@@ -40,6 +40,9 @@ var fogUniforms: struct {
 var deferredRenderPassShader: graphics.Shader = undefined;
 var deferredUniforms: struct {
 	color: c_int,
+	depthTexture: c_int,
+	blockType: c_int,
+	nearPlane: c_int,
 } = undefined;
 
 pub var activeFrameBuffer: c_uint = 0;
@@ -193,6 +196,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE3);
 
 	gpu_performance_measuring.startQuery(.transparent_rendering);
+	c.glTextureBarrier();
 	chunk.meshing.bindTransparentShaderAndUniforms(game.projectionMatrix, ambientLight, time);
 
 	c.glBlendEquationSeparate(c.GL_FUNC_ADD, c.GL_FUNC_ADD);
@@ -226,14 +230,20 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	fogShader.bind();
 	// TODO: Draw the water fog if the player is underwater.
 
+	const playerBlock = RenderStructure.getBlock(@intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2]))) orelse blocks.Block{.typ = 0, .data = 0};
+	
 	if(settings.bloom) {
-		Bloom.render(lastWidth, lastHeight);
+		Bloom.render(lastWidth, lastHeight, playerBlock);
 	}
 	gpu_performance_measuring.startQuery(.final_copy);
-	worldFrameBuffer.unbind();
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
+	worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
+	worldFrameBuffer.unbind();
 	deferredRenderPassShader.bind();
 	c.glUniform1i(deferredUniforms.color, 3);
+	c.glUniform1i(deferredUniforms.depthTexture, 4);
+	c.glUniform1i(deferredUniforms.blockType, playerBlock.typ);
+	c.glUniform1f(deferredUniforms.nearPlane, zNear);
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, activeFrameBuffer);
 
@@ -264,13 +274,18 @@ const Bloom = struct {
 	var secondPassShader: graphics.Shader = undefined;
 	var colorExtractAndDownsampleShader: graphics.Shader = undefined;
 	var upscaleShader: graphics.Shader = undefined;
+	var colorExtractUniforms: struct {
+		depthTexture: c_int,
+		blockType: c_int,
+		nearPlane: c_int,
+	} = undefined;
 
 	pub fn init() !void {
 		buffer1.init(false, c.GL_NEAREST, c.GL_CLAMP_TO_EDGE);
 		buffer2.init(false, c.GL_NEAREST, c.GL_CLAMP_TO_EDGE);
 		firstPassShader = try graphics.Shader.init("assets/cubyz/shaders/bloom/first_pass.vs", "assets/cubyz/shaders/bloom/first_pass.fs");
 		secondPassShader = try graphics.Shader.init("assets/cubyz/shaders/bloom/second_pass.vs", "assets/cubyz/shaders/bloom/second_pass.fs");
-		colorExtractAndDownsampleShader = try graphics.Shader.init("assets/cubyz/shaders/bloom/color_extractor_downsample.vs", "assets/cubyz/shaders/bloom/color_extractor_downsample.fs");
+		colorExtractAndDownsampleShader = try graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/bloom/color_extractor_downsample.vs", "assets/cubyz/shaders/bloom/color_extractor_downsample.fs", &colorExtractUniforms);
 		upscaleShader = try graphics.Shader.init("assets/cubyz/shaders/bloom/upscale.vs", "assets/cubyz/shaders/bloom/upscale.fs");
 	}
 
@@ -282,10 +297,14 @@ const Bloom = struct {
 		upscaleShader.deinit();
 	}
 
-	fn extractImageDataAndDownsample() void {
+	fn extractImageDataAndDownsample(playerBlock: blocks.Block) void {
 		colorExtractAndDownsampleShader.bind();
 		worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
+		worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
 		buffer1.bind();
+		c.glUniform1i(colorExtractUniforms.depthTexture, 4);
+		c.glUniform1i(colorExtractUniforms.blockType, playerBlock.typ);
+		c.glUniform1f(colorExtractUniforms.nearPlane, zNear);
 		c.glBindVertexArray(graphics.draw.rectVAO);
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
@@ -314,7 +333,7 @@ const Bloom = struct {
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
-	pub fn render(currentWidth: u31, currentHeight: u31) void {
+	pub fn render(currentWidth: u31, currentHeight: u31, playerBlock: blocks.Block) void {
 		if(width != currentWidth or height != currentHeight) {
 			width = currentWidth;
 			height = currentHeight;
@@ -326,9 +345,10 @@ const Bloom = struct {
 		gpu_performance_measuring.startQuery(.bloom_extract_downsample);
 		c.glDisable(c.GL_DEPTH_TEST);
 		c.glDisable(c.GL_CULL_FACE);
+		c.glDepthMask(c.GL_FALSE);
 
 		c.glViewport(0, 0, width/2, height/2);
-		extractImageDataAndDownsample();
+		extractImageDataAndDownsample(playerBlock);
 		gpu_performance_measuring.stopQuery();
 		gpu_performance_measuring.startQuery(.bloom_first_pass);
 		firstPass();
@@ -341,6 +361,7 @@ const Bloom = struct {
 		c.glBlendFunc(c.GL_ONE, c.GL_ONE);
 		upscale();
 
+		c.glDepthMask(c.GL_TRUE);
 		c.glEnable(c.GL_DEPTH_TEST);
 		c.glEnable(c.GL_CULL_FACE);
 		c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
