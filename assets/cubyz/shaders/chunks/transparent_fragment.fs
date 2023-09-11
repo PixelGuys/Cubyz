@@ -199,14 +199,12 @@ void main() {
 	float fogDistance = calculateFogDistance(texelFetch(depthTexture, ivec2(gl_FragCoord.xy), 0).r);
 	vec3 fogColor = unpackColor(textureData[blockType].fogColor);
 	if(isBackFace == 0) {
-		fragColor = mipMapSample(texture_sampler, textureCoords, textureIndex, lod)*vec4(ambientLight*normalVariation, 1);
 
-		if (fragColor.a == 1) discard;
+		vec4 textureColor = mipMapSample(texture_sampler, textureCoords, textureIndex, lod)*vec4(ambientLight*normalVariation, 1);
 
-		if (fog.activ) {
-			// TODO: Underwater fog if possible.
-		}
-		fragColor.rgb *= fragColor.a;
+		if (textureColor.a == 1) discard;
+
+		textureColor.rgb *= textureColor.a;
 		blendColor.rgb = unpackColor(textureData[blockType].absorption);
 
 		// Fake reflection:
@@ -214,29 +212,36 @@ void main() {
 		// TODO: Change this when it rains.
 		// TODO: Normal mapping.
 		// TODO: Allow textures to contribute to this term.
-		fragColor.rgb += (textureData[blockType].reflectivity/2*vec3(snoise(normalize(reflect(direction, normals[faceNormal])))) + vec3(textureData[blockType].reflectivity))*ambientLight*normalVariation;
-		fragColor.rgb += mipMapSample(emissionSampler, textureCoords, textureIndex, lod).rgb;
-		blendColor.rgb *= 1 - fragColor.a;
-		fragColor.a = 1;
+		textureColor.rgb += (textureData[blockType].reflectivity/2*vec3(snoise(normalize(reflect(direction, normals[faceNormal])))) + vec3(textureData[blockType].reflectivity))*ambientLight*normalVariation;
+		textureColor.rgb += mipMapSample(emissionSampler, textureCoords, textureIndex, lod).rgb;
+		blendColor.rgb *= 1 - textureColor.a;
+		textureColor.a = 1;
 
 		if (fog.activ) {
-			fragColor = calcFog(mvVertexPos, fragColor, fog);
-			blendColor.rgb *= fragColor.a;
-			fragColor.a = 1;
+			textureColor = calcFog(mvVertexPos, textureColor, fog);
+			blendColor.rgb *= textureColor.a;
+			textureColor.a = 1;
 		}
 
-		// TODO: Consider the case that the terrain is too far away, which would cause infinity/nan.
 		float fogFactor = exp(fogDistance);
 		fragColor = vec4(fogColor, 1);
 		fragColor.a = 1.0/fogFactor;
 		fragColor.rgb *= fragColor.a;
 		fragColor.rgb -= fogColor;
-		blendColor.rgb = vec3(1);
+
+		// Apply the texture+absorption
+		fragColor.rgb *= blendColor.rgb;
+		fragColor.rgb += textureColor.rgb*fragColor.a;
+
 	} else {
+		// Apply the texture
+		vec4 textureColor = mipMapSample(texture_sampler, textureCoords, textureIndex, lod)*vec4(ambientLight*normalVariation, 1);
+		blendColor.rgb = vec3(1 - textureColor.a);
+		fragColor.rgb += textureColor.rgb*textureColor.a;
+
 		float fogFactor = exp(fogDistance);
 		fragColor.a = fogFactor;
 		fragColor.rgb -= fogColor;
 		fragColor.rgb += fogFactor*fogColor;
-		blendColor.rgb = vec3(1);
 	}
 }
