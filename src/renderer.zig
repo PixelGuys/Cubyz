@@ -173,7 +173,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	MeshSelection.select(playerPos, game.camera.direction);
 	MeshSelection.render(game.projectionMatrix, game.camera.viewMatrix, playerPos);
 
-	// Render the far away ReducedChunks:
 	chunk.meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight, time);
 
 	for(meshes) |mesh| {
@@ -793,6 +792,9 @@ pub const MeshSelection = struct {
 
 	pub fn render(projectionMatrix: Mat4f, viewMatrix: Mat4f, playerPos: Vec3d) void {
 		if(selectedBlockPos) |_selectedBlockPos| {
+			c.glEnable(c.GL_POLYGON_OFFSET_LINE);
+			defer c.glDisable(c.GL_POLYGON_OFFSET_LINE);
+			c.glPolygonOffset(2, 0);
 			var block = RenderStructure.getBlock(_selectedBlockPos[0], _selectedBlockPos[1], _selectedBlockPos[2]) orelse return;
 			const model = blocks.meshes.model(block);
 			const voxelModel = &models.voxelModels.items[model.modelIndex];

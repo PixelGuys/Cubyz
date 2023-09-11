@@ -13,6 +13,5 @@ uniform vec3 upperBounds;
 void main() {
 	vec4 mvPos = viewMatrix*vec4(lowerBounds + position*(upperBounds - lowerBounds) + modelPosition, 1);
 	gl_Position = projectionMatrix*mvPos;
-	gl_Position.z -= 2e-4*gl_Position.w;
 	mvVertexPos = mvPos.xyz;
 }
