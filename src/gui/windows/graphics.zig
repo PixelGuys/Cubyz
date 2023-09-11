@@ -43,7 +43,6 @@ pub fn onOpen() Allocator.Error!void {
 	try list.add(try DiscreteSlider.init(.{0, 0}, 128, "#ffffffRender Distance: ", "{}", &renderDistances, settings.renderDistance - 1, &renderDistanceCallback));
 	const LODFactors = [_]f32{0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8};
 	try list.add(try DiscreteSlider.init(.{0, 0}, 128, "#ffffffLOD Factor: ", "{d:.1}", &LODFactors, @as(u16, @intFromFloat(settings.LODFactor*2)) - 1, &LODFactorCallback));
-	// TODO: fog?
 	try list.add(try CheckBox.init(.{0, 0}, 128, "Bloom", settings.bloom, &bloomCallback));
 	try list.add(try CheckBox.init(.{0, 0}, 128, "Vertical Synchronization", settings.vsync, &vsyncCallback));
 	list.finish(.center);

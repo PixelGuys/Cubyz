@@ -11,18 +11,10 @@ flat in uvec3 upper;
 
 layout(location = 0) out vec4 fragColor;
 
-struct Fog {
-	bool activ;
-	vec3 color;
-	float density;
-};
-
 uniform vec3 ambientLight;
 uniform mat4 projectionMatrix;
 uniform float sizeScale;
 uniform int time;
-
-uniform Fog fog;
 
 const float[6] normalVariations = float[6](
 	1.0, //vec3(0, 1, 0),
@@ -32,14 +24,6 @@ const float[6] normalVariations = float[6](
 	0.95, //vec3(0, 0, 1),
 	0.85 //vec3(0, 0, -1)
 );
-
-vec4 calcFog(vec3 pos, vec4 color, Fog fog) {
-	float distance = length(pos);
-	float fogFactor = 1.0/exp((distance*fog.density)*(distance*fog.density));
-	fogFactor = clamp(fogFactor, 0.0, 1.0);
-	vec3 resultColor = mix(fog.color, color.xyz, fogFactor);
-	return vec4(resultColor.xyz, color.w + 1 - fogFactor);
-}
 
 // blockDrops ------------------------------------------------------------------------------------------------------------------------
 
@@ -225,9 +209,6 @@ void mainBlockDrop() {
 
 	fragColor.rgb += mipMapSample(emissionSampler, textureCoords, textureIndex, lod).rgb;
 
-	if (fog.activ) {
-		fragColor = calcFog(startPosition, fragColor, fog);
-	}
 	fragColor.rgb /= 4;
 }
 
@@ -315,9 +296,6 @@ void mainItemDrop() {
 	color.a = 1; // No transparency supported!
 	color = color*vec4(ambientLight*normalVariations[lastNormal], 1);
 
-	if (fog.activ) {
-		fragColor = calcFog(modifiedCameraSpacePos, color, fog);
-	}
 	fragColor.rgb /= 4;
 }
 

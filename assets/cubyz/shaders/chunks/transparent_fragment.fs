@@ -19,7 +19,6 @@ layout (location = 0, index = 0) out vec4 fragColor;
 layout (location = 0, index = 1) out vec4 blendColor;
 
 struct Fog {
-	bool activ;
 	vec3 color;
 	float density;
 };
@@ -33,7 +32,7 @@ struct TextureData {
 	int textureIndices[6];
 	uint absorption;
 	float reflectivity;
-	float fogStrength;
+	float fogDensity;
 	uint fogColor;
 };
 
@@ -67,14 +66,6 @@ const vec3[6] normals = vec3[6](
 uniform float nearPlane;
 
 uniform Fog fog;
-
-vec4 calcFog(vec3 pos, vec4 color, Fog fog) {
-	float distance = length(pos);
-	float fogFactor = 1.0/exp((distance*fog.density)*(distance*fog.density));
-	fogFactor = clamp(fogFactor, 0.0, 1.0);
-	vec4 resultColor = mix(vec4(fog.color, 0), color, fogFactor);
-	return resultColor;
-}
 
 ivec2 getTextureCoords(ivec3 voxelPosition, int textureDir) {
 	switch(textureDir) {
@@ -168,10 +159,9 @@ vec3 unpackColor(uint color) {
 	)/255.0;
 }
 
-float calculateFogDistance(float depthBufferValue) {
-	float fogStrength = textureData[blockType].fogStrength;
-	float distCameraTerrain = nearPlane*fogStrength/depthBufferValue;
-	float distFromCamera = abs(mvVertexPos.z)*fogStrength;
+float calculateFogDistance(float depthBufferValue, float fogDensity) {
+	float distCameraTerrain = nearPlane*fogDensity/depthBufferValue;
+	float distFromCamera = abs(mvVertexPos.z)*fogDensity;
 	float distFromTerrain = distFromCamera - distCameraTerrain;
 	if(distCameraTerrain < 10) { // Resolution range is sufficient.
 		return distFromTerrain;
@@ -189,6 +179,22 @@ float calculateFogDistance(float depthBufferValue) {
 	}
 }
 
+void applyFrontfaceFog(float fogDistance, vec3 fogColor) {
+	float fogFactor = exp(fogDistance);
+	float oldAlpha = fragColor.a;
+	fragColor.a *= 1.0/fogFactor;
+	fragColor.rgb += fragColor.a*fogColor;
+	fragColor.rgb -= oldAlpha*fogColor;
+}
+
+void applyBackfaceFog(float fogDistance, vec3 fogColor) {
+	float fogFactor = exp(fogDistance);
+	float oldAlpha = fragColor.a;
+	fragColor.a *= fogFactor;
+	fragColor.rgb -= oldAlpha*fogColor;
+	fragColor.rgb += fragColor.a*fogColor;
+}
+
 void main() {
 	float variance = perpendicularFwidth(direction);
 	int textureIndex = textureData[blockType].textureIndices[faceNormal];
@@ -196,8 +202,10 @@ void main() {
 	float normalVariation = normalVariations[faceNormal];
 	float lod = getLod(ivec3(startPosition), faceNormal, direction, variance);
 	ivec2 textureCoords = getTextureCoords(ivec3(startPosition), faceNormal);
-	float fogDistance = calculateFogDistance(texelFetch(depthTexture, ivec2(gl_FragCoord.xy), 0).r);
+	float fogDistance = calculateFogDistance(texelFetch(depthTexture, ivec2(gl_FragCoord.xy), 0).r, textureData[blockType].fogDensity);
+	float airFogDistance = calculateFogDistance(texelFetch(depthTexture, ivec2(gl_FragCoord.xy), 0).r, fog.density);
 	vec3 fogColor = unpackColor(textureData[blockType].fogColor);
+	fragColor = vec4(0, 0, 0, 1);
 	if(isBackFace == 0) {
 
 		vec4 textureColor = mipMapSample(texture_sampler, textureCoords, textureIndex, lod)*vec4(ambientLight*normalVariation, 1);
@@ -217,31 +225,25 @@ void main() {
 		blendColor.rgb *= 1 - textureColor.a;
 		textureColor.a = 1;
 
-		if (fog.activ) {
-			textureColor = calcFog(mvVertexPos, textureColor, fog);
-			blendColor.rgb *= textureColor.a;
-			textureColor.a = 1;
-		}
-
-		float fogFactor = exp(fogDistance);
-		fragColor = vec4(fogColor, 1);
-		fragColor.a = 1.0/fogFactor;
-		fragColor.rgb *= fragColor.a;
-		fragColor.rgb -= fogColor;
+		// Apply the block fog:
+		applyFrontfaceFog(fogDistance, fogColor);
 
 		// Apply the texture+absorption
 		fragColor.rgb *= blendColor.rgb;
 		fragColor.rgb += textureColor.rgb*fragColor.a;
 
+		// Apply the air fog:
+		applyBackfaceFog(airFogDistance, fog.color);
 	} else {
-		// Apply the texture
+		// Apply the air fog:
+		applyFrontfaceFog(airFogDistance, fog.color);
+
+		// Apply the texture:
 		vec4 textureColor = mipMapSample(texture_sampler, textureCoords, textureIndex, lod)*vec4(ambientLight*normalVariation, 1);
 		blendColor.rgb = vec3(1 - textureColor.a);
 		fragColor.rgb += textureColor.rgb*textureColor.a;
 
-		float fogFactor = exp(fogDistance);
-		fragColor.a = fogFactor;
-		fragColor.rgb -= fogColor;
-		fragColor.rgb += fogFactor*fogColor;
+		// Apply the block fog:
+		applyBackfaceFog(fogDistance, fogColor);
 	}
 }

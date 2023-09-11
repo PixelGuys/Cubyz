@@ -313,7 +313,7 @@ pub const meshes = struct {
 		textureIndices: [6]u32,
 		absorption: u32,
 		reflectivity: f32,
-		fogStrength: f32,
+		fogDensity: f32,
 		fogColor: u32,
 	};
 	var size: u32 = 0;
@@ -396,6 +396,14 @@ pub const meshes = struct {
 
 	pub inline fn modelIndexStart(block: Block) u16 {
 		return _modelIndex[block.typ];
+	}
+
+	pub inline fn fogDensity(block: Block) f32 {
+		return textureData[block.typ].fogDensity;
+	}
+
+	pub inline fn fogColor(block: Block) u32 {
+		return textureData[block.typ].fogColor;
 	}
 
 	pub fn readTexture(textureInfo: JsonElement, assetFolder: []const u8) !?u31 {
@@ -501,7 +509,7 @@ pub const meshes = struct {
 		try getTextureIndices(json, assetFolder, &textureData[meshes.size].textureIndices);
 		textureData[meshes.size].reflectivity = json.get(f32, "reflectivity", 0);
 		textureData[meshes.size].absorption = json.get(u32, "absorption", 0xffffff);
-		textureData[meshes.size].fogStrength = json.get(f32, "fogStrength", 0.0);
+		textureData[meshes.size].fogDensity = json.get(f32, "fogDensity", 0.0);
 		textureData[meshes.size].fogColor = json.get(u32, "fogColor", 0xffffff);
 
 		maxTextureCount[meshes.size] = @intCast(textureIDs.items.len);

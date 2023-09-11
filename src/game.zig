@@ -299,8 +299,7 @@ pub var world: ?*World = null;
 
 pub var projectionMatrix: Mat4f = Mat4f.identity();
 
-pub var fog = Fog{.active = true, .color=.{0, 1, 0.5}, .density=1.0/15.0/256.0};
-
+pub var fog = Fog{.color=.{0, 1, 0.5}, .density=1.0/15.0/128.0}; // TODO: Make this depend on the render distance.
 
 pub fn update(deltaTime: f64) !void {
 	var movement = Vec3d{0, 0, 0};

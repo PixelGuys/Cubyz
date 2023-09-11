@@ -7,33 +7,17 @@ in vec2 texCoords;
 layout(binding = 3) uniform sampler2D color;
 
 uniform sampler2D depthTexture;
-uniform int blockType;
 uniform float nearPlane;
 
-struct TextureData {
-	int textureIndices[6];
-	uint absorption;
-	float reflectivity;
-	float fogStrength;
-	uint fogColor;
+struct Fog {
+	vec3 color;
+	float density;
 };
 
-layout(std430, binding = 1) buffer _textureData
-{
-	TextureData textureData[];
-};
+uniform Fog fog;
 
-vec3 unpackColor(uint color) {
-	return vec3(
-		color>>16 & 255u,
-		color>>8 & 255u,
-		color & 255u
-	)/255.0;
-}
-
-float calculateFogDistance(float depthBufferValue) {
-	float fogStrength = textureData[blockType].fogStrength;
-	float distCameraTerrain = nearPlane*fogStrength/depthBufferValue;
+float calculateFogDistance(float depthBufferValue, float fogDensity) {
+	float distCameraTerrain = nearPlane*fogDensity/depthBufferValue;
 	float distFromCamera = 0;
 	float distFromTerrain = distFromCamera - distCameraTerrain;
 	if(distCameraTerrain < 10) { // Resolution range is sufficient.
@@ -54,20 +38,18 @@ float calculateFogDistance(float depthBufferValue) {
 
 vec3 fetch(ivec2 pos) {
 	vec4 rgba = texelFetch(color, pos, 0);
-	if(blockType != 0) { // TODO: Handle air fog as well.
-		float fogDistance = calculateFogDistance(texelFetch(depthTexture, pos, 0).r);
-		vec3 fogColor = unpackColor(textureData[blockType].fogColor);
-		float fogFactor = exp(fogDistance);
-		vec4 sourceColor = vec4(fogColor, 1);
-		sourceColor.a = 1.0/fogFactor;
-		sourceColor.rgb *= sourceColor.a;
-		sourceColor.rgb -= fogColor;
-		vec3 source2Color = vec3(1);
-		rgba = vec4(
-			source2Color*rgba.rgb + rgba.a*sourceColor.rgb,
-			rgba.a*sourceColor.a
-		);
-	}
+	float fogDistance = calculateFogDistance(texelFetch(depthTexture, pos, 0).r, fog.density);
+	vec3 fogColor = fog.color;
+	float fogFactor = exp(fogDistance);
+	vec4 sourceColor = vec4(fogColor, 1);
+	sourceColor.a = 1.0/fogFactor;
+	sourceColor.rgb *= sourceColor.a;
+	sourceColor.rgb -= fogColor;
+	vec3 source2Color = vec3(1);
+	rgba = vec4(
+		source2Color*rgba.rgb + rgba.a*sourceColor.rgb,
+		rgba.a*sourceColor.a
+	);
 	if(rgba.a < 1) return vec3(0); // Prevent t-junctions from transparency from making a huge mess.
 	return rgba.rgb/rgba.a;
 }

@@ -1603,7 +1603,6 @@ pub const Image = struct {
 };
 
 pub const Fog = struct {
-	active: bool,
 	color: Vec3f,
 	density: f32,
 };
@@ -1656,7 +1655,7 @@ pub fn generateBlockTexture(blockType: u16) !Texture {
 	frameBuffer.updateSize(textureSize, textureSize, c.GL_RGBA16F);
 	frameBuffer.bind();
 	if(block.transparent()) {
-		frameBuffer.clear(.{0.683421, 0.6854237, 0.685426, 1}); // TODO: Alpha must be 1 for fog!
+		frameBuffer.clear(.{0.683421, 0.6854237, 0.685426, 1});
 	} else {
 		frameBuffer.clear(.{0, 0, 0, 0});
 	}

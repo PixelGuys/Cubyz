@@ -16,12 +16,6 @@ uniform sampler2DArray emissionSampler;
 
 layout(location = 0) out vec4 fragColor;
 
-struct Fog {
-	bool activ;
-	vec3 color;
-	float density;
-};
-
 struct AnimationData {
 	int frames;
 	int time;
@@ -38,7 +32,7 @@ struct TextureData {
 	int textureIndices[6];
 	uint absorption;
 	float reflectivity;
-	float fogStrength;
+	float fogDensity;
 	uint fogColor;
 };
 
@@ -72,17 +66,6 @@ const vec3[6] normals = vec3[6](
 	vec3(0, 0, 1),
 	vec3(0, 0, -1)
 );
-
-
-uniform Fog fog;
-
-vec4 calcFog(vec3 pos, vec4 color, Fog fog) {
-	float distance = length(pos);
-	float fogFactor = 1.0/exp((distance*fog.density)*(distance*fog.density));
-	fogFactor = clamp(fogFactor, 0.0, 1.0);
-	vec4 resultColor = mix(vec4(fog.color, 1), color, fogFactor);
-	return resultColor;
-}
 
 int getVoxel(int voxelIndex) {
 	voxelIndex = (voxelIndex & 0xf) | (voxelIndex>>1 & 0xf0) | (voxelIndex>>2 & 0xf00);
@@ -214,9 +197,5 @@ void main() {
 	if (fragColor.a < 1) discard;
 
 	fragColor.rgb += mipMapSample(emissionSampler, textureCoords, textureIndex, lod).rgb;
-
-	if (fog.activ) {
-		fragColor = calcFog(mvVertexPos, fragColor, fog);
-	}
 	// TODO: Update the depth.
 }

@@ -6,7 +6,6 @@ const chunk = @import("chunk.zig");
 const entity = @import("entity.zig");
 const graphics = @import("graphics.zig");
 const c = graphics.c;
-const Fog = graphics.Fog;
 const Shader = graphics.Shader;
 const game = @import("game.zig");
 const World = game.World;
@@ -30,25 +29,18 @@ const Mat4f = vec.Mat4f;
 const maximumMeshTime = 12;
 pub const zNear = 1e-10;
 
-var fogShader: graphics.Shader = undefined;
-var fogUniforms: struct {
-	fog_activ: c_int,
-	fog_color: c_int,
-	fog_density: c_int,
-	color: c_int,
-} = undefined;
 var deferredRenderPassShader: graphics.Shader = undefined;
 var deferredUniforms: struct {
 	color: c_int,
 	depthTexture: c_int,
-	blockType: c_int,
+	@"fog.color": c_int,
+	@"fog.density": c_int,
 	nearPlane: c_int,
 } = undefined;
 
 pub var activeFrameBuffer: c_uint = 0;
 
 pub fn init() !void {
-	fogShader = try Shader.initAndGetUniforms("assets/cubyz/shaders/fog_vertex.vs", "assets/cubyz/shaders/fog_fragment.fs", &fogUniforms);
 	deferredRenderPassShader = try Shader.initAndGetUniforms("assets/cubyz/shaders/deferred_render_pass.vs", "assets/cubyz/shaders/deferred_render_pass.fs", &deferredUniforms);
 	worldFrameBuffer.init(true, c.GL_NEAREST, c.GL_CLAMP_TO_EDGE);
 	worldFrameBuffer.updateSize(Window.width, Window.height, c.GL_RGBA16F);
@@ -58,7 +50,6 @@ pub fn init() !void {
 }
 
 pub fn deinit() void {
-	fogShader.deinit();
 	deferredRenderPassShader.deinit();
 	worldFrameBuffer.deinit();
 	Bloom.deinit();
@@ -114,9 +105,6 @@ pub fn render(playerPosition: Vec3d) !void {
 		ambient[2] = @max(0.1, world.ambientLight);
 		var skyColor = vec.xyz(world.clearColor);
 		game.fog.color = skyColor;
-		// TODO:
-//		Cubyz.fog.setActive(ClientSettings.FOG_COEFFICIENT != 0);
-//		Cubyz.fog.setDensity(1 / (ClientSettings.EFFECTIVE_RENDER_DISTANCE*ClientSettings.FOG_COEFFICIENT));
 
 		try renderWorld(world, ambient, skyColor, playerPosition);
 		try RenderStructure.updateMeshes(startTime + maximumMeshTime);
@@ -226,9 +214,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 //			Meshes.emissionTextureArray.bind();
 //		}
 
-	fogShader.bind();
-	// TODO: Draw the water fog if the player is underwater.
-
 	const playerBlock = RenderStructure.getBlock(@intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2]))) orelse blocks.Block{.typ = 0, .data = 0};
 	
 	if(settings.bloom) {
@@ -241,7 +226,14 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	deferredRenderPassShader.bind();
 	c.glUniform1i(deferredUniforms.color, 3);
 	c.glUniform1i(deferredUniforms.depthTexture, 4);
-	c.glUniform1i(deferredUniforms.blockType, playerBlock.typ);
+	if(playerBlock.typ == 0) {
+		c.glUniform3fv(deferredUniforms.@"fog.color", 1, @ptrCast(&game.fog.color));
+		c.glUniform1f(deferredUniforms.@"fog.density", game.fog.density);
+	} else {
+		const fogColor = blocks.meshes.fogColor(playerBlock);
+		c.glUniform3f(deferredUniforms.@"fog.color", @as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0);
+		c.glUniform1f(deferredUniforms.@"fog.density", blocks.meshes.fogDensity(playerBlock));
+	}
 	c.glUniform1f(deferredUniforms.nearPlane, zNear);
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, activeFrameBuffer);
@@ -275,8 +267,9 @@ const Bloom = struct {
 	var upscaleShader: graphics.Shader = undefined;
 	var colorExtractUniforms: struct {
 		depthTexture: c_int,
-		blockType: c_int,
 		nearPlane: c_int,
+		@"fog.color": c_int,
+		@"fog.density": c_int,
 	} = undefined;
 
 	pub fn init() !void {
@@ -302,7 +295,14 @@ const Bloom = struct {
 		worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
 		buffer1.bind();
 		c.glUniform1i(colorExtractUniforms.depthTexture, 4);
-		c.glUniform1i(colorExtractUniforms.blockType, playerBlock.typ);
+		if(playerBlock.typ == 0) {
+			c.glUniform3fv(deferredUniforms.@"fog.color", 1, @ptrCast(&game.fog.color));
+			c.glUniform1f(deferredUniforms.@"fog.density", game.fog.density);
+		} else {
+			const fogColor = blocks.meshes.fogColor(playerBlock);
+			c.glUniform3f(deferredUniforms.@"fog.color", @as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0);
+			c.glUniform1f(deferredUniforms.@"fog.density", blocks.meshes.fogDensity(playerBlock));
+		}
 		c.glUniform1f(colorExtractUniforms.nearPlane, zNear);
 		c.glBindVertexArray(graphics.draw.rectVAO);
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
