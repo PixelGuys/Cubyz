@@ -221,7 +221,8 @@ void main() {
 		// Apply the texture:
 		vec4 textureColor = texture(texture_sampler, vec3(getTextureCoordsNormal(startPosition/16, faceNormal), textureIndex))*vec4(ambientLight*normalVariation, 1);
 		blendColor.rgb = vec3(1 - textureColor.a);
-		fragColor.rgb += textureColor.rgb*textureColor.a;
+		fragColor.rgb *= blendColor.rgb;
+		fragColor.rgb += textureColor.rgb*textureColor.a*fragColor.a;
 
 		// Apply the block fog:
 		applyBackfaceFog(fogDistance, fogColor);
