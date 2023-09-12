@@ -6,12 +6,62 @@ in vec2 texCoords;
 
 layout(binding = 3) uniform sampler2D color;
 
+uniform sampler2D depthTexture;
+uniform float nearPlane;
+uniform vec2 tanXY;
+
+struct Fog {
+	vec3 color;
+	float density;
+};
+
+uniform Fog fog;
+
+float calculateFogDistance(float depthBufferValue, float fogDensity) {
+	float distCameraTerrain = nearPlane*fogDensity/depthBufferValue;
+	float distFromCamera = 0;
+	float distFromTerrain = distFromCamera - distCameraTerrain;
+	if(distCameraTerrain < 10) { // Resolution range is sufficient.
+		return distFromTerrain;
+	} else {
+		// Here we have a few options to deal with this. We could for example weaken the fog effect to fit the entire range.
+		// I decided to keep the fog strength close to the camera and far away, with a fog-free region in between.
+		// I decided to this because I want far away fog to work (e.g. a distant ocean) as well as close fog(e.g. the top surface of the water when the player is under it)
+		if(distFromTerrain > -5 && depthBufferValue != 0) {
+			return distFromTerrain;
+		} else if(distFromCamera < 5) {
+			return distFromCamera - 10;
+		} else {
+			return -5;
+		}
+	}
+}
+
+vec3 fetch(ivec2 pos) {
+	vec4 rgba = texelFetch(color, pos, 0);
+	float densityAdjustment = sqrt(dot(tanXY*(texCoords*2 - 1), tanXY*(texCoords*2 - 1)) + 1);
+	float fogDistance = calculateFogDistance(texelFetch(depthTexture, pos, 0).r, fog.density*densityAdjustment);
+	vec3 fogColor = fog.color;
+	float fogFactor = exp(fogDistance);
+	vec4 sourceColor = vec4(fogColor, 1);
+	sourceColor.a = 1.0/fogFactor;
+	sourceColor.rgb *= sourceColor.a;
+	sourceColor.rgb -= fogColor;
+	vec3 source2Color = vec3(1);
+	rgba = vec4(
+		source2Color*rgba.rgb + rgba.a*sourceColor.rgb,
+		rgba.a*sourceColor.a
+	);
+	if(rgba.a < 1) return vec3(0); // Prevent t-junctions from transparency from making a huge mess.
+	return rgba.rgb/rgba.a;
+}
+
 vec3 linearSample(ivec2 start) {
 	vec3 outColor = vec3(0);
-	outColor += texelFetch(color, start, 0).rgb;
-	outColor += texelFetch(color, start + ivec2(0, 1), 0).rgb;
-	outColor += texelFetch(color, start + ivec2(1, 0), 0).rgb;
-	outColor += texelFetch(color, start + ivec2(1, 1), 0).rgb;
+	outColor += fetch(start);
+	outColor += fetch(start + ivec2(0, 1));
+	outColor += fetch(start + ivec2(1, 0));
+	outColor += fetch(start + ivec2(1, 1));
 	return outColor*0.25;
 }
 

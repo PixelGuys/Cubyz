@@ -69,6 +69,7 @@ var _blockDrops: [maxBlockCount][]BlockDrop = undefined;
 /// Meaning undegradable parts of trees or other structures can grow through this block.
 var _degradable: [maxBlockCount]bool = undefined;
 var _viewThrough: [maxBlockCount]bool = undefined;
+var _hasBackFace: [maxBlockCount]bool = undefined;
 var _blockClass: [maxBlockCount]BlockClass = undefined;
 var _light: [maxBlockCount]u32 = undefined;
 /// How much light this block absorbs if it is transparent
@@ -114,6 +115,8 @@ pub fn register(_: []const u8, id: []const u8, json: JsonElement) !u16 {
 	_gui[size] = try allocator.dupe(u8, json.get([]const u8, "GUI", ""));
 	_transparent[size] = json.get(bool, "transparent", false);
 	_viewThrough[size] = json.get(bool, "viewThrough", false) or _transparent[size];
+	var hasFog: bool = json.get(f32, "fogDensity", 0.0) != 0.0;
+	_hasBackFace[size] = hasFog and _transparent[size];
 
 	const oreProperties = json.getChild("ore");
 	if (oreProperties != .JsonNull) {
@@ -257,6 +260,10 @@ pub const Block = packed struct {
 		return _viewThrough[self.typ];
 	}
 
+	pub inline fn hasBackFace(self: Block) bool {
+		return _hasBackFace[self.typ];
+	}
+
 	pub inline fn blockClass(self: Block) BlockClass {
 		return _blockClass[self.typ];
 	}
@@ -306,6 +313,8 @@ pub const meshes = struct {
 		textureIndices: [6]u32,
 		absorption: u32,
 		reflectivity: f32,
+		fogDensity: f32,
+		fogColor: u32,
 	};
 	var size: u32 = 0;
 	var _modelIndex: [maxBlockCount]u16 = undefined;
@@ -387,6 +396,14 @@ pub const meshes = struct {
 
 	pub inline fn modelIndexStart(block: Block) u16 {
 		return _modelIndex[block.typ];
+	}
+
+	pub inline fn fogDensity(block: Block) f32 {
+		return textureData[block.typ].fogDensity;
+	}
+
+	pub inline fn fogColor(block: Block) u32 {
+		return textureData[block.typ].fogColor;
 	}
 
 	pub fn readTexture(textureInfo: JsonElement, assetFolder: []const u8) !?u31 {
@@ -492,6 +509,8 @@ pub const meshes = struct {
 		try getTextureIndices(json, assetFolder, &textureData[meshes.size].textureIndices);
 		textureData[meshes.size].reflectivity = json.get(f32, "reflectivity", 0);
 		textureData[meshes.size].absorption = json.get(u32, "absorption", 0xffffff);
+		textureData[meshes.size].fogDensity = json.get(f32, "fogDensity", 0.0);
+		textureData[meshes.size].fogColor = json.get(u32, "fogColor", 0xffffff);
 
 		maxTextureCount[meshes.size] = @intCast(textureIDs.items.len);
 

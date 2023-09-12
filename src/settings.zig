@@ -20,8 +20,6 @@ pub var fov: f32 = 70;
 
 pub var mouseSensitivity: f32 = 1;
 
-pub var fogCoefficient: f32 = 15;
-
 pub var renderDistance: u16 = 4;
 pub var LODFactor: f32 = 2.0;
 

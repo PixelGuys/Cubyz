@@ -545,9 +545,6 @@ pub const ItemDropRenderer = struct {
 		viewMatrix: c_int,
 		modelPosition: c_int,
 		ambientLight: c_int,
-		@"fog.activ": c_int,
-		@"fog.color": c_int,
-		@"fog.density": c_int,
 		modelIndex: c_int,
 		block: c_int,
 		sizeScale: c_int,
@@ -730,9 +727,6 @@ pub const ItemDropRenderer = struct {
 		c.glUniform1i(itemUniforms.texture_sampler, 0);
 		c.glUniform1i(itemUniforms.emissionSampler, 1);
 		c.glUniform1i(itemUniforms.time, @as(u31, @truncate(time)));
-		c.glUniform1i(itemUniforms.@"fog.activ", if(game.fog.active) 1 else 0);
-		c.glUniform3fv(itemUniforms.@"fog.color", 1, @ptrCast(&game.fog.color));
-		c.glUniform1f(itemUniforms.@"fog.density", game.fog.density);
 		c.glUniformMatrix4fv(itemUniforms.projectionMatrix, 1, c.GL_FALSE, @ptrCast(&projMatrix));
 		c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniformMatrix4fv(itemUniforms.viewMatrix, 1, c.GL_FALSE, @ptrCast(&game.camera.viewMatrix));

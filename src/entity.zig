@@ -84,9 +84,6 @@ pub const ClientEntityManager = struct {
 		viewMatrix: c_int,
 		texture_sampler: c_int,
 		materialHasTexture: c_int,
-		@"fog.activ": c_int,
-		@"fog.color": c_int,
-		@"fog.density": c_int,
 		light: c_int,
 		ambientLight: c_int,
 		directionalLight: c_int,
@@ -153,9 +150,6 @@ pub const ClientEntityManager = struct {
 		defer mutex.unlock();
 		update();
 		shader.bind();
-		c.glUniform1i(uniforms.@"fog.activ", if(game.fog.active) c.GL_TRUE else c.GL_FALSE);
-		c.glUniform3fv(uniforms.@"fog.color", 1, @ptrCast(&game.fog.color));
-		c.glUniform1f(uniforms.@"fog.density", game.fog.density);
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_FALSE, @ptrCast(&projMatrix));
 		c.glUniform1i(uniforms.texture_sampler, 0);
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));

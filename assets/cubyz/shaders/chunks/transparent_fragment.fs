@@ -4,6 +4,7 @@ in vec3 mvVertexPos;
 flat in int blockType;
 flat in int faceNormal;
 flat in int modelIndex;
+flat in int isBackFace;
 in vec3 startPosition;
 in vec3 direction;
 
@@ -12,11 +13,12 @@ uniform vec3 ambientLight;
 uniform sampler2DArray texture_sampler;
 uniform sampler2DArray emissionSampler;
 
+layout(binding = 3) uniform sampler2D depthTexture;
+
 layout (location = 0, index = 0) out vec4 fragColor;
 layout (location = 0, index = 1) out vec4 blendColor;
 
 struct Fog {
-	bool activ;
 	vec3 color;
 	float density;
 };
@@ -30,6 +32,8 @@ struct TextureData {
 	int textureIndices[6];
 	uint absorption;
 	float reflectivity;
+	float fogDensity;
+	uint fogColor;
 };
 
 layout(std430, binding = 0) buffer _animation
@@ -59,56 +63,9 @@ const vec3[6] normals = vec3[6](
 	vec3(0, 0, -1)
 );
 
+uniform float nearPlane;
 
 uniform Fog fog;
-uniform Fog waterFog; // TODO: Select fog from texture
-
-vec4 calcFog(vec3 pos, vec4 color, Fog fog) {
-	float distance = length(pos);
-	float fogFactor = 1.0/exp((distance*fog.density)*(distance*fog.density));
-	fogFactor = clamp(fogFactor, 0.0, 1.0);
-	vec4 resultColor = mix(vec4(fog.color, 0), color, fogFactor);
-	return resultColor;
-}
-
-ivec2 getTextureCoords(ivec3 voxelPosition, int textureDir) {
-	switch(textureDir) {
-		case 0:
-			return ivec2(15 - voxelPosition.x, voxelPosition.z);
-		case 1:
-			return ivec2(voxelPosition.x, voxelPosition.z);
-		case 2:
-			return ivec2(15 - voxelPosition.z, voxelPosition.y);
-		case 3:
-			return ivec2(voxelPosition.z, voxelPosition.y);
-		case 4:
-			return ivec2(voxelPosition.x, voxelPosition.y);
-		case 5:
-			return ivec2(15 - voxelPosition.x, voxelPosition.y);
-	}
-}
-
-float getLod(ivec3 voxelPosition, int normal, vec3 direction, float variance) {
-	return max(0, min(4, log2(variance*length(direction)/abs(dot(vec3(normals[normal]), direction)))));
-}
-
-float perpendicularFwidth(vec3 direction) { // Estimates how big fwidth would be if the fragment normal was perpendicular to the light direction.
-	vec3 variance = dFdx(direction);
-	variance += direction;
-	variance = variance*length(direction)/length(variance);
-	variance -= direction;
-	return 16*length(variance);
-}
-
-vec4 mipMapSample(sampler2DArray texture, ivec2 textureCoords, int textureIndex, float lod) { // TODO: anisotropic filtering?
-	int lowerLod = int(floor(lod));
-	int higherLod = lowerLod+1;
-	float interpolation = lod - lowerLod;
-	vec4 lower = texelFetch(texture, ivec3(textureCoords >> lowerLod, textureIndex), lowerLod);
-	vec4 higher = texelFetch(texture, ivec3(textureCoords >> higherLod, textureIndex), higherLod);
-	return higher*interpolation + (1 - interpolation)*lower;
-}
-
 
 ivec3 random3to3(ivec3 v) {
 	v &= 15;
@@ -163,37 +120,110 @@ vec3 unpackColor(uint color) {
 	)/255.0;
 }
 
+float calculateFogDistance(float depthBufferValue, float fogDensity) {
+	float distCameraTerrain = nearPlane*fogDensity/depthBufferValue;
+	float distFromCamera = abs(mvVertexPos.z)*fogDensity;
+	float distFromTerrain = distFromCamera - distCameraTerrain;
+	if(distCameraTerrain < 10) { // Resolution range is sufficient.
+		return distFromTerrain;
+	} else {
+		// Here we have a few options to deal with this. We could for example weaken the fog effect to fit the entire range.
+		// I decided to keep the fog strength close to the camera and far away, with a fog-free region in between.
+		// I decided to this because I want far away fog to work (e.g. a distant ocean) as well as close fog(e.g. the top surface of the water when the player is under it)
+		if(distFromTerrain > -5 && depthBufferValue != 0) {
+			return distFromTerrain;
+		} else if(distFromCamera < 5) {
+			return distFromCamera - 10;
+		} else {
+			return -5;
+		}
+	}
+}
+
+void applyFrontfaceFog(float fogDistance, vec3 fogColor) {
+	float fogFactor = exp(fogDistance);
+	fragColor.a = 1.0/fogFactor;
+	fragColor.rgb = fragColor.a*fogColor;
+	fragColor.rgb -= fogColor;
+}
+
+void applyBackfaceFog(float fogDistance, vec3 fogColor) {
+	float fogFactor = exp(fogDistance);
+	float oldAlpha = fragColor.a;
+	fragColor.a *= fogFactor;
+	fragColor.rgb -= oldAlpha*fogColor;
+	fragColor.rgb += fragColor.a*fogColor;
+}
+
+vec2 getTextureCoordsNormal(vec3 voxelPosition, int textureDir) {
+	switch(textureDir) {
+		case 0:
+			return vec2(15 - voxelPosition.x, voxelPosition.z);
+		case 1:
+			return vec2(voxelPosition.x, voxelPosition.z);
+		case 2:
+			return vec2(15 - voxelPosition.z, voxelPosition.y);
+		case 3:
+			return vec2(voxelPosition.z, voxelPosition.y);
+		case 4:
+			return vec2(voxelPosition.x, voxelPosition.y);
+		case 5:
+			return vec2(15 - voxelPosition.x, voxelPosition.y);
+	}
+}
+
 void main() {
-	float variance = perpendicularFwidth(direction);
 	int textureIndex = textureData[blockType].textureIndices[faceNormal];
 	textureIndex = textureIndex + time / animation[textureIndex].time % animation[textureIndex].frames;
 	float normalVariation = normalVariations[faceNormal];
-	float lod = getLod(ivec3(startPosition), faceNormal, direction, variance);
-	ivec2 textureCoords = getTextureCoords(ivec3(startPosition), faceNormal);
-	fragColor = mipMapSample(texture_sampler, textureCoords, textureIndex, lod)*vec4(ambientLight*normalVariation, 1);
+	float densityAdjustment = sqrt(dot(mvVertexPos, mvVertexPos))/abs(mvVertexPos.z);
+	float fogDistance = calculateFogDistance(texelFetch(depthTexture, ivec2(gl_FragCoord.xy), 0).r, textureData[blockType].fogDensity*densityAdjustment);
+	float airFogDistance = calculateFogDistance(texelFetch(depthTexture, ivec2(gl_FragCoord.xy), 0).r, fog.density*densityAdjustment);
+	vec3 fogColor = unpackColor(textureData[blockType].fogColor);
+	if(isBackFace == 0) {
 
-	if (fragColor.a == 1) discard;
+		vec4 textureColor = texture(texture_sampler, vec3(getTextureCoordsNormal(startPosition/16, faceNormal), textureIndex))*vec4(ambientLight*normalVariation, 1);
 
-	if (fog.activ) {
-		// TODO: Underwater fog if possible.
+		if (textureColor.a == 1) discard;
+
+		textureColor.rgb *= textureColor.a;
+		blendColor.rgb = unpackColor(textureData[blockType].absorption);
+
+		// Fake reflection:
+		// TODO: Also allow this for opaque pixels.
+		// TODO: Change this when it rains.
+		// TODO: Normal mapping.
+		// TODO: Allow textures to contribute to this term.
+		textureColor.rgb += (textureData[blockType].reflectivity/2*vec3(snoise(normalize(reflect(direction, normals[faceNormal])))) + vec3(textureData[blockType].reflectivity))*ambientLight*normalVariation;
+		textureColor.rgb += texture(emissionSampler, vec3(getTextureCoordsNormal(startPosition/16, faceNormal), textureIndex)).rgb;
+		blendColor.rgb *= 1 - textureColor.a;
+		textureColor.a = 1;
+
+		if(textureData[blockType].fogDensity == 0.0) {
+			// Apply the air fog, compensating for the missing back-face:
+			applyFrontfaceFog(airFogDistance, fog.color);
+		} else {
+			// Apply the block fog:
+			applyFrontfaceFog(fogDistance, fogColor);
+		}
+
+		// Apply the texture+absorption
+		fragColor.rgb *= blendColor.rgb;
+		fragColor.rgb += textureColor.rgb*fragColor.a;
+
+		// Apply the air fog:
+		applyBackfaceFog(airFogDistance, fog.color);
+	} else {
+		// Apply the air fog:
+		applyFrontfaceFog(airFogDistance, fog.color);
+
+		// Apply the texture:
+		vec4 textureColor = texture(texture_sampler, vec3(getTextureCoordsNormal(startPosition/16, faceNormal), textureIndex))*vec4(ambientLight*normalVariation, 1);
+		blendColor.rgb = vec3(1 - textureColor.a);
+		fragColor.rgb *= blendColor.rgb;
+		fragColor.rgb += textureColor.rgb*textureColor.a*fragColor.a;
+
+		// Apply the block fog:
+		applyBackfaceFog(fogDistance, fogColor);
 	}
-	fragColor.rgb *= fragColor.a;
-	blendColor.rgb = unpackColor(textureData[blockType].absorption);
-
-	// Fake reflection:
-	// TODO: Also allow this for opaque pixels.
-	// TODO: Change this when it rains.
-	// TODO: Normal mapping.
-	// TODO: Allow textures to contribute to this term.
-	fragColor.rgb += (textureData[blockType].reflectivity/2*vec3(snoise(normalize(reflect(direction, normals[faceNormal])))) + vec3(textureData[blockType].reflectivity))*ambientLight*normalVariation;
-	fragColor.rgb += mipMapSample(emissionSampler, textureCoords, textureIndex, lod).rgb;
-	blendColor.rgb *= 1 - fragColor.a;
-	fragColor.a = 1;
-
-	if (fog.activ) {
-		fragColor = calcFog(mvVertexPos, fragColor, fog);
-		blendColor.rgb *= fragColor.a;
-		fragColor.a = 1;
-	}
-	// TODO: Update the depth.
 }

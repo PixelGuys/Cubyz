@@ -6,7 +6,6 @@ const chunk = @import("chunk.zig");
 const entity = @import("entity.zig");
 const graphics = @import("graphics.zig");
 const c = graphics.c;
-const Fog = graphics.Fog;
 const Shader = graphics.Shader;
 const game = @import("game.zig");
 const World = game.World;
@@ -28,24 +27,21 @@ const Mat4f = vec.Mat4f;
 
 /// The number of milliseconds after which no more chunk meshes are created. This allows the game to run smoother on movement.
 const maximumMeshTime = 12;
-const zNear = 1e-10;
+pub const zNear = 1e-10;
 
-var fogShader: graphics.Shader = undefined;
-var fogUniforms: struct {
-	fog_activ: c_int,
-	fog_color: c_int,
-	fog_density: c_int,
-	color: c_int,
-} = undefined;
 var deferredRenderPassShader: graphics.Shader = undefined;
 var deferredUniforms: struct {
 	color: c_int,
+	depthTexture: c_int,
+	@"fog.color": c_int,
+	@"fog.density": c_int,
+	tanXY: c_int,
+	nearPlane: c_int,
 } = undefined;
 
 pub var activeFrameBuffer: c_uint = 0;
 
 pub fn init() !void {
-	fogShader = try Shader.initAndGetUniforms("assets/cubyz/shaders/fog_vertex.vs", "assets/cubyz/shaders/fog_fragment.fs", &fogUniforms);
 	deferredRenderPassShader = try Shader.initAndGetUniforms("assets/cubyz/shaders/deferred_render_pass.vs", "assets/cubyz/shaders/deferred_render_pass.fs", &deferredUniforms);
 	worldFrameBuffer.init(true, c.GL_NEAREST, c.GL_CLAMP_TO_EDGE);
 	worldFrameBuffer.updateSize(Window.width, Window.height, c.GL_RGBA16F);
@@ -55,7 +51,6 @@ pub fn init() !void {
 }
 
 pub fn deinit() void {
-	fogShader.deinit();
 	deferredRenderPassShader.deinit();
 	worldFrameBuffer.deinit();
 	Bloom.deinit();
@@ -111,9 +106,6 @@ pub fn render(playerPosition: Vec3d) !void {
 		ambient[2] = @max(0.1, world.ambientLight);
 		var skyColor = vec.xyz(world.clearColor);
 		game.fog.color = skyColor;
-		// TODO:
-//		Cubyz.fog.setActive(ClientSettings.FOG_COEFFICIENT != 0);
-//		Cubyz.fog.setDensity(1 / (ClientSettings.EFFECTIVE_RENDER_DISTANCE*ClientSettings.FOG_COEFFICIENT));
 
 		try renderWorld(world, ambient, skyColor, playerPosition);
 		try RenderStructure.updateMeshes(startTime + maximumMeshTime);
@@ -141,7 +133,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	_ = frustum;
 
 	const time: u32 = @intCast(std.time.milliTimestamp() & std.math.maxInt(u32));
-	var waterFog = Fog{.active=true, .color=.{0.0, 0.1, 0.2}, .density=0.1};
 
 	// Update the uniforms. The uniforms are needed to render the replacement meshes.
 	chunk.meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight, time);
@@ -158,8 +149,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	chunk.meshing.transparentQuadsDrawn = 0;
 	const meshes = try RenderStructure.updateAndGetRenderChunks(game.world.?.conn, playerPos, settings.renderDistance, settings.LODFactor);
 
-	try sortChunks(meshes, playerPos);
-
 //	for (ChunkMesh mesh : Cubyz.chunkTree.getRenderChunks(frustumInt, x0, y0, z0)) {
 //		if (mesh instanceof NormalChunkMesh) {
 //			visibleChunks.add((NormalChunkMesh)mesh);
@@ -173,11 +162,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	MeshSelection.select(playerPos, game.camera.direction);
 	MeshSelection.render(game.projectionMatrix, game.camera.viewMatrix, playerPos);
 
-	// Render the far away ReducedChunks:
 	chunk.meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight, time);
-	c.glUniform1i(chunk.meshing.uniforms.@"waterFog.activ", if(waterFog.active) 1 else 0);
-	c.glUniform3fv(chunk.meshing.uniforms.@"waterFog.color", 1, @ptrCast(&waterFog.color));
-	c.glUniform1f(chunk.meshing.uniforms.@"waterFog.density", waterFog.density);
 
 	for(meshes) |mesh| {
 		mesh.render(playerPos);
@@ -196,14 +181,14 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.stopQuery();
 
 	// Render transparent chunk meshes:
+	worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE3);
 
 	gpu_performance_measuring.startQuery(.transparent_rendering);
+	c.glTextureBarrier();
 	chunk.meshing.bindTransparentShaderAndUniforms(game.projectionMatrix, ambientLight, time);
-	c.glUniform1i(chunk.meshing.transparentUniforms.@"waterFog.activ", if(waterFog.active) 1 else 0);
-	c.glUniform3fv(chunk.meshing.transparentUniforms.@"waterFog.color", 1, @ptrCast(&waterFog.color));
-	c.glUniform1f(chunk.meshing.transparentUniforms.@"waterFog.density", waterFog.density);
 
-	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_SRC1_COLOR);
+	c.glBlendEquationSeparate(c.GL_FUNC_ADD, c.GL_FUNC_ADD);
+	c.glBlendFuncSeparate(c.GL_DST_ALPHA, c.GL_SRC1_COLOR, c.GL_DST_ALPHA, c.GL_ZERO);
 	c.glDepthFunc(c.GL_GEQUAL);
 	c.glDepthMask(c.GL_FALSE);
 	{
@@ -222,21 +207,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
 
-//		NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_waterFog_activ, waterFog.isActive());
-//		NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_waterFog_color, waterFog.getColor());
-//		NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_waterFog_density, waterFog.getDensity());
-
-//		NormalChunkMesh[] meshes = sortChunks(visibleChunks.toArray(), x0/Chunk.chunkSize - 0.5f, y0/Chunk.chunkSize - 0.5f, z0/Chunk.chunkSize - 0.5f);
-//		for (NormalChunkMesh mesh : meshes) {
-//			NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_drawFrontFace, false);
-//			glCullFace(GL_FRONT);
-//			mesh.renderTransparent(playerPosition);
-
-//			NormalChunkMesh.transparentShader.setUniform(NormalChunkMesh.TransparentUniforms.loc_drawFrontFace, true);
-//			glCullFace(GL_BACK);
-//			mesh.renderTransparent(playerPosition);
-//		}
-
 //		if(selected != null && Blocks.transparent(selected.getBlock())) {
 //			BlockBreakingRenderer.render(selected, playerPosition);
 //			glActiveTexture(GL_TEXTURE0);
@@ -245,32 +215,28 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 //			Meshes.emissionTextureArray.bind();
 //		}
 
-	fogShader.bind();
-	// Draw the water fog if the player is underwater:
-//		Player player = Cubyz.player;
-//		int block = Cubyz.world.getBlock((int)Math.round(player.getPosition().x), (int)(player.getPosition().y + player.height), (int)Math.round(player.getPosition().z));
-//		if (block != 0 && !Blocks.solid(block)) {
-//			if (Blocks.id(block).toString().equals("cubyz:water")) {
-//				fogShader.setUniform(FogUniforms.loc_fog_activ, waterFog.isActive());
-//				fogShader.setUniform(FogUniforms.loc_fog_color, waterFog.getColor());
-//				fogShader.setUniform(FogUniforms.loc_fog_density, waterFog.getDensity());
-//				glUniform1i(FogUniforms.loc_color, 3);
-
-//				glBindVertexArray(Graphics.rectVAO);
-//				glDisable(GL_DEPTH_TEST);
-//				glDisable(GL_CULL_FACE);
-//				glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-//			}
-//		}
-
+	const playerBlock = RenderStructure.getBlockFromAnyLod(@intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
+	
 	if(settings.bloom) {
-		Bloom.render(lastWidth, lastHeight);
+		Bloom.render(lastWidth, lastHeight, playerBlock);
 	}
 	gpu_performance_measuring.startQuery(.final_copy);
-	worldFrameBuffer.unbind();
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
+	worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
+	worldFrameBuffer.unbind();
 	deferredRenderPassShader.bind();
 	c.glUniform1i(deferredUniforms.color, 3);
+	c.glUniform1i(deferredUniforms.depthTexture, 4);
+	if(playerBlock.typ == 0) {
+		c.glUniform3fv(deferredUniforms.@"fog.color", 1, @ptrCast(&game.fog.color));
+		c.glUniform1f(deferredUniforms.@"fog.density", game.fog.density);
+	} else {
+		const fogColor = blocks.meshes.fogColor(playerBlock);
+		c.glUniform3f(deferredUniforms.@"fog.color", @as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0);
+		c.glUniform1f(deferredUniforms.@"fog.density", blocks.meshes.fogDensity(playerBlock));
+	}
+	c.glUniform1f(deferredUniforms.nearPlane, zNear);
+	c.glUniform2f(deferredUniforms.tanXY, 1.0/game.projectionMatrix.columns[0][0], 1.0/game.projectionMatrix.columns[1][1]);
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, activeFrameBuffer);
 
@@ -283,45 +249,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	try entity.ClientEntityManager.renderNames(game.projectionMatrix, playerPos);
 	gpu_performance_measuring.stopQuery();
-}
-
-/// Sorts the chunks based on their distance from the player to reduce overdraw.
-fn sortChunks(toSort: []*chunk.meshing.ChunkMesh, playerPos: Vec3d) !void {
-	const distances = try main.threadAllocator.alloc(f64, toSort.len);
-	defer main.threadAllocator.free(distances);
-
-	for(distances, 0..) |*dist, i| {
-		dist.* = vec.lengthSquare(playerPos - Vec3d{
-			@floatFromInt(toSort[i].pos.wx + (toSort[i].size>>1)),
-			@floatFromInt(toSort[i].pos.wy + (toSort[i].size>>1)),
-			@floatFromInt(toSort[i].pos.wz + (toSort[i].size>>1)),
-		});
-	}
-	// Insert sort them:
-	var i: u32 = 1;
-	while(i < toSort.len) : (i += 1) {
-		var j: u32 = i - 1;
-		while(true) {
-			@setRuntimeSafety(false);
-			if(distances[j] > distances[j+1]) {
-				// Swap them:
-				{
-					const swap = distances[j];
-					distances[j] = distances[j+1];
-					distances[j+1] = swap;
-				} {
-					const swap = toSort[j];
-					toSort[j] = toSort[j+1];
-					toSort[j+1] = swap;
-				}
-			} else {
-				break;
-			}
-
-			if(j == 0) break;
-			j -= 1;
-		}
-	}
 }
 
 //	private float playerBobbing;
@@ -340,13 +267,20 @@ const Bloom = struct {
 	var secondPassShader: graphics.Shader = undefined;
 	var colorExtractAndDownsampleShader: graphics.Shader = undefined;
 	var upscaleShader: graphics.Shader = undefined;
+	var colorExtractUniforms: struct {
+		depthTexture: c_int,
+		nearPlane: c_int,
+		tanXY: c_int,
+		@"fog.color": c_int,
+		@"fog.density": c_int,
+	} = undefined;
 
 	pub fn init() !void {
 		buffer1.init(false, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
 		buffer2.init(false, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
 		firstPassShader = try graphics.Shader.init("assets/cubyz/shaders/bloom/first_pass.vs", "assets/cubyz/shaders/bloom/first_pass.fs");
 		secondPassShader = try graphics.Shader.init("assets/cubyz/shaders/bloom/second_pass.vs", "assets/cubyz/shaders/bloom/second_pass.fs");
-		colorExtractAndDownsampleShader = try graphics.Shader.init("assets/cubyz/shaders/bloom/color_extractor_downsample.vs", "assets/cubyz/shaders/bloom/color_extractor_downsample.fs");
+		colorExtractAndDownsampleShader = try graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/bloom/color_extractor_downsample.vs", "assets/cubyz/shaders/bloom/color_extractor_downsample.fs", &colorExtractUniforms);
 		upscaleShader = try graphics.Shader.init("assets/cubyz/shaders/bloom/upscale.vs", "assets/cubyz/shaders/bloom/upscale.fs");
 	}
 
@@ -358,10 +292,22 @@ const Bloom = struct {
 		upscaleShader.deinit();
 	}
 
-	fn extractImageDataAndDownsample() void {
+	fn extractImageDataAndDownsample(playerBlock: blocks.Block) void {
 		colorExtractAndDownsampleShader.bind();
 		worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
+		worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
 		buffer1.bind();
+		c.glUniform1i(colorExtractUniforms.depthTexture, 4);
+		if(playerBlock.typ == 0) {
+			c.glUniform3fv(colorExtractUniforms.@"fog.color", 1, @ptrCast(&game.fog.color));
+			c.glUniform1f(colorExtractUniforms.@"fog.density", game.fog.density);
+		} else {
+			const fogColor = blocks.meshes.fogColor(playerBlock);
+			c.glUniform3f(colorExtractUniforms.@"fog.color", @as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0);
+			c.glUniform1f(colorExtractUniforms.@"fog.density", blocks.meshes.fogDensity(playerBlock));
+		}
+		c.glUniform1f(colorExtractUniforms.nearPlane, zNear);
+		c.glUniform2f(colorExtractUniforms.tanXY, 1.0/game.projectionMatrix.columns[0][0], 1.0/game.projectionMatrix.columns[1][1]);
 		c.glBindVertexArray(graphics.draw.rectVAO);
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
@@ -390,7 +336,7 @@ const Bloom = struct {
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
-	pub fn render(currentWidth: u31, currentHeight: u31) void {
+	pub fn render(currentWidth: u31, currentHeight: u31, playerBlock: blocks.Block) void {
 		if(width != currentWidth or height != currentHeight) {
 			width = currentWidth;
 			height = currentHeight;
@@ -402,9 +348,10 @@ const Bloom = struct {
 		gpu_performance_measuring.startQuery(.bloom_extract_downsample);
 		c.glDisable(c.GL_DEPTH_TEST);
 		c.glDisable(c.GL_CULL_FACE);
+		c.glDepthMask(c.GL_FALSE);
 
 		c.glViewport(0, 0, width/2, height/2);
-		extractImageDataAndDownsample();
+		extractImageDataAndDownsample(playerBlock);
 		gpu_performance_measuring.stopQuery();
 		gpu_performance_measuring.startQuery(.bloom_first_pass);
 		firstPass();
@@ -417,6 +364,7 @@ const Bloom = struct {
 		c.glBlendFunc(c.GL_ONE, c.GL_ONE);
 		upscale();
 
+		c.glDepthMask(c.GL_TRUE);
 		c.glEnable(c.GL_DEPTH_TEST);
 		c.glEnable(c.GL_CULL_FACE);
 		c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
@@ -848,6 +796,9 @@ pub const MeshSelection = struct {
 
 	pub fn render(projectionMatrix: Mat4f, viewMatrix: Mat4f, playerPos: Vec3d) void {
 		if(selectedBlockPos) |_selectedBlockPos| {
+			c.glEnable(c.GL_POLYGON_OFFSET_LINE);
+			defer c.glDisable(c.GL_POLYGON_OFFSET_LINE);
+			c.glPolygonOffset(2, 0);
 			var block = RenderStructure.getBlock(_selectedBlockPos[0], _selectedBlockPos[1], _selectedBlockPos[2]) orelse return;
 			const model = blocks.meshes.model(block);
 			const voxelModel = &models.voxelModels.items[model.modelIndex];
@@ -962,6 +913,16 @@ pub const RenderStructure = struct {
 		const node = RenderStructure._getNode(.{.wx = x, .wy = y, .wz = z, .voxelSize=1}) orelse return null;
 		const block = (node.mesh.chunk.load(.Monotonic) orelse return null).getBlock(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask);
 		return block;
+	}
+
+	pub fn getBlockFromAnyLod(x: i32, y: i32, z: i32) blocks.Block {
+		var lod: u5 = 0;
+		while(lod < settings.highestLOD) : (lod += 1) {
+			const node = RenderStructure._getNode(.{.wx = x, .wy = y, .wz = z, .voxelSize=@as(u31, 1) << lod}) orelse continue;
+			const block = (node.mesh.chunk.load(.Monotonic) orelse continue).getBlock(x & chunk.chunkMask<<lod, y & chunk.chunkMask<<lod, z & chunk.chunkMask<<lod);
+			return block;
+		}
+		return blocks.Block{.typ = 0, .data = 0};
 	}
 
 	pub fn getNeighbor(_pos: chunk.ChunkPosition, resolution: u31, neighbor: u3) ?*chunk.meshing.ChunkMesh {
