@@ -67,45 +67,6 @@ uniform float nearPlane;
 
 uniform Fog fog;
 
-ivec2 getTextureCoords(ivec3 voxelPosition, int textureDir) {
-	switch(textureDir) {
-		case 0:
-			return ivec2(15 - voxelPosition.x, voxelPosition.z);
-		case 1:
-			return ivec2(voxelPosition.x, voxelPosition.z);
-		case 2:
-			return ivec2(15 - voxelPosition.z, voxelPosition.y);
-		case 3:
-			return ivec2(voxelPosition.z, voxelPosition.y);
-		case 4:
-			return ivec2(voxelPosition.x, voxelPosition.y);
-		case 5:
-			return ivec2(15 - voxelPosition.x, voxelPosition.y);
-	}
-}
-
-float getLod(ivec3 voxelPosition, int normal, vec3 direction, float variance) {
-	return max(0, min(4, log2(variance*length(direction)/abs(dot(vec3(normals[normal]), direction)))));
-}
-
-float perpendicularFwidth(vec3 direction) { // Estimates how big fwidth would be if the fragment normal was perpendicular to the light direction.
-	vec3 variance = dFdx(direction);
-	variance += direction;
-	variance = variance*length(direction)/length(variance);
-	variance -= direction;
-	return 16*length(variance);
-}
-
-vec4 mipMapSample(sampler2DArray texture, ivec2 textureCoords, int textureIndex, float lod) { // TODO: anisotropic filtering?
-	int lowerLod = int(floor(lod));
-	int higherLod = lowerLod+1;
-	float interpolation = lod - lowerLod;
-	vec4 lower = texelFetch(texture, ivec3(textureCoords >> lowerLod, textureIndex), lowerLod);
-	vec4 higher = texelFetch(texture, ivec3(textureCoords >> higherLod, textureIndex), higherLod);
-	return higher*interpolation + (1 - interpolation)*lower;
-}
-
-
 ivec3 random3to3(ivec3 v) {
 	v &= 15;
 	ivec3 fac = ivec3(11248723, 105436839, 45399083);
@@ -195,20 +156,34 @@ void applyBackfaceFog(float fogDistance, vec3 fogColor) {
 	fragColor.rgb += fragColor.a*fogColor;
 }
 
+vec2 getTextureCoordsNormal(vec3 voxelPosition, int textureDir) {
+	switch(textureDir) {
+		case 0:
+			return vec2(15 - voxelPosition.x, voxelPosition.z);
+		case 1:
+			return vec2(voxelPosition.x, voxelPosition.z);
+		case 2:
+			return vec2(15 - voxelPosition.z, voxelPosition.y);
+		case 3:
+			return vec2(voxelPosition.z, voxelPosition.y);
+		case 4:
+			return vec2(voxelPosition.x, voxelPosition.y);
+		case 5:
+			return vec2(15 - voxelPosition.x, voxelPosition.y);
+	}
+}
+
 void main() {
-	float variance = perpendicularFwidth(direction);
 	int textureIndex = textureData[blockType].textureIndices[faceNormal];
 	textureIndex = textureIndex + time / animation[textureIndex].time % animation[textureIndex].frames;
 	float normalVariation = normalVariations[faceNormal];
-	float lod = getLod(ivec3(startPosition), faceNormal, direction, variance);
-	ivec2 textureCoords = getTextureCoords(ivec3(startPosition), faceNormal);
 	float fogDistance = calculateFogDistance(texelFetch(depthTexture, ivec2(gl_FragCoord.xy), 0).r, textureData[blockType].fogDensity);
 	float airFogDistance = calculateFogDistance(texelFetch(depthTexture, ivec2(gl_FragCoord.xy), 0).r, fog.density);
 	vec3 fogColor = unpackColor(textureData[blockType].fogColor);
 	fragColor = vec4(0, 0, 0, 1);
 	if(isBackFace == 0) {
 
-		vec4 textureColor = mipMapSample(texture_sampler, textureCoords, textureIndex, lod)*vec4(ambientLight*normalVariation, 1);
+		vec4 textureColor = texture(texture_sampler, vec3(getTextureCoordsNormal(startPosition/16, faceNormal), textureIndex))*vec4(ambientLight*normalVariation, 1);
 
 		if (textureColor.a == 1) discard;
 
@@ -221,7 +196,7 @@ void main() {
 		// TODO: Normal mapping.
 		// TODO: Allow textures to contribute to this term.
 		textureColor.rgb += (textureData[blockType].reflectivity/2*vec3(snoise(normalize(reflect(direction, normals[faceNormal])))) + vec3(textureData[blockType].reflectivity))*ambientLight*normalVariation;
-		textureColor.rgb += mipMapSample(emissionSampler, textureCoords, textureIndex, lod).rgb;
+		textureColor.rgb += texture(emissionSampler, vec3(getTextureCoordsNormal(startPosition/16, faceNormal), textureIndex)).rgb;
 		blendColor.rgb *= 1 - textureColor.a;
 		textureColor.a = 1;
 
@@ -239,7 +214,7 @@ void main() {
 		applyFrontfaceFog(airFogDistance, fog.color);
 
 		// Apply the texture:
-		vec4 textureColor = mipMapSample(texture_sampler, textureCoords, textureIndex, lod)*vec4(ambientLight*normalVariation, 1);
+		vec4 textureColor = texture(texture_sampler, vec3(getTextureCoordsNormal(startPosition/16, faceNormal), textureIndex))*vec4(ambientLight*normalVariation, 1);
 		blendColor.rgb = vec3(1 - textureColor.a);
 		fragColor.rgb += textureColor.rgb*textureColor.a;
 
