@@ -142,10 +142,9 @@ float calculateFogDistance(float depthBufferValue, float fogDensity) {
 
 void applyFrontfaceFog(float fogDistance, vec3 fogColor) {
 	float fogFactor = exp(fogDistance);
-	float oldAlpha = fragColor.a;
-	fragColor.a *= 1.0/fogFactor;
-	fragColor.rgb += fragColor.a*fogColor;
-	fragColor.rgb -= oldAlpha*fogColor;
+	fragColor.a = 1.0/fogFactor;
+	fragColor.rgb = fragColor.a*fogColor;
+	fragColor.rgb -= fogColor;
 }
 
 void applyBackfaceFog(float fogDistance, vec3 fogColor) {
@@ -177,10 +176,10 @@ void main() {
 	int textureIndex = textureData[blockType].textureIndices[faceNormal];
 	textureIndex = textureIndex + time / animation[textureIndex].time % animation[textureIndex].frames;
 	float normalVariation = normalVariations[faceNormal];
-	float fogDistance = calculateFogDistance(texelFetch(depthTexture, ivec2(gl_FragCoord.xy), 0).r, textureData[blockType].fogDensity);
-	float airFogDistance = calculateFogDistance(texelFetch(depthTexture, ivec2(gl_FragCoord.xy), 0).r, fog.density);
+	float densityAdjustment = sqrt(dot(mvVertexPos, mvVertexPos))/abs(mvVertexPos.z);
+	float fogDistance = calculateFogDistance(texelFetch(depthTexture, ivec2(gl_FragCoord.xy), 0).r, textureData[blockType].fogDensity*densityAdjustment);
+	float airFogDistance = calculateFogDistance(texelFetch(depthTexture, ivec2(gl_FragCoord.xy), 0).r, fog.density*densityAdjustment);
 	vec3 fogColor = unpackColor(textureData[blockType].fogColor);
-	fragColor = vec4(0, 0, 0, 1);
 	if(isBackFace == 0) {
 
 		vec4 textureColor = texture(texture_sampler, vec3(getTextureCoordsNormal(startPosition/16, faceNormal), textureIndex))*vec4(ambientLight*normalVariation, 1);

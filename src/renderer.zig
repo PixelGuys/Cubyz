@@ -35,6 +35,7 @@ var deferredUniforms: struct {
 	depthTexture: c_int,
 	@"fog.color": c_int,
 	@"fog.density": c_int,
+	tanXY: c_int,
 	nearPlane: c_int,
 } = undefined;
 
@@ -235,6 +236,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 		c.glUniform1f(deferredUniforms.@"fog.density", blocks.meshes.fogDensity(playerBlock));
 	}
 	c.glUniform1f(deferredUniforms.nearPlane, zNear);
+	c.glUniform2f(deferredUniforms.tanXY, 1.0/game.projectionMatrix.columns[0][0], 1.0/game.projectionMatrix.columns[1][1]);
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, activeFrameBuffer);
 
@@ -268,6 +270,7 @@ const Bloom = struct {
 	var colorExtractUniforms: struct {
 		depthTexture: c_int,
 		nearPlane: c_int,
+		tanXY: c_int,
 		@"fog.color": c_int,
 		@"fog.density": c_int,
 	} = undefined;
@@ -296,14 +299,15 @@ const Bloom = struct {
 		buffer1.bind();
 		c.glUniform1i(colorExtractUniforms.depthTexture, 4);
 		if(playerBlock.typ == 0) {
-			c.glUniform3fv(deferredUniforms.@"fog.color", 1, @ptrCast(&game.fog.color));
-			c.glUniform1f(deferredUniforms.@"fog.density", game.fog.density);
+			c.glUniform3fv(colorExtractUniforms.@"fog.color", 1, @ptrCast(&game.fog.color));
+			c.glUniform1f(colorExtractUniforms.@"fog.density", game.fog.density);
 		} else {
 			const fogColor = blocks.meshes.fogColor(playerBlock);
-			c.glUniform3f(deferredUniforms.@"fog.color", @as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0);
-			c.glUniform1f(deferredUniforms.@"fog.density", blocks.meshes.fogDensity(playerBlock));
+			c.glUniform3f(colorExtractUniforms.@"fog.color", @as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0);
+			c.glUniform1f(colorExtractUniforms.@"fog.density", blocks.meshes.fogDensity(playerBlock));
 		}
 		c.glUniform1f(colorExtractUniforms.nearPlane, zNear);
+		c.glUniform2f(colorExtractUniforms.tanXY, 1.0/game.projectionMatrix.columns[0][0], 1.0/game.projectionMatrix.columns[1][1]);
 		c.glBindVertexArray(graphics.draw.rectVAO);
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}

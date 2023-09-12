@@ -8,6 +8,7 @@ layout(binding = 3) uniform sampler2D color;
 
 uniform sampler2D depthTexture;
 uniform float nearPlane;
+uniform vec2 tanXY;
 
 struct Fog {
 	vec3 color;
@@ -38,7 +39,8 @@ float calculateFogDistance(float depthBufferValue, float fogDensity) {
 
 vec3 fetch(ivec2 pos) {
 	vec4 rgba = texelFetch(color, pos, 0);
-	float fogDistance = calculateFogDistance(texelFetch(depthTexture, pos, 0).r, fog.density);
+	float densityAdjustment = sqrt(dot(tanXY*(texCoords*2 - 1), tanXY*(texCoords*2 - 1)) + 1);
+	float fogDistance = calculateFogDistance(texelFetch(depthTexture, pos, 0).r, fog.density*densityAdjustment);
 	vec3 fogColor = fog.color;
 	float fogFactor = exp(fogDistance);
 	vec4 sourceColor = vec4(fogColor, 1);
