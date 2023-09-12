@@ -876,7 +876,7 @@ pub const meshing = struct {
 			};
 		}
 
-		pub fn uploadDataAndFinishNeighbors(self: *ChunkMesh) !void { // TODO: The way neighboring chunks are handled doesn't work well with transparency.
+		pub fn uploadDataAndFinishNeighbors(self: *ChunkMesh) !void {
 			std.debug.assert(!self.mutex.tryLock()); // The mutex should be locked when calling this function.
 			const chunk = self.chunk.load(.Monotonic) orelse return; // In the mean-time the mesh was discarded and recreated and all the data was lost.
 			self.opaqueMesh.resetToCore();

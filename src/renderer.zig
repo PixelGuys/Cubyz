@@ -215,7 +215,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 //			Meshes.emissionTextureArray.bind();
 //		}
 
-	const playerBlock = RenderStructure.getBlock(@intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2]))) orelse blocks.Block{.typ = 0, .data = 0};
+	const playerBlock = RenderStructure.getBlockFromAnyLod(@intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
 	
 	if(settings.bloom) {
 		Bloom.render(lastWidth, lastHeight, playerBlock);
@@ -913,6 +913,16 @@ pub const RenderStructure = struct {
 		const node = RenderStructure._getNode(.{.wx = x, .wy = y, .wz = z, .voxelSize=1}) orelse return null;
 		const block = (node.mesh.chunk.load(.Monotonic) orelse return null).getBlock(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask);
 		return block;
+	}
+
+	pub fn getBlockFromAnyLod(x: i32, y: i32, z: i32) blocks.Block {
+		var lod: u5 = 0;
+		while(lod < settings.highestLOD) : (lod += 1) {
+			const node = RenderStructure._getNode(.{.wx = x, .wy = y, .wz = z, .voxelSize=@as(u31, 1) << lod}) orelse continue;
+			const block = (node.mesh.chunk.load(.Monotonic) orelse continue).getBlock(x & chunk.chunkMask<<lod, y & chunk.chunkMask<<lod, z & chunk.chunkMask<<lod);
+			return block;
+		}
+		return blocks.Block{.typ = 0, .data = 0};
 	}
 
 	pub fn getNeighbor(_pos: chunk.ChunkPosition, resolution: u31, neighbor: u3) ?*chunk.meshing.ChunkMesh {
