@@ -115,8 +115,8 @@ pub fn register(_: []const u8, id: []const u8, json: JsonElement) !u16 {
 	_gui[size] = try allocator.dupe(u8, json.get([]const u8, "GUI", ""));
 	_transparent[size] = json.get(bool, "transparent", false);
 	_viewThrough[size] = json.get(bool, "viewThrough", false) or _transparent[size];
-	var hasFog: bool = true; // TODO
-	_hasBackFace[size] = (json.get(bool, "hasBackFace", false) or hasFog) and _transparent[size];
+	var hasFog: bool = json.get(f32, "fogDensity", 0.0) != 0.0;
+	_hasBackFace[size] = hasFog and _transparent[size];
 
 	const oreProperties = json.getChild("ore");
 	if (oreProperties != .JsonNull) {

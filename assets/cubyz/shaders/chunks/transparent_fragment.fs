@@ -200,8 +200,13 @@ void main() {
 		blendColor.rgb *= 1 - textureColor.a;
 		textureColor.a = 1;
 
-		// Apply the block fog:
-		applyFrontfaceFog(fogDistance, fogColor);
+		if(textureData[blockType].fogDensity == 0.0) {
+			// Apply the air fog, compensating for the missing back-face:
+			applyFrontfaceFog(airFogDistance, fog.color);
+		} else {
+			// Apply the block fog:
+			applyFrontfaceFog(fogDistance, fogColor);
+		}
 
 		// Apply the texture+absorption
 		fragColor.rgb *= blendColor.rgb;
