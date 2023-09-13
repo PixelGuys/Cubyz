@@ -714,8 +714,7 @@ pub fn main() !void {
 
 	c.glCullFace(c.GL_BACK);
 	c.glEnable(c.GL_BLEND);
-	c.glClipControl(c.GL_LOWER_LEFT, c.GL_ZERO_TO_ONE);
-	c.glDepthFunc(c.GL_GREATER);
+	c.glDepthFunc(c.GL_LESS);
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
 	var lastTime = std.time.nanoTimestamp();

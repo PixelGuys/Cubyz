@@ -7,7 +7,8 @@ in vec2 texCoords;
 layout(binding = 3) uniform sampler2D color;
 
 uniform sampler2D depthTexture;
-uniform float nearPlane;
+uniform float zNear;
+uniform float zFar;
 uniform vec2 tanXY;
 
 struct Fog {
@@ -17,8 +18,12 @@ struct Fog {
 
 uniform Fog fog;
 
+float zFromDepth(float depthBufferValue) {
+	return zNear*zFar/(depthBufferValue*(zNear - zFar) + zFar);
+}
+
 float calculateFogDistance(float depthBufferValue, float fogDensity) {
-	float distCameraTerrain = nearPlane*fogDensity/depthBufferValue;
+	float distCameraTerrain = zFromDepth(depthBufferValue)*fogDensity;
 	float distFromCamera = 0;
 	float distFromTerrain = distFromCamera - distCameraTerrain;
 	if(distCameraTerrain < 10) { // Resolution range is sufficient.

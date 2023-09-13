@@ -170,15 +170,15 @@ pub const Mat4f = struct {
 		};
 	}
 
-	pub fn perspective(fovY: f32, aspect: f32, near: f32) Mat4f {
+	pub fn perspective(fovY: f32, aspect: f32, near: f32, far: f32) Mat4f {
 		const tanY = std.math.tan(fovY*0.5);
 		const tanX = aspect*tanY;
-		return Mat4f { // Taken from https://chaosinmotion.com/2010/09/06/goodbye-far-clipping-plane/
+		return Mat4f {
 			.columns = [4]Vec4f { // Keep in mind that this is the transpose!
-				Vec4f{1/tanX, 0,         0,  0},
-				Vec4f{0,      1/tanY,    0,  0},
-				Vec4f{0,      0,         0, -1},
-				Vec4f{0,      0,      near,  0},
+				Vec4f{1/tanX, 0,      0,                         0},
+				Vec4f{0,      1/tanY, 0,                         0},
+				Vec4f{0,      0,      (far + near)/(near - far), -1},
+				Vec4f{0,      0,      2*near*far/(near - far),   0},
 			}
 		};
 	}

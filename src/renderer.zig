@@ -27,7 +27,8 @@ const Mat4f = vec.Mat4f;
 
 /// The number of milliseconds after which no more chunk meshes are created. This allows the game to run smoother on movement.
 const maximumMeshTime = 12;
-pub const zNear = 1e-10;
+pub const zNear = 0.1;
+pub const zFar = 65536.0; // TODO: Fix z-fighting problems.
 
 var deferredRenderPassShader: graphics.Shader = undefined;
 var deferredUniforms: struct {
@@ -36,7 +37,8 @@ var deferredUniforms: struct {
 	@"fog.color": c_int,
 	@"fog.density": c_int,
 	tanXY: c_int,
-	nearPlane: c_int,
+	zNear: c_int,
+	zFar: c_int,
 } = undefined;
 
 pub var activeFrameBuffer: c_uint = 0;
@@ -68,7 +70,7 @@ pub fn updateViewport(width: u31, height: u31, fov: f32) void {
 	lastHeight = height;
 	lastFov = fov;
 	c.glViewport(0, 0, width, height);
-	game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(f32, fov), @as(f32, @floatFromInt(width))/@as(f32, @floatFromInt(height)), zNear);
+	game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(f32, fov), @as(f32, @floatFromInt(width))/@as(f32, @floatFromInt(height)), zNear, zFar);
 	worldFrameBuffer.updateSize(width, height, c.GL_RGBA16F);
 	worldFrameBuffer.unbind();
 }
@@ -123,7 +125,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	_ = world;
 	worldFrameBuffer.bind();
 	gpu_performance_measuring.startQuery(.clear);
-	c.glClearDepth(0.0);
 	worldFrameBuffer.clear(Vec4f{skyColor[0], skyColor[1], skyColor[2], 1});
 	gpu_performance_measuring.stopQuery();
 	game.camera.updateViewMatrix();
@@ -189,7 +190,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	c.glBlendEquationSeparate(c.GL_FUNC_ADD, c.GL_FUNC_ADD);
 	c.glBlendFuncSeparate(c.GL_DST_ALPHA, c.GL_SRC1_COLOR, c.GL_DST_ALPHA, c.GL_ZERO);
-	c.glDepthFunc(c.GL_GEQUAL);
+	c.glDepthFunc(c.GL_LEQUAL);
 	c.glDepthMask(c.GL_FALSE);
 	{
 		var i: usize = meshes.len;
@@ -200,7 +201,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 		}
 	}
 	c.glDepthMask(c.GL_TRUE);
-	c.glDepthFunc(c.GL_GREATER);
+	c.glDepthFunc(c.GL_LESS);
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 	gpu_performance_measuring.stopQuery();
 //		NormalChunkMesh.bindTransparentShader(ambientLight, directionalLight.getDirection(), time);
@@ -235,7 +236,8 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 		c.glUniform3f(deferredUniforms.@"fog.color", @as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0);
 		c.glUniform1f(deferredUniforms.@"fog.density", blocks.meshes.fogDensity(playerBlock));
 	}
-	c.glUniform1f(deferredUniforms.nearPlane, zNear);
+	c.glUniform1f(deferredUniforms.zNear, zNear);
+	c.glUniform1f(deferredUniforms.zFar, zFar);
 	c.glUniform2f(deferredUniforms.tanXY, 1.0/game.projectionMatrix.columns[0][0], 1.0/game.projectionMatrix.columns[1][1]);
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, activeFrameBuffer);
@@ -269,7 +271,8 @@ const Bloom = struct {
 	var upscaleShader: graphics.Shader = undefined;
 	var colorExtractUniforms: struct {
 		depthTexture: c_int,
-		nearPlane: c_int,
+		zNear: c_int,
+		zFar: c_int,
 		tanXY: c_int,
 		@"fog.color": c_int,
 		@"fog.density": c_int,
@@ -306,7 +309,8 @@ const Bloom = struct {
 			c.glUniform3f(colorExtractUniforms.@"fog.color", @as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0);
 			c.glUniform1f(colorExtractUniforms.@"fog.density", blocks.meshes.fogDensity(playerBlock));
 		}
-		c.glUniform1f(colorExtractUniforms.nearPlane, zNear);
+		c.glUniform1f(colorExtractUniforms.zNear, zNear);
+		c.glUniform1f(colorExtractUniforms.zFar, zFar);
 		c.glUniform2f(colorExtractUniforms.tanXY, 1.0/game.projectionMatrix.columns[0][0], 1.0/game.projectionMatrix.columns[1][1]);
 		c.glBindVertexArray(graphics.draw.rectVAO);
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);

@@ -63,7 +63,8 @@ const vec3[6] normals = vec3[6](
 	vec3(0, 0, -1)
 );
 
-uniform float nearPlane;
+uniform float zNear;
+uniform float zFar;
 
 uniform Fog fog;
 
@@ -120,8 +121,12 @@ vec3 unpackColor(uint color) {
 	)/255.0;
 }
 
+float zFromDepth(float depthBufferValue) {
+	return zNear*zFar/(depthBufferValue*(zNear - zFar) + zFar);
+}
+
 float calculateFogDistance(float depthBufferValue, float fogDensity) {
-	float distCameraTerrain = nearPlane*fogDensity/depthBufferValue;
+	float distCameraTerrain = zFromDepth(depthBufferValue)*fogDensity;
 	float distFromCamera = abs(mvVertexPos.z)*fogDensity;
 	float distFromTerrain = distFromCamera - distCameraTerrain;
 	if(distCameraTerrain < 10) { // Resolution range is sufficient.

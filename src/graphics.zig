@@ -1660,7 +1660,7 @@ pub fn generateBlockTexture(blockType: u16) !Texture {
 		frameBuffer.clear(.{0, 0, 0, 0});
 	}
 
-	const projMatrix = Mat4f.perspective(0.013, 1, 64);
+	const projMatrix = Mat4f.perspective(0.013, 1, 64, 256);
 	const oldViewMatrix = main.game.camera.viewMatrix;
 	main.game.camera.viewMatrix = Mat4f.rotationX(std.math.pi/4.0).mul(Mat4f.rotationY(-std.math.pi/4.0));
 	defer main.game.camera.viewMatrix = oldViewMatrix;
