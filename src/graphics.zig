@@ -6,12 +6,13 @@ const std = @import("std");
 const freetype = @import("freetype");
 const harfbuzz = @import("harfbuzz");
 
-const Mat4f = @import("vec.zig").Mat4f;
-const Vec4i = @import("vec.zig").Vec4i;
-const Vec4f = @import("vec.zig").Vec4f;
-const Vec2f = @import("vec.zig").Vec2f;
-const Vec2i = @import("vec.zig").Vec2i;
-const Vec3f = @import("vec.zig").Vec3f;
+const vec =  @import("vec.zig");
+const Mat4f = vec.Mat4f;
+const Vec4i = vec.Vec4i;
+const Vec4f = vec.Vec4f;
+const Vec2f = vec.Vec2f;
+const Vec2i = vec.Vec2i;
+const Vec3f = vec.Vec3f;
 
 const main = @import("main.zig");
 const Window = main.Window;
@@ -1323,7 +1324,7 @@ pub const FrameBuffer = struct {
 		c.glClear(c.GL_COLOR_BUFFER_BIT | c.GL_DEPTH_BUFFER_BIT);
 	}
 
-	pub fn validate(self: *FrameBuffer) bool {
+	pub fn validate(self: *const FrameBuffer) bool {
 		c.glBindFramebuffer(c.GL_FRAMEBUFFER, self.frameBuffer);
 		defer c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 		if(c.glCheckFramebufferStatus(c.GL_FRAMEBUFFER) != c.GL_FRAMEBUFFER_COMPLETE) {
@@ -1333,22 +1334,22 @@ pub const FrameBuffer = struct {
 		return true;
 	}
 
-	pub fn bindTexture(self: *FrameBuffer, target: c_uint) void {
+	pub fn bindTexture(self: *const FrameBuffer, target: c_uint) void {
 		c.glActiveTexture(target);
 		c.glBindTexture(c.GL_TEXTURE_2D, self.texture);
 	}
 
-	pub fn bindDepthTexture(self: *FrameBuffer, target: c_uint) void {
+	pub fn bindDepthTexture(self: *const FrameBuffer, target: c_uint) void {
 		std.debug.assert(self.hasDepthTexture);
 		c.glActiveTexture(target);
 		c.glBindTexture(c.GL_TEXTURE_2D, self.depthTexture);
 	}
 
-	pub fn bind(self: *FrameBuffer) void {
+	pub fn bind(self: *const FrameBuffer) void {
 		c.glBindFramebuffer(c.GL_FRAMEBUFFER, self.frameBuffer);
 	}
 
-	pub fn unbind(_: *FrameBuffer) void {
+	pub fn unbind(_: *const FrameBuffer) void {
 		c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 	}
 };
@@ -1530,6 +1531,85 @@ pub const Texture = struct {
 	pub fn render(self: Texture, pos: Vec2f, dim: Vec2f) void {
 		self.bindTo(0);
 		draw.boundImage(pos, dim);
+	}
+};
+
+pub const CubeMapTexture = struct {
+	textureID: c_uint,
+
+	pub fn init() CubeMapTexture {
+		var self: CubeMapTexture = undefined;
+		c.glGenTextures(1, &self.textureID);
+		return self;
+	}
+
+	pub fn deinit(self: CubeMapTexture) void {
+		c.glDeleteTextures(1, &self.textureID);
+	}
+
+	pub fn bindTo(self: CubeMapTexture, binding: u5) void {
+		c.glActiveTexture(@intCast(c.GL_TEXTURE0 + binding));
+		c.glBindTexture(c.GL_TEXTURE_CUBE_MAP, self.textureID);
+	}
+
+	pub fn bind(self: CubeMapTexture) void {
+		c.glBindTexture(c.GL_TEXTURE_CUBE_MAP, self.textureID);
+	}
+
+	/// (Re-)Generates the GPU buffer.
+	pub fn generate(self: CubeMapTexture, width: u31, height: u31) void {
+		self.bind();
+
+		c.glTexImage2D(c.GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, c.GL_RGBA8, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+		c.glTexImage2D(c.GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, c.GL_RGBA8, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+		c.glTexImage2D(c.GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, c.GL_RGBA8, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+		c.glTexImage2D(c.GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, c.GL_RGBA8, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+		c.glTexImage2D(c.GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, c.GL_RGBA8, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+		c.glTexImage2D(c.GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, c.GL_RGBA8, width, height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+		c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_MIN_FILTER, c.GL_LINEAR);
+		c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_MAG_FILTER, c.GL_LINEAR);
+		c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_WRAP_S, c.GL_CLAMP_TO_EDGE);
+		c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_WRAP_T, c.GL_CLAMP_TO_EDGE);
+		c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_WRAP_R, c.GL_CLAMP_TO_EDGE);
+		c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_BASE_LEVEL, 0);
+		c.glTexParameteri(c.GL_TEXTURE_CUBE_MAP, c.GL_TEXTURE_MAX_LEVEL, 0);
+	}
+
+	pub fn faceNormal(face: usize) Vec3f {
+		const normals = [_]Vec3f {
+			.{ 1, 0, 0}, // +x
+			.{-1, 0, 0}, // -x
+			.{0,  1, 0}, // +y
+			.{0, -1, 0}, // -y
+			.{0, 0,  1}, // +z
+			.{0, 0, -1}, // -z
+		};
+		return normals[face];
+	}
+
+	pub fn faceUp(face: usize) Vec3f {
+		const ups = [_]Vec3f {
+			.{0, -1, 0}, // +x
+			.{0, -1, 0}, // -x
+			.{0, 0,  1}, // +y
+			.{0, 0, -1}, // -y
+			.{0, -1, 0}, // +z
+			.{0, -1, 0}, // -z
+		};
+		return ups[face];
+	}
+
+	pub fn faceRight(face: usize) Vec3f {
+		comptime var rights: [6]Vec3f = undefined;
+		inline for(0..6) |i| {
+			rights[i] = comptime vec.cross(faceNormal(i), faceUp(i));
+		}
+		return rights[face];
+	}
+
+	pub fn bindToFramebuffer(self: CubeMapTexture, fb: FrameBuffer, face: c_uint) void {
+		fb.bind();
+		c.glFramebufferTexture2D(c.GL_FRAMEBUFFER, c.GL_COLOR_ATTACHMENT0, @as(c_uint, c.GL_TEXTURE_CUBE_MAP_POSITIVE_X) + face, self.textureID, 0);
 	}
 };
 

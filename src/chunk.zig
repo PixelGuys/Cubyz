@@ -397,6 +397,8 @@ pub const meshing = struct {
 		@"fog.density": c_int,
 		texture_sampler: c_int,
 		emissionSampler: c_int,
+		reflectionMap: c_int,
+		reflectionMapSize: c_int,
 		time: c_int,
 		visibilityMask: c_int,
 		voxelSize: c_int,
@@ -449,6 +451,8 @@ pub const meshing = struct {
 
 		c.glUniform1i(uniforms.texture_sampler, 0);
 		c.glUniform1i(uniforms.emissionSampler, 1);
+		c.glUniform1i(uniforms.reflectionMap, 2);
+		c.glUniform1f(uniforms.reflectionMapSize, renderer.reflectionCubeMapSize);
 
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_FALSE, @ptrCast(&game.camera.viewMatrix));
 
@@ -472,6 +476,8 @@ pub const meshing = struct {
 
 		c.glUniform1i(transparentUniforms.texture_sampler, 0);
 		c.glUniform1i(transparentUniforms.emissionSampler, 1);
+		c.glUniform1i(transparentUniforms.reflectionMap, 2);
+		c.glUniform1f(transparentUniforms.reflectionMapSize, renderer.reflectionCubeMapSize);
 
 		c.glUniformMatrix4fv(transparentUniforms.viewMatrix, 1, c.GL_FALSE, @ptrCast(&game.camera.viewMatrix));
 

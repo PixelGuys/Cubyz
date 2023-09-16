@@ -12,6 +12,8 @@ uniform int time;
 uniform vec3 ambientLight;
 uniform sampler2DArray texture_sampler;
 uniform sampler2DArray emissionSampler;
+uniform samplerCube reflectionMap;
+uniform float reflectionMapSize;
 
 layout(binding = 3) uniform sampler2D depthTexture;
 
@@ -67,51 +69,6 @@ uniform float zNear;
 uniform float zFar;
 
 uniform Fog fog;
-
-ivec3 random3to3(ivec3 v) {
-	v &= 15;
-	ivec3 fac = ivec3(11248723, 105436839, 45399083);
-	int seed = v.x*fac.x ^ v.y*fac.y ^ v.z*fac.z;
-	v = seed*fac;
-	return v;
-}
-
-float snoise(vec3 v){ // TODO: Maybe use a cubemap.
-	const vec2 C = vec2(1.0/6.0, 1.0/3.0);
-
-	// First corner
-	vec3 i = floor(v + dot(v, C.yyy));
-	vec3 x0 = v - i + dot(i, C.xxx);
-
-	// Other corners
-	vec3 g = step(x0.yzx, x0.xyz);
-	vec3 l = 1.0 - g;
-	vec3 i1 = min(g.xyz, l.zxy);
-	vec3 i2 = max(g.xyz, l.zxy);
-
-	// x0 = x0 - 0. + 0.0 * C 
-	vec3 x1 = x0 - i1 + 1.0*C.xxx;
-	vec3 x2 = x0 - i2 + 2.0*C.xxx;
-	vec3 x3 = x0 - 1. + 3.0*C.xxx;
-
-	// Get gradients:
-	ivec3 rand = random3to3(ivec3(i));
-	vec3 p0 = vec3(rand);
-	
-	rand = random3to3((ivec3(i + i1)));
-	vec3 p1 = vec3(rand);
-	
-	rand = random3to3((ivec3(i + i2)));
-	vec3 p2 = vec3(rand);
-	
-	rand = random3to3((ivec3(i + 1)));
-	vec3 p3 = vec3(rand);
-
-	// Mix final noise value
-	vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
-	m = m*m;
-	return 42.0*dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)))/(1 << 31);
-}
 
 vec3 unpackColor(uint color) {
 	return vec3(
@@ -177,6 +134,15 @@ vec2 getTextureCoordsNormal(vec3 voxelPosition, int textureDir) {
 	}
 }
 
+vec4 fixedCubeMapLookup(vec3 v) { // Taken from http://the-witness.net/news/2012/02/seamless-cube-map-filtering/
+   float M = max(max(abs(v.x), abs(v.y)), abs(v.z));
+   float scale = (reflectionMapSize - 1)/reflectionMapSize;
+   if (abs(v.x) != M) v.x *= scale;
+   if (abs(v.y) != M) v.y *= scale;
+   if (abs(v.z) != M) v.z *= scale;
+   return texture(reflectionMap, v);
+}
+
 void main() {
 	int textureIndex = textureData[blockType].textureIndices[faceNormal];
 	textureIndex = textureIndex + time / animation[textureIndex].time % animation[textureIndex].frames;
@@ -199,7 +165,7 @@ void main() {
 		// TODO: Change this when it rains.
 		// TODO: Normal mapping.
 		// TODO: Allow textures to contribute to this term.
-		textureColor.rgb += (textureData[blockType].reflectivity/2*vec3(snoise(normalize(reflect(direction, normals[faceNormal])))) + vec3(textureData[blockType].reflectivity))*ambientLight*normalVariation;
+		textureColor.rgb += (textureData[blockType].reflectivity*fixedCubeMapLookup(reflect(direction, normals[faceNormal])).xyz)*ambientLight*normalVariation;
 		textureColor.rgb += texture(emissionSampler, vec3(getTextureCoordsNormal(startPosition/16, faceNormal), textureIndex)).rgb;
 		blendColor.rgb *= 1 - textureColor.a;
 		textureColor.a = 1;

@@ -40,24 +40,62 @@ var deferredUniforms: struct {
 	zNear: c_int,
 	zFar: c_int,
 } = undefined;
+var fakeReflectionShader: graphics.Shader = undefined;
+var fakeReflectionUniforms: struct {
+	normalVector: c_int,
+	upVector: c_int,
+	rightVector: c_int,
+	frequency: c_int,
+	reflectionMapSize: c_int,
+} = undefined;
 
 pub var activeFrameBuffer: c_uint = 0;
 
+pub const reflectionCubeMapSize = 64;
+var reflectionCubeMap: graphics.CubeMapTexture = undefined;
+
 pub fn init() !void {
 	deferredRenderPassShader = try Shader.initAndGetUniforms("assets/cubyz/shaders/deferred_render_pass.vs", "assets/cubyz/shaders/deferred_render_pass.fs", &deferredUniforms);
+	fakeReflectionShader = try Shader.initAndGetUniforms("assets/cubyz/shaders/fake_reflection.vs", "assets/cubyz/shaders/fake_reflection.fs", &fakeReflectionUniforms);
 	worldFrameBuffer.init(true, c.GL_NEAREST, c.GL_CLAMP_TO_EDGE);
 	worldFrameBuffer.updateSize(Window.width, Window.height, c.GL_RGBA16F);
 	try Bloom.init();
 	try MeshSelection.init();
 	try MenuBackGround.init();
+	reflectionCubeMap = graphics.CubeMapTexture.init();
+	reflectionCubeMap.generate(reflectionCubeMapSize, reflectionCubeMapSize);
+	initReflectionCubeMap();
 }
 
 pub fn deinit() void {
 	deferredRenderPassShader.deinit();
+	fakeReflectionShader.deinit();
 	worldFrameBuffer.deinit();
 	Bloom.deinit();
 	MeshSelection.deinit();
 	MenuBackGround.deinit();
+	reflectionCubeMap.deinit();
+}
+
+fn initReflectionCubeMap() void {
+	c.glViewport(0, 0, reflectionCubeMapSize, reflectionCubeMapSize);
+	var framebuffer: graphics.FrameBuffer = undefined;
+	framebuffer.init(false, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
+	defer framebuffer.deinit();
+	framebuffer.bind();
+	fakeReflectionShader.bind();
+	c.glUniform1f(fakeReflectionUniforms.frequency, 1);
+	c.glUniform1f(fakeReflectionUniforms.reflectionMapSize, reflectionCubeMapSize);
+	for(0..6) |face| {
+		c.glUniform3fv(fakeReflectionUniforms.normalVector, 1, @ptrCast(&graphics.CubeMapTexture.faceNormal(face)));
+		c.glUniform3fv(fakeReflectionUniforms.upVector, 1, @ptrCast(&graphics.CubeMapTexture.faceUp(face)));
+		c.glUniform3fv(fakeReflectionUniforms.rightVector, 1, @ptrCast(&graphics.CubeMapTexture.faceRight(face)));
+		reflectionCubeMap.bindToFramebuffer(framebuffer, @intCast(face));
+		c.glBindVertexArray(graphics.draw.rectVAO);
+		c.glDisable(c.GL_DEPTH_TEST);
+		c.glDisable(c.GL_CULL_FACE);
+		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+	}
 }
 
 var worldFrameBuffer: graphics.FrameBuffer = undefined;
@@ -138,6 +176,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	// Update the uniforms. The uniforms are needed to render the replacement meshes.
 	chunk.meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight, time);
 
+	reflectionCubeMap.bindTo(2);
 	c.glActiveTexture(c.GL_TEXTURE0);
 	blocks.meshes.blockTextureArray.bind();
 	c.glActiveTexture(c.GL_TEXTURE1);
