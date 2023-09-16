@@ -81,8 +81,6 @@ pub fn build(b: *std.build.Builder) !void {
 	exe.addAnonymousModule("gui", .{.source_file = .{.path = "src/gui/gui.zig"}});
 	exe.addAnonymousModule("server", .{.source_file = .{.path = "src/server/server.zig"}});
 	
-	@import("mach_freetype").brotli_import_path = "mach_freetype.freetype.brotli";
-	@import("mach_freetype").freetype_import_path = "mach_freetype.freetype";
 	const mach_freetype_dep = b.dependency("mach_freetype", .{
 		.target = target,
 		.optimize = optimize,

@@ -89,11 +89,11 @@ fn flawedRender() !void {
 	inline for(0..queryObjects[curBuffer].len) |i| {
 		var result: i64 = undefined;
 		c.glGetQueryObjecti64v(queryObjects[curBuffer][i], c.GL_QUERY_RESULT, &result);
-		try draw.print("{s}: {} ns", .{names[i], result}, 0, y, 8, .left);
+		try draw.print("{s}: {} µs", .{names[i], @divTrunc(result, 1000)}, 0, y, 8, .left);
 		sum += result;
 		y += 8;
 	}
-	try draw.print("Total: {} ns", .{sum}, 0, 0, 8, .left);
+	try draw.print("Total: {} µs", .{@divTrunc(sum, 1000)}, 0, 0, 8, .left);
 }
 
 pub fn render() Allocator.Error!void {
