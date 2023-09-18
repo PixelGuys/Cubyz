@@ -598,19 +598,19 @@ pub const meshing = struct {
 
 	pub const ChunkMesh = struct {
 		const SortingData = struct {
-			index: u32,
+			face: FaceData,
 			distance: u32,
 			isBackFace: bool,
 
-			pub fn update(self: *SortingData, face: FaceData, chunkDx: i32, chunkDy: i32, chunkDz: i32) void {
-				const x: i32 = @intCast(face.position & 31);
-				const y: i32 = @intCast(face.position >> 5 & 31);
-				const z: i32 = @intCast(face.position >> 10 & 31);
+			pub fn update(self: *SortingData, chunkDx: i32, chunkDy: i32, chunkDz: i32) void {
+				const x: i32 = @intCast(self.face.position & 31);
+				const y: i32 = @intCast(self.face.position >> 5 & 31);
+				const z: i32 = @intCast(self.face.position >> 10 & 31);
 				const dx = x + chunkDx;
 				const dy = y + chunkDy;
 				const dz = z + chunkDz;
-				const normal = face.position >> 20 & 7;
-				self.isBackFace = face.position & 1<<19 != 0;
+				const normal = self.face.position >> 20 & 7;
+				self.isBackFace = self.face.position & 1<<19 != 0;
 				const fullDx = dx - Neighbors.relX[normal];
 				const fullDy = dy - Neighbors.relY[normal];
 				const fullDz = dz - Neighbors.relZ[normal];
@@ -636,10 +636,8 @@ pub const meshing = struct {
 		generated: bool = false,
 		mutex: std.Thread.Mutex = std.Thread.Mutex{},
 		visibilityMask: u8 = 0xff,
-		transparentVao: c_uint = 0,
-		transparentVbo: c_uint = 0,
 		currentSorting: []SortingData = &.{},
-		currentSortingSwap: []SortingData = &.{},
+		sortingOutputBuffer: []FaceData = &.{},
 		lastTransparentUpdatePos: Vec3i = Vec3i{0, 0, 0},
 
 		chunkBorders: [6]BoundingRectToNeighborChunk = [1]BoundingRectToNeighborChunk{.{}} ** 6,
@@ -661,12 +659,8 @@ pub const meshing = struct {
 		pub fn deinit(self: *ChunkMesh) void {
 			self.opaqueMesh.deinit();
 			self.transparentMesh.deinit();
-			if(self.transparentVao != 0) {
-				c.glDeleteVertexArrays(1, &self.transparentVao);
-				c.glDeleteBuffers(1, &self.transparentVbo);
-			}
 			main.globalAllocator.free(self.currentSorting);
-			main.globalAllocator.free(self.currentSortingSwap);
+			main.globalAllocator.free(self.sortingOutputBuffer);
 			if(self.chunk.load(.Monotonic)) |ch| {
 				main.globalAllocator.destroy(ch);
 			}
@@ -1036,23 +1030,15 @@ pub const meshing = struct {
 				return;
 			}
 			if(self.transparentMesh.vertexCount == 0) return;
-			if(self.transparentVao == 0) {
-				c.glGenVertexArrays(1, &self.transparentVao);
-				c.glBindVertexArray(self.transparentVao);
-				c.glGenBuffers(1, &self.transparentVbo);
-				c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, self.transparentVbo);
-			} else {
-				c.glBindVertexArray(self.transparentVao);
-			}
 
 			var needsUpdate: bool = false;
 			if(self.transparentMesh.wasChanged) {
+				self.sortingOutputBuffer = try main.globalAllocator.realloc(self.sortingOutputBuffer, self.transparentMesh.faces.items.len);
 				self.currentSorting = try main.globalAllocator.realloc(self.currentSorting, self.transparentMesh.faces.items.len);
-				self.currentSortingSwap = try main.globalAllocator.realloc(self.currentSortingSwap, self.transparentMesh.faces.items.len);
-
-				for(self.currentSorting, 0..) |*val, i| {
-					val.index = @intCast(i);
+				for(self.currentSorting, self.transparentMesh.faces.items) |*data, face| {
+					data.face = face;
 				}
+
 				needsUpdate = true;
 			}
 
@@ -1069,13 +1055,10 @@ pub const meshing = struct {
 				needsUpdate = true;
 			}
 			if(needsUpdate) {
-				var transparencyData: [][6]u32 = try main.threadAllocator.alloc([6]u32, self.currentSorting.len);
-				defer main.threadAllocator.free(transparencyData);
 				// TODO: Could additionally filter back-faces to reduce work on the gpu side.
 
 				for(self.currentSorting) |*val| {
 					val.update(
-						self.transparentMesh.faces.items[val.index],
 						updatePos[0],
 						updatePos[1],
 						updatePos[2],
@@ -1108,26 +1091,12 @@ pub const meshing = struct {
 				// Move it over into a new buffer:
 				for(0..self.currentSorting.len) |i| {
 					const bucket = 34*3 - 1 - self.currentSorting[i].distance;
-					self.currentSortingSwap[buckets[bucket]] = self.currentSorting[i];
+					self.sortingOutputBuffer[buckets[bucket]] = self.currentSorting[i].face;
 					buckets[bucket] += 1;
 				}
 
-				const swap = self.currentSorting;
-				self.currentSorting = self.currentSortingSwap;
-				self.currentSortingSwap = swap;
-
-				// Fill the data:
-				for(transparencyData, 0..) |*face, i| {
-					const lut = [_]u32{0, 1, 2, 2, 1, 3};
-					const index = self.currentSorting[i].index*4;
-					inline for(face, 0..) |*val, vertex| {
-						val.* = index + lut[vertex];
-					}
-				}
-
 				// Upload:
-				c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, self.transparentVbo);
-				c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(transparencyData.len*@sizeOf([6]u32)), transparencyData.ptr, c.GL_DYNAMIC_DRAW);
+				faceBuffer.bufferSubData(self.transparentMesh.bufferAllocation.start, FaceData, self.sortingOutputBuffer);
 			}
 
 			c.glUniform3f(
