@@ -87,8 +87,8 @@ pub fn build(b: *std.build.Builder) !void {
 	});
 	exe.addModule("freetype", mach_freetype_dep.module("mach-freetype"));
 	exe.addModule("harfbuzz", mach_freetype_dep.module("mach-harfbuzz"));
-	@import("mach_freetype").linkFreetype(b, optimize, target, exe);
-	@import("mach_freetype").linkHarfbuzz(b, optimize, target, exe);
+	@import("mach_freetype").linkFreetype(mach_freetype_dep.builder, exe);
+	@import("mach_freetype").linkHarfbuzz(mach_freetype_dep.builder, exe);
 
 	//exe.strip = true; // Improves compile-time
 	//exe.sanitize_thread = true;
