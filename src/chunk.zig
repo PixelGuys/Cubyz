@@ -1033,6 +1033,7 @@ pub const meshing = struct {
 
 			var needsUpdate: bool = false;
 			if(self.transparentMesh.wasChanged) {
+				self.transparentMesh.wasChanged = false;
 				self.sortingOutputBuffer = try main.globalAllocator.realloc(self.sortingOutputBuffer, self.transparentMesh.faces.items.len);
 				self.currentSorting = try main.globalAllocator.realloc(self.currentSorting, self.transparentMesh.faces.items.len);
 				for(self.currentSorting, self.transparentMesh.faces.items) |*data, face| {
