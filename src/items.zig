@@ -119,9 +119,6 @@ pub const BaseItem = struct {
 		if(self.texture == null) {
 			if(self.block) |blockType| {
 				self.texture = try graphics.generateBlockTexture(blockType);
-				var ret = self.texture.?;
-				self.texture = null;
-				return ret;
 			} else {
 				self.texture = graphics.Texture.init();
 				try self.texture.?.generate(self.image);
