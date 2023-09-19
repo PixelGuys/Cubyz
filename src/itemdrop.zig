@@ -226,9 +226,9 @@ pub const ItemDropManager = struct {
 	pub fn addFromBlockPosition(self: *ItemDropManager, blockPos: Vec3i, vel: Vec3d, itemStack: ItemStack, despawnTime: i32) void {
 		self.add(
 			vec.floatFromInt(f64, blockPos) + Vec3d { // TODO: Consider block bounding boxes.
-				@floatCast(random.nextFloat(&main.seed)),
-				@floatCast(random.nextFloat(&main.seed)),
-				@floatCast(random.nextFloat(&main.seed)),
+				random.nextDouble(&main.seed),
+				random.nextDouble(&main.seed),
+				random.nextDouble(&main.seed),
 			} + @as(Vec3d, @splat(radius)),
 			vel,
 			Vec3f {

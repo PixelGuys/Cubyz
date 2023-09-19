@@ -140,11 +140,11 @@ fn generateCaveBetween(_seed: u64, map: *CaveMapFragment, startWorldPos: Vec3d, 
 		generateSphere(&seed, map, startWorldPos, startRadius);
 	} else { // Otherwise go to the next fractal level:
 		const mid = (startWorldPos + endWorldPos)/@as(Vec3d, @splat(2)) + @as(Vec3d, @splat(maxFractalShift))*Vec3d{
-			@floatCast(random.nextFloatSigned(&seed)),
-			@floatCast(random.nextFloatSigned(&seed)),
-			@floatCast(random.nextFloatSigned(&seed)),
+			random.nextDoubleSigned(&seed),
+			random.nextDoubleSigned(&seed),
+			random.nextDoubleSigned(&seed),
 		} + bias/@as(Vec3d, @splat(4));
-		var midRadius = (startRadius + endRadius)/2 + maxFractalShift*@as(f64, @floatCast(random.nextFloatSigned(&seed)))*heightVariance;
+		var midRadius = (startRadius + endRadius)/2 + maxFractalShift*random.nextDoubleSigned(&seed)*heightVariance;
 		midRadius = @max(midRadius, minRadius);
 		generateCaveBetween(random.nextInt(u64, &seed), map, startWorldPos, mid, bias/@as(Vec3d, @splat(4)), startRadius, midRadius, randomness);
 		generateCaveBetween(random.nextInt(u64, &seed), map, mid, endWorldPos, bias/@as(Vec3d, @splat(4)), midRadius, endRadius, randomness);
@@ -161,36 +161,36 @@ fn generateBranchingCaveBetween(_seed: u64, map: *CaveMapFragment, startWorldPos
 		// Small chance to branch off:
 		if(!isStart and random.nextFloat(&seed) < branchChance and branchLength > 8) {
 			var newEndPos = startWorldPos + Vec3d {
-				branchLength*@as(f64, @floatCast(random.nextFloatSigned(&seed))),
-				branchLength*@as(f64, @floatCast(random.nextFloatSigned(&seed))),
-				branchLength*@as(f64, @floatCast(random.nextFloatSigned(&seed))),
+				branchLength*random.nextDoubleSigned(&seed),
+				branchLength*random.nextDoubleSigned(&seed),
+				branchLength*random.nextDoubleSigned(&seed),
 			};
 			const distanceToSeedPoint = vec.length(startWorldPos - newEndPos);
 			// Reduce distance to avoid cutoffs:
 			if(distanceToSeedPoint > (range - 1)*chunkSize) {
 				newEndPos = vec.floatFromInt(f64, centerWorldPos) + (newEndPos - vec.floatFromInt(f64, centerWorldPos))*@as(Vec3d, @splat(((range - 1)*chunkSize)/distanceToSeedPoint));
 			}
-			const newStartRadius = (startRadius - minRadius)*@as(f64, @floatCast(random.nextFloat(&seed))) + minRadius;
+			const newStartRadius = (startRadius - minRadius)*random.nextDouble(&seed) + minRadius;
 			const newBias = Vec3d {
-				branchLength*@as(f64, @floatCast(random.nextFloatSigned(&seed))),
-				branchLength*@as(f64, @floatCast(random.nextFloatSigned(&seed)/2)),
-				branchLength*@as(f64, @floatCast(random.nextFloatSigned(&seed))),
+				branchLength*random.nextDoubleSigned(&seed),
+				branchLength*random.nextDoubleSigned(&seed)/2,
+				branchLength*random.nextDoubleSigned(&seed),
 			};
-			generateBranchingCaveBetween(random.nextInt(u64, &seed), map, startWorldPos, newEndPos, newBias, newStartRadius, minRadius, centerWorldPos, branchLength/2, @min(0.5, randomness + randomness*@as(f64, @floatCast(random.nextFloat(&seed)*random.nextFloat(&seed)))), true, true);
+			generateBranchingCaveBetween(random.nextInt(u64, &seed), map, startWorldPos, newEndPos, newBias, newStartRadius, minRadius, centerWorldPos, branchLength/2, @min(0.5, randomness + randomness*random.nextDouble(&seed)*random.nextDouble(&seed)), true, true);
 		}
 		return;
 	}
 
 	const maxFractalShift = distance*randomness;
-	const weight: f64 = @floatCast(0.25 + random.nextFloat(&seed)*0.5); // Do slightly random subdivision instead of binary subdivision, to avoid regular patterns.
+	const weight: f64 = 0.25 + random.nextDouble(&seed)*0.5; // Do slightly random subdivision instead of binary subdivision, to avoid regular patterns.
 
 	const w1 = (1 - weight)*(1 - weight);
 	const w2 = weight*weight;
 	// Small chance to generate a split:
 	if(!isStart and !isEnd and distance < maxSplitLength and random.nextFloat(&seed) < splittingChance) {
 		// Find a random direction perpendicular to the current cave direction:
-		var splitXZ: f64 = @floatCast(random.nextFloat(&seed) - 0.5);
-		var splitY: f64 = @floatCast(ySplitReduction*(random.nextFloat(&seed) - 0.5));
+		var splitXZ: f64 = random.nextDouble(&seed) - 0.5;
+		var splitY: f64 = ySplitReduction*(random.nextDouble(&seed) - 0.5);
 		// Normalize
 		const length = @sqrt(splitXZ*splitXZ + splitY*splitY);
 		splitXZ /= length;
@@ -205,33 +205,33 @@ fn generateBranchingCaveBetween(_seed: u64, map: *CaveMapFragment, startWorldPos
 		const newBias2 = bias - Vec3d{offsetX, offsetY, offsetZ};
 
 		const mid1 = startWorldPos*@as(Vec3d, @splat(weight)) + endWorldPos*@as(Vec3d, @splat(1 - weight)) + @as(Vec3d, @splat(maxFractalShift))*Vec3d{
-			@floatCast(random.nextFloatSigned(&seed)),
-			@floatCast(random.nextFloatSigned(&seed)),
-			@floatCast(random.nextFloatSigned(&seed)),
+			random.nextDoubleSigned(&seed),
+			random.nextDoubleSigned(&seed),
+			random.nextDoubleSigned(&seed),
 		} + newBias1*@as(Vec3d, @splat(weight*(1 - weight)));
 		const mid2 = startWorldPos*@as(Vec3d, @splat(weight)) + endWorldPos*@as(Vec3d, @splat(1 - weight)) + @as(Vec3d, @splat(maxFractalShift))*Vec3d{
-			@floatCast(random.nextFloatSigned(&seed)),
-			@floatCast(random.nextFloatSigned(&seed)),
-			@floatCast(random.nextFloatSigned(&seed)),
+			random.nextDoubleSigned(&seed),
+			random.nextDoubleSigned(&seed),
+			random.nextDoubleSigned(&seed),
 		} + newBias2*@as(Vec3d, @splat(weight*(1 - weight)));
 
-		var midRadius = @max(minRadius, (startRadius + endRadius)/2 + maxFractalShift*@as(f64, @floatCast(random.nextFloatSigned(&seed)))*heightVariance);
+		var midRadius = @max(minRadius, (startRadius + endRadius)/2 + maxFractalShift*random.nextDoubleSigned(&seed)*heightVariance);
 		generateBranchingCaveBetween(random.nextInt(u64, &seed), map, startWorldPos, mid1, newBias1*@as(Vec3d, @splat(w1)), startRadius, midRadius, centerWorldPos, branchLength, randomness, isStart, false);
 		generateBranchingCaveBetween(random.nextInt(u64, &seed), map, mid1, endWorldPos, newBias1*@as(Vec3d, @splat(w2)), midRadius, endRadius, centerWorldPos, branchLength, randomness, false, isEnd);
 		// Do some tweaking to the radius before making the second part:
-		const newStartRadius = (startRadius - minRadius)*@as(f64, @floatCast(random.nextFloat(&seed))) + minRadius;
-		const newEndRadius = (endRadius - minRadius)*@as(f64, @floatCast(random.nextFloat(&seed))) + minRadius;
-		midRadius = @max(minRadius, (newStartRadius + newEndRadius)/2 + maxFractalShift*@as(f64, @floatCast(random.nextFloatSigned(&seed)))*heightVariance);
+		const newStartRadius = (startRadius - minRadius)*random.nextDouble(&seed) + minRadius;
+		const newEndRadius = (endRadius - minRadius)*random.nextDouble(&seed) + minRadius;
+		midRadius = @max(minRadius, (newStartRadius + newEndRadius)/2 + maxFractalShift*random.nextDoubleSigned(&seed)*heightVariance);
 		generateBranchingCaveBetween(random.nextInt(u64, &seed), map, startWorldPos, mid2, newBias2*@as(Vec3d, @splat(w1)), newStartRadius, midRadius, centerWorldPos, branchLength, randomness, isStart, false);
 		generateBranchingCaveBetween(random.nextInt(u64, &seed), map, mid2, endWorldPos, newBias2*@as(Vec3d, @splat(w2)), midRadius, newEndRadius, centerWorldPos, branchLength, randomness, false, isEnd);
 		return;
 	}
 	const mid = startWorldPos*@as(Vec3d, @splat(weight)) + endWorldPos*@as(Vec3d, @splat(1 - weight)) + @as(Vec3d, @splat(maxFractalShift))*Vec3d{
-		@floatCast(random.nextFloatSigned(&seed)),
-		@floatCast(random.nextFloatSigned(&seed)),
-		@floatCast(random.nextFloatSigned(&seed)),
+		random.nextDoubleSigned(&seed),
+		random.nextDoubleSigned(&seed),
+		random.nextDoubleSigned(&seed),
 	} + bias*@as(Vec3d, @splat(weight*(1 - weight)));
-	const midRadius = @max(minRadius, (startRadius + endRadius)/2 + maxFractalShift*@as(f64, @floatCast(random.nextFloatSigned(&seed)))*heightVariance);
+	const midRadius = @max(minRadius, (startRadius + endRadius)/2 + maxFractalShift*random.nextDoubleSigned(&seed)*heightVariance);
 	generateBranchingCaveBetween(random.nextInt(u64, &seed), map, startWorldPos, mid, bias*@as(Vec3d, @splat(w1)), startRadius, midRadius, centerWorldPos, branchLength, randomness, isStart, false);
 	generateBranchingCaveBetween(random.nextInt(u64, &seed), map, mid, endWorldPos, bias*@as(Vec3d, @splat(w2)), midRadius, endRadius, centerWorldPos, branchLength, randomness, false, isEnd);
 
@@ -259,13 +259,13 @@ fn considerCoordinates(x: i32, y: i32, z: i32, map: *CaveMapFragment, seed: *u64
 			@floatFromInt((endY << chunkShift) + random.nextIntBounded(u8, seed, chunkSize)),
 			@floatFromInt((endZ << chunkShift) + random.nextIntBounded(u8, seed, chunkSize)),
 		};
-		const startRadius: f64 = @floatCast(random.nextFloat(seed)*maxInitialRadius + 2*minRadius);
-		const endRadius: f64 = @floatCast(random.nextFloat(seed)*maxInitialRadius + 2*minRadius);
+		const startRadius: f64 = random.nextDouble(seed)*maxInitialRadius + 2*minRadius;
+		const endRadius: f64 = random.nextDouble(seed)*maxInitialRadius + 2*minRadius;
 		const caveLength = vec.length(startWorldPos - endWorldPos);
 		generateBranchingCaveBetween(random.nextInt(u64, seed), map, startWorldPos, endWorldPos, Vec3d {
-			caveLength*@as(f64, @floatCast(random.nextFloatSigned(seed)/2)),
-			caveLength*@as(f64, @floatCast(random.nextFloatSigned(seed)/4)),
-			caveLength*@as(f64, @floatCast(random.nextFloatSigned(seed)/2)),
+			caveLength*random.nextDoubleSigned(seed)/2,
+			caveLength*random.nextDoubleSigned(seed)/4,
+			caveLength*random.nextDoubleSigned(seed)/2,
 		}, startRadius, endRadius, Vec3i{x << chunkShift, y << chunkShift, z << chunkShift}, initialBranchLength, 0.1, true, true);
 	}
 }

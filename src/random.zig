@@ -59,6 +59,12 @@ pub fn nextDouble(seed: *u64) f64 {
 	return @as(f64, @floatFromInt(upper<<32 | lower))/(1 << 52);
 }
 
+pub fn nextDoubleSigned(seed: *u64) f64 {
+	const lower: i52 = nextInt(u32, seed);
+	const upper: i52 = nextInt(u20, seed);
+	return @as(f64, @floatFromInt(upper<<32 | lower))/(1 << 51);
+}
+
 pub fn nextPointInUnitCircle(seed: *u64) Vec2f {
 	while(true) {
 		var x: f32 = nextFloatSigned(seed);
