@@ -3,6 +3,7 @@
 layout(location=0) out vec4 fragColor;
 
 in vec2 texCoords;
+in vec2 normalizedTexCoords;
 
 layout(binding = 3) uniform sampler2D color;
 
@@ -44,7 +45,7 @@ float calculateFogDistance(float depthBufferValue, float fogDensity) {
 
 vec3 fetch(ivec2 pos) {
 	vec4 rgba = texelFetch(color, pos, 0);
-	float densityAdjustment = sqrt(dot(tanXY*(texCoords*2 - 1), tanXY*(texCoords*2 - 1)) + 1);
+	float densityAdjustment = sqrt(dot(tanXY*(normalizedTexCoords*2 - 1), tanXY*(normalizedTexCoords*2 - 1)) + 1);
 	float fogDistance = calculateFogDistance(texelFetch(depthTexture, pos, 0).r, fog.density*densityAdjustment);
 	vec3 fogColor = fog.color;
 	float fogFactor = exp(fogDistance);
@@ -64,9 +65,9 @@ vec3 fetch(ivec2 pos) {
 vec3 linearSample(ivec2 start) {
 	vec3 outColor = vec3(0);
 	outColor += fetch(start);
-	outColor += fetch(start + ivec2(0, 1));
-	outColor += fetch(start + ivec2(1, 0));
-	outColor += fetch(start + ivec2(1, 1));
+	outColor += fetch(start + ivec2(0, 2));
+	outColor += fetch(start + ivec2(2, 0));
+	outColor += fetch(start + ivec2(2, 2));
 	return outColor*0.25;
 }
 

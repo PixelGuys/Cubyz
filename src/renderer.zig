@@ -383,9 +383,9 @@ const Bloom = struct {
 		if(width != currentWidth or height != currentHeight) {
 			width = currentWidth;
 			height = currentHeight;
-			buffer1.updateSize(width/2, height/2, c.GL_RGB16F);
+			buffer1.updateSize(width/4, height/4, c.GL_RGB16F);
 			std.debug.assert(buffer1.validate());
-			buffer2.updateSize(width/2, height/2, c.GL_RGB16F);
+			buffer2.updateSize(width/4, height/4, c.GL_RGB16F);
 			std.debug.assert(buffer2.validate());
 		}
 		gpu_performance_measuring.startQuery(.bloom_extract_downsample);
@@ -393,7 +393,7 @@ const Bloom = struct {
 		c.glDisable(c.GL_CULL_FACE);
 		c.glDepthMask(c.GL_FALSE);
 
-		c.glViewport(0, 0, width/2, height/2);
+		c.glViewport(0, 0, width/4, height/4);
 		extractImageDataAndDownsample(playerBlock);
 		gpu_performance_measuring.stopQuery();
 		gpu_performance_measuring.startQuery(.bloom_first_pass);
