@@ -5,6 +5,7 @@ flat out int blockType;
 flat out int modelIndex;
 flat out int faceNormal;
 flat out int isBackFace;
+flat out int ditherSeed;
 // For raymarching:
 out vec3 startPosition;
 out vec3 direction;
@@ -129,6 +130,7 @@ void main() {
 	mat3 permutationMatrix = permutationMatrices[(encodedPositionAndNormalsAndPermutation >> 23) & 7];
 	vec3 mirrorVector = mirrorVectors[(encodedPositionAndNormalsAndPermutation >> 26) & 7];
 	int normal = convertNormal(oldNormal, permutationMatrix, mirrorVector);
+	ditherSeed = encodedPositionAndNormalsAndPermutation & 15;
 
 	blockType = blockAndModel & 65535;
 	modelIndex = blockAndModel >> 16;

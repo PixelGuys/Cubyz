@@ -5,6 +5,7 @@ flat in int blockType;
 flat in int faceNormal;
 flat in int modelIndex;
 flat in int isBackFace;
+flat in int ditherSeed;
 // For raymarching:
 in vec3 startPosition;
 in vec3 direction;
@@ -178,6 +179,33 @@ vec4 mipMapSample(sampler2DArray texture, ivec2 textureCoords, int textureIndex,
 	return higher*interpolation + (1 - interpolation)*lower;
 }
 
+float ditherThresholds[16] = float[16] (
+	1/17.0, 9/17.0, 3/17.0, 11/17.0,
+	13/17.0, 5/17.0, 15/17.0, 7/17.0,
+	4/17.0, 12/17.0, 2/17.0, 10/17.0,
+	16/17.0, 8/17.0, 14/17.0, 6/17.0
+);
+
+ivec2 random1to2(int v) {
+	ivec4 fac = ivec4(11248723, 105436839, 45399083, 5412951);
+	int seed = v.x*fac.x ^ fac.y;
+	return seed*fac.zw;
+}
+
+uint random3to1u(ivec3 v) {
+	v &= 15;
+	ivec4 fac = ivec4(11248723, 105436839, 45399083, 5412951);
+	int seed = v.x*fac.x ^ v.y*fac.y ^ v.z*fac.z;
+	return uint(seed)*uint(fac.w);
+}
+
+bool passDitherTest(float alpha) {
+	ivec2 screenPos = ivec2(gl_FragCoord.xy);
+	screenPos += random1to2(ditherSeed);
+	screenPos &= 3;
+	return alpha > ditherThresholds[screenPos.x*4 + screenPos.y];
+}
+
 void main() {
 	RayMarchResult result;
 	float variance = perpendicularFwidth(direction);
@@ -194,7 +222,8 @@ void main() {
 	ivec2 textureCoords = getTextureCoords(result.voxelPosition, result.textureDir);
 	fragColor = mipMapSample(texture_sampler, textureCoords, textureIndex, lod)*vec4(ambientLight*normalVariation, 1);
 
-	if (fragColor.a < 1) discard;
+	if(!passDitherTest(fragColor.a)) discard;
+	fragColor.a = 1;
 
 	fragColor.rgb += mipMapSample(emissionSampler, textureCoords, textureIndex, lod).rgb;
 	// TODO: Update the depth.

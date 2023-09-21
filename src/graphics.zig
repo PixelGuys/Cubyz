@@ -1372,39 +1372,39 @@ pub const TextureArray = struct {
 	}
 
 	fn lodColorInterpolation(colors: [4]Color, isTransparent: bool) Color {
-		var r: [4]u32 = undefined;
-		var g: [4]u32 = undefined;
-		var b: [4]u32 = undefined;
-		var a: [4]u32 = undefined;
+		_ = isTransparent;
+		var r: [4]f32 = undefined;
+		var g: [4]f32 = undefined;
+		var b: [4]f32 = undefined;
+		var a: [4]f32 = undefined;
 		for(0..4) |i| {
-			r[i] = colors[i].r;
-			g[i] = colors[i].g;
-			b[i] = colors[i].b;
-			a[i] = colors[i].a;
+			r[i] = @floatFromInt(colors[i].r);
+			g[i] = @floatFromInt(colors[i].g);
+			b[i] = @floatFromInt(colors[i].b);
+			a[i] = @floatFromInt(colors[i].a);
 		}
 		// Use gamma corrected average(https://stackoverflow.com/a/832314/13082649):
-		var aSum: u32 = 0;
-		var rSum: u32 = 0;
-		var gSum: u32 = 0;
-		var bSum: u32 = 0;
+		var aSum: f32 = 0;
+		var rSum: f32 = 0;
+		var gSum: f32 = 0;
+		var bSum: f32 = 0;
 		for(0..4) |i| {
-			aSum += a[i]*a[i];
-			rSum += r[i]*r[i];
-			gSum += g[i]*g[i];
-			bSum += b[i]*b[i];
+			const w = a[i]*a[i];
+			aSum += w;
+			rSum += w*r[i]*r[i];
+			gSum += w*g[i]*g[i];
+			bSum += w*b[i]*b[i];
 		}
-		aSum = @intFromFloat(@round(@sqrt(@as(f32, @floatFromInt(aSum))))/2);
-		if(!isTransparent) {
-			if(aSum < 128) {
-				aSum = 0;
-			} else {
-				aSum = 255;
-			}
+		aSum = @round(@sqrt(aSum))/2;
+		rSum = @round(@sqrt(rSum))/2;
+		gSum = @round(@sqrt(gSum))/2;
+		bSum = @round(@sqrt(bSum))/2;
+		if(aSum != 0) {
+			rSum /= aSum;
+			gSum /= aSum;
+			bSum /= aSum;
 		}
-		rSum = @intFromFloat(@round(@sqrt(@as(f32, @floatFromInt(rSum))))/2);
-		gSum = @intFromFloat(@round(@sqrt(@as(f32, @floatFromInt(gSum))))/2);
-		bSum = @intFromFloat(@round(@sqrt(@as(f32, @floatFromInt(bSum))))/2);
-		return Color{.r=@intCast(rSum), .g=@intCast(gSum), .b=@intCast(bSum), .a=@intCast(aSum)};
+		return Color{.r=@intFromFloat(rSum), .g=@intFromFloat(gSum), .b=@intFromFloat(bSum), .a=@intFromFloat(aSum)};
 	}
 
 	/// (Re-)Generates the GPU buffer.
