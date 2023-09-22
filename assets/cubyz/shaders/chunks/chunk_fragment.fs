@@ -68,8 +68,8 @@ const vec3[6] normals = vec3[6](
 	vec3(0, 0, -1)
 );
 
-int getVoxel(int voxelIndex) {
-	voxelIndex = (voxelIndex & 0xf) | (voxelIndex>>1 & 0xf0) | (voxelIndex>>2 & 0xf00);
+int getVoxel(ivec3 voxelPos) {
+	int voxelIndex = (voxelPos.x) | (voxelPos.y << 4) | (voxelPos.z << 8);
 	int shift = 4*(voxelIndex & 7);
 	int arrayIndex = voxelIndex >> 3;
 	return (int(voxelModels[modelIndex].bitPackedData[arrayIndex])>>shift & 15) - 6;
@@ -85,8 +85,6 @@ struct RayMarchResult {
 RayMarchResult rayMarching(vec3 startPosition, vec3 direction) { // TODO: Mipmapped voxel models. (or maybe just remove them when they are far enough away?)
 	// Branchless implementation of "A Fast Voxel Traversal Algorithm for Ray Tracing"  http://www.cse.yorku.ca/~amana/research/grid.pdf
 	vec3 step = sign(direction);
-	vec3 stepInIndex = step*vec3(1 << 10, 1 << 5, 1);
-	int overflowMask = 1<<14 | 1<<9 | 1<<4;
 	vec3 t1 = (floor(startPosition) - startPosition)/direction;
 	vec3 tDelta = 1/direction;
 	vec3 t2 = t1 + tDelta;
@@ -98,10 +96,24 @@ RayMarchResult rayMarching(vec3 startPosition, vec3 direction) { // TODO: Mipmap
 	if(direction.z == 0) tMax.z = 1.0/0.0;
 	
 	ivec3 voxelPos = ivec3(floor(startPosition));
-	int voxelIndex = voxelPos.x<<10 | voxelPos.y<<5 | voxelPos.z; // Stores the position as 0b0xxxx0yyyy0zzzz
+
+	ivec3 minPos = voxelModels[modelIndex].minimum.xyz;
+	ivec3 maxPos = voxelModels[modelIndex].maximum.xyz;
+
+	ivec3 compare = ivec3 (
+		(direction.x < 0) ? minPos.x : -maxPos.x,
+		(direction.y < 0) ? minPos.y : -maxPos.y,
+		(direction.z < 0) ? minPos.z : -maxPos.z
+	);
+
+	ivec3 inversionMasks = ivec3 (
+		(direction.x < 0) ? 0 : ~0,
+		(direction.y < 0) ? 0 : ~0,
+		(direction.z < 0) ? 0 : ~0
+	);
 
 	int lastNormal = faceNormal;
-	int block = getVoxel(voxelIndex);
+	int block = getVoxel(voxelPos);
 	float total_tMax = 0;
 	
 	int size = 16;
@@ -112,11 +124,20 @@ RayMarchResult rayMarching(vec3 startPosition, vec3 direction) { // TODO: Mipmap
 		vec3 tNext = tMax + block*tDelta;
 		total_tMax = min(tNext.x, min(tNext.y, tNext.z));
 		vec3 missingSteps = floor((total_tMax - tMax)*invTDelta);
-		voxelIndex += int(dot(missingSteps, stepInIndex));
+		voxelPos += ivec3(missingSteps*step);
 		tMax += missingSteps*tDelta;
-		if((voxelIndex & overflowMask) != 0)
+		/*
+		Here I use a trick to avoid integer multiplication.
+		The correct equation would be
+		  sign*pos > compare
+		→ ((sign > 0) ? pos : -pos) > compare // Expanding the left hand side (sign != 0 for all practical purposes)
+		→ ((sign > 0) ? pos : ~pos+1) > compare // 2's complement
+		→ ((sign > 0) ? pos : ~pos) > compare2 // putting the +1 into the compare constant
+		→ inversionMasks ^ pos > compare2 // xor can be used to conditionally invert a number
+		*/
+		if(any(lessThan(voxelPos^inversionMasks, compare)))
 			return RayMarchResult(false, 0, 0, ivec3(0, 0, 0));
-		block = getVoxel(voxelIndex);
+		block = getVoxel(voxelPos);
 	}
 	if(total_tMax != 0) {
 		if(tMax.x > tMax.y) {
@@ -133,9 +154,6 @@ RayMarchResult rayMarching(vec3 startPosition, vec3 direction) { // TODO: Mipmap
 			}
 		}
 	}
-	voxelPos.x = voxelIndex>>10 & 15;
-	voxelPos.y = voxelIndex>>5 & 15;
-	voxelPos.z = voxelIndex & 15;
 	int textureDir = -block;
 	if(textureDir == 6) textureDir = lastNormal;
 	return RayMarchResult(true, lastNormal, textureDir, voxelPos);
