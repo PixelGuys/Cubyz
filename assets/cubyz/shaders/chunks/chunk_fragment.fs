@@ -69,7 +69,7 @@ const vec3[6] normals = vec3[6](
 );
 
 int getVoxel(ivec3 voxelPos) {
-	int voxelIndex = (voxelPos.x) | (voxelPos.y << 4) | (voxelPos.z << 8);
+	int voxelIndex = (voxelPos.x << 8) | (voxelPos.y << 4) | (voxelPos.z);
 	int shift = 4*(voxelIndex & 7);
 	int arrayIndex = voxelIndex >> 3;
 	return (int(voxelModels[modelIndex].bitPackedData[arrayIndex])>>shift & 15) - 6;
