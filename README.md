@@ -35,6 +35,11 @@ If you forgot the `--recurse-submodules` flag you may need to run `git submodule
 3. Go into the folder `cd Cubyz`
 4. Run zig `zig build run`
 5. If it's too slow, run it in release: `zig build run -Doptimize=ReleaseFast`
+#### Note for Linux Users:
+I also had to install a few `-dev` packages for the compilation to work:
+```
+sudo apt install libgl-dev libasound2-dev libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxext-dev libxi-dev
+```
 
 # Contributing
 ### Code
