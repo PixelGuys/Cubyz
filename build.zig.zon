@@ -6,5 +6,9 @@
 			.url = "https://pkg.machengine.org/mach-freetype/92773615e2480c0a6f561748f2ba1180376bbb68.tar.gz",
 			.hash = "12205a6057fe43a4940c6db304449ebf3e98ff15d0eec05b75f621d7616c2e7d7f2c",
 		},
+		.portaudio = .{
+			.url = "https://github.com/PortAudio/portaudio/archive/refs/tags/v19.7.0.tar.gz",
+			.hash = "1220a96e42d87ae966106483e3351919c95b7c8129942c355fd173b38b2e7a0ae0a0",
+		}
 	},
 }

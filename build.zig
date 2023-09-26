@@ -1,5 +1,11 @@
 const std = @import("std");
 
+fn addPackageCSourceFiles(exe: *std.Build.Step.Compile, dep: *std.Build.Dependency, files: []const []const u8, flags: []const []const u8) void {
+	for(files) |file| {
+		exe.addCSourceFile(.{ .file =  dep.path(file), .flags = flags});
+	}
+}
+
 pub fn build(b: *std.build.Builder) !void {
 	// Standard target options allows the person running `zig build` to choose
 	// what target to build for. Here we do not override the defaults, which
@@ -43,35 +49,39 @@ pub fn build(b: *std.build.Builder) !void {
 		}
 	}
 	{ // compile portaudio from source:
-		exe.addIncludePath(.{.path = "portaudio/include"});
-		exe.addIncludePath(.{.path = "portaudio/src/common"});
-		exe.addCSourceFiles(&[_][]const u8 {
-			"portaudio/src/common/pa_allocation.c",
-			"portaudio/src/common/pa_converters.c",
-			"portaudio/src/common/pa_cpuload.c",
-			"portaudio/src/common/pa_debugprint.c",
-			"portaudio/src/common/pa_dither.c",
-			"portaudio/src/common/pa_front.c",
-			"portaudio/src/common/pa_process.c",
-			"portaudio/src/common/pa_ringbuffer.c",
-			"portaudio/src/common/pa_stream.c",
-			"portaudio/src/common/pa_trace.c",
+		const portaudio = b.dependency("portaudio", .{
+			.target = target,
+			.optimize = optimize,
+		});
+		exe.addIncludePath(portaudio.path("include"));
+		exe.addIncludePath(portaudio.path("src/common"));
+		addPackageCSourceFiles(exe, portaudio, &[_][]const u8 {
+			"src/common/pa_allocation.c",
+			"src/common/pa_converters.c",
+			"src/common/pa_cpuload.c",
+			"src/common/pa_debugprint.c",
+			"src/common/pa_dither.c",
+			"src/common/pa_front.c",
+			"src/common/pa_process.c",
+			"src/common/pa_ringbuffer.c",
+			"src/common/pa_stream.c",
+			"src/common/pa_trace.c",
 		}, &[_][]const u8{"-g", "-O3"});
 		if(target.getOsTag() == .windows) {
 			// windows:
-			exe.addCSourceFiles(&[_][]const u8 {"portaudio/src/os/win/pa_win_coinitialize.c", "portaudio/src/os/win/pa_win_hostapis.c", "portaudio/src/os/win/pa_win_util.c", "portaudio/src/os/win/pa_win_waveformat.c", "portaudio/src/os/win/pa_win_wdmks_utils.c", "portaudio/src/os/win/pa_x86_plain_converters.c", }, &[_][]const u8{"-g", "-O3", "-DPA_USE_WASAPI"});
-			exe.addIncludePath(.{.path = "portaudio/src/os/win"});
+			addPackageCSourceFiles(exe, portaudio, &[_][]const u8 {"src/os/win/pa_win_coinitialize.c", "src/os/win/pa_win_hostapis.c", "src/os/win/pa_win_util.c", "src/os/win/pa_win_waveformat.c", "src/os/win/pa_win_wdmks_utils.c", "src/os/win/pa_x86_plain_converters.c", }, &[_][]const u8{"-g", "-O3", "-DPA_USE_WASAPI"});
+			exe.addIncludePath(portaudio.path("src/os/win"));
 			exe.linkSystemLibrary("ole32");
 			exe.linkSystemLibrary("winmm");
 			exe.linkSystemLibrary("uuid");
 			// WASAPI:
-			exe.addCSourceFiles(&[_][]const u8 {"portaudio/src/hostapi/wasapi/pa_win_wasapi.c"}, &[_][]const u8{"-g", "-O3"});
+			addPackageCSourceFiles(exe, portaudio, &[_][]const u8 {"src/hostapi/wasapi/pa_win_wasapi.c"}, &[_][]const u8{"-g", "-O3"});
 		} else if(target.getOsTag() == .linux) {
 			// unix:
-			exe.addCSourceFiles(&[_][]const u8 {"portaudio/src/os/unix/pa_unix_hostapis.c", "portaudio/src/os/unix/pa_unix_util.c"}, &[_][]const u8{"-g", "-O3", "-DPA_USE_ALSA"});
-			exe.addIncludePath(.{.path = "portaudio/src/os/unix"});
+			addPackageCSourceFiles(exe, portaudio, &[_][]const u8 {"src/os/unix/pa_unix_hostapis.c", "src/os/unix/pa_unix_util.c"}, &[_][]const u8{"-g", "-O3", "-DPA_USE_ALSA"});
+			exe.addIncludePath(portaudio.path("src/os/unix"));
 			// ALSA:
-			exe.addCSourceFiles(&[_][]const u8 {"portaudio/src/hostapi/alsa/pa_linux_alsa.c"}, &[_][]const u8{"-g", "-O3"});
+			addPackageCSourceFiles(exe, portaudio, &[_][]const u8 {"src/hostapi/alsa/pa_linux_alsa.c"}, &[_][]const u8{"-g", "-O3"});
 			exe.linkSystemLibrary("asound");
 		} else {
 			std.log.err("Unsupported target: {}\n", .{ target.getOsTag() });

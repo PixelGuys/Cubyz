@@ -30,8 +30,7 @@ Sorry, the zig version isn't there yet. You can test the old java version or ask
 Otherwise you can
 ### Compile Cubyz from source
 1. Install git and zig (latest master release)
-2. Clone this repository `git clone --recurse-submodules https://github.com/pixelguys/Cubyz` <br>
-If you forgot the `--recurse-submodules` flag you may need to run `git submodule update --init --recursive`
+2. Clone this repository `git clone https://github.com/pixelguys/Cubyz`
 3. Go into the folder `cd Cubyz`
 4. Run zig `zig build run`
 5. If it's too slow, run it in release: `zig build run -Doptimize=ReleaseFast`
