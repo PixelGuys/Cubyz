@@ -39,6 +39,7 @@ I also had to install a few `-dev` packages for the compilation to work:
 ```
 sudo apt install libgl-dev libasound2-dev libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxext-dev libxi-dev
 ```
+For Linux there is also a handy `run.sh` file that automatically downloads the correct zig version
 
 # Contributing
 ### Code
