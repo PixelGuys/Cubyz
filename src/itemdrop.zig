@@ -461,13 +461,10 @@ pub const ClientItemDropManager = struct {
 	pub fn init(self: *ClientItemDropManager, allocator: Allocator, world: *World) !void {
 		std.debug.assert(instance == null); // Only one instance allowed.
 		instance = self;
-		self.super = undefined;
-		self.lastTime = @as(i16, @truncate(std.time.milliTimestamp())) -% settings.entityLookback;
-		self.timeDifference = .{};
-//		self.* = ClientItemDropManager { TODO: Wait for #17289 fix.
-//			.super = undefined,
-//			.lastTime = @as(i16, @truncate(std.time.milliTimestamp())) -% settings.entityLookback,
-//		};
+		self.* = .{
+			.super = undefined,
+			.lastTime = @as(i16, @truncate(std.time.milliTimestamp())) -% settings.entityLookback,
+		};
 		try self.super.init(allocator, null, world.gravity);
 		self.super.addWithIndexAndRotation = &overrideAddWithIndexAndRotation;
 		self.interpolation.init(

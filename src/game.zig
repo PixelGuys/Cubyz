@@ -104,20 +104,12 @@ pub const World = struct {
 //	public final ArrayList<String> chatHistory = new ArrayList<>();
 
 	pub fn init(self: *World, ip: []const u8, manager: *ConnectionManager) !void {
-		self.conn = try Connection.init(manager, ip);
-		self.manager = manager;
-		self.ambientLight = 0;
-		self.clearColor = .{0, 0, 0, 1};
-		self.gravity = 9.81*1.5;
-		self.name = "client";
-		self.milliTime = std.time.milliTimestamp();
-		self.gameTime = std.atomic.Atomic(i64).init(0);
-//		self.* = World { TODO: Wait for #17289 fix.
-//			.conn = try Connection.init(manager, ip),
-//			.manager = manager,
-//			.name = "client",
-//			.milliTime = std.time.milliTimestamp(),
-//		};
+		self.* = .{
+			.conn = try Connection.init(manager, ip),
+			.manager = manager,
+			.name = "client",
+			.milliTime = std.time.milliTimestamp(),
+		};
 		try self.itemDrops.init(main.globalAllocator, self);
 		Player.inventory__SEND_CHANGES_TO_SERVER = try Inventory.init(main.globalAllocator, 32);
 		// TODO:
