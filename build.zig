@@ -92,6 +92,7 @@ pub fn build(b: *std.build.Builder) !void {
 
 	//exe.strip = true; // Improves compile-time
 	//exe.sanitize_thread = true;
+	exe.disable_stack_probing = true; // Improves tracing of stack overflow errors.
 	b.installArtifact(exe);
 
 	const run_cmd = b.addRunArtifact(exe);
