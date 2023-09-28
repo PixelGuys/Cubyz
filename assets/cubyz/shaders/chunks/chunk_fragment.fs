@@ -230,7 +230,7 @@ void main() {
 	const float threshold = 1;
 	const float interpolationRegion = 1.25;
 	float interp = (variance - threshold)/threshold/(interpolationRegion - 1);
-	if(!passDitherTest(interp)) {
+	if(modelIndex != 0 && !passDitherTest(interp)) {
 		result = rayMarching(startPosition, direction);
 	} else {
 		result = RayMarchResult(true, faceNormal, faceNormal, ivec3(startPosition)); // At some point it doesn't make sense to even draw the model.
