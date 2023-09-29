@@ -41,22 +41,19 @@ float calculateFogDistance(float depthBufferValue, float fogDensity) {
 	}
 }
 
+vec3 applyFrontfaceFog(float fogDistance, vec3 fogColor, vec3 inColor) {
+	float fogFactor = exp(fogDistance);
+	inColor *= fogFactor;
+	inColor += fogColor;
+	inColor -= fogColor*fogFactor;
+	return inColor;
+}
+
 void main() {
 	fragColor = texture(color, texCoords);
 	float densityAdjustment = sqrt(dot(tanXY*(texCoords*2 - 1), tanXY*(texCoords*2 - 1)) + 1);
 	float fogDistance = calculateFogDistance(texelFetch(depthTexture, ivec2(gl_FragCoord.xy), 0).r, fog.density*densityAdjustment);
-	vec3 fogColor = fog.color;
-	float fogFactor = exp(fogDistance);
-	vec4 sourceColor = vec4(fogColor, 1);
-	sourceColor.a = 1.0/fogFactor;
-	sourceColor.rgb *= sourceColor.a;
-	sourceColor.rgb -= fogColor;
-	vec3 source2Color = vec3(1);
-	fragColor = vec4(
-		source2Color*fragColor.rgb + fragColor.a*sourceColor.rgb,
-		fragColor.a*sourceColor.a
-	);
-	fragColor.rgb /= fragColor.a;
+	fragColor.rgb = applyFrontfaceFog(fogDistance, fog.color, fragColor.rgb);
 	float maxColor = max(1.0, max(fragColor.r, max(fragColor.g, fragColor.b)));
 	fragColor.rgb = fragColor.rgb/maxColor;
 }

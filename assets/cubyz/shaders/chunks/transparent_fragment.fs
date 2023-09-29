@@ -105,17 +105,19 @@ float calculateFogDistance(float depthBufferValue, float fogDensity) {
 
 void applyFrontfaceFog(float fogDistance, vec3 fogColor) {
 	float fogFactor = exp(fogDistance);
-	fragColor.a = 1.0/fogFactor;
-	fragColor.rgb = fragColor.a*fogColor;
-	fragColor.rgb -= fogColor;
+	fragColor.rgb *= fogFactor;
+	fragColor.rgb += fogColor;
+	fragColor.rgb -= fogColor*fogFactor;
+	fragColor.a = fogFactor;
 }
 
 void applyBackfaceFog(float fogDistance, vec3 fogColor) {
 	float fogFactor = exp(fogDistance);
 	float oldAlpha = fragColor.a;
-	fragColor.a *= fogFactor;
-	fragColor.rgb -= oldAlpha*fogColor;
-	fragColor.rgb += fragColor.a*fogColor;
+	fragColor.rgb *= 1.0/fogFactor;
+	fragColor.rgb -= fogColor/fogFactor;
+	fragColor.rgb += fogColor;
+	fragColor.a *= 1.0/fogFactor;
 }
 
 vec2 getTextureCoordsNormal(vec3 voxelPosition, int textureDir) {
@@ -181,7 +183,7 @@ void main() {
 
 		// Apply the texture+absorption
 		fragColor.rgb *= blendColor.rgb;
-		fragColor.rgb += textureColor.rgb*fragColor.a;
+		fragColor.rgb += textureColor.rgb;
 
 		// Apply the air fog:
 		applyBackfaceFog(airFogDistance, fog.color);
@@ -193,9 +195,11 @@ void main() {
 		vec4 textureColor = texture(texture_sampler, vec3(getTextureCoordsNormal(startPosition/16, faceNormal), textureIndex))*vec4(ambientLight*normalVariation, 1);
 		blendColor.rgb = vec3(1 - textureColor.a);
 		fragColor.rgb *= blendColor.rgb;
-		fragColor.rgb += textureColor.rgb*textureColor.a*fragColor.a;
+		fragColor.rgb += textureColor.rgb*textureColor.a;
 
 		// Apply the block fog:
 		applyBackfaceFog(fogDistance, fogColor);
 	}
+	blendColor.rgb *= fragColor.a;
+	fragColor.a = 1;
 }

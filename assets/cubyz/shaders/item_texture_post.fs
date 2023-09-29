@@ -9,7 +9,6 @@ uniform bool transparent;
 void main() {
 	fragColor = texture(color, texCoords);
 	if(transparent) {
-		fragColor.rgb /= fragColor.a;
 		fragColor.a = 1;
 		// TODO: Remove the background color. Somehow?
 	}

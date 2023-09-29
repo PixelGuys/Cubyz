@@ -58,7 +58,7 @@ pub fn init() !void {
 	deferredRenderPassShader = try Shader.initAndGetUniforms("assets/cubyz/shaders/deferred_render_pass.vs", "assets/cubyz/shaders/deferred_render_pass.fs", &deferredUniforms);
 	fakeReflectionShader = try Shader.initAndGetUniforms("assets/cubyz/shaders/fake_reflection.vs", "assets/cubyz/shaders/fake_reflection.fs", &fakeReflectionUniforms);
 	worldFrameBuffer.init(true, c.GL_NEAREST, c.GL_CLAMP_TO_EDGE);
-	worldFrameBuffer.updateSize(Window.width, Window.height, c.GL_RGBA16F);
+	worldFrameBuffer.updateSize(Window.width, Window.height, c.GL_RGB16F);
 	try Bloom.init();
 	try MeshSelection.init();
 	try MenuBackGround.init();
@@ -109,7 +109,7 @@ pub fn updateViewport(width: u31, height: u31, fov: f32) void {
 	lastFov = fov;
 	c.glViewport(0, 0, width, height);
 	game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(f32, fov), @as(f32, @floatFromInt(width))/@as(f32, @floatFromInt(height)), zNear, zFar);
-	worldFrameBuffer.updateSize(width, height, c.GL_RGBA16F);
+	worldFrameBuffer.updateSize(width, height, c.GL_RGB16F);
 	worldFrameBuffer.unbind();
 }
 
@@ -227,8 +227,8 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glTextureBarrier();
 	chunk.meshing.bindTransparentShaderAndUniforms(game.projectionMatrix, ambientLight, time);
 
-	c.glBlendEquationSeparate(c.GL_FUNC_ADD, c.GL_FUNC_ADD);
-	c.glBlendFuncSeparate(c.GL_DST_ALPHA, c.GL_SRC1_COLOR, c.GL_DST_ALPHA, c.GL_ZERO);
+	c.glBlendEquation(c.GL_FUNC_ADD);
+	c.glBlendFunc(c.GL_ONE, c.GL_SRC1_COLOR);
 	c.glDepthFunc(c.GL_LEQUAL);
 	c.glDepthMask(c.GL_FALSE);
 	{

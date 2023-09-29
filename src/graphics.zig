@@ -1701,7 +1701,13 @@ const block_texture = struct {
 		depthTexture = Texture.init();
 		depthTexture.bind();
 		var data: [128*128]f32 = undefined;
-		@memset(&data, main.renderer.zNear/132.0);
+
+		const z: f32 = 134;
+		const near = main.renderer.zNear;
+		const far = main.renderer.zFar;
+		const depth = ((far + near)/(near - far)*z + 2*near*far/(near - far))/-z*0.5 + 0.5;
+
+		@memset(&data, depth);
 		c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_R32F, textureSize, textureSize, 0, c.GL_RED, c.GL_FLOAT, &data);
 		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MIN_FILTER, c.GL_NEAREST);
 		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_MAG_FILTER, c.GL_NEAREST);
@@ -1745,8 +1751,8 @@ pub fn generateBlockTexture(blockType: u16) !Texture {
 	main.game.camera.viewMatrix = Mat4f.rotationX(std.math.pi/4.0).mul(Mat4f.rotationY(-std.math.pi/4.0));
 	defer main.game.camera.viewMatrix = oldViewMatrix;
 	if(block.transparent()) {
-		c.glBlendEquationSeparate(c.GL_FUNC_ADD, c.GL_FUNC_ADD);
-		c.glBlendFuncSeparate(c.GL_DST_ALPHA, c.GL_SRC1_COLOR, c.GL_DST_ALPHA, c.GL_ZERO);
+		c.glBlendEquation(c.GL_FUNC_ADD);
+		c.glBlendFunc(c.GL_ONE, c.GL_SRC1_COLOR);
 		main.chunk.meshing.bindTransparentShaderAndUniforms(projMatrix, .{1, 1, 1}, 0);
 	} else {
 		main.chunk.meshing.bindShaderAndUniforms(projMatrix, .{1, 1, 1}, 0);

@@ -43,22 +43,20 @@ float calculateFogDistance(float depthBufferValue, float fogDensity) {
 	}
 }
 
+vec3 applyFrontfaceFog(float fogDistance, vec3 fogColor, vec3 inColor) {
+	float fogFactor = exp(fogDistance);
+	inColor *= fogFactor;
+	inColor += fogColor;
+	inColor -= fogColor*fogFactor;
+	return inColor;
+}
+
 vec3 fetch(ivec2 pos) {
 	vec4 rgba = texelFetch(color, pos, 0);
 	float densityAdjustment = sqrt(dot(tanXY*(normalizedTexCoords*2 - 1), tanXY*(normalizedTexCoords*2 - 1)) + 1);
 	float fogDistance = calculateFogDistance(texelFetch(depthTexture, pos, 0).r, fog.density*densityAdjustment);
 	vec3 fogColor = fog.color;
-	float fogFactor = exp(fogDistance);
-	vec4 sourceColor = vec4(fogColor, 1);
-	sourceColor.a = 1.0/fogFactor;
-	sourceColor.rgb *= sourceColor.a;
-	sourceColor.rgb -= fogColor;
-	vec3 source2Color = vec3(1);
-	rgba = vec4(
-		source2Color*rgba.rgb + rgba.a*sourceColor.rgb,
-		rgba.a*sourceColor.a
-	);
-	if(rgba.a < 1) return vec3(0); // Prevent t-junctions from transparency from making a huge mess.
+	rgba.rgb = applyFrontfaceFog(fogDistance, fog.color, rgba.rgb);
 	return rgba.rgb/rgba.a;
 }
 
