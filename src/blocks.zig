@@ -3,10 +3,12 @@ const std = @import("std");
 const main = @import("root");
 const JsonElement = @import("json.zig").JsonElement;
 const Neighbors = @import("chunk.zig").Neighbors;
-const SSBO = @import("graphics.zig").SSBO;
-const Image = @import("graphics.zig").Image;
-const Color = @import("graphics.zig").Color;
-const TextureArray = @import("graphics.zig").TextureArray;
+const graphics = @import("graphics.zig");
+const Shader = graphics.Shader;
+const SSBO = graphics.SSBO;
+const Image = graphics.Image;
+const Color = graphics.Color;
+const TextureArray = graphics.TextureArray;
 const items = @import("items.zig");
 const models = @import("models.zig");
 const rotation = @import("rotation.zig");
@@ -344,7 +346,14 @@ pub const meshes = struct {
 	};
 
 	var animationSSBO: SSBO = undefined;
-	var textureIndexSSBO: SSBO = undefined;
+	var textureDataSSBO: SSBO = undefined;
+	var animatedTextureDataSSBO: SSBO = undefined;
+
+	var animationShader: Shader = undefined;
+	var animationUniforms: struct {
+		time: c_int,
+		size: c_int,
+	} = undefined;
 
 	pub var blockTextureArray: TextureArray = undefined;
 	pub var emissionTextureArray: TextureArray = undefined;
@@ -356,11 +365,14 @@ pub const meshes = struct {
 	var emptyTexture = [_]Color {black};
 	const emptyImage = Image{.width = 1, .height = 1, .imageData = emptyTexture[0..]};
 
-	pub fn init() void {
+	pub fn init() !void {
 		animationSSBO = SSBO.init();
 		animationSSBO.bind(0);
-		textureIndexSSBO = SSBO.init();
-		textureIndexSSBO.bind(1);
+		textureDataSSBO = SSBO.init();
+		textureDataSSBO.bind(6);
+		animatedTextureDataSSBO = SSBO.init();
+		animatedTextureDataSSBO.bind(1);
+		animationShader = try Shader.initComputeAndGetUniforms("assets/cubyz/shaders/animation_pre_processing.glsl", &animationUniforms);
 		blockTextureArray = TextureArray.init();
 		emissionTextureArray = TextureArray.init();
 		arenaForArrayLists = std.heap.ArenaAllocator.init(main.globalAllocator);
@@ -373,7 +385,9 @@ pub const meshes = struct {
 
 	pub fn deinit() void {
 		animationSSBO.deinit();
-		textureIndexSSBO.deinit();
+		textureDataSSBO.deinit();
+		animatedTextureDataSSBO.deinit();
+		animationShader.deinit();
 		blockTextureArray.deinit();
 		emissionTextureArray.deinit();
 		arenaForArrayLists.deinit();
@@ -549,12 +563,21 @@ pub const meshes = struct {
 //		}
 //	}
 
+	pub fn preProcessAnimationData(time: u32) void {
+		animationShader.bind();
+		graphics.c.glUniform1i(animationUniforms.time, @bitCast(time));
+		graphics.c.glUniform1i(animationUniforms.size, @intCast(meshes.size));
+		graphics.c.glDispatchCompute(@divFloor(meshes.size + 63, 64), 1, 1); // TODO: Replace with @divCeil once available
+		graphics.c.glMemoryBarrier(graphics.c.GL_SHADER_STORAGE_BARRIER_BIT);
+	}
+
 	pub fn generateTextureArray() !void {
 		try blockTextureArray.generate(blockTextures.items, true);
 		try emissionTextureArray.generate(emissionTextures.items, true);
 
 		// Also generate additional buffers:
 		animationSSBO.bufferData(AnimationData, animation.items);
-		textureIndexSSBO.bufferData(TextureData, textureData[0..meshes.size]);
+		textureDataSSBO.bufferData(TextureData, textureData[0..meshes.size]);
+		animatedTextureDataSSBO.bufferData(TextureData, textureData[0..meshes.size]);
 	}
 };

@@ -9,7 +9,6 @@ flat in int ditherSeed;
 in vec3 startPosition;
 in vec3 direction;
 
-uniform int time;
 uniform vec3 ambientLight;
 uniform sampler2DArray texture_sampler;
 uniform sampler2DArray emissionSampler;
@@ -26,11 +25,6 @@ struct Fog {
 	float density;
 };
 
-struct AnimationData {
-	int frames;
-	int time;
-};
-
 struct TextureData {
 	int textureIndices[6];
 	uint absorption;
@@ -39,10 +33,6 @@ struct TextureData {
 	uint fogColor;
 };
 
-layout(std430, binding = 0) buffer _animation
-{
-	AnimationData animation[];
-};
 layout(std430, binding = 1) buffer _textureData
 {
 	TextureData textureData[];
@@ -143,7 +133,6 @@ vec4 fixedCubeMapLookup(vec3 v) { // Taken from http://the-witness.net/news/2012
 
 void main() {
 	int textureIndex = textureData[blockType].textureIndices[faceNormal];
-	textureIndex = textureIndex + time / animation[textureIndex].time % animation[textureIndex].frames;
 	vec3 textureCoords = vec3(getTextureCoordsNormal(startPosition/16, faceNormal), textureIndex);
 	float normalVariation = normalVariations[faceNormal];
 	float densityAdjustment = sqrt(dot(mvVertexPos, mvVertexPos))/abs(mvVertexPos.z);

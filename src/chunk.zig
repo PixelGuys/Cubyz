@@ -399,7 +399,6 @@ pub const meshing = struct {
 		emissionSampler: c_int,
 		reflectionMap: c_int,
 		reflectionMapSize: c_int,
-		time: c_int,
 		visibilityMask: c_int,
 		voxelSize: c_int,
 		zNear: c_int,
@@ -444,7 +443,7 @@ pub const meshing = struct {
 		faceBuffer.deinit();
 	}
 
-	pub fn bindShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, time: u32) void {
+	pub fn bindShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f) void {
 		shader.bind();
 
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_FALSE, @ptrCast(&projMatrix));
@@ -458,15 +457,13 @@ pub const meshing = struct {
 
 		c.glUniform3f(uniforms.ambientLight, ambient[0], ambient[1], ambient[2]);
 
-		c.glUniform1i(uniforms.time, @as(u31, @truncate(time)));
-
 		c.glUniform1f(uniforms.zNear, renderer.zNear);
 		c.glUniform1f(uniforms.zFar, renderer.zFar);
 
 		c.glBindVertexArray(vao);
 	}
 
-	pub fn bindTransparentShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, time: u32) void {
+	pub fn bindTransparentShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f) void {
 		transparentShader.bind();
 
 		c.glUniform3fv(transparentUniforms.@"fog.color", 1, @ptrCast(&game.fog.color));
@@ -482,8 +479,6 @@ pub const meshing = struct {
 		c.glUniformMatrix4fv(transparentUniforms.viewMatrix, 1, c.GL_FALSE, @ptrCast(&game.camera.viewMatrix));
 
 		c.glUniform3f(transparentUniforms.ambientLight, ambient[0], ambient[1], ambient[2]);
-
-		c.glUniform1i(transparentUniforms.time, @as(u31, @truncate(time)));
 
 		c.glUniform1f(transparentUniforms.zNear, renderer.zNear);
 		c.glUniform1f(transparentUniforms.zFar, renderer.zFar);

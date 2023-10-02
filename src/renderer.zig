@@ -173,8 +173,13 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	const time: u32 = @intCast(std.time.milliTimestamp() & std.math.maxInt(u32));
 
+	gpu_performance_measuring.startQuery(.animation);
+	blocks.meshes.preProcessAnimationData(time);
+	gpu_performance_measuring.stopQuery();
+	
+
 	// Update the uniforms. The uniforms are needed to render the replacement meshes.
-	chunk.meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight, time);
+	chunk.meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight);
 
 	reflectionCubeMap.bindTo(2);
 	c.glActiveTexture(c.GL_TEXTURE0);
@@ -202,7 +207,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	MeshSelection.select(playerPos, game.camera.direction);
 	MeshSelection.render(game.projectionMatrix, game.camera.viewMatrix, playerPos);
 
-	chunk.meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight, time);
+	chunk.meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight);
 
 	for(meshes) |mesh| {
 		mesh.render(playerPos);
@@ -225,7 +230,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	gpu_performance_measuring.startQuery(.transparent_rendering);
 	c.glTextureBarrier();
-	chunk.meshing.bindTransparentShaderAndUniforms(game.projectionMatrix, ambientLight, time);
+	chunk.meshing.bindTransparentShaderAndUniforms(game.projectionMatrix, ambientLight);
 
 	c.glBlendEquation(c.GL_FUNC_ADD);
 	c.glBlendFunc(c.GL_ONE, c.GL_SRC1_COLOR);

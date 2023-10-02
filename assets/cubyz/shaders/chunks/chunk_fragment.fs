@@ -10,17 +10,11 @@ flat in int ditherSeed;
 in vec3 startPosition;
 in vec3 direction;
 
-uniform int time;
 uniform vec3 ambientLight;
 uniform sampler2DArray texture_sampler;
 uniform sampler2DArray emissionSampler;
 
 layout(location = 0) out vec4 fragColor;
-
-struct AnimationData {
-	int frames;
-	int time;
-};
 
 #define modelSize 16
 struct VoxelModel {
@@ -37,10 +31,6 @@ struct TextureData {
 	uint fogColor;
 };
 
-layout(std430, binding = 0) buffer _animation
-{
-	AnimationData animation[];
-};
 layout(std430, binding = 1) buffer _textureData
 {
 	TextureData textureData[];
@@ -237,7 +227,6 @@ void main() {
 	}
 	if(!result.hitAThing) discard;
 	int textureIndex = textureData[blockType].textureIndices[result.textureDir];
-	textureIndex = textureIndex + time / animation[textureIndex].time % animation[textureIndex].frames;
 	float normalVariation = normalVariations[result.normal];
 	float lod = getLod(result.voxelPosition, result.normal, direction, variance);
 	ivec2 textureCoords = getTextureCoords(result.voxelPosition, result.textureDir);

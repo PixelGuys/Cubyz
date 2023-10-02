@@ -1110,6 +1110,23 @@ pub const Shader = struct {
 		return self;
 	}
 
+	pub fn initCompute(compute: []const u8) !Shader {
+		var shader = Shader{.id = c.glCreateProgram()};
+		try shader.addShader(compute, c.GL_COMPUTE_SHADER);
+		try shader.link();
+		return shader;
+	}
+
+	pub fn initComputeAndGetUniforms(compute: []const u8, ptrToUniformStruct: anytype) !Shader {
+		const self = try Shader.initCompute(compute);
+		inline for(@typeInfo(@TypeOf(ptrToUniformStruct.*)).Struct.fields) |field| {
+			if(field.type == c_int) {
+				@field(ptrToUniformStruct, field.name) = c.glGetUniformLocation(self.id, field.name[0..] ++ "\x00"); // TODO: #16072
+			}
+		}
+		return self;
+	}
+
 	pub fn bind(self: *const Shader) void {
 		c.glUseProgram(self.id);
 	}
@@ -1753,9 +1770,9 @@ pub fn generateBlockTexture(blockType: u16) !Texture {
 	if(block.transparent()) {
 		c.glBlendEquation(c.GL_FUNC_ADD);
 		c.glBlendFunc(c.GL_ONE, c.GL_SRC1_COLOR);
-		main.chunk.meshing.bindTransparentShaderAndUniforms(projMatrix, .{1, 1, 1}, 0);
+		main.chunk.meshing.bindTransparentShaderAndUniforms(projMatrix, .{1, 1, 1});
 	} else {
-		main.chunk.meshing.bindShaderAndUniforms(projMatrix, .{1, 1, 1}, 0);
+		main.chunk.meshing.bindShaderAndUniforms(projMatrix, .{1, 1, 1});
 	}
 	const uniforms = if(block.transparent()) &main.chunk.meshing.transparentUniforms else &main.chunk.meshing.uniforms;
 
