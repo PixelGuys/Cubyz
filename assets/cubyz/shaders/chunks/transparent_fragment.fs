@@ -83,8 +83,8 @@ float zFromDepth(float depthBufferValue) {
 	return zNear*zFar/(depthBufferValue*(zNear - zFar) + zFar);
 }
 
-float calculateFogDistance(float depthBufferValue, float fogDensity) {
-	float distCameraTerrain = zFromDepth(depthBufferValue)*fogDensity;
+float calculateFogDistance(float dist, float fogDensity) {
+	float distCameraTerrain = dist*fogDensity;
 	float distFromCamera = abs(mvVertexPos.z)*fogDensity;
 	float distFromTerrain = distFromCamera - distCameraTerrain;
 	if(distCameraTerrain < 10) { // Resolution range is sufficient.
@@ -93,7 +93,7 @@ float calculateFogDistance(float depthBufferValue, float fogDensity) {
 		// Here we have a few options to deal with this. We could for example weaken the fog effect to fit the entire range.
 		// I decided to keep the fog strength close to the camera and far away, with a fog-free region in between.
 		// I decided to this because I want far away fog to work (e.g. a distant ocean) as well as close fog(e.g. the top surface of the water when the player is under it)
-		if(distFromTerrain > -5 && depthBufferValue != 0) {
+		if(distFromTerrain > -5) {
 			return distFromTerrain;
 		} else if(distFromCamera < 5) {
 			return distFromCamera - 10;
@@ -105,19 +105,14 @@ float calculateFogDistance(float depthBufferValue, float fogDensity) {
 
 void applyFrontfaceFog(float fogDistance, vec3 fogColor) {
 	float fogFactor = exp(fogDistance);
-	fragColor.rgb *= fogFactor;
-	fragColor.rgb += fogColor;
-	fragColor.rgb -= fogColor*fogFactor;
+	fragColor.rgb = fragColor.rgb*fogFactor + fogColor*(1 - fogFactor);
 	fragColor.a = fogFactor;
 }
 
 void applyBackfaceFog(float fogDistance, vec3 fogColor) {
-	float fogFactor = exp(fogDistance);
-	float oldAlpha = fragColor.a;
-	fragColor.rgb *= 1.0/fogFactor;
-	fragColor.rgb -= fogColor/fogFactor;
-	fragColor.rgb += fogColor;
-	fragColor.a *= 1.0/fogFactor;
+	float fogFactor = exp(-fogDistance);
+	fragColor.rgb = fragColor.rgb*fogFactor + fogColor*(1 - fogFactor);
+	fragColor.a *= fogFactor;
 }
 
 vec2 getTextureCoordsNormal(vec3 voxelPosition, int textureDir) {
@@ -149,17 +144,15 @@ vec4 fixedCubeMapLookup(vec3 v) { // Taken from http://the-witness.net/news/2012
 void main() {
 	int textureIndex = textureData[blockType].textureIndices[faceNormal];
 	textureIndex = textureIndex + time / animation[textureIndex].time % animation[textureIndex].frames;
+	vec3 textureCoords = vec3(getTextureCoordsNormal(startPosition/16, faceNormal), textureIndex);
 	float normalVariation = normalVariations[faceNormal];
 	float densityAdjustment = sqrt(dot(mvVertexPos, mvVertexPos))/abs(mvVertexPos.z);
-	float fogDistance = calculateFogDistance(texelFetch(depthTexture, ivec2(gl_FragCoord.xy), 0).r, textureData[blockType].fogDensity*densityAdjustment);
-	float airFogDistance = calculateFogDistance(texelFetch(depthTexture, ivec2(gl_FragCoord.xy), 0).r, fog.density*densityAdjustment);
+	float dist = zFromDepth(texelFetch(depthTexture, ivec2(gl_FragCoord.xy), 0).r);
+	float fogDistance = calculateFogDistance(dist, textureData[blockType].fogDensity*densityAdjustment);
+	float airFogDistance = calculateFogDistance(dist, fog.density*densityAdjustment);
 	vec3 fogColor = unpackColor(textureData[blockType].fogColor);
+	vec4 textureColor = texture(texture_sampler, textureCoords)*vec4(ambientLight*normalVariation, 1);
 	if(isBackFace == 0) {
-
-		vec4 textureColor = texture(texture_sampler, vec3(getTextureCoordsNormal(startPosition/16, faceNormal), textureIndex))*vec4(ambientLight*normalVariation, 1);
-
-		if (textureColor.a == 1) discard;
-
 		textureColor.rgb *= textureColor.a;
 		blendColor.rgb = unpackColor(textureData[blockType].absorption);
 
@@ -169,7 +162,7 @@ void main() {
 		// TODO: Normal mapping.
 		// TODO: Allow textures to contribute to this term.
 		textureColor.rgb += (textureData[blockType].reflectivity*fixedCubeMapLookup(reflect(direction, normals[faceNormal])).xyz)*ambientLight*normalVariation;
-		textureColor.rgb += texture(emissionSampler, vec3(getTextureCoordsNormal(startPosition/16, faceNormal), textureIndex)).rgb;
+		textureColor.rgb += texture(emissionSampler, textureCoords).rgb;
 		blendColor.rgb *= 1 - textureColor.a;
 		textureColor.a = 1;
 
@@ -192,7 +185,6 @@ void main() {
 		applyFrontfaceFog(airFogDistance, fog.color);
 
 		// Apply the texture:
-		vec4 textureColor = texture(texture_sampler, vec3(getTextureCoordsNormal(startPosition/16, faceNormal), textureIndex))*vec4(ambientLight*normalVariation, 1);
 		blendColor.rgb = vec3(1 - textureColor.a);
 		fragColor.rgb *= blendColor.rgb;
 		fragColor.rgb += textureColor.rgb*textureColor.a;
