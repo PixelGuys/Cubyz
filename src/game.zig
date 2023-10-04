@@ -172,7 +172,7 @@ pub const World = struct {
 		}
 		// Ambient light:
 		{
-			var dayTime = std.math.absInt(@mod(self.gameTime.load(.Monotonic), dayCycle) -% dayCycle/2) catch 0;
+			var dayTime = @abs(@mod(self.gameTime.load(.Monotonic), dayCycle) -% dayCycle/2);
 			if(dayTime < dayCycle/4 - dayCycle/16) {
 				self.ambientLight = 0.1;
 				self.clearColor[0] = 0;

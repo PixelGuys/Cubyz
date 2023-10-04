@@ -117,9 +117,9 @@ pub const ChunkPosition = struct {
 
 	pub fn getMinDistanceSquared(self: ChunkPosition, playerPosition: Vec3d) f64 {
 		var halfWidth: f64 = @floatFromInt(self.voxelSize*@divExact(chunkSize, 2));
-		var dx = @fabs(@as(f64, @floatFromInt(self.wx)) + halfWidth - playerPosition[0]);
-		var dy = @fabs(@as(f64, @floatFromInt(self.wy)) + halfWidth - playerPosition[1]);
-		var dz = @fabs(@as(f64, @floatFromInt(self.wz)) + halfWidth - playerPosition[2]);
+		var dx = @abs(@as(f64, @floatFromInt(self.wx)) + halfWidth - playerPosition[0]);
+		var dy = @abs(@as(f64, @floatFromInt(self.wy)) + halfWidth - playerPosition[1]);
+		var dz = @abs(@as(f64, @floatFromInt(self.wz)) + halfWidth - playerPosition[2]);
 		dx = @max(0, dx - halfWidth);
 		dy = @max(0, dy - halfWidth);
 		dz = @max(0, dz - halfWidth);
@@ -128,9 +128,9 @@ pub const ChunkPosition = struct {
 
 	pub fn getMaxDistanceSquared(self: ChunkPosition, playerPosition: Vec3d) f64 {
 		var halfWidth: f64 = @floatFromInt(self.voxelSize*@divExact(chunkSize, 2));
-		var dx = @fabs(@as(f64, @floatFromInt(self.wx)) + halfWidth - playerPosition[0]);
-		var dy = @fabs(@as(f64, @floatFromInt(self.wy)) + halfWidth - playerPosition[1]);
-		var dz = @fabs(@as(f64, @floatFromInt(self.wz)) + halfWidth - playerPosition[2]);
+		var dx = @abs(@as(f64, @floatFromInt(self.wx)) + halfWidth - playerPosition[0]);
+		var dy = @abs(@as(f64, @floatFromInt(self.wy)) + halfWidth - playerPosition[1]);
+		var dz = @abs(@as(f64, @floatFromInt(self.wz)) + halfWidth - playerPosition[2]);
 		dx = dx + halfWidth;
 		dy = dy + halfWidth;
 		dz = dz + halfWidth;
@@ -609,7 +609,7 @@ pub const meshing = struct {
 				const fullDx = dx - Neighbors.relX[normal];
 				const fullDy = dy - Neighbors.relY[normal];
 				const fullDz = dz - Neighbors.relZ[normal];
-				self.distance = std.math.absCast(fullDx) + std.math.absCast(fullDy) + std.math.absCast(fullDz);
+				self.distance = @abs(fullDx) + @abs(fullDy) + @abs(fullDz);
 			}
 		};
 		const BoundingRectToNeighborChunk = struct {

@@ -173,7 +173,7 @@ fn log(_x: u16, _y: u16, _z: u16) ?u4 {
 		return Neighbors.dirDown;
 	}
 	if(x*x + z*z < 8.0*8.0) {
-		if(@fabs(x) > @fabs(z)) {
+		if(@abs(x) > @abs(z)) {
 			if(x < 0) return Neighbors.dirNegX;
 			return Neighbors.dirPosX;
 		} else {

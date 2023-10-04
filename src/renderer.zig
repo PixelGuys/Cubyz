@@ -706,7 +706,7 @@ pub const MeshSelection = struct {
 		// Implementation of "A Fast Voxel Traversal Algorithm for Ray Tracing"  http://www.cse.yorku.ca/~amana/research/grid.pdf
 		const step = vec.intFromFloat(i32, std.math.sign(dir));
 		const invDir = @as(Vec3d, @splat(1))/dir;
-		const tDelta = @fabs(invDir);
+		const tDelta = @abs(invDir);
 		var tMax = (@floor(pos) - pos)*invDir;
 		tMax = @max(tMax, tMax + tDelta*vec.floatFromInt(f64, step));
 		tMax = @select(f64, dir == @as(Vec3d, @splat(0)), @as(Vec3d, @splat(std.math.inf(f64))), tMax);
@@ -1020,7 +1020,7 @@ pub const RenderStructure = struct {
 			var x = minX;
 			while(x != maxX): (x +%= size) {
 				const xIndex = @divExact(x -% startX, size);
-				var deltaX: i64 = std.math.absInt(@as(i64, x +% size/2 -% px)) catch unreachable;
+				var deltaX: i64 = @abs(x +% size/2 -% px);
 				deltaX = @max(0, deltaX - size/2);
 				const maxYRenderDistanceSquare: f64 = @floatFromInt(@as(i64, maxRenderDistance)*@as(i64, maxRenderDistance) - deltaX*deltaX);
 				const maxYRenderDistance: i32 = @intFromFloat(@ceil(@sqrt(maxYRenderDistanceSquare)));
@@ -1030,7 +1030,7 @@ pub const RenderStructure = struct {
 				var y = minY;
 				while(y != maxY): (y +%= size) {
 					const yIndex = @divExact(y -% startY, size);
-					var deltaY: i64 = std.math.absInt(@as(i64, y +% size/2 -% py)) catch unreachable;
+					var deltaY: i64 = @abs(y +% size/2 -% py);
 					deltaY = @max(0, deltaY - size/2);
 					const maxZRenderDistanceSquare: f64 = @floatFromInt(@as(i64, maxYRenderDistance)*@as(i64, maxYRenderDistance) - deltaY*deltaY);
 					const maxZRenderDistance: i32 = @intFromFloat(@ceil(@sqrt(maxZRenderDistanceSquare)));

@@ -228,14 +228,14 @@ fn snapToOtherWindow(self: *GuiWindow) void {
 			if(start >= end) continue;
 			if(detectCycles(self, other)) continue;
 
-			const dist1 = @fabs(self.pos[i] - other.pos[i] - other.size[i]);
+			const dist1 = @abs(self.pos[i] - other.pos[i] - other.size[i]);
 			if(dist1 < minDist) {
 				minDist = dist1;
 				minWindow = other;
 				selfAttachment = .lower;
 				otherAttachment = .upper;
 			}
-			const dist2 = @fabs(self.pos[i] + self.size[i] - other.pos[i]);
+			const dist2 = @abs(self.pos[i] + self.size[i] - other.pos[i]);
 			if(dist2 < minDist) {
 				minDist = dist2;
 				minWindow = other;
@@ -253,17 +253,17 @@ fn positionRelativeToFrame(self: *GuiWindow) void {
 	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
 	for(&self.relativePosition, 0..) |*relPos, i| {
 		// Snap to the center:
-		if(@fabs(self.pos[i] + self.size[i] - windowSize[i]/2) <= snapDistance) {
+		if(@abs(self.pos[i] + self.size[i] - windowSize[i]/2) <= snapDistance) {
 			relPos.* = .{.attachedToFrame = .{
 				.selfAttachmentPoint = .upper,
 				.otherAttachmentPoint = .middle,
 			}};
-		} else if(@fabs(self.pos[i] + self.size[i]/2 - windowSize[i]/2) <= snapDistance) {
+		} else if(@abs(self.pos[i] + self.size[i]/2 - windowSize[i]/2) <= snapDistance) {
 			relPos.* = .{.attachedToFrame = .{
 				.selfAttachmentPoint = .middle,
 				.otherAttachmentPoint = .middle,
 			}};
-		} else if(@fabs(self.pos[i] - windowSize[i]/2) <= snapDistance) {
+		} else if(@abs(self.pos[i] - windowSize[i]/2) <= snapDistance) {
 			relPos.* = .{.attachedToFrame = .{
 				.selfAttachmentPoint = .lower,
 				.otherAttachmentPoint = .middle,
@@ -284,32 +284,32 @@ fn positionRelativeToConnectedWindow(self: *GuiWindow, other: *GuiWindow, i: usi
 	const otherSize = other.size;
 	const relPos = &self.relativePosition[i];
 	// Snap to the center:
-	if(@fabs(self.pos[i] + self.size[i] - (other.pos[i] + otherSize[i]/2)) <= snapDistance) {
+	if(@abs(self.pos[i] + self.size[i] - (other.pos[i] + otherSize[i]/2)) <= snapDistance) {
 		relPos.* = .{.attachedToWindow = .{
 			.reference = other,
 			.selfAttachmentPoint = .upper,
 			.otherAttachmentPoint = .middle,
 		}};
-	} else if(@fabs(self.pos[i] + self.size[i]/2 - (other.pos[i] + otherSize[i]/2)) <= snapDistance) {
+	} else if(@abs(self.pos[i] + self.size[i]/2 - (other.pos[i] + otherSize[i]/2)) <= snapDistance) {
 		relPos.* = .{.attachedToWindow = .{
 			.reference = other,
 			.selfAttachmentPoint = .middle,
 			.otherAttachmentPoint = .middle,
 		}};
-	} else if(@fabs(self.pos[i] - (other.pos[i] + otherSize[i]/2)) <= snapDistance) {
+	} else if(@abs(self.pos[i] - (other.pos[i] + otherSize[i]/2)) <= snapDistance) {
 		relPos.* = .{.attachedToWindow = .{
 			.reference = other,
 			.selfAttachmentPoint = .lower,
 			.otherAttachmentPoint = .middle,
 		}};
 	// Snap to the edges:
-	} else if(@fabs(self.pos[i] - other.pos[i]) <= snapDistance) {
+	} else if(@abs(self.pos[i] - other.pos[i]) <= snapDistance) {
 		relPos.* = .{.attachedToWindow = .{
 			.reference = other,
 			.selfAttachmentPoint = .lower,
 			.otherAttachmentPoint = .lower,
 		}};
-	} else if(@fabs(self.pos[i] + self.size[i] - (other.pos[i] + otherSize[i])) <= snapDistance) {
+	} else if(@abs(self.pos[i] + self.size[i] - (other.pos[i] + otherSize[i])) <= snapDistance) {
 		relPos.* = .{.attachedToWindow = .{
 			.reference = other,
 			.selfAttachmentPoint = .upper,

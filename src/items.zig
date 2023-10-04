@@ -651,8 +651,8 @@ const ToolPhysics = struct {
 			while(y < 16) : (y += 1) {
 				const angle = std.math.atan2(f32, y + 0.5 - center[1], x + 0.5 - center[0]) - initialAngle;
 				const distance = @cos(angle)*vec.length(center - Vec2f{x + 0.5, y + 0.5});
-				const deltaAngle = @fabs(angle - originalAngle);
-				const deltaDist = @fabs(distance - originalDistance);
+				const deltaAngle = @abs(angle - originalAngle);
+				const deltaDist = @abs(distance - originalDistance);
 				if(deltaAngle <= 0.2 and deltaDist <= 0.7) {
 					numOfSmoothPixels += 1;
 				}

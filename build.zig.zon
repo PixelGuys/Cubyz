@@ -3,8 +3,8 @@
 	.version = "0.0.0",
 	.dependencies = .{
 		.mach_freetype = .{
-			.url = "https://pkg.machengine.org/mach-freetype/92773615e2480c0a6f561748f2ba1180376bbb68.tar.gz",
-			.hash = "12205a6057fe43a4940c6db304449ebf3e98ff15d0eec05b75f621d7616c2e7d7f2c",
+			.url = "https://pkg.machengine.org/mach-freetype/7dd97f088455fddda6832851082f68670b36c426.tar.gz",
+			.hash = "12209950df2c606a03f5246dce72b3338ffd7314221b20e55df38f8b76676cb9ba13",
 		},
 		.portaudio = .{
 			.url = "https://github.com/PortAudio/portaudio/archive/refs/tags/v19.7.0.tar.gz",

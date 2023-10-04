@@ -234,7 +234,7 @@ const GenerationStructure = struct {
 					var weight: f32 = @max(1.0 - @sqrt(dist), 0);
 					weight *= weight;
 					// The important bit is the ocean height, that's the only point where we actually need the transition point to be exact for beaches to occur.
-					weight /= @fabs(biomePoint.height - 16);
+					weight /= @abs(biomePoint.height - 16);
 					height += biomePoint.height*weight;
 					roughness += biomePoint.biome.roughness*weight;
 					hills += biomePoint.biome.hills*weight;

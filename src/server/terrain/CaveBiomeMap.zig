@@ -141,7 +141,7 @@ pub const InterpolatableCaveBiomeMapView = struct {
 		return @shuffle(i32, in, undefined, Vec3i{2, 0, 1});
 	}
 	fn argMaxDistance0(distance: Vec3i) @Vector(3, bool) {
-		const absDistance = std.math.absInt(distance) catch unreachable;
+		const absDistance = @abs(distance);
 		if(absDistance[0] > absDistance[1]) {
 			if(absDistance[0] > absDistance[2]) {
 				return .{true, false, false};
@@ -157,7 +157,7 @@ pub const InterpolatableCaveBiomeMapView = struct {
 		}
 	}
 	fn argMaxDistance1(distance: Vec3i) @Vector(3, bool) {
-		const absDistance = std.math.absInt(distance) catch unreachable;
+		const absDistance = @abs(distance);
 		if(absDistance[0] >= absDistance[1]) {
 			if(absDistance[0] >= absDistance[2]) {
 				return .{true, false, false};
@@ -333,7 +333,7 @@ pub const InterpolatableCaveBiomeMapView = struct {
 		const distanceX = wx - gridPointX;
 		const distanceY = wy - gridPointY;
 		const distanceZ = wz - gridPointZ;
-		const totalDistance = (std.math.absInt(distanceX) catch unreachable) + (std.math.absInt(distanceY) catch unreachable) + (std.math.absInt(distanceZ) catch unreachable);
+		const totalDistance = @abs(distanceX) + @abs(distanceY) + @abs(distanceZ);
 		if(totalDistance > CaveBiomeMapFragment.caveBiomeSize*3/4) {
 			// Or with 1 to prevent errors if the value is 0.
 			gridPointX += (std.math.sign(distanceX | 1) - 1)*(CaveBiomeMapFragment.caveBiomeSize/2);

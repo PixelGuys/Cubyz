@@ -1079,7 +1079,7 @@ pub const Protocols = struct {
 						defer json.free(main.threadAllocator);
 						var expectedTime = json.get(i64, "time", 0);
 						var curTime = world.gameTime.load(.Monotonic);
-						if(std.math.absInt(curTime -% expectedTime) catch std.math.maxInt(i64) >= 1000) {
+						if(@abs(curTime -% expectedTime) >= 1000) {
 							world.gameTime.store(expectedTime, .Monotonic);
 						} else if(curTime < expectedTime) { // world.gameTime++
 							while(world.gameTime.tryCompareAndSwap(curTime, curTime +% 1, .Monotonic, .Monotonic)) |actualTime| {
