@@ -596,6 +596,7 @@ pub const meshing = struct {
 			face: FaceData,
 			distance: u32,
 			isBackFace: bool,
+			shouldBeCulled: bool,
 
 			pub fn update(self: *SortingData, chunkDx: i32, chunkDy: i32, chunkDz: i32) void {
 				const x: i32 = @intCast(self.face.position & 31);
@@ -606,6 +607,26 @@ pub const meshing = struct {
 				const dz = z + chunkDz;
 				const normal = self.face.position >> 20 & 7;
 				self.isBackFace = self.face.position & 1<<19 != 0;
+				switch(Neighbors.vectorComponent[normal]) {
+					.x => {
+						self.shouldBeCulled = (dx < 0) == (Neighbors.relX[normal] < 0);
+						if(dx == 0) {
+							self.shouldBeCulled = false;
+						}
+					},
+					.y => {
+						self.shouldBeCulled = (dy < 0) == (Neighbors.relY[normal] < 0);
+						if(dy == 0) {
+							self.shouldBeCulled = false;
+						}
+					},
+					.z => {
+						self.shouldBeCulled = (dz < 0) == (Neighbors.relZ[normal] < 0);
+						if(dz == 0) {
+							self.shouldBeCulled = false;
+						}
+					},
+				}
 				const fullDx = dx - Neighbors.relX[normal];
 				const fullDy = dy - Neighbors.relY[normal];
 				const fullDz = dz - Neighbors.relZ[normal];
@@ -633,6 +654,7 @@ pub const meshing = struct {
 		visibilityMask: u8 = 0xff,
 		currentSorting: []SortingData = &.{},
 		sortingOutputBuffer: []FaceData = &.{},
+		culledSortingCount: u31 = 0,
 		lastTransparentUpdatePos: Vec3i = Vec3i{0, 0, 0},
 
 		chunkBorders: [6]BoundingRectToNeighborChunk = [1]BoundingRectToNeighborChunk{.{}} ** 6,
@@ -1064,18 +1086,37 @@ pub const meshing = struct {
 				// Sort by back vs front face:
 				{
 					var backFaceStart: usize = 0;
-					for(self.currentSorting) |*val| {
-						if(!val.isBackFace) {
-							std.mem.swap(@TypeOf(val.*), val, &self.currentSorting[backFaceStart]);
+					var i: usize = 0;
+					var culledStart: usize = self.currentSorting.len;
+					while(culledStart > 0) {
+						if(!self.currentSorting[culledStart-1].shouldBeCulled) {
+							break;
+						}
+						culledStart -= 1;
+					}
+					while(i < culledStart): (i += 1) {
+						if(self.currentSorting[i].shouldBeCulled) {
+							culledStart -= 1;
+							std.mem.swap(SortingData, &self.currentSorting[i], &self.currentSorting[culledStart]);
+							while(culledStart > 0) {
+								if(!self.currentSorting[culledStart-1].shouldBeCulled) {
+									break;
+								}
+								culledStart -= 1;
+							}
+						}
+						if(!self.currentSorting[i].isBackFace) {
+							std.mem.swap(SortingData, &self.currentSorting[i], &self.currentSorting[backFaceStart]);
 							backFaceStart += 1;
 						}
 					}
+					self.culledSortingCount = @intCast(culledStart);
 				}
 
 				// Sort it using bucket sort:
 				var buckets: [34*3]u32 = undefined;
 				@memset(&buckets, 0);
-				for(self.currentSorting) |val| {
+				for(self.currentSorting[0..self.culledSortingCount]) |val| {
 					buckets[34*3 - 1 - val.distance] += 1;
 				}
 				var prefixSum: u32 = 0;
@@ -1085,14 +1126,14 @@ pub const meshing = struct {
 					prefixSum += copy;
 				}
 				// Move it over into a new buffer:
-				for(0..self.currentSorting.len) |i| {
+				for(0..self.culledSortingCount) |i| {
 					const bucket = 34*3 - 1 - self.currentSorting[i].distance;
 					self.sortingOutputBuffer[buckets[bucket]] = self.currentSorting[i].face;
 					buckets[bucket] += 1;
 				}
 
 				// Upload:
-				faceBuffer.bufferSubData(self.transparentMesh.bufferAllocation.start, FaceData, self.sortingOutputBuffer);
+				faceBuffer.bufferSubData(self.transparentMesh.bufferAllocation.start, FaceData, self.sortingOutputBuffer[0..self.culledSortingCount]);
 			}
 
 			c.glUniform3f(
@@ -1103,8 +1144,8 @@ pub const meshing = struct {
 			);
 			c.glUniform1i(transparentUniforms.visibilityMask, self.visibilityMask);
 			c.glUniform1i(transparentUniforms.voxelSize, self.pos.voxelSize);
-			transparentQuadsDrawn += self.transparentMesh.faces.items.len;
-			c.glDrawElementsBaseVertex(c.GL_TRIANGLES, self.transparentMesh.vertexCount, c.GL_UNSIGNED_INT, null, self.transparentMesh.bufferAllocation.start/8*4);
+			transparentQuadsDrawn += self.culledSortingCount;
+			c.glDrawElementsBaseVertex(c.GL_TRIANGLES, self.culledSortingCount*6, c.GL_UNSIGNED_INT, null, self.transparentMesh.bufferAllocation.start/8*4);
 		}
 	};
 };
