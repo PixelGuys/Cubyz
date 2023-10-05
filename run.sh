@@ -13,6 +13,7 @@ if [[ $(< compiler/version.txt) != "$version" ]]; then
     echo "Extracting tar file..."
     tar --xz -xf compiler/archive.tar.xz --directory compiler/zig --strip-components 1
     echo "Done."
+    rm compiler/archive.tar.xz
     rm compiler/version.txt
     printf "$version" >> compiler/version.txt
 fi
