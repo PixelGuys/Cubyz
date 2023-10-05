@@ -29,17 +29,15 @@ Sorry, the zig version isn't there yet. You can test the old java version or ask
 
 Otherwise you can
 ### Compile Cubyz from source
-1. Install git and zig (latest master release)
+1. Install git
 2. Clone this repository `git clone https://github.com/pixelguys/Cubyz`
-3. Go into the folder `cd Cubyz`
-4. Run zig `zig build run`
-5. If it's too slow, run it in release: `zig build run -Doptimize=ReleaseFast`
+3. Run `run.sh` (Linux) or `run.bat` (Windows)
+4. If the game is too slow, run it in release: `run.sh -Doptimize=ReleaseFast` (Linux) or `run.bar -Doptimize=ReleaseFast` (Windows)
 #### Note for Linux Users:
 I also had to install a few `-dev` packages for the compilation to work:
 ```
 sudo apt install libgl-dev libasound2-dev libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxext-dev libxi-dev
 ```
-For Linux there is also a handy `run.sh` file that automatically downloads the correct zig version
 
 # Contributing
 ### Code

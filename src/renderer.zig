@@ -160,7 +160,6 @@ pub fn render(playerPosition: Vec3d) !void {
 }
 
 pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPos: Vec3d) !void {
-	_ = world;
 	worldFrameBuffer.bind();
 	gpu_performance_measuring.startQuery(.clear);
 	worldFrameBuffer.clear(Vec4f{skyColor[0], skyColor[1], skyColor[2], 1});
@@ -192,7 +191,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	chunk.meshing.quadsDrawn = 0;
 	chunk.meshing.transparentQuadsDrawn = 0;
-	const meshes = try RenderStructure.updateAndGetRenderChunks(game.world.?.conn, playerPos, settings.renderDistance, settings.LODFactor);
+	const meshes = try RenderStructure.updateAndGetRenderChunks(world.conn, playerPos, settings.renderDistance, settings.LODFactor);
 
 //	for (ChunkMesh mesh : Cubyz.chunkTree.getRenderChunks(frustumInt, x0, y0, z0)) {
 //		if (mesh instanceof NormalChunkMesh) {
