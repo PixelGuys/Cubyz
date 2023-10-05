@@ -846,7 +846,7 @@ pub const MeshSelection = struct {
 		if(selectedBlockPos) |_selectedBlockPos| {
 			c.glEnable(c.GL_POLYGON_OFFSET_LINE);
 			defer c.glDisable(c.GL_POLYGON_OFFSET_LINE);
-			c.glPolygonOffset(2, 0);
+			c.glPolygonOffset(-2, 0);
 			var block = RenderStructure.getBlock(_selectedBlockPos[0], _selectedBlockPos[1], _selectedBlockPos[2]) orelse return;
 			const model = blocks.meshes.model(block);
 			const voxelModel = &models.voxelModels.items[model.modelIndex];
