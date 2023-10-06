@@ -263,10 +263,10 @@ const GenerationStructure = struct {
 	}
 
 	fn drawCircleOnTheMap(map: *ClimateMapFragment, biome: *const Biome, wx: i32, wz: i32, width: u31, height: u31, pos: Vec2f) void {
-		const relPos = (pos - vec.floatFromInt(f32, Vec2i{wx, wz}))/@as(Vec2f, @splat(terrain.SurfaceMap.MapFragment.biomeSize));
+		const relPos = (pos - @as(Vec2f, @floatFromInt(Vec2i{wx, wz})))/@as(Vec2f, @splat(terrain.SurfaceMap.MapFragment.biomeSize));
 		const relRadius = biome.radius/terrain.SurfaceMap.MapFragment.biomeSize;
 		const min = @floor(@max(Vec2f{0, 0}, relPos - @as(Vec2f, @splat(relRadius))));
-		const max = @ceil(@min(vec.floatFromInt(f32, Vec2i{width, height})/@as(Vec2f, @splat(terrain.SurfaceMap.MapFragment.biomeSize)), relPos + @as(Vec2f, @splat(relRadius))));
+		const max = @ceil(@min(@as(Vec2f, @floatFromInt(Vec2i{width, height}))/@as(Vec2f, @splat(terrain.SurfaceMap.MapFragment.biomeSize)), relPos + @as(Vec2f, @splat(relRadius))));
 		var x: f32 = min[0];
 		while(x < max[0]) : (x += 1) {
 			var z: f32 = min[1];

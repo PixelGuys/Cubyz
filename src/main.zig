@@ -734,8 +734,10 @@ pub fn main() !void {
 		c.glfwSwapBuffers(Window.window);
 		Window.handleEvents();
 		gui.windowlist.gpu_performance_measuring.startQuery(.screenbuffer_clear);
-		c.glClearColor(0.5, 1, 1, 1);
-		c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT); // TODO: It appears that this is only needed, in the menu, if we don't have a background scene.
+		if(game.world == null) { // Clearing is only needed in the menu.
+			c.glClearColor(0.5, 1, 1, 1);
+			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
+		}
 		gui.windowlist.gpu_performance_measuring.stopQuery();
 		var newTime = std.time.nanoTimestamp();
 		var deltaTime = @as(f64, @floatFromInt(newTime -% lastTime))/1e9;

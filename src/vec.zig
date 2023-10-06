@@ -38,33 +38,6 @@ pub fn normalize(self: anytype) @TypeOf(self) {
 	return self/@as(@TypeOf(self), @splat(length(self)));
 }
 
-pub fn intFromFloat(comptime DestType: type, self: anytype) @Vector(@typeInfo(@TypeOf(self)).Vector.len, DestType) { // TODO: Remove once @floatToInt supports vectors.
-	const len = @typeInfo(@TypeOf(self)).Vector.len;
-	var result: @Vector(len, DestType) = undefined;
-	inline for(0..len) |i| {
-		result[i] = @intFromFloat(self[i]);
-	}
-	return result;
-}
-
-pub fn floatFromInt(comptime DestType: type, self: anytype) @Vector(@typeInfo(@TypeOf(self)).Vector.len, DestType) { // TODO: Remove once @intToFloat supports vectors.
-	const len = @typeInfo(@TypeOf(self)).Vector.len;
-	var result: @Vector(len, DestType) = undefined;
-	inline for(0..len) |i| {
-		result[i] = @floatFromInt(self[i]);
-	}
-	return result;
-}
-
-pub fn floatCast(comptime DestType: type, self: anytype) @Vector(@typeInfo(@TypeOf(self)).Vector.len, DestType) { // TODO: Remove once @floatCast supports vectors.
-	const len = @typeInfo(@TypeOf(self)).Vector.len;
-	var result: @Vector(len, DestType) = undefined;
-	inline for(0..len) |i| {
-		result[i] = @floatCast(self[i]);
-	}
-	return result;
-}
-
 pub fn cross(self: anytype, other: @TypeOf(self)) @TypeOf(self) {
 	if(@typeInfo(@TypeOf(self)).Vector.len != 3) @compileError("Only available for vectors of length 3.");
 	return @TypeOf(self) {
@@ -77,7 +50,7 @@ pub fn cross(self: anytype, other: @TypeOf(self)) @TypeOf(self) {
 pub fn rotateX(self: anytype, angle: @typeInfo(@TypeOf(self)).Vector.child) @TypeOf(self) {
 	if(@typeInfo(@TypeOf(self)).Vector.len != 3) @compileError("Only available for vectors of length 3.");
 	const sin = @sin(angle);
-	const cos = @cos(angle); // TODO: Consider using sqrt here.
+	const cos = @cos(angle);
 	return @TypeOf(self){
 		self[0],
 		self[1]*cos - self[2]*sin,
@@ -88,7 +61,7 @@ pub fn rotateX(self: anytype, angle: @typeInfo(@TypeOf(self)).Vector.child) @Typ
 pub fn rotateY(self: anytype, angle: @typeInfo(@TypeOf(self)).Vector.child) @TypeOf(self) {
 	if(@typeInfo(@TypeOf(self)).Vector.len != 3) @compileError("Only available for vectors of length 3.");
 	const sin = @sin(angle);
-	const cos = @cos(angle); // TODO: Consider using sqrt here.
+	const cos = @cos(angle);
 	return @TypeOf(self){
 		self[0]*cos + self[2]*sin,
 		self[1],
@@ -99,7 +72,7 @@ pub fn rotateY(self: anytype, angle: @typeInfo(@TypeOf(self)).Vector.child) @Typ
 pub fn rotateZ(self: anytype, angle: @typeInfo(@TypeOf(self)).Vector.child) @TypeOf(self) {
 	if(@typeInfo(@TypeOf(self)).Vector.len != 3) @compileError("Only available for vectors of length 3.");
 	const sin = @sin(angle);
-	const cos = @cos(angle); // TODO: Consider using sqrt here.
+	const cos = @cos(angle);
 	return @TypeOf(self){
 		self[0]*cos - self[1]*sin,
 		self[0]*sin + self[1]*cos,

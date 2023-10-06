@@ -54,7 +54,7 @@ pub fn generate(self: *Boulder, x: i32, y: i32, z: i32, chunk: *main.chunk.Chunk
 				if(!chunk.liesInChunk(px, py, pz)) continue;
 				var potential: f32 = 0;
 				for(&pointCloud) |point| {
-					const delta = vec.floatFromInt(f32, Vec3i{px, py, pz} - Vec3i{x, y, z}) - point;
+					const delta = @as(Vec3f, @floatFromInt(Vec3i{px, py, pz} - Vec3i{x, y, z})) - point;
 					const distSqr = vec.dot(delta, delta);
 					potential += 1/distSqr;
 				}

@@ -358,7 +358,7 @@ pub const ItemDropManager = struct {
 	fn fixStuckInBlock(self: *ItemDropManager, chunk: *Chunk, pos: *Vec3d, vel: *Vec3d, deltaTime: f64) void {
 		std.debug.assert(!self.mutex.tryLock()); // Mutex must be locked!
 		const centeredPos = pos.* - @as(Vec3d, @splat(0.5));
-		const pos0 = vec.intFromFloat(i32, @floor(centeredPos));
+		const pos0: Vec3i = @intFromFloat(@floor(centeredPos));
 
 		var closestEmptyBlock: Vec3i = @splat(-1);
 		var closestDist = std.math.floatMax(f64);
@@ -370,7 +370,7 @@ pub const ItemDropManager = struct {
 				while(delta[2] <= 1) : (delta[2] += 1) {
 					const isSolid = self.checkBlock(chunk, pos, pos0 + delta);
 					if(!isSolid) {
-						const dist = vec.lengthSquare(vec.floatFromInt(f64, pos0 + delta) - centeredPos);
+						const dist = vec.lengthSquare(@as(Vec3d, @floatFromInt(pos0 + delta)) - centeredPos);
 						if(dist < closestDist) {
 							closestDist = dist;
 							closestEmptyBlock = delta;
@@ -381,13 +381,13 @@ pub const ItemDropManager = struct {
 		}
 
 		vel.* = @splat(0);
-		const factor: f64 = 1; // TODO: Investigate what past me wanted to accomplish here.
+		const unstuckVelocity: f64 = 1;
 		if(closestDist == std.math.floatMax(f64)) {
 			// Surrounded by solid blocks → move upwards
-			vel.*[1] = factor;
+			vel.*[1] = unstuckVelocity;
 			pos.*[1] += vel.*[1]*deltaTime;
 		} else {
-			vel.* = @as(Vec3d, @splat(factor))*(vec.floatFromInt(f64, pos0 + closestEmptyBlock) - centeredPos);
+			vel.* = @as(Vec3d, @splat(unstuckVelocity))*(@as(Vec3d, @floatFromInt(pos0 + closestEmptyBlock)) - centeredPos);
 			pos.* += (vel.*)*@as(Vec3d, @splat(deltaTime));
 		}
 	}
@@ -395,7 +395,7 @@ pub const ItemDropManager = struct {
 	fn checkBlocks(self: *ItemDropManager, chunk: *Chunk, pos: *Vec3d) bool {
 		const lowerCornerPos = pos.* - @as(Vec3d, @splat(radius));
 		const pos0f64 = @floor(lowerCornerPos);
-		const pos0 = vec.intFromFloat(i32, pos0f64);
+		const pos0: Vec3i = @intFromFloat(pos0f64);
 		var isSolid = self.checkBlock(chunk, pos, pos0);
 		if(pos.*[0] - pos0f64[0] + diameter >= 1) {
 			isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{1, 0, 0});
@@ -454,7 +454,7 @@ pub const ClientItemDropManager = struct {
 
 	timeDifference: utils.TimeDifference = .{},
 
-	interpolation: utils.GenericInterpolation(maxf64Capacity)align(32) = undefined, // TODO: Remove align(32) after #14527
+	interpolation: utils.GenericInterpolation(maxf64Capacity)align(64) = undefined,
 
 	var instance: ?*ClientItemDropManager = null;
 
@@ -750,7 +750,7 @@ pub const ItemDropRenderer = struct {
 					Vec3f{light >> 16 & 255, light >> 8 & 255, light & 255}/@as(Vec3f, @splat(255))
 				)));
 				pos -= playerPos;
-				var modelMatrix = Mat4f.translation(vec.floatCast(f32, pos));
+				var modelMatrix = Mat4f.translation(@floatCast(pos));
 				modelMatrix = modelMatrix.mul(Mat4f.rotationX(-rot[0]));
 				modelMatrix = modelMatrix.mul(Mat4f.rotationY(-rot[1]));
 				modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-rot[2]));

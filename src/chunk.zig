@@ -371,16 +371,6 @@ pub const Chunk = struct {
 			}
 		}
 	}
-
-//	TODO: Check if/how they are needed:
-//	
-//	public Vector3d getMin() {
-//		return new Vector3d(wx, wy, wz);
-//	}
-//	
-//	public Vector3d getMax() {
-//		return new Vector3d(wx + width, wy + width, wz + width);
-//	}
 };
 
 
@@ -1067,14 +1057,12 @@ pub const meshing = struct {
 			}/@as(Vec3d, @splat(@as(f64, @floatFromInt(self.pos.voxelSize))));
 			relativePos = @min(relativePos, @as(Vec3d, @splat(0)));
 			relativePos = @max(relativePos, @as(Vec3d, @splat(-32)));
-			var updatePos = vec.intFromFloat(i32, relativePos);
+			var updatePos: Vec3i = @intFromFloat(relativePos);
 			if(@reduce(.Or, updatePos != self.lastTransparentUpdatePos)) {
 				self.lastTransparentUpdatePos = updatePos;
 				needsUpdate = true;
 			}
 			if(needsUpdate) {
-				// TODO: Could additionally filter back-faces to reduce work on the gpu side.
-
 				for(self.currentSorting) |*val| {
 					val.update(
 						updatePos[0],

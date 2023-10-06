@@ -127,8 +127,8 @@ fn generateCaveBetween(_seed: u64, map: *CaveMapFragment, startWorldPos: Vec3d, 
 	const distance = vec.length(startWorldPos - endWorldPos);
 	const maxFractalShift = distance*randomness;
 	const safetyInterval = maxHeight + maxFractalShift;
-	const min = vec.intFromFloat(i32, @min(startWorldPos, endWorldPos) - @as(Vec3d, @splat(safetyInterval)));
-	const max = vec.intFromFloat(i32, @max(startWorldPos, endWorldPos) + @as(Vec3d, @splat(safetyInterval)));
+	const min: Vec3i = @intFromFloat(@min(startWorldPos, endWorldPos) - @as(Vec3d, @splat(safetyInterval)));
+	const max: Vec3i = @intFromFloat(@max(startWorldPos, endWorldPos) + @as(Vec3d, @splat(safetyInterval)));
 	// Only divide further if the cave may go through ther considered chunk.
 	if(min[0] >= map.pos.wx +% CaveMapFragment.width*map.pos.voxelSize or max[0] < map.pos.wx) return;
 	if(min[1] >= map.pos.wy +% CaveMapFragment.height*map.pos.voxelSize or max[1] < map.pos.wy) return;
@@ -168,7 +168,8 @@ fn generateBranchingCaveBetween(_seed: u64, map: *CaveMapFragment, startWorldPos
 			const distanceToSeedPoint = vec.length(startWorldPos - newEndPos);
 			// Reduce distance to avoid cutoffs:
 			if(distanceToSeedPoint > (range - 1)*chunkSize) {
-				newEndPos = vec.floatFromInt(f64, centerWorldPos) + (newEndPos - vec.floatFromInt(f64, centerWorldPos))*@as(Vec3d, @splat(((range - 1)*chunkSize)/distanceToSeedPoint));
+				const centerWorldPosFloat: Vec3d = @floatFromInt(centerWorldPos);
+				newEndPos = centerWorldPosFloat + (newEndPos - centerWorldPosFloat)*@as(Vec3d, @splat(((range - 1)*chunkSize)/distanceToSeedPoint));
 			}
 			const newStartRadius = (startRadius - minRadius)*random.nextDouble(&seed) + minRadius;
 			const newBias = Vec3d {

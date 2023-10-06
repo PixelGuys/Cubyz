@@ -512,6 +512,10 @@ pub const MenuBackGround = struct {
 		c.glDeleteBuffers(2, &vbos);
 	}
 
+	pub fn hasImage() bool {
+		return texture.textureID != 0;
+	}
+
 	pub fn render() void {
 		if(texture.textureID == 0) return;
 		c.glDisable(c.GL_CULL_FACE); // I'm not sure if my triangles are rotated correctly, and there are no triangles facing away from the player anyways.
@@ -697,19 +701,19 @@ pub const MeshSelection = struct {
 		var pos = _pos;
 		// TODO: pos.y += Player.cameraHeight;
 		lastPos = pos;
-		var dir = vec.floatCast(f64, _dir);
+		var dir: Vec3d = @floatCast(_dir);
 		lastDir = _dir;
 
 		// Test blocks:
 		const closestDistance: f64 = 6.0; // selection now limited
 		// Implementation of "A Fast Voxel Traversal Algorithm for Ray Tracing"  http://www.cse.yorku.ca/~amana/research/grid.pdf
-		const step = vec.intFromFloat(i32, std.math.sign(dir));
+		const step: Vec3i = @intFromFloat(std.math.sign(dir));
 		const invDir = @as(Vec3d, @splat(1))/dir;
 		const tDelta = @abs(invDir);
 		var tMax = (@floor(pos) - pos)*invDir;
-		tMax = @max(tMax, tMax + tDelta*vec.floatFromInt(f64, step));
+		tMax = @max(tMax, tMax + tDelta*@as(Vec3f, @floatFromInt(step)));
 		tMax = @select(f64, dir == @as(Vec3d, @splat(0)), @as(Vec3d, @splat(std.math.inf(f64))), tMax);
-		var voxelPos = vec.intFromFloat(i32, @floor(pos));
+		var voxelPos: Vec3i = @intFromFloat(@floor(pos));
 
 		var total_tMax: f64 = 0;
 
@@ -723,10 +727,11 @@ pub const MeshSelection = struct {
 				const voxelModel = &models.voxelModels.items[model.modelIndex];
 				var transformedMin = model.permutation.transform(voxelModel.min - @as(Vec3i, @splat(8))) + @as(Vec3i, @splat(8));
 				var transformedMax = model.permutation.transform(voxelModel.max - @as(Vec3i, @splat(8))) + @as(Vec3i, @splat(8));
-				const min = @min(transformedMin, transformedMax);
-				const max = @max(transformedMin ,transformedMax);
-				const t1 = (vec.floatFromInt(f64, voxelPos) + vec.floatFromInt(f64, min)/@as(Vec3d, @splat(16.0)) - pos)*invDir;
-				const t2 = (vec.floatFromInt(f64, voxelPos) + vec.floatFromInt(f64, max)/@as(Vec3d, @splat(16.0)) - pos)*invDir;
+				const min: Vec3d = @floatFromInt(@min(transformedMin, transformedMax));
+				const max: Vec3d = @floatFromInt(@max(transformedMin ,transformedMax));
+				const voxelPosFloat: Vec3d = @floatFromInt(voxelPos);
+				const t1 = (voxelPosFloat + min/@as(Vec3d, @splat(16.0)) - pos)*invDir;
+				const t2 = (voxelPosFloat + max/@as(Vec3d, @splat(16.0)) - pos)*invDir;
 				const boxTMin = @reduce(.Max, @min(t1, t2));
 				const boxTMax = @reduce(.Min, @max(t1, t2));
 				if(boxTMin <= boxTMax and boxTMin <= closestDistance and boxTMax > 0) {
@@ -771,7 +776,7 @@ pub const MeshSelection = struct {
 							var neighborDir = Vec3i{0, 0, 0};
 							// Check if stuff can be added to the block itself:
 							if(itemBlock == block.typ) {
-								const relPos = lastPos - vec.floatFromInt(f64, selectedPos);
+								const relPos = lastPos - @as(Vec3d, @floatFromInt(selectedPos));
 								if(rotationMode.generateData(main.game.world.?, selectedPos, relPos, lastDir, neighborDir, &block, false)) {
 									// TODO: world.updateBlock(bi.x, bi.y, bi.z, block.data); (→ Sending it over the network)
 									try RenderStructure.updateBlock(selectedPos[0], selectedPos[1], selectedPos[2], block);
@@ -782,7 +787,7 @@ pub const MeshSelection = struct {
 							// Check the block in front of it:
 							const neighborPos = posBeforeBlock;
 							neighborDir = selectedPos - posBeforeBlock;
-							const relPos = lastPos - vec.floatFromInt(f64, neighborPos);
+							const relPos = lastPos - @as(Vec3d, @floatFromInt(neighborPos));
 							block = RenderStructure.getBlock(neighborPos[0], neighborPos[1], neighborPos[2]) orelse return;
 							if(block.typ == itemBlock) {
 								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, &block, false)) {
@@ -851,9 +856,9 @@ pub const MeshSelection = struct {
 			const voxelModel = &models.voxelModels.items[model.modelIndex];
 			var transformedMin = model.permutation.transform(voxelModel.min - @as(Vec3i, @splat(8))) + @as(Vec3i, @splat(8));
 			var transformedMax = model.permutation.transform(voxelModel.max - @as(Vec3i, @splat(8))) + @as(Vec3i, @splat(8));
-			const min = @min(transformedMin, transformedMax);
-			const max = @max(transformedMin ,transformedMax);
-			drawCube(projectionMatrix, viewMatrix, vec.floatFromInt(f64, _selectedBlockPos) - playerPos, vec.floatFromInt(f32, min)/@as(Vec3f, @splat(16.0)), vec.floatFromInt(f32, max)/@as(Vec3f, @splat(16.0)));
+			const min: Vec3f = @floatFromInt(@min(transformedMin, transformedMax));
+			const max: Vec3f = @floatFromInt(@max(transformedMin ,transformedMax));
+			drawCube(projectionMatrix, viewMatrix, @as(Vec3d, @floatFromInt(_selectedBlockPos)) - playerPos, min/@as(Vec3f, @splat(16.0)), max/@as(Vec3f, @splat(16.0)));
 		}
 	}
 };
@@ -1154,15 +1159,15 @@ pub const RenderStructure = struct {
 				}
 			}
 			try meshList.append(mesh);
-			const relPos: Vec3d = vec.floatFromInt(f64, Vec3i{mesh.pos.wx, mesh.pos.wy, mesh.pos.wz}) - playerPos;
-			const relPosFloat: Vec3f = vec.floatCast(f32, relPos);
+			const relPos: Vec3d = @as(Vec3d, @floatFromInt(Vec3i{mesh.pos.wx, mesh.pos.wy, mesh.pos.wz})) - playerPos;
+			const relPosFloat: Vec3f = @floatCast(relPos);
 			for(chunk.Neighbors.iterable) |neighbor| continueNeighborLoop: {
 				const component = chunk.Neighbors.extractDirectionComponent(neighbor, relPos);
 				if(chunk.Neighbors.isPositive[neighbor] and component + @as(f64, @floatFromInt(chunk.chunkSize*mesh.pos.voxelSize)) <= 0) continue;
 				if(!chunk.Neighbors.isPositive[neighbor] and component >= 0) continue;
 				if(@reduce(.Or, @min(mesh.chunkBorders[neighbor].min, mesh.chunkBorders[neighbor].max) != mesh.chunkBorders[neighbor].min)) continue; // There was not a single block in the chunk. TODO: Find a better solution.
-				const minVec = vec.floatFromInt(f32, mesh.chunkBorders[neighbor].min*@as(Vec3i, @splat(mesh.pos.voxelSize)));
-				const maxVec = vec.floatFromInt(f32, mesh.chunkBorders[neighbor].max*@as(Vec3i, @splat(mesh.pos.voxelSize)));
+				const minVec: Vec3f = @floatFromInt(mesh.chunkBorders[neighbor].min*@as(Vec3i, @splat(mesh.pos.voxelSize)));
+				const maxVec: Vec3f = @floatFromInt(mesh.chunkBorders[neighbor].max*@as(Vec3i, @splat(mesh.pos.voxelSize)));
 				var xyMin: Vec2f = .{10, 10};
 				var xyMax: Vec2f = .{-10, -10};
 				var numberOfNegatives: u8 = 0;

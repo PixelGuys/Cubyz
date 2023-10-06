@@ -381,7 +381,7 @@ pub const ServerWorld = struct {
 		const player = &user.player;
 		if(playerData == .JsonNull) {
 			// Generate a new player:
-			player.pos = vec.floatFromInt(f64, self.spawn);
+			player.pos = @floatFromInt(self.spawn);
 		} else {
 			player.loadFrom(playerData);
 		}
