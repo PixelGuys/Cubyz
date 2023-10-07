@@ -95,7 +95,7 @@ float calculateFogDistance(float dist, float fogDensity) {
 
 void applyFrontfaceFog(float fogDistance, vec3 fogColor) {
 	float fogFactor = exp(fogDistance);
-	fragColor.rgb = fragColor.rgb*fogFactor + fogColor*(1 - fogFactor);
+	fragColor.rgb = fogColor*(1 - fogFactor);
 	fragColor.a = fogFactor;
 }
 

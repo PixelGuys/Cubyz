@@ -154,7 +154,7 @@ void main() {
 	totalOffset += ivec3(equal(textureY[oldNormal], ivec3(-1))) + (vertexID & 1)*textureY[oldNormal];
 	totalOffset = ivec3(permutationMatrix*(vec3(equal(mirrorVector, vec3(1)))*totalOffset + vec3(equal(mirrorVector, vec3(-1)))*(1 - totalOffset)));
 	ivec3 lowerBound = voxelModels[modelIndex].minimum.xyz;
-	ivec3 size = voxelModels[modelIndex].maximum.xyz - lowerBound;
+	ivec3 size = voxelModels[modelIndex].maximum.xyz - voxelModels[modelIndex].minimum.xyz;
 	totalOffset = lowerBound + size*totalOffset;
 	position += totalOffset - 16*ivec3(normals[normal]);
 
