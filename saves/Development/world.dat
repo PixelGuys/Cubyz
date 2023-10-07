@@ -1,0 +1,11 @@
+{
+	"spawn" : {
+		"x" : 3198,
+		"z" : 59786,
+		"y" : 100
+	},
+	"version" : 2,
+	"seed" : 1982878604,
+	"doGameTimeCycle" : false,
+	"gameTime" : 0
+}
