@@ -213,6 +213,14 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	}
 	gpu_performance_measuring.stopQuery();
 
+	gpu_performance_measuring.startQuery(.voxel_model_rendering);
+	chunk.meshing.bindVoxelShaderAndUniforms(game.projectionMatrix, ambientLight);
+
+	for(meshes) |mesh| {
+		mesh.renderVoxelModels(playerPos);
+	}
+	gpu_performance_measuring.stopQuery();
+
 //		for(int i = 0; i < visibleReduced.size; i++) {
 //			ReducedChunkMesh mesh = visibleReduced.array[i];
 //			mesh.render(playerPosition);
