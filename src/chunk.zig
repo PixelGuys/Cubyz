@@ -928,6 +928,8 @@ pub const meshing = struct {
 					if(neighborMesh.generated) {
 						var additionalNeighborFacesOpaque = std.ArrayList(FaceData).init(main.threadAllocator);
 						defer additionalNeighborFacesOpaque.deinit();
+						var additionalNeighborFacesVoxel = std.ArrayList(FaceData).init(main.threadAllocator);
+						defer additionalNeighborFacesVoxel.deinit();
 						var additionalNeighborFacesTransparent = std.ArrayList(FaceData).init(main.threadAllocator);
 						defer additionalNeighborFacesTransparent.deinit();
 						var x3: u8 = if(neighbor & 1 == 0) @intCast(chunkMask) else 0;
@@ -963,7 +965,11 @@ pub const meshing = struct {
 										}
 										try additionalNeighborFacesTransparent.append(constructFaceData(block, neighbor, otherX, otherY, otherZ, false));
 									} else {
-										try additionalNeighborFacesOpaque.append(constructFaceData(block, neighbor, otherX, otherY, otherZ, false));
+										if(blocks.meshes.model(block).modelIndex == 0) {
+											try additionalNeighborFacesOpaque.append(constructFaceData(block, neighbor, otherX, otherY, otherZ, false));
+										} else {
+											try additionalNeighborFacesVoxel.append(constructFaceData(block, neighbor, otherX, otherY, otherZ, false));
+										}
 									}
 								}
 								if(canBeSeenThroughOtherBlock(otherBlock, block, neighbor ^ 1)) {
@@ -983,7 +989,7 @@ pub const meshing = struct {
 							}
 						}
 						try neighborMesh.opaqueMesh.replaceNeighbors(neighbor, additionalNeighborFacesOpaque.items);
-						try neighborMesh.voxelMesh.replaceNeighbors(neighbor, additionalNeighborFacesOpaque.items);
+						try neighborMesh.voxelMesh.replaceNeighbors(neighbor, additionalNeighborFacesVoxel.items);
 						try neighborMesh.transparentMesh.replaceNeighbors(neighbor, additionalNeighborFacesTransparent.items);
 						continue;
 					}

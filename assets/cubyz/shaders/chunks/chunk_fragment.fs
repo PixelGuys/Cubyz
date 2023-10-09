@@ -86,5 +86,4 @@ void main() {
 	fragColor.a = 1;
 
 	fragColor.rgb += texture(emissionSampler, textureCoords).rgb;
-	// TODO: Update the depth.
 }
