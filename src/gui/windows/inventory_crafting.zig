@@ -19,7 +19,13 @@ const Icon = GuiComponent.Icon;
 const CraftingResultSlot = GuiComponent.CraftingResultSlot;
 const ImmutableItemSlot = GuiComponent.ImmutableItemSlot;
 
+const inventory = @import("inventory.zig");
+
 pub var window = GuiWindow {
+	.relativePosition = .{
+		.{ .attachedToWindow = .{.reference = &inventory.window, .selfAttachmentPoint = .lower, .otherAttachmentPoint = .upper} },
+		.{ .attachedToWindow = .{.reference = &inventory.window, .selfAttachmentPoint = .middle, .otherAttachmentPoint = .middle} },
+	},
 	.contentSize = Vec2f{64*8, 64*4},
 	.id = "inventory_crafting",
 };

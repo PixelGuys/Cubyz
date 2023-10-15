@@ -15,6 +15,10 @@ const ItemSlot = GuiComponent.ItemSlot;
 const Icon = GuiComponent.Icon;
 
 pub var window = GuiWindow {
+	.relativePosition = .{
+		.{ .attachedToFrame = .{.selfAttachmentPoint = .middle, .otherAttachmentPoint = .middle} },
+		.{ .attachedToFrame = .{.selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper} },
+	},
 	.contentSize = Vec2f{64*8, 64},
 	.id = "hotbar",
 	.isHud = true,

@@ -316,7 +316,7 @@ fn positionRelativeToConnectedWindow(self: *GuiWindow, other: *GuiWindow, i: usi
 			.otherAttachmentPoint = .upper,
 		}};
 	} else {
-		self.relativePosition[i] = .{.relativeToWindow = .{
+		relPos.* = .{.relativeToWindow = .{
 			.reference = other,
 			.ratio = (self.pos[i] + self.size[i]/2 - other.pos[i])/otherSize[i]
 		}};

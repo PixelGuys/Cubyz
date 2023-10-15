@@ -14,6 +14,11 @@ const TextInput = GuiComponent.TextInput;
 const VerticalList = @import("../components/VerticalList.zig");
 
 pub var window: GuiWindow = GuiWindow {
+	.relativePosition = .{
+		.{ .attachedToFrame = .{.selfAttachmentPoint = .lower, .otherAttachmentPoint = .lower} },
+		.{ .attachedToFrame = .{.selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper} },
+	},
+	.scale = 0.75,
 	.contentSize = Vec2f{128, 256},
 	.id = "chat",
 	.showTitleBar = false,

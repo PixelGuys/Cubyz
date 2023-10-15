@@ -235,6 +235,7 @@ fn load() !void {
 
 	for(windowList.items) |window| {
 		const windowJson = json.getChild(window.id);
+		if(windowJson == .JsonNull) continue;
 		for(&window.relativePosition, 0..) |*relPos, i| {
 			const relPosJson = windowJson.getChild(([_][]const u8{"relPos0", "relPos1"})[i]);
 			const typ = relPosJson.get([]const u8, "type", "ratio");

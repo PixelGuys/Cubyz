@@ -12,6 +12,10 @@ const GuiWindow = gui.GuiWindow;
 const GuiComponent = gui.GuiComponent;
 
 pub var window = GuiWindow {
+	.relativePosition = .{
+		.{ .attachedToFrame = .{.selfAttachmentPoint = .lower, .otherAttachmentPoint = .lower} },
+		.{ .attachedToFrame = .{.selfAttachmentPoint = .lower, .otherAttachmentPoint = .lower} },
+	},
 	.contentSize = Vec2f{128, 16},
 	.id = "debug",
 	.isHud = false,

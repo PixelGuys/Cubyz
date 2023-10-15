@@ -15,7 +15,13 @@ const HorizontalList = GuiComponent.HorizontalList;
 const VerticalList = GuiComponent.VerticalList;
 const ItemSlot = GuiComponent.ItemSlot;
 
+const hotbar = @import("hotbar.zig");
+
 pub var window = GuiWindow {
+	.relativePosition = .{
+		.{ .attachedToWindow = .{.reference = &hotbar.window, .selfAttachmentPoint = .middle, .otherAttachmentPoint = .middle} },
+		.{ .attachedToWindow = .{.reference = &hotbar.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .lower} },
+	},
 	.contentSize = Vec2f{64*8, 64*4},
 	.id = "inventory",
 };

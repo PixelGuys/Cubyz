@@ -153,7 +153,7 @@ pub fn init() !void {
 		0, // input channels
 		2, // stereo output
 		c.paFloat32,
-		sampleRate, // TODO: There must be some target dependant value to put here.
+		sampleRate,
 		c.paFramesPerBufferUnspecified,
 		&patestCallback,
 		null

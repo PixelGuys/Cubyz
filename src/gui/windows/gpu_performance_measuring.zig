@@ -77,6 +77,10 @@ pub fn stopQuery() void {
 }
 
 pub var window = GuiWindow {
+	.relativePosition = .{
+		.{ .attachedToFrame = .{.selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper} },
+		.{ .attachedToFrame = .{.selfAttachmentPoint = .lower, .otherAttachmentPoint = .lower} },
+	},
 	.contentSize = Vec2f{256, 16},
 	.id = "gpu_performance_measuring",
 	.isHud = false,
