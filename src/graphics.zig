@@ -1048,13 +1048,63 @@ pub fn deinit() void {
 
 pub const Shader = struct {
 	id: c_uint,
+
+	fn expandSourceIncludes(source: []u8) !std.ArrayList(u8) {
+		var output = std.ArrayList(u8).init(main.globalAllocator);
+		var cursor: u64 = 0;
+		while(std.mem.indexOf(u8, source[cursor..], "#include")) |index| {
+			try output.appendSlice(source[cursor..cursor + index]);
+
+			cursor += index + 8;
+			while(cursor < source.len and source[cursor] == ' ') {
+				cursor += 1;
+			}
+
+			if(cursor >= source.len or source[cursor] == '\n') {
+				cursor += 1;
+			} else if(source[cursor] == '"') {
+				cursor += 1;
+				const filename_start = cursor;
+				while(cursor < source.len and source[cursor] != '"' and source[cursor] != '\n') {
+					cursor += 1;
+				}
+				
+				if(cursor < source.len and source[cursor] == '"') {
+					const filename = source[filename_start..cursor];
+					const rawIncludeSource = main.files.read(main.threadAllocator, filename) catch |err| {
+						std.log.warn("Couldn't find file for #include: {s}", .{filename});
+						return err;
+					};
+					defer main.threadAllocator.free(rawIncludeSource);
+
+					const includeSource = try expandSourceIncludes(rawIncludeSource);
+					defer includeSource.deinit();
+
+					try output.appendSlice(includeSource.items);
+				}
+
+				cursor += 1;
+			}
+		}
+
+		try output.appendSlice(source[cursor..]);
+
+		return output;
+	}
 	
 	fn addShader(self: *const Shader, filename: []const u8, shader_stage: c_uint) !void {
-		const source = main.files.read(main.threadAllocator, filename) catch |err| {
+		const rawSource = main.files.read(main.threadAllocator, filename) catch |err| {
 			std.log.warn("Couldn't find file: {s}", .{filename});
 			return err;
 		};
-		defer main.threadAllocator.free(source);
+		defer main.threadAllocator.free(rawSource);
+
+		const sourceArray = try expandSourceIncludes(rawSource);
+		const source = sourceArray.items;
+		defer sourceArray.deinit();
+
+		std.debug.print("{s}\n", .{source});
+
 		const shader = c.glCreateShader(shader_stage);
 		defer c.glDeleteShader(shader);
 		
