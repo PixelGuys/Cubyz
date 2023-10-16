@@ -11,7 +11,14 @@ const gui = @import("../gui.zig");
 const GuiWindow = gui.GuiWindow;
 const GuiComponent = gui.GuiComponent;
 
+const hotbar = @import("hotbar.zig");
+
 pub var window = GuiWindow {
+	.scale = 0.75,
+	.relativePosition = .{
+		.{ .attachedToWindow = .{.reference = &hotbar.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper} },
+		.{ .attachedToWindow = .{.reference = &hotbar.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .lower} },
+	},
 	.contentSize = Vec2f{128, 16},
 	.id = "healthbar",
 	.isHud = true,

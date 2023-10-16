@@ -32,7 +32,13 @@ pub fn readAllJsonFilesInAddons(externalAllocator: Allocator, addons: std.ArrayL
 				var id: []u8 = try externalAllocator.alloc(u8, folderName.len + 1 + entry.path.len - 5);
 				@memcpy(id[0..folderName.len], folderName);
 				id[folderName.len] = ':';
-				@memcpy(id[folderName.len+1..], entry.path[0..entry.path.len-5]);
+				for(0..entry.path.len-5) |i| {
+					if(entry.path[i] == '\\') { // Convert windows path seperators
+						id[folderName.len+1+i] = '/';
+					} else {
+						id[folderName.len+1+i] = entry.path[i];
+					}
+				}
 
 				var file = try dir.dir.openFile(entry.path, .{});
 				defer file.close();

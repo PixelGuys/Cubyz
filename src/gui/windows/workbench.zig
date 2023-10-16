@@ -22,9 +22,14 @@ const ItemSlot = GuiComponent.ItemSlot;
 const CraftingResultSlot = GuiComponent.CraftingResultSlot;
 const ImmutableItemSlot = GuiComponent.ImmutableItemSlot;
 
+const inventory = @import("inventory.zig");
 const inventory_crafting = @import("inventory_crafting.zig");
 
 pub var window = GuiWindow {
+	.relativePosition = .{
+		.{ .attachedToWindow = .{.reference = &inventory.window, .selfAttachmentPoint = .middle, .otherAttachmentPoint = .middle} },
+		.{ .attachedToWindow = .{.reference = &inventory.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .lower} },
+	},
 	.contentSize = Vec2f{64*8, 64*4},
 	.id = "workbench",
 };

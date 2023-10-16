@@ -31,7 +31,7 @@ const AudioData = struct {
 		defer c.stb_vorbis_close(ogg_stream);
 		if(ogg_stream != null) {
 			const ogg_info: c.stb_vorbis_info = c.stb_vorbis_get_info(ogg_stream);
-			if(sampleRate != ogg_info.sample_rate) { // TODO: Does it make sense to convert it?
+			if(sampleRate != @as(f32, @floatFromInt(ogg_info.sample_rate))) { // TODO: Does it make sense to convert it?
 				std.log.warn("Audio file {s} has unsupported sample rate {}. Only {} is supported. Expect distortions.", .{path, ogg_info.sample_rate, sampleRate});
 			}
 			const samples = c.stb_vorbis_stream_length_in_samples(ogg_stream);
@@ -140,17 +140,20 @@ const MusicLoadTask = struct {
 
 var stream: ?*c.PaStream = null;
 
-const sampleRate = 44100;
+var sampleRate: f32 = 0;
 
 pub fn init() !void {
 	handleError(c.Pa_Initialize());
+
+	const device = c.Pa_GetDeviceInfo(c.Pa_GetDefaultOutputDevice());
+	sampleRate = @floatCast(device.*.defaultSampleRate);
 
 	handleError(c.Pa_OpenDefaultStream(
 		&stream,
 		0, // input channels
 		2, // stereo output
 		c.paFloat32,
-		sampleRate, // TODO: There must be some target dependant value to put here.
+		sampleRate,
 		c.paFramesPerBufferUnspecified,
 		&patestCallback,
 		null
@@ -202,7 +205,7 @@ const currentMusic = struct {
 var activeMusicId: []const u8 = &.{};
 var lastTime: i64 = 0;
 var partialFrame: f32 = 0;
-const animationLengthInSamples = 5.0*sampleRate;
+const animationLengthInSeconds = 5.0;
 
 var curIndex: u16 = 0;
 var curEndIndex: std.atomic.Atomic(u16) = .{.value = sampleRate/60 & ~@as(u16, 1)};
@@ -230,7 +233,7 @@ fn addMusic(buffer: []f32) !void {
 	// Copy the music to the buffer.
 	var i: usize = 0;
 	while(i < buffer.len) : (i += 2) {
-		currentMusic.animationProgress += 1.0/animationLengthInSamples;
+		currentMusic.animationProgress += 1.0/(animationLengthInSeconds*sampleRate);
 		var amplitude: f32 = main.settings.musicVolume;
 		if(currentMusic.animationProgress > 1) {
 			if(currentMusic.animationDecaying) {
