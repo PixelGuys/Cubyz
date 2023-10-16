@@ -758,6 +758,10 @@ pub fn main() !void {
 			gui.windowlist.gpu_performance_measuring.stopQuery();
 		}
 	}
+
+	// Make sure that threadPool is done before freeing any data
+	threadPool.clear();
+
 	if(game.world) |world| {
 		world.deinit();
 		game.world = null;
