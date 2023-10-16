@@ -758,6 +758,12 @@ pub fn main() !void {
 			gui.windowlist.gpu_performance_measuring.stopQuery();
 		}
 	}
+
+	// I think that another way to fix this is to not deinit anything and let OS clear everything up
+	// I think that would also improve close times
+	// Otherwise just need to make sure threadPool is done before freeing any data
+	threadPool.clear();
+
 	if(game.world) |world| {
 		world.deinit();
 		game.world = null;
