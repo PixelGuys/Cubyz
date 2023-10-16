@@ -22,28 +22,34 @@ pub fn build(b: *std.build.Builder) !void {
 		.target = target,
 		.optimize = optimize,
 	});
+	const c_lib = b.addStaticLibrary(.{
+		.name = "c",
+		.target = target,
+		.optimize = optimize,
+	});
+	c_lib.addIncludePath(.{.path = "include"});
 	exe.addIncludePath(.{.path = "include"});
-	exe.linkLibC();
+	c_lib.linkLibC();
 	{ // compile glfw from source:
 		if(target.getOsTag() == .windows) {
-			exe.addCSourceFiles(&[_][]const u8 {
+			c_lib.addCSourceFiles(&[_][]const u8 {
 				"lib/glfw/src/win32_init.c", "lib/glfw/src/win32_joystick.c", "lib/glfw/src/win32_monitor.c", "lib/glfw/src/win32_time.c", "lib/glfw/src/win32_thread.c", "lib/glfw/src/win32_window.c", "lib/glfw/src/wgl_context.c", "lib/glfw/src/egl_context.c", "lib/glfw/src/osmesa_context.c", "lib/glfw/src/context.c", "lib/glfw/src/init.c", "lib/glfw/src/input.c", "lib/glfw/src/monitor.c", "lib/glfw/src/vulkan.c", "lib/glfw/src/window.c"
 			}, &[_][]const u8{"-g", "-std=c99", "-D_GLFW_WIN32"});
-			exe.linkSystemLibrary("gdi32");
-			exe.linkSystemLibrary("opengl32");
-			exe.linkSystemLibrary("ws2_32");
+			c_lib.linkSystemLibrary("gdi32");
+			c_lib.linkSystemLibrary("opengl32");
+			c_lib.linkSystemLibrary("ws2_32");
 		} else if(target.getOsTag() == .linux) {
 			// TODO: if(isWayland) {
-			//	exe.addCSourceFiles(&[_][]const u8 {
+			//	c_lib.addCSourceFiles(&[_][]const u8 {
 			//		"lib/glfw/src/linux_joystick.c", "lib/glfw/src/wl_init.c", "lib/glfw/src/wl_monitor.c", "lib/glfw/src/wl_window.c", "lib/glfw/src/posix_time.c", "lib/glfw/src/posix_thread.c", "lib/glfw/src/xkb_unicode.c", "lib/glfw/src/egl_context.c", "lib/glfw/src/osmesa_context.c", "lib/glfw/src/context.c", "lib/glfw/src/init.c", "lib/glfw/src/input.c", "lib/glfw/src/monitor.c", "lib/glfw/src/vulkan.c", "lib/glfw/src/window.c"
 			//	}, &[_][]const u8{"-g",});
 			//} else {
-				exe.addCSourceFiles(&[_][]const u8 {
+				c_lib.addCSourceFiles(&[_][]const u8 {
 					"lib/glfw/src/linux_joystick.c", "lib/glfw/src/x11_init.c", "lib/glfw/src/x11_monitor.c", "lib/glfw/src/x11_window.c", "lib/glfw/src/xkb_unicode.c", "lib/glfw/src/posix_time.c", "lib/glfw/src/posix_thread.c", "lib/glfw/src/glx_context.c", "lib/glfw/src/egl_context.c", "lib/glfw/src/osmesa_context.c", "lib/glfw/src/context.c", "lib/glfw/src/init.c", "lib/glfw/src/input.c", "lib/glfw/src/monitor.c", "lib/glfw/src/vulkan.c", "lib/glfw/src/window.c"
 				}, &[_][]const u8{"-g", "-std=c99", "-D_GLFW_X11"});
-				exe.linkSystemLibrary("x11");
+				c_lib.linkSystemLibrary("x11");
 			//}
-			exe.linkSystemLibrary("GL");
+			c_lib.linkSystemLibrary("GL");
 		} else {
 			std.log.err("Unsupported target: {}\n", .{ target.getOsTag() });
 		}
@@ -53,9 +59,10 @@ pub fn build(b: *std.build.Builder) !void {
 			.target = target,
 			.optimize = optimize,
 		});
+		c_lib.addIncludePath(portaudio.path("include"));
 		exe.addIncludePath(portaudio.path("include"));
-		exe.addIncludePath(portaudio.path("src/common"));
-		addPackageCSourceFiles(exe, portaudio, &[_][]const u8 {
+		c_lib.addIncludePath(portaudio.path("src/common"));
+		addPackageCSourceFiles(c_lib, portaudio, &[_][]const u8 {
 			"src/common/pa_allocation.c",
 			"src/common/pa_converters.c",
 			"src/common/pa_cpuload.c",
@@ -69,25 +76,25 @@ pub fn build(b: *std.build.Builder) !void {
 		}, &[_][]const u8{"-g", "-O3"});
 		if(target.getOsTag() == .windows) {
 			// windows:
-			addPackageCSourceFiles(exe, portaudio, &[_][]const u8 {"src/os/win/pa_win_coinitialize.c", "src/os/win/pa_win_hostapis.c", "src/os/win/pa_win_util.c", "src/os/win/pa_win_waveformat.c", "src/os/win/pa_win_wdmks_utils.c", "src/os/win/pa_x86_plain_converters.c", }, &[_][]const u8{"-g", "-O3", "-DPA_USE_WASAPI"});
-			exe.addIncludePath(portaudio.path("src/os/win"));
-			exe.linkSystemLibrary("ole32");
-			exe.linkSystemLibrary("winmm");
-			exe.linkSystemLibrary("uuid");
+			addPackageCSourceFiles(c_lib, portaudio, &[_][]const u8 {"src/os/win/pa_win_coinitialize.c", "src/os/win/pa_win_hostapis.c", "src/os/win/pa_win_util.c", "src/os/win/pa_win_waveformat.c", "src/os/win/pa_win_wdmks_utils.c", "src/os/win/pa_x86_plain_converters.c", }, &[_][]const u8{"-g", "-O3", "-DPA_USE_WASAPI"});
+			c_lib.addIncludePath(portaudio.path("src/os/win"));
+			c_lib.linkSystemLibrary("ole32");
+			c_lib.linkSystemLibrary("winmm");
+			c_lib.linkSystemLibrary("uuid");
 			// WASAPI:
-			addPackageCSourceFiles(exe, portaudio, &[_][]const u8 {"src/hostapi/wasapi/pa_win_wasapi.c"}, &[_][]const u8{"-g", "-O3"});
+			addPackageCSourceFiles(c_lib, portaudio, &[_][]const u8 {"src/hostapi/wasapi/pa_win_wasapi.c"}, &[_][]const u8{"-g", "-O3"});
 		} else if(target.getOsTag() == .linux) {
 			// unix:
-			addPackageCSourceFiles(exe, portaudio, &[_][]const u8 {"src/os/unix/pa_unix_hostapis.c", "src/os/unix/pa_unix_util.c"}, &[_][]const u8{"-g", "-O3", "-DPA_USE_ALSA"});
-			exe.addIncludePath(portaudio.path("src/os/unix"));
+			addPackageCSourceFiles(c_lib, portaudio, &[_][]const u8 {"src/os/unix/pa_unix_hostapis.c", "src/os/unix/pa_unix_util.c"}, &[_][]const u8{"-g", "-O3", "-DPA_USE_ALSA"});
+			c_lib.addIncludePath(portaudio.path("src/os/unix"));
 			// ALSA:
-			addPackageCSourceFiles(exe, portaudio, &[_][]const u8 {"src/hostapi/alsa/pa_linux_alsa.c"}, &[_][]const u8{"-g", "-O3"});
-			exe.linkSystemLibrary("asound");
+			addPackageCSourceFiles(c_lib, portaudio, &[_][]const u8 {"src/hostapi/alsa/pa_linux_alsa.c"}, &[_][]const u8{"-g", "-O3"});
+			c_lib.linkSystemLibrary("asound");
 		} else {
 			std.log.err("Unsupported target: {}\n", .{ target.getOsTag() });
 		}
 	}
-	exe.addCSourceFiles(&[_][]const u8{"lib/glad.c", "lib/stb_image.c", "lib/stb_image_write.c", "lib/stb_vorbis.c"}, &[_][]const u8{"-g", "-O3"});
+	c_lib.addCSourceFiles(&[_][]const u8{"lib/glad.c", "lib/stb_image.c", "lib/stb_image_write.c", "lib/stb_vorbis.c"}, &[_][]const u8{"-g", "-O3"});
 	exe.addAnonymousModule("gui", .{.source_file = .{.path = "src/gui/gui.zig"}});
 	exe.addAnonymousModule("server", .{.source_file = .{.path = "src/server/server.zig"}});
 	
@@ -103,6 +110,7 @@ pub fn build(b: *std.build.Builder) !void {
 	//exe.strip = true; // Improves compile-time
 	//exe.sanitize_thread = true;
 	exe.disable_stack_probing = true; // Improves tracing of stack overflow errors.
+	exe.linkLibrary(c_lib);
 	b.installArtifact(exe);
 
 	const run_cmd = b.addRunArtifact(exe);
