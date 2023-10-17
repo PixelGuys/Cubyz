@@ -45,6 +45,7 @@ fn cacheString(comptime str: []const u8) []const u8 {
 	return cacheStringImpl(str.len, str[0..].*);
 }
 var logFile: std.fs.File = undefined;
+var supportsANSIColors: bool = undefined;
 // overwrite the log function:
 pub const std_options = struct {
 	pub const log_level = .debug;
@@ -168,8 +169,10 @@ pub const std_options = struct {
 
 		logToFile(formatString, resultArgs);
 
-		resultArgs[0] = color;
-		resultArgs[resultArgs.len - 1] = colorReset;
+		if(supportsANSIColors) {
+			resultArgs[0] = color;
+			resultArgs[resultArgs.len - 1] = colorReset;
+		}
 		logToStdErr(formatString, resultArgs);
 	}
 };
@@ -652,6 +655,7 @@ pub fn main() !void {
 	try std.fs.cwd().makePath("logs");
 	logFile = std.fs.cwd().createFile("logs/latest.log", .{}) catch unreachable;
 	defer logFile.close();
+	supportsANSIColors = std.io.getStdOut().supportsAnsiEscapeCodes();
 
 	threadPool = try utils.ThreadPool.init(globalAllocator, 1 + ((std.Thread.getCpuCount() catch 4) -| 2));
 	defer threadPool.deinit();
