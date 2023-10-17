@@ -27,14 +27,15 @@ pub fn build(b: *std.build.Builder) !void {
 		.target = target,
 		.optimize = optimize,
 	});
+	const c_flags = &[_][]const u8{"-g", "-O3"};
 	c_lib.addIncludePath(.{.path = "include"});
 	exe.addIncludePath(.{.path = "include"});
 	c_lib.linkLibC();
 	{ // compile glfw from source:
 		if(target.getOsTag() == .windows) {
-			c_lib.addCSourceFiles(&[_][]const u8 {
+			c_lib.addCSourceFiles(.{.files = &[_][]const u8 {
 				"lib/glfw/src/win32_init.c", "lib/glfw/src/win32_joystick.c", "lib/glfw/src/win32_monitor.c", "lib/glfw/src/win32_time.c", "lib/glfw/src/win32_thread.c", "lib/glfw/src/win32_window.c", "lib/glfw/src/wgl_context.c", "lib/glfw/src/egl_context.c", "lib/glfw/src/osmesa_context.c", "lib/glfw/src/context.c", "lib/glfw/src/init.c", "lib/glfw/src/input.c", "lib/glfw/src/monitor.c", "lib/glfw/src/vulkan.c", "lib/glfw/src/window.c"
-			}, &[_][]const u8{"-g", "-std=c99", "-D_GLFW_WIN32"});
+			}, .flags = c_flags ++ &[_][]const u8{"-std=c99", "-D_GLFW_WIN32"}});
 			c_lib.linkSystemLibrary("gdi32");
 			c_lib.linkSystemLibrary("opengl32");
 			c_lib.linkSystemLibrary("ws2_32");
@@ -44,9 +45,9 @@ pub fn build(b: *std.build.Builder) !void {
 			//		"lib/glfw/src/linux_joystick.c", "lib/glfw/src/wl_init.c", "lib/glfw/src/wl_monitor.c", "lib/glfw/src/wl_window.c", "lib/glfw/src/posix_time.c", "lib/glfw/src/posix_thread.c", "lib/glfw/src/xkb_unicode.c", "lib/glfw/src/egl_context.c", "lib/glfw/src/osmesa_context.c", "lib/glfw/src/context.c", "lib/glfw/src/init.c", "lib/glfw/src/input.c", "lib/glfw/src/monitor.c", "lib/glfw/src/vulkan.c", "lib/glfw/src/window.c"
 			//	}, &[_][]const u8{"-g",});
 			//} else {
-				c_lib.addCSourceFiles(&[_][]const u8 {
+				c_lib.addCSourceFiles(.{.files = &[_][]const u8 {
 					"lib/glfw/src/linux_joystick.c", "lib/glfw/src/x11_init.c", "lib/glfw/src/x11_monitor.c", "lib/glfw/src/x11_window.c", "lib/glfw/src/xkb_unicode.c", "lib/glfw/src/posix_time.c", "lib/glfw/src/posix_thread.c", "lib/glfw/src/glx_context.c", "lib/glfw/src/egl_context.c", "lib/glfw/src/osmesa_context.c", "lib/glfw/src/context.c", "lib/glfw/src/init.c", "lib/glfw/src/input.c", "lib/glfw/src/monitor.c", "lib/glfw/src/vulkan.c", "lib/glfw/src/window.c"
-				}, &[_][]const u8{"-g", "-std=c99", "-D_GLFW_X11"});
+				}, .flags = c_flags ++ &[_][]const u8{"-std=c99", "-D_GLFW_X11"}});
 				c_lib.linkSystemLibrary("x11");
 			//}
 			c_lib.linkSystemLibrary("GL");
@@ -73,28 +74,28 @@ pub fn build(b: *std.build.Builder) !void {
 			"src/common/pa_ringbuffer.c",
 			"src/common/pa_stream.c",
 			"src/common/pa_trace.c",
-		}, &[_][]const u8{"-g", "-O3"});
+		}, c_flags);
 		if(target.getOsTag() == .windows) {
 			// windows:
-			addPackageCSourceFiles(c_lib, portaudio, &[_][]const u8 {"src/os/win/pa_win_coinitialize.c", "src/os/win/pa_win_hostapis.c", "src/os/win/pa_win_util.c", "src/os/win/pa_win_waveformat.c", "src/os/win/pa_win_wdmks_utils.c", "src/os/win/pa_x86_plain_converters.c", }, &[_][]const u8{"-g", "-O3", "-DPA_USE_WASAPI"});
+			addPackageCSourceFiles(c_lib, portaudio, &[_][]const u8 {"src/os/win/pa_win_coinitialize.c", "src/os/win/pa_win_hostapis.c", "src/os/win/pa_win_util.c", "src/os/win/pa_win_waveformat.c", "src/os/win/pa_win_wdmks_utils.c", "src/os/win/pa_x86_plain_converters.c", }, c_flags ++ &[_][]const u8{"-DPA_USE_WASAPI"});
 			c_lib.addIncludePath(portaudio.path("src/os/win"));
 			c_lib.linkSystemLibrary("ole32");
 			c_lib.linkSystemLibrary("winmm");
 			c_lib.linkSystemLibrary("uuid");
 			// WASAPI:
-			addPackageCSourceFiles(c_lib, portaudio, &[_][]const u8 {"src/hostapi/wasapi/pa_win_wasapi.c"}, &[_][]const u8{"-g", "-O3"});
+			addPackageCSourceFiles(c_lib, portaudio, &[_][]const u8 {"src/hostapi/wasapi/pa_win_wasapi.c"}, c_flags);
 		} else if(target.getOsTag() == .linux) {
 			// unix:
-			addPackageCSourceFiles(c_lib, portaudio, &[_][]const u8 {"src/os/unix/pa_unix_hostapis.c", "src/os/unix/pa_unix_util.c"}, &[_][]const u8{"-g", "-O3", "-DPA_USE_ALSA"});
+			addPackageCSourceFiles(c_lib, portaudio, &[_][]const u8 {"src/os/unix/pa_unix_hostapis.c", "src/os/unix/pa_unix_util.c"}, c_flags ++ &[_][]const u8{"-DPA_USE_ALSA"});
 			c_lib.addIncludePath(portaudio.path("src/os/unix"));
 			// ALSA:
-			addPackageCSourceFiles(c_lib, portaudio, &[_][]const u8 {"src/hostapi/alsa/pa_linux_alsa.c"}, &[_][]const u8{"-g", "-O3"});
+			addPackageCSourceFiles(c_lib, portaudio, &[_][]const u8 {"src/hostapi/alsa/pa_linux_alsa.c"}, c_flags);
 			c_lib.linkSystemLibrary("asound");
 		} else {
 			std.log.err("Unsupported target: {}\n", .{ target.getOsTag() });
 		}
 	}
-	c_lib.addCSourceFiles(&[_][]const u8{"lib/glad.c", "lib/stb_image.c", "lib/stb_image_write.c", "lib/stb_vorbis.c"}, &[_][]const u8{"-g", "-O3"});
+	c_lib.addCSourceFiles(.{.files = &[_][]const u8{"lib/glad.c", "lib/stb_image.c", "lib/stb_image_write.c", "lib/stb_vorbis.c"}, .flags = c_flags});
 	exe.addAnonymousModule("gui", .{.source_file = .{.path = "src/gui/gui.zig"}});
 	exe.addAnonymousModule("server", .{.source_file = .{.path = "src/server/server.zig"}});
 	

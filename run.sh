@@ -1,6 +1,6 @@
 #!/bin/bash
 
-version=zig-linux-x86_64-0.12.0-dev.706+62a0fbdae
+version=zig-linux-x86_64-0.12.0-dev.983+78f2ae7f2
 
 mkdir -p compiler/zig
 touch compiler/version.txt

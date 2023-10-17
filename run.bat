@@ -1,6 +1,6 @@
 @echo off
 
-set version=zig-windows-x86_64-0.12.0-dev.706+62a0fbdae
+set version=zig-windows-x86_64-0.12.0-dev.983+78f2ae7f2
 
 if not exist compiler mkdir compiler
 if not exist compiler\version.txt copy NUL compiler\version.txt >NUL

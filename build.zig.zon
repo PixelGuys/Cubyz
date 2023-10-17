@@ -1,10 +1,11 @@
 .{
 	.name = "Cubyzig",
 	.version = "0.0.0",
+	.paths = .{""},
 	.dependencies = .{
 		.mach_freetype = .{
-			.url = "https://pkg.machengine.org/mach-freetype/7dd97f088455fddda6832851082f68670b36c426.tar.gz",
-			.hash = "12209950df2c606a03f5246dce72b3338ffd7314221b20e55df38f8b76676cb9ba13",
+			.url = "https://pkg.machengine.org/mach-freetype/f152278c6ccc6dcf6dcf4308bbe027a7598ffe63.tar.gz",
+			.hash = "1220e0de43cacb583b8f9efddcbe359398cfca17a39e265b56c8f2a10314eb8f7a5f"
 		},
 		.portaudio = .{
 			.url = "https://github.com/PortAudio/portaudio/archive/refs/tags/v19.7.0.tar.gz",
