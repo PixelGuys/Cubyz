@@ -1388,8 +1388,7 @@ pub const TextureArray = struct {
 		c.glBindTexture(c.GL_TEXTURE_2D_ARRAY, self.textureID);
 	}
 
-	fn lodColorInterpolation(colors: [4]Color, isTransparent: bool) Color {
-		_ = isTransparent;
+	fn lodColorInterpolation(colors: [4]Color) Color {
 		var r: [4]f32 = undefined;
 		var g: [4]f32 = undefined;
 		var b: [4]f32 = undefined;
@@ -1454,15 +1453,6 @@ pub const TextureArray = struct {
 		}
 		
 		for(images, 0..) |image, i| {
-			// Check if the image contains non-binary alpha values, which makes it transparent.
-			var isTransparent = false;
-			for(image.imageData) |color| {
-				if(color.a != 0 or color.a != 255) {
-					isTransparent = true;
-					break;
-				}
-			}
-
 			// Fill the buffer using nearest sampling. Probably not the best solutions for all textures, but that's what happens when someone doesn't use power of 2 textures...
 			for(0..maxWidth) |x| {
 				for(0..maxHeight) |y| {
@@ -1488,7 +1478,7 @@ pub const TextureArray = struct {
 								lodBuffer[lod-1][index2 + curWidth*2],
 								lodBuffer[lod-1][index2 + curWidth*2 + 1],
 							};
-							lodBuffer[lod][index] = lodColorInterpolation(colors, isTransparent);
+							lodBuffer[lod][index] = lodColorInterpolation(colors);
 						}
 					}
 				}

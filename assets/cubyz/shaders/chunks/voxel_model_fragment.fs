@@ -1,4 +1,4 @@
-#version 430
+#version 450
 
 in vec3 mvVertexPos;
 flat in int blockType;
@@ -90,17 +90,8 @@ RayMarchResult rayMarching(vec3 startPosition, vec3 direction) { // TODO: Mipmap
 	ivec3 minPos = voxelModels[modelIndex].minimum.xyz;
 	ivec3 maxPos = voxelModels[modelIndex].maximum.xyz;
 
-	ivec3 compare = ivec3 (
-		(direction.x < 0) ? minPos.x : -maxPos.x,
-		(direction.y < 0) ? minPos.y : -maxPos.y,
-		(direction.z < 0) ? minPos.z : -maxPos.z
-	);
-
-	ivec3 inversionMasks = ivec3 (
-		(direction.x < 0) ? 0 : ~0,
-		(direction.y < 0) ? 0 : ~0,
-		(direction.z < 0) ? 0 : ~0
-	);
+	ivec3 compare = mix(-maxPos, minPos, lessThan(direction, vec3(0)));
+	ivec3 inversionMasks = mix(ivec3(~0), ivec3(0), lessThan(direction, vec3(0)));
 
 	int lastNormal = faceNormal;
 	int block = getVoxel(voxelPos);
@@ -132,15 +123,15 @@ RayMarchResult rayMarching(vec3 startPosition, vec3 direction) { // TODO: Mipmap
 	if(total_tMax != 0) {
 		if(tMax.x > tMax.y) {
 			if(tMax.x > tMax.z) {
-				lastNormal = 2 + (1 + int(step.x))/2;
+				lastNormal = 2 + int(step.x == 1);
 			} else {
-				lastNormal = 4 + (1 + int(step.z))/2;
+				lastNormal = 4 + int(step.z == 1);
 			}
 		} else {
 			if(tMax.y > tMax.z) {
-				lastNormal = 0 + (1 + int(step.y))/2;
+				lastNormal = 0 + int(step.y == 1);
 			} else {
-				lastNormal = 4 + (1 + int(step.z))/2;
+				lastNormal = 4 + int(step.z == 1);
 			}
 		}
 	}

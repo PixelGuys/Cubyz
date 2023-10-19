@@ -268,8 +268,7 @@ const STUN = struct {
 		var seed = [_]u8 {0} ** std.rand.DefaultCsprng.secret_seed_length;
 		std.mem.writeIntNative(i128, seed[0..16], std.time.nanoTimestamp()); // Not the best seed, but it's not that important.
 		var random = std.rand.DefaultCsprng.init(seed);
-		for(0..16) |attempt| {
-			_ = attempt;
+		for(0..16) |_| {
 			// Choose a somewhat random server, so we faster notice if any one of them stopped working.
 			const server = ipServerList[random.random().intRangeAtMost(usize, 0, ipServerList.len-1)];
 			var data = [_]u8 {
