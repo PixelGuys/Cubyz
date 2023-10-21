@@ -3,8 +3,19 @@
 
 const std = @import("std");
 
-const freetype = @import("freetype");
-const harfbuzz = @import("harfbuzz");
+pub const hbft = @cImport({
+	@cInclude("freetype/ftadvanc.h");
+	@cInclude("freetype/ftbbox.h");
+	@cInclude("freetype/ftbitmap.h");
+	@cInclude("freetype/ftcolor.h");
+	@cInclude("freetype/ftlcdfil.h");
+	@cInclude("freetype/ftsizes.h");
+	@cInclude("freetype/ftstroke.h");
+	@cInclude("freetype/fttrigon.h");
+	@cInclude("freetype/ftsynth.h");
+	@cInclude("hb.h");
+	@cInclude("hb-ft.h");
+});
 
 const vec =  @import("vec.zig");
 const Mat4f = vec.Mat4f;
@@ -435,7 +446,7 @@ pub const TextBuffer = struct {
 
 	alignment: Alignment,
 	width: f32,
-	buffer: harfbuzz.Buffer,
+	buffer: ?*hbft.hb_buffer_t,
 	glyphs: []GlyphData,
 	lines: std.ArrayList(Line),
 	lineBreaks: std.ArrayList(LineBreak),
@@ -572,15 +583,22 @@ pub const TextBuffer = struct {
 		}
 
 		// Let harfbuzz do its thing:
-		var buffer = harfbuzz.Buffer.init() orelse return error.OutOfMemory;
-		defer buffer.deinit();
-		buffer.addUTF32(parser.parsedText.items, 0, null);
-		buffer.setDirection(.ltr);
-		buffer.setScript(.common);
-		buffer.setLanguage(harfbuzz.Language.getDefault());
-		TextRendering.harfbuzzFont.shape(buffer, null);
-		const glyphInfos = buffer.getGlyphInfos();
-		const glyphPositions = buffer.getGlyphPositions().?;
+		var buffer = hbft.hb_buffer_create() orelse return error.OutOfMemory;
+		defer hbft.hb_buffer_destroy(buffer);
+		hbft.hb_buffer_add_utf32(buffer, parser.parsedText.items.ptr, @intCast(parser.parsedText.items.len), 0, @intCast(parser.parsedText.items.len));
+		hbft.hb_buffer_set_direction(buffer, hbft.HB_DIRECTION_LTR);
+		hbft.hb_buffer_set_script(buffer, hbft.HB_SCRIPT_COMMON);
+		hbft.hb_buffer_set_language(buffer, hbft.hb_language_get_default());
+		hbft.hb_shape(TextRendering.harfbuzzFont, buffer, null, 0);
+		var glyphInfos: []hbft.hb_glyph_info_t = undefined;
+		var glyphPositions: []hbft.hb_glyph_position_t = undefined;
+		{
+			var len: c_uint = 0;
+			glyphInfos.ptr = hbft.hb_buffer_get_glyph_infos(buffer, &len).?;
+			glyphPositions.ptr = hbft.hb_buffer_get_glyph_positions(buffer, &len).?;
+			glyphInfos.len = len;
+			glyphPositions.len = len;
+		}
 
 		// Guess the text index from the given cluster indices. Only works if the number of glyphs and the number of characters in a cluster is the same.
 		var textIndexGuess = try stackFallbackAllocator.alloc(u32, glyphInfos.len);
@@ -893,27 +911,35 @@ const TextRendering = struct {
 		alpha: c_int,
 	} = undefined;
 
-	var freetypeLib: freetype.Library = undefined;
-	var freetypeFace: freetype.Face = undefined;
-	var harfbuzzFace: harfbuzz.Face = undefined;
-	var harfbuzzFont: harfbuzz.Font = undefined;
+	var freetypeLib: hbft.FT_Library = undefined;
+	var freetypeFace: hbft.FT_Face = undefined;
+	var harfbuzzFace: ?*hbft.hb_face_t = undefined;
+	var harfbuzzFont: ?*hbft.hb_font_t = undefined;
 	var glyphMapping: std.ArrayList(u31) = undefined;
 	var glyphData: std.ArrayList(Glyph) = undefined;
 	var glyphTexture: [2]c_uint = undefined;
 	var textureWidth: i32 = 1024;
 	const textureHeight: i32 = 16;
 	var textureOffset: i32 = 0;
+
+	fn ftError(errorCode: hbft.FT_Error) !void {
+		if(errorCode == 0) return;
+		const errorString = hbft.FT_Error_String(errorCode);
+		std.log.err("Got freetype error {s}", .{errorString});
+		return error.freetype;
+	}
+
 	fn init() !void {
 		shader = try Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Text.vs", "assets/cubyz/shaders/graphics/Text.fs", &uniforms);
 		shader.bind();
 		c.glUniform1i(uniforms.texture_sampler, 0);
 		c.glUniform1f(uniforms.alpha, 1.0);
 		c.glUniform2f(uniforms.fontSize, @floatFromInt(textureWidth), @floatFromInt(textureHeight));
-		freetypeLib = try freetype.Library.init();
-		freetypeFace = try freetypeLib.createFace("assets/cubyz/fonts/unscii-16-full.ttf", 0);
-		try freetypeFace.setPixelSizes(0, textureHeight);
-		harfbuzzFace = harfbuzz.Face.fromFreetypeFace(freetypeFace);
-		harfbuzzFont = harfbuzz.Font.init(harfbuzzFace);
+		try ftError(hbft.FT_Init_FreeType(&freetypeLib));
+		try ftError(hbft.FT_New_Face(freetypeLib, "assets/cubyz/fonts/unscii-16-full.ttf", 0, &freetypeFace));
+		try ftError(hbft.FT_Set_Pixel_Sizes(freetypeFace, 0, textureHeight));
+		harfbuzzFace = hbft.hb_ft_face_create_referenced(freetypeFace);
+		harfbuzzFont = hbft.hb_font_create(harfbuzzFace);
 
 		glyphMapping = std.ArrayList(u31).init(main.globalAllocator);
 		glyphData = std.ArrayList(Glyph).init(main.globalAllocator);
@@ -934,11 +960,11 @@ const TextRendering = struct {
 
 	fn deinit() void {
 		shader.deinit();
-		freetypeLib.deinit();
+		ftError(hbft.FT_Done_FreeType(freetypeLib)) catch {};
 		glyphMapping.deinit();
 		glyphData.deinit();
 		c.glDeleteTextures(2, &glyphTexture);
-		harfbuzzFont.deinit();
+		hbft.hb_font_destroy(harfbuzzFont);
 	}
 
 	fn resizeTexture(newWidth: i32) !void {
@@ -958,15 +984,15 @@ const TextRendering = struct {
 		c.glUniform2f(uniforms.fontSize, @floatFromInt(textureWidth), @floatFromInt(textureHeight));
 	}
 
-	fn uploadData(bitmap: freetype.Bitmap) !void {
-		const width: i32 = @bitCast(bitmap.width());
-		const height: i32 = @bitCast(bitmap.rows());
-		const buffer = bitmap.buffer() orelse return;
+	fn uploadData(bitmap: hbft.FT_Bitmap) !void {
+		const width: i32 = @bitCast(bitmap.width);
+		const height: i32 = @bitCast(bitmap.rows);
+		const buffer = bitmap.buffer orelse return;
 		if(textureOffset + width > textureWidth) {
 			try resizeTexture(textureWidth*2);
 		}
 		c.glPixelStorei(c.GL_UNPACK_ALIGNMENT, 1);
-		c.glTexSubImage2D(c.GL_TEXTURE_2D, 0, textureOffset, 0, width, height, c.GL_RED, c.GL_UNSIGNED_BYTE, buffer.ptr);
+		c.glTexSubImage2D(c.GL_TEXTURE_2D, 0, textureOffset, 0, width, height, c.GL_RED, c.GL_UNSIGNED_BYTE, buffer);
 		textureOffset += width;
 	}
 
@@ -975,17 +1001,17 @@ const TextRendering = struct {
 			try glyphMapping.appendNTimes(0, index - glyphMapping.items.len + 1);
 		}
 		if(glyphMapping.items[index] == 0) {// glyph was not initialized yet.
-			try freetypeFace.loadGlyph(index, freetype.LoadFlags{.render = true});
-			const glyph = freetypeFace.glyph();
-			const bitmap = glyph.bitmap();
-			const width = bitmap.width();
-			const height = bitmap.rows();
+			try ftError(hbft.FT_Load_Glyph(freetypeFace, index, hbft.FT_LOAD_RENDER));
+			const glyph = freetypeFace.*.glyph;
+			const bitmap = glyph.*.bitmap;
+			const width = bitmap.width;
+			const height = bitmap.rows;
 			glyphMapping.items[index] = @intCast(glyphData.items.len);
 			(try glyphData.addOne()).* = Glyph {
 				.textureX = textureOffset,
 				.size = Vec2i{@intCast(width), @intCast(height)},
-				.bearing = Vec2i{glyph.bitmapLeft(), 16 - glyph.bitmapTop()},
-				.advance = @as(f32, @floatFromInt(glyph.advance().x))/@as(f32, 1 << 6),
+				.bearing = Vec2i{glyph.*.bitmap_left, 16 - glyph.*.bitmap_top},
+				.advance = @as(f32, @floatFromInt(glyph.*.advance.x))/@as(f32, 1 << 6),
 			};
 			try uploadData(bitmap);
 		}

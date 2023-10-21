@@ -3,9 +3,13 @@
 	.version = "0.0.0",
 	.paths = .{""},
 	.dependencies = .{
-		.mach_freetype = .{
-			.url = "https://pkg.machengine.org/mach-freetype/f152278c6ccc6dcf6dcf4308bbe027a7598ffe63.tar.gz",
-			.hash = "1220e0de43cacb583b8f9efddcbe359398cfca17a39e265b56c8f2a10314eb8f7a5f"
+		.harfbuzz = .{
+			.url = "https://github.com/harfbuzz/harfbuzz/archive/refs/tags/8.2.2.tar.gz",
+			.hash = "1220d27d0e3ddd47705cbe1505076058cb41649336d35ea51369ec8f042c35991e0f",
+		},
+		.freetype = .{
+			.url = "https://github.com/freetype/freetype/archive/refs/tags/VER-2-13-2.tar.gz",
+			.hash = "1220b81f6ecfb3fd222f76cf9106fecfa6554ab07ec7fdc4124b9bb063ae2adf969d",
 		},
 		.portaudio = .{
 			.url = "https://github.com/PortAudio/portaudio/archive/refs/tags/v19.7.0.tar.gz",
