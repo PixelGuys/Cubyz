@@ -3,17 +3,9 @@
 	.version = "0.0.0",
 	.paths = .{""},
 	.dependencies = .{
-		.harfbuzz = .{
-			.url = "https://github.com/harfbuzz/harfbuzz/archive/refs/tags/8.2.2.tar.gz",
-			.hash = "1220d27d0e3ddd47705cbe1505076058cb41649336d35ea51369ec8f042c35991e0f",
+		.deps = .{
+			.hash = "1220125d685df0987d26d64548e4a158d925bbb416670087dc46129955d4044b9f0a",
+			.url = "https://github.com/PixelGuys/Cubyz-libs/releases/download/1/zig-out.tar.gz",
 		},
-		.freetype = .{
-			.url = "https://github.com/freetype/freetype/archive/refs/tags/VER-2-13-2.tar.gz",
-			.hash = "1220b81f6ecfb3fd222f76cf9106fecfa6554ab07ec7fdc4124b9bb063ae2adf969d",
-		},
-		.portaudio = .{
-			.url = "https://github.com/PortAudio/portaudio/archive/refs/tags/v19.7.0.tar.gz",
-			.hash = "1220a96e42d87ae966106483e3351919c95b7c8129942c355fd173b38b2e7a0ae0a0",
-		}
 	},
 }
