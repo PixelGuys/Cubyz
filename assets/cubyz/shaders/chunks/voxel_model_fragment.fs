@@ -7,6 +7,8 @@ flat in int modelIndex;
 flat in int isBackFace;
 flat in int ditherSeed;
 // For raymarching:
+flat in ivec3 minPos;
+flat in ivec3 maxPos;
 in vec3 startPosition;
 in vec3 direction;
 
@@ -59,6 +61,7 @@ const vec3[6] normals = vec3[6](
 );
 
 int getVoxel(ivec3 voxelPos) {
+	voxelPos &= 15;
 	int voxelIndex = (voxelPos.x << 8) | (voxelPos.y << 4) | (voxelPos.z);
 	int shift = 4*(voxelIndex & 7);
 	int arrayIndex = voxelIndex >> 3;
@@ -86,9 +89,6 @@ RayMarchResult rayMarching(vec3 startPosition, vec3 direction) { // TODO: Mipmap
 	if(direction.z == 0) tMax.z = 1.0/0.0;
 	
 	ivec3 voxelPos = ivec3(floor(startPosition));
-
-	ivec3 minPos = voxelModels[modelIndex].minimum.xyz;
-	ivec3 maxPos = voxelModels[modelIndex].maximum.xyz;
 
 	ivec3 compare = mix(-maxPos, minPos, lessThan(direction, vec3(0)));
 	ivec3 inversionMasks = mix(ivec3(~0), ivec3(0), lessThan(direction, vec3(0)));
@@ -137,7 +137,7 @@ RayMarchResult rayMarching(vec3 startPosition, vec3 direction) { // TODO: Mipmap
 	}
 	int textureDir = -block;
 	if(textureDir == 6) textureDir = lastNormal;
-	return RayMarchResult(true, lastNormal, textureDir, voxelPos);
+	return RayMarchResult(true, lastNormal, textureDir, voxelPos & 15);
 }
 
 ivec2 getTextureCoords(ivec3 voxelPosition, int textureDir) {
@@ -214,7 +214,7 @@ void main() {
 	if(!passDitherTest(interp)) {
 		result = rayMarching(startPosition, direction);
 	} else {
-		result = RayMarchResult(true, faceNormal, faceNormal, ivec3(startPosition)); // At some point it doesn't make sense to even draw the model.
+		result = RayMarchResult(true, faceNormal, faceNormal, ivec3(startPosition) & 15); // At some point it doesn't make sense to even draw the model.
 	}
 	if(!result.hitAThing) discard;
 	int textureIndex = textureData[blockType].textureIndices[result.textureDir];

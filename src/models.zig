@@ -18,25 +18,25 @@ const VoxelModel = extern struct {
 	max: Vec3i,
 	bitPackedData: [modelSize*modelSize*modelSize/8]u32,
 
-	pub fn init(self: *VoxelModel, distributionFunction: *const fn(u16, u16, u16) ?u4) void {
+	pub fn init(self: *VoxelModel, distributionFunction: *const fn(u4, u4, u4) ?u4) void {
 		if(@sizeOf(VoxelModel) != 16 + 16 + modelSize*modelSize*modelSize*4/8) @compileError("Expected Vec3i to have 16 byte alignment.");
 		@memset(&self.bitPackedData, 0);
 		self.min = @splat(16);
 		self.max = @splat(0);
-		var x: u16 = 0;
-		while(x < modelSize): (x += 1) {
-			var y: u16 = 0;
-			while(y < modelSize): (y += 1) {
-				var z: u16 = 0;
-				while(z < modelSize): (z += 1) {
-					var isSolid = distributionFunction(x, y, z);
-					var voxelIndex = (x << 2*modelShift) + (y << modelShift) + z;
-					var shift = 4*@as(u5, @intCast(voxelIndex & 7));
-					var arrayIndex = voxelIndex >> 3;
+		for(0..modelSize) |_x| {
+			const x: u4 = @intCast(_x);
+			for(0..modelSize) |_y| {
+				const y: u4 = @intCast(_y);
+				for(0..modelSize) |_z| {
+					const z: u4 = @intCast(_z);
+					const isSolid = distributionFunction(x, y, z);
+					const voxelIndex = (_x << 2*modelShift) + (_y << modelShift) + _z;
+					const shift = 4*@as(u5, @intCast(voxelIndex & 7));
+					const arrayIndex = voxelIndex >> 3;
 					if(isSolid) |texture| {
 						std.debug.assert(texture <= 6);
 						self.min = @min(self.min, Vec3i{x, y, z});
-						self.max = @max(self.max, Vec3i{x+1, y+1, z+1});
+						self.max = @max(self.max, Vec3i{x, y, z});
 						self.bitPackedData[arrayIndex] |= @as(u32, 6 - texture) << shift;
 					} else {
 						self.bitPackedData[arrayIndex] |= @as(u32, 7) << shift;
@@ -44,47 +44,41 @@ const VoxelModel = extern struct {
 				}
 			}
 		}
+		self.max += @splat(1);
 		// TODO: Use floodfill for this.
 		var i: u32 = 7;
 		while(i < 14) : (i += 1) {
-			x = 0;
-			while(x < modelSize): (x += 1) {
-				var y: u16 = 0;
-				while(y < modelSize): (y += 1) {
-					var z: u16 = 0;
+			for(0..modelSize) |_x| {
+				const x: u4 = @intCast(_x);
+				for(0..modelSize) |_y| {
+					const y: u4 = @intCast(_y);
 					outer:
-					while(z < modelSize): (z += 1) {
-						var voxelIndex = (x << 2*modelShift) + (y << modelShift) + z;
-						var shift = 4*@as(u5, @intCast(voxelIndex & 7));
-						var arrayIndex = voxelIndex >> 3;
-						var data = self.bitPackedData[arrayIndex]>>shift & 15;
+					for(0..modelSize) |_z| {
+						const z: u4 = @intCast(_z);
+						const voxelIndex = (_x << 2*modelShift) + (_y << modelShift) + _z;
+						const shift = 4*@as(u5, @intCast(voxelIndex & 7));
+						const arrayIndex = voxelIndex >> 3;
+						const data = self.bitPackedData[arrayIndex]>>shift & 15;
 						if(data <= i) continue;
 						var dx: u2 = 0;
 						while(dx < 3) : (dx += 1) {
-							if(dx == 0 and x == 0) continue;
-							if(dx + x - 1 >= 16) continue;
 							var dy: u2 = 0;
 							while(dy < 3) : (dy += 1) {
-								if(dy == 0 and y == 0) continue;
-								if(dy + y - 1 >= 16) continue;
 								var dz: u2 = 0;
 								while(dz < 3) : (dz += 1) {
-									if(dz == 0 and z == 0) continue;
-									if(dz + z - 1 >= 16) continue;
-									var nx = x + dx - 1;
-									var ny = y + dy - 1;
-									var nz = z + dz - 1;
-									var neighborVoxelIndex = (nx << 2*modelShift) + (ny << modelShift) + nz;
-									var neighborShift = 4*@as(u5, @intCast(neighborVoxelIndex & 7));
-									var neighborArrayIndex = neighborVoxelIndex >> 3;
-									var neighborData = self.bitPackedData[neighborArrayIndex]>>neighborShift & 15;
+									const nx = x +% dx -% 1;
+									const ny = y +% dy -% 1;
+									const nz = z +% dz -% 1;
+									const neighborVoxelIndex = (@as(usize, nx) << 2*modelShift) + (@as(usize, ny) << modelShift) + @as(usize, nz);
+									const neighborShift = 4*@as(u5, @intCast(neighborVoxelIndex & 7));
+									const neighborArrayIndex = neighborVoxelIndex >> 3;
+									const neighborData = self.bitPackedData[neighborArrayIndex]>>neighborShift & 15;
 									if(neighborData < data) continue :outer;
 								}
 							}
 						}
-						data += 1;
 						self.bitPackedData[arrayIndex] &= ~(@as(u32, 15) << shift);
-						self.bitPackedData[arrayIndex] |= @as(u32, data) << shift;
+						self.bitPackedData[arrayIndex] |= @as(u32, data + 1) << shift;
 					}
 				}
 			}
@@ -92,12 +86,12 @@ const VoxelModel = extern struct {
 	}
 };
 
-fn cube(_: u16, _: u16, _: u16) ?u4 {
+fn cube(_: u4, _: u4, _: u4) ?u4 {
 	return 6;
 }
 
 const Fence = struct {
-	fn fence0(_x: u16, _y: u16, _z: u16) ?u4 {
+	fn fence0(_x: u4, _y: u4, _z: u4) ?u4 {
 		var x = @max(@as(i32, _x)-8, -@as(i32, _x)+7);
 		var y = @max(@as(i32, _y)-8, -@as(i32, _y)+7);
 		var z = @max(@as(i32, _z)-8, -@as(i32, _z)+7);
@@ -106,7 +100,7 @@ const Fence = struct {
 		return null;
 	}
 
-	fn fence1(_x: u16, _y: u16, _z: u16) ?u4 {
+	fn fence1(_x: u4, _y: u4, _z: u4) ?u4 {
 		var x = @max(@as(i32, _x)-8, -@as(i32, _x)+7);
 		var y = @max(@as(i32, _y)-8, -@as(i32, _y)+7);
 		var z = @max(@as(i32, _z)-8, -@as(i32, _z)+7);
@@ -117,7 +111,7 @@ const Fence = struct {
 		return null;
 	}
 
-	fn fence2_neighbor(_x: u16, _y: u16, _z: u16) ?u4 {
+	fn fence2_neighbor(_x: u4, _y: u4, _z: u4) ?u4 {
 		var x = @max(@as(i32, _x)-8, -@as(i32, _x)+7);
 		var y = @max(@as(i32, _y)-8, -@as(i32, _y)+7);
 		var z = @max(@as(i32, _z)-8, -@as(i32, _z)+7);
@@ -129,7 +123,7 @@ const Fence = struct {
 		return null;
 	}
 
-	fn fence2_oppose(_x: u16, _y: u16, _z: u16) ?u4 {
+	fn fence2_oppose(_x: u4, _y: u4, _z: u4) ?u4 {
 		var x = @max(@as(i32, _x)-8, -@as(i32, _x)+7);
 		var y = @max(@as(i32, _y)-8, -@as(i32, _y)+7);
 		var z = @max(@as(i32, _z)-8, -@as(i32, _z)+7);
@@ -140,7 +134,7 @@ const Fence = struct {
 		return null;
 	}
 
-	fn fence3(_x: u16, _y: u16, _z: u16) ?u4 {
+	fn fence3(_x: u4, _y: u4, _z: u4) ?u4 {
 		var x = @max(@as(i32, _x)-8, -@as(i32, _x)+7);
 		var y = @max(@as(i32, _y)-8, -@as(i32, _y)+7);
 		var z = @max(@as(i32, _z)-8, -@as(i32, _z)+7);
@@ -152,7 +146,7 @@ const Fence = struct {
 		return null;
 	}
 
-	fn fence4(_x: u16, _y: u16, _z: u16) ?u4 {
+	fn fence4(_x: u4, _y: u4, _z: u4) ?u4 {
 		var x = @max(@as(i32, _x)-8, -@as(i32, _x)+7);
 		var y = @max(@as(i32, _y)-8, -@as(i32, _y)+7);
 		var z = @max(@as(i32, _z)-8, -@as(i32, _z)+7);
@@ -164,7 +158,7 @@ const Fence = struct {
 	}
 };
 
-fn log(_x: u16, _y: u16, _z: u16) ?u4 {
+fn log(_x: u4, _y: u4, _z: u4) ?u4 {
 	var x = @as(f32, @floatFromInt(_x)) - 7.5;
 	var y = @as(f32, @floatFromInt(_y)) - 7.5;
 	var z = @as(f32, @floatFromInt(_z)) - 7.5;
@@ -184,7 +178,7 @@ fn log(_x: u16, _y: u16, _z: u16) ?u4 {
 	return null;
 }
 
-fn octahedron(_x: u16, _y: u16, _z: u16) ?u4 {
+fn octahedron(_x: u4, _y: u4, _z: u4) ?u4 {
 	var x = _x;
 	var y = _y;
 	var z = _z;

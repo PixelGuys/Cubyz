@@ -7,6 +7,8 @@ flat out int faceNormal;
 flat out int isBackFace;
 flat out int ditherSeed;
 // For raymarching:
+flat out ivec3 minPos;
+flat out ivec3 maxPos;
 out vec3 startPosition;
 out vec3 direction;
 
@@ -149,20 +151,24 @@ void main() {
 	position *= 16;
 	position -= ivec3(mirrorVector)*8 - 8;
 	position = ivec3(permutationMatrix*(position*mirrorVector));
+	position *= voxelSize;
 	ivec3 totalOffset = (ivec3(normals[oldNormal])+1)/2;
 	totalOffset += ivec3(equal(textureX[oldNormal], ivec3(-1))) + (vertexID>>1 & 1)*textureX[oldNormal];
 	totalOffset += ivec3(equal(textureY[oldNormal], ivec3(-1))) + (vertexID & 1)*textureY[oldNormal];
 	totalOffset = ivec3(permutationMatrix*(vec3(equal(mirrorVector, vec3(1)))*totalOffset + vec3(equal(mirrorVector, vec3(-1)))*(1 - totalOffset)));
 	ivec3 lowerBound = voxelModels[modelIndex].minimum.xyz;
 	ivec3 size = voxelModels[modelIndex].maximum.xyz - voxelModels[modelIndex].minimum.xyz;
+	size += (voxelSize - 1)*16;
+	minPos = lowerBound;
+	maxPos = lowerBound + size;
 	totalOffset = lowerBound + size*totalOffset;
-	position += totalOffset - 16*ivec3(normals[normal]);
+	position += totalOffset - 16*voxelSize*ivec3(normals[normal]);
 
 	startPosition = (totalOffset)*0.999;
 
-	direction = position.xyz/16.0 + permutationMatrix*(mirrorVector*modelPosition)/voxelSize;
+	direction = position.xyz/16.0 + permutationMatrix*(mirrorVector*modelPosition);
 
-	vec3 globalPosition = mirrorVector*(transpose(permutationMatrix)*position)*voxelSize/16.0 + modelPosition;
+	vec3 globalPosition = mirrorVector*(transpose(permutationMatrix)*position)/16.0 + modelPosition;
 
 	vec4 mvPos = viewMatrix*vec4(globalPosition, 1);
 	gl_Position = projectionMatrix*mvPos;
