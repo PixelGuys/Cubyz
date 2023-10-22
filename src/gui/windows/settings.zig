@@ -18,7 +18,7 @@ pub var window: GuiWindow = GuiWindow {
 const padding: f32 = 8;
 
 pub fn onOpen() Allocator.Error!void {
-	var list = try VerticalList.init(.{padding, 16 + padding}, 300, 16);
+	const list = try VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	try list.add(try Button.initText(.{0, 0}, 128, "Graphics", gui.openWindowCallback("graphics")));
 	try list.add(try Button.initText(.{0, 0}, 128, "Sound", gui.openWindowCallback("sound")));
 	try list.add(try Button.initText(.{0, 0}, 128, "Controls", gui.openWindowCallback("controls")));

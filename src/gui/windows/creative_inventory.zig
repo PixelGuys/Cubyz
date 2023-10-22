@@ -53,10 +53,10 @@ pub fn onOpen() Allocator.Error!void {
 		try items.append(Item{.baseItem = item.*});
 	}
 
-	var list = try VerticalList.init(.{padding, padding + 16}, 140, 0);
+	const list = try VerticalList.init(.{padding, padding + 16}, 140, 0);
 	var i: u32 = 0;
 	while(i < items.items.len) {
-		var row = try HorizontalList.init();
+		const row = try HorizontalList.init();
 		for(0..8) |_| {
 			if(i >= items.items.len) break;
 			const item = items.items[i];

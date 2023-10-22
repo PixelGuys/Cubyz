@@ -66,7 +66,7 @@ pub const CaveBiomeGenerator = struct {
 	var generatorRegistry: std.StringHashMapUnmanaged(CaveBiomeGenerator) = .{};
 
 	pub fn registerGenerator(comptime Generator: type) !void {
-		var self = CaveBiomeGenerator {
+		const self = CaveBiomeGenerator {
 			.init = &Generator.init,
 			.deinit = &Generator.deinit,
 			.generate = &Generator.generate,

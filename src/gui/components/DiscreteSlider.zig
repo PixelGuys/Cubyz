@@ -43,7 +43,7 @@ pub fn __deinit() void {
 }
 
 pub fn init(pos: Vec2f, width: f32, text: []const u8, comptime fmt: []const u8, valueList: anytype, initialValue: u16, callback: *const fn(u16) void) Allocator.Error!*DiscreteSlider {
-	var values = try main.globalAllocator.alloc([]const u8, valueList.len);
+	const values = try main.globalAllocator.alloc([]const u8, valueList.len);
 	var maxLen: usize = 0;
 	for(valueList, 0..) |value, i| {
 		values[i] = try std.fmt.allocPrint(main.globalAllocator, fmt, .{value});

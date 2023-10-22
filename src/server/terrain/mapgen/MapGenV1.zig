@@ -94,9 +94,9 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) Allocator.Error!vo
 			var updatedZ = wz + (zOffsetMap.get(x, z) - 0.5)*biomeSize*4;
 			var xBiome: i32 = @intFromFloat(@floor((updatedX - @as(f32, @floatFromInt(map.pos.wx)))/biomeSize));
 			var zBiome: i32 = @intFromFloat(@floor((updatedZ - @as(f32, @floatFromInt(map.pos.wz)))/biomeSize));
-			var relXBiome = (0.5 + updatedX - @as(f32, @floatFromInt(map.pos.wx +% xBiome*biomeSize)))/biomeSize;
+			const relXBiome = (0.5 + updatedX - @as(f32, @floatFromInt(map.pos.wx +% xBiome*biomeSize)))/biomeSize;
 			xBiome += offset;
-			var relZBiome = (0.5 + updatedZ - @as(f32, @floatFromInt(map.pos.wz +% zBiome*biomeSize)))/biomeSize;
+			const relZBiome = (0.5 + updatedZ - @as(f32, @floatFromInt(map.pos.wz +% zBiome*biomeSize)))/biomeSize;
 			zBiome += offset;
 			var closestBiome: *const terrain.biomes.Biome = undefined;
 			if(relXBiome < 0.5) {

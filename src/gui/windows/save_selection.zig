@@ -110,7 +110,7 @@ fn parseEscapedFolderName(name: []const u8) ![]const u8 {
 
 pub fn onOpen() Allocator.Error!void {
 	buttonNameArena = std.heap.ArenaAllocator.init(main.globalAllocator);
-	var list = try VerticalList.init(.{padding, 16 + padding}, 300, 8);
+	const list = try VerticalList.init(.{padding, 16 + padding}, 300, 8);
 	// TODO: try list.add(try Button.initText(.{0, 0}, 128, "Create World", gui.openWindowCallback("save_creation")));
 
 	var dir: std.fs.IterableDir = std.fs.cwd().makeOpenPathIterable("saves", .{}) catch |err| {
@@ -125,7 +125,7 @@ pub fn onOpen() Allocator.Error!void {
 		return;
 	}) |entry| {
 		if(entry.kind == .directory) {
-			var row = try HorizontalList.init();
+			const row = try HorizontalList.init();
 
 			const decodedName = try parseEscapedFolderName(entry.name);
 			defer main.threadAllocator.free(decodedName);

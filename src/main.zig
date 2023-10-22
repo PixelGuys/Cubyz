@@ -744,8 +744,8 @@ pub fn main() !void {
 			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
 		}
 		gui.windowlist.gpu_performance_measuring.stopQuery();
-		var newTime = std.time.nanoTimestamp();
-		var deltaTime = @as(f64, @floatFromInt(newTime -% lastTime))/1e9;
+		const newTime = std.time.nanoTimestamp();
+		const deltaTime = @as(f64, @floatFromInt(newTime -% lastTime))/1e9;
 		lastFrameTime.store(deltaTime, .Monotonic);
 		lastTime = newTime;
 		if(game.world != null) { // Update the game

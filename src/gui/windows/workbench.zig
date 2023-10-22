@@ -129,12 +129,12 @@ pub fn onOpen() Allocator.Error!void {
 	seed = @truncate(@as(u128, @bitCast(std.time.nanoTimestamp())));
 	@memset(&availableItems, null);
 	@memset(&craftingGrid, .{});
-	var list = try HorizontalList.init();
+	const list = try HorizontalList.init();
 	{ // crafting grid
-		var grid = try VerticalList.init(.{0, 0}, 300, 0);
+		const grid = try VerticalList.init(.{0, 0}, 300, 0);
 		// Inventory:
 		for(0..5) |y| {
-			var row = try HorizontalList.init();
+			const row = try HorizontalList.init();
 			for(0..5) |x| {
 				const index = x + y*5;
 				const slot = try ItemSlot.init(.{0, 0}, craftingGrid[index], &vtable, index);

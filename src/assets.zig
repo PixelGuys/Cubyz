@@ -29,7 +29,7 @@ pub fn readAllJsonFilesInAddons(externalAllocator: Allocator, addons: std.ArrayL
 		while(try walker.next()) |entry| {
 			if(entry.kind == .file and std.ascii.endsWithIgnoreCase(entry.basename, ".json")) {
 				const folderName = addonName;
-				var id: []u8 = try externalAllocator.alloc(u8, folderName.len + 1 + entry.path.len - 5);
+				const id: []u8 = try externalAllocator.alloc(u8, folderName.len + 1 + entry.path.len - 5);
 				@memcpy(id[0..folderName.len], folderName);
 				id[folderName.len] = ':';
 				for(0..entry.path.len-5) |i| {
@@ -40,7 +40,7 @@ pub fn readAllJsonFilesInAddons(externalAllocator: Allocator, addons: std.ArrayL
 					}
 				}
 
-				var file = try dir.dir.openFile(entry.path, .{});
+				const file = try dir.dir.openFile(entry.path, .{});
 				defer file.close();
 				const string = try file.readToEndAlloc(main.threadAllocator, std.math.maxInt(usize));
 				defer main.threadAllocator.free(string);
@@ -63,7 +63,7 @@ pub fn readAllFilesInAddons(externalAllocator: Allocator, addons: std.ArrayList(
 
 		while(try walker.next()) |entry| {
 			if(entry.kind == .file) {
-				var file = try dir.dir.openFile(entry.path, .{});
+				const file = try dir.dir.openFile(entry.path, .{});
 				defer file.close();
 				const string = try file.readToEndAlloc(externalAllocator, std.math.maxInt(usize));
 				try output.append(string);
@@ -144,7 +144,7 @@ fn registerRecipesFromFile(file: []const u8) !void {
 pub const BlockPalette = struct {
 	palette: std.ArrayList([]const u8),
 	pub fn init(allocator: Allocator, json: JsonElement) !*BlockPalette {
-		var self = try allocator.create(BlockPalette);
+		const self = try allocator.create(BlockPalette);
 		self.* = BlockPalette {
 			.palette = std.ArrayList([]const u8).init(allocator),
 		};
@@ -152,7 +152,7 @@ pub const BlockPalette = struct {
 		if(json != .JsonObject or json.JsonObject.count() == 0) {
 			try self.palette.append(try allocator.dupe(u8, "cubyz:air"));
 		} else {
-			var palette = try main.threadAllocator.alloc(?[]const u8, json.JsonObject.count());
+			const palette = try main.threadAllocator.alloc(?[]const u8, json.JsonObject.count());
 			defer main.threadAllocator.free(palette);
 			for(palette) |*val| {
 				val.* = null;
@@ -174,7 +174,7 @@ pub const BlockPalette = struct {
 		for(self.palette.items) |item| {
 			self.palette.allocator.free(item);
 		}
-		var allocator = self.palette.allocator;
+		const allocator = self.palette.allocator;
 		self.palette.deinit();
 		allocator.destroy(self);
 	}
@@ -213,7 +213,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, palette: *BlockPalette) !void {
 	// blocks:
 	var block: u32 = 0;
 	for(palette.palette.items) |id| {
-		var nullValue = blocks.get(id);
+		const nullValue = blocks.get(id);
 		var json: JsonElement = undefined;
 		if(nullValue) |value| {
 			json = value;

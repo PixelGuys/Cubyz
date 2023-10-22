@@ -71,7 +71,7 @@ pub const ClimateMapGenerator = struct {
 	var generatorRegistry: std.StringHashMapUnmanaged(ClimateMapGenerator) = .{};
 
 	pub fn registerGenerator(comptime Generator: type) !void {
-		var self = ClimateMapGenerator {
+		const self = ClimateMapGenerator {
 			.init = &Generator.init,
 			.deinit = &Generator.deinit,
 			.generateMapFragment = &Generator.generateMapFragment,

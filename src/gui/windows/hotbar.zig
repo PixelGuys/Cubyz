@@ -79,7 +79,7 @@ const vtable = ItemSlot.VTable {
 };
 
 pub fn onOpen() Allocator.Error!void {
-	var list = try HorizontalList.init();
+	const list = try HorizontalList.init();
 	for(0..8) |i| {
 		itemSlots[i] = try ItemSlot.init(.{0, 0}, Player.inventory__SEND_CHANGES_TO_SERVER.items[i], &vtable, i);
 		try list.add(itemSlots[i]);

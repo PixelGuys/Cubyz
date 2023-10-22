@@ -97,7 +97,7 @@ const MusicLoadTask = struct {
 	};
 	
 	pub fn schedule(musicId: []const u8) !void {
-		var task = try main.globalAllocator.create(MusicLoadTask);
+		const task = try main.globalAllocator.create(MusicLoadTask);
 		task.* = MusicLoadTask {
 			.musicId = musicId,
 		};

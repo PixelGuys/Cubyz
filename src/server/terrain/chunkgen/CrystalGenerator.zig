@@ -121,7 +121,7 @@ fn considerCrystal(x: i32, y: i32, z: i32, chunk: *main.chunk.Chunk, seed: *u64,
 }
 
 fn considerCoordinates(x: i32, y: i32, z: i32, chunk: *main.chunk.Chunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView, seed: *u64) void {
-	var oldSeed = seed.*;
+	const oldSeed = seed.*;
 	const crystalSpawns = biomeMap.getBiomeAndSeed(x + main.chunk.chunkSize/2 - chunk.pos.wx, y + main.chunk.chunkSize/2 - chunk.pos.wy, z + main.chunk.chunkSize/2 - chunk.pos.wz, true, seed).crystals;
 	random.scrambleSeed(seed);
 	var differendColors: u32 = 1;

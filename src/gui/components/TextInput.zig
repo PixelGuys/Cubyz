@@ -384,7 +384,7 @@ pub fn inputCharacter(self: *TextInput, character: u21) !void {
 	if(self.cursor) |*cursor| {
 		self.deleteSelection();
 		var buf: [4]u8 = undefined;
-		var utf8 = buf[0..try std.unicode.utf8Encode(character, &buf)];
+		const utf8 = buf[0..try std.unicode.utf8Encode(character, &buf)];
 		try self.currentString.insertSlice(cursor.*, utf8);
 		try self.reloadText();
 		cursor.* += @intCast(utf8.len);
@@ -448,7 +448,7 @@ fn ensureCursorVisibility(self: *TextInput) void {
 		const diff = self.textSize[1] - (self.maxHeight - 2*border);
 		y -= diff*self.scrollBar.currentState;
 		if(self.cursor) |cursor| {
-			var cursorPos = y + self.textBuffer.indexToCursorPos(cursor)[1];
+			const cursorPos = y + self.textBuffer.indexToCursorPos(cursor)[1];
 			if(cursorPos < 0) {
 				self.scrollBar.currentState += cursorPos/diff;
 			} else if(cursorPos + 16 >= self.maxHeight - 2*border) {
@@ -480,7 +480,7 @@ pub fn render(self: *TextInput, mousePosition: Vec2f) !void {
 		self.cursor = self.textBuffer.mousePosToIndex(mousePosition - textPos - self.pos, self.currentString.items.len);
 	}
 	if(self.cursor) |cursor| {
-		var cursorPos = textPos + self.textBuffer.indexToCursorPos(cursor);
+		const cursorPos = textPos + self.textBuffer.indexToCursorPos(cursor);
 		if(self.selectionStart) |selectionStart| {
 			draw.setColor(0x440000ff);
 			try self.textBuffer.drawSelection(textPos, @min(selectionStart, cursor), @max(selectionStart, cursor));

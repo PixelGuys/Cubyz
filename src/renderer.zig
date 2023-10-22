@@ -114,7 +114,7 @@ pub fn updateViewport(width: u31, height: u31, fov: f32) void {
 }
 
 pub fn render(playerPosition: Vec3d) !void {
-	var startTime = std.time.milliTimestamp();
+	const startTime = std.time.milliTimestamp();
 //	TODO:
 //		if (Cubyz.player != null) {
 //			if (Cubyz.playerInc.x != 0 || Cubyz.playerInc.z != 0) { // while walking
@@ -144,7 +144,7 @@ pub fn render(playerPosition: Vec3d) !void {
 		ambient[0] = @max(0.1, world.ambientLight);
 		ambient[1] = @max(0.1, world.ambientLight);
 		ambient[2] = @max(0.1, world.ambientLight);
-		var skyColor = vec.xyz(world.clearColor);
+		const skyColor = vec.xyz(world.clearColor);
 		game.fog.color = skyColor;
 
 		try renderWorld(world, ambient, skyColor, playerPosition);
@@ -532,7 +532,7 @@ pub const MenuBackGround = struct {
 		const newTime = std.time.nanoTimestamp();
 		angle += @as(f32, @floatFromInt(newTime - lastTime))/2e10;
 		lastTime = newTime;
-		var viewMatrix = Mat4f.rotationY(angle);
+		const viewMatrix = Mat4f.rotationY(angle);
 		shader.bind();
 
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_FALSE, @ptrCast(&viewMatrix));
@@ -546,7 +546,7 @@ pub const MenuBackGround = struct {
 
 	pub fn takeBackgroundImage() !void {
 		const size: usize = 1024; // Use a power of 2 here, to reduce video memory waste.
-		var pixels: []u32 = try main.threadAllocator.alloc(u32, size*size);
+		const pixels: []u32 = try main.threadAllocator.alloc(u32, size*size);
 		defer main.threadAllocator.free(pixels);
 
 		// Change the viewport and the matrices to render 4 cube faces:
@@ -568,7 +568,7 @@ pub const MenuBackGround = struct {
 		const angles = [_]f32 {std.math.pi/2.0, std.math.pi, std.math.pi*3/2.0, std.math.pi*2};
 
 		// All 4 sides are stored in a single image.
-		var image = try graphics.Image.init(main.threadAllocator, 4*size, size);
+		const image = try graphics.Image.init(main.threadAllocator, 4*size, size);
 		defer image.deinit(main.threadAllocator);
 
 		for(0..4) |i| {
@@ -610,10 +610,10 @@ pub const Frustum = struct {
 	planes: [4]Plane, // Who cares about the near/far plane anyways?
 
 	pub fn init(cameraPos: Vec3f, rotationMatrix: Mat4f, fovY: f32, width: u31, height: u31) Frustum {
-		var invRotationMatrix = rotationMatrix.transpose();
-		var cameraDir = vec.xyz(invRotationMatrix.mulVec(Vec4f{0, 0, 1, 1}));
-		var cameraUp = vec.xyz(invRotationMatrix.mulVec(Vec4f{0, 1, 0, 1}));
-		var cameraRight = vec.xyz(invRotationMatrix.mulVec(Vec4f{1, 0, 0, 1}));
+		const invRotationMatrix = rotationMatrix.transpose();
+		const cameraDir = vec.xyz(invRotationMatrix.mulVec(Vec4f{0, 0, 1, 1}));
+		const cameraUp = vec.xyz(invRotationMatrix.mulVec(Vec4f{0, 1, 0, 1}));
+		const cameraRight = vec.xyz(invRotationMatrix.mulVec(Vec4f{1, 0, 0, 1}));
 
 		const halfVSide = std.math.tan(std.math.degreesToRadians(f32, fovY)*0.5);
 		const halfHSide = halfVSide*@as(f32, @floatFromInt(width))/@as(f32, @floatFromInt(height));
@@ -656,7 +656,7 @@ pub const MeshSelection = struct {
 	pub fn init() !void {
 		shader = try Shader.initAndGetUniforms("assets/cubyz/shaders/block_selection_vertex.vs", "assets/cubyz/shaders/block_selection_fragment.fs", &uniforms);
 
-		var rawData = [_]f32 {
+		const rawData = [_]f32 {
 			0, 0, 0,
 			0, 0, 1,
 			0, 1, 0,
@@ -666,7 +666,7 @@ pub const MeshSelection = struct {
 			1, 1, 0,
 			1, 1, 1,
 		};
-		var indices = [_]u8 {
+		const indices = [_]u8 {
 			0, 1,
 			0, 2,
 			0, 4,
@@ -733,8 +733,8 @@ pub const MeshSelection = struct {
 				// Check the true bounding box (using this algorithm here: https://tavianator.com/2011/ray_box.html):
 				const model = blocks.meshes.model(block);
 				const voxelModel = &models.voxelModels.items[model.modelIndex];
-				var transformedMin = model.permutation.transform(voxelModel.min - @as(Vec3i, @splat(8))) + @as(Vec3i, @splat(8));
-				var transformedMax = model.permutation.transform(voxelModel.max - @as(Vec3i, @splat(8))) + @as(Vec3i, @splat(8));
+				const transformedMin = model.permutation.transform(voxelModel.min - @as(Vec3i, @splat(8))) + @as(Vec3i, @splat(8));
+				const transformedMax = model.permutation.transform(voxelModel.max - @as(Vec3i, @splat(8))) + @as(Vec3i, @splat(8));
 				const min: Vec3d = @floatFromInt(@min(transformedMin, transformedMax));
 				const max: Vec3d = @floatFromInt(@max(transformedMin ,transformedMax));
 				const voxelPosFloat: Vec3d = @floatFromInt(voxelPos);
@@ -859,11 +859,11 @@ pub const MeshSelection = struct {
 			c.glEnable(c.GL_POLYGON_OFFSET_LINE);
 			defer c.glDisable(c.GL_POLYGON_OFFSET_LINE);
 			c.glPolygonOffset(-2, 0);
-			var block = RenderStructure.getBlock(_selectedBlockPos[0], _selectedBlockPos[1], _selectedBlockPos[2]) orelse return;
+			const block = RenderStructure.getBlock(_selectedBlockPos[0], _selectedBlockPos[1], _selectedBlockPos[2]) orelse return;
 			const model = blocks.meshes.model(block);
 			const voxelModel = &models.voxelModels.items[model.modelIndex];
-			var transformedMin = model.permutation.transform(voxelModel.min - @as(Vec3i, @splat(8))) + @as(Vec3i, @splat(8));
-			var transformedMax = model.permutation.transform(voxelModel.max - @as(Vec3i, @splat(8))) + @as(Vec3i, @splat(8));
+			const transformedMin = model.permutation.transform(voxelModel.min - @as(Vec3i, @splat(8))) + @as(Vec3i, @splat(8));
+			const transformedMax = model.permutation.transform(voxelModel.max - @as(Vec3i, @splat(8))) + @as(Vec3i, @splat(8));
 			const min: Vec3f = @floatFromInt(@min(transformedMin, transformedMax));
 			const max: Vec3f = @floatFromInt(@max(transformedMin ,transformedMax));
 			drawCube(projectionMatrix, viewMatrix, @as(Vec3d, @floatFromInt(_selectedBlockPos)) - playerPos, min/@as(Vec3f, @splat(16.0)), max/@as(Vec3f, @splat(16.0)));
@@ -939,28 +939,28 @@ pub const RenderStructure = struct {
 	}
 
 	fn getNodeFromRenderThread(pos: chunk.ChunkPosition) ?*ChunkMeshNode {
-		var lod = std.math.log2_int(u31, pos.voxelSize);
-		var xIndex = pos.wx-%(&lastX[lod]).* >> lod+chunk.chunkShift;
-		var yIndex = pos.wy-%(&lastY[lod]).* >> lod+chunk.chunkShift;
-		var zIndex = pos.wz-%(&lastZ[lod]).* >> lod+chunk.chunkShift;
+		const lod = std.math.log2_int(u31, pos.voxelSize);
+		const xIndex = pos.wx-%(&lastX[lod]).* >> lod+chunk.chunkShift;
+		const yIndex = pos.wy-%(&lastY[lod]).* >> lod+chunk.chunkShift;
+		const zIndex = pos.wz-%(&lastZ[lod]).* >> lod+chunk.chunkShift;
 		if(xIndex < 0 or xIndex >= (&lastSize[lod]).*) return null;
 		if(yIndex < 0 or yIndex >= (&lastSize[lod]).*) return null;
 		if(zIndex < 0 or zIndex >= (&lastSize[lod]).*) return null;
-		var index = (xIndex*(&lastSize[lod]).* + yIndex)*(&lastSize[lod]).* + zIndex;
+		const index = (xIndex*(&lastSize[lod]).* + yIndex)*(&lastSize[lod]).* + zIndex;
 		return storageLists[lod][@intCast(index)];
 	}
 
 	fn _getNode(pos: chunk.ChunkPosition) ?*ChunkMeshNode {
-		var lod = std.math.log2_int(u31, pos.voxelSize);
+		const lod = std.math.log2_int(u31, pos.voxelSize);
 		lodMutex[lod].lock();
 		defer lodMutex[lod].unlock();
-		var xIndex = pos.wx-%(&lastX[lod]).* >> lod+chunk.chunkShift;
-		var yIndex = pos.wy-%(&lastY[lod]).* >> lod+chunk.chunkShift;
-		var zIndex = pos.wz-%(&lastZ[lod]).* >> lod+chunk.chunkShift;
+		const xIndex = pos.wx-%(&lastX[lod]).* >> lod+chunk.chunkShift;
+		const yIndex = pos.wy-%(&lastY[lod]).* >> lod+chunk.chunkShift;
+		const zIndex = pos.wz-%(&lastZ[lod]).* >> lod+chunk.chunkShift;
 		if(xIndex < 0 or xIndex >= (&lastSize[lod]).*) return null;
 		if(yIndex < 0 or yIndex >= (&lastSize[lod]).*) return null;
 		if(zIndex < 0 or zIndex >= (&lastSize[lod]).*) return null;
-		var index = (xIndex*(&lastSize[lod]).* + yIndex)*(&lastSize[lod]).* + zIndex;
+		const index = (xIndex*(&lastSize[lod]).* + yIndex)*(&lastSize[lod]).* + zIndex;
 		return storageLists[lod][@intCast(index)];
 	}
 
@@ -991,7 +991,7 @@ pub const RenderStructure = struct {
 		pos.wy += pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relY[neighbor];
 		pos.wz += pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relZ[neighbor];
 		pos.voxelSize = resolution;
-		var node = _getNode(pos) orelse return null;
+		const node = _getNode(pos) orelse return null;
 		return &node.mesh;
 	}
 
@@ -1072,7 +1072,7 @@ pub const RenderStructure = struct {
 				}
 			}
 
-			var oldList = storageLists[lod];
+			const oldList = storageLists[lod];
 			{
 				lodMutex[lod].lock();
 				defer lodMutex[lod].unlock();
@@ -1421,7 +1421,7 @@ pub const RenderStructure = struct {
 		};
 
 		pub fn schedule(mesh: *chunk.Chunk) !void {
-			var task = try main.globalAllocator.create(MeshGenerationTask);
+			const task = try main.globalAllocator.create(MeshGenerationTask);
 			task.* = MeshGenerationTask {
 				.mesh = mesh,
 			};
@@ -1433,7 +1433,7 @@ pub const RenderStructure = struct {
 		}
 
 		pub fn isStillNeeded(self: *MeshGenerationTask) bool {
-			var distanceSqr = self.mesh.pos.getMinDistanceSquared(game.Player.getPosBlocking()); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
+			const distanceSqr = self.mesh.pos.getMinDistanceSquared(game.Player.getPosBlocking()); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
 			var maxRenderDistance = settings.renderDistance*chunk.chunkSize*self.mesh.pos.voxelSize;
 			if(self.mesh.pos.voxelSize != 1) maxRenderDistance = @intFromFloat(@ceil(@as(f32, @floatFromInt(maxRenderDistance))*settings.LODFactor));
 			maxRenderDistance += 2*self.mesh.pos.voxelSize*chunk.chunkSize;

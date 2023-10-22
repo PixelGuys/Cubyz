@@ -30,7 +30,7 @@ pub const BlockGenerator = struct {
 	var generatorRegistry: std.StringHashMapUnmanaged(BlockGenerator) = .{};
 
 	pub fn registerGenerator(comptime GeneratorType: type) !void {
-		var self = BlockGenerator {
+		const self = BlockGenerator {
 			.init = &GeneratorType.init,
 			.deinit = &GeneratorType.deinit,
 			.generate = &GeneratorType.generate,

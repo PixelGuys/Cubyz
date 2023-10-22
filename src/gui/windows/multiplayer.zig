@@ -85,7 +85,7 @@ fn copyIp(_: usize) void {
 }
 
 pub fn onOpen() Allocator.Error!void {
-	var list = try VerticalList.init(.{padding, 16 + padding}, 300, 16);
+	const list = try VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	try list.add(try Label.init(.{0, 0}, width, "Please send your IP to the host of the game and enter the host's IP below.", .center));
 	//                                               255.255.255.255:?65536 (longest possible ip address)
 	ipAddressLabel = try Label.init(.{0, 0}, width, "                      ", .center);

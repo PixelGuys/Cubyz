@@ -43,7 +43,7 @@ const ChunkManager = struct {
 		};
 		
 		pub fn schedule(pos: ChunkPosition, source: ?*User) !void {
-			var task = try main.globalAllocator.create(ChunkLoadTask);
+			const task = try main.globalAllocator.create(ChunkLoadTask);
 			task.* = ChunkLoadTask {
 				.pos = pos,
 				.creationTime = std.time.milliTimestamp(),

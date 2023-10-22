@@ -21,9 +21,8 @@ pub fn writeJson(path: []const u8, json: JsonElement) !void {
 }
 
 pub fn openDir(path: []const u8) !Dir {
-	var dir = try std.fs.cwd().makeOpenPath(path, .{});
 	return Dir {
-		.dir = dir,
+		.dir = try std.fs.cwd().makeOpenPath(path, .{}),
 	};
 }
 

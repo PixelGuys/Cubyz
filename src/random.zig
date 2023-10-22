@@ -37,7 +37,7 @@ pub fn nextInt(comptime T: type, seed: *u64) T {
 pub fn nextIntBounded(comptime T: type, seed: *u64, bound: T) T {
 	if(@typeInfo(T) != .Int) @compileError("Type must be integer.");
 	if(@typeInfo(T).Int.signedness == .signed) @compileError("Type must be unsigned.");
-	var bitSize = std.math.log2_int_ceil(T, bound);
+	const bitSize = std.math.log2_int_ceil(T, bound);
 	var result = nextWithBitSize(T, seed, bitSize);
 	while(result >= bound) {
 		result = nextWithBitSize(T, seed, bitSize);
@@ -67,8 +67,8 @@ pub fn nextDoubleSigned(seed: *u64) f64 {
 
 pub fn nextPointInUnitCircle(seed: *u64) Vec2f {
 	while(true) {
-		var x: f32 = nextFloatSigned(seed);
-		var y: f32 = nextFloatSigned(seed);
+		const x: f32 = nextFloatSigned(seed);
+		const y: f32 = nextFloatSigned(seed);
 		if(x*x + y*y < 1) {
 			return Vec2f{x, y};
 		}

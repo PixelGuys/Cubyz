@@ -116,7 +116,7 @@ pub const ChunkPosition = struct {
 	}
 
 	pub fn getMinDistanceSquared(self: ChunkPosition, playerPosition: Vec3d) f64 {
-		var halfWidth: f64 = @floatFromInt(self.voxelSize*@divExact(chunkSize, 2));
+		const halfWidth: f64 = @floatFromInt(self.voxelSize*@divExact(chunkSize, 2));
 		var dx = @abs(@as(f64, @floatFromInt(self.wx)) + halfWidth - playerPosition[0]);
 		var dy = @abs(@as(f64, @floatFromInt(self.wy)) + halfWidth - playerPosition[1]);
 		var dz = @abs(@as(f64, @floatFromInt(self.wz)) + halfWidth - playerPosition[2]);
@@ -127,7 +127,7 @@ pub const ChunkPosition = struct {
 	}
 
 	pub fn getMaxDistanceSquared(self: ChunkPosition, playerPosition: Vec3d) f64 {
-		var halfWidth: f64 = @floatFromInt(self.voxelSize*@divExact(chunkSize, 2));
+		const halfWidth: f64 = @floatFromInt(self.voxelSize*@divExact(chunkSize, 2));
 		var dx = @abs(@as(f64, @floatFromInt(self.wx)) + halfWidth - playerPosition[0]);
 		var dy = @abs(@as(f64, @floatFromInt(self.wy)) + halfWidth - playerPosition[1]);
 		var dz = @abs(@as(f64, @floatFromInt(self.wz)) + halfWidth - playerPosition[2]);
@@ -138,7 +138,7 @@ pub const ChunkPosition = struct {
 	}
 
 	pub fn getCenterDistanceSquared(self: ChunkPosition, playerPosition: Vec3d) f64 {
-		var halfWidth: f64 = @floatFromInt(self.voxelSize*@divExact(chunkSize, 2));
+		const halfWidth: f64 = @floatFromInt(self.voxelSize*@divExact(chunkSize, 2));
 		var dx = @as(f64, @floatFromInt(self.wx)) + halfWidth - playerPosition[0];
 		var dy = @as(f64, @floatFromInt(self.wy)) + halfWidth - playerPosition[1];
 		var dz = @as(f64, @floatFromInt(self.wz)) + halfWidth - playerPosition[2];
@@ -230,7 +230,7 @@ pub const Chunk = struct {
 		const x = _x >> self.voxelSizeShift;
 		const y = _y >> self.voxelSizeShift;
 		const z = _z >> self.voxelSizeShift;
-		var index = getIndex(x, y, z);
+		const index = getIndex(x, y, z);
 		if (self.blocks[index].typ == 0 or self.blocks[index].degradable()) {
 			self.blocks[index] = newBlock;
 		}
@@ -242,7 +242,7 @@ pub const Chunk = struct {
 		const x = _x >> self.voxelSizeShift;
 		const y = _y >> self.voxelSizeShift;
 		const z = _z >> self.voxelSizeShift;
-		var index = getIndex(x, y, z);
+		const index = getIndex(x, y, z);
 		self.blocks[index] = newBlock;
 	}
 
@@ -252,7 +252,7 @@ pub const Chunk = struct {
 		const x = _x >> self.voxelSizeShift;
 		const y = _y >> self.voxelSizeShift;
 		const z = _z >> self.voxelSizeShift;
-		var index = getIndex(x, y, z);
+		const index = getIndex(x, y, z);
 		self.blocks[index] = newBlock;
 	}
 
@@ -262,7 +262,7 @@ pub const Chunk = struct {
 		const x = _x >> self.voxelSizeShift;
 		const y = _y >> self.voxelSizeShift;
 		const z = _z >> self.voxelSizeShift;
-		var index = getIndex(x, y, z);
+		const index = getIndex(x, y, z);
 		return self.blocks[index];
 	}
 
@@ -272,9 +272,9 @@ pub const Chunk = struct {
 		y &= chunkMask;
 		z &= chunkMask;
 		for(Neighbors.relX, 0..) |_, i| {
-			var xi = x + Neighbors.relX[i];
-			var yi = y + Neighbors.relY[i];
-			var zi = z + Neighbors.relZ[i];
+			const xi = x + Neighbors.relX[i];
+			const yi = y + Neighbors.relY[i];
+			const zi = z + Neighbors.relZ[i];
 			if (xi == (xi & chunkMask) and yi == (yi & chunkMask) and zi == (zi & chunkMask)) { // Simple double-bound test for coordinates.
 				neighborsArray[i] = self.getBlock(xi, yi, zi);
 			} else {
@@ -519,8 +519,8 @@ pub const meshing = struct {
 		}
 
 		fn replaceNeighbors(self: *PrimitiveMesh, neighbor: usize, additionalNeighborFaces: []FaceData) !void {
-			var rangeStart = self.neighborStart[neighbor ^ 1];
-			var rangeEnd = self.neighborStart[(neighbor ^ 1)+1];
+			const rangeStart = self.neighborStart[neighbor ^ 1];
+			const rangeEnd = self.neighborStart[(neighbor ^ 1)+1];
 			try self.faces.replaceRange(rangeStart, rangeEnd - rangeStart, additionalNeighborFaces);
 			for(self.neighborStart[1+(neighbor ^ 1)..]) |*neighborStart| {
 				neighborStart.* = neighborStart.* - (rangeEnd - rangeStart) + @as(u31, @intCast(additionalNeighborFaces.len));
@@ -920,7 +920,7 @@ pub const meshing = struct {
 				self.opaqueMesh.startNeighbor(neighbor);
 				self.voxelMesh.startNeighbor(neighbor);
 				self.transparentMesh.startNeighbor(neighbor);
-				var nullNeighborMesh = renderer.RenderStructure.getNeighbor(self.pos, self.pos.voxelSize, neighbor);
+				const nullNeighborMesh = renderer.RenderStructure.getNeighbor(self.pos, self.pos.voxelSize, neighbor);
 				if(nullNeighborMesh) |neighborMesh| {
 					std.debug.assert(neighborMesh != self);
 					neighborMesh.mutex.lock();
@@ -932,7 +932,7 @@ pub const meshing = struct {
 						defer additionalNeighborFacesVoxel.deinit();
 						var additionalNeighborFacesTransparent = std.ArrayList(FaceData).init(main.threadAllocator);
 						defer additionalNeighborFacesTransparent.deinit();
-						var x3: u8 = if(neighbor & 1 == 0) @intCast(chunkMask) else 0;
+						const x3: u8 = if(neighbor & 1 == 0) @intCast(chunkMask) else 0;
 						var x1: u8 = 0;
 						while(x1 < chunkSize): (x1 += 1) {
 							var x2: u8 = 0;
@@ -953,11 +953,11 @@ pub const meshing = struct {
 									y = x1;
 									z = x3;
 								}
-								var otherX: u8 = @intCast(x+%Neighbors.relX[neighbor] & chunkMask);
-								var otherY: u8 = @intCast(y+%Neighbors.relY[neighbor] & chunkMask);
-								var otherZ: u8 = @intCast(z+%Neighbors.relZ[neighbor] & chunkMask);
-								var block = (&chunk.blocks)[getIndex(x, y, z)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
-								var otherBlock = (&neighborMesh.chunk.load(.Monotonic).?.blocks)[getIndex(otherX, otherY, otherZ)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
+								const otherX: u8 = @intCast(x+%Neighbors.relX[neighbor] & chunkMask);
+								const otherY: u8 = @intCast(y+%Neighbors.relY[neighbor] & chunkMask);
+								const otherZ: u8 = @intCast(z+%Neighbors.relZ[neighbor] & chunkMask);
+								const block = (&chunk.blocks)[getIndex(x, y, z)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
+								const otherBlock = (&neighborMesh.chunk.load(.Monotonic).?.blocks)[getIndex(otherX, otherY, otherZ)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
 								if(canBeSeenThroughOtherBlock(block, otherBlock, neighbor)) {
 									if(block.transparent()) {
 										if(block.hasBackFace()) {
@@ -996,7 +996,7 @@ pub const meshing = struct {
 				}
 				// lod border:
 				if(self.pos.voxelSize == 1 << settings.highestLOD) continue;
-				var neighborMesh = renderer.RenderStructure.getNeighbor(self.pos, 2*self.pos.voxelSize, neighbor) orelse return error.LODMissing;
+				const neighborMesh = renderer.RenderStructure.getNeighbor(self.pos, 2*self.pos.voxelSize, neighbor) orelse return error.LODMissing;
 				neighborMesh.mutex.lock();
 				defer neighborMesh.mutex.unlock();
 				if(neighborMesh.generated) {
@@ -1024,11 +1024,11 @@ pub const meshing = struct {
 								y = x1;
 								z = x3;
 							}
-							var otherX: u8 = @intCast((x+%Neighbors.relX[neighbor]+%offsetX >> 1) & chunkMask);
-							var otherY: u8 = @intCast((y+%Neighbors.relY[neighbor]+%offsetY >> 1) & chunkMask);
-							var otherZ: u8 = @intCast((z+%Neighbors.relZ[neighbor]+%offsetZ >> 1) & chunkMask);
-							var block = (&chunk.blocks)[getIndex(x, y, z)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
-							var otherBlock = (&neighborMesh.chunk.load(.Monotonic).?.blocks)[getIndex(otherX, otherY, otherZ)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
+							const otherX: u8 = @intCast((x+%Neighbors.relX[neighbor]+%offsetX >> 1) & chunkMask);
+							const otherY: u8 = @intCast((y+%Neighbors.relY[neighbor]+%offsetY >> 1) & chunkMask);
+							const otherZ: u8 = @intCast((z+%Neighbors.relZ[neighbor]+%offsetZ >> 1) & chunkMask);
+							const block = (&chunk.blocks)[getIndex(x, y, z)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
+							const otherBlock = (&neighborMesh.chunk.load(.Monotonic).?.blocks)[getIndex(otherX, otherY, otherZ)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
 							if(canBeSeenThroughOtherBlock(otherBlock, block, neighbor ^ 1)) {
 								if(otherBlock.transparent()) {
 									try self.transparentMesh.append(constructFaceData(otherBlock, neighbor ^ 1, x, y, z, false));
@@ -1116,7 +1116,7 @@ pub const meshing = struct {
 			}/@as(Vec3d, @splat(@as(f64, @floatFromInt(self.pos.voxelSize))));
 			relativePos = @min(relativePos, @as(Vec3d, @splat(0)));
 			relativePos = @max(relativePos, @as(Vec3d, @splat(-32)));
-			var updatePos: Vec3i = @intFromFloat(relativePos);
+			const updatePos: Vec3i = @intFromFloat(relativePos);
 			if(@reduce(.Or, updatePos != self.lastTransparentUpdatePos)) {
 				self.lastTransparentUpdatePos = updatePos;
 				needsUpdate = true;

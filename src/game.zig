@@ -141,7 +141,7 @@ pub const World = struct {
 	pub fn finishHandshake(self: *World, json: JsonElement) !void {
 		// TODO: Consider using a per-world allocator.
 		self.blockPalette = try assets.BlockPalette.init(main.globalAllocator, json.getChild("blockPalette"));
-		var jsonSpawn = json.getChild("spawn");
+		const jsonSpawn = json.getChild("spawn");
 		self.spawn[0] = jsonSpawn.get(f32, "x", 0);
 		self.spawn[1] = jsonSpawn.get(f32, "y", 0);
 		self.spawn[2] = jsonSpawn.get(f32, "z", 0);
@@ -162,7 +162,7 @@ pub const World = struct {
 	}
 
 	pub fn update(self: *World) !void {
-		var newTime: i64 = std.time.milliTimestamp();
+		const newTime: i64 = std.time.milliTimestamp();
 		while(self.milliTime +% 100 -% newTime < 0) {
 			self.milliTime +%= 100;
 			var curTime = self.gameTime.load(.Monotonic);
@@ -303,8 +303,8 @@ pub var fog = Fog{.color=.{0, 1, 0.5}, .density=1.0/15.0/128.0}; // TODO: Make t
 
 pub fn update(deltaTime: f64) !void {
 	var movement = Vec3d{0, 0, 0};
-	var forward = vec.rotateY(Vec3d{0, 0, -1}, -camera.rotation[1]);
-	var right = Vec3d{forward[2], 0, -forward[0]};
+	const forward = vec.rotateY(Vec3d{0, 0, -1}, -camera.rotation[1]);
+	const right = Vec3d{forward[2], 0, -forward[0]};
 	if(main.Window.grabbed) {
 		if(KeyBoard.key("forward").pressed) {
 			if(KeyBoard.key("sprint").pressed) {

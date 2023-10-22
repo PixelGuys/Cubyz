@@ -26,7 +26,7 @@ pub const JsonElement = union(JsonType) {
 	JsonObject: *std.StringHashMap(JsonElement),
 
 	pub fn initObject(allocator: Allocator) !JsonElement {
-		var map: *std.StringHashMap(JsonElement) = try allocator.create(std.StringHashMap(JsonElement));
+		const map: *std.StringHashMap(JsonElement) = try allocator.create(std.StringHashMap(JsonElement));
 		map.* = std.StringHashMap(JsonElement).init(allocator);
 		return JsonElement{.JsonObject=map};
 	}
@@ -208,7 +208,7 @@ pub const JsonElement = union(JsonType) {
 			.JsonObject => {
 				var iterator = self.JsonObject.iterator();
 				while(true) {
-					var elem = iterator.next() orelse break;
+					const elem = iterator.next() orelse break;
 					allocator.free(elem.key_ptr.*);
 					elem.value_ptr.free(allocator);
 				}
@@ -284,7 +284,7 @@ pub const JsonElement = union(JsonType) {
 				var iterator = obj.iterator();
 				var first: bool = true;
 				while(true) {
-					var elem = iterator.next() orelse break;
+					const elem = iterator.next() orelse break;
 					if(!first) {
 						try writer.writeByte(',');
 					}
@@ -490,7 +490,7 @@ const Parser = struct {
 	}
 
 	fn parseObject(allocator: Allocator, chars: []const u8, index: *u32) OutOfMemory!JsonElement {
-		var map: *std.StringHashMap(JsonElement) = try allocator.create(std.StringHashMap(JsonElement));
+		const map: *std.StringHashMap(JsonElement) = try allocator.create(std.StringHashMap(JsonElement));
 		map.* = std.StringHashMap(JsonElement).init(allocator);
 		while(index.* < chars.len) {
 			skipWhitespaces(chars, index);

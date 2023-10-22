@@ -52,7 +52,7 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.Chunk, caveMap: CaveMap.CaveM
 				if(relY < py or relY >= py + 32) continue;
 				const biome = biomeMap.getBiome(px, relY, pz);
 				var randomValue = random.nextFloat(&seed);
-				for(biome.vegetationModels) |model| {
+				for(biome.vegetationModels) |model| { // TODO: Could probably use an alias table here.
 					const adaptedChance = model.chance*16;
 					if(randomValue < adaptedChance) {
 						try model.generate(px, relY, pz, chunk, caveMap, &seed);
@@ -78,7 +78,7 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.Chunk, caveMap: CaveMap.CaveM
 				var seed = random.initSeed3D(worldSeed, .{wpx, relY, wpz});
 				var randomValue = random.nextFloat(&seed);
 				const biome = biomeMap.getBiome(px, relY, pz);
-				for(biome.vegetationModels) |model| {
+				for(biome.vegetationModels) |model| { // TODO: Could probably use an alias table here.
 					var adaptedChance = model.chance;
 					// Increase chance if there are less spawn points considered. Messes up positions, but at that distance density matters more.
 					adaptedChance = 1 - std.math.pow(f32, 1 - adaptedChance, @as(f32, @floatFromInt(chunk.pos.voxelSize*chunk.pos.voxelSize)));

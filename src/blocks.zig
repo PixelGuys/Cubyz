@@ -117,14 +117,14 @@ pub fn register(_: []const u8, id: []const u8, json: JsonElement) !u16 {
 	_gui[size] = try allocator.dupe(u8, json.get([]const u8, "GUI", ""));
 	_transparent[size] = json.get(bool, "transparent", false);
 	_viewThrough[size] = json.get(bool, "viewThrough", false) or _transparent[size];
-	var hasFog: bool = json.get(f32, "fogDensity", 0.0) != 0.0;
+	const hasFog: bool = json.get(f32, "fogDensity", 0.0) != 0.0;
 	_hasBackFace[size] = hasFog and _transparent[size];
 
 	const oreProperties = json.getChild("ore");
 	if (oreProperties != .JsonNull) {
 		// Extract the ids:
 		const sourceBlocks = oreProperties.getChild("sources").toSlice();
-		var oreIds = try main.globalAllocator.alloc([]const u8, sourceBlocks.len);
+		const oreIds = try main.globalAllocator.alloc([]const u8, sourceBlocks.len);
 		for(sourceBlocks, oreIds) |source, *oreId| {
 			oreId.* = try main.globalAllocator.dupe(u8, source.as([]const u8, ""));
 		}
@@ -167,7 +167,7 @@ fn registerBlockDrop(typ: u16, json: JsonElement) !void {
 			name = _id[typ];
 		}
 
-		var item = items.getByID(name) orelse continue;
+		const item = items.getByID(name) orelse continue;
 		result.len += 1;
 		result[result.len - 1] = BlockDrop{.item = items.Item{.baseItem = item}, .amount = amount};
 	}
@@ -436,7 +436,7 @@ pub const meshes = struct {
 					return result;
 				}
 			}
-			var file = std.fs.cwd().openFile(path, .{}) catch |err| blk: {
+			const file = std.fs.cwd().openFile(path, .{}) catch |err| blk: {
 				if(err == error.FileNotFound) {
 					path = try std.fmt.bufPrint(&buffer, "assets/{s}/blocks/textures/{s}.png", .{mod, id}); // Default to global assets.
 					break :blk std.fs.cwd().openFile(path, .{}) catch |err2| {
@@ -462,7 +462,7 @@ pub const meshes = struct {
 			try textureIDs.append(try arenaForWorld.allocator().dupe(u8, path));
 			try animation.append(.{.frames = 1, .time = 1});
 		} else if(textureInfo == .JsonObject) {
-			var animationTime = textureInfo.get(i32, "time", 500);
+			const animationTime = textureInfo.get(i32, "time", 500);
 			const textures = textureInfo.getChild("textures");
 			if(textures != .JsonArray) return result;
 			// Add the new textures into the list. Since this is an animation all textures that weren't found need to be replaced with undefined.
@@ -478,7 +478,7 @@ pub const meshes = struct {
 				const id = splitter.rest();
 				var buffer: [1024]u8 = undefined;
 				var path = try std.fmt.bufPrint(&buffer, "{s}/{s}/blocks/textures/{s}.png", .{assetFolder, mod, id});
-				var file = std.fs.cwd().openFile(path, .{}) catch |err| blk: {
+				const file = std.fs.cwd().openFile(path, .{}) catch |err| blk: {
 					if(err == error.FileNotFound) {
 						path = try std.fmt.bufPrint(&buffer, "assets/{s}/blocks/textures/{s}.png", .{mod, id}); // Default to global assets.
 						break :blk std.fs.cwd().openFile(path, .{}) catch |err2| {
@@ -506,7 +506,7 @@ pub const meshes = struct {
 	}
 
 	pub fn getTextureIndices(json: JsonElement, assetFolder: []const u8, textureIndicesRef: []u32) !void {
-		var defaultIndex = try readTexture(json.getChild("texture"), assetFolder) orelse 0;
+		const defaultIndex = try readTexture(json.getChild("texture"), assetFolder) orelse 0;
 		for(textureIndicesRef, sideNames) |*ref, name| {
 			ref.* = defaultIndex;
 			const textureInfo = json.getChild(name);

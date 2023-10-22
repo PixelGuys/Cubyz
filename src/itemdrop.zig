@@ -139,7 +139,7 @@ pub const ItemDropManager = struct {
 
 	fn storeSingle(self: *ItemDropManager, allocator: Allocator, i: u16) !JsonElement {
 		std.debug.assert(!self.mutex.tryLock()); // Mutex must be locked!
-		var obj = try JsonElement.initObject(allocator);
+		const obj = try JsonElement.initObject(allocator);
 		const itemDrop = self.list.get(i);
 		try obj.put("i", i);
 		try obj.put("x", itemDrop.pos.x);
@@ -731,7 +731,7 @@ pub const ItemDropRenderer = struct {
 		c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniformMatrix4fv(itemUniforms.viewMatrix, 1, c.GL_FALSE, @ptrCast(&game.camera.viewMatrix));
 		c.glUniform1f(itemUniforms.sizeScale, @floatCast(ItemDropManager.diameter/4.0));
-		var itemDrops = &game.world.?.itemDrops.super;
+		const itemDrops = &game.world.?.itemDrops.super;
 		itemDrops.mutex.lock();
 		defer itemDrops.mutex.unlock();
 		for(itemDrops.indices[0..itemDrops.size]) |i| {

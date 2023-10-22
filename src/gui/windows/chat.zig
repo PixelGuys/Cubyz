@@ -45,7 +45,7 @@ fn refresh() Allocator.Error!void {
 		old.mutexComponent.child.verticalList.children.clearRetainingCapacity();
 		old.deinit();
 	}
-	var list = try VerticalList.init(.{padding, 16 + padding}, 300, 0);
+	const list = try VerticalList.init(.{padding, 16 + padding}, 300, 0);
 	for(history.items[if(hideInput) historyStart else 0 ..]) |msg| {
 		msg.pos = .{0, 0};
 		try list.add(msg);

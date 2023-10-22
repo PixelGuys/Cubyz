@@ -38,7 +38,7 @@ fn vsyncCallback(newValue: bool) void {
 }
 
 pub fn onOpen() Allocator.Error!void {
-	var list = try VerticalList.init(.{padding, 16 + padding}, 300, 16);
+	const list = try VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	const renderDistances = [_]u32{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
 	try list.add(try DiscreteSlider.init(.{0, 0}, 128, "#ffffffRender Distance: ", "{}", &renderDistances, settings.renderDistance - 1, &renderDistanceCallback));
 	const LODFactors = [_]f32{0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8};

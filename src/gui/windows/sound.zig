@@ -41,7 +41,7 @@ fn musicFormatter(allocator: Allocator, value: f32) Allocator.Error![]const u8 {
 const padding: f32 = 8;
 
 pub fn onOpen() Allocator.Error!void {
-	var list = try VerticalList.init(.{padding, 16 + padding}, 300, 16);
+	const list = try VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	try list.add(try ContinuousSlider.init(.{0, 0}, 128, -60, 0, linearToDezibel(settings.musicVolume), &musicCallback, &musicFormatter));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();

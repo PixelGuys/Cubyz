@@ -4,13 +4,11 @@ const main = @import("root");
 const random = main.random;
 
 fn getSeedX(x: f32, worldSeed: u64) u64 {
-	var seed: u64 = worldSeed ^ @as(u64, 54275629861)*%@as(u32, @bitCast(@as(i32, @intFromFloat(x))));
-	return seed;
+	return worldSeed ^ @as(u64, 54275629861)*%@as(u32, @bitCast(@as(i32, @intFromFloat(x))));
 }
 
 fn getSeedY(x: f32, worldSeed: u64) u64 {
-	var seed: u64 = worldSeed ^ @as(u64, 5478938690717)*%@as(u32, @bitCast(@as(i32, @intFromFloat(x))));
-	return seed;
+	return worldSeed ^ @as(u64, 5478938690717)*%@as(u32, @bitCast(@as(i32, @intFromFloat(x))));
 }
 
 fn getGridValue1D(x: f32, worldSeed: u64) f32 {

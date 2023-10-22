@@ -43,9 +43,9 @@ pub const Compression = struct {
 				_ = try comp.write(&len);
 				_ = try comp.write(relPath);
 
-				var file = try sourceDir.dir.openFile(relPath, .{});
+				const file = try sourceDir.dir.openFile(relPath, .{});
 				defer file.close();
-				var fileData = try file.readToEndAlloc(main.threadAllocator, std.math.maxInt(u32));
+				const fileData = try file.readToEndAlloc(main.threadAllocator, std.math.maxInt(u32));
 				defer main.threadAllocator.free(fileData);
 
 				std.mem.writeIntBig(u32, &len, @as(u32, @intCast(fileData.len)));
@@ -60,24 +60,24 @@ pub const Compression = struct {
 		var stream = std.io.fixedBufferStream(input);
 		var decomp = try std.compress.deflate.decompressor(main.threadAllocator, stream.reader(), null);
 		defer decomp.deinit();
-		var reader = decomp.reader();
+		const reader = decomp.reader();
 		const _data = try reader.readAllAlloc(main.threadAllocator, std.math.maxInt(usize));
 		defer main.threadAllocator.free(_data);
 		var data = _data;
 		while(data.len != 0) {
 			var len = std.mem.readIntBig(u32, data[0..4]);
 			data = data[4..];
-			var path = data[0..len];
+			const path = data[0..len];
 			data = data[len..];
 			len = std.mem.readIntBig(u32, data[0..4]);
 			data = data[4..];
-			var fileData = data[0..len];
+			const fileData = data[0..len];
 			data = data[len..];
 
 			var splitter = std.mem.splitBackwards(u8, path, "/");
 			_ = splitter.first();
 			try outDir.makePath(splitter.rest());
-			var file = try outDir.createFile(path, .{});
+			const file = try outDir.createFile(path, .{});
 			defer file.close();
 			try file.writeAll(fileData);
 		}
@@ -145,7 +145,7 @@ pub fn AliasTable(comptime T: type) type {
 		}
 
 		pub fn initFromContext(allocator: Allocator, slice: anytype) !@This() {
-			var items = try allocator.alloc(T, slice.len);
+			const items = try allocator.alloc(T, slice.len);
 			for(slice, items) |context, *result| {
 				result.* = context.getItem();
 			}
@@ -329,7 +329,7 @@ pub fn BlockingMaxHeap(comptime T: type) type {
 		closed: bool = false,
 
 		pub fn init(allocator: Allocator) !*@This() {
-			var self = try allocator.create(@This());
+			const self = try allocator.create(@This());
 			self.* = @This() {
 				.size = 0,
 				.array = try allocator.alloc(T, initialSize),
@@ -360,11 +360,11 @@ pub fn BlockingMaxHeap(comptime T: type) type {
 			std.debug.assert(!self.mutex.tryLock()); // The mutex should be locked when calling this function.
 			var i = _i;
 			while(2*i + 1 < self.size) {
-				var biggest = if(2*i + 2 < self.size and self.array[2*i + 2].biggerThan(self.array[2*i + 1])) 2*i + 2 else 2*i + 1;
+				const biggest = if(2*i + 2 < self.size and self.array[2*i + 2].biggerThan(self.array[2*i + 1])) 2*i + 2 else 2*i + 1;
 				// Break if all childs are smaller.
 				if(self.array[i].biggerThan(self.array[biggest])) return;
 				// Swap it:
-				var local = self.array[biggest];
+				const local = self.array[biggest];
 				self.array[biggest] = self.array[i];
 				self.array[i] = local;
 				// goto the next node:
@@ -377,9 +377,9 @@ pub fn BlockingMaxHeap(comptime T: type) type {
 			std.debug.assert(!self.mutex.tryLock()); // The mutex should be locked when calling this function.
 			var i = _i;
 			while(i > 0) {
-				var parentIndex = (i - 1)/2;
+				const parentIndex = (i - 1)/2;
 				if(!self.array[i].biggerThan(self.array[parentIndex])) break;
-				var local = self.array[parentIndex];
+				const local = self.array[parentIndex];
 				self.array[parentIndex] = self.array[i];
 				self.array[i] = local;
 				i = parentIndex;
@@ -436,7 +436,7 @@ pub fn BlockingMaxHeap(comptime T: type) type {
 					self.waitingThreads.wait(&self.mutex);
 					self.waitingThreadCount -= 1;
 				} else {
-					var ret = self.array[0];
+					const ret = self.array[0];
 					self.removeIndex(0);
 					return ret;
 				}
@@ -538,7 +538,7 @@ pub const ThreadPool = struct {
 		var lastUpdate = std.time.milliTimestamp();
 		while(true) {
 			{
-				var task = self.loadList.extractMax() catch break;
+				const task = self.loadList.extractMax() catch break;
 				self.currentTasks[id].store(task.vtable, .Monotonic);
 				try task.vtable.run(task.self);
 				self.currentTasks[id].store(null, .Monotonic);
@@ -843,8 +843,7 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 				const drag = std.math.pow(f64, 0.5, deltaTime);
 				for(indices) |i| {
 					const index = @as(usize, i)*coordinatesPerIndex;
-					var j: u32 = 0;
-					while(j < coordinatesPerIndex): (j += 1) {
+					for(0..coordinatesPerIndex) |j| {
 						// Just move on with the current velocity.
 						self.outPos[index + j] += self.outVel[index + j]*deltaTime;
 						// Add some drag to prevent moving far away on short connection loss.
@@ -856,8 +855,7 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 				const t = deltaTime;
 				for(indices) |i| {
 					const index = @as(usize, i)*coordinatesPerIndex;
-					var j: u32 = 0;
-					while(j < coordinatesPerIndex): (j += 1) {
+					for(0..coordinatesPerIndex) |j| {
 						self.interpolateCoordinate(index + j, t, tScale);
 					}
 				}

@@ -928,7 +928,7 @@ pub const Tool = struct {
 	inertiaCenterOfMass: f32,
 
 	pub fn init() !*Tool {
-		var self = try main.globalAllocator.create(Tool);
+		const self = try main.globalAllocator.create(Tool);
 		self.image = try graphics.Image.init(main.globalAllocator, 16, 16);
 		self.texture = null;
 		self.tooltip = null;
@@ -945,7 +945,7 @@ pub const Tool = struct {
 	}
 
 	pub fn initFromCraftingGrid(craftingGrid: [25]?*const BaseItem, seed: u32) !*Tool {
-		var self = try init();
+		const self = try init();
 		self.seed = seed;
 		self.craftingGrid = craftingGrid;
 		// Produce the tool and its textures:
@@ -956,7 +956,7 @@ pub const Tool = struct {
 	}
 
 	pub fn initFromJson(json: JsonElement) !*Tool {
-		var self = try initFromCraftingGrid(extractItemsFromJson(json.getChild("grid")), json.get(u32, "seed", 0));
+		const self = try initFromCraftingGrid(extractItemsFromJson(json.getChild("grid")), json.get(u32, "seed", 0));
 		self.durability = json.get(u32, "durability", self.maxDurability);
 		return self;
 	}
@@ -970,8 +970,8 @@ pub const Tool = struct {
 	}
 
 	pub fn save(self: *const Tool, allocator: Allocator) !JsonElement {
-		var jsonObject = try JsonElement.initObject(allocator);
-		var jsonArray = try JsonElement.initArray(allocator);
+		const jsonObject = try JsonElement.initObject(allocator);
+		const jsonArray = try JsonElement.initArray(allocator);
 		for(self.craftingGrid) |nullItem| {
 			if(nullItem) |item| {
 				try jsonArray.JsonArray.append(JsonElement{.JsonString=item.id});
@@ -1049,7 +1049,7 @@ pub const Item = union(enum) {
 		if(reverseIndices.get(json.get([]const u8, "item", "null"))) |baseItem| {
 			return Item{.baseItem = baseItem};
 		} else {
-			var toolJson = json.getChild("tool");
+			const toolJson = json.getChild("tool");
 			if(toolJson != .JsonObject) return error.ItemNotFound;
 			return Item{.tool = try Tool.initFromJson(toolJson)};
 		}
@@ -1194,7 +1194,7 @@ pub const ItemStack = struct {
 	}
 
 	pub fn store(self: *const ItemStack, allocator: Allocator) !JsonElement {
-		var result = try JsonElement.initObject(allocator);
+		const result = try JsonElement.initObject(allocator);
 		try self.storeToJson(result);
 		return result;
 	}
@@ -1262,7 +1262,7 @@ pub const Inventory = struct {
 	}
 
 	pub fn save(self: Inventory, allocator: Allocator) !JsonElement {
-		var jsonObject = try JsonElement.initObject(allocator);
+		const jsonObject = try JsonElement.initObject(allocator);
 		try jsonObject.put("capacity", self.items.len);
 		for(self.items, 0..) |stack, i| {
 			if(!stack.empty()) {
@@ -1277,7 +1277,7 @@ pub const Inventory = struct {
 		for(self.items, 0..) |*stack, i| {
 			stack.clear();
 			var buf: [1024]u8 = undefined;
-			var stackJson = json.getChild(buf[0..std.fmt.formatIntBuf(&buf, i, 10, .lower, .{})]);
+			const stackJson = json.getChild(buf[0..std.fmt.formatIntBuf(&buf, i, 10, .lower, .{})]);
 			if(stackJson == .JsonObject) {
 				stack.item = try Item.init(stackJson);
 				stack.amount = stackJson.get(u16, "amount", 0);
@@ -1319,7 +1319,7 @@ pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: 
 	if(reverseIndices.contains(id)) {
 		std.log.warn("Registered item with id {s} twice!", .{id});
 	}
-	var newItem = &itemList[itemListSize];
+	const newItem = &itemList[itemListSize];
 	try newItem.init(arena.allocator(), texturePath, replacementTexturePath, id, json);
 	try reverseIndices.put(newItem.id, newItem);
 	itemListSize += 1;

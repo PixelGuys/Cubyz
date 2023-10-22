@@ -42,7 +42,7 @@ fn apply(_: usize) void {
 }
 
 pub fn onOpen() Allocator.Error!void {
-	var list = try VerticalList.init(.{padding, 16 + padding}, 300, 16);
+	const list = try VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	const width = 420;
 	if(settings.playerName.len == 0) {
 		try list.add(try Label.init(.{0, 0}, width, "Please enter your name!", .center));

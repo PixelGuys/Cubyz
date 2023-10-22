@@ -32,7 +32,7 @@ const Socket = struct {
 	}
 
 	fn init(localPort: u16) !Socket {
-		var self = Socket {
+		const self = Socket {
 			.socketID = try os.socket(os.AF.INET, os.SOCK.DGRAM, os.IPPROTO.UDP),
 		};
 		errdefer self.deinit();
@@ -281,7 +281,7 @@ const STUN = struct {
 
 			var splitter = std.mem.split(u8, server, ":");
 			const ip = splitter.first();
-			var serverAddress = Address {
+			const serverAddress = Address {
 				.ip=Socket.resolveIP(ip) catch |err| {
 					std.log.err("Cannot resolve stun server address: {s}, error: {s}", .{ip, @errorName(err)});
 					continue;
@@ -389,7 +389,7 @@ pub const ConnectionManager = struct {
 	world: ?*game.World = null,
 
 	pub fn init(localPort: u16, online: bool) !*ConnectionManager {
-		var result: *ConnectionManager = try main.globalAllocator.create(ConnectionManager);
+		const result: *ConnectionManager = try main.globalAllocator.create(ConnectionManager);
 		result.* = .{};
 		result.connections = std.ArrayList(*Connection).init(main.globalAllocator);
 		result.requests = std.ArrayList(*Request).init(main.globalAllocator);
@@ -462,7 +462,7 @@ pub const ConnectionManager = struct {
 			if(allocator.ptr == main.globalAllocator.ptr) {
 				return request.data;
 			} else {
-				var result = try allocator.dupe(u8, request.data);
+				const result = try allocator.dupe(u8, request.data);
 				main.globalAllocator.free(request.data);
 				return result;
 			}
@@ -569,7 +569,7 @@ pub const ConnectionManager = struct {
 				}
 				if(self.connections.items.len == 0 and self.online.load(.Acquire)) {
 					// Send a message to external ip, to keep the port open:
-					var data = [1]u8{0};
+					const data = [1]u8{0};
 					try self.send(&data, self.externalAddress);
 				}
 			}
@@ -611,7 +611,7 @@ pub const Protocols = struct {
 
 						{
 							// TODO: Send the world data.
-							var path = try std.fmt.allocPrint(main.threadAllocator, "saves/{s}/assets/", .{"Development"}); // TODO: Use world name.
+							const path = try std.fmt.allocPrint(main.threadAllocator, "saves/{s}/assets/", .{"Development"}); // TODO: Use world name.
 							defer main.threadAllocator.free(path);
 							var dir = try std.fs.cwd().openIterableDir(path, .{});
 							defer dir.close();
@@ -654,7 +654,7 @@ pub const Protocols = struct {
 						try utils.Compression.unpack(try std.fs.cwd().openDir("serverAssets", .{}), data[1..]);
 					},
 					stepServerData => {
-						var json = JsonElement.parseFromString(main.threadAllocator, data[1..]);
+						const json = JsonElement.parseFromString(main.threadAllocator, data[1..]);
 						defer json.free(main.threadAllocator);
 						try conn.manager.world.?.finishHandshake(json);
 						conn.handShakeState = stepComplete;
@@ -677,13 +677,13 @@ pub const Protocols = struct {
 		}
 
 		pub fn clientSide(conn: *Connection, name: []const u8) !void {
-			var jsonObject = JsonElement{.JsonObject=try main.threadAllocator.create(std.StringHashMap(JsonElement))};
+			const jsonObject = JsonElement{.JsonObject=try main.threadAllocator.create(std.StringHashMap(JsonElement))};
 			defer jsonObject.free(main.threadAllocator);
 			jsonObject.JsonObject.* = std.StringHashMap(JsonElement).init(main.threadAllocator);
 			try jsonObject.putOwnedString("version", settings.version);
 			try jsonObject.putOwnedString("name", name);
-			var prefix = [1]u8 {stepUserData};
-			var data = try jsonObject.toStringEfficient(main.threadAllocator, &prefix);
+			const prefix = [1]u8 {stepUserData};
+			const data = try jsonObject.toStringEfficient(main.threadAllocator, &prefix);
 			defer main.threadAllocator.free(data);
 			try conn.sendImportant(id, data);
 
@@ -711,7 +711,7 @@ pub const Protocols = struct {
 		}
 		pub fn sendRequest(conn: *Connection, requests: []chunk.ChunkPosition) !void {
 			if(requests.len == 0) return;
-			var data = try main.threadAllocator.alloc(u8, 16*requests.len);
+			const data = try main.threadAllocator.alloc(u8, 16*requests.len);
 			defer main.threadAllocator.free(data);
 			var remaining = data;
 			for(requests) |req| {
@@ -728,7 +728,7 @@ pub const Protocols = struct {
 		const id: u8 = 3;
 		fn receive(_: *Connection, _data: []const u8) !void {
 			var data = _data;
-			var pos = chunk.ChunkPosition{
+			const pos = chunk.ChunkPosition{
 				.wx = std.mem.readIntBig(i32, data[0..4]),
 				.wy = std.mem.readIntBig(i32, data[4..8]),
 				.wz = std.mem.readIntBig(i32, data[8..12]),
@@ -741,7 +741,7 @@ pub const Protocols = struct {
 				std.log.err("Transmission of chunk has invalid size: {}. Input data: {any}, After inflate: {any}", .{_inflatedLen, data, _inflatedData[0.._inflatedLen]});
 			}
 			data = _inflatedData;
-			var ch = try main.globalAllocator.create(chunk.Chunk);
+			const ch = try main.globalAllocator.create(chunk.Chunk);
 			ch.init(pos);
 			for(&ch.blocks) |*block| {
 				block.* = Block.fromInt(std.mem.readIntBig(u32, data[0..4]));
@@ -834,10 +834,10 @@ pub const Protocols = struct {
 	pub const blockUpdate = struct {
 		const id: u8 = 7;
 		fn receive(_: *Connection, data: []const u8) !void {
-			var x = std.mem.readIntBig(i32, data[0..4]);
-			var y = std.mem.readIntBig(i32, data[4..8]);
-			var z = std.mem.readIntBig(i32, data[8..12]);
-			var newBlock = Block.fromInt(std.mem.readIntBig(u32, data[12..16]));
+			const x = std.mem.readIntBig(i32, data[0..4]);
+			const y = std.mem.readIntBig(i32, data[4..8]);
+			const z = std.mem.readIntBig(i32, data[8..12]);
+			const newBlock = Block.fromInt(std.mem.readIntBig(u32, data[12..16]));
 			try renderer.RenderStructure.updateBlock(x, y, z, newBlock);
 			// TODO:
 //		if(conn instanceof User) {
@@ -1076,7 +1076,7 @@ pub const Protocols = struct {
 					if(conn.manager.world) |world| {
 						const json = JsonElement.parseFromString(main.threadAllocator, data[1..]);
 						defer json.free(main.threadAllocator);
-						var expectedTime = json.get(i64, "time", 0);
+						const expectedTime = json.get(i64, "time", 0);
 						var curTime = world.gameTime.load(.Monotonic);
 						if(@abs(curTime -% expectedTime) >= 1000) {
 							world.gameTime.store(expectedTime, .Monotonic);
@@ -1161,7 +1161,7 @@ pub const Protocols = struct {
 		}
 
 		pub fn itemStackDrop(conn: *Connection, stack: ItemStack, pos: Vec3d, dir: Vec3f, vel: f32) !void {
-			var jsonObject = try stack.store(main.threadAllocator);
+			const jsonObject = try stack.store(main.threadAllocator);
 			defer jsonObject.free(main.threadAllocator);
 			try jsonObject.put("x", pos[0]);
 			try jsonObject.put("y", pos[1]);
@@ -1176,7 +1176,7 @@ pub const Protocols = struct {
 		}
 
 		pub fn itemStackCollect(conn: *Connection, stack: ItemStack) !void {
-			var json = try stack.store(main.threadAllocator);
+			const json = try stack.store(main.threadAllocator);
 			defer json.free(main.threadAllocator);
 			const string = try json.toString(main.threadAllocator);
 			defer main.threadAllocator.free(string);
@@ -1184,7 +1184,7 @@ pub const Protocols = struct {
 		}
 
 		pub fn sendTimeAndBiome(conn: *Connection, world: *const main.server.ServerWorld) !void {
-			var json = try JsonElement.initObject(main.threadAllocator);
+			const json = try JsonElement.initObject(main.threadAllocator);
 			defer json.free(main.threadAllocator);
 			try json.put("time", world.gameTime);
 			const pos = conn.user.?.player.pos;
@@ -1259,7 +1259,7 @@ pub const Connection = struct {
 	mutex: std.Thread.Mutex = std.Thread.Mutex{},
 
 	pub fn init(manager: *ConnectionManager, ipPort: []const u8) !*Connection {
-		var result: *Connection = try main.globalAllocator.create(Connection);
+		const result: *Connection = try main.globalAllocator.create(Connection);
 		result.* = Connection {
 			.manager = manager,
 			.remoteAddress = undefined,
@@ -1312,11 +1312,11 @@ pub const Connection = struct {
 		if(self.streamPosition == importantHeaderSize) return; // Don't send empty packets.
 		// Fill the header:
 		self.streamBuffer[0] = Protocols.important;
-		var id = self.messageID;
+		const id = self.messageID;
 		self.messageID += 1;
 		std.mem.writeIntBig(u32, self.streamBuffer[1..5], id); // TODO: Use little endian for better hardware support. Currently the aim is interoperability with the java version which uses big endian.
 
-		var packet = UnconfirmedPacket{
+		const packet = UnconfirmedPacket{
 			.data = try main.globalAllocator.dupe(u8, self.streamBuffer[0..self.streamPosition]),
 			.lastKeepAliveSentBefore = self.lastKeepAliveSent,
 			.id = id,
@@ -1350,7 +1350,7 @@ pub const Connection = struct {
 
 		var remaining: []const u8 = data;
 		while(remaining.len != 0) {
-			var copyableSize = @min(remaining.len, self.streamBuffer.len - self.streamPosition);
+			const copyableSize = @min(remaining.len, self.streamBuffer.len - self.streamPosition);
 			@memcpy(self.streamBuffer[self.streamPosition..][0..copyableSize], remaining[0..copyableSize]);
 			remaining = remaining[copyableSize..];
 			self.streamPosition += @intCast(copyableSize);
@@ -1366,7 +1366,7 @@ pub const Connection = struct {
 
 		if(self.disconnected) return;
 		std.debug.assert(data.len + 1 < maxPacketSize);
-		var fullData = try main.threadAllocator.alloc(u8, data.len + 1);
+		const fullData = try main.threadAllocator.alloc(u8, data.len + 1);
 		defer main.threadAllocator.free(fullData);
 		fullData[0] = id;
 		@memcpy(fullData[1..], data);
@@ -1382,8 +1382,8 @@ pub const Connection = struct {
 		self.lastKeepAliveReceived = std.mem.readIntBig(u32, data[4..8]);
 		var remaining: []const u8 = data[8..];
 		while(remaining.len >= 8) {
-			var start = std.mem.readIntBig(u32, remaining[0..4]);
-			var len = std.mem.readIntBig(u32, remaining[4..8]);
+			const start = std.mem.readIntBig(u32, remaining[0..4]);
+			const len = std.mem.readIntBig(u32, remaining[4..8]);
 			remaining = remaining[8..];
 			var j: usize = 0;
 			while(j < self.unconfirmedPackets.items.len) {
@@ -1413,7 +1413,7 @@ pub const Connection = struct {
 				var leftRegion: ?u32 = null;
 				var rightRegion: ?u32 = null;
 				for(runLengthEncodingStarts.items, runLengthEncodingLengths.items, 0..) |start, length, reg| {
-					var diff = packetID -% start;
+					const diff = packetID -% start;
 					if(diff < length) continue;
 					if(diff == length) {
 						leftRegion = @intCast(reg);
@@ -1449,7 +1449,7 @@ pub const Connection = struct {
 			self.receivedPackets[0] = putBackToFront;
 			self.receivedPackets[0].clearRetainingCapacity();
 		}
-		var output = try main.threadAllocator.alloc(u8, runLengthEncodingStarts.items.len*8 + 9);
+		const output = try main.threadAllocator.alloc(u8, runLengthEncodingStarts.items.len*8 + 9);
 		defer main.threadAllocator.free(output);
 		output[0] = Protocols.keepAlive;
 		std.mem.writeIntBig(u32, output[1..5], self.lastKeepAliveSent);
@@ -1476,7 +1476,7 @@ pub const Connection = struct {
 		if(self.bruteforcingPort) {
 			// This is called every 100 ms, so if I send 10 requests it shouldn't be too bad.
 			for(0..5) |_| {
-				var data = [1]u8{0};
+				const data = [1]u8{0};
 				if(self.remoteAddress.port +% self.bruteForcedPortRange != 0) {
 					try self.manager.send(&data, Address{.ip = self.remoteAddress.ip, .port = self.remoteAddress.port +% self.bruteForcedPortRange});
 				}
@@ -1501,7 +1501,7 @@ pub const Connection = struct {
 			var id = self.lastIncompletePacket;
 			var receivedPacket = self.lastReceivedPackets[id & 65535] orelse return;
 			var newIndex = self.lastIndex;
-			var protocol = receivedPacket[newIndex];
+			const protocol = receivedPacket[newIndex];
 			newIndex += 1;
 			if(self.manager.world == null and self.user == null and protocol != Protocols.handShake.id)
 				return;
@@ -1529,12 +1529,12 @@ pub const Connection = struct {
 			var dataAvailable = receivedPacket.len - newIndex;
 			var idd = id + 1;
 			while(dataAvailable < len): (idd += 1) {
-				var otherPacket = self.lastReceivedPackets[idd & 65535] orelse return;
+				const otherPacket = self.lastReceivedPackets[idd & 65535] orelse return;
 				dataAvailable += otherPacket.len;
 			}
 
 			// Copy the data to an array:
-			var data = try main.threadAllocator.alloc(u8, len);
+			const data = try main.threadAllocator.alloc(u8, len);
 			defer main.threadAllocator.free(data);
 			var remaining = data[0..];
 			while(remaining.len != 0) {
@@ -1571,7 +1571,7 @@ pub const Connection = struct {
 		bytesReceived[protocol] += data.len + 20 + 8; // Including IP header and udp header;
 		packetsReceived[protocol] += 1;
 		if(protocol == Protocols.important) {
-			var id = std.mem.readIntBig(u32, data[1..5]);
+			const id = std.mem.readIntBig(u32, data[1..5]);
 			if(self.handShakeState == Protocols.handShake.stepComplete and id == 0) { // Got a new "first" packet from client. So the client tries to reconnect, but we still think it's connected.
 				// TODO:
 //				if(this instanceof User) {

@@ -29,13 +29,13 @@ pub fn deinit() void {
 pub fn generateMapFragment(map: *ClimateMapFragment, worldSeed: u64) Allocator.Error!void {
 	var seed: u64 = worldSeed;
 
-	var generator = try GenerationStructure.init(main.threadAllocator, map.pos.wx, map.pos.wz, ClimateMapFragment.mapSize, ClimateMapFragment.mapSize, terrain.biomes.byTypeBiomes, seed);
+	const generator = try GenerationStructure.init(main.threadAllocator, map.pos.wx, map.pos.wz, ClimateMapFragment.mapSize, ClimateMapFragment.mapSize, terrain.biomes.byTypeBiomes, seed);
 	defer generator.deinit(main.threadAllocator);
 
 	try generator.toMap(map, ClimateMapFragment.mapSize, ClimateMapFragment.mapSize, worldSeed);
 
 	// TODO: Remove debug image:
-	var image = try main.graphics.Image.init(main.threadAllocator, @intCast(map.map.len), @intCast(map.map[0].len));
+	const image = try main.graphics.Image.init(main.threadAllocator, @intCast(map.map.len), @intCast(map.map[0].len));
 	defer image.deinit(main.threadAllocator);
 	var x: u31 = 0;
 	while(x < map.map.len) : (x += 1) {
@@ -57,7 +57,7 @@ const BiomePoint = struct {
 
 	fn voronoiDistanceFunction(self: @This(), pos: Vec2f) f32 {
 		const len = vec.lengthSquare(self.pos - pos);
-		var result = len*self.weight;
+		const result = len*self.weight;
 		if(result > 1.0) {
 			return result + (result - 1.0)/8192.0*len;
 		}
@@ -97,7 +97,7 @@ const Chunk = struct {
 	fn checkIfBiomeIsValid(x: f32, y: f32, biomeRadius: f32, biomesSortedByX: []BiomePoint, chunkLocalMaxBiomeRadius: f32) bool {
 		const minX = x - biomeRadius - chunkLocalMaxBiomeRadius;
 		const maxX = x + biomeRadius + chunkLocalMaxBiomeRadius;
-		var i: usize = getStartCoordinate(minX, biomesSortedByX);
+		const i: usize = getStartCoordinate(minX, biomesSortedByX);
 		for(biomesSortedByX[i..]) |other| {
 			if(other.pos[0] >= maxX) break;
 			const minDistance = (biomeRadius + other.biome.radius)*0.85;
@@ -140,7 +140,7 @@ const Chunk = struct {
 			const x = random.nextFloat(&seed)*chunkSize + @as(f32, @floatFromInt(wx));
 			const y = random.nextFloat(&seed)*chunkSize + @as(f32, @floatFromInt(wz));
 			var biomeSeed: u64 = 562478564;
-			var drawnBiome = tree.getBiome(&biomeSeed, x, y);
+			const drawnBiome = tree.getBiome(&biomeSeed, x, y);
 			if(!checkIfBiomeIsValid(x, y, drawnBiome.radius, selectedBiomes.items(), chunkLocalMaxBiomeRadius)) {
 				rejections += 1;
 				continue :outer;

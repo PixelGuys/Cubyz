@@ -36,15 +36,15 @@ fn keypressListener(key: c_int, mouseButton: c_int, scancode: c_int) void {
 }
 
 pub fn onOpen() Allocator.Error!void {
-	var list = try VerticalList.init(.{padding, 16 + padding}, 300, 8);
+	const list = try VerticalList.init(.{padding, 16 + padding}, 300, 8);
 	for(&main.KeyBoard.keys) |*key| {
-		var label = try Label.init(.{0, 0}, 128, key.name, .left);
-		var button = if(key == selectedKey) (
+		const label = try Label.init(.{0, 0}, 128, key.name, .left);
+		const button = if(key == selectedKey) (
 			try Button.initText(.{16, 0}, 128, "...", .{})
 		) else (
 			try Button.initText(.{16, 0}, 128, key.getName(), .{.callback = &function, .arg = @intFromPtr(key)})
 		);
-		var row = try HorizontalList.init();
+		const row = try HorizontalList.init();
 		try row.add(label);
 		try row.add(button);
 		row.finish(.{0, 0}, .center);
@@ -65,7 +65,7 @@ pub fn onClose() void {
 pub fn render() Allocator.Error!void {
 	if(needsUpdate) {
 		needsUpdate = false;
-		var oldScroll = window.rootComponent.?.verticalList.scrollBar.currentState;
+		const oldScroll = window.rootComponent.?.verticalList.scrollBar.currentState;
 		onClose();
 		onOpen() catch {
 			std.log.err("Received out of memory error while rebuilding the controls GUI. This behavior is not handled.", .{});

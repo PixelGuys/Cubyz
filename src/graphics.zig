@@ -131,7 +131,7 @@ pub const draw = struct {
 
 	fn initRect() void {
 		rectShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Rect.vs", "assets/cubyz/shaders/graphics/Rect.fs", &rectUniforms) catch Shader{.id = 0};
-		var rawData = [_]f32 {
+		const rawData = [_]f32 {
 			0, 0,
 			0, 1,
 			1, 0,
@@ -185,7 +185,7 @@ pub const draw = struct {
 
 	fn initLine() void {
 		lineShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Line.vs", "assets/cubyz/shaders/graphics/Line.fs", &lineUniforms) catch Shader{.id = 0};
-		var rawData = [_]f32 {
+		const rawData = [_]f32 {
 			0, 0,
 			1, 1,
 		};
@@ -231,7 +231,7 @@ pub const draw = struct {
 	var drawRectVBO: c_uint = undefined;
 
 	fn initDrawRect() void {
-		var rawData = [_]f32 {
+		const rawData = [_]f32 {
 			0, 0,
 			0, 1,
 			1, 1,
@@ -284,7 +284,7 @@ pub const draw = struct {
 
 	fn initCircle() void {
 		circleShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Circle.vs", "assets/cubyz/shaders/graphics/Circle.fs", &circleUniforms) catch Shader{.id = 0};
-		var rawData = [_]f32 {
+		const rawData = [_]f32 {
 			-1, -1,
 			-1, 1,
 			1, -1,
@@ -583,7 +583,7 @@ pub const TextBuffer = struct {
 		}
 
 		// Let harfbuzz do its thing:
-		var buffer = hbft.hb_buffer_create() orelse return error.OutOfMemory;
+		const buffer = hbft.hb_buffer_create() orelse return error.OutOfMemory;
 		defer hbft.hb_buffer_destroy(buffer);
 		hbft.hb_buffer_add_utf32(buffer, parser.parsedText.items.ptr, @intCast(parser.parsedText.items.len), 0, @intCast(parser.parsedText.items.len));
 		hbft.hb_buffer_set_direction(buffer, hbft.HB_DIRECTION_LTR);
@@ -601,7 +601,7 @@ pub const TextBuffer = struct {
 		}
 
 		// Guess the text index from the given cluster indices. Only works if the number of glyphs and the number of characters in a cluster is the same.
-		var textIndexGuess = try stackFallbackAllocator.alloc(u32, glyphInfos.len);
+		const textIndexGuess = try stackFallbackAllocator.alloc(u32, glyphInfos.len);
 		defer stackFallbackAllocator.free(textIndexGuess);
 		for(textIndexGuess, 0..) |*index, i| {
 			if(i == 0 or glyphInfos[i-1].cluster != glyphInfos[i].cluster) {
@@ -698,7 +698,7 @@ pub const TextBuffer = struct {
 		self.lineBreaks.clearRetainingCapacity();
 		const spaceCharacterWidth = 8;
 		try self.lineBreaks.append(.{.index = 0, .width = 0});
-		var scaledMaxWidth = maxLineWidth/fontSize*16.0;
+		const scaledMaxWidth = maxLineWidth/fontSize*16.0;
 		var lineWidth: f32 = 0;
 		var lastSpaceWidth: f32 = 0;
 		var lastSpaceIndex: u32 = 0;
@@ -811,7 +811,7 @@ pub const TextBuffer = struct {
 				const lineStart = @max(0, line.start);
 				const lineEnd = @min(lineWrap, line.end);
 				if(lineStart < lineEnd) {
-					var start = Vec2f{lineStart + self.getLineOffset(j), y};
+					const start = Vec2f{lineStart + self.getLineOffset(j), y};
 					const dim = Vec2f{lineEnd - lineStart, 1};
 					draw.rect(start, dim);
 				}
@@ -880,7 +880,7 @@ pub const TextBuffer = struct {
 				const lineStart = @max(0, line.start);
 				const lineEnd = @min(lineWrap, line.end);
 				if(lineStart < lineEnd) {
-					var start = Vec2f{lineStart + self.getLineOffset(j), y};
+					const start = Vec2f{lineStart + self.getLineOffset(j), y};
 					const dim = Vec2f{lineEnd - lineStart, 1};
 					draw.rect(start, dim);
 				}
@@ -1119,7 +1119,7 @@ pub const Shader = struct {
 	}
 	
 	pub fn init(vertex: []const u8, fragment: []const u8) !Shader {
-		var shader = Shader{.id = c.glCreateProgram()};
+		const shader = Shader{.id = c.glCreateProgram()};
 		try shader.addShader(vertex, c.GL_VERTEX_SHADER);
 		try shader.addShader(fragment, c.GL_FRAGMENT_SHADER);
 		try shader.link();
@@ -1137,7 +1137,7 @@ pub const Shader = struct {
 	}
 
 	pub fn initCompute(compute: []const u8) !Shader {
-		var shader = Shader{.id = c.glCreateProgram()};
+		const shader = Shader{.id = c.glCreateProgram()};
 		try shader.addShader(compute, c.GL_COMPUTE_SHADER);
 		try shader.link();
 		return shader;
@@ -1473,7 +1473,7 @@ pub const TextureArray = struct {
 		c.glTexStorage3D(c.GL_TEXTURE_2D_ARRAY, maxLOD, c.GL_RGBA8, maxWidth, maxHeight, @intCast(images.len));
 		var arena = std.heap.ArenaAllocator.init(main.threadAllocator);
 		defer arena.deinit();
-		var lodBuffer: [][]Color = try arena.allocator().alloc([]Color, maxLOD);
+		const lodBuffer: [][]Color = try arena.allocator().alloc([]Color, maxLOD);
 		for(lodBuffer, 0..) |*buffer, i| {
 			buffer.* = try arena.allocator().alloc(Color, (maxWidth >> @intCast(i))*(maxHeight >> @intCast(i)));
 		}
@@ -1822,7 +1822,7 @@ pub fn generateBlockTexture(blockType: u16) !Texture {
 	finalFrameBuffer.init(false, c.GL_NEAREST, c.GL_REPEAT);
 	finalFrameBuffer.updateSize(textureSize, textureSize, c.GL_RGBA8);
 	finalFrameBuffer.bind();
-	var texture = Texture{.textureID = finalFrameBuffer.texture};
+	const texture = Texture{.textureID = finalFrameBuffer.texture};
 	defer c.glDeleteFramebuffers(1, &finalFrameBuffer.frameBuffer);
 	block_texture.shader.bind();
 	c.glUniform1i(block_texture.uniforms.transparent, if(block.transparent()) c.GL_TRUE else c.GL_FALSE);

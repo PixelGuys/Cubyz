@@ -117,7 +117,7 @@ fn findAvailableRecipes(list: *VerticalList) Allocator.Error!bool {
 			continue :outer; // Ingredient not found.
 		}
 		// All ingredients found: Add it to the list.
-		var rowList = try HorizontalList.init();
+		const rowList = try HorizontalList.init();
 		const maxColumns: u32 = 4;
 		const itemsPerColumn = recipe.sourceItems.len/maxColumns;
 		const remainder = recipe.sourceItems.len%maxColumns;
@@ -125,7 +125,7 @@ fn findAvailableRecipes(list: *VerticalList) Allocator.Error!bool {
 		for(0..maxColumns) |col| {
 			var itemsThisColumn = itemsPerColumn;
 			if(col < remainder) itemsThisColumn += 1;
-			var columnList = try VerticalList.init(.{0, 0}, std.math.inf(f32), 0);
+			const columnList = try VerticalList.init(.{0, 0}, std.math.inf(f32), 0);
 			for(0..itemsThisColumn) |_| {
 				try columnList.add(try ImmutableItemSlot.init(.{0, 0}, recipe.sourceItems[i], recipe.sourceAmounts[i]));
 				i += 1;
@@ -143,7 +143,7 @@ fn findAvailableRecipes(list: *VerticalList) Allocator.Error!bool {
 }
 
 fn refresh() Allocator.Error!void {
-	var list = try VerticalList.init(.{padding, padding + 16}, 300, 8);
+	const list = try VerticalList.init(.{padding, padding + 16}, 300, 8);
 	if(!try findAvailableRecipes(list)) {
 		list.deinit();
 		return;

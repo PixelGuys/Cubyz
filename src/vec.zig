@@ -168,7 +168,7 @@ pub const Mat4f = struct {
 	}
 
 	pub fn mul(self: Mat4f, other: Mat4f) Mat4f {
-		var transposeSelf = self.transpose();
+		const transposeSelf = self.transpose();
 		var result: Mat4f = undefined;
 		for(&result.columns, other.columns) |*resCol, otherCol| {
 			resCol.*[0] = dot(transposeSelf.columns[0], otherCol);
@@ -180,12 +180,12 @@ pub const Mat4f = struct {
 	}
 
 	pub fn mulVec(self: Mat4f, vec: Vec4f) Vec4f {
-		var transposeSelf = self.transpose();
-		var result: Vec4f = undefined;
-		result[0] = dot(transposeSelf.columns[0], vec);
-		result[1] = dot(transposeSelf.columns[1], vec);
-		result[2] = dot(transposeSelf.columns[2], vec);
-		result[3] = dot(transposeSelf.columns[3], vec);
-		return result;
+		const transposeSelf = self.transpose();
+		return Vec4f {
+			dot(transposeSelf.columns[0], vec),
+			dot(transposeSelf.columns[1], vec),
+			dot(transposeSelf.columns[2], vec),
+			dot(transposeSelf.columns[3], vec),
+		};
 	}
 };

@@ -92,7 +92,7 @@ pub const MapGenerator = struct {
 	var generatorRegistry: std.StringHashMapUnmanaged(MapGenerator) = .{};
 
 	fn registerGenerator(comptime Generator: type) !void {
-		var self = MapGenerator {
+		const self = MapGenerator {
 			.init = &Generator.init,
 			.deinit = &Generator.deinit,
 			.generateMapFragment = &Generator.generateMapFragment,
