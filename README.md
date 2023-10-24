@@ -31,8 +31,7 @@ Otherwise you can
 ### Compile Cubyz from source
 1. Install git
 2. Clone this repository `git clone https://github.com/pixelguys/Cubyz`
-3. Run `run.sh` (Linux) or `run.bat` (Windows)
-4. If the game is too slow, run it in release: `run.sh -Doptimize=ReleaseFast` (Linux) or `run.bar -Doptimize=ReleaseFast` (Windows)
+3. Run `run_release.sh` (Linux) or `run_release.bat` (Windows)
 #### Note for Linux Users:
 I also had to install a few `-dev` packages for the compilation to work:
 ```
