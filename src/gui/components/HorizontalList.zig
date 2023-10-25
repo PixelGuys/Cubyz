@@ -21,7 +21,7 @@ pub fn init() Allocator.Error!*HorizontalList {
 	const self = try main.globalAllocator.create(HorizontalList);
 	self.* = HorizontalList {
 		.children = std.ArrayList(GuiComponent).init(main.globalAllocator),
-		.pos = undefined,
+		.pos = .{0, 0},
 		.size = .{0, 0},
 	};
 	return self;
@@ -48,11 +48,10 @@ pub fn add(self: *HorizontalList, _other: anytype) Allocator.Error!void {
 	} else {
 		other = _other.toComponent();
 	}
-	const added = try self.children.addOne();
-	added.* = other;
-	added.mutPos().*[0] += self.size[0];
-	self.size[0] = added.pos()[0] + added.size()[0];
-	self.size[1] = @max(self.size[1], added.pos()[1] + added.size()[1]);
+	other.mutPos().*[0] += self.size[0];
+	self.size[0] = other.pos()[0] + other.size()[0];
+	self.size[1] = @max(self.size[1], other.pos()[1] + other.size()[1]);
+	try self.children.append(other);
 }
 
 pub fn finish(self: *HorizontalList, pos: Vec2f, alignment: graphics.TextBuffer.Alignment) void {

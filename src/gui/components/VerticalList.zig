@@ -62,12 +62,11 @@ pub fn add(self: *VerticalList, _other: anytype) Allocator.Error!void {
 	} else {
 		other = _other.toComponent();
 	}
-	const added = try self.children.addOne();
-	added.* = other;
-	added.mutPos().*[1] += self.size[1];
-	if(self.size[1] != 0) added.mutPos().*[1] += self.padding;
-	self.size[1] = added.pos()[1] + added.size()[1];
-	self.size[0] = @max(self.size[0], added.pos()[0] + added.size()[0]);
+	other.mutPos().*[1] += self.size[1];
+	if(self.size[1] != 0) other.mutPos().*[1] += self.padding;
+	self.size[1] = other.pos()[1] + other.size()[1];
+	self.size[0] = @max(self.size[0], other.pos()[0] + other.size()[0]);
+	try self.children.append(other);
 }
 
 pub fn finish(self: *VerticalList, alignment: graphics.TextBuffer.Alignment) void {
