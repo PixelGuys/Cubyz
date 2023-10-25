@@ -38,11 +38,11 @@ fn flawedRender() !void {
 		y += 8;
 		try draw.print("Game Time: {}", .{main.game.world.?.gameTime.load(.Monotonic)}, 0, y, 8, .left);
 		y += 8;
-		try draw.print("Queue size: {}", .{main.threadPool.loadList.size}, 0, y, 8, .left);
+		try draw.print("Queue size: {}", .{main.threadPool.queueSize()}, 0, y, 8, .left);
 		y += 8;
 		try draw.print("ChunkMesh memory: {} MiB / {} MiB (fragmentation: {})", .{main.chunk.meshing.faceBuffer.used >> 20, main.chunk.meshing.faceBuffer.capacity >> 20, main.chunk.meshing.faceBuffer.freeBlocks.items.len}, 0, y, 8, .left);
 		y += 8;
-		try draw.print("Biome: {s}", .{main.game.world.?.playerBiome.id}, 0, y, 8, .left);
+		try draw.print("Biome: {s}", .{main.game.world.?.playerBiome.load(.Monotonic).id}, 0, y, 8, .left);
 		y += 8;
 		try draw.print("Opaque faces: {}, Transparent faces: {}", .{main.chunk.meshing.quadsDrawn, main.chunk.meshing.transparentQuadsDrawn}, 0, y, 8, .left);
 		y += 8;

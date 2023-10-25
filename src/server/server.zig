@@ -60,6 +60,7 @@ pub const User = struct {
 	}
 
 	pub fn update(self: *User) void {
+		std.debug.assert(!mutex.tryLock()); // The mutex should be locked when calling this function.
 		var time = @as(i16, @truncate(std.time.milliTimestamp())) -% main.settings.entityLookback;
 		time -%= self.timeDifference.difference.load(.Monotonic);
 		self.interpolation.update(time, self.lastTime);
@@ -67,6 +68,8 @@ pub const User = struct {
 	}
 
 	pub fn receiveData(self: *User, data: []const u8) void {
+		mutex.lock();
+		defer mutex.unlock();
 		const position: [3]f64 = .{
 			@bitCast(std.mem.readIntBig(u64, data[0..8])),
 			@bitCast(std.mem.readIntBig(u64, data[8..16])),

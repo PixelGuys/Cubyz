@@ -1070,7 +1070,7 @@ pub const meshing = struct {
 			);
 			c.glUniform1i(uniforms.visibilityMask, self.visibilityMask);
 			c.glUniform1i(uniforms.voxelSize, self.pos.voxelSize);
-			quadsDrawn += self.opaqueMesh.faces.items.len;
+			quadsDrawn += self.opaqueMesh.vertexCount/6;
 			c.glDrawElementsBaseVertex(c.GL_TRIANGLES, self.opaqueMesh.vertexCount, c.GL_UNSIGNED_INT, null, self.opaqueMesh.bufferAllocation.start/8*4);
 		}
 
@@ -1087,7 +1087,7 @@ pub const meshing = struct {
 			);
 			c.glUniform1i(voxelUniforms.visibilityMask, self.visibilityMask);
 			c.glUniform1i(voxelUniforms.voxelSize, self.pos.voxelSize);
-			quadsDrawn += self.voxelMesh.faces.items.len;
+			quadsDrawn += self.voxelMesh.vertexCount/6;
 			c.glDrawElementsBaseVertex(c.GL_TRIANGLES, self.voxelMesh.vertexCount, c.GL_UNSIGNED_INT, null, self.voxelMesh.bufferAllocation.start/8*4);
 		}
 

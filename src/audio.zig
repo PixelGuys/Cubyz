@@ -211,7 +211,7 @@ var curIndex: u16 = 0;
 var curEndIndex: std.atomic.Atomic(u16) = .{.value = sampleRate/60 & ~@as(u16, 1)};
 
 fn addMusic(buffer: []f32) !void {
-	const musicId = if(main.game.world) |world| world.playerBiome.preferredMusic else "cubyz";
+	const musicId = if(main.game.world) |world| world.playerBiome.load(.Monotonic).preferredMusic else "cubyz";
 	if(!std.mem.eql(u8, musicId, activeMusicId)) {
 		if(activeMusicId.len == 0) {
 			if(try findMusic(musicId)) |musicBuffer| {

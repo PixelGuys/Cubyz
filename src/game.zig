@@ -1,4 +1,5 @@
 const std = @import("std");
+const Atomic = std.atomic.Atomic;
 
 const assets = @import("assets.zig");
 const chunk = @import("chunk.zig");
@@ -47,7 +48,7 @@ pub const camera = struct {
 pub const Player = struct {
 	pub var super: main.server.Entity = .{};
 	pub var id: u32 = 0;
-	pub var isFlying: std.atomic.Atomic(bool) = std.atomic.Atomic(bool).init(true);
+	pub var isFlying: Atomic(bool) = Atomic(bool).init(true);
 	pub var mutex: std.Thread.Mutex = std.Thread.Mutex{};
 	pub var inventory__SEND_CHANGES_TO_SERVER: Inventory = undefined;
 	pub var selectedSlot: u32 = 0;
@@ -95,11 +96,11 @@ pub const World = struct {
 	gravity: f64 = 9.81*1.5, // TODO: Balance
 	name: []const u8,
 	milliTime: i64,
-	gameTime: std.atomic.Atomic(i64) = std.atomic.Atomic(i64).init(0),
+	gameTime: Atomic(i64) = Atomic(i64).init(0),
 	spawn: Vec3f = undefined,
 	blockPalette: *assets.BlockPalette = undefined,
 	itemDrops: ClientItemDropManager = undefined,
-	playerBiome: *const main.server.terrain.biomes.Biome = undefined,
+	playerBiome: Atomic(*const main.server.terrain.biomes.Biome) = undefined,
 	
 //	public final ArrayList<String> chatHistory = new ArrayList<>();
 
@@ -119,7 +120,7 @@ pub const World = struct {
 		main.Window.setMouseGrabbed(true);
 
 		try main.blocks.meshes.generateTextureArray();
-		self.playerBiome = main.server.terrain.biomes.getById("");
+		self.playerBiome = Atomic(*const main.server.terrain.biomes.Biome).init(main.server.terrain.biomes.getById(""));
 	}
 
 	pub fn deinit(self: *World) void {

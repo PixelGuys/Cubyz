@@ -1,6 +1,7 @@
 const builtin = @import("builtin");
 const std = @import("std");
 const Allocator = std.mem.Allocator;
+const Atomic = std.atomic.Atomic;
 
 const assets = @import("assets.zig");
 const Block = @import("blocks.zig").Block;
@@ -375,8 +376,8 @@ pub const ConnectionManager = struct {
 	thread: std.Thread = undefined,
 	threadId: std.Thread.Id = undefined,
 	externalAddress: Address = undefined,
-	online: std.atomic.Atomic(bool) = std.atomic.Atomic(bool).init(false),
-	running: std.atomic.Atomic(bool) = std.atomic.Atomic(bool).init(true),
+	online: Atomic(bool) = Atomic(bool).init(false),
+	running: Atomic(bool) = Atomic(bool).init(true),
 
 	connections: std.ArrayList(*Connection) = undefined,
 	requests: std.ArrayList(*Request) = undefined,
@@ -472,7 +473,7 @@ pub const ConnectionManager = struct {
 	pub fn addConnection(self: *ConnectionManager, conn: *Connection) !void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
-		
+
 		try self.connections.append(conn);
 	}
 
@@ -583,8 +584,8 @@ const UnconfirmedPacket = struct {
 	id: u32,
 };
 
-pub var bytesReceived: [256]usize = [_]usize {0} ** 256;
-pub var packetsReceived: [256]usize = [_]usize {0} ** 256;
+pub var bytesReceived: [256]Atomic(usize) = [_]Atomic(usize) {Atomic(usize).init(0)} ** 256;
+pub var packetsReceived: [256]Atomic(usize) = [_]Atomic(usize) {Atomic(usize).init(0)} ** 256;
 pub const Protocols = struct {
 	pub var list: [256]?*const fn(*Connection, []const u8) anyerror!void = [_]?*const fn(*Connection, []const u8) anyerror!void {null} ** 256;
 
@@ -599,8 +600,8 @@ pub const Protocols = struct {
 		const stepComplete: u8 = 255;
 
 		fn receive(conn: *Connection, data: []const u8) !void {
-			if(conn.handShakeState < data[0]) {
-				conn.handShakeState = data[0];
+			if(conn.handShakeState.load(.Monotonic) < data[0]) {
+				conn.handShakeState.store(data[0], .Monotonic);
 				switch(data[0]) {
 					stepUserData => {
 						const json = JsonElement.parseFromString(main.threadAllocator, data[1..]);
@@ -640,8 +641,8 @@ pub const Protocols = struct {
 						const outData = try jsonObject.toStringEfficient(main.threadAllocator, &[1]u8{stepServerData});
 						defer main.threadAllocator.free(outData);
 						try conn.sendImportant(id, outData);
-						conn.handShakeState = stepServerData;
-						conn.handShakeState = stepComplete;
+						conn.handShakeState.store(stepServerData, .Monotonic);
+						conn.handShakeState.store(stepComplete, .Monotonic);
 						// TODO:
 //					synchronized(conn) { // Notify the waiting server thread.
 //						conn.notifyAll();
@@ -657,7 +658,7 @@ pub const Protocols = struct {
 						const json = JsonElement.parseFromString(main.threadAllocator, data[1..]);
 						defer json.free(main.threadAllocator);
 						try conn.manager.world.?.finishHandshake(json);
-						conn.handShakeState = stepComplete;
+						conn.handShakeState.store(stepComplete, .Monotonic);
 						conn.handShakeWaiting.broadcast(); // Notify the waiting client thread.
 					},
 					stepComplete => {
@@ -673,7 +674,7 @@ pub const Protocols = struct {
 		}
 
 		pub fn serverSide(conn: *Connection) void {
-			conn.handShakeState = stepStart;
+			conn.handShakeState.store(stepStart, .Monotonic);
 		}
 
 		pub fn clientSide(conn: *Connection, name: []const u8) !void {
@@ -1089,7 +1090,7 @@ pub const Protocols = struct {
 								curTime = actualTime;
 							}
 						}
-						world.playerBiome = main.server.terrain.biomes.getById(json.get([]const u8, "biome", ""));
+						world.playerBiome.store(main.server.terrain.biomes.getById(json.get([]const u8, "biome", "")), .Monotonic);
 					}
 				},
 				else => |unrecognizedType| {
@@ -1226,8 +1227,8 @@ pub const Connection = struct {
 	const maxImportantPacketSize: u32 = 1500 - 20 - 8; // Ethernet MTU minus IP header minus udp header
 
 	// Statistics:
-	var packetsSent: u32 = 0;
-	var packetsResent: u32 = 0;
+	var packetsSent: Atomic(u32) = Atomic(u32).init(0);
+	var packetsResent: Atomic(u32) = Atomic(u32).init(0);
 
 	manager: *ConnectionManager,
 	user: ?*main.server.User = null,
@@ -1252,7 +1253,7 @@ pub const Connection = struct {
 	otherKeepAliveReceived: u32 = 0,
 
 	disconnected: bool = false,
-	handShakeState: u8 = Protocols.handShake.stepStart,
+	handShakeState: Atomic(u8) = Atomic(u8).init(Protocols.handShake.stepStart),
 	handShakeWaiting: std.Thread.Condition = std.Thread.Condition{},
 	lastConnection: i64,
 
@@ -1322,7 +1323,7 @@ pub const Connection = struct {
 			.id = id,
 		};
 		try self.unconfirmedPackets.append(packet);
-		packetsSent += 1;
+		_ = packetsSent.fetchAdd(1, .Monotonic);
 		try self.manager.send(packet.data, self.remoteAddress);
 		self.streamPosition = importantHeaderSize;
 	}
@@ -1466,8 +1467,8 @@ pub const Connection = struct {
 		// Resend packets that didn't receive confirmation within the last 2 keep-alive signals.
 		for(self.unconfirmedPackets.items) |*packet| {
 			if(self.lastKeepAliveReceived -% @as(i33, packet.lastKeepAliveSentBefore) >= 2) {
-				packetsSent += 1;
-				packetsResent += 1;
+				_ = packetsSent.fetchAdd(1, .Monotonic);
+				_ = packetsResent.fetchAdd(1, .Monotonic);
 				try self.manager.send(packet.data, self.remoteAddress);
 				packet.lastKeepAliveSentBefore = self.lastKeepAliveSent;
 			}
@@ -1552,7 +1553,7 @@ pub const Connection = struct {
 				self.lastReceivedPackets[self.lastIncompletePacket & 65535] = null;
 			}
 			self.lastIndex = newIndex;
-			bytesReceived[protocol] += data.len + 1 + (7 + std.math.log2_int(usize, 1 + data.len))/7;
+			_ = bytesReceived[protocol].fetchAdd(data.len + 1 + (7 + std.math.log2_int(usize, 1 + data.len))/7, .Monotonic);
 			if(Protocols.list[protocol]) |prot| {
 				try prot(self, data);
 			} else {
@@ -1564,15 +1565,15 @@ pub const Connection = struct {
 	pub fn receive(self: *Connection, data: []const u8) !void {
 		std.debug.assert(self.manager.threadId == std.Thread.getCurrentId());
 		const protocol = data[0];
-		if(self.handShakeState != Protocols.handShake.stepComplete and protocol != Protocols.handShake.id and protocol != Protocols.keepAlive and protocol != Protocols.important) {
+		if(self.handShakeState.load(.Monotonic) != Protocols.handShake.stepComplete and protocol != Protocols.handShake.id and protocol != Protocols.keepAlive and protocol != Protocols.important) {
 			return; // Reject all non-handshake packets until the handshake is done.
 		}
 		self.lastConnection = std.time.milliTimestamp();
-		bytesReceived[protocol] += data.len + 20 + 8; // Including IP header and udp header;
-		packetsReceived[protocol] += 1;
+		_ = bytesReceived[protocol].fetchAdd(data.len + 20 + 8, .Monotonic); // Including IP header and udp header;
+		_ = packetsReceived[protocol].fetchAdd(1, .Monotonic);
 		if(protocol == Protocols.important) {
 			const id = std.mem.readIntBig(u32, data[1..5]);
-			if(self.handShakeState == Protocols.handShake.stepComplete and id == 0) { // Got a new "first" packet from client. So the client tries to reconnect, but we still think it's connected.
+			if(self.handShakeState.load(.Monotonic) == Protocols.handShake.stepComplete and id == 0) { // Got a new "first" packet from client. So the client tries to reconnect, but we still think it's connected.
 				// TODO:
 //				if(this instanceof User) {
 //					Server.disconnect((User)this);

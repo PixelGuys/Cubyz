@@ -1,5 +1,6 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
+const Atomic = std.atomic.Atomic;
 const builtin = @import("builtin");
 
 const main = @import("main.zig");
@@ -670,8 +671,8 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 
 	return struct {
 		buckets: [numberOfBuckets]Bucket = [_]Bucket {Bucket{}} ** numberOfBuckets,
-		cacheRequests: std.atomic.Atomic(usize) = std.atomic.Atomic(usize).init(0),
-		cacheMisses: std.atomic.Atomic(usize) = std.atomic.Atomic(usize).init(0),
+		cacheRequests: Atomic(usize) = Atomic(usize).init(0),
+		cacheMisses: Atomic(usize) = Atomic(usize).init(0),
 
 		///  Tries to find the entry that fits to the supplied hashable.
 		pub fn find(self: *@This(), compareAndHash: anytype) ?*T {
@@ -865,7 +866,7 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 }
 
 pub const TimeDifference = struct {
-	difference: std.atomic.Atomic(i16) = std.atomic.Atomic(i16).init(0),
+	difference: Atomic(i16) = Atomic(i16).init(0),
 	firstValue: bool = true,
 
 	pub fn addDataPoint(self: *TimeDifference, time: i16) void {
