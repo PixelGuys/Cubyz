@@ -873,7 +873,7 @@ pub const MeshSelection = struct {
 
 pub const RenderStructure = struct {
 	const ChunkMeshNode = struct {
-		mesh: chunk.meshing.ChunkMesh,
+		mesh: ?*chunk.meshing.ChunkMesh,
 		shouldBeRemoved: bool, // Internal use.
 		drawableChildren: u32, // How many children can be renderer. If this is 8 then there is no need to render this mesh.
 		lod: u3,
@@ -884,9 +884,7 @@ pub const RenderStructure = struct {
 	var storageLists: [settings.highestLOD + 1][]?*ChunkMeshNode = [1][]?*ChunkMeshNode{&.{}} ** (settings.highestLOD + 1);
 	var storageListsSwap: [settings.highestLOD + 1][]?*ChunkMeshNode = [1][]?*ChunkMeshNode{&.{}} ** (settings.highestLOD + 1);
 	var meshList = std.ArrayList(*chunk.meshing.ChunkMesh).init(main.globalAllocator);
-	var updatableList: std.ArrayList(chunk.ChunkPosition) = undefined;
-	var updatableListSwap: std.ArrayList(chunk.ChunkPosition) = undefined;
-	var clearList: std.ArrayList(*ChunkMeshNode) = undefined;
+	var updatableList: std.ArrayList(*chunk.meshing.ChunkMesh) = undefined;
 	var lastRD: i32 = 0;
 	var lastFactor: f32 = 0;
 	var lastX: [settings.highestLOD + 1]i32 = [_]i32{0} ** (settings.highestLOD + 1);
@@ -907,9 +905,8 @@ pub const RenderStructure = struct {
 	pub fn init() !void {
 		lastRD = 0;
 		lastFactor = 0;
-		updatableList = std.ArrayList(chunk.ChunkPosition).init(main.globalAllocator);
+		updatableList = std.ArrayList(*chunk.meshing.ChunkMesh).init(main.globalAllocator);
 		blockUpdateList = std.ArrayList(BlockUpdate).init(main.globalAllocator);
-		clearList = std.ArrayList(*ChunkMeshNode).init(main.globalAllocator);
 		for(&storageLists) |*storageList| {
 			storageList.* = try main.globalAllocator.alloc(?*ChunkMeshNode, 0);
 		}
@@ -917,10 +914,13 @@ pub const RenderStructure = struct {
 
 	pub fn deinit() void {
 		for(storageLists) |storageList| {
-			for(storageList) |nullChunkMesh| {
-				if(nullChunkMesh) |chunkMesh| {
-					chunkMesh.mesh.deinit();
-					main.globalAllocator.destroy(chunkMesh);
+			for(storageList) |nullNode| {
+				if(nullNode) |node| {
+					if(node.mesh) |mesh| {
+						mesh.deinit();
+						main.globalAllocator.destroy(mesh);
+					}
+					main.globalAllocator.destroy(node);
 				}
 			}
 			main.globalAllocator.free(storageList);
@@ -928,13 +928,12 @@ pub const RenderStructure = struct {
 		for(storageListsSwap) |storageList| {
 			main.globalAllocator.free(storageList);
 		}
-		updatableList.deinit();
-		for(clearList.items) |chunkMesh| {
-			chunkMesh.mesh.deinit();
-			main.globalAllocator.destroy(chunkMesh);
+		for(updatableList.items) |mesh| {
+			mesh.deinit();
+			main.globalAllocator.destroy(mesh);
 		}
+		updatableList.deinit();
 		blockUpdateList.deinit();
-		clearList.deinit();
 		meshList.deinit();
 	}
 
@@ -966,12 +965,13 @@ pub const RenderStructure = struct {
 
 	pub fn getChunk(x: i32, y: i32, z: i32) ?*chunk.Chunk {
 		const node = RenderStructure._getNode(.{.wx = x, .wy = y, .wz = z, .voxelSize=1}) orelse return null;
-		return node.mesh.chunk.load(.Monotonic);
+		return &node.mesh.chunk;
 	}
 
 	pub fn getBlock(x: i32, y: i32, z: i32) ?blocks.Block {
 		const node = RenderStructure._getNode(.{.wx = x, .wy = y, .wz = z, .voxelSize=1}) orelse return null;
-		const block = (node.mesh.chunk.load(.Monotonic) orelse return null).getBlock(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask);
+		const mesh = node.mesh orelse return null;
+		const block = mesh.chunk.getBlock(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask);
 		return block;
 	}
 
@@ -979,7 +979,8 @@ pub const RenderStructure = struct {
 		var lod: u5 = 0;
 		while(lod < settings.highestLOD) : (lod += 1) {
 			const node = RenderStructure._getNode(.{.wx = x, .wy = y, .wz = z, .voxelSize=@as(u31, 1) << lod}) orelse continue;
-			const block = (node.mesh.chunk.load(.Monotonic) orelse continue).getBlock(x & chunk.chunkMask<<lod, y & chunk.chunkMask<<lod, z & chunk.chunkMask<<lod);
+			const mesh = node.mesh orelse continue;
+			const block = mesh.chunk.getBlock(x & chunk.chunkMask<<lod, y & chunk.chunkMask<<lod, z & chunk.chunkMask<<lod);
 			return block;
 		}
 		return blocks.Block{.typ = 0, .data = 0};
@@ -992,7 +993,7 @@ pub const RenderStructure = struct {
 		pos.wz += pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relZ[neighbor];
 		pos.voxelSize = resolution;
 		const node = _getNode(pos) orelse return null;
-		return &node.mesh;
+		return node.mesh;
 	}
 
 	pub fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: Vec3d, renderDistance: i32, LODFactor: f32) ![]*chunk.meshing.ChunkMesh {
@@ -1056,13 +1057,13 @@ pub const RenderStructure = struct {
 						const pos = chunk.ChunkPosition{.wx=x, .wy=y, .wz=z, .voxelSize=@as(u31, 1)<<lod};
 						var node = getNodeFromRenderThread(pos);
 						if(node) |_node| {
-							if(_node.mesh.generated) {
-								_node.mesh.visibilityMask = 0xff;
+							if(_node.mesh) |mesh| {
+								mesh.visibilityMask = 0xff;
 							}
 							_node.shouldBeRemoved = false;
 						} else {
 							node = try main.globalAllocator.create(ChunkMeshNode);
-							node.?.mesh = chunk.meshing.ChunkMesh.init(main.globalAllocator, pos);
+							node.?.mesh = null;
 							node.?.shouldBeRemoved = true; // Might be removed in the next iteration.
 							try meshRequests.append(pos);
 						}
@@ -1084,27 +1085,23 @@ pub const RenderStructure = struct {
 				storageListsSwap[lod] = oldList;
 			}
 			for(oldList) |nullMesh| {
-				if(nullMesh) |mesh| {
-					if(mesh.shouldBeRemoved) {
+				if(nullMesh) |node| {
+					if(node.shouldBeRemoved) {
 						// Update the neighbors, so we don't get cracks when we look back:
 						for(chunk.Neighbors.iterable) |neighbor| {
-							if(getNeighbor(mesh.mesh.pos, mesh.mesh.pos.voxelSize, neighbor)) |neighborMesh| {
-								if(neighborMesh.generated) {
-									neighborMesh.mutex.lock();
-									defer neighborMesh.mutex.unlock();
+							if(node.mesh) |mesh| {
+								if(getNeighbor(mesh.pos, mesh.pos.voxelSize, neighbor)) |neighborMesh| {
 									try neighborMesh.uploadDataAndFinishNeighbors();
 								}
 							}
 						}
-						if(mesh.mesh.mutex.tryLock()) { // Make sure there is no task currently running on the thing.
-							mesh.mesh.mutex.unlock();
-							mesh.mesh.deinit();
+						if(node.mesh) |mesh| {
+							mesh.deinit();
 							main.globalAllocator.destroy(mesh);
-						} else {
-							try clearList.append(mesh);
 						}
+						main.globalAllocator.destroy(node);
 					} else {
-						mesh.shouldBeRemoved = true;
+						node.shouldBeRemoved = true;
 					}
 				}
 			}
@@ -1138,7 +1135,7 @@ pub const RenderStructure = struct {
 			firstPos.wz &= ~@as(i32, chunk.chunkMask);
 			var lod: u3 = 0;
 			while(lod <= settings.highestLOD) : (lod += 1) {
-				if(getNodeFromRenderThread(firstPos)) |node| if(node.mesh.generated) {
+				if(getNodeFromRenderThread(firstPos)) |node| if(node.mesh != null) {
 					node.lod = lod;
 					node.min = @splat(-1);
 					node.max = @splat(1);
@@ -1158,12 +1155,14 @@ pub const RenderStructure = struct {
 		const projRotMat = game.projectionMatrix.mul(game.camera.viewMatrix);
 		while(searchList.removeOrNull()) |data| {
 			data.node.active = false;
-			const mesh = &data.node.mesh;
+			const mesh = data.node.mesh.?;
 			if(data.node.lod+1 != storageLists.len) {
 				if(getNodeFromRenderThread(.{.wx=mesh.pos.wx, .wy=mesh.pos.wy, .wz=mesh.pos.wz, .voxelSize=mesh.pos.voxelSize << 1})) |parent| {
-					const sizeShift = chunk.chunkShift + data.node.lod;
-					const octantIndex: u3 = @intCast((mesh.pos.wx>>sizeShift & 1) | (mesh.pos.wy>>sizeShift & 1)<<1 | (mesh.pos.wz>>sizeShift & 1)<<2);
-					parent.mesh.visibilityMask &= ~(@as(u8, 1) << octantIndex);
+					if(parent.mesh) |parentMesh| {
+						const sizeShift = chunk.chunkShift + data.node.lod;
+						const octantIndex: u3 = @intCast((mesh.pos.wx>>sizeShift & 1) | (mesh.pos.wy>>sizeShift & 1)<<1 | (mesh.pos.wz>>sizeShift & 1)<<2);
+						parentMesh.visibilityMask &= ~(@as(u8, 1) << octantIndex);
+					}
 				}
 			}
 			try meshList.append(mesh);
@@ -1319,7 +1318,7 @@ pub const RenderStructure = struct {
 				};
 				var lod: u3 = data.node.lod;
 				while(lod <= settings.highestLOD) : (lod += 1) {
-					if(getNodeFromRenderThread(neighborPos)) |node| if(node.mesh.generated) {
+					if(getNodeFromRenderThread(neighborPos)) |node| if(node.mesh != null) {
 						if(node.active) {
 							node.min = @min(node.min, min);
 							node.max = @max(node.max, max);
@@ -1330,7 +1329,7 @@ pub const RenderStructure = struct {
 							node.active = true;
 							try searchList.add(.{
 								.node = node,
-								.distance = node.mesh.pos.getMaxDistanceSquared(playerPos)
+								.distance = node.mesh.?.pos.getMaxDistanceSquared(playerPos),
 							});
 						}
 						break :continueNeighborLoop;
@@ -1340,19 +1339,6 @@ pub const RenderStructure = struct {
 					neighborPos.wz &= ~@as(i32, neighborPos.voxelSize*chunk.chunkSize);
 					neighborPos.voxelSize *= 2;
 				}
-			}
-		}
-
-		var i: usize = 0;
-		while(i < clearList.items.len) {
-			const mesh = clearList.items[i];
-			if(mesh.mesh.mutex.tryLock()) { // Make sure there is no task currently running on the thing.
-				mesh.mesh.mutex.unlock();
-				mesh.mesh.deinit();
-				main.globalAllocator.destroy(mesh);
-				_ = clearList.swapRemove(i);
-			} else {
-				i += 1;
 			}
 		}
 
@@ -1370,7 +1356,9 @@ pub const RenderStructure = struct {
 			for(blockUpdateList.items) |blockUpdate| {
 				const pos = chunk.ChunkPosition{.wx=blockUpdate.x, .wy=blockUpdate.y, .wz=blockUpdate.z, .voxelSize=1};
 				if(_getNode(pos)) |node| {
-					try node.mesh.updateBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock);
+					if(node.mesh) |mesh| {
+						try mesh.updateBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock);
+					} // TODO: It seems like we simply ignore the block update if we don't have the mesh yet.
 				}
 			}
 			blockUpdateList.clearRetainingCapacity();
@@ -1382,29 +1370,27 @@ pub const RenderStructure = struct {
 			var closestPriority: f32 = -std.math.floatMax(f32);
 			var closestIndex: usize = 0;
 			const playerPos = game.Player.getPosBlocking();
-			for(updatableList.items, 0..) |pos, i| {
-				const priority = pos.getPriority(playerPos);
+			for(updatableList.items, 0..) |mesh, i| {
+				const priority = mesh.pos.getPriority(playerPos);
 				if(priority > closestPriority) {
 					closestPriority = priority;
 					closestIndex = i;
 				}
 			}
-			const pos = updatableList.orderedRemove(closestIndex);
+			const mesh = updatableList.orderedRemove(closestIndex);
 			mutex.unlock();
 			defer mutex.lock();
-			const nullNode = _getNode(pos);
+			const nullNode = _getNode(mesh.pos);
 			if(nullNode) |node| {
-				node.mesh.mutex.lock();
-				defer node.mesh.mutex.unlock();
-				node.mesh.uploadDataAndFinishNeighbors() catch |err| {
-					if(err == error.LODMissing) {
-						mutex.lock();
-						defer mutex.unlock();
-						try updatableList.append(pos);
-					} else {
-						return err;
-					}
-				};
+				try mesh.uploadDataAndFinishNeighbors();
+				if(node.mesh) |oldMesh| {
+					oldMesh.deinit();
+					main.globalAllocator.destroy(oldMesh);
+				}
+				node.mesh = mesh;
+			} else {
+				mesh.deinit();
+				main.globalAllocator.destroy(mesh);
 			}
 			if(std.time.milliTimestamp() >= targetTime) break; // Update at least one mesh.
 		}
@@ -1442,25 +1428,18 @@ pub const RenderStructure = struct {
 
 		pub fn run(self: *MeshGenerationTask) Allocator.Error!void {
 			const pos = self.mesh.pos;
-			const nullNode = _getNode(pos);
-			if(nullNode) |node| {
-				{
-					node.mesh.mutex.lock();
-					defer node.mesh.mutex.unlock();
-					try node.mesh.regenerateMainMesh(self.mesh);
+			const mesh = try main.globalAllocator.create(chunk.meshing.ChunkMesh);
+			mesh.* = chunk.meshing.ChunkMesh.init(main.globalAllocator, pos, self.mesh);
+			try mesh.regenerateMainMesh();
+			mutex.lock();
+			defer mutex.unlock();
+			updatableList.append(mesh) catch |err| {
+				std.log.err("Error while regenerating mesh: {s}", .{@errorName(err)});
+				if(@errorReturnTrace()) |trace| {
+					std.log.err("Trace: {}", .{trace});
 				}
-				mutex.lock();
-				defer mutex.unlock();
-				updatableList.append(pos) catch |err| {
-					std.log.err("Error while regenerating mesh: {s}", .{@errorName(err)});
-					if(@errorReturnTrace()) |trace| {
-						std.log.err("Trace: {}", .{trace});
-					}
-					main.globalAllocator.destroy(self.mesh);
-				};
-			} else {
 				main.globalAllocator.destroy(self.mesh);
-			}
+			};
 			main.globalAllocator.destroy(self);
 		}
 
