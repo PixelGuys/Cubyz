@@ -794,7 +794,7 @@ pub const meshing = struct {
 				var ny = y + Neighbors.relY[neighbor];
 				var nz = z + Neighbors.relZ[neighbor];
 				if(nx & chunkMask != nx or ny & chunkMask != ny or nz & chunkMask != nz) { // Outside this chunk.
-					neighborMesh = renderer.RenderStructure.getNeighbor(self.pos, self.pos.voxelSize, neighbor) orelse continue;
+					neighborMesh = renderer.RenderStructure.getNeighborFromRenderThread(self.pos, self.pos.voxelSize, neighbor) orelse continue;
 				}
 				nx &= chunkMask;
 				ny &= chunkMask;
@@ -902,7 +902,7 @@ pub const meshing = struct {
 				self.opaqueMesh.startNeighbor(neighbor);
 				self.voxelMesh.startNeighbor(neighbor);
 				self.transparentMesh.startNeighbor(neighbor);
-				const nullNeighborMesh = renderer.RenderStructure.getNeighbor(self.pos, self.pos.voxelSize, neighbor);
+				const nullNeighborMesh = renderer.RenderStructure.getNeighborFromRenderThread(self.pos, self.pos.voxelSize, neighbor);
 				if(nullNeighborMesh) |neighborMesh| {
 					std.debug.assert(neighborMesh != self);
 					var additionalNeighborFacesOpaque = std.ArrayList(FaceData).init(main.threadAllocator);
@@ -974,7 +974,7 @@ pub const meshing = struct {
 				}
 				// lod border:
 				if(self.pos.voxelSize == 1 << settings.highestLOD) continue;
-				const neighborMesh = renderer.RenderStructure.getNeighbor(self.pos, 2*self.pos.voxelSize, neighbor) orelse continue;
+				const neighborMesh = renderer.RenderStructure.getNeighborFromRenderThread(self.pos, 2*self.pos.voxelSize, neighbor) orelse continue;
 				const x3: u8 = if(neighbor & 1 == 0) @intCast(chunkMask) else 0;
 				const offsetX = @divExact(self.pos.wx, self.pos.voxelSize) & chunkSize;
 				const offsetY = @divExact(self.pos.wy, self.pos.voxelSize) & chunkSize;

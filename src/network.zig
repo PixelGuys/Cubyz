@@ -834,18 +834,16 @@ pub const Protocols = struct {
 	};
 	pub const blockUpdate = struct {
 		const id: u8 = 7;
-		fn receive(_: *Connection, data: []const u8) !void {
+		fn receive(conn: *Connection, data: []const u8) !void {
 			const x = std.mem.readIntBig(i32, data[0..4]);
 			const y = std.mem.readIntBig(i32, data[4..8]);
 			const z = std.mem.readIntBig(i32, data[8..12]);
 			const newBlock = Block.fromInt(std.mem.readIntBig(u32, data[12..16]));
-			try renderer.RenderStructure.updateBlock(x, y, z, newBlock);
-			// TODO:
-//		if(conn instanceof User) {
-//			Server.world.updateBlock(x, y, z, newBlock);
-//		} else {
-//			Cubyz.world.remoteUpdateBlock(x, y, z, newBlock);
-//		}
+			if(conn.user != null) {
+				// TODO: Handle block update from the client.
+			} else {
+				try renderer.RenderStructure.updateBlock(x, y, z, newBlock);
+			}
 		}
 		pub fn send(conn: *Connection, x: i32, y: i32, z: i32, newBlock: Block) !void {
 			var data: [16]u8 = undefined;

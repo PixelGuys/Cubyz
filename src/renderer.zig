@@ -267,7 +267,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 //			Meshes.emissionTextureArray.bind();
 //		}
 
-	const playerBlock = RenderStructure.getBlockFromAnyLod(@intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
+	const playerBlock = RenderStructure.getBlockFromAnyLodFromRenderThread(@intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
 	
 	if(settings.bloom) {
 		Bloom.render(lastWidth, lastHeight, playerBlock);
@@ -728,7 +728,7 @@ pub const MeshSelection = struct {
 		selectedBlockPos = null;
 
 		while(total_tMax < closestDistance) {
-			const block = RenderStructure.getBlock(voxelPos[0], voxelPos[1], voxelPos[2]) orelse break;
+			const block = RenderStructure.getBlockFromRenderThread(voxelPos[0], voxelPos[1], voxelPos[2]) orelse break;
 			if(block.typ != 0) {
 				// Check the true bounding box (using this algorithm here: https://tavianator.com/2011/ray_box.html):
 				const model = blocks.meshes.model(block);
@@ -775,7 +775,7 @@ pub const MeshSelection = struct {
 
 	pub fn placeBlock(inventoryStack: *main.items.ItemStack) !void {
 		if(selectedBlockPos) |selectedPos| {
-			var block = RenderStructure.getBlock(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
+			var block = RenderStructure.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
 			if(inventoryStack.item) |item| {
 				switch(item) {
 					.baseItem => |baseItem| {
@@ -796,7 +796,7 @@ pub const MeshSelection = struct {
 							const neighborPos = posBeforeBlock;
 							neighborDir = selectedPos - posBeforeBlock;
 							const relPos = lastPos - @as(Vec3d, @floatFromInt(neighborPos));
-							block = RenderStructure.getBlock(neighborPos[0], neighborPos[1], neighborPos[2]) orelse return;
+							block = RenderStructure.getBlockFromRenderThread(neighborPos[0], neighborPos[1], neighborPos[2]) orelse return;
 							if(block.typ == itemBlock) {
 								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, &block, false)) {
 									// TODO: world.updateBlock(bi.x, bi.y, bi.z, block.data); (→ Sending it over the network)
@@ -859,7 +859,7 @@ pub const MeshSelection = struct {
 			c.glEnable(c.GL_POLYGON_OFFSET_LINE);
 			defer c.glDisable(c.GL_POLYGON_OFFSET_LINE);
 			c.glPolygonOffset(-2, 0);
-			const block = RenderStructure.getBlock(_selectedBlockPos[0], _selectedBlockPos[1], _selectedBlockPos[2]) orelse return;
+			const block = RenderStructure.getBlockFromRenderThread(_selectedBlockPos[0], _selectedBlockPos[1], _selectedBlockPos[2]) orelse return;
 			const model = blocks.meshes.model(block);
 			const voxelModel = &models.voxelModels.items[model.modelIndex];
 			const transformedMin = model.permutation.transform(voxelModel.min - @as(Vec3i, @splat(8))) + @as(Vec3i, @splat(8));
@@ -891,7 +891,6 @@ pub const RenderStructure = struct {
 	var lastY: [settings.highestLOD + 1]i32 = [_]i32{0} ** (settings.highestLOD + 1);
 	var lastZ: [settings.highestLOD + 1]i32 = [_]i32{0} ** (settings.highestLOD + 1);
 	var lastSize: [settings.highestLOD + 1]i32 = [_]i32{0} ** (settings.highestLOD + 1);
-	var lodMutex: [settings.highestLOD + 1]std.Thread.Mutex = [_]std.Thread.Mutex{std.Thread.Mutex{}} ** (settings.highestLOD + 1);
 	var mutex = std.Thread.Mutex{};
 	var blockUpdateMutex = std.Thread.Mutex{};
 	const BlockUpdate = struct {
@@ -949,36 +948,17 @@ pub const RenderStructure = struct {
 		return storageLists[lod][@intCast(index)];
 	}
 
-	fn _getNode(pos: chunk.ChunkPosition) ?*ChunkMeshNode {
-		const lod = std.math.log2_int(u31, pos.voxelSize);
-		lodMutex[lod].lock();
-		defer lodMutex[lod].unlock();
-		const xIndex = pos.wx-%(&lastX[lod]).* >> lod+chunk.chunkShift;
-		const yIndex = pos.wy-%(&lastY[lod]).* >> lod+chunk.chunkShift;
-		const zIndex = pos.wz-%(&lastZ[lod]).* >> lod+chunk.chunkShift;
-		if(xIndex < 0 or xIndex >= (&lastSize[lod]).*) return null;
-		if(yIndex < 0 or yIndex >= (&lastSize[lod]).*) return null;
-		if(zIndex < 0 or zIndex >= (&lastSize[lod]).*) return null;
-		const index = (xIndex*(&lastSize[lod]).* + yIndex)*(&lastSize[lod]).* + zIndex;
-		return storageLists[lod][@intCast(index)];
-	}
-
-	pub fn getChunk(x: i32, y: i32, z: i32) ?*chunk.Chunk {
-		const node = RenderStructure._getNode(.{.wx = x, .wy = y, .wz = z, .voxelSize=1}) orelse return null;
-		return &node.mesh.chunk;
-	}
-
-	pub fn getBlock(x: i32, y: i32, z: i32) ?blocks.Block {
-		const node = RenderStructure._getNode(.{.wx = x, .wy = y, .wz = z, .voxelSize=1}) orelse return null;
+	fn getBlockFromRenderThread(x: i32, y: i32, z: i32) ?blocks.Block {
+		const node = RenderStructure.getNodeFromRenderThread(.{.wx = x, .wy = y, .wz = z, .voxelSize=1}) orelse return null;
 		const mesh = node.mesh orelse return null;
 		const block = mesh.chunk.getBlock(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask);
 		return block;
 	}
 
-	pub fn getBlockFromAnyLod(x: i32, y: i32, z: i32) blocks.Block {
+	fn getBlockFromAnyLodFromRenderThread(x: i32, y: i32, z: i32) blocks.Block {
 		var lod: u5 = 0;
 		while(lod < settings.highestLOD) : (lod += 1) {
-			const node = RenderStructure._getNode(.{.wx = x, .wy = y, .wz = z, .voxelSize=@as(u31, 1) << lod}) orelse continue;
+			const node = RenderStructure.getNodeFromRenderThread(.{.wx = x, .wy = y, .wz = z, .voxelSize=@as(u31, 1) << lod}) orelse continue;
 			const mesh = node.mesh orelse continue;
 			const block = mesh.chunk.getBlock(x & chunk.chunkMask<<lod, y & chunk.chunkMask<<lod, z & chunk.chunkMask<<lod);
 			return block;
@@ -986,13 +966,13 @@ pub const RenderStructure = struct {
 		return blocks.Block{.typ = 0, .data = 0};
 	}
 
-	pub fn getNeighbor(_pos: chunk.ChunkPosition, resolution: u31, neighbor: u3) ?*chunk.meshing.ChunkMesh {
+	pub fn getNeighborFromRenderThread(_pos: chunk.ChunkPosition, resolution: u31, neighbor: u3) ?*chunk.meshing.ChunkMesh {
 		var pos = _pos;
 		pos.wx += pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relX[neighbor];
 		pos.wy += pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relY[neighbor];
 		pos.wz += pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relZ[neighbor];
 		pos.voxelSize = resolution;
-		const node = _getNode(pos) orelse return null;
+		const node = getNodeFromRenderThread(pos) orelse return null;
 		return node.mesh;
 	}
 
@@ -1074,23 +1054,19 @@ pub const RenderStructure = struct {
 			}
 
 			const oldList = storageLists[lod];
-			{
-				lodMutex[lod].lock();
-				defer lodMutex[lod].unlock();
-				lastX[lod] = startX;
-				lastY[lod] = startY;
-				lastZ[lod] = startZ;
-				lastSize[lod] = maxSideLength;
-				storageLists[lod] = newList;
-				storageListsSwap[lod] = oldList;
-			}
+			lastX[lod] = startX;
+			lastY[lod] = startY;
+			lastZ[lod] = startZ;
+			lastSize[lod] = maxSideLength;
+			storageLists[lod] = newList;
+			storageListsSwap[lod] = oldList;
 			for(oldList) |nullMesh| {
 				if(nullMesh) |node| {
 					if(node.shouldBeRemoved) {
 						// Update the neighbors, so we don't get cracks when we look back:
 						for(chunk.Neighbors.iterable) |neighbor| {
 							if(node.mesh) |mesh| {
-								if(getNeighbor(mesh.pos, mesh.pos.voxelSize, neighbor)) |neighborMesh| {
+								if(getNeighborFromRenderThread(mesh.pos, mesh.pos.voxelSize, neighbor)) |neighborMesh| {
 									try neighborMesh.uploadDataAndFinishNeighbors();
 								}
 							}
@@ -1355,7 +1331,7 @@ pub const RenderStructure = struct {
 			defer blockUpdateMutex.unlock();
 			for(blockUpdateList.items) |blockUpdate| {
 				const pos = chunk.ChunkPosition{.wx=blockUpdate.x, .wy=blockUpdate.y, .wz=blockUpdate.z, .voxelSize=1};
-				if(_getNode(pos)) |node| {
+				if(getNodeFromRenderThread(pos)) |node| {
 					if(node.mesh) |mesh| {
 						try mesh.updateBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock);
 					} // TODO: It seems like we simply ignore the block update if we don't have the mesh yet.
@@ -1380,7 +1356,7 @@ pub const RenderStructure = struct {
 			const mesh = updatableList.orderedRemove(closestIndex);
 			mutex.unlock();
 			defer mutex.lock();
-			const nullNode = _getNode(mesh.pos);
+			const nullNode = getNodeFromRenderThread(mesh.pos);
 			if(nullNode) |node| {
 				try mesh.uploadDataAndFinishNeighbors();
 				if(node.mesh) |oldMesh| {
