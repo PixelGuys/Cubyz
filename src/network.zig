@@ -486,7 +486,7 @@ pub const ConnectionManager = struct {
 	pub fn removeConnection(self: *ConnectionManager, conn: *Connection) void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
-		
+
 		for(self.connections.items, 0..) |other, i| {
 			if(other == conn) {
 				_ = self.connections.swapRemove(i);
@@ -498,7 +498,7 @@ pub const ConnectionManager = struct {
 	fn onReceive(self: *ConnectionManager, data: []const u8, source: Address) !void {
 		std.debug.assert(self.threadId == std.Thread.getCurrentId());
 		self.mutex.lock();
-		
+
 		for(self.connections.items) |conn| {
 			if(conn.remoteAddress.ip == source.ip) {
 				if(conn.bruteforcingPort) {
@@ -637,7 +637,7 @@ pub const Protocols = struct {
 						try spawn.put("y", main.server.world.?.spawn[1]);
 						try spawn.put("z", main.server.world.?.spawn[2]);
 						try jsonObject.put("spawn", spawn);
-						
+
 						const outData = try jsonObject.toStringEfficient(main.threadAllocator, &[1]u8{stepServerData});
 						defer main.threadAllocator.free(outData);
 						try conn.sendImportant(id, outData);
@@ -1225,8 +1225,8 @@ pub const Connection = struct {
 	const maxImportantPacketSize: u32 = 1500 - 20 - 8; // Ethernet MTU minus IP header minus udp header
 
 	// Statistics:
-	var packetsSent: Atomic(u32) = Atomic(u32).init(0);
-	var packetsResent: Atomic(u32) = Atomic(u32).init(0);
+	pub var packetsSent: Atomic(u32) = Atomic(u32).init(0);
+	pub var packetsResent: Atomic(u32) = Atomic(u32).init(0);
 
 	manager: *ConnectionManager,
 	user: ?*main.server.User = null,

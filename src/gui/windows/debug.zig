@@ -6,6 +6,8 @@ const graphics = main.graphics;
 const draw = graphics.draw;
 const Texture = graphics.Texture;
 const Vec2f = main.vec.Vec2f;
+const network = main.network;
+const Connection = network.Connection;
 
 const gui = @import("../gui.zig");
 const GuiWindow = gui.GuiWindow;
@@ -48,6 +50,12 @@ fn flawedRender() !void {
 		y += 8;
 		// TODO: packet loss
 		// TODO: Protocol statistics(maybe?)
+                try draw.print("Connections number: {}", .{main.game.world.?.manager.connections.items.len},  0, y, 8, .left);
+                y += 8;
+                try draw.print("PacketsSent number: {}", .{Connection.packetsSent.value},  0, y, 8, .left);
+                y += 8;
+                try draw.print("PacketsResent number: {}", .{Connection.packetsResent.value},  0, y, 8, .left);
+                y += 8;
 	}
 }
 
