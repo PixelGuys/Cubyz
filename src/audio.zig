@@ -217,7 +217,7 @@ fn addMusic(buffer: []f32) !void {
 			if(try findMusic(musicId)) |musicBuffer| {
 				currentMusic.init(musicBuffer);
 				activeMusicId = musicId;
-			} else return;
+			}
 		} else if(!currentMusic.animationDecaying) {
 			_ = try findMusic(musicId); // Start loading the next music into the cache ahead of time.
 			currentMusic.animationDecaying = true;
@@ -229,6 +229,7 @@ fn addMusic(buffer: []f32) !void {
 		currentMusic.animationProgress = 0;
 		currentMusic.interpolationPolynomial = utils.unitIntervalSpline(f32, currentMusic.animationAmplitude, currentMusic.animationVelocity, 1, 0);
 	}
+	if(activeMusicId.len == 0) return;
 
 	// Copy the music to the buffer.
 	var i: usize = 0;
