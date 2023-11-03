@@ -1535,7 +1535,7 @@ pub const RenderStructure = struct {
 		pub fn run(self: *MeshGenerationTask) Allocator.Error!void {
 			const pos = self.mesh.pos;
 			const mesh = try main.globalAllocator.create(chunk.meshing.ChunkMesh);
-			mesh.* = chunk.meshing.ChunkMesh.init(main.globalAllocator, pos, self.mesh);
+			mesh.* = chunk.meshing.ChunkMesh.init(pos, self.mesh);
 			try mesh.regenerateMainMesh();
 			mutex.lock();
 			defer mutex.unlock();
