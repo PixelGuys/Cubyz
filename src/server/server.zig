@@ -71,22 +71,22 @@ pub const User = struct {
 		mutex.lock();
 		defer mutex.unlock();
 		const position: [3]f64 = .{
-			@bitCast(std.mem.readIntBig(u64, data[0..8])),
-			@bitCast(std.mem.readIntBig(u64, data[8..16])),
-			@bitCast(std.mem.readIntBig(u64, data[16..24])),
+			@bitCast(std.mem.readInt(u64, data[0..8], .big)),
+			@bitCast(std.mem.readInt(u64, data[8..16], .big)),
+			@bitCast(std.mem.readInt(u64, data[16..24], .big)),
 		};
 		const velocity: [3]f64 = .{
-			@bitCast(std.mem.readIntBig(u64, data[24..32])),
-			@bitCast(std.mem.readIntBig(u64, data[32..40])),
-			@bitCast(std.mem.readIntBig(u64, data[40..48])),
+			@bitCast(std.mem.readInt(u64, data[24..32], .big)),
+			@bitCast(std.mem.readInt(u64, data[32..40], .big)),
+			@bitCast(std.mem.readInt(u64, data[40..48], .big)),
 		};
 		const rotation: [3]f32 = .{
-			@bitCast(std.mem.readIntBig(u32, data[48..52])),
-			@bitCast(std.mem.readIntBig(u32, data[52..56])),
-			@bitCast(std.mem.readIntBig(u32, data[56..60])),
+			@bitCast(std.mem.readInt(u32, data[48..52], .big)),
+			@bitCast(std.mem.readInt(u32, data[52..56], .big)),
+			@bitCast(std.mem.readInt(u32, data[56..60], .big)),
 		};
 		self.player.rot = rotation;
-		const time = std.mem.readIntBig(i16, data[60..62]);
+		const time = std.mem.readInt(i16, data[60..62], .big);
 		self.timeDifference.addDataPoint(time);
 		self.interpolation.updatePosition(&position, &velocity, time);
 	}

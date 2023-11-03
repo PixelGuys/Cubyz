@@ -40,7 +40,7 @@ pub const Compression = struct {
 					main.threadAllocator.free(relPath);
 				};
 				var len: [4]u8 = undefined;
-				std.mem.writeIntBig(u32, &len, @as(u32, @intCast(relPath.len)));
+				std.mem.writeInt(u32, &len, @as(u32, @intCast(relPath.len)), .big);
 				_ = try comp.write(&len);
 				_ = try comp.write(relPath);
 
@@ -49,7 +49,7 @@ pub const Compression = struct {
 				const fileData = try file.readToEndAlloc(main.threadAllocator, std.math.maxInt(u32));
 				defer main.threadAllocator.free(fileData);
 
-				std.mem.writeIntBig(u32, &len, @as(u32, @intCast(fileData.len)));
+				std.mem.writeInt(u32, &len, @as(u32, @intCast(fileData.len)), .big);
 				_ = try comp.write(&len);
 				_ = try comp.write(fileData);
 			}
@@ -66,11 +66,11 @@ pub const Compression = struct {
 		defer main.threadAllocator.free(_data);
 		var data = _data;
 		while(data.len != 0) {
-			var len = std.mem.readIntBig(u32, data[0..4]);
+			var len = std.mem.readInt(u32, data[0..4], .big);
 			data = data[4..];
 			const path = data[0..len];
 			data = data[len..];
-			len = std.mem.readIntBig(u32, data[0..4]);
+			len = std.mem.readInt(u32, data[0..4], .big);
 			data = data[4..];
 			const fileData = data[0..len];
 			data = data[len..];

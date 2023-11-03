@@ -267,7 +267,7 @@ const STUN = struct {
 	fn requestAddress(connection: *ConnectionManager) Address {
 		var oldAddress: ?Address = null;
 		var seed = [_]u8 {0} ** std.rand.DefaultCsprng.secret_seed_length;
-		std.mem.writeIntNative(i128, seed[0..16], std.time.nanoTimestamp()); // Not the best seed, but it's not that important.
+		std.mem.writeInt(i128, seed[0..16], std.time.nanoTimestamp(), builtin.cpu.arch.endian()); // Not the best seed, but it's not that important.
 		var random = std.rand.DefaultCsprng.init(seed);
 		for(0..16) |_| {
 			// Choose a somewhat random server, so we faster notice if any one of them stopped working.
@@ -323,8 +323,8 @@ const STUN = struct {
 	fn findIPPort(_data: []const u8) !Address {
 		var data = _data[20..]; // Skip the header.
 		while(data.len > 0) {
-			const typ = std.mem.readIntBig(u16, data[0..2]);
-			const len = std.mem.readIntBig(u16, data[2..4]);
+			const typ = std.mem.readInt(u16, data[0..2], .big);
+			const len = std.mem.readInt(u16, data[2..4], .big);
 			data = data[4..];
 			switch(typ) {
 				XOR_MAPPED_ADDRESS, MAPPED_ADDRESS => {
@@ -341,8 +341,8 @@ const STUN = struct {
 							addressData[5] ^= MAGIC_COOKIE[3];
 						}
 						return Address {
-							.port = std.mem.readIntBig(u16, addressData[0..2]),
-							.ip = std.mem.readIntNative(u32, addressData[2..6]), // Needs to stay in big endian → native.
+							.port = std.mem.readInt(u16, addressData[0..2], .big),
+							.ip = std.mem.readInt(u32, addressData[2..6], builtin.cpu.arch.endian()), // Needs to stay in big endian → native.
 						};
 					} else if(data[1] == 0x02) {
 						data = data[(len + 3) & ~@as(usize, 3)..]; // Pad to 32 Bit.
@@ -699,10 +699,10 @@ pub const Protocols = struct {
 			var remaining = data[0..];
 			while(remaining.len >= 16) {
 				const request = chunk.ChunkPosition{
-					.wx = std.mem.readIntBig(i32, remaining[0..4]),
-					.wy = std.mem.readIntBig(i32, remaining[4..8]),
-					.wz = std.mem.readIntBig(i32, remaining[8..12]),
-					.voxelSize = @intCast(std.mem.readIntBig(i32, remaining[12..16])),
+					.wx = std.mem.readInt(i32, remaining[0..4], .big),
+					.wy = std.mem.readInt(i32, remaining[4..8], .big),
+					.wz = std.mem.readInt(i32, remaining[8..12], .big),
+					.voxelSize = @intCast(std.mem.readInt(i32, remaining[12..16], .big)),
 				};
 				if(conn.user) |user| {
 					try main.server.world.?.queueChunk(request, user);
@@ -716,10 +716,10 @@ pub const Protocols = struct {
 			defer main.threadAllocator.free(data);
 			var remaining = data;
 			for(requests) |req| {
-				std.mem.writeIntBig(i32, remaining[0..4], req.wx);
-				std.mem.writeIntBig(i32, remaining[4..8], req.wy);
-				std.mem.writeIntBig(i32, remaining[8..12], req.wz);
-				std.mem.writeIntBig(i32, remaining[12..16], req.voxelSize);
+				std.mem.writeInt(i32, remaining[0..4], req.wx, .big);
+				std.mem.writeInt(i32, remaining[4..8], req.wy, .big);
+				std.mem.writeInt(i32, remaining[8..12], req.wz, .big);
+				std.mem.writeInt(i32, remaining[12..16], req.voxelSize, .big);
 				remaining = remaining[16..];
 			}
 			try conn.sendImportant(id, data);
@@ -730,10 +730,10 @@ pub const Protocols = struct {
 		fn receive(_: *Connection, _data: []const u8) !void {
 			var data = _data;
 			const pos = chunk.ChunkPosition{
-				.wx = std.mem.readIntBig(i32, data[0..4]),
-				.wy = std.mem.readIntBig(i32, data[4..8]),
-				.wz = std.mem.readIntBig(i32, data[8..12]),
-				.voxelSize = @intCast(std.mem.readIntBig(i32, data[12..16])),
+				.wx = std.mem.readInt(i32, data[0..4], .big),
+				.wy = std.mem.readInt(i32, data[4..8], .big),
+				.wz = std.mem.readInt(i32, data[8..12], .big),
+				.voxelSize = @intCast(std.mem.readInt(i32, data[12..16], .big)),
 			};
 			const _inflatedData = try main.threadAllocator.alloc(u8, chunk.chunkVolume*4);
 			defer main.threadAllocator.free(_inflatedData);
@@ -745,7 +745,7 @@ pub const Protocols = struct {
 			const ch = try main.globalAllocator.create(chunk.Chunk);
 			ch.init(pos);
 			for(&ch.blocks) |*block| {
-				block.* = Block.fromInt(std.mem.readIntBig(u32, data[0..4]));
+				block.* = Block.fromInt(std.mem.readInt(u32, data[0..4], .big));
 				data = data[4..];
 			}
 			try renderer.RenderStructure.updateChunkMesh(ch);
@@ -753,17 +753,17 @@ pub const Protocols = struct {
 		pub fn sendChunk(conn: *Connection, ch: *chunk.Chunk) Allocator.Error!void {
 			var uncompressedData: [@sizeOf(@TypeOf(ch.blocks))]u8 = undefined; // TODO: #15280
 			for(&ch.blocks, 0..) |*block, i| {
-				std.mem.writeIntBig(u32, uncompressedData[4*i..][0..4], block.toInt());
+				std.mem.writeInt(u32, uncompressedData[4*i..][0..4], block.toInt(), .big);
 			}
 			const compressedData = try utils.Compression.deflate(main.threadAllocator, &uncompressedData);
 			defer main.threadAllocator.free(compressedData);
 			const data =try  main.threadAllocator.alloc(u8, 16 + compressedData.len);
 			defer main.threadAllocator.free(data);
 			@memcpy(data[16..], compressedData);
-			std.mem.writeIntBig(i32, data[0..4], ch.pos.wx);
-			std.mem.writeIntBig(i32, data[4..8], ch.pos.wy);
-			std.mem.writeIntBig(i32, data[8..12], ch.pos.wz);
-			std.mem.writeIntBig(i32, data[12..16], ch.pos.voxelSize);
+			std.mem.writeInt(i32, data[0..4], ch.pos.wx, .big);
+			std.mem.writeInt(i32, data[4..8], ch.pos.wy, .big);
+			std.mem.writeInt(i32, data[8..12], ch.pos.wz, .big);
+			std.mem.writeInt(i32, data[12..16], ch.pos.voxelSize, .big);
 			try conn.sendImportant(id, data);
 		}
 	};
@@ -779,16 +779,16 @@ pub const Protocols = struct {
 			}
 			lastPositionSent = time;
 			var data: [62]u8 = undefined;
-			std.mem.writeIntBig(u64, data[0..8],   @as(u64, @bitCast(playerPos[0])));
-			std.mem.writeIntBig(u64, data[8..16],  @as(u64, @bitCast(playerPos[1])));
-			std.mem.writeIntBig(u64, data[16..24], @as(u64, @bitCast(playerPos[2])));
-			std.mem.writeIntBig(u64, data[24..32], @as(u64, @bitCast(playerVel[0])));
-			std.mem.writeIntBig(u64, data[32..40], @as(u64, @bitCast(playerVel[1])));
-			std.mem.writeIntBig(u64, data[40..48], @as(u64, @bitCast(playerVel[2])));
-			std.mem.writeIntBig(u32, data[48..52], @as(u32, @bitCast(game.camera.rotation[0])));
-			std.mem.writeIntBig(u32, data[52..56], @as(u32, @bitCast(game.camera.rotation[1])));
-			std.mem.writeIntBig(u32, data[56..60], @as(u32, @bitCast(game.camera.rotation[2])));
-			std.mem.writeIntBig(u16, data[60..62], time);
+			std.mem.writeInt(u64, data[0..8],   @as(u64, @bitCast(playerPos[0])), .big);
+			std.mem.writeInt(u64, data[8..16],  @as(u64, @bitCast(playerPos[1])), .big);
+			std.mem.writeInt(u64, data[16..24], @as(u64, @bitCast(playerPos[2])), .big);
+			std.mem.writeInt(u64, data[24..32], @as(u64, @bitCast(playerVel[0])), .big);
+			std.mem.writeInt(u64, data[32..40], @as(u64, @bitCast(playerVel[1])), .big);
+			std.mem.writeInt(u64, data[40..48], @as(u64, @bitCast(playerVel[2])), .big);
+			std.mem.writeInt(u32, data[48..52], @as(u32, @bitCast(game.camera.rotation[0])), .big);
+			std.mem.writeInt(u32, data[52..56], @as(u32, @bitCast(game.camera.rotation[1])), .big);
+			std.mem.writeInt(u32, data[56..60], @as(u32, @bitCast(game.camera.rotation[2])), .big);
+			std.mem.writeInt(u16, data[60..62], time, .big);
 			try conn.sendUnimportant(id, &data);
 		}
 	};
@@ -808,7 +808,7 @@ pub const Protocols = struct {
 		const type_item: u8 = 1;
 		fn receive(conn: *Connection, data: []const u8) !void {
 			if(conn.manager.world) |world| {
-				const time = std.mem.readIntBig(i16, data[1..3]);
+				const time = std.mem.readInt(i16, data[1..3], .big);
 				if(data[0] == type_entity) {
 					try main.entity.ClientEntityManager.serverUpdate(time, data[3..]);
 				} else if(data[0] == type_item) {
@@ -820,14 +820,14 @@ pub const Protocols = struct {
 			const fullEntityData = main.threadAllocator.alloc(u8, entityData.len + 3);
 			defer main.threadAllocator.free(fullEntityData);
 			fullEntityData[0] = type_entity;
-			std.mem.writeIntBig(i16, fullEntityData[1..3], @as(i16, @truncate(std.time.milliTimestamp())));
+			std.mem.writeInt(i16, fullEntityData[1..3], @as(i16, @truncate(std.time.milliTimestamp())));
 			@memcpy(fullEntityData[3..], entityData);
 			conn.sendUnimportant(id, fullEntityData);
 
 			const fullItemData = main.threadAllocator.alloc(u8, itemData.len + 3);
 			defer main.threadAllocator.free(fullItemData);
 			fullItemData[0] = type_item;
-			std.mem.writeIntBig(i16, fullItemData[1..3], @as(i16, @truncate(std.time.milliTimestamp())));
+			std.mem.writeInt(i16, fullItemData[1..3], @as(i16, @truncate(std.time.milliTimestamp())));
 			@memcpy(fullItemData[3..], itemData);
 			conn.sendUnimportant(id, fullItemData);
 		}
@@ -835,10 +835,10 @@ pub const Protocols = struct {
 	pub const blockUpdate = struct {
 		const id: u8 = 7;
 		fn receive(conn: *Connection, data: []const u8) !void {
-			const x = std.mem.readIntBig(i32, data[0..4]);
-			const y = std.mem.readIntBig(i32, data[4..8]);
-			const z = std.mem.readIntBig(i32, data[8..12]);
-			const newBlock = Block.fromInt(std.mem.readIntBig(u32, data[12..16]));
+			const x = std.mem.readInt(i32, data[0..4], .big);
+			const y = std.mem.readInt(i32, data[4..8], .big);
+			const z = std.mem.readInt(i32, data[8..12], .big);
+			const newBlock = Block.fromInt(std.mem.readInt(u32, data[12..16], .big));
 			if(conn.user != null) {
 				// TODO: Handle block update from the client.
 			} else {
@@ -847,10 +847,10 @@ pub const Protocols = struct {
 		}
 		pub fn send(conn: *Connection, x: i32, y: i32, z: i32, newBlock: Block) !void {
 			var data: [16]u8 = undefined;
-			std.mem.writeIntBig(i32, data[0..4], x);
-			std.mem.writeIntBig(i32, data[4..8], y);
-			std.mem.writeIntBig(i32, data[8..12], z);
-			std.mem.writeIntBig(u32, data[12..16], newBlock.toInt());
+			std.mem.writeInt(i32, data[0..4], x, .big);
+			std.mem.writeInt(i32, data[4..8], y, .big);
+			std.mem.writeInt(i32, data[8..12], z, .big);
+			std.mem.writeInt(u32, data[12..16], newBlock.toInt(), .big);
 			try conn.sendImportant(id, &data);
 		}
 	};
@@ -992,8 +992,8 @@ pub const Protocols = struct {
 		fn receive(conn: *Connection, data: []const u8) !void {
 			switch(data[0]) {
 				type_renderDistance => {
-					const renderDistance = std.mem.readIntBig(i32, data[1..5]);
-					const lodFactor: f32 = @bitCast(std.mem.readIntBig(u32, data[5..9]));
+					const renderDistance = std.mem.readInt(i32, data[1..5], .big);
+					const lodFactor: f32 = @bitCast(std.mem.readInt(u32, data[5..9], .big));
 					if(conn.user) |user| {
 						user.renderDistance = @intCast(renderDistance); // TODO: Update the protocol to use u16.
 						user.lodFactor = lodFactor;
@@ -1001,9 +1001,9 @@ pub const Protocols = struct {
 				},
 				type_teleport => {
 					game.Player.setPosBlocking(Vec3d{
-						@bitCast(std.mem.readIntBig(u64, data[1..9])),
-						@bitCast(std.mem.readIntBig(u64, data[9..17])),
-						@bitCast(std.mem.readIntBig(u64, data[17..25])),
+						@bitCast(std.mem.readInt(u64, data[1..9], .big)),
+						@bitCast(std.mem.readInt(u64, data[9..17], .big)),
+						@bitCast(std.mem.readInt(u64, data[17..25], .big)),
 					});
 				},
 				type_cure => {
@@ -1012,8 +1012,8 @@ pub const Protocols = struct {
 //					Cubyz.player.hunger = Cubyz.player.maxHunger;
 				},
 				type_inventoryAdd => {
-					const slot = std.mem.readIntBig(u32, data[1..5]);
-					const amount = std.mem.readIntBig(u32, data[5..9]);
+					const slot = std.mem.readInt(u32, data[1..5], .big);
+					const amount = std.mem.readInt(u32, data[5..9], .big);
 					_ = slot;
 					_ = amount;
 					// TODO:
@@ -1116,17 +1116,17 @@ pub const Protocols = struct {
 		pub fn sendRenderDistance(conn: *Connection, renderDistance: i32, LODFactor: f32) !void {
 			var data: [9]u8 = undefined;
 			data[0] = type_renderDistance;
-			std.mem.writeIntBig(i32, data[1..5], renderDistance);
-			std.mem.writeIntBig(u32, data[5..9], @as(u32, @bitCast(LODFactor)));
+			std.mem.writeInt(i32, data[1..5], renderDistance, .big);
+			std.mem.writeInt(u32, data[5..9], @as(u32, @bitCast(LODFactor)), .big);
 			try conn.sendImportant(id, &data);
 		}
 
 		pub fn sendTPCoordinates(conn: *Connection, pos: Vec3d) !void {
 			var data: [1+24]u8 = undefined;
 			data[0] = type_teleport;
-			std.mem.writeIntBig(u64, data[1..9], @as(u64, @bitCast(pos[0])));
-			std.mem.writeIntBig(u64, data[9..17], @as(u64, @bitCast(pos[1])));
-			std.mem.writeIntBig(u64, data[17..25], @as(u64, @bitCast(pos[2])));
+			std.mem.writeInt(u64, data[1..9], @as(u64, @bitCast(pos[0])), .big);
+			std.mem.writeInt(u64, data[9..17], @as(u64, @bitCast(pos[1])), .big);
+			std.mem.writeInt(u64, data[17..25], @as(u64, @bitCast(pos[2])), .big);
 			try conn.sendImportant(id, &data);
 		}
 
@@ -1139,8 +1139,8 @@ pub const Protocols = struct {
 		pub fn sendInventory_ItemStack_add(conn: *Connection, slot: u32, amount: i32) !void {
 			var data: [9]u8 = undefined;
 			data[0] = type_inventoryAdd;
-			std.mem.writeIntBig(u32, data[1..5], slot);
-			std.mem.writeIntBig(u32, data[5..9], amount);
+			std.mem.writeInt(u32, data[1..5], slot, .big);
+			std.mem.writeInt(u32, data[5..9], amount, .big);
 			try conn.sendImportant(id, &data);
 		}
 
@@ -1313,7 +1313,7 @@ pub const Connection = struct {
 		self.streamBuffer[0] = Protocols.important;
 		const id = self.messageID;
 		self.messageID += 1;
-		std.mem.writeIntBig(u32, self.streamBuffer[1..5], id); // TODO: Use little endian for better hardware support. Currently the aim is interoperability with the java version which uses big endian.
+		std.mem.writeInt(u32, self.streamBuffer[1..5], id, .big); // TODO: Use little endian for better hardware support. Currently the aim is interoperability with the java version which uses big endian.
 
 		const packet = UnconfirmedPacket{
 			.data = try main.globalAllocator.dupe(u8, self.streamBuffer[0..self.streamPosition]),
@@ -1377,12 +1377,12 @@ pub const Connection = struct {
 		self.mutex.lock();
 		defer self.mutex.unlock();
 
-		self.otherKeepAliveReceived = std.mem.readIntBig(u32, data[0..4]);
-		self.lastKeepAliveReceived = std.mem.readIntBig(u32, data[4..8]);
+		self.otherKeepAliveReceived = std.mem.readInt(u32, data[0..4], .big);
+		self.lastKeepAliveReceived = std.mem.readInt(u32, data[4..8], .big);
 		var remaining: []const u8 = data[8..];
 		while(remaining.len >= 8) {
-			const start = std.mem.readIntBig(u32, remaining[0..4]);
-			const len = std.mem.readIntBig(u32, remaining[4..8]);
+			const start = std.mem.readInt(u32, remaining[0..4], .big);
+			const len = std.mem.readInt(u32, remaining[4..8], .big);
 			remaining = remaining[8..];
 			var j: usize = 0;
 			while(j < self.unconfirmedPackets.items.len) {
@@ -1451,13 +1451,13 @@ pub const Connection = struct {
 		const output = try main.threadAllocator.alloc(u8, runLengthEncodingStarts.items.len*8 + 9);
 		defer main.threadAllocator.free(output);
 		output[0] = Protocols.keepAlive;
-		std.mem.writeIntBig(u32, output[1..5], self.lastKeepAliveSent);
+		std.mem.writeInt(u32, output[1..5], self.lastKeepAliveSent, .big);
 		self.lastKeepAliveSent += 1;
-		std.mem.writeIntBig(u32, output[5..9], self.otherKeepAliveReceived);
+		std.mem.writeInt(u32, output[5..9], self.otherKeepAliveReceived, .big);
 		var remaining: []u8 = output[9..];
 		for(runLengthEncodingStarts.items, 0..) |_, i| {
-			std.mem.writeIntBig(u32, remaining[0..4], runLengthEncodingStarts.items[i]);
-			std.mem.writeIntBig(u32, remaining[4..8], runLengthEncodingLengths.items[i]);
+			std.mem.writeInt(u32, remaining[0..4], runLengthEncodingStarts.items[i], .big);
+			std.mem.writeInt(u32, remaining[4..8], runLengthEncodingLengths.items[i], .big);
 			remaining = remaining[8..];
 		}
 		try self.manager.send(output, self.remoteAddress);
@@ -1570,7 +1570,7 @@ pub const Connection = struct {
 		_ = bytesReceived[protocol].fetchAdd(data.len + 20 + 8, .Monotonic); // Including IP header and udp header;
 		_ = packetsReceived[protocol].fetchAdd(1, .Monotonic);
 		if(protocol == Protocols.important) {
-			const id = std.mem.readIntBig(u32, data[1..5]);
+			const id = std.mem.readInt(u32, data[1..5], .big);
 			if(self.handShakeState.load(.Monotonic) == Protocols.handShake.stepComplete and id == 0) { // Got a new "first" packet from client. So the client tries to reconnect, but we still think it's connected.
 				// TODO:
 //				if(this instanceof User) {

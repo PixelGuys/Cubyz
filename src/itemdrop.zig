@@ -125,13 +125,13 @@ pub const ItemDropManager = struct {
 		const _data = try allocator.alloc(u8, self.size*50);
 		var data = _data;
 		for(self.indices[0..self.size]) |i| {
-			std.mem.writeIntBig(u16, data[0..2], i);
-			std.mem.writeIntBig(u64, data[2..10], @bitCast(self.pos[i][0]));
-			std.mem.writeIntBig(u64, data[10..18], @bitCast(self.pos[i][1]));
-			std.mem.writeIntBig(u64, data[18..26], @bitCast(self.pos[i][2]));
-			std.mem.writeIntBig(u64, data[26..34], @bitCast(self.vel[i][0]));
-			std.mem.writeIntBig(u64, data[34..42], @bitCast(self.vel[i][1]));
-			std.mem.writeIntBig(u64, data[42..50], @bitCast(self.vel[i][2]));
+			std.mem.writeInt(u16, data[0..2], i, .big);
+			std.mem.writeInt(u64, data[2..10], @bitCast(self.pos[i][0]), .big);
+			std.mem.writeInt(u64, data[10..18], @bitCast(self.pos[i][1]), .big);
+			std.mem.writeInt(u64, data[18..26], @bitCast(self.pos[i][2]), .big);
+			std.mem.writeInt(u64, data[26..34], @bitCast(self.vel[i][0]), .big);
+			std.mem.writeInt(u64, data[34..42], @bitCast(self.vel[i][1]), .big);
+			std.mem.writeInt(u64, data[42..50], @bitCast(self.vel[i][2]), .big);
 			data = data[50..];
 		}
 		return _data;
@@ -485,13 +485,13 @@ pub const ClientItemDropManager = struct {
 		var pos: [ItemDropManager.maxCapacity]Vec3d = undefined;
 		var vel: [ItemDropManager.maxCapacity]Vec3d = undefined;
 		while(data.len != 0) {
-			const i = std.mem.readIntBig(u16, data[0..2]);
-			pos[i][0] = @bitCast(std.mem.readIntBig(u64, data[2..10]));
-			pos[i][1] = @bitCast(std.mem.readIntBig(u64, data[10..18]));
-			pos[i][2] = @bitCast(std.mem.readIntBig(u64, data[18..26]));
-			vel[i][0] = @bitCast(std.mem.readIntBig(u64, data[26..34]));
-			vel[i][1] = @bitCast(std.mem.readIntBig(u64, data[34..42]));
-			vel[i][2] = @bitCast(std.mem.readIntBig(u64, data[42..50]));
+			const i = std.mem.readInt(u16, data[0..2], .big);
+			pos[i][0] = @bitCast(std.mem.readInt(u64, data[2..10], .big));
+			pos[i][1] = @bitCast(std.mem.readInt(u64, data[10..18], .big));
+			pos[i][2] = @bitCast(std.mem.readInt(u64, data[18..26], .big));
+			vel[i][0] = @bitCast(std.mem.readInt(u64, data[26..34], .big));
+			vel[i][1] = @bitCast(std.mem.readInt(u64, data[34..42], .big));
+			vel[i][2] = @bitCast(std.mem.readInt(u64, data[42..50], .big));
 			data = data[50..];
 		}
 		self.super.mutex.lock();

@@ -207,21 +207,21 @@ pub const ClientEntityManager = struct {
 		std.debug.assert(data.len%(4 + 24 + 12 + 24) == 0);
 		var remaining = data;
 		while(remaining.len != 0) {
-			const id = std.mem.readIntBig(u32, remaining[0..4]);
+			const id = std.mem.readInt(u32, remaining[0..4], .big);
 			remaining = remaining[4..];
 			const pos = [_]f64 {
-				@bitCast(std.mem.readIntBig(u64, remaining[0..8])),
-				@bitCast(std.mem.readIntBig(u64, remaining[8..16])),
-				@bitCast(std.mem.readIntBig(u64, remaining[16..24])),
-				@floatCast(@as(f32, @bitCast(std.mem.readIntBig(u32, remaining[24..28])))),
-				@floatCast(@as(f32, @bitCast(std.mem.readIntBig(u32, remaining[28..32])))),
-				@floatCast(@as(f32, @bitCast(std.mem.readIntBig(u32, remaining[32..36])))),
+				@bitCast(std.mem.readInt(u64, remaining[0..8], .big)),
+				@bitCast(std.mem.readInt(u64, remaining[8..16], .big)),
+				@bitCast(std.mem.readInt(u64, remaining[16..24], .big)),
+				@floatCast(@as(f32, @bitCast(std.mem.readInt(u32, remaining[24..28], .big)))),
+				@floatCast(@as(f32, @bitCast(std.mem.readInt(u32, remaining[28..32], .big)))),
+				@floatCast(@as(f32, @bitCast(std.mem.readInt(u32, remaining[32..36], .big)))),
 			};
 			remaining = remaining[36..];
 			const vel = [_]f64 {
-				@bitCast(std.mem.readIntBig(u64, remaining[0..8])),
-				@bitCast(std.mem.readIntBig(u64, remaining[8..16])),
-				@bitCast(std.mem.readIntBig(u64, remaining[16..24])),
+				@bitCast(std.mem.readInt(u64, remaining[0..8], .big)),
+				@bitCast(std.mem.readInt(u64, remaining[8..16], .big)),
+				@bitCast(std.mem.readInt(u64, remaining[16..24], .big)),
 				0, 0, 0,
 			};
 			remaining = remaining[24..];
