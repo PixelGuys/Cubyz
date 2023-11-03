@@ -418,6 +418,10 @@ pub fn register(id: []const u8, json: JsonElement) !void {
 pub fn finishLoading() !void {
 	std.debug.assert(!finishedLoading);
 	finishedLoading = true;
+	// Sort the biomes by id, so they have a deterministic order when randomly sampling them based on the seed:
+	std.mem.sortUnstable(Biome, biomes.items, {}, struct {fn lessThan(_: void, lhs: Biome, rhs: Biome) bool {
+		return std.mem.order(u8, lhs.id, rhs.id) == .lt;
+	}}.lessThan);
 	byTypeBiomes = try TreeNode.init(main.globalAllocator, biomes.items, 0);
 	for(biomes.items) |*biome| {
 		try biomesById.put(biome.id, biome);
