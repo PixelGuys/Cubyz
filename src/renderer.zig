@@ -960,6 +960,15 @@ pub const RenderStructure = struct {
 		return blocks.Block{.typ = 0, .data = 0};
 	}
 
+	pub fn getMeshFromAnyLodFromRenderThread(wx: i32, wy: i32, wz: i32, voxelSize: u31) ?*chunk.meshing.ChunkMesh {
+		var lod: u5 = @ctz(voxelSize);
+		while(lod < settings.highestLOD) : (lod += 1) {
+			const node = RenderStructure.getNodeFromRenderThread(.{.wx = wx & ~chunk.chunkMask<<lod, .wy = wy & ~chunk.chunkMask<<lod, .wz = wz & ~chunk.chunkMask<<lod, .voxelSize=@as(u31, 1) << lod});
+			return node.mesh orelse continue;
+		}
+		return null;
+	}
+
 	pub fn getNeighborFromRenderThread(_pos: chunk.ChunkPosition, resolution: u31, neighbor: u3) ?*chunk.meshing.ChunkMesh {
 		var pos = _pos;
 		pos.wx += pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relX[neighbor];
@@ -968,14 +977,6 @@ pub const RenderStructure = struct {
 		pos.voxelSize = resolution;
 		const node = getNodeFromRenderThread(pos);
 		return node.mesh;
-	}
-
-	pub fn removeChunksOutsideRenderDistance(px: i32, py: i32, pz: i32, renderDistance: i32, LODFactor: f32) void {
-		_ = px;
-		_ = py;
-		_ = pz;
-		_ = renderDistance;
-		_ = LODFactor;
 	}
 
 	fn reduceRenderDistance(fullRenderDistance: i64, reduction: i64) i32 {
@@ -1535,7 +1536,7 @@ pub const RenderStructure = struct {
 		pub fn run(self: *MeshGenerationTask) Allocator.Error!void {
 			const pos = self.mesh.pos;
 			const mesh = try main.globalAllocator.create(chunk.meshing.ChunkMesh);
-			mesh.* = chunk.meshing.ChunkMesh.init(pos, self.mesh);
+			mesh.* = try chunk.meshing.ChunkMesh.init(pos, self.mesh);
 			try mesh.regenerateMainMesh();
 			mutex.lock();
 			defer mutex.unlock();

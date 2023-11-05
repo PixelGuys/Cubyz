@@ -1,6 +1,7 @@
 #version 450
 
 in vec3 mvVertexPos;
+in vec3 light; // TODO: This doesn't work here.
 flat in int blockType;
 flat in int faceNormal;
 flat in int modelIndex;
@@ -12,7 +13,6 @@ flat in ivec3 maxPos;
 in vec3 startPosition;
 in vec3 direction;
 
-uniform vec3 ambientLight;
 uniform sampler2DArray texture_sampler;
 uniform sampler2DArray emissionSampler;
 
@@ -221,7 +221,7 @@ void main() {
 	float normalVariation = normalVariations[result.normal];
 	float lod = getLod(result.voxelPosition, result.normal, direction, variance);
 	ivec2 textureCoords = getTextureCoords(result.voxelPosition, result.textureDir);
-	fragColor = mipMapSample(texture_sampler, textureCoords, textureIndex, lod)*vec4(ambientLight*normalVariation, 1);
+	fragColor = mipMapSample(texture_sampler, textureCoords, textureIndex, lod)*vec4(light*normalVariation, 1);
 
 	if(!passDitherTest(fragColor.a)) discard;
 	fragColor.a = 1;

@@ -1,6 +1,7 @@
 #version 430
 
 out vec3 mvVertexPos;
+out vec3 light;
 flat out int blockType;
 flat out int modelIndex;
 flat out int faceNormal;
@@ -12,6 +13,7 @@ flat out ivec3 maxPos;
 out vec3 startPosition;
 out vec3 direction;
 
+uniform vec3 ambientLight;
 uniform int visibilityMask;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
@@ -20,6 +22,7 @@ uniform vec3 modelPosition;
 struct FaceData {
 	int encodedPositionAndNormalsAndPermutation;
 	int blockAndModel;
+	int light[4];
 };
 layout(std430, binding = 3) buffer _faceData
 {
@@ -127,6 +130,18 @@ void main() {
 	int vertexID = gl_VertexID%4;
 	int encodedPositionAndNormalsAndPermutation = faceData[faceID].encodedPositionAndNormalsAndPermutation;
 	int blockAndModel = faceData[faceID].blockAndModel;
+	int fullLight = faceData[faceID].light[vertexID];
+	vec3 sunLight = vec3(
+		fullLight >> 25 & 31,
+		fullLight >> 20 & 31,
+		fullLight >> 15 & 31
+	);
+	vec3 blockLight = vec3(
+		fullLight >> 10 & 31,
+		fullLight >> 5 & 31,
+		fullLight >> 0 & 31
+	);
+	light = max(sunLight*ambientLight, blockLight)/32;
 	isBackFace = encodedPositionAndNormalsAndPermutation>>19 & 1;
 	int oldNormal = (encodedPositionAndNormalsAndPermutation >> 20) & 7;
 	mat3 permutationMatrix = permutationMatrices[(encodedPositionAndNormalsAndPermutation >> 23) & 7];

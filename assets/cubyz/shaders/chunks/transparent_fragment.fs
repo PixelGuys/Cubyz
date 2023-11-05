@@ -1,6 +1,7 @@
 #version 430
 
 in vec3 mvVertexPos;
+in vec3 light;
 flat in int blockType;
 flat in int faceNormal;
 flat in int modelIndex;
@@ -11,7 +12,6 @@ flat in ivec3 maxPos;
 in vec3 startPosition;
 in vec3 direction;
 
-uniform vec3 ambientLight;
 uniform sampler2DArray texture_sampler;
 uniform sampler2DArray emissionSampler;
 uniform samplerCube reflectionMap;
@@ -142,7 +142,7 @@ void main() {
 	float fogDistance = calculateFogDistance(dist, textureData[blockType].fogDensity*densityAdjustment);
 	float airFogDistance = calculateFogDistance(dist, fog.density*densityAdjustment);
 	vec3 fogColor = unpackColor(textureData[blockType].fogColor);
-	vec4 textureColor = texture(texture_sampler, textureCoords)*vec4(ambientLight*normalVariation, 1);
+	vec4 textureColor = texture(texture_sampler, textureCoords)*vec4(light*normalVariation, 1);
 	if(isBackFace == 0) {
 		textureColor.rgb *= textureColor.a;
 		blendColor.rgb = unpackColor(textureData[blockType].absorption);
@@ -152,7 +152,7 @@ void main() {
 		// TODO: Change this when it rains.
 		// TODO: Normal mapping.
 		// TODO: Allow textures to contribute to this term.
-		textureColor.rgb += (textureData[blockType].reflectivity*fixedCubeMapLookup(reflect(direction, normals[faceNormal])).xyz)*ambientLight*normalVariation;
+		textureColor.rgb += (textureData[blockType].reflectivity*fixedCubeMapLookup(reflect(direction, normals[faceNormal])).xyz)*light*normalVariation;
 		textureColor.rgb += texture(emissionSampler, textureCoords).rgb;
 		blendColor.rgb *= 1 - textureColor.a;
 		textureColor.a = 1;

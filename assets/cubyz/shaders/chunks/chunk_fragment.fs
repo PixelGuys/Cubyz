@@ -1,6 +1,7 @@
 #version 430
 
 in vec3 mvVertexPos;
+in vec3 light;
 flat in int blockType;
 flat in int faceNormal;
 flat in int modelIndex;
@@ -12,7 +13,6 @@ flat in ivec3 maxPos;
 in vec3 startPosition;
 in vec3 direction;
 
-uniform vec3 ambientLight;
 uniform sampler2DArray texture_sampler;
 uniform sampler2DArray emissionSampler;
 
@@ -82,7 +82,7 @@ void main() {
 	int textureIndex = textureData[blockType].textureIndices[faceNormal];
 	float normalVariation = normalVariations[faceNormal];
 	vec3 textureCoords = vec3(getTextureCoordsNormal(startPosition/16, faceNormal), textureIndex);
-	fragColor = texture(texture_sampler, textureCoords)*vec4(ambientLight*normalVariation, 1);
+	fragColor = texture(texture_sampler, textureCoords)*vec4(light*normalVariation, 1);
 
 	if(!passDitherTest(fragColor.a)) discard;
 	fragColor.a = 1;
