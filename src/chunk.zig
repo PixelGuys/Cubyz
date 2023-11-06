@@ -625,7 +625,7 @@ pub const meshing = struct {
 					interpolatedVals[5][i] << 0
 				);
 			}
-			return result; // TODO:
+			return result;
 		}
 
 		fn uploadData(self: *PrimitiveMesh) !void {

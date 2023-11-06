@@ -1150,51 +1150,6 @@ pub const RenderStructure = struct {
 		}
 	}
 
-	fn resetVisibilityMask(px: i32, py: i32, pz: i32, renderDistance: i32, LODFactor: f32) void {
-		for(0..storageLists.len) |_lod| {
-			const lod: u5 = @intCast(_lod);
-			var maxRenderDistanceNew = renderDistance*chunk.chunkSize << lod;
-			if(lod != 0) maxRenderDistanceNew = @intFromFloat(@ceil(@as(f32, @floatFromInt(maxRenderDistanceNew))*LODFactor));
-			const size: u31 = chunk.chunkSize << lod;
-			const mask: i32 = size - 1;
-			const invMask: i32 = ~mask;
-
-			const minX = px-%maxRenderDistanceNew & invMask;
-			const maxX = px+%maxRenderDistanceNew+%size & invMask;
-			var x = minX;
-			while(x != maxX): (x +%= size) {
-				const xIndex = @divExact(x, size) & storageMask;
-				var deltaXNew: i64 = @abs(x +% size/2 -% px);
-				deltaXNew = @max(0, deltaXNew - size/2);
-				const maxYRenderDistanceNew: i32 = reduceRenderDistance(maxRenderDistanceNew, deltaXNew);
-
-				const minY = py-%maxYRenderDistanceNew & invMask;
-				const maxY = py+%maxYRenderDistanceNew+%size & invMask;
-				var y = minY;
-				while(y != maxY): (y +%= size) {
-					const yIndex = @divExact(y, size) & storageMask;
-					var deltaYNew: i64 = @abs(y +% size/2 -% py);
-					deltaYNew = @max(0, deltaYNew - size/2);
-					const maxZRenderDistanceNew: i32 = reduceRenderDistance(maxYRenderDistanceNew, deltaYNew);
-					if(maxZRenderDistanceNew == 0) continue;
-
-					const minZNew = pz-%maxZRenderDistanceNew & invMask;
-					const maxZNew = pz+%maxZRenderDistanceNew+%size & invMask;
-
-					var z = minZNew;
-					while(z != maxZNew): (z +%= size) {
-						const zIndex = @divExact(z, size) & storageMask;
-						const index = (xIndex*storageSize + yIndex)*storageSize + zIndex;
-
-						if(storageLists[_lod][@intCast(index)].mesh) |mesh| {
-							mesh.visibilityMask = 0xff;
-						}
-					}
-				}
-			}
-		}
-	}
-
 	pub fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: Vec3d, renderDistance: i32, LODFactor: f32) ![]*chunk.meshing.ChunkMesh {
 		meshList.clearRetainingCapacity();
 		if(lastRD != renderDistance and lastFactor != LODFactor) {
@@ -1209,7 +1164,6 @@ pub const RenderStructure = struct {
 
 		try freeOldMeshes(px, py, pz, renderDistance, LODFactor);
 		try createNewMeshes(px, py, pz, renderDistance, LODFactor, &meshRequests);
-		resetVisibilityMask(px, py, pz, renderDistance, LODFactor); // TODO: A better solution is needed here. Resetting this every frame is kind of expensive.
 
 		// Does occlusion using a breadth-first search that caches an on-screen visibility rectangle.
 
@@ -1261,14 +1215,7 @@ pub const RenderStructure = struct {
 		while(searchList.removeOrNull()) |data| {
 			data.node.active = false;
 			const mesh = data.node.mesh.?;
-			if(data.node.lod+1 != storageLists.len) {
-				const parent = getNodeFromRenderThread(.{.wx=mesh.pos.wx, .wy=mesh.pos.wy, .wz=mesh.pos.wz, .voxelSize=mesh.pos.voxelSize << 1});
-				if(parent.mesh) |parentMesh| {
-					const sizeShift = chunk.chunkShift + data.node.lod;
-					const octantIndex: u3 = @intCast((mesh.pos.wx>>sizeShift & 1) | (mesh.pos.wy>>sizeShift & 1)<<1 | (mesh.pos.wz>>sizeShift & 1)<<2);
-					parentMesh.visibilityMask &= ~(@as(u8, 1) << octantIndex);
-				}
-			}
+			mesh.visibilityMask = 0xff;
 			try meshList.append(mesh);
 			const relPos: Vec3d = @as(Vec3d, @floatFromInt(Vec3i{mesh.pos.wx, mesh.pos.wy, mesh.pos.wz})) - playerPos;
 			const relPosFloat: Vec3f = @floatCast(relPos);
@@ -1443,6 +1390,16 @@ pub const RenderStructure = struct {
 					neighborPos.wy &= ~@as(i32, neighborPos.voxelSize*chunk.chunkSize);
 					neighborPos.wz &= ~@as(i32, neighborPos.voxelSize*chunk.chunkSize);
 					neighborPos.voxelSize *= 2;
+				}
+			}
+		}
+		for(meshList.items) |mesh| {
+			if(mesh.pos.voxelSize != @as(u31, 1) << settings.highestLOD) {
+				const parent = getNodeFromRenderThread(.{.wx=mesh.pos.wx, .wy=mesh.pos.wy, .wz=mesh.pos.wz, .voxelSize=mesh.pos.voxelSize << 1});
+				if(parent.mesh) |parentMesh| {
+					const sizeShift = chunk.chunkShift + @ctz(mesh.pos.voxelSize);
+					const octantIndex: u3 = @intCast((mesh.pos.wx>>sizeShift & 1) | (mesh.pos.wy>>sizeShift & 1)<<1 | (mesh.pos.wz>>sizeShift & 1)<<2);
+					parentMesh.visibilityMask &= ~(@as(u8, 1) << octantIndex);
 				}
 			}
 		}
