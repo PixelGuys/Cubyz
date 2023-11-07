@@ -441,7 +441,7 @@ pub const meshing = struct {
 		c.glBindVertexArray(0);
 
 		faces = try std.ArrayList(u32).initCapacity(main.globalAllocator, 65536);
-		try faceBuffer.init(main.globalAllocator, 512 << 20, 3);
+		try faceBuffer.init(main.globalAllocator, 1 << 30, 3);
 	}
 
 	pub fn deinit() void {
@@ -732,15 +732,17 @@ pub const meshing = struct {
 		sortingOutputBuffer: []FaceData = &.{},
 		culledSortingCount: u31 = 0,
 		lastTransparentUpdatePos: Vec3i = Vec3i{0, 0, 0},
+		refCount: std.atomic.Atomic(u32) = std.atomic.Atomic(u32).init(1),
+		needsNeighborUpdate: bool = false,
 
 		chunkBorders: [6]BoundingRectToNeighborChunk = [1]BoundingRectToNeighborChunk{.{}} ** 6,
 
-		pub fn init(pos: ChunkPosition, chunk: *Chunk) !ChunkMesh {
+		pub fn init(self: *ChunkMesh, pos: ChunkPosition, chunk: *Chunk) !void {
 			const lightingData = try main.globalAllocator.create([6]lighting.ChannelChunk);
 			for(lightingData) |*lightChunk| {
 				try lightChunk.init(chunk);
 			}
-			return ChunkMesh{
+			self.* = ChunkMesh{
 				.pos = pos,
 				.size = chunkSize*pos.voxelSize,
 				.opaqueMesh = .{},
@@ -752,6 +754,7 @@ pub const meshing = struct {
 		}
 
 		pub fn deinit(self: *ChunkMesh) void {
+			std.debug.assert(self.refCount.load(.Monotonic) == 0);
 			self.opaqueMesh.deinit();
 			self.voxelMesh.deinit();
 			self.transparentMesh.deinit();
@@ -759,6 +762,19 @@ pub const meshing = struct {
 			main.globalAllocator.free(self.sortingOutputBuffer);
 			main.globalAllocator.destroy(self.chunk);
 			main.globalAllocator.destroy(self.lightingData);
+		}
+
+		pub fn increaseRefCount(self: *ChunkMesh) void {
+			const prevVal = self.refCount.fetchAdd(1, .Monotonic);
+			std.debug.assert(prevVal != 0);
+		}
+
+		pub fn decreaseRefCount(self: *ChunkMesh) !void {
+			const prevVal = self.refCount.fetchSub(1, .Monotonic);
+			std.debug.assert(prevVal != 0);
+			if(prevVal == 1) {
+				try renderer.RenderStructure.addMeshToClearList(self);
+			}
 		}
 
 		pub fn isEmpty(self: *const ChunkMesh) bool {

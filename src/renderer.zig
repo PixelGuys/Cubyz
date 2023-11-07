@@ -884,7 +884,9 @@ pub const RenderStructure = struct {
 	const storageMask = storageSize - 1;
 	var storageLists: [settings.highestLOD + 1]*[storageSize*storageSize*storageSize]ChunkMeshNode = undefined;
 	var meshList = std.ArrayList(*chunk.meshing.ChunkMesh).init(main.globalAllocator);
-	var updatableList: std.ArrayList(*chunk.meshing.ChunkMesh) = undefined;
+	var priorityUpdateList = std.ArrayList(*chunk.meshing.ChunkMesh).init(main.globalAllocator);
+	var updatableList = std.ArrayList(*chunk.meshing.ChunkMesh).init(main.globalAllocator);
+	var clearList = std.ArrayList(*chunk.meshing.ChunkMesh).init(main.globalAllocator);
 	var lastPx: i32 = 0;
 	var lastPy: i32 = 0;
 	var lastPz: i32 = 0;
@@ -903,7 +905,6 @@ pub const RenderStructure = struct {
 	pub fn init() !void {
 		lastRD = 0;
 		lastFactor = 0;
-		updatableList = std.ArrayList(*chunk.meshing.ChunkMesh).init(main.globalAllocator);
 		blockUpdateList = std.ArrayList(BlockUpdate).init(main.globalAllocator);
 		for(&storageLists) |*storageList| {
 			storageList.* = try main.globalAllocator.create([storageSize*storageSize*storageSize]ChunkMeshNode);
@@ -922,12 +923,20 @@ pub const RenderStructure = struct {
 			main.globalAllocator.destroy(storageList);
 		}
 		for(updatableList.items) |mesh| {
+			mesh.decreaseRefCount() catch unreachable;
+		}
+		updatableList.deinit();
+		for(priorityUpdateList.items) |mesh| {
+			mesh.decreaseRefCount() catch unreachable;
+		}
+		priorityUpdateList.deinit();
+		blockUpdateList.deinit();
+		meshList.deinit();
+		for(clearList.items) |mesh| {
 			mesh.deinit();
 			main.globalAllocator.destroy(mesh);
 		}
-		updatableList.deinit();
-		blockUpdateList.deinit();
-		meshList.deinit();
+		clearList.deinit();
 	}
 
 	fn getNodeFromRenderThread(pos: chunk.ChunkPosition) *ChunkMeshNode {
@@ -1055,13 +1064,14 @@ pub const RenderStructure = struct {
 						// Update the neighbors, so we don't get cracks when we look back:
 						if(node.mesh) |mesh| {
 							const pos = mesh.pos;
-							mesh.deinit();
-							main.globalAllocator.destroy(mesh);
+							try mesh.decreaseRefCount();
 							node.mesh = null;
 							if(renderDistance != 0) {
 								for(chunk.Neighbors.iterable) |neighbor| {
 									if(getNeighborFromRenderThread(pos, pos.voxelSize, neighbor)) |neighborMesh| {
-										try neighborMesh.uploadDataAndFinishNeighbors(); // TODO: This part is quite slow and can cause large lag spikes.
+										neighborMesh.needsNeighborUpdate = true;
+										neighborMesh.increaseRefCount();
+										try priorityUpdateList.append(neighborMesh);
 									}
 								}
 							}
@@ -1402,6 +1412,10 @@ pub const RenderStructure = struct {
 					parentMesh.visibilityMask &= ~(@as(u8, 1) << octantIndex);
 				}
 			}
+			if(mesh.needsNeighborUpdate) {
+				try mesh.uploadDataAndFinishNeighbors();
+				mesh.needsNeighborUpdate = false;
+			}
 		}
 
 		lastPx = px;
@@ -1429,6 +1443,22 @@ pub const RenderStructure = struct {
 		}
 		mutex.lock();
 		defer mutex.unlock();
+		for(clearList.items) |mesh| {
+			mesh.deinit();
+			main.globalAllocator.destroy(mesh);
+		}
+		clearList.clearRetainingCapacity();
+		while (priorityUpdateList.items.len != 0) {
+			const mesh = priorityUpdateList.orderedRemove(0);
+			mutex.unlock();
+			defer mutex.lock();
+			try mesh.decreaseRefCount();
+			if(getNodeFromRenderThread(mesh.pos).mesh != mesh) continue; // This mesh isn't used for rendering anymore.
+			if(!mesh.needsNeighborUpdate) continue;
+			try mesh.uploadDataAndFinishNeighbors();
+			mesh.needsNeighborUpdate = false;
+			if(std.time.milliTimestamp() >= targetTime) break; // Update at least one mesh.
+		}
 		while(updatableList.items.len != 0) {
 			// TODO: Find a faster solution than going through the entire list.
 			var closestPriority: f32 = -std.math.floatMax(f32);
@@ -1448,16 +1478,21 @@ pub const RenderStructure = struct {
 			if(node.inRenderDistance) {
 				try mesh.uploadDataAndFinishNeighbors();
 				if(node.mesh) |oldMesh| {
-					oldMesh.deinit();
-					main.globalAllocator.destroy(oldMesh);
+					try oldMesh.decreaseRefCount();
 				}
 				node.mesh = mesh;
 			} else {
-				mesh.deinit();
-				main.globalAllocator.destroy(mesh);
+				try mesh.decreaseRefCount();
 			}
 			if(std.time.milliTimestamp() >= targetTime) break; // Update at least one mesh.
 		}
+	}
+
+	pub fn addMeshToClearList(mesh: *chunk.meshing.ChunkMesh) !void {
+		std.debug.assert(mesh.refCount.load(.Monotonic) == 0);
+		mutex.lock();
+		defer mutex.unlock();
+		try clearList.append(mesh);
 	}
 
 	pub const MeshGenerationTask = struct {
@@ -1493,7 +1528,7 @@ pub const RenderStructure = struct {
 		pub fn run(self: *MeshGenerationTask) Allocator.Error!void {
 			const pos = self.mesh.pos;
 			const mesh = try main.globalAllocator.create(chunk.meshing.ChunkMesh);
-			mesh.* = try chunk.meshing.ChunkMesh.init(pos, self.mesh);
+			try mesh.init(pos, self.mesh);
 			try mesh.regenerateMainMesh();
 			mutex.lock();
 			defer mutex.unlock();
