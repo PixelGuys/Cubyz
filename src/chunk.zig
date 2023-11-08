@@ -93,7 +93,7 @@ pub const Neighbors = struct {
 };
 
 /// Gets the index of a given position inside this chunk.
-pub fn getIndex(x: i32, y: i32, z: i32) u32 {
+fn getIndex(x: i32, y: i32, z: i32) u32 {
 	std.debug.assert((x & chunkMask) == x and (y & chunkMask) == y and (z & chunkMask) == z);
 	return (@as(u32, @intCast(x)) << chunkShift) | (@as(u32, @intCast(y)) << chunkShift2) | @as(u32, @intCast(z));
 }
@@ -574,30 +574,43 @@ pub const meshing = struct {
 			try self.uploadData();
 		}
 
-		fn getLightAt(parent: *ChunkMesh, channel: usize, x: i32, y: i32, z: i32) u8 {
+		fn getValues(mesh: *ChunkMesh, wx: i32, wy: i32, wz: i32) [6]u8 {
+			const x = (wx >> mesh.chunk.voxelSizeShift) & chunkMask;
+			const y = (wy >> mesh.chunk.voxelSizeShift) & chunkMask;
+			const z = (wz >> mesh.chunk.voxelSizeShift) & chunkMask;
+			const index = getIndex(x, y, z);
+			return .{
+				mesh.lightingData.*[0].data[index],
+				mesh.lightingData.*[1].data[index],
+				mesh.lightingData.*[2].data[index],
+				mesh.lightingData.*[3].data[index],
+				mesh.lightingData.*[4].data[index],
+				mesh.lightingData.*[5].data[index],
+			};
+		}
+
+		fn getLightAt(parent: *ChunkMesh, x: i32, y: i32, z: i32) [6]u8 {
 			const wx = parent.pos.wx +% x*parent.pos.voxelSize;
 			const wy = parent.pos.wy +% y*parent.pos.voxelSize;
 			const wz = parent.pos.wz +% z*parent.pos.voxelSize;
 			if(x == x & chunkMask and y == y & chunkMask and z == z & chunkMask) {
-				return parent.lightingData.*[channel].getValue(parent.chunk.voxelSizeShift, wx, wy, wz);
+				return getValues(parent, wx, wy, wz);
 			}
-			const neighborMesh = renderer.RenderStructure.getMeshFromAnyLodFromRenderThread(wx, wy, wz, parent.pos.voxelSize) orelse return 0;
+			const neighborMesh = renderer.RenderStructure.getMeshFromAnyLodFromRenderThread(wx, wy, wz, parent.pos.voxelSize) orelse return .{0, 0, 0, 0, 0, 0};
 			// TODO: If the neighbor mesh has a higher lod the transition isn't seamless.
-			return neighborMesh.lightingData.*[channel].getValue(neighborMesh.chunk.voxelSizeShift, wx, wy, wz);
+			return getValues(neighborMesh, wx, wy, wz);
 		}
 
 		fn getLight(parent: *ChunkMesh, x: i32, y: i32, z: i32, normal: u3) [4]u32 {
 			// TODO: Add a case for non-full cube models. This requires considering more light values along the normal.
 			const pos = Vec3i{x, y, z};
-			var rawVals: [6][3][3]u8 = undefined;
-			for(0..6) |channel| {
-				var dx: i32 = -1;
-				while(dx <= 1): (dx += 1) {
-					var dy: i32 = -1;
-					while(dy <= 1): (dy += 1) {
-						const lightPos = pos +% Neighbors.textureX[normal]*@as(Vec3i, @splat(dx)) +% Neighbors.textureY[normal]*@as(Vec3i, @splat(dy));
-						rawVals[channel][@intCast(dx + 1)][@intCast(dy + 1)] = getLightAt(parent, channel, lightPos[0], lightPos[1], lightPos[2]);
-					}
+			var rawVals: [3][3][6]u8 = undefined;
+			var dx: i32 = -1;
+			while(dx <= 1): (dx += 1) {
+				var dy: i32 = -1;
+				while(dy <= 1): (dy += 1) {
+					const lightPos = pos +% Neighbors.textureX[normal]*@as(Vec3i, @splat(dx)) +% Neighbors.textureY[normal]*@as(Vec3i, @splat(dy));
+					rawVals[@intCast(dx + 1)][@intCast(dy + 1)] = getLightAt(parent, lightPos[0], lightPos[1], lightPos[2]);
 				}
 			}
 			var interpolatedVals: [6][4]u32 = undefined;
@@ -607,7 +620,7 @@ pub const meshing = struct {
 						var val: u32 = 0;
 						for(0..2) |sourceX| {
 							for(0..2) |sourceY| {
-								val += rawVals[channel][destX+sourceX][destY+sourceY];
+								val += rawVals[destX+sourceX][destY+sourceY][channel];
 							}
 						}
 						interpolatedVals[channel][destX*2 + destY] = @intCast(val >> 2+3);

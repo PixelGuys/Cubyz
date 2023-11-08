@@ -28,12 +28,4 @@ pub const ChannelChunk = struct {
 			val.* = if(ch.blocks[i].transparent()) 255 else 0; // TODO: Proper light propagation. This is just ambient occlusion at the moment.
 		}
 	}
-
-	pub fn getValue(self: *ChannelChunk, voxelSizeShift: u5, wx: i32, wy: i32, wz: i32) u8 {
-		const x = (wx >> voxelSizeShift) & chunk.chunkMask;
-		const y = (wy >> voxelSizeShift) & chunk.chunkMask;
-		const z = (wz >> voxelSizeShift) & chunk.chunkMask;
-		const index = chunk.getIndex(x, y, z);
-		return self.data[index];
-	}
 };
