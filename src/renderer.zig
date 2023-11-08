@@ -271,6 +271,8 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	
 	if(settings.bloom) {
 		Bloom.render(lastWidth, lastHeight, playerBlock);
+	} else {
+		Bloom.bindReplacementImage();
 	}
 	gpu_performance_measuring.startQuery(.final_copy);
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
@@ -314,12 +316,12 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 const Bloom = struct {
 	var buffer1: graphics.FrameBuffer = undefined;
 	var buffer2: graphics.FrameBuffer = undefined;
+	var emptyBuffer: graphics.Texture = undefined;
 	var width: u31 = std.math.maxInt(u31);
 	var height: u31 = std.math.maxInt(u31);
 	var firstPassShader: graphics.Shader = undefined;
 	var secondPassShader: graphics.Shader = undefined;
 	var colorExtractAndDownsampleShader: graphics.Shader = undefined;
-	var upscaleShader: graphics.Shader = undefined;
 	var colorExtractUniforms: struct {
 		depthTexture: c_int,
 		zNear: c_int,
@@ -332,10 +334,11 @@ const Bloom = struct {
 	pub fn init() !void {
 		buffer1.init(false, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
 		buffer2.init(false, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
+		emptyBuffer = graphics.Texture.init();
+		emptyBuffer.generate(graphics.Image.emptyImage);
 		firstPassShader = try graphics.Shader.init("assets/cubyz/shaders/bloom/first_pass.vs", "assets/cubyz/shaders/bloom/first_pass.fs");
 		secondPassShader = try graphics.Shader.init("assets/cubyz/shaders/bloom/second_pass.vs", "assets/cubyz/shaders/bloom/second_pass.fs");
 		colorExtractAndDownsampleShader = try graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/bloom/color_extractor_downsample.vs", "assets/cubyz/shaders/bloom/color_extractor_downsample.fs", &colorExtractUniforms);
-		upscaleShader = try graphics.Shader.init("assets/cubyz/shaders/bloom/upscale.vs", "assets/cubyz/shaders/bloom/upscale.fs");
 	}
 
 	pub fn deinit() void {
@@ -343,7 +346,6 @@ const Bloom = struct {
 		buffer2.deinit();
 		firstPassShader.deinit();
 		secondPassShader.deinit();
-		upscaleShader.deinit();
 	}
 
 	fn extractImageDataAndDownsample(playerBlock: blocks.Block) void {
@@ -383,15 +385,7 @@ const Bloom = struct {
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
-	fn upscale() void {
-		upscaleShader.bind();
-		buffer1.bindTexture(c.GL_TEXTURE3);
-		worldFrameBuffer.bind();
-		c.glBindVertexArray(graphics.draw.rectVAO);
-		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
-	}
-
-	pub fn render(currentWidth: u31, currentHeight: u31, playerBlock: blocks.Block) void {
+	fn render(currentWidth: u31, currentHeight: u31, playerBlock: blocks.Block) void {
 		if(width != currentWidth or height != currentHeight) {
 			width = currentWidth;
 			height = currentHeight;
@@ -413,17 +407,19 @@ const Bloom = struct {
 		gpu_performance_measuring.stopQuery();
 		gpu_performance_measuring.startQuery(.bloom_second_pass);
 		secondPass();
-		gpu_performance_measuring.stopQuery();
-		gpu_performance_measuring.startQuery(.bloom_upscale);
+
 		c.glViewport(0, 0, width, height);
-		c.glBlendFunc(c.GL_ONE, c.GL_ONE);
-		upscale();
+		buffer1.bindTexture(c.GL_TEXTURE5);
 
 		c.glDepthMask(c.GL_TRUE);
 		c.glEnable(c.GL_DEPTH_TEST);
 		c.glEnable(c.GL_CULL_FACE);
 		c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 		gpu_performance_measuring.stopQuery();
+	}
+
+	fn bindReplacementImage() void {
+		emptyBuffer.bindTo(5);
 	}
 };
 

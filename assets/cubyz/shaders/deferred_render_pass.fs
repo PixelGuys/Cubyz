@@ -10,6 +10,8 @@ uniform float zNear;
 uniform float zFar;
 uniform vec2 tanXY;
 
+layout(binding = 5) uniform sampler2D bloomColor;
+
 struct Fog {
 	vec3 color;
 	float density;
@@ -51,6 +53,7 @@ vec3 applyFrontfaceFog(float fogDistance, vec3 fogColor, vec3 inColor) {
 
 void main() {
 	fragColor = texture(color, texCoords);
+	fragColor += texture(bloomColor, texCoords);
 	float densityAdjustment = sqrt(dot(tanXY*(texCoords*2 - 1), tanXY*(texCoords*2 - 1)) + 1);
 	float fogDistance = calculateFogDistance(texelFetch(depthTexture, ivec2(gl_FragCoord.xy), 0).r, fog.density*densityAdjustment);
 	fragColor.rgb = applyFrontfaceFog(fogDistance, fog.color, fragColor.rgb);

@@ -23,7 +23,6 @@ pub const Samples = enum(u8) {
 	bloom_extract_downsample,
 	bloom_first_pass,
 	bloom_second_pass,
-	bloom_upscale,
 	final_copy,
 	gui,
 };
@@ -39,7 +38,6 @@ const names = [_][]const u8 {
 	"Bloom - Extract color and downsample",
 	"Bloom - First Pass",
 	"Bloom - Second Pass",
-	"Bloom - Upscale",
 	"Copy to screen",
 	"GUI Rendering",
 };

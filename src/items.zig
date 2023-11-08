@@ -121,7 +121,7 @@ pub const BaseItem = struct {
 				self.texture = try graphics.generateBlockTexture(blockType);
 			} else {
 				self.texture = graphics.Texture.init();
-				try self.texture.?.generate(self.image);
+				self.texture.?.generate(self.image);
 			}
 		}
 		return self.texture.?;
@@ -998,7 +998,7 @@ pub const Tool = struct {
 	fn getTexture(self: *Tool) !graphics.Texture {
 		if(self.texture == null) {
 			self.texture = graphics.Texture.init();
-			try self.texture.?.generate(self.image);
+			self.texture.?.generate(self.image);
 		}
 		return self.texture.?;
 	}

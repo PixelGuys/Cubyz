@@ -1533,7 +1533,7 @@ pub const Texture = struct {
 		const self = Texture.init();
 		const image = try Image.readFromFile(main.threadAllocator, path);
 		defer image.deinit(main.threadAllocator);
-		try self.generate(image);
+		self.generate(image);
 		return self;
 	}
 
@@ -1551,7 +1551,7 @@ pub const Texture = struct {
 	}
 
 	/// (Re-)Generates the GPU buffer.
-	pub fn generate(self: Texture, image: Image) !void {
+	pub fn generate(self: Texture, image: Image) void {
 		self.bind();
 
 		c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_RGBA8, image.width, image.height, 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, image.imageData.ptr);
@@ -1668,6 +1668,14 @@ pub const Image = struct {
 		.width = 2,
 		.height = 2,
 		.imageData = &defaultImageData,
+	};
+	var emptyImageData = [1]Color {
+		Color{.r=0, .g=0, .b=0, .a=0},
+	};
+	pub const emptyImage = Image {
+		.width = 1,
+		.height = 1,
+		.imageData = &emptyImageData,
 	};
 	width: u31,
 	height: u31,
