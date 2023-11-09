@@ -1796,7 +1796,11 @@ pub fn generateBlockTexture(blockType: u16) !Texture {
 		c.glBlendFunc(c.GL_ONE, c.GL_SRC1_COLOR);
 		main.chunk.meshing.bindTransparentShaderAndUniforms(projMatrix, .{1, 1, 1});
 	} else {
-		main.chunk.meshing.bindShaderAndUniforms(projMatrix, .{1, 1, 1});
+		if(block.mode().model(block).modelIndex == 0) {
+			main.chunk.meshing.bindShaderAndUniforms(projMatrix, .{1, 1, 1});
+		} else {
+			main.chunk.meshing.bindVoxelShaderAndUniforms(projMatrix, .{1, 1, 1});
+		}
 	}
 	const uniforms = if(block.transparent()) &main.chunk.meshing.transparentUniforms else &main.chunk.meshing.uniforms;
 
@@ -1812,6 +1816,9 @@ pub fn generateBlockTexture(blockType: u16) !Texture {
 	faceData[faces + 1] = main.chunk.meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirUp, 1, 1+1, 1, false);
 	faceData[faces + 2] = main.chunk.meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirPosZ, 1, 1, 1+1, false);
 	faces += 3;
+	for(faceData[0..faces]) |*face| {
+		@memset(&face.light, ~@as(u32, 0));
+	}
 	var allocation: LargeBuffer.Allocation = .{.start = 0, .len = 0};
 	try main.chunk.meshing.faceBuffer.realloc(&allocation, faces*@sizeOf(main.chunk.meshing.FaceData));
 	main.chunk.meshing.faceBuffer.bufferSubData(allocation.start, main.chunk.meshing.FaceData, faceData[0..faces]);
