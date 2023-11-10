@@ -454,14 +454,14 @@ pub const meshing = struct {
 	}
 
 	fn bindCommonUniforms(locations: *UniformStruct, projMatrix: Mat4f, ambient: Vec3f) void {
-		c.glUniformMatrix4fv(locations.projectionMatrix, 1, c.GL_FALSE, @ptrCast(&projMatrix));
+		c.glUniformMatrix4fv(locations.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 
 		c.glUniform1i(locations.texture_sampler, 0);
 		c.glUniform1i(locations.emissionSampler, 1);
 		c.glUniform1i(locations.reflectionMap, 2);
 		c.glUniform1f(locations.reflectionMapSize, renderer.reflectionCubeMapSize);
 
-		c.glUniformMatrix4fv(locations.viewMatrix, 1, c.GL_FALSE, @ptrCast(&game.camera.viewMatrix));
+		c.glUniformMatrix4fv(locations.viewMatrix, 1, c.GL_TRUE, @ptrCast(&game.camera.viewMatrix));
 
 		c.glUniform3f(locations.ambientLight, ambient[0], ambient[1], ambient[2]);
 

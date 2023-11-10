@@ -150,7 +150,7 @@ pub const ClientEntityManager = struct {
 		defer mutex.unlock();
 		update();
 		shader.bind();
-		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_FALSE, @ptrCast(&projMatrix));
+		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 		c.glUniform1i(uniforms.texture_sampler, 0);
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniform3fv(uniforms.directionalLight, 1, @ptrCast(&directionalLight));
@@ -176,7 +176,7 @@ pub const ClientEntityManager = struct {
 				}))
 			);
 			const modelViewMatrix = modelMatrix.mul(game.camera.viewMatrix);
-			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_FALSE, @ptrCast(&modelViewMatrix));
+			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));
 			// TODO: c.glDrawElements(...);
 		}
 	}

@@ -727,9 +727,9 @@ pub const ItemDropRenderer = struct {
 		c.glUniform1i(itemUniforms.texture_sampler, 0);
 		c.glUniform1i(itemUniforms.emissionSampler, 1);
 		c.glUniform1i(itemUniforms.time, @as(u31, @truncate(time)));
-		c.glUniformMatrix4fv(itemUniforms.projectionMatrix, 1, c.GL_FALSE, @ptrCast(&projMatrix));
+		c.glUniformMatrix4fv(itemUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 		c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&ambientLight));
-		c.glUniformMatrix4fv(itemUniforms.viewMatrix, 1, c.GL_FALSE, @ptrCast(&game.camera.viewMatrix));
+		c.glUniformMatrix4fv(itemUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&game.camera.viewMatrix));
 		c.glUniform1f(itemUniforms.sizeScale, @floatCast(ItemDropManager.diameter/4.0));
 		const itemDrops = &game.world.?.itemDrops.super;
 		itemDrops.mutex.lock();
@@ -754,7 +754,7 @@ pub const ItemDropRenderer = struct {
 				modelMatrix = modelMatrix.mul(Mat4f.rotationX(-rot[0]));
 				modelMatrix = modelMatrix.mul(Mat4f.rotationY(-rot[1]));
 				modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-rot[2]));
-				c.glUniformMatrix4fv(itemUniforms.modelMatrix, 1, c.GL_FALSE, @ptrCast(&modelMatrix));
+				c.glUniformMatrix4fv(itemUniforms.modelMatrix, 1, c.GL_TRUE, @ptrCast(&modelMatrix));
 
 				if(item == .baseItem and item.baseItem.block != null) {
 					const blockType = item.baseItem.block.?;

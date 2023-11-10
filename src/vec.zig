@@ -81,10 +81,10 @@ pub fn rotateZ(self: anytype, angle: @typeInfo(@TypeOf(self)).Vector.child) @Typ
 }
 
 pub const Mat4f = struct {
-	columns: [4]Vec4f,
+	rows: [4]Vec4f,
 	pub fn identity() Mat4f {
 		return Mat4f {
-			.columns = [4]Vec4f { // Keep in mind that this is the transpose!
+			.rows = [4]Vec4f {
 				Vec4f{1, 0, 0, 0},
 				Vec4f{0, 1, 0, 0},
 				Vec4f{0, 0, 1, 0},
@@ -95,11 +95,11 @@ pub const Mat4f = struct {
 
 	pub fn translation(pos: Vec3f) Mat4f {
 		return Mat4f {
-			.columns = [4]Vec4f { // Keep in mind that this is the transpose!
-				Vec4f{1, 0, 0, 0},
-				Vec4f{0, 1, 0, 0},
-				Vec4f{0, 0, 1, 0},
-				Vec4f{pos[0], pos[1], pos[2], 1},
+			.rows = [4]Vec4f {
+				Vec4f{1, 0, 0, pos[0]},
+				Vec4f{0, 1, 0, pos[1]},
+				Vec4f{0, 0, 1, pos[2]},
+				Vec4f{0, 0, 0, 1},
 			}
 		};
 	}
@@ -108,10 +108,10 @@ pub const Mat4f = struct {
 		const s = @sin(rad);
 		const c = @cos(rad);
 		return Mat4f {
-			.columns = [4]Vec4f { // Keep in mind that this is the transpose!
+			.rows = [4]Vec4f {
 				Vec4f{1, 0, 0, 0},
-				Vec4f{0, c, s, 0},
-				Vec4f{0,-s, c, 0},
+				Vec4f{0, c,-s, 0},
+				Vec4f{0, s, c, 0},
 				Vec4f{0, 0, 0, 1},
 			}
 		};
@@ -121,10 +121,10 @@ pub const Mat4f = struct {
 		const s = @sin(rad);
 		const c = @cos(rad);
 		return Mat4f {
-			.columns = [4]Vec4f { // Keep in mind that this is the transpose!
-				Vec4f{c, 0,-s, 0},
+			.rows = [4]Vec4f {
+				Vec4f{c, 0, s, 0},
 				Vec4f{0, 1, 0, 0},
-				Vec4f{s, 0, c, 0},
+				Vec4f{-s,0, c, 0},
 				Vec4f{0, 0, 0, 1},
 			}
 		};
@@ -134,9 +134,9 @@ pub const Mat4f = struct {
 		const s = @sin(rad);
 		const c = @cos(rad);
 		return Mat4f {
-			.columns = [4]Vec4f { // Keep in mind that this is the transpose!
-				Vec4f{c, s, 0, 0},
-				Vec4f{-s,c, 0, 0},
+			.rows = [4]Vec4f {
+				Vec4f{c,-s, 0, 0},
+				Vec4f{s, c, 0, 0},
 				Vec4f{0, 0, 1, 0},
 				Vec4f{0, 0, 0, 1},
 			}
@@ -147,45 +147,46 @@ pub const Mat4f = struct {
 		const tanY = std.math.tan(fovY*0.5);
 		const tanX = aspect*tanY;
 		return Mat4f {
-			.columns = [4]Vec4f { // Keep in mind that this is the transpose!
+			.rows = [4]Vec4f {
 				Vec4f{1/tanX, 0,      0,                         0},
 				Vec4f{0,      1/tanY, 0,                         0},
-				Vec4f{0,      0,      (far + near)/(near - far), -1},
-				Vec4f{0,      0,      2*near*far/(near - far),   0},
+				Vec4f{0,      0,      (far + near)/(near - far), 2*near*far/(near - far)},
+				Vec4f{0,      0,      -1,                        0},
 			}
 		};
 	}
 
 	pub fn transpose(self: Mat4f) Mat4f {
 		return Mat4f {
-			.columns = [4]Vec4f { // Keep in mind that this is the transpose!
-				Vec4f{self.columns[0][0], self.columns[1][0], self.columns[2][0], self.columns[3][0]},
-				Vec4f{self.columns[0][1], self.columns[1][1], self.columns[2][1], self.columns[3][1]},
-				Vec4f{self.columns[0][2], self.columns[1][2], self.columns[2][2], self.columns[3][2]},
-				Vec4f{self.columns[0][3], self.columns[1][3], self.columns[2][3], self.columns[3][3]},
+			.rows = [4]Vec4f {
+				Vec4f{self.rows[0][0], self.rows[1][0], self.rows[2][0], self.rows[3][0]},
+				Vec4f{self.rows[0][1], self.rows[1][1], self.rows[2][1], self.rows[3][1]},
+				Vec4f{self.rows[0][2], self.rows[1][2], self.rows[2][2], self.rows[3][2]},
+				Vec4f{self.rows[0][3], self.rows[1][3], self.rows[2][3], self.rows[3][3]},
 			}
 		};
 	}
 
 	pub fn mul(self: Mat4f, other: Mat4f) Mat4f {
-		const transposeSelf = self.transpose();
+		const transposeOther = other.transpose();
 		var result: Mat4f = undefined;
-		for(&result.columns, other.columns) |*resCol, otherCol| {
-			resCol.*[0] = dot(transposeSelf.columns[0], otherCol);
-			resCol.*[1] = dot(transposeSelf.columns[1], otherCol);
-			resCol.*[2] = dot(transposeSelf.columns[2], otherCol);
-			resCol.*[3] = dot(transposeSelf.columns[3], otherCol);
+		for(&result.rows, self.rows) |*resRow, selfRow| {
+			resRow.* = .{
+				dot(selfRow, transposeOther.rows[0]),
+				dot(selfRow, transposeOther.rows[1]),
+				dot(selfRow, transposeOther.rows[2]),
+				dot(selfRow, transposeOther.rows[3]),
+			};
 		}
 		return result;
 	}
 
 	pub fn mulVec(self: Mat4f, vec: Vec4f) Vec4f {
-		const transposeSelf = self.transpose();
 		return Vec4f {
-			dot(transposeSelf.columns[0], vec),
-			dot(transposeSelf.columns[1], vec),
-			dot(transposeSelf.columns[2], vec),
-			dot(transposeSelf.columns[3], vec),
+			dot(self.rows[0], vec),
+			dot(self.rows[1], vec),
+			dot(self.rows[2], vec),
+			dot(self.rows[3], vec),
 		};
 	}
 };

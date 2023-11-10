@@ -291,7 +291,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	}
 	c.glUniform1f(deferredUniforms.zNear, zNear);
 	c.glUniform1f(deferredUniforms.zFar, zFar);
-	c.glUniform2f(deferredUniforms.tanXY, 1.0/game.projectionMatrix.columns[0][0], 1.0/game.projectionMatrix.columns[1][1]);
+	c.glUniform2f(deferredUniforms.tanXY, 1.0/game.projectionMatrix.rows[0][0], 1.0/game.projectionMatrix.rows[1][1]);
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, activeFrameBuffer);
 
@@ -364,7 +364,7 @@ const Bloom = struct {
 		}
 		c.glUniform1f(colorExtractUniforms.zNear, zNear);
 		c.glUniform1f(colorExtractUniforms.zFar, zFar);
-		c.glUniform2f(colorExtractUniforms.tanXY, 1.0/game.projectionMatrix.columns[0][0], 1.0/game.projectionMatrix.columns[1][1]);
+		c.glUniform2f(colorExtractUniforms.tanXY, 1.0/game.projectionMatrix.rows[0][0], 1.0/game.projectionMatrix.rows[1][1]);
 		c.glBindVertexArray(graphics.draw.rectVAO);
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
@@ -531,8 +531,8 @@ pub const MenuBackGround = struct {
 		const viewMatrix = Mat4f.rotationY(angle);
 		shader.bind();
 
-		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_FALSE, @ptrCast(&viewMatrix));
-		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_FALSE, @ptrCast(&game.projectionMatrix));
+		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
+		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
 
 		texture.bindTo(0);
 
@@ -834,8 +834,8 @@ pub const MeshSelection = struct {
 	pub fn drawCube(projectionMatrix: Mat4f, viewMatrix: Mat4f, relativePositionToPlayer: Vec3d, min: Vec3f, max: Vec3f) void {
 		shader.bind();
 
-		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_FALSE, @ptrCast(&projectionMatrix));
-		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_FALSE, @ptrCast(&viewMatrix));
+		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projectionMatrix));
+		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
 
 		c.glUniform3f(uniforms.modelPosition,
 			@floatCast(relativePositionToPlayer[0]),
@@ -1156,7 +1156,7 @@ pub const RenderStructure = struct {
 		}
 	}
 
-	pub fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: Vec3d, renderDistance: i32, LODFactor: f32) ![]*chunk.meshing.ChunkMesh {
+	pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: Vec3d, renderDistance: i32, LODFactor: f32) ![]*chunk.meshing.ChunkMesh {
 		meshList.clearRetainingCapacity();
 		if(lastRD != renderDistance and lastFactor != LODFactor) {
 			try network.Protocols.genericUpdate.sendRenderDistance(conn, renderDistance, LODFactor);
