@@ -626,9 +626,7 @@ pub const Frustum = struct {
 		inline for(self.planes) |plane| {
 			var dist: f32 = vec.dot(pos - plane.pos, plane.norm);
 			// Find the most positive corner:
-			dist += @max(0, dim[0]*plane.norm[0]);
-			dist += @max(0, dim[1]*plane.norm[1]);
-			dist += @max(0, dim[2]*plane.norm[2]);
+			dist += @reduce(.Add, @max(Vec3f{0, 0, 0}, dim*plane.norm));
 			if(dist < 0) return false;
 		}
 		return true;
@@ -1239,22 +1237,17 @@ pub const RenderStructure = struct {
 				var curCorner: usize = 0;
 				for(0..2) |a| {
 					for(0..2) |b| {
+						
 						var cornerVector: Vec3f = undefined;
 						switch(chunk.Neighbors.vectorComponent[neighbor]) {
 							.x => {
-								cornerVector[0] = minVec[0];
-								cornerVector[1] = if(a == 0) minVec[1] else maxVec[1];
-								cornerVector[2] = if(b == 0) minVec[2] else maxVec[2];
+								cornerVector = @select(f32, @Vector(3, bool){true, a == 0, b == 0}, minVec, maxVec);
 							},
 							.y => {
-								cornerVector[1] = minVec[1];
-								cornerVector[0] = if(a == 0) minVec[0] else maxVec[0];
-								cornerVector[2] = if(b == 0) minVec[2] else maxVec[2];
+								cornerVector = @select(f32, @Vector(3, bool){a == 0, true, b == 0}, minVec, maxVec);
 							},
 							.z => {
-								cornerVector[2] = minVec[2];
-								cornerVector[0] = if(a == 0) minVec[0] else maxVec[0];
-								cornerVector[1] = if(b == 0) minVec[1] else maxVec[1];
+								cornerVector = @select(f32, @Vector(3, bool){a == 0, b == 0, true}, minVec, maxVec);
 							},
 						}
 						corners[curCorner] = projRotMat.mulVec(vec.combine(relPosFloat + cornerVector, 1));
