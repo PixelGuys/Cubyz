@@ -83,9 +83,7 @@ const ChunkManager = struct {
 					const minDistSquare = self.pos.getMinDistanceSquared(user.player.pos);
 					//                                                                  ↓ Margin for error. (diagonal of 1 chunk)
 					var targetRenderDistance = (@as(f32, @floatFromInt(user.renderDistance*chunk.chunkSize)) + @as(f32, @floatFromInt(chunk.chunkSize))*@sqrt(3.0));
-					if(self.pos.voxelSize != 1) {
-						targetRenderDistance *= @as(f32, @floatFromInt(self.pos.voxelSize))*user.lodFactor;
-					}
+					targetRenderDistance *= @as(f32, @floatFromInt(self.pos.voxelSize));
 					if(minDistSquare <= targetRenderDistance*targetRenderDistance) {
 						return true;
 					}

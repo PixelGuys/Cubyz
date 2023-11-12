@@ -21,7 +21,6 @@ pub const User = struct {
 	lastTime: i16 = undefined,
 	name: []const u8 = "",
 	renderDistance: u16 = undefined,
-	lodFactor: f32 = undefined,
 	receivedFirstEntityData: bool = false,
 	// TODO: ipPort: []const u8,
 //	TODO: public Thread waitingThread;

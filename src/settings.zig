@@ -20,8 +20,7 @@ pub var fov: f32 = 70;
 
 pub var mouseSensitivity: f32 = 1;
 
-pub var renderDistance: u16 = 4;
-pub var LODFactor: f32 = 2.0;
+pub var renderDistance: u16 = 7;
 
 pub var bloom: bool = true;
 

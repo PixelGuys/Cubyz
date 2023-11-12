@@ -993,10 +993,8 @@ pub const Protocols = struct {
 			switch(data[0]) {
 				type_renderDistance => {
 					const renderDistance = std.mem.readInt(i32, data[1..5], .big);
-					const lodFactor: f32 = @bitCast(std.mem.readInt(u32, data[5..9], .big));
 					if(conn.user) |user| {
 						user.renderDistance = @intCast(renderDistance); // TODO: Update the protocol to use u16.
-						user.lodFactor = lodFactor;
 					}
 				},
 				type_teleport => {
@@ -1113,11 +1111,10 @@ pub const Protocols = struct {
 			try conn.sendUnimportant(id, headeredData);
 		}
 
-		pub fn sendRenderDistance(conn: *Connection, renderDistance: i32, LODFactor: f32) !void {
-			var data: [9]u8 = undefined;
+		pub fn sendRenderDistance(conn: *Connection, renderDistance: i32) !void {
+			var data: [5]u8 = undefined;
 			data[0] = type_renderDistance;
 			std.mem.writeInt(i32, data[1..5], renderDistance, .big);
-			std.mem.writeInt(u32, data[5..9], @as(u32, @bitCast(LODFactor)), .big);
 			try conn.sendImportant(id, &data);
 		}
 

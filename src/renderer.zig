@@ -191,7 +191,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	chunk.meshing.quadsDrawn = 0;
 	chunk.meshing.transparentQuadsDrawn = 0;
-	const meshes = try RenderStructure.updateAndGetRenderChunks(world.conn, playerPos, settings.renderDistance, settings.LODFactor);
+	const meshes = try RenderStructure.updateAndGetRenderChunks(world.conn, playerPos, settings.renderDistance);
 
 //	for (ChunkMesh mesh : Cubyz.chunkTree.getRenderChunks(frustumInt, x0, y0, z0)) {
 //		if (mesh instanceof NormalChunkMesh) {
@@ -885,7 +885,6 @@ pub const RenderStructure = struct {
 	var lastPy: i32 = 0;
 	var lastPz: i32 = 0;
 	var lastRD: i32 = 0;
-	var lastFactor: f32 = 0;
 	var mutex = std.Thread.Mutex{};
 	var blockUpdateMutex = std.Thread.Mutex{};
 	const BlockUpdate = struct {
@@ -898,7 +897,6 @@ pub const RenderStructure = struct {
 
 	pub fn init() !void {
 		lastRD = 0;
-		lastFactor = 0;
 		blockUpdateList = std.ArrayList(BlockUpdate).init(main.globalAllocator);
 		for(&storageLists) |*storageList| {
 			storageList.* = try main.globalAllocator.create([storageSize*storageSize*storageSize]ChunkMeshNode);
@@ -910,7 +908,7 @@ pub const RenderStructure = struct {
 	}
 
 	pub fn deinit() void {
-		freeOldMeshes(0, 0, 0, 0, 0) catch |err| {
+		freeOldMeshes(0, 0, 0, 0) catch |err| {
 			std.log.err("Error while freeing remaining meshes: {s}", .{@errorName(err)});
 		};
 		for(storageLists) |storageList| {
@@ -988,13 +986,11 @@ pub const RenderStructure = struct {
 		return reducedRenderDistance;
 	}
 
-	fn freeOldMeshes(px: i32, py: i32, pz: i32, renderDistance: i32, LODFactor: f32) !void {
+	fn freeOldMeshes(px: i32, py: i32, pz: i32, renderDistance: i32) !void {
 		for(0..storageLists.len) |_lod| {
 			const lod: u5 = @intCast(_lod);
 			var maxRenderDistanceNew = renderDistance*chunk.chunkSize << lod;
-			if(lod != 0) maxRenderDistanceNew = @intFromFloat(@ceil(@as(f32, @floatFromInt(maxRenderDistanceNew))*LODFactor));
 			var maxRenderDistanceOld = lastRD*chunk.chunkSize << lod;
-			if(lod != 0) maxRenderDistanceOld = @intFromFloat(@ceil(@as(f32, @floatFromInt(maxRenderDistanceOld))*lastFactor));
 			const size: u31 = chunk.chunkSize << lod;
 			const mask: i32 = size - 1;
 			const invMask: i32 = ~mask;
@@ -1077,13 +1073,11 @@ pub const RenderStructure = struct {
 		}
 	}
 
-	fn createNewMeshes(px: i32, py: i32, pz: i32, renderDistance: i32, LODFactor: f32, meshRequests: *std.ArrayList(chunk.ChunkPosition)) !void {
+	fn createNewMeshes(px: i32, py: i32, pz: i32, renderDistance: i32, meshRequests: *std.ArrayList(chunk.ChunkPosition)) !void {
 		for(0..storageLists.len) |_lod| {
 			const lod: u5 = @intCast(_lod);
 			var maxRenderDistanceNew = renderDistance*chunk.chunkSize << lod;
-			if(lod != 0) maxRenderDistanceNew = @intFromFloat(@ceil(@as(f32, @floatFromInt(maxRenderDistanceNew))*LODFactor));
 			var maxRenderDistanceOld = lastRD*chunk.chunkSize << lod;
-			if(lod != 0) maxRenderDistanceOld = @intFromFloat(@ceil(@as(f32, @floatFromInt(maxRenderDistanceOld))*lastFactor));
 			const size: u31 = chunk.chunkSize << lod;
 			const mask: i32 = size - 1;
 			const invMask: i32 = ~mask;
@@ -1154,10 +1148,10 @@ pub const RenderStructure = struct {
 		}
 	}
 
-	pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: Vec3d, renderDistance: i32, LODFactor: f32) ![]*chunk.meshing.ChunkMesh {
+	pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: Vec3d, renderDistance: i32) ![]*chunk.meshing.ChunkMesh {
 		meshList.clearRetainingCapacity();
-		if(lastRD != renderDistance and lastFactor != LODFactor) {
-			try network.Protocols.genericUpdate.sendRenderDistance(conn, renderDistance, LODFactor);
+		if(lastRD != renderDistance) {
+			try network.Protocols.genericUpdate.sendRenderDistance(conn, renderDistance);
 		}
 		const px: i32 = @intFromFloat(playerPos[0]);
 		const py: i32 = @intFromFloat(playerPos[1]);
@@ -1166,8 +1160,8 @@ pub const RenderStructure = struct {
 		var meshRequests = std.ArrayList(chunk.ChunkPosition).init(main.threadAllocator);
 		defer meshRequests.deinit();
 
-		try freeOldMeshes(px, py, pz, renderDistance, LODFactor);
-		try createNewMeshes(px, py, pz, renderDistance, LODFactor, &meshRequests);
+		try freeOldMeshes(px, py, pz, renderDistance);
+		try createNewMeshes(px, py, pz, renderDistance, &meshRequests);
 
 		// Does occlusion using a breadth-first search that caches an on-screen visibility rectangle.
 
@@ -1411,7 +1405,6 @@ pub const RenderStructure = struct {
 		lastPy = py;
 		lastPz = pz;
 		lastRD = renderDistance;
-		lastFactor = LODFactor;
 		// Make requests after updating the, to avoid concurrency issues and reduce the number of requests:
 		try network.Protocols.chunkRequest.sendRequest(conn, meshRequests.items);
 		return meshList.items;
@@ -1509,7 +1502,6 @@ pub const RenderStructure = struct {
 		pub fn isStillNeeded(self: *MeshGenerationTask) bool {
 			const distanceSqr = self.mesh.pos.getMinDistanceSquared(game.Player.getPosBlocking()); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
 			var maxRenderDistance = settings.renderDistance*chunk.chunkSize*self.mesh.pos.voxelSize;
-			if(self.mesh.pos.voxelSize != 1) maxRenderDistance = @intFromFloat(@ceil(@as(f32, @floatFromInt(maxRenderDistance))*settings.LODFactor));
 			maxRenderDistance += 2*self.mesh.pos.voxelSize*chunk.chunkSize;
 			return distanceSqr < @as(f64, @floatFromInt(maxRenderDistance*maxRenderDistance));
 		}
