@@ -16,11 +16,13 @@ pub const modelMask: u16 = modelSize - 1;
 const VoxelModel = extern struct {
 	min: Vec3i,
 	max: Vec3i,
-	bitPackedData: [modelSize*modelSize*modelSize/8]u32,
+	bitPackedData: [modelSize*modelSize*modelSize/32]u32,
+	bitPackedTexture: [modelSize*modelSize*modelSize/8]u32,
 
 	pub fn init(self: *VoxelModel, distributionFunction: *const fn(u4, u4, u4) ?u4) void {
-		if(@sizeOf(VoxelModel) != 16 + 16 + modelSize*modelSize*modelSize*4/8) @compileError("Expected Vec3i to have 16 byte alignment.");
+		if(@sizeOf(VoxelModel) != 16 + 16 + modelSize*modelSize*modelSize*4/32 + modelSize*modelSize*modelSize*4/8) @compileError("Expected Vec3i to have 16 byte alignment.");
 		@memset(&self.bitPackedData, 0);
+		@memset(&self.bitPackedTexture, 0);
 		self.min = @splat(16);
 		self.max = @splat(0);
 		for(0..modelSize) |_x| {
@@ -31,58 +33,23 @@ const VoxelModel = extern struct {
 					const z: u4 = @intCast(_z);
 					const isSolid = distributionFunction(x, y, z);
 					const voxelIndex = (_x << 2*modelShift) + (_y << modelShift) + _z;
-					const shift = 4*@as(u5, @intCast(voxelIndex & 7));
-					const arrayIndex = voxelIndex >> 3;
+					const shift = @as(u5, @intCast(voxelIndex & 31));
+					const arrayIndex = voxelIndex >> 5;
+					const shiftTexture = 4*@as(u5, @intCast(voxelIndex & 7));
+					const arrayIndexTexture = voxelIndex >> 3;
 					if(isSolid) |texture| {
 						std.debug.assert(texture <= 6);
 						self.min = @min(self.min, Vec3i{x, y, z});
 						self.max = @max(self.max, Vec3i{x, y, z});
-						self.bitPackedData[arrayIndex] |= @as(u32, 6 - texture) << shift;
+						self.bitPackedData[arrayIndex] &= ~(@as(u32, 1) << shift);
+						self.bitPackedTexture[arrayIndexTexture] |= @as(u32, texture) << shiftTexture;
 					} else {
-						self.bitPackedData[arrayIndex] |= @as(u32, 7) << shift;
+						self.bitPackedData[arrayIndex] |= @as(u32, 1) << shift;
 					}
 				}
 			}
 		}
 		self.max += @splat(1);
-		// TODO: Use floodfill for this.
-		var i: u32 = 7;
-		while(i < 14) : (i += 1) {
-			for(0..modelSize) |_x| {
-				const x: u4 = @intCast(_x);
-				for(0..modelSize) |_y| {
-					const y: u4 = @intCast(_y);
-					outer:
-					for(0..modelSize) |_z| {
-						const z: u4 = @intCast(_z);
-						const voxelIndex = (_x << 2*modelShift) + (_y << modelShift) + _z;
-						const shift = 4*@as(u5, @intCast(voxelIndex & 7));
-						const arrayIndex = voxelIndex >> 3;
-						const data = self.bitPackedData[arrayIndex]>>shift & 15;
-						if(data <= i) continue;
-						var dx: u2 = 0;
-						while(dx < 3) : (dx += 1) {
-							var dy: u2 = 0;
-							while(dy < 3) : (dy += 1) {
-								var dz: u2 = 0;
-								while(dz < 3) : (dz += 1) {
-									const nx = x +% dx -% 1;
-									const ny = y +% dy -% 1;
-									const nz = z +% dz -% 1;
-									const neighborVoxelIndex = (@as(usize, nx) << 2*modelShift) + (@as(usize, ny) << modelShift) + @as(usize, nz);
-									const neighborShift = 4*@as(u5, @intCast(neighborVoxelIndex & 7));
-									const neighborArrayIndex = neighborVoxelIndex >> 3;
-									const neighborData = self.bitPackedData[neighborArrayIndex]>>neighborShift & 15;
-									if(neighborData < data) continue :outer;
-								}
-							}
-						}
-						self.bitPackedData[arrayIndex] &= ~(@as(u32, 15) << shift);
-						self.bitPackedData[arrayIndex] |= @as(u32, data + 1) << shift;
-					}
-				}
-			}
-		}
 	}
 };
 

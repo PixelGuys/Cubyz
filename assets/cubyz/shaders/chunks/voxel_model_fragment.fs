@@ -22,7 +22,8 @@ layout(location = 0) out vec4 fragColor;
 struct VoxelModel {
 	ivec4 minimum;
 	ivec4 maximum;
-	uint bitPackedData[modelSize*modelSize*modelSize/8];
+	uint bitPackedData[modelSize*modelSize*modelSize/32];
+	uint bitPackedTextureData[modelSize*modelSize*modelSize/8];
 };
 
 struct TextureData {
@@ -63,9 +64,17 @@ const vec3[6] normals = vec3[6](
 int getVoxel(ivec3 voxelPos) {
 	voxelPos &= 15;
 	int voxelIndex = (voxelPos.x << 8) | (voxelPos.y << 4) | (voxelPos.z);
+	int shift = (voxelIndex & 31);
+	int arrayIndex = voxelIndex >> 5;
+	return (int(voxelModels[modelIndex].bitPackedData[arrayIndex])>>shift & 1);
+}
+
+int getTexture(ivec3 voxelPos) {
+	voxelPos &= 15;
+	int voxelIndex = (voxelPos.x << 8) | (voxelPos.y << 4) | (voxelPos.z);
 	int shift = 4*(voxelIndex & 7);
 	int arrayIndex = voxelIndex >> 3;
-	return (int(voxelModels[modelIndex].bitPackedData[arrayIndex])>>shift & 15) - 6;
+	return (int(voxelModels[modelIndex].bitPackedTextureData[arrayIndex])>>shift & 15);
 }
 
 struct RayMarchResult {
@@ -77,16 +86,22 @@ struct RayMarchResult {
 
 RayMarchResult rayMarching(vec3 startPosition, vec3 direction) { // TODO: Mipmapped voxel models. (or maybe just remove them when they are far enough away?)
 	// Branchless implementation of "A Fast Voxel Traversal Algorithm for Ray Tracing"  http://www.cse.yorku.ca/~amana/research/grid.pdf
+	if(direction.x == 0) {
+		direction.x = 1e-10;
+	}
+	if(direction.y == 0) {
+		direction.y = 1e-10;
+	}
+	if(direction.z == 0) {
+		direction.z = 1e-10;
+	}
 	vec3 step = sign(direction);
+	ivec3 stepi = ivec3(step);
 	vec3 t1 = (floor(startPosition) - startPosition)/direction;
 	vec3 tDelta = 1/direction;
 	vec3 t2 = t1 + tDelta;
 	tDelta = abs(tDelta);
-	vec3 invTDelta = intBitsToFloat(floatBitsToInt(1.0) | modelSize)/tDelta;
-	vec3 tMax = max(t1, t2) - tDelta;
-	if(direction.x == 0) tMax.x = 1.0/0.0;
-	if(direction.y == 0) tMax.y = 1.0/0.0;
-	if(direction.z == 0) tMax.z = 1.0/0.0;
+	vec3 tMax = max(t1, t2);
 	
 	ivec3 voxelPos = ivec3(floor(startPosition));
 
@@ -95,18 +110,17 @@ RayMarchResult rayMarching(vec3 startPosition, vec3 direction) { // TODO: Mipmap
 
 	int lastNormal = faceNormal;
 	int block = getVoxel(voxelPos);
-	float total_tMax = 0;
 	
 	int size = 16;
 	ivec3 sizeMask = ivec3(size - 1);
-	int it = 0;
-	while(block > 0 && it < 48) {
-		it++;
-		vec3 tNext = tMax + block*tDelta;
-		total_tMax = min(tNext.x, min(tNext.y, tNext.z));
-		vec3 missingSteps = floor((total_tMax - tMax)*invTDelta);
-		voxelPos += ivec3(missingSteps*step);
-		tMax += missingSteps*tDelta;
+	vec3 lastStep = vec3(0, 0, 0);
+	while(block != 0) {
+		bvec3 gt1 = lessThanEqual(tMax.xyz, tMax.yzx);
+		bvec3 gt2 = lessThanEqual(tMax.xyz, tMax.zxy);
+		bvec3 and = bvec3(gt1.x && gt2.x, gt1.y && gt2.y, gt1.z && gt2.z);
+		lastStep = vec3(and);
+		voxelPos += -ivec3(and) & stepi;
+		tMax += lastStep*tDelta;
 		/*
 		Here I use a trick to avoid integer multiplication.
 		The correct equation would be
@@ -120,23 +134,17 @@ RayMarchResult rayMarching(vec3 startPosition, vec3 direction) { // TODO: Mipmap
 			return RayMarchResult(false, 0, 0, ivec3(0, 0, 0));
 		block = getVoxel(voxelPos);
 	}
-	if(total_tMax != 0) {
-		if(tMax.x > tMax.y) {
-			if(tMax.x > tMax.z) {
-				lastNormal = 2 + int(step.x == 1);
-			} else {
-				lastNormal = 4 + int(step.z == 1);
-			}
-		} else {
-			if(tMax.y > tMax.z) {
-				lastNormal = 0 + int(step.y == 1);
-			} else {
-				lastNormal = 4 + int(step.z == 1);
-			}
-		}
+	if(lastStep.x != 0) {
+		lastNormal = 2 + int(step.x == 1);
+	} else if(lastStep.y != 0) {
+		lastNormal = 0 + int(step.y == 1);
+	} else if(lastStep.z != 0) {
+		lastNormal = 4 + int(step.z == 1);
 	}
-	int textureDir = -block;
-	if(textureDir == 6) textureDir = lastNormal;
+	int textureDir = getTexture(voxelPos);
+	if(textureDir == 6) {
+		textureDir = lastNormal;
+	}
 	return RayMarchResult(true, lastNormal, textureDir, voxelPos & 15);
 }
 

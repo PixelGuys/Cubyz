@@ -33,7 +33,8 @@ layout(std430, binding = 3) buffer _faceData
 struct VoxelModel {
 	ivec4 minimum;
 	ivec4 maximum;
-	uint bitPackedData[modelSize*modelSize*modelSize/8];
+	uint bitPackedData[modelSize*modelSize*modelSize/32];
+	uint bitPackedTextureData[modelSize*modelSize*modelSize/8];
 };
 
 layout(std430, binding = 4) buffer _voxelModels

@@ -746,6 +746,10 @@ pub fn main() !void {
 		gui.windowlist.gpu_performance_measuring.stopQuery();
 		const newTime = std.time.nanoTimestamp();
 		const deltaTime = @as(f64, @floatFromInt(newTime -% lastTime))/1e9;
+		if(deltaTime > 5) {
+			std.log.err("Frame got too long with {} seconds. Infinite loop on GPU?", .{deltaTime});
+			std.os.exit(1);
+		}
 		lastFrameTime.store(deltaTime, .Monotonic);
 		lastTime = newTime;
 		if(game.world != null) { // Update the game
