@@ -521,13 +521,35 @@ pub const Window = struct {
 			_ = xOffset;
 			scrollOffset += @floatCast(yOffset);
 		}
-		fn glDebugOutput(_: c_uint, _: c_uint, _: c_uint, severity: c_uint, length: c_int, message: [*c]const u8, _: ?*const anyopaque) callconv(.C) void {
-			if(severity == c.GL_DEBUG_SEVERITY_HIGH) { // TODO: Capture the stack traces.
-				std.log.err("OpenGL {}:{s}", .{severity, message[0..@intCast(length)]});
-			} else if(severity == c.GL_DEBUG_SEVERITY_MEDIUM) {
-				std.log.warn("OpenGL {}:{s}", .{severity, message[0..@intCast(length)]});
-			} else if(severity == c.GL_DEBUG_SEVERITY_LOW) {
-				std.log.info("OpenGL {}:{s}", .{severity, message[0..@intCast(length)]});
+		fn glDebugOutput(source: c_uint, typ: c_uint, _: c_uint, severity: c_uint, length: c_int, message: [*c]const u8, _: ?*const anyopaque) callconv(.C) void {
+			const sourceString: []const u8 = switch (source) {
+				c.GL_DEBUG_SOURCE_API => "API",
+				c.GL_DEBUG_SOURCE_APPLICATION => "Application",
+				c.GL_DEBUG_SOURCE_OTHER => "Other",
+				c.GL_DEBUG_SOURCE_SHADER_COMPILER => "Shader Compiler",
+				c.GL_DEBUG_SOURCE_THIRD_PARTY => "Third Party",
+				c.GL_DEBUG_SOURCE_WINDOW_SYSTEM => "Window System",
+				else => "Unknown",
+			};
+			const typeString: []const u8 = switch (typ) {
+				c.GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR => "deprecated behavior",
+				c.GL_DEBUG_TYPE_ERROR => "error",
+				c.GL_DEBUG_TYPE_MARKER => "marker",
+				c.GL_DEBUG_TYPE_OTHER => "other",
+				c.GL_DEBUG_TYPE_PERFORMANCE => "performance",
+				c.GL_DEBUG_TYPE_POP_GROUP => "pop group",
+				c.GL_DEBUG_TYPE_PORTABILITY => "portability",
+				c.GL_DEBUG_TYPE_PUSH_GROUP => "push group",
+				c.GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR => "undefined behavior",
+				else => "unknown",
+			};
+			switch (severity) {
+				c.GL_DEBUG_SEVERITY_HIGH => {
+					std.log.err("OpenGL {s} {s}: {s}", .{sourceString, typeString, message[0..@intCast(length)]});
+				},
+				else => {
+					std.log.warn("OpenGL {s} {s}: {s}", .{sourceString, typeString, message[0..@intCast(length)]});
+				},
 			}
 		}
 	};
@@ -597,12 +619,10 @@ pub const Window = struct {
 		}
 		reloadSettings();
 
-		if(@import("builtin").mode == .Debug) {
-			c.glEnable(c.GL_DEBUG_OUTPUT);
-			c.glEnable(c.GL_DEBUG_OUTPUT_SYNCHRONOUS);
-			c.glDebugMessageCallback(GLFWCallbacks.glDebugOutput, null);
-			c.glDebugMessageControl(c.GL_DONT_CARE, c.GL_DONT_CARE, c.GL_DONT_CARE, 0, null, c.GL_TRUE);
-		}
+		c.glEnable(c.GL_DEBUG_OUTPUT);
+		c.glEnable(c.GL_DEBUG_OUTPUT_SYNCHRONOUS);
+		c.glDebugMessageCallback(GLFWCallbacks.glDebugOutput, null);
+		c.glDebugMessageControl(c.GL_DONT_CARE, c.GL_DONT_CARE, c.GL_DONT_CARE, 0, null, c.GL_TRUE);
 	}
 
 	fn deinit() void {
@@ -730,12 +750,6 @@ pub fn main() !void {
 	}
 
 	while(c.glfwWindowShouldClose(Window.window) == 0) {
-		{ // Check opengl errors:
-			const err = c.glGetError();
-			if(err != 0) {
-				std.log.err("Got opengl error: {}", .{err});
-			}
-		}
 		c.glfwSwapBuffers(Window.window);
 		Window.handleEvents();
 		gui.windowlist.gpu_performance_measuring.startQuery(.screenbuffer_clear);
