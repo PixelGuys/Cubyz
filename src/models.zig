@@ -174,9 +174,6 @@ pub var fullCube: u16 = 0;
 // TODO: Allow loading from world assets.
 // TODO: Editable player models.
 pub fn init() !void {
-	voxelModelSSBO = graphics.SSBO.init();
-	voxelModelSSBO.bind(4);
-
 	voxelModels = std.ArrayList(VoxelModel).init(main.threadAllocator);
 
 	nameToIndex = std.StringHashMap(u16).init(main.threadAllocator);
@@ -199,7 +196,8 @@ pub fn init() !void {
 	try nameToIndex.put("octahedron", @intCast(voxelModels.items.len));
 	(try voxelModels.addOne()).init(octahedron);
 
-	voxelModelSSBO.bufferData(VoxelModel, voxelModels.items);
+	voxelModelSSBO = graphics.SSBO.initStatic(VoxelModel, voxelModels.items);
+	voxelModelSSBO.bind(4);
 }
 
 pub fn deinit() void {

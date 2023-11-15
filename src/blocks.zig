@@ -345,9 +345,9 @@ pub const meshes = struct {
 		break :blk names;
 	};
 
-	var animationSSBO: SSBO = undefined;
-	var textureDataSSBO: SSBO = undefined;
-	var animatedTextureDataSSBO: SSBO = undefined;
+	var animationSSBO: ?SSBO = null;
+	var textureDataSSBO: ?SSBO = null;
+	var animatedTextureDataSSBO: ?SSBO = null;
 
 	var animationShader: Shader = undefined;
 	var animationUniforms: struct {
@@ -366,12 +366,6 @@ pub const meshes = struct {
 	const emptyImage = Image{.width = 1, .height = 1, .imageData = emptyTexture[0..]};
 
 	pub fn init() !void {
-		animationSSBO = SSBO.init();
-		animationSSBO.bind(0);
-		textureDataSSBO = SSBO.init();
-		textureDataSSBO.bind(6);
-		animatedTextureDataSSBO = SSBO.init();
-		animatedTextureDataSSBO.bind(1);
 		animationShader = try Shader.initComputeAndGetUniforms("assets/cubyz/shaders/animation_pre_processing.glsl", &animationUniforms);
 		blockTextureArray = TextureArray.init();
 		emissionTextureArray = TextureArray.init();
@@ -384,9 +378,15 @@ pub const meshes = struct {
 	}
 
 	pub fn deinit() void {
-		animationSSBO.deinit();
-		textureDataSSBO.deinit();
-		animatedTextureDataSSBO.deinit();
+		if(animationSSBO) |ssbo| {
+			ssbo.deinit();
+		}
+		if(textureDataSSBO) |ssbo| {
+			ssbo.deinit();
+		}
+		if(animatedTextureDataSSBO) |ssbo| {
+			ssbo.deinit();
+		}
 		animationShader.deinit();
 		blockTextureArray.deinit();
 		emissionTextureArray.deinit();
@@ -576,8 +576,20 @@ pub const meshes = struct {
 		try emissionTextureArray.generate(emissionTextures.items, true);
 
 		// Also generate additional buffers:
-		animationSSBO.bufferData(AnimationData, animation.items);
-		textureDataSSBO.bufferData(TextureData, textureData[0..meshes.size]);
-		animatedTextureDataSSBO.bufferData(TextureData, textureData[0..meshes.size]);
+		if(animationSSBO) |ssbo| {
+			ssbo.deinit();
+		}
+		if(textureDataSSBO) |ssbo| {
+			ssbo.deinit();
+		}
+		if(animatedTextureDataSSBO) |ssbo| {
+			ssbo.deinit();
+		}
+		animationSSBO = SSBO.initStatic(AnimationData, animation.items);
+		animationSSBO.?.bind(0);
+		textureDataSSBO = SSBO.initStatic(TextureData, textureData[0..meshes.size]);
+		textureDataSSBO.?.bind(6);
+		animatedTextureDataSSBO = SSBO.initStatic(TextureData, textureData[0..meshes.size]);
+		animatedTextureDataSSBO.?.bind(1);
 	}
 };
