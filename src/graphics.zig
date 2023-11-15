@@ -1207,22 +1207,57 @@ pub const LargeBuffer = struct {
 	};
 	ssbo: SSBO,
 	freeBlocks: std.ArrayList(Allocation),
+	persistentBuffer: [*]u8,
+	fences: [3]c.GLsync,
+	fencedFreeLists: [3]std.ArrayList(Allocation),
+	activeFence: u8,
 	capacity: u32,
 	used: u32,
 
 	pub fn init(self: *LargeBuffer, allocator: Allocator, size: u31, binding: c_uint) !void {
 		self.ssbo = SSBO.init();
-		self.ssbo.createDynamicBuffer(size);
+		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.ssbo.bufferID);
+		const flags = c.GL_MAP_WRITE_BIT | c.GL_MAP_PERSISTENT_BIT | c.GL_MAP_COHERENT_BIT;
+		c.glBufferStorage(c.GL_SHADER_STORAGE_BUFFER, size, null, flags);
+		self.persistentBuffer = @ptrCast(c.glMapBufferRange(c.GL_SHADER_STORAGE_BUFFER, 0, size, flags | c.GL_MAP_INVALIDATE_BUFFER_BIT).?);
 		self.ssbo.bind(binding);
 		self.capacity = size;
+		self.activeFence = 0;
+		for(&self.fences) |*fence| {
+			fence.* = c.glFenceSync(c.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+		}
+		for(&self.fencedFreeLists) |*list| {
+			list.* = std.ArrayList(Allocation).init(allocator);
+		}
 
 		self.freeBlocks = std.ArrayList(Allocation).init(allocator);
 		try self.freeBlocks.append(.{.start = 0, .len = size});
 	}
 
 	pub fn deinit(self: *LargeBuffer) void {
+		for(self.fences) |fence| {
+			c.glDeleteSync(fence);
+		}
+		for(self.fencedFreeLists) |list| {
+			list.deinit();
+		}
 		self.ssbo.deinit();
 		self.freeBlocks.deinit();
+	}
+
+	pub fn beginRender(self: *LargeBuffer) !void {
+		self.activeFence += 1;
+		if(self.activeFence == self.fences.len) self.activeFence = 0;
+		for(self.fencedFreeLists[self.activeFence].items) |allocation| {
+			try self.finalFree(allocation);
+		}
+		self.fencedFreeLists[self.activeFence].clearRetainingCapacity();
+		_ = c.glClientWaitSync(self.fences[self.activeFence], 0, c.GL_TIMEOUT_IGNORED); // Make sure the render calls that accessed these parts of the buffer have finished.
+	}
+
+	pub fn endRender(self: *LargeBuffer) void {
+		c.glDeleteSync(self.fences[self.activeFence]);
+		self.fences[self.activeFence] = c.glFenceSync(c.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 	}
 
 	fn alloc(self: *LargeBuffer, size: u31) !Allocation {
@@ -1244,7 +1279,7 @@ pub const LargeBuffer = struct {
 		} else return error.OutOfMemory; // TODO: Increase the buffer size.
 	}
 
-	pub fn free(self: *LargeBuffer, _allocation: Allocation) !void {
+	fn finalFree(self: *LargeBuffer, _allocation: Allocation) !void {
 		self.used -= _allocation.len;
 		var allocation = _allocation;
 		if(allocation.len == 0) return;
@@ -1264,55 +1299,20 @@ pub const LargeBuffer = struct {
 		try self.freeBlocks.append(allocation);
 	}
 
-	pub fn realloc(self: *LargeBuffer, allocation: *Allocation, newSize: u31) !void {
-		if(allocation.len == 0) allocation.* = try self.alloc(newSize);
-		if(newSize == allocation.len) return;
-		if(newSize < allocation.len) {
-			const diff = allocation.len - newSize;
-			self.used -= diff;
-			// Check if there is a free block directly after:
-			for(self.freeBlocks.items) |*block| {
-				if(allocation.start + allocation.len == block.start and block.len + allocation.len >= newSize) {
-					block.start -= diff;
-					block.len += diff;
-					allocation.len -= diff;
-					return;
-				}
-			}
-			// Create a new free block:
-			allocation.len -= diff;
-			try self.freeBlocks.append(.{.start = allocation.start + allocation.len, .len = diff});
-		} else {
-			const diff = newSize - allocation.len;
-			self.used += diff;
-			// Check if the buffer can be extended without a problem:
-			for(self.freeBlocks.items, 0..) |*block, i| {
-				if(allocation.start + allocation.len == block.start and block.len + allocation.len >= newSize) {
-					allocation.len += diff;
-					if(block.len != diff) {
-						block.start += diff;
-						block.len -= diff;
-					} else {
-						_ = self.freeBlocks.swapRemove(i);
-					}
-					return;
-				}
-			}
-			const oldAllocation = allocation.*;
-			allocation.* = try self.alloc(newSize);
-
-			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.ssbo.bufferID);
-			c.glCopyBufferSubData(c.GL_SHADER_STORAGE_BUFFER, c.GL_SHADER_STORAGE_BUFFER, oldAllocation.start, allocation.start, oldAllocation.len);
-			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
-
-			try self.free(oldAllocation);
-		}
+	pub fn free(self: *LargeBuffer, allocation: Allocation) !void {
+		if(allocation.len == 0) return;
+		try self.fencedFreeLists[self.activeFence].append(allocation);
 	}
 
-	pub fn bufferSubData(self: *LargeBuffer, offset: u31, comptime T: type, data: []T) void {
-		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.ssbo.bufferID);
-		c.glBufferSubData(c.GL_SHADER_STORAGE_BUFFER, offset, @sizeOf(T)*@as(c_long, @intCast(data.len)), data.ptr);
-		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
+	pub fn uploadData(self: *LargeBuffer, comptime T: type, data: []T, allocation: *Allocation) !void {
+		const len = @sizeOf(T)*data.len;
+		try self.free(allocation.*);
+		if(len == 0) {
+			allocation.len = 0;
+			return;
+		}
+		allocation.* = try self.alloc(@intCast(len));
+		@memcpy(self.persistentBuffer[allocation.start..allocation.start].ptr, @as([*]u8, @ptrCast(data.ptr))[0..len]);
 	}
 };
 
@@ -1828,8 +1828,7 @@ pub fn generateBlockTexture(blockType: u16) !Texture {
 		@memset(&face.light, ~@as(u32, 0));
 	}
 	var allocation: LargeBuffer.Allocation = .{.start = 0, .len = 0};
-	try main.chunk.meshing.faceBuffer.realloc(&allocation, faces*@sizeOf(main.chunk.meshing.FaceData));
-	main.chunk.meshing.faceBuffer.bufferSubData(allocation.start, main.chunk.meshing.FaceData, faceData[0..faces]);
+	try main.chunk.meshing.faceBuffer.uploadData(main.chunk.meshing.FaceData, faceData[0..faces], &allocation);
 
 	c.glUniform3f(uniforms.modelPosition, -65.5 - 1.5, -92.631 - 1.5, -65.5 - 1.5);
 	c.glUniform1i(uniforms.visibilityMask, 0xff);

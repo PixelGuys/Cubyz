@@ -206,6 +206,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	MeshSelection.select(playerPos, game.camera.direction);
 	MeshSelection.render(game.projectionMatrix, game.camera.viewMatrix, playerPos);
 
+	try chunk.meshing.beginRender();
 	chunk.meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight);
 
 	for(meshes) |mesh| {
@@ -254,6 +255,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glDepthMask(c.GL_TRUE);
 	c.glDepthFunc(c.GL_LESS);
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
+	chunk.meshing.endRender();
 	gpu_performance_measuring.stopQuery();
 //		NormalChunkMesh.bindTransparentShader(ambientLight, directionalLight.getDirection(), time);
 

@@ -453,6 +453,14 @@ pub const meshing = struct {
 		faceBuffer.deinit();
 	}
 
+	pub fn beginRender() !void {
+		try faceBuffer.beginRender();
+	}
+
+	pub fn endRender() void {
+		faceBuffer.endRender();
+	}
+
 	fn bindCommonUniforms(locations: *UniformStruct, projMatrix: Mat4f, ambient: Vec3f) void {
 		c.glUniformMatrix4fv(locations.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 
@@ -643,8 +651,7 @@ pub const meshing = struct {
 
 		fn uploadData(self: *PrimitiveMesh) !void {
 			self.vertexCount = @intCast(6*self.completeList.len);
-			try faceBuffer.realloc(&self.bufferAllocation, @intCast(@sizeOf(FaceData)*self.completeList.len));
-			faceBuffer.bufferSubData(self.bufferAllocation.start, FaceData, self.completeList);
+			try faceBuffer.uploadData(FaceData, self.completeList, &self.bufferAllocation);
 			self.wasChanged = true;
 		}
 
@@ -1261,7 +1268,7 @@ pub const meshing = struct {
 				}
 
 				// Upload:
-				faceBuffer.bufferSubData(self.transparentMesh.bufferAllocation.start, FaceData, self.sortingOutputBuffer[0..self.culledSortingCount]);
+				try faceBuffer.uploadData(FaceData, self.sortingOutputBuffer[0..self.culledSortingCount], &self.transparentMesh.bufferAllocation);
 			}
 
 			c.glUniform3f(
