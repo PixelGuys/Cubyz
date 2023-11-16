@@ -40,7 +40,8 @@ fn flawedRender() !void {
 		y += 8;
 		try draw.print("Queue size: {}", .{main.threadPool.queueSize()}, 0, y, 8, .left);
 		y += 8;
-		try draw.print("ChunkMesh memory: {} MiB / {} MiB (fragmentation: {})", .{main.chunk.meshing.faceBuffer.used >> 20, main.chunk.meshing.faceBuffer.capacity >> 20, main.chunk.meshing.faceBuffer.freeBlocks.items.len}, 0, y, 8, .left);
+		const faceDataSize = @sizeOf(main.chunk.meshing.FaceData);
+		try draw.print("ChunkMesh memory: {} MiB / {} MiB (fragmentation: {})", .{main.chunk.meshing.faceBuffer.used*faceDataSize >> 20, main.chunk.meshing.faceBuffer.capacity*faceDataSize >> 20, main.chunk.meshing.faceBuffer.freeBlocks.items.len}, 0, y, 8, .left);
 		y += 8;
 		try draw.print("Biome: {s}", .{main.game.world.?.playerBiome.load(.Monotonic).id}, 0, y, 8, .left);
 		y += 8;

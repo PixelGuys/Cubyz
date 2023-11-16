@@ -418,7 +418,7 @@ pub const meshing = struct {
 	var vao: c_uint = undefined;
 	var vbo: c_uint = undefined;
 	var faces: std.ArrayList(u32) = undefined;
-	pub var faceBuffer: graphics.LargeBuffer = undefined;
+	pub var faceBuffer: graphics.LargeBuffer(FaceData) = undefined;
 	pub var quadsDrawn: usize = 0;
 	pub var transparentQuadsDrawn: usize = 0;
 
@@ -526,7 +526,7 @@ pub const meshing = struct {
 		coreFaces: std.ArrayListUnmanaged(FaceData) = .{},
 		neighborFaces: [6]std.ArrayListUnmanaged(FaceData) = [_]std.ArrayListUnmanaged(FaceData){.{}} ** 6,
 		completeList: []FaceData = &.{},
-		bufferAllocation: graphics.LargeBuffer.Allocation = .{.start = 0, .len = 0},
+		bufferAllocation: graphics.SubAllocation = .{.start = 0, .len = 0},
 		vertexCount: u31 = 0,
 		wasChanged: bool = false,
 
@@ -651,7 +651,7 @@ pub const meshing = struct {
 
 		fn uploadData(self: *PrimitiveMesh) !void {
 			self.vertexCount = @intCast(6*self.completeList.len);
-			try faceBuffer.uploadData(FaceData, self.completeList, &self.bufferAllocation);
+			try faceBuffer.uploadData(self.completeList, &self.bufferAllocation);
 			self.wasChanged = true;
 		}
 
@@ -1165,7 +1165,7 @@ pub const meshing = struct {
 			c.glUniform1i(uniforms.visibilityMask, self.visibilityMask);
 			c.glUniform1i(uniforms.voxelSize, self.pos.voxelSize);
 			quadsDrawn += self.opaqueMesh.vertexCount/6;
-			c.glDrawElementsBaseVertex(c.GL_TRIANGLES, self.opaqueMesh.vertexCount, c.GL_UNSIGNED_INT, null, self.opaqueMesh.bufferAllocation.start/@sizeOf(FaceData)*4);
+			c.glDrawElementsBaseVertex(c.GL_TRIANGLES, self.opaqueMesh.vertexCount, c.GL_UNSIGNED_INT, null, self.opaqueMesh.bufferAllocation.start*4);
 		}
 
 		pub fn renderVoxelModels(self: *ChunkMesh, playerPosition: Vec3d) void {
@@ -1179,7 +1179,7 @@ pub const meshing = struct {
 			c.glUniform1i(voxelUniforms.visibilityMask, self.visibilityMask);
 			c.glUniform1i(voxelUniforms.voxelSize, self.pos.voxelSize);
 			quadsDrawn += self.voxelMesh.vertexCount/6;
-			c.glDrawElementsBaseVertex(c.GL_TRIANGLES, self.voxelMesh.vertexCount, c.GL_UNSIGNED_INT, null, self.voxelMesh.bufferAllocation.start/@sizeOf(FaceData)*4);
+			c.glDrawElementsBaseVertex(c.GL_TRIANGLES, self.voxelMesh.vertexCount, c.GL_UNSIGNED_INT, null, self.voxelMesh.bufferAllocation.start*4);
 		}
 
 		pub fn renderTransparent(self: *ChunkMesh, playerPosition: Vec3d) !void {
@@ -1268,7 +1268,7 @@ pub const meshing = struct {
 				}
 
 				// Upload:
-				try faceBuffer.uploadData(FaceData, self.sortingOutputBuffer[0..self.culledSortingCount], &self.transparentMesh.bufferAllocation);
+				try faceBuffer.uploadData(self.sortingOutputBuffer[0..self.culledSortingCount], &self.transparentMesh.bufferAllocation);
 			}
 
 			c.glUniform3f(
@@ -1280,7 +1280,7 @@ pub const meshing = struct {
 			c.glUniform1i(transparentUniforms.visibilityMask, self.visibilityMask);
 			c.glUniform1i(transparentUniforms.voxelSize, self.pos.voxelSize);
 			transparentQuadsDrawn += self.culledSortingCount;
-			c.glDrawElementsBaseVertex(c.GL_TRIANGLES, self.culledSortingCount*6, c.GL_UNSIGNED_INT, null, self.transparentMesh.bufferAllocation.start/@sizeOf(FaceData)*4);
+			c.glDrawElementsBaseVertex(c.GL_TRIANGLES, self.culledSortingCount*6, c.GL_UNSIGNED_INT, null, self.transparentMesh.bufferAllocation.start*4);
 		}
 	};
 };
