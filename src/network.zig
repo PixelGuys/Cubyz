@@ -65,18 +65,19 @@ const Socket = struct {
 			var pfd = [1]os.pollfd {
 				.{.fd = self.socketID, .events = std.c.POLL.RDNORM | std.c.POLL.RDBAND, .revents = undefined},
 			};
-			const length = os.windows.ws2_32.WSAPoll(&pfd, pfd.len, timeout); // TODO: #16122
+			const length = os.windows.ws2_32.WSAPoll(&pfd, pfd.len, 0); // The timeout is set to zero. Otherwise sendto operations from other threads will block on this.
 			if (length == os.windows.ws2_32.SOCKET_ERROR) {
-                switch (os.windows.ws2_32.WSAGetLastError()) {
-                    .WSANOTINITIALISED => unreachable,
-                    .WSAENETDOWN => return error.NetworkSubsystemFailed,
-                    .WSAENOBUFS => return error.SystemResources,
-                    // TODO: handle more errors
-                    else => |err| return os.windows.unexpectedWSAError(err),
-                }
-            } else if(length == 0) {
-                return error.Timeout;
-            }
+				switch (os.windows.ws2_32.WSAGetLastError()) {
+					.WSANOTINITIALISED => unreachable,
+					.WSAENETDOWN => return error.NetworkSubsystemFailed,
+					.WSAENOBUFS => return error.SystemResources,
+					// TODO: handle more errors
+					else => |err| return os.windows.unexpectedWSAError(err),
+				}
+			} else if(length == 0) {
+				std.time.sleep(1000000); // Manually sleep, since WSAPoll is blocking.
+				return error.Timeout;
+			}
 		} else {
 			var pfd = [1]os.pollfd {
 				.{.fd = self.socketID, .events = os.POLL.IN, .revents = undefined},
