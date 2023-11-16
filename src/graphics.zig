@@ -1387,7 +1387,9 @@ pub const FrameBuffer = struct {
 		c.glDeleteTextures(1, &self.texture);
 	}
 
-	pub fn updateSize(self: *FrameBuffer, width: u31, height: u31, internalFormat: c_int) void {
+	pub fn updateSize(self: *FrameBuffer, _width: u31, _height: u31, internalFormat: c_int) void {
+		const width = @max(_width, 1);
+		const height = @max(_height, 1);
 		c.glBindFramebuffer(c.GL_FRAMEBUFFER, self.frameBuffer);
 		if(self.hasDepthTexture) {
 			c.glBindTexture(c.GL_TEXTURE_2D, self.depthTexture);
