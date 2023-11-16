@@ -1211,17 +1211,23 @@ pub const LargeBuffer = struct {
 	fences: [3]c.GLsync,
 	fencedFreeLists: [3]std.ArrayList(Allocation),
 	activeFence: u8,
-	capacity: u32,
+	capacity: u31,
 	used: u32,
+	binding: c_uint,
 
-	pub fn init(self: *LargeBuffer, allocator: Allocator, size: u31, binding: c_uint) !void {
+	fn createBuffer(self: *LargeBuffer, size: u31) void {
 		self.ssbo = SSBO.init();
 		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.ssbo.bufferID);
 		const flags = c.GL_MAP_WRITE_BIT | c.GL_MAP_PERSISTENT_BIT | c.GL_MAP_COHERENT_BIT;
 		c.glBufferStorage(c.GL_SHADER_STORAGE_BUFFER, size, null, flags);
 		self.persistentBuffer = @ptrCast(c.glMapBufferRange(c.GL_SHADER_STORAGE_BUFFER, 0, size, flags | c.GL_MAP_INVALIDATE_BUFFER_BIT).?);
-		self.ssbo.bind(binding);
+		self.ssbo.bind(self.binding);
 		self.capacity = size;
+	}
+
+	pub fn init(self: *LargeBuffer, allocator: Allocator, size: u31, binding: c_uint) !void {
+		self.binding = binding;
+		self.createBuffer(size);
 		self.activeFence = 0;
 		for(&self.fences) |*fence| {
 			fence.* = c.glFenceSync(c.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
@@ -1241,6 +1247,8 @@ pub const LargeBuffer = struct {
 		for(self.fencedFreeLists) |list| {
 			list.deinit();
 		}
+		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.ssbo.bufferID);
+		_ = c.glUnmapBuffer(c.GL_SHADER_STORAGE_BUFFER);
 		self.ssbo.deinit();
 		self.freeBlocks.deinit();
 	}
@@ -1276,7 +1284,22 @@ pub const LargeBuffer = struct {
 			block.start += size;
 			block.len -= size;
 			return result;
-		} else return error.OutOfMemory; // TODO: Increase the buffer size.
+		} else {
+			std.log.info("Resizing internal mesh buffer from {} MiB to {} MiB", .{self.capacity >> 20, (self.capacity >> 20)*2});
+			const oldBuffer = self.ssbo;
+			defer oldBuffer.deinit();
+			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, oldBuffer.bufferID);
+			_ = c.glUnmapBuffer(c.GL_SHADER_STORAGE_BUFFER);
+			const oldCapacity = self.capacity;
+			self.createBuffer(self.capacity*2); // TODO: Is there a way to free the old buffer before creating the new one?
+			self.used += self.capacity - oldCapacity;
+			try self.finalFree(.{.start = oldCapacity, .len = self.capacity - oldCapacity});
+
+			c.glBindBuffer(c.GL_COPY_READ_BUFFER, oldBuffer.bufferID);
+			c.glBindBuffer(c.GL_COPY_WRITE_BUFFER, self.ssbo.bufferID);
+			c.glCopyBufferSubData(c.GL_COPY_READ_BUFFER, c.GL_COPY_WRITE_BUFFER, 0, 0, oldCapacity);
+			return alloc(self, size);
+		}
 	}
 
 	fn finalFree(self: *LargeBuffer, _allocation: Allocation) !void {
@@ -1838,7 +1861,7 @@ pub fn generateBlockTexture(blockType: u16) !Texture {
 	c.glActiveTexture(c.GL_TEXTURE1);
 	main.blocks.meshes.emissionTextureArray.bind();
 	block_texture.depthTexture.bindTo(3);
-	c.glDrawElementsBaseVertex(c.GL_TRIANGLES, 6*faces, c.GL_UNSIGNED_INT, null, allocation.start/8*4);
+	c.glDrawElementsBaseVertex(c.GL_TRIANGLES, 6*faces, c.GL_UNSIGNED_INT, null, allocation.start/@sizeOf(main.chunk.meshing.FaceData)*4);
 
 	var finalFrameBuffer: FrameBuffer = undefined;
 	finalFrameBuffer.init(false, c.GL_NEAREST, c.GL_REPEAT);
