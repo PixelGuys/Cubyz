@@ -28,7 +28,7 @@ struct Fog {
 };
 
 struct TextureData {
-	int textureIndices[6];
+	uint textureIndices[6];
 	uint absorption;
 	float reflectivity;
 	float fogDensity;
@@ -134,7 +134,7 @@ vec4 fixedCubeMapLookup(vec3 v) { // Taken from http://the-witness.net/news/2012
 }
 
 void main() {
-	int textureIndex = textureData[blockType].textureIndices[faceNormal];
+	uint textureIndex = textureData[blockType].textureIndices[faceNormal];
 	vec3 textureCoords = vec3(getTextureCoordsNormal(startPosition/16, faceNormal), textureIndex);
 	float normalVariation = normalVariations[faceNormal];
 	float densityAdjustment = sqrt(dot(mvVertexPos, mvVertexPos))/abs(mvVertexPos.z);

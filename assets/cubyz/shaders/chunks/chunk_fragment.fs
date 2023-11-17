@@ -19,7 +19,7 @@ uniform sampler2DArray emissionSampler;
 layout(location = 0) out vec4 fragColor;
 
 struct TextureData {
-	int textureIndices[6];
+	uint textureIndices[6];
 	uint absorption;
 	float reflectivity;
 	float fogDensity;
@@ -79,7 +79,7 @@ vec2 getTextureCoordsNormal(vec3 voxelPosition, int textureDir) {
 }
 
 void main() {
-	int textureIndex = textureData[blockType].textureIndices[faceNormal];
+	uint textureIndex = textureData[blockType].textureIndices[faceNormal];
 	float normalVariation = normalVariations[faceNormal];
 	vec3 textureCoords = vec3(getTextureCoordsNormal(startPosition/16, faceNormal), textureIndex);
 	fragColor = texture(texture_sampler, textureCoords)*vec4(light*normalVariation, 1);

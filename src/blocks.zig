@@ -565,8 +565,8 @@ pub const meshes = struct {
 
 	pub fn preProcessAnimationData(time: u32) void {
 		animationShader.bind();
-		graphics.c.glUniform1i(animationUniforms.time, @bitCast(time));
-		graphics.c.glUniform1i(animationUniforms.size, @intCast(meshes.size));
+		graphics.c.glUniform1ui(animationUniforms.time, time);
+		graphics.c.glUniform1ui(animationUniforms.size, @intCast(meshes.size));
 		graphics.c.glDispatchCompute(@divFloor(meshes.size + 63, 64), 1, 1); // TODO: Replace with @divCeil once available
 		graphics.c.glMemoryBarrier(graphics.c.GL_SHADER_STORAGE_BARRIER_BIT);
 	}

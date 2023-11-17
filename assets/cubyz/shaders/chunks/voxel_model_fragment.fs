@@ -27,7 +27,7 @@ struct VoxelModel {
 };
 
 struct TextureData {
-	int textureIndices[6];
+	uint textureIndices[6];
 	uint absorption;
 	float reflectivity;
 	float fogDensity;
@@ -177,7 +177,7 @@ float perpendicularFwidth(vec3 direction) { // Estimates how big fwidth would be
 	return 16*length(variance);
 }
 
-vec4 mipMapSample(sampler2DArray texture, ivec2 textureCoords, int textureIndex, float lod) { // TODO: anisotropic filtering?
+vec4 mipMapSample(sampler2DArray texture, ivec2 textureCoords, uint textureIndex, float lod) { // TODO: anisotropic filtering?
 	int lowerLod = int(floor(lod));
 	int higherLod = lowerLod+1;
 	float interpolation = lod - lowerLod;
@@ -225,7 +225,7 @@ void main() {
 		result = RayMarchResult(true, faceNormal, faceNormal, ivec3(startPosition) & 15); // At some point it doesn't make sense to even draw the model.
 	}
 	if(!result.hitAThing) discard;
-	int textureIndex = textureData[blockType].textureIndices[result.textureDir];
+	uint textureIndex = textureData[blockType].textureIndices[result.textureDir];
 	float normalVariation = normalVariations[result.normal];
 	float lod = getLod(result.voxelPosition, result.normal, direction, variance);
 	ivec2 textureCoords = getTextureCoords(result.voxelPosition, result.textureDir);
