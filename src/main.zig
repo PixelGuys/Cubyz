@@ -761,7 +761,7 @@ pub fn main() !void {
 		gui.windowlist.gpu_performance_measuring.stopQuery();
 		const newTime = std.time.nanoTimestamp();
 		const deltaTime = @as(f64, @floatFromInt(newTime -% lastTime))/1e9;
-		if(deltaTime > 5) {
+		if(@import("builtin").os.tag == .linux and deltaTime > 5) { // On linux a process that runs 10 seconds or longer on the GPU will get stopped. This allows detecting an infinite loop on the GPU.
 			std.log.err("Frame got too long with {} seconds. Infinite loop on GPU?", .{deltaTime});
 			std.os.exit(1);
 		}
