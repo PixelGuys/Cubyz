@@ -297,6 +297,10 @@ pub fn setNextKeypressListener(listener: ?*const fn(c_int, c_int, c_int) void) !
 	if(nextKeypressListener != null) return error.AlreadyUsed;
 	nextKeypressListener = listener;
 }
+fn escape() void {
+	if(game.world == null) return;
+	Window.setMouseGrabbed(!Window.grabbed);
+}
 fn ungrabMouse() void {
 	Window.setMouseGrabbed(false);
 }
@@ -359,7 +363,7 @@ pub const KeyBoard = struct {
 		Key{.name = "takeBackgroundImage", .key = c.GLFW_KEY_PRINT_SCREEN, .releaseAction = &takeBackgroundImageFn},
 
 		// Gui:
-		Key{.name = "escape", .key = c.GLFW_KEY_ESCAPE, .releaseAction = &ungrabMouse},
+		Key{.name = "escape", .key = c.GLFW_KEY_ESCAPE, .releaseAction = &escape},
 		Key{.name = "openInventory", .key = c.GLFW_KEY_I, .releaseAction = &openInventory},
 		Key{.name = "openWorkbench", .key = c.GLFW_KEY_K, .releaseAction = &openWorkbench}, // TODO: Remove
 		Key{.name = "openCreativeInventory(aka cheat inventory)", .key = c.GLFW_KEY_C, .releaseAction = &openCreativeInventory},
