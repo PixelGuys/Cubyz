@@ -486,7 +486,7 @@ pub const ThreadPool = struct {
 		for(self.threads, 0..) |*thread, i| {
 			thread.* = try std.Thread.spawn(.{}, run, .{self, i});
 			var buf: [64]u8 = undefined;
-			try thread.setName(try std.fmt.bufPrint(&buf, "Worker {}", .{i+1}));
+			thread.setName(try std.fmt.bufPrint(&buf, "Worker {}", .{i+1})) catch |err| std.log.err("Couldn't rename thread: {s}", .{@errorName(err)});
 		}
 		return self;
 	}

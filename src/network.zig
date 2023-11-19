@@ -404,7 +404,7 @@ pub const ConnectionManager = struct {
 		errdefer Socket.deinit(result.socket);
 
 		result.thread = try std.Thread.spawn(.{}, run, .{result});
-		try result.thread.setName("Network Thread");
+		result.thread.setName("Network Thread") catch |err| std.log.err("Couldn't rename thread: {s}", .{@errorName(err)});
 		if(online) {
 			result.makeOnline();
 		}
