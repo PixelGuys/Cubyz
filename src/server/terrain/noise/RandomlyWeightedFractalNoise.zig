@@ -34,22 +34,22 @@ pub fn generateFractalTerrain(wx: i32, wz: i32, x0: u31, z0: u31, width: u32, he
 pub fn generateInitializedFractalTerrain(offsetX: i32, offsetZ: i32, scale: u31, startingScale: u31, worldSeed: u64, bigMap: Array2D(f32), lowerLimit: f32, upperLimit: f32, maxResolution: u31) void {
 	// Increase the "grid" of points with already known heights in each round by a factor of 2×2, like so(# marks the gridpoints of the first grid, * the points of the second grid and + the points of the third grid(and so on…)):
 	//
-	//	#+*+#
-	//	+++++
-	//	*+*+*
-	//	+++++
-	//	#+*+#
+	//  #+*+#
+	//  +++++
+	//  *+*+*
+	//  +++++
+	//  #+*+#
 	//
 	// Each new gridpoint gets the interpolated height value of the surrounding known grid points using random weights. Afterwards this value gets offset by a random value.
 	// Here is a visual representation of this process(with random starting values):
 	//
-	//█░▒▓						small							small
-	//	█???█	grid	█?█?█	random	█?▓?█	grid	██▓▓█	random	██▓▓█
-	//	?????	resize	?????	change	?????	resize	█▓▓▓▒	change	█▓█▓▒
-	//	?????	→→→→	▓?▓?▒	→→→→	▒?█?▒	→→→→	▒▒██▒	→→→→	▒▒██▒
-	//	?????			?????	of new	?????			░▒░▒▒	of new	░▒░▒░
-	//	???▒			 ? ?▒	values	 ?░?▒			  ░░▒	values	  ░░▒
-	//			 
+	//█░▒▓                      small                           small
+	//  █???█   grid    █?█?█   random  █?▓?█   grid    ██▓▓█   random  ██▓▓█
+	//  ?????   resize  ?????   change  ?????   resize  █▓▓▓▒   change  █▓█▓▒
+	//  ?????   →→→→    ▓?▓?▒   →→→→    ▒?█?▒   →→→→    ▒▒██▒   →→→→    ▒▒██▒
+	//  ?????           ?????   of new  ?????           ░▒░▒▒   of new  ░▒░▒░
+	//  ???▒            ? ?▒   values   ?░?▒             ░░▒   values    ░░▒
+	//
 	// Another important thing to note is that the side length of the grid has to be 2^n + 1 because every new gridpoint needs a new neighbor.
 	// So the rightmost column and the bottom row are already part of the next map piece.
 	// One other important thing in the implementation of this algorithm is that the relative height change has to decrease in every iteration. Otherwise the terrain would look noisy.
