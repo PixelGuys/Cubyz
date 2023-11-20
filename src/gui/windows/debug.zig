@@ -41,7 +41,13 @@ fn flawedRender() !void {
 		try draw.print("Queue size: {}", .{main.threadPool.queueSize()}, 0, y, 8, .left);
 		y += 8;
 		const faceDataSize = @sizeOf(main.chunk.meshing.FaceData);
-		try draw.print("ChunkMesh memory: {} MiB / {} MiB (fragmentation: {})", .{main.chunk.meshing.faceBuffer.used*faceDataSize >> 20, main.chunk.meshing.faceBuffer.capacity*faceDataSize >> 20, main.chunk.meshing.faceBuffer.freeBlocks.items.len}, 0, y, 8, .left);
+		try draw.print("Chunk Face memory: {} MiB / {} MiB (fragmentation: {})", .{main.chunk.meshing.faceBuffer.used*faceDataSize >> 20, main.chunk.meshing.faceBuffer.capacity*faceDataSize >> 20, main.chunk.meshing.faceBuffer.freeBlocks.items.len}, 0, y, 8, .left);
+		y += 8;
+		const chunkDataSize = @sizeOf(main.chunk.meshing.ChunkData);
+		try draw.print("Chunk memory: {} MiB / {} MiB (fragmentation: {})", .{main.chunk.meshing.chunkBuffer.used*chunkDataSize >> 20, main.chunk.meshing.chunkBuffer.capacity*chunkDataSize >> 20, main.chunk.meshing.chunkBuffer.freeBlocks.items.len}, 0, y, 8, .left);
+		y += 8;
+		const lightDataSize = @sizeOf(main.chunk.meshing.LightData);
+		try draw.print("Chunk light memory: {} MiB / {} MiB (fragmentation: {})", .{main.chunk.meshing.lightBuffer.used*lightDataSize >> 20, main.chunk.meshing.lightBuffer.capacity*lightDataSize >> 20, main.chunk.meshing.lightBuffer.freeBlocks.items.len}, 0, y, 8, .left);
 		y += 8;
 		try draw.print("Biome: {s}", .{main.game.world.?.playerBiome.load(.Monotonic).id}, 0, y, 8, .left);
 		y += 8;

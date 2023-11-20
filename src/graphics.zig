@@ -1332,7 +1332,7 @@ pub fn LargeBuffer(comptime Entry: type) type {
 			try self.fencedFreeLists[self.activeFence].append(allocation);
 		}
 
-		pub fn uploadData(self: *Self, data: []Entry, allocation: *SubAllocation) !void {
+		pub fn uploadData(self: *Self, data: []const Entry, allocation: *SubAllocation) !void {
 			try self.free(allocation.*);
 			if(data.len == 0) {
 				allocation.len = 0;
@@ -1854,9 +1854,7 @@ pub fn generateBlockTexture(blockType: u16) !Texture {
 	faceData[faces + 1] = main.chunk.meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirUp, 1, 1+1, 1, false);
 	faceData[faces + 2] = main.chunk.meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirPosZ, 1, 1, 1+1, false);
 	faces += 3;
-	for(faceData[0..faces]) |*face| {
-		@memset(&face.light, ~@as(u32, 0));
-	}
+	// TODO: Lighting
 	var allocation: SubAllocation = .{.start = 0, .len = 0};
 	try main.chunk.meshing.faceBuffer.uploadData(faceData[0..faces], &allocation);
 
