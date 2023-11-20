@@ -870,7 +870,6 @@ pub const MeshSelection = struct {
 pub const RenderStructure = struct {
 	const ChunkMeshNode = struct {
 		mesh: ?*chunk.meshing.ChunkMesh,
-		inRenderDistance: bool, // TODO: Remove this in the future.
 		lod: u3,
 		min: Vec2f,
 		max: Vec2f,
@@ -904,7 +903,6 @@ pub const RenderStructure = struct {
 			storageList.* = try main.globalAllocator.create([storageSize*storageSize*storageSize]ChunkMeshNode);
 			for(storageList.*) |*val| {
 				val.mesh = null;
-				val.inRenderDistance = false;
 			}
 		}
 	}
@@ -988,6 +986,36 @@ pub const RenderStructure = struct {
 		return reducedRenderDistance;
 	}
 
+	fn isInRenderDistance(pos: chunk.ChunkPosition) bool {
+		const maxRenderDistance = lastRD*chunk.chunkSize*pos.voxelSize;
+		const size: u31 = chunk.chunkSize*pos.voxelSize;
+		const mask: i32 = size - 1;
+		const invMask: i32 = ~mask;
+
+		const minX = lastPx-%maxRenderDistance & invMask;
+		const maxX = lastPx+%maxRenderDistance+%size & invMask;
+		if(pos.wx < minX) return false;
+		if(pos.wx >= maxX) return false;
+		var deltaX: i64 = @abs(pos.wx +% size/2 -% lastPx);
+		deltaX = @max(0, deltaX - size/2);
+
+		const maxYRenderDistance: i32 = reduceRenderDistance(maxRenderDistance, deltaX);
+		const minY = lastPy-%maxYRenderDistance & invMask;
+		const maxY = lastPy+%maxYRenderDistance+%size & invMask;
+		if(pos.wy < minY) return false;
+		if(pos.wy >= maxY) return false;
+		var deltaY: i64 = @abs(pos.wy +% size/2 -% lastPy);
+		deltaY = @max(0, deltaY - size/2);
+
+		const maxZRenderDistance: i32 = reduceRenderDistance(maxYRenderDistance, deltaY);
+		if(maxZRenderDistance == 0) return false;
+		const minZ = lastPz-%maxZRenderDistance & invMask;
+		const maxZ = lastPz+%maxZRenderDistance+%size & invMask;
+		if(pos.wz < minZ) return false;
+		if(pos.wz >= maxZ) return false;
+		return true;
+	}
+
 	fn freeOldMeshes(px: i32, py: i32, pz: i32, renderDistance: i32) !void {
 		for(0..storageLists.len) |_lod| {
 			const lod: u5 = @intCast(_lod);
@@ -1052,7 +1080,6 @@ pub const RenderStructure = struct {
 						const index = (xIndex*storageSize + yIndex)*storageSize + zIndex;
 						
 						const node = &storageLists[_lod][@intCast(index)];
-						std.debug.assert(node.inRenderDistance);
 						// Update the neighbors, so we don't get cracks when we look back:
 						if(node.mesh) |mesh| {
 							const pos = mesh.pos;
@@ -1068,7 +1095,6 @@ pub const RenderStructure = struct {
 								}
 							}
 						}
-						node.inRenderDistance = false;
 					}
 				}
 			}
@@ -1141,8 +1167,6 @@ pub const RenderStructure = struct {
 
 						const node = &storageLists[_lod][@intCast(index)];
 						std.debug.assert(node.mesh == null);
-						std.debug.assert(node.inRenderDistance == false);
-						node.inRenderDistance = true;
 						try meshRequests.append(pos);
 					}
 				}
@@ -1458,8 +1482,8 @@ pub const RenderStructure = struct {
 			const mesh = updatableList.orderedRemove(closestIndex);
 			mutex.unlock();
 			defer mutex.lock();
-			const node = getNodeFromRenderThread(mesh.pos);
-			if(node.inRenderDistance) {
+			if(isInRenderDistance(mesh.pos)) {
+				const node = getNodeFromRenderThread(mesh.pos);
 				try mesh.uploadDataAndFinishNeighbors();
 				if(node.mesh) |oldMesh| {
 					try oldMesh.decreaseRefCount();
