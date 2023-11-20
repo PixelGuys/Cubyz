@@ -93,8 +93,8 @@ fn flawedRender() !void {
 	var sum: isize = 0;
 	var y: f32 = 8;
 	inline for(0..queryObjects[curBuffer].len) |i| {
-		var result: i64 = undefined;
-		c.glGetQueryObjecti64v(queryObjects[curBuffer][i], c.GL_QUERY_RESULT, &result);
+		var result: u32 = undefined;
+		c.glGetQueryObjectuiv(queryObjects[curBuffer][i], c.GL_QUERY_RESULT, &result);
 		try draw.print("{s}: {} µs", .{names[i], @divTrunc(result, 1000)}, 0, y, 8, .left);
 		sum += result;
 		y += 8;
