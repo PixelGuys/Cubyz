@@ -29,14 +29,14 @@ pub fn deinit() void {
 pub fn generateMapFragment(map: *ClimateMapFragment, worldSeed: u64) Allocator.Error!void {
 	var seed: u64 = worldSeed;
 
-	const generator = try GenerationStructure.init(main.threadAllocator, map.pos.wx, map.pos.wz, ClimateMapFragment.mapSize, ClimateMapFragment.mapSize, terrain.biomes.byTypeBiomes, seed);
-	defer generator.deinit(main.threadAllocator);
+	const generator = try GenerationStructure.init(main.globalAllocator, map.pos.wx, map.pos.wz, ClimateMapFragment.mapSize, ClimateMapFragment.mapSize, terrain.biomes.byTypeBiomes, seed);
+	defer generator.deinit(main.stackAllocator);
 
 	try generator.toMap(map, ClimateMapFragment.mapSize, ClimateMapFragment.mapSize, worldSeed);
 
 	// TODO: Remove debug image:
-	const image = try main.graphics.Image.init(main.threadAllocator, @intCast(map.map.len), @intCast(map.map[0].len));
-	defer image.deinit(main.threadAllocator);
+	const image = try main.graphics.Image.init(main.stackAllocator, @intCast(map.map.len), @intCast(map.map[0].len));
+	defer image.deinit(main.stackAllocator);
 	var x: u31 = 0;
 	while(x < map.map.len) : (x += 1) {
 		var z: u31 = 0;
@@ -326,7 +326,7 @@ const GenerationStructure = struct {
 		}
 
 		// Add some sub-biomes:
-		var extraBiomes = std.ArrayList(BiomePoint).init(main.threadAllocator);
+		var extraBiomes = std.ArrayList(BiomePoint).init(main.globalAllocator);
 		defer extraBiomes.deinit();
 		for(self.chunks.mem) |chunk| {
 			for(chunk.biomesSortedByX) |biome| {

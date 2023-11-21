@@ -94,7 +94,7 @@ const Socket = struct {
 	}
 
 	fn resolveIP(addr: []const u8) !u32 {
-		const list = try std.net.getAddressList(main.threadAllocator, addr, settings.defaultPort);
+		const list = try std.net.getAddressList(main.globalAllocator, addr, settings.defaultPort);
 		defer list.deinit();
 		return list.addrs[0].in.sa.addr;
 	}
@@ -530,11 +530,9 @@ pub const ConnectionManager = struct {
 
 	pub fn run(self: *ConnectionManager) !void {
 		self.threadId = std.Thread.getCurrentId();
-		var gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe=false}){};
-		main.threadAllocator = gpa.allocator();
-		defer if(gpa.deinit() == .leak) {
-			@panic("Memory leak");
-		};
+		var sta = try utils.StackAllocator.init(main.globalAllocator, 1 << 23);
+		defer sta.deinit();
+		main.stackAllocator = sta.allocator();
 
 		var lastTime = std.time.milliTimestamp();
 		while(self.running.load(.Monotonic)) {
@@ -605,19 +603,19 @@ pub const Protocols = struct {
 				conn.handShakeState.store(data[0], .Monotonic);
 				switch(data[0]) {
 					stepUserData => {
-						const json = JsonElement.parseFromString(main.threadAllocator, data[1..]);
-						defer json.free(main.threadAllocator);
+						const json = JsonElement.parseFromString(main.globalAllocator, data[1..]);
+						defer json.free(main.globalAllocator);
 						const name = json.get([]const u8, "name", "unnamed");
 						const version = json.get([]const u8, "version", "unknown");
 						std.log.info("User {s} joined using version {s}.", .{name, version});
 
 						{
 							// TODO: Send the world data.
-							const path = try std.fmt.allocPrint(main.threadAllocator, "saves/{s}/assets/", .{"Development"}); // TODO: Use world name.
-							defer main.threadAllocator.free(path);
+							const path = try std.fmt.allocPrint(main.stackAllocator, "saves/{s}/assets/", .{"Development"}); // TODO: Use world name.
+							defer main.stackAllocator.free(path);
 							var dir = try std.fs.cwd().openIterableDir(path, .{});
 							defer dir.close();
-							var arrayList = std.ArrayList(u8).init(main.threadAllocator);
+							var arrayList = std.ArrayList(u8).init(main.globalAllocator);
 							defer arrayList.deinit();
 							try arrayList.append(stepAssets);
 							try utils.Compression.pack(dir, arrayList.writer());
@@ -627,20 +625,20 @@ pub const Protocols = struct {
 
 						// TODO:
 						try conn.user.?.initPlayer(name);
-						const jsonObject = try JsonElement.initObject(main.threadAllocator);
-						defer jsonObject.free(main.threadAllocator);
-						try jsonObject.put("player", try conn.user.?.player.save(main.threadAllocator));
+						const jsonObject = try JsonElement.initObject(main.globalAllocator);
+						defer jsonObject.free(main.globalAllocator);
+						try jsonObject.put("player", try conn.user.?.player.save(main.globalAllocator));
 						// TODO:
 //					jsonObject.put("player_id", ((User)conn).player.id);
 //					jsonObject.put("blockPalette", Server.world.blockPalette.save());
-						const spawn = try JsonElement.initObject(main.threadAllocator);
+						const spawn = try JsonElement.initObject(main.globalAllocator);
 						try spawn.put("x", main.server.world.?.spawn[0]);
 						try spawn.put("y", main.server.world.?.spawn[1]);
 						try spawn.put("z", main.server.world.?.spawn[2]);
 						try jsonObject.put("spawn", spawn);
 						
-						const outData = try jsonObject.toStringEfficient(main.threadAllocator, &[1]u8{stepServerData});
-						defer main.threadAllocator.free(outData);
+						const outData = try jsonObject.toStringEfficient(main.stackAllocator, &[1]u8{stepServerData});
+						defer main.stackAllocator.free(outData);
 						try conn.sendImportant(id, outData);
 						conn.handShakeState.store(stepServerData, .Monotonic);
 						conn.handShakeState.store(stepComplete, .Monotonic);
@@ -656,8 +654,8 @@ pub const Protocols = struct {
 						try utils.Compression.unpack(try std.fs.cwd().openDir("serverAssets", .{}), data[1..]);
 					},
 					stepServerData => {
-						const json = JsonElement.parseFromString(main.threadAllocator, data[1..]);
-						defer json.free(main.threadAllocator);
+						const json = JsonElement.parseFromString(main.globalAllocator, data[1..]);
+						defer json.free(main.globalAllocator);
 						try conn.manager.world.?.finishHandshake(json);
 						conn.handShakeState.store(stepComplete, .Monotonic);
 						conn.handShakeWaiting.broadcast(); // Notify the waiting client thread.
@@ -679,14 +677,14 @@ pub const Protocols = struct {
 		}
 
 		pub fn clientSide(conn: *Connection, name: []const u8) !void {
-			const jsonObject = JsonElement{.JsonObject=try main.threadAllocator.create(std.StringHashMap(JsonElement))};
-			defer jsonObject.free(main.threadAllocator);
-			jsonObject.JsonObject.* = std.StringHashMap(JsonElement).init(main.threadAllocator);
+			const jsonObject = JsonElement{.JsonObject=try main.globalAllocator.create(std.StringHashMap(JsonElement))};
+			defer jsonObject.free(main.globalAllocator);
+			jsonObject.JsonObject.* = std.StringHashMap(JsonElement).init(main.globalAllocator);
 			try jsonObject.putOwnedString("version", settings.version);
 			try jsonObject.putOwnedString("name", name);
 			const prefix = [1]u8 {stepUserData};
-			const data = try jsonObject.toStringEfficient(main.threadAllocator, &prefix);
-			defer main.threadAllocator.free(data);
+			const data = try jsonObject.toStringEfficient(main.stackAllocator, &prefix);
+			defer main.stackAllocator.free(data);
 			try conn.sendImportant(id, data);
 
 			conn.mutex.lock();
@@ -713,8 +711,8 @@ pub const Protocols = struct {
 		}
 		pub fn sendRequest(conn: *Connection, requests: []chunk.ChunkPosition) !void {
 			if(requests.len == 0) return;
-			const data = try main.threadAllocator.alloc(u8, 16*requests.len);
-			defer main.threadAllocator.free(data);
+			const data = try main.stackAllocator.alloc(u8, 16*requests.len);
+			defer main.stackAllocator.free(data);
 			var remaining = data;
 			for(requests) |req| {
 				std.mem.writeInt(i32, remaining[0..4], req.wx, .big);
@@ -736,8 +734,8 @@ pub const Protocols = struct {
 				.wz = std.mem.readInt(i32, data[8..12], .big),
 				.voxelSize = @intCast(std.mem.readInt(i32, data[12..16], .big)),
 			};
-			const _inflatedData = try main.threadAllocator.alloc(u8, chunk.chunkVolume*4);
-			defer main.threadAllocator.free(_inflatedData);
+			const _inflatedData = try main.stackAllocator.alloc(u8, chunk.chunkVolume*4);
+			defer main.stackAllocator.free(_inflatedData);
 			const _inflatedLen = try utils.Compression.inflateTo(_inflatedData, data[16..]);
 			if(_inflatedLen != chunk.chunkVolume*4) {
 				std.log.err("Transmission of chunk has invalid size: {}. Input data: {any}, After inflate: {any}", .{_inflatedLen, data, _inflatedData[0.._inflatedLen]});
@@ -756,10 +754,10 @@ pub const Protocols = struct {
 			for(&ch.blocks, 0..) |*block, i| {
 				std.mem.writeInt(u32, uncompressedData[4*i..][0..4], block.toInt(), .big);
 			}
-			const compressedData = try utils.Compression.deflate(main.threadAllocator, &uncompressedData);
-			defer main.threadAllocator.free(compressedData);
-			const data =try  main.threadAllocator.alloc(u8, 16 + compressedData.len);
-			defer main.threadAllocator.free(data);
+			const compressedData = try utils.Compression.deflate(main.stackAllocator, &uncompressedData);
+			defer main.stackAllocator.free(compressedData);
+			const data = try main.stackAllocator.alloc(u8, 16 + compressedData.len);
+			defer main.stackAllocator.free(data);
 			@memcpy(data[16..], compressedData);
 			std.mem.writeInt(i32, data[0..4], ch.pos.wx, .big);
 			std.mem.writeInt(i32, data[4..8], ch.pos.wy, .big);
@@ -818,15 +816,15 @@ pub const Protocols = struct {
 			}
 		}
 		pub fn send(conn: *Connection, entityData: []const u8, itemData: []const u8) !void {
-			const fullEntityData = main.threadAllocator.alloc(u8, entityData.len + 3);
-			defer main.threadAllocator.free(fullEntityData);
+			const fullEntityData = main.stackAllocator.alloc(u8, entityData.len + 3);
+			defer main.stackAllocator.free(fullEntityData);
 			fullEntityData[0] = type_entity;
 			std.mem.writeInt(i16, fullEntityData[1..3], @as(i16, @truncate(std.time.milliTimestamp())));
 			@memcpy(fullEntityData[3..], entityData);
 			conn.sendUnimportant(id, fullEntityData);
 
-			const fullItemData = main.threadAllocator.alloc(u8, itemData.len + 3);
-			defer main.threadAllocator.free(fullItemData);
+			const fullItemData = main.stackAllocator.alloc(u8, itemData.len + 3);
+			defer main.stackAllocator.free(fullItemData);
 			fullItemData[0] = type_item;
 			std.mem.writeInt(i16, fullItemData[1..3], @as(i16, @truncate(std.time.milliTimestamp())));
 			@memcpy(fullItemData[3..], itemData);
@@ -858,8 +856,8 @@ pub const Protocols = struct {
 	pub const entity = struct {
 		const id: u8 = 8;
 		fn receive(conn: *Connection, data: []const u8) !void {
-			const jsonArray = JsonElement.parseFromString(main.threadAllocator, data);
-			defer jsonArray.free(main.threadAllocator);
+			const jsonArray = JsonElement.parseFromString(main.globalAllocator, data);
+			defer jsonArray.free(main.globalAllocator);
 			var i: u32 = 0;
 			while(i < jsonArray.JsonArray.items.len) : (i += 1) {
 				const elem = jsonArray.JsonArray.items[i];
@@ -1054,8 +1052,8 @@ pub const Protocols = struct {
 //					);
 				},
 				type_itemStackCollect => {
-					const json = JsonElement.parseFromString(main.threadAllocator, data[1..]);
-					defer json.free(main.threadAllocator);
+					const json = JsonElement.parseFromString(main.globalAllocator, data[1..]);
+					defer json.free(main.globalAllocator);
 					const item = items.Item.init(json) catch |err| {
 						std.log.err("Error {s} while collecting item {s}. Ignoring it.", .{@errorName(err), data[1..]});
 						return;
@@ -1072,8 +1070,8 @@ pub const Protocols = struct {
 				},
 				type_timeAndBiome => {
 					if(conn.manager.world) |world| {
-						const json = JsonElement.parseFromString(main.threadAllocator, data[1..]);
-						defer json.free(main.threadAllocator);
+						const json = JsonElement.parseFromString(main.globalAllocator, data[1..]);
+						defer json.free(main.globalAllocator);
 						const expectedTime = json.get(i64, "time", 0);
 						var curTime = world.gameTime.load(.Monotonic);
 						if(@abs(curTime -% expectedTime) >= 1000) {
@@ -1097,16 +1095,16 @@ pub const Protocols = struct {
 		}
 
 		fn addHeaderAndSendImportant(conn: *Connection, header: u8, data: []const u8) !void {
-			const headeredData = try main.threadAllocator.alloc(u8, data.len + 1);
-			defer main.threadAllocator.free(headeredData);
+			const headeredData = try main.stackAllocator.alloc(u8, data.len + 1);
+			defer main.stackAllocator.free(headeredData);
 			headeredData[0] = header;
 			@memcpy(headeredData[1..], data);
 			try conn.sendImportant(id, headeredData);
 		}
 
 		fn addHeaderAndSendUnimportant(conn: *Connection, header: u8, data: []const u8) !void {
-			const headeredData = try main.threadAllocator.alloc(u8, data.len + 1);
-			defer main.threadAllocator.free(headeredData);
+			const headeredData = try main.stackAllocator.alloc(u8, data.len + 1);
+			defer main.stackAllocator.free(headeredData);
 			headeredData[0] = header;
 			@memcpy(headeredData[1..], data);
 			try conn.sendUnimportant(id, headeredData);
@@ -1144,10 +1142,10 @@ pub const Protocols = struct {
 
 
 		pub fn sendInventory_full(conn: *Connection, inv: Inventory) !void {
-			const json = try inv.save(main.threadAllocator);
-			defer json.free(main.threadAllocator);
-			const string = try json.toString(main.threadAllocator);
-			defer main.threadAllocator.free(string);
+			const json = try inv.save(main.globalAllocator);
+			defer json.free(main.globalAllocator);
+			const string = try json.toString(main.stackAllocator);
+			defer main.stackAllocator.free(string);
 			try addHeaderAndSendImportant(conn, type_inventoryFull, string);
 		}
 
@@ -1158,8 +1156,8 @@ pub const Protocols = struct {
 		}
 
 		pub fn itemStackDrop(conn: *Connection, stack: ItemStack, pos: Vec3d, dir: Vec3f, vel: f32) !void {
-			const jsonObject = try stack.store(main.threadAllocator);
-			defer jsonObject.free(main.threadAllocator);
+			const jsonObject = try stack.store(main.globalAllocator);
+			defer jsonObject.free(main.globalAllocator);
 			try jsonObject.put("x", pos[0]);
 			try jsonObject.put("y", pos[1]);
 			try jsonObject.put("z", pos[2]);
@@ -1167,27 +1165,27 @@ pub const Protocols = struct {
 			try jsonObject.put("dirY", dir[1]);
 			try jsonObject.put("dirZ", dir[2]);
 			try jsonObject.put("vel", vel);
-			const string = try jsonObject.toString(main.threadAllocator);
-			defer main.threadAllocator.free(string);
+			const string = try jsonObject.toString(main.stackAllocator);
+			defer main.stackAllocator.free(string);
 			try addHeaderAndSendImportant(conn, type_itemStackDrop, string);
 		}
 
 		pub fn itemStackCollect(conn: *Connection, stack: ItemStack) !void {
-			const json = try stack.store(main.threadAllocator);
-			defer json.free(main.threadAllocator);
-			const string = try json.toString(main.threadAllocator);
-			defer main.threadAllocator.free(string);
+			const json = try stack.store(main.globalAllocator);
+			defer json.free(main.globalAllocator);
+			const string = try json.toString(main.stackAllocator);
+			defer main.stackAllocator.free(string);
 			try addHeaderAndSendImportant(conn, type_itemStackCollect, string);
 		}
 
 		pub fn sendTimeAndBiome(conn: *Connection, world: *const main.server.ServerWorld) !void {
-			const json = try JsonElement.initObject(main.threadAllocator);
-			defer json.free(main.threadAllocator);
+			const json = try JsonElement.initObject(main.globalAllocator);
+			defer json.free(main.globalAllocator);
 			try json.put("time", world.gameTime);
 			const pos = conn.user.?.player.pos;
 			try json.put("biome", (try world.getBiome(@intFromFloat(pos[0]), @intFromFloat(pos[1]), @intFromFloat(pos[2]))).id);
-			const string = try json.toString(main.threadAllocator);
-			defer main.threadAllocator.free(string);
+			const string = try json.toString(main.stackAllocator);
+			defer main.stackAllocator.free(string);
 			try addHeaderAndSendUnimportant(conn, type_timeAndBiome, string);
 		}
 	};
@@ -1199,8 +1197,8 @@ pub const Protocols = struct {
 					// TODO:
 					// CommandExecutor.execute(data, user);
 				} else {
-					const newMessage = try std.fmt.allocPrint(main.threadAllocator, "[{s}#ffffff]{s}", .{user.name, data});
-					defer main.threadAllocator.free(newMessage);
+					const newMessage = try std.fmt.allocPrint(main.stackAllocator, "[{s}#ffffff]{s}", .{user.name, data});
+					defer main.stackAllocator.free(newMessage);
 					main.server.mutex.lock();
 					defer main.server.mutex.unlock();
 					try main.server.sendMessage(newMessage);
@@ -1363,8 +1361,8 @@ pub const Connection = struct {
 
 		if(self.disconnected) return;
 		std.debug.assert(data.len + 1 < maxPacketSize);
-		const fullData = try main.threadAllocator.alloc(u8, data.len + 1);
-		defer main.threadAllocator.free(fullData);
+		const fullData = try main.stackAllocator.alloc(u8, data.len + 1);
+		defer main.stackAllocator.free(fullData);
 		fullData[0] = id;
 		@memcpy(fullData[1..], data);
 		try self.manager.send(fullData, self.remoteAddress);
@@ -1400,9 +1398,9 @@ pub const Connection = struct {
 		self.mutex.lock();
 		defer self.mutex.unlock();
 
-		var runLengthEncodingStarts: std.ArrayList(u32) = std.ArrayList(u32).init(main.threadAllocator);
+		var runLengthEncodingStarts: std.ArrayList(u32) = std.ArrayList(u32).init(main.globalAllocator);
 		defer runLengthEncodingStarts.deinit();
-		var runLengthEncodingLengths: std.ArrayList(u32) = std.ArrayList(u32).init(main.threadAllocator);
+		var runLengthEncodingLengths: std.ArrayList(u32) = std.ArrayList(u32).init(main.globalAllocator);
 		defer runLengthEncodingLengths.deinit();
 
 		for(self.receivedPackets) |list| {
@@ -1446,8 +1444,8 @@ pub const Connection = struct {
 			self.receivedPackets[0] = putBackToFront;
 			self.receivedPackets[0].clearRetainingCapacity();
 		}
-		const output = try main.threadAllocator.alloc(u8, runLengthEncodingStarts.items.len*8 + 9);
-		defer main.threadAllocator.free(output);
+		const output = try main.stackAllocator.alloc(u8, runLengthEncodingStarts.items.len*8 + 9);
+		defer main.stackAllocator.free(output);
 		output[0] = Protocols.keepAlive;
 		std.mem.writeInt(u32, output[1..5], self.lastKeepAliveSent, .big);
 		self.lastKeepAliveSent += 1;
@@ -1531,8 +1529,8 @@ pub const Connection = struct {
 			}
 
 			// Copy the data to an array:
-			const data = try main.threadAllocator.alloc(u8, len);
-			defer main.threadAllocator.free(data);
+			const data = try main.stackAllocator.alloc(u8, len);
+			defer main.stackAllocator.free(data);
 			var remaining = data[0..];
 			while(remaining.len != 0) {
 				dataAvailable = @min(self.lastReceivedPackets[id & 65535].?.len - newIndex, remaining.len);

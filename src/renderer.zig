@@ -486,19 +486,19 @@ pub const MenuBackGround = struct {
 		var dir: std.fs.IterableDir = try std.fs.cwd().makeOpenPathIterable("assets/backgrounds", .{});
 		defer dir.close();
 
-		var walker = try dir.walk(main.threadAllocator);
+		var walker = try dir.walk(main.globalAllocator);
 		defer walker.deinit();
-		var fileList = std.ArrayList([]const u8).init(main.threadAllocator);
+		var fileList = std.ArrayList([]const u8).init(main.globalAllocator);
 		defer {
 			for(fileList.items) |fileName| {
-				main.threadAllocator.free(fileName);
+				main.globalAllocator.free(fileName);
 			}
 			fileList.deinit();
 		}
 
 		while(try walker.next()) |entry| {
 			if(entry.kind == .file and std.ascii.endsWithIgnoreCase(entry.basename, ".png")) {
-				try fileList.append(try main.threadAllocator.dupe(u8, entry.path));
+				try fileList.append(try main.globalAllocator.dupe(u8, entry.path));
 			}
 		}
 		if(fileList.items.len == 0) {
@@ -507,8 +507,8 @@ pub const MenuBackGround = struct {
 			return;
 		}
 		const theChosenOne = main.random.nextIntBounded(u32, &main.seed, @as(u32, @intCast(fileList.items.len)));
-		const theChosenPath = try std.fmt.allocPrint(main.threadAllocator, "assets/backgrounds/{s}", .{fileList.items[theChosenOne]});
-		defer main.threadAllocator.free(theChosenPath);
+		const theChosenPath = try std.fmt.allocPrint(main.stackAllocator, "assets/backgrounds/{s}", .{fileList.items[theChosenOne]});
+		defer main.stackAllocator.free(theChosenPath);
 		texture = try graphics.Texture.initFromFile(theChosenPath);
 	}
 
@@ -544,8 +544,8 @@ pub const MenuBackGround = struct {
 
 	pub fn takeBackgroundImage() !void {
 		const size: usize = 1024; // Use a power of 2 here, to reduce video memory waste.
-		const pixels: []u32 = try main.threadAllocator.alloc(u32, size*size);
-		defer main.threadAllocator.free(pixels);
+		const pixels: []u32 = try main.stackAllocator.alloc(u32, size*size);
+		defer main.stackAllocator.free(pixels);
 
 		// Change the viewport and the matrices to render 4 cube faces:
 
@@ -566,8 +566,8 @@ pub const MenuBackGround = struct {
 		const angles = [_]f32 {std.math.pi/2.0, std.math.pi, std.math.pi*3/2.0, std.math.pi*2};
 
 		// All 4 sides are stored in a single image.
-		const image = try graphics.Image.init(main.threadAllocator, 4*size, size);
-		defer image.deinit(main.threadAllocator);
+		const image = try graphics.Image.init(main.stackAllocator, 4*size, size);
+		defer image.deinit(main.stackAllocator);
 
 		for(0..4) |i| {
 			c.glEnable(c.GL_CULL_FACE);
@@ -593,8 +593,8 @@ pub const MenuBackGround = struct {
 		c.glDisable(c.GL_DEPTH_TEST);
 		c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 
-		const fileName = try std.fmt.allocPrint(main.threadAllocator, "assets/backgrounds/{s}_{}.png", .{game.world.?.name, game.world.?.gameTime.load(.Monotonic)});
-		defer main.threadAllocator.free(fileName);
+		const fileName = try std.fmt.allocPrint(main.stackAllocator, "assets/backgrounds/{s}_{}.png", .{game.world.?.name, game.world.?.gameTime.load(.Monotonic)});
+		defer main.stackAllocator.free(fileName);
 		try image.exportToFile(fileName);
 		// TODO: Performance is terrible even with -O3. Consider using qoi instead.
 	}
@@ -880,7 +880,7 @@ pub const RenderStructure = struct {
 	var storageLists: [settings.highestLOD + 1]*[storageSize*storageSize*storageSize]ChunkMeshNode = undefined;
 	var meshList = std.ArrayList(*chunk.meshing.ChunkMesh).init(main.globalAllocator);
 	var priorityUpdateList = std.ArrayList(*chunk.meshing.ChunkMesh).init(main.globalAllocator);
-	var updatableList = std.ArrayList(*chunk.meshing.ChunkMesh).init(main.globalAllocator);
+	pub var updatableList = std.ArrayList(*chunk.meshing.ChunkMesh).init(main.globalAllocator);
 	var clearList = std.ArrayList(*chunk.meshing.ChunkMesh).init(main.globalAllocator);
 	var lastPx: i32 = 0;
 	var lastPy: i32 = 0;
@@ -1183,7 +1183,7 @@ pub const RenderStructure = struct {
 		const py: i32 = @intFromFloat(playerPos[1]);
 		const pz: i32 = @intFromFloat(playerPos[2]);
 
-		var meshRequests = std.ArrayList(chunk.ChunkPosition).init(main.threadAllocator);
+		var meshRequests = std.ArrayList(chunk.ChunkPosition).init(main.globalAllocator);
 		defer meshRequests.deinit();
 
 		try freeOldMeshes(px, py, pz, renderDistance);
@@ -1203,7 +1203,7 @@ pub const RenderStructure = struct {
 		};
 
 		// TODO: Is there a way to combine this with minecraft's approach?
-		var searchList = std.PriorityQueue(OcclusionData, void, OcclusionData.compare).init(main.threadAllocator, {});
+		var searchList = std.PriorityQueue(OcclusionData, void, OcclusionData.compare).init(main.globalAllocator, {});
 		defer searchList.deinit();
 		{
 			var firstPos = chunk.ChunkPosition{

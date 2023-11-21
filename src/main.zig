@@ -31,7 +31,7 @@ pub const c = @cImport ({
 	@cInclude("GLFW/glfw3.h");
 });
 
-pub threadlocal var threadAllocator: std.mem.Allocator = undefined;
+pub threadlocal var stackAllocator: std.mem.Allocator = undefined;
 pub threadlocal var seed: u64 = undefined;
 var global_gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe=true}){};
 pub const globalAllocator: std.mem.Allocator = global_gpa.allocator();
@@ -178,22 +178,14 @@ pub const std_options = struct {
 };
 
 fn logToFile(comptime format: []const u8, args: anytype) void {
-	var stackFallbackAllocator: std.heap.StackFallbackAllocator(65536) = undefined;
-	stackFallbackAllocator.fallback_allocator = threadAllocator;
-	const allocator = stackFallbackAllocator.get();
-
-	const string = std.fmt.allocPrint(allocator, format, args) catch return;
-	defer allocator.free(string);
+	const string = std.fmt.allocPrint(stackAllocator, format, args) catch return;
+	defer stackAllocator.free(string);
 	logFile.writeAll(string) catch {};
 }
 
 fn logToStdErr(comptime format: []const u8, args: anytype) void {
-	var stackFallbackAllocator: std.heap.StackFallbackAllocator(65536) = undefined;
-	stackFallbackAllocator.fallback_allocator = threadAllocator;
-	const allocator = stackFallbackAllocator.get();
-	
-	const string = std.fmt.allocPrint(allocator, format, args) catch return;
-	defer allocator.free(string);
+	const string = std.fmt.allocPrint(stackAllocator, format, args) catch return;
+	defer stackAllocator.free(string);
 	nosuspend std.io.getStdErr().writeAll(string) catch {};
 }
 
@@ -589,8 +581,8 @@ pub const Window = struct {
 	}
 
 	pub fn setClipboardString(string: []const u8) void {
-		const nullTerminatedString = threadAllocator.dupeZ(u8, string) catch return;
-		defer threadAllocator.free(nullTerminatedString);
+		const nullTerminatedString = stackAllocator.dupeZ(u8, string) catch return;
+		defer stackAllocator.free(nullTerminatedString);
 		c.glfwSetClipboardString(window, nullTerminatedString.ptr);
 	}
 
@@ -667,14 +659,12 @@ pub var lastFrameTime = std.atomic.Atomic(f64).init(0);
 
 pub fn main() !void {
 	seed = @bitCast(std.time.milliTimestamp());
-	var gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe=false}){};
-	threadAllocator = gpa.allocator();
-	defer if(gpa.deinit() == .leak) {
-		std.log.err("Memory leak", .{});
-	};
 	defer if(global_gpa.deinit() == .leak) {
 		std.log.err("Memory leak", .{});
 	};
+	var sta = try utils.StackAllocator.init(globalAllocator, 1 << 23);
+	defer sta.deinit();
+	stackAllocator = sta.allocator();
 
 	// init logging.
 	try std.fs.cwd().makePath("logs");

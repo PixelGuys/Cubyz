@@ -153,11 +153,9 @@ fn update() !void {
 }
 
 pub fn start(name: []const u8) !void {
-	var gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe=false}){};
-	main.threadAllocator = gpa.allocator();
-	defer if(gpa.deinit() == .leak) {
-		std.log.err("Memory leak", .{});
-	};
+	var sta = try utils.StackAllocator.init(main.globalAllocator, 1 << 23);
+	defer sta.deinit();
+	main.stackAllocator = sta.allocator();
 	std.debug.assert(!running.load(.Monotonic)); // There can only be one server.
 	try init(name);
 	defer deinit();
@@ -182,8 +180,8 @@ pub fn stop() void {
 
 pub fn disconnect(user: *User) !void {
 	// TODO: world.forceSave();
-	const message = try std.fmt.allocPrint(main.threadAllocator, "{s} #ffff00left", .{user.name});
-	defer main.threadAllocator.free(message);
+	const message = try std.fmt.allocPrint(main.stackAllocator, "{s} #ffff00left", .{user.name});
+	defer main.stackAllocator.free(message);
 	mutex.lock();
 	defer mutex.unlock();
 	try sendMessage(message);
@@ -199,8 +197,8 @@ pub fn disconnect(user: *User) !void {
 }
 
 pub fn connect(user: *User) !void {
-	const message = try std.fmt.allocPrint(main.threadAllocator, "{s} #ffff00joined", .{user.name});
-	defer main.threadAllocator.free(message);
+	const message = try std.fmt.allocPrint(main.stackAllocator, "{s} #ffff00joined", .{user.name});
+	defer main.stackAllocator.free(message);
 	mutex.lock();
 	defer mutex.unlock();
 	try sendMessage(message);

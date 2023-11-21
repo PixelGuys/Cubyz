@@ -25,8 +25,8 @@ const AudioData = struct {
 		const self = try main.globalAllocator.create(AudioData);
 		self.* = .{.musicId = musicId};
 		var err: c_int = 0;
-		const path = try std.fmt.allocPrintZ(main.threadAllocator, "assets/cubyz/music/{s}.ogg", .{musicId});
-		defer main.threadAllocator.free(path);
+		const path = try std.fmt.allocPrintZ(main.stackAllocator, "assets/cubyz/music/{s}.ogg", .{musicId});
+		defer main.stackAllocator.free(path);
 		const ogg_stream = c.stb_vorbis_open_filename(path.ptr, &err, null);
 		defer c.stb_vorbis_close(ogg_stream);
 		if(ogg_stream != null) {

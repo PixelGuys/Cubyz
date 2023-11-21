@@ -46,8 +46,8 @@ pub const Dir = struct {
 	}
 
 	pub fn readToJson(self: Dir, allocator: Allocator, path: []const u8) !JsonElement {
-		const string = try self.read(main.threadAllocator, path);
-		defer main.threadAllocator.free(string);
+		const string = try self.read(main.stackAllocator, path);
+		defer main.stackAllocator.free(string);
 		return JsonElement.parseFromString(allocator, string);
 	}
 
@@ -58,8 +58,8 @@ pub const Dir = struct {
 	}
 
 	pub fn writeJson(self: Dir, path: []const u8, json: JsonElement) !void {
-		const string = try json.toString(main.threadAllocator);
-		defer main.threadAllocator.free(string);
+		const string = try json.toString(main.stackAllocator);
+		defer main.stackAllocator.free(string);
 		try self.write(path, string);
 	}
 

@@ -442,7 +442,7 @@ const TextureGenerator = struct {
 		var pixelMaterials: [16][16]PixelData = undefined;
 		for(0..16) |x| {
 			for(0..16) |y| {
-				pixelMaterials[x][y] = PixelData.init(main.threadAllocator);
+				pixelMaterials[x][y] = PixelData.init(main.globalAllocator);
 			}
 		}
 
@@ -797,7 +797,7 @@ const ToolPhysics = struct {
 			x: u8,
 			y: u8,
 		};
-		var stack = std.ArrayList(Entry).init(main.threadAllocator);
+		var stack = std.ArrayList(Entry).init(main.stackAllocator);
 		defer stack.deinit();
 		// Uses a simple flood-fill algorithm equivalent to light calculation.
 		var x: u8 = 0;
@@ -1327,19 +1327,19 @@ pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: 
 }
 
 pub fn registerRecipes(file: []const u8) !void {
-	var shortcuts = std.StringHashMap(*BaseItem).init(main.threadAllocator);
+	var shortcuts = std.StringHashMap(*BaseItem).init(main.globalAllocator);
 	defer shortcuts.deinit();
 	defer {
 		var keyIterator = shortcuts.keyIterator();
 		while(keyIterator.next()) |key| {
-			main.threadAllocator.free(key.*);
+			main.globalAllocator.free(key.*);
 		}
 	}
-	var items = std.ArrayList(*BaseItem).init(main.threadAllocator);
+	var items = std.ArrayList(*BaseItem).init(main.globalAllocator);
 	defer items.deinit();
-	var itemAmounts = std.ArrayList(u32).init(main.threadAllocator);
+	var itemAmounts = std.ArrayList(u32).init(main.globalAllocator);
 	defer itemAmounts.deinit();
-	var string = std.ArrayList(u8).init(main.threadAllocator);
+	var string = std.ArrayList(u8).init(main.globalAllocator);
 	defer string.deinit();
 	var lines = std.mem.split(u8, file, "\n");
 	while(lines.next()) |line| {

@@ -8,7 +8,7 @@ const main = @import("main.zig");
 pub const Compression = struct {
 	pub fn deflate(allocator: Allocator, data: []const u8) ![]u8 {
 		var result = std.ArrayList(u8).init(allocator);
-		var comp = try std.compress.deflate.compressor(main.threadAllocator, result.writer(), .{.level = .default_compression});
+		var comp = try std.compress.deflate.compressor(main.globalAllocator, result.writer(), .{.level = .default_compression});
 		_ = try comp.write(data);
 		try comp.close();
 		comp.deinit();
@@ -17,27 +17,27 @@ pub const Compression = struct {
 
 	pub fn inflateTo(buf: []u8, data: []const u8) !usize {
 		var stream = std.io.fixedBufferStream(data);
-		var decomp = try std.compress.deflate.decompressor(main.threadAllocator, stream.reader(), null);
+		var decomp = try std.compress.deflate.decompressor(main.globalAllocator, stream.reader(), null);
 		defer decomp.deinit();
 		return try decomp.reader().readAll(buf);
 	}
 
 	pub fn pack(sourceDir: std.fs.IterableDir, writer: anytype) !void {
-		var comp = try std.compress.deflate.compressor(main.threadAllocator, writer, .{.level = .default_compression});
+		var comp = try std.compress.deflate.compressor(main.globalAllocator, writer, .{.level = .default_compression});
 		defer comp.deinit();
-		var walker = try sourceDir.walk(main.threadAllocator);
+		var walker = try sourceDir.walk(main.globalAllocator);
 		defer walker.deinit();
 
 		while(try walker.next()) |entry| {
 			if(entry.kind == .file) {
 				var relPath = entry.path;
 				if(builtin.os.tag == .windows) { // I hate you
-					const copy = try main.threadAllocator.dupe(u8, relPath);
+					const copy = try main.stackAllocator.dupe(u8, relPath);
 					std.mem.replaceScalar(u8, copy, '\\', '/');
 					relPath = copy;
 				}
 				defer if(builtin.os.tag == .windows) {
-					main.threadAllocator.free(relPath);
+					main.stackAllocator.free(relPath);
 				};
 				var len: [4]u8 = undefined;
 				std.mem.writeInt(u32, &len, @as(u32, @intCast(relPath.len)), .big);
@@ -46,8 +46,8 @@ pub const Compression = struct {
 
 				const file = try sourceDir.dir.openFile(relPath, .{});
 				defer file.close();
-				const fileData = try file.readToEndAlloc(main.threadAllocator, std.math.maxInt(u32));
-				defer main.threadAllocator.free(fileData);
+				const fileData = try file.readToEndAlloc(main.stackAllocator, std.math.maxInt(u32));
+				defer main.stackAllocator.free(fileData);
 
 				std.mem.writeInt(u32, &len, @as(u32, @intCast(fileData.len)), .big);
 				_ = try comp.write(&len);
@@ -59,11 +59,11 @@ pub const Compression = struct {
 
 	pub fn unpack(outDir: std.fs.Dir, input: []const u8) !void {
 		var stream = std.io.fixedBufferStream(input);
-		var decomp = try std.compress.deflate.decompressor(main.threadAllocator, stream.reader(), null);
+		var decomp = try std.compress.deflate.decompressor(main.globalAllocator, stream.reader(), null);
 		defer decomp.deinit();
 		const reader = decomp.reader();
-		const _data = try reader.readAllAlloc(main.threadAllocator, std.math.maxInt(usize));
-		defer main.threadAllocator.free(_data);
+		const _data = try reader.readAllAlloc(main.stackAllocator, std.math.maxInt(usize));
+		defer main.stackAllocator.free(_data);
 		var data = _data;
 		while(data.len != 0) {
 			var len = std.mem.readInt(u32, data[0..4], .big);
@@ -132,8 +132,8 @@ pub fn AliasTable(comptime T: type) type {
 			};
 			if(items.len == 0) return self;
 			@memset(self.aliasData, AliasData{.chance = 0, .alias = 0});
-			const currentChances = try main.threadAllocator.alloc(f32, items.len);
-			defer main.threadAllocator.free(currentChances);
+			const currentChances = try main.stackAllocator.alloc(f32, items.len);
+			defer main.stackAllocator.free(currentChances);
 			var totalChance: f32 = 0;
 			for(items, 0..) |*item, i| {
 				totalChance += item.chance;
@@ -157,8 +157,8 @@ pub fn AliasTable(comptime T: type) type {
 			};
 			if(items.len == 0) return self;
 			@memset(self.aliasData, AliasData{.chance = 0, .alias = 0});
-			const currentChances = try main.threadAllocator.alloc(f32, items.len);
-			defer main.threadAllocator.free(currentChances);
+			const currentChances = try main.stackAllocator.alloc(f32, items.len);
+			defer main.stackAllocator.free(currentChances);
 			var totalChance: f32 = 0;
 			for(slice, 0..) |context, i| {
 				totalChance += context.chance;
@@ -314,6 +314,130 @@ pub fn Array3D(comptime T: type) type {
 		}
 	};
 }
+
+/// Allows for stack-like allocations in a fast and safe way.
+/// It is safe in the sense that a regular allocator will be used when the buffer is full.
+pub const StackAllocator = struct {
+	const Allocation = struct{start: u32, len: u32};
+	backingAllocator: Allocator,
+	buffer: []align(4096) u8,
+	allocationList: std.ArrayList(Allocation),
+	index: usize,
+
+	pub fn init(backingAllocator: Allocator, size: u32) !StackAllocator {
+		return .{
+			.backingAllocator = backingAllocator,
+			.buffer = try backingAllocator.alignedAlloc(u8, 4096, size),
+			.allocationList = std.ArrayList(Allocation).init(backingAllocator),
+			.index = 0,
+		};
+	}
+
+	pub fn deinit(self: StackAllocator) void {
+		if(self.allocationList.items.len != 0) {
+			std.log.err("Memory leak in Stack Allocator", .{});
+		}
+		self.allocationList.deinit();
+		self.backingAllocator.free(self.buffer);
+	}
+
+	pub fn allocator(self: *StackAllocator) Allocator {
+		return .{
+			.vtable = &.{
+				.alloc = &alloc,
+				.resize = &resize,
+				.free = &free,
+			},
+			.ptr = self,
+		};
+	}
+
+	fn isInsideBuffer(self: *StackAllocator, buf: []u8) bool {
+		const bufferStart = @intFromPtr(self.buffer.ptr);
+		const bufferEnd = bufferStart + self.buffer.len;
+		const compare = @intFromPtr(buf.ptr);
+		return compare >= bufferStart and compare < bufferEnd;
+	}
+
+	fn indexInBuffer(self: *StackAllocator, buf: []u8) usize {
+		const bufferStart = @intFromPtr(self.buffer.ptr);
+		const compare = @intFromPtr(buf.ptr);
+		return compare - bufferStart;
+	}
+
+    /// Attempt to allocate exactly `len` bytes aligned to `1 << ptr_align`.
+    ///
+    /// `ret_addr` is optionally provided as the first return address of the
+    /// allocation call stack. If the value is `0` it means no return address
+    /// has been provided.
+    fn alloc(ctx: *anyopaque, len: usize, ptr_align: u8, ret_addr: usize) ?[*]u8 {
+		const self: *StackAllocator = @ptrCast(@alignCast(ctx));
+		if(len >= self.buffer.len) return self.backingAllocator.rawAlloc(len, ptr_align, ret_addr);
+		var start = std.mem.alignForward(usize, self.index, @as(usize, 1) << @intCast(ptr_align));
+		if(start + len >= self.buffer.len) return self.backingAllocator.rawAlloc(len, ptr_align, ret_addr);
+		self.allocationList.append(.{.start = @intCast(start), .len = @intCast(len)}) catch return null;
+		self.index = start + len;
+		return self.buffer.ptr + start;
+	}
+
+    /// Attempt to expand or shrink memory in place. `buf.len` must equal the
+    /// length requested from the most recent successful call to `alloc` or
+    /// `resize`. `buf_align` must equal the same value that was passed as the
+    /// `ptr_align` parameter to the original `alloc` call.
+    ///
+    /// A result of `true` indicates the resize was successful and the
+    /// allocation now has the same address but a size of `new_len`. `false`
+    /// indicates the resize could not be completed without moving the
+    /// allocation to a different address.
+    ///
+    /// `new_len` must be greater than zero.
+    ///
+    /// `ret_addr` is optionally provided as the first return address of the
+    /// allocation call stack. If the value is `0` it means no return address
+    /// has been provided.
+	fn resize(ctx: *anyopaque, buf: []u8, buf_align: u8, new_len: usize, ret_addr: usize) bool {
+		const self: *StackAllocator = @ptrCast(@alignCast(ctx));
+		if(self.isInsideBuffer(buf)) {
+			const top = &self.allocationList.items[self.allocationList.items.len - 1];
+			std.debug.assert(top.start == self.indexInBuffer(buf)); // Can only resize the top element.
+			std.debug.assert(top.len == buf.len);
+			std.debug.assert(self.index >= top.start + top.len);
+			if(top.start + new_len >= self.buffer.len) {
+				return false;
+			}
+			self.index -= top.len;
+			self.index += new_len;
+			top.len = @intCast(new_len);
+			return true;
+		} else {
+			return self.backingAllocator.rawResize(buf, buf_align, new_len, ret_addr);
+		}
+	}
+
+    /// Free and invalidate a buffer.
+    ///
+    /// `buf.len` must equal the most recent length returned by `alloc` or
+    /// given to a successful `resize` call.
+    ///
+    /// `buf_align` must equal the same value that was passed as the
+    /// `ptr_align` parameter to the original `alloc` call.
+    ///
+    /// `ret_addr` is optionally provided as the first return address of the
+    /// allocation call stack. If the value is `0` it means no return address
+    /// has been provided.
+    fn free(ctx: *anyopaque, buf: []u8, buf_align: u8, ret_addr: usize) void {
+		const self: *StackAllocator = @ptrCast(@alignCast(ctx));
+		if(self.isInsideBuffer(buf)) {
+			const top = self.allocationList.pop();
+			std.debug.assert(top.start == self.indexInBuffer(buf)); // Can only free the top element.
+			std.debug.assert(top.len == buf.len);
+			std.debug.assert(self.index >= top.start + top.len);
+			self.index = top.start;
+		} else {
+			self.backingAllocator.rawFree(buf, buf_align, ret_addr);
+		}
+	}
+};
 
 /// A simple binary heap.
 /// Thread safe and blocking.
@@ -530,11 +654,9 @@ pub const ThreadPool = struct {
 
 	fn run(self: ThreadPool, id: usize) !void {
 		// In case any of the tasks wants to allocate memory:
-		var gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe=false}){};
-		main.threadAllocator = gpa.allocator();
-		defer if(gpa.deinit() == .leak) {
-			std.log.err("Memory leak", .{});
-		};
+		var sta = try StackAllocator.init(main.globalAllocator, 1 << 23);
+		defer sta.deinit();
+		main.stackAllocator = sta.allocator();
 
 		var lastUpdate = std.time.milliTimestamp();
 		while(true) {

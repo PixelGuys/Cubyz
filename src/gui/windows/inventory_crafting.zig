@@ -87,8 +87,8 @@ fn onTake(recipeIndex: usize) void {
 }
 
 fn findAvailableRecipes(list: *VerticalList) Allocator.Error!bool {
-	const oldAmounts = try main.threadAllocator.dupe(u32, itemAmount.items);
-	defer main.threadAllocator.free(oldAmounts);
+	const oldAmounts = try main.stackAllocator.dupe(u32, itemAmount.items);
+	defer main.stackAllocator.free(oldAmounts);
 	for(itemAmount.items) |*amount| {
 		amount.* = 0;
 	}

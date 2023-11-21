@@ -145,6 +145,26 @@ fn log(_x: u4, _y: u4, _z: u4) ?u4 {
 	return null;
 }
 
+fn sphere(_x: u4, _y: u4, _z: u4) ?u4 {
+	var x = @as(f32, @floatFromInt(_x)) - 7.5;
+	var y = @as(f32, @floatFromInt(_y)) - 7.5;
+	var z = @as(f32, @floatFromInt(_z)) - 7.5;
+	if(x*x + y*y + z*z < 8.0*8.0) {
+		return 6;
+	}
+	return null;
+}
+
+fn grass(x: u4, y: u4, z: u4) ?u4 {
+	var seed = main.random.initSeed2D(542642, .{x, z});
+	var val = main.random.nextFloat(&seed);
+	val *= val*16;
+	if(val > @as(f32, @floatFromInt(y))) {
+		return 6;
+	}
+	return null;
+}
+
 fn octahedron(_x: u4, _y: u4, _z: u4) ?u4 {
 	var x = _x;
 	var y = _y;
@@ -174,9 +194,9 @@ pub var fullCube: u16 = 0;
 // TODO: Allow loading from world assets.
 // TODO: Editable player models.
 pub fn init() !void {
-	voxelModels = std.ArrayList(VoxelModel).init(main.threadAllocator);
+	voxelModels = std.ArrayList(VoxelModel).init(main.globalAllocator);
 
-	nameToIndex = std.StringHashMap(u16).init(main.threadAllocator);
+	nameToIndex = std.StringHashMap(u16).init(main.globalAllocator);
 
 	try nameToIndex.put("cube", @intCast(voxelModels.items.len));
 	fullCube = @intCast(voxelModels.items.len);
@@ -192,6 +212,12 @@ pub fn init() !void {
 	(try voxelModels.addOne()).init(Fence.fence2_oppose);
 	(try voxelModels.addOne()).init(Fence.fence3);
 	(try voxelModels.addOne()).init(Fence.fence4);
+
+	try nameToIndex.put("sphere", @intCast(voxelModels.items.len));
+	(try voxelModels.addOne()).init(sphere);
+
+	try nameToIndex.put("grass", @intCast(voxelModels.items.len));
+	(try voxelModels.addOne()).init(grass);
 
 	try nameToIndex.put("octahedron", @intCast(voxelModels.items.len));
 	(try voxelModels.addOne()).init(octahedron);

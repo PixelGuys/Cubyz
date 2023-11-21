@@ -31,8 +31,8 @@ pub fn deinit() void {
 pub fn generate(worldSeed: u64, chunk: *main.chunk.Chunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView) Allocator.Error!void {
 	if(chunk.pos.voxelSize < 4) {
 		// Uses a blue noise pattern for all structure that shouldn't touch.
-		const blueNoise = try noise.BlueNoise.getRegionData(main.threadAllocator, chunk.pos.wx - 8, chunk.pos.wz - 8, chunk.width + 16, chunk.width + 16);
-		defer main.threadAllocator.free(blueNoise);
+		const blueNoise = try noise.BlueNoise.getRegionData(main.stackAllocator, chunk.pos.wx - 8, chunk.pos.wz - 8, chunk.width + 16, chunk.width + 16);
+		defer main.stackAllocator.free(blueNoise);
 		for(blueNoise) |coordinatePair| {
 			const px = @as(i32, @intCast(coordinatePair >> 16)) - 8; // TODO: Maybe add a blue-noise iterator or something like that?
 			const pz = @as(i32, @intCast(coordinatePair & 0xffff)) - 8;

@@ -119,10 +119,10 @@ const Context = struct {
 	}
 
 	fn freeGridPoints(self: *Context, allocator: Allocator) void {
-		self.xGridPoints.deinit(allocator);
 		self.yGridPoints.deinit(allocator);
-		self.xGridPoints = undefined;
+		self.xGridPoints.deinit(allocator);
 		self.yGridPoints = undefined;
+		self.xGridPoints = undefined;
 	}
 };
 
@@ -143,8 +143,8 @@ pub fn generateRidgidNoise(allocator: Allocator, x: i32, y: i32, width: u31, hei
 		context.resolutionMask = scale - 1;
 		const x0 = x & ~context.resolutionMask;
 		const y0 = y & ~context.resolutionMask;
-		try context.calculateGridPoints(main.threadAllocator, x, y, width, height, scale);
-		defer context.freeGridPoints(main.threadAllocator);
+		try context.calculateGridPoints(main.globalAllocator, x, y, width, height, scale);
+		defer context.freeGridPoints(main.globalAllocator);
 
 		var x1 = x;
 		while(x1 -% width -% x < 0) : (x1 += voxelSize) {
@@ -175,8 +175,8 @@ pub fn generateSmoothNoise(allocator: Allocator, x: i32, y: i32, width: u31, hei
 		context.resolutionMask = scale - 1;
 		const x0 = x & ~context.resolutionMask;
 		const y0 = y & ~context.resolutionMask;
-		try context.calculateGridPoints(main.threadAllocator, x, y, width, height, scale);
-		defer context.freeGridPoints(main.threadAllocator);
+		try context.calculateGridPoints(main.stackAllocator, x, y, width, height, scale);
+		defer context.freeGridPoints(main.stackAllocator);
 
 		var x1 = x;
 		while(x1 -% width -% x < 0) : (x1 += voxelSize) {

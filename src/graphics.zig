@@ -391,7 +391,7 @@ pub const draw = struct {
 	}
 
 	pub inline fn print(comptime format: []const u8, args: anytype, x: f32, y: f32, fontSize: f32, alignment: TextBuffer.Alignment) !void {
-		var stackFallback = std.heap.stackFallback(4096, main.threadAllocator);
+		var stackFallback = std.heap.stackFallback(4096, main.globalAllocator);
 		const allocator = stackFallback.get();
 		const string = try std.fmt.allocPrint(allocator, format, args);
 		defer allocator.free(string);
@@ -560,7 +560,7 @@ pub const TextBuffer = struct {
 	pub fn init(allocator: Allocator, text: []const u8, initialFontEffect: FontEffect, showControlCharacters: bool, alignment: Alignment) Allocator.Error!TextBuffer {
 		var self: TextBuffer = undefined;
 		self.alignment = alignment;
-		var stackFallback = std.heap.stackFallback(4096, main.threadAllocator);
+		var stackFallback = std.heap.stackFallback(4096, main.globalAllocator);
 		const stackFallbackAllocator = stackFallback.get();
 		// Parse the input text:
 		var parser = Parser {
@@ -781,10 +781,8 @@ pub const TextBuffer = struct {
 		c.glActiveTexture(c.GL_TEXTURE0);
 		c.glBindTexture(c.GL_TEXTURE_2D, TextRendering.glyphTexture[0]);
 		c.glBindVertexArray(draw.rectVAO);
-		var stackFallback = std.heap.stackFallback(4096, main.threadAllocator);
-		const allocator = stackFallback.get();
-		const lineWraps: []f32 = try allocator.alloc(f32, self.lineBreaks.items.len - 1);
-		defer allocator.free(lineWraps);
+		const lineWraps: []f32 = try main.stackAllocator.alloc(f32, self.lineBreaks.items.len - 1);
+		defer main.stackAllocator.free(lineWraps);
 		var i: usize = 0;
 		while(i < self.lineBreaks.items.len - 1) : (i += 1) {
 			x = self.getLineOffset(i);
@@ -848,10 +846,8 @@ pub const TextBuffer = struct {
 		c.glActiveTexture(c.GL_TEXTURE0);
 		c.glBindTexture(c.GL_TEXTURE_2D, TextRendering.glyphTexture[0]);
 		c.glBindVertexArray(draw.rectVAO);
-		var stackFallback = std.heap.stackFallback(4096, main.threadAllocator);
-		const allocator = stackFallback.get();
-		const lineWraps: []f32 = try allocator.alloc(f32, self.lineBreaks.items.len - 1);
-		defer allocator.free(lineWraps);
+		const lineWraps: []f32 = try main.stackAllocator.alloc(f32, self.lineBreaks.items.len - 1);
+		defer main.stackAllocator.free(lineWraps);
 		var i: usize = 0;
 		while(i < self.lineBreaks.items.len - 1) : (i += 1) {
 			x = self.getLineOffset(i);
@@ -1043,7 +1039,7 @@ const TextRendering = struct {
 	}
 
 	fn renderText(text: []const u8, x: f32, y: f32, fontSize: f32, initialFontEffect: TextBuffer.FontEffect, alignment: TextBuffer.Alignment) !void {
-		var stackFallback = std.heap.stackFallback(4096, main.threadAllocator);
+		var stackFallback = std.heap.stackFallback(4096, main.globalAllocator);
 		const allocator = stackFallback.get();
 		const buf = try TextBuffer.init(allocator, text, initialFontEffect, false, alignment);
 		defer buf.deinit();
@@ -1076,11 +1072,11 @@ pub const Shader = struct {
 	id: c_uint,
 	
 	fn addShader(self: *const Shader, filename: []const u8, shader_stage: c_uint) !void {
-		const source = main.files.read(main.threadAllocator, filename) catch |err| {
+		const source = main.files.read(main.stackAllocator, filename) catch |err| {
 			std.log.warn("Couldn't find file: {s}", .{filename});
 			return err;
 		};
-		defer main.threadAllocator.free(source);
+		defer main.stackAllocator.free(source);
 		const shader = c.glCreateShader(shader_stage);
 		defer c.glDeleteShader(shader);
 		
@@ -1509,7 +1505,7 @@ pub const TextureArray = struct {
 
 		const maxLOD = if(mipmapping) 1 + std.math.log2_int(u31, @min(maxWidth, maxHeight)) else 1;
 		c.glTexStorage3D(c.GL_TEXTURE_2D_ARRAY, maxLOD, c.GL_RGBA8, maxWidth, maxHeight, @intCast(images.len));
-		var arena = std.heap.ArenaAllocator.init(main.threadAllocator);
+		var arena = std.heap.ArenaAllocator.init(main.globalAllocator);
 		defer arena.deinit();
 		const lodBuffer: [][]Color = try arena.allocator().alloc([]Color, maxLOD);
 		for(lodBuffer, 0..) |*buffer, i| {
@@ -1569,8 +1565,8 @@ pub const Texture = struct {
 
 	pub fn initFromFile(path: []const u8) !Texture {
 		const self = Texture.init();
-		const image = try Image.readFromFile(main.threadAllocator, path);
-		defer image.deinit(main.threadAllocator);
+		const image = try Image.readFromFile(main.stackAllocator, path);
+		defer image.deinit(main.stackAllocator);
 		self.generate(image);
 		return self;
 	}
@@ -1732,19 +1728,20 @@ pub const Image = struct {
 	pub fn readFromFile(allocator: Allocator, path: []const u8) !Image {
 		var result: Image = undefined;
 		var channel: c_int = undefined;
-		const nullTerminatedPath = try std.fmt.allocPrintZ(main.threadAllocator, "{s}", .{path}); // TODO: Find a more zig-friendly image loading library.
-		defer main.threadAllocator.free(nullTerminatedPath);
+		const nullTerminatedPath = try std.fmt.allocPrintZ(main.stackAllocator, "{s}", .{path}); // TODO: Find a more zig-friendly image loading library.
+		errdefer main.stackAllocator.free(nullTerminatedPath);
 		stb_image.stbi_set_flip_vertically_on_load(1);
 		const data = stb_image.stbi_load(nullTerminatedPath.ptr, @ptrCast(&result.width), @ptrCast(&result.height), &channel, 4) orelse {
 			return error.FileNotFound;
 		};
+		main.stackAllocator.free(nullTerminatedPath);
 		result.imageData = try allocator.dupe(Color, @as([*]Color, @ptrCast(data))[0..result.width*result.height]);
 		stb_image.stbi_image_free(data);
 		return result;
 	}
 	pub fn exportToFile(self: Image, path: []const u8) !void {
-		const nullTerminated = try main.threadAllocator.dupeZ(u8, path);
-		defer main.threadAllocator.free(nullTerminated);
+		const nullTerminated = try main.stackAllocator.dupeZ(u8, path);
+		defer main.stackAllocator.free(nullTerminated);
 		_ = stb_image.stbi_write_png(nullTerminated.ptr, self.width, self.height, 4, self.imageData.ptr, self.width*4);
 	}
 	pub fn getRGB(self: Image, x: usize, y: usize) Color {

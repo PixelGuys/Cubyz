@@ -189,12 +189,12 @@ pub fn deinit() void {
 }
 
 fn save() !void {
-	const guiJson = try JsonElement.initObject(main.threadAllocator);
-	defer guiJson.free(main.threadAllocator);
+	const guiJson = try JsonElement.initObject(main.globalAllocator);
+	defer guiJson.free(main.globalAllocator);
 	for(windowList.items) |window| {
-		const windowJson = try JsonElement.initObject(main.threadAllocator);
+		const windowJson = try JsonElement.initObject(main.globalAllocator);
 		for(window.relativePosition, 0..) |relPos, i| {
-			const relPosJson = try JsonElement.initObject(main.threadAllocator);
+			const relPosJson = try JsonElement.initObject(main.globalAllocator);
 			switch(relPos) {
 				.ratio => |ratio| {
 					try relPosJson.put("type", "ratio");
@@ -227,11 +227,11 @@ fn save() !void {
 }
 
 fn load() !void {
-	const json: JsonElement = main.files.readToJson(main.threadAllocator, "gui_layout.json") catch |err| blk: {
+	const json: JsonElement = main.files.readToJson(main.globalAllocator, "gui_layout.json") catch |err| blk: {
 		if(err == error.FileNotFound) break :blk JsonElement{.JsonNull={}};
 		return err;
 	};
-	defer json.free(main.threadAllocator);
+	defer json.free(main.globalAllocator);
 
 	for(windowList.items) |window| {
 		const windowJson = json.getChild(window.id);
@@ -664,7 +664,7 @@ pub const inventory = struct {
 		if(carriedItemStack.amount == 0) if(hoveredItemSlot) |hovered| {
 			if(hovered.itemStack.item) |item| {
 				const tooltip = try item.getTooltip();
-				var textBuffer: graphics.TextBuffer = try graphics.TextBuffer.init(main.threadAllocator, tooltip, .{}, false, .left);
+				var textBuffer: graphics.TextBuffer = try graphics.TextBuffer.init(main.globalAllocator, tooltip, .{}, false, .left);
 				defer textBuffer.deinit();
 				var size = try textBuffer.calculateLineBreaks(16, 256);
 				size[0] = 0;

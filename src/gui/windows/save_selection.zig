@@ -81,8 +81,8 @@ fn deleteWorld(namePtr: usize) void {
 	};
 }
 
-fn parseEscapedFolderName(name: []const u8) ![]const u8 {
-	var result = std.ArrayList(u8).init(main.threadAllocator);
+fn parseEscapedFolderName(allocator: std.mem.Allocator, name: []const u8) ![]const u8 {
+	var result = std.ArrayList(u8).init(allocator);
 	defer result.deinit();
 	var i: u32 = 0;
 	while(i < name.len) : (i += 1) {
@@ -127,8 +127,8 @@ pub fn onOpen() Allocator.Error!void {
 		if(entry.kind == .directory) {
 			const row = try HorizontalList.init();
 
-			const decodedName = try parseEscapedFolderName(entry.name);
-			defer main.threadAllocator.free(decodedName);
+			const decodedName = try parseEscapedFolderName(main.stackAllocator, entry.name);
+			defer main.stackAllocator.free(decodedName);
 			const name = try buttonNameArena.allocator().dupeZ(u8, entry.name); // Null terminate, so we can later recover the string from just the pointer.
 			const buttonName = try std.fmt.allocPrint(buttonNameArena.allocator(), "Play {s}", .{decodedName});
 			

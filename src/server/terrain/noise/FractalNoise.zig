@@ -10,8 +10,8 @@ fn setSeed(x: i32, z: i32, offsetX: i32, offsetZ: i32, seed: *u64, worldSeed: u6
 pub fn generateFractalTerrain(wx: i32, wz: i32, x0: u31, z0: u31, width: u32, height: u32, scale: u31, worldSeed: u64, map: Array2D(f32), maxResolution: u31) !void {
 	const max = scale + 1;
 	const mask: i32 = scale - 1;
-	const bigMap = try Array2D(f32).init(main.threadAllocator, max, max);
-	defer bigMap.deinit(main.threadAllocator);
+	const bigMap = try Array2D(f32).init(main.stackAllocator, max, max);
+	defer bigMap.deinit(main.stackAllocator);
 	const offsetX = wx & ~mask;
 	const offsetZ = wz & ~mask;
 	var seed: u64 = undefined;

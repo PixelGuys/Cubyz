@@ -222,18 +222,16 @@ pub const JsonElement = union(JsonType) {
 		return self.* == .JsonNull;
 	}
 
-	fn escape(string: []const u8, allocator: Allocator) ![]const u8 {
-		var out = std.ArrayList(u8).init(allocator);
+	fn escapeToWriter(writer: std.ArrayList(u8).Writer, string: []const u8) !void {
 		for(string) |char| {
 			switch(char) {
-				'\\' => try out.appendSlice("\\\\"),
-				'\n' => try out.appendSlice("\\n"),
-				'\"' => try out.appendSlice("\\\""),
-				'\t' => try out.appendSlice("\\t"),
-				else => try out.append(char),
+				'\\' => try writer.writeAll("\\\\"),
+				'\n' => try writer.writeAll("\\n"),
+				'\"' => try writer.writeAll("\\\""),
+				'\t' => try writer.writeAll("\\t"),
+				else => try writer.writeByte(char),
 			}
 		}
-		return out.toOwnedSlice();
 	}
 	fn writeTabs(writer: std.ArrayList(u8).Writer, tabs: u32) !void {
 		for(0..tabs) |_| {
@@ -259,11 +257,9 @@ pub const JsonElement = union(JsonType) {
 				try writer.writeAll("null");
 			},
 			.JsonString, .JsonStringOwned => |value| {
-				const escaped = try escape(value, main.threadAllocator);
 				try writer.writeByte('\"');
-				try writer.writeAll(escaped);
+				try escapeToWriter(writer, value);
 				try writer.writeByte('\"');
-				main.threadAllocator.free(escaped);
 			},
 			.JsonArray => |array| {
 				try writer.writeByte('[');

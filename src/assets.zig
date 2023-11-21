@@ -23,7 +23,7 @@ pub fn readAllJsonFilesInAddons(externalAllocator: Allocator, addons: std.ArrayL
 		};
 		defer dir.close();
 
-		var walker = try dir.walk(main.threadAllocator);
+		var walker = try dir.walk(main.globalAllocator);
 		defer walker.deinit();
 
 		while(try walker.next()) |entry| {
@@ -42,8 +42,8 @@ pub fn readAllJsonFilesInAddons(externalAllocator: Allocator, addons: std.ArrayL
 
 				const file = try dir.dir.openFile(entry.path, .{});
 				defer file.close();
-				const string = try file.readToEndAlloc(main.threadAllocator, std.math.maxInt(usize));
-				defer main.threadAllocator.free(string);
+				const string = try file.readToEndAlloc(main.stackAllocator, std.math.maxInt(usize));
+				defer main.stackAllocator.free(string);
 				try output.put(id, JsonElement.parseFromString(externalAllocator, string));
 			}
 		}
@@ -58,7 +58,7 @@ pub fn readAllFilesInAddons(externalAllocator: Allocator, addons: std.ArrayList(
 		};
 		defer dir.close();
 
-		var walker = try dir.walk(main.threadAllocator);
+		var walker = try dir.walk(main.globalAllocator);
 		defer walker.deinit();
 
 		while(try walker.next()) |entry| {
@@ -73,9 +73,9 @@ pub fn readAllFilesInAddons(externalAllocator: Allocator, addons: std.ArrayList(
 }
 
 pub fn readAssets(externalAllocator: Allocator, assetPath: []const u8, blocks: *std.StringHashMap(JsonElement), items: *std.StringHashMap(JsonElement), biomes: *std.StringHashMap(JsonElement), recipes: *std.ArrayList([]const u8)) !void {
-	var addons = std.ArrayList(std.fs.Dir).init(main.threadAllocator);
+	var addons = std.ArrayList(std.fs.Dir).init(main.globalAllocator);
 	defer addons.deinit();
-	var addonNames = std.ArrayList([]const u8).init(main.threadAllocator);
+	var addonNames = std.ArrayList([]const u8).init(main.globalAllocator);
 	defer addonNames.deinit();
 	
 	{ // Find all the sub-directories to the assets folder.
@@ -85,13 +85,13 @@ pub fn readAssets(externalAllocator: Allocator, assetPath: []const u8, blocks: *
 		while(try iterator.next()) |addon| {
 			if(addon.kind == .directory) {
 				try addons.append(try dir.dir.openDir(addon.name, .{}));
-				try addonNames.append(try main.threadAllocator.dupe(u8, addon.name));
+				try addonNames.append(try main.globalAllocator.dupe(u8, addon.name));
 			}
 		}
 	}
 	defer for(addons.items, addonNames.items) |*dir, addonName| {
 		dir.close();
-		main.threadAllocator.free(addonName);
+		main.globalAllocator.free(addonName);
 	};
 
 	try readAllJsonFilesInAddons(externalAllocator, addons, addonNames, "blocks", blocks);
@@ -152,8 +152,8 @@ pub const BlockPalette = struct {
 		if(json != .JsonObject or json.JsonObject.count() == 0) {
 			try self.palette.append(try allocator.dupe(u8, "cubyz:air"));
 		} else {
-			const palette = try main.threadAllocator.alloc(?[]const u8, json.JsonObject.count());
-			defer main.threadAllocator.free(palette);
+			const palette = try main.stackAllocator.alloc(?[]const u8, json.JsonObject.count());
+			defer main.stackAllocator.free(palette);
 			for(palette) |*val| {
 				val.* = null;
 			}
@@ -198,13 +198,13 @@ var loadedAssets: bool = false;
 pub fn loadWorldAssets(assetFolder: []const u8, palette: *BlockPalette) !void {
 	if(loadedAssets) return; // The assets already got loaded by the server.
 	loadedAssets = true;
-	var blocks = try commonBlocks.cloneWithAllocator(main.threadAllocator);
+	var blocks = try commonBlocks.cloneWithAllocator(main.globalAllocator);
 	defer blocks.clearAndFree();
-	var items = try commonItems.cloneWithAllocator(main.threadAllocator);
+	var items = try commonItems.cloneWithAllocator(main.globalAllocator);
 	defer items.clearAndFree();
-	var biomes = try commonBiomes.cloneWithAllocator(main.threadAllocator);
+	var biomes = try commonBiomes.cloneWithAllocator(main.globalAllocator);
 	defer biomes.clearAndFree();
-	var recipes = std.ArrayList([]const u8).init(main.threadAllocator);
+	var recipes = std.ArrayList([]const u8).init(main.globalAllocator);
 	try recipes.appendSlice(commonRecipes.items);
 	defer recipes.clearAndFree();
 
@@ -219,11 +219,11 @@ pub fn loadWorldAssets(assetFolder: []const u8, palette: *BlockPalette) !void {
 			json = value;
 		} else {
 			std.log.err("Missing block: {s}. Replacing it with default block.", .{id});
-			var map: *std.StringHashMap(JsonElement) = try main.threadAllocator.create(std.StringHashMap(JsonElement));
-			map.* = std.StringHashMap(JsonElement).init(main.threadAllocator);
+			var map: *std.StringHashMap(JsonElement) = try main.globalAllocator.create(std.StringHashMap(JsonElement));
+			map.* = std.StringHashMap(JsonElement).init(main.globalAllocator);
 			json = JsonElement{.JsonObject=map};
 		}
-		defer if(nullValue == null) json.free(main.threadAllocator);
+		defer if(nullValue == null) json.free(main.globalAllocator);
 		try registerBlock(assetFolder, id, json);
 		block += 1;
 	}

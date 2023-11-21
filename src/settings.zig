@@ -39,11 +39,11 @@ pub var developerAutoEnterWorld: []const u8 = "";
 
 
 pub fn init() !void {
-	const json: JsonElement = main.files.readToJson(main.threadAllocator, "settings.json") catch |err| blk: {
+	const json: JsonElement = main.files.readToJson(main.globalAllocator, "settings.json") catch |err| blk: {
 		if(err == error.FileNotFound) break :blk JsonElement{.JsonNull={}};
 		return err;
 	};
-	defer json.free(main.threadAllocator);
+	defer json.free(main.globalAllocator);
 
 	inline for(@typeInfo(@This()).Struct.decls) |decl| {
 		const is_const = @typeInfo(@TypeOf(&@field(@This(), decl.name))).Pointer.is_const; // Sadly there is no direct way to check if a declaration is const.
@@ -74,8 +74,8 @@ pub fn init() !void {
 }
 
 fn flawedDeinit() !void {
-	const jsonObject = try JsonElement.initObject(main.threadAllocator);
-	defer jsonObject.free(main.threadAllocator);
+	const jsonObject = try JsonElement.initObject(main.globalAllocator);
+	defer jsonObject.free(main.globalAllocator);
 
 	inline for(@typeInfo(@This()).Struct.decls) |decl| {
 		const is_const = @typeInfo(@TypeOf(&@field(@This(), decl.name))).Pointer.is_const; // Sadly there is no direct way to check if a declaration is const.
@@ -100,9 +100,9 @@ fn flawedDeinit() !void {
 	}
 
 	// keyboard settings:
-	const keyboard = try JsonElement.initObject(main.threadAllocator);
+	const keyboard = try JsonElement.initObject(main.globalAllocator);
 	for(&main.KeyBoard.keys) |key| {
-		const keyJson = try JsonElement.initObject(main.threadAllocator);
+		const keyJson = try JsonElement.initObject(main.globalAllocator);
 		try keyJson.put("key", key.key);
 		try keyJson.put("mouseButton", key.mouseButton);
 		try keyJson.put("scancode", key.scancode);
