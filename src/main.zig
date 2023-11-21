@@ -338,6 +338,11 @@ fn toggleGPUPerformanceOverlay() void {
 		std.log.err("Got error while opening the gpu performance overlay: {s}", .{@errorName(err)});
 	};
 }
+fn toggleNetworkDebugOverlay() void {
+	gui.toggleWindow("debug_network") catch |err| {
+		std.log.err("Got error while opening the network debug overlay: {s}", .{@errorName(err)});
+	};
+}
 
 pub const KeyBoard = struct {
 	pub var keys = [_]Key {
@@ -379,6 +384,7 @@ pub const KeyBoard = struct {
 		Key{.name = "debugOverlay", .key = c.GLFW_KEY_F3, .releaseAction = &toggleDebugOverlay},
 		Key{.name = "performanceOverlay", .key = c.GLFW_KEY_F4, .releaseAction = &togglePerformanceOverlay},
 		Key{.name = "gpuPerformanceOverlay", .key = c.GLFW_KEY_F5, .releaseAction = &toggleGPUPerformanceOverlay},
+		Key{.name = "networkDebugOverlay", .key = c.GLFW_KEY_F6, .releaseAction = &toggleNetworkDebugOverlay},
 	};
 
 	pub fn key(name: []const u8) *const Key { // TODO: Maybe I should use a hashmap here?

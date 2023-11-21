@@ -591,7 +591,7 @@ pub const Protocols = struct {
 	pub const keepAlive: u8 = 0;
 	pub const important: u8 = 0xff;
 	pub const handShake = struct {
-		const id: u8 = 1;
+		pub const id: u8 = 1;
 		const stepStart: u8 = 0;
 		const stepUserData: u8 = 1;
 		const stepAssets: u8 = 2;
@@ -693,7 +693,7 @@ pub const Protocols = struct {
 		}
 	};
 	pub const chunkRequest = struct {
-		const id: u8 = 2;
+		pub const id: u8 = 2;
 		fn receive(conn: *Connection, data: []const u8) !void {
 			var remaining = data[0..];
 			while(remaining.len >= 16) {
@@ -725,7 +725,7 @@ pub const Protocols = struct {
 		}
 	};
 	pub const chunkTransmission = struct {
-		const id: u8 = 3;
+		pub const id: u8 = 3;
 		fn receive(_: *Connection, _data: []const u8) !void {
 			var data = _data;
 			const pos = chunk.ChunkPosition{
@@ -767,7 +767,7 @@ pub const Protocols = struct {
 		}
 	};
 	pub const playerPosition = struct {
-		const id: u8 = 4;
+		pub const id: u8 = 4;
 		fn receive(conn: *Connection, data: []const u8) !void {
 			conn.user.?.receiveData(data);
 		}
@@ -792,7 +792,7 @@ pub const Protocols = struct {
 		}
 	};
 	pub const disconnect = struct {
-		const id: u8 = 5;
+		pub const id: u8 = 5;
 		fn receive(conn: *Connection, _: []const u8) !void {
 			try conn.disconnect();
 		}
@@ -802,7 +802,7 @@ pub const Protocols = struct {
 		}
 	};
 	pub const entityPosition = struct {
-		const id: u8 = 6;
+		pub const id: u8 = 6;
 		const type_entity: u8 = 0;
 		const type_item: u8 = 1;
 		fn receive(conn: *Connection, data: []const u8) !void {
@@ -832,7 +832,7 @@ pub const Protocols = struct {
 		}
 	};
 	pub const blockUpdate = struct {
-		const id: u8 = 7;
+		pub const id: u8 = 7;
 		fn receive(conn: *Connection, data: []const u8) !void {
 			const x = std.mem.readInt(i32, data[0..4], .big);
 			const y = std.mem.readInt(i32, data[4..8], .big);
@@ -854,7 +854,7 @@ pub const Protocols = struct {
 		}
 	};
 	pub const entity = struct {
-		const id: u8 = 8;
+		pub const id: u8 = 8;
 		fn receive(conn: *Connection, data: []const u8) !void {
 			const jsonArray = JsonElement.parseFromString(main.globalAllocator, data);
 			defer jsonArray.free(main.globalAllocator);
@@ -978,7 +978,7 @@ pub const Protocols = struct {
 //			}
 	};
 	pub const genericUpdate = struct {
-		const id: u8 = 9;
+		pub const id: u8 = 9;
 		const type_renderDistance: u8 = 0;
 		const type_teleport: u8 = 1;
 		const type_cure: u8 = 2;
@@ -1190,7 +1190,7 @@ pub const Protocols = struct {
 		}
 	};
 	pub const chat = struct {
-		const id: u8 = 10;
+		pub const id: u8 = 10;
 		fn receive(conn: *Connection, data: []const u8) !void {
 			if(conn.user) |user| {
 				if(data[0] == '/') {
@@ -1221,8 +1221,8 @@ pub const Connection = struct {
 	const maxImportantPacketSize: u32 = 1500 - 20 - 8; // Ethernet MTU minus IP header minus udp header
 
 	// Statistics:
-	var packetsSent: Atomic(u32) = Atomic(u32).init(0);
-	var packetsResent: Atomic(u32) = Atomic(u32).init(0);
+	pub var packetsSent: Atomic(u32) = Atomic(u32).init(0);
+	pub var packetsResent: Atomic(u32) = Atomic(u32).init(0);
 
 	manager: *ConnectionManager,
 	user: ?*main.server.User = null,
