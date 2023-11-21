@@ -1382,7 +1382,7 @@ pub const Connection = struct {
 			remaining = remaining[8..];
 			var j: usize = 0;
 			while(j < self.unconfirmedPackets.items.len) {
-				var diff = self.unconfirmedPackets.items[j].id -% start;
+				const diff = self.unconfirmedPackets.items[j].id -% start;
 				if(diff < len) {
 					main.globalAllocator.free(self.unconfirmedPackets.items[j].data);
 					_ = self.unconfirmedPackets.swapRemove(j);
@@ -1436,7 +1436,7 @@ pub const Connection = struct {
 			}
 		}
 		{ // Cycle the receivedPackets lists:
-			var putBackToFront: std.ArrayList(u32) = self.receivedPackets[self.receivedPackets.len - 1];
+			const putBackToFront: std.ArrayList(u32) = self.receivedPackets[self.receivedPackets.len - 1];
 			var i: u32 = self.receivedPackets.len - 1;
 			while(i >= 1): (i -= 1) {
 				self.receivedPackets[i] = self.receivedPackets[i-1];
@@ -1510,7 +1510,7 @@ pub const Connection = struct {
 					id += 1;
 					receivedPacket = self.lastReceivedPackets[id & 65535] orelse return;
 				}
-				var nextByte = receivedPacket[newIndex];
+				const nextByte = receivedPacket[newIndex];
 				newIndex += 1;
 				len |= @as(u32, @intCast(nextByte & 0x7f)) << shift;
 				if(nextByte & 0x80 != 0) {

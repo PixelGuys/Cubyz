@@ -156,9 +156,9 @@ pub const ChunkPosition = struct {
 
 	pub fn getCenterDistanceSquared(self: ChunkPosition, playerPosition: Vec3d) f64 {
 		const halfWidth: f64 = @floatFromInt(self.voxelSize*@divExact(chunkSize, 2));
-		var dx = @as(f64, @floatFromInt(self.wx)) + halfWidth - playerPosition[0];
-		var dy = @as(f64, @floatFromInt(self.wy)) + halfWidth - playerPosition[1];
-		var dz = @as(f64, @floatFromInt(self.wz)) + halfWidth - playerPosition[2];
+		const dx = @as(f64, @floatFromInt(self.wx)) + halfWidth - playerPosition[0];
+		const dy = @as(f64, @floatFromInt(self.wy)) + halfWidth - playerPosition[1];
+		const dz = @as(f64, @floatFromInt(self.wz)) + halfWidth - playerPosition[2];
 		return dx*dx + dy*dy + dz*dz;
 	}
 

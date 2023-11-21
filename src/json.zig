@@ -537,7 +537,7 @@ const Parser = struct {
 				break;
 			}
 		}
-		var lineEnd: u32 = i;
+		const lineEnd: u32 = i;
 		std.log.warn("Error in line {}: {s}", .{lineNumber, msg});
 		std.log.warn("{s}", .{chars[lineStart..lineEnd]});
 		// Mark the position:

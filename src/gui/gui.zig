@@ -474,7 +474,7 @@ pub fn mainButtonPressed() void {
 pub fn mainButtonReleased() void {
 	if(main.Window.grabbed) return;
 	inventory.applyChanges(true);
-	var oldWindow = selectedWindow;
+	const oldWindow = selectedWindow;
 	selectedWindow = null;
 	for(openWindows.items) |window| {
 		var mousePosition = main.Window.getMousePosition()/@as(Vec2f, @splat(scale));

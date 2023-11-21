@@ -219,7 +219,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, palette: *BlockPalette) !void {
 			json = value;
 		} else {
 			std.log.err("Missing block: {s}. Replacing it with default block.", .{id});
-			var map: *std.StringHashMap(JsonElement) = try main.globalAllocator.create(std.StringHashMap(JsonElement));
+			const map: *std.StringHashMap(JsonElement) = try main.globalAllocator.create(std.StringHashMap(JsonElement));
 			map.* = std.StringHashMap(JsonElement).init(main.globalAllocator);
 			json = JsonElement{.JsonObject=map};
 		}

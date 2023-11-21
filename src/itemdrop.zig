@@ -339,7 +339,7 @@ pub const ItemDropManager = struct {
 			return;
 		}
 		var drag: f64 = self.airDragFactor;
-		var acceleration: Vec3d = Vec3d{0, -self.gravity*deltaTime, 0};
+		const acceleration: Vec3d = Vec3d{0, -self.gravity*deltaTime, 0};
 		// Update gravity:
 		inline for(0..3) |i| {
 			const old = pos.*[i];

@@ -167,7 +167,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	game.camera.updateViewMatrix();
 
 	// Uses FrustumCulling on the chunks.
-	var frustum = Frustum.init(Vec3f{0, 0, 0}, game.camera.viewMatrix, lastFov, lastWidth, lastHeight);
+	const frustum = Frustum.init(Vec3f{0, 0, 0}, game.camera.viewMatrix, lastFov, lastWidth, lastHeight);
 	_ = frustum;
 
 	const time: u32 = @intCast(std.time.milliTimestamp() & std.math.maxInt(u32));
@@ -703,9 +703,9 @@ pub const MeshSelection = struct {
 	var lastDir: Vec3f = undefined;
 	pub fn select(_pos: Vec3d, _dir: Vec3f) void {
 		var pos = _pos;
-		// TODO: pos.y += Player.cameraHeight;
+		_ = &pos;// TODO: pos.y += Player.cameraHeight;
 		lastPos = pos;
-		var dir: Vec3d = @floatCast(_dir);
+		const dir: Vec3d = @floatCast(_dir);
 		lastDir = _dir;
 
 		// Test blocks:
@@ -1019,8 +1019,8 @@ pub const RenderStructure = struct {
 	fn freeOldMeshes(px: i32, py: i32, pz: i32, renderDistance: i32) !void {
 		for(0..storageLists.len) |_lod| {
 			const lod: u5 = @intCast(_lod);
-			var maxRenderDistanceNew = renderDistance*chunk.chunkSize << lod;
-			var maxRenderDistanceOld = lastRD*chunk.chunkSize << lod;
+			const maxRenderDistanceNew = renderDistance*chunk.chunkSize << lod;
+			const maxRenderDistanceOld = lastRD*chunk.chunkSize << lod;
 			const size: u31 = chunk.chunkSize << lod;
 			const mask: i32 = size - 1;
 			const invMask: i32 = ~mask;
@@ -1104,8 +1104,8 @@ pub const RenderStructure = struct {
 	fn createNewMeshes(px: i32, py: i32, pz: i32, renderDistance: i32, meshRequests: *std.ArrayList(chunk.ChunkPosition)) !void {
 		for(0..storageLists.len) |_lod| {
 			const lod: u5 = @intCast(_lod);
-			var maxRenderDistanceNew = renderDistance*chunk.chunkSize << lod;
-			var maxRenderDistanceOld = lastRD*chunk.chunkSize << lod;
+			const maxRenderDistanceNew = renderDistance*chunk.chunkSize << lod;
+			const maxRenderDistanceOld = lastRD*chunk.chunkSize << lod;
 			const size: u31 = chunk.chunkSize << lod;
 			const mask: i32 = size - 1;
 			const invMask: i32 = ~mask;

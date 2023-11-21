@@ -47,7 +47,7 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.Chunk, caveMap: CaveMap.CaveM
 		while(y < cy + 1) : (y +%= 1) {
 			var z = cz - 1;
 			while(z < cz + 1) : (z +%= 1) {
-				var seed = random.initSeed3D(worldSeed, .{x, y, z});
+				const seed = random.initSeed3D(worldSeed, .{x, y, z});
 				const relX: f32 = @floatFromInt(x-cx << main.chunk.chunkShift);
 				const relY: f32 = @floatFromInt(y-cy << main.chunk.chunkShift);
 				const relZ: f32 = @floatFromInt(z-cz << main.chunk.chunkShift);

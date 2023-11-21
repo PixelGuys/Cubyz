@@ -373,7 +373,7 @@ pub const StackAllocator = struct {
     fn alloc(ctx: *anyopaque, len: usize, ptr_align: u8, ret_addr: usize) ?[*]u8 {
 		const self: *StackAllocator = @ptrCast(@alignCast(ctx));
 		if(len >= self.buffer.len) return self.backingAllocator.rawAlloc(len, ptr_align, ret_addr);
-		var start = std.mem.alignForward(usize, self.index, @as(usize, 1) << @intCast(ptr_align));
+		const start = std.mem.alignForward(usize, self.index, @as(usize, 1) << @intCast(ptr_align));
 		if(start + len >= self.buffer.len) return self.backingAllocator.rawAlloc(len, ptr_align, ret_addr);
 		self.allocationList.append(.{.start = @intCast(start), .len = @intCast(len)}) catch return null;
 		self.index = start + len;
@@ -601,7 +601,7 @@ pub const ThreadPool = struct {
 	allocator: Allocator,
 
 	pub fn init(allocator: Allocator, threadCount: usize) !ThreadPool {
-		var self = ThreadPool {
+		const self = ThreadPool {
 			.threads = try allocator.alloc(std.Thread, threadCount),
 			.currentTasks = try allocator.alloc(std.atomic.Atomic(?*const VTable), threadCount),
 			.loadList = try BlockingMaxHeap(Task).init(allocator),

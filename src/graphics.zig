@@ -309,8 +309,8 @@ pub const draw = struct {
 	pub fn circle(_center: Vec2f, _radius: f32) void {
 		var center = _center;
 		var radius = _radius;
-		_center *= @splat(scale);
-		_center += translation;
+		center *= @splat(scale);
+		center += translation;
 		radius *= scale;
 		circleShader.bind();
 

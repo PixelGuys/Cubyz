@@ -59,18 +59,18 @@ fn cube(_: u4, _: u4, _: u4) ?u4 {
 
 const Fence = struct {
 	fn fence0(_x: u4, _y: u4, _z: u4) ?u4 {
-		var x = @max(@as(i32, _x)-8, -@as(i32, _x)+7);
-		var y = @max(@as(i32, _y)-8, -@as(i32, _y)+7);
-		var z = @max(@as(i32, _z)-8, -@as(i32, _z)+7);
+		const x = @max(@as(i32, _x)-8, -@as(i32, _x)+7);
+		const y = @max(@as(i32, _y)-8, -@as(i32, _y)+7);
+		const z = @max(@as(i32, _z)-8, -@as(i32, _z)+7);
 		_ = y;
 		if(x < 2 and z < 2) return 6;
 		return null;
 	}
 
 	fn fence1(_x: u4, _y: u4, _z: u4) ?u4 {
-		var x = @max(@as(i32, _x)-8, -@as(i32, _x)+7);
-		var y = @max(@as(i32, _y)-8, -@as(i32, _y)+7);
-		var z = @max(@as(i32, _z)-8, -@as(i32, _z)+7);
+		const x = @max(@as(i32, _x)-8, -@as(i32, _x)+7);
+		const y = @max(@as(i32, _y)-8, -@as(i32, _y)+7);
+		const z = @max(@as(i32, _z)-8, -@as(i32, _z)+7);
 		if(x < 2 and z < 2) return 6;
 		if(y < 5 and y >= 2) {
 			if(z == 0 and _x < 8) return 6;
@@ -79,9 +79,9 @@ const Fence = struct {
 	}
 
 	fn fence2_neighbor(_x: u4, _y: u4, _z: u4) ?u4 {
-		var x = @max(@as(i32, _x)-8, -@as(i32, _x)+7);
-		var y = @max(@as(i32, _y)-8, -@as(i32, _y)+7);
-		var z = @max(@as(i32, _z)-8, -@as(i32, _z)+7);
+		const x = @max(@as(i32, _x)-8, -@as(i32, _x)+7);
+		const y = @max(@as(i32, _y)-8, -@as(i32, _y)+7);
+		const z = @max(@as(i32, _z)-8, -@as(i32, _z)+7);
 		if(x < 2 and z < 2) return 6;
 		if(y < 5 and y >= 2) {
 			if(z == 0 and _x < 8) return 6;
@@ -91,9 +91,9 @@ const Fence = struct {
 	}
 
 	fn fence2_oppose(_x: u4, _y: u4, _z: u4) ?u4 {
-		var x = @max(@as(i32, _x)-8, -@as(i32, _x)+7);
-		var y = @max(@as(i32, _y)-8, -@as(i32, _y)+7);
-		var z = @max(@as(i32, _z)-8, -@as(i32, _z)+7);
+		const x = @max(@as(i32, _x)-8, -@as(i32, _x)+7);
+		const y = @max(@as(i32, _y)-8, -@as(i32, _y)+7);
+		const z = @max(@as(i32, _z)-8, -@as(i32, _z)+7);
 		if(x < 2 and z < 2) return 6;
 		if(y < 5 and y >= 2) {
 			if(z == 0) return 6;
@@ -102,9 +102,9 @@ const Fence = struct {
 	}
 
 	fn fence3(_x: u4, _y: u4, _z: u4) ?u4 {
-		var x = @max(@as(i32, _x)-8, -@as(i32, _x)+7);
-		var y = @max(@as(i32, _y)-8, -@as(i32, _y)+7);
-		var z = @max(@as(i32, _z)-8, -@as(i32, _z)+7);
+		const x = @max(@as(i32, _x)-8, -@as(i32, _x)+7);
+		const y = @max(@as(i32, _y)-8, -@as(i32, _y)+7);
+		const z = @max(@as(i32, _z)-8, -@as(i32, _z)+7);
 		if(x < 2 and z < 2) return 6;
 		if(y < 5 and y >= 2) {
 			if(z == 0 and _x >= 8) return 6;
@@ -114,9 +114,9 @@ const Fence = struct {
 	}
 
 	fn fence4(_x: u4, _y: u4, _z: u4) ?u4 {
-		var x = @max(@as(i32, _x)-8, -@as(i32, _x)+7);
-		var y = @max(@as(i32, _y)-8, -@as(i32, _y)+7);
-		var z = @max(@as(i32, _z)-8, -@as(i32, _z)+7);
+		const x = @max(@as(i32, _x)-8, -@as(i32, _x)+7);
+		const y = @max(@as(i32, _y)-8, -@as(i32, _y)+7);
+		const z = @max(@as(i32, _z)-8, -@as(i32, _z)+7);
 		if(x < 2 and z < 2) return 6;
 		if(y < 5 and y >= 2) {
 			if(x == 0 or z == 0) return 6;
@@ -126,9 +126,9 @@ const Fence = struct {
 };
 
 fn log(_x: u4, _y: u4, _z: u4) ?u4 {
-	var x = @as(f32, @floatFromInt(_x)) - 7.5;
-	var y = @as(f32, @floatFromInt(_y)) - 7.5;
-	var z = @as(f32, @floatFromInt(_z)) - 7.5;
+	const x = @as(f32, @floatFromInt(_x)) - 7.5;
+	const y = @as(f32, @floatFromInt(_y)) - 7.5;
+	const z = @as(f32, @floatFromInt(_z)) - 7.5;
 	if(x*x + z*z < 7.2*7.2) {
 		if(y > 0) return Neighbors.dirUp;
 		return Neighbors.dirDown;
@@ -146,9 +146,9 @@ fn log(_x: u4, _y: u4, _z: u4) ?u4 {
 }
 
 fn sphere(_x: u4, _y: u4, _z: u4) ?u4 {
-	var x = @as(f32, @floatFromInt(_x)) - 7.5;
-	var y = @as(f32, @floatFromInt(_y)) - 7.5;
-	var z = @as(f32, @floatFromInt(_z)) - 7.5;
+	const x = @as(f32, @floatFromInt(_x)) - 7.5;
+	const y = @as(f32, @floatFromInt(_y)) - 7.5;
+	const z = @as(f32, @floatFromInt(_z)) - 7.5;
 	if(x*x + y*y + z*z < 8.0*8.0) {
 		return 6;
 	}
