@@ -1238,6 +1238,7 @@ pub const Connection = struct {
 	receivedPackets: [3]std.ArrayList(u32) = undefined,
 	__lastReceivedPackets: [65536]?[]const u8 = [_]?[]const u8{null} ** 65536, // TODO: Wait for #12215 fix.
 	lastReceivedPackets: []?[]const u8, // TODO: Wait for #12215 fix.
+	packetMemory: *[65536][maxImportantPacketSize]u8 = undefined,
 	lastIndex: u32 = 0,
 
 	lastIncompletePacket: u32 = 0,
@@ -1260,6 +1261,7 @@ pub const Connection = struct {
 			.remoteAddress = undefined,
 			.lastConnection = std.time.milliTimestamp(),
 			.lastReceivedPackets = &result.__lastReceivedPackets, // TODO: Wait for #12215 fix.
+			.packetMemory = try main.globalAllocator.create([65536][maxImportantPacketSize]u8),
 		};
 		result.unconfirmedPackets = std.ArrayList(UnconfirmedPacket).init(main.globalAllocator);
 		result.receivedPackets = [3]std.ArrayList(u32){
@@ -1295,11 +1297,7 @@ pub const Connection = struct {
 		self.receivedPackets[0].deinit();
 		self.receivedPackets[1].deinit();
 		self.receivedPackets[2].deinit();
-		for(self.lastReceivedPackets) |nullablePacket| {
-			if(nullablePacket) |packet| {
-				main.globalAllocator.free(packet);
-			}
-		}
+		main.globalAllocator.destroy(self.packetMemory);
 		main.globalAllocator.destroy(self);
 	}
 
@@ -1543,7 +1541,6 @@ pub const Connection = struct {
 				}
 			}
 			while(self.lastIncompletePacket != id): (self.lastIncompletePacket += 1) {
-				main.globalAllocator.free(self.lastReceivedPackets[self.lastIncompletePacket & 65535].?);
 				self.lastReceivedPackets[self.lastIncompletePacket & 65535] = null;
 			}
 			self.lastIndex = newIndex;
@@ -1593,7 +1590,9 @@ pub const Connection = struct {
 			if(id < self.lastIncompletePacket or self.lastReceivedPackets[id & 65535] != null) {
 				return; // Already received the package in the past.
 			}
-			self.lastReceivedPackets[id & 65535] = try main.globalAllocator.dupe(u8, data[importantHeaderSize..]);
+			const temporaryMemory: []u8 = (&self.packetMemory[id & 65535])[0..data.len-importantHeaderSize];
+			@memcpy(temporaryMemory, data[importantHeaderSize..]);
+			self.lastReceivedPackets[id & 65535] = temporaryMemory;
 			// Check if a message got completed:
 			try self.collectPackets();
 		} else if(protocol == Protocols.keepAlive) {

@@ -16,8 +16,10 @@ pub const Compression = struct {
 	}
 
 	pub fn inflateTo(buf: []u8, data: []const u8) !usize {
+		var arena = std.heap.ArenaAllocator.init(main.stackAllocator);
+		defer arena.deinit();
 		var stream = std.io.fixedBufferStream(data);
-		var decomp = try std.compress.deflate.decompressor(main.globalAllocator, stream.reader(), null);
+		var decomp = try std.compress.deflate.decompressor(arena.allocator(), stream.reader(), null);
 		defer decomp.deinit();
 		return try decomp.reader().readAll(buf);
 	}
