@@ -23,8 +23,8 @@ vec2 convert2Proportional(vec2 original, vec2 full) {
 
 void main() {
 	vec2 vertex_pos = face_pos*vec2(1, -1);
-	vec2 position_percentage 	= convert2Proportional(offset, scene);
-	vec2 size_percentage		= convert2Proportional(vec2(texture_rect.z, texture_rect.w)*ratio, scene);
+	vec2 position_percentage 	= convert2Proportional(floor(offset), scene);
+	vec2 size_percentage		= convert2Proportional(floor(vec2(texture_rect.z, texture_rect.w)*ratio), scene);
 	if ((fontEffects & 0x02000000) != 0) { // italic
 		vertex_pos.x += vertex_pos.y/texture_rect.z;
 	}
