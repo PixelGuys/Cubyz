@@ -1468,18 +1468,31 @@ pub const RenderStructure = struct {
 			if(std.time.milliTimestamp() >= targetTime) break; // Update at least one mesh.
 		}
 		while(updatableList.items.len != 0) {
-			// TODO: Find a faster solution than going through the entire list.
+			// TODO: Find a faster solution than going through the entire list every frame.
 			var closestPriority: f32 = -std.math.floatMax(f32);
 			var closestIndex: usize = 0;
 			const playerPos = game.Player.getPosBlocking();
-			for(updatableList.items, 0..) |mesh, i| {
-				const priority = mesh.pos.getPriority(playerPos);
-				if(priority > closestPriority) {
-					closestPriority = priority;
-					closestIndex = i;
+			{
+				var i: usize = 0;
+				while(i < updatableList.items.len) {
+					const mesh = updatableList.items[i];
+					if(!isInRenderDistance(mesh.pos)) {
+						_ = updatableList.swapRemove(i);
+						mutex.unlock();
+						defer mutex.lock();
+						try mesh.decreaseRefCount();
+						continue;
+					}
+					const priority = mesh.pos.getPriority(playerPos);
+					if(priority > closestPriority) {
+						closestPriority = priority;
+						closestIndex = i;
+					}
+					i += 1;
 				}
+				if(updatableList.items.len == 0) break;
 			}
-			const mesh = updatableList.orderedRemove(closestIndex);
+			const mesh = updatableList.swapRemove(closestIndex);
 			mutex.unlock();
 			defer mutex.lock();
 			if(isInRenderDistance(mesh.pos)) {
