@@ -524,7 +524,8 @@ pub const meshing = struct {
 
 	const PrimitiveMesh = struct {
 		coreFaces: std.ArrayListUnmanaged(FaceData) = .{},
-		neighborFaces: [6]std.ArrayListUnmanaged(FaceData) = [_]std.ArrayListUnmanaged(FaceData){.{}} ** 6,
+		neighborFacesSameLod: [6]std.ArrayListUnmanaged(FaceData) = [_]std.ArrayListUnmanaged(FaceData){.{}} ** 6,
+		neighborFacesHigherLod: [6]std.ArrayListUnmanaged(FaceData) = [_]std.ArrayListUnmanaged(FaceData){.{}} ** 6,
 		completeList: []FaceData = &.{},
 		bufferAllocation: graphics.SubAllocation = .{.start = 0, .len = 0},
 		vertexCount: u31 = 0,
@@ -533,7 +534,10 @@ pub const meshing = struct {
 		fn deinit(self: *PrimitiveMesh) void {
 			faceBuffer.free(self.bufferAllocation) catch unreachable;
 			self.coreFaces.deinit(main.globalAllocator);
-			for(&self.neighborFaces) |*neighborFaces| {
+			for(&self.neighborFacesSameLod) |*neighborFaces| {
+				neighborFaces.deinit(main.globalAllocator);
+			}
+			for(&self.neighborFacesHigherLod) |*neighborFaces| {
 				neighborFaces.deinit(main.globalAllocator);
 			}
 			main.globalAllocator.free(self.completeList);
@@ -541,7 +545,10 @@ pub const meshing = struct {
 
 		fn reset(self: *PrimitiveMesh) void {
 			self.coreFaces.clearRetainingCapacity();
-			for(&self.neighborFaces) |*neighborFaces| {
+			for(&self.neighborFacesSameLod) |*neighborFaces| {
+				neighborFaces.clearRetainingCapacity();
+			}
+			for(&self.neighborFacesHigherLod) |*neighborFaces| {
 				neighborFaces.clearRetainingCapacity();
 			}
 		}
@@ -550,18 +557,34 @@ pub const meshing = struct {
 			try self.coreFaces.append(main.globalAllocator, face);
 		}
 
-		fn appendNeighbor(self: *PrimitiveMesh, face: FaceData, neighbor: u3) !void {
-			try self.neighborFaces[neighbor].append(main.globalAllocator, face);
+		fn appendNeighbor(self: *PrimitiveMesh, face: FaceData, neighbor: u3, comptime isLod: bool) !void {
+			if(isLod) {
+				try self.neighborFacesHigherLod[neighbor].append(main.globalAllocator, face);
+			} else {
+				try self.neighborFacesSameLod[neighbor].append(main.globalAllocator, face);
+			}
 		}
 
-		fn clearNeighbor(self: *PrimitiveMesh, neighbor: u3) void {
-			self.neighborFaces[neighbor].clearRetainingCapacity();
+		fn clearNeighbor(self: *PrimitiveMesh, neighbor: u3, comptime isLod: bool) void {
+			if(isLod) {
+				self.neighborFacesHigherLod[neighbor].clearRetainingCapacity();
+			} else {
+				self.neighborFacesSameLod[neighbor].clearRetainingCapacity();
+			}
 		}
 
 		fn finish(self: *PrimitiveMesh, parent: *ChunkMesh) !void {
 			var len: usize = self.coreFaces.items.len;
-			for(self.neighborFaces) |neighborFaces| {
-				len += neighborFaces.items.len;
+			var neighborFaceLists: [6][]FaceData = undefined;
+			for(0..6) |i| {
+				if(parent.lastNeighborsSameLod[i] == null) {
+					neighborFaceLists[i] = self.neighborFacesHigherLod[i].items;
+				} else {
+					neighborFaceLists[i] = self.neighborFacesSameLod[i].items;
+				}
+			}
+			for(neighborFaceLists) |neighborFaces| {
+				len += neighborFaces.len;
 			}
 			if(main.globalAllocator.resize(self.completeList, len)) {
 				self.completeList.len = len;
@@ -572,9 +595,9 @@ pub const meshing = struct {
 			var i: usize = 0;
 			@memcpy(self.completeList[i..][0..self.coreFaces.items.len], self.coreFaces.items);
 			i += self.coreFaces.items.len;
-			for(self.neighborFaces) |neighborFaces| {
-				@memcpy(self.completeList[i..][0..neighborFaces.items.len], neighborFaces.items);
-				i += neighborFaces.items.len;
+			for(neighborFaceLists) |neighborFaces| {
+				@memcpy(self.completeList[i..][0..neighborFaces.len], neighborFaces);
+				i += neighborFaces.len;
 			}
 			for(self.completeList) |*face| {
 				face.light = getLight(parent, face.position.x, face.position.y, face.position.z, face.position.normal);
@@ -657,7 +680,7 @@ pub const meshing = struct {
 
 		fn addFace(self: *PrimitiveMesh, faceData: FaceData, fromNeighborChunk: ?u3) !void {
 			if(fromNeighborChunk) |neighbor| {
-				try self.neighborFaces[neighbor].append(main.globalAllocator, faceData);
+				try self.neighborFacesSameLod[neighbor].append(main.globalAllocator, faceData);
 			} else {
 				try self.coreFaces.append(main.globalAllocator, faceData);
 			}
@@ -666,13 +689,13 @@ pub const meshing = struct {
 		fn removeFace(self: *PrimitiveMesh, faceData: FaceData, fromNeighborChunk: ?u3) void {
 			if(fromNeighborChunk) |neighbor| {
 				var pos: usize = std.math.maxInt(usize);
-				for(self.neighborFaces[neighbor].items, 0..) |item, i| {
+				for(self.neighborFacesSameLod[neighbor].items, 0..) |item, i| {
 					if(std.meta.eql(faceData, item)) {
 						pos = i;
 						break;
 					}
 				}
-				_ = self.neighborFaces[neighbor].swapRemove(pos);
+				_ = self.neighborFacesSameLod[neighbor].swapRemove(pos);
 			} else {
 				var pos: usize = std.math.maxInt(usize);
 				for(self.coreFaces.items, 0..) |item, i| {
@@ -746,7 +769,8 @@ pub const meshing = struct {
 		opaqueMesh: PrimitiveMesh,
 		voxelMesh: PrimitiveMesh,
 		transparentMesh: PrimitiveMesh,
-		lastNeighbors: [6]?*const ChunkMesh = [_]?*const ChunkMesh{null} ** 6,
+		lastNeighborsSameLod: [6]?*const ChunkMesh = [_]?*const ChunkMesh{null} ** 6,
+		lastNeighborsHigherLod: [6]?*const ChunkMesh = [_]?*const ChunkMesh{null} ** 6,
 		visibilityMask: u8 = 0xff,
 		currentSorting: []SortingData = &.{},
 		sortingOutputBuffer: []FaceData = &.{},
@@ -1015,15 +1039,15 @@ pub const meshing = struct {
 				const nullNeighborMesh = renderer.RenderStructure.getNeighborFromRenderThread(self.pos, self.pos.voxelSize, neighbor);
 				if(nullNeighborMesh) |neighborMesh| {
 					std.debug.assert(neighborMesh != self);
-					if(self.lastNeighbors[neighbor] == neighborMesh) continue;
-					self.lastNeighbors[neighbor] = neighborMesh;
-					neighborMesh.lastNeighbors[neighbor ^ 1] = self;
-					self.opaqueMesh.clearNeighbor(neighbor);
-					self.voxelMesh.clearNeighbor(neighbor);
-					self.transparentMesh.clearNeighbor(neighbor);
-					neighborMesh.opaqueMesh.clearNeighbor(neighbor ^ 1);
-					neighborMesh.voxelMesh.clearNeighbor(neighbor ^ 1);
-					neighborMesh.transparentMesh.clearNeighbor(neighbor ^ 1);
+					if(self.lastNeighborsSameLod[neighbor] == neighborMesh) continue;
+					self.lastNeighborsSameLod[neighbor] = neighborMesh;
+					neighborMesh.lastNeighborsSameLod[neighbor ^ 1] = self;
+					self.opaqueMesh.clearNeighbor(neighbor, false);
+					self.voxelMesh.clearNeighbor(neighbor, false);
+					self.transparentMesh.clearNeighbor(neighbor, false);
+					neighborMesh.opaqueMesh.clearNeighbor(neighbor ^ 1, false);
+					neighborMesh.voxelMesh.clearNeighbor(neighbor ^ 1, false);
+					neighborMesh.transparentMesh.clearNeighbor(neighbor ^ 1, false);
 					const x3: i32 = if(neighbor & 1 == 0) chunkMask else 0;
 					var x1: i32 = 0;
 					while(x1 < chunkSize): (x1 += 1) {
@@ -1053,28 +1077,28 @@ pub const meshing = struct {
 							if(canBeSeenThroughOtherBlock(block, otherBlock, neighbor)) {
 								if(block.transparent()) {
 									if(block.hasBackFace()) {
-										try self.transparentMesh.appendNeighbor(constructFaceData(block, neighbor ^ 1, x, y, z, true), neighbor);
+										try self.transparentMesh.appendNeighbor(constructFaceData(block, neighbor ^ 1, x, y, z, true), neighbor, false);
 									}
-									try neighborMesh.transparentMesh.appendNeighbor(constructFaceData(block, neighbor, otherX, otherY, otherZ, false), neighbor ^ 1);
+									try neighborMesh.transparentMesh.appendNeighbor(constructFaceData(block, neighbor, otherX, otherY, otherZ, false), neighbor ^ 1, false);
 								} else {
 									if(blocks.meshes.model(block).modelIndex == 0) {
-										try neighborMesh.opaqueMesh.appendNeighbor(constructFaceData(block, neighbor, otherX, otherY, otherZ, false), neighbor ^ 1);
+										try neighborMesh.opaqueMesh.appendNeighbor(constructFaceData(block, neighbor, otherX, otherY, otherZ, false), neighbor ^ 1, false);
 									} else {
-										try neighborMesh.voxelMesh.appendNeighbor(constructFaceData(block, neighbor, otherX, otherY, otherZ, false), neighbor ^ 1);
+										try neighborMesh.voxelMesh.appendNeighbor(constructFaceData(block, neighbor, otherX, otherY, otherZ, false), neighbor ^ 1, false);
 									}
 								}
 							}
 							if(canBeSeenThroughOtherBlock(otherBlock, block, neighbor ^ 1)) {
 								if(otherBlock.transparent()) {
 									if(otherBlock.hasBackFace()) {
-										try neighborMesh.transparentMesh.appendNeighbor(constructFaceData(otherBlock, neighbor, otherX, otherY, otherZ, true), neighbor ^ 1);
+										try neighborMesh.transparentMesh.appendNeighbor(constructFaceData(otherBlock, neighbor, otherX, otherY, otherZ, true), neighbor ^ 1, false);
 									}
-									try self.transparentMesh.appendNeighbor(constructFaceData(otherBlock, neighbor ^ 1, x, y, z, false), neighbor);
+									try self.transparentMesh.appendNeighbor(constructFaceData(otherBlock, neighbor ^ 1, x, y, z, false), neighbor, false);
 								} else {
 									if(blocks.meshes.model(otherBlock).modelIndex == 0) {
-										try self.opaqueMesh.appendNeighbor(constructFaceData(otherBlock, neighbor ^ 1, x, y, z, false), neighbor);
+										try self.opaqueMesh.appendNeighbor(constructFaceData(otherBlock, neighbor ^ 1, x, y, z, false), neighbor, false);
 									} else {
-										try self.voxelMesh.appendNeighbor(constructFaceData(otherBlock, neighbor ^ 1, x, y, z, false), neighbor);
+										try self.voxelMesh.appendNeighbor(constructFaceData(otherBlock, neighbor ^ 1, x, y, z, false), neighbor, false);
 									}
 								}
 							}
@@ -1083,24 +1107,30 @@ pub const meshing = struct {
 					try neighborMesh.opaqueMesh.finish(neighborMesh);
 					try neighborMesh.voxelMesh.finish(neighborMesh);
 					try neighborMesh.transparentMesh.finish(neighborMesh);
-					continue;
+				} else {
+					if(self.lastNeighborsSameLod[neighbor] != null) {
+						self.opaqueMesh.clearNeighbor(neighbor, false);
+						self.voxelMesh.clearNeighbor(neighbor, false);
+						self.transparentMesh.clearNeighbor(neighbor, false);
+					}
+					self.lastNeighborsSameLod[neighbor] = null;
 				}
 				// lod border:
 				if(self.pos.voxelSize == 1 << settings.highestLOD) continue;
 				const neighborMesh = renderer.RenderStructure.getNeighborFromRenderThread(self.pos, 2*self.pos.voxelSize, neighbor) orelse {
-					if(self.lastNeighbors[neighbor] != null) {
-						self.opaqueMesh.clearNeighbor(neighbor);
-						self.voxelMesh.clearNeighbor(neighbor);
-						self.transparentMesh.clearNeighbor(neighbor);
+					if(self.lastNeighborsHigherLod[neighbor] != null) {
+						self.opaqueMesh.clearNeighbor(neighbor, true);
+						self.voxelMesh.clearNeighbor(neighbor, true);
+						self.transparentMesh.clearNeighbor(neighbor, true);
 					}
-					self.lastNeighbors[neighbor] = null;
+					self.lastNeighborsHigherLod[neighbor] = null;
 					continue;
 				};
-				if(self.lastNeighbors[neighbor] == neighborMesh) continue;
-				self.lastNeighbors[neighbor] = neighborMesh;
-				self.opaqueMesh.clearNeighbor(neighbor);
-				self.voxelMesh.clearNeighbor(neighbor);
-				self.transparentMesh.clearNeighbor(neighbor);
+				if(self.lastNeighborsHigherLod[neighbor] == neighborMesh) continue;
+				self.lastNeighborsHigherLod[neighbor] = neighborMesh;
+				self.opaqueMesh.clearNeighbor(neighbor, true);
+				self.voxelMesh.clearNeighbor(neighbor, true);
+				self.transparentMesh.clearNeighbor(neighbor, true);
 				const x3: i32 = if(neighbor & 1 == 0) chunkMask else 0;
 				const offsetX = @divExact(self.pos.wx, self.pos.voxelSize) & chunkSize;
 				const offsetY = @divExact(self.pos.wy, self.pos.voxelSize) & chunkSize;
@@ -1132,18 +1162,18 @@ pub const meshing = struct {
 						const otherBlock = (&neighborMesh.chunk.blocks)[getIndex(otherX, otherY, otherZ)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
 						if(canBeSeenThroughOtherBlock(otherBlock, block, neighbor ^ 1)) {
 							if(otherBlock.transparent()) {
-								try self.transparentMesh.appendNeighbor(constructFaceData(otherBlock, neighbor ^ 1, x, y, z, false), neighbor);
+								try self.transparentMesh.appendNeighbor(constructFaceData(otherBlock, neighbor ^ 1, x, y, z, false), neighbor, true);
 							} else {
 								if(blocks.meshes.model(otherBlock).modelIndex == 0) {
-									try self.opaqueMesh.appendNeighbor(constructFaceData(otherBlock, neighbor ^ 1, x, y, z, false), neighbor);
+									try self.opaqueMesh.appendNeighbor(constructFaceData(otherBlock, neighbor ^ 1, x, y, z, false), neighbor, true);
 								} else {
-									try self.voxelMesh.appendNeighbor(constructFaceData(otherBlock, neighbor ^ 1, x, y, z, false), neighbor);
+									try self.voxelMesh.appendNeighbor(constructFaceData(otherBlock, neighbor ^ 1, x, y, z, false), neighbor, true);
 								}
 							}
 						}
 						if(block.hasBackFace()) {
 							if(canBeSeenThroughOtherBlock(block, otherBlock, neighbor)) {
-								try self.transparentMesh.appendNeighbor(constructFaceData(block, neighbor ^ 1, x, y, z, true), neighbor);
+								try self.transparentMesh.appendNeighbor(constructFaceData(block, neighbor ^ 1, x, y, z, true), neighbor, true);
 							}
 						}
 					}
