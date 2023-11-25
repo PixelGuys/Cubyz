@@ -874,6 +874,7 @@ pub const RenderStructure = struct {
 		min: Vec2f,
 		max: Vec2f,
 		active: bool,
+		rendered: bool,
 	};
 	const storageSize = 32;
 	const storageMask = storageSize - 1;
@@ -903,6 +904,7 @@ pub const RenderStructure = struct {
 			storageList.* = try main.globalAllocator.create([storageSize*storageSize*storageSize]ChunkMeshNode);
 			for(storageList.*) |*val| {
 				val.mesh = null;
+				val.rendered = false;
 			}
 		}
 	}
@@ -1223,6 +1225,7 @@ pub const RenderStructure = struct {
 					node.min = @splat(-1);
 					node.max = @splat(1);
 					node.active = true;
+					node.rendered = true;
 					try searchList.add(.{
 						.node = node,
 						.distance = 0,
@@ -1235,14 +1238,17 @@ pub const RenderStructure = struct {
 				firstPos.voxelSize *= 2;
 			}
 		}
+		var nodeList = std.ArrayList(*ChunkMeshNode).init(main.globalAllocator);
+		defer nodeList.deinit();
 		const projRotMat = game.projectionMatrix.mul(game.camera.viewMatrix);
 		while(searchList.removeOrNull()) |data| {
+			try nodeList.append(data.node);
 			data.node.active = false;
 			const mesh = data.node.mesh.?;
 			mesh.visibilityMask = 0xff;
-			try meshList.append(mesh);
 			const relPos: Vec3d = @as(Vec3d, @floatFromInt(Vec3i{mesh.pos.wx, mesh.pos.wy, mesh.pos.wz})) - playerPos;
 			const relPosFloat: Vec3f = @floatCast(relPos);
+			var forceNeighborsLod: [6]bool = .{false} ** 6;
 			for(chunk.Neighbors.iterable) |neighbor| continueNeighborLoop: {
 				const component = chunk.Neighbors.extractDirectionComponent(neighbor, relPos);
 				if(chunk.Neighbors.isPositive[neighbor] and component + @as(f64, @floatFromInt(chunk.chunkSize*mesh.pos.voxelSize)) <= 0) continue;
@@ -1388,8 +1394,53 @@ pub const RenderStructure = struct {
 				};
 				var lod: u3 = data.node.lod;
 				while(lod <= settings.highestLOD) : (lod += 1) {
+					defer {
+						neighborPos.wx &= ~@as(i32, neighborPos.voxelSize*chunk.chunkSize);
+						neighborPos.wy &= ~@as(i32, neighborPos.voxelSize*chunk.chunkSize);
+						neighborPos.wz &= ~@as(i32, neighborPos.voxelSize*chunk.chunkSize);
+						neighborPos.voxelSize *= 2;
+					}
 					const node = getNodeFromRenderThread(neighborPos);
 					if(node.mesh != null) {
+						// Ensure that there are no high-to-low lod transitions, which would produce cracks.
+						if(lod == data.node.lod and lod != settings.highestLOD and !node.rendered) {
+							var isValid: bool = true;
+							const relPos2: Vec3d = @as(Vec3d, @floatFromInt(Vec3i{neighborPos.wx, neighborPos.wy, neighborPos.wz})) - playerPos;
+							for(chunk.Neighbors.iterable) |neighbor2| {
+								const component2 = chunk.Neighbors.extractDirectionComponent(neighbor2, relPos2);
+								if(chunk.Neighbors.isPositive[neighbor2] and component2 + @as(f64, @floatFromInt(chunk.chunkSize*node.mesh.?.pos.voxelSize)) >= 0) continue;
+								if(!chunk.Neighbors.isPositive[neighbor2] and component2 <= 0) continue;
+								{ // Check the chunk of same lod:
+									const neighborPos2 = chunk.ChunkPosition{
+										.wx = neighborPos.wx + chunk.Neighbors.relX[neighbor2]*chunk.chunkSize*neighborPos.voxelSize,
+										.wy = neighborPos.wy + chunk.Neighbors.relY[neighbor2]*chunk.chunkSize*neighborPos.voxelSize,
+										.wz = neighborPos.wz + chunk.Neighbors.relZ[neighbor2]*chunk.chunkSize*neighborPos.voxelSize,
+										.voxelSize = neighborPos.voxelSize,
+									};
+									const node2 = getNodeFromRenderThread(neighborPos2);
+									if(node2.rendered) {
+										continue;
+									}
+								}
+								{ // Check the chunk of higher lod
+									const neighborPos2 = chunk.ChunkPosition{
+										.wx = neighborPos.wx + chunk.Neighbors.relX[neighbor2]*chunk.chunkSize*neighborPos.voxelSize,
+										.wy = neighborPos.wy + chunk.Neighbors.relY[neighbor2]*chunk.chunkSize*neighborPos.voxelSize,
+										.wz = neighborPos.wz + chunk.Neighbors.relZ[neighbor2]*chunk.chunkSize*neighborPos.voxelSize,
+										.voxelSize = neighborPos.voxelSize << 1,
+									};
+									const node2 = getNodeFromRenderThread(neighborPos2);
+									if(node2.rendered) {
+										isValid = false;
+										break;
+									}
+								}
+							}
+							if(!isValid) {
+								forceNeighborsLod[neighbor] = true;
+								continue;
+							}
+						}
 						if(node.active) {
 							node.min = @min(node.min, min);
 							node.max = @max(node.max, max);
@@ -1402,17 +1453,17 @@ pub const RenderStructure = struct {
 								.node = node,
 								.distance = node.mesh.?.pos.getMaxDistanceSquared(playerPos),
 							});
+							node.rendered = true;
 						}
 						break :continueNeighborLoop;
 					}
-					neighborPos.wx &= ~@as(i32, neighborPos.voxelSize*chunk.chunkSize);
-					neighborPos.wy &= ~@as(i32, neighborPos.voxelSize*chunk.chunkSize);
-					neighborPos.wz &= ~@as(i32, neighborPos.voxelSize*chunk.chunkSize);
-					neighborPos.voxelSize *= 2;
 				}
 			}
+			try mesh.changeLodBorders(forceNeighborsLod);
 		}
-		for(meshList.items) |mesh| {
+		for(nodeList.items) |node| {
+			node.rendered = false;
+			const mesh = node.mesh.?;
 			if(mesh.pos.voxelSize != @as(u31, 1) << settings.highestLOD) {
 				const parent = getNodeFromRenderThread(.{.wx=mesh.pos.wx, .wy=mesh.pos.wy, .wz=mesh.pos.wz, .voxelSize=mesh.pos.voxelSize << 1});
 				if(parent.mesh) |parentMesh| {
@@ -1424,6 +1475,10 @@ pub const RenderStructure = struct {
 			if(mesh.needsNeighborUpdate) {
 				try mesh.uploadDataAndFinishNeighbors();
 				mesh.needsNeighborUpdate = false;
+			}
+			// Remove empty meshes.
+			if(mesh.opaqueMesh.vertexCount != 0 or mesh.voxelMesh.vertexCount != 0 or mesh.transparentMesh.vertexCount != 0) {
+				try meshList.append(mesh);
 			}
 		}
 

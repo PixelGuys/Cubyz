@@ -28,7 +28,7 @@ pub const chunkVolume: u31 = 1 << 3*chunkShift;
 pub const chunkMask: i32 = chunkSize - 1;
 
 /// Contains a bunch of constants used to describe neighboring blocks.
-pub const Neighbors = struct {
+pub const Neighbors = struct { // TODO: Should this be an enum?
 	/// How many neighbors there are.
 	pub const neighbors: u3 = 6;
 	/// Directions → Index
@@ -573,11 +573,11 @@ pub const meshing = struct {
 			}
 		}
 
-		fn finish(self: *PrimitiveMesh, parent: *ChunkMesh) !void {
+		fn finish(self: *PrimitiveMesh, parent: *ChunkMesh, isNeighborLod: [6]bool) !void {
 			var len: usize = self.coreFaces.items.len;
 			var neighborFaceLists: [6][]FaceData = undefined;
 			for(0..6) |i| {
-				if(parent.lastNeighborsSameLod[i] == null) {
+				if(isNeighborLod[i]) {
 					neighborFaceLists[i] = self.neighborFacesHigherLod[i].items;
 				} else {
 					neighborFaceLists[i] = self.neighborFacesSameLod[i].items;
@@ -771,6 +771,7 @@ pub const meshing = struct {
 		transparentMesh: PrimitiveMesh,
 		lastNeighborsSameLod: [6]?*const ChunkMesh = [_]?*const ChunkMesh{null} ** 6,
 		lastNeighborsHigherLod: [6]?*const ChunkMesh = [_]?*const ChunkMesh{null} ** 6,
+		forceHigherLod: [6]bool = .{false} ** 6,
 		visibilityMask: u8 = 0xff,
 		currentSorting: []SortingData = &.{},
 		sortingOutputBuffer: []FaceData = &.{},
@@ -1015,15 +1016,11 @@ pub const meshing = struct {
 					}
 				}
 				if(neighborMesh != self) {
-					try neighborMesh.opaqueMesh.finish(neighborMesh);
-					try neighborMesh.voxelMesh.finish(neighborMesh);
-					try neighborMesh.transparentMesh.finish(neighborMesh);
+					try neighborMesh.uploadData();
 				}
 			}
 			self.chunk.blocks[getIndex(x, y, z)] = newBlock;
-			try self.opaqueMesh.finish(self);
-			try self.voxelMesh.finish(self);
-			try self.transparentMesh.finish(self);
+			try self.uploadData();
 		}
 
 		pub inline fn constructFaceData(block: Block, normal: u3, x: i32, y: i32, z: i32, comptime backFace: bool) FaceData {
@@ -1034,6 +1031,33 @@ pub const meshing = struct {
 			};
 		}
 
+		fn clearNeighbor(self: *ChunkMesh, neighbor: u3, comptime isLod: bool) void {
+			self.opaqueMesh.clearNeighbor(neighbor, isLod);
+			self.voxelMesh.clearNeighbor(neighbor, isLod);
+			self.transparentMesh.clearNeighbor(neighbor, isLod);
+		}
+
+		fn uploadData(self: *ChunkMesh) !void {
+			const isNeighborLod: [6]bool = .{
+				self.lastNeighborsSameLod[0] == null or self.forceHigherLod[0],
+				self.lastNeighborsSameLod[1] == null or self.forceHigherLod[1],
+				self.lastNeighborsSameLod[2] == null or self.forceHigherLod[2],
+				self.lastNeighborsSameLod[3] == null or self.forceHigherLod[3],
+				self.lastNeighborsSameLod[4] == null or self.forceHigherLod[4],
+				self.lastNeighborsSameLod[5] == null or self.forceHigherLod[5],
+			};
+			try self.opaqueMesh.finish(self, isNeighborLod);
+			try self.voxelMesh.finish(self, isNeighborLod);
+			try self.transparentMesh.finish(self, isNeighborLod);
+		}
+
+		pub fn changeLodBorders(self: *ChunkMesh, forceHigherLod: [6]bool) !void {
+			if(!std.meta.eql(forceHigherLod, self.forceHigherLod)) {
+				self.forceHigherLod = forceHigherLod;
+				try self.uploadData();
+			}
+		}
+
 		pub fn uploadDataAndFinishNeighbors(self: *ChunkMesh) !void {
 			for(Neighbors.iterable) |neighbor| {
 				const nullNeighborMesh = renderer.RenderStructure.getNeighborFromRenderThread(self.pos, self.pos.voxelSize, neighbor);
@@ -1042,12 +1066,8 @@ pub const meshing = struct {
 					if(self.lastNeighborsSameLod[neighbor] == neighborMesh) continue;
 					self.lastNeighborsSameLod[neighbor] = neighborMesh;
 					neighborMesh.lastNeighborsSameLod[neighbor ^ 1] = self;
-					self.opaqueMesh.clearNeighbor(neighbor, false);
-					self.voxelMesh.clearNeighbor(neighbor, false);
-					self.transparentMesh.clearNeighbor(neighbor, false);
-					neighborMesh.opaqueMesh.clearNeighbor(neighbor ^ 1, false);
-					neighborMesh.voxelMesh.clearNeighbor(neighbor ^ 1, false);
-					neighborMesh.transparentMesh.clearNeighbor(neighbor ^ 1, false);
+					self.clearNeighbor(neighbor, false);
+					neighborMesh.clearNeighbor(neighbor ^ 1, false);
 					const x3: i32 = if(neighbor & 1 == 0) chunkMask else 0;
 					var x1: i32 = 0;
 					while(x1 < chunkSize): (x1 += 1) {
@@ -1104,33 +1124,25 @@ pub const meshing = struct {
 							}
 						}
 					}
-					try neighborMesh.opaqueMesh.finish(neighborMesh);
-					try neighborMesh.voxelMesh.finish(neighborMesh);
-					try neighborMesh.transparentMesh.finish(neighborMesh);
+					try neighborMesh.uploadData();
 				} else {
 					if(self.lastNeighborsSameLod[neighbor] != null) {
-						self.opaqueMesh.clearNeighbor(neighbor, false);
-						self.voxelMesh.clearNeighbor(neighbor, false);
-						self.transparentMesh.clearNeighbor(neighbor, false);
+						self.clearNeighbor(neighbor, false);
+						self.lastNeighborsSameLod[neighbor] = null;
 					}
-					self.lastNeighborsSameLod[neighbor] = null;
 				}
 				// lod border:
 				if(self.pos.voxelSize == 1 << settings.highestLOD) continue;
 				const neighborMesh = renderer.RenderStructure.getNeighborFromRenderThread(self.pos, 2*self.pos.voxelSize, neighbor) orelse {
 					if(self.lastNeighborsHigherLod[neighbor] != null) {
-						self.opaqueMesh.clearNeighbor(neighbor, true);
-						self.voxelMesh.clearNeighbor(neighbor, true);
-						self.transparentMesh.clearNeighbor(neighbor, true);
+						self.clearNeighbor(neighbor, true);
+						self.lastNeighborsHigherLod[neighbor] = null;
 					}
-					self.lastNeighborsHigherLod[neighbor] = null;
 					continue;
 				};
 				if(self.lastNeighborsHigherLod[neighbor] == neighborMesh) continue;
 				self.lastNeighborsHigherLod[neighbor] = neighborMesh;
-				self.opaqueMesh.clearNeighbor(neighbor, true);
-				self.voxelMesh.clearNeighbor(neighbor, true);
-				self.transparentMesh.clearNeighbor(neighbor, true);
+				self.clearNeighbor(neighbor, true);
 				const x3: i32 = if(neighbor & 1 == 0) chunkMask else 0;
 				const offsetX = @divExact(self.pos.wx, self.pos.voxelSize) & chunkSize;
 				const offsetY = @divExact(self.pos.wy, self.pos.voxelSize) & chunkSize;
@@ -1179,9 +1191,7 @@ pub const meshing = struct {
 					}
 				}
 			}
-			try self.opaqueMesh.finish(self);
-			try self.voxelMesh.finish(self);
-			try self.transparentMesh.finish(self);
+			try self.uploadData();
 		}
 
 		pub fn render(self: *ChunkMesh, playerPosition: Vec3d) void {
