@@ -1276,7 +1276,7 @@ pub fn LargeBuffer(comptime Entry: type) type {
 				if(size == block.len) {
 					return self.freeBlocks.swapRemove(i);
 				}
-				if(size < block.len and if(smallestBlock) |_smallestBlock| block.len > _smallestBlock.len else true) {
+				if(size < block.len and if(smallestBlock) |_smallestBlock| block.len < _smallestBlock.len else true) {
 					smallestBlock = block;
 				}
 			}
