@@ -1270,10 +1270,10 @@ pub fn LargeBuffer(comptime Entry: type) type {
 		}
 
 		fn alloc(self: *Self, size: u31) !SubAllocation {
-			self.used += size;
 			var smallestBlock: ?*SubAllocation = null;
 			for(self.freeBlocks.items, 0..) |*block, i| {
 				if(size == block.len) {
+					self.used += size;
 					return self.freeBlocks.swapRemove(i);
 				}
 				if(size < block.len and if(smallestBlock) |_smallestBlock| block.len < _smallestBlock.len else true) {
@@ -1284,6 +1284,7 @@ pub fn LargeBuffer(comptime Entry: type) type {
 				const result = SubAllocation {.start = block.start, .len = size};
 				block.start += size;
 				block.len -= size;
+				self.used += size;
 				return result;
 			} else {
 				std.log.info("Resizing internal mesh buffer from {} MiB to {} MiB", .{self.capacity*@sizeOf(Entry) >> 20, (self.capacity*@sizeOf(Entry) >> 20)*2});
@@ -1304,9 +1305,9 @@ pub fn LargeBuffer(comptime Entry: type) type {
 		}
 
 		fn finalFree(self: *Self, _allocation: SubAllocation) !void {
+			if(_allocation.len == 0) return;
 			self.used -= _allocation.len;
 			var allocation = _allocation;
-			if(allocation.len == 0) return;
 			for(self.freeBlocks.items, 0..) |*block, i| {
 				if(allocation.start + allocation.len == block.start) {
 					allocation.len += block.len;
