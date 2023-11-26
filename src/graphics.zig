@@ -1205,7 +1205,6 @@ pub fn LargeBuffer(comptime Entry: type) type {
 	return struct {
 		ssbo: SSBO,
 		freeBlocks: std.ArrayList(SubAllocation),
-		persistentBuffer: [*]align(64) Entry, // glMapBufferRange has a guaranteed alignment of at least 64 bytes.
 		fences: [3]c.GLsync,
 		fencedFreeLists: [3]std.ArrayList(SubAllocation),
 		activeFence: u8,
@@ -1218,10 +1217,9 @@ pub fn LargeBuffer(comptime Entry: type) type {
 		fn createBuffer(self: *Self, size: u31) void {
 			self.ssbo = SSBO.init();
 			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.ssbo.bufferID);
-			const flags = c.GL_MAP_WRITE_BIT | c.GL_MAP_PERSISTENT_BIT | c.GL_MAP_COHERENT_BIT;
+			const flags = c.GL_MAP_WRITE_BIT | c.GL_DYNAMIC_STORAGE_BIT;
 			const bytes = @as(c_long, size)*@sizeOf(Entry);
 			c.glBufferStorage(c.GL_SHADER_STORAGE_BUFFER, bytes, null, flags);
-			self.persistentBuffer = @ptrCast(@alignCast(c.glMapBufferRange(c.GL_SHADER_STORAGE_BUFFER, 0, bytes, flags | c.GL_MAP_INVALIDATE_BUFFER_BIT).?));
 			self.ssbo.bind(self.binding);
 			self.capacity = size;
 		}
@@ -1248,8 +1246,6 @@ pub fn LargeBuffer(comptime Entry: type) type {
 			for(self.fencedFreeLists) |list| {
 				list.deinit();
 			}
-			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.ssbo.bufferID);
-			_ = c.glUnmapBuffer(c.GL_SHADER_STORAGE_BUFFER);
 			self.ssbo.deinit();
 			self.freeBlocks.deinit();
 		}
@@ -1290,8 +1286,6 @@ pub fn LargeBuffer(comptime Entry: type) type {
 				std.log.info("Resizing internal mesh buffer from {} MiB to {} MiB", .{self.capacity*@sizeOf(Entry) >> 20, (self.capacity*@sizeOf(Entry) >> 20)*2});
 				const oldBuffer = self.ssbo;
 				defer oldBuffer.deinit();
-				c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, oldBuffer.bufferID);
-				_ = c.glUnmapBuffer(c.GL_SHADER_STORAGE_BUFFER);
 				const oldCapacity = self.capacity;
 				self.createBuffer(self.capacity*2); // TODO: Is there a way to free the old buffer before creating the new one?
 				self.used += self.capacity - oldCapacity;
@@ -1336,7 +1330,12 @@ pub fn LargeBuffer(comptime Entry: type) type {
 				return;
 			}
 			allocation.* = try self.alloc(@intCast(data.len));
-			@memcpy(self.persistentBuffer[allocation.start..allocation.start].ptr, data);
+			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.ssbo.bufferID);
+			const ptr: [*]Entry = @ptrCast(@alignCast(
+				c.glMapBufferRange(c.GL_SHADER_STORAGE_BUFFER, allocation.start*@sizeOf(Entry), allocation.len*@sizeOf(Entry), c.GL_MAP_WRITE_BIT | c.GL_MAP_INVALIDATE_RANGE_BIT)
+			));
+			@memcpy(ptr, data);
+			std.debug.assert(c.glUnmapBuffer(c.GL_SHADER_STORAGE_BUFFER) == c.GL_TRUE);
 		}
 	};
 }
