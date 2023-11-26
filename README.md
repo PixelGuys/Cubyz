@@ -1,5 +1,5 @@
 # Cubyz
-Cubyz is a 3D voxel sandbox game (AKA a Minecraft clone).
+Cubyz is a 3D voxel sandbox game (inspired by Minecraft).
 
 Cubyz has a bunch of interesting/unique features such as:
 - Level of Detail (→ This enables far view distances.)
