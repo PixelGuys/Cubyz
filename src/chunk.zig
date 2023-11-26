@@ -814,6 +814,15 @@ pub const meshing = struct {
 			std.debug.assert(prevVal != 0);
 		}
 
+		/// In cases where it's not certain whether the thing was cleared already.
+		pub fn tryIncreaseRefCount(self: *ChunkMesh) bool {
+			const prevVal = self.refCount.load(.Monotonic);
+			while(prevVal != 0) {
+				prevVal = self.refCount.compareAndSwap(prevVal, prevVal + 1, .Monotonic, .Monotonic) orelse return true;
+			}
+			return false;
+		}
+
 		pub fn decreaseRefCount(self: *ChunkMesh) !void {
 			const prevVal = self.refCount.fetchSub(1, .Monotonic);
 			std.debug.assert(prevVal != 0);

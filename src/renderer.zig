@@ -1,5 +1,6 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
+const Atomic = std.atomic.Atomic;
 
 const blocks = @import("blocks.zig");
 const chunk = @import("chunk.zig");
@@ -869,7 +870,7 @@ pub const MeshSelection = struct {
 
 pub const RenderStructure = struct {
 	const ChunkMeshNode = struct {
-		mesh: ?*chunk.meshing.ChunkMesh,
+		mesh: Atomic(?*chunk.meshing.ChunkMesh),
 		lod: u3,
 		min: Vec2f,
 		max: Vec2f,
@@ -903,7 +904,7 @@ pub const RenderStructure = struct {
 		for(&storageLists) |*storageList| {
 			storageList.* = try main.globalAllocator.create([storageSize*storageSize*storageSize]ChunkMeshNode);
 			for(storageList.*) |*val| {
-				val.mesh = null;
+				val.mesh = Atomic(?*chunk.meshing.ChunkMesh).init(null);
 				val.rendered = false;
 			}
 		}
@@ -947,7 +948,7 @@ pub const RenderStructure = struct {
 
 	fn getBlockFromRenderThread(x: i32, y: i32, z: i32) ?blocks.Block {
 		const node = RenderStructure.getNodeFromRenderThread(.{.wx = x, .wy = y, .wz = z, .voxelSize=1});
-		const mesh = node.mesh orelse return null;
+		const mesh = node.mesh.load(.Unordered) orelse return null;
 		const block = mesh.chunk.getBlock(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask);
 		return block;
 	}
@@ -956,7 +957,7 @@ pub const RenderStructure = struct {
 		var lod: u5 = 0;
 		while(lod < settings.highestLOD) : (lod += 1) {
 			const node = RenderStructure.getNodeFromRenderThread(.{.wx = x, .wy = y, .wz = z, .voxelSize=@as(u31, 1) << lod});
-			const mesh = node.mesh orelse continue;
+			const mesh = node.mesh.load(.Unordered) orelse continue;
 			const block = mesh.chunk.getBlock(x & chunk.chunkMask<<lod, y & chunk.chunkMask<<lod, z & chunk.chunkMask<<lod);
 			return block;
 		}
@@ -967,7 +968,7 @@ pub const RenderStructure = struct {
 		var lod: u5 = @ctz(voxelSize);
 		while(lod < settings.highestLOD) : (lod += 1) {
 			const node = RenderStructure.getNodeFromRenderThread(.{.wx = wx & ~chunk.chunkMask<<lod, .wy = wy & ~chunk.chunkMask<<lod, .wz = wz & ~chunk.chunkMask<<lod, .voxelSize=@as(u31, 1) << lod});
-			return node.mesh orelse continue;
+			return node.mesh.load(.Unordered) orelse continue;
 		}
 		return null;
 	}
@@ -979,7 +980,16 @@ pub const RenderStructure = struct {
 		pos.wz += pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relZ[neighbor];
 		pos.voxelSize = resolution;
 		const node = getNodeFromRenderThread(pos);
-		return node.mesh;
+		return node.mesh.load(.Unordered);
+	}
+
+	pub fn getMeshAndIncreaseRefCount(pos: chunk.ChunkPosition) ?*chunk.meshing.ChunkMesh {
+		const node = RenderStructure.getNodeFromRenderThread(pos);
+		const mesh = node.mesh.load(.Unordered) orelse return null;
+		if(mesh.tryIncreaseRefCount()) {
+			return mesh;
+		}
+		return null;
 	}
 
 	fn reduceRenderDistance(fullRenderDistance: i64, reduction: i64) i32 {
@@ -1083,10 +1093,10 @@ pub const RenderStructure = struct {
 						
 						const node = &storageLists[_lod][@intCast(index)];
 						// Update the neighbors, so we don't get cracks when we look back:
-						if(node.mesh) |mesh| {
+						if(node.mesh.load(.Unordered)) |mesh| {
 							const pos = mesh.pos;
 							try mesh.decreaseRefCount();
-							node.mesh = null;
+							node.mesh.store(null, .Unordered);
 							if(renderDistance != 0) {
 								for(chunk.Neighbors.iterable) |neighbor| {
 									if(getNeighborFromRenderThread(pos, pos.voxelSize, neighbor)) |neighborMesh| {
@@ -1168,7 +1178,7 @@ pub const RenderStructure = struct {
 						const pos = chunk.ChunkPosition{.wx=x, .wy=y, .wz=z, .voxelSize=@as(u31, 1)<<lod};
 
 						const node = &storageLists[_lod][@intCast(index)];
-						std.debug.assert(node.mesh == null);
+						std.debug.assert(node.mesh.load(.Unordered) == null);
 						try meshRequests.append(pos);
 					}
 				}
@@ -1220,7 +1230,7 @@ pub const RenderStructure = struct {
 			var lod: u3 = 0;
 			while(lod <= settings.highestLOD) : (lod += 1) {
 				const node = getNodeFromRenderThread(firstPos);
-				if(node.mesh != null) {
+				if(node.mesh.load(.Unordered) != null) {
 					node.lod = lod;
 					node.min = @splat(-1);
 					node.max = @splat(1);
@@ -1244,7 +1254,7 @@ pub const RenderStructure = struct {
 		while(searchList.removeOrNull()) |data| {
 			try nodeList.append(data.node);
 			data.node.active = false;
-			const mesh = data.node.mesh.?;
+			const mesh = data.node.mesh.load(.Unordered).?;
 			mesh.visibilityMask = 0xff;
 			const relPos: Vec3d = @as(Vec3d, @floatFromInt(Vec3i{mesh.pos.wx, mesh.pos.wy, mesh.pos.wz})) - playerPos;
 			const relPosFloat: Vec3f = @floatCast(relPos);
@@ -1401,14 +1411,14 @@ pub const RenderStructure = struct {
 						neighborPos.voxelSize *= 2;
 					}
 					const node = getNodeFromRenderThread(neighborPos);
-					if(node.mesh != null) {
+					if(node.mesh.load(.Unordered)) |neighborMesh| {
 						// Ensure that there are no high-to-low lod transitions, which would produce cracks.
 						if(lod == data.node.lod and lod != settings.highestLOD and !node.rendered) {
 							var isValid: bool = true;
 							const relPos2: Vec3d = @as(Vec3d, @floatFromInt(Vec3i{neighborPos.wx, neighborPos.wy, neighborPos.wz})) - playerPos;
 							for(chunk.Neighbors.iterable) |neighbor2| {
 								const component2 = chunk.Neighbors.extractDirectionComponent(neighbor2, relPos2);
-								if(chunk.Neighbors.isPositive[neighbor2] and component2 + @as(f64, @floatFromInt(chunk.chunkSize*node.mesh.?.pos.voxelSize)) >= 0) continue;
+								if(chunk.Neighbors.isPositive[neighbor2] and component2 + @as(f64, @floatFromInt(chunk.chunkSize*neighborMesh.pos.voxelSize)) >= 0) continue;
 								if(!chunk.Neighbors.isPositive[neighbor2] and component2 <= 0) continue;
 								{ // Check the chunk of same lod:
 									const neighborPos2 = chunk.ChunkPosition{
@@ -1451,7 +1461,7 @@ pub const RenderStructure = struct {
 							node.active = true;
 							try searchList.add(.{
 								.node = node,
-								.distance = node.mesh.?.pos.getMaxDistanceSquared(playerPos),
+								.distance = neighborMesh.pos.getMaxDistanceSquared(playerPos),
 							});
 							node.rendered = true;
 						}
@@ -1463,10 +1473,10 @@ pub const RenderStructure = struct {
 		}
 		for(nodeList.items) |node| {
 			node.rendered = false;
-			const mesh = node.mesh.?;
+			const mesh = node.mesh.load(.Unordered).?;
 			if(mesh.pos.voxelSize != @as(u31, 1) << settings.highestLOD) {
 				const parent = getNodeFromRenderThread(.{.wx=mesh.pos.wx, .wy=mesh.pos.wy, .wz=mesh.pos.wz, .voxelSize=mesh.pos.voxelSize << 1});
-				if(parent.mesh) |parentMesh| {
+				if(parent.mesh.load(.Unordered)) |parentMesh| {
 					const sizeShift = chunk.chunkShift + @ctz(mesh.pos.voxelSize);
 					const octantIndex: u3 = @intCast((mesh.pos.wx>>sizeShift & 1) | (mesh.pos.wy>>sizeShift & 1)<<1 | (mesh.pos.wz>>sizeShift & 1)<<2);
 					parentMesh.visibilityMask &= ~(@as(u8, 1) << octantIndex);
@@ -1498,7 +1508,7 @@ pub const RenderStructure = struct {
 			for(blockUpdateList.items) |blockUpdate| {
 				const pos = chunk.ChunkPosition{.wx=blockUpdate.x, .wy=blockUpdate.y, .wz=blockUpdate.z, .voxelSize=1};
 				const node = getNodeFromRenderThread(pos);
-				if(node.mesh) |mesh| {
+				if(node.mesh.load(.Unordered)) |mesh| {
 					try mesh.updateBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock);
 				} // TODO: It seems like we simply ignore the block update if we don't have the mesh yet.
 			}
@@ -1516,7 +1526,7 @@ pub const RenderStructure = struct {
 			mutex.unlock();
 			defer mutex.lock();
 			try mesh.decreaseRefCount();
-			if(getNodeFromRenderThread(mesh.pos).mesh != mesh) continue; // This mesh isn't used for rendering anymore.
+			if(getNodeFromRenderThread(mesh.pos).mesh.load(.Unordered) != mesh) continue; // This mesh isn't used for rendering anymore.
 			if(!mesh.needsNeighborUpdate) continue;
 			try mesh.uploadDataAndFinishNeighbors();
 			mesh.needsNeighborUpdate = false;
@@ -1553,10 +1563,9 @@ pub const RenderStructure = struct {
 			if(isInRenderDistance(mesh.pos)) {
 				const node = getNodeFromRenderThread(mesh.pos);
 				try mesh.uploadDataAndFinishNeighbors();
-				if(node.mesh) |oldMesh| {
+				if(node.mesh.swap(mesh, .Monotonic)) |oldMesh| {
 					try oldMesh.decreaseRefCount();
 				}
-				node.mesh = mesh;
 			} else {
 				try mesh.decreaseRefCount();
 			}
