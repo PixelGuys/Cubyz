@@ -178,14 +178,22 @@ pub const std_options = struct {
 };
 
 fn logToFile(comptime format: []const u8, args: anytype) void {
-	const string = std.fmt.allocPrint(stackAllocator, format, args) catch return;
-	defer stackAllocator.free(string);
+	var stackFallbackAllocator: std.heap.StackFallbackAllocator(65536) = undefined;
+	stackFallbackAllocator.fallback_allocator = globalAllocator;
+	const allocator = stackFallbackAllocator.get();
+
+	const string = std.fmt.allocPrint(allocator, format, args) catch return;
+	defer allocator.free(string);
 	logFile.writeAll(string) catch {};
 }
 
 fn logToStdErr(comptime format: []const u8, args: anytype) void {
-	const string = std.fmt.allocPrint(stackAllocator, format, args) catch return;
-	defer stackAllocator.free(string);
+	var stackFallbackAllocator: std.heap.StackFallbackAllocator(65536) = undefined;
+	stackFallbackAllocator.fallback_allocator = globalAllocator;
+	const allocator = stackFallbackAllocator.get();
+
+	const string = std.fmt.allocPrint(allocator, format, args) catch return;
+	defer allocator.free(string);
 	nosuspend std.io.getStdErr().writeAll(string) catch {};
 }
 
