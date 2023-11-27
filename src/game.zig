@@ -1,5 +1,5 @@
 const std = @import("std");
-const Atomic = std.atomic.Atomic;
+const Atomic = std.atomic.Value;
 
 const assets = @import("assets.zig");
 const chunk = @import("chunk.zig");
@@ -167,7 +167,7 @@ pub const World = struct {
 		while(self.milliTime +% 100 -% newTime < 0) {
 			self.milliTime +%= 100;
 			var curTime = self.gameTime.load(.Monotonic);
-			while(self.gameTime.tryCompareAndSwap(curTime, curTime +% 1, .Monotonic, .Monotonic)) |actualTime| {
+			while(self.gameTime.cmpxchgWeak(curTime, curTime +% 1, .Monotonic, .Monotonic)) |actualTime| {
 				curTime = actualTime;
 			}
 		}

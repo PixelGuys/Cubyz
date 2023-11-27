@@ -668,7 +668,7 @@ pub const Window = struct {
 	}
 };
 
-pub var lastFrameTime = std.atomic.Atomic(f64).init(0);
+pub var lastFrameTime = std.atomic.Value(f64).init(0);
 
 pub fn main() !void {
 	seed = @bitCast(std.time.milliTimestamp());

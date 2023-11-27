@@ -1,6 +1,6 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-const Atomic = std.atomic.Atomic;
+const Atomic = std.atomic.Value;
 
 const blocks = @import("blocks.zig");
 const chunk = @import("chunk.zig");
@@ -484,7 +484,7 @@ pub const MenuBackGround = struct {
 		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.len*@sizeOf(c_int)), &indices, c.GL_STATIC_DRAW);
 
 		// Load a random texture from the backgrounds folder. The player may make their own pictures which can be chosen as well.
-		var dir: std.fs.IterableDir = try std.fs.cwd().makeOpenPathIterable("assets/backgrounds", .{});
+		var dir = try std.fs.cwd().makeOpenPath("assets/backgrounds", .{.iterate = true});
 		defer dir.close();
 
 		var walker = try dir.walk(main.globalAllocator);

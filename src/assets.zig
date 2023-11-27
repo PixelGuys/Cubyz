@@ -17,7 +17,7 @@ var commonRecipes: std.ArrayList([]const u8) = undefined;
 /// Reads json files recursively from all subfolders.
 pub fn readAllJsonFilesInAddons(externalAllocator: Allocator, addons: std.ArrayList(std.fs.Dir), addonNames: std.ArrayList([]const u8), subPath: []const u8, output: *std.StringHashMap(JsonElement)) !void {
 	for(addons.items, addonNames.items) |addon, addonName| {
-		var dir: std.fs.IterableDir = addon.openIterableDir(subPath, .{}) catch |err| {
+		var dir = addon.openDir(subPath, .{.iterate = true}) catch |err| {
 			if(err == error.FileNotFound) continue;
 			return err;
 		};
@@ -40,7 +40,7 @@ pub fn readAllJsonFilesInAddons(externalAllocator: Allocator, addons: std.ArrayL
 					}
 				}
 
-				const file = try dir.dir.openFile(entry.path, .{});
+				const file = try dir.openFile(entry.path, .{});
 				defer file.close();
 				const string = try file.readToEndAlloc(main.stackAllocator, std.math.maxInt(usize));
 				defer main.stackAllocator.free(string);
@@ -52,7 +52,7 @@ pub fn readAllJsonFilesInAddons(externalAllocator: Allocator, addons: std.ArrayL
 /// Reads text files recursively from all subfolders.
 pub fn readAllFilesInAddons(externalAllocator: Allocator, addons: std.ArrayList(std.fs.Dir), subPath: []const u8, output: *std.ArrayList([]const u8)) !void {
 	for(addons.items) |addon| {
-		var dir: std.fs.IterableDir = addon.openIterableDir(subPath, .{}) catch |err| {
+		var dir = addon.openDir(subPath, .{.iterate = true}) catch |err| {
 			if(err == error.FileNotFound) continue;
 			return err;
 		};
@@ -63,7 +63,7 @@ pub fn readAllFilesInAddons(externalAllocator: Allocator, addons: std.ArrayList(
 
 		while(try walker.next()) |entry| {
 			if(entry.kind == .file) {
-				const file = try dir.dir.openFile(entry.path, .{});
+				const file = try dir.openFile(entry.path, .{});
 				defer file.close();
 				const string = try file.readToEndAlloc(externalAllocator, std.math.maxInt(usize));
 				try output.append(string);
@@ -79,12 +79,12 @@ pub fn readAssets(externalAllocator: Allocator, assetPath: []const u8, blocks: *
 	defer addonNames.deinit();
 	
 	{ // Find all the sub-directories to the assets folder.
-		var dir = try std.fs.cwd().openIterableDir(assetPath, .{});
+		var dir = try std.fs.cwd().openDir(assetPath, .{.iterate = true});
 		defer dir.close();
 		var iterator = dir.iterate();
 		while(try iterator.next()) |addon| {
 			if(addon.kind == .directory) {
-				try addons.append(try dir.dir.openDir(addon.name, .{}));
+				try addons.append(try dir.openDir(addon.name, .{}));
 				try addonNames.append(try main.globalAllocator.dupe(u8, addon.name));
 			}
 		}

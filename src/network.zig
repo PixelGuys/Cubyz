@@ -1,7 +1,7 @@
 const builtin = @import("builtin");
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-const Atomic = std.atomic.Atomic;
+const Atomic = std.atomic.Value;
 
 const assets = @import("assets.zig");
 const Block = @import("blocks.zig").Block;
@@ -613,7 +613,7 @@ pub const Protocols = struct {
 							// TODO: Send the world data.
 							const path = try std.fmt.allocPrint(main.stackAllocator, "saves/{s}/assets/", .{"Development"}); // TODO: Use world name.
 							defer main.stackAllocator.free(path);
-							var dir = try std.fs.cwd().openIterableDir(path, .{});
+							var dir = try std.fs.cwd().openDir(path, .{.iterate = true});
 							defer dir.close();
 							var arrayList = std.ArrayList(u8).init(main.globalAllocator);
 							defer arrayList.deinit();
@@ -1077,11 +1077,11 @@ pub const Protocols = struct {
 						if(@abs(curTime -% expectedTime) >= 1000) {
 							world.gameTime.store(expectedTime, .Monotonic);
 						} else if(curTime < expectedTime) { // world.gameTime++
-							while(world.gameTime.tryCompareAndSwap(curTime, curTime +% 1, .Monotonic, .Monotonic)) |actualTime| {
+							while(world.gameTime.cmpxchgWeak(curTime, curTime +% 1, .Monotonic, .Monotonic)) |actualTime| {
 								curTime = actualTime;
 							}
 						} else { // world.gameTime--
-							while(world.gameTime.tryCompareAndSwap(curTime, curTime -% 1, .Monotonic, .Monotonic)) |actualTime| {
+							while(world.gameTime.cmpxchgWeak(curTime, curTime -% 1, .Monotonic, .Monotonic)) |actualTime| {
 								curTime = actualTime;
 							}
 						}

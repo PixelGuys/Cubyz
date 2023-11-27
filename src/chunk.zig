@@ -777,7 +777,7 @@ pub const meshing = struct {
 		sortingOutputBuffer: []FaceData = &.{},
 		culledSortingCount: u31 = 0,
 		lastTransparentUpdatePos: Vec3i = Vec3i{0, 0, 0},
-		refCount: std.atomic.Atomic(u32) = std.atomic.Atomic(u32).init(1),
+		refCount: std.atomic.Value(u32) = std.atomic.Value(u32).init(1),
 		needsNeighborUpdate: bool = false,
 		needsMeshUpdate: bool = false,
 		mutex: std.Thread.Mutex = .{},
@@ -820,7 +820,7 @@ pub const meshing = struct {
 		pub fn tryIncreaseRefCount(self: *ChunkMesh) bool {
 			var prevVal = self.refCount.load(.Monotonic);
 			while(prevVal != 0) {
-				prevVal = self.refCount.compareAndSwap(prevVal, prevVal + 1, .Monotonic, .Monotonic) orelse return true;
+				prevVal = self.refCount.cmpxchgWeak(prevVal, prevVal + 1, .Monotonic, .Monotonic) orelse return true;
 			}
 			return false;
 		}

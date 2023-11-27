@@ -1,6 +1,6 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-const Atomic = std.atomic.Atomic;
+const Atomic = std.atomic.Value;
 const builtin = @import("builtin");
 
 const main = @import("main.zig");
@@ -24,7 +24,7 @@ pub const Compression = struct {
 		return try decomp.reader().readAll(buf);
 	}
 
-	pub fn pack(sourceDir: std.fs.IterableDir, writer: anytype) !void {
+	pub fn pack(sourceDir: std.fs.Dir, writer: anytype) !void {
 		var comp = try std.compress.deflate.compressor(main.globalAllocator, writer, .{.level = .default_compression});
 		defer comp.deinit();
 		var walker = try sourceDir.walk(main.globalAllocator);
@@ -46,7 +46,7 @@ pub const Compression = struct {
 				_ = try comp.write(&len);
 				_ = try comp.write(relPath);
 
-				const file = try sourceDir.dir.openFile(relPath, .{});
+				const file = try sourceDir.openFile(relPath, .{});
 				defer file.close();
 				const fileData = try file.readToEndAlloc(main.stackAllocator, std.math.maxInt(u32));
 				defer main.stackAllocator.free(fileData);
@@ -598,14 +598,14 @@ pub const ThreadPool = struct {
 	const refreshTime: u32 = 100; // The time after which all priorities get refreshed in milliseconds.
 
 	threads: []std.Thread,
-	currentTasks: []std.atomic.Atomic(?*const VTable),
+	currentTasks: []Atomic(?*const VTable),
 	loadList: *BlockingMaxHeap(Task),
 	allocator: Allocator,
 
 	pub fn init(allocator: Allocator, threadCount: usize) !ThreadPool {
 		const self = ThreadPool {
 			.threads = try allocator.alloc(std.Thread, threadCount),
-			.currentTasks = try allocator.alloc(std.atomic.Atomic(?*const VTable), threadCount),
+			.currentTasks = try allocator.alloc(Atomic(?*const VTable), threadCount),
 			.loadList = try BlockingMaxHeap(Task).init(allocator),
 			.allocator = allocator,
 		};
@@ -801,13 +801,13 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 		///  Tries to find the entry that fits to the supplied hashable.
 		pub fn find(self: *@This(), compareAndHash: anytype) ?*T {
 			const index: u32 = compareAndHash.hashCode() & hashMask;
-			_ = @atomicRmw(usize, &self.cacheRequests.value, .Add, 1, .Monotonic);
+			_ = @atomicRmw(usize, &self.cacheRequests.raw, .Add, 1, .Monotonic);
 			self.buckets[index].mutex.lock();
 			defer self.buckets[index].mutex.unlock();
 			if(self.buckets[index].find(compareAndHash)) |item| {
 				return item;
 			}
-			_ = @atomicRmw(usize, &self.cacheMisses.value, .Add, 1, .Monotonic);
+			_ = @atomicRmw(usize, &self.cacheMisses.raw, .Add, 1, .Monotonic);
 			return null;
 		}
 
@@ -1001,9 +1001,9 @@ pub const TimeDifference = struct {
 			self.firstValue = false;
 		}
 		if(timeDifference -% self.difference.load(.Monotonic) > 0) {
-			_ = @atomicRmw(i16, &self.difference.value, .Add, 1, .Monotonic);
+			_ = @atomicRmw(i16, &self.difference.raw, .Add, 1, .Monotonic);
 		} else if(timeDifference -% self.difference.load(.Monotonic) < 0) {
-			_ = @atomicRmw(i16, &self.difference.value, .Add, -1, .Monotonic);
+			_ = @atomicRmw(i16, &self.difference.raw, .Add, -1, .Monotonic);
 		}
 	}
 };

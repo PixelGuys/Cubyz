@@ -113,7 +113,7 @@ pub fn onOpen() Allocator.Error!void {
 	const list = try VerticalList.init(.{padding, 16 + padding}, 300, 8);
 	// TODO: try list.add(try Button.initText(.{0, 0}, 128, "Create World", gui.openWindowCallback("save_creation")));
 
-	var dir: std.fs.IterableDir = std.fs.cwd().makeOpenPathIterable("saves", .{}) catch |err| {
+	var dir = std.fs.cwd().makeOpenPath("saves", .{.iterate = true}) catch |err| {
 		std.log.err("Encountered error while trying to open folder \"saves\": {s}", .{@errorName(err)});
 		return;
 	};

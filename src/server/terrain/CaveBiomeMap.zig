@@ -27,7 +27,7 @@ pub const CaveBiomeMapFragment = struct {
 
 	pos: main.chunk.ChunkPosition,
 	biomeMap: [1 << 3*(caveBiomeMapShift - caveBiomeShift)][2]*const Biome = undefined,
-	refCount: std.atomic.Atomic(u16) = std.atomic.Atomic(u16).init(0),
+	refCount: std.atomic.Value(u16) = std.atomic.Value(u16).init(0),
 
 	pub fn init(self: *CaveBiomeMapFragment, wx: i32, wy: i32, wz: i32) !void {
 		self.* = .{
@@ -454,7 +454,7 @@ pub fn deinit() void {
 }
 
 fn mapFragmentDeinit(mapFragment: *CaveBiomeMapFragment) void {
-	if(@atomicRmw(u16, &mapFragment.refCount.value, .Sub, 1, .Monotonic) == 1) {
+	if(@atomicRmw(u16, &mapFragment.refCount.raw, .Sub, 1, .Monotonic) == 1) {
 		main.globalAllocator.destroy(mapFragment);
 	}
 }
@@ -465,7 +465,7 @@ fn cacheInit(pos: ChunkPosition) !*CaveBiomeMapFragment {
 	for(profile.caveBiomeGenerators) |generator| {
 		try generator.generate(mapFragment, profile.seed ^ generator.generatorSeed);
 	}
-	_= @atomicRmw(u16, &mapFragment.refCount.value, .Add, 1, .Monotonic);
+	_= @atomicRmw(u16, &mapFragment.refCount.raw, .Add, 1, .Monotonic);
 	return mapFragment;
 }
 
@@ -478,6 +478,6 @@ fn getOrGenerateFragment(_wx: i32, _wy: i32, _wz: i32) !*CaveBiomeMapFragment {
 		.voxelSize = CaveBiomeMapFragment.caveBiomeSize,
 	};
 	const result = try cache.findOrCreate(compare, cacheInit);
-	std.debug.assert(@atomicRmw(u16, &result.refCount.value, .Add, 1, .Monotonic) != 0);
+	std.debug.assert(@atomicRmw(u16, &result.refCount.raw, .Add, 1, .Monotonic) != 0);
 	return result;
 }

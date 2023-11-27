@@ -104,7 +104,7 @@ pub var users: std.ArrayList(*User) = undefined;
 
 pub var connectionManager: *ConnectionManager = undefined;
 
-var running: std.atomic.Atomic(bool) = std.atomic.Atomic(bool).init(false);
+var running: std.atomic.Value(bool) = std.atomic.Value(bool).init(false);
 var lastTime: i128 = undefined;
 
 pub var mutex: std.Thread.Mutex = .{};
