@@ -779,6 +779,8 @@ pub const meshing = struct {
 		lastTransparentUpdatePos: Vec3i = Vec3i{0, 0, 0},
 		refCount: std.atomic.Atomic(u32) = std.atomic.Atomic(u32).init(1),
 		needsNeighborUpdate: bool = false,
+		needsMeshUpdate: bool = false,
+		mutex: std.Thread.Mutex = .{},
 
 		chunkBorders: [6]BoundingRectToNeighborChunk = [1]BoundingRectToNeighborChunk{.{}} ** 6,
 
@@ -816,18 +818,18 @@ pub const meshing = struct {
 
 		/// In cases where it's not certain whether the thing was cleared already.
 		pub fn tryIncreaseRefCount(self: *ChunkMesh) bool {
-			const prevVal = self.refCount.load(.Monotonic);
+			var prevVal = self.refCount.load(.Monotonic);
 			while(prevVal != 0) {
 				prevVal = self.refCount.compareAndSwap(prevVal, prevVal + 1, .Monotonic, .Monotonic) orelse return true;
 			}
 			return false;
 		}
 
-		pub fn decreaseRefCount(self: *ChunkMesh) !void {
+		pub fn decreaseRefCount(self: *ChunkMesh) void {
 			const prevVal = self.refCount.fetchSub(1, .Monotonic);
 			std.debug.assert(prevVal != 0);
 			if(prevVal == 1) {
-				try renderer.RenderStructure.addMeshToClearList(self);
+				renderer.RenderStructure.addMeshToClearList(self) catch @panic("Out of Memory");
 			}
 		}
 
@@ -907,6 +909,7 @@ pub const meshing = struct {
 					self.chunkBorders[Neighbors.dirPosZ].adjustToBlock((&self.chunk.blocks)[getIndex(x, y, chunkSize-1)], .{x, y, chunkSize}, Neighbors.dirPosZ); // TODO: Wait for the compiler bug to get fixed.
 				}
 			}
+			try self.finishNeighbors(false);
 		}
 
 		fn addFace(self: *ChunkMesh, faceData: FaceData, fromNeighborChunk: ?u3, transparent: bool) !void {
@@ -1046,7 +1049,7 @@ pub const meshing = struct {
 			self.transparentMesh.clearNeighbor(neighbor, isLod);
 		}
 
-		fn uploadData(self: *ChunkMesh) !void {
+		pub fn uploadData(self: *ChunkMesh) !void {
 			const isNeighborLod: [6]bool = .{
 				self.lastNeighborsSameLod[0] == null or self.forceHigherLod[0],
 				self.lastNeighborsSameLod[1] == null or self.forceHigherLod[1],
@@ -1067,11 +1070,26 @@ pub const meshing = struct {
 			}
 		}
 
-		pub fn uploadDataAndFinishNeighbors(self: *ChunkMesh) !void {
+		fn deadlockFreeDoubleLock(m1: *std.Thread.Mutex, m2: *std.Thread.Mutex) void {
+			if(@intFromPtr(m1) < @intFromPtr(m2)) {
+				m1.lock();
+				m2.lock();
+			} else {
+				m2.lock();
+				m1.lock();
+			}
+		}
+
+		fn finishNeighbors(self: *ChunkMesh, comptime inRenderThread: bool) !void {
+			const getNeighborMesh: fn(ChunkPosition, u31, u3) ?*ChunkMesh = if(inRenderThread) renderer.RenderStructure.getNeighborFromRenderThread else renderer.RenderStructure.getNeighborAndIncreaseRefCount;
 			for(Neighbors.iterable) |neighbor| {
-				const nullNeighborMesh = renderer.RenderStructure.getNeighborFromRenderThread(self.pos, self.pos.voxelSize, neighbor);
+				const nullNeighborMesh = getNeighborMesh(self.pos, self.pos.voxelSize, neighbor);
 				if(nullNeighborMesh) |neighborMesh| {
+					defer if(!inRenderThread) neighborMesh.decreaseRefCount();
 					std.debug.assert(neighborMesh != self);
+					deadlockFreeDoubleLock(&self.mutex, &neighborMesh.mutex);
+					defer self.mutex.unlock();
+					defer neighborMesh.mutex.unlock();
 					if(self.lastNeighborsSameLod[neighbor] == neighborMesh) continue;
 					self.lastNeighborsSameLod[neighbor] = neighborMesh;
 					neighborMesh.lastNeighborsSameLod[neighbor ^ 1] = self;
@@ -1133,7 +1151,12 @@ pub const meshing = struct {
 							}
 						}
 					}
-					try neighborMesh.uploadData();
+					if(inRenderThread) {
+						try neighborMesh.uploadData();
+					} else {
+						neighborMesh.increaseRefCount();
+						try renderer.RenderStructure.addToUpdateList(neighborMesh);
+					}
 				} else {
 					if(self.lastNeighborsSameLod[neighbor] != null) {
 						self.clearNeighbor(neighbor, false);
@@ -1142,13 +1165,17 @@ pub const meshing = struct {
 				}
 				// lod border:
 				if(self.pos.voxelSize == 1 << settings.highestLOD) continue;
-				const neighborMesh = renderer.RenderStructure.getNeighborFromRenderThread(self.pos, 2*self.pos.voxelSize, neighbor) orelse {
+				const neighborMesh = getNeighborMesh(self.pos, 2*self.pos.voxelSize, neighbor) orelse {
 					if(self.lastNeighborsHigherLod[neighbor] != null) {
 						self.clearNeighbor(neighbor, true);
 						self.lastNeighborsHigherLod[neighbor] = null;
 					}
 					continue;
 				};
+				deadlockFreeDoubleLock(&self.mutex, &neighborMesh.mutex);
+				defer self.mutex.unlock();
+				defer neighborMesh.mutex.unlock();
+				defer if(!inRenderThread) neighborMesh.decreaseRefCount();
 				if(self.lastNeighborsHigherLod[neighbor] == neighborMesh) continue;
 				self.lastNeighborsHigherLod[neighbor] = neighborMesh;
 				self.clearNeighbor(neighbor, true);
@@ -1200,6 +1227,10 @@ pub const meshing = struct {
 					}
 				}
 			}
+		}
+
+		pub fn uploadDataAndFinishNeighbors(self: *ChunkMesh) !void {
+			try self.finishNeighbors(true);
 			try self.uploadData();
 		}
 
