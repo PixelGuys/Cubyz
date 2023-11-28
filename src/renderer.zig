@@ -912,7 +912,15 @@ pub const RenderStructure = struct {
 	}
 
 	pub fn deinit() void {
-		freeOldMeshes(0, 0, 0, 0) catch |err| {
+		const olderPx = lastPx;
+		const olderPy = lastPy;
+		const olderPz = lastPz;
+		const olderRD = lastRD;
+		lastPx = 0;
+		lastPy = 0;
+		lastPz = 0;
+		lastRD = 0;
+		freeOldMeshes(olderPx, olderPy, olderPz, olderRD) catch |err| {
 			std.log.err("Error while freeing remaining meshes: {s}", .{@errorName(err)});
 		};
 		for(storageLists) |storageList| {
@@ -953,7 +961,7 @@ pub const RenderStructure = struct {
 
 	fn getBlockFromRenderThread(x: i32, y: i32, z: i32) ?blocks.Block {
 		const node = RenderStructure.getNodeFromRenderThread(.{.wx = x, .wy = y, .wz = z, .voxelSize=1});
-		const mesh = node.mesh.load(.Unordered) orelse return null;
+		const mesh = node.mesh.load(.Acquire) orelse return null;
 		const block = mesh.chunk.getBlock(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask);
 		return block;
 	}
@@ -962,7 +970,7 @@ pub const RenderStructure = struct {
 		var lod: u5 = 0;
 		while(lod < settings.highestLOD) : (lod += 1) {
 			const node = RenderStructure.getNodeFromRenderThread(.{.wx = x, .wy = y, .wz = z, .voxelSize=@as(u31, 1) << lod});
-			const mesh = node.mesh.load(.Unordered) orelse continue;
+			const mesh = node.mesh.load(.Acquire) orelse continue;
 			const block = mesh.chunk.getBlock(x & chunk.chunkMask<<lod, y & chunk.chunkMask<<lod, z & chunk.chunkMask<<lod);
 			return block;
 		}
@@ -973,7 +981,7 @@ pub const RenderStructure = struct {
 		var lod: u5 = @ctz(voxelSize);
 		while(lod < settings.highestLOD) : (lod += 1) {
 			const node = RenderStructure.getNodeFromRenderThread(.{.wx = wx & ~chunk.chunkMask<<lod, .wy = wy & ~chunk.chunkMask<<lod, .wz = wz & ~chunk.chunkMask<<lod, .voxelSize=@as(u31, 1) << lod});
-			return node.mesh.load(.Unordered) orelse continue;
+			return node.mesh.load(.Acquire) orelse continue;
 		}
 		return null;
 	}
@@ -985,14 +993,26 @@ pub const RenderStructure = struct {
 		pos.wz += pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relZ[neighbor];
 		pos.voxelSize = resolution;
 		const node = getNodeFromRenderThread(pos);
-		return node.mesh.load(.Unordered);
+		return node.mesh.load(.Acquire);
 	}
 
 	pub fn getMeshAndIncreaseRefCount(pos: chunk.ChunkPosition) ?*chunk.meshing.ChunkMesh {
 		const node = RenderStructure.getNodeFromRenderThread(pos);
-		const mesh = node.mesh.load(.Unordered) orelse return null;
+		const mesh = node.mesh.load(.Acquire) orelse return null;
+		const lod = std.math.log2_int(u31, pos.voxelSize);
+		const mask = ~((@as(i32, 1) << lod+chunk.chunkShift) - 1);
+		if(pos.wx & mask != mesh.pos.wx or pos.wy & mask != mesh.pos.wy or pos.wz & mask != mesh.pos.wz) return null;
 		if(mesh.tryIncreaseRefCount()) {
 			return mesh;
+		}
+		return null;
+	}
+
+	pub fn getMeshFromAnyLodAndIncreaseRefCount(wx: i32, wy: i32, wz: i32, voxelSize: u31) ?*chunk.meshing.ChunkMesh {
+		var lod: u5 = @ctz(voxelSize);
+		while(lod < settings.highestLOD) : (lod += 1) {
+			const mesh = RenderStructure.getMeshAndIncreaseRefCount(.{.wx = wx & ~chunk.chunkMask<<lod, .wy = wy & ~chunk.chunkMask<<lod, .wz = wz & ~chunk.chunkMask<<lod, .voxelSize=@as(u31, 1) << lod});
+			return mesh orelse continue;
 		}
 		return null;
 	}
@@ -1042,47 +1062,47 @@ pub const RenderStructure = struct {
 		return true;
 	}
 
-	fn freeOldMeshes(px: i32, py: i32, pz: i32, renderDistance: i32) !void {
+	fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32) !void {
 		for(0..storageLists.len) |_lod| {
 			const lod: u5 = @intCast(_lod);
-			const maxRenderDistanceNew = renderDistance*chunk.chunkSize << lod;
-			const maxRenderDistanceOld = lastRD*chunk.chunkSize << lod;
+			const maxRenderDistanceNew = lastRD*chunk.chunkSize << lod;
+			const maxRenderDistanceOld = olderRD*chunk.chunkSize << lod;
 			const size: u31 = chunk.chunkSize << lod;
 			const mask: i32 = size - 1;
 			const invMask: i32 = ~mask;
 
 			std.debug.assert(@divFloor(2*maxRenderDistanceNew + size-1, size) + 2 <= storageSize);
 
-			const minX = lastPx-%maxRenderDistanceOld & invMask;
-			const maxX = lastPx+%maxRenderDistanceOld+%size & invMask;
+			const minX = olderPx-%maxRenderDistanceOld & invMask;
+			const maxX = olderPx+%maxRenderDistanceOld+%size & invMask;
 			var x = minX;
 			while(x != maxX): (x +%= size) {
 				const xIndex = @divExact(x, size) & storageMask;
-				var deltaXNew: i64 = @abs(x +% size/2 -% px);
+				var deltaXNew: i64 = @abs(x +% size/2 -% lastPx);
 				deltaXNew = @max(0, deltaXNew - size/2);
-				var deltaXOld: i64 = @abs(x +% size/2 -% lastPx);
+				var deltaXOld: i64 = @abs(x +% size/2 -% olderPx);
 				deltaXOld = @max(0, deltaXOld - size/2);
 				const maxYRenderDistanceNew: i32 = reduceRenderDistance(maxRenderDistanceNew, deltaXNew);
 				const maxYRenderDistanceOld: i32 = reduceRenderDistance(maxRenderDistanceOld, deltaXOld);
 
-				const minY = lastPy-%maxYRenderDistanceOld & invMask;
-				const maxY = lastPy+%maxYRenderDistanceOld+%size & invMask;
+				const minY = olderPy-%maxYRenderDistanceOld & invMask;
+				const maxY = olderPy+%maxYRenderDistanceOld+%size & invMask;
 				var y = minY;
 				while(y != maxY): (y +%= size) {
 					const yIndex = @divExact(y, size) & storageMask;
-					var deltaYOld: i64 = @abs(y +% size/2 -% lastPy);
+					var deltaYOld: i64 = @abs(y +% size/2 -% olderPy);
 					deltaYOld = @max(0, deltaYOld - size/2);
-					var deltaYNew: i64 = @abs(y +% size/2 -% py);
+					var deltaYNew: i64 = @abs(y +% size/2 -% lastPy);
 					deltaYNew = @max(0, deltaYNew - size/2);
 					var maxZRenderDistanceOld: i32 = reduceRenderDistance(maxYRenderDistanceOld, deltaYOld);
 					if(maxZRenderDistanceOld == 0) maxZRenderDistanceOld -= size/2;
 					var maxZRenderDistanceNew: i32 = reduceRenderDistance(maxYRenderDistanceNew, deltaYNew);
 					if(maxZRenderDistanceNew == 0) maxZRenderDistanceNew -= size/2;
 
-					const minZOld = lastPz-%maxZRenderDistanceOld & invMask;
-					const maxZOld = lastPz+%maxZRenderDistanceOld+%size & invMask;
-					const minZNew = pz-%maxZRenderDistanceNew & invMask;
-					const maxZNew = pz+%maxZRenderDistanceNew+%size & invMask;
+					const minZOld = olderPz-%maxZRenderDistanceOld & invMask;
+					const maxZOld = olderPz+%maxZRenderDistanceOld+%size & invMask;
+					const minZNew = lastPz-%maxZRenderDistanceNew & invMask;
+					const maxZNew = lastPz+%maxZRenderDistanceNew+%size & invMask;
 
 					var zValues: [storageSize]i32 = undefined;
 					var zValuesLen: usize = 0;
@@ -1107,16 +1127,18 @@ pub const RenderStructure = struct {
 						
 						const node = &storageLists[_lod][@intCast(index)];
 						// Update the neighbors, so we don't get cracks when we look back:
-						if(node.mesh.load(.Unordered)) |mesh| {
+						if(node.mesh.load(.Acquire)) |mesh| {
 							const pos = mesh.pos;
 							mesh.decreaseRefCount();
-							node.mesh.store(null, .Unordered);
-							if(renderDistance != 0) {
+							node.mesh.store(null, .Release);
+							if(lastRD != 0) {
 								for(chunk.Neighbors.iterable) |neighbor| {
 									if(getNeighborFromRenderThread(pos, pos.voxelSize, neighbor)) |neighborMesh| {
-										neighborMesh.needsNeighborUpdate = true;
-										neighborMesh.increaseRefCount();
-										try priorityNeighborUpdateList.append(neighborMesh);
+										if(neighborMesh.finishedMeshing) {
+											neighborMesh.needsNeighborUpdate = true;
+											neighborMesh.increaseRefCount();
+											try priorityNeighborUpdateList.append(neighborMesh);
+										}
 									}
 								}
 							}
@@ -1192,7 +1214,7 @@ pub const RenderStructure = struct {
 						const pos = chunk.ChunkPosition{.wx=x, .wy=y, .wz=z, .voxelSize=@as(u31, 1)<<lod};
 
 						const node = &storageLists[_lod][@intCast(index)];
-						std.debug.assert(node.mesh.load(.Unordered) == null);
+						std.debug.assert(node.mesh.load(.Acquire) == null);
 						try meshRequests.append(pos);
 					}
 				}
@@ -1212,7 +1234,6 @@ pub const RenderStructure = struct {
 		var meshRequests = std.ArrayList(chunk.ChunkPosition).init(main.globalAllocator);
 		defer meshRequests.deinit();
 
-		try freeOldMeshes(px, py, pz, renderDistance);
 		try createNewMeshes(px, py, pz, renderDistance, &meshRequests);
 
 		// Does occlusion using a breadth-first search that caches an on-screen visibility rectangle.
@@ -1244,7 +1265,7 @@ pub const RenderStructure = struct {
 			var lod: u3 = 0;
 			while(lod <= settings.highestLOD) : (lod += 1) {
 				const node = getNodeFromRenderThread(firstPos);
-				if(node.mesh.load(.Unordered) != null) {
+				if(node.mesh.load(.Acquire) != null and node.mesh.load(.Acquire).?.finishedMeshing) {
 					node.lod = lod;
 					node.min = @splat(-1);
 					node.max = @splat(1);
@@ -1268,7 +1289,8 @@ pub const RenderStructure = struct {
 		while(searchList.removeOrNull()) |data| {
 			try nodeList.append(data.node);
 			data.node.active = false;
-			const mesh = data.node.mesh.load(.Unordered).?;
+			const mesh = data.node.mesh.load(.Acquire).?;
+			std.debug.assert(mesh.finishedMeshing);
 			mesh.visibilityMask = 0xff;
 			const relPos: Vec3d = @as(Vec3d, @floatFromInt(Vec3i{mesh.pos.wx, mesh.pos.wy, mesh.pos.wz})) - playerPos;
 			const relPosFloat: Vec3f = @floatCast(relPos);
@@ -1425,7 +1447,8 @@ pub const RenderStructure = struct {
 						neighborPos.voxelSize *= 2;
 					}
 					const node = getNodeFromRenderThread(neighborPos);
-					if(node.mesh.load(.Unordered)) |neighborMesh| {
+					if(node.mesh.load(.Acquire)) |neighborMesh| {
+						if(!neighborMesh.finishedMeshing) continue;
 						// Ensure that there are no high-to-low lod transitions, which would produce cracks.
 						if(lod == data.node.lod and lod != settings.highestLOD and !node.rendered) {
 							var isValid: bool = true;
@@ -1490,10 +1513,10 @@ pub const RenderStructure = struct {
 		}
 		for(nodeList.items) |node| {
 			node.rendered = false;
-			const mesh = node.mesh.load(.Unordered).?;
+			const mesh = node.mesh.load(.Acquire).?;
 			if(mesh.pos.voxelSize != @as(u31, 1) << settings.highestLOD) {
 				const parent = getNodeFromRenderThread(.{.wx=mesh.pos.wx, .wy=mesh.pos.wy, .wz=mesh.pos.wz, .voxelSize=mesh.pos.voxelSize << 1});
-				if(parent.mesh.load(.Unordered)) |parentMesh| {
+				if(parent.mesh.load(.Acquire)) |parentMesh| {
 					const sizeShift = chunk.chunkShift + @ctz(mesh.pos.voxelSize);
 					const octantIndex: u3 = @intCast((mesh.pos.wx>>sizeShift & 1) | (mesh.pos.wy>>sizeShift & 1)<<1 | (mesh.pos.wz>>sizeShift & 1)<<2);
 					parentMesh.visibilityMask &= ~(@as(u8, 1) << octantIndex);
@@ -1503,20 +1526,29 @@ pub const RenderStructure = struct {
 				try mesh.uploadDataAndFinishNeighbors();
 				mesh.needsNeighborUpdate = false;
 			}
+			mutex.lock();
 			if(mesh.needsMeshUpdate) {
 				try mesh.uploadData();
 				mesh.needsMeshUpdate = false;
 			}
+			mutex.unlock();
 			// Remove empty meshes.
 			if(mesh.opaqueMesh.vertexCount != 0 or mesh.voxelMesh.vertexCount != 0 or mesh.transparentMesh.vertexCount != 0) {
 				try meshList.append(mesh);
 			}
 		}
 
+		const olderPx = lastPx;
+		const olderPy = lastPy;
+		const olderPz = lastPz;
+		const olderRD = lastRD;
+		mutex.lock();
 		lastPx = px;
 		lastPy = py;
 		lastPz = pz;
 		lastRD = renderDistance;
+		mutex.unlock();
+		try freeOldMeshes(olderPx, olderPy, olderPz, olderRD);
 		// Make requests after updating the, to avoid concurrency issues and reduce the number of requests:
 		try network.Protocols.chunkRequest.sendRequest(conn, meshRequests.items);
 		return meshList.items;
@@ -1529,7 +1561,7 @@ pub const RenderStructure = struct {
 			for(blockUpdateList.items) |blockUpdate| {
 				const pos = chunk.ChunkPosition{.wx=blockUpdate.x, .wy=blockUpdate.y, .wz=blockUpdate.z, .voxelSize=1};
 				const node = getNodeFromRenderThread(pos);
-				if(node.mesh.load(.Unordered)) |mesh| {
+				if(node.mesh.load(.Acquire)) |mesh| {
 					try mesh.updateBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock);
 				} // TODO: It seems like we simply ignore the block update if we don't have the mesh yet.
 			}
@@ -1547,7 +1579,7 @@ pub const RenderStructure = struct {
 			mutex.unlock();
 			defer mutex.lock();
 			mesh.decreaseRefCount();
-			if(getNodeFromRenderThread(mesh.pos).mesh.load(.Unordered) != mesh) continue; // This mesh isn't used for rendering anymore.
+			if(getNodeFromRenderThread(mesh.pos).mesh.load(.Acquire) != mesh) continue; // This mesh isn't used for rendering anymore.
 			if(!mesh.needsNeighborUpdate) continue;
 			try mesh.uploadDataAndFinishNeighbors();
 			mesh.needsNeighborUpdate = false;
@@ -1555,12 +1587,17 @@ pub const RenderStructure = struct {
 		}
 		while (priorityMeshUpdateList.items.len != 0) {
 			const mesh = priorityMeshUpdateList.orderedRemove(0);
-			mesh.decreaseRefCount();
-			if(!mesh.needsMeshUpdate) continue;
+			if(!mesh.needsMeshUpdate) {
+				mutex.unlock();
+				defer mutex.lock();
+				mesh.decreaseRefCount();
+				continue;
+			}
 			mesh.needsMeshUpdate = false;
 			mutex.unlock();
 			defer mutex.lock();
-			if(getNodeFromRenderThread(mesh.pos).mesh.load(.Unordered) != mesh) continue; // This mesh isn't used for rendering anymore.
+			mesh.decreaseRefCount();
+			if(getNodeFromRenderThread(mesh.pos).mesh.load(.Acquire) != mesh) continue; // This mesh isn't used for rendering anymore.
 			try mesh.uploadData();
 			if(std.time.milliTimestamp() >= targetTime) break; // Update at least one mesh.
 		}
@@ -1595,7 +1632,7 @@ pub const RenderStructure = struct {
 			if(isInRenderDistance(mesh.pos)) {
 				const node = getNodeFromRenderThread(mesh.pos);
 				try mesh.uploadDataAndFinishNeighbors();
-				if(node.mesh.swap(mesh, .Monotonic)) |oldMesh| {
+				if(node.mesh.swap(mesh, .AcqRel)) |oldMesh| {
 					oldMesh.decreaseRefCount();
 				}
 			} else {
@@ -1618,6 +1655,20 @@ pub const RenderStructure = struct {
 		defer mutex.unlock();
 		try priorityMeshUpdateList.append(mesh);
 		mesh.needsMeshUpdate = true;
+	}
+
+	pub fn addMeshToStorage(mesh: *chunk.meshing.ChunkMesh) void {
+		mutex.lock();
+		if(isInRenderDistance(mesh.pos)) {
+			mesh.increaseRefCount();
+			const node = getNodeFromRenderThread(mesh.pos);
+			if(node.mesh.swap(mesh, .AcqRel)) |oldMesh| {
+				mutex.unlock();
+				oldMesh.decreaseRefCount();
+				return;
+			}
+		}
+		mutex.unlock();
 	}
 
 	pub const MeshGenerationTask = struct {

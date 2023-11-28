@@ -527,6 +527,7 @@ pub const meshing = struct {
 		neighborFacesSameLod: [6]std.ArrayListUnmanaged(FaceData) = [_]std.ArrayListUnmanaged(FaceData){.{}} ** 6,
 		neighborFacesHigherLod: [6]std.ArrayListUnmanaged(FaceData) = [_]std.ArrayListUnmanaged(FaceData){.{}} ** 6,
 		completeList: []FaceData = &.{},
+		mutex: std.Thread.Mutex = .{},
 		bufferAllocation: graphics.SubAllocation = .{.start = 0, .len = 0},
 		vertexCount: u31 = 0,
 		wasChanged: bool = false,
@@ -586,23 +587,22 @@ pub const meshing = struct {
 			for(neighborFaceLists) |neighborFaces| {
 				len += neighborFaces.len;
 			}
-			if(main.globalAllocator.resize(self.completeList, len)) {
-				self.completeList.len = len;
-			} else {
-				main.globalAllocator.free(self.completeList);
-				self.completeList = try main.globalAllocator.alloc(FaceData, len);
-			}
+			const completeList = try main.globalAllocator.alloc(FaceData, len);
 			var i: usize = 0;
-			@memcpy(self.completeList[i..][0..self.coreFaces.items.len], self.coreFaces.items);
+			@memcpy(completeList[i..][0..self.coreFaces.items.len], self.coreFaces.items);
 			i += self.coreFaces.items.len;
 			for(neighborFaceLists) |neighborFaces| {
-				@memcpy(self.completeList[i..][0..neighborFaces.len], neighborFaces);
+				@memcpy(completeList[i..][0..neighborFaces.len], neighborFaces);
 				i += neighborFaces.len;
 			}
-			for(self.completeList) |*face| {
+			for(completeList) |*face| {
 				face.light = getLight(parent, face.position.x, face.position.y, face.position.z, face.position.normal);
 			}
-			try self.uploadData();
+			self.mutex.lock();
+			const oldList = self.completeList;
+			self.completeList = completeList;
+			self.mutex.unlock();
+			main.globalAllocator.free(oldList);
 		}
 
 		fn getValues(mesh: *ChunkMesh, wx: i32, wy: i32, wz: i32) [6]u8 {
@@ -627,7 +627,8 @@ pub const meshing = struct {
 			if(x == x & chunkMask and y == y & chunkMask and z == z & chunkMask) {
 				return getValues(parent, wx, wy, wz);
 			}
-			const neighborMesh = renderer.RenderStructure.getMeshFromAnyLodFromRenderThread(wx, wy, wz, parent.pos.voxelSize) orelse return .{0, 0, 0, 0, 0, 0};
+			const neighborMesh = renderer.RenderStructure.getMeshFromAnyLodAndIncreaseRefCount(wx, wy, wz, parent.pos.voxelSize) orelse return .{0, 0, 0, 0, 0, 0};
+			defer neighborMesh.decreaseRefCount();
 			// TODO: If the neighbor mesh has a higher lod the transition isn't seamless.
 			return getValues(neighborMesh, wx, wy, wz);
 		}
@@ -673,6 +674,8 @@ pub const meshing = struct {
 		}
 
 		fn uploadData(self: *PrimitiveMesh) !void {
+			self.mutex.lock();
+			defer self.mutex.unlock();
 			self.vertexCount = @intCast(6*self.completeList.len);
 			try faceBuffer.uploadData(self.completeList, &self.bufferAllocation);
 			self.wasChanged = true;
@@ -780,6 +783,7 @@ pub const meshing = struct {
 		refCount: std.atomic.Value(u32) = std.atomic.Value(u32).init(1),
 		needsNeighborUpdate: bool = false,
 		needsMeshUpdate: bool = false,
+		finishedMeshing: bool = false,
 		mutex: std.Thread.Mutex = .{},
 
 		chunkBorders: [6]BoundingRectToNeighborChunk = [1]BoundingRectToNeighborChunk{.{}} ** 6,
@@ -858,6 +862,8 @@ pub const meshing = struct {
 		}
 
 		pub fn regenerateMainMesh(self: *ChunkMesh) !void {
+			renderer.RenderStructure.addMeshToStorage(self);
+			self.mutex.lock();
 			self.opaqueMesh.reset();
 			self.voxelMesh.reset();
 			self.transparentMesh.reset();
@@ -909,6 +915,7 @@ pub const meshing = struct {
 					self.chunkBorders[Neighbors.dirPosZ].adjustToBlock((&self.chunk.blocks)[getIndex(x, y, chunkSize-1)], .{x, y, chunkSize}, Neighbors.dirPosZ); // TODO: Wait for the compiler bug to get fixed.
 				}
 			}
+			self.mutex.unlock();
 			try self.finishNeighbors(false);
 		}
 
@@ -937,12 +944,19 @@ pub const meshing = struct {
 		}
 
 		pub fn updateBlock(self: *ChunkMesh, _x: i32, _y: i32, _z: i32, newBlock: Block) !void {
+			self.mutex.lock();
+			defer self.mutex.unlock();
 			const x = _x & chunkMask;
 			const y = _y & chunkMask;
 			const z = _z & chunkMask;
 			const oldBlock = self.chunk.blocks[getIndex(x, y, z)];
 			for(Neighbors.iterable) |neighbor| {
 				var neighborMesh = self;
+				if(neighborMesh != self) {
+					self.mutex.unlock();
+					deadlockFreeDoubleLock(&self.mutex, &neighborMesh.mutex);
+				}
+				defer if(neighborMesh != self) neighborMesh.mutex.unlock();
 				var nx = x + Neighbors.relX[neighbor];
 				var ny = y + Neighbors.relY[neighbor];
 				var nz = z + Neighbors.relZ[neighbor];
@@ -1028,10 +1042,12 @@ pub const meshing = struct {
 					}
 				}
 				if(neighborMesh != self) {
+					try neighborMesh.finishData();
 					try neighborMesh.uploadData();
 				}
 			}
 			self.chunk.blocks[getIndex(x, y, z)] = newBlock;
+			try self.finishData();
 			try self.uploadData();
 		}
 
@@ -1049,7 +1065,8 @@ pub const meshing = struct {
 			self.transparentMesh.clearNeighbor(neighbor, isLod);
 		}
 
-		pub fn uploadData(self: *ChunkMesh) !void {
+		fn finishData(self: *ChunkMesh) !void {
+			std.debug.assert(!self.mutex.tryLock());
 			const isNeighborLod: [6]bool = .{
 				self.lastNeighborsSameLod[0] == null or self.forceHigherLod[0],
 				self.lastNeighborsSameLod[1] == null or self.forceHigherLod[1],
@@ -1063,10 +1080,19 @@ pub const meshing = struct {
 			try self.transparentMesh.finish(self, isNeighborLod);
 		}
 
+		pub fn uploadData(self: *ChunkMesh) !void {
+			try self.opaqueMesh.uploadData();
+			try self.voxelMesh.uploadData();
+			try self.transparentMesh.uploadData();
+		}
+
 		pub fn changeLodBorders(self: *ChunkMesh, forceHigherLod: [6]bool) !void {
 			if(!std.meta.eql(forceHigherLod, self.forceHigherLod)) {
+				self.mutex.lock();
 				self.forceHigherLod = forceHigherLod;
+				try self.finishData();
 				try self.uploadData();
+				self.mutex.unlock();
 			}
 		}
 
@@ -1084,13 +1110,13 @@ pub const meshing = struct {
 			const getNeighborMesh: fn(ChunkPosition, u31, u3) ?*ChunkMesh = if(inRenderThread) renderer.RenderStructure.getNeighborFromRenderThread else renderer.RenderStructure.getNeighborAndIncreaseRefCount;
 			for(Neighbors.iterable) |neighbor| {
 				const nullNeighborMesh = getNeighborMesh(self.pos, self.pos.voxelSize, neighbor);
-				if(nullNeighborMesh) |neighborMesh| {
+				if(nullNeighborMesh) |neighborMesh| sameLodBlock: {
 					defer if(!inRenderThread) neighborMesh.decreaseRefCount();
 					std.debug.assert(neighborMesh != self);
 					deadlockFreeDoubleLock(&self.mutex, &neighborMesh.mutex);
 					defer self.mutex.unlock();
 					defer neighborMesh.mutex.unlock();
-					if(self.lastNeighborsSameLod[neighbor] == neighborMesh) continue;
+					if(self.lastNeighborsSameLod[neighbor] == neighborMesh) break :sameLodBlock;
 					self.lastNeighborsSameLod[neighbor] = neighborMesh;
 					neighborMesh.lastNeighborsSameLod[neighbor ^ 1] = self;
 					self.clearNeighbor(neighbor, false);
@@ -1151,6 +1177,7 @@ pub const meshing = struct {
 							}
 						}
 					}
+					try neighborMesh.finishData();
 					if(inRenderThread) {
 						try neighborMesh.uploadData();
 					} else {
@@ -1158,6 +1185,8 @@ pub const meshing = struct {
 						try renderer.RenderStructure.addToUpdateList(neighborMesh);
 					}
 				} else {
+					self.mutex.lock();
+					defer self.mutex.unlock();
 					if(self.lastNeighborsSameLod[neighbor] != null) {
 						self.clearNeighbor(neighbor, false);
 						self.lastNeighborsSameLod[neighbor] = null;
@@ -1166,6 +1195,8 @@ pub const meshing = struct {
 				// lod border:
 				if(self.pos.voxelSize == 1 << settings.highestLOD) continue;
 				const neighborMesh = getNeighborMesh(self.pos, 2*self.pos.voxelSize, neighbor) orelse {
+					self.mutex.lock();
+					defer self.mutex.unlock();
 					if(self.lastNeighborsHigherLod[neighbor] != null) {
 						self.clearNeighbor(neighbor, true);
 						self.lastNeighborsHigherLod[neighbor] = null;
@@ -1227,10 +1258,13 @@ pub const meshing = struct {
 					}
 				}
 			}
+			self.mutex.lock();
+			defer self.mutex.unlock();
+			try self.finishData();
 		}
 
 		pub fn uploadDataAndFinishNeighbors(self: *ChunkMesh) !void {
-			try self.finishNeighbors(true);
+			self.finishedMeshing = true;
 			try self.uploadData();
 		}
 
