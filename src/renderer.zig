@@ -881,7 +881,6 @@ pub const RenderStructure = struct {
 	const storageMask = storageSize - 1;
 	var storageLists: [settings.highestLOD + 1]*[storageSize*storageSize*storageSize]ChunkMeshNode = undefined;
 	var meshList = std.ArrayList(*chunk.meshing.ChunkMesh).init(main.globalAllocator);
-	var priorityNeighborUpdateList = std.ArrayList(*chunk.meshing.ChunkMesh).init(main.globalAllocator);
 	var priorityMeshUpdateList = std.ArrayList(*chunk.meshing.ChunkMesh).init(main.globalAllocator);
 	pub var updatableList = std.ArrayList(*chunk.meshing.ChunkMesh).init(main.globalAllocator);
 	var clearList = std.ArrayList(*chunk.meshing.ChunkMesh).init(main.globalAllocator);
@@ -930,10 +929,6 @@ pub const RenderStructure = struct {
 			mesh.decreaseRefCount();
 		}
 		updatableList.deinit();
-		for(priorityNeighborUpdateList.items) |mesh| {
-			mesh.decreaseRefCount();
-		}
-		priorityNeighborUpdateList.deinit();
 		for(priorityMeshUpdateList.items) |mesh| {
 			mesh.decreaseRefCount();
 		}
@@ -1126,22 +1121,9 @@ pub const RenderStructure = struct {
 						const index = (xIndex*storageSize + yIndex)*storageSize + zIndex;
 						
 						const node = &storageLists[_lod][@intCast(index)];
-						// Update the neighbors, so we don't get cracks when we look back:
 						if(node.mesh.load(.Acquire)) |mesh| {
-							const pos = mesh.pos;
 							mesh.decreaseRefCount();
 							node.mesh.store(null, .Release);
-							if(lastRD != 0) {
-								for(chunk.Neighbors.iterable) |neighbor| {
-									if(getNeighborFromRenderThread(pos, pos.voxelSize, neighbor)) |neighborMesh| {
-										if(neighborMesh.finishedMeshing) {
-											neighborMesh.needsNeighborUpdate = true;
-											neighborMesh.increaseRefCount();
-											try priorityNeighborUpdateList.append(neighborMesh);
-										}
-									}
-								}
-							}
 						}
 					}
 				}
@@ -1522,10 +1504,6 @@ pub const RenderStructure = struct {
 					parentMesh.visibilityMask &= ~(@as(u8, 1) << octantIndex);
 				}
 			}
-			if(mesh.needsNeighborUpdate) {
-				try mesh.uploadDataAndFinishNeighbors();
-				mesh.needsNeighborUpdate = false;
-			}
 			mutex.lock();
 			if(mesh.needsMeshUpdate) {
 				try mesh.uploadData();
@@ -1574,17 +1552,6 @@ pub const RenderStructure = struct {
 			main.globalAllocator.destroy(mesh);
 		}
 		clearList.clearRetainingCapacity();
-		while (priorityNeighborUpdateList.items.len != 0) {
-			const mesh = priorityNeighborUpdateList.orderedRemove(0);
-			mutex.unlock();
-			defer mutex.lock();
-			mesh.decreaseRefCount();
-			if(getNodeFromRenderThread(mesh.pos).mesh.load(.Acquire) != mesh) continue; // This mesh isn't used for rendering anymore.
-			if(!mesh.needsNeighborUpdate) continue;
-			try mesh.uploadDataAndFinishNeighbors();
-			mesh.needsNeighborUpdate = false;
-			if(std.time.milliTimestamp() >= targetTime) break; // Update at least one mesh.
-		}
 		while (priorityMeshUpdateList.items.len != 0) {
 			const mesh = priorityMeshUpdateList.orderedRemove(0);
 			if(!mesh.needsMeshUpdate) {
@@ -1631,7 +1598,8 @@ pub const RenderStructure = struct {
 			defer mutex.lock();
 			if(isInRenderDistance(mesh.pos)) {
 				const node = getNodeFromRenderThread(mesh.pos);
-				try mesh.uploadDataAndFinishNeighbors();
+				mesh.finishedMeshing = true;
+				try mesh.uploadData();
 				if(node.mesh.swap(mesh, .AcqRel)) |oldMesh| {
 					oldMesh.decreaseRefCount();
 				}

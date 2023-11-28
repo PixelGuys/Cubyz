@@ -781,7 +781,6 @@ pub const meshing = struct {
 		culledSortingCount: u31 = 0,
 		lastTransparentUpdatePos: Vec3i = Vec3i{0, 0, 0},
 		refCount: std.atomic.Value(u32) = std.atomic.Value(u32).init(1),
-		needsNeighborUpdate: bool = false,
 		needsMeshUpdate: bool = false,
 		finishedMeshing: bool = false,
 		mutex: std.Thread.Mutex = .{},
@@ -1261,11 +1260,6 @@ pub const meshing = struct {
 			self.mutex.lock();
 			defer self.mutex.unlock();
 			try self.finishData();
-		}
-
-		pub fn uploadDataAndFinishNeighbors(self: *ChunkMesh) !void {
-			self.finishedMeshing = true;
-			try self.uploadData();
 		}
 
 		pub fn render(self: *ChunkMesh, playerPosition: Vec3d) void {
