@@ -1276,7 +1276,7 @@ pub const RenderStructure = struct {
 			mesh.visibilityMask = 0xff;
 			const relPos: Vec3d = @as(Vec3d, @floatFromInt(Vec3i{mesh.pos.wx, mesh.pos.wy, mesh.pos.wz})) - playerPos;
 			const relPosFloat: Vec3f = @floatCast(relPos);
-			var forceNeighborsLod: [6]bool = .{false} ** 6;
+			var isNeighborLod: [6]bool = .{false} ** 6;
 			for(chunk.Neighbors.iterable) |neighbor| continueNeighborLoop: {
 				const component = chunk.Neighbors.extractDirectionComponent(neighbor, relPos);
 				if(chunk.Neighbors.isPositive[neighbor] and component + @as(f64, @floatFromInt(chunk.chunkSize*mesh.pos.voxelSize)) <= 0) continue;
@@ -1466,12 +1466,12 @@ pub const RenderStructure = struct {
 								}
 							}
 							if(!isValid) {
-								forceNeighborsLod[neighbor] = true;
+								isNeighborLod[neighbor] = true;
 								continue;
 							}
 						}
 						if(lod != data.node.lod) {
-							forceNeighborsLod[neighbor] = true;
+							isNeighborLod[neighbor] = true;
 						}
 						if(node.active) {
 							node.min = @min(node.min, min);
@@ -1491,7 +1491,7 @@ pub const RenderStructure = struct {
 					}
 				}
 			}
-			try mesh.changeLodBorders(forceNeighborsLod);
+			try mesh.changeLodBorders(isNeighborLod);
 		}
 		for(nodeList.items) |node| {
 			node.rendered = false;

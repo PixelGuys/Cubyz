@@ -809,7 +809,7 @@ pub const meshing = struct {
 		transparentMesh: PrimitiveMesh,
 		lastNeighborsSameLod: [6]?*const ChunkMesh = [_]?*const ChunkMesh{null} ** 6,
 		lastNeighborsHigherLod: [6]?*const ChunkMesh = [_]?*const ChunkMesh{null} ** 6,
-		forceHigherLod: [6]bool = .{false} ** 6,
+		isNeighborLod: [6]bool = .{false} ** 6,
 		visibilityMask: u8 = 0xff,
 		currentSorting: []SortingData = &.{},
 		sortingOutputBuffer: []FaceData = &.{},
@@ -1107,22 +1107,14 @@ pub const meshing = struct {
 		}
 
 		pub fn uploadData(self: *ChunkMesh) !void {
-			const isNeighborLod: [6]bool = .{
-				self.lastNeighborsSameLod[0] == null or self.forceHigherLod[0],
-				self.lastNeighborsSameLod[1] == null or self.forceHigherLod[1],
-				self.lastNeighborsSameLod[2] == null or self.forceHigherLod[2],
-				self.lastNeighborsSameLod[3] == null or self.forceHigherLod[3],
-				self.lastNeighborsSameLod[4] == null or self.forceHigherLod[4],
-				self.lastNeighborsSameLod[5] == null or self.forceHigherLod[5],
-			};
-			try self.opaqueMesh.uploadData(isNeighborLod);
-			try self.voxelMesh.uploadData(isNeighborLod);
-			try self.transparentMesh.uploadData(isNeighborLod);
+			try self.opaqueMesh.uploadData(self.isNeighborLod);
+			try self.voxelMesh.uploadData(self.isNeighborLod);
+			try self.transparentMesh.uploadData(self.isNeighborLod);
 		}
 
-		pub fn changeLodBorders(self: *ChunkMesh, forceHigherLod: [6]bool) !void {
-			if(!std.meta.eql(forceHigherLod, self.forceHigherLod)) {
-				self.forceHigherLod = forceHigherLod;
+		pub fn changeLodBorders(self: *ChunkMesh, isNeighborLod: [6]bool) !void {
+			if(!std.meta.eql(isNeighborLod, self.isNeighborLod)) {
+				self.isNeighborLod = isNeighborLod;
 				try self.uploadData();
 			}
 		}
@@ -1328,10 +1320,38 @@ pub const meshing = struct {
 			var needsUpdate: bool = false;
 			if(self.transparentMesh.wasChanged) {
 				self.transparentMesh.wasChanged = false;
-				self.sortingOutputBuffer = try main.globalAllocator.realloc(self.sortingOutputBuffer, self.transparentMesh.completeList.len);
-				self.currentSorting = try main.globalAllocator.realloc(self.currentSorting, self.transparentMesh.completeList.len);
-				for(self.currentSorting, self.transparentMesh.completeList) |*data, face| {
-					data.face = face;
+				self.transparentMesh.mutex.lock();
+				defer self.transparentMesh.mutex.unlock();
+				var len: usize = self.transparentMesh.coreLen;
+				var offset: usize = self.transparentMesh.coreLen;
+				var list: [6][]FaceData = undefined;
+				for(0..6) |i| {
+					const neighborLen = self.transparentMesh.sameLodLens[i];
+					if(!self.isNeighborLod[i]) {
+						list[i] = self.transparentMesh.completeList[offset..][0..neighborLen];
+						len += neighborLen;
+					}
+					offset += neighborLen;
+				}
+				for(0..6) |i| {
+					const neighborLen = self.transparentMesh.higherLodLens[i];
+					if(self.isNeighborLod[i]) {
+						list[i] = self.transparentMesh.completeList[offset..][0..neighborLen];
+						len += neighborLen;
+					}
+					offset += neighborLen;
+				}
+				self.sortingOutputBuffer = try main.globalAllocator.realloc(self.sortingOutputBuffer, len);
+				self.currentSorting = try main.globalAllocator.realloc(self.currentSorting, len);
+				for(0..self.transparentMesh.coreLen) |i| {
+					self.currentSorting[i].face = self.transparentMesh.completeList[i];
+				}
+				offset = self.transparentMesh.coreLen;
+				for(0..6) |n| {
+					for(0..list[n].len) |i| {
+						self.currentSorting[offset + i].face = list[n][i];
+					}
+					offset += list[n].len;
 				}
 
 				needsUpdate = true;
