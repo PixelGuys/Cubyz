@@ -704,8 +704,8 @@ pub const meshing = struct {
 				}
 				offset += neighborLen;
 			}
-			const fullBuffer = try main.stackAllocator.alloc(FaceData, len);
-			defer main.stackAllocator.free(fullBuffer);
+			const fullBuffer = try faceBuffer.allocateAndMapRange(len, &self.bufferAllocation);
+			defer faceBuffer.unmapRange(fullBuffer);
 			@memcpy(fullBuffer[0..self.coreLen], self.completeList[0..self.coreLen]);
 			var i: usize = self.coreLen;
 			for(0..6) |n| {
@@ -713,7 +713,6 @@ pub const meshing = struct {
 				i += list[n].len;
 			}
 			self.vertexCount = @intCast(6*fullBuffer.len);
-			try faceBuffer.uploadData(fullBuffer, &self.bufferAllocation); // TODO: Avoid the extra copy by writing to the memory-mapped buffer directly.
 			self.wasChanged = true;
 		}
 

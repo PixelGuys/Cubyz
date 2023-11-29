@@ -1323,6 +1323,27 @@ pub fn LargeBuffer(comptime Entry: type) type {
 			try self.fencedFreeLists[self.activeFence].append(allocation);
 		}
 
+		/// Must unmap after use!
+		pub fn allocateAndMapRange(self: *Self, len: usize, allocation: *SubAllocation) ![]Entry {
+			try self.free(allocation.*);
+			if(len == 0) {
+				allocation.len = 0;
+				return &.{};
+			}
+			allocation.* = try self.alloc(@intCast(len));
+			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.ssbo.bufferID);
+			const ptr: [*]Entry = @ptrCast(@alignCast(
+				c.glMapBufferRange(c.GL_SHADER_STORAGE_BUFFER, allocation.start*@sizeOf(Entry), allocation.len*@sizeOf(Entry), c.GL_MAP_WRITE_BIT | c.GL_MAP_INVALIDATE_RANGE_BIT)
+			));
+			return ptr[0..len];
+		}
+
+		pub fn unmapRange(self: *Self, range: []Entry) void {
+			if(range.len == 0) return;
+			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.ssbo.bufferID);
+			std.debug.assert(c.glUnmapBuffer(c.GL_SHADER_STORAGE_BUFFER) == c.GL_TRUE);
+		}
+
 		pub fn uploadData(self: *Self, data: []Entry, allocation: *SubAllocation) !void {
 			try self.free(allocation.*);
 			if(data.len == 0) {
