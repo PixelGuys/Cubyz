@@ -1131,47 +1131,47 @@ pub const RenderStructure = struct {
 		}
 	}
 
-	fn createNewMeshes(px: i32, py: i32, pz: i32, renderDistance: i32, meshRequests: *std.ArrayList(chunk.ChunkPosition)) !void {
+	fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32, meshRequests: *std.ArrayList(chunk.ChunkPosition)) !void {
 		for(0..storageLists.len) |_lod| {
 			const lod: u5 = @intCast(_lod);
-			const maxRenderDistanceNew = renderDistance*chunk.chunkSize << lod;
-			const maxRenderDistanceOld = lastRD*chunk.chunkSize << lod;
+			const maxRenderDistanceNew = lastRD*chunk.chunkSize << lod;
+			const maxRenderDistanceOld = olderRD*chunk.chunkSize << lod;
 			const size: u31 = chunk.chunkSize << lod;
 			const mask: i32 = size - 1;
 			const invMask: i32 = ~mask;
 
 			std.debug.assert(@divFloor(2*maxRenderDistanceNew + size-1, size) + 2 <= storageSize);
 
-			const minX = px-%maxRenderDistanceNew & invMask;
-			const maxX = px+%maxRenderDistanceNew+%size & invMask;
+			const minX = lastPx-%maxRenderDistanceNew & invMask;
+			const maxX = lastPx+%maxRenderDistanceNew+%size & invMask;
 			var x = minX;
 			while(x != maxX): (x +%= size) {
 				const xIndex = @divExact(x, size) & storageMask;
-				var deltaXNew: i64 = @abs(x +% size/2 -% px);
+				var deltaXNew: i64 = @abs(x +% size/2 -% lastPx);
 				deltaXNew = @max(0, deltaXNew - size/2);
-				var deltaXOld: i64 = @abs(x +% size/2 -% lastPx);
+				var deltaXOld: i64 = @abs(x +% size/2 -% olderPx);
 				deltaXOld = @max(0, deltaXOld - size/2);
 				const maxYRenderDistanceNew: i32 = reduceRenderDistance(maxRenderDistanceNew, deltaXNew);
 				const maxYRenderDistanceOld: i32 = reduceRenderDistance(maxRenderDistanceOld, deltaXOld);
 
-				const minY = py-%maxYRenderDistanceNew & invMask;
-				const maxY = py+%maxYRenderDistanceNew+%size & invMask;
+				const minY = lastPy-%maxYRenderDistanceNew & invMask;
+				const maxY = lastPy+%maxYRenderDistanceNew+%size & invMask;
 				var y = minY;
 				while(y != maxY): (y +%= size) {
 					const yIndex = @divExact(y, size) & storageMask;
-					var deltaYOld: i64 = @abs(y +% size/2 -% lastPy);
+					var deltaYOld: i64 = @abs(y +% size/2 -% olderPy);
 					deltaYOld = @max(0, deltaYOld - size/2);
-					var deltaYNew: i64 = @abs(y +% size/2 -% py);
+					var deltaYNew: i64 = @abs(y +% size/2 -% lastPy);
 					deltaYNew = @max(0, deltaYNew - size/2);
 					var maxZRenderDistanceNew: i32 = reduceRenderDistance(maxYRenderDistanceNew, deltaYNew);
 					if(maxZRenderDistanceNew == 0) maxZRenderDistanceNew -= size/2;
 					var maxZRenderDistanceOld: i32 = reduceRenderDistance(maxYRenderDistanceOld, deltaYOld);
 					if(maxZRenderDistanceOld == 0) maxZRenderDistanceOld -= size/2;
 
-					const minZOld = lastPz-%maxZRenderDistanceOld & invMask;
-					const maxZOld = lastPz+%maxZRenderDistanceOld+%size & invMask;
-					const minZNew = pz-%maxZRenderDistanceNew & invMask;
-					const maxZNew = pz+%maxZRenderDistanceNew+%size & invMask;
+					const minZOld = olderPz-%maxZRenderDistanceOld & invMask;
+					const maxZOld = olderPz+%maxZRenderDistanceOld+%size & invMask;
+					const minZNew = lastPz-%maxZRenderDistanceNew & invMask;
+					const maxZNew = lastPz+%maxZRenderDistanceNew+%size & invMask;
 
 					var zValues: [storageSize]i32 = undefined;
 					var zValuesLen: usize = 0;
@@ -1209,14 +1209,26 @@ pub const RenderStructure = struct {
 		if(lastRD != renderDistance) {
 			try network.Protocols.genericUpdate.sendRenderDistance(conn, renderDistance);
 		}
-		const px: i32 = @intFromFloat(playerPos[0]);
-		const py: i32 = @intFromFloat(playerPos[1]);
-		const pz: i32 = @intFromFloat(playerPos[2]);
 
 		var meshRequests = std.ArrayList(chunk.ChunkPosition).init(main.globalAllocator);
 		defer meshRequests.deinit();
 
-		try createNewMeshes(px, py, pz, renderDistance, &meshRequests);
+		const olderPx = lastPx;
+		const olderPy = lastPy;
+		const olderPz = lastPz;
+		const olderRD = lastRD;
+		mutex.lock();
+		lastPx = @intFromFloat(playerPos[0]);
+		lastPy = @intFromFloat(playerPos[1]);
+		lastPz = @intFromFloat(playerPos[2]);
+		lastRD = renderDistance;
+		mutex.unlock();
+		try freeOldMeshes(olderPx, olderPy, olderPz, olderRD);
+
+		try createNewMeshes(olderPx, olderPy, olderPz, olderRD, &meshRequests);
+
+		// Make requests as soon as possible to reduce latency:
+		try network.Protocols.chunkRequest.sendRequest(conn, meshRequests.items);
 
 		// Does occlusion using a breadth-first search that caches an on-screen visibility rectangle.
 
@@ -1516,19 +1528,6 @@ pub const RenderStructure = struct {
 			}
 		}
 
-		const olderPx = lastPx;
-		const olderPy = lastPy;
-		const olderPz = lastPz;
-		const olderRD = lastRD;
-		mutex.lock();
-		lastPx = px;
-		lastPy = py;
-		lastPz = pz;
-		lastRD = renderDistance;
-		mutex.unlock();
-		try freeOldMeshes(olderPx, olderPy, olderPz, olderRD);
-		// Make requests after updating the, to avoid concurrency issues and reduce the number of requests:
-		try network.Protocols.chunkRequest.sendRequest(conn, meshRequests.items);
 		return meshList.items;
 	}
 
