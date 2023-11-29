@@ -749,7 +749,7 @@ pub const Protocols = struct {
 			}
 			try renderer.RenderStructure.updateChunkMesh(ch);
 		}
-		pub fn sendChunk(conn: *Connection, ch: *chunk.Chunk) Allocator.Error!void {
+		fn sendChunkOverTheNetwork(conn: *Connection, ch: *chunk.Chunk) Allocator.Error!void {
 			var uncompressedData: [@sizeOf(@TypeOf(ch.blocks))]u8 = undefined; // TODO: #15280
 			for(&ch.blocks, 0..) |*block, i| {
 				std.mem.writeInt(u32, uncompressedData[4*i..][0..4], block.toInt(), .big);
@@ -764,6 +764,19 @@ pub const Protocols = struct {
 			std.mem.writeInt(i32, data[8..12], ch.pos.wz, .big);
 			std.mem.writeInt(i32, data[12..16], ch.pos.voxelSize, .big);
 			try conn.sendImportant(id, data);
+		}
+		fn sendChunkLocally(ch: *chunk.Chunk) Allocator.Error!void {
+			const chunkCopy = try main.globalAllocator.create(chunk.Chunk);
+			chunkCopy.init(ch.pos);
+			@memcpy(&chunkCopy.blocks, &ch.blocks);
+			try renderer.RenderStructure.updateChunkMesh(chunkCopy);
+		}
+		pub fn sendChunk(conn: *Connection, ch: *chunk.Chunk) Allocator.Error!void {
+			if(conn.user.?.isLocal) {
+				try sendChunkLocally(ch);
+			} else {
+				try sendChunkOverTheNetwork(conn, ch);
+			}
 		}
 	};
 	pub const playerPosition = struct {

@@ -22,6 +22,7 @@ pub const User = struct {
 	name: []const u8 = "",
 	renderDistance: u16 = undefined,
 	receivedFirstEntityData: bool = false,
+	isLocal: bool = false,
 	// TODO: ipPort: []const u8,
 //	TODO: public Thread waitingThread;
 
@@ -121,6 +122,7 @@ fn init(name: []const u8) !void {
 	world = try ServerWorld.init(name, null);
 	if(true) { // singleplayer // TODO: Configure this in the server settings.
 		const user = try User.init(connectionManager, "127.0.0.1:47650");
+		user.isLocal = true;
 		try connect(user);
 	}
 }
