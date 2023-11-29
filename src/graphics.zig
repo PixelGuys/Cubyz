@@ -1209,7 +1209,7 @@ pub fn LargeBuffer(comptime Entry: type) type {
 		fencedFreeLists: [3]std.ArrayList(SubAllocation),
 		activeFence: u8,
 		capacity: u31,
-		used: u32,
+		used: u31,
 		binding: c_uint,
 
 		const Self = @This();
@@ -1283,11 +1283,12 @@ pub fn LargeBuffer(comptime Entry: type) type {
 				self.used += size;
 				return result;
 			} else {
-				std.log.info("Resizing internal mesh buffer from {} MiB to {} MiB", .{self.capacity*@sizeOf(Entry) >> 20, (self.capacity*@sizeOf(Entry) >> 20)*2});
+				std.log.info("Resizing internal mesh buffer from {} MiB to {} MiB", .{@as(usize, self.capacity)*@sizeOf(Entry) >> 20, (@as(usize, self.capacity)*@sizeOf(Entry) >> 20)*2});
 				const oldBuffer = self.ssbo;
 				defer oldBuffer.deinit();
 				const oldCapacity = self.capacity;
-				self.createBuffer(self.capacity*2); // TODO: Is there a way to free the old buffer before creating the new one?
+				self.createBuffer(self.capacity*|2); // TODO: Is there a way to free the old buffer before creating the new one?
+				if(self.capacity == oldCapacity) return error.OutOfMemory;
 				self.used += self.capacity - oldCapacity;
 				try self.finalFree(.{.start = oldCapacity, .len = self.capacity - oldCapacity});
 
@@ -1333,7 +1334,7 @@ pub fn LargeBuffer(comptime Entry: type) type {
 			allocation.* = try self.alloc(@intCast(len));
 			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.ssbo.bufferID);
 			const ptr: [*]Entry = @ptrCast(@alignCast(
-				c.glMapBufferRange(c.GL_SHADER_STORAGE_BUFFER, allocation.start*@sizeOf(Entry), allocation.len*@sizeOf(Entry), c.GL_MAP_WRITE_BIT | c.GL_MAP_INVALIDATE_RANGE_BIT)
+				c.glMapBufferRange(c.GL_SHADER_STORAGE_BUFFER, @as(c_long, allocation.start)*@sizeOf(Entry), @as(c_long, allocation.len)*@sizeOf(Entry), c.GL_MAP_WRITE_BIT | c.GL_MAP_INVALIDATE_RANGE_BIT)
 			));
 			return ptr[0..len];
 		}
@@ -1353,7 +1354,7 @@ pub fn LargeBuffer(comptime Entry: type) type {
 			allocation.* = try self.alloc(@intCast(data.len));
 			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.ssbo.bufferID);
 			const ptr: [*]Entry = @ptrCast(@alignCast(
-				c.glMapBufferRange(c.GL_SHADER_STORAGE_BUFFER, allocation.start*@sizeOf(Entry), allocation.len*@sizeOf(Entry), c.GL_MAP_WRITE_BIT | c.GL_MAP_INVALIDATE_RANGE_BIT)
+				c.glMapBufferRange(c.GL_SHADER_STORAGE_BUFFER, @as(c_long, allocation.start)*@sizeOf(Entry), @as(c_long, allocation.len)*@sizeOf(Entry), c.GL_MAP_WRITE_BIT | c.GL_MAP_INVALIDATE_RANGE_BIT)
 			));
 			@memcpy(ptr, data);
 			std.debug.assert(c.glUnmapBuffer(c.GL_SHADER_STORAGE_BUFFER) == c.GL_TRUE);

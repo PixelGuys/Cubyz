@@ -43,9 +43,9 @@ fn flawedRender() !void {
 		try draw.print("Mesh Queue size: {}", .{main.renderer.RenderStructure.updatableList.items.len}, 0, y, 8, .left);
 		y += 8;
 		{
-			const faceDataSize = @sizeOf(main.chunk.meshing.FaceData);
-			const size = main.chunk.meshing.faceBuffer.capacity*faceDataSize;
-			const used = main.chunk.meshing.faceBuffer.used*faceDataSize;
+			const faceDataSize: usize = @sizeOf(main.chunk.meshing.FaceData);
+			const size: usize = main.chunk.meshing.faceBuffer.capacity*faceDataSize;
+			const used: usize = main.chunk.meshing.faceBuffer.used*faceDataSize;
 			var largestFreeBlock: usize = 0;
 			for(main.chunk.meshing.faceBuffer.freeBlocks.items) |freeBlock| {
 				largestFreeBlock = @max(largestFreeBlock, freeBlock.len);
