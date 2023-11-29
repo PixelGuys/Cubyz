@@ -527,6 +527,9 @@ pub const meshing = struct {
 		neighborFacesSameLod: [6]std.ArrayListUnmanaged(FaceData) = [_]std.ArrayListUnmanaged(FaceData){.{}} ** 6,
 		neighborFacesHigherLod: [6]std.ArrayListUnmanaged(FaceData) = [_]std.ArrayListUnmanaged(FaceData){.{}} ** 6,
 		completeList: []FaceData = &.{},
+		coreLen: u32 = 0,
+		sameLodLens: [6]u32 = .{0} ** 6,
+		higherLodLens: [6]u32 = .{0} ** 6,
 		mutex: std.Thread.Mutex = .{},
 		bufferAllocation: graphics.SubAllocation = .{.start = 0, .len = 0},
 		vertexCount: u31 = 0,
@@ -574,26 +577,25 @@ pub const meshing = struct {
 			}
 		}
 
-		fn finish(self: *PrimitiveMesh, parent: *ChunkMesh, isNeighborLod: [6]bool) !void {
+		fn finish(self: *PrimitiveMesh, parent: *ChunkMesh) !void {
 			var len: usize = self.coreFaces.items.len;
-			var neighborFaceLists: [6][]FaceData = undefined;
-			for(0..6) |i| {
-				if(isNeighborLod[i]) {
-					neighborFaceLists[i] = self.neighborFacesHigherLod[i].items;
-				} else {
-					neighborFaceLists[i] = self.neighborFacesSameLod[i].items;
-				}
+			for(self.neighborFacesSameLod) |neighborFaces| {
+				len += neighborFaces.items.len;
 			}
-			for(neighborFaceLists) |neighborFaces| {
-				len += neighborFaces.len;
+			for(self.neighborFacesHigherLod) |neighborFaces| {
+				len += neighborFaces.items.len;
 			}
 			const completeList = try main.globalAllocator.alloc(FaceData, len);
 			var i: usize = 0;
 			@memcpy(completeList[i..][0..self.coreFaces.items.len], self.coreFaces.items);
 			i += self.coreFaces.items.len;
-			for(neighborFaceLists) |neighborFaces| {
-				@memcpy(completeList[i..][0..neighborFaces.len], neighborFaces);
-				i += neighborFaces.len;
+			for(self.neighborFacesSameLod) |neighborFaces| {
+				@memcpy(completeList[i..][0..neighborFaces.items.len], neighborFaces.items);
+				i += neighborFaces.items.len;
+			}
+			for(self.neighborFacesHigherLod) |neighborFaces| {
+				@memcpy(completeList[i..][0..neighborFaces.items.len], neighborFaces.items);
+				i += neighborFaces.items.len;
 			}
 			for(completeList) |*face| {
 				face.light = getLight(parent, face.position.x, face.position.y, face.position.z, face.position.normal);
@@ -601,6 +603,13 @@ pub const meshing = struct {
 			self.mutex.lock();
 			const oldList = self.completeList;
 			self.completeList = completeList;
+			self.coreLen = @intCast(self.coreFaces.items.len);
+			for(self.neighborFacesSameLod, 0..) |neighborFaces, j| {
+				self.sameLodLens[j] = @intCast(neighborFaces.items.len);
+			}
+			for(self.neighborFacesHigherLod, 0..) |neighborFaces, j| {
+				self.higherLodLens[j] = @intCast(neighborFaces.items.len);
+			}
 			self.mutex.unlock();
 			main.globalAllocator.free(oldList);
 		}
@@ -673,11 +682,38 @@ pub const meshing = struct {
 			return result;
 		}
 
-		fn uploadData(self: *PrimitiveMesh) !void {
+		fn uploadData(self: *PrimitiveMesh, isNeighborLod: [6]bool) !void {
 			self.mutex.lock();
 			defer self.mutex.unlock();
-			self.vertexCount = @intCast(6*self.completeList.len);
-			try faceBuffer.uploadData(self.completeList, &self.bufferAllocation);
+			var len: u32 = self.coreLen;
+			var offset: u32 = self.coreLen;
+			var list: [6][]FaceData = undefined;
+			for(0..6) |i| {
+				const neighborLen = self.sameLodLens[i];
+				if(!isNeighborLod[i]) {
+					list[i] = self.completeList[offset..][0..neighborLen];
+					len += neighborLen;
+				}
+				offset += neighborLen;
+			}
+			for(0..6) |i| {
+				const neighborLen = self.higherLodLens[i];
+				if(isNeighborLod[i]) {
+					list[i] = self.completeList[offset..][0..neighborLen];
+					len += neighborLen;
+				}
+				offset += neighborLen;
+			}
+			const fullBuffer = try main.stackAllocator.alloc(FaceData, len);
+			defer main.stackAllocator.free(fullBuffer);
+			@memcpy(fullBuffer[0..self.coreLen], self.completeList[0..self.coreLen]);
+			var i: usize = self.coreLen;
+			for(0..6) |n| {
+				@memcpy(fullBuffer[i..][0..list[n].len], list[n]);
+				i += list[n].len;
+			}
+			self.vertexCount = @intCast(6*fullBuffer.len);
+			try faceBuffer.uploadData(fullBuffer, &self.bufferAllocation); // TODO: Avoid the extra copy by writing to the memory-mapped buffer directly.
 			self.wasChanged = true;
 		}
 
@@ -1066,6 +1102,12 @@ pub const meshing = struct {
 
 		fn finishData(self: *ChunkMesh) !void {
 			std.debug.assert(!self.mutex.tryLock());
+			try self.opaqueMesh.finish(self);
+			try self.voxelMesh.finish(self);
+			try self.transparentMesh.finish(self);
+		}
+
+		pub fn uploadData(self: *ChunkMesh) !void {
 			const isNeighborLod: [6]bool = .{
 				self.lastNeighborsSameLod[0] == null or self.forceHigherLod[0],
 				self.lastNeighborsSameLod[1] == null or self.forceHigherLod[1],
@@ -1074,24 +1116,15 @@ pub const meshing = struct {
 				self.lastNeighborsSameLod[4] == null or self.forceHigherLod[4],
 				self.lastNeighborsSameLod[5] == null or self.forceHigherLod[5],
 			};
-			try self.opaqueMesh.finish(self, isNeighborLod);
-			try self.voxelMesh.finish(self, isNeighborLod);
-			try self.transparentMesh.finish(self, isNeighborLod);
-		}
-
-		pub fn uploadData(self: *ChunkMesh) !void {
-			try self.opaqueMesh.uploadData();
-			try self.voxelMesh.uploadData();
-			try self.transparentMesh.uploadData();
+			try self.opaqueMesh.uploadData(isNeighborLod);
+			try self.voxelMesh.uploadData(isNeighborLod);
+			try self.transparentMesh.uploadData(isNeighborLod);
 		}
 
 		pub fn changeLodBorders(self: *ChunkMesh, forceHigherLod: [6]bool) !void {
 			if(!std.meta.eql(forceHigherLod, self.forceHigherLod)) {
-				self.mutex.lock();
 				self.forceHigherLod = forceHigherLod;
-				try self.finishData();
 				try self.uploadData();
-				self.mutex.unlock();
 			}
 		}
 
