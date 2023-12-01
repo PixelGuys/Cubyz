@@ -959,17 +959,17 @@ pub const meshing = struct {
 			const oldBlock = self.chunk.blocks[getIndex(x, y, z)];
 			for(Neighbors.iterable) |neighbor| {
 				var neighborMesh = self;
-				if(neighborMesh != self) {
-					self.mutex.unlock();
-					deadlockFreeDoubleLock(&self.mutex, &neighborMesh.mutex);
-				}
-				defer if(neighborMesh != self) neighborMesh.mutex.unlock();
 				var nx = x + Neighbors.relX[neighbor];
 				var ny = y + Neighbors.relY[neighbor];
 				var nz = z + Neighbors.relZ[neighbor];
 				if(nx & chunkMask != nx or ny & chunkMask != ny or nz & chunkMask != nz) { // Outside this chunk.
 					neighborMesh = renderer.RenderStructure.getNeighborFromRenderThread(self.pos, self.pos.voxelSize, neighbor) orelse continue;
 				}
+				if(neighborMesh != self) {
+					self.mutex.unlock();
+					deadlockFreeDoubleLock(&self.mutex, &neighborMesh.mutex);
+				}
+				defer if(neighborMesh != self) neighborMesh.mutex.unlock();
 				nx &= chunkMask;
 				ny &= chunkMask;
 				nz &= chunkMask;

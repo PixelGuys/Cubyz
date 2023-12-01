@@ -79,10 +79,9 @@ void main() {
 	uint textureIndex = textureData[blockType].textureIndices[faceNormal];
 	float normalVariation = normalVariations[faceNormal];
 	vec3 textureCoords = vec3(getTextureCoordsNormal(startPosition/16, faceNormal), textureIndex);
-	fragColor = texture(texture_sampler, textureCoords)*vec4(light*normalVariation, 1);
+	vec3 pixelLight = max(light*normalVariation, texture(emissionSampler, textureCoords).r*4);
+	fragColor = texture(texture_sampler, textureCoords)*vec4(pixelLight, 1);
 
 	if(!passDitherTest(fragColor.a)) discard;
 	fragColor.a = 1;
-
-	fragColor.rgb += texture(emissionSampler, textureCoords).rgb;
 }

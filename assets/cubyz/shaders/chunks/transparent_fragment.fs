@@ -139,7 +139,8 @@ void main() {
 	float fogDistance = calculateFogDistance(dist, textureData[blockType].fogDensity*densityAdjustment);
 	float airFogDistance = calculateFogDistance(dist, fog.density*densityAdjustment);
 	vec3 fogColor = unpackColor(textureData[blockType].fogColor);
-	vec4 textureColor = texture(texture_sampler, textureCoords)*vec4(light*normalVariation, 1);
+	vec3 pixelLight = max(light*normalVariation, texture(emissionSampler, textureCoords).r*4);
+	vec4 textureColor = texture(texture_sampler, textureCoords)*vec4(pixelLight, 1);
 	if(isBackFace == 0) {
 		textureColor.rgb *= textureColor.a;
 		blendColor.rgb = unpackColor(textureData[blockType].absorption);
@@ -149,7 +150,7 @@ void main() {
 		// TODO: Change this when it rains.
 		// TODO: Normal mapping.
 		// TODO: Allow textures to contribute to this term.
-		textureColor.rgb += (textureData[blockType].reflectivity*fixedCubeMapLookup(reflect(direction, normals[faceNormal])).xyz)*light*normalVariation;
+		textureColor.rgb += (textureData[blockType].reflectivity*fixedCubeMapLookup(reflect(direction, normals[faceNormal])).xyz)*pixelLight;
 		textureColor.rgb += texture(emissionSampler, textureCoords).rgb;
 		blendColor.rgb *= 1 - textureColor.a;
 		textureColor.a = 1;
