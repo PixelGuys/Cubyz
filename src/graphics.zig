@@ -1856,7 +1856,7 @@ pub fn generateBlockTexture(blockType: u16) !Texture {
 		if(block.mode().model(block).modelIndex == 0) {
 			main.chunk.meshing.bindShaderAndUniforms(projMatrix, .{1, 1, 1});
 		} else {
-			main.chunk.meshing.bindVoxelShaderAndUniforms(projMatrix, .{1, 1, 1});
+			std.log.err("TODO: Item textures for non-cube models.", .{});
 		}
 	}
 	const uniforms = if(block.transparent()) &main.chunk.meshing.transparentUniforms else &main.chunk.meshing.uniforms;

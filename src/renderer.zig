@@ -215,14 +215,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	}
 	gpu_performance_measuring.stopQuery();
 
-	gpu_performance_measuring.startQuery(.voxel_model_rendering);
-	chunk.meshing.bindVoxelShaderAndUniforms(game.projectionMatrix, ambientLight);
-
-	for(meshes) |mesh| {
-		mesh.renderVoxelModels(playerPos);
-	}
-	gpu_performance_measuring.stopQuery();
-
 //		for(int i = 0; i < visibleReduced.size; i++) {
 //			ReducedChunkMesh mesh = visibleReduced.array[i];
 //			mesh.render(playerPosition);
@@ -729,9 +721,9 @@ pub const MeshSelection = struct {
 			if(block.typ != 0) {
 				// Check the true bounding box (using this algorithm here: https://tavianator.com/2011/ray_box.html):
 				const model = blocks.meshes.model(block);
-				const voxelModel = &models.voxelModels.items[model.modelIndex];
-				const transformedMin = model.permutation.transform(voxelModel.min - @as(Vec3i, @splat(8))) + @as(Vec3i, @splat(8));
-				const transformedMax = model.permutation.transform(voxelModel.max - @as(Vec3i, @splat(8))) + @as(Vec3i, @splat(8));
+				const modelData = &models.models.items[model.modelIndex];
+				const transformedMin = model.permutation.transform(modelData.min - @as(Vec3i, @splat(8))) + @as(Vec3i, @splat(8));
+				const transformedMax = model.permutation.transform(modelData.max - @as(Vec3i, @splat(8))) + @as(Vec3i, @splat(8));
 				const min: Vec3d = @floatFromInt(@min(transformedMin, transformedMax));
 				const max: Vec3d = @floatFromInt(@max(transformedMin ,transformedMax));
 				const voxelPosFloat: Vec3d = @floatFromInt(voxelPos);
@@ -858,9 +850,9 @@ pub const MeshSelection = struct {
 			c.glPolygonOffset(-2, 0);
 			const block = RenderStructure.getBlockFromRenderThread(_selectedBlockPos[0], _selectedBlockPos[1], _selectedBlockPos[2]) orelse return;
 			const model = blocks.meshes.model(block);
-			const voxelModel = &models.voxelModels.items[model.modelIndex];
-			const transformedMin = model.permutation.transform(voxelModel.min - @as(Vec3i, @splat(8))) + @as(Vec3i, @splat(8));
-			const transformedMax = model.permutation.transform(voxelModel.max - @as(Vec3i, @splat(8))) + @as(Vec3i, @splat(8));
+			const modelData = &models.models.items[model.modelIndex];
+			const transformedMin = model.permutation.transform(modelData.min - @as(Vec3i, @splat(8))) + @as(Vec3i, @splat(8));
+			const transformedMax = model.permutation.transform(modelData.max - @as(Vec3i, @splat(8))) + @as(Vec3i, @splat(8));
 			const min: Vec3f = @floatFromInt(@min(transformedMin, transformedMax));
 			const max: Vec3f = @floatFromInt(@max(transformedMin ,transformedMax));
 			drawCube(projectionMatrix, viewMatrix, @as(Vec3d, @floatFromInt(_selectedBlockPos)) - playerPos, min/@as(Vec3f, @splat(16.0)), max/@as(Vec3f, @splat(16.0)));
@@ -1523,7 +1515,7 @@ pub const RenderStructure = struct {
 			}
 			mutex.unlock();
 			// Remove empty meshes.
-			if(mesh.opaqueMesh.vertexCount != 0 or mesh.voxelMesh.vertexCount != 0 or mesh.transparentMesh.vertexCount != 0) {
+			if(!mesh.isEmpty()) {
 				try meshList.append(mesh);
 			}
 		}

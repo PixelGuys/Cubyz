@@ -4,6 +4,6 @@
 	"drops" : [
 		"auto"
 	],
-	"model" : "log",
+	"model" : "cube",
 	"texture" : "cubyz:cactus"
 }

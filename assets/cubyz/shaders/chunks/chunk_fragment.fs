@@ -4,12 +4,9 @@ in vec3 mvVertexPos;
 in vec3 light;
 flat in int blockType;
 flat in int faceNormal;
-flat in int modelIndex;
 flat in int isBackFace;
 flat in int ditherSeed;
 // For raymarching:
-flat in ivec3 minPos;
-flat in ivec3 maxPos;
 in vec3 startPosition;
 in vec3 direction;
 

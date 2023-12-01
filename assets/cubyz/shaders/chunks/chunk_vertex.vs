@@ -3,13 +3,10 @@
 out vec3 mvVertexPos;
 out vec3 light;
 flat out int blockType;
-flat out int modelIndex;
 flat out int faceNormal;
 flat out int isBackFace;
 flat out int ditherSeed;
 // For raymarching:
-flat out ivec3 minPos;
-flat out ivec3 maxPos;
 out vec3 startPosition;
 out vec3 direction;
 
@@ -29,17 +26,14 @@ layout(std430, binding = 3) buffer _faceData
 	FaceData faceData[];
 };
 
-#define modelSize 16
-struct VoxelModel {
+struct ModelInfo {
 	ivec4 minimum;
 	ivec4 maximum;
-	uint bitPackedData[modelSize*modelSize*modelSize/32];
-	uint bitPackedTextureData[modelSize*modelSize*modelSize/8];
 };
 
 layout(std430, binding = 4) buffer _voxelModels
 {
-	VoxelModel voxelModels[];
+	ModelInfo voxelModels[];
 };
 
 uniform int voxelSize;
@@ -151,7 +145,7 @@ void main() {
 	ditherSeed = encodedPositionAndNormalsAndPermutation & 15;
 
 	blockType = blockAndModel & 65535;
-	modelIndex = blockAndModel >> 16;
+	int modelIndex = blockAndModel >> 16;
 
 	ivec3 position = ivec3(
 		encodedPositionAndNormalsAndPermutation & 31,
@@ -175,8 +169,6 @@ void main() {
 	ivec3 lowerBound = voxelModels[modelIndex].minimum.xyz;
 	ivec3 size = voxelModels[modelIndex].maximum.xyz - voxelModels[modelIndex].minimum.xyz;
 	size += (voxelSize - 1)*16;
-	minPos = lowerBound;
-	maxPos = lowerBound + size;
 	totalOffset = lowerBound + size*totalOffset;
 	position += totalOffset - 16*voxelSize*ivec3(normals[normal]);
 

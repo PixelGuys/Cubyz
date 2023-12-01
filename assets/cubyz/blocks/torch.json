@@ -8,6 +8,6 @@
 	"emittedLight" : 0x00a09080,
 	"viewThrough" : true,
 	"rotation" : "torch",
-	"model" : "cubyz:torch.obj",
+	"model" : "torch",
 	"texture" : "cubyz:torch"
 }

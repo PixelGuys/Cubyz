@@ -393,7 +393,6 @@ pub const Chunk = struct {
 
 pub const meshing = struct {
 	var shader: Shader = undefined;
-	var voxelShader: Shader = undefined;
 	var transparentShader: Shader = undefined;
 	const UniformStruct = struct {
 		projectionMatrix: c_int,
@@ -413,7 +412,6 @@ pub const meshing = struct {
 		zFar: c_int,
 	};
 	pub var uniforms: UniformStruct = undefined;
-	pub var voxelUniforms: UniformStruct = undefined;
 	pub var transparentUniforms: UniformStruct = undefined;
 	var vao: c_uint = undefined;
 	var vbo: c_uint = undefined;
@@ -424,7 +422,6 @@ pub const meshing = struct {
 
 	pub fn init() !void {
 		shader = try Shader.initAndGetUniforms("assets/cubyz/shaders/chunks/chunk_vertex.vs", "assets/cubyz/shaders/chunks/chunk_fragment.fs", &uniforms);
-		voxelShader = try Shader.initAndGetUniforms("assets/cubyz/shaders/chunks/chunk_vertex.vs", "assets/cubyz/shaders/chunks/voxel_model_fragment.fs", &voxelUniforms);
 		transparentShader = try Shader.initAndGetUniforms("assets/cubyz/shaders/chunks/chunk_vertex.vs", "assets/cubyz/shaders/chunks/transparent_fragment.fs", &transparentUniforms);
 
 		var rawData: [6*3 << (3*chunkShift)]u32 = undefined; // 6 vertices per face, maximum 3 faces/block
@@ -481,14 +478,6 @@ pub const meshing = struct {
 		shader.bind();
 
 		bindCommonUniforms(&uniforms, projMatrix, ambient);
-
-		c.glBindVertexArray(vao);
-	}
-
-	pub fn bindVoxelShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f) void {
-		voxelShader.bind();
-
-		bindCommonUniforms(&voxelUniforms, projMatrix, ambient);
 
 		c.glBindVertexArray(vao);
 	}
@@ -805,7 +794,6 @@ pub const meshing = struct {
 		chunk: *Chunk,
 		lightingData: *[6]lighting.ChannelChunk,
 		opaqueMesh: PrimitiveMesh,
-		voxelMesh: PrimitiveMesh,
 		transparentMesh: PrimitiveMesh,
 		lastNeighborsSameLod: [6]?*const ChunkMesh = [_]?*const ChunkMesh{null} ** 6,
 		lastNeighborsHigherLod: [6]?*const ChunkMesh = [_]?*const ChunkMesh{null} ** 6,
@@ -831,7 +819,6 @@ pub const meshing = struct {
 				.pos = pos,
 				.size = chunkSize*pos.voxelSize,
 				.opaqueMesh = .{},
-				.voxelMesh = .{},
 				.transparentMesh = .{},
 				.chunk = chunk,
 				.lightingData = lightingData,
@@ -841,7 +828,6 @@ pub const meshing = struct {
 		pub fn deinit(self: *ChunkMesh) void {
 			std.debug.assert(self.refCount.load(.Monotonic) == 0);
 			self.opaqueMesh.deinit();
-			self.voxelMesh.deinit();
 			self.transparentMesh.deinit();
 			main.globalAllocator.free(self.currentSorting);
 			main.globalAllocator.free(self.sortingOutputBuffer);
@@ -872,15 +858,15 @@ pub const meshing = struct {
 		}
 
 		pub fn isEmpty(self: *const ChunkMesh) bool {
-			return self.opaqueMesh.vertexCount == 0 and self.voxelMesh.vertexCount == 0 and self.transparentMesh.vertexCount == 0;
+			return self.opaqueMesh.vertexCount == 0 and self.transparentMesh.vertexCount == 0;
 		}
 
 		fn canBeSeenThroughOtherBlock(block: Block, other: Block, neighbor: u3) bool {
 			const rotatedModel = blocks.meshes.model(block);
-			const model = &models.voxelModels.items[rotatedModel.modelIndex];
+			const model = &models.models.items[rotatedModel.modelIndex];
 			const freestandingModel = rotatedModel.modelIndex != models.fullCube and switch(rotatedModel.permutation.permuteNeighborIndex(neighbor)) {
 				Neighbors.dirNegX => model.min[0] != 0,
-				Neighbors.dirPosX => model.max[0] != 16,
+				Neighbors.dirPosX => model.max[0] != 16, // TODO: Use a bitfield inside the models or something like that.
 				Neighbors.dirDown => model.min[1] != 0,
 				Neighbors.dirUp => model.max[1] != 16,
 				Neighbors.dirNegZ => model.min[2] != 0,
@@ -899,7 +885,6 @@ pub const meshing = struct {
 			renderer.RenderStructure.addMeshToStorage(self);
 			self.mutex.lock();
 			self.opaqueMesh.reset();
-			self.voxelMesh.reset();
 			self.transparentMesh.reset();
 			var n: u32 = 0;
 			var x: u8 = 0;
@@ -925,11 +910,7 @@ pub const meshing = struct {
 									}
 									try self.transparentMesh.appendCore(constructFaceData(block, i, x2, y2, z2, false));
 								} else {
-									if(blocks.meshes.model(block).modelIndex == 0) {
-										try self.opaqueMesh.appendCore(constructFaceData(block, i, x2, y2, z2, false));
-									} else {
-										try self.voxelMesh.appendCore(constructFaceData(block, i, x2, y2, z2, false));
-									}
+									try self.opaqueMesh.appendCore(constructFaceData(block, i, x2, y2, z2, false)); // TODO: Create multiple faces for non-cube meshes.
 								}
 							}
 						}
@@ -957,11 +938,7 @@ pub const meshing = struct {
 			if(transparent) {
 				try self.transparentMesh.addFace(faceData, fromNeighborChunk);
 			} else {
-				if(faceData.blockAndModel.modelIndex == 0) {
-					try self.opaqueMesh.addFace(faceData, fromNeighborChunk);
-				} else {
-					try self.voxelMesh.addFace(faceData, fromNeighborChunk);
-				}
+				try self.opaqueMesh.addFace(faceData, fromNeighborChunk);
 			}
 		}
 
@@ -969,11 +946,7 @@ pub const meshing = struct {
 			if(transparent) {
 				self.transparentMesh.removeFace(faceData, fromNeighborChunk);
 			} else {
-				if(faceData.blockAndModel.modelIndex == 0) {
-					self.opaqueMesh.removeFace(faceData, fromNeighborChunk);
-				} else {
-					self.voxelMesh.removeFace(faceData, fromNeighborChunk);
-				}
+				self.opaqueMesh.removeFace(faceData, fromNeighborChunk);
 			}
 		}
 
@@ -1095,20 +1068,17 @@ pub const meshing = struct {
 
 		fn clearNeighbor(self: *ChunkMesh, neighbor: u3, comptime isLod: bool) void {
 			self.opaqueMesh.clearNeighbor(neighbor, isLod);
-			self.voxelMesh.clearNeighbor(neighbor, isLod);
 			self.transparentMesh.clearNeighbor(neighbor, isLod);
 		}
 
 		fn finishData(self: *ChunkMesh) !void {
 			std.debug.assert(!self.mutex.tryLock());
 			try self.opaqueMesh.finish(self);
-			try self.voxelMesh.finish(self);
 			try self.transparentMesh.finish(self);
 		}
 
 		pub fn uploadData(self: *ChunkMesh) !void {
 			try self.opaqueMesh.uploadData(self.isNeighborLod);
-			try self.voxelMesh.uploadData(self.isNeighborLod);
 			try self.transparentMesh.uploadData(self.isNeighborLod);
 		}
 
@@ -1177,11 +1147,7 @@ pub const meshing = struct {
 									}
 									try neighborMesh.transparentMesh.appendNeighbor(constructFaceData(block, neighbor, otherX, otherY, otherZ, false), neighbor ^ 1, false);
 								} else {
-									if(blocks.meshes.model(block).modelIndex == 0) {
-										try neighborMesh.opaqueMesh.appendNeighbor(constructFaceData(block, neighbor, otherX, otherY, otherZ, false), neighbor ^ 1, false);
-									} else {
-										try neighborMesh.voxelMesh.appendNeighbor(constructFaceData(block, neighbor, otherX, otherY, otherZ, false), neighbor ^ 1, false);
-									}
+									try neighborMesh.opaqueMesh.appendNeighbor(constructFaceData(block, neighbor, otherX, otherY, otherZ, false), neighbor ^ 1, false);
 								}
 							}
 							if(canBeSeenThroughOtherBlock(otherBlock, block, neighbor ^ 1)) {
@@ -1191,11 +1157,7 @@ pub const meshing = struct {
 									}
 									try self.transparentMesh.appendNeighbor(constructFaceData(otherBlock, neighbor ^ 1, x, y, z, false), neighbor, false);
 								} else {
-									if(blocks.meshes.model(otherBlock).modelIndex == 0) {
-										try self.opaqueMesh.appendNeighbor(constructFaceData(otherBlock, neighbor ^ 1, x, y, z, false), neighbor, false);
-									} else {
-										try self.voxelMesh.appendNeighbor(constructFaceData(otherBlock, neighbor ^ 1, x, y, z, false), neighbor, false);
-									}
+									try self.opaqueMesh.appendNeighbor(constructFaceData(otherBlock, neighbor ^ 1, x, y, z, false), neighbor, false);
 								}
 							}
 						}
@@ -1266,11 +1228,7 @@ pub const meshing = struct {
 							if(otherBlock.transparent()) {
 								try self.transparentMesh.appendNeighbor(constructFaceData(otherBlock, neighbor ^ 1, x, y, z, false), neighbor, true);
 							} else {
-								if(blocks.meshes.model(otherBlock).modelIndex == 0) {
-									try self.opaqueMesh.appendNeighbor(constructFaceData(otherBlock, neighbor ^ 1, x, y, z, false), neighbor, true);
-								} else {
-									try self.voxelMesh.appendNeighbor(constructFaceData(otherBlock, neighbor ^ 1, x, y, z, false), neighbor, true);
-								}
+								try self.opaqueMesh.appendNeighbor(constructFaceData(otherBlock, neighbor ^ 1, x, y, z, false), neighbor, true);
 							}
 						}
 						if(block.hasBackFace()) {
@@ -1298,20 +1256,6 @@ pub const meshing = struct {
 			c.glUniform1i(uniforms.voxelSize, self.pos.voxelSize);
 			quadsDrawn += self.opaqueMesh.vertexCount/6;
 			c.glDrawElementsBaseVertex(c.GL_TRIANGLES, self.opaqueMesh.vertexCount, c.GL_UNSIGNED_INT, null, self.opaqueMesh.bufferAllocation.start*4);
-		}
-
-		pub fn renderVoxelModels(self: *ChunkMesh, playerPosition: Vec3d) void {
-			if(self.voxelMesh.vertexCount == 0) return;
-			c.glUniform3f(
-				voxelUniforms.modelPosition,
-				@floatCast(@as(f64, @floatFromInt(self.pos.wx)) - playerPosition[0]),
-				@floatCast(@as(f64, @floatFromInt(self.pos.wy)) - playerPosition[1]),
-				@floatCast(@as(f64, @floatFromInt(self.pos.wz)) - playerPosition[2])
-			);
-			c.glUniform1i(voxelUniforms.visibilityMask, self.visibilityMask);
-			c.glUniform1i(voxelUniforms.voxelSize, self.pos.voxelSize);
-			quadsDrawn += self.voxelMesh.vertexCount/6;
-			c.glDrawElementsBaseVertex(c.GL_TRIANGLES, self.voxelMesh.vertexCount, c.GL_UNSIGNED_INT, null, self.voxelMesh.bufferAllocation.start*4);
 		}
 
 		pub fn renderTransparent(self: *ChunkMesh, playerPosition: Vec3d) !void {
