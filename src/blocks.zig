@@ -572,8 +572,15 @@ pub const meshes = struct {
 	}
 
 	pub fn generateTextureArray() !void {
+		const c = graphics.c;
 		try blockTextureArray.generate(blockTextures.items, true);
+		if(main.settings.anisotropicFiltering) {
+			c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, 16);
+		}
 		try emissionTextureArray.generate(emissionTextures.items, true);
+		if(main.settings.anisotropicFiltering) {
+			c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, 16);
+		}
 
 		// Also generate additional buffers:
 		if(animationSSBO) |ssbo| {

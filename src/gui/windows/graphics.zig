@@ -37,12 +37,18 @@ fn vsyncCallback(newValue: bool) void {
 	main.Window.reloadSettings();
 }
 
+fn anisotropicFilteringCallback(newValue: bool) void {
+	settings.anisotropicFiltering = newValue;
+	// TODO: Reload the textures.
+}
+
 pub fn onOpen() Allocator.Error!void {
 	const list = try VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	const renderDistances = [_]u32{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
 	try list.add(try DiscreteSlider.init(.{0, 0}, 128, "#ffffffRender Distance: ", "{}", &renderDistances, settings.renderDistance - 1, &renderDistanceCallback));
 	try list.add(try CheckBox.init(.{0, 0}, 128, "Bloom", settings.bloom, &bloomCallback));
 	try list.add(try CheckBox.init(.{0, 0}, 128, "Vertical Synchronization", settings.vsync, &vsyncCallback));
+	try list.add(try CheckBox.init(.{0, 0}, 128, "Anisotropic Filtering", settings.anisotropicFiltering, &anisotropicFilteringCallback));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));

@@ -15,6 +15,8 @@ pub const highestLOD: u5 = 5;
 
 pub var entityDistance: u16 = 2;
 
+pub var anisotropicFiltering: bool = true;
+
 
 pub var fov: f32 = 70;
 

@@ -611,7 +611,7 @@ pub const Window = struct {
 			c.glfwWindowHint(c.GLFW_OPENGL_DEBUG_CONTEXT, 1);
 		}
 		c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MAJOR, 4);
-		c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MINOR, 5);
+		c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MINOR, 6);
 
 		window = c.glfwCreateWindow(width, height, "Cubyz", null, null) orelse return error.GLFWFailed;
 
