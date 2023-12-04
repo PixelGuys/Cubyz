@@ -1601,14 +1601,14 @@ pub const RenderStructure = struct {
 		}
 	}
 
-	pub fn addMeshToClearList(mesh: *chunk.meshing.ChunkMesh) !void {
+	pub fn addMeshToClearListAndDecreaseRefCount(mesh: *chunk.meshing.ChunkMesh) !void {
 		std.debug.assert(mesh.refCount.load(.Monotonic) == 0);
 		mutex.lock();
 		defer mutex.unlock();
 		try clearList.append(mesh);
 	}
 
-	pub fn addToUpdateList(mesh: *chunk.meshing.ChunkMesh) !void {
+	pub fn addToUpdateListAndDecreaseRefCount(mesh: *chunk.meshing.ChunkMesh) !void {
 		std.debug.assert(mesh.refCount.load(.Monotonic) != 0);
 		mutex.lock();
 		defer mutex.unlock();

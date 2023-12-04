@@ -93,7 +93,7 @@ pub const Neighbors = struct { // TODO: Should this be an enum?
 };
 
 /// Gets the index of a given position inside this chunk.
-fn getIndex(x: i32, y: i32, z: i32) u32 {
+pub fn getIndex(x: i32, y: i32, z: i32) u32 {
 	std.debug.assert((x & chunkMask) == x and (y & chunkMask) == y and (z & chunkMask) == z);
 	return (@as(u32, @intCast(x)) << chunkShift) | (@as(u32, @intCast(y)) << chunkShift2) | @as(u32, @intCast(z));
 }
@@ -609,12 +609,12 @@ pub const meshing = struct {
 			const z = (wz >> mesh.chunk.voxelSizeShift) & chunkMask;
 			const index = getIndex(x, y, z);
 			return .{
-				mesh.lightingData.*[0].data[index],
-				mesh.lightingData.*[1].data[index],
-				mesh.lightingData.*[2].data[index],
-				mesh.lightingData.*[3].data[index],
-				mesh.lightingData.*[4].data[index],
-				mesh.lightingData.*[5].data[index],
+				mesh.lightingData.*[0].data[index].load(.Unordered),
+				mesh.lightingData.*[1].data[index].load(.Unordered),
+				mesh.lightingData.*[2].data[index].load(.Unordered),
+				mesh.lightingData.*[3].data[index].load(.Unordered),
+				mesh.lightingData.*[4].data[index].load(.Unordered),
+				mesh.lightingData.*[5].data[index].load(.Unordered),
 			};
 		}
 
@@ -812,9 +812,12 @@ pub const meshing = struct {
 
 		pub fn init(self: *ChunkMesh, pos: ChunkPosition, chunk: *Chunk) !void {
 			const lightingData = try main.globalAllocator.create([6]lighting.ChannelChunk);
-			for(lightingData) |*lightChunk| {
-				try lightChunk.init(chunk);
-			}
+			try lightingData[0].init(chunk, .sun_red);
+			try lightingData[1].init(chunk, .sun_green);
+			try lightingData[2].init(chunk, .sun_blue);
+			try lightingData[3].init(chunk, .red);
+			try lightingData[4].init(chunk, .green);
+			try lightingData[5].init(chunk, .blue);
 			self.* = ChunkMesh{
 				.pos = pos,
 				.size = chunkSize*pos.voxelSize,
@@ -853,7 +856,7 @@ pub const meshing = struct {
 			const prevVal = self.refCount.fetchSub(1, .Monotonic);
 			std.debug.assert(prevVal != 0);
 			if(prevVal == 1) {
-				renderer.RenderStructure.addMeshToClearList(self) catch @panic("Out of Memory");
+				renderer.RenderStructure.addMeshToClearListAndDecreaseRefCount(self) catch @panic("Out of Memory");
 			}
 		}
 
@@ -886,6 +889,8 @@ pub const meshing = struct {
 			self.mutex.lock();
 			self.opaqueMesh.reset();
 			self.transparentMesh.reset();
+			var lightEmittingBlocks = std.ArrayList([3]u8).init(main.globalAllocator);
+			defer lightEmittingBlocks.deinit();
 			var n: u32 = 0;
 			var x: u8 = 0;
 			while(x < chunkSize): (x += 1) {
@@ -894,6 +899,7 @@ pub const meshing = struct {
 					var z: u8 = 0;
 					while(z < chunkSize): (z += 1) {
 						const block = (&self.chunk.blocks)[getIndex(x, y, z)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
+						if(block.light() != 0) try lightEmittingBlocks.append(.{x, y, z});
 						if(block.typ == 0) continue;
 						// Check all neighbors:
 						for(Neighbors.iterable) |i| {
@@ -931,6 +937,10 @@ pub const meshing = struct {
 				}
 			}
 			self.mutex.unlock();
+			for(self.lightingData[3..]) |*lightingData| {
+				try lightingData.propagateLights(lightEmittingBlocks.items, true);
+			}
+			// TODO: Sunlight propagation
 			try self.finishNeighbors(false);
 		}
 
@@ -1071,7 +1081,7 @@ pub const meshing = struct {
 			self.transparentMesh.clearNeighbor(neighbor, isLod);
 		}
 
-		fn finishData(self: *ChunkMesh) !void {
+		pub fn finishData(self: *ChunkMesh) !void {
 			std.debug.assert(!self.mutex.tryLock());
 			try self.opaqueMesh.finish(self);
 			try self.transparentMesh.finish(self);
@@ -1167,7 +1177,7 @@ pub const meshing = struct {
 						try neighborMesh.uploadData();
 					} else {
 						neighborMesh.increaseRefCount();
-						try renderer.RenderStructure.addToUpdateList(neighborMesh);
+						try renderer.RenderStructure.addToUpdateListAndDecreaseRefCount(neighborMesh);
 					}
 				} else {
 					self.mutex.lock();
