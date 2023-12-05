@@ -58,7 +58,6 @@ pub const Ore = struct {
 	}
 };
 
-var _lightingTransparent: [maxBlockCount]bool = undefined;
 var _transparent: [maxBlockCount]bool = undefined;
 var _id: [maxBlockCount][]u8 = undefined;
 /// Time in seconds to break this block by hand.
@@ -109,8 +108,7 @@ pub fn register(_: []const u8, id: []const u8, json: JsonElement) !u16 {
 
 	_blockClass[size] = std.meta.stringToEnum(BlockClass, json.get([]const u8, "class", "stone")) orelse .stone;
 	_light[size] = json.get(u32, "emittedLight", 0);
-	_absorption[size] = json.get(u32, "absorbedLight", 0);
-	_lightingTransparent[size] = json.getChild("absorbedLight") != .JsonNull;
+	_absorption[size] = json.get(u32, "absorbedLight", 0xffffff);
 	_degradable[size] = json.get(bool, "degradable", false);
 	_selectable[size] = json.get(bool, "selectable", true);
 	_solid[size] = json.get(bool, "solid", true);
@@ -218,9 +216,6 @@ pub const Block = packed struct {
 	}
 	pub fn fromInt(self: u32) Block {
 		return Block{.typ=@truncate(self), .data=@intCast(self>>16)};
-	}
-	pub inline fn lightingTransparent(self: Block) bool {
-		return _lightingTransparent[self.typ];
 	}
 
 	pub inline fn transparent(self: Block) bool {

@@ -96,7 +96,7 @@ pub const ChannelChunk = struct {
 		}
 	}
 
-	fn propagateFromNeighbor(self: *ChannelChunk, lights: []Entry) std.mem.Allocator.Error!void {
+	fn propagateFromNeighbor(self: *ChannelChunk, lights: []const Entry) std.mem.Allocator.Error!void {
 		var lightQueue = std.PriorityQueue(Entry, void, Entry.compare).init(main.globalAllocator, {});
 		defer lightQueue.deinit();
 		for(lights) |entry| {
@@ -110,7 +110,7 @@ pub const ChannelChunk = struct {
 		try self.propagateDirect(&lightQueue);
 	}
 
-	pub fn propagateLights(self: *ChannelChunk, lights: [][3]u8, comptime checkNeighbors: bool) std.mem.Allocator.Error!void {
+	pub fn propagateLights(self: *ChannelChunk, lights: []const [3]u8, comptime checkNeighbors: bool) std.mem.Allocator.Error!void {
 		var lightQueue = std.PriorityQueue(Entry, void, Entry.compare).init(main.globalAllocator, {});
 		defer lightQueue.deinit();
 		for(lights) |pos| {

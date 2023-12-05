@@ -962,11 +962,19 @@ pub const meshing = struct {
 
 		pub fn updateBlock(self: *ChunkMesh, _x: i32, _y: i32, _z: i32, newBlock: Block) !void {
 			self.mutex.lock();
-			defer self.mutex.unlock();
 			const x = _x & chunkMask;
 			const y = _y & chunkMask;
 			const z = _z & chunkMask;
 			const oldBlock = self.chunk.blocks[getIndex(x, y, z)];
+			self.chunk.blocks[getIndex(x, y, z)] = newBlock;
+			self.mutex.unlock();
+			if(newBlock.light() != 0) {
+				for(self.lightingData[3..]) |*lightingData| {
+					try lightingData.propagateLights(&.{.{@intCast(x), @intCast(y), @intCast(z)}}, true);
+				}
+			}
+			self.mutex.lock();
+			defer self.mutex.unlock();
 			for(Neighbors.iterable) |neighbor| {
 				var neighborMesh = self;
 				var nx = x + Neighbors.relX[neighbor];
@@ -1063,7 +1071,6 @@ pub const meshing = struct {
 					try neighborMesh.uploadData();
 				}
 			}
-			self.chunk.blocks[getIndex(x, y, z)] = newBlock;
 			try self.finishData();
 			try self.uploadData();
 		}

@@ -6,7 +6,7 @@
 	"absorbtion" : 0,
 
 	"transparent" : true,
-	"lightingTransparent" : true,
+	"absorbedLight" : 0x000000,
 	"viewThrough" : true,
 	"solid" : false,
 	"rotation" : "no_rotation",
