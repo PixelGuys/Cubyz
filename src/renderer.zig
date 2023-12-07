@@ -1612,8 +1612,14 @@ pub const RenderStructure = struct {
 		std.debug.assert(mesh.refCount.load(.Monotonic) != 0);
 		mutex.lock();
 		defer mutex.unlock();
-		try priorityMeshUpdateList.append(mesh);
-		mesh.needsMeshUpdate = true;
+		if(mesh.finishedMeshing) {
+			try priorityMeshUpdateList.append(mesh);
+			mesh.needsMeshUpdate = true;
+		} else {
+			mutex.unlock();
+			defer mutex.lock();
+			mesh.decreaseRefCount();
+		}
 	}
 
 	pub fn addMeshToStorage(mesh: *chunk.meshing.ChunkMesh) void {

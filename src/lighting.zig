@@ -76,10 +76,7 @@ pub const ChannelChunk = struct {
 		}
 		self.mutex.unlock();
 		if(main.renderer.RenderStructure.getMeshAndIncreaseRefCount(self.ch.pos)) |mesh| {
-			mesh.mutex.lock();
-			defer mesh.mutex.unlock();
-			try mesh.finishData();
-			try main.renderer.RenderStructure.addToUpdateListAndDecreaseRefCount(mesh);
+			try mesh.scheduleLightRefreshAndDecreaseRefCount();
 		}
 
 		for(0..6) |neighbor| {

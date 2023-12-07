@@ -804,6 +804,7 @@ pub const meshing = struct {
 		culledSortingCount: u31 = 0,
 		lastTransparentUpdatePos: Vec3i = Vec3i{0, 0, 0},
 		refCount: std.atomic.Value(u32) = std.atomic.Value(u32).init(1),
+		needsLightRefresh: std.atomic.Value(bool) = std.atomic.Value(bool).init(false),
 		needsMeshUpdate: bool = false,
 		finishedMeshing: bool = false,
 		mutex: std.Thread.Mutex = .{},
@@ -859,6 +860,57 @@ pub const meshing = struct {
 				renderer.RenderStructure.addMeshToClearListAndDecreaseRefCount(self) catch @panic("Out of Memory");
 			}
 		}
+
+		pub fn scheduleLightRefreshAndDecreaseRefCount(self: *ChunkMesh) !void {
+			if(!self.needsLightRefresh.swap(true, .AcqRel)) {
+				try LightRefreshTask.scheduleAndDecreaseRefCount(self);
+			} else {
+				self.decreaseRefCount();
+			}
+		}
+		const LightRefreshTask = struct {
+			mesh: *ChunkMesh,
+
+			pub const vtable = main.utils.ThreadPool.VTable{
+				.getPriority = @ptrCast(&getPriority),
+				.isStillNeeded = @ptrCast(&isStillNeeded),
+				.run = @ptrCast(&run),
+				.clean = @ptrCast(&clean),
+			};
+
+			pub fn scheduleAndDecreaseRefCount(mesh: *ChunkMesh) !void {
+				const task = try main.globalAllocator.create(LightRefreshTask);
+				task.* = .{
+					.mesh = mesh,
+				};
+				try main.threadPool.addTask(task, &vtable);
+			}
+
+			pub fn getPriority(_: *LightRefreshTask) f32 {
+				return 1000000;
+			}
+
+			pub fn isStillNeeded(_: *LightRefreshTask) bool {
+				return true; // TODO: Is it worth checking for this?
+			}
+
+			pub fn run(self: *LightRefreshTask) Allocator.Error!void {
+				if(self.mesh.needsLightRefresh.swap(false, .AcqRel)) {
+					self.mesh.mutex.lock();
+					try self.mesh.finishData();
+					self.mesh.mutex.unlock();
+					try renderer.RenderStructure.addToUpdateListAndDecreaseRefCount(self.mesh);
+				} else {
+					self.mesh.decreaseRefCount();
+				}
+				main.globalAllocator.destroy(self);
+			}
+
+			pub fn clean(self: *LightRefreshTask) void {
+				self.mesh.decreaseRefCount();
+				main.globalAllocator.destroy(self);
+			}
+		};
 
 		pub fn isEmpty(self: *const ChunkMesh) bool {
 			return self.opaqueMesh.vertexCount == 0 and self.transparentMesh.vertexCount == 0;
@@ -1067,10 +1119,12 @@ pub const meshing = struct {
 					}
 				}
 				if(neighborMesh != self) {
+					_ = neighborMesh.needsLightRefresh.swap(false, .AcqRel);
 					try neighborMesh.finishData();
 					try neighborMesh.uploadData();
 				}
 			}
+			_ = self.needsLightRefresh.swap(false, .AcqRel);
 			try self.finishData();
 			try self.uploadData();
 		}
@@ -1179,6 +1233,7 @@ pub const meshing = struct {
 							}
 						}
 					}
+					_ = neighborMesh.needsLightRefresh.swap(false, .AcqRel);
 					try neighborMesh.finishData();
 					if(inRenderThread) {
 						try neighborMesh.uploadData();
@@ -1258,6 +1313,7 @@ pub const meshing = struct {
 			}
 			self.mutex.lock();
 			defer self.mutex.unlock();
+			_ = self.needsLightRefresh.swap(false, .AcqRel);
 			try self.finishData();
 		}
 
