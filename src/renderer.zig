@@ -1622,18 +1622,17 @@ pub const RenderStructure = struct {
 		}
 	}
 
-	pub fn addMeshToStorage(mesh: *chunk.meshing.ChunkMesh) void {
+	pub fn addMeshToStorage(mesh: *chunk.meshing.ChunkMesh) !void {
 		mutex.lock();
+		defer mutex.unlock();
 		if(isInRenderDistance(mesh.pos)) {
-			mesh.increaseRefCount();
 			const node = getNodeFromRenderThread(mesh.pos);
-			if(node.mesh.swap(mesh, .AcqRel)) |oldMesh| {
-				mutex.unlock();
-				oldMesh.decreaseRefCount();
-				return;
+			if(node.mesh.cmpxchgStrong(null, mesh, .AcqRel, .Monotonic) != null) {
+				return error.AlreadyStored;
+			} else {
+				mesh.increaseRefCount();
 			}
 		}
-		mutex.unlock();
 	}
 
 	pub const MeshGenerationTask = struct {
@@ -1669,7 +1668,18 @@ pub const RenderStructure = struct {
 			const pos = self.mesh.pos;
 			const mesh = try main.globalAllocator.create(chunk.meshing.ChunkMesh);
 			try mesh.init(pos, self.mesh);
-			try mesh.regenerateMainMesh();
+			mesh.regenerateMainMesh() catch |err| {
+				switch(err) {
+					error.AlreadyStored => {
+						mesh.decreaseRefCount();
+						main.globalAllocator.destroy(self);
+						return;
+					},
+					else => |_err| {
+						return _err;
+					}
+				}
+			};
 			mutex.lock();
 			defer mutex.unlock();
 			updatableList.append(mesh) catch |err| {

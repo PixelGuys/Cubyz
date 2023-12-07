@@ -937,7 +937,7 @@ pub const meshing = struct {
 		}
 
 		pub fn regenerateMainMesh(self: *ChunkMesh) !void {
-			renderer.RenderStructure.addMeshToStorage(self);
+			try renderer.RenderStructure.addMeshToStorage(self);
 			self.mutex.lock();
 			self.opaqueMesh.reset();
 			self.transparentMesh.reset();
