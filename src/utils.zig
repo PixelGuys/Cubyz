@@ -317,6 +317,59 @@ pub fn Array3D(comptime T: type) type {
 	};
 }
 
+pub fn CircularBufferQueue(comptime T: type) type {
+	return struct {
+		const Self = @This();
+		mem: []T,
+		mask: usize,
+		startIndex: usize,
+		endIndex: usize,
+		allocator: Allocator,
+
+		pub fn init(allocator: Allocator, initialCapacity: usize) !Self {
+			comptime std.debug.assert(@sizeOf(Self) <= 64);
+			std.debug.assert(initialCapacity-1 & initialCapacity == 0 and initialCapacity > 0);
+			return .{
+				.mem = try allocator.alloc(T, initialCapacity),
+				.mask = initialCapacity-1,
+				.startIndex = 0,
+				.endIndex = 0,
+				.allocator = allocator,
+			};
+		}
+
+		pub fn deinit(self: Self) void {
+			self.allocator.free(self.mem);
+		}
+
+		fn increaseCapacity(self: *Self) !void {
+			const newMem = try self.allocator.alloc(T, self.mem.len*2);
+			@memcpy(newMem[0..(self.mem.len - self.startIndex)], self.mem[self.startIndex..]);
+			@memcpy(newMem[(self.mem.len - self.startIndex)..][0..self.endIndex], self.mem[0..self.endIndex]);
+			self.startIndex = 0;
+			self.endIndex = self.mem.len;
+			self.allocator.free(self.mem);
+			self.mem = newMem;
+			self.mask = self.mem.len - 1;
+		}
+
+		pub fn enqueue(self: *Self, elem: T) !void {
+			self.mem[self.endIndex] = elem;
+			self.endIndex = (self.endIndex + 1) & self.mask;
+			if(self.endIndex == self.startIndex) {
+				try self.increaseCapacity();
+			}
+		}
+
+		pub fn dequeue(self: *Self) ?T {
+			if(self.startIndex == self.endIndex) return null;
+			const result = self.mem[self.startIndex];
+			self.startIndex = (self.startIndex + 1) & self.mask;
+			return result;
+		}
+	};
+}
+
 /// Allows for stack-like allocations in a fast and safe way.
 /// It is safe in the sense that a regular allocator will be used when the buffer is full.
 pub const StackAllocator = struct {

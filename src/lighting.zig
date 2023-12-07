@@ -40,15 +40,9 @@ pub const ChannelChunk = struct {
 		y: u5,
 		z: u5,
 		value: u8,
-
-		fn compare(_: void, a: @This(), b: @This()) std.math.Order {
-			if (a.value > b.value) return .gt;
-			if (a.value < b.value) return .lt;
-			return .eq;
-		}
 	};
 
-	fn propagateDirect(self: *ChannelChunk, lightQueue: *std.PriorityQueue(Entry, void, Entry.compare)) std.mem.Allocator.Error!void {
+	noinline fn propagateDirect(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry)) std.mem.Allocator.Error!void {
 		var neighborLists: [6]std.ArrayListUnmanaged(Entry) = .{.{}} ** 6;
 		defer {
 			for(&neighborLists) |*list| {
@@ -58,7 +52,7 @@ pub const ChannelChunk = struct {
 
 		self.mutex.lock();
 		errdefer self.mutex.unlock();
-		while(lightQueue.removeOrNull()) |entry| {
+		while(lightQueue.dequeue()) |entry| {
 			const index = chunk.getIndex(entry.x, entry.y, entry.z);
 			if(entry.value <= self.data[index].load(.Unordered)) continue;
 			self.data[index].store(entry.value, .Unordered);
@@ -77,7 +71,7 @@ pub const ChannelChunk = struct {
 				var absorption: u8 = @intCast(self.ch.blocks[neighborIndex].absorption() >> self.channel.shift() & 255);
 				absorption *|= @intCast(self.ch.pos.voxelSize);
 				result.value -|= absorption;
-				if(result.value != 0) try lightQueue.add(result);
+				if(result.value != 0) try lightQueue.enqueue(result);
 			}
 		}
 		self.mutex.unlock();
@@ -97,7 +91,7 @@ pub const ChannelChunk = struct {
 	}
 
 	fn propagateFromNeighbor(self: *ChannelChunk, lights: []const Entry) std.mem.Allocator.Error!void {
-		var lightQueue = std.PriorityQueue(Entry, void, Entry.compare).init(main.globalAllocator, {});
+		var lightQueue = try main.utils.CircularBufferQueue(Entry).init(main.globalAllocator, 1 << 8);
 		defer lightQueue.deinit();
 		for(lights) |entry| {
 			const index = chunk.getIndex(entry.x, entry.y, entry.z);
@@ -105,17 +99,17 @@ pub const ChannelChunk = struct {
 			var absorption: u8 = @intCast(self.ch.blocks[index].absorption() >> self.channel.shift() & 255);
 			absorption *|= @intCast(self.ch.pos.voxelSize);
 			result.value -|= absorption;
-			if(result.value != 0) try lightQueue.add(result);
+			if(result.value != 0) try lightQueue.enqueue(result);
 		}
 		try self.propagateDirect(&lightQueue);
 	}
 
 	pub fn propagateLights(self: *ChannelChunk, lights: []const [3]u8, comptime checkNeighbors: bool) std.mem.Allocator.Error!void {
-		var lightQueue = std.PriorityQueue(Entry, void, Entry.compare).init(main.globalAllocator, {});
+		var lightQueue = try main.utils.CircularBufferQueue(Entry).init(main.globalAllocator, 1 << 8);
 		defer lightQueue.deinit();
 		for(lights) |pos| {
 			const index = chunk.getIndex(pos[0], pos[1], pos[2]);
-			try lightQueue.add(.{.x = @intCast(pos[0]), .y = @intCast(pos[1]), .z = @intCast(pos[2]), .value = @intCast(self.ch.blocks[index].light() >> self.channel.shift() & 255)});
+			try lightQueue.enqueue(.{.x = @intCast(pos[0]), .y = @intCast(pos[1]), .z = @intCast(pos[2]), .value = @intCast(self.ch.blocks[index].light() >> self.channel.shift() & 255)});
 		}
 		if(checkNeighbors) {
 			for(0..6) |neighbor| {
@@ -154,7 +148,7 @@ pub const ChannelChunk = struct {
 						var absorption: u8 = @intCast(self.ch.blocks[index].absorption() >> self.channel.shift() & 255);
 						absorption *|= @intCast(self.ch.pos.voxelSize);
 						value -|= absorption;
-						if(value != 0) try lightQueue.add(.{.x = @intCast(x), .y = @intCast(y), .z = @intCast(z), .value = value});
+						if(value != 0) try lightQueue.enqueue(.{.x = @intCast(x), .y = @intCast(y), .z = @intCast(z), .value = value});
 					}
 				}
 			}
