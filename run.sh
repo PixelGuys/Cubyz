@@ -16,7 +16,7 @@ if [[ "$CURRENT_VERSION" != "$VERSION" ]]; then
 	wget -O compiler/archive.tar.xz https://ziglang.org/builds/"$VERSION".tar.xz
 	echo "Extracting tar file..."
 	tar --xz -xf compiler/archive.tar.xz --directory compiler/zig --strip-components 1
-	echo "Done."
+	echo "Done downloading zig."
 	rm compiler/archive.tar.xz
 	echo "$VERSION" > compiler/version.txt
 fi

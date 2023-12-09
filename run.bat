@@ -17,7 +17,7 @@ if not "%version%" == "%currVersion%" (
     echo Extracting zip file ...
     powershell $ProgressPreference = 'SilentlyContinue'; Expand-Archive compiler\archive.zip -DestinationPath compiler
 	ren compiler\%version% zig
-    echo Done.
+    echo Done downloading zig.
     del compiler\archive.zip
     echo %version%> compiler\version.txt
 )
