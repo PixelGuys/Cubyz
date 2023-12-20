@@ -38,7 +38,7 @@ const Material = struct {
 		const colors = json.getChild("colors");
 		self.colorPalette = try allocator.alloc(Color, colors.JsonArray.items.len);
 		for(colors.JsonArray.items, self.colorPalette) |item, *color| {
-			const colorInt = item.as(u32, 0xff000000);
+			const colorInt: u32 = @intCast(item.as(i64, 0xff000000) & 0xffffffff);
 			color.* = Color {
 				.r = @intCast(colorInt>>16 & 0xff),
 				.g = @intCast(colorInt>>8 & 0xff),
