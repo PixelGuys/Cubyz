@@ -12,7 +12,7 @@ const terrain = @import("terrain.zig");
 const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
 const Biome = terrain.biomes.Biome;
 
-const MapFragmentPosition = struct {
+pub const MapFragmentPosition = struct {
 	wx: i32,
 	wz: i32,
 	voxelSize: u31,
@@ -30,12 +30,10 @@ const MapFragmentPosition = struct {
 	}
 
 	pub fn equals(self: MapFragmentPosition, other: anytype) bool {
-		if(@TypeOf(other) == ?*MapFragment) {
-			if(other) |ch| {
-				return self.wx == ch.pos.wx and self.wz == ch.pos.wz and self.voxelSize == ch.pos.voxelSize;
-			}
-			return false;
-		} else @compileError("Unsupported");
+		if(other) |ch| {
+			return self.wx == ch.pos.wx and self.wz == ch.pos.wz and self.voxelSize == ch.pos.voxelSize;
+		}
+		return false;
 	}
 
 	pub fn hashCode(self: MapFragmentPosition) u32 {

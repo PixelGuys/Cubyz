@@ -19,6 +19,7 @@ const settings = @import("settings.zig");
 const utils = @import("utils.zig");
 const vec = @import("vec.zig");
 const gpu_performance_measuring = main.gui.windowlist.gpu_performance_measuring;
+const LightMap = main.server.terrain.LightMap;
 const Vec2f = vec.Vec2f;
 const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
@@ -872,9 +873,11 @@ pub const RenderStructure = struct {
 	const storageSize = 32;
 	const storageMask = storageSize - 1;
 	var storageLists: [settings.highestLOD + 1]*[storageSize*storageSize*storageSize]ChunkMeshNode = undefined;
+	var mapStorageLists: [settings.highestLOD + 1]*[storageSize*storageSize]Atomic(?*LightMap.LightMapFragment) = undefined;
 	var meshList = std.ArrayList(*chunk.meshing.ChunkMesh).init(main.globalAllocator);
 	var priorityMeshUpdateList = std.ArrayList(*chunk.meshing.ChunkMesh).init(main.globalAllocator);
 	pub var updatableList = std.ArrayList(*chunk.meshing.ChunkMesh).init(main.globalAllocator);
+	var mapUpdatableList = std.ArrayList(*LightMap.LightMapFragment).init(main.globalAllocator);
 	var clearList = std.ArrayList(*chunk.meshing.ChunkMesh).init(main.globalAllocator);
 	var lastPx: i32 = 0;
 	var lastPy: i32 = 0;
@@ -900,6 +903,10 @@ pub const RenderStructure = struct {
 				val.rendered = false;
 			}
 		}
+		for(&mapStorageLists) |*mapStorageList| {
+			mapStorageList.* = try main.globalAllocator.create([storageSize*storageSize]Atomic(?*LightMap.LightMapFragment));
+			@memset(mapStorageList.*, Atomic(?*LightMap.LightMapFragment).init(null));
+		}
 	}
 
 	pub fn deinit() void {
@@ -917,10 +924,17 @@ pub const RenderStructure = struct {
 		for(storageLists) |storageList| {
 			main.globalAllocator.destroy(storageList);
 		}
+		for(mapStorageLists) |mapStorageList| {
+			main.globalAllocator.destroy(mapStorageList);
+		}
 		for(updatableList.items) |mesh| {
 			mesh.decreaseRefCount();
 		}
 		updatableList.deinit();
+		for(mapUpdatableList.items) |map| {
+			map.decreaseRefCount();
+		}
+		mapUpdatableList.deinit();
 		for(priorityMeshUpdateList.items) |mesh| {
 			mesh.decreaseRefCount();
 		}
@@ -944,6 +958,26 @@ pub const RenderStructure = struct {
 		zIndex &= storageMask;
 		const index = (xIndex*storageSize + yIndex)*storageSize + zIndex;
 		return &storageLists[lod][@intCast(index)];
+	}
+
+	fn getMapPieceLocation(x: i32, z: i32, voxelSize: u31) *Atomic(?*LightMap.LightMapFragment) {
+		const lod = std.math.log2_int(u31, voxelSize);
+		var xIndex = x >> lod+LightMap.LightMapFragment.mapShift;
+		var zIndex = z >> lod+LightMap.LightMapFragment.mapShift;
+		xIndex &= storageMask;
+		zIndex &= storageMask;
+		const index = xIndex*storageSize + zIndex;
+		return &(&mapStorageLists)[lod][@intCast(index)];
+	}
+
+	pub fn getLightMapPieceAndIncreaseRefCount(x: i32, z: i32, voxelSize: u31) ?*LightMap.LightMapFragment {
+		const result: *LightMap.LightMapFragment = getMapPieceLocation(x, z, voxelSize).load(.Acquire) orelse return null;
+		var refCount: u16 = 1;
+		while(result.refCount.cmpxchgWeak(refCount, refCount+1, .Monotonic, .Monotonic)) |otherVal| {
+			if(otherVal == 0) return null;
+			refCount = otherVal;
+		}
+		return result;
 	}
 
 	fn getBlockFromRenderThread(x: i32, y: i32, z: i32) ?blocks.Block {
@@ -1049,6 +1083,28 @@ pub const RenderStructure = struct {
 		return true;
 	}
 
+	fn isMapInRenderDistance(pos: LightMap.MapFragmentPosition) bool {
+		const maxRenderDistance = lastRD*chunk.chunkSize*pos.voxelSize;
+		const size: u31 = @as(u31, LightMap.LightMapFragment.mapSize)*pos.voxelSize;
+		const mask: i32 = size - 1;
+		const invMask: i32 = ~mask;
+
+		const minX = lastPx-%maxRenderDistance & invMask;
+		const maxX = lastPx+%maxRenderDistance+%size & invMask;
+		if(pos.wx < minX) return false;
+		if(pos.wx >= maxX) return false;
+		var deltaX: i64 = @abs(pos.wx +% size/2 -% lastPx);
+		deltaX = @max(0, deltaX - size/2);
+
+		const maxZRenderDistance: i32 = reduceRenderDistance(maxRenderDistance, deltaX);
+		if(maxZRenderDistance == 0) return false;
+		const minZ = lastPz-%maxZRenderDistance & invMask;
+		const maxZ = lastPz+%maxZRenderDistance+%size & invMask;
+		if(pos.wz < minZ) return false;
+		if(pos.wz >= maxZ) return false;
+		return true;
+	}
+
 	fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32) !void {
 		for(0..storageLists.len) |_lod| {
 			const lod: u5 = @intCast(_lod);
@@ -1121,9 +1177,67 @@ pub const RenderStructure = struct {
 				}
 			}
 		}
+		for(0..mapStorageLists.len) |_lod| {
+			const lod: u5 = @intCast(_lod);
+			const maxRenderDistanceNew = lastRD*chunk.chunkSize << lod;
+			const maxRenderDistanceOld = olderRD*chunk.chunkSize << lod;
+			const size: u31 = @as(u31, LightMap.LightMapFragment.mapSize) << lod;
+			const mask: i32 = size - 1;
+			const invMask: i32 = ~mask;
+
+			std.debug.assert(@divFloor(2*maxRenderDistanceNew + size-1, size) + 2 <= storageSize);
+
+			const minX = olderPx-%maxRenderDistanceOld & invMask;
+			const maxX = olderPx+%maxRenderDistanceOld+%size & invMask;
+			var x = minX;
+			while(x != maxX): (x +%= size) {
+				const xIndex = @divExact(x, size) & storageMask;
+				var deltaXNew: i64 = @abs(x +% size/2 -% lastPx);
+				deltaXNew = @max(0, deltaXNew - size/2);
+				var deltaXOld: i64 = @abs(x +% size/2 -% olderPx);
+				deltaXOld = @max(0, deltaXOld - size/2);
+				var maxZRenderDistanceNew: i32 = reduceRenderDistance(maxRenderDistanceNew, deltaXNew);
+				if(maxZRenderDistanceNew == 0) maxZRenderDistanceNew -= size/2;
+				var maxZRenderDistanceOld: i32 = reduceRenderDistance(maxRenderDistanceOld, deltaXOld);
+				if(maxZRenderDistanceOld == 0) maxZRenderDistanceOld -= size/2;
+
+				const minZOld = olderPz-%maxZRenderDistanceOld & invMask;
+				const maxZOld = olderPz+%maxZRenderDistanceOld+%size & invMask;
+				const minZNew = lastPz-%maxZRenderDistanceNew & invMask;
+				const maxZNew = lastPz+%maxZRenderDistanceNew+%size & invMask;
+
+				var zValues: [storageSize]i32 = undefined;
+				var zValuesLen: usize = 0;
+				if(minZNew -% minZOld > 0) {
+					var z = minZOld;
+					while(z != minZNew and z != maxZOld): (z +%= size) {
+						zValues[zValuesLen] = z;
+						zValuesLen += 1;
+					}
+				}
+				if(maxZOld -% maxZNew > 0) {
+					var z = minZOld +% @max(0, maxZNew -% minZOld);
+					while(z != maxZOld): (z +%= size) {
+						zValues[zValuesLen] = z;
+						zValuesLen += 1;
+					}
+				}
+
+				for(zValues[0..zValuesLen]) |z| {
+					const zIndex = @divExact(z, size) & storageMask;
+					const index = xIndex*storageSize + zIndex;
+					
+					const mapAtomic = &mapStorageLists[_lod][@intCast(index)];
+					if(mapAtomic.load(.Acquire)) |map| {
+						mapAtomic.store(null, .Release);
+						map.decreaseRefCount();
+					}
+				}
+			}
+		}
 	}
 
-	fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32, meshRequests: *std.ArrayList(chunk.ChunkPosition)) !void {
+	fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32, meshRequests: *std.ArrayList(chunk.ChunkPosition), mapRequests: *std.ArrayList(LightMap.MapFragmentPosition)) !void {
 		for(0..storageLists.len) |_lod| {
 			const lod: u5 = @intCast(_lod);
 			const maxRenderDistanceNew = lastRD*chunk.chunkSize << lod;
@@ -1194,6 +1308,63 @@ pub const RenderStructure = struct {
 				}
 			}
 		}
+		for(0..mapStorageLists.len) |_lod| {
+			const lod: u5 = @intCast(_lod);
+			const maxRenderDistanceNew = lastRD*chunk.chunkSize << lod;
+			const maxRenderDistanceOld = olderRD*chunk.chunkSize << lod;
+			const size: u31 = @as(u31, LightMap.LightMapFragment.mapSize) << lod;
+			const mask: i32 = size - 1;
+			const invMask: i32 = ~mask;
+
+			std.debug.assert(@divFloor(2*maxRenderDistanceNew + size-1, size) + 2 <= storageSize);
+
+			const minX = lastPx-%maxRenderDistanceNew & invMask;
+			const maxX = lastPx+%maxRenderDistanceNew+%size & invMask;
+			var x = minX;
+			while(x != maxX): (x +%= size) {
+				const xIndex = @divExact(x, size) & storageMask;
+				var deltaXNew: i64 = @abs(x +% size/2 -% lastPx);
+				deltaXNew = @max(0, deltaXNew - size/2);
+				var deltaXOld: i64 = @abs(x +% size/2 -% olderPx);
+				deltaXOld = @max(0, deltaXOld - size/2);
+				var maxZRenderDistanceNew: i32 = reduceRenderDistance(maxRenderDistanceNew, deltaXNew);
+				if(maxZRenderDistanceNew == 0) maxZRenderDistanceNew -= size/2;
+				var maxZRenderDistanceOld: i32 = reduceRenderDistance(maxRenderDistanceOld, deltaXOld);
+				if(maxZRenderDistanceOld == 0) maxZRenderDistanceOld -= size/2;
+
+				const minZOld = olderPz-%maxZRenderDistanceOld & invMask;
+				const maxZOld = olderPz+%maxZRenderDistanceOld+%size & invMask;
+				const minZNew = lastPz-%maxZRenderDistanceNew & invMask;
+				const maxZNew = lastPz+%maxZRenderDistanceNew+%size & invMask;
+
+				var zValues: [storageSize]i32 = undefined;
+				var zValuesLen: usize = 0;
+				if(minZOld -% minZNew > 0) {
+					var z = minZNew;
+					while(z != minZOld and z != maxZNew): (z +%= size) {
+						zValues[zValuesLen] = z;
+						zValuesLen += 1;
+					}
+				}
+				if(maxZNew -% maxZOld > 0) {
+					var z = minZNew +% @max(0, maxZOld -% minZNew);
+					while(z != maxZNew): (z +%= size) {
+						zValues[zValuesLen] = z;
+						zValuesLen += 1;
+					}
+				}
+
+				for(zValues[0..zValuesLen]) |z| {
+					const zIndex = @divExact(z, size) & storageMask;
+					const index = xIndex*storageSize + zIndex;
+					const pos = LightMap.MapFragmentPosition{.wx=x, .wz=z, .voxelSize=@as(u31, 1)<<lod, .voxelSizeShift = lod};
+
+					const node = &mapStorageLists[_lod][@intCast(index)];
+					std.debug.assert(node.load(.Acquire) == null);
+					try mapRequests.append(pos);
+				}
+			}
+		}
 	}
 
 	pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: Vec3d, renderDistance: i32) ![]*chunk.meshing.ChunkMesh {
@@ -1204,6 +1375,8 @@ pub const RenderStructure = struct {
 
 		var meshRequests = std.ArrayList(chunk.ChunkPosition).init(main.globalAllocator);
 		defer meshRequests.deinit();
+		var mapRequests = std.ArrayList(LightMap.MapFragmentPosition).init(main.globalAllocator);
+		defer mapRequests.deinit();
 
 		const olderPx = lastPx;
 		const olderPy = lastPy;
@@ -1217,9 +1390,10 @@ pub const RenderStructure = struct {
 		mutex.unlock();
 		try freeOldMeshes(olderPx, olderPy, olderPz, olderRD);
 
-		try createNewMeshes(olderPx, olderPy, olderPz, olderRD, &meshRequests);
+		try createNewMeshes(olderPx, olderPy, olderPz, olderRD, &meshRequests, &mapRequests);
 
 		// Make requests as soon as possible to reduce latency:
+		try network.Protocols.lightMapRequest.sendRequest(conn, mapRequests.items);
 		try network.Protocols.chunkRequest.sendRequest(conn, meshRequests.items);
 
 		// Does occlusion using a breadth-first search that caches an on-screen visibility rectangle.
@@ -1559,6 +1733,15 @@ pub const RenderStructure = struct {
 			try mesh.uploadData();
 			if(std.time.milliTimestamp() >= targetTime) break; // Update at least one mesh.
 		}
+		while(mapUpdatableList.popOrNull()) |map| {
+			if(!isMapInRenderDistance(map.pos)) {
+				map.decreaseRefCount();
+			} else {
+				if(getMapPieceLocation(map.pos.wx, map.pos.wz, map.pos.voxelSize).swap(map, .AcqRel)) |old| {
+					old.decreaseRefCount();
+				}
+			}
+		}
 		while(updatableList.items.len != 0) {
 			// TODO: Find a faster solution than going through the entire list every frame.
 			var closestPriority: f32 = -std.math.floatMax(f32);
@@ -1706,5 +1889,11 @@ pub const RenderStructure = struct {
 
 	pub fn updateChunkMesh(mesh: *chunk.Chunk) !void {
 		try MeshGenerationTask.schedule(mesh);
+	}
+
+	pub fn updateLightMap(map: *LightMap.LightMapFragment) !void {
+		mutex.lock();
+		defer mutex.unlock();
+		try mapUpdatableList.append(map);
 	}
 };

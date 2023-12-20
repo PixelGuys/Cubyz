@@ -12,6 +12,8 @@ pub const ClimateMap = @import("ClimateMap.zig");
 
 pub const SurfaceMap = @import("SurfaceMap.zig");
 
+pub const LightMap = @import("LightMap.zig");
+
 pub const CaveBiomeMap = @import("CaveBiomeMap.zig");
 
 pub const CaveMap = @import("CaveMap.zig");
@@ -146,4 +148,5 @@ pub fn deinit() void {
 	CaveMap.deinit();
 	ClimateMap.deinit();
 	SurfaceMap.deinit();
+	LightMap.deinit();
 }

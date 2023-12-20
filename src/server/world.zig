@@ -103,6 +103,62 @@ const ChunkManager = struct {
 		}
 	};
 
+	const LightMapLoadTask = struct {
+		pos: terrain.SurfaceMap.MapFragmentPosition,
+		creationTime: i64,
+		source: ?*User,
+
+		const vtable = utils.ThreadPool.VTable{
+			.getPriority = @ptrCast(&getPriority),
+			.isStillNeeded = @ptrCast(&isStillNeeded),
+			.run = @ptrCast(&run),
+			.clean = @ptrCast(&clean),
+		};
+		
+		pub fn schedule(pos: terrain.SurfaceMap.MapFragmentPosition, source: ?*User) !void {
+			const task = try main.globalAllocator.create(LightMapLoadTask);
+			task.* = LightMapLoadTask {
+				.pos = pos,
+				.creationTime = std.time.milliTimestamp(),
+				.source = source,
+			};
+			try main.threadPool.addTask(task, &vtable);
+		}
+
+		pub fn getPriority(self: *LightMapLoadTask) f32 {
+			if(self.source) |user| {
+				const pos = ChunkPosition{.wx = self.pos.wx, .wy = @intFromFloat(user.player.pos[1]), .wz = self.pos.wz, .voxelSize = self.pos.voxelSize};
+				return pos.getPriority(user.player.pos) + 100000;
+			} else {
+				return std.math.floatMax(f32);
+			}
+		}
+
+		pub fn isStillNeeded(self: *LightMapLoadTask) bool {
+			_ = self; // TODO: Do these tasks need to be culled?
+			return true;
+		}
+
+		pub fn run(self: *LightMapLoadTask) Allocator.Error!void {
+			defer self.clean();
+			const map = try terrain.LightMap.getOrGenerateFragment(self.pos.wx, self.pos.wz, self.pos.voxelSize);
+			defer map.decreaseRefCount();
+			if(self.source) |source| {
+				try main.network.Protocols.lightMapTransmission.sendLightMap(source.conn, map);
+			} else {
+				server.mutex.lock();
+				defer server.mutex.unlock();
+				for(server.users.items) |user| {
+					try main.network.Protocols.lightMapTransmission.sendLightMap(user.conn, map);
+				}
+			}
+		}
+
+		pub fn clean(self: *LightMapLoadTask) void {
+			main.globalAllocator.destroy(self);
+		}
+	};
+
 	pub fn init(world: *ServerWorld, settings: JsonElement) !ChunkManager {
 		const self = ChunkManager {
 			.world = world,
@@ -133,6 +189,11 @@ const ChunkManager = struct {
 		server.terrain.deinit();
 		main.assets.unloadAssets();
 		self.terrainGenerationProfile.deinit();
+	}
+
+	pub fn queueLightMap(self: ChunkManager, pos: terrain.SurfaceMap.MapFragmentPosition, source: ?*User) !void {
+		_ = self;
+		try LightMapLoadTask.schedule(pos, source);
 	}
 
 	pub fn queueChunk(self: ChunkManager, pos: ChunkPosition, source: ?*User) !void {
@@ -529,6 +590,10 @@ pub const ServerWorld = struct {
 
 	pub fn queueChunk(self: *ServerWorld, pos: ChunkPosition, source: ?*User) !void {
 		try self.chunkManager.queueChunk(pos, source);
+	}
+
+	pub fn queueLightMap(self: *ServerWorld, pos: terrain.SurfaceMap.MapFragmentPosition, source: ?*User) !void {
+		try self.chunkManager.queueLightMap(pos, source);
 	}
 
 	pub fn seek() !void {

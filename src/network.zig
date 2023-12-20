@@ -1225,6 +1225,79 @@ pub const Protocols = struct {
 			try conn.sendImportant(id, data);
 		}
 	};
+	pub const lightMapRequest = struct {
+		pub const id: u8 = 11;
+		fn receive(conn: *Connection, data: []const u8) !void {
+			var remaining = data[0..];
+			while(remaining.len >= 9) {
+				const request = main.server.terrain.SurfaceMap.MapFragmentPosition{
+					.wx = std.mem.readInt(i32, remaining[0..4], .big),
+					.wz = std.mem.readInt(i32, remaining[4..8], .big),
+					.voxelSize = @as(u31, 1) << @intCast(std.mem.readInt(u8, remaining[8..9], .big)),
+					.voxelSizeShift = @intCast(std.mem.readInt(u8, remaining[8..9], .big)),
+				};
+				if(conn.user) |user| {
+					try main.server.world.?.queueLightMap(request, user);
+				}
+				remaining = remaining[9..];
+			}
+		}
+		pub fn sendRequest(conn: *Connection, requests: []main.server.terrain.SurfaceMap.MapFragmentPosition) !void {
+			if(requests.len == 0) return;
+			const data = try main.stackAllocator.alloc(u8, 9*requests.len);
+			defer main.stackAllocator.free(data);
+			var remaining = data;
+			for(requests) |req| {
+				std.mem.writeInt(i32, remaining[0..4], req.wx, .big);
+				std.mem.writeInt(i32, remaining[4..8], req.wz, .big);
+				std.mem.writeInt(u8, remaining[8..9], req.voxelSizeShift, .big);
+				remaining = remaining[9..];
+			}
+			try conn.sendImportant(id, data);
+		}
+	};
+	pub const lightMapTransmission = struct {
+		pub const id: u8 = 12;
+		fn receive(_: *Connection, _data: []const u8) !void {
+			var data = _data;
+			const pos = main.server.terrain.SurfaceMap.MapFragmentPosition{
+				.wx = std.mem.readInt(i32, data[0..4], .big),
+				.wz = std.mem.readInt(i32, data[4..8], .big),
+				.voxelSize = @as(u31, 1) << @intCast(std.mem.readInt(u8, data[8..9], .big)),
+				.voxelSizeShift = @intCast(std.mem.readInt(u8, data[8..9], .big)),
+			};
+			const _inflatedData = try main.stackAllocator.alloc(u8, main.server.terrain.LightMap.LightMapFragment.mapSize*main.server.terrain.LightMap.LightMapFragment.mapSize*2);
+			defer main.stackAllocator.free(_inflatedData);
+			const _inflatedLen = try utils.Compression.inflateTo(_inflatedData, data[9..]);
+			if(_inflatedLen != main.server.terrain.LightMap.LightMapFragment.mapSize*main.server.terrain.LightMap.LightMapFragment.mapSize*2) {
+				std.log.err("Transmission of light map has invalid size: {}. Input data: {any}, After inflate: {any}", .{_inflatedLen, data, _inflatedData[0.._inflatedLen]});
+			}
+			data = _inflatedData;
+			const map = try main.globalAllocator.create(main.server.terrain.LightMap.LightMapFragment);
+			map.init(pos.wx, pos.wz, pos.voxelSize);
+			_ = map.refCount.fetchAdd(1, .Monotonic);
+			for(&map.startHeight) |*val| {
+				val.* = std.mem.readInt(i16, data[0..2], .big);
+				data = data[2..];
+			}
+			try renderer.RenderStructure.updateLightMap(map);
+		}
+		pub fn sendLightMap(conn: *Connection, map: *main.server.terrain.LightMap.LightMapFragment) Allocator.Error!void {
+			var uncompressedData: [@sizeOf(@TypeOf(map.startHeight))]u8 = undefined; // TODO: #15280
+			for(&map.startHeight, 0..) |val, i| {
+				std.mem.writeInt(i16, uncompressedData[2*i..][0..2], val, .big);
+			}
+			const compressedData = try utils.Compression.deflate(main.stackAllocator, &uncompressedData);
+			defer main.stackAllocator.free(compressedData);
+			const data = try main.stackAllocator.alloc(u8, 9 + compressedData.len);
+			defer main.stackAllocator.free(data);
+			@memcpy(data[9..], compressedData);
+			std.mem.writeInt(i32, data[0..4], map.pos.wx, .big);
+			std.mem.writeInt(i32, data[4..8], map.pos.wz, .big);
+			std.mem.writeInt(u8, data[8..9], map.pos.voxelSizeShift, .big);
+			try conn.sendImportant(id, data);
+		}
+	};
 };
 
 

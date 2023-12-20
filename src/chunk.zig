@@ -992,6 +992,28 @@ pub const meshing = struct {
 			for(self.lightingData[3..]) |*lightingData| {
 				try lightingData.propagateLights(lightEmittingBlocks.items, true);
 			}
+			sunLight: {
+				var sunStarters: [chunkSize*chunkSize][3]u8 = undefined;
+				var index: usize = 0;
+				const lightStartMap = renderer.RenderStructure.getLightMapPieceAndIncreaseRefCount(self.pos.wx, self.pos.wz, self.pos.voxelSize) orelse break :sunLight;
+				defer lightStartMap.decreaseRefCount();
+				x = 0;
+				while(x < chunkSize): (x += 1) {
+					var z: u8 = 0;
+					while(z < chunkSize): (z += 1) {
+						const startHeight: i32 = lightStartMap.getHeight(self.pos.wx + x*self.pos.voxelSize, self.pos.wz + z*self.pos.voxelSize);
+						const relHeight = startHeight -% self.pos.wy;
+						if(relHeight < chunkSize*self.pos.voxelSize) {
+							sunStarters[index] = .{x, chunkSize-1, z};
+							index += 1;
+						}
+					}
+				}
+				for(self.lightingData[0..3]) |*lightingData| {
+					try lightingData.propagateLights(sunStarters[0..index], true);
+				}
+			}
+
 			// TODO: Sunlight propagation
 			try self.finishNeighbors(false);
 		}

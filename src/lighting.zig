@@ -20,6 +20,13 @@ const Channel = enum(u8) {
 			.blue, .sun_blue => return 0,
 		}
 	}
+
+	pub fn isSun(self: Channel) bool {
+		switch(self) {
+			.sun_red, .sun_green, .sun_blue => return true,
+			.red, .green, .blue => return false,
+		}
+	}
 };
 
 pub const ChannelChunk = struct {
@@ -61,7 +68,9 @@ pub const ChannelChunk = struct {
 				const ny = entry.y + chunk.Neighbors.relY[neighbor];
 				const nz = entry.z + chunk.Neighbors.relZ[neighbor];
 				var result: Entry = .{.x = @intCast(nx & chunk.chunkMask), .y = @intCast(ny & chunk.chunkMask), .z = @intCast(nz & chunk.chunkMask), .value = entry.value};
-				result.value -|= 8*|@as(u8, @intCast(self.ch.pos.voxelSize));
+				if(!self.channel.isSun() or neighbor != chunk.Neighbors.dirDown or result.value != 255) {
+					result.value -|= 8*|@as(u8, @intCast(self.ch.pos.voxelSize));
+				}
 				if(result.value == 0) continue;
 				if(nx < 0 or nx >= chunk.chunkSize or ny < 0 or ny >= chunk.chunkSize or nz < 0 or nz >= chunk.chunkSize) {
 					try neighborLists[neighbor].append(main.globalAllocator, result);
@@ -106,7 +115,11 @@ pub const ChannelChunk = struct {
 		defer lightQueue.deinit();
 		for(lights) |pos| {
 			const index = chunk.getIndex(pos[0], pos[1], pos[2]);
-			try lightQueue.enqueue(.{.x = @intCast(pos[0]), .y = @intCast(pos[1]), .z = @intCast(pos[2]), .value = @intCast(self.ch.blocks[index].light() >> self.channel.shift() & 255)});
+			if(self.channel.isSun()) {
+				try lightQueue.enqueue(.{.x = @intCast(pos[0]), .y = @intCast(pos[1]), .z = @intCast(pos[2]), .value = 255});
+			} else {
+				try lightQueue.enqueue(.{.x = @intCast(pos[0]), .y = @intCast(pos[1]), .z = @intCast(pos[2]), .value = @intCast(self.ch.blocks[index].light() >> self.channel.shift() & 255)});
+			}
 		}
 		if(checkNeighbors) {
 			for(0..6) |neighbor| {
@@ -140,7 +153,9 @@ pub const ChannelChunk = struct {
 						const index = chunk.getIndex(x, y, z);
 						const neighborIndex = chunk.getIndex(otherX, otherY, otherZ);
 						var value: u8 = neighborLightChunk.data[neighborIndex].load(.Unordered);
-						value -|= 8*|@as(u8, @intCast(self.ch.pos.voxelSize));
+						if(!self.channel.isSun() or neighbor != chunk.Neighbors.dirUp or value != 255) {
+							value -|= 8*|@as(u8, @intCast(self.ch.pos.voxelSize));
+						}
 						if(value == 0) continue;
 						var absorption: u8 = @intCast(self.ch.blocks[index].absorption() >> self.channel.shift() & 255);
 						absorption *|= @intCast(self.ch.pos.voxelSize);
