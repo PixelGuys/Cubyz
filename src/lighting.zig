@@ -49,7 +49,7 @@ pub const ChannelChunk = struct {
 		value: u8,
 	};
 
-	noinline fn propagateDirect(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry)) std.mem.Allocator.Error!void {
+	fn propagateDirect(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry)) std.mem.Allocator.Error!void {
 		var neighborLists: [6]std.ArrayListUnmanaged(Entry) = .{.{}} ** 6;
 		defer {
 			for(&neighborLists) |*list| {
@@ -96,6 +96,64 @@ pub const ChannelChunk = struct {
 		}
 	}
 
+	fn propagateDestructive(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry)) std.mem.Allocator.Error!void {
+		var neighborLists: [6]std.ArrayListUnmanaged(Entry) = .{.{}} ** 6;
+		var constructiveList: std.ArrayListUnmanaged(Entry) = .{};
+		defer constructiveList.deinit(main.globalAllocator);
+		defer {
+			for(&neighborLists) |*list| {
+				list.deinit(main.globalAllocator);
+			}
+		}
+
+		self.mutex.lock();
+		errdefer self.mutex.unlock();
+		while(lightQueue.dequeue()) |entry| {
+			const index = chunk.getIndex(entry.x, entry.y, entry.z);
+			if(entry.value != self.data[index].load(.Unordered)) {
+				try constructiveList.append(main.globalAllocator, .{.x = entry.x, .y = entry.y, .z = entry.z, .value = self.data[index].load(.Unordered)});
+				self.data[index].store(0, .Unordered);
+				continue;
+			}
+			self.data[index].store(0, .Unordered);
+			for(chunk.Neighbors.iterable) |neighbor| {
+				const nx = entry.x + chunk.Neighbors.relX[neighbor];
+				const ny = entry.y + chunk.Neighbors.relY[neighbor];
+				const nz = entry.z + chunk.Neighbors.relZ[neighbor];
+				var result: Entry = .{.x = @intCast(nx & chunk.chunkMask), .y = @intCast(ny & chunk.chunkMask), .z = @intCast(nz & chunk.chunkMask), .value = entry.value};
+				if(!self.channel.isSun() or neighbor != chunk.Neighbors.dirDown or result.value != 255) {
+					result.value -|= 8*|@as(u8, @intCast(self.ch.pos.voxelSize));
+				}
+				if(result.value == 0) continue;
+				if(nx < 0 or nx >= chunk.chunkSize or ny < 0 or ny >= chunk.chunkSize or nz < 0 or nz >= chunk.chunkSize) {
+					try neighborLists[neighbor].append(main.globalAllocator, result);
+					continue;
+				}
+				const neighborIndex = chunk.getIndex(nx, ny, nz);
+				var absorption: u8 = @intCast(self.ch.blocks[neighborIndex].absorption() >> self.channel.shift() & 255);
+				absorption *|= @intCast(self.ch.pos.voxelSize);
+				result.value -|= absorption;
+				if(result.value != 0) try lightQueue.enqueue(result);
+			}
+		}
+		self.mutex.unlock();
+		if(main.renderer.RenderStructure.getMeshAndIncreaseRefCount(self.ch.pos)) |mesh| {
+			try mesh.scheduleLightRefreshAndDecreaseRefCount();
+		}
+
+		for(0..6) |neighbor| {
+			if(neighborLists[neighbor].items.len == 0) continue;
+			const neighborMesh = main.renderer.RenderStructure.getNeighborAndIncreaseRefCount(self.ch.pos, self.ch.pos.voxelSize, @intCast(neighbor)) orelse continue;
+			defer neighborMesh.decreaseRefCount();
+			try neighborMesh.lightingData[@intFromEnum(self.channel)].propagateDestructiveFromNeighbor(neighborLists[neighbor].items);
+		}
+
+		for(constructiveList.items) |entry| {
+			try lightQueue.enqueue(entry);
+		}
+		try self.propagateDirect(lightQueue);
+	}
+
 	fn propagateFromNeighbor(self: *ChannelChunk, lights: []const Entry) std.mem.Allocator.Error!void {
 		var lightQueue = try main.utils.CircularBufferQueue(Entry).init(main.globalAllocator, 1 << 8);
 		defer lightQueue.deinit();
@@ -108,6 +166,20 @@ pub const ChannelChunk = struct {
 			if(result.value != 0) try lightQueue.enqueue(result);
 		}
 		try self.propagateDirect(&lightQueue);
+	}
+
+	fn propagateDestructiveFromNeighbor(self: *ChannelChunk, lights: []const Entry) std.mem.Allocator.Error!void {
+		var lightQueue = try main.utils.CircularBufferQueue(Entry).init(main.globalAllocator, 1 << 8);
+		defer lightQueue.deinit();
+		for(lights) |entry| {
+			const index = chunk.getIndex(entry.x, entry.y, entry.z);
+			var result = entry;
+			var absorption: u8 = @intCast(self.ch.blocks[index].absorption() >> self.channel.shift() & 255);
+			absorption *|= @intCast(self.ch.pos.voxelSize);
+			result.value -|= absorption;
+			if(result.value != 0) try lightQueue.enqueue(result);
+		}
+		try self.propagateDestructive(&lightQueue);
 	}
 
 	pub fn propagateLights(self: *ChannelChunk, lights: []const [3]u8, comptime checkNeighbors: bool) std.mem.Allocator.Error!void {
@@ -166,5 +238,15 @@ pub const ChannelChunk = struct {
 			}
 		}
 		try self.propagateDirect(&lightQueue);
+	}
+
+	pub fn propagateLightsDestructive(self: *ChannelChunk, lights: []const [3]u8) std.mem.Allocator.Error!void {
+		var lightQueue = try main.utils.CircularBufferQueue(Entry).init(main.globalAllocator, 1 << 8);
+		defer lightQueue.deinit();
+		for(lights) |pos| {
+			const index = chunk.getIndex(pos[0], pos[1], pos[2]);
+			try lightQueue.enqueue(.{.x = @intCast(pos[0]), .y = @intCast(pos[1]), .z = @intCast(pos[2]), .value = self.data[index].load(.Unordered)});
+		}
+		try self.propagateDestructive(&lightQueue);
 	}
 };

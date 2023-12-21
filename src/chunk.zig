@@ -1042,9 +1042,12 @@ pub const meshing = struct {
 			const oldBlock = self.chunk.blocks[getIndex(x, y, z)];
 			self.chunk.blocks[getIndex(x, y, z)] = newBlock;
 			self.mutex.unlock();
+			for(self.lightingData[0..]) |*lightingData| {
+				try lightingData.propagateLightsDestructive(&.{.{@intCast(x), @intCast(y), @intCast(z)}});
+			}
 			if(newBlock.light() != 0) {
 				for(self.lightingData[3..]) |*lightingData| {
-					try lightingData.propagateLights(&.{.{@intCast(x), @intCast(y), @intCast(z)}}, true);
+					try lightingData.propagateLights(&.{.{@intCast(x), @intCast(y), @intCast(z)}}, false);
 				}
 			}
 			self.mutex.lock();
