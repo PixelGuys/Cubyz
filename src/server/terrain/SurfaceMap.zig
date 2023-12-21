@@ -7,6 +7,7 @@ const Chunk = main.chunk.Chunk;
 const ChunkPosition = main.chunk.ChunkPosition;
 const Cache = main.utils.Cache;
 const JsonElement = main.JsonElement;
+const Vec3d = main.vec.Vec3d;
 
 const terrain = @import("terrain.zig");
 const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
@@ -38,6 +39,19 @@ pub const MapFragmentPosition = struct {
 
 	pub fn hashCode(self: MapFragmentPosition) u32 {
 		return @bitCast((self.wx >> (MapFragment.mapShift + self.voxelSizeShift))*%33 +% (self.wz >> (MapFragment.mapShift + self.voxelSizeShift)) ^ self.voxelSize);
+	}
+
+	pub fn getMinDistanceSquared(self: MapFragmentPosition, playerPosition: Vec3d, comptime width: comptime_int) f64 {
+		const halfWidth: f64 = @floatFromInt(self.voxelSize*@divExact(width, 2));
+		var dx = @abs(@as(f64, @floatFromInt(self.wx)) + halfWidth - playerPosition[0]);
+		var dz = @abs(@as(f64, @floatFromInt(self.wz)) + halfWidth - playerPosition[2]);
+		dx = @max(0, dx - halfWidth);
+		dz = @max(0, dz - halfWidth);
+		return dx*dx + dz*dz;
+	}
+
+	pub fn getPriority(self: MapFragmentPosition, playerPos: Vec3d, comptime width: comptime_int) f32 {
+		return -@as(f32, @floatCast(self.getMinDistanceSquared(playerPos, width)))/@as(f32, @floatFromInt(self.voxelSize*self.voxelSize)) + 2*@as(f32, @floatFromInt(std.math.log2_int(u31, self.voxelSize)))*width*width;
 	}
 };
 

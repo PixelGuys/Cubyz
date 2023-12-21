@@ -127,8 +127,7 @@ const ChunkManager = struct {
 
 		pub fn getPriority(self: *LightMapLoadTask) f32 {
 			if(self.source) |user| {
-				const pos = ChunkPosition{.wx = self.pos.wx, .wy = @intFromFloat(user.player.pos[1]), .wz = self.pos.wz, .voxelSize = self.pos.voxelSize};
-				return pos.getPriority(user.player.pos) + 100000;
+				return self.pos.getPriority(user.player.pos, terrain.LightMap.LightMapFragment.mapSize) + 100;
 			} else {
 				return std.math.floatMax(f32);
 			}
