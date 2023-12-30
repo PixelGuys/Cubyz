@@ -121,8 +121,8 @@ int convertNormal(int normal, mat3 permutationMatrix, vec3 mirrorVector) {
 }
 
 void main() {
-	int faceID = gl_VertexID/4;
-	int vertexID = gl_VertexID%4;
+	int faceID = gl_VertexID >> 2;
+	int vertexID = gl_VertexID & 3;
 	int encodedPositionAndNormalsAndPermutation = faceData[faceID].encodedPositionAndNormalsAndPermutation;
 	int blockAndModel = faceData[faceID].blockAndModel;
 	int fullLight = faceData[faceID].light[vertexID];
