@@ -1126,7 +1126,7 @@ pub const Shader = struct {
 		const self = try Shader.init(vertex, fragment);
 		inline for(@typeInfo(@TypeOf(ptrToUniformStruct.*)).Struct.fields) |field| {
 			if(field.type == c_int) {
-				@field(ptrToUniformStruct, field.name) = c.glGetUniformLocation(self.id, field.name[0..] ++ "\x00"); // TODO: #16072
+				@field(ptrToUniformStruct, field.name) = c.glGetUniformLocation(self.id, field.name[0..]);
 			}
 		}
 		return self;
@@ -1143,7 +1143,7 @@ pub const Shader = struct {
 		const self = try Shader.initCompute(compute);
 		inline for(@typeInfo(@TypeOf(ptrToUniformStruct.*)).Struct.fields) |field| {
 			if(field.type == c_int) {
-				@field(ptrToUniformStruct, field.name) = c.glGetUniformLocation(self.id, field.name[0..] ++ "\x00"); // TODO: #16072
+				@field(ptrToUniformStruct, field.name) = c.glGetUniformLocation(self.id, field.name[0..]);
 			}
 		}
 		return self;
