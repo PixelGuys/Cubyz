@@ -6,6 +6,7 @@
 	],
 	"transparent" : true,
 	"absorption" : 0x00e000,
+	"absorbedLight" : 0xff01ff,
 	"reflectivity" : 0.08,
 	"model" : "cube",
 	"texture" : "cubyz:glass"
