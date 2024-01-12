@@ -825,6 +825,12 @@ pub const MeshSelection = struct {
 		}
 	}
 
+	pub fn breakBlock() !void {
+		if(selectedBlockPos) |selectedPos| {
+			try RenderStructure.updateBlock(selectedPos[0], selectedPos[1], selectedPos[2], .{.typ = 0, .data = 0});
+		}
+	}
+
 	pub fn drawCube(projectionMatrix: Mat4f, viewMatrix: Mat4f, relativePositionToPlayer: Vec3d, min: Vec3f, max: Vec3f) void {
 		shader.bind();
 

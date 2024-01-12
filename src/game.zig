@@ -84,6 +84,12 @@ pub const Player = struct {
 			std.log.err("Error while placing block: {s}", .{@errorName(err)});
 		};
 	}
+
+	pub fn breakBlock() void { // TODO: Breaking animation and tools
+		main.renderer.MeshSelection.breakBlock() catch |err| {
+			std.log.err("Error while placing block: {s}", .{@errorName(err)});
+		};
+	}
 };
 
 pub const World = struct {

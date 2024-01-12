@@ -364,6 +364,7 @@ pub const KeyBoard = struct {
 		Key{.name = "fall", .key = c.GLFW_KEY_LEFT_SHIFT},
 		Key{.name = "fullscreen", .key = c.GLFW_KEY_F11, .releaseAction = &Window.toggleFullscreen},
 		Key{.name = "placeBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &game.Player.placeBlock}, // TODO: Add GLFW_REPEAT behavior to mouse buttons.
+		Key{.name = "breakBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &game.Player.breakBlock}, // TODO: Add GLFW_REPEAT behavior to mouse buttons.
 
 		Key{.name = "takeBackgroundImage", .key = c.GLFW_KEY_PRINT_SCREEN, .releaseAction = &takeBackgroundImageFn},
 
