@@ -80,12 +80,14 @@ pub const Player = struct {
 	}
 
 	pub fn placeBlock() void {
+		if(!main.Window.grabbed) return;
 		main.renderer.MeshSelection.placeBlock(&inventory__SEND_CHANGES_TO_SERVER.items[selectedSlot]) catch |err| {
 			std.log.err("Error while placing block: {s}", .{@errorName(err)});
 		};
 	}
 
 	pub fn breakBlock() void { // TODO: Breaking animation and tools
+		if(!main.Window.grabbed) return;
 		main.renderer.MeshSelection.breakBlock() catch |err| {
 			std.log.err("Error while placing block: {s}", .{@errorName(err)});
 		};
