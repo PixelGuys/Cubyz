@@ -722,16 +722,10 @@ pub fn main() !void {
 	try blocks.meshes.init();
 	defer blocks.meshes.deinit();
 
-	try chunk.meshing.init();
-	defer chunk.meshing.deinit();
-
 	try renderer.init();
 	defer renderer.deinit();
 
 	try network.init();
-
-	try renderer.RenderStructure.init();
-	defer renderer.RenderStructure.deinit();
 
 	try entity.ClientEntityManager.init();
 	defer entity.ClientEntityManager.deinit();

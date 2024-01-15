@@ -1851,33 +1851,33 @@ pub fn generateBlockTexture(blockType: u16) !Texture {
 	if(block.transparent()) {
 		c.glBlendEquation(c.GL_FUNC_ADD);
 		c.glBlendFunc(c.GL_ONE, c.GL_SRC1_COLOR);
-		main.chunk.meshing.bindTransparentShaderAndUniforms(projMatrix, .{1, 1, 1});
+		main.renderer.chunk_meshing.bindTransparentShaderAndUniforms(projMatrix, .{1, 1, 1});
 	} else {
 		if(block.mode().model(block).modelIndex == 0) {
-			main.chunk.meshing.bindShaderAndUniforms(projMatrix, .{1, 1, 1});
+			main.renderer.chunk_meshing.bindShaderAndUniforms(projMatrix, .{1, 1, 1});
 		} else {
 			std.log.err("TODO: Item textures for non-cube models.", .{});
 		}
 	}
-	const uniforms = if(block.transparent()) &main.chunk.meshing.transparentUniforms else &main.chunk.meshing.uniforms;
+	const uniforms = if(block.transparent()) &main.renderer.chunk_meshing.transparentUniforms else &main.renderer.chunk_meshing.uniforms;
 
-	var faceData: [6]main.chunk.meshing.FaceData = undefined;
+	var faceData: [6]main.renderer.chunk_meshing.FaceData = undefined;
 	var faces: u8 = 0;
 	if(block.hasBackFace()) {
-		faceData[2] = main.chunk.meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirPosX, 1, 1, 1, true);
-		faceData[1] = main.chunk.meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirUp, 1, 1, 1, true);
-		faceData[0] = main.chunk.meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirPosZ, 1, 1, 1, true);
+		faceData[2] = main.renderer.chunk_meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirPosX, 1, 1, 1, true);
+		faceData[1] = main.renderer.chunk_meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirUp, 1, 1, 1, true);
+		faceData[0] = main.renderer.chunk_meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirPosZ, 1, 1, 1, true);
 		faces += 3;
 	}
-	faceData[faces + 0] = main.chunk.meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirPosX, 1+1, 1, 1, false);
-	faceData[faces + 1] = main.chunk.meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirUp, 1, 1+1, 1, false);
-	faceData[faces + 2] = main.chunk.meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirPosZ, 1, 1, 1+1, false);
+	faceData[faces + 0] = main.renderer.chunk_meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirPosX, 1+1, 1, 1, false);
+	faceData[faces + 1] = main.renderer.chunk_meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirUp, 1, 1+1, 1, false);
+	faceData[faces + 2] = main.renderer.chunk_meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirPosZ, 1, 1, 1+1, false);
 	faces += 3;
 	for(faceData[0..faces]) |*face| {
 		@memset(&face.light, ~@as(u32, 0));
 	}
 	var allocation: SubAllocation = .{.start = 0, .len = 0};
-	try main.chunk.meshing.faceBuffer.uploadData(faceData[0..faces], &allocation);
+	try main.renderer.chunk_meshing.faceBuffer.uploadData(faceData[0..faces], &allocation);
 
 	c.glUniform3f(uniforms.modelPosition, -65.5 - 1.5, -92.631 - 1.5, -65.5 - 1.5);
 	c.glUniform1i(uniforms.visibilityMask, 0xff);
@@ -1907,7 +1907,7 @@ pub fn generateBlockTexture(blockType: u16) !Texture {
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 
-	try main.chunk.meshing.faceBuffer.free(allocation);
+	try main.renderer.chunk_meshing.faceBuffer.free(allocation);
 	c.glViewport(0, 0, main.Window.width, main.Window.height);
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 	return texture;

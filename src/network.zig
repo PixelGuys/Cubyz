@@ -747,7 +747,7 @@ pub const Protocols = struct {
 				block.* = Block.fromInt(std.mem.readInt(u32, data[0..4], .big));
 				data = data[4..];
 			}
-			try renderer.RenderStructure.updateChunkMesh(ch);
+			try renderer.mesh_storage.updateChunkMesh(ch);
 		}
 		fn sendChunkOverTheNetwork(conn: *Connection, ch: *chunk.Chunk) Allocator.Error!void {
 			var uncompressedData: [@sizeOf(@TypeOf(ch.blocks))]u8 = undefined; // TODO: #15280
@@ -769,7 +769,7 @@ pub const Protocols = struct {
 			const chunkCopy = try main.globalAllocator.create(chunk.Chunk);
 			chunkCopy.init(ch.pos);
 			@memcpy(&chunkCopy.blocks, &ch.blocks);
-			try renderer.RenderStructure.updateChunkMesh(chunkCopy);
+			try renderer.mesh_storage.updateChunkMesh(chunkCopy);
 		}
 		pub fn sendChunk(conn: *Connection, ch: *chunk.Chunk) Allocator.Error!void {
 			if(conn.user.?.isLocal) {
@@ -854,7 +854,7 @@ pub const Protocols = struct {
 			if(conn.user != null) {
 				// TODO: Handle block update from the client.
 			} else {
-				try renderer.RenderStructure.updateBlock(x, y, z, newBlock);
+				try renderer.mesh_storage.updateBlock(x, y, z, newBlock);
 			}
 		}
 		pub fn send(conn: *Connection, x: i32, y: i32, z: i32, newBlock: Block) !void {
@@ -1280,7 +1280,7 @@ pub const Protocols = struct {
 				val.* = std.mem.readInt(i16, data[0..2], .big);
 				data = data[2..];
 			}
-			try renderer.RenderStructure.updateLightMap(map);
+			try renderer.mesh_storage.updateLightMap(map);
 		}
 		pub fn sendLightMap(conn: *Connection, map: *main.server.terrain.LightMap.LightMapFragment) Allocator.Error!void {
 			var uncompressedData: [@sizeOf(@TypeOf(map.startHeight))]u8 = undefined; // TODO: #15280

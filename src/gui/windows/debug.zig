@@ -40,14 +40,14 @@ fn flawedRender() !void {
 		y += 8;
 		try draw.print("Queue size: {}", .{main.threadPool.queueSize()}, 0, y, 8, .left);
 		y += 8;
-		try draw.print("Mesh Queue size: {}", .{main.renderer.RenderStructure.updatableList.items.len}, 0, y, 8, .left);
+		try draw.print("Mesh Queue size: {}", .{main.renderer.mesh_storage.updatableList.items.len}, 0, y, 8, .left);
 		y += 8;
 		{
-			const faceDataSize: usize = @sizeOf(main.chunk.meshing.FaceData);
-			const size: usize = main.chunk.meshing.faceBuffer.capacity*faceDataSize;
-			const used: usize = main.chunk.meshing.faceBuffer.used*faceDataSize;
+			const faceDataSize: usize = @sizeOf(main.renderer.chunk_meshing.FaceData);
+			const size: usize = main.renderer.chunk_meshing.faceBuffer.capacity*faceDataSize;
+			const used: usize = main.renderer.chunk_meshing.faceBuffer.used*faceDataSize;
 			var largestFreeBlock: usize = 0;
-			for(main.chunk.meshing.faceBuffer.freeBlocks.items) |freeBlock| {
+			for(main.renderer.chunk_meshing.faceBuffer.freeBlocks.items) |freeBlock| {
 				largestFreeBlock = @max(largestFreeBlock, freeBlock.len);
 			}
 			const fragmentation = size - used - largestFreeBlock*faceDataSize;
@@ -56,7 +56,7 @@ fn flawedRender() !void {
 		}
 		try draw.print("Biome: {s}", .{main.game.world.?.playerBiome.load(.Monotonic).id}, 0, y, 8, .left);
 		y += 8;
-		try draw.print("Opaque faces: {}, Transparent faces: {}", .{main.chunk.meshing.quadsDrawn, main.chunk.meshing.transparentQuadsDrawn}, 0, y, 8, .left);
+		try draw.print("Opaque faces: {}, Transparent faces: {}", .{main.renderer.chunk_meshing.quadsDrawn, main.renderer.chunk_meshing.transparentQuadsDrawn}, 0, y, 8, .left);
 		y += 8;
 	}
 }

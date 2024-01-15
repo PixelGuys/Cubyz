@@ -4,6 +4,8 @@ const Atomic = std.atomic.Value;
 const main = @import("root");
 const blocks = main.blocks;
 const chunk = main.chunk;
+const chunk_meshing = @import("chunk_meshing.zig");
+const mesh_storage = @import("mesh_storage.zig");
 
 const Channel = enum(u8) {
 	sun_red = 0,
@@ -56,7 +58,7 @@ pub const ChannelChunk = struct {
 	};
 
 	const ChunkEntries = struct {
-		mesh: ?*chunk.meshing.ChunkMesh,
+		mesh: ?*chunk_meshing.ChunkMesh,
 		entries: std.ArrayListUnmanaged(PositionEntry),
 	};
 
@@ -95,13 +97,13 @@ pub const ChannelChunk = struct {
 			}
 		}
 		self.mutex.unlock();
-		if(main.renderer.RenderStructure.getMeshAndIncreaseRefCount(self.ch.pos)) |mesh| {
+		if(mesh_storage.getMeshAndIncreaseRefCount(self.ch.pos)) |mesh| {
 			try mesh.scheduleLightRefreshAndDecreaseRefCount();
 		}
 
 		for(0..6) |neighbor| {
 			if(neighborLists[neighbor].items.len == 0) continue;
-			const neighborMesh = main.renderer.RenderStructure.getNeighborAndIncreaseRefCount(self.ch.pos, self.ch.pos.voxelSize, @intCast(neighbor)) orelse continue;
+			const neighborMesh = mesh_storage.getNeighborAndIncreaseRefCount(self.ch.pos, self.ch.pos.voxelSize, @intCast(neighbor)) orelse continue;
 			defer neighborMesh.decreaseRefCount();
 			try neighborMesh.lightingData[@intFromEnum(self.channel)].propagateFromNeighbor(neighborLists[neighbor].items);
 		}
@@ -150,13 +152,13 @@ pub const ChannelChunk = struct {
 			}
 		}
 		self.mutex.unlock();
-		if(main.renderer.RenderStructure.getMeshAndIncreaseRefCount(self.ch.pos)) |mesh| {
+		if(mesh_storage.getMeshAndIncreaseRefCount(self.ch.pos)) |mesh| {
 			try mesh.scheduleLightRefreshAndDecreaseRefCount();
 		}
 
 		for(0..6) |neighbor| {
 			if(neighborLists[neighbor].items.len == 0) continue;
-			const neighborMesh = main.renderer.RenderStructure.getNeighborAndIncreaseRefCount(self.ch.pos, self.ch.pos.voxelSize, @intCast(neighbor)) orelse continue;
+			const neighborMesh = mesh_storage.getNeighborAndIncreaseRefCount(self.ch.pos, self.ch.pos.voxelSize, @intCast(neighbor)) orelse continue;
 			try constructiveEntries.append(main.globalAllocator, .{
 				.mesh = neighborMesh,
 				.entries = try neighborMesh.lightingData[@intFromEnum(self.channel)].propagateDestructiveFromNeighbor(neighborLists[neighbor].items, constructiveEntries),
@@ -231,7 +233,7 @@ pub const ChannelChunk = struct {
 						const otherX = x+%chunk.Neighbors.relX[neighbor] & chunk.chunkMask;
 						const otherY = y+%chunk.Neighbors.relY[neighbor] & chunk.chunkMask;
 						const otherZ = z+%chunk.Neighbors.relZ[neighbor] & chunk.chunkMask;
-						const neighborMesh = main.renderer.RenderStructure.getNeighborAndIncreaseRefCount(self.ch.pos, self.ch.pos.voxelSize, @intCast(neighbor)) orelse continue;
+						const neighborMesh = mesh_storage.getNeighborAndIncreaseRefCount(self.ch.pos, self.ch.pos.voxelSize, @intCast(neighbor)) orelse continue;
 						defer neighborMesh.decreaseRefCount();
 						const neighborLightChunk = &neighborMesh.lightingData[@intFromEnum(self.channel)];
 						const index = chunk.getIndex(x, y, z);
