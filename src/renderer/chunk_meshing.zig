@@ -567,14 +567,10 @@ pub const ChunkMesh = struct {
 		);
 	}
 
-	pub fn regenerateMainMesh(self: *ChunkMesh) !void {
-		try mesh_storage.addMeshToStorage(self);
+	fn initLight(self: *ChunkMesh) !void {
 		self.mutex.lock();
-		self.opaqueMesh.reset();
-		self.transparentMesh.reset();
 		var lightEmittingBlocks = std.ArrayList([3]u8).init(main.globalAllocator);
 		defer lightEmittingBlocks.deinit();
-		var n: u32 = 0;
 		var x: u8 = 0;
 		while(x < chunk.chunkSize): (x += 1) {
 			var y: u8 = 0;
@@ -583,6 +579,54 @@ pub const ChunkMesh = struct {
 				while(z < chunk.chunkSize): (z += 1) {
 					const block = (&self.chunk.blocks)[chunk.getIndex(x, y, z)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
 					if(block.light() != 0) try lightEmittingBlocks.append(.{x, y, z});
+				}
+			}
+		}
+		self.mutex.unlock();
+		for(self.lightingData[3..]) |*lightingData| {
+			try lightingData.propagateLights(lightEmittingBlocks.items, true);
+		}
+		sunLight: {
+			var sunStarters: [chunk.chunkSize*chunk.chunkSize][3]u8 = undefined;
+			var index: usize = 0;
+			const lightStartMap = mesh_storage.getLightMapPieceAndIncreaseRefCount(self.pos.wx, self.pos.wz, self.pos.voxelSize) orelse break :sunLight;
+			defer lightStartMap.decreaseRefCount();
+			x = 0;
+			while(x < chunk.chunkSize): (x += 1) {
+				var z: u8 = 0;
+				while(z < chunk.chunkSize): (z += 1) {
+					const startHeight: i32 = lightStartMap.getHeight(self.pos.wx + x*self.pos.voxelSize, self.pos.wz + z*self.pos.voxelSize);
+					const relHeight = startHeight -% self.pos.wy;
+					if(relHeight < chunk.chunkSize*self.pos.voxelSize) {
+						sunStarters[index] = .{x, chunk.chunkSize-1, z};
+						index += 1;
+					}
+				}
+			}
+			for(self.lightingData[0..3]) |*lightingData| {
+				try lightingData.propagateLights(sunStarters[0..index], true);
+			}
+		}
+	}
+
+	pub fn regenerateMainMesh(self: *ChunkMesh) !void {
+		self.mutex.lock();
+		self.opaqueMesh.reset();
+		self.transparentMesh.reset();
+		self.mutex.unlock();
+		try mesh_storage.addMeshToStorage(self);
+
+		try self.initLight();
+
+		self.mutex.lock();
+		var n: u32 = 0;
+		var x: u8 = 0;
+		while(x < chunk.chunkSize): (x += 1) {
+			var y: u8 = 0;
+			while(y < chunk.chunkSize): (y += 1) {
+				var z: u8 = 0;
+				while(z < chunk.chunkSize): (z += 1) {
+					const block = (&self.chunk.blocks)[chunk.getIndex(x, y, z)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
 					if(block.typ == 0) continue;
 					// Check all neighbors:
 					for(chunk.Neighbors.iterable) |i| {
@@ -620,33 +664,8 @@ pub const ChunkMesh = struct {
 			}
 		}
 		self.mutex.unlock();
-		for(self.lightingData[3..]) |*lightingData| {
-			try lightingData.propagateLights(lightEmittingBlocks.items, true);
-		}
-		sunLight: {
-			var sunStarters: [chunk.chunkSize*chunk.chunkSize][3]u8 = undefined;
-			var index: usize = 0;
-			const lightStartMap = mesh_storage.getLightMapPieceAndIncreaseRefCount(self.pos.wx, self.pos.wz, self.pos.voxelSize) orelse break :sunLight;
-			defer lightStartMap.decreaseRefCount();
-			x = 0;
-			while(x < chunk.chunkSize): (x += 1) {
-				var z: u8 = 0;
-				while(z < chunk.chunkSize): (z += 1) {
-					const startHeight: i32 = lightStartMap.getHeight(self.pos.wx + x*self.pos.voxelSize, self.pos.wz + z*self.pos.voxelSize);
-					const relHeight = startHeight -% self.pos.wy;
-					if(relHeight < chunk.chunkSize*self.pos.voxelSize) {
-						sunStarters[index] = .{x, chunk.chunkSize-1, z};
-						index += 1;
-					}
-				}
-			}
-			for(self.lightingData[0..3]) |*lightingData| {
-				try lightingData.propagateLights(sunStarters[0..index], true);
-			}
-		}
 
-		// TODO: Sunlight propagation
-		try self.finishNeighbors(false);
+		try self.finishNeighbors();
 	}
 
 	fn addFace(self: *ChunkMesh, faceData: FaceData, fromNeighborChunk: ?u3, transparent: bool) !void {
@@ -826,12 +845,11 @@ pub const ChunkMesh = struct {
 		}
 	}
 
-	fn finishNeighbors(self: *ChunkMesh, comptime inRenderThread: bool) !void {
-		const getNeighborMesh: fn(chunk.ChunkPosition, u31, u3) ?*ChunkMesh = if(inRenderThread) mesh_storage.getNeighborFromRenderThread else mesh_storage.getNeighborAndIncreaseRefCount;
+	fn finishNeighbors(self: *ChunkMesh) !void {
 		for(chunk.Neighbors.iterable) |neighbor| {
-			const nullNeighborMesh = getNeighborMesh(self.pos, self.pos.voxelSize, neighbor);
+			const nullNeighborMesh = mesh_storage.getNeighborAndIncreaseRefCount(self.pos, self.pos.voxelSize, neighbor);
 			if(nullNeighborMesh) |neighborMesh| sameLodBlock: {
-				defer if(!inRenderThread) neighborMesh.decreaseRefCount();
+				defer neighborMesh.decreaseRefCount();
 				std.debug.assert(neighborMesh != self);
 				deadlockFreeDoubleLock(&self.mutex, &neighborMesh.mutex);
 				defer self.mutex.unlock();
@@ -891,12 +909,8 @@ pub const ChunkMesh = struct {
 				}
 				_ = neighborMesh.needsLightRefresh.swap(false, .AcqRel);
 				try neighborMesh.finishData();
-				if(inRenderThread) {
-					try neighborMesh.uploadData();
-				} else {
-					neighborMesh.increaseRefCount();
-					try mesh_storage.addToUpdateListAndDecreaseRefCount(neighborMesh);
-				}
+				neighborMesh.increaseRefCount();
+				try mesh_storage.addToUpdateListAndDecreaseRefCount(neighborMesh);
 			} else {
 				self.mutex.lock();
 				defer self.mutex.unlock();
@@ -907,7 +921,7 @@ pub const ChunkMesh = struct {
 			}
 			// lod border:
 			if(self.pos.voxelSize == 1 << settings.highestLOD) continue;
-			const neighborMesh = getNeighborMesh(self.pos, 2*self.pos.voxelSize, neighbor) orelse {
+			const neighborMesh = mesh_storage.getNeighborAndIncreaseRefCount(self.pos, 2*self.pos.voxelSize, neighbor) orelse {
 				self.mutex.lock();
 				defer self.mutex.unlock();
 				if(self.lastNeighborsHigherLod[neighbor] != null) {
@@ -916,10 +930,10 @@ pub const ChunkMesh = struct {
 				}
 				continue;
 			};
+			defer neighborMesh.decreaseRefCount();
 			deadlockFreeDoubleLock(&self.mutex, &neighborMesh.mutex);
 			defer self.mutex.unlock();
 			defer neighborMesh.mutex.unlock();
-			defer if(!inRenderThread) neighborMesh.decreaseRefCount();
 			if(self.lastNeighborsHigherLod[neighbor] == neighborMesh) continue;
 			self.lastNeighborsHigherLod[neighbor] = neighborMesh;
 			self.clearNeighbor(neighbor, true);
