@@ -978,6 +978,19 @@ pub fn addMeshToStorage(mesh: *chunk_meshing.ChunkMesh) !void {
 	}
 }
 
+pub fn finishMesh(mesh: *chunk_meshing.ChunkMesh) !void {
+	mutex.lock();
+	defer mutex.unlock();
+	mesh.increaseRefCount();
+	updatableList.append(mesh) catch |err| {
+		std.log.err("Error while regenerating mesh: {s}", .{@errorName(err)});
+		if(@errorReturnTrace()) |trace| {
+			std.log.err("Trace: {}", .{trace});
+		}
+		mesh.decreaseRefCount();
+	};
+}
+
 pub const MeshGenerationTask = struct {
 	mesh: *chunk.Chunk,
 
@@ -1008,14 +1021,14 @@ pub const MeshGenerationTask = struct {
 	}
 
 	pub fn run(self: *MeshGenerationTask) Allocator.Error!void {
+		defer main.globalAllocator.destroy(self);
 		const pos = self.mesh.pos;
 		const mesh = try main.globalAllocator.create(chunk_meshing.ChunkMesh);
 		try mesh.init(pos, self.mesh);
-		mesh.regenerateMainMesh() catch |err| {
+		defer mesh.decreaseRefCount();
+		mesh.generateLightingData() catch |err| {
 			switch(err) {
 				error.AlreadyStored => {
-					mesh.decreaseRefCount();
-					main.globalAllocator.destroy(self);
 					return;
 				},
 				else => |_err| {
@@ -1023,16 +1036,6 @@ pub const MeshGenerationTask = struct {
 				}
 			}
 		};
-		mutex.lock();
-		defer mutex.unlock();
-		updatableList.append(mesh) catch |err| {
-			std.log.err("Error while regenerating mesh: {s}", .{@errorName(err)});
-			if(@errorReturnTrace()) |trace| {
-				std.log.err("Trace: {}", .{trace});
-			}
-			main.globalAllocator.destroy(self.mesh);
-		};
-		main.globalAllocator.destroy(self);
 	}
 
 	pub fn clean(self: *MeshGenerationTask) void {

@@ -1,5 +1,6 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
+const Atomic = std.atomic.Value;
 
 const main = @import("root");
 const blocks = main.blocks;
@@ -256,9 +257,8 @@ const PrimitiveMesh = struct {
 		if(x == x & chunk.chunkMask and y == y & chunk.chunkMask and z == z & chunk.chunkMask) {
 			return getValues(parent, wx, wy, wz);
 		}
-		const neighborMesh = mesh_storage.getMeshFromAnyLodAndIncreaseRefCount(wx, wy, wz, parent.pos.voxelSize) orelse return .{0, 0, 0, 0, 0, 0};
+		const neighborMesh = mesh_storage.getMeshAndIncreaseRefCount(.{.wx = wx, .wy = wy, .wz = wz, .voxelSize = parent.pos.voxelSize}) orelse return .{0, 0, 0, 0, 0, 0};
 		defer neighborMesh.decreaseRefCount();
-		// TODO: If the neighbor mesh has a higher lod the transition isn't seamless.
 		return getValues(neighborMesh, wx, wy, wz);
 	}
 
@@ -438,6 +438,8 @@ pub const ChunkMesh = struct {
 	needsLightRefresh: std.atomic.Value(bool) = std.atomic.Value(bool).init(false),
 	needsMeshUpdate: bool = false,
 	finishedMeshing: bool = false,
+	finishedLighting: bool = false,
+	litNeighbors: Atomic(u32) = Atomic(u32).init(0),
 	mutex: std.Thread.Mutex = .{},
 
 	chunkBorders: [6]BoundingRectToNeighborChunk = [1]BoundingRectToNeighborChunk{.{}} ** 6,
@@ -609,7 +611,7 @@ pub const ChunkMesh = struct {
 		}
 	}
 
-	pub fn regenerateMainMesh(self: *ChunkMesh) !void {
+	pub fn generateLightingData(self: *ChunkMesh) !void {
 		self.mutex.lock();
 		self.opaqueMesh.reset();
 		self.transparentMesh.reset();
@@ -618,6 +620,41 @@ pub const ChunkMesh = struct {
 
 		try self.initLight();
 
+		self.mutex.lock();
+		self.finishedLighting = true;
+		self.mutex.unlock();
+
+		// Only generate a mesh if the surrounding 27 chunks finished the light generation steps.
+		var dx: i32 = -1;
+		while(dx <= 1): (dx += 1) {
+			var dy: i32 = -1;
+			while(dy <= 1): (dy += 1) {
+				var dz: i32 = -1;
+				while(dz <= 1): (dz += 1) {
+					var pos = self.pos;
+					pos.wx +%= pos.voxelSize*chunk.chunkSize*dx;
+					pos.wy +%= pos.voxelSize*chunk.chunkSize*dy;
+					pos.wz +%= pos.voxelSize*chunk.chunkSize*dz;
+					const neighborMesh = mesh_storage.getMeshAndIncreaseRefCount(pos) orelse continue;
+					defer neighborMesh.decreaseRefCount();
+
+					const shiftSelf: u5 = @intCast(((dx + 1)*3 + dy + 1)*3 + dz + 1);
+					const shiftOther: u5 = @intCast(((-dx + 1)*3 + -dy + 1)*3 + -dz + 1);
+					if(neighborMesh.litNeighbors.fetchOr(@as(u27, 1) << shiftOther, .Monotonic) ^ @as(u27, 1) << shiftOther == ~@as(u27, 0)) { // Trigger mesh creation for neighbor
+						try neighborMesh.generateMesh();
+					}
+					neighborMesh.mutex.lock();
+					const neighborFinishedLighting = neighborMesh.finishedLighting;
+					neighborMesh.mutex.unlock();
+					if(neighborFinishedLighting and self.litNeighbors.fetchOr(@as(u27, 1) << shiftSelf, .Monotonic) ^ @as(u27, 1) << shiftSelf == ~@as(u27, 0)) {
+						try self.generateMesh();
+					}
+				}
+			}
+		}
+	}
+
+	pub fn generateMesh(self: *ChunkMesh) !void {
 		self.mutex.lock();
 		var n: u32 = 0;
 		var x: u8 = 0;
@@ -985,6 +1022,7 @@ pub const ChunkMesh = struct {
 		defer self.mutex.unlock();
 		_ = self.needsLightRefresh.swap(false, .AcqRel);
 		try self.finishData();
+		try mesh_storage.finishMesh(self);
 	}
 
 	pub fn render(self: *ChunkMesh, playerPosition: Vec3d) void {
