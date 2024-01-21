@@ -61,6 +61,7 @@ pub fn init() !void {
 		for(storageList.*) |*val| {
 			val.mesh = Atomic(?*chunk_meshing.ChunkMesh).init(null);
 			val.rendered = false;
+			val.active = false;
 		}
 	}
 	for(&mapStorageLists) |*mapStorageList| {
