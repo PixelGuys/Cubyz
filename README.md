@@ -25,18 +25,28 @@ However, both of them lost interest at some point, and now Cubyz is maintained b
 
 
 # Run Cubyz
-Sorry, the zig version isn't there yet. You can test the old Java version or ask on the Discord server and I may compile a test release for you.
+## The Easy Way (no tools needed)
+1. Download the latest [source code](https://codeload.github.com/PixelGuys/Cubyz/zip/refs/heads/master)
+2. Extract the zip file
+3. Go into the extraced folder and double click the `run_release.sh` (Linux) or `run_release.bat` (Windows)
+4. Congratulations: You just compiled your first program!
 
-Otherwise, you can do the following:
-### Compile Cubyz from Source
-1. Install Git
-2. Clone this repository `git clone https://github.com/pixelguys/Cubyz`
-3. Run `run_release.sh` (Linux) or `run_release.bat` (Windows)
+### It doesn't work?
+- If it doesn't work and keeps running for more than 10 minutes without doing anything it can help to kill and restart the process. A few people seem to experience this, and I have not found the cause. It might also help to delete the `zig-cache` folder.
+- If you see an error message in the terminal, please report it in the [Issues](https://github.com/PixelGuys/Cubyz/issues) tab or on the [Discord server](https://discord.gg/XtqCRRG).
+- Otherwise you can always ask for help on the Discord server. If you are unable to get it compiling on your machine, you can also ask on the Discord server and we may compile a release for you.
+
 #### Note for Linux Users:
 I also had to install a few `-dev` packages for the compilation to work:
 ```
 sudo apt install libgl-dev libasound2-dev libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxext-dev libxi-dev
 ```
+
+## The Better Way
+1. Install Git
+2. Clone this repository `git clone https://github.com/pixelguys/Cubyz`
+3. Run `run_release.sh` (Linux) or `run_release.bat` (Windows), if you already have Zig installed on your computer (it must be a compatible version) you can also just use `zig build run`
+4. When you want to update your local version you can use `git pull`. This keeps everything in one place, avoiding repeatedly downloading the compiler on every update.
 
 # Contributing
 ### Code
