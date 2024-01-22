@@ -52,4 +52,4 @@ fi
 echo "Cubyz successfully built!"
 echo "Launching Cubyz."
 
-./compiler/zig/zig run "$@"
+./compiler/zig/zig build run "$@"
