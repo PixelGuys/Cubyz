@@ -1,7 +1,15 @@
 #!/bin/bash
 
+fail () {
+    echo "Press enter key to continue."
+    read
+    exit 1
+}
+
+echo "Detecting Zig compiler..."
+
 BASE_VERSION=$(< .zig-version)
-VERSION=zig-linux-x86_64-$BASE_VERSION
+VERSION=zig-macos-aarch64-$BASE_VERSION
 
 mkdir -p compiler/zig
 touch compiler/version.txt
@@ -9,16 +17,37 @@ touch compiler/version.txt
 CURRENT_VERSION=$(< compiler/version.txt)
 
 if [[ "$CURRENT_VERSION" != "$VERSION" ]]; then
-	echo "Deleting old zig installation..."
+    echo "Your Zig is outdated."
+	echo "Deleting old Zig installation..."
 	rm -r compiler/zig
 	mkdir compiler/zig
 	echo "Downloading $VERSION..."
 	wget -O compiler/archive.tar.xz https://ziglang.org/builds/"$VERSION".tar.xz
+    if [ $? != 0 ]
+    then
+        echo "Could not download the Zig compiler."
+        fail
+    fi
 	echo "Extracting tar file..."
 	tar --xz -xf compiler/archive.tar.xz --directory compiler/zig --strip-components 1
-	echo "Done downloading zig."
 	rm compiler/archive.tar.xz
 	echo "$VERSION" > compiler/version.txt
+	echo "Done updating Zig."
+else
+    echo "Zig compiler is valid."
 fi
 
-./compiler/zig/zig build run "$@"
+echo "Building Cubyzig from source. This may take up to 10 minutes..."
+
+./compiler/zig/zig build "$@"
+
+if [ $? != 0 ]
+then
+    echo "Failed to build Cubyz."
+    fail
+fi
+
+echo "Cubyz successfully built!"
+echo "Launching Cubyz."
+
+./compiler/zig/zig run "$@"
