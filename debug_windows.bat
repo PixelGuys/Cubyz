@@ -1,5 +1,7 @@
 @echo off
 
+echo "Detecting Zig compiler..."
+
 set /p baseVersion=<".zig-version"
 set version=zig-windows-x86_64-%baseVersion%
 
@@ -10,16 +12,36 @@ set currVersion=
 set /p currVersion=<"compiler\version.txt"
 
 if not "%version%" == "%currVersion%" (
-    echo Deleting old zig installation ...
+    echo Your Zig is the wrong version.
+    echo Deleting current Zig installation ...
 	if exist compiler\zig rmdir /s /q compiler\zig
-    echo Downloading zig version %version% ...
+    echo Downloading %version% ...
     powershell -Command $ProgressPreference = 'SilentlyContinue'; "Invoke-WebRequest -uri https://ziglang.org/builds/%version%.zip -OutFile compiler\archive.zip"
+    if errorlevel 1 (
+        echo "Failed to download the Zig compiler."
+        echo "Press any key to continue."
+        pause
+        exit /b 1
+    )
     echo Extracting zip file ...
     powershell $ProgressPreference = 'SilentlyContinue'; Expand-Archive compiler\archive.zip -DestinationPath compiler
 	ren compiler\%version% zig
-    echo Done downloading zig.
     del compiler\archive.zip
     echo %version%> compiler\version.txt
+    echo Done updating Zig.
+) ELSE (
+    echo "Zig compiler is valid."
 )
 
-compiler\zig\zig build run %*
+echo "Building Cubyzig from source. This may take up to 10 minutes..."
+
+compiler\zig\zig build %*
+
+if errorlevel 1 (
+    echo "Failed to build Cubyz."
+    echo "Press any key to continue."
+    pause
+    exit /b 1
+)
+
+compiler\zig\zig run %*

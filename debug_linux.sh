@@ -17,15 +17,15 @@ touch compiler/version.txt
 CURRENT_VERSION=$(< compiler/version.txt)
 
 if [[ "$CURRENT_VERSION" != "$VERSION" ]]; then
-    echo "Your Zig is outdated."
-	echo "Deleting old Zig installation..."
+    echo "Your Zig is the wrong version."
+	echo "Deleting current Zig installation..."
 	rm -r compiler/zig
 	mkdir compiler/zig
 	echo "Downloading $VERSION..."
 	wget -O compiler/archive.tar.xz https://ziglang.org/builds/"$VERSION".tar.xz
     if [ $? != 0 ]
     then
-        echo "Could not download the Zig compiler."
+        echo "Failed to download the Zig compiler."
         fail
     fi
 	echo "Extracting tar file..."
