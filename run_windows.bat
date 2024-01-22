@@ -1,3 +1,3 @@
 @echo off
 
-.\run_windows.bat -Doptimize=ReleaseFast %*
+.\debug_windows.bat -Doptimize=ReleaseFast %*
