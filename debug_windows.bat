@@ -1,5 +1,7 @@
 @echo off
 
+cd /D "%~dp0"
+
 echo "Detecting Zig compiler..."
 
 set /p baseVersion=<".zig-version"

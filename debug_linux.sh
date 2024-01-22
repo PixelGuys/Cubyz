@@ -1,5 +1,7 @@
 #!/bin/bash
 
+cd "$(dirname "$0")"
+
 fail () {
     echo "Press enter key to continue."
     read
