@@ -2,7 +2,7 @@
 
 cd /D "%~dp0"
 
-echo "Detecting Zig compiler..."
+echo Detecting Zig compiler...
 
 set /p baseVersion=<".zig-version"
 set version=zig-windows-x86_64-%baseVersion%
@@ -20,8 +20,8 @@ if not "%version%" == "%currVersion%" (
     echo Downloading %version% ...
     powershell -Command $ProgressPreference = 'SilentlyContinue'; "Invoke-WebRequest -uri https://ziglang.org/builds/%version%.zip -OutFile compiler\archive.zip"
     if errorlevel 1 (
-        echo "Failed to download the Zig compiler."
-        echo "Press any key to continue."
+        echo Failed to download the Zig compiler.
+        echo Press any key to continue.
         pause
         exit /b 1
     )
@@ -32,18 +32,21 @@ if not "%version%" == "%currVersion%" (
     echo %version%> compiler\version.txt
     echo Done updating Zig.
 ) ELSE (
-    echo "Zig compiler is valid."
+    echo Zig compiler is valid.
 )
 
-echo "Building Cubyzig from source. This may take up to 10 minutes..."
+echo Building Cubyzig from source. This may take up to 10 minutes...
 
 compiler\zig\zig build %*
 
 if errorlevel 1 (
-    echo "Failed to build Cubyz."
-    echo "Press any key to continue."
+    echo Failed to build Cubyz.
+    echo Press any key to continue.
     pause
     exit /b 1
 )
+
+echo Cubyz successfully built!
+echo Launching Cubyz.
 
 compiler\zig\zig run %*
