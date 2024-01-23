@@ -3,7 +3,6 @@
 cd "$(dirname "$0")"
 
 fail () {
-	echo "Run script failed."
 	exit 1
 }
 
@@ -70,7 +69,6 @@ echo "Building Zig Cubyz ($@) from source. This may take a few minutes..."
 
 if [ $? != 0 ]
 then
-	echo "Failed to build Cubyz."
 	fail
 fi
 
