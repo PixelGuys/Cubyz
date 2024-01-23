@@ -21,20 +21,20 @@ esac
 
 if [ -n $ARCH ]
 then
-    case "$(uname -m)" in
-    "arm64" | "aarch64")
-        ARCH=aarch64;;
-    "arm*")
-        ARCH=armv7a;;
-    "amd64" | "x86_64")
-        ARCH=x86_64;;
-    "x86*")
-        ARCH=x86;;
-    *)
-        echo "Machine architecture could not be recognized ($(uname -m)). Report this bug with the result of \`uname -m\` and your preferred Zig release name."
-        echo "Defaulting architecture to x86_64."
-        ARCH=x86_64;;
-    esac
+	case "$(uname -m)" in
+	"arm64" | "aarch64")
+		ARCH=aarch64;;
+	"arm*")
+		ARCH=armv7a;;
+	"amd64" | "x86_64")
+		ARCH=x86_64;;
+	"x86*")
+		ARCH=x86;;
+	*)
+		echo "Machine architecture could not be recognized ($(uname -m)). Report this bug with the result of \`uname -m\` and your preferred Zig release name."
+		echo "Defaulting architecture to x86_64."
+		ARCH=x86_64;;
+	esac
 fi
 
 VERSION=zig-$OS-$ARCH-$BASE_VERSION
