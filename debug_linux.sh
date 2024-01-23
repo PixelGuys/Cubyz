@@ -3,8 +3,7 @@
 cd "$(dirname "$0")"
 
 fail () {
-	echo "Press enter key to continue."
-	read
+	echo "Run script failed."
 	exit 1
 }
 
