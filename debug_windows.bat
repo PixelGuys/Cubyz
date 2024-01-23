@@ -5,7 +5,24 @@ cd /D "%~dp0"
 echo Detecting Zig compiler...
 
 set /p baseVersion=<".zig-version"
-set version=zig-windows-x86_64-%baseVersion%
+
+
+ARM64 (arm)
+
+AMD64
+IA64
+
+X86 (32 bit)
+
+IF "%PROCESSOR_ARCHITECTURE%"=="AMD64"	(set arch=x86_64)
+IF "%PROCESSOR_ARCHITECTURE%"=="IA64"	(set arch=x86_64)
+IF "%PROCESSOR_ARCHITECTURE%"=="x64"	(set arch=x86)
+IF "%PROCESSOR_ARCHITECTURE%"=="ARM64"	(set arch=aarch64)
+IF "%arch%"=="" (
+	echo Machine architecture could not be determined. Please file a bug report.
+)
+
+set version=zig-windows-%arch%-%baseVersion%
 
 if not exist compiler mkdir compiler
 if not exist compiler\version.txt copy NUL compiler\version.txt >NUL
