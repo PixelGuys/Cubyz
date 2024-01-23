@@ -8,7 +8,7 @@ set /p baseVersion=<".zig-version"
 
 IF "%PROCESSOR_ARCHITECTURE%"=="AMD64"	(set arch=x86_64)
 IF "%PROCESSOR_ARCHITECTURE%"=="IA64"	(set arch=x86_64)
-IF "%PROCESSOR_ARCHITECTURE%"=="x64"	(set arch=x86)
+IF "%PROCESSOR_ARCHITECTURE%"=="x86"	(set arch=x86)
 IF "%PROCESSOR_ARCHITECTURE%"=="ARM64"	(set arch=aarch64)
 IF "%arch%"=="" (
 	echo Machine architecture could not be recognized: %arch%. Please file a bug report.
