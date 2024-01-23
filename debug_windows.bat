@@ -44,7 +44,7 @@ if not "%version%" == "%currVersion%" (
 	echo Zig compiler is valid.
 )
 
-echo Building Zig Cubyz (%*) from source. This may take a few minutes...
+echo Building Zig Cubyz (%*^) from source. This may take a few minutes...
 
 compiler\zig\zig build %*
 
