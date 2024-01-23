@@ -28,7 +28,7 @@ However, both of them lost interest at some point, and now Cubyz is maintained b
 ## The Easy Way (no tools needed)
 1. Download the latest [source code](https://codeload.github.com/PixelGuys/Cubyz/zip/refs/heads/master)
 2. Extract the zip file
-3. Go into the extraced folder and double click the `run_release.sh` (Linux) or `run_release.bat` (Windows)
+3. Go into the extraced folder and double click the `run_linux.sh` or `run_windows.bat` depending on your operating system.
 4. Congratulations: You just compiled your first program!
 
 ### It doesn't work?
@@ -45,7 +45,7 @@ sudo apt install libgl-dev libasound2-dev libx11-dev libxcursor-dev libxrandr-de
 ## The Better Way
 1. Install Git
 2. Clone this repository `git clone https://github.com/pixelguys/Cubyz`
-3. Run `run_release.sh` (Linux) or `run_release.bat` (Windows), if you already have Zig installed on your computer (it must be a compatible version) you can also just use `zig build run`
+3. Run `run_linux.sh` or `run_windows.bat`, if you already have Zig installed on your computer (it must be a compatible version) you can also just use `zig build run`
 4. When you want to update your local version you can use `git pull`. This keeps everything in one place, avoiding repeatedly downloading the compiler on every update.
 
 # Contributing
