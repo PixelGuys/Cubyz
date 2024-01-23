@@ -31,7 +31,9 @@ then
     "x86*")
         ARCH=x86;;
     *)
-        echo "Machine architecture could not be determined. Report this bug with the result of `uname -m` and your preferred Zig release name. In the meantime, you may try `export ARCH=x86_64`.";;
+        echo "Machine architecture could not be recognized ($(uname -m)). Report this bug with the result of \`uname -m\` and your preferred Zig release name."
+        echo "Defaulting architecture to x86_64."
+        ARCH=x86_64;;
     esac
 fi
 

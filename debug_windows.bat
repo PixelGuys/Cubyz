@@ -6,20 +6,14 @@ echo Detecting Zig compiler...
 
 set /p baseVersion=<".zig-version"
 
-
-ARM64 (arm)
-
-AMD64
-IA64
-
-X86 (32 bit)
-
 IF "%PROCESSOR_ARCHITECTURE%"=="AMD64"	(set arch=x86_64)
 IF "%PROCESSOR_ARCHITECTURE%"=="IA64"	(set arch=x86_64)
 IF "%PROCESSOR_ARCHITECTURE%"=="x64"	(set arch=x86)
 IF "%PROCESSOR_ARCHITECTURE%"=="ARM64"	(set arch=aarch64)
 IF "%arch%"=="" (
-	echo Machine architecture could not be determined. Please file a bug report.
+	echo Machine architecture could not be recognized: %arch%. Please file a bug report.
+	echo Defaulting architecture to x86_64.
+	set arch=x86_64
 )
 
 set version=zig-windows-%arch%-%baseVersion%
