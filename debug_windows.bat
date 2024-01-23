@@ -32,8 +32,6 @@ if not "%version%" == "%currVersion%" (
 	powershell -Command $ProgressPreference = 'SilentlyContinue'; "Invoke-WebRequest -uri https://ziglang.org/builds/%version%.zip -OutFile compiler\archive.zip"
 	if errorlevel 1 (
 		echo Failed to download the Zig compiler.
-		echo Press any key to continue.
-		pause
 		exit /b 1
 	)
 	echo Extracting zip file ...
@@ -52,8 +50,6 @@ compiler\zig\zig build %*
 
 if errorlevel 1 (
 	echo Failed to build Cubyz.
-	echo Press any key to continue.
-	pause
 	exit /b 1
 )
 
