@@ -8,10 +8,8 @@ pub const GuiComponent = union(enum) {
 
 	pub const Button = @import("components/Button.zig");
 	pub const CheckBox = @import("components/CheckBox.zig");
-	pub const CraftingResultSlot = @import("components/CraftingResultSlot.zig");
 	pub const HorizontalList = @import("components/HorizontalList.zig");
 	pub const Icon = @import("components/Icon.zig");
-	pub const ImmutableItemSlot = @import("components/ImmutableItemSlot.zig");
 	pub const ItemSlot = @import("components/ItemSlot.zig");
 	pub const Label = @import("components/Label.zig");
 	pub const MutexComponent = @import("components/MutexComponent.zig");
@@ -24,10 +22,8 @@ pub const GuiComponent = union(enum) {
 
 	button: *Button,
 	checkBox: *CheckBox,
-	craftingResultSlot: *CraftingResultSlot,
 	horizontalList: *HorizontalList,
 	icon: *Icon,
-	immutableItemSlot: *ImmutableItemSlot,
 	itemSlot: *ItemSlot,
 	label: *Label,
 	mutexComponent: *MutexComponent,

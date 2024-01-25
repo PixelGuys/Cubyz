@@ -26,25 +26,11 @@ pub var window = GuiWindow {
 const padding: f32 = 8;
 var items: std.ArrayList(Item) = undefined;
 
-pub fn tryAddingItems(_: usize, _: *ItemStack, _: u16) void {
-	return;
-}
-
-pub fn tryTakingItems(index: usize, destination: *ItemStack, amount: u16) void {
+pub fn tryTakingItems(index: usize, destination: *ItemStack, _: u16) void {
 	if(destination.item != null and !std.meta.eql(destination.item.?, items.items[index])) return;
 	destination.item = items.items[index];
-	_ = destination.add(amount);
+	destination.amount = destination.item.?.stackSize();
 }
-
-pub fn trySwappingItems(_: usize, _: *ItemStack) void {
-	return;
-}
-
-const vtable = ItemSlot.VTable {
-	.tryAddingItems = &tryAddingItems,
-	.tryTakingItems = &tryTakingItems,
-	.trySwappingItems = &trySwappingItems,
-};
 
 pub fn onOpen() Allocator.Error!void {
 	items = std.ArrayList(Item).init(main.globalAllocator);
@@ -60,7 +46,7 @@ pub fn onOpen() Allocator.Error!void {
 		for(0..8) |_| {
 			if(i >= items.items.len) break;
 			const item = items.items[i];
-			try row.add(try ItemSlot.init(.{0, 0}, .{.item = item, .amount = item.stackSize()}, &vtable, i));
+			try row.add(try ItemSlot.init(.{0, 0}, .{.item = item, .amount = item.stackSize()}, &.{.tryTakingItems = &tryTakingItems}, i, .default, .takeOnly));
 			i += 1;
 		}
 		try list.add(row);

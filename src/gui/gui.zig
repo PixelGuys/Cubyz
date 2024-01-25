@@ -11,8 +11,6 @@ const Vec2f = vec.Vec2f;
 
 const Button = @import("components/Button.zig");
 const CheckBox = @import("components/CheckBox.zig");
-const CraftingResultSlot = @import("components/CraftingResultSlot.zig");
-const ImmutableItemSlot = @import("components/ImmutableItemSlot.zig");
 const ItemSlot = @import("components/ItemSlot.zig");
 const ScrollBar = @import("components/ScrollBar.zig");
 const ContinuousSlider = @import("components/ContinuousSlider.zig");
@@ -33,7 +31,6 @@ var hoveredAWindow: bool = false;
 pub var scale: f32 = undefined;
 
 pub var hoveredItemSlot: ?*ItemSlot = null;
-pub var hoveredCraftingSlot: ?*CraftingResultSlot = null;
 
 const GuiCommandQueue = struct {
 	const Action = enum {
@@ -147,8 +144,6 @@ pub fn init() !void {
 	try GuiWindow.__init();
 	try Button.__init();
 	try CheckBox.__init();
-	try CraftingResultSlot.__init();
-	try ImmutableItemSlot.__init();
 	try ItemSlot.__init();
 	try ScrollBar.__init();
 	try ContinuousSlider.__init();
@@ -171,8 +166,6 @@ pub fn deinit() void {
 	GuiWindow.__deinit();
 	Button.__deinit();
 	CheckBox.__deinit();
-	CraftingResultSlot.__deinit();
-	ImmutableItemSlot.__deinit();
 	ItemSlot.__deinit();
 	ScrollBar.__deinit();
 	ContinuousSlider.__deinit();
@@ -444,12 +437,6 @@ pub fn mainButtonPressed() void {
 	inventory.update() catch |err| {
 		std.log.err("Encountered error while updating inventory: {s}", .{@errorName(err)});
 	};
-	if(inventory.carriedItemStack.amount != 0) {
-		if(hoveredCraftingSlot) |hovered| {
-			hovered.mainButtonPressed(undefined);
-		}
-		return;
-	}
 	selectedWindow = null;
 	selectedTextInput = null;
 	var selectedI: usize = 0;
@@ -527,7 +514,6 @@ pub fn updateAndRenderGui() !void {
 			try selected.updateSelected(mousePos);
 		}
 		hoveredItemSlot = null;
-		hoveredCraftingSlot = null;
 		var i: usize = openWindows.items.len;
 		while(i != 0) {
 			i -= 1;
@@ -568,7 +554,7 @@ pub const inventory = struct {
 	pub fn init() !void {
 		deliveredItemSlots = std.ArrayList(*ItemSlot).init(main.globalAllocator);
 		deliveredItemStacksAmountAdded = std.ArrayList(u16).init(main.globalAllocator);
-		carriedItemSlot = try ItemSlot.init(.{0, 0}, carriedItemStack, undefined, undefined);
+		carriedItemSlot = try ItemSlot.init(.{0, 0}, carriedItemStack, undefined, undefined, .default, .normal);
 		carriedItemSlot.renderFrame = false;
 	}
 
@@ -584,6 +570,7 @@ pub const inventory = struct {
 			initialAmount = carriedItemStack.amount;
 		}
 		if(hoveredItemSlot) |itemSlot| {
+			if(itemSlot.mode != .normal) return;
 			if(initialAmount == 0) return;
 			if(!std.meta.eql(itemSlot.itemStack.item, carriedItemStack.item) and itemSlot.itemStack.item != null) return;
 
@@ -619,7 +606,6 @@ pub const inventory = struct {
 				}
 			}
 		}
-		try carriedItemSlot.updateItemStack(carriedItemStack);
 	}
 
 	fn applyChanges(leftClick: bool) void {
@@ -633,11 +619,15 @@ pub const inventory = struct {
 		} else if(hoveredItemSlot) |hovered| {
 			if(carriedItemStack.amount != 0) {
 				if(leftClick) {
-					hovered.trySwappingItems(&carriedItemStack);
+					if(std.meta.eql(carriedItemStack.item, hovered.itemStack.item)) {
+						hovered.tryTakingItems(&carriedItemStack, hovered.itemStack.amount);
+					} else {
+						hovered.trySwappingItems(&carriedItemStack);
+					}
 				}
 			} else {
 				if(leftClick) {
-					hovered.tryTakingItems(&carriedItemStack, std.math.maxInt(u16));
+					hovered.tryTakingItems(&carriedItemStack, hovered.itemStack.amount);
 				} else {
 					hovered.tryTakingItems(&carriedItemStack, hovered.itemStack.amount/2);
 				}
@@ -652,12 +642,13 @@ pub const inventory = struct {
 				main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, .{.item = carriedItemStack.item, .amount = 1}, @floatCast(main.game.Player.getPosBlocking()), main.game.camera.direction, 20) catch |err| {
 					std.log.err("Error while dropping itemStack: {s}", .{@errorName(err)});
 				};
-				_ = carriedItemStack.add(@as(i32, -1));
+				_ = carriedItemStack.add(carriedItemStack.item.?, @as(i32, -1));
 			}
 		}
 	}
 
 	fn render(mousePos: Vec2f) !void {
+		try carriedItemSlot.updateItemStack(carriedItemStack);
 		carriedItemSlot.pos = mousePos - Vec2f{12, 12};
 		try carriedItemSlot.render(.{0, 0});
 		// Draw tooltip:

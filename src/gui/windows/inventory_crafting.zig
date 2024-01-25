@@ -16,8 +16,7 @@ const Button = GuiComponent.Button;
 const HorizontalList = GuiComponent.HorizontalList;
 const VerticalList = GuiComponent.VerticalList;
 const Icon = GuiComponent.Icon;
-const CraftingResultSlot = GuiComponent.CraftingResultSlot;
-const ImmutableItemSlot = GuiComponent.ImmutableItemSlot;
+const ItemSlot = GuiComponent.ItemSlot;
 
 const inventory = @import("inventory.zig");
 
@@ -62,10 +61,12 @@ fn addItemStackToAvailable(itemStack: ItemStack) Allocator.Error!void {
 	}
 }
 
-fn onTake(recipeIndex: usize) void {
+fn tryTakingItems(recipeIndex: usize, destination: *ItemStack, _: u16) void {
 	const recipe = items.recipes()[recipeIndex];
+	const resultItem = recipe.resultItem;
+	if(!destination.canAddAll(resultItem.item.?, resultItem.amount)) return;
 	for(recipe.sourceItems, recipe.sourceAmounts) |item, _amount| {
-		var amount: u32 = _amount;
+		var amount = _amount;
 		for(main.game.Player.inventory__SEND_CHANGES_TO_SERVER.items) |*itemStack| {
 			if(itemStack.item) |invItem| {
 				if(invItem == .baseItem and invItem.baseItem == item) {
@@ -84,6 +85,7 @@ fn onTake(recipeIndex: usize) void {
 			std.log.warn("Congratulations, you just managed to cheat {}*{s}, thanks to my lazy coding. Have fun with that :D", .{amount, item.id});
 		}
 	}
+	std.debug.assert(destination.add(resultItem.item.?, resultItem.amount) == resultItem.amount);
 }
 
 fn findAvailableRecipes(list: *VerticalList) Allocator.Error!bool {
@@ -127,14 +129,14 @@ fn findAvailableRecipes(list: *VerticalList) Allocator.Error!bool {
 			if(col < remainder) itemsThisColumn += 1;
 			const columnList = try VerticalList.init(.{0, 0}, std.math.inf(f32), 0);
 			for(0..itemsThisColumn) |_| {
-				try columnList.add(try ImmutableItemSlot.init(.{0, 0}, recipe.sourceItems[i], recipe.sourceAmounts[i]));
+				try columnList.add(try ItemSlot.init(.{0, 0}, .{.item = .{.baseItem = recipe.sourceItems[i]}, .amount = recipe.sourceAmounts[i]}, &.{}, 0, .immutable, .immutable));
 				i += 1;
 			}
 			columnList.finish(.center);
 			try rowList.add(columnList);
 		}
 		try rowList.add(try Icon.init(.{8, 0}, .{32, 32}, arrowTexture, false));
-		const itemSlot = try CraftingResultSlot.init(.{8, 0}, recipe.resultItem, .{.callback = &onTake, .arg = recipeIndex});
+		const itemSlot = try ItemSlot.init(.{8, 0}, recipe.resultItem, &.{.tryTakingItems = &tryTakingItems}, recipeIndex, .craftingResult, .takeOnly);
 		try rowList.add(itemSlot);
 		rowList.finish(.{0, 0}, .center);
 		try list.add(rowList);

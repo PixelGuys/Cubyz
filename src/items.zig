@@ -1154,8 +1154,8 @@ pub const ItemStack = struct {
 	}
 
 	/// Returns the number of items actually added/removed.
-	pub fn add(self: *ItemStack, number: anytype) @TypeOf(number) {
-		std.debug.assert(self.item != null);
+	pub fn add(self: *ItemStack, item: Item, number: anytype) @TypeOf(number) {
+		if(self.item == null) self.item = item;
 		var newAmount = self.amount + number;
 		var returnValue = number;
 		if(newAmount < 0) {
@@ -1173,9 +1173,9 @@ pub const ItemStack = struct {
 	}
 
 	/// whether the given number of items can be added to this stack.
-	pub fn canAddAll(self: *const ItemStack, number: u16) bool {
-		std.debug.assert(self.item);
-		return @as(u32, self.amount) + number <= self.item.?.stackSize();
+	pub fn canAddAll(self: *const ItemStack, item: Item, number: u16) bool {
+		if(self.item != null and !std.meta.eql(self.item.?, item)) return false;
+		return @as(u32, self.amount) + number <= item.stackSize();
 	}
 
 	pub fn clear(self: *ItemStack) void {
@@ -1225,14 +1225,13 @@ pub const Inventory = struct {
 		var amount = _amount;
 		for(self.items) |*stack| {
 			if(!stack.empty() and std.meta.eql(stack.item, item) and !stack.filled()) {
-				amount -= stack.add(amount);
+				amount -= stack.add(item, amount);
 				if(amount == 0) return 0;
 			}
 		}
 		for(self.items) |*stack| {
 			if(stack.empty()) {
-				stack.item = item;
-				amount -= stack.add(amount);
+				amount -= stack.add(item, amount);
 				if(amount == 0) return 0;
 			}
 		}
@@ -1288,7 +1287,7 @@ pub const Inventory = struct {
 
 const Recipe = struct {
 	sourceItems: []*BaseItem,
-	sourceAmounts: []u32,
+	sourceAmounts: []u16,
 	resultItem: ItemStack,
 };
 
@@ -1337,7 +1336,7 @@ pub fn registerRecipes(file: []const u8) !void {
 	}
 	var items = std.ArrayList(*BaseItem).init(main.globalAllocator);
 	defer items.deinit();
-	var itemAmounts = std.ArrayList(u32).init(main.globalAllocator);
+	var itemAmounts = std.ArrayList(u16).init(main.globalAllocator);
 	defer itemAmounts.deinit();
 	var string = std.ArrayList(u8).init(main.globalAllocator);
 	defer string.deinit();
@@ -1369,7 +1368,7 @@ pub fn registerRecipes(file: []const u8) !void {
 			const item = shortcuts.get(id) orelse getByID(id) orelse continue;
 			const recipe = Recipe {
 				.sourceItems = try arena.allocator().dupe(*BaseItem, items.items),
-				.sourceAmounts = try arena.allocator().dupe(u32, itemAmounts.items),
+				.sourceAmounts = try arena.allocator().dupe(u16, itemAmounts.items),
 				.resultItem = ItemStack{.item = Item{.baseItem = item}, .amount = amount},
 			};
 			try recipeList.append(recipe);

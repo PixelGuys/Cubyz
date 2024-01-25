@@ -782,7 +782,7 @@ pub const MeshSelection = struct {
 								if(rotationMode.generateData(main.game.world.?, selectedPos, relPos, lastDir, neighborDir, &block, false)) {
 									// TODO: world.updateBlock(bi.x, bi.y, bi.z, block.data); (→ Sending it over the network)
 									try mesh_storage.updateBlock(selectedPos[0], selectedPos[1], selectedPos[2], block);
-									_ = inventoryStack.add(@as(i32, -1));
+									_ = inventoryStack.add(item, @as(i32, -1));
 									return;
 								}
 							}
@@ -795,7 +795,7 @@ pub const MeshSelection = struct {
 								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, &block, false)) {
 									// TODO: world.updateBlock(bi.x, bi.y, bi.z, block.data); (→ Sending it over the network)
 									try mesh_storage.updateBlock(neighborPos[0], neighborPos[1], neighborPos[2], block);
-									_ = inventoryStack.add(@as(i32, -1));
+									_ = inventoryStack.add(item, @as(i32, -1));
 									return;
 								}
 							} else {
@@ -815,7 +815,7 @@ pub const MeshSelection = struct {
 								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, &block, true)) {
 									// TODO: world.updateBlock(bi.x, bi.y, bi.z, block.data); (→ Sending it over the network)
 									try mesh_storage.updateBlock(neighborPos[0], neighborPos[1], neighborPos[2], block);
-									_ = inventoryStack.add(@as(i32, -1));
+									_ = inventoryStack.add(item, @as(i32, -1));
 									return;
 								}
 							}

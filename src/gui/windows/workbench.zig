@@ -19,8 +19,6 @@ const HorizontalList = GuiComponent.HorizontalList;
 const VerticalList = GuiComponent.VerticalList;
 const Icon = GuiComponent.Icon;
 const ItemSlot = GuiComponent.ItemSlot;
-const CraftingResultSlot = GuiComponent.CraftingResultSlot;
-const ImmutableItemSlot = GuiComponent.ImmutableItemSlot;
 
 const inventory = @import("inventory.zig");
 const inventory_crafting = @import("inventory_crafting.zig");
@@ -40,7 +38,7 @@ var availableItems: [25]?*const BaseItem = undefined;
 
 var craftingGrid: [25]ItemStack = undefined;
 
-var craftingResult: *CraftingResultSlot = undefined;
+var craftingResult: *ItemSlot = undefined;
 
 var seed: u32 = undefined;
 
@@ -52,8 +50,7 @@ pub fn tryAddingItems(index: usize, source: *ItemStack, amount: u16) void {
 	if(source.item.?.baseItem.material == null) return;
 	const destination = &craftingGrid[index];
 	if(destination.item != null and !std.meta.eql(source.item, destination.item)) return;
-	destination.item = source.item;
-	const actual = destination.add(amount);
+	const actual = destination.add(source.item.?, amount);
 	source.amount -= actual;
 	if(source.amount == 0) source.item = null;
 }
@@ -64,8 +61,7 @@ pub fn tryTakingItems(index: usize, destination: *ItemStack, _amount: u16) void 
 	if(destination.item != null and !std.meta.eql(source.item, destination.item)) return;
 	if(source.item == null) return;
 	amount = @min(amount, source.amount);
-	destination.item = source.item;
-	const actual = destination.add(amount);
+	const actual = destination.add(source.item.?, amount);
 	source.amount -= actual;
 	if(source.amount == 0) source.item = null;
 }
@@ -83,10 +79,12 @@ const vtable = ItemSlot.VTable {
 	.trySwappingItems = &trySwappingItems,
 };
 
-fn onTake(_: usize) void {
+fn onTake(_: usize, destination: *ItemStack, _: u16) void {
+	if(destination.item != null) return;
+	destination.* = craftingResult.itemStack;
 	for(&craftingGrid) |*itemStack| {
 		if(itemStack.item != null and itemStack.item.? == .baseItem and itemStack.item.?.baseItem.material != null) {
-			_ = itemStack.add(@as(i32, -1));
+			_ = itemStack.add(itemStack.item.?, @as(i32, -1));
 		}
 	}
 	craftingResult.itemStack = .{};
@@ -137,7 +135,7 @@ pub fn onOpen() Allocator.Error!void {
 			const row = try HorizontalList.init();
 			for(0..5) |x| {
 				const index = x + y*5;
-				const slot = try ItemSlot.init(.{0, 0}, craftingGrid[index], &vtable, index);
+				const slot = try ItemSlot.init(.{0, 0}, craftingGrid[index], &vtable, index, .default, .normal);
 				itemSlots[index] = slot;
 				try row.add(slot);
 			}
@@ -147,7 +145,7 @@ pub fn onOpen() Allocator.Error!void {
 		try list.add(grid);
 	}
 	try list.add(try Icon.init(.{8, 0}, .{32, 32}, inventory_crafting.arrowTexture, false));
-	craftingResult = try CraftingResultSlot.init(.{8, 0}, .{}, .{.callback = &onTake});
+	craftingResult = try ItemSlot.init(.{8, 0}, .{}, &.{.tryTakingItems = &onTake}, 0, .craftingResult, .takeOnly);
 	try list.add(craftingResult);
 	list.finish(.{padding, padding + 16}, .center);
 	window.rootComponent = list.toComponent();

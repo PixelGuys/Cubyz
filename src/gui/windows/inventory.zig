@@ -40,13 +40,12 @@ pub fn deinit() void {
 
 var itemSlots: [24]*ItemSlot = undefined;
 
-pub fn tryAddingItems(index: usize, source: *ItemStack, amount: u16) void {
+pub fn tryAddingItems(index: usize, source: *ItemStack, desiredAmount: u16) void {
 	Player.mutex.lock();
 	defer Player.mutex.unlock();
 	const destination = &Player.inventory__SEND_CHANGES_TO_SERVER.items[index];
 	if(destination.item != null and !std.meta.eql(source.item, destination.item)) return;
-	destination.item = source.item;
-	const actual = destination.add(amount);
+	const actual = destination.add(source.item.?, desiredAmount);
 	source.amount -= actual;
 	if(source.amount == 0) source.item = null;
 	main.network.Protocols.genericUpdate.sendInventory_full(main.game.world.?.conn, Player.inventory__SEND_CHANGES_TO_SERVER) catch |err| { // TODO(post-java): Add better options to the protocol.
@@ -54,16 +53,15 @@ pub fn tryAddingItems(index: usize, source: *ItemStack, amount: u16) void {
 	};
 }
 
-pub fn tryTakingItems(index: usize, destination: *ItemStack, _amount: u16) void {
-	var amount = _amount;
+pub fn tryTakingItems(index: usize, destination: *ItemStack, desiredAmount: u16) void {
+	var amount = desiredAmount;
 	Player.mutex.lock();
 	defer Player.mutex.unlock();
 	const source = &Player.inventory__SEND_CHANGES_TO_SERVER.items[index];
 	if(destination.item != null and !std.meta.eql(source.item, destination.item)) return;
 	if(source.item == null) return;
 	amount = @min(amount, source.amount);
-	destination.item = source.item;
-	const actual = destination.add(amount);
+	const actual = destination.add(source.item.?, amount);
 	source.amount -= actual;
 	if(source.amount == 0) source.item = null;
 	main.network.Protocols.genericUpdate.sendInventory_full(main.game.world.?.conn, Player.inventory__SEND_CHANGES_TO_SERVER) catch |err| { // TODO(post-java): Add better options to the protocol.
@@ -103,7 +101,7 @@ pub fn onOpen() Allocator.Error!void {
 		const row = try HorizontalList.init();
 		for(0..8) |x| {
 			const index: usize = y*8 + x;
-			const slot = try ItemSlot.init(.{0, 0}, Player.inventory__SEND_CHANGES_TO_SERVER.items[index], &vtable, index);
+			const slot = try ItemSlot.init(.{0, 0}, Player.inventory__SEND_CHANGES_TO_SERVER.items[index], &vtable, index, .default, .normal);
 			itemSlots[index - 8] = slot;
 			try row.add(slot);
 		}

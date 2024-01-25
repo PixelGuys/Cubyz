@@ -16,13 +16,22 @@ const GuiComponent = gui.GuiComponent;
 
 const ItemSlot = @This();
 
-var texture: Texture = undefined;
 const border: f32 = 2;
 
 pub const VTable = struct {
-	tryAddingItems: *const fn(usize, *ItemStack, u16) void,
-	tryTakingItems: *const fn(usize, *ItemStack, u16) void,
-	trySwappingItems: *const fn(usize, *ItemStack) void,
+	tryAddingItems: *const fn(usize, *ItemStack, u16) void = &defaultAddingItems,
+	tryTakingItems: *const fn(usize, *ItemStack, u16) void = &defaultTakingItems,
+	trySwappingItems: *const fn(usize, *ItemStack) void = &defaultSwappingItems,
+
+	fn defaultAddingItems(_: usize, _: *ItemStack, _: u16) void {}
+	fn defaultTakingItems(_: usize, _: *ItemStack, _: u16) void {}
+	fn defaultSwappingItems(_: usize, _: *ItemStack) void {}
+};
+
+const Mode = enum {
+	normal,
+	takeOnly,
+	immutable,
 };
 
 pos: Vec2f,
@@ -35,16 +44,40 @@ pressed: bool = false,
 renderFrame: bool = true,
 userData: usize,
 vtable: *const VTable,
+texture: Texture,
+mode: Mode,
+
+var defaultTexture: Texture = undefined;
+var immutableTexture: Texture = undefined;
+var craftingResultTexture: Texture = undefined;
+const TextureParamType = union(enum) {
+	default: void,
+	immutable: void,
+	craftingResult: void,
+	custom: Texture,
+	fn value(self: TextureParamType) Texture {
+		return switch(self) {
+			.default => defaultTexture,
+			.immutable => immutableTexture,
+			.craftingResult => craftingResultTexture,
+			.custom => |t| t,
+		};
+	}
+};
 
 pub fn __init() !void {
-	texture = try Texture.initFromFile("assets/cubyz/ui/inventory/slot.png");
+	defaultTexture = try Texture.initFromFile("assets/cubyz/ui/inventory/slot.png");
+	immutableTexture = try Texture.initFromFile("assets/cubyz/ui/inventory/immutable_slot.png");
+	craftingResultTexture = try Texture.initFromFile("assets/cubyz/ui/inventory/crafting_result_slot.png");
 }
 
 pub fn __deinit() void {
-	texture.deinit();
+	defaultTexture.deinit();
+	immutableTexture.deinit();
+	craftingResultTexture.deinit();
 }
 
-pub fn init(pos: Vec2f, itemStack: ItemStack, vtable: *const VTable, userData: usize) Allocator.Error!*ItemSlot {
+pub fn init(pos: Vec2f, itemStack: ItemStack, vtable: *const VTable, userData: usize, texture: TextureParamType, mode: Mode) Allocator.Error!*ItemSlot {
 	const self = try main.globalAllocator.create(ItemSlot);
 	var buf: [16]u8 = undefined;
 	self.* = ItemSlot {
@@ -53,6 +86,8 @@ pub fn init(pos: Vec2f, itemStack: ItemStack, vtable: *const VTable, userData: u
 		.userData = userData,
 		.pos = pos,
 		.text = try TextBuffer.init(main.globalAllocator, std.fmt.bufPrint(&buf, "{}", .{self.itemStack.amount}) catch "∞", .{}, false, .right),
+		.texture = texture.value(),
+		.mode = mode,
 	};
 	self.textSize = try self.text.calculateLineBreaks(8, self.size[0] - 2*border);
 	return self;
@@ -63,14 +98,14 @@ pub fn deinit(self: *const ItemSlot) void {
 	main.globalAllocator.destroy(self);
 }
 
-pub fn tryAddingItems(self: *ItemSlot, source: *ItemStack, amount: u16) void {
+pub fn tryAddingItems(self: *ItemSlot, source: *ItemStack, desiredAmount: u16) void {
 	std.debug.assert(source.item != null);
-	std.debug.assert(amount <= source.amount);
-	self.vtable.tryAddingItems(self.userData, source, amount);
+	std.debug.assert(desiredAmount <= source.amount);
+	self.vtable.tryAddingItems(self.userData, source, desiredAmount);
 }
 
-pub fn tryTakingItems(self: *ItemSlot, destination: *ItemStack, amount: u16) void {
-	self.vtable.tryTakingItems(self.userData, destination, amount);
+pub fn tryTakingItems(self: *ItemSlot, destination: *ItemStack, desiredAmount: u16) void {
+	self.vtable.tryTakingItems(self.userData, destination, desiredAmount);
 }
 
 pub fn trySwappingItems(self: *ItemSlot, destination: *ItemStack) void {
@@ -122,7 +157,7 @@ pub fn mainButtonReleased(self: *ItemSlot, _: Vec2f) void {
 pub fn render(self: *ItemSlot, _: Vec2f) !void {
 	draw.setColor(0xffffffff);
 	if(self.renderFrame) {
-		texture.bindTo(0);
+		self.texture.bindTo(0);
 		draw.boundImage(self.pos, self.size);
 	}
 	if(self.itemStack.item) |item| {
@@ -140,8 +175,10 @@ pub fn render(self: *ItemSlot, _: Vec2f) !void {
 		draw.setColor(0x80808080);
 		draw.rect(self.pos, self.size);
 	} else if(self.hovered) {
-		self.hovered = false;
-		draw.setColor(0x300000ff);
-		draw.rect(self.pos, self.size);
+		if(self.mode != .immutable) {
+			self.hovered = false;
+			draw.setColor(0x300000ff);
+			draw.rect(self.pos, self.size);
+		}
 	}
 }
