@@ -78,8 +78,8 @@ pub fn deinit() void {
 	Bloom.deinit();
 	MeshSelection.deinit();
 	MenuBackGround.deinit();
-	chunk_meshing.deinit();
 	mesh_storage.deinit();
+	chunk_meshing.deinit();
 	reflectionCubeMap.deinit();
 }
 
