@@ -698,7 +698,7 @@ pub fn main() !void {
 	try graphics.init();
 	defer graphics.deinit();
 
-	try audio.init();
+	audio.init() catch std.log.err("Failed to initialize audio. Continuing the game without sounds.", .{});
 	defer audio.deinit();
 
 	try gui.init();

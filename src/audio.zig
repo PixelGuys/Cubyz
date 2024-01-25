@@ -10,10 +10,10 @@ const c = @cImport ({
 	@cInclude("stb/stb_vorbis.h");
 });
 
-fn handleError(paError: c_int) void {
+fn handleError(paError: c_int) !void {
 	if(paError != c.paNoError) {
 		std.log.err("PortAudio error: {s}", .{c.Pa_GetErrorText(paError)});
-		@panic("Audio error");
+		return error.paError;
 	}
 }
 
@@ -142,13 +142,14 @@ var stream: ?*c.PaStream = null;
 
 var sampleRate: f32 = 0;
 
-pub fn init() !void {
-	handleError(c.Pa_Initialize());
+pub fn init() error{paError}!void {
+	try handleError(c.Pa_Initialize());
+	errdefer handleError(c.Pa_Terminate()) catch {};
 
 	const device = c.Pa_GetDeviceInfo(c.Pa_GetDefaultOutputDevice());
 	sampleRate = @floatCast(device.*.defaultSampleRate);
 
-	handleError(c.Pa_OpenDefaultStream(
+	try handleError(c.Pa_OpenDefaultStream(
 		&stream,
 		0, // input channels
 		2, // stereo output
@@ -158,15 +159,16 @@ pub fn init() !void {
 		&patestCallback,
 		null
 	));
+	errdefer handleError(c.Pa_CloseStream(stream)) catch {};
 
-	handleError(c.Pa_StartStream(stream));
+	try handleError(c.Pa_StartStream(stream));
 	lastTime = std.time.milliTimestamp();
 }
 
 pub fn deinit() void {
-	handleError(c.Pa_StopStream(stream));
-	handleError(c.Pa_CloseStream(stream));
-	handleError(c.Pa_Terminate());
+	handleError(c.Pa_StopStream(stream)) catch {};
+	handleError(c.Pa_CloseStream(stream)) catch {};
+	handleError(c.Pa_Terminate()) catch {};
 	main.threadPool.closeAllTasksOfType(&MusicLoadTask.vtable);
 	musicCache.clear();
 	activeTasks.deinit(main.globalAllocator);
