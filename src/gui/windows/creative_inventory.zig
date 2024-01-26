@@ -46,7 +46,7 @@ pub fn onOpen() Allocator.Error!void {
 		for(0..8) |_| {
 			if(i >= items.items.len) break;
 			const item = items.items[i];
-			try row.add(try ItemSlot.init(.{0, 0}, .{.item = item, .amount = item.stackSize()}, &.{.tryTakingItems = &tryTakingItems}, i, .default, .takeOnly));
+			try row.add(try ItemSlot.init(.{0, 0}, .{.item = item, .amount = 1}, &.{.tryTakingItems = &tryTakingItems}, i, .default, .takeOnly));
 			i += 1;
 		}
 		try list.add(row);

@@ -85,7 +85,7 @@ pub fn init(pos: Vec2f, itemStack: ItemStack, vtable: *const VTable, userData: u
 		.vtable = vtable,
 		.userData = userData,
 		.pos = pos,
-		.text = try TextBuffer.init(main.globalAllocator, std.fmt.bufPrint(&buf, "{}", .{self.itemStack.amount}) catch "∞", .{}, false, .right),
+		.text = try TextBuffer.init(main.globalAllocator, std.fmt.bufPrint(&buf, "{}", .{itemStack.amount}) catch "∞", .{}, false, .right),
 		.texture = texture.value(),
 		.mode = mode,
 	};
