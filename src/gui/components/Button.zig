@@ -106,7 +106,7 @@ pub fn mainButtonReleased(self: *Button, mousePosition: Vec2f) void {
 	}
 }
 
-pub fn render(self: *Button, mousePosition: Vec2f) anyerror!void { // TODO: Remove anyerror once recursive error set inference is implemented.
+pub fn render(self: *Button, mousePosition: Vec2f) Allocator.Error!void {
 	texture.bindTo(0);
 	shader.bind();
 	graphics.c.glUniform1i(buttonUniforms.pressed, 0);

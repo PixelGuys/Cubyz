@@ -58,7 +58,7 @@ pub fn updateHovered(self: *MutexComponent, mousePosition: Vec2f) void {
 	self.child.updateHovered(mousePosition);
 }
 
-pub fn render(self: *MutexComponent, mousePosition: Vec2f) anyerror!void { // TODO: Remove anyerror once error union inference works in recursive loops.
+pub fn render(self: *MutexComponent, mousePosition: Vec2f) Allocator.Error!void {
 	self.mutex.lock();
 	defer self.mutex.unlock();
 	try self.child.render(mousePosition);

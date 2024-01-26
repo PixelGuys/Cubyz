@@ -91,7 +91,7 @@ pub fn updateHovered(self: *HorizontalList, mousePosition: Vec2f) void {
 	}
 }
 
-pub fn render(self: *HorizontalList, mousePosition: Vec2f) anyerror!void { // TODO: Remove anyerror once error union inference works in recursive loops.
+pub fn render(self: *HorizontalList, mousePosition: Vec2f) Allocator.Error!void {
 	const oldTranslation = draw.setTranslation(self.pos);
 	for(self.children.items) |*child| {
 		try child.render(mousePosition - self.pos);

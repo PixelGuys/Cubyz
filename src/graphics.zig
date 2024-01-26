@@ -788,7 +788,7 @@ pub const TextBuffer = struct {
 			x = self.getLineOffset(i);
 			for(self.glyphs[self.lineBreaks.items[i].index..self.lineBreaks.items[i+1].index]) |glyph| {
 				if(glyph.character != '\n') {
-					const ftGlyph = try TextRendering.getGlyph(glyph.index);
+					const ftGlyph = TextRendering.getGlyph(glyph.index) catch continue;
 					TextRendering.drawGlyph(ftGlyph, x + glyph.x_offset, y - glyph.y_offset, @bitCast(glyph.fontEffect));
 				}
 				x += glyph.x_advance;
@@ -853,7 +853,7 @@ pub const TextBuffer = struct {
 			x = self.getLineOffset(i);
 			for(self.glyphs[self.lineBreaks.items[i].index..self.lineBreaks.items[i+1].index]) |glyph| {
 				if(glyph.character != '\n') {
-					const ftGlyph = try TextRendering.getGlyph(glyph.index);
+					const ftGlyph = TextRendering.getGlyph(glyph.index) catch continue;
 					var fontEffect = glyph.fontEffect;
 					fontEffect.color = shadowColor(fontEffect.color);
 					TextRendering.drawGlyph(ftGlyph, x + glyph.x_offset, y - glyph.y_offset, @bitCast(fontEffect));
