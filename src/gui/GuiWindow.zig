@@ -116,10 +116,10 @@ pub fn __init() !void {
 
 	backgroundTexture = try Texture.initFromFile("assets/cubyz/ui/window_background.png");
 	titleTexture = try Texture.initFromFile("assets/cubyz/ui/window_title.png");
-	closeTexture = try Texture.initFromFile("assets/cubyz/ui/window_close.png");
-	zoomInTexture = try Texture.initFromFile("assets/cubyz/ui/window_zoom_in.png");
-	zoomOutTexture = try Texture.initFromFile("assets/cubyz/ui/window_zoom_out.png");
-	expandTitleBarTexture = try Texture.initFromFile("assets/cubyz/ui/window_expand.png");
+	closeTexture = try Texture.initFromFile("assets/cubyz/ui/window_close_28.png");
+	zoomInTexture = try Texture.initFromFile("assets/cubyz/ui/window_zoom_in_28.png");
+	zoomOutTexture = try Texture.initFromFile("assets/cubyz/ui/window_zoom_out_28.png");
+	expandTitleBarTexture = try Texture.initFromFile("assets/cubyz/ui/window_expand_28.png");
 }
 
 pub fn __deinit() void {
