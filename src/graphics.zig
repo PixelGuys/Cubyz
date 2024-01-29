@@ -28,7 +28,7 @@ const Vec3f = vec.Vec3f;
 const main = @import("main.zig");
 const Window = main.Window;
 
-const Allocator = std.mem.Allocator;
+const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 pub const c = @cImport ({
 	@cInclude("glad/glad.h");
@@ -130,7 +130,7 @@ pub const draw = struct {
 	var rectVBO: c_uint = undefined;
 
 	fn initRect() void {
-		rectShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Rect.vs", "assets/cubyz/shaders/graphics/Rect.fs", &rectUniforms) catch Shader{.id = 0};
+		rectShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Rect.vs", "assets/cubyz/shaders/graphics/Rect.fs", &rectUniforms);
 		const rawData = [_]f32 {
 			0, 0,
 			0, 1,
@@ -184,7 +184,7 @@ pub const draw = struct {
 	var lineVBO: c_uint = undefined;
 
 	fn initLine() void {
-		lineShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Line.vs", "assets/cubyz/shaders/graphics/Line.fs", &lineUniforms) catch Shader{.id = 0};
+		lineShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Line.vs", "assets/cubyz/shaders/graphics/Line.fs", &lineUniforms);
 		const rawData = [_]f32 {
 			0, 0,
 			1, 1,
@@ -283,7 +283,7 @@ pub const draw = struct {
 	var circleVBO: c_uint = undefined;
 
 	fn initCircle() void {
-		circleShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Circle.vs", "assets/cubyz/shaders/graphics/Circle.fs", &circleUniforms) catch Shader{.id = 0};
+		circleShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Circle.vs", "assets/cubyz/shaders/graphics/Circle.fs", &circleUniforms);
 		const rawData = [_]f32 {
 			-1, -1,
 			-1, 1,
@@ -336,7 +336,7 @@ pub const draw = struct {
 	var imageShader: Shader = undefined;
 
 	fn initImage() void {
-		imageShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Image.vs", "assets/cubyz/shaders/graphics/Image.fs", &imageUniforms) catch Shader{.id = 0};
+		imageShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Image.vs", "assets/cubyz/shaders/graphics/Image.fs", &imageUniforms);
 	}
 
 	fn deinitImage() void {
@@ -386,16 +386,16 @@ pub const draw = struct {
 
 	// ----------------------------------------------------------------------------
 	
-	pub fn text(_text: []const u8, x: f32, y: f32, fontSize: f32, alignment: TextBuffer.Alignment) !void {
-		try TextRendering.renderText(_text, x, y, fontSize, .{.color = @truncate(@as(u32, @bitCast(color)))}, alignment);
+	pub fn text(_text: []const u8, x: f32, y: f32, fontSize: f32, alignment: TextBuffer.Alignment) void {
+		TextRendering.renderText(_text, x, y, fontSize, .{.color = @truncate(@as(u32, @bitCast(color)))}, alignment);
 	}
 
-	pub inline fn print(comptime format: []const u8, args: anytype, x: f32, y: f32, fontSize: f32, alignment: TextBuffer.Alignment) !void {
-		var stackFallback = std.heap.stackFallback(4096, main.globalAllocator);
+	pub inline fn print(comptime format: []const u8, args: anytype, x: f32, y: f32, fontSize: f32, alignment: TextBuffer.Alignment) void {
+		var stackFallback = std.heap.stackFallback(4096, main.globalAllocator.allocator);
 		const allocator = stackFallback.get();
-		const string = try std.fmt.allocPrint(allocator, format, args);
+		const string = std.fmt.allocPrint(allocator, format, args) catch unreachable;
 		defer allocator.free(string);
-		try text(string, x, y ,fontSize, alignment);
+		text(string, x, y ,fontSize, alignment);
 	}
 };
 
@@ -451,24 +451,24 @@ pub const TextBuffer = struct {
 	lines: std.ArrayList(Line),
 	lineBreaks: std.ArrayList(LineBreak),
 
-	fn addLine(self: *TextBuffer, line: Line) !void {
+	fn addLine(self: *TextBuffer, line: Line) void {
 		if(line.start != line.end) {
-			try self.lines.append(line);
+			self.lines.append(line) catch unreachable;
 		}
 	}
 
-	fn initLines(self: *TextBuffer, comptime isUnderline: bool) !void {
+	fn initLines(self: *TextBuffer, comptime isUnderline: bool) void {
 		var line: Line = Line {.start = 0, .end = 0, .color = 0, .isUnderline = isUnderline};
 		var lastFontEffect: FontEffect = .{};
 		for(self.glyphs) |glyph| {
 			const fontEffect = glyph.fontEffect;
 			if(lastFontEffect.hasLine(isUnderline)) {
 				if(fontEffect.color != lastFontEffect.color) {
-					try self.addLine(line);
+					self.addLine(line);
 					line.color = fontEffect.color;
 					line.start = line.end;
 				} else if(!fontEffect.hasLine(isUnderline)) {
-					try self.addLine(line);
+					self.addLine(line);
 				}
 			} else if(fontEffect.hasLine(isUnderline)) {
 				line.start = line.end;
@@ -478,7 +478,7 @@ pub const TextBuffer = struct {
 			line.end += glyph.x_advance;
 		}
 		if(lastFontEffect.hasLine(isUnderline)) {
-			try self.addLine(line);
+			self.addLine(line);
 		}
 	}
 
@@ -492,52 +492,52 @@ pub const TextBuffer = struct {
 		curChar: u21 = undefined,
 		curIndex: u32 = 0,
 
-		fn appendControlGetNext(self: *Parser) !?void {
+		fn appendControlGetNext(self: *Parser) ?void {
 			if(self.showControlCharacters) {
-				try self.fontEffects.append(.{.color = 0x808080});
-				try self.parsedText.append(self.curChar);
-				try self.characterIndex.append(self.curIndex);
+				self.fontEffects.append(.{.color = 0x808080}) catch unreachable;
+				self.parsedText.append(self.curChar) catch unreachable;
+				self.characterIndex.append(self.curIndex) catch unreachable;
 			}
 			self.curIndex = @intCast(self.unicodeIterator.i);
 			self.curChar = self.unicodeIterator.nextCodepoint() orelse return null;
 		}
 
-		fn appendGetNext(self: *Parser) !?void {
-			try self.fontEffects.append(self.currentFontEffect);
-			try self.parsedText.append(self.curChar);
-			try self.characterIndex.append(self.curIndex);
+		fn appendGetNext(self: *Parser) ?void {
+			self.fontEffects.append(self.currentFontEffect) catch unreachable;
+			self.parsedText.append(self.curChar) catch unreachable;
+			self.characterIndex.append(self.curIndex) catch unreachable;
 			self.curIndex = @intCast(self.unicodeIterator.i);
 			self.curChar = self.unicodeIterator.nextCodepoint() orelse return null;
 		}
 
-		fn parse(self: *Parser) !void {
+		fn parse(self: *Parser) void {
 			self.curIndex = @intCast(self.unicodeIterator.i);
 			self.curChar = self.unicodeIterator.nextCodepoint() orelse return;
 			while(true) switch(self.curChar) {
 				'*' => {
-					try self.appendControlGetNext() orelse return;
+					self.appendControlGetNext() orelse return;
 					if(self.curChar == '*') {
-						try self.appendControlGetNext() orelse return;
+						self.appendControlGetNext() orelse return;
 						self.currentFontEffect.bold = !self.currentFontEffect.bold;
 					} else {
 						self.currentFontEffect.italic = !self.currentFontEffect.italic;
 					}
 				},
 				'_' => {
-					try self.appendControlGetNext() orelse return;
+					self.appendControlGetNext() orelse return;
 					if(self.curChar == '_') {
-						try self.appendControlGetNext() orelse return;
+						self.appendControlGetNext() orelse return;
 						self.currentFontEffect.strikethrough = !self.currentFontEffect.strikethrough;
 					} else {
 						self.currentFontEffect.underline = !self.currentFontEffect.underline;
 					}
 				},
 				'\\' => {
-					try self.appendControlGetNext() orelse return;
-					try self.appendGetNext() orelse return;
+					self.appendControlGetNext() orelse return;
+					self.appendGetNext() orelse return;
 				},
 				'#' => {
-					try self.appendControlGetNext() orelse return;
+					self.appendControlGetNext() orelse return;
 					var shift: u5 = 20;
 					while(true) : (shift -= 4) {
 						self.currentFontEffect.color = (self.currentFontEffect.color & ~(@as(u24, 0xf) << shift)) | @as(u24, switch(self.curChar) {
@@ -546,44 +546,44 @@ pub const TextBuffer = struct {
 							'A', 'B', 'C', 'D', 'E', 'F' => self.curChar - 'A' + 10,
 							else => 0,
 						}) << shift;
-						try self.appendControlGetNext() orelse return;
+						self.appendControlGetNext() orelse return;
 						if(shift == 0) break;
 					}
 				},
 				else => {
-					try self.appendGetNext() orelse return;
+					self.appendGetNext() orelse return;
 				}
 			};
 		}
 	};
 
-	pub fn init(allocator: Allocator, text: []const u8, initialFontEffect: FontEffect, showControlCharacters: bool, alignment: Alignment) Allocator.Error!TextBuffer {
+	pub fn init(allocator: NeverFailingAllocator, text: []const u8, initialFontEffect: FontEffect, showControlCharacters: bool, alignment: Alignment) TextBuffer {
 		var self: TextBuffer = undefined;
 		self.alignment = alignment;
-		var stackFallback = std.heap.stackFallback(4096, main.globalAllocator);
+		var stackFallback = std.heap.stackFallback(4096, main.globalAllocator.allocator);
 		const stackFallbackAllocator = stackFallback.get();
 		// Parse the input text:
 		var parser = Parser {
 			.unicodeIterator = std.unicode.Utf8Iterator{.bytes = text, .i = 0},
 			.currentFontEffect = initialFontEffect,
 			.parsedText = std.ArrayList(u32).init(stackFallbackAllocator),
-			.fontEffects = std.ArrayList(FontEffect).init(allocator),
-			.characterIndex = std.ArrayList(u32).init(allocator),
+			.fontEffects = std.ArrayList(FontEffect).init(allocator.allocator),
+			.characterIndex = std.ArrayList(u32).init(allocator.allocator),
 			.showControlCharacters = showControlCharacters
 		};
 		defer parser.fontEffects.deinit();
 		defer parser.parsedText.deinit();
 		defer parser.characterIndex.deinit();
-		self.lines = std.ArrayList(Line).init(allocator);
-		self.lineBreaks = std.ArrayList(LineBreak).init(allocator);
-		try parser.parse();
+		self.lines = std.ArrayList(Line).init(allocator.allocator);
+		self.lineBreaks = std.ArrayList(LineBreak).init(allocator.allocator);
+		parser.parse();
 		if(parser.parsedText.items.len == 0) {
 			self.glyphs = &[0]GlyphData{};
 			return self;
 		}
 
 		// Let harfbuzz do its thing:
-		const buffer = hbft.hb_buffer_create() orelse return error.OutOfMemory;
+		const buffer = hbft.hb_buffer_create() orelse @panic("Out of Memory while creating harfbuzz buffer");
 		defer hbft.hb_buffer_destroy(buffer);
 		hbft.hb_buffer_add_utf32(buffer, parser.parsedText.items.ptr, @intCast(parser.parsedText.items.len), 0, @intCast(parser.parsedText.items.len));
 		hbft.hb_buffer_set_direction(buffer, hbft.HB_DIRECTION_LTR);
@@ -601,8 +601,8 @@ pub const TextBuffer = struct {
 		}
 
 		// Guess the text index from the given cluster indices. Only works if the number of glyphs and the number of characters in a cluster is the same.
-		const textIndexGuess = try stackFallbackAllocator.alloc(u32, glyphInfos.len);
-		defer stackFallbackAllocator.free(textIndexGuess);
+		const textIndexGuess = main.stackAllocator.alloc(u32, glyphInfos.len);
+		defer main.stackAllocator.free(textIndexGuess);
 		for(textIndexGuess, 0..) |*index, i| {
 			if(i == 0 or glyphInfos[i-1].cluster != glyphInfos[i].cluster) {
 				index.* = glyphInfos[i].cluster;
@@ -618,7 +618,7 @@ pub const TextBuffer = struct {
 		}
 
 		// Merge it all together:
-		self.glyphs = try allocator.alloc(GlyphData, glyphInfos.len);
+		self.glyphs = allocator.alloc(GlyphData, glyphInfos.len);
 		for(self.glyphs, 0..) |*glyph, i| {
 			glyph.x_advance = @as(f32, @floatFromInt(glyphPositions[i].x_advance))/4.0;
 			glyph.y_advance = @as(f32, @floatFromInt(glyphPositions[i].y_advance))/4.0;
@@ -632,10 +632,10 @@ pub const TextBuffer = struct {
 		}
 
 		// Find the lines:
-		try self.initLines(true);
-		try self.initLines(false);
-		try self.lineBreaks.append(.{.index = 0, .width = 0});
-		try self.lineBreaks.append(.{.index = @intCast(self.glyphs.len), .width = 0});
+		self.initLines(true);
+		self.initLines(false);
+		self.lineBreaks.append(.{.index = 0, .width = 0}) catch unreachable;
+		self.lineBreaks.append(.{.index = @intCast(self.glyphs.len), .width = 0}) catch unreachable;
 		return self;
 	}
 
@@ -694,10 +694,10 @@ pub const TextBuffer = struct {
 	}
 
 	/// Returns the calculated dimensions of the text block.
-	pub fn calculateLineBreaks(self: *TextBuffer, fontSize: f32, maxLineWidth: f32) !Vec2f {
+	pub fn calculateLineBreaks(self: *TextBuffer, fontSize: f32, maxLineWidth: f32) Vec2f {
 		self.lineBreaks.clearRetainingCapacity();
 		const spaceCharacterWidth = 8;
-		try self.lineBreaks.append(.{.index = 0, .width = 0});
+		self.lineBreaks.append(.{.index = 0, .width = 0}) catch unreachable;
 		const scaledMaxWidth = maxLineWidth/fontSize*16.0;
 		var lineWidth: f32 = 0;
 		var lastSpaceWidth: f32 = 0;
@@ -709,7 +709,7 @@ pub const TextBuffer = struct {
 				lastSpaceIndex = @intCast(i+1);
 			}
 			if(glyph.character == '\n') {
-				try self.lineBreaks.append(.{.index = @intCast(i+1), .width = lineWidth - spaceCharacterWidth});
+				self.lineBreaks.append(.{.index = @intCast(i+1), .width = lineWidth - spaceCharacterWidth}) catch unreachable;
 				lineWidth = 0;
 				lastSpaceIndex = 0;
 				lastSpaceWidth = 0;
@@ -717,11 +717,11 @@ pub const TextBuffer = struct {
 			if(lineWidth > scaledMaxWidth) {
 				if(lastSpaceIndex != 0) {
 					lineWidth -= lastSpaceWidth;
-					try self.lineBreaks.append(.{.index = lastSpaceIndex, .width = lastSpaceWidth - spaceCharacterWidth});
+					self.lineBreaks.append(.{.index = lastSpaceIndex, .width = lastSpaceWidth - spaceCharacterWidth}) catch unreachable;
 					lastSpaceIndex = 0;
 					lastSpaceWidth = 0;
 				} else {
-					try self.lineBreaks.append(.{.index = @intCast(i), .width = lineWidth - glyph.x_advance});
+					self.lineBreaks.append(.{.index = @intCast(i), .width = lineWidth - glyph.x_advance}) catch unreachable;
 					lineWidth = glyph.x_advance;
 					lastSpaceIndex = 0;
 					lastSpaceWidth = 0;
@@ -729,11 +729,11 @@ pub const TextBuffer = struct {
 			}
 		}
 		self.width = maxLineWidth;
-		try self.lineBreaks.append(.{.index = @intCast(self.glyphs.len), .width = lineWidth});
+		self.lineBreaks.append(.{.index = @intCast(self.glyphs.len), .width = lineWidth}) catch unreachable;
 		return Vec2f{maxLineWidth*fontSize/16.0, @as(f32, @floatFromInt(self.lineBreaks.items.len - 1))*fontSize};
 	}
 
-	pub fn drawSelection(self: TextBuffer, pos: Vec2f, selectionStart: u32, selectionEnd: u32) !void {
+	pub fn drawSelection(self: TextBuffer, pos: Vec2f, selectionStart: u32, selectionEnd: u32) void {
 		std.debug.assert(selectionStart <= selectionEnd);
 		var x: f32 = self.getLineOffset(0);
 		var y: f32 = 0;
@@ -766,8 +766,8 @@ pub const TextBuffer = struct {
 		}
 	}
 
-	pub fn render(self: TextBuffer, _x: f32, _y: f32, _fontSize: f32) !void {
-		try self.renderShadow(_x, _y, _fontSize);
+	pub fn render(self: TextBuffer, _x: f32, _y: f32, _fontSize: f32) void {
+		self.renderShadow(_x, _y, _fontSize);
 		const oldTranslation = draw.setTranslation(.{_x, _y});
 		defer draw.restoreTranslation(oldTranslation);
 		const oldScale = draw.setScale(_fontSize/16.0);
@@ -781,7 +781,7 @@ pub const TextBuffer = struct {
 		c.glActiveTexture(c.GL_TEXTURE0);
 		c.glBindTexture(c.GL_TEXTURE_2D, TextRendering.glyphTexture[0]);
 		c.glBindVertexArray(draw.rectVAO);
-		const lineWraps: []f32 = try main.stackAllocator.alloc(f32, self.lineBreaks.items.len - 1);
+		const lineWraps: []f32 = main.stackAllocator.alloc(f32, self.lineBreaks.items.len - 1);
 		defer main.stackAllocator.free(lineWraps);
 		var i: usize = 0;
 		while(i < self.lineBreaks.items.len - 1) : (i += 1) {
@@ -832,7 +832,7 @@ pub const TextBuffer = struct {
 		}
 	}
 
-	fn renderShadow(self: TextBuffer, _x: f32, _y: f32, _fontSize: f32) !void { // Basically a copy of render with some color and position changes.
+	fn renderShadow(self: TextBuffer, _x: f32, _y: f32, _fontSize: f32) void { // Basically a copy of render with some color and position changes.
 		const oldTranslation = draw.setTranslation(.{_x + _fontSize/16.0, _y + _fontSize/16.0});
 		defer draw.restoreTranslation(oldTranslation);
 		const oldScale = draw.setScale(_fontSize/16.0);
@@ -846,7 +846,7 @@ pub const TextBuffer = struct {
 		c.glActiveTexture(c.GL_TEXTURE0);
 		c.glBindTexture(c.GL_TEXTURE_2D, TextRendering.glyphTexture[0]);
 		c.glBindVertexArray(draw.rectVAO);
-		const lineWraps: []f32 = try main.stackAllocator.alloc(f32, self.lineBreaks.items.len - 1);
+		const lineWraps: []f32 = main.stackAllocator.alloc(f32, self.lineBreaks.items.len - 1);
 		defer main.stackAllocator.free(lineWraps);
 		var i: usize = 0;
 		while(i < self.lineBreaks.items.len - 1) : (i += 1) {
@@ -926,7 +926,7 @@ const TextRendering = struct {
 	}
 
 	fn init() !void {
-		shader = try Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Text.vs", "assets/cubyz/shaders/graphics/Text.fs", &uniforms);
+		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Text.vs", "assets/cubyz/shaders/graphics/Text.fs", &uniforms);
 		shader.bind();
 		c.glUniform1i(uniforms.texture_sampler, 0);
 		c.glUniform1f(uniforms.alpha, 1.0);
@@ -937,9 +937,9 @@ const TextRendering = struct {
 		harfbuzzFace = hbft.hb_ft_face_create_referenced(freetypeFace);
 		harfbuzzFont = hbft.hb_font_create(harfbuzzFace);
 
-		glyphMapping = std.ArrayList(u31).init(main.globalAllocator);
-		glyphData = std.ArrayList(Glyph).init(main.globalAllocator);
-		try glyphData.append(undefined); // 0 is a reserved value.
+		glyphMapping = std.ArrayList(u31).init(main.globalAllocator.allocator);
+		glyphData = std.ArrayList(Glyph).init(main.globalAllocator.allocator);
+		glyphData.append(undefined) catch unreachable; // 0 is a reserved value.
 		c.glGenTextures(2, &glyphTexture);
 		c.glBindTexture(c.GL_TEXTURE_2D, glyphTexture[0]);
 		c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_R8, textureWidth, textureHeight, 0, c.GL_RED, c.GL_UNSIGNED_BYTE, null);
@@ -963,7 +963,7 @@ const TextRendering = struct {
 		hbft.hb_font_destroy(harfbuzzFont);
 	}
 
-	fn resizeTexture(newWidth: i32) !void {
+	fn resizeTexture(newWidth: i32) void {
 		textureWidth = newWidth;
 		const swap = glyphTexture[1];
 		glyphTexture[1] = glyphTexture[0];
@@ -980,12 +980,12 @@ const TextRendering = struct {
 		c.glUniform2f(uniforms.fontSize, @floatFromInt(textureWidth), @floatFromInt(textureHeight));
 	}
 
-	fn uploadData(bitmap: hbft.FT_Bitmap) !void {
+	fn uploadData(bitmap: hbft.FT_Bitmap) void {
 		const width: i32 = @bitCast(bitmap.width);
 		const height: i32 = @bitCast(bitmap.rows);
 		const buffer = bitmap.buffer orelse return;
 		if(textureOffset + width > textureWidth) {
-			try resizeTexture(textureWidth*2);
+			resizeTexture(textureWidth*2);
 		}
 		c.glPixelStorei(c.GL_UNPACK_ALIGNMENT, 1);
 		c.glTexSubImage2D(c.GL_TEXTURE_2D, 0, textureOffset, 0, width, height, c.GL_RED, c.GL_UNSIGNED_BYTE, buffer);
@@ -994,7 +994,7 @@ const TextRendering = struct {
 
 	fn getGlyph(index: u32) !Glyph {
 		if(index >= glyphMapping.items.len) {
-			try glyphMapping.appendNTimes(0, index - glyphMapping.items.len + 1);
+			glyphMapping.appendNTimes(0, index - glyphMapping.items.len + 1) catch unreachable;
 		}
 		if(glyphMapping.items[index] == 0) {// glyph was not initialized yet.
 			try ftError(hbft.FT_Load_Glyph(freetypeFace, index, hbft.FT_LOAD_RENDER));
@@ -1003,13 +1003,13 @@ const TextRendering = struct {
 			const width = bitmap.width;
 			const height = bitmap.rows;
 			glyphMapping.items[index] = @intCast(glyphData.items.len);
-			(try glyphData.addOne()).* = Glyph {
+			(glyphData.addOne() catch unreachable).* = Glyph {
 				.textureX = textureOffset,
 				.size = Vec2i{@intCast(width), @intCast(height)},
 				.bearing = Vec2i{glyph.*.bitmap_left, 16 - glyph.*.bitmap_top},
 				.advance = @as(f32, @floatFromInt(glyph.*.advance.x))/@as(f32, 1 << 6),
 			};
-			try uploadData(bitmap);
+			uploadData(bitmap);
 		}
 		return glyphData.items[glyphMapping.items[index]];
 	}
@@ -1038,13 +1038,13 @@ const TextRendering = struct {
 		}
 	}
 
-	fn renderText(text: []const u8, x: f32, y: f32, fontSize: f32, initialFontEffect: TextBuffer.FontEffect, alignment: TextBuffer.Alignment) !void {
-		var stackFallback = std.heap.stackFallback(4096, main.globalAllocator);
+	fn renderText(text: []const u8, x: f32, y: f32, fontSize: f32, initialFontEffect: TextBuffer.FontEffect, alignment: TextBuffer.Alignment) void {
+		var stackFallback = std.heap.stackFallback(4096, main.globalAllocator.allocator);
 		const allocator = stackFallback.get();
-		const buf = try TextBuffer.init(allocator, text, initialFontEffect, false, alignment);
+		const buf = TextBuffer.init(.{.allocator = allocator, .IAssertThatTheProvidedAllocatorCantFail = {}}, text, initialFontEffect, false, alignment);
 		defer buf.deinit();
 
-		try buf.render(x, y, fontSize);
+		buf.render(x, y, fontSize);
 	}
 };
 
@@ -1054,8 +1054,10 @@ pub fn init() !void {
 	draw.initImage();
 	draw.initLine();
 	draw.initRect();
-	try TextRendering.init();
-	try block_texture.init();
+	TextRendering.init() catch |err| {
+		std.log.err("Error while initializing TextRendering: {s}", .{@errorName(err)});
+	};
+	block_texture.init();
 }
 
 pub fn deinit() void {
@@ -1073,7 +1075,7 @@ pub const Shader = struct {
 	
 	fn addShader(self: *const Shader, filename: []const u8, shader_stage: c_uint) !void {
 		const source = main.files.read(main.stackAllocator, filename) catch |err| {
-			std.log.warn("Couldn't find file: {s}", .{filename});
+			std.log.warn("Couldn't read file: {s}", .{filename});
 			return err;
 		};
 		defer main.stackAllocator.free(source);
@@ -1114,16 +1116,16 @@ pub const Shader = struct {
 		}
 	}
 	
-	pub fn init(vertex: []const u8, fragment: []const u8) !Shader {
+	pub fn init(vertex: []const u8, fragment: []const u8) Shader {
 		const shader = Shader{.id = c.glCreateProgram()};
-		try shader.addShader(vertex, c.GL_VERTEX_SHADER);
-		try shader.addShader(fragment, c.GL_FRAGMENT_SHADER);
-		try shader.link();
+		shader.addShader(vertex, c.GL_VERTEX_SHADER) catch return shader;
+		shader.addShader(fragment, c.GL_FRAGMENT_SHADER) catch return shader;
+		shader.link() catch return shader;
 		return shader;
 	}
 	
-	pub fn initAndGetUniforms(vertex: []const u8, fragment: []const u8, ptrToUniformStruct: anytype) !Shader {
-		const self = try Shader.init(vertex, fragment);
+	pub fn initAndGetUniforms(vertex: []const u8, fragment: []const u8, ptrToUniformStruct: anytype) Shader {
+		const self = Shader.init(vertex, fragment);
 		inline for(@typeInfo(@TypeOf(ptrToUniformStruct.*)).Struct.fields) |field| {
 			if(field.type == c_int) {
 				@field(ptrToUniformStruct, field.name) = c.glGetUniformLocation(self.id, field.name[0..]);
@@ -1132,15 +1134,15 @@ pub const Shader = struct {
 		return self;
 	}
 
-	pub fn initCompute(compute: []const u8) !Shader {
+	pub fn initCompute(compute: []const u8) Shader {
 		const shader = Shader{.id = c.glCreateProgram()};
-		try shader.addShader(compute, c.GL_COMPUTE_SHADER);
-		try shader.link();
+		shader.addShader(compute, c.GL_COMPUTE_SHADER) catch return shader;
+		shader.link() catch return shader;
 		return shader;
 	}
 
-	pub fn initComputeAndGetUniforms(compute: []const u8, ptrToUniformStruct: anytype) !Shader {
-		const self = try Shader.initCompute(compute);
+	pub fn initComputeAndGetUniforms(compute: []const u8, ptrToUniformStruct: anytype) Shader {
+		const self = Shader.initCompute(compute);
 		inline for(@typeInfo(@TypeOf(ptrToUniformStruct.*)).Struct.fields) |field| {
 			if(field.type == c_int) {
 				@field(ptrToUniformStruct, field.name) = c.glGetUniformLocation(self.id, field.name[0..]);
@@ -1224,7 +1226,7 @@ pub fn LargeBuffer(comptime Entry: type) type {
 			self.capacity = size;
 		}
 
-		pub fn init(self: *Self, allocator: Allocator, size: u31, binding: c_uint) !void {
+		pub fn init(self: *Self, allocator: NeverFailingAllocator, size: u31, binding: c_uint) void {
 			self.binding = binding;
 			self.createBuffer(size);
 			self.activeFence = 0;
@@ -1232,11 +1234,11 @@ pub fn LargeBuffer(comptime Entry: type) type {
 				fence.* = c.glFenceSync(c.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 			}
 			for(&self.fencedFreeLists) |*list| {
-				list.* = std.ArrayList(SubAllocation).init(allocator);
+				list.* = std.ArrayList(SubAllocation).init(allocator.allocator);
 			}
 
-			self.freeBlocks = std.ArrayList(SubAllocation).init(allocator);
-			try self.freeBlocks.append(.{.start = 0, .len = size});
+			self.freeBlocks = std.ArrayList(SubAllocation).init(allocator.allocator);
+			self.freeBlocks.append(.{.start = 0, .len = size}) catch unreachable;
 		}
 
 		pub fn deinit(self: *Self) void {
@@ -1250,11 +1252,11 @@ pub fn LargeBuffer(comptime Entry: type) type {
 			self.freeBlocks.deinit();
 		}
 
-		pub fn beginRender(self: *Self) !void {
+		pub fn beginRender(self: *Self) void {
 			self.activeFence += 1;
 			if(self.activeFence == self.fences.len) self.activeFence = 0;
 			for(self.fencedFreeLists[self.activeFence].items) |allocation| {
-				try self.finalFree(allocation);
+				self.finalFree(allocation);
 			}
 			self.fencedFreeLists[self.activeFence].clearRetainingCapacity();
 			_ = c.glClientWaitSync(self.fences[self.activeFence], 0, c.GL_TIMEOUT_IGNORED); // Make sure the render calls that accessed these parts of the buffer have finished.
@@ -1265,7 +1267,7 @@ pub fn LargeBuffer(comptime Entry: type) type {
 			self.fences[self.activeFence] = c.glFenceSync(c.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 		}
 
-		fn alloc(self: *Self, size: u31) !SubAllocation {
+		fn alloc(self: *Self, size: u31) SubAllocation {
 			var smallestBlock: ?*SubAllocation = null;
 			for(self.freeBlocks.items, 0..) |*block, i| {
 				if(size == block.len) {
@@ -1288,9 +1290,9 @@ pub fn LargeBuffer(comptime Entry: type) type {
 				defer oldBuffer.deinit();
 				const oldCapacity = self.capacity;
 				self.createBuffer(self.capacity*|2); // TODO: Is there a way to free the old buffer before creating the new one?
-				if(self.capacity == oldCapacity) return error.OutOfMemory;
+				if(self.capacity == oldCapacity) @panic("Not enough addressable GPU memory available.");
 				self.used += self.capacity - oldCapacity;
-				try self.finalFree(.{.start = oldCapacity, .len = self.capacity - oldCapacity});
+				self.finalFree(.{.start = oldCapacity, .len = self.capacity - oldCapacity});
 
 				c.glBindBuffer(c.GL_COPY_READ_BUFFER, oldBuffer.bufferID);
 				c.glBindBuffer(c.GL_COPY_WRITE_BUFFER, self.ssbo.bufferID);
@@ -1299,7 +1301,7 @@ pub fn LargeBuffer(comptime Entry: type) type {
 			}
 		}
 
-		fn finalFree(self: *Self, _allocation: SubAllocation) !void {
+		fn finalFree(self: *Self, _allocation: SubAllocation) void {
 			if(_allocation.len == 0) return;
 			self.used -= _allocation.len;
 			var allocation = _allocation;
@@ -1316,22 +1318,22 @@ pub fn LargeBuffer(comptime Entry: type) type {
 					return;
 				}
 			}
-			try self.freeBlocks.append(allocation);
+			self.freeBlocks.append(allocation) catch unreachable;
 		}
 
-		pub fn free(self: *Self, allocation: SubAllocation) !void {
+		pub fn free(self: *Self, allocation: SubAllocation) void {
 			if(allocation.len == 0) return;
-			try self.fencedFreeLists[self.activeFence].append(allocation);
+			self.fencedFreeLists[self.activeFence].append(allocation) catch unreachable;
 		}
 
 		/// Must unmap after use!
-		pub fn allocateAndMapRange(self: *Self, len: usize, allocation: *SubAllocation) ![]Entry {
-			try self.free(allocation.*);
+		pub fn allocateAndMapRange(self: *Self, len: usize, allocation: *SubAllocation) []Entry {
+			self.free(allocation.*);
 			if(len == 0) {
 				allocation.len = 0;
 				return &.{};
 			}
-			allocation.* = try self.alloc(@intCast(len));
+			allocation.* = self.alloc(@intCast(len));
 			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.ssbo.bufferID);
 			const ptr: [*]Entry = @ptrCast(@alignCast(
 				c.glMapBufferRange(c.GL_SHADER_STORAGE_BUFFER, @as(c_long, allocation.start)*@sizeOf(Entry), @as(c_long, allocation.len)*@sizeOf(Entry), c.GL_MAP_WRITE_BIT | c.GL_MAP_INVALIDATE_RANGE_BIT)
@@ -1345,13 +1347,13 @@ pub fn LargeBuffer(comptime Entry: type) type {
 			std.debug.assert(c.glUnmapBuffer(c.GL_SHADER_STORAGE_BUFFER) == c.GL_TRUE);
 		}
 
-		pub fn uploadData(self: *Self, data: []Entry, allocation: *SubAllocation) !void {
-			try self.free(allocation.*);
+		pub fn uploadData(self: *Self, data: []Entry, allocation: *SubAllocation) void {
+			self.free(allocation.*);
 			if(data.len == 0) {
 				allocation.len = 0;
 				return;
 			}
-			allocation.* = try self.alloc(@intCast(data.len));
+			allocation.* = self.alloc(@intCast(data.len));
 			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.ssbo.bufferID);
 			const ptr: [*]Entry = @ptrCast(@alignCast(
 				c.glMapBufferRange(c.GL_SHADER_STORAGE_BUFFER, @as(c_long, allocation.start)*@sizeOf(Entry), @as(c_long, allocation.len)*@sizeOf(Entry), c.GL_MAP_WRITE_BIT | c.GL_MAP_INVALIDATE_RANGE_BIT)
@@ -1506,7 +1508,7 @@ pub const TextureArray = struct {
 	}
 
 	/// (Re-)Generates the GPU buffer.
-	pub fn generate(self: TextureArray, images: []Image, mipmapping: bool) !void {
+	pub fn generate(self: TextureArray, images: []Image, mipmapping: bool) void {
 		var maxWidth: u31 = 0;
 		var maxHeight: u31 = 0;
 		for(images) |image| {
@@ -1527,11 +1529,11 @@ pub const TextureArray = struct {
 
 		const maxLOD = if(mipmapping) 1 + std.math.log2_int(u31, @min(maxWidth, maxHeight)) else 1;
 		c.glTexStorage3D(c.GL_TEXTURE_2D_ARRAY, maxLOD, c.GL_RGBA8, maxWidth, maxHeight, @intCast(images.len));
-		var arena = std.heap.ArenaAllocator.init(main.globalAllocator);
+		var arena = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
 		defer arena.deinit();
-		const lodBuffer: [][]Color = try arena.allocator().alloc([]Color, maxLOD);
+		const lodBuffer: [][]Color = arena.allocator().alloc([]Color, maxLOD);
 		for(lodBuffer, 0..) |*buffer, i| {
-			buffer.* = try arena.allocator().alloc(Color, (maxWidth >> @intCast(i))*(maxHeight >> @intCast(i)));
+			buffer.* = arena.allocator().alloc(Color, (maxWidth >> @intCast(i))*(maxHeight >> @intCast(i)));
 		}
 		
 		for(images, 0..) |image, i| {
@@ -1585,9 +1587,12 @@ pub const Texture = struct {
 		return self;
 	}
 
-	pub fn initFromFile(path: []const u8) !Texture {
+	pub fn initFromFile(path: []const u8) Texture {
 		const self = Texture.init();
-		const image = try Image.readFromFile(main.stackAllocator, path);
+		const image = Image.readFromFile(main.stackAllocator, path) catch |err| blk: {
+			std.log.err("Couldn't read image from {s}: {s}", .{path, @errorName(err)});
+			break :blk Image.defaultImage;
+		};
 		defer image.deinit(main.stackAllocator);
 		self.generate(image);
 		return self;
@@ -1736,35 +1741,35 @@ pub const Image = struct {
 	width: u31,
 	height: u31,
 	imageData: []Color,
-	pub fn init(allocator: Allocator, width: u31, height: u31) !Image {
+	pub fn init(allocator: NeverFailingAllocator, width: u31, height: u31) Image {
 		return Image{
 			.width = width,
 			.height = height,
-			.imageData = try allocator.alloc(Color, width*height),
+			.imageData = allocator.alloc(Color, width*height),
 		};
 	}
-	pub fn deinit(self: Image, allocator: Allocator) void {
+	pub fn deinit(self: Image, allocator: NeverFailingAllocator) void {
 		if(self.imageData.ptr == &defaultImageData) return;
 		allocator.free(self.imageData);
 	}
-	pub fn readFromFile(allocator: Allocator, path: []const u8) !Image {
+	pub fn readFromFile(allocator: NeverFailingAllocator, path: []const u8) !Image {
 		var result: Image = undefined;
 		var channel: c_int = undefined;
-		const nullTerminatedPath = try std.fmt.allocPrintZ(main.stackAllocator, "{s}", .{path}); // TODO: Find a more zig-friendly image loading library.
+		const nullTerminatedPath = std.fmt.allocPrintZ(main.stackAllocator.allocator, "{s}", .{path}) catch unreachable; // TODO: Find a more zig-friendly image loading library.
 		errdefer main.stackAllocator.free(nullTerminatedPath);
 		stb_image.stbi_set_flip_vertically_on_load(1);
 		const data = stb_image.stbi_load(nullTerminatedPath.ptr, @ptrCast(&result.width), @ptrCast(&result.height), &channel, 4) orelse {
 			return error.FileNotFound;
 		};
 		main.stackAllocator.free(nullTerminatedPath);
-		result.imageData = try allocator.dupe(Color, @as([*]Color, @ptrCast(data))[0..result.width*result.height]);
+		result.imageData = allocator.dupe(Color, @as([*]Color, @ptrCast(data))[0..result.width*result.height]);
 		stb_image.stbi_image_free(data);
 		return result;
 	}
 	pub fn exportToFile(self: Image, path: []const u8) !void {
-		const nullTerminated = try main.stackAllocator.dupeZ(u8, path);
+		const nullTerminated = main.stackAllocator.dupeZ(u8, path);
 		defer main.stackAllocator.free(nullTerminated);
-		_ = stb_image.stbi_write_png(nullTerminated.ptr, self.width, self.height, 4, self.imageData.ptr, self.width*4);
+		_ = stb_image.stbi_write_png(nullTerminated.ptr, self.width, self.height, 4, self.imageData.ptr, self.width*4); // TODO: Handle the return type.
 	}
 	pub fn getRGB(self: Image, x: usize, y: usize) Color {
 		std.debug.assert(x < self.width);
@@ -1794,8 +1799,8 @@ const block_texture = struct {
 	var depthTexture: Texture = undefined;
 	const textureSize = 128;
 
-	fn init() !void {
-		shader = try Shader.initAndGetUniforms("assets/cubyz/shaders/item_texture_post.vs", "assets/cubyz/shaders/item_texture_post.fs", &uniforms);
+	fn init() void {
+		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/item_texture_post.vs", "assets/cubyz/shaders/item_texture_post.fs", &uniforms);
 		depthTexture = Texture.init();
 		depthTexture.bind();
 		var data: [128*128]f32 = undefined;
@@ -1818,7 +1823,7 @@ const block_texture = struct {
 	}
 };
 
-pub fn generateBlockTexture(blockType: u16) !Texture {
+pub fn generateBlockTexture(blockType: u16) Texture {
 	const block = main.blocks.Block{.typ = blockType, .data = 0}; // TODO: Use natural standard data.
 	const textureSize = block_texture.textureSize;
 	c.glViewport(0, 0, textureSize, textureSize);
@@ -1877,7 +1882,7 @@ pub fn generateBlockTexture(blockType: u16) !Texture {
 		@memset(&face.light, ~@as(u32, 0));
 	}
 	var allocation: SubAllocation = .{.start = 0, .len = 0};
-	try main.renderer.chunk_meshing.faceBuffer.uploadData(faceData[0..faces], &allocation);
+	main.renderer.chunk_meshing.faceBuffer.uploadData(faceData[0..faces], &allocation);
 
 	c.glUniform3f(uniforms.modelPosition, -65.5 - 1.5, -92.631 - 1.5, -65.5 - 1.5);
 	c.glUniform1i(uniforms.visibilityMask, 0xff);
@@ -1907,7 +1912,7 @@ pub fn generateBlockTexture(blockType: u16) !Texture {
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 
-	try main.renderer.chunk_meshing.faceBuffer.free(allocation);
+	main.renderer.chunk_meshing.faceBuffer.free(allocation);
 	c.glViewport(0, 0, main.Window.width, main.Window.height);
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 	return texture;

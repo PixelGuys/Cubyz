@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const graphics = main.graphics;
@@ -17,10 +16,10 @@ pos: Vec2f,
 size: Vec2f,
 children: std.ArrayList(GuiComponent),
 
-pub fn init() Allocator.Error!*HorizontalList {
-	const self = try main.globalAllocator.create(HorizontalList);
+pub fn init() *HorizontalList {
+	const self = main.globalAllocator.create(HorizontalList);
 	self.* = HorizontalList {
-		.children = std.ArrayList(GuiComponent).init(main.globalAllocator),
+		.children = std.ArrayList(GuiComponent).init(main.globalAllocator.allocator),
 		.pos = .{0, 0},
 		.size = .{0, 0},
 	};
@@ -41,7 +40,7 @@ pub fn toComponent(self: *HorizontalList) GuiComponent {
 	};
 }
 
-pub fn add(self: *HorizontalList, _other: anytype) Allocator.Error!void {
+pub fn add(self: *HorizontalList, _other: anytype) void {
 	var other: GuiComponent = undefined;
 	if(@TypeOf(_other) == GuiComponent) {
 		other = _other;
@@ -51,7 +50,7 @@ pub fn add(self: *HorizontalList, _other: anytype) Allocator.Error!void {
 	other.mutPos().*[0] += self.size[0];
 	self.size[0] = other.pos()[0] + other.size()[0];
 	self.size[1] = @max(self.size[1], other.pos()[1] + other.size()[1]);
-	try self.children.append(other);
+	self.children.append(other) catch unreachable;
 }
 
 pub fn finish(self: *HorizontalList, pos: Vec2f, alignment: graphics.TextBuffer.Alignment) void {
@@ -91,10 +90,10 @@ pub fn updateHovered(self: *HorizontalList, mousePosition: Vec2f) void {
 	}
 }
 
-pub fn render(self: *HorizontalList, mousePosition: Vec2f) Allocator.Error!void {
+pub fn render(self: *HorizontalList, mousePosition: Vec2f) void {
 	const oldTranslation = draw.setTranslation(self.pos);
 	for(self.children.items) |*child| {
-		try child.render(mousePosition - self.pos);
+		child.render(mousePosition - self.pos);
 	}
 	draw.restoreTranslation(oldTranslation);
 }

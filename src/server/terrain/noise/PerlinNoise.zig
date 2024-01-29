@@ -1,9 +1,9 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const Array2D = main.utils.Array2D;
 const random = main.random;
+const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 // TODO: Simplify with Vec2f and Vec2i.
 
@@ -77,14 +77,14 @@ const Context = struct {
 	}
 	
 	// Calculate all grid points that will be needed to prevent double calculating them.
-	fn calculateGridPoints(self: *Context, allocator: Allocator, x: i32, y: i32, _width: u31, _height: u31, scale: u31) !void {
+	fn calculateGridPoints(self: *Context, allocator: NeverFailingAllocator, x: i32, y: i32, _width: u31, _height: u31, scale: u31) void {
 		// Create one gridpoint more, just in case...
 		const width = _width + scale;
 		const height = _height + scale;
 		const resolutionShift = @ctz(scale);
 		// Determine grid cell coordinates of all cells that points can be in:
-		self.xGridPoints = try Array2D(f32).init(allocator, width/scale + 3, height/scale + 3); // Simply assume the absolute maximum number of grid points are generated.
-		self.yGridPoints = try Array2D(f32).init(allocator, width/scale + 3, height/scale + 3); // Simply assume the absolute maximum number of grid points are generated.
+		self.xGridPoints = Array2D(f32).init(allocator, width/scale + 3, height/scale + 3); // Simply assume the absolute maximum number of grid points are generated.
+		self.yGridPoints = Array2D(f32).init(allocator, width/scale + 3, height/scale + 3); // Simply assume the absolute maximum number of grid points are generated.
 		var numX: u31 = 0;
 		var numY: u31 = undefined;
 		var x0: i32 = 0;
@@ -118,7 +118,7 @@ const Context = struct {
 		numX += 1;
 	}
 
-	fn freeGridPoints(self: *Context, allocator: Allocator) void {
+	fn freeGridPoints(self: *Context, allocator: NeverFailingAllocator) void {
 		self.yGridPoints.deinit(allocator);
 		self.xGridPoints.deinit(allocator);
 		self.yGridPoints = undefined;
@@ -127,8 +127,8 @@ const Context = struct {
 };
 
 /// Returns a ridgid map of floats with values between 0 and 1.
-pub fn generateRidgidNoise(allocator: Allocator, x: i32, y: i32, width: u31, height: u31, maxScale: u31, minScale: u31, worldSeed: u64, voxelSize: u31, reductionFactor: f32) !Array2D(f32) {
-	const map = try Array2D(f32).init(allocator, width/voxelSize, height/voxelSize);
+pub fn generateRidgidNoise(allocator: NeverFailingAllocator, x: i32, y: i32, width: u31, height: u31, maxScale: u31, minScale: u31, worldSeed: u64, voxelSize: u31, reductionFactor: f32) Array2D(f32) {
+	const map = Array2D(f32).init(allocator, width/voxelSize, height/voxelSize);
 	var seed = worldSeed;
 	random.scrambleSeed(&seed);
 	var context = Context {
@@ -143,7 +143,7 @@ pub fn generateRidgidNoise(allocator: Allocator, x: i32, y: i32, width: u31, hei
 		context.resolutionMask = scale - 1;
 		const x0 = x & ~context.resolutionMask;
 		const y0 = y & ~context.resolutionMask;
-		try context.calculateGridPoints(main.globalAllocator, x, y, width, height, scale);
+		context.calculateGridPoints(main.globalAllocator, x, y, width, height, scale);
 		defer context.freeGridPoints(main.globalAllocator);
 
 		var x1 = x;
@@ -159,8 +159,8 @@ pub fn generateRidgidNoise(allocator: Allocator, x: i32, y: i32, width: u31, hei
 }
 
 /// Returns a smooth map of floats with values between 0 and 1.
-pub fn generateSmoothNoise(allocator: Allocator, x: i32, y: i32, width: u31, height: u31, maxScale: u31, minScale: u31, worldSeed: u64, voxelSize: u31, reductionFactor: f32) !Array2D(f32) {
-	const map = try Array2D(f32).init(allocator, width/voxelSize, height/voxelSize);
+pub fn generateSmoothNoise(allocator: NeverFailingAllocator, x: i32, y: i32, width: u31, height: u31, maxScale: u31, minScale: u31, worldSeed: u64, voxelSize: u31, reductionFactor: f32) Array2D(f32) {
+	const map = Array2D(f32).init(allocator, width/voxelSize, height/voxelSize);
 	var seed = worldSeed;
 	random.scrambleSeed(&seed);
 	var context = Context {
@@ -175,7 +175,7 @@ pub fn generateSmoothNoise(allocator: Allocator, x: i32, y: i32, width: u31, hei
 		context.resolutionMask = scale - 1;
 		const x0 = x & ~context.resolutionMask;
 		const y0 = y & ~context.resolutionMask;
-		try context.calculateGridPoints(main.stackAllocator, x, y, width, height, scale);
+		context.calculateGridPoints(main.stackAllocator, x, y, width, height, scale);
 		defer context.freeGridPoints(main.stackAllocator);
 
 		var x1 = x;

@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const items = main.items;
@@ -115,43 +114,43 @@ fn isEmpty() bool {
 	return true;
 }
 
-fn refresh() Allocator.Error!void {
+fn refresh() void {
 	if(!changedItems()) return;
 	craftingResult.itemStack.clear();
 	if(isEmpty()) return;
-	craftingResult.itemStack.item = Item{.tool = try Tool.initFromCraftingGrid(availableItems, seed)};
+	craftingResult.itemStack.item = Item{.tool = Tool.initFromCraftingGrid(availableItems, seed)};
 	craftingResult.itemStack.amount = 1;
 }
 
-pub fn onOpen() Allocator.Error!void {
+pub fn onOpen() void {
 	seed = @truncate(@as(u128, @bitCast(std.time.nanoTimestamp())));
 	@memset(&availableItems, null);
 	@memset(&craftingGrid, .{});
-	const list = try HorizontalList.init();
+	const list = HorizontalList.init();
 	{ // crafting grid
-		const grid = try VerticalList.init(.{0, 0}, 300, 0);
+		const grid = VerticalList.init(.{0, 0}, 300, 0);
 		// Inventory:
 		for(0..5) |y| {
-			const row = try HorizontalList.init();
+			const row = HorizontalList.init();
 			for(0..5) |x| {
 				const index = x + y*5;
-				const slot = try ItemSlot.init(.{0, 0}, craftingGrid[index], &vtable, index, .default, .normal);
+				const slot = ItemSlot.init(.{0, 0}, craftingGrid[index], &vtable, index, .default, .normal);
 				itemSlots[index] = slot;
-				try row.add(slot);
+				row.add(slot);
 			}
-			try grid.add(row);
+			grid.add(row);
 		}
 		grid.finish(.center);
-		try list.add(grid);
+		list.add(grid);
 	}
-	try list.add(try Icon.init(.{8, 0}, .{32, 32}, inventory_crafting.arrowTexture, false));
-	craftingResult = try ItemSlot.init(.{8, 0}, .{}, &.{.tryTakingItems = &onTake}, 0, .craftingResult, .takeOnly);
-	try list.add(craftingResult);
+	list.add(Icon.init(.{8, 0}, .{32, 32}, inventory_crafting.arrowTexture, false));
+	craftingResult = ItemSlot.init(.{8, 0}, .{}, &.{.tryTakingItems = &onTake}, 0, .craftingResult, .takeOnly);
+	list.add(craftingResult);
 	list.finish(.{padding, padding + 16}, .center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
 	gui.updateWindowPositions();
-	try refresh();
+	refresh();
 }
 
 pub fn onClose() void {
@@ -165,22 +164,18 @@ pub fn onClose() void {
 		if(!itemStack.empty()) {
 			itemStack.amount = main.game.Player.inventory__SEND_CHANGES_TO_SERVER.addItem(itemStack.item.?, itemStack.amount);
 			if(!itemStack.empty()) {
-				main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, itemStack.*, .{0, 0, 0}, main.game.camera.direction, 20) catch |err| {
-					std.log.err("Error while dropping itemStack: {s}", .{@errorName(err)});
-				};
+				main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, itemStack.*, .{0, 0, 0}, main.game.camera.direction, 20);
 				itemStack.clear();
 			}
 		}
 	}
-	main.network.Protocols.genericUpdate.sendInventory_full(main.game.world.?.conn, Player.inventory__SEND_CHANGES_TO_SERVER) catch |err| { // TODO(post-java): Add better options to the protocol.
-		std.log.err("Got error while trying to send inventory data: {s}", .{@errorName(err)});
-	};
+	main.network.Protocols.genericUpdate.sendInventory_full(main.game.world.?.conn, Player.inventory__SEND_CHANGES_TO_SERVER); // TODO(post-java): Add better options to the protocol.
 	craftingGrid = undefined;
 }
 
-pub fn update() Allocator.Error!void {
+pub fn update() void {
 	for(&itemSlots, &craftingGrid) |slot, stack| {
-		try slot.updateItemStack(stack);
+		slot.updateItemStack(stack);
 	}
-	try refresh();
+	refresh();
 }

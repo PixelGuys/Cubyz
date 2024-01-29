@@ -1,10 +1,10 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const ConnectionManager = main.network.ConnectionManager;
 const settings = main.settings;
 const Vec2f = main.vec.Vec2f;
+const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 const gui = @import("../gui.zig");
 const GuiComponent = gui.GuiComponent;
@@ -22,7 +22,7 @@ pub var window = GuiWindow {
 
 const padding: f32 = 8;
 const width: f32 = 128;
-var buttonNameArena: std.heap.ArenaAllocator = undefined;
+var buttonNameArena: main.utils.NeverFailingArenaAllocator = undefined;
 
 pub fn openWorld(name: []const u8) void {
 	std.log.info("TODO: Open world {s}", .{name});
@@ -41,13 +41,9 @@ pub fn openWorld(name: []const u8) void {
 	};
 	main.game.world = &main.game.testWorld;
 	for(gui.openWindows.items) |openWindow| {
-		gui.closeWindow(openWindow) catch |err| {
-			std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
-		};
+		gui.closeWindow(openWindow);
 	}
-	gui.openHud() catch |err| {
-		std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
-	};
+	gui.openHud();
 //	while(Server.world == null) {
 //		try {
 //			Thread.sleep(10);
@@ -70,7 +66,7 @@ fn flawedDeleteWorld(name: []const u8) !void {
 	try saveDir.deleteTree(name);
 
 	onClose();
-	try onOpen();
+	onOpen();
 }
 
 fn deleteWorld(namePtr: usize) void {
@@ -81,8 +77,8 @@ fn deleteWorld(namePtr: usize) void {
 	};
 }
 
-fn parseEscapedFolderName(allocator: std.mem.Allocator, name: []const u8) ![]const u8 {
-	var result = std.ArrayList(u8).init(allocator);
+fn parseEscapedFolderName(allocator: NeverFailingAllocator, name: []const u8) []const u8 {
+	var result = std.ArrayList(u8).init(allocator.allocator);
 	defer result.deinit();
 	var i: u32 = 0;
 	while(i < name.len) : (i += 1) {
@@ -100,18 +96,18 @@ fn parseEscapedFolderName(allocator: std.mem.Allocator, name: []const u8) ![]con
 				}
 			}
 			var buf: [4]u8 = undefined;
-			try result.appendSlice(buf[0..std.unicode.utf8Encode(val, &buf) catch 0]); // TODO: Change this to full unicode rather than using this broken utf-16 converter.
+			result.appendSlice(buf[0..std.unicode.utf8Encode(val, &buf) catch 0]) catch unreachable; // TODO: Change this to full unicode rather than using this broken utf-16 converter.
 		} else {
-			try result.append(name[i]);
+			result.append(name[i]) catch unreachable;
 		}
 	}
-	return try result.toOwnedSlice();
+	return result.toOwnedSlice() catch unreachable;
 }
 
-pub fn onOpen() Allocator.Error!void {
-	buttonNameArena = std.heap.ArenaAllocator.init(main.globalAllocator);
-	const list = try VerticalList.init(.{padding, 16 + padding}, 300, 8);
-	// TODO: try list.add(try Button.initText(.{0, 0}, 128, "Create World", gui.openWindowCallback("save_creation")));
+pub fn onOpen() void {
+	buttonNameArena = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
+	const list = VerticalList.init(.{padding, 16 + padding}, 300, 8);
+	// TODO: list.add(Button.initText(.{0, 0}, 128, "Create World", gui.openWindowCallback("save_creation")));
 
 	var dir = std.fs.cwd().makeOpenPath("saves", .{.iterate = true}) catch |err| {
 		std.log.err("Encountered error while trying to open folder \"saves\": {s}", .{@errorName(err)});
@@ -125,17 +121,17 @@ pub fn onOpen() Allocator.Error!void {
 		return;
 	}) |entry| {
 		if(entry.kind == .directory) {
-			const row = try HorizontalList.init();
+			const row = HorizontalList.init();
 
-			const decodedName = try parseEscapedFolderName(main.stackAllocator, entry.name);
+			const decodedName = parseEscapedFolderName(main.stackAllocator, entry.name);
 			defer main.stackAllocator.free(decodedName);
-			const name = try buttonNameArena.allocator().dupeZ(u8, entry.name); // Null terminate, so we can later recover the string from just the pointer.
-			const buttonName = try std.fmt.allocPrint(buttonNameArena.allocator(), "Play {s}", .{decodedName});
+			const name = buttonNameArena.allocator().dupeZ(u8, entry.name); // Null terminate, so we can later recover the string from just the pointer.
+			const buttonName = std.fmt.allocPrint(buttonNameArena.allocator().allocator, "Play {s}", .{decodedName}) catch unreachable;
 			
-			try row.add(try Button.initText(.{0, 0}, 128, buttonName, .{.callback = &openWorldWrap, .arg = @intFromPtr(name.ptr)}));
-			try row.add(try Button.initText(.{8, 0}, 64, "delete", .{.callback = &deleteWorld, .arg = @intFromPtr(name.ptr)}));
+			row.add(Button.initText(.{0, 0}, 128, buttonName, .{.callback = &openWorldWrap, .arg = @intFromPtr(name.ptr)}));
+			row.add(Button.initText(.{8, 0}, 64, "delete", .{.callback = &deleteWorld, .arg = @intFromPtr(name.ptr)}));
 			row.finish(.{0, 0}, .center);
-			try list.add(row);
+			list.add(row);
 		}
 	}
 

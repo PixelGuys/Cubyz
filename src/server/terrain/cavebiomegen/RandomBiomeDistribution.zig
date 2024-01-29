@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const random = main.random;
@@ -27,10 +26,10 @@ pub fn deinit() void {
 
 }
 
-pub fn generate(map: *CaveBiomeMapFragment, worldSeed: u64) Allocator.Error!void {
+pub fn generate(map: *CaveBiomeMapFragment, worldSeed: u64) void {
 	// Select all the biomes that are within the given height range.
-	var validBiomes = try std.ArrayListUnmanaged(*const Biome).initCapacity(main.stackAllocator, caveBiomes.len);
-	defer validBiomes.deinit(main.stackAllocator);
+	var validBiomes = std.ArrayListUnmanaged(*const Biome).initCapacity(main.stackAllocator.allocator, caveBiomes.len) catch unreachable;
+	defer validBiomes.deinit(main.stackAllocator.allocator);
 	for(caveBiomes) |*biome| {
 		if(biome.minHeight < map.pos.wy +% CaveBiomeMapFragment.caveBiomeMapSize and biome.maxHeight > map.pos.wy) {
 			validBiomes.appendAssumeCapacity(biome);

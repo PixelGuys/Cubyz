@@ -7,10 +7,10 @@ fn setSeed(x: i32, z: i32, offsetX: i32, offsetZ: i32, seed: *u64, worldSeed: u6
 	seed.* = main.random.initSeed2D(worldSeed*%(scale*maxResolution | 1), .{(offsetX +% x)*%maxResolution, (offsetZ +% z)*%maxResolution});
 }
 
-pub fn generateFractalTerrain(wx: i32, wz: i32, x0: u31, z0: u31, width: u32, height: u32, scale: u31, worldSeed: u64, map: Array2D(f32), maxResolution: u31) !void {
+pub fn generateFractalTerrain(wx: i32, wz: i32, x0: u31, z0: u31, width: u32, height: u32, scale: u31, worldSeed: u64, map: Array2D(f32), maxResolution: u31) void {
 	const max = scale + 1;
 	const mask: i32 = scale - 1;
-	const bigMap = try Array2D(f32).init(main.stackAllocator, max, max);
+	const bigMap = Array2D(f32).init(main.stackAllocator, max, max);
 	defer bigMap.deinit(main.stackAllocator);
 	const offsetX = wx & ~mask;
 	const offsetZ = wz & ~mask;
@@ -96,7 +96,7 @@ pub fn generateInitializedFractalTerrain(offsetX: i32, offsetZ: i32, scale: u31,
 }
 
 /// Same as `generateFractalTerrain`, but it generates only a reduced resolution version of the map.
-pub fn generateSparseFractalTerrain(wx: i32, wz: i32, scale: u31, worldSeed: u64, map: Array2D(f32), maxResolution: u31) !void {
+pub fn generateSparseFractalTerrain(wx: i32, wz: i32, scale: u31, worldSeed: u64, map: Array2D(f32), maxResolution: u31) void {
 	const scaledWx = @divFloor(wx, maxResolution);
 	const scaledWz = @divFloor(wz, maxResolution);
 	const scaledScale = scale/maxResolution;
@@ -104,7 +104,7 @@ pub fn generateSparseFractalTerrain(wx: i32, wz: i32, scale: u31, worldSeed: u64
 	while(x0 < map.width) : (x0 += scaledScale) {
 		var z0: u31 = 0;
 		while(z0 < map.height) : (z0 += scaledScale) {
-			try generateFractalTerrain(scaledWx +% x0, scaledWz +% z0, x0, z0, @min(map.width-x0, scaledScale), @min(map.height-z0, scaledScale), scaledScale, worldSeed, map, maxResolution);
+			generateFractalTerrain(scaledWx +% x0, scaledWz +% z0, x0, z0, @min(map.width-x0, scaledScale), @min(map.height-z0, scaledScale), scaledScale, worldSeed, map, maxResolution);
 		}
 	}
 }

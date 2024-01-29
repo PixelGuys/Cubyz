@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const random = main.random;
@@ -30,7 +29,7 @@ pub fn deinit() void {
 
 }
 
-pub fn generate(worldSeed: u64, chunk: *main.chunk.Chunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView) Allocator.Error!void {
+pub fn generate(worldSeed: u64, chunk: *main.chunk.Chunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView) void {
 	const voxelSizeShift = @ctz(chunk.pos.voxelSize);
 	var x: u31 = 0;
 	while(x < chunk.width) : (x += chunk.pos.voxelSize) {

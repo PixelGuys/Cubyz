@@ -276,10 +276,10 @@ const RotationModes = struct {
 	};
 };
 
-pub fn init() !void {
-	rotationModes = std.StringHashMap(RotationMode).init(main.globalAllocator);
+pub fn init() void {
+	rotationModes = std.StringHashMap(RotationMode).init(main.globalAllocator.allocator);
 	inline for(@typeInfo(RotationModes).Struct.decls) |declaration| {
-		try register(@field(RotationModes, declaration.name));
+		register(@field(RotationModes, declaration.name));
 	}
 }
 
@@ -293,7 +293,7 @@ pub fn getByID(id: []const u8) *RotationMode {
 	return rotationModes.getPtr("no_rotation").?;
 }
 
-pub fn register(comptime Mode: type) !void {
+pub fn register(comptime Mode: type) void {
 	var result: RotationMode = RotationMode{};
 	inline for(@typeInfo(RotationMode).Struct.fields) |field| {
 		if(@hasDecl(Mode, field.name)) {
@@ -304,5 +304,5 @@ pub fn register(comptime Mode: type) !void {
 			}
 		}
 	}
-	try rotationModes.putNoClobber(Mode.id, result);
+	rotationModes.putNoClobber(Mode.id, result) catch unreachable;
 }

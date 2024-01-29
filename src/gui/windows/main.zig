@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const Vec2f = main.vec.Vec2f;
@@ -17,12 +16,12 @@ pub var window = GuiWindow {
 
 const padding: f32 = 8;
 
-pub fn onOpen() Allocator.Error!void {
-	const list = try VerticalList.init(.{padding, 16 + padding}, 300, 16);
-	try list.add(try Button.initText(.{0, 0}, 128, "Singleplayer", gui.openWindowCallback("save_selection")));
-	try list.add(try Button.initText(.{0, 0}, 128, "Multiplayer", gui.openWindowCallback("multiplayer")));
-	try list.add(try Button.initText(.{0, 0}, 128, "Settings", gui.openWindowCallback("settings")));
-	try list.add(try Button.initText(.{0, 0}, 128, "Exit TODO", .{}));
+pub fn onOpen() void {
+	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
+	list.add(Button.initText(.{0, 0}, 128, "Singleplayer", gui.openWindowCallback("save_selection")));
+	list.add(Button.initText(.{0, 0}, 128, "Multiplayer", gui.openWindowCallback("multiplayer")));
+	list.add(Button.initText(.{0, 0}, 128, "Settings", gui.openWindowCallback("settings")));
+	list.add(Button.initText(.{0, 0}, 128, "Exit TODO", .{}));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));

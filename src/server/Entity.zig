@@ -1,11 +1,11 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const JsonElement = main.JsonElement;
 const vec = main.vec;
 const Vec3f = vec.Vec3f;
 const Vec3d = vec.Vec3d;
+const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 pos: Vec3d = .{0, 0, 0},
 vel: Vec3d = .{0, 0, 0},
@@ -27,11 +27,11 @@ fn loadVec3d(json: JsonElement) Vec3d {
 	};
 }
 
-fn saveVec3(allocator: Allocator, vector: anytype) !JsonElement {
-	const json = try JsonElement.initObject(allocator);
-	try json.put("x", vector[0]);
-	try json.put("y", vector[1]);
-	try json.put("z", vector[2]);
+fn saveVec3(allocator: NeverFailingAllocator, vector: anytype) JsonElement {
+	const json = JsonElement.initObject(allocator);
+	json.put("x", vector[0]);
+	json.put("y", vector[1]);
+	json.put("z", vector[2]);
 	return json;
 }
 
@@ -45,12 +45,12 @@ pub fn loadFrom(self: *@This(), json: JsonElement) void {
 // 		name = json.getString("name", "");
 }
 
-pub fn save(self: *@This(), allocator: Allocator) !JsonElement {
-	const json = try JsonElement.initObject(allocator);
+pub fn save(self: *@This(), allocator: NeverFailingAllocator) JsonElement {
+	const json = JsonElement.initObject(allocator);
 	// TODO: json.put("id", type.getRegistryID().toString());
-	try json.put("position", try saveVec3(allocator, self.pos));
-	try json.put("velocity", try saveVec3(allocator, self.vel));
-	try json.put("rotation", try saveVec3(allocator, self.rot));
+	json.put("position", saveVec3(allocator, self.pos));
+	json.put("velocity", saveVec3(allocator, self.vel));
+	json.put("rotation", saveVec3(allocator, self.rot));
 	// TODO:
 // 		json.put("health", health);
 // 		json.put("hunger", hunger);

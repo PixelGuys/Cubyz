@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const vec = main.vec;
@@ -96,11 +95,11 @@ pub const GuiComponent = union(enum) {
 		}
 	}
 
-	pub fn render(self: GuiComponent, mousePosition: Vec2f) Allocator.Error!void {
+	pub fn render(self: GuiComponent, mousePosition: Vec2f) void {
 		switch(self) {
 			inline else => |impl| {
 				if(@hasDecl(@TypeOf(impl.*), "render")) {
-					try impl.render(mousePosition);
+					impl.render(mousePosition);
 				}
 			}
 		}

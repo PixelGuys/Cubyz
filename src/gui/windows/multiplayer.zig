@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const ConnectionManager = main.network.ConnectionManager;
@@ -31,7 +30,7 @@ const width: f32 = 420;
 
 fn flawedDiscoverIpAddress() !void {
 	connection = try ConnectionManager.init(12347, true); // TODO: default port
-	ipAddress = try std.fmt.allocPrint(main.globalAllocator, "{}", .{connection.?.externalAddress});
+	ipAddress = std.fmt.allocPrint(main.globalAllocator.allocator, "{}", .{connection.?.externalAddress}) catch unreachable;
 	gotIpAddress.store(true, .Release);
 }
 
@@ -42,7 +41,7 @@ fn discoverIpAddress() void {
 }
 
 fn discoverIpAddressFromNewThread() void {
-	var sta = main.utils.StackAllocator.init(main.globalAllocator, 1 << 23) catch unreachable;
+	var sta = main.utils.StackAllocator.init(main.globalAllocator, 1 << 23);
 	defer sta.deinit();
 	main.stackAllocator = sta.allocator();
 
@@ -69,28 +68,24 @@ fn join(_: usize) void {
 		std.log.err("No connection found. Cannot connect.", .{});
 	}
 	for(gui.openWindows.items) |openWindow| {
-		gui.closeWindow(openWindow) catch |err| {
-			std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
-		};
+		gui.closeWindow(openWindow);
 	}
-	gui.openHud() catch |err| {
-		std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
-	};
+	gui.openHud();
 }
 
 fn copyIp(_: usize) void {
 	main.Window.setClipboardString(ipAddress);
 }
 
-pub fn onOpen() Allocator.Error!void {
-	const list = try VerticalList.init(.{padding, 16 + padding}, 300, 16);
-	try list.add(try Label.init(.{0, 0}, width, "Please send your IP to the host of the game and enter the host's IP below.", .center));
+pub fn onOpen() void {
+	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
+	list.add(Label.init(.{0, 0}, width, "Please send your IP to the host of the game and enter the host's IP below.", .center));
 	//                                               255.255.255.255:?65536 (longest possible ip address)
-	ipAddressLabel = try Label.init(.{0, 0}, width, "                      ", .center);
-	try list.add(ipAddressLabel);
-	try list.add(try Button.initText(.{0, 0}, 100, "Copy IP", .{.callback = &copyIp}));
-	try list.add(try TextInput.init(.{0, 0}, width, 32, settings.lastUsedIPAddress, .{.callback = &join}));
-	try list.add(try Button.initText(.{0, 0}, 100, "Join", .{.callback = &join}));
+	ipAddressLabel = Label.init(.{0, 0}, width, "                      ", .center);
+	list.add(ipAddressLabel);
+	list.add(Button.initText(.{0, 0}, 100, "Copy IP", .{.callback = &copyIp}));
+	list.add(TextInput.init(.{0, 0}, width, 32, settings.lastUsedIPAddress, .{.callback = &join}));
+	list.add(Button.initText(.{0, 0}, 100, "Join", .{.callback = &join}));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
@@ -122,9 +117,9 @@ pub fn onClose() void {
 	}
 }
 
-pub fn update() Allocator.Error!void {
+pub fn update() void {
 	if(gotIpAddress.load(.Acquire)) {
 		gotIpAddress.store(false, .Monotonic);
-		try ipAddressLabel.updateText(ipAddress);
+		ipAddressLabel.updateText(ipAddress);
 	}
 }

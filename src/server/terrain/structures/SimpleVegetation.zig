@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const random = main.random;
@@ -10,6 +9,7 @@ const vec = main.vec;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
+const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 pub const id = "cubyz:simple_vegetation";
 
@@ -19,8 +19,8 @@ blockType: u16,
 height0: u31,
 deltaHeight: u31,
 
-pub fn loadModel(arenaAllocator: Allocator, parameters: JsonElement) Allocator.Error!*SimpleVegetation {
-	const self = try arenaAllocator.create(SimpleVegetation);
+pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: JsonElement) *SimpleVegetation {
+	const self = arenaAllocator.create(SimpleVegetation);
 	self.* = .{
 		.blockType = main.blocks.getByID(parameters.get([]const u8, "block", "")),
 		.height0 = parameters.get(u31, "height", 1),
@@ -29,7 +29,7 @@ pub fn loadModel(arenaAllocator: Allocator, parameters: JsonElement) Allocator.E
 	return self;
 }
 
-pub fn generate(self: *SimpleVegetation, x: i32, y: i32, z: i32, chunk: *main.chunk.Chunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) Allocator.Error!void {
+pub fn generate(self: *SimpleVegetation, x: i32, y: i32, z: i32, chunk: *main.chunk.Chunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) void {
 	if(chunk.pos.voxelSize > 2 and (x & chunk.pos.voxelSize-1 != 0 or z & chunk.pos.voxelSize-1 != 0)) return;
 	if(chunk.liesInChunk(x, y, z)) {
 		const height = self.height0 + random.nextIntBounded(u31, seed, self.deltaHeight+1);

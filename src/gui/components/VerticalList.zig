@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const graphics = main.graphics;
@@ -26,11 +25,11 @@ childrenHeight: f32 = 0,
 scrollBar: *ScrollBar,
 scrollBarEnabled: bool = false,
 
-pub fn init(pos: Vec2f, maxHeight: f32, padding: f32) Allocator.Error!*VerticalList {
-	const scrollBar = try ScrollBar.init(undefined, scrollBarWidth, maxHeight - 2*border, 0);
-	const self = try main.globalAllocator.create(VerticalList);
+pub fn init(pos: Vec2f, maxHeight: f32, padding: f32) *VerticalList {
+	const scrollBar = ScrollBar.init(undefined, scrollBarWidth, maxHeight - 2*border, 0);
+	const self = main.globalAllocator.create(VerticalList);
 	self.* = VerticalList {
-		.children = std.ArrayList(GuiComponent).init(main.globalAllocator),
+		.children = std.ArrayList(GuiComponent).init(main.globalAllocator.allocator),
 		.pos = pos,
 		.size = .{0, 0},
 		.padding = padding,
@@ -55,7 +54,7 @@ pub fn toComponent(self: *VerticalList) GuiComponent {
 	};
 }
 
-pub fn add(self: *VerticalList, _other: anytype) Allocator.Error!void {
+pub fn add(self: *VerticalList, _other: anytype) void {
 	var other: GuiComponent = undefined;
 	if(@TypeOf(_other) == GuiComponent) {
 		other = _other;
@@ -66,7 +65,7 @@ pub fn add(self: *VerticalList, _other: anytype) Allocator.Error!void {
 	if(self.size[1] != 0) other.mutPos().*[1] += self.padding;
 	self.size[1] = other.pos()[1] + other.size()[1];
 	self.size[0] = @max(self.size[0], other.pos()[0] + other.size()[0]);
-	try self.children.append(other);
+	self.children.append(other) catch unreachable;
 }
 
 pub fn finish(self: *VerticalList, alignment: graphics.TextBuffer.Alignment) void {
@@ -125,7 +124,7 @@ pub fn updateHovered(self: *VerticalList, mousePosition: Vec2f) void {
 	}
 }
 
-pub fn render(self: *VerticalList, mousePosition: Vec2f) Allocator.Error!void {
+pub fn render(self: *VerticalList, mousePosition: Vec2f) void {
 	const oldTranslation = draw.setTranslation(self.pos);
 	defer draw.restoreTranslation(oldTranslation);
 	const oldClip = draw.setClip(self.size);
@@ -134,12 +133,12 @@ pub fn render(self: *VerticalList, mousePosition: Vec2f) Allocator.Error!void {
 	if(self.scrollBarEnabled) {
 		const diff = self.childrenHeight - self.maxHeight;
 		shiftedPos[1] -= diff*self.scrollBar.currentState;
-		try self.scrollBar.render(mousePosition - self.pos);
+		self.scrollBar.render(mousePosition - self.pos);
 	}
 	_ = draw.setTranslation(shiftedPos - self.pos);
 
 	for(self.children.items) |*child| {
-		try child.render(mousePosition - shiftedPos);
+		child.render(mousePosition - shiftedPos);
 	}
 }
 

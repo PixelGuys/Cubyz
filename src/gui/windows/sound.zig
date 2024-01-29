@@ -1,9 +1,9 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const settings = main.settings;
 const Vec2f = main.vec.Vec2f;
+const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 const gui = @import("../gui.zig");
 const GuiComponent = gui.GuiComponent;
@@ -32,17 +32,17 @@ fn linearToDezibel(x: f32) f32 {
 	return 0;
 }
 
-fn musicFormatter(allocator: Allocator, value: f32) Allocator.Error![]const u8 {
+fn musicFormatter(allocator: NeverFailingAllocator, value: f32) []const u8 {
 	const percentage = 100*deziBelToLinear(value);
-	if(percentage == 0) return try allocator.dupe(u8, "Music volume: Off");
-	return try std.fmt.allocPrint(allocator, "Music volume: {d:.1} dB ({d:.1}%)", .{value, percentage});
+	if(percentage == 0) return allocator.dupe(u8, "Music volume: Off");
+	return std.fmt.allocPrint(allocator.allocator, "Music volume: {d:.1} dB ({d:.1}%)", .{value, percentage}) catch unreachable;
 }
 
 const padding: f32 = 8;
 
-pub fn onOpen() Allocator.Error!void {
-	const list = try VerticalList.init(.{padding, 16 + padding}, 300, 16);
-	try list.add(try ContinuousSlider.init(.{0, 0}, 128, -60, 0, linearToDezibel(settings.musicVolume), &musicCallback, &musicFormatter));
+pub fn onOpen() void {
+	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
+	list.add(ContinuousSlider.init(.{0, 0}, 128, -60, 0, linearToDezibel(settings.musicVolume), &musicCallback, &musicFormatter));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));

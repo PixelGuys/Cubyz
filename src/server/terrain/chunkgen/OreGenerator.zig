@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const random = main.random;
@@ -33,7 +32,7 @@ pub fn deinit() void {
 }
 
 // Works basically similar to cave generation, but considers a lot less chunks and has a few other differences.
-pub fn generate(worldSeed: u64, chunk: *main.chunk.Chunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView) Allocator.Error!void {
+pub fn generate(worldSeed: u64, chunk: *main.chunk.Chunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView) void {
 	_ = caveMap;
 	_ = biomeMap;
 	if(chunk.pos.voxelSize != 1) return;

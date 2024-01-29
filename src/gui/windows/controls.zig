@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const Vec2f = main.vec.Vec2f;
@@ -35,20 +34,20 @@ fn keypressListener(key: c_int, mouseButton: c_int, scancode: c_int) void {
 	needsUpdate = true;
 }
 
-pub fn onOpen() Allocator.Error!void {
-	const list = try VerticalList.init(.{padding, 16 + padding}, 300, 8);
+pub fn onOpen() void {
+	const list = VerticalList.init(.{padding, 16 + padding}, 300, 8);
 	for(&main.KeyBoard.keys) |*key| {
-		const label = try Label.init(.{0, 0}, 128, key.name, .left);
+		const label = Label.init(.{0, 0}, 128, key.name, .left);
 		const button = if(key == selectedKey) (
-			try Button.initText(.{16, 0}, 128, "...", .{})
+			Button.initText(.{16, 0}, 128, "...", .{})
 		) else (
-			try Button.initText(.{16, 0}, 128, key.getName(), .{.callback = &function, .arg = @intFromPtr(key)})
+			Button.initText(.{16, 0}, 128, key.getName(), .{.callback = &function, .arg = @intFromPtr(key)})
 		);
-		const row = try HorizontalList.init();
-		try row.add(label);
-		try row.add(button);
+		const row = HorizontalList.init();
+		row.add(label);
+		row.add(button);
 		row.finish(.{0, 0}, .center);
-		try list.add(row);
+		list.add(row);
 	}
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
@@ -62,14 +61,12 @@ pub fn onClose() void {
 	}
 }
 
-pub fn render() Allocator.Error!void {
+pub fn render() void {
 	if(needsUpdate) {
 		needsUpdate = false;
 		const oldScroll = window.rootComponent.?.verticalList.scrollBar.currentState;
 		onClose();
-		onOpen() catch {
-			std.log.err("Received out of memory error while rebuilding the controls GUI. This behavior is not handled.", .{});
-		};
+		onOpen();
 		window.rootComponent.?.verticalList.scrollBar.currentState = oldScroll;
 	}
 }

@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const graphics = main.graphics;
@@ -33,9 +32,9 @@ hovered: bool = false,
 onAction: *const fn(bool) void,
 label: *Label,
 
-pub fn __init() !void {
-	textureChecked = try Texture.initFromFile("assets/cubyz/ui/checked_box.png");
-	textureEmpty = try Texture.initFromFile("assets/cubyz/ui/box.png");
+pub fn __init() void {
+	textureChecked = Texture.initFromFile("assets/cubyz/ui/checked_box.png");
+	textureEmpty = Texture.initFromFile("assets/cubyz/ui/box.png");
 }
 
 pub fn __deinit() void {
@@ -43,9 +42,9 @@ pub fn __deinit() void {
 	textureEmpty.deinit();
 }
 
-pub fn init(pos: Vec2f, width: f32, text: []const u8, initialValue: bool, onAction: *const fn(bool) void) Allocator.Error!*CheckBox {
-	const label = (try Label.init(undefined, width - 3*border - boxSize, text, .left));
-	const self = try main.globalAllocator.create(CheckBox);
+pub fn init(pos: Vec2f, width: f32, text: []const u8, initialValue: bool, onAction: *const fn(bool) void) *CheckBox {
+	const label = Label.init(undefined, width - 3*border - boxSize, text, .left);
+	const self = main.globalAllocator.create(CheckBox);
 	self.* = CheckBox {
 		.pos = pos,
 		.size = Vec2f{@max(width, label.size[0] + 3*border + boxSize), label.size[1] + 3*border},
@@ -85,7 +84,7 @@ pub fn mainButtonReleased(self: *CheckBox, mousePosition: Vec2f) void {
 	}
 }
 
-pub fn render(self: *CheckBox, mousePosition: Vec2f) !void {
+pub fn render(self: *CheckBox, mousePosition: Vec2f) void {
 	if(self.state) {
 		textureChecked.bindTo(0);
 	} else {
@@ -106,5 +105,5 @@ pub fn render(self: *CheckBox, mousePosition: Vec2f) !void {
 	graphics.c.glUniform1i(Button.buttonUniforms.pressed, 0);
 	const textPos = self.pos + Vec2f{boxSize/2, 0} + self.size/@as(Vec2f, @splat(2.0)) - self.label.size/@as(Vec2f, @splat(2.0));
 	self.label.pos = textPos;
-	try self.label.render(mousePosition - textPos);
+	self.label.render(mousePosition - textPos);
 }

@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const blocks = @import("blocks.zig");
 const chunk_zig = @import("chunk.zig");
@@ -21,6 +20,7 @@ const Mat4f = vec.Mat4f;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
+const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 const ItemDrop = struct {
 	pos: Vec3d,
@@ -45,7 +45,7 @@ pub const ItemDropManager = struct {
 
 	const maxCapacity = 65536;
 
-	allocator: Allocator,
+	allocator: NeverFailingAllocator,
 
 	mutex: std.Thread.Mutex = std.Thread.Mutex{},
 
@@ -66,18 +66,18 @@ pub const ItemDropManager = struct {
 	// TODO: Get rid of this inheritance pattern.
 	addWithIndexAndRotation: *const fn(*ItemDropManager, u16, Vec3d, Vec3d, Vec3f, ItemStack, i32, i32) void,
 
-	pub fn init(self: *ItemDropManager, allocator: Allocator, world: ?*ServerWorld, gravity: f64) !void {
+	pub fn init(self: *ItemDropManager, allocator: NeverFailingAllocator, world: ?*ServerWorld, gravity: f64) void {
 		self.* = ItemDropManager {
 			.allocator = allocator,
 			.list = std.MultiArrayList(ItemDrop){},
-			.lastUpdates = try JsonElement.initArray(allocator),
+			.lastUpdates = JsonElement.initArray(allocator),
 			.isEmpty = std.bit_set.ArrayBitSet(usize, maxCapacity).initFull(),
 			.world = world,
 			.gravity = gravity,
 			.airDragFactor = gravity/maxSpeed,
 			.addWithIndexAndRotation = &defaultAddWithIndexAndRotation,
 		};
-		try self.list.resize(self.allocator, maxCapacity);
+		self.list.resize(self.allocator.allocator, maxCapacity) catch unreachable;
 	}
 
 	pub fn deinit(self: *ItemDropManager) void {
@@ -86,19 +86,24 @@ pub const ItemDropManager = struct {
 				item.deinit();
 			}
 		}
-		self.list.deinit(self.allocator);
+		self.list.deinit(self.allocator.allocator);
 		self.lastUpdates.free(self.allocator);
 	}
 
-	pub fn loadFrom(self: *ItemDropManager, json: JsonElement) !void {
+	pub fn loadFrom(self: *ItemDropManager, json: JsonElement) void {
 		const jsonArray = json.getChild("array");
 		for(jsonArray.toSlice()) |elem| {
-			try self.addFromJson(elem);
+			self.addFromJson(elem);
 		}
 	}
 
-	pub fn addFromJson(self: *ItemDropManager, json: JsonElement) !void {
-		const item = try items.Item.init(json);
+	pub fn addFromJson(self: *ItemDropManager, json: JsonElement) void {
+		const item = items.Item.init(json) catch |err| {
+			const msg = json.toStringEfficient(main.stackAllocator, "");
+			defer main.stackAllocator.free(msg);
+			std.log.err("Ignoring invalid item drop {s} which caused {s}", .{msg, @errorName(err)});
+			return;
+		};
 		const properties = .{
 			Vec3d{
 				json.get(f64, "x", 0),
@@ -117,12 +122,12 @@ pub const ItemDropManager = struct {
 		if(json.get(?u16, "i", null)) |i| {
 			@call(.auto, addWithIndex, .{self, i} ++ properties);
 		} else {
-			try @call(.auto, add, .{self} ++ properties);
+			@call(.auto, add, .{self} ++ properties);
 		}
 	}
 
-	pub fn getPositionAndVelocityData(self: *ItemDropManager, allocator: Allocator) ![]u8 {
-		const _data = try allocator.alloc(u8, self.size*50);
+	pub fn getPositionAndVelocityData(self: *ItemDropManager, allocator: NeverFailingAllocator) []u8 {
+		const _data = allocator.alloc(u8, self.size*50);
 		var data = _data;
 		for(self.indices[0..self.size]) |i| {
 			std.mem.writeInt(u16, data[0..2], i, .big);
@@ -137,33 +142,33 @@ pub const ItemDropManager = struct {
 		return _data;
 	}
 
-	fn storeSingle(self: *ItemDropManager, allocator: Allocator, i: u16) !JsonElement {
+	fn storeSingle(self: *ItemDropManager, allocator: NeverFailingAllocator, i: u16) JsonElement {
 		std.debug.assert(!self.mutex.tryLock()); // Mutex must be locked!
-		const obj = try JsonElement.initObject(allocator);
+		const obj = JsonElement.initObject(allocator);
 		const itemDrop = self.list.get(i);
-		try obj.put("i", i);
-		try obj.put("x", itemDrop.pos.x);
-		try obj.put("y", itemDrop.pos.y);
-		try obj.put("z", itemDrop.pos.z);
-		try obj.put("vx", itemDrop.vel.x);
-		try obj.put("vy", itemDrop.vel.y);
-		try obj.put("vz", itemDrop.vel.z);
-		try itemDrop.itemStack.storeToJson(obj);
-		try obj.put("despawnTime", itemDrop.despawnTime);
+		obj.put("i", i);
+		obj.put("x", itemDrop.pos.x);
+		obj.put("y", itemDrop.pos.y);
+		obj.put("z", itemDrop.pos.z);
+		obj.put("vx", itemDrop.vel.x);
+		obj.put("vy", itemDrop.vel.y);
+		obj.put("vz", itemDrop.vel.z);
+		itemDrop.itemStack.storeToJson(obj);
+		obj.put("despawnTime", itemDrop.despawnTime);
 		return obj;
 	}
 
-	pub fn store(self: *ItemDropManager, allocator: Allocator) !JsonElement {
-		const jsonArray = try JsonElement.initArray(allocator);
+	pub fn store(self: *ItemDropManager, allocator: NeverFailingAllocator) JsonElement {
+		const jsonArray = JsonElement.initArray(allocator);
 		{
 			self.mutex.lock();
 			defer self.mutex.unlock();
 			for(self.indices[0..self.size]) |i| {
-				const item = try self.storeSingle(allocator, i);
-				try jsonArray.JsonArray.append(item);
+				const item = self.storeSingle(allocator, i);
+				jsonArray.JsonArray.append(item);
 			}
 		}
-		const json = try JsonElement.initObject(allocator);
+		const json = JsonElement.initObject(allocator);
 		json.put("array", jsonArray);
 		return json;
 	}
@@ -240,8 +245,8 @@ pub const ItemDropManager = struct {
 		);
 	}
 
-	pub fn add(self: *ItemDropManager, pos: Vec3d, vel: Vec3d, itemStack: ItemStack, despawnTime: i32, pickupCooldown: i32) !void {
-		try self.addWithRotation(
+	pub fn add(self: *ItemDropManager, pos: Vec3d, vel: Vec3d, itemStack: ItemStack, despawnTime: i32, pickupCooldown: i32) void {
+		self.addWithRotation(
 			pos, vel,
 			Vec3f {
 				2*std.math.pi*random.nextFloat(&main.seed),
@@ -264,15 +269,15 @@ pub const ItemDropManager = struct {
 		);
 	}
 
-	pub fn addWithRotation(self: *ItemDropManager, pos: Vec3d, vel: Vec3d, rot: Vec3f, itemStack: ItemStack, despawnTime: i32, pickupCooldown: i32) !void {
+	pub fn addWithRotation(self: *ItemDropManager, pos: Vec3d, vel: Vec3d, rot: Vec3f, itemStack: ItemStack, despawnTime: i32, pickupCooldown: i32) void {
 		var i: u16 = undefined;
 		{
 			self.mutex.lock();
 			defer self.mutex.unlock();
 			if(self.size == maxCapacity) {
-				const json = try itemStack.store(main.globalAllocator);
+				const json = itemStack.store(main.globalAllocator);
 				defer json.free(main.globalAllocator);
-				const string = try json.toString(main.globalAllocator);
+				const string = json.toString(main.stackAllocator);
 				defer main.globalAllocator.free(string);
 				std.log.err("Item drop capacitiy limit reached. Failed to add itemStack: {s}", .{string});
 				if(itemStack.item) |item| {
@@ -458,14 +463,14 @@ pub const ClientItemDropManager = struct {
 
 	var instance: ?*ClientItemDropManager = null;
 
-	pub fn init(self: *ClientItemDropManager, allocator: Allocator, world: *World) !void {
+	pub fn init(self: *ClientItemDropManager, allocator: NeverFailingAllocator, world: *World) void {
 		std.debug.assert(instance == null); // Only one instance allowed.
 		instance = self;
 		self.* = .{
 			.super = undefined,
 			.lastTime = @as(i16, @truncate(std.time.milliTimestamp())) -% settings.entityLookback,
 		};
-		try self.super.init(allocator, null, world.gravity);
+		self.super.init(allocator, null, world.gravity);
 		self.super.addWithIndexAndRotation = &overrideAddWithIndexAndRotation;
 		self.interpolation.init(
 			@ptrCast(self.super.list.items(.pos).ptr),
@@ -528,12 +533,12 @@ pub const ClientItemDropManager = struct {
 		self.super.remove(i);
 	}
 
-	pub fn loadFrom(self: *ClientItemDropManager, json: JsonElement) !void {
-		try self.super.loadFrom(json);
+	pub fn loadFrom(self: *ClientItemDropManager, json: JsonElement) void {
+		self.super.loadFrom(json);
 	}
 
-	pub fn addFromJson(self: *ClientItemDropManager, json: JsonElement) !void {
-		try self.super.addFromJson(json);
+	pub fn addFromJson(self: *ClientItemDropManager, json: JsonElement) void {
+		self.super.addFromJson(json);
 	}
 };
 
@@ -565,8 +570,8 @@ pub const ItemDropRenderer = struct {
 		size: Vec3i = undefined,
 		item: items.Item,
 
-		fn init(template: ItemVoxelModel) !*ItemVoxelModel {
-			const self = try main.globalAllocator.create(ItemVoxelModel);
+		fn init(template: ItemVoxelModel) *ItemVoxelModel {
+			const self = main.globalAllocator.create(ItemVoxelModel);
 			self.* = ItemVoxelModel{
 				.item = template.item,
 			};
@@ -588,7 +593,7 @@ pub const ItemDropRenderer = struct {
 				self.index = _freeSlot.index;
 			} else {
 				self.index = @intCast(modelData.items.len);
-				try modelData.resize(self.index + modelDataSize);
+				modelData.resize(self.index + modelDataSize) catch unreachable;
 			}
 			dataSection = modelData.items[self.index..][0..modelDataSize];
 			dataSection[0] = @intCast(self.size[0]);
@@ -627,8 +632,8 @@ pub const ItemDropRenderer = struct {
 		}
 	};
 
-	pub fn init() !void {
-		itemShader = try graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/item_drop.vs", "assets/cubyz/shaders/item_drop.fs", &itemUniforms);
+	pub fn init() void {
+		itemShader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/item_drop.vs", "assets/cubyz/shaders/item_drop.fs", &itemUniforms);
 		itemModelSSBO = graphics.SSBO.init();
 		itemModelSSBO.bufferData(i32, &[3]i32{1, 1, 1});
 		itemModelSSBO.bind(2);
@@ -697,8 +702,8 @@ pub const ItemDropRenderer = struct {
 
 		c.glBindVertexArray(0);
 
-		modelData = std.ArrayList(u32).init(main.globalAllocator);
-		freeSlots = std.ArrayList(*ItemVoxelModel).init(main.globalAllocator);
+		modelData = std.ArrayList(u32).init(main.globalAllocator.allocator);
+		freeSlots = std.ArrayList(*ItemVoxelModel).init(main.globalAllocator.allocator);
 	}
 
 	pub fn deinit() void {
@@ -716,12 +721,12 @@ pub const ItemDropRenderer = struct {
 
 	var voxelModels: utils.Cache(ItemVoxelModel, 32, 32, ItemVoxelModel.deinit) = .{};
 
-	fn getModelIndex(item: items.Item) !u31 {
+	fn getModelIndex(item: items.Item) u31 {
 		const compareObject = ItemVoxelModel{.item = item};
-		return (try voxelModels.findOrCreate(compareObject, ItemVoxelModel.init)).index;
+		return voxelModels.findOrCreate(compareObject, ItemVoxelModel.init).index;
 	}
 
-	pub fn renderItemDrops(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d, time: u32) !void {
+	pub fn renderItemDrops(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d, time: u32) void {
 		game.world.?.itemDrops.updateInterpolationData();
 		itemShader.bind();
 		c.glUniform1i(itemUniforms.texture_sampler, 0);
@@ -762,7 +767,7 @@ pub const ItemDropRenderer = struct {
 					c.glUniform1i(itemUniforms.modelIndex, block.mode().model(block).modelIndex);
 					c.glUniform1i(itemUniforms.block, blockType);
 				} else {
-					const index = try getModelIndex(item);
+					const index = getModelIndex(item);
 					c.glUniform1i(itemUniforms.modelIndex, index);
 					c.glUniform1i(itemUniforms.block, 0);
 				}

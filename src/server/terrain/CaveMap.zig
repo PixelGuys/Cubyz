@@ -1,12 +1,12 @@
 const std = @import("std");
 const Atomic = std.atomic.Value;
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const Chunk = main.chunk.Chunk;
 const ChunkPosition = main.chunk.ChunkPosition;
 const Cache = main.utils.Cache;
 const JsonElement = main.JsonElement;
+const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 const terrain = @import("terrain.zig");
 const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
@@ -24,7 +24,7 @@ pub const CaveMapFragment = struct {
 	refCount: Atomic(u16) = Atomic(u16).init(0),
 
 
-	pub fn init(self: *CaveMapFragment, wx: i32, wy: i32, wz: i32, voxelSize: u31) !void {
+	pub fn init(self: *CaveMapFragment, wx: i32, wy: i32, wz: i32, voxelSize: u31) void {
 		self.* = .{
 			.pos = .{
 				.wx = wx, .wy = wy, .wz = wz,
@@ -88,7 +88,7 @@ pub const CaveMapFragment = struct {
 pub const CaveGenerator = struct {
 	init: *const fn(parameters: JsonElement) void,
 	deinit: *const fn() void,
-	generate: *const fn(map: *CaveMapFragment, seed: u64) Allocator.Error!void,
+	generate: *const fn(map: *CaveMapFragment, seed: u64) void,
 	/// Used to prioritize certain generators over others.
 	priority: i32,
 	/// To avoid duplicate seeds in similar generation algorithms, the SurfaceGenerator xors the world-seed with the generator specific seed.
@@ -97,7 +97,7 @@ pub const CaveGenerator = struct {
 
 	var generatorRegistry: std.StringHashMapUnmanaged(CaveGenerator) = .{};
 
-	pub fn registerGenerator(comptime Generator: type) !void {
+	pub fn registerGenerator(comptime Generator: type) void {
 		const self = CaveGenerator {
 			.init = &Generator.init,
 			.deinit = &Generator.deinit,
@@ -105,11 +105,11 @@ pub const CaveGenerator = struct {
 			.priority = Generator.priority,
 			.generatorSeed = Generator.generatorSeed,
 		};
-		try generatorRegistry.put(main.globalAllocator, Generator.id, self);
+		generatorRegistry.put(main.globalAllocator.allocator, Generator.id, self) catch unreachable;
 	}
 
-	pub fn getAndInitGenerators(allocator: std.mem.Allocator, settings: JsonElement) ![]CaveGenerator {
-		const list = try allocator.alloc(CaveGenerator, generatorRegistry.size);
+	pub fn getAndInitGenerators(allocator: NeverFailingAllocator, settings: JsonElement) []CaveGenerator {
+		const list = allocator.alloc(CaveGenerator, generatorRegistry.size);
 		var iterator = generatorRegistry.iterator();
 		var i: usize = 0;
 		while(iterator.next()) |generator| {
@@ -131,18 +131,18 @@ pub const CaveMapView = struct {
 	reference: *Chunk,
 	fragments: [8]*CaveMapFragment,
 
-	pub fn init(chunk: *Chunk) !CaveMapView {
+	pub fn init(chunk: *Chunk) CaveMapView {
 		return CaveMapView {
 			.reference = chunk,
 			.fragments = [_]*CaveMapFragment {
-				try getOrGenerateFragment(chunk.pos.wx - chunk.width, chunk.pos.wy - chunk.width, chunk.pos.wz - chunk.width, chunk.pos.voxelSize),
-				try getOrGenerateFragment(chunk.pos.wx - chunk.width, chunk.pos.wy - chunk.width, chunk.pos.wz + chunk.width, chunk.pos.voxelSize),
-				try getOrGenerateFragment(chunk.pos.wx - chunk.width, chunk.pos.wy + chunk.width, chunk.pos.wz - chunk.width, chunk.pos.voxelSize),
-				try getOrGenerateFragment(chunk.pos.wx - chunk.width, chunk.pos.wy + chunk.width, chunk.pos.wz + chunk.width, chunk.pos.voxelSize),
-				try getOrGenerateFragment(chunk.pos.wx + chunk.width, chunk.pos.wy - chunk.width, chunk.pos.wz - chunk.width, chunk.pos.voxelSize),
-				try getOrGenerateFragment(chunk.pos.wx + chunk.width, chunk.pos.wy - chunk.width, chunk.pos.wz + chunk.width, chunk.pos.voxelSize),
-				try getOrGenerateFragment(chunk.pos.wx + chunk.width, chunk.pos.wy + chunk.width, chunk.pos.wz - chunk.width, chunk.pos.voxelSize),
-				try getOrGenerateFragment(chunk.pos.wx + chunk.width, chunk.pos.wy + chunk.width, chunk.pos.wz + chunk.width, chunk.pos.voxelSize),
+				getOrGenerateFragment(chunk.pos.wx - chunk.width, chunk.pos.wy - chunk.width, chunk.pos.wz - chunk.width, chunk.pos.voxelSize),
+				getOrGenerateFragment(chunk.pos.wx - chunk.width, chunk.pos.wy - chunk.width, chunk.pos.wz + chunk.width, chunk.pos.voxelSize),
+				getOrGenerateFragment(chunk.pos.wx - chunk.width, chunk.pos.wy + chunk.width, chunk.pos.wz - chunk.width, chunk.pos.voxelSize),
+				getOrGenerateFragment(chunk.pos.wx - chunk.width, chunk.pos.wy + chunk.width, chunk.pos.wz + chunk.width, chunk.pos.voxelSize),
+				getOrGenerateFragment(chunk.pos.wx + chunk.width, chunk.pos.wy - chunk.width, chunk.pos.wz - chunk.width, chunk.pos.voxelSize),
+				getOrGenerateFragment(chunk.pos.wx + chunk.width, chunk.pos.wy - chunk.width, chunk.pos.wz + chunk.width, chunk.pos.voxelSize),
+				getOrGenerateFragment(chunk.pos.wx + chunk.width, chunk.pos.wy + chunk.width, chunk.pos.wz - chunk.width, chunk.pos.voxelSize),
+				getOrGenerateFragment(chunk.pos.wx + chunk.width, chunk.pos.wy + chunk.width, chunk.pos.wz + chunk.width, chunk.pos.voxelSize),
 			},
 		};
 	}
@@ -294,25 +294,25 @@ fn mapFragmentDeinit(mapFragment: *CaveMapFragment) void {
 	}
 }
 
-fn cacheInit(pos: ChunkPosition) !*CaveMapFragment {
-	const mapFragment = try main.globalAllocator.create(CaveMapFragment);
-	try mapFragment.init(pos.wx, pos.wy, pos.wz, pos.voxelSize);
+fn cacheInit(pos: ChunkPosition) *CaveMapFragment {
+	const mapFragment = main.globalAllocator.create(CaveMapFragment);
+	mapFragment.init(pos.wx, pos.wy, pos.wz, pos.voxelSize);
 	for(profile.caveGenerators) |generator| {
-		try generator.generate(mapFragment, profile.seed ^ generator.generatorSeed);
+		generator.generate(mapFragment, profile.seed ^ generator.generatorSeed);
 	}
 	_ = @atomicRmw(u16, &mapFragment.refCount.raw, .Add, 1, .Monotonic);
 	return mapFragment;
 }
 
-pub fn initGenerators() !void {
+pub fn initGenerators() void {
 	const list = @import("cavegen/_list.zig");
 	inline for(@typeInfo(list).Struct.decls) |decl| {
-		try CaveGenerator.registerGenerator(@field(list, decl.name));
+		CaveGenerator.registerGenerator(@field(list, decl.name));
 	}
 }
 
 pub fn deinitGenerators() void {
-	CaveGenerator.generatorRegistry.clearAndFree(main.globalAllocator);
+	CaveGenerator.generatorRegistry.clearAndFree(main.globalAllocator.allocator);
 }
 
 pub fn init(_profile: TerrainGenerationProfile) void {
@@ -323,14 +323,14 @@ pub fn deinit() void {
 	cache.clear();
 }
 
-fn getOrGenerateFragment(wx: i32, wy: i32, wz: i32, voxelSize: u31) !*CaveMapFragment {
+fn getOrGenerateFragment(wx: i32, wy: i32, wz: i32, voxelSize: u31) *CaveMapFragment {
 	const compare = ChunkPosition {
 		.wx = wx & ~@as(i32, CaveMapFragment.widthMask*voxelSize | voxelSize-1),
 		.wy = wy & ~@as(i32, CaveMapFragment.heightMask*voxelSize | voxelSize-1),
 		.wz = wz & ~@as(i32, CaveMapFragment.widthMask*voxelSize | voxelSize-1),
 		.voxelSize = voxelSize,
 	};
-	const result = try cache.findOrCreate(compare, cacheInit);
+	const result = cache.findOrCreate(compare, cacheInit);
 	std.debug.assert(@atomicRmw(u16, &result.refCount.raw, .Add, 1, .Monotonic) != 0);
 	return result;
 }

@@ -1,8 +1,8 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const JsonElement = main.JsonElement;
+const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 pub const biomes = @import("biomes.zig");
 pub const noise = @import("noise/noise.zig");
@@ -22,7 +22,7 @@ pub const CaveMap = @import("CaveMap.zig");
 pub const BlockGenerator = struct {
 	init: *const fn(parameters: JsonElement) void,
 	deinit: *const fn() void,
-	generate: *const fn(seed: u64, chunk: *main.chunk.Chunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView) Allocator.Error!void,
+	generate: *const fn(seed: u64, chunk: *main.chunk.Chunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView) void,
 	/// Used to prioritize certain generators over others.
 	priority: i32,
 	/// To avoid duplicate seeds in similar generation algorithms, the SurfaceGenerator xors the world-seed with the generator specific seed.
@@ -31,7 +31,7 @@ pub const BlockGenerator = struct {
 
 	var generatorRegistry: std.StringHashMapUnmanaged(BlockGenerator) = .{};
 
-	pub fn registerGenerator(comptime GeneratorType: type) !void {
+	pub fn registerGenerator(comptime GeneratorType: type) void {
 		const self = BlockGenerator {
 			.init = &GeneratorType.init,
 			.deinit = &GeneratorType.deinit,
@@ -39,11 +39,11 @@ pub const BlockGenerator = struct {
 			.priority = GeneratorType.priority,
 			.generatorSeed = GeneratorType.generatorSeed,
 		};
-		try generatorRegistry.put(main.globalAllocator, GeneratorType.id, self);
+		generatorRegistry.put(main.globalAllocator.allocator, GeneratorType.id, self) catch unreachable;
 	}
 
-	fn getAndInitGenerators(allocator: std.mem.Allocator, settings: JsonElement) ![]BlockGenerator {
-		const list = try allocator.alloc(BlockGenerator, generatorRegistry.size);
+	fn getAndInitGenerators(allocator: NeverFailingAllocator, settings: JsonElement) []BlockGenerator {
+		const list = allocator.alloc(BlockGenerator, generatorRegistry.size);
 		var iterator = generatorRegistry.iterator();
 		var i: usize = 0;
 		while(iterator.next()) |generator| {
@@ -85,13 +85,13 @@ pub const TerrainGenerationProfile = struct {
 		self.climateGenerator.init(generator);
 
 		generator = settings.getChild("caveBiomeGenerators");
-		self.caveBiomeGenerators = try CaveBiomeMap.CaveBiomeGenerator.getAndInitGenerators(main.globalAllocator, generator);
+		self.caveBiomeGenerators = CaveBiomeMap.CaveBiomeGenerator.getAndInitGenerators(main.globalAllocator, generator);
 
 		generator = settings.getChild("caveGenerators");
-		self.caveGenerators = try CaveMap.CaveGenerator.getAndInitGenerators(main.globalAllocator, generator);
+		self.caveGenerators = CaveMap.CaveGenerator.getAndInitGenerators(main.globalAllocator, generator);
 
 		generator = settings.getChild("generators");
-		self.generators = try BlockGenerator.getAndInitGenerators(main.globalAllocator, generator);
+		self.generators = BlockGenerator.getAndInitGenerators(main.globalAllocator, generator);
 
 		return self;
 	}
@@ -114,14 +114,14 @@ pub const TerrainGenerationProfile = struct {
 	}
 };
 
-pub fn initGenerators() !void {
-	try SurfaceMap.initGenerators();
-	try ClimateMap.initGenerators();
-	try CaveBiomeMap.initGenerators();
-	try CaveMap.initGenerators();
+pub fn initGenerators() void {
+	SurfaceMap.initGenerators();
+	ClimateMap.initGenerators();
+	CaveBiomeMap.initGenerators();
+	CaveMap.initGenerators();
 	const list = @import("chunkgen/_list.zig");
 	inline for(@typeInfo(list).Struct.decls) |decl| {
-		try BlockGenerator.registerGenerator(@field(list, decl.name));
+		BlockGenerator.registerGenerator(@field(list, decl.name));
 	}
 	const t1 = std.time.milliTimestamp();
 	noise.BlueNoise.load();
@@ -133,14 +133,14 @@ pub fn deinitGenerators() void {
 	ClimateMap.deinitGenerators();
 	CaveBiomeMap.deinitGenerators();
 	CaveMap.deinitGenerators();
-	BlockGenerator.generatorRegistry.clearAndFree(main.globalAllocator);
+	BlockGenerator.generatorRegistry.clearAndFree(main.globalAllocator.allocator);
 }
 
-pub fn init(profile: TerrainGenerationProfile) !void {
+pub fn init(profile: TerrainGenerationProfile) void {
 	CaveBiomeMap.init(profile);
 	CaveMap.init(profile);
 	ClimateMap.init(profile);
-	try SurfaceMap.init(profile);
+	SurfaceMap.init(profile);
 }
 
 pub fn deinit() void {

@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const graphics = main.graphics;
@@ -41,22 +40,22 @@ var uniforms: struct {
 	lineColor: c_int,
 } = undefined;
 
-pub fn init() !void {
+pub fn init() void {
 	ssbo = graphics.SSBO.init();
-	shader = try graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/graph.vs", "assets/cubyz/shaders/graphics/graph.fs", &uniforms);
+	shader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/graph.vs", "assets/cubyz/shaders/graphics/graph.fs", &uniforms);
 }
 
 pub fn deinit() void {
 	ssbo.deinit();
 }
 
-fn flawedRender() !void {
+pub fn render() void {
 	lastFrameTime[index] = @floatCast(main.lastFrameTime.load(.Monotonic)*1000.0);
 	index = (index + 1)%@as(u31, @intCast(lastFrameTime.len));
 	draw.setColor(0xffffffff);
-	try draw.text("32 ms", 0, 16, 8, .left);
-	try draw.text("16 ms", 0, 32, 8, .left);
-	try draw.text("00 ms", 0, 48, 8, .left);
+	draw.text("32 ms", 0, 16, 8, .left);
+	draw.text("16 ms", 0, 32, 8, .left);
+	draw.text("00 ms", 0, 48, 8, .left);
 	draw.setColor(0x80ffffff);
 	draw.line(.{border, 24}, .{window.contentSize[0] - border, 24});
 	draw.line(.{border, 40}, .{window.contentSize[0] - border, 40});
@@ -81,10 +80,4 @@ fn flawedRender() !void {
 	ssbo.bufferData(f32, &lastFrameTime);
 	ssbo.bind(5);
 	graphics.c.glDrawArrays(graphics.c.GL_LINE_STRIP, 0, lastFrameTime.len);
-}
-
-pub fn render() Allocator.Error!void {
-	flawedRender() catch |err| {
-		std.log.err("Encountered error while drawing debug window: {s}", .{@errorName(err)});
-	};
 }

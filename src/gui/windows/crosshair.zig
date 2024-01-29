@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const graphics = main.graphics;
@@ -23,15 +22,15 @@ pub var window = GuiWindow {
 
 var texture: Texture = undefined;
 
-pub fn init() !void {
-	texture = try Texture.initFromFile("assets/cubyz/ui/hud/crosshair.png");
+pub fn init() void {
+	texture = Texture.initFromFile("assets/cubyz/ui/hud/crosshair.png");
 }
 
 pub fn deinit() void {
 	texture.deinit();
 }
 
-pub fn render() Allocator.Error!void {
+pub fn render() void {
 	texture.bindTo(0);
 	graphics.draw.setColor(0xffffffff);
 	graphics.draw.boundImage(.{0, 0}, .{size, size});

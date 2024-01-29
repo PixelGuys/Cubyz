@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const graphics = main.graphics;
@@ -20,14 +19,14 @@ size: Vec2f,
 text: TextBuffer,
 alpha: f32 = 1,
 
-pub fn init(pos: Vec2f, maxWidth: f32, text: []const u8, alignment: TextBuffer.Alignment) Allocator.Error!*Label {
-	const self = try main.globalAllocator.create(Label);
+pub fn init(pos: Vec2f, maxWidth: f32, text: []const u8, alignment: TextBuffer.Alignment) *Label {
+	const self = main.globalAllocator.create(Label);
 	self.* = Label {
-		.text = try TextBuffer.init(main.globalAllocator, text, .{}, false, alignment),
+		.text = TextBuffer.init(main.globalAllocator, text, .{}, false, alignment),
 		.pos = pos,
 		.size = undefined,
 	};
-	self.size = try self.text.calculateLineBreaks(fontSize, maxWidth);
+	self.size = self.text.calculateLineBreaks(fontSize, maxWidth);
 	return self;
 }
 
@@ -42,14 +41,14 @@ pub fn toComponent(self: *Label) GuiComponent {
 	};
 }
 
-pub fn updateText(self: *Label, newText: []const u8) !void {
+pub fn updateText(self: *Label, newText: []const u8) void {
 	const alignment = self.text.alignment;
 	self.text.deinit();
-	self.text = try TextBuffer.init(main.globalAllocator, newText, .{}, false, alignment);
-	self.size = try self.text.calculateLineBreaks(fontSize, self.size[0]);
+	self.text = TextBuffer.init(main.globalAllocator, newText, .{}, false, alignment);
+	self.size = self.text.calculateLineBreaks(fontSize, self.size[0]);
 }
 
-pub fn render(self: *Label, _: Vec2f) !void {
+pub fn render(self: *Label, _: Vec2f) void {
 	draw.setColor(@as(u32, @intFromFloat(self.alpha*255)) << 24);
-	try self.text.render(self.pos[0], self.pos[1], fontSize);
+	self.text.render(self.pos[0], self.pos[1], fontSize);
 }

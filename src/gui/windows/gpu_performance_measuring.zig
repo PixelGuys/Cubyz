@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const c = main.c;
@@ -46,7 +45,7 @@ var queryObjects: [buffers][@typeInfo(Samples).Enum.fields.len]c_uint = undefine
 
 var activeSample: ?Samples = null;
 
-pub fn init() !void {
+pub fn init() void {
 	for(&queryObjects) |*buf| {
 		c.glGenQueries(buf.len, buf);
 		for(buf) |queryObject| { // Start them to get an initial value.
@@ -85,7 +84,7 @@ pub var window = GuiWindow {
 	.hideIfMouseIsGrabbed = false,
 };
 
-fn flawedRender() !void {
+pub fn render() void {
 	curBuffer +%= 1;
 	draw.setColor(0xffffffff);
 	var sum: isize = 0;
@@ -93,15 +92,9 @@ fn flawedRender() !void {
 	inline for(0..queryObjects[curBuffer].len) |i| {
 		var result: u32 = undefined;
 		c.glGetQueryObjectuiv(queryObjects[curBuffer][i], c.GL_QUERY_RESULT, &result);
-		try draw.print("{s}: {} µs", .{names[i], @divTrunc(result, 1000)}, 0, y, 8, .left);
+		draw.print("{s}: {} µs", .{names[i], @divTrunc(result, 1000)}, 0, y, 8, .left);
 		sum += result;
 		y += 8;
 	}
-	try draw.print("Total: {} µs", .{@divTrunc(sum, 1000)}, 0, 0, 8, .left);
-}
-
-pub fn render() Allocator.Error!void {
-	flawedRender() catch |err| {
-		std.log.err("Encountered error while drawing debug window: {s}", .{@errorName(err)});
-	};
+	draw.print("Total: {} µs", .{@divTrunc(sum, 1000)}, 0, 0, 8, .left);
 }

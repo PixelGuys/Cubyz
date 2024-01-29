@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 const Atomic = std.atomic.Value;
 
 const blocks = @import("blocks.zig");
@@ -56,16 +55,18 @@ pub var activeFrameBuffer: c_uint = 0;
 pub const reflectionCubeMapSize = 64;
 var reflectionCubeMap: graphics.CubeMapTexture = undefined;
 
-pub fn init() !void {
-	deferredRenderPassShader = try Shader.initAndGetUniforms("assets/cubyz/shaders/deferred_render_pass.vs", "assets/cubyz/shaders/deferred_render_pass.fs", &deferredUniforms);
-	fakeReflectionShader = try Shader.initAndGetUniforms("assets/cubyz/shaders/fake_reflection.vs", "assets/cubyz/shaders/fake_reflection.fs", &fakeReflectionUniforms);
+pub fn init() void {
+	deferredRenderPassShader = Shader.initAndGetUniforms("assets/cubyz/shaders/deferred_render_pass.vs", "assets/cubyz/shaders/deferred_render_pass.fs", &deferredUniforms);
+	fakeReflectionShader = Shader.initAndGetUniforms("assets/cubyz/shaders/fake_reflection.vs", "assets/cubyz/shaders/fake_reflection.fs", &fakeReflectionUniforms);
 	worldFrameBuffer.init(true, c.GL_NEAREST, c.GL_CLAMP_TO_EDGE);
 	worldFrameBuffer.updateSize(Window.width, Window.height, c.GL_RGB16F);
-	try Bloom.init();
-	try MeshSelection.init();
-	try MenuBackGround.init();
-	try chunk_meshing.init();
-	try mesh_storage.init();
+	Bloom.init();
+	MeshSelection.init();
+	MenuBackGround.init() catch |err| {
+		std.log.err("Failed to initialize the Menu Background: {s}", .{@errorName(err)});
+	};
+	chunk_meshing.init();
+	mesh_storage.init();
 	reflectionCubeMap = graphics.CubeMapTexture.init();
 	reflectionCubeMap.generate(reflectionCubeMapSize, reflectionCubeMapSize);
 	initReflectionCubeMap();
@@ -119,7 +120,7 @@ pub fn updateViewport(width: u31, height: u31, fov: f32) void {
 	worldFrameBuffer.unbind();
 }
 
-pub fn render(playerPosition: Vec3d) !void {
+pub fn render(playerPosition: Vec3d) void {
 	const startTime = std.time.milliTimestamp();
 //	TODO:
 //		if (Cubyz.player != null) {
@@ -153,8 +154,8 @@ pub fn render(playerPosition: Vec3d) !void {
 		const skyColor = vec.xyz(world.clearColor);
 		game.fog.color = skyColor;
 
-		try renderWorld(world, ambient, skyColor, playerPosition);
-		try mesh_storage.updateMeshes(startTime + maximumMeshTime);
+		renderWorld(world, ambient, skyColor, playerPosition);
+		mesh_storage.updateMeshes(startTime + maximumMeshTime);
 	} else {
 		// TODO:
 //		clearColor.y = clearColor.z = 0.7f;
@@ -165,7 +166,7 @@ pub fn render(playerPosition: Vec3d) !void {
 	}
 }
 
-pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPos: Vec3d) !void {
+pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPos: Vec3d) void {
 	worldFrameBuffer.bind();
 	gpu_performance_measuring.startQuery(.clear);
 	worldFrameBuffer.clear(Vec4f{skyColor[0], skyColor[1], skyColor[2], 1});
@@ -197,7 +198,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	chunk_meshing.quadsDrawn = 0;
 	chunk_meshing.transparentQuadsDrawn = 0;
-	const meshes = try mesh_storage.updateAndGetRenderChunks(world.conn, playerPos, settings.renderDistance);
+	const meshes = mesh_storage.updateAndGetRenderChunks(world.conn, playerPos, settings.renderDistance);
 
 //	for (ChunkMesh mesh : Cubyz.chunkTree.getRenderChunks(frustumInt, x0, y0, z0)) {
 //		if (mesh instanceof NormalChunkMesh) {
@@ -212,7 +213,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	MeshSelection.select(playerPos, game.camera.direction);
 	MeshSelection.render(game.projectionMatrix, game.camera.viewMatrix, playerPos);
 
-	try chunk_meshing.beginRender();
+	chunk_meshing.beginRender();
 	chunk_meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight);
 
 	for(meshes) |mesh| {
@@ -228,7 +229,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.startQuery(.entity_rendering);
 	entity.ClientEntityManager.render(game.projectionMatrix, ambientLight, .{1, 0.5, 0.25}, playerPos);
 
-	try itemdrop.ItemDropRenderer.renderItemDrops(game.projectionMatrix, ambientLight, playerPos, time);
+	itemdrop.ItemDropRenderer.renderItemDrops(game.projectionMatrix, ambientLight, playerPos, time);
 	gpu_performance_measuring.stopQuery();
 
 	// Render transparent chunk meshes:
@@ -247,7 +248,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 		while(true) {
 			if(i == 0) break;
 			i -= 1;
-			try meshes[i].renderTransparent(playerPos);
+			meshes[i].renderTransparent(playerPos);
 		}
 	}
 	c.glDepthMask(c.GL_TRUE);
@@ -302,7 +303,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 
-	try entity.ClientEntityManager.renderNames(game.projectionMatrix, playerPos);
+	entity.ClientEntityManager.renderNames(game.projectionMatrix, playerPos);
 	gpu_performance_measuring.stopQuery();
 }
 
@@ -331,14 +332,14 @@ const Bloom = struct {
 		@"fog.density": c_int,
 	} = undefined;
 
-	pub fn init() !void {
+	pub fn init() void {
 		buffer1.init(false, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
 		buffer2.init(false, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
 		emptyBuffer = graphics.Texture.init();
 		emptyBuffer.generate(graphics.Image.emptyImage);
-		firstPassShader = try graphics.Shader.init("assets/cubyz/shaders/bloom/first_pass.vs", "assets/cubyz/shaders/bloom/first_pass.fs");
-		secondPassShader = try graphics.Shader.init("assets/cubyz/shaders/bloom/second_pass.vs", "assets/cubyz/shaders/bloom/second_pass.fs");
-		colorExtractAndDownsampleShader = try graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/bloom/color_extractor_downsample.vs", "assets/cubyz/shaders/bloom/color_extractor_downsample.fs", &colorExtractUniforms);
+		firstPassShader = graphics.Shader.init("assets/cubyz/shaders/bloom/first_pass.vs", "assets/cubyz/shaders/bloom/first_pass.fs");
+		secondPassShader = graphics.Shader.init("assets/cubyz/shaders/bloom/second_pass.vs", "assets/cubyz/shaders/bloom/second_pass.fs");
+		colorExtractAndDownsampleShader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/bloom/color_extractor_downsample.vs", "assets/cubyz/shaders/bloom/color_extractor_downsample.fs", &colorExtractUniforms);
 	}
 
 	pub fn deinit() void {
@@ -440,7 +441,7 @@ pub const MenuBackGround = struct {
 
 	fn init() !void {
 		lastTime = std.time.nanoTimestamp();
-		shader = try Shader.initAndGetUniforms("assets/cubyz/shaders/background/vertex.vs", "assets/cubyz/shaders/background/fragment.fs", &uniforms);
+		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/background/vertex.vs", "assets/cubyz/shaders/background/fragment.fs", &uniforms);
 		shader.bind();
 		c.glUniform1i(uniforms.image, 0);
 		// 4 sides of a simple cube with some panorama texture on it.
@@ -484,9 +485,9 @@ pub const MenuBackGround = struct {
 		var dir = try std.fs.cwd().makeOpenPath("assets/backgrounds", .{.iterate = true});
 		defer dir.close();
 
-		var walker = try dir.walk(main.globalAllocator);
+		var walker = try dir.walk(main.globalAllocator.allocator);
 		defer walker.deinit();
-		var fileList = std.ArrayList([]const u8).init(main.globalAllocator);
+		var fileList = std.ArrayList([]const u8).init(main.globalAllocator.allocator);
 		defer {
 			for(fileList.items) |fileName| {
 				main.globalAllocator.free(fileName);
@@ -496,7 +497,7 @@ pub const MenuBackGround = struct {
 
 		while(try walker.next()) |entry| {
 			if(entry.kind == .file and std.ascii.endsWithIgnoreCase(entry.basename, ".png")) {
-				try fileList.append(try main.globalAllocator.dupe(u8, entry.path));
+				fileList.append(main.globalAllocator.dupe(u8, entry.path)) catch unreachable;
 			}
 		}
 		if(fileList.items.len == 0) {
@@ -505,9 +506,9 @@ pub const MenuBackGround = struct {
 			return;
 		}
 		const theChosenOne = main.random.nextIntBounded(u32, &main.seed, @as(u32, @intCast(fileList.items.len)));
-		const theChosenPath = try std.fmt.allocPrint(main.stackAllocator, "assets/backgrounds/{s}", .{fileList.items[theChosenOne]});
+		const theChosenPath = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/backgrounds/{s}", .{fileList.items[theChosenOne]}) catch unreachable;
 		defer main.stackAllocator.free(theChosenPath);
-		texture = try graphics.Texture.initFromFile(theChosenPath);
+		texture = graphics.Texture.initFromFile(theChosenPath);
 	}
 
 	pub fn deinit() void {
@@ -540,9 +541,9 @@ pub const MenuBackGround = struct {
 		c.glDrawElements(c.GL_TRIANGLES, 24, c.GL_UNSIGNED_INT, null);
 	}
 
-	pub fn takeBackgroundImage() !void {
+	pub fn takeBackgroundImage() void {
 		const size: usize = 1024; // Use a power of 2 here, to reduce video memory waste.
-		const pixels: []u32 = try main.stackAllocator.alloc(u32, size*size);
+		const pixels: []u32 = main.stackAllocator.alloc(u32, size*size);
 		defer main.stackAllocator.free(pixels);
 
 		// Change the viewport and the matrices to render 4 cube faces:
@@ -564,7 +565,7 @@ pub const MenuBackGround = struct {
 		const angles = [_]f32 {std.math.pi/2.0, std.math.pi, std.math.pi*3/2.0, std.math.pi*2};
 
 		// All 4 sides are stored in a single image.
-		const image = try graphics.Image.init(main.stackAllocator, 4*size, size);
+		const image = graphics.Image.init(main.stackAllocator, 4*size, size);
 		defer image.deinit(main.stackAllocator);
 
 		for(0..4) |i| {
@@ -574,7 +575,7 @@ pub const MenuBackGround = struct {
 			// Draw to frame buffer.
 			buffer.bind();
 			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
-			try main.renderer.render(game.Player.getPosBlocking());
+			main.renderer.render(game.Player.getPosBlocking());
 			// Copy the pixels directly from OpenGL
 			buffer.bind();
 			c.glReadPixels(0, 0, size, size, c.GL_RGBA, c.GL_UNSIGNED_BYTE, pixels.ptr);
@@ -591,9 +592,11 @@ pub const MenuBackGround = struct {
 		c.glDisable(c.GL_DEPTH_TEST);
 		c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 
-		const fileName = try std.fmt.allocPrint(main.stackAllocator, "assets/backgrounds/{s}_{}.png", .{game.world.?.name, game.world.?.gameTime.load(.Monotonic)});
+		const fileName = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/backgrounds/{s}_{}.png", .{game.world.?.name, game.world.?.gameTime.load(.Monotonic)}) catch unreachable;
 		defer main.stackAllocator.free(fileName);
-		try image.exportToFile(fileName);
+		image.exportToFile(fileName) catch |err| {
+			std.log.err("Cannot write file {s} due to {s}", .{fileName, @errorName(err)});
+		};
 		// TODO: Performance is terrible even with -O3. Consider using qoi instead.
 	}
 };
@@ -647,8 +650,8 @@ pub const MeshSelection = struct {
 	var cubeVBO: c_uint = undefined;
 	var cubeIBO: c_uint = undefined;
 
-	pub fn init() !void {
-		shader = try Shader.initAndGetUniforms("assets/cubyz/shaders/block_selection_vertex.vs", "assets/cubyz/shaders/block_selection_fragment.fs", &uniforms);
+	pub fn init() void {
+		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/block_selection_vertex.vs", "assets/cubyz/shaders/block_selection_fragment.fs", &uniforms);
 
 		const rawData = [_]f32 {
 			0, 0, 0,
@@ -767,7 +770,7 @@ pub const MeshSelection = struct {
 		// TODO: Test entities
 	}
 
-	pub fn placeBlock(inventoryStack: *main.items.ItemStack) !void {
+	pub fn placeBlock(inventoryStack: *main.items.ItemStack) void {
 		if(selectedBlockPos) |selectedPos| {
 			var block = mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
 			if(inventoryStack.item) |item| {
@@ -781,7 +784,7 @@ pub const MeshSelection = struct {
 								const relPos = lastPos - @as(Vec3d, @floatFromInt(selectedPos));
 								if(rotationMode.generateData(main.game.world.?, selectedPos, relPos, lastDir, neighborDir, &block, false)) {
 									// TODO: world.updateBlock(bi.x, bi.y, bi.z, block.data); (→ Sending it over the network)
-									try mesh_storage.updateBlock(selectedPos[0], selectedPos[1], selectedPos[2], block);
+									mesh_storage.updateBlock(selectedPos[0], selectedPos[1], selectedPos[2], block);
 									_ = inventoryStack.add(item, @as(i32, -1));
 									return;
 								}
@@ -794,7 +797,7 @@ pub const MeshSelection = struct {
 							if(block.typ == itemBlock) {
 								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, &block, false)) {
 									// TODO: world.updateBlock(bi.x, bi.y, bi.z, block.data); (→ Sending it over the network)
-									try mesh_storage.updateBlock(neighborPos[0], neighborPos[1], neighborPos[2], block);
+									mesh_storage.updateBlock(neighborPos[0], neighborPos[1], neighborPos[2], block);
 									_ = inventoryStack.add(item, @as(i32, -1));
 									return;
 								}
@@ -814,7 +817,7 @@ pub const MeshSelection = struct {
 								block.data = 0;
 								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, &block, true)) {
 									// TODO: world.updateBlock(bi.x, bi.y, bi.z, block.data); (→ Sending it over the network)
-									try mesh_storage.updateBlock(neighborPos[0], neighborPos[1], neighborPos[2], block);
+									mesh_storage.updateBlock(neighborPos[0], neighborPos[1], neighborPos[2], block);
 									_ = inventoryStack.add(item, @as(i32, -1));
 									return;
 								}
@@ -829,9 +832,9 @@ pub const MeshSelection = struct {
 		}
 	}
 
-	pub fn breakBlock() !void {
+	pub fn breakBlock() void {
 		if(selectedBlockPos) |selectedPos| {
-			try mesh_storage.updateBlock(selectedPos[0], selectedPos[1], selectedPos[2], .{.typ = 0, .data = 0});
+			mesh_storage.updateBlock(selectedPos[0], selectedPos[1], selectedPos[2], .{.typ = 0, .data = 0});
 		}
 	}
 

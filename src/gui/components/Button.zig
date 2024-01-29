@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const graphics = main.graphics;
@@ -40,11 +39,11 @@ hovered: bool = false,
 onAction: gui.Callback,
 child: GuiComponent,
 
-pub fn __init() !void {
-	shader = try Shader.initAndGetUniforms("assets/cubyz/shaders/ui/button.vs", "assets/cubyz/shaders/ui/button.fs", &buttonUniforms);
+pub fn __init() void {
+	shader = Shader.initAndGetUniforms("assets/cubyz/shaders/ui/button.vs", "assets/cubyz/shaders/ui/button.fs", &buttonUniforms);
 	shader.bind();
 	graphics.c.glUniform1i(buttonUniforms.image, 0);
-	texture = try Texture.initFromFile("assets/cubyz/ui/button.png");
+	texture = Texture.initFromFile("assets/cubyz/ui/button.png");
 }
 
 pub fn __deinit() void {
@@ -54,9 +53,9 @@ pub fn __deinit() void {
 
 fn defaultOnAction(_: usize) void {}
 
-pub fn initText(pos: Vec2f, width: f32, text: []const u8, onAction: gui.Callback) Allocator.Error!*Button {
-	const label = try Label.init(undefined, width - 3*border, text, .center);
-	const self = try main.globalAllocator.create(Button);
+pub fn initText(pos: Vec2f, width: f32, text: []const u8, onAction: gui.Callback) *Button {
+	const label = Label.init(undefined, width - 3*border, text, .center);
+	const self = main.globalAllocator.create(Button);
 	self.* = Button {
 		.pos = pos,
 		.size = Vec2f{width, label.size[1] + 3*border},
@@ -66,9 +65,9 @@ pub fn initText(pos: Vec2f, width: f32, text: []const u8, onAction: gui.Callback
 	return self;
 }
 
-pub fn initIcon(pos: Vec2f, iconSize: Vec2f, iconTexture: Texture, hasShadow: bool, onAction: gui.Callback) Allocator.Error!*Button {
-	const icon = try Icon.init(undefined, iconSize, iconTexture, hasShadow);
-	const self = try main.globalAllocator.create(Button);
+pub fn initIcon(pos: Vec2f, iconSize: Vec2f, iconTexture: Texture, hasShadow: bool, onAction: gui.Callback) *Button {
+	const icon = Icon.init(undefined, iconSize, iconTexture, hasShadow);
+	const self = main.globalAllocator.create(Button);
 	self.* = Button {
 		.pos = pos,
 		.size = icon.size + @as(Vec2f, @splat(3*border)),
@@ -106,7 +105,7 @@ pub fn mainButtonReleased(self: *Button, mousePosition: Vec2f) void {
 	}
 }
 
-pub fn render(self: *Button, mousePosition: Vec2f) Allocator.Error!void {
+pub fn render(self: *Button, mousePosition: Vec2f) void {
 	texture.bindTo(0);
 	shader.bind();
 	graphics.c.glUniform1i(buttonUniforms.pressed, 0);
@@ -123,5 +122,5 @@ pub fn render(self: *Button, mousePosition: Vec2f) Allocator.Error!void {
 	graphics.c.glUniform1i(buttonUniforms.pressed, 0);
 	const textPos = self.pos + self.size/@as(Vec2f, @splat(2.0)) - self.child.size()/@as(Vec2f, @splat(2.0));
 	self.child.mutPos().* = textPos;
-	try self.child.render(mousePosition - self.pos);
+	self.child.render(mousePosition - self.pos);
 }

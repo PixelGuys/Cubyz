@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const ItemStack = main.items.ItemStack;
@@ -37,9 +36,7 @@ pub fn tryAddingItems(index: usize, source: *ItemStack, desiredAmount: u16) void
 	const actual = destination.add(source.item.?, desiredAmount);
 	source.amount -= actual;
 	if(source.amount == 0) source.item = null;
-	main.network.Protocols.genericUpdate.sendInventory_full(main.game.world.?.conn, Player.inventory__SEND_CHANGES_TO_SERVER) catch |err| { // TODO(post-java): Add better options to the protocol.
-		std.log.err("Got error while trying to send inventory data: {s}", .{@errorName(err)});
-	};
+	main.network.Protocols.genericUpdate.sendInventory_full(main.game.world.?.conn, Player.inventory__SEND_CHANGES_TO_SERVER); // TODO(post-java): Add better options to the protocol.
 }
 
 pub fn tryTakingItems(index: usize, destination: *ItemStack, desiredAmount: u16) void {
@@ -53,9 +50,7 @@ pub fn tryTakingItems(index: usize, destination: *ItemStack, desiredAmount: u16)
 	const actual = destination.add(source.item.?, amount);
 	source.amount -= actual;
 	if(source.amount == 0) source.item = null;
-	main.network.Protocols.genericUpdate.sendInventory_full(main.game.world.?.conn, Player.inventory__SEND_CHANGES_TO_SERVER) catch |err| { // TODO(post-java): Add better options to the protocol.
-		std.log.err("Got error while trying to send inventory data: {s}", .{@errorName(err)});
-	};
+	main.network.Protocols.genericUpdate.sendInventory_full(main.game.world.?.conn, Player.inventory__SEND_CHANGES_TO_SERVER); // TODO(post-java): Add better options to the protocol.
 }
 
 pub fn trySwappingItems(index: usize, source: *ItemStack) void {
@@ -65,9 +60,7 @@ pub fn trySwappingItems(index: usize, source: *ItemStack) void {
 	const swap = destination.*;
 	destination.* = source.*;
 	source.* = swap;
-	main.network.Protocols.genericUpdate.sendInventory_full(main.game.world.?.conn, Player.inventory__SEND_CHANGES_TO_SERVER) catch |err| { // TODO(post-java): Add better options to the protocol.
-		std.log.err("Got error while trying to send inventory data: {s}", .{@errorName(err)});
-	};
+	main.network.Protocols.genericUpdate.sendInventory_full(main.game.world.?.conn, Player.inventory__SEND_CHANGES_TO_SERVER); // TODO(post-java): Add better options to the protocol.
 }
 
 const vtable = ItemSlot.VTable {
@@ -76,11 +69,11 @@ const vtable = ItemSlot.VTable {
 	.trySwappingItems = &trySwappingItems,
 };
 
-pub fn onOpen() Allocator.Error!void {
-	const list = try HorizontalList.init();
+pub fn onOpen() void {
+	const list = HorizontalList.init();
 	for(0..8) |i| {
-		itemSlots[i] = try ItemSlot.init(.{0, 0}, Player.inventory__SEND_CHANGES_TO_SERVER.items[i], &vtable, i, .default, .normal);
-		try list.add(itemSlots[i]);
+		itemSlots[i] = ItemSlot.init(.{0, 0}, Player.inventory__SEND_CHANGES_TO_SERVER.items[i], &vtable, i, .default, .normal);
+		list.add(itemSlots[i]);
 	}
 	list.finish(.{0, 0}, .center);
 	window.rootComponent = list.toComponent();
@@ -94,11 +87,11 @@ pub fn onClose() void {
 	}
 }
 
-pub fn update() Allocator.Error!void {
+pub fn update() void {
 	Player.mutex.lock();
 	defer Player.mutex.unlock();
 	for(&itemSlots, 0..) |slot, i| {
-		try slot.updateItemStack(Player.inventory__SEND_CHANGES_TO_SERVER.items[i]);
+		slot.updateItemStack(Player.inventory__SEND_CHANGES_TO_SERVER.items[i]);
 	}
 	itemSlots[Player.selectedSlot].hovered = true;
 }

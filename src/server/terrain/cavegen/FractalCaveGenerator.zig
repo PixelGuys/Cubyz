@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const random = main.random;
@@ -43,7 +42,7 @@ const maxCaveDensity = 1.0/32.0;
 
 // TODO: Should probably use fixed point arithmetic to avoid crashes at the world border.
 
-pub fn generate(map: *CaveMapFragment, worldSeed: u64) Allocator.Error!void {
+pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 	if(map.pos.voxelSize > 2) return;
 	const cx = map.pos.wx >> chunkShift;
 	const cy = map.pos.wy >> chunkShift;

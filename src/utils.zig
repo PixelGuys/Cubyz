@@ -6,17 +6,17 @@ const builtin = @import("builtin");
 const main = @import("main.zig");
 
 pub const Compression = struct {
-	pub fn deflate(allocator: Allocator, data: []const u8) ![]u8 {
-		var result = std.ArrayList(u8).init(allocator);
-		var comp = try std.compress.deflate.compressor(main.globalAllocator, result.writer(), .{.level = .default_compression});
-		_ = try comp.write(data);
-		try comp.close();
+	pub fn deflate(allocator: NeverFailingAllocator, data: []const u8) []u8 {
+		var result = std.ArrayList(u8).init(allocator.allocator);
+		var comp = std.compress.deflate.compressor(main.globalAllocator.allocator, result.writer(), .{.level = .default_compression}) catch unreachable;
+		_ = comp.write(data) catch unreachable;
+		comp.close() catch unreachable;
 		comp.deinit();
-		return result.toOwnedSlice();
+		return result.toOwnedSlice() catch unreachable;
 	}
 
 	pub fn inflateTo(buf: []u8, data: []const u8) !usize {
-		var arena = std.heap.ArenaAllocator.init(main.stackAllocator);
+		var arena = std.heap.ArenaAllocator.init(main.stackAllocator.allocator);
 		defer arena.deinit();
 		var stream = std.io.fixedBufferStream(data);
 		var decomp = try std.compress.deflate.decompressor(arena.allocator(), stream.reader(), null);
@@ -25,16 +25,16 @@ pub const Compression = struct {
 	}
 
 	pub fn pack(sourceDir: std.fs.Dir, writer: anytype) !void {
-		var comp = try std.compress.deflate.compressor(main.globalAllocator, writer, .{.level = .default_compression});
+		var comp = try std.compress.deflate.compressor(main.globalAllocator.allocator, writer, .{.level = .default_compression});
 		defer comp.deinit();
-		var walker = try sourceDir.walk(main.globalAllocator);
+		var walker = try sourceDir.walk(main.globalAllocator.allocator);
 		defer walker.deinit();
 
 		while(try walker.next()) |entry| {
 			if(entry.kind == .file) {
 				var relPath = entry.path;
 				if(builtin.os.tag == .windows) { // I hate you
-					const copy = try main.stackAllocator.dupe(u8, relPath);
+					const copy = main.stackAllocator.dupe(u8, relPath);
 					std.mem.replaceScalar(u8, copy, '\\', '/');
 					relPath = copy;
 				}
@@ -48,7 +48,7 @@ pub const Compression = struct {
 
 				const file = try sourceDir.openFile(relPath, .{});
 				defer file.close();
-				const fileData = try file.readToEndAlloc(main.stackAllocator, std.math.maxInt(u32));
+				const fileData = try file.readToEndAlloc(main.stackAllocator.allocator, std.math.maxInt(u32));
 				defer main.stackAllocator.free(fileData);
 
 				std.mem.writeInt(u32, &len, @as(u32, @intCast(fileData.len)), .big);
@@ -61,10 +61,10 @@ pub const Compression = struct {
 
 	pub fn unpack(outDir: std.fs.Dir, input: []const u8) !void {
 		var stream = std.io.fixedBufferStream(input);
-		var decomp = try std.compress.deflate.decompressor(main.globalAllocator, stream.reader(), null);
+		var decomp = try std.compress.deflate.decompressor(main.globalAllocator.allocator, stream.reader(), null);
 		defer decomp.deinit();
 		const reader = decomp.reader();
-		const _data = try reader.readAllAlloc(main.stackAllocator, std.math.maxInt(usize));
+		const _data = try reader.readAllAlloc(main.stackAllocator.allocator, std.math.maxInt(usize));
 		defer main.stackAllocator.free(_data);
 		var data = _data;
 		while(data.len != 0) {
@@ -127,14 +127,14 @@ pub fn AliasTable(comptime T: type) type {
 			}
 		}
 
-		pub fn init(allocator: Allocator, items: []T) !@This() {
+		pub fn init(allocator: NeverFailingAllocator, items: []T) @This() {
 			var self: @This() = .{
 				.items = items,
-				.aliasData = try allocator.alloc(AliasData, items.len),
+				.aliasData = allocator.alloc(AliasData, items.len),
 			};
 			if(items.len == 0) return self;
 			@memset(self.aliasData, AliasData{.chance = 0, .alias = 0});
-			const currentChances = try main.stackAllocator.alloc(f32, items.len);
+			const currentChances = main.stackAllocator.alloc(f32, items.len);
 			defer main.stackAllocator.free(currentChances);
 			var totalChance: f32 = 0;
 			for(items, 0..) |*item, i| {
@@ -147,19 +147,19 @@ pub fn AliasTable(comptime T: type) type {
 			return self;
 		}
 
-		pub fn initFromContext(allocator: Allocator, slice: anytype) !@This() {
-			const items = try allocator.alloc(T, slice.len);
+		pub fn initFromContext(allocator: NeverFailingAllocator, slice: anytype) @This() {
+			const items = allocator.alloc(T, slice.len);
 			for(slice, items) |context, *result| {
 				result.* = context.getItem();
 			}
 			var self: @This() = .{
 				.items = items,
-				.aliasData = try allocator.alloc(AliasData, items.len),
+				.aliasData = allocator.alloc(AliasData, items.len),
 				.ownsSlice = true,
 			};
 			if(items.len == 0) return self;
 			@memset(self.aliasData, AliasData{.chance = 0, .alias = 0});
-			const currentChances = try main.stackAllocator.alloc(f32, items.len);
+			const currentChances = main.stackAllocator.alloc(f32, items.len);
 			defer main.stackAllocator.free(currentChances);
 			var totalChance: f32 = 0;
 			for(slice, 0..) |context, i| {
@@ -172,7 +172,7 @@ pub fn AliasTable(comptime T: type) type {
 			return self;
 		}
 
-		pub fn deinit(self: *const @This(), allocator: Allocator) void {
+		pub fn deinit(self: *const @This(), allocator: NeverFailingAllocator) void {
 			allocator.free(self.aliasData);
 			if(self.ownsSlice) {
 				allocator.free(self.items);
@@ -198,7 +198,7 @@ pub fn SortedList(comptime T: type) type {
 		len: u32 = 0,
 		capacity: u32 = 0,
 
-		pub fn deinit(self: Self, allocator: Allocator) void {
+		pub fn deinit(self: Self, allocator: NeverFailingAllocator) void {
 			allocator.free(self.ptr[0..self.capacity]);
 		}
 
@@ -206,16 +206,16 @@ pub fn SortedList(comptime T: type) type {
 			return self.ptr[0..self.len];
 		}
 
-		fn increaseCapacity(self: *Self, allocator: Allocator) !void {
+		fn increaseCapacity(self: *Self, allocator: NeverFailingAllocator) void {
 			const newSize = 8 + self.capacity*3/2;
-			const newSlice = try allocator.realloc(self.ptr[0..self.capacity], newSize);
+			const newSlice = allocator.realloc(self.ptr[0..self.capacity], newSize);
 			self.capacity = @intCast(newSlice.len);
 			self.ptr = newSlice.ptr;
 		}
 
-		pub fn insertSorted(self: *Self, allocator: Allocator, object: T) !void {
+		pub fn insertSorted(self: *Self, allocator: NeverFailingAllocator, object: T) void {
 			if(self.len == self.capacity) {
-				try self.increaseCapacity(allocator);
+				self.increaseCapacity(allocator);
 			}
 			var i = self.len;
 			while(i != 0) { // Find the point to insert and move the rest out of the way.
@@ -230,8 +230,8 @@ pub fn SortedList(comptime T: type) type {
 			self.ptr[i] = object;
 		}
 
-		pub fn toOwnedSlice(self: *Self, allocator: Allocator) ![]T {
-			const output = try allocator.realloc(self.ptr[0..self.capacity], self.len);
+		pub fn toOwnedSlice(self: *Self, allocator: NeverFailingAllocator) []T {
+			const output = allocator.realloc(self.ptr[0..self.capacity], self.len);
 			self.* = .{};
 			return output;
 		}
@@ -245,15 +245,15 @@ pub fn Array2D(comptime T: type) type {
 		width: u32,
 		height: u32,
 
-		pub fn init(allocator: Allocator, width: u32, height: u32) !Self {
+		pub fn init(allocator: NeverFailingAllocator, width: u32, height: u32) Self {
 			return .{
-				.mem = try allocator.alloc(T, width*height),
+				.mem = allocator.alloc(T, width*height),
 				.width = width,
 				.height = height,
 			};
 		}
 
-		pub fn deinit(self: Self, allocator: Allocator) void {
+		pub fn deinit(self: Self, allocator: NeverFailingAllocator) void {
 			allocator.free(self.mem);
 		}
 
@@ -287,16 +287,16 @@ pub fn Array3D(comptime T: type) type {
 		height: u32,
 		depth: u32,
 
-		pub fn init(allocator: Allocator, width: u32, height: u32, depth: u32) !Self {
+		pub fn init(allocator: NeverFailingAllocator, width: u32, height: u32, depth: u32) Self {
 			return .{
-				.mem = try allocator.alloc(T, width*height*depth),
+				.mem = allocator.alloc(T, width*height*depth),
 				.width = width,
 				.height = height,
 				.depth = depth,
 			};
 		}
 
-		pub fn deinit(self: Self, allocator: Allocator) void {
+		pub fn deinit(self: Self, allocator: NeverFailingAllocator) void {
 			allocator.free(self.mem);
 		}
 
@@ -324,13 +324,13 @@ pub fn CircularBufferQueue(comptime T: type) type {
 		mask: usize,
 		startIndex: usize,
 		endIndex: usize,
-		allocator: Allocator,
+		allocator: NeverFailingAllocator,
 
-		pub fn init(allocator: Allocator, initialCapacity: usize) !Self {
+		pub fn init(allocator: NeverFailingAllocator, initialCapacity: usize) Self {
 			comptime std.debug.assert(@sizeOf(Self) <= 64);
 			std.debug.assert(initialCapacity-1 & initialCapacity == 0 and initialCapacity > 0);
 			return .{
-				.mem = try allocator.alloc(T, initialCapacity),
+				.mem = allocator.alloc(T, initialCapacity),
 				.mask = initialCapacity-1,
 				.startIndex = 0,
 				.endIndex = 0,
@@ -342,8 +342,8 @@ pub fn CircularBufferQueue(comptime T: type) type {
 			self.allocator.free(self.mem);
 		}
 
-		fn increaseCapacity(self: *Self) !void {
-			const newMem = try self.allocator.alloc(T, self.mem.len*2);
+		fn increaseCapacity(self: *Self) void {
+			const newMem = self.allocator.alloc(T, self.mem.len*2);
 			@memcpy(newMem[0..(self.mem.len - self.startIndex)], self.mem[self.startIndex..]);
 			@memcpy(newMem[(self.mem.len - self.startIndex)..][0..self.endIndex], self.mem[0..self.endIndex]);
 			self.startIndex = 0;
@@ -353,11 +353,11 @@ pub fn CircularBufferQueue(comptime T: type) type {
 			self.mask = self.mem.len - 1;
 		}
 
-		pub fn enqueue(self: *Self, elem: T) !void {
+		pub fn enqueue(self: *Self, elem: T) void {
 			self.mem[self.endIndex] = elem;
 			self.endIndex = (self.endIndex + 1) & self.mask;
 			if(self.endIndex == self.startIndex) {
-				try self.increaseCapacity();
+				self.increaseCapacity();
 			}
 		}
 
@@ -374,16 +374,16 @@ pub fn CircularBufferQueue(comptime T: type) type {
 /// It is safe in the sense that a regular allocator will be used when the buffer is full.
 pub const StackAllocator = struct {
 	const Allocation = struct{start: u32, len: u32};
-	backingAllocator: Allocator,
+	backingAllocator: NeverFailingAllocator,
 	buffer: []align(4096) u8,
 	allocationList: std.ArrayList(Allocation),
 	index: usize,
 
-	pub fn init(backingAllocator: Allocator, size: u32) !StackAllocator {
+	pub fn init(backingAllocator: NeverFailingAllocator, size: u32) StackAllocator {
 		return .{
 			.backingAllocator = backingAllocator,
-			.buffer = try backingAllocator.alignedAlloc(u8, 4096, size),
-			.allocationList = std.ArrayList(Allocation).init(backingAllocator),
+			.buffer = backingAllocator.alignedAlloc(u8, 4096, size),
+			.allocationList = std.ArrayList(Allocation).init(backingAllocator.allocator),
 			.index = 0,
 		};
 	}
@@ -396,14 +396,17 @@ pub const StackAllocator = struct {
 		self.backingAllocator.free(self.buffer);
 	}
 
-	pub fn allocator(self: *StackAllocator) Allocator {
+	pub fn allocator(self: *StackAllocator) NeverFailingAllocator {
 		return .{
-			.vtable = &.{
-				.alloc = &alloc,
-				.resize = &resize,
-				.free = &free,
+			.allocator = .{
+				.vtable = &.{
+					.alloc = &alloc,
+					.resize = &resize,
+					.free = &free,
+				},
+				.ptr = self,
 			},
-			.ptr = self,
+			.IAssertThatTheProvidedAllocatorCantFail = {},
 		};
 	}
 
@@ -430,7 +433,7 @@ pub const StackAllocator = struct {
 		if(len >= self.buffer.len) return self.backingAllocator.rawAlloc(len, ptr_align, ret_addr);
 		const start = std.mem.alignForward(usize, self.index, @as(usize, 1) << @intCast(ptr_align));
 		if(start + len >= self.buffer.len) return self.backingAllocator.rawAlloc(len, ptr_align, ret_addr);
-		self.allocationList.append(.{.start = @intCast(start), .len = @intCast(len)}) catch return null;
+		self.allocationList.append(.{.start = @intCast(start), .len = @intCast(len)}) catch unreachable;
 		self.index = start + len;
 		return self.buffer.ptr + start;
 	}
@@ -494,6 +497,279 @@ pub const StackAllocator = struct {
 	}
 };
 
+/// An allocator that handles OutOfMemory situations by panicing or freeing memory(TODO), making it safe to ignore errors.
+pub const ErrorHandlingAllocator = struct {
+	backingAllocator: Allocator,
+
+	pub fn init(backingAllocator: Allocator) ErrorHandlingAllocator {
+		return .{
+			.backingAllocator = backingAllocator,
+		};
+	}
+
+	pub fn allocator(self: *ErrorHandlingAllocator) NeverFailingAllocator {
+		return .{
+			.allocator = .{
+				.vtable = &.{
+					.alloc = &alloc,
+					.resize = &resize,
+					.free = &free,
+				},
+				.ptr = self,
+			},
+			.IAssertThatTheProvidedAllocatorCantFail = {},
+		};
+	}
+
+	fn handleError() noreturn {
+		@panic("Out Of Memory. Please download more RAM, reduce the render distance, or close some of your 100 browser tabs.");
+	}
+
+    /// Attempt to allocate exactly `len` bytes aligned to `1 << ptr_align`.
+    ///
+    /// `ret_addr` is optionally provided as the first return address of the
+    /// allocation call stack. If the value is `0` it means no return address
+    /// has been provided.
+    fn alloc(ctx: *anyopaque, len: usize, ptr_align: u8, ret_addr: usize) ?[*]u8 {
+		const self: *ErrorHandlingAllocator = @ptrCast(@alignCast(ctx));
+		return self.backingAllocator.rawAlloc(len, ptr_align, ret_addr) orelse handleError();
+	}
+
+    /// Attempt to expand or shrink memory in place. `buf.len` must equal the
+    /// length requested from the most recent successful call to `alloc` or
+    /// `resize`. `buf_align` must equal the same value that was passed as the
+    /// `ptr_align` parameter to the original `alloc` call.
+    ///
+    /// A result of `true` indicates the resize was successful and the
+    /// allocation now has the same address but a size of `new_len`. `false`
+    /// indicates the resize could not be completed without moving the
+    /// allocation to a different address.
+    ///
+    /// `new_len` must be greater than zero.
+    ///
+    /// `ret_addr` is optionally provided as the first return address of the
+    /// allocation call stack. If the value is `0` it means no return address
+    /// has been provided.
+	fn resize(ctx: *anyopaque, buf: []u8, buf_align: u8, new_len: usize, ret_addr: usize) bool {
+		const self: *ErrorHandlingAllocator = @ptrCast(@alignCast(ctx));
+		return self.backingAllocator.rawResize(buf, buf_align, new_len, ret_addr);
+	}
+
+    /// Free and invalidate a buffer.
+    ///
+    /// `buf.len` must equal the most recent length returned by `alloc` or
+    /// given to a successful `resize` call.
+    ///
+    /// `buf_align` must equal the same value that was passed as the
+    /// `ptr_align` parameter to the original `alloc` call.
+    ///
+    /// `ret_addr` is optionally provided as the first return address of the
+    /// allocation call stack. If the value is `0` it means no return address
+    /// has been provided.
+    fn free(ctx: *anyopaque, buf: []u8, buf_align: u8, ret_addr: usize) void {
+		const self: *ErrorHandlingAllocator = @ptrCast(@alignCast(ctx));
+		self.backingAllocator.rawFree(buf, buf_align, ret_addr);
+	}
+};
+
+/// An allocator interface signaling that you can use 
+pub const NeverFailingAllocator = struct {
+	allocator: Allocator,
+	IAssertThatTheProvidedAllocatorCantFail: void,
+
+	/// This function is not intended to be called except from within the
+	/// implementation of an Allocator
+	pub inline fn rawAlloc(self: NeverFailingAllocator, len: usize, ptr_align: u8, ret_addr: usize) ?[*]u8 {
+		return self.allocator.vtable.alloc(self.allocator.ptr, len, ptr_align, ret_addr);
+	}
+
+	/// This function is not intended to be called except from within the
+	/// implementation of an Allocator
+	pub inline fn rawResize(self: NeverFailingAllocator, buf: []u8, log2_buf_align: u8, new_len: usize, ret_addr: usize) bool {
+		return self.allocator.vtable.resize(self.allocator.ptr, buf, log2_buf_align, new_len, ret_addr);
+	}
+
+	/// This function is not intended to be called except from within the
+	/// implementation of an Allocator
+	pub inline fn rawFree(self: NeverFailingAllocator, buf: []u8, log2_buf_align: u8, ret_addr: usize) void {
+		return self.allocator.vtable.free(self.allocator.ptr, buf, log2_buf_align, ret_addr);
+	}
+
+	/// Returns a pointer to undefined memory.
+	/// Call `destroy` with the result to free the memory.
+	pub fn create(self: NeverFailingAllocator, comptime T: type) *T {
+		return self.allocator.create(T) catch unreachable;
+	}
+
+	/// `ptr` should be the return value of `create`, or otherwise
+	/// have the same address and alignment property.
+	pub fn destroy(self: NeverFailingAllocator, ptr: anytype) void {
+		return self.allocator.destroy(ptr);
+	}
+
+	/// Allocates an array of `n` items of type `T` and sets all the
+	/// items to `undefined`. Depending on the Allocator
+	/// implementation, it may be required to call `free` once the
+	/// memory is no longer needed, to avoid a resource leak. If the
+	/// `Allocator` implementation is unknown, then correct code will
+	/// call `free` when done.
+	///
+	/// For allocating a single item, see `create`.
+	pub fn alloc(self: NeverFailingAllocator, comptime T: type, n: usize) []T {
+		return self.allocator.alloc(T, n) catch unreachable;
+	}
+
+	pub fn allocWithOptions(
+		self: NeverFailingAllocator,
+		comptime Elem: type,
+		n: usize,
+		/// null means naturally aligned
+		comptime optional_alignment: ?u29,
+		comptime optional_sentinel: ?Elem,
+	) AllocWithOptionsPayload(Elem, optional_alignment, optional_sentinel) {
+		return self.allocator.allocWithOptions(Elem, n, optional_alignment, optional_sentinel) catch unreachable;
+	}
+
+	pub fn allocWithOptionsRetAddr(
+		self: NeverFailingAllocator,
+		comptime Elem: type,
+		n: usize,
+		/// null means naturally aligned
+		comptime optional_alignment: ?u29,
+		comptime optional_sentinel: ?Elem,
+		return_address: usize,
+	) AllocWithOptionsPayload(Elem, optional_alignment, optional_sentinel) {
+		return self.allocator.allocWithOptionsRetAddr(Elem, n, optional_alignment, optional_sentinel, return_address) catch unreachable;
+	}
+
+	fn AllocWithOptionsPayload(comptime Elem: type, comptime alignment: ?u29, comptime sentinel: ?Elem) type {
+		if (sentinel) |s| {
+			return [:s]align(alignment orelse @alignOf(Elem)) Elem;
+		} else {
+			return []align(alignment orelse @alignOf(Elem)) Elem;
+		}
+	}
+
+	/// Allocates an array of `n + 1` items of type `T` and sets the first `n`
+	/// items to `undefined` and the last item to `sentinel`. Depending on the
+	/// Allocator implementation, it may be required to call `free` once the
+	/// memory is no longer needed, to avoid a resource leak. If the
+	/// `Allocator` implementation is unknown, then correct code will
+	/// call `free` when done.
+	///
+	/// For allocating a single item, see `create`.
+	pub fn allocSentinel(
+		self: NeverFailingAllocator,
+		comptime Elem: type,
+		n: usize,
+		comptime sentinel: Elem,
+	) [:sentinel]Elem {
+		return self.allocator.allocSentinel(Elem, n, sentinel) catch unreachable;
+	}
+
+	pub fn alignedAlloc(
+		self: NeverFailingAllocator,
+		comptime T: type,
+		/// null means naturally aligned
+		comptime alignment: ?u29,
+		n: usize,
+	) []align(alignment orelse @alignOf(T)) T {
+		return self.allocator.alignedAlloc(T, alignment, n) catch unreachable;
+	}
+
+	pub inline fn allocAdvancedWithRetAddr(
+		self: NeverFailingAllocator,
+		comptime T: type,
+		/// null means naturally aligned
+		comptime alignment: ?u29,
+		n: usize,
+		return_address: usize,
+	) []align(alignment orelse @alignOf(T)) T {
+		return self.allocator.allocAdvancedWithRetAddr(T, alignment, n, return_address) catch unreachable;
+	}
+
+	/// Requests to modify the size of an allocation. It is guaranteed to not move
+	/// the pointer, however the allocator implementation may refuse the resize
+	/// request by returning `false`.
+	pub fn resize(self: NeverFailingAllocator, old_mem: anytype, new_n: usize) bool {
+		return self.allocator.resize(old_mem, new_n);
+	}
+
+	/// This function requests a new byte size for an existing allocation, which
+	/// can be larger, smaller, or the same size as the old memory allocation.
+	/// If `new_n` is 0, this is the same as `free` and it always succeeds.
+	pub fn realloc(self: NeverFailingAllocator, old_mem: anytype, new_n: usize) t: {
+		const Slice = @typeInfo(@TypeOf(old_mem)).Pointer;
+		break :t []align(Slice.alignment) Slice.child;
+	} {
+		return self.allocator.realloc(old_mem, new_n) catch unreachable;
+	}
+
+	pub fn reallocAdvanced(
+		self: NeverFailingAllocator,
+		old_mem: anytype,
+		new_n: usize,
+		return_address: usize,
+	) t: {
+		const Slice = @typeInfo(@TypeOf(old_mem)).Pointer;
+		break :t []align(Slice.alignment) Slice.child;
+	} {
+		return self.allocator.reallocAdvanced(old_mem, new_n, return_address) catch unreachable;
+	}
+
+	/// Free an array allocated with `alloc`. To free a single item,
+	/// see `destroy`.
+	pub fn free(self: NeverFailingAllocator, memory: anytype) void {
+		self.allocator.free(memory);
+	}
+
+	/// Copies `m` to newly allocated memory. Caller owns the memory.
+	pub fn dupe(self: NeverFailingAllocator, comptime T: type, m: []const T) []T {
+		return self.allocator.dupe(T, m) catch unreachable;
+	}
+
+	/// Copies `m` to newly allocated memory, with a null-terminated element. Caller owns the memory.
+	pub fn dupeZ(self: NeverFailingAllocator, comptime T: type, m: []const T) [:0]T {
+		return self.allocator.dupeZ(T, m) catch unreachable;
+	}
+};
+
+pub const NeverFailingArenaAllocator = struct {
+	arena: std.heap.ArenaAllocator,
+
+	pub fn init(child_allocator: NeverFailingAllocator) NeverFailingArenaAllocator {
+		return .{
+			.arena = std.heap.ArenaAllocator.init(child_allocator.allocator),
+		};
+	}
+
+	pub fn deinit(self: NeverFailingArenaAllocator) void {
+		self.arena.deinit();
+	}
+
+	pub fn allocator(self: *NeverFailingArenaAllocator) NeverFailingAllocator {
+		return .{
+			.allocator = self.arena.allocator(),
+			.IAssertThatTheProvidedAllocatorCantFail = {},
+		};
+	}
+
+    /// Resets the arena allocator and frees all allocated memory.
+    ///
+    /// `mode` defines how the currently allocated memory is handled.
+    /// See the variant documentation for `ResetMode` for the effects of each mode.
+    ///
+    /// The function will return whether the reset operation was successful or not.
+    /// If the reallocation  failed `false` is returned. The arena will still be fully
+    /// functional in that case, all memory is released. Future allocations just might
+    /// be slower.
+    ///
+    /// NOTE: If `mode` is `free_all`, the function will always return `true`.
+	pub fn reset(self: *NeverFailingArenaAllocator, mode: std.heap.ArenaAllocator.ResetMode) bool {
+		return self.arena.reset(mode);
+	}
+};
+
 /// A simple binary heap.
 /// Thread safe and blocking.
 /// Expects T to have a `biggerThan(T) bool` function
@@ -505,14 +781,14 @@ pub fn BlockingMaxHeap(comptime T: type) type {
 		waitingThreads: std.Thread.Condition,
 		waitingThreadCount: u32 = 0,
 		mutex: std.Thread.Mutex,
-		allocator: Allocator,
+		allocator: NeverFailingAllocator,
 		closed: bool = false,
 
-		pub fn init(allocator: Allocator) !*@This() {
-			const self = try allocator.create(@This());
+		pub fn init(allocator: NeverFailingAllocator) *@This() {
+			const self = allocator.create(@This());
 			self.* = @This() {
 				.size = 0,
-				.array = try allocator.alloc(T, initialSize),
+				.array = allocator.alloc(T, initialSize),
 				.waitingThreads = .{},
 				.mutex = .{},
 				.allocator = allocator,
@@ -583,12 +859,12 @@ pub fn BlockingMaxHeap(comptime T: type) type {
 		}
 
 		/// Adds a new element to the heap.
-		pub fn add(self: *@This(), elem: T) !void {
+		pub fn add(self: *@This(), elem: T) void {
 			self.mutex.lock();
 			defer self.mutex.unlock();
 
 			if(self.size == self.array.len) {
-				try self.increaseCapacity(self.size*2);
+				self.increaseCapacity(self.size*2);
 			}
 			self.array[self.size] = elem;
 			self.siftUp(self.size);
@@ -626,8 +902,8 @@ pub fn BlockingMaxHeap(comptime T: type) type {
 			}
 		}
 
-		fn increaseCapacity(self: *@This(), newCapacity: usize) !void {
-			self.array = try self.allocator.realloc(self.array, newCapacity);
+		fn increaseCapacity(self: *@This(), newCapacity: usize) void {
+			self.array = self.allocator.realloc(self.array, newCapacity);
 		}
 	};
 }
@@ -645,7 +921,7 @@ pub const ThreadPool = struct {
 	pub const VTable = struct {
 		getPriority: *const fn(*anyopaque) f32,
 		isStillNeeded: *const fn(*anyopaque) bool,
-		run: *const fn(*anyopaque) Allocator.Error!void,
+		run: *const fn(*anyopaque) void,
 		clean: *const fn(*anyopaque) void,
 	};
 	const refreshTime: u32 = 100; // The time after which all priorities get refreshed in milliseconds.
@@ -653,19 +929,22 @@ pub const ThreadPool = struct {
 	threads: []std.Thread,
 	currentTasks: []Atomic(?*const VTable),
 	loadList: *BlockingMaxHeap(Task),
-	allocator: Allocator,
+	allocator: NeverFailingAllocator,
 
-	pub fn init(allocator: Allocator, threadCount: usize) !ThreadPool {
+	pub fn init(allocator: NeverFailingAllocator, threadCount: usize) ThreadPool {
 		const self = ThreadPool {
-			.threads = try allocator.alloc(std.Thread, threadCount),
-			.currentTasks = try allocator.alloc(Atomic(?*const VTable), threadCount),
-			.loadList = try BlockingMaxHeap(Task).init(allocator),
+			.threads = allocator.alloc(std.Thread, threadCount),
+			.currentTasks = allocator.alloc(Atomic(?*const VTable), threadCount),
+			.loadList = BlockingMaxHeap(Task).init(allocator),
 			.allocator = allocator,
 		};
 		for(self.threads, 0..) |*thread, i| {
-			thread.* = try std.Thread.spawn(.{}, run, .{self, i});
-			var buf: [64]u8 = undefined;
-			thread.setName(try std.fmt.bufPrint(&buf, "Worker {}", .{i+1})) catch |err| std.log.err("Couldn't rename thread: {s}", .{@errorName(err)});
+			thread.* = std.Thread.spawn(.{}, run, .{self, i}) catch |err| {
+				std.log.err("Could not spawn Thread due to {s}", .{@errorName(err)});
+				@panic("ThreadPool Creation Failed.");
+			};
+			var buf: [std.Thread.max_name_len]u8 = undefined;
+			thread.setName(std.fmt.bufPrint(&buf, "Worker {}", .{i+1}) catch "Worker n") catch |err| std.log.err("Couldn't rename thread: {s}", .{@errorName(err)});
 		}
 		return self;
 	}
@@ -707,9 +986,9 @@ pub const ThreadPool = struct {
 		}
 	}
 
-	fn run(self: ThreadPool, id: usize) !void {
+	fn run(self: ThreadPool, id: usize) void {
 		// In case any of the tasks wants to allocate memory:
-		var sta = try StackAllocator.init(main.globalAllocator, 1 << 23);
+		var sta = StackAllocator.init(main.globalAllocator, 1 << 23);
 		defer sta.deinit();
 		main.stackAllocator = sta.allocator();
 
@@ -718,7 +997,7 @@ pub const ThreadPool = struct {
 			{
 				const task = self.loadList.extractMax() catch break;
 				self.currentTasks[id].store(task.vtable, .Monotonic);
-				try task.vtable.run(task.self);
+				task.vtable.run(task.self);
 				self.currentTasks[id].store(null, .Monotonic);
 			}
 
@@ -745,8 +1024,8 @@ pub const ThreadPool = struct {
 		}
 	}
 
-	pub fn addTask(self: ThreadPool, task: *anyopaque, vtable: *const VTable) !void {
-		try self.loadList.add(Task {
+	pub fn addTask(self: ThreadPool, task: *anyopaque, vtable: *const VTable) void {
+		self.loadList.add(Task {
 			.cachedPriority = vtable.getPriority(task),
 			.vtable = vtable,
 			.self = task,
@@ -812,12 +1091,12 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 			return previous;
 		}
 
-		fn findOrCreate(self: *@This(), compare: anytype, comptime initFunction: fn(@TypeOf(compare)) Allocator.Error!*T) Allocator.Error!*T {
+		fn findOrCreate(self: *@This(), compare: anytype, comptime initFunction: fn(@TypeOf(compare)) *T) *T {
 			std.debug.assert(!self.mutex.tryLock()); // The mutex must be locked.
 			if(self.find(compare)) |item| {
 				return item;
 			}
-			const new = try initFunction(compare);
+			const new = initFunction(compare);
 			if(self.add(new)) |toRemove| {
 				deinitFunction(toRemove);
 			}
@@ -885,11 +1164,11 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 			return self.buckets[index].add(item);
 		}
 
-		pub fn findOrCreate(self: *@This(), compareAndHash: anytype, comptime initFunction: fn(@TypeOf(compareAndHash)) Allocator.Error!*T) Allocator.Error!*T {
+		pub fn findOrCreate(self: *@This(), compareAndHash: anytype, comptime initFunction: fn(@TypeOf(compareAndHash)) *T) *T {
 			const index: u32 = compareAndHash.hashCode() & hashMask;
 			self.buckets[index].mutex.lock();
 			defer self.buckets[index].mutex.unlock();
-			return try self.buckets[index].findOrCreate(compareAndHash, initFunction);
+			return self.buckets[index].findOrCreate(compareAndHash, initFunction);
 		}
 	};
 }

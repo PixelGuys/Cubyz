@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const graphics = main.graphics;
@@ -31,10 +30,10 @@ var heartTexture: Texture = undefined;
 var halfHeartTexture: Texture = undefined;
 var deadHeartTexture: Texture = undefined;
 
-pub fn init() !void {
-	heartTexture = try Texture.initFromFile("assets/cubyz/ui/hud/heart.png");
-	halfHeartTexture = try Texture.initFromFile("assets/cubyz/ui/hud/half_heart.png");
-	deadHeartTexture = try Texture.initFromFile("assets/cubyz/ui/hud/dead_heart.png");
+pub fn init() void {
+	heartTexture = Texture.initFromFile("assets/cubyz/ui/hud/heart.png");
+	halfHeartTexture = Texture.initFromFile("assets/cubyz/ui/hud/half_heart.png");
+	deadHeartTexture = Texture.initFromFile("assets/cubyz/ui/hud/dead_heart.png");
 }
 
 pub fn deinit() void {
@@ -43,7 +42,7 @@ pub fn deinit() void {
 	deadHeartTexture.deinit();
 }
 
-pub fn render() Allocator.Error!void {
+pub fn render() void {
 	draw.setColor(0xffffffff);
 	var y: f32 = 0;
 	var x: f32 = 0;

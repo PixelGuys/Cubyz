@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const Vec2f = main.vec.Vec2f;
@@ -39,37 +38,37 @@ var fadeOutEnd: u32 = 0;
 var input: *TextInput = undefined;
 var hideInput: bool = true;
 
-fn refresh() Allocator.Error!void {
+fn refresh() void {
 	std.debug.assert(!mutexComponent.mutex.tryLock()); // mutex must be locked!
 	if(window.rootComponent) |old| {
 		old.mutexComponent.child.verticalList.children.clearRetainingCapacity();
 		old.deinit();
 	}
-	const list = try VerticalList.init(.{padding, 16 + padding}, 300, 0);
+	const list = VerticalList.init(.{padding, 16 + padding}, 300, 0);
 	for(history.items[if(hideInput) historyStart else 0 ..]) |msg| {
 		msg.pos = .{0, 0};
-		try list.add(msg);
+		list.add(msg);
 	}
 	if(!hideInput) {
 		input.pos = .{0, 0};
-		try list.add(input);
+		list.add(input);
 	}
 	list.finish(.center);
 	list.scrollBar.currentState = 1;
-	try mutexComponent.updateInner(list);
+	mutexComponent.updateInner(list);
 	window.rootComponent = mutexComponent.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
 	gui.updateWindowPositions();
 }
 
-pub fn onOpen() Allocator.Error!void {
-	history = std.ArrayList(*Label).init(main.globalAllocator);
-	expirationTime = std.ArrayList(i32).init(main.globalAllocator);
+pub fn onOpen() void {
+	history = std.ArrayList(*Label).init(main.globalAllocator.allocator);
+	expirationTime = std.ArrayList(i32).init(main.globalAllocator.allocator);
 	historyStart = 0;
-	input = try TextInput.init(.{0, 0}, 256, 32, "", .{.callback = &sendMessage});
+	input = TextInput.init(.{0, 0}, 256, 32, "", .{.callback = &sendMessage});
 	mutexComponent.mutex.lock();
 	defer mutexComponent.mutex.unlock();
-	try refresh();
+	refresh();
 }
 
 pub fn onClose() void {
@@ -86,7 +85,7 @@ pub fn onClose() void {
 	window.rootComponent = null;
 }
 
-pub fn update() Allocator.Error!void {
+pub fn update() void {
 	mutexComponent.mutex.lock();
 	defer mutexComponent.mutex.unlock();
 	const currentTime: i32 = @truncate(std.time.milliTimestamp());
@@ -97,7 +96,7 @@ pub fn update() Allocator.Error!void {
 		if(currentTime -% time >= messageFade) {
 			historyStart += 1;
 			hideInput = main.Window.grabbed;
-			try refresh();
+			refresh();
 		} else {
 			const timeDifference: f32 = @floatFromInt(currentTime -% time);
 			label.alpha = 1.0 - timeDifference/messageFade;
@@ -105,31 +104,27 @@ pub fn update() Allocator.Error!void {
 	}
 	if(hideInput != main.Window.grabbed) {
 		hideInput = main.Window.grabbed;
-		try refresh();
+		refresh();
 	}
 }
 
-pub fn render() Allocator.Error!void {
+pub fn render() void {
 	if(!hideInput) {
 		main.graphics.draw.setColor(0x80000000);
 		main.graphics.draw.rect(.{0, 0}, window.contentSize);
 	}
 }
 
-pub fn addMessage(message: []const u8) Allocator.Error!void {
+pub fn addMessage(message: []const u8) void {
 	mutexComponent.mutex.lock();
 	defer mutexComponent.mutex.unlock();
-	try history.append(try Label.init(.{0, 0}, 256, message, .left));
+	history.append(Label.init(.{0, 0}, 256, message, .left)) catch unreachable;
 	const currentTime: i32 = @truncate(std.time.milliTimestamp());
-	try expirationTime.append(currentTime +% messageTimeout);
-	try refresh();
+	expirationTime.append(currentTime +% messageTimeout) catch unreachable;
+	refresh();
 }
 
 pub fn sendMessage(_: usize) void {
-	main.network.Protocols.chat.send(main.game.world.?.conn, input.currentString.items) catch |err| {
-		std.log.err("Got error while trying to send chat message: {s}", .{@errorName(err)});
-	};
-	input.clear() catch |err| {
-		std.log.err("Got error while trying to send chat message: {s}", .{@errorName(err)});
-	};
+	main.network.Protocols.chat.send(main.game.world.?.conn, input.currentString.items);
+	input.clear();
 }

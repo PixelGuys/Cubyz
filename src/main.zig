@@ -31,10 +31,11 @@ pub const c = @cImport ({
 	@cInclude("GLFW/glfw3.h");
 });
 
-pub threadlocal var stackAllocator: std.mem.Allocator = undefined;
+pub threadlocal var stackAllocator: utils.NeverFailingAllocator = undefined;
 pub threadlocal var seed: u64 = undefined;
 var global_gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe=true}){};
-pub const globalAllocator: std.mem.Allocator = global_gpa.allocator();
+var handled_gpa = utils.ErrorHandlingAllocator.init(global_gpa.allocator());
+pub const globalAllocator: utils.NeverFailingAllocator = handled_gpa.allocator();
 pub var threadPool: utils.ThreadPool = undefined;
 
 fn cacheStringImpl(comptime len: usize, comptime str: [len]u8) []const u8 {
@@ -178,21 +179,21 @@ pub const std_options = struct {
 };
 
 fn logToFile(comptime format: []const u8, args: anytype) void {
-	var stackFallbackAllocator: std.heap.StackFallbackAllocator(65536) = undefined;
-	stackFallbackAllocator.fallback_allocator = globalAllocator;
-	const allocator = stackFallbackAllocator.get();
+	var buf: [65536]u8 = undefined;
+	var fba = std.heap.FixedBufferAllocator.init(&buf);
+	const allocator = fba.allocator();
 
-	const string = std.fmt.allocPrint(allocator, format, args) catch return;
+	const string = std.fmt.allocPrint(allocator, format, args) catch format;
 	defer allocator.free(string);
 	logFile.writeAll(string) catch {};
 }
 
 fn logToStdErr(comptime format: []const u8, args: anytype) void {
-	var stackFallbackAllocator: std.heap.StackFallbackAllocator(65536) = undefined;
-	stackFallbackAllocator.fallback_allocator = globalAllocator;
-	const allocator = stackFallbackAllocator.get();
+	var buf: [65536]u8 = undefined;
+	var fba = std.heap.FixedBufferAllocator.init(&buf);
+	const allocator = fba.allocator();
 
-	const string = std.fmt.allocPrint(allocator, format, args) catch return;
+	const string = std.fmt.allocPrint(allocator, format, args) catch format;
 	defer allocator.free(string);
 	nosuspend std.io.getStdErr().writeAll(string) catch {};
 }
@@ -307,49 +308,33 @@ fn ungrabMouse() void {
 fn openInventory() void {
 	if(game.world == null) return;
 	ungrabMouse();
-	gui.openWindow("inventory") catch |err| {
-		std.log.err("Got error while opening the inventory: {s}", .{@errorName(err)});
-	};
+	gui.openWindow("inventory");
 }
 fn openWorkbench() void {
 	if(game.world == null) return;
 	ungrabMouse();
-	gui.openWindow("workbench") catch |err| {
-		std.log.err("Got error while opening the inventory: {s}", .{@errorName(err)});
-	};
+	gui.openWindow("workbench");
 }
 fn openCreativeInventory() void {
 	if(game.world == null) return;
 	ungrabMouse();
-	gui.openWindow("creative_inventory") catch |err| {
-		std.log.err("Got error while opening the inventory: {s}", .{@errorName(err)});
-	};
+	gui.openWindow("creative_inventory");
 }
 fn takeBackgroundImageFn() void {
 	if(game.world == null) return;
-	renderer.MenuBackGround.takeBackgroundImage() catch |err| {
-		std.log.err("Got error while recording the background image: {s}", .{@errorName(err)});
-	};
+	renderer.MenuBackGround.takeBackgroundImage();
 }
 fn toggleDebugOverlay() void {
-	gui.toggleWindow("debug") catch |err| {
-		std.log.err("Got error while opening the debug overlay: {s}", .{@errorName(err)});
-	};
+	gui.toggleWindow("debug");
 }
 fn togglePerformanceOverlay() void {
-	gui.toggleWindow("performance_graph") catch |err| {
-		std.log.err("Got error while opening the performance_graph overlay: {s}", .{@errorName(err)});
-	};
+	gui.toggleWindow("performance_graph");
 }
 fn toggleGPUPerformanceOverlay() void {
-	gui.toggleWindow("gpu_performance_measuring") catch |err| {
-		std.log.err("Got error while opening the gpu performance overlay: {s}", .{@errorName(err)});
-	};
+	gui.toggleWindow("gpu_performance_measuring");
 }
 fn toggleNetworkDebugOverlay() void {
-	gui.toggleWindow("debug_network") catch |err| {
-		std.log.err("Got error while opening the network debug overlay: {s}", .{@errorName(err)});
-	};
+	gui.toggleWindow("debug_network");
 }
 
 pub const KeyBoard = struct {
@@ -463,9 +448,7 @@ pub const Window = struct {
 		}
 		fn charCallback(_: ?*c.GLFWwindow, codepoint: c_uint) callconv(.C) void {
 			if(!grabbed) {
-				gui.textCallbacks.char(@intCast(codepoint)) catch |err| {
-					std.log.err("Error while calling char callback: {s}", .{@errorName(err)});
-				};
+				gui.textCallbacks.char(@intCast(codepoint));
 			}
 		}
 
@@ -596,7 +579,7 @@ pub const Window = struct {
 	}
 
 	pub fn setClipboardString(string: []const u8) void {
-		const nullTerminatedString = stackAllocator.dupeZ(u8, string) catch return;
+		const nullTerminatedString = stackAllocator.dupeZ(u8, string);
 		defer stackAllocator.free(nullTerminatedString);
 		c.glfwSetClipboardString(window, nullTerminatedString.ptr);
 	}
@@ -676,7 +659,7 @@ pub fn main() !void {
 	defer if(global_gpa.deinit() == .leak) {
 		std.log.err("Memory leak", .{});
 	};
-	var sta = try utils.StackAllocator.init(globalAllocator, 1 << 23);
+	var sta = utils.StackAllocator.init(globalAllocator, 1 << 23);
 	defer sta.deinit();
 	stackAllocator = sta.allocator();
 
@@ -686,10 +669,10 @@ pub fn main() !void {
 	defer logFile.close();
 	supportsANSIColors = std.io.getStdOut().supportsAnsiEscapeCodes();
 
-	threadPool = try utils.ThreadPool.init(globalAllocator, 1 + ((std.Thread.getCpuCount() catch 4) -| 2));
+	threadPool = utils.ThreadPool.init(globalAllocator, 1 + ((std.Thread.getCpuCount() catch 4) -| 2));
 	defer threadPool.deinit();
 
-	try settings.init();
+	settings.init();
 	defer settings.deinit();
 
 	try Window.init();
@@ -704,39 +687,39 @@ pub fn main() !void {
 	try gui.init();
 	defer gui.deinit();
 
-	try rotation.init();
+	rotation.init();
 	defer rotation.deinit();
 
-	try models.init();
+	models.init();
 	defer models.deinit();
 
 	items.globalInit();
 	defer items.deinit();
 
-	try itemdrop.ItemDropRenderer.init();
+	itemdrop.ItemDropRenderer.init();
 	defer itemdrop.ItemDropRenderer.deinit();
 
 	try assets.init();
 	defer assets.deinit();
 
-	try blocks.meshes.init();
+	blocks.meshes.init();
 	defer blocks.meshes.deinit();
 
-	try renderer.init();
+	renderer.init();
 	defer renderer.deinit();
 
 	try network.init();
 
-	try entity.ClientEntityManager.init();
+	entity.ClientEntityManager.init();
 	defer entity.ClientEntityManager.deinit();
 
 	if(settings.playerName.len == 0) {
-		try gui.openWindow("change_name");
+		gui.openWindow("change_name");
 	} else {
-		try gui.openWindow("main");
+		gui.openWindow("main");
 	}
 
-	try server.terrain.initGenerators();
+	server.terrain.initGenerators();
 	defer server.terrain.deinitGenerators();
 
 	c.glCullFace(c.GL_BACK);
@@ -770,17 +753,17 @@ pub fn main() !void {
 		lastFrameTime.store(deltaTime, .Monotonic);
 		lastTime = newTime;
 		if(game.world != null) { // Update the game
-			try game.update(deltaTime);
+			game.update(deltaTime);
 		}
 		c.glEnable(c.GL_CULL_FACE);
 		c.glEnable(c.GL_DEPTH_TEST);
-		try renderer.render(game.Player.getPosBlocking());
+		renderer.render(game.Player.getPosBlocking());
 
 		{ // Render the GUI
 			gui.windowlist.gpu_performance_measuring.startQuery(.gui);
 			c.glDisable(c.GL_CULL_FACE);
 			c.glDisable(c.GL_DEPTH_TEST);
-			try gui.updateAndRenderGui();
+			gui.updateAndRenderGui();
 			gui.windowlist.gpu_performance_measuring.stopQuery();
 		}
 	}

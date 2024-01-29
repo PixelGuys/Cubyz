@@ -1,6 +1,5 @@
 const std = @import("std");
 const Atomic = std.atomic.Value;
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const Chunk = main.chunk.Chunk;
@@ -49,10 +48,10 @@ const cacheMask = cacheSize - 1;
 const associativity = 8; // ~100MiB MiB Cache size
 var cache: Cache(LightMapFragment, cacheSize, associativity, LightMapFragment.decreaseRefCount) = .{};
 
-fn cacheInit(pos: MapFragmentPosition) !*LightMapFragment {
-	const mapFragment = try main.globalAllocator.create(LightMapFragment);
+fn cacheInit(pos: MapFragmentPosition) *LightMapFragment {
+	const mapFragment = main.globalAllocator.create(LightMapFragment);
 	mapFragment.init(pos.wx, pos.wz, pos.voxelSize);
-	const surfaceMap = try terrain.SurfaceMap.getOrGenerateFragment(pos.wx, pos.wz, pos.voxelSize);
+	const surfaceMap = terrain.SurfaceMap.getOrGenerateFragment(pos.wx, pos.wz, pos.voxelSize);
 	defer surfaceMap.deinit();
 	comptime std.debug.assert(LightMapFragment.mapSize == terrain.SurfaceMap.MapFragment.mapSize);
 	for(0..LightMapFragment.mapSize) |x| {
@@ -70,13 +69,13 @@ pub fn deinit() void {
 }
 
 /// Call decreaseRefCount on the result.
-pub fn getOrGenerateFragment(wx: i32, wz: i32, voxelSize: u31) !*LightMapFragment {
+pub fn getOrGenerateFragment(wx: i32, wz: i32, voxelSize: u31) *LightMapFragment {
 	const compare = MapFragmentPosition.init(
 		wx & ~@as(i32, LightMapFragment.mapMask*voxelSize | voxelSize-1),
 		wz & ~@as(i32, LightMapFragment.mapMask*voxelSize | voxelSize-1),
 		voxelSize
 	);
-	const result = try cache.findOrCreate(compare, cacheInit);
+	const result = cache.findOrCreate(compare, cacheInit);
 	std.debug.assert(@atomicRmw(u16, &result.refCount.raw, .Add, 1, .Monotonic) != 0);
 	return result;
 }

@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const graphics = main.graphics;
@@ -64,15 +63,15 @@ isHud: bool = false,
 // TODO: Option to disable the close button for certain windows that cannot be reopened.
 
 /// Called every frame.
-renderFn: *const fn()Allocator.Error!void = &defaultErrorFunction,
+renderFn: *const fn()void = &defaultFunction,
 /// Called every frame before rendering.
-updateFn: *const fn()Allocator.Error!void = &defaultErrorFunction,
+updateFn: *const fn()void = &defaultFunction,
 /// Called every frame for the currently selected window.
-updateSelectedFn: *const fn()Allocator.Error!void = &defaultErrorFunction,
+updateSelectedFn: *const fn()void = &defaultFunction,
 /// Called every frame for the currently hovered window.
-updateHoveredFn: *const fn()Allocator.Error!void = &defaultErrorFunction,
+updateHoveredFn: *const fn()void = &defaultFunction,
 
-onOpenFn: *const fn()Allocator.Error!void = &defaultErrorFunction,
+onOpenFn: *const fn()void = &defaultFunction,
 
 onCloseFn: *const fn()void = &defaultFunction,
 
@@ -107,19 +106,19 @@ pub var borderUniforms: struct {
 	effectLength: c_int,
 } = undefined;
 
-pub fn __init() !void {
-	shader = try Shader.initAndGetUniforms("assets/cubyz/shaders/ui/button.vs", "assets/cubyz/shaders/ui/button.fs", &windowUniforms);
+pub fn __init() void {
+	shader = Shader.initAndGetUniforms("assets/cubyz/shaders/ui/button.vs", "assets/cubyz/shaders/ui/button.fs", &windowUniforms);
 	shader.bind();
 	graphics.c.glUniform1i(windowUniforms.image, 0);
-	borderShader = try Shader.initAndGetUniforms("assets/cubyz/shaders/ui/window_border.vs", "assets/cubyz/shaders/ui/window_border.fs", &borderUniforms);
+	borderShader = Shader.initAndGetUniforms("assets/cubyz/shaders/ui/window_border.vs", "assets/cubyz/shaders/ui/window_border.fs", &borderUniforms);
 	borderShader.bind();
 
-	backgroundTexture = try Texture.initFromFile("assets/cubyz/ui/window_background.png");
-	titleTexture = try Texture.initFromFile("assets/cubyz/ui/window_title.png");
-	closeTexture = try Texture.initFromFile("assets/cubyz/ui/window_close.png");
-	zoomInTexture = try Texture.initFromFile("assets/cubyz/ui/window_zoom_in.png");
-	zoomOutTexture = try Texture.initFromFile("assets/cubyz/ui/window_zoom_out.png");
-	expandTitleBarTexture = try Texture.initFromFile("assets/cubyz/ui/window_expand.png");
+	backgroundTexture = Texture.initFromFile("assets/cubyz/ui/window_background.png");
+	titleTexture = Texture.initFromFile("assets/cubyz/ui/window_title.png");
+	closeTexture = Texture.initFromFile("assets/cubyz/ui/window_close.png");
+	zoomInTexture = Texture.initFromFile("assets/cubyz/ui/window_zoom_in.png");
+	zoomOutTexture = Texture.initFromFile("assets/cubyz/ui/window_zoom_out.png");
+	expandTitleBarTexture = Texture.initFromFile("assets/cubyz/ui/window_expand.png");
 }
 
 pub fn __deinit() void {
@@ -129,7 +128,6 @@ pub fn __deinit() void {
 }
 
 pub fn defaultFunction() void {}
-pub fn defaultErrorFunction() Allocator.Error!void {}
 
 pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) void {
 	const scaledMousePos = (mousePosition - self.pos)/@as(Vec2f, @splat(self.scale));
@@ -158,9 +156,7 @@ pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 				if(mousePosition[0] - self.pos[0] > self.size[0] - 32*self.scale) {
 					if(mousePosition[0] - self.pos[0] > self.size[0] - 16*self.scale) {
 						// Close
-						gui.closeWindow(self) catch |err| {
-							std.log.err("Got error while trying to close a window: {s}", .{@errorName(err)});
-						};
+						gui.closeWindow(self);
 						return;
 					} else {
 						// Zoom out
@@ -323,12 +319,12 @@ fn positionRelativeToConnectedWindow(self: *GuiWindow, other: *GuiWindow, i: usi
 	}
 }
 
-pub fn update(self: *GuiWindow) !void {
-	try self.updateFn();
+pub fn update(self: *GuiWindow) void {
+	self.updateFn();
 }
 
-pub fn updateSelected(self: *GuiWindow, mousePosition: Vec2f) !void {
-	try self.updateSelectedFn();
+pub fn updateSelected(self: *GuiWindow, mousePosition: Vec2f) void {
+	self.updateSelectedFn();
 	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
 	if(self == grabbedWindow) if(grabPosition) |_grabPosition| {
 		self.relativePosition[0] = .{.ratio = undefined};
@@ -351,8 +347,8 @@ pub fn updateSelected(self: *GuiWindow, mousePosition: Vec2f) !void {
 	}
 }
 
-pub fn updateHovered(self: *GuiWindow, mousePosition: Vec2f) !void {
-	try self.updateHoveredFn();
+pub fn updateHovered(self: *GuiWindow, mousePosition: Vec2f) void {
+	self.updateHoveredFn();
 	if(self.rootComponent) |component| {
 		if(GuiComponent.contains(component.pos(), component.size(), (mousePosition - self.pos)/@as(Vec2f, @splat(self.scale)))) {
 			component.updateHovered((mousePosition - self.pos)/@as(Vec2f, @splat(self.scale)));
@@ -455,7 +451,7 @@ pub fn drawIcons(self: *const GuiWindow) void {
 	zoomInTexture.render(.{self.size[0]/self.scale - 48, 0}, .{16, 16});
 }
 
-pub fn render(self: *const GuiWindow, mousePosition: Vec2f) !void {
+pub fn render(self: *const GuiWindow, mousePosition: Vec2f) void {
 	if(self.hideIfMouseIsGrabbed and main.Window.grabbed) return;
 	const oldTranslation = draw.setTranslation(self.pos);
 	const oldScale = draw.setScale(self.scale);
@@ -465,9 +461,9 @@ pub fn render(self: *const GuiWindow, mousePosition: Vec2f) !void {
 		backgroundTexture.bindTo(0);
 		draw.customShadedRect(windowUniforms, .{0, 0}, self.size/@as(Vec2f, @splat(self.scale)));
 	}
-	try self.renderFn();
+	self.renderFn();
 	if(self.rootComponent) |*component| {
-		try component.render((mousePosition - self.pos)/@as(Vec2f, @splat(self.scale)));
+		component.render((mousePosition - self.pos)/@as(Vec2f, @splat(self.scale)));
 	}
 	if(self.showTitleBar) {
 		shader.bind();

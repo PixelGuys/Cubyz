@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const graphics = main.graphics;
@@ -8,6 +7,8 @@ const JsonElement = main.JsonElement;
 const settings = main.settings;
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
+
+const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 const Button = @import("components/Button.zig");
 const CheckBox = @import("components/CheckBox.zig");
@@ -48,7 +49,7 @@ const GuiCommandQueue = struct {
 	fn init() void {
 		mutex.lock();
 		defer mutex.unlock();
-		commands = std.ArrayList(Command).init(main.globalAllocator);
+		commands = std.ArrayList(Command).init(main.globalAllocator.allocator);
 	}
 
 	fn deinit() void {
@@ -57,19 +58,19 @@ const GuiCommandQueue = struct {
 		commands.deinit();
 	}
 
-	fn scheduleCommand(command: Command) !void {
+	fn scheduleCommand(command: Command) void {
 		mutex.lock();
 		defer mutex.unlock();
-		try commands.append(command);
+		commands.append(command) catch unreachable;
 	}
 
-	fn executeCommands() !void {
+	fn executeCommands() void {
 		mutex.lock();
 		defer mutex.unlock();
 		for(commands.items) |command| {
 			switch(command.action) {
 				.open => {
-					try executeOpenWindowCommand(command.window);
+					executeOpenWindowCommand(command.window);
 				},
 				.close => {
 					executeCloseWindowCommand(command.window);
@@ -79,7 +80,7 @@ const GuiCommandQueue = struct {
 		commands.clearRetainingCapacity();
 	}
 
-	fn executeOpenWindowCommand(window: *GuiWindow) !void {
+	fn executeOpenWindowCommand(window: *GuiWindow) void {
 		std.debug.assert(!mutex.tryLock()); // mutex must be locked.
 		defer updateWindowPositions();
 		for(openWindows.items, 0..) |_openWindow, i| {
@@ -90,8 +91,8 @@ const GuiCommandQueue = struct {
 				return;
 			}
 		}
-		try openWindows.append(window);
-		try window.onOpenFn();
+		openWindows.append(window) catch unreachable;
+		window.onOpenFn();
 		selectedWindow = null;
 	}
 
@@ -124,15 +125,15 @@ pub const Callback = struct {
 
 pub fn init() !void {
 	GuiCommandQueue.init();
-	windowList = std.ArrayList(*GuiWindow).init(main.globalAllocator);
-	hudWindows = std.ArrayList(*GuiWindow).init(main.globalAllocator);
-	openWindows = std.ArrayList(*GuiWindow).init(main.globalAllocator);
+	windowList = std.ArrayList(*GuiWindow).init(main.globalAllocator.allocator);
+	hudWindows = std.ArrayList(*GuiWindow).init(main.globalAllocator.allocator);
+	openWindows = std.ArrayList(*GuiWindow).init(main.globalAllocator.allocator);
 	inline for(@typeInfo(windowlist).Struct.decls) |decl| {
 		const windowStruct = @field(windowlist, decl.name);
 		std.debug.assert(std.mem.eql(u8, decl.name, windowStruct.window.id)); // id and file name should be the same.
-		try addWindow(&windowStruct.window);
+		addWindow(&windowStruct.window);
 		if(@hasDecl(windowStruct, "init")) {
-			try windowStruct.init();
+			windowStruct.init();
 		}
 		const functionNames = [_][]const u8{"render", "update", "updateSelected", "updateHovered", "onOpen", "onClose"};
 		inline for(functionNames) |function| {
@@ -141,22 +142,20 @@ pub fn init() !void {
 			}
 		}
 	}
-	try GuiWindow.__init();
-	try Button.__init();
-	try CheckBox.__init();
-	try ItemSlot.__init();
-	try ScrollBar.__init();
-	try ContinuousSlider.__init();
-	try DiscreteSlider.__init();
-	try TextInput.__init();
-	try load();
-	try inventory.init();
+	GuiWindow.__init();
+	Button.__init();
+	CheckBox.__init();
+	ItemSlot.__init();
+	ScrollBar.__init();
+	ContinuousSlider.__init();
+	DiscreteSlider.__init();
+	TextInput.__init();
+	load();
+	inventory.init();
 }
 
 pub fn deinit() void {
-	save() catch |err| {
-		std.log.err("Got error while saving gui layout: {s}", .{@errorName(err)});
-	};
+	save();
 	windowList.deinit();
 	hudWindows.deinit();
 	for(openWindows.items) |window| {
@@ -181,48 +180,52 @@ pub fn deinit() void {
 	GuiCommandQueue.deinit();
 }
 
-fn save() !void {
-	const guiJson = try JsonElement.initObject(main.globalAllocator);
+fn save() void {
+	const guiJson = JsonElement.initObject(main.globalAllocator);
 	defer guiJson.free(main.globalAllocator);
 	for(windowList.items) |window| {
-		const windowJson = try JsonElement.initObject(main.globalAllocator);
+		const windowJson = JsonElement.initObject(main.globalAllocator);
 		for(window.relativePosition, 0..) |relPos, i| {
-			const relPosJson = try JsonElement.initObject(main.globalAllocator);
+			const relPosJson = JsonElement.initObject(main.globalAllocator);
 			switch(relPos) {
 				.ratio => |ratio| {
-					try relPosJson.put("type", "ratio");
-					try relPosJson.put("ratio", ratio);
+					relPosJson.put("type", "ratio");
+					relPosJson.put("ratio", ratio);
 				},
 				.attachedToFrame => |attachedToFrame| {
-					try relPosJson.put("type", "attachedToFrame");
-					try relPosJson.put("selfAttachmentPoint", @intFromEnum(attachedToFrame.selfAttachmentPoint));
-					try relPosJson.put("otherAttachmentPoint", @intFromEnum(attachedToFrame.otherAttachmentPoint));
+					relPosJson.put("type", "attachedToFrame");
+					relPosJson.put("selfAttachmentPoint", @intFromEnum(attachedToFrame.selfAttachmentPoint));
+					relPosJson.put("otherAttachmentPoint", @intFromEnum(attachedToFrame.otherAttachmentPoint));
 				},
 				.relativeToWindow => |relativeToWindow| {
-					try relPosJson.put("type", "relativeToWindow");
-					try relPosJson.put("reference", relativeToWindow.reference.id);
-					try relPosJson.put("ratio", relativeToWindow.ratio);
+					relPosJson.put("type", "relativeToWindow");
+					relPosJson.put("reference", relativeToWindow.reference.id);
+					relPosJson.put("ratio", relativeToWindow.ratio);
 				},
 				.attachedToWindow => |attachedToWindow| {
-					try relPosJson.put("type", "attachedToWindow");
-					try relPosJson.put("reference", attachedToWindow.reference.id);
-					try relPosJson.put("selfAttachmentPoint", @intFromEnum(attachedToWindow.selfAttachmentPoint));
-					try relPosJson.put("otherAttachmentPoint", @intFromEnum(attachedToWindow.otherAttachmentPoint));
+					relPosJson.put("type", "attachedToWindow");
+					relPosJson.put("reference", attachedToWindow.reference.id);
+					relPosJson.put("selfAttachmentPoint", @intFromEnum(attachedToWindow.selfAttachmentPoint));
+					relPosJson.put("otherAttachmentPoint", @intFromEnum(attachedToWindow.otherAttachmentPoint));
 				},
 			}
-			try windowJson.put(([_][]const u8{"relPos0", "relPos1"})[i], relPosJson);
+			windowJson.put(([_][]const u8{"relPos0", "relPos1"})[i], relPosJson);
 		}
-		try windowJson.put("scale", window.scale);
-		try guiJson.put(window.id, windowJson);
+		windowJson.put("scale", window.scale);
+		guiJson.put(window.id, windowJson);
 	}
 	
-	try main.files.writeJson("gui_layout.json", guiJson);
+	main.files.writeJson("gui_layout.json", guiJson) catch |err| {
+		std.log.err("Could not write gui_layout.json: {s}", .{@errorName(err)});
+	};
 }
 
-fn load() !void {
+fn load() void {
 	const json: JsonElement = main.files.readToJson(main.globalAllocator, "gui_layout.json") catch |err| blk: {
-		if(err == error.FileNotFound) break :blk JsonElement{.JsonNull={}};
-		return err;
+		if(err != error.FileNotFound) {
+			std.log.err("Could not read gui_layout.json: {s}", .{@errorName(err)});
+		}
+		break :blk JsonElement{.JsonNull={}};
 	};
 	defer json.free(main.globalAllocator);
 
@@ -283,7 +286,7 @@ pub fn updateGuiScale() void {
 	}
 }
 
-fn addWindow(window: *GuiWindow) !void {
+fn addWindow(window: *GuiWindow) void {
 	for(windowList.items) |other| {
 		if(std.mem.eql(u8, window.id, other.id)) {
 			std.log.err("Duplicate window id: {s}", .{window.id});
@@ -291,27 +294,27 @@ fn addWindow(window: *GuiWindow) !void {
 		}
 	}
 	if(window.isHud) {
-		try hudWindows.append(window);
+		hudWindows.append(window) catch unreachable;
 	}
-	try windowList.append(window);
+	windowList.append(window) catch unreachable;
 }
 
-pub fn openWindow(id: []const u8) Allocator.Error!void {
+pub fn openWindow(id: []const u8) void {
 	defer updateWindowPositions();
 	for(windowList.items) |window| {
 		if(std.mem.eql(u8, window.id, id)) {
-			try openWindowFromRef(window);
+			openWindowFromRef(window);
 			return;
 		}
 	}
 	std.log.warn("Could not find window with id {s}.", .{id});
 }
 
-pub fn openWindowFromRef(window: *GuiWindow) Allocator.Error!void {
-	try GuiCommandQueue.scheduleCommand(.{.action = .open, .window = window});
+pub fn openWindowFromRef(window: *GuiWindow) void {
+	GuiCommandQueue.scheduleCommand(.{.action = .open, .window = window});
 }
 
-pub fn toggleWindow(id: []const u8) Allocator.Error!void {
+pub fn toggleWindow(id: []const u8) void {
 	defer updateWindowPositions();
 	for(windowList.items) |window| {
 		if(std.mem.eql(u8, window.id, id)) {
@@ -322,8 +325,8 @@ pub fn toggleWindow(id: []const u8) Allocator.Error!void {
 					return;
 				}
 			}
-			try openWindows.append(window);
-			try window.onOpenFn();
+			openWindows.append(window) catch unreachable;
+			window.onOpenFn();
 			selectedWindow = null;
 			return;
 		}
@@ -331,18 +334,16 @@ pub fn toggleWindow(id: []const u8) Allocator.Error!void {
 	std.log.warn("Could not find window with id {s}.", .{id});
 }
 
-pub fn openHud() Allocator.Error!void {
+pub fn openHud() void {
 	for(windowList.items) |window| {
 		if(window.isHud) {
-			try openWindowFromRef(window);
+			openWindowFromRef(window);
 		}
 	}
 }
 
 fn openWindowCallbackFunction(windowPtr: usize) void {
-	openWindowFromRef(@ptrFromInt(windowPtr)) catch |err| {
-		std.log.err("Encountered error while opening window: {s}", .{@errorName(err)});
-	};
+	openWindowFromRef(@ptrFromInt(windowPtr));
 }
 pub fn openWindowCallback(comptime id: []const u8) Callback {
 	return .{
@@ -351,8 +352,8 @@ pub fn openWindowCallback(comptime id: []const u8) Callback {
 	};
 }
 
-pub fn closeWindow(window: *GuiWindow) !void {
-	try GuiCommandQueue.scheduleCommand(.{.action = .close, .window = window});
+pub fn closeWindow(window: *GuiWindow) void {
+	GuiCommandQueue.scheduleCommand(.{.action = .close, .window = window});
 }
 
 pub fn setSelectedTextInput(newSelectedTextInput: ?*TextInput) void {
@@ -365,9 +366,9 @@ pub fn setSelectedTextInput(newSelectedTextInput: ?*TextInput) void {
 }
 
 pub const textCallbacks = struct {
-	pub fn char(codepoint: u21) !void {
+	pub fn char(codepoint: u21) void {
 		if(selectedTextInput) |current| {
-			try current.inputCharacter(codepoint);
+			current.inputCharacter(codepoint);
 		}
 	}
 	pub fn left(mods: main.Key.Modifiers) void {
@@ -434,9 +435,7 @@ pub const textCallbacks = struct {
 
 pub fn mainButtonPressed() void {
 	if(main.Window.grabbed) return;
-	inventory.update() catch |err| {
-		std.log.err("Encountered error while updating inventory: {s}", .{@errorName(err)});
-	};
+	inventory.update();
 	selectedWindow = null;
 	selectedTextInput = null;
 	var selectedI: usize = 0;
@@ -481,9 +480,7 @@ pub fn mainButtonReleased() void {
 
 pub fn secondaryButtonPressed() void {
 	if(main.Window.grabbed) return;
-	inventory.update() catch |err| {
-		std.log.err("Encountered error while updating inventory: {s}", .{@errorName(err)});
-	};
+	inventory.update();
 	if(inventory.carriedItemStack.amount != 0) return;
 }
 
@@ -505,13 +502,13 @@ pub fn updateWindowPositions() void {
 	if(wasChanged) @call(.always_tail, updateWindowPositions, .{}); // Very efficient O(n²) algorithm :P
 }
 
-pub fn updateAndRenderGui() !void {
+pub fn updateAndRenderGui() void {
 	const mousePos = main.Window.getMousePosition()/@as(Vec2f, @splat(scale));
 	hoveredAWindow = false;
-	try GuiCommandQueue.executeCommands();
+	GuiCommandQueue.executeCommands();
 	if(!main.Window.grabbed) {
 		if(selectedWindow) |selected| {
-			try selected.updateSelected(mousePos);
+			selected.updateSelected(mousePos);
 		}
 		hoveredItemSlot = null;
 		var i: usize = openWindows.items.len;
@@ -519,15 +516,15 @@ pub fn updateAndRenderGui() !void {
 			i -= 1;
 			const window: *GuiWindow = openWindows.items[i];
 			if(GuiComponent.contains(window.pos, window.size, mousePos)) {
-				try window.updateHovered(mousePos);
+				window.updateHovered(mousePos);
 				hoveredAWindow = true;
 				break;
 			}
 		}
-		try inventory.update();
+		inventory.update();
 	}
 	for(openWindows.items) |window| {
-		try window.update();
+		window.update();
 	}
 	if(!main.Window.grabbed) {
 		draw.setColor(0x80000000);
@@ -538,9 +535,9 @@ pub fn updateAndRenderGui() !void {
 	const oldScale = draw.setScale(scale);
 	defer draw.restoreScale(oldScale);
 	for(openWindows.items) |window| {
-		try window.render(mousePos);
+		window.render(mousePos);
 	}
-	try inventory.render(mousePos);
+	inventory.render(mousePos);
 }
 
 pub const inventory = struct {
@@ -551,10 +548,10 @@ pub const inventory = struct {
 	var deliveredItemStacksAmountAdded: std.ArrayList(u16) = undefined;
 	var initialAmount: u16 = 0;
 
-	pub fn init() !void {
-		deliveredItemSlots = std.ArrayList(*ItemSlot).init(main.globalAllocator);
-		deliveredItemStacksAmountAdded = std.ArrayList(u16).init(main.globalAllocator);
-		carriedItemSlot = try ItemSlot.init(.{0, 0}, carriedItemStack, undefined, undefined, .default, .normal);
+	pub fn init() void {
+		deliveredItemSlots = std.ArrayList(*ItemSlot).init(main.globalAllocator.allocator);
+		deliveredItemStacksAmountAdded = std.ArrayList(u16).init(main.globalAllocator.allocator);
+		carriedItemSlot = ItemSlot.init(.{0, 0}, carriedItemStack, undefined, undefined, .default, .normal);
 		carriedItemSlot.renderFrame = false;
 	}
 
@@ -565,7 +562,7 @@ pub const inventory = struct {
 		std.debug.assert(carriedItemStack.amount == 0);
 	}
 
-	fn update() !void {
+	fn update() void {
 		if(deliveredItemSlots.items.len == 0) {
 			initialAmount = carriedItemStack.amount;
 		}
@@ -584,8 +581,8 @@ pub const inventory = struct {
 					deliveredSlot.tryTakingItems(&carriedItemStack, oldAmountAdded);
 				}
 				initialAmount = carriedItemStack.amount;
-				try deliveredItemSlots.append(itemSlot);
-				try deliveredItemStacksAmountAdded.append(0);
+				deliveredItemSlots.append(itemSlot) catch unreachable;
+				deliveredItemStacksAmountAdded.append(0) catch unreachable;
 				carriedItemStack.amount = initialAmount;
 				const addedAmount: u16 = @intCast(initialAmount/deliveredItemSlots.items.len);
 				for(deliveredItemSlots.items, deliveredItemStacksAmountAdded.items) |deliveredSlot, *amountAdded| {
@@ -601,8 +598,8 @@ pub const inventory = struct {
 				}
 				if(carriedItemStack.amount != 0) {
 					itemSlot.tryAddingItems(&carriedItemStack, 1);
-					try deliveredItemSlots.append(itemSlot);
-					try deliveredItemStacksAmountAdded.append(1);
+					deliveredItemSlots.append(itemSlot) catch unreachable;
+					deliveredItemStacksAmountAdded.append(1) catch unreachable;
 				}
 			}
 		}
@@ -634,30 +631,26 @@ pub const inventory = struct {
 			}
 		} else if(!hoveredAWindow) {
 			if(leftClick or carriedItemStack.amount == 1) {
-				main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, carriedItemStack, @floatCast(main.game.Player.getPosBlocking()), main.game.camera.direction, 20) catch |err| {
-					std.log.err("Error while dropping itemStack: {s}", .{@errorName(err)});
-				};
+				main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, carriedItemStack, @floatCast(main.game.Player.getPosBlocking()), main.game.camera.direction, 20);
 				carriedItemStack.clear();
 			} else if(carriedItemStack.amount != 0) {
-				main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, .{.item = carriedItemStack.item, .amount = 1}, @floatCast(main.game.Player.getPosBlocking()), main.game.camera.direction, 20) catch |err| {
-					std.log.err("Error while dropping itemStack: {s}", .{@errorName(err)});
-				};
+				main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, .{.item = carriedItemStack.item, .amount = 1}, @floatCast(main.game.Player.getPosBlocking()), main.game.camera.direction, 20);
 				_ = carriedItemStack.add(carriedItemStack.item.?, @as(i32, -1));
 			}
 		}
 	}
 
-	fn render(mousePos: Vec2f) !void {
-		try carriedItemSlot.updateItemStack(carriedItemStack);
+	fn render(mousePos: Vec2f) void {
+		carriedItemSlot.updateItemStack(carriedItemStack);
 		carriedItemSlot.pos = mousePos - Vec2f{12, 12};
-		try carriedItemSlot.render(.{0, 0});
+		carriedItemSlot.render(.{0, 0});
 		// Draw tooltip:
 		if(carriedItemStack.amount == 0) if(hoveredItemSlot) |hovered| {
 			if(hovered.itemStack.item) |item| {
-				const tooltip = try item.getTooltip();
-				var textBuffer: graphics.TextBuffer = try graphics.TextBuffer.init(main.globalAllocator, tooltip, .{}, false, .left);
+				const tooltip = item.getTooltip();
+				var textBuffer: graphics.TextBuffer = graphics.TextBuffer.init(main.globalAllocator, tooltip, .{}, false, .left);
 				defer textBuffer.deinit();
-				var size = try textBuffer.calculateLineBreaks(16, 256);
+				var size = textBuffer.calculateLineBreaks(16, 256);
 				size[0] = 0;
 				for(textBuffer.lineBreaks.items) |lineBreak| {
 					size[0] = @max(size[0], lineBreak.width);
@@ -676,7 +669,7 @@ pub const inventory = struct {
 				draw.rect(pos - @as(Vec2f, @splat(border1)), size + @as(Vec2f, @splat(2*border1)));
 				draw.setColor(0xff000000);
 				draw.rect(pos - @as(Vec2f, @splat(border2)), size + @as(Vec2f, @splat(2*border2)));
-				try textBuffer.render(pos[0], pos[1], 16);
+				textBuffer.render(pos[0], pos[1], 16);
 			}
 		};
 	}

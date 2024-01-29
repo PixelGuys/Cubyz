@@ -56,9 +56,9 @@ pub const Player = struct {
 	pub var maxHealth: f32 = 8;
 	pub var health: f32 = 4.5;
 
-	fn loadFrom(json: JsonElement) !void {
+	fn loadFrom(json: JsonElement) void {
 		super.loadFrom(json);
-		try inventory__SEND_CHANGES_TO_SERVER.loadFromJson(json.getChild("inventory"));
+		inventory__SEND_CHANGES_TO_SERVER.loadFromJson(json.getChild("inventory"));
 	}
 
 	pub fn setPosBlocking(newPos: Vec3d) void {
@@ -81,16 +81,12 @@ pub const Player = struct {
 
 	pub fn placeBlock() void {
 		if(!main.Window.grabbed) return;
-		main.renderer.MeshSelection.placeBlock(&inventory__SEND_CHANGES_TO_SERVER.items[selectedSlot]) catch |err| {
-			std.log.err("Error while placing block: {s}", .{@errorName(err)});
-		};
+		main.renderer.MeshSelection.placeBlock(&inventory__SEND_CHANGES_TO_SERVER.items[selectedSlot]);
 	}
 
 	pub fn breakBlock() void { // TODO: Breaking animation and tools
 		if(!main.Window.grabbed) return;
-		main.renderer.MeshSelection.breakBlock() catch |err| {
-			std.log.err("Error while placing block: {s}", .{@errorName(err)});
-		};
+		main.renderer.MeshSelection.breakBlock();
 	}
 };
 
@@ -119,15 +115,15 @@ pub const World = struct {
 			.name = "client",
 			.milliTime = std.time.milliTimestamp(),
 		};
-		try self.itemDrops.init(main.globalAllocator, self);
-		Player.inventory__SEND_CHANGES_TO_SERVER = try Inventory.init(main.globalAllocator, 32);
+		self.itemDrops.init(main.globalAllocator, self);
+		Player.inventory__SEND_CHANGES_TO_SERVER = Inventory.init(main.globalAllocator, 32);
 		// TODO:
 //		player = new ClientPlayer(this, 0);
-		try network.Protocols.handShake.clientSide(self.conn, settings.playerName);
+		network.Protocols.handShake.clientSide(self.conn, settings.playerName);
 
 		main.Window.setMouseGrabbed(true);
 
-		try main.blocks.meshes.generateTextureArray();
+		main.blocks.meshes.generateTextureArray();
 		self.playerBiome = Atomic(*const main.server.terrain.biomes.Biome).init(main.server.terrain.biomes.getById(""));
 	}
 
@@ -166,11 +162,11 @@ pub const World = struct {
 //		// Call mods for this new world. Mods sometimes need to do extra stuff for the specific world.
 //		ModLoader.postWorldGen(registries);
 		try assets.loadWorldAssets("serverAssets", self.blockPalette);
-		try Player.loadFrom(json.getChild("player"));
+		Player.loadFrom(json.getChild("player"));
 		Player.id = json.get(u32, "player_id", std.math.maxInt(u32));
 	}
 
-	pub fn update(self: *World) !void {
+	pub fn update(self: *World) void {
 		const newTime: i64 = std.time.milliTimestamp();
 		while(self.milliTime +% 100 -% newTime < 0) {
 			self.milliTime +%= 100;
@@ -218,7 +214,7 @@ pub const World = struct {
 				self.ambientLight = 0.55 + 0.45*@as(f32, @floatFromInt(dayTime))/@as(f32, @floatFromInt(dayCycle/2));
 			}
 		}
-		try network.Protocols.playerPosition.send(self.conn, Player.getPosBlocking(), Player.getVelBlocking(), @intCast(newTime & 65535));
+		network.Protocols.playerPosition.send(self.conn, Player.getPosBlocking(), Player.getVelBlocking(), @intCast(newTime & 65535));
 	}
 };
 pub var testWorld: World = undefined; // TODO:
@@ -228,7 +224,7 @@ pub var projectionMatrix: Mat4f = Mat4f.identity();
 
 pub var fog = Fog{.color=.{0, 1, 0.5}, .density=1.0/15.0/128.0}; // TODO: Make this depend on the render distance.
 
-pub fn update(deltaTime: f64) !void {
+pub fn update(deltaTime: f64) void {
 	var movement = Vec3d{0, 0, 0};
 	const forward = vec.rotateY(Vec3d{0, 0, -1}, -camera.rotation[1]);
 	const right = Vec3d{forward[2], 0, -forward[0]};
@@ -283,5 +279,5 @@ pub fn update(deltaTime: f64) !void {
 		defer Player.mutex.unlock();
 		Player.super.pos += movement*@as(Vec3d, @splat(deltaTime));
 	}
-	try world.?.update();
+	world.?.update();
 }

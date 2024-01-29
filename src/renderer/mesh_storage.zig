@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 const Atomic = std.atomic.Value;
 
 const main = @import("root");
@@ -34,11 +33,11 @@ const storageSize = 32;
 const storageMask = storageSize - 1;
 var storageLists: [settings.highestLOD + 1]*[storageSize*storageSize*storageSize]ChunkMeshNode = undefined;
 var mapStorageLists: [settings.highestLOD + 1]*[storageSize*storageSize]Atomic(?*LightMap.LightMapFragment) = undefined;
-var meshList = std.ArrayList(*chunk_meshing.ChunkMesh).init(main.globalAllocator);
-var priorityMeshUpdateList = std.ArrayList(*chunk_meshing.ChunkMesh).init(main.globalAllocator);
-pub var updatableList = std.ArrayList(*chunk_meshing.ChunkMesh).init(main.globalAllocator);
-var mapUpdatableList = std.ArrayList(*LightMap.LightMapFragment).init(main.globalAllocator);
-var clearList = std.ArrayList(*chunk_meshing.ChunkMesh).init(main.globalAllocator);
+var meshList = std.ArrayList(*chunk_meshing.ChunkMesh).init(main.globalAllocator.allocator);
+var priorityMeshUpdateList = std.ArrayList(*chunk_meshing.ChunkMesh).init(main.globalAllocator.allocator);
+pub var updatableList = std.ArrayList(*chunk_meshing.ChunkMesh).init(main.globalAllocator.allocator);
+var mapUpdatableList = std.ArrayList(*LightMap.LightMapFragment).init(main.globalAllocator.allocator);
+var clearList = std.ArrayList(*chunk_meshing.ChunkMesh).init(main.globalAllocator.allocator);
 var lastPx: i32 = 0;
 var lastPy: i32 = 0;
 var lastPz: i32 = 0;
@@ -53,11 +52,11 @@ const BlockUpdate = struct {
 };
 var blockUpdateList: std.ArrayList(BlockUpdate) = undefined;
 
-pub fn init() !void {
+pub fn init() void {
 	lastRD = 0;
-	blockUpdateList = std.ArrayList(BlockUpdate).init(main.globalAllocator);
+	blockUpdateList = std.ArrayList(BlockUpdate).init(main.globalAllocator.allocator);
 	for(&storageLists) |*storageList| {
-		storageList.* = try main.globalAllocator.create([storageSize*storageSize*storageSize]ChunkMeshNode);
+		storageList.* = main.globalAllocator.create([storageSize*storageSize*storageSize]ChunkMeshNode);
 		for(storageList.*) |*val| {
 			val.mesh = Atomic(?*chunk_meshing.ChunkMesh).init(null);
 			val.rendered = false;
@@ -65,7 +64,7 @@ pub fn init() !void {
 		}
 	}
 	for(&mapStorageLists) |*mapStorageList| {
-		mapStorageList.* = try main.globalAllocator.create([storageSize*storageSize]Atomic(?*LightMap.LightMapFragment));
+		mapStorageList.* = main.globalAllocator.create([storageSize*storageSize]Atomic(?*LightMap.LightMapFragment));
 		@memset(mapStorageList.*, Atomic(?*LightMap.LightMapFragment).init(null));
 	}
 }
@@ -79,9 +78,7 @@ pub fn deinit() void {
 	lastPy = 0;
 	lastPz = 0;
 	lastRD = 0;
-	freeOldMeshes(olderPx, olderPy, olderPz, olderRD) catch |err| {
-		std.log.err("Error while freeing remaining meshes: {s}", .{@errorName(err)});
-	};
+	freeOldMeshes(olderPx, olderPy, olderPz, olderRD);
 	for(storageLists) |storageList| {
 		main.globalAllocator.destroy(storageList);
 	}
@@ -266,7 +263,7 @@ fn isMapInRenderDistance(pos: LightMap.MapFragmentPosition) bool {
 	return true;
 }
 
-fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32) !void {
+fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32) void {
 	for(0..storageLists.len) |_lod| {
 		const lod: u5 = @intCast(_lod);
 		const maxRenderDistanceNew = lastRD*chunk.chunkSize << lod;
@@ -398,7 +395,7 @@ fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32) !void {
 	}
 }
 
-fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32, meshRequests: *std.ArrayList(chunk.ChunkPosition), mapRequests: *std.ArrayList(LightMap.MapFragmentPosition)) !void {
+fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32, meshRequests: *std.ArrayList(chunk.ChunkPosition), mapRequests: *std.ArrayList(LightMap.MapFragmentPosition)) void {
 	for(0..storageLists.len) |_lod| {
 		const lod: u5 = @intCast(_lod);
 		const maxRenderDistanceNew = lastRD*chunk.chunkSize << lod;
@@ -464,7 +461,7 @@ fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32, meshR
 
 					const node = &storageLists[_lod][@intCast(index)];
 					std.debug.assert(node.mesh.load(.Acquire) == null);
-					try meshRequests.append(pos);
+					meshRequests.append(pos) catch unreachable;
 				}
 			}
 		}
@@ -522,21 +519,21 @@ fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32, meshR
 
 				const node = &mapStorageLists[_lod][@intCast(index)];
 				std.debug.assert(node.load(.Acquire) == null);
-				try mapRequests.append(pos);
+				mapRequests.append(pos) catch unreachable;
 			}
 		}
 	}
 }
 
-pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: Vec3d, renderDistance: i32) ![]*chunk_meshing.ChunkMesh {
+pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: Vec3d, renderDistance: i32) []*chunk_meshing.ChunkMesh {
 	meshList.clearRetainingCapacity();
 	if(lastRD != renderDistance) {
-		try network.Protocols.genericUpdate.sendRenderDistance(conn, renderDistance);
+		network.Protocols.genericUpdate.sendRenderDistance(conn, renderDistance);
 	}
 
-	var meshRequests = std.ArrayList(chunk.ChunkPosition).init(main.globalAllocator);
+	var meshRequests = std.ArrayList(chunk.ChunkPosition).init(main.globalAllocator.allocator);
 	defer meshRequests.deinit();
-	var mapRequests = std.ArrayList(LightMap.MapFragmentPosition).init(main.globalAllocator);
+	var mapRequests = std.ArrayList(LightMap.MapFragmentPosition).init(main.globalAllocator.allocator);
 	defer mapRequests.deinit();
 
 	const olderPx = lastPx;
@@ -549,13 +546,13 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 	lastPz = @intFromFloat(playerPos[2]);
 	lastRD = renderDistance;
 	mutex.unlock();
-	try freeOldMeshes(olderPx, olderPy, olderPz, olderRD);
+	freeOldMeshes(olderPx, olderPy, olderPz, olderRD);
 
-	try createNewMeshes(olderPx, olderPy, olderPz, olderRD, &meshRequests, &mapRequests);
+	createNewMeshes(olderPx, olderPy, olderPz, olderRD, &meshRequests, &mapRequests);
 
 	// Make requests as soon as possible to reduce latency:
-	try network.Protocols.lightMapRequest.sendRequest(conn, mapRequests.items);
-	try network.Protocols.chunkRequest.sendRequest(conn, meshRequests.items);
+	network.Protocols.lightMapRequest.sendRequest(conn, mapRequests.items);
+	network.Protocols.chunkRequest.sendRequest(conn, meshRequests.items);
 
 	// Does occlusion using a breadth-first search that caches an on-screen visibility rectangle.
 
@@ -571,7 +568,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 	};
 
 	// TODO: Is there a way to combine this with minecraft's approach?
-	var searchList = std.PriorityQueue(OcclusionData, void, OcclusionData.compare).init(main.globalAllocator, {});
+	var searchList = std.PriorityQueue(OcclusionData, void, OcclusionData.compare).init(main.globalAllocator.allocator, {});
 	defer searchList.deinit();
 	{
 		var firstPos = chunk.ChunkPosition{
@@ -592,10 +589,10 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 				node.max = @splat(1);
 				node.active = true;
 				node.rendered = true;
-				try searchList.add(.{
+				searchList.add(.{
 					.node = node,
 					.distance = 0,
-				});
+				}) catch unreachable;
 				break;
 			}
 			firstPos.wx &= ~@as(i32, firstPos.voxelSize*chunk.chunkSize);
@@ -604,11 +601,11 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 			firstPos.voxelSize *= 2;
 		}
 	}
-	var nodeList = std.ArrayList(*ChunkMeshNode).init(main.globalAllocator);
+	var nodeList = std.ArrayList(*ChunkMeshNode).init(main.globalAllocator.allocator);
 	defer nodeList.deinit();
 	const projRotMat = game.projectionMatrix.mul(game.camera.viewMatrix);
 	while(searchList.removeOrNull()) |data| {
-		try nodeList.append(data.node);
+		nodeList.append(data.node) catch unreachable;
 		data.node.active = false;
 		const mesh = data.node.mesh.load(.Acquire).?;
 		std.debug.assert(mesh.finishedMeshing);
@@ -820,17 +817,17 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 						node.min = min;
 						node.max = max;
 						node.active = true;
-						try searchList.add(.{
+						searchList.add(.{
 							.node = node,
 							.distance = neighborMesh.pos.getMaxDistanceSquared(playerPos),
-						});
+						}) catch unreachable;
 						node.rendered = true;
 					}
 					break :continueNeighborLoop;
 				}
 			}
 		}
-		try mesh.changeLodBorders(isNeighborLod);
+		mesh.changeLodBorders(isNeighborLod);
 	}
 	for(nodeList.items) |node| {
 		node.rendered = false;
@@ -845,20 +842,20 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 		}
 		mutex.lock();
 		if(mesh.needsMeshUpdate) {
-			try mesh.uploadData();
+			mesh.uploadData();
 			mesh.needsMeshUpdate = false;
 		}
 		mutex.unlock();
 		// Remove empty meshes.
 		if(!mesh.isEmpty()) {
-			try meshList.append(mesh);
+			meshList.append(mesh) catch unreachable;
 		}
 	}
 
 	return meshList.items;
 }
 
-pub fn updateMeshes(targetTime: i64) !void {
+pub fn updateMeshes(targetTime: i64) void {
 	{ // First of all process all the block updates:
 		blockUpdateMutex.lock();
 		defer blockUpdateMutex.unlock();
@@ -866,7 +863,7 @@ pub fn updateMeshes(targetTime: i64) !void {
 			const pos = chunk.ChunkPosition{.wx=blockUpdate.x, .wy=blockUpdate.y, .wz=blockUpdate.z, .voxelSize=1};
 			const node = getNodeFromRenderThread(pos);
 			if(node.mesh.load(.Acquire)) |mesh| {
-				try mesh.updateBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock);
+				mesh.updateBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock);
 			} // TODO: It seems like we simply ignore the block update if we don't have the mesh yet.
 		}
 		blockUpdateList.clearRetainingCapacity();
@@ -891,7 +888,7 @@ pub fn updateMeshes(targetTime: i64) !void {
 		defer mutex.lock();
 		mesh.decreaseRefCount();
 		if(getNodeFromRenderThread(mesh.pos).mesh.load(.Acquire) != mesh) continue; // This mesh isn't used for rendering anymore.
-		try mesh.uploadData();
+		mesh.uploadData();
 		if(std.time.milliTimestamp() >= targetTime) break; // Update at least one mesh.
 	}
 	while(mapUpdatableList.popOrNull()) |map| {
@@ -934,7 +931,7 @@ pub fn updateMeshes(targetTime: i64) !void {
 		if(isInRenderDistance(mesh.pos)) {
 			const node = getNodeFromRenderThread(mesh.pos);
 			mesh.finishedMeshing = true;
-			try mesh.uploadData();
+			mesh.uploadData();
 			if(node.mesh.swap(mesh, .AcqRel)) |oldMesh| {
 				oldMesh.decreaseRefCount();
 			}
@@ -945,19 +942,19 @@ pub fn updateMeshes(targetTime: i64) !void {
 	}
 }
 
-pub fn addMeshToClearListAndDecreaseRefCount(mesh: *chunk_meshing.ChunkMesh) !void {
+pub fn addMeshToClearListAndDecreaseRefCount(mesh: *chunk_meshing.ChunkMesh) void {
 	std.debug.assert(mesh.refCount.load(.Monotonic) == 0);
 	mutex.lock();
 	defer mutex.unlock();
-	try clearList.append(mesh);
+	clearList.append(mesh) catch unreachable;
 }
 
-pub fn addToUpdateListAndDecreaseRefCount(mesh: *chunk_meshing.ChunkMesh) !void {
+pub fn addToUpdateListAndDecreaseRefCount(mesh: *chunk_meshing.ChunkMesh) void {
 	std.debug.assert(mesh.refCount.load(.Monotonic) != 0);
 	mutex.lock();
 	defer mutex.unlock();
 	if(mesh.finishedMeshing) {
-		try priorityMeshUpdateList.append(mesh);
+		priorityMeshUpdateList.append(mesh) catch unreachable;
 		mesh.needsMeshUpdate = true;
 	} else {
 		mutex.unlock();
@@ -979,17 +976,11 @@ pub fn addMeshToStorage(mesh: *chunk_meshing.ChunkMesh) !void {
 	}
 }
 
-pub fn finishMesh(mesh: *chunk_meshing.ChunkMesh) !void {
+pub fn finishMesh(mesh: *chunk_meshing.ChunkMesh) void {
 	mutex.lock();
 	defer mutex.unlock();
 	mesh.increaseRefCount();
-	updatableList.append(mesh) catch |err| {
-		std.log.err("Error while regenerating mesh: {s}", .{@errorName(err)});
-		if(@errorReturnTrace()) |trace| {
-			std.log.err("Trace: {}", .{trace});
-		}
-		mesh.decreaseRefCount();
-	};
+	updatableList.append(mesh) catch unreachable;
 }
 
 pub const MeshGenerationTask = struct {
@@ -1002,12 +993,12 @@ pub const MeshGenerationTask = struct {
 		.clean = @ptrCast(&clean),
 	};
 
-	pub fn schedule(mesh: *chunk.Chunk) !void {
-		const task = try main.globalAllocator.create(MeshGenerationTask);
+	pub fn schedule(mesh: *chunk.Chunk) void {
+		const task = main.globalAllocator.create(MeshGenerationTask);
 		task.* = MeshGenerationTask {
 			.mesh = mesh,
 		};
-		try main.threadPool.addTask(task, &vtable);
+		main.threadPool.addTask(task, &vtable);
 	}
 
 	pub fn getPriority(self: *MeshGenerationTask) f32 {
@@ -1021,20 +1012,17 @@ pub const MeshGenerationTask = struct {
 		return distanceSqr < @as(f64, @floatFromInt(maxRenderDistance*maxRenderDistance));
 	}
 
-	pub fn run(self: *MeshGenerationTask) Allocator.Error!void {
+	pub fn run(self: *MeshGenerationTask) void {
 		defer main.globalAllocator.destroy(self);
 		const pos = self.mesh.pos;
-		const mesh = try main.globalAllocator.create(chunk_meshing.ChunkMesh);
-		try mesh.init(pos, self.mesh);
+		const mesh = main.globalAllocator.create(chunk_meshing.ChunkMesh);
+		mesh.init(pos, self.mesh);
 		defer mesh.decreaseRefCount();
 		mesh.generateLightingData() catch |err| {
 			switch(err) {
 				error.AlreadyStored => {
 					return;
 				},
-				else => |_err| {
-					return _err;
-				}
 			}
 		};
 	}
@@ -1045,18 +1033,18 @@ pub const MeshGenerationTask = struct {
 	}
 };
 
-pub fn updateBlock(x: i32, y: i32, z: i32, newBlock: blocks.Block) !void {
+pub fn updateBlock(x: i32, y: i32, z: i32, newBlock: blocks.Block) void {
 	blockUpdateMutex.lock();
-	try blockUpdateList.append(BlockUpdate{.x=x, .y=y, .z=z, .newBlock=newBlock});
+	blockUpdateList.append(BlockUpdate{.x=x, .y=y, .z=z, .newBlock=newBlock}) catch unreachable;
 	defer blockUpdateMutex.unlock();
 }
 
-pub fn updateChunkMesh(mesh: *chunk.Chunk) !void {
-	try MeshGenerationTask.schedule(mesh);
+pub fn updateChunkMesh(mesh: *chunk.Chunk) void {
+	MeshGenerationTask.schedule(mesh);
 }
 
-pub fn updateLightMap(map: *LightMap.LightMapFragment) !void {
+pub fn updateLightMap(map: *LightMap.LightMapFragment) void {
 	mutex.lock();
 	defer mutex.unlock();
-	try mapUpdatableList.append(map);
+	mapUpdatableList.append(map) catch unreachable;
 }

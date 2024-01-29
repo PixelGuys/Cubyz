@@ -1,7 +1,5 @@
 const std = @import("std");
 
-const Allocator = std.mem.Allocator;
-
 const blocks = @import("blocks.zig");
 const Block = blocks.Block;
 const graphics = @import("graphics.zig");
@@ -15,6 +13,7 @@ const Mat4f = vec.Mat4f;
 const Vec2f = vec.Vec2f;
 const Vec2i = vec.Vec2i;
 const Vec3i = vec.Vec3i;
+const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 /// Holds the basic properties of a tool crafting material.
 const Material = struct {
@@ -30,13 +29,13 @@ const Material = struct {
 	/// The colors that are used to make tool textures.
 	colorPalette: []Color = undefined,
 
-	pub fn init(self: *Material, allocator: Allocator, json: JsonElement) !void {
+	pub fn init(self: *Material, allocator: NeverFailingAllocator, json: JsonElement) void {
 		self.density = json.get(f32, "density", 1.0);
 		self.resistance = json.get(f32, "resistance", 1.0);
 		self.power = json.get(f32, "power", 1.0);
 		self.roughness = @max(0, json.get(f32, "roughness", 1.0));
 		const colors = json.getChild("colors");
-		self.colorPalette = try allocator.alloc(Color, colors.JsonArray.items.len);
+		self.colorPalette = allocator.alloc(Color, colors.JsonArray.items.len);
 		for(colors.JsonArray.items, self.colorPalette) |item, *color| {
 			const colorInt: u32 = @intCast(item.as(i64, 0xff000000) & 0xffffffff);
 			color.* = Color {
@@ -81,8 +80,8 @@ pub const BaseItem = struct {
 		.foodValue = 0,
 	};
 
-	fn init(self: *BaseItem, allocator: Allocator, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, json: JsonElement) !void {
-		self.id = try allocator.dupe(u8, id);
+	fn init(self: *BaseItem, allocator: NeverFailingAllocator, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, json: JsonElement) void {
+		self.id = allocator.dupe(u8, id);
 		if(texturePath.len == 0) {
 			self.image = graphics.Image.defaultImage;
 		} else {
@@ -91,12 +90,12 @@ pub const BaseItem = struct {
 				break :blk graphics.Image.defaultImage;
 			};
 		}
-		self.name = try allocator.dupe(u8, json.get([]const u8, "name", id));
+		self.name = allocator.dupe(u8, json.get([]const u8, "name", id));
 		self.stackSize = json.get(u16, "stackSize", 64);
 		const material = json.getChild("material");
 		if(material == .JsonObject) {
 			self.material = Material{};
-			try self.material.?.init(allocator, material);
+			self.material.?.init(allocator, material);
 		} else {
 			self.material = null;
 		}
@@ -115,10 +114,10 @@ pub const BaseItem = struct {
 		return hash;
 	}
 
-	pub fn getTexture(self: *BaseItem) !graphics.Texture {
+	pub fn getTexture(self: *BaseItem) graphics.Texture {
 		if(self.texture == null) {
 			if(self.block) |blockType| {
-				self.texture = try graphics.generateBlockTexture(blockType);
+				self.texture = graphics.generateBlockTexture(blockType);
 			} else {
 				self.texture = graphics.Texture.init();
 				self.texture.?.generate(self.image);
@@ -192,21 +191,21 @@ const TextureGenerator = struct {
 	const PixelData = struct {
 		maxNeighbors: u8 = 0,
 		items: std.ArrayList(*const BaseItem),
-		pub fn init(allocator: Allocator) PixelData {
+		pub fn init(allocator: NeverFailingAllocator) PixelData {
 			return PixelData {
-				.items = std.ArrayList(*const BaseItem).init(allocator),
+				.items = std.ArrayList(*const BaseItem).init(allocator.allocator),
 			};
 		}
 		pub fn deinit(self: *PixelData) void {
 			self.items.clearAndFree();
 		}
-		pub fn add(self: *PixelData, item: *const BaseItem, neighbors: u8) !void {
+		pub fn add(self: *PixelData, item: *const BaseItem, neighbors: u8) void {
 			if(neighbors > self.maxNeighbors) {
 				self.maxNeighbors = neighbors;
 				self.items.clearRetainingCapacity();
 			}
 			if(neighbors == self.maxNeighbors) {
-				try self.items.append(item);
+				self.items.append(item) catch unreachable;
 			}
 		}
 	};
@@ -229,7 +228,7 @@ const TextureGenerator = struct {
 	}
 
 	/// This part is responsible for associating each pixel with an item.
-	fn drawRegion(relativeGrid: *[25]?*const BaseItem, relativeNeighborCount: *[25]u8, x: u8, y: u8, pixels: *[16][16]PixelData) !void {
+	fn drawRegion(relativeGrid: *[25]?*const BaseItem, relativeNeighborCount: *[25]u8, x: u8, y: u8, pixels: *[16][16]PixelData) void {
 		if(relativeGrid[12]) |item| {
 			// Count diagonal and straight neighbors:
 			var diagonalNeighbors: u8 = 0;
@@ -246,145 +245,145 @@ const TextureGenerator = struct {
 
 			const neighbors = diagonalNeighbors + straightNeighbors;
 
-			try pixels[x + 1][y + 1].add(item, relativeNeighborCount[12]);
-			try pixels[x + 1][y + 2].add(item, relativeNeighborCount[12]);
-			try pixels[x + 2][y + 1].add(item, relativeNeighborCount[12]);
-			try pixels[x + 2][y + 2].add(item, relativeNeighborCount[12]);
+			pixels[x + 1][y + 1].add(item, relativeNeighborCount[12]);
+			pixels[x + 1][y + 2].add(item, relativeNeighborCount[12]);
+			pixels[x + 2][y + 1].add(item, relativeNeighborCount[12]);
+			pixels[x + 2][y + 2].add(item, relativeNeighborCount[12]);
 
 			// Checkout straight neighbors:
 			if(relativeGrid[7] != null) {
 				if(relativeNeighborCount[7] >= relativeNeighborCount[12]) {
-					try pixels[x + 1][y].add(item, relativeNeighborCount[12]);
-					try pixels[x + 2][y].add(item, relativeNeighborCount[12]);
+					pixels[x + 1][y].add(item, relativeNeighborCount[12]);
+					pixels[x + 2][y].add(item, relativeNeighborCount[12]);
 				}
 				if(relativeGrid[1] != null and relativeGrid[16] == null and straightNeighbors <= 1) {
-					try pixels[x + 2][y + 3].add(item, relativeNeighborCount[12]);
+					pixels[x + 2][y + 3].add(item, relativeNeighborCount[12]);
 				}
 				if(relativeGrid[3] != null and relativeGrid[18] == null and straightNeighbors <= 1) {
-					try pixels[x + 1][y + 3].add(item, relativeNeighborCount[12]);
+					pixels[x + 1][y + 3].add(item, relativeNeighborCount[12]);
 				}
 			}
 			if(relativeGrid[11] != null) {
 				if(relativeNeighborCount[11] >= relativeNeighborCount[12]) {
-					try pixels[x][y + 1].add(item, relativeNeighborCount[12]);
-					try pixels[x][y + 2].add(item, relativeNeighborCount[12]);
+					pixels[x][y + 1].add(item, relativeNeighborCount[12]);
+					pixels[x][y + 2].add(item, relativeNeighborCount[12]);
 				}
 				if(relativeGrid[5] != null and relativeGrid[8] == null and straightNeighbors <= 1) {
-					try pixels[x + 3][y + 2].add(item, relativeNeighborCount[12]);
+					pixels[x + 3][y + 2].add(item, relativeNeighborCount[12]);
 				}
 				if(relativeGrid[15] != null and relativeGrid[18] == null and straightNeighbors <= 1) {
-					try pixels[x + 3][y + 1].add(item, relativeNeighborCount[12]);
+					pixels[x + 3][y + 1].add(item, relativeNeighborCount[12]);
 				}
 			}
 			if(relativeGrid[13] != null) {
 				if(relativeNeighborCount[13] >= relativeNeighborCount[12]) {
-					try pixels[x + 3][y + 1].add(item, relativeNeighborCount[12]);
-					try pixels[x + 3][y + 2].add(item, relativeNeighborCount[12]);
+					pixels[x + 3][y + 1].add(item, relativeNeighborCount[12]);
+					pixels[x + 3][y + 2].add(item, relativeNeighborCount[12]);
 				}
 				if(relativeGrid[9] != null and relativeGrid[6] == null and straightNeighbors <= 1) {
-					try pixels[x][y + 2].add(item, relativeNeighborCount[12]);
+					pixels[x][y + 2].add(item, relativeNeighborCount[12]);
 				}
 				if(relativeGrid[19] != null and relativeGrid[16] == null and straightNeighbors <= 1) {
-					try pixels[x][y + 1].add(item, relativeNeighborCount[12]);
+					pixels[x][y + 1].add(item, relativeNeighborCount[12]);
 				}
 			}
 			if(relativeGrid[17] != null) {
 				if(relativeNeighborCount[17] >= relativeNeighborCount[12]) {
-					try pixels[x + 1][y + 3].add(item, relativeNeighborCount[12]);
-					try pixels[x + 2][y + 3].add(item, relativeNeighborCount[12]);
+					pixels[x + 1][y + 3].add(item, relativeNeighborCount[12]);
+					pixels[x + 2][y + 3].add(item, relativeNeighborCount[12]);
 				}
 				if(relativeGrid[21] != null and relativeGrid[6] == null and straightNeighbors <= 1) {
-					try pixels[x + 2][y].add(item, relativeNeighborCount[12]);
+					pixels[x + 2][y].add(item, relativeNeighborCount[12]);
 				}
 				if(relativeGrid[23] != null and relativeGrid[8] == null and straightNeighbors <= 1) {
-					try pixels[x + 1][y].add(item, relativeNeighborCount[12]);
+					pixels[x + 1][y].add(item, relativeNeighborCount[12]);
 				}
 			}
 
 			// Checkout diagonal neighbors:
 			if(relativeGrid[6] != null) {
 				if(relativeNeighborCount[6] >= relativeNeighborCount[12]) {
-					try pixels[x][y].add(item, relativeNeighborCount[12]);
+					pixels[x][y].add(item, relativeNeighborCount[12]);
 				}
-				try pixels[x + 1][y].add(item, relativeNeighborCount[12]);
-				try pixels[x][y + 1].add(item, relativeNeighborCount[12]);
+				pixels[x + 1][y].add(item, relativeNeighborCount[12]);
+				pixels[x][y + 1].add(item, relativeNeighborCount[12]);
 				if(relativeGrid[1] != null and relativeGrid[7] == null and neighbors <= 2) {
-					try pixels[x + 3][y + 2].add(item, relativeNeighborCount[12]);
+					pixels[x + 3][y + 2].add(item, relativeNeighborCount[12]);
 				}
 				if(relativeGrid[5] != null and relativeGrid[11] == null and neighbors <= 2) {
-					try pixels[x + 2][y + 3].add(item, relativeNeighborCount[12]);
+					pixels[x + 2][y + 3].add(item, relativeNeighborCount[12]);
 				}
 			}
 			if(relativeGrid[8] != null) {
 				if(relativeNeighborCount[8] >= relativeNeighborCount[12]) {
-					try pixels[x + 3][y].add(item, relativeNeighborCount[12]);
+					pixels[x + 3][y].add(item, relativeNeighborCount[12]);
 				}
-				try pixels[x + 2][y].add(item, relativeNeighborCount[12]);
-				try pixels[x + 3][y + 1].add(item, relativeNeighborCount[12]);
+				pixels[x + 2][y].add(item, relativeNeighborCount[12]);
+				pixels[x + 3][y + 1].add(item, relativeNeighborCount[12]);
 				if(relativeGrid[3] != null and relativeGrid[7] == null and neighbors <= 2) {
-					try pixels[x][y + 2].add(item, relativeNeighborCount[12]);
+					pixels[x][y + 2].add(item, relativeNeighborCount[12]);
 				}
 				if(relativeGrid[9] != null and relativeGrid[13] == null and neighbors <= 2) {
-					try pixels[x + 1][y + 3].add(item, relativeNeighborCount[12]);
+					pixels[x + 1][y + 3].add(item, relativeNeighborCount[12]);
 				}
 			}
 			if(relativeGrid[16] != null) {
 				if(relativeNeighborCount[16] >= relativeNeighborCount[12]) {
-					try pixels[x][y + 3].add(item, relativeNeighborCount[12]);
+					pixels[x][y + 3].add(item, relativeNeighborCount[12]);
 				}
-				try pixels[x][y + 2].add(item, relativeNeighborCount[12]);
-				try pixels[x + 1][y + 3].add(item, relativeNeighborCount[12]);
+				pixels[x][y + 2].add(item, relativeNeighborCount[12]);
+				pixels[x + 1][y + 3].add(item, relativeNeighborCount[12]);
 				if(relativeGrid[21] != null and relativeGrid[17] == null and neighbors <= 2) {
-					try pixels[x + 3][y + 1].add(item, relativeNeighborCount[12]);
+					pixels[x + 3][y + 1].add(item, relativeNeighborCount[12]);
 				}
 				if(relativeGrid[15] != null and relativeGrid[11] == null and neighbors <= 2) {
-					try pixels[x + 2][y].add(item, relativeNeighborCount[12]);
+					pixels[x + 2][y].add(item, relativeNeighborCount[12]);
 				}
 			}
 			if(relativeGrid[18] != null) {
 				if(relativeNeighborCount[18] >= relativeNeighborCount[12]) {
-					try pixels[x + 3][y + 3].add(item, relativeNeighborCount[12]);
+					pixels[x + 3][y + 3].add(item, relativeNeighborCount[12]);
 				}
-				try pixels[x + 2][y + 3].add(item, relativeNeighborCount[12]);
-				try pixels[x + 3][y + 2].add(item, relativeNeighborCount[12]);
+				pixels[x + 2][y + 3].add(item, relativeNeighborCount[12]);
+				pixels[x + 3][y + 2].add(item, relativeNeighborCount[12]);
 				if(relativeGrid[23] != null and relativeGrid[17] == null and neighbors <= 2) {
-					try pixels[x][y + 1].add(item, relativeNeighborCount[12]);
+					pixels[x][y + 1].add(item, relativeNeighborCount[12]);
 				}
 				if(relativeGrid[19] != null and relativeGrid[13] == null and neighbors <= 2) {
-					try pixels[x + 1][y].add(item, relativeNeighborCount[12]);
+					pixels[x + 1][y].add(item, relativeNeighborCount[12]);
 				}
 			}
 
 			// Make stuff more round when there is many incoming connections:
 			if(diagonalNeighbors >= 3 or straightNeighbors == 4) {
-				try pixels[x + 0][y + 1].add(item, relativeNeighborCount[12]);
-				try pixels[x + 0][y + 2].add(item, relativeNeighborCount[12]);
-				try pixels[x + 3][y + 1].add(item, relativeNeighborCount[12]);
-				try pixels[x + 3][y + 2].add(item, relativeNeighborCount[12]);
-				try pixels[x + 1][y + 0].add(item, relativeNeighborCount[12]);
-				try pixels[x + 1][y + 3].add(item, relativeNeighborCount[12]);
-				try pixels[x + 2][y + 0].add(item, relativeNeighborCount[12]);
-				try pixels[x + 2][y + 3].add(item, relativeNeighborCount[12]);
+				pixels[x + 0][y + 1].add(item, relativeNeighborCount[12]);
+				pixels[x + 0][y + 2].add(item, relativeNeighborCount[12]);
+				pixels[x + 3][y + 1].add(item, relativeNeighborCount[12]);
+				pixels[x + 3][y + 2].add(item, relativeNeighborCount[12]);
+				pixels[x + 1][y + 0].add(item, relativeNeighborCount[12]);
+				pixels[x + 1][y + 3].add(item, relativeNeighborCount[12]);
+				pixels[x + 2][y + 0].add(item, relativeNeighborCount[12]);
+				pixels[x + 2][y + 3].add(item, relativeNeighborCount[12]);
 				// Check which of the neighbors was empty:
 				if(relativeGrid[6] == null) {
-					try pixels[x + 0][y + 0].add(item, relativeNeighborCount[12]);
-					try pixels[x + 2][y - 1].add(item, relativeNeighborCount[12]);
-					try pixels[x - 1][y + 2].add(item, relativeNeighborCount[12]);
+					pixels[x + 0][y + 0].add(item, relativeNeighborCount[12]);
+					pixels[x + 2][y - 1].add(item, relativeNeighborCount[12]);
+					pixels[x - 1][y + 2].add(item, relativeNeighborCount[12]);
 				}
 				if(relativeGrid[8] == null) {
-					try pixels[x + 3][y + 0].add(item, relativeNeighborCount[12]);
-					try pixels[x + 1][y - 1].add(item, relativeNeighborCount[12]);
-					try pixels[x + 4][y + 2].add(item, relativeNeighborCount[12]);
+					pixels[x + 3][y + 0].add(item, relativeNeighborCount[12]);
+					pixels[x + 1][y - 1].add(item, relativeNeighborCount[12]);
+					pixels[x + 4][y + 2].add(item, relativeNeighborCount[12]);
 				}
 				if(relativeGrid[16] == null) {
-					try pixels[x + 0][y + 3].add(item, relativeNeighborCount[12]);
-					try pixels[x + 2][y + 4].add(item, relativeNeighborCount[12]);
-					try pixels[x - 1][y + 1].add(item, relativeNeighborCount[12]);
+					pixels[x + 0][y + 3].add(item, relativeNeighborCount[12]);
+					pixels[x + 2][y + 4].add(item, relativeNeighborCount[12]);
+					pixels[x - 1][y + 1].add(item, relativeNeighborCount[12]);
 				}
 				if(relativeGrid[18] == null) {
-					try pixels[x + 3][y + 3].add(item, relativeNeighborCount[12]);
-					try pixels[x + 1][y + 4].add(item, relativeNeighborCount[12]);
-					try pixels[x + 4][y + 1].add(item, relativeNeighborCount[12]);
+					pixels[x + 3][y + 3].add(item, relativeNeighborCount[12]);
+					pixels[x + 1][y + 4].add(item, relativeNeighborCount[12]);
+					pixels[x + 4][y + 1].add(item, relativeNeighborCount[12]);
 				}
 			}
 		}
@@ -437,7 +436,7 @@ const TextureGenerator = struct {
 		return heightMap;
 	}
 
-	pub fn generate(tool: *Tool) !void {
+	pub fn generate(tool: *Tool) void {
 		const img = tool.image;
 		var pixelMaterials: [16][16]PixelData = undefined;
 		for(0..16) |x| {
@@ -500,7 +499,7 @@ const TextureGenerator = struct {
 					}
 				}
 				const index = x + 5*y;
-				try drawRegion(&offsetGrid, &offsetNeighborCount, GRID_CENTERS_X[index] - 2, GRID_CENTERS_Y[index] - 2, &pixelMaterials);
+				drawRegion(&offsetGrid, &offsetNeighborCount, GRID_CENTERS_X[index] - 2, GRID_CENTERS_Y[index] - 2, &pixelMaterials);
 			}
 		}
 
@@ -789,7 +788,7 @@ const ToolPhysics = struct {
 	}
 
 	/// Determines how good a shovel this side of the tool would make.
-	fn evaluateShovelPower(tool: *Tool, collisionPoint: Vec3i) !f32 {
+	fn evaluateShovelPower(tool: *Tool, collisionPoint: Vec3i) f32 {
 		// Shovels require a large area to put all the sand on.
 		// For the sake of simplicity I just assume that every part of the tool can contain sand and that sand piles up in a pyramidial shape.
 		var sandPiles: [16][16]u8 = [_][16]u8{[_]u8{0} ** 16} ** 16;
@@ -797,7 +796,7 @@ const ToolPhysics = struct {
 			x: u8,
 			y: u8,
 		};
-		var stack = std.ArrayList(Entry).init(main.stackAllocator);
+		var stack = std.ArrayList(Entry).init(main.stackAllocator.allocator);
 		defer stack.deinit();
 		// Uses a simple flood-fill algorithm equivalent to light calculation.
 		var x: u8 = 0;
@@ -807,10 +806,10 @@ const ToolPhysics = struct {
 				sandPiles[x][y] = std.math.maxInt(u8);
 				if(tool.materialGrid[x][y] == null) {
 					sandPiles[x][y] = 0;
-					try stack.append(Entry{.x=x, .y=y});
+					stack.append(Entry{.x=x, .y=y}) catch unreachable;
 				} else if(x == 0 or x == 15 or y == 0 or y == 15) {
 					sandPiles[x][y] = 1;
-					try stack.append(Entry{.x=x, .y=y});
+					stack.append(Entry{.x=x, .y=y}) catch unreachable;
 				}
 			}
 		}
@@ -820,25 +819,25 @@ const ToolPhysics = struct {
 			if(x != 0 and y != 0 and tool.materialGrid[x - 1][y - 1] != null) {
 				if(sandPiles[x - 1][y - 1] > sandPiles[x][y] + 1) {
 					sandPiles[x - 1][y - 1] = sandPiles[x][y] + 1;
-					try stack.append(Entry{.x=x-1, .y=y-1});
+					stack.append(Entry{.x=x-1, .y=y-1}) catch unreachable;
 				}
 			}
 			if(x != 0 and y != 15 and tool.materialGrid[x - 1][y + 1] != null) {
 				if(sandPiles[x - 1][y + 1] > sandPiles[x][y] + 1) {
 					sandPiles[x - 1][y + 1] = sandPiles[x][y] + 1;
-					try stack.append(Entry{.x=x-1, .y=y+1});
+					stack.append(Entry{.x=x-1, .y=y+1}) catch unreachable;
 				}
 			}
 			if(x != 15 and y != 0 and tool.materialGrid[x + 1][y - 1] != null) {
 				if(sandPiles[x + 1][y - 1] > sandPiles[x][y] + 1) {
 					sandPiles[x + 1][y - 1] = sandPiles[x][y] + 1;
-					try stack.append(Entry{.x=x+1, .y=y-1});
+					stack.append(Entry{.x=x+1, .y=y-1}) catch unreachable;
 				}
 			}
 			if(x != 15 and y != 15 and tool.materialGrid[x + 1][y + 1] != null) {
 				if(sandPiles[x + 1][y + 1] > sandPiles[x][y] + 1) {
 					sandPiles[x + 1][y + 1] = sandPiles[x][y] + 1;
-					try stack.append(Entry{.x=x+1, .y=y+1});
+					stack.append(Entry{.x=x+1, .y=y+1}) catch unreachable;
 				}
 			}
 		}
@@ -857,7 +856,7 @@ const ToolPhysics = struct {
 
 
 	/// Determines all the basic properties of the tool.
-	pub fn evaluateTool(tool: *Tool) !void {
+	pub fn evaluateTool(tool: *Tool) void {
 		const hasGoodHandle = findHandle(tool);
 		calculateDurability(tool);
 		determineInertia(tool);
@@ -878,7 +877,7 @@ const ToolPhysics = struct {
 		const rightAP = evaluateAxePower(tool, rightCollisionPointLower, rightCollisionPointUpper);
 		tool.axePower = @max(leftAP, rightAP); // TODO: Adjust the swing direction.
 
-		tool.shovelPower = try evaluateShovelPower(tool, frontCollisionPointLower);
+		tool.shovelPower = evaluateShovelPower(tool, frontCollisionPointLower);
 
 		// It takes longer to swing a heavy tool.
 		tool.swingTime = (tool.mass + tool.inertiaHandle/8)/256; // TODO: Balancing
@@ -927,9 +926,9 @@ pub const Tool = struct {
 	/// Moment of inertia relative to the center of mass.
 	inertiaCenterOfMass: f32,
 
-	pub fn init() !*Tool {
-		const self = try main.globalAllocator.create(Tool);
-		self.image = try graphics.Image.init(main.globalAllocator, 16, 16);
+	pub fn init() *Tool {
+		const self = main.globalAllocator.create(Tool);
+		self.image = graphics.Image.init(main.globalAllocator, 16, 16);
 		self.texture = null;
 		self.tooltip = null;
 		return self;
@@ -944,19 +943,19 @@ pub const Tool = struct {
 		main.globalAllocator.destroy(self);
 	}
 
-	pub fn initFromCraftingGrid(craftingGrid: [25]?*const BaseItem, seed: u32) !*Tool {
-		const self = try init();
+	pub fn initFromCraftingGrid(craftingGrid: [25]?*const BaseItem, seed: u32) *Tool {
+		const self = init();
 		self.seed = seed;
 		self.craftingGrid = craftingGrid;
 		// Produce the tool and its textures:
 		// The material grid, which comes from texture generation, is needed on both server and client, to generate the tool properties.
-		try TextureGenerator.generate(self);
-		try ToolPhysics.evaluateTool(self);
+		TextureGenerator.generate(self);
+		ToolPhysics.evaluateTool(self);
 		return self;
 	}
 
-	pub fn initFromJson(json: JsonElement) !*Tool {
-		const self = try initFromCraftingGrid(extractItemsFromJson(json.getChild("grid")), json.get(u32, "seed", 0));
+	pub fn initFromJson(json: JsonElement) *Tool {
+		const self = initFromCraftingGrid(extractItemsFromJson(json.getChild("grid")), json.get(u32, "seed", 0));
 		self.durability = json.get(u32, "durability", self.maxDurability);
 		return self;
 	}
@@ -969,19 +968,19 @@ pub const Tool = struct {
 		return items;
 	}
 
-	pub fn save(self: *const Tool, allocator: Allocator) !JsonElement {
-		const jsonObject = try JsonElement.initObject(allocator);
-		const jsonArray = try JsonElement.initArray(allocator);
+	pub fn save(self: *const Tool, allocator: NeverFailingAllocator) JsonElement {
+		const jsonObject = JsonElement.initObject(allocator);
+		const jsonArray = JsonElement.initArray(allocator);
 		for(self.craftingGrid) |nullItem| {
 			if(nullItem) |item| {
-				try jsonArray.JsonArray.append(JsonElement{.JsonString=item.id});
+				jsonArray.JsonArray.append(JsonElement{.JsonString=item.id}) catch unreachable;
 			} else {
-				try jsonArray.JsonArray.append(JsonElement{.JsonNull={}});
+				jsonArray.JsonArray.append(JsonElement{.JsonNull={}}) catch unreachable;
 			}
 		}
-		try jsonObject.put("grid", jsonArray);
-		try jsonObject.put("durability", self.durability);
-		try jsonObject.put("seed", self.seed);
+		jsonObject.put("grid", jsonArray);
+		jsonObject.put("durability", self.durability);
+		jsonObject.put("seed", self.seed);
 		return jsonObject;
 	}
 
@@ -995,7 +994,7 @@ pub const Tool = struct {
 		return hash;
 	}
 
-	fn getTexture(self: *Tool) !graphics.Texture {
+	fn getTexture(self: *Tool) graphics.Texture {
 		if(self.texture == null) {
 			self.texture = graphics.Texture.init();
 			self.texture.?.generate(self.image);
@@ -1003,10 +1002,10 @@ pub const Tool = struct {
 		return self.texture.?;
 	}
 	
-	fn getTooltip(self: *Tool) ![]const u8 {
+	fn getTooltip(self: *Tool) []const u8 {
 		if(self.tooltip) |tooltip| return tooltip;
-		self.tooltip = try std.fmt.allocPrint(
-			main.globalAllocator,
+		self.tooltip = std.fmt.allocPrint(
+			main.globalAllocator.allocator,
 			\\Time to swing: {d:.2} s
 			\\Pickaxe power: {} %
 			\\Axe power: {} %
@@ -1020,7 +1019,7 @@ pub const Tool = struct {
 				@as(i32, @intFromFloat(100*self.shovelPower)),
 				self.durability, self.maxDurability,
 			}
-		);
+		) catch unreachable;
 		return self.tooltip.?;
 	}
 
@@ -1051,7 +1050,7 @@ pub const Item = union(enum) {
 		} else {
 			const toolJson = json.getChild("tool");
 			if(toolJson != .JsonObject) return error.ItemNotFound;
-			return Item{.tool = try Tool.initFromJson(toolJson)};
+			return Item{.tool = Tool.initFromJson(toolJson)};
 		}
 	}
 
@@ -1077,35 +1076,35 @@ pub const Item = union(enum) {
 		}
 	}
 
-	pub fn insertIntoJson(self: Item, allocator: Allocator, jsonObject: JsonElement) !void {
+	pub fn insertIntoJson(self: Item, allocator: NeverFailingAllocator, jsonObject: JsonElement) void {
 		switch(self) {
 			.baseItem => |_baseItem| {
-				try jsonObject.put("item", _baseItem.id);
+				jsonObject.put("item", _baseItem.id);
 			},
 			.tool => |_tool| {
-				try jsonObject.put("tool", try _tool.save(allocator));
+				jsonObject.put("tool", _tool.save(allocator));
 			},
 		}
 	}
 
-	pub fn getTexture(self: Item) !graphics.Texture {
+	pub fn getTexture(self: Item) graphics.Texture {
 		switch(self) {
 			.baseItem => |_baseItem| {
-				return try _baseItem.getTexture();
+				return _baseItem.getTexture();
 			},
 			.tool => |_tool| {
-				return try _tool.getTexture();
+				return _tool.getTexture();
 			},
 		}
 	}
 
-	pub fn getTooltip(self: Item) ![]const u8 {
+	pub fn getTooltip(self: Item) []const u8 {
 		switch(self) {
 			.baseItem => |_baseItem| {
 				return _baseItem.getTooltip();
 			},
 			.tool => |_tool| {
-				return try _tool.getTooltip();
+				return _tool.getTooltip();
 			},
 		}
 	}
@@ -1186,16 +1185,16 @@ pub const ItemStack = struct {
 		self.amount = 0;
 	}
 
-	pub fn storeToJson(self: *const ItemStack, jsonObject: JsonElement) !void {
+	pub fn storeToJson(self: *const ItemStack, allocator: NeverFailingAllocator, jsonObject: JsonElement) void {
 		if(self.item) |item| {
-			try item.insertIntoJson(jsonObject.JsonObject.allocator, jsonObject);
-			try jsonObject.put("amount", self.amount);
+			item.insertIntoJson(allocator, jsonObject);
+			jsonObject.put("amount", self.amount);
 		}
 	}
 
-	pub fn store(self: *const ItemStack, allocator: Allocator) !JsonElement {
-		const result = try JsonElement.initObject(allocator);
-		try self.storeToJson(result);
+	pub fn store(self: *const ItemStack, allocator: NeverFailingAllocator) JsonElement {
+		const result = JsonElement.initObject(allocator);
+		self.storeToJson(allocator, result);
 		return result;
 	}
 };
@@ -1203,9 +1202,9 @@ pub const ItemStack = struct {
 pub const Inventory = struct {
 	items: []ItemStack,
 
-	pub fn init(allocator: Allocator, size: usize) !Inventory {
+	pub fn init(allocator: NeverFailingAllocator, size: usize) Inventory {
 		const self = Inventory{
-			.items = try allocator.alloc(ItemStack, size),
+			.items = allocator.alloc(ItemStack, size),
 		};
 		for(self.items) |*item| {
 			item.* = ItemStack{};
@@ -1213,7 +1212,7 @@ pub const Inventory = struct {
 		return self;
 	}
 
-	pub fn deinit(self: Inventory, allocator: Allocator) void {
+	pub fn deinit(self: Inventory, allocator: NeverFailingAllocator) void {
 		for(self.items) |*item| {
 			item.clear();
 		}
@@ -1260,25 +1259,31 @@ pub const Inventory = struct {
 		return self.items[slot].amount;
 	}
 
-	pub fn save(self: Inventory, allocator: Allocator) !JsonElement {
-		const jsonObject = try JsonElement.initObject(allocator);
-		try jsonObject.put("capacity", self.items.len);
+	pub fn save(self: Inventory, allocator: NeverFailingAllocator) JsonElement {
+		const jsonObject = JsonElement.initObject(allocator);
+		jsonObject.put("capacity", self.items.len);
 		for(self.items, 0..) |stack, i| {
 			if(!stack.empty()) {
 				var buf: [1024]u8 = undefined;
-				try jsonObject.put(buf[0..std.fmt.formatIntBuf(&buf, i, 10, .lower, .{})], try stack.store(allocator));
+				jsonObject.put(buf[0..std.fmt.formatIntBuf(&buf, i, 10, .lower, .{})], stack.store(allocator));
 			}
 		}
 		return jsonObject;
 	}
 
-	pub fn loadFromJson(self: Inventory, json: JsonElement) !void {
+	pub fn loadFromJson(self: Inventory, json: JsonElement) void {
 		for(self.items, 0..) |*stack, i| {
 			stack.clear();
 			var buf: [1024]u8 = undefined;
 			const stackJson = json.getChild(buf[0..std.fmt.formatIntBuf(&buf, i, 10, .lower, .{})]);
 			if(stackJson == .JsonObject) {
-				stack.item = try Item.init(stackJson);
+				stack.item = Item.init(stackJson) catch |err| {
+					const msg = stackJson.toStringEfficient(main.stackAllocator, "");
+					defer main.stackAllocator.free(msg);
+					std.log.err("Couldn't find item {s}: {s}", .{msg, @errorName(err)});
+					stack.clear();
+					continue;
+				};
 				stack.amount = stackJson.get(u16, "amount", 0);
 			}
 		}
@@ -1291,7 +1296,7 @@ const Recipe = struct {
 	resultItem: ItemStack,
 };
 
-var arena: std.heap.ArenaAllocator = undefined;
+var arena: main.utils.NeverFailingArenaAllocator = undefined;
 var reverseIndices: std.StringHashMap(*BaseItem) = undefined;
 var itemList: [65536]BaseItem = undefined;
 var itemListSize: u16 = 0;
@@ -1307,26 +1312,26 @@ pub fn recipes() []Recipe {
 }
 
 pub fn globalInit() void {
-	arena = std.heap.ArenaAllocator.init(main.globalAllocator);
-	reverseIndices = std.StringHashMap(*BaseItem).init(arena.allocator());
-	recipeList = std.ArrayList(Recipe).init(arena.allocator());
+	arena = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
+	reverseIndices = std.StringHashMap(*BaseItem).init(arena.allocator().allocator);
+	recipeList = std.ArrayList(Recipe).init(arena.allocator().allocator);
 	itemListSize = 0;
 }
 
-pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, json: JsonElement) !*BaseItem {
+pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, json: JsonElement) *BaseItem {
 	std.log.info("{s}", .{id});
 	if(reverseIndices.contains(id)) {
 		std.log.warn("Registered item with id {s} twice!", .{id});
 	}
 	const newItem = &itemList[itemListSize];
-	try newItem.init(arena.allocator(), texturePath, replacementTexturePath, id, json);
-	try reverseIndices.put(newItem.id, newItem);
+	newItem.init(arena.allocator(), texturePath, replacementTexturePath, id, json);
+	reverseIndices.put(newItem.id, newItem) catch unreachable;
 	itemListSize += 1;
 	return newItem;
 }
 
-pub fn registerRecipes(file: []const u8) !void {
-	var shortcuts = std.StringHashMap(*BaseItem).init(main.globalAllocator);
+pub fn registerRecipes(file: []const u8) void {
+	var shortcuts = std.StringHashMap(*BaseItem).init(main.globalAllocator.allocator);
 	defer shortcuts.deinit();
 	defer {
 		var keyIterator = shortcuts.keyIterator();
@@ -1334,11 +1339,11 @@ pub fn registerRecipes(file: []const u8) !void {
 			main.globalAllocator.free(key.*);
 		}
 	}
-	var items = std.ArrayList(*BaseItem).init(main.globalAllocator);
+	var items = std.ArrayList(*BaseItem).init(main.globalAllocator.allocator);
 	defer items.deinit();
-	var itemAmounts = std.ArrayList(u16).init(main.globalAllocator);
+	var itemAmounts = std.ArrayList(u16).init(main.globalAllocator.allocator);
 	defer itemAmounts.deinit();
-	var string = std.ArrayList(u8).init(main.globalAllocator);
+	var string = std.ArrayList(u8).init(main.globalAllocator.allocator);
 	defer string.deinit();
 	var lines = std.mem.split(u8, file, "\n");
 	while(lines.next()) |line| {
@@ -1347,12 +1352,12 @@ pub fn registerRecipes(file: []const u8) !void {
 			var parts = std.mem.split(u8, line, "=");
 			for(parts.first()) |char| {
 				if(std.ascii.isWhitespace(char)) continue; // TODO: Unicode whitespaces
-				try string.append(char);
+				string.append(char) catch unreachable;
 			}
-			const shortcut = try string.toOwnedSlice();
+			const shortcut = string.toOwnedSlice() catch unreachable;
 			const id = std.mem.trim(u8, parts.rest(), &std.ascii.whitespace); // TODO: Unicode whitespaces
 			const item = shortcuts.get(id) orelse getByID(id) orelse &BaseItem.unobtainable;
-			try shortcuts.put(shortcut, item);
+			shortcuts.put(shortcut, item) catch unreachable;
 		} else if(std.mem.startsWith(u8, line, "result") and items.items.len != 0) {
 			defer items.clearAndFree();
 			defer itemAmounts.clearAndFree();
@@ -1367,11 +1372,11 @@ pub fn registerRecipes(file: []const u8) !void {
 			id = std.mem.trim(u8, id, &std.ascii.whitespace); // TODO: Unicode whitespaces
 			const item = shortcuts.get(id) orelse getByID(id) orelse continue;
 			const recipe = Recipe {
-				.sourceItems = try arena.allocator().dupe(*BaseItem, items.items),
-				.sourceAmounts = try arena.allocator().dupe(u16, itemAmounts.items),
+				.sourceItems = arena.allocator().dupe(*BaseItem, items.items),
+				.sourceAmounts = arena.allocator().dupe(u16, itemAmounts.items),
 				.resultItem = ItemStack{.item = Item{.baseItem = item}, .amount = amount},
 			};
-			try recipeList.append(recipe);
+			recipeList.append(recipe) catch unreachable;
 		} else {
 			var ingredients = std.mem.split(u8, line, ",");
 			outer: while(ingredients.next()) |ingredient| {
@@ -1393,8 +1398,8 @@ pub fn registerRecipes(file: []const u8) !void {
 						continue :outer;
 					}
 				}
-				try items.append(item);
-				try itemAmounts.append(amount);
+				items.append(item) catch unreachable;
+				itemAmounts.append(amount) catch unreachable;
 			}
 		}
 	}

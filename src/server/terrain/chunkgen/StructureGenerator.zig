@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const random = main.random;
@@ -28,10 +27,10 @@ pub fn deinit() void {
 
 }
 
-pub fn generate(worldSeed: u64, chunk: *main.chunk.Chunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView) Allocator.Error!void {
+pub fn generate(worldSeed: u64, chunk: *main.chunk.Chunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView) void {
 	if(chunk.pos.voxelSize < 4) {
 		// Uses a blue noise pattern for all structure that shouldn't touch.
-		const blueNoise = try noise.BlueNoise.getRegionData(main.stackAllocator, chunk.pos.wx - 8, chunk.pos.wz - 8, chunk.width + 16, chunk.width + 16);
+		const blueNoise = noise.BlueNoise.getRegionData(main.stackAllocator, chunk.pos.wx - 8, chunk.pos.wz - 8, chunk.width + 16, chunk.width + 16);
 		defer main.stackAllocator.free(blueNoise);
 		for(blueNoise) |coordinatePair| {
 			const px = @as(i32, @intCast(coordinatePair >> 16)) - 8; // TODO: Maybe add a blue-noise iterator or something like that?
@@ -55,7 +54,7 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.Chunk, caveMap: CaveMap.CaveM
 				for(biome.vegetationModels) |model| { // TODO: Could probably use an alias table here.
 					const adaptedChance = model.chance*16;
 					if(randomValue < adaptedChance) {
-						try model.generate(px, relY, pz, chunk, caveMap, &seed);
+						model.generate(px, relY, pz, chunk, caveMap, &seed);
 						break;
 					} else {
 						// Make sure that after the first one was considered all others get the correct chances.
@@ -83,7 +82,7 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.Chunk, caveMap: CaveMap.CaveM
 					// Increase chance if there are less spawn points considered. Messes up positions, but at that distance density matters more.
 					adaptedChance = 1 - std.math.pow(f32, 1 - adaptedChance, @as(f32, @floatFromInt(chunk.pos.voxelSize*chunk.pos.voxelSize)));
 					if(randomValue < adaptedChance) {
-						try model.generate(px - 8, relY, pz - 8, chunk, caveMap, &seed);
+						model.generate(px - 8, relY, pz - 8, chunk, caveMap, &seed);
 						break;
 					} else {
 						// Make sure that after the first one was considered all others get the correct chances.
