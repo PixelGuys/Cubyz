@@ -112,7 +112,7 @@ const Chunk = struct {
 
 	pub fn init(allocator: NeverFailingAllocator, tree: *TreeNode, worldSeed: u64, wx: i32, wz: i32) *Chunk {
 		var neighborBuffer: [8]*Chunk = undefined;
-		var neighbors: std.ArrayListUnmanaged(*Chunk) = .{.items = neighborBuffer[0..0], .capacity = neighborBuffer.len};
+		var neighbors: main.ListUnmanaged(*Chunk) = .{.items = neighborBuffer[0..0], .capacity = neighborBuffer.len};
 		defer for(neighbors.items) |ch| {
 			ch.deinit(allocator);
 		};
@@ -286,7 +286,7 @@ const GenerationStructure = struct {
 		}
 	}
 
-	fn addSubBiomesOf(biome: BiomePoint, map: *ClimateMapFragment, extraBiomes: *std.ArrayList(BiomePoint), wx: i32, wz: i32, width: u31, height: u31, worldSeed: u64) void {
+	fn addSubBiomesOf(biome: BiomePoint, map: *ClimateMapFragment, extraBiomes: *main.List(BiomePoint), wx: i32, wz: i32, width: u31, height: u31, worldSeed: u64) void {
 		var seed = random.initSeed2D(worldSeed, @bitCast(biome.pos));
 		var biomeCount: f32 = undefined;
 		if(biome.biome.subBiomeTotalChance > biome.biome.maxSubBiomeCount) {
@@ -313,7 +313,7 @@ const GenerationStructure = struct {
 				.pos = point,
 				.height = random.nextFloat(&seed)*@as(f32, @floatFromInt(subBiome.maxHeight - subBiome.minHeight)) + @as(f32, @floatFromInt(subBiome.minHeight)),
 				.weight = 1.0/(std.math.pi*subBiome.radius*subBiome.radius)
-			}) catch unreachable;
+			});
 		}
 	}
 
@@ -327,7 +327,7 @@ const GenerationStructure = struct {
 		}
 
 		// Add some sub-biomes:
-		var extraBiomes = std.ArrayList(BiomePoint).init(main.globalAllocator.allocator);
+		var extraBiomes = main.List(BiomePoint).init(main.globalAllocator);
 		defer extraBiomes.deinit();
 		for(self.chunks.mem) |chunk| {
 			for(chunk.biomesSortedByX) |biome| {

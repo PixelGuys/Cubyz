@@ -7,6 +7,7 @@ const JsonElement = main.JsonElement;
 const settings = main.settings;
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
+const List = main.List;
 
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
@@ -22,9 +23,9 @@ pub const GuiWindow = @import("GuiWindow.zig");
 
 pub const windowlist = @import("windows/_windowlist.zig");
 
-var windowList: std.ArrayList(*GuiWindow) = undefined;
-var hudWindows: std.ArrayList(*GuiWindow) = undefined;
-pub var openWindows: std.ArrayList(*GuiWindow) = undefined;
+var windowList: List(*GuiWindow) = undefined;
+var hudWindows: List(*GuiWindow) = undefined;
+pub var openWindows: List(*GuiWindow) = undefined;
 var selectedWindow: ?*GuiWindow = null;
 var selectedTextInput: ?*TextInput = null;
 var hoveredAWindow: bool = false;
@@ -43,13 +44,13 @@ const GuiCommandQueue = struct {
 		action: Action,
 	};
 
-	var commands: std.ArrayList(Command) = undefined;
+	var commands: List(Command) = undefined;
 	var mutex: std.Thread.Mutex = .{};
 
 	fn init() void {
 		mutex.lock();
 		defer mutex.unlock();
-		commands = std.ArrayList(Command).init(main.globalAllocator.allocator);
+		commands = List(Command).init(main.globalAllocator);
 	}
 
 	fn deinit() void {
@@ -61,7 +62,7 @@ const GuiCommandQueue = struct {
 	fn scheduleCommand(command: Command) void {
 		mutex.lock();
 		defer mutex.unlock();
-		commands.append(command) catch unreachable;
+		commands.append(command);
 	}
 
 	fn executeCommands() void {
@@ -91,7 +92,7 @@ const GuiCommandQueue = struct {
 				return;
 			}
 		}
-		openWindows.append(window) catch unreachable;
+		openWindows.append(window);
 		window.onOpenFn();
 		selectedWindow = null;
 	}
@@ -125,9 +126,9 @@ pub const Callback = struct {
 
 pub fn init() !void {
 	GuiCommandQueue.init();
-	windowList = std.ArrayList(*GuiWindow).init(main.globalAllocator.allocator);
-	hudWindows = std.ArrayList(*GuiWindow).init(main.globalAllocator.allocator);
-	openWindows = std.ArrayList(*GuiWindow).init(main.globalAllocator.allocator);
+	windowList = List(*GuiWindow).init(main.globalAllocator);
+	hudWindows = List(*GuiWindow).init(main.globalAllocator);
+	openWindows = List(*GuiWindow).init(main.globalAllocator);
 	inline for(@typeInfo(windowlist).Struct.decls) |decl| {
 		const windowStruct = @field(windowlist, decl.name);
 		std.debug.assert(std.mem.eql(u8, decl.name, windowStruct.window.id)); // id and file name should be the same.
@@ -294,9 +295,9 @@ fn addWindow(window: *GuiWindow) void {
 		}
 	}
 	if(window.isHud) {
-		hudWindows.append(window) catch unreachable;
+		hudWindows.append(window);
 	}
-	windowList.append(window) catch unreachable;
+	windowList.append(window);
 }
 
 pub fn openWindow(id: []const u8) void {
@@ -325,7 +326,7 @@ pub fn toggleWindow(id: []const u8) void {
 					return;
 				}
 			}
-			openWindows.append(window) catch unreachable;
+			openWindows.append(window);
 			window.onOpenFn();
 			selectedWindow = null;
 			return;
@@ -544,13 +545,13 @@ pub const inventory = struct {
 	const ItemStack = main.items.ItemStack;
 	pub var carriedItemStack: ItemStack = .{.item = null, .amount = 0};
 	var carriedItemSlot: *ItemSlot = undefined;
-	var deliveredItemSlots: std.ArrayList(*ItemSlot) = undefined;
-	var deliveredItemStacksAmountAdded: std.ArrayList(u16) = undefined;
+	var deliveredItemSlots: List(*ItemSlot) = undefined;
+	var deliveredItemStacksAmountAdded: List(u16) = undefined;
 	var initialAmount: u16 = 0;
 
 	pub fn init() void {
-		deliveredItemSlots = std.ArrayList(*ItemSlot).init(main.globalAllocator.allocator);
-		deliveredItemStacksAmountAdded = std.ArrayList(u16).init(main.globalAllocator.allocator);
+		deliveredItemSlots = List(*ItemSlot).init(main.globalAllocator);
+		deliveredItemStacksAmountAdded = List(u16).init(main.globalAllocator);
 		carriedItemSlot = ItemSlot.init(.{0, 0}, carriedItemStack, undefined, undefined, .default, .normal);
 		carriedItemSlot.renderFrame = false;
 	}
@@ -581,8 +582,8 @@ pub const inventory = struct {
 					deliveredSlot.tryTakingItems(&carriedItemStack, oldAmountAdded);
 				}
 				initialAmount = carriedItemStack.amount;
-				deliveredItemSlots.append(itemSlot) catch unreachable;
-				deliveredItemStacksAmountAdded.append(0) catch unreachable;
+				deliveredItemSlots.append(itemSlot);
+				deliveredItemStacksAmountAdded.append(0);
 				carriedItemStack.amount = initialAmount;
 				const addedAmount: u16 = @intCast(initialAmount/deliveredItemSlots.items.len);
 				for(deliveredItemSlots.items, deliveredItemStacksAmountAdded.items) |deliveredSlot, *amountAdded| {
@@ -598,8 +599,8 @@ pub const inventory = struct {
 				}
 				if(carriedItemStack.amount != 0) {
 					itemSlot.tryAddingItems(&carriedItemStack, 1);
-					deliveredItemSlots.append(itemSlot) catch unreachable;
-					deliveredItemStacksAmountAdded.append(1) catch unreachable;
+					deliveredItemSlots.append(itemSlot);
+					deliveredItemStacksAmountAdded.append(1);
 				}
 			}
 		}

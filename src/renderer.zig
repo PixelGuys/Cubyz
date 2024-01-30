@@ -487,7 +487,7 @@ pub const MenuBackGround = struct {
 
 		var walker = try dir.walk(main.globalAllocator.allocator);
 		defer walker.deinit();
-		var fileList = std.ArrayList([]const u8).init(main.globalAllocator.allocator);
+		var fileList = main.List([]const u8).init(main.globalAllocator);
 		defer {
 			for(fileList.items) |fileName| {
 				main.globalAllocator.free(fileName);
@@ -497,7 +497,7 @@ pub const MenuBackGround = struct {
 
 		while(try walker.next()) |entry| {
 			if(entry.kind == .file and std.ascii.endsWithIgnoreCase(entry.basename, ".png")) {
-				fileList.append(main.globalAllocator.dupe(u8, entry.path)) catch unreachable;
+				fileList.append(main.globalAllocator.dupe(u8, entry.path));
 			}
 		}
 		if(fileList.items.len == 0) {

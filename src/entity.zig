@@ -89,11 +89,11 @@ pub const ClientEntityManager = struct {
 		directionalLight: c_int,
 	} = undefined;
 	var shader: graphics.Shader = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
-	pub var entities: std.ArrayList(ClientEntity) = undefined;
+	pub var entities: main.List(ClientEntity) = undefined;
 	pub var mutex: std.Thread.Mutex = std.Thread.Mutex{};
 
 	pub fn init() void {
-		entities = std.ArrayList(ClientEntity).init(main.globalAllocator.allocator);
+		entities = main.List(ClientEntity).init(main.globalAllocator);
 		shader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/entity_vertex.vs", "assets/cubyz/shaders/entity_fragment.fs", &uniforms);
 	}
 
@@ -184,7 +184,7 @@ pub const ClientEntityManager = struct {
 	pub fn addEntity(json: JsonElement) void {
 		mutex.lock();
 		defer mutex.unlock();
-		var ent = entities.addOne() catch unreachable;
+		var ent = entities.addOne();
 		ent.init(json, main.globalAllocator);
 	}
 

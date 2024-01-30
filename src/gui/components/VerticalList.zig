@@ -18,7 +18,7 @@ const border: f32 = 3;
 
 pos: Vec2f,
 size: Vec2f,
-children: std.ArrayList(GuiComponent),
+children: main.List(GuiComponent),
 padding: f32,
 maxHeight: f32,
 childrenHeight: f32 = 0,
@@ -29,7 +29,7 @@ pub fn init(pos: Vec2f, maxHeight: f32, padding: f32) *VerticalList {
 	const scrollBar = ScrollBar.init(undefined, scrollBarWidth, maxHeight - 2*border, 0);
 	const self = main.globalAllocator.create(VerticalList);
 	self.* = VerticalList {
-		.children = std.ArrayList(GuiComponent).init(main.globalAllocator.allocator),
+		.children = main.List(GuiComponent).init(main.globalAllocator),
 		.pos = pos,
 		.size = .{0, 0},
 		.padding = padding,
@@ -65,7 +65,7 @@ pub fn add(self: *VerticalList, _other: anytype) void {
 	if(self.size[1] != 0) other.mutPos().*[1] += self.padding;
 	self.size[1] = other.pos()[1] + other.size()[1];
 	self.size[0] = @max(self.size[0], other.pos()[0] + other.size()[0]);
-	self.children.append(other) catch unreachable;
+	self.children.append(other);
 }
 
 pub fn finish(self: *VerticalList, alignment: graphics.TextBuffer.Alignment) void {

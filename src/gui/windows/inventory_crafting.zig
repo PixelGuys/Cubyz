@@ -30,8 +30,8 @@ pub var window = GuiWindow {
 
 const padding: f32 = 8;
 
-var availableItems: std.ArrayList(*BaseItem) = undefined;
-var itemAmount: std.ArrayList(u32) = undefined;
+var availableItems: main.List(*BaseItem) = undefined;
+var itemAmount: main.List(u32) = undefined;
 
 pub var arrowTexture: Texture = undefined;
 var recipeResult: ItemStack = undefined;
@@ -54,8 +54,8 @@ fn addItemStackToAvailable(itemStack: ItemStack) void {
 					return;
 				}
 			}
-			availableItems.append(baseItem) catch unreachable;
-			itemAmount.append(itemStack.amount) catch unreachable;
+			availableItems.append(baseItem);
+			itemAmount.append(itemStack.amount);
 		}
 	}
 }
@@ -159,8 +159,8 @@ fn refresh() void {
 }
 
 pub fn onOpen() void {
-	availableItems = std.ArrayList(*BaseItem).init(main.globalAllocator.allocator);
-	itemAmount = std.ArrayList(u32).init(main.globalAllocator.allocator);
+	availableItems = main.List(*BaseItem).init(main.globalAllocator);
+	itemAmount = main.List(u32).init(main.globalAllocator);
 	refresh();
 }
 

@@ -1,8 +1,8 @@
 const std = @import("std");
-const ArrayList = std.ArrayList;
 
 const main = @import("main.zig");
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const List = main.List;
 
 const JsonType = enum(u8) {
 	JsonInt,
@@ -21,7 +21,7 @@ pub const JsonElement = union(JsonType) {
 	JsonStringOwned: []const u8,
 	JsonBool: bool,
 	JsonNull: void,
-	JsonArray: *ArrayList(JsonElement),
+	JsonArray: *List(JsonElement),
 	JsonObject: *std.StringHashMap(JsonElement),
 
 	pub fn initObject(allocator: NeverFailingAllocator) JsonElement {
@@ -31,8 +31,8 @@ pub const JsonElement = union(JsonType) {
 	}
 
 	pub fn initArray(allocator: NeverFailingAllocator) JsonElement {
-		const list: *ArrayList(JsonElement) = allocator.create(ArrayList(JsonElement));
-		list.* = ArrayList(JsonElement).init(allocator.allocator);
+		const list: *List(JsonElement) = allocator.create(List(JsonElement));
+		list.* = List(JsonElement).init(allocator);
 		return JsonElement{.JsonArray=list};
 	}
 
@@ -221,98 +221,98 @@ pub const JsonElement = union(JsonType) {
 		return self.* == .JsonNull;
 	}
 
-	fn escapeToWriter(writer: std.ArrayList(u8).Writer, string: []const u8) !void {
+	fn escape(list: *List(u8), string: []const u8) void {
 		for(string) |char| {
 			switch(char) {
-				'\\' => try writer.writeAll("\\\\"),
-				'\n' => try writer.writeAll("\\n"),
-				'\"' => try writer.writeAll("\\\""),
-				'\t' => try writer.writeAll("\\t"),
-				else => try writer.writeByte(char),
+				'\\' => list.appendSlice("\\\\"),
+				'\n' => list.appendSlice("\\n"),
+				'\"' => list.appendSlice("\\\""),
+				'\t' => list.appendSlice("\\t"),
+				else => list.append(char),
 			}
 		}
 	}
-	fn writeTabs(writer: std.ArrayList(u8).Writer, tabs: u32) !void {
+	fn writeTabs(list: *List(u8), tabs: u32) void {
 		for(0..tabs) |_| {
-			try writer.writeByte('\t');
+			list.append('\t');
 		}
 	}
-	fn recurseToString(json: JsonElement, writer: std.ArrayList(u8).Writer, tabs: u32, comptime visualCharacters: bool) !void {
+	fn recurseToString(json: JsonElement, list: *List(u8), tabs: u32, comptime visualCharacters: bool) !void {
 		switch(json) {
 			.JsonInt => |value| {
-				try std.fmt.formatInt(value, 10, .lower, .{}, writer);
+				try std.fmt.formatInt(value, 10, .lower, .{}, list.writer());
 			},
 			.JsonFloat => |value| {
-				try std.fmt.formatFloatScientific(value, .{}, writer);
+				try std.fmt.formatFloatScientific(value, .{}, list.writer());
 			},
 			.JsonBool => |value| {
 				if(value) {
-					try writer.writeAll("true");
+					list.appendSlice("true");
 				} else {
-					try writer.writeAll("false");
+					list.appendSlice("false");
 				}
 			},
 			.JsonNull => {
-				try writer.writeAll("null");
+				list.appendSlice("null");
 			},
 			.JsonString, .JsonStringOwned => |value| {
-				try writer.writeByte('\"');
-				try escapeToWriter(writer, value);
-				try writer.writeByte('\"');
+				list.append('\"');
+				escape(list, value);
+				list.append('\"');
 			},
 			.JsonArray => |array| {
-				try writer.writeByte('[');
+				list.append('[');
 				for(array.items, 0..) |elem, i| {
 					if(i != 0) {
-						try writer.writeByte(',');
+						list.append(',');
 					}
-					if(visualCharacters) try writer.writeByte('\n');
-					if(visualCharacters) try writeTabs(writer, tabs + 1);
-					try recurseToString(elem, writer, tabs + 1, visualCharacters);
+					if(visualCharacters) list.append('\n');
+					if(visualCharacters) writeTabs(list, tabs + 1);
+					try recurseToString(elem, list, tabs + 1, visualCharacters);
 				}
-				if(visualCharacters) try writer.writeByte('\n');
-				if(visualCharacters) try writeTabs(writer, tabs);
-				try writer.writeByte(']');
+				if(visualCharacters) list.append('\n');
+				if(visualCharacters) writeTabs(list, tabs);
+				list.append(']');
 			},
 			.JsonObject => |obj| {
-				try writer.writeByte('{');
+				list.append('{');
 				var iterator = obj.iterator();
 				var first: bool = true;
 				while(true) {
 					const elem = iterator.next() orelse break;
 					if(!first) {
-						try writer.writeByte(',');
+						list.append(',');
 					}
-					if(visualCharacters) try writer.writeByte('\n');
-					if(visualCharacters) try writeTabs(writer, tabs + 1);
-					try writer.writeByte('\"');
-					try writer.writeAll(elem.key_ptr.*);
-					try writer.writeByte('\"');
-					if(visualCharacters) try writer.writeByte(' ');
-					try writer.writeByte(':');
-					if(visualCharacters) try writer.writeByte(' ');
+					if(visualCharacters) list.append('\n');
+					if(visualCharacters) writeTabs(list, tabs + 1);
+					list.append('\"');
+					list.appendSlice(elem.key_ptr.*);
+					list.append('\"');
+					if(visualCharacters) list.append(' ');
+					list.append(':');
+					if(visualCharacters) list.append(' ');
 
-					try recurseToString(elem.value_ptr.*, writer, tabs + 1, visualCharacters);
+					try recurseToString(elem.value_ptr.*, list, tabs + 1, visualCharacters);
 					first = false;
 				}
-				if(visualCharacters) try writer.writeByte('\n');
-				if(visualCharacters) try writeTabs(writer, tabs);
-				try writer.writeByte('}');
+				if(visualCharacters) list.append('\n');
+				if(visualCharacters) writeTabs(list, tabs);
+				list.append('}');
 			},
 		}
 	}
 	pub fn toString(json: JsonElement, allocator: NeverFailingAllocator) []const u8 {
-		var string = std.ArrayList(u8).init(allocator.allocator);
-		recurseToString(json, string.writer(), 0, true) catch unreachable;
-		return string.toOwnedSlice() catch unreachable;
+		var string = List(u8).init(allocator);
+		recurseToString(json, &string, 0, true) catch unreachable;
+		return string.toOwnedSlice();
 	}
 
 	/// Ignores all the visual characters(spaces, tabs and newlines) and allows adding a custom prefix(which is for example required by networking).
 	pub fn toStringEfficient(json: JsonElement, allocator: NeverFailingAllocator, prefix: []const u8) []const u8 {
-		var string = std.ArrayList(u8).init(allocator.allocator);
-		string.appendSlice(prefix) catch unreachable;
-		recurseToString(json, string.writer(), 0, false) catch unreachable;
-		return string.toOwnedSlice() catch unreachable;
+		var string = List(u8).init(allocator);
+		string.appendSlice(prefix);
+		recurseToString(json, &string, 0, false) catch unreachable;
+		return string.toOwnedSlice();
 	}
 
 	pub fn parseFromString(allocator: NeverFailingAllocator, string: []const u8) JsonElement {
@@ -431,7 +431,7 @@ const Parser = struct {
 	}
 
 	fn parseString(allocator: NeverFailingAllocator, chars: []const u8, index: *u32) []const u8 {
-		var builder: ArrayList(u8) = ArrayList(u8).init(allocator.allocator);
+		var builder: List(u8) = List(u8).init(allocator);
 		while(index.* < chars.len): (index.* += 1) {
 			if(chars[index.*] == '\"') {
 				index.* += 1;
@@ -442,28 +442,28 @@ const Parser = struct {
 					break;
 				switch(chars[index.*]) {
 					't' => {
-						builder.append('\t') catch unreachable;
+						builder.append('\t');
 					},
 					'n' => {
-						builder.append('\n') catch unreachable;
+						builder.append('\n');
 					},
 					'r' => {
-						builder.append('\r') catch unreachable;
+						builder.append('\r');
 					},
 					else => {
-						builder.append(chars[index.*]) catch unreachable;
+						builder.append(chars[index.*]);
 					}
 				}
 			} else {
-				builder.append(chars[index.*]) catch unreachable;
+				builder.append(chars[index.*]);
 			}
 		}
-		return builder.toOwnedSlice() catch unreachable;
+		return builder.toOwnedSlice();
 	}
 
 	fn parseArray(allocator: NeverFailingAllocator, chars: []const u8, index: *u32) JsonElement {
-		const list: *ArrayList(JsonElement) = allocator.create(ArrayList(JsonElement));
-		list.* = ArrayList(JsonElement).init(allocator.allocator);
+		const list: *List(JsonElement) = allocator.create(List(JsonElement));
+		list.* = List(JsonElement).init(allocator);
 		while(index.* < chars.len) {
 			skipWhitespaces(chars, index);
 			if(index.* >= chars.len) break;
@@ -471,7 +471,7 @@ const Parser = struct {
 				index.* += 1;
 				return JsonElement{.JsonArray=list};
 			}
-			list.append(parseElement(allocator, chars, index)) catch unreachable;
+			list.append(parseElement(allocator, chars, index));
 			skipWhitespaces(chars, index);
 			if(index.* < chars.len and chars[index.*] == ',') {
 				index.* += 1;

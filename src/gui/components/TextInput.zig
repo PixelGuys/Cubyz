@@ -26,7 +26,7 @@ size: Vec2f,
 pressed: bool = false,
 cursor: ?u32 = null,
 selectionStart: ?u32 = null,
-currentString: std.ArrayList(u8),
+currentString: main.List(u8),
 textBuffer: TextBuffer,
 maxWidth: f32,
 maxHeight: f32,
@@ -48,14 +48,14 @@ pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, onNewli
 	self.* = TextInput {
 		.pos = pos,
 		.size = .{maxWidth, maxHeight},
-		.currentString = std.ArrayList(u8).init(main.globalAllocator.allocator),
+		.currentString = main.List(u8).init(main.globalAllocator),
 		.textBuffer = TextBuffer.init(main.globalAllocator, text, .{}, true, .left),
 		.maxWidth = maxWidth,
 		.maxHeight = maxHeight,
 		.scrollBar = scrollBar,
 		.onNewline = onNewline,
 	};
-	self.currentString.appendSlice(text) catch unreachable;
+	self.currentString.appendSlice(text);
 	self.textSize = self.textBuffer.calculateLineBreaks(fontSize, maxWidth - 2*border - scrollBarWidth);
 	return self;
 }
@@ -346,7 +346,7 @@ fn deleteSelection(self: *TextInput) void {
 		const start = @min(selectionStart, self.cursor.?);
 		const end = @max(selectionStart, self.cursor.?);
 
-		self.currentString.replaceRange(start, end - start, &[0]u8{}) catch unreachable;
+		self.currentString.replaceRange(start, end - start, &[0]u8{});
 		self.cursor.? = start;
 		self.selectionStart = null;
 		self.ensureCursorVisibility();
@@ -380,7 +380,7 @@ pub fn inputCharacter(self: *TextInput, character: u21) void {
 		self.deleteSelection();
 		var buf: [4]u8 = undefined;
 		const utf8 = buf[0..std.unicode.utf8Encode(character, &buf) catch return];
-		self.currentString.insertSlice(cursor.*, utf8) catch unreachable;
+		self.currentString.insertSlice(cursor.*, utf8);
 		self.reloadText();
 		cursor.* += @intCast(utf8.len);
 		self.ensureCursorVisibility();
@@ -404,7 +404,7 @@ pub fn paste(self: *TextInput, mods: main.Key.Modifiers) void {
 	if(mods.control) {
 		const string = main.Window.getClipboardString();
 		self.deleteSelection();
-		self.currentString.insertSlice(self.cursor.?, string) catch unreachable;
+		self.currentString.insertSlice(self.cursor.?, string);
 		self.cursor.? += @intCast(string.len);
 		self.reloadText();
 		self.ensureCursorVisibility();

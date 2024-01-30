@@ -23,7 +23,7 @@ pub var window = GuiWindow {
 };
 
 const padding: f32 = 8;
-var items: std.ArrayList(Item) = undefined;
+var items: main.List(Item) = undefined;
 
 pub fn tryTakingItems(index: usize, destination: *ItemStack, _: u16) void {
 	if(destination.item != null and !std.meta.eql(destination.item.?, items.items[index])) return;
@@ -32,10 +32,10 @@ pub fn tryTakingItems(index: usize, destination: *ItemStack, _: u16) void {
 }
 
 pub fn onOpen() void {
-	items = std.ArrayList(Item).init(main.globalAllocator.allocator);
+	items = main.List(Item).init(main.globalAllocator);
 	var itemIterator = main.items.iterator();
 	while(itemIterator.next()) |item| {
-		items.append(Item{.baseItem = item.*}) catch unreachable;
+		items.append(Item{.baseItem = item.*});
 	}
 
 	const list = VerticalList.init(.{padding, padding + 16}, 140, 0);

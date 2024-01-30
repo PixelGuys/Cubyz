@@ -67,7 +67,7 @@ pub fn getRegionData(allocator: NeverFailingAllocator, x: i32, y: i32, width: u3
 	const yMin = ((y & ~@as(i32, featureMask)) - featureSize) >> featureShift;
 	const xMax = ((x+width & ~@as(i32, featureMask))) >> featureShift;
 	const yMax = ((y+height & ~@as(i32, featureMask))) >> featureShift;
-	var result = std.ArrayListUnmanaged(u32).initCapacity(allocator.allocator, @intCast((xMax - xMin + 1)*(yMax - yMin + 1))) catch unreachable;
+	var result = main.ListUnmanaged(u32).initCapacity(allocator, @intCast((xMax - xMin + 1)*(yMax - yMin + 1)));
 	var xMap: i32 = xMin;
 	while(xMap <= xMax) : (xMap += 1) {
 		var yMap: i32 = yMin;
@@ -82,5 +82,5 @@ pub fn getRegionData(allocator: NeverFailingAllocator, x: i32, y: i32, width: u3
 			}
 		}
 	}
-	return result.toOwnedSlice(allocator.allocator) catch unreachable;
+	return result.toOwnedSlice(allocator);
 }

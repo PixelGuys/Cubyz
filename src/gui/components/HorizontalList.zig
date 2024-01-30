@@ -14,12 +14,12 @@ const HorizontalList = @This();
 
 pos: Vec2f,
 size: Vec2f,
-children: std.ArrayList(GuiComponent),
+children: main.List(GuiComponent),
 
 pub fn init() *HorizontalList {
 	const self = main.globalAllocator.create(HorizontalList);
 	self.* = HorizontalList {
-		.children = std.ArrayList(GuiComponent).init(main.globalAllocator.allocator),
+		.children = main.List(GuiComponent).init(main.globalAllocator),
 		.pos = .{0, 0},
 		.size = .{0, 0},
 	};
@@ -50,7 +50,7 @@ pub fn add(self: *HorizontalList, _other: anytype) void {
 	other.mutPos().*[0] += self.size[0];
 	self.size[0] = other.pos()[0] + other.size()[0];
 	self.size[1] = @max(self.size[1], other.pos()[1] + other.size()[1]);
-	self.children.append(other) catch unreachable;
+	self.children.append(other);
 }
 
 pub fn finish(self: *HorizontalList, pos: Vec2f, alignment: graphics.TextBuffer.Alignment) void {

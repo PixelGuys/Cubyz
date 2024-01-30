@@ -63,7 +63,7 @@ const AudioData = struct {
 	}
 };
 
-var activeTasks: std.ArrayListUnmanaged([]const u8) = .{};
+var activeTasks: main.ListUnmanaged([]const u8) = .{};
 var taskMutex: std.Thread.Mutex = .{};
 
 var musicCache: utils.Cache(AudioData, 4, 4, AudioData.deinit) = .{};
@@ -103,7 +103,7 @@ const MusicLoadTask = struct {
 		main.threadPool.addTask(task, &vtable);
 		taskMutex.lock();
 		defer taskMutex.unlock();
-		activeTasks.append(main.globalAllocator.allocator, musicId) catch unreachable;
+		activeTasks.append(main.globalAllocator, musicId);
 	}
 
 	pub fn getPriority(_: *MusicLoadTask) f32 {
@@ -170,7 +170,7 @@ pub fn deinit() void {
 	handleError(c.Pa_Terminate()) catch {};
 	main.threadPool.closeAllTasksOfType(&MusicLoadTask.vtable);
 	musicCache.clear();
-	activeTasks.deinit(main.globalAllocator.allocator);
+	activeTasks.deinit(main.globalAllocator);
 	activeMusicId.len = 0;
 }
 

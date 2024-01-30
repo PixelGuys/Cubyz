@@ -46,7 +46,7 @@ pub var uniforms: UniformStruct = undefined;
 pub var transparentUniforms: UniformStruct = undefined;
 var vao: c_uint = undefined;
 var vbo: c_uint = undefined;
-var faces: std.ArrayList(u32) = undefined;
+var faces: main.List(u32) = undefined;
 pub var faceBuffer: graphics.LargeBuffer(FaceData) = undefined;
 pub var quadsDrawn: usize = 0;
 pub var transparentQuadsDrawn: usize = 0;
@@ -68,7 +68,7 @@ pub fn init() void {
 	c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, rawData.len*@sizeOf(u32), &rawData, c.GL_STATIC_DRAW);
 	c.glBindVertexArray(0);
 
-	faces = std.ArrayList(u32).initCapacity(main.globalAllocator.allocator, 65536) catch unreachable; // TODO: What is this used for?
+	faces = main.List(u32).initCapacity(main.globalAllocator, 65536); // TODO: What is this used for?
 	faceBuffer.init(main.globalAllocator, 1 << 20, 3);
 }
 
@@ -143,9 +143,9 @@ pub const FaceData = extern struct {
 };
 
 const PrimitiveMesh = struct {
-	coreFaces: std.ArrayListUnmanaged(FaceData) = .{},
-	neighborFacesSameLod: [6]std.ArrayListUnmanaged(FaceData) = [_]std.ArrayListUnmanaged(FaceData){.{}} ** 6,
-	neighborFacesHigherLod: [6]std.ArrayListUnmanaged(FaceData) = [_]std.ArrayListUnmanaged(FaceData){.{}} ** 6,
+	coreFaces: main.ListUnmanaged(FaceData) = .{},
+	neighborFacesSameLod: [6]main.ListUnmanaged(FaceData) = [_]main.ListUnmanaged(FaceData){.{}} ** 6,
+	neighborFacesHigherLod: [6]main.ListUnmanaged(FaceData) = [_]main.ListUnmanaged(FaceData){.{}} ** 6,
 	completeList: []FaceData = &.{},
 	coreLen: u32 = 0,
 	sameLodLens: [6]u32 = .{0} ** 6,
@@ -157,12 +157,12 @@ const PrimitiveMesh = struct {
 
 	fn deinit(self: *PrimitiveMesh) void {
 		faceBuffer.free(self.bufferAllocation);
-		self.coreFaces.deinit(main.globalAllocator.allocator);
+		self.coreFaces.deinit(main.globalAllocator);
 		for(&self.neighborFacesSameLod) |*neighborFaces| {
-			neighborFaces.deinit(main.globalAllocator.allocator);
+			neighborFaces.deinit(main.globalAllocator);
 		}
 		for(&self.neighborFacesHigherLod) |*neighborFaces| {
-			neighborFaces.deinit(main.globalAllocator.allocator);
+			neighborFaces.deinit(main.globalAllocator);
 		}
 		main.globalAllocator.free(self.completeList);
 	}
@@ -178,14 +178,14 @@ const PrimitiveMesh = struct {
 	}
 
 	fn appendCore(self: *PrimitiveMesh, face: FaceData) void {
-		self.coreFaces.append(main.globalAllocator.allocator, face) catch unreachable;
+		self.coreFaces.append(main.globalAllocator, face);
 	}
 
 	fn appendNeighbor(self: *PrimitiveMesh, face: FaceData, neighbor: u3, comptime isLod: bool) void {
 		if(isLod) {
-			self.neighborFacesHigherLod[neighbor].append(main.globalAllocator.allocator, face) catch unreachable;
+			self.neighborFacesHigherLod[neighbor].append(main.globalAllocator, face);
 		} else {
-			self.neighborFacesSameLod[neighbor].append(main.globalAllocator.allocator, face) catch unreachable;
+			self.neighborFacesSameLod[neighbor].append(main.globalAllocator, face);
 		}
 	}
 
@@ -337,9 +337,9 @@ const PrimitiveMesh = struct {
 
 	fn addFace(self: *PrimitiveMesh, faceData: FaceData, fromNeighborChunk: ?u3) void {
 		if(fromNeighborChunk) |neighbor| {
-			self.neighborFacesSameLod[neighbor].append(main.globalAllocator.allocator, faceData) catch unreachable;
+			self.neighborFacesSameLod[neighbor].append(main.globalAllocator, faceData);
 		} else {
-			self.coreFaces.append(main.globalAllocator.allocator, faceData) catch unreachable;
+			self.coreFaces.append(main.globalAllocator, faceData);
 		}
 	}
 
@@ -570,7 +570,7 @@ pub const ChunkMesh = struct {
 
 	fn initLight(self: *ChunkMesh) void {
 		self.mutex.lock();
-		var lightEmittingBlocks = std.ArrayList([3]u8).init(main.globalAllocator.allocator);
+		var lightEmittingBlocks = main.List([3]u8).init(main.globalAllocator);
 		defer lightEmittingBlocks.deinit();
 		var x: u8 = 0;
 		while(x < chunk.chunkSize): (x += 1) {
@@ -579,7 +579,7 @@ pub const ChunkMesh = struct {
 				var z: u8 = 0;
 				while(z < chunk.chunkSize): (z += 1) {
 					const block = (&self.chunk.blocks)[chunk.getIndex(x, y, z)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
-					if(block.light() != 0) lightEmittingBlocks.append(.{x, y, z}) catch unreachable;
+					if(block.light() != 0) lightEmittingBlocks.append(.{x, y, z});
 				}
 			}
 		}

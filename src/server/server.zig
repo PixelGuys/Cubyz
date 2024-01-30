@@ -101,7 +101,7 @@ pub const updatesPerSec: u32 = 20;
 const updateNanoTime: u32 = 1000000000/20;
 
 pub var world: ?*ServerWorld = null;
-pub var users: std.ArrayList(*User) = undefined;
+pub var users: main.List(*User) = undefined;
 
 pub var connectionManager: *ConnectionManager = undefined;
 
@@ -114,7 +114,7 @@ pub var thread: ?std.Thread = null;
 
 fn init(name: []const u8) void {
 	std.debug.assert(world == null); // There can only be one world.
-	users = std.ArrayList(*User).init(main.globalAllocator.allocator);
+	users = main.List(*User).init(main.globalAllocator);
 	lastTime = std.time.nanoTimestamp();
 	connectionManager = ConnectionManager.init(main.settings.defaultPort, false) catch |err| {
 		std.log.err("Couldn't create connection from port: {s}", .{@errorName(err)});
@@ -214,7 +214,7 @@ pub fn connect(user: *User) void {
 	defer mutex.unlock();
 	sendMessage(message);
 
-	users.append(user) catch unreachable;
+	users.append(user);
 	// TODO: users = usersList.toArray();
 }
 

@@ -562,8 +562,8 @@ pub const ItemDropRenderer = struct {
 	var itemVAO: c_uint = undefined;
 	var itemVBOs: [2]c_uint = undefined;
 
-	var modelData: std.ArrayList(u32) = undefined;
-	var freeSlots: std.ArrayList(*ItemVoxelModel) = undefined;
+	var modelData: main.List(u32) = undefined;
+	var freeSlots: main.List(*ItemVoxelModel) = undefined;
 
 	const ItemVoxelModel = struct {
 		index: u31 = undefined,
@@ -593,7 +593,7 @@ pub const ItemDropRenderer = struct {
 				self.index = _freeSlot.index;
 			} else {
 				self.index = @intCast(modelData.items.len);
-				modelData.resize(self.index + modelDataSize) catch unreachable;
+				modelData.resize(self.index + modelDataSize);
 			}
 			dataSection = modelData.items[self.index..][0..modelDataSize];
 			dataSection[0] = @intCast(self.size[0]);
@@ -616,10 +616,7 @@ pub const ItemDropRenderer = struct {
 		}
 
 		fn deinit(self: *ItemVoxelModel) void {
-			freeSlots.append(self) catch |err| {
-				std.log.err("Encountered error {s} while freeing an ItemVoxelModel. This causes the game to leak {} bytes of memory.", .{@errorName(err), @reduce(.Mul, self.size) + 3});
-				main.globalAllocator.destroy(self);
-			};
+			freeSlots.append(self);
 		}
 
 		pub fn equals(self: ItemVoxelModel, other: ?*ItemVoxelModel) bool {
@@ -702,8 +699,8 @@ pub const ItemDropRenderer = struct {
 
 		c.glBindVertexArray(0);
 
-		modelData = std.ArrayList(u32).init(main.globalAllocator.allocator);
-		freeSlots = std.ArrayList(*ItemVoxelModel).init(main.globalAllocator.allocator);
+		modelData = main.List(u32).init(main.globalAllocator);
+		freeSlots = main.List(*ItemVoxelModel).init(main.globalAllocator);
 	}
 
 	pub fn deinit() void {

@@ -139,17 +139,17 @@ pub const Biome = struct {
 		const parentBiomeList = json.getChild("parentBiomes");
 		for(parentBiomeList.toSlice()) |parent| {
 			const result = unfinishedSubBiomes.getOrPutValue(main.globalAllocator.allocator, parent.get([]const u8, "id", ""), .{}) catch unreachable;
-			result.value_ptr.append(main.globalAllocator.allocator, .{.biomeId = self.id, .chance = parent.get(f32, "chance", 1)}) catch unreachable;
+			result.value_ptr.append(main.globalAllocator, .{.biomeId = self.id, .chance = parent.get(f32, "chance", 1)});
 		}
 
 		self.structure = BlockStructure.init(main.globalAllocator, json.getChild("ground_structure"));
 		
 		const structures = json.getChild("structures");
-		var vegetation = std.ArrayListUnmanaged(StructureModel){};
-		defer vegetation.deinit(main.globalAllocator.allocator);
+		var vegetation = main.ListUnmanaged(StructureModel){};
+		defer vegetation.deinit(main.globalAllocator);
 		for(structures.toSlice()) |elem| {
 			if(StructureModel.initModel(elem)) |model| {
-				vegetation.append(main.globalAllocator.allocator, model) catch unreachable;
+				vegetation.append(main.globalAllocator, model);
 			}
 		}
 		self.vegetationModels = main.globalAllocator.dupe(StructureModel, vegetation.items);
@@ -354,8 +354,8 @@ pub const TreeNode = union(enum) {
 };
 
 var finishedLoading: bool = false;
-var biomes: std.ArrayList(Biome) = undefined;
-var caveBiomes: std.ArrayList(Biome) = undefined;
+var biomes: main.List(Biome) = undefined;
+var caveBiomes: main.List(Biome) = undefined;
 var biomesById: std.StringHashMap(*Biome) = undefined;
 pub var byTypeBiomes: *TreeNode = undefined;
 const UnfinishedSubBiomeData = struct {
@@ -365,11 +365,11 @@ const UnfinishedSubBiomeData = struct {
 		return getById(self.biomeId);
 	}
 };
-var unfinishedSubBiomes: std.StringHashMapUnmanaged(std.ArrayListUnmanaged(UnfinishedSubBiomeData)) = .{};
+var unfinishedSubBiomes: std.StringHashMapUnmanaged(main.ListUnmanaged(UnfinishedSubBiomeData)) = .{};
 
 pub fn init() void {
-	biomes = std.ArrayList(Biome).init(main.globalAllocator.allocator);
-	caveBiomes = std.ArrayList(Biome).init(main.globalAllocator.allocator);
+	biomes = main.List(Biome).init(main.globalAllocator);
+	caveBiomes = main.List(Biome).init(main.globalAllocator);
 	biomesById = std.StringHashMap(*Biome).init(main.globalAllocator.allocator);
 	const list = @import("structures/_list.zig");
 	inline for(@typeInfo(list).Struct.decls) |decl| {
@@ -409,9 +409,9 @@ pub fn register(id: []const u8, json: JsonElement) void {
 	var biome: Biome = undefined;
 	biome.init(id, json);
 	if(biome.isCave) {
-		caveBiomes.append(biome) catch unreachable;
+		caveBiomes.append(biome);
 	} else {
-		biomes.append(biome) catch unreachable;
+		biomes.append(biome);
 	}
 }
 
@@ -440,7 +440,7 @@ pub fn finishLoading() void {
 			parentBiome.subBiomeTotalChance += item.chance;
 		}
 		parentBiome.subBiomes = main.utils.AliasTable(*const Biome).initFromContext(main.globalAllocator, subBiomeDataList.items);
-		subBiomeDataList.deinit(main.globalAllocator.allocator);
+		subBiomeDataList.deinit(main.globalAllocator);
 	}
 	unfinishedSubBiomes.clearAndFree(main.globalAllocator.allocator);
 }

@@ -377,8 +377,8 @@ pub const ConnectionManager = struct {
 	online: Atomic(bool) = Atomic(bool).init(false),
 	running: Atomic(bool) = Atomic(bool).init(true),
 
-	connections: std.ArrayList(*Connection) = undefined,
-	requests: std.ArrayList(*Request) = undefined,
+	connections: main.List(*Connection) = undefined,
+	requests: main.List(*Request) = undefined,
 
 	mutex: std.Thread.Mutex = std.Thread.Mutex{},
 	waitingToFinishReceive: std.Thread.Condition = std.Thread.Condition{},
@@ -390,8 +390,8 @@ pub const ConnectionManager = struct {
 	pub fn init(localPort: u16, online: bool) !*ConnectionManager {
 		const result: *ConnectionManager = main.globalAllocator.create(ConnectionManager);
 		result.* = .{};
-		result.connections = std.ArrayList(*Connection).init(main.globalAllocator.allocator);
-		result.requests = std.ArrayList(*Request).init(main.globalAllocator.allocator);
+		result.connections = main.List(*Connection).init(main.globalAllocator);
+		result.requests = main.List(*Request).init(main.globalAllocator);
 
 		result.socket = Socket.init(localPort) catch |err| blk: {
 			if(err == error.AddressInUse) {
@@ -442,7 +442,7 @@ pub const ConnectionManager = struct {
 		{
 			self.mutex.lock();
 			defer self.mutex.unlock();
-			self.requests.append(&request) catch unreachable;
+			self.requests.append(&request);
 
 			request.requestNotifier.timedWait(&self.mutex, timeout_ns) catch {};
 
@@ -468,11 +468,11 @@ pub const ConnectionManager = struct {
 		}
 	}
 
-	pub fn addConnection(self: *ConnectionManager, conn: *Connection) !void {
+	pub fn addConnection(self: *ConnectionManager, conn: *Connection) void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
 
-		try self.connections.append(conn);
+		self.connections.append(conn);
 	}
 
 	pub fn finishCurrentReceive(self: *ConnectionManager) void {
@@ -612,9 +612,9 @@ pub const Protocols = struct {
 							defer main.stackAllocator.free(path);
 							var dir = try std.fs.cwd().openDir(path, .{.iterate = true});
 							defer dir.close();
-							var arrayList = std.ArrayList(u8).init(main.globalAllocator.allocator);
+							var arrayList = main.List(u8).init(main.globalAllocator);
 							defer arrayList.deinit();
-							arrayList.append(stepAssets) catch unreachable;
+							arrayList.append(stepAssets);
 							try utils.Compression.pack(dir, arrayList.writer());
 							conn.sendImportant(id, arrayList.items);
 							conn.flush();
@@ -1316,8 +1316,8 @@ pub const Connection = struct {
 	streamBuffer: [maxImportantPacketSize]u8 = undefined,
 	streamPosition: u32 = importantHeaderSize,
 	messageID: u32 = 0,
-	unconfirmedPackets: std.ArrayList(UnconfirmedPacket) = undefined,
-	receivedPackets: [3]std.ArrayList(u32) = undefined,
+	unconfirmedPackets: main.List(UnconfirmedPacket) = undefined,
+	receivedPackets: [3]main.List(u32) = undefined,
 	__lastReceivedPackets: [65536]?[]const u8 = [_]?[]const u8{null} ** 65536, // TODO: Wait for #12215 fix.
 	lastReceivedPackets: []?[]const u8, // TODO: Wait for #12215 fix.
 	packetMemory: *[65536][maxImportantPacketSize]u8 = undefined,
@@ -1345,11 +1345,11 @@ pub const Connection = struct {
 			.lastReceivedPackets = &result.__lastReceivedPackets, // TODO: Wait for #12215 fix.
 			.packetMemory = main.globalAllocator.create([65536][maxImportantPacketSize]u8),
 		};
-		result.unconfirmedPackets = std.ArrayList(UnconfirmedPacket).init(main.globalAllocator.allocator);
-		result.receivedPackets = [3]std.ArrayList(u32){
-			std.ArrayList(u32).init(main.globalAllocator.allocator),
-			std.ArrayList(u32).init(main.globalAllocator.allocator),
-			std.ArrayList(u32).init(main.globalAllocator.allocator),
+		result.unconfirmedPackets = main.List(UnconfirmedPacket).init(main.globalAllocator);
+		result.receivedPackets = [3]main.List(u32){
+			main.List(u32).init(main.globalAllocator),
+			main.List(u32).init(main.globalAllocator),
+			main.List(u32).init(main.globalAllocator),
 		};
 		var splitter = std.mem.split(u8, ipPort, ":");
 		const ip = splitter.first();
@@ -1365,7 +1365,7 @@ pub const Connection = struct {
 			break :blk settings.defaultPort;
 		};
 
-		try result.manager.addConnection(result);
+		result.manager.addConnection(result);
 		return result;
 	}
 
@@ -1396,7 +1396,7 @@ pub const Connection = struct {
 			.lastKeepAliveSentBefore = self.lastKeepAliveSent,
 			.id = id,
 		};
-		self.unconfirmedPackets.append(packet) catch unreachable;
+		self.unconfirmedPackets.append(packet);
 		_ = packetsSent.fetchAdd(1, .Monotonic);
 		self.manager.send(packet.data, self.remoteAddress);
 		self.streamPosition = importantHeaderSize;
@@ -1478,9 +1478,9 @@ pub const Connection = struct {
 		self.mutex.lock();
 		defer self.mutex.unlock();
 
-		var runLengthEncodingStarts: std.ArrayList(u32) = std.ArrayList(u32).init(main.globalAllocator.allocator);
+		var runLengthEncodingStarts: main.List(u32) = main.List(u32).init(main.globalAllocator);
 		defer runLengthEncodingStarts.deinit();
-		var runLengthEncodingLengths: std.ArrayList(u32) = std.ArrayList(u32).init(main.globalAllocator.allocator);
+		var runLengthEncodingLengths: main.List(u32) = main.List(u32).init(main.globalAllocator);
 		defer runLengthEncodingLengths.deinit();
 
 		for(self.receivedPackets) |list| {
@@ -1510,13 +1510,13 @@ pub const Connection = struct {
 					runLengthEncodingStarts.items[right] -= 1;
 					runLengthEncodingLengths.items[right] += 1;
 				} else {
-					runLengthEncodingStarts.append(packetID) catch unreachable;
-					runLengthEncodingLengths.append(1) catch unreachable;
+					runLengthEncodingStarts.append(packetID);
+					runLengthEncodingLengths.append(1);
 				}
 			}
 		}
 		{ // Cycle the receivedPackets lists:
-			const putBackToFront: std.ArrayList(u32) = self.receivedPackets[self.receivedPackets.len - 1];
+			const putBackToFront: main.List(u32) = self.receivedPackets[self.receivedPackets.len - 1];
 			var i: u32 = self.receivedPackets.len - 1;
 			while(i >= 1): (i -= 1) {
 				self.receivedPackets[i] = self.receivedPackets[i-1];
@@ -1668,7 +1668,7 @@ pub const Connection = struct {
 				std.log.warn("Many incomplete packages. Cannot process any more packages for now.", .{});
 				return;
 			}
-			try self.receivedPackets[0].append(id);
+			self.receivedPackets[0].append(id);
 			if(id < self.lastIncompletePacket or self.lastReceivedPackets[id & 65535] != null) {
 				return; // Already received the package in the past.
 			}

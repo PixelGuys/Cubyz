@@ -33,11 +33,11 @@ const storageSize = 32;
 const storageMask = storageSize - 1;
 var storageLists: [settings.highestLOD + 1]*[storageSize*storageSize*storageSize]ChunkMeshNode = undefined;
 var mapStorageLists: [settings.highestLOD + 1]*[storageSize*storageSize]Atomic(?*LightMap.LightMapFragment) = undefined;
-var meshList = std.ArrayList(*chunk_meshing.ChunkMesh).init(main.globalAllocator.allocator);
-var priorityMeshUpdateList = std.ArrayList(*chunk_meshing.ChunkMesh).init(main.globalAllocator.allocator);
-pub var updatableList = std.ArrayList(*chunk_meshing.ChunkMesh).init(main.globalAllocator.allocator);
-var mapUpdatableList = std.ArrayList(*LightMap.LightMapFragment).init(main.globalAllocator.allocator);
-var clearList = std.ArrayList(*chunk_meshing.ChunkMesh).init(main.globalAllocator.allocator);
+var meshList = main.List(*chunk_meshing.ChunkMesh).init(main.globalAllocator);
+var priorityMeshUpdateList = main.List(*chunk_meshing.ChunkMesh).init(main.globalAllocator);
+pub var updatableList = main.List(*chunk_meshing.ChunkMesh).init(main.globalAllocator);
+var mapUpdatableList = main.List(*LightMap.LightMapFragment).init(main.globalAllocator);
+var clearList = main.List(*chunk_meshing.ChunkMesh).init(main.globalAllocator);
 var lastPx: i32 = 0;
 var lastPy: i32 = 0;
 var lastPz: i32 = 0;
@@ -50,11 +50,11 @@ const BlockUpdate = struct {
 	z: i32,
 	newBlock: blocks.Block,
 };
-var blockUpdateList: std.ArrayList(BlockUpdate) = undefined;
+var blockUpdateList: main.List(BlockUpdate) = undefined;
 
 pub fn init() void {
 	lastRD = 0;
-	blockUpdateList = std.ArrayList(BlockUpdate).init(main.globalAllocator.allocator);
+	blockUpdateList = main.List(BlockUpdate).init(main.globalAllocator);
 	for(&storageLists) |*storageList| {
 		storageList.* = main.globalAllocator.create([storageSize*storageSize*storageSize]ChunkMeshNode);
 		for(storageList.*) |*val| {
@@ -395,7 +395,7 @@ fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32) void {
 	}
 }
 
-fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32, meshRequests: *std.ArrayList(chunk.ChunkPosition), mapRequests: *std.ArrayList(LightMap.MapFragmentPosition)) void {
+fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32, meshRequests: *main.List(chunk.ChunkPosition), mapRequests: *main.List(LightMap.MapFragmentPosition)) void {
 	for(0..storageLists.len) |_lod| {
 		const lod: u5 = @intCast(_lod);
 		const maxRenderDistanceNew = lastRD*chunk.chunkSize << lod;
@@ -461,7 +461,7 @@ fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32, meshR
 
 					const node = &storageLists[_lod][@intCast(index)];
 					std.debug.assert(node.mesh.load(.Acquire) == null);
-					meshRequests.append(pos) catch unreachable;
+					meshRequests.append(pos);
 				}
 			}
 		}
@@ -519,7 +519,7 @@ fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32, meshR
 
 				const node = &mapStorageLists[_lod][@intCast(index)];
 				std.debug.assert(node.load(.Acquire) == null);
-				mapRequests.append(pos) catch unreachable;
+				mapRequests.append(pos);
 			}
 		}
 	}
@@ -531,9 +531,9 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 		network.Protocols.genericUpdate.sendRenderDistance(conn, renderDistance);
 	}
 
-	var meshRequests = std.ArrayList(chunk.ChunkPosition).init(main.globalAllocator.allocator);
+	var meshRequests = main.List(chunk.ChunkPosition).init(main.globalAllocator);
 	defer meshRequests.deinit();
-	var mapRequests = std.ArrayList(LightMap.MapFragmentPosition).init(main.globalAllocator.allocator);
+	var mapRequests = main.List(LightMap.MapFragmentPosition).init(main.globalAllocator);
 	defer mapRequests.deinit();
 
 	const olderPx = lastPx;
@@ -601,11 +601,11 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 			firstPos.voxelSize *= 2;
 		}
 	}
-	var nodeList = std.ArrayList(*ChunkMeshNode).init(main.globalAllocator.allocator);
+	var nodeList = main.List(*ChunkMeshNode).init(main.globalAllocator);
 	defer nodeList.deinit();
 	const projRotMat = game.projectionMatrix.mul(game.camera.viewMatrix);
 	while(searchList.removeOrNull()) |data| {
-		nodeList.append(data.node) catch unreachable;
+		nodeList.append(data.node);
 		data.node.active = false;
 		const mesh = data.node.mesh.load(.Acquire).?;
 		std.debug.assert(mesh.finishedMeshing);
@@ -848,7 +848,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 		mutex.unlock();
 		// Remove empty meshes.
 		if(!mesh.isEmpty()) {
-			meshList.append(mesh) catch unreachable;
+			meshList.append(mesh);
 		}
 	}
 
@@ -946,7 +946,7 @@ pub fn addMeshToClearListAndDecreaseRefCount(mesh: *chunk_meshing.ChunkMesh) voi
 	std.debug.assert(mesh.refCount.load(.Monotonic) == 0);
 	mutex.lock();
 	defer mutex.unlock();
-	clearList.append(mesh) catch unreachable;
+	clearList.append(mesh);
 }
 
 pub fn addToUpdateListAndDecreaseRefCount(mesh: *chunk_meshing.ChunkMesh) void {
@@ -954,7 +954,7 @@ pub fn addToUpdateListAndDecreaseRefCount(mesh: *chunk_meshing.ChunkMesh) void {
 	mutex.lock();
 	defer mutex.unlock();
 	if(mesh.finishedMeshing) {
-		priorityMeshUpdateList.append(mesh) catch unreachable;
+		priorityMeshUpdateList.append(mesh);
 		mesh.needsMeshUpdate = true;
 	} else {
 		mutex.unlock();
@@ -980,7 +980,7 @@ pub fn finishMesh(mesh: *chunk_meshing.ChunkMesh) void {
 	mutex.lock();
 	defer mutex.unlock();
 	mesh.increaseRefCount();
-	updatableList.append(mesh) catch unreachable;
+	updatableList.append(mesh);
 }
 
 pub const MeshGenerationTask = struct {
@@ -1035,8 +1035,8 @@ pub const MeshGenerationTask = struct {
 
 pub fn updateBlock(x: i32, y: i32, z: i32, newBlock: blocks.Block) void {
 	blockUpdateMutex.lock();
-	blockUpdateList.append(BlockUpdate{.x=x, .y=y, .z=z, .newBlock=newBlock}) catch unreachable;
 	defer blockUpdateMutex.unlock();
+	blockUpdateList.append(BlockUpdate{.x=x, .y=y, .z=z, .newBlock=newBlock});
 }
 
 pub fn updateChunkMesh(mesh: *chunk.Chunk) void {
@@ -1046,5 +1046,5 @@ pub fn updateChunkMesh(mesh: *chunk.Chunk) void {
 pub fn updateLightMap(map: *LightMap.LightMapFragment) void {
 	mutex.lock();
 	defer mutex.unlock();
-	mapUpdatableList.append(map) catch unreachable;
+	mapUpdatableList.append(map);
 }

@@ -12,10 +12,10 @@ var arenaAllocator: NeverFailingAllocator = undefined;
 var commonBlocks: std.StringHashMap(JsonElement) = undefined;
 var commonBiomes: std.StringHashMap(JsonElement) = undefined;
 var commonItems: std.StringHashMap(JsonElement) = undefined;
-var commonRecipes: std.ArrayList([]const u8) = undefined;
+var commonRecipes: main.List([]const u8) = undefined;
 
 /// Reads json files recursively from all subfolders.
-pub fn readAllJsonFilesInAddons(externalAllocator: NeverFailingAllocator, addons: std.ArrayList(std.fs.Dir), addonNames: std.ArrayList([]const u8), subPath: []const u8, output: *std.StringHashMap(JsonElement)) !void {
+pub fn readAllJsonFilesInAddons(externalAllocator: NeverFailingAllocator, addons: main.List(std.fs.Dir), addonNames: main.List([]const u8), subPath: []const u8, output: *std.StringHashMap(JsonElement)) !void {
 	for(addons.items, addonNames.items) |addon, addonName| {
 		var dir = addon.openDir(subPath, .{.iterate = true}) catch |err| {
 			if(err == error.FileNotFound) continue;
@@ -50,7 +50,7 @@ pub fn readAllJsonFilesInAddons(externalAllocator: NeverFailingAllocator, addons
 	}
 }
 /// Reads text files recursively from all subfolders.
-pub fn readAllFilesInAddons(externalAllocator: NeverFailingAllocator, addons: std.ArrayList(std.fs.Dir), subPath: []const u8, output: *std.ArrayList([]const u8)) !void {
+pub fn readAllFilesInAddons(externalAllocator: NeverFailingAllocator, addons: main.List(std.fs.Dir), subPath: []const u8, output: *main.List([]const u8)) !void {
 	for(addons.items) |addon| {
 		var dir = addon.openDir(subPath, .{.iterate = true}) catch |err| {
 			if(err == error.FileNotFound) continue;
@@ -66,16 +66,16 @@ pub fn readAllFilesInAddons(externalAllocator: NeverFailingAllocator, addons: st
 				const file = try dir.openFile(entry.path, .{});
 				defer file.close();
 				const string = file.readToEndAlloc(externalAllocator.allocator, std.math.maxInt(usize)) catch unreachable;
-				try output.append(string);
+				output.append(string);
 			}
 		}
 	}
 }
 
-pub fn readAssets(externalAllocator: NeverFailingAllocator, assetPath: []const u8, blocks: *std.StringHashMap(JsonElement), items: *std.StringHashMap(JsonElement), biomes: *std.StringHashMap(JsonElement), recipes: *std.ArrayList([]const u8)) !void {
-	var addons = std.ArrayList(std.fs.Dir).init(main.globalAllocator.allocator);
+pub fn readAssets(externalAllocator: NeverFailingAllocator, assetPath: []const u8, blocks: *std.StringHashMap(JsonElement), items: *std.StringHashMap(JsonElement), biomes: *std.StringHashMap(JsonElement), recipes: *main.List([]const u8)) !void {
+	var addons = main.List(std.fs.Dir).init(main.globalAllocator);
 	defer addons.deinit();
-	var addonNames = std.ArrayList([]const u8).init(main.globalAllocator.allocator);
+	var addonNames = main.List([]const u8).init(main.globalAllocator);
 	defer addonNames.deinit();
 	
 	{ // Find all the sub-directories to the assets folder.
@@ -84,8 +84,8 @@ pub fn readAssets(externalAllocator: NeverFailingAllocator, assetPath: []const u
 		var iterator = dir.iterate();
 		while(try iterator.next()) |addon| {
 			if(addon.kind == .directory) {
-				addons.append(try dir.openDir(addon.name, .{})) catch unreachable;
-				addonNames.append(main.globalAllocator.dupe(u8, addon.name)) catch unreachable;
+				addons.append(try dir.openDir(addon.name, .{}));
+				addonNames.append(main.globalAllocator.dupe(u8, addon.name));
 			}
 		}
 	}
@@ -108,7 +108,7 @@ pub fn init() !void {
 	commonBlocks = std.StringHashMap(JsonElement).init(arenaAllocator.allocator);
 	commonItems = std.StringHashMap(JsonElement).init(arenaAllocator.allocator);
 	commonBiomes = std.StringHashMap(JsonElement).init(arenaAllocator.allocator);
-	commonRecipes = std.ArrayList([]const u8).init(arenaAllocator.allocator);
+	commonRecipes = main.List([]const u8).init(arenaAllocator);
 
 	try readAssets(arenaAllocator, "assets/", &commonBlocks, &commonItems, &commonBiomes, &commonRecipes);
 }
@@ -142,15 +142,15 @@ fn registerRecipesFromFile(file: []const u8) void {
 }
 
 pub const BlockPalette = struct {
-	palette: std.ArrayList([]const u8),
+	palette: main.List([]const u8),
 	pub fn init(allocator: NeverFailingAllocator, json: JsonElement) !*BlockPalette {
 		const self = allocator.create(BlockPalette);
 		self.* = BlockPalette {
-			.palette = std.ArrayList([]const u8).init(allocator.allocator),
+			.palette = main.List([]const u8).init(allocator),
 		};
 		errdefer self.deinit();
 		if(json != .JsonObject or json.JsonObject.count() == 0) {
-			self.palette.append(allocator.dupe(u8, "cubyz:air")) catch unreachable;
+			self.palette.append(allocator.dupe(u8, "cubyz:air"));
 		} else {
 			const palette = main.stackAllocator.alloc(?[]const u8, json.JsonObject.count());
 			defer main.stackAllocator.free(palette);
@@ -164,7 +164,7 @@ pub const BlockPalette = struct {
 			std.debug.assert(std.mem.eql(u8, palette[0].?, "cubyz:air"));
 			for(palette) |val| {
 				std.log.info("palette[{}]: {s}", .{self.palette.items.len, val.?});
-				self.palette.append(allocator.dupe(u8, val orelse return error.MissingKeyInPalette)) catch unreachable;
+				self.palette.append(allocator.dupe(u8, val orelse return error.MissingKeyInPalette));
 			}
 		}
 		return self;
@@ -179,8 +179,8 @@ pub const BlockPalette = struct {
 		allocator.destroy(self);
 	}
 
-	pub fn add(self: *BlockPalette, id: []const u8) !void {
-		try self.palette.append(try self.palette.allocator.dupe(u8, id));
+	pub fn add(self: *BlockPalette, id: []const u8) void {
+		self.palette.append(self.palette.allocator.dupe(u8, id));
 	}
 
 	pub fn save(self: *BlockPalette, allocator: NeverFailingAllocator) JsonElement {
@@ -204,8 +204,8 @@ pub fn loadWorldAssets(assetFolder: []const u8, palette: *BlockPalette) !void {
 	defer items.clearAndFree();
 	var biomes = commonBiomes.cloneWithAllocator(main.globalAllocator.allocator) catch unreachable;
 	defer biomes.clearAndFree();
-	var recipes = std.ArrayList([]const u8).init(main.globalAllocator.allocator);
-	recipes.appendSlice(commonRecipes.items) catch unreachable;
+	var recipes = main.List([]const u8).init(main.globalAllocator);
+	recipes.appendSlice(commonRecipes.items);
 	defer recipes.clearAndFree();
 
 	try readAssets(arenaAllocator, assetFolder, &blocks, &items, &biomes, &recipes);
@@ -229,7 +229,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, palette: *BlockPalette) !void {
 	while(iterator.next()) |entry| {
 		if(blocks_zig.hasRegistered(entry.key_ptr.*)) continue;
 		try registerBlock(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
-		try palette.add(entry.key_ptr.*);
+		palette.add(entry.key_ptr.*);
 		block += 1;
 	}
 

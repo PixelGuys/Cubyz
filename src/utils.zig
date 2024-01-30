@@ -7,12 +7,12 @@ const main = @import("main.zig");
 
 pub const Compression = struct {
 	pub fn deflate(allocator: NeverFailingAllocator, data: []const u8) []u8 {
-		var result = std.ArrayList(u8).init(allocator.allocator);
+		var result = main.List(u8).init(allocator);
 		var comp = std.compress.deflate.compressor(main.globalAllocator.allocator, result.writer(), .{.level = .default_compression}) catch unreachable;
 		_ = comp.write(data) catch unreachable;
 		comp.close() catch unreachable;
 		comp.deinit();
-		return result.toOwnedSlice() catch unreachable;
+		return result.toOwnedSlice();
 	}
 
 	pub fn inflateTo(buf: []u8, data: []const u8) !usize {
@@ -376,14 +376,14 @@ pub const StackAllocator = struct {
 	const Allocation = struct{start: u32, len: u32};
 	backingAllocator: NeverFailingAllocator,
 	buffer: []align(4096) u8,
-	allocationList: std.ArrayList(Allocation),
+	allocationList: main.List(Allocation),
 	index: usize,
 
 	pub fn init(backingAllocator: NeverFailingAllocator, size: u32) StackAllocator {
 		return .{
 			.backingAllocator = backingAllocator,
 			.buffer = backingAllocator.alignedAlloc(u8, 4096, size),
-			.allocationList = std.ArrayList(Allocation).init(backingAllocator.allocator),
+			.allocationList = main.List(Allocation).init(backingAllocator),
 			.index = 0,
 		};
 	}
@@ -423,36 +423,36 @@ pub const StackAllocator = struct {
 		return compare - bufferStart;
 	}
 
-    /// Attempt to allocate exactly `len` bytes aligned to `1 << ptr_align`.
-    ///
-    /// `ret_addr` is optionally provided as the first return address of the
-    /// allocation call stack. If the value is `0` it means no return address
-    /// has been provided.
-    fn alloc(ctx: *anyopaque, len: usize, ptr_align: u8, ret_addr: usize) ?[*]u8 {
+	/// Attempt to allocate exactly `len` bytes aligned to `1 << ptr_align`.
+	///
+	/// `ret_addr` is optionally provided as the first return address of the
+	/// allocation call stack. If the value is `0` it means no return address
+	/// has been provided.
+	fn alloc(ctx: *anyopaque, len: usize, ptr_align: u8, ret_addr: usize) ?[*]u8 {
 		const self: *StackAllocator = @ptrCast(@alignCast(ctx));
 		if(len >= self.buffer.len) return self.backingAllocator.rawAlloc(len, ptr_align, ret_addr);
 		const start = std.mem.alignForward(usize, self.index, @as(usize, 1) << @intCast(ptr_align));
 		if(start + len >= self.buffer.len) return self.backingAllocator.rawAlloc(len, ptr_align, ret_addr);
-		self.allocationList.append(.{.start = @intCast(start), .len = @intCast(len)}) catch unreachable;
+		self.allocationList.append(.{.start = @intCast(start), .len = @intCast(len)});
 		self.index = start + len;
 		return self.buffer.ptr + start;
 	}
 
-    /// Attempt to expand or shrink memory in place. `buf.len` must equal the
-    /// length requested from the most recent successful call to `alloc` or
-    /// `resize`. `buf_align` must equal the same value that was passed as the
-    /// `ptr_align` parameter to the original `alloc` call.
-    ///
-    /// A result of `true` indicates the resize was successful and the
-    /// allocation now has the same address but a size of `new_len`. `false`
-    /// indicates the resize could not be completed without moving the
-    /// allocation to a different address.
-    ///
-    /// `new_len` must be greater than zero.
-    ///
-    /// `ret_addr` is optionally provided as the first return address of the
-    /// allocation call stack. If the value is `0` it means no return address
-    /// has been provided.
+	/// Attempt to expand or shrink memory in place. `buf.len` must equal the
+	/// length requested from the most recent successful call to `alloc` or
+	/// `resize`. `buf_align` must equal the same value that was passed as the
+	/// `ptr_align` parameter to the original `alloc` call.
+	///
+	/// A result of `true` indicates the resize was successful and the
+	/// allocation now has the same address but a size of `new_len`. `false`
+	/// indicates the resize could not be completed without moving the
+	/// allocation to a different address.
+	///
+	/// `new_len` must be greater than zero.
+	///
+	/// `ret_addr` is optionally provided as the first return address of the
+	/// allocation call stack. If the value is `0` it means no return address
+	/// has been provided.
 	fn resize(ctx: *anyopaque, buf: []u8, buf_align: u8, new_len: usize, ret_addr: usize) bool {
 		const self: *StackAllocator = @ptrCast(@alignCast(ctx));
 		if(self.isInsideBuffer(buf)) {
@@ -472,18 +472,18 @@ pub const StackAllocator = struct {
 		}
 	}
 
-    /// Free and invalidate a buffer.
-    ///
-    /// `buf.len` must equal the most recent length returned by `alloc` or
-    /// given to a successful `resize` call.
-    ///
-    /// `buf_align` must equal the same value that was passed as the
-    /// `ptr_align` parameter to the original `alloc` call.
-    ///
-    /// `ret_addr` is optionally provided as the first return address of the
-    /// allocation call stack. If the value is `0` it means no return address
-    /// has been provided.
-    fn free(ctx: *anyopaque, buf: []u8, buf_align: u8, ret_addr: usize) void {
+	/// Free and invalidate a buffer.
+	///
+	/// `buf.len` must equal the most recent length returned by `alloc` or
+	/// given to a successful `resize` call.
+	///
+	/// `buf_align` must equal the same value that was passed as the
+	/// `ptr_align` parameter to the original `alloc` call.
+	///
+	/// `ret_addr` is optionally provided as the first return address of the
+	/// allocation call stack. If the value is `0` it means no return address
+	/// has been provided.
+	fn free(ctx: *anyopaque, buf: []u8, buf_align: u8, ret_addr: usize) void {
 		const self: *StackAllocator = @ptrCast(@alignCast(ctx));
 		if(self.isInsideBuffer(buf)) {
 			const top = self.allocationList.pop();
@@ -525,48 +525,48 @@ pub const ErrorHandlingAllocator = struct {
 		@panic("Out Of Memory. Please download more RAM, reduce the render distance, or close some of your 100 browser tabs.");
 	}
 
-    /// Attempt to allocate exactly `len` bytes aligned to `1 << ptr_align`.
-    ///
-    /// `ret_addr` is optionally provided as the first return address of the
-    /// allocation call stack. If the value is `0` it means no return address
-    /// has been provided.
-    fn alloc(ctx: *anyopaque, len: usize, ptr_align: u8, ret_addr: usize) ?[*]u8 {
+	/// Attempt to allocate exactly `len` bytes aligned to `1 << ptr_align`.
+	///
+	/// `ret_addr` is optionally provided as the first return address of the
+	/// allocation call stack. If the value is `0` it means no return address
+	/// has been provided.
+	fn alloc(ctx: *anyopaque, len: usize, ptr_align: u8, ret_addr: usize) ?[*]u8 {
 		const self: *ErrorHandlingAllocator = @ptrCast(@alignCast(ctx));
 		return self.backingAllocator.rawAlloc(len, ptr_align, ret_addr) orelse handleError();
 	}
 
-    /// Attempt to expand or shrink memory in place. `buf.len` must equal the
-    /// length requested from the most recent successful call to `alloc` or
-    /// `resize`. `buf_align` must equal the same value that was passed as the
-    /// `ptr_align` parameter to the original `alloc` call.
-    ///
-    /// A result of `true` indicates the resize was successful and the
-    /// allocation now has the same address but a size of `new_len`. `false`
-    /// indicates the resize could not be completed without moving the
-    /// allocation to a different address.
-    ///
-    /// `new_len` must be greater than zero.
-    ///
-    /// `ret_addr` is optionally provided as the first return address of the
-    /// allocation call stack. If the value is `0` it means no return address
-    /// has been provided.
+	/// Attempt to expand or shrink memory in place. `buf.len` must equal the
+	/// length requested from the most recent successful call to `alloc` or
+	/// `resize`. `buf_align` must equal the same value that was passed as the
+	/// `ptr_align` parameter to the original `alloc` call.
+	///
+	/// A result of `true` indicates the resize was successful and the
+	/// allocation now has the same address but a size of `new_len`. `false`
+	/// indicates the resize could not be completed without moving the
+	/// allocation to a different address.
+	///
+	/// `new_len` must be greater than zero.
+	///
+	/// `ret_addr` is optionally provided as the first return address of the
+	/// allocation call stack. If the value is `0` it means no return address
+	/// has been provided.
 	fn resize(ctx: *anyopaque, buf: []u8, buf_align: u8, new_len: usize, ret_addr: usize) bool {
 		const self: *ErrorHandlingAllocator = @ptrCast(@alignCast(ctx));
 		return self.backingAllocator.rawResize(buf, buf_align, new_len, ret_addr);
 	}
 
-    /// Free and invalidate a buffer.
-    ///
-    /// `buf.len` must equal the most recent length returned by `alloc` or
-    /// given to a successful `resize` call.
-    ///
-    /// `buf_align` must equal the same value that was passed as the
-    /// `ptr_align` parameter to the original `alloc` call.
-    ///
-    /// `ret_addr` is optionally provided as the first return address of the
-    /// allocation call stack. If the value is `0` it means no return address
-    /// has been provided.
-    fn free(ctx: *anyopaque, buf: []u8, buf_align: u8, ret_addr: usize) void {
+	/// Free and invalidate a buffer.
+	///
+	/// `buf.len` must equal the most recent length returned by `alloc` or
+	/// given to a successful `resize` call.
+	///
+	/// `buf_align` must equal the same value that was passed as the
+	/// `ptr_align` parameter to the original `alloc` call.
+	///
+	/// `ret_addr` is optionally provided as the first return address of the
+	/// allocation call stack. If the value is `0` it means no return address
+	/// has been provided.
+	fn free(ctx: *anyopaque, buf: []u8, buf_align: u8, ret_addr: usize) void {
 		const self: *ErrorHandlingAllocator = @ptrCast(@alignCast(ctx));
 		self.backingAllocator.rawFree(buf, buf_align, ret_addr);
 	}
@@ -754,17 +754,17 @@ pub const NeverFailingArenaAllocator = struct {
 		};
 	}
 
-    /// Resets the arena allocator and frees all allocated memory.
-    ///
-    /// `mode` defines how the currently allocated memory is handled.
-    /// See the variant documentation for `ResetMode` for the effects of each mode.
-    ///
-    /// The function will return whether the reset operation was successful or not.
-    /// If the reallocation  failed `false` is returned. The arena will still be fully
-    /// functional in that case, all memory is released. Future allocations just might
-    /// be slower.
-    ///
-    /// NOTE: If `mode` is `free_all`, the function will always return `true`.
+	/// Resets the arena allocator and frees all allocated memory.
+	///
+	/// `mode` defines how the currently allocated memory is handled.
+	/// See the variant documentation for `ResetMode` for the effects of each mode.
+	///
+	/// The function will return whether the reset operation was successful or not.
+	/// If the reallocation  failed `false` is returned. The arena will still be fully
+	/// functional in that case, all memory is released. Future allocations just might
+	/// be slower.
+	///
+	/// NOTE: If `mode` is `free_all`, the function will always return `true`.
 	pub fn reset(self: *NeverFailingArenaAllocator, mode: std.heap.ArenaAllocator.ResetMode) bool {
 		return self.arena.reset(mode);
 	}
@@ -1249,7 +1249,7 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 				var smallestTime: i16 = std.math.maxInt(i16);
 				var smallestIndex: ?u31 = null;
 				for(self.lastTimes, 0..) |lastTimeI, i| {
-					//                     ↓ Only using a future time value that is far enough away to prevent jumping.
+					//					 ↓ Only using a future time value that is far enough away to prevent jumping.
 					if(lastTimeI -% time >= 50 and lastTimeI -% time < smallestTime) {
 						smallestTime = lastTimeI -% time;
 						smallestIndex = @intCast(i);

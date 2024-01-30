@@ -78,7 +78,7 @@ fn deleteWorld(namePtr: usize) void {
 }
 
 fn parseEscapedFolderName(allocator: NeverFailingAllocator, name: []const u8) []const u8 {
-	var result = std.ArrayList(u8).init(allocator.allocator);
+	var result = main.List(u8).init(allocator);
 	defer result.deinit();
 	var i: u32 = 0;
 	while(i < name.len) : (i += 1) {
@@ -96,12 +96,12 @@ fn parseEscapedFolderName(allocator: NeverFailingAllocator, name: []const u8) []
 				}
 			}
 			var buf: [4]u8 = undefined;
-			result.appendSlice(buf[0..std.unicode.utf8Encode(val, &buf) catch 0]) catch unreachable; // TODO: Change this to full unicode rather than using this broken utf-16 converter.
+			result.appendSlice(buf[0..std.unicode.utf8Encode(val, &buf) catch 0]); // TODO: Change this to full unicode rather than using this broken utf-16 converter.
 		} else {
-			result.append(name[i]) catch unreachable;
+			result.append(name[i]);
 		}
 	}
-	return result.toOwnedSlice() catch unreachable;
+	return result.toOwnedSlice();
 }
 
 pub fn onOpen() void {

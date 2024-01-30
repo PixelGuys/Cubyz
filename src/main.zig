@@ -23,6 +23,9 @@ pub const settings = @import("settings.zig");
 pub const utils = @import("utils.zig");
 pub const vec = @import("vec.zig");
 
+pub const List = @import("utils/list.zig").List;
+pub const ListUnmanaged = @import("utils/list.zig").ListUnmanaged;
+
 const Vec2f = vec.Vec2f;
 const Vec3d = vec.Vec3d;
 

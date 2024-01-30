@@ -190,10 +190,10 @@ const TextureGenerator = struct {
 	/// Contains the material(s) of a single pixel and tries to avoid multiple materials.
 	const PixelData = struct {
 		maxNeighbors: u8 = 0,
-		items: std.ArrayList(*const BaseItem),
+		items: main.List(*const BaseItem),
 		pub fn init(allocator: NeverFailingAllocator) PixelData {
 			return PixelData {
-				.items = std.ArrayList(*const BaseItem).init(allocator.allocator),
+				.items = main.List(*const BaseItem).init(allocator),
 			};
 		}
 		pub fn deinit(self: *PixelData) void {
@@ -205,7 +205,7 @@ const TextureGenerator = struct {
 				self.items.clearRetainingCapacity();
 			}
 			if(neighbors == self.maxNeighbors) {
-				self.items.append(item) catch unreachable;
+				self.items.append(item);
 			}
 		}
 	};
@@ -796,7 +796,7 @@ const ToolPhysics = struct {
 			x: u8,
 			y: u8,
 		};
-		var stack = std.ArrayList(Entry).init(main.stackAllocator.allocator);
+		var stack = main.List(Entry).init(main.stackAllocator);
 		defer stack.deinit();
 		// Uses a simple flood-fill algorithm equivalent to light calculation.
 		var x: u8 = 0;
@@ -806,10 +806,10 @@ const ToolPhysics = struct {
 				sandPiles[x][y] = std.math.maxInt(u8);
 				if(tool.materialGrid[x][y] == null) {
 					sandPiles[x][y] = 0;
-					stack.append(Entry{.x=x, .y=y}) catch unreachable;
+					stack.append(Entry{.x=x, .y=y});
 				} else if(x == 0 or x == 15 or y == 0 or y == 15) {
 					sandPiles[x][y] = 1;
-					stack.append(Entry{.x=x, .y=y}) catch unreachable;
+					stack.append(Entry{.x=x, .y=y});
 				}
 			}
 		}
@@ -819,25 +819,25 @@ const ToolPhysics = struct {
 			if(x != 0 and y != 0 and tool.materialGrid[x - 1][y - 1] != null) {
 				if(sandPiles[x - 1][y - 1] > sandPiles[x][y] + 1) {
 					sandPiles[x - 1][y - 1] = sandPiles[x][y] + 1;
-					stack.append(Entry{.x=x-1, .y=y-1}) catch unreachable;
+					stack.append(Entry{.x=x-1, .y=y-1});
 				}
 			}
 			if(x != 0 and y != 15 and tool.materialGrid[x - 1][y + 1] != null) {
 				if(sandPiles[x - 1][y + 1] > sandPiles[x][y] + 1) {
 					sandPiles[x - 1][y + 1] = sandPiles[x][y] + 1;
-					stack.append(Entry{.x=x-1, .y=y+1}) catch unreachable;
+					stack.append(Entry{.x=x-1, .y=y+1});
 				}
 			}
 			if(x != 15 and y != 0 and tool.materialGrid[x + 1][y - 1] != null) {
 				if(sandPiles[x + 1][y - 1] > sandPiles[x][y] + 1) {
 					sandPiles[x + 1][y - 1] = sandPiles[x][y] + 1;
-					stack.append(Entry{.x=x+1, .y=y-1}) catch unreachable;
+					stack.append(Entry{.x=x+1, .y=y-1});
 				}
 			}
 			if(x != 15 and y != 15 and tool.materialGrid[x + 1][y + 1] != null) {
 				if(sandPiles[x + 1][y + 1] > sandPiles[x][y] + 1) {
 					sandPiles[x + 1][y + 1] = sandPiles[x][y] + 1;
-					stack.append(Entry{.x=x+1, .y=y+1}) catch unreachable;
+					stack.append(Entry{.x=x+1, .y=y+1});
 				}
 			}
 		}
@@ -973,9 +973,9 @@ pub const Tool = struct {
 		const jsonArray = JsonElement.initArray(allocator);
 		for(self.craftingGrid) |nullItem| {
 			if(nullItem) |item| {
-				jsonArray.JsonArray.append(JsonElement{.JsonString=item.id}) catch unreachable;
+				jsonArray.JsonArray.append(JsonElement{.JsonString=item.id});
 			} else {
-				jsonArray.JsonArray.append(JsonElement{.JsonNull={}}) catch unreachable;
+				jsonArray.JsonArray.append(JsonElement{.JsonNull={}});
 			}
 		}
 		jsonObject.put("grid", jsonArray);
@@ -1301,7 +1301,7 @@ var reverseIndices: std.StringHashMap(*BaseItem) = undefined;
 var itemList: [65536]BaseItem = undefined;
 var itemListSize: u16 = 0;
 
-var recipeList: std.ArrayList(Recipe) = undefined;
+var recipeList: main.List(Recipe) = undefined;
 
 pub fn iterator() std.StringHashMap(*BaseItem).ValueIterator {
 	return reverseIndices.valueIterator();
@@ -1314,7 +1314,7 @@ pub fn recipes() []Recipe {
 pub fn globalInit() void {
 	arena = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
 	reverseIndices = std.StringHashMap(*BaseItem).init(arena.allocator().allocator);
-	recipeList = std.ArrayList(Recipe).init(arena.allocator().allocator);
+	recipeList = main.List(Recipe).init(arena.allocator());
 	itemListSize = 0;
 }
 
@@ -1339,11 +1339,11 @@ pub fn registerRecipes(file: []const u8) void {
 			main.globalAllocator.free(key.*);
 		}
 	}
-	var items = std.ArrayList(*BaseItem).init(main.globalAllocator.allocator);
+	var items = main.List(*BaseItem).init(main.globalAllocator);
 	defer items.deinit();
-	var itemAmounts = std.ArrayList(u16).init(main.globalAllocator.allocator);
+	var itemAmounts = main.List(u16).init(main.globalAllocator);
 	defer itemAmounts.deinit();
-	var string = std.ArrayList(u8).init(main.globalAllocator.allocator);
+	var string = main.List(u8).init(main.globalAllocator);
 	defer string.deinit();
 	var lines = std.mem.split(u8, file, "\n");
 	while(lines.next()) |line| {
@@ -1352,9 +1352,9 @@ pub fn registerRecipes(file: []const u8) void {
 			var parts = std.mem.split(u8, line, "=");
 			for(parts.first()) |char| {
 				if(std.ascii.isWhitespace(char)) continue; // TODO: Unicode whitespaces
-				string.append(char) catch unreachable;
+				string.append(char);
 			}
-			const shortcut = string.toOwnedSlice() catch unreachable;
+			const shortcut = string.toOwnedSlice();
 			const id = std.mem.trim(u8, parts.rest(), &std.ascii.whitespace); // TODO: Unicode whitespaces
 			const item = shortcuts.get(id) orelse getByID(id) orelse &BaseItem.unobtainable;
 			shortcuts.put(shortcut, item) catch unreachable;
@@ -1376,7 +1376,7 @@ pub fn registerRecipes(file: []const u8) void {
 				.sourceAmounts = arena.allocator().dupe(u16, itemAmounts.items),
 				.resultItem = ItemStack{.item = Item{.baseItem = item}, .amount = amount},
 			};
-			recipeList.append(recipe) catch unreachable;
+			recipeList.append(recipe);
 		} else {
 			var ingredients = std.mem.split(u8, line, ",");
 			outer: while(ingredients.next()) |ingredient| {
@@ -1398,8 +1398,8 @@ pub fn registerRecipes(file: []const u8) void {
 						continue :outer;
 					}
 				}
-				items.append(item) catch unreachable;
-				itemAmounts.append(amount) catch unreachable;
+				items.append(item);
+				itemAmounts.append(amount);
 			}
 		}
 	}

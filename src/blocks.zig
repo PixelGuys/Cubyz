@@ -83,12 +83,12 @@ var reverseIndices = std.StringHashMap(u16).init(allocator.allocator);
 
 var size: u32 = 0;
 
-pub var ores: std.ArrayList(Ore) = std.ArrayList(Ore).init(allocator.allocator);
+pub var ores: main.List(Ore) = main.List(Ore).init(allocator);
 
-var unfinishedOreSourceBlockIds: std.ArrayList([][]const u8) = undefined;
+var unfinishedOreSourceBlockIds: main.List([][]const u8) = undefined;
 
 pub fn init() void {
-	unfinishedOreSourceBlockIds = std.ArrayList([][]const u8).init(main.globalAllocator.allocator);
+	unfinishedOreSourceBlockIds = main.List([][]const u8).init(main.globalAllocator);
 }
 
 pub fn deinit() void {
@@ -126,7 +126,7 @@ pub fn register(_: []const u8, id: []const u8, json: JsonElement) u16 {
 		for(sourceBlocks, oreIds) |source, *oreId| {
 			oreId.* = main.globalAllocator.dupe(u8, source.as([]const u8, ""));
 		}
-		unfinishedOreSourceBlockIds.append(oreIds) catch unreachable;
+		unfinishedOreSourceBlockIds.append(oreIds);
 		ores.append(Ore {
 			.veins = oreProperties.get(f32, "veins", 0),
 			.size = oreProperties.get(f32, "size", 0),
@@ -134,7 +134,7 @@ pub fn register(_: []const u8, id: []const u8, json: JsonElement) u16 {
 			.density = oreProperties.get(f32, "density", 0.5),
 			.blockType = @intCast(size),
 			.sources = &.{},
-		}) catch unreachable;
+		});
 	}
 
 	size += 1;
@@ -321,10 +321,10 @@ pub const meshes = struct {
 	/// Number of loaded meshes. Used to determine if an update is needed.
 	var loadedMeshes: u32 = 0;
 
-	var textureIDs: std.ArrayList([]const u8) = undefined;
-	var animation: std.ArrayList(AnimationData) = undefined;
-	var blockTextures: std.ArrayList(Image) = undefined;
-	var emissionTextures: std.ArrayList(Image) = undefined;
+	var textureIDs: main.List([]const u8) = undefined;
+	var animation: main.List(AnimationData) = undefined;
+	var blockTextures: main.List(Image) = undefined;
+	var emissionTextures: main.List(Image) = undefined;
 
 	var arenaForWorld: main.utils.NeverFailingArenaAllocator = undefined;
 
@@ -363,10 +363,10 @@ pub const meshes = struct {
 		animationShader = Shader.initComputeAndGetUniforms("assets/cubyz/shaders/animation_pre_processing.glsl", &animationUniforms);
 		blockTextureArray = TextureArray.init();
 		emissionTextureArray = TextureArray.init();
-		textureIDs = std.ArrayList([]const u8).init(main.globalAllocator.allocator);
-		animation = std.ArrayList(AnimationData).init(main.globalAllocator.allocator);
-		blockTextures = std.ArrayList(Image).init(main.globalAllocator.allocator);
-		emissionTextures = std.ArrayList(Image).init(main.globalAllocator.allocator);
+		textureIDs = main.List([]const u8).init(main.globalAllocator);
+		animation = main.List(AnimationData).init(main.globalAllocator);
+		blockTextures = main.List(Image).init(main.globalAllocator);
+		emissionTextures = main.List(Image).init(main.globalAllocator);
 		arenaForWorld = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
 	}
 
@@ -446,13 +446,13 @@ pub const meshes = struct {
 			// Otherwise read it into the list:
 			result = @intCast(blockTextures.items.len);
 
-			blockTextures.append(try Image.readFromFile(arenaForWorld.allocator(), path)) catch unreachable;
+			blockTextures.append(try Image.readFromFile(arenaForWorld.allocator(), path));
 			@memcpy(buffer[path.len..][0.."_emission.png".len], "_emission.png");
 			path.len += "_emission.png".len;
 			const emissionTexture = Image.readFromFile(arenaForWorld.allocator(), path) catch Image.emptyImage;
-			emissionTextures.append(emissionTexture) catch unreachable;
-			textureIDs.append(arenaForWorld.allocator().dupe(u8, path)) catch unreachable;
-			animation.append(.{.frames = 1, .time = 1}) catch unreachable;
+			emissionTextures.append(emissionTexture);
+			textureIDs.append(arenaForWorld.allocator().dupe(u8, path));
+			animation.append(.{.frames = 1, .time = 1});
 		} else if(textureInfo == .JsonObject) {
 			const animationTime = textureInfo.get(i32, "time", 500);
 			const textures = textureInfo.getChild("textures").toSlice();
@@ -460,9 +460,9 @@ pub const meshes = struct {
 			result = @intCast(blockTextures.items.len);
 			for(textures, 0..) |item, i| {
 				if(i == 0) {
-					animation.append(.{.frames = @intCast(textures.len), .time = animationTime}) catch unreachable;
+					animation.append(.{.frames = @intCast(textures.len), .time = animationTime});
 				} else {
-					animation.append(.{.frames = 1, .time = 1}) catch unreachable;
+					animation.append(.{.frames = 1, .time = 1});
 				}
 				var splitter = std.mem.split(u8, item.as([]const u8, "cubyz:undefined"), ":");
 				const mod = splitter.first();
@@ -481,12 +481,12 @@ pub const meshes = struct {
 				};
 				file.close(); // It was only openend to check if it exists.
 
-				blockTextures.append(try Image.readFromFile(arenaForWorld.allocator(), path)) catch unreachable;
+				blockTextures.append(try Image.readFromFile(arenaForWorld.allocator(), path));
 				@memcpy(buffer[path.len..][0.."_emission.png".len], "_emission.png");
 				path.len += "_emission.png".len;
 				const emissionTexture = Image.readFromFile(arenaForWorld.allocator(), path) catch Image.emptyImage;
-				emissionTextures.append(emissionTexture) catch unreachable;
-				textureIDs.append(arenaForWorld.allocator().dupe(u8, path)) catch unreachable;
+				emissionTextures.append(emissionTexture);
+				textureIDs.append(arenaForWorld.allocator().dupe(u8, path));
 			}
 		} else {
 			return error.NotSpecified;

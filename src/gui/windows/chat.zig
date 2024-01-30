@@ -31,8 +31,8 @@ const messageTimeout: i32 = 10000;
 const messageFade = 1000;
 
 var mutexComponent: MutexComponent = .{};
-var history: std.ArrayList(*Label) = undefined;
-var expirationTime: std.ArrayList(i32) = undefined;
+var history: main.List(*Label) = undefined;
+var expirationTime: main.List(i32) = undefined;
 var historyStart: u32 = 0;
 var fadeOutEnd: u32 = 0;
 var input: *TextInput = undefined;
@@ -62,8 +62,8 @@ fn refresh() void {
 }
 
 pub fn onOpen() void {
-	history = std.ArrayList(*Label).init(main.globalAllocator.allocator);
-	expirationTime = std.ArrayList(i32).init(main.globalAllocator.allocator);
+	history = main.List(*Label).init(main.globalAllocator);
+	expirationTime = main.List(i32).init(main.globalAllocator);
 	historyStart = 0;
 	input = TextInput.init(.{0, 0}, 256, 32, "", .{.callback = &sendMessage});
 	mutexComponent.mutex.lock();
@@ -118,9 +118,9 @@ pub fn render() void {
 pub fn addMessage(message: []const u8) void {
 	mutexComponent.mutex.lock();
 	defer mutexComponent.mutex.unlock();
-	history.append(Label.init(.{0, 0}, 256, message, .left)) catch unreachable;
+	history.append(Label.init(.{0, 0}, 256, message, .left));
 	const currentTime: i32 = @truncate(std.time.milliTimestamp());
-	expirationTime.append(currentTime +% messageTimeout) catch unreachable;
+	expirationTime.append(currentTime +% messageTimeout);
 	refresh();
 }
 

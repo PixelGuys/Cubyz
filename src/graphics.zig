@@ -448,12 +448,12 @@ pub const TextBuffer = struct {
 	width: f32,
 	buffer: ?*hbft.hb_buffer_t,
 	glyphs: []GlyphData,
-	lines: std.ArrayList(Line),
-	lineBreaks: std.ArrayList(LineBreak),
+	lines: main.List(Line),
+	lineBreaks: main.List(LineBreak),
 
 	fn addLine(self: *TextBuffer, line: Line) void {
 		if(line.start != line.end) {
-			self.lines.append(line) catch unreachable;
+			self.lines.append(line);
 		}
 	}
 
@@ -485,27 +485,27 @@ pub const TextBuffer = struct {
 	const Parser = struct {
 		unicodeIterator: std.unicode.Utf8Iterator,
 		currentFontEffect: FontEffect,
-		parsedText: std.ArrayList(u32),
-		fontEffects: std.ArrayList(FontEffect),
-		characterIndex: std.ArrayList(u32),
+		parsedText: main.List(u32),
+		fontEffects: main.List(FontEffect),
+		characterIndex: main.List(u32),
 		showControlCharacters: bool,
 		curChar: u21 = undefined,
 		curIndex: u32 = 0,
 
 		fn appendControlGetNext(self: *Parser) ?void {
 			if(self.showControlCharacters) {
-				self.fontEffects.append(.{.color = 0x808080}) catch unreachable;
-				self.parsedText.append(self.curChar) catch unreachable;
-				self.characterIndex.append(self.curIndex) catch unreachable;
+				self.fontEffects.append(.{.color = 0x808080});
+				self.parsedText.append(self.curChar);
+				self.characterIndex.append(self.curIndex);
 			}
 			self.curIndex = @intCast(self.unicodeIterator.i);
 			self.curChar = self.unicodeIterator.nextCodepoint() orelse return null;
 		}
 
 		fn appendGetNext(self: *Parser) ?void {
-			self.fontEffects.append(self.currentFontEffect) catch unreachable;
-			self.parsedText.append(self.curChar) catch unreachable;
-			self.characterIndex.append(self.curIndex) catch unreachable;
+			self.fontEffects.append(self.currentFontEffect);
+			self.parsedText.append(self.curChar);
+			self.characterIndex.append(self.curIndex);
 			self.curIndex = @intCast(self.unicodeIterator.i);
 			self.curChar = self.unicodeIterator.nextCodepoint() orelse return null;
 		}
@@ -566,16 +566,16 @@ pub const TextBuffer = struct {
 		var parser = Parser {
 			.unicodeIterator = std.unicode.Utf8Iterator{.bytes = text, .i = 0},
 			.currentFontEffect = initialFontEffect,
-			.parsedText = std.ArrayList(u32).init(stackFallbackAllocator),
-			.fontEffects = std.ArrayList(FontEffect).init(allocator.allocator),
-			.characterIndex = std.ArrayList(u32).init(allocator.allocator),
+			.parsedText = main.List(u32).init(.{.allocator = stackFallbackAllocator, .IAssertThatTheProvidedAllocatorCantFail = {}}),
+			.fontEffects = main.List(FontEffect).init(allocator),
+			.characterIndex = main.List(u32).init(allocator),
 			.showControlCharacters = showControlCharacters
 		};
 		defer parser.fontEffects.deinit();
 		defer parser.parsedText.deinit();
 		defer parser.characterIndex.deinit();
-		self.lines = std.ArrayList(Line).init(allocator.allocator);
-		self.lineBreaks = std.ArrayList(LineBreak).init(allocator.allocator);
+		self.lines = main.List(Line).init(allocator);
+		self.lineBreaks = main.List(LineBreak).init(allocator);
 		parser.parse();
 		if(parser.parsedText.items.len == 0) {
 			self.glyphs = &[0]GlyphData{};
@@ -634,8 +634,8 @@ pub const TextBuffer = struct {
 		// Find the lines:
 		self.initLines(true);
 		self.initLines(false);
-		self.lineBreaks.append(.{.index = 0, .width = 0}) catch unreachable;
-		self.lineBreaks.append(.{.index = @intCast(self.glyphs.len), .width = 0}) catch unreachable;
+		self.lineBreaks.append(.{.index = 0, .width = 0});
+		self.lineBreaks.append(.{.index = @intCast(self.glyphs.len), .width = 0});
 		return self;
 	}
 
@@ -697,7 +697,7 @@ pub const TextBuffer = struct {
 	pub fn calculateLineBreaks(self: *TextBuffer, fontSize: f32, maxLineWidth: f32) Vec2f {
 		self.lineBreaks.clearRetainingCapacity();
 		const spaceCharacterWidth = 8;
-		self.lineBreaks.append(.{.index = 0, .width = 0}) catch unreachable;
+		self.lineBreaks.append(.{.index = 0, .width = 0});
 		const scaledMaxWidth = maxLineWidth/fontSize*16.0;
 		var lineWidth: f32 = 0;
 		var lastSpaceWidth: f32 = 0;
@@ -709,7 +709,7 @@ pub const TextBuffer = struct {
 				lastSpaceIndex = @intCast(i+1);
 			}
 			if(glyph.character == '\n') {
-				self.lineBreaks.append(.{.index = @intCast(i+1), .width = lineWidth - spaceCharacterWidth}) catch unreachable;
+				self.lineBreaks.append(.{.index = @intCast(i+1), .width = lineWidth - spaceCharacterWidth});
 				lineWidth = 0;
 				lastSpaceIndex = 0;
 				lastSpaceWidth = 0;
@@ -717,11 +717,11 @@ pub const TextBuffer = struct {
 			if(lineWidth > scaledMaxWidth) {
 				if(lastSpaceIndex != 0) {
 					lineWidth -= lastSpaceWidth;
-					self.lineBreaks.append(.{.index = lastSpaceIndex, .width = lastSpaceWidth - spaceCharacterWidth}) catch unreachable;
+					self.lineBreaks.append(.{.index = lastSpaceIndex, .width = lastSpaceWidth - spaceCharacterWidth});
 					lastSpaceIndex = 0;
 					lastSpaceWidth = 0;
 				} else {
-					self.lineBreaks.append(.{.index = @intCast(i), .width = lineWidth - glyph.x_advance}) catch unreachable;
+					self.lineBreaks.append(.{.index = @intCast(i), .width = lineWidth - glyph.x_advance});
 					lineWidth = glyph.x_advance;
 					lastSpaceIndex = 0;
 					lastSpaceWidth = 0;
@@ -729,7 +729,7 @@ pub const TextBuffer = struct {
 			}
 		}
 		self.width = maxLineWidth;
-		self.lineBreaks.append(.{.index = @intCast(self.glyphs.len), .width = lineWidth}) catch unreachable;
+		self.lineBreaks.append(.{.index = @intCast(self.glyphs.len), .width = lineWidth});
 		return Vec2f{maxLineWidth*fontSize/16.0, @as(f32, @floatFromInt(self.lineBreaks.items.len - 1))*fontSize};
 	}
 
@@ -911,8 +911,8 @@ const TextRendering = struct {
 	var freetypeFace: hbft.FT_Face = undefined;
 	var harfbuzzFace: ?*hbft.hb_face_t = undefined;
 	var harfbuzzFont: ?*hbft.hb_font_t = undefined;
-	var glyphMapping: std.ArrayList(u31) = undefined;
-	var glyphData: std.ArrayList(Glyph) = undefined;
+	var glyphMapping: main.List(u31) = undefined;
+	var glyphData: main.List(Glyph) = undefined;
 	var glyphTexture: [2]c_uint = undefined;
 	var textureWidth: i32 = 1024;
 	const textureHeight: i32 = 16;
@@ -937,9 +937,9 @@ const TextRendering = struct {
 		harfbuzzFace = hbft.hb_ft_face_create_referenced(freetypeFace);
 		harfbuzzFont = hbft.hb_font_create(harfbuzzFace);
 
-		glyphMapping = std.ArrayList(u31).init(main.globalAllocator.allocator);
-		glyphData = std.ArrayList(Glyph).init(main.globalAllocator.allocator);
-		glyphData.append(undefined) catch unreachable; // 0 is a reserved value.
+		glyphMapping = main.List(u31).init(main.globalAllocator);
+		glyphData = main.List(Glyph).init(main.globalAllocator);
+		glyphData.append(undefined); // 0 is a reserved value.
 		c.glGenTextures(2, &glyphTexture);
 		c.glBindTexture(c.GL_TEXTURE_2D, glyphTexture[0]);
 		c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_R8, textureWidth, textureHeight, 0, c.GL_RED, c.GL_UNSIGNED_BYTE, null);
@@ -994,7 +994,7 @@ const TextRendering = struct {
 
 	fn getGlyph(index: u32) !Glyph {
 		if(index >= glyphMapping.items.len) {
-			glyphMapping.appendNTimes(0, index - glyphMapping.items.len + 1) catch unreachable;
+			glyphMapping.appendNTimes(0, index - glyphMapping.items.len + 1);
 		}
 		if(glyphMapping.items[index] == 0) {// glyph was not initialized yet.
 			try ftError(hbft.FT_Load_Glyph(freetypeFace, index, hbft.FT_LOAD_RENDER));
@@ -1003,7 +1003,7 @@ const TextRendering = struct {
 			const width = bitmap.width;
 			const height = bitmap.rows;
 			glyphMapping.items[index] = @intCast(glyphData.items.len);
-			(glyphData.addOne() catch unreachable).* = Glyph {
+			glyphData.addOne().* = Glyph {
 				.textureX = textureOffset,
 				.size = Vec2i{@intCast(width), @intCast(height)},
 				.bearing = Vec2i{glyph.*.bitmap_left, 16 - glyph.*.bitmap_top},
@@ -1206,9 +1206,9 @@ pub const SubAllocation = struct {
 pub fn LargeBuffer(comptime Entry: type) type {
 	return struct {
 		ssbo: SSBO,
-		freeBlocks: std.ArrayList(SubAllocation),
+		freeBlocks: main.List(SubAllocation),
 		fences: [3]c.GLsync,
-		fencedFreeLists: [3]std.ArrayList(SubAllocation),
+		fencedFreeLists: [3]main.List(SubAllocation),
 		activeFence: u8,
 		capacity: u31,
 		used: u31,
@@ -1234,11 +1234,11 @@ pub fn LargeBuffer(comptime Entry: type) type {
 				fence.* = c.glFenceSync(c.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 			}
 			for(&self.fencedFreeLists) |*list| {
-				list.* = std.ArrayList(SubAllocation).init(allocator.allocator);
+				list.* = main.List(SubAllocation).init(allocator);
 			}
 
-			self.freeBlocks = std.ArrayList(SubAllocation).init(allocator.allocator);
-			self.freeBlocks.append(.{.start = 0, .len = size}) catch unreachable;
+			self.freeBlocks = main.List(SubAllocation).init(allocator);
+			self.freeBlocks.append(.{.start = 0, .len = size});
 		}
 
 		pub fn deinit(self: *Self) void {
@@ -1318,12 +1318,12 @@ pub fn LargeBuffer(comptime Entry: type) type {
 					return;
 				}
 			}
-			self.freeBlocks.append(allocation) catch unreachable;
+			self.freeBlocks.append(allocation);
 		}
 
 		pub fn free(self: *Self, allocation: SubAllocation) void {
 			if(allocation.len == 0) return;
-			self.fencedFreeLists[self.activeFence].append(allocation) catch unreachable;
+			self.fencedFreeLists[self.activeFence].append(allocation);
 		}
 
 		/// Must unmap after use!
