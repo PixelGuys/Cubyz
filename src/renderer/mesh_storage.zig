@@ -963,7 +963,7 @@ pub fn addToUpdateListAndDecreaseRefCount(mesh: *chunk_meshing.ChunkMesh) void {
 	}
 }
 
-pub fn addMeshToStorage(mesh: *chunk_meshing.ChunkMesh) !void {
+pub fn addMeshToStorage(mesh: *chunk_meshing.ChunkMesh) error{AlreadyStored}!void {
 	mutex.lock();
 	defer mutex.unlock();
 	if(isInRenderDistance(mesh.pos)) {
@@ -1018,13 +1018,7 @@ pub const MeshGenerationTask = struct {
 		const mesh = main.globalAllocator.create(chunk_meshing.ChunkMesh);
 		mesh.init(pos, self.mesh);
 		defer mesh.decreaseRefCount();
-		mesh.generateLightingData() catch |err| {
-			switch(err) {
-				error.AlreadyStored => {
-					return;
-				},
-			}
-		};
+		mesh.generateLightingData() catch return;
 	}
 
 	pub fn clean(self: *MeshGenerationTask) void {

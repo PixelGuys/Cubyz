@@ -482,6 +482,7 @@ pub const MenuBackGround = struct {
 		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.len*@sizeOf(c_int)), &indices, c.GL_STATIC_DRAW);
 
 		// Load a random texture from the backgrounds folder. The player may make their own pictures which can be chosen as well.
+		texture = .{.textureID = 0};
 		var dir = try std.fs.cwd().makeOpenPath("assets/backgrounds", .{.iterate = true});
 		defer dir.close();
 
@@ -502,7 +503,6 @@ pub const MenuBackGround = struct {
 		}
 		if(fileList.items.len == 0) {
 			std.log.warn("Couldn't find any background scene images in \"assets/backgrounds\".", .{});
-			texture = .{.textureID = 0};
 			return;
 		}
 		const theChosenOne = main.random.nextIntBounded(u32, &main.seed, @as(u32, @intCast(fileList.items.len)));

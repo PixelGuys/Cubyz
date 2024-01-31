@@ -42,7 +42,7 @@ pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 	const outerSize = @max(map.pos.voxelSize, interpolatedPart);
 	const outerSizeShift = std.math.log2_int(u31, outerSize);
 	const outerSizeFloat: f32 = @floatFromInt(outerSize);
-	const noise = FractalNoise3D.generateAligned(main.stackAllocator, map.pos.wx, map.pos.wy, map.pos.wz, outerSize, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, CaveMapFragment.height*map.pos.voxelSize/outerSize + 1, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, worldSeed, scale);//try Cached3DFractalNoise.init(map.pos.wx, map.pos.wy & ~@as(i32, CaveMapFragment.width*map.pos.voxelSize - 1), map.pos.wz, outerSize, map.pos.voxelSize*CaveMapFragment.width, worldSeed, scale);
+	const noise = FractalNoise3D.generateAligned(main.stackAllocator, map.pos.wx, map.pos.wy, map.pos.wz, outerSize, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, CaveMapFragment.height*map.pos.voxelSize/outerSize + 1, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, worldSeed, scale);
 	defer noise.deinit(main.stackAllocator);
 	biomeMap.bulkInterpolateValue("caves", map.pos.wx, map.pos.wy, map.pos.wz, outerSize, noise, .addToMap, scale);
 	var x: u31 = 0;

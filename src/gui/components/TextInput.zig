@@ -206,7 +206,7 @@ fn moveCursorRight(self: *TextInput, mods: main.Key.Modifiers) void {
 				if(self.cursor.? >= self.currentString.items.len) return;
 			}
 		} else {
-			self.cursor.? += std.unicode.utf8ByteSequenceLength(self.currentString.items[self.cursor.?]) catch unreachable;
+			self.cursor.? += std.unicode.utf8ByteSequenceLength(self.currentString.items[self.cursor.?]) catch 0;
 		}
 	}
 }

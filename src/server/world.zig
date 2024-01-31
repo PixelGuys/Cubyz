@@ -463,7 +463,7 @@ pub const ServerWorld = struct {
 //		for(MetaChunk chunk : metaChunks.values().toArray(new MetaChunk[0])) {
 //			if (chunk != null) chunk.save();
 //		}
-		self.wio.saveWorldData();
+		try self.wio.saveWorldData();
 		// TODO:
 //		savePlayers();
 //		chunkManager.forceSave();
@@ -471,7 +471,7 @@ pub const ServerWorld = struct {
 		const itemDropJson = self.itemDropManager.store(main.globalAllocator);
 		defer itemDropJson.free(main.globalAllocator);
 		var buf: [32768]u8 = undefined;
-		files.writeJson(try std.fmt.bufPrint(&buf, "saves/{s}/items.json", .{self.name}), itemDropJson);
+		try files.writeJson(try std.fmt.bufPrint(&buf, "saves/{s}/items.json", .{self.name}), itemDropJson);
 	}
 // TODO:
 //	public void addEntity(Entity ent) {

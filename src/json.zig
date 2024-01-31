@@ -237,13 +237,13 @@ pub const JsonElement = union(JsonType) {
 			list.append('\t');
 		}
 	}
-	fn recurseToString(json: JsonElement, list: *List(u8), tabs: u32, comptime visualCharacters: bool) !void {
+	fn recurseToString(json: JsonElement, list: *List(u8), tabs: u32, comptime visualCharacters: bool) void {
 		switch(json) {
 			.JsonInt => |value| {
-				try std.fmt.formatInt(value, 10, .lower, .{}, list.writer());
+				std.fmt.formatInt(value, 10, .lower, .{}, list.writer()) catch unreachable;
 			},
 			.JsonFloat => |value| {
-				try std.fmt.formatFloatScientific(value, .{}, list.writer());
+				std.fmt.formatFloatScientific(value, .{}, list.writer()) catch unreachable;
 			},
 			.JsonBool => |value| {
 				if(value) {
@@ -268,7 +268,7 @@ pub const JsonElement = union(JsonType) {
 					}
 					if(visualCharacters) list.append('\n');
 					if(visualCharacters) writeTabs(list, tabs + 1);
-					try recurseToString(elem, list, tabs + 1, visualCharacters);
+					recurseToString(elem, list, tabs + 1, visualCharacters);
 				}
 				if(visualCharacters) list.append('\n');
 				if(visualCharacters) writeTabs(list, tabs);
@@ -292,7 +292,7 @@ pub const JsonElement = union(JsonType) {
 					list.append(':');
 					if(visualCharacters) list.append(' ');
 
-					try recurseToString(elem.value_ptr.*, list, tabs + 1, visualCharacters);
+					recurseToString(elem.value_ptr.*, list, tabs + 1, visualCharacters);
 					first = false;
 				}
 				if(visualCharacters) list.append('\n');
@@ -303,7 +303,7 @@ pub const JsonElement = union(JsonType) {
 	}
 	pub fn toString(json: JsonElement, allocator: NeverFailingAllocator) []const u8 {
 		var string = List(u8).init(allocator);
-		recurseToString(json, &string, 0, true) catch unreachable;
+		recurseToString(json, &string, 0, true);
 		return string.toOwnedSlice();
 	}
 
@@ -311,7 +311,7 @@ pub const JsonElement = union(JsonType) {
 	pub fn toStringEfficient(json: JsonElement, allocator: NeverFailingAllocator, prefix: []const u8) []const u8 {
 		var string = List(u8).init(allocator);
 		string.appendSlice(prefix);
-		recurseToString(json, &string, 0, false) catch unreachable;
+		recurseToString(json, &string, 0, false);
 		return string.toOwnedSlice();
 	}
 
@@ -505,10 +505,11 @@ const Parser = struct {
 			index.* += 1;
 			skipWhitespaces(chars, index);
 			const value: JsonElement = parseElement(allocator, chars, index);
-			map.putNoClobber(key, value) catch {
+			if(map.fetchPut(key, value) catch unreachable) |old| {
 				printError(chars, index.*, "Duplicate key.");
-				allocator.free(key);
-			};
+				allocator.free(old.key);
+				old.value.free(allocator);
+			}
 			skipWhitespaces(chars, index);
 			if(index.* < chars.len and chars[index.*] == ',') {
 				index.* += 1;

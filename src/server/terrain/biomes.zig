@@ -204,7 +204,7 @@ pub const BlockStructure = struct {
 		};
 		for(blockStackDescriptions, self.structure) |jsonString, *blockStack| {
 			blockStack.init(jsonString.as([]const u8, "That's not a json string.")) catch |err| {
-				std.log.warn("Couldn't parse blockStack '{s}': {s} Removing it.", .{jsonString.as([]const u8, "That's not a json string."), @errorName(err)});
+				std.log.warn("Couldn't parse blockStack '{s}': {s} Removing it.", .{jsonString.as([]const u8, "(not a json string)"), @errorName(err)});
 				blockStack.* = .{};
 			};
 		}

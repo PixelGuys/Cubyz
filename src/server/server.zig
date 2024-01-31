@@ -117,7 +117,7 @@ fn init(name: []const u8) void {
 	users = main.List(*User).init(main.globalAllocator);
 	lastTime = std.time.nanoTimestamp();
 	connectionManager = ConnectionManager.init(main.settings.defaultPort, false) catch |err| {
-		std.log.err("Couldn't create connection from port: {s}", .{@errorName(err)});
+		std.log.err("Couldn't create socket: {s}", .{@errorName(err)});
 		@panic("Could not open Server.");
 	}; // TODO Configure the second argument in the server settings.
 	// TODO: Load the assets.
@@ -128,7 +128,7 @@ fn init(name: []const u8) void {
 	};
 	if(true) blk: { // singleplayer // TODO: Configure this in the server settings.
 		const user = User.init(connectionManager, "127.0.0.1:47650") catch |err| {
-			std.log.err("Cannot create user {s}", .{@errorName(err)});
+			std.log.err("Cannot create singleplayer user {s}", .{@errorName(err)});
 			break :blk;
 		};
 		user.isLocal = true;

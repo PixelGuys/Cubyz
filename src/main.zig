@@ -668,7 +668,7 @@ pub fn main() !void {
 
 	// init logging.
 	try std.fs.cwd().makePath("logs");
-	logFile = std.fs.cwd().createFile("logs/latest.log", .{}) catch unreachable;
+	logFile = try std.fs.cwd().createFile("logs/latest.log", .{});
 	defer logFile.close();
 	supportsANSIColors = std.io.getStdOut().supportsAnsiEscapeCodes();
 

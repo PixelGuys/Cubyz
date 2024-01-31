@@ -610,7 +610,7 @@ pub const ChunkMesh = struct {
 		}
 	}
 
-	pub fn generateLightingData(self: *ChunkMesh) !void {
+	pub fn generateLightingData(self: *ChunkMesh) error{AlreadyStored}!void {
 		self.mutex.lock();
 		self.opaqueMesh.reset();
 		self.transparentMesh.reset();

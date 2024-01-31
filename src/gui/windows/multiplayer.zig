@@ -28,16 +28,14 @@ var gotIpAddress: std.atomic.Value(bool) = std.atomic.Value(bool).init(false);
 var thread: ?std.Thread = null;
 const width: f32 = 420;
 
-fn flawedDiscoverIpAddress() !void {
-	connection = try ConnectionManager.init(12347, true); // TODO: default port
+fn discoverIpAddress() void {
+	connection = ConnectionManager.init(12347, true) catch |err| {
+		std.log.err("Could not open Connection: {s}", .{@errorName(err)});
+		ipAddress = main.globalAllocator.dupe(u8, @errorName(err));
+		return;
+	}; // TODO: default port
 	ipAddress = std.fmt.allocPrint(main.globalAllocator.allocator, "{}", .{connection.?.externalAddress}) catch unreachable;
 	gotIpAddress.store(true, .Release);
-}
-
-fn discoverIpAddress() void {
-	flawedDiscoverIpAddress() catch |err| {
-		std.log.err("Encountered error {s} while discovering the ip address for multiplayer.", .{@errorName(err)});
-	};
 }
 
 fn discoverIpAddressFromNewThread() void {

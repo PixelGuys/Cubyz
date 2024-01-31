@@ -30,6 +30,7 @@ pub fn readAllJsonFilesInAddons(externalAllocator: NeverFailingAllocator, addons
 			if(entry.kind == .file and std.ascii.endsWithIgnoreCase(entry.basename, ".json")) {
 				const folderName = addonName;
 				const id: []u8 = externalAllocator.alloc(u8, folderName.len + 1 + entry.path.len - 5);
+				errdefer externalAllocator.free(id);
 				@memcpy(id[0..folderName.len], folderName);
 				id[folderName.len] = ':';
 				for(0..entry.path.len-5) |i| {
@@ -219,9 +220,8 @@ pub fn loadWorldAssets(assetFolder: []const u8, palette: *BlockPalette) !void {
 			json = value;
 		} else {
 			std.log.err("Missing block: {s}. Replacing it with default block.", .{id});
-			json = JsonElement.initObject(main.globalAllocator);
+			json = .{.JsonNull={}};
 		}
-		defer if(nullValue == null) json.free(main.globalAllocator);
 		try registerBlock(assetFolder, id, json);
 		block += 1;
 	}
