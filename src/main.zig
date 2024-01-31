@@ -48,7 +48,7 @@ fn cacheStringImpl(comptime len: usize, comptime str: [len]u8) []const u8 {
 fn cacheString(comptime str: []const u8) []const u8 {
 	return cacheStringImpl(str.len, str[0..].*);
 }
-var logFile: std.fs.File = undefined;
+var logFile: ?std.fs.File = undefined;
 var supportsANSIColors: bool = undefined;
 // overwrite the log function:
 pub const std_options = struct {
@@ -181,6 +181,26 @@ pub const std_options = struct {
 	}
 };
 
+fn initLogging() void {
+	logFile = null;
+	std.fs.cwd().makePath("logs") catch |err| {
+		std.log.err("Couldn't create logs folder: {s}", .{@errorName(err)});
+		return;
+	};
+	logFile = std.fs.cwd().createFile("logs/latest.log", .{}) catch |err| {
+		std.log.err("Couldn't create logs/latest.log: {s}", .{@errorName(err)});
+		return;
+	};
+	supportsANSIColors = std.io.getStdOut().supportsAnsiEscapeCodes();
+}
+
+fn deinitLogging() void {
+	if(logFile) |_logFile| {
+		_logFile.close();
+		logFile = null;
+	}
+}
+
 fn logToFile(comptime format: []const u8, args: anytype) void {
 	var buf: [65536]u8 = undefined;
 	var fba = std.heap.FixedBufferAllocator.init(&buf);
@@ -188,7 +208,7 @@ fn logToFile(comptime format: []const u8, args: anytype) void {
 
 	const string = std.fmt.allocPrint(allocator, format, args) catch format;
 	defer allocator.free(string);
-	logFile.writeAll(string) catch {};
+	(logFile orelse return).writeAll(string) catch {};
 }
 
 fn logToStdErr(comptime format: []const u8, args: anytype) void {
@@ -587,11 +607,11 @@ pub const Window = struct {
 		c.glfwSetClipboardString(window, nullTerminatedString.ptr);
 	}
 
-	fn init() !void {
+	fn init() void {
 		_ = c.glfwSetErrorCallback(GLFWCallbacks.errorCallback);
 
 		if(c.glfwInit() == 0) {
-			return error.GLFWFailed;
+			@panic("Failed to initialize GLFW");
 		}
 
 		if(@import("builtin").mode == .Debug) {
@@ -600,7 +620,7 @@ pub const Window = struct {
 		c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MAJOR, 4);
 		c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MINOR, 6);
 
-		window = c.glfwCreateWindow(width, height, "Cubyz", null, null) orelse return error.GLFWFailed;
+		window = c.glfwCreateWindow(width, height, "Cubyz", null, null) orelse @panic("Failed to create GLFW window");
 
 		_ = c.glfwSetKeyCallback(window, GLFWCallbacks.keyCallback);
 		_ = c.glfwSetCharCallback(window, GLFWCallbacks.charCallback);
@@ -612,7 +632,7 @@ pub const Window = struct {
 		c.glfwMakeContextCurrent(window);
 
 		if(c.gladLoadGL() == 0) {
-			return error.GLADFailed;
+			@panic("Failed to load OpenGL functions from GLAD");
 		}
 		reloadSettings();
 
@@ -657,7 +677,7 @@ pub const Window = struct {
 
 pub var lastFrameTime = std.atomic.Value(f64).init(0);
 
-pub fn main() !void {
+pub fn main() void {
 	seed = @bitCast(std.time.milliTimestamp());
 	defer if(global_gpa.deinit() == .leak) {
 		std.log.err("Memory leak", .{});
@@ -666,11 +686,8 @@ pub fn main() !void {
 	defer sta.deinit();
 	stackAllocator = sta.allocator();
 
-	// init logging.
-	try std.fs.cwd().makePath("logs");
-	logFile = try std.fs.cwd().createFile("logs/latest.log", .{});
-	defer logFile.close();
-	supportsANSIColors = std.io.getStdOut().supportsAnsiEscapeCodes();
+	initLogging();
+	defer deinitLogging();
 
 	threadPool = utils.ThreadPool.init(globalAllocator, 1 + ((std.Thread.getCpuCount() catch 4) -| 2));
 	defer threadPool.deinit();
@@ -678,16 +695,16 @@ pub fn main() !void {
 	settings.init();
 	defer settings.deinit();
 
-	try Window.init();
+	Window.init();
 	defer Window.deinit();
 
-	try graphics.init();
+	graphics.init();
 	defer graphics.deinit();
 
 	audio.init() catch std.log.err("Failed to initialize audio. Continuing the game without sounds.", .{});
 	defer audio.deinit();
 
-	try gui.init();
+	gui.init();
 	defer gui.deinit();
 
 	rotation.init();
@@ -702,7 +719,7 @@ pub fn main() !void {
 	itemdrop.ItemDropRenderer.init();
 	defer itemdrop.ItemDropRenderer.deinit();
 
-	try assets.init();
+	assets.init();
 	defer assets.deinit();
 
 	blocks.meshes.init();
@@ -711,7 +728,7 @@ pub fn main() !void {
 	renderer.init();
 	defer renderer.deinit();
 
-	try network.init();
+	network.init();
 
 	entity.ClientEntityManager.init();
 	defer entity.ClientEntityManager.deinit();

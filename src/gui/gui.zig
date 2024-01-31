@@ -124,7 +124,7 @@ pub const Callback = struct {
 	}
 };
 
-pub fn init() !void {
+pub fn init() void {
 	GuiCommandQueue.init();
 	windowList = List(*GuiWindow).init(main.globalAllocator);
 	hudWindows = List(*GuiWindow).init(main.globalAllocator);

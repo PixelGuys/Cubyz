@@ -1048,7 +1048,7 @@ const TextRendering = struct {
 	}
 };
 
-pub fn init() !void {
+pub fn init() void {
 	draw.initCircle();
 	draw.initDrawRect();
 	draw.initImage();

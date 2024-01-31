@@ -26,9 +26,12 @@ const Socket = struct {
 	const os = std.os;
 	socketID: os.socket_t,
 
-	fn startup() !void {
+	fn startup() void {
 		if(builtin.os.tag == .windows) {
-			_ = try os.windows.WSAStartup(2, 2);
+			_ = os.windows.WSAStartup(2, 2) catch |err| {
+				std.log.err("Could not initialize the Windows Socket API: {s}", .{@errorName(err)});
+				@panic("Could not init networking.");
+			};
 		}
 	}
 
@@ -100,8 +103,8 @@ const Socket = struct {
 	}
 };
 
-pub fn init() !void {
-	try Socket.startup();
+pub fn init() void {
+	Socket.startup();
 	inline for(@typeInfo(Protocols).Struct.decls) |decl| {
 		if(@TypeOf(@field(Protocols, decl.name)) == type) {
 			const id = @field(Protocols, decl.name).id;
@@ -493,7 +496,7 @@ pub const ConnectionManager = struct {
 		}
 	}
 
-	fn onReceive(self: *ConnectionManager, data: []const u8, source: Address) !void {
+	fn onReceive(self: *ConnectionManager, data: []const u8, source: Address) void {
 		std.debug.assert(self.threadId == std.Thread.getCurrentId());
 		self.mutex.lock();
 		
@@ -505,7 +508,7 @@ pub const ConnectionManager = struct {
 				}
 				if(conn.remoteAddress.port == source.port) {
 					self.mutex.unlock();
-					try conn.receive(data);
+					conn.receive(data);
 					return;
 				}
 			}
@@ -525,7 +528,7 @@ pub const ConnectionManager = struct {
 		std.log.debug("Message: {any}", .{data});
 	}
 
-	pub fn run(self: *ConnectionManager) !void {
+	pub fn run(self: *ConnectionManager) void {
 		self.threadId = std.Thread.getCurrentId();
 		var sta = utils.StackAllocator.init(main.globalAllocator, 1 << 23);
 		defer sta.deinit();
@@ -536,12 +539,13 @@ pub const ConnectionManager = struct {
 			self.waitingToFinishReceive.broadcast();
 			var source: Address = undefined;
 			if(self.socket.receive(&self.receiveBuffer, 100, &source)) |data| {
-				try self.onReceive(data, source);
+				self.onReceive(data, source);
 			} else |err| {
 				if(err == error.Timeout) {
 					// No message within the last ~100 ms.
 				} else {
-					return err; // TODO: Shutdown the game normally.
+					std.log.err("Got error on receive: {s}", .{@errorName(err)});
+					@panic("Network failed.");
 				}
 			}
 
@@ -1635,7 +1639,14 @@ pub const Connection = struct {
 		}
 	}
 
-	pub fn receive(self: *Connection, data: []const u8) !void {
+	pub fn receive(self: *Connection, data: []const u8) void {
+		self.flawedReceive(data) catch |err| {
+			std.log.err("Got error while processing received network data: {s}", .{@errorName(err)});
+			self.disconnect();
+		};
+	}
+
+	pub fn flawedReceive(self: *Connection, data: []const u8) !void {
 		std.debug.assert(self.manager.threadId == std.Thread.getCurrentId());
 		const protocol = data[0];
 		if(self.handShakeState.load(.Monotonic) != Protocols.handShake.stepComplete and protocol != Protocols.handShake.id and protocol != Protocols.keepAlive and protocol != Protocols.important) {
@@ -1683,7 +1694,7 @@ pub const Connection = struct {
 			if(Protocols.list[protocol]) |prot| {
 				try prot(self, data[1..]);
 			} else {
-				std.log.warn("Received unknown protocol width id {}", .{protocol});
+				std.log.warn("Received unknown protocol with id {}", .{protocol});
 			}
 		}
 	}
