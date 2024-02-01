@@ -356,6 +356,7 @@ pub const ServerWorld = struct {
 
 	pub fn init(name: []const u8, nullGeneratorSettings: ?JsonElement) !*ServerWorld {
 		const self = main.globalAllocator.create(ServerWorld);
+		errdefer main.globalAllocator.destroy(self);
 		self.* = ServerWorld {
 			.lastUpdateTime = std.time.milliTimestamp(),
 			.milliTime = std.time.milliTimestamp(),
@@ -364,6 +365,7 @@ pub const ServerWorld = struct {
 			.name = name,
 		};
 		self.itemDropManager.init(main.globalAllocator, self, self.gravity);
+		errdefer self.itemDropManager.deinit();
 
 		var loadArena = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
 		defer loadArena.deinit();
@@ -378,9 +380,12 @@ pub const ServerWorld = struct {
 			generatorSettings = try files.readToJson(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/generatorSettings.json", .{name}));
 		}
 		self.wio = WorldIO.init(try files.openDir(try std.fmt.bufPrint(&buf, "saves/{s}", .{name})), self);
+		errdefer self.wio.deinit();
 		const blockPaletteJson = try files.readToJson(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/palette.json", .{name}));
 		self.blockPalette = try main.assets.BlockPalette.init(main.globalAllocator, blockPaletteJson.getChild("blocks")); // TODO: Figure out why this is inconsistent with the save call.
-		
+		errdefer self.blockPalette.deinit();
+		errdefer main.assets.unloadAssets();
+
 		if(self.wio.hasWorldData()) {
 			self.seed = try self.wio.loadWorldSeed();
 			self.generated = true;
@@ -397,6 +402,7 @@ pub const ServerWorld = struct {
 //		ModLoader.postWorldGen(registries);
 //
 		self.chunkManager = try ChunkManager.init(self, generatorSettings);
+		errdefer self.chunkManager.deinit();
 		try self.generate();
 		self.itemDropManager.loadFrom(try files.readToJson(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/items.json", .{name})));
 		return self;

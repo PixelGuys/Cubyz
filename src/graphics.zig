@@ -928,6 +928,7 @@ const TextRendering = struct {
 	fn init() !void {
 		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Text.vs", "assets/cubyz/shaders/graphics/Text.fs", &uniforms);
 		shader.bind();
+		errdefer shader.deinit();
 		c.glUniform1i(uniforms.texture_sampler, 0);
 		c.glUniform1f(uniforms.alpha, 1.0);
 		c.glUniform2f(uniforms.fontSize, @floatFromInt(textureWidth), @floatFromInt(textureHeight));

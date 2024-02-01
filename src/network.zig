@@ -392,6 +392,7 @@ pub const ConnectionManager = struct {
 
 	pub fn init(localPort: u16, online: bool) !*ConnectionManager {
 		const result: *ConnectionManager = main.globalAllocator.create(ConnectionManager);
+		errdefer main.globalAllocator.destroy(result);
 		result.* = .{};
 		result.connections = main.List(*Connection).init(main.globalAllocator);
 		result.requests = main.List(*Request).init(main.globalAllocator);
@@ -651,8 +652,9 @@ pub const Protocols = struct {
 					stepAssets => {
 						std.log.info("Received assets.", .{});
 						std.fs.cwd().deleteTree("serverAssets") catch {}; // Delete old assets.
-						try std.fs.cwd().makePath("serverAssets");
-						try utils.Compression.unpack(try std.fs.cwd().openDir("serverAssets", .{}), data[1..]);
+						var dir = try std.fs.cwd().makeOpenPath("serverAssets", .{});
+						defer dir.close();
+						try utils.Compression.unpack(dir, data[1..]);
 					},
 					stepServerData => {
 						const json = JsonElement.parseFromString(main.globalAllocator, data[1..]);
@@ -1355,6 +1357,7 @@ pub const Connection = struct {
 			main.List(u32).init(main.globalAllocator),
 			main.List(u32).init(main.globalAllocator),
 		};
+		errdefer result.deinit();
 		var splitter = std.mem.split(u8, ipPort, ":");
 		const ip = splitter.first();
 		result.remoteAddress.ip = try Socket.resolveIP(ip);

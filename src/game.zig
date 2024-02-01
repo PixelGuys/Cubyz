@@ -146,6 +146,7 @@ pub const World = struct {
 	pub fn finishHandshake(self: *World, json: JsonElement) !void {
 		// TODO: Consider using a per-world allocator.
 		self.blockPalette = try assets.BlockPalette.init(main.globalAllocator, json.getChild("blockPalette"));
+		errdefer self.blockPalette.deinit();
 		const jsonSpawn = json.getChild("spawn");
 		self.spawn[0] = jsonSpawn.get(f32, "x", 0);
 		self.spawn[1] = jsonSpawn.get(f32, "y", 0);

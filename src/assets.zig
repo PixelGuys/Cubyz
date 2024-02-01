@@ -235,6 +235,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, palette: *BlockPalette) !void {
 	defer recipes.clearAndFree();
 
 	readAssets(arenaAllocator, assetFolder, &blocks, &items, &biomes, &recipes);
+	errdefer unloadAssets();
 
 	// blocks:
 	var block: u32 = 0;

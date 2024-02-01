@@ -28,6 +28,7 @@ pub const User = struct {
 
 	pub fn init(manager: *ConnectionManager, ipPort: []const u8) !*User {
 		const self = main.globalAllocator.create(User);
+		errdefer main.globalAllocator.destroy(self);
 		self.* = User {
 			.conn = try Connection.init(manager, ipPort),
 		};
