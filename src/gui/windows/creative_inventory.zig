@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const Item = main.items.Item;
@@ -24,7 +23,7 @@ pub var window = GuiWindow {
 };
 
 const padding: f32 = 8;
-var items: std.ArrayList(Item) = undefined;
+var items: main.List(Item) = undefined;
 
 pub fn tryTakingItems(index: usize, destination: *ItemStack, _: u16) void {
 	if(destination.item != null and !std.meta.eql(destination.item.?, items.items[index])) return;
@@ -32,24 +31,24 @@ pub fn tryTakingItems(index: usize, destination: *ItemStack, _: u16) void {
 	destination.amount = destination.item.?.stackSize();
 }
 
-pub fn onOpen() Allocator.Error!void {
-	items = std.ArrayList(Item).init(main.globalAllocator);
+pub fn onOpen() void {
+	items = main.List(Item).init(main.globalAllocator);
 	var itemIterator = main.items.iterator();
 	while(itemIterator.next()) |item| {
-		try items.append(Item{.baseItem = item.*});
+		items.append(Item{.baseItem = item.*});
 	}
 
-	const list = try VerticalList.init(.{padding, padding + 16}, 140, 0);
+	const list = VerticalList.init(.{padding, padding + 16}, 140, 0);
 	var i: u32 = 0;
 	while(i < items.items.len) {
-		const row = try HorizontalList.init();
+		const row = HorizontalList.init();
 		for(0..8) |_| {
 			if(i >= items.items.len) break;
 			const item = items.items[i];
-			try row.add(try ItemSlot.init(.{0, 0}, .{.item = item, .amount = 1}, &.{.tryTakingItems = &tryTakingItems}, i, .default, .takeOnly));
+			row.add(ItemSlot.init(.{0, 0}, .{.item = item, .amount = 1}, &.{.tryTakingItems = &tryTakingItems}, i, .default, .takeOnly));
 			i += 1;
 		}
-		try list.add(row);
+		list.add(row);
 	}
 	list.finish(.center);
 	window.rootComponent = list.toComponent();

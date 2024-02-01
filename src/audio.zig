@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const utils = main.utils;
@@ -21,11 +20,11 @@ const AudioData = struct {
 	musicId: []const u8,
 	data: []f32 = &.{},
 
-	fn init(musicId: []const u8) !*AudioData {
-		const self = try main.globalAllocator.create(AudioData);
+	fn init(musicId: []const u8) *AudioData {
+		const self = main.globalAllocator.create(AudioData);
 		self.* = .{.musicId = musicId};
 		var err: c_int = 0;
-		const path = try std.fmt.allocPrintZ(main.stackAllocator, "assets/cubyz/music/{s}.ogg", .{musicId});
+		const path = std.fmt.allocPrintZ(main.stackAllocator.allocator, "assets/cubyz/music/{s}.ogg", .{musicId}) catch unreachable;
 		defer main.stackAllocator.free(path);
 		const ogg_stream = c.stb_vorbis_open_filename(path.ptr, &err, null);
 		defer c.stb_vorbis_close(ogg_stream);
@@ -36,7 +35,7 @@ const AudioData = struct {
 			}
 			const samples = c.stb_vorbis_stream_length_in_samples(ogg_stream);
 			const channels = 2;
-			self.data = try main.globalAllocator.alloc(f32, samples*channels);
+			self.data = main.globalAllocator.alloc(f32, samples*channels);
 			_ = c.stb_vorbis_get_samples_float_interleaved(ogg_stream, channels, self.data.ptr, @as(c_int, @intCast(samples))*ogg_info.channels);
 		} else {
 			std.log.err("Couldn't read audio with id {s}", .{musicId});
@@ -64,12 +63,12 @@ const AudioData = struct {
 	}
 };
 
-var activeTasks: std.ArrayListUnmanaged([]const u8) = .{};
+var activeTasks: main.ListUnmanaged([]const u8) = .{};
 var taskMutex: std.Thread.Mutex = .{};
 
 var musicCache: utils.Cache(AudioData, 4, 4, AudioData.deinit) = .{};
 
-fn findMusic(musicId: []const u8) !?[]f32 {
+fn findMusic(musicId: []const u8) ?[]f32 {
 	{
 		taskMutex.lock();
 		defer taskMutex.unlock();
@@ -82,7 +81,7 @@ fn findMusic(musicId: []const u8) !?[]f32 {
 			}
 		}
 	}
-	try MusicLoadTask.schedule(musicId);
+	MusicLoadTask.schedule(musicId);
 	return null;
 }
 
@@ -96,15 +95,15 @@ const MusicLoadTask = struct {
 		.clean = @ptrCast(&clean),
 	};
 	
-	pub fn schedule(musicId: []const u8) !void {
-		const task = try main.globalAllocator.create(MusicLoadTask);
+	pub fn schedule(musicId: []const u8) void {
+		const task = main.globalAllocator.create(MusicLoadTask);
 		task.* = MusicLoadTask {
 			.musicId = musicId,
 		};
-		try main.threadPool.addTask(task, &vtable);
+		main.threadPool.addTask(task, &vtable);
 		taskMutex.lock();
 		defer taskMutex.unlock();
-		try activeTasks.append(main.globalAllocator, musicId);
+		activeTasks.append(main.globalAllocator, musicId);
 	}
 
 	pub fn getPriority(_: *MusicLoadTask) f32 {
@@ -115,9 +114,9 @@ const MusicLoadTask = struct {
 		return true;
 	}
 
-	pub fn run(self: *MusicLoadTask) Allocator.Error!void {
+	pub fn run(self: *MusicLoadTask) void {
 		defer self.clean();
-		const data = try AudioData.init(self.musicId);
+		const data = AudioData.init(self.musicId);
 		const hasOld = musicCache.addToCache(data, data.hashCode());
 		if(hasOld) |old| {
 			old.deinit();
@@ -212,16 +211,16 @@ const animationLengthInSeconds = 5.0;
 var curIndex: u16 = 0;
 var curEndIndex: std.atomic.Value(u16) = .{.value = sampleRate/60 & ~@as(u16, 1)};
 
-fn addMusic(buffer: []f32) !void {
+fn addMusic(buffer: []f32) void {
 	const musicId = if(main.game.world) |world| world.playerBiome.load(.Monotonic).preferredMusic else "cubyz";
 	if(!std.mem.eql(u8, musicId, activeMusicId)) {
 		if(activeMusicId.len == 0) {
-			if(try findMusic(musicId)) |musicBuffer| {
+			if(findMusic(musicId)) |musicBuffer| {
 				currentMusic.init(musicBuffer);
 				activeMusicId = musicId;
 			}
 		} else if(!currentMusic.animationDecaying) {
-			_ = try findMusic(musicId); // Start loading the next music into the cache ahead of time.
+			_ = findMusic(musicId); // Start loading the next music into the cache ahead of time.
 			currentMusic.animationDecaying = true;
 			currentMusic.animationProgress = 0;
 			currentMusic.interpolationPolynomial = utils.unitIntervalSpline(f32, currentMusic.animationAmplitude, currentMusic.animationVelocity, 0, 0);
@@ -274,9 +273,7 @@ fn patestCallback(
 	const valuesPerBuffer = 2*framesPerBuffer; // Stereo
 	const buffer = @as([*]f32, @ptrCast(@alignCast(outputBuffer)))[0..valuesPerBuffer];
 	@memset(buffer, 0);
-	addMusic(buffer) catch |err| {
-		std.log.err("Encountered error while adding music to the sound output buffer: {s}", .{@errorName(err)});
-	};
+	addMusic(buffer);
 	return 0;
 }
 

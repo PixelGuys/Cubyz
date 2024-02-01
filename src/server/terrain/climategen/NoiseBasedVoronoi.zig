@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const Array2D = main.utils.Array2D;
@@ -14,6 +13,8 @@ const vec = main.vec;
 const Vec2i = vec.Vec2i;
 const Vec2f = vec.Vec2f;
 
+const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+
 // Generates the climate map using a fluidynamics simulation, with a circular heat distribution.
 
 pub const id = "cubyz:noise_based_voronoi";
@@ -26,16 +27,16 @@ pub fn deinit() void {
 
 }
 
-pub fn generateMapFragment(map: *ClimateMapFragment, worldSeed: u64) Allocator.Error!void {
+pub fn generateMapFragment(map: *ClimateMapFragment, worldSeed: u64) void {
 	var seed: u64 = worldSeed;
 
-	const generator = try GenerationStructure.init(main.globalAllocator, map.pos.wx, map.pos.wz, ClimateMapFragment.mapSize, ClimateMapFragment.mapSize, terrain.biomes.byTypeBiomes, seed);
+	const generator = GenerationStructure.init(main.globalAllocator, map.pos.wx, map.pos.wz, ClimateMapFragment.mapSize, ClimateMapFragment.mapSize, terrain.biomes.byTypeBiomes, seed);
 	defer generator.deinit(main.stackAllocator);
 
-	try generator.toMap(map, ClimateMapFragment.mapSize, ClimateMapFragment.mapSize, worldSeed);
+	generator.toMap(map, ClimateMapFragment.mapSize, ClimateMapFragment.mapSize, worldSeed);
 
 	// TODO: Remove debug image:
-	const image = try main.graphics.Image.init(main.stackAllocator, @intCast(map.map.len), @intCast(map.map[0].len));
+	const image = main.graphics.Image.init(main.stackAllocator, @intCast(map.map.len), @intCast(map.map[0].len));
 	defer image.deinit(main.stackAllocator);
 	var x: u31 = 0;
 	while(x < map.map.len) : (x += 1) {
@@ -46,7 +47,7 @@ pub fn generateMapFragment(map: *ClimateMapFragment, worldSeed: u64) Allocator.E
 			image.setRGB(x, z, @bitCast(0xff000000 | main.random.nextInt(u32, &seed)));
 		}
 	}
-	try image.exportToFile("test.png");
+	image.exportToFile("test.png") catch {};
 }
 
 const BiomePoint = struct {
@@ -109,27 +110,27 @@ const Chunk = struct {
 		return true;
 	}
 
-	pub fn init(allocator: Allocator, tree: *TreeNode, worldSeed: u64, wx: i32, wz: i32) !*Chunk {
+	pub fn init(allocator: NeverFailingAllocator, tree: *TreeNode, worldSeed: u64, wx: i32, wz: i32) *Chunk {
 		var neighborBuffer: [8]*Chunk = undefined;
-		var neighbors: std.ArrayListUnmanaged(*Chunk) = .{.items = neighborBuffer[0..0], .capacity = neighborBuffer.len};
+		var neighbors: main.ListUnmanaged(*Chunk) = .{.items = neighborBuffer[0..0], .capacity = neighborBuffer.len};
 		defer for(neighbors.items) |ch| {
 			ch.deinit(allocator);
 		};
 		// Generate the chunks in an interleaved pattern, to allow seamless infinite generation.
 		if(wx & chunkSize != 0) {
-			neighbors.appendAssumeCapacity(try Chunk.init(allocator, tree, worldSeed, wx +% chunkSize, wz));
-			neighbors.appendAssumeCapacity(try Chunk.init(allocator, tree, worldSeed, wx -% chunkSize, wz));
+			neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx +% chunkSize, wz));
+			neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx -% chunkSize, wz));
 			if(wz & chunkSize != 0) {
-				neighbors.appendAssumeCapacity(try Chunk.init(allocator, tree, worldSeed, wx +% chunkSize, wz +% chunkSize));
-				neighbors.appendAssumeCapacity(try Chunk.init(allocator, tree, worldSeed, wx -% chunkSize, wz +% chunkSize));
-				neighbors.appendAssumeCapacity(try Chunk.init(allocator, tree, worldSeed, wx +% chunkSize, wz -% chunkSize));
-				neighbors.appendAssumeCapacity(try Chunk.init(allocator, tree, worldSeed, wx -% chunkSize, wz -% chunkSize));
-				neighbors.appendAssumeCapacity(try Chunk.init(allocator, tree, worldSeed, wx, wz +% chunkSize));
-				neighbors.appendAssumeCapacity(try Chunk.init(allocator, tree, worldSeed, wx, wz -% chunkSize));
+				neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx +% chunkSize, wz +% chunkSize));
+				neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx -% chunkSize, wz +% chunkSize));
+				neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx +% chunkSize, wz -% chunkSize));
+				neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx -% chunkSize, wz -% chunkSize));
+				neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx, wz +% chunkSize));
+				neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx, wz -% chunkSize));
 			}
 		} else if(wz & chunkSize != 0) {
-			neighbors.appendAssumeCapacity(try Chunk.init(allocator, tree, worldSeed, wx, wz +% chunkSize));
-			neighbors.appendAssumeCapacity(try Chunk.init(allocator, tree, worldSeed, wx, wz -% chunkSize));
+			neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx, wz +% chunkSize));
+			neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx, wz -% chunkSize));
 		}
 
 		var chunkLocalMaxBiomeRadius: f32 = 0;
@@ -153,7 +154,7 @@ const Chunk = struct {
 			}
 			rejections = 0;
 			chunkLocalMaxBiomeRadius = @max(chunkLocalMaxBiomeRadius, drawnBiome.radius);
-			try selectedBiomes.insertSorted(allocator, .{
+			selectedBiomes.insertSorted(allocator, .{
 				.biome = drawnBiome,
 				.pos = .{x, y},
 				.height = random.nextFloat(&seed)*@as(f32, @floatFromInt(drawnBiome.maxHeight - drawnBiome.minHeight)) + @as(f32, @floatFromInt(drawnBiome.minHeight)),
@@ -161,17 +162,17 @@ const Chunk = struct {
 			});
 		}
 
-		const self = try allocator.create(Chunk);
+		const self = allocator.create(Chunk);
 		self.* = .{
 			.wx = wx,
 			.wz = wz,
-			.biomesSortedByX = try selectedBiomes.toOwnedSlice(allocator),
+			.biomesSortedByX = selectedBiomes.toOwnedSlice(allocator),
 			.maxBiomeRadius = chunkLocalMaxBiomeRadius,
 		};
 		return self;
 	}
 
-	pub fn deinit(self: *Chunk, allocator: Allocator) void {
+	pub fn deinit(self: *Chunk, allocator: NeverFailingAllocator) void {
 		allocator.free(self.biomesSortedByX);
 		allocator.destroy(self);
 	}
@@ -181,21 +182,21 @@ const GenerationStructure = struct {
 
 	chunks: Array2D(*Chunk) = undefined, // Implemented as slices into the original array!
 	
-	pub fn init(allocator: Allocator, wx: i32, wz: i32, width: u31, height: u31, tree: *TreeNode, worldSeed: u64) !GenerationStructure {
+	pub fn init(allocator: NeverFailingAllocator, wx: i32, wz: i32, width: u31, height: u31, tree: *TreeNode, worldSeed: u64) GenerationStructure {
 		const self: GenerationStructure = .{
-			.chunks = try Array2D(*Chunk).init(allocator, 2 + @divExact(width, chunkSize), 2 + @divExact(height, chunkSize)),
+			.chunks = Array2D(*Chunk).init(allocator, 2 + @divExact(width, chunkSize), 2 + @divExact(height, chunkSize)),
 		};
 		var x: u31 = 0;
 		while(x < self.chunks.width) : (x += 1) {
 			var z: u31 = 0;
 			while(z < self.chunks.height) : (z += 1) {
-				self.chunks.ptr(x, z).* = try Chunk.init(allocator, tree, worldSeed, wx +% x*chunkSize -% chunkSize, wz +% z*chunkSize -% chunkSize);
+				self.chunks.ptr(x, z).* = Chunk.init(allocator, tree, worldSeed, wx +% x*chunkSize -% chunkSize, wz +% z*chunkSize -% chunkSize);
 			}
 		}
 		return self;
 	}
 
-	pub fn deinit(self: GenerationStructure, allocator: Allocator) void {
+	pub fn deinit(self: GenerationStructure, allocator: NeverFailingAllocator) void {
 		for(self.chunks.mem) |chunk| {
 			chunk.deinit(allocator);
 		}
@@ -285,7 +286,7 @@ const GenerationStructure = struct {
 		}
 	}
 
-	fn addSubBiomesOf(biome: BiomePoint, map: *ClimateMapFragment, extraBiomes: *std.ArrayList(BiomePoint), wx: i32, wz: i32, width: u31, height: u31, worldSeed: u64) !void {
+	fn addSubBiomesOf(biome: BiomePoint, map: *ClimateMapFragment, extraBiomes: *main.List(BiomePoint), wx: i32, wz: i32, width: u31, height: u31, worldSeed: u64) void {
 		var seed = random.initSeed2D(worldSeed, @bitCast(biome.pos));
 		var biomeCount: f32 = undefined;
 		if(biome.biome.subBiomeTotalChance > biome.biome.maxSubBiomeCount) {
@@ -307,7 +308,7 @@ const GenerationStructure = struct {
 			}
 			const point = biome.pos + random.nextPointInUnitCircle(&seed)*@as(Vec2f, @splat(maxCenterOffset));
 			drawCircleOnTheMap(map, subBiome, wx, wz, width, height, point);
-			try extraBiomes.append(.{
+			extraBiomes.append(.{
 				.biome = subBiome,
 				.pos = point,
 				.height = random.nextFloat(&seed)*@as(f32, @floatFromInt(subBiome.maxHeight - subBiome.minHeight)) + @as(f32, @floatFromInt(subBiome.minHeight)),
@@ -316,7 +317,7 @@ const GenerationStructure = struct {
 		}
 	}
 
-	pub fn toMap(self: GenerationStructure, map: *ClimateMapFragment, width: u31, height: u31, worldSeed: u64) !void {
+	pub fn toMap(self: GenerationStructure, map: *ClimateMapFragment, width: u31, height: u31, worldSeed: u64) void {
 		var x: u31 = 0;
 		while(x < width/terrain.SurfaceMap.MapFragment.biomeSize) : (x += 1) {
 			var z: u31 = 0;
@@ -326,16 +327,16 @@ const GenerationStructure = struct {
 		}
 
 		// Add some sub-biomes:
-		var extraBiomes = std.ArrayList(BiomePoint).init(main.globalAllocator);
+		var extraBiomes = main.List(BiomePoint).init(main.globalAllocator);
 		defer extraBiomes.deinit();
 		for(self.chunks.mem) |chunk| {
 			for(chunk.biomesSortedByX) |biome| {
-				try addSubBiomesOf(biome, map, &extraBiomes, map.pos.wx, map.pos.wz, width, height, worldSeed);
+				addSubBiomesOf(biome, map, &extraBiomes, map.pos.wx, map.pos.wz, width, height, worldSeed);
 			}
 		}
 		// Add some sub-sub(-sub)*-biomes
 		while(extraBiomes.popOrNull()) |biomePoint| {
-			try addSubBiomesOf(biomePoint, map, &extraBiomes, map.pos.wx, map.pos.wz, width, height, worldSeed);
+			addSubBiomesOf(biomePoint, map, &extraBiomes, map.pos.wx, map.pos.wz, width, height, worldSeed);
 		}
 	}
 };

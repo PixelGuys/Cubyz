@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const chunk = @import("chunk.zig");
 const game = @import("game.zig");
@@ -15,6 +14,7 @@ const Mat4f = vec.Mat4f;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
+const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 pub const ClientEntity = struct {
 	interpolatedValues: utils.GenericInterpolation(6) = undefined,
@@ -32,14 +32,14 @@ pub const ClientEntity = struct {
 	id: u32,
 	name: []const u8,
 
-	pub fn init(self: *ClientEntity, json: JsonElement, allocator: Allocator) !void {
+	pub fn init(self: *ClientEntity, json: JsonElement, allocator: NeverFailingAllocator) void {
 		self.* = ClientEntity{
 			.id = json.get(u32, "id", std.math.maxInt(u32)),
 			// TODO:
 //			CubyzRegistries.ENTITY_REGISTRY.getByID(json.getString("type", null)),
 			.width = json.get(f64, "width", 1),
 			.height = json.get(f64, "height", 1),
-			.name = try allocator.dupe(u8, json.get([]const u8, "name", "")),
+			.name = allocator.dupe(u8, json.get([]const u8, "name", "")),
 		};
 		self._interpolationPos = [_]f64 {
 			self.pos[0],
@@ -53,7 +53,7 @@ pub const ClientEntity = struct {
 		self.interpolatedValues.init(&self._interpolationPos, &self._interpolationVel);
 	}
 
-	pub fn deinit(self: ClientEntity, allocator: Allocator) void {
+	pub fn deinit(self: ClientEntity, allocator: NeverFailingAllocator) void {
 		allocator.free(self.name);
 	}
 
@@ -89,12 +89,12 @@ pub const ClientEntityManager = struct {
 		directionalLight: c_int,
 	} = undefined;
 	var shader: graphics.Shader = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
-	pub var entities: std.ArrayList(ClientEntity) = undefined;
+	pub var entities: main.List(ClientEntity) = undefined;
 	pub var mutex: std.Thread.Mutex = std.Thread.Mutex{};
 
-	pub fn init() !void {
-		entities = std.ArrayList(ClientEntity).init(main.globalAllocator);
-		shader = try graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/entity_vertex.vs", "assets/cubyz/shaders/entity_fragment.fs", &uniforms);
+	pub fn init() void {
+		entities = main.List(ClientEntity).init(main.globalAllocator);
+		shader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/entity_vertex.vs", "assets/cubyz/shaders/entity_fragment.fs", &uniforms);
 	}
 
 	pub fn deinit() void {
@@ -120,7 +120,7 @@ pub const ClientEntityManager = struct {
 		lastTime = time;
 	}
 
-	pub fn renderNames(projMatrix: Mat4f, playerPos: Vec3d) !void {
+	pub fn renderNames(projMatrix: Mat4f, playerPos: Vec3d) void {
 		mutex.lock();
 		defer mutex.unlock();
 
@@ -141,7 +141,7 @@ pub const ClientEntityManager = struct {
 			const yCenter = (1 - projectedPos[1]/projectedPos[3])*@as(f32, @floatFromInt(main.Window.height/2));
 			
 			graphics.draw.setColor(0xff000000);
-			try graphics.draw.text(ent.name, xCenter, yCenter, 64, .center);
+			graphics.draw.text(ent.name, xCenter, yCenter, 64, .center);
 		}
 	}
 
@@ -181,11 +181,11 @@ pub const ClientEntityManager = struct {
 		}
 	}
 
-	pub fn addEntity(json: JsonElement) !void {
+	pub fn addEntity(json: JsonElement) void {
 		mutex.lock();
 		defer mutex.unlock();
-		var ent = try entities.addOne();
-		try ent.init(json, main.globalAllocator);
+		var ent = entities.addOne();
+		ent.init(json, main.globalAllocator);
 	}
 
 	pub fn removeEntity(id: u32) void {
@@ -200,7 +200,7 @@ pub const ClientEntityManager = struct {
 		}
 	}
 
-	pub fn serverUpdate(time: i16, data: []const u8) !void {
+	pub fn serverUpdate(time: i16, data: []const u8) void {
 		mutex.lock();
 		defer mutex.unlock();
 		timeDifference.addDataPoint(time);

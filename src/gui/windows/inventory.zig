@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const Player = main.game.Player;
@@ -30,8 +29,8 @@ const padding: f32 = 8;
 
 var craftingIcon: Texture = undefined;
 
-pub fn init() !void {
-	craftingIcon = try Texture.initFromFile("assets/cubyz/ui/inventory/crafting_icon.png");
+pub fn init() void {
+	craftingIcon = Texture.initFromFile("assets/cubyz/ui/inventory/crafting_icon.png");
 }
 
 pub fn deinit() void {
@@ -48,9 +47,7 @@ pub fn tryAddingItems(index: usize, source: *ItemStack, desiredAmount: u16) void
 	const actual = destination.add(source.item.?, desiredAmount);
 	source.amount -= actual;
 	if(source.amount == 0) source.item = null;
-	main.network.Protocols.genericUpdate.sendInventory_full(main.game.world.?.conn, Player.inventory__SEND_CHANGES_TO_SERVER) catch |err| { // TODO(post-java): Add better options to the protocol.
-		std.log.err("Got error while trying to send inventory data: {s}", .{@errorName(err)});
-	};
+	main.network.Protocols.genericUpdate.sendInventory_full(main.game.world.?.conn, Player.inventory__SEND_CHANGES_TO_SERVER); // TODO(post-java): Add better options to the protocol.
 }
 
 pub fn tryTakingItems(index: usize, destination: *ItemStack, desiredAmount: u16) void {
@@ -64,9 +61,7 @@ pub fn tryTakingItems(index: usize, destination: *ItemStack, desiredAmount: u16)
 	const actual = destination.add(source.item.?, amount);
 	source.amount -= actual;
 	if(source.amount == 0) source.item = null;
-	main.network.Protocols.genericUpdate.sendInventory_full(main.game.world.?.conn, Player.inventory__SEND_CHANGES_TO_SERVER) catch |err| { // TODO(post-java): Add better options to the protocol.
-		std.log.err("Got error while trying to send inventory data: {s}", .{@errorName(err)});
-	};
+	main.network.Protocols.genericUpdate.sendInventory_full(main.game.world.?.conn, Player.inventory__SEND_CHANGES_TO_SERVER); // TODO(post-java): Add better options to the protocol.
 }
 
 pub fn trySwappingItems(index: usize, source: *ItemStack) void {
@@ -76,9 +71,7 @@ pub fn trySwappingItems(index: usize, source: *ItemStack) void {
 	const swap = destination.*;
 	destination.* = source.*;
 	source.* = swap;
-	main.network.Protocols.genericUpdate.sendInventory_full(main.game.world.?.conn, Player.inventory__SEND_CHANGES_TO_SERVER) catch |err| { // TODO(post-java): Add better options to the protocol.
-		std.log.err("Got error while trying to send inventory data: {s}", .{@errorName(err)});
-	};
+	main.network.Protocols.genericUpdate.sendInventory_full(main.game.world.?.conn, Player.inventory__SEND_CHANGES_TO_SERVER); // TODO(post-java): Add better options to the protocol.
 }
 
 const vtable = ItemSlot.VTable {
@@ -87,25 +80,25 @@ const vtable = ItemSlot.VTable {
 	.trySwappingItems = &trySwappingItems,
 };
 
-pub fn onOpen() Allocator.Error!void {
-	const list = try VerticalList.init(.{padding, padding + 16}, 300, 0);
+pub fn onOpen() void {
+	const list = VerticalList.init(.{padding, padding + 16}, 300, 0);
 	// Some miscellanious slots and buttons:
 	// TODO: armor slots, backpack slot + stack-based backpack inventory, other items maybe?
 	{
-		const row = try HorizontalList.init();
-		try row.add(try Button.initIcon(.{0, 0}, .{24, 24}, craftingIcon, true, gui.openWindowCallback("inventory_crafting")));
-		try list.add(row);
+		const row = HorizontalList.init();
+		row.add(Button.initIcon(.{0, 0}, .{24, 24}, craftingIcon, true, gui.openWindowCallback("inventory_crafting")));
+		list.add(row);
 	}
 	// Inventory:
 	for(1..4) |y| {
-		const row = try HorizontalList.init();
+		const row = HorizontalList.init();
 		for(0..8) |x| {
 			const index: usize = y*8 + x;
-			const slot = try ItemSlot.init(.{0, 0}, Player.inventory__SEND_CHANGES_TO_SERVER.items[index], &vtable, index, .default, .normal);
+			const slot = ItemSlot.init(.{0, 0}, Player.inventory__SEND_CHANGES_TO_SERVER.items[index], &vtable, index, .default, .normal);
 			itemSlots[index - 8] = slot;
-			try row.add(slot);
+			row.add(slot);
 		}
-		try list.add(row);
+		list.add(row);
 	}
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
@@ -119,10 +112,10 @@ pub fn onClose() void {
 	}
 }
 
-pub fn update() Allocator.Error!void {
+pub fn update() void {
 	Player.mutex.lock();
 	defer Player.mutex.unlock();
 	for(&itemSlots, 8..) |slot, i| {
-		try slot.updateItemStack(Player.inventory__SEND_CHANGES_TO_SERVER.items[i]);
+		slot.updateItemStack(Player.inventory__SEND_CHANGES_TO_SERVER.items[i]);
 	}
 }

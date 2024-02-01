@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const ItemStack = main.items.ItemStack;
@@ -65,10 +64,10 @@ const TextureParamType = union(enum) {
 	}
 };
 
-pub fn __init() !void {
-	defaultTexture = try Texture.initFromFile("assets/cubyz/ui/inventory/slot.png");
-	immutableTexture = try Texture.initFromFile("assets/cubyz/ui/inventory/immutable_slot.png");
-	craftingResultTexture = try Texture.initFromFile("assets/cubyz/ui/inventory/crafting_result_slot.png");
+pub fn __init() void {
+	defaultTexture = Texture.initFromFile("assets/cubyz/ui/inventory/slot.png");
+	immutableTexture = Texture.initFromFile("assets/cubyz/ui/inventory/immutable_slot.png");
+	craftingResultTexture = Texture.initFromFile("assets/cubyz/ui/inventory/crafting_result_slot.png");
 }
 
 pub fn __deinit() void {
@@ -77,19 +76,19 @@ pub fn __deinit() void {
 	craftingResultTexture.deinit();
 }
 
-pub fn init(pos: Vec2f, itemStack: ItemStack, vtable: *const VTable, userData: usize, texture: TextureParamType, mode: Mode) Allocator.Error!*ItemSlot {
-	const self = try main.globalAllocator.create(ItemSlot);
+pub fn init(pos: Vec2f, itemStack: ItemStack, vtable: *const VTable, userData: usize, texture: TextureParamType, mode: Mode) *ItemSlot {
+	const self = main.globalAllocator.create(ItemSlot);
 	var buf: [16]u8 = undefined;
 	self.* = ItemSlot {
 		.itemStack = itemStack,
 		.vtable = vtable,
 		.userData = userData,
 		.pos = pos,
-		.text = try TextBuffer.init(main.globalAllocator, std.fmt.bufPrint(&buf, "{}", .{itemStack.amount}) catch "∞", .{}, false, .right),
+		.text = TextBuffer.init(main.globalAllocator, std.fmt.bufPrint(&buf, "{}", .{itemStack.amount}) catch "∞", .{}, false, .right),
 		.texture = texture.value(),
 		.mode = mode,
 	};
-	self.textSize = try self.text.calculateLineBreaks(8, self.size[0] - 2*border);
+	self.textSize = self.text.calculateLineBreaks(8, self.size[0] - 2*border);
 	return self;
 }
 
@@ -112,25 +111,25 @@ pub fn trySwappingItems(self: *ItemSlot, destination: *ItemStack) void {
 	self.vtable.trySwappingItems(self.userData, destination);
 }
 
-pub fn updateItemStack(self: *ItemSlot, newStack: ItemStack) !void {
+pub fn updateItemStack(self: *ItemSlot, newStack: ItemStack) void {
 	const oldAmount = self.itemStack.amount;
 	self.itemStack = newStack;
 	if(oldAmount != newStack.amount) {
-		try self.refreshText();
+		self.refreshText();
 	}
 }
 
-fn refreshText(self: *ItemSlot) !void {
+fn refreshText(self: *ItemSlot) void {
 	self.text.deinit();
 	var buf: [16]u8 = undefined;
-	self.text = try TextBuffer.init(
+	self.text = TextBuffer.init(
 		main.globalAllocator,
 		std.fmt.bufPrint(&buf, "{}", .{self.itemStack.amount}) catch "∞",
 		.{.color = if(self.itemStack.amount == 0) 0xff0000 else 0xffffff},
 		false,
 		.right
 	);
-	self.textSize = try self.text.calculateLineBreaks(8, self.size[0] - 2*border);
+	self.textSize = self.text.calculateLineBreaks(8, self.size[0] - 2*border);
 }
 
 pub fn toComponent(self: *ItemSlot) GuiComponent {
@@ -154,21 +153,21 @@ pub fn mainButtonReleased(self: *ItemSlot, _: Vec2f) void {
 	}
 }
 
-pub fn render(self: *ItemSlot, _: Vec2f) !void {
+pub fn render(self: *ItemSlot, _: Vec2f) void {
 	draw.setColor(0xffffffff);
 	if(self.renderFrame) {
 		self.texture.bindTo(0);
 		draw.boundImage(self.pos, self.size);
 	}
 	if(self.itemStack.item) |item| {
-		const itemTexture = try item.getTexture();
+		const itemTexture = item.getTexture();
 		itemTexture.bindTo(0);
 		draw.setColor(0xff000000);
 		draw.boundImage(self.pos + @as(Vec2f, @splat(border)) + Vec2f{1.0, 1.0}, self.size - @as(Vec2f, @splat(2*border)));
 		draw.setColor(0xffffffff);
 		draw.boundImage(self.pos + @as(Vec2f, @splat(border)), self.size - @as(Vec2f, @splat(2*border)));
 		if(self.itemStack.amount != 1) {
-			try self.text.render(self.pos[0] + self.size[0] - self.textSize[0] - border, self.pos[1] + self.size[1] - self.textSize[1] - border, 8);
+			self.text.render(self.pos[0] + self.size[0] - self.textSize[0] - border, self.pos[1] + self.size[1] - self.textSize[1] - border, 8);
 		}
 	}
 	if(self.pressed) {

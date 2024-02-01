@@ -1,14 +1,14 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
+const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 const JsonElement = main.JsonElement;
 
-pub fn read(allocator: Allocator, path: []const u8) ![]u8 {
+pub fn read(allocator: NeverFailingAllocator, path: []const u8) ![]u8 {
 	return cwd().read(allocator, path);
 }
 
-pub fn readToJson(allocator: Allocator, path: []const u8) !JsonElement {
+pub fn readToJson(allocator: NeverFailingAllocator, path: []const u8) !JsonElement {
 	return cwd().readToJson(allocator, path);
 }
 
@@ -39,13 +39,13 @@ pub const Dir = struct {
 		self.dir.close();
 	}
 
-	pub fn read(self: Dir, allocator: Allocator, path: []const u8) ![]u8 {
+	pub fn read(self: Dir, allocator: NeverFailingAllocator, path: []const u8) ![]u8 {
 		const file = try self.dir.openFile(path, .{});
 		defer file.close();
-		return try file.readToEndAlloc(allocator, std.math.maxInt(usize));
+		return file.readToEndAlloc(allocator.allocator, std.math.maxInt(usize)) catch unreachable;
 	}
 
-	pub fn readToJson(self: Dir, allocator: Allocator, path: []const u8) !JsonElement {
+	pub fn readToJson(self: Dir, allocator: NeverFailingAllocator, path: []const u8) !JsonElement {
 		const string = try self.read(main.stackAllocator, path);
 		defer main.stackAllocator.free(string);
 		return JsonElement.parseFromString(allocator, string);
@@ -58,7 +58,7 @@ pub const Dir = struct {
 	}
 
 	pub fn writeJson(self: Dir, path: []const u8, json: JsonElement) !void {
-		const string = try json.toString(main.stackAllocator);
+		const string = json.toString(main.stackAllocator);
 		defer main.stackAllocator.free(string);
 		try self.write(path, string);
 	}

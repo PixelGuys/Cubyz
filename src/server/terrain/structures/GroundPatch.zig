@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const random = main.random;
@@ -10,6 +9,7 @@ const vec = main.vec;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
+const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 pub const id = "cubyz:ground_patch";
 
@@ -21,8 +21,8 @@ variation: f32,
 depth: i32,
 smoothness: f32,
 
-pub fn loadModel(arenaAllocator: Allocator, parameters: JsonElement) Allocator.Error!*GroundPatch {
-	const self = try arenaAllocator.create(GroundPatch);
+pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: JsonElement) *GroundPatch {
+	const self = arenaAllocator.create(GroundPatch);
 	self.* = .{
 		.blockType = main.blocks.getByID(parameters.get([]const u8, "block", "")),
 		.width = parameters.get(f32, "width", 5),
@@ -33,7 +33,7 @@ pub fn loadModel(arenaAllocator: Allocator, parameters: JsonElement) Allocator.E
 	return self;
 }
 
-pub fn generate(self: *GroundPatch, x: i32, y: i32, z: i32, chunk: *main.chunk.Chunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) Allocator.Error!void {
+pub fn generate(self: *GroundPatch, x: i32, y: i32, z: i32, chunk: *main.chunk.Chunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) void {
 	const width = self.width + (random.nextFloat(seed) - 0.5)*self.variation;
 	const orientation = 2*std.math.pi*random.nextFloat(seed);
 	const ellipseParam = 1 + random.nextFloat(seed);

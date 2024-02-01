@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const blocks = @import("blocks.zig");
 const Block = blocks.Block;

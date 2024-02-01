@@ -1,23 +1,23 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const blocks = main.blocks;
 const Chunk = main.chunk.Chunk;
 const JsonElement = main.JsonElement;
 const terrain = main.server.terrain;
+const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 const StructureModel = struct {
 	const VTable = struct {
-		loadModel: *const fn(arenaAllocator: Allocator, parameters: JsonElement) Allocator.Error!*anyopaque,
-		generate: *const fn(self: *anyopaque, x: i32, y: i32, z: i32, chunk: *Chunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) Allocator.Error!void,
+		loadModel: *const fn(arenaAllocator: NeverFailingAllocator, parameters: JsonElement) *anyopaque,
+		generate: *const fn(self: *anyopaque, x: i32, y: i32, z: i32, chunk: *Chunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) void,
 	};
 
 	vtable: VTable,
 	data: *anyopaque,
 	chance: f32,
 
-	pub fn initModel(parameters: JsonElement) !?StructureModel {
+	pub fn initModel(parameters: JsonElement) ?StructureModel {
 		const id = parameters.get([]const u8, "id", "");
 		const vtable = modelRegistry.get(id) orelse {
 			std.log.err("Couldn't find structure model with id {s}", .{id});
@@ -25,28 +25,28 @@ const StructureModel = struct {
 		};
 		return StructureModel {
 			.vtable = vtable,
-			.data = try vtable.loadModel(arena.allocator(), parameters),
+			.data = vtable.loadModel(arena.allocator(), parameters),
 			.chance = parameters.get(f32, "chance", 0.5),
 		};
 	}
 
-	pub fn generate(self: StructureModel, x: i32, y: i32, z: i32, chunk: *Chunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) Allocator.Error!void {
-		try self.vtable.generate(self.data, x, y, z, chunk, caveMap, seed);
+	pub fn generate(self: StructureModel, x: i32, y: i32, z: i32, chunk: *Chunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) void {
+		self.vtable.generate(self.data, x, y, z, chunk, caveMap, seed);
 	}
 
 
 	var modelRegistry: std.StringHashMapUnmanaged(VTable) = .{};
-	var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(main.globalAllocator);
+	var arena: main.utils.NeverFailingArenaAllocator = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
 
 	pub fn reset() void {
 		std.debug.assert(arena.reset(.free_all));
 	}
 
-	pub fn registerGenerator(comptime Generator: type) !void {
+	pub fn registerGenerator(comptime Generator: type) void {
 		var self: VTable = undefined;
 		self.loadModel = @ptrCast(&Generator.loadModel);
 		self.generate = @ptrCast(&Generator.generate);
-		try modelRegistry.put(main.globalAllocator, Generator.id, self);
+		modelRegistry.put(main.globalAllocator.allocator, Generator.id, self) catch unreachable;
 	}
 };
 
@@ -112,9 +112,9 @@ pub const Biome = struct {
 	isValidPlayerSpawn: bool,
 	chance: f32,
 
-	pub fn init(self: *Biome, id: []const u8, json: JsonElement) !void {
+	pub fn init(self: *Biome, id: []const u8, json: JsonElement) void {
 		self.* = Biome {
-			.id = try main.globalAllocator.dupe(u8, id),
+			.id = main.globalAllocator.dupe(u8, id),
 			.properties = GenerationProperties.fromJson(json.getChild("properties")),
 			.isCave = json.get(bool, "isCave", false),
 			.radius = json.get(f32, "radius", 256),
@@ -128,7 +128,7 @@ pub const Biome = struct {
 			.minHeight = json.get(i32, "minHeight", std.math.minInt(i32)),
 			.maxHeight = json.get(i32, "maxHeight", std.math.maxInt(i32)),
 			.supportsRivers = json.get(bool, "rivers", false),
-			.preferredMusic = try main.globalAllocator.dupe(u8, json.get([]const u8, "music", "")),
+			.preferredMusic = main.globalAllocator.dupe(u8, json.get([]const u8, "music", "")),
 			.isValidPlayerSpawn = json.get(bool, "validPlayerSpawn", false),
 			.chance = json.get(f32, "chance", 1),
 			.maxSubBiomeCount = json.get(f32, "maxSubBiomeCount", std.math.floatMax(f32)),
@@ -138,21 +138,21 @@ pub const Biome = struct {
 		}
 		const parentBiomeList = json.getChild("parentBiomes");
 		for(parentBiomeList.toSlice()) |parent| {
-			const result = try unfinishedSubBiomes.getOrPutValue(main.globalAllocator, parent.get([]const u8, "id", ""), .{});
-			try result.value_ptr.append(main.globalAllocator, .{.biomeId = self.id, .chance = parent.get(f32, "chance", 1)});
+			const result = unfinishedSubBiomes.getOrPutValue(main.globalAllocator.allocator, parent.get([]const u8, "id", ""), .{}) catch unreachable;
+			result.value_ptr.append(main.globalAllocator, .{.biomeId = self.id, .chance = parent.get(f32, "chance", 1)});
 		}
 
-		self.structure = try BlockStructure.init(main.globalAllocator, json.getChild("ground_structure"));
+		self.structure = BlockStructure.init(main.globalAllocator, json.getChild("ground_structure"));
 		
 		const structures = json.getChild("structures");
-		var vegetation = std.ArrayListUnmanaged(StructureModel){};
+		var vegetation = main.ListUnmanaged(StructureModel){};
 		defer vegetation.deinit(main.globalAllocator);
 		for(structures.toSlice()) |elem| {
-			if(try StructureModel.initModel(elem)) |model| {
-				try vegetation.append(main.globalAllocator, model);
+			if(StructureModel.initModel(elem)) |model| {
+				vegetation.append(main.globalAllocator, model);
 			}
 		}
-		self.vegetationModels = try main.globalAllocator.dupe(StructureModel, vegetation.items);
+		self.vegetationModels = main.globalAllocator.dupe(StructureModel, vegetation.items);
 	}
 
 	pub fn deinit(self: *Biome) void {
@@ -197,21 +197,21 @@ pub const BlockStructure = struct {
 	};
 	structure: []BlockStack,
 
-	pub fn init(allocator: Allocator, jsonArray: JsonElement) !BlockStructure {
+	pub fn init(allocator: NeverFailingAllocator, jsonArray: JsonElement) BlockStructure {
 		const blockStackDescriptions = jsonArray.toSlice();
 		const self = BlockStructure {
-			.structure = try allocator.alloc(BlockStack, blockStackDescriptions.len),
+			.structure = allocator.alloc(BlockStack, blockStackDescriptions.len),
 		};
 		for(blockStackDescriptions, self.structure) |jsonString, *blockStack| {
 			blockStack.init(jsonString.as([]const u8, "That's not a json string.")) catch |err| {
-				std.log.warn("Couldn't parse blockStack '{s}': {s} Removing it.", .{jsonString.as([]const u8, "That's not a json string."), @errorName(err)});
+				std.log.warn("Couldn't parse blockStack '{s}': {s} Removing it.", .{jsonString.as([]const u8, "(not a json string)"), @errorName(err)});
 				blockStack.* = .{};
 			};
 		}
 		return self;
 	}
 
-	pub fn deinit(self: BlockStructure, allocator: Allocator) void {
+	pub fn deinit(self: BlockStructure, allocator: NeverFailingAllocator) void {
 		allocator.free(self.structure);
 	}
 
@@ -246,14 +246,14 @@ pub const TreeNode = union(enum) {
 		children: [3]*TreeNode,
 	},
 
-	pub fn init(allocator: Allocator, currentSlice: []Biome, parameterShift: u5) !*TreeNode {
-		const self = try allocator.create(TreeNode);
+	pub fn init(allocator: NeverFailingAllocator, currentSlice: []Biome, parameterShift: u5) *TreeNode {
+		const self = allocator.create(TreeNode);
 		if(currentSlice.len <= 1 or parameterShift >= @bitSizeOf(Biome.GenerationProperties)) {
 			self.* = .{.leaf = .{}};
 			for(currentSlice) |biome| {
 				self.leaf.totalChance += biome.chance;
 			}
-			self.leaf.aliasTable = try main.utils.AliasTable(Biome).init(allocator, currentSlice);
+			self.leaf.aliasTable = main.utils.AliasTable(Biome).init(allocator, currentSlice);
 			return self;
 		}
 		var chanceLower: f32 = 0;
@@ -309,14 +309,14 @@ pub const TreeNode = union(enum) {
 			} else unreachable;
 		}
 
-		self.branch.children[0] = try TreeNode.init(allocator, currentSlice[0..lowerIndex], parameterShift+2);
-		self.branch.children[1] = try TreeNode.init(allocator, currentSlice[lowerIndex..upperIndex+1], parameterShift+2);
-		self.branch.children[2] = try TreeNode.init(allocator, currentSlice[upperIndex+1..], parameterShift+2);
+		self.branch.children[0] = TreeNode.init(allocator, currentSlice[0..lowerIndex], parameterShift+2);
+		self.branch.children[1] = TreeNode.init(allocator, currentSlice[lowerIndex..upperIndex+1], parameterShift+2);
+		self.branch.children[2] = TreeNode.init(allocator, currentSlice[upperIndex+1..], parameterShift+2);
 
 		return self;
 	}
 
-	pub fn deinit(self: *TreeNode, allocator: Allocator) void {
+	pub fn deinit(self: *TreeNode, allocator: NeverFailingAllocator) void {
 		switch(self.*) {
 			.leaf => |leaf| {
 				leaf.aliasTable.deinit(allocator);
@@ -354,8 +354,8 @@ pub const TreeNode = union(enum) {
 };
 
 var finishedLoading: bool = false;
-var biomes: std.ArrayList(Biome) = undefined;
-var caveBiomes: std.ArrayList(Biome) = undefined;
+var biomes: main.List(Biome) = undefined;
+var caveBiomes: main.List(Biome) = undefined;
 var biomesById: std.StringHashMap(*Biome) = undefined;
 pub var byTypeBiomes: *TreeNode = undefined;
 const UnfinishedSubBiomeData = struct {
@@ -365,15 +365,15 @@ const UnfinishedSubBiomeData = struct {
 		return getById(self.biomeId);
 	}
 };
-var unfinishedSubBiomes: std.StringHashMapUnmanaged(std.ArrayListUnmanaged(UnfinishedSubBiomeData)) = .{};
+var unfinishedSubBiomes: std.StringHashMapUnmanaged(main.ListUnmanaged(UnfinishedSubBiomeData)) = .{};
 
-pub fn init() !void {
-	biomes = std.ArrayList(Biome).init(main.globalAllocator);
-	caveBiomes = std.ArrayList(Biome).init(main.globalAllocator);
-	biomesById = std.StringHashMap(*Biome).init(main.globalAllocator);
+pub fn init() void {
+	biomes = main.List(Biome).init(main.globalAllocator);
+	caveBiomes = main.List(Biome).init(main.globalAllocator);
+	biomesById = std.StringHashMap(*Biome).init(main.globalAllocator.allocator);
 	const list = @import("structures/_list.zig");
 	inline for(@typeInfo(list).Struct.decls) |decl| {
-		try StructureModel.registerGenerator(@field(list, decl.name));
+		StructureModel.registerGenerator(@field(list, decl.name));
 	}
 }
 
@@ -400,34 +400,34 @@ pub fn deinit() void {
 	caveBiomes.deinit();
 	biomesById.deinit();
 	// TODO? byTypeBiomes.deinit(main.globalAllocator);
-	StructureModel.modelRegistry.clearAndFree(main.globalAllocator);
+	StructureModel.modelRegistry.clearAndFree(main.globalAllocator.allocator);
 }
 
-pub fn register(id: []const u8, json: JsonElement) !void {
+pub fn register(id: []const u8, json: JsonElement) void {
 	std.log.debug("Registered biome: {s}", .{id});
 	std.debug.assert(!finishedLoading);
 	var biome: Biome = undefined;
-	try biome.init(id, json);
+	biome.init(id, json);
 	if(biome.isCave) {
-		try caveBiomes.append(biome);
+		caveBiomes.append(biome);
 	} else {
-		try biomes.append(biome);
+		biomes.append(biome);
 	}
 }
 
-pub fn finishLoading() !void {
+pub fn finishLoading() void {
 	std.debug.assert(!finishedLoading);
 	finishedLoading = true;
 	// Sort the biomes by id, so they have a deterministic order when randomly sampling them based on the seed:
 	std.mem.sortUnstable(Biome, biomes.items, {}, struct {fn lessThan(_: void, lhs: Biome, rhs: Biome) bool {
 		return std.mem.order(u8, lhs.id, rhs.id) == .lt;
 	}}.lessThan);
-	byTypeBiomes = try TreeNode.init(main.globalAllocator, biomes.items, 0);
+	byTypeBiomes = TreeNode.init(main.globalAllocator, biomes.items, 0);
 	for(biomes.items) |*biome| {
-		try biomesById.put(biome.id, biome);
+		biomesById.put(biome.id, biome) catch unreachable;
 	}
 	for(caveBiomes.items) |*biome| {
-		try biomesById.put(biome.id, biome);
+		biomesById.put(biome.id, biome) catch unreachable;
 	}
 	var subBiomeIterator = unfinishedSubBiomes.iterator();
 	while(subBiomeIterator.next()) |subBiomeData| {
@@ -439,10 +439,10 @@ pub fn finishLoading() !void {
 		for(subBiomeDataList.items) |item| {
 			parentBiome.subBiomeTotalChance += item.chance;
 		}
-		parentBiome.subBiomes = try main.utils.AliasTable(*const Biome).initFromContext(main.globalAllocator, subBiomeDataList.items);
+		parentBiome.subBiomes = main.utils.AliasTable(*const Biome).initFromContext(main.globalAllocator, subBiomeDataList.items);
 		subBiomeDataList.deinit(main.globalAllocator);
 	}
-	unfinishedSubBiomes.clearAndFree(main.globalAllocator);
+	unfinishedSubBiomes.clearAndFree(main.globalAllocator.allocator);
 }
 
 pub fn getById(id: []const u8) *const Biome {

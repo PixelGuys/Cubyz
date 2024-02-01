@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const graphics = main.graphics;
@@ -22,7 +21,7 @@ size: Vec2f = undefined,
 child: GuiComponent = undefined,
 mutex: std.Thread.Mutex = .{},
 
-pub fn updateInner(self: *MutexComponent, _other: anytype) Allocator.Error!void {
+pub fn updateInner(self: *MutexComponent, _other: anytype) void {
 	std.debug.assert(!self.mutex.tryLock()); // self.mutex must be locked before calling!
 	var other: GuiComponent = undefined;
 	if(@TypeOf(_other) == GuiComponent) {
@@ -58,10 +57,10 @@ pub fn updateHovered(self: *MutexComponent, mousePosition: Vec2f) void {
 	self.child.updateHovered(mousePosition);
 }
 
-pub fn render(self: *MutexComponent, mousePosition: Vec2f) Allocator.Error!void {
+pub fn render(self: *MutexComponent, mousePosition: Vec2f) void {
 	self.mutex.lock();
 	defer self.mutex.unlock();
-	try self.child.render(mousePosition);
+	self.child.render(mousePosition);
 	self.pos = self.child.pos();
 	self.size = self.child.size();
 }

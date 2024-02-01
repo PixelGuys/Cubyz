@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const random = main.random;
@@ -10,6 +9,7 @@ const vec = main.vec;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
+const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 pub const id = "cubyz:simple_tree";
 
@@ -28,8 +28,8 @@ topWoodBlock: u16,
 height0: i32,
 deltaHeight: u31,
 
-pub fn loadModel(arenaAllocator: Allocator, parameters: JsonElement) Allocator.Error!*SimpleTreeModel {
-	const self = try arenaAllocator.create(SimpleTreeModel);
+pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: JsonElement) *SimpleTreeModel {
+	const self = arenaAllocator.create(SimpleTreeModel);
 	self.* = .{
 		.typ = std.meta.stringToEnum(Type, parameters.get([]const u8, "type", "")) orelse .round,
 		.leavesBlock = main.blocks.getByID(parameters.get([]const u8, "leaves", "cubyz:oak_leaves")),
@@ -52,7 +52,7 @@ pub fn generateStem(self: *SimpleTreeModel, x: i32, y: i32, z: i32, height: i32,
 	}
 }
 
-pub fn generate(self: *SimpleTreeModel, x: i32, y: i32, z: i32, chunk: *main.chunk.Chunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) Allocator.Error!void {
+pub fn generate(self: *SimpleTreeModel, x: i32, y: i32, z: i32, chunk: *main.chunk.Chunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) void {
 	var height = self.height0 + random.nextIntBounded(u31, seed, self.deltaHeight);
 
 	if(y + height >= caveMap.findTerrainChangeAbove(x, z, y)) // Space is too small.Allocator

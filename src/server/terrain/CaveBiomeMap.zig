@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const Array3D = main.utils.Array3D;
@@ -9,6 +8,7 @@ const ChunkPosition = main.chunk.ChunkPosition;
 const JsonElement = main.JsonElement;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
+const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 const terrain = @import("terrain.zig");
 const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
@@ -29,7 +29,7 @@ pub const CaveBiomeMapFragment = struct {
 	biomeMap: [1 << 3*(caveBiomeMapShift - caveBiomeShift)][2]*const Biome = undefined,
 	refCount: std.atomic.Value(u16) = std.atomic.Value(u16).init(0),
 
-	pub fn init(self: *CaveBiomeMapFragment, wx: i32, wy: i32, wz: i32) !void {
+	pub fn init(self: *CaveBiomeMapFragment, wx: i32, wy: i32, wz: i32) void {
 		self.* = .{
 			.pos = main.chunk.ChunkPosition {
 				.wx = wx, .wy = wy, .wz = wz,
@@ -56,7 +56,7 @@ pub const CaveBiomeMapFragment = struct {
 pub const CaveBiomeGenerator = struct {
 	init: *const fn(parameters: JsonElement) void,
 	deinit: *const fn() void,
-	generate: *const fn(map: *CaveBiomeMapFragment, seed: u64) Allocator.Error!void,
+	generate: *const fn(map: *CaveBiomeMapFragment, seed: u64) void,
 	/// Used to prioritize certain generators over others.
 	priority: i32,
 	/// To avoid duplicate seeds in similar generation algorithms, the SurfaceGenerator xors the world-seed with the generator specific seed.
@@ -65,7 +65,7 @@ pub const CaveBiomeGenerator = struct {
 
 	var generatorRegistry: std.StringHashMapUnmanaged(CaveBiomeGenerator) = .{};
 
-	pub fn registerGenerator(comptime Generator: type) !void {
+	pub fn registerGenerator(comptime Generator: type) void {
 		const self = CaveBiomeGenerator {
 			.init = &Generator.init,
 			.deinit = &Generator.deinit,
@@ -73,11 +73,11 @@ pub const CaveBiomeGenerator = struct {
 			.priority = Generator.priority,
 			.generatorSeed = Generator.generatorSeed,
 		};
-		try generatorRegistry.put(main.globalAllocator, Generator.id, self);
+		generatorRegistry.put(main.globalAllocator.allocator, Generator.id, self) catch unreachable;
 	}
 
-	pub fn getAndInitGenerators(allocator: std.mem.Allocator, settings: JsonElement) ![]CaveBiomeGenerator {
-		const list = try allocator.alloc(CaveBiomeGenerator, generatorRegistry.size);
+	pub fn getAndInitGenerators(allocator: NeverFailingAllocator, settings: JsonElement) []CaveBiomeGenerator {
+		const list = allocator.alloc(CaveBiomeGenerator, generatorRegistry.size);
 		var iterator = generatorRegistry.iterator();
 		var i: usize = 0;
 		while(iterator.next()) |generator| {
@@ -102,23 +102,23 @@ pub const InterpolatableCaveBiomeMapView = struct {
 	pos: ChunkPosition,
 	width: i32,
 
-	pub fn init(pos: ChunkPosition, width: i32) !InterpolatableCaveBiomeMapView {
+	pub fn init(pos: ChunkPosition, width: i32) InterpolatableCaveBiomeMapView {
 		return InterpolatableCaveBiomeMapView {
 			.fragments = [_]*CaveBiomeMapFragment {
-				try getOrGenerateFragment(pos.wx - CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy - CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz - CaveBiomeMapFragment.caveBiomeMapSize/2),
-				try getOrGenerateFragment(pos.wx - CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy - CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz + CaveBiomeMapFragment.caveBiomeMapSize/2),
-				try getOrGenerateFragment(pos.wx - CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy + CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz - CaveBiomeMapFragment.caveBiomeMapSize/2),
-				try getOrGenerateFragment(pos.wx - CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy + CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz + CaveBiomeMapFragment.caveBiomeMapSize/2),
-				try getOrGenerateFragment(pos.wx + CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy - CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz - CaveBiomeMapFragment.caveBiomeMapSize/2),
-				try getOrGenerateFragment(pos.wx + CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy - CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz + CaveBiomeMapFragment.caveBiomeMapSize/2),
-				try getOrGenerateFragment(pos.wx + CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy + CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz - CaveBiomeMapFragment.caveBiomeMapSize/2),
-				try getOrGenerateFragment(pos.wx + CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy + CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz + CaveBiomeMapFragment.caveBiomeMapSize/2),
+				getOrGenerateFragment(pos.wx - CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy - CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz - CaveBiomeMapFragment.caveBiomeMapSize/2),
+				getOrGenerateFragment(pos.wx - CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy - CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz + CaveBiomeMapFragment.caveBiomeMapSize/2),
+				getOrGenerateFragment(pos.wx - CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy + CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz - CaveBiomeMapFragment.caveBiomeMapSize/2),
+				getOrGenerateFragment(pos.wx - CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy + CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz + CaveBiomeMapFragment.caveBiomeMapSize/2),
+				getOrGenerateFragment(pos.wx + CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy - CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz - CaveBiomeMapFragment.caveBiomeMapSize/2),
+				getOrGenerateFragment(pos.wx + CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy - CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz + CaveBiomeMapFragment.caveBiomeMapSize/2),
+				getOrGenerateFragment(pos.wx + CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy + CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz - CaveBiomeMapFragment.caveBiomeMapSize/2),
+				getOrGenerateFragment(pos.wx + CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy + CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz + CaveBiomeMapFragment.caveBiomeMapSize/2),
 			},
 			.surfaceFragments = [_]*MapFragment {
-				try SurfaceMap.getOrGenerateFragment(pos.wx - 32, pos.wz - 32, pos.voxelSize),
-				try SurfaceMap.getOrGenerateFragment(pos.wx - 32, pos.wz + width + 32, pos.voxelSize),
-				try SurfaceMap.getOrGenerateFragment(pos.wx + width + 32, pos.wz - 32, pos.voxelSize),
-				try SurfaceMap.getOrGenerateFragment(pos.wx + width + 32, pos.wz + width + 32, pos.voxelSize),
+				SurfaceMap.getOrGenerateFragment(pos.wx - 32, pos.wz - 32, pos.voxelSize),
+				SurfaceMap.getOrGenerateFragment(pos.wx - 32, pos.wz + width + 32, pos.voxelSize),
+				SurfaceMap.getOrGenerateFragment(pos.wx + width + 32, pos.wz - 32, pos.voxelSize),
+				SurfaceMap.getOrGenerateFragment(pos.wx + width + 32, pos.wz + width + 32, pos.voxelSize),
 			},
 			.pos = pos,
 			.width = width,
@@ -359,17 +359,17 @@ pub const CaveBiomeMapView = struct {
 	noiseY: ?CachedFractalNoise3D = null,
 	noiseZ: ?CachedFractalNoise3D = null,
 
-	pub fn init(chunk: *Chunk) !CaveBiomeMapView {
+	pub fn init(chunk: *Chunk) CaveBiomeMapView {
 		var self = CaveBiomeMapView {
-			.super = try InterpolatableCaveBiomeMapView.init(chunk.pos, chunk.width),
+			.super = InterpolatableCaveBiomeMapView.init(chunk.pos, chunk.width),
 		};
 		if(chunk.pos.voxelSize < 8) {
 			const startX = (chunk.pos.wx - 32) & ~@as(i32, 63);
 			const startY = (chunk.pos.wy - 32) & ~@as(i32, 63);
 			const startZ = (chunk.pos.wz - 32) & ~@as(i32, 63);
-			self.noiseX = try CachedFractalNoise3D.init(startX, startY, startZ, chunk.pos.voxelSize*4, chunk.width + 128, main.server.world.?.seed ^ 0x764923684396, 64);
-			self.noiseY = try CachedFractalNoise3D.init(startX, startY, startZ, chunk.pos.voxelSize*4, chunk.width + 128, main.server.world.?.seed ^ 0x6547835649265429, 64);
-			self.noiseZ = try CachedFractalNoise3D.init(startX, startY, startZ, chunk.pos.voxelSize*4, chunk.width + 128, main.server.world.?.seed ^ 0x56789365396783, 64);
+			self.noiseX = CachedFractalNoise3D.init(startX, startY, startZ, chunk.pos.voxelSize*4, chunk.width + 128, main.server.world.?.seed ^ 0x764923684396, 64);
+			self.noiseY = CachedFractalNoise3D.init(startX, startY, startZ, chunk.pos.voxelSize*4, chunk.width + 128, main.server.world.?.seed ^ 0x6547835649265429, 64);
+			self.noiseZ = CachedFractalNoise3D.init(startX, startY, startZ, chunk.pos.voxelSize*4, chunk.width + 128, main.server.world.?.seed ^ 0x56789365396783, 64);
 		}
 		return self;
 	}
@@ -434,15 +434,15 @@ var cache: Cache(CaveBiomeMapFragment, cacheSize, associativity, mapFragmentDein
 
 var profile: TerrainGenerationProfile = undefined;
 
-pub fn initGenerators() !void {
+pub fn initGenerators() void {
 	const list = @import("cavebiomegen/_list.zig");
 	inline for(@typeInfo(list).Struct.decls) |decl| {
-		try CaveBiomeGenerator.registerGenerator(@field(list, decl.name));
+		CaveBiomeGenerator.registerGenerator(@field(list, decl.name));
 	}
 }
 
 pub fn deinitGenerators() void {
-	CaveBiomeGenerator.generatorRegistry.clearAndFree(main.globalAllocator);
+	CaveBiomeGenerator.generatorRegistry.clearAndFree(main.globalAllocator.allocator);
 }
 
 pub fn init(_profile: TerrainGenerationProfile) void {
@@ -459,17 +459,17 @@ fn mapFragmentDeinit(mapFragment: *CaveBiomeMapFragment) void {
 	}
 }
 
-fn cacheInit(pos: ChunkPosition) !*CaveBiomeMapFragment {
-	const mapFragment = try main.globalAllocator.create(CaveBiomeMapFragment);
-	try mapFragment.init(pos.wx, pos.wy, pos.wz);
+fn cacheInit(pos: ChunkPosition) *CaveBiomeMapFragment {
+	const mapFragment = main.globalAllocator.create(CaveBiomeMapFragment);
+	mapFragment.init(pos.wx, pos.wy, pos.wz);
 	for(profile.caveBiomeGenerators) |generator| {
-		try generator.generate(mapFragment, profile.seed ^ generator.generatorSeed);
+		generator.generate(mapFragment, profile.seed ^ generator.generatorSeed);
 	}
 	_= @atomicRmw(u16, &mapFragment.refCount.raw, .Add, 1, .Monotonic);
 	return mapFragment;
 }
 
-fn getOrGenerateFragment(_wx: i32, _wy: i32, _wz: i32) !*CaveBiomeMapFragment {
+fn getOrGenerateFragment(_wx: i32, _wy: i32, _wz: i32) *CaveBiomeMapFragment {
 	const wx = _wx & ~@as(i32, CaveBiomeMapFragment.caveBiomeMapMask);
 	const wy = _wy & ~@as(i32, CaveBiomeMapFragment.caveBiomeMapMask);
 	const wz = _wz & ~@as(i32, CaveBiomeMapFragment.caveBiomeMapMask);
@@ -477,7 +477,7 @@ fn getOrGenerateFragment(_wx: i32, _wy: i32, _wz: i32) !*CaveBiomeMapFragment {
 		.wx = wx, .wy = wy, .wz = wz,
 		.voxelSize = CaveBiomeMapFragment.caveBiomeSize,
 	};
-	const result = try cache.findOrCreate(compare, cacheInit);
+	const result = cache.findOrCreate(compare, cacheInit);
 	std.debug.assert(@atomicRmw(u16, &result.refCount.raw, .Add, 1, .Monotonic) != 0);
 	return result;
 }

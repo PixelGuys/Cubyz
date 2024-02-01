@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const items = main.items;
@@ -31,21 +30,21 @@ pub var window = GuiWindow {
 
 const padding: f32 = 8;
 
-var availableItems: std.ArrayList(*BaseItem) = undefined;
-var itemAmount: std.ArrayList(u32) = undefined;
+var availableItems: main.List(*BaseItem) = undefined;
+var itemAmount: main.List(u32) = undefined;
 
 pub var arrowTexture: Texture = undefined;
 var recipeResult: ItemStack = undefined;
 
-pub fn init() !void {
-	arrowTexture = try Texture.initFromFile("assets/cubyz/ui/inventory/crafting_arrow.png");
+pub fn init() void {
+	arrowTexture = Texture.initFromFile("assets/cubyz/ui/inventory/crafting_arrow.png");
 }
 
 pub fn deinit() void {
 	arrowTexture.deinit();
 }
 
-fn addItemStackToAvailable(itemStack: ItemStack) Allocator.Error!void {
+fn addItemStackToAvailable(itemStack: ItemStack) void {
 	if(itemStack.item) |item| {
 		if(item == .baseItem) {
 			const baseItem = item.baseItem;
@@ -55,8 +54,8 @@ fn addItemStackToAvailable(itemStack: ItemStack) Allocator.Error!void {
 					return;
 				}
 			}
-			try availableItems.append(baseItem);
-			try itemAmount.append(itemStack.amount);
+			availableItems.append(baseItem);
+			itemAmount.append(itemStack.amount);
 		}
 	}
 }
@@ -88,17 +87,17 @@ fn tryTakingItems(recipeIndex: usize, destination: *ItemStack, _: u16) void {
 	std.debug.assert(destination.add(resultItem.item.?, resultItem.amount) == resultItem.amount);
 }
 
-fn findAvailableRecipes(list: *VerticalList) Allocator.Error!bool {
-	const oldAmounts = try main.stackAllocator.dupe(u32, itemAmount.items);
+fn findAvailableRecipes(list: *VerticalList) bool {
+	const oldAmounts = main.stackAllocator.dupe(u32, itemAmount.items);
 	defer main.stackAllocator.free(oldAmounts);
 	for(itemAmount.items) |*amount| {
 		amount.* = 0;
 	}
 	// Figure out what items are available in the inventory:
 	for(main.game.Player.inventory__SEND_CHANGES_TO_SERVER.items) |itemStack| {
-		try addItemStackToAvailable(itemStack);
+		addItemStackToAvailable(itemStack);
 	}
-	try addItemStackToAvailable(gui.inventory.carriedItemStack);
+	addItemStackToAvailable(gui.inventory.carriedItemStack);
 	if(std.mem.eql(u32, oldAmounts, itemAmount.items)) return false;
 	// Remove no longer present items:
 	var i: u32 = 0;
@@ -119,7 +118,7 @@ fn findAvailableRecipes(list: *VerticalList) Allocator.Error!bool {
 			continue :outer; // Ingredient not found.
 		}
 		// All ingredients found: Add it to the list.
-		const rowList = try HorizontalList.init();
+		const rowList = HorizontalList.init();
 		const maxColumns: u32 = 4;
 		const itemsPerColumn = recipe.sourceItems.len/maxColumns;
 		const remainder = recipe.sourceItems.len%maxColumns;
@@ -127,26 +126,26 @@ fn findAvailableRecipes(list: *VerticalList) Allocator.Error!bool {
 		for(0..maxColumns) |col| {
 			var itemsThisColumn = itemsPerColumn;
 			if(col < remainder) itemsThisColumn += 1;
-			const columnList = try VerticalList.init(.{0, 0}, std.math.inf(f32), 0);
+			const columnList = VerticalList.init(.{0, 0}, std.math.inf(f32), 0);
 			for(0..itemsThisColumn) |_| {
-				try columnList.add(try ItemSlot.init(.{0, 0}, .{.item = .{.baseItem = recipe.sourceItems[i]}, .amount = recipe.sourceAmounts[i]}, &.{}, 0, .immutable, .immutable));
+				columnList.add(ItemSlot.init(.{0, 0}, .{.item = .{.baseItem = recipe.sourceItems[i]}, .amount = recipe.sourceAmounts[i]}, &.{}, 0, .immutable, .immutable));
 				i += 1;
 			}
 			columnList.finish(.center);
-			try rowList.add(columnList);
+			rowList.add(columnList);
 		}
-		try rowList.add(try Icon.init(.{8, 0}, .{32, 32}, arrowTexture, false));
-		const itemSlot = try ItemSlot.init(.{8, 0}, recipe.resultItem, &.{.tryTakingItems = &tryTakingItems}, recipeIndex, .craftingResult, .takeOnly);
-		try rowList.add(itemSlot);
+		rowList.add(Icon.init(.{8, 0}, .{32, 32}, arrowTexture, false));
+		const itemSlot = ItemSlot.init(.{8, 0}, recipe.resultItem, &.{.tryTakingItems = &tryTakingItems}, recipeIndex, .craftingResult, .takeOnly);
+		rowList.add(itemSlot);
 		rowList.finish(.{0, 0}, .center);
-		try list.add(rowList);
+		list.add(rowList);
 	}
 	return true;
 }
 
-fn refresh() Allocator.Error!void {
-	const list = try VerticalList.init(.{padding, padding + 16}, 300, 8);
-	if(!try findAvailableRecipes(list)) {
+fn refresh() void {
+	const list = VerticalList.init(.{padding, padding + 16}, 300, 8);
+	if(!findAvailableRecipes(list)) {
 		list.deinit();
 		return;
 	}
@@ -159,10 +158,10 @@ fn refresh() Allocator.Error!void {
 	gui.updateWindowPositions();
 }
 
-pub fn onOpen() Allocator.Error!void {
-	availableItems = std.ArrayList(*BaseItem).init(main.globalAllocator);
-	itemAmount = std.ArrayList(u32).init(main.globalAllocator);
-	try refresh();
+pub fn onOpen() void {
+	availableItems = main.List(*BaseItem).init(main.globalAllocator);
+	itemAmount = main.List(u32).init(main.globalAllocator);
+	refresh();
 }
 
 pub fn onClose() void {
@@ -174,6 +173,6 @@ pub fn onClose() void {
 	itemAmount.deinit();
 }
 
-pub fn update() Allocator.Error!void {
-	try refresh();
+pub fn update() void {
+	refresh();
 }

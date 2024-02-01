@@ -27,7 +27,8 @@ pub const User = struct {
 //	TODO: public Thread waitingThread;
 
 	pub fn init(manager: *ConnectionManager, ipPort: []const u8) !*User {
-		const self = try main.globalAllocator.create(User);
+		const self = main.globalAllocator.create(User);
+		errdefer main.globalAllocator.destroy(self);
 		self.* = User {
 			.conn = try Connection.init(manager, ipPort),
 		};
@@ -54,9 +55,9 @@ pub const User = struct {
 //		Server.disconnect(this);
 //	}
 
-	pub fn initPlayer(self: *User, name: []const u8) !void {
-		self.name = try main.globalAllocator.dupe(u8, name);
-		try world.?.findPlayer(self);
+	pub fn initPlayer(self: *User, name: []const u8) void {
+		self.name = main.globalAllocator.dupe(u8, name);
+		world.?.findPlayer(self);
 	}
 
 	pub fn update(self: *User) void {
@@ -101,7 +102,7 @@ pub const updatesPerSec: u32 = 20;
 const updateNanoTime: u32 = 1000000000/20;
 
 pub var world: ?*ServerWorld = null;
-pub var users: std.ArrayList(*User) = undefined;
+pub var users: main.List(*User) = undefined;
 
 pub var connectionManager: *ConnectionManager = undefined;
 
@@ -112,18 +113,27 @@ pub var mutex: std.Thread.Mutex = .{};
 
 pub var thread: ?std.Thread = null;
 
-fn init(name: []const u8) !void {
+fn init(name: []const u8) void {
 	std.debug.assert(world == null); // There can only be one world.
-	users = std.ArrayList(*User).init(main.globalAllocator);
+	users = main.List(*User).init(main.globalAllocator);
 	lastTime = std.time.nanoTimestamp();
-	connectionManager = try ConnectionManager.init(main.settings.defaultPort, false); // TODO Configure the second argument in the server settings.
+	connectionManager = ConnectionManager.init(main.settings.defaultPort, false) catch |err| {
+		std.log.err("Couldn't create socket: {s}", .{@errorName(err)});
+		@panic("Could not open Server.");
+	}; // TODO Configure the second argument in the server settings.
 	// TODO: Load the assets.
 
-	world = try ServerWorld.init(name, null);
-	if(true) { // singleplayer // TODO: Configure this in the server settings.
-		const user = try User.init(connectionManager, "127.0.0.1:47650");
+	world = ServerWorld.init(name, null) catch |err| {
+		std.log.err("Failed to create world: {s}", .{@errorName(err)});
+		@panic("Can't create world.");
+	};
+	if(true) blk: { // singleplayer // TODO: Configure this in the server settings.
+		const user = User.init(connectionManager, "127.0.0.1:47650") catch |err| {
+			std.log.err("Cannot create singleplayer user {s}", .{@errorName(err)});
+			break :blk;
+		};
 		user.isLocal = true;
-		try connect(user);
+		connect(user);
 	}
 }
 
@@ -141,8 +151,8 @@ fn deinit() void {
 	world = null;
 }
 
-fn update() !void {
-	try world.?.update();
+fn update() void {
+	world.?.update();
 	mutex.lock();
 	for(users.items) |user| {
 		user.update();
@@ -154,12 +164,12 @@ fn update() !void {
 //		lastSentEntities = entities;
 }
 
-pub fn start(name: []const u8) !void {
-	var sta = try utils.StackAllocator.init(main.globalAllocator, 1 << 23);
+pub fn start(name: []const u8) void {
+	var sta = utils.StackAllocator.init(main.globalAllocator, 1 << 23);
 	defer sta.deinit();
 	main.stackAllocator = sta.allocator();
 	std.debug.assert(!running.load(.Monotonic)); // There can only be one server.
-	try init(name);
+	init(name);
 	defer deinit();
 	running.store(true, .Monotonic);
 	while(running.load(.Monotonic)) {
@@ -171,7 +181,7 @@ pub fn start(name: []const u8) !void {
 			std.log.warn("The server is lagging behind by {d:.1} ms", .{@as(f32, @floatFromInt(newTime -% lastTime -% updateNanoTime))/1000000.0});
 			lastTime = newTime;
 		}
-		try update();
+		update();
 
 	}
 }
@@ -180,13 +190,13 @@ pub fn stop() void {
 	running.store(false, .Monotonic);
 }
 
-pub fn disconnect(user: *User) !void {
+pub fn disconnect(user: *User) void {
 	// TODO: world.forceSave();
-	const message = try std.fmt.allocPrint(main.stackAllocator, "{s} #ffff00left", .{user.name});
+	const message = std.fmt.allocPrint(main.stackAllocator, "{s} #ffff00left", .{user.name}) catch unreachable;
 	defer main.stackAllocator.free(message);
 	mutex.lock();
 	defer mutex.unlock();
-	try sendMessage(message);
+	sendMessage(message);
 
 	for(users.items, 0..) |other, i| {
 		if(other == user) {
@@ -198,23 +208,23 @@ pub fn disconnect(user: *User) !void {
 //	TODO?		users = usersList.toArray();
 }
 
-pub fn connect(user: *User) !void {
-	const message = try std.fmt.allocPrint(main.stackAllocator, "{s} #ffff00joined", .{user.name});
+pub fn connect(user: *User) void {
+	const message = std.fmt.allocPrint(main.stackAllocator.allocator, "{s} #ffff00joined", .{user.name}) catch unreachable;
 	defer main.stackAllocator.free(message);
 	mutex.lock();
 	defer mutex.unlock();
-	try sendMessage(message);
+	sendMessage(message);
 
-	try users.append(user);
+	users.append(user);
 	// TODO: users = usersList.toArray();
 }
 
 //	private Entity[] lastSentEntities = new Entity[0];
 
-pub fn sendMessage(msg: []const u8) !void {
+pub fn sendMessage(msg: []const u8) void {
 	std.debug.assert(!mutex.tryLock()); // Mutex must be locked!
 	std.log.info("Chat: {s}", .{msg}); // TODO use color \033[0;32m
 	for(users.items) |user| {
-		try main.network.Protocols.chat.send(user.conn, msg);
+		main.network.Protocols.chat.send(user.conn, msg);
 	}
 }

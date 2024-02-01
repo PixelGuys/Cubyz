@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 const sign = std.math.sign;
 
 const main = @import("root");
@@ -28,9 +27,9 @@ pub fn deinit() void {
 
 }
 
-pub fn generate(map: *CaveMapFragment, worldSeed: u64) Allocator.Error!void {
+pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 	_ = worldSeed;
-	const mapFragment = try SurfaceMap.getOrGenerateFragment(map.pos.wx, map.pos.wz, map.pos.voxelSize);
+	const mapFragment = SurfaceMap.getOrGenerateFragment(map.pos.wx, map.pos.wz, map.pos.voxelSize);
 	defer mapFragment.deinit();
 	var x: u31 = 0;
 	while(x < CaveMapFragment.width*map.pos.voxelSize) : (x += map.pos.voxelSize) {

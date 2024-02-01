@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const graphics = main.graphics;
@@ -28,17 +27,17 @@ currentState: f32,
 button: *Button,
 mouseAnchor: f32 = undefined,
 
-pub fn __init() !void {
-	texture = try Texture.initFromFile("assets/cubyz/ui/scrollbar.png");
+pub fn __init() void {
+	texture = Texture.initFromFile("assets/cubyz/ui/scrollbar.png");
 }
 
 pub fn __deinit() void {
 	texture.deinit();
 }
 
-pub fn init(pos: Vec2f, width: f32, height: f32, initialState: f32) Allocator.Error!*ScrollBar {
-	const button = try Button.initText(.{0, 0}, undefined, "", .{});
-	const self = try main.globalAllocator.create(ScrollBar);
+pub fn init(pos: Vec2f, width: f32, height: f32, initialState: f32) *ScrollBar {
+	const button = Button.initText(.{0, 0}, undefined, "", .{});
+	const self = main.globalAllocator.create(ScrollBar);
 	self.* = ScrollBar {
 		.pos = pos,
 		.size = Vec2f{width, height},
@@ -96,7 +95,7 @@ pub fn mainButtonReleased(self: *ScrollBar, mousePosition: Vec2f) void {
 	self.button.mainButtonReleased(mousePosition - self.pos);
 }
 
-pub fn render(self: *ScrollBar, mousePosition: Vec2f) !void {
+pub fn render(self: *ScrollBar, mousePosition: Vec2f) void {
 	texture.bindTo(0);
 	Button.shader.bind();
 	draw.setColor(0xff000000);
@@ -111,5 +110,5 @@ pub fn render(self: *ScrollBar, mousePosition: Vec2f) !void {
 	}
 	const oldTranslation = draw.setTranslation(self.pos);
 	defer draw.restoreTranslation(oldTranslation);
-	try self.button.render(mousePosition - self.pos);
+	self.button.render(mousePosition - self.pos);
 }

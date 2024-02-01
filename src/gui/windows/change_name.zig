@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const settings = main.settings;
@@ -24,38 +23,29 @@ const padding: f32 = 8;
 fn apply(_: usize) void {
 	const oldName = settings.playerName;
 	main.globalAllocator.free(settings.playerName);
-	settings.playerName = main.globalAllocator.dupe(u8, textComponent.currentString.items) catch {
-		std.log.err("Encountered out of memory in change_name.apply.", .{});
-		return;
-	};
+	settings.playerName = main.globalAllocator.dupe(u8, textComponent.currentString.items);
 
-	gui.closeWindow(&window) catch |err| {
-		std.log.err("Encountered error in change_name.apply while closing window: {s}", .{@errorName(err)});
-		return;
-	};
+	gui.closeWindow(&window);
 	if(oldName.len == 0) {
-		gui.openWindow("main") catch |err| {
-			std.log.err("Encountered error in change_name.apply: {s}", .{@errorName(err)});
-			return;
-		};
+		gui.openWindow("main");
 	}
 }
 
-pub fn onOpen() Allocator.Error!void {
-	const list = try VerticalList.init(.{padding, 16 + padding}, 300, 16);
+pub fn onOpen() void {
+	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	const width = 420;
 	if(settings.playerName.len == 0) {
-		try list.add(try Label.init(.{0, 0}, width, "Please enter your name!", .center));
+		list.add(Label.init(.{0, 0}, width, "Please enter your name!", .center));
 	} else {
-		try list.add(try Label.init(.{0, 0}, width, "#ff0000Warning: #ffffffYou loose access to your inventory data when changing the name!", .center));
+		list.add(Label.init(.{0, 0}, width, "#ff0000Warning: #ffffffYou loose access to your inventory data when changing the name!", .center));
 	}
-	try list.add(try Label.init(.{0, 0}, width, "Cubyz supports formatting your username using a markdown-like syntax:", .center));
-	try list.add(try Label.init(.{0, 0}, width, "\\**italic*\\* \\*\\***bold**\\*\\* \\__underlined_\\_ \\_\\___strike-through__\\_\\_", .center));
-	try list.add(try Label.init(.{0, 0}, width, "Even colors are possible, using the hexadecimal color code:", .center));
-	try list.add(try Label.init(.{0, 0}, width, "\\##ff0000ff#ffffff00#ffffff00#ff0000red#ffffff \\##ff0000ff#00770077#ffffff00#ff7700orange#ffffff \\##ffffff00#00ff00ff#ffffff00#00ff00green#ffffff \\##ffffff00#ffffff00#0000ffff#0000ffblue", .center));
-	textComponent = try TextInput.init(.{0, 0}, width, 32, "quanturmdoelvloper", .{.callback = &apply});
-	try list.add(textComponent);
-	try list.add(try Button.initText(.{0, 0}, 100, "Apply", .{.callback = &apply}));
+	list.add(Label.init(.{0, 0}, width, "Cubyz supports formatting your username using a markdown-like syntax:", .center));
+	list.add(Label.init(.{0, 0}, width, "\\**italic*\\* \\*\\***bold**\\*\\* \\__underlined_\\_ \\_\\___strike-through__\\_\\_", .center));
+	list.add(Label.init(.{0, 0}, width, "Even colors are possible, using the hexadecimal color code:", .center));
+	list.add(Label.init(.{0, 0}, width, "\\##ff0000ff#ffffff00#ffffff00#ff0000red#ffffff \\##ff0000ff#00770077#ffffff00#ff7700orange#ffffff \\##ffffff00#00ff00ff#ffffff00#00ff00green#ffffff \\##ffffff00#ffffff00#0000ffff#0000ffblue", .center));
+	textComponent = TextInput.init(.{0, 0}, width, 32, "quanturmdoelvloper", .{.callback = &apply});
+	list.add(textComponent);
+	list.add(Button.initText(.{0, 0}, 100, "Apply", .{.callback = &apply}));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));

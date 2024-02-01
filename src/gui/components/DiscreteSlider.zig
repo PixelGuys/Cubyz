@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const graphics = main.graphics;
@@ -34,28 +33,28 @@ label: *Label,
 button: *Button,
 mouseAnchor: f32 = undefined,
 
-pub fn __init() !void {
-	texture = try Texture.initFromFile("assets/cubyz/ui/slider.png");
+pub fn __init() void {
+	texture = Texture.initFromFile("assets/cubyz/ui/slider.png");
 }
 
 pub fn __deinit() void {
 	texture.deinit();
 }
 
-pub fn init(pos: Vec2f, width: f32, text: []const u8, comptime fmt: []const u8, valueList: anytype, initialValue: u16, callback: *const fn(u16) void) Allocator.Error!*DiscreteSlider {
-	const values = try main.globalAllocator.alloc([]const u8, valueList.len);
+pub fn init(pos: Vec2f, width: f32, text: []const u8, comptime fmt: []const u8, valueList: anytype, initialValue: u16, callback: *const fn(u16) void) *DiscreteSlider {
+	const values = main.globalAllocator.alloc([]const u8, valueList.len);
 	var maxLen: usize = 0;
 	for(valueList, 0..) |value, i| {
-		values[i] = try std.fmt.allocPrint(main.globalAllocator, fmt, .{value});
+		values[i] = std.fmt.allocPrint(main.globalAllocator.allocator, fmt, .{value}) catch unreachable;
 		maxLen = @max(maxLen, values[i].len);
 	}
 
-	const initialText = try main.globalAllocator.alloc(u8, text.len + maxLen);
+	const initialText = main.globalAllocator.alloc(u8, text.len + maxLen);
 	@memcpy(initialText[0..text.len], text);
 	@memset(initialText[text.len..], ' ');
-	const label = try Label.init(undefined, width - 3*border, initialText, .center);
-	const button = try Button.initText(.{0, 0}, undefined, "", .{});
-	const self = try main.globalAllocator.create(DiscreteSlider);
+	const label = Label.init(undefined, width - 3*border, initialText, .center);
+	const button = Button.initText(.{0, 0}, undefined, "", .{});
+	const self = main.globalAllocator.create(DiscreteSlider);
 	self.* = DiscreteSlider {
 		.pos = pos,
 		.size = undefined,
@@ -70,7 +69,7 @@ pub fn init(pos: Vec2f, width: f32, text: []const u8, comptime fmt: []const u8, 
 	self.button.size = .{16, 16};
 	self.button.pos[1] = self.label.size[1] + 3.5*border;
 	self.size = Vec2f{@max(width, self.label.size[0] + 3*border), self.label.size[1] + self.button.size[1] + 5*border};
-	try self.setButtonPosFromValue();
+	self.setButtonPosFromValue();
 	return self;
 }
 
@@ -91,31 +90,31 @@ pub fn toComponent(self: *DiscreteSlider) GuiComponent {
 	};
 }
 
-fn setButtonPosFromValue(self: *DiscreteSlider) !void {
+fn setButtonPosFromValue(self: *DiscreteSlider) void {
 	const range: f32 = self.size[0] - 3*border - self.button.size[0];
 	const len: f32 = @floatFromInt(self.values.len);
 	const selection: f32 = @floatFromInt(self.currentSelection);
 	self.button.pos[0] = 1.5*border + range*(0.5 + selection)/len;
-	try self.updateLabel(self.values[self.currentSelection], self.size[0]);
+	self.updateLabel(self.values[self.currentSelection], self.size[0]);
 }
 
-fn updateLabel(self: *DiscreteSlider, newValue: []const u8, width: f32) !void {
+fn updateLabel(self: *DiscreteSlider, newValue: []const u8, width: f32) void {
 	main.globalAllocator.free(self.currentText);
-	self.currentText = try main.globalAllocator.alloc(u8, newValue.len + self.text.len);
+	self.currentText = main.globalAllocator.alloc(u8, newValue.len + self.text.len);
 	@memcpy(self.currentText[0..self.text.len], self.text);
 	@memcpy(self.currentText[self.text.len..], newValue);
-	const label = try Label.init(undefined, width - 3*border, self.currentText, .center);
+	const label = Label.init(undefined, width - 3*border, self.currentText, .center);
 	self.label.deinit();
 	self.label = label;
 }
 
-fn updateValueFromButtonPos(self: *DiscreteSlider) !void {
+fn updateValueFromButtonPos(self: *DiscreteSlider) void {
 	const range: f32 = self.size[0] - 3*border - self.button.size[0];
 	const len: f32 = @floatFromInt(self.values.len);
 	const selection: u16 = @intFromFloat((self.button.pos[0] - 1.5*border)/range*len);
 	if(selection != self.currentSelection) {
 		self.currentSelection = selection;
-		try self.updateLabel(self.values[selection], self.size[0]);
+		self.updateLabel(self.values[selection], self.size[0]);
 		self.callback(selection);
 	}
 }
@@ -137,7 +136,7 @@ pub fn mainButtonReleased(self: *DiscreteSlider, _: Vec2f) void {
 	self.button.mainButtonReleased(undefined);
 }
 
-pub fn render(self: *DiscreteSlider, mousePosition: Vec2f) !void {
+pub fn render(self: *DiscreteSlider, mousePosition: Vec2f) void {
 	texture.bindTo(0);
 	Button.shader.bind();
 	draw.setColor(0xff000000);
@@ -148,14 +147,14 @@ pub fn render(self: *DiscreteSlider, mousePosition: Vec2f) !void {
 	draw.rect(self.pos + Vec2f{1.5*border + self.button.size[0]/2, self.button.pos[1] + self.button.size[1]/2 - border}, .{range, 2*border});
 
 	self.label.pos = self.pos + @as(Vec2f, @splat(1.5*border));
-	try self.label.render(mousePosition);
+	self.label.render(mousePosition);
 
 	if(self.button.pressed) {
 		self.button.pos[0] = mousePosition[0] - self.mouseAnchor;
 		self.button.pos[0] = @min(@max(self.button.pos[0], 1.5*border), 1.5*border + range - 0.001);
-		try self.updateValueFromButtonPos();
+		self.updateValueFromButtonPos();
 	}
 	const oldTranslation = draw.setTranslation(self.pos);
 	defer draw.restoreTranslation(oldTranslation);
-	try self.button.render(mousePosition - self.pos);
+	self.button.render(mousePosition - self.pos);
 }

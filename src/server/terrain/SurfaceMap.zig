@@ -1,6 +1,5 @@
 const std = @import("std");
 const Atomic = std.atomic.Value;
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const Chunk = main.chunk.Chunk;
@@ -99,17 +98,17 @@ pub const MapFragment = struct {
 pub const MapGenerator = struct {
 	init: *const fn(parameters: JsonElement) void,
 	deinit: *const fn() void,
-	generateMapFragment: *const fn(fragment: *MapFragment, seed: u64) Allocator.Error!void,
+	generateMapFragment: *const fn(fragment: *MapFragment, seed: u64) void,
 
 	var generatorRegistry: std.StringHashMapUnmanaged(MapGenerator) = .{};
 
-	fn registerGenerator(comptime Generator: type) !void {
+	fn registerGenerator(comptime Generator: type) void {
 		const self = MapGenerator {
 			.init = &Generator.init,
 			.deinit = &Generator.deinit,
 			.generateMapFragment = &Generator.generateMapFragment,
 		};
-		try generatorRegistry.put(main.globalAllocator, Generator.id, self);
+		generatorRegistry.put(main.globalAllocator.allocator, Generator.id, self) catch unreachable;
 	}
 
 	pub fn getGeneratorById(id: []const u8) !MapGenerator {
@@ -127,15 +126,15 @@ const associativity = 8; // ~400MiB MiB Cache size
 var cache: Cache(MapFragment, cacheSize, associativity, mapFragmentDeinit) = .{};
 var profile: TerrainGenerationProfile = undefined;
 
-pub fn initGenerators() !void {
+pub fn initGenerators() void {
 	const list = @import("mapgen/_list.zig");
 	inline for(@typeInfo(list).Struct.decls) |decl| {
-		try MapGenerator.registerGenerator(@field(list, decl.name));
+		MapGenerator.registerGenerator(@field(list, decl.name));
 	}
 }
 
 pub fn deinitGenerators() void {
-	MapGenerator.generatorRegistry.clearAndFree(main.globalAllocator);
+	MapGenerator.generatorRegistry.clearAndFree(main.globalAllocator.allocator);
 }
 
 fn mapFragmentDeinit(mapFragment: *MapFragment) void {
@@ -144,15 +143,15 @@ fn mapFragmentDeinit(mapFragment: *MapFragment) void {
 	}
 }
 
-fn cacheInit(pos: MapFragmentPosition) !*MapFragment {
-	const mapFragment = try main.globalAllocator.create(MapFragment);
+fn cacheInit(pos: MapFragmentPosition) *MapFragment {
+	const mapFragment = main.globalAllocator.create(MapFragment);
 	mapFragment.init(pos.wx, pos.wz, pos.voxelSize);
-	try profile.mapFragmentGenerator.generateMapFragment(mapFragment, profile.seed);
+	profile.mapFragmentGenerator.generateMapFragment(mapFragment, profile.seed);
 	_ = @atomicRmw(u16, &mapFragment.refCount.raw, .Add, 1, .Monotonic);
 	return mapFragment;
 }
 
-pub fn init(_profile: TerrainGenerationProfile) !void {
+pub fn init(_profile: TerrainGenerationProfile) void {
 	profile = _profile;
 }
 
@@ -161,13 +160,13 @@ pub fn deinit() void {
 }
 
 /// Call deinit on the result.
-pub fn getOrGenerateFragment(wx: i32, wz: i32, voxelSize: u31) !*MapFragment {
+pub fn getOrGenerateFragment(wx: i32, wz: i32, voxelSize: u31) *MapFragment {
 	const compare = MapFragmentPosition.init(
 		wx & ~@as(i32, MapFragment.mapMask*voxelSize | voxelSize-1),
 		wz & ~@as(i32, MapFragment.mapMask*voxelSize | voxelSize-1),
 		voxelSize
 	);
-	const result = try cache.findOrCreate(compare, cacheInit);
+	const result = cache.findOrCreate(compare, cacheInit);
 	std.debug.assert(@atomicRmw(u16, &result.refCount.raw, .Add, 1, .Monotonic) != 0);
 	return result;
 }

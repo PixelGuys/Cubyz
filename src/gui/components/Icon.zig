@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const graphics = main.graphics;
@@ -20,8 +19,8 @@ size: Vec2f,
 texture: Texture,
 hasShadow: bool,
 
-pub fn init(pos: Vec2f, size: Vec2f, texture: Texture, hasShadow: bool) Allocator.Error!*Icon {
-	const self = try main.globalAllocator.create(Icon);
+pub fn init(pos: Vec2f, size: Vec2f, texture: Texture, hasShadow: bool) *Icon {
+	const self = main.globalAllocator.create(Icon);
 	self.* = Icon {
 		.texture = texture,
 		.pos = pos,
@@ -45,7 +44,7 @@ pub fn updateTexture(self: *Icon, newTexture: Texture) !void {
 	self.texture = newTexture;
 }
 
-pub fn render(self: *Icon, _: Vec2f) !void {
+pub fn render(self: *Icon, _: Vec2f) void {
 	if(self.hasShadow) {
 		draw.setColor(0xff000000);
 		self.texture.render(self.pos + Vec2f{1, 1}, self.size);

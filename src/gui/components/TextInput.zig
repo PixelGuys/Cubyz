@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const graphics = main.graphics;
@@ -27,7 +26,7 @@ size: Vec2f,
 pressed: bool = false,
 cursor: ?u32 = null,
 selectionStart: ?u32 = null,
-currentString: std.ArrayList(u8),
+currentString: main.List(u8),
 textBuffer: TextBuffer,
 maxWidth: f32,
 maxHeight: f32,
@@ -35,29 +34,29 @@ textSize: Vec2f = undefined,
 scrollBar: *ScrollBar,
 onNewline: gui.Callback,
 
-pub fn __init() !void {
-	texture = try Texture.initFromFile("assets/cubyz/ui/text_input.png");
+pub fn __init() void {
+	texture = Texture.initFromFile("assets/cubyz/ui/text_input.png");
 }
 
 pub fn __deinit() void {
 	texture.deinit();
 }
 
-pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, onNewline: gui.Callback) Allocator.Error!*TextInput {
-	const scrollBar = try ScrollBar.init(undefined, scrollBarWidth, maxHeight - 2*border, 0);
-	const self = try main.globalAllocator.create(TextInput);
+pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, onNewline: gui.Callback) *TextInput {
+	const scrollBar = ScrollBar.init(undefined, scrollBarWidth, maxHeight - 2*border, 0);
+	const self = main.globalAllocator.create(TextInput);
 	self.* = TextInput {
 		.pos = pos,
 		.size = .{maxWidth, maxHeight},
-		.currentString = std.ArrayList(u8).init(main.globalAllocator),
-		.textBuffer = try TextBuffer.init(main.globalAllocator, text, .{}, true, .left),
+		.currentString = main.List(u8).init(main.globalAllocator),
+		.textBuffer = TextBuffer.init(main.globalAllocator, text, .{}, true, .left),
 		.maxWidth = maxWidth,
 		.maxHeight = maxHeight,
 		.scrollBar = scrollBar,
 		.onNewline = onNewline,
 	};
-	try self.currentString.appendSlice(text);
-	self.textSize = try self.textBuffer.calculateLineBreaks(fontSize, maxWidth - 2*border - scrollBarWidth);
+	self.currentString.appendSlice(text);
+	self.textSize = self.textBuffer.calculateLineBreaks(fontSize, maxWidth - 2*border - scrollBarWidth);
 	return self;
 }
 
@@ -68,13 +67,13 @@ pub fn deinit(self: *const TextInput) void {
 	main.globalAllocator.destroy(self);
 }
 
-pub fn clear(self: *TextInput) !void {
+pub fn clear(self: *TextInput) void {
 	if(self.cursor != null) {
 		self.cursor = 0;
 		self.selectionStart = null;
 	}
 	self.currentString.clearRetainingCapacity();
-	try self.reloadText();
+	self.reloadText();
 }
 
 pub fn toComponent(self: *TextInput) GuiComponent {
@@ -140,10 +139,10 @@ pub fn deselect(self: *TextInput) void {
 	self.selectionStart = null;
 }
 
-fn reloadText(self: *TextInput) !void {
+fn reloadText(self: *TextInput) void {
 	self.textBuffer.deinit();
-	self.textBuffer = try TextBuffer.init(main.globalAllocator, self.currentString.items, .{}, true, .left);
-	self.textSize = try self.textBuffer.calculateLineBreaks(fontSize, self.maxWidth - 2*border - scrollBarWidth);
+	self.textBuffer = TextBuffer.init(main.globalAllocator, self.currentString.items, .{}, true, .left);
+	self.textSize = self.textBuffer.calculateLineBreaks(fontSize, self.maxWidth - 2*border - scrollBarWidth);
 }
 
 fn moveCursorLeft(self: *TextInput, mods: main.Key.Modifiers) void {
@@ -207,7 +206,7 @@ fn moveCursorRight(self: *TextInput, mods: main.Key.Modifiers) void {
 				if(self.cursor.? >= self.currentString.items.len) return;
 			}
 		} else {
-			self.cursor.? += std.unicode.utf8ByteSequenceLength(self.currentString.items[self.cursor.?]) catch unreachable;
+			self.cursor.? += std.unicode.utf8ByteSequenceLength(self.currentString.items[self.cursor.?]) catch 0;
 		}
 	}
 }
@@ -347,7 +346,7 @@ fn deleteSelection(self: *TextInput) void {
 		const start = @min(selectionStart, self.cursor.?);
 		const end = @max(selectionStart, self.cursor.?);
 
-		self.currentString.replaceRange(start, end - start, &[0]u8{}) catch unreachable;
+		self.currentString.replaceRange(start, end - start, &[0]u8{});
 		self.cursor.? = start;
 		self.selectionStart = null;
 		self.ensureCursorVisibility();
@@ -361,9 +360,7 @@ pub fn deleteLeft(self: *TextInput, _: main.Key.Modifiers) void {
 		self.moveCursorLeft(.{});
 	}
 	self.deleteSelection();
-	self.reloadText() catch |err| {
-		std.log.err("Error while deleting text: {s}", .{@errorName(err)});
-	};
+	self.reloadText();
 	self.ensureCursorVisibility();
 }
 
@@ -374,19 +371,17 @@ pub fn deleteRight(self: *TextInput, _: main.Key.Modifiers) void {
 		self.moveCursorRight(.{});
 	}
 	self.deleteSelection();
-	self.reloadText() catch |err| {
-		std.log.err("Error while deleting text: {s}", .{@errorName(err)});
-	};
+	self.reloadText();
 	self.ensureCursorVisibility();
 }
 
-pub fn inputCharacter(self: *TextInput, character: u21) !void {
+pub fn inputCharacter(self: *TextInput, character: u21) void {
 	if(self.cursor) |*cursor| {
 		self.deleteSelection();
 		var buf: [4]u8 = undefined;
-		const utf8 = buf[0..try std.unicode.utf8Encode(character, &buf)];
-		try self.currentString.insertSlice(cursor.*, utf8);
-		try self.reloadText();
+		const utf8 = buf[0..std.unicode.utf8Encode(character, &buf) catch return];
+		self.currentString.insertSlice(cursor.*, utf8);
+		self.reloadText();
 		cursor.* += @intCast(utf8.len);
 		self.ensureCursorVisibility();
 	}
@@ -409,13 +404,9 @@ pub fn paste(self: *TextInput, mods: main.Key.Modifiers) void {
 	if(mods.control) {
 		const string = main.Window.getClipboardString();
 		self.deleteSelection();
-		self.currentString.insertSlice(self.cursor.?, string) catch |err| {
-			std.log.err("Error while pasting text: {s}", .{@errorName(err)});
-		};
+		self.currentString.insertSlice(self.cursor.?, string);
 		self.cursor.? += @intCast(string.len);
-		self.reloadText() catch |err| {
-			std.log.err("Error while pasting text: {s}", .{@errorName(err)});
-		};
+		self.reloadText();
 		self.ensureCursorVisibility();
 	}
 }
@@ -424,9 +415,7 @@ pub fn cut(self: *TextInput, mods: main.Key.Modifiers) void {
 	if(mods.control) {
 		self.copy(mods);
 		self.deleteSelection();
-		self.reloadText() catch |err| {
-			std.log.err("Error while cutting text: {s}", .{@errorName(err)});
-		};
+		self.reloadText();
 		self.ensureCursorVisibility();
 	}
 }
@@ -436,9 +425,7 @@ pub fn newline(self: *TextInput, mods: main.Key.Modifiers) void {
 		self.onNewline.run();
 		return;
 	}
-	self.inputCharacter('\n') catch |err| {
-		std.log.err("Error while entering text: {s}", .{@errorName(err)});
-	};
+	self.inputCharacter('\n');
 	self.ensureCursorVisibility();
 }
 
@@ -458,7 +445,7 @@ fn ensureCursorVisibility(self: *TextInput) void {
 	}
 }
 
-pub fn render(self: *TextInput, mousePosition: Vec2f) !void {
+pub fn render(self: *TextInput, mousePosition: Vec2f) void {
 	texture.bindTo(0);
 	Button.shader.bind();
 	draw.setColor(0xff000000);
@@ -473,9 +460,9 @@ pub fn render(self: *TextInput, mousePosition: Vec2f) !void {
 		const diff = self.textSize[1] - (self.maxHeight - 2*border);
 		textPos[1] -= diff*self.scrollBar.currentState;
 		self.scrollBar.pos = .{self.size[0] - self.scrollBar.size[0] - border, border};
-		try self.scrollBar.render(mousePosition - self.pos);
+		self.scrollBar.render(mousePosition - self.pos);
 	}
-	try self.textBuffer.render(textPos[0], textPos[1], fontSize);
+	self.textBuffer.render(textPos[0], textPos[1], fontSize);
 	if(self.pressed) {
 		self.cursor = self.textBuffer.mousePosToIndex(mousePosition - textPos - self.pos, self.currentString.items.len);
 	}
@@ -483,7 +470,7 @@ pub fn render(self: *TextInput, mousePosition: Vec2f) !void {
 		const cursorPos = textPos + self.textBuffer.indexToCursorPos(cursor);
 		if(self.selectionStart) |selectionStart| {
 			draw.setColor(0x440000ff);
-			try self.textBuffer.drawSelection(textPos, @min(selectionStart, cursor), @max(selectionStart, cursor));
+			self.textBuffer.drawSelection(textPos, @min(selectionStart, cursor), @max(selectionStart, cursor));
 		}
 		draw.setColor(0xff000000);
 		draw.line(cursorPos, cursorPos + Vec2f{0, 16});

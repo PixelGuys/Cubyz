@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const Block = main.blocks.Block;
@@ -42,14 +41,14 @@ const ChunkManager = struct {
 			.clean = @ptrCast(&clean),
 		};
 		
-		pub fn schedule(pos: ChunkPosition, source: ?*User) !void {
-			const task = try main.globalAllocator.create(ChunkLoadTask);
+		pub fn schedule(pos: ChunkPosition, source: ?*User) void {
+			const task = main.globalAllocator.create(ChunkLoadTask);
 			task.* = ChunkLoadTask {
 				.pos = pos,
 				.creationTime = std.time.milliTimestamp(),
 				.source = source,
 			};
-			try main.threadPool.addTask(task, &vtable);
+			main.threadPool.addTask(task, &vtable);
 		}
 
 		pub fn getPriority(self: *ChunkLoadTask) f32 {
@@ -93,9 +92,9 @@ const ChunkManager = struct {
 			return true;
 		}
 
-		pub fn run(self: *ChunkLoadTask) Allocator.Error!void {
+		pub fn run(self: *ChunkLoadTask) void {
 			defer self.clean();
-			try generateChunk(self.pos, self.source);
+			generateChunk(self.pos, self.source);
 		}
 
 		pub fn clean(self: *ChunkLoadTask) void {
@@ -115,14 +114,14 @@ const ChunkManager = struct {
 			.clean = @ptrCast(&clean),
 		};
 		
-		pub fn schedule(pos: terrain.SurfaceMap.MapFragmentPosition, source: ?*User) !void {
-			const task = try main.globalAllocator.create(LightMapLoadTask);
+		pub fn schedule(pos: terrain.SurfaceMap.MapFragmentPosition, source: ?*User) void {
+			const task = main.globalAllocator.create(LightMapLoadTask);
 			task.* = LightMapLoadTask {
 				.pos = pos,
 				.creationTime = std.time.milliTimestamp(),
 				.source = source,
 			};
-			try main.threadPool.addTask(task, &vtable);
+			main.threadPool.addTask(task, &vtable);
 		}
 
 		pub fn getPriority(self: *LightMapLoadTask) f32 {
@@ -138,17 +137,17 @@ const ChunkManager = struct {
 			return true;
 		}
 
-		pub fn run(self: *LightMapLoadTask) Allocator.Error!void {
+		pub fn run(self: *LightMapLoadTask) void {
 			defer self.clean();
-			const map = try terrain.LightMap.getOrGenerateFragment(self.pos.wx, self.pos.wz, self.pos.voxelSize);
+			const map = terrain.LightMap.getOrGenerateFragment(self.pos.wx, self.pos.wz, self.pos.voxelSize);
 			defer map.decreaseRefCount();
 			if(self.source) |source| {
-				try main.network.Protocols.lightMapTransmission.sendLightMap(source.conn, map);
+				main.network.Protocols.lightMapTransmission.sendLightMap(source.conn, map);
 			} else {
 				server.mutex.lock();
 				defer server.mutex.unlock();
 				for(server.users.items) |user| {
-					try main.network.Protocols.lightMapTransmission.sendLightMap(user.conn, map);
+					main.network.Protocols.lightMapTransmission.sendLightMap(user.conn, map);
 				}
 			}
 		}
@@ -163,7 +162,7 @@ const ChunkManager = struct {
 			.world = world,
 			.terrainGenerationProfile = try server.terrain.TerrainGenerationProfile.init(settings, world.seed),
 		};
-		try server.terrain.init(self.terrainGenerationProfile);
+		server.terrain.init(self.terrainGenerationProfile);
 		return self;
 	}
 
@@ -190,40 +189,40 @@ const ChunkManager = struct {
 		self.terrainGenerationProfile.deinit();
 	}
 
-	pub fn queueLightMap(self: ChunkManager, pos: terrain.SurfaceMap.MapFragmentPosition, source: ?*User) !void {
+	pub fn queueLightMap(self: ChunkManager, pos: terrain.SurfaceMap.MapFragmentPosition, source: ?*User) void {
 		_ = self;
-		try LightMapLoadTask.schedule(pos, source);
+		LightMapLoadTask.schedule(pos, source);
 	}
 
-	pub fn queueChunk(self: ChunkManager, pos: ChunkPosition, source: ?*User) !void {
+	pub fn queueChunk(self: ChunkManager, pos: ChunkPosition, source: ?*User) void {
 		_ = self;
-		try ChunkLoadTask.schedule(pos, source);
+		ChunkLoadTask.schedule(pos, source);
 	}
 
-	pub fn generateChunk(pos: ChunkPosition, source: ?*User) Allocator.Error!void {
-		const ch = try getOrGenerateChunk(pos);
+	pub fn generateChunk(pos: ChunkPosition, source: ?*User) void {
+		const ch = getOrGenerateChunk(pos);
 		if(source) |_source| {
-			try main.network.Protocols.chunkTransmission.sendChunk(_source.conn, ch);
+			main.network.Protocols.chunkTransmission.sendChunk(_source.conn, ch);
 		} else { // TODO: This feature was temporarily removed to keep compatibility with the zig version.
 			server.mutex.lock();
 			defer server.mutex.unlock();
 			for(server.users.items) |user| {
-				try main.network.Protocols.chunkTransmission.sendChunk(user.conn, ch);
+				main.network.Protocols.chunkTransmission.sendChunk(user.conn, ch);
 			}
 		}
 	}
 
-	fn chunkInitFunctionForCache(pos: ChunkPosition) !*Chunk {
-		const ch = try main.globalAllocator.create(Chunk);
+	fn chunkInitFunctionForCache(pos: ChunkPosition) *Chunk {
+		const ch = main.globalAllocator.create(Chunk);
 		ch.init(pos);
 		ch.generated = true;
 //	TODO:	if(!ChunkIO.loadChunkFromFile(world, this)) {
-		const caveMap = try terrain.CaveMap.CaveMapView.init(ch);
+		const caveMap = terrain.CaveMap.CaveMapView.init(ch);
 		defer caveMap.deinit();
-		const biomeMap = try terrain.CaveBiomeMap.CaveBiomeMapView.init(ch);
+		const biomeMap = terrain.CaveBiomeMap.CaveBiomeMapView.init(ch);
 		defer biomeMap.deinit();
 		for(server.world.?.chunkManager.terrainGenerationProfile.generators) |generator| {
-			try generator.generate(server.world.?.seed ^ generator.generatorSeed, ch, caveMap, biomeMap);
+			generator.generate(server.world.?.seed ^ generator.generatorSeed, ch, caveMap, biomeMap);
 		}
 		return ch;
 	}
@@ -233,8 +232,8 @@ const ChunkManager = struct {
 		// TODO: Store chunk.
 	}
 	/// Generates a normal chunk at a given location, or if possible gets it from the cache.
-	pub fn getOrGenerateChunk(pos: ChunkPosition) !*Chunk {
-		return try chunkCache.findOrCreate(pos, chunkInitFunctionForCache);
+	pub fn getOrGenerateChunk(pos: ChunkPosition) *Chunk {
+		return chunkCache.findOrCreate(pos, chunkInitFunctionForCache);
 	}
 
 	pub fn getChunkFromCache(pos: ChunkPosition) ?*Chunk {
@@ -302,19 +301,19 @@ const WorldIO = struct {
 	}
 
 	pub fn saveWorldData(self: WorldIO) !void {
-		const worldData: JsonElement = try JsonElement.initObject(main.globalAllocator);
+		const worldData: JsonElement = JsonElement.initObject(main.globalAllocator);
 		defer worldData.free(main.globalAllocator);
-		try worldData.put("version", worldDataVersion);
-		try worldData.put("seed", self.world.seed);
-		try worldData.put("doGameTimeCycle", self.world.doGameTimeCycle);
-		try worldData.put("gameTime", self.world.gameTime);
+		worldData.put("version", worldDataVersion);
+		worldData.put("seed", self.world.seed);
+		worldData.put("doGameTimeCycle", self.world.doGameTimeCycle);
+		worldData.put("gameTime", self.world.gameTime);
 		// TODO:
 //			worldData.put("entityCount", world.getEntities().length);
-		const spawnData = try JsonElement.initObject(main.globalAllocator);
-		try spawnData.put("x", self.world.spawn[0]);
-		try spawnData.put("y", self.world.spawn[1]);
-		try spawnData.put("z", self.world.spawn[2]);
-		try worldData.put("spawn", spawnData);
+		const spawnData = JsonElement.initObject(main.globalAllocator);
+		spawnData.put("x", self.world.spawn[0]);
+		spawnData.put("y", self.world.spawn[1]);
+		spawnData.put("z", self.world.spawn[2]);
+		worldData.put("spawn", spawnData);
 		// TODO:
 //			JsonArray entityData = new JsonArray();
 //			worldData.put("entities", entityData);
@@ -356,7 +355,8 @@ pub const ServerWorld = struct {
 //	protected ArrayList<Entity> entities = new ArrayList<>();
 
 	pub fn init(name: []const u8, nullGeneratorSettings: ?JsonElement) !*ServerWorld {
-		const self = try main.globalAllocator.create(ServerWorld);
+		const self = main.globalAllocator.create(ServerWorld);
+		errdefer main.globalAllocator.destroy(self);
 		self.* = ServerWorld {
 			.lastUpdateTime = std.time.milliTimestamp(),
 			.milliTime = std.time.milliTimestamp(),
@@ -364,9 +364,10 @@ pub const ServerWorld = struct {
 			.seed = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp()))),
 			.name = name,
 		};
-		try self.itemDropManager.init(main.globalAllocator, self, self.gravity);
+		self.itemDropManager.init(main.globalAllocator, self, self.gravity);
+		errdefer self.itemDropManager.deinit();
 
-		var loadArena = std.heap.ArenaAllocator.init(main.globalAllocator);
+		var loadArena = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
 		defer loadArena.deinit();
 		const arenaAllocator = loadArena.allocator();
 		var buf: [32768]u8 = undefined;
@@ -379,9 +380,12 @@ pub const ServerWorld = struct {
 			generatorSettings = try files.readToJson(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/generatorSettings.json", .{name}));
 		}
 		self.wio = WorldIO.init(try files.openDir(try std.fmt.bufPrint(&buf, "saves/{s}", .{name})), self);
+		errdefer self.wio.deinit();
 		const blockPaletteJson = try files.readToJson(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/palette.json", .{name}));
 		self.blockPalette = try main.assets.BlockPalette.init(main.globalAllocator, blockPaletteJson.getChild("blocks")); // TODO: Figure out why this is inconsistent with the save call.
-		
+		errdefer self.blockPalette.deinit();
+		errdefer main.assets.unloadAssets();
+
 		if(self.wio.hasWorldData()) {
 			self.seed = try self.wio.loadWorldSeed();
 			self.generated = true;
@@ -392,14 +396,15 @@ pub const ServerWorld = struct {
 			try self.wio.saveWorldData();
 		}
 		// Store the block palette now that everything is loaded.
-		try files.writeJson(try std.fmt.bufPrint(&buf, "saves/{s}/palette.json", .{name}), try self.blockPalette.save(arenaAllocator));
+		try files.writeJson(try std.fmt.bufPrint(&buf, "saves/{s}/palette.json", .{name}), self.blockPalette.save(arenaAllocator));
 
 //		TODO: // Call mods for this new world. Mods sometimes need to do extra stuff for the specific world.
 //		ModLoader.postWorldGen(registries);
 //
 		self.chunkManager = try ChunkManager.init(self, generatorSettings);
+		errdefer self.chunkManager.deinit();
 		try self.generate();
-		try self.itemDropManager.loadFrom(try files.readToJson(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/items.json", .{name})));
+		self.itemDropManager.loadFrom(try files.readToJson(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/items.json", .{name})));
 		return self;
 	}
 
@@ -421,9 +426,9 @@ pub const ServerWorld = struct {
 				self.spawn[0] = main.random.nextIntBounded(u31, &seed, 65536);
 				self.spawn[2] = main.random.nextIntBounded(u31, &seed, 65536);
 				std.log.info("Trying ({}, {})", .{self.spawn[0], self.spawn[2]});
-				if(try self.isValidSpawnLocation(self.spawn[0], self.spawn[2])) break;
+				if(self.isValidSpawnLocation(self.spawn[0], self.spawn[2])) break;
 			}
-			const map = try terrain.SurfaceMap.getOrGenerateFragment(self.spawn[0], self.spawn[2], 1);
+			const map = terrain.SurfaceMap.getOrGenerateFragment(self.spawn[0], self.spawn[2], 1);
 			defer map.deinit();
 			self.spawn[1] = @intFromFloat(map.getHeight(self.spawn[0], self.spawn[2]) + 1);
 		}
@@ -432,9 +437,9 @@ pub const ServerWorld = struct {
 	}
 
 
-	pub fn findPlayer(self: *ServerWorld, user: *User) !void {
+	pub fn findPlayer(self: *ServerWorld, user: *User) void {
 		var buf: [1024]u8 = undefined;
-		const playerData = files.readToJson(main.globalAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/player/{s}.json", .{self.name, user.name})) catch .JsonNull; // TODO: Utils.escapeFolderName(user.name)
+		const playerData = files.readToJson(main.globalAllocator, std.fmt.bufPrint(&buf, "saves/{s}/player/{s}.json", .{self.name, user.name}) catch "") catch .JsonNull; // TODO: Utils.escapeFolderName(user.name)
 		defer playerData.free(main.globalAllocator);
 		const player = &user.player;
 		if(playerData == .JsonNull) {
@@ -464,7 +469,7 @@ pub const ServerWorld = struct {
 //		for(MetaChunk chunk : metaChunks.values().toArray(new MetaChunk[0])) {
 //			if (chunk != null) chunk.save();
 //		}
-		self.wio.saveWorldData();
+		try self.wio.saveWorldData();
 		// TODO:
 //		savePlayers();
 //		chunkManager.forceSave();
@@ -472,7 +477,7 @@ pub const ServerWorld = struct {
 		const itemDropJson = self.itemDropManager.store(main.globalAllocator);
 		defer itemDropJson.free(main.globalAllocator);
 		var buf: [32768]u8 = undefined;
-		files.writeJson(try std.fmt.bufPrint(&buf, "saves/{s}/items.json", .{self.name}), itemDropJson);
+		try files.writeJson(try std.fmt.bufPrint(&buf, "saves/{s}/items.json", .{self.name}), itemDropJson);
 	}
 // TODO:
 //	public void addEntity(Entity ent) {
@@ -490,19 +495,19 @@ pub const ServerWorld = struct {
 //		}
 //	}
 
-	fn isValidSpawnLocation(_: *ServerWorld, wx: i32, wz: i32) !bool {
-		const map = try terrain.SurfaceMap.getOrGenerateFragment(wx, wz, 1);
+	fn isValidSpawnLocation(_: *ServerWorld, wx: i32, wz: i32) bool {
+		const map = terrain.SurfaceMap.getOrGenerateFragment(wx, wz, 1);
 		defer map.deinit();
 		return map.getBiome(wx, wz).isValidPlayerSpawn;
 	}
 
-	pub fn dropWithCooldown(self: *ServerWorld, stack: ItemStack, pos: Vec3d, dir: Vec3f, velocity: f32, pickupCooldown: u32) !void {
+	pub fn dropWithCooldown(self: *ServerWorld, stack: ItemStack, pos: Vec3d, dir: Vec3f, velocity: f32, pickupCooldown: u32) void {
 		const vel = vec.floatCast(f64, dir*@as(Vec3d, @splat(velocity)));
-		try self.itemDropManager.add(pos, vel, stack, server.updatesPerSec*900, pickupCooldown);
+		self.itemDropManager.add(pos, vel, stack, server.updatesPerSec*900, pickupCooldown);
 	}
 
-	pub fn drop(self: *ServerWorld, stack: ItemStack, pos: Vec3d, dir: Vec3f, velocity: f32) !void {
-		try self.dropWithCooldown(stack, pos, dir, velocity, 0);
+	pub fn drop(self: *ServerWorld, stack: ItemStack, pos: Vec3d, dir: Vec3f, velocity: f32) void {
+		self.dropWithCooldown(stack, pos, dir, velocity, 0);
 	}
 
 // TODO:
@@ -529,7 +534,7 @@ pub const ServerWorld = struct {
 //		}
 //	}
 
-	pub fn update(self: *ServerWorld) !void {
+	pub fn update(self: *ServerWorld) void {
 		const newTime = std.time.milliTimestamp();
 		var deltaTime = @as(f32, @floatFromInt(newTime - self.lastUpdateTime))/1000.0;
 		self.lastUpdateTime = newTime;
@@ -545,7 +550,7 @@ pub const ServerWorld = struct {
 		if(self.lastUnimportantDataSent + 2000 < newTime) {// Send unimportant data every ~2s.
 			self.lastUnimportantDataSent = newTime;
 			for(server.users.items) |user| {
-				try main.network.Protocols.genericUpdate.sendTimeAndBiome(user.conn, self);
+				main.network.Protocols.genericUpdate.sendTimeAndBiome(user.conn, self);
 			}
 		}
 		// TODO:
@@ -581,21 +586,21 @@ pub const ServerWorld = struct {
 
 // TODO:
 //	@Override
-	pub fn queueChunks(self: *ServerWorld, positions: []ChunkPosition, source: ?*User) !void {
+	pub fn queueChunks(self: *ServerWorld, positions: []ChunkPosition, source: ?*User) void {
 		for(positions) |pos| {
-			try self.queueChunk(pos, source);
+			self.queueChunk(pos, source);
 		}
 	}
 
-	pub fn queueChunk(self: *ServerWorld, pos: ChunkPosition, source: ?*User) !void {
-		try self.chunkManager.queueChunk(pos, source);
+	pub fn queueChunk(self: *ServerWorld, pos: ChunkPosition, source: ?*User) void {
+		self.chunkManager.queueChunk(pos, source);
 	}
 
-	pub fn queueLightMap(self: *ServerWorld, pos: terrain.SurfaceMap.MapFragmentPosition, source: ?*User) !void {
-		try self.chunkManager.queueLightMap(pos, source);
+	pub fn queueLightMap(self: *ServerWorld, pos: terrain.SurfaceMap.MapFragmentPosition, source: ?*User) void {
+		self.chunkManager.queueLightMap(pos, source);
 	}
 
-	pub fn seek() !void {
+	pub fn seek() void {
 		// TODO: Remove this MetaChunk stuff. It wasn't really useful and made everything needlessly complicated.
 //		// Care about the metaChunks:
 //		HashMap<HashMapKey3D, MetaChunk> oldMetaChunks = new HashMap<>(metaChunks);
@@ -696,8 +701,8 @@ pub const ServerWorld = struct {
 //		return registries;
 //	}
 
-	pub fn getBiome(_: *const ServerWorld, wx: i32, wy: i32, wz: i32) !*const terrain.biomes.Biome {
-		const map = try terrain.CaveBiomeMap.InterpolatableCaveBiomeMapView.init(.{.wx = wx, .wy = wy, .wz = wz, .voxelSize = 1}, 1);
+	pub fn getBiome(_: *const ServerWorld, wx: i32, wy: i32, wz: i32) *const terrain.biomes.Biome {
+		const map = terrain.CaveBiomeMap.InterpolatableCaveBiomeMapView.init(.{.wx = wx, .wy = wy, .wz = wz, .voxelSize = 1}, 1);
 		defer map.deinit();
 		return map.getRoughBiome(wx, wy, wz, false, undefined, true);
 	}

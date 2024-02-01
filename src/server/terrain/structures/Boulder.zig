@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const random = main.random;
@@ -10,6 +9,7 @@ const vec = main.vec;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
+const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 pub const id = "cubyz:boulder";
 
@@ -19,8 +19,8 @@ blockType: u16,
 size: f32,
 sizeVariation: f32,
 
-pub fn loadModel(arenaAllocator: Allocator, parameters: JsonElement) Allocator.Error!*Boulder {
-	const self = try arenaAllocator.create(Boulder);
+pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: JsonElement) *Boulder {
+	const self = arenaAllocator.create(Boulder);
 	self.* = .{
 		.blockType = main.blocks.getByID(parameters.get([]const u8, "block", "cubyz:stone")),
 		.size = parameters.get(f32, "size", 4),
@@ -29,7 +29,7 @@ pub fn loadModel(arenaAllocator: Allocator, parameters: JsonElement) Allocator.E
 	return self;
 }
 
-pub fn generate(self: *Boulder, x: i32, y: i32, z: i32, chunk: *main.chunk.Chunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) Allocator.Error!void {
+pub fn generate(self: *Boulder, x: i32, y: i32, z: i32, chunk: *main.chunk.Chunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) void {
 	_ = caveMap;
 	const radius = self.size + self.sizeVariation*(random.nextFloat(seed)*2 - 1);
 	// My basic idea is to use a point cloud and a potential function to achieve somewhat smooth boulders without being a sphere.

@@ -1,9 +1,9 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const random = main.random;
 const Array2D = main.utils.Array2D;
+const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 const sizeShift = 7; // TODO: Increase back to 10 once this is no longer impacting loading time.
 const size = 1 << sizeShift;
@@ -62,12 +62,12 @@ fn sample(x: i32, y: i32) u8 {
 }
 
 /// Takes a subregion of the grid. Corrdinates are returned relative to x and y compressed into 16 bits each.
-pub fn getRegionData(allocator: Allocator, x: i32, y: i32, width: u31, height: u31) ![]u32 {
+pub fn getRegionData(allocator: NeverFailingAllocator, x: i32, y: i32, width: u31, height: u31) []u32 {
 	const xMin = ((x & ~@as(i32, featureMask)) - featureSize) >> featureShift;
 	const yMin = ((y & ~@as(i32, featureMask)) - featureSize) >> featureShift;
 	const xMax = ((x+width & ~@as(i32, featureMask))) >> featureShift;
 	const yMax = ((y+height & ~@as(i32, featureMask))) >> featureShift;
-	var result = try std.ArrayListUnmanaged(u32).initCapacity(allocator, @intCast((xMax - xMin + 1)*(yMax - yMin + 1)));
+	var result = main.ListUnmanaged(u32).initCapacity(allocator, @intCast((xMax - xMin + 1)*(yMax - yMin + 1)));
 	var xMap: i32 = xMin;
 	while(xMap <= xMax) : (xMap += 1) {
 		var yMap: i32 = yMin;

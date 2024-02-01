@@ -24,19 +24,19 @@ pub fn getModelIndex(string: []const u8) u16 {
 	};
 }
 
-pub var models: std.ArrayList(Model) = undefined;
+pub var models: main.List(Model) = undefined;
 pub var fullCube: u16 = 0;
 
 // TODO: Allow loading from world assets.
 // TODO: Entity models.
-pub fn init() !void {
-	models = std.ArrayList(Model).init(main.globalAllocator);
+pub fn init() void {
+	models = main.List(Model).init(main.globalAllocator);
 
-	nameToIndex = std.StringHashMap(u16).init(main.globalAllocator);
+	nameToIndex = std.StringHashMap(u16).init(main.globalAllocator.allocator);
 
-	try nameToIndex.put("cube", @intCast(models.items.len));
+	nameToIndex.put("cube", @intCast(models.items.len)) catch unreachable;
 	fullCube = @intCast(models.items.len);
-	try models.append(.{.min = .{0, 0, 0}, .max = .{16, 16, 16}});
+	models.append(.{.min = .{0, 0, 0}, .max = .{16, 16, 16}});
 
 	modelSSBO = graphics.SSBO.initStatic(Model, models.items);
 	modelSSBO.bind(4);

@@ -1,10 +1,10 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const ConnectionManager = main.network.ConnectionManager;
 const settings = main.settings;
 const Vec2f = main.vec.Vec2f;
+const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 const gui = @import("../gui.zig");
 const GuiComponent = gui.GuiComponent;
@@ -22,10 +22,10 @@ pub var window = GuiWindow {
 
 const padding: f32 = 8;
 const width: f32 = 128;
-var buttonNameArena: std.heap.ArenaAllocator = undefined;
+var buttonNameArena: main.utils.NeverFailingArenaAllocator = undefined;
 
 pub fn openWorld(name: []const u8) void {
-	std.log.info("TODO: Open world {s}", .{name});
+	std.log.info("Opening world {s}", .{name});
 	main.server.thread = std.Thread.spawn(.{}, main.server.start, .{name}) catch |err| {
 		std.log.err("Encountered error while starting server thread: {s}", .{@errorName(err)});
 		return;
@@ -41,21 +41,9 @@ pub fn openWorld(name: []const u8) void {
 	};
 	main.game.world = &main.game.testWorld;
 	for(gui.openWindows.items) |openWindow| {
-		gui.closeWindow(openWindow) catch |err| {
-			std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
-		};
+		gui.closeWindow(openWindow);
 	}
-	gui.openHud() catch |err| {
-		std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
-	};
-//	while(Server.world == null) {
-//		try {
-//			Thread.sleep(10);
-//		} catch(InterruptedException e) {}
-//	}
-//	try {
-//		GameLauncher.logic.loadWorld(new ClientWorld("127.0.0.1", new UDPConnectionManager(Constants.DEFAULT_PORT+1, false))); // TODO: Don't go over the local network in singleplayer.
-//	} catch(InterruptedException e) {}
+	gui.openHud();
 }
 
 fn openWorldWrap(namePtr: usize) void { // TODO: Improve this situation. Maybe it makes sense to always use 2 arguments in the Callback.
@@ -70,7 +58,7 @@ fn flawedDeleteWorld(name: []const u8) !void {
 	try saveDir.deleteTree(name);
 
 	onClose();
-	try onOpen();
+	onOpen();
 }
 
 fn deleteWorld(namePtr: usize) void {
@@ -81,8 +69,8 @@ fn deleteWorld(namePtr: usize) void {
 	};
 }
 
-fn parseEscapedFolderName(allocator: std.mem.Allocator, name: []const u8) ![]const u8 {
-	var result = std.ArrayList(u8).init(allocator);
+fn parseEscapedFolderName(allocator: NeverFailingAllocator, name: []const u8) []const u8 {
+	var result = main.List(u8).init(allocator);
 	defer result.deinit();
 	var i: u32 = 0;
 	while(i < name.len) : (i += 1) {
@@ -100,42 +88,46 @@ fn parseEscapedFolderName(allocator: std.mem.Allocator, name: []const u8) ![]con
 				}
 			}
 			var buf: [4]u8 = undefined;
-			try result.appendSlice(buf[0..std.unicode.utf8Encode(val, &buf) catch 0]); // TODO: Change this to full unicode rather than using this broken utf-16 converter.
+			result.appendSlice(buf[0..std.unicode.utf8Encode(val, &buf) catch 0]); // TODO: Change this to full unicode rather than using this broken utf-16 converter.
 		} else {
-			try result.append(name[i]);
+			result.append(name[i]);
 		}
 	}
-	return try result.toOwnedSlice();
+	return result.toOwnedSlice();
 }
 
-pub fn onOpen() Allocator.Error!void {
-	buttonNameArena = std.heap.ArenaAllocator.init(main.globalAllocator);
-	const list = try VerticalList.init(.{padding, 16 + padding}, 300, 8);
-	// TODO: try list.add(try Button.initText(.{0, 0}, 128, "Create World", gui.openWindowCallback("save_creation")));
+pub fn onOpen() void {
+	buttonNameArena = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
+	const list = VerticalList.init(.{padding, 16 + padding}, 300, 8);
+	// TODO: list.add(Button.initText(.{0, 0}, 128, "Create World", gui.openWindowCallback("save_creation")));
 
-	var dir = std.fs.cwd().makeOpenPath("saves", .{.iterate = true}) catch |err| {
-		std.log.err("Encountered error while trying to open folder \"saves\": {s}", .{@errorName(err)});
-		return;
-	};
-	defer dir.close();
+	readingSaves: {
+		var dir = std.fs.cwd().makeOpenPath("saves", .{.iterate = true}) catch |err| {
+			list.add(Label.init(.{0, 0}, 128, "Encountered error while trying to open saves folder:", .center));
+			list.add(Label.init(.{0, 0}, 128, @errorName(err), .center));
+			break :readingSaves;
+		};
+		defer dir.close();
 
-	var iterator = dir.iterate();
-	while(iterator.next() catch |err| {
-		std.log.err("Encountered error while iterating over folder \"saves\": {s}", .{@errorName(err)});
-		return;
-	}) |entry| {
-		if(entry.kind == .directory) {
-			const row = try HorizontalList.init();
+		var iterator = dir.iterate();
+		while(iterator.next() catch |err| {
+			list.add(Label.init(.{0, 0}, 128, "Encountered error while iterating over saves folder:", .center));
+			list.add(Label.init(.{0, 0}, 128, @errorName(err), .center));
+			break :readingSaves;
+		}) |entry| {
+			if(entry.kind == .directory) {
+				const row = HorizontalList.init();
 
-			const decodedName = try parseEscapedFolderName(main.stackAllocator, entry.name);
-			defer main.stackAllocator.free(decodedName);
-			const name = try buttonNameArena.allocator().dupeZ(u8, entry.name); // Null terminate, so we can later recover the string from just the pointer.
-			const buttonName = try std.fmt.allocPrint(buttonNameArena.allocator(), "Play {s}", .{decodedName});
-			
-			try row.add(try Button.initText(.{0, 0}, 128, buttonName, .{.callback = &openWorldWrap, .arg = @intFromPtr(name.ptr)}));
-			try row.add(try Button.initText(.{8, 0}, 64, "delete", .{.callback = &deleteWorld, .arg = @intFromPtr(name.ptr)}));
-			row.finish(.{0, 0}, .center);
-			try list.add(row);
+				const decodedName = parseEscapedFolderName(main.stackAllocator, entry.name);
+				defer main.stackAllocator.free(decodedName);
+				const name = buttonNameArena.allocator().dupeZ(u8, entry.name); // Null terminate, so we can later recover the string from just the pointer.
+				const buttonName = std.fmt.allocPrint(buttonNameArena.allocator().allocator, "Play {s}", .{decodedName}) catch unreachable;
+				
+				row.add(Button.initText(.{0, 0}, 128, buttonName, .{.callback = &openWorldWrap, .arg = @intFromPtr(name.ptr)}));
+				row.add(Button.initText(.{8, 0}, 64, "delete", .{.callback = &deleteWorld, .arg = @intFromPtr(name.ptr)}));
+				row.finish(.{0, 0}, .center);
+				list.add(row);
+			}
 		}
 	}
 

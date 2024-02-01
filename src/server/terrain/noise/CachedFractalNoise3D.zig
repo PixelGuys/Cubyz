@@ -12,7 +12,7 @@ voxelShift: u5,
 scale: u31,
 worldSeed: u64,
 
-pub fn init(wx: i32, wy: i32, wz: i32, voxelSize: u31, size: u31, worldSeed: u64, scale: u31) !CachedFractalNoise3D {
+pub fn init(wx: i32, wy: i32, wz: i32, voxelSize: u31, size: u31, worldSeed: u64, scale: u31) CachedFractalNoise3D {
 	const maxSize = size/voxelSize;
 	const cacheWidth = maxSize + 1;
 	var self = CachedFractalNoise3D {
@@ -21,7 +21,7 @@ pub fn init(wx: i32, wy: i32, wz: i32, voxelSize: u31, size: u31, worldSeed: u64
 			.voxelSize = voxelSize,
 		},
 		.voxelShift = @ctz(voxelSize),
-		.cache = try Array3D(f32).init(main.globalAllocator, cacheWidth, cacheWidth, cacheWidth),
+		.cache = Array3D(f32).init(main.globalAllocator, cacheWidth, cacheWidth, cacheWidth),
 		.scale = scale,
 		.worldSeed = worldSeed,
 	};

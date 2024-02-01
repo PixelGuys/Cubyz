@@ -1,5 +1,4 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 const sign = std.math.sign;
 
 const main = @import("root");
@@ -36,14 +35,14 @@ fn getValue(noise: Array3D(f32), outerSizeShift: u5, relX: u31, relY: u31, relZ:
 	return noise.get(relX >> outerSizeShift, relY >> outerSizeShift, relZ >> outerSizeShift);
 }
 
-pub fn generate(map: *CaveMapFragment, worldSeed: u64) Allocator.Error!void {
+pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 	if(map.pos.voxelSize > 2) return;
-	const biomeMap = try InterpolatableCaveBiomeMapView.init(map.pos, CaveMapFragment.width*map.pos.voxelSize);
+	const biomeMap = InterpolatableCaveBiomeMapView.init(map.pos, CaveMapFragment.width*map.pos.voxelSize);
 	defer biomeMap.deinit();
 	const outerSize = @max(map.pos.voxelSize, interpolatedPart);
 	const outerSizeShift = std.math.log2_int(u31, outerSize);
 	const outerSizeFloat: f32 = @floatFromInt(outerSize);
-	const noise = try FractalNoise3D.generateAligned(main.stackAllocator, map.pos.wx, map.pos.wy, map.pos.wz, outerSize, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, CaveMapFragment.height*map.pos.voxelSize/outerSize + 1, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, worldSeed, scale);//try Cached3DFractalNoise.init(map.pos.wx, map.pos.wy & ~@as(i32, CaveMapFragment.width*map.pos.voxelSize - 1), map.pos.wz, outerSize, map.pos.voxelSize*CaveMapFragment.width, worldSeed, scale);
+	const noise = FractalNoise3D.generateAligned(main.stackAllocator, map.pos.wx, map.pos.wy, map.pos.wz, outerSize, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, CaveMapFragment.height*map.pos.voxelSize/outerSize + 1, CaveMapFragment.width*map.pos.voxelSize/outerSize + 1, worldSeed, scale);
 	defer noise.deinit(main.stackAllocator);
 	biomeMap.bulkInterpolateValue("caves", map.pos.wx, map.pos.wy, map.pos.wz, outerSize, noise, .addToMap, scale);
 	var x: u31 = 0;

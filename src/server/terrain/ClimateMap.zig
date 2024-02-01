@@ -1,6 +1,5 @@
 const std = @import("std");
 const Atomic = std.atomic.Value;
-const Allocator = std.mem.Allocator;
 
 const main = @import("root");
 const Array2D = main.utils.Array2D;
@@ -10,6 +9,7 @@ const terrain = main.server.terrain;
 const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
 const Biome = terrain.biomes.Biome;
 const MapFragment = terrain.SurfaceMap.MapFragment;
+const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 pub const BiomeSample = struct {
 	biome: *const Biome,
@@ -66,17 +66,17 @@ pub const ClimateMapFragment = struct {
 pub const ClimateMapGenerator = struct {
 	init: *const fn(parameters: JsonElement) void,
 	deinit: *const fn() void,
-	generateMapFragment: *const fn(fragment: *ClimateMapFragment, seed: u64) Allocator.Error!void,
+	generateMapFragment: *const fn(fragment: *ClimateMapFragment, seed: u64) void,
 
 	var generatorRegistry: std.StringHashMapUnmanaged(ClimateMapGenerator) = .{};
 
-	pub fn registerGenerator(comptime Generator: type) !void {
+	pub fn registerGenerator(comptime Generator: type) void {
 		const self = ClimateMapGenerator {
 			.init = &Generator.init,
 			.deinit = &Generator.deinit,
 			.generateMapFragment = &Generator.generateMapFragment,
 		};
-		try generatorRegistry.put(main.globalAllocator, Generator.id, self);
+		generatorRegistry.put(main.globalAllocator.allocator, Generator.id, self) catch unreachable;
 	}
 
 	pub fn getGeneratorById(id: []const u8) !ClimateMapGenerator {
@@ -94,15 +94,15 @@ const associativity = 4;
 var cache: Cache(ClimateMapFragment, cacheSize, associativity, mapFragmentDeinit) = .{};
 var profile: TerrainGenerationProfile = undefined;
 
-pub fn initGenerators() !void {
+pub fn initGenerators() void {
 	const list = @import("climategen/_list.zig");
 	inline for(@typeInfo(list).Struct.decls) |decl| {
-		try ClimateMapGenerator.registerGenerator(@field(list, decl.name));
+		ClimateMapGenerator.registerGenerator(@field(list, decl.name));
 	}
 }
 
 pub fn deinitGenerators() void {
-	ClimateMapGenerator.generatorRegistry.clearAndFree(main.globalAllocator);
+	ClimateMapGenerator.generatorRegistry.clearAndFree(main.globalAllocator.allocator);
 }
 
 fn mapFragmentDeinit(mapFragment: *ClimateMapFragment) void {
@@ -111,10 +111,10 @@ fn mapFragmentDeinit(mapFragment: *ClimateMapFragment) void {
 	}
 }
 
-fn cacheInit(pos: ClimateMapFragmentPosition) !*ClimateMapFragment {
-	const mapFragment = try main.globalAllocator.create(ClimateMapFragment);
+fn cacheInit(pos: ClimateMapFragmentPosition) *ClimateMapFragment {
+	const mapFragment = main.globalAllocator.create(ClimateMapFragment);
 	mapFragment.init(pos.wx, pos.wz);
-	try profile.climateGenerator.generateMapFragment(mapFragment, profile.seed);
+	profile.climateGenerator.generateMapFragment(mapFragment, profile.seed);
 	_ = @atomicRmw(u16, &mapFragment.refCount.raw, .Add, 1, .Monotonic);
 	return mapFragment;
 }
@@ -128,15 +128,15 @@ pub fn deinit() void {
 }
 
 /// Call deinit on the result.
-fn getOrGenerateFragment(wx: i32, wz: i32) Allocator.Error!*ClimateMapFragment {
+fn getOrGenerateFragment(wx: i32, wz: i32) *ClimateMapFragment {
 	const compare = ClimateMapFragmentPosition{.wx = wx, .wz = wz};
-	const result = try cache.findOrCreate(compare, cacheInit);
+	const result = cache.findOrCreate(compare, cacheInit);
 	std.debug.assert(@atomicRmw(u16, &result.refCount.raw, .Add, 1, .Monotonic) != 0);
 	return result;
 }
 
-pub fn getBiomeMap(allocator: Allocator, wx: i32, wz: i32, width: u31, height: u31) Allocator.Error!Array2D(BiomeSample) {
-	const map = try Array2D(BiomeSample).init(allocator, width >> MapFragment.biomeShift, height >> MapFragment.biomeShift);
+pub fn getBiomeMap(allocator: NeverFailingAllocator, wx: i32, wz: i32, width: u31, height: u31) Array2D(BiomeSample) {
+	const map = Array2D(BiomeSample).init(allocator, width >> MapFragment.biomeShift, height >> MapFragment.biomeShift);
 	const wxStart = wx & ~ClimateMapFragment.mapMask;
 	const wzStart = wz & ~ClimateMapFragment.mapMask;
 	const wxEnd = wx+width & ~ClimateMapFragment.mapMask;
@@ -145,7 +145,7 @@ pub fn getBiomeMap(allocator: Allocator, wx: i32, wz: i32, width: u31, height: u
 	while(x <= wxEnd) : (x += ClimateMapFragment.mapSize) {
 		var z = wzStart;
 		while(z <= wzEnd) : (z += ClimateMapFragment.mapSize) {
-			const mapPiece = try getOrGenerateFragment(x, z);
+			const mapPiece = getOrGenerateFragment(x, z);
 			defer mapFragmentDeinit(mapPiece);
 			// Offset of the indices in the result map:
 			const xOffset = (x - wx) >> MapFragment.biomeShift;
