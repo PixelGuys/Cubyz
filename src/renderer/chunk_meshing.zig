@@ -52,6 +52,7 @@ pub var quadsDrawn: usize = 0;
 pub var transparentQuadsDrawn: usize = 0;
 
 pub fn init() void {
+	lighting.init();
 	shader = Shader.initAndGetUniforms("assets/cubyz/shaders/chunks/chunk_vertex.vs", "assets/cubyz/shaders/chunks/chunk_fragment.fs", &uniforms);
 	transparentShader = Shader.initAndGetUniforms("assets/cubyz/shaders/chunks/chunk_vertex.vs", "assets/cubyz/shaders/chunks/transparent_fragment.fs", &transparentUniforms);
 
@@ -73,6 +74,7 @@ pub fn init() void {
 }
 
 pub fn deinit() void {
+	lighting.deinit();
 	shader.deinit();
 	transparentShader.deinit();
 	c.glDeleteVertexArrays(1, &vao);
@@ -240,12 +242,12 @@ const PrimitiveMesh = struct {
 		const z = (wz >> mesh.chunk.voxelSizeShift) & chunk.chunkMask;
 		const index = chunk.getIndex(x, y, z);
 		return .{
-			mesh.lightingData.*[0].data[index].load(.Unordered),
-			mesh.lightingData.*[1].data[index].load(.Unordered),
-			mesh.lightingData.*[2].data[index].load(.Unordered),
-			mesh.lightingData.*[3].data[index].load(.Unordered),
-			mesh.lightingData.*[4].data[index].load(.Unordered),
-			mesh.lightingData.*[5].data[index].load(.Unordered),
+			mesh.lightingData[0].data[index].load(.Unordered),
+			mesh.lightingData[1].data[index].load(.Unordered),
+			mesh.lightingData[2].data[index].load(.Unordered),
+			mesh.lightingData[3].data[index].load(.Unordered),
+			mesh.lightingData[4].data[index].load(.Unordered),
+			mesh.lightingData[5].data[index].load(.Unordered),
 		};
 	}
 
@@ -422,7 +424,7 @@ pub const ChunkMesh = struct {
 	pos: chunk.ChunkPosition,
 	size: i32,
 	chunk: *chunk.Chunk,
-	lightingData: *[6]lighting.ChannelChunk,
+	lightingData: [6]*lighting.ChannelChunk,
 	opaqueMesh: PrimitiveMesh,
 	transparentMesh: PrimitiveMesh,
 	lastNeighborsSameLod: [6]?*const ChunkMesh = [_]?*const ChunkMesh{null} ** 6,
@@ -444,20 +446,20 @@ pub const ChunkMesh = struct {
 	chunkBorders: [6]BoundingRectToNeighborChunk = [1]BoundingRectToNeighborChunk{.{}} ** 6,
 
 	pub fn init(self: *ChunkMesh, pos: chunk.ChunkPosition, ch: *chunk.Chunk) void {
-		const lightingData = main.globalAllocator.create([6]lighting.ChannelChunk);
-		lightingData[0].init(ch, .sun_red);
-		lightingData[1].init(ch, .sun_green);
-		lightingData[2].init(ch, .sun_blue);
-		lightingData[3].init(ch, .red);
-		lightingData[4].init(ch, .green);
-		lightingData[5].init(ch, .blue);
 		self.* = ChunkMesh{
 			.pos = pos,
 			.size = chunk.chunkSize*pos.voxelSize,
 			.opaqueMesh = .{},
 			.transparentMesh = .{},
 			.chunk = ch,
-			.lightingData = lightingData,
+			.lightingData = .{
+				lighting.ChannelChunk.init(ch, .sun_red),
+				lighting.ChannelChunk.init(ch, .sun_green),
+				lighting.ChannelChunk.init(ch, .sun_blue),
+				lighting.ChannelChunk.init(ch, .red),
+				lighting.ChannelChunk.init(ch, .green),
+				lighting.ChannelChunk.init(ch, .blue),
+			},
 		};
 	}
 
@@ -465,10 +467,12 @@ pub const ChunkMesh = struct {
 		std.debug.assert(self.refCount.load(.Monotonic) == 0);
 		self.opaqueMesh.deinit();
 		self.transparentMesh.deinit();
+		self.chunk.deinit();
 		main.globalAllocator.free(self.currentSorting);
 		main.globalAllocator.free(self.sortingOutputBuffer);
-		main.globalAllocator.destroy(self.chunk);
-		main.globalAllocator.destroy(self.lightingData);
+		for(self.lightingData) |lightingChunk| {
+			lightingChunk.deinit();
+		}
 	}
 
 	pub fn increaseRefCount(self: *ChunkMesh) void {
@@ -584,7 +588,7 @@ pub const ChunkMesh = struct {
 			}
 		}
 		self.mutex.unlock();
-		for(self.lightingData[3..]) |*lightingData| {
+		for(self.lightingData[3..]) |lightingData| {
 			lightingData.propagateLights(lightEmittingBlocks.items, true);
 		}
 		sunLight: {
@@ -604,7 +608,7 @@ pub const ChunkMesh = struct {
 					}
 				}
 			}
-			for(self.lightingData[0..3]) |*lightingData| {
+			for(self.lightingData[0..3]) |lightingData| {
 				lightingData.propagateLights(sunStarters[0..index], true);
 			}
 		}
@@ -728,11 +732,11 @@ pub const ChunkMesh = struct {
 		const oldBlock = self.chunk.blocks[chunk.getIndex(x, y, z)];
 		self.chunk.blocks[chunk.getIndex(x, y, z)] = newBlock;
 		self.mutex.unlock();
-		for(self.lightingData[0..]) |*lightingData| {
+		for(self.lightingData[0..]) |lightingData| {
 			lightingData.propagateLightsDestructive(&.{.{@intCast(x), @intCast(y), @intCast(z)}});
 		}
 		if(newBlock.light() != 0) {
-			for(self.lightingData[3..]) |*lightingData| {
+			for(self.lightingData[3..]) |lightingData| {
 				lightingData.propagateLights(&.{.{@intCast(x), @intCast(y), @intCast(z)}}, false);
 			}
 		}

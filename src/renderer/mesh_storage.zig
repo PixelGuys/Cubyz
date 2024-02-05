@@ -1022,7 +1022,7 @@ pub const MeshGenerationTask = struct {
 	}
 
 	pub fn clean(self: *MeshGenerationTask) void {
-		main.globalAllocator.destroy(self.mesh);
+		self.mesh.deinit();
 		main.globalAllocator.destroy(self);
 	}
 };

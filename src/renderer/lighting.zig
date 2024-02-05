@@ -31,17 +31,38 @@ const Channel = enum(u8) {
 	}
 };
 
+var memoryPool: std.heap.MemoryPool(ChannelChunk) = undefined;
+var memoryPoolMutex: std.Thread.Mutex = .{};
+
+pub fn init() void {
+	memoryPool = std.heap.MemoryPool(ChannelChunk).init(main.globalAllocator.allocator);
+}
+
+pub fn deinit() void {
+	memoryPool.deinit();
+}
+
 pub const ChannelChunk = struct {
 	data: [chunk.chunkVolume]Atomic(u8),
 	mutex: std.Thread.Mutex,
 	ch: *chunk.Chunk,
 	channel: Channel,
 
-	pub fn init(self: *ChannelChunk, ch: *chunk.Chunk, channel: Channel) void {
+	pub fn init(ch: *chunk.Chunk, channel: Channel) *ChannelChunk {
+		memoryPoolMutex.lock();
+		const self = memoryPool.create() catch unreachable;
+		memoryPoolMutex.unlock();
 		self.mutex = .{};
 		self.ch = ch;
 		self.channel = channel;
 		@memset(&self.data, Atomic(u8).init(0));
+		return self;
+	}
+
+	pub fn deinit(self: *ChannelChunk) void {
+		memoryPoolMutex.lock();
+		memoryPool.destroy(self);
+		memoryPoolMutex.unlock();
 	}
 
 	const Entry = struct {
@@ -235,7 +256,7 @@ pub const ChannelChunk = struct {
 						const otherZ = z+%chunk.Neighbors.relZ[neighbor] & chunk.chunkMask;
 						const neighborMesh = mesh_storage.getNeighborAndIncreaseRefCount(self.ch.pos, self.ch.pos.voxelSize, @intCast(neighbor)) orelse continue;
 						defer neighborMesh.decreaseRefCount();
-						const neighborLightChunk = &neighborMesh.lightingData[@intFromEnum(self.channel)];
+						const neighborLightChunk = neighborMesh.lightingData[@intFromEnum(self.channel)];
 						const index = chunk.getIndex(x, y, z);
 						const neighborIndex = chunk.getIndex(otherX, otherY, otherZ);
 						var value: u8 = neighborLightChunk.data[neighborIndex].load(.Unordered);
@@ -272,7 +293,7 @@ pub const ChannelChunk = struct {
 			defer if(mesh) |_mesh| _mesh.decreaseRefCount();
 			var entryList = entries.entries;
 			defer entryList.deinit(main.globalAllocator);
-			const channelChunk = if(mesh) |_mesh| &_mesh.lightingData[@intFromEnum(self.channel)] else self;
+			const channelChunk = if(mesh) |_mesh| _mesh.lightingData[@intFromEnum(self.channel)] else self;
 			for(entryList.items) |entry| {
 				const index = chunk.getIndex(entry.x, entry.y, entry.z);
 				const value = channelChunk.data[index].load(.Unordered);

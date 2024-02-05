@@ -98,6 +98,17 @@ fn extractZFromIndex(index: usize) i32 {
 	return @intCast(index & chunkMask);
 }
 
+var memoryPool: std.heap.MemoryPoolAligned(Chunk, @alignOf(Chunk)) = undefined;
+var memoryPoolMutex: std.Thread.Mutex = .{};
+
+pub fn init() void {
+	memoryPool = std.heap.MemoryPoolAligned(Chunk, @alignOf(Chunk)).init(main.globalAllocator.allocator);
+}
+
+pub fn deinit() void {
+	memoryPool.deinit();
+}
+
 pub const ChunkPosition = struct {
 	wx: i32,
 	wy: i32,
@@ -170,7 +181,10 @@ pub const Chunk = struct {
 	widthShift: u5,
 	mutex: std.Thread.Mutex,
 
-	pub fn init(self: *Chunk, pos: ChunkPosition) void {
+	pub fn init(pos: ChunkPosition) *Chunk {
+		memoryPoolMutex.lock();
+		const self = memoryPool.create() catch unreachable;
+		memoryPoolMutex.unlock();
 		std.debug.assert((pos.voxelSize - 1 & pos.voxelSize) == 0);
 		std.debug.assert(@mod(pos.wx, pos.voxelSize) == 0 and @mod(pos.wy, pos.voxelSize) == 0 and @mod(pos.wz, pos.voxelSize) == 0);
 		const voxelSizeShift: u5 = @intCast(std.math.log2_int(u31, pos.voxelSize));
@@ -182,6 +196,13 @@ pub const Chunk = struct {
 			.widthShift = voxelSizeShift + chunkShift,
 			.mutex = std.Thread.Mutex{},
 		};
+		return self;
+	}
+
+	pub fn deinit(self: *Chunk) void {
+		memoryPoolMutex.lock();
+		memoryPool.destroy(@alignCast(self));
+		memoryPoolMutex.unlock();
 	}
 
 	pub fn setChanged(self: *Chunk) void {

@@ -743,8 +743,7 @@ pub const Protocols = struct {
 				std.log.err("Transmission of chunk has invalid size: {}. Input data: {any}, After inflate: {any}", .{_inflatedLen, data, _inflatedData[0.._inflatedLen]});
 			}
 			data = _inflatedData;
-			const ch = main.globalAllocator.create(chunk.Chunk);
-			ch.init(pos);
+			const ch = chunk.Chunk.init(pos);
 			for(&ch.blocks) |*block| {
 				block.* = Block.fromInt(std.mem.readInt(u32, data[0..4], .big));
 				data = data[4..];
@@ -768,8 +767,7 @@ pub const Protocols = struct {
 			conn.sendImportant(id, data);
 		}
 		fn sendChunkLocally(ch: *chunk.Chunk) void {
-			const chunkCopy = main.globalAllocator.create(chunk.Chunk);
-			chunkCopy.init(ch.pos);
+			const chunkCopy = chunk.Chunk.init(ch.pos);
 			@memcpy(&chunkCopy.blocks, &ch.blocks);
 			renderer.mesh_storage.updateChunkMesh(chunkCopy);
 		}

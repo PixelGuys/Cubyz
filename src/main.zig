@@ -707,6 +707,9 @@ pub fn main() void {
 	gui.init();
 	defer gui.deinit();
 
+	chunk.init();
+	defer chunk.deinit();
+
 	rotation.init();
 	defer rotation.deinit();
 

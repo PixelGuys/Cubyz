@@ -213,8 +213,7 @@ const ChunkManager = struct {
 	}
 
 	fn chunkInitFunctionForCache(pos: ChunkPosition) *Chunk {
-		const ch = main.globalAllocator.create(Chunk);
-		ch.init(pos);
+		const ch = Chunk.init(pos);
 		ch.generated = true;
 //	TODO:	if(!ChunkIO.loadChunkFromFile(world, this)) {
 		const caveMap = terrain.CaveMap.CaveMapView.init(ch);
@@ -228,7 +227,7 @@ const ChunkManager = struct {
 	}
 
 	fn chunkDeinitFunctionForCache(ch: *Chunk) void {
-		main.globalAllocator.destroy(ch);
+		ch.deinit();
 		// TODO: Store chunk.
 	}
 	/// Generates a normal chunk at a given location, or if possible gets it from the cache.
