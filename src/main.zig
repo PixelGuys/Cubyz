@@ -689,7 +689,7 @@ pub fn main() void {
 	initLogging();
 	defer deinitLogging();
 
-	threadPool = utils.ThreadPool.init(globalAllocator, 1 + ((std.Thread.getCpuCount() catch 4) -| 2));
+	threadPool = utils.ThreadPool.init(globalAllocator, @max(1, (std.Thread.getCpuCount() catch 4) -| 1));
 	defer threadPool.deinit();
 
 	settings.init();

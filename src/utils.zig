@@ -1001,7 +1001,7 @@ pub const ThreadPool = struct {
 				self.currentTasks[id].store(null, .Monotonic);
 			}
 
-			if(std.time.milliTimestamp() -% lastUpdate > refreshTime) {
+			if(id == 0 and std.time.milliTimestamp() -% lastUpdate > refreshTime) {
 				if(self.loadList.mutex.tryLock()) {
 					lastUpdate = std.time.milliTimestamp();
 					{
