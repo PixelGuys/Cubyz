@@ -70,6 +70,7 @@ pub const ChannelChunk = struct {
 		y: u5,
 		z: u5,
 		value: u8,
+		sourceDir: u3,
 	};
 
 	const PositionEntry = struct {
@@ -98,10 +99,11 @@ pub const ChannelChunk = struct {
 			if(entry.value <= self.data[index].load(.Unordered)) continue;
 			self.data[index].store(entry.value, .Unordered);
 			for(chunk.Neighbors.iterable) |neighbor| {
+				if(neighbor == entry.sourceDir) continue;
 				const nx = entry.x + chunk.Neighbors.relX[neighbor];
 				const ny = entry.y + chunk.Neighbors.relY[neighbor];
 				const nz = entry.z + chunk.Neighbors.relZ[neighbor];
-				var result: Entry = .{.x = @intCast(nx & chunk.chunkMask), .y = @intCast(ny & chunk.chunkMask), .z = @intCast(nz & chunk.chunkMask), .value = entry.value};
+				var result: Entry = .{.x = @intCast(nx & chunk.chunkMask), .y = @intCast(ny & chunk.chunkMask), .z = @intCast(nz & chunk.chunkMask), .value = entry.value, .sourceDir = neighbor ^ 1};
 				if(!self.channel.isSun() or neighbor != chunk.Neighbors.dirDown or result.value != 255) {
 					result.value -|= 8*|@as(u8, @intCast(self.ch.pos.voxelSize));
 				}
@@ -154,10 +156,11 @@ pub const ChannelChunk = struct {
 			isFirstIteration = false;
 			self.data[index].store(0, .Unordered);
 			for(chunk.Neighbors.iterable) |neighbor| {
+				if(neighbor == entry.sourceDir) continue;
 				const nx = entry.x + chunk.Neighbors.relX[neighbor];
 				const ny = entry.y + chunk.Neighbors.relY[neighbor];
 				const nz = entry.z + chunk.Neighbors.relZ[neighbor];
-				var result: Entry = .{.x = @intCast(nx & chunk.chunkMask), .y = @intCast(ny & chunk.chunkMask), .z = @intCast(nz & chunk.chunkMask), .value = entry.value};
+				var result: Entry = .{.x = @intCast(nx & chunk.chunkMask), .y = @intCast(ny & chunk.chunkMask), .z = @intCast(nz & chunk.chunkMask), .value = entry.value, .sourceDir = neighbor ^ 1};
 				if(!self.channel.isSun() or neighbor != chunk.Neighbors.dirDown or result.value != 255) {
 					result.value -|= 8*|@as(u8, @intCast(self.ch.pos.voxelSize));
 				}
@@ -223,9 +226,9 @@ pub const ChannelChunk = struct {
 		for(lights) |pos| {
 			const index = chunk.getIndex(pos[0], pos[1], pos[2]);
 			if(self.channel.isSun()) {
-				lightQueue.enqueue(.{.x = @intCast(pos[0]), .y = @intCast(pos[1]), .z = @intCast(pos[2]), .value = 255});
+				lightQueue.enqueue(.{.x = @intCast(pos[0]), .y = @intCast(pos[1]), .z = @intCast(pos[2]), .value = 255, .sourceDir = 6});
 			} else {
-				lightQueue.enqueue(.{.x = @intCast(pos[0]), .y = @intCast(pos[1]), .z = @intCast(pos[2]), .value = @intCast(self.ch.blocks[index].light() >> self.channel.shift() & 255)});
+				lightQueue.enqueue(.{.x = @intCast(pos[0]), .y = @intCast(pos[1]), .z = @intCast(pos[2]), .value = @intCast(self.ch.blocks[index].light() >> self.channel.shift() & 255), .sourceDir = 6});
 			}
 		}
 		if(checkNeighbors) {
@@ -267,7 +270,7 @@ pub const ChannelChunk = struct {
 						var absorption: u8 = @intCast(self.ch.blocks[index].absorption() >> self.channel.shift() & 255);
 						absorption *|= @intCast(self.ch.pos.voxelSize);
 						value -|= absorption;
-						if(value != 0) lightQueue.enqueue(.{.x = @intCast(x), .y = @intCast(y), .z = @intCast(z), .value = value});
+						if(value != 0) lightQueue.enqueue(.{.x = @intCast(x), .y = @intCast(y), .z = @intCast(z), .value = value, .sourceDir = @intCast(neighbor)});
 					}
 				}
 			}
@@ -280,7 +283,7 @@ pub const ChannelChunk = struct {
 		defer lightQueue.deinit();
 		for(lights) |pos| {
 			const index = chunk.getIndex(pos[0], pos[1], pos[2]);
-			lightQueue.enqueue(.{.x = @intCast(pos[0]), .y = @intCast(pos[1]), .z = @intCast(pos[2]), .value = self.data[index].load(.Unordered)});
+			lightQueue.enqueue(.{.x = @intCast(pos[0]), .y = @intCast(pos[1]), .z = @intCast(pos[2]), .value = self.data[index].load(.Unordered), .sourceDir = 6});
 		}
 		var constructiveEntries: main.ListUnmanaged(ChunkEntries) = .{};
 		defer constructiveEntries.deinit(main.globalAllocator);
@@ -299,7 +302,7 @@ pub const ChannelChunk = struct {
 				const value = channelChunk.data[index].load(.Unordered);
 				if(value == 0) continue;
 				channelChunk.data[index].store(0, .Unordered);
-				lightQueue.enqueue(.{.x = entry.x, .y = entry.y, .z = entry.z, .value = value});
+				lightQueue.enqueue(.{.x = entry.x, .y = entry.y, .z = entry.z, .value = value, .sourceDir = 6});
 			}
 			channelChunk.propagateDirect(&lightQueue);
 		}
