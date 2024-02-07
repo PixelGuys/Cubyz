@@ -770,6 +770,56 @@ pub const NeverFailingArenaAllocator = struct {
 	}
 };
 
+pub const BufferFallbackAllocator = struct {
+	fixedBuffer: std.heap.FixedBufferAllocator,
+	fallbackAllocator: NeverFailingAllocator,
+
+	pub fn init(buffer: []u8, fallbackAllocator: NeverFailingAllocator) BufferFallbackAllocator {
+		return .{
+			.fixedBuffer = std.heap.FixedBufferAllocator.init(buffer),
+			.fallbackAllocator = fallbackAllocator,
+		};
+	}
+
+	pub fn allocator(self: *BufferFallbackAllocator) NeverFailingAllocator {
+		return .{
+			.allocator = .{
+				.vtable = &.{
+					.alloc = &alloc,
+					.resize = &resize,
+					.free = &free,
+				},
+				.ptr = self,
+			},
+			.IAssertThatTheProvidedAllocatorCantFail = {},
+		};
+	}
+
+	fn alloc(ctx: *anyopaque, len: usize, log2_ptr_align: u8, ra: usize) ?[*]u8 {
+		const self: *BufferFallbackAllocator = @ptrCast(@alignCast(ctx));
+		return self.fixedBuffer.allocator().rawAlloc(len, log2_ptr_align, ra) orelse
+			return self.fallbackAllocator.rawAlloc(len, log2_ptr_align, ra);
+	}
+
+	fn resize(ctx: *anyopaque, buf: []u8, log2_buf_align: u8, new_len: usize, ra: usize) bool {
+		const self: *BufferFallbackAllocator = @ptrCast(@alignCast(ctx));
+		if (self.fixedBuffer.ownsPtr(buf.ptr)) {
+			return self.fixedBuffer.allocator().rawResize(buf, log2_buf_align, new_len, ra);
+		} else {
+			return self.fallbackAllocator.rawResize(buf, log2_buf_align, new_len, ra);
+		}
+	}
+
+	fn free(ctx: *anyopaque, buf: []u8, log2_buf_align: u8, ra: usize) void {
+		const self: *BufferFallbackAllocator = @ptrCast(@alignCast(ctx));
+		if (self.fixedBuffer.ownsPtr(buf.ptr)) {
+			return self.fixedBuffer.allocator().rawFree(buf, log2_buf_align, ra);
+		} else {
+			return self.fallbackAllocator.rawFree(buf, log2_buf_align, ra);
+		}
+	}
+};
+
 /// A simple binary heap.
 /// Thread safe and blocking.
 /// Expects T to have a `biggerThan(T) bool` function

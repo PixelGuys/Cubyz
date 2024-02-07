@@ -88,12 +88,11 @@ pub const ChannelChunk = struct {
 		var neighborLists: [6]main.ListUnmanaged(Entry) = .{.{}} ** 6;
 		defer {
 			for(&neighborLists) |*list| {
-				list.deinit(main.globalAllocator);
+				list.deinit(lightQueue.allocator);
 			}
 		}
 
 		self.mutex.lock();
-		errdefer self.mutex.unlock();
 		while(lightQueue.dequeue()) |entry| {
 			const index = chunk.getIndex(entry.x, entry.y, entry.z);
 			if(entry.value <= self.data[index].load(.Unordered)) continue;
@@ -109,7 +108,7 @@ pub const ChannelChunk = struct {
 				}
 				if(result.value == 0) continue;
 				if(nx < 0 or nx >= chunk.chunkSize or ny < 0 or ny >= chunk.chunkSize or nz < 0 or nz >= chunk.chunkSize) {
-					neighborLists[neighbor].append(main.globalAllocator, result);
+					neighborLists[neighbor].append(lightQueue.allocator, result);
 					continue;
 				}
 				const neighborIndex = chunk.getIndex(nx, ny, nz);
@@ -137,18 +136,17 @@ pub const ChannelChunk = struct {
 		var constructiveList: main.ListUnmanaged(PositionEntry) = .{};
 		defer {
 			for(&neighborLists) |*list| {
-				list.deinit(main.globalAllocator);
+				list.deinit(lightQueue.allocator);
 			}
 		}
 		var isFirstIteration: bool = isFirstBlock;
 
 		self.mutex.lock();
-		errdefer self.mutex.unlock();
 		while(lightQueue.dequeue()) |entry| {
 			const index = chunk.getIndex(entry.x, entry.y, entry.z);
 			if(entry.value != self.data[index].load(.Unordered)) {
 				if(self.data[index].load(.Unordered) != 0) {
-					constructiveList.append(main.globalAllocator, .{.x = entry.x, .y = entry.y, .z = entry.z});
+					constructiveList.append(lightQueue.allocator, .{.x = entry.x, .y = entry.y, .z = entry.z});
 				}
 				continue;
 			}
@@ -165,7 +163,7 @@ pub const ChannelChunk = struct {
 					result.value -|= 8*|@as(u8, @intCast(self.ch.pos.voxelSize));
 				}
 				if(nx < 0 or nx >= chunk.chunkSize or ny < 0 or ny >= chunk.chunkSize or nz < 0 or nz >= chunk.chunkSize) {
-					neighborLists[neighbor].append(main.globalAllocator, result);
+					neighborLists[neighbor].append(lightQueue.allocator, result);
 					continue;
 				}
 				const neighborIndex = chunk.getIndex(nx, ny, nz);
@@ -183,7 +181,7 @@ pub const ChannelChunk = struct {
 		for(0..6) |neighbor| {
 			if(neighborLists[neighbor].items.len == 0) continue;
 			const neighborMesh = mesh_storage.getNeighborAndIncreaseRefCount(self.ch.pos, self.ch.pos.voxelSize, @intCast(neighbor)) orelse continue;
-			constructiveEntries.append(main.globalAllocator, .{
+			constructiveEntries.append(lightQueue.allocator, .{
 				.mesh = neighborMesh,
 				.entries = neighborMesh.lightingData[@intFromEnum(self.channel)].propagateDestructiveFromNeighbor(lightQueue, neighborLists[neighbor].items, constructiveEntries),
 			});
@@ -219,7 +217,12 @@ pub const ChannelChunk = struct {
 	}
 
 	pub fn propagateLights(self: *ChannelChunk, lights: []const [3]u8, comptime checkNeighbors: bool) void {
-		var lightQueue = main.utils.CircularBufferQueue(Entry).init(main.globalAllocator, 1 << 10);
+		const buf = main.stackAllocator.alloc(u8, 1 << 16);
+		defer main.stackAllocator.free(buf);
+		var bufferFallback = main.utils.BufferFallbackAllocator.init(buf, main.globalAllocator);
+		var arena = main.utils.NeverFailingArenaAllocator.init(bufferFallback.allocator());
+		defer arena.deinit();
+		var lightQueue = main.utils.CircularBufferQueue(Entry).init(arena.allocator(), 1 << 10);
 		defer lightQueue.deinit();
 		for(lights) |pos| {
 			const index = chunk.getIndex(pos[0], pos[1], pos[2]);
@@ -277,15 +280,20 @@ pub const ChannelChunk = struct {
 	}
 
 	pub fn propagateLightsDestructive(self: *ChannelChunk, lights: []const [3]u8) void {
-		var lightQueue = main.utils.CircularBufferQueue(Entry).init(main.globalAllocator, 1 << 10);
+		const buf = main.stackAllocator.alloc(u8, 1 << 16);
+		defer main.stackAllocator.free(buf);
+		var bufferFallback = main.utils.BufferFallbackAllocator.init(buf, main.globalAllocator);
+		var arena = main.utils.NeverFailingArenaAllocator.init(bufferFallback.allocator());
+		defer arena.deinit();
+		var lightQueue = main.utils.CircularBufferQueue(Entry).init(arena.allocator(), 1 << 10);
 		defer lightQueue.deinit();
 		for(lights) |pos| {
 			const index = chunk.getIndex(pos[0], pos[1], pos[2]);
 			lightQueue.enqueue(.{.x = @intCast(pos[0]), .y = @intCast(pos[1]), .z = @intCast(pos[2]), .value = self.data[index].load(.Unordered), .sourceDir = 6});
 		}
 		var constructiveEntries: main.ListUnmanaged(ChunkEntries) = .{};
-		defer constructiveEntries.deinit(main.globalAllocator);
-		constructiveEntries.append(main.globalAllocator, .{
+		defer constructiveEntries.deinit(arena.allocator());
+		constructiveEntries.append(arena.allocator(), .{
 			.mesh = null,
 			.entries = self.propagateDestructive(&lightQueue, &constructiveEntries, true),
 		});
@@ -293,7 +301,7 @@ pub const ChannelChunk = struct {
 			const mesh = entries.mesh;
 			defer if(mesh) |_mesh| _mesh.decreaseRefCount();
 			var entryList = entries.entries;
-			defer entryList.deinit(main.globalAllocator);
+			defer entryList.deinit(arena.allocator());
 			const channelChunk = if(mesh) |_mesh| _mesh.lightingData[@intFromEnum(self.channel)] else self;
 			for(entryList.items) |entry| {
 				const index = chunk.getIndex(entry.x, entry.y, entry.z);
