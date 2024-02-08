@@ -146,10 +146,10 @@ pub const Biome = struct {
 		
 		const structures = json.getChild("structures");
 		var vegetation = main.ListUnmanaged(StructureModel){};
-		defer vegetation.deinit(main.globalAllocator);
+		defer vegetation.deinit(main.stackAllocator);
 		for(structures.toSlice()) |elem| {
 			if(StructureModel.initModel(elem)) |model| {
-				vegetation.append(main.globalAllocator, model);
+				vegetation.append(main.stackAllocator, model);
 			}
 		}
 		self.vegetationModels = main.globalAllocator.dupe(StructureModel, vegetation.items);

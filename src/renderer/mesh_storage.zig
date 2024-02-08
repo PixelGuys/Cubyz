@@ -531,9 +531,9 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 		network.Protocols.genericUpdate.sendRenderDistance(conn, renderDistance);
 	}
 
-	var meshRequests = main.List(chunk.ChunkPosition).init(main.globalAllocator);
+	var meshRequests = main.List(chunk.ChunkPosition).init(main.stackAllocator);
 	defer meshRequests.deinit();
-	var mapRequests = main.List(LightMap.MapFragmentPosition).init(main.globalAllocator);
+	var mapRequests = main.List(LightMap.MapFragmentPosition).init(main.stackAllocator);
 	defer mapRequests.deinit();
 
 	const olderPx = lastPx;
@@ -568,7 +568,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 	};
 
 	// TODO: Is there a way to combine this with minecraft's approach?
-	var searchList = std.PriorityQueue(OcclusionData, void, OcclusionData.compare).init(main.globalAllocator.allocator, {});
+	var searchList = std.PriorityQueue(OcclusionData, void, OcclusionData.compare).init(main.stackAllocator.allocator, {});
 	defer searchList.deinit();
 	{
 		var firstPos = chunk.ChunkPosition{
@@ -601,7 +601,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 			firstPos.voxelSize *= 2;
 		}
 	}
-	var nodeList = main.List(*ChunkMeshNode).init(main.globalAllocator);
+	var nodeList = main.List(*ChunkMeshNode).init(main.stackAllocator);
 	defer nodeList.deinit();
 	const projRotMat = game.projectionMatrix.mul(game.camera.viewMatrix);
 	while(searchList.removeOrNull()) |data| {

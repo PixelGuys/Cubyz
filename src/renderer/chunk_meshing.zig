@@ -574,7 +574,7 @@ pub const ChunkMesh = struct {
 
 	fn initLight(self: *ChunkMesh) void {
 		self.mutex.lock();
-		var lightEmittingBlocks = main.List([3]u8).init(main.globalAllocator);
+		var lightEmittingBlocks = main.List([3]u8).init(main.stackAllocator);
 		defer lightEmittingBlocks.deinit();
 		var x: u8 = 0;
 		while(x < chunk.chunkSize): (x += 1) {

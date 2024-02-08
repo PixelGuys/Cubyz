@@ -25,7 +25,7 @@ pub fn readAllJsonFilesInAddons(externalAllocator: NeverFailingAllocator, addons
 		};
 		defer dir.close();
 
-		var walker = dir.walk(main.globalAllocator.allocator) catch unreachable;
+		var walker = dir.walk(main.stackAllocator.allocator) catch unreachable;
 		defer walker.deinit();
 
 		while(walker.next() catch |err| blk: {
@@ -69,7 +69,7 @@ pub fn readAllFilesInAddons(externalAllocator: NeverFailingAllocator, addons: ma
 		};
 		defer dir.close();
 
-		var walker = dir.walk(main.globalAllocator.allocator) catch unreachable;
+		var walker = dir.walk(main.stackAllocator.allocator) catch unreachable;
 		defer walker.deinit();
 
 		while(walker.next() catch |err| blk: {
@@ -90,9 +90,9 @@ pub fn readAllFilesInAddons(externalAllocator: NeverFailingAllocator, addons: ma
 }
 
 pub fn readAssets(externalAllocator: NeverFailingAllocator, assetPath: []const u8, blocks: *std.StringHashMap(JsonElement), items: *std.StringHashMap(JsonElement), biomes: *std.StringHashMap(JsonElement), recipes: *main.List([]const u8)) void {
-	var addons = main.List(std.fs.Dir).init(main.globalAllocator);
+	var addons = main.List(std.fs.Dir).init(main.stackAllocator);
 	defer addons.deinit();
-	var addonNames = main.List([]const u8).init(main.globalAllocator);
+	var addonNames = main.List([]const u8).init(main.stackAllocator);
 	defer addonNames.deinit();
 	
 	{ // Find all the sub-directories to the assets folder.
@@ -111,13 +111,13 @@ pub fn readAssets(externalAllocator: NeverFailingAllocator, assetPath: []const u
 					std.log.err("Got error while reading addon {s} from {s}: {s}", .{addon.name, assetPath, @errorName(err)});
 					continue;
 				});
-				addonNames.append(main.globalAllocator.dupe(u8, addon.name));
+				addonNames.append(main.stackAllocator.dupe(u8, addon.name));
 			}
 		}
 	}
 	defer for(addons.items, addonNames.items) |*dir, addonName| {
 		dir.close();
-		main.globalAllocator.free(addonName);
+		main.stackAllocator.free(addonName);
 	};
 
 	readAllJsonFilesInAddons(externalAllocator, addons, addonNames, "blocks", blocks);
@@ -224,13 +224,13 @@ var loadedAssets: bool = false;
 pub fn loadWorldAssets(assetFolder: []const u8, palette: *BlockPalette) !void {
 	if(loadedAssets) return; // The assets already got loaded by the server.
 	loadedAssets = true;
-	var blocks = commonBlocks.cloneWithAllocator(main.globalAllocator.allocator) catch unreachable;
+	var blocks = commonBlocks.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer blocks.clearAndFree();
-	var items = commonItems.cloneWithAllocator(main.globalAllocator.allocator) catch unreachable;
+	var items = commonItems.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer items.clearAndFree();
-	var biomes = commonBiomes.cloneWithAllocator(main.globalAllocator.allocator) catch unreachable;
+	var biomes = commonBiomes.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer biomes.clearAndFree();
-	var recipes = main.List([]const u8).init(main.globalAllocator);
+	var recipes = main.List([]const u8).init(main.stackAllocator);
 	recipes.appendSlice(commonRecipes.items);
 	defer recipes.clearAndFree();
 

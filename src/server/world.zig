@@ -269,8 +269,8 @@ const WorldIO = struct {
 
 	/// Load the seed, which is needed before custom item and ore generation.
 	pub fn loadWorldSeed(self: WorldIO) !u64 {
-		const worldData: JsonElement = try self.dir.readToJson(main.globalAllocator, "world.dat");
-		defer worldData.free(main.globalAllocator);
+		const worldData: JsonElement = try self.dir.readToJson(main.stackAllocator, "world.dat");
+		defer worldData.free(main.stackAllocator);
 		if(worldData.get(u32, "version", 0) != worldDataVersion) {
 			std.log.err("Cannot read world file version {}. Expected version {}.", .{worldData.get(u32, "version", 0), worldDataVersion});
 			return error.OldWorld;
@@ -279,8 +279,8 @@ const WorldIO = struct {
 	}
 
 	pub fn loadWorldData(self: WorldIO) !void {
-		const worldData: JsonElement = try self.dir.readToJson(main.globalAllocator, "world.dat");
-		defer worldData.free(main.globalAllocator);
+		const worldData: JsonElement = try self.dir.readToJson(main.stackAllocator, "world.dat");
+		defer worldData.free(main.stackAllocator);
 
 		const entityJson = worldData.getChild("entities");
 		_ = entityJson;
@@ -300,15 +300,15 @@ const WorldIO = struct {
 	}
 
 	pub fn saveWorldData(self: WorldIO) !void {
-		const worldData: JsonElement = JsonElement.initObject(main.globalAllocator);
-		defer worldData.free(main.globalAllocator);
+		const worldData: JsonElement = JsonElement.initObject(main.stackAllocator);
+		defer worldData.free(main.stackAllocator);
 		worldData.put("version", worldDataVersion);
 		worldData.put("seed", self.world.seed);
 		worldData.put("doGameTimeCycle", self.world.doGameTimeCycle);
 		worldData.put("gameTime", self.world.gameTime);
 		// TODO:
 //			worldData.put("entityCount", world.getEntities().length);
-		const spawnData = JsonElement.initObject(main.globalAllocator);
+		const spawnData = JsonElement.initObject(main.stackAllocator);
 		spawnData.put("x", self.world.spawn[0]);
 		spawnData.put("y", self.world.spawn[1]);
 		spawnData.put("z", self.world.spawn[2]);
@@ -366,7 +366,7 @@ pub const ServerWorld = struct {
 		self.itemDropManager.init(main.globalAllocator, self, self.gravity);
 		errdefer self.itemDropManager.deinit();
 
-		var loadArena = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
+		var loadArena = main.utils.NeverFailingArenaAllocator.init(main.stackAllocator);
 		defer loadArena.deinit();
 		const arenaAllocator = loadArena.allocator();
 		var buf: [32768]u8 = undefined;
@@ -438,8 +438,8 @@ pub const ServerWorld = struct {
 
 	pub fn findPlayer(self: *ServerWorld, user: *User) void {
 		var buf: [1024]u8 = undefined;
-		const playerData = files.readToJson(main.globalAllocator, std.fmt.bufPrint(&buf, "saves/{s}/player/{s}.json", .{self.name, user.name}) catch "") catch .JsonNull; // TODO: Utils.escapeFolderName(user.name)
-		defer playerData.free(main.globalAllocator);
+		const playerData = files.readToJson(main.stackAllocator, std.fmt.bufPrint(&buf, "saves/{s}/player/{s}.json", .{self.name, user.name}) catch "") catch .JsonNull; // TODO: Utils.escapeFolderName(user.name)
+		defer playerData.free(main.stackAllocator);
 		const player = &user.player;
 		if(playerData == .JsonNull) {
 			// Generate a new player:
@@ -473,8 +473,8 @@ pub const ServerWorld = struct {
 //		savePlayers();
 //		chunkManager.forceSave();
 //		ChunkIO.save();
-		const itemDropJson = self.itemDropManager.store(main.globalAllocator);
-		defer itemDropJson.free(main.globalAllocator);
+		const itemDropJson = self.itemDropManager.store(main.stackAllocator);
+		defer itemDropJson.free(main.stackAllocator);
 		var buf: [32768]u8 = undefined;
 		try files.writeJson(try std.fmt.bufPrint(&buf, "saves/{s}/items.json", .{self.name}), itemDropJson);
 	}

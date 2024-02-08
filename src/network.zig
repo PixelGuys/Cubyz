@@ -97,7 +97,7 @@ const Socket = struct {
 	}
 
 	fn resolveIP(addr: []const u8) !u32 {
-		const list = try std.net.getAddressList(main.globalAllocator.allocator, addr, settings.defaultPort);
+		const list = try std.net.getAddressList(main.stackAllocator.allocator, addr, settings.defaultPort);
 		defer list.deinit();
 		return list.addrs[0].in.sa.addr;
 	}
@@ -605,8 +605,8 @@ pub const Protocols = struct {
 				conn.handShakeState.store(data[0], .Monotonic);
 				switch(data[0]) {
 					stepUserData => {
-						const json = JsonElement.parseFromString(main.globalAllocator, data[1..]);
-						defer json.free(main.globalAllocator);
+						const json = JsonElement.parseFromString(main.stackAllocator, data[1..]);
+						defer json.free(main.stackAllocator);
 						const name = json.get([]const u8, "name", "unnamed");
 						const version = json.get([]const u8, "version", "unknown");
 						std.log.info("User {s} joined using version {s}.", .{name, version});
@@ -617,7 +617,7 @@ pub const Protocols = struct {
 							defer main.stackAllocator.free(path);
 							var dir = try std.fs.cwd().openDir(path, .{.iterate = true});
 							defer dir.close();
-							var arrayList = main.List(u8).init(main.globalAllocator);
+							var arrayList = main.List(u8).init(main.stackAllocator);
 							defer arrayList.deinit();
 							arrayList.append(stepAssets);
 							try utils.Compression.pack(dir, arrayList.writer());
@@ -627,13 +627,13 @@ pub const Protocols = struct {
 
 						// TODO:
 						conn.user.?.initPlayer(name);
-						const jsonObject = JsonElement.initObject(main.globalAllocator);
-						defer jsonObject.free(main.globalAllocator);
-						jsonObject.put("player", conn.user.?.player.save(main.globalAllocator));
+						const jsonObject = JsonElement.initObject(main.stackAllocator);
+						defer jsonObject.free(main.stackAllocator);
+						jsonObject.put("player", conn.user.?.player.save(main.stackAllocator));
 						// TODO:
 //					jsonObject.put("player_id", ((User)conn).player.id);
 //					jsonObject.put("blockPalette", Server.world.blockPalette.save());
-						const spawn = JsonElement.initObject(main.globalAllocator);
+						const spawn = JsonElement.initObject(main.stackAllocator);
 						spawn.put("x", main.server.world.?.spawn[0]);
 						spawn.put("y", main.server.world.?.spawn[1]);
 						spawn.put("z", main.server.world.?.spawn[2]);
@@ -657,8 +657,8 @@ pub const Protocols = struct {
 						try utils.Compression.unpack(dir, data[1..]);
 					},
 					stepServerData => {
-						const json = JsonElement.parseFromString(main.globalAllocator, data[1..]);
-						defer json.free(main.globalAllocator);
+						const json = JsonElement.parseFromString(main.stackAllocator, data[1..]);
+						defer json.free(main.stackAllocator);
 						try conn.manager.world.?.finishHandshake(json);
 						conn.handShakeState.store(stepComplete, .Monotonic);
 						conn.handShakeWaiting.broadcast(); // Notify the waiting client thread.
@@ -680,8 +680,8 @@ pub const Protocols = struct {
 		}
 
 		pub fn clientSide(conn: *Connection, name: []const u8) void {
-			const jsonObject = JsonElement.initObject(main.globalAllocator);
-			defer jsonObject.free(main.globalAllocator);
+			const jsonObject = JsonElement.initObject(main.stackAllocator);
+			defer jsonObject.free(main.stackAllocator);
 			jsonObject.putOwnedString("version", settings.version);
 			jsonObject.putOwnedString("name", name);
 			const prefix = [1]u8 {stepUserData};
@@ -869,8 +869,8 @@ pub const Protocols = struct {
 	pub const entity = struct {
 		pub const id: u8 = 8;
 		fn receive(conn: *Connection, data: []const u8) !void {
-			const jsonArray = JsonElement.parseFromString(main.globalAllocator, data);
-			defer jsonArray.free(main.globalAllocator);
+			const jsonArray = JsonElement.parseFromString(main.stackAllocator, data);
+			defer jsonArray.free(main.stackAllocator);
 			var i: u32 = 0;
 			while(i < jsonArray.JsonArray.items.len) : (i += 1) {
 				const elem = jsonArray.JsonArray.items[i];
@@ -1065,8 +1065,8 @@ pub const Protocols = struct {
 //					);
 				},
 				type_itemStackCollect => {
-					const json = JsonElement.parseFromString(main.globalAllocator, data[1..]);
-					defer json.free(main.globalAllocator);
+					const json = JsonElement.parseFromString(main.stackAllocator, data[1..]);
+					defer json.free(main.stackAllocator);
 					const item = items.Item.init(json) catch |err| {
 						std.log.err("Error {s} while collecting item {s}. Ignoring it.", .{@errorName(err), data[1..]});
 						return;
@@ -1083,8 +1083,8 @@ pub const Protocols = struct {
 				},
 				type_timeAndBiome => {
 					if(conn.manager.world) |world| {
-						const json = JsonElement.parseFromString(main.globalAllocator, data[1..]);
-						defer json.free(main.globalAllocator);
+						const json = JsonElement.parseFromString(main.stackAllocator, data[1..]);
+						defer json.free(main.stackAllocator);
 						const expectedTime = json.get(i64, "time", 0);
 						var curTime = world.gameTime.load(.Monotonic);
 						if(@abs(curTime -% expectedTime) >= 1000) {
@@ -1155,8 +1155,8 @@ pub const Protocols = struct {
 
 
 		pub fn sendInventory_full(conn: *Connection, inv: Inventory) void {
-			const json = inv.save(main.globalAllocator);
-			defer json.free(main.globalAllocator);
+			const json = inv.save(main.stackAllocator);
+			defer json.free(main.stackAllocator);
 			const string = json.toString(main.stackAllocator);
 			defer main.stackAllocator.free(string);
 			addHeaderAndSendImportant(conn, type_inventoryFull, string);
@@ -1169,8 +1169,8 @@ pub const Protocols = struct {
 		}
 
 		pub fn itemStackDrop(conn: *Connection, stack: ItemStack, pos: Vec3d, dir: Vec3f, vel: f32) void {
-			const jsonObject = stack.store(main.globalAllocator);
-			defer jsonObject.free(main.globalAllocator);
+			const jsonObject = stack.store(main.stackAllocator);
+			defer jsonObject.free(main.stackAllocator);
 			jsonObject.put("x", pos[0]);
 			jsonObject.put("y", pos[1]);
 			jsonObject.put("z", pos[2]);
@@ -1184,16 +1184,16 @@ pub const Protocols = struct {
 		}
 
 		pub fn itemStackCollect(conn: *Connection, stack: ItemStack) void {
-			const json = stack.store(main.globalAllocator);
-			defer json.free(main.globalAllocator);
+			const json = stack.store(main.stackAllocator);
+			defer json.free(main.stackAllocator);
 			const string = json.toString(main.stackAllocator);
 			defer main.stackAllocator.free(string);
 			addHeaderAndSendImportant(conn, type_itemStackCollect, string);
 		}
 
 		pub fn sendTimeAndBiome(conn: *Connection, world: *const main.server.ServerWorld) void {
-			const json = JsonElement.initObject(main.globalAllocator);
-			defer json.free(main.globalAllocator);
+			const json = JsonElement.initObject(main.stackAllocator);
+			defer json.free(main.stackAllocator);
 			json.put("time", world.gameTime);
 			const pos = conn.user.?.player.pos;
 			json.put("biome", (world.getBiome(@intFromFloat(pos[0]), @intFromFloat(pos[1]), @intFromFloat(pos[2]))).id);
@@ -1483,9 +1483,9 @@ pub const Connection = struct {
 		self.mutex.lock();
 		defer self.mutex.unlock();
 
-		var runLengthEncodingStarts: main.List(u32) = main.List(u32).init(main.globalAllocator);
+		var runLengthEncodingStarts: main.List(u32) = main.List(u32).init(main.stackAllocator);
 		defer runLengthEncodingStarts.deinit();
-		var runLengthEncodingLengths: main.List(u32) = main.List(u32).init(main.globalAllocator);
+		var runLengthEncodingLengths: main.List(u32) = main.List(u32).init(main.stackAllocator);
 		defer runLengthEncodingLengths.deinit();
 
 		for(self.receivedPackets) |list| {

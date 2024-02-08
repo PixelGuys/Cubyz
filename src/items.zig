@@ -441,7 +441,7 @@ const TextureGenerator = struct {
 		var pixelMaterials: [16][16]PixelData = undefined;
 		for(0..16) |x| {
 			for(0..16) |y| {
-				pixelMaterials[x][y] = PixelData.init(main.globalAllocator);
+				pixelMaterials[x][y] = PixelData.init(main.stackAllocator);
 			}
 		}
 
@@ -1331,19 +1331,19 @@ pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: 
 }
 
 pub fn registerRecipes(file: []const u8) void {
-	var shortcuts = std.StringHashMap(*BaseItem).init(main.globalAllocator.allocator);
+	var shortcuts = std.StringHashMap(*BaseItem).init(main.stackAllocator.allocator);
 	defer shortcuts.deinit();
 	defer {
 		var keyIterator = shortcuts.keyIterator();
 		while(keyIterator.next()) |key| {
-			main.globalAllocator.free(key.*);
+			main.stackAllocator.free(key.*);
 		}
 	}
-	var items = main.List(*BaseItem).init(main.globalAllocator);
+	var items = main.List(*BaseItem).init(main.stackAllocator);
 	defer items.deinit();
-	var itemAmounts = main.List(u16).init(main.globalAllocator);
+	var itemAmounts = main.List(u16).init(main.stackAllocator);
 	defer itemAmounts.deinit();
-	var string = main.List(u8).init(main.globalAllocator);
+	var string = main.List(u8).init(main.stackAllocator);
 	defer string.deinit();
 	var lines = std.mem.split(u8, file, "\n");
 	while(lines.next()) |line| {

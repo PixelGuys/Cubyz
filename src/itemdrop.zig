@@ -275,10 +275,10 @@ pub const ItemDropManager = struct {
 			self.mutex.lock();
 			defer self.mutex.unlock();
 			if(self.size == maxCapacity) {
-				const json = itemStack.store(main.globalAllocator);
-				defer json.free(main.globalAllocator);
+				const json = itemStack.store(main.stackAllocator);
+				defer json.free(main.stackAllocator);
 				const string = json.toString(main.stackAllocator);
-				defer main.globalAllocator.free(string);
+				defer main.stackAllocator.free(string);
 				std.log.err("Item drop capacitiy limit reached. Failed to add itemStack: {s}", .{string});
 				if(itemStack.item) |item| {
 					item.deinit();

@@ -8,7 +8,7 @@ const main = @import("main.zig");
 pub const Compression = struct {
 	pub fn deflate(allocator: NeverFailingAllocator, data: []const u8) []u8 {
 		var result = main.List(u8).init(allocator);
-		var comp = std.compress.deflate.compressor(main.globalAllocator.allocator, result.writer(), .{.level = .default_compression}) catch unreachable;
+		var comp = std.compress.deflate.compressor(main.stackAllocator.allocator, result.writer(), .{.level = .default_compression}) catch unreachable;
 		_ = comp.write(data) catch unreachable;
 		comp.close() catch unreachable;
 		comp.deinit();
@@ -25,9 +25,9 @@ pub const Compression = struct {
 	}
 
 	pub fn pack(sourceDir: std.fs.Dir, writer: anytype) !void {
-		var comp = try std.compress.deflate.compressor(main.globalAllocator.allocator, writer, .{.level = .default_compression});
+		var comp = try std.compress.deflate.compressor(main.stackAllocator.allocator, writer, .{.level = .default_compression});
 		defer comp.deinit();
-		var walker = try sourceDir.walk(main.globalAllocator.allocator);
+		var walker = try sourceDir.walk(main.stackAllocator.allocator);
 		defer walker.deinit();
 
 		while(try walker.next()) |entry| {
@@ -61,7 +61,7 @@ pub const Compression = struct {
 
 	pub fn unpack(outDir: std.fs.Dir, input: []const u8) !void {
 		var stream = std.io.fixedBufferStream(input);
-		var decomp = try std.compress.deflate.decompressor(main.globalAllocator.allocator, stream.reader(), null);
+		var decomp = try std.compress.deflate.decompressor(main.stackAllocator.allocator, stream.reader(), null);
 		defer decomp.deinit();
 		const reader = decomp.reader();
 		const _data = try reader.readAllAlloc(main.stackAllocator.allocator, std.math.maxInt(usize));
@@ -373,26 +373,23 @@ pub fn CircularBufferQueue(comptime T: type) type {
 /// Allows for stack-like allocations in a fast and safe way.
 /// It is safe in the sense that a regular allocator will be used when the buffer is full.
 pub const StackAllocator = struct {
-	const Allocation = struct{start: u32, len: u32};
+	const AllocationTrailer = packed struct{wasFreed: bool, previousAllocationTrailer: u31};
 	backingAllocator: NeverFailingAllocator,
 	buffer: []align(4096) u8,
-	allocationList: main.List(Allocation),
 	index: usize,
 
-	pub fn init(backingAllocator: NeverFailingAllocator, size: u32) StackAllocator {
+	pub fn init(backingAllocator: NeverFailingAllocator, size: u31) StackAllocator {
 		return .{
 			.backingAllocator = backingAllocator,
 			.buffer = backingAllocator.alignedAlloc(u8, 4096, size),
-			.allocationList = main.List(Allocation).init(backingAllocator),
 			.index = 0,
 		};
 	}
 
 	pub fn deinit(self: StackAllocator) void {
-		if(self.allocationList.items.len != 0) {
+		if(self.index != 0) {
 			std.log.err("Memory leak in Stack Allocator", .{});
 		}
-		self.allocationList.deinit();
 		self.backingAllocator.free(self.buffer);
 	}
 
@@ -423,6 +420,16 @@ pub const StackAllocator = struct {
 		return compare - bufferStart;
 	}
 
+	fn getTrueAllocationEnd(start: usize, len: usize) usize {
+		const trailerStart = std.mem.alignForward(usize, start + len, @alignOf(AllocationTrailer));
+		return trailerStart + @sizeOf(AllocationTrailer);
+	}
+
+	fn getTrailerBefore(self: *StackAllocator, end: usize) *AllocationTrailer {
+		const trailerStart = end - @sizeOf(AllocationTrailer);
+		return @ptrCast(@alignCast(self.buffer[trailerStart..].ptr));
+	}
+
 	/// Attempt to allocate exactly `len` bytes aligned to `1 << ptr_align`.
 	///
 	/// `ret_addr` is optionally provided as the first return address of the
@@ -430,11 +437,12 @@ pub const StackAllocator = struct {
 	/// has been provided.
 	fn alloc(ctx: *anyopaque, len: usize, ptr_align: u8, ret_addr: usize) ?[*]u8 {
 		const self: *StackAllocator = @ptrCast(@alignCast(ctx));
-		if(len >= self.buffer.len) return self.backingAllocator.rawAlloc(len, ptr_align, ret_addr);
 		const start = std.mem.alignForward(usize, self.index, @as(usize, 1) << @intCast(ptr_align));
-		if(start + len >= self.buffer.len) return self.backingAllocator.rawAlloc(len, ptr_align, ret_addr);
-		self.allocationList.append(.{.start = @intCast(start), .len = @intCast(len)});
-		self.index = start + len;
+		const end = getTrueAllocationEnd(start, len);
+		if(end >= self.buffer.len) return self.backingAllocator.rawAlloc(len, ptr_align, ret_addr);
+		const trailer = self.getTrailerBefore(end);
+		trailer.* = .{.wasFreed = false, .previousAllocationTrailer = @intCast(self.index)};
+		self.index = end;
 		return self.buffer.ptr + start;
 	}
 
@@ -456,16 +464,18 @@ pub const StackAllocator = struct {
 	fn resize(ctx: *anyopaque, buf: []u8, buf_align: u8, new_len: usize, ret_addr: usize) bool {
 		const self: *StackAllocator = @ptrCast(@alignCast(ctx));
 		if(self.isInsideBuffer(buf)) {
-			const top = &self.allocationList.items[self.allocationList.items.len - 1];
-			std.debug.assert(top.start == self.indexInBuffer(buf)); // Can only resize the top element.
-			std.debug.assert(top.len == buf.len);
-			std.debug.assert(self.index >= top.start + top.len);
-			if(top.start + new_len >= self.buffer.len) {
-				return false;
-			}
-			self.index -= top.len;
-			self.index += new_len;
-			top.len = @intCast(new_len);
+			const start = self.indexInBuffer(buf);
+			const end = getTrueAllocationEnd(start, buf.len);
+			if(end != self.index) return false;
+			const newEnd = getTrueAllocationEnd(start, new_len);
+			if(newEnd >= self.buffer.len) return false;
+
+			const trailer = self.getTrailerBefore(end);
+			std.debug.assert(!trailer.wasFreed);
+			const newTrailer = self.getTrailerBefore(newEnd);
+
+			newTrailer.* = .{.wasFreed = false, .previousAllocationTrailer = trailer.previousAllocationTrailer};
+			self.index = newEnd;
 			return true;
 		} else {
 			return self.backingAllocator.rawResize(buf, buf_align, new_len, ret_addr);
@@ -486,11 +496,24 @@ pub const StackAllocator = struct {
 	fn free(ctx: *anyopaque, buf: []u8, buf_align: u8, ret_addr: usize) void {
 		const self: *StackAllocator = @ptrCast(@alignCast(ctx));
 		if(self.isInsideBuffer(buf)) {
-			const top = self.allocationList.pop();
-			std.debug.assert(top.start == self.indexInBuffer(buf)); // Can only free the top element.
-			std.debug.assert(top.len == buf.len);
-			std.debug.assert(self.index >= top.start + top.len);
-			self.index = top.start;
+			const start = self.indexInBuffer(buf);
+			const end = getTrueAllocationEnd(start, buf.len);
+			const trailer = self.getTrailerBefore(end);
+			std.debug.assert(!trailer.wasFreed); // Double Free
+
+			if(end == self.index) {
+				self.index = trailer.previousAllocationTrailer;
+				if(self.index != 0) {
+					var previousTrailer = self.getTrailerBefore(trailer.previousAllocationTrailer);
+					while(previousTrailer.wasFreed) {
+						self.index = previousTrailer.previousAllocationTrailer;
+						if(self.index == 0) break;
+						previousTrailer = self.getTrailerBefore(previousTrailer.previousAllocationTrailer);
+					}
+				}
+			} else {
+				trailer.wasFreed = true;
+			}
 		} else {
 			self.backingAllocator.rawFree(buf, buf_align, ret_addr);
 		}

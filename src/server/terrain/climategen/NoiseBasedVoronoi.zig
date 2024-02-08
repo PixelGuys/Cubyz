@@ -30,7 +30,7 @@ pub fn deinit() void {
 pub fn generateMapFragment(map: *ClimateMapFragment, worldSeed: u64) void {
 	var seed: u64 = worldSeed;
 
-	const generator = GenerationStructure.init(main.globalAllocator, map.pos.wx, map.pos.wz, ClimateMapFragment.mapSize, ClimateMapFragment.mapSize, terrain.biomes.byTypeBiomes, seed);
+	const generator = GenerationStructure.init(main.stackAllocator, map.pos.wx, map.pos.wz, ClimateMapFragment.mapSize, ClimateMapFragment.mapSize, terrain.biomes.byTypeBiomes, seed);
 	defer generator.deinit(main.stackAllocator);
 
 	generator.toMap(map, ClimateMapFragment.mapSize, ClimateMapFragment.mapSize, worldSeed);
@@ -327,7 +327,7 @@ const GenerationStructure = struct {
 		}
 
 		// Add some sub-biomes:
-		var extraBiomes = main.List(BiomePoint).init(main.globalAllocator);
+		var extraBiomes = main.List(BiomePoint).init(main.stackAllocator);
 		defer extraBiomes.deinit();
 		for(self.chunks.mem) |chunk| {
 			for(chunk.biomesSortedByX) |biome| {

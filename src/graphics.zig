@@ -391,10 +391,8 @@ pub const draw = struct {
 	}
 
 	pub inline fn print(comptime format: []const u8, args: anytype, x: f32, y: f32, fontSize: f32, alignment: TextBuffer.Alignment) void {
-		var stackFallback = std.heap.stackFallback(4096, main.globalAllocator.allocator);
-		const allocator = stackFallback.get();
-		const string = std.fmt.allocPrint(allocator, format, args) catch unreachable;
-		defer allocator.free(string);
+		const string = std.fmt.allocPrint(main.stackAllocator.allocator, format, args) catch unreachable;
+		defer main.stackAllocator.free(string);
 		text(string, x, y ,fontSize, alignment);
 	}
 };
@@ -560,13 +558,11 @@ pub const TextBuffer = struct {
 	pub fn init(allocator: NeverFailingAllocator, text: []const u8, initialFontEffect: FontEffect, showControlCharacters: bool, alignment: Alignment) TextBuffer {
 		var self: TextBuffer = undefined;
 		self.alignment = alignment;
-		var stackFallback = std.heap.stackFallback(4096, main.globalAllocator.allocator);
-		const stackFallbackAllocator = stackFallback.get();
 		// Parse the input text:
 		var parser = Parser {
 			.unicodeIterator = std.unicode.Utf8Iterator{.bytes = text, .i = 0},
 			.currentFontEffect = initialFontEffect,
-			.parsedText = main.List(u32).init(.{.allocator = stackFallbackAllocator, .IAssertThatTheProvidedAllocatorCantFail = {}}),
+			.parsedText = main.List(u32).init(main.stackAllocator),
 			.fontEffects = main.List(FontEffect).init(allocator),
 			.characterIndex = main.List(u32).init(allocator),
 			.showControlCharacters = showControlCharacters
@@ -1040,9 +1036,7 @@ const TextRendering = struct {
 	}
 
 	fn renderText(text: []const u8, x: f32, y: f32, fontSize: f32, initialFontEffect: TextBuffer.FontEffect, alignment: TextBuffer.Alignment) void {
-		var stackFallback = std.heap.stackFallback(4096, main.globalAllocator.allocator);
-		const allocator = stackFallback.get();
-		const buf = TextBuffer.init(.{.allocator = allocator, .IAssertThatTheProvidedAllocatorCantFail = {}}, text, initialFontEffect, false, alignment);
+		const buf = TextBuffer.init(main.stackAllocator, text, initialFontEffect, false, alignment);
 		defer buf.deinit();
 
 		buf.render(x, y, fontSize);
@@ -1530,7 +1524,7 @@ pub const TextureArray = struct {
 
 		const maxLOD = if(mipmapping) 1 + std.math.log2_int(u31, @min(maxWidth, maxHeight)) else 1;
 		c.glTexStorage3D(c.GL_TEXTURE_2D_ARRAY, maxLOD, c.GL_RGBA8, maxWidth, maxHeight, @intCast(images.len));
-		var arena = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
+		var arena = main.utils.NeverFailingArenaAllocator.init(main.stackAllocator);
 		defer arena.deinit();
 		const lodBuffer: [][]Color = arena.allocator().alloc([]Color, maxLOD);
 		for(lodBuffer, 0..) |*buffer, i| {

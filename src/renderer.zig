@@ -486,19 +486,19 @@ pub const MenuBackGround = struct {
 		var dir = try std.fs.cwd().makeOpenPath("assets/backgrounds", .{.iterate = true});
 		defer dir.close();
 
-		var walker = try dir.walk(main.globalAllocator.allocator);
+		var walker = try dir.walk(main.stackAllocator.allocator);
 		defer walker.deinit();
-		var fileList = main.List([]const u8).init(main.globalAllocator);
+		var fileList = main.List([]const u8).init(main.stackAllocator);
 		defer {
 			for(fileList.items) |fileName| {
-				main.globalAllocator.free(fileName);
+				main.stackAllocator.free(fileName);
 			}
 			fileList.deinit();
 		}
 
 		while(try walker.next()) |entry| {
 			if(entry.kind == .file and std.ascii.endsWithIgnoreCase(entry.basename, ".png")) {
-				fileList.append(main.globalAllocator.dupe(u8, entry.path));
+				fileList.append(main.stackAllocator.dupe(u8, entry.path));
 			}
 		}
 		if(fileList.items.len == 0) {
