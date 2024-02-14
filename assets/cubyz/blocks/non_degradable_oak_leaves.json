@@ -2,10 +2,10 @@
 	"class" : "leaf",
 	"hardness" : 0.4,
 	"drops" : [
-		"auto",
+		"cubyz:oak_leaves",
 		"0.1 cubyz:apple"
 	],
-	"degradable" : true,
+	"degradable" : false,
 	"viewThrough" : true,
 	"absorbedLight" : 0x121012,
 	"model" : "cube",

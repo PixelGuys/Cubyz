@@ -1,0 +1,15 @@
+{
+	"class" : "stone",
+	"hardness" : 2,
+	"drops" : [
+		"none"
+	],
+	"degradable" : true,
+	"transparent" : true,
+	"absorbedLight" : 0x010000,
+	"fogDensity" : 0.02,
+	"fogColor" : 0x00ffff,
+
+	"model" : "cube",
+	"texture" : "cubyz:glass"
+}
