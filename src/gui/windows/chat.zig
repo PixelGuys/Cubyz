@@ -125,6 +125,8 @@ pub fn addMessage(message: []const u8) void {
 }
 
 pub fn sendMessage(_: usize) void {
-	main.network.Protocols.chat.send(main.game.world.?.conn, input.currentString.items);
-	input.clear();
+	if(input.currentString.items.len != 0) {
+		main.network.Protocols.chat.send(main.game.world.?.conn, input.currentString.items);
+		input.clear();
+	}
 }
