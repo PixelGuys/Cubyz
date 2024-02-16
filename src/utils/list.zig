@@ -131,7 +131,7 @@ pub fn List(comptime T: type) type {
 			std.debug.assert(i <= self.items.len);
 			if(i == self.items.len) return self.appendAssumeCapacity(elem);
 			_ = self.addOneAssumeCapacity();
-			for(self.items[i+1..], i..) |*item, j| item.* = self.items[j];
+			std.mem.copyBackwards(T, self.items[i+1..], self.items[0..self.items.len-1][i..]);
 			self.items[i] = elem;
 		}
 
@@ -139,7 +139,7 @@ pub fn List(comptime T: type) type {
 			std.debug.assert(i <= self.items.len);
 			if(i == self.items.len) return self.append(elem);
 			_ = self.addOne();
-			for(self.items[i+1..], i..) |*item, j| item.* = self.items[j];
+			std.mem.copyBackwards(T, self.items[i+1..], self.items[0..self.items.len-1][i..]);
 			self.items[i] = elem;
 		}
 
@@ -147,7 +147,7 @@ pub fn List(comptime T: type) type {
 			std.debug.assert(i <= self.items.len);
 			if(i == self.items.len) return self.appendSliceAssumeCapacity(elems);
 			_ = self.addManyAssumeCapacity(elems.len);
-			for(self.items[i+elems.len..], i..) |*item, j| item.* = self.items[j];
+			std.mem.copyBackwards(T, self.items[i+elems.len..], self.items[0..self.items.len-elems.len][i..]);
 			@memcpy(self.items[i..][0..elems.len], elems);
 		}
 
@@ -155,7 +155,7 @@ pub fn List(comptime T: type) type {
 			std.debug.assert(i <= self.items.len);
 			if(i == self.items.len) return self.appendSlice(elems);
 			_ = self.addMany(elems.len);
-			for(self.items[i+elems.len..], i..) |*item, j| item.* = self.items[j];
+			std.mem.copyBackwards(T, self.items[i+elems.len..], self.items[0..self.items.len-elems.len][i..]);
 			@memcpy(self.items[i..][0..elems.len], elems);
 		}
 
@@ -337,7 +337,7 @@ pub fn ListUnmanaged(comptime T: type) type {
 			std.debug.assert(i <= self.items.len);
 			if(i == self.items.len) return self.appendAssumeCapacity(elem);
 			_ = self.addOneAssumeCapacity();
-			for(self.items[i+1..], i..) |*item, j| item.* = self.items[j];
+			std.mem.copyBackwards(T, self.items[i+1..], self.items[0..self.items.len-1][i..]);
 			self.items[i] = elem;
 		}
 
@@ -345,7 +345,7 @@ pub fn ListUnmanaged(comptime T: type) type {
 			std.debug.assert(i <= self.items.len);
 			if(i == self.items.len) return self.append(elem);
 			_ = self.addOne();
-			for(self.items[i+1..], i..) |*item, j| item.* = self.items[j];
+			std.mem.copyBackwards(T, self.items[i+1..], self.items[0..self.items.len-1][i..]);
 			self.items[i] = elem;
 		}
 
@@ -353,7 +353,7 @@ pub fn ListUnmanaged(comptime T: type) type {
 			std.debug.assert(i <= self.items.len);
 			if(i == self.items.len) return self.appendSliceAssumeCapacity(elems);
 			_ = self.addManyAssumeCapacity(elems.len);
-			for(self.items[i+elems.len..], i..) |*item, j| item.* = self.items[j];
+			std.mem.copyBackwards(T, self.items[i+elems.len..], self.items[0..self.items.len-elems.len][i..]);
 			@memcpy(self.items[i..][0..elems.len], elems);
 		}
 
@@ -361,7 +361,7 @@ pub fn ListUnmanaged(comptime T: type) type {
 			std.debug.assert(i <= self.items.len);
 			if(i == self.items.len) return self.appendSlice(elems);
 			_ = self.addMany(elems.len);
-			for(self.items[i+elems.len..], i..) |*item, j| item.* = self.items[j];
+			std.mem.copyBackwards(T, self.items[i+elems.len..], self.items[0..self.items.len-elems.len][i..]);
 			@memcpy(self.items[i..][0..elems.len], elems);
 		}
 
