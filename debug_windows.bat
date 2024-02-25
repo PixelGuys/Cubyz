@@ -55,4 +55,4 @@ if errorlevel 1 (
 echo Cubyz successfully built!
 echo Launching Cubyz.
 
-compiler\zig\zig build run %*
+zig-out\bin\Cubyzig
