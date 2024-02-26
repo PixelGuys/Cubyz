@@ -19,5 +19,3 @@ pub const settings = @import("settings.zig");
 pub const sound = @import("sound.zig");
 pub const workbench = @import("workbench.zig");
 pub const pause_menu = @import("pause_menu.zig");
-
-// TODO: Add a pause menu.
