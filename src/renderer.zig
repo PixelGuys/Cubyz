@@ -124,7 +124,7 @@ pub fn render(playerPosition: Vec3d) void {
 	const startTime = std.time.milliTimestamp();
 //	TODO:
 //		if (Cubyz.player != null) {
-//			if (Cubyz.playerInc.x != 0 || Cubyz.playerInc.z != 0) { // while walking
+//			if (Cubyz.playerInc.x != 0 || Cubyz.playerInc.y != 0) { // while walking
 //				if (bobbingUp) {
 //					playerBobbing += 0.005f;
 //					if (playerBobbing >= 0.05f) {
@@ -143,7 +143,7 @@ pub fn render(playerPosition: Vec3d) void {
 //			if (Cubyz.playerInc.x != 0) {
 //				Cubyz.player.vx = Cubyz.playerInc.x;
 //			}
-//			playerPosition.y += Player.cameraHeight + playerBobbing;
+//			playerPosition.z += Player.cameraHeight + playerBobbing;
 //		}
 	if(game.world) |world| {
 //		// TODO: Handle colors and sun position in the world.
@@ -704,7 +704,7 @@ pub const MeshSelection = struct {
 	var lastDir: Vec3f = undefined;
 	pub fn select(_pos: Vec3d, _dir: Vec3f) void {
 		var pos = _pos;
-		_ = &pos;// TODO: pos.y += Player.cameraHeight;
+		_ = &pos;// TODO: pos.z += Player.cameraHeight;
 		lastPos = pos;
 		const dir: Vec3d = @floatCast(_dir);
 		lastDir = _dir;
@@ -809,8 +809,8 @@ pub const MeshSelection = struct {
 //									Vector3d pos = ent.position;
 //									// Check if the block is inside:
 //									if (neighbor.x < pos.x + ent.width && neighbor.x + 1 > pos.x - ent.width
-//									        && neighbor.z < pos.z + ent.width && neighbor.z + 1 > pos.z - ent.width
-//									        && neighbor.y < pos.y + ent.height && neighbor.y + 1 > pos.y)
+//									        && neighbor.y < pos.y + ent.width && neighbor.y + 1 > pos.y - ent.width
+//									        && neighbor.z < pos.z + ent.height && neighbor.z + 1 > pos.z)
 //										return;
 //								}
 								block.typ = itemBlock;

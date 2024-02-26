@@ -84,39 +84,39 @@ const mat3[8] permutationMatrices = mat3[8](
 );
 
 const vec3[6] normals = vec3[6](
-	vec3(0, 1, 0),
-	vec3(0, -1, 0),
+	vec3(0, 0, 1),
+	vec3(0, 0, -1),
 	vec3(1, 0, 0),
 	vec3(-1, 0, 0),
-	vec3(0, 0, 1),
-	vec3(0, 0, -1)
+	vec3(0, 1, 0),
+	vec3(0, -1, 0)
 );
 const ivec3[6] textureX = ivec3[6](
 	ivec3(1, 0, 0),
 	ivec3(-1, 0, 0),
-	ivec3(0, 0, -1),
-	ivec3(0, 0, 1),
+	ivec3(0, -1, 0),
+	ivec3(0, 1, 0),
 	ivec3(1, 0, 0),
 	ivec3(-1, 0, 0)
 );
 const ivec3[6] textureY = ivec3[6](
-	ivec3(0, 0, 1),
-	ivec3(0, 0, 1),
-	ivec3(0, -1, 0),
-	ivec3(0, -1, 0),
-	ivec3(0, -1, 0),
-	ivec3(0, -1, 0)
+	ivec3(0, 1, 0),
+	ivec3(0, 1, 0),
+	ivec3(0, 0, -1),
+	ivec3(0, 0, -1),
+	ivec3(0, 0, -1),
+	ivec3(0, 0, -1)
 );
 
 int convertNormal(int normal, mat3 permutationMatrix, vec3 mirrorVector) {
 	vec3 normalVector = normals[normal];
 	normalVector = permutationMatrix*(normalVector*mirrorVector);
-	if(normalVector.y == 1) return 0;
-	if(normalVector.y == -1) return 1;
+	if(normalVector.z == 1) return 0;
+	if(normalVector.z == -1) return 1;
 	if(normalVector.x == 1) return 2;
 	if(normalVector.x == -1) return 3;
-	if(normalVector.z == 1) return 4;
-	if(normalVector.z == -1) return 5;
+	if(normalVector.y == 1) return 4;
+	if(normalVector.y == -1) return 5;
 	return -1;
 }
 

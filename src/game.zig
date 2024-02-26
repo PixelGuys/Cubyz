@@ -28,20 +28,25 @@ pub const camera = struct {
 	pub var direction: Vec3f = Vec3f{0, 0, 0};
 	pub var viewMatrix: Mat4f = Mat4f.identity();
 	pub fn moveRotation(mouseX: f32, mouseY: f32) void {
-		// Mouse movement along the x-axis rotates the image along the y-axis.
+		// Mouse movement along the y-axis rotates the image along the x-axis.
 		rotation[0] += mouseY;
 		if(rotation[0] > std.math.pi/2.0) {
 			rotation[0] = std.math.pi/2.0;
 		} else if(rotation[0] < -std.math.pi/2.0) {
 			rotation[0] = -std.math.pi/2.0;
 		}
-		// Mouse movement along the y-axis rotates the image along the x-axis.
-		rotation[1] += mouseX;
+		// Mouse movement along the x-axis rotates the image along the z-axis.
+		rotation[2] += mouseX;
 	}
 
 	pub fn updateViewMatrix() void {
-		direction = vec.rotateY(vec.rotateX(Vec3f{0, 0, -1}, -rotation[0]), -rotation[1]);
-		viewMatrix = Mat4f.rotationX(rotation[0]).mul(Mat4f.rotationY(rotation[1]));
+		direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -rotation[0]), -rotation[2]);
+		viewMatrix = Mat4f.identity().mul(.{.rows = .{
+			.{1, 0, 0, 0},
+			.{0, 0, 1, 0},
+			.{0,-1, 0, 0},
+			.{0, 0, 0, 1},
+		}}).mul(Mat4f.rotationX(rotation[0])).mul(Mat4f.rotationZ(rotation[2]));
 	}
 };
 
@@ -227,8 +232,8 @@ pub var fog = Fog{.color=.{0, 1, 0.5}, .density=1.0/15.0/128.0}; // TODO: Make t
 
 pub fn update(deltaTime: f64) void {
 	var movement = Vec3d{0, 0, 0};
-	const forward = vec.rotateY(Vec3d{0, 0, -1}, -camera.rotation[1]);
-	const right = Vec3d{forward[2], 0, -forward[0]};
+	const forward = vec.rotateZ(Vec3d{0, 1, 0}, -camera.rotation[2]);
+	const right = Vec3d{-forward[1], forward[0], 0};
 	if(main.Window.grabbed) {
 		if(KeyBoard.key("forward").pressed) {
 			if(KeyBoard.key("sprint").pressed) {
@@ -253,20 +258,20 @@ pub fn update(deltaTime: f64) void {
 		if(KeyBoard.key("jump").pressed) {
 			if(Player.isFlying.load(.Monotonic)) {
 				if(KeyBoard.key("sprint").pressed) {
-					movement[1] = 59.45;
+					movement[2] = 59.45;
 				} else {
-					movement[1] = 5.45;
+					movement[2] = 5.45;
 				}
 			} else { // TODO: if (Cubyz.player.isOnGround())
-				movement[1] = 5.45;
+				movement[2] = 5.45;
 			}
 		}
 		if(KeyBoard.key("fall").pressed) {
 			if(Player.isFlying.load(.Monotonic)) {
 				if(KeyBoard.key("sprint").pressed) {
-					movement[1] = -59.45;
+					movement[2] = -59.45;
 				} else {
-					movement[1] = -5.45;
+					movement[2] = -5.45;
 				}
 			}
 		}

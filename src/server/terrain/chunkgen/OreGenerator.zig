@@ -51,7 +51,7 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.Chunk, caveMap: CaveMap.CaveM
 				const relY: f32 = @floatFromInt(y-cy << main.chunk.chunkShift);
 				const relZ: f32 = @floatFromInt(z-cz << main.chunk.chunkShift);
 				for(ores) |*ore| {
-					if(ore.maxHeight <= y << main.chunk.chunkShift) continue;
+					if(ore.maxHeight <= z << main.chunk.chunkShift) continue;
 					considerCoordinates(ore, relX, relY, relZ, chunk, seed);
 				}
 			}
@@ -77,31 +77,31 @@ fn considerCoordinates(ore: *const main.blocks.Ore, relX: f32, relY: f32, relZ: 
 		const radius = std.math.cbrt(expectedVolume*3/4/std.math.pi);
 		var xMin: i32 = @intFromFloat(veinRelX - radius);
 		var xMax: i32 = @intFromFloat(@ceil(veinRelX + radius));
-		var zMin: i32 = @intFromFloat(veinRelZ - radius);
-		var zMax: i32 = @intFromFloat(@ceil(veinRelZ + radius));
+		var yMin: i32 = @intFromFloat(veinRelY - radius);
+		var yMax: i32 = @intFromFloat(@ceil(veinRelY + radius));
 		xMin = @max(xMin, 0);
 		xMax = @min(xMax, chunk.width);
-		zMin = @max(zMin, 0);
-		zMax = @min(zMax, chunk.width);
+		yMin = @max(yMin, 0);
+		yMax = @min(yMax, chunk.width);
 
 		var veinSeed = random.nextInt(u64, &seed);
 		var curX = xMin;
 		while(curX < xMax) : (curX += 1) {
 			const distToCenterX = (@as(f32, @floatFromInt(curX)) - veinRelX)/radius;
-			var curZ = zMin;
-			while(curZ < zMax) : (curZ += 1) {
-				const distToCenterZ = (@as(f32, @floatFromInt(curZ)) - veinRelZ)/radius;
-				const xzDistSqr = distToCenterX*distToCenterX + distToCenterZ*distToCenterZ;
-				if(xzDistSqr > 1) continue;
-				const yDistance = radius*@sqrt(1 - xzDistSqr);
-				var yMin: i32 = @intFromFloat(veinRelY - yDistance);
-				var yMax: i32 = @intFromFloat(@ceil(veinRelY + yDistance));
-				yMin = @max(yMin, 0);
-				yMax = @min(yMax, chunk.width);
-				var curY = yMin;
-				while(curY < yMax) : (curY += 1) {
-					const distToCenterY = (@as(f32, @floatFromInt(curY)) - veinRelY)/radius;
-					const distSqr = xzDistSqr + distToCenterY*distToCenterY;
+			var curY = yMin;
+			while(curY < yMax) : (curY += 1) {
+				const distToCenterY = (@as(f32, @floatFromInt(curY)) - veinRelY)/radius;
+				const xyDistSqr = distToCenterX*distToCenterX + distToCenterY*distToCenterY;
+				if(xyDistSqr > 1) continue;
+				const zDistance = radius*@sqrt(1 - xyDistSqr);
+				var zMin: i32 = @intFromFloat(veinRelZ - zDistance);
+				var zMax: i32 = @intFromFloat(@ceil(veinRelZ + zDistance));
+				zMin = @max(zMin, 0);
+				zMax = @min(zMax, chunk.width);
+				var curZ = zMin;
+				while(curZ < zMax) : (curZ += 1) {
+					const distToCenterZ = (@as(f32, @floatFromInt(curZ)) - veinRelZ)/radius;
+					const distSqr = xyDistSqr + distToCenterZ*distToCenterZ;
 					if(distSqr < 1) {
 						// Add some roughness. The ore density gets smaller at the edges:
 						if((1 - distSqr)*ore.density >= random.nextFloat(&veinSeed)) {

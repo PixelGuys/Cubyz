@@ -284,15 +284,15 @@ pub fn Array3D(comptime T: type) type {
 		const Self = @This();
 		mem: []T,
 		width: u32,
-		height: u32,
 		depth: u32,
+		height: u32,
 
-		pub fn init(allocator: NeverFailingAllocator, width: u32, height: u32, depth: u32) Self {
+		pub fn init(allocator: NeverFailingAllocator, width: u32, depth: u32, height: u32) Self {
 			return .{
 				.mem = allocator.alloc(T, width*height*depth),
 				.width = width,
-				.height = height,
 				.depth = depth,
+				.height = height,
 			};
 		}
 
@@ -301,18 +301,18 @@ pub fn Array3D(comptime T: type) type {
 		}
 
 		pub fn get(self: Self, x: usize, y: usize, z: usize) T {
-			std.debug.assert(x < self.width and y < self.height and z < self.depth);
-			return self.mem[(x*self.height + y)*self.depth + z];
+			std.debug.assert(x < self.width and y < self.depth and z < self.height);
+			return self.mem[(x*self.depth + y)*self.height + z];
 		}
 
 		pub fn set(self: Self, x: usize, y: usize, z: usize, t: T) void {
-			std.debug.assert(x < self.width and y < self.height and z < self.depth);
-			self.mem[(x*self.height + y)*self.depth + z] = t;
+			std.debug.assert(x < self.width and y < self.depth and z < self.height);
+			self.mem[(x*self.depth + y)*self.height + z] = t;
 		}
 
 		pub fn ptr(self: Self, x: usize, y: usize, z: usize) *T {
-			std.debug.assert(x < self.width and y < self.height and z < self.depth);
-			return &self.mem[(x*self.height + y)*self.depth + z];
+			std.debug.assert(x < self.width and y < self.depth and z < self.height);
+			return &self.mem[(x*self.depth + y)*self.height + z];
 		}
 	};
 }

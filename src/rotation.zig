@@ -64,13 +64,13 @@ pub const Permutation = packed struct(u6) {
 				if(self.mirrorX) neighbor ^ 1
 				else neighbor
 			),
-			Neighbors.dirDown,
-			Neighbors.dirUp => (
+			Neighbors.dirNegY,
+			Neighbors.dirPosY => (
 				if(self.mirrorY) neighbor ^ 1
 				else neighbor
 			),
-			Neighbors.dirNegZ,
-			Neighbors.dirPosZ => (
+			Neighbors.dirDown,
+			Neighbors.dirUp => (
 				if(self.mirrorZ) neighbor ^ 1
 				else neighbor
 			),
@@ -79,18 +79,18 @@ pub const Permutation = packed struct(u6) {
 		const afterXPermutation: u3 = switch(mirrored) {
 			Neighbors.dirNegX,
 			Neighbors.dirPosX => (
-				if(self.permutationX == 1) mirrored +% (Neighbors.dirDown -% Neighbors.dirNegX)
-				else if(self.permutationX == 2) mirrored +% (Neighbors.dirNegZ -% Neighbors.dirNegX)
+				if(self.permutationX == 1) mirrored +% (Neighbors.dirNegY -% Neighbors.dirNegX)
+				else if(self.permutationX == 2) mirrored +% (Neighbors.dirDown -% Neighbors.dirNegX)
+				else mirrored
+			),
+			Neighbors.dirNegY,
+			Neighbors.dirPosY => (
+				if(self.permutationX == 1) mirrored +% (Neighbors.dirNegX -% Neighbors.dirNegY)
 				else mirrored
 			),
 			Neighbors.dirDown,
 			Neighbors.dirUp => (
-				if(self.permutationX == 1) mirrored +% (Neighbors.dirNegX -% Neighbors.dirDown)
-				else mirrored
-			),
-			Neighbors.dirNegZ,
-			Neighbors.dirPosZ => (
-				if(self.permutationX == 2) mirrored +% (Neighbors.dirNegX -% Neighbors.dirNegZ)
+				if(self.permutationX == 2) mirrored +% (Neighbors.dirNegX -% Neighbors.dirDown)
 				else mirrored
 			),
 			else => unreachable,
@@ -98,14 +98,14 @@ pub const Permutation = packed struct(u6) {
 		const afterYZPermutation: u3 = switch(afterXPermutation) {
 			Neighbors.dirNegX,
 			Neighbors.dirPosX => afterXPermutation,
-			Neighbors.dirDown,
-			Neighbors.dirUp => (
-				if(self.permutationYZ) afterXPermutation +% (Neighbors.dirNegZ -% Neighbors.dirDown)
+			Neighbors.dirNegY,
+			Neighbors.dirPosY => (
+				if(self.permutationYZ) afterXPermutation +% (Neighbors.dirDown -% Neighbors.dirNegY)
 				else afterXPermutation
 			),
-			Neighbors.dirNegZ,
-			Neighbors.dirPosZ => (
-				if(self.permutationYZ) afterXPermutation +% (Neighbors.dirDown -% Neighbors.dirNegZ)
+			Neighbors.dirDown,
+			Neighbors.dirUp => (
+				if(self.permutationYZ) afterXPermutation +% (Neighbors.dirNegY -% Neighbors.dirDown)
 				else afterXPermutation
 			),
 			else => unreachable,

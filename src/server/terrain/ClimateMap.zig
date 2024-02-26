@@ -21,19 +21,19 @@ pub const BiomeSample = struct {
 
 const ClimateMapFragmentPosition = struct {
 	wx: i32,
-	wz: i32,
+	wy: i32,
 
 	pub fn equals(self: ClimateMapFragmentPosition, other: anytype) bool {
 		if(@TypeOf(other) == ?*ClimateMapFragment) {
 			if(other) |ch| {
-				return self.wx == ch.pos.wx and self.wz == ch.pos.wz;
+				return self.wx == ch.pos.wx and self.wy == ch.pos.wy;
 			}
 			return false;
 		} else @compileError("Unsupported");
 	}
 
 	pub fn hashCode(self: ClimateMapFragmentPosition) u32 {
-		return @bitCast((self.wx >> ClimateMapFragment.mapShift)*%33 +% (self.wz >> ClimateMapFragment.mapShift));
+		return @bitCast((self.wx >> ClimateMapFragment.mapShift)*%33 +% (self.wy >> ClimateMapFragment.mapShift));
 	}
 };
 
@@ -47,18 +47,18 @@ pub const ClimateMapFragment = struct {
 	
 	refCount: Atomic(u16) = Atomic(u16).init(0),
 
-	pub fn init(self: *ClimateMapFragment, wx: i32, wz: i32) void {
+	pub fn init(self: *ClimateMapFragment, wx: i32, wy: i32) void {
 		self.* = .{
-			.pos = .{.wx = wx, .wz = wz,},
+			.pos = .{.wx = wx, .wy = wy,},
 		};
 	}
 
 	pub fn hashCodeSelf(self: *ClimateMapFragment) u32 {
-		return hashCode(self.wx, self.wz);
+		return hashCode(self.wx, self.wy);
 	}
 
-	pub fn hashCode(wx: i32, wz: i32) u32 {
-		return @bitCast((wx >> mapShift)*%33 + (wz >> mapShift));
+	pub fn hashCode(wx: i32, wy: i32) u32 {
+		return @bitCast((wx >> mapShift)*%33 + (wy >> mapShift));
 	}
 };
 
@@ -113,7 +113,7 @@ fn mapFragmentDeinit(mapFragment: *ClimateMapFragment) void {
 
 fn cacheInit(pos: ClimateMapFragmentPosition) *ClimateMapFragment {
 	const mapFragment = main.globalAllocator.create(ClimateMapFragment);
-	mapFragment.init(pos.wx, pos.wz);
+	mapFragment.init(pos.wx, pos.wy);
 	profile.climateGenerator.generateMapFragment(mapFragment, profile.seed);
 	_ = @atomicRmw(u16, &mapFragment.refCount.raw, .Add, 1, .Monotonic);
 	return mapFragment;
@@ -128,36 +128,36 @@ pub fn deinit() void {
 }
 
 /// Call deinit on the result.
-fn getOrGenerateFragment(wx: i32, wz: i32) *ClimateMapFragment {
-	const compare = ClimateMapFragmentPosition{.wx = wx, .wz = wz};
+fn getOrGenerateFragment(wx: i32, wy: i32) *ClimateMapFragment {
+	const compare = ClimateMapFragmentPosition{.wx = wx, .wy = wy};
 	const result = cache.findOrCreate(compare, cacheInit);
 	std.debug.assert(@atomicRmw(u16, &result.refCount.raw, .Add, 1, .Monotonic) != 0);
 	return result;
 }
 
-pub fn getBiomeMap(allocator: NeverFailingAllocator, wx: i32, wz: i32, width: u31, height: u31) Array2D(BiomeSample) {
+pub fn getBiomeMap(allocator: NeverFailingAllocator, wx: i32, wy: i32, width: u31, height: u31) Array2D(BiomeSample) {
 	const map = Array2D(BiomeSample).init(allocator, width >> MapFragment.biomeShift, height >> MapFragment.biomeShift);
 	const wxStart = wx & ~ClimateMapFragment.mapMask;
-	const wzStart = wz & ~ClimateMapFragment.mapMask;
+	const wzStart = wy & ~ClimateMapFragment.mapMask;
 	const wxEnd = wx+width & ~ClimateMapFragment.mapMask;
-	const wzEnd = wz+height & ~ClimateMapFragment.mapMask;
+	const wzEnd = wy+height & ~ClimateMapFragment.mapMask;
 	var x = wxStart;
 	while(x <= wxEnd) : (x += ClimateMapFragment.mapSize) {
-		var z = wzStart;
-		while(z <= wzEnd) : (z += ClimateMapFragment.mapSize) {
-			const mapPiece = getOrGenerateFragment(x, z);
+		var y = wzStart;
+		while(y <= wzEnd) : (y += ClimateMapFragment.mapSize) {
+			const mapPiece = getOrGenerateFragment(x, y);
 			defer mapFragmentDeinit(mapPiece);
 			// Offset of the indices in the result map:
 			const xOffset = (x - wx) >> MapFragment.biomeShift;
-			const zOffset = (z - wz) >> MapFragment.biomeShift;
+			const yOffset = (y - wy) >> MapFragment.biomeShift;
 			// Go through all indices in the mapPiece:
 			for(&mapPiece.map, 0..) |*col, lx| {
 				const resultX = @as(i32, @intCast(lx)) + xOffset;
 				if(resultX < 0 or resultX >= width >> MapFragment.biomeShift) continue;
-				for(col, 0..) |*spot, lz| {
-					const resultZ = @as(i32, @intCast(lz)) + zOffset;
-					if(resultZ < 0 or resultZ >= height >> MapFragment.biomeShift) continue;
-					map.set(@intCast(resultX), @intCast(resultZ), spot.*);
+				for(col, 0..) |*spot, ly| {
+					const resultY = @as(i32, @intCast(ly)) + yOffset;
+					if(resultY < 0 or resultY >= height >> MapFragment.biomeShift) continue;
+					map.set(@intCast(resultX), @intCast(resultY), spot.*);
 				}
 			}
 		}

@@ -1232,7 +1232,7 @@ pub const Protocols = struct {
 			while(remaining.len >= 9) {
 				const request = main.server.terrain.SurfaceMap.MapFragmentPosition{
 					.wx = std.mem.readInt(i32, remaining[0..4], .big),
-					.wz = std.mem.readInt(i32, remaining[4..8], .big),
+					.wy = std.mem.readInt(i32, remaining[4..8], .big),
 					.voxelSize = @as(u31, 1) << @intCast(std.mem.readInt(u8, remaining[8..9], .big)),
 					.voxelSizeShift = @intCast(std.mem.readInt(u8, remaining[8..9], .big)),
 				};
@@ -1249,7 +1249,7 @@ pub const Protocols = struct {
 			var remaining = data;
 			for(requests) |req| {
 				std.mem.writeInt(i32, remaining[0..4], req.wx, .big);
-				std.mem.writeInt(i32, remaining[4..8], req.wz, .big);
+				std.mem.writeInt(i32, remaining[4..8], req.wy, .big);
 				std.mem.writeInt(u8, remaining[8..9], req.voxelSizeShift, .big);
 				remaining = remaining[9..];
 			}
@@ -1262,7 +1262,7 @@ pub const Protocols = struct {
 			var data = _data;
 			const pos = main.server.terrain.SurfaceMap.MapFragmentPosition{
 				.wx = std.mem.readInt(i32, data[0..4], .big),
-				.wz = std.mem.readInt(i32, data[4..8], .big),
+				.wy = std.mem.readInt(i32, data[4..8], .big),
 				.voxelSize = @as(u31, 1) << @intCast(std.mem.readInt(u8, data[8..9], .big)),
 				.voxelSizeShift = @intCast(std.mem.readInt(u8, data[8..9], .big)),
 			};
@@ -1274,7 +1274,7 @@ pub const Protocols = struct {
 			}
 			data = _inflatedData;
 			const map = main.globalAllocator.create(main.server.terrain.LightMap.LightMapFragment);
-			map.init(pos.wx, pos.wz, pos.voxelSize);
+			map.init(pos.wx, pos.wy, pos.voxelSize);
 			_ = map.refCount.fetchAdd(1, .Monotonic);
 			for(&map.startHeight) |*val| {
 				val.* = std.mem.readInt(i16, data[0..2], .big);
@@ -1293,7 +1293,7 @@ pub const Protocols = struct {
 			defer main.stackAllocator.free(data);
 			@memcpy(data[9..], compressedData);
 			std.mem.writeInt(i32, data[0..4], map.pos.wx, .big);
-			std.mem.writeInt(i32, data[4..8], map.pos.wz, .big);
+			std.mem.writeInt(i32, data[4..8], map.pos.wy, .big);
 			std.mem.writeInt(u8, data[8..9], map.pos.voxelSizeShift, .big);
 			conn.sendImportant(id, data);
 		}

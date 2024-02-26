@@ -215,15 +215,15 @@ pub const BlockStructure = struct {
 		allocator.free(self.structure);
 	}
 
-	pub fn addSubTerranian(self: BlockStructure, chunk: *Chunk, startingDepth: i32, minDepth: i32, x: i32, z: i32, seed: *u64) i32 {
+	pub fn addSubTerranian(self: BlockStructure, chunk: *Chunk, startingDepth: i32, minDepth: i32, x: i32, y: i32, seed: *u64) i32 {
 		var depth = startingDepth;
 		for(self.structure) |blockStack| {
 			const total = blockStack.min + main.random.nextIntBounded(u32, seed, @as(u32, 1) + blockStack.max - blockStack.min);
 			for(0..total) |_| {
 				const block = blocks.Block{.typ = blockStack.blockType, .data = undefined};
 				// TODO: block = block.mode().getNaturalStandard(block);
-				if(chunk.liesInChunk(x, depth, z)) {
-					chunk.updateBlockInGeneration(x, depth, z, block);
+				if(chunk.liesInChunk(x, y, depth)) {
+					chunk.updateBlockInGeneration(x, y, depth, block);
 				}
 				depth -%= chunk.pos.voxelSize;
 				if(depth -% minDepth <= 0)

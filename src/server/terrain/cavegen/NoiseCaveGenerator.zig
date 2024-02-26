@@ -48,9 +48,9 @@ pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 	var x: u31 = 0;
 	while(x < map.pos.voxelSize*CaveMapFragment.width) : (x += outerSize) {
 		var y: u31 = 0;
-		while(y < map.pos.voxelSize*CaveMapFragment.height) : (y += outerSize) {
+		while(y < map.pos.voxelSize*CaveMapFragment.width) : (y += outerSize) {
 			var z: u31 = 0;
-			while(z < map.pos.voxelSize*CaveMapFragment.width) : (z += outerSize) {
+			while(z < map.pos.voxelSize*CaveMapFragment.height) : (z += outerSize) {
 				const val000 = getValue(noise, outerSizeShift, x, y, z);
 				const val001 = getValue(noise, outerSizeShift, x, y, z + outerSize);
 				const val010 = getValue(noise, outerSizeShift, x, y + outerSize, z);
@@ -69,9 +69,9 @@ pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 					// All cave in here :)
 					var dx: u31 = 0;
 					while(dx < outerSize) : (dx += map.pos.voxelSize) {
-						var dz: u31 = 0;
-						while(dz < outerSize) : (dz += map.pos.voxelSize) {
-							map.removeRange(x + dx, z + dz, y, y + outerSize);
+						var dy: u31 = 0;
+						while(dy < outerSize) : (dy += map.pos.voxelSize) {
+							map.removeRange(x + dx, y + dy, z, z + outerSize);
 						}
 					}
 				} else {
@@ -79,38 +79,38 @@ pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 					// Luckily due to the blocky nature of the game there is no visible artifacts from it.
 					var dx: u31 = 0;
 					while(dx < outerSize) : (dx += map.pos.voxelSize) {
-						var dz: u31 = 0;
-						while(dz < outerSize) : (dz += map.pos.voxelSize) {
+						var dy: u31 = 0;
+						while(dy < outerSize) : (dy += map.pos.voxelSize) {
 							const ix = @as(f32, @floatFromInt(dx))/outerSizeFloat;
-							const iz = @as(f32, @floatFromInt(dz))/outerSizeFloat;
+							const iy = @as(f32, @floatFromInt(dy))/outerSizeFloat;
 							const lowerVal = (
-								(1 - ix)*(1 - iz)*val000
-								+ (1 - ix)*iz*val001
-								+ ix*(1 - iz)*val100
-								+ ix*iz*val101
+								(1 - ix)*(1 - iy)*val000
+								+ (1 - ix)*iy*val001
+								+ ix*(1 - iy)*val100
+								+ ix*iy*val101
 							);
 							const upperVal = (
-								(1 - ix)*(1 - iz)*val010
-								+ (1 - ix)*iz*val011
-								+ ix*(1 - iz)*val110
-								+ ix*iz*val111
+								(1 - ix)*(1 - iy)*val010
+								+ (1 - ix)*iy*val011
+								+ ix*(1 - iy)*val110
+								+ ix*iy*val111
 							);
 							// TODO: Determine the range that needs to be removed, and remove it in one go.
 							if(upperVal*lowerVal > 0) { // All y values have the same sign → the entire column is the same.
 								if(upperVal > 0) {
 									// All cave in here :)
-									map.removeRange(x + dx, z + dz, y, y + outerSize);
+									map.removeRange(x + dx, y + dy, z, z + outerSize);
 								} else {
 									// No cave in here :)
 								}
 							} else {
 								// Could be more efficient, but I'm lazy right now and I'll just go through the entire range:
-								var dy: u31 = 0;
-								while(dy < outerSize) : (dy += map.pos.voxelSize) {
-									const iy = @as(f32, @floatFromInt(dy))/outerSizeFloat;
-									const val = (1 - iy)*lowerVal + iy*upperVal;
+								var dz: u31 = 0;
+								while(dz < outerSize) : (dz += map.pos.voxelSize) {
+									const iz = @as(f32, @floatFromInt(dz))/outerSizeFloat;
+									const val = (1 - iz)*lowerVal + iz*upperVal;
 									if(val > 0)
-										map.removeRange(x + dx, z + dz, y + dy, y + dy + map.pos.voxelSize);
+										map.removeRange(x + dx, y + dy, z + dz, z + dz + map.pos.voxelSize);
 								}
 							}
 						}

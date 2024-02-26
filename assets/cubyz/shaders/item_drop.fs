@@ -17,23 +17,23 @@ uniform float sizeScale;
 uniform int time;
 
 const float[6] normalVariations = float[6](
-	1.0, //vec3(0, 1, 0),
-	0.80, //vec3(0, -1, 0),
-	0.9, //vec3(1, 0, 0),
-	0.9, //vec3(-1, 0, 0),
-	0.95, //vec3(0, 0, 1),
-	0.85 //vec3(0, 0, -1)
+	1.0,
+	0.80,
+	0.9,
+	0.9,
+	0.95,
+	0.85
 );
 
 // blockDrops ------------------------------------------------------------------------------------------------------------------------
 
 const vec3[6] normals = vec3[6](
-	vec3(0, 1, 0),
-	vec3(0, -1, 0),
+	vec3(0, 0, 1),
+	vec3(0, 0, -1),
 	vec3(1, 0, 0),
 	vec3(-1, 0, 0),
-	vec3(0, 0, 1),
-	vec3(0, 0, -1)
+	vec3(0, 1, 0),
+	vec3(0, -1, 0)
 );
 
 #define modelSize 16
@@ -140,17 +140,17 @@ RayMarchResult rayMarching(vec3 startPosition, vec3 direction) { // TODO: Mipmap
 ivec2 getTextureCoords(ivec3 voxelPosition, int textureDir) {
 	switch(textureDir) {
 		case 0:
-			return ivec2(15 - voxelPosition.x, voxelPosition.z);
-		case 1:
-			return ivec2(voxelPosition.x, voxelPosition.z);
-		case 2:
-			return ivec2(15 - voxelPosition.z, voxelPosition.y);
-		case 3:
-			return ivec2(voxelPosition.z, voxelPosition.y);
-		case 4:
-			return ivec2(voxelPosition.x, voxelPosition.y);
-		case 5:
 			return ivec2(15 - voxelPosition.x, voxelPosition.y);
+		case 1:
+			return ivec2(voxelPosition.x, voxelPosition.y);
+		case 2:
+			return ivec2(15 - voxelPosition.y, voxelPosition.z);
+		case 3:
+			return ivec2(voxelPosition.y, voxelPosition.z);
+		case 4:
+			return ivec2(voxelPosition.x, voxelPosition.z);
+		case 5:
+			return ivec2(15 - voxelPosition.x, voxelPosition.z);
 	}
 }
 

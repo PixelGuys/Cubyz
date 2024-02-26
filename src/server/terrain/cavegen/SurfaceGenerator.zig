@@ -29,13 +29,13 @@ pub fn deinit() void {
 
 pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 	_ = worldSeed;
-	const mapFragment = SurfaceMap.getOrGenerateFragment(map.pos.wx, map.pos.wz, map.pos.voxelSize);
+	const mapFragment = SurfaceMap.getOrGenerateFragment(map.pos.wx, map.pos.wy, map.pos.voxelSize);
 	defer mapFragment.deinit();
 	var x: u31 = 0;
 	while(x < CaveMapFragment.width*map.pos.voxelSize) : (x += map.pos.voxelSize) {
-		var z: u31 = 0;
-		while(z < CaveMapFragment.width*map.pos.voxelSize) : (z += map.pos.voxelSize) {
-			map.addRange(x, z, 0, @as(i32, @intFromFloat(mapFragment.getHeight(map.pos.wx + x, map.pos.wz + z))) - map.pos.wy);
+		var y: u31 = 0;
+		while(y < CaveMapFragment.width*map.pos.voxelSize) : (y += map.pos.voxelSize) {
+			map.addRange(x, y, 0, @as(i32, @intFromFloat(mapFragment.getHeight(map.pos.wx + x, map.pos.wy + y))) - map.pos.wz);
 		}
 	}
 }

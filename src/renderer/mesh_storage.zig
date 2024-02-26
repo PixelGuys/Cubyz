@@ -118,18 +118,18 @@ fn getNodeFromRenderThread(pos: chunk.ChunkPosition) *ChunkMeshNode {
 	return &storageLists[lod][@intCast(index)];
 }
 
-fn getMapPieceLocation(x: i32, z: i32, voxelSize: u31) *Atomic(?*LightMap.LightMapFragment) {
+fn getMapPieceLocation(x: i32, y: i32, voxelSize: u31) *Atomic(?*LightMap.LightMapFragment) {
 	const lod = std.math.log2_int(u31, voxelSize);
 	var xIndex = x >> lod+LightMap.LightMapFragment.mapShift;
-	var zIndex = z >> lod+LightMap.LightMapFragment.mapShift;
+	var yIndex = y >> lod+LightMap.LightMapFragment.mapShift;
 	xIndex &= storageMask;
-	zIndex &= storageMask;
-	const index = xIndex*storageSize + zIndex;
+	yIndex &= storageMask;
+	const index = xIndex*storageSize + yIndex;
 	return &(&mapStorageLists)[lod][@intCast(index)];
 }
 
-pub fn getLightMapPieceAndIncreaseRefCount(x: i32, z: i32, voxelSize: u31) ?*LightMap.LightMapFragment {
-	const result: *LightMap.LightMapFragment = getMapPieceLocation(x, z, voxelSize).load(.Acquire) orelse return null;
+pub fn getLightMapPieceAndIncreaseRefCount(x: i32, y: i32, voxelSize: u31) ?*LightMap.LightMapFragment {
+	const result: *LightMap.LightMapFragment = getMapPieceLocation(x, y, voxelSize).load(.Acquire) orelse return null;
 	var refCount: u16 = 1;
 	while(result.refCount.cmpxchgWeak(refCount, refCount+1, .Monotonic, .Monotonic)) |otherVal| {
 		if(otherVal == 0) return null;
@@ -254,12 +254,12 @@ fn isMapInRenderDistance(pos: LightMap.MapFragmentPosition) bool {
 	var deltaX: i64 = @abs(pos.wx +% size/2 -% lastPx);
 	deltaX = @max(0, deltaX - size/2);
 
-	const maxZRenderDistance: i32 = reduceRenderDistance(maxRenderDistance, deltaX);
-	if(maxZRenderDistance == 0) return false;
-	const minZ = lastPz-%maxZRenderDistance & invMask;
-	const maxZ = lastPz+%maxZRenderDistance+%size & invMask;
-	if(pos.wz < minZ) return false;
-	if(pos.wz >= maxZ) return false;
+	const maxYRenderDistance: i32 = reduceRenderDistance(maxRenderDistance, deltaX);
+	if(maxYRenderDistance == 0) return false;
+	const minY = lastPy-%maxYRenderDistance & invMask;
+	const maxY = lastPy+%maxYRenderDistance+%size & invMask;
+	if(pos.wy < minY) return false;
+	if(pos.wy >= maxY) return false;
 	return true;
 }
 
@@ -354,36 +354,36 @@ fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32) void {
 			deltaXNew = @max(0, deltaXNew - size/2);
 			var deltaXOld: i64 = @abs(x +% size/2 -% olderPx);
 			deltaXOld = @max(0, deltaXOld - size/2);
-			var maxZRenderDistanceNew: i32 = reduceRenderDistance(maxRenderDistanceNew, deltaXNew);
-			if(maxZRenderDistanceNew == 0) maxZRenderDistanceNew -= size/2;
-			var maxZRenderDistanceOld: i32 = reduceRenderDistance(maxRenderDistanceOld, deltaXOld);
-			if(maxZRenderDistanceOld == 0) maxZRenderDistanceOld -= size/2;
+			var maxYRenderDistanceNew: i32 = reduceRenderDistance(maxRenderDistanceNew, deltaXNew);
+			if(maxYRenderDistanceNew == 0) maxYRenderDistanceNew -= size/2;
+			var maxYRenderDistanceOld: i32 = reduceRenderDistance(maxRenderDistanceOld, deltaXOld);
+			if(maxYRenderDistanceOld == 0) maxYRenderDistanceOld -= size/2;
 
-			const minZOld = olderPz-%maxZRenderDistanceOld & invMask;
-			const maxZOld = olderPz+%maxZRenderDistanceOld+%size & invMask;
-			const minZNew = lastPz-%maxZRenderDistanceNew & invMask;
-			const maxZNew = lastPz+%maxZRenderDistanceNew+%size & invMask;
+			const minYOld = olderPy-%maxYRenderDistanceOld & invMask;
+			const maxYOld = olderPy+%maxYRenderDistanceOld+%size & invMask;
+			const minYNew = lastPy-%maxYRenderDistanceNew & invMask;
+			const maxYNew = lastPy+%maxYRenderDistanceNew+%size & invMask;
 
-			var zValues: [storageSize]i32 = undefined;
-			var zValuesLen: usize = 0;
-			if(minZNew -% minZOld > 0) {
-				var z = minZOld;
-				while(z != minZNew and z != maxZOld): (z +%= size) {
-					zValues[zValuesLen] = z;
-					zValuesLen += 1;
+			var yValues: [storageSize]i32 = undefined;
+			var yValuesLen: usize = 0;
+			if(minYNew -% minYOld > 0) {
+				var y = minYOld;
+				while(y != minYNew and y != maxYOld): (y +%= size) {
+					yValues[yValuesLen] = y;
+					yValuesLen += 1;
 				}
 			}
-			if(maxZOld -% maxZNew > 0) {
-				var z = minZOld +% @max(0, maxZNew -% minZOld);
-				while(z != maxZOld): (z +%= size) {
-					zValues[zValuesLen] = z;
-					zValuesLen += 1;
+			if(maxYOld -% maxYNew > 0) {
+				var y = minYOld +% @max(0, maxYNew -% minYOld);
+				while(y != maxYOld): (y +%= size) {
+					yValues[yValuesLen] = y;
+					yValuesLen += 1;
 				}
 			}
 
-			for(zValues[0..zValuesLen]) |z| {
-				const zIndex = @divExact(z, size) & storageMask;
-				const index = xIndex*storageSize + zIndex;
+			for(yValues[0..yValuesLen]) |y| {
+				const yIndex = @divExact(y, size) & storageMask;
+				const index = xIndex*storageSize + yIndex;
 				
 				const mapAtomic = &mapStorageLists[_lod][@intCast(index)];
 				if(mapAtomic.load(.Acquire)) |map| {
@@ -485,37 +485,37 @@ fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32, meshR
 			deltaXNew = @max(0, deltaXNew - size/2);
 			var deltaXOld: i64 = @abs(x +% size/2 -% olderPx);
 			deltaXOld = @max(0, deltaXOld - size/2);
-			var maxZRenderDistanceNew: i32 = reduceRenderDistance(maxRenderDistanceNew, deltaXNew);
-			if(maxZRenderDistanceNew == 0) maxZRenderDistanceNew -= size/2;
-			var maxZRenderDistanceOld: i32 = reduceRenderDistance(maxRenderDistanceOld, deltaXOld);
-			if(maxZRenderDistanceOld == 0) maxZRenderDistanceOld -= size/2;
+			var maxYRenderDistanceNew: i32 = reduceRenderDistance(maxRenderDistanceNew, deltaXNew);
+			if(maxYRenderDistanceNew == 0) maxYRenderDistanceNew -= size/2;
+			var maxYRenderDistanceOld: i32 = reduceRenderDistance(maxRenderDistanceOld, deltaXOld);
+			if(maxYRenderDistanceOld == 0) maxYRenderDistanceOld -= size/2;
 
-			const minZOld = olderPz-%maxZRenderDistanceOld & invMask;
-			const maxZOld = olderPz+%maxZRenderDistanceOld+%size & invMask;
-			const minZNew = lastPz-%maxZRenderDistanceNew & invMask;
-			const maxZNew = lastPz+%maxZRenderDistanceNew+%size & invMask;
+			const minYOld = olderPy-%maxYRenderDistanceOld & invMask;
+			const maxYOld = olderPy+%maxYRenderDistanceOld+%size & invMask;
+			const minYNew = lastPy-%maxYRenderDistanceNew & invMask;
+			const maxYNew = lastPy+%maxYRenderDistanceNew+%size & invMask;
 
-			var zValues: [storageSize]i32 = undefined;
-			var zValuesLen: usize = 0;
-			if(minZOld -% minZNew > 0) {
-				var z = minZNew;
-				while(z != minZOld and z != maxZNew): (z +%= size) {
-					zValues[zValuesLen] = z;
-					zValuesLen += 1;
+			var yValues: [storageSize]i32 = undefined;
+			var yValuesLen: usize = 0;
+			if(minYOld -% minYNew > 0) {
+				var y = minYNew;
+				while(y != minYOld and y != maxYNew): (y +%= size) {
+					yValues[yValuesLen] = y;
+					yValuesLen += 1;
 				}
 			}
-			if(maxZNew -% maxZOld > 0) {
-				var z = minZNew +% @max(0, maxZOld -% minZNew);
-				while(z != maxZNew): (z +%= size) {
-					zValues[zValuesLen] = z;
-					zValuesLen += 1;
+			if(maxYNew -% maxYOld > 0) {
+				var y = minYNew +% @max(0, maxYOld -% minYNew);
+				while(y != maxYNew): (y +%= size) {
+					yValues[yValuesLen] = y;
+					yValuesLen += 1;
 				}
 			}
 
-			for(zValues[0..zValuesLen]) |z| {
-				const zIndex = @divExact(z, size) & storageMask;
-				const index = xIndex*storageSize + zIndex;
-				const pos = LightMap.MapFragmentPosition{.wx=x, .wz=z, .voxelSize=@as(u31, 1)<<lod, .voxelSizeShift = lod};
+			for(yValues[0..yValuesLen]) |y| {
+				const yIndex = @divExact(y, size) & storageMask;
+				const index = xIndex*storageSize + yIndex;
+				const pos = LightMap.MapFragmentPosition{.wx=x, .wy=y, .voxelSize=@as(u31, 1)<<lod, .voxelSizeShift = lod};
 
 				const node = &mapStorageLists[_lod][@intCast(index)];
 				std.debug.assert(node.load(.Acquire) == null);
@@ -895,7 +895,7 @@ pub fn updateMeshes(targetTime: i64) void {
 		if(!isMapInRenderDistance(map.pos)) {
 			map.decreaseRefCount();
 		} else {
-			if(getMapPieceLocation(map.pos.wx, map.pos.wz, map.pos.voxelSize).swap(map, .AcqRel)) |old| {
+			if(getMapPieceLocation(map.pos.wx, map.pos.wy, map.pos.voxelSize).swap(map, .AcqRel)) |old| {
 				old.decreaseRefCount();
 			}
 		}

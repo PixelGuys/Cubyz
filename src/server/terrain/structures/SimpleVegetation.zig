@@ -30,14 +30,14 @@ pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: JsonElement)
 }
 
 pub fn generate(self: *SimpleVegetation, x: i32, y: i32, z: i32, chunk: *main.chunk.Chunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) void {
-	if(chunk.pos.voxelSize > 2 and (x & chunk.pos.voxelSize-1 != 0 or z & chunk.pos.voxelSize-1 != 0)) return;
+	if(chunk.pos.voxelSize > 2 and (x & chunk.pos.voxelSize-1 != 0 or y & chunk.pos.voxelSize-1 != 0)) return;
 	if(chunk.liesInChunk(x, y, z)) {
 		const height = self.height0 + random.nextIntBounded(u31, seed, self.deltaHeight+1);
-		if(y + height >= caveMap.findTerrainChangeAbove(x, z, y)) return; // Space is too small.
-		var py: i32 = chunk.startIndex(y);
-		while(py < y + height) : (py += chunk.pos.voxelSize) {
-			if(chunk.liesInChunk(x, py, z)) {
-				chunk.updateBlockIfDegradable(x, py, z, .{.typ = self.blockType, .data = 0}); // TODO: Natural standard.
+		if(z + height >= caveMap.findTerrainChangeAbove(x, y, z)) return; // Space is too small.
+		var pz: i32 = chunk.startIndex(z);
+		while(pz < z + height) : (pz += chunk.pos.voxelSize) {
+			if(chunk.liesInChunk(x, y, pz)) {
+				chunk.updateBlockIfDegradable(x, y, pz, .{.typ = self.blockType, .data = 0}); // TODO: Natural standard.
 			}
 		}
 	}

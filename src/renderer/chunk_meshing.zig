@@ -57,7 +57,7 @@ pub fn init() void {
 	transparentShader = Shader.initAndGetUniforms("assets/cubyz/shaders/chunks/chunk_vertex.vs", "assets/cubyz/shaders/chunks/transparent_fragment.fs", &transparentUniforms);
 
 	var rawData: [6*3 << (3*chunk.chunkShift)]u32 = undefined; // 6 vertices per face, maximum 3 faces/block
-	const lut = [_]u32{0, 1, 2, 2, 1, 3};
+	const lut = [_]u32{0, 2, 1, 1, 2, 3};
 	for(0..rawData.len) |i| {
 		rawData[i] = @as(u32, @intCast(i))/6*4 + lut[i%6];
 	}
@@ -557,10 +557,10 @@ pub const ChunkMesh = struct {
 		const freestandingModel = rotatedModel.modelIndex != models.fullCube and switch(rotatedModel.permutation.permuteNeighborIndex(neighbor)) {
 			chunk.Neighbors.dirNegX => model.min[0] != 0,
 			chunk.Neighbors.dirPosX => model.max[0] != 16, // TODO: Use a bitfield inside the models or something like that.
-			chunk.Neighbors.dirDown => model.min[1] != 0,
-			chunk.Neighbors.dirUp => model.max[1] != 16,
-			chunk.Neighbors.dirNegZ => model.min[2] != 0,
-			chunk.Neighbors.dirPosZ => model.max[2] != 16,
+			chunk.Neighbors.dirNegY => model.min[1] != 0,
+			chunk.Neighbors.dirPosY => model.max[1] != 16,
+			chunk.Neighbors.dirDown => model.min[2] != 0,
+			chunk.Neighbors.dirUp => model.max[2] != 16,
 			else => unreachable,
 		};
 		return block.typ != 0 and (
@@ -593,16 +593,16 @@ pub const ChunkMesh = struct {
 		sunLight: {
 			var sunStarters: [chunk.chunkSize*chunk.chunkSize][3]u8 = undefined;
 			var index: usize = 0;
-			const lightStartMap = mesh_storage.getLightMapPieceAndIncreaseRefCount(self.pos.wx, self.pos.wz, self.pos.voxelSize) orelse break :sunLight;
+			const lightStartMap = mesh_storage.getLightMapPieceAndIncreaseRefCount(self.pos.wx, self.pos.wy, self.pos.voxelSize) orelse break :sunLight;
 			defer lightStartMap.decreaseRefCount();
 			x = 0;
 			while(x < chunk.chunkSize): (x += 1) {
-				var z: u8 = 0;
-				while(z < chunk.chunkSize): (z += 1) {
-					const startHeight: i32 = lightStartMap.getHeight(self.pos.wx + x*self.pos.voxelSize, self.pos.wz + z*self.pos.voxelSize);
-					const relHeight = startHeight -% self.pos.wy;
+				var y: u8 = 0;
+				while(y < chunk.chunkSize): (y += 1) {
+					const startHeight: i32 = lightStartMap.getHeight(self.pos.wx + x*self.pos.voxelSize, self.pos.wy + y*self.pos.voxelSize);
+					const relHeight = startHeight -% self.pos.wz;
 					if(relHeight < chunk.chunkSize*self.pos.voxelSize) {
-						sunStarters[index] = .{x, chunk.chunkSize-1, z};
+						sunStarters[index] = .{x, y, chunk.chunkSize-1};
 						index += 1;
 					}
 				}
@@ -696,10 +696,10 @@ pub const ChunkMesh = struct {
 			while(y < chunk.chunkSize): (y += 1) {
 				self.chunkBorders[chunk.Neighbors.dirNegX].adjustToBlock((&self.chunk.blocks)[chunk.getIndex(0, x, y)], .{0, x, y}, chunk.Neighbors.dirNegX); // TODO: Wait for the compiler bug to get fixed.
 				self.chunkBorders[chunk.Neighbors.dirPosX].adjustToBlock((&self.chunk.blocks)[chunk.getIndex(chunk.chunkSize-1, x, y)], .{chunk.chunkSize, x, y}, chunk.Neighbors.dirPosX); // TODO: Wait for the compiler bug to get fixed.
-				self.chunkBorders[chunk.Neighbors.dirDown].adjustToBlock((&self.chunk.blocks)[chunk.getIndex(x, 0, y)], .{x, 0, y}, chunk.Neighbors.dirDown); // TODO: Wait for the compiler bug to get fixed.
-				self.chunkBorders[chunk.Neighbors.dirUp].adjustToBlock((&self.chunk.blocks)[chunk.getIndex(x, chunk.chunkSize-1, y)], .{x, chunk.chunkSize, y}, chunk.Neighbors.dirUp); // TODO: Wait for the compiler bug to get fixed.
-				self.chunkBorders[chunk.Neighbors.dirNegZ].adjustToBlock((&self.chunk.blocks)[chunk.getIndex(x, y, 0)], .{x, y, 0}, chunk.Neighbors.dirNegZ); // TODO: Wait for the compiler bug to get fixed.
-				self.chunkBorders[chunk.Neighbors.dirPosZ].adjustToBlock((&self.chunk.blocks)[chunk.getIndex(x, y, chunk.chunkSize-1)], .{x, y, chunk.chunkSize}, chunk.Neighbors.dirPosZ); // TODO: Wait for the compiler bug to get fixed.
+				self.chunkBorders[chunk.Neighbors.dirNegY].adjustToBlock((&self.chunk.blocks)[chunk.getIndex(x, 0, y)], .{x, 0, y}, chunk.Neighbors.dirNegY); // TODO: Wait for the compiler bug to get fixed.
+				self.chunkBorders[chunk.Neighbors.dirPosY].adjustToBlock((&self.chunk.blocks)[chunk.getIndex(x, chunk.chunkSize-1, y)], .{x, chunk.chunkSize, y}, chunk.Neighbors.dirPosY); // TODO: Wait for the compiler bug to get fixed.
+				self.chunkBorders[chunk.Neighbors.dirDown].adjustToBlock((&self.chunk.blocks)[chunk.getIndex(x, y, 0)], .{x, y, 0}, chunk.Neighbors.dirDown); // TODO: Wait for the compiler bug to get fixed.
+				self.chunkBorders[chunk.Neighbors.dirUp].adjustToBlock((&self.chunk.blocks)[chunk.getIndex(x, y, chunk.chunkSize-1)], .{x, y, chunk.chunkSize}, chunk.Neighbors.dirUp); // TODO: Wait for the compiler bug to get fixed.
 			}
 		}
 		self.mutex.unlock();

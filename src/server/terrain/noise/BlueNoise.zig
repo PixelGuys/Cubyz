@@ -28,8 +28,8 @@ pub fn load() void { // TODO: Do this at compile time once the caching is good e
 	// In the last repetition is enforced, to remove grid artifacts.
 	for(0..repetitions) |_| {
 		for(0..pattern.len) |i| {
-			const y: i32 = @intCast(i & sizeMask);
 			const x: i32 = @intCast(i >> sizeShift);
+			const y: i32 = @intCast(i & sizeMask);
 			outer:
 			for(0..iterations) |_| {
 				const point = random.nextInt(u6, &seed);

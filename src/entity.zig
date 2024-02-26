@@ -58,7 +58,7 @@ pub const ClientEntity = struct {
 	}
 
 	pub fn getRenderPosition(self: *const ClientEntity) Vec3d {
-		return Vec3d{self.pos[0], self.pos[1] + self.height/2, self.pos[2]};
+		return Vec3d{self.pos[0], self.pos[1], self.pos[2] + self.height/2};
 	}
 
 	pub fn updatePosition(self: *ClientEntity, pos: *const [6]f64, vel: *const [6]f64, time: i16) void {
@@ -129,8 +129,8 @@ pub const ClientEntityManager = struct {
 			const pos3d = ent.getRenderPosition() - playerPos;
 			const pos4f = Vec4f{
 				@floatCast(pos3d[0]),
-				@floatCast(pos3d[1] + 1.5),
-				@floatCast(pos3d[2]),
+				@floatCast(pos3d[1]),
+				@floatCast(pos3d[2] + 1.5),
 				1,
 			};
 

@@ -334,8 +334,8 @@ pub const meshes = struct {
 		names[Neighbors.dirUp] = "texture_top";
 		names[Neighbors.dirPosX] = "texture_right";
 		names[Neighbors.dirNegX] = "texture_left";
-		names[Neighbors.dirPosZ] = "texture_front";
-		names[Neighbors.dirNegZ] = "texture_back";
+		names[Neighbors.dirPosY] = "texture_front";
+		names[Neighbors.dirNegY] = "texture_back";
 		break :blk names;
 	};
 

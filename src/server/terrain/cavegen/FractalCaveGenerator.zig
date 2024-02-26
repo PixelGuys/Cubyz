@@ -30,7 +30,7 @@ const range = 8;
 const initialBranchLength = 64;
 const splittingChance = 0.4;
 const splitFactor = 1.0;
-const ySplitReduction = 0.5; // To reduce splitting in y-direction.
+const zSplitReduction = 0.5; // To reduce splitting in z-direction.
 const maxSplitLength = 128;
 const branchChance = 0.4;
 const minRadius = 2.0;
@@ -51,9 +51,9 @@ pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 	var x = cx -% range;
 	while(x -% cx -% CaveMapFragment.width*map.pos.voxelSize/chunkSize -% range < 0) : (x += 1) {
 		var y = cy -% range;
-		while(y -% cy -% CaveMapFragment.height*map.pos.voxelSize/chunkSize -% range < 0) : (y += 1) {
+		while(y -% cy -% CaveMapFragment.width*map.pos.voxelSize/chunkSize -% range < 0) : (y += 1) {
 			var z = cz -% range;
-			while(z -% cz -% CaveMapFragment.width*map.pos.voxelSize/chunkSize -% range < 0) : (z += 1) {
+			while(z -% cz -% CaveMapFragment.height*map.pos.voxelSize/chunkSize -% range < 0) : (z += 1) {
 				var seed: u64 = random.initSeed3D(worldSeed, .{x, y, z});
 				considerCoordinates(x, y, z, map, &seed, worldSeed);
 			}
@@ -69,50 +69,50 @@ fn generateSphere(seed: *u64, map: *CaveMapFragment, worldPos: Vec3d, radius: f6
 	xMin = @max(xMin, 0);
 	var xMax = @as(i32, @intFromFloat(relX + radius)) + 1;
 	xMax = @min(xMax, CaveMapFragment.width*map.pos.voxelSize);
-	var zMin = @as(i32, @intFromFloat(relZ - radius)) - 1;
-	zMin = @max(zMin, 0);
-	var zMax = @as(i32, @intFromFloat(relZ + radius)) + 1;
-	zMax = @min(zMax, CaveMapFragment.width*map.pos.voxelSize);
-	if(xMin >= xMax or zMin >= zMax or relY - radius + 1 >= @as(f64, @floatFromInt(CaveMapFragment.height*map.pos.voxelSize)) or relY + radius + 1 < 0) {
+	var yMin = @as(i32, @intFromFloat(relY - radius)) - 1;
+	yMin = @max(yMin, 0);
+	var yMax = @as(i32, @intFromFloat(relY + radius)) + 1;
+	yMax = @min(yMax, CaveMapFragment.width*map.pos.voxelSize);
+	if(xMin >= xMax or yMin >= yMax or relZ - radius + 1 >= @as(f64, @floatFromInt(CaveMapFragment.height*map.pos.voxelSize)) or relZ + radius + 1 < 0) {
 		return;
 	}
 	// Go through all blocks within range of the sphere center and remove them.
 	var curX = xMin;
 	while(curX < xMax) : (curX += map.pos.voxelSize) {
 		const distToCenterX = (@as(f64, @floatFromInt(curX)) - relX)/radius;
-		var curZ = zMin;
-		while(curZ < zMax) : (curZ += map.pos.voxelSize) {
-			const distToCenterZ = (@as(f64, @floatFromInt(curZ)) - relZ)/radius;
-			const xzDistaceSquared = distToCenterX*distToCenterX + distToCenterZ*distToCenterZ;
-			var yMin: i32 = @intFromFloat(relY);
-			var yMax: i32 = @intFromFloat(relY);
-			if(xzDistaceSquared < 0.9*0.9) {
-				const yDistance = radius*@sqrt(0.9*0.9 - xzDistaceSquared);
-				yMin = @intFromFloat(relY - yDistance);
-				yMax = @intFromFloat(relY + yDistance);
-				map.removeRange(curX, curZ, yMin, yMax); // Remove the center range in a single call.
+		var curY = yMin;
+		while(curY < yMax) : (curY += map.pos.voxelSize) {
+			const distToCenterY = (@as(f64, @floatFromInt(curY)) - relY)/radius;
+			const xyDistaceSquared = distToCenterX*distToCenterX + distToCenterY*distToCenterY;
+			var zMin: i32 = @intFromFloat(relZ);
+			var zMax: i32 = @intFromFloat(relZ);
+			if(xyDistaceSquared < 0.9*0.9) {
+				const zDistance = radius*@sqrt(0.9*0.9 - xyDistaceSquared);
+				zMin = @intFromFloat(relZ - zDistance);
+				zMax = @intFromFloat(relZ + zDistance);
+				map.removeRange(curX, curY, yMin, yMax); // Remove the center range in a single call.
 			}
 			// Add some roughness at the upper cave walls:
-			var curY: i32 = yMax;
-			while(curY <= CaveMapFragment.height*map.pos.voxelSize) : (curY += map.pos.voxelSize) {
-				const distToCenterY = (@as(f64, @floatFromInt(curY)) - relY)/radius;
-				const distToCenter = distToCenterY*distToCenterY + xzDistaceSquared;
+			var curZ: i32 = zMax;
+			while(curZ <= CaveMapFragment.height*map.pos.voxelSize) : (curZ += map.pos.voxelSize) {
+				const distToCenterZ = (@as(f64, @floatFromInt(curZ)) - relZ)/radius;
+				const distToCenter = distToCenterZ*distToCenterZ + xyDistaceSquared;
 				if(distToCenter < 1) {
 					// Add a small roughness parameter to make walls look a bit rough by filling only 5/6 of the blocks at the walls with air:
 					if(random.nextIntBounded(u8, seed, 6) != 0) {
-						map.removeRange(curX, curZ, curY, curY + 1);
+						map.removeRange(curX, curY, curZ, curZ + 1);
 					}
 				} else break;
 			}
 			// Add some roughness at the lower cave walls:
-			curY = yMin;
-			while(curY >= 0) : (curY -= map.pos.voxelSize) {
-				const distToCenterY = (@as(f64, @floatFromInt(curY)) - relY)/radius;
+			curZ = zMin;
+			while(curZ >= 0) : (curZ -= map.pos.voxelSize) {
+				const distToCenterZ = (@as(f64, @floatFromInt(curZ)) - relZ)/radius;
 				const distToCenter = distToCenterX*distToCenterX + distToCenterY*distToCenterY + distToCenterZ*distToCenterZ;
 				if(distToCenter < 1) {
 					// Add a small roughness parameter to make walls look a bit rough by filling only 5/6 of the blocks at the walls with air:
 					if(random.nextIntBounded(u8, seed, 6) != 0) {
-						map.removeRange(curX, curZ, curY, curY + 1);
+						map.removeRange(curX, curY, curZ, curZ + 1);
 					}
 				} else break;
 			}
@@ -130,8 +130,8 @@ fn generateCaveBetween(_seed: u64, map: *CaveMapFragment, startWorldPos: Vec3d, 
 	const max: Vec3i = @intFromFloat(@max(startWorldPos, endWorldPos) + @as(Vec3d, @splat(safetyInterval)));
 	// Only divide further if the cave may go through ther considered chunk.
 	if(min[0] >= map.pos.wx +% CaveMapFragment.width*map.pos.voxelSize or max[0] < map.pos.wx) return;
-	if(min[1] >= map.pos.wy +% CaveMapFragment.height*map.pos.voxelSize or max[1] < map.pos.wy) return;
-	if(min[2] >= map.pos.wz +% CaveMapFragment.width*map.pos.voxelSize or max[2] < map.pos.wz) return;
+	if(min[1] >= map.pos.wy +% CaveMapFragment.width*map.pos.voxelSize or max[1] < map.pos.wy) return;
+	if(min[2] >= map.pos.wz +% CaveMapFragment.height*map.pos.voxelSize or max[2] < map.pos.wz) return;
 
 	var seed = _seed;
 	random.scrambleSeed(&seed);
@@ -189,17 +189,17 @@ fn generateBranchingCaveBetween(_seed: u64, map: *CaveMapFragment, startWorldPos
 	// Small chance to generate a split:
 	if(!isStart and !isEnd and distance < maxSplitLength and random.nextFloat(&seed) < splittingChance) {
 		// Find a random direction perpendicular to the current cave direction:
-		var splitXZ: f64 = random.nextDouble(&seed) - 0.5;
-		var splitY: f64 = ySplitReduction*(random.nextDouble(&seed) - 0.5);
+		var splitXY: f64 = random.nextDouble(&seed) - 0.5;
+		var splitZ: f64 = zSplitReduction*(random.nextDouble(&seed) - 0.5);
 		// Normalize
-		const length = @sqrt(splitXZ*splitXZ + splitY*splitY);
-		splitXZ /= length;
-		splitY /= length;
+		const length = @sqrt(splitXY*splitXY + splitZ*splitZ);
+		splitXY /= length;
+		splitZ /= length;
 		// Calculate bias offsets:
 		const biasLength = vec.length(bias);
-		const offsetY = splitY*splitFactor*distance;
-		const offsetX = splitXZ*splitFactor*distance * bias[2]/biasLength;
-		const offsetZ = splitXZ*splitFactor*distance * bias[0]/biasLength;
+		const offsetX = splitXY*splitFactor*distance * bias[1]/biasLength;
+		const offsetY = splitXY*splitFactor*distance * bias[0]/biasLength;
+		const offsetZ = splitZ*splitFactor*distance;
 
 		const newBias1 = bias + Vec3d{offsetX, offsetY, offsetZ};
 		const newBias2 = bias - Vec3d{offsetX, offsetY, offsetZ};
@@ -245,8 +245,8 @@ fn considerCoordinates(x: i32, y: i32, z: i32, map: *CaveMapFragment, seed: *u64
 		@floatFromInt((z << chunkShift) + random.nextIntBounded(u8, seed, chunkSize)),
 	};
 
-	// At y = caveHeightWithMaxDensity blocks the chance is saturated, while at maxCaveHeight the chance gets 0:
-	if(random.nextFloat(seed) >= maxCaveDensity*@min(1, @as(f32, @floatCast((maxCaveHeight - startWorldPos[1])/(maxCaveHeight - caveHeightWithMaxDensity))))) return;
+	// At z = caveHeightWithMaxDensity blocks the chance is saturated, while at maxCaveHeight the chance gets 0:
+	if(random.nextFloat(seed) >= maxCaveDensity*@min(1, @as(f32, @floatCast((maxCaveHeight - startWorldPos[2])/(maxCaveHeight - caveHeightWithMaxDensity))))) return;
 
 	var starters = 1 + random.nextIntBounded(u8, seed, 4);
 	while(starters != 0) : (starters -= 1) {

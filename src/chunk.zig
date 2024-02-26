@@ -28,47 +28,47 @@ pub const Neighbors = struct { // TODO: Should this be an enum?
 	/// Directions → Index
 	pub const dirNegX: u3 = 3;
 	/// Directions → Index
-	pub const dirPosZ: u3 = 4;
+	pub const dirPosY: u3 = 4;
 	/// Directions → Index
-	pub const dirNegZ: u3 = 5;
+	pub const dirNegY: u3 = 5;
 	/// Index to relative position
 	pub const relX = [_]i32 {0, 0, 1, -1, 0, 0};
 	/// Index to relative position
-	pub const relY = [_]i32 {1, -1, 0, 0, 0, 0};
+	pub const relY = [_]i32 {0, 0, 0, 0, 1, -1};
 	/// Index to relative position
-	pub const relZ = [_]i32 {0, 0, 0, 0, 1, -1};
+	pub const relZ = [_]i32 {1, -1, 0, 0, 0, 0};
 	/// Index to bitMask for bitmap direction data
 	pub const bitMask = [_]u6 {0x01, 0x02, 0x04, 0x08, 0x10, 0x20};
 	/// To iterate over all neighbors easily
 	pub const iterable = [_]u3 {0, 1, 2, 3, 4, 5};
 	/// Marks the two dimension that are orthogonal
 	pub const orthogonalComponents = [_]Vec3i {
-		.{1, 0, 1},
-		.{1, 0, 1},
-		.{0, 1, 1},
-		.{0, 1, 1},
 		.{1, 1, 0},
 		.{1, 1, 0},
+		.{0, 1, 1},
+		.{0, 1, 1},
+		.{1, 0, 1},
+		.{1, 0, 1},
 	};
 	pub const textureX = [_]Vec3i {
 		.{1, 0, 0},
 		.{-1, 0, 0},
-		.{0, 0, -1},
-		.{0, 0, 1},
+		.{0, -1, 0},
+		.{0, 1, 0},
 		.{1, 0, 0},
 		.{-1, 0, 0},
 	};
 	pub const textureY = [_]Vec3i {
-		.{0, 0, 1},
-		.{0, 0, 1},
-		.{0, -1, 0},
-		.{0, -1, 0},
-		.{0, -1, 0},
-		.{0, -1, 0},
+		.{0, 1, 0},
+		.{0, 1, 0},
+		.{0, 0, -1},
+		.{0, 0, -1},
+		.{0, 0, -1},
+		.{0, 0, -1},
 	};
 
 	pub const isPositive = [_]bool {true, false, true, false, true, false};
-	pub const vectorComponent = [_]enum(u2){x = 0, y = 1, z = 2} {.y, .y, .x, .x, .z, .z};
+	pub const vectorComponent = [_]enum(u2){x = 0, y = 1, z = 2} {.z, .z, .x, .x, .y, .y};
 
 	pub fn extractDirectionComponent(self: u3, in: anytype) @TypeOf(in[0]) {
 		switch(self) {
@@ -83,15 +83,15 @@ pub const Neighbors = struct { // TODO: Should this be an enum?
 /// Gets the index of a given position inside this chunk.
 pub fn getIndex(x: i32, y: i32, z: i32) u32 {
 	std.debug.assert((x & chunkMask) == x and (y & chunkMask) == y and (z & chunkMask) == z);
-	return (@as(u32, @intCast(x)) << chunkShift) | (@as(u32, @intCast(y)) << chunkShift2) | @as(u32, @intCast(z));
+	return (@as(u32, @intCast(x)) << chunkShift2) | (@as(u32, @intCast(y)) << chunkShift) | @as(u32, @intCast(z));
 }
 /// Gets the x coordinate from a given index inside this chunk.
 fn extractXFromIndex(index: usize) i32 {
-	return @intCast(index >> chunkShift & chunkMask);
+	return @intCast(index >> chunkShift2 & chunkMask);
 }
 /// Gets the y coordinate from a given index inside this chunk.
 fn extractYFromIndex(index: usize) i32 {
-	return @intCast(index >> chunkShift2 & chunkMask);
+	return @intCast(index >> chunkShift & chunkMask);
 }
 /// Gets the z coordinate from a given index inside this chunk.
 fn extractZFromIndex(index: usize) i32 {

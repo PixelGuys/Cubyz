@@ -115,10 +115,10 @@ pub const InterpolatableCaveBiomeMapView = struct {
 				getOrGenerateFragment(pos.wx + CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy + CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz + CaveBiomeMapFragment.caveBiomeMapSize/2),
 			},
 			.surfaceFragments = [_]*MapFragment {
-				SurfaceMap.getOrGenerateFragment(pos.wx - 32, pos.wz - 32, pos.voxelSize),
-				SurfaceMap.getOrGenerateFragment(pos.wx - 32, pos.wz + width + 32, pos.voxelSize),
-				SurfaceMap.getOrGenerateFragment(pos.wx + width + 32, pos.wz - 32, pos.voxelSize),
-				SurfaceMap.getOrGenerateFragment(pos.wx + width + 32, pos.wz + width + 32, pos.voxelSize),
+				SurfaceMap.getOrGenerateFragment(pos.wx - 32, pos.wy - 32, pos.voxelSize),
+				SurfaceMap.getOrGenerateFragment(pos.wx - 32, pos.wy + width + 32, pos.voxelSize),
+				SurfaceMap.getOrGenerateFragment(pos.wx + width + 32, pos.wy - 32, pos.voxelSize),
+				SurfaceMap.getOrGenerateFragment(pos.wx + width + 32, pos.wy + width + 32, pos.voxelSize),
 			},
 			.pos = pos,
 			.width = width,
@@ -293,12 +293,12 @@ pub const InterpolatableCaveBiomeMapView = struct {
 		if(wx - self.surfaceFragments[0].pos.wx >= MapFragment.mapSize*self.pos.voxelSize) {
 			index += 2;
 		}
-		if(wz - self.surfaceFragments[0].pos.wz >= MapFragment.mapSize*self.pos.voxelSize) {
+		if(wy - self.surfaceFragments[0].pos.wy >= MapFragment.mapSize*self.pos.voxelSize) {
 			index += 1;
 		}
-		const height: i32 = @intFromFloat(self.surfaceFragments[index].getHeight(wx, wz));
-		if(wy < height - 32 or wy > height + 128) return null;
-		return self.surfaceFragments[index].getBiome(wx, wz);
+		const height: i32 = @intFromFloat(self.surfaceFragments[index].getHeight(wx, wy));
+		if(wz < height - 32 or wz > height + 128) return null;
+		return self.surfaceFragments[index].getBiome(wx, wy);
 	}
 
 	noinline fn _getBiome(self: InterpolatableCaveBiomeMapView, wx: i32, wy: i32, wz: i32, map: u1) *const Biome {
@@ -387,15 +387,15 @@ pub const CaveBiomeMapView = struct {
 		}
 	}
 
-	pub fn getSurfaceHeight(self: CaveBiomeMapView, wx: i32, wz: i32) f32 {
+	pub fn getSurfaceHeight(self: CaveBiomeMapView, wx: i32, wy: i32) f32 {
 		var index: u8 = 0;
 		if(wx - self.super.surfaceFragments[0].pos.wx >= MapFragment.mapSize*self.super.pos.voxelSize) {
 			index += 2;
 		}
-		if(wz - self.super.surfaceFragments[0].pos.wz >= MapFragment.mapSize*self.super.pos.voxelSize) {
+		if(wy - self.super.surfaceFragments[0].pos.wy >= MapFragment.mapSize*self.super.pos.voxelSize) {
 			index += 1;
 		}
-		return self.super.surfaceFragments[index].getHeight(wx, wz);
+		return self.super.surfaceFragments[index].getHeight(wx, wy);
 	}
 
 	pub fn getBiome(self: CaveBiomeMapView, relX: i32, relY: i32, relZ: i32) *const Biome {

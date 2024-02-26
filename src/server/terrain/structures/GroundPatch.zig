@@ -41,32 +41,32 @@ pub fn generate(self: *GroundPatch, x: i32, y: i32, z: i32, chunk: *main.chunk.C
 	// Orientation of the major and minor half axis of the ellipse.
 	// For now simply use a minor axis 1/ellipseParam as big as the major.
 	const xMain = @sin(orientation)/width;
-	const zMain = @cos(orientation)/width;
+	const yMain = @cos(orientation)/width;
 	const xSecn = ellipseParam*@cos(orientation)/width;
-	const zSecn = -ellipseParam*@sin(orientation)/width;
+	const ySecn = -ellipseParam*@sin(orientation)/width;
 
 	const xMin = @max(0, x - @as(i32, @intFromFloat(@ceil(width))));
 	const xMax = @min(chunk.width, x + @as(i32, @intFromFloat(@ceil(width))));
-	const zMin = @max(0, z - @as(i32, @intFromFloat(@ceil(width))));
-	const zMax = @min(chunk.width, z + @as(i32, @intFromFloat(@ceil(width))));
+	const yMin = @max(0, y - @as(i32, @intFromFloat(@ceil(width))));
+	const yMax = @min(chunk.width, y + @as(i32, @intFromFloat(@ceil(width))));
 
 	var px = chunk.startIndex(xMin);
 	while(px < xMax) : (px += 1) {
-		var pz = chunk.startIndex(zMin);
-		while(pz < zMax) : (pz += 1) {
-			const mainDist = xMain*@as(f32, @floatFromInt(x - px)) + zMain*@as(f32, @floatFromInt(z - pz));
-			const secnDist = xSecn*@as(f32, @floatFromInt(x - px)) + zSecn*@as(f32, @floatFromInt(z - pz));
+		var py = chunk.startIndex(yMin);
+		while(py < yMax) : (py += 1) {
+			const mainDist = xMain*@as(f32, @floatFromInt(x - px)) + yMain*@as(f32, @floatFromInt(y - py));
+			const secnDist = xSecn*@as(f32, @floatFromInt(x - px)) + ySecn*@as(f32, @floatFromInt(y - py));
 			const dist = mainDist*mainDist + secnDist*secnDist;
 			if(dist <= 1) {
-				var startHeight = y;
+				var startHeight = z;
 
-				if(caveMap.isSolid(px, startHeight, pz)) {
-					startHeight = caveMap.findTerrainChangeAbove(px, pz, startHeight) - 1;
+				if(caveMap.isSolid(px, py, startHeight)) {
+					startHeight = caveMap.findTerrainChangeAbove(px, py, startHeight) - 1;
 				} else {
-					startHeight = caveMap.findTerrainChangeBelow(px, pz, startHeight);
+					startHeight = caveMap.findTerrainChangeBelow(px, py, startHeight);
 				}
-				var py = chunk.startIndex(startHeight - self.depth + 1);
-				while(py <= startHeight) : (py += chunk.pos.voxelSize) {
+				var pz = chunk.startIndex(startHeight - self.depth + 1);
+				while(pz <= startHeight) : (pz += chunk.pos.voxelSize) {
 					if(dist <= self.smoothness or (dist - self.smoothness)/(1 - self.smoothness) < random.nextFloat(seed)) {
 						if(chunk.liesInChunk(px, py, pz))  {
 							chunk.updateBlockInGeneration(px, py, pz, .{.typ = self.blockType, .data = 0}); // TODO: Natural standard.

@@ -139,7 +139,7 @@ const ChunkManager = struct {
 
 		pub fn run(self: *LightMapLoadTask) void {
 			defer self.clean();
-			const map = terrain.LightMap.getOrGenerateFragment(self.pos.wx, self.pos.wz, self.pos.voxelSize);
+			const map = terrain.LightMap.getOrGenerateFragment(self.pos.wx, self.pos.wy, self.pos.voxelSize);
 			defer map.decreaseRefCount();
 			if(self.source) |source| {
 				main.network.Protocols.lightMapTransmission.sendLightMap(source.conn, map);
@@ -423,13 +423,13 @@ pub const ServerWorld = struct {
 			std.log.info("Finding position..", .{});
 			for(0..1000) |_| {
 				self.spawn[0] = main.random.nextIntBounded(u31, &seed, 65536);
-				self.spawn[2] = main.random.nextIntBounded(u31, &seed, 65536);
-				std.log.info("Trying ({}, {})", .{self.spawn[0], self.spawn[2]});
-				if(self.isValidSpawnLocation(self.spawn[0], self.spawn[2])) break;
+				self.spawn[1] = main.random.nextIntBounded(u31, &seed, 65536);
+				std.log.info("Trying ({}, {})", .{self.spawn[0], self.spawn[1]});
+				if(self.isValidSpawnLocation(self.spawn[0], self.spawn[1])) break;
 			}
-			const map = terrain.SurfaceMap.getOrGenerateFragment(self.spawn[0], self.spawn[2], 1);
+			const map = terrain.SurfaceMap.getOrGenerateFragment(self.spawn[0], self.spawn[1], 1);
 			defer map.deinit();
-			self.spawn[1] = @intFromFloat(map.getHeight(self.spawn[0], self.spawn[2]) + 1);
+			self.spawn[2] = @intFromFloat(map.getHeight(self.spawn[0], self.spawn[1]) + 1);
 		}
 		self.generated = true;
 		try self.wio.saveWorldData();
@@ -494,10 +494,10 @@ pub const ServerWorld = struct {
 //		}
 //	}
 
-	fn isValidSpawnLocation(_: *ServerWorld, wx: i32, wz: i32) bool {
-		const map = terrain.SurfaceMap.getOrGenerateFragment(wx, wz, 1);
+	fn isValidSpawnLocation(_: *ServerWorld, wx: i32, wy: i32) bool {
+		const map = terrain.SurfaceMap.getOrGenerateFragment(wx, wy, 1);
 		defer map.deinit();
-		return map.getBiome(wx, wz).isValidPlayerSpawn;
+		return map.getBiome(wx, wy).isValidPlayerSpawn;
 	}
 
 	pub fn dropWithCooldown(self: *ServerWorld, stack: ItemStack, pos: Vec3d, dir: Vec3f, velocity: f32, pickupCooldown: u32) void {
@@ -658,7 +658,7 @@ pub const ServerWorld = struct {
 // TODO:
 //	public BlockEntity getBlockEntity(int x, int y, int z) {
 //		/*BlockInstance bi = getBlockInstance(x, y, z);
-//		Chunk ck = _getNoGenerateChunk(bi.getX() >> NormalChunk.chunkShift, bi.getZ() >> NormalChunk.chunkShift);
+//		Chunk ck = _getNoGenerateChunk(bi.getX() >> NormalChunk.chunkShift, bi.getY() >> NormalChunk.chunkShift);
 //		return ck.blockEntities().get(bi);*/
 //		return null; // TODO: Work on BlockEntities!
 //	}
@@ -670,8 +670,8 @@ pub const ServerWorld = struct {
 //		return entities.toArray(new Entity[0]);
 //	}
 //
-//	public int getHeight(int wx, int wz) {
-//		return (int)chunkManager.getOrGenerateMapFragment(wx, wz, 1).getHeight(wx, wz);
+//	public int getHeight(int wx, int wy) {
+//		return (int)chunkManager.getOrGenerateMapFragment(wx, wy, 1).getHeight(wx, wy);
 //	}
 //	@Override
 //	public void cleanup() {

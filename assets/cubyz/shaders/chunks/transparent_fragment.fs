@@ -39,20 +39,20 @@ layout(std430, binding = 1) buffer _textureData
 
 
 const float[6] normalVariations = float[6](
-	1.0, //vec3(0, 1, 0),
-	0.84, //vec3(0, -1, 0),
-	0.92, //vec3(1, 0, 0),
-	0.92, //vec3(-1, 0, 0),
-	0.96, //vec3(0, 0, 1),
-	0.88 //vec3(0, 0, -1)
+	1.0,
+	0.84,
+	0.92,
+	0.92,
+	0.96,
+	0.88
 );
 const vec3[6] normals = vec3[6](
-	vec3(0, 1, 0),
-	vec3(0, -1, 0),
+	vec3(0, 0, 1),
+	vec3(0, 0, -1),
 	vec3(1, 0, 0),
 	vec3(-1, 0, 0),
-	vec3(0, 0, 1),
-	vec3(0, 0, -1)
+	vec3(0, 1, 0),
+	vec3(0, -1, 0)
 );
 
 uniform float zNear;
@@ -107,17 +107,17 @@ void applyBackfaceFog(float fogDistance, vec3 fogColor) {
 vec2 getTextureCoordsNormal(vec3 voxelPosition, int textureDir) {
 	switch(textureDir) {
 		case 0:
-			return vec2(15 - voxelPosition.x, voxelPosition.z);
-		case 1:
-			return vec2(voxelPosition.x, voxelPosition.z);
-		case 2:
-			return vec2(15 - voxelPosition.z, voxelPosition.y);
-		case 3:
-			return vec2(voxelPosition.z, voxelPosition.y);
-		case 4:
-			return vec2(voxelPosition.x, voxelPosition.y);
-		case 5:
 			return vec2(15 - voxelPosition.x, voxelPosition.y);
+		case 1:
+			return vec2(voxelPosition.x, voxelPosition.y);
+		case 2:
+			return vec2(15 - voxelPosition.y, voxelPosition.z);
+		case 3:
+			return vec2(voxelPosition.y, voxelPosition.z);
+		case 4:
+			return vec2(voxelPosition.x, voxelPosition.z);
+		case 5:
+			return vec2(15 - voxelPosition.x, voxelPosition.z);
 	}
 }
 

@@ -1865,13 +1865,13 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	var faces: u8 = 0;
 	if(block.hasBackFace()) {
 		faceData[2] = main.renderer.chunk_meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirPosX, 1, 1, 1, true);
-		faceData[1] = main.renderer.chunk_meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirUp, 1, 1, 1, true);
-		faceData[0] = main.renderer.chunk_meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirPosZ, 1, 1, 1, true);
+		faceData[1] = main.renderer.chunk_meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirPosY, 1, 1, 1, true);
+		faceData[0] = main.renderer.chunk_meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirUp, 1, 1, 1, true);
 		faces += 3;
 	}
 	faceData[faces + 0] = main.renderer.chunk_meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirPosX, 1+1, 1, 1, false);
-	faceData[faces + 1] = main.renderer.chunk_meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirUp, 1, 1+1, 1, false);
-	faceData[faces + 2] = main.renderer.chunk_meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirPosZ, 1, 1, 1+1, false);
+	faceData[faces + 1] = main.renderer.chunk_meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirPosY, 1, 1+1, 1, false);
+	faceData[faces + 2] = main.renderer.chunk_meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirUp, 1, 1, 1+1, false);
 	faces += 3;
 	for(faceData[0..faces]) |*face| {
 		@memset(&face.light, ~@as(u32, 0));

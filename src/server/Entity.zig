@@ -61,7 +61,7 @@ pub fn save(self: *@This(), allocator: NeverFailingAllocator) JsonElement {
 }
 
 // Entity {
-
+// TODO: WARNING: This old code still uses y-up
 // 	protected World world;
 // 	public double targetVX, targetVZ; // The velocity the AI wants the entity to have.
 

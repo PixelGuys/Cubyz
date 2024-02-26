@@ -389,8 +389,8 @@ pub const ItemDropManager = struct {
 		const unstuckVelocity: f64 = 1;
 		if(closestDist == std.math.floatMax(f64)) {
 			// Surrounded by solid blocks → move upwards
-			vel.*[1] = unstuckVelocity;
-			pos.*[1] += vel.*[1]*deltaTime;
+			vel.*[2] = unstuckVelocity;
+			pos.*[2] += vel.*[2]*deltaTime;
 		} else {
 			vel.* = @as(Vec3d, @splat(unstuckVelocity))*(@as(Vec3d, @floatFromInt(pos0 + closestEmptyBlock)) - centeredPos);
 			pos.* += (vel.*)*@as(Vec3d, @splat(deltaTime));
@@ -600,13 +600,13 @@ pub const ItemDropRenderer = struct {
 			dataSection[1] = @intCast(self.size[1]);
 			dataSection[2] = @intCast(self.size[2]);
 			var i: u32 = 3;
-			var y: u32 = 0;
-			while(y < 1) : (y += 1) {
+			var z: u32 = 0;
+			while(z < 1) : (z += 1) {
 				var x: u32 = 0;
 				while(x < self.size[0]) : (x += 1) {
-					var z: u32 = 0;
-					while(z < self.size[2]) : (z += 1) {
-						dataSection[i] = img.getRGB(x, z).toARBG();
+					var y: u32 = 0;
+					while(y < self.size[1]) : (y += 1) {
+						dataSection[i] = img.getRGB(x, y).toARBG();
 						i += 1;
 					}
 				}
