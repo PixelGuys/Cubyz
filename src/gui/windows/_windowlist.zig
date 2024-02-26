@@ -1,4 +1,3 @@
-
 pub const change_name = @import("change_name.zig");
 pub const chat = @import("chat.zig");
 pub const controls = @import("controls.zig");
@@ -19,5 +18,6 @@ pub const save_selection = @import("save_selection.zig");
 pub const settings = @import("settings.zig");
 pub const sound = @import("sound.zig");
 pub const workbench = @import("workbench.zig");
+pub const pause_menu = @import("pause_menu.zig");
 
 // TODO: Add a pause menu.
