@@ -240,14 +240,13 @@ const PrimitiveMesh = struct {
 		const x = (wx >> mesh.chunk.voxelSizeShift) & chunk.chunkMask;
 		const y = (wy >> mesh.chunk.voxelSizeShift) & chunk.chunkMask;
 		const z = (wz >> mesh.chunk.voxelSizeShift) & chunk.chunkMask;
-		const index = chunk.getIndex(x, y, z);
 		return .{
-			mesh.lightingData[0].data[index].load(.Unordered),
-			mesh.lightingData[1].data[index].load(.Unordered),
-			mesh.lightingData[2].data[index].load(.Unordered),
-			mesh.lightingData[3].data[index].load(.Unordered),
-			mesh.lightingData[4].data[index].load(.Unordered),
-			mesh.lightingData[5].data[index].load(.Unordered),
+			mesh.lightingData[0].getValue(x, y, z),
+			mesh.lightingData[1].getValue(x, y, z),
+			mesh.lightingData[2].getValue(x, y, z),
+			mesh.lightingData[3].getValue(x, y, z),
+			mesh.lightingData[4].getValue(x, y, z),
+			mesh.lightingData[5].getValue(x, y, z),
 		};
 	}
 

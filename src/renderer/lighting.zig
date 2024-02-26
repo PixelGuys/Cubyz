@@ -84,6 +84,11 @@ pub const ChannelChunk = struct {
 		entries: main.ListUnmanaged(PositionEntry),
 	};
 
+	pub fn getValue(self: *const ChannelChunk, x: i32, y: i32, z: i32) u8 {
+		const index = chunk.getIndex(x, y, z);
+		return self.data[index].load(.Unordered);
+	}
+
 	fn propagateDirect(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry)) void {
 		var neighborLists: [6]main.ListUnmanaged(Entry) = .{.{}} ** 6;
 		defer {
