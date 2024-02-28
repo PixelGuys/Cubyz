@@ -51,7 +51,7 @@ fn generateInitializedFractalTerrain(wx: i32, wy: i32, wz: i32, startingScale: u
 			var y: u31 = 0;
 			while(y < bigMap.depth) : (y += 2*res) {
 				var z: u31 = res;
-				while(z+res < bigMap.depth) : (z += 2*res) {
+				while(z+res < bigMap.height) : (z += 2*res) {
 					seed = random.initSeed3D(worldSeed, .{x*maxResolution + wx, y*maxResolution + wy, z*maxResolution + wz});
 					bigMap.ptr(x, y, z).* = (bigMap.get(x, y, z - res) + bigMap.get(x, y, z + res))/2;
 					bigMap.ptr(x, y, z).* += randomnessScale*(random.nextFloat(&seed) - 0.5);

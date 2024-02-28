@@ -85,18 +85,18 @@ pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 							const iy = @as(f32, @floatFromInt(dy))/outerSizeFloat;
 							const lowerVal = (
 								(1 - ix)*(1 - iy)*val000
-								+ (1 - ix)*iy*val001
+								+ (1 - ix)*iy*val010
 								+ ix*(1 - iy)*val100
-								+ ix*iy*val101
+								+ ix*iy*val110
 							);
 							const upperVal = (
-								(1 - ix)*(1 - iy)*val010
+								(1 - ix)*(1 - iy)*val001
 								+ (1 - ix)*iy*val011
-								+ ix*(1 - iy)*val110
+								+ ix*(1 - iy)*val101
 								+ ix*iy*val111
 							);
 							// TODO: Determine the range that needs to be removed, and remove it in one go.
-							if(upperVal*lowerVal > 0) { // All y values have the same sign → the entire column is the same.
+							if(upperVal*lowerVal > 0) { // All z values have the same sign → the entire column is the same.
 								if(upperVal > 0) {
 									// All cave in here :)
 									map.removeRange(x + dx, y + dy, z, z + outerSize);

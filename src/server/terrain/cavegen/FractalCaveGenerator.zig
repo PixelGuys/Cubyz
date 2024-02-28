@@ -83,20 +83,20 @@ fn generateSphere(seed: *u64, map: *CaveMapFragment, worldPos: Vec3d, radius: f6
 		var curY = yMin;
 		while(curY < yMax) : (curY += map.pos.voxelSize) {
 			const distToCenterY = (@as(f64, @floatFromInt(curY)) - relY)/radius;
-			const xyDistaceSquared = distToCenterX*distToCenterX + distToCenterY*distToCenterY;
+			const xyDistanceSquared = distToCenterX*distToCenterX + distToCenterY*distToCenterY;
 			var zMin: i32 = @intFromFloat(relZ);
 			var zMax: i32 = @intFromFloat(relZ);
-			if(xyDistaceSquared < 0.9*0.9) {
-				const zDistance = radius*@sqrt(0.9*0.9 - xyDistaceSquared);
+			if(xyDistanceSquared < 0.9*0.9) {
+				const zDistance = radius*@sqrt(0.9*0.9 - xyDistanceSquared);
 				zMin = @intFromFloat(relZ - zDistance);
 				zMax = @intFromFloat(relZ + zDistance);
-				map.removeRange(curX, curY, yMin, yMax); // Remove the center range in a single call.
+				map.removeRange(curX, curY, zMin, zMax); // Remove the center range in a single call.
 			}
 			// Add some roughness at the upper cave walls:
 			var curZ: i32 = zMax;
 			while(curZ <= CaveMapFragment.height*map.pos.voxelSize) : (curZ += map.pos.voxelSize) {
 				const distToCenterZ = (@as(f64, @floatFromInt(curZ)) - relZ)/radius;
-				const distToCenter = distToCenterZ*distToCenterZ + xyDistaceSquared;
+				const distToCenter = distToCenterZ*distToCenterZ + xyDistanceSquared;
 				if(distToCenter < 1) {
 					// Add a small roughness parameter to make walls look a bit rough by filling only 5/6 of the blocks at the walls with air:
 					if(random.nextIntBounded(u8, seed, 6) != 0) {
