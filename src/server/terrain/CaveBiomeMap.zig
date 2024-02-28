@@ -297,7 +297,7 @@ pub const InterpolatableCaveBiomeMapView = struct {
 			index += 1;
 		}
 		const height: i32 = @intFromFloat(self.surfaceFragments[index].getHeight(wx, wy));
-		if(wz < height - 32 or wz > height + 128) return null;
+		if(wz < height - 32*self.pos.voxelSize or wz > height + 128 + self.pos.voxelSize) return null;
 		return self.surfaceFragments[index].getBiome(wx, wy);
 	}
 
