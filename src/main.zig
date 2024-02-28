@@ -760,13 +760,14 @@ pub fn main() void {
 
 	while(c.glfwWindowShouldClose(Window.window) == 0) {
 		c.glfwSwapBuffers(Window.window);
-		Window.handleEvents();
+		// Clear may also wait on vsync, so it's done before handling events:
 		gui.windowlist.gpu_performance_measuring.startQuery(.screenbuffer_clear);
-		if(game.world == null) { // Clearing is only needed in the menu.
-			c.glClearColor(0.5, 1, 1, 1);
-			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
-		}
+		c.glClearColor(0.5, 1, 1, 1);
+		c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
 		gui.windowlist.gpu_performance_measuring.stopQuery();
+
+		Window.handleEvents();
+
 		const newTime = std.time.nanoTimestamp();
 		const deltaTime = @as(f64, @floatFromInt(newTime -% lastTime))/1e9;
 		if(@import("builtin").os.tag == .linux and deltaTime > 5) { // On linux a process that runs 10 seconds or longer on the GPU will get stopped. This allows detecting an infinite loop on the GPU.
