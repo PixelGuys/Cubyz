@@ -49,7 +49,7 @@ const Socket = struct {
 	}
 
 	fn deinit(self: Socket) void {
-		os.closeSocket(self.socketID);
+		os.close(self.socketID);
 	}
 
 	fn send(self: Socket, data: []const u8, destination: Address) void {

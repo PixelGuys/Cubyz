@@ -51,9 +51,9 @@ fn cacheString(comptime str: []const u8) []const u8 {
 var logFile: ?std.fs.File = undefined;
 var supportsANSIColors: bool = undefined;
 // overwrite the log function:
-pub const std_options = struct {
-	pub const log_level = .debug;
-	pub fn logFn(
+pub const std_options: std.Options = .{
+	.log_level = .debug,
+	.logFn = struct {pub fn logFn(
 		comptime level: std.log.Level,
 		comptime _: @Type(.EnumLiteral),
 		comptime format: []const u8,
@@ -178,7 +178,7 @@ pub const std_options = struct {
 			resultArgs[resultArgs.len - 1] = colorReset;
 		}
 		logToStdErr(formatString, resultArgs);
-	}
+	}}.logFn,
 };
 
 fn initLogging() void {

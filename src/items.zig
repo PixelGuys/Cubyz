@@ -641,14 +641,14 @@ const ToolPhysics = struct {
 	fn determineSharpness(tool: *Tool, point: *Vec3i, initialAngle: f32) void {
 		const center: Vec2f = tool.handlePosition - vec.normalize(tool.centerOfMass - tool.handlePosition)*@as(Vec2f, @splat(16)); // Going 16 pixels away from the handle to simulate arm length.
 		// A region is smooth if there is a lot of pixel within similar angle/distance:
-		const originalAngle = std.math.atan2(f32, @as(f32, @floatFromInt(point.*[1])) + 0.5 - center[1], @as(f32, @floatFromInt(point.*[0])) + 0.5 - center[0]) - initialAngle;
+		const originalAngle = std.math.atan2(@as(f32, @floatFromInt(point.*[1])) + 0.5 - center[1], @as(f32, @floatFromInt(point.*[0])) + 0.5 - center[0]) - initialAngle;
 		const originalDistance = @cos(originalAngle)*vec.length(center - Vec2f{@as(f32, @floatFromInt(point.*[0])) + 0.5, @as(f32, @floatFromInt(point.*[1])) + 0.5});
 		var numOfSmoothPixels: u31 = 0;
 		var x: f32 = 0;
 		while(x < 16) : (x += 1) {
 			var y: f32 = 0;
 			while(y < 16) : (y += 1) {
-				const angle = std.math.atan2(f32, y + 0.5 - center[1], x + 0.5 - center[0]) - initialAngle;
+				const angle = std.math.atan2(y + 0.5 - center[1], x + 0.5 - center[0]) - initialAngle;
 				const distance = @cos(angle)*vec.length(center - Vec2f{x + 0.5, y + 0.5});
 				const deltaAngle = @abs(angle - originalAngle);
 				const deltaDist = @abs(distance - originalDistance);
@@ -667,7 +667,7 @@ const ToolPhysics = struct {
 		// Additionally the handle is assumed to go towards the center of mass.
 		const center: Vec2f = tool.handlePosition - vec.normalize(tool.centerOfMass - tool.handlePosition)*@as(Vec2f, @splat(factor)); // Going some distance away from the handle to simulate arm length.
 		// Angle of the handle.
-		const initialAngle = std.math.atan2(f32, tool.handlePosition[1] - center[1], tool.handlePosition[0] - center[0]);
+		const initialAngle = std.math.atan2(tool.handlePosition[1] - center[1], tool.handlePosition[0] - center[0]);
 		var leftCollisionAngle: f32 = 0;
 		var rightCollisionAngle: f32 = 0;
 		var frontCollisionDistance: f32 = 0;
@@ -678,7 +678,7 @@ const ToolPhysics = struct {
 				if(tool.materialGrid[x][y] == null) continue;
 				const x_float: f32 = @floatFromInt(x);
 				const y_float: f32 = @floatFromInt(y);
-				const angle = std.math.atan2(f32, y_float + 0.5 - center[1], x_float + 0.5 - center[0]) - initialAngle;
+				const angle = std.math.atan2(y_float + 0.5 - center[1], x_float + 0.5 - center[0]) - initialAngle;
 				const distance = @cos(angle)*vec.length(center - Vec2f{x_float + 0.5, y_float + 0.5});
 				if(angle < leftCollisionAngle) {
 					leftCollisionAngle = angle;
