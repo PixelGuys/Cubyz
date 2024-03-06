@@ -8,25 +8,22 @@ const main = @import("main.zig");
 pub const Compression = struct {
 	pub fn deflate(allocator: NeverFailingAllocator, data: []const u8) []u8 {
 		var result = main.List(u8).init(allocator);
-		var comp = std.compress.deflate.compressor(main.stackAllocator.allocator, result.writer(), .{.level = .default_compression}) catch unreachable;
+		var comp = std.compress.flate.compressor(result.writer(), .{}) catch unreachable;
 		_ = comp.write(data) catch unreachable;
-		comp.close() catch unreachable;
-		comp.deinit();
+		comp.finish() catch unreachable;
 		return result.toOwnedSlice();
 	}
 
 	pub fn inflateTo(buf: []u8, data: []const u8) !usize {
-		var arena = std.heap.ArenaAllocator.init(main.stackAllocator.allocator);
-		defer arena.deinit();
-		var stream = std.io.fixedBufferStream(data);
-		var decomp = try std.compress.deflate.decompressor(arena.allocator(), stream.reader(), null);
-		defer decomp.deinit();
-		return try decomp.reader().readAll(buf);
+		var streamIn = std.io.fixedBufferStream(data);
+		var decomp = std.compress.flate.decompressor(streamIn.reader());
+		var streamOut = std.io.fixedBufferStream(buf);
+		try decomp.decompress(streamOut.writer());
+		return streamOut.getWritten().len;
 	}
 
 	pub fn pack(sourceDir: std.fs.Dir, writer: anytype) !void {
-		var comp = try std.compress.deflate.compressor(main.stackAllocator.allocator, writer, .{.level = .default_compression});
-		defer comp.deinit();
+		var comp = try std.compress.flate.compressor(writer, .{});
 		var walker = try sourceDir.walk(main.stackAllocator.allocator);
 		defer walker.deinit();
 
@@ -56,13 +53,12 @@ pub const Compression = struct {
 				_ = try comp.write(fileData);
 			}
 		}
-		try comp.close();
+		try comp.finish();
 	}
 
 	pub fn unpack(outDir: std.fs.Dir, input: []const u8) !void {
 		var stream = std.io.fixedBufferStream(input);
-		var decomp = try std.compress.deflate.decompressor(main.stackAllocator.allocator, stream.reader(), null);
-		defer decomp.deinit();
+		var decomp = std.compress.flate.decompressor(stream.reader());
 		const reader = decomp.reader();
 		const _data = try reader.readAllAlloc(main.stackAllocator.allocator, std.math.maxInt(usize));
 		defer main.stackAllocator.free(_data);

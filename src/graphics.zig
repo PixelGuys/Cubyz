@@ -1846,7 +1846,12 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 
 	const projMatrix = Mat4f.perspective(0.013, 1, 64, 256);
 	const oldViewMatrix = main.game.camera.viewMatrix;
-	main.game.camera.viewMatrix = Mat4f.rotationX(std.math.pi/4.0).mul(Mat4f.rotationY(-std.math.pi/4.0));
+	main.game.camera.viewMatrix = Mat4f.identity().mul(.{.rows = .{
+		.{1, 0, 0, 0},
+		.{0, 0, 1, 0},
+		.{0,-1, 0, 0},
+		.{0, 0, 0, 1},
+	}}).mul(Mat4f.rotationX(std.math.pi/4.0)).mul(Mat4f.rotationZ(-3.0*std.math.pi/4.0));
 	defer main.game.camera.viewMatrix = oldViewMatrix;
 	if(block.transparent()) {
 		c.glBlendEquation(c.GL_FUNC_ADD);
@@ -1863,23 +1868,23 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 
 	var faceData: [6]main.renderer.chunk_meshing.FaceData = undefined;
 	var faces: u8 = 0;
-	if(block.hasBackFace()) {
-		faceData[2] = main.renderer.chunk_meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirPosX, 1, 1, 1, true);
-		faceData[1] = main.renderer.chunk_meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirPosY, 1, 1, 1, true);
-		faceData[0] = main.renderer.chunk_meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirUp, 1, 1, 1, true);
-		faces += 3;
-	}
 	faceData[faces + 0] = main.renderer.chunk_meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirPosX, 1+1, 1, 1, false);
 	faceData[faces + 1] = main.renderer.chunk_meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirPosY, 1, 1+1, 1, false);
 	faceData[faces + 2] = main.renderer.chunk_meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirUp, 1, 1, 1+1, false);
 	faces += 3;
+	if(block.hasBackFace()) {
+		faceData[faces+2] = main.renderer.chunk_meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirPosX, 1, 1, 1, true);
+		faceData[faces+1] = main.renderer.chunk_meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirPosY, 1, 1, 1, true);
+		faceData[faces+0] = main.renderer.chunk_meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirUp, 1, 1, 1, true);
+		faces += 3;
+	}
 	for(faceData[0..faces]) |*face| {
 		@memset(&face.light, ~@as(u32, 0));
 	}
 	var allocation: SubAllocation = .{.start = 0, .len = 0};
 	main.renderer.chunk_meshing.faceBuffer.uploadData(faceData[0..faces], &allocation);
 
-	c.glUniform3f(uniforms.modelPosition, -65.5 - 1.5, -92.631 - 1.5, -65.5 - 1.5);
+	c.glUniform3f(uniforms.modelPosition, -65.5 - 1.5, -65.5 - 1.5, -92.631 - 1.5);
 	c.glUniform1i(uniforms.visibilityMask, 0xff);
 	c.glUniform1i(uniforms.voxelSize, 1);
 	c.glActiveTexture(c.GL_TEXTURE0);

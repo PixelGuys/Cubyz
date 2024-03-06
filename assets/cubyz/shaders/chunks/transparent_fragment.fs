@@ -107,17 +107,17 @@ void applyBackfaceFog(float fogDistance, vec3 fogColor) {
 vec2 getTextureCoordsNormal(vec3 voxelPosition, int textureDir) {
 	switch(textureDir) {
 		case 0:
-			return vec2(15 - voxelPosition.x, voxelPosition.y);
-		case 1:
 			return vec2(voxelPosition.x, voxelPosition.y);
+		case 1:
+			return vec2(15 - voxelPosition.x, voxelPosition.y);
 		case 2:
-			return vec2(15 - voxelPosition.y, voxelPosition.z);
-		case 3:
 			return vec2(voxelPosition.y, voxelPosition.z);
+		case 3:
+			return vec2(15 - voxelPosition.y, voxelPosition.z);
 		case 4:
-			return vec2(voxelPosition.x, voxelPosition.z);
-		case 5:
 			return vec2(15 - voxelPosition.x, voxelPosition.z);
+		case 5:
+			return vec2(voxelPosition.x, voxelPosition.z);
 	}
 }
 
