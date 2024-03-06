@@ -324,8 +324,6 @@ pub fn setNextKeypressListener(listener: ?*const fn(c_int, c_int, c_int) void) !
 fn escape() void {
 	if(game.world == null) return;
 	Window.setMouseGrabbed(!Window.grabbed);
-
-	gui.openWindow("pause_menu");
 }
 fn ungrabMouse() void {
 	Window.setMouseGrabbed(false);
