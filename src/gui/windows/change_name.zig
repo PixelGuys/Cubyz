@@ -37,7 +37,7 @@ pub fn onOpen() void {
 	if(settings.playerName.len == 0) {
 		list.add(Label.init(.{0, 0}, width, "Please enter your name!", .center));
 	} else {
-		list.add(Label.init(.{0, 0}, width, "#ff0000Warning: #ffffffYou loose access to your inventory data when changing the name!", .center));
+		list.add(Label.init(.{0, 0}, width, "#ff0000Warning: #ffffffYou lose access to your inventory data when changing the name!", .center));
 	}
 	list.add(Label.init(.{0, 0}, width, "Cubyz supports formatting your username using a markdown-like syntax:", .center));
 	list.add(Label.init(.{0, 0}, width, "\\**italic*\\* \\*\\***bold**\\*\\* \\__underlined_\\_ \\_\\___strike-through__\\_\\_", .center));
