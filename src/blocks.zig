@@ -309,7 +309,6 @@ pub const meshes = struct {
 	const TextureData = extern struct {
 		textureIndices: [6]u32,
 		absorption: u32,
-		reflectivity: f32,
 		fogDensity: f32,
 		fogColor: u32,
 	};
@@ -325,6 +324,7 @@ pub const meshes = struct {
 	var animation: main.List(AnimationData) = undefined;
 	var blockTextures: main.List(Image) = undefined;
 	var emissionTextures: main.List(Image) = undefined;
+	var reflectivityTextures: main.List(Image) = undefined;
 
 	var arenaForWorld: main.utils.NeverFailingArenaAllocator = undefined;
 
@@ -351,6 +351,7 @@ pub const meshes = struct {
 
 	pub var blockTextureArray: TextureArray = undefined;
 	pub var emissionTextureArray: TextureArray = undefined;
+	pub var reflectivityTextureArray: TextureArray = undefined;
 
 	const black: Color = Color{.r=0, .g=0, .b=0, .a=255};
 	const magenta: Color = Color{.r=255, .g=0, .b=255, .a=255};
@@ -363,10 +364,12 @@ pub const meshes = struct {
 		animationShader = Shader.initComputeAndGetUniforms("assets/cubyz/shaders/animation_pre_processing.glsl", &animationUniforms);
 		blockTextureArray = TextureArray.init();
 		emissionTextureArray = TextureArray.init();
+		reflectivityTextureArray = TextureArray.init();
 		textureIDs = main.List([]const u8).init(main.globalAllocator);
 		animation = main.List(AnimationData).init(main.globalAllocator);
 		blockTextures = main.List(Image).init(main.globalAllocator);
 		emissionTextures = main.List(Image).init(main.globalAllocator);
+		reflectivityTextures = main.List(Image).init(main.globalAllocator);
 		arenaForWorld = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
 	}
 
@@ -383,10 +386,12 @@ pub const meshes = struct {
 		animationShader.deinit();
 		blockTextureArray.deinit();
 		emissionTextureArray.deinit();
+		reflectivityTextureArray.deinit();
 		textureIDs.deinit();
 		animation.deinit();
 		blockTextures.deinit();
 		emissionTextures.deinit();
+		reflectivityTextures.deinit();
 		arenaForWorld.deinit();
 	}
 
@@ -397,6 +402,7 @@ pub const meshes = struct {
 		animation.clearRetainingCapacity();
 		blockTextures.clearRetainingCapacity();
 		emissionTextures.clearRetainingCapacity();
+		reflectivityTextures.clearRetainingCapacity();
 		_ = arenaForWorld.reset(.free_all);
 	}
 
@@ -414,6 +420,14 @@ pub const meshes = struct {
 
 	pub inline fn fogColor(block: Block) u32 {
 		return textureData[block.typ].fogColor;
+	}
+
+	fn readAuxillaryTexture(_path: []const u8, pathBuffer: []u8, ending: []const u8, list: *main.List(Image)) void {
+		var path = _path;
+		@memcpy(pathBuffer[path.len..][0..ending.len], ending);
+		path.len += ending.len;
+		const texture = Image.readFromFile(arenaForWorld.allocator(), path) catch Image.emptyImage;
+		list.append(texture);
 	}
 
 	pub fn readTexture(textureInfo: JsonElement, assetFolder: []const u8) !u31 {
@@ -447,12 +461,10 @@ pub const meshes = struct {
 			result = @intCast(blockTextures.items.len);
 
 			blockTextures.append(try Image.readFromFile(arenaForWorld.allocator(), path));
-			@memcpy(buffer[path.len..][0.."_emission.png".len], "_emission.png");
-			path.len += "_emission.png".len;
-			const emissionTexture = Image.readFromFile(arenaForWorld.allocator(), path) catch Image.emptyImage;
-			emissionTextures.append(emissionTexture);
 			textureIDs.append(arenaForWorld.allocator().dupe(u8, path));
 			animation.append(.{.frames = 1, .time = 1});
+			readAuxillaryTexture(path, &buffer, "_emission.png", &emissionTextures);
+			readAuxillaryTexture(path, &buffer, "_reflectivity.png", &reflectivityTextures);
 		} else if(textureInfo == .JsonObject) {
 			const animationTime = textureInfo.get(i32, "time", 500);
 			const textures = textureInfo.getChild("textures").toSlice();
@@ -482,11 +494,9 @@ pub const meshes = struct {
 				file.close(); // It was only openend to check if it exists.
 
 				blockTextures.append(try Image.readFromFile(arenaForWorld.allocator(), path));
-				@memcpy(buffer[path.len..][0.."_emission.png".len], "_emission.png");
-				path.len += "_emission.png".len;
-				const emissionTexture = Image.readFromFile(arenaForWorld.allocator(), path) catch Image.emptyImage;
-				emissionTextures.append(emissionTexture);
 				textureIDs.append(arenaForWorld.allocator().dupe(u8, path));
+				readAuxillaryTexture(path, &buffer, "_emission.png", &emissionTextures);
+				readAuxillaryTexture(path, &buffer, "_reflectivity.png", &reflectivityTextures);
 			}
 		} else {
 			return error.NotSpecified;
@@ -509,7 +519,6 @@ pub const meshes = struct {
 		// But textures can be loaded here:
 
 		getTextureIndices(json, assetFolder, &textureData[meshes.size].textureIndices);
-		textureData[meshes.size].reflectivity = json.get(f32, "reflectivity", 0);
 		textureData[meshes.size].absorption = json.get(u32, "absorption", 0xffffff);
 		textureData[meshes.size].fogDensity = json.get(f32, "fogDensity", 0.0);
 		textureData[meshes.size].fogColor = json.get(u32, "fogColor", 0xffffff);
@@ -566,6 +575,10 @@ pub const meshes = struct {
 			c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, 16);
 		}
 		emissionTextureArray.generate(emissionTextures.items, true);
+		if(main.settings.anisotropicFiltering) {
+			c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, 16);
+		}
+		reflectivityTextureArray.generate(reflectivityTextures.items, true);
 		if(main.settings.anisotropicFiltering) {
 			c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, 16);
 		}

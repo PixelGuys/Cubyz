@@ -47,7 +47,8 @@ struct VoxelModel {
 struct TextureData {
 	uint textureIndices[6];
 	uint absorption;
-	float reflectivity;
+	float fogDensity;
+	uint fogColor;
 };
 
 layout(std430, binding = 1) buffer _textureData
@@ -140,17 +141,17 @@ RayMarchResult rayMarching(vec3 startPosition, vec3 direction) { // TODO: Mipmap
 ivec2 getTextureCoords(ivec3 voxelPosition, int textureDir) {
 	switch(textureDir) {
 		case 0:
-			return ivec2(15 - voxelPosition.x, voxelPosition.y);
-		case 1:
 			return ivec2(voxelPosition.x, voxelPosition.y);
+		case 1:
+			return ivec2(15 - voxelPosition.x, voxelPosition.y);
 		case 2:
-			return ivec2(15 - voxelPosition.y, voxelPosition.z);
-		case 3:
 			return ivec2(voxelPosition.y, voxelPosition.z);
+		case 3:
+			return ivec2(15 - voxelPosition.y, voxelPosition.z);
 		case 4:
-			return ivec2(voxelPosition.x, voxelPosition.z);
-		case 5:
 			return ivec2(15 - voxelPosition.x, voxelPosition.z);
+		case 5:
+			return ivec2(voxelPosition.x, voxelPosition.z);
 	}
 }
 

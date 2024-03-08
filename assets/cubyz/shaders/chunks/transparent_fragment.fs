@@ -11,10 +11,11 @@ in vec3 direction;
 
 uniform sampler2DArray texture_sampler;
 uniform sampler2DArray emissionSampler;
+uniform sampler2DArray reflectivitySampler;
 uniform samplerCube reflectionMap;
 uniform float reflectionMapSize;
 
-layout(binding = 3) uniform sampler2D depthTexture;
+layout(binding = 5) uniform sampler2D depthTexture;
 
 layout (location = 0, index = 0) out vec4 fragColor;
 layout (location = 0, index = 1) out vec4 blendColor;
@@ -27,7 +28,6 @@ struct Fog {
 struct TextureData {
 	uint textureIndices[6];
 	uint absorption;
-	float reflectivity;
 	float fogDensity;
 	uint fogColor;
 };
@@ -107,27 +107,27 @@ void applyBackfaceFog(float fogDistance, vec3 fogColor) {
 vec2 getTextureCoordsNormal(vec3 voxelPosition, int textureDir) {
 	switch(textureDir) {
 		case 0:
-			return vec2(15 - voxelPosition.x, voxelPosition.y);
-		case 1:
 			return vec2(voxelPosition.x, voxelPosition.y);
+		case 1:
+			return vec2(15 - voxelPosition.x, voxelPosition.y);
 		case 2:
-			return vec2(15 - voxelPosition.y, voxelPosition.z);
-		case 3:
 			return vec2(voxelPosition.y, voxelPosition.z);
+		case 3:
+			return vec2(15 - voxelPosition.y, voxelPosition.z);
 		case 4:
-			return vec2(voxelPosition.x, voxelPosition.z);
-		case 5:
 			return vec2(15 - voxelPosition.x, voxelPosition.z);
+		case 5:
+			return vec2(voxelPosition.x, voxelPosition.z);
 	}
 }
 
 vec4 fixedCubeMapLookup(vec3 v) { // Taken from http://the-witness.net/news/2012/02/seamless-cube-map-filtering/
-   float M = max(max(abs(v.x), abs(v.y)), abs(v.z));
-   float scale = (reflectionMapSize - 1)/reflectionMapSize;
-   if (abs(v.x) != M) v.x *= scale;
-   if (abs(v.y) != M) v.y *= scale;
-   if (abs(v.z) != M) v.z *= scale;
-   return texture(reflectionMap, v);
+	float M = max(max(abs(v.x), abs(v.y)), abs(v.z));
+	float scale = (reflectionMapSize - 1)/reflectionMapSize;
+	if (abs(v.x) != M) v.x *= scale;
+	if (abs(v.y) != M) v.y *= scale;
+	if (abs(v.z) != M) v.z *= scale;
+	return texture(reflectionMap, v);
 }
 
 void main() {
@@ -141,6 +141,8 @@ void main() {
 	vec3 fogColor = unpackColor(textureData[blockType].fogColor);
 	vec3 pixelLight = max(light*normalVariation, texture(emissionSampler, textureCoords).r*4);
 	vec4 textureColor = texture(texture_sampler, textureCoords)*vec4(pixelLight, 1);
+	float reflectivity = texture(reflectivitySampler, textureCoords).r;
+	vec3 normal = normals[faceNormal];
 	if(isBackFace == 0) {
 		textureColor.rgb *= textureColor.a;
 		blendColor.rgb = unpackColor(textureData[blockType].absorption);
@@ -150,7 +152,7 @@ void main() {
 		// TODO: Change this when it rains.
 		// TODO: Normal mapping.
 		// TODO: Allow textures to contribute to this term.
-		textureColor.rgb += (textureData[blockType].reflectivity*fixedCubeMapLookup(reflect(direction, normals[faceNormal])).xyz)*pixelLight;
+		textureColor.rgb += (reflectivity*fixedCubeMapLookup(reflect(direction, normal)).xyz)*pixelLight;
 		textureColor.rgb += texture(emissionSampler, textureCoords).rgb;
 		blendColor.rgb *= 1 - textureColor.a;
 		textureColor.a = 1;
