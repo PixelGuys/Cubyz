@@ -8,7 +8,6 @@
 	"transparent" : true,
 	"absorbedLight" : 0x090501,
 	"absorption" : 0x90d0f0,
-	"reflectivity" : 0.1,
 	"fogDensity" : 0.02,
 	"fogColor" : 0x203860,
 	"model" : "cube",

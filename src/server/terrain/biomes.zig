@@ -220,7 +220,7 @@ pub const BlockStructure = struct {
 		for(self.structure) |blockStack| {
 			const total = blockStack.min + main.random.nextIntBounded(u32, seed, @as(u32, 1) + blockStack.max - blockStack.min);
 			for(0..total) |_| {
-				const block = blocks.Block{.typ = blockStack.blockType, .data = undefined};
+				const block = blocks.Block{.typ = blockStack.blockType, .data = 0};
 				// TODO: block = block.mode().getNaturalStandard(block);
 				if(chunk.liesInChunk(x, y, depth)) {
 					chunk.updateBlockInGeneration(x, y, depth, block);

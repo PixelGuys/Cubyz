@@ -187,11 +187,13 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	// Update the uniforms. The uniforms are needed to render the replacement meshes.
 	chunk_meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight);
 
-	reflectionCubeMap.bindTo(2);
 	c.glActiveTexture(c.GL_TEXTURE0);
 	blocks.meshes.blockTextureArray.bind();
 	c.glActiveTexture(c.GL_TEXTURE1);
 	blocks.meshes.emissionTextureArray.bind();
+	c.glActiveTexture(c.GL_TEXTURE2);
+	blocks.meshes.reflectivityTextureArray.bind();
+	reflectionCubeMap.bindTo(4);
 
 //	SimpleList<NormalChunkMesh> visibleChunks = new SimpleList<NormalChunkMesh>(new NormalChunkMesh[64]);
 //	SimpleList<ReducedChunkMesh> visibleReduced = new SimpleList<ReducedChunkMesh>(new ReducedChunkMesh[64]);
@@ -233,7 +235,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.stopQuery();
 
 	// Render transparent chunk meshes:
-	worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE3);
+	worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE5);
 
 	gpu_performance_measuring.startQuery(.transparent_rendering);
 	c.glTextureBarrier();
