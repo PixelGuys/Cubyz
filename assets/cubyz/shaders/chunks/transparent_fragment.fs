@@ -1,13 +1,14 @@
 #version 430
 
 in vec3 mvVertexPos;
+in vec3 direction;
 in vec3 light;
+in vec2 uv;
+flat in vec3 normal;
 flat in int blockType;
-flat in int faceNormal;
+flat in uint textureSlot;
 flat in int isBackFace;
 flat in int ditherSeed;
-in vec3 startPosition;
-in vec3 direction;
 
 uniform sampler2DArray texture_sampler;
 uniform sampler2DArray emissionSampler;
@@ -37,23 +38,11 @@ layout(std430, binding = 1) buffer _textureData
 	TextureData textureData[];
 };
 
-
-const float[6] normalVariations = float[6](
-	1.0,
-	0.84,
-	0.92,
-	0.92,
-	0.96,
-	0.88
-);
-const vec3[6] normals = vec3[6](
-	vec3(0, 0, 1),
-	vec3(0, 0, -1),
-	vec3(1, 0, 0),
-	vec3(-1, 0, 0),
-	vec3(0, 1, 0),
-	vec3(0, -1, 0)
-);
+float lightVariation(vec3 normal) {
+	const vec3 directionalPart = vec3(0, 0.04, 0.08);
+	const float baseLighting = 0.92;
+	return baseLighting + dot(normal, directionalPart);
+}
 
 uniform float zNear;
 uniform float zFar;
@@ -104,23 +93,6 @@ void applyBackfaceFog(float fogDistance, vec3 fogColor) {
 	fragColor.a *= fogFactor;
 }
 
-vec2 getTextureCoordsNormal(vec3 voxelPosition, int textureDir) {
-	switch(textureDir) {
-		case 0:
-			return vec2(voxelPosition.x, voxelPosition.y);
-		case 1:
-			return vec2(15 - voxelPosition.x, voxelPosition.y);
-		case 2:
-			return vec2(voxelPosition.y, voxelPosition.z);
-		case 3:
-			return vec2(15 - voxelPosition.y, voxelPosition.z);
-		case 4:
-			return vec2(15 - voxelPosition.x, voxelPosition.z);
-		case 5:
-			return vec2(voxelPosition.x, voxelPosition.z);
-	}
-}
-
 vec4 fixedCubeMapLookup(vec3 v) { // Taken from http://the-witness.net/news/2012/02/seamless-cube-map-filtering/
 	float M = max(max(abs(v.x), abs(v.y)), abs(v.z));
 	float scale = (reflectionMapSize - 1)/reflectionMapSize;
@@ -131,9 +103,9 @@ vec4 fixedCubeMapLookup(vec3 v) { // Taken from http://the-witness.net/news/2012
 }
 
 void main() {
-	uint textureIndex = textureData[blockType].textureIndices[faceNormal];
-	vec3 textureCoords = vec3(getTextureCoordsNormal(startPosition/16, faceNormal), textureIndex);
-	float normalVariation = normalVariations[faceNormal];
+	uint textureIndex = textureData[blockType].textureIndices[textureSlot];
+	vec3 textureCoords = vec3(uv, textureIndex);
+	float normalVariation = lightVariation(normal);
 	float densityAdjustment = sqrt(dot(mvVertexPos, mvVertexPos))/abs(mvVertexPos.z);
 	float dist = zFromDepth(texelFetch(depthTexture, ivec2(gl_FragCoord.xy), 0).r);
 	float fogDistance = calculateFogDistance(dist, textureData[blockType].fogDensity*densityAdjustment);
@@ -142,7 +114,6 @@ void main() {
 	vec3 pixelLight = max(light*normalVariation, texture(emissionSampler, textureCoords).r*4);
 	vec4 textureColor = texture(texture_sampler, textureCoords)*vec4(pixelLight, 1);
 	float reflectivity = texture(reflectivitySampler, textureCoords).r;
-	vec3 normal = normals[faceNormal];
 	if(isBackFace == 0) {
 		textureColor.rgb *= textureColor.a;
 		blendColor.rgb = unpackColor(textureData[blockType].absorption);

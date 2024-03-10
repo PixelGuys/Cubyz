@@ -51,20 +51,20 @@ pub const Neighbors = struct { // TODO: Should this be an enum?
 		.{1, 0, 1},
 	};
 	pub const textureX = [_]Vec3i {
-		.{1, 0, 0},
 		.{-1, 0, 0},
-		.{0, -1, 0},
+		.{1, 0, 0},
 		.{0, 1, 0},
-		.{1, 0, 0},
+		.{0, -1, 0},
 		.{-1, 0, 0},
+		.{1, 0, 0},
 	};
 	pub const textureY = [_]Vec3i {
-		.{0, 1, 0},
-		.{0, 1, 0},
-		.{0, 0, -1},
-		.{0, 0, -1},
-		.{0, 0, -1},
-		.{0, 0, -1},
+		.{0, -1, 0},
+		.{0, -1, 0},
+		.{0, 0, 1},
+		.{0, 0, 1},
+		.{0, 0, 1},
+		.{0, 0, 1},
 	};
 
 	pub const isPositive = [_]bool {true, false, true, false, true, false};

@@ -139,9 +139,9 @@ pub const FaceData = extern struct {
 		permutation: u6,
 		padding2: u3 = 0,
 	},
-	blockAndModel: packed struct(u32) {
+	blockAndQuad: packed struct(u32) {
 		typ: u16,
-		modelIndex: u16,
+		quadIndex: u16,
 	},
 	light: [4]u32 = .{0, 0, 0, 0},
 };
@@ -849,7 +849,7 @@ pub const ChunkMesh = struct {
 		const model = blocks.meshes.model(block);
 		return FaceData {
 			.position = .{.x = @intCast(x), .y = @intCast(y), .z = @intCast(z), .normal = normal, .permutation = model.permutation.toInt(), .isBackFace = backFace},
-			.blockAndModel = .{.typ = block.typ, .modelIndex = model.modelIndex},
+			.blockAndQuad = .{.typ = block.typ, .quadIndex = models.models.items[model.modelIndex].quads[normal]}, // TODO: Expand the meshing algorithm to allow non-cuboid models.
 		};
 	}
 
