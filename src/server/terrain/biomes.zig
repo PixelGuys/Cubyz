@@ -286,32 +286,33 @@ pub const TreeNode = union(enum) {
 		};
 
 		// Partition the slice:
-		var lowerIndex: usize = 0;
-		var upperIndex: usize = currentSlice.len - 1;
-		var i: usize = 0;
-		while(i <= upperIndex) {
-			var properties: u32 = @as(u8, @bitCast(currentSlice[i].properties));
-			properties >>= parameterShift;
-			properties = properties & 3;
-			if(properties == 0 or properties == 3) {
-				i += 1;
-			} else if(properties == 1) {
-				const swap = currentSlice[i];
-				currentSlice[i] = currentSlice[lowerIndex];
-				currentSlice[lowerIndex] = swap;
-				i += 1;
-				lowerIndex += 1;
-			} else if(properties == 2) {
-				const swap = currentSlice[i];
-				currentSlice[i] = currentSlice[upperIndex];
-				currentSlice[upperIndex] = swap;
-				upperIndex -= 1;
-			} else unreachable;
+		var lowerIndex: usize = undefined;
+		var upperIndex: usize = undefined;
+		{
+			var lists: [3]main.ListUnmanaged(Biome) = .{
+				main.ListUnmanaged(Biome).initCapacity(main.stackAllocator, currentSlice.len),
+				main.ListUnmanaged(Biome).initCapacity(main.stackAllocator, currentSlice.len),
+				main.ListUnmanaged(Biome).initCapacity(main.stackAllocator, currentSlice.len),
+			};
+			defer for(lists) |list| {
+				list.deinit(main.stackAllocator);
+			};
+			for(currentSlice) |biome| {
+				var properties: u32 = @as(u8, @bitCast(biome.properties));
+				properties >>= parameterShift;
+				const valueMap = [_]usize{1, 0, 2, 1};
+				lists[valueMap[properties & 3]].appendAssumeCapacity(biome);
+			}
+			lowerIndex = lists[0].items.len;
+			@memcpy(currentSlice[0..lowerIndex], lists[0].items);
+			upperIndex = lowerIndex + lists[1].items.len;
+			@memcpy(currentSlice[lowerIndex..upperIndex], lists[1].items);
+			@memcpy(currentSlice[upperIndex..], lists[2].items);
 		}
 
 		self.branch.children[0] = TreeNode.init(allocator, currentSlice[0..lowerIndex], parameterShift+2);
-		self.branch.children[1] = TreeNode.init(allocator, currentSlice[lowerIndex..upperIndex+1], parameterShift+2);
-		self.branch.children[2] = TreeNode.init(allocator, currentSlice[upperIndex+1..], parameterShift+2);
+		self.branch.children[1] = TreeNode.init(allocator, currentSlice[lowerIndex..upperIndex], parameterShift+2);
+		self.branch.children[2] = TreeNode.init(allocator, currentSlice[upperIndex..], parameterShift+2);
 
 		return self;
 	}
