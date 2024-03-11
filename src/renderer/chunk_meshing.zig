@@ -47,6 +47,7 @@ pub var uniforms: UniformStruct = undefined;
 pub var transparentUniforms: UniformStruct = undefined;
 var vao: c_uint = undefined;
 var vbo: c_uint = undefined;
+var faces: main.List(u32) = undefined;
 pub var faceBuffer: graphics.LargeBuffer(FaceData) = undefined;
 pub var quadsDrawn: usize = 0;
 pub var transparentQuadsDrawn: usize = 0;
@@ -56,7 +57,11 @@ pub fn init() void {
 	shader = Shader.initAndGetUniforms("assets/cubyz/shaders/chunks/chunk_vertex.vs", "assets/cubyz/shaders/chunks/chunk_fragment.fs", &uniforms);
 	transparentShader = Shader.initAndGetUniforms("assets/cubyz/shaders/chunks/chunk_vertex.vs", "assets/cubyz/shaders/chunks/transparent_fragment.fs", &transparentUniforms);
 
-	const rawData = [_]u32{0, 2, 1, 1, 2, 3};
+	var rawData: [6*3 << (3*chunk.chunkShift)]u32 = undefined; // 6 vertices per face, maximum 3 faces/block
+	const lut = [_]u32{0, 2, 1, 1, 2, 3};
+	for(0..rawData.len) |i| {
+		rawData[i] = @as(u32, @intCast(i))/6*4 + lut[i%6];
+	}
 
 	c.glGenVertexArrays(1, &vao);
 	c.glBindVertexArray(vao);
@@ -65,6 +70,7 @@ pub fn init() void {
 	c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, rawData.len*@sizeOf(u32), &rawData, c.GL_STATIC_DRAW);
 	c.glBindVertexArray(0);
 
+	faces = main.List(u32).initCapacity(main.globalAllocator, 65536); // TODO: What is this used for?
 	faceBuffer.init(main.globalAllocator, 1 << 20, 3);
 }
 
@@ -74,6 +80,7 @@ pub fn deinit() void {
 	transparentShader.deinit();
 	c.glDeleteVertexArrays(1, &vao);
 	c.glDeleteBuffers(1, &vbo);
+	faces.deinit();
 	faceBuffer.deinit();
 }
 
@@ -149,7 +156,7 @@ const PrimitiveMesh = struct {
 	higherLodLens: [6]u32 = .{0} ** 6,
 	mutex: std.Thread.Mutex = .{},
 	bufferAllocation: graphics.SubAllocation = .{.start = 0, .len = 0},
-	faceCount: u31 = 0,
+	vertexCount: u31 = 0,
 	wasChanged: bool = false,
 
 	fn deinit(self: *PrimitiveMesh) void {
@@ -327,7 +334,7 @@ const PrimitiveMesh = struct {
 			@memcpy(fullBuffer[i..][0..list[n].len], list[n]);
 			i += list[n].len;
 		}
-		self.faceCount = @intCast(fullBuffer.len);
+		self.vertexCount = @intCast(6*fullBuffer.len);
 		self.wasChanged = true;
 	}
 
@@ -543,7 +550,7 @@ pub const ChunkMesh = struct {
 	};
 
 	pub fn isEmpty(self: *const ChunkMesh) bool {
-		return self.opaqueMesh.faceCount == 0 and self.transparentMesh.faceCount == 0;
+		return self.opaqueMesh.vertexCount == 0 and self.transparentMesh.vertexCount == 0;
 	}
 
 	fn canBeSeenThroughOtherBlock(block: Block, other: Block, neighbor: u3) bool {
@@ -1023,7 +1030,7 @@ pub const ChunkMesh = struct {
 	}
 
 	pub fn render(self: *ChunkMesh, playerPosition: Vec3d) void {
-		if(self.opaqueMesh.faceCount == 0) return;
+		if(self.opaqueMesh.vertexCount == 0) return;
 		c.glUniform3f(
 			uniforms.modelPosition,
 			@floatCast(@as(f64, @floatFromInt(self.pos.wx)) - playerPosition[0]),
@@ -1032,12 +1039,12 @@ pub const ChunkMesh = struct {
 		);
 		c.glUniform1i(uniforms.visibilityMask, self.visibilityMask);
 		c.glUniform1i(uniforms.voxelSize, self.pos.voxelSize);
-		quadsDrawn += self.opaqueMesh.faceCount;
-		c.glDrawElementsInstancedBaseInstance(c.GL_TRIANGLES, 6, c.GL_UNSIGNED_INT, null, self.opaqueMesh.faceCount, self.opaqueMesh.bufferAllocation.start);
+		quadsDrawn += self.opaqueMesh.vertexCount/6;
+		c.glDrawElementsBaseVertex(c.GL_TRIANGLES, self.opaqueMesh.vertexCount, c.GL_UNSIGNED_INT, null, self.opaqueMesh.bufferAllocation.start*4);
 	}
 
 	pub fn renderTransparent(self: *ChunkMesh, playerPosition: Vec3d) void {
-		if(self.transparentMesh.faceCount == 0) return;
+		if(self.transparentMesh.vertexCount == 0) return;
 
 		var needsUpdate: bool = false;
 		if(self.transparentMesh.wasChanged) {
@@ -1162,6 +1169,6 @@ pub const ChunkMesh = struct {
 		c.glUniform1i(transparentUniforms.visibilityMask, self.visibilityMask);
 		c.glUniform1i(transparentUniforms.voxelSize, self.pos.voxelSize);
 		transparentQuadsDrawn += self.culledSortingCount;
-		c.glDrawElementsInstancedBaseInstance(c.GL_TRIANGLES, 6, c.GL_UNSIGNED_INT, null, self.culledSortingCount, self.transparentMesh.bufferAllocation.start);
+		c.glDrawElementsBaseVertex(c.GL_TRIANGLES, self.culledSortingCount*6, c.GL_UNSIGNED_INT, null, self.transparentMesh.bufferAllocation.start*4);
 	}
 };

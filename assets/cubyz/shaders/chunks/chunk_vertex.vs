@@ -1,4 +1,4 @@
-#version 460
+#version 430
 
 out vec3 mvVertexPos;
 out vec3 direction;
@@ -111,8 +111,8 @@ const ivec3[6] textureY = ivec3[6](
 );
 
 void main() {
-	int faceID = gl_BaseInstance + gl_InstanceID;
-	int vertexID = gl_VertexID;
+	int faceID = gl_VertexID >> 2;
+	int vertexID = gl_VertexID & 3;
 	int encodedPositionAndPermutation = faceData[faceID].encodedPositionAndPermutation;
 	int blockAndQuad = faceData[faceID].blockAndQuad;
 	int fullLight = faceData[faceID].light[vertexID];
