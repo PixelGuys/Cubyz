@@ -12,7 +12,7 @@ flat in int ditherSeed;
 
 uniform sampler2DArray texture_sampler;
 uniform sampler2DArray emissionSampler;
-uniform sampler2DArray reflectivitySampler;
+uniform sampler2DArray reflectivityAndAbsorptionSampler;
 uniform samplerCube reflectionMap;
 uniform float reflectionMapSize;
 
@@ -20,7 +20,6 @@ layout(location = 0) out vec4 fragColor;
 
 struct TextureData {
 	uint textureIndices[6];
-	uint absorption;
 	float fogDensity;
 	uint fogColor;
 };
@@ -69,7 +68,7 @@ void main() {
 	uint textureIndex = textureData[blockType].textureIndices[textureSlot];
 	float normalVariation = lightVariation(normal);
 	vec3 textureCoords = vec3(uv, textureIndex);
-	float reflectivity = texture(reflectivitySampler, textureCoords).r;
+	float reflectivity = texture(reflectivityAndAbsorptionSampler, textureCoords).a;
 	vec3 pixelLight = max(light*normalVariation, texture(emissionSampler, textureCoords).r*4);
 	fragColor = texture(texture_sampler, textureCoords)*vec4(pixelLight, 1);
 	fragColor.rgb += (reflectivity*fixedCubeMapLookup(reflect(direction, normal)).xyz)*pixelLight;

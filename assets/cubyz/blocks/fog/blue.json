@@ -11,5 +11,5 @@
 	"fogColor" : 0x0000ff,
 
 	"model" : "cube",
-	"texture" : "cubyz:glass"
+	"texture" : "cubyz:fog"
 }

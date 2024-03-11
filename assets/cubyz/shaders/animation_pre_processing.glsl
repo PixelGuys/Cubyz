@@ -9,7 +9,6 @@ struct AnimationData {
 
 struct TextureData {
 	uint textureIndices[6];
-	uint absorption;
 	float fogDensity;
 	uint fogColor;
 };

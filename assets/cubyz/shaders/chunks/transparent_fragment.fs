@@ -12,7 +12,7 @@ flat in int ditherSeed;
 
 uniform sampler2DArray texture_sampler;
 uniform sampler2DArray emissionSampler;
-uniform sampler2DArray reflectivitySampler;
+uniform sampler2DArray reflectivityAndAbsorptionSampler;
 uniform samplerCube reflectionMap;
 uniform float reflectionMapSize;
 
@@ -28,7 +28,6 @@ struct Fog {
 
 struct TextureData {
 	uint textureIndices[6];
-	uint absorption;
 	float fogDensity;
 	uint fogColor;
 };
@@ -113,10 +112,11 @@ void main() {
 	vec3 fogColor = unpackColor(textureData[blockType].fogColor);
 	vec3 pixelLight = max(light*normalVariation, texture(emissionSampler, textureCoords).r*4);
 	vec4 textureColor = texture(texture_sampler, textureCoords)*vec4(pixelLight, 1);
-	float reflectivity = texture(reflectivitySampler, textureCoords).r;
+	float reflectivity = texture(reflectivityAndAbsorptionSampler, textureCoords).a;
+	vec3 absorption = texture(reflectivityAndAbsorptionSampler, textureCoords).rgb;
 	if(isBackFace == 0) {
 		textureColor.rgb *= textureColor.a;
-		blendColor.rgb = unpackColor(textureData[blockType].absorption);
+		blendColor.rgb = absorption;
 
 		// Fake reflection:
 		// TODO: Also allow this for opaque pixels.

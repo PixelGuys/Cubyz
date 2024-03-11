@@ -35,7 +35,7 @@ const UniformStruct = struct {
 	@"fog.density": c_int,
 	texture_sampler: c_int,
 	emissionSampler: c_int,
-	reflectivitySampler: c_int,
+	reflectivityAndAbsorptionSampler: c_int,
 	reflectionMap: c_int,
 	reflectionMapSize: c_int,
 	visibilityMask: c_int,
@@ -90,7 +90,7 @@ fn bindCommonUniforms(locations: *UniformStruct, projMatrix: Mat4f, ambient: Vec
 
 	c.glUniform1i(locations.texture_sampler, 0);
 	c.glUniform1i(locations.emissionSampler, 1);
-	c.glUniform1i(locations.reflectivitySampler, 2);
+	c.glUniform1i(locations.reflectivityAndAbsorptionSampler, 2);
 	c.glUniform1i(locations.reflectionMap, 4);
 	c.glUniform1f(locations.reflectionMapSize, renderer.reflectionCubeMapSize);
 

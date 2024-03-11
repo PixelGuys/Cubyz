@@ -192,7 +192,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glActiveTexture(c.GL_TEXTURE1);
 	blocks.meshes.emissionTextureArray.bind();
 	c.glActiveTexture(c.GL_TEXTURE2);
-	blocks.meshes.reflectivityTextureArray.bind();
+	blocks.meshes.reflectivityAndAbsorptionTextureArray.bind();
 	reflectionCubeMap.bindTo(4);
 
 //	SimpleList<NormalChunkMesh> visibleChunks = new SimpleList<NormalChunkMesh>(new NormalChunkMesh[64]);

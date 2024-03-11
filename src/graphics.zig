@@ -1490,10 +1490,10 @@ pub const TextureArray = struct {
 			gSum += w*g[i]*g[i];
 			bSum += w*b[i]*b[i];
 		}
-		aSum = @round(@sqrt(aSum))/2;
-		rSum = @round(@sqrt(rSum))/2;
-		gSum = @round(@sqrt(gSum))/2;
-		bSum = @round(@sqrt(bSum))/2;
+		aSum = @sqrt(aSum)/2;
+		rSum = @sqrt(rSum)/2;
+		gSum = @sqrt(gSum)/2;
+		bSum = @sqrt(bSum)/2;
 		if(aSum != 0) {
 			rSum /= aSum;
 			gSum /= aSum;
@@ -1733,6 +1733,14 @@ pub const Image = struct {
 		.height = 1,
 		.imageData = &emptyImageData,
 	};
+	var whiteImageData = [1]Color {
+		Color{.r=255, .g=255, .b=255, .a=255},
+	};
+	pub const whiteEmptyImage = Image {
+		.width = 1,
+		.height = 1,
+		.imageData = &whiteImageData,
+	};
 	width: u31,
 	height: u31,
 	imageData: []Color,
@@ -1744,7 +1752,7 @@ pub const Image = struct {
 		};
 	}
 	pub fn deinit(self: Image, allocator: NeverFailingAllocator) void {
-		if(self.imageData.ptr == &defaultImageData) return;
+		if(self.imageData.ptr == &defaultImageData or self.imageData.ptr == &emptyImageData or self.imageData.ptr == &whiteImageData) return;
 		allocator.free(self.imageData);
 	}
 	pub fn readFromFile(allocator: NeverFailingAllocator, path: []const u8) !Image {
@@ -1891,7 +1899,9 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	main.blocks.meshes.blockTextureArray.bind();
 	c.glActiveTexture(c.GL_TEXTURE1);
 	main.blocks.meshes.emissionTextureArray.bind();
-	block_texture.depthTexture.bindTo(3);
+	c.glActiveTexture(c.GL_TEXTURE2);
+	main.blocks.meshes.reflectivityAndAbsorptionTextureArray.bind();
+	block_texture.depthTexture.bindTo(5);
 	c.glDrawElementsBaseVertex(c.GL_TRIANGLES, 6*faces, c.GL_UNSIGNED_INT, null, allocation.start*4);
 
 	var finalFrameBuffer: FrameBuffer = undefined;

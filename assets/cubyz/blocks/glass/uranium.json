@@ -5,9 +5,8 @@
 		"none"
 	],
 	"transparent" : true,
-	"absorption" : 0xa0e000,
 	"absorbedLight" : 0x4001ff,
 	"emittedLight" : 0x80ff00,
 	"model" : "cube",
-	"texture" : "cubyz:uranium_glass"
+	"texture" : "cubyz:glass/uranium"
 }

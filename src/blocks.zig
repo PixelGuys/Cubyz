@@ -308,7 +308,6 @@ pub const meshes = struct {
 
 	const TextureData = extern struct {
 		textureIndices: [6]u32,
-		absorption: u32,
 		fogDensity: f32,
 		fogColor: u32,
 	};
@@ -325,6 +324,7 @@ pub const meshes = struct {
 	var blockTextures: main.List(Image) = undefined;
 	var emissionTextures: main.List(Image) = undefined;
 	var reflectivityTextures: main.List(Image) = undefined;
+	var absorptionTextures: main.List(Image) = undefined;
 
 	var arenaForWorld: main.utils.NeverFailingArenaAllocator = undefined;
 
@@ -351,7 +351,7 @@ pub const meshes = struct {
 
 	pub var blockTextureArray: TextureArray = undefined;
 	pub var emissionTextureArray: TextureArray = undefined;
-	pub var reflectivityTextureArray: TextureArray = undefined;
+	pub var reflectivityAndAbsorptionTextureArray: TextureArray = undefined;
 
 	const black: Color = Color{.r=0, .g=0, .b=0, .a=255};
 	const magenta: Color = Color{.r=255, .g=0, .b=255, .a=255};
@@ -364,12 +364,13 @@ pub const meshes = struct {
 		animationShader = Shader.initComputeAndGetUniforms("assets/cubyz/shaders/animation_pre_processing.glsl", &animationUniforms);
 		blockTextureArray = TextureArray.init();
 		emissionTextureArray = TextureArray.init();
-		reflectivityTextureArray = TextureArray.init();
+		reflectivityAndAbsorptionTextureArray = TextureArray.init();
 		textureIDs = main.List([]const u8).init(main.globalAllocator);
 		animation = main.List(AnimationData).init(main.globalAllocator);
 		blockTextures = main.List(Image).init(main.globalAllocator);
 		emissionTextures = main.List(Image).init(main.globalAllocator);
 		reflectivityTextures = main.List(Image).init(main.globalAllocator);
+		absorptionTextures = main.List(Image).init(main.globalAllocator);
 		arenaForWorld = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
 	}
 
@@ -386,12 +387,13 @@ pub const meshes = struct {
 		animationShader.deinit();
 		blockTextureArray.deinit();
 		emissionTextureArray.deinit();
-		reflectivityTextureArray.deinit();
+		reflectivityAndAbsorptionTextureArray.deinit();
 		textureIDs.deinit();
 		animation.deinit();
 		blockTextures.deinit();
 		emissionTextures.deinit();
 		reflectivityTextures.deinit();
+		absorptionTextures.deinit();
 		arenaForWorld.deinit();
 	}
 
@@ -403,6 +405,7 @@ pub const meshes = struct {
 		blockTextures.clearRetainingCapacity();
 		emissionTextures.clearRetainingCapacity();
 		reflectivityTextures.clearRetainingCapacity();
+		absorptionTextures.clearRetainingCapacity();
 		_ = arenaForWorld.reset(.free_all);
 	}
 
@@ -422,11 +425,11 @@ pub const meshes = struct {
 		return textureData[block.typ].fogColor;
 	}
 
-	fn readAuxillaryTexture(_path: []const u8, pathBuffer: []u8, ending: []const u8, list: *main.List(Image)) void {
+	fn readAuxillaryTexture(_path: []const u8, pathBuffer: []u8, ending: []const u8, list: *main.List(Image), default: Image) void {
 		var path = _path;
 		@memcpy(pathBuffer[path.len..][0..ending.len], ending);
 		path.len += ending.len;
-		const texture = Image.readFromFile(arenaForWorld.allocator(), path) catch Image.emptyImage;
+		const texture = Image.readFromFile(arenaForWorld.allocator(), path) catch default;
 		list.append(texture);
 	}
 
@@ -463,8 +466,9 @@ pub const meshes = struct {
 			blockTextures.append(try Image.readFromFile(arenaForWorld.allocator(), path));
 			textureIDs.append(arenaForWorld.allocator().dupe(u8, path));
 			animation.append(.{.frames = 1, .time = 1});
-			readAuxillaryTexture(path, &buffer, "_emission.png", &emissionTextures);
-			readAuxillaryTexture(path, &buffer, "_reflectivity.png", &reflectivityTextures);
+			readAuxillaryTexture(path, &buffer, "_emission.png", &emissionTextures, Image.emptyImage);
+			readAuxillaryTexture(path, &buffer, "_reflectivity.png", &reflectivityTextures, Image.emptyImage);
+			readAuxillaryTexture(path, &buffer, "_absorption.png", &absorptionTextures, Image.whiteEmptyImage);
 		} else if(textureInfo == .JsonObject) {
 			const animationTime = textureInfo.get(i32, "time", 500);
 			const textures = textureInfo.getChild("textures").toSlice();
@@ -495,8 +499,9 @@ pub const meshes = struct {
 
 				blockTextures.append(try Image.readFromFile(arenaForWorld.allocator(), path));
 				textureIDs.append(arenaForWorld.allocator().dupe(u8, path));
-				readAuxillaryTexture(path, &buffer, "_emission.png", &emissionTextures);
-				readAuxillaryTexture(path, &buffer, "_reflectivity.png", &reflectivityTextures);
+				readAuxillaryTexture(path, &buffer, "_emission.png", &emissionTextures, Image.emptyImage);
+				readAuxillaryTexture(path, &buffer, "_reflectivity.png", &reflectivityTextures, Image.emptyImage);
+				readAuxillaryTexture(path, &buffer, "_absorption.png", &absorptionTextures, Image.whiteEmptyImage);
 			}
 		} else {
 			return error.NotSpecified;
@@ -519,7 +524,6 @@ pub const meshes = struct {
 		// But textures can be loaded here:
 
 		getTextureIndices(json, assetFolder, &textureData[meshes.size].textureIndices);
-		textureData[meshes.size].absorption = json.get(u32, "absorption", 0xffffff);
 		textureData[meshes.size].fogDensity = json.get(f32, "fogDensity", 0.0);
 		textureData[meshes.size].fogColor = json.get(u32, "fogColor", 0xffffff);
 
@@ -578,7 +582,24 @@ pub const meshes = struct {
 		if(main.settings.anisotropicFiltering) {
 			c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, 16);
 		}
-		reflectivityTextureArray.generate(reflectivityTextures.items, true);
+		const reflectivityAndAbsorptionTextures = main.stackAllocator.alloc(Image, reflectivityTextures.items.len);
+		defer main.stackAllocator.free(reflectivityAndAbsorptionTextures);
+		defer for(reflectivityAndAbsorptionTextures) |texture| {
+			texture.deinit(main.stackAllocator);
+		};
+		for(reflectivityTextures.items, absorptionTextures.items, reflectivityAndAbsorptionTextures) |reflecitivityTexture, absorptionTexture, *resultTexture| {
+			const width = @max(reflecitivityTexture.width, absorptionTexture.width);
+			const height = @max(reflecitivityTexture.height, absorptionTexture.height);
+			resultTexture.* = Image.init(main.stackAllocator, width, height);
+			for(0..width) |x| {
+				for(0..height) |y| {
+					const reflectivity = reflecitivityTexture.getRGB(x*reflecitivityTexture.width/width, y*reflecitivityTexture.height/height);
+					const absorption = absorptionTexture.getRGB(x*absorptionTexture.width/width, y*absorptionTexture.height/height);
+					resultTexture.setRGB(x, y, .{.r = absorption.r, .g = absorption.g, .b = absorption.b, .a = reflectivity.r});
+				}
+			}
+		}
+		reflectivityAndAbsorptionTextureArray.generate(reflectivityAndAbsorptionTextures, true);
 		if(main.settings.anisotropicFiltering) {
 			c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, 16);
 		}
