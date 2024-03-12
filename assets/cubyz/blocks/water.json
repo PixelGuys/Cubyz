@@ -6,9 +6,8 @@
 	"selectable" : false,
 	"solid" : false,
 	"transparent" : true,
+	"hasBackFace" : true,
 	"absorbedLight" : 0x090501,
-	"fogDensity" : 0.02,
-	"fogColor" : 0x203860,
 	"model" : "cube",
 	"texture" : {
 		"time" : 500,

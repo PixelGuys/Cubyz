@@ -46,8 +46,6 @@ struct VoxelModel {
 
 struct TextureData {
 	uint textureIndices[6];
-	float fogDensity;
-	uint fogColor;
 };
 
 layout(std430, binding = 1) buffer _textureData

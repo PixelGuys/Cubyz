@@ -115,8 +115,7 @@ pub fn register(_: []const u8, id: []const u8, json: JsonElement) u16 {
 	_gui[size] = allocator.dupe(u8, json.get([]const u8, "GUI", ""));
 	_transparent[size] = json.get(bool, "transparent", false);
 	_viewThrough[size] = json.get(bool, "viewThrough", false) or _transparent[size];
-	const hasFog: bool = json.get(f32, "fogDensity", 0.0) != 0.0;
-	_hasBackFace[size] = hasFog and _transparent[size];
+	_hasBackFace[size] = json.get(bool, "hasBackFace", false);
 
 	const oreProperties = json.getChild("ore");
 	if (oreProperties != .JsonNull) {
@@ -308,6 +307,8 @@ pub const meshes = struct {
 
 	const TextureData = extern struct {
 		textureIndices: [6]u32,
+	};
+	const FogData = extern struct {
 		fogDensity: f32,
 		fogColor: u32,
 	};
@@ -325,6 +326,7 @@ pub const meshes = struct {
 	var emissionTextures: main.List(Image) = undefined;
 	var reflectivityTextures: main.List(Image) = undefined;
 	var absorptionTextures: main.List(Image) = undefined;
+	var textureFogData: main.List(FogData) = undefined;
 
 	var arenaForWorld: main.utils.NeverFailingArenaAllocator = undefined;
 
@@ -342,6 +344,7 @@ pub const meshes = struct {
 	var animationSSBO: ?SSBO = null;
 	var textureDataSSBO: ?SSBO = null;
 	var animatedTextureDataSSBO: ?SSBO = null;
+	var fogSSBO: ?SSBO = null;
 
 	var animationShader: Shader = undefined;
 	var animationUniforms: struct {
@@ -371,6 +374,7 @@ pub const meshes = struct {
 		emissionTextures = main.List(Image).init(main.globalAllocator);
 		reflectivityTextures = main.List(Image).init(main.globalAllocator);
 		absorptionTextures = main.List(Image).init(main.globalAllocator);
+		textureFogData = main.List(FogData).init(main.globalAllocator);
 		arenaForWorld = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
 	}
 
@@ -384,6 +388,9 @@ pub const meshes = struct {
 		if(animatedTextureDataSSBO) |ssbo| {
 			ssbo.deinit();
 		}
+		if(fogSSBO) |ssbo| {
+			ssbo.deinit();
+		}
 		animationShader.deinit();
 		blockTextureArray.deinit();
 		emissionTextureArray.deinit();
@@ -394,6 +401,7 @@ pub const meshes = struct {
 		emissionTextures.deinit();
 		reflectivityTextures.deinit();
 		absorptionTextures.deinit();
+		textureFogData.deinit();
 		arenaForWorld.deinit();
 	}
 
@@ -406,6 +414,7 @@ pub const meshes = struct {
 		emissionTextures.clearRetainingCapacity();
 		reflectivityTextures.clearRetainingCapacity();
 		absorptionTextures.clearRetainingCapacity();
+		textureFogData.clearRetainingCapacity();
 		_ = arenaForWorld.reset(.free_all);
 	}
 
@@ -418,17 +427,21 @@ pub const meshes = struct {
 	}
 
 	pub inline fn fogDensity(block: Block) f32 {
-		return textureData[block.typ].fogDensity;
+		return textureFogData.items[textureData[block.typ].textureIndices[0]].fogDensity;
 	}
 
 	pub inline fn fogColor(block: Block) u32 {
-		return textureData[block.typ].fogColor;
+		return textureFogData.items[textureData[block.typ].textureIndices[0]].fogColor;
+	}
+
+	fn extendedPath(path: []const u8, pathBuffer: []u8, ending: []const u8) []const u8 {
+		std.debug.assert(path.ptr == pathBuffer.ptr);
+		@memcpy(pathBuffer[path.len..][0..ending.len], ending);
+		return pathBuffer[0..path.len+ending.len];
 	}
 
 	fn readAuxillaryTexture(_path: []const u8, pathBuffer: []u8, ending: []const u8, list: *main.List(Image), default: Image) void {
-		var path = _path;
-		@memcpy(pathBuffer[path.len..][0..ending.len], ending);
-		path.len += ending.len;
+		const path = extendedPath(_path, pathBuffer, ending);
 		const texture = Image.readFromFile(arenaForWorld.allocator(), path) catch default;
 		list.append(texture);
 	}
@@ -469,6 +482,13 @@ pub const meshes = struct {
 			readAuxillaryTexture(path, &buffer, "_emission.png", &emissionTextures, Image.emptyImage);
 			readAuxillaryTexture(path, &buffer, "_reflectivity.png", &reflectivityTextures, Image.emptyImage);
 			readAuxillaryTexture(path, &buffer, "_absorption.png", &absorptionTextures, Image.whiteEmptyImage);
+			const textureInfoPath = extendedPath(path, &buffer, "_textureInfo.json");
+			const textureInfoJson = main.files.readToJson(main.stackAllocator, textureInfoPath) catch .JsonNull;
+			defer textureInfoJson.free(main.stackAllocator);
+			textureFogData.append(.{
+				.fogDensity = textureInfoJson.get(f32, "fogDensity", 0.0),
+				.fogColor = textureInfoJson.get(u32, "fogColor", 0xffffff),
+			});
 		} else if(textureInfo == .JsonObject) {
 			const animationTime = textureInfo.get(i32, "time", 500);
 			const textures = textureInfo.getChild("textures").toSlice();
@@ -502,6 +522,13 @@ pub const meshes = struct {
 				readAuxillaryTexture(path, &buffer, "_emission.png", &emissionTextures, Image.emptyImage);
 				readAuxillaryTexture(path, &buffer, "_reflectivity.png", &reflectivityTextures, Image.emptyImage);
 				readAuxillaryTexture(path, &buffer, "_absorption.png", &absorptionTextures, Image.whiteEmptyImage);
+				const textureInfoPath = extendedPath(path, &buffer, "_textureInfo.json");
+				const textureInfoJson = main.files.readToJson(main.stackAllocator, textureInfoPath) catch .JsonNull;
+				defer textureInfoJson.free(main.stackAllocator);
+				textureFogData.append(.{
+					.fogDensity = textureInfoJson.get(f32, "fogDensity", 0.0),
+					.fogColor = textureInfoJson.get(u32, "fogColor", 0xffffff),
+				});
 			}
 		} else {
 			return error.NotSpecified;
@@ -524,8 +551,6 @@ pub const meshes = struct {
 		// But textures can be loaded here:
 
 		getTextureIndices(json, assetFolder, &textureData[meshes.size].textureIndices);
-		textureData[meshes.size].fogDensity = json.get(f32, "fogDensity", 0.0);
-		textureData[meshes.size].fogColor = json.get(u32, "fogColor", 0xffffff);
 
 		maxTextureCount[meshes.size] = @intCast(textureIDs.items.len);
 
@@ -574,11 +599,11 @@ pub const meshes = struct {
 
 	pub fn generateTextureArray() void {
 		const c = graphics.c;
-		blockTextureArray.generate(blockTextures.items, true);
+		blockTextureArray.generate(blockTextures.items, true, true);
 		if(main.settings.anisotropicFiltering) {
 			c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, 16);
 		}
-		emissionTextureArray.generate(emissionTextures.items, true);
+		emissionTextureArray.generate(emissionTextures.items, true, false);
 		if(main.settings.anisotropicFiltering) {
 			c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, 16);
 		}
@@ -599,7 +624,7 @@ pub const meshes = struct {
 				}
 			}
 		}
-		reflectivityAndAbsorptionTextureArray.generate(reflectivityAndAbsorptionTextures, true);
+		reflectivityAndAbsorptionTextureArray.generate(reflectivityAndAbsorptionTextures, true, false);
 		if(main.settings.anisotropicFiltering) {
 			c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, 16);
 		}
@@ -614,11 +639,16 @@ pub const meshes = struct {
 		if(animatedTextureDataSSBO) |ssbo| {
 			ssbo.deinit();
 		}
+		if(fogSSBO) |ssbo| {
+			ssbo.deinit();
+		}
 		animationSSBO = SSBO.initStatic(AnimationData, animation.items);
 		animationSSBO.?.bind(0);
 		textureDataSSBO = SSBO.initStatic(TextureData, textureData[0..meshes.size]);
 		textureDataSSBO.?.bind(6);
 		animatedTextureDataSSBO = SSBO.initStatic(TextureData, textureData[0..meshes.size]);
 		animatedTextureDataSSBO.?.bind(1);
+		fogSSBO = SSBO.initStatic(FogData, textureFogData.items);
+		fogSSBO.?.bind(7);
 	}
 };

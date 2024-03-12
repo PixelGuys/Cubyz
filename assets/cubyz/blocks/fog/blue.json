@@ -6,10 +6,9 @@
 	],
 	"degradable" : true,
 	"transparent" : true,
+	"hasBackFace" : true,
 	"absorbedLight" : 0x010100,
-	"fogDensity" : 0.02,
-	"fogColor" : 0x0000ff,
 
 	"model" : "cube",
-	"texture" : "cubyz:fog"
+	"texture" : "cubyz:fog/blue"
 }

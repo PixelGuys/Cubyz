@@ -1467,7 +1467,7 @@ pub const TextureArray = struct {
 		c.glBindTexture(c.GL_TEXTURE_2D_ARRAY, self.textureID);
 	}
 
-	fn lodColorInterpolation(colors: [4]Color) Color {
+	fn lodColorInterpolation(colors: [4]Color, alphaCorrection: bool) Color {
 		var r: [4]f32 = undefined;
 		var g: [4]f32 = undefined;
 		var b: [4]f32 = undefined;
@@ -1484,8 +1484,8 @@ pub const TextureArray = struct {
 		var gSum: f32 = 0;
 		var bSum: f32 = 0;
 		for(0..4) |i| {
-			const w = a[i]*a[i];
-			aSum += w;
+			const w = if(alphaCorrection) a[i]*a[i] else 1;
+			aSum += a[i]*a[i];
 			rSum += w*r[i]*r[i];
 			gSum += w*g[i]*g[i];
 			bSum += w*b[i]*b[i];
@@ -1494,7 +1494,7 @@ pub const TextureArray = struct {
 		rSum = @sqrt(rSum)/2;
 		gSum = @sqrt(gSum)/2;
 		bSum = @sqrt(bSum)/2;
-		if(aSum != 0) {
+		if(alphaCorrection and aSum != 0) {
 			rSum /= aSum;
 			gSum /= aSum;
 			bSum /= aSum;
@@ -1503,7 +1503,7 @@ pub const TextureArray = struct {
 	}
 
 	/// (Re-)Generates the GPU buffer.
-	pub fn generate(self: TextureArray, images: []Image, mipmapping: bool) void {
+	pub fn generate(self: TextureArray, images: []Image, mipmapping: bool, alphaCorrectMipmapping: bool) void {
 		var maxWidth: u31 = 0;
 		var maxHeight: u31 = 0;
 		for(images) |image| {
@@ -1536,7 +1536,7 @@ pub const TextureArray = struct {
 			for(0..maxWidth) |x| {
 				for(0..maxHeight) |y| {
 					const index = x + y*maxWidth;
-					const imageIndex = (x*image.width)/maxWidth + image.width*(y*image.height)/maxHeight;
+					const imageIndex = (x*image.width)/maxWidth + image.width*((y*image.height)/maxHeight);
 					lodBuffer[0][index] = image.imageData[imageIndex];
 				}
 			}
@@ -1557,7 +1557,7 @@ pub const TextureArray = struct {
 								lodBuffer[lod-1][index2 + curWidth*2],
 								lodBuffer[lod-1][index2 + curWidth*2 + 1],
 							};
-							lodBuffer[lod][index] = lodColorInterpolation(colors);
+							lodBuffer[lod][index] = lodColorInterpolation(colors, alphaCorrectMipmapping);
 						}
 					}
 				}

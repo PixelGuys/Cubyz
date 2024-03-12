@@ -20,13 +20,21 @@ layout(location = 0) out vec4 fragColor;
 
 struct TextureData {
 	uint textureIndices[6];
-	float fogDensity;
-	uint fogColor;
 };
 
 layout(std430, binding = 1) buffer _textureData
 {
 	TextureData textureData[];
+};
+
+struct FogData {
+	float fogDensity;
+	uint fogColor;
+};
+
+layout(std430, binding = 7) buffer _fogData
+{
+	FogData fogData[];
 };
 
 float lightVariation(vec3 normal) {

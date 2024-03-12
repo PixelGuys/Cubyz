@@ -28,13 +28,21 @@ struct Fog {
 
 struct TextureData {
 	uint textureIndices[6];
-	float fogDensity;
-	uint fogColor;
 };
 
 layout(std430, binding = 1) buffer _textureData
 {
 	TextureData textureData[];
+};
+
+struct FogData {
+	float fogDensity;
+	uint fogColor;
+};
+
+layout(std430, binding = 7) buffer _fogData
+{
+	FogData fogData[];
 };
 
 float lightVariation(vec3 normal) {
@@ -107,9 +115,9 @@ void main() {
 	float normalVariation = lightVariation(normal);
 	float densityAdjustment = sqrt(dot(mvVertexPos, mvVertexPos))/abs(mvVertexPos.z);
 	float dist = zFromDepth(texelFetch(depthTexture, ivec2(gl_FragCoord.xy), 0).r);
-	float fogDistance = calculateFogDistance(dist, textureData[blockType].fogDensity*densityAdjustment);
+	float fogDistance = calculateFogDistance(dist, fogData[textureIndex].fogDensity*densityAdjustment);
 	float airFogDistance = calculateFogDistance(dist, fog.density*densityAdjustment);
-	vec3 fogColor = unpackColor(textureData[blockType].fogColor);
+	vec3 fogColor = unpackColor(fogData[textureIndex].fogColor);
 	vec3 pixelLight = max(light*normalVariation, texture(emissionSampler, textureCoords).r*4);
 	vec4 textureColor = texture(texture_sampler, textureCoords)*vec4(pixelLight, 1);
 	float reflectivity = texture(reflectivityAndAbsorptionSampler, textureCoords).a;
@@ -119,16 +127,14 @@ void main() {
 		blendColor.rgb = absorption;
 
 		// Fake reflection:
-		// TODO: Also allow this for opaque pixels.
 		// TODO: Change this when it rains.
 		// TODO: Normal mapping.
-		// TODO: Allow textures to contribute to this term.
 		textureColor.rgb += (reflectivity*fixedCubeMapLookup(reflect(direction, normal)).xyz)*pixelLight;
 		textureColor.rgb += texture(emissionSampler, textureCoords).rgb;
 		blendColor.rgb *= 1 - textureColor.a;
 		textureColor.a = 1;
 
-		if(textureData[blockType].fogDensity == 0.0) {
+		if(fogData[textureIndex].fogDensity == 0.0) {
 			// Apply the air fog, compensating for the missing back-face:
 			applyFrontfaceFog(airFogDistance, fog.color);
 		} else {
