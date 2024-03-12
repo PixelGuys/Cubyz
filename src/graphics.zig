@@ -1171,6 +1171,14 @@ pub const SSBO = struct {
 		return self;
 	}
 
+	pub fn initStaticSize(comptime T: type, len: usize) SSBO {
+		var self = SSBO{.bufferID = undefined};
+		c.glGenBuffers(1, &self.bufferID);
+		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
+		c.glBufferStorage(c.GL_SHADER_STORAGE_BUFFER, @intCast(len*@sizeOf(T)), null, 0);
+		return self;
+	}
+
 	pub fn deinit(self: SSBO) void {
 		c.glDeleteBuffers(1, &self.bufferID);
 	}

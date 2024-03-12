@@ -140,7 +140,7 @@ pub const FaceData = extern struct {
 		padding2: u3 = 0,
 	},
 	blockAndQuad: packed struct(u32) {
-		typ: u16,
+		texture: u16,
 		quadIndex: u16,
 	},
 	light: [4]u32 = .{0, 0, 0, 0},
@@ -847,9 +847,11 @@ pub const ChunkMesh = struct {
 
 	pub inline fn constructFaceData(block: Block, normal: u3, x: i32, y: i32, z: i32, comptime backFace: bool) FaceData {
 		const model = blocks.meshes.model(block);
+		const quadIndex = models.models.items[model.modelIndex].quads[normal];
+		const texture = blocks.meshes.textureIndex(block, models.quads.items[quadIndex].textureSlot);
 		return FaceData {
 			.position = .{.x = @intCast(x), .y = @intCast(y), .z = @intCast(z), .normal = normal, .permutation = model.permutation.toInt(), .isBackFace = backFace},
-			.blockAndQuad = .{.typ = block.typ, .quadIndex = models.models.items[model.modelIndex].quads[normal]}, // TODO: Expand the meshing algorithm to allow non-cuboid models.
+			.blockAndQuad = .{.texture = texture, .quadIndex = quadIndex}, // TODO: Expand the meshing algorithm to allow non-cuboid models.
 		};
 	}
 

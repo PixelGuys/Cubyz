@@ -7,32 +7,20 @@ struct AnimationData {
 	uint time;
 };
 
-struct TextureData {
-	uint textureIndices[6];
-};
-
 layout(std430, binding = 0) buffer _animation
 {
 	AnimationData animation[];
 };
-layout(std430, binding = 6) buffer _textureDataIn
+layout(std430, binding = 1) buffer _animatedTexture
 {
-	TextureData textureDataIn[];
-};
-layout(std430, binding = 1) buffer _textureDataOut
-{
-	TextureData textureDataOut[];
+	float animatedTexture[];
 };
 
 uniform uint time;
 uniform uint size;
 
 void main() {
-	uint index = gl_GlobalInvocationID.x;
-    if(index >= size) return;
-	for(int i = 0; i < 6; i++) {
-        uint textureIndex = textureDataIn[index].textureIndices[i];
-        textureIndex = textureIndex + time / animation[textureIndex].time % animation[textureIndex].frames;
-		textureDataOut[index].textureIndices[i] = textureIndex;
-	}
+	uint textureIndex = gl_GlobalInvocationID.x;
+	if(textureIndex >= size) return;
+	animatedTexture[textureIndex] = textureIndex + time / animation[textureIndex].time % animation[textureIndex].frames;
 }

@@ -5,8 +5,7 @@ in vec3 direction;
 in vec3 light;
 in vec2 uv;
 flat in vec3 normal;
-flat in int blockType;
-flat in uint textureSlot;
+flat in int textureIndex;
 flat in int isBackFace;
 flat in int ditherSeed;
 
@@ -26,13 +25,9 @@ struct Fog {
 	float density;
 };
 
-struct TextureData {
-	uint textureIndices[6];
-};
-
-layout(std430, binding = 1) buffer _textureData
+layout(std430, binding = 1) buffer _animatedTexture
 {
-	TextureData textureData[];
+	float animatedTexture[];
 };
 
 struct FogData {
@@ -110,14 +105,14 @@ vec4 fixedCubeMapLookup(vec3 v) { // Taken from http://the-witness.net/news/2012
 }
 
 void main() {
-	uint textureIndex = textureData[blockType].textureIndices[textureSlot];
-	vec3 textureCoords = vec3(uv, textureIndex);
+	float animatedTextureIndex = animatedTexture[textureIndex];
+	vec3 textureCoords = vec3(uv, animatedTextureIndex);
 	float normalVariation = lightVariation(normal);
 	float densityAdjustment = sqrt(dot(mvVertexPos, mvVertexPos))/abs(mvVertexPos.z);
 	float dist = zFromDepth(texelFetch(depthTexture, ivec2(gl_FragCoord.xy), 0).r);
-	float fogDistance = calculateFogDistance(dist, fogData[textureIndex].fogDensity*densityAdjustment);
+	float fogDistance = calculateFogDistance(dist, fogData[int(animatedTextureIndex)].fogDensity*densityAdjustment);
 	float airFogDistance = calculateFogDistance(dist, fog.density*densityAdjustment);
-	vec3 fogColor = unpackColor(fogData[textureIndex].fogColor);
+	vec3 fogColor = unpackColor(fogData[int(animatedTextureIndex)].fogColor);
 	vec3 pixelLight = max(light*normalVariation, texture(emissionSampler, textureCoords).r*4);
 	vec4 textureColor = texture(texture_sampler, textureCoords)*vec4(pixelLight, 1);
 	float reflectivity = texture(reflectivityAndAbsorptionSampler, textureCoords).a;
@@ -134,7 +129,7 @@ void main() {
 		blendColor.rgb *= 1 - textureColor.a;
 		textureColor.a = 1;
 
-		if(fogData[textureIndex].fogDensity == 0.0) {
+		if(fogData[int(animatedTextureIndex)].fogDensity == 0.0) {
 			// Apply the air fog, compensating for the missing back-face:
 			applyFrontfaceFog(airFogDistance, fog.color);
 		} else {

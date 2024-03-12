@@ -5,8 +5,7 @@ in vec3 direction;
 in vec3 light;
 in vec2 uv;
 flat in vec3 normal;
-flat in int blockType;
-flat in uint textureSlot;
+flat in int textureIndex;
 flat in int isBackFace;
 flat in int ditherSeed;
 
@@ -18,13 +17,9 @@ uniform float reflectionMapSize;
 
 layout(location = 0) out vec4 fragColor;
 
-struct TextureData {
-	uint textureIndices[6];
-};
-
-layout(std430, binding = 1) buffer _textureData
+layout(std430, binding = 1) buffer _animatedTexture
 {
-	TextureData textureData[];
+	float animatedTexture[];
 };
 
 struct FogData {
@@ -73,9 +68,9 @@ vec4 fixedCubeMapLookup(vec3 v) { // Taken from http://the-witness.net/news/2012
 }
 
 void main() {
-	uint textureIndex = textureData[blockType].textureIndices[textureSlot];
+	float animatedTextureIndex = animatedTexture[textureIndex];
 	float normalVariation = lightVariation(normal);
-	vec3 textureCoords = vec3(uv, textureIndex);
+	vec3 textureCoords = vec3(uv, animatedTextureIndex);
 	float reflectivity = texture(reflectivityAndAbsorptionSampler, textureCoords).a;
 	vec3 pixelLight = max(light*normalVariation, texture(emissionSampler, textureCoords).r*4);
 	fragColor = texture(texture_sampler, textureCoords)*vec4(pixelLight, 1);

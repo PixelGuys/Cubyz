@@ -306,7 +306,7 @@ pub const meshes = struct {
 	};
 
 	const TextureData = extern struct {
-		textureIndices: [6]u32,
+		textureIndices: [6]u16,
 	};
 	const FogData = extern struct {
 		fogDensity: f32,
@@ -342,8 +342,7 @@ pub const meshes = struct {
 	};
 
 	var animationSSBO: ?SSBO = null;
-	var textureDataSSBO: ?SSBO = null;
-	var animatedTextureDataSSBO: ?SSBO = null;
+	var animatedTextureSSBO: ?SSBO = null;
 	var fogSSBO: ?SSBO = null;
 
 	var animationShader: Shader = undefined;
@@ -382,10 +381,7 @@ pub const meshes = struct {
 		if(animationSSBO) |ssbo| {
 			ssbo.deinit();
 		}
-		if(textureDataSSBO) |ssbo| {
-			ssbo.deinit();
-		}
-		if(animatedTextureDataSSBO) |ssbo| {
+		if(animatedTextureSSBO) |ssbo| {
 			ssbo.deinit();
 		}
 		if(fogSSBO) |ssbo| {
@@ -434,6 +430,10 @@ pub const meshes = struct {
 		return textureFogData.items[textureData[block.typ].textureIndices[0]].fogColor;
 	}
 
+	pub inline fn textureIndex(block: Block, orientation: usize) u16 {
+		return textureData[block.typ].textureIndices[orientation];
+	}
+
 	fn extendedPath(path: []const u8, pathBuffer: []u8, ending: []const u8) []const u8 {
 		std.debug.assert(path.ptr == pathBuffer.ptr);
 		@memcpy(pathBuffer[path.len..][0..ending.len], ending);
@@ -446,8 +446,8 @@ pub const meshes = struct {
 		list.append(texture);
 	}
 
-	pub fn readTexture(textureInfo: JsonElement, assetFolder: []const u8) !u31 {
-		var result: u31 = undefined;
+	pub fn readTexture(textureInfo: JsonElement, assetFolder: []const u8) !u16 {
+		var result: u16 = undefined;
 		if(textureInfo == .JsonString or textureInfo == .JsonStringOwned) {
 			const resource = textureInfo.as([]const u8, "");
 			var splitter = std.mem.split(u8, resource, ":");
@@ -536,7 +536,7 @@ pub const meshes = struct {
 		return result;
 	}
 
-	pub fn getTextureIndices(json: JsonElement, assetFolder: []const u8, textureIndicesRef: []u32) void {
+	pub fn getTextureIndices(json: JsonElement, assetFolder: []const u8, textureIndicesRef: []u16) void {
 		const defaultIndex = readTexture(json.getChild("texture"), assetFolder) catch 0;
 		for(textureIndicesRef, sideNames) |*ref, name| {
 			const textureInfo = json.getChild(name);
@@ -592,8 +592,8 @@ pub const meshes = struct {
 	pub fn preProcessAnimationData(time: u32) void {
 		animationShader.bind();
 		graphics.c.glUniform1ui(animationUniforms.time, time);
-		graphics.c.glUniform1ui(animationUniforms.size, @intCast(meshes.size));
-		graphics.c.glDispatchCompute(@divFloor(meshes.size + 63, 64), 1, 1); // TODO: Replace with @divCeil once available
+		graphics.c.glUniform1ui(animationUniforms.size, @intCast(blockTextures.items.len));
+		graphics.c.glDispatchCompute(@intCast(@divFloor(blockTextures.items.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
 		graphics.c.glMemoryBarrier(graphics.c.GL_SHADER_STORAGE_BARRIER_BIT);
 	}
 
@@ -633,10 +633,7 @@ pub const meshes = struct {
 		if(animationSSBO) |ssbo| {
 			ssbo.deinit();
 		}
-		if(textureDataSSBO) |ssbo| {
-			ssbo.deinit();
-		}
-		if(animatedTextureDataSSBO) |ssbo| {
+		if(animatedTextureSSBO) |ssbo| {
 			ssbo.deinit();
 		}
 		if(fogSSBO) |ssbo| {
@@ -644,10 +641,9 @@ pub const meshes = struct {
 		}
 		animationSSBO = SSBO.initStatic(AnimationData, animation.items);
 		animationSSBO.?.bind(0);
-		textureDataSSBO = SSBO.initStatic(TextureData, textureData[0..meshes.size]);
-		textureDataSSBO.?.bind(6);
-		animatedTextureDataSSBO = SSBO.initStatic(TextureData, textureData[0..meshes.size]);
-		animatedTextureDataSSBO.?.bind(1);
+		
+		animatedTextureSSBO = SSBO.initStaticSize(u32, blockTextures.items.len);
+		animatedTextureSSBO.?.bind(1);
 		fogSSBO = SSBO.initStatic(FogData, textureFogData.items);
 		fogSSBO.?.bind(7);
 	}

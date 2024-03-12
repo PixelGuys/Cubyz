@@ -5,8 +5,7 @@ out vec3 direction;
 out vec3 light;
 out vec2 uv;
 flat out vec3 normal;
-flat out int blockType;
-flat out uint textureSlot;
+flat out int textureIndex;
 flat out int isBackFace;
 flat out int ditherSeed;
 
@@ -18,7 +17,7 @@ uniform vec3 modelPosition;
 
 struct FaceData {
 	int encodedPositionAndPermutation;
-	int blockAndQuad;
+	int textureAndQuad;
 	int light[4];
 };
 layout(std430, binding = 3) buffer _faceData
@@ -114,7 +113,7 @@ void main() {
 	int faceID = gl_VertexID >> 2;
 	int vertexID = gl_VertexID & 3;
 	int encodedPositionAndPermutation = faceData[faceID].encodedPositionAndPermutation;
-	int blockAndQuad = faceData[faceID].blockAndQuad;
+	int textureAndQuad = faceData[faceID].textureAndQuad;
 	int fullLight = faceData[faceID].light[vertexID];
 	vec3 sunLight = vec3(
 		fullLight >> 25 & 31,
@@ -133,8 +132,8 @@ void main() {
 	vec3 mirrorVector = mirrorVectors[(encodedPositionAndPermutation >> 26) & 7];
 	ditherSeed = encodedPositionAndPermutation & 15;
 
-	blockType = blockAndQuad & 65535;
-	int quadIndex = blockAndQuad >> 16;
+	textureIndex = textureAndQuad & 65535;
+	int quadIndex = textureAndQuad >> 16;
 
 	ivec3 position = ivec3(
 		encodedPositionAndPermutation & 31,
@@ -165,5 +164,4 @@ void main() {
 	gl_Position = projectionMatrix*mvPos;
 	mvVertexPos = mvPos.xyz;
 	uv = quads[quadIndex].cornerUV[vertexID]*voxelSize;
-	textureSlot = quads[quadIndex].textureSlot;
 }
