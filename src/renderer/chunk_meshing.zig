@@ -135,9 +135,9 @@ pub const FaceData = extern struct {
 		z: u5,
 		padding: u4 = 0,
 		isBackFace: bool,
-		normal: u3,
-		permutation: u6,
 		padding2: u3 = 0,
+		permutation: u6,
+		padding3: u3 = 0,
 	},
 	blockAndQuad: packed struct(u32) {
 		texture: u16,
@@ -222,7 +222,7 @@ const PrimitiveMesh = struct {
 			i += neighborFaces.items.len;
 		}
 		for(completeList) |*face| {
-			face.light = getLight(parent, face.position.x, face.position.y, face.position.z, face.position.normal);
+			face.light = getLight(parent, .{face.position.x, face.position.y, face.position.z}, face.blockAndQuad.quadIndex);
 		}
 		self.mutex.lock();
 		const oldList = self.completeList;
@@ -264,41 +264,48 @@ const PrimitiveMesh = struct {
 		return getValues(neighborMesh, wx, wy, wz);
 	}
 
-	fn getLight(parent: *ChunkMesh, x: i32, y: i32, z: i32, normal: u3) [4]u32 {
-		// TODO: Add a case for non-full cube models. This requires considering more light values along the normal.
-		const pos = Vec3i{x, y, z};
-		var rawVals: [3][3][6]u8 = undefined;
-		var dx: i32 = -1;
-		while(dx <= 1): (dx += 1) {
-			var dy: i32 = -1;
-			while(dy <= 1): (dy += 1) {
-				const lightPos = pos +% chunk.Neighbors.textureX[normal]*@as(Vec3i, @splat(dx)) +% chunk.Neighbors.textureY[normal]*@as(Vec3i, @splat(dy));
-				rawVals[@intCast(dx + 1)][@intCast(dy + 1)] = getLightAt(parent, lightPos[0], lightPos[1], lightPos[2]);
-			}
-		}
-		var interpolatedVals: [6][4]u32 = undefined;
-		for(0..6) |channel| {
-			for(0..2) |destX| {
-				for(0..2) |destY| {
-					var val: u32 = 0;
-					for(0..2) |sourceX| {
-						for(0..2) |sourceY| {
-							val += rawVals[destX+sourceX][destY+sourceY][channel];
+	fn getLight(parent: *ChunkMesh, blockPos: Vec3i, quadIndex: u16) [4]u32 {
+		var rawVals: [4][6]u5 = undefined;
+		const normal = models.quads.items[quadIndex].normal;
+		for(0..4) |i| {
+			const vertexPos = models.quads.items[quadIndex].corners[i];
+			const lightPos = vertexPos + @as(Vec3f, @floatFromInt(blockPos)) - normal*@as(Vec3f, @splat(0.5)) - @as(Vec3f, @splat(0.5));
+			const startPos: Vec3i = @intFromFloat(@floor(lightPos));
+			const interp = lightPos - @floor(lightPos);
+			var val: [6]f32 = .{0, 0, 0, 0, 0, 0};
+			var dx: i32 = 0;
+			while(dx <= 1) : (dx += 1) {
+				var dy: i32 = 0;
+				while(dy <= 1) : (dy += 1) {
+					var dz: i32 = 0;
+					while(dz <= 1) : (dz += 1) {
+						var weight: f32 = 0;
+						if(dx == 0) weight = 1 - interp[0]
+						else weight = interp[0];
+						if(dy == 0) weight *= 1 - interp[1]
+						else weight *= interp[1];
+						if(dz == 0) weight *= 1 - interp[2]
+						else weight *= interp[2];
+						const lightVal: [6]u8 = getLightAt(parent, startPos[0] +% dx, startPos[1] +% dy, startPos[2] +% dz);
+						for(0..6) |j| {
+							val[j] += @as(f32, @floatFromInt(lightVal[j]))*weight;
 						}
 					}
-					interpolatedVals[channel][destX*2 + destY] = @intCast(val >> 2+3);
 				}
+			}
+			for(0..6) |j| {
+				rawVals[i][j] = std.math.lossyCast(u5, val[j]/8);
 			}
 		}
 		var result: [4]u32 = undefined;
 		for(0..4) |i| {
 			result[i] = (
-				interpolatedVals[0][i] << 25 |
-				interpolatedVals[1][i] << 20 |
-				interpolatedVals[2][i] << 15 |
-				interpolatedVals[3][i] << 10 |
-				interpolatedVals[4][i] << 5 |
-				interpolatedVals[5][i] << 0
+				@as(u32, rawVals[i][0]) << 25 |
+				@as(u32, rawVals[i][1]) << 20 |
+				@as(u32, rawVals[i][2]) << 15 |
+				@as(u32, rawVals[i][3]) << 10 |
+				@as(u32, rawVals[i][4]) << 5 |
+				@as(u32, rawVals[i][5]) << 0
 			);
 		}
 		return result;
@@ -383,31 +390,13 @@ pub const ChunkMesh = struct {
 			const dx = x + chunkDx;
 			const dy = y + chunkDy;
 			const dz = z + chunkDz;
-			const normal = self.face.position.normal;
 			self.isBackFace = self.face.position.isBackFace;
-			switch(chunk.Neighbors.vectorComponent[normal]) {
-				.x => {
-					self.shouldBeCulled = (dx < 0) == (chunk.Neighbors.relX[normal] < 0);
-					if(dx == 0) {
-						self.shouldBeCulled = false;
-					}
-				},
-				.y => {
-					self.shouldBeCulled = (dy < 0) == (chunk.Neighbors.relY[normal] < 0);
-					if(dy == 0) {
-						self.shouldBeCulled = false;
-					}
-				},
-				.z => {
-					self.shouldBeCulled = (dz < 0) == (chunk.Neighbors.relZ[normal] < 0);
-					if(dz == 0) {
-						self.shouldBeCulled = false;
-					}
-				},
-			}
-			const fullDx = dx - chunk.Neighbors.relX[normal];
-			const fullDy = dy - chunk.Neighbors.relY[normal];
-			const fullDz = dz - chunk.Neighbors.relZ[normal];
+			const quadIndex = self.face.blockAndQuad.quadIndex;
+			const normalVector = models.quads.items[quadIndex].normal;
+			self.shouldBeCulled = vec.dot(normalVector, @floatFromInt(Vec3i{dx, dy, dz})) > 0; // TODO: Adjust for arbitrary voxel models.
+			const fullDx = dx - @as(i32, @intFromFloat(normalVector[0])); // TODO: This calculation should only be done for border faces.
+			const fullDy = dy - @as(i32, @intFromFloat(normalVector[1]));
+			const fullDz = dz - @as(i32, @intFromFloat(normalVector[2]));
 			self.distance = @abs(fullDx) + @abs(fullDy) + @abs(fullDz);
 		}
 	};
@@ -850,7 +839,7 @@ pub const ChunkMesh = struct {
 		const quadIndex = models.models.items[model.modelIndex].quads[normal];
 		const texture = blocks.meshes.textureIndex(block, models.quads.items[quadIndex].textureSlot);
 		return FaceData {
-			.position = .{.x = @intCast(x), .y = @intCast(y), .z = @intCast(z), .normal = normal, .permutation = model.permutation.toInt(), .isBackFace = backFace},
+			.position = .{.x = @intCast(x), .y = @intCast(y), .z = @intCast(z), .permutation = model.permutation.toInt(), .isBackFace = backFace},
 			.blockAndQuad = .{.texture = texture, .quadIndex = quadIndex}, // TODO: Expand the meshing algorithm to allow non-cuboid models.
 		};
 	}
