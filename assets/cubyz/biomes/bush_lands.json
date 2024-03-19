@@ -34,6 +34,13 @@
 			"variation" : 4,
 			"depth" : 2,
 			"smoothness" : 0.2
-		}
+		},
+		{
+			"id" : "cubyz:simple_vegetation",
+			"block" : "cubyz:grass_vegetation",
+			"chance" : 1,
+			"height" : 1,
+			"height_variation" : 0
+		},
 	]
 }

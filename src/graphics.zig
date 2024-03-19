@@ -1847,7 +1847,7 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	c.glDisable(c.GL_DEPTH_TEST);
 	defer if(depthTest != 0) c.glEnable(c.GL_DEPTH_TEST);
 	const cullFace = c.glIsEnabled(c.GL_CULL_FACE);
-	c.glDisable(c.GL_CULL_FACE);
+	c.glEnable(c.GL_CULL_FACE);
 	defer if(cullFace != 0) c.glEnable(c.GL_CULL_FACE);
 
 	frameBuffer.init(false, c.GL_NEAREST, c.GL_REPEAT);
@@ -1874,31 +1874,29 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 		c.glBlendFunc(c.GL_ONE, c.GL_SRC1_COLOR);
 		main.renderer.chunk_meshing.bindTransparentShaderAndUniforms(projMatrix, .{1, 1, 1});
 	} else {
-		if(block.mode().model(block).modelIndex == 0) {
-			main.renderer.chunk_meshing.bindShaderAndUniforms(projMatrix, .{1, 1, 1});
-		} else {
-			std.log.err("TODO: Item textures for non-cube models.", .{});
-		}
+		main.renderer.chunk_meshing.bindShaderAndUniforms(projMatrix, .{1, 1, 1});
 	}
 	const uniforms = if(block.transparent()) &main.renderer.chunk_meshing.transparentUniforms else &main.renderer.chunk_meshing.uniforms;
 
-	var faceData: [6]main.renderer.chunk_meshing.FaceData = undefined;
-	var faces: u8 = 0;
-	faceData[faces + 0] = main.renderer.chunk_meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirPosX, 1+1, 1, 1, false);
-	faceData[faces + 1] = main.renderer.chunk_meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirPosY, 1, 1+1, 1, false);
-	faceData[faces + 2] = main.renderer.chunk_meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirUp, 1, 1, 1+1, false);
-	faces += 3;
-	if(block.hasBackFace()) {
-		faceData[faces+2] = main.renderer.chunk_meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirPosX, 1, 1, 1, true);
-		faceData[faces+1] = main.renderer.chunk_meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirPosY, 1, 1, 1, true);
-		faceData[faces+0] = main.renderer.chunk_meshing.ChunkMesh.constructFaceData(block, main.chunk.Neighbors.dirUp, 1, 1, 1, true);
-		faces += 3;
+	var faceData: main.ListUnmanaged(main.renderer.chunk_meshing.FaceData) = .{};
+	defer faceData.deinit(main.stackAllocator);
+	const model = &main.models.models.items[main.blocks.meshes.model(block).modelIndex];
+	model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, 1, 1, 1, false);
+	for(main.chunk.Neighbors.iterable) |neighbor| {
+		model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, 1 + main.chunk.Neighbors.relX[neighbor], 1 + main.chunk.Neighbors.relY[neighbor], 1 + main.chunk.Neighbors.relZ[neighbor], false);
 	}
-	for(faceData[0..faces]) |*face| {
+	if(block.hasBackFace()) {
+		model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, 1, 1, 1, true);
+		for(main.chunk.Neighbors.iterable) |neighbor| {
+			model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, 1, 1, 1, true);
+		}
+	}
+
+	for(faceData.items) |*face| {
 		@memset(&face.light, ~@as(u32, 0));
 	}
 	var allocation: SubAllocation = .{.start = 0, .len = 0};
-	main.renderer.chunk_meshing.faceBuffer.uploadData(faceData[0..faces], &allocation);
+	main.renderer.chunk_meshing.faceBuffer.uploadData(faceData.items, &allocation);
 
 	c.glUniform3f(uniforms.modelPosition, -65.5 - 1.5, -65.5 - 1.5, -92.631 - 1.5);
 	c.glUniform1i(uniforms.visibilityMask, 0xff);
@@ -1910,8 +1908,9 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	c.glActiveTexture(c.GL_TEXTURE2);
 	main.blocks.meshes.reflectivityAndAbsorptionTextureArray.bind();
 	block_texture.depthTexture.bindTo(5);
-	c.glDrawElementsBaseVertex(c.GL_TRIANGLES, 6*faces, c.GL_UNSIGNED_INT, null, allocation.start*4);
+	c.glDrawElementsBaseVertex(c.GL_TRIANGLES, @intCast(6*faceData.items.len), c.GL_UNSIGNED_INT, null, allocation.start*4);
 
+	c.glDisable(c.GL_CULL_FACE);
 	var finalFrameBuffer: FrameBuffer = undefined;
 	finalFrameBuffer.init(false, c.GL_NEAREST, c.GL_REPEAT);
 	finalFrameBuffer.updateSize(textureSize, textureSize, c.GL_RGBA8);

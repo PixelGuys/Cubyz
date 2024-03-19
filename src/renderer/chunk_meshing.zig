@@ -144,6 +144,13 @@ pub const FaceData = extern struct {
 		quadIndex: u16,
 	},
 	light: [4]u32 = .{0, 0, 0, 0},
+
+	pub inline fn init(texture: u16, quadIndex: u16, x: i32, y: i32, z: i32, comptime backFace: bool) FaceData {
+		return FaceData {
+			.position = .{.x = @intCast(x), .y = @intCast(y), .z = @intCast(z), .permutation = @bitCast(@as(u6, 0)), .isBackFace = backFace}, // TODO: Handle permutation during meshing
+			.blockAndQuad = .{.texture = texture, .quadIndex = quadIndex},
+		};
+	}
 };
 
 const PrimitiveMesh = struct {
@@ -181,15 +188,22 @@ const PrimitiveMesh = struct {
 		}
 	}
 
-	fn appendCore(self: *PrimitiveMesh, face: FaceData) void {
-		self.coreFaces.append(main.globalAllocator, face);
+	fn appendInternalQuadsToCore(self: *PrimitiveMesh, block: Block, x: i32, y: i32, z: i32, comptime backFace: bool) void {
+		const model = blocks.meshes.model(block);
+		models.models.items[model.modelIndex].appendInternalQuadsToList(&self.coreFaces, main.globalAllocator, block, x, y, z, backFace);
 	}
 
-	fn appendNeighbor(self: *PrimitiveMesh, face: FaceData, neighbor: u3, comptime isLod: bool) void {
+	fn appendNeighborFacingQuadsToCore(self: *PrimitiveMesh, block: Block, neighbor: u3, x: i32, y: i32, z: i32, comptime backFace: bool) void {
+		const model = blocks.meshes.model(block);
+		models.models.items[model.modelIndex].appendNeighborFacingQuadsToList(&self.coreFaces, main.globalAllocator, block, neighbor, x, y, z, backFace);
+	}
+
+	fn appendNeighborFacingQuadsToNeighbor(self: *PrimitiveMesh, block: Block, neighbor: u3, x: i32, y: i32, z: i32, comptime backFace: bool, comptime isLod: bool) void {
+		const model = blocks.meshes.model(block);
 		if(isLod) {
-			self.neighborFacesHigherLod[neighbor].append(main.globalAllocator, face);
+			models.models.items[model.modelIndex].appendNeighborFacingQuadsToList(&self.neighborFacesHigherLod[neighbor ^ 1], main.globalAllocator, block, neighbor, x, y, z, backFace);
 		} else {
-			self.neighborFacesSameLod[neighbor].append(main.globalAllocator, face);
+			models.models.items[model.modelIndex].appendNeighborFacingQuadsToList(&self.neighborFacesSameLod[neighbor ^ 1], main.globalAllocator, block, neighbor, x, y, z, backFace);
 		}
 	}
 
@@ -269,7 +283,7 @@ const PrimitiveMesh = struct {
 		const normal = models.quads.items[quadIndex].normal;
 		for(0..4) |i| {
 			const vertexPos = models.quads.items[quadIndex].corners[i];
-			const lightPos = vertexPos + @as(Vec3f, @floatFromInt(blockPos)) - normal*@as(Vec3f, @splat(0.5)) - @as(Vec3f, @splat(0.5));
+			const lightPos = vertexPos + @as(Vec3f, @floatFromInt(blockPos)) + normal*@as(Vec3f, @splat(0.5)) - @as(Vec3f, @splat(0.5));
 			const startPos: Vec3i = @intFromFloat(@floor(lightPos));
 			const interp = lightPos - @floor(lightPos);
 			var val: [6]f32 = .{0, 0, 0, 0, 0, 0};
@@ -343,36 +357,6 @@ const PrimitiveMesh = struct {
 		}
 		self.vertexCount = @intCast(6*fullBuffer.len);
 		self.wasChanged = true;
-	}
-
-	fn addFace(self: *PrimitiveMesh, faceData: FaceData, fromNeighborChunk: ?u3) void {
-		if(fromNeighborChunk) |neighbor| {
-			self.neighborFacesSameLod[neighbor].append(main.globalAllocator, faceData);
-		} else {
-			self.coreFaces.append(main.globalAllocator, faceData);
-		}
-	}
-
-	fn removeFace(self: *PrimitiveMesh, faceData: FaceData, fromNeighborChunk: ?u3) void {
-		if(fromNeighborChunk) |neighbor| {
-			var pos: usize = std.math.maxInt(usize);
-			for(self.neighborFacesSameLod[neighbor].items, 0..) |item, i| {
-				if(std.meta.eql(faceData, item)) {
-					pos = i;
-					break;
-				}
-			}
-			_ = self.neighborFacesSameLod[neighbor].swapRemove(pos);
-		} else {
-			var pos: usize = std.math.maxInt(usize);
-			for(self.coreFaces.items, 0..) |item, i| {
-				if(std.meta.eql(faceData, item)) {
-					pos = i;
-					break;
-				}
-			}
-			_ = self.coreFaces.swapRemove(pos);
-		}
 	}
 };
 
@@ -669,13 +653,18 @@ pub const ChunkMesh = struct {
 						if(canBeSeenThroughOtherBlock(block, neighborBlock, i)) {
 							if(block.transparent()) {
 								if(block.hasBackFace()) {
-									self.transparentMesh.appendCore(constructFaceData(block, i ^ 1, x, y, z, true));
+									self.transparentMesh.appendNeighborFacingQuadsToCore(block, i ^ 1, x, y, z, true);
 								}
-								self.transparentMesh.appendCore(constructFaceData(block, i, x2, y2, z2, false));
+								self.transparentMesh.appendNeighborFacingQuadsToCore(block, i, x2, y2, z2, false);
 							} else {
-								self.opaqueMesh.appendCore(constructFaceData(block, i, x2, y2, z2, false)); // TODO: Create multiple faces for non-cube meshes.
+								self.opaqueMesh.appendNeighborFacingQuadsToCore(block, i, x2, y2, z2, false);
 							}
 						}
+					}
+					if(block.transparent()) {
+						self.transparentMesh.appendInternalQuadsToCore(block, x, y, z, false);
+					} else {
+						self.opaqueMesh.appendInternalQuadsToCore(block, x, y, z, false);
 					}
 				}
 			}
@@ -698,28 +687,11 @@ pub const ChunkMesh = struct {
 		self.finishNeighbors();
 	}
 
-	fn addFace(self: *ChunkMesh, faceData: FaceData, fromNeighborChunk: ?u3, transparent: bool) void {
-		if(transparent) {
-			self.transparentMesh.addFace(faceData, fromNeighborChunk);
-		} else {
-			self.opaqueMesh.addFace(faceData, fromNeighborChunk);
-		}
-	}
-
-	fn removeFace(self: *ChunkMesh, faceData: FaceData, fromNeighborChunk: ?u3, transparent: bool) void {
-		if(transparent) {
-			self.transparentMesh.removeFace(faceData, fromNeighborChunk);
-		} else {
-			self.opaqueMesh.removeFace(faceData, fromNeighborChunk);
-		}
-	}
-
 	pub fn updateBlock(self: *ChunkMesh, _x: i32, _y: i32, _z: i32, newBlock: Block) void {
 		self.mutex.lock();
 		const x = _x & chunk.chunkMask;
 		const y = _y & chunk.chunkMask;
 		const z = _z & chunk.chunkMask;
-		const oldBlock = self.chunk.blocks[chunk.getIndex(x, y, z)];
 		self.chunk.blocks[chunk.getIndex(x, y, z)] = newBlock;
 		self.mutex.unlock();
 		for(self.lightingData[0..]) |lightingData| {
@@ -732,116 +704,34 @@ pub const ChunkMesh = struct {
 		}
 		self.mutex.lock();
 		defer self.mutex.unlock();
-		for(chunk.Neighbors.iterable) |neighbor| {
-			var neighborMesh = self;
-			var nx = x + chunk.Neighbors.relX[neighbor];
-			var ny = y + chunk.Neighbors.relY[neighbor];
-			var nz = z + chunk.Neighbors.relZ[neighbor];
-			if(nx & chunk.chunkMask != nx or ny & chunk.chunkMask != ny or nz & chunk.chunkMask != nz) { // Outside this chunk.
-				neighborMesh = mesh_storage.getNeighborFromRenderThread(self.pos, self.pos.voxelSize, neighbor) orelse continue;
-			}
-			if(neighborMesh != self) {
-				self.mutex.unlock();
-				deadlockFreeDoubleLock(&self.mutex, &neighborMesh.mutex);
-			}
-			defer if(neighborMesh != self) neighborMesh.mutex.unlock();
-			nx &= chunk.chunkMask;
-			ny &= chunk.chunkMask;
-			nz &= chunk.chunkMask;
-			const neighborBlock = neighborMesh.chunk.blocks[chunk.getIndex(nx, ny, nz)];
-			{ // TODO: Batch all the changes and apply them in one go for more efficiency.
-				{ // The face of the changed block
-					const newVisibility = canBeSeenThroughOtherBlock(newBlock, neighborBlock, neighbor);
-					const oldVisibility = canBeSeenThroughOtherBlock(oldBlock, neighborBlock, neighbor);
-					if(oldVisibility) { // Removing the face
-						const faceData = constructFaceData(oldBlock, neighbor, nx, ny, nz, false);
-						if(neighborMesh == self) {
-							self.removeFace(faceData, null, oldBlock.transparent());
-						} else {
-							neighborMesh.removeFace(faceData, neighbor ^ 1, oldBlock.transparent());
-						}
-						if(oldBlock.hasBackFace()) {
-							const backFaceData = constructFaceData(oldBlock, neighbor ^ 1, x, y, z, true);
-							if(neighborMesh == self) {
-								self.removeFace(backFaceData, null, true);
-							} else {
-								self.removeFace(backFaceData, neighbor, true);
-							}
-						}
-					}
-					if(newVisibility) { // Adding the face
-						const faceData = constructFaceData(newBlock, neighbor, nx, ny, nz, false);
-						if(neighborMesh == self) {
-							self.addFace(faceData, null, newBlock.transparent());
-						} else {
-							neighborMesh.addFace(faceData, neighbor ^ 1, newBlock.transparent());
-						}
-						if(newBlock.hasBackFace()) {
-							const backFaceData = constructFaceData(newBlock, neighbor ^ 1, x, y, z, true);
-							if(neighborMesh == self) {
-								self.addFace(backFaceData, null, true);
-							} else {
-								self.addFace(backFaceData, neighbor, true);
-							}
-						}
-					}
-				}
-				{ // The face of the neighbor block
-					const newVisibility = canBeSeenThroughOtherBlock(neighborBlock, newBlock, neighbor ^ 1);
-					if(canBeSeenThroughOtherBlock(neighborBlock, oldBlock, neighbor ^ 1) != newVisibility) {
-						if(newVisibility) { // Adding the face
-							const faceData = constructFaceData(neighborBlock, neighbor ^ 1, x, y, z, false);
-							if(neighborMesh == self) {
-								self.addFace(faceData, null, neighborBlock.transparent());
-							} else {
-								self.addFace(faceData, neighbor, neighborBlock.transparent());
-							}
-							if(neighborBlock.hasBackFace()) {
-								const backFaceData = constructFaceData(neighborBlock, neighbor, nx, ny, nz, true);
-								if(neighborMesh == self) {
-									self.addFace(backFaceData, null, true);
-								} else {
-									neighborMesh.addFace(backFaceData, neighbor ^ 1, true);
-								}
-							}
-						} else { // Removing the face
-							const faceData = constructFaceData(neighborBlock, neighbor ^ 1, x, y, z, false);
-							if(neighborMesh == self) {
-								self.removeFace(faceData, null, neighborBlock.transparent());
-							} else {
-								self.removeFace(faceData, neighbor, neighborBlock.transparent());
-							}
-							if(neighborBlock.hasBackFace()) {
-								const backFaceData = constructFaceData(neighborBlock, neighbor, nx, ny, nz, true);
-								if(neighborMesh == self) {
-									self.removeFace(backFaceData, null, true);
-								} else {
-									neighborMesh.removeFace(backFaceData, neighbor ^ 1, true);
-								}
-							}
-						}
-					}
-				}
-			}
-			if(neighborMesh != self) {
-				_ = neighborMesh.needsLightRefresh.swap(false, .AcqRel);
-				neighborMesh.finishData();
-				neighborMesh.uploadData();
-			}
+		// Update neighbor chunks:
+		if(x == 0) {
+			self.lastNeighborsHigherLod[chunk.Neighbors.dirNegX] = null;
+			self.lastNeighborsSameLod[chunk.Neighbors.dirNegX] = null;
+		} else if(x == 31) {
+			self.lastNeighborsHigherLod[chunk.Neighbors.dirPosX] = null;
+			self.lastNeighborsSameLod[chunk.Neighbors.dirPosX] = null;
 		}
-		_ = self.needsLightRefresh.swap(false, .AcqRel);
-		self.finishData();
+		if(y == 0) {
+			self.lastNeighborsHigherLod[chunk.Neighbors.dirNegY] = null;
+			self.lastNeighborsSameLod[chunk.Neighbors.dirNegY] = null;
+		} else if(y == 31) {
+			self.lastNeighborsHigherLod[chunk.Neighbors.dirPosY] = null;
+			self.lastNeighborsSameLod[chunk.Neighbors.dirPosY] = null;
+		}
+		if(z == 0) {
+			self.lastNeighborsHigherLod[chunk.Neighbors.dirDown] = null;
+			self.lastNeighborsSameLod[chunk.Neighbors.dirDown] = null;
+		} else if(z == 31) {
+			self.lastNeighborsHigherLod[chunk.Neighbors.dirUp] = null;
+			self.lastNeighborsSameLod[chunk.Neighbors.dirUp] = null;
+		}
+		self.opaqueMesh.coreFaces.clearRetainingCapacity();
+		self.transparentMesh.coreFaces.clearRetainingCapacity();
+		self.mutex.unlock();
+		self.generateMesh(); // TODO: Batch mesh updates instead of applying them for each block changes.
+		self.mutex.lock();
 		self.uploadData();
-	}
-
-	pub inline fn constructFaceData(block: Block, normal: u3, x: i32, y: i32, z: i32, comptime backFace: bool) FaceData {
-		const model = blocks.meshes.model(block);
-		const quadIndex = models.models.items[model.modelIndex].quads[normal];
-		const texture = blocks.meshes.textureIndex(block, models.quads.items[quadIndex].textureSlot);
-		return FaceData {
-			.position = .{.x = @intCast(x), .y = @intCast(y), .z = @intCast(z), .permutation = model.permutation.toInt(), .isBackFace = backFace},
-			.blockAndQuad = .{.texture = texture, .quadIndex = quadIndex}, // TODO: Expand the meshing algorithm to allow non-cuboid models.
-		};
 	}
 
 	fn clearNeighbor(self: *ChunkMesh, neighbor: u3, comptime isLod: bool) void {
@@ -920,21 +810,21 @@ pub const ChunkMesh = struct {
 						if(canBeSeenThroughOtherBlock(block, otherBlock, neighbor)) {
 							if(block.transparent()) {
 								if(block.hasBackFace()) {
-									self.transparentMesh.appendNeighbor(constructFaceData(block, neighbor ^ 1, x, y, z, true), neighbor, false);
+									self.transparentMesh.appendNeighborFacingQuadsToNeighbor(block, neighbor ^ 1, x, y, z, true, false);
 								}
-								neighborMesh.transparentMesh.appendNeighbor(constructFaceData(block, neighbor, otherX, otherY, otherZ, false), neighbor ^ 1, false);
+								neighborMesh.transparentMesh.appendNeighborFacingQuadsToNeighbor(block, neighbor, otherX, otherY, otherZ, false, false);
 							} else {
-								neighborMesh.opaqueMesh.appendNeighbor(constructFaceData(block, neighbor, otherX, otherY, otherZ, false), neighbor ^ 1, false);
+								neighborMesh.opaqueMesh.appendNeighborFacingQuadsToNeighbor(block, neighbor, otherX, otherY, otherZ, false, false);
 							}
 						}
 						if(canBeSeenThroughOtherBlock(otherBlock, block, neighbor ^ 1)) {
 							if(otherBlock.transparent()) {
 								if(otherBlock.hasBackFace()) {
-									neighborMesh.transparentMesh.appendNeighbor(constructFaceData(otherBlock, neighbor, otherX, otherY, otherZ, true), neighbor ^ 1, false);
+									neighborMesh.transparentMesh.appendNeighborFacingQuadsToNeighbor(otherBlock, neighbor, otherX, otherY, otherZ, true, false);
 								}
-								self.transparentMesh.appendNeighbor(constructFaceData(otherBlock, neighbor ^ 1, x, y, z, false), neighbor, false);
+								self.transparentMesh.appendNeighborFacingQuadsToNeighbor(otherBlock, neighbor ^ 1, x, y, z, false, false);
 							} else {
-								self.opaqueMesh.appendNeighbor(constructFaceData(otherBlock, neighbor ^ 1, x, y, z, false), neighbor, false);
+								self.opaqueMesh.appendNeighborFacingQuadsToNeighbor(otherBlock, neighbor ^ 1, x, y, z, false, false);
 							}
 						}
 					}
@@ -1000,14 +890,14 @@ pub const ChunkMesh = struct {
 					const otherBlock = (&neighborMesh.chunk.blocks)[chunk.getIndex(otherX, otherY, otherZ)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
 					if(canBeSeenThroughOtherBlock(otherBlock, block, neighbor ^ 1)) {
 						if(otherBlock.transparent()) {
-							self.transparentMesh.appendNeighbor(constructFaceData(otherBlock, neighbor ^ 1, x, y, z, false), neighbor, true);
+							self.transparentMesh.appendNeighborFacingQuadsToNeighbor(otherBlock, neighbor ^ 1, x, y, z, false, true);
 						} else {
-							self.opaqueMesh.appendNeighbor(constructFaceData(otherBlock, neighbor ^ 1, x, y, z, false), neighbor, true);
+							self.opaqueMesh.appendNeighborFacingQuadsToNeighbor(otherBlock, neighbor ^ 1, x, y, z, false, true);
 						}
 					}
 					if(block.hasBackFace()) {
 						if(canBeSeenThroughOtherBlock(block, otherBlock, neighbor)) {
-							self.transparentMesh.appendNeighbor(constructFaceData(block, neighbor ^ 1, x, y, z, true), neighbor, true);
+							self.transparentMesh.appendNeighborFacingQuadsToNeighbor(block, neighbor ^ 1, x, y, z, true, true);
 						}
 					}
 				}

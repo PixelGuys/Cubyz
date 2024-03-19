@@ -154,7 +154,7 @@ void main() {
 	position *= voxelSize;
 	ivec3 totalOffset = ivec3(16*voxelSize*quads[quadIndex].corners[vertexID]);
 	totalOffset = ivec3(permutationMatrix*(vec3(equal(mirrorVector, vec3(1)))*totalOffset + vec3(equal(mirrorVector, vec3(-1)))*(1 - totalOffset)));
-	position += totalOffset - 16*voxelSize*ivec3(normal);
+	position += totalOffset;
 
 	direction = position.xyz/16.0 + permutationMatrix*(mirrorVector*modelPosition);
 
