@@ -17,7 +17,6 @@ pub var window = GuiWindow {
 		.{ .attachedToFrame = .{.selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper} },
 	},
 	.contentSize = Vec2f{192, 128},
-	.id = "debug_network",
 	.isHud = false,
 	.showTitleBar = false,
 	.hasBackground = false,

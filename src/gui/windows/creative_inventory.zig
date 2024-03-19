@@ -19,7 +19,6 @@ pub var window = GuiWindow {
 		.{ .attachedToFrame = .{.selfAttachmentPoint = .middle, .otherAttachmentPoint = .middle} },
 	},
 	.contentSize = Vec2f{64*8, 64*4},
-	.id = "creative_inventory",
 };
 
 const padding: f32 = 8;

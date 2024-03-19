@@ -19,7 +19,6 @@ pub var window = GuiWindow {
 		.{ .attachedToWindow = .{.reference = &hotbar.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .lower} },
 	},
 	.contentSize = Vec2f{128, 16},
-	.id = "healthbar",
 	.isHud = true,
 	.showTitleBar = false,
 	.hasBackground = false,

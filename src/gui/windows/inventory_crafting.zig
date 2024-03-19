@@ -25,7 +25,6 @@ pub var window = GuiWindow {
 		.{ .attachedToWindow = .{.reference = &inventory.window, .selfAttachmentPoint = .middle, .otherAttachmentPoint = .middle} },
 	},
 	.contentSize = Vec2f{64*8, 64*4},
-	.id = "inventory_crafting",
 };
 
 const padding: f32 = 8;

@@ -19,7 +19,6 @@ pub var window = GuiWindow {
 		.{ .attachedToFrame = .{.selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper} },
 	},
 	.contentSize = Vec2f{64*8, 64},
-	.id = "hotbar",
 	.isHud = true,
 	.showTitleBar = false,
 	.hasBackground = false,

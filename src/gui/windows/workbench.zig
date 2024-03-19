@@ -28,7 +28,6 @@ pub var window = GuiWindow {
 		.{ .attachedToWindow = .{.reference = &inventory.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .lower} },
 	},
 	.contentSize = Vec2f{64*8, 64*4},
-	.id = "workbench",
 };
 
 const padding: f32 = 8;

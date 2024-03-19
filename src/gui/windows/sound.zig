@@ -14,7 +14,6 @@ const VerticalList = @import("../components/VerticalList.zig");
 
 pub var window = GuiWindow {
 	.contentSize = Vec2f{128, 256},
-	.id = "sound",
 };
 
 fn musicCallback(newValue: f32) void {

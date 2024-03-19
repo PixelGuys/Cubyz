@@ -139,8 +139,8 @@ pub const std_options: std.Options = .{
 		}
 		types = &[_]type{[]const u8} ++ types ++ &[_]type{[]const u8};
 
-		comptime var comptimeTuple: std.meta.Tuple(types) = undefined;
-		comptime std.debug.assert(std.meta.Tuple(types) == std.meta.Tuple(types));
+		const ArgsType = std.meta.Tuple(types);
+		comptime var comptimeTuple: ArgsType = undefined;
 		comptime var len: usize = 0;
 		i_1 = 0;
 		i_2 = 0;
@@ -156,7 +156,7 @@ pub const std_options: std.Options = .{
 		}
 		comptimeTuple[0] = filePrefix;
 		comptimeTuple[comptimeTuple.len - 1] = fileSuffix;
-		var resultArgs: std.meta.Tuple(types) = comptimeTuple;
+		var resultArgs: ArgsType = comptimeTuple;
 		len = 0;
 		i_1 = 0;
 		i_2 = 0;

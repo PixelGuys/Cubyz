@@ -17,7 +17,6 @@ const VerticalList = @import("../components/VerticalList.zig");
 
 pub var window = GuiWindow {
 	.contentSize = Vec2f{128, 256},
-	.id = "save_selection",
 };
 
 const padding: f32 = 8;

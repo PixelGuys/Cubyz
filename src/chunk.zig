@@ -293,7 +293,6 @@ pub const Chunk = struct {
 	}
 
 	pub fn getNeighbors(self: *const Chunk, x: i32, y: i32, z: i32, neighborsArray: *[6]Block) void {
-		std.debug.assert(neighborsArray.length == 6);
 		x &= chunkMask;
 		y &= chunkMask;
 		z &= chunkMask;

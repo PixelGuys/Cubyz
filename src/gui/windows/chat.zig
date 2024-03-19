@@ -19,7 +19,6 @@ pub var window: GuiWindow = GuiWindow {
 	},
 	.scale = 0.75,
 	.contentSize = Vec2f{128, 256},
-	.id = "chat",
 	.showTitleBar = false,
 	.hasBackground = false,
 	.isHud = true,

@@ -131,7 +131,7 @@ pub fn init() void {
 	openWindows = List(*GuiWindow).init(main.globalAllocator);
 	inline for(@typeInfo(windowlist).Struct.decls) |decl| {
 		const windowStruct = @field(windowlist, decl.name);
-		std.debug.assert(std.mem.eql(u8, decl.name, windowStruct.window.id)); // id and file name should be the same.
+		windowStruct.window.id = decl.name;
 		addWindow(&windowStruct.window);
 		if(@hasDecl(windowStruct, "init")) {
 			windowStruct.init();

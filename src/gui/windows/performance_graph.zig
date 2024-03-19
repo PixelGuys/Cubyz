@@ -18,7 +18,6 @@ pub var window = GuiWindow {
 		.{ .attachedToFrame = .{.selfAttachmentPoint = .lower, .otherAttachmentPoint = .lower} },
 		.{ .attachedToWindow = .{.reference = &chat.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .lower} },
 	},
-	.id = "performance_graph",
 	.isHud = false,
 	.showTitleBar = false,
 	.hasBackground = false,

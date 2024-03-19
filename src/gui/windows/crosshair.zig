@@ -13,7 +13,6 @@ const GuiComponent = gui.GuiComponent;
 const size: f32 = 64;
 pub var window = GuiWindow {
 	.contentSize = Vec2f{size, size},
-	.id = "crosshair",
 	.showTitleBar = false,
 	.hasBackground = false,
 	.isHud = true,

@@ -77,7 +77,6 @@ pub var window = GuiWindow {
 		.{ .attachedToFrame = .{.selfAttachmentPoint = .lower, .otherAttachmentPoint = .lower} },
 	},
 	.contentSize = Vec2f{256, 16},
-	.id = "gpu_performance_measuring",
 	.isHud = false,
 	.showTitleBar = false,
 	.hasBackground = false,
