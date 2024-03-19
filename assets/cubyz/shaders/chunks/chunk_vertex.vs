@@ -16,7 +16,7 @@ uniform mat4 viewMatrix;
 uniform vec3 modelPosition;
 
 struct FaceData {
-	int encodedPositionAndPermutation;
+	int encodedPosition;
 	int textureAndQuad;
 	int light[4];
 };
@@ -38,51 +38,6 @@ layout(std430, binding = 4) buffer _quads
 };
 
 uniform int voxelSize;
-
-const vec3[8] mirrorVectors = vec3[8](
-	vec3(1, 1, 1),
-	vec3(-1, 1, 1),
-	vec3(1, -1, 1),
-	vec3(-1, -1, 1),
-	vec3(1, 1, -1),
-	vec3(-1, 1, -1),
-	vec3(1, -1, -1),
-	vec3(-1, -1, -1)
-);
-const mat3[8] permutationMatrices = mat3[8](
-	mat3(
-		1, 0, 0,
-		0, 1, 0,
-		0, 0, 1
-	), // permutationX = 0, permutationYZ = 0
-	mat3(
-		0, 1, 0,
-		1, 0, 0,
-		0, 0, 1
-	), // permutationX = 1, permutationYZ = 0
-	mat3(
-		0, 0, 1,
-		0, 1, 0,
-		1, 0, 0
-	), // permutationX = 2, permutationYZ = 0
-	mat3(0), // permutationX = 3 (invalid), permutationYZ = 0
-	mat3(
-		1, 0, 0,
-		0, 0, 1,
-		0, 1, 0
-	), // permutationX = 0, permutationYZ = 1
-	mat3(
-		0, 1, 0,
-		0, 0, 1,
-		1, 0, 0
-	), // permutationX = 1, permutationYZ = 1
-	mat3(
-		0, 0, 1,
-		1, 0, 0,
-		0, 1, 0
-	), // permutationX = 2, permutationYZ = 1
-	mat3(0) // permutationX = 3 (invalid), permutationYZ = 1
-);
 
 const vec3[6] normals = vec3[6](
 	vec3(0, 0, 1),
@@ -112,7 +67,7 @@ const ivec3[6] textureY = ivec3[6](
 void main() {
 	int faceID = gl_VertexID >> 2;
 	int vertexID = gl_VertexID & 3;
-	int encodedPositionAndPermutation = faceData[faceID].encodedPositionAndPermutation;
+	int encodedPosition = faceData[faceID].encodedPosition;
 	int textureAndQuad = faceData[faceID].textureAndQuad;
 	int fullLight = faceData[faceID].light[vertexID];
 	vec3 sunLight = vec3(
@@ -126,41 +81,32 @@ void main() {
 		fullLight >> 0 & 31
 	);
 	light = max(sunLight*ambientLight, blockLight)/32;
-	isBackFace = encodedPositionAndPermutation>>19 & 1;
-	int oldNormal = (encodedPositionAndPermutation >> 20) & 7;
-	mat3 permutationMatrix = permutationMatrices[(encodedPositionAndPermutation >> 23) & 7];
-	vec3 mirrorVector = mirrorVectors[(encodedPositionAndPermutation >> 26) & 7];
-	ditherSeed = encodedPositionAndPermutation & 15;
+	isBackFace = encodedPosition>>19 & 1;
+	ditherSeed = encodedPosition & 15;
 
 	textureIndex = textureAndQuad & 65535;
 	int quadIndex = textureAndQuad >> 16;
 
-	ivec3 position = ivec3(
-		encodedPositionAndPermutation & 31,
-		encodedPositionAndPermutation >> 5 & 31,
-		encodedPositionAndPermutation >> 10 & 31
+	vec3 position = vec3(
+		encodedPosition & 31,
+		encodedPosition >> 5 & 31,
+		encodedPosition >> 10 & 31
 	);
-	int octantIndex = (position.x >> 4) | (position.y >> 4)<<1 | (position.z >> 4)<<2;
+	int octantIndex = (int(position.x) >> 4) | (int(position.y) >> 4)<<1 | (int(position.z) >> 4)<<2;
 	if((visibilityMask & 1<<octantIndex) == 0) { // discard face
 		gl_Position = vec4(-2, -2, -2, 1);
 		return;
 	}
 
-	normal = permutationMatrix*(quads[quadIndex].normal*mirrorVector);
+	normal = quads[quadIndex].normal;
 	
-	position *= 16;
-	position -= ivec3(mirrorVector)*8 - 8;
-	position = ivec3(permutationMatrix*(position*mirrorVector));
+	position += quads[quadIndex].corners[vertexID];
 	position *= voxelSize;
-	ivec3 totalOffset = ivec3(16*voxelSize*quads[quadIndex].corners[vertexID]);
-	totalOffset = ivec3(permutationMatrix*(vec3(equal(mirrorVector, vec3(1)))*totalOffset + vec3(equal(mirrorVector, vec3(-1)))*(1 - totalOffset)));
-	position += totalOffset;
+	position += modelPosition;
 
-	direction = position.xyz/16.0 + permutationMatrix*(mirrorVector*modelPosition);
+	direction = position;
 
-	vec3 globalPosition = mirrorVector*(transpose(permutationMatrix)*position)/16.0 + modelPosition;
-
-	vec4 mvPos = viewMatrix*vec4(globalPosition, 1);
+	vec4 mvPos = viewMatrix*vec4(position, 1);
 	gl_Position = projectionMatrix*mvPos;
 	mvVertexPos = mvPos.xyz;
 	uv = quads[quadIndex].cornerUV[vertexID]*voxelSize;

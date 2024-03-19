@@ -732,10 +732,8 @@ pub const MeshSelection = struct {
 				// Check the true bounding box (using this algorithm here: https://tavianator.com/2011/ray_box.html):
 				const model = blocks.meshes.model(block);
 				const modelData = &models.models.items[model.modelIndex];
-				const transformedMin = model.permutation.transform(modelData.min - @as(Vec3i, @splat(8))) + @as(Vec3i, @splat(8));
-				const transformedMax = model.permutation.transform(modelData.max - @as(Vec3i, @splat(8))) + @as(Vec3i, @splat(8));
-				const min: Vec3d = @floatFromInt(@min(transformedMin, transformedMax));
-				const max: Vec3d = @floatFromInt(@max(transformedMin ,transformedMax));
+				const min: Vec3d = @floatFromInt(@min(modelData.min, modelData.max));
+				const max: Vec3d = @floatFromInt(@max(modelData.min, modelData.max));
 				const voxelPosFloat: Vec3d = @floatFromInt(voxelPos);
 				const t1 = (voxelPosFloat + min/@as(Vec3d, @splat(16.0)) - pos)*invDir;
 				const t2 = (voxelPosFloat + max/@as(Vec3d, @splat(16.0)) - pos)*invDir;

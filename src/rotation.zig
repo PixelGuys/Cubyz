@@ -205,6 +205,8 @@ pub const RotationMode = struct {
 
 var rotationModes: std.StringHashMap(RotationMode) = undefined;
 
+ // TODO: Instead of using a permutation, rotation modes should directly return a rotated version of the model.
+
 const RotationModes = struct {
 	pub const NoRotation = struct {
 		pub const id: []const u8 = "no_rotation";

@@ -135,9 +135,7 @@ pub const FaceData = extern struct {
 		z: u5,
 		padding: u4 = 0,
 		isBackFace: bool,
-		padding2: u3 = 0,
-		permutation: u6,
-		padding3: u3 = 0,
+		padding2: u12 = 0,
 	},
 	blockAndQuad: packed struct(u32) {
 		texture: u16,
@@ -147,7 +145,7 @@ pub const FaceData = extern struct {
 
 	pub inline fn init(texture: u16, quadIndex: u16, x: i32, y: i32, z: i32, comptime backFace: bool) FaceData {
 		return FaceData {
-			.position = .{.x = @intCast(x), .y = @intCast(y), .z = @intCast(z), .permutation = @bitCast(@as(u6, 0)), .isBackFace = backFace}, // TODO: Handle permutation during meshing
+			.position = .{.x = @intCast(x), .y = @intCast(y), .z = @intCast(z), .isBackFace = backFace},
 			.blockAndQuad = .{.texture = texture, .quadIndex = quadIndex},
 		};
 	}
@@ -529,20 +527,12 @@ pub const ChunkMesh = struct {
 	fn canBeSeenThroughOtherBlock(block: Block, other: Block, neighbor: u3) bool {
 		const rotatedModel = blocks.meshes.model(block);
 		const model = &models.models.items[rotatedModel.modelIndex];
-		const freestandingModel = rotatedModel.modelIndex != models.fullCube and switch(rotatedModel.permutation.permuteNeighborIndex(neighbor)) {
-			chunk.Neighbors.dirNegX => model.min[0] != 0,
-			chunk.Neighbors.dirPosX => model.max[0] != 16, // TODO: Use a bitfield inside the models or something like that.
-			chunk.Neighbors.dirNegY => model.min[1] != 0,
-			chunk.Neighbors.dirPosY => model.max[1] != 16,
-			chunk.Neighbors.dirDown => model.min[2] != 0,
-			chunk.Neighbors.dirUp => model.max[2] != 16,
-			else => unreachable,
-		};
+		_ = neighbor;
+		_ = model; // TODO: Check if the neighbor model occludes this one. (maybe not that relevant)
 		return block.typ != 0 and (
-			freestandingModel
-			or other.typ == 0
+			other.typ == 0
 			or (!std.meta.eql(block, other) and other.viewThrough())
-			or blocks.meshes.model(other).modelIndex != 0 // TODO: make this more strict to avoid overdraw.
+			or blocks.meshes.model(other).modelIndex != 0
 		);
 	}
 
