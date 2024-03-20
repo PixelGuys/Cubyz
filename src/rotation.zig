@@ -9,6 +9,7 @@ const vec = main.vec;
 const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
 const Vec3d = vec.Vec3d;
+const Mat4f = vec.Mat4f;
 
 
 pub const Permutation = packed struct(u6) {
@@ -133,6 +134,9 @@ pub const RotationMode = struct {
 		fn generateData(_: *main.game.World, _: Vec3i, _: Vec3d, _: Vec3f, _: Vec3i, _: *Block, blockPlacing: bool) bool {
 			return blockPlacing;
 		}
+		fn createBlockModel(modelId: []const u8) u16 {
+			return main.models.getModelIndex(modelId);
+		}
 	};
 
 	/// if the block should be destroyed or changed when a certain neighbor is removed.
@@ -143,6 +147,8 @@ pub const RotationMode = struct {
 	/// Updates the block data of a block in the world or places a block in the world.
 	/// return true if the placing was successful, false otherwise.
 	generateData: *const fn(world: *main.game.World, pos: Vec3i, relativePlayerPos: Vec3d, playerDir: Vec3f, relativeDir: Vec3i, currentData: *Block, blockPlacing: bool) bool = DefaultFunctions.generateData,
+
+	createBlockModel: *const fn(modelId: []const u8) u16 = &DefaultFunctions.createBlockModel,
 };
 
 //public interface RotationMode extends RegistryElement {
@@ -210,27 +216,49 @@ var rotationModes: std.StringHashMap(RotationMode) = undefined;
 const RotationModes = struct {
 	pub const NoRotation = struct {
 		pub const id: []const u8 = "no_rotation";
+		fn init() void {}
+		fn deinit() void {}
 	};
 	pub const Log = struct {
 		pub const id: []const u8 = "log";
+		var rotatedModels: std.StringHashMap(u16) = undefined;
+
+		fn init() void {
+			rotatedModels = std.StringHashMap(u16).init(main.globalAllocator.allocator);
+		}
+
+		fn deinit() void {
+			rotatedModels.deinit();
+		}
 
 		pub fn model(block: Block) RotatedModel {
-			const permutation: Permutation = switch(block.data) {
-				else => Permutation {},
-				1 => Permutation {.mirrorX = true, .mirrorY = true},
-				2 => Permutation {.permutationX = 1, .mirrorX = true, .mirrorY = true},
-				3 => Permutation {.permutationX = 1},
-				4 => Permutation {.permutationYZ = true, .mirrorZ = true, .mirrorY = true},
-				5 => Permutation {.permutationYZ = true},
-			};
 			return RotatedModel{
-				.modelIndex = blocks.meshes.modelIndexStart(block),
-				.permutation = permutation,
+				.modelIndex = blocks.meshes.modelIndexStart(block) + @min(block.data, 5),
+				.permutation = undefined,
 			};
+		}
+
+		pub fn createBlockModel(modelId: []const u8) u16 {
+			if(rotatedModels.get(modelId)) |modelIndex| return modelIndex;
+
+			const baseModelIndex = main.models.getModelIndex(modelId);
+			const baseModel = main.models.models.items[baseModelIndex];
+			// Rotate the model:
+			const modelIndex: u16 = baseModel.transformModel(Mat4f.identity());
+			_ = baseModel.transformModel(Mat4f.rotationY(std.math.pi));
+			_ = baseModel.transformModel(Mat4f.rotationY(std.math.pi/2.0));
+			_ = baseModel.transformModel(Mat4f.rotationY(-std.math.pi/2.0));
+			_ = baseModel.transformModel(Mat4f.rotationX(std.math.pi/2.0));
+			_ = baseModel.transformModel(Mat4f.rotationX(-std.math.pi/2.0)); // TODO: Verify these angles once placement of rotated blocks is possible.
+			rotatedModels.put(modelId, modelIndex) catch unreachable;
+			return modelIndex;
 		}
 	};
 	pub const Fence = struct {
 		pub const id: []const u8 = "fence";
+		// TODO:
+		fn init() void {}
+		fn deinit() void {}
 
 		pub fn model(block: Block) RotatedModel {
 			const data = block.data>>2 & 15; // TODO: This is just for compatibility with the java version. Remove it.
@@ -287,6 +315,9 @@ pub fn init() void {
 
 pub fn deinit() void {
 	rotationModes.deinit();
+	inline for(@typeInfo(RotationModes).Struct.decls) |declaration| {
+		@field(RotationModes, declaration.name).deinit();
+	}
 }
 
 pub fn getByID(id: []const u8) *RotationMode {
@@ -296,6 +327,7 @@ pub fn getByID(id: []const u8) *RotationMode {
 }
 
 pub fn register(comptime Mode: type) void {
+	Mode.init();
 	var result: RotationMode = RotationMode{};
 	inline for(@typeInfo(RotationMode).Struct.fields) |field| {
 		if(@hasDecl(Mode, field.name)) {

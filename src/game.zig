@@ -129,6 +129,7 @@ pub const World = struct {
 		main.Window.setMouseGrabbed(true);
 
 		main.blocks.meshes.generateTextureArray();
+		main.models.uploadModels();
 		self.playerBiome = Atomic(*const main.server.terrain.biomes.Biome).init(main.server.terrain.biomes.getById(""));
 	}
 

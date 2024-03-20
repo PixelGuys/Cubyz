@@ -545,7 +545,7 @@ pub const meshes = struct {
 	}
 
 	pub fn register(assetFolder: []const u8, _: []const u8, json: JsonElement) void {
-		_modelIndex[meshes.size] = models.getModelIndex(json.get([]const u8, "model", "cube"));
+		_modelIndex[meshes.size] = _mode[meshes.size].createBlockModel(json.get([]const u8, "model", "cube"));
 
 		// The actual model is loaded later, in the rendering thread.
 		// But textures can be loaded here:

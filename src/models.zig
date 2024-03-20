@@ -8,6 +8,7 @@ const vec = @import("vec.zig");
 const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
 const Vec2f = vec.Vec2f;
+const Mat4f = vec.Mat4f;
 const FaceData = main.renderer.chunk_meshing.FaceData;
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
@@ -20,9 +21,13 @@ const QuadInfo = extern struct {
 	textureSlot: u32,
 };
 
+fn approxEqAbs(x: Vec3f, y: Vec3f, tolerance: Vec3f) @Vector(3, bool) {
+    return @abs(x - y) <= tolerance;
+}
+
 const Model = struct {
-	min: Vec3i,
-	max: Vec3i,
+	min: Vec3f,
+	max: Vec3f,
 	internalQuads: []u16,
 	neighborFacingQuads: [6][]u16,
 
@@ -30,8 +35,8 @@ const Model = struct {
 		var allZero: @Vector(3, bool) = .{true, true, true};
 		var allOne: @Vector(3, bool) = .{true, true, true};
 		for(quad.corners) |corner| {
-			allZero = @select(bool, allZero, corner == Vec3f{0, 0, 0}, allZero); // vector and TODO: #14306
-			allOne = @select(bool, allOne, corner == Vec3f{1, 1, 1}, allOne); // vector and TODO: #14306
+			allZero = @select(bool, allZero, approxEqAbs(corner, @splat(0), @splat(0.0001)), allZero); // vector and TODO: #14306
+			allOne = @select(bool, allOne, approxEqAbs(corner, @splat(1), @splat(0.0001)), allOne); // vector and TODO: #14306
 		}
 		if(allZero[0]) return Neighbors.dirNegX;
 		if(allZero[1]) return Neighbors.dirNegY;
@@ -42,10 +47,18 @@ const Model = struct {
 		return null;
 	}
 
-	fn init(self: *Model, allocator: NeverFailingAllocator, quadInfos: []const QuadInfo) void {
+	fn init(allocator: NeverFailingAllocator, quadInfos: []const QuadInfo) u16 {
+		const modelIndex: u16 = @intCast(models.items.len);
+		const self = models.addOne();
 		var amounts: [6]usize = .{0, 0, 0, 0, 0, 0};
 		var internalAmount: usize = 0;
+		self.min = .{1, 1, 1};
+		self.max = .{0, 0, 0};
 		for(quadInfos) |*quad| {
+			for(quad.corners) |corner| {
+				self.min = @min(self.min, corner);
+				self.max = @max(self.max, corner);
+			}
 			if(getFaceNeighbor(quad)) |neighbor| {
 				amounts[neighbor] += 1;
 			} else {
@@ -75,6 +88,7 @@ const Model = struct {
 				internalIndex += 1;
 			}
 		}
+		return modelIndex;
 	}
 
 	fn deinit(self: *const Model, allocator: NeverFailingAllocator) void {
@@ -82,6 +96,30 @@ const Model = struct {
 			allocator.free(self.neighborFacingQuads[i]);
 		}
 		allocator.free(self.internalQuads);
+	}
+
+	pub fn transformModel(model: Model, transformMatrix: Mat4f) u16 {
+		var quadList = main.List(QuadInfo).init(main.stackAllocator);
+		defer quadList.deinit();
+		for(model.internalQuads) |quadIndex| {
+			quadList.append(quads.items[quadIndex]);
+		}
+		for(0..6) |neighbor| {
+			for(model.neighborFacingQuads[neighbor]) |quadIndex| {
+				var quad = quads.items[quadIndex];
+				for(&quad.corners) |*corner| {
+					corner.* += quad.normal;
+				}
+				quadList.append(quad);
+			}
+		}
+		for(quadList.items) |*quad| {
+			quad.normal = vec.xyz(Mat4f.mulVec(transformMatrix, vec.combine(quad.normal, 0)));
+			for(&quad.corners) |*corner| {
+				corner.* = vec.xyz(Mat4f.mulVec(transformMatrix, vec.combine(corner.* - Vec3f{0.5, 0.5, 0.5}, 1))) + Vec3f{0.5, 0.5, 0.5};
+			}
+		}
+		return Model.init(main.globalAllocator, quadList.items);
 	}
 
 	fn appendQuadsToList(quadList: []const u16, list: *main.ListUnmanaged(FaceData), allocator: NeverFailingAllocator, block: main.blocks.Block, x: i32, y: i32, z: i32, comptime backFace: bool) void {
@@ -127,12 +165,7 @@ pub fn init() void {
 
 	nameToIndex = std.StringHashMap(u16).init(main.globalAllocator.allocator);
 
-	const cubeIndex: u16 = @intCast(models.items.len);
-	nameToIndex.put("cube", cubeIndex) catch unreachable;
-	const cube = models.addOne();
-	cube.min = .{0, 0, 0};
-	cube.max = .{16, 16, 16};
-	cube.init(main.globalAllocator, &.{
+	const cube = Model.init(main.globalAllocator, &.{
 		.{
 			.normal = .{-1, 0, 0},
 			.corners = .{.{0, 1, 0}, .{0, 1, 1}, .{0, 0, 0}, .{0, 0, 1}},
@@ -170,14 +203,10 @@ pub fn init() void {
 			.textureSlot = chunk.Neighbors.dirUp,
 		},
 	});
-	fullCube = cubeIndex;
+	nameToIndex.put("cube", cube) catch unreachable;
+	fullCube = cube;
 
-	const crossModelIndex: u16 = @intCast(models.items.len);
-	nameToIndex.put("cross", crossModelIndex) catch unreachable;
-	const cross = models.addOne();
-	cross.min = .{0, 0, 0};
-	cross.max = .{16, 16, 16};
-	cross.init(main.globalAllocator, &.{
+	const cross = Model.init(main.globalAllocator, &.{
 		.{
 			.normal = .{-std.math.sqrt1_2, std.math.sqrt1_2, 0},
 			.corners = .{.{1, 1, 0}, .{1, 1, 1}, .{0, 0, 0}, .{0, 0, 1}},
@@ -203,7 +232,10 @@ pub fn init() void {
 			.textureSlot = 0,
 		},
 	});
+	nameToIndex.put("cross", cross) catch unreachable;
+}
 
+pub fn uploadModels() void {
 	quadSSBO = graphics.SSBO.initStatic(QuadInfo, quads.items);
 	quadSSBO.bind(4);
 }

@@ -732,11 +732,11 @@ pub const MeshSelection = struct {
 				// Check the true bounding box (using this algorithm here: https://tavianator.com/2011/ray_box.html):
 				const model = blocks.meshes.model(block);
 				const modelData = &models.models.items[model.modelIndex];
-				const min: Vec3d = @floatFromInt(@min(modelData.min, modelData.max));
-				const max: Vec3d = @floatFromInt(@max(modelData.min, modelData.max));
+				const min: Vec3d = @floatCast(modelData.min);
+				const max: Vec3d = @floatCast(modelData.max);
 				const voxelPosFloat: Vec3d = @floatFromInt(voxelPos);
-				const t1 = (voxelPosFloat + min/@as(Vec3d, @splat(16.0)) - pos)*invDir;
-				const t2 = (voxelPosFloat + max/@as(Vec3d, @splat(16.0)) - pos)*invDir;
+				const t1 = (voxelPosFloat + min - pos)*invDir;
+				const t2 = (voxelPosFloat + max - pos)*invDir;
 				const boxTMin = @reduce(.Max, @min(t1, t2));
 				const boxTMax = @reduce(.Min, @max(t1, t2));
 				if(boxTMin <= boxTMax and boxTMin <= closestDistance and boxTMax > 0) {
@@ -865,11 +865,9 @@ pub const MeshSelection = struct {
 			const block = mesh_storage.getBlockFromRenderThread(_selectedBlockPos[0], _selectedBlockPos[1], _selectedBlockPos[2]) orelse return;
 			const model = blocks.meshes.model(block);
 			const modelData = &models.models.items[model.modelIndex];
-			const transformedMin = model.permutation.transform(modelData.min - @as(Vec3i, @splat(8))) + @as(Vec3i, @splat(8));
-			const transformedMax = model.permutation.transform(modelData.max - @as(Vec3i, @splat(8))) + @as(Vec3i, @splat(8));
-			const min: Vec3f = @floatFromInt(@min(transformedMin, transformedMax));
-			const max: Vec3f = @floatFromInt(@max(transformedMin ,transformedMax));
-			drawCube(projectionMatrix, viewMatrix, @as(Vec3d, @floatFromInt(_selectedBlockPos)) - playerPos, min/@as(Vec3f, @splat(16.0)), max/@as(Vec3f, @splat(16.0)));
+			const min: Vec3f = @floatCast(modelData.min);
+			const max: Vec3f = @floatCast(modelData.max);
+			drawCube(projectionMatrix, viewMatrix, @as(Vec3d, @floatFromInt(_selectedBlockPos)) - playerPos, min, max);
 		}
 	}
 };
