@@ -157,6 +157,64 @@ fn addQuad(info: QuadInfo) u16 { // TODO: Merge duplicates
 	return index;
 }
 
+fn box(min: Vec3f, max: Vec3f) [6]QuadInfo {
+	const corner000: Vec3f = .{min[0], min[1], min[2]};
+	const corner001: Vec3f = .{min[0], min[1], max[2]};
+	const corner010: Vec3f = .{min[0], max[1], min[2]};
+	const corner011: Vec3f = .{min[0], max[1], max[2]};
+	const corner100: Vec3f = .{max[0], min[1], min[2]};
+	const corner101: Vec3f = .{max[0], min[1], max[2]};
+	const corner110: Vec3f = .{max[0], max[1], min[2]};
+	const corner111: Vec3f = .{max[0], max[1], max[2]};
+	return .{
+		.{
+			.normal = .{-1, 0, 0},
+			.corners = .{corner010, corner011, corner000, corner001},
+			.cornerUV = .{.{1 - max[1], min[2]}, .{1 - max[1], max[2]}, .{1 - min[1], min[2]}, .{1 - min[1], max[2]}},
+			.textureSlot = chunk.Neighbors.dirNegX,
+		},
+		.{
+			.normal = .{1, 0, 0},
+			.corners = .{corner100, corner101, corner110, corner111},
+			.cornerUV = .{.{min[1], min[2]}, .{min[1], max[2]}, .{max[1], min[2]}, .{max[1], max[2]}},
+			.textureSlot = chunk.Neighbors.dirPosX,
+		},
+		.{
+			.normal = .{0, -1, 0},
+			.corners = .{corner000, corner001, corner100, corner101},
+			.cornerUV = .{.{min[0], min[2]}, .{min[0], max[2]}, .{max[0], min[2]}, .{max[0], max[2]}},
+			.textureSlot = chunk.Neighbors.dirNegY,
+		},
+		.{
+			.normal = .{0, 1, 0},
+			.corners = .{corner110, corner111, corner010, corner011},
+			.cornerUV = .{.{1 - max[0], min[2]}, .{1 - max[0], max[2]}, .{1 - min[0], min[2]}, .{1 - min[0], max[2]}},
+			.textureSlot = chunk.Neighbors.dirPosY,
+		},
+		.{
+			.normal = .{0, 0, -1},
+			.corners = .{corner010, corner000, corner110, corner100},
+			.cornerUV = .{.{min[0], 1 - max[1]}, .{min[0], 1 - min[1]}, .{max[0], 1 - max[1]}, .{max[0], 1 - min[1]}},
+			.textureSlot = chunk.Neighbors.dirDown,
+		},
+		.{
+			.normal = .{0, 0, 1},
+			.corners = .{corner111, corner101, corner011, corner001},
+			.cornerUV = .{.{1 - max[0], 1 - max[1]}, .{1 - max[0], 1 - min[1]}, .{1 - min[0], 1 - max[1]}, .{1 - min[0], 1 - min[1]}},
+			.textureSlot = chunk.Neighbors.dirUp,
+		},
+	};
+}
+
+fn openBox(min: Vec3f, max: Vec3f, openSide: enum{x, y, z}) [4]QuadInfo {
+	const fullBox = box(min, max);
+	switch(openSide) {
+		.x => return fullBox[2..6].*,
+		.y => return fullBox[0..2].* ++ fullBox[4..6].*,
+		.z => return fullBox[2..6].*,
+	}
+}
+
 // TODO: Allow loading from world assets.
 // TODO: Entity models.
 pub fn init() void {
@@ -165,44 +223,7 @@ pub fn init() void {
 
 	nameToIndex = std.StringHashMap(u16).init(main.globalAllocator.allocator);
 
-	const cube = Model.init(main.globalAllocator, &.{
-		.{
-			.normal = .{-1, 0, 0},
-			.corners = .{.{0, 1, 0}, .{0, 1, 1}, .{0, 0, 0}, .{0, 0, 1}},
-			.cornerUV = .{.{0, 0}, .{0, 1}, .{1, 0}, .{1, 1}},
-			.textureSlot = chunk.Neighbors.dirNegX,
-		},
-		.{
-			.normal = .{1, 0, 0},
-			.corners = .{.{1, 0, 0}, .{1, 0, 1}, .{1, 1, 0}, .{1, 1, 1}},
-			.cornerUV = .{.{0, 0}, .{0, 1}, .{1, 0}, .{1, 1}},
-			.textureSlot = chunk.Neighbors.dirPosX,
-		},
-		.{
-			.normal = .{0, -1, 0},
-			.corners = .{.{0, 0, 0}, .{0, 0, 1}, .{1, 0, 0}, .{1, 0, 1}},
-			.cornerUV = .{.{0, 0}, .{0, 1}, .{1, 0}, .{1, 1}},
-			.textureSlot = chunk.Neighbors.dirNegY,
-		},
-		.{
-			.normal = .{0, 1, 0},
-			.corners = .{.{1, 1, 0}, .{1, 1, 1}, .{0, 1, 0}, .{0, 1, 1}},
-			.cornerUV = .{.{0, 0}, .{0, 1}, .{1, 0}, .{1, 1}},
-			.textureSlot = chunk.Neighbors.dirPosY,
-		},
-		.{
-			.normal = .{0, 0, -1},
-			.corners = .{.{0, 1, 0}, .{0, 0, 0}, .{1, 1, 0}, .{1, 0, 0}},
-			.cornerUV = .{.{0, 0}, .{0, 1}, .{1, 0}, .{1, 1}},
-			.textureSlot = chunk.Neighbors.dirDown,
-		},
-		.{
-			.normal = .{0, 0, 1},
-			.corners = .{.{1, 1, 1}, .{1, 0, 1}, .{0, 1, 1}, .{0, 0, 1}},
-			.cornerUV = .{.{0, 0}, .{0, 1}, .{1, 0}, .{1, 1}},
-			.textureSlot = chunk.Neighbors.dirUp,
-		},
-	});
+	const cube = Model.init(main.globalAllocator, &box(.{0, 0, 0}, .{1, 1, 1}));
 	nameToIndex.put("cube", cube) catch unreachable;
 	fullCube = cube;
 
@@ -233,6 +254,15 @@ pub fn init() void {
 		},
 	});
 	nameToIndex.put("cross", cross) catch unreachable;
+
+	const fence = Model.init(main.globalAllocator, &(
+		box(.{6.0/16.0, 6.0/16.0, 0}, .{10.0/16.0, 10.0/16.0, 1})
+		++ openBox(.{0, 7.0/16.0, 3.0/16.0}, .{1, 9.0/16.0, 6.0/16.0}, .x)
+		++ openBox(.{0, 7.0/16.0, 10.0/16.0}, .{1, 9.0/16.0, 13.0/16.0}, .x)
+		++ openBox(.{7.0/16.0, 0, 3.0/16.0}, .{9.0/16.0, 1, 6.0/16.0}, .y)
+		++ openBox(.{7.0/16.0, 0, 10.0/16.0}, .{9.0/16.0, 1, 13.0/16.0}, .y)
+	));
+	nameToIndex.put("fence", fence) catch unreachable;
 }
 
 pub fn uploadModels() void {
