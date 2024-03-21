@@ -248,10 +248,23 @@ const RotationModes = struct {
 			_ = baseModel.transformModel(Mat4f.rotationY(std.math.pi));
 			_ = baseModel.transformModel(Mat4f.rotationY(std.math.pi/2.0));
 			_ = baseModel.transformModel(Mat4f.rotationY(-std.math.pi/2.0));
+			_ = baseModel.transformModel(Mat4f.rotationX(-std.math.pi/2.0));
 			_ = baseModel.transformModel(Mat4f.rotationX(std.math.pi/2.0));
-			_ = baseModel.transformModel(Mat4f.rotationX(-std.math.pi/2.0)); // TODO: Verify these angles once placement of rotated blocks is possible.
 			rotatedModels.put(modelId, modelIndex) catch unreachable;
 			return modelIndex;
+		}
+
+		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3d, _: Vec3f, relativeDir: Vec3i, currentData: *Block, blockPlacing: bool) bool {
+			if(blockPlacing) {
+				if(relativeDir[0] == 1) currentData.data = chunk.Neighbors.dirNegX;
+				if(relativeDir[0] == -1) currentData.data = chunk.Neighbors.dirPosX;
+				if(relativeDir[1] == 1) currentData.data = chunk.Neighbors.dirNegY;
+				if(relativeDir[1] == -1) currentData.data = chunk.Neighbors.dirPosY;
+				if(relativeDir[2] == 1) currentData.data = chunk.Neighbors.dirDown;
+				if(relativeDir[2] == -1) currentData.data = chunk.Neighbors.dirUp;
+				return true;
+			}
+			return false;
 		}
 	};
 	pub const Fence = struct {
