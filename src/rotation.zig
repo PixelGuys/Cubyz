@@ -27,6 +27,9 @@ pub const RotationMode = struct {
 		fn createBlockModel(modelId: []const u8) u16 {
 			return main.models.getModelIndex(modelId);
 		}
+		fn updateData(_: *Block, _: u3, _: Block) bool {
+			return false;
+		}
 	};
 
 	/// if the block should be destroyed or changed when a certain neighbor is removed.
@@ -39,44 +42,10 @@ pub const RotationMode = struct {
 	/// Updates the block data of a block in the world or places a block in the world.
 	/// return true if the placing was successful, false otherwise.
 	generateData: *const fn(world: *main.game.World, pos: Vec3i, relativePlayerPos: Vec3d, playerDir: Vec3f, relativeDir: Vec3i, currentData: *Block, blockPlacing: bool) bool = DefaultFunctions.generateData,
-};
 
-//public interface RotationMode extends RegistryElement {
-//	/**
-//	 * Updates data of a placed block if the RotationMode dependsOnNeighbors().
-//	 * If the returned value is null, then the block will be removed instead of only updating the data.
-//	 * @param oldBlock
-//	 * @param removedDir given as neighbor index (See NormalChunk.)
-//	 * @return new data
-//	 */
-//	int updateData(int oldBlock, int removedDir, int newNeighbor);
-//	
-//	/**
-//	 * A RotationMode may even alter the blocks transparency. Here is where it's done.
-//	 * @param block The blocks data
-//	 * @param neighbor the inverted(!) neighbor index(see Neighbors.java).
-//	 */
-//	boolean checkTransparency(int block, int neighbor);
-//	
-//	/**
-//	 * @return standard data for natural generation.
-//	 */
-//	int getNaturalStandard(int block);
-//
-//	/**
-//	 * Check if the entity would collide with the block.
-//	 * @return Whether the entity and block hitboxes overlap.
-//	 */
-//	boolean checkEntity(Vector3d pos, double width, double height, int x, int y, int z, int block);
-//	
-//	/**
-//	 * Check if the entity would collide with the block, if its position was changed by `vel`.
-//	 * If a collision occurs, adjust the velocity in way such that the entity does not move inside the block.
-//	 * @param vel Velocity of the entity. The 4th element is reserved for stepping: a y-movement that is done exactly once.
-//	 * @return Returns true if the block behaves like a normal block and therefor needs to be handled like a normal block in the specified direction. Returns false if everything has been handled already in here.
-//	 */
-//	boolean checkEntityAndDoCollision(Entity ent, Vector4d vel, int x, int y, int z, int block);
-//}
+	/// Updates data of a placed block if the RotationMode dependsOnNeighbors.
+	updateData: *const fn(block: *Block, neighborIndex: u3, neighbor: Block) bool = &DefaultFunctions.updateData,
+};
 
 var rotationModes: std.StringHashMap(RotationMode) = undefined;
 
@@ -86,8 +55,6 @@ fn rotationMatrixTransform(quad: *main.models.QuadInfo, transformMatrix: Mat4f) 
 		corner.* = vec.xyz(Mat4f.mulVec(transformMatrix, vec.combine(corner.* - Vec3f{0.5, 0.5, 0.5}, 1))) + Vec3f{0.5, 0.5, 0.5};
 	}
 }
-
- // TODO: Instead of using a permutation, rotation modes should directly return a rotated version of the model.
 
 const RotationModes = struct {
 	pub const NoRotation = struct {
@@ -195,7 +162,33 @@ const RotationModes = struct {
 		}
 
 		pub fn model(block: Block) u16 {
-			return blocks.meshes.modelIndexStart(block) + @min(block.data, 15);
+			return blocks.meshes.modelIndexStart(block) + (block.data & 15);
+		}
+
+		pub fn updateData(block: *Block, neighborIndex: u3, neighbor: Block) bool {
+			const blockModel = blocks.meshes.modelIndexStart(block.*);
+			const neighborModel = blocks.meshes.modelIndexStart(neighbor);
+			const targetVal = neighbor.solid() and (blockModel == neighborModel or main.models.models.items[neighborModel].neighborFacingQuads[neighborIndex ^ 1].len != 0);
+			var currentData: FenceData = @bitCast(@as(u4, @truncate(block.data)));
+			switch(neighborIndex) {
+				Neighbors.dirNegX => {
+					currentData.isConnectedNegX = targetVal;
+				},
+				Neighbors.dirPosX => {
+					currentData.isConnectedPosX = targetVal;
+				},
+				Neighbors.dirNegY => {
+					currentData.isConnectedNegY = targetVal;
+				},
+				Neighbors.dirPosY => {
+					currentData.isConnectedPosY = targetVal;
+				},
+				else => {},
+			}
+			const result: u16 = @as(u4, @bitCast(currentData));
+			if(result == block.data) return false;
+			block.data = result;
+			return true;
 		}
 	};
 };

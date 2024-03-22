@@ -677,11 +677,54 @@ pub const ChunkMesh = struct {
 		self.finishNeighbors();
 	}
 
-	pub fn updateBlock(self: *ChunkMesh, _x: i32, _y: i32, _z: i32, newBlock: Block) void {
-		self.mutex.lock();
+	pub fn updateBlock(self: *ChunkMesh, _x: i32, _y: i32, _z: i32, _newBlock: Block) void {
 		const x = _x & chunk.chunkMask;
 		const y = _y & chunk.chunkMask;
 		const z = _z & chunk.chunkMask;
+		var newBlock = _newBlock;
+		var neighborBlocks: [6]Block = undefined;
+		@memset(&neighborBlocks, .{.typ = 0, .data = 0});
+		for(chunk.Neighbors.iterable) |neighbor| {
+			const nx = x + chunk.Neighbors.relX[neighbor];
+			const ny = y + chunk.Neighbors.relY[neighbor];
+			const nz = z + chunk.Neighbors.relZ[neighbor];
+			if(nx & chunk.chunkMask != nx or ny & chunk.chunkMask != ny or nz & chunk.chunkMask != nz) {
+				const neighborChunkMesh = mesh_storage.getNeighborAndIncreaseRefCount(self.pos, self.pos.voxelSize, neighbor) orelse continue;
+				defer neighborChunkMesh.decreaseRefCount();
+				const index = chunk.getIndex(nx & chunk.chunkMask, ny & chunk.chunkMask, nz & chunk.chunkMask);
+				neighborChunkMesh.mutex.lock();
+				var neighborBlock = neighborChunkMesh.chunk.blocks[index];
+				if(neighborBlock.mode().dependsOnNeighbors) {
+					if(neighborBlock.mode().updateData(&neighborBlock, neighbor ^ 1, newBlock)) {
+						neighborChunkMesh.chunk.blocks[index] = neighborBlock;
+						neighborChunkMesh.opaqueMesh.coreFaces.clearRetainingCapacity();
+						neighborChunkMesh.transparentMesh.coreFaces.clearRetainingCapacity();
+						neighborChunkMesh.mutex.unlock();
+						neighborChunkMesh.generateMesh();
+						neighborChunkMesh.mutex.lock();
+					}
+				}
+				neighborChunkMesh.mutex.unlock();
+				neighborBlocks[neighbor] = neighborBlock;
+			} else {
+				const index = chunk.getIndex(nx, ny, nz);
+				self.mutex.lock();
+				var neighborBlock = self.chunk.blocks[index];
+				if(neighborBlock.mode().dependsOnNeighbors) {
+					if(neighborBlock.mode().updateData(&neighborBlock, neighbor ^ 1, newBlock)) {
+						self.chunk.blocks[index] = neighborBlock;
+					}
+				}
+				self.mutex.unlock();
+				neighborBlocks[neighbor] = neighborBlock;
+			}
+		}
+		if(newBlock.mode().dependsOnNeighbors) {
+			for(chunk.Neighbors.iterable) |neighbor| {
+				_ = newBlock.mode().updateData(&newBlock, neighbor, neighborBlocks[neighbor]);
+			}
+		}
+		self.mutex.lock();
 		self.chunk.blocks[chunk.getIndex(x, y, z)] = newBlock;
 		self.mutex.unlock();
 		for(self.lightingData[0..]) |lightingData| {
