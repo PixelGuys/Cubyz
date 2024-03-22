@@ -188,20 +188,20 @@ const PrimitiveMesh = struct {
 
 	fn appendInternalQuadsToCore(self: *PrimitiveMesh, block: Block, x: i32, y: i32, z: i32, comptime backFace: bool) void {
 		const model = blocks.meshes.model(block);
-		models.models.items[model.modelIndex].appendInternalQuadsToList(&self.coreFaces, main.globalAllocator, block, x, y, z, backFace);
+		models.models.items[model].appendInternalQuadsToList(&self.coreFaces, main.globalAllocator, block, x, y, z, backFace);
 	}
 
 	fn appendNeighborFacingQuadsToCore(self: *PrimitiveMesh, block: Block, neighbor: u3, x: i32, y: i32, z: i32, comptime backFace: bool) void {
 		const model = blocks.meshes.model(block);
-		models.models.items[model.modelIndex].appendNeighborFacingQuadsToList(&self.coreFaces, main.globalAllocator, block, neighbor, x, y, z, backFace);
+		models.models.items[model].appendNeighborFacingQuadsToList(&self.coreFaces, main.globalAllocator, block, neighbor, x, y, z, backFace);
 	}
 
 	fn appendNeighborFacingQuadsToNeighbor(self: *PrimitiveMesh, block: Block, neighbor: u3, x: i32, y: i32, z: i32, comptime backFace: bool, comptime isLod: bool) void {
 		const model = blocks.meshes.model(block);
 		if(isLod) {
-			models.models.items[model.modelIndex].appendNeighborFacingQuadsToList(&self.neighborFacesHigherLod[neighbor ^ 1], main.globalAllocator, block, neighbor, x, y, z, backFace);
+			models.models.items[model].appendNeighborFacingQuadsToList(&self.neighborFacesHigherLod[neighbor ^ 1], main.globalAllocator, block, neighbor, x, y, z, backFace);
 		} else {
-			models.models.items[model.modelIndex].appendNeighborFacingQuadsToList(&self.neighborFacesSameLod[neighbor ^ 1], main.globalAllocator, block, neighbor, x, y, z, backFace);
+			models.models.items[model].appendNeighborFacingQuadsToList(&self.neighborFacesSameLod[neighbor ^ 1], main.globalAllocator, block, neighbor, x, y, z, backFace);
 		}
 	}
 
@@ -526,13 +526,13 @@ pub const ChunkMesh = struct {
 
 	fn canBeSeenThroughOtherBlock(block: Block, other: Block, neighbor: u3) bool {
 		const rotatedModel = blocks.meshes.model(block);
-		const model = &models.models.items[rotatedModel.modelIndex];
+		const model = &models.models.items[rotatedModel];
 		_ = neighbor;
 		_ = model; // TODO: Check if the neighbor model occludes this one. (maybe not that relevant)
 		return block.typ != 0 and (
 			other.typ == 0
 			or (!std.meta.eql(block, other) and other.viewThrough())
-			or blocks.meshes.model(other).modelIndex != 0
+			or blocks.meshes.model(other) != 0
 		);
 	}
 

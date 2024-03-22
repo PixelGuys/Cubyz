@@ -414,7 +414,7 @@ pub const meshes = struct {
 		_ = arenaForWorld.reset(.free_all);
 	}
 
-	pub inline fn model(block: Block) rotation.RotatedModel {
+	pub inline fn model(block: Block) u16 {
 		return block.mode().model(block);
 	}
 

@@ -731,7 +731,7 @@ pub const MeshSelection = struct {
 			if(block.typ != 0) {
 				// Check the true bounding box (using this algorithm here: https://tavianator.com/2011/ray_box.html):
 				const model = blocks.meshes.model(block);
-				const modelData = &models.models.items[model.modelIndex];
+				const modelData = &models.models.items[model];
 				const min: Vec3d = @floatCast(modelData.min);
 				const max: Vec3d = @floatCast(modelData.max);
 				const voxelPosFloat: Vec3d = @floatFromInt(voxelPos);
@@ -864,7 +864,7 @@ pub const MeshSelection = struct {
 			c.glPolygonOffset(-2, 0);
 			const block = mesh_storage.getBlockFromRenderThread(_selectedBlockPos[0], _selectedBlockPos[1], _selectedBlockPos[2]) orelse return;
 			const model = blocks.meshes.model(block);
-			const modelData = &models.models.items[model.modelIndex];
+			const modelData = &models.models.items[model];
 			const min: Vec3f = @floatCast(modelData.min);
 			const max: Vec3f = @floatCast(modelData.max);
 			drawCube(projectionMatrix, viewMatrix, @as(Vec3d, @floatFromInt(_selectedBlockPos)) - playerPos, min, max);

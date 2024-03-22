@@ -14,7 +14,7 @@ const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 var quadSSBO: graphics.SSBO = undefined;
 
-const QuadInfo = extern struct {
+pub const QuadInfo = extern struct {
 	normal: Vec3f,
 	corners: [4]Vec3f,
 	cornerUV: [4]Vec2f,
@@ -98,7 +98,7 @@ const Model = struct {
 		allocator.free(self.internalQuads);
 	}
 
-	pub fn transformModel(model: Model, transformMatrix: Mat4f) u16 {
+	pub fn transformModel(model: Model, transformFunction: anytype, transformFunctionParameters: anytype) u16 {
 		var quadList = main.List(QuadInfo).init(main.stackAllocator);
 		defer quadList.deinit();
 		for(model.internalQuads) |quadIndex| {
@@ -114,10 +114,7 @@ const Model = struct {
 			}
 		}
 		for(quadList.items) |*quad| {
-			quad.normal = vec.xyz(Mat4f.mulVec(transformMatrix, vec.combine(quad.normal, 0)));
-			for(&quad.corners) |*corner| {
-				corner.* = vec.xyz(Mat4f.mulVec(transformMatrix, vec.combine(corner.* - Vec3f{0.5, 0.5, 0.5}, 1))) + Vec3f{0.5, 0.5, 0.5};
-			}
+			@call(.auto, transformFunction, .{quad} ++ transformFunctionParameters);
 		}
 		return Model.init(main.globalAllocator, quadList.items);
 	}

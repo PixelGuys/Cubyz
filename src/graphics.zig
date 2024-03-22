@@ -1880,7 +1880,7 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 
 	var faceData: main.ListUnmanaged(main.renderer.chunk_meshing.FaceData) = .{};
 	defer faceData.deinit(main.stackAllocator);
-	const model = &main.models.models.items[main.blocks.meshes.model(block).modelIndex];
+	const model = &main.models.models.items[main.blocks.meshes.model(block)];
 	model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, 1, 1, 1, false);
 	for(main.chunk.Neighbors.iterable) |neighbor| {
 		model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, 1 + main.chunk.Neighbors.relX[neighbor], 1 + main.chunk.Neighbors.relY[neighbor], 1 + main.chunk.Neighbors.relZ[neighbor], false);

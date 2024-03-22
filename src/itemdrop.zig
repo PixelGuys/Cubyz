@@ -761,7 +761,7 @@ pub const ItemDropRenderer = struct {
 				if(item == .baseItem and item.baseItem.block != null) {
 					const blockType = item.baseItem.block.?;
 					const block = blocks.Block{.typ = blockType, .data = 0};
-					c.glUniform1i(itemUniforms.modelIndex, block.mode().model(block).modelIndex);
+					c.glUniform1i(itemUniforms.modelIndex, block.mode().model(block));
 					c.glUniform1i(itemUniforms.block, blockType);
 				} else {
 					const index = getModelIndex(item);
