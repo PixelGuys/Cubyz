@@ -6,6 +6,7 @@ const chunk = @import("chunk.zig");
 const Neighbors = chunk.Neighbors;
 const main = @import("main.zig");
 const vec = main.vec;
+const Vec2f = vec.Vec2f;
 const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
 const Vec3d = vec.Vec3d;
@@ -189,6 +190,178 @@ const RotationModes = struct {
 			if(result == block.data) return false;
 			block.data = result;
 			return true;
+		}
+	};
+	pub const Stairs = struct {
+		pub const id: []const u8 = "stairs";
+		var modelIndex: u16 = 0;
+
+		fn hasSubBlock(stairData: u8, x: u1, y: u1, z: u1) bool {
+			return stairData & @as(u8, 1) << ((@as(u3, x)*2 + @as(u3, y))*2 + z) == 0;
+		}
+
+		fn init() void {
+			modelIndex = 0;
+		}
+		fn deinit() void {}
+
+		const GreedyFaceInfo = struct{min: Vec2f, max: Vec2f};
+		fn mergeFaces(faceVisible: [2][2] bool, mem: []GreedyFaceInfo) []GreedyFaceInfo {
+			var faces: usize = 0;
+			if(faceVisible[0][0]) {
+				if(faceVisible[0][1]) {
+					if(faceVisible[1][0] and faceVisible[1][1]) {
+						// One big face:
+						mem[faces] = .{.min = .{0, 0}, .max = .{1, 1}};
+						faces += 1;
+					} else {
+						mem[faces] = .{.min = .{0, 0}, .max = .{0.5, 1}};
+						faces += 1;
+						if(faceVisible[1][0]) {
+							mem[faces] = .{.min = .{0.5, 0}, .max = .{1, 0.5}};
+							faces += 1;
+						}
+						if(faceVisible[1][1]) {
+							mem[faces] = .{.min = .{0.5, 0.5}, .max = .{1, 1}};
+							faces += 1;
+						}
+					}
+				} else {
+					if(faceVisible[1][0]) {
+						mem[faces] = .{.min = .{0, 0}, .max = .{1.0, 0.5}};
+						faces += 1;
+					} else {
+						mem[faces] = .{.min = .{0, 0}, .max = .{0.5, 0.5}};
+						faces += 1;
+					}
+					if(faceVisible[1][1]) {
+						mem[faces] = .{.min = .{0.5, 0.5}, .max = .{1, 1}};
+						faces += 1;
+					}
+				}
+			} else {
+				if(faceVisible[0][1]) {
+					if(faceVisible[1][1]) {
+						mem[faces] = .{.min = .{0, 0.5}, .max = .{1, 1}};
+						faces += 1;
+					} else {
+						mem[faces] = .{.min = .{0, 0.5}, .max = .{0.5, 1}};
+						faces += 1;
+					}
+					if(faceVisible[1][0]) {
+						mem[faces] = .{.min = .{0.5, 0}, .max = .{1, 0.5}};
+						faces += 1;
+					}
+				} else {
+					if(faceVisible[1][0]) {
+						if(faceVisible[1][1]) {
+							mem[faces] = .{.min = .{0.5, 0}, .max = .{1, 1.0}};
+							faces += 1;
+						} else {
+							mem[faces] = .{.min = .{0.5, 0}, .max = .{1, 0.5}};
+							faces += 1;
+						}
+					} else if(faceVisible[1][1]) {
+						mem[faces] = .{.min = .{0.5, 0.5}, .max = .{1, 1}};
+						faces += 1;
+					}
+				}
+			}
+			return mem[0..faces];
+		}
+
+		pub fn createBlockModel(_: []const u8) u16 {
+			if(modelIndex != 0) {
+				return modelIndex;
+			}
+			for(0..256) |i| {
+				var quads = main.List(main.models.QuadInfo).init(main.stackAllocator);
+				defer quads.deinit();
+				for(Neighbors.iterable) |neighbor| {
+					const xComponent = @abs(Neighbors.textureX[neighbor]);
+					const yComponent = @abs(Neighbors.textureY[neighbor]);
+					const normal = Vec3i{Neighbors.relX[neighbor], Neighbors.relY[neighbor], Neighbors.relZ[neighbor]};
+					const zComponent = @abs(normal);
+					const zMap: [2]@Vector(3, u32) = if(@reduce(.Add, normal) > 0) .{@splat(0), @splat(1)} else .{@splat(1), @splat(0)};
+					var visibleFront: [2][2]bool = undefined;
+					var visibleMiddle: [2][2]bool = undefined;
+					for(0..2) |x| {
+						for(0..2) |y| {
+							const xSplat: @TypeOf(xComponent) = @splat(@intCast(x));
+							const ySplat: @TypeOf(xComponent) = @splat(@intCast(y));
+							const posFront = xComponent*xSplat + yComponent*ySplat + zComponent*zMap[1];
+							const posBack = xComponent*xSplat + yComponent*ySplat + zComponent*zMap[0];
+							visibleFront[x][y] = hasSubBlock(@intCast(i), @intCast(posFront[0]), @intCast(posFront[1]), @intCast(posFront[2]));
+							visibleMiddle[x][y] = !visibleFront[x][y] and hasSubBlock(@intCast(i), @intCast(posBack[0]), @intCast(posBack[1]), @intCast(posBack[2]));
+						}
+					}
+					const xAxis = @as(Vec3f, @floatFromInt(Neighbors.textureX[neighbor]));
+					const yAxis = @as(Vec3f, @floatFromInt(Neighbors.textureY[neighbor]));
+					const zAxis = @as(Vec3f, @floatFromInt(normal));
+					// Greedy mesh it:
+					var faces: [2]GreedyFaceInfo = undefined;
+					const frontFaces = mergeFaces(visibleFront, &faces);
+					for(frontFaces) |face| {
+						var xLower = @abs(xAxis)*@as(Vec3f, @splat(face.min[0]));
+						var xUpper = @abs(xAxis)*@as(Vec3f, @splat(face.max[0]));
+						if(@reduce(.Add, xAxis) > 0) std.mem.swap(Vec3f, &xLower, &xUpper);
+						var yLower = @abs(yAxis)*@as(Vec3f, @splat(face.min[1]));
+						var yUpper = @abs(yAxis)*@as(Vec3f, @splat(face.max[1]));
+						if(@reduce(.Add, yAxis) > 0) std.mem.swap(Vec3f, &yLower, &yUpper);
+						const zValue: Vec3f = @floatFromInt(zComponent*zMap[1]);
+						quads.append(.{
+							.normal = zAxis,
+							.corners = .{
+								xLower + yLower + zValue,
+								xLower + yUpper + zValue,
+								xUpper + yLower + zValue,
+								xUpper + yUpper + zValue,
+							},
+							.cornerUV = .{.{face.min[0], face.min[1]}, .{face.min[0], face.max[1]}, .{face.max[0], face.min[1]}, .{face.max[0], face.max[1]}},
+							.textureSlot = neighbor,
+						});
+					}
+					const middleFaces = mergeFaces(visibleMiddle, &faces);
+					for(middleFaces) |face| {
+						var xLower = @abs(xAxis)*@as(Vec3f, @splat(face.min[0]));
+						var xUpper = @abs(xAxis)*@as(Vec3f, @splat(face.max[0]));
+						if(@reduce(.Add, xAxis) > 0) std.mem.swap(Vec3f, &xLower, &xUpper);
+						var yLower = @abs(yAxis)*@as(Vec3f, @splat(face.min[1]));
+						var yUpper = @abs(yAxis)*@as(Vec3f, @splat(face.max[1]));
+						if(@reduce(.Add, yAxis) > 0) std.mem.swap(Vec3f, &yLower, &yUpper);
+						const zValue = @as(Vec3f, @floatFromInt(zComponent))*@as(Vec3f, @splat(0.5));
+						quads.append(.{
+							.normal = zAxis,
+							.corners = .{
+								xLower + yLower + zValue,
+								xLower + yUpper + zValue,
+								xUpper + yLower + zValue,
+								xUpper + yUpper + zValue,
+							},
+							.cornerUV = .{.{face.min[0], face.min[1]}, .{face.min[0], face.max[1]}, .{face.max[0], face.min[1]}, .{face.max[0], face.max[1]}},
+							.textureSlot = neighbor,
+						});
+					}
+				}
+				const index = main.models.Model.init(quads.items);
+				if(i == 0) {
+					modelIndex = index;
+				}
+			}
+			return modelIndex;
+		}
+
+		pub fn model(block: Block) u16 {
+			return blocks.meshes.modelIndexStart(block) + (block.data & 255);
+		}
+		var data: u8 = 0;
+		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3d, _: Vec3f, _: Vec3i, currentData: *Block, blockPlacing: bool) bool {
+			if(blockPlacing) {
+				currentData.data = data; // TODO: Set this to a full block and allow modifying the stairs with a chisel.
+				data +%= 1;
+				return true;
+			}
+			return false;
 		}
 	};
 };

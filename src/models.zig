@@ -25,7 +25,7 @@ fn approxEqAbs(x: Vec3f, y: Vec3f, tolerance: Vec3f) @Vector(3, bool) {
     return @abs(x - y) <= tolerance;
 }
 
-const Model = struct {
+pub const Model = struct {
 	min: Vec3f,
 	max: Vec3f,
 	internalQuads: []u16,
@@ -47,7 +47,7 @@ const Model = struct {
 		return null;
 	}
 
-	fn init(allocator: NeverFailingAllocator, quadInfos: []const QuadInfo) u16 {
+	pub fn init(quadInfos: []const QuadInfo) u16 {
 		const modelIndex: u16 = @intCast(models.items.len);
 		const self = models.addOne();
 		var amounts: [6]usize = .{0, 0, 0, 0, 0, 0};
@@ -67,9 +67,9 @@ const Model = struct {
 		}
 
 		for(0..6) |i| {
-			self.neighborFacingQuads[i] = allocator.alloc(u16, amounts[i]);
+			self.neighborFacingQuads[i] = main.globalAllocator.alloc(u16, amounts[i]);
 		}
-		self.internalQuads = allocator.alloc(u16, internalAmount);
+		self.internalQuads = main.globalAllocator.alloc(u16, internalAmount);
 
 		var indices: [6]usize = .{0, 0, 0, 0, 0, 0};
 		var internalIndex: usize = 0;
@@ -91,11 +91,11 @@ const Model = struct {
 		return modelIndex;
 	}
 
-	fn deinit(self: *const Model, allocator: NeverFailingAllocator) void {
+	fn deinit(self: *const Model) void {
 		for(0..6) |i| {
-			allocator.free(self.neighborFacingQuads[i]);
+			main.globalAllocator.free(self.neighborFacingQuads[i]);
 		}
-		allocator.free(self.internalQuads);
+		main.globalAllocator.free(self.internalQuads);
 	}
 
 	pub fn transformModel(model: Model, transformFunction: anytype, transformFunctionParameters: anytype) u16 {
@@ -116,7 +116,7 @@ const Model = struct {
 		for(quadList.items) |*quad| {
 			@call(.auto, transformFunction, .{quad} ++ transformFunctionParameters);
 		}
-		return Model.init(main.globalAllocator, quadList.items);
+		return Model.init(quadList.items);
 	}
 
 	fn appendQuadsToList(quadList: []const u16, list: *main.ListUnmanaged(FaceData), allocator: NeverFailingAllocator, block: main.blocks.Block, x: i32, y: i32, z: i32, comptime backFace: bool) void {
@@ -220,11 +220,11 @@ pub fn init() void {
 
 	nameToIndex = std.StringHashMap(u16).init(main.globalAllocator.allocator);
 
-	const cube = Model.init(main.globalAllocator, &box(.{0, 0, 0}, .{1, 1, 1}));
+	const cube = Model.init(&box(.{0, 0, 0}, .{1, 1, 1}));
 	nameToIndex.put("cube", cube) catch unreachable;
 	fullCube = cube;
 
-	const cross = Model.init(main.globalAllocator, &.{
+	const cross = Model.init(&.{
 		.{
 			.normal = .{-std.math.sqrt1_2, std.math.sqrt1_2, 0},
 			.corners = .{.{1, 1, 0}, .{1, 1, 1}, .{0, 0, 0}, .{0, 0, 1}},
@@ -252,7 +252,7 @@ pub fn init() void {
 	});
 	nameToIndex.put("cross", cross) catch unreachable;
 
-	const fence = Model.init(main.globalAllocator, &(
+	const fence = Model.init(&(
 		box(.{6.0/16.0, 6.0/16.0, 0}, .{10.0/16.0, 10.0/16.0, 1})
 		++ openBox(.{0, 7.0/16.0, 3.0/16.0}, .{1, 9.0/16.0, 6.0/16.0}, .x)
 		++ openBox(.{0, 7.0/16.0, 10.0/16.0}, .{1, 9.0/16.0, 13.0/16.0}, .x)
@@ -271,7 +271,7 @@ pub fn deinit() void {
 	quadSSBO.deinit();
 	nameToIndex.deinit();
 	for(models.items) |model| {
-		model.deinit(main.globalAllocator);
+		model.deinit();
 	}
 	models.deinit();
 	quads.deinit();
