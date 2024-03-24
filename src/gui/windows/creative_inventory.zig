@@ -25,7 +25,10 @@ const padding: f32 = 8;
 var items: main.List(Item) = undefined;
 
 pub fn tryTakingItems(index: usize, destination: *ItemStack, _: u16) void {
-	if(destination.item != null and !std.meta.eql(destination.item.?, items.items[index])) return;
+	trySwappingItems(index, destination);
+}
+pub fn trySwappingItems(index: usize, destination: *ItemStack) void {
+	destination.clear(); // Always replace the destination.
 	destination.item = items.items[index];
 	destination.amount = destination.item.?.stackSize();
 }
@@ -44,7 +47,7 @@ pub fn onOpen() void {
 		for(0..8) |_| {
 			if(i >= items.items.len) break;
 			const item = items.items[i];
-			row.add(ItemSlot.init(.{0, 0}, .{.item = item, .amount = 1}, &.{.tryTakingItems = &tryTakingItems}, i, .default, .takeOnly));
+			row.add(ItemSlot.init(.{0, 0}, .{.item = item, .amount = 1}, &.{.tryTakingItems = &tryTakingItems, .trySwappingItems = &trySwappingItems}, i, .default, .takeOnly));
 			i += 1;
 		}
 		list.add(row);

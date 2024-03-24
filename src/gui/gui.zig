@@ -453,7 +453,7 @@ pub fn mainButtonPressed() void {
 		_selectedWindow.mainButtonPressed(mousePosition);
 		_ = openWindows.orderedRemove(selectedI);
 		openWindows.appendAssumeCapacity(_selectedWindow);
-	} else if(main.game.world != null) {
+	} else if(main.game.world != null and inventory.carriedItemSlot.itemStack.item == null) {
 		main.Window.setMouseGrabbed(true);
 	}
 }
