@@ -58,6 +58,7 @@ showTitleBar: bool = true,
 titleBarExpanded: bool = false,
 hasBackground: bool = true,
 hideIfMouseIsGrabbed: bool = true, // TODO: Allow the user to change this with a button, to for example leave the inventory open while playing.
+closeIfMouseIsGrabbed: bool = false,
 isHud: bool = false,
 
 // TODO: Option to disable the close button for certain windows that cannot be reopened.
