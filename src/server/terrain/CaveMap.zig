@@ -32,7 +32,7 @@ pub const CaveMapFragment = struct {
 			},
 			.voxelShift = @ctz(voxelSize),
 		};
-		@memset(&self.data, 0);
+		@memset(&self.data, std.math.maxInt(u64));
 	}
 
 	fn getIndex(x: i32, y: i32) usize {
