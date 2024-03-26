@@ -254,14 +254,7 @@ const PrimitiveMesh = struct {
 		const x = (wx >> mesh.chunk.voxelSizeShift) & chunk.chunkMask;
 		const y = (wy >> mesh.chunk.voxelSizeShift) & chunk.chunkMask;
 		const z = (wz >> mesh.chunk.voxelSizeShift) & chunk.chunkMask;
-		return .{
-			mesh.lightingData[0].getValue(x, y, z),
-			mesh.lightingData[1].getValue(x, y, z),
-			mesh.lightingData[2].getValue(x, y, z),
-			mesh.lightingData[3].getValue(x, y, z),
-			mesh.lightingData[4].getValue(x, y, z),
-			mesh.lightingData[5].getValue(x, y, z),
-		};
+		return mesh.lightingData[1].getValue(x, y, z) ++ mesh.lightingData[0].getValue(x, y, z);
 	}
 
 	fn getLightAt(parent: *ChunkMesh, x: i32, y: i32, z: i32) [6]u8 {
@@ -396,7 +389,7 @@ pub const ChunkMesh = struct {
 	pos: chunk.ChunkPosition,
 	size: i32,
 	chunk: *chunk.Chunk,
-	lightingData: [6]*lighting.ChannelChunk,
+	lightingData: [2]*lighting.ChannelChunk,
 	opaqueMesh: PrimitiveMesh,
 	transparentMesh: PrimitiveMesh,
 	lastNeighborsSameLod: [6]?*const ChunkMesh = [_]?*const ChunkMesh{null} ** 6,
@@ -425,12 +418,8 @@ pub const ChunkMesh = struct {
 			.transparentMesh = .{},
 			.chunk = ch,
 			.lightingData = .{
-				lighting.ChannelChunk.init(ch, .sun_red),
-				lighting.ChannelChunk.init(ch, .sun_green),
-				lighting.ChannelChunk.init(ch, .sun_blue),
-				lighting.ChannelChunk.init(ch, .red),
-				lighting.ChannelChunk.init(ch, .green),
-				lighting.ChannelChunk.init(ch, .blue),
+				lighting.ChannelChunk.init(ch, false),
+				lighting.ChannelChunk.init(ch, true),
 			},
 		};
 	}
@@ -552,9 +541,7 @@ pub const ChunkMesh = struct {
 			}
 		}
 		self.mutex.unlock();
-		for(self.lightingData[3..]) |lightingData| {
-			lightingData.propagateLights(lightEmittingBlocks.items, true);
-		}
+		self.lightingData[0].propagateLights(lightEmittingBlocks.items, true);
 		sunLight: {
 			var sunStarters: [chunk.chunkSize*chunk.chunkSize][3]u8 = undefined;
 			var index: usize = 0;
@@ -572,9 +559,7 @@ pub const ChunkMesh = struct {
 					}
 				}
 			}
-			for(self.lightingData[0..3]) |lightingData| {
-				lightingData.propagateLights(sunStarters[0..index], true);
-			}
+			self.lightingData[1].propagateLights(sunStarters[0..index], true);
 		}
 	}
 
@@ -731,9 +716,7 @@ pub const ChunkMesh = struct {
 			lightingData.propagateLightsDestructive(&.{.{@intCast(x), @intCast(y), @intCast(z)}});
 		}
 		if(newBlock.light() != 0) {
-			for(self.lightingData[3..]) |lightingData| {
-				lightingData.propagateLights(&.{.{@intCast(x), @intCast(y), @intCast(z)}}, false);
-			}
+			self.lightingData[0].propagateLights(&.{.{@intCast(x), @intCast(y), @intCast(z)}}, false);
 		}
 		self.mutex.lock();
 		defer self.mutex.unlock();

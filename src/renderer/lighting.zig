@@ -7,30 +7,6 @@ const chunk = main.chunk;
 const chunk_meshing = @import("chunk_meshing.zig");
 const mesh_storage = @import("mesh_storage.zig");
 
-const Channel = enum(u8) {
-	sun_red = 0,
-	sun_green = 1,
-	sun_blue = 2,
-	red = 3,
-	green = 4,
-	blue = 5,
-
-	pub fn shift(self: Channel) u5 {
-		switch(self) {
-			.red, .sun_red => return 16,
-			.green, .sun_green => return 8,
-			.blue, .sun_blue => return 0,
-		}
-	}
-
-	pub fn isSun(self: Channel) bool {
-		switch(self) {
-			.sun_red, .sun_green, .sun_blue => return true,
-			.red, .green, .blue => return false,
-		}
-	}
-};
-
 var memoryPool: std.heap.MemoryPool(ChannelChunk) = undefined;
 var memoryPoolMutex: std.Thread.Mutex = .{};
 
@@ -42,20 +18,28 @@ pub fn deinit() void {
 	memoryPool.deinit();
 }
 
+fn extractColor(in: u32) [3]u8 {
+	return .{
+		@truncate(in >> 16),
+		@truncate(in >> 8),
+		@truncate(in),
+	};
+}
+
 pub const ChannelChunk = struct {
-	data: [chunk.chunkVolume]Atomic(u8),
+	data: [chunk.chunkVolume][3]Atomic(u8),
 	mutex: std.Thread.Mutex,
 	ch: *chunk.Chunk,
-	channel: Channel,
+	isSun: bool,
 
-	pub fn init(ch: *chunk.Chunk, channel: Channel) *ChannelChunk {
+	pub fn init(ch: *chunk.Chunk, isSun: bool) *ChannelChunk {
 		memoryPoolMutex.lock();
 		const self = memoryPool.create() catch unreachable;
 		memoryPoolMutex.unlock();
 		self.mutex = .{};
 		self.ch = ch;
-		self.channel = channel;
-		@memset(&self.data, Atomic(u8).init(0));
+		self.isSun = isSun;
+		@memset(&self.data, .{Atomic(u8).init(0)} ** 3);
 		return self;
 	}
 
@@ -69,8 +53,9 @@ pub const ChannelChunk = struct {
 		x: u5,
 		y: u5,
 		z: u5,
-		value: u8,
+		value: [3]u8,
 		sourceDir: u3,
+		activeValue: u3,
 	};
 
 	const PositionEntry = struct {
@@ -84,9 +69,9 @@ pub const ChannelChunk = struct {
 		entries: main.ListUnmanaged(PositionEntry),
 	};
 
-	pub fn getValue(self: *const ChannelChunk, x: i32, y: i32, z: i32) u8 {
+	pub fn getValue(self: *const ChannelChunk, x: i32, y: i32, z: i32) [3]u8 {
 		const index = chunk.getIndex(x, y, z);
-		return self.data[index].load(.Unordered);
+		return .{self.data[index][0].load(.Unordered), self.data[index][1].load(.Unordered), self.data[index][2].load(.Unordered)};
 	}
 
 	fn propagateDirect(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry)) void {
@@ -100,27 +85,45 @@ pub const ChannelChunk = struct {
 		self.mutex.lock();
 		while(lightQueue.dequeue()) |entry| {
 			const index = chunk.getIndex(entry.x, entry.y, entry.z);
-			if(entry.value <= self.data[index].load(.Unordered)) continue;
-			self.data[index].store(entry.value, .Unordered);
+			const oldValue: [3]u8 = .{
+				self.data[index][0].load(.Unordered),
+				self.data[index][1].load(.Unordered),
+				self.data[index][2].load(.Unordered),
+			};
+			const newValue: [3]u8 = .{
+				@max(entry.value[0], oldValue[0]),
+				@max(entry.value[1], oldValue[1]),
+				@max(entry.value[2], oldValue[2]),
+			};
+			if(newValue[0] == oldValue[0] and newValue[1] == oldValue[1] and newValue[2] == oldValue[2]) continue;
+			self.data[index][0].store(newValue[0], .Unordered);
+			self.data[index][1].store(newValue[1], .Unordered);
+			self.data[index][2].store(newValue[2], .Unordered);
 			for(chunk.Neighbors.iterable) |neighbor| {
 				if(neighbor == entry.sourceDir) continue;
 				const nx = entry.x + chunk.Neighbors.relX[neighbor];
 				const ny = entry.y + chunk.Neighbors.relY[neighbor];
 				const nz = entry.z + chunk.Neighbors.relZ[neighbor];
-				var result: Entry = .{.x = @intCast(nx & chunk.chunkMask), .y = @intCast(ny & chunk.chunkMask), .z = @intCast(nz & chunk.chunkMask), .value = entry.value, .sourceDir = neighbor ^ 1};
-				if(!self.channel.isSun() or neighbor != chunk.Neighbors.dirDown or result.value != 255) {
-					result.value -|= 8*|@as(u8, @intCast(self.ch.pos.voxelSize));
+				var result: Entry = .{.x = @intCast(nx & chunk.chunkMask), .y = @intCast(ny & chunk.chunkMask), .z = @intCast(nz & chunk.chunkMask), .value = newValue, .sourceDir = neighbor ^ 1, .activeValue = 0b111};
+				if(!self.isSun or neighbor != chunk.Neighbors.dirDown or result.value[0] != 255 or result.value[1] != 255 or result.value[2] != 255) {
+					result.value[0] -|= 8*|@as(u8, @intCast(self.ch.pos.voxelSize));
+					result.value[1] -|= 8*|@as(u8, @intCast(self.ch.pos.voxelSize));
+					result.value[2] -|= 8*|@as(u8, @intCast(self.ch.pos.voxelSize));
 				}
-				if(result.value == 0) continue;
+				if(result.value[0] == 0 and result.value[1] == 0 and result.value[2] == 0) continue;
 				if(nx < 0 or nx >= chunk.chunkSize or ny < 0 or ny >= chunk.chunkSize or nz < 0 or nz >= chunk.chunkSize) {
 					neighborLists[neighbor].append(main.stackAllocator, result);
 					continue;
 				}
 				const neighborIndex = chunk.getIndex(nx, ny, nz);
-				var absorption: u8 = @intCast(self.ch.blocks[neighborIndex].absorption() >> self.channel.shift() & 255);
-				absorption *|= @intCast(self.ch.pos.voxelSize);
-				result.value -|= absorption;
-				if(result.value != 0) lightQueue.enqueue(result);
+				var absorption: [3]u8 = extractColor(self.ch.blocks[neighborIndex].absorption());
+				absorption[0] *|= @intCast(self.ch.pos.voxelSize);
+				absorption[1] *|= @intCast(self.ch.pos.voxelSize);
+				absorption[2] *|= @intCast(self.ch.pos.voxelSize);
+				result.value[0] -|= absorption[0];
+				result.value[1] -|= absorption[1];
+				result.value[2] -|= absorption[2];
+				if(result.value[0] != 0 or result.value[1] != 0 or result.value[2] != 0) lightQueue.enqueue(result);
 			}
 		}
 		self.mutex.unlock();
@@ -132,7 +135,7 @@ pub const ChannelChunk = struct {
 			if(neighborLists[neighbor].items.len == 0) continue;
 			const neighborMesh = mesh_storage.getNeighborAndIncreaseRefCount(self.ch.pos, self.ch.pos.voxelSize, @intCast(neighbor)) orelse continue;
 			defer neighborMesh.decreaseRefCount();
-			neighborMesh.lightingData[@intFromEnum(self.channel)].propagateFromNeighbor(lightQueue, neighborLists[neighbor].items);
+			neighborMesh.lightingData[@intFromBool(self.isSun)].propagateFromNeighbor(lightQueue, neighborLists[neighbor].items);
 		}
 	}
 
@@ -149,32 +152,62 @@ pub const ChannelChunk = struct {
 		self.mutex.lock();
 		while(lightQueue.dequeue()) |entry| {
 			const index = chunk.getIndex(entry.x, entry.y, entry.z);
-			if(entry.value != self.data[index].load(.Unordered)) {
-				if(self.data[index].load(.Unordered) != 0) {
-					constructiveList.append(main.stackAllocator, .{.x = entry.x, .y = entry.y, .z = entry.z});
-				}
+			const oldValue: [3]u8 = .{
+				self.data[index][0].load(.Unordered),
+				self.data[index][1].load(.Unordered),
+				self.data[index][2].load(.Unordered),
+			};
+			var activeValue: @Vector(3, bool) = @bitCast(entry.activeValue);
+			var append: bool = false;
+			if(activeValue[0] and entry.value[0] != oldValue[0]) {
+				if(oldValue[0] != 0) append = true;
+				activeValue[0] = false;
+			}
+			if(activeValue[1] and entry.value[1] != oldValue[1]) {
+				if(oldValue[1] != 0) append = true;
+				activeValue[1] = false;
+			}
+			if(activeValue[2] and entry.value[2] != oldValue[2]) {
+				if(oldValue[2] != 0) append = true;
+				activeValue[2] = false;
+			}
+			if(append) {
+				constructiveList.append(main.stackAllocator, .{.x = entry.x, .y = entry.y, .z = entry.z});
+			}
+			if(entry.value[0] == 0) activeValue[0] = false;
+			if(entry.value[1] == 0) activeValue[1] = false;
+			if(entry.value[2] == 0) activeValue[2] = false;
+			if(isFirstIteration) activeValue = .{true, true, true};
+			if(!@reduce(.Or, activeValue)) {
 				continue;
 			}
-			if(entry.value == 0 and !isFirstIteration) continue;
 			isFirstIteration = false;
-			self.data[index].store(0, .Unordered);
+			if(activeValue[0]) self.data[index][0].store(0, .Unordered);
+			if(activeValue[1]) self.data[index][1].store(0, .Unordered);
+			if(activeValue[2]) self.data[index][2].store(0, .Unordered);
 			for(chunk.Neighbors.iterable) |neighbor| {
 				if(neighbor == entry.sourceDir) continue;
 				const nx = entry.x + chunk.Neighbors.relX[neighbor];
 				const ny = entry.y + chunk.Neighbors.relY[neighbor];
 				const nz = entry.z + chunk.Neighbors.relZ[neighbor];
-				var result: Entry = .{.x = @intCast(nx & chunk.chunkMask), .y = @intCast(ny & chunk.chunkMask), .z = @intCast(nz & chunk.chunkMask), .value = entry.value, .sourceDir = neighbor ^ 1};
-				if(!self.channel.isSun() or neighbor != chunk.Neighbors.dirDown or result.value != 255) {
-					result.value -|= 8*|@as(u8, @intCast(self.ch.pos.voxelSize));
+				var result: Entry = .{.x = @intCast(nx & chunk.chunkMask), .y = @intCast(ny & chunk.chunkMask), .z = @intCast(nz & chunk.chunkMask), .value = entry.value, .sourceDir = neighbor ^ 1, .activeValue = @bitCast(activeValue)};
+				if(!self.isSun or neighbor != chunk.Neighbors.dirDown or result.value[0] != 255 or result.value[1] != 255 or result.value[2] != 255) {
+					result.value[0] -|= 8*|@as(u8, @intCast(self.ch.pos.voxelSize));
+					result.value[1] -|= 8*|@as(u8, @intCast(self.ch.pos.voxelSize));
+					result.value[2] -|= 8*|@as(u8, @intCast(self.ch.pos.voxelSize));
 				}
 				if(nx < 0 or nx >= chunk.chunkSize or ny < 0 or ny >= chunk.chunkSize or nz < 0 or nz >= chunk.chunkSize) {
 					neighborLists[neighbor].append(main.stackAllocator, result);
 					continue;
 				}
 				const neighborIndex = chunk.getIndex(nx, ny, nz);
-				var absorption: u8 = @intCast(self.ch.blocks[neighborIndex].absorption() >> self.channel.shift() & 255);
-				absorption *|= @intCast(self.ch.pos.voxelSize);
-				result.value -|= absorption;
+				var absorption: [3]u8 = extractColor(self.ch.blocks[neighborIndex].absorption());
+				absorption[0] *|= @intCast(self.ch.pos.voxelSize);
+				absorption[1] *|= @intCast(self.ch.pos.voxelSize);
+				absorption[2] *|= @intCast(self.ch.pos.voxelSize);
+				result.value[0] -|= absorption[0];
+				result.value[1] -|= absorption[1];
+				result.value[2] -|= absorption[2];
 				lightQueue.enqueue(result);
 			}
 		}
@@ -188,7 +221,7 @@ pub const ChannelChunk = struct {
 			const neighborMesh = mesh_storage.getNeighborAndIncreaseRefCount(self.ch.pos, self.ch.pos.voxelSize, @intCast(neighbor)) orelse continue;
 			constructiveEntries.append(main.stackAllocator, .{
 				.mesh = neighborMesh,
-				.entries = neighborMesh.lightingData[@intFromEnum(self.channel)].propagateDestructiveFromNeighbor(lightQueue, neighborLists[neighbor].items, constructiveEntries),
+				.entries = neighborMesh.lightingData[@intFromBool(self.isSun)].propagateDestructiveFromNeighbor(lightQueue, neighborLists[neighbor].items, constructiveEntries),
 			});
 		}
 
@@ -200,10 +233,14 @@ pub const ChannelChunk = struct {
 		for(lights) |entry| {
 			const index = chunk.getIndex(entry.x, entry.y, entry.z);
 			var result = entry;
-			var absorption: u8 = @intCast(self.ch.blocks[index].absorption() >> self.channel.shift() & 255);
-			absorption *|= @intCast(self.ch.pos.voxelSize);
-			result.value -|= absorption;
-			if(result.value != 0) lightQueue.enqueue(result);
+			var absorption: [3]u8 = extractColor(self.ch.blocks[index].absorption());
+			absorption[0] *|= @intCast(self.ch.pos.voxelSize);
+			absorption[1] *|= @intCast(self.ch.pos.voxelSize);
+			absorption[2] *|= @intCast(self.ch.pos.voxelSize);
+			result.value[0] -|= absorption[0];
+			result.value[1] -|= absorption[1];
+			result.value[2] -|= absorption[2];
+			if(result.value[0] != 0 or result.value[1] != 0 or result.value[2] != 0) lightQueue.enqueue(result);
 		}
 		self.propagateDirect(lightQueue);
 	}
@@ -213,9 +250,13 @@ pub const ChannelChunk = struct {
 		for(lights) |entry| {
 			const index = chunk.getIndex(entry.x, entry.y, entry.z);
 			var result = entry;
-			var absorption: u8 = @intCast(self.ch.blocks[index].absorption() >> self.channel.shift() & 255);
-			absorption *|= @intCast(self.ch.pos.voxelSize);
-			result.value -|= absorption;
+			var absorption: [3]u8 = extractColor(self.ch.blocks[index].absorption());
+			absorption[0] *|= @intCast(self.ch.pos.voxelSize);
+			absorption[1] *|= @intCast(self.ch.pos.voxelSize);
+			absorption[2] *|= @intCast(self.ch.pos.voxelSize);
+			result.value[0] -|= absorption[0];
+			result.value[1] -|= absorption[1];
+			result.value[2] -|= absorption[2];
 			lightQueue.enqueue(result);
 		}
 		return self.propagateDestructive(lightQueue, constructiveEntries, false);
@@ -226,10 +267,10 @@ pub const ChannelChunk = struct {
 		defer lightQueue.deinit();
 		for(lights) |pos| {
 			const index = chunk.getIndex(pos[0], pos[1], pos[2]);
-			if(self.channel.isSun()) {
-				lightQueue.enqueue(.{.x = @intCast(pos[0]), .y = @intCast(pos[1]), .z = @intCast(pos[2]), .value = 255, .sourceDir = 6});
+			if(self.isSun) {
+				lightQueue.enqueue(.{.x = @intCast(pos[0]), .y = @intCast(pos[1]), .z = @intCast(pos[2]), .value = .{255, 255, 255}, .sourceDir = 6, .activeValue = 0b111});
 			} else {
-				lightQueue.enqueue(.{.x = @intCast(pos[0]), .y = @intCast(pos[1]), .z = @intCast(pos[2]), .value = @intCast(self.ch.blocks[index].light() >> self.channel.shift() & 255), .sourceDir = 6});
+				lightQueue.enqueue(.{.x = @intCast(pos[0]), .y = @intCast(pos[1]), .z = @intCast(pos[2]), .value = extractColor(self.ch.blocks[index].light()), .sourceDir = 6, .activeValue = 0b111});
 			}
 		}
 		if(checkNeighbors) {
@@ -260,18 +301,25 @@ pub const ChannelChunk = struct {
 						const otherZ = z+%chunk.Neighbors.relZ[neighbor] & chunk.chunkMask;
 						const neighborMesh = mesh_storage.getNeighborAndIncreaseRefCount(self.ch.pos, self.ch.pos.voxelSize, @intCast(neighbor)) orelse continue;
 						defer neighborMesh.decreaseRefCount();
-						const neighborLightChunk = neighborMesh.lightingData[@intFromEnum(self.channel)];
+						const neighborLightChunk = neighborMesh.lightingData[@intFromBool(self.isSun)];
 						const index = chunk.getIndex(x, y, z);
 						const neighborIndex = chunk.getIndex(otherX, otherY, otherZ);
-						var value: u8 = neighborLightChunk.data[neighborIndex].load(.Unordered);
-						if(!self.channel.isSun() or neighbor != chunk.Neighbors.dirUp or value != 255) {
-							value -|= 8*|@as(u8, @intCast(self.ch.pos.voxelSize));
+						var value: [3]u8 = .{neighborLightChunk.data[neighborIndex][0].load(.Unordered), neighborLightChunk.data[neighborIndex][1].load(.Unordered), neighborLightChunk.data[neighborIndex][2].load(.Unordered)};
+						
+						if(!self.isSun or neighbor != chunk.Neighbors.dirUp or value[0] != 255 or value[1] != 255 or value[2] != 255) {
+							value[0] -|= 8*|@as(u8, @intCast(self.ch.pos.voxelSize));
+							value[1] -|= 8*|@as(u8, @intCast(self.ch.pos.voxelSize));
+							value[2] -|= 8*|@as(u8, @intCast(self.ch.pos.voxelSize));
 						}
-						if(value == 0) continue;
-						var absorption: u8 = @intCast(self.ch.blocks[index].absorption() >> self.channel.shift() & 255);
-						absorption *|= @intCast(self.ch.pos.voxelSize);
-						value -|= absorption;
-						if(value != 0) lightQueue.enqueue(.{.x = @intCast(x), .y = @intCast(y), .z = @intCast(z), .value = value, .sourceDir = @intCast(neighbor)});
+						if(value[0] == 0 and value[1] == 0 and value[2] == 0) continue;
+						var absorption: [3]u8 = extractColor(self.ch.blocks[index].absorption());
+						absorption[0] *|= @intCast(self.ch.pos.voxelSize);
+						absorption[1] *|= @intCast(self.ch.pos.voxelSize);
+						absorption[2] *|= @intCast(self.ch.pos.voxelSize);
+						value[0] -|= absorption[0];
+						value[1] -|= absorption[1];
+						value[2] -|= absorption[2];
+						if(value[0] != 0 or value[1] != 0 or value[2] != 0) lightQueue.enqueue(.{.x = @intCast(x), .y = @intCast(y), .z = @intCast(z), .value = value, .sourceDir = @intCast(neighbor), .activeValue = 0b111});
 					}
 				}
 			}
@@ -284,7 +332,7 @@ pub const ChannelChunk = struct {
 		defer lightQueue.deinit();
 		for(lights) |pos| {
 			const index = chunk.getIndex(pos[0], pos[1], pos[2]);
-			lightQueue.enqueue(.{.x = @intCast(pos[0]), .y = @intCast(pos[1]), .z = @intCast(pos[2]), .value = self.data[index].load(.Unordered), .sourceDir = 6});
+			lightQueue.enqueue(.{.x = @intCast(pos[0]), .y = @intCast(pos[1]), .z = @intCast(pos[2]), .value = .{self.data[index][0].load(.Unordered), self.data[index][1].load(.Unordered), self.data[index][2].load(.Unordered)}, .sourceDir = 6, .activeValue = 0b111});
 		}
 		var constructiveEntries: main.ListUnmanaged(ChunkEntries) = .{};
 		defer constructiveEntries.deinit(main.stackAllocator);
@@ -297,13 +345,15 @@ pub const ChannelChunk = struct {
 			defer if(mesh) |_mesh| _mesh.decreaseRefCount();
 			var entryList = entries.entries;
 			defer entryList.deinit(main.stackAllocator);
-			const channelChunk = if(mesh) |_mesh| _mesh.lightingData[@intFromEnum(self.channel)] else self;
+			const channelChunk = if(mesh) |_mesh| _mesh.lightingData[@intFromBool(self.isSun)] else self;
 			for(entryList.items) |entry| {
 				const index = chunk.getIndex(entry.x, entry.y, entry.z);
-				const value = channelChunk.data[index].load(.Unordered);
-				if(value == 0) continue;
-				channelChunk.data[index].store(0, .Unordered);
-				lightQueue.enqueue(.{.x = entry.x, .y = entry.y, .z = entry.z, .value = value, .sourceDir = 6});
+				const value = .{channelChunk.data[index][0].load(.Unordered), channelChunk.data[index][1].load(.Unordered), channelChunk.data[index][2].load(.Unordered)};
+				if(value[0] == 0 and value[1] == 0 and value[2] == 0) continue;
+				channelChunk.data[index][0].store(0, .Unordered);
+				channelChunk.data[index][1].store(0, .Unordered);
+				channelChunk.data[index][2].store(0, .Unordered);
+				lightQueue.enqueue(.{.x = entry.x, .y = entry.y, .z = entry.z, .value = value, .sourceDir = 6, .activeValue = 0b111});
 			}
 			channelChunk.propagateDirect(&lightQueue);
 		}
