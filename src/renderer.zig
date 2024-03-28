@@ -832,8 +832,25 @@ pub const MeshSelection = struct {
 		}
 	}
 
-	pub fn breakBlock() void {
+	pub fn breakBlock(inventoryStack: *main.items.ItemStack) void {
 		if(selectedBlockPos) |selectedPos| {
+			var block = mesh_storage.getBlockFromRenderThread(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
+			// TODO: Breaking animation and tools.
+			if(inventoryStack.item) |item| {
+				switch(item) {
+					.baseItem => |baseItem| {
+						if(baseItem.leftClickUse) |leftClick| {
+							const relPos = lastPos - @as(Vec3d, @floatFromInt(selectedPos));
+							if(leftClick(main.game.world.?, selectedPos, relPos, lastDir, &block)) {
+								// TODO: world.updateBlock(bi.x, bi.y, bi.z, block.data); (→ Sending it over the network)
+								mesh_storage.updateBlock(selectedPos[0], selectedPos[1], selectedPos[2], block);
+							}
+							return;
+						}
+					},
+					else => {},
+				}
+			}
 			mesh_storage.updateBlock(selectedPos[0], selectedPos[1], selectedPos[2], .{.typ = 0, .data = 0});
 		}
 	}

@@ -57,7 +57,7 @@ fn rotationMatrixTransform(quad: *main.models.QuadInfo, transformMatrix: Mat4f) 
 	}
 }
 
-const RotationModes = struct {
+pub const RotationModes = struct {
 	pub const NoRotation = struct {
 		pub const id: []const u8 = "no_rotation";
 		fn init() void {}
@@ -196,8 +196,11 @@ const RotationModes = struct {
 		pub const id: []const u8 = "stairs";
 		var modelIndex: u16 = 0;
 
+		fn subBlockMask(x: u1, y: u1, z: u1) u8 {
+			return @as(u8, 1) << ((@as(u3, x)*2 + @as(u3, y))*2 + z);
+		}
 		fn hasSubBlock(stairData: u8, x: u1, y: u1, z: u1) bool {
-			return stairData & @as(u8, 1) << ((@as(u3, x)*2 + @as(u3, y))*2 + z) == 0;
+			return stairData & subBlockMask(x, y, z) == 0;
 		}
 
 		fn init() void {
@@ -301,7 +304,7 @@ const RotationModes = struct {
 					// Greedy mesh it:
 					var faces: [2]GreedyFaceInfo = undefined;
 					const frontFaces = mergeFaces(visibleFront, &faces);
-					for(frontFaces) |face| {
+					for(frontFaces) |*face| {
 						var xLower = @abs(xAxis)*@as(Vec3f, @splat(face.min[0]));
 						var xUpper = @abs(xAxis)*@as(Vec3f, @splat(face.max[0]));
 						if(@reduce(.Add, xAxis) > 0) std.mem.swap(Vec3f, &xLower, &xUpper);
@@ -309,6 +312,25 @@ const RotationModes = struct {
 						var yUpper = @abs(yAxis)*@as(Vec3f, @splat(face.max[1]));
 						if(@reduce(.Add, yAxis) > 0) std.mem.swap(Vec3f, &yLower, &yUpper);
 						const zValue: Vec3f = @floatFromInt(zComponent*zMap[1]);
+						if(neighbor != chunk.Neighbors.dirUp) {
+							if(neighbor == chunk.Neighbors.dirNegX or neighbor == chunk.Neighbors.dirPosY) {
+								face.min[1] = 1 - face.min[1];
+								face.max[1] = 1 - face.max[1];
+								const swap = face.min[1];
+								face.min[1] = face.max[1];
+								face.max[1] = swap;
+							} else if(neighbor == chunk.Neighbors.dirDown) {
+								face.min[0] = 1 - face.min[0];
+								face.max[0] = 1 - face.max[0];
+								const swap = face.min[0];
+								face.min[0] = face.max[0];
+								face.max[0] = swap;
+							} else {
+								face.min = Vec2f{1, 1} - face.min;
+								face.max = Vec2f{1, 1} - face.max;
+								std.mem.swap(Vec2f, &face.min, &face.max);
+							}
+						}
 						quads.append(.{
 							.normal = zAxis,
 							.corners = .{
@@ -322,7 +344,7 @@ const RotationModes = struct {
 						});
 					}
 					const middleFaces = mergeFaces(visibleMiddle, &faces);
-					for(middleFaces) |face| {
+					for(middleFaces) |*face| {
 						var xLower = @abs(xAxis)*@as(Vec3f, @splat(face.min[0]));
 						var xUpper = @abs(xAxis)*@as(Vec3f, @splat(face.max[0]));
 						if(@reduce(.Add, xAxis) > 0) std.mem.swap(Vec3f, &xLower, &xUpper);
@@ -330,6 +352,25 @@ const RotationModes = struct {
 						var yUpper = @abs(yAxis)*@as(Vec3f, @splat(face.max[1]));
 						if(@reduce(.Add, yAxis) > 0) std.mem.swap(Vec3f, &yLower, &yUpper);
 						const zValue = @as(Vec3f, @floatFromInt(zComponent))*@as(Vec3f, @splat(0.5));
+						if(neighbor != chunk.Neighbors.dirUp) {
+							if(neighbor == chunk.Neighbors.dirNegX or neighbor == chunk.Neighbors.dirPosY) {
+								face.min[1] = 1 - face.min[1];
+								face.max[1] = 1 - face.max[1];
+								const swap = face.min[1];
+								face.min[1] = face.max[1];
+								face.max[1] = swap;
+							} else if(neighbor == chunk.Neighbors.dirDown) {
+								face.min[0] = 1 - face.min[0];
+								face.max[0] = 1 - face.max[0];
+								const swap = face.min[0];
+								face.min[0] = face.max[0];
+								face.max[0] = swap;
+							} else {
+								face.min = Vec2f{1, 1} - face.min;
+								face.max = Vec2f{1, 1} - face.max;
+								std.mem.swap(Vec2f, &face.min, &face.max);
+							}
+						}
 						quads.append(.{
 							.normal = zAxis,
 							.corners = .{
@@ -354,11 +395,49 @@ const RotationModes = struct {
 		pub fn model(block: Block) u16 {
 			return blocks.meshes.modelIndexStart(block) + (block.data & 255);
 		}
-		var data: u8 = 0;
+
 		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3d, _: Vec3f, _: Vec3i, currentData: *Block, blockPlacing: bool) bool {
 			if(blockPlacing) {
-				currentData.data = data; // TODO: Set this to a full block and allow modifying the stairs with a chisel.
-				data +%= 1;
+				currentData.data = 0;
+				return true;
+			}
+			return false;
+		}
+
+		fn intersectHalfUnitBox(start: Vec3f, invDir: Vec3f) ?f32 {
+			const t0 = start*invDir;
+			const t1 = (start + Vec3f{0.5, 0.5, 0.5})*invDir;
+			const entry = @reduce(.Max, @min(t0, t1));
+			const exit = @reduce(.Min, @max(t0, t1));
+			if(entry > exit or exit < 0) {
+				return null;
+			} else return entry;
+		}
+
+		pub fn chisel(_: *main.game.World, _: Vec3i, relativePlayerPos: Vec3d, playerDir: Vec3f, currentData: *Block) bool {
+			const invDir = @as(Vec3f, @splat(1))/playerDir;
+			const relPos: Vec3f = @floatCast(-relativePlayerPos);
+			const data: u8 = @truncate(currentData.data);
+			var minT: f32 = std.math.floatMax(f32);
+			var minPos: @Vector(3, u1) = undefined;
+			for(0..8) |i| {
+				const subPos: @Vector(3, u1) = .{
+					@truncate(i >> 2),
+					@truncate(i >> 1),
+					@truncate(i),
+				};
+				if(hasSubBlock(data, subPos[0], subPos[1], subPos[2])) {
+					const relSubPos = relPos + @as(Vec3f, @floatFromInt(subPos))*@as(Vec3f, @splat(0.5));
+					if(intersectHalfUnitBox(relSubPos, invDir)) |t| {
+						if(t < minT) {
+							minT = t;
+							minPos = subPos;
+						}
+					}
+				}
+			}
+			if(minT != std.math.floatMax(f32)) {
+				currentData.data = data | subBlockMask(minPos[0], minPos[1], minPos[2]);
 				return true;
 			}
 			return false;

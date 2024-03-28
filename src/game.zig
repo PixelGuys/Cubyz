@@ -91,7 +91,7 @@ pub const Player = struct {
 
 	pub fn breakBlock() void { // TODO: Breaking animation and tools
 		if(!main.Window.grabbed) return;
-		main.renderer.MeshSelection.breakBlock();
+		main.renderer.MeshSelection.breakBlock(&inventory__SEND_CHANGES_TO_SERVER.items[selectedSlot]);
 	}
 };
 
