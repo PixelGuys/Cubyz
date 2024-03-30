@@ -269,21 +269,63 @@ const PrimitiveMesh = struct {
 		return getValues(neighborMesh, wx, wy, wz);
 	}
 
+	fn getCornerLight(parent: *ChunkMesh, pos: Vec3i, normal: Vec3f) [6]u8 {
+		const lightPos = @as(Vec3f, @floatFromInt(pos)) + normal*@as(Vec3f, @splat(0.5)) - @as(Vec3f, @splat(0.5));
+		const startPos: Vec3i = @intFromFloat(@floor(lightPos));
+		const interp = lightPos - @floor(lightPos);
+		var val: [6]f32 = .{0, 0, 0, 0, 0, 0};
+		var dx: i32 = 0;
+		while(dx <= 1) : (dx += 1) {
+			var dy: i32 = 0;
+			while(dy <= 1) : (dy += 1) {
+				var dz: i32 = 0;
+				while(dz <= 1) : (dz += 1) {
+					var weight: f32 = 0;
+					if(dx == 0) weight = 1 - interp[0]
+					else weight = interp[0];
+					if(dy == 0) weight *= 1 - interp[1]
+					else weight *= interp[1];
+					if(dz == 0) weight *= 1 - interp[2]
+					else weight *= interp[2];
+					const lightVal: [6]u8 = getLightAt(parent, startPos[0] +% dx, startPos[1] +% dy, startPos[2] +% dz);
+					for(0..6) |i| {
+						val[i] += @as(f32, @floatFromInt(lightVal[i]))*weight;
+					}
+				}
+			}
+		}
+		var result: [6]u8 = undefined;
+		for(0..6) |i| {
+			result[i] = std.math.lossyCast(u8, val[i]);
+		}
+		return result;
+	}
+
 	fn getLight(parent: *ChunkMesh, blockPos: Vec3i, quadIndex: u16) [4]u32 {
-		var rawVals: [4][6]u5 = undefined;
+		// TODO: This is doing 12 interpolations of 8 values each. For full cube models only 4 interpolations or 4 values each would be needed.
 		const normal = models.quads.items[quadIndex].normal;
+		var cornerVals: [2][2][2][6]u8 = undefined;
+		{
+			var dx: u31 = 0;
+			while(dx <= 1) : (dx += 1) {
+				var dy: u31 = 0;
+				while(dy <= 1) : (dy += 1) {
+					var dz: u31 = 0;
+					while(dz <= 1) : (dz += 1) {
+						cornerVals[dx][dy][dz] = getCornerLight(parent, blockPos +% Vec3i{dx, dy, dz}, normal);
+					}
+				}
+			}
+		}
+		var rawVals: [4][6]u5 = undefined;
 		for(0..4) |i| {
 			const vertexPos = models.quads.items[quadIndex].corners[i];
-			const lightPos = vertexPos + @as(Vec3f, @floatFromInt(blockPos)) + normal*@as(Vec3f, @splat(0.5)) - @as(Vec3f, @splat(0.5));
-			const startPos: Vec3i = @intFromFloat(@floor(lightPos));
-			const interp = lightPos - @floor(lightPos);
+			const lightPos = vertexPos + @as(Vec3f, @floatFromInt(blockPos));
+			const interp = lightPos - @as(Vec3f, @floatFromInt(blockPos));
 			var val: [6]f32 = .{0, 0, 0, 0, 0, 0};
-			var dx: i32 = 0;
-			while(dx <= 1) : (dx += 1) {
-				var dy: i32 = 0;
-				while(dy <= 1) : (dy += 1) {
-					var dz: i32 = 0;
-					while(dz <= 1) : (dz += 1) {
+			for(0..2) |dx| {
+				for(0..2) |dy| {
+					for(0..2) |dz| {
 						var weight: f32 = 0;
 						if(dx == 0) weight = 1 - interp[0]
 						else weight = interp[0];
@@ -291,7 +333,7 @@ const PrimitiveMesh = struct {
 						else weight *= interp[1];
 						if(dz == 0) weight *= 1 - interp[2]
 						else weight *= interp[2];
-						const lightVal: [6]u8 = getLightAt(parent, startPos[0] +% dx, startPos[1] +% dy, startPos[2] +% dz);
+						const lightVal: [6]u8 = cornerVals[dx][dy][dz];
 						for(0..6) |j| {
 							val[j] += @as(f32, @floatFromInt(lightVal[j]))*weight;
 						}
