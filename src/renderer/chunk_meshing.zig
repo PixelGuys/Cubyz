@@ -558,12 +558,11 @@ pub const ChunkMesh = struct {
 	fn canBeSeenThroughOtherBlock(block: Block, other: Block, neighbor: u3) bool {
 		const rotatedModel = blocks.meshes.model(block);
 		const model = &models.models.items[rotatedModel];
-		_ = neighbor;
 		_ = model; // TODO: Check if the neighbor model occludes this one. (maybe not that relevant)
 		return block.typ != 0 and (
 			other.typ == 0
 			or (!std.meta.eql(block, other) and other.viewThrough())
-			or blocks.meshes.model(other) != 0
+			or !models.models.items[blocks.meshes.model(other)].isNeighborOccluded[neighbor ^ 1]
 		);
 	}
 

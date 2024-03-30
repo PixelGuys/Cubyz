@@ -74,6 +74,31 @@ pub const ChannelChunk = struct {
 		return .{self.data[index][0].load(.Unordered), self.data[index][1].load(.Unordered), self.data[index][2].load(.Unordered)};
 	}
 
+	fn calculateIncomingOcclusion(result: *[3]u8, block: blocks.Block, voxelSize: u31, neighbor: usize) void {
+		if(main.models.models.items[blocks.meshes.model(block)].isNeighborOccluded[neighbor]) {
+			var absorption: [3]u8 = extractColor(block.absorption());
+			absorption[0] *|= @intCast(voxelSize);
+			absorption[1] *|= @intCast(voxelSize);
+			absorption[2] *|= @intCast(voxelSize);
+			result[0] -|= absorption[0];
+			result[1] -|= absorption[1];
+			result[2] -|= absorption[2];
+		}
+	}
+
+	fn calculateOutgoingOcclusion(result: *[3]u8, block: blocks.Block, voxelSize: u31, neighbor: usize) void {
+		const model = &main.models.models.items[blocks.meshes.model(block)];
+		if(model.isNeighborOccluded[neighbor] and !model.isNeighborOccluded[neighbor ^ 1]) { // Avoid calculating the absorption twice.
+			var absorption: [3]u8 = extractColor(block.absorption());
+			absorption[0] *|= @intCast(voxelSize);
+			absorption[1] *|= @intCast(voxelSize);
+			absorption[2] *|= @intCast(voxelSize);
+			result[0] -|= absorption[0];
+			result[1] -|= absorption[1];
+			result[2] -|= absorption[2];
+		}
+	}
+
 	fn propagateDirect(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry)) void {
 		var neighborLists: [6]main.ListUnmanaged(Entry) = .{.{}} ** 6;
 		defer {
@@ -110,19 +135,14 @@ pub const ChannelChunk = struct {
 					result.value[1] -|= 8*|@as(u8, @intCast(self.ch.pos.voxelSize));
 					result.value[2] -|= 8*|@as(u8, @intCast(self.ch.pos.voxelSize));
 				}
+				calculateOutgoingOcclusion(&result.value, self.ch.blocks[index], self.ch.pos.voxelSize, neighbor);
 				if(result.value[0] == 0 and result.value[1] == 0 and result.value[2] == 0) continue;
 				if(nx < 0 or nx >= chunk.chunkSize or ny < 0 or ny >= chunk.chunkSize or nz < 0 or nz >= chunk.chunkSize) {
 					neighborLists[neighbor].append(main.stackAllocator, result);
 					continue;
 				}
 				const neighborIndex = chunk.getIndex(nx, ny, nz);
-				var absorption: [3]u8 = extractColor(self.ch.blocks[neighborIndex].absorption());
-				absorption[0] *|= @intCast(self.ch.pos.voxelSize);
-				absorption[1] *|= @intCast(self.ch.pos.voxelSize);
-				absorption[2] *|= @intCast(self.ch.pos.voxelSize);
-				result.value[0] -|= absorption[0];
-				result.value[1] -|= absorption[1];
-				result.value[2] -|= absorption[2];
+				calculateIncomingOcclusion(&result.value, self.ch.blocks[neighborIndex], self.ch.pos.voxelSize, neighbor ^ 1);
 				if(result.value[0] != 0 or result.value[1] != 0 or result.value[2] != 0) lightQueue.enqueue(result);
 			}
 		}
@@ -196,18 +216,13 @@ pub const ChannelChunk = struct {
 					result.value[1] -|= 8*|@as(u8, @intCast(self.ch.pos.voxelSize));
 					result.value[2] -|= 8*|@as(u8, @intCast(self.ch.pos.voxelSize));
 				}
+				calculateOutgoingOcclusion(&result.value, self.ch.blocks[index], self.ch.pos.voxelSize, neighbor);
 				if(nx < 0 or nx >= chunk.chunkSize or ny < 0 or ny >= chunk.chunkSize or nz < 0 or nz >= chunk.chunkSize) {
 					neighborLists[neighbor].append(main.stackAllocator, result);
 					continue;
 				}
 				const neighborIndex = chunk.getIndex(nx, ny, nz);
-				var absorption: [3]u8 = extractColor(self.ch.blocks[neighborIndex].absorption());
-				absorption[0] *|= @intCast(self.ch.pos.voxelSize);
-				absorption[1] *|= @intCast(self.ch.pos.voxelSize);
-				absorption[2] *|= @intCast(self.ch.pos.voxelSize);
-				result.value[0] -|= absorption[0];
-				result.value[1] -|= absorption[1];
-				result.value[2] -|= absorption[2];
+				calculateIncomingOcclusion(&result.value, self.ch.blocks[neighborIndex], self.ch.pos.voxelSize, neighbor ^ 1);
 				lightQueue.enqueue(result);
 			}
 		}
@@ -233,13 +248,7 @@ pub const ChannelChunk = struct {
 		for(lights) |entry| {
 			const index = chunk.getIndex(entry.x, entry.y, entry.z);
 			var result = entry;
-			var absorption: [3]u8 = extractColor(self.ch.blocks[index].absorption());
-			absorption[0] *|= @intCast(self.ch.pos.voxelSize);
-			absorption[1] *|= @intCast(self.ch.pos.voxelSize);
-			absorption[2] *|= @intCast(self.ch.pos.voxelSize);
-			result.value[0] -|= absorption[0];
-			result.value[1] -|= absorption[1];
-			result.value[2] -|= absorption[2];
+			calculateIncomingOcclusion(&result.value, self.ch.blocks[index], self.ch.pos.voxelSize, entry.sourceDir);
 			if(result.value[0] != 0 or result.value[1] != 0 or result.value[2] != 0) lightQueue.enqueue(result);
 		}
 		self.propagateDirect(lightQueue);
@@ -250,13 +259,7 @@ pub const ChannelChunk = struct {
 		for(lights) |entry| {
 			const index = chunk.getIndex(entry.x, entry.y, entry.z);
 			var result = entry;
-			var absorption: [3]u8 = extractColor(self.ch.blocks[index].absorption());
-			absorption[0] *|= @intCast(self.ch.pos.voxelSize);
-			absorption[1] *|= @intCast(self.ch.pos.voxelSize);
-			absorption[2] *|= @intCast(self.ch.pos.voxelSize);
-			result.value[0] -|= absorption[0];
-			result.value[1] -|= absorption[1];
-			result.value[2] -|= absorption[2];
+			calculateIncomingOcclusion(&result.value, self.ch.blocks[index], self.ch.pos.voxelSize, entry.sourceDir);
 			lightQueue.enqueue(result);
 		}
 		return self.propagateDestructive(lightQueue, constructiveEntries, false);
@@ -311,14 +314,9 @@ pub const ChannelChunk = struct {
 							value[1] -|= 8*|@as(u8, @intCast(self.ch.pos.voxelSize));
 							value[2] -|= 8*|@as(u8, @intCast(self.ch.pos.voxelSize));
 						}
+						calculateOutgoingOcclusion(&value, self.ch.blocks[neighborIndex], self.ch.pos.voxelSize, neighbor);
 						if(value[0] == 0 and value[1] == 0 and value[2] == 0) continue;
-						var absorption: [3]u8 = extractColor(self.ch.blocks[index].absorption());
-						absorption[0] *|= @intCast(self.ch.pos.voxelSize);
-						absorption[1] *|= @intCast(self.ch.pos.voxelSize);
-						absorption[2] *|= @intCast(self.ch.pos.voxelSize);
-						value[0] -|= absorption[0];
-						value[1] -|= absorption[1];
-						value[2] -|= absorption[2];
+						calculateIncomingOcclusion(&value, self.ch.blocks[index], self.ch.pos.voxelSize, neighbor ^ 1);
 						if(value[0] != 0 or value[1] != 0 or value[2] != 0) lightQueue.enqueue(.{.x = @intCast(x), .y = @intCast(y), .z = @intCast(z), .value = value, .sourceDir = @intCast(neighbor), .activeValue = 0b111});
 					}
 				}

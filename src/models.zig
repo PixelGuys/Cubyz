@@ -30,6 +30,7 @@ pub const Model = struct {
 	max: Vec3f,
 	internalQuads: []u16,
 	neighborFacingQuads: [6][]u16,
+	isNeighborOccluded: [6]bool,
 
 	fn getFaceNeighbor(quad: *const QuadInfo) ?u3 {
 		var allZero: @Vector(3, bool) = .{true, true, true};
@@ -47,6 +48,19 @@ pub const Model = struct {
 		return null;
 	}
 
+	fn fullyOccludesNeighbor(quad: *const QuadInfo) bool {
+		var zeroes: @Vector(3, u32) = .{0, 0, 0};
+		var ones: @Vector(3, u32) = .{0, 0, 0};
+		for(quad.corners) |corner| {
+			zeroes += @select(u32, approxEqAbs(corner, @splat(0), @splat(0.0001)), .{1, 1, 1}, .{0, 0, 0});
+			ones += @select(u32, approxEqAbs(corner, @splat(1), @splat(0.0001)), .{1, 1, 1}, .{0, 0, 0});
+		}
+		// For full coverage there will 2 ones and 2 zeroes for two components, while the other one is constant.
+		const hasTwoZeroes = zeroes == @Vector(3, u32){2, 2, 2};
+		const hasTwoOnes = ones == @Vector(3, u32){2, 2, 2};
+		return @popCount(@as(u3, @bitCast(hasTwoOnes))) == 2 and @popCount(@as(u3, @bitCast(hasTwoZeroes))) == 2;
+	}
+
 	pub fn init(quadInfos: []const QuadInfo) u16 {
 		const modelIndex: u16 = @intCast(models.items.len);
 		const self = models.addOne();
@@ -54,6 +68,7 @@ pub const Model = struct {
 		var internalAmount: usize = 0;
 		self.min = .{1, 1, 1};
 		self.max = .{0, 0, 0};
+		self.isNeighborOccluded = .{false} ** 6;
 		for(quadInfos) |*quad| {
 			for(quad.corners) |corner| {
 				self.min = @min(self.min, corner);
@@ -86,6 +101,13 @@ pub const Model = struct {
 				const quadIndex = addQuad(quad);
 				self.internalQuads[internalIndex] = quadIndex;
 				internalIndex += 1;
+			}
+		}
+		for(0..6) |neighbor| {
+			for(self.neighborFacingQuads[neighbor]) |quad| {
+				if(fullyOccludesNeighbor(&quads.items[quad])) {
+					self.isNeighborOccluded[neighbor] = true;
+				}
 			}
 		}
 		return modelIndex;
