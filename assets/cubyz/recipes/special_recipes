@@ -1,0 +1,6 @@
+P = cubyz:oak_planks
+I = cubyz:iron_ore
+
+P
+I
+result cubyz:chisel
