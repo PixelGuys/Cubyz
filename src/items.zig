@@ -13,7 +13,6 @@ const Mat4f = vec.Mat4f;
 const Vec2f = vec.Vec2f;
 const Vec2i = vec.Vec2i;
 const Vec3i = vec.Vec3i;
-const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
@@ -71,7 +70,7 @@ pub const BaseItem = struct {
 	block: ?u16,
 	foodValue: f32, // TODO: Effects.
 
-	leftClickUse: ?*const fn(world: *main.game.World, pos: Vec3i, relativePlayerPos: Vec3d, playerDir: Vec3f, currentData: *Block) bool,
+	leftClickUse: ?*const fn(world: *main.game.World, pos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) bool,
 
 	var unobtainable = BaseItem {
 		.image = graphics.Image.defaultImage,
@@ -112,7 +111,7 @@ pub const BaseItem = struct {
 		self.leftClickUse = if(std.mem.eql(u8, json.get([]const u8, "onLeftUse", ""), "chisel")) &chiselFunction else null; // TODO: Proper registry.
 	}
 
-	fn chiselFunction(world: *main.game.World, pos: Vec3i, relativePlayerPos: Vec3d, playerDir: Vec3f, currentData: *Block) bool {
+	fn chiselFunction(world: *main.game.World, pos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) bool {
 		if(currentData.mode() == main.rotation.getByID("stairs")) {
 			return main.rotation.RotationModes.Stairs.chisel(world, pos, relativePlayerPos, playerDir, currentData);
 		}

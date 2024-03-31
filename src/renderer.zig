@@ -212,7 +212,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 //		}
 //	}
 	gpu_performance_measuring.startQuery(.chunk_rendering);
-	MeshSelection.select(playerPos, game.camera.direction);
+	MeshSelection.select(playerPos, game.camera.direction, game.Player.inventory__SEND_CHANGES_TO_SERVER.items[game.Player.selectedSlot]);
 	MeshSelection.render(game.projectionMatrix, game.camera.viewMatrix, playerPos);
 
 	chunk_meshing.beginRender();
@@ -702,9 +702,11 @@ pub const MeshSelection = struct {
 
 	var posBeforeBlock: Vec3i = undefined;
 	var selectedBlockPos: ?Vec3i = null;
+	var selectionMin: Vec3f = undefined;
+	var selectionMax: Vec3f = undefined;
 	var lastPos: Vec3d = undefined;
 	var lastDir: Vec3f = undefined;
-	pub fn select(_pos: Vec3d, _dir: Vec3f) void {
+	pub fn select(_pos: Vec3d, _dir: Vec3f, inventoryStack: main.items.ItemStack) void {
 		var pos = _pos;
 		_ = &pos;// TODO: pos.z += Player.cameraHeight;
 		lastPos = pos;
@@ -729,19 +731,16 @@ pub const MeshSelection = struct {
 		while(total_tMax < closestDistance) {
 			const block = mesh_storage.getBlockFromRenderThread(voxelPos[0], voxelPos[1], voxelPos[2]) orelse break;
 			if(block.typ != 0) {
-				// Check the true bounding box (using this algorithm here: https://tavianator.com/2011/ray_box.html):
-				const model = blocks.meshes.model(block);
-				const modelData = &models.models.items[model];
-				const min: Vec3d = @floatCast(modelData.min);
-				const max: Vec3d = @floatCast(modelData.max);
-				const voxelPosFloat: Vec3d = @floatFromInt(voxelPos);
-				const t1 = (voxelPosFloat + min - pos)*invDir;
-				const t2 = (voxelPosFloat + max - pos)*invDir;
-				const boxTMin = @reduce(.Max, @min(t1, t2));
-				const boxTMax = @reduce(.Min, @max(t1, t2));
-				if(boxTMin <= boxTMax and boxTMin <= closestDistance and boxTMax > 0) {
-					selectedBlockPos = voxelPos;
-					break;
+				if(block.blockClass() != .fluid) { // TODO: Buckets could select fluids
+					const relativePlayerPos: Vec3f = @floatCast(pos - @as(Vec3d, @floatFromInt(voxelPos)));
+					if(block.mode().rayIntersection(block, inventoryStack, voxelPos, relativePlayerPos, _dir)) |intersection| {
+						if(intersection.distance <= closestDistance) {
+							selectedBlockPos = voxelPos;
+							selectionMin = intersection.min;
+							selectionMax = intersection.max;
+							break;
+						}
+					}
 				}
 			}
 			posBeforeBlock = voxelPos;
@@ -781,7 +780,7 @@ pub const MeshSelection = struct {
 							var neighborDir = Vec3i{0, 0, 0};
 							// Check if stuff can be added to the block itself:
 							if(itemBlock == block.typ) {
-								const relPos = lastPos - @as(Vec3d, @floatFromInt(selectedPos));
+								const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
 								if(rotationMode.generateData(main.game.world.?, selectedPos, relPos, lastDir, neighborDir, &block, false)) {
 									// TODO: world.updateBlock(bi.x, bi.y, bi.z, block.data); (→ Sending it over the network)
 									mesh_storage.updateBlock(selectedPos[0], selectedPos[1], selectedPos[2], block);
@@ -792,7 +791,7 @@ pub const MeshSelection = struct {
 							// Check the block in front of it:
 							const neighborPos = posBeforeBlock;
 							neighborDir = selectedPos - posBeforeBlock;
-							const relPos = lastPos - @as(Vec3d, @floatFromInt(neighborPos));
+							const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(neighborPos)));
 							block = mesh_storage.getBlockFromRenderThread(neighborPos[0], neighborPos[1], neighborPos[2]) orelse return;
 							if(block.typ == itemBlock) {
 								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, &block, false)) {
@@ -840,7 +839,7 @@ pub const MeshSelection = struct {
 				switch(item) {
 					.baseItem => |baseItem| {
 						if(baseItem.leftClickUse) |leftClick| {
-							const relPos = lastPos - @as(Vec3d, @floatFromInt(selectedPos));
+							const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
 							if(leftClick(main.game.world.?, selectedPos, relPos, lastDir, &block)) {
 								// TODO: world.updateBlock(bi.x, bi.y, bi.z, block.data); (→ Sending it over the network)
 								mesh_storage.updateBlock(selectedPos[0], selectedPos[1], selectedPos[2], block);
@@ -879,12 +878,7 @@ pub const MeshSelection = struct {
 			c.glEnable(c.GL_POLYGON_OFFSET_LINE);
 			defer c.glDisable(c.GL_POLYGON_OFFSET_LINE);
 			c.glPolygonOffset(-2, 0);
-			const block = mesh_storage.getBlockFromRenderThread(_selectedBlockPos[0], _selectedBlockPos[1], _selectedBlockPos[2]) orelse return;
-			const model = blocks.meshes.model(block);
-			const modelData = &models.models.items[model];
-			const min: Vec3f = @floatCast(modelData.min);
-			const max: Vec3f = @floatCast(modelData.max);
-			drawCube(projectionMatrix, viewMatrix, @as(Vec3d, @floatFromInt(_selectedBlockPos)) - playerPos, min, max);
+			drawCube(projectionMatrix, viewMatrix, @as(Vec3d, @floatFromInt(_selectedBlockPos)) - playerPos, selectionMin, selectionMax);
 		}
 	}
 };

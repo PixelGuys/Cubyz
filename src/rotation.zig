@@ -9,9 +9,13 @@ const vec = main.vec;
 const Vec2f = vec.Vec2f;
 const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
-const Vec3d = vec.Vec3d;
 const Mat4f = vec.Mat4f;
 
+const RayIntersectionResult = struct {
+	distance: f64,
+	min: Vec3f,
+	max: Vec3f,
+};
 
 // TODO: Why not just use a tagged union?
 /// Each block gets 16 bit of additional storage(apart from the reference to the block type).
@@ -22,7 +26,7 @@ pub const RotationMode = struct {
 		fn model(block: Block) u16 {
 			return blocks.meshes.modelIndexStart(block);
 		}
-		fn generateData(_: *main.game.World, _: Vec3i, _: Vec3d, _: Vec3f, _: Vec3i, _: *Block, blockPlacing: bool) bool {
+		fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: *Block, blockPlacing: bool) bool {
 			return blockPlacing;
 		}
 		fn createBlockModel(modelId: []const u8) u16 {
@@ -30,6 +34,25 @@ pub const RotationMode = struct {
 		}
 		fn updateData(_: *Block, _: u3, _: Block) bool {
 			return false;
+		}
+		fn rayIntersection(block: Block, _: main.items.ItemStack, _: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
+			// Check the true bounding box (using this algorithm here: https://tavianator.com/2011/ray_box.html):
+			const invDir = @as(Vec3f, @splat(1))/playerDir;
+			const modelData = &main.models.models.items[blocks.meshes.model(block)];
+			const min: Vec3f = modelData.min;
+			const max: Vec3f = modelData.max;
+			const t1 = (min - relativePlayerPos)*invDir;
+			const t2 = (max - relativePlayerPos)*invDir;
+			const boxTMin = @reduce(.Max, @min(t1, t2));
+			const boxTMax = @reduce(.Min, @max(t1, t2));
+			if(boxTMin <= boxTMax and boxTMax > 0) {
+				return .{
+					.distance = boxTMin,
+					.min = min,
+					.max = max,
+				};
+			}
+			return null;
 		}
 	};
 
@@ -42,10 +65,12 @@ pub const RotationMode = struct {
 
 	/// Updates the block data of a block in the world or places a block in the world.
 	/// return true if the placing was successful, false otherwise.
-	generateData: *const fn(world: *main.game.World, pos: Vec3i, relativePlayerPos: Vec3d, playerDir: Vec3f, relativeDir: Vec3i, currentData: *Block, blockPlacing: bool) bool = DefaultFunctions.generateData,
+	generateData: *const fn(world: *main.game.World, pos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, relativeDir: Vec3i, currentData: *Block, blockPlacing: bool) bool = DefaultFunctions.generateData,
 
 	/// Updates data of a placed block if the RotationMode dependsOnNeighbors.
 	updateData: *const fn(block: *Block, neighborIndex: u3, neighbor: Block) bool = &DefaultFunctions.updateData,
+
+	rayIntersection: *const fn(block: Block, item: main.items.ItemStack, voxelPos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult = &DefaultFunctions.rayIntersection,
 };
 
 var rotationModes: std.StringHashMap(RotationMode) = undefined;
@@ -95,7 +120,7 @@ pub const RotationModes = struct {
 			return blocks.meshes.modelIndexStart(block) + @min(block.data, 5);
 		}
 
-		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3d, _: Vec3f, relativeDir: Vec3i, currentData: *Block, blockPlacing: bool) bool {
+		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, relativeDir: Vec3i, currentData: *Block, blockPlacing: bool) bool {
 			if(blockPlacing) {
 				if(relativeDir[0] == 1) currentData.data = chunk.Neighbors.dirNegX;
 				if(relativeDir[0] == -1) currentData.data = chunk.Neighbors.dirPosX;
@@ -396,7 +421,7 @@ pub const RotationModes = struct {
 			return blocks.meshes.modelIndexStart(block) + (block.data & 255);
 		}
 
-		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3d, _: Vec3f, _: Vec3i, currentData: *Block, blockPlacing: bool) bool {
+		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, currentData: *Block, blockPlacing: bool) bool {
 			if(blockPlacing) {
 				currentData.data = 0;
 				return true;
@@ -414,10 +439,10 @@ pub const RotationModes = struct {
 			} else return entry;
 		}
 
-		pub fn chisel(_: *main.game.World, _: Vec3i, relativePlayerPos: Vec3d, playerDir: Vec3f, currentData: *Block) bool {
+		fn intersectionPos(block: Block, relativePlayerPos: Vec3f, playerDir: Vec3f) ?struct{minT: f32, minPos: @Vector(3, u1)} {
 			const invDir = @as(Vec3f, @splat(1))/playerDir;
 			const relPos: Vec3f = @floatCast(-relativePlayerPos);
-			const data: u8 = @truncate(currentData.data);
+			const data: u8 = @truncate(block.data);
 			var minT: f32 = std.math.floatMax(f32);
 			var minPos: @Vector(3, u1) = undefined;
 			for(0..8) |i| {
@@ -437,7 +462,37 @@ pub const RotationModes = struct {
 				}
 			}
 			if(minT != std.math.floatMax(f32)) {
-				currentData.data = data | subBlockMask(minPos[0], minPos[1], minPos[2]);
+				return .{.minT = minT, .minPos = minPos};
+			}
+			return null;
+		}
+
+		pub fn rayIntersection(block: Block, item: main.items.ItemStack, blockPos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
+			if(item.item) |_item| {
+				switch(_item) {
+					.baseItem => |baseItem| {
+						if(std.mem.eql(u8, baseItem.id, "cubyz:chisel")) { // Select only one eigth of a block
+							if(intersectionPos(block, relativePlayerPos, playerDir)) |intersection| {
+								const offset: Vec3f = @floatFromInt(intersection.minPos);
+								const half: Vec3f = @splat(0.5);
+								return .{
+									.distance = intersection.minT,
+									.min = half*offset,
+									.max = half + half*offset,
+								};
+							}
+							return null;
+						}
+					},
+					else => {},
+				}
+			}
+			return RotationMode.DefaultFunctions.rayIntersection(block, item, blockPos, relativePlayerPos, playerDir);
+		}
+
+		pub fn chisel(_: *main.game.World, _: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) bool {
+			if(intersectionPos(currentData.*, relativePlayerPos, playerDir)) |intersection| {
+				currentData.data = currentData.data | subBlockMask(intersection.minPos[0], intersection.minPos[1], intersection.minPos[2]);
 				return true;
 			}
 			return false;
@@ -517,7 +572,7 @@ pub const RotationModes = struct {
 			return blocks.meshes.modelIndexStart(block) + (@as(u5, @truncate(block.data)) -| 1);
 		}
 
-		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3d, _: Vec3f, relativeDir: Vec3i, currentData: *Block, _: bool) bool {
+		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, relativeDir: Vec3i, currentData: *Block, _: bool) bool {
 			var data: TorchData = @bitCast(@as(u5, @truncate(currentData.data)));
 			if(relativeDir[0] == 1) data.posX = true;
 			if(relativeDir[0] == -1) data.negX = true;
