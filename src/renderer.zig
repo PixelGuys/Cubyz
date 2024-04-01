@@ -573,7 +573,7 @@ pub const MenuBackGround = struct {
 		for(0..4) |i| {
 			c.glEnable(c.GL_CULL_FACE);
 			c.glEnable(c.GL_DEPTH_TEST);
-			game.camera.rotation = .{0, angles[i], 0};
+			game.camera.rotation = .{0, 0, angles[i]};
 			// Draw to frame buffer.
 			buffer.bind();
 			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
