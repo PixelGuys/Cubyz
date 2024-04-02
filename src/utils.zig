@@ -5,6 +5,8 @@ const builtin = @import("builtin");
 
 const main = @import("main.zig");
 
+pub const file_monitor = @import("utils/file_monitor.zig");
+
 pub const Compression = struct {
 	pub fn deflate(allocator: NeverFailingAllocator, data: []const u8) []u8 {
 		var result = main.List(u8).init(allocator);

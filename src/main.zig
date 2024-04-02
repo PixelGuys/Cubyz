@@ -26,6 +26,8 @@ pub const vec = @import("vec.zig");
 pub const List = @import("utils/list.zig").List;
 pub const ListUnmanaged = @import("utils/list.zig").ListUnmanaged;
 
+const file_monitor = utils.file_monitor;
+
 const Vec2f = vec.Vec2f;
 const Vec3d = vec.Vec3d;
 
@@ -694,6 +696,9 @@ pub fn main() void {
 	threadPool = utils.ThreadPool.init(globalAllocator, @max(1, (std.Thread.getCpuCount() catch 4) -| 1));
 	defer threadPool.deinit();
 
+	file_monitor.init();
+	defer file_monitor.deinit();
+
 	settings.init();
 	defer settings.deinit();
 
@@ -769,6 +774,7 @@ pub fn main() void {
 		gui.windowlist.gpu_performance_measuring.stopQuery();
 
 		Window.handleEvents();
+		file_monitor.handleEvents();
 
 		const newTime = std.time.nanoTimestamp();
 		const deltaTime = @as(f64, @floatFromInt(newTime -% lastTime))/1e9;

@@ -1531,7 +1531,9 @@ pub const TextureArray = struct {
 		self.bind();
 
 		const maxLOD = if(mipmapping) 1 + std.math.log2_int(u31, @min(maxWidth, maxHeight)) else 1;
-		c.glTexStorage3D(c.GL_TEXTURE_2D_ARRAY, maxLOD, c.GL_RGBA8, maxWidth, maxHeight, @intCast(images.len));
+		for (0..maxLOD) |i| {
+			c.glTexImage3D(c.GL_TEXTURE_2D_ARRAY, @intCast(i), c.GL_RGBA8, @max(0, maxWidth >> @intCast(i)), @max(0, maxHeight >> @intCast(i)), @intCast(images.len), 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
+		}
 		var arena = main.utils.NeverFailingArenaAllocator.init(main.stackAllocator);
 		defer arena.deinit();
 		const lodBuffer: [][]Color = arena.allocator().alloc([]Color, maxLOD);

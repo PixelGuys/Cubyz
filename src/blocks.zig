@@ -446,6 +446,23 @@ pub const meshes = struct {
 		list.append(texture);
 	}
 
+	fn readTextureData(_path: []const u8) void {
+		var buffer: [1024]u8 = undefined;
+		@memcpy(buffer[0.._path.len], _path);
+		const path = buffer[0.._path.len];
+		blockTextures.append(Image.readFromFile(arenaForWorld.allocator(), path) catch Image.defaultImage);
+		readAuxillaryTexture(path, &buffer, "_emission.png", &emissionTextures, Image.emptyImage);
+		readAuxillaryTexture(path, &buffer, "_reflectivity.png", &reflectivityTextures, Image.emptyImage);
+		readAuxillaryTexture(path, &buffer, "_absorption.png", &absorptionTextures, Image.whiteEmptyImage);
+		const textureInfoPath = extendedPath(path, &buffer, "_textureInfo.json");
+		const textureInfoJson = main.files.readToJson(main.stackAllocator, textureInfoPath) catch .JsonNull;
+		defer textureInfoJson.free(main.stackAllocator);
+		textureFogData.append(.{
+			.fogDensity = textureInfoJson.get(f32, "fogDensity", 0.0),
+			.fogColor = textureInfoJson.get(u32, "fogColor", 0xffffff),
+		});
+	}
+
 	pub fn readTexture(textureInfo: JsonElement, assetFolder: []const u8) !u16 {
 		var result: u16 = undefined;
 		if(textureInfo == .JsonString or textureInfo == .JsonStringOwned) {
@@ -476,19 +493,9 @@ pub const meshes = struct {
 			// Otherwise read it into the list:
 			result = @intCast(blockTextures.items.len);
 
-			blockTextures.append(try Image.readFromFile(arenaForWorld.allocator(), path));
 			textureIDs.append(arenaForWorld.allocator().dupe(u8, path));
 			animation.append(.{.frames = 1, .time = 1});
-			readAuxillaryTexture(path, &buffer, "_emission.png", &emissionTextures, Image.emptyImage);
-			readAuxillaryTexture(path, &buffer, "_reflectivity.png", &reflectivityTextures, Image.emptyImage);
-			readAuxillaryTexture(path, &buffer, "_absorption.png", &absorptionTextures, Image.whiteEmptyImage);
-			const textureInfoPath = extendedPath(path, &buffer, "_textureInfo.json");
-			const textureInfoJson = main.files.readToJson(main.stackAllocator, textureInfoPath) catch .JsonNull;
-			defer textureInfoJson.free(main.stackAllocator);
-			textureFogData.append(.{
-				.fogDensity = textureInfoJson.get(f32, "fogDensity", 0.0),
-				.fogColor = textureInfoJson.get(u32, "fogColor", 0xffffff),
-			});
+			readTextureData(path);
 		} else if(textureInfo == .JsonObject) {
 			const animationTime = textureInfo.get(i32, "time", 500);
 			const textures = textureInfo.getChild("textures").toSlice();
@@ -517,18 +524,8 @@ pub const meshes = struct {
 				};
 				file.close(); // It was only openend to check if it exists.
 
-				blockTextures.append(try Image.readFromFile(arenaForWorld.allocator(), path));
 				textureIDs.append(arenaForWorld.allocator().dupe(u8, path));
-				readAuxillaryTexture(path, &buffer, "_emission.png", &emissionTextures, Image.emptyImage);
-				readAuxillaryTexture(path, &buffer, "_reflectivity.png", &reflectivityTextures, Image.emptyImage);
-				readAuxillaryTexture(path, &buffer, "_absorption.png", &absorptionTextures, Image.whiteEmptyImage);
-				const textureInfoPath = extendedPath(path, &buffer, "_textureInfo.json");
-				const textureInfoJson = main.files.readToJson(main.stackAllocator, textureInfoPath) catch .JsonNull;
-				defer textureInfoJson.free(main.stackAllocator);
-				textureFogData.append(.{
-					.fogDensity = textureInfoJson.get(f32, "fogDensity", 0.0),
-					.fogColor = textureInfoJson.get(u32, "fogColor", 0xffffff),
-				});
+				readTextureData(path);
 			}
 		} else {
 			return error.NotSpecified;
@@ -595,6 +592,18 @@ pub const meshes = struct {
 		graphics.c.glUniform1ui(animationUniforms.size, @intCast(blockTextures.items.len));
 		graphics.c.glDispatchCompute(@intCast(@divFloor(blockTextures.items.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
 		graphics.c.glMemoryBarrier(graphics.c.GL_SHADER_STORAGE_BARRIER_BIT);
+	}
+
+	pub fn reloadTextures(_: usize) void {
+		blockTextures.clearRetainingCapacity();
+		emissionTextures.clearRetainingCapacity();
+		reflectivityTextures.clearRetainingCapacity();
+		absorptionTextures.clearRetainingCapacity();
+		textureFogData.clearAndFree();
+		for(textureIDs.items) |path| {
+			readTextureData(path);
+		}
+		generateTextureArray();
 	}
 
 	pub fn generateTextureArray() void {
