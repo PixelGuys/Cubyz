@@ -243,7 +243,8 @@ pub const JsonElement = union(JsonType) {
 				std.fmt.formatInt(value, 10, .lower, .{}, list.writer()) catch unreachable;
 			},
 			.JsonFloat => |value| {
-				std.fmt.formatFloatScientific(value, .{}, list.writer()) catch unreachable;
+				var buf: [std.fmt.format_float.bufferSize(.scientific, @TypeOf(value))]u8 = undefined;
+				list.appendSlice(std.fmt.format_float.formatFloat(&buf, value, .{.mode = .scientific}) catch unreachable);
 			},
 			.JsonBool => |value| {
 				if(value) {

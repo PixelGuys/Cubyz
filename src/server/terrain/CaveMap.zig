@@ -289,7 +289,7 @@ var cache: Cache(CaveMapFragment, cacheSize, associativity, mapFragmentDeinit) =
 var profile: TerrainGenerationProfile = undefined;
 
 fn mapFragmentDeinit(mapFragment: *CaveMapFragment) void {
-	if(@atomicRmw(u16, &mapFragment.refCount.raw, .Sub, 1, .Monotonic) == 1) {
+	if(@atomicRmw(u16, &mapFragment.refCount.raw, .Sub, 1, .monotonic) == 1) {
 		main.globalAllocator.destroy(mapFragment);
 	}
 }
@@ -300,7 +300,7 @@ fn cacheInit(pos: ChunkPosition) *CaveMapFragment {
 	for(profile.caveGenerators) |generator| {
 		generator.generate(mapFragment, profile.seed ^ generator.generatorSeed);
 	}
-	_ = @atomicRmw(u16, &mapFragment.refCount.raw, .Add, 1, .Monotonic);
+	_ = @atomicRmw(u16, &mapFragment.refCount.raw, .Add, 1, .monotonic);
 	return mapFragment;
 }
 
@@ -331,6 +331,6 @@ fn getOrGenerateFragment(wx: i32, wy: i32, wz: i32, voxelSize: u31) *CaveMapFrag
 		.voxelSize = voxelSize,
 	};
 	const result = cache.findOrCreate(compare, cacheInit);
-	std.debug.assert(@atomicRmw(u16, &result.refCount.raw, .Add, 1, .Monotonic) != 0);
+	std.debug.assert(@atomicRmw(u16, &result.refCount.raw, .Add, 1, .monotonic) != 0);
 	return result;
 }

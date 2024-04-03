@@ -467,7 +467,7 @@ pub const ChunkMesh = struct {
 	}
 
 	pub fn deinit(self: *ChunkMesh) void {
-		std.debug.assert(self.refCount.load(.Monotonic) == 0);
+		std.debug.assert(self.refCount.load(.monotonic) == 0);
 		self.opaqueMesh.deinit();
 		self.transparentMesh.deinit();
 		self.chunk.deinit();
@@ -479,21 +479,21 @@ pub const ChunkMesh = struct {
 	}
 
 	pub fn increaseRefCount(self: *ChunkMesh) void {
-		const prevVal = self.refCount.fetchAdd(1, .Monotonic);
+		const prevVal = self.refCount.fetchAdd(1, .monotonic);
 		std.debug.assert(prevVal != 0);
 	}
 
 	/// In cases where it's not certain whether the thing was cleared already.
 	pub fn tryIncreaseRefCount(self: *ChunkMesh) bool {
-		var prevVal = self.refCount.load(.Monotonic);
+		var prevVal = self.refCount.load(.monotonic);
 		while(prevVal != 0) {
-			prevVal = self.refCount.cmpxchgWeak(prevVal, prevVal + 1, .Monotonic, .Monotonic) orelse return true;
+			prevVal = self.refCount.cmpxchgWeak(prevVal, prevVal + 1, .monotonic, .monotonic) orelse return true;
 		}
 		return false;
 	}
 
 	pub fn decreaseRefCount(self: *ChunkMesh) void {
-		const prevVal = self.refCount.fetchSub(1, .Monotonic);
+		const prevVal = self.refCount.fetchSub(1, .monotonic);
 		std.debug.assert(prevVal != 0);
 		if(prevVal == 1) {
 			mesh_storage.addMeshToClearListAndDecreaseRefCount(self);
@@ -501,7 +501,7 @@ pub const ChunkMesh = struct {
 	}
 
 	pub fn scheduleLightRefreshAndDecreaseRefCount(self: *ChunkMesh) void {
-		if(!self.needsLightRefresh.swap(true, .AcqRel)) {
+		if(!self.needsLightRefresh.swap(true, .acq_rel)) {
 			LightRefreshTask.scheduleAndDecreaseRefCount(self);
 		} else {
 			self.decreaseRefCount();
@@ -534,7 +534,7 @@ pub const ChunkMesh = struct {
 		}
 
 		pub fn run(self: *LightRefreshTask) void {
-			if(self.mesh.needsLightRefresh.swap(false, .AcqRel)) {
+			if(self.mesh.needsLightRefresh.swap(false, .acq_rel)) {
 				self.mesh.mutex.lock();
 				self.mesh.finishData();
 				self.mesh.mutex.unlock();
@@ -633,13 +633,13 @@ pub const ChunkMesh = struct {
 
 					const shiftSelf: u5 = @intCast(((dx + 1)*3 + dy + 1)*3 + dz + 1);
 					const shiftOther: u5 = @intCast(((-dx + 1)*3 + -dy + 1)*3 + -dz + 1);
-					if(neighborMesh.litNeighbors.fetchOr(@as(u27, 1) << shiftOther, .Monotonic) ^ @as(u27, 1) << shiftOther == ~@as(u27, 0)) { // Trigger mesh creation for neighbor
+					if(neighborMesh.litNeighbors.fetchOr(@as(u27, 1) << shiftOther, .monotonic) ^ @as(u27, 1) << shiftOther == ~@as(u27, 0)) { // Trigger mesh creation for neighbor
 						neighborMesh.generateMesh();
 					}
 					neighborMesh.mutex.lock();
 					const neighborFinishedLighting = neighborMesh.finishedLighting;
 					neighborMesh.mutex.unlock();
-					if(neighborFinishedLighting and self.litNeighbors.fetchOr(@as(u27, 1) << shiftSelf, .Monotonic) ^ @as(u27, 1) << shiftSelf == ~@as(u27, 0)) {
+					if(neighborFinishedLighting and self.litNeighbors.fetchOr(@as(u27, 1) << shiftSelf, .monotonic) ^ @as(u27, 1) << shiftSelf == ~@as(u27, 0)) {
 						self.generateMesh();
 					}
 				}
@@ -886,7 +886,7 @@ pub const ChunkMesh = struct {
 						}
 					}
 				}
-				_ = neighborMesh.needsLightRefresh.swap(false, .AcqRel);
+				_ = neighborMesh.needsLightRefresh.swap(false, .acq_rel);
 				neighborMesh.finishData();
 				neighborMesh.increaseRefCount();
 				mesh_storage.addToUpdateListAndDecreaseRefCount(neighborMesh);
@@ -962,7 +962,7 @@ pub const ChunkMesh = struct {
 		}
 		self.mutex.lock();
 		defer self.mutex.unlock();
-		_ = self.needsLightRefresh.swap(false, .AcqRel);
+		_ = self.needsLightRefresh.swap(false, .acq_rel);
 		self.finishData();
 		mesh_storage.finishMesh(self);
 	}

@@ -106,7 +106,7 @@ pub fn deinitGenerators() void {
 }
 
 fn mapFragmentDeinit(mapFragment: *ClimateMapFragment) void {
-	if(@atomicRmw(u16, &mapFragment.refCount.raw, .Sub, 1, .Monotonic) == 1) {
+	if(@atomicRmw(u16, &mapFragment.refCount.raw, .Sub, 1, .monotonic) == 1) {
 		main.globalAllocator.destroy(mapFragment);
 	}
 }
@@ -115,7 +115,7 @@ fn cacheInit(pos: ClimateMapFragmentPosition) *ClimateMapFragment {
 	const mapFragment = main.globalAllocator.create(ClimateMapFragment);
 	mapFragment.init(pos.wx, pos.wy);
 	profile.climateGenerator.generateMapFragment(mapFragment, profile.seed);
-	_ = @atomicRmw(u16, &mapFragment.refCount.raw, .Add, 1, .Monotonic);
+	_ = @atomicRmw(u16, &mapFragment.refCount.raw, .Add, 1, .monotonic);
 	return mapFragment;
 }
 
@@ -131,7 +131,7 @@ pub fn deinit() void {
 fn getOrGenerateFragment(wx: i32, wy: i32) *ClimateMapFragment {
 	const compare = ClimateMapFragmentPosition{.wx = wx, .wy = wy};
 	const result = cache.findOrCreate(compare, cacheInit);
-	std.debug.assert(@atomicRmw(u16, &result.refCount.raw, .Add, 1, .Monotonic) != 0);
+	std.debug.assert(@atomicRmw(u16, &result.refCount.raw, .Add, 1, .monotonic) != 0);
 	return result;
 }
 

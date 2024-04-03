@@ -458,7 +458,7 @@ pub fn deinit() void {
 }
 
 fn mapFragmentDeinit(mapFragment: *CaveBiomeMapFragment) void {
-	if(@atomicRmw(u16, &mapFragment.refCount.raw, .Sub, 1, .Monotonic) == 1) {
+	if(@atomicRmw(u16, &mapFragment.refCount.raw, .Sub, 1, .monotonic) == 1) {
 		main.globalAllocator.destroy(mapFragment);
 	}
 }
@@ -469,7 +469,7 @@ fn cacheInit(pos: ChunkPosition) *CaveBiomeMapFragment {
 	for(profile.caveBiomeGenerators) |generator| {
 		generator.generate(mapFragment, profile.seed ^ generator.generatorSeed);
 	}
-	_= @atomicRmw(u16, &mapFragment.refCount.raw, .Add, 1, .Monotonic);
+	_= @atomicRmw(u16, &mapFragment.refCount.raw, .Add, 1, .monotonic);
 	return mapFragment;
 }
 
@@ -482,6 +482,6 @@ fn getOrGenerateFragment(_wx: i32, _wy: i32, _wz: i32) *CaveBiomeMapFragment {
 		.voxelSize = CaveBiomeMapFragment.caveBiomeSize,
 	};
 	const result = cache.findOrCreate(compare, cacheInit);
-	std.debug.assert(@atomicRmw(u16, &result.refCount.raw, .Add, 1, .Monotonic) != 0);
+	std.debug.assert(@atomicRmw(u16, &result.refCount.raw, .Add, 1, .monotonic) != 0);
 	return result;
 }

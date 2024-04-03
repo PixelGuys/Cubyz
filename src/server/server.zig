@@ -63,7 +63,7 @@ pub const User = struct {
 	pub fn update(self: *User) void {
 		std.debug.assert(!mutex.tryLock()); // The mutex should be locked when calling this function.
 		var time = @as(i16, @truncate(std.time.milliTimestamp())) -% main.settings.entityLookback;
-		time -%= self.timeDifference.difference.load(.Monotonic);
+		time -%= self.timeDifference.difference.load(.monotonic);
 		self.interpolation.update(time, self.lastTime);
 		self.lastTime = time;
 	}
@@ -168,11 +168,11 @@ pub fn start(name: []const u8) void {
 	var sta = utils.StackAllocator.init(main.globalAllocator, 1 << 23);
 	defer sta.deinit();
 	main.stackAllocator = sta.allocator();
-	std.debug.assert(!running.load(.Monotonic)); // There can only be one server.
+	std.debug.assert(!running.load(.monotonic)); // There can only be one server.
 	init(name);
 	defer deinit();
-	running.store(true, .Monotonic);
-	while(running.load(.Monotonic)) {
+	running.store(true, .monotonic);
+	while(running.load(.monotonic)) {
 		const newTime = std.time.nanoTimestamp();
 		if(newTime -% lastTime < updateNanoTime) {
 			std.time.sleep(@intCast(lastTime +% updateNanoTime -% newTime));
@@ -187,7 +187,7 @@ pub fn start(name: []const u8) void {
 }
 
 pub fn stop() void {
-	running.store(false, .Monotonic);
+	running.store(false, .monotonic);
 }
 
 pub fn disconnect(user: *User) void {
