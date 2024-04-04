@@ -105,20 +105,20 @@ pub const InterpolatableCaveBiomeMapView = struct {
 	pub fn init(pos: ChunkPosition, width: i32) InterpolatableCaveBiomeMapView {
 		return InterpolatableCaveBiomeMapView {
 			.fragments = [_]*CaveBiomeMapFragment {
-				getOrGenerateFragment(pos.wx - CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy - CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz - CaveBiomeMapFragment.caveBiomeMapSize/2),
-				getOrGenerateFragment(pos.wx - CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy - CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz + CaveBiomeMapFragment.caveBiomeMapSize/2),
-				getOrGenerateFragment(pos.wx - CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy + CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz - CaveBiomeMapFragment.caveBiomeMapSize/2),
-				getOrGenerateFragment(pos.wx - CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy + CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz + CaveBiomeMapFragment.caveBiomeMapSize/2),
-				getOrGenerateFragment(pos.wx + CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy - CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz - CaveBiomeMapFragment.caveBiomeMapSize/2),
-				getOrGenerateFragment(pos.wx + CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy - CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz + CaveBiomeMapFragment.caveBiomeMapSize/2),
-				getOrGenerateFragment(pos.wx + CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy + CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz - CaveBiomeMapFragment.caveBiomeMapSize/2),
-				getOrGenerateFragment(pos.wx + CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy + CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz + CaveBiomeMapFragment.caveBiomeMapSize/2),
+				getOrGenerateFragment(pos.wx -% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy -% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz -% CaveBiomeMapFragment.caveBiomeMapSize/2),
+				getOrGenerateFragment(pos.wx -% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy -% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz +% CaveBiomeMapFragment.caveBiomeMapSize/2),
+				getOrGenerateFragment(pos.wx -% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy +% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz -% CaveBiomeMapFragment.caveBiomeMapSize/2),
+				getOrGenerateFragment(pos.wx -% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy +% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz +% CaveBiomeMapFragment.caveBiomeMapSize/2),
+				getOrGenerateFragment(pos.wx +% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy -% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz -% CaveBiomeMapFragment.caveBiomeMapSize/2),
+				getOrGenerateFragment(pos.wx +% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy -% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz +% CaveBiomeMapFragment.caveBiomeMapSize/2),
+				getOrGenerateFragment(pos.wx +% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy +% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz -% CaveBiomeMapFragment.caveBiomeMapSize/2),
+				getOrGenerateFragment(pos.wx +% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy +% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz +% CaveBiomeMapFragment.caveBiomeMapSize/2),
 			},
 			.surfaceFragments = [_]*MapFragment {
-				SurfaceMap.getOrGenerateFragment(pos.wx - 32, pos.wy - 32, pos.voxelSize),
-				SurfaceMap.getOrGenerateFragment(pos.wx - 32, pos.wy + width + 32, pos.voxelSize),
-				SurfaceMap.getOrGenerateFragment(pos.wx + width + 32, pos.wy - 32, pos.voxelSize),
-				SurfaceMap.getOrGenerateFragment(pos.wx + width + 32, pos.wy + width + 32, pos.voxelSize),
+				SurfaceMap.getOrGenerateFragment(pos.wx -% 32, pos.wy -% 32, pos.voxelSize),
+				SurfaceMap.getOrGenerateFragment(pos.wx -% 32, pos.wy +% width +% 32, pos.voxelSize),
+				SurfaceMap.getOrGenerateFragment(pos.wx +% width +% 32, pos.wy -% 32, pos.voxelSize),
+				SurfaceMap.getOrGenerateFragment(pos.wx +% width +% 32, pos.wy +% width +% 32, pos.voxelSize),
 			},
 			.pos = pos,
 			.width = width,
@@ -188,7 +188,7 @@ pub const InterpolatableCaveBiomeMapView = struct {
 					switch (mode) {
 						.addToMap => {
 							// TODO: Do a tetrahedron voxelization here, so parts of the tetrahedral barycentric coordinates can be precomputed.
-							map.ptr(x, y, z).* += scale*interpolateValue(self, wx + x*voxelSize, wy + y*voxelSize, wz + z*voxelSize, field);
+							map.ptr(x, y, z).* += scale*interpolateValue(self, wx +% x*voxelSize, wy +% y*voxelSize, wz +% z*voxelSize, field);
 						}
 					}
 				}
@@ -198,15 +198,15 @@ pub const InterpolatableCaveBiomeMapView = struct {
 
 	pub noinline fn interpolateValue(self: InterpolatableCaveBiomeMapView, wx: i32, wy: i32, wz: i32, comptime field: []const u8) f32 {
 		const worldPos = Vec3i{wx, wy, wz};
-		const closestGridpoint0 = (worldPos + @as(Vec3i, @splat(CaveBiomeMapFragment.caveBiomeSize/2))) & @as(Vec3i, @splat(~@as(i32, CaveBiomeMapFragment.caveBiomeMask)));
-		const distance0 = worldPos - closestGridpoint0;
+		const closestGridpoint0 = (worldPos +% @as(Vec3i, @splat(CaveBiomeMapFragment.caveBiomeSize/2))) & @as(Vec3i, @splat(~@as(i32, CaveBiomeMapFragment.caveBiomeMask)));
+		const distance0 = worldPos -% closestGridpoint0;
 		const step0 = @select(i32, argMaxDistance0(distance0), @as(Vec3i, @splat(CaveBiomeMapFragment.caveBiomeSize)), @as(Vec3i, @splat(0)));
-		const secondGridPoint0 = closestGridpoint0 + step0*nonZeroSign(distance0);
+		const secondGridPoint0 = closestGridpoint0 +% step0*nonZeroSign(distance0);
 
-		const closestGridpoint1 = (worldPos & @as(Vec3i, @splat(~@as(i32, CaveBiomeMapFragment.caveBiomeMask)))) + @as(Vec3i, @splat(CaveBiomeMapFragment.caveBiomeSize/2));
-		const distance1 = worldPos - closestGridpoint1;
+		const closestGridpoint1 = (worldPos & @as(Vec3i, @splat(~@as(i32, CaveBiomeMapFragment.caveBiomeMask)))) +% @as(Vec3i, @splat(CaveBiomeMapFragment.caveBiomeSize/2));
+		const distance1 = worldPos -% closestGridpoint1;
 		const step1 = @select(i32, argMaxDistance1(distance1), @as(Vec3i, @splat(CaveBiomeMapFragment.caveBiomeSize)), @as(Vec3i, @splat(0)));
-		const secondGridPoint1 = closestGridpoint1 + step1*nonZeroSign(distance1);
+		const secondGridPoint1 = closestGridpoint1 +% step1*nonZeroSign(distance1);
 
 		const @"r⃗₄" = closestGridpoint0;
 		const @"r⃗₃" = secondGridPoint0;
@@ -224,9 +224,9 @@ pub const InterpolatableCaveBiomeMapView = struct {
 		//            \/
 		//           =: A
 		const @"d⃗" = distance0;
-		const @"d⃗₁" = @"r⃗₁" - @"r⃗₄";
-		const @"d⃗₂" = @"r⃗₂" - @"r⃗₄";
-		const @"d⃗₃" = @"r⃗₃" - @"r⃗₄";
+		const @"d⃗₁" = @"r⃗₁" -% @"r⃗₄";
+		const @"d⃗₂" = @"r⃗₂" -% @"r⃗₄";
+		const @"d⃗₃" = @"r⃗₃" -% @"r⃗₄";
 		// With some renamings we get:
 		//     ┌            ┐
 		// A = | d⃗₁  d⃗₂  d⃗₃ |
@@ -290,10 +290,10 @@ pub const InterpolatableCaveBiomeMapView = struct {
 
 	fn checkSurfaceBiome(self: InterpolatableCaveBiomeMapView, wx: i32, wy: i32, wz: i32) ?*const Biome {
 		var index: u8 = 0;
-		if(wx - self.surfaceFragments[0].pos.wx >= MapFragment.mapSize*self.pos.voxelSize) {
+		if(wx -% self.surfaceFragments[0].pos.wx >= MapFragment.mapSize*self.pos.voxelSize) {
 			index += 2;
 		}
-		if(wy - self.surfaceFragments[0].pos.wy >= MapFragment.mapSize*self.pos.voxelSize) {
+		if(wy -% self.surfaceFragments[0].pos.wy >= MapFragment.mapSize*self.pos.voxelSize) {
 			index += 1;
 		}
 		const height: i32 = @intFromFloat(self.surfaceFragments[index].getHeight(wx, wy));
@@ -303,10 +303,10 @@ pub const InterpolatableCaveBiomeMapView = struct {
 
 	pub fn getSurfaceHeight(self: InterpolatableCaveBiomeMapView, wx: i32, wy: i32) f32 {
 		var index: u8 = 0;
-		if(wx - self.surfaceFragments[0].pos.wx >= MapFragment.mapSize*self.pos.voxelSize) {
+		if(wx -% self.surfaceFragments[0].pos.wx >= MapFragment.mapSize*self.pos.voxelSize) {
 			index += 2;
 		}
-		if(wy - self.surfaceFragments[0].pos.wy >= MapFragment.mapSize*self.pos.voxelSize) {
+		if(wy -% self.surfaceFragments[0].pos.wy >= MapFragment.mapSize*self.pos.voxelSize) {
 			index += 1;
 		}
 		return self.surfaceFragments[index].getHeight(wx, wy);
@@ -314,13 +314,13 @@ pub const InterpolatableCaveBiomeMapView = struct {
 
 	noinline fn _getBiome(self: InterpolatableCaveBiomeMapView, wx: i32, wy: i32, wz: i32, map: u1) *const Biome {
 		var index: u8 = 0;
-		if(wx - self.fragments[0].pos.wx >= CaveBiomeMapFragment.caveBiomeMapSize) {
+		if(wx -% self.fragments[0].pos.wx >= CaveBiomeMapFragment.caveBiomeMapSize) {
 			index += 4;
 		}
-		if(wy - self.fragments[0].pos.wy >= CaveBiomeMapFragment.caveBiomeMapSize) {
+		if(wy -% self.fragments[0].pos.wy >= CaveBiomeMapFragment.caveBiomeMapSize) {
 			index += 2;
 		}
-		if(wz - self.fragments[0].pos.wz >= CaveBiomeMapFragment.caveBiomeMapSize) {
+		if(wz -% self.fragments[0].pos.wz >= CaveBiomeMapFragment.caveBiomeMapSize) {
 			index += 1;
 		}
 		const relX: u31 = @intCast(wx - self.fragments[index].pos.wx);
@@ -337,19 +337,19 @@ pub const InterpolatableCaveBiomeMapView = struct {
 				return surfaceBiome;
 			}
 		}
-		var gridPointX = (wx + CaveBiomeMapFragment.caveBiomeSize/2) & ~@as(i32, CaveBiomeMapFragment.caveBiomeMask);
-		var gridPointY = (wy + CaveBiomeMapFragment.caveBiomeSize/2) & ~@as(i32, CaveBiomeMapFragment.caveBiomeMask);
-		var gridPointZ = (wz + CaveBiomeMapFragment.caveBiomeSize/2) & ~@as(i32, CaveBiomeMapFragment.caveBiomeMask);
+		var gridPointX = (wx +% CaveBiomeMapFragment.caveBiomeSize/2) & ~@as(i32, CaveBiomeMapFragment.caveBiomeMask);
+		var gridPointY = (wy +% CaveBiomeMapFragment.caveBiomeSize/2) & ~@as(i32, CaveBiomeMapFragment.caveBiomeMask);
+		var gridPointZ = (wz +% CaveBiomeMapFragment.caveBiomeSize/2) & ~@as(i32, CaveBiomeMapFragment.caveBiomeMask);
 		var map: u1 = 0;
-		const distanceX = wx - gridPointX;
-		const distanceY = wy - gridPointY;
-		const distanceZ = wz - gridPointZ;
+		const distanceX = wx -% gridPointX;
+		const distanceY = wy -% gridPointY;
+		const distanceZ = wz -% gridPointZ;
 		const totalDistance = @abs(distanceX) + @abs(distanceY) + @abs(distanceZ);
 		if(totalDistance > CaveBiomeMapFragment.caveBiomeSize*3/4) {
 			// Or with 1 to prevent errors if the value is 0.
-			gridPointX += (std.math.sign(distanceX | 1) - 1)*(CaveBiomeMapFragment.caveBiomeSize/2);
-			gridPointY += (std.math.sign(distanceY | 1) - 1)*(CaveBiomeMapFragment.caveBiomeSize/2);
-			gridPointZ += (std.math.sign(distanceZ | 1) - 1)*(CaveBiomeMapFragment.caveBiomeSize/2);
+			gridPointX +%= (std.math.sign(distanceX | 1) - 1)*(CaveBiomeMapFragment.caveBiomeSize/2);
+			gridPointY +%= (std.math.sign(distanceY | 1) - 1)*(CaveBiomeMapFragment.caveBiomeSize/2);
+			gridPointZ +%= (std.math.sign(distanceZ | 1) - 1)*(CaveBiomeMapFragment.caveBiomeSize/2);
 			map = 1;
 		}
 
@@ -411,9 +411,9 @@ pub const CaveBiomeMapView = struct {
 		std.debug.assert(relX >= -32 and relX < self.super.width + 32); // coordinate out of bounds
 		std.debug.assert(relY >= -32 and relY < self.super.width + 32); // coordinate out of bounds
 		std.debug.assert(relZ >= -32 and relZ < self.super.width + 32); // coordinate out of bounds
-		var wx = relX + self.super.pos.wx;
-		var wy = relY + self.super.pos.wy;
-		var wz = relZ + self.super.pos.wz;
+		var wx = relX +% self.super.pos.wx;
+		var wy = relY +% self.super.pos.wy;
+		var wz = relZ +% self.super.pos.wz;
 		if(self.super.checkSurfaceBiome(wx, wy, wz)) |surfaceBiome| {
 			return surfaceBiome;
 		}
@@ -422,9 +422,9 @@ pub const CaveBiomeMapView = struct {
 			const valueX = noiseX.getValue(wx, wy, wz)*0.5 + noiseY.getRandomValue(wx, wy, wz)*8;
 			const valueY = noiseY.getValue(wx, wy, wz)*0.5 + noiseZ.getRandomValue(wx, wy, wz)*8;
 			const valueZ = noiseZ.getValue(wx, wy, wz)*0.5 + noiseX.getRandomValue(wx, wy, wz)*8;
-			wx += @intFromFloat(valueX);
-			wy += @intFromFloat(valueY);
-			wz += @intFromFloat(valueZ);
+			wx +%= @intFromFloat(valueX);
+			wy +%= @intFromFloat(valueY);
+			wz +%= @intFromFloat(valueZ);
 		};
 
 		return self.super.getRoughBiome(wx, wy, wz, getSeed, seed, false);

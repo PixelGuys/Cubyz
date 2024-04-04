@@ -35,12 +35,12 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.Chunk, caveMap: CaveMap.CaveM
 		for(blueNoise) |coordinatePair| {
 			const px = @as(i32, @intCast(coordinatePair >> 16)) - 8; // TODO: Maybe add a blue-noise iterator or something like that?
 			const py = @as(i32, @intCast(coordinatePair & 0xffff)) - 8;
-			const wpx = chunk.pos.wx + px;
-			const wpy = chunk.pos.wy + py;
+			const wpx = chunk.pos.wx +% px;
+			const wpy = chunk.pos.wy +% py;
 
 			var pz : i32 = -32;
 			while(pz < chunk.width) : (pz += 32) {
-				const wpz = chunk.pos.wz + pz;
+				const wpz = chunk.pos.wz +% pz;
 				var seed = random.initSeed3D(worldSeed, .{wpx, wpy, wpz});
 				var relZ = pz + 16;
 				if(caveMap.isSolid(px, py, relZ)) {
@@ -68,8 +68,8 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.Chunk, caveMap: CaveMap.CaveM
 		while(px < chunk.width + 16) : (px += chunk.pos.voxelSize) {
 			var py: i32 = 0;
 			while(py < chunk.width + 16) : (py += chunk.pos.voxelSize) {
-				const wpx = px - 8 + chunk.pos.wx;
-				const wpy = py - 8 + chunk.pos.wy;
+				const wpx = px -% 8 +% chunk.pos.wx;
+				const wpy = py -% 8 +% chunk.pos.wy;
 
 				const relZ = @as(i32, @intFromFloat(biomeMap.getSurfaceHeight(wpx, wpy))) - chunk.pos.wz;
 				if(relZ < -32 or relZ >= chunk.width + 32) continue;

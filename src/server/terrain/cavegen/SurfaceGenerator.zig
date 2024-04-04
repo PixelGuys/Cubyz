@@ -39,10 +39,10 @@ pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 		while(y < width) : (y += map.pos.voxelSize) {
 			const height = biomeMap.getSurfaceHeight(map.pos.wx + x, map.pos.wy + y);
 			const smallestHeight: i32 = @intFromFloat(@floor(@min(
-				biomeMap.getSurfaceHeight(map.pos.wx + x + 1, map.pos.wy + y),
-				biomeMap.getSurfaceHeight(map.pos.wx + x, map.pos.wy + y + 1),
-				biomeMap.getSurfaceHeight(map.pos.wx + x - 1, map.pos.wy + y),
-				biomeMap.getSurfaceHeight(map.pos.wx + x, map.pos.wy + y - 1),
+				biomeMap.getSurfaceHeight(map.pos.wx +% x +% 1, map.pos.wy +% y),
+				biomeMap.getSurfaceHeight(map.pos.wx +% x, map.pos.wy +% y +% 1),
+				biomeMap.getSurfaceHeight(map.pos.wx +% x -% 1, map.pos.wy +% y),
+				biomeMap.getSurfaceHeight(map.pos.wx +% x, map.pos.wy +% y -% 1),
 				height,
 			) - 0.5));
 			const relativeHeight: i32 = @as(i32, @intFromFloat(height)) - map.pos.wz;

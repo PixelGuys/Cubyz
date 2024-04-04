@@ -198,9 +198,9 @@ pub fn getMeshFromAnyLodAndIncreaseRefCount(wx: i32, wy: i32, wz: i32, voxelSize
 
 pub fn getNeighborAndIncreaseRefCount(_pos: chunk.ChunkPosition, resolution: u31, neighbor: u3) ?*chunk_meshing.ChunkMesh {
 	var pos = _pos;
-	pos.wx += pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relX[neighbor];
-	pos.wy += pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relY[neighbor];
-	pos.wz += pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relZ[neighbor];
+	pos.wx +%= pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relX[neighbor];
+	pos.wy +%= pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relY[neighbor];
+	pos.wz +%= pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relZ[neighbor];
 	pos.voxelSize = resolution;
 	return getMeshAndIncreaseRefCount(pos);
 }
@@ -747,8 +747,8 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 				xyMin = @min(xyMin, xy);
 				xyMax = @max(xyMax, xy);
 			}
-			const min = @max(xyMin, data.node.min);
-			const max = @min(xyMax, data.node.max);
+			const min = data.node.min;
+			const max = data.node.max;
 			if(@reduce(.Or, min >= max)) continue; // Nothing to render.
 			var neighborPos = chunk.ChunkPosition{
 				.wx = mesh.pos.wx + chunk.Neighbors.relX[neighbor]*chunk.chunkSize*mesh.pos.voxelSize,

@@ -51,7 +51,7 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 	const mapSize = scaledSize*map.pos.voxelSize;
 	const biomeSize = MapFragment.biomeSize;
 	const offset = 8;
-	const biomePositions = terrain.ClimateMap.getBiomeMap(main.stackAllocator, map.pos.wx - offset*biomeSize, map.pos.wy - offset*biomeSize, mapSize + 2*offset*biomeSize, mapSize + 2*offset*biomeSize);
+	const biomePositions = terrain.ClimateMap.getBiomeMap(main.stackAllocator, map.pos.wx -% offset*biomeSize, map.pos.wy -% offset*biomeSize, mapSize + 2*offset*biomeSize, mapSize + 2*offset*biomeSize);
 	defer biomePositions.deinit(main.stackAllocator);
 	var seed = random.initSeed2D(worldSeed, .{map.pos.wx, map.pos.wy});
 	random.scrambleSeed(&seed);
@@ -89,13 +89,15 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 			var mountains: f32 = 0;
 			const wx: f32 = @floatFromInt(x*map.pos.voxelSize + map.pos.wx);
 			const wy: f32 = @floatFromInt(y*map.pos.voxelSize + map.pos.wy);
-			var updatedX = wx + (xOffsetMap.get(x, y) - 0.5)*biomeSize*4;
-			var updatedY = wy + (yOffsetMap.get(x, y) - 0.5)*biomeSize*4;
+			const offsetX = (xOffsetMap.get(x, y) - 0.5)*biomeSize*4;
+			const offsetY = (yOffsetMap.get(x, y) - 0.5)*biomeSize*4;
+			var updatedX = wx + offsetX;
+			var updatedY = wy + offsetY;
 			var xBiome: i32 = @intFromFloat(@floor((updatedX - @as(f32, @floatFromInt(map.pos.wx)))/biomeSize));
 			var yBiome: i32 = @intFromFloat(@floor((updatedY - @as(f32, @floatFromInt(map.pos.wy)))/biomeSize));
-			const relXBiome = (0.5 + updatedX - @as(f32, @floatFromInt(map.pos.wx +% xBiome*biomeSize)))/biomeSize;
+			const relXBiome = (0.5 + offsetX + @as(f32, @floatFromInt(x*map.pos.voxelSize -% xBiome*biomeSize)))/biomeSize;
 			xBiome += offset;
-			const relYBiome = (0.5 + updatedY - @as(f32, @floatFromInt(map.pos.wy +% yBiome*biomeSize)))/biomeSize;
+			const relYBiome = (0.5 + offsetY + @as(f32, @floatFromInt(y*map.pos.voxelSize -% yBiome*biomeSize)))/biomeSize;
 			yBiome += offset;
 			var closestBiome: *const terrain.biomes.Biome = undefined;
 			if(relXBiome < 0.5) {
