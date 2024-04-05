@@ -45,7 +45,7 @@ pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 				biomeMap.getSurfaceHeight(map.pos.wx +% x, map.pos.wy +% y -% 1),
 				height,
 			) - 0.5));
-			const relativeHeight: i32 = @as(i32, @intFromFloat(height)) - map.pos.wz;
+			const relativeHeight: i32 = @as(i32, @intFromFloat(height)) -% map.pos.wz;
 			map.removeRange(x, y, relativeHeight, CaveMapFragment.height*map.pos.voxelSize);
 			if(smallestHeight < 1) { // Seal off caves that intersect the ocean floor.
 				map.addRange(x, y, smallestHeight -% 1 -% map.pos.wz, relativeHeight);

@@ -746,21 +746,21 @@ pub const MeshSelection = struct {
 			posBeforeBlock = voxelPos;
 			if(tMax[0] < tMax[1]) {
 				if(tMax[0] < tMax[2]) {
-					voxelPos[0] += step[0];
+					voxelPos[0] +%= step[0];
 					total_tMax = tMax[0];
 					tMax[0] += tDelta[0];
 				} else {
-					voxelPos[2] += step[2];
+					voxelPos[2] +%= step[2];
 					total_tMax = tMax[2];
 					tMax[2] += tDelta[2];
 				}
 			} else {
 				if(tMax[1] < tMax[2]) {
-					voxelPos[1] += step[1];
+					voxelPos[1] +%= step[1];
 					total_tMax = tMax[1];
 					tMax[1] += tDelta[1];
 				} else {
-					voxelPos[2] += step[2];
+					voxelPos[2] +%= step[2];
 					total_tMax = tMax[2];
 					tMax[2] += tDelta[2];
 				}

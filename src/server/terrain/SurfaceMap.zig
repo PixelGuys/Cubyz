@@ -41,9 +41,10 @@ pub const MapFragmentPosition = struct {
 	}
 
 	pub fn getMinDistanceSquared(self: MapFragmentPosition, playerPosition: Vec3d, comptime width: comptime_int) f64 {
+		const adjustedPosition = @mod(playerPosition + @as(Vec3d, @splat(1 << 31)), @as(Vec3d, @splat(1 << 32))) - @as(Vec3d, @splat(1 << 31));
 		const halfWidth: f64 = @floatFromInt(self.voxelSize*@divExact(width, 2));
-		var dx = @abs(@as(f64, @floatFromInt(self.wx)) + halfWidth - playerPosition[0]);
-		var dy = @abs(@as(f64, @floatFromInt(self.wy)) + halfWidth - playerPosition[1]);
+		var dx = @abs(@as(f64, @floatFromInt(self.wx)) + halfWidth - adjustedPosition[0]);
+		var dy = @abs(@as(f64, @floatFromInt(self.wy)) + halfWidth - adjustedPosition[1]);
 		dx = @max(0, dx - halfWidth);
 		dy = @max(0, dy - halfWidth);
 		return dx*dx + dy*dy;

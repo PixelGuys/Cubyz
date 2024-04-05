@@ -375,9 +375,9 @@ pub const CaveBiomeMapView = struct {
 			.super = InterpolatableCaveBiomeMapView.init(chunk.pos, chunk.width),
 		};
 		if(chunk.pos.voxelSize < 8) {
-			const startX = (chunk.pos.wx - 32) & ~@as(i32, 63);
-			const startY = (chunk.pos.wy - 32) & ~@as(i32, 63);
-			const startZ = (chunk.pos.wz - 32) & ~@as(i32, 63);
+			const startX = (chunk.pos.wx -% 32) & ~@as(i32, 63);
+			const startY = (chunk.pos.wy -% 32) & ~@as(i32, 63);
+			const startZ = (chunk.pos.wz -% 32) & ~@as(i32, 63);
 			self.noiseX = CachedFractalNoise3D.init(startX, startY, startZ, chunk.pos.voxelSize*4, chunk.width + 128, main.server.world.?.seed ^ 0x764923684396, 64);
 			self.noiseY = CachedFractalNoise3D.init(startX, startY, startZ, chunk.pos.voxelSize*4, chunk.width + 128, main.server.world.?.seed ^ 0x6547835649265429, 64);
 			self.noiseZ = CachedFractalNoise3D.init(startX, startY, startZ, chunk.pos.voxelSize*4, chunk.width + 128, main.server.world.?.seed ^ 0x56789365396783, 64);

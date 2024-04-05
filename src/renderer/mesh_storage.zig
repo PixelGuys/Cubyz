@@ -167,9 +167,9 @@ pub fn getMeshFromAnyLodFromRenderThread(wx: i32, wy: i32, wz: i32, voxelSize: u
 
 pub fn getNeighborFromRenderThread(_pos: chunk.ChunkPosition, resolution: u31, neighbor: u3) ?*chunk_meshing.ChunkMesh {
 	var pos = _pos;
-	pos.wx += pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relX[neighbor];
-	pos.wy += pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relY[neighbor];
-	pos.wz += pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relZ[neighbor];
+	pos.wx +%= pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relX[neighbor];
+	pos.wy +%= pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relY[neighbor];
+	pos.wz +%= pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relZ[neighbor];
 	pos.voxelSize = resolution;
 	const node = getNodeFromRenderThread(pos);
 	return node.mesh.load(.acquire);
@@ -219,16 +219,16 @@ fn isInRenderDistance(pos: chunk.ChunkPosition) bool {
 
 	const minX = lastPx-%maxRenderDistance & invMask;
 	const maxX = lastPx+%maxRenderDistance+%size & invMask;
-	if(pos.wx < minX) return false;
-	if(pos.wx >= maxX) return false;
+	if(pos.wx -% minX < 0) return false;
+	if(pos.wx -% maxX >= 0) return false;
 	var deltaX: i64 = @abs(pos.wx +% size/2 -% lastPx);
 	deltaX = @max(0, deltaX - size/2);
 
 	const maxYRenderDistance: i32 = reduceRenderDistance(maxRenderDistance, deltaX);
 	const minY = lastPy-%maxYRenderDistance & invMask;
 	const maxY = lastPy+%maxYRenderDistance+%size & invMask;
-	if(pos.wy < minY) return false;
-	if(pos.wy >= maxY) return false;
+	if(pos.wy -% minY < 0) return false;
+	if(pos.wy -% maxY >= 0) return false;
 	var deltaY: i64 = @abs(pos.wy +% size/2 -% lastPy);
 	deltaY = @max(0, deltaY - size/2);
 
@@ -236,8 +236,8 @@ fn isInRenderDistance(pos: chunk.ChunkPosition) bool {
 	if(maxZRenderDistance == 0) return false;
 	const minZ = lastPz-%maxZRenderDistance & invMask;
 	const maxZ = lastPz+%maxZRenderDistance+%size & invMask;
-	if(pos.wz < minZ) return false;
-	if(pos.wz >= maxZ) return false;
+	if(pos.wz -% minZ < 0) return false;
+	if(pos.wz -% maxZ >= 0) return false;
 	return true;
 }
 
@@ -249,8 +249,8 @@ fn isMapInRenderDistance(pos: LightMap.MapFragmentPosition) bool {
 
 	const minX = lastPx-%maxRenderDistance & invMask;
 	const maxX = lastPx+%maxRenderDistance+%size & invMask;
-	if(pos.wx < minX) return false;
-	if(pos.wx >= maxX) return false;
+	if(pos.wx -% minX < 0) return false;
+	if(pos.wx -% maxX >= 0) return false;
 	var deltaX: i64 = @abs(pos.wx +% size/2 -% lastPx);
 	deltaX = @max(0, deltaX - size/2);
 
@@ -258,8 +258,8 @@ fn isMapInRenderDistance(pos: LightMap.MapFragmentPosition) bool {
 	if(maxYRenderDistance == 0) return false;
 	const minY = lastPy-%maxYRenderDistance & invMask;
 	const maxY = lastPy+%maxYRenderDistance+%size & invMask;
-	if(pos.wy < minY) return false;
-	if(pos.wy >= maxY) return false;
+	if(pos.wy -% minY < 0) return false;
+	if(pos.wy -% maxY >= 0) return false;
 	return true;
 }
 
@@ -751,9 +751,9 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 			const max = data.node.max;
 			if(@reduce(.Or, min >= max)) continue; // Nothing to render.
 			var neighborPos = chunk.ChunkPosition{
-				.wx = mesh.pos.wx + chunk.Neighbors.relX[neighbor]*chunk.chunkSize*mesh.pos.voxelSize,
-				.wy = mesh.pos.wy + chunk.Neighbors.relY[neighbor]*chunk.chunkSize*mesh.pos.voxelSize,
-				.wz = mesh.pos.wz + chunk.Neighbors.relZ[neighbor]*chunk.chunkSize*mesh.pos.voxelSize,
+				.wx = mesh.pos.wx +% chunk.Neighbors.relX[neighbor]*chunk.chunkSize*mesh.pos.voxelSize,
+				.wy = mesh.pos.wy +% chunk.Neighbors.relY[neighbor]*chunk.chunkSize*mesh.pos.voxelSize,
+				.wz = mesh.pos.wz +% chunk.Neighbors.relZ[neighbor]*chunk.chunkSize*mesh.pos.voxelSize,
 				.voxelSize = mesh.pos.voxelSize,
 			};
 			var lod: u3 = data.node.lod;

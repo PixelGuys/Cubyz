@@ -30,7 +30,7 @@ pub fn deinit() void {
 pub fn generate(worldSeed: u64, chunk: *main.chunk.Chunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView) void {
 	if(chunk.pos.voxelSize < 4) {
 		// Uses a blue noise pattern for all structure that shouldn't touch.
-		const blueNoise = noise.BlueNoise.getRegionData(main.stackAllocator, chunk.pos.wx - 8, chunk.pos.wy - 8, chunk.width + 16, chunk.width + 16);
+		const blueNoise = noise.BlueNoise.getRegionData(main.stackAllocator, chunk.pos.wx -% 8, chunk.pos.wy -% 8, chunk.width + 16, chunk.width + 16);
 		defer main.stackAllocator.free(blueNoise);
 		for(blueNoise) |coordinatePair| {
 			const px = @as(i32, @intCast(coordinatePair >> 16)) - 8; // TODO: Maybe add a blue-noise iterator or something like that?
@@ -71,7 +71,7 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.Chunk, caveMap: CaveMap.CaveM
 				const wpx = px -% 8 +% chunk.pos.wx;
 				const wpy = py -% 8 +% chunk.pos.wy;
 
-				const relZ = @as(i32, @intFromFloat(biomeMap.getSurfaceHeight(wpx, wpy))) - chunk.pos.wz;
+				const relZ = @as(i32, @intFromFloat(biomeMap.getSurfaceHeight(wpx, wpy))) -% chunk.pos.wz;
 				if(relZ < -32 or relZ >= chunk.width + 32) continue;
 
 				var seed = random.initSeed3D(worldSeed, .{wpx, wpy, relZ});

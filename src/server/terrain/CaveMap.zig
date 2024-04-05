@@ -184,7 +184,7 @@ pub const CaveMapView = struct {
 		if(wy -% self.fragments[0].pos.wy >= CaveMapFragment.width*self.reference.pos.voxelSize) {
 			index += 2;
 		}
-		var deltaZ = self.reference.pos.wz - self.fragments[0].pos.wz;
+		var deltaZ = self.reference.pos.wz -% self.fragments[0].pos.wz;
 		if(deltaZ >= CaveMapFragment.height*self.reference.pos.voxelSize) {
 			index += 1;
 			deltaZ -= CaveMapFragment.height*self.reference.pos.voxelSize;
@@ -209,7 +209,7 @@ pub const CaveMapView = struct {
 		if(wy -% self.fragments[0].pos.wy >= CaveMapFragment.width*self.reference.pos.voxelSize) {
 			index += 2;
 		}
-		var relativeZ = @divFloor(z + self.reference.pos.wz - self.fragments[0].pos.wz, self.reference.pos.voxelSize);
+		var relativeZ = @divFloor(z +% self.reference.pos.wz -% self.fragments[0].pos.wz, self.reference.pos.voxelSize);
 		std.debug.assert(relativeZ >= 0 and relativeZ < 2*CaveMapFragment.height);
 		const fragmentRelX = wx - self.fragments[index].pos.wx;
 		const fragmentRelY = wy - self.fragments[index].pos.wy;
@@ -237,7 +237,7 @@ pub const CaveMapView = struct {
 			}
 		}
 		result += @ctz(height);
-		return result*self.reference.pos.voxelSize + self.fragments[0].pos.wz - self.reference.pos.wz;
+		return result*self.reference.pos.voxelSize +% self.fragments[0].pos.wz -% self.reference.pos.wz;
 	}
 
 	pub fn findTerrainChangeBelow(self: CaveMapView, relX: i32, relY: i32, z: i32) i32 {
@@ -250,7 +250,7 @@ pub const CaveMapView = struct {
 		if(wy -% self.fragments[0].pos.wy >= CaveMapFragment.width*self.reference.pos.voxelSize) {
 			index += 2;
 		}
-		var relativeZ = @divFloor(z + self.reference.pos.wz - self.fragments[0].pos.wz, self.reference.pos.voxelSize);
+		var relativeZ = @divFloor(z +% self.reference.pos.wz -% self.fragments[0].pos.wz, self.reference.pos.voxelSize);
 		std.debug.assert(relativeZ >= 0 and relativeZ < 2*CaveMapFragment.height);
 		const fragmentRelX = wx - self.fragments[index].pos.wx;
 		const fragmentRelY = wy - self.fragments[index].pos.wy;
@@ -278,7 +278,7 @@ pub const CaveMapView = struct {
 			}
 		}
 		result -= @clz(height);
-		return result*self.reference.pos.voxelSize + self.fragments[0].pos.wz - self.reference.pos.wz;
+		return result*self.reference.pos.voxelSize +% self.fragments[0].pos.wz -% self.reference.pos.wz;
 	}
 };
 
