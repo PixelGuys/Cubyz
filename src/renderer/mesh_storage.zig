@@ -747,8 +747,8 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 				xyMin = @min(xyMin, xy);
 				xyMax = @max(xyMax, xy);
 			}
-			const min = data.node.min;
-			const max = data.node.max;
+			const min = @max(xyMin, data.node.min);
+			const max = @min(xyMax, data.node.max);
 			if(@reduce(.Or, min >= max)) continue; // Nothing to render.
 			var neighborPos = chunk.ChunkPosition{
 				.wx = mesh.pos.wx +% chunk.Neighbors.relX[neighbor]*chunk.chunkSize*mesh.pos.voxelSize,
