@@ -80,7 +80,7 @@ void main() {
 		fullLight >> 5 & 31,
 		fullLight >> 0 & 31
 	);
-	light = max(sunLight*ambientLight, blockLight)/32;
+	light = max(sunLight*ambientLight, blockLight)/31;
 	isBackFace = encodedPosition>>19 & 1;
 	ditherSeed = encodedPosition & 15;
 
