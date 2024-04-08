@@ -132,10 +132,11 @@ pub const ChunkPosition = struct {
 	}
 
 	pub fn getMinDistanceSquared(self: ChunkPosition, playerPosition: Vec3d) f64 {
+		const adjustedPosition = @mod(playerPosition + @as(Vec3d, @splat(1 << 31)), @as(Vec3d, @splat(1 << 32))) - @as(Vec3d, @splat(1 << 31));
 		const halfWidth: f64 = @floatFromInt(self.voxelSize*@divExact(chunkSize, 2));
-		var dx = @abs(@as(f64, @floatFromInt(self.wx)) + halfWidth - playerPosition[0]);
-		var dy = @abs(@as(f64, @floatFromInt(self.wy)) + halfWidth - playerPosition[1]);
-		var dz = @abs(@as(f64, @floatFromInt(self.wz)) + halfWidth - playerPosition[2]);
+		var dx = @abs(@as(f64, @floatFromInt(self.wx)) + halfWidth - adjustedPosition[0]);
+		var dy = @abs(@as(f64, @floatFromInt(self.wy)) + halfWidth - adjustedPosition[1]);
+		var dz = @abs(@as(f64, @floatFromInt(self.wz)) + halfWidth - adjustedPosition[2]);
 		dx = @max(0, dx - halfWidth);
 		dy = @max(0, dy - halfWidth);
 		dz = @max(0, dz - halfWidth);
@@ -143,10 +144,11 @@ pub const ChunkPosition = struct {
 	}
 
 	pub fn getMaxDistanceSquared(self: ChunkPosition, playerPosition: Vec3d) f64 {
+		const adjustedPosition = @mod(playerPosition + @as(Vec3d, @splat(1 << 31)), @as(Vec3d, @splat(1 << 32))) - @as(Vec3d, @splat(1 << 31));
 		const halfWidth: f64 = @floatFromInt(self.voxelSize*@divExact(chunkSize, 2));
-		var dx = @abs(@as(f64, @floatFromInt(self.wx)) + halfWidth - playerPosition[0]);
-		var dy = @abs(@as(f64, @floatFromInt(self.wy)) + halfWidth - playerPosition[1]);
-		var dz = @abs(@as(f64, @floatFromInt(self.wz)) + halfWidth - playerPosition[2]);
+		var dx = @abs(@as(f64, @floatFromInt(self.wx)) + halfWidth - adjustedPosition[0]);
+		var dy = @abs(@as(f64, @floatFromInt(self.wy)) + halfWidth - adjustedPosition[1]);
+		var dz = @abs(@as(f64, @floatFromInt(self.wz)) + halfWidth - adjustedPosition[2]);
 		dx = dx + halfWidth;
 		dy = dy + halfWidth;
 		dz = dz + halfWidth;
@@ -154,10 +156,11 @@ pub const ChunkPosition = struct {
 	}
 
 	pub fn getCenterDistanceSquared(self: ChunkPosition, playerPosition: Vec3d) f64 {
+		const adjustedPosition = @mod(playerPosition + @as(Vec3d, @splat(1 << 31)), @as(Vec3d, @splat(1 << 32))) - @as(Vec3d, @splat(1 << 31));
 		const halfWidth: f64 = @floatFromInt(self.voxelSize*@divExact(chunkSize, 2));
-		const dx = @as(f64, @floatFromInt(self.wx)) + halfWidth - playerPosition[0];
-		const dy = @as(f64, @floatFromInt(self.wy)) + halfWidth - playerPosition[1];
-		const dz = @as(f64, @floatFromInt(self.wz)) + halfWidth - playerPosition[2];
+		const dx = @as(f64, @floatFromInt(self.wx)) + halfWidth - adjustedPosition[0];
+		const dy = @as(f64, @floatFromInt(self.wy)) + halfWidth - adjustedPosition[1];
+		const dz = @as(f64, @floatFromInt(self.wz)) + halfWidth - adjustedPosition[2];
 		return dx*dx + dy*dy + dz*dz;
 	}
 

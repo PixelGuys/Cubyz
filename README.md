@@ -17,7 +17,7 @@ Check out the [Discord server](https://discord.gg/XtqCRRG) for more information 
 There are also some devlogs on [YouTube](https://www.youtube.com/playlist?list=PLYi_o2N3ImLb3SIUpTS_AFPWe0MUTk2Lf).
 
 ### History
-Until recently (the Zig rewrite was started in August 2022) Cubyz was written in Java. You can still see the code over on the [cubyz-java](https://github.com/PixelGuys/Cubyz/tree/cubyz-java) branch and play it using the [Java Launcher](https://github.com/PixelGuys/Cubyz-Launcher/releases). `// TODO: Move this over to a separate repository`
+Until recently (the Zig rewrite was started in August 2022) Cubyz was written in Java. You can still see the code in the [Cubyz-Java](https://github.com/PixelGuys/Cubyz-Java) repository and play it using the [Java Launcher](https://github.com/PixelGuys/Cubyz-Launcher/releases). `// TODO: Move this over to a separate repository`
 
 Originally Cubyz was created on August 22, 2018 by <img src="https://avatars.githubusercontent.com/u/39484230" width="20" height="20">[zenith391](https://github.com/zenith391) and <img src="https://avatars.githubusercontent.com/u/39484479" width="20" height="20">[ZaUserA](https://github.com/ZaUserA). Back then, it was called "Cubz".
 

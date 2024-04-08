@@ -115,7 +115,7 @@ pub fn updateViewport(width: u31, height: u31, fov: f32) void {
 	lastHeight = height;
 	lastFov = fov;
 	c.glViewport(0, 0, width, height);
-	game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(f32, fov), @as(f32, @floatFromInt(width))/@as(f32, @floatFromInt(height)), zNear, zFar);
+	game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(fov), @as(f32, @floatFromInt(width))/@as(f32, @floatFromInt(height)), zNear, zFar);
 	worldFrameBuffer.updateSize(width, height, c.GL_RGB16F);
 	worldFrameBuffer.unbind();
 }
@@ -594,7 +594,7 @@ pub const MenuBackGround = struct {
 		c.glDisable(c.GL_DEPTH_TEST);
 		c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 
-		const fileName = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/backgrounds/{s}_{}.png", .{game.world.?.name, game.world.?.gameTime.load(.Monotonic)}) catch unreachable;
+		const fileName = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/backgrounds/{s}_{}.png", .{game.world.?.name, game.world.?.gameTime.load(.monotonic)}) catch unreachable;
 		defer main.stackAllocator.free(fileName);
 		image.exportToFile(fileName) catch |err| {
 			std.log.err("Cannot write file {s} due to {s}", .{fileName, @errorName(err)});
@@ -616,7 +616,7 @@ pub const Frustum = struct {
 		const cameraUp = vec.xyz(invRotationMatrix.mulVec(Vec4f{0, 1, 0, 1}));
 		const cameraRight = vec.xyz(invRotationMatrix.mulVec(Vec4f{1, 0, 0, 1}));
 
-		const halfVSide = std.math.tan(std.math.degreesToRadians(f32, fovY)*0.5);
+		const halfVSide = std.math.tan(std.math.degreesToRadians(fovY)*0.5);
 		const halfHSide = halfVSide*@as(f32, @floatFromInt(width))/@as(f32, @floatFromInt(height));
 
 		var self: Frustum = undefined;
@@ -746,21 +746,21 @@ pub const MeshSelection = struct {
 			posBeforeBlock = voxelPos;
 			if(tMax[0] < tMax[1]) {
 				if(tMax[0] < tMax[2]) {
-					voxelPos[0] += step[0];
+					voxelPos[0] +%= step[0];
 					total_tMax = tMax[0];
 					tMax[0] += tDelta[0];
 				} else {
-					voxelPos[2] += step[2];
+					voxelPos[2] +%= step[2];
 					total_tMax = tMax[2];
 					tMax[2] += tDelta[2];
 				}
 			} else {
 				if(tMax[1] < tMax[2]) {
-					voxelPos[1] += step[1];
+					voxelPos[1] +%= step[1];
 					total_tMax = tMax[1];
 					tMax[1] += tDelta[1];
 				} else {
-					voxelPos[2] += step[2];
+					voxelPos[2] +%= step[2];
 					total_tMax = tMax[2];
 					tMax[2] += tDelta[2];
 				}

@@ -49,7 +49,7 @@ pub fn deinit() void {
 }
 
 pub fn render() void {
-	lastFrameTime[index] = @floatCast(main.lastFrameTime.load(.Monotonic)*1000.0);
+	lastFrameTime[index] = @floatCast(main.lastFrameTime.load(.monotonic)*1000.0);
 	index = (index + 1)%@as(u31, @intCast(lastFrameTime.len));
 	draw.setColor(0xffffffff);
 	draw.text("32 ms", 0, 16, 8, .left);

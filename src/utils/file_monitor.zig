@@ -63,7 +63,7 @@ const LinuxImpl = struct {
 	fn init() void {
 		fd = c.inotify_init();
 		if(fd == -1) {
-			std.log.err("Error while initializing inotifiy: {}", .{std.os.errno(fd)});
+			std.log.err("Error while initializing inotifiy: {}", .{std.posix.errno(fd)});
 		}
 		watchDescriptors = std.StringHashMap(*DirectoryInfo).init(main.globalAllocator.allocator);
 		callbacks = std.AutoHashMap(c_int, *DirectoryInfo).init(main.globalAllocator.allocator);
@@ -72,7 +72,7 @@ const LinuxImpl = struct {
 	fn deinit() void {
 		const result = c.close(fd);
 		if(result == -1) {
-			std.log.err("Error while closing file descriptor: {}", .{std.os.errno(result)});
+			std.log.err("Error while closing file descriptor: {}", .{std.posix.errno(result)});
 		}
 		var iterator = watchDescriptors.iterator();
 		while(iterator.next()) |entry| {
@@ -120,14 +120,14 @@ const LinuxImpl = struct {
 		var available: c_uint = 0;
 		const result = c.ioctl(fd, c.FIONREAD, &available);
 		if(result == -1) {
-			std.log.err("Error while checking the number of available bytes for the inotify file descriptor: {}", .{std.os.errno(result)});
+			std.log.err("Error while checking the number of available bytes for the inotify file descriptor: {}", .{std.posix.errno(result)});
 		}
 		if(available == 0) return;
 		const events: []u8 = main.stackAllocator.alloc(u8, available);
 		defer main.stackAllocator.free(events);
 		const readBytes = c.read(fd, events.ptr, available);
 		if(readBytes == -1) {
-			std.log.err("Error while reading inotify event: {}", .{std.os.errno(readBytes)});
+			std.log.err("Error while reading inotify event: {}", .{std.posix.errno(readBytes)});
 			return;
 		}
 		var triggeredCallbacks = std.AutoHashMap(*DirectoryInfo, void).init(main.stackAllocator.allocator); // Avoid duplicate calls
@@ -157,7 +157,7 @@ const LinuxImpl = struct {
 		std.debug.assert(!mutex.tryLock());
 		const watchDescriptor = c.inotify_add_watch(fd, path.ptr, c.IN_CLOSE_WRITE | c.IN_DELETE | c.IN_CREATE | c.IN_MOVE | c.IN_ONLYDIR);
 		if(watchDescriptor == -1) {
-			std.log.err("Error while adding watch descriptor for path {s}: {}", .{path, std.os.errno(watchDescriptor)});
+			std.log.err("Error while adding watch descriptor for path {s}: {}", .{path, std.posix.errno(watchDescriptor)});
 		}
 		callbacks.put(watchDescriptor, info) catch unreachable;
 		info.watchDescriptors.append(main.globalAllocator, watchDescriptor);
@@ -168,8 +168,8 @@ const LinuxImpl = struct {
 		_ = callbacks.remove(watchDescriptor);
 		const result = c.inotify_rm_watch(fd, watchDescriptor);
 		if(result == -1) {
-			const err = std.os.errno(result);
-			if(err != .INVAL) std.log.err("Error while removing watch descriptors for path {s}: {}", .{path, std.os.errno(result)});
+			const err = std.posix.errno(result);
+			if(err != .INVAL) std.log.err("Error while removing watch descriptors for path {s}: {}", .{path, err});
 		}
 	}
 

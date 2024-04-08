@@ -71,7 +71,7 @@ pub const ChannelChunk = struct {
 
 	pub fn getValue(self: *const ChannelChunk, x: i32, y: i32, z: i32) [3]u8 {
 		const index = chunk.getIndex(x, y, z);
-		return .{self.data[index][0].load(.Unordered), self.data[index][1].load(.Unordered), self.data[index][2].load(.Unordered)};
+		return .{self.data[index][0].load(.unordered), self.data[index][1].load(.unordered), self.data[index][2].load(.unordered)};
 	}
 
 	fn calculateIncomingOcclusion(result: *[3]u8, block: blocks.Block, voxelSize: u31, neighbor: usize) void {
@@ -113,9 +113,9 @@ pub const ChannelChunk = struct {
 		while(lightQueue.dequeue()) |entry| {
 			const index = chunk.getIndex(entry.x, entry.y, entry.z);
 			const oldValue: [3]u8 = .{
-				self.data[index][0].load(.Unordered),
-				self.data[index][1].load(.Unordered),
-				self.data[index][2].load(.Unordered),
+				self.data[index][0].load(.unordered),
+				self.data[index][1].load(.unordered),
+				self.data[index][2].load(.unordered),
 			};
 			const newValue: [3]u8 = .{
 				@max(entry.value[0], oldValue[0]),
@@ -123,9 +123,9 @@ pub const ChannelChunk = struct {
 				@max(entry.value[2], oldValue[2]),
 			};
 			if(newValue[0] == oldValue[0] and newValue[1] == oldValue[1] and newValue[2] == oldValue[2]) continue;
-			self.data[index][0].store(newValue[0], .Unordered);
-			self.data[index][1].store(newValue[1], .Unordered);
-			self.data[index][2].store(newValue[2], .Unordered);
+			self.data[index][0].store(newValue[0], .unordered);
+			self.data[index][1].store(newValue[1], .unordered);
+			self.data[index][2].store(newValue[2], .unordered);
 			for(chunk.Neighbors.iterable) |neighbor| {
 				if(neighbor == entry.sourceDir) continue;
 				const nx = entry.x + chunk.Neighbors.relX[neighbor];
@@ -175,9 +175,9 @@ pub const ChannelChunk = struct {
 		while(lightQueue.dequeue()) |entry| {
 			const index = chunk.getIndex(entry.x, entry.y, entry.z);
 			const oldValue: [3]u8 = .{
-				self.data[index][0].load(.Unordered),
-				self.data[index][1].load(.Unordered),
-				self.data[index][2].load(.Unordered),
+				self.data[index][0].load(.unordered),
+				self.data[index][1].load(.unordered),
+				self.data[index][2].load(.unordered),
 			};
 			var activeValue: @Vector(3, bool) = @bitCast(entry.activeValue);
 			var append: bool = false;
@@ -204,9 +204,9 @@ pub const ChannelChunk = struct {
 				continue;
 			}
 			isFirstIteration = false;
-			if(activeValue[0]) self.data[index][0].store(0, .Unordered);
-			if(activeValue[1]) self.data[index][1].store(0, .Unordered);
-			if(activeValue[2]) self.data[index][2].store(0, .Unordered);
+			if(activeValue[0]) self.data[index][0].store(0, .unordered);
+			if(activeValue[1]) self.data[index][1].store(0, .unordered);
+			if(activeValue[2]) self.data[index][2].store(0, .unordered);
 			for(chunk.Neighbors.iterable) |neighbor| {
 				if(neighbor == entry.sourceDir) continue;
 				const nx = entry.x + chunk.Neighbors.relX[neighbor];
@@ -309,7 +309,7 @@ pub const ChannelChunk = struct {
 						const neighborLightChunk = neighborMesh.lightingData[@intFromBool(self.isSun)];
 						const index = chunk.getIndex(x, y, z);
 						const neighborIndex = chunk.getIndex(otherX, otherY, otherZ);
-						var value: [3]u8 = .{neighborLightChunk.data[neighborIndex][0].load(.Unordered), neighborLightChunk.data[neighborIndex][1].load(.Unordered), neighborLightChunk.data[neighborIndex][2].load(.Unordered)};
+						var value: [3]u8 = .{neighborLightChunk.data[neighborIndex][0].load(.unordered), neighborLightChunk.data[neighborIndex][1].load(.unordered), neighborLightChunk.data[neighborIndex][2].load(.unordered)};
 						
 						if(!self.isSun or neighbor != chunk.Neighbors.dirUp or value[0] != 255 or value[1] != 255 or value[2] != 255) {
 							value[0] -|= 8*|@as(u8, @intCast(self.ch.pos.voxelSize));
@@ -332,7 +332,7 @@ pub const ChannelChunk = struct {
 		defer lightQueue.deinit();
 		for(lights) |pos| {
 			const index = chunk.getIndex(pos[0], pos[1], pos[2]);
-			lightQueue.enqueue(.{.x = @intCast(pos[0]), .y = @intCast(pos[1]), .z = @intCast(pos[2]), .value = .{self.data[index][0].load(.Unordered), self.data[index][1].load(.Unordered), self.data[index][2].load(.Unordered)}, .sourceDir = 6, .activeValue = 0b111});
+			lightQueue.enqueue(.{.x = @intCast(pos[0]), .y = @intCast(pos[1]), .z = @intCast(pos[2]), .value = .{self.data[index][0].load(.unordered), self.data[index][1].load(.unordered), self.data[index][2].load(.unordered)}, .sourceDir = 6, .activeValue = 0b111});
 		}
 		var constructiveEntries: main.ListUnmanaged(ChunkEntries) = .{};
 		defer constructiveEntries.deinit(main.stackAllocator);
@@ -348,11 +348,11 @@ pub const ChannelChunk = struct {
 			const channelChunk = if(mesh) |_mesh| _mesh.lightingData[@intFromBool(self.isSun)] else self;
 			for(entryList.items) |entry| {
 				const index = chunk.getIndex(entry.x, entry.y, entry.z);
-				const value = .{channelChunk.data[index][0].load(.Unordered), channelChunk.data[index][1].load(.Unordered), channelChunk.data[index][2].load(.Unordered)};
+				const value = .{channelChunk.data[index][0].load(.unordered), channelChunk.data[index][1].load(.unordered), channelChunk.data[index][2].load(.unordered)};
 				if(value[0] == 0 and value[1] == 0 and value[2] == 0) continue;
-				channelChunk.data[index][0].store(0, .Unordered);
-				channelChunk.data[index][1].store(0, .Unordered);
-				channelChunk.data[index][2].store(0, .Unordered);
+				channelChunk.data[index][0].store(0, .unordered);
+				channelChunk.data[index][1].store(0, .unordered);
+				channelChunk.data[index][2].store(0, .unordered);
 				lightQueue.enqueue(.{.x = entry.x, .y = entry.y, .z = entry.z, .value = value, .sourceDir = 6, .activeValue = 0b111});
 			}
 			channelChunk.propagateDirect(&lightQueue);

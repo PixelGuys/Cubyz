@@ -780,9 +780,9 @@ pub fn main() void {
 		const deltaTime = @as(f64, @floatFromInt(newTime -% lastTime))/1e9;
 		if(@import("builtin").os.tag == .linux and deltaTime > 5) { // On linux a process that runs 10 seconds or longer on the GPU will get stopped. This allows detecting an infinite loop on the GPU.
 			std.log.err("Frame got too long with {} seconds. Infinite loop on GPU?", .{deltaTime});
-			std.os.exit(1);
+			std.posix.exit(1);
 		}
-		lastFrameTime.store(deltaTime, .Monotonic);
+		lastFrameTime.store(deltaTime, .monotonic);
 		lastTime = newTime;
 		if(game.world != null) { // Update the game
 			game.update(deltaTime);

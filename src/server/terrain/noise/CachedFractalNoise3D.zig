@@ -121,8 +121,8 @@ fn _getValue(self: CachedFractalNoise3D, x: u31, y: u31, z: u31) f32 {
 }
 
 pub fn getValue(self: CachedFractalNoise3D, wx: i32, wy: i32, wz: i32) f32 {
-	const x: u31 = @intCast((wx - self.pos.wx) >> self.voxelShift);
-	const y: u31 = @intCast((wy - self.pos.wy) >> self.voxelShift);
-	const z: u31 = @intCast((wz - self.pos.wz) >> self.voxelShift);
+	const x: u31 = @intCast((wx -% self.pos.wx) >> self.voxelShift);
+	const y: u31 = @intCast((wy -% self.pos.wy) >> self.voxelShift);
+	const z: u31 = @intCast((wz -% self.pos.wz) >> self.voxelShift);
 	return self._getValue(x, y, z) - @as(f32, @floatFromInt(self.scale));
 }

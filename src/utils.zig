@@ -1051,7 +1051,7 @@ pub const ThreadPool = struct {
 		}
 		// Wait for active tasks:
 		for(self.currentTasks) |*task| {
-			while(task.load(.Monotonic) == vtable) {
+			while(task.load(.monotonic) == vtable) {
 				std.time.sleep(1e6);
 			}
 		}
@@ -1067,9 +1067,9 @@ pub const ThreadPool = struct {
 		while(true) {
 			{
 				const task = self.loadList.extractMax() catch break;
-				self.currentTasks[id].store(task.vtable, .Monotonic);
+				self.currentTasks[id].store(task.vtable, .monotonic);
 				task.vtable.run(task.self);
-				self.currentTasks[id].store(null, .Monotonic);
+				self.currentTasks[id].store(null, .monotonic);
 			}
 
 			if(id == 0 and std.time.milliTimestamp() -% lastUpdate > refreshTime) {
@@ -1204,13 +1204,13 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 		///  Tries to find the entry that fits to the supplied hashable.
 		pub fn find(self: *@This(), compareAndHash: anytype) ?*T {
 			const index: u32 = compareAndHash.hashCode() & hashMask;
-			_ = @atomicRmw(usize, &self.cacheRequests.raw, .Add, 1, .Monotonic);
+			_ = @atomicRmw(usize, &self.cacheRequests.raw, .Add, 1, .monotonic);
 			self.buckets[index].mutex.lock();
 			defer self.buckets[index].mutex.unlock();
 			if(self.buckets[index].find(compareAndHash)) |item| {
 				return item;
 			}
-			_ = @atomicRmw(usize, &self.cacheMisses.raw, .Add, 1, .Monotonic);
+			_ = @atomicRmw(usize, &self.cacheMisses.raw, .Add, 1, .monotonic);
 			return null;
 		}
 
@@ -1400,13 +1400,13 @@ pub const TimeDifference = struct {
 		const currentTime: i16 = @truncate(std.time.milliTimestamp());
 		const timeDifference = currentTime -% time;
 		if(self.firstValue) {
-			self.difference.store(timeDifference, .Monotonic);
+			self.difference.store(timeDifference, .monotonic);
 			self.firstValue = false;
 		}
-		if(timeDifference -% self.difference.load(.Monotonic) > 0) {
-			_ = @atomicRmw(i16, &self.difference.raw, .Add, 1, .Monotonic);
-		} else if(timeDifference -% self.difference.load(.Monotonic) < 0) {
-			_ = @atomicRmw(i16, &self.difference.raw, .Add, -1, .Monotonic);
+		if(timeDifference -% self.difference.load(.monotonic) > 0) {
+			_ = @atomicRmw(i16, &self.difference.raw, .Add, 1, .monotonic);
+		} else if(timeDifference -% self.difference.load(.monotonic) < 0) {
+			_ = @atomicRmw(i16, &self.difference.raw, .Add, -1, .monotonic);
 		}
 	}
 };

@@ -43,12 +43,12 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.Chunk, caveMap: CaveMap.CaveM
 	if(chunk.pos.voxelSize > 2) return;
 	const size = chunk.width;
 	// Generate caves from all nearby chunks:
-	var x = chunk.pos.wx - main.chunk.chunkSize;
-	while(x < chunk.pos.wx + size + main.chunk.chunkSize) : (x += main.chunk.chunkSize) {
-		var y = chunk.pos.wy - main.chunk.chunkSize;
-		while(y < chunk.pos.wy + size + main.chunk.chunkSize) : (y += main.chunk.chunkSize) {
-			var z = chunk.pos.wz - main.chunk.chunkSize;
-			while(z < chunk.pos.wz + size + main.chunk.chunkSize) : (z += main.chunk.chunkSize) {
+	var x = chunk.pos.wx -% main.chunk.chunkSize;
+	while(x != chunk.pos.wx +% size +% main.chunk.chunkSize) : (x +%= main.chunk.chunkSize) {
+		var y = chunk.pos.wy -% main.chunk.chunkSize;
+		while(y != chunk.pos.wy +% size +% main.chunk.chunkSize) : (y +%= main.chunk.chunkSize) {
+			var z = chunk.pos.wz -% main.chunk.chunkSize;
+			while(z != chunk.pos.wz +% size +% main.chunk.chunkSize) : (z +%= main.chunk.chunkSize) {
 				var seed = random.initSeed3D(worldSeed, .{x, y, z});
 				considerCoordinates(x, y, z, chunk, caveMap, biomeMap, &seed);
 			}
@@ -61,9 +61,9 @@ fn distSqr(x: f32, y: f32, z: f32) f32 {
 }
 
 fn considerCrystal(x: i32, y: i32, z: i32, chunk: *main.chunk.Chunk, seed: *u64, useNeedles: bool, types: []u16) void {
-	const relX: f32 = @floatFromInt(x - chunk.pos.wx);
-	const relY: f32 = @floatFromInt(y - chunk.pos.wy);
-	const relZ: f32 = @floatFromInt(z - chunk.pos.wz);
+	const relX: f32 = @floatFromInt(x -% chunk.pos.wx);
+	const relY: f32 = @floatFromInt(y -% chunk.pos.wy);
+	const relZ: f32 = @floatFromInt(z -% chunk.pos.wz);
 	const typ = types[random.nextIntBounded(u32, seed, @as(u32, @intCast(types.len)))];
 	// Make some crystal spikes in random directions:
 	var spikes: f32 = 4;
@@ -121,7 +121,7 @@ fn considerCrystal(x: i32, y: i32, z: i32, chunk: *main.chunk.Chunk, seed: *u64,
 
 fn considerCoordinates(x: i32, y: i32, z: i32, chunk: *main.chunk.Chunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView, seed: *u64) void {
 	const oldSeed = seed.*;
-	const crystalSpawns = biomeMap.getBiomeAndSeed(x + main.chunk.chunkSize/2 - chunk.pos.wx, y + main.chunk.chunkSize/2 - chunk.pos.wy, z + main.chunk.chunkSize/2 - chunk.pos.wz, true, seed).crystals;
+	const crystalSpawns = biomeMap.getBiomeAndSeed(x +% main.chunk.chunkSize/2 -% chunk.pos.wx, y +% main.chunk.chunkSize/2 -% chunk.pos.wy, z +% main.chunk.chunkSize/2 -% chunk.pos.wz, true, seed).crystals;
 	random.scrambleSeed(seed);
 	var differendColors: u32 = 1;
 	if(random.nextInt(u1, seed) != 0) {
@@ -143,9 +143,9 @@ fn considerCoordinates(x: i32, y: i32, z: i32, chunk: *main.chunk.Chunk, caveMap
 		const worldX = x + random.nextIntBounded(u31, seed, main.chunk.chunkSize);
 		const worldY = y + random.nextIntBounded(u31, seed, main.chunk.chunkSize);
 		const worldZ = z + random.nextIntBounded(u31, seed, main.chunk.chunkSize);
-		const relX = worldX - chunk.pos.wx;
-		const relY = worldY - chunk.pos.wy;
-		const relZ = worldZ - chunk.pos.wz;
+		const relX = worldX -% chunk.pos.wx;
+		const relY = worldY -% chunk.pos.wy;
+		const relZ = worldZ -% chunk.pos.wz;
 		if(caveMap.isSolid(relX, relY, relZ)) { // Only start crystal in solid blocks
 			// Only start crystal when they are close to the surface (±SURFACE_DIST blocks)
 			if(

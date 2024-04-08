@@ -106,7 +106,7 @@ pub fn deinitGenerators() void {
 }
 
 fn mapFragmentDeinit(mapFragment: *ClimateMapFragment) void {
-	if(@atomicRmw(u16, &mapFragment.refCount.raw, .Sub, 1, .Monotonic) == 1) {
+	if(@atomicRmw(u16, &mapFragment.refCount.raw, .Sub, 1, .monotonic) == 1) {
 		main.globalAllocator.destroy(mapFragment);
 	}
 }
@@ -115,7 +115,7 @@ fn cacheInit(pos: ClimateMapFragmentPosition) *ClimateMapFragment {
 	const mapFragment = main.globalAllocator.create(ClimateMapFragment);
 	mapFragment.init(pos.wx, pos.wy);
 	profile.climateGenerator.generateMapFragment(mapFragment, profile.seed);
-	_ = @atomicRmw(u16, &mapFragment.refCount.raw, .Add, 1, .Monotonic);
+	_ = @atomicRmw(u16, &mapFragment.refCount.raw, .Add, 1, .monotonic);
 	return mapFragment;
 }
 
@@ -131,7 +131,7 @@ pub fn deinit() void {
 fn getOrGenerateFragment(wx: i32, wy: i32) *ClimateMapFragment {
 	const compare = ClimateMapFragmentPosition{.wx = wx, .wy = wy};
 	const result = cache.findOrCreate(compare, cacheInit);
-	std.debug.assert(@atomicRmw(u16, &result.refCount.raw, .Add, 1, .Monotonic) != 0);
+	std.debug.assert(@atomicRmw(u16, &result.refCount.raw, .Add, 1, .monotonic) != 0);
 	return result;
 }
 
@@ -139,17 +139,17 @@ pub fn getBiomeMap(allocator: NeverFailingAllocator, wx: i32, wy: i32, width: u3
 	const map = Array2D(BiomeSample).init(allocator, width >> MapFragment.biomeShift, height >> MapFragment.biomeShift);
 	const wxStart = wx & ~ClimateMapFragment.mapMask;
 	const wzStart = wy & ~ClimateMapFragment.mapMask;
-	const wxEnd = wx+width & ~ClimateMapFragment.mapMask;
-	const wzEnd = wy+height & ~ClimateMapFragment.mapMask;
+	const wxEnd = wx+%width & ~ClimateMapFragment.mapMask;
+	const wzEnd = wy+%height & ~ClimateMapFragment.mapMask;
 	var x = wxStart;
-	while(x <= wxEnd) : (x += ClimateMapFragment.mapSize) {
+	while(wxEnd -% x >= 0) : (x +%= ClimateMapFragment.mapSize) {
 		var y = wzStart;
-		while(y <= wzEnd) : (y += ClimateMapFragment.mapSize) {
+		while(wzEnd -% y >= 0) : (y +%= ClimateMapFragment.mapSize) {
 			const mapPiece = getOrGenerateFragment(x, y);
 			defer mapFragmentDeinit(mapPiece);
 			// Offset of the indices in the result map:
-			const xOffset = (x - wx) >> MapFragment.biomeShift;
-			const yOffset = (y - wy) >> MapFragment.biomeShift;
+			const xOffset = (x -% wx) >> MapFragment.biomeShift;
+			const yOffset = (y -% wy) >> MapFragment.biomeShift;
 			// Go through all indices in the mapPiece:
 			for(&mapPiece.map, 0..) |*col, lx| {
 				const resultX = @as(i32, @intCast(lx)) + xOffset;

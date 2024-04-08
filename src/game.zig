@@ -177,14 +177,14 @@ pub const World = struct {
 		const newTime: i64 = std.time.milliTimestamp();
 		while(self.milliTime +% 100 -% newTime < 0) {
 			self.milliTime +%= 100;
-			var curTime = self.gameTime.load(.Monotonic);
-			while(self.gameTime.cmpxchgWeak(curTime, curTime +% 1, .Monotonic, .Monotonic)) |actualTime| {
+			var curTime = self.gameTime.load(.monotonic);
+			while(self.gameTime.cmpxchgWeak(curTime, curTime +% 1, .monotonic, .monotonic)) |actualTime| {
 				curTime = actualTime;
 			}
 		}
 		// Ambient light:
 		{
-			var dayTime = @abs(@mod(self.gameTime.load(.Monotonic), dayCycle) -% dayCycle/2);
+			var dayTime = @abs(@mod(self.gameTime.load(.monotonic), dayCycle) -% dayCycle/2);
 			if(dayTime < dayCycle/4 - dayCycle/16) {
 				self.ambientLight = 0.1;
 				self.clearColor[0] = 0;
@@ -238,7 +238,7 @@ pub fn update(deltaTime: f64) void {
 	if(main.Window.grabbed) {
 		if(KeyBoard.key("forward").pressed) {
 			if(KeyBoard.key("sprint").pressed) {
-				if(Player.isFlying.load(.Monotonic)) {
+				if(Player.isFlying.load(.monotonic)) {
 					movement += forward*@as(Vec3d, @splat(128));
 				} else {
 					movement += forward*@as(Vec3d, @splat(8));
@@ -257,7 +257,7 @@ pub fn update(deltaTime: f64) void {
 			movement += right*@as(Vec3d, @splat(-4));
 		}
 		if(KeyBoard.key("jump").pressed) {
-			if(Player.isFlying.load(.Monotonic)) {
+			if(Player.isFlying.load(.monotonic)) {
 				if(KeyBoard.key("sprint").pressed) {
 					movement[2] = 59.45;
 				} else {
@@ -268,7 +268,7 @@ pub fn update(deltaTime: f64) void {
 			}
 		}
 		if(KeyBoard.key("fall").pressed) {
-			if(Player.isFlying.load(.Monotonic)) {
+			if(Player.isFlying.load(.monotonic)) {
 				if(KeyBoard.key("sprint").pressed) {
 					movement[2] = -59.45;
 				} else {

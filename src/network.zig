@@ -23,12 +23,12 @@ const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 //TODO: Might want to use SSL or something similar to encode the message
 
 const Socket = struct {
-	const os = std.os;
-	socketID: os.socket_t,
+	const posix = std.posix;
+	socketID: posix.socket_t,
 
 	fn startup() void {
 		if(builtin.os.tag == .windows) {
-			_ = os.windows.WSAStartup(2, 2) catch |err| {
+			_ = std.os.windows.WSAStartup(2, 2) catch |err| {
 				std.log.err("Could not initialize the Windows Socket API: {s}", .{@errorName(err)});
 				@panic("Could not init networking.");
 			};
@@ -37,27 +37,27 @@ const Socket = struct {
 
 	fn init(localPort: u16) !Socket {
 		const self = Socket {
-			.socketID = try os.socket(os.AF.INET, os.SOCK.DGRAM, os.IPPROTO.UDP),
+			.socketID = try posix.socket(posix.AF.INET, posix.SOCK.DGRAM, posix.IPPROTO.UDP),
 		};
 		errdefer self.deinit();
-		const bindingAddr = os.sockaddr.in {
+		const bindingAddr = posix.sockaddr.in {
 			.port = @byteSwap(localPort),
 			.addr = 0,
 		};
-		try os.bind(self.socketID, @ptrCast(&bindingAddr), @sizeOf(os.sockaddr.in));
+		try posix.bind(self.socketID, @ptrCast(&bindingAddr), @sizeOf(posix.sockaddr.in));
 		return self;
 	}
 
 	fn deinit(self: Socket) void {
-		os.close(self.socketID);
+		posix.close(self.socketID);
 	}
 
 	fn send(self: Socket, data: []const u8, destination: Address) void {
-		const addr = os.sockaddr.in {
+		const addr = posix.sockaddr.in {
 			.port = @byteSwap(destination.port),
 			.addr = destination.ip,
 		};
-		std.debug.assert(data.len == os.sendto(self.socketID, data, 0, @ptrCast(&addr), @sizeOf(os.sockaddr.in)) catch |err| {
+		std.debug.assert(data.len == posix.sendto(self.socketID, data, 0, @ptrCast(&addr), @sizeOf(posix.sockaddr.in)) catch |err| {
 			std.log.info("Got error while sending to {}: {s}", .{destination, @errorName(err)});
 			return;
 		});
@@ -65,32 +65,32 @@ const Socket = struct {
 
 	fn receive(self: Socket, buffer: []u8, timeout: i32, resultAddress: *Address) ![]u8 {
 		if(builtin.os.tag == .windows) { // Of course Windows always has it's own special thing.
-			var pfd = [1]os.pollfd {
+			var pfd = [1]posix.pollfd {
 				.{.fd = self.socketID, .events = std.c.POLL.RDNORM | std.c.POLL.RDBAND, .revents = undefined},
 			};
-			const length = os.windows.ws2_32.WSAPoll(&pfd, pfd.len, 0); // The timeout is set to zero. Otherwise sendto operations from other threads will block on this.
-			if (length == os.windows.ws2_32.SOCKET_ERROR) {
-				switch (os.windows.ws2_32.WSAGetLastError()) {
+			const length = std.os.windows.ws2_32.WSAPoll(&pfd, pfd.len, 0); // The timeout is set to zero. Otherwise sendto operations from other threads will block on this.
+			if (length == std.os.windows.ws2_32.SOCKET_ERROR) {
+				switch (std.os.windows.ws2_32.WSAGetLastError()) {
 					.WSANOTINITIALISED => unreachable,
 					.WSAENETDOWN => return error.NetworkSubsystemFailed,
 					.WSAENOBUFS => return error.SystemResources,
 					// TODO: handle more errors
-					else => |err| return os.windows.unexpectedWSAError(err),
+					else => |err| return std.os.windows.unexpectedWSAError(err),
 				}
 			} else if(length == 0) {
 				std.time.sleep(1000000); // Manually sleep, since WSAPoll is blocking.
 				return error.Timeout;
 			}
 		} else {
-			var pfd = [1]os.pollfd {
-				.{.fd = self.socketID, .events = os.POLL.IN, .revents = undefined},
+			var pfd = [1]posix.pollfd {
+				.{.fd = self.socketID, .events = posix.POLL.IN, .revents = undefined},
 			};
-			const length = try os.poll(&pfd, timeout);
+			const length = try posix.poll(&pfd, timeout);
 			if(length == 0) return error.Timeout;
 		}
-		var addr: os.sockaddr.in = undefined;
-		var addrLen: os.socklen_t = @sizeOf(os.sockaddr.in);
-		const length = try os.recvfrom(self.socketID, buffer, 0,  @ptrCast(&addr), &addrLen);
+		var addr: posix.sockaddr.in = undefined;
+		var addrLen: posix.socklen_t = @sizeOf(posix.sockaddr.in);
+		const length = try posix.recvfrom(self.socketID, buffer, 0,  @ptrCast(&addr), &addrLen);
 		resultAddress.ip = addr.addr;
 		resultAddress.port = @byteSwap(addr.port);
 		return buffer[0..length];
@@ -417,7 +417,7 @@ pub const ConnectionManager = struct {
 			conn.disconnect();
 		}
 
-		self.running.store(false, .Monotonic);
+		self.running.store(false, .monotonic);
 		self.thread.join();
 		Socket.deinit(self.socket);
 		self.connections.deinit();
@@ -430,9 +430,9 @@ pub const ConnectionManager = struct {
 	}
 
 	pub fn makeOnline(self: *ConnectionManager) void {
-		if(!self.online.load(.Acquire)) {
+		if(!self.online.load(.acquire)) {
 			self.externalAddress = STUN.requestAddress(self);
-			self.online.store(true, .Release);
+			self.online.store(true, .release);
 		}
 	}
 
@@ -523,7 +523,7 @@ pub const ConnectionManager = struct {
 				return;
 			}
 		}
-		if(self.online.load(.Acquire) and source.ip == self.externalAddress.ip and source.port == self.externalAddress.port) return;
+		if(self.online.load(.acquire) and source.ip == self.externalAddress.ip and source.port == self.externalAddress.port) return;
 		// TODO: Reduce the number of false alarms in the short period after a disconnect.
 		std.log.warn("Unknown connection from address: {}", .{source});
 		std.log.debug("Message: {any}", .{data});
@@ -536,7 +536,7 @@ pub const ConnectionManager = struct {
 		main.stackAllocator = sta.allocator();
 
 		var lastTime = std.time.milliTimestamp();
-		while(self.running.load(.Monotonic)) {
+		while(self.running.load(.monotonic)) {
 			self.waitingToFinishReceive.broadcast();
 			var source: Address = undefined;
 			if(self.socket.receive(&self.receiveBuffer, 100, &source)) |data| {
@@ -569,7 +569,7 @@ pub const ConnectionManager = struct {
 						i += 1;
 					}
 				}
-				if(self.connections.items.len == 0 and self.online.load(.Acquire)) {
+				if(self.connections.items.len == 0 and self.online.load(.acquire)) {
 					// Send a message to external ip, to keep the port open:
 					const data = [1]u8{0};
 					self.send(&data, self.externalAddress);
@@ -601,8 +601,8 @@ pub const Protocols = struct {
 		const stepComplete: u8 = 255;
 
 		fn receive(conn: *Connection, data: []const u8) !void {
-			if(conn.handShakeState.load(.Monotonic) < data[0]) {
-				conn.handShakeState.store(data[0], .Monotonic);
+			if(conn.handShakeState.load(.monotonic) < data[0]) {
+				conn.handShakeState.store(data[0], .monotonic);
 				switch(data[0]) {
 					stepUserData => {
 						const json = JsonElement.parseFromString(main.stackAllocator, data[1..]);
@@ -642,8 +642,8 @@ pub const Protocols = struct {
 						const outData = jsonObject.toStringEfficient(main.stackAllocator, &[1]u8{stepServerData});
 						defer main.stackAllocator.free(outData);
 						conn.sendImportant(id, outData);
-						conn.handShakeState.store(stepServerData, .Monotonic);
-						conn.handShakeState.store(stepComplete, .Monotonic);
+						conn.handShakeState.store(stepServerData, .monotonic);
+						conn.handShakeState.store(stepComplete, .monotonic);
 						// TODO:
 //					synchronized(conn) { // Notify the waiting server thread.
 //						conn.notifyAll();
@@ -660,7 +660,7 @@ pub const Protocols = struct {
 						const json = JsonElement.parseFromString(main.stackAllocator, data[1..]);
 						defer json.free(main.stackAllocator);
 						try conn.manager.world.?.finishHandshake(json);
-						conn.handShakeState.store(stepComplete, .Monotonic);
+						conn.handShakeState.store(stepComplete, .monotonic);
 						conn.handShakeWaiting.broadcast(); // Notify the waiting client thread.
 					},
 					stepComplete => {
@@ -676,7 +676,7 @@ pub const Protocols = struct {
 		}
 
 		pub fn serverSide(conn: *Connection) void {
-			conn.handShakeState.store(stepStart, .Monotonic);
+			conn.handShakeState.store(stepStart, .monotonic);
 		}
 
 		pub fn clientSide(conn: *Connection, name: []const u8) void {
@@ -1086,19 +1086,19 @@ pub const Protocols = struct {
 						const json = JsonElement.parseFromString(main.stackAllocator, data[1..]);
 						defer json.free(main.stackAllocator);
 						const expectedTime = json.get(i64, "time", 0);
-						var curTime = world.gameTime.load(.Monotonic);
+						var curTime = world.gameTime.load(.monotonic);
 						if(@abs(curTime -% expectedTime) >= 1000) {
-							world.gameTime.store(expectedTime, .Monotonic);
+							world.gameTime.store(expectedTime, .monotonic);
 						} else if(curTime < expectedTime) { // world.gameTime++
-							while(world.gameTime.cmpxchgWeak(curTime, curTime +% 1, .Monotonic, .Monotonic)) |actualTime| {
+							while(world.gameTime.cmpxchgWeak(curTime, curTime +% 1, .monotonic, .monotonic)) |actualTime| {
 								curTime = actualTime;
 							}
 						} else { // world.gameTime--
-							while(world.gameTime.cmpxchgWeak(curTime, curTime -% 1, .Monotonic, .Monotonic)) |actualTime| {
+							while(world.gameTime.cmpxchgWeak(curTime, curTime -% 1, .monotonic, .monotonic)) |actualTime| {
 								curTime = actualTime;
 							}
 						}
-						world.playerBiome.store(main.server.terrain.biomes.getById(json.get([]const u8, "biome", "")), .Monotonic);
+						world.playerBiome.store(main.server.terrain.biomes.getById(json.get([]const u8, "biome", "")), .monotonic);
 					}
 				},
 				else => |unrecognizedType| {
@@ -1275,7 +1275,7 @@ pub const Protocols = struct {
 			data = _inflatedData;
 			const map = main.globalAllocator.create(main.server.terrain.LightMap.LightMapFragment);
 			map.init(pos.wx, pos.wy, pos.voxelSize);
-			_ = map.refCount.fetchAdd(1, .Monotonic);
+			_ = map.refCount.fetchAdd(1, .monotonic);
 			for(&map.startHeight) |*val| {
 				val.* = std.mem.readInt(i16, data[0..2], .big);
 				data = data[2..];
@@ -1402,7 +1402,7 @@ pub const Connection = struct {
 			.id = id,
 		};
 		self.unconfirmedPackets.append(packet);
-		_ = packetsSent.fetchAdd(1, .Monotonic);
+		_ = packetsSent.fetchAdd(1, .monotonic);
 		self.manager.send(packet.data, self.remoteAddress);
 		self.streamPosition = importantHeaderSize;
 	}
@@ -1546,8 +1546,8 @@ pub const Connection = struct {
 		// Resend packets that didn't receive confirmation within the last 2 keep-alive signals.
 		for(self.unconfirmedPackets.items) |*packet| {
 			if(self.lastKeepAliveReceived -% @as(i33, packet.lastKeepAliveSentBefore) >= 2) {
-				_ = packetsSent.fetchAdd(1, .Monotonic);
-				_ = packetsResent.fetchAdd(1, .Monotonic);
+				_ = packetsSent.fetchAdd(1, .monotonic);
+				_ = packetsResent.fetchAdd(1, .monotonic);
 				self.manager.send(packet.data, self.remoteAddress);
 				packet.lastKeepAliveSentBefore = self.lastKeepAliveSent;
 			}
@@ -1631,7 +1631,7 @@ pub const Connection = struct {
 				self.lastReceivedPackets[self.lastIncompletePacket & 65535] = null;
 			}
 			self.lastIndex = newIndex;
-			_ = bytesReceived[protocol].fetchAdd(data.len + 1 + (7 + std.math.log2_int(usize, 1 + data.len))/7, .Monotonic);
+			_ = bytesReceived[protocol].fetchAdd(data.len + 1 + (7 + std.math.log2_int(usize, 1 + data.len))/7, .monotonic);
 			if(Protocols.list[protocol]) |prot| {
 				try prot(self, data);
 			} else {
@@ -1650,15 +1650,15 @@ pub const Connection = struct {
 	pub fn flawedReceive(self: *Connection, data: []const u8) !void {
 		std.debug.assert(self.manager.threadId == std.Thread.getCurrentId());
 		const protocol = data[0];
-		if(self.handShakeState.load(.Monotonic) != Protocols.handShake.stepComplete and protocol != Protocols.handShake.id and protocol != Protocols.keepAlive and protocol != Protocols.important) {
+		if(self.handShakeState.load(.monotonic) != Protocols.handShake.stepComplete and protocol != Protocols.handShake.id and protocol != Protocols.keepAlive and protocol != Protocols.important) {
 			return; // Reject all non-handshake packets until the handshake is done.
 		}
 		self.lastConnection = std.time.milliTimestamp();
-		_ = bytesReceived[protocol].fetchAdd(data.len + 20 + 8, .Monotonic); // Including IP header and udp header;
-		_ = packetsReceived[protocol].fetchAdd(1, .Monotonic);
+		_ = bytesReceived[protocol].fetchAdd(data.len + 20 + 8, .monotonic); // Including IP header and udp header;
+		_ = packetsReceived[protocol].fetchAdd(1, .monotonic);
 		if(protocol == Protocols.important) {
 			const id = std.mem.readInt(u32, data[1..5], .big);
-			if(self.handShakeState.load(.Monotonic) == Protocols.handShake.stepComplete and id == 0) { // Got a new "first" packet from client. So the client tries to reconnect, but we still think it's connected.
+			if(self.handShakeState.load(.monotonic) == Protocols.handShake.stepComplete and id == 0) { // Got a new "first" packet from client. So the client tries to reconnect, but we still think it's connected.
 				// TODO:
 //				if(this instanceof User) {
 //					Server.disconnect((User)this);

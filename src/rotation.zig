@@ -332,29 +332,29 @@ pub const RotationModes = struct {
 					for(frontFaces) |*face| {
 						var xLower = @abs(xAxis)*@as(Vec3f, @splat(face.min[0]));
 						var xUpper = @abs(xAxis)*@as(Vec3f, @splat(face.max[0]));
-						if(@reduce(.Add, xAxis) > 0) std.mem.swap(Vec3f, &xLower, &xUpper);
+						if(@reduce(.Add, xAxis) < 0) std.mem.swap(Vec3f, &xLower, &xUpper);
 						var yLower = @abs(yAxis)*@as(Vec3f, @splat(face.min[1]));
 						var yUpper = @abs(yAxis)*@as(Vec3f, @splat(face.max[1]));
-						if(@reduce(.Add, yAxis) > 0) std.mem.swap(Vec3f, &yLower, &yUpper);
+						if(@reduce(.Add, yAxis) < 0) std.mem.swap(Vec3f, &yLower, &yUpper);
 						const zValue: Vec3f = @floatFromInt(zComponent*zMap[1]);
-						if(neighbor != chunk.Neighbors.dirUp) {
-							if(neighbor == chunk.Neighbors.dirNegX or neighbor == chunk.Neighbors.dirPosY) {
-								face.min[1] = 1 - face.min[1];
-								face.max[1] = 1 - face.max[1];
-								const swap = face.min[1];
-								face.min[1] = face.max[1];
-								face.max[1] = swap;
-							} else if(neighbor == chunk.Neighbors.dirDown) {
-								face.min[0] = 1 - face.min[0];
-								face.max[0] = 1 - face.max[0];
-								const swap = face.min[0];
-								face.min[0] = face.max[0];
-								face.max[0] = swap;
-							} else {
-								face.min = Vec2f{1, 1} - face.min;
-								face.max = Vec2f{1, 1} - face.max;
-								std.mem.swap(Vec2f, &face.min, &face.max);
-							}
+						if(neighbor == chunk.Neighbors.dirNegX or neighbor == chunk.Neighbors.dirPosY) {
+							face.min[0] = 1 - face.min[0];
+							face.max[0] = 1 - face.max[0];
+							const swap = face.min[0];
+							face.min[0] = face.max[0];
+							face.max[0] = swap;
+						}
+						if(neighbor == chunk.Neighbors.dirUp) {
+							face.min = Vec2f{1, 1} - face.min;
+							face.max = Vec2f{1, 1} - face.max;
+							std.mem.swap(Vec2f, &face.min, &face.max);
+						}
+						if(neighbor == chunk.Neighbors.dirDown) {
+							face.min[1] = 1 - face.min[1];
+							face.max[1] = 1 - face.max[1];
+							const swap = face.min[1];
+							face.min[1] = face.max[1];
+							face.max[1] = swap;
 						}
 						quads.append(.{
 							.normal = zAxis,
@@ -372,29 +372,29 @@ pub const RotationModes = struct {
 					for(middleFaces) |*face| {
 						var xLower = @abs(xAxis)*@as(Vec3f, @splat(face.min[0]));
 						var xUpper = @abs(xAxis)*@as(Vec3f, @splat(face.max[0]));
-						if(@reduce(.Add, xAxis) > 0) std.mem.swap(Vec3f, &xLower, &xUpper);
+						if(@reduce(.Add, xAxis) < 0) std.mem.swap(Vec3f, &xLower, &xUpper);
 						var yLower = @abs(yAxis)*@as(Vec3f, @splat(face.min[1]));
 						var yUpper = @abs(yAxis)*@as(Vec3f, @splat(face.max[1]));
-						if(@reduce(.Add, yAxis) > 0) std.mem.swap(Vec3f, &yLower, &yUpper);
+						if(@reduce(.Add, yAxis) < 0) std.mem.swap(Vec3f, &yLower, &yUpper);
 						const zValue = @as(Vec3f, @floatFromInt(zComponent))*@as(Vec3f, @splat(0.5));
-						if(neighbor != chunk.Neighbors.dirUp) {
-							if(neighbor == chunk.Neighbors.dirNegX or neighbor == chunk.Neighbors.dirPosY) {
-								face.min[1] = 1 - face.min[1];
-								face.max[1] = 1 - face.max[1];
-								const swap = face.min[1];
-								face.min[1] = face.max[1];
-								face.max[1] = swap;
-							} else if(neighbor == chunk.Neighbors.dirDown) {
-								face.min[0] = 1 - face.min[0];
-								face.max[0] = 1 - face.max[0];
-								const swap = face.min[0];
-								face.min[0] = face.max[0];
-								face.max[0] = swap;
-							} else {
-								face.min = Vec2f{1, 1} - face.min;
-								face.max = Vec2f{1, 1} - face.max;
-								std.mem.swap(Vec2f, &face.min, &face.max);
-							}
+						if(neighbor == chunk.Neighbors.dirNegX or neighbor == chunk.Neighbors.dirPosY) {
+							face.min[0] = 1 - face.min[0];
+							face.max[0] = 1 - face.max[0];
+							const swap = face.min[0];
+							face.min[0] = face.max[0];
+							face.max[0] = swap;
+						}
+						if(neighbor == chunk.Neighbors.dirUp) {
+							face.min = Vec2f{1, 1} - face.min;
+							face.max = Vec2f{1, 1} - face.max;
+							std.mem.swap(Vec2f, &face.min, &face.max);
+						}
+						if(neighbor == chunk.Neighbors.dirDown) {
+							face.min[1] = 1 - face.min[1];
+							face.max[1] = 1 - face.max[1];
+							const swap = face.min[1];
+							face.min[1] = face.max[1];
+							face.max[1] = swap;
 						}
 						quads.append(.{
 							.normal = zAxis,

@@ -506,7 +506,7 @@ pub const ClientItemDropManager = struct {
 
 	pub fn updateInterpolationData(self: *ClientItemDropManager) void {
 		var time = @as(i16, @truncate(std.time.milliTimestamp())) -% settings.entityLookback;
-		time -%= self.timeDifference.difference.load(.Monotonic);
+		time -%= self.timeDifference.difference.load(.monotonic);
 		{
 			self.super.mutex.lock();
 			defer self.super.mutex.unlock();

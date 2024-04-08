@@ -135,14 +135,14 @@ pub const CaveMapView = struct {
 		return CaveMapView {
 			.reference = chunk,
 			.fragments = [_]*CaveMapFragment {
-				getOrGenerateFragment(chunk.pos.wx - chunk.width, chunk.pos.wy - chunk.width, chunk.pos.wz - chunk.width, chunk.pos.voxelSize),
-				getOrGenerateFragment(chunk.pos.wx - chunk.width, chunk.pos.wy - chunk.width, chunk.pos.wz + chunk.width, chunk.pos.voxelSize),
-				getOrGenerateFragment(chunk.pos.wx - chunk.width, chunk.pos.wy + chunk.width, chunk.pos.wz - chunk.width, chunk.pos.voxelSize),
-				getOrGenerateFragment(chunk.pos.wx - chunk.width, chunk.pos.wy + chunk.width, chunk.pos.wz + chunk.width, chunk.pos.voxelSize),
-				getOrGenerateFragment(chunk.pos.wx + chunk.width, chunk.pos.wy - chunk.width, chunk.pos.wz - chunk.width, chunk.pos.voxelSize),
-				getOrGenerateFragment(chunk.pos.wx + chunk.width, chunk.pos.wy - chunk.width, chunk.pos.wz + chunk.width, chunk.pos.voxelSize),
-				getOrGenerateFragment(chunk.pos.wx + chunk.width, chunk.pos.wy + chunk.width, chunk.pos.wz - chunk.width, chunk.pos.voxelSize),
-				getOrGenerateFragment(chunk.pos.wx + chunk.width, chunk.pos.wy + chunk.width, chunk.pos.wz + chunk.width, chunk.pos.voxelSize),
+				getOrGenerateFragment(chunk.pos.wx -% chunk.width, chunk.pos.wy -% chunk.width, chunk.pos.wz -% chunk.width, chunk.pos.voxelSize),
+				getOrGenerateFragment(chunk.pos.wx -% chunk.width, chunk.pos.wy -% chunk.width, chunk.pos.wz +% chunk.width, chunk.pos.voxelSize),
+				getOrGenerateFragment(chunk.pos.wx -% chunk.width, chunk.pos.wy +% chunk.width, chunk.pos.wz -% chunk.width, chunk.pos.voxelSize),
+				getOrGenerateFragment(chunk.pos.wx -% chunk.width, chunk.pos.wy +% chunk.width, chunk.pos.wz +% chunk.width, chunk.pos.voxelSize),
+				getOrGenerateFragment(chunk.pos.wx +% chunk.width, chunk.pos.wy -% chunk.width, chunk.pos.wz -% chunk.width, chunk.pos.voxelSize),
+				getOrGenerateFragment(chunk.pos.wx +% chunk.width, chunk.pos.wy -% chunk.width, chunk.pos.wz +% chunk.width, chunk.pos.voxelSize),
+				getOrGenerateFragment(chunk.pos.wx +% chunk.width, chunk.pos.wy +% chunk.width, chunk.pos.wz -% chunk.width, chunk.pos.voxelSize),
+				getOrGenerateFragment(chunk.pos.wx +% chunk.width, chunk.pos.wy +% chunk.width, chunk.pos.wz +% chunk.width, chunk.pos.voxelSize),
 			},
 		};
 	}
@@ -158,13 +158,13 @@ pub const CaveMapView = struct {
 		const wy = relY +% self.reference.pos.wy;
 		const wz = relZ +% self.reference.pos.wz;
 		var index: u8 = 0;
-		if(wx - self.fragments[0].pos.wx >= CaveMapFragment.width*self.reference.pos.voxelSize) {
+		if(wx -% self.fragments[0].pos.wx >= CaveMapFragment.width*self.reference.pos.voxelSize) {
 			index += 4;
 		}
-		if(wy - self.fragments[0].pos.wy >= CaveMapFragment.width*self.reference.pos.voxelSize) {
+		if(wy -% self.fragments[0].pos.wy >= CaveMapFragment.width*self.reference.pos.voxelSize) {
 			index += 2;
 		}
-		if(wz - self.fragments[0].pos.wz >= CaveMapFragment.width*self.reference.pos.voxelSize) {
+		if(wz -% self.fragments[0].pos.wz >= CaveMapFragment.width*self.reference.pos.voxelSize) {
 			index += 1;
 		}
 		const fragmentRelX = wx - self.fragments[index].pos.wx;
@@ -175,16 +175,16 @@ pub const CaveMapView = struct {
 	}
 
 	pub fn getHeightData(self: CaveMapView, relX: i32, relY: i32) u32 {
-		const wx = relX + self.reference.pos.wx;
-		const wy = relY + self.reference.pos.wy;
+		const wx = relX +% self.reference.pos.wx;
+		const wy = relY +% self.reference.pos.wy;
 		var index: u8 = 0;
-		if(wx - self.fragments[0].pos.wx >= CaveMapFragment.width*self.reference.pos.voxelSize) {
+		if(wx -% self.fragments[0].pos.wx >= CaveMapFragment.width*self.reference.pos.voxelSize) {
 			index += 4;
 		}
-		if(wy - self.fragments[0].pos.wy >= CaveMapFragment.width*self.reference.pos.voxelSize) {
+		if(wy -% self.fragments[0].pos.wy >= CaveMapFragment.width*self.reference.pos.voxelSize) {
 			index += 2;
 		}
-		var deltaZ = self.reference.pos.wz - self.fragments[0].pos.wz;
+		var deltaZ = self.reference.pos.wz -% self.fragments[0].pos.wz;
 		if(deltaZ >= CaveMapFragment.height*self.reference.pos.voxelSize) {
 			index += 1;
 			deltaZ -= CaveMapFragment.height*self.reference.pos.voxelSize;
@@ -200,16 +200,16 @@ pub const CaveMapView = struct {
 	}
 
 	pub fn findTerrainChangeAbove(self: CaveMapView, relX: i32, relY: i32, z: i32) i32 {
-		const wx = relX + self.reference.pos.wx;
-		const wy = relY + self.reference.pos.wy;
+		const wx = relX +% self.reference.pos.wx;
+		const wy = relY +% self.reference.pos.wy;
 		var index: u8 = 0;
-		if(wx - self.fragments[0].pos.wx >= CaveMapFragment.width*self.reference.pos.voxelSize) {
+		if(wx -% self.fragments[0].pos.wx >= CaveMapFragment.width*self.reference.pos.voxelSize) {
 			index += 4;
 		}
-		if(wy - self.fragments[0].pos.wy >= CaveMapFragment.width*self.reference.pos.voxelSize) {
+		if(wy -% self.fragments[0].pos.wy >= CaveMapFragment.width*self.reference.pos.voxelSize) {
 			index += 2;
 		}
-		var relativeZ = @divFloor(z + self.reference.pos.wz - self.fragments[0].pos.wz, self.reference.pos.voxelSize);
+		var relativeZ = @divFloor(z +% self.reference.pos.wz -% self.fragments[0].pos.wz, self.reference.pos.voxelSize);
 		std.debug.assert(relativeZ >= 0 and relativeZ < 2*CaveMapFragment.height);
 		const fragmentRelX = wx - self.fragments[index].pos.wx;
 		const fragmentRelY = wy - self.fragments[index].pos.wy;
@@ -237,20 +237,20 @@ pub const CaveMapView = struct {
 			}
 		}
 		result += @ctz(height);
-		return result*self.reference.pos.voxelSize + self.fragments[0].pos.wz - self.reference.pos.wz;
+		return result*self.reference.pos.voxelSize +% self.fragments[0].pos.wz -% self.reference.pos.wz;
 	}
 
 	pub fn findTerrainChangeBelow(self: CaveMapView, relX: i32, relY: i32, z: i32) i32 {
-		const wx = relX + self.reference.pos.wx;
-		const wy = relY + self.reference.pos.wy;
+		const wx = relX +% self.reference.pos.wx;
+		const wy = relY +% self.reference.pos.wy;
 		var index: u8 = 0;
-		if(wx - self.fragments[0].pos.wx >= CaveMapFragment.width*self.reference.pos.voxelSize) {
+		if(wx -% self.fragments[0].pos.wx >= CaveMapFragment.width*self.reference.pos.voxelSize) {
 			index += 4;
 		}
-		if(wy - self.fragments[0].pos.wy >= CaveMapFragment.width*self.reference.pos.voxelSize) {
+		if(wy -% self.fragments[0].pos.wy >= CaveMapFragment.width*self.reference.pos.voxelSize) {
 			index += 2;
 		}
-		var relativeZ = @divFloor(z + self.reference.pos.wz - self.fragments[0].pos.wz, self.reference.pos.voxelSize);
+		var relativeZ = @divFloor(z +% self.reference.pos.wz -% self.fragments[0].pos.wz, self.reference.pos.voxelSize);
 		std.debug.assert(relativeZ >= 0 and relativeZ < 2*CaveMapFragment.height);
 		const fragmentRelX = wx - self.fragments[index].pos.wx;
 		const fragmentRelY = wy - self.fragments[index].pos.wy;
@@ -278,7 +278,7 @@ pub const CaveMapView = struct {
 			}
 		}
 		result -= @clz(height);
-		return result*self.reference.pos.voxelSize + self.fragments[0].pos.wz - self.reference.pos.wz;
+		return result*self.reference.pos.voxelSize +% self.fragments[0].pos.wz -% self.reference.pos.wz;
 	}
 };
 
@@ -289,7 +289,7 @@ var cache: Cache(CaveMapFragment, cacheSize, associativity, mapFragmentDeinit) =
 var profile: TerrainGenerationProfile = undefined;
 
 fn mapFragmentDeinit(mapFragment: *CaveMapFragment) void {
-	if(@atomicRmw(u16, &mapFragment.refCount.raw, .Sub, 1, .Monotonic) == 1) {
+	if(@atomicRmw(u16, &mapFragment.refCount.raw, .Sub, 1, .monotonic) == 1) {
 		main.globalAllocator.destroy(mapFragment);
 	}
 }
@@ -300,7 +300,7 @@ fn cacheInit(pos: ChunkPosition) *CaveMapFragment {
 	for(profile.caveGenerators) |generator| {
 		generator.generate(mapFragment, profile.seed ^ generator.generatorSeed);
 	}
-	_ = @atomicRmw(u16, &mapFragment.refCount.raw, .Add, 1, .Monotonic);
+	_ = @atomicRmw(u16, &mapFragment.refCount.raw, .Add, 1, .monotonic);
 	return mapFragment;
 }
 
@@ -331,6 +331,6 @@ fn getOrGenerateFragment(wx: i32, wy: i32, wz: i32, voxelSize: u31) *CaveMapFrag
 		.voxelSize = voxelSize,
 	};
 	const result = cache.findOrCreate(compare, cacheInit);
-	std.debug.assert(@atomicRmw(u16, &result.refCount.raw, .Add, 1, .Monotonic) != 0);
+	std.debug.assert(@atomicRmw(u16, &result.refCount.raw, .Add, 1, .monotonic) != 0);
 	return result;
 }

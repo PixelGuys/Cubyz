@@ -41,9 +41,10 @@ pub const MapFragmentPosition = struct {
 	}
 
 	pub fn getMinDistanceSquared(self: MapFragmentPosition, playerPosition: Vec3d, comptime width: comptime_int) f64 {
+		const adjustedPosition = @mod(playerPosition + @as(Vec3d, @splat(1 << 31)), @as(Vec3d, @splat(1 << 32))) - @as(Vec3d, @splat(1 << 31));
 		const halfWidth: f64 = @floatFromInt(self.voxelSize*@divExact(width, 2));
-		var dx = @abs(@as(f64, @floatFromInt(self.wx)) + halfWidth - playerPosition[0]);
-		var dy = @abs(@as(f64, @floatFromInt(self.wy)) + halfWidth - playerPosition[1]);
+		var dx = @abs(@as(f64, @floatFromInt(self.wx)) + halfWidth - adjustedPosition[0]);
+		var dy = @abs(@as(f64, @floatFromInt(self.wy)) + halfWidth - adjustedPosition[1]);
 		dx = @max(0, dx - halfWidth);
 		dy = @max(0, dy - halfWidth);
 		return dx*dx + dy*dy;
@@ -138,7 +139,7 @@ pub fn deinitGenerators() void {
 }
 
 fn mapFragmentDeinit(mapFragment: *MapFragment) void {
-	if(@atomicRmw(u16, &mapFragment.refCount.raw, .Sub, 1, .Monotonic) == 1) {
+	if(@atomicRmw(u16, &mapFragment.refCount.raw, .Sub, 1, .monotonic) == 1) {
 		main.globalAllocator.destroy(mapFragment);
 	}
 }
@@ -147,7 +148,7 @@ fn cacheInit(pos: MapFragmentPosition) *MapFragment {
 	const mapFragment = main.globalAllocator.create(MapFragment);
 	mapFragment.init(pos.wx, pos.wy, pos.voxelSize);
 	profile.mapFragmentGenerator.generateMapFragment(mapFragment, profile.seed);
-	_ = @atomicRmw(u16, &mapFragment.refCount.raw, .Add, 1, .Monotonic);
+	_ = @atomicRmw(u16, &mapFragment.refCount.raw, .Add, 1, .monotonic);
 	return mapFragment;
 }
 
@@ -167,6 +168,6 @@ pub fn getOrGenerateFragment(wx: i32, wy: i32, voxelSize: u31) *MapFragment {
 		voxelSize
 	);
 	const result = cache.findOrCreate(compare, cacheInit);
-	std.debug.assert(@atomicRmw(u16, &result.refCount.raw, .Add, 1, .Monotonic) != 0);
+	std.debug.assert(@atomicRmw(u16, &result.refCount.raw, .Add, 1, .monotonic) != 0);
 	return result;
 }
