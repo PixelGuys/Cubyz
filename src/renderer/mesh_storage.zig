@@ -460,8 +460,11 @@ fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32, meshR
 					const pos = chunk.ChunkPosition{.wx=x, .wy=y, .wz=z, .voxelSize=@as(u31, 1)<<lod};
 
 					const node = &storageLists[_lod][@intCast(index)];
-					std.debug.assert(node.mesh.load(.acquire) == null);
-					meshRequests.append(pos);
+					if(node.mesh.load(.acquire)) |mesh| {
+						std.debug.assert(std.meta.eql(pos, mesh.pos));
+					} else {
+						meshRequests.append(pos);
+					}
 				}
 			}
 		}
@@ -518,8 +521,11 @@ fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32, meshR
 				const pos = LightMap.MapFragmentPosition{.wx=x, .wy=y, .voxelSize=@as(u31, 1)<<lod, .voxelSizeShift = lod};
 
 				const node = &mapStorageLists[_lod][@intCast(index)];
-				std.debug.assert(node.load(.acquire) == null);
-				mapRequests.append(pos);
+				if(node.load(.acquire)) |map| {
+					std.debug.assert(std.meta.eql(pos, map.pos));
+				} else {
+					mapRequests.append(pos);
+				}
 			}
 		}
 	}
