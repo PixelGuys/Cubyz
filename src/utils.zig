@@ -1130,6 +1130,79 @@ pub const ThreadPool = struct {
 	}
 };
 
+/// An packed array of integers with dynamic bit size.
+/// The bit size can be changed using the `resize` function.
+pub fn DynamicPackedIntArray(size: comptime_int) type {
+	return struct {
+		data: []u8 = &.{},
+		bitSize: u5 = 0,
+
+		const Self = @This();
+
+		pub fn initCapacity(allocator: main.utils.NeverFailingAllocator, bitSize: u5) Self {
+			return .{
+				.data = allocator.alloc(u8, @as(usize, @divFloor(size + 7, 8))*bitSize + @sizeOf(u32)),
+				.bitSize = bitSize,
+			};
+		}
+
+		pub fn deinit(self: *Self, allocator: main.utils.NeverFailingAllocator) void {
+			allocator.free(self.data);
+			self.* = .{};
+		}
+
+		pub fn resize(self: *Self, allocator: main.utils.NeverFailingAllocator, newBitSize: u5) void {
+			if(newBitSize == self.bitSize) return;
+			var newSelf: Self = Self.initCapacity(allocator, newBitSize);
+
+			for(0..size) |i| {
+				newSelf.setValue(i, self.getValue(i));
+			}
+			allocator.free(self.data);
+			self.* = newSelf;
+		}
+
+		pub fn getValue(self: *const Self, i: usize) u32 {
+			std.debug.assert(i < size);
+			if(self.bitSize == 0) return 0;
+			const bitIndex = i*self.bitSize;
+			const byteIndex = bitIndex >> 3;
+			const bitOffset: u5 = @intCast(bitIndex & 7);
+			const bitMask = (@as(u32, 1) << self.bitSize) - 1;
+			const ptr: *align(1) u32 = @ptrCast(&self.data[byteIndex]);
+			return ptr.* >> bitOffset  &  bitMask;
+		}
+
+		pub fn setValue(self: *Self, i: usize, value: u32) void {
+			std.debug.assert(i < size);
+			if(self.bitSize == 0) return;
+			const bitIndex = i*self.bitSize;
+			const byteIndex = bitIndex >> 3;
+			const bitOffset: u5 = @intCast(bitIndex & 7);
+			const bitMask = (@as(u32, 1) << self.bitSize) - 1;
+			std.debug.assert(value <= bitMask);
+			const ptr: *align(1) u32 = @ptrCast(&self.data[byteIndex]);
+			ptr.* &= ~(bitMask << bitOffset);
+			ptr.* |= value << bitOffset;
+		}
+
+		pub fn setAndGetValue(self: *Self, i: usize, value: u32) u32 {
+			std.debug.assert(i < size);
+			if(self.bitSize == 0) return 0;
+			const bitIndex = i*self.bitSize;
+			const byteIndex = bitIndex >> 3;
+			const bitOffset: u5 = @intCast(bitIndex & 7);
+			const bitMask = (@as(u32, 1) << self.bitSize) - 1;
+			std.debug.assert(value <= bitMask);
+			const ptr: *align(1) u32 = @ptrCast(&self.data[byteIndex]);
+			const result = ptr.* >> bitOffset  &  bitMask;
+			ptr.* &= ~(bitMask << bitOffset);
+			ptr.* |= value << bitOffset;
+			return result;
+		}
+	};
+}
+
 /// Implements a simple set associative cache with LRU replacement strategy.
 pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSize: u32, comptime deinitFunction: fn(*T) void) type {
 	const hashMask = numberOfBuckets-1;
