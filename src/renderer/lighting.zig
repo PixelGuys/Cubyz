@@ -32,7 +32,7 @@ pub const ChannelChunk = struct {
 	paletteOccupancy: []u32,
 	paletteLength: u32,
 	activePaletteEntries: u32,
-	mutex: std.Thread.Mutex,
+	lock: std.Thread.RwLock,
 	ch: *chunk.Chunk,
 	isSun: bool,
 
@@ -40,7 +40,7 @@ pub const ChannelChunk = struct {
 		memoryPoolMutex.lock();
 		const self = memoryPool.create() catch unreachable;
 		memoryPoolMutex.unlock();
-		self.mutex = .{};
+		self.lock = .{};
 		self.ch = ch;
 		self.isSun = isSun;
 		self.data = .{};
@@ -83,20 +83,17 @@ pub const ChannelChunk = struct {
 	};
 
 	fn getValueInternal(self: *ChannelChunk, i: usize) [3]u8 {
-		std.debug.assert(!self.mutex.tryLock());
 		return self.palette[self.data.getValue(i)];
 	}
 
-	pub fn getValue(self: *ChannelChunk, x: i32, y: i32, z: i32) [3]u8 {
+	pub fn getValueHoldingTheLock(self: *ChannelChunk, x: i32, y: i32, z: i32) [3]u8 {
 		const index = chunk.getIndex(x, y, z);
-		self.mutex.lock(); // TODO: Locking a mutex this often can be quite slow.
-		defer self.mutex.unlock();
 		return self.getValueInternal(index);
 	}
 
 	fn setValueInternal(self: *ChannelChunk, i: usize, val: [3]u8) void {
 		std.debug.assert(self.paletteLength <= self.palette.len);
-		std.debug.assert(!self.mutex.tryLock());
+		std.debug.assert(!self.lock.tryLock());
 		var paletteIndex: u32 = 0;
 		while(paletteIndex < self.paletteLength) : (paletteIndex += 1) { // TODO: There got to be a faster way to do this. Either using SIMD or using a cache or hashmap.
 			if(std.meta.eql(self.palette[paletteIndex], val)) {
@@ -128,7 +125,7 @@ pub const ChannelChunk = struct {
 	}
 
 	fn optimizeLayout(self: *ChannelChunk) void {
-		std.debug.assert(!self.mutex.tryLock());
+		std.debug.assert(!self.lock.tryLock());
 		if(std.math.log2_int_ceil(usize, self.palette.len) == std.math.log2_int_ceil(usize, self.activePaletteEntries)) return;
 
 		var newData = main.utils.DynamicPackedIntArray(chunk.chunkVolume).initCapacity(main.globalAllocator, @intCast(std.math.log2_int_ceil(u32, self.activePaletteEntries)));
@@ -197,7 +194,7 @@ pub const ChannelChunk = struct {
 			}
 		}
 
-		self.mutex.lock();
+		self.lock.lock();
 		while(lightQueue.dequeue()) |entry| {
 			const index = chunk.getIndex(entry.x, entry.y, entry.z);
 			const oldValue: [3]u8 = self.getValueInternal(index);
@@ -231,7 +228,7 @@ pub const ChannelChunk = struct {
 			}
 		}
 		self.optimizeLayout();
-		self.mutex.unlock();
+		self.lock.unlock();
 		if(mesh_storage.getMeshAndIncreaseRefCount(self.ch.pos)) |mesh| {
 			mesh.scheduleLightRefreshAndDecreaseRefCount();
 		}
@@ -254,7 +251,7 @@ pub const ChannelChunk = struct {
 		}
 		var isFirstIteration: bool = isFirstBlock;
 
-		self.mutex.lock();
+		self.lock.lock();
 		while(lightQueue.dequeue()) |entry| {
 			const index = chunk.getIndex(entry.x, entry.y, entry.z);
 			const oldValue: [3]u8 = self.getValueInternal(index);
@@ -309,7 +306,7 @@ pub const ChannelChunk = struct {
 				lightQueue.enqueue(result);
 			}
 		}
-		self.mutex.unlock();
+		self.lock.unlock();
 		if(mesh_storage.getMeshAndIncreaseRefCount(self.ch.pos)) |mesh| {
 			mesh.scheduleLightRefreshAndDecreaseRefCount();
 		}
@@ -388,8 +385,8 @@ pub const ChannelChunk = struct {
 						const neighborMesh = mesh_storage.getNeighborAndIncreaseRefCount(self.ch.pos, self.ch.pos.voxelSize, @intCast(neighbor)) orelse continue;
 						defer neighborMesh.decreaseRefCount();
 						const neighborLightChunk = neighborMesh.lightingData[@intFromBool(self.isSun)];
-						neighborLightChunk.mutex.lock();
-						defer neighborLightChunk.mutex.unlock();
+						neighborLightChunk.lock.lockShared();
+						defer neighborLightChunk.lock.unlockShared();
 						const index = chunk.getIndex(x, y, z);
 						const neighborIndex = chunk.getIndex(otherX, otherY, otherZ);
 						var value: [3]u8 = neighborLightChunk.getValueInternal(neighborIndex);
@@ -412,12 +409,12 @@ pub const ChannelChunk = struct {
 	pub fn propagateLightsDestructive(self: *ChannelChunk, lights: []const [3]u8) void {
 		var lightQueue = main.utils.CircularBufferQueue(Entry).init(main.stackAllocator, 1 << 12);
 		defer lightQueue.deinit();
-		self.mutex.lock();
+		self.lock.lockShared();
 		for(lights) |pos| {
 			const index = chunk.getIndex(pos[0], pos[1], pos[2]);
 			lightQueue.enqueue(.{.x = @intCast(pos[0]), .y = @intCast(pos[1]), .z = @intCast(pos[2]), .value = self.getValueInternal(index), .sourceDir = 6, .activeValue = 0b111});
 		}
-		self.mutex.unlock();
+		self.lock.unlockShared();
 		var constructiveEntries: main.ListUnmanaged(ChunkEntries) = .{};
 		defer constructiveEntries.deinit(main.stackAllocator);
 		constructiveEntries.append(main.stackAllocator, .{
@@ -430,7 +427,7 @@ pub const ChannelChunk = struct {
 			var entryList = entries.entries;
 			defer entryList.deinit(main.stackAllocator);
 			const channelChunk = if(mesh) |_mesh| _mesh.lightingData[@intFromBool(self.isSun)] else self;
-			channelChunk.mutex.lock();
+			channelChunk.lock.lockShared();
 			for(entryList.items) |entry| {
 				const index = chunk.getIndex(entry.x, entry.y, entry.z);
 				const value = channelChunk.getValueInternal(index);
@@ -438,7 +435,7 @@ pub const ChannelChunk = struct {
 				channelChunk.setValueInternal(index, .{0, 0, 0});
 				lightQueue.enqueue(.{.x = entry.x, .y = entry.y, .z = entry.z, .value = value, .sourceDir = 6, .activeValue = 0b111});
 			}
-			channelChunk.mutex.unlock();
+			channelChunk.lock.unlockShared();
 			channelChunk.propagateDirect(&lightQueue);
 		}
 	}
