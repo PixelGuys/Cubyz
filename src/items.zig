@@ -13,6 +13,7 @@ const Mat4f = vec.Mat4f;
 const Vec2f = vec.Vec2f;
 const Vec2i = vec.Vec2i;
 const Vec3i = vec.Vec3i;
+const Vec3f = vec.Vec3f;
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 /// Holds the basic properties of a tool crafting material.
@@ -69,6 +70,8 @@ pub const BaseItem = struct {
 	block: ?u16,
 	foodValue: f32, // TODO: Effects.
 
+	leftClickUse: ?*const fn(world: *main.game.World, pos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) bool,
+
 	var unobtainable = BaseItem {
 		.image = graphics.Image.defaultImage,
 		.texture = null,
@@ -78,6 +81,7 @@ pub const BaseItem = struct {
 		.material = null,
 		.block = null,
 		.foodValue = 0,
+		.leftClickUse = null,
 	};
 
 	fn init(self: *BaseItem, allocator: NeverFailingAllocator, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, json: JsonElement) void {
@@ -104,6 +108,14 @@ pub const BaseItem = struct {
 		};
 		self.texture = null;
 		self.foodValue = json.get(f32, "food", 0);
+		self.leftClickUse = if(std.mem.eql(u8, json.get([]const u8, "onLeftUse", ""), "chisel")) &chiselFunction else null; // TODO: Proper registry.
+	}
+
+	fn chiselFunction(world: *main.game.World, pos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) bool {
+		if(currentData.mode() == main.rotation.getByID("stairs")) {
+			return main.rotation.RotationModes.Stairs.chisel(world, pos, relativePlayerPos, playerDir, currentData);
+		}
+		return false;
 	}
 
 	fn hashCode(self: BaseItem) u32 {

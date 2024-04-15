@@ -63,19 +63,19 @@ fn sample(x: i32, y: i32) u8 {
 
 /// Takes a subregion of the grid. Corrdinates are returned relative to x and y compressed into 16 bits each.
 pub fn getRegionData(allocator: NeverFailingAllocator, x: i32, y: i32, width: u31, height: u31) []u32 {
-	const xMin = ((x & ~@as(i32, featureMask)) - featureSize) >> featureShift;
-	const yMin = ((y & ~@as(i32, featureMask)) - featureSize) >> featureShift;
-	const xMax = ((x+width & ~@as(i32, featureMask))) >> featureShift;
-	const yMax = ((y+height & ~@as(i32, featureMask))) >> featureShift;
-	var result = main.ListUnmanaged(u32).initCapacity(allocator, @intCast((xMax - xMin + 1)*(yMax - yMin + 1)));
+	const xMin = ((x & ~@as(i32, featureMask)) -% featureSize);
+	const yMin = ((y & ~@as(i32, featureMask)) -% featureSize);
+	const xMax = ((x+%width & ~@as(i32, featureMask)));
+	const yMax = ((y+%height & ~@as(i32, featureMask)));
+	var result = main.ListUnmanaged(u32).initCapacity(allocator, @intCast((((xMax -% xMin) >> featureShift) + 1)*(((yMax -% yMin) >> featureShift) + 1)));
 	var xMap: i32 = xMin;
-	while(xMap <= xMax) : (xMap += 1) {
+	while(xMap -% xMax <= 0) : (xMap +%= featureSize) {
 		var yMap: i32 = yMin;
-		while(yMap <= yMax) : (yMap += 1) {
-			const val = sample(xMap & sizeMask, yMap & sizeMask);
-			var xRes = (xMap - xMin) << featureShift;
+		while(yMap -% yMax <= 0) : (yMap +%= featureSize) {
+			const val = sample(xMap >> featureShift & sizeMask, yMap >> featureShift & sizeMask);
+			var xRes = xMap -% xMin;
 			xRes += val >> 3;
-			var yRes = (yMap - yMin) << featureShift;
+			var yRes = yMap -% yMin;
 			yRes += val & 7;
 			if(xRes >= 0 and xRes < width and yRes >= 0 and yRes < height) {
 				result.appendAssumeCapacity(@bitCast(xRes << 16 | yRes));

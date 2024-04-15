@@ -5,7 +5,5 @@
 		"auto"
 	],
 	"model" : "cube",
-	"texture_top" : "cubyz:sand",
-	"texture" : "cubyz:sand_side",
-	"texture_bottom" : "cubyz:sand"
+	"texture" : "cubyz:sand",
 }

@@ -34,7 +34,7 @@ fn discoverIpAddress() void {
 		return;
 	}; // TODO: default port
 	ipAddress = std.fmt.allocPrint(main.globalAllocator.allocator, "{}", .{connection.?.externalAddress}) catch unreachable;
-	gotIpAddress.store(true, .Release);
+	gotIpAddress.store(true, .release);
 }
 
 fn discoverIpAddressFromNewThread() void {
@@ -115,8 +115,8 @@ pub fn onClose() void {
 }
 
 pub fn update() void {
-	if(gotIpAddress.load(.Acquire)) {
-		gotIpAddress.store(false, .Monotonic);
+	if(gotIpAddress.load(.acquire)) {
+		gotIpAddress.store(false, .monotonic);
 		ipAddressLabel.updateText(ipAddress);
 	}
 }

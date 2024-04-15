@@ -278,6 +278,25 @@ pub fn loadWorldAssets(assetFolder: []const u8, palette: *BlockPalette) !void {
 		biomes_zig.register(entry.key_ptr.*, entry.value_ptr.*);
 	}
 	biomes_zig.finishLoading();
+
+	// Register paths for asset hot reloading:
+	var dir = std.fs.cwd().openDir("assets", .{.iterate = true}) catch |err| {
+		std.log.err("Can't open asset path {s}: {s}", .{"assets", @errorName(err)});
+		return;
+	};
+	defer dir.close();
+	var dirIterator = dir.iterate();
+	while(dirIterator.next() catch |err| blk: {
+		std.log.err("Got error while iterating over asset path {s}: {s}", .{"assets", @errorName(err)});
+		break :blk null;
+	}) |addon| {
+		if(addon.kind == .directory) {
+			const path = std.fmt.allocPrintZ(main.stackAllocator.allocator, "assets/{s}/blocks/textures", .{addon.name}) catch unreachable;
+			defer main.stackAllocator.free(path);
+			std.fs.cwd().access(path, .{}) catch continue;
+			main.utils.file_monitor.listenToPath(path, main.blocks.meshes.reloadTextures, 0);
+		}
+	}
 }
 
 pub fn unloadAssets() void {
@@ -286,6 +305,25 @@ pub fn unloadAssets() void {
 	blocks_zig.reset();
 	items_zig.reset();
 	biomes_zig.reset();
+
+	// Remove paths from asset hot reloading:
+	var dir = std.fs.cwd().openDir("assets", .{.iterate = true}) catch |err| {
+		std.log.err("Can't open asset path {s}: {s}", .{"assets", @errorName(err)});
+		return;
+	};
+	defer dir.close();
+	var dirIterator = dir.iterate();
+	while(dirIterator.next() catch |err| blk: {
+		std.log.err("Got error while iterating over asset path {s}: {s}", .{"assets", @errorName(err)});
+		break :blk null;
+	}) |addon| {
+		if(addon.kind == .directory) {
+			const path = std.fmt.allocPrintZ(main.stackAllocator.allocator, "assets/{s}/blocks/textures", .{addon.name}) catch unreachable;
+			defer main.stackAllocator.free(path);
+			std.fs.cwd().access(path, .{}) catch continue;
+			main.utils.file_monitor.removePath(path);
+		}
+	}
 }
 
 pub fn deinit() void {

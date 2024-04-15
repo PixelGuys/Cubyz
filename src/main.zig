@@ -26,6 +26,8 @@ pub const vec = @import("vec.zig");
 pub const List = @import("utils/list.zig").List;
 pub const ListUnmanaged = @import("utils/list.zig").ListUnmanaged;
 
+const file_monitor = utils.file_monitor;
+
 const Vec2f = vec.Vec2f;
 const Vec3d = vec.Vec3d;
 
@@ -323,10 +325,12 @@ pub fn setNextKeypressListener(listener: ?*const fn(c_int, c_int, c_int) void) !
 }
 fn escape() void {
 	if(game.world == null) return;
-	Window.setMouseGrabbed(!Window.grabbed);
+	gui.toggleGameMenu();
 }
 fn ungrabMouse() void {
-	Window.setMouseGrabbed(false);
+	if(Window.grabbed) {
+		gui.toggleGameMenu();
+	}
 }
 fn openInventory() void {
 	if(game.world == null) return;
@@ -692,6 +696,9 @@ pub fn main() void {
 	threadPool = utils.ThreadPool.init(globalAllocator, @max(1, (std.Thread.getCpuCount() catch 4) -| 1));
 	defer threadPool.deinit();
 
+	file_monitor.init();
+	defer file_monitor.deinit();
+
 	settings.init();
 	defer settings.deinit();
 
@@ -767,14 +774,15 @@ pub fn main() void {
 		gui.windowlist.gpu_performance_measuring.stopQuery();
 
 		Window.handleEvents();
+		file_monitor.handleEvents();
 
 		const newTime = std.time.nanoTimestamp();
 		const deltaTime = @as(f64, @floatFromInt(newTime -% lastTime))/1e9;
 		if(@import("builtin").os.tag == .linux and deltaTime > 5) { // On linux a process that runs 10 seconds or longer on the GPU will get stopped. This allows detecting an infinite loop on the GPU.
 			std.log.err("Frame got too long with {} seconds. Infinite loop on GPU?", .{deltaTime});
-			std.os.exit(1);
+			std.posix.exit(1);
 		}
-		lastFrameTime.store(deltaTime, .Monotonic);
+		lastFrameTime.store(deltaTime, .monotonic);
 		lastTime = newTime;
 		if(game.world != null) { // Update the game
 			game.update(deltaTime);

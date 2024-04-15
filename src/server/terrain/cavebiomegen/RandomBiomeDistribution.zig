@@ -48,7 +48,7 @@ pub fn generate(map: *CaveBiomeMapFragment, worldSeed: u64) void {
 		var insertionIndex: usize = 0;
 		var i: usize = 0;
 		while(i < validBiomes.items.len) : (i += 1) {
-			if(validBiomes.items[i].minHeight < map.pos.wz +% z +% CaveBiomeMapFragment.caveBiomeSize and validBiomes.items[i].maxHeight > map.pos.wz +% z) {
+			if(validBiomes.items[i].minHeight < map.pos.wz + z + (CaveBiomeMapFragment.caveBiomeSize - 1) and validBiomes.items[i].maxHeight > map.pos.wz + z) {
 				if(insertionIndex != i) {
 					const swap = validBiomes.items[i];
 					validBiomes.items[i] = validBiomes.items[insertionIndex];

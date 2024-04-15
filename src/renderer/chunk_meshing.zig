@@ -233,9 +233,15 @@ const PrimitiveMesh = struct {
 			@memcpy(completeList[i..][0..neighborFaces.items.len], neighborFaces.items);
 			i += neighborFaces.items.len;
 		}
+
+		parent.lightingData[0].lock.lockShared();
+		parent.lightingData[1].lock.lockShared();
 		for(completeList) |*face| {
 			face.light = getLight(parent, .{face.position.x, face.position.y, face.position.z}, face.blockAndQuad.quadIndex);
 		}
+		parent.lightingData[1].lock.unlockShared();
+		parent.lightingData[0].lock.unlockShared();
+
 		self.mutex.lock();
 		const oldList = self.completeList;
 		self.completeList = completeList;
@@ -254,14 +260,7 @@ const PrimitiveMesh = struct {
 		const x = (wx >> mesh.chunk.voxelSizeShift) & chunk.chunkMask;
 		const y = (wy >> mesh.chunk.voxelSizeShift) & chunk.chunkMask;
 		const z = (wz >> mesh.chunk.voxelSizeShift) & chunk.chunkMask;
-		return .{
-			mesh.lightingData[0].getValue(x, y, z),
-			mesh.lightingData[1].getValue(x, y, z),
-			mesh.lightingData[2].getValue(x, y, z),
-			mesh.lightingData[3].getValue(x, y, z),
-			mesh.lightingData[4].getValue(x, y, z),
-			mesh.lightingData[5].getValue(x, y, z),
-		};
+		return mesh.lightingData[1].getValueHoldingTheLock(x, y, z) ++ mesh.lightingData[0].getValueHoldingTheLock(x, y, z);
 	}
 
 	fn getLightAt(parent: *ChunkMesh, x: i32, y: i32, z: i32) [6]u8 {
@@ -273,24 +272,70 @@ const PrimitiveMesh = struct {
 		}
 		const neighborMesh = mesh_storage.getMeshAndIncreaseRefCount(.{.wx = wx, .wy = wy, .wz = wz, .voxelSize = parent.pos.voxelSize}) orelse return .{0, 0, 0, 0, 0, 0};
 		defer neighborMesh.decreaseRefCount();
+		neighborMesh.lightingData[0].lock.lockShared();
+		defer neighborMesh.lightingData[0].lock.unlockShared();
+		neighborMesh.lightingData[1].lock.lockShared();
+		defer neighborMesh.lightingData[1].lock.unlockShared();
 		return getValues(neighborMesh, wx, wy, wz);
 	}
 
+	fn getCornerLight(parent: *ChunkMesh, pos: Vec3i, normal: Vec3f) [6]u8 {
+		const lightPos = @as(Vec3f, @floatFromInt(pos)) + normal*@as(Vec3f, @splat(0.5)) - @as(Vec3f, @splat(0.5));
+		const startPos: Vec3i = @intFromFloat(@floor(lightPos));
+		const interp = lightPos - @floor(lightPos);
+		var val: [6]f32 = .{0, 0, 0, 0, 0, 0};
+		var dx: i32 = 0;
+		while(dx <= 1) : (dx += 1) {
+			var dy: i32 = 0;
+			while(dy <= 1) : (dy += 1) {
+				var dz: i32 = 0;
+				while(dz <= 1) : (dz += 1) {
+					var weight: f32 = 0;
+					if(dx == 0) weight = 1 - interp[0]
+					else weight = interp[0];
+					if(dy == 0) weight *= 1 - interp[1]
+					else weight *= interp[1];
+					if(dz == 0) weight *= 1 - interp[2]
+					else weight *= interp[2];
+					const lightVal: [6]u8 = getLightAt(parent, startPos[0] +% dx, startPos[1] +% dy, startPos[2] +% dz);
+					for(0..6) |i| {
+						val[i] += @as(f32, @floatFromInt(lightVal[i]))*weight;
+					}
+				}
+			}
+		}
+		var result: [6]u8 = undefined;
+		for(0..6) |i| {
+			result[i] = std.math.lossyCast(u8, val[i]);
+		}
+		return result;
+	}
+
 	fn getLight(parent: *ChunkMesh, blockPos: Vec3i, quadIndex: u16) [4]u32 {
-		var rawVals: [4][6]u5 = undefined;
+		// TODO: This is doing 12 interpolations of 8 values each. For full cube models only 4 interpolations or 4 values each would be needed.
 		const normal = models.quads.items[quadIndex].normal;
+		var cornerVals: [2][2][2][6]u8 = undefined;
+		{
+			var dx: u31 = 0;
+			while(dx <= 1) : (dx += 1) {
+				var dy: u31 = 0;
+				while(dy <= 1) : (dy += 1) {
+					var dz: u31 = 0;
+					while(dz <= 1) : (dz += 1) {
+						cornerVals[dx][dy][dz] = getCornerLight(parent, blockPos +% Vec3i{dx, dy, dz}, normal);
+					}
+				}
+			}
+		}
+		var rawVals: [4][6]u5 = undefined;
 		for(0..4) |i| {
 			const vertexPos = models.quads.items[quadIndex].corners[i];
-			const lightPos = vertexPos + @as(Vec3f, @floatFromInt(blockPos)) + normal*@as(Vec3f, @splat(0.5)) - @as(Vec3f, @splat(0.5));
-			const startPos: Vec3i = @intFromFloat(@floor(lightPos));
-			const interp = lightPos - @floor(lightPos);
+			const lightPos = vertexPos + @as(Vec3f, @floatFromInt(blockPos));
+			const interp = lightPos - @as(Vec3f, @floatFromInt(blockPos));
 			var val: [6]f32 = .{0, 0, 0, 0, 0, 0};
-			var dx: i32 = 0;
-			while(dx <= 1) : (dx += 1) {
-				var dy: i32 = 0;
-				while(dy <= 1) : (dy += 1) {
-					var dz: i32 = 0;
-					while(dz <= 1) : (dz += 1) {
+			for(0..2) |dx| {
+				for(0..2) |dy| {
+					for(0..2) |dz| {
 						var weight: f32 = 0;
 						if(dx == 0) weight = 1 - interp[0]
 						else weight = interp[0];
@@ -298,7 +343,7 @@ const PrimitiveMesh = struct {
 						else weight *= interp[1];
 						if(dz == 0) weight *= 1 - interp[2]
 						else weight *= interp[2];
-						const lightVal: [6]u8 = getLightAt(parent, startPos[0] +% dx, startPos[1] +% dy, startPos[2] +% dz);
+						const lightVal: [6]u8 = cornerVals[dx][dy][dz];
 						for(0..6) |j| {
 							val[j] += @as(f32, @floatFromInt(lightVal[j]))*weight;
 						}
@@ -396,7 +441,7 @@ pub const ChunkMesh = struct {
 	pos: chunk.ChunkPosition,
 	size: i32,
 	chunk: *chunk.Chunk,
-	lightingData: [6]*lighting.ChannelChunk,
+	lightingData: [2]*lighting.ChannelChunk,
 	opaqueMesh: PrimitiveMesh,
 	transparentMesh: PrimitiveMesh,
 	lastNeighborsSameLod: [6]?*const ChunkMesh = [_]?*const ChunkMesh{null} ** 6,
@@ -425,18 +470,14 @@ pub const ChunkMesh = struct {
 			.transparentMesh = .{},
 			.chunk = ch,
 			.lightingData = .{
-				lighting.ChannelChunk.init(ch, .sun_red),
-				lighting.ChannelChunk.init(ch, .sun_green),
-				lighting.ChannelChunk.init(ch, .sun_blue),
-				lighting.ChannelChunk.init(ch, .red),
-				lighting.ChannelChunk.init(ch, .green),
-				lighting.ChannelChunk.init(ch, .blue),
+				lighting.ChannelChunk.init(ch, false),
+				lighting.ChannelChunk.init(ch, true),
 			},
 		};
 	}
 
 	pub fn deinit(self: *ChunkMesh) void {
-		std.debug.assert(self.refCount.load(.Monotonic) == 0);
+		std.debug.assert(self.refCount.load(.monotonic) == 0);
 		self.opaqueMesh.deinit();
 		self.transparentMesh.deinit();
 		self.chunk.deinit();
@@ -448,21 +489,21 @@ pub const ChunkMesh = struct {
 	}
 
 	pub fn increaseRefCount(self: *ChunkMesh) void {
-		const prevVal = self.refCount.fetchAdd(1, .Monotonic);
+		const prevVal = self.refCount.fetchAdd(1, .monotonic);
 		std.debug.assert(prevVal != 0);
 	}
 
 	/// In cases where it's not certain whether the thing was cleared already.
 	pub fn tryIncreaseRefCount(self: *ChunkMesh) bool {
-		var prevVal = self.refCount.load(.Monotonic);
+		var prevVal = self.refCount.load(.monotonic);
 		while(prevVal != 0) {
-			prevVal = self.refCount.cmpxchgWeak(prevVal, prevVal + 1, .Monotonic, .Monotonic) orelse return true;
+			prevVal = self.refCount.cmpxchgWeak(prevVal, prevVal + 1, .monotonic, .monotonic) orelse return true;
 		}
 		return false;
 	}
 
 	pub fn decreaseRefCount(self: *ChunkMesh) void {
-		const prevVal = self.refCount.fetchSub(1, .Monotonic);
+		const prevVal = self.refCount.fetchSub(1, .monotonic);
 		std.debug.assert(prevVal != 0);
 		if(prevVal == 1) {
 			mesh_storage.addMeshToClearListAndDecreaseRefCount(self);
@@ -470,7 +511,7 @@ pub const ChunkMesh = struct {
 	}
 
 	pub fn scheduleLightRefreshAndDecreaseRefCount(self: *ChunkMesh) void {
-		if(!self.needsLightRefresh.swap(true, .AcqRel)) {
+		if(!self.needsLightRefresh.swap(true, .acq_rel)) {
 			LightRefreshTask.scheduleAndDecreaseRefCount(self);
 		} else {
 			self.decreaseRefCount();
@@ -503,7 +544,7 @@ pub const ChunkMesh = struct {
 		}
 
 		pub fn run(self: *LightRefreshTask) void {
-			if(self.mesh.needsLightRefresh.swap(false, .AcqRel)) {
+			if(self.mesh.needsLightRefresh.swap(false, .acq_rel)) {
 				self.mesh.mutex.lock();
 				self.mesh.finishData();
 				self.mesh.mutex.unlock();
@@ -527,12 +568,11 @@ pub const ChunkMesh = struct {
 	fn canBeSeenThroughOtherBlock(block: Block, other: Block, neighbor: u3) bool {
 		const rotatedModel = blocks.meshes.model(block);
 		const model = &models.models.items[rotatedModel];
-		_ = neighbor;
 		_ = model; // TODO: Check if the neighbor model occludes this one. (maybe not that relevant)
 		return block.typ != 0 and (
 			other.typ == 0
 			or (!std.meta.eql(block, other) and other.viewThrough())
-			or blocks.meshes.model(other) != 0
+			or !models.models.items[blocks.meshes.model(other)].isNeighborOccluded[neighbor ^ 1]
 		);
 	}
 
@@ -552,9 +592,7 @@ pub const ChunkMesh = struct {
 			}
 		}
 		self.mutex.unlock();
-		for(self.lightingData[3..]) |lightingData| {
-			lightingData.propagateLights(lightEmittingBlocks.items, true);
-		}
+		self.lightingData[0].propagateLights(lightEmittingBlocks.items, true);
 		sunLight: {
 			var sunStarters: [chunk.chunkSize*chunk.chunkSize][3]u8 = undefined;
 			var index: usize = 0;
@@ -572,9 +610,7 @@ pub const ChunkMesh = struct {
 					}
 				}
 			}
-			for(self.lightingData[0..3]) |lightingData| {
-				lightingData.propagateLights(sunStarters[0..index], true);
-			}
+			self.lightingData[1].propagateLights(sunStarters[0..index], true);
 		}
 	}
 
@@ -607,13 +643,13 @@ pub const ChunkMesh = struct {
 
 					const shiftSelf: u5 = @intCast(((dx + 1)*3 + dy + 1)*3 + dz + 1);
 					const shiftOther: u5 = @intCast(((-dx + 1)*3 + -dy + 1)*3 + -dz + 1);
-					if(neighborMesh.litNeighbors.fetchOr(@as(u27, 1) << shiftOther, .Monotonic) ^ @as(u27, 1) << shiftOther == ~@as(u27, 0)) { // Trigger mesh creation for neighbor
+					if(neighborMesh.litNeighbors.fetchOr(@as(u27, 1) << shiftOther, .monotonic) ^ @as(u27, 1) << shiftOther == ~@as(u27, 0)) { // Trigger mesh creation for neighbor
 						neighborMesh.generateMesh();
 					}
 					neighborMesh.mutex.lock();
 					const neighborFinishedLighting = neighborMesh.finishedLighting;
 					neighborMesh.mutex.unlock();
-					if(neighborFinishedLighting and self.litNeighbors.fetchOr(@as(u27, 1) << shiftSelf, .Monotonic) ^ @as(u27, 1) << shiftSelf == ~@as(u27, 0)) {
+					if(neighborFinishedLighting and self.litNeighbors.fetchOr(@as(u27, 1) << shiftSelf, .monotonic) ^ @as(u27, 1) << shiftSelf == ~@as(u27, 0)) {
 						self.generateMesh();
 					}
 				}
@@ -731,9 +767,7 @@ pub const ChunkMesh = struct {
 			lightingData.propagateLightsDestructive(&.{.{@intCast(x), @intCast(y), @intCast(z)}});
 		}
 		if(newBlock.light() != 0) {
-			for(self.lightingData[3..]) |lightingData| {
-				lightingData.propagateLights(&.{.{@intCast(x), @intCast(y), @intCast(z)}}, false);
-			}
+			self.lightingData[0].propagateLights(&.{.{@intCast(x), @intCast(y), @intCast(z)}}, false);
 		}
 		self.mutex.lock();
 		defer self.mutex.unlock();
@@ -862,7 +896,7 @@ pub const ChunkMesh = struct {
 						}
 					}
 				}
-				_ = neighborMesh.needsLightRefresh.swap(false, .AcqRel);
+				_ = neighborMesh.needsLightRefresh.swap(false, .acq_rel);
 				neighborMesh.finishData();
 				neighborMesh.increaseRefCount();
 				mesh_storage.addToUpdateListAndDecreaseRefCount(neighborMesh);
@@ -938,7 +972,7 @@ pub const ChunkMesh = struct {
 		}
 		self.mutex.lock();
 		defer self.mutex.unlock();
-		_ = self.needsLightRefresh.swap(false, .AcqRel);
+		_ = self.needsLightRefresh.swap(false, .acq_rel);
 		self.finishData();
 		mesh_storage.finishMesh(self);
 	}

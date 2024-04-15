@@ -53,11 +53,11 @@ pub fn generateMapFragment(map: *ClimateMapFragment, worldSeed: u64) void {
 const BiomePoint = struct {
 	biome: *const Biome,
 	height: f32,
-	pos: Vec2f = .{0, 0},
+	pos: Vec2i = .{0, 0},
 	weight: f32 = 1,
 
-	fn voronoiDistanceFunction(self: @This(), pos: Vec2f) f32 {
-		const len = vec.lengthSquare(self.pos - pos);
+	fn voronoiDistanceFunction(self: @This(), pos: Vec2i) f32 {
+		const len: f32 = @floatFromInt(vec.lengthSquare(self.pos -% pos));
 		const result = len*self.weight;
 		if(result > 1.0) {
 			return result + (result - 1.0)/8192.0*len;
@@ -78,15 +78,15 @@ const Chunk = struct {
 	wx: i32,
 	wy: i32,
 	biomesSortedByX: []BiomePoint,
-	maxBiomeRadius: f32,
+	maxBiomeRadius: i32,
 
-	fn getStartCoordinate(minX: f32, biomesSortedByX: []BiomePoint) usize {
+	fn getStartCoordinate(minX: i32, biomesSortedByX: []BiomePoint) usize {
 		// TODO: Should this be vectorized by storing the x-coordinate in a seperate []u8?
 		var start: usize = 0;
 		var end: usize = biomesSortedByX.len;
 		while(end - start > 16) {
 			const mid = (start + end)/2 - 1;
-			if(biomesSortedByX[mid].pos[0] < minX) {
+			if(biomesSortedByX[mid].pos[0] -% minX < 0) {
 				start = mid + 1;
 			} else {
 				end = mid + 1;
@@ -95,15 +95,16 @@ const Chunk = struct {
 		return start;
 	}
 
-	fn checkIfBiomeIsValid(x: f32, y: f32, biomeRadius: f32, biomesSortedByX: []BiomePoint, chunkLocalMaxBiomeRadius: f32) bool {
-		const minX = x - biomeRadius - chunkLocalMaxBiomeRadius;
-		const maxX = x + biomeRadius + chunkLocalMaxBiomeRadius;
+	fn checkIfBiomeIsValid(x: i32, y: i32, biomeRadius: f32, biomesSortedByX: []BiomePoint, chunkLocalMaxBiomeRadius: i32) bool {
+		const ceiledBiomeRadius: i32 = @intFromFloat(@ceil(biomeRadius));
+		const minX = x -% ceiledBiomeRadius -% chunkLocalMaxBiomeRadius;
+		const maxX = x +% ceiledBiomeRadius +% chunkLocalMaxBiomeRadius;
 		const i: usize = getStartCoordinate(minX, biomesSortedByX);
 		for(biomesSortedByX[i..]) |other| {
-			if(other.pos[0] >= maxX) break;
+			if(other.pos[0] -% maxX >= 0) break;
 			const minDistance = (biomeRadius + other.biome.radius)*0.85;
 
-			if(vec.lengthSquare(other.pos - Vec2f{x, y}) < minDistance*minDistance) {
+			if(@as(f32, @floatFromInt(vec.lengthSquare(other.pos -% Vec2i{x, y}))) < minDistance*minDistance) {
 				return false;
 			}
 		}
@@ -133,13 +134,13 @@ const Chunk = struct {
 			neighbors.appendAssumeCapacity(Chunk.init(allocator, tree, worldSeed, wx, wy -% chunkSize));
 		}
 
-		var chunkLocalMaxBiomeRadius: f32 = 0;
+		var chunkLocalMaxBiomeRadius: i32 = 0;
 		var seed = random.initSeed2D(worldSeed, .{wx, wy});
 		var selectedBiomes: main.utils.SortedList(BiomePoint) = .{};
 		var rejections: usize = 0;
 		outer: while(rejections < 100) {
-			const x = random.nextFloat(&seed)*chunkSize + @as(f32, @floatFromInt(wx));
-			const y = random.nextFloat(&seed)*chunkSize + @as(f32, @floatFromInt(wy));
+			const x = random.nextIntBounded(u31, &seed, chunkSize) + wx;
+			const y = random.nextIntBounded(u31, &seed, chunkSize) + wy;
 			var biomeSeed: u64 = 562478564;
 			const drawnBiome = tree.getBiome(&biomeSeed, x, y);
 			if(!checkIfBiomeIsValid(x, y, drawnBiome.radius, selectedBiomes.items(), chunkLocalMaxBiomeRadius)) {
@@ -153,7 +154,7 @@ const Chunk = struct {
 				}
 			}
 			rejections = 0;
-			chunkLocalMaxBiomeRadius = @max(chunkLocalMaxBiomeRadius, drawnBiome.radius);
+			chunkLocalMaxBiomeRadius = @max(chunkLocalMaxBiomeRadius, @as(i32, @intFromFloat(@ceil(drawnBiome.radius))));
 			selectedBiomes.insertSorted(allocator, .{
 				.biome = drawnBiome,
 				.pos = .{x, y},
@@ -203,9 +204,9 @@ const GenerationStructure = struct {
 		self.chunks.deinit(allocator);
 	}
 
-	fn findClosestBiomeTo(self: GenerationStructure, wx: i32, wy: i32, x: u31, y: u31) BiomeSample {
-		const xf: f32 = @floatFromInt(wx +% x*terrain.SurfaceMap.MapFragment.biomeSize);
-		const yf: f32 = @floatFromInt(wy +% y*terrain.SurfaceMap.MapFragment.biomeSize);
+	fn findClosestBiomeTo(self: GenerationStructure, wx: i32, wy: i32, relX: u31, relY: u31) BiomeSample {
+		const x = wx +% relX*terrain.SurfaceMap.MapFragment.biomeSize;
+		const y = wy +% relY*terrain.SurfaceMap.MapFragment.biomeSize;
 		var closestDist = std.math.floatMax(f32);
 		var secondClosestDist = std.math.floatMax(f32);
 		var closestBiomePoint: BiomePoint = undefined;
@@ -214,8 +215,8 @@ const GenerationStructure = struct {
 		var hills: f32 = 0;
 		var mountains: f32 = 0;
 		var totalWeight: f32 = 0;
-		const cellX: i32 = x/(chunkSize/terrain.SurfaceMap.MapFragment.biomeSize);
-		const cellY: i32 = y/(chunkSize/terrain.SurfaceMap.MapFragment.biomeSize);
+		const cellX: i32 = relX/(chunkSize/terrain.SurfaceMap.MapFragment.biomeSize);
+		const cellY: i32 = relY/(chunkSize/terrain.SurfaceMap.MapFragment.biomeSize);
 		// Note that at a small loss of details we can assume that all BiomePoints are withing ±1 chunks of the current one.
 		var dx: i32 = 0;
 		while(dx <= 2) : (dx += 1) {
@@ -226,12 +227,12 @@ const GenerationStructure = struct {
 				const totalY = cellY + dy;
 				if(totalY < 0 or totalY >= self.chunks.height) continue;
 				const chunk = self.chunks.get(@intCast(totalX), @intCast(totalY));
-				const minX = xf - 3*chunk.maxBiomeRadius;
-				const maxX = xf + 3*chunk.maxBiomeRadius;
+				const minX = x -% 3*chunk.maxBiomeRadius;
+				const maxX = x +% 3*chunk.maxBiomeRadius;
 				const list = chunk.biomesSortedByX[Chunk.getStartCoordinate(minX, chunk.biomesSortedByX)..];
 				for(list) |biomePoint| {
-					if(biomePoint.pos[0] >= maxX) break;
-					const dist = biomePoint.voronoiDistanceFunction(.{xf, yf});
+					if(biomePoint.pos[0] -% maxX >= 0) break;
+					const dist = biomePoint.voronoiDistanceFunction(.{x, y});
 					var weight: f32 = @max(1.0 - @sqrt(dist), 0);
 					weight *= weight;
 					// The important bit is the ocean height, that's the only point where we actually need the transition point to be exact for beaches to occur.
@@ -263,8 +264,8 @@ const GenerationStructure = struct {
 		};
 	}
 
-	fn drawCircleOnTheMap(map: *ClimateMapFragment, biome: *const Biome, wx: i32, wy: i32, width: u31, height: u31, pos: Vec2f) void {
-		const relPos = (pos - @as(Vec2f, @floatFromInt(Vec2i{wx, wy})))/@as(Vec2f, @splat(terrain.SurfaceMap.MapFragment.biomeSize));
+	fn drawCircleOnTheMap(map: *ClimateMapFragment, biome: *const Biome, wx: i32, wy: i32, width: u31, height: u31, pos: Vec2i) void {
+		const relPos = @as(Vec2f, @floatFromInt(pos -% Vec2i{wx, wy}))/@as(Vec2f, @splat(terrain.SurfaceMap.MapFragment.biomeSize));
 		const relRadius = biome.radius/terrain.SurfaceMap.MapFragment.biomeSize;
 		const min = @floor(@max(Vec2f{0, 0}, relPos - @as(Vec2f, @splat(relRadius))));
 		const max = @ceil(@min(@as(Vec2f, @floatFromInt(Vec2i{width, height}))/@as(Vec2f, @splat(terrain.SurfaceMap.MapFragment.biomeSize)), relPos + @as(Vec2f, @splat(relRadius))));
@@ -306,7 +307,7 @@ const GenerationStructure = struct {
 				std.log.warn("SubBiome {s} of {s} is too big", .{subBiome.id, biome.biome.id});
 				maxCenterOffset = 0;
 			}
-			const point = biome.pos + random.nextPointInUnitCircle(&seed)*@as(Vec2f, @splat(maxCenterOffset));
+			const point = biome.pos +% @as(Vec2i, @intFromFloat(random.nextPointInUnitCircle(&seed)*@as(Vec2f, @splat(maxCenterOffset))));
 			drawCircleOnTheMap(map, subBiome, wx, wy, width, height, point);
 			extraBiomes.append(.{
 				.biome = subBiome,

@@ -331,15 +331,15 @@ pub const TreeNode = union(enum) {
 		allocator.destroy(self);
 	}
 
-	pub fn getBiome(self: *const TreeNode, seed: *u64, x: f32, y: f32) *const Biome {
+	pub fn getBiome(self: *const TreeNode, seed: *u64, x: i32, y: i32) *const Biome {
 		switch(self.*) {
 			.leaf => |leaf| {
-				var biomeSeed = main.random.initSeed2D(seed.*, main.vec.Vec2i{@intFromFloat(x), @intFromFloat(y)});
+				var biomeSeed = main.random.initSeed2D(seed.*, main.vec.Vec2i{x, y});
 				const result = leaf.aliasTable.sample(&biomeSeed);
 				return result;
 			},
 			.branch => |branch| {
-				const value = terrain.noise.ValueNoise.samplePoint2D(x/branch.amplitude, y/branch.amplitude, main.random.nextInt(u32, seed));
+				const value = terrain.noise.ValueNoise.samplePoint2D(@as(f32, @floatFromInt(x))/branch.amplitude, @as(f32, @floatFromInt(y))/branch.amplitude, main.random.nextInt(u32, seed));
 				var index: u2 = 0;
 				if(value >= branch.lowerBorder) {
 					if(value >= branch.upperBorder) {
