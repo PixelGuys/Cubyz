@@ -294,7 +294,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	}
 	c.glUniform1f(deferredUniforms.zNear, zNear);
 	c.glUniform1f(deferredUniforms.zFar, zFar);
-	c.glUniform2f(deferredUniforms.tanXY, 1.0/game.projectionMatrix.rows[0][0], 1.0/game.projectionMatrix.rows[1][1]);
+	c.glUniform2f(deferredUniforms.tanXY, 1.0/game.projectionMatrix.rows[0][0], 1.0/game.projectionMatrix.rows[1][2]);
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, activeFrameBuffer);
 
@@ -367,7 +367,7 @@ const Bloom = struct {
 		}
 		c.glUniform1f(colorExtractUniforms.zNear, zNear);
 		c.glUniform1f(colorExtractUniforms.zFar, zFar);
-		c.glUniform2f(colorExtractUniforms.tanXY, 1.0/game.projectionMatrix.rows[0][0], 1.0/game.projectionMatrix.rows[1][1]);
+		c.glUniform2f(colorExtractUniforms.tanXY, 1.0/game.projectionMatrix.rows[0][0], 1.0/game.projectionMatrix.rows[1][2]);
 		c.glBindVertexArray(graphics.draw.rectVAO);
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
@@ -449,15 +449,15 @@ pub const MenuBackGround = struct {
 		// 4 sides of a simple cube with some panorama texture on it.
 		const rawData = [_]f32 {
 			-1, -1, -1, 1, 1,
-			-1, 1, -1, 1, 0,
-			-1, -1, 1, 0.75, 1,
+			-1, -1, 1, 1, 0,
+			-1, 1, -1, 0.75, 1,
 			-1, 1, 1, 0.75, 0,
-			1, -1, 1, 0.5, 1,
+			1, 1, -1, 0.5, 1,
 			1, 1, 1, 0.5, 0,
 			1, -1, -1, 0.25, 1,
-			1, 1, -1, 0.25, 0,
+			1, -1, 1, 0.25, 0,
 			-1, -1, -1, 0, 1,
-			-1, 1, -1, 0, 0,
+			-1, -1, 1, 0, 0,
 		};
 
 		const indices = [_]c_int {
@@ -527,11 +527,11 @@ pub const MenuBackGround = struct {
 		if(texture.textureID == 0) return;
 		c.glDisable(c.GL_CULL_FACE); // I'm not sure if my triangles are rotated correctly, and there are no triangles facing away from the player anyways.
 
-		// Use a simple rotation around the y axis, with a steadily increasing angle.
+		// Use a simple rotation around the z axis, with a steadily increasing angle.
 		const newTime = std.time.nanoTimestamp();
 		angle += @as(f32, @floatFromInt(newTime - lastTime))/2e10;
 		lastTime = newTime;
-		const viewMatrix = Mat4f.rotationY(angle);
+		const viewMatrix = Mat4f.rotationZ(angle);
 		shader.bind();
 
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
@@ -612,8 +612,8 @@ pub const Frustum = struct {
 
 	pub fn init(cameraPos: Vec3f, rotationMatrix: Mat4f, fovY: f32, width: u31, height: u31) Frustum {
 		const invRotationMatrix = rotationMatrix.transpose();
-		const cameraDir = vec.xyz(invRotationMatrix.mulVec(Vec4f{0, 0, 1, 1}));
-		const cameraUp = vec.xyz(invRotationMatrix.mulVec(Vec4f{0, 1, 0, 1}));
+		const cameraDir = vec.xyz(invRotationMatrix.mulVec(Vec4f{0, 1, 0, 1}));
+		const cameraUp = vec.xyz(invRotationMatrix.mulVec(Vec4f{0, 0, 1, 1}));
 		const cameraRight = vec.xyz(invRotationMatrix.mulVec(Vec4f{1, 0, 0, 1}));
 
 		const halfVSide = std.math.tan(std.math.degreesToRadians(fovY)*0.5);

@@ -65,7 +65,7 @@ float zFromDepth(float depthBufferValue) {
 
 float calculateFogDistance(float dist, float fogDensity) {
 	float distCameraTerrain = dist*fogDensity;
-	float distFromCamera = abs(mvVertexPos.z)*fogDensity;
+	float distFromCamera = abs(mvVertexPos.y)*fogDensity;
 	float distFromTerrain = distFromCamera - distCameraTerrain;
 	if(distCameraTerrain < 10) { // Resolution range is sufficient.
 		return distFromTerrain;
@@ -108,7 +108,7 @@ void main() {
 	float animatedTextureIndex = animatedTexture[textureIndex];
 	vec3 textureCoords = vec3(uv, animatedTextureIndex);
 	float normalVariation = lightVariation(normal);
-	float densityAdjustment = sqrt(dot(mvVertexPos, mvVertexPos))/abs(mvVertexPos.z);
+	float densityAdjustment = sqrt(dot(mvVertexPos, mvVertexPos))/abs(mvVertexPos.y);
 	float dist = zFromDepth(texelFetch(depthTexture, ivec2(gl_FragCoord.xy), 0).r);
 	float fogDistance = calculateFogDistance(dist, fogData[int(animatedTextureIndex)].fogDensity*densityAdjustment);
 	float airFogDistance = calculateFogDistance(dist, fog.density*densityAdjustment);
