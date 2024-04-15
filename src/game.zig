@@ -41,12 +41,7 @@ pub const camera = struct {
 
 	pub fn updateViewMatrix() void {
 		direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -rotation[0]), -rotation[2]);
-		viewMatrix = Mat4f.identity().mul(.{.rows = .{
-			.{1, 0, 0, 0},
-			.{0, 0, 1, 0},
-			.{0,-1, 0, 0},
-			.{0, 0, 0, 1},
-		}}).mul(Mat4f.rotationX(rotation[0])).mul(Mat4f.rotationZ(rotation[2]));
+		viewMatrix = Mat4f.identity().mul(Mat4f.rotationX(rotation[0])).mul(Mat4f.rotationZ(rotation[2]));
 	}
 };
 
