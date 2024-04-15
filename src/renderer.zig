@@ -178,7 +178,7 @@ pub fn crosshairDirection(rotationMatrix: Mat4f, fovY: f32, width: u31, height: 
 	const screenSize = Vec2f{@floatFromInt(width), @floatFromInt(height)};
 	const screenCoord = crosshair.window.pos + crosshair.window.contentSize*Vec2f{0.5, 0.5};
 
-	const halfVSide = std.math.tan(std.math.degreesToRadians(f32, fovY)*0.5);
+	const halfVSide = std.math.tan(std.math.degreesToRadians(fovY)*0.5);
 	const halfHSide = halfVSide*screenSize[0]/screenSize[1];
 	const sides = Vec2f{halfHSide, halfVSide};
 
