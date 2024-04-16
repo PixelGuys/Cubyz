@@ -17,6 +17,8 @@ const network = @import("network.zig");
 const settings = @import("settings.zig");
 const vec = @import("vec.zig");
 const gpu_performance_measuring = main.gui.windowlist.gpu_performance_measuring;
+const crosshair = main.gui.windowlist.crosshair;
+const Vec2f = vec.Vec2f;
 const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
 const Vec3d = vec.Vec3d;
@@ -166,6 +168,29 @@ pub fn render(playerPosition: Vec3d) void {
 	}
 }
 
+pub fn crosshairDirection(rotationMatrix: Mat4f, fovY: f32, width: u31, height: u31) Vec3f {
+	// stolen code from Frustum.init
+	const invRotationMatrix = rotationMatrix.transpose();
+	const cameraDir = vec.xyz(invRotationMatrix.mulVec(Vec4f{0, 1, 0, 1}));
+	const cameraUp = vec.xyz(invRotationMatrix.mulVec(Vec4f{0, 0, 1, 1}));
+	const cameraRight = vec.xyz(invRotationMatrix.mulVec(Vec4f{1, 0, 0, 1}));
+
+	const screenSize = Vec2f{@floatFromInt(width), @floatFromInt(height)};
+	const screenCoord = (crosshair.window.pos + crosshair.window.contentSize*Vec2f{0.5, 0.5}*@as(Vec2f, @splat(crosshair.window.scale)))*@as(Vec2f, @splat(main.gui.scale));
+
+	const halfVSide = std.math.tan(std.math.degreesToRadians(fovY)*0.5);
+	const halfHSide = halfVSide*screenSize[0]/screenSize[1];
+	const sides = Vec2f{halfHSide, halfVSide};
+
+	const scale = (Vec2f{-1, 1} + Vec2f{2, -2} * screenCoord / screenSize) * sides;
+	const forwards = cameraDir;
+	const horizontal = cameraRight * @as(Vec3f, @splat(scale[0]));
+	const vertical = cameraUp * @as(Vec3f, @splat(scale[1])); // adjust for y coordinate
+
+	const adjusted = forwards + horizontal + vertical;
+	return adjusted;
+}
+
 pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPos: Vec3d) void {
 	worldFrameBuffer.bind();
 	gpu_performance_measuring.startQuery(.clear);
@@ -212,7 +237,8 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 //		}
 //	}
 	gpu_performance_measuring.startQuery(.chunk_rendering);
-	MeshSelection.select(playerPos, game.camera.direction, game.Player.inventory__SEND_CHANGES_TO_SERVER.items[game.Player.selectedSlot]);
+	const direction = crosshairDirection(game.camera.viewMatrix, lastFov, lastWidth, lastHeight);
+	MeshSelection.select(playerPos, direction, game.Player.inventory__SEND_CHANGES_TO_SERVER.items[game.Player.selectedSlot]);
 	MeshSelection.render(game.projectionMatrix, game.camera.viewMatrix, playerPos);
 
 	chunk_meshing.beginRender();
