@@ -143,7 +143,7 @@ pub const ItemDropManager = struct {
 	}
 
 	fn storeSingle(self: *ItemDropManager, allocator: NeverFailingAllocator, i: u16) JsonElement {
-		std.debug.assert(!self.mutex.tryLock()); // Mutex must be locked!
+		main.utils.assertLocked(&self.mutex);
 		const obj = JsonElement.initObject(allocator);
 		const itemDrop = self.list.get(i);
 		obj.put("i", i);
@@ -337,7 +337,7 @@ pub const ItemDropManager = struct {
 //	}
 
 	fn updateEnt(self: *ItemDropManager, chunk: *Chunk, pos: *Vec3d, vel: *Vec3d, deltaTime: f64) void {
-		std.debug.assert(!self.mutex.tryLock()); // Mutex must be locked!
+		main.utils.assertLocked(&self.mutex);
 		const startedInABlock = self.checkBlocks(chunk, pos);
 		if(startedInABlock) {
 			self.fixStuckInBlock(chunk, pos, vel, deltaTime);
@@ -361,7 +361,7 @@ pub const ItemDropManager = struct {
 	}
 
 	fn fixStuckInBlock(self: *ItemDropManager, chunk: *Chunk, pos: *Vec3d, vel: *Vec3d, deltaTime: f64) void {
-		std.debug.assert(!self.mutex.tryLock()); // Mutex must be locked!
+		main.utils.assertLocked(&self.mutex);
 		const centeredPos = pos.* - @as(Vec3d, @splat(0.5));
 		const pos0: Vec3i = @intFromFloat(@floor(centeredPos));
 

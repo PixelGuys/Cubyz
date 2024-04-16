@@ -38,7 +38,7 @@ var input: *TextInput = undefined;
 var hideInput: bool = true;
 
 fn refresh() void {
-	std.debug.assert(!mutexComponent.mutex.tryLock()); // mutex must be locked!
+	main.utils.assertLocked(&mutexComponent.mutex);
 	if(window.rootComponent) |old| {
 		old.mutexComponent.child.verticalList.children.clearRetainingCapacity();
 		old.deinit();

@@ -61,7 +61,7 @@ pub const User = struct {
 	}
 
 	pub fn update(self: *User) void {
-		std.debug.assert(!mutex.tryLock()); // The mutex should be locked when calling this function.
+		main.utils.assertLocked(&mutex);
 		var time = @as(i16, @truncate(std.time.milliTimestamp())) -% main.settings.entityLookback;
 		time -%= self.timeDifference.difference.load(.monotonic);
 		self.interpolation.update(time, self.lastTime);
@@ -222,7 +222,7 @@ pub fn connect(user: *User) void {
 //	private Entity[] lastSentEntities = new Entity[0];
 
 pub fn sendMessage(msg: []const u8) void {
-	std.debug.assert(!mutex.tryLock()); // Mutex must be locked!
+	main.utils.assertLocked(&mutex);
 	std.log.info("Chat: {s}", .{msg}); // TODO use color \033[0;32m
 	for(users.items) |user| {
 		main.network.Protocols.chat.send(user.conn, msg);

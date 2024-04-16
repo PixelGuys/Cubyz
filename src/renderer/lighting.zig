@@ -87,13 +87,14 @@ pub const ChannelChunk = struct {
 	}
 
 	pub fn getValueHoldingTheLock(self: *ChannelChunk, x: i32, y: i32, z: i32) [3]u8 {
+		main.utils.assertLockedShared(&self.lock);
 		const index = chunk.getIndex(x, y, z);
 		return self.getValueInternal(index);
 	}
 
 	fn setValueInternal(self: *ChannelChunk, i: usize, val: [3]u8) void {
 		std.debug.assert(self.paletteLength <= self.palette.len);
-		std.debug.assert(!self.lock.tryLock());
+		main.utils.assertLockedShared(&self.lock);
 		var paletteIndex: u32 = 0;
 		while(paletteIndex < self.paletteLength) : (paletteIndex += 1) { // TODO: There got to be a faster way to do this. Either using SIMD or using a cache or hashmap.
 			if(std.meta.eql(self.palette[paletteIndex], val)) {
@@ -125,7 +126,7 @@ pub const ChannelChunk = struct {
 	}
 
 	fn optimizeLayout(self: *ChannelChunk) void {
-		std.debug.assert(!self.lock.tryLock());
+		main.utils.assertLockedShared(&self.lock);
 		if(std.math.log2_int_ceil(usize, self.palette.len) == std.math.log2_int_ceil(usize, self.activePaletteEntries)) return;
 
 		var newData = main.utils.DynamicPackedIntArray(chunk.chunkVolume).initCapacity(main.globalAllocator, @intCast(std.math.log2_int_ceil(u32, self.activePaletteEntries)));

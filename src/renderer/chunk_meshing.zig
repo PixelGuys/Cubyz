@@ -807,7 +807,7 @@ pub const ChunkMesh = struct {
 	}
 
 	pub fn finishData(self: *ChunkMesh) void {
-		std.debug.assert(!self.mutex.tryLock());
+		main.utils.assertLocked(&self.mutex);
 		self.opaqueMesh.finish(self);
 		self.transparentMesh.finish(self);
 	}

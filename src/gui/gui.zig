@@ -82,7 +82,7 @@ const GuiCommandQueue = struct {
 	}
 
 	fn executeOpenWindowCommand(window: *GuiWindow) void {
-		std.debug.assert(!mutex.tryLock()); // mutex must be locked.
+		main.utils.assertLocked(&mutex);
 		defer updateWindowPositions();
 		for(openWindows.items, 0..) |_openWindow, i| {
 			if(_openWindow == window) {
@@ -98,7 +98,7 @@ const GuiCommandQueue = struct {
 	}
 
 	fn executeCloseWindowCommand(window: *GuiWindow) void {
-		std.debug.assert(!mutex.tryLock()); // mutex must be locked.
+		main.utils.assertLocked(&mutex);
 		defer updateWindowPositions();
 		if(selectedWindow == window) {
 			selectedWindow = null;

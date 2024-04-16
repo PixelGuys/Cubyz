@@ -22,7 +22,7 @@ child: GuiComponent = undefined,
 mutex: std.Thread.Mutex = .{},
 
 pub fn updateInner(self: *MutexComponent, _other: anytype) void {
-	std.debug.assert(!self.mutex.tryLock()); // self.mutex must be locked before calling!
+	main.utils.assertLocked(&self.mutex);
 	var other: GuiComponent = undefined;
 	if(@TypeOf(_other) == GuiComponent) {
 		other = _other;
@@ -35,7 +35,7 @@ pub fn updateInner(self: *MutexComponent, _other: anytype) void {
 }
 
 pub fn deinit(self: *MutexComponent) void {
-	std.debug.assert(!self.mutex.tryLock()); // self.mutex must be locked before calling!
+	main.utils.assertLocked(&self.mutex);
 	self.child.deinit();
 }
 

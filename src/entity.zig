@@ -111,7 +111,7 @@ pub const ClientEntityManager = struct {
 	}
 
 	fn update() void {
-		std.debug.assert(!mutex.tryLock()); // The mutex should be locked when calling this function.
+		main.utils.assertLocked(&mutex);
 		var time: i16 = @truncate(std.time.milliTimestamp());
 		time -%= timeDifference.difference.load(.monotonic);
 		for(entities.items) |*ent| {

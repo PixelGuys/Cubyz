@@ -884,7 +884,7 @@ pub fn BlockingMaxHeap(comptime T: type) type {
 
 		/// Moves an element from a given index down the heap, such that all children are always smaller than their parents.
 		fn siftDown(self: *@This(), _i: usize) void {
-			std.debug.assert(!self.mutex.tryLock()); // The mutex should be locked when calling this function.
+			assertLocked(&self.mutex);
 			var i = _i;
 			while(2*i + 1 < self.size) {
 				const biggest = if(2*i + 2 < self.size and self.array[2*i + 2].biggerThan(self.array[2*i + 1])) 2*i + 2 else 2*i + 1;
@@ -901,7 +901,7 @@ pub fn BlockingMaxHeap(comptime T: type) type {
 
 		/// Moves an element from a given index up the heap, such that all children are always smaller than their parents.
 		fn siftUp(self: *@This(), _i: usize) void {
-			std.debug.assert(!self.mutex.tryLock()); // The mutex should be locked when calling this function.
+			assertLocked(&self.mutex);
 			var i = _i;
 			while(i > 0) {
 				const parentIndex = (i - 1)/2;
@@ -924,7 +924,7 @@ pub fn BlockingMaxHeap(comptime T: type) type {
 
 		/// Returns the i-th element in the heap. Useless for most applications.
 		pub fn get(self: *@This(), i: usize) ?T {
-			std.debug.assert(!self.mutex.tryLock()); // The mutex should be locked when calling this function.
+			assertLocked(&self.mutex);
 			if(i >= self.size) return null;
 			return self.array[i];
 		}
@@ -945,7 +945,7 @@ pub fn BlockingMaxHeap(comptime T: type) type {
 		}
 
 		fn removeIndex(self: *@This(), i: usize) void {
-			std.debug.assert(!self.mutex.tryLock()); // The mutex should be locked when calling this function.
+			assertLocked(&self.mutex);
 			self.size -= 1;
 			self.array[i] = self.array[self.size];
 			self.siftDown(i);
@@ -1213,7 +1213,7 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 		items: [bucketSize]?*T = [_]?*T {null} ** bucketSize,
 
 		fn find(self: *@This(), compare: anytype) ?*T {
-			std.debug.assert(!self.mutex.tryLock()); // The mutex must be locked.
+			assertLocked(&self.mutex);
 			for(self.items, 0..) |item, i| {
 				if(compare.equals(item)) {
 					if(i != 0) {
@@ -1228,7 +1228,7 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 
 		/// Returns the object that got kicked out of the cache. This must be deinited by the user.
 		fn add(self: *@This(), item: *T) ?*T {
-			std.debug.assert(!self.mutex.tryLock()); // The mutex must be locked.
+			assertLocked(&self.mutex);
 			const previous = self.items[bucketSize - 1];
 			std.mem.copyBackwards(?*T, self.items[1..], self.items[0..bucketSize - 1]);
 			self.items[0] = item;
@@ -1236,7 +1236,7 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 		}
 
 		fn findOrCreate(self: *@This(), compare: anytype, comptime initFunction: fn(@TypeOf(compare)) *T) *T {
-			std.debug.assert(!self.mutex.tryLock()); // The mutex must be locked.
+			assertLocked(&self.mutex);
 			if(self.find(compare)) |item| {
 				return item;
 			}
@@ -1483,3 +1483,15 @@ pub const TimeDifference = struct {
 		}
 	}
 };
+
+pub fn assertLocked(mutex: *std.Thread.Mutex) void {
+	if(builtin.mode == .Debug) {
+		std.debug.assert(!mutex.tryLock());
+	}
+}
+
+pub fn assertLockedShared(lock: *std.Thread.RwLock) void {
+	if(builtin.mode == .Debug) {
+		std.debug.assert(!lock.tryLock());
+	}
+}
