@@ -30,7 +30,7 @@ vec3 calcLight(int srgb) {
 void main() {
 	vec4 mvPos = viewMatrix * vec4(position, 1);
 	gl_Position = projectionMatrix * mvPos;
-    outTexCoord = texCoord;
-    mvVertexPos = mvPos.xyz;
+	outTexCoord = texCoord;
+	mvVertexPos = mvPos.xyz;
 	outLight = calcLight(light);
 }

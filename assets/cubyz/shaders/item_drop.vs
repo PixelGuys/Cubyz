@@ -20,7 +20,7 @@ uniform float sizeScale;
 
 layout(std430, binding = 2) buffer _itemVoxelModels
 {
-    uint itemVoxelModels[];
+	uint itemVoxelModels[];
 };
 
 #define modelSize 16

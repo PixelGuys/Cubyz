@@ -204,7 +204,7 @@ void mainBlockDrop() {
 
 layout(std430, binding = 2) buffer _itemVoxelModels
 {
-    uint itemVoxelModels[];
+	uint itemVoxelModels[];
 };
 
 uint getVoxel(uvec3 pos) {

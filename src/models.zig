@@ -22,7 +22,7 @@ pub const QuadInfo = extern struct {
 };
 
 fn approxEqAbs(x: Vec3f, y: Vec3f, tolerance: Vec3f) @Vector(3, bool) {
-    return @abs(x - y) <= tolerance;
+	return @abs(x - y) <= tolerance;
 }
 
 pub const Model = struct {

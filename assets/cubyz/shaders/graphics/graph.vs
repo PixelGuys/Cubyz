@@ -14,8 +14,8 @@ layout(std430, binding = 5) buffer _data
 
 
 void main() {
-    float x = gl_VertexID;
-    float y = -data[(gl_VertexID+offset)%points];
+	float x = gl_VertexID;
+	float y = -data[(gl_VertexID+offset)%points];
 	// Convert to opengl coordinates:
 	vec2 position_percentage = (start + dimension*vec2(x/points, y))/screen;
 	
