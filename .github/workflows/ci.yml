@@ -1,0 +1,21 @@
+# This is a basic workflow that is manually triggered
+
+name: Format Check
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  format_check:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.10"
+    - name: Check Format
+      run: python3 "check_format.py"
