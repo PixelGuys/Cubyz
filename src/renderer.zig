@@ -176,13 +176,13 @@ pub fn crosshairDirection(rotationMatrix: Mat4f, fovY: f32, width: u31, height: 
 	const cameraRight = vec.xyz(invRotationMatrix.mulVec(Vec4f{1, 0, 0, 1}));
 
 	const screenSize = Vec2f{@floatFromInt(width), @floatFromInt(height)};
-	const screenCoord = crosshair.window.pos + crosshair.window.contentSize*Vec2f{0.5, 0.5};
+	const screenCoord = (crosshair.window.pos + crosshair.window.contentSize*Vec2f{0.5, 0.5}*@as(Vec2f, @splat(crosshair.window.scale)))*@as(Vec2f, @splat(main.gui.scale));
 
 	const halfVSide = std.math.tan(std.math.degreesToRadians(fovY)*0.5);
 	const halfHSide = halfVSide*screenSize[0]/screenSize[1];
 	const sides = Vec2f{halfHSide, halfVSide};
 
-	const scale = (Vec2f{1, -1} + Vec2f{-2, 2} * screenCoord / screenSize) * sides;
+	const scale = (Vec2f{-1, 1} + Vec2f{2, -2} * screenCoord / screenSize) * sides;
 	const forwards = cameraDir;
 	const horizontal = cameraRight * @as(Vec3f, @splat(scale[0]));
 	const vertical = cameraUp * @as(Vec3f, @splat(scale[1])); // adjust for y coordinate
