@@ -18,4 +18,4 @@ jobs:
       with:
         python-version: "3.10"
     - name: Check Format
-      run: python3 "check_format.py"
+      run: python3 "format_check.py"
