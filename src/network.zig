@@ -744,16 +744,16 @@ pub const Protocols = struct {
 			}
 			data = _inflatedData;
 			const ch = chunk.Chunk.init(pos);
-			for(&ch.blocks) |*block| {
-				block.* = Block.fromInt(std.mem.readInt(u32, data[0..4], .big));
+			for(0..chunk.chunkVolume) |i| {
+				ch.data.setValue(i, Block.fromInt(std.mem.readInt(u32, data[0..4], .big)));
 				data = data[4..];
 			}
 			renderer.mesh_storage.updateChunkMesh(ch);
 		}
 		fn sendChunkOverTheNetwork(conn: *Connection, ch: *chunk.Chunk) void {
-			var uncompressedData: [@sizeOf(@TypeOf(ch.blocks))]u8 = undefined; // TODO: #15280
-			for(&ch.blocks, 0..) |*block, i| {
-				std.mem.writeInt(u32, uncompressedData[4*i..][0..4], block.toInt(), .big);
+			var uncompressedData: [chunk.chunkVolume*@sizeOf(u32)]u8 = undefined;
+			for(0..chunk.chunkVolume) |i| {
+				std.mem.writeInt(u32, uncompressedData[4*i..][0..4], ch.data.getValue(i).toInt(), .big);
 			}
 			const compressedData = utils.Compression.deflate(main.stackAllocator, &uncompressedData);
 			defer main.stackAllocator.free(compressedData);
@@ -768,7 +768,8 @@ pub const Protocols = struct {
 		}
 		fn sendChunkLocally(ch: *chunk.Chunk) void {
 			const chunkCopy = chunk.Chunk.init(ch.pos);
-			@memcpy(&chunkCopy.blocks, &ch.blocks);
+			chunkCopy.data.deinit();
+			chunkCopy.data.initCopy(&ch.data);
 			renderer.mesh_storage.updateChunkMesh(chunkCopy);
 		}
 		pub fn sendChunk(conn: *Connection, ch: *chunk.Chunk) void {

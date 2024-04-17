@@ -171,7 +171,7 @@ pub const ChunkPosition = struct {
 
 pub const Chunk = struct {
 	pos: ChunkPosition,
-	blocks: [chunkVolume]Block = undefined,
+	data: main.utils.PaletteCompressedRegion(Block, chunkVolume) = undefined,
 
 	wasChanged: bool = false,
 	/// When a chunk is cleaned, it won't be saved by the ChunkManager anymore, so following changes need to be saved directly.
@@ -199,10 +199,12 @@ pub const Chunk = struct {
 			.widthShift = voxelSizeShift + chunkShift,
 			.mutex = std.Thread.Mutex{},
 		};
+		self.data.init();
 		return self;
 	}
 
 	pub fn deinit(self: *Chunk) void {
+		self.data.deinit();
 		memoryPoolMutex.lock();
 		memoryPool.destroy(@alignCast(self));
 		memoryPoolMutex.unlock();
@@ -260,8 +262,9 @@ pub const Chunk = struct {
 		const y = _y >> self.voxelSizeShift;
 		const z = _z >> self.voxelSizeShift;
 		const index = getIndex(x, y, z);
-		if (self.blocks[index].typ == 0 or self.blocks[index].degradable()) {
-			self.blocks[index] = newBlock;
+		const oldBlock = self.data.getValue(index);
+		if(oldBlock.typ == 0 or oldBlock.degradable()) {
+			self.data.setValue(index, newBlock);
 		}
 	}
 
@@ -272,7 +275,7 @@ pub const Chunk = struct {
 		const y = _y >> self.voxelSizeShift;
 		const z = _z >> self.voxelSizeShift;
 		const index = getIndex(x, y, z);
-		self.blocks[index] = newBlock;
+		self.data.setValue(index, newBlock);
 	}
 
 	/// Updates a block if it is inside this chunk. Should be used in generation to prevent accidently storing these as changes.
@@ -282,7 +285,7 @@ pub const Chunk = struct {
 		const y = _y >> self.voxelSizeShift;
 		const z = _z >> self.voxelSizeShift;
 		const index = getIndex(x, y, z);
-		self.blocks[index] = newBlock;
+		self.data.setValue(index, newBlock);
 	}
 
 	/// Gets a block if it is inside this chunk.
@@ -292,7 +295,7 @@ pub const Chunk = struct {
 		const y = _y >> self.voxelSizeShift;
 		const z = _z >> self.voxelSizeShift;
 		const index = getIndex(x, y, z);
-		return self.blocks[index];
+		return self.data.getValue(index);
 	}
 
 	pub fn getNeighbors(self: *const Chunk, x: i32, y: i32, z: i32, neighborsArray: *[6]Block) void {
@@ -340,7 +343,7 @@ pub const Chunk = struct {
 							while(dz <= 1): (dz += 1) {
 								const index = getIndex(x*2 + dx, y*2 + dy, z*2 + dz);
 								const i = dx*4 + dz*2 + dy;
-								octantBlocks[i] = other.blocks[index];
+								octantBlocks[i] = other.data.getValue(index);
 								if(octantBlocks[i] == 0) continue; // I don't care about air blocks.
 								
 								var count: u32 = 0;
@@ -350,7 +353,7 @@ pub const Chunk = struct {
 									const nz = z*2 + dz + Neighbors.relZ[n];
 									if((nx & chunkMask) == nx and (ny & chunkMask) == ny and (nz & chunkMask) == nz) { // If it's inside the chunk.
 										const neighborIndex = getIndex(nx, ny, nz);
-										if(other.blocks[neighborIndex].transparent()) {
+										if(other.data.getValue(neighborIndex).transparent()) {
 											count += 5;
 										}
 									} else {
@@ -368,12 +371,12 @@ pub const Chunk = struct {
 					for(0..8) |i| {
 						const appliedPermutation = permutationStart ^ i;
 						if(neighborCount[appliedPermutation] >= maxCount - 1) { // Avoid pattern breaks at chunk borders.
-							block = blocks[appliedPermutation];
+							block = octantBlocks[appliedPermutation];
 						}
 					}
 					// Update the block:
 					const thisIndex = getIndex(x + xOffset, y + yOffset, z + zOffset);
-					self.blocks[thisIndex] = block;
+					self.data.setValue(thisIndex, block);
 				}
 			}
 		}

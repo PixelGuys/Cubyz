@@ -29,7 +29,7 @@ const ChunkMeshNode = struct {
 	active: bool,
 	rendered: bool,
 };
-const storageSize = 32;
+const storageSize = 64;
 const storageMask = storageSize - 1;
 var storageLists: [settings.highestLOD + 1]*[storageSize*storageSize*storageSize]ChunkMeshNode = undefined;
 var mapStorageLists: [settings.highestLOD + 1]*[storageSize*storageSize]Atomic(?*LightMap.LightMapFragment) = undefined;

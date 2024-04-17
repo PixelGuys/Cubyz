@@ -1215,7 +1215,7 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type {
 
 		pub fn init(self: *Self) void {
 			self.* = .{
-				.palette = main.globalAllocator.alloc([3]u8, 1),
+				.palette = main.globalAllocator.alloc(T, 1),
 				.paletteOccupancy = main.globalAllocator.alloc(u32, 1),
 				.paletteLength = 1,
 				.activePaletteEntries = 1,
@@ -1224,13 +1224,26 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type {
 			self.paletteOccupancy[0] = size;
 		}
 
+		pub fn initCopy(self: *Self, template: *const Self) void {
+			self.* = .{
+				.data = .{
+					.data = main.globalAllocator.dupe(u8, template.data.data),
+					.bitSize = template.data.bitSize,
+				},
+				.palette = main.globalAllocator.dupe(T, template.palette),
+				.paletteOccupancy = main.globalAllocator.dupe(u32, template.paletteOccupancy),
+				.paletteLength = template.paletteLength,
+				.activePaletteEntries = template.activePaletteEntries,
+			};
+		}
+
 		pub fn deinit(self: *Self) void {
 			self.data.deinit(main.globalAllocator);
 			main.globalAllocator.free(self.palette);
 			main.globalAllocator.free(self.paletteOccupancy);
 		}
 
-		pub fn getValue(self: *Self, i: usize) T {
+		pub fn getValue(self: *const Self, i: usize) T {
 			return self.palette[self.data.getValue(i)];
 		}
 

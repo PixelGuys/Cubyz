@@ -586,7 +586,7 @@ pub const ChunkMesh = struct {
 			while(y < chunk.chunkSize): (y += 1) {
 				var z: u8 = 0;
 				while(z < chunk.chunkSize): (z += 1) {
-					const block = (&self.chunk.blocks)[chunk.getIndex(x, y, z)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
+					const block = self.chunk.data.getValue(chunk.getIndex(x, y, z));
 					if(block.light() != 0) lightEmittingBlocks.append(.{x, y, z});
 				}
 			}
@@ -666,7 +666,7 @@ pub const ChunkMesh = struct {
 			while(y < chunk.chunkSize): (y += 1) {
 				var z: u8 = 0;
 				while(z < chunk.chunkSize): (z += 1) {
-					const block = (&self.chunk.blocks)[chunk.getIndex(x, y, z)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
+					const block = self.chunk.data.getValue(chunk.getIndex(x, y, z));
 					if(block.typ == 0) continue;
 					// Check all neighbors:
 					for(chunk.Neighbors.iterable) |i| {
@@ -675,7 +675,7 @@ pub const ChunkMesh = struct {
 						const y2 = y + chunk.Neighbors.relY[i];
 						const z2 = z + chunk.Neighbors.relZ[i];
 						if(x2&chunk.chunkMask != x2 or y2&chunk.chunkMask != y2 or z2&chunk.chunkMask != z2) continue; // Neighbor is outside the chunk.
-						const neighborBlock = (&self.chunk.blocks)[chunk.getIndex(x2, y2, z2)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
+						const neighborBlock = self.chunk.data.getValue(chunk.getIndex(x2, y2, z2));
 						if(canBeSeenThroughOtherBlock(block, neighborBlock, i)) {
 							if(block.transparent()) {
 								if(block.hasBackFace()) {
@@ -700,12 +700,12 @@ pub const ChunkMesh = struct {
 		while(x < chunk.chunkSize): (x += 1) {
 			var y: u8 = 0;
 			while(y < chunk.chunkSize): (y += 1) {
-				self.chunkBorders[chunk.Neighbors.dirNegX].adjustToBlock((&self.chunk.blocks)[chunk.getIndex(0, x, y)], .{0, x, y}, chunk.Neighbors.dirNegX); // TODO: Wait for the compiler bug to get fixed.
-				self.chunkBorders[chunk.Neighbors.dirPosX].adjustToBlock((&self.chunk.blocks)[chunk.getIndex(chunk.chunkSize-1, x, y)], .{chunk.chunkSize, x, y}, chunk.Neighbors.dirPosX); // TODO: Wait for the compiler bug to get fixed.
-				self.chunkBorders[chunk.Neighbors.dirNegY].adjustToBlock((&self.chunk.blocks)[chunk.getIndex(x, 0, y)], .{x, 0, y}, chunk.Neighbors.dirNegY); // TODO: Wait for the compiler bug to get fixed.
-				self.chunkBorders[chunk.Neighbors.dirPosY].adjustToBlock((&self.chunk.blocks)[chunk.getIndex(x, chunk.chunkSize-1, y)], .{x, chunk.chunkSize, y}, chunk.Neighbors.dirPosY); // TODO: Wait for the compiler bug to get fixed.
-				self.chunkBorders[chunk.Neighbors.dirDown].adjustToBlock((&self.chunk.blocks)[chunk.getIndex(x, y, 0)], .{x, y, 0}, chunk.Neighbors.dirDown); // TODO: Wait for the compiler bug to get fixed.
-				self.chunkBorders[chunk.Neighbors.dirUp].adjustToBlock((&self.chunk.blocks)[chunk.getIndex(x, y, chunk.chunkSize-1)], .{x, y, chunk.chunkSize}, chunk.Neighbors.dirUp); // TODO: Wait for the compiler bug to get fixed.
+				self.chunkBorders[chunk.Neighbors.dirNegX].adjustToBlock(self.chunk.data.getValue(chunk.getIndex(0, x, y)), .{0, x, y}, chunk.Neighbors.dirNegX);
+				self.chunkBorders[chunk.Neighbors.dirPosX].adjustToBlock(self.chunk.data.getValue(chunk.getIndex(chunk.chunkSize-1, x, y)), .{chunk.chunkSize, x, y}, chunk.Neighbors.dirPosX);
+				self.chunkBorders[chunk.Neighbors.dirNegY].adjustToBlock(self.chunk.data.getValue(chunk.getIndex(x, 0, y)), .{x, 0, y}, chunk.Neighbors.dirNegY);
+				self.chunkBorders[chunk.Neighbors.dirPosY].adjustToBlock(self.chunk.data.getValue(chunk.getIndex(x, chunk.chunkSize-1, y)), .{x, chunk.chunkSize, y}, chunk.Neighbors.dirPosY);
+				self.chunkBorders[chunk.Neighbors.dirDown].adjustToBlock(self.chunk.data.getValue(chunk.getIndex(x, y, 0)), .{x, y, 0}, chunk.Neighbors.dirDown);
+				self.chunkBorders[chunk.Neighbors.dirUp].adjustToBlock(self.chunk.data.getValue(chunk.getIndex(x, y, chunk.chunkSize-1)), .{x, y, chunk.chunkSize}, chunk.Neighbors.dirUp);
 			}
 		}
 		self.mutex.unlock();
@@ -729,10 +729,10 @@ pub const ChunkMesh = struct {
 				defer neighborChunkMesh.decreaseRefCount();
 				const index = chunk.getIndex(nx & chunk.chunkMask, ny & chunk.chunkMask, nz & chunk.chunkMask);
 				neighborChunkMesh.mutex.lock();
-				var neighborBlock = neighborChunkMesh.chunk.blocks[index];
+				var neighborBlock = neighborChunkMesh.chunk.data.getValue(index);
 				if(neighborBlock.mode().dependsOnNeighbors) {
 					if(neighborBlock.mode().updateData(&neighborBlock, neighbor ^ 1, newBlock)) {
-						neighborChunkMesh.chunk.blocks[index] = neighborBlock;
+						neighborChunkMesh.chunk.data.setValue(index, neighborBlock);
 						neighborChunkMesh.opaqueMesh.coreFaces.clearRetainingCapacity();
 						neighborChunkMesh.transparentMesh.coreFaces.clearRetainingCapacity();
 						neighborChunkMesh.mutex.unlock();
@@ -745,10 +745,10 @@ pub const ChunkMesh = struct {
 			} else {
 				const index = chunk.getIndex(nx, ny, nz);
 				self.mutex.lock();
-				var neighborBlock = self.chunk.blocks[index];
+				var neighborBlock = self.chunk.data.getValue(index);
 				if(neighborBlock.mode().dependsOnNeighbors) {
 					if(neighborBlock.mode().updateData(&neighborBlock, neighbor ^ 1, newBlock)) {
-						self.chunk.blocks[index] = neighborBlock;
+						self.chunk.data.setValue(index, neighborBlock);
 					}
 				}
 				self.mutex.unlock();
@@ -761,7 +761,7 @@ pub const ChunkMesh = struct {
 			}
 		}
 		self.mutex.lock();
-		self.chunk.blocks[chunk.getIndex(x, y, z)] = newBlock;
+		self.chunk.data.setValue(chunk.getIndex(x, y, z), newBlock);
 		self.mutex.unlock();
 		for(self.lightingData[0..]) |lightingData| {
 			lightingData.propagateLightsDestructive(&.{.{@intCast(x), @intCast(y), @intCast(z)}});
@@ -872,8 +872,8 @@ pub const ChunkMesh = struct {
 						const otherX = x+%chunk.Neighbors.relX[neighbor] & chunk.chunkMask;
 						const otherY = y+%chunk.Neighbors.relY[neighbor] & chunk.chunkMask;
 						const otherZ = z+%chunk.Neighbors.relZ[neighbor] & chunk.chunkMask;
-						const block = (&self.chunk.blocks)[chunk.getIndex(x, y, z)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
-						const otherBlock = (&neighborMesh.chunk.blocks)[chunk.getIndex(otherX, otherY, otherZ)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
+						const block = self.chunk.data.getValue(chunk.getIndex(x, y, z));
+						const otherBlock = neighborMesh.chunk.data.getValue(chunk.getIndex(otherX, otherY, otherZ));
 						if(canBeSeenThroughOtherBlock(block, otherBlock, neighbor)) {
 							if(block.transparent()) {
 								if(block.hasBackFace()) {
@@ -953,8 +953,8 @@ pub const ChunkMesh = struct {
 					const otherX = (x+%chunk.Neighbors.relX[neighbor]+%offsetX >> 1) & chunk.chunkMask;
 					const otherY = (y+%chunk.Neighbors.relY[neighbor]+%offsetY >> 1) & chunk.chunkMask;
 					const otherZ = (z+%chunk.Neighbors.relZ[neighbor]+%offsetZ >> 1) & chunk.chunkMask;
-					const block = (&self.chunk.blocks)[chunk.getIndex(x, y, z)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
-					const otherBlock = (&neighborMesh.chunk.blocks)[chunk.getIndex(otherX, otherY, otherZ)]; // ← a temporary fix to a compiler performance bug. TODO: check if this was fixed.
+					const block = self.chunk.data.getValue(chunk.getIndex(x, y, z));
+					const otherBlock = neighborMesh.chunk.data.getValue(chunk.getIndex(otherX, otherY, otherZ));
 					if(canBeSeenThroughOtherBlock(otherBlock, block, neighbor ^ 1)) {
 						if(otherBlock.transparent()) {
 							self.transparentMesh.appendNeighborFacingQuadsToNeighbor(otherBlock, neighbor ^ 1, x, y, z, false, true);
