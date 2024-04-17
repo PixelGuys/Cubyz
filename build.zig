@@ -21,7 +21,9 @@ pub fn build(b: *std.Build) !void {
 	exe.linkLibC();
 	exe.linkLibCpp();
 
-	const deps = b.dependency("deps", .{
+	// For the time being, MacOS cubyz_deps will not have released binaries.
+	const depsName = if (t.os.tag == .macos) "deps_local" else "deps";
+	const deps = b.dependency(depsName, .{
 		.target = target,
 		.optimize = optimize,
 	});
@@ -42,6 +44,19 @@ pub fn build(b: *std.Build) !void {
 		exe.linkSystemLibrary("asound");
 		exe.linkSystemLibrary("x11");
 		exe.linkSystemLibrary("GL");
+	} else if(t.os.tag == .macos) {
+        exe.linkFramework("AudioUnit");
+        exe.linkFramework("AudioToolbox");
+        exe.linkFramework("CoreAudio");
+        exe.linkFramework("CoreServices");
+        exe.linkFramework("Foundation");
+        exe.linkFramework("IOKit");
+        exe.linkFramework("Cocoa");
+        exe.linkFramework("QuartzCore");
+        exe.linkSystemLibrary("GL");
+        exe.linkSystemLibrary("X11");
+		exe.addLibraryPath(.{.path="/usr/local/GL/lib"});
+		exe.addLibraryPath(.{.path="/opt/X11/lib"});
 	} else {
 		std.log.err("Unsupported target: {}\n", .{t.os.tag});
 	}
