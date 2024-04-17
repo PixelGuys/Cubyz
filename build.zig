@@ -45,16 +45,16 @@ pub fn build(b: *std.Build) !void {
 		exe.linkSystemLibrary("x11");
 		exe.linkSystemLibrary("GL");
 	} else if(t.os.tag == .macos) {
-        exe.linkFramework("AudioUnit");
-        exe.linkFramework("AudioToolbox");
-        exe.linkFramework("CoreAudio");
-        exe.linkFramework("CoreServices");
-        exe.linkFramework("Foundation");
-        exe.linkFramework("IOKit");
-        exe.linkFramework("Cocoa");
-        exe.linkFramework("QuartzCore");
-        exe.linkSystemLibrary("GL");
-        exe.linkSystemLibrary("X11");
+		exe.linkFramework("AudioUnit");
+		exe.linkFramework("AudioToolbox");
+		exe.linkFramework("CoreAudio");
+		exe.linkFramework("CoreServices");
+		exe.linkFramework("Foundation");
+		exe.linkFramework("IOKit");
+		exe.linkFramework("Cocoa");
+		exe.linkFramework("QuartzCore");
+		exe.linkSystemLibrary("GL");
+		exe.linkSystemLibrary("X11");
 		exe.addLibraryPath(.{.path="/usr/local/GL/lib"});
 		exe.addLibraryPath(.{.path="/opt/X11/lib"});
 	} else {
