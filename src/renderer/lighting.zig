@@ -27,11 +27,7 @@ fn extractColor(in: u32) [3]u8 {
 }
 
 pub const ChannelChunk = struct {
-	data: main.utils.DynamicPackedIntArray(chunk.chunkVolume),
-	palette: [][3]u8,
-	paletteOccupancy: []u32,
-	paletteLength: u32,
-	activePaletteEntries: u32,
+	data: main.utils.PaletteCompressedRegion([3]u8, chunk.chunkVolume),
 	lock: std.Thread.RwLock,
 	ch: *chunk.Chunk,
 	isSun: bool,
@@ -43,20 +39,12 @@ pub const ChannelChunk = struct {
 		self.lock = .{};
 		self.ch = ch;
 		self.isSun = isSun;
-		self.data = .{};
-		self.palette = main.globalAllocator.alloc([3]u8, 1);
-		self.palette[0] = .{0, 0, 0};
-		self.paletteOccupancy = main.globalAllocator.alloc(u32, 1);
-		self.paletteOccupancy[0] = chunk.chunkVolume;
-		self.paletteLength = 1;
-		self.activePaletteEntries = 1;
+		self.data.init();
 		return self;
 	}
 
 	pub fn deinit(self: *ChannelChunk) void {
-		self.data.deinit(main.globalAllocator);
-		main.globalAllocator.free(self.palette);
-		main.globalAllocator.free(self.paletteOccupancy);
+		self.data.deinit();
 		memoryPoolMutex.lock();
 		memoryPool.destroy(self);
 		memoryPoolMutex.unlock();
@@ -82,82 +70,10 @@ pub const ChannelChunk = struct {
 		entries: main.ListUnmanaged(PositionEntry),
 	};
 
-	fn getValueInternal(self: *ChannelChunk, i: usize) [3]u8 {
-		return self.palette[self.data.getValue(i)];
-	}
-
 	pub fn getValueHoldingTheLock(self: *ChannelChunk, x: i32, y: i32, z: i32) [3]u8 {
 		main.utils.assertLockedShared(&self.lock);
 		const index = chunk.getIndex(x, y, z);
-		return self.getValueInternal(index);
-	}
-
-	fn setValueInternal(self: *ChannelChunk, i: usize, val: [3]u8) void {
-		std.debug.assert(self.paletteLength <= self.palette.len);
-		main.utils.assertLockedShared(&self.lock);
-		var paletteIndex: u32 = 0;
-		while(paletteIndex < self.paletteLength) : (paletteIndex += 1) { // TODO: There got to be a faster way to do this. Either using SIMD or using a cache or hashmap.
-			if(std.meta.eql(self.palette[paletteIndex], val)) {
-				break;
-			}
-		}
-		if(paletteIndex == self.paletteLength) {
-			if(self.paletteLength == self.palette.len) {
-				self.data.resize(main.globalAllocator, self.data.bitSize + 1);
-				self.palette = main.globalAllocator.realloc(self.palette, @as(usize, 1) << self.data.bitSize);
-				const oldLen = self.paletteOccupancy.len;
-				self.paletteOccupancy = main.globalAllocator.realloc(self.paletteOccupancy, @as(usize, 1) << self.data.bitSize);
-				@memset(self.paletteOccupancy[oldLen..], 0);
-			}
-			self.palette[paletteIndex] = val;
-			self.paletteLength += 1;
-			std.debug.assert(self.paletteLength <= self.palette.len);
-		}
-
-		const previousPaletteIndex = self.data.setAndGetValue(i, paletteIndex);
-		if(self.paletteOccupancy[paletteIndex] == 0) {
-			self.activePaletteEntries += 1;
-		}
-		self.paletteOccupancy[paletteIndex] += 1;
-		self.paletteOccupancy[previousPaletteIndex] -= 1;
-		if(self.paletteOccupancy[previousPaletteIndex] == 0) {
-			self.activePaletteEntries -= 1;
-		}
-	}
-
-	fn optimizeLayout(self: *ChannelChunk) void {
-		main.utils.assertLockedShared(&self.lock);
-		if(std.math.log2_int_ceil(usize, self.palette.len) == std.math.log2_int_ceil(usize, self.activePaletteEntries)) return;
-
-		var newData = main.utils.DynamicPackedIntArray(chunk.chunkVolume).initCapacity(main.globalAllocator, @intCast(std.math.log2_int_ceil(u32, self.activePaletteEntries)));
-		const paletteMap: []u32 = main.stackAllocator.alloc(u32, self.paletteLength);
-		defer main.stackAllocator.free(paletteMap);
-		{
-			var i: u32 = 0;
-			var len: u32 = self.paletteLength;
-			while(i < len) : (i += 1) outer: {
-				paletteMap[i] = i;
-				if(self.paletteOccupancy[i] == 0) {
-					while(true) {
-						len -= 1;
-						if(self.paletteOccupancy[len] != 0) break;
-						if(len == i) break :outer;
-					}
-					paletteMap[len] = i;
-					self.palette[i] = self.palette[len];
-					self.paletteOccupancy[i] = self.paletteOccupancy[len];
-					self.paletteOccupancy[len] = 0;
-				}
-			}
-		}
-		for(0..chunk.chunkVolume) |i| {
-			newData.setValue(i, paletteMap[self.data.getValue(i)]);
-		}
-		self.data.deinit(main.globalAllocator);
-		self.data = newData;
-		self.paletteLength = self.activePaletteEntries;
-		self.palette = main.globalAllocator.realloc(self.palette, @as(usize, 1) << self.data.bitSize);
-		self.paletteOccupancy = main.globalAllocator.realloc(self.paletteOccupancy, @as(usize, 1) << self.data.bitSize);
+		return self.data.getValue(index);
 	}
 
 	fn calculateIncomingOcclusion(result: *[3]u8, block: blocks.Block, voxelSize: u31, neighbor: usize) void {
@@ -198,14 +114,14 @@ pub const ChannelChunk = struct {
 		self.lock.lock();
 		while(lightQueue.dequeue()) |entry| {
 			const index = chunk.getIndex(entry.x, entry.y, entry.z);
-			const oldValue: [3]u8 = self.getValueInternal(index);
+			const oldValue: [3]u8 = self.data.getValue(index);
 			const newValue: [3]u8 = .{
 				@max(entry.value[0], oldValue[0]),
 				@max(entry.value[1], oldValue[1]),
 				@max(entry.value[2], oldValue[2]),
 			};
 			if(newValue[0] == oldValue[0] and newValue[1] == oldValue[1] and newValue[2] == oldValue[2]) continue;
-			self.setValueInternal(index, newValue);
+			self.data.setValue(index, newValue);
 			for(chunk.Neighbors.iterable) |neighbor| {
 				if(neighbor == entry.sourceDir) continue;
 				const nx = entry.x + chunk.Neighbors.relX[neighbor];
@@ -228,7 +144,7 @@ pub const ChannelChunk = struct {
 				if(result.value[0] != 0 or result.value[1] != 0 or result.value[2] != 0) lightQueue.enqueue(result);
 			}
 		}
-		self.optimizeLayout();
+		self.data.optimizeLayout();
 		self.lock.unlock();
 		if(mesh_storage.getMeshAndIncreaseRefCount(self.ch.pos)) |mesh| {
 			mesh.scheduleLightRefreshAndDecreaseRefCount();
@@ -255,7 +171,7 @@ pub const ChannelChunk = struct {
 		self.lock.lock();
 		while(lightQueue.dequeue()) |entry| {
 			const index = chunk.getIndex(entry.x, entry.y, entry.z);
-			const oldValue: [3]u8 = self.getValueInternal(index);
+			const oldValue: [3]u8 = self.data.getValue(index);
 			var activeValue: @Vector(3, bool) = @bitCast(entry.activeValue);
 			var append: bool = false;
 			if(activeValue[0] and entry.value[0] != oldValue[0]) {
@@ -285,7 +201,7 @@ pub const ChannelChunk = struct {
 			if(activeValue[0]) insertValue[0] = 0;
 			if(activeValue[1]) insertValue[1] = 0;
 			if(activeValue[2]) insertValue[2] = 0;
-			self.setValueInternal(index, insertValue);
+			self.data.setValue(index, insertValue);
 			for(chunk.Neighbors.iterable) |neighbor| {
 				if(neighbor == entry.sourceDir) continue;
 				const nx = entry.x + chunk.Neighbors.relX[neighbor];
@@ -390,7 +306,7 @@ pub const ChannelChunk = struct {
 						defer neighborLightChunk.lock.unlockShared();
 						const index = chunk.getIndex(x, y, z);
 						const neighborIndex = chunk.getIndex(otherX, otherY, otherZ);
-						var value: [3]u8 = neighborLightChunk.getValueInternal(neighborIndex);
+						var value: [3]u8 = neighborLightChunk.data.getValue(neighborIndex);
 						if(!self.isSun or neighbor != chunk.Neighbors.dirUp or value[0] != 255 or value[1] != 255 or value[2] != 255) {
 							value[0] -|= 8*|@as(u8, @intCast(self.ch.pos.voxelSize));
 							value[1] -|= 8*|@as(u8, @intCast(self.ch.pos.voxelSize));
@@ -413,7 +329,7 @@ pub const ChannelChunk = struct {
 		self.lock.lockShared();
 		for(lights) |pos| {
 			const index = chunk.getIndex(pos[0], pos[1], pos[2]);
-			lightQueue.enqueue(.{.x = @intCast(pos[0]), .y = @intCast(pos[1]), .z = @intCast(pos[2]), .value = self.getValueInternal(index), .sourceDir = 6, .activeValue = 0b111});
+			lightQueue.enqueue(.{.x = @intCast(pos[0]), .y = @intCast(pos[1]), .z = @intCast(pos[2]), .value = self.data.getValue(index), .sourceDir = 6, .activeValue = 0b111});
 		}
 		self.lock.unlockShared();
 		var constructiveEntries: main.ListUnmanaged(ChunkEntries) = .{};
@@ -431,9 +347,9 @@ pub const ChannelChunk = struct {
 			channelChunk.lock.lockShared();
 			for(entryList.items) |entry| {
 				const index = chunk.getIndex(entry.x, entry.y, entry.z);
-				const value = channelChunk.getValueInternal(index);
+				const value = channelChunk.data.getValue(index);
 				if(value[0] == 0 and value[1] == 0 and value[2] == 0) continue;
-				channelChunk.setValueInternal(index, .{0, 0, 0});
+				channelChunk.data.setValue(index, .{0, 0, 0});
 				lightQueue.enqueue(.{.x = entry.x, .y = entry.y, .z = entry.z, .value = value, .sourceDir = 6, .activeValue = 0b111});
 			}
 			channelChunk.lock.unlockShared();

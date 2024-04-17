@@ -1203,6 +1203,105 @@ pub fn DynamicPackedIntArray(size: comptime_int) type {
 	};
 }
 
+pub fn PaletteCompressedRegion(T: type, size: comptime_int) type {
+	return struct {
+		data: DynamicPackedIntArray(size) = .{},
+		palette: []T,
+		paletteOccupancy: []u32,
+		paletteLength: u32,
+		activePaletteEntries: u32,
+
+		const Self = @This();
+
+		pub fn init(self: *Self) void {
+			self.* = .{
+				.palette = main.globalAllocator.alloc([3]u8, 1),
+				.paletteOccupancy = main.globalAllocator.alloc(u32, 1),
+				.paletteLength = 1,
+				.activePaletteEntries = 1,
+			};
+			self.palette[0] = std.mem.zeroes(T);
+			self.paletteOccupancy[0] = size;
+		}
+
+		pub fn deinit(self: *Self) void {
+			self.data.deinit(main.globalAllocator);
+			main.globalAllocator.free(self.palette);
+			main.globalAllocator.free(self.paletteOccupancy);
+		}
+
+		pub fn getValue(self: *Self, i: usize) T {
+			return self.palette[self.data.getValue(i)];
+		}
+
+		pub fn setValue(self: *Self, i: usize, val: T) void {
+			std.debug.assert(self.paletteLength <= self.palette.len);
+			var paletteIndex: u32 = 0;
+			while(paletteIndex < self.paletteLength) : (paletteIndex += 1) { // TODO: There got to be a faster way to do this. Either using SIMD or using a cache or hashmap.
+				if(std.meta.eql(self.palette[paletteIndex], val)) {
+					break;
+				}
+			}
+			if(paletteIndex == self.paletteLength) {
+				if(self.paletteLength == self.palette.len) {
+					self.data.resize(main.globalAllocator, self.data.bitSize + 1);
+					self.palette = main.globalAllocator.realloc(self.palette, @as(usize, 1) << self.data.bitSize);
+					const oldLen = self.paletteOccupancy.len;
+					self.paletteOccupancy = main.globalAllocator.realloc(self.paletteOccupancy, @as(usize, 1) << self.data.bitSize);
+					@memset(self.paletteOccupancy[oldLen..], 0);
+				}
+				self.palette[paletteIndex] = val;
+				self.paletteLength += 1;
+				std.debug.assert(self.paletteLength <= self.palette.len);
+			}
+
+			const previousPaletteIndex = self.data.setAndGetValue(i, paletteIndex);
+			if(self.paletteOccupancy[paletteIndex] == 0) {
+				self.activePaletteEntries += 1;
+			}
+			self.paletteOccupancy[paletteIndex] += 1;
+			self.paletteOccupancy[previousPaletteIndex] -= 1;
+			if(self.paletteOccupancy[previousPaletteIndex] == 0) {
+				self.activePaletteEntries -= 1;
+			}
+		}
+
+		pub fn optimizeLayout(self: *Self) void {
+			if(std.math.log2_int_ceil(usize, self.palette.len) == std.math.log2_int_ceil(usize, self.activePaletteEntries)) return;
+
+			var newData = main.utils.DynamicPackedIntArray(size).initCapacity(main.globalAllocator, @intCast(std.math.log2_int_ceil(u32, self.activePaletteEntries)));
+			const paletteMap: []u32 = main.stackAllocator.alloc(u32, self.paletteLength);
+			defer main.stackAllocator.free(paletteMap);
+			{
+				var i: u32 = 0;
+				var len: u32 = self.paletteLength;
+				while(i < len) : (i += 1) outer: {
+					paletteMap[i] = i;
+					if(self.paletteOccupancy[i] == 0) {
+						while(true) {
+							len -= 1;
+							if(self.paletteOccupancy[len] != 0) break;
+							if(len == i) break :outer;
+						}
+						paletteMap[len] = i;
+						self.palette[i] = self.palette[len];
+						self.paletteOccupancy[i] = self.paletteOccupancy[len];
+						self.paletteOccupancy[len] = 0;
+					}
+				}
+			}
+			for(0..size) |i| {
+				newData.setValue(i, paletteMap[self.data.getValue(i)]);
+			}
+			self.data.deinit(main.globalAllocator);
+			self.data = newData;
+			self.paletteLength = self.activePaletteEntries;
+			self.palette = main.globalAllocator.realloc(self.palette, @as(usize, 1) << self.data.bitSize);
+			self.paletteOccupancy = main.globalAllocator.realloc(self.paletteOccupancy, @as(usize, 1) << self.data.bitSize);
+		}
+	};
+}
+
 /// Implements a simple set associative cache with LRU replacement strategy.
 pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSize: u32, comptime deinitFunction: fn(*T) void) type {
 	const hashMask = numberOfBuckets-1;
