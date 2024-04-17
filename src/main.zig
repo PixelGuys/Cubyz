@@ -618,9 +618,7 @@ pub const Window = struct {
 			@panic("Failed to initialize GLFW");
 		}
 
-		if(@import("builtin").mode == .Debug) {
-			c.glfwWindowHint(c.GLFW_OPENGL_DEBUG_CONTEXT, 1);
-		}
+		c.glfwWindowHint(c.GLFW_OPENGL_DEBUG_CONTEXT, 1);
 		c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MAJOR, 4);
 		c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MINOR, 6);
 
