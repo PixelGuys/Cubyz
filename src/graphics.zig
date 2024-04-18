@@ -1223,7 +1223,7 @@ pub fn LargeBuffer(comptime Entry: type) type {
 			self.ssbo = SSBO.init();
 			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.ssbo.bufferID);
 			const flags = c.GL_MAP_WRITE_BIT | c.GL_DYNAMIC_STORAGE_BIT;
-			const bytes = @as(c_long, size)*@sizeOf(Entry);
+			const bytes = @as(c.GLsizeiptr, size)*@sizeOf(Entry);
 			c.glBufferStorage(c.GL_SHADER_STORAGE_BUFFER, bytes, null, flags);
 			self.ssbo.bind(self.binding);
 			self.capacity = size;
@@ -1299,7 +1299,7 @@ pub fn LargeBuffer(comptime Entry: type) type {
 
 				c.glBindBuffer(c.GL_COPY_READ_BUFFER, oldBuffer.bufferID);
 				c.glBindBuffer(c.GL_COPY_WRITE_BUFFER, self.ssbo.bufferID);
-				c.glCopyBufferSubData(c.GL_COPY_READ_BUFFER, c.GL_COPY_WRITE_BUFFER, 0, 0, @as(c_long, oldCapacity)*@sizeOf(Entry));
+				c.glCopyBufferSubData(c.GL_COPY_READ_BUFFER, c.GL_COPY_WRITE_BUFFER, 0, 0, @as(c.GLsizeiptr, oldCapacity)*@sizeOf(Entry));
 				return alloc(self, size);
 			}
 		}
@@ -1339,7 +1339,7 @@ pub fn LargeBuffer(comptime Entry: type) type {
 			allocation.* = self.alloc(@intCast(len));
 			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.ssbo.bufferID);
 			const ptr: [*]Entry = @ptrCast(@alignCast(
-				c.glMapBufferRange(c.GL_SHADER_STORAGE_BUFFER, @as(c_long, allocation.start)*@sizeOf(Entry), @as(c_long, allocation.len)*@sizeOf(Entry), c.GL_MAP_WRITE_BIT | c.GL_MAP_INVALIDATE_RANGE_BIT)
+				c.glMapBufferRange(c.GL_SHADER_STORAGE_BUFFER, @as(c.GLintptr, allocation.start)*@sizeOf(Entry), @as(c.GLsizeiptr, allocation.len)*@sizeOf(Entry), c.GL_MAP_WRITE_BIT | c.GL_MAP_INVALIDATE_RANGE_BIT)
 			));
 			return ptr[0..len];
 		}
@@ -1359,7 +1359,7 @@ pub fn LargeBuffer(comptime Entry: type) type {
 			allocation.* = self.alloc(@intCast(data.len));
 			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.ssbo.bufferID);
 			const ptr: [*]Entry = @ptrCast(@alignCast(
-				c.glMapBufferRange(c.GL_SHADER_STORAGE_BUFFER, @as(c_long, allocation.start)*@sizeOf(Entry), @as(c_long, allocation.len)*@sizeOf(Entry), c.GL_MAP_WRITE_BIT | c.GL_MAP_INVALIDATE_RANGE_BIT)
+				c.glMapBufferRange(c.GL_SHADER_STORAGE_BUFFER, @as(c.GLintptr, allocation.start)*@sizeOf(Entry), @as(c.GLsizeiptr, allocation.len)*@sizeOf(Entry), c.GL_MAP_WRITE_BIT | c.GL_MAP_INVALIDATE_RANGE_BIT)
 			));
 			@memcpy(ptr, data);
 			std.debug.assert(c.glUnmapBuffer(c.GL_SHADER_STORAGE_BUFFER) == c.GL_TRUE);
