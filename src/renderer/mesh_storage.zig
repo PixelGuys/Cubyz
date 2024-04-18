@@ -1011,7 +1011,7 @@ pub const MeshGenerationTask = struct {
 		return self.mesh.pos.getPriority(game.Player.getPosBlocking()); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
 	}
 
-	pub fn isStillNeeded(self: *MeshGenerationTask) bool {
+	pub fn isStillNeeded(self: *MeshGenerationTask, _: i64) bool {
 		const distanceSqr = self.mesh.pos.getMinDistanceSquared(game.Player.getPosBlocking()); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
 		var maxRenderDistance = settings.renderDistance*chunk.chunkSize*self.mesh.pos.voxelSize;
 		maxRenderDistance += 2*self.mesh.pos.voxelSize*chunk.chunkSize;

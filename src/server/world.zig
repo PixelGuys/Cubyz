@@ -59,7 +59,7 @@ const ChunkManager = struct {
 			}
 		}
 
-		pub fn isStillNeeded(self: *ChunkLoadTask) bool {
+		pub fn isStillNeeded(self: *ChunkLoadTask, milliTime: i64) bool {
 			// TODO:
 			if(self.source) |source| {
 				_ = source;
@@ -75,7 +75,7 @@ const ChunkManager = struct {
 //					return false;
 //				}
 			}
-			if(std.time.milliTimestamp() - self.creationTime > 10000) { // Only remove stuff after 10 seconds to account for trouble when for example teleporting.
+			if(milliTime - self.creationTime > 10000) { // Only remove stuff after 10 seconds to account for trouble when for example teleporting.
 				server.mutex.lock();
 				defer server.mutex.unlock();
 				for(server.users.items) |user| {
@@ -132,7 +132,7 @@ const ChunkManager = struct {
 			}
 		}
 
-		pub fn isStillNeeded(self: *LightMapLoadTask) bool {
+		pub fn isStillNeeded(self: *LightMapLoadTask, _: i64) bool {
 			_ = self; // TODO: Do these tasks need to be culled?
 			return true;
 		}

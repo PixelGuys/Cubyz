@@ -991,7 +991,7 @@ pub const ThreadPool = struct {
 	};
 	pub const VTable = struct {
 		getPriority: *const fn(*anyopaque) f32,
-		isStillNeeded: *const fn(*anyopaque) bool,
+		isStillNeeded: *const fn(*anyopaque, milliTime: i64) bool,
 		run: *const fn(*anyopaque) void,
 		clean: *const fn(*anyopaque) void,
 	};
@@ -1080,7 +1080,7 @@ pub const ThreadPool = struct {
 						var i: u32 = 0;
 						while(i < self.loadList.size) {
 							const task = &self.loadList.array[i];
-							if(!task.vtable.isStillNeeded(task.self)) {
+							if(!task.vtable.isStillNeeded(task.self, lastUpdate)) {
 								task.vtable.clean(task.self);
 								self.loadList.removeIndex(i);
 							} else {
