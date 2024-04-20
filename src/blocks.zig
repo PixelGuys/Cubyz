@@ -281,21 +281,6 @@ pub const Block = packed struct {
 	pub inline fn mode(self: Block) *RotationMode {
 		return _mode[self.typ];
 	}
-
-//	TODO:
-//	/**
-//	 * Fires the blocks on click event(usually nothing or GUI opening).
-//	 * @param world
-//	 * @param pos
-//	 * @return if the block did something on click.
-//	 */
-//	public static boolean onClick(int block, World world, Vector3i pos) {
-//		if (gui[block & TYPE_MASK] != null) {
-//			GameLauncher.logic.openGUI("cubyz:workbench", new Inventory(26)); // TODO: Care about the inventory.
-//			return true;
-//		}
-//		return false;
-//	}
 };
 
 
@@ -553,38 +538,6 @@ pub const meshes = struct {
 
 		meshes.size += 1;
 	}
-
-// TODO: (this one requires thinking about the allocated memory!)
-//	public static void reloadTextures() {
-//		for(int i = 0; i < blockTextures.size(); i++) {
-//			try {
-//				blockTextures.set(i, ImageIO.read(new File(textureIDs.get(i).replace(":animation", ""))));
-//			} catch(IOException e) {
-//				Logger.warning("Could not read image from path "+textureIDs.get(i));
-//				Logger.warning(e);
-//				blockTextures.set(i, blockTextures.get(0));
-//			}
-//		}
-//		generateTextureArray();
-//	}
-
-
-// TODO:
-//	public static void loadMeshes() {
-//		// Goes through all meshes that were newly added:
-//		for(; loadedMeshes < size; loadedMeshes++) {
-//			if (meshes[loadedMeshes] == null) {
-//				meshes[loadedMeshes] = Meshes.cachedDefaultModels.get(models[loadedMeshes]);
-//				if (meshes[loadedMeshes] == null) {
-//					if(models[loadedMeshes].isEmpty())
-//						continue;
-//					Resource rs = new Resource(models[loadedMeshes]);
-//					meshes[loadedMeshes] = new Mesh(ModelLoader.loadModel(rs, "assets/" + rs.getMod() + "/models/3d/" + rs.getID()));
-//					Meshes.cachedDefaultModels.put(models[loadedMeshes], meshes[loadedMeshes]);
-//				}
-//			}
-//		}
-//	}
 
 	pub fn preProcessAnimationData(time: u32) void {
 		animationShader.bind();

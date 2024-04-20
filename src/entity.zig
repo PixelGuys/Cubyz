@@ -23,8 +23,6 @@ pub const ClientEntity = struct {
 
 	width: f64,
 	height: f64,
-//	TODO:
-//	public final EntityType type;
 	
 	pos: Vec3d = undefined,
 	rot: Vec3f = undefined,
@@ -35,8 +33,6 @@ pub const ClientEntity = struct {
 	pub fn init(self: *ClientEntity, json: JsonElement, allocator: NeverFailingAllocator) void {
 		self.* = ClientEntity{
 			.id = json.get(u32, "id", std.math.maxInt(u32)),
-			// TODO:
-//			CubyzRegistries.ENTITY_REGISTRY.getByID(json.getString("type", null)),
 			.width = json.get(f64, "width", 1),
 			.height = json.get(f64, "height", 1),
 			.name = allocator.dupe(u8, json.get([]const u8, "name", "")),

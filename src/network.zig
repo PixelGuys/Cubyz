@@ -625,14 +625,10 @@ pub const Protocols = struct {
 							conn.flush();
 						}
 
-						// TODO:
 						conn.user.?.initPlayer(name);
 						const jsonObject = JsonElement.initObject(main.stackAllocator);
 						defer jsonObject.free(main.stackAllocator);
 						jsonObject.put("player", conn.user.?.player.save(main.stackAllocator));
-						// TODO:
-//					jsonObject.put("player_id", ((User)conn).player.id);
-//					jsonObject.put("blockPalette", Server.world.blockPalette.save());
 						const spawn = JsonElement.initObject(main.stackAllocator);
 						spawn.put("x", main.server.world.?.spawn[0]);
 						spawn.put("y", main.server.world.?.spawn[1]);
@@ -644,10 +640,6 @@ pub const Protocols = struct {
 						conn.sendImportant(id, outData);
 						conn.handShakeState.store(stepServerData, .monotonic);
 						conn.handShakeState.store(stepComplete, .monotonic);
-						// TODO:
-//					synchronized(conn) { // Notify the waiting server thread.
-//						conn.notifyAll();
-//					}
 					},
 					stepAssets => {
 						std.log.info("Received assets.", .{});
@@ -905,91 +897,7 @@ pub const Protocols = struct {
 		pub fn send(conn: *Connection, msg: []const u8) void {
 			conn.sendImportant(id, msg);
 		}
-//			TODO:
-//			public void sendToClients(Entity[] currentEntities, Entity[] lastSentEntities, ItemEntityManager itemEntities) {
-//				synchronized(itemEntities) {
-//					byte[] data = new byte[currentEntities.length*(4 + 3*8 + 3*8 + 3*4)];
-//					int offset = 0;
-//					JsonArray entityChanges = new JsonArray();
-//					outer:
-//					for(Entity ent : currentEntities) {
-//						Bits.putInt(data, offset, ent.id);
-//						offset += 4;
-//						Bits.putDouble(data, offset, ent.getPosition().x);
-//						offset += 8;
-//						Bits.putDouble(data, offset, ent.getPosition().y);
-//						offset += 8;
-//						Bits.putDouble(data, offset, ent.getPosition().z);
-//						offset += 8;
-//						Bits.putFloat(data, offset, ent.getRotation().x);
-//						offset += 4;
-//						Bits.putFloat(data, offset, ent.getRotation().y);
-//						offset += 4;
-//						Bits.putFloat(data, offset, ent.getRotation().z);
-//						offset += 4;
-//						Bits.putDouble(data, offset, ent.vx);
-//						offset += 8;
-//						Bits.putDouble(data, offset, ent.vy);
-//						offset += 8;
-//						Bits.putDouble(data, offset, ent.vz);
-//						offset += 8;
-//						for(int i = 0; i < lastSentEntities.length; i++) {
-//							if(lastSentEntities[i] == ent) {
-//								lastSentEntities[i] = null;
-//								continue outer;
-//							}
-//						}
-//						JsonObject entityData = new JsonObject();
-//						entityData.put("id", ent.id);
-//						entityData.put("type", ent.getType().getRegistryID().toString());
-//						entityData.put("width", ent.width);
-//						entityData.put("height", ent.height);
-//						entityData.put("name", ent.name);
-//						entityChanges.add(entityData);
-//					}
-//					assert offset == data.length;
-//					for(Entity ent : lastSentEntities) {
-//						if(ent != null) {
-//							entityChanges.add(new JsonInt(ent.id));
-//						}
-//					}
-//					if(!itemEntities.lastUpdates.array.isEmpty()) {
-//						entityChanges.add(new JsonOthers(true, false));
-//						for(JsonElement elem : itemEntities.lastUpdates.array) {
-//							entityChanges.add(elem);
-//						}
-//						itemEntities.lastUpdates.array.clear();
-//					}
-//
-//					if(!entityChanges.array.isEmpty()) {
-//						for(User user : Server.users) {
-//							if(user.receivedFirstEntityData) {
-//								user.sendImportant(this, entityChanges.toString().getBytes(StandardCharsets.UTF_8));
-//							}
-//						}
-//					}
-//					for(User user : Server.users) {
-//						if(!user.isConnected()) continue;
-//						if(!user.receivedFirstEntityData) {
-//							JsonArray fullEntityData = new JsonArray();
-//							for(Entity ent : currentEntities) {
-//								JsonObject entityData = new JsonObject();
-//								entityData.put("id", ent.id);
-//								entityData.put("type", ent.getType().getRegistryID().toString());
-//								entityData.put("width", ent.width);
-//								entityData.put("height", ent.height);
-//								entityData.put("name", ent.name);
-//								fullEntityData.add(entityData);
-//							}
-//							fullEntityData.add(new JsonOthers(true, false));
-//							fullEntityData.add(itemEntities.store());
-//							user.sendImportant(this, fullEntityData.toString().getBytes(StandardCharsets.UTF_8));
-//							user.receivedFirstEntityData = true;
-//						}
-//						Protocols.ENTITY_POSITION.send(user, data, itemEntities.getPositionAndVelocityData());
-//					}
-//				}
-//			}
+		// TODO: Send entity data.
 	};
 	pub const genericUpdate = struct {
 		pub const id: u8 = 9;
@@ -1018,52 +926,23 @@ pub const Protocols = struct {
 					});
 				},
 				type_cure => {
-					// TODO:
-//					Cubyz.player.health = Cubyz.player.maxHealth;
-//					Cubyz.player.hunger = Cubyz.player.maxHunger;
+					// TODO: health and hunger
 				},
 				type_inventoryAdd => {
 					const slot = std.mem.readInt(u32, data[1..5], .big);
 					const amount = std.mem.readInt(u32, data[5..9], .big);
 					_ = slot;
 					_ = amount;
-					// TODO:
-//					((User)conn).player.getInventory().getStack(slot).add(amount);
+					// TODO
 				},
 				type_inventoryFull => {
-					// TODO:
-//					JsonObject json = JsonParser.parseObjectFromString(new String(data, offset + 1, length - 1, StandardCharsets.UTF_8));
-//					((User)conn).player.getInventory().loadFrom(json, Server.world.getCurrentRegistries());
+					// TODO: Parse inventory from json
 				},
 				type_inventoryClear => {
-					// TODO:
-//					if(conn instanceof User) {
-//						Inventory inv = ((User)conn).player.getInventory();
-//						for (int i = 0; i < inv.getCapacity(); i++) {
-//							inv.getStack(i).clear();
-//						}
-//					} else {
-//						Inventory inv = Cubyz.player.getInventory_AND_DONT_FORGET_TO_SEND_CHANGES_TO_THE_SERVER();
-//						for (int i = 0; i < inv.getCapacity(); i++) {
-//							inv.getStack(i).clear();
-//						}
-//						clearInventory(conn); // Needs to send changes back to server, to ensure correct order.
-//					}
+					// TODO: Clear inventory
 				},
 				type_itemStackDrop => {
-					// TODO:
-//					JsonObject json = JsonParser.parseObjectFromString(new String(data, offset + 1, length - 1, StandardCharsets.UTF_8));
-//					Item item = Item.load(json, Cubyz.world.registries);
-//					if (item == null) {
-//						break;
-//					}
-//					Server.world.drop(
-//						new ItemStack(item, json.getInt("amount", 1)),
-//						new Vector3d(json.getDouble("x", 0), json.getDouble("y", 0), json.getDouble("z", 0)),
-//						new Vector3f(json.getFloat("dirX", 0), json.getFloat("dirY", 0), json.getFloat("dirZ", 0)),
-//						json.getFloat("vel", 0),
-//						Server.UPDATES_PER_SEC*5
-//					);
+					// TODO: Drop stack
 				},
 				type_itemStackCollect => {
 					const json = JsonElement.parseFromString(main.stackAllocator, data[1..]);
@@ -1660,22 +1539,7 @@ pub const Connection = struct {
 		if(protocol == Protocols.important) {
 			const id = std.mem.readInt(u32, data[1..5], .big);
 			if(self.handShakeState.load(.monotonic) == Protocols.handShake.stepComplete and id == 0) { // Got a new "first" packet from client. So the client tries to reconnect, but we still think it's connected.
-				// TODO:
-//				if(this instanceof User) {
-//					Server.disconnect((User)this);
-//					disconnected = true;
-//					manager.removeConnection(this);
-//					new Thread(() -> {
-//						try {
-//							Server.connect(new User(manager, remoteAddress.getHostAddress() + ":" + remotePort));
-//						} catch(Throwable e) {
-//							Logger.error(e);
-//						}
-//					}).start();
-//					return;
-//				} else {
-//					Logger.error("Server 'reconnected'? This makes no sense and the game can't handle that.");
-//				}
+				// TODO: re-initialize connection.
 			}
 			if(id - @as(i33, self.lastIncompletePacket) >= 65536) {
 				std.log.warn("Many incomplete packages. Cannot process any more packages for now.", .{});

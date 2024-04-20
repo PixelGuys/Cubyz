@@ -331,16 +331,3 @@ pub fn deinit() void {
 	biomes_zig.deinit();
 	blocks_zig.deinit();
 }
-
-//TODO:
-//	private void registerBlock(int block, Resource id, JsonObject json, Registry<DataOrientedRegistry>  registries, NoIDRegistry<Ore> oreRegistry) {
-//		// block entities:
-//		if (json.has("blockEntity")) {
-//			try {
-//				Blocks.setBlockEntity(block, Class.forName(json.getString("blockEntity", "")).asSubclass(BlockEntity.class));
-//			} catch (ClassNotFoundException e) {
-//				Logger.error(e);
-//			}
-//		}
-//	}
-//}

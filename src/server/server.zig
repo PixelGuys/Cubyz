@@ -24,7 +24,6 @@ pub const User = struct {
 	receivedFirstEntityData: bool = false,
 	isLocal: bool = false,
 	// TODO: ipPort: []const u8,
-//	TODO: public Thread waitingThread;
 
 	pub fn init(manager: *ConnectionManager, ipPort: []const u8) !*User {
 		const self = main.globalAllocator.create(User);
@@ -35,12 +34,6 @@ pub const User = struct {
 		self.conn.user = self;
 		self.interpolation.init(@ptrCast(&self.player.pos), @ptrCast(&self.player.vel));
 		network.Protocols.handShake.serverSide(self.conn);
-		// TODO:
-//		synchronized(this) {
-//			waitingThread = Thread.currentThread();
-//			this.wait();
-//			waitingThread = null;
-//		}
 		return self;
 	}
 
@@ -49,11 +42,6 @@ pub const User = struct {
 		main.globalAllocator.free(self.name);
 		main.globalAllocator.destroy(self);
 	}
-//	@Override
-//	public void disconnect() {
-//		super.disconnect();
-//		Server.disconnect(this);
-//	}
 
 	pub fn initPlayer(self: *User, name: []const u8) void {
 		self.name = main.globalAllocator.dupe(u8, name);
@@ -91,11 +79,6 @@ pub const User = struct {
 		self.timeDifference.addDataPoint(time);
 		self.interpolation.updatePosition(&position, &velocity, time);
 	}
-	// TODO (Command stuff):
-//	@Override
-//	public void feedback(String feedback) {
-//		Protocols.CHAT.send(this, "#ffff00"+feedback);
-//	}
 };
 
 pub const updatesPerSec: u32 = 20;
@@ -158,10 +141,7 @@ fn update() void {
 		user.update();
 	}
 	mutex.unlock();
-	// TODO:
-//		Entity[] entities = world.getEntities();
-//		Protocols.ENTITY.sendToClients(entities, lastSentEntities, world.itemEntityManager);
-//		lastSentEntities = entities;
+	// TODO: Send entities to client
 }
 
 pub fn start(name: []const u8) void {
@@ -204,8 +184,6 @@ pub fn disconnect(user: *User) void {
 			break;
 		}
 	}
-//	TODO:		world.removeEntity(user.player);
-//	TODO?		users = usersList.toArray();
 }
 
 pub fn connect(user: *User) void {
@@ -216,10 +194,7 @@ pub fn connect(user: *User) void {
 	sendMessage(message);
 
 	users.append(user);
-	// TODO: users = usersList.toArray();
 }
-
-//	private Entity[] lastSentEntities = new Entity[0];
 
 pub fn sendMessage(msg: []const u8) void {
 	main.utils.assertLocked(&mutex);

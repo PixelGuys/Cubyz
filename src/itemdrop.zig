@@ -196,38 +196,6 @@ pub const ItemDropManager = struct {
 		}
 	}
 
-//TODO:
-//	public void checkEntity(Entity ent) {
-//		for(int ii = 0; ii < size; ii++) {
-//			int i = indices[ii] & 0xffff;
-//			int i3 = 3*i;
-//			if (pickupCooldown[i] >= 0) continue; // Item cannot be picked up yet.
-//			if (Math.abs(ent.position.x - posxyz[i3]) < ent.width + PICKUP_RANGE && Math.abs(ent.position.y + ent.height/2 - posxyz[i3 + 1]) < ent.height + PICKUP_RANGE && Math.abs(ent.position.z - posxyz[i3 + 2]) < ent.width + PICKUP_RANGE) {
-//				if(ent.getInventory().canCollect(itemStacks[i].getItem())) {
-//					if(ent instanceof Player) {
-//						// Needs to go through the network.
-//						for(User user : Server.users) {
-//							if(user.player == ent) {
-//								Protocols.GENERIC_UPDATE.itemStackCollect(user, itemStacks[i]);
-//								remove(i);
-//								ii--;
-//								break;
-//							}
-//						}
-//					} else {
-//						int newAmount = ent.getInventory().addItem(itemStacks[i].getItem(), itemStacks[i].getAmount());
-//						if(newAmount != 0) {
-//							itemStacks[i].setAmount(newAmount);
-//						} else {
-//							remove(i);
-//							ii--;
-//						}
-//					}
-//				}
-//			}
-//		}
-//	}
-
 	pub fn addFromBlockPosition(self: *ItemDropManager, blockPos: Vec3i, vel: Vec3d, itemStack: ItemStack, despawnTime: i32) void {
 		self.add(
 			vec.floatFromInt(f64, blockPos) + Vec3d { // TODO: Consider block bounding boxes.
@@ -325,16 +293,6 @@ pub const ItemDropManager = struct {
 //				lastUpdates.add(new JsonInt(i));
 //			}
 	}
-// TODO: Check if/how this is needed:
-//	public Vector3d getPosition(int index) {
-//		index *= 3;
-//		return new Vector3d(posxyz[index], posxyz[index+1], posxyz[index+2]);
-//	}
-//
-//	public Vector3f getRotation(int index) {
-//		index *= 3;
-//		return new Vector3f(rotxyz[index], rotxyz[index+1], rotxyz[index+2]);
-//	}
 
 	fn updateEnt(self: *ItemDropManager, chunk: *Chunk, pos: *Vec3d, vel: *Vec3d, deltaTime: f64) void {
 		main.utils.assertLocked(&self.mutex);
@@ -432,21 +390,12 @@ pub const ItemDropManager = struct {
 	}
 
 	fn checkBlock(self: *ItemDropManager, chunk: *Chunk, pos: *Vec3d, blockPos: Vec3i) bool {
-		// TODO:
+		// TODO: Check if the item drop collides with the block in the given location.
 		_ = self;
 		_ = chunk;
 		_ = pos;
 		_ = blockPos;
 		return false;
-//		// Transform to chunk-relative coordinates:
-//		int block = chunk.getBlockPossiblyOutside(x - chunk.wx, y - chunk.wy, z - chunk.wz);
-//		if (block == 0) return false;
-//		// Check if the item entity is inside the block:
-//		boolean isInside = true;
-//		if (Blocks.mode(block).changesHitbox()) {
-//			isInside = Blocks.mode(block).checkEntity(new Vector3d(posxyz[index3], posxyz[index3+1]-RADIUS, posxyz[index3+2]), RADIUS, DIAMETER, x, y, z, block);
-//		}
-//		return isInside && Blocks.solid(block);
 	}
 };
 
@@ -740,13 +689,7 @@ pub const ItemDropRenderer = struct {
 			if(itemDrops.list.items(.itemStack)[i].item) |item| {
 				var pos = itemDrops.list.items(.pos)[i];
 				const rot = itemDrops.list.items(.rot)[i];
-				// TODO: lighting:
-//				int x = (int)(manager.posxyz[index3] + 1.0f);
-//				int y = (int)(manager.posxyz[index3+1] + 1.0f);
-//				int z = (int)(manager.posxyz[index3+2] + 1.0f);
-//
-//				int light = Cubyz.world.getLight(x, y, z, ambientLight, ClientSettings.easyLighting);
-				const light: u32 = 0xffffffff;
+				const light: u32 = 0xffffffff; // TODO: Get this light value from the mesh_storage.
 				c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&@max(
 					ambientLight*@as(Vec3f, @splat(@as(f32, @floatFromInt(light >> 24))/255)),
 					Vec3f{light >> 16 & 255, light >> 8 & 255, light & 255}/@as(Vec3f, @splat(255))

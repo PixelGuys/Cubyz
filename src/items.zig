@@ -141,43 +141,6 @@ pub const BaseItem = struct {
 	fn getTooltip(self: BaseItem) []const u8 {
 		return self.name;
 	}
-// TODO: Check if/how this is needed:
-//	protected Item(int stackSize) {
-//		id = Resource.EMPTY;
-//		this.stackSize = stackSize;
-//		material = null;
-//	}
-//	
-//	public void update() {}
-//	
-//	/**
-//	 * Returns true if this item should be consumed on use. May be accessed by non-player entities.
-//	 * @param user
-//	 * @return whether this item is consumed upon use.
-//	 */
-//	public boolean onUse(Entity user) {
-//		return false;
-//	}
-//	From Consumable.java:
-//	@Override
-//	public boolean onUse(Entity user) {
-//		if((user.hunger >= user.maxHunger - Math.min(user.maxHunger*0.1, 0.5) && foodValue > 0) || (user.hunger == 0 && foodValue < 0)) return false;
-//		user.hunger = Math.min(user.maxHunger, user.hunger+foodValue);
-//		return true;
-//	}
-//	public static Item load(JsonObject json, CurrentWorldRegistries registries) {
-//		Item item = registries.itemRegistry.getByID(json.getString("item", "null"));
-//		if(item == null) {
-//			// Check if it is a tool:
-//			JsonObject tool = json.getObject("tool");
-//			if(tool != null) {
-//				item = new Tool(tool, registries);
-//			} else {
-//				// item not existant in this version of the game. Can't do much so ignore it.
-//			}
-//		}
-//		return item;
-//	}
 };
 
 ///Generates the texture of a Tool using the material information.

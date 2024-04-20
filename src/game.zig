@@ -105,8 +105,6 @@ pub const World = struct {
 	blockPalette: *assets.BlockPalette = undefined,
 	itemDrops: ClientItemDropManager = undefined,
 	playerBiome: Atomic(*const main.server.terrain.biomes.Biome) = undefined,
-	
-//	public final ArrayList<String> chatHistory = new ArrayList<>();
 
 	pub fn init(self: *World, ip: []const u8, manager: *ConnectionManager) !void {
 		self.* = .{
@@ -117,8 +115,6 @@ pub const World = struct {
 		};
 		self.itemDrops.init(main.globalAllocator, self);
 		Player.inventory__SEND_CHANGES_TO_SERVER = Inventory.init(main.globalAllocator, 32);
-		// TODO:
-//		player = new ClientPlayer(this, 0);
 		network.Protocols.handShake.clientSide(self.conn, settings.playerName);
 
 		main.Window.setMouseGrabbed(true);
@@ -153,16 +149,6 @@ pub const World = struct {
 		self.spawn[1] = jsonSpawn.get(f32, "y", 0);
 		self.spawn[2] = jsonSpawn.get(f32, "z", 0);
 
-		// TODO:
-//		if(Server.world != null) {
-//			// Share the registries of the local server:
-//			registries = Server.world.getCurrentRegistries();
-//		} else {
-//			registries = new CurrentWorldRegistries(this, "serverAssets/", blockPalette);
-//		}
-//
-//		// Call mods for this new world. Mods sometimes need to do extra stuff for the specific world.
-//		ModLoader.postWorldGen(registries);
 		try assets.loadWorldAssets("serverAssets", self.blockPalette);
 		Player.loadFrom(json.getChild("player"));
 		Player.id = json.get(u32, "player_id", std.math.maxInt(u32));

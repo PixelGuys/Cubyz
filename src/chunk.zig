@@ -298,28 +298,6 @@ pub const Chunk = struct {
 		return self.data.getValue(index);
 	}
 
-	pub fn getNeighbors(self: *const Chunk, x: i32, y: i32, z: i32, neighborsArray: *[6]Block) void {
-		x &= chunkMask;
-		y &= chunkMask;
-		z &= chunkMask;
-		for(Neighbors.relX, 0..) |_, i| {
-			const xi = x + Neighbors.relX[i];
-			const yi = y + Neighbors.relY[i];
-			const zi = z + Neighbors.relZ[i];
-			if (xi == (xi & chunkMask) and yi == (yi & chunkMask) and zi == (zi & chunkMask)) { // Simple double-bound test for coordinates.
-				neighborsArray[i] = self.getBlock(xi, yi, zi);
-			} else {
-				// TODO: What about other chunks?
-//				NormalChunk ch = world.getChunk(xi + wx, yi + wy, zi + wz);
-//				if (ch != null) {
-//					neighborsArray[i] = ch.getBlock(xi & chunkMask, yi & chunkMask, zi & chunkMask);
-//				} else {
-//					neighborsArray[i] = 1; // Some solid replacement, in case the chunk isn't loaded. TODO: Properly choose a solid block.
-//				}
-			}
-		}
-	}
-
 	pub fn updateFromLowerResolution(self: *Chunk, other: *const Chunk) void {
 		const xOffset = if(other.wx != self.wx) chunkSize/2 else 0; // Offsets of the lower resolution chunk in this chunk.
 		const yOffset = if(other.wy != self.wy) chunkSize/2 else 0;
@@ -388,7 +366,7 @@ pub const Chunk = struct {
 		self.mutex.lock();
 		defer self.mutex.unlock();
 		if(self.wasChanged) {
-//		TODO:	ChunkIO.storeChunkToFile(world, this);
+			// TODO: Actually store the chunk
 			self.wasChanged = false;
 			// Update the next lod chunk:
 			if(self.pos.voxelSize != 1 << settings.highestLOD) {

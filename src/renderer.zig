@@ -124,31 +124,9 @@ pub fn updateViewport(width: u31, height: u31, fov: f32) void {
 
 pub fn render(playerPosition: Vec3d) void {
 	const startTime = std.time.milliTimestamp();
-//	TODO:
-//		if (Cubyz.player != null) {
-//			if (Cubyz.playerInc.x != 0 || Cubyz.playerInc.y != 0) { // while walking
-//				if (bobbingUp) {
-//					playerBobbing += 0.005f;
-//					if (playerBobbing >= 0.05f) {
-//						bobbingUp = false;
-//					}
-//				} else {
-//					playerBobbing -= 0.005f;
-//					if (playerBobbing <= -0.05f) {
-//						bobbingUp = true;
-//					}
-//				}
-//			}
-//			if (Cubyz.playerInc.y != 0) {
-//				Cubyz.player.vy = Cubyz.playerInc.y;
-//			}
-//			if (Cubyz.playerInc.x != 0) {
-//				Cubyz.player.vx = Cubyz.playerInc.x;
-//			}
-//			playerPosition.z += Player.cameraHeight + playerBobbing;
-//		}
+	// TODO: player bobbing
 	if(game.world) |world| {
-//		// TODO: Handle colors and sun position in the world.
+		// TODO: Handle colors and sun position in the world.
 		var ambient: Vec3f = undefined;
 		ambient[0] = @max(0.1, world.ambientLight);
 		ambient[1] = @max(0.1, world.ambientLight);
@@ -159,11 +137,6 @@ pub fn render(playerPosition: Vec3d) void {
 		renderWorld(world, ambient, skyColor, playerPosition);
 		mesh_storage.updateMeshes(startTime + maximumMeshTime);
 	} else {
-		// TODO:
-//		clearColor.y = clearColor.z = 0.7f;
-//		clearColor.x = 0.1f;@import("main.zig")
-//		
-//		Window.setClearColor(clearColor);
 		MenuBackGround.render();
 	}
 }
@@ -220,22 +193,10 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	blocks.meshes.reflectivityAndAbsorptionTextureArray.bind();
 	reflectionCubeMap.bindTo(4);
 
-//	SimpleList<NormalChunkMesh> visibleChunks = new SimpleList<NormalChunkMesh>(new NormalChunkMesh[64]);
-//	SimpleList<ReducedChunkMesh> visibleReduced = new SimpleList<ReducedChunkMesh>(new ReducedChunkMesh[64]);
-
 	chunk_meshing.quadsDrawn = 0;
 	chunk_meshing.transparentQuadsDrawn = 0;
 	const meshes = mesh_storage.updateAndGetRenderChunks(world.conn, playerPos, settings.renderDistance);
 
-//	for (ChunkMesh mesh : Cubyz.chunkTree.getRenderChunks(frustumInt, x0, y0, z0)) {
-//		if (mesh instanceof NormalChunkMesh) {
-//			visibleChunks.add((NormalChunkMesh)mesh);
-//			
-//			mesh.render(playerPosition);
-//		} else if (mesh instanceof ReducedChunkMesh) {
-//			visibleReduced.add((ReducedChunkMesh)mesh);
-//		}
-//	}
 	gpu_performance_measuring.startQuery(.chunk_rendering);
 	const direction = crosshairDirection(game.camera.viewMatrix, lastFov, lastWidth, lastHeight);
 	MeshSelection.select(playerPos, direction, game.Player.inventory__SEND_CHANGES_TO_SERVER.items[game.Player.selectedSlot]);
@@ -248,11 +209,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 		mesh.render(playerPos);
 	}
 	gpu_performance_measuring.stopQuery();
-
-//		for(int i = 0; i < visibleReduced.size; i++) {
-//			ReducedChunkMesh mesh = visibleReduced.array[i];
-//			mesh.render(playerPosition);
-//		}
 
 	gpu_performance_measuring.startQuery(.entity_rendering);
 	entity.ClientEntityManager.render(game.projectionMatrix, ambientLight, .{1, 0.5, 0.25}, playerPos);
@@ -284,17 +240,8 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 	chunk_meshing.endRender();
 	gpu_performance_measuring.stopQuery();
-//		NormalChunkMesh.bindTransparentShader(ambientLight, directionalLight.getDirection(), time);
 
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
-
-//		if(selected != null && Blocks.transparent(selected.getBlock())) {
-//			BlockBreakingRenderer.render(selected, playerPosition);
-//			glActiveTexture(GL_TEXTURE0);
-//			Meshes.blockTextureArray.bind();
-//			glActiveTexture(GL_TEXTURE1);
-//			Meshes.emissionTextureArray.bind();
-//		}
 
 	const playerBlock = mesh_storage.getBlockFromAnyLodFromRenderThread(@intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
 	
@@ -334,13 +281,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	entity.ClientEntityManager.renderNames(game.projectionMatrix, playerPos);
 	gpu_performance_measuring.stopQuery();
 }
-
-//	private float playerBobbing;
-//	private boolean bobbingUp;
-//	
-//	private Vector3f ambient = new Vector3f();
-//	private Vector4f clearColor = new Vector4f(0.1f, 0.7f, 0.7f, 1f);
-//	private DirectionalLight light = new DirectionalLight(new Vector3f(1.0f, 1.0f, 1.0f), new Vector3f(0.0f, 1.0f, 0.0f).mul(0.1f));
 
 const Bloom = struct {
 	var buffer1: graphics.FrameBuffer = undefined;
@@ -827,17 +767,8 @@ pub const MeshSelection = struct {
 									return;
 								}
 							} else {
-								// Check if the block can actually be placed at that point. There might be entities or other blocks in the way.
+								// TODO: Check if the block can actually be placed at that point. There might be entities or other blocks in the way.
 								if(block.solid()) return;
-								// TODO:
-//								for(ClientEntity ent : ClientEntityManager.getEntities()) {
-//									Vector3d pos = ent.position;
-//									// Check if the block is inside:
-//									if (neighbor.x < pos.x + ent.width && neighbor.x + 1 > pos.x - ent.width
-//									        && neighbor.y < pos.y + ent.width && neighbor.y + 1 > pos.y - ent.width
-//									        && neighbor.z < pos.z + ent.height && neighbor.z + 1 > pos.z)
-//										return;
-//								}
 								block.typ = itemBlock;
 								block.data = 0;
 								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, &block, true)) {
