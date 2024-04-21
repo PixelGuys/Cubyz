@@ -171,7 +171,7 @@ fn generateBranchingCaveBetween(_seed: u64, map: *CaveMapFragment, startRelPos: 
 				branchLength*random.nextFloatSigned(&seed),
 				branchLength*random.nextFloatSigned(&seed)/2,
 			};
-			generateBranchingCaveBetween(random.nextInt(u64, &seed), map, startRelPos, newEndPos, newBias, newStartRadius, minRadius, seedPos, branchLength/2, @min(0.5, randomness + randomness*random.nextFloat(&seed)*random.nextFloat(&seed)), true, true);
+			generateBranchingCaveBetween(random.nextInt(u64, &seed), map, startRelPos, newEndPos, newBias, newStartRadius, minRadius, seedPos, branchLength/2, @min(0.5/@sqrt(3.0) - 0.01, randomness + randomness*random.nextFloat(&seed)*random.nextFloat(&seed)), true, true);
 		}
 		return;
 	}
