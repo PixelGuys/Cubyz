@@ -145,7 +145,7 @@ fn reloadText(self: *TextInput) void {
 	self.textSize = self.textBuffer.calculateLineBreaks(fontSize, self.maxWidth - 2*border - scrollBarWidth);
 }
 
-fn moveCursorLeft(self: *TextInput, mods: main.Key.Modifiers) void {
+fn moveCursorLeft(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	if(mods.control) {
 		const text = self.currentString.items;
 		if(self.cursor.? == 0) return;
@@ -169,7 +169,7 @@ fn moveCursorLeft(self: *TextInput, mods: main.Key.Modifiers) void {
 	}
 }
 
-pub fn left(self: *TextInput, mods: main.Key.Modifiers) void {
+pub fn left(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	if(self.cursor) |*cursor| {
 		if(mods.shift) {
 			if(self.selectionStart == null) {
@@ -191,7 +191,7 @@ pub fn left(self: *TextInput, mods: main.Key.Modifiers) void {
 	}
 }
 
-fn moveCursorRight(self: *TextInput, mods: main.Key.Modifiers) void {
+fn moveCursorRight(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	if(self.cursor.? < self.currentString.items.len) {
 		if(mods.control) {
 			const text = self.currentString.items;
@@ -211,7 +211,7 @@ fn moveCursorRight(self: *TextInput, mods: main.Key.Modifiers) void {
 	}
 }
 
-pub fn right(self: *TextInput, mods: main.Key.Modifiers) void {
+pub fn right(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	if(self.cursor) |*cursor| {
 		if(mods.shift) {
 			if(self.selectionStart == null) {
@@ -237,7 +237,7 @@ fn moveCursorVertically(self: *TextInput, relativeLines: f32) void {
 	self.cursor = self.textBuffer.mousePosToIndex(self.textBuffer.indexToCursorPos(self.cursor.?) + Vec2f{0, 16*relativeLines}, self.currentString.items.len);
 }
 
-pub fn down(self: *TextInput, mods: main.Key.Modifiers) void {
+pub fn down(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	if(self.cursor) |*cursor| {
 		if(mods.shift) {
 			if(self.selectionStart == null) {
@@ -259,7 +259,7 @@ pub fn down(self: *TextInput, mods: main.Key.Modifiers) void {
 	}
 }
 
-pub fn up(self: *TextInput, mods: main.Key.Modifiers) void {
+pub fn up(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	if(self.cursor) |*cursor| {
 		if(mods.shift) {
 			if(self.selectionStart == null) {
@@ -281,7 +281,7 @@ pub fn up(self: *TextInput, mods: main.Key.Modifiers) void {
 	}
 }
 
-fn moveCursorToStart(self: *TextInput, mods: main.Key.Modifiers) void {
+fn moveCursorToStart(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	if(mods.control) {
 		self.cursor.? = 0;
 	} else {
@@ -289,7 +289,7 @@ fn moveCursorToStart(self: *TextInput, mods: main.Key.Modifiers) void {
 	}
 }
 
-pub fn gotoStart(self: *TextInput, mods: main.Key.Modifiers) void {
+pub fn gotoStart(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	if(self.cursor) |*cursor| {
 		if(mods.shift) {
 			if(self.selectionStart == null) {
@@ -311,7 +311,7 @@ pub fn gotoStart(self: *TextInput, mods: main.Key.Modifiers) void {
 	}
 }
 
-fn moveCursorToEnd(self: *TextInput, mods: main.Key.Modifiers) void {
+fn moveCursorToEnd(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	if(mods.control) {
 		self.cursor.? = @intCast(self.currentString.items.len);
 	} else {
@@ -319,7 +319,7 @@ fn moveCursorToEnd(self: *TextInput, mods: main.Key.Modifiers) void {
 	}
 }
 
-pub fn gotoEnd(self: *TextInput, mods: main.Key.Modifiers) void {
+pub fn gotoEnd(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	if(self.cursor) |*cursor| {
 		if(mods.shift) {
 			if(self.selectionStart == null) {
@@ -353,7 +353,7 @@ fn deleteSelection(self: *TextInput) void {
 	}
 }
 
-pub fn deleteLeft(self: *TextInput, _: main.Key.Modifiers) void {
+pub fn deleteLeft(self: *TextInput, _: main.Window.Key.Modifiers) void {
 	if(self.cursor == null) return;
 	if(self.selectionStart == null) {
 		self.selectionStart = self.cursor;
@@ -364,7 +364,7 @@ pub fn deleteLeft(self: *TextInput, _: main.Key.Modifiers) void {
 	self.ensureCursorVisibility();
 }
 
-pub fn deleteRight(self: *TextInput, _: main.Key.Modifiers) void {
+pub fn deleteRight(self: *TextInput, _: main.Window.Key.Modifiers) void {
 	if(self.cursor == null) return;
 	if(self.selectionStart == null) {
 		self.selectionStart = self.cursor;
@@ -387,7 +387,7 @@ pub fn inputCharacter(self: *TextInput, character: u21) void {
 	}
 }
 
-pub fn copy(self: *TextInput, mods: main.Key.Modifiers) void {
+pub fn copy(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	if(mods.control) {
 		if(self.cursor) |cursor| {
 			if(self.selectionStart) |selectionStart| {
@@ -400,7 +400,7 @@ pub fn copy(self: *TextInput, mods: main.Key.Modifiers) void {
 	}
 }
 
-pub fn paste(self: *TextInput, mods: main.Key.Modifiers) void {
+pub fn paste(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	if(mods.control) {
 		const string = main.Window.getClipboardString();
 		self.deleteSelection();
@@ -411,7 +411,7 @@ pub fn paste(self: *TextInput, mods: main.Key.Modifiers) void {
 	}
 }
 
-pub fn cut(self: *TextInput, mods: main.Key.Modifiers) void {
+pub fn cut(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	if(mods.control) {
 		self.copy(mods);
 		self.deleteSelection();
@@ -420,7 +420,7 @@ pub fn cut(self: *TextInput, mods: main.Key.Modifiers) void {
 	}
 }
 
-pub fn newline(self: *TextInput, mods: main.Key.Modifiers) void {
+pub fn newline(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	if(!mods.shift and self.onNewline.callback != null) {
 		self.onNewline.run();
 		return;

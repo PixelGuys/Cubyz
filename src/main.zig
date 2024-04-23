@@ -23,6 +23,8 @@ pub const settings = @import("settings.zig");
 pub const utils = @import("utils.zig");
 pub const vec = @import("vec.zig");
 
+pub const Window = @import("graphics/Window.zig");
+
 pub const List = @import("utils/list.zig").List;
 pub const ListUnmanaged = @import("utils/list.zig").ListUnmanaged;
 
@@ -30,11 +32,6 @@ const file_monitor = utils.file_monitor;
 
 const Vec2f = vec.Vec2f;
 const Vec3d = vec.Vec3d;
-
-pub const c = @cImport ({
-	@cInclude("glad/glad.h");
-	@cInclude("GLFW/glfw3.h");
-});
 
 pub threadlocal var stackAllocator: utils.NeverFailingAllocator = undefined;
 pub threadlocal var seed: u64 = undefined;
@@ -223,106 +220,6 @@ fn logToStdErr(comptime format: []const u8, args: anytype) void {
 	nosuspend std.io.getStdErr().writeAll(string) catch {};
 }
 
-
-
-pub const Key = struct {
-	name: []const u8,
-	pressed: bool = false,
-	key: c_int = c.GLFW_KEY_UNKNOWN,
-	mouseButton: c_int = -1,
-	scancode: c_int = 0,
-	releaseAction: ?*const fn() void = null,
-	pressAction: ?*const fn() void = null,
-	repeatAction: ?*const fn(Modifiers) void = null,
-
-	pub const Modifiers = packed struct(u6) {
-		shift: bool = false,
-		control: bool = false,
-		alt: bool = false,
-		super: bool = false,
-		capsLock: bool = false,
-		numLock: bool = false,
-	};
-
-	pub fn getName(self: Key) []const u8 {
-		if(self.mouseButton == -1) {
-			const cName = c.glfwGetKeyName(self.key, self.scancode);
-			if(cName != null) return std.mem.span(cName);
-			return switch(self.key) {
-				c.GLFW_KEY_SPACE => "Space",
-				c.GLFW_KEY_GRAVE_ACCENT => "Grave Accent",
-				c.GLFW_KEY_ESCAPE => "Escape",
-				c.GLFW_KEY_ENTER => "Enter",
-				c.GLFW_KEY_TAB => "Tab",
-				c.GLFW_KEY_BACKSPACE => "Backspace",
-				c.GLFW_KEY_INSERT => "Insert",
-				c.GLFW_KEY_DELETE => "Delete",
-				c.GLFW_KEY_RIGHT => "Right",
-				c.GLFW_KEY_LEFT => "Left",
-				c.GLFW_KEY_DOWN => "Down",
-				c.GLFW_KEY_UP => "Up",
-				c.GLFW_KEY_PAGE_UP => "Page Up",
-				c.GLFW_KEY_PAGE_DOWN => "Page Down",
-				c.GLFW_KEY_HOME => "Home",
-				c.GLFW_KEY_END => "End",
-				c.GLFW_KEY_CAPS_LOCK => "Caps Lock",
-				c.GLFW_KEY_SCROLL_LOCK => "Scroll Lock",
-				c.GLFW_KEY_NUM_LOCK => "Num Lock",
-				c.GLFW_KEY_PRINT_SCREEN => "Print Screen",
-				c.GLFW_KEY_PAUSE => "Pause",
-				c.GLFW_KEY_F1 => "F1",
-				c.GLFW_KEY_F2 => "F2",
-				c.GLFW_KEY_F3 => "F3",
-				c.GLFW_KEY_F4 => "F4",
-				c.GLFW_KEY_F5 => "F5",
-				c.GLFW_KEY_F6 => "F6",
-				c.GLFW_KEY_F7 => "F7",
-				c.GLFW_KEY_F8 => "F8",
-				c.GLFW_KEY_F9 => "F9",
-				c.GLFW_KEY_F10 => "F10",
-				c.GLFW_KEY_F11 => "F11",
-				c.GLFW_KEY_F12 => "F12",
-				c.GLFW_KEY_F13 => "F13",
-				c.GLFW_KEY_F14 => "F14",
-				c.GLFW_KEY_F15 => "F15",
-				c.GLFW_KEY_F16 => "F16",
-				c.GLFW_KEY_F17 => "F17",
-				c.GLFW_KEY_F18 => "F18",
-				c.GLFW_KEY_F19 => "F19",
-				c.GLFW_KEY_F20 => "F20",
-				c.GLFW_KEY_F21 => "F21",
-				c.GLFW_KEY_F22 => "F22",
-				c.GLFW_KEY_F23 => "F23",
-				c.GLFW_KEY_F24 => "F24",
-				c.GLFW_KEY_F25 => "F25",
-				c.GLFW_KEY_KP_ENTER => "Keypad Enter",
-				c.GLFW_KEY_LEFT_SHIFT => "Left Shift",
-				c.GLFW_KEY_LEFT_CONTROL => "Left Control",
-				c.GLFW_KEY_LEFT_ALT => "Left Alt",
-				c.GLFW_KEY_LEFT_SUPER => "Left Super",
-				c.GLFW_KEY_RIGHT_SHIFT => "Right Shift",
-				c.GLFW_KEY_RIGHT_CONTROL => "Right Control",
-				c.GLFW_KEY_RIGHT_ALT => "Right Alt",
-				c.GLFW_KEY_RIGHT_SUPER => "Right Super",
-				c.GLFW_KEY_MENU => "Menu",
-				else => "Unknown Key",
-			};
-		} else {
-			return switch(self.mouseButton) {
-				c.GLFW_MOUSE_BUTTON_LEFT => "Left Button",
-				c.GLFW_MOUSE_BUTTON_MIDDLE => "Middle Button",
-				c.GLFW_MOUSE_BUTTON_RIGHT => "Right Button",
-				else => "Other Mouse Button",
-			};
-		}
-	}
-};
-
-var nextKeypressListener: ?*const fn(c_int, c_int, c_int) void = null;
-pub fn setNextKeypressListener(listener: ?*const fn(c_int, c_int, c_int) void) !void {
-	if(nextKeypressListener != null) return error.AlreadyUsed;
-	nextKeypressListener = listener;
-}
 fn escape() void {
 	if(game.world == null) return;
 	gui.toggleGameMenu();
@@ -365,315 +262,58 @@ fn toggleNetworkDebugOverlay() void {
 }
 
 pub const KeyBoard = struct {
-	pub var keys = [_]Key {
+	const c = Window.c;
+	pub var keys = [_]Window.Key {
 		// Gameplay:
-		Key{.name = "forward", .key = c.GLFW_KEY_W},
-		Key{.name = "left", .key = c.GLFW_KEY_A},
-		Key{.name = "backward", .key = c.GLFW_KEY_S},
-		Key{.name = "right", .key = c.GLFW_KEY_D},
-		Key{.name = "sprint", .key = c.GLFW_KEY_LEFT_CONTROL},
-		Key{.name = "jump", .key = c.GLFW_KEY_SPACE},
-		Key{.name = "fall", .key = c.GLFW_KEY_LEFT_SHIFT},
-		Key{.name = "fullscreen", .key = c.GLFW_KEY_F11, .releaseAction = &Window.toggleFullscreen},
-		Key{.name = "placeBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &game.Player.placeBlock}, // TODO: Add GLFW_REPEAT behavior to mouse buttons.
-		Key{.name = "breakBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &game.Player.breakBlock}, // TODO: Add GLFW_REPEAT behavior to mouse buttons.
+		.{.name = "forward", .key = c.GLFW_KEY_W},
+		.{.name = "left", .key = c.GLFW_KEY_A},
+		.{.name = "backward", .key = c.GLFW_KEY_S},
+		.{.name = "right", .key = c.GLFW_KEY_D},
+		.{.name = "sprint", .key = c.GLFW_KEY_LEFT_CONTROL},
+		.{.name = "jump", .key = c.GLFW_KEY_SPACE},
+		.{.name = "fall", .key = c.GLFW_KEY_LEFT_SHIFT},
+		.{.name = "fullscreen", .key = c.GLFW_KEY_F11, .releaseAction = &Window.toggleFullscreen},
+		.{.name = "placeBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &game.Player.placeBlock}, // TODO: Add GLFW_REPEAT behavior to mouse buttons.
+		.{.name = "breakBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &game.Player.breakBlock}, // TODO: Add GLFW_REPEAT behavior to mouse buttons.
 
-		Key{.name = "takeBackgroundImage", .key = c.GLFW_KEY_PRINT_SCREEN, .releaseAction = &takeBackgroundImageFn},
+		.{.name = "takeBackgroundImage", .key = c.GLFW_KEY_PRINT_SCREEN, .releaseAction = &takeBackgroundImageFn},
 
 		// Gui:
-		Key{.name = "escape", .key = c.GLFW_KEY_ESCAPE, .releaseAction = &escape},
-		Key{.name = "openInventory", .key = c.GLFW_KEY_I, .releaseAction = &openInventory},
-		Key{.name = "openWorkbench", .key = c.GLFW_KEY_K, .releaseAction = &openWorkbench}, // TODO: Remove
-		Key{.name = "openCreativeInventory(aka cheat inventory)", .key = c.GLFW_KEY_C, .releaseAction = &openCreativeInventory},
-		Key{.name = "mainGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &gui.mainButtonPressed, .releaseAction = &gui.mainButtonReleased},
-		Key{.name = "secondaryGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &gui.secondaryButtonPressed, .releaseAction = &gui.secondaryButtonReleased},
+		.{.name = "escape", .key = c.GLFW_KEY_ESCAPE, .releaseAction = &escape},
+		.{.name = "openInventory", .key = c.GLFW_KEY_I, .releaseAction = &openInventory},
+		.{.name = "openWorkbench", .key = c.GLFW_KEY_K, .releaseAction = &openWorkbench}, // TODO: Remove
+		.{.name = "openCreativeInventory(aka cheat inventory)", .key = c.GLFW_KEY_C, .releaseAction = &openCreativeInventory},
+		.{.name = "mainGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &gui.mainButtonPressed, .releaseAction = &gui.mainButtonReleased},
+		.{.name = "secondaryGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &gui.secondaryButtonPressed, .releaseAction = &gui.secondaryButtonReleased},
 		// text:
-		Key{.name = "textCursorLeft", .key = c.GLFW_KEY_LEFT, .repeatAction = &gui.textCallbacks.left},
-		Key{.name = "textCursorRight", .key = c.GLFW_KEY_RIGHT, .repeatAction = &gui.textCallbacks.right},
-		Key{.name = "textCursorDown", .key = c.GLFW_KEY_DOWN, .repeatAction = &gui.textCallbacks.down},
-		Key{.name = "textCursorUp", .key = c.GLFW_KEY_UP, .repeatAction = &gui.textCallbacks.up},
-		Key{.name = "textGotoStart", .key = c.GLFW_KEY_HOME, .repeatAction = &gui.textCallbacks.gotoStart},
-		Key{.name = "textGotoEnd", .key = c.GLFW_KEY_END, .repeatAction = &gui.textCallbacks.gotoEnd},
-		Key{.name = "textDeleteLeft", .key = c.GLFW_KEY_BACKSPACE, .repeatAction = &gui.textCallbacks.deleteLeft},
-		Key{.name = "textDeleteRight", .key = c.GLFW_KEY_DELETE, .repeatAction = &gui.textCallbacks.deleteRight},
-		Key{.name = "textCopy", .key = c.GLFW_KEY_C, .repeatAction = &gui.textCallbacks.copy},
-		Key{.name = "textPaste", .key = c.GLFW_KEY_V, .repeatAction = &gui.textCallbacks.paste},
-		Key{.name = "textCut", .key = c.GLFW_KEY_X, .repeatAction = &gui.textCallbacks.cut},
-		Key{.name = "textNewline", .key = c.GLFW_KEY_ENTER, .repeatAction = &gui.textCallbacks.newline},
+		.{.name = "textCursorLeft", .key = c.GLFW_KEY_LEFT, .repeatAction = &gui.textCallbacks.left},
+		.{.name = "textCursorRight", .key = c.GLFW_KEY_RIGHT, .repeatAction = &gui.textCallbacks.right},
+		.{.name = "textCursorDown", .key = c.GLFW_KEY_DOWN, .repeatAction = &gui.textCallbacks.down},
+		.{.name = "textCursorUp", .key = c.GLFW_KEY_UP, .repeatAction = &gui.textCallbacks.up},
+		.{.name = "textGotoStart", .key = c.GLFW_KEY_HOME, .repeatAction = &gui.textCallbacks.gotoStart},
+		.{.name = "textGotoEnd", .key = c.GLFW_KEY_END, .repeatAction = &gui.textCallbacks.gotoEnd},
+		.{.name = "textDeleteLeft", .key = c.GLFW_KEY_BACKSPACE, .repeatAction = &gui.textCallbacks.deleteLeft},
+		.{.name = "textDeleteRight", .key = c.GLFW_KEY_DELETE, .repeatAction = &gui.textCallbacks.deleteRight},
+		.{.name = "textCopy", .key = c.GLFW_KEY_C, .repeatAction = &gui.textCallbacks.copy},
+		.{.name = "textPaste", .key = c.GLFW_KEY_V, .repeatAction = &gui.textCallbacks.paste},
+		.{.name = "textCut", .key = c.GLFW_KEY_X, .repeatAction = &gui.textCallbacks.cut},
+		.{.name = "textNewline", .key = c.GLFW_KEY_ENTER, .repeatAction = &gui.textCallbacks.newline},
 
 		// debug:
-		Key{.name = "debugOverlay", .key = c.GLFW_KEY_F3, .releaseAction = &toggleDebugOverlay},
-		Key{.name = "performanceOverlay", .key = c.GLFW_KEY_F4, .releaseAction = &togglePerformanceOverlay},
-		Key{.name = "gpuPerformanceOverlay", .key = c.GLFW_KEY_F5, .releaseAction = &toggleGPUPerformanceOverlay},
-		Key{.name = "networkDebugOverlay", .key = c.GLFW_KEY_F6, .releaseAction = &toggleNetworkDebugOverlay},
+		.{.name = "debugOverlay", .key = c.GLFW_KEY_F3, .releaseAction = &toggleDebugOverlay},
+		.{.name = "performanceOverlay", .key = c.GLFW_KEY_F4, .releaseAction = &togglePerformanceOverlay},
+		.{.name = "gpuPerformanceOverlay", .key = c.GLFW_KEY_F5, .releaseAction = &toggleGPUPerformanceOverlay},
+		.{.name = "networkDebugOverlay", .key = c.GLFW_KEY_F6, .releaseAction = &toggleNetworkDebugOverlay},
 	};
 
-	pub fn key(name: []const u8) *const Key { // TODO: Maybe I should use a hashmap here?
+	pub fn key(name: []const u8) *const Window.Key { // TODO: Maybe I should use a hashmap here?
 		for(&keys) |*_key| {
 			if(std.mem.eql(u8, name, _key.name)) {
 				return _key;
 			}
 		}
 		std.log.err("Couldn't find keyboard key with name {s}", .{name});
-		return &Key{.name = ""};
-	}
-};
-
-pub const Window = struct {
-	var isFullscreen: bool = false;
-	pub var width: u31 = 1280;
-	pub var height: u31 = 720;
-	var window: *c.GLFWwindow = undefined;
-	pub var grabbed: bool = false;
-	pub var scrollOffset: f32 = 0;
-	const GLFWCallbacks = struct {
-		fn errorCallback(errorCode: c_int, description: [*c]const u8) callconv(.C) void {
-			std.log.err("GLFW Error({}): {s}", .{errorCode, description});
-		}
-		fn keyCallback(_: ?*c.GLFWwindow, glfw_key: c_int, scancode: c_int, action: c_int, _mods: c_int) callconv(.C) void {
-			const mods: Key.Modifiers = @bitCast(@as(u6, @intCast(_mods)));
-			if(action == c.GLFW_PRESS) {
-				for(&KeyBoard.keys) |*key| {
-					if(glfw_key == key.key) {
-						if(glfw_key != c.GLFW_KEY_UNKNOWN or scancode == key.scancode) {
-							key.pressed = true;
-							if(key.pressAction) |pressAction| {
-								pressAction();
-							}
-							if(key.repeatAction) |repeatAction| {
-								repeatAction(mods);
-							}
-						}
-					}
-				}
-				if(nextKeypressListener) |listener| {
-					listener(glfw_key, -1, scancode);
-					nextKeypressListener = null;
-				}
-			} else if(action == c.GLFW_RELEASE) {
-				for(&KeyBoard.keys) |*key| {
-					if(glfw_key == key.key) {
-						if(glfw_key != c.GLFW_KEY_UNKNOWN or scancode == key.scancode) {
-							key.pressed = false;
-							if(key.releaseAction) |releaseAction| {
-								releaseAction();
-							}
-						}
-					}
-				}
-			} else if(action == c.GLFW_REPEAT) {
-				for(&KeyBoard.keys) |*key| {
-					if(glfw_key == key.key) {
-						if(glfw_key != c.GLFW_KEY_UNKNOWN or scancode == key.scancode) {
-							if(key.repeatAction) |repeatAction| {
-								repeatAction(mods);
-							}
-						}
-					}
-				}
-			}
-		}
-		fn charCallback(_: ?*c.GLFWwindow, codepoint: c_uint) callconv(.C) void {
-			if(!grabbed) {
-				gui.textCallbacks.char(@intCast(codepoint));
-			}
-		}
-
-		fn framebufferSize(_: ?*c.GLFWwindow, newWidth: c_int, newHeight: c_int) callconv(.C) void {
-			std.log.info("Framebuffer: {}, {}", .{newWidth, newHeight});
-			width = @intCast(newWidth);
-			height = @intCast(newHeight);
-			renderer.updateViewport(width, height, settings.fov);
-			gui.updateGuiScale();
-			gui.updateWindowPositions();
-		}
-		// Mouse deltas are averaged over multiple frames using a circular buffer:
-		const deltasLen: u2 = 3;
-		var deltas: [deltasLen]Vec2f = [_]Vec2f{Vec2f{0, 0}} ** 3;
-		var deltaBufferPosition: u2 = 0;
-		var currentPos: Vec2f = Vec2f{0, 0};
-		var ignoreDataAfterRecentGrab: bool = true;
-		fn cursorPosition(_: ?*c.GLFWwindow, x: f64, y: f64) callconv(.C) void {
-			const newPos = Vec2f {
-				@floatCast(x),
-				@floatCast(y),
-			};
-			if(grabbed and !ignoreDataAfterRecentGrab) {
-				deltas[deltaBufferPosition] += (newPos - currentPos)*@as(Vec2f, @splat(settings.mouseSensitivity));
-				var averagedDelta: Vec2f = Vec2f{0, 0};
-				for(deltas) |delta| {
-					averagedDelta += delta;
-				}
-				averagedDelta /= @splat(deltasLen);
-				game.camera.moveRotation(averagedDelta[0]*0.0089, averagedDelta[1]*0.0089);
-				deltaBufferPosition = (deltaBufferPosition + 1)%deltasLen;
-				deltas[deltaBufferPosition] = Vec2f{0, 0};
-			}
-			ignoreDataAfterRecentGrab = false;
-			currentPos = newPos;
-		}
-		fn mouseButton(_: ?*c.GLFWwindow, button: c_int, action: c_int, mods: c_int) callconv(.C) void {
-			_ = mods;
-			if(action == c.GLFW_PRESS) {
-				for(&KeyBoard.keys) |*key| {
-					if(button == key.mouseButton) {
-						key.pressed = true;
-						if(key.pressAction) |pressAction| {
-							pressAction();
-						}
-					}
-				}
-				if(nextKeypressListener) |listener| {
-					listener(c.GLFW_KEY_UNKNOWN, button, 0);
-					nextKeypressListener = null;
-				}
-			} else if(action == c.GLFW_RELEASE) {
-				for(&KeyBoard.keys) |*key| {
-					if(button == key.mouseButton) {
-						key.pressed = false;
-						if(key.releaseAction) |releaseAction| {
-							releaseAction();
-						}
-					}
-				}
-			}
-		}
-		fn scroll(_ : ?*c.GLFWwindow, xOffset: f64, yOffset: f64) callconv(.C) void {
-			_ = xOffset;
-			scrollOffset += @floatCast(yOffset);
-		}
-		fn glDebugOutput(source: c_uint, typ: c_uint, _: c_uint, severity: c_uint, length: c_int, message: [*c]const u8, _: ?*const anyopaque) callconv(.C) void {
-			const sourceString: []const u8 = switch (source) {
-				c.GL_DEBUG_SOURCE_API => "API",
-				c.GL_DEBUG_SOURCE_APPLICATION => "Application",
-				c.GL_DEBUG_SOURCE_OTHER => "Other",
-				c.GL_DEBUG_SOURCE_SHADER_COMPILER => "Shader Compiler",
-				c.GL_DEBUG_SOURCE_THIRD_PARTY => "Third Party",
-				c.GL_DEBUG_SOURCE_WINDOW_SYSTEM => "Window System",
-				else => "Unknown",
-			};
-			const typeString: []const u8 = switch (typ) {
-				c.GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR => "deprecated behavior",
-				c.GL_DEBUG_TYPE_ERROR => "error",
-				c.GL_DEBUG_TYPE_MARKER => "marker",
-				c.GL_DEBUG_TYPE_OTHER => "other",
-				c.GL_DEBUG_TYPE_PERFORMANCE => "performance",
-				c.GL_DEBUG_TYPE_POP_GROUP => "pop group",
-				c.GL_DEBUG_TYPE_PORTABILITY => "portability",
-				c.GL_DEBUG_TYPE_PUSH_GROUP => "push group",
-				c.GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR => "undefined behavior",
-				else => "unknown",
-			};
-			switch (severity) {
-				c.GL_DEBUG_SEVERITY_HIGH => {
-					std.log.err("OpenGL {s} {s}: {s}", .{sourceString, typeString, message[0..@intCast(length)]});
-				},
-				else => {
-					std.log.warn("OpenGL {s} {s}: {s}", .{sourceString, typeString, message[0..@intCast(length)]});
-				},
-			}
-		}
-	};
-
-	pub fn setMouseGrabbed(grab: bool) void {
-		if(grabbed != grab) {
-			if(grab) {
-				c.glfwSetInputMode(window, c.GLFW_CURSOR, c.GLFW_CURSOR_DISABLED);
-				if (c.glfwRawMouseMotionSupported() != 0)
-					c.glfwSetInputMode(window, c.GLFW_RAW_MOUSE_MOTION, c.GLFW_TRUE);
-				GLFWCallbacks.ignoreDataAfterRecentGrab = true;
-			} else {
-				c.glfwSetInputMode(window, c.GLFW_CURSOR, c.GLFW_CURSOR_NORMAL);
-			}
-			grabbed = grab;
-		}
-	}
-
-	pub fn getMousePosition() Vec2f {
-		return GLFWCallbacks.currentPos;
-	}
-
-	pub fn getWindowSize() Vec2f {
-		return Vec2f{@floatFromInt(width), @floatFromInt(height)};
-	}
-
-	pub fn reloadSettings() void {
-		c.glfwSwapInterval(@intFromBool(settings.vsync));
-	}
-
-	pub fn getClipboardString() []const u8 {
-		return std.mem.span(c.glfwGetClipboardString(window));
-	}
-
-	pub fn setClipboardString(string: []const u8) void {
-		const nullTerminatedString = stackAllocator.dupeZ(u8, string);
-		defer stackAllocator.free(nullTerminatedString);
-		c.glfwSetClipboardString(window, nullTerminatedString.ptr);
-	}
-
-	fn init() void {
-		_ = c.glfwSetErrorCallback(GLFWCallbacks.errorCallback);
-
-		if(c.glfwInit() == 0) {
-			@panic("Failed to initialize GLFW");
-		}
-
-		c.glfwWindowHint(c.GLFW_OPENGL_DEBUG_CONTEXT, 1);
-		c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MAJOR, 4);
-		c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MINOR, 6);
-
-		window = c.glfwCreateWindow(width, height, "Cubyz", null, null) orelse @panic("Failed to create GLFW window");
-
-		_ = c.glfwSetKeyCallback(window, GLFWCallbacks.keyCallback);
-		_ = c.glfwSetCharCallback(window, GLFWCallbacks.charCallback);
-		_ = c.glfwSetFramebufferSizeCallback(window, GLFWCallbacks.framebufferSize);
-		_ = c.glfwSetCursorPosCallback(window, GLFWCallbacks.cursorPosition);
-		_ = c.glfwSetMouseButtonCallback(window, GLFWCallbacks.mouseButton);
-		_ = c.glfwSetScrollCallback(window, GLFWCallbacks.scroll);
-
-		c.glfwMakeContextCurrent(window);
-
-		if(c.gladLoadGL() == 0) {
-			@panic("Failed to load OpenGL functions from GLAD");
-		}
-		reloadSettings();
-
-		c.glEnable(c.GL_DEBUG_OUTPUT);
-		c.glEnable(c.GL_DEBUG_OUTPUT_SYNCHRONOUS);
-		c.glDebugMessageCallback(GLFWCallbacks.glDebugOutput, null);
-		c.glDebugMessageControl(c.GL_DONT_CARE, c.GL_DONT_CARE, c.GL_DONT_CARE, 0, null, c.GL_TRUE);
-	}
-
-	fn deinit() void {
-		c.glfwDestroyWindow(window);
-		c.glfwTerminate();
-	}
-
-	fn handleEvents() void {
-		scrollOffset = 0;
-		c.glfwPollEvents();
-	}
-
-	var oldX: c_int = 0;
-	var oldY: c_int = 0;
-	var oldWidth: c_int = 0;
-	var oldHeight: c_int = 0;
-	pub fn toggleFullscreen() void {
-		isFullscreen = !isFullscreen;
-		if (isFullscreen) {
-			c.glfwGetWindowPos(window, &oldX, &oldY);
-			c.glfwGetWindowSize(window, &oldWidth, &oldHeight);
-			const monitor = c.glfwGetPrimaryMonitor();
-			if(monitor == null) {
-				isFullscreen = false;
-				return;
-			}
-			const vidMode = c.glfwGetVideoMode(monitor).?;
-			c.glfwSetWindowMonitor(window, monitor, 0, 0, vidMode[0].width, vidMode[0].height, c.GLFW_DONT_CARE);
-		} else {
-			c.glfwSetWindowMonitor(window, null, oldX, oldY, oldWidth, oldHeight, c.GLFW_DONT_CARE);
-			c.glfwSetWindowAttrib(window, c.GLFW_DECORATED, c.GLFW_TRUE);
-		}
+		return &.{.name = ""};
 	}
 };
 
@@ -749,6 +389,8 @@ pub fn main() void {
 
 	server.terrain.initGenerators();
 	defer server.terrain.deinitGenerators();
+
+	const c = Window.c;
 
 	c.glCullFace(c.GL_BACK);
 	c.glEnable(c.GL_BLEND);

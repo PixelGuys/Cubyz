@@ -16,11 +16,11 @@ pub var window = GuiWindow {
 };
 
 const padding: f32 = 8;
-var selectedKey: ?*main.Key = null;
+var selectedKey: ?*main.Window.Key = null;
 var needsUpdate: bool = false;
 
 fn function(keyPtr: usize) void {
-	main.setNextKeypressListener(&keypressListener) catch return;
+	main.Window.setNextKeypressListener(&keypressListener) catch return;
 	selectedKey = @ptrFromInt(keyPtr);
 	needsUpdate = true;
 }

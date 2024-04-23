@@ -372,62 +372,62 @@ pub const textCallbacks = struct {
 			current.inputCharacter(codepoint);
 		}
 	}
-	pub fn left(mods: main.Key.Modifiers) void {
+	pub fn left(mods: main.Window.Key.Modifiers) void {
 		if(selectedTextInput) |current| {
 			current.left(mods);
 		}
 	}
-	pub fn right(mods: main.Key.Modifiers) void {
+	pub fn right(mods: main.Window.Key.Modifiers) void {
 		if(selectedTextInput) |current| {
 			current.right(mods);
 		}
 	}
-	pub fn down(mods: main.Key.Modifiers) void {
+	pub fn down(mods: main.Window.Key.Modifiers) void {
 		if(selectedTextInput) |current| {
 			current.down(mods);
 		}
 	}
-	pub fn up(mods: main.Key.Modifiers) void {
+	pub fn up(mods: main.Window.Key.Modifiers) void {
 		if(selectedTextInput) |current| {
 			current.up(mods);
 		}
 	}
-	pub fn gotoStart(mods: main.Key.Modifiers) void {
+	pub fn gotoStart(mods: main.Window.Key.Modifiers) void {
 		if(selectedTextInput) |current| {
 			current.gotoStart(mods);
 		}
 	}
-	pub fn gotoEnd(mods: main.Key.Modifiers) void {
+	pub fn gotoEnd(mods: main.Window.Key.Modifiers) void {
 		if(selectedTextInput) |current| {
 			current.gotoEnd(mods);
 		}
 	}
-	pub fn deleteLeft(mods: main.Key.Modifiers) void {
+	pub fn deleteLeft(mods: main.Window.Key.Modifiers) void {
 		if(selectedTextInput) |current| {
 			current.deleteLeft(mods);
 		}
 	}
-	pub fn deleteRight(mods: main.Key.Modifiers) void {
+	pub fn deleteRight(mods: main.Window.Key.Modifiers) void {
 		if(selectedTextInput) |current| {
 			current.deleteRight(mods);
 		}
 	}
-	pub fn copy(mods: main.Key.Modifiers) void {
+	pub fn copy(mods: main.Window.Key.Modifiers) void {
 		if(selectedTextInput) |current| {
 			current.copy(mods);
 		}
 	}
-	pub fn paste(mods: main.Key.Modifiers) void {
+	pub fn paste(mods: main.Window.Key.Modifiers) void {
 		if(selectedTextInput) |current| {
 			current.paste(mods);
 		}
 	}
-	pub fn cut(mods: main.Key.Modifiers) void {
+	pub fn cut(mods: main.Window.Key.Modifiers) void {
 		if(selectedTextInput) |current| {
 			current.cut(mods);
 		}
 	}
-	pub fn newline(mods: main.Key.Modifiers) void {
+	pub fn newline(mods: main.Window.Key.Modifiers) void {
 		if(selectedTextInput) |current| {
 			current.newline(mods);
 		}
