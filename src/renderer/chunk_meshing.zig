@@ -234,13 +234,9 @@ const PrimitiveMesh = struct {
 			i += neighborFaces.items.len;
 		}
 
-		parent.lightingData[0].lock.lockShared();
-		parent.lightingData[1].lock.lockShared();
 		for(completeList) |*face| {
 			face.light = getLight(parent, .{face.position.x, face.position.y, face.position.z}, face.blockAndQuad.quadIndex);
 		}
-		parent.lightingData[1].lock.unlockShared();
-		parent.lightingData[0].lock.unlockShared();
 
 		self.mutex.lock();
 		const oldList = self.completeList;
@@ -260,7 +256,7 @@ const PrimitiveMesh = struct {
 		const x = (wx >> mesh.chunk.voxelSizeShift) & chunk.chunkMask;
 		const y = (wy >> mesh.chunk.voxelSizeShift) & chunk.chunkMask;
 		const z = (wz >> mesh.chunk.voxelSizeShift) & chunk.chunkMask;
-		return mesh.lightingData[1].getValueHoldingTheLock(x, y, z) ++ mesh.lightingData[0].getValueHoldingTheLock(x, y, z);
+		return mesh.lightingData[1].getValue(x, y, z) ++ mesh.lightingData[0].getValue(x, y, z);
 	}
 
 	fn getLightAt(parent: *ChunkMesh, x: i32, y: i32, z: i32) [6]u8 {
@@ -272,10 +268,6 @@ const PrimitiveMesh = struct {
 		}
 		const neighborMesh = mesh_storage.getMeshAndIncreaseRefCount(.{.wx = wx, .wy = wy, .wz = wz, .voxelSize = parent.pos.voxelSize}) orelse return .{0, 0, 0, 0, 0, 0};
 		defer neighborMesh.decreaseRefCount();
-		neighborMesh.lightingData[0].lock.lockShared();
-		defer neighborMesh.lightingData[0].lock.unlockShared();
-		neighborMesh.lightingData[1].lock.lockShared();
-		defer neighborMesh.lightingData[1].lock.unlockShared();
 		return getValues(neighborMesh, wx, wy, wz);
 	}
 
