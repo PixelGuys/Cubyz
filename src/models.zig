@@ -21,8 +21,12 @@ pub const QuadInfo = extern struct {
 	textureSlot: u32,
 };
 
-fn approxEqAbs(x: Vec3f, y: Vec3f, tolerance: Vec3f) @Vector(3, bool) {
-	return @abs(x - y) <= tolerance;
+const gridSize = 4096;
+
+fn snapToGrid(x: anytype) @TypeOf(x) {
+	const T = @TypeOf(x);
+	const int = @as(@Vector(@typeInfo(T).Vector.len, i32), @intFromFloat(std.math.round(x*@as(T, @splat(gridSize)))));
+	return @as(T, @floatFromInt(int))/@as(T, @splat(gridSize));
 }
 
 pub const Model = struct {
@@ -36,8 +40,8 @@ pub const Model = struct {
 		var allZero: @Vector(3, bool) = .{true, true, true};
 		var allOne: @Vector(3, bool) = .{true, true, true};
 		for(quad.corners) |corner| {
-			allZero = @select(bool, allZero, approxEqAbs(corner, @splat(0), @splat(0.0001)), allZero); // vector and TODO: #14306
-			allOne = @select(bool, allOne, approxEqAbs(corner, @splat(1), @splat(0.0001)), allOne); // vector and TODO: #14306
+			allZero = @select(bool, allZero, corner == @as(Vec3f, @splat(0)), allZero); // vector and TODO: #14306
+			allOne = @select(bool, allOne, corner == @as(Vec3f, @splat(1)), allOne); // vector and TODO: #14306
 		}
 		if(allZero[0]) return Neighbors.dirNegX;
 		if(allZero[1]) return Neighbors.dirNegY;
@@ -52,8 +56,8 @@ pub const Model = struct {
 		var zeroes: @Vector(3, u32) = .{0, 0, 0};
 		var ones: @Vector(3, u32) = .{0, 0, 0};
 		for(quad.corners) |corner| {
-			zeroes += @select(u32, approxEqAbs(corner, @splat(0), @splat(0.0001)), .{1, 1, 1}, .{0, 0, 0});
-			ones += @select(u32, approxEqAbs(corner, @splat(1), @splat(0.0001)), .{1, 1, 1}, .{0, 0, 0});
+			zeroes += @select(u32, corner == @as(Vec3f, @splat(0)), .{1, 1, 1}, .{0, 0, 0});
+			ones += @select(u32, corner == @as(Vec3f, @splat(1)), .{1, 1, 1}, .{0, 0, 0});
 		}
 		// For full coverage there will 2 ones and 2 zeroes for two components, while the other one is constant.
 		const hasTwoZeroes = zeroes == @Vector(3, u32){2, 2, 2};
@@ -61,7 +65,23 @@ pub const Model = struct {
 		return @popCount(@as(u3, @bitCast(hasTwoOnes))) == 2 and @popCount(@as(u3, @bitCast(hasTwoZeroes))) == 2;
 	}
 
+
+
 	pub fn init(quadInfos: []const QuadInfo) u16 {
+		const adjustedQuads = main.stackAllocator.alloc(QuadInfo, quadInfos.len);
+		defer main.stackAllocator.free(adjustedQuads);
+		for(adjustedQuads, quadInfos) |*dest, *src| {
+			dest.* = src.*;
+			// Snap all values to a fixed point grid to make comparisons more accurate.
+			for(&dest.corners) |*corner| {
+				corner.* = snapToGrid(corner.*);
+			}
+			for(&dest.cornerUV) |*uv| {
+				uv.* = snapToGrid(uv.*);
+			}
+			// Snap the normals as well:
+			dest.normal = snapToGrid(dest.normal);
+		}
 		const modelIndex: u16 = @intCast(models.items.len);
 		const self = models.addOne();
 		var amounts: [6]usize = .{0, 0, 0, 0, 0, 0};
@@ -69,7 +89,7 @@ pub const Model = struct {
 		self.min = .{1, 1, 1};
 		self.max = .{0, 0, 0};
 		self.isNeighborOccluded = .{false} ** 6;
-		for(quadInfos) |*quad| {
+		for(adjustedQuads) |*quad| {
 			for(quad.corners) |corner| {
 				self.min = @min(self.min, corner);
 				self.max = @max(self.max, corner);
@@ -88,7 +108,7 @@ pub const Model = struct {
 
 		var indices: [6]usize = .{0, 0, 0, 0, 0, 0};
 		var internalIndex: usize = 0;
-		for(quadInfos) |_quad| {
+		for(adjustedQuads) |_quad| {
 			var quad = _quad;
 			if(getFaceNeighbor(&quad)) |neighbor| {
 				for(&quad.corners) |*corner| {
@@ -183,9 +203,15 @@ pub var quads: main.List(QuadInfo) = undefined;
 pub var models: main.List(Model) = undefined;
 pub var fullCube: u16 = undefined;
 
+var quadDeduplication: std.AutoHashMap([@sizeOf(QuadInfo)]u8, u16) = undefined;
+
 fn addQuad(info: QuadInfo) u16 { // TODO: Merge duplicates
+	if(quadDeduplication.get(std.mem.toBytes(info))) |id| {
+		return id;
+	}
 	const index: u16 = @intCast(quads.items.len);
 	quads.append(info);
+	quadDeduplication.put(std.mem.toBytes(info), index) catch unreachable;
 	return index;
 }
 
@@ -252,6 +278,7 @@ fn openBox(min: Vec3f, max: Vec3f, uvOffset: Vec2f, openSide: enum{x, y, z}) [4]
 pub fn init() void {
 	models = main.List(Model).init(main.globalAllocator);
 	quads = main.List(QuadInfo).init(main.globalAllocator);
+	quadDeduplication = std.AutoHashMap([@sizeOf(QuadInfo)]u8, u16).init(main.globalAllocator.allocator);
 
 	nameToIndex = std.StringHashMap(u16).init(main.globalAllocator.allocator);
 
@@ -334,4 +361,5 @@ pub fn deinit() void {
 	}
 	models.deinit();
 	quads.deinit();
+	quadDeduplication.deinit();
 }
