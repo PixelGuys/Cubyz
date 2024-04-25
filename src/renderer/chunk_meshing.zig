@@ -303,9 +303,61 @@ const PrimitiveMesh = struct {
 		return result;
 	}
 
+	fn getCornerLightAligned(parent: *ChunkMesh, pos: Vec3i, direction: u3) [6]u8 { // Fast path for algined normals, leading to 4 instead of 8 light samples.
+		const normal: Vec3f = @floatFromInt(Vec3i{chunk.Neighbors.relX[direction], chunk.Neighbors.relY[direction], chunk.Neighbors.relZ[direction]});
+		const lightPos = @as(Vec3f, @floatFromInt(pos)) + normal*@as(Vec3f, @splat(0.5)) - @as(Vec3f, @splat(0.5));
+		const startPos: Vec3i = @intFromFloat(@floor(lightPos));
+		var val: [6]f32 = .{0, 0, 0, 0, 0, 0};
+		var dx: i32 = 0;
+		while(dx <= 1): (dx += 1) {
+			var dy: i32 = 0;
+			while(dy <= 1): (dy += 1) {
+				const weight: f32 = 1.0/4.0;
+				const finalPos = startPos +% @as(Vec3i, @intCast(@abs(chunk.Neighbors.textureX[direction])))*@as(Vec3i, @splat(dx)) +% @as(Vec3i, @intCast(@abs(chunk.Neighbors.textureY[direction]*@as(Vec3i, @splat(dy)))));
+				const lightVal: [6]u8 = getLightAt(parent, finalPos[0], finalPos[1], finalPos[2]);
+				for(0..6) |i| {
+					val[i] += @as(f32, @floatFromInt(lightVal[i]))*weight;
+				}
+			}
+		}
+		var result: [6]u8 = undefined;
+		for(0..6) |i| {
+			result[i] = std.math.lossyCast(u8, val[i]);
+		}
+		return result;
+	}
+
+	fn packLightValues(rawVals: [4][6]u5) [4]u32 {
+		var result: [4]u32 = undefined;
+		for(0..4) |i| {
+			result[i] = (
+				@as(u32, rawVals[i][0]) << 25 |
+				@as(u32, rawVals[i][1]) << 20 |
+				@as(u32, rawVals[i][2]) << 15 |
+				@as(u32, rawVals[i][3]) << 10 |
+				@as(u32, rawVals[i][4]) << 5 |
+				@as(u32, rawVals[i][5]) << 0
+			);
+		}
+		return result;
+	}
+
 	fn getLight(parent: *ChunkMesh, blockPos: Vec3i, quadIndex: u16) [4]u32 {
-		// TODO: This is doing 12 interpolations of 8 values each. For full cube models only 4 interpolations or 4 values each would be needed.
 		const normal = models.quads.items[quadIndex].normal;
+		if(models.extraQuadInfos.items[quadIndex].hasOnlyCornerVertices) { // Fast path for simple quads.
+			var rawVals: [4][6]u5 = undefined;
+			for(0..4) |i| {
+				const vertexPos = models.quads.items[quadIndex].corners[i];
+				const fullPos = blockPos +% @as(Vec3i, @intFromFloat(vertexPos));
+				const fullValues = if(models.extraQuadInfos.items[quadIndex].alignedNormalDirection) |dir|
+					getCornerLightAligned(parent, fullPos, dir)
+				else getCornerLight(parent, fullPos, normal);
+				for(0..6) |j| {
+					rawVals[i][j] = std.math.lossyCast(u5, fullValues[j]/8);
+				}
+			}
+			return packLightValues(rawVals);
+		}
 		var cornerVals: [2][2][2][6]u8 = undefined;
 		{
 			var dx: u31 = 0;
@@ -314,7 +366,9 @@ const PrimitiveMesh = struct {
 				while(dy <= 1) : (dy += 1) {
 					var dz: u31 = 0;
 					while(dz <= 1) : (dz += 1) {
-						cornerVals[dx][dy][dz] = getCornerLight(parent, blockPos +% Vec3i{dx, dy, dz}, normal);
+						cornerVals[dx][dy][dz] = if(models.extraQuadInfos.items[quadIndex].alignedNormalDirection) |dir|
+							getCornerLightAligned(parent, blockPos +% Vec3i{dx, dy, dz}, dir)
+						else getCornerLight(parent, blockPos +% Vec3i{dx, dy, dz}, normal);
 					}
 				}
 			}
@@ -346,18 +400,7 @@ const PrimitiveMesh = struct {
 				rawVals[i][j] = std.math.lossyCast(u5, val[j]/8);
 			}
 		}
-		var result: [4]u32 = undefined;
-		for(0..4) |i| {
-			result[i] = (
-				@as(u32, rawVals[i][0]) << 25 |
-				@as(u32, rawVals[i][1]) << 20 |
-				@as(u32, rawVals[i][2]) << 15 |
-				@as(u32, rawVals[i][3]) << 10 |
-				@as(u32, rawVals[i][4]) << 5 |
-				@as(u32, rawVals[i][5]) << 0
-			);
-		}
-		return result;
+		return packLightValues(rawVals);
 	}
 
 	fn uploadData(self: *PrimitiveMesh, isNeighborLod: [6]bool) void {

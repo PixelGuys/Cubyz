@@ -21,6 +21,13 @@ pub const QuadInfo = extern struct {
 	textureSlot: u32,
 };
 
+const ExtraQuadInfo = struct {
+	faceNeighbor: ?u3,
+	isFullQuad: bool,
+	hasOnlyCornerVertices: bool,
+	alignedNormalDirection: ?u3,
+};
+
 const gridSize = 4096;
 
 fn snapToGrid(x: anytype) @TypeOf(x) {
@@ -200,18 +207,44 @@ pub fn getModelIndex(string: []const u8) u16 {
 }
 
 pub var quads: main.List(QuadInfo) = undefined;
+pub var extraQuadInfos: main.List(ExtraQuadInfo) = undefined;
 pub var models: main.List(Model) = undefined;
 pub var fullCube: u16 = undefined;
 
 var quadDeduplication: std.AutoHashMap([@sizeOf(QuadInfo)]u8, u16) = undefined;
 
-fn addQuad(info: QuadInfo) u16 { // TODO: Merge duplicates
+fn addQuad(info: QuadInfo) u16 {
 	if(quadDeduplication.get(std.mem.toBytes(info))) |id| {
 		return id;
 	}
 	const index: u16 = @intCast(quads.items.len);
 	quads.append(info);
 	quadDeduplication.put(std.mem.toBytes(info), index) catch unreachable;
+
+	var extraQuadInfo: ExtraQuadInfo = undefined;
+	extraQuadInfo.faceNeighbor = Model.getFaceNeighbor(&info);
+	extraQuadInfo.isFullQuad = Model.fullyOccludesNeighbor(&info);
+	{
+		var zeroes: @Vector(3, u32) = .{0, 0, 0};
+		var ones: @Vector(3, u32) = .{0, 0, 0};
+		for(info.corners) |corner| {
+			zeroes += @select(u32, corner == @as(Vec3f, @splat(0)), .{1, 1, 1}, .{0, 0, 0});
+			ones += @select(u32, corner == @as(Vec3f, @splat(1)), .{1, 1, 1}, .{0, 0, 0});
+		}
+		const cornerValues = @reduce(.Add, zeroes) + @reduce(.Add, ones);
+		extraQuadInfo.hasOnlyCornerVertices = cornerValues == 4*3;
+	}
+	{
+		extraQuadInfo.alignedNormalDirection = null;
+		if(@reduce(.And, info.normal == Vec3f{-1, 0, 0})) extraQuadInfo.alignedNormalDirection = chunk.Neighbors.dirNegX;
+		if(@reduce(.And, info.normal == Vec3f{1, 0, 0})) extraQuadInfo.alignedNormalDirection = chunk.Neighbors.dirPosX;
+		if(@reduce(.And, info.normal == Vec3f{0, -1, 0})) extraQuadInfo.alignedNormalDirection = chunk.Neighbors.dirNegY;
+		if(@reduce(.And, info.normal == Vec3f{0, 1, 0})) extraQuadInfo.alignedNormalDirection = chunk.Neighbors.dirPosY;
+		if(@reduce(.And, info.normal == Vec3f{0, 0, -1})) extraQuadInfo.alignedNormalDirection = chunk.Neighbors.dirDown;
+		if(@reduce(.And, info.normal == Vec3f{0, 0, 1})) extraQuadInfo.alignedNormalDirection = chunk.Neighbors.dirUp;
+	}
+	extraQuadInfos.append(extraQuadInfo);
+
 	return index;
 }
 
@@ -278,6 +311,7 @@ fn openBox(min: Vec3f, max: Vec3f, uvOffset: Vec2f, openSide: enum{x, y, z}) [4]
 pub fn init() void {
 	models = main.List(Model).init(main.globalAllocator);
 	quads = main.List(QuadInfo).init(main.globalAllocator);
+	extraQuadInfos = main.List(ExtraQuadInfo).init(main.globalAllocator);
 	quadDeduplication = std.AutoHashMap([@sizeOf(QuadInfo)]u8, u16).init(main.globalAllocator.allocator);
 
 	nameToIndex = std.StringHashMap(u16).init(main.globalAllocator.allocator);
@@ -361,5 +395,6 @@ pub fn deinit() void {
 	}
 	models.deinit();
 	quads.deinit();
+	extraQuadInfos.deinit();
 	quadDeduplication.deinit();
 }
