@@ -22,7 +22,7 @@ pub fn build(b: *std.Build) !void {
 	exe.linkLibCpp();
 
 	// For the time being, MacOS cubyz_deps will not have released binaries.
-	const depsName = if (t.os.tag != .macos) "deps_local" else "deps";
+	const depsName = if (t.os.tag == .macos) "deps_local" else "deps";
 	const deps = b.lazyDependency(depsName, .{
 		.target = target,
 		.optimize = optimize,
