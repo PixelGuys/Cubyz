@@ -327,7 +327,7 @@ pub fn update(self: *GuiWindow) void {
 pub fn updateSelected(self: *GuiWindow, mousePosition: Vec2f) void {
 	self.updateSelectedFn();
 	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
-	if(self == grabbedWindow and self.titleBarExpanded) if(grabPosition) |_grabPosition| {
+	if(self == grabbedWindow and (self.titleBarExpanded or self.showTitleBar)) if(grabPosition) |_grabPosition| {
 		self.relativePosition[0] = .{.ratio = undefined};
 		self.relativePosition[1] = .{.ratio = undefined};
 		self.pos = (mousePosition - _grabPosition) + selfPositionWhenGrabbed;
@@ -497,7 +497,7 @@ pub fn render(self: *const GuiWindow, mousePosition: Vec2f) void {
 	}
 	draw.restoreTranslation(oldTranslation);
 	draw.restoreScale(oldScale);
-	if(self == grabbedWindow and self.titleBarExpanded and grabPosition != null) {
+	if(self == grabbedWindow and (self.titleBarExpanded or self.showTitleBar) and grabPosition != null) {
 		self.drawOrientationLines();
 	}
 }
