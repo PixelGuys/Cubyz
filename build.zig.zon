@@ -4,8 +4,8 @@
 	.paths = .{""},
 	.dependencies = .{
 		.deps_local = .{
-			.url = "file:../Cubyz-libs/zig-out.tar.gz", // macos has no official deps release
-			.hash = "12209f7db8911ff57c69db2097437ad5e00141e862b0e760926c966b8652d09edf43",
+			.path = "../Cubyz-libs/zig-out", // macos has no official deps release
+			.lazy = true,
 		},
 		.deps = .{
 			//.url = "file:../Cubyz-libs/zig-out.tar.gz", // fetching the lib from the local folder

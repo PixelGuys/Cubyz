@@ -22,11 +22,16 @@ pub fn build(b: *std.Build) !void {
 	exe.linkLibCpp();
 
 	// For the time being, MacOS cubyz_deps will not have released binaries.
-	const depsName = if (t.os.tag == .macos) "deps_local" else "deps";
-	const deps = b.dependency(depsName, .{
+	const depsName = if (t.os.tag != .macos) "deps_local" else "deps";
+	const deps = b.lazyDependency(depsName, .{
 		.target = target,
 		.optimize = optimize,
-	});
+	}) orelse {
+		// Lazy dependencies with a `url` field will fail here the first time.
+		// build.zig will restart and try again.
+		std.log.info("Downloading dependency {s}.", .{depsName});
+		return;
+	};
 
 	exe.addLibraryPath(deps.path("lib"));
 	exe.addIncludePath(deps.path("include"));
