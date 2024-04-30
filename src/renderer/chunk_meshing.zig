@@ -748,10 +748,19 @@ pub const ChunkMesh = struct {
 		self.finishNeighbors();
 	}
 
+	fn updateBlockLight(self: *ChunkMesh, x: u5, y: u5, z: u5, newBlock: Block) void {
+		for(self.lightingData[0..]) |lightingData| {
+			lightingData.propagateLightsDestructive(&.{.{x, y, z}});
+		}
+		if(newBlock.light() != 0) {
+			self.lightingData[0].propagateLights(&.{.{x, y, z}}, false);
+		}
+	}
+
 	pub fn updateBlock(self: *ChunkMesh, _x: i32, _y: i32, _z: i32, _newBlock: Block) void {
-		const x = _x & chunk.chunkMask;
-		const y = _y & chunk.chunkMask;
-		const z = _z & chunk.chunkMask;
+		const x: u5 = @intCast(_x & chunk.chunkMask);
+		const y: u5 = @intCast(_y & chunk.chunkMask);
+		const z: u5 = @intCast(_z & chunk.chunkMask);
 		var newBlock = _newBlock;
 		var neighborBlocks: [6]Block = undefined;
 		@memset(&neighborBlocks, .{.typ = 0, .data = 0});
@@ -771,6 +780,7 @@ pub const ChunkMesh = struct {
 						neighborChunkMesh.opaqueMesh.coreFaces.clearRetainingCapacity();
 						neighborChunkMesh.transparentMesh.coreFaces.clearRetainingCapacity();
 						neighborChunkMesh.mutex.unlock();
+						neighborChunkMesh.updateBlockLight(@intCast(nx & chunk.chunkMask), @intCast(ny & chunk.chunkMask), @intCast(nz & chunk.chunkMask), neighborBlock);
 						neighborChunkMesh.generateMesh();
 						neighborChunkMesh.mutex.lock();
 					}
@@ -784,6 +794,7 @@ pub const ChunkMesh = struct {
 				if(neighborBlock.mode().dependsOnNeighbors) {
 					if(neighborBlock.mode().updateData(&neighborBlock, neighbor ^ 1, newBlock)) {
 						self.chunk.data.setValue(index, neighborBlock);
+						self.updateBlockLight(@intCast(nx & chunk.chunkMask), @intCast(ny & chunk.chunkMask), @intCast(nz & chunk.chunkMask), neighborBlock);
 					}
 				}
 				self.mutex.unlock();
@@ -798,12 +809,7 @@ pub const ChunkMesh = struct {
 		self.mutex.lock();
 		self.chunk.data.setValue(chunk.getIndex(x, y, z), newBlock);
 		self.mutex.unlock();
-		for(self.lightingData[0..]) |lightingData| {
-			lightingData.propagateLightsDestructive(&.{.{@intCast(x), @intCast(y), @intCast(z)}});
-		}
-		if(newBlock.light() != 0) {
-			self.lightingData[0].propagateLights(&.{.{@intCast(x), @intCast(y), @intCast(z)}}, false);
-		}
+		self.updateBlockLight(x, y, z, newBlock);
 		self.mutex.lock();
 		defer self.mutex.unlock();
 		// Update neighbor chunks:

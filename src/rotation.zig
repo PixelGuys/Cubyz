@@ -493,6 +493,7 @@ pub const RotationModes = struct {
 		pub fn chisel(_: *main.game.World, _: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) bool {
 			if(intersectionPos(currentData.*, relativePlayerPos, playerDir)) |intersection| {
 				currentData.data = currentData.data | subBlockMask(intersection.minPos[0], intersection.minPos[1], intersection.minPos[2]);
+				if(currentData.data == 255) currentData.* = .{.typ = 0, .data = 0};
 				return true;
 			}
 			return false;
