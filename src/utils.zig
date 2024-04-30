@@ -1387,12 +1387,13 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 		cacheMisses: Atomic(usize) = Atomic(usize).init(0),
 
 		///  Tries to find the entry that fits to the supplied hashable.
-		pub fn find(self: *@This(), compareAndHash: anytype) ?*T {
+		pub fn find(self: *@This(), compareAndHash: anytype, comptime postGetFunction: ?fn(*T) void) ?*T {
 			const index: u32 = compareAndHash.hashCode() & hashMask;
 			_ = @atomicRmw(usize, &self.cacheRequests.raw, .Add, 1, .monotonic);
 			self.buckets[index].mutex.lock();
 			defer self.buckets[index].mutex.unlock();
 			if(self.buckets[index].find(compareAndHash)) |item| {
+				if(postGetFunction) |fun| fun(item);
 				return item;
 			}
 			_ = @atomicRmw(usize, &self.cacheMisses.raw, .Add, 1, .monotonic);
@@ -1420,11 +1421,13 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 			return self.buckets[index].add(item);
 		}
 
-		pub fn findOrCreate(self: *@This(), compareAndHash: anytype, comptime initFunction: fn(@TypeOf(compareAndHash)) *T) *T {
+		pub fn findOrCreate(self: *@This(), compareAndHash: anytype, comptime initFunction: fn(@TypeOf(compareAndHash)) *T, comptime postGetFunction: ?fn(*T) void) *T {
 			const index: u32 = compareAndHash.hashCode() & hashMask;
 			self.buckets[index].mutex.lock();
 			defer self.buckets[index].mutex.unlock();
-			return self.buckets[index].findOrCreate(compareAndHash, initFunction);
+			const result = self.buckets[index].findOrCreate(compareAndHash, initFunction);
+			if(postGetFunction) |fun| fun(result);
+			return result;
 		}
 	};
 }

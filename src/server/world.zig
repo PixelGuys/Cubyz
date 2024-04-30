@@ -127,7 +127,7 @@ const ChunkManager = struct {
 
 		pub fn run(self: *LightMapLoadTask) void {
 			defer self.clean();
-			const map = terrain.LightMap.getOrGenerateFragment(self.pos.wx, self.pos.wy, self.pos.voxelSize);
+			const map = terrain.LightMap.getOrGenerateFragmentAndIncreaseRefCount(self.pos.wx, self.pos.wy, self.pos.voxelSize);
 			defer map.decreaseRefCount();
 			if(self.source) |source| {
 				main.network.Protocols.lightMapTransmission.sendLightMap(source.conn, map);
@@ -204,8 +204,8 @@ const ChunkManager = struct {
 		// TODO: Store chunk.
 	}
 	/// Generates a normal chunk at a given location, or if possible gets it from the cache.
-	pub fn getOrGenerateChunk(pos: ChunkPosition) *Chunk {
-		return chunkCache.findOrCreate(pos, chunkInitFunctionForCache);
+	pub fn getOrGenerateChunk(pos: ChunkPosition) *Chunk { // TODO: This is not thread safe! The chunk could get removed from the cache while in use. Reference counting should probably be used here.
+		return chunkCache.findOrCreate(pos, chunkInitFunctionForCache, null);
 	}
 
 	pub fn getChunkFromCache(pos: ChunkPosition) ?*Chunk {
@@ -368,8 +368,8 @@ pub const ServerWorld = struct {
 				std.log.info("Trying ({}, {})", .{self.spawn[0], self.spawn[1]});
 				if(self.isValidSpawnLocation(self.spawn[0], self.spawn[1])) break;
 			}
-			const map = terrain.SurfaceMap.getOrGenerateFragment(self.spawn[0], self.spawn[1], 1);
-			defer map.deinit();
+			const map = terrain.SurfaceMap.getOrGenerateFragmentAndIncreaseRefCount(self.spawn[0], self.spawn[1], 1);
+			defer map.decreaseRefCount();
 			self.spawn[2] = @intFromFloat(map.getHeight(self.spawn[0], self.spawn[1]) + 1);
 		}
 		self.generated = true;
@@ -401,8 +401,8 @@ pub const ServerWorld = struct {
 	}
 
 	fn isValidSpawnLocation(_: *ServerWorld, wx: i32, wy: i32) bool {
-		const map = terrain.SurfaceMap.getOrGenerateFragment(wx, wy, 1);
-		defer map.deinit();
+		const map = terrain.SurfaceMap.getOrGenerateFragmentAndIncreaseRefCount(wx, wy, 1);
+		defer map.decreaseRefCount();
 		return map.getBiome(wx, wy).isValidPlayerSpawn;
 	}
 

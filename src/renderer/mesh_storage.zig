@@ -22,7 +22,7 @@ const chunk_meshing = @import("chunk_meshing.zig");
 
 
 const ChunkMeshNode = struct {
-	mesh: Atomic(?*chunk_meshing.ChunkMesh),
+	mesh: ?*chunk_meshing.ChunkMesh,
 	lod: u3,
 	min: Vec2f,
 	max: Vec2f,
@@ -32,7 +32,7 @@ const ChunkMeshNode = struct {
 const storageSize = 64;
 const storageMask = storageSize - 1;
 var storageLists: [settings.highestLOD + 1]*[storageSize*storageSize*storageSize]ChunkMeshNode = undefined;
-var mapStorageLists: [settings.highestLOD + 1]*[storageSize*storageSize]Atomic(?*LightMap.LightMapFragment) = undefined;
+var mapStorageLists: [settings.highestLOD + 1]*[storageSize*storageSize]?*LightMap.LightMapFragment = undefined;
 var meshList = main.List(*chunk_meshing.ChunkMesh).init(main.globalAllocator);
 var priorityMeshUpdateList = main.List(*chunk_meshing.ChunkMesh).init(main.globalAllocator);
 pub var updatableList = main.List(*chunk_meshing.ChunkMesh).init(main.globalAllocator);
@@ -58,14 +58,14 @@ pub fn init() void {
 	for(&storageLists) |*storageList| {
 		storageList.* = main.globalAllocator.create([storageSize*storageSize*storageSize]ChunkMeshNode);
 		for(storageList.*) |*val| {
-			val.mesh = Atomic(?*chunk_meshing.ChunkMesh).init(null);
+			val.mesh = null;
 			val.rendered = false;
 			val.active = false;
 		}
 	}
 	for(&mapStorageLists) |*mapStorageList| {
-		mapStorageList.* = main.globalAllocator.create([storageSize*storageSize]Atomic(?*LightMap.LightMapFragment));
-		@memset(mapStorageList.*, Atomic(?*LightMap.LightMapFragment).init(null));
+		mapStorageList.* = main.globalAllocator.create([storageSize*storageSize]?*LightMap.LightMapFragment);
+		@memset(mapStorageList.*, null);
 	}
 }
 
@@ -106,7 +106,7 @@ pub fn deinit() void {
 	clearList.deinit();
 }
 
-fn getNodeFromRenderThread(pos: chunk.ChunkPosition) *ChunkMeshNode {
+fn getNodePointer(pos: chunk.ChunkPosition) *ChunkMeshNode {
 	const lod = std.math.log2_int(u31, pos.voxelSize);
 	var xIndex = pos.wx >> lod+chunk.chunkShift;
 	var yIndex = pos.wy >> lod+chunk.chunkShift;
@@ -118,7 +118,7 @@ fn getNodeFromRenderThread(pos: chunk.ChunkPosition) *ChunkMeshNode {
 	return &storageLists[lod][@intCast(index)];
 }
 
-fn getMapPieceLocation(x: i32, y: i32, voxelSize: u31) *Atomic(?*LightMap.LightMapFragment) {
+fn getMapPiecePointer(x: i32, y: i32, voxelSize: u31) *?*LightMap.LightMapFragment {
 	const lod = std.math.log2_int(u31, voxelSize);
 	var xIndex = x >> lod+LightMap.LightMapFragment.mapShift;
 	var yIndex = y >> lod+LightMap.LightMapFragment.mapShift;
@@ -129,62 +129,53 @@ fn getMapPieceLocation(x: i32, y: i32, voxelSize: u31) *Atomic(?*LightMap.LightM
 }
 
 pub fn getLightMapPieceAndIncreaseRefCount(x: i32, y: i32, voxelSize: u31) ?*LightMap.LightMapFragment {
-	const result: *LightMap.LightMapFragment = getMapPieceLocation(x, y, voxelSize).load(.acquire) orelse return null;
-	var refCount: u16 = 1;
-	while(result.refCount.cmpxchgWeak(refCount, refCount+1, .monotonic, .monotonic)) |otherVal| {
-		if(otherVal == 0) return null;
-		refCount = otherVal;
-	}
+	mutex.lock();
+	defer mutex.unlock();
+	const result: *LightMap.LightMapFragment = getMapPiecePointer(x, y, voxelSize).* orelse {
+		return null;
+	};
+	result.increaseRefCount();
 	return result;
 }
 
-pub fn getBlockFromRenderThread(x: i32, y: i32, z: i32) ?blocks.Block {
-	const node = getNodeFromRenderThread(.{.wx = x, .wy = y, .wz = z, .voxelSize=1});
-	const mesh = node.mesh.load(.acquire) orelse return null;
+pub fn getBlock(x: i32, y: i32, z: i32) ?blocks.Block {
+	const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize=1});
+	mutex.lock();
+	defer mutex.unlock();
+	const mesh = node.mesh orelse return null;
 	const block = mesh.chunk.getBlock(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask);
 	return block;
 }
 
-pub fn getBlockFromAnyLodFromRenderThread(x: i32, y: i32, z: i32) blocks.Block {
+pub fn getBlockFromAnyLod(x: i32, y: i32, z: i32) blocks.Block {
 	var lod: u5 = 0;
 	while(lod < settings.highestLOD) : (lod += 1) {
-		const node = getNodeFromRenderThread(.{.wx = x, .wy = y, .wz = z, .voxelSize=@as(u31, 1) << lod});
-		const mesh = node.mesh.load(.acquire) orelse continue;
+		const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize=@as(u31, 1) << lod});
+		mutex.lock();
+		defer mutex.unlock();
+		const mesh = node.mesh orelse continue;
 		const block = mesh.chunk.getBlock(x & chunk.chunkMask<<lod, y & chunk.chunkMask<<lod, z & chunk.chunkMask<<lod);
 		return block;
 	}
 	return blocks.Block{.typ = 0, .data = 0};
 }
 
-pub fn getMeshFromAnyLodFromRenderThread(wx: i32, wy: i32, wz: i32, voxelSize: u31) ?*chunk_meshing.ChunkMesh {
-	var lod: u5 = @ctz(voxelSize);
-	while(lod < settings.highestLOD) : (lod += 1) {
-		const node = getNodeFromRenderThread(.{.wx = wx & ~chunk.chunkMask<<lod, .wy = wy & ~chunk.chunkMask<<lod, .wz = wz & ~chunk.chunkMask<<lod, .voxelSize=@as(u31, 1) << lod});
-		return node.mesh.load(.acquire) orelse continue;
-	}
-	return null;
-}
-
-pub fn getNeighborFromRenderThread(_pos: chunk.ChunkPosition, resolution: u31, neighbor: u3) ?*chunk_meshing.ChunkMesh {
-	var pos = _pos;
-	pos.wx +%= pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relX[neighbor];
-	pos.wy +%= pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relY[neighbor];
-	pos.wz +%= pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relZ[neighbor];
-	pos.voxelSize = resolution;
-	const node = getNodeFromRenderThread(pos);
-	return node.mesh.load(.acquire);
-}
-
 pub fn getMeshAndIncreaseRefCount(pos: chunk.ChunkPosition) ?*chunk_meshing.ChunkMesh {
-	const node = getNodeFromRenderThread(pos);
-	const mesh = node.mesh.load(.acquire) orelse return null;
 	const lod = std.math.log2_int(u31, pos.voxelSize);
 	const mask = ~((@as(i32, 1) << lod+chunk.chunkShift) - 1);
-	if(pos.wx & mask != mesh.pos.wx or pos.wy & mask != mesh.pos.wy or pos.wz & mask != mesh.pos.wz) return null;
-	if(mesh.tryIncreaseRefCount()) {
-		return mesh;
+	const node = getNodePointer(pos);
+	mutex.lock();
+	const mesh = node.mesh orelse {
+		mutex.unlock();
+		return null;
+	};
+	mesh.increaseRefCount();
+	mutex.unlock();
+	if(pos.wx & mask != mesh.pos.wx or pos.wy & mask != mesh.pos.wy or pos.wz & mask != mesh.pos.wz) {
+		mesh.decreaseRefCount();
+		return null;
 	}
-	return null;
+	return mesh;
 }
 
 pub fn getMeshFromAnyLodAndIncreaseRefCount(wx: i32, wy: i32, wz: i32, voxelSize: u31) ?*chunk_meshing.ChunkMesh {
@@ -327,9 +318,12 @@ fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32) void {
 					const index = (xIndex*storageSize + yIndex)*storageSize + zIndex;
 					
 					const node = &storageLists[_lod][@intCast(index)];
-					if(node.mesh.load(.acquire)) |mesh| {
+					mutex.lock();
+					const oldMesh = node.mesh;
+					node.mesh = null;
+					mutex.unlock();
+					if(oldMesh) |mesh| {
 						mesh.decreaseRefCount();
-						node.mesh.store(null, .release);
 					}
 				}
 			}
@@ -385,9 +379,12 @@ fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32) void {
 				const yIndex = @divExact(y, size) & storageMask;
 				const index = xIndex*storageSize + yIndex;
 				
-				const mapAtomic = &mapStorageLists[_lod][@intCast(index)];
-				if(mapAtomic.load(.acquire)) |map| {
-					mapAtomic.store(null, .release);
+				const mapPointer = &mapStorageLists[_lod][@intCast(index)];
+				mutex.lock();
+				const oldMap = mapPointer.*;
+				mapPointer.* = null;
+				mutex.unlock();
+				if(oldMap) |map| {
 					map.decreaseRefCount();
 				}
 			}
@@ -460,11 +457,13 @@ fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32, meshR
 					const pos = chunk.ChunkPosition{.wx=x, .wy=y, .wz=z, .voxelSize=@as(u31, 1)<<lod};
 
 					const node = &storageLists[_lod][@intCast(index)];
-					if(node.mesh.load(.acquire)) |mesh| {
+					mutex.lock();
+					if(node.mesh) |mesh| {
 						std.debug.assert(std.meta.eql(pos, mesh.pos));
 					} else {
 						meshRequests.append(pos);
 					}
+					mutex.unlock();
 				}
 			}
 		}
@@ -521,11 +520,13 @@ fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32, meshR
 				const pos = LightMap.MapFragmentPosition{.wx=x, .wy=y, .voxelSize=@as(u31, 1)<<lod, .voxelSizeShift = lod};
 
 				const node = &mapStorageLists[_lod][@intCast(index)];
-				if(node.load(.acquire)) |map| {
+				mutex.lock();
+				if(node.*) |map| {
 					std.debug.assert(std.meta.eql(pos, map.pos));
 				} else {
 					mapRequests.append(pos);
 				}
+				mutex.unlock();
 			}
 		}
 	}
@@ -588,8 +589,11 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 		firstPos.wz &= ~@as(i32, chunk.chunkMask);
 		var lod: u3 = 0;
 		while(lod <= settings.highestLOD) : (lod += 1) {
-			const node = getNodeFromRenderThread(firstPos);
-			if(node.mesh.load(.acquire) != null and node.mesh.load(.acquire).?.finishedMeshing) {
+			const node = getNodePointer(firstPos);
+			mutex.lock();
+			const hasMesh = node.mesh != null and node.mesh.?.finishedMeshing;
+			mutex.unlock();
+			if(hasMesh) {
 				node.lod = lod;
 				node.min = @splat(-1);
 				node.max = @splat(1);
@@ -613,8 +617,20 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 	while(searchList.removeOrNull()) |data| {
 		nodeList.append(data.node);
 		data.node.active = false;
-		const mesh = data.node.mesh.load(.acquire).?;
-		std.debug.assert(mesh.finishedMeshing);
+
+		mutex.lock();
+		const mesh = data.node.mesh orelse {
+			mutex.unlock();
+			continue;
+		};
+		if(!mesh.finishedMeshing) {
+			mutex.unlock();
+			continue;
+		}
+		mesh.increaseRefCount();
+		defer mesh.decreaseRefCount();
+		mutex.unlock();
+
 		mesh.visibilityMask = 0xff;
 		const relPos: Vec3d = @as(Vec3d, @floatFromInt(Vec3i{mesh.pos.wx, mesh.pos.wy, mesh.pos.wz})) - playerPos;
 		const relPosFloat: Vec3f = @floatCast(relPos);
@@ -770,8 +786,10 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 					neighborPos.wz &= ~@as(i32, neighborPos.voxelSize*chunk.chunkSize);
 					neighborPos.voxelSize *= 2;
 				}
-				const node = getNodeFromRenderThread(neighborPos);
-				if(node.mesh.load(.acquire)) |neighborMesh| {
+				const node = getNodePointer(neighborPos);
+				if(getMeshAndIncreaseRefCount(neighborPos)) |neighborMesh| {
+					std.debug.assert(std.meta.eql(neighborPos, neighborMesh.pos));
+					defer neighborMesh.decreaseRefCount();
 					if(!neighborMesh.finishedMeshing) continue;
 					// Ensure that there are no high-to-low lod transitions, which would produce cracks.
 					if(lod == data.node.lod and lod != settings.highestLOD and !node.rendered) {
@@ -788,7 +806,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 									.wz = neighborPos.wz + chunk.Neighbors.relZ[neighbor2]*chunk.chunkSize*neighborPos.voxelSize,
 									.voxelSize = neighborPos.voxelSize,
 								};
-								const node2 = getNodeFromRenderThread(neighborPos2);
+								const node2 = getNodePointer(neighborPos2);
 								if(node2.rendered) {
 									continue;
 								}
@@ -800,7 +818,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 									.wz = neighborPos.wz + chunk.Neighbors.relZ[neighbor2]*chunk.chunkSize*neighborPos.voxelSize,
 									.voxelSize = neighborPos.voxelSize << 1,
 								};
-								const node2 = getNodeFromRenderThread(neighborPos2);
+								const node2 = getNodePointer(neighborPos2);
 								if(node2.rendered) {
 									isValid = false;
 									break;
@@ -837,10 +855,25 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 	}
 	for(nodeList.items) |node| {
 		node.rendered = false;
-		const mesh = node.mesh.load(.acquire).?;
+
+		mutex.lock();
+		const mesh = node.mesh orelse {
+			mutex.unlock();
+			continue;
+		};
+		if(!mesh.finishedMeshing) {
+			mutex.unlock();
+			continue;
+		}
+		mesh.increaseRefCount();
+		defer mesh.decreaseRefCount();
+		mutex.unlock();
+
 		if(mesh.pos.voxelSize != @as(u31, 1) << settings.highestLOD) {
-			const parent = getNodeFromRenderThread(.{.wx=mesh.pos.wx, .wy=mesh.pos.wy, .wz=mesh.pos.wz, .voxelSize=mesh.pos.voxelSize << 1});
-			if(parent.mesh.load(.acquire)) |parentMesh| {
+			const parent = getNodePointer(.{.wx=mesh.pos.wx, .wy=mesh.pos.wy, .wz=mesh.pos.wz, .voxelSize=mesh.pos.voxelSize << 1});
+			mutex.lock();
+			defer mutex.unlock();
+			if(parent.mesh) |parentMesh| {
 				const sizeShift = chunk.chunkShift + @ctz(mesh.pos.voxelSize);
 				const octantIndex: u3 = @intCast((mesh.pos.wx>>sizeShift & 1) | (mesh.pos.wy>>sizeShift & 1)<<1 | (mesh.pos.wz>>sizeShift & 1)<<2);
 				parentMesh.visibilityMask &= ~(@as(u8, 1) << octantIndex);
@@ -867,8 +900,8 @@ pub fn updateMeshes(targetTime: i64) void {
 		defer blockUpdateMutex.unlock();
 		for(blockUpdateList.items) |blockUpdate| {
 			const pos = chunk.ChunkPosition{.wx=blockUpdate.x, .wy=blockUpdate.y, .wz=blockUpdate.z, .voxelSize=1};
-			const node = getNodeFromRenderThread(pos);
-			if(node.mesh.load(.acquire)) |mesh| {
+			if(getMeshAndIncreaseRefCount(pos)) |mesh| {
+				defer mesh.decreaseRefCount();
 				mesh.updateBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock);
 			} // TODO: It seems like we simply ignore the block update if we don't have the mesh yet.
 		}
@@ -890,10 +923,14 @@ pub fn updateMeshes(targetTime: i64) void {
 			continue;
 		}
 		mesh.needsMeshUpdate = false;
+		if(getNodePointer(mesh.pos).mesh != mesh) {
+			mutex.unlock();
+			mesh.decreaseRefCount();
+			continue;
+		}
 		mutex.unlock();
 		defer mutex.lock();
 		mesh.decreaseRefCount();
-		if(getNodeFromRenderThread(mesh.pos).mesh.load(.acquire) != mesh) continue; // This mesh isn't used for rendering anymore.
 		mesh.uploadData();
 		if(std.time.milliTimestamp() >= targetTime) break; // Update at least one mesh.
 	}
@@ -901,9 +938,11 @@ pub fn updateMeshes(targetTime: i64) void {
 		if(!isMapInRenderDistance(map.pos)) {
 			map.decreaseRefCount();
 		} else {
-			if(getMapPieceLocation(map.pos.wx, map.pos.wy, map.pos.voxelSize).swap(map, .acq_rel)) |old| {
+			const mapPointer = getMapPiecePointer(map.pos.wx, map.pos.wy, map.pos.voxelSize);
+			if(mapPointer.*) |old| {
 				old.decreaseRefCount();
 			}
+			mapPointer.* = map;
 		}
 	}
 	while(updatableList.items.len != 0) {
@@ -935,11 +974,15 @@ pub fn updateMeshes(targetTime: i64) void {
 		mutex.unlock();
 		defer mutex.lock();
 		if(isInRenderDistance(mesh.pos)) {
-			const node = getNodeFromRenderThread(mesh.pos);
+			const node = getNodePointer(mesh.pos);
 			mesh.finishedMeshing = true;
 			mesh.uploadData();
-			if(node.mesh.swap(mesh, .acq_rel)) |oldMesh| {
-				oldMesh.decreaseRefCount();
+			mutex.lock();
+			const oldMesh = node.mesh;
+			node.mesh = mesh;
+			mutex.unlock();
+			if(oldMesh) |_oldMesh| {
+				_oldMesh.decreaseRefCount();
 			}
 		} else {
 			mesh.decreaseRefCount();
@@ -973,12 +1016,12 @@ pub fn addMeshToStorage(mesh: *chunk_meshing.ChunkMesh) error{AlreadyStored}!voi
 	mutex.lock();
 	defer mutex.unlock();
 	if(isInRenderDistance(mesh.pos)) {
-		const node = getNodeFromRenderThread(mesh.pos);
-		if(node.mesh.cmpxchgStrong(null, mesh, .acq_rel, .monotonic) != null) {
+		const node = getNodePointer(mesh.pos);
+		if(node.mesh != null) {
 			return error.AlreadyStored;
-		} else {
-			mesh.increaseRefCount();
 		}
+		node.mesh = mesh;
+		mesh.increaseRefCount();
 	}
 }
 

@@ -78,8 +78,17 @@ pub const MapFragment = struct {
 		};
 	}
 
-	pub fn deinit(self: *MapFragment) void {
-		mapFragmentDeinit(self);
+	pub fn increaseRefCount(self: *MapFragment) void {
+		const prevVal = self.refCount.fetchAdd(1, .monotonic);
+		std.debug.assert(prevVal != 0);
+	}
+
+	pub fn decreaseRefCount(self: *MapFragment) void {
+		const prevVal = self.refCount.fetchSub(1, .monotonic);
+		std.debug.assert(prevVal != 0);
+		if(prevVal == 1) {
+			main.globalAllocator.destroy(self);
+		}
 	}
 
 	pub fn getBiome(self: *MapFragment, wx: i32, wy: i32) *const Biome {
@@ -124,7 +133,7 @@ pub const MapGenerator = struct {
 const cacheSize = 1 << 6; // Must be a power of 2!
 const cacheMask = cacheSize - 1;
 const associativity = 8; // ~400MiB MiB Cache size
-var cache: Cache(MapFragment, cacheSize, associativity, mapFragmentDeinit) = .{};
+var cache: Cache(MapFragment, cacheSize, associativity, MapFragment.decreaseRefCount) = .{};
 var profile: TerrainGenerationProfile = undefined;
 
 pub fn initGenerators() void {
@@ -136,12 +145,6 @@ pub fn initGenerators() void {
 
 pub fn deinitGenerators() void {
 	MapGenerator.generatorRegistry.clearAndFree(main.globalAllocator.allocator);
-}
-
-fn mapFragmentDeinit(mapFragment: *MapFragment) void {
-	if(@atomicRmw(u16, &mapFragment.refCount.raw, .Sub, 1, .monotonic) == 1) {
-		main.globalAllocator.destroy(mapFragment);
-	}
 }
 
 fn cacheInit(pos: MapFragmentPosition) *MapFragment {
@@ -161,13 +164,12 @@ pub fn deinit() void {
 }
 
 /// Call deinit on the result.
-pub fn getOrGenerateFragment(wx: i32, wy: i32, voxelSize: u31) *MapFragment {
+pub fn getOrGenerateFragmentAndIncreaseRefCount(wx: i32, wy: i32, voxelSize: u31) *MapFragment {
 	const compare = MapFragmentPosition.init(
 		wx & ~@as(i32, MapFragment.mapMask*voxelSize | voxelSize-1),
 		wy & ~@as(i32, MapFragment.mapMask*voxelSize | voxelSize-1),
 		voxelSize
 	);
-	const result = cache.findOrCreate(compare, cacheInit);
-	std.debug.assert(@atomicRmw(u16, &result.refCount.raw, .Add, 1, .monotonic) != 0);
+	const result = cache.findOrCreate(compare, cacheInit, MapFragment.increaseRefCount);
 	return result;
 }

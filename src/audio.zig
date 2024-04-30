@@ -72,7 +72,7 @@ fn findMusic(musicId: []const u8) ?[]f32 {
 	{
 		taskMutex.lock();
 		defer taskMutex.unlock();
-		if(musicCache.find(AudioData{.musicId = musicId})) |musicData| {
+		if(musicCache.find(AudioData{.musicId = musicId}, null)) |musicData| {
 			return musicData.data;
 		}
 		for(activeTasks.items) |taskFileName| {

@@ -60,6 +60,19 @@ pub const ClimateMapFragment = struct {
 	pub fn hashCode(wx: i32, wy: i32) u32 {
 		return @bitCast((wx >> mapShift)*%33 + (wy >> mapShift));
 	}
+
+	pub fn increaseRefCount(self: *ClimateMapFragment) void {
+		const prevVal = self.refCount.fetchAdd(1, .monotonic);
+		std.debug.assert(prevVal != 0);
+	}
+
+	pub fn decreaseRefCount(self: *ClimateMapFragment) void {
+		const prevVal = self.refCount.fetchSub(1, .monotonic);
+		std.debug.assert(prevVal != 0);
+		if(prevVal == 1) {
+			main.globalAllocator.destroy(self);
+		}
+	}
 };
 
 /// Generates the climate(aka Biome) map, which is a rough representation of the world.
@@ -91,7 +104,7 @@ pub const ClimateMapGenerator = struct {
 const cacheSize = 1 << 8; // Must be a power of 2!
 const cacheMask = cacheSize - 1;
 const associativity = 4;
-var cache: Cache(ClimateMapFragment, cacheSize, associativity, mapFragmentDeinit) = .{};
+var cache: Cache(ClimateMapFragment, cacheSize, associativity, ClimateMapFragment.decreaseRefCount) = .{};
 var profile: TerrainGenerationProfile = undefined;
 
 pub fn initGenerators() void {
@@ -103,12 +116,6 @@ pub fn initGenerators() void {
 
 pub fn deinitGenerators() void {
 	ClimateMapGenerator.generatorRegistry.clearAndFree(main.globalAllocator.allocator);
-}
-
-fn mapFragmentDeinit(mapFragment: *ClimateMapFragment) void {
-	if(@atomicRmw(u16, &mapFragment.refCount.raw, .Sub, 1, .monotonic) == 1) {
-		main.globalAllocator.destroy(mapFragment);
-	}
 }
 
 fn cacheInit(pos: ClimateMapFragmentPosition) *ClimateMapFragment {
@@ -127,11 +134,9 @@ pub fn deinit() void {
 	cache.clear();
 }
 
-/// Call deinit on the result.
-fn getOrGenerateFragment(wx: i32, wy: i32) *ClimateMapFragment {
+fn getOrGenerateFragmentAndIncreaseRefCount(wx: i32, wy: i32) *ClimateMapFragment {
 	const compare = ClimateMapFragmentPosition{.wx = wx, .wy = wy};
-	const result = cache.findOrCreate(compare, cacheInit);
-	std.debug.assert(@atomicRmw(u16, &result.refCount.raw, .Add, 1, .monotonic) != 0);
+	const result = cache.findOrCreate(compare, cacheInit, ClimateMapFragment.increaseRefCount);
 	return result;
 }
 
@@ -145,8 +150,8 @@ pub fn getBiomeMap(allocator: NeverFailingAllocator, wx: i32, wy: i32, width: u3
 	while(wxEnd -% x >= 0) : (x +%= ClimateMapFragment.mapSize) {
 		var y = wzStart;
 		while(wzEnd -% y >= 0) : (y +%= ClimateMapFragment.mapSize) {
-			const mapPiece = getOrGenerateFragment(x, y);
-			defer mapFragmentDeinit(mapPiece);
+			const mapPiece = getOrGenerateFragmentAndIncreaseRefCount(x, y);
+			defer mapPiece.decreaseRefCount();
 			// Offset of the indices in the result map:
 			const xOffset = (x -% wx) >> MapFragment.biomeShift;
 			const yOffset = (y -% wy) >> MapFragment.biomeShift;

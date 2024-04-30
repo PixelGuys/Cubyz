@@ -669,7 +669,7 @@ pub const ItemDropRenderer = struct {
 
 	fn getModelIndex(item: items.Item) u31 {
 		const compareObject = ItemVoxelModel{.item = item};
-		return voxelModels.findOrCreate(compareObject, ItemVoxelModel.init).index;
+		return voxelModels.findOrCreate(compareObject, ItemVoxelModel.init, null).index;
 	}
 
 	pub fn renderItemDrops(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d, time: u32) void {

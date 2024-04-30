@@ -50,6 +50,19 @@ pub const CaveBiomeMapFragment = struct {
 		relZ >>= caveBiomeShift;
 		return relX << 2*(caveBiomeMapShift - caveBiomeShift) | relY << caveBiomeMapShift-caveBiomeShift | relZ;
 	}
+
+	pub fn increaseRefCount(self: *CaveBiomeMapFragment) void {
+		const prevVal = self.refCount.fetchAdd(1, .monotonic);
+		std.debug.assert(prevVal != 0);
+	}
+
+	pub fn decreaseRefCount(self: *CaveBiomeMapFragment) void {
+		const prevVal = self.refCount.fetchSub(1, .monotonic);
+		std.debug.assert(prevVal != 0);
+		if(prevVal == 1) {
+			main.globalAllocator.destroy(self);
+		}
+	}
 };
 
 /// A generator for the cave biome map.
@@ -105,20 +118,20 @@ pub const InterpolatableCaveBiomeMapView = struct {
 	pub fn init(pos: ChunkPosition, width: i32) InterpolatableCaveBiomeMapView {
 		return InterpolatableCaveBiomeMapView {
 			.fragments = [_]*CaveBiomeMapFragment {
-				getOrGenerateFragment(pos.wx -% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy -% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz -% CaveBiomeMapFragment.caveBiomeMapSize/2),
-				getOrGenerateFragment(pos.wx -% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy -% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz +% CaveBiomeMapFragment.caveBiomeMapSize/2),
-				getOrGenerateFragment(pos.wx -% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy +% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz -% CaveBiomeMapFragment.caveBiomeMapSize/2),
-				getOrGenerateFragment(pos.wx -% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy +% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz +% CaveBiomeMapFragment.caveBiomeMapSize/2),
-				getOrGenerateFragment(pos.wx +% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy -% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz -% CaveBiomeMapFragment.caveBiomeMapSize/2),
-				getOrGenerateFragment(pos.wx +% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy -% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz +% CaveBiomeMapFragment.caveBiomeMapSize/2),
-				getOrGenerateFragment(pos.wx +% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy +% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz -% CaveBiomeMapFragment.caveBiomeMapSize/2),
-				getOrGenerateFragment(pos.wx +% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy +% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz +% CaveBiomeMapFragment.caveBiomeMapSize/2),
+				getOrGenerateFragmentAndIncreaseRefCount(pos.wx -% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy -% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz -% CaveBiomeMapFragment.caveBiomeMapSize/2),
+				getOrGenerateFragmentAndIncreaseRefCount(pos.wx -% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy -% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz +% CaveBiomeMapFragment.caveBiomeMapSize/2),
+				getOrGenerateFragmentAndIncreaseRefCount(pos.wx -% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy +% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz -% CaveBiomeMapFragment.caveBiomeMapSize/2),
+				getOrGenerateFragmentAndIncreaseRefCount(pos.wx -% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy +% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz +% CaveBiomeMapFragment.caveBiomeMapSize/2),
+				getOrGenerateFragmentAndIncreaseRefCount(pos.wx +% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy -% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz -% CaveBiomeMapFragment.caveBiomeMapSize/2),
+				getOrGenerateFragmentAndIncreaseRefCount(pos.wx +% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy -% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz +% CaveBiomeMapFragment.caveBiomeMapSize/2),
+				getOrGenerateFragmentAndIncreaseRefCount(pos.wx +% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy +% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz -% CaveBiomeMapFragment.caveBiomeMapSize/2),
+				getOrGenerateFragmentAndIncreaseRefCount(pos.wx +% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wy +% CaveBiomeMapFragment.caveBiomeMapSize/2, pos.wz +% CaveBiomeMapFragment.caveBiomeMapSize/2),
 			},
 			.surfaceFragments = [_]*MapFragment {
-				SurfaceMap.getOrGenerateFragment(pos.wx -% 32, pos.wy -% 32, pos.voxelSize),
-				SurfaceMap.getOrGenerateFragment(pos.wx -% 32, pos.wy +% width +% 32, pos.voxelSize),
-				SurfaceMap.getOrGenerateFragment(pos.wx +% width +% 32, pos.wy -% 32, pos.voxelSize),
-				SurfaceMap.getOrGenerateFragment(pos.wx +% width +% 32, pos.wy +% width +% 32, pos.voxelSize),
+				SurfaceMap.getOrGenerateFragmentAndIncreaseRefCount(pos.wx -% 32, pos.wy -% 32, pos.voxelSize),
+				SurfaceMap.getOrGenerateFragmentAndIncreaseRefCount(pos.wx -% 32, pos.wy +% width +% 32, pos.voxelSize),
+				SurfaceMap.getOrGenerateFragmentAndIncreaseRefCount(pos.wx +% width +% 32, pos.wy -% 32, pos.voxelSize),
+				SurfaceMap.getOrGenerateFragmentAndIncreaseRefCount(pos.wx +% width +% 32, pos.wy +% width +% 32, pos.voxelSize),
 			},
 			.pos = pos,
 			.width = width,
@@ -127,10 +140,10 @@ pub const InterpolatableCaveBiomeMapView = struct {
 
 	pub fn deinit(self: InterpolatableCaveBiomeMapView) void {
 		for(self.fragments) |mapFragment| {
-			mapFragmentDeinit(mapFragment);
+			mapFragment.decreaseRefCount();
 		}
 		for(self.surfaceFragments) |mapFragment| {
-			mapFragment.deinit();
+			mapFragment.decreaseRefCount();
 		}
 	}
 
@@ -434,7 +447,7 @@ pub const CaveBiomeMapView = struct {
 const cacheSize = 1 << 8; // Must be a power of 2!
 const cacheMask = cacheSize - 1;
 const associativity = 8;
-var cache: Cache(CaveBiomeMapFragment, cacheSize, associativity, mapFragmentDeinit) = .{};
+var cache: Cache(CaveBiomeMapFragment, cacheSize, associativity, CaveBiomeMapFragment.decreaseRefCount) = .{};
 
 var profile: TerrainGenerationProfile = undefined;
 
@@ -457,12 +470,6 @@ pub fn deinit() void {
 	cache.clear();
 }
 
-fn mapFragmentDeinit(mapFragment: *CaveBiomeMapFragment) void {
-	if(@atomicRmw(u16, &mapFragment.refCount.raw, .Sub, 1, .monotonic) == 1) {
-		main.globalAllocator.destroy(mapFragment);
-	}
-}
-
 fn cacheInit(pos: ChunkPosition) *CaveBiomeMapFragment {
 	const mapFragment = main.globalAllocator.create(CaveBiomeMapFragment);
 	mapFragment.init(pos.wx, pos.wy, pos.wz);
@@ -473,7 +480,7 @@ fn cacheInit(pos: ChunkPosition) *CaveBiomeMapFragment {
 	return mapFragment;
 }
 
-fn getOrGenerateFragment(_wx: i32, _wy: i32, _wz: i32) *CaveBiomeMapFragment {
+fn getOrGenerateFragmentAndIncreaseRefCount(_wx: i32, _wy: i32, _wz: i32) *CaveBiomeMapFragment {
 	const wx = _wx & ~@as(i32, CaveBiomeMapFragment.caveBiomeMapMask);
 	const wy = _wy & ~@as(i32, CaveBiomeMapFragment.caveBiomeMapMask);
 	const wz = _wz & ~@as(i32, CaveBiomeMapFragment.caveBiomeMapMask);
@@ -481,7 +488,6 @@ fn getOrGenerateFragment(_wx: i32, _wy: i32, _wz: i32) *CaveBiomeMapFragment {
 		.wx = wx, .wy = wy, .wz = wz,
 		.voxelSize = CaveBiomeMapFragment.caveBiomeSize,
 	};
-	const result = cache.findOrCreate(compare, cacheInit);
-	std.debug.assert(@atomicRmw(u16, &result.refCount.raw, .Add, 1, .monotonic) != 0);
+	const result = cache.findOrCreate(compare, cacheInit, CaveBiomeMapFragment.increaseRefCount);
 	return result;
 }

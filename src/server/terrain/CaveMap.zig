@@ -61,6 +61,19 @@ pub const CaveMapFragment = struct {
 		return maskLower | maskUpper;
 	}
 
+	pub fn increaseRefCount(self: *CaveMapFragment) void {
+		const prevVal = self.refCount.fetchAdd(1, .monotonic);
+		std.debug.assert(prevVal != 0);
+	}
+
+	pub fn decreaseRefCount(self: *CaveMapFragment) void {
+		const prevVal = self.refCount.fetchSub(1, .monotonic);
+		std.debug.assert(prevVal != 0);
+		if(prevVal == 1) {
+			main.globalAllocator.destroy(self);
+		}
+	}
+
 	pub fn addRange(self: *CaveMapFragment, _relX: i32, _relY: i32, _start: i32, _end: i32) void {
 		const relX = _relX >> self.voxelShift;
 		const relY = _relY >> self.voxelShift;
@@ -135,21 +148,21 @@ pub const CaveMapView = struct {
 		return CaveMapView {
 			.reference = chunk,
 			.fragments = [_]*CaveMapFragment {
-				getOrGenerateFragment(chunk.pos.wx -% chunk.width, chunk.pos.wy -% chunk.width, chunk.pos.wz -% chunk.width, chunk.pos.voxelSize),
-				getOrGenerateFragment(chunk.pos.wx -% chunk.width, chunk.pos.wy -% chunk.width, chunk.pos.wz +% chunk.width, chunk.pos.voxelSize),
-				getOrGenerateFragment(chunk.pos.wx -% chunk.width, chunk.pos.wy +% chunk.width, chunk.pos.wz -% chunk.width, chunk.pos.voxelSize),
-				getOrGenerateFragment(chunk.pos.wx -% chunk.width, chunk.pos.wy +% chunk.width, chunk.pos.wz +% chunk.width, chunk.pos.voxelSize),
-				getOrGenerateFragment(chunk.pos.wx +% chunk.width, chunk.pos.wy -% chunk.width, chunk.pos.wz -% chunk.width, chunk.pos.voxelSize),
-				getOrGenerateFragment(chunk.pos.wx +% chunk.width, chunk.pos.wy -% chunk.width, chunk.pos.wz +% chunk.width, chunk.pos.voxelSize),
-				getOrGenerateFragment(chunk.pos.wx +% chunk.width, chunk.pos.wy +% chunk.width, chunk.pos.wz -% chunk.width, chunk.pos.voxelSize),
-				getOrGenerateFragment(chunk.pos.wx +% chunk.width, chunk.pos.wy +% chunk.width, chunk.pos.wz +% chunk.width, chunk.pos.voxelSize),
+				getOrGenerateFragmentAndIncreaseRefCount(chunk.pos.wx -% chunk.width, chunk.pos.wy -% chunk.width, chunk.pos.wz -% chunk.width, chunk.pos.voxelSize),
+				getOrGenerateFragmentAndIncreaseRefCount(chunk.pos.wx -% chunk.width, chunk.pos.wy -% chunk.width, chunk.pos.wz +% chunk.width, chunk.pos.voxelSize),
+				getOrGenerateFragmentAndIncreaseRefCount(chunk.pos.wx -% chunk.width, chunk.pos.wy +% chunk.width, chunk.pos.wz -% chunk.width, chunk.pos.voxelSize),
+				getOrGenerateFragmentAndIncreaseRefCount(chunk.pos.wx -% chunk.width, chunk.pos.wy +% chunk.width, chunk.pos.wz +% chunk.width, chunk.pos.voxelSize),
+				getOrGenerateFragmentAndIncreaseRefCount(chunk.pos.wx +% chunk.width, chunk.pos.wy -% chunk.width, chunk.pos.wz -% chunk.width, chunk.pos.voxelSize),
+				getOrGenerateFragmentAndIncreaseRefCount(chunk.pos.wx +% chunk.width, chunk.pos.wy -% chunk.width, chunk.pos.wz +% chunk.width, chunk.pos.voxelSize),
+				getOrGenerateFragmentAndIncreaseRefCount(chunk.pos.wx +% chunk.width, chunk.pos.wy +% chunk.width, chunk.pos.wz -% chunk.width, chunk.pos.voxelSize),
+				getOrGenerateFragmentAndIncreaseRefCount(chunk.pos.wx +% chunk.width, chunk.pos.wy +% chunk.width, chunk.pos.wz +% chunk.width, chunk.pos.voxelSize),
 			},
 		};
 	}
 
 	pub fn deinit(self: CaveMapView) void {
 		for(self.fragments) |mapFragment| {
-			mapFragmentDeinit(mapFragment);
+			mapFragment.decreaseRefCount();
 		}
 	}
 
@@ -285,14 +298,8 @@ pub const CaveMapView = struct {
 const cacheSize = 1 << 9; // Must be a power of 2!
 const cacheMask = cacheSize - 1;
 const associativity = 8; // 512 MiB Cache size
-var cache: Cache(CaveMapFragment, cacheSize, associativity, mapFragmentDeinit) = .{};
+var cache: Cache(CaveMapFragment, cacheSize, associativity, CaveMapFragment.decreaseRefCount) = .{};
 var profile: TerrainGenerationProfile = undefined;
-
-fn mapFragmentDeinit(mapFragment: *CaveMapFragment) void {
-	if(@atomicRmw(u16, &mapFragment.refCount.raw, .Sub, 1, .monotonic) == 1) {
-		main.globalAllocator.destroy(mapFragment);
-	}
-}
 
 fn cacheInit(pos: ChunkPosition) *CaveMapFragment {
 	const mapFragment = main.globalAllocator.create(CaveMapFragment);
@@ -323,14 +330,13 @@ pub fn deinit() void {
 	cache.clear();
 }
 
-fn getOrGenerateFragment(wx: i32, wy: i32, wz: i32, voxelSize: u31) *CaveMapFragment {
+fn getOrGenerateFragmentAndIncreaseRefCount(wx: i32, wy: i32, wz: i32, voxelSize: u31) *CaveMapFragment {
 	const compare = ChunkPosition {
 		.wx = wx & ~@as(i32, CaveMapFragment.widthMask*voxelSize | voxelSize-1),
 		.wy = wy & ~@as(i32, CaveMapFragment.widthMask*voxelSize | voxelSize-1),
 		.wz = wz & ~@as(i32, CaveMapFragment.heightMask*voxelSize | voxelSize-1),
 		.voxelSize = voxelSize,
 	};
-	const result = cache.findOrCreate(compare, cacheInit);
-	std.debug.assert(@atomicRmw(u16, &result.refCount.raw, .Add, 1, .monotonic) != 0);
+	const result = cache.findOrCreate(compare, cacheInit, CaveMapFragment.increaseRefCount);
 	return result;
 }
