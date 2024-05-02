@@ -32,7 +32,7 @@ pub fn readAllJsonFilesInAddons(externalAllocator: NeverFailingAllocator, addons
 			std.log.err("Got error while iterating addon directory {s}: {s}", .{subPath, @errorName(err)});
 			break :blk null;
 		}) |entry| {
-			if(entry.kind == .file and std.ascii.endsWithIgnoreCase(entry.basename, ".json")) {
+			if(entry.kind == .file and std.ascii.endsWithIgnoreCase(entry.basename, ".json") and !std.ascii.startsWithIgnoreCase(entry.path, "textures")) {
 				const folderName = addonName;
 				const id: []u8 = externalAllocator.alloc(u8, folderName.len + 1 + entry.path.len - 5);
 				errdefer externalAllocator.free(id);
