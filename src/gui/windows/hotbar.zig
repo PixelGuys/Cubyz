@@ -18,14 +18,14 @@ pub var window = GuiWindow {
 		.{ .attachedToFrame = .{.selfAttachmentPoint = .middle, .otherAttachmentPoint = .middle} },
 		.{ .attachedToFrame = .{.selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper} },
 	},
-	.contentSize = Vec2f{64*8, 64},
+	.contentSize = Vec2f{64*12, 64},
 	.isHud = true,
 	.showTitleBar = false,
 	.hasBackground = false,
 	.hideIfMouseIsGrabbed = false,
 };
 
-var itemSlots: [8]*ItemSlot = undefined;
+var itemSlots: [12]*ItemSlot = undefined;
 
 pub fn tryAddingItems(index: usize, source: *ItemStack, desiredAmount: u16) void {
 	Player.mutex.lock();
@@ -70,7 +70,7 @@ const vtable = ItemSlot.VTable {
 
 pub fn onOpen() void {
 	const list = HorizontalList.init();
-	for(0..8) |i| {
+	for(0..12) |i| {
 		itemSlots[i] = ItemSlot.init(.{0, 0}, Player.inventory__SEND_CHANGES_TO_SERVER.items[i], &vtable, i, .default, .normal);
 		list.add(itemSlots[i]);
 	}

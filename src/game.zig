@@ -257,8 +257,8 @@ pub fn update(deltaTime: f64) void {
 				}
 			}
 		}
-		Player.selectedSlot -%= @bitCast(@as(i32, @intFromFloat(main.Window.scrollOffset)));
-		Player.selectedSlot %= 8;
+		const newSlot: i32 = @as(i32, @intCast(Player.selectedSlot)) -% @as(i32, @intFromFloat(main.Window.scrollOffset));
+		Player.selectedSlot = @intCast(@mod(newSlot, 12));
 		main.Window.scrollOffset = 0;
 	}
 

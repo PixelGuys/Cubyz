@@ -21,7 +21,7 @@ pub var window = GuiWindow {
 		.{ .attachedToWindow = .{.reference = &hotbar.window, .selfAttachmentPoint = .middle, .otherAttachmentPoint = .middle} },
 		.{ .attachedToWindow = .{.reference = &hotbar.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .lower} },
 	},
-	.contentSize = Vec2f{64*8, 64*4},
+	.contentSize = Vec2f{64*10, 64*3},
 };
 
 const padding: f32 = 8;
@@ -36,7 +36,7 @@ pub fn deinit() void {
 	craftingIcon.deinit();
 }
 
-var itemSlots: [24]*ItemSlot = undefined;
+var itemSlots: [20]*ItemSlot = undefined;
 
 pub fn tryAddingItems(index: usize, source: *ItemStack, desiredAmount: u16) void {
 	Player.mutex.lock();
@@ -88,13 +88,12 @@ pub fn onOpen() void {
 		row.add(Button.initIcon(.{0, 0}, .{24, 24}, craftingIcon, true, gui.openWindowCallback("inventory_crafting")));
 		list.add(row);
 	}
-	// Inventory:
-	for(1..4) |y| {
+	for(0..2) |y| {
 		const row = HorizontalList.init();
-		for(0..8) |x| {
-			const index: usize = y*8 + x;
+		for(0..10) |x| {
+			const index: usize = 12 + y*10 + x;
 			const slot = ItemSlot.init(.{0, 0}, Player.inventory__SEND_CHANGES_TO_SERVER.items[index], &vtable, index, .default, .normal);
-			itemSlots[index - 8] = slot;
+			itemSlots[index - 12] = slot;
 			row.add(slot);
 		}
 		list.add(row);
@@ -114,7 +113,7 @@ pub fn onClose() void {
 pub fn update() void {
 	Player.mutex.lock();
 	defer Player.mutex.unlock();
-	for(&itemSlots, 8..) |slot, i| {
+	for(&itemSlots, 12..) |slot, i| {
 		slot.updateItemStack(Player.inventory__SEND_CHANGES_TO_SERVER.items[i]);
 	}
 }
