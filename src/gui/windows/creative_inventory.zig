@@ -33,12 +33,26 @@ pub fn trySwappingItems(index: usize, destination: *ItemStack) void {
 	destination.amount = destination.item.?.stackSize();
 }
 
+fn lessThan(_: void, lhs: Item, rhs: Item) bool {
+	if(lhs == .baseItem and rhs == .baseItem) {
+		const lhsFolders = std.mem.count(u8, lhs.baseItem.id, "/");
+		const rhsFolders = std.mem.count(u8, rhs.baseItem.id, "/");
+		if(lhsFolders < rhsFolders) return true;
+		if(lhsFolders > rhsFolders) return false;
+		return std.ascii.lessThanIgnoreCase(lhs.baseItem.id, rhs.baseItem.id);
+	} else {
+		if(lhs == .baseItem) return true;
+		return false;
+	}
+}
+
 pub fn onOpen() void {
 	items = main.List(Item).init(main.globalAllocator);
 	var itemIterator = main.items.iterator();
 	while(itemIterator.next()) |item| {
 		items.append(Item{.baseItem = item.*});
 	}
+	std.mem.sort(Item, items.items, {}, lessThan);
 
 	const list = VerticalList.init(.{padding, padding + 16}, 140, 0);
 	var i: u32 = 0;
