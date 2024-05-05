@@ -9,7 +9,7 @@
 	"interpolation" : "linear",
 	"chance" : 0,
 	
-	"music" : "DarkTimes",
+	"music" : "out_of_breath",
 
 	"parentBiomes" : [
 		{
