@@ -1,0 +1,11 @@
+{
+	"class" : "stone",
+	"hardness" : 2,
+	"drops" : [
+		"none"
+	],
+	"transparent" : true,
+	"absorbedLight" : 0xacacac,
+	"model" : "cube",
+	"texture" : "cubyz:glass/dark_grey"
+}

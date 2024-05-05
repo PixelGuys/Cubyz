@@ -5,7 +5,7 @@
 		"none"
 	],
 	"transparent" : true,
-	"absorbedLight" : 0x80ff01,
+	"absorbedLight" : 0x46c345,
 	"model" : "cube",
 	"texture" : "cubyz:glass/violet"
 }

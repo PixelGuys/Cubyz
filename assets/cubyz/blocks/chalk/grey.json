@@ -1,0 +1,10 @@
+{
+	"class" : "stone",
+	"hardness" : 6,
+	"drops" : [
+		"auto"
+	],
+	"model" : "cube",
+	"rotation" : "stairs",
+	"texture" : "cubyz:chalk/grey"
+}
