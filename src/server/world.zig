@@ -21,6 +21,8 @@ const server = @import("server.zig");
 const User = server.User;
 const Entity = server.Entity;
 
+const storage = @import("storage.zig");
+
 const ChunkManager = struct {
 	world: *ServerWorld,
 	terrainGenerationProfile: server.terrain.TerrainGenerationProfile,

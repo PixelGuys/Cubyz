@@ -11,6 +11,7 @@ const Vec3d = vec.Vec3d;
 pub const ServerWorld = @import("world.zig").ServerWorld;
 pub const terrain = @import("terrain/terrain.zig");
 pub const Entity = @import("Entity.zig");
+pub const storage = @import("storage.zig");
 
 
 pub const User = struct {

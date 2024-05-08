@@ -720,42 +720,13 @@ pub const Protocols = struct {
 	};
 	pub const chunkTransmission = struct {
 		pub const id: u8 = 3;
-		fn receive(_: *Connection, _data: []const u8) !void {
-			var data = _data;
-			const pos = chunk.ChunkPosition{
-				.wx = std.mem.readInt(i32, data[0..4], .big),
-				.wy = std.mem.readInt(i32, data[4..8], .big),
-				.wz = std.mem.readInt(i32, data[8..12], .big),
-				.voxelSize = @intCast(std.mem.readInt(i32, data[12..16], .big)),
-			};
-			const _inflatedData = main.stackAllocator.alloc(u8, chunk.chunkVolume*4);
-			defer main.stackAllocator.free(_inflatedData);
-			const _inflatedLen = try utils.Compression.inflateTo(_inflatedData, data[16..]);
-			if(_inflatedLen != chunk.chunkVolume*4) {
-				std.log.err("Transmission of chunk has invalid size: {}. Input data: {any}, After inflate: {any}", .{_inflatedLen, data, _inflatedData[0.._inflatedLen]});
-			}
-			data = _inflatedData;
-			const ch = chunk.Chunk.init(pos);
-			for(0..chunk.chunkVolume) |i| {
-				ch.data.setValue(i, Block.fromInt(std.mem.readInt(u32, data[0..4], .big)));
-				data = data[4..];
-			}
+		fn receive(_: *Connection, data: []const u8) !void {
+			const ch = try main.server.storage.ChunkCompression.decompressChunk(data);
 			renderer.mesh_storage.updateChunkMesh(ch);
 		}
 		fn sendChunkOverTheNetwork(conn: *Connection, ch: *chunk.Chunk) void {
-			var uncompressedData: [chunk.chunkVolume*@sizeOf(u32)]u8 = undefined;
-			for(0..chunk.chunkVolume) |i| {
-				std.mem.writeInt(u32, uncompressedData[4*i..][0..4], ch.data.getValue(i).toInt(), .big);
-			}
-			const compressedData = utils.Compression.deflate(main.stackAllocator, &uncompressedData);
-			defer main.stackAllocator.free(compressedData);
-			const data = main.stackAllocator.alloc(u8, 16 + compressedData.len);
+			const data = main.server.storage.ChunkCompression.compressChunk(main.stackAllocator, ch);
 			defer main.stackAllocator.free(data);
-			@memcpy(data[16..], compressedData);
-			std.mem.writeInt(i32, data[0..4], ch.pos.wx, .big);
-			std.mem.writeInt(i32, data[4..8], ch.pos.wy, .big);
-			std.mem.writeInt(i32, data[8..12], ch.pos.wz, .big);
-			std.mem.writeInt(i32, data[12..16], ch.pos.voxelSize, .big);
 			conn.sendImportant(id, data);
 		}
 		fn sendChunkLocally(ch: *chunk.Chunk) void {
