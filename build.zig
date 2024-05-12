@@ -62,6 +62,7 @@ pub fn build(b: *std.Build) !void {
 		exe.linkSystemLibrary("X11");
 		exe.addLibraryPath(.{.path="/usr/local/GL/lib"});
 		exe.addLibraryPath(.{.path="/opt/X11/lib"});
+		exe.addRPath(.{.path="../Library"});
 	} else {
 		std.log.err("Unsupported target: {}\n", .{t.os.tag});
 	}
