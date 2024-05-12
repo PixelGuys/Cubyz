@@ -26,6 +26,10 @@ pub fn openDir(path: []const u8) !Dir {
 	};
 }
 
+pub fn makeDir(path: []const u8) !void {
+	try std.fs.cwd().makePath(path);
+}
+
 fn cwd() Dir {
 	return Dir {
 		.dir = std.fs.cwd(),

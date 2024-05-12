@@ -1,13 +1,15 @@
 const std = @import("std");
+const Atomic = std.atomic.Value;
 
 const main = @import("root");
 const chunk = main.chunk;
+const server = @import("server.zig");
 
 pub const RegionFile = struct {
 	const version = 0;
-	const regionShift = 2;
-	const regionSize = 1 << regionShift;
-	const regionVolume = 1 << 3*regionShift;
+	pub const regionShift = 2;
+	pub const regionSize = 1 << regionShift;
+	pub const regionVolume = 1 << 3*regionShift;
 
 	const headerSize = 8 + regionSize*regionSize*regionSize*@sizeOf(u32);
 
@@ -15,6 +17,8 @@ pub const RegionFile = struct {
 	pos: chunk.ChunkPosition,
 	mutex: std.Thread.Mutex = .{},
 	modified: bool = false,
+	refCount: Atomic(u16) = Atomic(u16).init(1),
+	saveFolder: []const u8,
 
 	fn getIndex(x: usize, y: usize, z: usize) usize {
 		std.debug.assert(x < regionSize and y < regionSize and z < regionSize);
@@ -28,6 +32,7 @@ pub const RegionFile = struct {
 		const self = main.globalAllocator.create(RegionFile);
 		self.* = .{
 			.pos = pos,
+			.saveFolder = main.globalAllocator.dupe(u8, saveFolder),
 		};
 
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}/{}/{}.region", .{saveFolder, pos.voxelSize, pos.wx, pos.wy, pos.wz}) catch unreachable;
@@ -49,7 +54,7 @@ pub const RegionFile = struct {
 			std.log.err("Region file {s} has incorrect version {}. Requires version {}.", .{path, fileVersion, version});
 			return self;
 		}
-		const sizes: [regionVolume] u32 = undefined;
+		var sizes: [regionVolume] u32 = undefined;
 		var totalSize: usize = 0;
 		for(0..regionVolume) |j| {
 			const size = std.mem.readInt(u32, data[i..][0..4], .big);
@@ -70,17 +75,36 @@ pub const RegionFile = struct {
 			}
 		}
 		std.debug.assert(i == data.len);
+		return self;
 	}
 
 	pub fn deinit(self: *RegionFile) void {
+		std.debug.assert(self.refCount.raw == 0);
 		std.debug.assert(!self.modified);
 		for(self.chunks) |ch| {
 			main.globalAllocator.free(ch);
 		}
+		main.globalAllocator.free(self.saveFolder);
 		main.globalAllocator.destroy(self);
 	}
 
-	pub fn store(self: *RegionFile, saveFolder: []const u8) void {
+	pub fn increaseRefCount(self: *RegionFile) void {
+		const prevVal = self.refCount.fetchAdd(1, .monotonic);
+		std.debug.assert(prevVal != 0);
+	}
+
+	pub fn decreaseRefCount(self: *RegionFile) void {
+		const prevVal = self.refCount.fetchSub(1, .monotonic);
+		std.debug.assert(prevVal != 0);
+		if(prevVal == 1) {
+			if(self.modified) {
+				self.store();
+			}
+			self.deinit();
+		}
+	}
+
+	pub fn store(self: *RegionFile) void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
 		self.modified = false;
@@ -95,6 +119,7 @@ pub const RegionFile = struct {
 		}
 
 		const data = main.stackAllocator.alloc(u8, totalSize + headerSize);
+		defer main.stackAllocator.free(data);
 		var i: usize = 0;
 		std.mem.writeInt(u32, data[i..][0..4], version, .big);
 		i += 4;
@@ -113,8 +138,14 @@ pub const RegionFile = struct {
 		}
 		std.debug.assert(i == data.len);
 
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}/{}/{}.region", .{saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy, self.pos.wz}) catch unreachable;
+		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}/{}/{}.region", .{self.saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy, self.pos.wz}) catch unreachable;
 		defer main.stackAllocator.free(path);
+		const folder = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}/{}", .{self.saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy}) catch unreachable;
+		defer main.stackAllocator.free(folder);
+
+		main.files.makeDir(folder) catch |err| {
+			std.log.err("Error while writing to file {s}: {s}", .{path, @errorName(err)});
+		};
 
 		main.files.write(path, data) catch |err| {
 			std.log.err("Error while writing to file {s}: {s}", .{path, @errorName(err)});
@@ -124,20 +155,59 @@ pub const RegionFile = struct {
 	pub fn storeChunk(self: *RegionFile, ch: []const u8, relX: usize, relY: usize, relZ: usize) void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
+		self.modified = true;
 		const index = getIndex(relX, relY, relZ);
 		self.chunks[index] = main.globalAllocator.realloc(self.chunks[index], ch.len);
 		@memcpy(self.chunks[index], ch);
 	}
+
+	pub fn getChunk(self: *RegionFile, allocator: main.utils.NeverFailingAllocator, relX: usize, relY: usize, relZ: usize) ?[]const u8 {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+		const index = getIndex(relX, relY, relZ);
+		const ch = self.chunks[index];
+		if(ch.len == 0) return null;
+		return allocator.dupe(u8, ch);
+	}
 };
+
+
+const cacheSize = 1 << 8; // Must be a power of 2!
+const cacheMask = cacheSize - 1;
+const associativity = 8;
+var cache: main.utils.Cache(RegionFile, cacheSize, associativity, RegionFile.decreaseRefCount) = .{};
+
+fn cacheInit(pos: chunk.ChunkPosition) *RegionFile {
+	const path: []const u8 = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/chunks", .{server.world.?.name}) catch unreachable;
+	defer main.stackAllocator.free(path);
+	return RegionFile.init(pos, path);
+}
+
+pub fn init() void {
+}
+
+pub fn deinit() void {
+	cache.clear();
+}
+
+pub fn loadRegionFileAndIncreaseRefCount(wx: i32, wy: i32, wz: i32, voxelSize: u31) *RegionFile {
+	const compare = chunk.ChunkPosition {
+		.wx = wx & ~@as(i32, RegionFile.regionSize*voxelSize - 1),
+		.wy = wy & ~@as(i32, RegionFile.regionSize*voxelSize - 1),
+		.wz = wz & ~@as(i32, RegionFile.regionSize*voxelSize - 1),
+		.voxelSize = voxelSize,
+	};
+	const result = cache.findOrCreate(compare, cacheInit, RegionFile.increaseRefCount);
+	return result;
+}
 
 pub const ChunkCompression = struct {
 	const CompressionAlgo = enum(u32) {
-		deflate = 0,
-		_,
+		deflate = 0, // TODO: Investigate if palette compression (or palette compression with huffman coding) is more efficient.
+		_, // TODO: Add more algorithms for specific cases like uniform chunks.
 	};
 	pub fn compressChunk(allocator: main.utils.NeverFailingAllocator, ch: *chunk.Chunk) []const u8 {
-		ch.mutex.lock();
-		defer ch.mutex.unlock();
+		main.utils.assertLocked(&ch.mutex);
 		var uncompressedData: [chunk.chunkVolume*@sizeOf(u32)]u8 = undefined;
 		for(0..chunk.chunkVolume) |i| {
 			std.mem.writeInt(u32, uncompressedData[4*i..][0..4], ch.data.getValue(i).toInt(), .big);

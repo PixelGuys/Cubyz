@@ -174,8 +174,6 @@ pub const Chunk = struct {
 	data: main.utils.PaletteCompressedRegion(Block, chunkVolume) = undefined,
 
 	wasChanged: bool = false,
-	/// When a chunk is cleaned, it won't be saved by the ChunkManager anymore, so following changes need to be saved directly.
-	wasCleaned: bool = false,
 	generated: bool = false,
 
 	width: u31,
@@ -208,35 +206,6 @@ pub const Chunk = struct {
 		memoryPoolMutex.lock();
 		memoryPool.destroy(@alignCast(self));
 		memoryPoolMutex.unlock();
-	}
-
-	pub fn setChanged(self: *Chunk) void {
-		self.wasChanged = true;
-		{
-			self.mutex.lock();
-			if(self.wasCleaned) {
-				self.save();
-			}
-			self.mutex.unlock();
-		}
-	}
-
-	pub fn clean(self: *Chunk) void {
-		{
-			self.mutex.lock();
-			self.wasCleaned = true;
-			self.save();
-			self.mutex.unlock();
-		}
-	}
-
-	pub fn unclean(self: *Chunk) void {
-		{
-			self.mutex.lock();
-			self.wasCleaned = false;
-			self.save();
-			self.mutex.unlock();
-		}
 	}
 
 	/// Checks if the given relative coordinates lie within the bounds of this chunk.
@@ -278,6 +247,17 @@ pub const Chunk = struct {
 		self.data.setValue(index, newBlock);
 	}
 
+	/// Updates a block if it is inside this chunk.
+	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
+	pub fn updateBlockAndSetChanged(self: *Chunk, _x: i32, _y: i32, _z: i32, newBlock: Block) void {
+		const x = _x >> self.voxelSizeShift;
+		const y = _y >> self.voxelSizeShift;
+		const z = _z >> self.voxelSizeShift;
+		const index = getIndex(x, y, z);
+		self.data.setValue(index, newBlock);
+		self.wasChanged = true;
+	}
+
 	/// Updates a block if it is inside this chunk. Should be used in generation to prevent accidently storing these as changes.
 	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
 	pub fn updateBlockInGeneration(self: *Chunk, _x: i32, _y: i32, _z: i32, newBlock: Block) void {
@@ -299,32 +279,32 @@ pub const Chunk = struct {
 	}
 
 	pub fn updateFromLowerResolution(self: *Chunk, other: *const Chunk) void {
-		const xOffset = if(other.wx != self.wx) chunkSize/2 else 0; // Offsets of the lower resolution chunk in this chunk.
-		const yOffset = if(other.wy != self.wy) chunkSize/2 else 0;
-		const zOffset = if(other.wz != self.wz) chunkSize/2 else 0;
+		const xOffset = if(other.pos.wx != self.pos.wx) chunkSize/2 else 0; // Offsets of the lower resolution chunk in this chunk.
+		const yOffset = if(other.pos.wy != self.pos.wy) chunkSize/2 else 0;
+		const zOffset = if(other.pos.wz != self.pos.wz) chunkSize/2 else 0;
 		
-		var x: i32 = 0;
+		var x: u31 = 0;
 		while(x < chunkSize/2): (x += 1) {
-			var y: i32 = 0;
+			var y: u31 = 0;
 			while(y < chunkSize/2): (y += 1) {
-				var z: i32 = 0;
+				var z: u31 = 0;
 				while(z < chunkSize/2): (z += 1) {
 					// Count the neighbors for each subblock. An transparent block counts 5. A chunk border(unknown block) only counts 1.
-					var neighborCount: [8]u32 = undefined;
+					var neighborCount: [8]u31 = undefined;
 					var octantBlocks: [8]Block = undefined;
-					var maxCount: u32 = 0;
-					var dx: i32 = 0;
+					var maxCount: i32 = 0;
+					var dx: u31 = 0;
 					while(dx <= 1): (dx += 1) {
-						var dy: i32 = 0;
+						var dy: u31 = 0;
 						while(dy <= 1): (dy += 1) {
-							var dz: i32 = 0;
+							var dz: u31 = 0;
 							while(dz <= 1): (dz += 1) {
 								const index = getIndex(x*2 + dx, y*2 + dy, z*2 + dz);
 								const i = dx*4 + dz*2 + dy;
 								octantBlocks[i] = other.data.getValue(index);
-								if(octantBlocks[i] == 0) continue; // I don't care about air blocks.
+								if(octantBlocks[i].typ == 0) continue; // I don't care about air blocks.
 								
-								var count: u32 = 0;
+								var count: u31 = 0;
 								for(Neighbors.iterable) |n| {
 									const nx = x*2 + dx + Neighbors.relX[n];
 									const ny = y*2 + dy + Neighbors.relY[n];
@@ -345,7 +325,7 @@ pub const Chunk = struct {
 					}
 					// Uses a specific permutation here that keeps high resolution patterns in lower resolution.
 					const permutationStart = (x & 1)*4 + (z & 1)*2 + (y & 1);
-					const block = Block{.typ = 0, .data = 0};
+					var block = Block{.typ = 0, .data = 0};
 					for(0..8) |i| {
 						const appliedPermutation = permutationStart ^ i;
 						if(neighborCount[appliedPermutation] >= maxCount - 1) { // Avoid pattern breaks at chunk borders.
@@ -358,24 +338,36 @@ pub const Chunk = struct {
 				}
 			}
 		}
-		
-		self.setChanged();
+
+		self.wasChanged = true;
 	}
 
 	pub fn save(self: *Chunk, world: *main.server.ServerWorld) void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
 		if(self.wasChanged) {
-			// TODO: Actually store the chunk
+			const regionSize = self.pos.voxelSize*chunkSize*main.server.storage.RegionFile.regionSize;
+			const regionMask: i32 = regionSize - 1;
+			const region = main.server.storage.loadRegionFileAndIncreaseRefCount(self.pos.wx & ~regionMask, self.pos.wy & ~regionMask, self.pos.wz & ~regionMask, self.pos.voxelSize);
+			defer region.decreaseRefCount();
+			const data = main.server.storage.ChunkCompression.compressChunk(main.stackAllocator, self);
+			defer main.stackAllocator.free(data);
+			region.storeChunk(
+				data,
+				@as(usize, @intCast(self.pos.wx -% region.pos.wx))/self.pos.voxelSize/chunkSize,
+				@as(usize, @intCast(self.pos.wy -% region.pos.wy))/self.pos.voxelSize/chunkSize,
+				@as(usize, @intCast(self.pos.wz -% region.pos.wz))/self.pos.voxelSize/chunkSize,
+			);
+
 			self.wasChanged = false;
 			// Update the next lod chunk:
 			if(self.pos.voxelSize != 1 << settings.highestLOD) {
 				var pos = self.pos;
-				pos.wx &= ~pos.voxelSize;
-				pos.wy &= ~pos.voxelSize;
-				pos.wz &= ~pos.voxelSize;
+				pos.wx &= ~(pos.voxelSize*chunkSize);
+				pos.wy &= ~(pos.voxelSize*chunkSize);
+				pos.wz &= ~(pos.voxelSize*chunkSize);
 				pos.voxelSize *= 2;
-				const nextHigherLod = world.chunkManager.getOrGenerateChunk(pos);
+				const nextHigherLod = world.getOrGenerateChunk(pos);
 				nextHigherLod.updateFromLowerResolution(self);
 			}
 		}

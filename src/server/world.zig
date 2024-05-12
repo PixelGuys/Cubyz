@@ -153,6 +153,7 @@ const ChunkManager = struct {
 			.terrainGenerationProfile = try server.terrain.TerrainGenerationProfile.init(settings, world.seed),
 		};
 		server.terrain.init(self.terrainGenerationProfile);
+		storage.init();
 		return self;
 	}
 
@@ -162,6 +163,7 @@ const ChunkManager = struct {
 		server.terrain.deinit();
 		main.assets.unloadAssets();
 		self.terrainGenerationProfile.deinit();
+		storage.deinit();
 	}
 
 	pub fn queueLightMap(self: ChunkManager, pos: terrain.SurfaceMap.MapFragmentPosition, source: ?*User) void {
@@ -188,9 +190,24 @@ const ChunkManager = struct {
 	}
 
 	fn chunkInitFunctionForCache(pos: ChunkPosition) *Chunk {
+		const regionSize = pos.voxelSize*chunk.chunkSize*storage.RegionFile.regionSize;
+		const regionMask: i32 = regionSize - 1;
+		const region = storage.loadRegionFileAndIncreaseRefCount(pos.wx & ~regionMask, pos.wy & ~regionMask, pos.wz & ~regionMask, pos.voxelSize);
+		defer region.decreaseRefCount();
+		if(region.getChunk(
+			main.stackAllocator,
+			@as(usize, @intCast(pos.wx -% region.pos.wx))/pos.voxelSize/chunk.chunkSize,
+			@as(usize, @intCast(pos.wy -% region.pos.wy))/pos.voxelSize/chunk.chunkSize,
+			@as(usize, @intCast(pos.wz -% region.pos.wz))/pos.voxelSize/chunk.chunkSize,
+		)) |ch| blk: { // Load chunk from file:
+			defer main.stackAllocator.free(ch);
+			return storage.ChunkCompression.decompressChunk(ch) catch {
+				std.log.err("Storage for chunk {} in region file at {} is corrupted", .{pos, region.pos});
+				break :blk;
+			};
+		}
 		const ch = Chunk.init(pos);
 		ch.generated = true;
-		// TODO: Try loading chunk from file
 		const caveMap = terrain.CaveMap.CaveMapView.init(ch);
 		defer caveMap.deinit();
 		const biomeMap = terrain.CaveBiomeMap.CaveBiomeMapView.init(ch);
@@ -207,10 +224,14 @@ const ChunkManager = struct {
 	}
 	/// Generates a normal chunk at a given location, or if possible gets it from the cache.
 	pub fn getOrGenerateChunk(pos: ChunkPosition) *Chunk { // TODO: This is not thread safe! The chunk could get removed from the cache while in use. Reference counting should probably be used here.
+		const mask = pos.voxelSize*chunk.chunkSize - 1;
+		std.debug.assert(pos.wx & mask == 0 and pos.wy & mask == 0 and pos.wz & mask == 0);
 		return chunkCache.findOrCreate(pos, chunkInitFunctionForCache, null);
 	}
 
 	pub fn getChunkFromCache(pos: ChunkPosition) ?*Chunk {
+		const mask = pos.voxelSize*chunk.chunkSize - 1;
+		std.debug.assert(pos.wx & mask == 0 and pos.wy & mask == 0 and pos.wz & mask == 0);
 		return chunkCache.find(pos);
 	}
 };
@@ -307,7 +328,7 @@ pub const ServerWorld = struct {
 			.milliTime = std.time.milliTimestamp(),
 			.lastUnimportantDataSent = std.time.milliTimestamp(),
 			.seed = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp()))),
-			.name = name,
+			.name = main.globalAllocator.dupe(u8, name),
 		};
 		self.itemDropManager.init(main.globalAllocator, self, self.gravity);
 		errdefer self.itemDropManager.deinit();
@@ -355,6 +376,7 @@ pub const ServerWorld = struct {
 		self.itemDropManager.deinit();
 		self.blockPalette.deinit();
 		self.wio.deinit();
+		main.globalAllocator.free(self.name);
 		main.globalAllocator.destroy(self);
 	}
 
@@ -463,6 +485,10 @@ pub const ServerWorld = struct {
 		_ = z;
 		// TODO
 		return null;
+	}
+
+	pub fn getOrGenerateChunk(_: *ServerWorld, pos: chunk.ChunkPosition) *Chunk {
+		return ChunkManager.getOrGenerateChunk(pos);
 	}
 
 	pub fn getBiome(_: *const ServerWorld, wx: i32, wy: i32, wz: i32) *const terrain.biomes.Biome {

@@ -748,8 +748,7 @@ pub const MeshSelection = struct {
 							if(itemBlock == block.typ) {
 								const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
 								if(rotationMode.generateData(main.game.world.?, selectedPos, relPos, lastDir, neighborDir, &block, false)) {
-									// TODO: world.updateBlock(bi.x, bi.y, bi.z, block.data); (→ Sending it over the network)
-									mesh_storage.updateBlock(selectedPos[0], selectedPos[1], selectedPos[2], block);
+									updateBlockAndSendUpdate(selectedPos[0], selectedPos[1], selectedPos[2], block);
 									_ = inventoryStack.add(item, @as(i32, -1));
 									return;
 								}
@@ -761,8 +760,7 @@ pub const MeshSelection = struct {
 							block = mesh_storage.getBlock(neighborPos[0], neighborPos[1], neighborPos[2]) orelse return;
 							if(block.typ == itemBlock) {
 								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, &block, false)) {
-									// TODO: world.updateBlock(bi.x, bi.y, bi.z, block.data); (→ Sending it over the network)
-									mesh_storage.updateBlock(neighborPos[0], neighborPos[1], neighborPos[2], block);
+									updateBlockAndSendUpdate(neighborPos[0], neighborPos[1], neighborPos[2], block);
 									_ = inventoryStack.add(item, @as(i32, -1));
 									return;
 								}
@@ -772,8 +770,7 @@ pub const MeshSelection = struct {
 								block.typ = itemBlock;
 								block.data = 0;
 								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, &block, true)) {
-									// TODO: world.updateBlock(bi.x, bi.y, bi.z, block.data); (→ Sending it over the network)
-									mesh_storage.updateBlock(neighborPos[0], neighborPos[1], neighborPos[2], block);
+									updateBlockAndSendUpdate(neighborPos[0], neighborPos[1], neighborPos[2], block);
 									_ = inventoryStack.add(item, @as(i32, -1));
 									return;
 								}
@@ -798,8 +795,7 @@ pub const MeshSelection = struct {
 						if(baseItem.leftClickUse) |leftClick| {
 							const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
 							if(leftClick(main.game.world.?, selectedPos, relPos, lastDir, &block)) {
-								// TODO: world.updateBlock(bi.x, bi.y, bi.z, block.data); (→ Sending it over the network)
-								mesh_storage.updateBlock(selectedPos[0], selectedPos[1], selectedPos[2], block);
+								updateBlockAndSendUpdate(selectedPos[0], selectedPos[1], selectedPos[2], block);
 							}
 							return;
 						}
@@ -807,8 +803,13 @@ pub const MeshSelection = struct {
 					else => {},
 				}
 			}
-			mesh_storage.updateBlock(selectedPos[0], selectedPos[1], selectedPos[2], .{.typ = 0, .data = 0});
+			updateBlockAndSendUpdate(selectedPos[0], selectedPos[1], selectedPos[2], .{.typ = 0, .data = 0});
 		}
+	}
+
+	fn updateBlockAndSendUpdate(x: i32, y: i32, z: i32, newBlock: blocks.Block) void {
+		main.network.Protocols.blockUpdate.send(main.game.world.?.conn, x, y, z, newBlock);
+		mesh_storage.updateBlock(x, y, z, newBlock);
 	}
 
 	pub fn drawCube(projectionMatrix: Mat4f, viewMatrix: Mat4f, relativePositionToPlayer: Vec3d, min: Vec3f, max: Vec3f) void {
