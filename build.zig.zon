@@ -3,14 +3,39 @@
 	.version = "0.0.0",
 	.paths = .{""},
 	.dependencies = .{
-		.deps_local = .{
-			.path = "../Cubyz-libs/zig-out", // macos has no official deps release
+		.local = .{
+			.path = "../Cubyz-libs/zig-out", // Local alternative to the cubyz_deps below
 			.lazy = true,
 		},
-		.deps = .{
-			//.url = "file:../Cubyz-libs/zig-out.tar.gz", // fetching the lib from the local folder
-			.url = "https://github.com/PixelGuys/Cubyz-libs/releases/download/2/zig-out.tar.gz",
-			.hash = "12201446153e8822c020a10199880fae5fac7eb3f1e3f7c7a9b653e58914fa3e2223",
+		.cubyz_deps_aarch64_macos_none = .{
+			.url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/TODO/cubyz_deps_aarch64-macos-none.tar.gz",
+			.hash = "12640000000000000000000000000000000000000000000000000000000000000000",
+			.lazy = true,
+		},
+		.cubyz_deps_aarch64_linux_musl = .{
+			.url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/TODO/cubyz_deps_aarch64-linux-musl.tar.gz",
+			.hash = "12640000000000000000000000000000000000000000000000000000000000000000",
+			.lazy = true,
+		},
+		.cubyz_deps_aarch64_windows_gnu = .{
+			.url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/TODO/cubyz_deps_aarch64-windows-gnu.tar.gz",
+			.hash = "12640000000000000000000000000000000000000000000000000000000000000000",
+			.lazy = true,
+		},
+		.cubyz_deps_x86_64_macos_none = .{
+			.url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/TODO/cubyz_deps_x86_64-macos-none.tar.gz",
+			.hash = "12640000000000000000000000000000000000000000000000000000000000000000",
+			.lazy = true,
+		},
+		.cubyz_deps_x86_64_linux_musl = .{
+			.url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/TODO/cubyz_deps_x86_64-linux-musl.tar.gz",
+			.hash = "12640000000000000000000000000000000000000000000000000000000000000000",
+			.lazy = true,
+		},
+		.cubyz_deps_x86_64_windows_gnu = .{
+			.url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/TODO/cubyz_deps_x86_64-windows-gnu.tar.gz",
+			.hash = "12640000000000000000000000000000000000000000000000000000000000000000",
+			.lazy = true,
 		},
 	},
 }

@@ -21,8 +21,19 @@ pub fn build(b: *std.Build) !void {
 	exe.linkLibC();
 	exe.linkLibCpp();
 
-	// For the time being, MacOS cubyz_deps will not have released binaries.
-	const depsName = if (t.os.tag == .macos) "deps_local" else "deps";
+	const depsLib = b.fmt("cubyz_deps_{s}", .{
+		t.linuxTriple(b.allocator) catch unreachable,
+	});
+
+	var depsName: []const u8 = depsLib;
+	if (b.option(bool, "local", "Use local cubyz_deps") orelse (t.os.tag == .macos)) { depsName = "local"; }
+	else {
+		const targetName = b.allocator.alloc(u8, depsLib.len) catch unreachable;
+		// build.zig.zon does not support hyphenated deps :(
+		_ = std.mem.replace(u8, depsName, "-", "_", targetName);
+		depsName = targetName;
+	}
+
 	const deps = b.lazyDependency(depsName, .{
 		.target = target,
 		.optimize = optimize,
@@ -35,7 +46,7 @@ pub fn build(b: *std.Build) !void {
 
 	exe.addLibraryPath(deps.path("lib"));
 	exe.addIncludePath(deps.path("include"));
-	exe.linkSystemLibrary("cubyz_deps");
+	exe.linkSystemLibrary(depsLib);
 	exe.addRPath(deps.path("lib")); // TODO: Maybe move the library next to the executable, to make this more portable?
 
 	if(t.os.tag == .windows) {
