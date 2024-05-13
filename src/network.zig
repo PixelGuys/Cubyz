@@ -817,12 +817,10 @@ pub const Protocols = struct {
 			const y = std.mem.readInt(i32, data[4..8], .big);
 			const z = std.mem.readInt(i32, data[8..12], .big);
 			const newBlock = Block.fromInt(std.mem.readInt(u32, data[12..16], .big));
-			if(conn.user != null) {
-				// TODO: Store changes in batches to reduce cost of singe block updates.
+			if(conn.user != null) { // TODO: Send update event to other players.
 				const mask = ~@as(i32, chunk.chunkMask);
 				const ch = main.server.world.?.getOrGenerateChunk(.{.wx = x & mask, .wy = y & mask, .wz = z & mask, .voxelSize = 1});
 				ch.updateBlockAndSetChanged(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask, newBlock);
-				ch.save(main.server.world.?);
 			} else {
 				renderer.mesh_storage.updateBlock(x, y, z, newBlock);
 			}

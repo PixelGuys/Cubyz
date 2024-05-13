@@ -440,9 +440,6 @@ pub fn main() void {
 		}
 	}
 
-	// Make sure that threadPool is done before freeing any data
-	threadPool.clear();
-
 	if(game.world) |world| {
 		world.deinit();
 		game.world = null;

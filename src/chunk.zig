@@ -202,6 +202,9 @@ pub const Chunk = struct {
 	}
 
 	pub fn deinit(self: *Chunk) void {
+		if(self.wasChanged) {
+			self.save(main.server.world.?);
+		}
 		self.data.deinit();
 		memoryPoolMutex.lock();
 		memoryPool.destroy(@alignCast(self));
@@ -278,10 +281,13 @@ pub const Chunk = struct {
 		return self.data.getValue(index);
 	}
 
-	pub fn updateFromLowerResolution(self: *Chunk, other: *const Chunk) void {
+	pub fn updateFromLowerResolution(self: *Chunk, other: *Chunk) void {
 		const xOffset = if(other.pos.wx != self.pos.wx) chunkSize/2 else 0; // Offsets of the lower resolution chunk in this chunk.
 		const yOffset = if(other.pos.wy != self.pos.wy) chunkSize/2 else 0;
 		const zOffset = if(other.pos.wz != self.pos.wz) chunkSize/2 else 0;
+		self.mutex.lock();
+		defer self.mutex.unlock();
+		main.utils.assertLocked(&other.mutex);
 		
 		var x: u31 = 0;
 		while(x < chunkSize/2): (x += 1) {
@@ -302,7 +308,10 @@ pub const Chunk = struct {
 								const index = getIndex(x*2 + dx, y*2 + dy, z*2 + dz);
 								const i = dx*4 + dz*2 + dy;
 								octantBlocks[i] = other.data.getValue(index);
-								if(octantBlocks[i].typ == 0) continue; // I don't care about air blocks.
+								if(octantBlocks[i].typ == 0) {
+									neighborCount[i] = 0;
+									continue; // I don't care about air blocks.
+								}
 								
 								var count: u31 = 0;
 								for(Neighbors.iterable) |n| {

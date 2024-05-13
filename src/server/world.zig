@@ -158,8 +158,9 @@ const ChunkManager = struct {
 	}
 
 	pub fn deinit(self: ChunkManager) void {
-		// TODO: Save chunks
-		chunkCache.clear();
+		for(0..main.settings.highestLOD) |_| {
+			chunkCache.clear();
+		}
 		server.terrain.deinit();
 		main.assets.unloadAssets();
 		self.terrainGenerationProfile.deinit();
@@ -180,7 +181,7 @@ const ChunkManager = struct {
 		const ch = getOrGenerateChunk(pos);
 		if(source) |_source| {
 			main.network.Protocols.chunkTransmission.sendChunk(_source.conn, ch);
-		} else { // TODO: This feature was temporarily removed to keep compatibility with the zig version.
+		} else {
 			server.mutex.lock();
 			defer server.mutex.unlock();
 			for(server.users.items) |user| {
@@ -220,7 +221,6 @@ const ChunkManager = struct {
 
 	fn chunkDeinitFunctionForCache(ch: *Chunk) void {
 		ch.deinit();
-		// TODO: Store chunk.
 	}
 	/// Generates a normal chunk at a given location, or if possible gets it from the cache.
 	pub fn getOrGenerateChunk(pos: ChunkPosition) *Chunk { // TODO: This is not thread safe! The chunk could get removed from the cache while in use. Reference counting should probably be used here.

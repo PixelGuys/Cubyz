@@ -126,18 +126,18 @@ pub const World = struct {
 
 	pub fn deinit(self: *World) void {
 		// TODO: Close all world related guis.
+		main.threadPool.clear();
 		self.conn.deinit();
 		self.itemDrops.deinit();
 		self.blockPalette.deinit();
 		Player.inventory__SEND_CHANGES_TO_SERVER.deinit(main.globalAllocator);
 		self.manager.deinit();
-		assets.unloadAssets();
 		main.server.stop();
-		main.threadPool.clear();
 		if(main.server.thread) |serverThread| {
 			serverThread.join();
 			main.server.thread = null;
 		}
+		assets.unloadAssets();
 	}
 
 	pub fn finishHandshake(self: *World, json: JsonElement) !void {
