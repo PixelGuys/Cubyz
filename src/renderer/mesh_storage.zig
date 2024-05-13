@@ -925,6 +925,7 @@ pub fn updateMeshes(targetTime: i64) void {
 		mesh.needsMeshUpdate = false;
 		if(getNodePointer(mesh.pos).mesh != mesh) {
 			mutex.unlock();
+			defer mutex.lock();
 			mesh.decreaseRefCount();
 			continue;
 		}
