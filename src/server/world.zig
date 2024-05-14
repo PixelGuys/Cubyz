@@ -320,6 +320,21 @@ pub const ServerWorld = struct {
 
 	wio: WorldIO = undefined,
 
+	mutex: std.Thread.Mutex = .{},
+
+	chunkUpdateQueue: main.utils.CircularBufferQueue(ChunkUpdateRequest),
+	regionUpdateQueue: main.utils.CircularBufferQueue(RegionUpdateRequest),
+
+	const ChunkUpdateRequest = struct {
+		ch: *Chunk,
+		milliTimeStamp: i64,
+	};
+
+	const RegionUpdateRequest = struct {
+		region: *storage.RegionFile,
+		milliTimeStamp: i64,
+	};
+
 	pub fn init(name: []const u8, nullGeneratorSettings: ?JsonElement) !*ServerWorld {
 		const self = main.globalAllocator.create(ServerWorld);
 		errdefer main.globalAllocator.destroy(self);
@@ -329,6 +344,8 @@ pub const ServerWorld = struct {
 			.lastUnimportantDataSent = std.time.milliTimestamp(),
 			.seed = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp()))),
 			.name = main.globalAllocator.dupe(u8, name),
+			.chunkUpdateQueue = main.utils.CircularBufferQueue(ChunkUpdateRequest).init(main.globalAllocator, 256),
+			.regionUpdateQueue = main.utils.CircularBufferQueue(RegionUpdateRequest).init(main.globalAllocator, 256),
 		};
 		self.itemDropManager.init(main.globalAllocator, self, self.gravity);
 		errdefer self.itemDropManager.deinit();
@@ -372,6 +389,14 @@ pub const ServerWorld = struct {
 	}
 
 	pub fn deinit(self: *ServerWorld) void {
+		while(self.chunkUpdateQueue.dequeue()) |updateRequest| {
+			updateRequest.ch.save(self);
+		}
+		self.chunkUpdateQueue.deinit();
+		while(self.regionUpdateQueue.dequeue()) |updateRequest| {
+			updateRequest.region.store();
+		}
+		self.regionUpdateQueue.deinit();
 		self.chunkManager.deinit();
 		self.itemDropManager.deinit();
 		self.blockPalette.deinit();
@@ -462,6 +487,19 @@ pub const ServerWorld = struct {
 
 		// Item Entities
 		self.itemDropManager.update(deltaTime);
+
+		// Store chunks and regions.
+		// Stores at least one chunk and one region per iteration.
+		// All chunks and regions will be stored within the storage time.
+		const insertionTime = newTime -% main.settings.storageTime;
+		while(self.chunkUpdateQueue.dequeue()) |updateRequest| {
+			updateRequest.ch.save(self);
+			if(updateRequest.milliTimeStamp -% insertionTime <= 0) break;
+		}
+		while(self.regionUpdateQueue.dequeue()) |updateRequest| {
+			updateRequest.region.store();
+			if(updateRequest.milliTimeStamp -% insertionTime <= 0) break;
+		}
 	}
 
 	pub fn queueChunks(self: *ServerWorld, positions: []ChunkPosition, source: ?*User) void {
@@ -504,4 +542,15 @@ pub const ServerWorld = struct {
 		return Block {.typ = 0, .data = 0};
 	}
 
+	pub fn queueChunkUpdate(self: *ServerWorld, ch: *Chunk) void {
+		self.mutex.lock();
+		self.chunkUpdateQueue.enqueue(.{.ch = ch, .milliTimeStamp = std.time.milliTimestamp()});
+		self.mutex.unlock();
+	}
+
+	pub fn queueRegionFileUpdate(self: *ServerWorld, region: *storage.RegionFile) void {
+		self.mutex.lock();
+		self.regionUpdateQueue.enqueue(.{.region = region, .milliTimeStamp = std.time.milliTimestamp()});
+		self.mutex.unlock();
+	}
 };

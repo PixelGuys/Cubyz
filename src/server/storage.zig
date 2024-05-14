@@ -155,10 +155,13 @@ pub const RegionFile = struct {
 	pub fn storeChunk(self: *RegionFile, ch: []const u8, relX: usize, relY: usize, relZ: usize) void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
-		self.modified = true;
 		const index = getIndex(relX, relY, relZ);
 		self.chunks[index] = main.globalAllocator.realloc(self.chunks[index], ch.len);
 		@memcpy(self.chunks[index], ch);
+		if(!self.modified) {
+			self.modified = true;
+			main.server.world.?.queueRegionFileUpdate(self);
+		}
 	}
 
 	pub fn getChunk(self: *RegionFile, allocator: main.utils.NeverFailingAllocator, relX: usize, relY: usize, relZ: usize) ?[]const u8 {
