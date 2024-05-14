@@ -348,7 +348,7 @@ pub const ServerWorld = struct {
 		self.wio = WorldIO.init(try files.openDir(try std.fmt.bufPrint(&buf, "saves/{s}", .{name})), self);
 		errdefer self.wio.deinit();
 		const blockPaletteJson = try files.readToJson(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/palette.json", .{name}));
-		self.blockPalette = try main.assets.BlockPalette.init(main.globalAllocator, blockPaletteJson.getChild("blocks")); // TODO: Figure out why this is inconsistent with the save call.
+		self.blockPalette = try main.assets.BlockPalette.init(main.globalAllocator, blockPaletteJson);
 		errdefer self.blockPalette.deinit();
 		errdefer main.assets.unloadAssets();
 
