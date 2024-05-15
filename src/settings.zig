@@ -37,6 +37,9 @@ pub var guiScale: ?f32 = null;
 pub var musicVolume: f32 = 1;
 
 
+pub var storageTime: i64 = 5000;
+
+
 pub var developerAutoEnterWorld: []const u8 = "";
 
 

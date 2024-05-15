@@ -211,6 +211,14 @@ pub const Chunk = struct {
 		memoryPoolMutex.unlock();
 	}
 
+	fn setChanged(self: *Chunk) void {
+		main.utils.assertLocked(&self.mutex);
+		if(!self.wasChanged) {
+			self.wasChanged = true;
+			main.server.world.?.queueChunkUpdate(self);
+		}
+	}
+
 	/// Checks if the given relative coordinates lie within the bounds of this chunk.
 	pub fn liesInChunk(self: *const Chunk, x: i32, y: i32, z: i32) bool {
 		return x >= 0 and x < self.width
@@ -258,7 +266,7 @@ pub const Chunk = struct {
 		const z = _z >> self.voxelSizeShift;
 		const index = getIndex(x, y, z);
 		self.data.setValue(index, newBlock);
-		self.wasChanged = true;
+		self.setChanged();
 	}
 
 	/// Updates a block if it is inside this chunk. Should be used in generation to prevent accidently storing these as changes.
@@ -348,7 +356,7 @@ pub const Chunk = struct {
 			}
 		}
 
-		self.wasChanged = true;
+		self.setChanged();
 	}
 
 	pub fn save(self: *Chunk, world: *main.server.ServerWorld) void {

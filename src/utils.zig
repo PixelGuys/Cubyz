@@ -31,7 +31,7 @@ pub const Compression = struct {
 
 		while(try walker.next()) |entry| {
 			if(entry.kind == .file) {
-				var relPath = entry.path;
+				var relPath: []const u8 = entry.path;
 				if(builtin.os.tag == .windows) { // I hate you
 					const copy = main.stackAllocator.dupe(u8, relPath);
 					std.mem.replaceScalar(u8, copy, '\\', '/');
