@@ -542,6 +542,42 @@ pub const ServerWorld = struct {
 		return Block {.typ = 0, .data = 0};
 	}
 
+	pub fn updateBlock(_: *ServerWorld, wx: i32, wy: i32, wz: i32, _newBlock: Block) void {
+		const baseChunk = ChunkManager.getOrGenerateChunk(.{.wx = wx & ~@as(i32, chunk.chunkMask), .wy = wy & ~@as(i32, chunk.chunkMask), .wz = wz & ~@as(i32, chunk.chunkMask), .voxelSize = 1});
+		const x: u5 = @intCast(wx & chunk.chunkMask);
+		const y: u5 = @intCast(wy & chunk.chunkMask);
+		const z: u5 = @intCast(wz & chunk.chunkMask);
+		var newBlock = _newBlock;
+		for(chunk.Neighbors.iterable) |neighbor| {
+			const nx = x + chunk.Neighbors.relX[neighbor];
+			const ny = y + chunk.Neighbors.relY[neighbor];
+			const nz = z + chunk.Neighbors.relZ[neighbor];
+			var ch = baseChunk;
+			if(nx & chunk.chunkMask != nx or ny & chunk.chunkMask != ny or nz & chunk.chunkMask != nz) {
+				ch = ChunkManager.getOrGenerateChunk(.{
+					.wx = baseChunk.pos.wx + nx,
+					.wy = baseChunk.pos.wy + ny,
+					.wz = baseChunk.pos.wz + nz,
+					.voxelSize = 1,
+				});
+			}
+			ch.mutex.lock();
+			defer ch.mutex.unlock();
+			var neighborBlock = ch.getBlock(nx & chunk.chunkMask, ny & chunk.chunkMask, nz & chunk.chunkMask);
+			if(neighborBlock.mode().dependsOnNeighbors) {
+				if(neighborBlock.mode().updateData(&neighborBlock, neighbor ^ 1, newBlock)) {
+					ch.updateBlockAndSetChanged(nx & chunk.chunkMask, ny & chunk.chunkMask, nz & chunk.chunkMask, neighborBlock);
+				}
+			}
+			if(newBlock.mode().dependsOnNeighbors) {
+				_ = newBlock.mode().updateData(&newBlock, neighbor, neighborBlock);
+			}
+		}
+		baseChunk.mutex.lock();
+		defer baseChunk.mutex.unlock();
+		baseChunk.updateBlock(x, y, z, newBlock);
+	}
+
 	pub fn queueChunkUpdate(self: *ServerWorld, ch: *Chunk) void {
 		self.mutex.lock();
 		self.chunkUpdateQueue.enqueue(.{.ch = ch, .milliTimeStamp = std.time.milliTimestamp()});
