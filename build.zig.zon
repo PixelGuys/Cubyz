@@ -7,6 +7,11 @@
 			.path = "../Cubyz-libs/zig-out", // Local alternative to the cubyz_deps below
 			.lazy = true,
 		},
+		.cubyz_deps_headers = .{
+			.url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/TODO/cubyz_deps_headers.tar.gz",
+			.hash = "12640000000000000000000000000000000000000000000000000000000000000000",
+			.lazy = true,
+		},
 		.cubyz_deps_aarch64_macos_none = .{
 			.url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/TODO/cubyz_deps_aarch64-macos-none.tar.gz",
 			.hash = "12640000000000000000000000000000000000000000000000000000000000000000",

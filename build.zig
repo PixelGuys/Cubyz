@@ -26,7 +26,8 @@ pub fn build(b: *std.Build) !void {
 	});
 
 	var depsName: []const u8 = depsLib;
-	if (b.option(bool, "local", "Use local cubyz_deps") orelse (t.os.tag == .macos)) { depsName = "local"; }
+	const useLocalDeps = b.option(bool, "local", "Use local cubyz_deps") orelse (t.os.tag == .macos);
+	if(useLocalDeps) { depsName = "local"; }
 	else {
 		const targetName = b.allocator.alloc(u8, depsLib.len) catch unreachable;
 		// build.zig.zon does not support hyphenated deps :(
@@ -34,20 +35,25 @@ pub fn build(b: *std.Build) !void {
 		depsName = targetName;
 	}
 
-	const deps = b.lazyDependency(depsName, .{
+	const libsDeps = b.lazyDependency(depsName, .{
 		.target = target,
 		.optimize = optimize,
 	}) orelse {
 		// Lazy dependencies with a `url` field will fail here the first time.
 		// build.zig will restart and try again.
-		std.log.info("Downloading dependency {s}.", .{depsName});
+		std.log.info("Downloading cubyz_deps libraries {s}.", .{depsName});
+		return;
+	};
+	const headersDeps = if(useLocalDeps) libsDeps else
+		b.lazyDependency("cubyz_deps_headers", .{}) orelse {
+		std.log.info("Downloading cubyz_deps headers {s}.", .{depsName});
 		return;
 	};
 
-	exe.addLibraryPath(deps.path("lib"));
-	exe.addIncludePath(deps.path("include"));
+	exe.addLibraryPath(libsDeps.path("lib"));
+	exe.addIncludePath(headersDeps.path("include"));
 	exe.linkSystemLibrary(depsLib);
-	exe.addRPath(deps.path("lib")); // TODO: Maybe move the library next to the executable, to make this more portable?
+	exe.addRPath(libsDeps.path("lib")); // TODO: Maybe move the library next to the executable, to make this more portable?
 
 	if(t.os.tag == .windows) {
 		exe.linkSystemLibrary("ole32");
