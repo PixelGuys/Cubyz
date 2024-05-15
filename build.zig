@@ -69,7 +69,6 @@ pub fn build(b: *std.Build) !void {
 		exe.linkFramework("IOKit");
 		exe.linkFramework("Cocoa");
 		exe.linkFramework("QuartzCore");
-		exe.linkSystemLibrary("GL");
 		exe.linkSystemLibrary("X11");
 		exe.addLibraryPath(.{.path="/usr/local/GL/lib"});
 		exe.addLibraryPath(.{.path="/opt/X11/lib"});
