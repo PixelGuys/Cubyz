@@ -721,8 +721,8 @@ pub const Protocols = struct {
 	pub const chunkTransmission = struct {
 		pub const id: u8 = 3;
 		fn receive(_: *Connection, data: []const u8) !void {
-			const ch = try main.server.storage.ChunkCompression.decompressChunk(data);
-			renderer.mesh_storage.updateChunkMesh(ch);
+			const ch = try main.server.storage.ChunkCompression.decompressChunkAndIncreaseRefCount(data);
+			renderer.mesh_storage.updateChunkMeshAndDecreaseRefCount(ch);
 		}
 		fn sendChunkOverTheNetwork(conn: *Connection, ch: *chunk.Chunk) void {
 			ch.mutex.lock();
@@ -732,10 +732,10 @@ pub const Protocols = struct {
 			conn.sendImportant(id, data);
 		}
 		fn sendChunkLocally(ch: *chunk.Chunk) void {
-			const chunkCopy = chunk.Chunk.init(ch.pos);
+			const chunkCopy = chunk.Chunk.initAndIncreaseRefCount(ch.pos);
 			chunkCopy.data.deinit();
 			chunkCopy.data.initCopy(&ch.data);
-			renderer.mesh_storage.updateChunkMesh(chunkCopy);
+			renderer.mesh_storage.updateChunkMeshAndDecreaseRefCount(chunkCopy);
 		}
 		pub fn sendChunk(conn: *Connection, ch: *chunk.Chunk) void {
 			if(conn.user.?.isLocal) {

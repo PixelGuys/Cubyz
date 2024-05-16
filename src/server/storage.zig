@@ -160,7 +160,8 @@ pub const RegionFile = struct {
 		@memcpy(self.chunks[index], ch);
 		if(!self.modified) {
 			self.modified = true;
-			main.server.world.?.queueRegionFileUpdate(self);
+			self.increaseRefCount();
+			main.server.world.?.queueRegionFileUpdateAndDecreaseRefCount(self);
 		}
 	}
 
@@ -227,7 +228,7 @@ pub const ChunkCompression = struct {
 		return data;
 	}
 
-	pub fn decompressChunk(_data: []const u8) error{corrupted}!*chunk.Chunk {
+	pub fn decompressChunkAndIncreaseRefCount(_data: []const u8) error{corrupted}!*chunk.Chunk {
 		var data = _data;
 		if(data.len < 4) return error.corrupted;
 		const algo: CompressionAlgo = @enumFromInt(std.mem.readInt(u32, data[0..4], .big));
@@ -248,7 +249,7 @@ pub const ChunkCompression = struct {
 					return error.corrupted;
 				}
 				data = _inflatedData;
-				const ch = chunk.Chunk.init(pos);
+				const ch = chunk.Chunk.initAndIncreaseRefCount(pos);
 				for(0..chunk.chunkVolume) |i| {
 					ch.data.setValue(i, main.blocks.Block.fromInt(std.mem.readInt(u32, data[0..4], .big)));
 					data = data[4..];

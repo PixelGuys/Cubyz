@@ -515,7 +515,7 @@ pub const ChunkMesh = struct {
 		std.debug.assert(self.refCount.load(.monotonic) == 0);
 		self.opaqueMesh.deinit();
 		self.transparentMesh.deinit();
-		self.chunk.deinit();
+		self.chunk.decreaseRefCount();
 		main.globalAllocator.free(self.currentSorting);
 		main.globalAllocator.free(self.sortingOutputBuffer);
 		for(self.lightingData) |lightingChunk| {

@@ -181,8 +181,9 @@ pub const Chunk = struct {
 	voxelSizeMask: i32,
 	widthShift: u5,
 	mutex: std.Thread.Mutex,
+	refCount: std.atomic.Value(u16),
 
-	pub fn init(pos: ChunkPosition) *Chunk {
+	pub fn initAndIncreaseRefCount(pos: ChunkPosition) *Chunk {
 		memoryPoolMutex.lock();
 		const self = memoryPool.create() catch unreachable;
 		memoryPoolMutex.unlock();
@@ -196,12 +197,14 @@ pub const Chunk = struct {
 			.voxelSizeMask = pos.voxelSize - 1,
 			.widthShift = voxelSizeShift + chunkShift,
 			.mutex = std.Thread.Mutex{},
+			.refCount = std.atomic.Value(u16).init(1),
 		};
 		self.data.init();
 		return self;
 	}
 
 	pub fn deinit(self: *Chunk) void {
+		std.debug.assert(self.refCount.raw == 0);
 		if(self.wasChanged) {
 			self.save(main.server.world.?);
 		}
@@ -211,11 +214,25 @@ pub const Chunk = struct {
 		memoryPoolMutex.unlock();
 	}
 
+	pub fn increaseRefCount(self: *Chunk) void {
+		const prevVal = self.refCount.fetchAdd(1, .monotonic);
+		std.debug.assert(prevVal != 0);
+	}
+
+	pub fn decreaseRefCount(self: *Chunk) void {
+		const prevVal = self.refCount.fetchSub(1, .monotonic);
+		std.debug.assert(prevVal != 0);
+		if(prevVal == 1) {
+			self.deinit();
+		}
+	}
+
 	fn setChanged(self: *Chunk) void {
 		main.utils.assertLocked(&self.mutex);
 		if(!self.wasChanged) {
 			self.wasChanged = true;
-			main.server.world.?.queueChunkUpdate(self);
+			self.increaseRefCount();
+			main.server.world.?.queueChunkUpdateAndDecreaseRefCount(self);
 		}
 	}
 
@@ -384,7 +401,8 @@ pub const Chunk = struct {
 				pos.wy &= ~(pos.voxelSize*chunkSize);
 				pos.wz &= ~(pos.voxelSize*chunkSize);
 				pos.voxelSize *= 2;
-				const nextHigherLod = world.getOrGenerateChunk(pos);
+				const nextHigherLod = world.getOrGenerateChunkAndIncreaseRefCount(pos);
+				defer nextHigherLod.decreaseRefCount();
 				nextHigherLod.updateFromLowerResolution(self);
 			}
 		}

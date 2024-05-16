@@ -178,7 +178,8 @@ const ChunkManager = struct {
 	}
 
 	pub fn generateChunk(pos: ChunkPosition, source: ?*User) void {
-		const ch = getOrGenerateChunk(pos);
+		const ch = getOrGenerateChunkAndIncreaseRefCount(pos);
+		defer ch.decreaseRefCount();
 		if(source) |_source| {
 			main.network.Protocols.chunkTransmission.sendChunk(_source.conn, ch);
 		} else {
@@ -190,7 +191,7 @@ const ChunkManager = struct {
 		}
 	}
 
-	fn chunkInitFunctionForCache(pos: ChunkPosition) *Chunk {
+	fn chunkInitFunctionForCacheAndIncreaseRefCount(pos: ChunkPosition) *Chunk {
 		const regionSize = pos.voxelSize*chunk.chunkSize*storage.RegionFile.regionSize;
 		const regionMask: i32 = regionSize - 1;
 		const region = storage.loadRegionFileAndIncreaseRefCount(pos.wx & ~regionMask, pos.wy & ~regionMask, pos.wz & ~regionMask, pos.voxelSize);
@@ -202,12 +203,12 @@ const ChunkManager = struct {
 			@as(usize, @intCast(pos.wz -% region.pos.wz))/pos.voxelSize/chunk.chunkSize,
 		)) |ch| blk: { // Load chunk from file:
 			defer main.stackAllocator.free(ch);
-			return storage.ChunkCompression.decompressChunk(ch) catch {
+			return storage.ChunkCompression.decompressChunkAndIncreaseRefCount(ch) catch {
 				std.log.err("Storage for chunk {} in region file at {} is corrupted", .{pos, region.pos});
 				break :blk;
 			};
 		}
-		const ch = Chunk.init(pos);
+		const ch = Chunk.initAndIncreaseRefCount(pos);
 		ch.generated = true;
 		const caveMap = terrain.CaveMap.CaveMapView.init(ch);
 		defer caveMap.deinit();
@@ -220,19 +221,22 @@ const ChunkManager = struct {
 	}
 
 	fn chunkDeinitFunctionForCache(ch: *Chunk) void {
-		ch.deinit();
+		ch.decreaseRefCount();
 	}
 	/// Generates a normal chunk at a given location, or if possible gets it from the cache.
-	pub fn getOrGenerateChunk(pos: ChunkPosition) *Chunk { // TODO: This is not thread safe! The chunk could get removed from the cache while in use. Reference counting should probably be used here.
+	pub fn getOrGenerateChunkAndIncreaseRefCount(pos: ChunkPosition) *Chunk { // TODO: This is not thread safe! The chunk could get removed from the cache while in use. Reference counting should probably be used here.
 		const mask = pos.voxelSize*chunk.chunkSize - 1;
 		std.debug.assert(pos.wx & mask == 0 and pos.wy & mask == 0 and pos.wz & mask == 0);
-		return chunkCache.findOrCreate(pos, chunkInitFunctionForCache, null);
+		const result = chunkCache.findOrCreate(pos, chunkInitFunctionForCacheAndIncreaseRefCount, Chunk.increaseRefCount);
+		return result;
 	}
 
-	pub fn getChunkFromCache(pos: ChunkPosition) ?*Chunk {
+	pub fn getChunkFromCacheAndIncreaseRefCount(pos: ChunkPosition) ?*Chunk {
 		const mask = pos.voxelSize*chunk.chunkSize - 1;
 		std.debug.assert(pos.wx & mask == 0 and pos.wy & mask == 0 and pos.wz & mask == 0);
-		return chunkCache.find(pos);
+		const result = chunkCache.find(pos, Chunk.increaseRefCount) orelse return null;
+		result.increaseRefCount();
+		return result;
 	}
 };
 
@@ -391,10 +395,12 @@ pub const ServerWorld = struct {
 	pub fn deinit(self: *ServerWorld) void {
 		while(self.chunkUpdateQueue.dequeue()) |updateRequest| {
 			updateRequest.ch.save(self);
+			updateRequest.ch.decreaseRefCount();
 		}
 		self.chunkUpdateQueue.deinit();
 		while(self.regionUpdateQueue.dequeue()) |updateRequest| {
 			updateRequest.region.store();
+			updateRequest.region.decreaseRefCount();
 		}
 		self.regionUpdateQueue.deinit();
 		self.chunkManager.deinit();
@@ -494,10 +500,12 @@ pub const ServerWorld = struct {
 		const insertionTime = newTime -% main.settings.storageTime;
 		while(self.chunkUpdateQueue.dequeue()) |updateRequest| {
 			updateRequest.ch.save(self);
+			updateRequest.ch.decreaseRefCount();
 			if(updateRequest.milliTimeStamp -% insertionTime <= 0) break;
 		}
 		while(self.regionUpdateQueue.dequeue()) |updateRequest| {
 			updateRequest.region.store();
+			updateRequest.region.decreaseRefCount();
 			if(updateRequest.milliTimeStamp -% insertionTime <= 0) break;
 		}
 	}
@@ -525,8 +533,8 @@ pub const ServerWorld = struct {
 		return null;
 	}
 
-	pub fn getOrGenerateChunk(_: *ServerWorld, pos: chunk.ChunkPosition) *Chunk {
-		return ChunkManager.getOrGenerateChunk(pos);
+	pub fn getOrGenerateChunkAndIncreaseRefCount(_: *ServerWorld, pos: chunk.ChunkPosition) *Chunk {
+		return ChunkManager.getOrGenerateChunkAndIncreaseRefCount(pos);
 	}
 
 	pub fn getBiome(_: *const ServerWorld, wx: i32, wy: i32, wz: i32) *const terrain.biomes.Biome {
@@ -543,7 +551,8 @@ pub const ServerWorld = struct {
 	}
 
 	pub fn updateBlock(_: *ServerWorld, wx: i32, wy: i32, wz: i32, _newBlock: Block) void {
-		const baseChunk = ChunkManager.getOrGenerateChunk(.{.wx = wx & ~@as(i32, chunk.chunkMask), .wy = wy & ~@as(i32, chunk.chunkMask), .wz = wz & ~@as(i32, chunk.chunkMask), .voxelSize = 1});
+		const baseChunk = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(.{.wx = wx & ~@as(i32, chunk.chunkMask), .wy = wy & ~@as(i32, chunk.chunkMask), .wz = wz & ~@as(i32, chunk.chunkMask), .voxelSize = 1});
+		defer baseChunk.decreaseRefCount();
 		const x: u5 = @intCast(wx & chunk.chunkMask);
 		const y: u5 = @intCast(wy & chunk.chunkMask);
 		const z: u5 = @intCast(wz & chunk.chunkMask);
@@ -554,13 +563,16 @@ pub const ServerWorld = struct {
 			const nz = z + chunk.Neighbors.relZ[neighbor];
 			var ch = baseChunk;
 			if(nx & chunk.chunkMask != nx or ny & chunk.chunkMask != ny or nz & chunk.chunkMask != nz) {
-				ch = ChunkManager.getOrGenerateChunk(.{
-					.wx = baseChunk.pos.wx + nx,
-					.wy = baseChunk.pos.wy + ny,
-					.wz = baseChunk.pos.wz + nz,
+				ch = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(.{
+					.wx = baseChunk.pos.wx + nx & ~@as(i32, chunk.chunkMask),
+					.wy = baseChunk.pos.wy + ny & ~@as(i32, chunk.chunkMask),
+					.wz = baseChunk.pos.wz + nz & ~@as(i32, chunk.chunkMask),
 					.voxelSize = 1,
 				});
 			}
+			defer if(ch != baseChunk) {
+				ch.decreaseRefCount();
+			};
 			ch.mutex.lock();
 			defer ch.mutex.unlock();
 			var neighborBlock = ch.getBlock(nx & chunk.chunkMask, ny & chunk.chunkMask, nz & chunk.chunkMask);
@@ -578,13 +590,13 @@ pub const ServerWorld = struct {
 		baseChunk.updateBlock(x, y, z, newBlock);
 	}
 
-	pub fn queueChunkUpdate(self: *ServerWorld, ch: *Chunk) void {
+	pub fn queueChunkUpdateAndDecreaseRefCount(self: *ServerWorld, ch: *Chunk) void {
 		self.mutex.lock();
 		self.chunkUpdateQueue.enqueue(.{.ch = ch, .milliTimeStamp = std.time.milliTimestamp()});
 		self.mutex.unlock();
 	}
 
-	pub fn queueRegionFileUpdate(self: *ServerWorld, region: *storage.RegionFile) void {
+	pub fn queueRegionFileUpdateAndDecreaseRefCount(self: *ServerWorld, region: *storage.RegionFile) void {
 		self.mutex.lock();
 		self.regionUpdateQueue.enqueue(.{.region = region, .milliTimeStamp = std.time.milliTimestamp()});
 		self.mutex.unlock();
