@@ -220,7 +220,6 @@ const ChunkManager = struct {
 		for(server.world.?.chunkManager.terrainGenerationProfile.generators) |generator| {
 			generator.generate(server.world.?.seed ^ generator.generatorSeed, ch, caveMap, biomeMap);
 		}
-		ch.setChanged();
 		return ch;
 	}
 
