@@ -2,7 +2,7 @@ const std = @import("std");
 const Atomic = std.atomic.Value;
 
 const main = @import("root");
-const Chunk = main.chunk.Chunk;
+const ServerChunk = main.chunk.ServerChunk;
 const ChunkPosition = main.chunk.ChunkPosition;
 const Cache = main.utils.Cache;
 const JsonElement = main.JsonElement;
@@ -141,21 +141,23 @@ pub const CaveGenerator = struct {
 };
 
 pub const CaveMapView = struct {
-	reference: *Chunk,
+	reference: *ServerChunk,
 	fragments: [8]*CaveMapFragment,
 
-	pub fn init(chunk: *Chunk) CaveMapView {
+	pub fn init(chunk: *ServerChunk) CaveMapView {
+		const pos = chunk.super.pos;
+		const width = chunk.super.width;
 		return CaveMapView {
 			.reference = chunk,
 			.fragments = [_]*CaveMapFragment {
-				getOrGenerateFragmentAndIncreaseRefCount(chunk.pos.wx -% chunk.width, chunk.pos.wy -% chunk.width, chunk.pos.wz -% chunk.width, chunk.pos.voxelSize),
-				getOrGenerateFragmentAndIncreaseRefCount(chunk.pos.wx -% chunk.width, chunk.pos.wy -% chunk.width, chunk.pos.wz +% chunk.width, chunk.pos.voxelSize),
-				getOrGenerateFragmentAndIncreaseRefCount(chunk.pos.wx -% chunk.width, chunk.pos.wy +% chunk.width, chunk.pos.wz -% chunk.width, chunk.pos.voxelSize),
-				getOrGenerateFragmentAndIncreaseRefCount(chunk.pos.wx -% chunk.width, chunk.pos.wy +% chunk.width, chunk.pos.wz +% chunk.width, chunk.pos.voxelSize),
-				getOrGenerateFragmentAndIncreaseRefCount(chunk.pos.wx +% chunk.width, chunk.pos.wy -% chunk.width, chunk.pos.wz -% chunk.width, chunk.pos.voxelSize),
-				getOrGenerateFragmentAndIncreaseRefCount(chunk.pos.wx +% chunk.width, chunk.pos.wy -% chunk.width, chunk.pos.wz +% chunk.width, chunk.pos.voxelSize),
-				getOrGenerateFragmentAndIncreaseRefCount(chunk.pos.wx +% chunk.width, chunk.pos.wy +% chunk.width, chunk.pos.wz -% chunk.width, chunk.pos.voxelSize),
-				getOrGenerateFragmentAndIncreaseRefCount(chunk.pos.wx +% chunk.width, chunk.pos.wy +% chunk.width, chunk.pos.wz +% chunk.width, chunk.pos.voxelSize),
+				getOrGenerateFragmentAndIncreaseRefCount(pos.wx -% width, pos.wy -% width, pos.wz -% width, pos.voxelSize),
+				getOrGenerateFragmentAndIncreaseRefCount(pos.wx -% width, pos.wy -% width, pos.wz +% width, pos.voxelSize),
+				getOrGenerateFragmentAndIncreaseRefCount(pos.wx -% width, pos.wy +% width, pos.wz -% width, pos.voxelSize),
+				getOrGenerateFragmentAndIncreaseRefCount(pos.wx -% width, pos.wy +% width, pos.wz +% width, pos.voxelSize),
+				getOrGenerateFragmentAndIncreaseRefCount(pos.wx +% width, pos.wy -% width, pos.wz -% width, pos.voxelSize),
+				getOrGenerateFragmentAndIncreaseRefCount(pos.wx +% width, pos.wy -% width, pos.wz +% width, pos.voxelSize),
+				getOrGenerateFragmentAndIncreaseRefCount(pos.wx +% width, pos.wy +% width, pos.wz -% width, pos.voxelSize),
+				getOrGenerateFragmentAndIncreaseRefCount(pos.wx +% width, pos.wy +% width, pos.wz +% width, pos.voxelSize),
 			},
 		};
 	}
@@ -167,40 +169,40 @@ pub const CaveMapView = struct {
 	}
 
 	pub fn isSolid(self: CaveMapView, relX: i32, relY: i32, relZ: i32) bool {
-		const wx = relX +% self.reference.pos.wx;
-		const wy = relY +% self.reference.pos.wy;
-		const wz = relZ +% self.reference.pos.wz;
+		const wx = relX +% self.reference.super.pos.wx;
+		const wy = relY +% self.reference.super.pos.wy;
+		const wz = relZ +% self.reference.super.pos.wz;
 		var index: u8 = 0;
-		if(wx -% self.fragments[0].pos.wx >= CaveMapFragment.width*self.reference.pos.voxelSize) {
+		if(wx -% self.fragments[0].pos.wx >= CaveMapFragment.width*self.reference.super.pos.voxelSize) {
 			index += 4;
 		}
-		if(wy -% self.fragments[0].pos.wy >= CaveMapFragment.width*self.reference.pos.voxelSize) {
+		if(wy -% self.fragments[0].pos.wy >= CaveMapFragment.width*self.reference.super.pos.voxelSize) {
 			index += 2;
 		}
-		if(wz -% self.fragments[0].pos.wz >= CaveMapFragment.width*self.reference.pos.voxelSize) {
+		if(wz -% self.fragments[0].pos.wz >= CaveMapFragment.width*self.reference.super.pos.voxelSize) {
 			index += 1;
 		}
 		const fragmentRelX = wx - self.fragments[index].pos.wx;
 		const fragmentRelY = wy - self.fragments[index].pos.wy;
-		const fragmentRelZ = @divFloor(wz - self.fragments[index].pos.wz, self.reference.pos.voxelSize);
+		const fragmentRelZ = @divFloor(wz - self.fragments[index].pos.wz, self.reference.super.pos.voxelSize);
 		const height = self.fragments[index].getColumnData(fragmentRelX, fragmentRelY);
 		return (height & @as(u64, 1)<<@intCast(fragmentRelZ)) != 0;
 	}
 
 	pub fn getHeightData(self: CaveMapView, relX: i32, relY: i32) u32 {
-		const wx = relX +% self.reference.pos.wx;
-		const wy = relY +% self.reference.pos.wy;
+		const wx = relX +% self.reference.super.pos.wx;
+		const wy = relY +% self.reference.super.pos.wy;
 		var index: u8 = 0;
-		if(wx -% self.fragments[0].pos.wx >= CaveMapFragment.width*self.reference.pos.voxelSize) {
+		if(wx -% self.fragments[0].pos.wx >= CaveMapFragment.width*self.reference.super.pos.voxelSize) {
 			index += 4;
 		}
-		if(wy -% self.fragments[0].pos.wy >= CaveMapFragment.width*self.reference.pos.voxelSize) {
+		if(wy -% self.fragments[0].pos.wy >= CaveMapFragment.width*self.reference.super.pos.voxelSize) {
 			index += 2;
 		}
-		var deltaZ = self.reference.pos.wz -% self.fragments[0].pos.wz;
-		if(deltaZ >= CaveMapFragment.height*self.reference.pos.voxelSize) {
+		var deltaZ = self.reference.super.pos.wz -% self.fragments[0].pos.wz;
+		if(deltaZ >= CaveMapFragment.height*self.reference.super.pos.voxelSize) {
 			index += 1;
-			deltaZ -= CaveMapFragment.height*self.reference.pos.voxelSize;
+			deltaZ -= CaveMapFragment.height*self.reference.super.pos.voxelSize;
 		}
 		const fragmentRelX = wx - self.fragments[index].pos.wx;
 		const fragmentRelY = wy - self.fragments[index].pos.wy;
@@ -213,16 +215,16 @@ pub const CaveMapView = struct {
 	}
 
 	pub fn findTerrainChangeAbove(self: CaveMapView, relX: i32, relY: i32, z: i32) i32 {
-		const wx = relX +% self.reference.pos.wx;
-		const wy = relY +% self.reference.pos.wy;
+		const wx = relX +% self.reference.super.pos.wx;
+		const wy = relY +% self.reference.super.pos.wy;
 		var index: u8 = 0;
-		if(wx -% self.fragments[0].pos.wx >= CaveMapFragment.width*self.reference.pos.voxelSize) {
+		if(wx -% self.fragments[0].pos.wx >= CaveMapFragment.width*self.reference.super.pos.voxelSize) {
 			index += 4;
 		}
-		if(wy -% self.fragments[0].pos.wy >= CaveMapFragment.width*self.reference.pos.voxelSize) {
+		if(wy -% self.fragments[0].pos.wy >= CaveMapFragment.width*self.reference.super.pos.voxelSize) {
 			index += 2;
 		}
-		var relativeZ = @divFloor(z +% self.reference.pos.wz -% self.fragments[0].pos.wz, self.reference.pos.voxelSize);
+		var relativeZ = @divFloor(z +% self.reference.super.pos.wz -% self.fragments[0].pos.wz, self.reference.super.pos.voxelSize);
 		std.debug.assert(relativeZ >= 0 and relativeZ < 2*CaveMapFragment.height);
 		const fragmentRelX = wx - self.fragments[index].pos.wx;
 		const fragmentRelY = wy - self.fragments[index].pos.wy;
@@ -250,20 +252,20 @@ pub const CaveMapView = struct {
 			}
 		}
 		result += @ctz(height);
-		return result*self.reference.pos.voxelSize +% self.fragments[0].pos.wz -% self.reference.pos.wz;
+		return result*self.reference.super.pos.voxelSize +% self.fragments[0].pos.wz -% self.reference.super.pos.wz;
 	}
 
 	pub fn findTerrainChangeBelow(self: CaveMapView, relX: i32, relY: i32, z: i32) i32 {
-		const wx = relX +% self.reference.pos.wx;
-		const wy = relY +% self.reference.pos.wy;
+		const wx = relX +% self.reference.super.pos.wx;
+		const wy = relY +% self.reference.super.pos.wy;
 		var index: u8 = 0;
-		if(wx -% self.fragments[0].pos.wx >= CaveMapFragment.width*self.reference.pos.voxelSize) {
+		if(wx -% self.fragments[0].pos.wx >= CaveMapFragment.width*self.reference.super.pos.voxelSize) {
 			index += 4;
 		}
-		if(wy -% self.fragments[0].pos.wy >= CaveMapFragment.width*self.reference.pos.voxelSize) {
+		if(wy -% self.fragments[0].pos.wy >= CaveMapFragment.width*self.reference.super.pos.voxelSize) {
 			index += 2;
 		}
-		var relativeZ = @divFloor(z +% self.reference.pos.wz -% self.fragments[0].pos.wz, self.reference.pos.voxelSize);
+		var relativeZ = @divFloor(z +% self.reference.super.pos.wz -% self.fragments[0].pos.wz, self.reference.super.pos.voxelSize);
 		std.debug.assert(relativeZ >= 0 and relativeZ < 2*CaveMapFragment.height);
 		const fragmentRelX = wx - self.fragments[index].pos.wx;
 		const fragmentRelY = wy - self.fragments[index].pos.wy;
@@ -291,7 +293,7 @@ pub const CaveMapView = struct {
 			}
 		}
 		result -= @clz(height);
-		return result*self.reference.pos.voxelSize +% self.fragments[0].pos.wz -% self.reference.pos.wz;
+		return result*self.reference.super.pos.voxelSize +% self.fragments[0].pos.wz -% self.reference.super.pos.wz;
 	}
 };
 

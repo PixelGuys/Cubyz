@@ -29,7 +29,7 @@ pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: JsonElement)
 	return self;
 }
 
-pub fn generate(self: *Boulder, x: i32, y: i32, z: i32, chunk: *main.chunk.Chunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) void {
+pub fn generate(self: *Boulder, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) void {
 	_ = caveMap;
 	const radius = self.size + self.sizeVariation*(random.nextFloat(seed)*2 - 1);
 	// My basic idea is to use a point cloud and a potential function to achieve somewhat smooth boulders without being a sphere.
@@ -46,11 +46,11 @@ pub fn generate(self: *Boulder, x: i32, y: i32, z: i32, chunk: *main.chunk.Chunk
 	// This ensures that the entire boulder is inside of a square with sidelength 2*radius.
 	const maxRadius: i32 = @intFromFloat(@ceil(radius));
 	var px = chunk.startIndex(x - maxRadius);
-	while(px < x + maxRadius) : (px += chunk.pos.voxelSize) {
+	while(px < x + maxRadius) : (px += chunk.super.pos.voxelSize) {
 		var py = chunk.startIndex(y - maxRadius);
-		while(py < y + maxRadius) : (py += chunk.pos.voxelSize) {
+		while(py < y + maxRadius) : (py += chunk.super.pos.voxelSize) {
 			var pz = chunk.startIndex(z - maxRadius);
-			while(pz < z + maxRadius) : (pz += chunk.pos.voxelSize) {
+			while(pz < z + maxRadius) : (pz += chunk.super.pos.voxelSize) {
 				if(!chunk.liesInChunk(px, py, pz)) continue;
 				var potential: f32 = 0;
 				for(&pointCloud) |point| {

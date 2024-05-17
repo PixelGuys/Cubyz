@@ -33,7 +33,7 @@ pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: JsonElement)
 	return self;
 }
 
-pub fn generate(self: *GroundPatch, x: i32, y: i32, z: i32, chunk: *main.chunk.Chunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) void {
+pub fn generate(self: *GroundPatch, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) void {
 	const width = self.width + (random.nextFloat(seed) - 0.5)*self.variation;
 	const orientation = 2*std.math.pi*random.nextFloat(seed);
 	const ellipseParam = 1 + random.nextFloat(seed);
@@ -46,9 +46,9 @@ pub fn generate(self: *GroundPatch, x: i32, y: i32, z: i32, chunk: *main.chunk.C
 	const ySecn = -ellipseParam*@sin(orientation)/width;
 
 	const xMin = @max(0, x - @as(i32, @intFromFloat(@ceil(width))));
-	const xMax = @min(chunk.width, x + @as(i32, @intFromFloat(@ceil(width))));
+	const xMax = @min(chunk.super.width, x + @as(i32, @intFromFloat(@ceil(width))));
 	const yMin = @max(0, y - @as(i32, @intFromFloat(@ceil(width))));
-	const yMax = @min(chunk.width, y + @as(i32, @intFromFloat(@ceil(width))));
+	const yMax = @min(chunk.super.width, y + @as(i32, @intFromFloat(@ceil(width))));
 
 	var px = chunk.startIndex(xMin);
 	while(px < xMax) : (px += 1) {
@@ -66,7 +66,7 @@ pub fn generate(self: *GroundPatch, x: i32, y: i32, z: i32, chunk: *main.chunk.C
 					startHeight = caveMap.findTerrainChangeBelow(px, py, startHeight);
 				}
 				var pz = chunk.startIndex(startHeight - self.depth + 1);
-				while(pz <= startHeight) : (pz += chunk.pos.voxelSize) {
+				while(pz <= startHeight) : (pz += chunk.super.pos.voxelSize) {
 					if(dist <= self.smoothness or (dist - self.smoothness)/(1 - self.smoothness) < random.nextFloat(seed)) {
 						if(chunk.liesInChunk(px, py, pz))  {
 							chunk.updateBlockInGeneration(px, py, pz, .{.typ = self.blockType, .data = 0}); // TODO: Natural standard.

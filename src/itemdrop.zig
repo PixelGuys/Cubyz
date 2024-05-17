@@ -2,7 +2,7 @@ const std = @import("std");
 
 const blocks = @import("blocks.zig");
 const chunk_zig = @import("chunk.zig");
-const Chunk = chunk_zig.Chunk;
+const ServerChunk = chunk_zig.ServerChunk;
 const game = @import("game.zig");
 const World = game.World;
 const ServerWorld = main.server.ServerWorld;
@@ -294,7 +294,7 @@ pub const ItemDropManager = struct {
 //			}
 	}
 
-	fn updateEnt(self: *ItemDropManager, chunk: *Chunk, pos: *Vec3d, vel: *Vec3d, deltaTime: f64) void {
+	fn updateEnt(self: *ItemDropManager, chunk: *ServerChunk, pos: *Vec3d, vel: *Vec3d, deltaTime: f64) void {
 		main.utils.assertLocked(&self.mutex);
 		const startedInABlock = self.checkBlocks(chunk, pos);
 		if(startedInABlock) {
@@ -318,7 +318,7 @@ pub const ItemDropManager = struct {
 		vel.* *= @splat(@max(0, 1 - drag*deltaTime));
 	}
 
-	fn fixStuckInBlock(self: *ItemDropManager, chunk: *Chunk, pos: *Vec3d, vel: *Vec3d, deltaTime: f64) void {
+	fn fixStuckInBlock(self: *ItemDropManager, chunk: *ServerChunk, pos: *Vec3d, vel: *Vec3d, deltaTime: f64) void {
 		main.utils.assertLocked(&self.mutex);
 		const centeredPos = pos.* - @as(Vec3d, @splat(0.5));
 		const pos0: Vec3i = @intFromFloat(@floor(centeredPos));
@@ -355,7 +355,7 @@ pub const ItemDropManager = struct {
 		}
 	}
 
-	fn checkBlocks(self: *ItemDropManager, chunk: *Chunk, pos: *Vec3d) bool {
+	fn checkBlocks(self: *ItemDropManager, chunk: *ServerChunk, pos: *Vec3d) bool {
 		const lowerCornerPos = pos.* - @as(Vec3d, @splat(radius));
 		const pos0f64 = @floor(lowerCornerPos);
 		const pos0: Vec3i = @intFromFloat(pos0f64);
@@ -389,7 +389,7 @@ pub const ItemDropManager = struct {
 		return isSolid;
 	}
 
-	fn checkBlock(self: *ItemDropManager, chunk: *Chunk, pos: *Vec3d, blockPos: Vec3i) bool {
+	fn checkBlock(self: *ItemDropManager, chunk: *ServerChunk, pos: *Vec3d, blockPos: Vec3i) bool {
 		// TODO: Check if the item drop collides with the block in the given location.
 		_ = self;
 		_ = chunk;

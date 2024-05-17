@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("root");
 const blocks = main.blocks;
-const Chunk = main.chunk.Chunk;
+const ServerChunk = main.chunk.ServerChunk;
 const JsonElement = main.JsonElement;
 const terrain = main.server.terrain;
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
@@ -10,7 +10,7 @@ const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 const StructureModel = struct {
 	const VTable = struct {
 		loadModel: *const fn(arenaAllocator: NeverFailingAllocator, parameters: JsonElement) *anyopaque,
-		generate: *const fn(self: *anyopaque, x: i32, y: i32, z: i32, chunk: *Chunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) void,
+		generate: *const fn(self: *anyopaque, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) void,
 	};
 
 	vtable: VTable,
@@ -30,7 +30,7 @@ const StructureModel = struct {
 		};
 	}
 
-	pub fn generate(self: StructureModel, x: i32, y: i32, z: i32, chunk: *Chunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) void {
+	pub fn generate(self: StructureModel, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) void {
 		self.vtable.generate(self.data, x, y, z, chunk, caveMap, seed);
 	}
 
@@ -215,7 +215,7 @@ pub const BlockStructure = struct {
 		allocator.free(self.structure);
 	}
 
-	pub fn addSubTerranian(self: BlockStructure, chunk: *Chunk, startingDepth: i32, minDepth: i32, x: i32, y: i32, seed: *u64) i32 {
+	pub fn addSubTerranian(self: BlockStructure, chunk: *ServerChunk, startingDepth: i32, minDepth: i32, x: i32, y: i32, seed: *u64) i32 {
 		var depth = startingDepth;
 		for(self.structure) |blockStack| {
 			const total = blockStack.min + main.random.nextIntBounded(u32, seed, @as(u32, 1) + blockStack.max - blockStack.min);
@@ -225,12 +225,12 @@ pub const BlockStructure = struct {
 				if(chunk.liesInChunk(x, y, depth)) {
 					chunk.updateBlockInGeneration(x, y, depth, block);
 				}
-				depth -%= chunk.pos.voxelSize;
+				depth -%= chunk.super.pos.voxelSize;
 				if(depth -% minDepth <= 0)
-					return depth +% chunk.pos.voxelSize;
+					return depth +% chunk.super.pos.voxelSize;
 			}
 		}
-		return depth +% chunk.pos.voxelSize;
+		return depth +% chunk.super.pos.voxelSize;
 	}
 };
 

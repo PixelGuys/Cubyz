@@ -1599,14 +1599,14 @@ pub const TimeDifference = struct {
 	}
 };
 
-pub fn assertLocked(mutex: *std.Thread.Mutex) void {
+pub fn assertLocked(mutex: *const std.Thread.Mutex) void {
 	if(builtin.mode == .Debug) {
-		std.debug.assert(!mutex.tryLock());
+		std.debug.assert(!@constCast(mutex).tryLock());
 	}
 }
 
-pub fn assertLockedShared(lock: *std.Thread.RwLock) void {
+pub fn assertLockedShared(lock: *const std.Thread.RwLock) void {
 	if(builtin.mode == .Debug) {
-		std.debug.assert(!lock.tryLock());
+		std.debug.assert(!@constCast(lock).tryLock());
 	}
 }

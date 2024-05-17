@@ -1072,7 +1072,7 @@ pub const MeshGenerationTask = struct {
 	}
 
 	pub fn clean(self: *MeshGenerationTask) void {
-		self.mesh.decreaseRefCount();
+		self.mesh.deinit();
 		main.globalAllocator.destroy(self);
 	}
 };
@@ -1083,7 +1083,7 @@ pub fn updateBlock(x: i32, y: i32, z: i32, newBlock: blocks.Block) void {
 	blockUpdateList.append(BlockUpdate{.x=x, .y=y, .z=z, .newBlock=newBlock});
 }
 
-pub fn updateChunkMeshAndDecreaseRefCount(mesh: *chunk.Chunk) void {
+pub fn updateChunkMesh(mesh: *chunk.Chunk) void {
 	MeshGenerationTask.schedule(mesh);
 }
 
