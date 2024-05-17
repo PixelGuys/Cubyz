@@ -100,13 +100,17 @@ fn extractZFromIndex(index: usize) i32 {
 
 var memoryPool: std.heap.MemoryPoolAligned(Chunk, @alignOf(Chunk)) = undefined;
 var memoryPoolMutex: std.Thread.Mutex = .{};
+var serverPool: std.heap.MemoryPoolAligned(ServerChunk, @alignOf(ServerChunk)) = undefined;
+var serverPoolMutex: std.Thread.Mutex = .{};
 
 pub fn init() void {
 	memoryPool = std.heap.MemoryPoolAligned(Chunk, @alignOf(Chunk)).init(main.globalAllocator.allocator);
+	serverPool = std.heap.MemoryPoolAligned(ServerChunk, @alignOf(ServerChunk)).init(main.globalAllocator.allocator);
 }
 
 pub fn deinit() void {
 	memoryPool.deinit();
+	serverPool.deinit();
 }
 
 pub const ChunkPosition = struct {
@@ -126,6 +130,8 @@ pub const ChunkPosition = struct {
 				return self.equals(notNull);
 			}
 			return false;
+		} else if(@TypeOf(other.*) == ServerChunk) {
+			return self.wx == other.super.pos.wx and self.wy == other.super.pos.wy and self.wz == other.super.pos.wz and self.voxelSize == other.super.pos.voxelSize;
 		} else if(@typeInfo(@TypeOf(other)) == .Pointer) {
 			return self.wx == other.pos.wx and self.wy == other.pos.wy and self.wz == other.pos.wz and self.voxelSize == other.pos.voxelSize;
 		} else @compileError("Unsupported");
@@ -173,14 +179,10 @@ pub const Chunk = struct {
 	pos: ChunkPosition,
 	data: main.utils.PaletteCompressedRegion(Block, chunkVolume) = undefined,
 
-	wasChanged: bool = false,
-	generated: bool = false,
-
 	width: u31,
 	voxelSizeShift: u5,
 	voxelSizeMask: i32,
 	widthShift: u5,
-	mutex: std.Thread.Mutex,
 
 	pub fn init(pos: ChunkPosition) *Chunk {
 		memoryPoolMutex.lock();
@@ -195,83 +197,21 @@ pub const Chunk = struct {
 			.voxelSizeShift = voxelSizeShift,
 			.voxelSizeMask = pos.voxelSize - 1,
 			.widthShift = voxelSizeShift + chunkShift,
-			.mutex = std.Thread.Mutex{},
 		};
 		self.data.init();
 		return self;
 	}
 
 	pub fn deinit(self: *Chunk) void {
-		if(self.wasChanged) {
-			self.save(main.server.world.?);
-		}
 		self.data.deinit();
 		memoryPoolMutex.lock();
 		memoryPool.destroy(@alignCast(self));
 		memoryPoolMutex.unlock();
 	}
 
-	fn setChanged(self: *Chunk) void {
-		main.utils.assertLocked(&self.mutex);
-		if(!self.wasChanged) {
-			self.wasChanged = true;
-			main.server.world.?.queueChunkUpdate(self);
-		}
-	}
-
-	/// Checks if the given relative coordinates lie within the bounds of this chunk.
-	pub fn liesInChunk(self: *const Chunk, x: i32, y: i32, z: i32) bool {
-		return x >= 0 and x < self.width
-			and y >= 0 and y < self.width
-			and z >= 0 and z < self.width;
-	}
-
-	/// This is useful to convert for loops to work for reduced resolution:
-	/// Instead of using
-	/// for(int x = start; x < end; x++)
-	/// for(int x = chunk.startIndex(start); x < end; x += chunk.getVoxelSize())
-	/// should be used to only activate those voxels that are used in Cubyz's downscaling technique.
-	pub fn startIndex(self: *const Chunk, start: i32) i32 {
-		return start+self.voxelSizeMask & ~self.voxelSizeMask; // Rounds up to the nearest valid voxel coordinate.
-	}
-
-	/// Updates a block if current value is air or the current block is degradable.
-	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
-	pub fn updateBlockIfDegradable(self: *Chunk, _x: i32, _y: i32, _z: i32, newBlock: Block) void {
-		const x = _x >> self.voxelSizeShift;
-		const y = _y >> self.voxelSizeShift;
-		const z = _z >> self.voxelSizeShift;
-		const index = getIndex(x, y, z);
-		const oldBlock = self.data.getValue(index);
-		if(oldBlock.typ == 0 or oldBlock.degradable()) {
-			self.data.setValue(index, newBlock);
-		}
-	}
-
 	/// Updates a block if it is inside this chunk.
 	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
 	pub fn updateBlock(self: *Chunk, _x: i32, _y: i32, _z: i32, newBlock: Block) void {
-		const x = _x >> self.voxelSizeShift;
-		const y = _y >> self.voxelSizeShift;
-		const z = _z >> self.voxelSizeShift;
-		const index = getIndex(x, y, z);
-		self.data.setValue(index, newBlock);
-	}
-
-	/// Updates a block if it is inside this chunk.
-	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
-	pub fn updateBlockAndSetChanged(self: *Chunk, _x: i32, _y: i32, _z: i32, newBlock: Block) void {
-		const x = _x >> self.voxelSizeShift;
-		const y = _y >> self.voxelSizeShift;
-		const z = _z >> self.voxelSizeShift;
-		const index = getIndex(x, y, z);
-		self.data.setValue(index, newBlock);
-		self.setChanged();
-	}
-
-	/// Updates a block if it is inside this chunk. Should be used in generation to prevent accidently storing these as changes.
-	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
-	pub fn updateBlockInGeneration(self: *Chunk, _x: i32, _y: i32, _z: i32, newBlock: Block) void {
 		const x = _x >> self.voxelSizeShift;
 		const y = _y >> self.voxelSizeShift;
 		const z = _z >> self.voxelSizeShift;
@@ -288,11 +228,139 @@ pub const Chunk = struct {
 		const index = getIndex(x, y, z);
 		return self.data.getValue(index);
 	}
+};
 
-	pub fn updateFromLowerResolution(self: *Chunk, other: *Chunk) void {
-		const xOffset = if(other.pos.wx != self.pos.wx) chunkSize/2 else 0; // Offsets of the lower resolution chunk in this chunk.
-		const yOffset = if(other.pos.wy != self.pos.wy) chunkSize/2 else 0;
-		const zOffset = if(other.pos.wz != self.pos.wz) chunkSize/2 else 0;
+pub const ServerChunk = struct {
+	super: Chunk,
+
+	wasChanged: bool = false,
+	generated: bool = false,
+
+	mutex: std.Thread.Mutex = .{},
+	refCount: std.atomic.Value(u16),
+
+	pub fn initAndIncreaseRefCount(pos: ChunkPosition) *ServerChunk {
+		serverPoolMutex.lock();
+		const self = serverPool.create() catch unreachable;
+		serverPoolMutex.unlock();
+		std.debug.assert((pos.voxelSize - 1 & pos.voxelSize) == 0);
+		std.debug.assert(@mod(pos.wx, pos.voxelSize) == 0 and @mod(pos.wy, pos.voxelSize) == 0 and @mod(pos.wz, pos.voxelSize) == 0);
+		const voxelSizeShift: u5 = @intCast(std.math.log2_int(u31, pos.voxelSize));
+		self.* = ServerChunk {
+			.super = .{
+				.pos = pos,
+				.width = pos.voxelSize*chunkSize,
+				.voxelSizeShift = voxelSizeShift,
+				.voxelSizeMask = pos.voxelSize - 1,
+				.widthShift = voxelSizeShift + chunkShift,
+			},
+			.refCount = std.atomic.Value(u16).init(1),
+		};
+		self.super.data.init();
+		return self;
+	}
+
+	pub fn deinit(self: *ServerChunk) void {
+		std.debug.assert(self.refCount.raw == 0);
+		if(self.wasChanged) {
+			self.save(main.server.world.?);
+		}
+		self.super.data.deinit();
+		serverPoolMutex.lock();
+		serverPool.destroy(@alignCast(self));
+		serverPoolMutex.unlock();
+	}
+
+	pub fn setChanged(self: *ServerChunk) void {
+		main.utils.assertLocked(&self.mutex);
+		if(!self.wasChanged) {
+			self.wasChanged = true;
+			self.increaseRefCount();
+			main.server.world.?.queueChunkUpdateAndDecreaseRefCount(self);
+		}
+	}
+
+	pub fn increaseRefCount(self: *ServerChunk) void {
+		const prevVal = self.refCount.fetchAdd(1, .monotonic);
+		std.debug.assert(prevVal != 0);
+	}
+
+	pub fn decreaseRefCount(self: *ServerChunk) void {
+		const prevVal = self.refCount.fetchSub(1, .monotonic);
+		std.debug.assert(prevVal != 0);
+		if(prevVal == 1) {
+			self.deinit();
+		}
+	}
+
+	/// Checks if the given relative coordinates lie within the bounds of this chunk.
+	pub fn liesInChunk(self: *const ServerChunk, x: i32, y: i32, z: i32) bool {
+		return x >= 0 and x < self.super.width
+			and y >= 0 and y < self.super.width
+			and z >= 0 and z < self.super.width;
+	}
+
+	/// This is useful to convert for loops to work for reduced resolution:
+	/// Instead of using
+	/// for(int x = start; x < end; x++)
+	/// for(int x = chunk.startIndex(start); x < end; x += chunk.getVoxelSize())
+	/// should be used to only activate those voxels that are used in Cubyz's downscaling technique.
+	pub fn startIndex(self: *const ServerChunk, start: i32) i32 {
+		return start+self.super.voxelSizeMask & ~self.super.voxelSizeMask; // Rounds up to the nearest valid voxel coordinate.
+	}
+
+	/// Gets a block if it is inside this chunk.
+	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
+	pub fn getBlock(self: *const ServerChunk, _x: i32, _y: i32, _z: i32) Block {
+		main.utils.assertLocked(&self.mutex);
+		const x = _x >> self.super.voxelSizeShift;
+		const y = _y >> self.super.voxelSizeShift;
+		const z = _z >> self.super.voxelSizeShift;
+		const index = getIndex(x, y, z);
+		return self.super.data.getValue(index);
+	}
+
+	/// Updates a block if it is inside this chunk.
+	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
+	pub fn updateBlockAndSetChanged(self: *ServerChunk, _x: i32, _y: i32, _z: i32, newBlock: Block) void {
+		main.utils.assertLocked(&self.mutex);
+		const x = _x >> self.super.voxelSizeShift;
+		const y = _y >> self.super.voxelSizeShift;
+		const z = _z >> self.super.voxelSizeShift;
+		const index = getIndex(x, y, z);
+		self.super.data.setValue(index, newBlock);
+		self.setChanged();
+	}
+
+	/// Updates a block if current value is air or the current block is degradable.
+	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
+	pub fn updateBlockIfDegradable(self: *ServerChunk, _x: i32, _y: i32, _z: i32, newBlock: Block) void {
+		main.utils.assertLocked(&self.mutex);
+		const x = _x >> self.super.voxelSizeShift;
+		const y = _y >> self.super.voxelSizeShift;
+		const z = _z >> self.super.voxelSizeShift;
+		const index = getIndex(x, y, z);
+		const oldBlock = self.super.data.getValue(index);
+		if(oldBlock.typ == 0 or oldBlock.degradable()) {
+			self.super.data.setValue(index, newBlock);
+		}
+	}
+
+	/// Updates a block if it is inside this chunk. Should be used in generation to prevent accidently storing these as changes.
+	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
+	pub fn updateBlockInGeneration(self: *ServerChunk, _x: i32, _y: i32, _z: i32, newBlock: Block) void {
+		main.utils.assertLocked(&self.mutex);
+		const x = _x >> self.super.voxelSizeShift;
+		const y = _y >> self.super.voxelSizeShift;
+		const z = _z >> self.super.voxelSizeShift;
+		const index = getIndex(x, y, z);
+		self.super.data.setValue(index, newBlock);
+	}
+
+	pub fn updateFromLowerResolution(self: *ServerChunk, other: *ServerChunk) void {
+		const xOffset = if(other.super.pos.wx != self.super.pos.wx) chunkSize/2 else 0; // Offsets of the lower resolution chunk in this chunk.
+		const yOffset = if(other.super.pos.wy != self.super.pos.wy) chunkSize/2 else 0;
+		const zOffset = if(other.super.pos.wz != self.super.pos.wz) chunkSize/2 else 0;
 		self.mutex.lock();
 		defer self.mutex.unlock();
 		main.utils.assertLocked(&other.mutex);
@@ -315,7 +383,7 @@ pub const Chunk = struct {
 							while(dz <= 1): (dz += 1) {
 								const index = getIndex(x*2 + dx, y*2 + dy, z*2 + dz);
 								const i = dx*4 + dz*2 + dy;
-								octantBlocks[i] = other.data.getValue(index);
+								octantBlocks[i] = other.super.data.getValue(index);
 								if(octantBlocks[i].typ == 0) {
 									neighborCount[i] = 0;
 									continue; // I don't care about air blocks.
@@ -328,7 +396,7 @@ pub const Chunk = struct {
 									const nz = z*2 + dz + Neighbors.relZ[n];
 									if((nx & chunkMask) == nx and (ny & chunkMask) == ny and (nz & chunkMask) == nz) { // If it's inside the chunk.
 										const neighborIndex = getIndex(nx, ny, nz);
-										if(other.data.getValue(neighborIndex).transparent()) {
+										if(other.super.data.getValue(neighborIndex).transparent()) {
 											count += 5;
 										}
 									} else {
@@ -351,7 +419,7 @@ pub const Chunk = struct {
 					}
 					// Update the block:
 					const thisIndex = getIndex(x + xOffset, y + yOffset, z + zOffset);
-					self.data.setValue(thisIndex, block);
+					self.super.data.setValue(thisIndex, block);
 				}
 			}
 		}
@@ -359,32 +427,34 @@ pub const Chunk = struct {
 		self.setChanged();
 	}
 
-	pub fn save(self: *Chunk, world: *main.server.ServerWorld) void {
+	pub fn save(self: *ServerChunk, world: *main.server.ServerWorld) void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
 		if(self.wasChanged) {
-			const regionSize = self.pos.voxelSize*chunkSize*main.server.storage.RegionFile.regionSize;
+			const pos = self.super.pos;
+			const regionSize = pos.voxelSize*chunkSize*main.server.storage.RegionFile.regionSize;
 			const regionMask: i32 = regionSize - 1;
-			const region = main.server.storage.loadRegionFileAndIncreaseRefCount(self.pos.wx & ~regionMask, self.pos.wy & ~regionMask, self.pos.wz & ~regionMask, self.pos.voxelSize);
+			const region = main.server.storage.loadRegionFileAndIncreaseRefCount(pos.wx & ~regionMask, pos.wy & ~regionMask, pos.wz & ~regionMask, pos.voxelSize);
 			defer region.decreaseRefCount();
-			const data = main.server.storage.ChunkCompression.compressChunk(main.stackAllocator, self);
+			const data = main.server.storage.ChunkCompression.compressChunk(main.stackAllocator, &self.super);
 			defer main.stackAllocator.free(data);
 			region.storeChunk(
 				data,
-				@as(usize, @intCast(self.pos.wx -% region.pos.wx))/self.pos.voxelSize/chunkSize,
-				@as(usize, @intCast(self.pos.wy -% region.pos.wy))/self.pos.voxelSize/chunkSize,
-				@as(usize, @intCast(self.pos.wz -% region.pos.wz))/self.pos.voxelSize/chunkSize,
+				@as(usize, @intCast(pos.wx -% region.pos.wx))/pos.voxelSize/chunkSize,
+				@as(usize, @intCast(pos.wy -% region.pos.wy))/pos.voxelSize/chunkSize,
+				@as(usize, @intCast(pos.wz -% region.pos.wz))/pos.voxelSize/chunkSize,
 			);
 
 			self.wasChanged = false;
 			// Update the next lod chunk:
-			if(self.pos.voxelSize != 1 << settings.highestLOD) {
-				var pos = self.pos;
-				pos.wx &= ~(pos.voxelSize*chunkSize);
-				pos.wy &= ~(pos.voxelSize*chunkSize);
-				pos.wz &= ~(pos.voxelSize*chunkSize);
-				pos.voxelSize *= 2;
-				const nextHigherLod = world.getOrGenerateChunk(pos);
+			if(pos.voxelSize != 1 << settings.highestLOD) {
+				var nextPos = pos;
+				nextPos.wx &= ~(pos.voxelSize*chunkSize);
+				nextPos.wy &= ~(pos.voxelSize*chunkSize);
+				nextPos.wz &= ~(pos.voxelSize*chunkSize);
+				nextPos.voxelSize *= 2;
+				const nextHigherLod = world.getOrGenerateChunkAndIncreaseRefCount(nextPos);
+				defer nextHigherLod.decreaseRefCount();
 				nextHigherLod.updateFromLowerResolution(self);
 			}
 		}

@@ -721,23 +721,36 @@ pub const Protocols = struct {
 	pub const chunkTransmission = struct {
 		pub const id: u8 = 3;
 		fn receive(_: *Connection, data: []const u8) !void {
-			const ch = try main.server.storage.ChunkCompression.decompressChunk(data);
+			const pos = chunk.ChunkPosition{
+				.wx = std.mem.readInt(i32, data[0..4], .big),
+				.wy = std.mem.readInt(i32, data[4..8], .big),
+				.wz = std.mem.readInt(i32, data[8..12], .big),
+				.voxelSize = @intCast(std.mem.readInt(i32, data[12..16], .big)),
+			};
+			const ch = chunk.Chunk.init(pos);
+			try main.server.storage.ChunkCompression.decompressChunk(ch, data[16..]);
 			renderer.mesh_storage.updateChunkMesh(ch);
 		}
-		fn sendChunkOverTheNetwork(conn: *Connection, ch: *chunk.Chunk) void {
+		fn sendChunkOverTheNetwork(conn: *Connection, ch: *chunk.ServerChunk) void {
 			ch.mutex.lock();
-			const data = main.server.storage.ChunkCompression.compressChunk(main.stackAllocator, ch);
+			const chunkData = main.server.storage.ChunkCompression.compressChunk(main.stackAllocator, &ch.super);
 			ch.mutex.unlock();
-			defer main.stackAllocator.free(data);
+			defer main.stackAllocator.free(chunkData);
+			const data = main.stackAllocator.alloc(u8, chunkData.len + 16);
+			std.mem.writeInt(i32, data[0..4], ch.super.pos.wx, .big);
+			std.mem.writeInt(i32, data[4..8], ch.super.pos.wy, .big);
+			std.mem.writeInt(i32, data[8..12], ch.super.pos.wz, .big);
+			std.mem.writeInt(i32, data[12..16], ch.super.pos.voxelSize, .big);
+			@memcpy(data[16..], chunkData);
 			conn.sendImportant(id, data);
 		}
-		fn sendChunkLocally(ch: *chunk.Chunk) void {
-			const chunkCopy = chunk.Chunk.init(ch.pos);
+		fn sendChunkLocally(ch: *chunk.ServerChunk) void {
+			const chunkCopy = chunk.Chunk.init(ch.super.pos);
 			chunkCopy.data.deinit();
-			chunkCopy.data.initCopy(&ch.data);
+			chunkCopy.data.initCopy(&ch.super.data);
 			renderer.mesh_storage.updateChunkMesh(chunkCopy);
 		}
-		pub fn sendChunk(conn: *Connection, ch: *chunk.Chunk) void {
+		pub fn sendChunk(conn: *Connection, ch: *chunk.ServerChunk) void {
 			if(conn.user.?.isLocal) {
 				sendChunkLocally(ch);
 			} else {

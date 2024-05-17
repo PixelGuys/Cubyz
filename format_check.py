@@ -16,7 +16,7 @@ for subdir, dirs, files in os.walk("."):
 		if filepath.startswith("./zig-cache"): continue
 
 		if filepath.endswith(".json") or filepath.endswith(".zig") or filepath.endswith(".py") or filepath.endswith(".zon") or filepath.endswith(".vs") or filepath.endswith(".fs") or filepath.endswith(".glsl"):
-			with open(filepath, "r") as f:
+			with open(filepath, "r", newline = '') as f:
 				string = f.read()
 				line = 1
 				lineStart = True

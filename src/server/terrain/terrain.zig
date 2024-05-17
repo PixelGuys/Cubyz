@@ -22,7 +22,7 @@ pub const CaveMap = @import("CaveMap.zig");
 pub const BlockGenerator = struct {
 	init: *const fn(parameters: JsonElement) void,
 	deinit: *const fn() void,
-	generate: *const fn(seed: u64, chunk: *main.chunk.Chunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView) void,
+	generate: *const fn(seed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView) void,
 	/// Used to prioritize certain generators over others.
 	priority: i32,
 	/// To avoid duplicate seeds in similar generation algorithms, the SurfaceGenerator xors the world-seed with the generator specific seed.

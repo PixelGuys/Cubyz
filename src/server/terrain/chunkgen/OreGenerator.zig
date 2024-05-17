@@ -32,13 +32,13 @@ pub fn deinit() void {
 }
 
 // Works basically similar to cave generation, but considers a lot less chunks and has a few other differences.
-pub fn generate(worldSeed: u64, chunk: *main.chunk.Chunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView) void {
+pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView) void {
 	_ = caveMap;
 	_ = biomeMap;
-	if(chunk.pos.voxelSize != 1) return;
-	const cx = chunk.pos.wx >> main.chunk.chunkShift;
-	const cy = chunk.pos.wy >> main.chunk.chunkShift;
-	const cz = chunk.pos.wz >> main.chunk.chunkShift;
+	if(chunk.super.pos.voxelSize != 1) return;
+	const cx = chunk.super.pos.wx >> main.chunk.chunkShift;
+	const cy = chunk.super.pos.wy >> main.chunk.chunkShift;
+	const cz = chunk.super.pos.wz >> main.chunk.chunkShift;
 	// Generate caves from all nearby chunks:
 	var x = cx - 1;
 	while(x < cx + 1) : (x +%= 1) {
@@ -59,7 +59,7 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.Chunk, caveMap: CaveMap.CaveM
 	}
 }
 
-fn considerCoordinates(ore: *const main.blocks.Ore, relX: f32, relY: f32, relZ: f32, chunk: *main.chunk.Chunk, startSeed: u64) void {
+fn considerCoordinates(ore: *const main.blocks.Ore, relX: f32, relY: f32, relZ: f32, chunk: *main.chunk.ServerChunk, startSeed: u64) void {
 	const chunkSizeFloat: f32 = @floatFromInt(main.chunk.chunkSize);
 	// Compose the seeds from some random stats of the ore. They generally shouldn't be the same for two different ores. TODO: Give each block a hash function (id based) that can be used in cases like this.
 	var seed = startSeed ^ @as(u32, @bitCast(ore.maxHeight)) ^ @as(u32, @bitCast(ore.size)) ^ @as(u32, @bitCast(main.blocks.Block.hardness(.{.typ = ore.blockType, .data = 0})));
@@ -80,9 +80,9 @@ fn considerCoordinates(ore: *const main.blocks.Ore, relX: f32, relY: f32, relZ: 
 		var yMin: i32 = @intFromFloat(veinRelY - radius);
 		var yMax: i32 = @intFromFloat(@ceil(veinRelY + radius));
 		xMin = @max(xMin, 0);
-		xMax = @min(xMax, chunk.width);
+		xMax = @min(xMax, chunk.super.width);
 		yMin = @max(yMin, 0);
-		yMax = @min(yMax, chunk.width);
+		yMax = @min(yMax, chunk.super.width);
 
 		var veinSeed = random.nextInt(u64, &seed);
 		var curX = xMin;
@@ -97,7 +97,7 @@ fn considerCoordinates(ore: *const main.blocks.Ore, relX: f32, relY: f32, relZ: 
 				var zMin: i32 = @intFromFloat(veinRelZ - zDistance);
 				var zMax: i32 = @intFromFloat(@ceil(veinRelZ + zDistance));
 				zMin = @max(zMin, 0);
-				zMax = @min(zMax, chunk.width);
+				zMax = @min(zMax, chunk.super.width);
 				var curZ = zMin;
 				while(curZ < zMax) : (curZ += 1) {
 					const distToCenterZ = (@as(f32, @floatFromInt(curZ)) - veinRelZ)/radius;

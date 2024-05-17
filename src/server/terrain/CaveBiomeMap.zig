@@ -3,7 +3,7 @@ const std = @import("std");
 const main = @import("root");
 const Array3D = main.utils.Array3D;
 const Cache = main.utils.Cache;
-const Chunk = main.chunk.Chunk;
+const ServerChunk = main.chunk.ServerChunk;
 const ChunkPosition = main.chunk.ChunkPosition;
 const JsonElement = main.JsonElement;
 const vec = main.vec;
@@ -383,17 +383,19 @@ pub const CaveBiomeMapView = struct {
 	noiseY: ?CachedFractalNoise3D = null,
 	noiseZ: ?CachedFractalNoise3D = null,
 
-	pub fn init(chunk: *Chunk) CaveBiomeMapView {
+	pub fn init(chunk: *ServerChunk) CaveBiomeMapView {
+		const pos = chunk.super.pos;
+		const width = chunk.super.width;
 		var self = CaveBiomeMapView {
-			.super = InterpolatableCaveBiomeMapView.init(chunk.pos, chunk.width),
+			.super = InterpolatableCaveBiomeMapView.init(pos, width),
 		};
-		if(chunk.pos.voxelSize < 8) {
-			const startX = (chunk.pos.wx -% 32) & ~@as(i32, 63);
-			const startY = (chunk.pos.wy -% 32) & ~@as(i32, 63);
-			const startZ = (chunk.pos.wz -% 32) & ~@as(i32, 63);
-			self.noiseX = CachedFractalNoise3D.init(startX, startY, startZ, chunk.pos.voxelSize*4, chunk.width + 128, main.server.world.?.seed ^ 0x764923684396, 64);
-			self.noiseY = CachedFractalNoise3D.init(startX, startY, startZ, chunk.pos.voxelSize*4, chunk.width + 128, main.server.world.?.seed ^ 0x6547835649265429, 64);
-			self.noiseZ = CachedFractalNoise3D.init(startX, startY, startZ, chunk.pos.voxelSize*4, chunk.width + 128, main.server.world.?.seed ^ 0x56789365396783, 64);
+		if(pos.voxelSize < 8) {
+			const startX = (pos.wx -% 32) & ~@as(i32, 63);
+			const startY = (pos.wy -% 32) & ~@as(i32, 63);
+			const startZ = (pos.wz -% 32) & ~@as(i32, 63);
+			self.noiseX = CachedFractalNoise3D.init(startX, startY, startZ, pos.voxelSize*4, width + 128, main.server.world.?.seed ^ 0x764923684396, 64);
+			self.noiseY = CachedFractalNoise3D.init(startX, startY, startZ, pos.voxelSize*4, width + 128, main.server.world.?.seed ^ 0x6547835649265429, 64);
+			self.noiseZ = CachedFractalNoise3D.init(startX, startY, startZ, pos.voxelSize*4, width + 128, main.server.world.?.seed ^ 0x56789365396783, 64);
 		}
 		return self;
 	}
