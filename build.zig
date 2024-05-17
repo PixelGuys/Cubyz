@@ -21,22 +21,36 @@ pub fn build(b: *std.Build) !void {
 	exe.linkLibC();
 	exe.linkLibCpp();
 
-	// For the time being, MacOS cubyz_deps will not have released binaries.
-	const depsName = if (t.os.tag == .macos) "deps_local" else "deps";
-	const deps = b.lazyDependency(depsName, .{
+	const depsLib = b.fmt("cubyz_deps_{s}-{s}-{s}", .{@tagName(t.cpu.arch), @tagName(t.os.tag), switch(t.os.tag) {
+		.linux => "musl",
+		.macos => "none",
+		.windows => "gnu",
+		else => "none",
+	}});
+
+	var depsName: []const u8 = b.fmt("cubyz_deps_{s}_{s}", .{@tagName(t.cpu.arch), @tagName(t.os.tag)});
+	const useLocalDeps = b.option(bool, "local", "Use local cubyz_deps") orelse (t.os.tag == .macos);
+	if(useLocalDeps) depsName = "local";
+
+	const libsDeps = b.lazyDependency(depsName, .{
 		.target = target,
 		.optimize = optimize,
 	}) orelse {
 		// Lazy dependencies with a `url` field will fail here the first time.
 		// build.zig will restart and try again.
-		std.log.info("Downloading dependency {s}.", .{depsName});
+		std.log.info("Downloading cubyz_deps libraries {s}.", .{depsName});
+		return;
+	};
+	const headersDeps = if(useLocalDeps) libsDeps else
+		b.lazyDependency("cubyz_deps_headers", .{}) orelse {
+		std.log.info("Downloading cubyz_deps headers {s}.", .{depsName});
 		return;
 	};
 
-	exe.addLibraryPath(deps.path("lib"));
-	exe.addIncludePath(deps.path("include"));
-	exe.linkSystemLibrary("cubyz_deps");
-	exe.addRPath(deps.path("lib")); // TODO: Maybe move the library next to the executable, to make this more portable?
+	exe.addLibraryPath(libsDeps.path("lib"));
+	exe.addIncludePath(headersDeps.path("include"));
+	exe.linkSystemLibrary(depsLib);
+	exe.addRPath(libsDeps.path("lib")); // TODO: Maybe move the library next to the executable, to make this more portable?
 
 	if(t.os.tag == .windows) {
 		exe.linkSystemLibrary("ole32");
@@ -58,10 +72,10 @@ pub fn build(b: *std.Build) !void {
 		exe.linkFramework("IOKit");
 		exe.linkFramework("Cocoa");
 		exe.linkFramework("QuartzCore");
-		exe.linkSystemLibrary("GL");
 		exe.linkSystemLibrary("X11");
 		exe.addLibraryPath(.{.path="/usr/local/GL/lib"});
 		exe.addLibraryPath(.{.path="/opt/X11/lib"});
+		exe.addRPath(.{.path="../Library"});
 	} else {
 		std.log.err("Unsupported target: {}\n", .{t.os.tag});
 	}
