@@ -235,7 +235,6 @@ const ChunkManager = struct {
 		const mask = pos.voxelSize*chunk.chunkSize - 1;
 		std.debug.assert(pos.wx & mask == 0 and pos.wy & mask == 0 and pos.wz & mask == 0);
 		const result = chunkCache.find(pos, Chunk.increaseRefCount) orelse return null;
-		result.increaseRefCount();
 		return result;
 	}
 };
@@ -587,7 +586,7 @@ pub const ServerWorld = struct {
 		}
 		baseChunk.mutex.lock();
 		defer baseChunk.mutex.unlock();
-		baseChunk.updateBlock(x, y, z, newBlock);
+		baseChunk.updateBlockAndSetChanged(x, y, z, newBlock);
 	}
 
 	pub fn queueChunkUpdateAndDecreaseRefCount(self: *ServerWorld, ch: *Chunk) void {
