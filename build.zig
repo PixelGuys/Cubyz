@@ -21,19 +21,16 @@ pub fn build(b: *std.Build) !void {
 	exe.linkLibC();
 	exe.linkLibCpp();
 
-	const depsLib = b.fmt("cubyz_deps_{s}", .{
-		t.linuxTriple(b.allocator) catch unreachable,
-	});
+	const depsLib = b.fmt("cubyz_deps_{s}-{s}-{s}", .{@tagName(t.cpu.arch), @tagName(t.os.tag), switch(t.os.tag) {
+		.linux => "musl",
+		.macos => "none",
+		.windows => "gnu",
+		else => "none",
+	}});
 
-	var depsName: []const u8 = depsLib;
+	var depsName: []const u8 = b.fmt("cubyz_deps_{s}_{s}", .{@tagName(t.cpu.arch), @tagName(t.os.tag)});
 	const useLocalDeps = b.option(bool, "local", "Use local cubyz_deps") orelse (t.os.tag == .macos);
-	if(useLocalDeps) { depsName = "local"; }
-	else {
-		const targetName = b.allocator.alloc(u8, depsLib.len) catch unreachable;
-		// build.zig.zon does not support hyphenated deps :(
-		_ = std.mem.replace(u8, depsName, "-", "_", targetName);
-		depsName = targetName;
-	}
+	if(useLocalDeps) depsName = "local";
 
 	const libsDeps = b.lazyDependency(depsName, .{
 		.target = target,

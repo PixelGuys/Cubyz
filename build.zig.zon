@@ -8,38 +8,38 @@
 			.lazy = true,
 		},
 		.cubyz_deps_headers = .{
-			.url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/TODO/cubyz_deps_headers.tar.gz",
-			.hash = "12640000000000000000000000000000000000000000000000000000000000000000",
+			.url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/3/cubyz_deps_headers.tar.gz",
+			.hash = "1220f83952166e8649c95fdbc3585c7fc8cc2d0de878c26feec2d4b0277cc0c86106",
 			.lazy = true,
 		},
-		.cubyz_deps_aarch64_macos_none = .{
-			.url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/TODO/cubyz_deps_aarch64-macos-none.tar.gz",
-			.hash = "12640000000000000000000000000000000000000000000000000000000000000000",
+		.cubyz_deps_aarch64_macos = .{
+			.url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/3/cubyz_deps_aarch64-macos-none.tar.gz",
+			.hash = "12200ff0b0a2b8c119f9987125f33a9fb87e670c881d7989a73dfb39e9c79fb79dc9",
 			.lazy = true,
 		},
-		.cubyz_deps_aarch64_linux_musl = .{
-			.url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/TODO/cubyz_deps_aarch64-linux-musl.tar.gz",
-			.hash = "12640000000000000000000000000000000000000000000000000000000000000000",
+		.cubyz_deps_aarch64_linux = .{
+			.url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/3/cubyz_deps_aarch64-linux-musl.tar.gz",
+			.hash = "1220c94c49f56b65a1646d683f868d167db5178c71d90c60759d788d6afa0e484c64",
 			.lazy = true,
 		},
-		.cubyz_deps_aarch64_windows_gnu = .{
-			.url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/TODO/cubyz_deps_aarch64-windows-gnu.tar.gz",
-			.hash = "12640000000000000000000000000000000000000000000000000000000000000000",
+		.cubyz_deps_aarch64_windows = .{
+			.url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/3/cubyz_deps_aarch64-windows-gnu.tar.gz",
+			.hash = "1220c27cb071f1340304f5befa8e273bc995c31f833f26c148ca17714d648ae1365a",
 			.lazy = true,
 		},
-		.cubyz_deps_x86_64_macos_none = .{
-			.url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/TODO/cubyz_deps_x86_64-macos-none.tar.gz",
-			.hash = "12640000000000000000000000000000000000000000000000000000000000000000",
+		.cubyz_deps_x86_64_macos = .{
+			.url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/3/cubyz_deps_x86_64-macos-none.tar.gz",
+			.hash = "122009aa86e29cda6c1094f287512b20f19ca7afc7fe8e3a722b7a2c42323d5ab13c",
 			.lazy = true,
 		},
-		.cubyz_deps_x86_64_linux_musl = .{
-			.url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/TODO/cubyz_deps_x86_64-linux-musl.tar.gz",
-			.hash = "12640000000000000000000000000000000000000000000000000000000000000000",
+		.cubyz_deps_x86_64_linux = .{
+			.url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/3/cubyz_deps_x86_64-linux-musl.tar.gz",
+			.hash = "1220234373ac197e8dad7a2d1beeb81619a6112e44dba6b2672af9a38fb01a16eef8",
 			.lazy = true,
 		},
-		.cubyz_deps_x86_64_windows_gnu = .{
-			.url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/TODO/cubyz_deps_x86_64-windows-gnu.tar.gz",
-			.hash = "12640000000000000000000000000000000000000000000000000000000000000000",
+		.cubyz_deps_x86_64_windows = .{
+			.url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/3/cubyz_deps_x86_64-windows-gnu.tar.gz",
+			.hash = "1220a2630c691c0ce40afd51022941b0544c9bacc9190667f701036e0eb3ec6333d5",
 			.lazy = true,
 		},
 	},
