@@ -606,7 +606,7 @@ pub const ChunkMesh = struct {
 		_ = model; // TODO: Check if the neighbor model occludes this one. (maybe not that relevant)
 		return block.typ != 0 and (
 			other.typ == 0
-			or (!std.meta.eql(block, other) and other.viewThrough())
+			or (!std.meta.eql(block, other) and other.viewThrough()) or other.alwaysViewThrough()
 			or !models.models.items[blocks.meshes.model(other)].isNeighborOccluded[neighbor ^ 1]
 		);
 	}

@@ -70,6 +70,7 @@ var _blockDrops: [maxBlockCount][]BlockDrop = undefined;
 /// Meaning undegradable parts of trees or other structures can grow through this block.
 var _degradable: [maxBlockCount]bool = undefined;
 var _viewThrough: [maxBlockCount]bool = undefined;
+var _alwaysViewThrough: [maxBlockCount]bool = undefined;
 var _hasBackFace: [maxBlockCount]bool = undefined;
 var _blockClass: [maxBlockCount]BlockClass = undefined;
 var _light: [maxBlockCount]u32 = undefined;
@@ -114,7 +115,8 @@ pub fn register(_: []const u8, id: []const u8, json: JsonElement) u16 {
 	_solid[size] = json.get(bool, "solid", true);
 	_gui[size] = allocator.dupe(u8, json.get([]const u8, "GUI", ""));
 	_transparent[size] = json.get(bool, "transparent", false);
-	_viewThrough[size] = json.get(bool, "viewThrough", false) or _transparent[size];
+	_alwaysViewThrough[size] = json.get(bool, "alwaysViewThrough", false);
+	_viewThrough[size] = json.get(bool, "viewThrough", false) or _transparent[size] or _alwaysViewThrough[size];
 	_hasBackFace[size] = json.get(bool, "hasBackFace", false);
 
 	const oreProperties = json.getChild("ore");
@@ -254,6 +256,11 @@ pub const Block = packed struct {
 
 	pub inline fn viewThrough(self: Block) bool {
 		return _viewThrough[self.typ];
+	}
+
+	/// shows backfaces even when next to the same block type
+	pub inline fn alwaysViewThrough(self: Block) bool {
+		return _alwaysViewThrough[self.typ];
 	}
 
 	pub inline fn hasBackFace(self: Block) bool {
