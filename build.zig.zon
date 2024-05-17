@@ -14,7 +14,7 @@
 		},
 		.cubyz_deps_aarch64_macos = .{
 			.url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/3/cubyz_deps_aarch64-macos-none.tar.gz",
-			.hash = "12200ff0b0a2b8c119f9987125f33a9fb87e670c881d7989a73dfb39e9c79fb79dc9",
+			.hash = "12204ba799cc74baeec8284b8a22cd0b597b58d5fa32c6eac999635fdc1834c950fc",
 			.lazy = true,
 		},
 		.cubyz_deps_aarch64_linux = .{
@@ -29,7 +29,7 @@
 		},
 		.cubyz_deps_x86_64_macos = .{
 			.url = "https://github.com/PixelGuys/Cubyz-Libs/releases/download/3/cubyz_deps_x86_64-macos-none.tar.gz",
-			.hash = "122009aa86e29cda6c1094f287512b20f19ca7afc7fe8e3a722b7a2c42323d5ab13c",
+			.hash = "1220cd7c8fd567132ba3fa64bf60765434a6dbab9c33444ca37e6ab53563cabfbf94",
 			.lazy = true,
 		},
 		.cubyz_deps_x86_64_linux = .{
