@@ -213,7 +213,7 @@ pub const BlockPalette = struct {
 		const json = JsonElement.initObject(allocator);
 		errdefer json.free(allocator);
 		for(self.palette.items, 0..) |item, i| {
-			json.put(allocator.dupe(u8, item), i);
+			json.put(item, i);
 		}
 		return json;
 	}

@@ -108,7 +108,7 @@ pub const ClientEntityManager = struct {
 
 	fn update() void {
 		main.utils.assertLocked(&mutex);
-		var time: i16 = @truncate(std.time.milliTimestamp());
+		var time: i16 = @truncate(std.time.milliTimestamp() -% settings.entityLookback);
 		time -%= timeDifference.difference.load(.monotonic);
 		for(entities.items) |*ent| {
 			ent.update(time, lastTime);

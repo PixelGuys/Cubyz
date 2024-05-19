@@ -24,6 +24,7 @@ pub const User = struct {
 	renderDistance: u16 = undefined,
 	receivedFirstEntityData: bool = false,
 	isLocal: bool = false,
+	id: u32 = 0, // TODO: Use entity id.
 	// TODO: ipPort: []const u8,
 
 	pub fn init(manager: *ConnectionManager, ipPort: []const u8) !*User {
@@ -141,7 +142,29 @@ fn update() void {
 		user.update();
 	}
 	mutex.unlock();
-	// TODO: Send entities to client
+
+	const data = main.stackAllocator.alloc(u8, (4 + 24 + 12 + 24)*users.items.len);
+	defer main.stackAllocator.free(data);
+	var remaining = data;
+	for(users.items) |user| {
+		const id = user.id; // TODO
+		std.mem.writeInt(u32, remaining[0..4], id, .big);
+		remaining = remaining[4..];
+		std.mem.writeInt(u64, remaining[0..8], @bitCast(user.player.pos[0]), .big);
+		std.mem.writeInt(u64, remaining[8..16], @bitCast(user.player.pos[1]), .big);
+		std.mem.writeInt(u64, remaining[16..24], @bitCast(user.player.pos[2]), .big);
+		std.mem.writeInt(u32, remaining[24..28], @bitCast(user.player.rot[0]), .big);
+		std.mem.writeInt(u32, remaining[28..32], @bitCast(user.player.rot[1]), .big);
+		std.mem.writeInt(u32, remaining[32..36], @bitCast(user.player.rot[2]), .big);
+		remaining = remaining[36..];
+		std.mem.writeInt(u64, remaining[0..8], @bitCast(user.player.vel[0]), .big);
+		std.mem.writeInt(u64, remaining[8..16], @bitCast(user.player.vel[1]), .big);
+		std.mem.writeInt(u64, remaining[16..24], @bitCast(user.player.vel[2]), .big);
+		remaining = remaining[24..];
+	}
+	for(users.items) |user| {
+		main.network.Protocols.entityPosition.send(user.conn, data, &.{});
+	}
 }
 
 pub fn start(name: []const u8) void {
@@ -186,8 +209,39 @@ pub fn disconnect(user: *User) void {
 	}
 }
 
+var freeId: u32 = 0;
 pub fn connect(user: *User) void {
 	// TODO: addEntity(player);
+	user.id = freeId;
+	freeId += 1;
+	// Let the other clients know about this new one.
+	{
+		const jsonArray = main.JsonElement.initArray(main.stackAllocator);
+		defer jsonArray.free(main.stackAllocator);
+		const entityJson = main.JsonElement.initObject(main.stackAllocator);
+		entityJson.put("id", user.id);
+		entityJson.put("name", user.name);
+		jsonArray.JsonArray.append(entityJson);
+		const data = jsonArray.toStringEfficient(main.stackAllocator, &.{});
+		defer main.stackAllocator.free(data);
+		for(users.items) |other| {
+			main.network.Protocols.entity.send(other.conn, data);
+		}
+	}
+	{ // Let this client know about the others:
+		const jsonArray = main.JsonElement.initArray(main.stackAllocator);
+		defer jsonArray.free(main.stackAllocator);
+		for(users.items) |other| {
+			const entityJson = main.JsonElement.initObject(main.stackAllocator);
+			entityJson.put("id", other.id);
+			entityJson.put("name", other.name);
+			jsonArray.JsonArray.append(entityJson);
+		}
+		const data = jsonArray.toStringEfficient(main.stackAllocator, &.{});
+		defer main.stackAllocator.free(data);
+		main.network.Protocols.entity.send(user.conn, data);
+
+	}
 	const message = std.fmt.allocPrint(main.stackAllocator.allocator, "{s} #ffff00joined", .{user.name}) catch unreachable;
 	defer main.stackAllocator.free(message);
 	mutex.lock();
