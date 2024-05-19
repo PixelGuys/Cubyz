@@ -640,6 +640,7 @@ pub const Protocols = struct {
 						conn.sendImportant(id, outData);
 						conn.handShakeState.store(stepServerData, .monotonic);
 						conn.handShakeState.store(stepComplete, .monotonic);
+						main.server.connect(conn.user.?);
 					},
 					stepAssets => {
 						std.log.info("Received assets.", .{});
@@ -737,6 +738,7 @@ pub const Protocols = struct {
 			ch.mutex.unlock();
 			defer main.stackAllocator.free(chunkData);
 			const data = main.stackAllocator.alloc(u8, chunkData.len + 16);
+			defer main.stackAllocator.free(data);
 			std.mem.writeInt(i32, data[0..4], ch.super.pos.wx, .big);
 			std.mem.writeInt(i32, data[4..8], ch.super.pos.wy, .big);
 			std.mem.writeInt(i32, data[8..12], ch.super.pos.wz, .big);

@@ -137,6 +137,7 @@ pub const World = struct {
 			serverThread.join();
 			main.server.thread = null;
 		}
+		main.threadPool.clear();
 		assets.unloadAssets();
 	}
 

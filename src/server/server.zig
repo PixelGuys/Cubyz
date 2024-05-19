@@ -117,7 +117,6 @@ fn init(name: []const u8) void {
 			break :blk;
 		};
 		user.isLocal = true;
-		connect(user);
 	}
 }
 
@@ -188,6 +187,7 @@ pub fn disconnect(user: *User) void {
 }
 
 pub fn connect(user: *User) void {
+	// TODO: addEntity(player);
 	const message = std.fmt.allocPrint(main.stackAllocator.allocator, "{s} #ffff00joined", .{user.name}) catch unreachable;
 	defer main.stackAllocator.free(message);
 	mutex.lock();

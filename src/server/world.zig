@@ -445,7 +445,6 @@ pub const ServerWorld = struct {
 		} else {
 			player.loadFrom(playerData);
 		}
-		// TODO: addEntity(player);
 	}
 
 	pub fn forceSave(self: *ServerWorld) !void {

@@ -1525,6 +1525,7 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 			var deltaTime = @as(f64, @floatFromInt(time -% lastTime))/1000;
 			if(deltaTime < 0) {
 				std.log.err("Experienced time travel. Current time: {} Last time: {}", .{time, lastTime});
+				lastTime = time;
 				deltaTime = 0;
 			}
 
@@ -1552,6 +1553,7 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 			var deltaTime = @as(f64, @floatFromInt(time -% lastTime))/1000;
 			if(deltaTime < 0) {
 				std.log.err("Experienced time travel. Current time: {} Last time: {}", .{time, lastTime});
+				lastTime = time;
 				deltaTime = 0;
 			}
 
