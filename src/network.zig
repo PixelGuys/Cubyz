@@ -634,6 +634,7 @@ pub const Protocols = struct {
 						spawn.put("y", main.server.world.?.spawn[1]);
 						spawn.put("z", main.server.world.?.spawn[2]);
 						jsonObject.put("spawn", spawn);
+						jsonObject.put("blockPalette", main.server.world.?.blockPalette.save(main.stackAllocator));
 						
 						const outData = jsonObject.toStringEfficient(main.stackAllocator, &[1]u8{stepServerData});
 						defer main.stackAllocator.free(outData);
