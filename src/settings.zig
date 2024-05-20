@@ -42,6 +42,8 @@ pub var storageTime: i64 = 5000;
 
 pub var developerAutoEnterWorld: []const u8 = "";
 
+pub var developerGPUInfiniteLoopDetection: bool = false;
+
 
 pub fn init() void {
 	const json: JsonElement = main.files.readToJson(main.stackAllocator, "settings.json") catch |err| {

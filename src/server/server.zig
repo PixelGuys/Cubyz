@@ -88,6 +88,7 @@ const updateNanoTime: u32 = 1000000000/20;
 
 pub var world: ?*ServerWorld = null;
 pub var users: main.List(*User) = undefined;
+pub var userDeinitList: main.List(*User) = undefined;
 
 pub var connectionManager: *ConnectionManager = undefined;
 
@@ -101,6 +102,7 @@ pub var thread: ?std.Thread = null;
 fn init(name: []const u8) void {
 	std.debug.assert(world == null); // There can only be one world.
 	users = main.List(*User).init(main.globalAllocator);
+	userDeinitList = main.List(*User).init(main.globalAllocator);
 	lastTime = std.time.nanoTimestamp();
 	connectionManager = ConnectionManager.init(main.settings.defaultPort, false) catch |err| {
 		std.log.err("Couldn't create socket: {s}", .{@errorName(err)});
@@ -126,6 +128,10 @@ fn deinit() void {
 		user.deinit();
 	}
 	users.clearAndFree();
+	for(userDeinitList.items) |user| {
+		user.deinit();
+	}
+	userDeinitList.clearAndFree();
 	connectionManager.deinit();
 	connectionManager = undefined;
 
@@ -165,6 +171,9 @@ fn update() void {
 	for(users.items) |user| {
 		main.network.Protocols.entityPosition.send(user.conn, data, &.{});
 	}
+	while(userDeinitList.popOrNull()) |user| {
+		user.deinit();
+	}
 }
 
 pub fn start(name: []const u8) void {
@@ -195,11 +204,10 @@ pub fn stop() void {
 
 pub fn disconnect(user: *User) void {
 	// TODO: world.forceSave();
-	const message = std.fmt.allocPrint(main.stackAllocator, "{s} #ffff00left", .{user.name}) catch unreachable;
+	const message = std.fmt.allocPrint(main.stackAllocator.allocator, "{s} #ffff00left", .{user.name}) catch unreachable;
 	defer main.stackAllocator.free(message);
 	mutex.lock();
 	defer mutex.unlock();
-	sendMessage(message);
 
 	for(users.items, 0..) |other, i| {
 		if(other == user) {
@@ -207,6 +215,17 @@ pub fn disconnect(user: *User) void {
 			break;
 		}
 	}
+	sendMessage(message);
+	// Let the other clients know about that this new one left.
+	const jsonArray = main.JsonElement.initArray(main.stackAllocator);
+	defer jsonArray.free(main.stackAllocator);
+	jsonArray.JsonArray.append(.{.JsonInt = user.id});
+	const data = jsonArray.toStringEfficient(main.stackAllocator, &.{});
+	defer main.stackAllocator.free(data);
+	for(users.items) |other| {
+		main.network.Protocols.entity.send(other.conn, data);
+	}
+	userDeinitList.append(user);
 }
 
 var freeId: u32 = 0;

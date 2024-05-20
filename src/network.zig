@@ -790,6 +790,9 @@ pub const Protocols = struct {
 		pub const id: u8 = 5;
 		fn receive(conn: *Connection, _: []const u8) !void {
 			conn.disconnect();
+			if(conn.user) |user| {
+				main.server.disconnect(user);
+			}
 		}
 		pub fn disconnect(conn: *Connection) void {
 			const noData = [0]u8 {};
