@@ -22,6 +22,7 @@ pub var window = GuiWindow {
 		.{ .attachedToWindow = .{.reference = &hotbar.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .lower} },
 	},
 	.contentSize = Vec2f{64*10, 64*3},
+	.scale = 0.75,
 };
 
 const padding: f32 = 8;

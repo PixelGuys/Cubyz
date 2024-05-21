@@ -34,7 +34,7 @@ const Mode = enum {
 };
 
 pos: Vec2f,
-size: Vec2f = .{24 + 2*border, 24 + 2*border},
+size: Vec2f = .{32 + 2*border, 32 + 2*border},
 itemStack: ItemStack,
 text: TextBuffer,
 textSize: Vec2f = .{0, 0},
