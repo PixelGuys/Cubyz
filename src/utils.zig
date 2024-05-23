@@ -365,6 +365,11 @@ pub fn CircularBufferQueue(comptime T: type) type {
 			self.startIndex = (self.startIndex + 1) & self.mask;
 			return result;
 		}
+
+		pub fn peek(self: *Self) ?T {
+			if(self.startIndex == self.endIndex) return null;
+			return self.mem[self.startIndex];
+		}
 	};
 }
 

@@ -4,7 +4,7 @@ const JsonElement = @import("json.zig").JsonElement;
 const main = @import("main.zig");
 
 pub const defaultPort: u16 = 47649;
-pub const connectionTimeout = 60000;
+pub const connectionTimeout = 60_000_000_000;
 
 pub const entityLookback: i16 = 100;
 
