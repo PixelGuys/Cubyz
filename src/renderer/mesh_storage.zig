@@ -85,27 +85,27 @@ pub fn deinit() void {
 	for(mapStorageLists) |mapStorageList| {
 		main.globalAllocator.destroy(mapStorageList);
 	}
+
 	for(updatableList.items) |mesh| {
 		mesh.decreaseRefCount();
 	}
-	updatableList.deinit();
+	updatableList.clearAndFree();
 	for(mapUpdatableList.items) |map| {
 		map.decreaseRefCount();
 	}
-	mapUpdatableList.deinit();
+	mapUpdatableList.clearAndFree();
 	for(priorityMeshUpdateList.items) |mesh| {
 		mesh.decreaseRefCount();
 	}
-	priorityMeshUpdateList.deinit();
-	blockUpdateList.deinit();
-	meshList.deinit();
+	priorityMeshUpdateList.clearAndFree();
+	blockUpdateList.clearAndFree();
+	meshList.clearAndFree();
 	for(clearList.items) |mesh| {
 		mesh.deinit();
 		main.globalAllocator.destroy(mesh);
 	}
-	clearList.deinit();
+	clearList.clearAndFree();
 }
-
 fn getNodePointer(pos: chunk.ChunkPosition) *ChunkMeshNode {
 	const lod = std.math.log2_int(u31, pos.voxelSize);
 	var xIndex = pos.wx >> lod+chunk.chunkShift;

@@ -190,10 +190,12 @@ pub fn finishBlocks(jsonElements: std.StringHashMap(JsonElement)) void {
 
 pub fn reset() void {
 	size = 0;
+	ores.clearRetainingCapacity();
+	ores.clearAndFree();
+	meshes.reset();
 	_ = arena.reset(.free_all);
 	reverseIndices = std.StringHashMap(u16).init(arena.allocator().allocator);
 	std.debug.assert(unfinishedOreSourceBlockIds.items.len == 0);
-	ores.clearRetainingCapacity();
 }
 
 pub fn getByID(id: []const u8) u16 {
@@ -534,6 +536,7 @@ pub const meshes = struct {
 	}
 
 	pub fn register(assetFolder: []const u8, _: []const u8, json: JsonElement) void {
+		std.debug.print("size {d}", .{meshes.size});
 		_modelIndex[meshes.size] = _mode[meshes.size].createBlockModel(json.get([]const u8, "model", "cube"));
 
 		// The actual model is loaded later, in the rendering thread.

@@ -17,14 +17,11 @@ const padding: f32 = 8;
 
 fn exitMenuCallbackFunction(useless: usize) void {
 	_ = useless; 
-	//if(main.server.world) |world|
-	//	world.forceSave() catch unreachable;
+	if(main.game.world) |world| {
+	 	world.deinit();
+		main.game.world = null;
+	}
 	gui.openWindow("main");
-	// if(main.game.world) |world| {
-	// 	world.deinit();
-	// 	main.game.world = null;
-	// }
-	
 }
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
