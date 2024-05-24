@@ -14,6 +14,7 @@ uniform sampler2DArray emissionSampler;
 uniform sampler2DArray reflectivityAndAbsorptionSampler;
 uniform samplerCube reflectionMap;
 uniform float reflectionMapSize;
+uniform float contrast;
 
 layout(binding = 5) uniform sampler2D depthTexture;
 
@@ -41,8 +42,8 @@ layout(std430, binding = 7) buffer _fogData
 };
 
 float lightVariation(vec3 normal) {
-	const vec3 directionalPart = vec3(0, 0.04, 0.08);
-	const float baseLighting = 0.92;
+	const vec3 directionalPart = vec3(0, contrast/2, contrast);
+	const float baseLighting = 1 - contrast;
 	return baseLighting + dot(normal, directionalPart);
 }
 

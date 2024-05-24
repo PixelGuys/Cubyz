@@ -31,6 +31,7 @@ const UniformStruct = struct {
 	modelPosition: c_int,
 	screenSize: c_int,
 	ambientLight: c_int,
+	contrast: c_int,
 	@"fog.color": c_int,
 	@"fog.density": c_int,
 	texture_sampler: c_int,
@@ -100,6 +101,8 @@ fn bindCommonUniforms(locations: *UniformStruct, projMatrix: Mat4f, ambient: Vec
 	c.glUniform1i(locations.reflectivityAndAbsorptionSampler, 2);
 	c.glUniform1i(locations.reflectionMap, 4);
 	c.glUniform1f(locations.reflectionMapSize, renderer.reflectionCubeMapSize);
+
+	c.glUniform1f(locations.contrast, 0.12);
 
 	c.glUniformMatrix4fv(locations.viewMatrix, 1, c.GL_TRUE, @ptrCast(&game.camera.viewMatrix));
 

@@ -23,6 +23,7 @@ pub var window = GuiWindow {
 	.showTitleBar = false,
 	.hasBackground = false,
 	.hideIfMouseIsGrabbed = false,
+	.scale = 0.75,
 };
 
 var itemSlots: [12]*ItemSlot = undefined;

@@ -108,7 +108,7 @@ pub const ClientEntityManager = struct {
 
 	fn update() void {
 		main.utils.assertLocked(&mutex);
-		var time: i16 = @truncate(std.time.milliTimestamp());
+		var time: i16 = @truncate(std.time.milliTimestamp() -% settings.entityLookback);
 		time -%= timeDifference.difference.load(.monotonic);
 		for(entities.items) |*ent| {
 			ent.update(time, lastTime);
@@ -137,7 +137,7 @@ pub const ClientEntityManager = struct {
 			const yCenter = (1 - projectedPos[1]/projectedPos[3])*@as(f32, @floatFromInt(main.Window.height/2));
 			
 			graphics.draw.setColor(0xff000000);
-			graphics.draw.text(ent.name, xCenter, yCenter, 64, .center);
+			graphics.draw.text(ent.name, xCenter, yCenter, 32, .center);
 		}
 	}
 

@@ -449,9 +449,9 @@ pub const ServerChunk = struct {
 			// Update the next lod chunk:
 			if(pos.voxelSize != 1 << settings.highestLOD) {
 				var nextPos = pos;
-				nextPos.wx &= ~(pos.voxelSize*chunkSize);
-				nextPos.wy &= ~(pos.voxelSize*chunkSize);
-				nextPos.wz &= ~(pos.voxelSize*chunkSize);
+				nextPos.wx &= ~@as(i32, pos.voxelSize*chunkSize);
+				nextPos.wy &= ~@as(i32, pos.voxelSize*chunkSize);
+				nextPos.wz &= ~@as(i32, pos.voxelSize*chunkSize);
 				nextPos.voxelSize *= 2;
 				const nextHigherLod = world.getOrGenerateChunkAndIncreaseRefCount(nextPos);
 				defer nextHigherLod.decreaseRefCount();

@@ -172,6 +172,70 @@ pub const draw = struct {
 	}
 
 	// ----------------------------------------------------------------------------
+	// Stuff for fillRectBorder:
+	var rectBorderUniforms: struct {
+		screen: c_int,
+		start: c_int,
+		size: c_int,
+		rectColor: c_int,
+		lineWidth: c_int,
+	} = undefined;
+	var rectBorderShader: Shader = undefined;
+	var rectBorderVAO: c_uint = undefined;
+	var rectBorderVBO: c_uint = undefined;
+
+	fn initRectBorder() void {
+		rectBorderShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/RectBorder.vs", "assets/cubyz/shaders/graphics/RectBorder.fs", &rectBorderUniforms);
+		const rawData = [_]f32 {
+			0, 0, 0, 0,
+			0, 0, 1, 1,
+			0, 1, 0, 0,
+			0, 1, 1, -1,
+			1, 1, 0, 0,
+			1, 1, -1, -1,
+			1, 0, 0, 0,
+			1, 0, -1, 1,
+			0, 0, 0, 0,
+			0, 0, 1, 1,
+		};
+
+		c.glGenVertexArrays(1, &rectBorderVAO);
+		c.glBindVertexArray(rectBorderVAO);
+		c.glGenBuffers(1, &rectBorderVBO);
+		c.glBindBuffer(c.GL_ARRAY_BUFFER, rectBorderVBO);
+		c.glBufferData(c.GL_ARRAY_BUFFER, rawData.len*@sizeOf(f32), &rawData, c.GL_STATIC_DRAW);
+		c.glVertexAttribPointer(0, 4, c.GL_FLOAT, c.GL_FALSE, 4*@sizeOf(f32), null);
+		c.glEnableVertexAttribArray(0);
+	}
+
+	fn deinitRectBorder() void {
+		rectBorderShader.deinit();
+		c.glDeleteVertexArrays(1, &rectBorderVAO);
+		c.glDeleteBuffers(1, &rectBorderVBO);
+	}
+
+	pub fn rectBorder(_pos: Vec2f, _dim: Vec2f, _width: f32) void {
+		var pos = _pos;
+		var dim = _dim;
+		var width = _width;
+		pos *= @splat(scale);
+		pos += translation;
+		dim *= @splat(scale);
+		width *= scale;
+
+		rectBorderShader.bind();
+
+		c.glUniform2f(rectBorderUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
+		c.glUniform2f(rectBorderUniforms.start, pos[0], pos[1]);
+		c.glUniform2f(rectBorderUniforms.size, dim[0], dim[1]);
+		c.glUniform1i(rectBorderUniforms.rectColor,  @bitCast(color));
+		c.glUniform1f(rectBorderUniforms.lineWidth, width);
+
+		c.glBindVertexArray(rectBorderVAO);
+		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 10);
+	}
+
+	// ----------------------------------------------------------------------------
 	// Stuff for drawLine:
 	var lineUniforms: struct {
 		screen: c_int,
@@ -332,6 +396,8 @@ pub const draw = struct {
 		size: c_int,
 		image: c_int,
 		color: c_int,
+		uvOffset: c_int,
+		uvDim: c_int,
 	} = undefined;
 	var imageShader: Shader = undefined;
 
@@ -358,6 +424,30 @@ pub const draw = struct {
 		c.glUniform2f(imageUniforms.start, pos[0], pos[1]);
 		c.glUniform2f(imageUniforms.size, dim[0], dim[1]);
 		c.glUniform1i(imageUniforms.color, @bitCast(color));
+		c.glUniform2f(imageUniforms.uvOffset, 0, 0);
+		c.glUniform2f(imageUniforms.uvDim, 1, 1);
+
+		c.glBindVertexArray(rectVAO);
+		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+	}
+
+	pub fn boundSubImage(_pos: Vec2f, _dim: Vec2f, uvOffset: Vec2f, uvDim: Vec2f) void {
+		var pos = _pos;
+		var dim = _dim;
+		pos *= @splat(scale);
+		pos += translation;
+		dim *= @splat(scale);
+		pos = @floor(pos);
+		dim = @ceil(dim);
+
+		imageShader.bind();
+
+		c.glUniform2f(imageUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
+		c.glUniform2f(imageUniforms.start, pos[0], pos[1]);
+		c.glUniform2f(imageUniforms.size, dim[0], dim[1]);
+		c.glUniform1i(imageUniforms.color, @bitCast(color));
+		c.glUniform2f(imageUniforms.uvOffset, uvOffset[0], 1 - uvOffset[1] - uvDim[1]);
+		c.glUniform2f(imageUniforms.uvDim, uvDim[0], uvDim[1]);
 
 		c.glBindVertexArray(rectVAO);
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
@@ -1049,6 +1139,7 @@ pub fn init() void {
 	draw.initImage();
 	draw.initLine();
 	draw.initRect();
+	draw.initRectBorder();
 	TextRendering.init() catch |err| {
 		std.log.err("Error while initializing TextRendering: {s}", .{@errorName(err)});
 	};
@@ -1061,6 +1152,7 @@ pub fn deinit() void {
 	draw.deinitImage();
 	draw.deinitLine();
 	draw.deinitRect();
+	draw.deinitRectBorder();
 	TextRendering.deinit();
 	block_texture.deinit();
 }
@@ -1631,6 +1723,14 @@ pub const Texture = struct {
 		self.bindTo(0);
 		draw.boundImage(pos, dim);
 	}
+
+	pub fn size(self: Texture) Vec2i {
+		self.bind();
+		var result: Vec2i = undefined;
+		c.glGetTexLevelParameteriv(c.GL_TEXTURE_2D, 0, c.GL_TEXTURE_WIDTH, &result[0]);
+		c.glGetTexLevelParameteriv(c.GL_TEXTURE_2D, 0, c.GL_TEXTURE_HEIGHT, &result[1]);
+		return result;
+	}
 };
 
 pub const CubeMapTexture = struct {
@@ -1864,7 +1964,7 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 
 	const projMatrix = Mat4f.perspective(0.013, 1, 64, 256);
 	const oldViewMatrix = main.game.camera.viewMatrix;
-	main.game.camera.viewMatrix = Mat4f.identity().mul(Mat4f.rotationX(std.math.pi/4.0)).mul(Mat4f.rotationZ(-3.0*std.math.pi/4.0));
+	main.game.camera.viewMatrix = Mat4f.identity().mul(Mat4f.rotationX(std.math.pi/4.0)).mul(Mat4f.rotationZ(-5.0*std.math.pi/4.0));
 	defer main.game.camera.viewMatrix = oldViewMatrix;
 	if(block.transparent()) {
 		c.glBlendEquation(c.GL_FUNC_ADD);
@@ -1895,17 +1995,27 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	var allocation: SubAllocation = .{.start = 0, .len = 0};
 	main.renderer.chunk_meshing.faceBuffer.uploadData(faceData.items, &allocation);
 
-	c.glUniform3f(uniforms.modelPosition, -65.5 - 1.5, -65.5 - 1.5, -92.631 - 1.5);
-	c.glUniform1i(uniforms.visibilityMask, 0xff);
-	c.glUniform1i(uniforms.voxelSize, 1);
-	c.glActiveTexture(c.GL_TEXTURE0);
-	main.blocks.meshes.blockTextureArray.bind();
-	c.glActiveTexture(c.GL_TEXTURE1);
-	main.blocks.meshes.emissionTextureArray.bind();
-	c.glActiveTexture(c.GL_TEXTURE2);
-	main.blocks.meshes.reflectivityAndAbsorptionTextureArray.bind();
-	block_texture.depthTexture.bindTo(5);
-	c.glDrawElementsBaseVertex(c.GL_TRIANGLES, @intCast(6*faceData.items.len), c.GL_UNSIGNED_INT, null, allocation.start*4);
+	{
+		const i = 6; // Easily switch between the 8 rotations.
+		var x: f32 = 65.5 - 1.5;
+		var y: f32 = 65.5 - 1.5;
+		var z: f32 = 92.631 - 1.5;
+		if(i & 1 != 0) x = -x - 3;
+		if(i & 2 != 0) y = -y - 3;
+		if(i & 4 != 0) z = -z - 3;
+		c.glUniform3f(uniforms.modelPosition, x, y, z);
+		c.glUniform1i(uniforms.visibilityMask, 0xff);
+		c.glUniform1i(uniforms.voxelSize, 1);
+		c.glUniform1f(uniforms.contrast, 0.25);
+		c.glActiveTexture(c.GL_TEXTURE0);
+		main.blocks.meshes.blockTextureArray.bind();
+		c.glActiveTexture(c.GL_TEXTURE1);
+		main.blocks.meshes.emissionTextureArray.bind();
+		c.glActiveTexture(c.GL_TEXTURE2);
+		main.blocks.meshes.reflectivityAndAbsorptionTextureArray.bind();
+		block_texture.depthTexture.bindTo(5);
+		c.glDrawElementsBaseVertex(c.GL_TRIANGLES, @intCast(6*faceData.items.len), c.GL_UNSIGNED_INT, null, allocation.start*4);
+	}
 
 	c.glDisable(c.GL_CULL_FACE);
 	var finalFrameBuffer: FrameBuffer = undefined;

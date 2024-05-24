@@ -445,7 +445,6 @@ pub const ServerWorld = struct {
 		} else {
 			player.loadFrom(playerData);
 		}
-		// TODO: addEntity(player);
 	}
 
 	pub fn forceSave(self: *ServerWorld) !void {
@@ -596,6 +595,9 @@ pub const ServerWorld = struct {
 		baseChunk.mutex.lock();
 		defer baseChunk.mutex.unlock();
 		baseChunk.updateBlockAndSetChanged(x, y, z, newBlock);
+		for(main.server.users.items) |user| {
+			main.network.Protocols.blockUpdate.send(user.conn, wx, wy, wz, _newBlock);
+		}
 	}
 
 	pub fn queueChunkUpdateAndDecreaseRefCount(self: *ServerWorld, ch: *ServerChunk) void {

@@ -137,6 +137,7 @@ pub const World = struct {
 			serverThread.join();
 			main.server.thread = null;
 		}
+		main.threadPool.clear();
 		assets.unloadAssets();
 	}
 
@@ -165,7 +166,7 @@ pub const World = struct {
 		}
 		// Ambient light:
 		{
-			var dayTime = @abs(@mod(self.gameTime.load(.monotonic), dayCycle) -% dayCycle/2);
+			const dayTime = @abs(@mod(self.gameTime.load(.monotonic), dayCycle) -% dayCycle/2);
 			if(dayTime < dayCycle/4 - dayCycle/16) {
 				self.ambientLight = 0.1;
 				self.clearColor[0] = 0;
@@ -187,7 +188,7 @@ pub const World = struct {
 				if(dayTime > dayCycle/4 + dayCycle/32) {
 					self.clearColor[1] = 0.8;
 				} else if(dayTime > dayCycle/4 - dayCycle/32) {
-					self.clearColor[1] = 0.8 + 0.8*@as(f32, @floatFromInt(dayTime - dayCycle/4 - dayCycle/32))/@as(f32, @floatFromInt(dayCycle/16));
+					self.clearColor[1] = 0.8 - 0.8*@as(f32, @floatFromInt(dayCycle/4 + dayCycle/32 - dayTime))/@as(f32, @floatFromInt(dayCycle/16));
 				} else {
 					self.clearColor[1] = 0;
 				}
@@ -195,11 +196,9 @@ pub const World = struct {
 				if(dayTime > dayCycle/4) {
 					self.clearColor[0] = 0.8;
 				} else {
-					self.clearColor[0] = 0.8 + 0.8*@as(f32, @floatFromInt(dayTime - dayCycle/4))/@as(f32, @floatFromInt(dayCycle/16));
+					self.clearColor[0] = 0.8 - 0.8*@as(f32, @floatFromInt(dayCycle/4 - dayTime))/@as(f32, @floatFromInt(dayCycle/16));
 				}
-				dayTime -= dayCycle/4;
-				dayTime <<= 3;
-				self.ambientLight = 0.55 + 0.45*@as(f32, @floatFromInt(dayTime))/@as(f32, @floatFromInt(dayCycle/2));
+				self.ambientLight = 0.1 + 0.9*@as(f32, @floatFromInt(dayTime - (dayCycle/4 - dayCycle/16)))/@as(f32, @floatFromInt(dayCycle/8));
 			}
 		}
 		network.Protocols.playerPosition.send(self.conn, Player.getPosBlocking(), Player.getVelBlocking(), @intCast(newTime & 65535));

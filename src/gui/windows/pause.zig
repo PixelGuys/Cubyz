@@ -17,7 +17,7 @@ const padding: f32 = 8;
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
-	list.add(Button.initText(.{0, 0}, 128, "Invite Player TODO", .{}));
+	list.add(Button.initText(.{0, 0}, 128, "Invite Player", gui.openWindowCallback("invite")));
 	list.add(Button.initText(.{0, 0}, 128, "Settings", gui.openWindowCallback("settings")));
 	list.add(Button.initText(.{0, 0}, 128, "Exit to Menu TODO", .{}));
 	list.finish(.center);

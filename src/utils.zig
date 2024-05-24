@@ -365,6 +365,11 @@ pub fn CircularBufferQueue(comptime T: type) type {
 			self.startIndex = (self.startIndex + 1) & self.mask;
 			return result;
 		}
+
+		pub fn peek(self: *Self) ?T {
+			if(self.startIndex == self.endIndex) return null;
+			return self.mem[self.startIndex];
+		}
 	};
 }
 
@@ -1525,6 +1530,7 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 			var deltaTime = @as(f64, @floatFromInt(time -% lastTime))/1000;
 			if(deltaTime < 0) {
 				std.log.err("Experienced time travel. Current time: {} Last time: {}", .{time, lastTime});
+				lastTime = time;
 				deltaTime = 0;
 			}
 
@@ -1552,6 +1558,7 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 			var deltaTime = @as(f64, @floatFromInt(time -% lastTime))/1000;
 			if(deltaTime < 0) {
 				std.log.err("Experienced time travel. Current time: {} Last time: {}", .{time, lastTime});
+				lastTime = time;
 				deltaTime = 0;
 			}
 

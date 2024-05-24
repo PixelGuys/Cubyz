@@ -12,6 +12,7 @@ pub const healthbar = @import("healthbar.zig");
 pub const hotbar = @import("hotbar.zig");
 pub const inventory = @import("inventory.zig");
 pub const inventory_crafting = @import("inventory_crafting.zig");
+pub const invite = @import("invite.zig");
 pub const main = @import("main.zig");
 pub const multiplayer = @import("multiplayer.zig");
 pub const pause = @import("pause.zig");

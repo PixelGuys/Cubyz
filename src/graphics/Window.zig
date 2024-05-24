@@ -291,7 +291,7 @@ pub fn reloadSettings() void {
 }
 
 pub fn getClipboardString() []const u8 {
-	return std.mem.span(c.glfwGetClipboardString(window));
+	return std.mem.span(c.glfwGetClipboardString(window) orelse @as([*c]const u8, ""));
 }
 
 pub fn setClipboardString(string: []const u8) void {
