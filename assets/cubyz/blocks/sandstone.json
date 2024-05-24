@@ -4,6 +4,7 @@
 	"drops": [
 		"auto"
 	],
+	"rotation": "stairs",
 	"model": "cube",
 	"texture": "cubyz:sandstone"
 }

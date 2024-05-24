@@ -5,6 +5,7 @@
 	"drops" : [
 		"cubyz:cobblestone"
 	],
+	"rotation" : "stairs",
 	"model" : "cube",
 	"texture" : "cubyz:stone"
 }

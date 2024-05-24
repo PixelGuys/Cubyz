@@ -7,13 +7,5 @@
 	"model" : "cube",
 	"texture" : "cubyz:mossy_cobblestone",
 
-	"rotation" : "multi_texture",
-	"multi_texture_variants" : [
-		{
-			"texture" : "cubyz:mossy_cobblestone"
-		},
-		{
-			"texture" : "cubyz:mossy_cobblestone_1"
-		}
-	]
+	"rotation" : "stairs",
 }
