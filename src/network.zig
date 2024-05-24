@@ -680,6 +680,9 @@ pub const Protocols = struct {
 						const outData = jsonObject.toStringEfficient(main.stackAllocator, &[1]u8{stepServerData});
 						defer main.stackAllocator.free(outData);
 						conn.sendImportant(id, outData);
+						conn.mutex.lock();
+						conn.flush();
+						conn.mutex.unlock();
 						conn.handShakeState.store(stepServerData, .monotonic);
 						conn.handShakeState.store(stepComplete, .monotonic);
 						main.server.connect(conn.user.?);
@@ -725,6 +728,7 @@ pub const Protocols = struct {
 			conn.sendImportant(id, data);
 
 			conn.mutex.lock();
+			conn.flush();
 			conn.handShakeWaiting.wait(&conn.mutex);
 			conn.mutex.unlock();
 		}
