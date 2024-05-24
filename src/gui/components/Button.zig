@@ -138,6 +138,7 @@ pub fn render(self: *Button, mousePosition: Vec2f) void {
 	else if(GuiComponent.contains(self.pos, self.size, mousePosition) and self.hovered)
 		hoveredTextures
 	else normalTextures;
+	draw.setColor(0xff000000);
 	textures.texture.bindTo(0);
 	shader.bind();
 	self.hovered = false;
