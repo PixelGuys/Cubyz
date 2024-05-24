@@ -58,12 +58,13 @@ fn refresh() void {
 	window.rootComponent = mutexComponent.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
 	gui.updateWindowPositions();
-	if(hideInput) {
-		historyStart = 0;
-	} else {
+	if(!hideInput) {
 		for(history.items) |label| {
 			label.alpha = 1;
 		}
+	} else {
+		list.scrollBar.currentState = 1;
+		list.scrollBar.size = .{0, 0};
 	}
 }
 
@@ -106,7 +107,6 @@ pub fn update() void {
 		for(expirationTime.items[historyStart..fadeOutEnd], history.items[historyStart..fadeOutEnd]) |time, label| {
 			if(currentTime -% time >= messageFade) {
 				historyStart += 1;
-				hideInput = main.Window.grabbed;
 				refresh();
 			} else {
 				const timeDifference: f32 = @floatFromInt(currentTime -% time);
