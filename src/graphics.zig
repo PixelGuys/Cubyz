@@ -396,6 +396,8 @@ pub const draw = struct {
 		size: c_int,
 		image: c_int,
 		color: c_int,
+		uvOffset: c_int,
+		uvDim: c_int,
 	} = undefined;
 	var imageShader: Shader = undefined;
 
@@ -422,6 +424,30 @@ pub const draw = struct {
 		c.glUniform2f(imageUniforms.start, pos[0], pos[1]);
 		c.glUniform2f(imageUniforms.size, dim[0], dim[1]);
 		c.glUniform1i(imageUniforms.color, @bitCast(color));
+		c.glUniform2f(imageUniforms.uvOffset, 0, 0);
+		c.glUniform2f(imageUniforms.uvDim, 1, 1);
+
+		c.glBindVertexArray(rectVAO);
+		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+	}
+
+	pub fn boundSubImage(_pos: Vec2f, _dim: Vec2f, uvOffset: Vec2f, uvDim: Vec2f) void {
+		var pos = _pos;
+		var dim = _dim;
+		pos *= @splat(scale);
+		pos += translation;
+		dim *= @splat(scale);
+		pos = @floor(pos);
+		dim = @ceil(dim);
+
+		imageShader.bind();
+
+		c.glUniform2f(imageUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
+		c.glUniform2f(imageUniforms.start, pos[0], pos[1]);
+		c.glUniform2f(imageUniforms.size, dim[0], dim[1]);
+		c.glUniform1i(imageUniforms.color, @bitCast(color));
+		c.glUniform2f(imageUniforms.uvOffset, uvOffset[0], 1 - uvOffset[1] - uvDim[1]);
+		c.glUniform2f(imageUniforms.uvDim, uvDim[0], uvDim[1]);
 
 		c.glBindVertexArray(rectVAO);
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
@@ -1696,6 +1722,14 @@ pub const Texture = struct {
 	pub fn render(self: Texture, pos: Vec2f, dim: Vec2f) void {
 		self.bindTo(0);
 		draw.boundImage(pos, dim);
+	}
+
+	pub fn size(self: Texture) Vec2i {
+		self.bind();
+		var result: Vec2i = undefined;
+		c.glGetTexLevelParameteriv(c.GL_TEXTURE_2D, 0, c.GL_TEXTURE_WIDTH, &result[0]);
+		c.glGetTexLevelParameteriv(c.GL_TEXTURE_2D, 0, c.GL_TEXTURE_HEIGHT, &result[1]);
+		return result;
 	}
 };
 

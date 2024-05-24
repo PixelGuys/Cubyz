@@ -9,6 +9,8 @@ flat out vec4 fColor;
 uniform vec2 start;
 uniform vec2 size;
 uniform vec2 screen;
+uniform vec2 uvOffset;
+uniform vec2 uvDim;
 
 uniform int color;
 
@@ -22,5 +24,5 @@ void main() {
 	gl_Position = vec4(position, 0, 1);
 	
 	fColor = vec4((color & 0xff0000)>>16, (color & 0xff00)>>8, color & 0xff, (color>>24) & 255)/255.0;
-	uv = vertex_pos;
+	uv = uvOffset + vertex_pos*uvDim;
 }
