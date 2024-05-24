@@ -447,9 +447,9 @@ fn drawOrientationLines(self: *const GuiWindow) void {
 
 pub fn drawIcons(self: *const GuiWindow) void {
 	draw.setColor(0xffffffff);
-	closeTexture.render(.{self.size[0]/self.scale - 16, 0}, .{16, 16});
-	zoomOutTexture.render(.{self.size[0]/self.scale - 32, 0}, .{16, 16});
-	zoomInTexture.render(.{self.size[0]/self.scale - 48, 0}, .{16, 16});
+	closeTexture.render(.{self.size[0]/self.scale - 16, 2}, .{14, 14});
+	zoomOutTexture.render(.{self.size[0]/self.scale - 32, 2}, .{14, 14});
+	zoomInTexture.render(.{self.size[0]/self.scale - 48, 2}, .{14, 14});
 }
 
 pub fn render(self: *const GuiWindow, mousePosition: Vec2f) void {
@@ -470,30 +470,28 @@ pub fn render(self: *const GuiWindow, mousePosition: Vec2f) void {
 		shader.bind();
 		titleTexture.bindTo(0);
 		draw.setColor(0xff000000);
-		draw.customShadedRect(windowUniforms, .{0, 0}, .{self.size[0]/self.scale, 16});
+		draw.customShadedRect(windowUniforms, .{0, 0}, .{self.size[0]/self.scale, 18});
 		self.drawIcons();
 	} else if(!main.Window.grabbed) {
 		if(self.titleBarExpanded) {
 			shader.bind();
 			titleTexture.bindTo(0);
 			draw.setColor(0xff000000);
-			draw.customShadedRect(windowUniforms, .{0, 0}, .{self.size[0]/self.scale, 16});
+			draw.customShadedRect(windowUniforms, .{0, 0}, .{self.size[0]/self.scale, 18});
 			self.drawIcons();
-			expandTitleBarTexture.render(.{0, 0}, .{16, 16});
+			expandTitleBarTexture.render(.{2, 2}, .{14, 14});
 		} else {
 			shader.bind();
 			titleTexture.bindTo(0);
 			draw.setColor(0xff000000);
-			draw.customShadedRect(windowUniforms, .{0, 0}, .{16, 16});
+			draw.customShadedRect(windowUniforms, .{0, 0}, .{18, 18});
 			draw.setColor(0xffffffff);
-			expandTitleBarTexture.render(.{0, 0}, .{16, 16});
+			expandTitleBarTexture.render(.{2, 2}, .{14, 14});
 		}
 	}
 	if(self.hasBackground or (!main.Window.grabbed and self.titleBarExpanded)) {
-		draw.setColor(0x80000000);
-		borderShader.bind();
-		graphics.c.glUniform2f(borderUniforms.effectLength, 2.5, 2.5);
-		draw.customShadedRect(borderUniforms, .{0, 0}, self.size/@as(Vec2f, @splat(self.scale)));
+		draw.setColor(0xff1d1d1d);
+		draw.rectBorder(.{-2, -2}, self.size/@as(Vec2f, @splat(self.scale)) + Vec2f{4, 4}, 2.0);
 	}
 	draw.restoreTranslation(oldTranslation);
 	draw.restoreScale(oldScale);

@@ -172,6 +172,70 @@ pub const draw = struct {
 	}
 
 	// ----------------------------------------------------------------------------
+	// Stuff for fillRectBorder:
+	var rectBorderUniforms: struct {
+		screen: c_int,
+		start: c_int,
+		size: c_int,
+		rectColor: c_int,
+		lineWidth: c_int,
+	} = undefined;
+	var rectBorderShader: Shader = undefined;
+	var rectBorderVAO: c_uint = undefined;
+	var rectBorderVBO: c_uint = undefined;
+
+	fn initRectBorder() void {
+		rectBorderShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/RectBorder.vs", "assets/cubyz/shaders/graphics/RectBorder.fs", &rectBorderUniforms);
+		const rawData = [_]f32 {
+			0, 0, 0, 0,
+			0, 0, 1, 1,
+			0, 1, 0, 0,
+			0, 1, 1, -1,
+			1, 1, 0, 0,
+			1, 1, -1, -1,
+			1, 0, 0, 0,
+			1, 0, -1, 1,
+			0, 0, 0, 0,
+			0, 0, 1, 1,
+		};
+
+		c.glGenVertexArrays(1, &rectBorderVAO);
+		c.glBindVertexArray(rectBorderVAO);
+		c.glGenBuffers(1, &rectBorderVBO);
+		c.glBindBuffer(c.GL_ARRAY_BUFFER, rectBorderVBO);
+		c.glBufferData(c.GL_ARRAY_BUFFER, rawData.len*@sizeOf(f32), &rawData, c.GL_STATIC_DRAW);
+		c.glVertexAttribPointer(0, 4, c.GL_FLOAT, c.GL_FALSE, 4*@sizeOf(f32), null);
+		c.glEnableVertexAttribArray(0);
+	}
+
+	fn deinitRectBorder() void {
+		rectBorderShader.deinit();
+		c.glDeleteVertexArrays(1, &rectBorderVAO);
+		c.glDeleteBuffers(1, &rectBorderVBO);
+	}
+
+	pub fn rectBorder(_pos: Vec2f, _dim: Vec2f, _width: f32) void {
+		var pos = _pos;
+		var dim = _dim;
+		var width = _width;
+		pos *= @splat(scale);
+		pos += translation;
+		dim *= @splat(scale);
+		width *= scale;
+
+		rectBorderShader.bind();
+
+		c.glUniform2f(rectBorderUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
+		c.glUniform2f(rectBorderUniforms.start, pos[0], pos[1]);
+		c.glUniform2f(rectBorderUniforms.size, dim[0], dim[1]);
+		c.glUniform1i(rectBorderUniforms.rectColor,  @bitCast(color));
+		c.glUniform1f(rectBorderUniforms.lineWidth, width);
+
+		c.glBindVertexArray(rectBorderVAO);
+		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 10);
+	}
+
+	// ----------------------------------------------------------------------------
 	// Stuff for drawLine:
 	var lineUniforms: struct {
 		screen: c_int,
@@ -1049,6 +1113,7 @@ pub fn init() void {
 	draw.initImage();
 	draw.initLine();
 	draw.initRect();
+	draw.initRectBorder();
 	TextRendering.init() catch |err| {
 		std.log.err("Error while initializing TextRendering: {s}", .{@errorName(err)});
 	};
@@ -1061,6 +1126,7 @@ pub fn deinit() void {
 	draw.deinitImage();
 	draw.deinitLine();
 	draw.deinitRect();
+	draw.deinitRectBorder();
 	TextRendering.deinit();
 	block_texture.deinit();
 }
