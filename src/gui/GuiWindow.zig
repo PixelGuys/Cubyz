@@ -447,9 +447,9 @@ fn drawOrientationLines(self: *const GuiWindow) void {
 
 pub fn drawIcons(self: *const GuiWindow) void {
 	draw.setColor(0xffffffff);
-	closeTexture.render(.{self.size[0]/self.scale - 16, 2}, .{14, 14});
-	zoomOutTexture.render(.{self.size[0]/self.scale - 32, 2}, .{14, 14});
-	zoomInTexture.render(.{self.size[0]/self.scale - 48, 2}, .{14, 14});
+	closeTexture.render(.{self.size[0]/self.scale - 18, 0}, .{18, 18});
+	zoomOutTexture.render(.{self.size[0]/self.scale - 36, 0}, .{18, 18});
+	zoomInTexture.render(.{self.size[0]/self.scale - 54, 0}, .{18, 18});
 }
 
 pub fn render(self: *const GuiWindow, mousePosition: Vec2f) void {
@@ -479,14 +479,14 @@ pub fn render(self: *const GuiWindow, mousePosition: Vec2f) void {
 			draw.setColor(0xff000000);
 			draw.customShadedRect(windowUniforms, .{0, 0}, .{self.size[0]/self.scale, 18});
 			self.drawIcons();
-			expandTitleBarTexture.render(.{2, 2}, .{14, 14});
+			expandTitleBarTexture.render(.{0, 0}, .{18, 18});
 		} else {
 			shader.bind();
 			titleTexture.bindTo(0);
 			draw.setColor(0xff000000);
 			draw.customShadedRect(windowUniforms, .{0, 0}, .{18, 18});
 			draw.setColor(0xffffffff);
-			expandTitleBarTexture.render(.{2, 2}, .{14, 14});
+			expandTitleBarTexture.render(.{0, 0}, .{18, 18});
 		}
 	}
 	if(self.hasBackground or (!main.Window.grabbed and self.titleBarExpanded)) {
