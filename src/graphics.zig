@@ -1879,6 +1879,19 @@ pub const Image = struct {
 		stb_image.stbi_image_free(data);
 		return result;
 	}
+	pub fn readUnflippedFromFile(allocator: NeverFailingAllocator, path: []const u8) !Image {
+		var result: Image = undefined;
+		var channel: c_int = undefined;
+		const nullTerminatedPath = std.fmt.allocPrintZ(main.stackAllocator.allocator, "{s}", .{path}) catch unreachable; // TODO: Find a more zig-friendly image loading library.
+		errdefer main.stackAllocator.free(nullTerminatedPath);
+		const data = stb_image.stbi_load(nullTerminatedPath.ptr, @ptrCast(&result.width), @ptrCast(&result.height), &channel, 4) orelse {
+			return error.FileNotFound;
+		};
+		main.stackAllocator.free(nullTerminatedPath);
+		result.imageData = allocator.dupe(Color, @as([*]Color, @ptrCast(data))[0..result.width*result.height]);
+		stb_image.stbi_image_free(data);
+		return result;
+	}
 	pub fn exportToFile(self: Image, path: []const u8) !void {
 		const nullTerminated = main.stackAllocator.dupeZ(u8, path);
 		defer main.stackAllocator.free(nullTerminated);

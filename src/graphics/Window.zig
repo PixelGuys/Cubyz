@@ -312,6 +312,19 @@ pub fn init() void {
 	c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MINOR, 6);
 
 	window = c.glfwCreateWindow(width, height, "Cubyz", null, null) orelse @panic("Failed to create GLFW window");
+	iconBlock: {
+		const image = main.graphics.Image.readUnflippedFromFile(main.stackAllocator, "logo.png") catch |err| {
+			std.log.err("Error loading logo: {s}", .{@errorName(err)});
+			break :iconBlock;
+		};
+		defer image.deinit(main.stackAllocator);
+		const glfwImage: c.GLFWimage = .{
+			.pixels = @ptrCast(image.imageData.ptr),
+			.width = image.width,
+			.height = image.height,
+		};
+		c.glfwSetWindowIcon(window, 1, &glfwImage);
+	}
 
 	_ = c.glfwSetKeyCallback(window, GLFWCallbacks.keyCallback);
 	_ = c.glfwSetCharCallback(window, GLFWCallbacks.charCallback);
