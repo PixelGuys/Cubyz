@@ -6,5 +6,6 @@
 		"cubyz:cobblestone"
 	],
 	"model" : "cube",
+	"rotation" : "stairs",
 	"texture" : "cubyz:stone"
 }

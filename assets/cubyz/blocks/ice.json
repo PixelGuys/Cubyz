@@ -5,6 +5,7 @@
 		"auto"
 	],
 	"model" : "cube",
+	"rotation" : "stairs",
 	"texture" : "cubyz:ice",
 	"blockEntity" : "cubyz.modding.base.MeltableBlockEntity"
 }
