@@ -601,6 +601,9 @@ pub const ConnectionManager = struct {
 						// Timeout a connection if it was connect at some point. New connections are not timed out because that could annoy players(having to restart the connection several times).
 						self.mutex.unlock();
 						conn.disconnect();
+						if(conn.user) |user| {
+							main.server.disconnect(user);
+						}
 						self.mutex.lock();
 					} else {
 						self.mutex.unlock();
