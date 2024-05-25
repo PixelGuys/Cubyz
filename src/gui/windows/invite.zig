@@ -46,9 +46,11 @@ fn invite(_: usize) void {
 		_thread.join();
 		thread = null;
 	}
-	_ = main.server.User.init(main.server.connectionManager, ipAddressEntry.currentString.items) catch |err| {
+	const user = main.server.User.initAndIncreaseRefCount(main.server.connectionManager, ipAddressEntry.currentString.items) catch |err| {
 		std.log.err("Cannot connect user: {s}", .{@errorName(err)});
+		return;
 	};
+	user.decreaseRefCount();
 }
 
 fn copyIp(_: usize) void {

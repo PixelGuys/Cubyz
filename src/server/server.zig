@@ -1,4 +1,5 @@
 const std = @import("std");
+const Atomic = std.atomic.Value;
 
 const main = @import("root");
 const network = main.network;
@@ -27,12 +28,17 @@ pub const User = struct {
 	id: u32 = 0, // TODO: Use entity id.
 	// TODO: ipPort: []const u8,
 
-	pub fn init(manager: *ConnectionManager, ipPort: []const u8) !*User {
+	connected: Atomic(bool) = Atomic(bool).init(true),
+
+	refCount: Atomic(u32) = Atomic(u32).init(1),
+
+	pub fn initAndIncreaseRefCount(manager: *ConnectionManager, ipPort: []const u8) !*User {
 		const self = main.globalAllocator.create(User);
 		errdefer main.globalAllocator.destroy(self);
 		self.* = User {
 			.conn = try Connection.init(manager, ipPort),
 		};
+		self.increaseRefCount();
 		self.conn.user = self;
 		self.interpolation.init(@ptrCast(&self.player.pos), @ptrCast(&self.player.vel));
 		network.Protocols.handShake.serverSide(self.conn);
@@ -40,9 +46,23 @@ pub const User = struct {
 	}
 
 	pub fn deinit(self: *User) void {
+		std.debug.assert(self.refCount.load(.monotonic) == 0);
 		self.conn.deinit();
 		main.globalAllocator.free(self.name);
 		main.globalAllocator.destroy(self);
+	}
+
+	pub fn increaseRefCount(self: *User) void {
+		const prevVal = self.refCount.fetchAdd(1, .monotonic);
+		std.debug.assert(prevVal != 0);
+	}
+
+	pub fn decreaseRefCount(self: *User) void {
+		const prevVal = self.refCount.fetchSub(1, .monotonic);
+		std.debug.assert(prevVal != 0);
+		if(prevVal == 1) {
+			self.deinit();
+		}
 	}
 
 	pub fn initPlayer(self: *User, name: []const u8) void {
@@ -115,17 +135,18 @@ fn init(name: []const u8) void {
 		@panic("Can't create world.");
 	};
 	if(true) blk: { // singleplayer // TODO: Configure this in the server settings.
-		const user = User.init(connectionManager, "127.0.0.1:47650") catch |err| {
+		const user = User.initAndIncreaseRefCount(connectionManager, "127.0.0.1:47650") catch |err| {
 			std.log.err("Cannot create singleplayer user {s}", .{@errorName(err)});
 			break :blk;
 		};
+		defer user.decreaseRefCount();
 		user.isLocal = true;
 	}
 }
 
 fn deinit() void {
 	for(users.items) |user| {
-		user.deinit();
+		user.decreaseRefCount();
 	}
 	users.clearAndFree();
 	for(userDeinitList.items) |user| {
@@ -152,6 +173,7 @@ fn update() void {
 	const data = main.stackAllocator.alloc(u8, (4 + 24 + 12 + 24)*users.items.len);
 	defer main.stackAllocator.free(data);
 	var remaining = data;
+	mutex.lock();
 	for(users.items) |user| {
 		const id = user.id; // TODO
 		std.mem.writeInt(u32, remaining[0..4], id, .big);
@@ -171,8 +193,10 @@ fn update() void {
 	for(users.items) |user| {
 		main.network.Protocols.entityPosition.send(user.conn, data, &.{});
 	}
+	mutex.unlock();
+
 	while(userDeinitList.popOrNull()) |user| {
-		user.deinit();
+		user.decreaseRefCount();
 	}
 }
 
@@ -203,6 +227,7 @@ pub fn stop() void {
 }
 
 pub fn disconnect(user: *User) void {
+	if(!user.connected.load(.unordered)) return;
 	// TODO: world.forceSave();
 	const message = std.fmt.allocPrint(main.stackAllocator.allocator, "{s} #ffff00left", .{user.name}) catch unreachable;
 	defer main.stackAllocator.free(message);
@@ -225,6 +250,7 @@ pub fn disconnect(user: *User) void {
 	for(users.items) |other| {
 		main.network.Protocols.entity.send(other.conn, data);
 	}
+	user.connected.store(false, .unordered);
 	userDeinitList.append(user);
 }
 
@@ -243,6 +269,8 @@ pub fn connect(user: *User) void {
 		jsonArray.JsonArray.append(entityJson);
 		const data = jsonArray.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(data);
+		mutex.lock();
+		defer mutex.unlock();
 		for(users.items) |other| {
 			main.network.Protocols.entity.send(other.conn, data);
 		}
@@ -250,15 +278,17 @@ pub fn connect(user: *User) void {
 	{ // Let this client know about the others:
 		const jsonArray = main.JsonElement.initArray(main.stackAllocator);
 		defer jsonArray.free(main.stackAllocator);
+		mutex.lock();
 		for(users.items) |other| {
 			const entityJson = main.JsonElement.initObject(main.stackAllocator);
 			entityJson.put("id", other.id);
 			entityJson.put("name", other.name);
 			jsonArray.JsonArray.append(entityJson);
 		}
+		mutex.unlock();
 		const data = jsonArray.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(data);
-		main.network.Protocols.entity.send(user.conn, data);
+		if(user.connected.load(.unordered)) main.network.Protocols.entity.send(user.conn, data);
 
 	}
 	const message = std.fmt.allocPrint(main.stackAllocator.allocator, "{s} #ffff00joined", .{user.name}) catch unreachable;

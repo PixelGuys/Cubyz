@@ -43,7 +43,7 @@ const ChunkManager = struct {
 			.clean = @ptrCast(&clean),
 		};
 		
-		pub fn schedule(pos: ChunkPosition, source: ?*User) void {
+		pub fn scheduleAndDecreaseRefCount(pos: ChunkPosition, source: ?*User) void {
 			const task = main.globalAllocator.create(ChunkLoadTask);
 			task.* = ChunkLoadTask {
 				.pos = pos,
@@ -62,8 +62,8 @@ const ChunkManager = struct {
 		}
 
 		pub fn isStillNeeded(self: *ChunkLoadTask, milliTime: i64) bool {
-			if(self.source) |source| { // TODO: Remove the task if the player disconnected
-				_ = source;
+			if(self.source) |source| { // Remove the task if the player disconnected
+				if(!source.connected.load(.unordered)) return false;
 			}
 			if(milliTime - self.creationTime > 10000) { // Only remove stuff after 10 seconds to account for trouble when for example teleporting.
 				server.mutex.lock();
@@ -88,6 +88,9 @@ const ChunkManager = struct {
 		}
 
 		pub fn clean(self: *ChunkLoadTask) void {
+			if(self.source) |source| {
+				source.decreaseRefCount();
+			}
 			main.globalAllocator.destroy(self);
 		}
 	};
@@ -104,7 +107,7 @@ const ChunkManager = struct {
 			.clean = @ptrCast(&clean),
 		};
 		
-		pub fn schedule(pos: terrain.SurfaceMap.MapFragmentPosition, source: ?*User) void {
+		pub fn scheduleAndDecreaseRefCount(pos: terrain.SurfaceMap.MapFragmentPosition, source: ?*User) void {
 			const task = main.globalAllocator.create(LightMapLoadTask);
 			task.* = LightMapLoadTask {
 				.pos = pos,
@@ -132,7 +135,7 @@ const ChunkManager = struct {
 			const map = terrain.LightMap.getOrGenerateFragmentAndIncreaseRefCount(self.pos.wx, self.pos.wy, self.pos.voxelSize);
 			defer map.decreaseRefCount();
 			if(self.source) |source| {
-				main.network.Protocols.lightMapTransmission.sendLightMap(source.conn, map);
+				if(source.connected.load(.unordered)) main.network.Protocols.lightMapTransmission.sendLightMap(source.conn, map);
 			} else {
 				server.mutex.lock();
 				defer server.mutex.unlock();
@@ -143,6 +146,9 @@ const ChunkManager = struct {
 		}
 
 		pub fn clean(self: *LightMapLoadTask) void {
+			if(self.source) |source| {
+				source.decreaseRefCount();
+			}
 			main.globalAllocator.destroy(self);
 		}
 	};
@@ -167,17 +173,18 @@ const ChunkManager = struct {
 		storage.deinit();
 	}
 
-	pub fn queueLightMap(self: ChunkManager, pos: terrain.SurfaceMap.MapFragmentPosition, source: ?*User) void {
+	pub fn queueLightMapAndDecreaseRefCount(self: ChunkManager, pos: terrain.SurfaceMap.MapFragmentPosition, source: ?*User) void {
 		_ = self;
-		LightMapLoadTask.schedule(pos, source);
+		LightMapLoadTask.scheduleAndDecreaseRefCount(pos, source);
 	}
 
-	pub fn queueChunk(self: ChunkManager, pos: ChunkPosition, source: ?*User) void {
+	pub fn queueChunkAndDecreaseRefCount(self: ChunkManager, pos: ChunkPosition, source: ?*User) void {
 		_ = self;
-		ChunkLoadTask.schedule(pos, source);
+		ChunkLoadTask.scheduleAndDecreaseRefCount(pos, source);
 	}
 
 	pub fn generateChunk(pos: ChunkPosition, source: ?*User) void {
+		if(source != null and !source.?.connected.load(.unordered)) return; // User disconnected.
 		const ch = getOrGenerateChunkAndIncreaseRefCount(pos);
 		defer ch.decreaseRefCount();
 		if(source) |_source| {
@@ -486,6 +493,8 @@ pub const ServerWorld = struct {
 		}
 		if(self.lastUnimportantDataSent + 2000 < newTime) {// Send unimportant data every ~2s.
 			self.lastUnimportantDataSent = newTime;
+			server.mutex.lock();
+			defer server.mutex.unlock();
 			for(server.users.items) |user| {
 				main.network.Protocols.genericUpdate.sendTimeAndBiome(user.conn, self);
 			}
@@ -523,12 +532,12 @@ pub const ServerWorld = struct {
 		}
 	}
 
-	pub fn queueChunk(self: *ServerWorld, pos: ChunkPosition, source: ?*User) void {
-		self.chunkManager.queueChunk(pos, source);
+	pub fn queueChunkAndDecreaseRefCount(self: *ServerWorld, pos: ChunkPosition, source: ?*User) void {
+		self.chunkManager.queueChunkAndDecreaseRefCount(pos, source);
 	}
 
-	pub fn queueLightMap(self: *ServerWorld, pos: terrain.SurfaceMap.MapFragmentPosition, source: ?*User) void {
-		self.chunkManager.queueLightMap(pos, source);
+	pub fn queueLightMapAndDecreaseRefCount(self: *ServerWorld, pos: terrain.SurfaceMap.MapFragmentPosition, source: ?*User) void {
+		self.chunkManager.queueLightMapAndDecreaseRefCount(pos, source);
 	}
 
 	pub fn getChunk(self: *ServerWorld, x: i32, y: i32, z: i32) ?*ServerChunk {
@@ -595,6 +604,8 @@ pub const ServerWorld = struct {
 		baseChunk.mutex.lock();
 		defer baseChunk.mutex.unlock();
 		baseChunk.updateBlockAndSetChanged(x, y, z, newBlock);
+		server.mutex.lock();
+		defer server.mutex.unlock();
 		for(main.server.users.items) |user| {
 			main.network.Protocols.blockUpdate.send(user.conn, wx, wy, wz, _newBlock);
 		}

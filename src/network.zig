@@ -749,7 +749,8 @@ pub const Protocols = struct {
 					.voxelSize = @intCast(std.mem.readInt(i32, remaining[12..16], .big)),
 				};
 				if(conn.user) |user| {
-					main.server.world.?.queueChunk(request, user);
+					user.increaseRefCount();
+					main.server.world.?.queueChunkAndDecreaseRefCount(request, user);
 				}
 				remaining = remaining[16..];
 			}
@@ -1167,7 +1168,8 @@ pub const Protocols = struct {
 					.voxelSizeShift = @intCast(std.mem.readInt(u8, remaining[8..9], .big)),
 				};
 				if(conn.user) |user| {
-					main.server.world.?.queueLightMap(request, user);
+					user.increaseRefCount();
+					main.server.world.?.queueLightMapAndDecreaseRefCount(request, user);
 				}
 				remaining = remaining[9..];
 			}
