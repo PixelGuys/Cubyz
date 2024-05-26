@@ -278,6 +278,9 @@ fn toggleGPUPerformanceOverlay() void {
 fn toggleNetworkDebugOverlay() void {
 	gui.toggleWindow("debug_network");
 }
+fn toggleAdvancedNetworkDebugOverlay() void {
+	gui.toggleWindow("debug_network_advanced");
+}
 
 pub const KeyBoard = struct {
 	const c = Window.c;
@@ -322,6 +325,7 @@ pub const KeyBoard = struct {
 		.{.name = "performanceOverlay", .key = c.GLFW_KEY_F4, .releaseAction = &togglePerformanceOverlay},
 		.{.name = "gpuPerformanceOverlay", .key = c.GLFW_KEY_F5, .releaseAction = &toggleGPUPerformanceOverlay},
 		.{.name = "networkDebugOverlay", .key = c.GLFW_KEY_F6, .releaseAction = &toggleNetworkDebugOverlay},
+		.{.name = "advancedNetworkDebugOverlay", .key = c.GLFW_KEY_F7, .releaseAction = &toggleAdvancedNetworkDebugOverlay},
 	};
 
 	pub fn key(name: []const u8) *const Window.Key { // TODO: Maybe I should use a hashmap here?

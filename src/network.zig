@@ -1277,6 +1277,7 @@ pub const Connection = struct {
 	congestionControl_bandWidthEstimate: usize = minimumBandWidth,
 	congestionControl_inversebandWidth: f32 = timeUnit/minimumBandWidth,
 	congestionControl_lastSendTime: i64,
+	congestionControl_sendTimeLimit: i64,
 	congestionControl_bandWidthUsed: usize = 0,
 	congestionControl_curPosition: usize = 0,
 
@@ -1296,6 +1297,7 @@ pub const Connection = struct {
 			.lastReceivedPackets = &result.__lastReceivedPackets, // TODO: Wait for #12215 fix.
 			.packetMemory = main.globalAllocator.create([65536][maxImportantPacketSize]u8),
 			.congestionControl_lastSendTime = @truncate(std.time.nanoTimestamp()),
+			.congestionControl_sendTimeLimit = @as(i64, @truncate(std.time.nanoTimestamp())) +% timeUnit*21/20,
 		};
 		result.unconfirmedPackets = main.List(UnconfirmedPacket).init(main.globalAllocator);
 		result.packetQueue = main.utils.CircularBufferQueue(UnconfirmedPacket).init(main.globalAllocator, 1024);
@@ -1347,7 +1349,7 @@ pub const Connection = struct {
 		if(curTime -% self.congestionControl_lastSendTime > 0) {
 			self.congestionControl_lastSendTime = curTime;
 		}
-		const shouldSend = self.congestionControl_bandWidthUsed < self.congestionControl_bandWidthEstimate and self.congestionControl_lastSendTime -% curTime < 100_000_000;
+		const shouldSend = self.congestionControl_bandWidthUsed < self.congestionControl_bandWidthEstimate and self.congestionControl_lastSendTime -% self.congestionControl_sendTimeLimit < 0;
 		if(shouldSend) {
 			_ = packetsSent.fetchAdd(1, .monotonic);
 			self.manager.send(data, self.remoteAddress, self.congestionControl_lastSendTime);
@@ -1558,6 +1560,7 @@ pub const Connection = struct {
 		}
 		self.congestionControl_inversebandWidth = timeUnit/@as(f32, @floatFromInt(self.congestionControl_bandWidthEstimate));
 		self.congestionControl_bandWidthUsed = 0;
+		self.congestionControl_sendTimeLimit = @as(i64, @truncate(std.time.nanoTimestamp())) + timeUnit*21/20;
 
 		// Resend packets that didn't receive confirmation within the last 2 keep-alive signals.
 		for(self.unconfirmedPackets.items) |*packet| {
