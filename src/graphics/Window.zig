@@ -268,8 +268,12 @@ pub fn setMouseGrabbed(grab: bool) void {
 	if(grabbed != grab) {
 		if(grab) {
 			c.glfwSetInputMode(window, c.GLFW_CURSOR, c.GLFW_CURSOR_DISABLED);
-			if (c.glfwRawMouseMotionSupported() != 0)
-				c.glfwSetInputMode(window, c.GLFW_RAW_MOUSE_MOTION, c.GLFW_TRUE);
+			// Behavior seems much more intended without this line on MacOS.
+			// Perhaps this is an inconsistency in GLFW due to its fresh XQuartz support?
+			if(@import("builtin").target.os.tag != .macos) {
+				if (c.glfwRawMouseMotionSupported() != 0)
+					c.glfwSetInputMode(window, c.GLFW_RAW_MOUSE_MOTION, c.GLFW_TRUE);
+			}
 			GLFWCallbacks.ignoreDataAfterRecentGrab = true;
 		} else {
 			c.glfwSetInputMode(window, c.GLFW_CURSOR, c.GLFW_CURSOR_NORMAL);
