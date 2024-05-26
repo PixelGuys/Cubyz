@@ -192,21 +192,15 @@ fn initLogging() void {
 		return;
 	};
 
-    const _timestamp = std.time.timestamp();
-    var buf: [64]u8 = undefined;
-	const _timestamp_str = std.fmt.bufPrint(&buf, "{}", .{_timestamp}) catch |err| {
-        std.log.err("Couldn't format the timestamp: {s}", .{@errorName(err)});
-        return;
-    };
+	const _timestamp = std.time.timestamp();
+	const _timestamp_str = std.fmt.allocPrint(stackAllocator.allocator, "{}", .{_timestamp}) catch unreachable;
+	defer stackAllocator.free(_timestamp_str);
 
-    const _path_str = std.fmt.allocPrint(globalAllocator.allocator, "logs/ts_{s}.log", .{_timestamp_str}) catch |err| {
-        std.log.err("Couldn't format the timestamp path: {s}", .{@errorName(err)});
-        return;
-    };
-    defer globalAllocator.free(_path_str);
+	const _path_str = std.fmt.allocPrint(stackAllocator.allocator, "logs/ts_{s}.log", .{_timestamp_str}) catch unreachable;
+	defer stackAllocator.free(_path_str);
 
 	logFileTs = std.fs.cwd().createFile(_path_str, .{}) catch |err| {
-		std.log.err("Couldn't create logs/latest.log: {s}", .{@errorName(err)});
+		std.log.err("Couldn't create {s}: {s}", .{_path_str, @errorName(err)});
 		return;
 	};
 
@@ -214,15 +208,15 @@ fn initLogging() void {
 }
 
 fn deinitLogging() void {
-    if (logFile) |_logFile| {
-        _logFile.close();
-        logFile = null;
-    }
+	if (logFile) |_logFile| {
+		_logFile.close();
+		logFile = null;
+	}
 
 	if (logFileTs) |_logFileTs| {
-        _logFileTs.close();
-        logFileTs = null;
-    }
+		_logFileTs.close();
+		logFileTs = null;
+	}
 }
 
 fn logToFile(comptime format: []const u8, args: anytype) void {
