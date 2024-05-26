@@ -123,7 +123,6 @@ pub fn updateViewport(width: u31, height: u31, fov: f32) void {
 }
 
 pub fn render(playerPosition: Vec3d) void {
-	const startTime = std.time.milliTimestamp();
 	// TODO: player bobbing
 	if(game.world) |world| {
 		// TODO: Handle colors and sun position in the world.
@@ -135,6 +134,7 @@ pub fn render(playerPosition: Vec3d) void {
 		game.fog.color = skyColor;
 
 		renderWorld(world, ambient, skyColor, playerPosition);
+		const startTime = std.time.milliTimestamp();
 		mesh_storage.updateMeshes(startTime + maximumMeshTime);
 	} else {
 		MenuBackGround.render();
