@@ -106,6 +106,7 @@ pub fn deinit() void {
 	}
 	clearList.clearAndFree();
 }
+
 fn getNodePointer(pos: chunk.ChunkPosition) *ChunkMeshNode {
 	const lod = std.math.log2_int(u31, pos.voxelSize);
 	var xIndex = pos.wx >> lod+chunk.chunkShift;

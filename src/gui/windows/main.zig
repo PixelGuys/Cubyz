@@ -16,14 +16,14 @@ pub var window = GuiWindow {
 const padding: f32 = 8;
 
 fn exitGame(_:usize) void {
-	main.Window.deinit();
+	main.Window.c.glfwSetWindowShouldClose(main.Window.window,main.Window.c.GLFW_TRUE);
 }
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	list.add(Button.initText(.{0, 0}, 128, "Singleplayer", gui.openWindowCallback("save_selection")));
 	list.add(Button.initText(.{0, 0}, 128, "Multiplayer", gui.openWindowCallback("multiplayer")));
 	list.add(Button.initText(.{0, 0}, 128, "Settings", gui.openWindowCallback("settings")));
-	list.add(Button.initText(.{0, 0}, 128, "TODO",  .{.callback = &exitGame}));
+	list.add(Button.initText(.{0, 0}, 128, "Bye-bye!",  .{.callback = &exitGame}));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
