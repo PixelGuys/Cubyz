@@ -294,8 +294,8 @@ pub const KeyBoard = struct {
 		.{.name = "jump", .key = c.GLFW_KEY_SPACE},
 		.{.name = "fall", .key = c.GLFW_KEY_LEFT_SHIFT},
 		.{.name = "fullscreen", .key = c.GLFW_KEY_F11, .releaseAction = &Window.toggleFullscreen},
-		.{.name = "placeBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT},
-		.{.name = "breakBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT},
+		.{.name = "placeBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &game.pressPlace, .releaseAction = &game.releasePlace},
+		.{.name = "breakBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &game.pressBreak, .releaseAction = &game.releaseBreak},
 
 		.{.name = "takeBackgroundImage", .key = c.GLFW_KEY_PRINT_SCREEN, .releaseAction = &takeBackgroundImageFn},
 

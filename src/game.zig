@@ -219,6 +219,26 @@ pub var fog = Fog{.color=.{0, 1, 0.5}, .density=1.0/15.0/128.0}; // TODO: Make t
 var nextBlockPlaceTime: ?i64 = null;
 var nextBlockBreakTime: ?i64 = null;
 
+pub fn pressPlace() void {
+	const time = std.time.milliTimestamp();
+	nextBlockPlaceTime = time + main.settings.updateRepeatDelay;
+	Player.placeBlock();
+}
+
+pub fn releasePlace() void {
+	nextBlockPlaceTime = null;
+}
+
+pub fn pressBreak() void {
+	const time = std.time.milliTimestamp();
+	nextBlockBreakTime = time + main.settings.updateRepeatDelay;
+	Player.breakBlock();
+}
+
+pub fn releaseBreak() void {
+	nextBlockBreakTime = null;
+}
+
 pub fn update(deltaTime: f64) void {
 	var movement = Vec3d{0, 0, 0};
 	const forward = vec.rotateZ(Vec3d{0, 1, 0}, -camera.rotation[2]);
@@ -270,22 +290,6 @@ pub fn update(deltaTime: f64) void {
 	}
 
 	const time = std.time.milliTimestamp();
-	if(KeyBoard.key("placeBlock").pressed != (nextBlockPlaceTime != null)) {
-		if(nextBlockPlaceTime != null) {
-			nextBlockPlaceTime = null;
-		} else {
-			nextBlockPlaceTime = time + main.settings.updateRepeatDelay;
-			Player.placeBlock();
-		}
-	}
-	if(KeyBoard.key("breakBlock").pressed != (nextBlockBreakTime != null)) {
-		if(nextBlockBreakTime != null) {
-			nextBlockBreakTime = null;
-		} else {
-			nextBlockBreakTime = time + main.settings.updateRepeatDelay;
-			Player.breakBlock();
-		}
-	}
 	if(nextBlockPlaceTime) |*placeTime| {
 		if(time -% placeTime.* >= 0) {
 			placeTime.* += main.settings.updateRepeatSpeed;
