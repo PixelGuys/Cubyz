@@ -868,19 +868,23 @@ pub const Protocols = struct {
 			}
 		}
 		pub fn send(conn: *Connection, entityData: []const u8, itemData: []const u8) void {
-			const fullEntityData = main.stackAllocator.alloc(u8, entityData.len + 3);
-			defer main.stackAllocator.free(fullEntityData);
-			fullEntityData[0] = type_entity;
-			std.mem.writeInt(i16, fullEntityData[1..3], @as(i16, @truncate(std.time.milliTimestamp())), .big);
-			@memcpy(fullEntityData[3..], entityData);
-			conn.sendUnimportant(id, fullEntityData);
+			if(entityData.len != 0) {
+				const fullEntityData = main.stackAllocator.alloc(u8, entityData.len + 3);
+				defer main.stackAllocator.free(fullEntityData);
+				fullEntityData[0] = type_entity;
+				std.mem.writeInt(i16, fullEntityData[1..3], @as(i16, @truncate(std.time.milliTimestamp())), .big);
+				@memcpy(fullEntityData[3..], entityData);
+				conn.sendUnimportant(id, fullEntityData);
+			}
 
-			const fullItemData = main.stackAllocator.alloc(u8, itemData.len + 3);
-			defer main.stackAllocator.free(fullItemData);
-			fullItemData[0] = type_item;
-			std.mem.writeInt(i16, fullItemData[1..3], @as(i16, @truncate(std.time.milliTimestamp())), .big);
-			@memcpy(fullItemData[3..], itemData);
-			conn.sendUnimportant(id, fullItemData);
+			if(itemData.len != 0) {
+				const fullItemData = main.stackAllocator.alloc(u8, itemData.len + 3);
+				defer main.stackAllocator.free(fullItemData);
+				fullItemData[0] = type_item;
+				std.mem.writeInt(i16, fullItemData[1..3], @as(i16, @truncate(std.time.milliTimestamp())), .big);
+				@memcpy(fullItemData[3..], itemData);
+				conn.sendUnimportant(id, fullItemData);
+			}
 		}
 	};
 	pub const blockUpdate = struct {
