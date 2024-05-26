@@ -15,10 +15,9 @@ pub var window = GuiWindow {
 
 const padding: f32 = 8;
 
-fn exitMenuCallbackFunction(useless: usize) void {
-	_ = useless; 
+fn exitMenuCallbackFunction(_: usize) void {
 	if(main.game.world) |world| {
-	 	world.deinit();
+		world.deinit();
 		main.game.world = null;
 	}
 	gui.openWindow("main");
