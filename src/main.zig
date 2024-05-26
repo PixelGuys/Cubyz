@@ -194,10 +194,31 @@ fn initLogging() void {
 }
 
 fn deinitLogging() void {
-	if(logFile) |_logFile| {
-		_logFile.close();
-		logFile = null;
-	}
+    if (logFile) |_logFile| {
+        _logFile.close();
+
+        const _src = std.fs.cwd();
+        const _timestamp = std.time.timestamp();
+
+        var buf: [64]u8 = undefined;
+        const _timestamp_str = std.fmt.bufPrint(&buf, "{}", .{_timestamp}) catch |err| {
+            std.log.err("Couldn't format the timestamp: {s}", .{@errorName(err)});
+            return;
+        };
+
+        const _path_str = std.fmt.allocPrint(globalAllocator.allocator, "logs/ts_{s}.log", .{_timestamp_str}) catch |err| {
+            std.log.err("Couldn't format the timestamp: {s}", .{@errorName(err)});
+            return;
+        };
+        defer globalAllocator.free(_path_str);
+
+        _src.copyFile("logs/latest.log", _src, _path_str, .{}) catch |err| {
+            std.log.err("Couldn't create logs/{s}: {s}", .{ _timestamp_str, @errorName(err) });
+            return;
+        };
+
+        logFile = null;
+    }
 }
 
 fn logToFile(comptime format: []const u8, args: anytype) void {
