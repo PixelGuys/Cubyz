@@ -29,7 +29,7 @@ pub fn build(b: *std.Build) !void {
 	}});
 
 	var depsName: []const u8 = b.fmt("cubyz_deps_{s}_{s}", .{@tagName(t.cpu.arch), @tagName(t.os.tag)});
-	const useLocalDeps = b.option(bool, "local", "Use local cubyz_deps") orelse (t.os.tag == .macos);
+	const useLocalDeps = b.option(bool, "local", "Use local cubyz_deps") orelse false;
 	if(useLocalDeps) depsName = "local";
 
 	const libsDeps = b.lazyDependency(depsName, .{
