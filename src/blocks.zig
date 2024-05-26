@@ -190,10 +190,11 @@ pub fn finishBlocks(jsonElements: std.StringHashMap(JsonElement)) void {
 
 pub fn reset() void {
 	size = 0;
+	ores.clearAndFree();
+	meshes.reset();
 	_ = arena.reset(.free_all);
 	reverseIndices = std.StringHashMap(u16).init(arena.allocator().allocator);
 	std.debug.assert(unfinishedOreSourceBlockIds.items.len == 0);
-	ores.clearRetainingCapacity();
 }
 
 pub fn getByID(id: []const u8) u16 {

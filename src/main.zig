@@ -231,17 +231,17 @@ fn ungrabMouse() void {
 }
 fn openInventory() void {
 	if(game.world == null) return;
-	ungrabMouse();
+	gui.toggleGameMenu();
 	gui.openWindow("inventory");
 }
 fn openWorkbench() void {
 	if(game.world == null) return;
-	ungrabMouse();
+	gui.toggleGameMenu();
 	gui.openWindow("workbench");
 }
 fn openCreativeInventory() void {
 	if(game.world == null) return;
-	ungrabMouse();
+	gui.toggleGameMenu();
 	gui.openWindow("creative_inventory");
 }
 fn takeBackgroundImageFn() void {
@@ -280,8 +280,8 @@ pub const KeyBoard = struct {
 
 		// Gui:
 		.{.name = "escape", .key = c.GLFW_KEY_ESCAPE, .releaseAction = &escape},
-		.{.name = "openInventory", .key = c.GLFW_KEY_I, .releaseAction = &openInventory},
-		.{.name = "openWorkbench", .key = c.GLFW_KEY_K, .releaseAction = &openWorkbench}, // TODO: Remove
+		.{.name = "openInventory", .key = c.GLFW_KEY_E, .releaseAction = &openInventory},
+		.{.name = "openWorkbench", .key = c.GLFW_KEY_R, .releaseAction = &openWorkbench}, // TODO: Remove
 		.{.name = "openCreativeInventory(aka cheat inventory)", .key = c.GLFW_KEY_C, .releaseAction = &openCreativeInventory},
 		.{.name = "mainGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &gui.mainButtonPressed, .releaseAction = &gui.mainButtonReleased},
 		.{.name = "secondaryGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &gui.secondaryButtonPressed, .releaseAction = &gui.secondaryButtonReleased},
