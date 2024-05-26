@@ -193,10 +193,8 @@ fn initLogging() void {
 	};
 
 	const _timestamp = std.time.timestamp();
-	const _timestamp_str = std.fmt.allocPrint(stackAllocator.allocator, "{}", .{_timestamp}) catch unreachable;
-	defer stackAllocator.free(_timestamp_str);
 
-	const _path_str = std.fmt.allocPrint(stackAllocator.allocator, "logs/ts_{s}.log", .{_timestamp_str}) catch unreachable;
+	const _path_str = std.fmt.allocPrint(stackAllocator.allocator, "logs/ts_{}.log", .{_timestamp}) catch unreachable;
 	defer stackAllocator.free(_path_str);
 
 	logFileTs = std.fs.cwd().createFile(_path_str, .{}) catch |err| {
