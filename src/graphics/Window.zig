@@ -114,8 +114,8 @@ pub const GLFWCallbacks = struct {
 		std.log.err("GLFW Error({}): {s}", .{errorCode, description});
 	}
 	fn keyCallback(_: ?*c.GLFWwindow, glfw_key: c_int, scancode: c_int, action: c_int, _mods: c_int) callconv(.C) void {
-		if(main.gui.selectedTextInput != null and c.glfwGetKeyName(glfw_key, scancode) != null) return; // Don't send events for keys that are used in writing letters.
 		const mods: Key.Modifiers = @bitCast(@as(u6, @intCast(_mods)));
+		if(!mods.control and main.gui.selectedTextInput != null and c.glfwGetKeyName(glfw_key, scancode) != null) return; // Don't send events for keys that are used in writing letters.
 		if(action == c.GLFW_PRESS) {
 			for(&main.KeyBoard.keys) |*key| {
 				if(glfw_key == key.key) {
