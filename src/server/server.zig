@@ -16,7 +16,7 @@ pub const storage = @import("storage.zig");
 
 
 pub const User = struct {
-	conn: *Connection,
+	conn: *Connection = undefined,
 	player: Entity = .{},
 	timeDifference: utils.TimeDifference = .{},
 	interpolation: utils.GenericInterpolation(3) = undefined,
@@ -35,12 +35,10 @@ pub const User = struct {
 	pub fn initAndIncreaseRefCount(manager: *ConnectionManager, ipPort: []const u8) !*User {
 		const self = main.globalAllocator.create(User);
 		errdefer main.globalAllocator.destroy(self);
-		self.* = User {
-			.conn = try Connection.init(manager, ipPort),
-		};
-		self.increaseRefCount();
-		self.conn.user = self;
+		self.* = .{};
 		self.interpolation.init(@ptrCast(&self.player.pos), @ptrCast(&self.player.vel));
+		self.conn = try Connection.init(manager, ipPort, self);
+		self.increaseRefCount();
 		network.Protocols.handShake.serverSide(self.conn);
 		return self;
 	}
@@ -193,11 +191,11 @@ fn update() void {
 	for(users.items) |user| {
 		main.network.Protocols.entityPosition.send(user.conn, data, &.{});
 	}
-	mutex.unlock();
 
 	while(userDeinitList.popOrNull()) |user| {
 		user.decreaseRefCount();
 	}
+	mutex.unlock();
 }
 
 pub fn start(name: []const u8) void {

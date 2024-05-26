@@ -1253,7 +1253,7 @@ pub const Connection = struct {
 	pub var packetsResent: Atomic(u32) = Atomic(u32).init(0);
 
 	manager: *ConnectionManager,
-	user: ?*main.server.User = null,
+	user: ?*main.server.User,
 
 	remoteAddress: Address,
 	bruteforcingPort: bool = false,
@@ -1285,17 +1285,18 @@ pub const Connection = struct {
 	congestionControl_bandWidthUsed: usize = 0,
 	congestionControl_curPosition: usize = 0,
 
-	disconnected: bool = false,
+	disconnected: Atomic(bool) = Atomic(bool).init(false),
 	handShakeState: Atomic(u8) = Atomic(u8).init(Protocols.handShake.stepStart),
 	handShakeWaiting: std.Thread.Condition = std.Thread.Condition{},
 	lastConnection: i64,
 
 	mutex: std.Thread.Mutex = std.Thread.Mutex{},
 
-	pub fn init(manager: *ConnectionManager, ipPort: []const u8) !*Connection {
+	pub fn init(manager: *ConnectionManager, ipPort: []const u8, user: ?*main.server.User) !*Connection {
 		const result: *Connection = main.globalAllocator.create(Connection);
 		result.* = Connection {
 			.manager = manager,
+			.user = user,
 			.remoteAddress = undefined,
 			.lastConnection = @truncate(std.time.nanoTimestamp()),
 			.lastReceivedPackets = &result.__lastReceivedPackets, // TODO: Wait for #12215 fix.
@@ -1398,7 +1399,7 @@ pub const Connection = struct {
 		self.mutex.lock();
 		defer self.mutex.unlock();
 
-		if(self.disconnected) return;
+		if(self.disconnected.load(.unordered)) return;
 		self.writeByteToStream(id);
 		var processedLength = data.len;
 		while(processedLength > 0x7f) {
@@ -1423,7 +1424,7 @@ pub const Connection = struct {
 		self.mutex.lock();
 		defer self.mutex.unlock();
 
-		if(self.disconnected) return;
+		if(self.disconnected.load(.unordered)) return;
 		std.debug.assert(data.len + 1 < maxPacketSize);
 		const fullData = main.stackAllocator.alloc(u8, data.len + 1);
 		defer main.stackAllocator.free(fullData);
@@ -1730,7 +1731,7 @@ pub const Connection = struct {
 		Protocols.disconnect.disconnect(self);
 		std.time.sleep(10000000);
 		Protocols.disconnect.disconnect(self);
-		self.disconnected = true;
+		self.disconnected.store(true, .unordered);
 		self.manager.removeConnection(self);
 		std.log.info("Disconnected", .{});
 	}

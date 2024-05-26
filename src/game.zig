@@ -108,7 +108,7 @@ pub const World = struct {
 
 	pub fn init(self: *World, ip: []const u8, manager: *ConnectionManager) !void {
 		self.* = .{
-			.conn = try Connection.init(manager, ip),
+			.conn = try Connection.init(manager, ip, null),
 			.manager = manager,
 			.name = "client",
 			.milliTime = std.time.milliTimestamp(),
