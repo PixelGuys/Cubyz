@@ -27,7 +27,7 @@ var windowList: List(*GuiWindow) = undefined;
 var hudWindows: List(*GuiWindow) = undefined;
 pub var openWindows: List(*GuiWindow) = undefined;
 var selectedWindow: ?*GuiWindow = null;
-var selectedTextInput: ?*TextInput = null;
+pub var selectedTextInput: ?*TextInput = null;
 var hoveredAWindow: bool = false;
 
 pub var scale: f32 = undefined;
