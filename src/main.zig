@@ -48,6 +48,7 @@ fn cacheString(comptime str: []const u8) []const u8 {
 	return cacheStringImpl(str.len, str[0..].*);
 }
 var logFile: ?std.fs.File = undefined;
+var logFileTs: ?std.fs.File = undefined;
 var supportsANSIColors: bool = undefined;
 // overwrite the log function:
 pub const std_options: std.Options = .{
@@ -190,34 +191,37 @@ fn initLogging() void {
 		std.log.err("Couldn't create logs/latest.log: {s}", .{@errorName(err)});
 		return;
 	};
+
+    const _timestamp = std.time.timestamp();
+    var buf: [64]u8 = undefined;
+	const _timestamp_str = std.fmt.bufPrint(&buf, "{}", .{_timestamp}) catch |err| {
+        std.log.err("Couldn't format the timestamp: {s}", .{@errorName(err)});
+        return;
+    };
+
+    const _path_str = std.fmt.allocPrint(globalAllocator.allocator, "logs/ts_{s}.log", .{_timestamp_str}) catch |err| {
+        std.log.err("Couldn't format the timestamp path: {s}", .{@errorName(err)});
+        return;
+    };
+    defer globalAllocator.free(_path_str);
+
+	logFileTs = std.fs.cwd().createFile(_path_str, .{}) catch |err| {
+		std.log.err("Couldn't create logs/latest.log: {s}", .{@errorName(err)});
+		return;
+	};
+
 	supportsANSIColors = std.io.getStdOut().supportsAnsiEscapeCodes();
 }
 
 fn deinitLogging() void {
     if (logFile) |_logFile| {
         _logFile.close();
-
-        const _src = std.fs.cwd();
-        const _timestamp = std.time.timestamp();
-
-        var buf: [64]u8 = undefined;
-        const _timestamp_str = std.fmt.bufPrint(&buf, "{}", .{_timestamp}) catch |err| {
-            std.log.err("Couldn't format the timestamp: {s}", .{@errorName(err)});
-            return;
-        };
-
-        const _path_str = std.fmt.allocPrint(globalAllocator.allocator, "logs/ts_{s}.log", .{_timestamp_str}) catch |err| {
-            std.log.err("Couldn't format the timestamp: {s}", .{@errorName(err)});
-            return;
-        };
-        defer globalAllocator.free(_path_str);
-
-        _src.copyFile("logs/latest.log", _src, _path_str, .{}) catch |err| {
-            std.log.err("Couldn't create logs/{s}: {s}", .{ _timestamp_str, @errorName(err) });
-            return;
-        };
-
         logFile = null;
+    }
+
+	if (logFileTs) |_logFileTs| {
+        _logFileTs.close();
+        logFileTs = null;
     }
 }
 
@@ -229,6 +233,7 @@ fn logToFile(comptime format: []const u8, args: anytype) void {
 	const string = std.fmt.allocPrint(allocator, format, args) catch format;
 	defer allocator.free(string);
 	(logFile orelse return).writeAll(string) catch {};
+	(logFileTs orelse return).writeAll(string) catch {};
 }
 
 fn logToStdErr(comptime format: []const u8, args: anytype) void {
