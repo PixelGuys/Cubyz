@@ -55,6 +55,25 @@ pub fn init() void {
 		if(err != error.FileNotFound) {
 			std.log.err("Could not read settings file: {s}", .{@errorName(err)});
 		}
+
+		inline for(@typeInfo(@This()).Struct.decls) |decl| {
+			const is_const = @typeInfo(@TypeOf(&@field(@This(), decl.name))).Pointer.is_const; // Sadly there is no direct way to check if a declaration is const.
+			if(!is_const) {
+				const declType = @TypeOf(@field(@This(), decl.name));
+				if(@typeInfo(declType) == .Struct) {
+					@compileError("Not implemented yet.");
+				}
+				// The json was not read so do not change the field
+				if(@typeInfo(declType) == .Pointer) {
+					if(@typeInfo(declType).Pointer.size == .Slice) {
+						@field(@This(), decl.name) = main.globalAllocator.dupe(@typeInfo(declType).Pointer.child, @field(@This(), decl.name));
+					} else {
+						@compileError("Not implemented yet.");
+					}
+				}
+			}
+		}
+
 		return;
 	};
 	defer json.free(main.stackAllocator);
