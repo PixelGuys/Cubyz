@@ -46,6 +46,7 @@ const RelativePosition = union(enum) {
 
 const snapDistance = 3;
 
+gameMenuNeed:bool = false,
 pos: Vec2f = undefined,
 size: Vec2f = undefined,
 contentSize: Vec2f,

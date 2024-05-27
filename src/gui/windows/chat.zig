@@ -34,7 +34,7 @@ var history: main.List(*Label) = undefined;
 var expirationTime: main.List(i32) = undefined;
 var historyStart: u32 = 0;
 var fadeOutEnd: u32 = 0;
-var input: *TextInput = undefined;
+pub var input: *TextInput = undefined;
 var hideInput: bool = true;
 
 fn refresh() void {

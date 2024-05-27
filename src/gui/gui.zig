@@ -543,27 +543,39 @@ pub fn updateAndRenderGui() void {
 
 pub fn toggleGameMenu() void {
 	main.Window.setMouseGrabbed(!main.Window.grabbed);
-	if(main.Window.grabbed) { // Take of the currently held item stack and close some windows
-		if(inventory.carriedItemStack.item) |item| {
-			inventory.carriedItemStack.amount = main.game.Player.inventory__SEND_CHANGES_TO_SERVER.addItem(item, inventory.carriedItemStack.amount);
-			main.network.Protocols.genericUpdate.sendInventory_full(main.game.world.?.conn, main.game.Player.inventory__SEND_CHANGES_TO_SERVER); // TODO(post-java): Add better options to the protocol.
-			if(inventory.carriedItemStack.amount != 0) {
-				main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, inventory.carriedItemStack, @floatCast(main.game.Player.getPosBlocking()), main.game.camera.direction, 20);
-			}
-			inventory.carriedItemStack.clear();
+	if(!main.Window.grabbed)  // Take of the currently held item stack and close some windows
+		return;
+	if(inventory.carriedItemStack.item) |item| {
+		inventory.carriedItemStack.amount = main.game.Player.inventory__SEND_CHANGES_TO_SERVER.addItem(item, inventory.carriedItemStack.amount);
+		main.network.Protocols.genericUpdate.sendInventory_full(main.game.world.?.conn, main.game.Player.inventory__SEND_CHANGES_TO_SERVER); // TODO(post-java): Add better options to the protocol.
+		if(inventory.carriedItemStack.amount != 0) {
+			main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, inventory.carriedItemStack, @floatCast(main.game.Player.getPosBlocking()), main.game.camera.direction, 20);
 		}
-		hoveredItemSlot = null;
-		var i: usize = 0;
-		while(i < openWindows.items.len) {
-			const window = openWindows.items[i];
-			if(window.closeIfMouseIsGrabbed) {
-				_ = openWindows.swapRemove(i);
-				window.onCloseFn();
-			} else {
-				i += 1;
-			}
+		inventory.carriedItemStack.clear();
+	}
+	selectedTextInput = null;
+	selectedWindow    = null;
+	hoveredItemSlot   = null;
+	var i: usize = 0;
+	while(i < openWindows.items.len) {
+		const window = openWindows.items[i];
+		if(window.closeIfMouseIsGrabbed) {
+			_ = openWindows.swapRemove(i);
+			window.onCloseFn();
+		} else {
+			i += 1;
 		}
 	}
+}
+pub fn closeGameMenuIfNoNeed() void {
+	if(main.Window.grabbed)
+		return;
+	for(openWindows.items) |_openWindow| {
+		if(_openWindow.gameMenuNeed) {			
+			return;
+		}
+	}
+	toggleGameMenu();
 }
 
 pub const inventory = struct {

@@ -17,6 +17,7 @@ const ItemSlot = GuiComponent.ItemSlot;
 const hotbar = @import("hotbar.zig");
 
 pub var window = GuiWindow {
+	.gameMenuNeed = true,
 	.relativePosition = .{
 		.{ .attachedToWindow = .{.reference = &hotbar.window, .selfAttachmentPoint = .middle, .otherAttachmentPoint = .middle} },
 		.{ .attachedToWindow = .{.reference = &hotbar.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .lower} },

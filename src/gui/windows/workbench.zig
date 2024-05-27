@@ -23,6 +23,7 @@ const inventory = @import("inventory.zig");
 const inventory_crafting = @import("inventory_crafting.zig");
 
 pub var window = GuiWindow {
+	.gameMenuNeed = true,
 	.relativePosition = .{
 		.{ .attachedToWindow = .{.reference = &inventory.window, .selfAttachmentPoint = .middle, .otherAttachmentPoint = .middle} },
 		.{ .attachedToWindow = .{.reference = &inventory.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .lower} },
