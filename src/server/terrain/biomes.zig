@@ -105,7 +105,7 @@ pub const Biome = struct {
 	supportsRivers: bool, // TODO: Reimplement rivers.
 	/// The first members in this array will get prioritized.
 	vegetationModels: []StructureModel = &.{},
-	subBiomes: main.utils.AliasTable(*const Biome) = undefined,
+	subBiomes: main.utils.AliasTable(*const Biome) = .{.items = &.{}, .aliasData = &.{}},
 	maxSubBiomeCount: f32,
 	subBiomeTotalChance: f32 = 0,
 	preferredMusic: []const u8, // TODO: Support multiple possibilities that are chosen based on time and danger.
