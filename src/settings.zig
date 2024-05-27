@@ -51,11 +51,11 @@ pub var developerGPUInfiniteLoopDetection: bool = false;
 
 
 pub fn init() void {
-	const json: JsonElement = main.files.readToJson(main.stackAllocator, "settings.json") catch |err| {
+	const json: JsonElement = main.files.readToJson(main.stackAllocator, "settings.json") catch |err| blk: {
 		if(err != error.FileNotFound) {
 			std.log.err("Could not read settings file: {s}", .{@errorName(err)});
 		}
-		return;
+		break :blk .JsonNull;
 	};
 	defer json.free(main.stackAllocator);
 
