@@ -4,7 +4,7 @@ const main = @import("root");
 const User = main.server.User;
 
 pub const description = "Get or set the server time.";
-pub const usage = "/time\n/time <day/night>\n/time <time>";
+pub const usage = "/time\n/time <day/night>\n/time <time>\n/time <start/stop>";
 
 pub fn execute(args: []const u8, source: *User) void {
 	var split = std.mem.splitScalar(u8, args, ' ');
@@ -15,6 +15,12 @@ pub fn execute(args: []const u8, source: *User) void {
 			gameTime = 0;
 		} else if(std.ascii.eqlIgnoreCase(arg, "night")) {
 			gameTime = main.server.ServerWorld.dayCycle/2;
+		} else if(std.ascii.eqlIgnoreCase(arg, "start")) {
+			main.server.world.?.doGameTimeCycle = true;
+			return;
+		} else if(std.ascii.eqlIgnoreCase(arg, "stop")) {
+			main.server.world.?.doGameTimeCycle = false;
+			return;
 		} else {
 			gameTime = std.fmt.parseInt(i64, arg, 0) catch {
 				const msg = std.fmt.allocPrint(main.stackAllocator.allocator, "#ff0000Expected i64 number, found \"{s}\"", .{arg}) catch unreachable;

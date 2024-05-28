@@ -508,6 +508,7 @@ pub const ConnectionManager = struct {
 	}
 
 	pub fn finishCurrentReceive(self: *ConnectionManager) void {
+		std.debug.assert(self.threadId != std.Thread.getCurrentId()); // WOuld cause deadlock, since we are in a receive.
 		self.mutex.lock();
 		defer self.mutex.unlock();
 		self.waitingToFinishReceive.wait(&self.mutex);
@@ -1285,6 +1286,7 @@ pub const Connection = struct {
 
 	pub fn init(manager: *ConnectionManager, ipPort: []const u8, user: ?*main.server.User) !*Connection {
 		const result: *Connection = main.globalAllocator.create(Connection);
+		errdefer main.globalAllocator.destroy(result);
 		result.* = Connection {
 			.manager = manager,
 			.user = user,
@@ -1295,14 +1297,19 @@ pub const Connection = struct {
 			.congestionControl_lastSendTime = @truncate(std.time.nanoTimestamp()),
 			.congestionControl_sendTimeLimit = @as(i64, @truncate(std.time.nanoTimestamp())) +% timeUnit*21/20,
 		};
+		errdefer main.globalAllocator.free(result.packetMemory);
 		result.unconfirmedPackets = main.List(UnconfirmedPacket).init(main.globalAllocator);
+		errdefer result.unconfirmedPackets.deinit();
 		result.packetQueue = main.utils.CircularBufferQueue(UnconfirmedPacket).init(main.globalAllocator, 1024);
+		errdefer result.packetQueue.deinit();
 		result.receivedPackets = [3]main.List(u32){
 			main.List(u32).init(main.globalAllocator),
 			main.List(u32).init(main.globalAllocator),
 			main.List(u32).init(main.globalAllocator),
 		};
-		errdefer result.deinit();
+		errdefer for(&result.receivedPackets) |*list| {
+			list.deinit();
+		};
 		var splitter = std.mem.split(u8, ipPort, ":");
 		const ip = splitter.first();
 		result.remoteAddress.ip = try Socket.resolveIP(ip);
