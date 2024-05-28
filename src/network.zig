@@ -500,10 +500,12 @@ pub const ConnectionManager = struct {
 		}
 	}
 
-	pub fn addConnection(self: *ConnectionManager, conn: *Connection) void {
+	pub fn addConnection(self: *ConnectionManager, conn: *Connection) error{AlreadyConnected}!void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
-
+		for(self.connections.items) |other| {
+			if(other.remoteAddress.ip == conn.remoteAddress.ip and other.remoteAddress.port == conn.remoteAddress.port) return error.AlreadyConnected;
+		}
 		self.connections.append(conn);
 	}
 
@@ -1324,7 +1326,7 @@ pub const Connection = struct {
 			break :blk settings.defaultPort;
 		};
 
-		result.manager.addConnection(result);
+		try result.manager.addConnection(result);
 		return result;
 	}
 

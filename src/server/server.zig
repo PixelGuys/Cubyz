@@ -150,14 +150,14 @@ fn init(name: []const u8) void {
 }
 
 fn deinit() void {
-	for(users.items) |user| {
-		user.decreaseRefCount();
-	}
 	users.clearAndFree();
 	for(userDeinitList.items) |user| {
 		user.deinit();
 	}
 	userDeinitList.clearAndFree();
+	for(connectionManager.connections.items) |conn| {
+		conn.user.?.decreaseRefCount();
+	}
 	connectionManager.deinit();
 	connectionManager = undefined;
 
