@@ -15,6 +15,7 @@ pub fn execute(args: []const u8, source: *User) void {
 	if(args.len == 0) {
 		var iterator = command.commands.valueIterator();
 		while(iterator.next()) |cmd| {
+			msg.append('/');
 			msg.appendSlice(cmd.name);
 			msg.appendSlice(": ");
 			msg.appendSlice(cmd.description);
@@ -24,6 +25,7 @@ pub fn execute(args: []const u8, source: *User) void {
 		var split = std.mem.splitScalar(u8, args, ' ');
 		while(split.next()) |arg| {
 			if(command.commands.get(arg)) |cmd| {
+				msg.append('/');
 				msg.appendSlice(cmd.name);
 				msg.appendSlice(": ");
 				msg.appendSlice(cmd.description);
