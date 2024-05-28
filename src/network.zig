@@ -1140,16 +1140,7 @@ pub const Protocols = struct {
 		pub const asynchronous = false;
 		fn receive(conn: *Connection, data: []const u8) !void {
 			if(conn.user) |user| {
-				if(data[0] == '/') {
-					// TODO:
-					// CommandExecutor.execute(data, user);
-				} else {
-					const newMessage = std.fmt.allocPrint(main.stackAllocator.allocator, "[{s}#ffffff]{s}", .{user.name, data}) catch unreachable;
-					defer main.stackAllocator.free(newMessage);
-					main.server.mutex.lock();
-					defer main.server.mutex.unlock();
-					main.server.sendMessage(newMessage);
-				}
+				main.server.messageFrom(data, user);
 			} else {
 				main.gui.windowlist.chat.addMessage(data);
 			}

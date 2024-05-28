@@ -14,6 +14,8 @@ pub const terrain = @import("terrain/terrain.zig");
 pub const Entity = @import("Entity.zig");
 pub const storage = @import("storage.zig");
 
+const command = @import("command/_command.zig");
+
 
 pub const User = struct {
 	conn: *Connection = undefined,
@@ -99,6 +101,10 @@ pub const User = struct {
 		self.timeDifference.addDataPoint(time);
 		self.interpolation.updatePosition(&position, &velocity, time);
 	}
+
+	pub fn sendMessage(user: *User, msg: []const u8) void {
+		main.network.Protocols.chat.send(user.conn, msg);
+	}
 };
 
 pub const updatesPerSec: u32 = 20;
@@ -119,6 +125,7 @@ pub var thread: ?std.Thread = null;
 
 fn init(name: []const u8) void {
 	std.debug.assert(world == null); // There can only be one world.
+	command.init();
 	users = main.List(*User).init(main.globalAllocator);
 	userDeinitList = main.List(*User).init(main.globalAllocator);
 	lastTime = std.time.nanoTimestamp();
@@ -158,6 +165,7 @@ fn deinit() void {
 		_world.deinit();
 	}
 	world = null;
+	command.deinit();
 }
 
 fn update() void {
@@ -298,10 +306,23 @@ pub fn connect(user: *User) void {
 	users.append(user);
 }
 
+pub fn messageFrom(msg: []const u8, source: *User) void {
+	if(msg[0] == '/') { // Command.
+		std.log.info("User \"{s}\" executed command \"{s}\"", .{source.name, msg}); // TODO use color \033[0;32m
+		command.execute(msg[1..], source);
+	} else {
+		const newMessage = std.fmt.allocPrint(main.stackAllocator.allocator, "[{s}#ffffff]{s}", .{source.name, msg}) catch unreachable;
+		defer main.stackAllocator.free(newMessage);
+		main.server.mutex.lock();
+		defer main.server.mutex.unlock();
+		main.server.sendMessage(newMessage);
+	}
+}
+
 pub fn sendMessage(msg: []const u8) void {
 	main.utils.assertLocked(&mutex);
 	std.log.info("Chat: {s}", .{msg}); // TODO use color \033[0;32m
 	for(users.items) |user| {
-		main.network.Protocols.chat.send(user.conn, msg);
+		user.sendMessage(msg);
 	}
 }
