@@ -201,7 +201,9 @@ fn update() void {
 	}
 
 	while(userDeinitList.popOrNull()) |user| {
+		mutex.unlock();
 		user.decreaseRefCount();
+		mutex.lock();
 	}
 	mutex.unlock();
 }
