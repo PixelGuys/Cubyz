@@ -6,6 +6,8 @@ const ServerChunk = main.chunk.ServerChunk;
 const JsonElement = main.JsonElement;
 const terrain = main.server.terrain;
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const vec = @import("main.vec");
+const Vec3d = main.vec.Vec3d;
 
 const StructureModel = struct {
 	const VTable = struct {
@@ -50,6 +52,74 @@ const StructureModel = struct {
 	}
 };
 
+const Stripe = struct {
+	direction: ?Vec3d,
+	block: u16,
+	minDistance: f64,
+	maxDistance: f64,
+	minOffset: f64,
+	maxOffset: f64,
+	minWidth: f64,
+	maxWidth: f64,
+
+	pub fn init(parameters: JsonElement) Stripe {
+		const items: []JsonElement = parameters.getChild("direction").toSlice();
+		var dir: ?Vec3d = null;
+		if (items.len == 3) {
+			const dx = items[0].as(f64, 0);
+			const dy = items[1].as(f64, 0);
+			const dz = items[2].as(f64, 0);
+			const d: Vec3d = .{dx, dy, dz};
+			dir = main.vec.normalize(d);
+		}
+
+		const block: u16 = blocks.getByID(parameters.get([]const u8, "block", ""));
+		
+		var minDistance: f64 = 0;
+		var maxDistance: f64 = 0;
+		if (parameters.JsonObject.get("distance")) |dist| {
+			minDistance = dist.as(f64, 0);
+			maxDistance = dist.as(f64, 0);
+		} else {
+			minDistance = parameters.get(f64, "minDistance", 0);
+			maxDistance = parameters.get(f64, "maxDistance", 0);
+		}
+
+		var minOffset: f64 = 0;
+		var maxOffset: f64 = 0;
+		if (parameters.JsonObject.get("offset")) |off| {
+			minOffset = off.as(f64, 0);
+			maxOffset = off.as(f64, 0);
+		} else {
+			minOffset = parameters.get(f64, "minOffset", 0);
+			maxOffset = parameters.get(f64, "maxOffset", 0);
+		}
+
+		var minWidth: f64 = 0;
+		var maxWidth: f64 = 0;
+		if (parameters.JsonObject.get("width")) |width| {
+			minWidth = width.as(f64, 0);
+			maxWidth = width.as(f64, 0);
+		} else {
+			minWidth = parameters.get(f64, "minWidth", 0);
+			maxWidth = parameters.get(f64, "maxWidth", 0);
+		}
+
+		return Stripe {
+			.direction = dir,
+			.block = block,
+
+			.minDistance = minDistance,
+			.maxDistance = maxDistance,
+
+			.minOffset = minOffset,
+			.maxOffset = maxOffset,
+
+			.minWidth = minWidth,
+			.maxWidth = maxWidth,
+		};
+	}
+};
 
 pub const Interpolation = enum(u8) {
 	none,
@@ -105,6 +175,7 @@ pub const Biome = struct {
 	supportsRivers: bool, // TODO: Reimplement rivers.
 	/// The first members in this array will get prioritized.
 	vegetationModels: []StructureModel = &.{},
+	stripes: []Stripe = &.{},
 	subBiomes: main.utils.AliasTable(*const Biome) = .{.items = &.{}, .aliasData = &.{}},
 	maxSubBiomeCount: f32,
 	subBiomeTotalChance: f32 = 0,
@@ -153,12 +224,19 @@ pub const Biome = struct {
 			}
 		}
 		self.vegetationModels = main.globalAllocator.dupe(StructureModel, vegetation.items);
+
+		const stripes = json.getChild("stripes");
+		self.stripes = main.globalAllocator.alloc(Stripe, stripes.toSlice().len);
+		for (stripes.toSlice(), 0..) |elem, i| {
+			self.stripes[i] = Stripe.init(elem);
+		}
 	}
 
 	pub fn deinit(self: *Biome) void {
 		self.subBiomes.deinit(main.globalAllocator);
 		self.structure.deinit(main.globalAllocator);
 		main.globalAllocator.free(self.vegetationModels);
+		main.globalAllocator.free(self.stripes);
 		main.globalAllocator.free(self.preferredMusic);
 		main.globalAllocator.free(self.id);
 	}

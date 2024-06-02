@@ -12,6 +12,16 @@
 	"hills" : 50,
 	
 	"rivers" : true,
+
+	"stripes" : [
+		{
+			"direction": [0, 0, 1],
+			"block": "cubyz:stone",
+			"distance": 10,
+			"offset": 3,
+			"width": 2
+		}
+	],
 	
 	"ground_structure" : [
 	],
