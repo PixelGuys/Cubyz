@@ -55,14 +55,14 @@ const StructureModel = struct {
 const Stripe = struct {
 	direction: ?Vec3d,
 	block: u16,
-	mindistance: f64,
-	maxdistance: f64,
-	minoffset: f64,
-	maxoffset: f64,
-	minwidth: f64,
-	maxwidth: f64,
+	minDistance: f64,
+	maxDistance: f64,
+	minOffset: f64,
+	maxOffset: f64,
+	minWidth: f64,
+	maxWidth: f64,
 
-	pub fn initStripe(parameters: JsonElement) ?Stripe {
+	pub fn init(parameters: JsonElement) Stripe {
 		const items: []JsonElement = parameters.getChild("direction").toSlice();
 		var dir: ?Vec3d = null;
 		if (items.len == 3) {
@@ -75,46 +75,48 @@ const Stripe = struct {
 
 		const block: u16 = blocks.getByID(parameters.get([]const u8, "block", ""));
 		
-		var mindistance: f64 = 0;
-		var maxdistance: f64 = 0;
+		var minDistance: f64 = 0;
+		var maxDistance: f64 = 0;
 		if (parameters.JsonObject.get("distance")) |dist| {
-			mindistance = dist.as(f64, 0);
-			maxdistance = dist.as(f64, 0);
+			minDistance = dist.as(f64, 0);
+			maxDistance = dist.as(f64, 0);
 		} else {
-			mindistance = parameters.get(f64, "minDistance", 0);
-			maxdistance = parameters.get(f64, "maxDistance", 0);
+			minDistance = parameters.get(f64, "minDistance", 0);
+			maxDistance = parameters.get(f64, "maxDistance", 0);
 		}
 
-		var minoffset: f64 = 0;
-		var maxoffset: f64 = 0;
+		var minOffset: f64 = 0;
+		var maxOffset: f64 = 0;
 		if (parameters.JsonObject.get("offset")) |off| {
-			minoffset = off.as(f64, 0);
-			maxoffset = off.as(f64, 0);
+			minOffset = off.as(f64, 0);
+			maxOffset = off.as(f64, 0);
 		} else {
-			minoffset = parameters.get(f64, "minOffset", 0);
-			maxoffset = parameters.get(f64, "maxOffset", 0);
+			minOffset = parameters.get(f64, "minOffset", 0);
+			maxOffset = parameters.get(f64, "maxOffset", 0);
 		}
 
-		var minwidth: f64 = 0;
-		var maxwidth: f64 = 0;
+		var minWidth: f64 = 0;
+		var maxWidth: f64 = 0;
 		if (parameters.JsonObject.get("width")) |width| {
-			minwidth = width.as(f64, 0);
-			maxwidth = width.as(f64, 0);
+			minWidth = width.as(f64, 0);
+			maxWidth = width.as(f64, 0);
 		} else {
-			minwidth = parameters.get(f64, "minWidth", 0);
-			maxwidth = parameters.get(f64, "maxWidth", 0);
+			minWidth = parameters.get(f64, "minWidth", 0);
+			maxWidth = parameters.get(f64, "maxWidth", 0);
 		}
 
 		return Stripe {
-			// .{dx, dy, dz},
 			.direction = dir,
 			.block = block,
-			.mindistance = mindistance,
-			.maxdistance = maxdistance,
-			.minoffset = minoffset,
-			.maxoffset = maxoffset,
-			.minwidth = minwidth,
-			.maxwidth = maxwidth,
+
+			.minDistance = minDistance,
+			.maxDistance = maxDistance,
+
+			.minOffset = minOffset,
+			.maxOffset = maxOffset,
+
+			.minWidth = minWidth,
+			.maxWidth = maxWidth,
 		};
 	}
 };
@@ -224,14 +226,10 @@ pub const Biome = struct {
 		self.vegetationModels = main.globalAllocator.dupe(StructureModel, vegetation.items);
 
 		const stripes = json.getChild("stripes");
-		var stripeList = main.ListUnmanaged(Stripe){};
-		defer stripeList.deinit(main.stackAllocator);
-		for (stripes.toSlice()) |elem| {
-			if (Stripe.initStripe(elem)) |stripe| {
-				stripeList.append(main.stackAllocator, stripe);
-			}
+		self.stripes = main.globalAllocator.alloc(Stripe, stripes.toSlice().len);
+		for (stripes.toSlice(), 0..) |elem, i| {
+			self.stripes[i] = Stripe.init(elem);
 		}
-		self.stripes = main.globalAllocator.dupe(Stripe, stripeList.items);
 	}
 
 	pub fn deinit(self: *Biome) void {

@@ -62,21 +62,22 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 							if (stripe.direction) |direction| {
 								d = vec.dot(direction, pos);
 							} else {
-								const dx = @sqrt(-2 * @log(main.random.nextDouble(&seed))) * @cos(2 * 3.14159 * main.random.nextDouble(&seed));
-								const dy = @sqrt(-2 * @log(main.random.nextDouble(&seed))) * @cos(2 * 3.14159 * main.random.nextDouble(&seed));
-								const dz = @sqrt(-2 * @log(main.random.nextDouble(&seed))) * @cos(2 * 3.14159 * main.random.nextDouble(&seed));
+								const dx = main.random.nextDoubleSigned(&seed);
+								const dy = main.random.nextDoubleSigned(&seed);
+								const dz = main.random.nextDoubleSigned(&seed);
 								const dir: Vec3d = .{dx, dy, dz};
 								d = vec.dot(vec.normalize(dir), pos);
 							}
 
-							const distance = (stripe.maxdistance - stripe.mindistance) * main.random.nextDouble(&seed) + stripe.mindistance;
+							const distance = (stripe.maxDistance - stripe.minDistance) * main.random.nextDouble(&seed) + stripe.minDistance;
 
-							const offset = (stripe.maxoffset - stripe.minoffset) * main.random.nextDouble(&seed) + stripe.minoffset;
+							const offset = (stripe.maxOffset - stripe.minOffset) * main.random.nextDouble(&seed) + stripe.minOffset;
 
-							const width = (stripe.maxwidth - stripe.minwidth) * main.random.nextDouble(&seed) + stripe.minwidth;
+							const width = (stripe.maxWidth - stripe.minWidth) * main.random.nextDouble(&seed) + stripe.minWidth;
 
 							if (@mod(d + offset, distance) < width) {
 								typ = stripe.block;
+								break;
 							}
 						}
 						chunk.updateBlockInGeneration(x, y, z, .{.typ = typ, .data = 0}); // TODO: Natural standard.
