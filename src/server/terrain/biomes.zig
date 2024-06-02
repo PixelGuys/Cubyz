@@ -63,14 +63,9 @@ const Stripe = struct {
 	maxWidth: f64,
 
 	pub fn init(parameters: JsonElement) Stripe {
-		const items: []JsonElement = parameters.getChild("direction").toSlice();
-		var dir: ?Vec3d = null;
-		if (items.len == 3) {
-			const dx = items[0].as(f64, 0);
-			const dy = items[1].as(f64, 0);
-			const dz = items[2].as(f64, 0);
-			const d: Vec3d = .{dx, dy, dz};
-			dir = main.vec.normalize(d);
+		var dir: ?Vec3d = parameters.get(?Vec3d, "direction", null);
+		if(dir != null) {
+			dir = main.vec.normalize(dir.?);
 		}
 
 		const block: u16 = blocks.getByID(parameters.get([]const u8, "block", ""));

@@ -84,9 +84,9 @@ pub const JsonElement = union(JsonType) {
 		}
 	}
 
-	pub fn as(self: *const JsonElement, comptime _type: type, replacement: _type) _type {
-		comptime var typeInfo = @typeInfo(_type);
-		comptime var innerType = _type;
+	pub fn as(self: *const JsonElement, comptime T: type, replacement: T) T {
+		comptime var typeInfo : std.builtin.Type = @typeInfo(T);
+		comptime var innerType = T;
 		inline while(typeInfo == .Optional) {
 			innerType = typeInfo.Optional.child;
 			typeInfo = @typeInfo(innerType);
@@ -106,6 +106,21 @@ pub const JsonElement = union(JsonType) {
 					else => return replacement,
 				}
 			},
+			.Vector => {
+				const len = typeInfo.Vector.len;
+				const elems = self.toSlice();
+				if(elems.len != len) return replacement;
+				var result: innerType = undefined;
+				if(innerType == T) result = replacement;
+				inline for(0..len) |i| {
+					if(innerType == T) {
+						result[i] = elems[i].as(typeInfo.Vector.child, result[i]);
+					} else {
+						result[i] = elems[i].as(?typeInfo.Vector.child, null) orelse return replacement;
+					}
+				}
+				return result;
+			},
 			else => {
 				switch(innerType) {
 					[]const u8 => {
@@ -122,14 +137,14 @@ pub const JsonElement = union(JsonType) {
 						}
 					},
 					else => {
-						@compileError("Unsupported type '" ++ @typeName(_type) ++ "'.");
+						@compileError("Unsupported type '" ++ @typeName(T) ++ "'.");
 					}
 				}
 			},
 		}
 	}
 
-	fn createElementFromRandomType(value: anytype) JsonElement {
+	fn createElementFromRandomType(value: anytype, allocator: std.mem.Allocator) JsonElement {
 		switch(@typeInfo(@TypeOf(value))) {
 			.Void => return JsonElement{.JsonNull={}},
 			.Null => return JsonElement{.JsonNull={}},
@@ -157,10 +172,19 @@ pub const JsonElement = union(JsonType) {
 			},
 			.Optional => {
 				if(value) |val| {
-					return createElementFromRandomType(val);
+					return createElementFromRandomType(val, allocator);
 				} else {
 					return JsonElement{.JsonNull={}};
 				}
+			},
+			.Vector => {
+				const len = @typeInfo(@TypeOf(value)).Vector.len;
+				const result = initArray(main.utils.NeverFailingAllocator{.allocator = allocator, .IAssertThatTheProvidedAllocatorCantFail = {}});
+				result.JsonArray.ensureCapacity(len);
+				inline for(0..len) |i| {
+					result.JsonArray.appendAssumeCapacity(createElementFromRandomType(value[i], allocator));
+				}
+				return result;
 			},
 			else => {
 				if(@TypeOf(value) == JsonElement) {
@@ -173,7 +197,7 @@ pub const JsonElement = union(JsonType) {
 	}
 
 	pub fn put(self: *const JsonElement, key: []const u8, value: anytype) void {
-		const result = createElementFromRandomType(value);
+		const result = createElementFromRandomType(value, self.JsonObject.allocator);
 		self.JsonObject.put(self.JsonObject.allocator.dupe(u8, key) catch unreachable, result) catch unreachable;
 	}
 

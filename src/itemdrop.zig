@@ -105,16 +105,8 @@ pub const ItemDropManager = struct {
 			return;
 		};
 		const properties = .{
-			Vec3d{
-				json.get(f64, "x", 0),
-				json.get(f64, "y", 0),
-				json.get(f64, "z", 0),
-			},
-			Vec3d{
-				json.get(f64, "vx", 0),
-				json.get(f64, "vy", 0),
-				json.get(f64, "vz", 0),
-			},
+			json.get(Vec3d, "pos", .{0, 0, 0}),
+			json.get(Vec3d, "vel", .{0, 0, 0}),
 			items.ItemStack{.item = item, .amount = json.get(u16, "amount", 1)},
 			json.get(i32, "despawnTime", 60),
 			0
@@ -147,12 +139,8 @@ pub const ItemDropManager = struct {
 		const obj = JsonElement.initObject(allocator);
 		const itemDrop = self.list.get(i);
 		obj.put("i", i);
-		obj.put("x", itemDrop.pos.x);
-		obj.put("y", itemDrop.pos.y);
-		obj.put("z", itemDrop.pos.z);
-		obj.put("vx", itemDrop.vel.x);
-		obj.put("vy", itemDrop.vel.y);
-		obj.put("vz", itemDrop.vel.z);
+		obj.put("pos", itemDrop.pos);
+		obj.put("vel", itemDrop.vel);
 		itemDrop.itemStack.storeToJson(obj);
 		obj.put("despawnTime", itemDrop.despawnTime);
 		return obj;

@@ -676,11 +676,7 @@ pub const Protocols = struct {
 						const jsonObject = JsonElement.initObject(main.stackAllocator);
 						defer jsonObject.free(main.stackAllocator);
 						jsonObject.put("player", conn.user.?.player.save(main.stackAllocator));
-						const spawn = JsonElement.initObject(main.stackAllocator);
-						spawn.put("x", main.server.world.?.spawn[0]);
-						spawn.put("y", main.server.world.?.spawn[1]);
-						spawn.put("z", main.server.world.?.spawn[2]);
-						jsonObject.put("spawn", spawn);
+						jsonObject.put("spawn", main.server.world.?.spawn);
 						jsonObject.put("blockPalette", main.server.world.?.blockPalette.save(main.stackAllocator));
 						
 						const outData = jsonObject.toStringEfficient(main.stackAllocator, &[1]u8{stepServerData});
@@ -1107,12 +1103,8 @@ pub const Protocols = struct {
 		pub fn itemStackDrop(conn: *Connection, stack: ItemStack, pos: Vec3d, dir: Vec3f, vel: f32) void {
 			const jsonObject = stack.store(main.stackAllocator);
 			defer jsonObject.free(main.stackAllocator);
-			jsonObject.put("x", pos[0]);
-			jsonObject.put("y", pos[1]);
-			jsonObject.put("z", pos[2]);
-			jsonObject.put("dirX", dir[0]);
-			jsonObject.put("dirY", dir[1]);
-			jsonObject.put("dirZ", dir[2]);
+			jsonObject.put("pos", pos);
+			jsonObject.put("dir", dir);
 			jsonObject.put("vel", vel);
 			const string = jsonObject.toString(main.stackAllocator);
 			defer main.stackAllocator.free(string);

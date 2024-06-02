@@ -287,10 +287,7 @@ const WorldIO = struct {
 
 		self.world.doGameTimeCycle = worldData.get(bool, "doGameTimeCycle", true);
 		self.world.gameTime = worldData.get(i64, "gameTime", 0);
-		const spawnData = worldData.getChild("spawn");
-		self.world.spawn[0] = spawnData.get(i32, "x", 0);
-		self.world.spawn[1] = spawnData.get(i32, "y", 0);
-		self.world.spawn[2] = spawnData.get(i32, "z", 0);
+		self.world.spawn = worldData.get(Vec3i, "spawn", .{0, 0, 0});
 	}
 
 	pub fn saveWorldData(self: WorldIO) !void {
@@ -300,11 +297,7 @@ const WorldIO = struct {
 		worldData.put("seed", self.world.seed);
 		worldData.put("doGameTimeCycle", self.world.doGameTimeCycle);
 		worldData.put("gameTime", self.world.gameTime);
-		const spawnData = JsonElement.initObject(main.stackAllocator);
-		spawnData.put("x", self.world.spawn[0]);
-		spawnData.put("y", self.world.spawn[1]);
-		spawnData.put("z", self.world.spawn[2]);
-		worldData.put("spawn", spawnData);
+		worldData.put("spawn", self.world.spawn);
 		// TODO: Save entities
 		try self.dir.writeJson("world.dat", worldData);
 	}
