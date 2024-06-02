@@ -28,7 +28,7 @@ pub fn deinit() void {
 }
 
 pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView) void {
-	if(chunk.super.pos.voxelSize < 4) {
+	if(chunk.super.pos.voxelSize < 8) {
 		// Uses a blue noise pattern for all structure that shouldn't touch.
 		const blueNoise = noise.BlueNoise.getRegionData(main.stackAllocator, chunk.super.pos.wx -% 8, chunk.super.pos.wy -% 8, chunk.super.width + 16, chunk.super.width + 16);
 		defer main.stackAllocator.free(blueNoise);
@@ -39,7 +39,7 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 			const wpy = chunk.super.pos.wy +% py;
 
 			var pz : i32 = -32;
-			while(pz < chunk.super.width) : (pz += 32) {
+			while(pz < chunk.super.width + 32) : (pz += 32) {
 				const wpz = chunk.super.pos.wz +% pz;
 				var seed = random.initSeed3D(worldSeed, .{wpx, wpy, wpz});
 				var relZ = pz + 16;
