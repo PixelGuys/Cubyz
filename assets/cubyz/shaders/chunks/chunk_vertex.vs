@@ -1,4 +1,4 @@
-#version 430
+#version 460
 
 out vec3 mvVertexPos;
 out vec3 direction;
@@ -10,10 +10,10 @@ flat out int isBackFace;
 flat out int ditherSeed;
 
 uniform vec3 ambientLight;
-uniform int visibilityMask;
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
-uniform vec3 modelPosition;
+uniform ivec3 playerPositionInteger;
+uniform vec3 playerPositionFraction;
 
 struct FaceData {
 	int encodedPosition;
@@ -37,7 +37,20 @@ layout(std430, binding = 4) buffer _quads
 	QuadInfo quads[];
 };
 
-uniform int voxelSize;
+struct ChunkData {
+	ivec4 position;
+	int visibilityMask;
+	int voxelSize;
+	uint vertexStartOpaque;
+	uint vertexCountOpaque;
+	uint vertexStartTransparent;
+	uint vertexCountTransparent;
+};
+
+layout(std430, binding = 6) buffer _chunks
+{
+	ChunkData chunks[];
+};
 
 const vec3[6] normals = vec3[6](
 	vec3(0, 0, 1),
@@ -67,6 +80,10 @@ const ivec3[6] textureY = ivec3[6](
 void main() {
 	int faceID = gl_VertexID >> 2;
 	int vertexID = gl_VertexID & 3;
+	int chunkID = gl_BaseInstance;
+	int visibilityMask = chunks[chunkID].visibilityMask;
+	int voxelSize = chunks[chunkID].voxelSize;
+	vec3 modelPosition = vec3(chunks[chunkID].position.xyz - playerPositionInteger) - playerPositionFraction;
 	int encodedPosition = faceData[faceID].encodedPosition;
 	int textureAndQuad = faceData[faceID].textureAndQuad;
 	int fullLight = faceData[faceID].light[vertexID];

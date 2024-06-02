@@ -183,7 +183,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	
 
 	// Update the uniforms. The uniforms are needed to render the replacement meshes.
-	chunk_meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight);
+	chunk_meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight, playerPos);
 
 	c.glActiveTexture(c.GL_TEXTURE0);
 	blocks.meshes.blockTextureArray.bind();
@@ -197,16 +197,22 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	chunk_meshing.transparentQuadsDrawn = 0;
 	const meshes = mesh_storage.updateAndGetRenderChunks(world.conn, playerPos, settings.renderDistance);
 
-	gpu_performance_measuring.startQuery(.chunk_rendering);
+	gpu_performance_measuring.startQuery(.chunk_rendering_preparation);
 	const direction = crosshairDirection(game.camera.viewMatrix, lastFov, lastWidth, lastHeight);
 	MeshSelection.select(playerPos, direction, game.Player.inventory__SEND_CHANGES_TO_SERVER.items[game.Player.selectedSlot]);
 	MeshSelection.render(game.projectionMatrix, game.camera.viewMatrix, playerPos);
 
 	chunk_meshing.beginRender();
-	chunk_meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight);
 
+	var chunkList = main.List(u32).init(main.stackAllocator);
+	defer chunkList.deinit();
 	for(meshes) |mesh| {
-		mesh.render(playerPos);
+		mesh.prepareRendering(&chunkList);
+	}
+	gpu_performance_measuring.stopQuery();
+	gpu_performance_measuring.startQuery(.chunk_rendering);
+	if(chunkList.items.len != 0) {
+		chunk_meshing.drawChunksIndirect(chunkList.items, game.projectionMatrix, ambientLight, playerPos, false);
 	}
 	gpu_performance_measuring.stopQuery();
 
@@ -219,20 +225,25 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	// Render transparent chunk meshes:
 	worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE5);
 
-	gpu_performance_measuring.startQuery(.transparent_rendering);
+	gpu_performance_measuring.startQuery(.transparent_rendering_preparation);
 	c.glTextureBarrier();
-	chunk_meshing.bindTransparentShaderAndUniforms(game.projectionMatrix, ambientLight);
 
 	c.glBlendEquation(c.GL_FUNC_ADD);
 	c.glBlendFunc(c.GL_ONE, c.GL_SRC1_COLOR);
 	c.glDepthFunc(c.GL_LEQUAL);
 	c.glDepthMask(c.GL_FALSE);
 	{
+		chunkList.clearRetainingCapacity();
 		var i: usize = meshes.len;
 		while(true) {
 			if(i == 0) break;
 			i -= 1;
-			meshes[i].renderTransparent(playerPos);
+			meshes[i].prepareTransparentRendering(playerPos, &chunkList);
+		}
+		gpu_performance_measuring.stopQuery();
+		gpu_performance_measuring.startQuery(.transparent_rendering);
+		if(chunkList.items.len != 0) {
+			chunk_meshing.drawChunksIndirect(chunkList.items, game.projectionMatrix, ambientLight, playerPos, true);
 		}
 	}
 	c.glDepthMask(c.GL_TRUE);

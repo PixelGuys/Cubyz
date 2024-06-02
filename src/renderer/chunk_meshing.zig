@@ -28,7 +28,8 @@ var transparentShader: Shader = undefined;
 const UniformStruct = struct {
 	projectionMatrix: c_int,
 	viewMatrix: c_int,
-	modelPosition: c_int,
+	playerPositionInteger: c_int,
+	playerPositionFraction: c_int,
 	screenSize: c_int,
 	ambientLight: c_int,
 	contrast: c_int,
@@ -39,17 +40,25 @@ const UniformStruct = struct {
 	reflectivityAndAbsorptionSampler: c_int,
 	reflectionMap: c_int,
 	reflectionMapSize: c_int,
-	visibilityMask: c_int,
-	voxelSize: c_int,
 	zNear: c_int,
 	zFar: c_int,
 };
 pub var uniforms: UniformStruct = undefined;
 pub var transparentUniforms: UniformStruct = undefined;
+pub var commandShader: Shader = undefined;
+pub var commandUniforms: struct {
+	chunkIDIndex: c_int,
+	commandIndexStart: c_int,
+	size: c_int,
+	isTransparent: c_int,
+} = undefined;
 var vao: c_uint = undefined;
 var vbo: c_uint = undefined;
 var faces: main.List(u32) = undefined;
 pub var faceBuffer: graphics.LargeBuffer(FaceData) = undefined;
+pub var chunkBuffer: graphics.LargeBuffer(ChunkData) = undefined;
+pub var commandBuffer: graphics.LargeBuffer(IndirectData) = undefined;
+pub var chunkIDBuffer: graphics.LargeBuffer(u32) = undefined;
 pub var quadsDrawn: usize = 0;
 pub var transparentQuadsDrawn: usize = 0;
 
@@ -57,6 +66,7 @@ pub fn init() void {
 	lighting.init();
 	shader = Shader.initAndGetUniforms("assets/cubyz/shaders/chunks/chunk_vertex.vs", "assets/cubyz/shaders/chunks/chunk_fragment.fs", &uniforms);
 	transparentShader = Shader.initAndGetUniforms("assets/cubyz/shaders/chunks/chunk_vertex.vs", "assets/cubyz/shaders/chunks/transparent_fragment.fs", &transparentUniforms);
+	commandShader = Shader.initComputeAndGetUniforms("assets/cubyz/shaders/chunks/fillIndirectBuffer.glsl", &commandUniforms);
 
 	var rawData: [6*3 << (3*chunk.chunkShift)]u32 = undefined; // 6 vertices per face, maximum 3 faces/block
 	const lut = [_]u32{0, 2, 1, 1, 2, 3};
@@ -73,27 +83,40 @@ pub fn init() void {
 
 	faces = main.List(u32).initCapacity(main.globalAllocator, 65536); // TODO: What is this used for?
 	faceBuffer.init(main.globalAllocator, 1 << 20, 3);
+	chunkBuffer.init(main.globalAllocator, 1 << 20, 6);
+	commandBuffer.init(main.globalAllocator, 1 << 20, 8);
+	chunkIDBuffer.init(main.globalAllocator, 1 << 20, 9);
 }
 
 pub fn deinit() void {
 	lighting.deinit();
 	shader.deinit();
 	transparentShader.deinit();
+	commandShader.deinit();
 	c.glDeleteVertexArrays(1, &vao);
 	c.glDeleteBuffers(1, &vbo);
 	faces.deinit();
 	faceBuffer.deinit();
+	chunkBuffer.deinit();
+	commandBuffer.deinit();
+	chunkIDBuffer.deinit();
 }
 
 pub fn beginRender() void {
 	faceBuffer.beginRender();
+	chunkBuffer.beginRender();
+	commandBuffer.beginRender();
+	chunkIDBuffer.beginRender();
 }
 
 pub fn endRender() void {
 	faceBuffer.endRender();
+	chunkBuffer.endRender();
+	commandBuffer.endRender();
+	chunkIDBuffer.endRender();
 }
 
-fn bindCommonUniforms(locations: *UniformStruct, projMatrix: Mat4f, ambient: Vec3f) void {
+fn bindCommonUniforms(locations: *UniformStruct, projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d) void {
 	c.glUniformMatrix4fv(locations.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 
 	c.glUniform1i(locations.texture_sampler, 0);
@@ -110,25 +133,51 @@ fn bindCommonUniforms(locations: *UniformStruct, projMatrix: Mat4f, ambient: Vec
 
 	c.glUniform1f(locations.zNear, renderer.zNear);
 	c.glUniform1f(locations.zFar, renderer.zFar);
+
+	c.glUniform3i(locations.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
+	c.glUniform3f(locations.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
 }
 
-pub fn bindShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f) void {
+pub fn bindShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d) void {
 	shader.bind();
 
-	bindCommonUniforms(&uniforms, projMatrix, ambient);
+	bindCommonUniforms(&uniforms, projMatrix, ambient, playerPos);
 
 	c.glBindVertexArray(vao);
 }
 
-pub fn bindTransparentShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f) void {
+pub fn bindTransparentShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d) void {
 	transparentShader.bind();
 
 	c.glUniform3fv(transparentUniforms.@"fog.color", 1, @ptrCast(&game.fog.color));
 	c.glUniform1f(transparentUniforms.@"fog.density", game.fog.density);
 
-	bindCommonUniforms(&transparentUniforms, projMatrix, ambient);
+	bindCommonUniforms(&transparentUniforms, projMatrix, ambient, playerPos);
 
 	c.glBindVertexArray(vao);
+}
+
+pub fn drawChunksIndirect(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d, transparent: bool) void {
+	var chunkIDAllocation: main.graphics.SubAllocation = .{.start = 0, .len = 0};
+	chunkIDBuffer.uploadData(chunkIDs, &chunkIDAllocation);
+	defer chunkIDBuffer.free(chunkIDAllocation);
+	const allocation = commandBuffer.rawAlloc(@intCast(chunkIDs.len));
+	defer commandBuffer.free(allocation);
+	commandShader.bind();
+	c.glUniform1ui(commandUniforms.chunkIDIndex, chunkIDAllocation.start);
+	c.glUniform1ui(commandUniforms.commandIndexStart, allocation.start);
+	c.glUniform1ui(commandUniforms.size, @intCast(chunkIDs.len));
+	c.glUniform1i(commandUniforms.isTransparent, @intFromBool(transparent));
+	c.glDispatchCompute(@intCast(@divFloor(chunkIDs.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
+	c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT);
+
+	if(transparent) {
+		bindTransparentShaderAndUniforms(projMatrix, ambient, playerPos);
+	} else {
+		bindShaderAndUniforms(projMatrix, ambient, playerPos);
+	}
+	c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
+	c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), @intCast(chunkIDs.len), 0);
 }
 
 pub const FaceData = extern struct {
@@ -152,6 +201,24 @@ pub const FaceData = extern struct {
 			.blockAndQuad = .{.texture = texture, .quadIndex = quadIndex},
 		};
 	}
+};
+
+pub const ChunkData = extern struct {
+	position: Vec3i align(16),
+	visibilityMask: i32,
+	voxelSize: i32,
+	vertexStartOpaque: u32,
+	vertexCountOpaque: u32,
+	vertexStartTransparent: u32,
+	vertexCountTransparent: u32,
+};
+
+pub const IndirectData = extern struct {
+	count: u32,
+	instanceCount: u32,
+	firstIndex: u32,
+	baseVertex: i32,
+	baseInstance: u32,
 };
 
 const PrimitiveMesh = struct {
@@ -486,6 +553,7 @@ pub const ChunkMesh = struct {
 	lastNeighborsHigherLod: [6]?*const ChunkMesh = [_]?*const ChunkMesh{null} ** 6,
 	isNeighborLod: [6]bool = .{false} ** 6,
 	visibilityMask: u8 = 0xff,
+	uploadedVisibilityMask: u8 = 0xff,
 	currentSorting: []SortingData = &.{},
 	sortingOutputBuffer: []FaceData = &.{},
 	culledSortingCount: u31 = 0,
@@ -497,6 +565,7 @@ pub const ChunkMesh = struct {
 	finishedLighting: bool = false,
 	litNeighbors: Atomic(u32) = Atomic(u32).init(0),
 	mutex: std.Thread.Mutex = .{},
+	chunkAllocation: graphics.SubAllocation = .{.start = 0, .len = 0},
 
 	chunkBorders: [6]BoundingRectToNeighborChunk = [1]BoundingRectToNeighborChunk{.{}} ** 6,
 
@@ -516,6 +585,7 @@ pub const ChunkMesh = struct {
 
 	pub fn deinit(self: *ChunkMesh) void {
 		std.debug.assert(self.refCount.load(.monotonic) == 0);
+		chunkBuffer.free(self.chunkAllocation);
 		self.opaqueMesh.deinit();
 		self.transparentMesh.deinit();
 		self.chunk.deinit();
@@ -859,6 +929,7 @@ pub const ChunkMesh = struct {
 	pub fn uploadData(self: *ChunkMesh) void {
 		self.opaqueMesh.uploadData(self.isNeighborLod);
 		self.transparentMesh.uploadData(self.isNeighborLod);
+		self.uploadChunkPosition();
 	}
 
 	pub fn changeLodBorders(self: *ChunkMesh, isNeighborLod: [6]bool) void {
@@ -1021,21 +1092,29 @@ pub const ChunkMesh = struct {
 		mesh_storage.finishMesh(self);
 	}
 
-	pub fn render(self: *ChunkMesh, playerPosition: Vec3d) void {
-		if(self.opaqueMesh.vertexCount == 0) return;
-		c.glUniform3f(
-			uniforms.modelPosition,
-			@floatCast(@as(f64, @floatFromInt(self.pos.wx)) - playerPosition[0]),
-			@floatCast(@as(f64, @floatFromInt(self.pos.wy)) - playerPosition[1]),
-			@floatCast(@as(f64, @floatFromInt(self.pos.wz)) - playerPosition[2])
-		);
-		c.glUniform1i(uniforms.visibilityMask, self.visibilityMask);
-		c.glUniform1i(uniforms.voxelSize, self.pos.voxelSize);
-		quadsDrawn += self.opaqueMesh.vertexCount/6;
-		c.glDrawElementsBaseVertex(c.GL_TRIANGLES, self.opaqueMesh.vertexCount, c.GL_UNSIGNED_INT, null, self.opaqueMesh.bufferAllocation.start*4);
+	fn uploadChunkPosition(self: *ChunkMesh) void {
+		chunkBuffer.uploadData(&.{ChunkData{ // TODO: Only upload data when the visibilityMask changes.
+			.position = .{self.pos.wx, self.pos.wy, self.pos.wz},
+			.voxelSize = self.pos.voxelSize,
+			.visibilityMask = self.visibilityMask,
+			.vertexStartOpaque = self.opaqueMesh.bufferAllocation.start*4,
+			.vertexCountOpaque = self.opaqueMesh.vertexCount,
+			.vertexStartTransparent = self.transparentMesh.bufferAllocation.start*4,
+			.vertexCountTransparent = self.transparentMesh.bufferAllocation.len*6,
+		}}, &self.chunkAllocation);
+		self.uploadedVisibilityMask = self.visibilityMask;
 	}
 
-	pub fn renderTransparent(self: *ChunkMesh, playerPosition: Vec3d) void {
+	pub fn prepareRendering(self: *ChunkMesh, chunkList: *main.List(u32)) void {
+		if(self.opaqueMesh.vertexCount == 0) return;
+		if(self.uploadedVisibilityMask != self.visibilityMask) self.uploadChunkPosition();
+
+		chunkList.append(self.chunkAllocation.start);
+
+		quadsDrawn += self.opaqueMesh.vertexCount/6;
+	}
+
+	pub fn prepareTransparentRendering(self: *ChunkMesh, playerPosition: Vec3d, chunkList: *main.List(u32)) void {
 		if(self.transparentMesh.vertexCount == 0) return;
 
 		var needsUpdate: bool = false;
@@ -1150,17 +1229,12 @@ pub const ChunkMesh = struct {
 
 			// Upload:
 			faceBuffer.uploadData(self.sortingOutputBuffer[0..self.culledSortingCount], &self.transparentMesh.bufferAllocation);
+			self.uploadChunkPosition();
 		}
 
-		c.glUniform3f(
-			transparentUniforms.modelPosition,
-			@floatCast(@as(f64, @floatFromInt(self.pos.wx)) - playerPosition[0]),
-			@floatCast(@as(f64, @floatFromInt(self.pos.wy)) - playerPosition[1]),
-			@floatCast(@as(f64, @floatFromInt(self.pos.wz)) - playerPosition[2])
-		);
-		c.glUniform1i(transparentUniforms.visibilityMask, self.visibilityMask);
-		c.glUniform1i(transparentUniforms.voxelSize, self.pos.voxelSize);
+		if(self.uploadedVisibilityMask != self.visibilityMask) self.uploadChunkPosition();
+
+		chunkList.append(self.chunkAllocation.start);
 		transparentQuadsDrawn += self.culledSortingCount;
-		c.glDrawElementsBaseVertex(c.GL_TRIANGLES, self.culledSortingCount*6, c.GL_UNSIGNED_INT, null, self.transparentMesh.bufferAllocation.start*4);
 	}
 };
