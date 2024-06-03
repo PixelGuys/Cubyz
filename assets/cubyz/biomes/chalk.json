@@ -11,11 +11,7 @@
 	"music" : "EasternThought",
 	
 	"ground_structure" : [
-		"0 to 1 cubyz:grass",
-		"0 to 1 cubyz:grass",
-		"0 to 1 cubyz:grass",
-		"0 to 1 cubyz:grass",
-		"0 to 1 cubyz:chalf/white"
+		"cubyz:grass"
 	],
 	"structures" : [
 		{
