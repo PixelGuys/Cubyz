@@ -1,4 +1,6 @@
 {
+	"chance": 0,
+	
 	"properties" : [
 		"wet",
 		"hot",

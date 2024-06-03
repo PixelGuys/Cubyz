@@ -30,7 +30,7 @@
 			"leaves" : "cubyz:oak_leaves",
 			"log" : "cubyz:oak_log",
 			"top" : "cubyz:oak_top",
-			"chance" : 0.001,
+			"chance" : 0.0008,
 			"type" : "round",
 			"height" : 6,
 			"height_variation" : 3
@@ -41,6 +41,14 @@
 			"block" : "cubyz:stone",
 			"size" : 5,
 			"size_variance" : 1
+		},
+		{
+			"id" : "cubyz:fallen_tree",
+			"log" : "cubyz:oak_log",
+			"top" : "cubyz:oak_top",
+			"height" : 6,
+			"height_variation" : 3,
+			"chance" : 0.0002
 		}
 	]
 }

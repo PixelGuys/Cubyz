@@ -1,4 +1,5 @@
 {
+	"chance": 1,
 	"properties" : [
 		"wet"
 	],
@@ -22,8 +23,16 @@
 			"leaves" : "cubyz:oak_leaves",
 			"log" : "cubyz:oak_log",
 			"top" : "cubyz:oak_top",
-			"chance" : 0.05,
+			"chance" : 0.04,
 			"type" : "round",
+			"height" : 6,
+			"height_variation" : 3
+		},
+		{
+			"id" : "cubyz:fallen_tree",
+			"log" : "cubyz:oak_log",
+			"top" : "cubyz:oak_top",
+			"chance" : 0.01,
 			"height" : 6,
 			"height_variation" : 3
 		}
