@@ -31,6 +31,7 @@ pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: JsonElement)
 
 pub fn generate(self: *Lake, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) void {
 	_ = caveMap;
+
 	const radius = self.size;
 	// My basic idea is to use a point cloud and a potential function to achieve somewhat smooth lakes without being a sphere.
 	const numberOfPoints = 4;
@@ -52,6 +53,7 @@ pub fn generate(self: *Lake, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerCh
 	const maxRadius: i32 = @intFromFloat(@ceil(radius));
 	const maxHeight: i32 = @intFromFloat(@ceil(self.depth));
 	const scale: f32 = @as(f32, @floatFromInt(maxHeight)) / @as(f32, @floatFromInt(maxRadius));
+
 	var px = chunk.startIndex(x - maxRadius);
 	while(px < x + maxRadius) : (px += chunk.super.pos.voxelSize) {
 		var py = chunk.startIndex(y - maxRadius);
@@ -74,7 +76,8 @@ pub fn generate(self: *Lake, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerCh
 				potential *= radius*radius/4/numberOfPoints;
 				if(potential >= 1 and z > pz) {
 					chunk.updateBlockInGeneration(px, py, pz, .{.typ = self.liquid, .data = 0}); // TODO: Natural standard.
-				} else if (potential >= 0.85 and z > pz and chunk.getBlock(px, py, pz).typ == 0) {
+				} else if (potential >= 0.7 and z > pz and chunk.getBlock(px, py, pz).typ == 0) {
+					u16 typ = chunk.
 					chunk.updateBlockInGeneration(px, py, pz, .{.typ = main.blocks.getByID("cubyz:stone"), .data = 0});
 				} else if (potential >= 1 and chunk.getBlock(px, py, pz).typ != 0) {
 					chunk.updateBlockInGeneration(px, py, pz, .{.typ = 0, .data = 0});
