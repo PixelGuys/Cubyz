@@ -13,6 +13,7 @@ const StructureModel = struct {
 	const VTable = struct {
 		loadModel: *const fn(arenaAllocator: NeverFailingAllocator, parameters: JsonElement) *anyopaque,
 		generate: *const fn(self: *anyopaque, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) void,
+		hashFunction: *const fn(self: *anyopaque) u64,
 	};
 
 	vtable: VTable,
@@ -48,7 +49,16 @@ const StructureModel = struct {
 		var self: VTable = undefined;
 		self.loadModel = @ptrCast(&Generator.loadModel);
 		self.generate = @ptrCast(&Generator.generate);
+		self.hashFunction = @ptrCast(&struct {
+			fn hash(ptr: *Generator) u64 {
+				return hashGeneric(ptr.*);
+			}
+		}.hash);
 		modelRegistry.put(main.globalAllocator.allocator, Generator.id, self) catch unreachable;
+	}
+
+	fn getHash(self: StructureModel) u64 {
+		return self.vtable.hashFunction(self.data);
 	}
 };
 
@@ -115,6 +125,56 @@ const Stripe = struct {
 		};
 	}
 };
+
+fn hashGeneric(input: anytype) u64 {
+	const T = @TypeOf(input);
+	return switch(@typeInfo(T)) {
+		.Bool => @intFromBool(input),
+		.Enum => @intFromEnum(input),
+		.Int, .Float => @as(std.meta.Int(.unsigned, @bitSizeOf(T)), @bitCast(input)),
+		.Struct => blk: {
+			if(@hasDecl(T, "getHash")) {
+				break :blk input.getHash();
+			}
+			var result: u64 = 0;
+			inline for(@typeInfo(T).Struct.fields) |field| {
+				result ^= hashGeneric(@field(input, field.name))*%hashGeneric(@as([]const u8, field.name));
+			}
+			break :blk result;
+		},
+		.Optional => if(input) |_input| hashGeneric(_input) else 0,
+		.Pointer => switch(@typeInfo(T).Pointer.size) {
+			.One => blk: {
+				if(@typeInfo(@typeInfo(T).Pointer.child) == .Fn) break :blk 0;
+				if(@typeInfo(T).Pointer.child == anyopaque) break :blk 0;
+				break :blk hashGeneric(input.*);
+			},
+			.Slice => blk: {
+				var result: u64 = 0;
+				for(input) |val| {
+					result = result*%33 +% hashGeneric(val);
+				}
+				break :blk result;
+			},
+			else => @compileError("Unsupported type " ++ @typeName(T)),
+		},
+		.Array => blk: {
+			var result: u64 = 0;
+			for(input) |val| {
+				result = result*%33 +% hashGeneric(val);
+			}
+			break :blk result;
+		},
+		.Vector => blk: {
+			var result: u64 = 0;
+			inline for(0..@typeInfo(T).Vector.len) |i| {
+				result = result*%33 +% hashGeneric(input[i]);
+			}
+			break :blk result;
+		},
+		else => @compileError("Unsupported type " ++ @typeName(T)),
+	};
+}
 
 pub const Interpolation = enum(u8) {
 	none,
@@ -234,6 +294,10 @@ pub const Biome = struct {
 		main.globalAllocator.free(self.stripes);
 		main.globalAllocator.free(self.preferredMusic);
 		main.globalAllocator.free(self.id);
+	}
+
+	fn getCheckSum(self: *Biome) u64 {
+		return hashGeneric(self.*);
 	}
 };
 
@@ -533,4 +597,16 @@ pub fn getRandomly(typ: Biome.Type, seed: *u64) *const Biome {
 
 pub fn getCaveBiomes() []const Biome {
 	return caveBiomes.items;
+}
+
+/// A checksum that can be used to check for changes i nthe biomes being used.
+pub fn getBiomeCheckSum(seed: u64) u64 {
+	var result: u64 = seed;
+	for(biomes.items) |*biome| {
+		result ^= biome.getCheckSum();
+	}
+	for(caveBiomes.items) |*biome| {
+		result ^= biome.getCheckSum();
+	}
+	return result;
 }

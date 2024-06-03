@@ -30,6 +30,12 @@ pub fn makeDir(path: []const u8) !void {
 	try std.fs.cwd().makePath(path);
 }
 
+pub fn deleteDir(path: []const u8, dirName: []const u8) !void {
+	var saveDir = try std.fs.cwd().openDir(path, .{});
+	defer saveDir.close();
+	try saveDir.deleteTree(dirName);
+}
+
 fn cwd() Dir {
 	return Dir {
 		.dir = std.fs.cwd(),

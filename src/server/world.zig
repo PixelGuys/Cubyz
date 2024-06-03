@@ -288,6 +288,7 @@ const WorldIO = struct {
 		self.world.doGameTimeCycle = worldData.get(bool, "doGameTimeCycle", true);
 		self.world.gameTime = worldData.get(i64, "gameTime", 0);
 		self.world.spawn = worldData.get(Vec3i, "spawn", .{0, 0, 0});
+		self.world.biomeChecksum = worldData.get(i64, "biomeChecksum", 0);
 	}
 
 	pub fn saveWorldData(self: WorldIO) !void {
@@ -298,6 +299,7 @@ const WorldIO = struct {
 		worldData.put("doGameTimeCycle", self.world.doGameTimeCycle);
 		worldData.put("gameTime", self.world.gameTime);
 		worldData.put("spawn", self.world.spawn);
+		worldData.put("biomeChecksum", self.world.biomeChecksum);
 		// TODO: Save entities
 		try self.dir.writeJson("world.dat", worldData);
 	}
@@ -330,6 +332,8 @@ pub const ServerWorld = struct {
 
 	chunkUpdateQueue: main.utils.CircularBufferQueue(ChunkUpdateRequest),
 	regionUpdateQueue: main.utils.CircularBufferQueue(RegionUpdateRequest),
+
+	biomeChecksum: i64 = 0,
 
 	const ChunkUpdateRequest = struct {
 		ch: *ServerChunk,
@@ -389,8 +393,6 @@ pub const ServerWorld = struct {
 
 		self.chunkManager = try ChunkManager.init(self, generatorSettings);
 		errdefer self.chunkManager.deinit();
-		try self.generate();
-		self.itemDropManager.loadFrom(try files.readToJson(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/items.json", .{name})));
 		return self;
 	}
 
@@ -413,7 +415,148 @@ pub const ServerWorld = struct {
 		main.globalAllocator.destroy(self);
 	}
 
-	fn generate(self: *ServerWorld) !void {
+
+	const RegenerateLODTask = struct {
+		pos: ChunkPosition,
+
+		const vtable = utils.ThreadPool.VTable{
+			.getPriority = @ptrCast(&getPriority),
+			.isStillNeeded = @ptrCast(&isStillNeeded),
+			.run = @ptrCast(&run),
+			.clean = @ptrCast(&clean),
+		};
+		
+		pub fn schedule(pos: ChunkPosition) void {
+			const task = main.globalAllocator.create(RegenerateLODTask);
+			task.* = .{
+				.pos = pos,
+			};
+			main.threadPool.addTask(task, &vtable);
+		}
+
+		pub fn getPriority(_: *RegenerateLODTask) f32 {
+			return std.math.floatMax(f32);
+		}
+
+		pub fn isStillNeeded(_: *RegenerateLODTask, _: i64) bool {
+			return true;
+		}
+
+		pub fn run(self: *RegenerateLODTask) void {
+			defer self.clean();
+			const region = storage.loadRegionFileAndIncreaseRefCount(self.pos.wx, self.pos.wy, self.pos.wz, self.pos.voxelSize);
+			defer region.decreaseRefCount();
+			region.mutex.lock();
+			defer region.mutex.unlock();
+			for(0..storage.RegionFile.regionSize) |x| {
+				for(0..storage.RegionFile.regionSize) |y| {
+					for(0..storage.RegionFile.regionSize) |z| {
+						if(region.chunks[storage.RegionFile.getIndex(x, y, z)].len != 0) {
+							region.mutex.unlock();
+							defer region.mutex.lock();
+							const pos = ChunkPosition {
+								.wx = self.pos.wx + @as(i32, @intCast(x))*chunk.chunkSize,
+								.wy = self.pos.wy + @as(i32, @intCast(y))*chunk.chunkSize,
+								.wz = self.pos.wz + @as(i32, @intCast(z))*chunk.chunkSize,
+								.voxelSize = 1,
+							};
+							const ch = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(pos);
+							defer ch.decreaseRefCount();
+							var nextPos = pos;
+							nextPos.wx &= ~@as(i32, self.pos.voxelSize*chunk.chunkSize);
+							nextPos.wy &= ~@as(i32, self.pos.voxelSize*chunk.chunkSize);
+							nextPos.wz &= ~@as(i32, self.pos.voxelSize*chunk.chunkSize);
+							nextPos.voxelSize *= 2;
+							const nextHigherLod = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(nextPos);
+							defer nextHigherLod.decreaseRefCount();
+							ch.mutex.lock();
+							defer ch.mutex.unlock();
+							nextHigherLod.updateFromLowerResolution(ch);
+						}
+					}
+				}
+			}
+		}
+
+		pub fn clean(self: *RegenerateLODTask) void {
+			main.globalAllocator.destroy(self);
+		}
+	};
+
+	fn regenerateLOD(self: *ServerWorld, newBiomeCheckSum: i64) !void {
+		std.log.info("Biomes have changed. Regenerating LODs... (this might take some time)", .{});
+		// Delete old LODs:
+		for(1..main.settings.highestLOD+1) |i| {
+			const lod = @as(u32, 1) << @intCast(i);
+			const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/chunks", .{self.name}) catch unreachable;
+			defer main.stackAllocator.free(path);
+			const dir = std.fmt.allocPrint(main.stackAllocator.allocator, "{}", .{lod}) catch unreachable;
+			defer main.stackAllocator.free(dir);
+			main.files.deleteDir(path, dir) catch |err| {
+				std.log.err("Error while deleting directory {s}/{s}: {s}", .{path, dir, @errorName(err)});
+			};
+		}
+		// Find all the stored chunks:
+		var chunkPositions = main.List(ChunkPosition).init(main.stackAllocator);
+		defer chunkPositions.deinit();
+		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/chunks/1", .{self.name}) catch unreachable;
+		defer main.stackAllocator.free(path);
+		{
+			var dirX = try std.fs.cwd().openDir(path, .{.iterate = true});
+			defer dirX.close();
+			var iterX = dirX.iterate();
+			while(try iterX.next()) |entryX| {
+				if(entryX.kind != .directory) continue;
+				const wx = std.fmt.parseInt(i32, entryX.name, 0) catch continue;
+				var dirY = try dirX.openDir(entryX.name, .{.iterate = true});
+				defer dirY.close();
+				var iterY = dirY.iterate();
+				while(try iterY.next()) |entryY| {
+					if(entryY.kind != .directory) continue;
+					const wy = std.fmt.parseInt(i32, entryY.name, 0) catch continue;
+					var dirZ = try dirY.openDir(entryY.name, .{.iterate = true});
+					defer dirZ.close();
+					var iterZ = dirZ.iterate();
+					while(try iterZ.next()) |entryZ| {
+						if(entryZ.kind != .file) continue;
+						const nameZ = entryZ.name[0..std.mem.indexOfScalar(u8, entryZ.name, '.') orelse entryZ.name.len];
+						const wz = std.fmt.parseInt(i32, nameZ, 0) catch continue;
+						chunkPositions.append(.{.wx = wx, .wy = wy, .wz = wz, .voxelSize = 1});
+					}
+				}
+			}
+		}
+		// Load all the stored chunks and update their next LODs.
+		for(chunkPositions.items) |pos| {
+			RegenerateLODTask.schedule(pos);
+		}
+
+		self.mutex.lock();
+		defer self.mutex.unlock();
+		while(true) {
+			while(self.chunkUpdateQueue.dequeue()) |updateRequest| {
+				self.mutex.unlock();
+				defer self.mutex.lock();
+				updateRequest.ch.save(self);
+				updateRequest.ch.decreaseRefCount();
+			}
+			while(self.regionUpdateQueue.dequeue()) |updateRequest| {
+				self.mutex.unlock();
+				defer self.mutex.lock();
+				updateRequest.region.store();
+				updateRequest.region.decreaseRefCount();
+			}
+			self.mutex.unlock();
+			std.time.sleep(1_000_000);
+			self.mutex.lock();
+			if(main.threadPool.queueSize() == 0 and self.chunkUpdateQueue.peek() == null and self.regionUpdateQueue.peek() == null) break;
+		}
+		std.log.info("Finished LOD update.", .{});
+
+		self.biomeChecksum = newBiomeCheckSum;
+	}
+
+	pub fn generate(self: *ServerWorld) !void {
 		try self.wio.loadWorldData(); // load data here in order for entities to also be loaded.
 
 		if(!self.generated) {
@@ -430,7 +573,17 @@ pub const ServerWorld = struct {
 			self.spawn[2] = @intFromFloat(map.getHeight(self.spawn[0], self.spawn[1]) + 1);
 		}
 		self.generated = true;
+		const newBiomeCheckSum: i64 = @bitCast(terrain.biomes.getBiomeCheckSum(self.seed));
+		if(newBiomeCheckSum != self.biomeChecksum) {
+			self.regenerateLOD(newBiomeCheckSum) catch |err| {
+				std.log.err("Error while trying to regenerate LODs: {s}", .{@errorName(err)});
+			};
+		}
 		try self.wio.saveWorldData();
+		var buf: [32768]u8 = undefined;
+		const json = try files.readToJson(main.stackAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/items.json", .{self.name}));
+		defer json.free(main.stackAllocator);
+		self.itemDropManager.loadFrom(json);
 	}
 
 

@@ -139,6 +139,10 @@ fn init(name: []const u8) void {
 		std.log.err("Failed to create world: {s}", .{@errorName(err)});
 		@panic("Can't create world.");
 	};
+	world.?.generate() catch |err| {
+		std.log.err("Failed to generate world: {s}", .{@errorName(err)});
+		@panic("Can't generate world.");
+	};
 	if(true) blk: { // singleplayer // TODO: Configure this in the server settings.
 		const user = User.initAndIncreaseRefCount(connectionManager, "127.0.0.1:47650") catch |err| {
 			std.log.err("Cannot create singleplayer user {s}", .{@errorName(err)});

@@ -20,7 +20,7 @@ pub const RegionFile = struct {
 	refCount: Atomic(u16) = Atomic(u16).init(1),
 	saveFolder: []const u8,
 
-	fn getIndex(x: usize, y: usize, z: usize) usize {
+	pub fn getIndex(x: usize, y: usize, z: usize) usize {
 		std.debug.assert(x < regionSize and y < regionSize and z < regionSize);
 		return ((x*regionSize) + y)*regionSize + z;
 	}
