@@ -44,7 +44,7 @@ pub fn generateFallen(self: *FallenTree, x: i32, y: i32, z: i32, length: u32, ch
 	const sh = caveMap.getHeightData(x, y);
 
 	for (0..4) |i| {
-        _ = i;
+		_ = i;
 
 		const dir: u32 = main.random.nextIntBounded(u32, seed, 4);
 
@@ -65,10 +65,10 @@ pub fn generateFallen(self: *FallenTree, x: i32, y: i32, z: i32, length: u32, ch
 		for (0..length) |j| {
 			const v: i32 = @intCast(j);
 			if (caveMap.getHeightData(x + dx * (v + 2), y + dy * (v + 2)) != sh)
-            {
-                works = false;
-                break;
-            }
+			{
+				works = false;
+				break;
+			}
 		}
 
 		if (works)
