@@ -5,8 +5,7 @@
 	"drops" : [
 		"auto"
 	],
-	"emittedLight" : 0x444444,
 	"rotation" : "cube",
 	"model" : "cube",
-	"texture" : "cubyz:stalagmite"
+	"texture" : "cubyz:limestone"
 }

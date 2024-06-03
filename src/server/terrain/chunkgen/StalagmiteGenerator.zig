@@ -28,7 +28,7 @@ pub fn init(parameters: JsonElement) void {
 	// 	const oreID = "cubyz:glow_stalagmite/" ++ color;
 	// 	block.* = main.blocks.getByID(oreID);
 	// }
-	stalagmite = main.blocks.getByID("cubyz:stalagmite");
+	stalagmite = main.blocks.getByID("cubyz:limestone");
 }
 
 pub fn deinit() void {
