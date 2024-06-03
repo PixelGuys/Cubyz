@@ -38,6 +38,11 @@ pub fn render() void {
 		y += 8;
 		draw.print("Queue size: {}", .{main.threadPool.queueSize()}, 0, y, 8, .left);
 		y += 8;
+        const perf = main.threadPool.getPerformance();
+		draw.print("Queue task time: {} ms / {} tasks", .{@divFloor(perf.utime, 1000), perf.tasks}, 0, y, 8, .left);
+		y += 8;
+        draw.print("    {} µs / task", .{@divFloor(perf.utime, @max(perf.tasks, 1))}, 0, y, 8, .left);
+		y += 8;
 		draw.print("Mesh Queue size: {}", .{main.renderer.mesh_storage.updatableList.items.len}, 0, y, 8, .left);
 		y += 8;
 		{

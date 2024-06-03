@@ -1000,6 +1000,11 @@ pub const ThreadPool = struct {
 		run: *const fn(*anyopaque) void,
 		clean: *const fn(*anyopaque) void,
 	};
+	pub const Performance = struct {
+		mutex: std.Thread.Mutex = .{},
+		tasks: u32 = 0,
+		utime: i64 = 0,
+	};
 	const refreshTime: u32 = 100; // The time after which all priorities get refreshed in milliseconds.
 
 	threads: []std.Thread,
@@ -1007,11 +1012,14 @@ pub const ThreadPool = struct {
 	loadList: *BlockingMaxHeap(Task),
 	allocator: NeverFailingAllocator,
 
+	performance: *Performance,
+
 	pub fn init(allocator: NeverFailingAllocator, threadCount: usize) ThreadPool {
 		const self = ThreadPool {
 			.threads = allocator.alloc(std.Thread, threadCount),
 			.currentTasks = allocator.alloc(Atomic(?*const VTable), threadCount),
 			.loadList = BlockingMaxHeap(Task).init(allocator),
+			.performance = allocator.create(Performance),
 			.allocator = allocator,
 		};
 		for(self.threads, 0..) |*thread, i| {
@@ -1062,6 +1070,16 @@ pub const ThreadPool = struct {
 		}
 	}
 
+	pub fn getPerformance(self: ThreadPool) Performance {
+		self.performance.mutex.lock();
+		defer {
+			self.performance.tasks = 0;
+			self.performance.utime = 0;
+			self.performance.mutex.unlock();
+		}
+		return self.performance.*;
+	}
+
 	fn run(self: ThreadPool, id: usize) void {
 		// In case any of the tasks wants to allocate memory:
 		var sta = StackAllocator.init(main.globalAllocator, 1 << 23);
@@ -1073,7 +1091,13 @@ pub const ThreadPool = struct {
 			{
 				const task = self.loadList.extractMax() catch break;
 				self.currentTasks[id].store(task.vtable, .monotonic);
+				const start = std.time.microTimestamp();
 				task.vtable.run(task.self);
+				const end = std.time.microTimestamp();
+				self.performance.mutex.lock();
+				self.performance.tasks += 1;
+				self.performance.utime += end - start;
+				self.performance.mutex.unlock();
 				self.currentTasks[id].store(null, .monotonic);
 			}
 
