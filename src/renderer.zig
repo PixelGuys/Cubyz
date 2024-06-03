@@ -113,12 +113,17 @@ var lastWidth: u31 = 0;
 var lastHeight: u31 = 0;
 var lastFov: f32 = 0;
 pub fn updateViewport(width: u31, height: u31, fov: f32) void {
-	lastWidth = width;
-	lastHeight = height;
+	if(main.settings.resolutionScale < 0) {
+		lastWidth = width >> @intCast(-main.settings.resolutionScale);
+		lastHeight = height >> @intCast(-main.settings.resolutionScale);
+	} else {
+		lastWidth = width;
+		lastHeight = height;
+	}
 	lastFov = fov;
-	c.glViewport(0, 0, width, height);
-	game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(fov), @as(f32, @floatFromInt(width))/@as(f32, @floatFromInt(height)), zNear, zFar);
-	worldFrameBuffer.updateSize(width, height, c.GL_RGB16F);
+	c.glViewport(0, 0, lastWidth, lastHeight);
+	game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(fov), @as(f32, @floatFromInt(lastWidth))/@as(f32, @floatFromInt(lastHeight)), zNear, zFar);
+	worldFrameBuffer.updateSize(lastWidth, lastHeight, c.GL_RGB16F);
 	worldFrameBuffer.unbind();
 }
 
@@ -137,6 +142,7 @@ pub fn render(playerPosition: Vec3d) void {
 		const startTime = std.time.milliTimestamp();
 		mesh_storage.updateMeshes(startTime + maximumMeshTime);
 	} else {
+		c.glViewport(0, 0, main.Window.width, main.Window.height);
 		MenuBackGround.render();
 	}
 }
@@ -166,6 +172,7 @@ pub fn crosshairDirection(rotationMatrix: Mat4f, fovY: f32, width: u31, height: 
 
 pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPos: Vec3d) void {
 	worldFrameBuffer.bind();
+	c.glViewport(0, 0, lastWidth, lastHeight);
 	gpu_performance_measuring.startQuery(.clear);
 	worldFrameBuffer.clear(Vec4f{skyColor[0], skyColor[1], skyColor[2], 1});
 	gpu_performance_measuring.stopQuery();
@@ -262,6 +269,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 		Bloom.bindReplacementImage();
 	}
 	gpu_performance_measuring.startQuery(.final_copy);
+	c.glViewport(0, 0, main.Window.width, main.Window.height);
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
 	worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
 	worldFrameBuffer.unbind();

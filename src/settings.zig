@@ -24,6 +24,8 @@ pub var mouseSensitivity: f32 = 1;
 
 pub var renderDistance: u16 = 7;
 
+pub var resolutionScale: i32 = 0;
+
 pub var bloom: bool = true;
 
 pub var vsync: bool = true;
