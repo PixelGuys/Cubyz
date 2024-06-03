@@ -78,6 +78,9 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 	defer roughMap.deinit(main.stackAllocator);
 	FractalNoise.generateSparseFractalTerrain(map.pos.wx, map.pos.wy, 64, worldSeed ^ 954936678493, roughMap, map.pos.voxelSize);
 
+	const cliffMap = PerlinNoise.generateSmoothNoise(main.globalAllocator, map.pos.wx, map.pos.wy, mapSize, mapSize, 128, 32, worldSeed ^ 506038939594929284, map.pos.voxelSize, 0.5);
+	defer cliffMap.deinit(main.stackAllocator);
+
 	var x: u31 = 0;
 	while(x < map.heightMap.len) : (x += 1) {
 		var y: u31 = 0;
@@ -130,6 +133,13 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 			height += (roughMap.get(x, y) - 0.5)*2*roughness;
 			height += (hillMap.get(x, y) - 0.5)*2*hills;
 			height += (mountainMap.get(x, y) - 0.5)*2*mountains;
+			if (height > 0) {
+				const cliffness = @max(cliffMap.get(x, y) * 30, 0);
+				const cliffheight = @sqrt(height * height + cliffness * cliffness);
+				const clampedheight = @min(@max(height, 0), 1);
+				// const interp = clampedheight * clampedheight * (3 - 2 * clampedheight);
+				height = (cliffheight - height) * clampedheight + height;
+			}
 			map.heightMap[x][y] = height;
 			map.minHeight = @min(map.minHeight, height);
 			map.minHeight = @max(map.minHeight, 0);
