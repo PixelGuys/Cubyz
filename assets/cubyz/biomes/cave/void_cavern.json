@@ -2,7 +2,7 @@
 	"isCave" : true,
 	"maxHeight" : -1024,
 
-	"chance" : 0.01,
+	"chance" : 0.1,
 
 	"caves" : -0.1,
 

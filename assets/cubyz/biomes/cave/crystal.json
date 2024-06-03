@@ -2,7 +2,7 @@
 	"isCave" : true,
 	"maxHeight" : -512,
 
-	"chance" : 0.2,
+	"chance" : 1,
 
 	"caves" : -0.1,
 	"crystals" : 32,
