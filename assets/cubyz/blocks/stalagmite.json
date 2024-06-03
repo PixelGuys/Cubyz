@@ -1,0 +1,12 @@
+{
+	"class" : "stone",
+	"hardness" : 25,
+	"breakingPower" : 1,
+	"drops" : [
+		"auto"
+	],
+	"emittedLight" : 0x444444,
+	"rotation" : "cube",
+	"model" : "cube",
+	"texture" : "cubyz:stalagmite"
+}

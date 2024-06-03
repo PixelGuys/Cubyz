@@ -23,7 +23,8 @@
 			"chance" : 0.025,
 			"type" : "pyramid",
 			"height" : 8,
-			"height_variation" : 5
+			"height_variation" : 5,
+			"branched" : false
 		}
 	]
 }

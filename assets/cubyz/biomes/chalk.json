@@ -1,46 +1,40 @@
 {
-	"chance": 1,
-
 	"properties" : [
+		"hot",
+		"wet"
 	],
-	"minHeight" : 22,
-	"maxHeight" : 40,
+	"minHeight" : 52,
+	"maxHeight" : 62,
 	
-	"roughness" : 1,
-	"hills" : 5,
+	"hills" : 30,
 	
-	"music" : "sunrise",
-
-	"validPlayerSpawn" : true,
+	"music" : "EasternThought",
 	
 	"ground_structure" : [
-		"cubyz:grass",
-		"2 to 3 cubyz:soil"
+		"0 to 1 cubyz:grass",
+		"0 to 1 cubyz:grass",
+		"0 to 1 cubyz:grass",
+		"0 to 1 cubyz:grass",
+		"0 to 1 cubyz:chalf/white"
 	],
 	"structures" : [
-		{
-			"id" : "cubyz:lake",
-			"liquid" : "cubyz:water",
-			"size" : 16,
-			"depth" : 6,
-			"chance" : 0.0001
-		},
 		{
 			"id" : "cubyz:simple_tree",
 			"leaves" : "cubyz:oak_leaves",
 			"log" : "cubyz:oak_log",
 			"top" : "cubyz:oak_top",
-			"chance" : 0.001,
+			"chance" : 0.0001,
 			"type" : "round",
 			"height" : 6,
 			"height_variation" : 3
 		},
 		{
 			"id" : "cubyz:boulder",
-			"chance" : 0.00001,
+			"chance" : 0.001,
 			"block" : "cubyz:stone",
 			"size" : 5,
 			"size_variance" : 1
 		}
-	]
+	],
+	"stoneBlock" : "cubyz:chalk/white"
 }

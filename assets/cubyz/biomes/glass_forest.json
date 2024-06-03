@@ -23,7 +23,7 @@
 			"chance" : 0.0005,
 			"type" : "round",
 			"height" : 6,
-			"height_variation" : 3
+			"height_variation" : 3,
 		},
 		{
 			"id" : "cubyz:simple_tree",
