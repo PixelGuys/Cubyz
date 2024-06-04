@@ -674,14 +674,11 @@ pub const ChunkMesh = struct {
 	}
 
 	fn canBeSeenThroughOtherBlock(block: Block, other: Block, neighbor: u3) bool {
-		const rotatedModel = blocks.meshes.model(block);
-		const model = &models.models.items[rotatedModel];
-		_ = model; // TODO: Check if the neighbor model occludes this one. (maybe not that relevant)
-		return block.typ != 0 and (
-			other.typ == 0
-			or (!std.meta.eql(block, other) and other.viewThrough()) or other.alwaysViewThrough()
-			or !models.models.items[blocks.meshes.model(other)].isNeighborOccluded[neighbor ^ 1]
-		);
+		if(block.typ == 0) return false;
+		if(other.typ == 0) return true;
+		if(@as(u32, @bitCast(block)) == @as(u32, @bitCast(other))) return block.alwaysViewThrough();
+		if(other.viewThrough()) return true;
+		return !models.models.items[blocks.meshes.model(other)].isNeighborOccluded[neighbor ^ 1]; // TODO: Should this also solve faces between partial blocks, like fences?
 	}
 
 	fn initLight(self: *ChunkMesh) void {
