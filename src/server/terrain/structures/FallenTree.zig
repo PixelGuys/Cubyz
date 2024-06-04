@@ -31,9 +31,7 @@ pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: JsonElement)
 	return self;
 }
 
-pub fn generateStump(self: *FallenTree, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, seed: *u64) void {
-	_ = seed;
-
+pub fn generateStump(self: *FallenTree, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk) void {
 	if (chunk.liesInChunk(x, y, z))
 		chunk.updateBlockIfDegradable(x, y, z, .{.typ = self.woodBlock, .data = 0});
 }
@@ -43,9 +41,7 @@ pub fn generateFallen(self: *FallenTree, x: i32, y: i32, z: i32, length: u32, ch
 
 	const sh = caveMap.getHeightData(x, y);
 
-	for (0..4) |i| {
-		_ = i;
-
+	for (0..4) |_| {
 		const dir: u32 = main.random.nextIntBounded(u32, seed, 4);
 
 		var dx: i32 = 0;
@@ -107,7 +103,7 @@ pub fn generate(self: *FallenTree, x: i32, y: i32, z: i32, chunk: *main.chunk.Se
 
 	const height = self.height0 + random.nextIntBounded(u31, seed, self.deltaHeight);
 
-	generateStump(self, x, y, z, chunk, seed);
+	generateStump(self, x, y, z, chunk);
 
 	generateFallen(self, x, y, z, height - 2, chunk, caveMap, seed);
 }
