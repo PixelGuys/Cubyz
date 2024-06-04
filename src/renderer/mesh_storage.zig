@@ -1049,7 +1049,7 @@ pub const MeshGenerationTask = struct {
 		task.* = MeshGenerationTask {
 			.mesh = mesh,
 		};
-		main.threadPool.addTask(task, &vtable);
+		main.threadPool.addTask(task, &vtable, .meshgen);
 	}
 
 	pub fn getPriority(self: *MeshGenerationTask) f32 {

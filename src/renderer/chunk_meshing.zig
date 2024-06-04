@@ -640,7 +640,7 @@ pub const ChunkMesh = struct {
 			task.* = .{
 				.mesh = mesh,
 			};
-			main.threadPool.addTask(task, &vtable);
+			main.threadPool.addTask(task, &vtable, .lighting);
 		}
 
 		pub fn getPriority(_: *LightRefreshTask) f32 {

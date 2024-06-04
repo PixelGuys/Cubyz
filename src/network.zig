@@ -1748,7 +1748,7 @@ const ProtocolTask = struct {
 			.protocol = protocol,
 			.data = main.globalAllocator.dupe(u8, data),
 		};
-		main.threadPool.addTask(task, &vtable);
+		main.threadPool.addTask(task, &vtable, .misc);
 	}
 
 	pub fn getPriority(_: *ProtocolTask) f32 {

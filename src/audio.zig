@@ -100,7 +100,7 @@ const MusicLoadTask = struct {
 		task.* = MusicLoadTask {
 			.musicId = musicId,
 		};
-		main.threadPool.addTask(task, &vtable);
+		main.threadPool.addTask(task, &vtable, .misc);
 		taskMutex.lock();
 		defer taskMutex.unlock();
 		activeTasks.append(main.globalAllocator, musicId);

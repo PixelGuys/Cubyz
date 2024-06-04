@@ -985,10 +985,18 @@ pub fn BlockingMaxHeap(comptime T: type) type {
 }
 
 pub const ThreadPool = struct {
+	pub const TaskType = enum(usize) {
+		chunkgen,
+		lighting,
+		meshgen,
+		misc,
+		taskTypes,
+	};
 	const Task = struct {
 		cachedPriority: f32,
 		self: *anyopaque,
 		vtable: *const VTable,
+		taskType: TaskType,
 
 		fn biggerThan(self: Task, other: Task) bool {
 			return self.cachedPriority > other.cachedPriority;
@@ -1002,8 +1010,19 @@ pub const ThreadPool = struct {
 	};
 	pub const Performance = struct {
 		mutex: std.Thread.Mutex = .{},
-		tasks: u32 = 0,
-		utime: i64 = 0,
+		tasks: [@intFromEnum(TaskType.taskTypes)]u32 = {},
+		utime: [@intFromEnum(TaskType.taskTypes)]i64 = {},
+
+		fn clear(self: *Performance) void {
+			for(0..@intFromEnum(TaskType.taskTypes)) |i| {
+				self.tasks[i] = 0;
+				self.utime[i] = 0;
+			}
+		}
+
+		fn init(self: Performance) void {
+			self.clear();
+		}
 	};
 	const refreshTime: u32 = 100; // The time after which all priorities get refreshed in milliseconds.
 
@@ -1073,8 +1092,7 @@ pub const ThreadPool = struct {
 	pub fn getPerformance(self: ThreadPool) Performance {
 		self.performance.mutex.lock();
 		defer {
-			self.performance.tasks = 0;
-			self.performance.utime = 0;
+			self.performance.clear();
 			self.performance.mutex.unlock();
 		}
 		return self.performance.*;
@@ -1095,8 +1113,8 @@ pub const ThreadPool = struct {
 				task.vtable.run(task.self);
 				const end = std.time.microTimestamp();
 				self.performance.mutex.lock();
-				self.performance.tasks += 1;
-				self.performance.utime += end - start;
+				self.performance.tasks[@intFromEnum(task.taskType)] += 1;
+				self.performance.utime[@intFromEnum(task.taskType)] += end - start;
 				self.performance.mutex.unlock();
 				self.currentTasks[id].store(null, .monotonic);
 			}
@@ -1124,11 +1142,12 @@ pub const ThreadPool = struct {
 		}
 	}
 
-	pub fn addTask(self: ThreadPool, task: *anyopaque, vtable: *const VTable) void {
+	pub fn addTask(self: ThreadPool, task: *anyopaque, vtable: *const VTable, taskType: TaskType) void {
 		self.loadList.add(Task {
 			.cachedPriority = vtable.getPriority(task),
 			.vtable = vtable,
 			.self = task,
+			.taskType = taskType,
 		});
 	}
 

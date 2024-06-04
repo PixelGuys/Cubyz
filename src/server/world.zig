@@ -50,7 +50,7 @@ const ChunkManager = struct {
 				.creationTime = std.time.milliTimestamp(),
 				.source = source,
 			};
-			main.threadPool.addTask(task, &vtable);
+			main.threadPool.addTask(task, &vtable, .chunkgen);
 		}
 
 		pub fn getPriority(self: *ChunkLoadTask) f32 {
@@ -114,7 +114,7 @@ const ChunkManager = struct {
 				.creationTime = std.time.milliTimestamp(),
 				.source = source,
 			};
-			main.threadPool.addTask(task, &vtable);
+			main.threadPool.addTask(task, &vtable, .lighting);
 		}
 
 		pub fn getPriority(self: *LightMapLoadTask) f32 {
@@ -431,7 +431,7 @@ pub const ServerWorld = struct {
 			task.* = .{
 				.pos = pos,
 			};
-			main.threadPool.addTask(task, &vtable);
+			main.threadPool.addTask(task, &vtable, .chunkgen);
 		}
 
 		pub fn getPriority(_: *RegenerateLODTask) f32 {
