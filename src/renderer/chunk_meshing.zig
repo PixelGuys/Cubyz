@@ -702,6 +702,7 @@ pub const ChunkMesh = struct {
 		self.mutex.unlock();
 		self.lightingData[0].propagateLights(lightEmittingBlocks.items, true);
 		sunLight: {
+			var allSun: bool = self.chunk.data.paletteLength == 1 and self.chunk.data.palette[0].typ == 0;
 			var sunStarters: [chunk.chunkSize*chunk.chunkSize][3]u8 = undefined;
 			var index: usize = 0;
 			const lightStartMap = mesh_storage.getLightMapPieceAndIncreaseRefCount(self.pos.wx, self.pos.wy, self.pos.voxelSize) orelse break :sunLight;
@@ -715,10 +716,16 @@ pub const ChunkMesh = struct {
 					if(relHeight < chunk.chunkSize*self.pos.voxelSize) {
 						sunStarters[index] = .{x, y, chunk.chunkSize-1};
 						index += 1;
+					} else {
+						allSun = false;
 					}
 				}
 			}
-			self.lightingData[1].propagateLights(sunStarters[0..index], true);
+			if(allSun) {
+				self.lightingData[1].propagateUniformSun();
+			} else {
+				self.lightingData[1].propagateLights(sunStarters[0..index], true);
+			}
 		}
 	}
 
