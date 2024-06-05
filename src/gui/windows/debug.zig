@@ -49,7 +49,7 @@ pub fn render() void {
 				else => continue,
 			};
 			const i = @intFromEnum(t);
-			draw.print("    " ++ name ++ " time: {} ms ({} µs/task)", .{@divFloor(perf.utime[i], 1000), @divFloor(perf.utime[i], perf.tasks[i])}, 0, y, 8, .left);
+			draw.print("    " ++ name ++ " time: {} ms ({} µs/task)", .{@divFloor(perf.utime[i], 1000), @divFloor(perf.utime[i], @max(1, perf.tasks[i]))}, 0, y, 8, .left);
 		y += 8;
 		}
 		draw.print("Mesh Queue size: {}", .{main.renderer.mesh_storage.updatableList.items.len}, 0, y, 8, .left);
