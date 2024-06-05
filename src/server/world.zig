@@ -217,6 +217,7 @@ const ChunkManager = struct {
 				std.log.err("Storage for chunk {} in region file at {} is corrupted", .{pos, region.pos});
 				break :blk;
 			};
+			ch.wasStored = true;
 			return ch;
 		}
 		ch.generated = true;
