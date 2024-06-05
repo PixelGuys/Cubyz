@@ -50,9 +50,9 @@ fn distSqr(x: f32, y: f32, z: f32) f32 {
 }
 
 fn considerStalagmite(x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, caveMap: CaveMap.CaveMapView, seed: *u64) void {
-	const relX: f32 = @floatFromInt(x -% chunk.super.pos.wx);
-	const relY: f32 = @floatFromInt(y -% chunk.super.pos.wy);
-	const relZ: f32 = @floatFromInt(z -% chunk.super.pos.wz);
+	const relX: f32 = @as(f32, @floatFromInt(x -% chunk.super.pos.wx)) + main.random.nextFloat(seed);
+	const relY: f32 = @as(f32, @floatFromInt(y -% chunk.super.pos.wy)) + main.random.nextFloat(seed);
+	const relZ: f32 = @as(f32, @floatFromInt(z -% chunk.super.pos.wz)) + main.random.nextFloat(seed);
 
 	const iRelX: i32 = x -% chunk.super.pos.wx;
 	const iRelY: i32 = y -% chunk.super.pos.wy;
@@ -61,7 +61,7 @@ fn considerStalagmite(x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, ca
 	var length = 12 + random.nextFloat(seed) * random.nextFloat(seed) * 36;
 	const tiny = random.nextFloat(seed) < 0.9;
 	if (tiny) {
-		length = 2 * random.nextFloat(seed)*3;
+		length = 5 + random.nextFloat(seed)*3;
 	}
 	// Choose a direction:
 
