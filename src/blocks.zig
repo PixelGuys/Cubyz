@@ -423,6 +423,10 @@ pub const meshes = struct {
 		return textureFogData.items[textureData[block.typ].textureIndices[0]].fogColor;
 	}
 
+	pub inline fn hasFog(block: Block) bool {
+		return fogDensity(block) != 0.0;
+	}
+
 	pub inline fn textureIndex(block: Block, orientation: usize) u16 {
 		return textureData[block.typ].textureIndices[orientation];
 	}

@@ -276,7 +276,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	deferredRenderPassShader.bind();
 	c.glUniform1i(deferredUniforms.color, 3);
 	c.glUniform1i(deferredUniforms.depthTexture, 4);
-	if(playerBlock.typ == 0) {
+	if(!blocks.meshes.hasFog(playerBlock)) {
 		c.glUniform3fv(deferredUniforms.@"fog.color", 1, @ptrCast(&game.fog.color));
 		c.glUniform1f(deferredUniforms.@"fog.density", game.fog.density);
 	} else {
@@ -342,7 +342,7 @@ const Bloom = struct {
 		worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
 		buffer1.bind();
 		c.glUniform1i(colorExtractUniforms.depthTexture, 4);
-		if(playerBlock.typ == 0) {
+		if(!blocks.meshes.hasFog(playerBlock)) {
 			c.glUniform3fv(colorExtractUniforms.@"fog.color", 1, @ptrCast(&game.fog.color));
 			c.glUniform1f(colorExtractUniforms.@"fog.density", game.fog.density);
 		} else {
