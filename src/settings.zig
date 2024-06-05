@@ -15,6 +15,8 @@ pub const highestLOD: u5 = 5;
 
 pub var entityDistance: u16 = 2;
 
+pub var cpuThreads: ?u64 = null;
+
 pub var anisotropicFiltering: bool = true;
 
 
@@ -23,6 +25,8 @@ pub var fov: f32 = 70;
 pub var mouseSensitivity: f32 = 1;
 
 pub var renderDistance: u16 = 7;
+
+pub var resolutionScale: i32 = 0;
 
 pub var bloom: bool = true;
 
@@ -51,11 +55,11 @@ pub var developerGPUInfiniteLoopDetection: bool = false;
 
 
 pub fn init() void {
-	const json: JsonElement = main.files.readToJson(main.stackAllocator, "settings.json") catch |err| {
+	const json: JsonElement = main.files.readToJson(main.stackAllocator, "settings.json") catch |err| blk: {
 		if(err != error.FileNotFound) {
 			std.log.err("Could not read settings file: {s}", .{@errorName(err)});
 		}
-		return;
+		break :blk .JsonNull;
 	};
 	defer json.free(main.stackAllocator);
 

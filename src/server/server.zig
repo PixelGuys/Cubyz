@@ -14,9 +14,11 @@ pub const terrain = @import("terrain/terrain.zig");
 pub const Entity = @import("Entity.zig");
 pub const storage = @import("storage.zig");
 
+const command = @import("command/_command.zig");
+
 
 pub const User = struct {
-	conn: *Connection,
+	conn: *Connection = undefined,
 	player: Entity = .{},
 	timeDifference: utils.TimeDifference = .{},
 	interpolation: utils.GenericInterpolation(3) = undefined,
@@ -35,12 +37,10 @@ pub const User = struct {
 	pub fn initAndIncreaseRefCount(manager: *ConnectionManager, ipPort: []const u8) !*User {
 		const self = main.globalAllocator.create(User);
 		errdefer main.globalAllocator.destroy(self);
-		self.* = User {
-			.conn = try Connection.init(manager, ipPort),
-		};
-		self.increaseRefCount();
-		self.conn.user = self;
+		self.* = .{};
 		self.interpolation.init(@ptrCast(&self.player.pos), @ptrCast(&self.player.vel));
+		self.conn = try Connection.init(manager, ipPort, self);
+		self.increaseRefCount();
 		network.Protocols.handShake.serverSide(self.conn);
 		return self;
 	}
@@ -101,6 +101,10 @@ pub const User = struct {
 		self.timeDifference.addDataPoint(time);
 		self.interpolation.updatePosition(&position, &velocity, time);
 	}
+
+	pub fn sendMessage(user: *User, msg: []const u8) void {
+		main.network.Protocols.chat.send(user.conn, msg);
+	}
 };
 
 pub const updatesPerSec: u32 = 20;
@@ -121,6 +125,7 @@ pub var thread: ?std.Thread = null;
 
 fn init(name: []const u8) void {
 	std.debug.assert(world == null); // There can only be one world.
+	command.init();
 	users = main.List(*User).init(main.globalAllocator);
 	userDeinitList = main.List(*User).init(main.globalAllocator);
 	lastTime = std.time.nanoTimestamp();
@@ -134,6 +139,10 @@ fn init(name: []const u8) void {
 		std.log.err("Failed to create world: {s}", .{@errorName(err)});
 		@panic("Can't create world.");
 	};
+	world.?.generate() catch |err| {
+		std.log.err("Failed to generate world: {s}", .{@errorName(err)});
+		@panic("Can't generate world.");
+	};
 	if(true) blk: { // singleplayer // TODO: Configure this in the server settings.
 		const user = User.initAndIncreaseRefCount(connectionManager, "127.0.0.1:47650") catch |err| {
 			std.log.err("Cannot create singleplayer user {s}", .{@errorName(err)});
@@ -145,14 +154,14 @@ fn init(name: []const u8) void {
 }
 
 fn deinit() void {
-	for(users.items) |user| {
-		user.decreaseRefCount();
-	}
 	users.clearAndFree();
 	for(userDeinitList.items) |user| {
 		user.deinit();
 	}
 	userDeinitList.clearAndFree();
+	for(connectionManager.connections.items) |conn| {
+		conn.user.?.decreaseRefCount();
+	}
 	connectionManager.deinit();
 	connectionManager = undefined;
 
@@ -160,6 +169,7 @@ fn deinit() void {
 		_world.deinit();
 	}
 	world = null;
+	command.deinit();
 }
 
 fn update() void {
@@ -193,11 +203,13 @@ fn update() void {
 	for(users.items) |user| {
 		main.network.Protocols.entityPosition.send(user.conn, data, &.{});
 	}
-	mutex.unlock();
 
 	while(userDeinitList.popOrNull()) |user| {
+		mutex.unlock();
 		user.decreaseRefCount();
+		mutex.lock();
 	}
+	mutex.unlock();
 }
 
 pub fn start(name: []const u8) void {
@@ -300,10 +312,23 @@ pub fn connect(user: *User) void {
 	users.append(user);
 }
 
+pub fn messageFrom(msg: []const u8, source: *User) void {
+	if(msg[0] == '/') { // Command.
+		std.log.info("User \"{s}\" executed command \"{s}\"", .{source.name, msg}); // TODO use color \033[0;32m
+		command.execute(msg[1..], source);
+	} else {
+		const newMessage = std.fmt.allocPrint(main.stackAllocator.allocator, "[{s}#ffffff]{s}", .{source.name, msg}) catch unreachable;
+		defer main.stackAllocator.free(newMessage);
+		main.server.mutex.lock();
+		defer main.server.mutex.unlock();
+		main.server.sendMessage(newMessage);
+	}
+}
+
 pub fn sendMessage(msg: []const u8) void {
 	main.utils.assertLocked(&mutex);
 	std.log.info("Chat: {s}", .{msg}); // TODO use color \033[0;32m
 	for(users.items) |user| {
-		main.network.Protocols.chat.send(user.conn, msg);
+		user.sendMessage(msg);
 	}
 }

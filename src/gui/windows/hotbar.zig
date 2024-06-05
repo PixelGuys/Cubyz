@@ -26,6 +26,16 @@ pub var window = GuiWindow {
 	.scale = 0.75,
 };
 
+var hotbarSlotTexture: Texture = undefined;
+
+pub fn init() void {
+	hotbarSlotTexture = Texture.initFromFile("assets/cubyz/ui/inventory/hotbar_slot.png");
+}
+
+pub fn deinit() void {
+	hotbarSlotTexture.deinit();
+}
+
 var itemSlots: [12]*ItemSlot = undefined;
 
 pub fn tryAddingItems(index: usize, source: *ItemStack, desiredAmount: u16) void {
@@ -72,7 +82,7 @@ const vtable = ItemSlot.VTable {
 pub fn onOpen() void {
 	const list = HorizontalList.init();
 	for(0..12) |i| {
-		itemSlots[i] = ItemSlot.init(.{0, 0}, Player.inventory__SEND_CHANGES_TO_SERVER.items[i], &vtable, i, .default, .normal);
+		itemSlots[i] = ItemSlot.init(.{0, 0}, Player.inventory__SEND_CHANGES_TO_SERVER.items[i], &vtable, i, .{.custom = hotbarSlotTexture}, .normal);
 		list.add(itemSlots[i]);
 	}
 	list.finish(.{0, 0}, .center);

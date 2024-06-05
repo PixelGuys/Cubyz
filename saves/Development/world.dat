@@ -1,11 +1,11 @@
 {
-	"spawn" : {
-		"x" : 3198,
-		"z" : 100,
-		"y" : 59786
-	},
+	"spawn" : [
+		3198,
+		59786,
+		100
+	],
 	"version" : 2,
 	"seed" : 1982878604,
-	"doGameTimeCycle" : false,
+	"doGameTimeCycle" : true,
 	"gameTime" : 0
 }

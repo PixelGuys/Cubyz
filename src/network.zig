@@ -18,6 +18,7 @@ const utils = @import("utils.zig");
 const vec = @import("vec.zig");
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
+const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 //TODO: Might want to use SSL or something similar to encode the message
@@ -500,14 +501,17 @@ pub const ConnectionManager = struct {
 		}
 	}
 
-	pub fn addConnection(self: *ConnectionManager, conn: *Connection) void {
+	pub fn addConnection(self: *ConnectionManager, conn: *Connection) error{AlreadyConnected}!void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
-
+		for(self.connections.items) |other| {
+			if(other.remoteAddress.ip == conn.remoteAddress.ip and other.remoteAddress.port == conn.remoteAddress.port) return error.AlreadyConnected;
+		}
 		self.connections.append(conn);
 	}
 
 	pub fn finishCurrentReceive(self: *ConnectionManager) void {
+		std.debug.assert(self.threadId != std.Thread.getCurrentId()); // WOuld cause deadlock, since we are in a receive.
 		self.mutex.lock();
 		defer self.mutex.unlock();
 		self.waitingToFinishReceive.wait(&self.mutex);
@@ -673,11 +677,7 @@ pub const Protocols = struct {
 						const jsonObject = JsonElement.initObject(main.stackAllocator);
 						defer jsonObject.free(main.stackAllocator);
 						jsonObject.put("player", conn.user.?.player.save(main.stackAllocator));
-						const spawn = JsonElement.initObject(main.stackAllocator);
-						spawn.put("x", main.server.world.?.spawn[0]);
-						spawn.put("y", main.server.world.?.spawn[1]);
-						spawn.put("z", main.server.world.?.spawn[2]);
-						jsonObject.put("spawn", spawn);
+						jsonObject.put("spawn", main.server.world.?.spawn);
 						jsonObject.put("blockPalette", main.server.world.?.blockPalette.save(main.stackAllocator));
 						
 						const outData = jsonObject.toStringEfficient(main.stackAllocator, &[1]u8{stepServerData});
@@ -741,31 +741,45 @@ pub const Protocols = struct {
 		pub const asynchronous = false;
 		fn receive(conn: *Connection, data: []const u8) !void {
 			var remaining = data[0..];
-			while(remaining.len >= 16) {
+			const basePosition = Vec3i {
+				std.mem.readInt(i32, remaining[0..4], .big),
+				std.mem.readInt(i32, remaining[4..8], .big),
+				std.mem.readInt(i32, remaining[8..12], .big),
+			};
+			remaining = remaining[12..];
+			while(remaining.len >= 4) {
+				const voxelSizeShift: u5 = @intCast(remaining[3]);
+				const positionMask = ~((@as(i32, 1) << voxelSizeShift+chunk.chunkShift) - 1);
 				const request = chunk.ChunkPosition{
-					.wx = std.mem.readInt(i32, remaining[0..4], .big),
-					.wy = std.mem.readInt(i32, remaining[4..8], .big),
-					.wz = std.mem.readInt(i32, remaining[8..12], .big),
-					.voxelSize = @intCast(std.mem.readInt(i32, remaining[12..16], .big)),
+					.wx = (@as(i32, @as(i8, @bitCast(remaining[0]))) << voxelSizeShift+chunk.chunkShift) +% (basePosition[0] & positionMask),
+					.wy = (@as(i32, @as(i8, @bitCast(remaining[1]))) << voxelSizeShift+chunk.chunkShift) +% (basePosition[1] & positionMask),
+					.wz = (@as(i32, @as(i8, @bitCast(remaining[2]))) << voxelSizeShift+chunk.chunkShift) +% (basePosition[2] & positionMask),
+					.voxelSize = @as(u31, 1) << voxelSizeShift,
 				};
 				if(conn.user) |user| {
 					user.increaseRefCount();
 					main.server.world.?.queueChunkAndDecreaseRefCount(request, user);
 				}
-				remaining = remaining[16..];
+				remaining = remaining[4..];
 			}
 		}
-		pub fn sendRequest(conn: *Connection, requests: []chunk.ChunkPosition) void {
+		pub fn sendRequest(conn: *Connection, requests: []chunk.ChunkPosition, basePosition: Vec3i) void {
 			if(requests.len == 0) return;
-			const data = main.stackAllocator.alloc(u8, 16*requests.len);
+			const data = main.stackAllocator.alloc(u8, 12 + 4*requests.len);
 			defer main.stackAllocator.free(data);
 			var remaining = data;
+			std.mem.writeInt(i32, remaining[0..4], basePosition[0], .big);
+			std.mem.writeInt(i32, remaining[4..8], basePosition[1], .big);
+			std.mem.writeInt(i32, remaining[8..12], basePosition[2], .big);
+			remaining = remaining[12..];
 			for(requests) |req| {
-				std.mem.writeInt(i32, remaining[0..4], req.wx, .big);
-				std.mem.writeInt(i32, remaining[4..8], req.wy, .big);
-				std.mem.writeInt(i32, remaining[8..12], req.wz, .big);
-				std.mem.writeInt(i32, remaining[12..16], req.voxelSize, .big);
-				remaining = remaining[16..];
+				const voxelSizeShift: u5 = std.math.log2_int(u31, req.voxelSize);
+				const positionMask = ~((@as(i32, 1) << voxelSizeShift+chunk.chunkShift) - 1);
+				remaining[0] = @bitCast(@as(i8, @intCast((req.wx -% (basePosition[0] & positionMask)) >> voxelSizeShift+chunk.chunkShift)));
+				remaining[1] = @bitCast(@as(i8, @intCast((req.wy -% (basePosition[1] & positionMask)) >> voxelSizeShift+chunk.chunkShift)));
+				remaining[2] = @bitCast(@as(i8, @intCast((req.wz -% (basePosition[2] & positionMask)) >> voxelSizeShift+chunk.chunkShift)));
+				remaining[3] = voxelSizeShift;
+				remaining = remaining[4..];
 			}
 			conn.sendImportant(id, data);
 		}
@@ -1104,12 +1118,8 @@ pub const Protocols = struct {
 		pub fn itemStackDrop(conn: *Connection, stack: ItemStack, pos: Vec3d, dir: Vec3f, vel: f32) void {
 			const jsonObject = stack.store(main.stackAllocator);
 			defer jsonObject.free(main.stackAllocator);
-			jsonObject.put("x", pos[0]);
-			jsonObject.put("y", pos[1]);
-			jsonObject.put("z", pos[2]);
-			jsonObject.put("dirX", dir[0]);
-			jsonObject.put("dirY", dir[1]);
-			jsonObject.put("dirZ", dir[2]);
+			jsonObject.put("pos", pos);
+			jsonObject.put("dir", dir);
 			jsonObject.put("vel", vel);
 			const string = jsonObject.toString(main.stackAllocator);
 			defer main.stackAllocator.free(string);
@@ -1140,16 +1150,7 @@ pub const Protocols = struct {
 		pub const asynchronous = false;
 		fn receive(conn: *Connection, data: []const u8) !void {
 			if(conn.user) |user| {
-				if(data[0] == '/') {
-					// TODO:
-					// CommandExecutor.execute(data, user);
-				} else {
-					const newMessage = std.fmt.allocPrint(main.stackAllocator.allocator, "[{s}#ffffff]{s}", .{user.name, data}) catch unreachable;
-					defer main.stackAllocator.free(newMessage);
-					main.server.mutex.lock();
-					defer main.server.mutex.unlock();
-					main.server.sendMessage(newMessage);
-				}
+				main.server.messageFrom(data, user);
 			} else {
 				main.gui.windowlist.chat.addMessage(data);
 			}
@@ -1241,7 +1242,7 @@ pub const Protocols = struct {
 pub const Connection = struct {
 	const maxPacketSize: u32 = 65507; // max udp packet size
 	const importantHeaderSize: u32 = 5;
-	const maxImportantPacketSize: u32 = 1500 - 20 - 8; // Ethernet MTU minus IP header minus udp header
+	const maxImportantPacketSize: u32 = 1500 - 14 - 20 - 8; // Ethernet MTU minus Ethernet header minus IP header minus udp header
 	const headerOverhead = 20 + 8 + 42; // IP Header + UDP Header + Ethernet header/footer
 	const congestionControl_historySize = 16;
 	const congestionControl_historyMask = congestionControl_historySize - 1;
@@ -1253,7 +1254,7 @@ pub const Connection = struct {
 	pub var packetsResent: Atomic(u32) = Atomic(u32).init(0);
 
 	manager: *ConnectionManager,
-	user: ?*main.server.User = null,
+	user: ?*main.server.User,
 
 	remoteAddress: Address,
 	bruteforcingPort: bool = false,
@@ -1285,17 +1286,19 @@ pub const Connection = struct {
 	congestionControl_bandWidthUsed: usize = 0,
 	congestionControl_curPosition: usize = 0,
 
-	disconnected: bool = false,
+	disconnected: Atomic(bool) = Atomic(bool).init(false),
 	handShakeState: Atomic(u8) = Atomic(u8).init(Protocols.handShake.stepStart),
 	handShakeWaiting: std.Thread.Condition = std.Thread.Condition{},
 	lastConnection: i64,
 
 	mutex: std.Thread.Mutex = std.Thread.Mutex{},
 
-	pub fn init(manager: *ConnectionManager, ipPort: []const u8) !*Connection {
+	pub fn init(manager: *ConnectionManager, ipPort: []const u8, user: ?*main.server.User) !*Connection {
 		const result: *Connection = main.globalAllocator.create(Connection);
+		errdefer main.globalAllocator.destroy(result);
 		result.* = Connection {
 			.manager = manager,
+			.user = user,
 			.remoteAddress = undefined,
 			.lastConnection = @truncate(std.time.nanoTimestamp()),
 			.lastReceivedPackets = &result.__lastReceivedPackets, // TODO: Wait for #12215 fix.
@@ -1303,14 +1306,19 @@ pub const Connection = struct {
 			.congestionControl_lastSendTime = @truncate(std.time.nanoTimestamp()),
 			.congestionControl_sendTimeLimit = @as(i64, @truncate(std.time.nanoTimestamp())) +% timeUnit*21/20,
 		};
+		errdefer main.globalAllocator.free(result.packetMemory);
 		result.unconfirmedPackets = main.List(UnconfirmedPacket).init(main.globalAllocator);
+		errdefer result.unconfirmedPackets.deinit();
 		result.packetQueue = main.utils.CircularBufferQueue(UnconfirmedPacket).init(main.globalAllocator, 1024);
+		errdefer result.packetQueue.deinit();
 		result.receivedPackets = [3]main.List(u32){
 			main.List(u32).init(main.globalAllocator),
 			main.List(u32).init(main.globalAllocator),
 			main.List(u32).init(main.globalAllocator),
 		};
-		errdefer result.deinit();
+		errdefer for(&result.receivedPackets) |*list| {
+			list.deinit();
+		};
 		var splitter = std.mem.split(u8, ipPort, ":");
 		const ip = splitter.first();
 		result.remoteAddress.ip = try Socket.resolveIP(ip);
@@ -1325,7 +1333,7 @@ pub const Connection = struct {
 			break :blk settings.defaultPort;
 		};
 
-		result.manager.addConnection(result);
+		try result.manager.addConnection(result);
 		return result;
 	}
 
@@ -1398,7 +1406,7 @@ pub const Connection = struct {
 		self.mutex.lock();
 		defer self.mutex.unlock();
 
-		if(self.disconnected) return;
+		if(self.disconnected.load(.unordered)) return;
 		self.writeByteToStream(id);
 		var processedLength = data.len;
 		while(processedLength > 0x7f) {
@@ -1423,7 +1431,7 @@ pub const Connection = struct {
 		self.mutex.lock();
 		defer self.mutex.unlock();
 
-		if(self.disconnected) return;
+		if(self.disconnected.load(.unordered)) return;
 		std.debug.assert(data.len + 1 < maxPacketSize);
 		const fullData = main.stackAllocator.alloc(u8, data.len + 1);
 		defer main.stackAllocator.free(fullData);
@@ -1730,7 +1738,7 @@ pub const Connection = struct {
 		Protocols.disconnect.disconnect(self);
 		std.time.sleep(10000000);
 		Protocols.disconnect.disconnect(self);
-		self.disconnected = true;
+		self.disconnected.store(true, .unordered);
 		self.manager.removeConnection(self);
 		std.log.info("Disconnected", .{});
 	}

@@ -108,7 +108,7 @@ pub const World = struct {
 
 	pub fn init(self: *World, ip: []const u8, manager: *ConnectionManager) !void {
 		self.* = .{
-			.conn = try Connection.init(manager, ip),
+			.conn = try Connection.init(manager, ip, null),
 			.manager = manager,
 			.name = "client",
 			.milliTime = std.time.milliTimestamp(),
@@ -150,10 +150,7 @@ pub const World = struct {
 		// TODO: Consider using a per-world allocator.
 		self.blockPalette = try assets.BlockPalette.init(main.globalAllocator, json.getChild("blockPalette"));
 		errdefer self.blockPalette.deinit();
-		const jsonSpawn = json.getChild("spawn");
-		self.spawn[0] = jsonSpawn.get(f32, "x", 0);
-		self.spawn[1] = jsonSpawn.get(f32, "y", 0);
-		self.spawn[2] = jsonSpawn.get(f32, "z", 0);
+		self.spawn = json.get(Vec3f, "spawn", .{0, 0, 0});
 
 		try assets.loadWorldAssets("serverAssets", self.blockPalette);
 		Player.loadFrom(json.getChild("player"));

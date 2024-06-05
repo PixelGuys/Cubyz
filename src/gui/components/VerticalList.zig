@@ -13,7 +13,7 @@ const ScrollBar = GuiComponent.ScrollBar;
 
 const VerticalList = @This();
 
-const scrollBarWidth = 5;
+const scrollBarWidth = 10;
 const border: f32 = 3;
 
 pos: Vec2f,

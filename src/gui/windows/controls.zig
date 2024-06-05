@@ -10,6 +10,7 @@ const Button = @import("../components/Button.zig");
 const HorizontalList = @import("../components/HorizontalList.zig");
 const Label = @import("../components/Label.zig");
 const VerticalList = @import("../components/VerticalList.zig");
+const ContinuousSlider = @import("../components/ContinuousSlider.zig");
 
 pub var window = GuiWindow {
 	.contentSize = Vec2f{128, 256},
@@ -33,8 +34,17 @@ fn keypressListener(key: c_int, mouseButton: c_int, scancode: c_int) void {
 	needsUpdate = true;
 }
 
+fn updateSensitivity(sensitivity: f32) void {
+	main.settings.mouseSensitivity = sensitivity;
+}
+
+fn sensitivityFormatter(allocator: main.utils.NeverFailingAllocator, value: f32) []const u8 {
+	return std.fmt.allocPrint(allocator.allocator, "Mouse Sensitivity: {d:.0}%", .{value*100}) catch unreachable;
+}
+
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 8);
+	list.add(ContinuousSlider.init(.{0, 0}, 256, 0, 5, main.settings.mouseSensitivity, &updateSensitivity, &sensitivityFormatter));
 	for(&main.KeyBoard.keys) |*key| {
 		const label = Label.init(.{0, 0}, 128, key.name, .left);
 		const button = if(key == selectedKey) (

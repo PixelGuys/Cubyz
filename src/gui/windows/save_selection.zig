@@ -52,10 +52,7 @@ fn openWorldWrap(namePtr: usize) void { // TODO: Improve this situation. Maybe i
 }
 
 fn flawedDeleteWorld(name: []const u8) !void {
-	var saveDir = try std.fs.cwd().openDir("saves", .{});
-	defer saveDir.close();
-	try saveDir.deleteTree(name);
-
+	try main.files.deleteDir("saves", name);
 	onClose();
 	onOpen();
 }

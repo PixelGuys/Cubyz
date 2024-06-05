@@ -13,40 +13,16 @@ rot: Vec3f = .{0, 0, 0},
 // TODO: Health and hunger
 // TODO: Name
 
-fn loadVec3f(json: JsonElement) Vec3f {
-	return .{
-		json.get(f32, "x", 0),
-		json.get(f32, "y", 0),
-		json.get(f32, "z", 0),
-	};
-}
-
-fn loadVec3d(json: JsonElement) Vec3d {
-	return .{
-		json.get(f64, "x", 0),
-		json.get(f64, "y", 0),
-		json.get(f64, "z", 0),
-	};
-}
-
-fn saveVec3(allocator: NeverFailingAllocator, vector: anytype) JsonElement {
-	const json = JsonElement.initObject(allocator);
-	json.put("x", vector[0]);
-	json.put("y", vector[1]);
-	json.put("z", vector[2]);
-	return json;
-}
-
 pub fn loadFrom(self: *@This(), json: JsonElement) void {
-	self.pos = loadVec3d(json.getChild("position"));
-	self.vel = loadVec3d(json.getChild("velocity"));
-	self.rot = loadVec3f(json.getChild("rotation"));
+	self.pos = json.get(Vec3d, "position", .{0, 0, 0});
+	self.vel = json.get(Vec3d, "velocity", .{0, 0, 0});
+	self.rot = json.get(Vec3f, "rotation", .{0, 0, 0});
 }
 
 pub fn save(self: *@This(), allocator: NeverFailingAllocator) JsonElement {
 	const json = JsonElement.initObject(allocator);
-	json.put("position", saveVec3(allocator, self.pos));
-	json.put("velocity", saveVec3(allocator, self.vel));
-	json.put("rotation", saveVec3(allocator, self.rot));
+	json.put("position", self.pos);
+	json.put("velocity", self.vel);
+	json.put("rotation", self.rot);
 	return json;
 }

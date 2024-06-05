@@ -235,6 +235,7 @@ pub const ServerChunk = struct {
 
 	wasChanged: bool = false,
 	generated: bool = false,
+	wasStored: bool = false,
 
 	mutex: std.Thread.Mutex = .{},
 	refCount: std.atomic.Value(u16),
@@ -329,6 +330,33 @@ pub const ServerChunk = struct {
 		const z = _z >> self.super.voxelSizeShift;
 		const index = getIndex(x, y, z);
 		self.super.data.setValue(index, newBlock);
+		if(!self.wasChanged and self.super.pos.voxelSize == 1) {
+			self.mutex.unlock();
+			defer self.mutex.lock();
+			// Store all the neighbor chunks as well:
+			var dx: i32 = -@as(i32, chunkSize);
+			while(dx <= chunkSize) : (dx += chunkSize) {
+				var dy: i32 = -@as(i32, chunkSize);
+				while(dy <= chunkSize) : (dy += chunkSize) {
+					var dz: i32 = -@as(i32, chunkSize);
+					while(dz <= chunkSize) : (dz += chunkSize) {
+						if(dx == 0 and dy == 0 and dz == 0) continue;
+						const ch = main.server.world.?.getOrGenerateChunkAndIncreaseRefCount(.{
+							.wx = self.super.pos.wx +% dx,
+							.wy = self.super.pos.wy +% dy,
+							.wz = self.super.pos.wz +% dz,
+							.voxelSize = 1
+						});
+						defer ch.decreaseRefCount();
+						ch.mutex.lock();
+						defer ch.mutex.unlock();
+						if(!ch.wasStored) {
+							ch.setChanged();
+						}
+					}
+				}
+			}
+		}
 		self.setChanged();
 	}
 
@@ -430,6 +458,7 @@ pub const ServerChunk = struct {
 	pub fn save(self: *ServerChunk, world: *main.server.ServerWorld) void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
+		self.wasStored = true;
 		if(self.wasChanged) {
 			const pos = self.super.pos;
 			const regionSize = pos.voxelSize*chunkSize*main.server.storage.RegionFile.regionSize;

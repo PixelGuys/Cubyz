@@ -324,6 +324,54 @@ pub const ChannelChunk = struct {
 		self.propagateDirect(&lightQueue);
 	}
 
+	pub fn propagateUniformSun(self: *ChannelChunk) void {
+		std.debug.assert(self.isSun);
+		self.mutex.lock();
+		if(self.data.paletteLength != 1) {
+			self.data.deinit();
+			self.data.init();
+		}
+		self.data.palette[0] = .{255, 255, 255};
+		self.mutex.unlock();
+		const val = 255 -| 8*|@as(u8, @intCast(self.ch.pos.voxelSize));
+		var lightQueue = main.utils.CircularBufferQueue(Entry).init(main.stackAllocator, 1 << 12);
+		defer lightQueue.deinit();
+		for(chunk.Neighbors.iterable) |neighbor| {
+			if(neighbor == chunk.Neighbors.dirUp) continue;
+			const neighborMesh = mesh_storage.getNeighborAndIncreaseRefCount(self.ch.pos, self.ch.pos.voxelSize, @intCast(neighbor)) orelse continue;
+			defer neighborMesh.decreaseRefCount();
+			var list: [chunk.chunkSize*chunk.chunkSize]Entry = undefined;
+			for(0..chunk.chunkSize) |x| {
+				for(0..chunk.chunkSize) |y| {
+					const entry = &list[x*chunk.chunkSize + y];
+					switch(chunk.Neighbors.vectorComponent[neighbor]) {
+						.x => {
+							entry.x = if(chunk.Neighbors.isPositive[neighbor]) 0 else chunk.chunkSize - 1;
+							entry.y = @intCast(x);
+							entry.z = @intCast(y);
+							entry.value = .{val, val, val};
+						},
+						.y => {
+							entry.y = if(chunk.Neighbors.isPositive[neighbor]) 0 else chunk.chunkSize - 1;
+							entry.x = @intCast(x);
+							entry.z = @intCast(y);
+							entry.value = .{val, val, val};
+						},
+						.z => {
+							entry.z = if(chunk.Neighbors.isPositive[neighbor]) 0 else chunk.chunkSize - 1;
+							entry.x = @intCast(x);
+							entry.y = @intCast(y);
+							entry.value = .{255, 255, 255};
+						},
+					}
+					entry.activeValue = 0b111;
+					entry.sourceDir = neighbor ^ 1;
+				}
+			}
+			neighborMesh.lightingData[1].propagateFromNeighbor(&lightQueue, &list);
+		}
+	}
+
 	pub fn propagateLightsDestructive(self: *ChannelChunk, lights: []const [3]u8) void {
 		var lightQueue = main.utils.CircularBufferQueue(Entry).init(main.stackAllocator, 1 << 12);
 		defer lightQueue.deinit();

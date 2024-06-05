@@ -1362,7 +1362,7 @@ pub fn LargeBuffer(comptime Entry: type) type {
 			self.fences[self.activeFence] = c.glFenceSync(c.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 		}
 
-		fn alloc(self: *Self, size: u31) SubAllocation {
+		pub fn rawAlloc(self: *Self, size: u31) SubAllocation {
 			var smallestBlock: ?*SubAllocation = null;
 			for(self.freeBlocks.items, 0..) |*block, i| {
 				if(size == block.len) {
@@ -1392,7 +1392,7 @@ pub fn LargeBuffer(comptime Entry: type) type {
 				c.glBindBuffer(c.GL_COPY_READ_BUFFER, oldBuffer.bufferID);
 				c.glBindBuffer(c.GL_COPY_WRITE_BUFFER, self.ssbo.bufferID);
 				c.glCopyBufferSubData(c.GL_COPY_READ_BUFFER, c.GL_COPY_WRITE_BUFFER, 0, 0, @as(c.GLsizeiptr, oldCapacity)*@sizeOf(Entry));
-				return alloc(self, size);
+				return rawAlloc(self, size);
 			}
 		}
 
@@ -1428,7 +1428,7 @@ pub fn LargeBuffer(comptime Entry: type) type {
 				allocation.len = 0;
 				return &.{};
 			}
-			allocation.* = self.alloc(@intCast(len));
+			allocation.* = self.rawAlloc(@intCast(len));
 			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.ssbo.bufferID);
 			const ptr: [*]Entry = @ptrCast(@alignCast(
 				c.glMapBufferRange(c.GL_SHADER_STORAGE_BUFFER, @as(c.GLintptr, allocation.start)*@sizeOf(Entry), @as(c.GLsizeiptr, allocation.len)*@sizeOf(Entry), c.GL_MAP_WRITE_BIT | c.GL_MAP_INVALIDATE_RANGE_BIT)
@@ -1442,13 +1442,13 @@ pub fn LargeBuffer(comptime Entry: type) type {
 			std.debug.assert(c.glUnmapBuffer(c.GL_SHADER_STORAGE_BUFFER) == c.GL_TRUE);
 		}
 
-		pub fn uploadData(self: *Self, data: []Entry, allocation: *SubAllocation) void {
+		pub fn uploadData(self: *Self, data: []const Entry, allocation: *SubAllocation) void {
 			self.free(allocation.*);
 			if(data.len == 0) {
 				allocation.len = 0;
 				return;
 			}
-			allocation.* = self.alloc(@intCast(data.len));
+			allocation.* = self.rawAlloc(@intCast(data.len));
 			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.ssbo.bufferID);
 			const ptr: [*]Entry = @ptrCast(@alignCast(
 				c.glMapBufferRange(c.GL_SHADER_STORAGE_BUFFER, @as(c.GLintptr, allocation.start)*@sizeOf(Entry), @as(c.GLsizeiptr, allocation.len)*@sizeOf(Entry), c.GL_MAP_WRITE_BIT | c.GL_MAP_INVALIDATE_RANGE_BIT)
@@ -1979,13 +1979,6 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	const oldViewMatrix = main.game.camera.viewMatrix;
 	main.game.camera.viewMatrix = Mat4f.identity().mul(Mat4f.rotationX(std.math.pi/4.0)).mul(Mat4f.rotationZ(-5.0*std.math.pi/4.0));
 	defer main.game.camera.viewMatrix = oldViewMatrix;
-	if(block.transparent()) {
-		c.glBlendEquation(c.GL_FUNC_ADD);
-		c.glBlendFunc(c.GL_ONE, c.GL_SRC1_COLOR);
-		main.renderer.chunk_meshing.bindTransparentShaderAndUniforms(projMatrix, .{1, 1, 1});
-	} else {
-		main.renderer.chunk_meshing.bindShaderAndUniforms(projMatrix, .{1, 1, 1});
-	}
 	const uniforms = if(block.transparent()) &main.renderer.chunk_meshing.transparentUniforms else &main.renderer.chunk_meshing.uniforms;
 
 	var faceData: main.ListUnmanaged(main.renderer.chunk_meshing.FaceData) = .{};
@@ -2010,15 +2003,30 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 
 	{
 		const i = 6; // Easily switch between the 8 rotations.
-		var x: f32 = 65.5 - 1.5;
-		var y: f32 = 65.5 - 1.5;
-		var z: f32 = 92.631 - 1.5;
-		if(i & 1 != 0) x = -x - 3;
-		if(i & 2 != 0) y = -y - 3;
-		if(i & 4 != 0) z = -z - 3;
-		c.glUniform3f(uniforms.modelPosition, x, y, z);
-		c.glUniform1i(uniforms.visibilityMask, 0xff);
-		c.glUniform1i(uniforms.voxelSize, 1);
+		var x: f64 = -65.5 + 1.5;
+		var y: f64 = -65.5 + 1.5;
+		var z: f64 = -92.631 + 1.5;
+		if(i & 1 != 0) x = -x + 3;
+		if(i & 2 != 0) y = -y + 3;
+		if(i & 4 != 0) z = -z + 3;
+		var chunkAllocation: SubAllocation = .{.start = 0, .len = 0};
+		main.renderer.chunk_meshing.chunkBuffer.uploadData(&.{.{
+			.position = .{0, 0, 0},
+			.visibilityMask = 255,
+			.voxelSize = 1,
+			.vertexStartOpaque = undefined,
+			.vertexCountOpaque = undefined,
+			.vertexStartTransparent = undefined,
+			.vertexCountTransparent = undefined,
+		}}, &chunkAllocation);
+		defer main.renderer.chunk_meshing.chunkBuffer.free(chunkAllocation);
+		if(block.transparent()) {
+			c.glBlendEquation(c.GL_FUNC_ADD);
+			c.glBlendFunc(c.GL_ONE, c.GL_SRC1_COLOR);
+			main.renderer.chunk_meshing.bindTransparentShaderAndUniforms(projMatrix, .{1, 1, 1}, .{x, y, z});
+		} else {
+			main.renderer.chunk_meshing.bindShaderAndUniforms(projMatrix, .{1, 1, 1}, .{x, y, z});
+		}
 		c.glUniform1f(uniforms.contrast, 0.25);
 		c.glActiveTexture(c.GL_TEXTURE0);
 		main.blocks.meshes.blockTextureArray.bind();
@@ -2027,7 +2035,7 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 		c.glActiveTexture(c.GL_TEXTURE2);
 		main.blocks.meshes.reflectivityAndAbsorptionTextureArray.bind();
 		block_texture.depthTexture.bindTo(5);
-		c.glDrawElementsBaseVertex(c.GL_TRIANGLES, @intCast(6*faceData.items.len), c.GL_UNSIGNED_INT, null, allocation.start*4);
+		c.glDrawElementsInstancedBaseVertexBaseInstance(c.GL_TRIANGLES, @intCast(6*faceData.items.len), c.GL_UNSIGNED_INT, null, 1, allocation.start*4, chunkAllocation.start);
 	}
 
 	c.glDisable(c.GL_CULL_FACE);

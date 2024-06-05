@@ -6,11 +6,14 @@ const ServerChunk = main.chunk.ServerChunk;
 const JsonElement = main.JsonElement;
 const terrain = main.server.terrain;
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const vec = @import("main.vec");
+const Vec3d = main.vec.Vec3d;
 
 const StructureModel = struct {
 	const VTable = struct {
 		loadModel: *const fn(arenaAllocator: NeverFailingAllocator, parameters: JsonElement) *anyopaque,
 		generate: *const fn(self: *anyopaque, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) void,
+		hashFunction: *const fn(self: *anyopaque) u64,
 	};
 
 	vtable: VTable,
@@ -46,10 +49,132 @@ const StructureModel = struct {
 		var self: VTable = undefined;
 		self.loadModel = @ptrCast(&Generator.loadModel);
 		self.generate = @ptrCast(&Generator.generate);
+		self.hashFunction = @ptrCast(&struct {
+			fn hash(ptr: *Generator) u64 {
+				return hashGeneric(ptr.*);
+			}
+		}.hash);
 		modelRegistry.put(main.globalAllocator.allocator, Generator.id, self) catch unreachable;
+	}
+
+	fn getHash(self: StructureModel) u64 {
+		return self.vtable.hashFunction(self.data);
 	}
 };
 
+const Stripe = struct {
+	direction: ?Vec3d,
+	block: u16,
+	minDistance: f64,
+	maxDistance: f64,
+	minOffset: f64,
+	maxOffset: f64,
+	minWidth: f64,
+	maxWidth: f64,
+
+	pub fn init(parameters: JsonElement) Stripe {
+		var dir: ?Vec3d = parameters.get(?Vec3d, "direction", null);
+		if(dir != null) {
+			dir = main.vec.normalize(dir.?);
+		}
+
+		const block: u16 = blocks.getByID(parameters.get([]const u8, "block", ""));
+		
+		var minDistance: f64 = 0;
+		var maxDistance: f64 = 0;
+		if (parameters.JsonObject.get("distance")) |dist| {
+			minDistance = dist.as(f64, 0);
+			maxDistance = dist.as(f64, 0);
+		} else {
+			minDistance = parameters.get(f64, "minDistance", 0);
+			maxDistance = parameters.get(f64, "maxDistance", 0);
+		}
+
+		var minOffset: f64 = 0;
+		var maxOffset: f64 = 0;
+		if (parameters.JsonObject.get("offset")) |off| {
+			minOffset = off.as(f64, 0);
+			maxOffset = off.as(f64, 0);
+		} else {
+			minOffset = parameters.get(f64, "minOffset", 0);
+			maxOffset = parameters.get(f64, "maxOffset", 0);
+		}
+
+		var minWidth: f64 = 0;
+		var maxWidth: f64 = 0;
+		if (parameters.JsonObject.get("width")) |width| {
+			minWidth = width.as(f64, 0);
+			maxWidth = width.as(f64, 0);
+		} else {
+			minWidth = parameters.get(f64, "minWidth", 0);
+			maxWidth = parameters.get(f64, "maxWidth", 0);
+		}
+
+		return Stripe {
+			.direction = dir,
+			.block = block,
+
+			.minDistance = minDistance,
+			.maxDistance = maxDistance,
+
+			.minOffset = minOffset,
+			.maxOffset = maxOffset,
+
+			.minWidth = minWidth,
+			.maxWidth = maxWidth,
+		};
+	}
+};
+
+fn hashGeneric(input: anytype) u64 {
+	const T = @TypeOf(input);
+	return switch(@typeInfo(T)) {
+		.Bool => @intFromBool(input),
+		.Enum => @intFromEnum(input),
+		.Int, .Float => @as(std.meta.Int(.unsigned, @bitSizeOf(T)), @bitCast(input)),
+		.Struct => blk: {
+			if(@hasDecl(T, "getHash")) {
+				break :blk input.getHash();
+			}
+			var result: u64 = 0;
+			inline for(@typeInfo(T).Struct.fields) |field| {
+				result ^= hashGeneric(@field(input, field.name))*%hashGeneric(@as([]const u8, field.name));
+			}
+			break :blk result;
+		},
+		.Optional => if(input) |_input| hashGeneric(_input) else 0,
+		.Pointer => switch(@typeInfo(T).Pointer.size) {
+			.One => blk: {
+				if(@typeInfo(@typeInfo(T).Pointer.child) == .Fn) break :blk 0;
+				if(@typeInfo(T).Pointer.child == anyopaque) break :blk 0;
+				break :blk hashGeneric(input.*);
+			},
+			.Slice => blk: {
+				var result: u64 = 0;
+				for(input) |val| {
+					result = result*%33 +% hashGeneric(val);
+				}
+				break :blk result;
+			},
+			else => @compileError("Unsupported type " ++ @typeName(T)),
+		},
+		.Array => blk: {
+			var result: u64 = 0;
+			for(input) |val| {
+				result = result*%33 +% hashGeneric(val);
+			}
+			break :blk result;
+		},
+		.Vector => blk: {
+			var result: u64 = 0;
+			inline for(0..@typeInfo(T).Vector.len) |i| {
+				result = result*%33 +% hashGeneric(input[i]);
+			}
+			break :blk result;
+		},
+		else => @compileError("Unsupported type " ++ @typeName(T)),
+	};
+}
 
 pub const Interpolation = enum(u8) {
 	none,
@@ -98,6 +223,7 @@ pub const Biome = struct {
 	mountains: f32,
 	caves: f32,
 	crystals: u32,
+	stalagmites: u32,
 	stoneBlockType: u16,
 	id: []const u8,
 	structure: BlockStructure = undefined,
@@ -105,7 +231,8 @@ pub const Biome = struct {
 	supportsRivers: bool, // TODO: Reimplement rivers.
 	/// The first members in this array will get prioritized.
 	vegetationModels: []StructureModel = &.{},
-	subBiomes: main.utils.AliasTable(*const Biome) = undefined,
+	stripes: []Stripe = &.{},
+	subBiomes: main.utils.AliasTable(*const Biome) = .{.items = &.{}, .aliasData = &.{}},
 	maxSubBiomeCount: f32,
 	subBiomeTotalChance: f32 = 0,
 	preferredMusic: []const u8, // TODO: Support multiple possibilities that are chosen based on time and danger.
@@ -125,6 +252,7 @@ pub const Biome = struct {
 			.interpolation = std.meta.stringToEnum(Interpolation, json.get([]const u8, "interpolation", "square")) orelse .square,
 			.caves = json.get(f32, "caves", -0.375),
 			.crystals = json.get(u32, "crystals", 0),
+			.stalagmites = json.get(u32, "stalagmites", 0),
 			.minHeight = json.get(i32, "minHeight", std.math.minInt(i32)),
 			.maxHeight = json.get(i32, "maxHeight", std.math.maxInt(i32)),
 			.supportsRivers = json.get(bool, "rivers", false),
@@ -153,14 +281,25 @@ pub const Biome = struct {
 			}
 		}
 		self.vegetationModels = main.globalAllocator.dupe(StructureModel, vegetation.items);
+
+		const stripes = json.getChild("stripes");
+		self.stripes = main.globalAllocator.alloc(Stripe, stripes.toSlice().len);
+		for (stripes.toSlice(), 0..) |elem, i| {
+			self.stripes[i] = Stripe.init(elem);
+		}
 	}
 
 	pub fn deinit(self: *Biome) void {
 		self.subBiomes.deinit(main.globalAllocator);
 		self.structure.deinit(main.globalAllocator);
 		main.globalAllocator.free(self.vegetationModels);
+		main.globalAllocator.free(self.stripes);
 		main.globalAllocator.free(self.preferredMusic);
 		main.globalAllocator.free(self.id);
+	}
+
+	fn getCheckSum(self: *Biome) u64 {
+		return hashGeneric(self.*);
 	}
 };
 
@@ -460,4 +599,16 @@ pub fn getRandomly(typ: Biome.Type, seed: *u64) *const Biome {
 
 pub fn getCaveBiomes() []const Biome {
 	return caveBiomes.items;
+}
+
+/// A checksum that can be used to check for changes i nthe biomes being used.
+pub fn getBiomeCheckSum(seed: u64) u64 {
+	var result: u64 = seed;
+	for(biomes.items) |*biome| {
+		result ^= biome.getCheckSum();
+	}
+	for(caveBiomes.items) |*biome| {
+		result ^= biome.getCheckSum();
+	}
+	return result;
 }
