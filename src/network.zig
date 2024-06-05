@@ -18,6 +18,7 @@ const utils = @import("utils.zig");
 const vec = @import("vec.zig");
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
+const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 //TODO: Might want to use SSL or something similar to encode the message
@@ -740,31 +741,45 @@ pub const Protocols = struct {
 		pub const asynchronous = false;
 		fn receive(conn: *Connection, data: []const u8) !void {
 			var remaining = data[0..];
-			while(remaining.len >= 16) {
+			const basePosition = Vec3i {
+				std.mem.readInt(i32, remaining[0..4], .big),
+				std.mem.readInt(i32, remaining[4..8], .big),
+				std.mem.readInt(i32, remaining[8..12], .big),
+			};
+			remaining = remaining[12..];
+			while(remaining.len >= 4) {
+				const voxelSizeShift: u5 = @intCast(remaining[3]);
+				const positionMask = ~((@as(i32, 1) << voxelSizeShift+chunk.chunkShift) - 1);
 				const request = chunk.ChunkPosition{
-					.wx = std.mem.readInt(i32, remaining[0..4], .big),
-					.wy = std.mem.readInt(i32, remaining[4..8], .big),
-					.wz = std.mem.readInt(i32, remaining[8..12], .big),
-					.voxelSize = @intCast(std.mem.readInt(i32, remaining[12..16], .big)),
+					.wx = (@as(i32, @as(i8, @bitCast(remaining[0]))) << voxelSizeShift+chunk.chunkShift) +% (basePosition[0] & positionMask),
+					.wy = (@as(i32, @as(i8, @bitCast(remaining[1]))) << voxelSizeShift+chunk.chunkShift) +% (basePosition[1] & positionMask),
+					.wz = (@as(i32, @as(i8, @bitCast(remaining[2]))) << voxelSizeShift+chunk.chunkShift) +% (basePosition[2] & positionMask),
+					.voxelSize = @as(u31, 1) << voxelSizeShift,
 				};
 				if(conn.user) |user| {
 					user.increaseRefCount();
 					main.server.world.?.queueChunkAndDecreaseRefCount(request, user);
 				}
-				remaining = remaining[16..];
+				remaining = remaining[4..];
 			}
 		}
-		pub fn sendRequest(conn: *Connection, requests: []chunk.ChunkPosition) void {
+		pub fn sendRequest(conn: *Connection, requests: []chunk.ChunkPosition, basePosition: Vec3i) void {
 			if(requests.len == 0) return;
-			const data = main.stackAllocator.alloc(u8, 16*requests.len);
+			const data = main.stackAllocator.alloc(u8, 12 + 4*requests.len);
 			defer main.stackAllocator.free(data);
 			var remaining = data;
+			std.mem.writeInt(i32, remaining[0..4], basePosition[0], .big);
+			std.mem.writeInt(i32, remaining[4..8], basePosition[1], .big);
+			std.mem.writeInt(i32, remaining[8..12], basePosition[2], .big);
+			remaining = remaining[12..];
 			for(requests) |req| {
-				std.mem.writeInt(i32, remaining[0..4], req.wx, .big);
-				std.mem.writeInt(i32, remaining[4..8], req.wy, .big);
-				std.mem.writeInt(i32, remaining[8..12], req.wz, .big);
-				std.mem.writeInt(i32, remaining[12..16], req.voxelSize, .big);
-				remaining = remaining[16..];
+				const voxelSizeShift: u5 = std.math.log2_int(u31, req.voxelSize);
+				const positionMask = ~((@as(i32, 1) << voxelSizeShift+chunk.chunkShift) - 1);
+				remaining[0] = @bitCast(@as(i8, @intCast((req.wx -% (basePosition[0] & positionMask)) >> voxelSizeShift+chunk.chunkShift)));
+				remaining[1] = @bitCast(@as(i8, @intCast((req.wy -% (basePosition[1] & positionMask)) >> voxelSizeShift+chunk.chunkShift)));
+				remaining[2] = @bitCast(@as(i8, @intCast((req.wz -% (basePosition[2] & positionMask)) >> voxelSizeShift+chunk.chunkShift)));
+				remaining[3] = voxelSizeShift;
+				remaining = remaining[4..];
 			}
 			conn.sendImportant(id, data);
 		}

@@ -561,7 +561,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 
 	// Make requests as soon as possible to reduce latency:
 	network.Protocols.lightMapRequest.sendRequest(conn, mapRequests.items);
-	network.Protocols.chunkRequest.sendRequest(conn, meshRequests.items);
+	network.Protocols.chunkRequest.sendRequest(conn, meshRequests.items, .{lastPx, lastPy, lastPz});
 
 	// Does occlusion using a breadth-first search that caches an on-screen visibility rectangle.
 
