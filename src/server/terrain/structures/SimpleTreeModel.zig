@@ -108,8 +108,7 @@ pub fn generate(self: *SimpleTreeModel, x: i32, y: i32, z: i32, chunk: *main.chu
 					var py = chunk.startIndex(y + 1 - j);
 					while(py < y + j) : (py += chunk.super.pos.voxelSize) {
 						if(chunk.liesInChunk(px, py, pz))
-							if (chunk.getBlock(px, py, pz).typ == 0)
-								chunk.updateBlockIfDegradable(px, py, pz, .{.typ = self.leavesBlock, .data = 0}); // TODO: Natural standard.
+							chunk.updateBlockIfDegradable(px, py, pz, .{.typ = self.leavesBlock, .data = 0}); // TODO: Natural standard.
 					}
 				}
 			}
@@ -130,8 +129,7 @@ pub fn generate(self: *SimpleTreeModel, x: i32, y: i32, z: i32, chunk: *main.chu
 					while(py < y + leafRadius) : (py += chunk.super.pos.voxelSize) {
 						const distSqr = (pz - center)*(pz - center) + (px - x)*(px - x) + (py - y)*(py - y);
 						if(chunk.liesInChunk(px, py, pz) and distSqr < radiusSqr and (distSqr < randomRadiusSqr or random.nextInt(u1, seed) != 0)) { // TODO: Use another seed to make this more reliable!
-							if (chunk.getBlock(px, py, pz).typ == 0)
-								chunk.updateBlockIfDegradable(px, py, pz, .{.typ = self.leavesBlock, .data = 0}); // TODO: Natural standard.
+							chunk.updateBlockIfDegradable(px, py, pz, .{.typ = self.leavesBlock, .data = 0}); // TODO: Natural standard.
 						}
 					}
 				}
@@ -156,8 +154,7 @@ pub fn generate(self: *SimpleTreeModel, x: i32, y: i32, z: i32, chunk: *main.chu
 					while(py < y + leafRadius) : (py += chunk.super.pos.voxelSize) {
 						const distSqr = (pz - center)*(pz - center) + (px - x)*(px - x) + (py - y)*(py - y);
 						if(chunk.liesInChunk(px, py, pz) and distSqr < radiusSqr and (distSqr < randomRadiusSqr or random.nextInt(u1, seed) != 0)) { // TODO: Use another seed to make this more reliable!
-							if (chunk.getBlock(px, py, pz).transparent())
-								chunk.updateBlockIfDegradable(px, py, pz, .{.typ = self.leavesBlock, .data = 0}); // TODO: Natural standard.
+							chunk.updateBlockIfDegradable(px, py, pz, .{.typ = self.leavesBlock, .data = 0}); // TODO: Natural standard.
 						}
 					}
 				}
