@@ -93,6 +93,7 @@ const MusicLoadTask = struct {
 		.isStillNeeded = @ptrCast(&isStillNeeded),
 		.run = @ptrCast(&run),
 		.clean = @ptrCast(&clean),
+		.taskType = .misc,
 	};
 	
 	pub fn schedule(musicId: []const u8) void {
@@ -100,7 +101,7 @@ const MusicLoadTask = struct {
 		task.* = MusicLoadTask {
 			.musicId = musicId,
 		};
-		main.threadPool.addTask(task, &vtable, .misc);
+		main.threadPool.addTask(task, &vtable);
 		taskMutex.lock();
 		defer taskMutex.unlock();
 		activeTasks.append(main.globalAllocator, musicId);

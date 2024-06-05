@@ -995,7 +995,6 @@ pub const ThreadPool = struct {
 		cachedPriority: f32,
 		self: *anyopaque,
 		vtable: *const VTable,
-		taskType: TaskType,
 
 		fn biggerThan(self: Task, other: Task) bool {
 			return self.cachedPriority > other.cachedPriority;
@@ -1006,6 +1005,7 @@ pub const ThreadPool = struct {
 		isStillNeeded: *const fn(*anyopaque, milliTime: i64) bool,
 		run: *const fn(*anyopaque) void,
 		clean: *const fn(*anyopaque) void,
+		taskType: TaskType = .misc,
 	};
 	pub const Performance = struct {
 		mutex: std.Thread.Mutex = .{},
@@ -1111,9 +1111,10 @@ pub const ThreadPool = struct {
 				const start = std.time.microTimestamp();
 				task.vtable.run(task.self);
 				const end = std.time.microTimestamp();
+				const taskType = @intFromEnum(task.vtable.taskType);
 				self.performance.mutex.lock();
-				self.performance.tasks[@intFromEnum(task.taskType)] += 1;
-				self.performance.utime[@intFromEnum(task.taskType)] += end - start;
+				self.performance.tasks[taskType] += 1;
+				self.performance.utime[taskType] += end - start;
 				self.performance.mutex.unlock();
 				self.currentTasks[id].store(null, .monotonic);
 			}
@@ -1141,12 +1142,11 @@ pub const ThreadPool = struct {
 		}
 	}
 
-	pub fn addTask(self: ThreadPool, task: *anyopaque, vtable: *const VTable, taskType: TaskType) void {
+	pub fn addTask(self: ThreadPool, task: *anyopaque, vtable: *const VTable) void {
 		self.loadList.add(Task {
 			.cachedPriority = vtable.getPriority(task),
 			.vtable = vtable,
 			.self = task,
-			.taskType = taskType,
 		});
 	}
 

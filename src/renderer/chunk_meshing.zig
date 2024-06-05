@@ -633,6 +633,7 @@ pub const ChunkMesh = struct {
 			.isStillNeeded = @ptrCast(&isStillNeeded),
 			.run = @ptrCast(&run),
 			.clean = @ptrCast(&clean),
+			.taskType = .lighting,
 		};
 
 		pub fn scheduleAndDecreaseRefCount(mesh: *ChunkMesh) void {
@@ -640,7 +641,7 @@ pub const ChunkMesh = struct {
 			task.* = .{
 				.mesh = mesh,
 			};
-			main.threadPool.addTask(task, &vtable, .lighting);
+			main.threadPool.addTask(task, &vtable);
 		}
 
 		pub fn getPriority(_: *LightRefreshTask) f32 {

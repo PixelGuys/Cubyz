@@ -1042,6 +1042,7 @@ pub const MeshGenerationTask = struct {
 		.isStillNeeded = @ptrCast(&isStillNeeded),
 		.run = @ptrCast(&run),
 		.clean = @ptrCast(&clean),
+		.taskType = .lighting,
 	};
 
 	pub fn schedule(mesh: *chunk.Chunk) void {
@@ -1049,7 +1050,7 @@ pub const MeshGenerationTask = struct {
 		task.* = MeshGenerationTask {
 			.mesh = mesh,
 		};
-		main.threadPool.addTask(task, &vtable, .lighting);
+		main.threadPool.addTask(task, &vtable);
 	}
 
 	pub fn getPriority(self: *MeshGenerationTask) f32 {

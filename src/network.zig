@@ -1739,6 +1739,7 @@ const ProtocolTask = struct {
 		.isStillNeeded = @ptrCast(&isStillNeeded),
 		.run = @ptrCast(&run),
 		.clean = @ptrCast(&clean),
+		.taskType = .misc,
 	};
 	
 	pub fn schedule(conn: *Connection, protocol: u8, data: []const u8) void {
@@ -1748,7 +1749,7 @@ const ProtocolTask = struct {
 			.protocol = protocol,
 			.data = main.globalAllocator.dupe(u8, data),
 		};
-		main.threadPool.addTask(task, &vtable, .misc);
+		main.threadPool.addTask(task, &vtable);
 	}
 
 	pub fn getPriority(_: *ProtocolTask) f32 {

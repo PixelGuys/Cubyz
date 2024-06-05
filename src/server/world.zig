@@ -41,6 +41,7 @@ const ChunkManager = struct {
 			.isStillNeeded = @ptrCast(&isStillNeeded),
 			.run = @ptrCast(&run),
 			.clean = @ptrCast(&clean),
+			.taskType = .chunkgen,
 		};
 		
 		pub fn scheduleAndDecreaseRefCount(pos: ChunkPosition, source: ?*User) void {
@@ -50,7 +51,7 @@ const ChunkManager = struct {
 				.creationTime = std.time.milliTimestamp(),
 				.source = source,
 			};
-			main.threadPool.addTask(task, &vtable, .chunkgen);
+			main.threadPool.addTask(task, &vtable);
 		}
 
 		pub fn getPriority(self: *ChunkLoadTask) f32 {
@@ -105,6 +106,7 @@ const ChunkManager = struct {
 			.isStillNeeded = @ptrCast(&isStillNeeded),
 			.run = @ptrCast(&run),
 			.clean = @ptrCast(&clean),
+			.taskType = .lighting,
 		};
 		
 		pub fn scheduleAndDecreaseRefCount(pos: terrain.SurfaceMap.MapFragmentPosition, source: ?*User) void {
@@ -114,7 +116,7 @@ const ChunkManager = struct {
 				.creationTime = std.time.milliTimestamp(),
 				.source = source,
 			};
-			main.threadPool.addTask(task, &vtable, .lighting);
+			main.threadPool.addTask(task, &vtable);
 		}
 
 		pub fn getPriority(self: *LightMapLoadTask) f32 {
@@ -424,6 +426,7 @@ pub const ServerWorld = struct {
 			.isStillNeeded = @ptrCast(&isStillNeeded),
 			.run = @ptrCast(&run),
 			.clean = @ptrCast(&clean),
+			.taskType = .chunkgen,
 		};
 		
 		pub fn schedule(pos: ChunkPosition) void {
@@ -431,7 +434,7 @@ pub const ServerWorld = struct {
 			task.* = .{
 				.pos = pos,
 			};
-			main.threadPool.addTask(task, &vtable, .chunkgen);
+			main.threadPool.addTask(task, &vtable);
 		}
 
 		pub fn getPriority(_: *RegenerateLODTask) f32 {
