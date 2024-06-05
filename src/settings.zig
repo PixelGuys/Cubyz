@@ -15,6 +15,8 @@ pub const highestLOD: u5 = 5;
 
 pub var entityDistance: u16 = 2;
 
+pub var cpuThreads: ?u64 = null;
+
 pub var anisotropicFiltering: bool = true;
 
 
@@ -77,6 +79,10 @@ pub fn init() void {
 				}
 			}
 		}
+	}
+
+	if(cpuThreads == null) {
+		cpuThreads = @max(1, (std.Thread.getCpuCount() catch 4) -| 1);
 	}
 
 	// keyboard settings:
