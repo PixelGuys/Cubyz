@@ -81,10 +81,6 @@ pub fn init() void {
 		}
 	}
 
-	if(cpuThreads == null) {
-		cpuThreads = @max(1, (std.Thread.getCpuCount() catch 4) -| 1);
-	}
-
 	// keyboard settings:
 	const keyboard = json.getChild("keyboard");
 	for(&main.KeyBoard.keys) |*key| {
