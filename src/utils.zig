@@ -988,7 +988,6 @@ pub const ThreadPool = struct {
 	pub const TaskType = enum(usize) {
 		chunkgen,
 		lighting,
-		meshgen,
 		misc,
 		taskTypes,
 	};

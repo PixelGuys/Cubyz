@@ -45,7 +45,6 @@ pub fn render() void {
 			const name = switch (t) {
 				.chunkgen => "chunkgen",
 				.lighting => "lighting",
-				.meshgen => "meshing",
 				.misc => "other",
 				else => continue,
 			};
