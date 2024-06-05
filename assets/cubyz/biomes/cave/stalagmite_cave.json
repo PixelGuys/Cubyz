@@ -2,7 +2,7 @@
 	"isCave" : true,
 	"maxHeight" : -512,
 
-	"chance" : 3,
+	"chance" : 0.2,
 
 	"caves" : -0.1,
 	"stalagmites" : 160,

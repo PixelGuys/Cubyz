@@ -1,7 +1,7 @@
 {
 	"isCave" : true,
 
-	"chance" : 0.3,
+	"chance" : 0.01,
 
 	"caves" : -0.2,
 
