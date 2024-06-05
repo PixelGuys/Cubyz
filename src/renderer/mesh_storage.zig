@@ -28,6 +28,7 @@ const ChunkMeshNode = struct {
 	max: Vec2f,
 	active: bool,
 	rendered: bool,
+	mutex: std.Thread.Mutex,
 };
 const storageSize = 64;
 const storageMask = storageSize - 1;
@@ -141,8 +142,8 @@ pub fn getLightMapPieceAndIncreaseRefCount(x: i32, y: i32, voxelSize: u31) ?*Lig
 
 pub fn getBlock(x: i32, y: i32, z: i32) ?blocks.Block {
 	const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize=1});
-	mutex.lock();
-	defer mutex.unlock();
+	node.mutex.lock();
+	defer node.mutex.unlock();
 	const mesh = node.mesh orelse return null;
 	const block = mesh.chunk.getBlock(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask);
 	return block;
@@ -152,8 +153,8 @@ pub fn getBlockFromAnyLod(x: i32, y: i32, z: i32) blocks.Block {
 	var lod: u5 = 0;
 	while(lod < settings.highestLOD) : (lod += 1) {
 		const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize=@as(u31, 1) << lod});
-		mutex.lock();
-		defer mutex.unlock();
+		node.mutex.lock();
+		defer node.mutex.unlock();
 		const mesh = node.mesh orelse continue;
 		const block = mesh.chunk.getBlock(x & chunk.chunkMask<<lod, y & chunk.chunkMask<<lod, z & chunk.chunkMask<<lod);
 		return block;
@@ -165,13 +166,13 @@ pub fn getMeshAndIncreaseRefCount(pos: chunk.ChunkPosition) ?*chunk_meshing.Chun
 	const lod = std.math.log2_int(u31, pos.voxelSize);
 	const mask = ~((@as(i32, 1) << lod+chunk.chunkShift) - 1);
 	const node = getNodePointer(pos);
-	mutex.lock();
+	node.mutex.lock();
 	const mesh = node.mesh orelse {
-		mutex.unlock();
+		node.mutex.unlock();
 		return null;
 	};
 	mesh.increaseRefCount();
-	mutex.unlock();
+	node.mutex.unlock();
 	if(pos.wx & mask != mesh.pos.wx or pos.wy & mask != mesh.pos.wy or pos.wz & mask != mesh.pos.wz) {
 		mesh.decreaseRefCount();
 		return null;
@@ -319,10 +320,10 @@ fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32) void {
 					const index = (xIndex*storageSize + yIndex)*storageSize + zIndex;
 					
 					const node = &storageLists[_lod][@intCast(index)];
-					mutex.lock();
+					node.mutex.lock();
 					const oldMesh = node.mesh;
 					node.mesh = null;
-					mutex.unlock();
+					node.mutex.unlock();
 					if(oldMesh) |mesh| {
 						mesh.decreaseRefCount();
 					}
@@ -458,13 +459,13 @@ fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32, meshR
 					const pos = chunk.ChunkPosition{.wx=x, .wy=y, .wz=z, .voxelSize=@as(u31, 1)<<lod};
 
 					const node = &storageLists[_lod][@intCast(index)];
-					mutex.lock();
+					node.mutex.lock();
 					if(node.mesh) |mesh| {
 						std.debug.assert(std.meta.eql(pos, mesh.pos));
 					} else {
 						meshRequests.append(pos);
 					}
-					mutex.unlock();
+					node.mutex.unlock();
 				}
 			}
 		}
@@ -591,9 +592,9 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 		var lod: u3 = 0;
 		while(lod <= settings.highestLOD) : (lod += 1) {
 			const node = getNodePointer(firstPos);
-			mutex.lock();
+			node.mutex.lock();
 			const hasMesh = node.mesh != null and node.mesh.?.finishedMeshing;
-			mutex.unlock();
+			node.mutex.unlock();
 			if(hasMesh) {
 				node.lod = lod;
 				node.min = @splat(-1);
@@ -857,35 +858,35 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 	for(nodeList.items) |node| {
 		node.rendered = false;
 
-		mutex.lock();
+		node.mutex.lock();
 		const mesh = node.mesh orelse {
-			mutex.unlock();
+			node.mutex.unlock();
 			continue;
 		};
 		if(!mesh.finishedMeshing) {
-			mutex.unlock();
+			node.mutex.unlock();
 			continue;
 		}
 		mesh.increaseRefCount();
 		defer mesh.decreaseRefCount();
-		mutex.unlock();
+		node.mutex.unlock();
 
 		if(mesh.pos.voxelSize != @as(u31, 1) << settings.highestLOD) {
 			const parent = getNodePointer(.{.wx=mesh.pos.wx, .wy=mesh.pos.wy, .wz=mesh.pos.wz, .voxelSize=mesh.pos.voxelSize << 1});
-			mutex.lock();
-			defer mutex.unlock();
+			parent.mutex.lock();
+			defer parent.mutex.unlock();
 			if(parent.mesh) |parentMesh| {
 				const sizeShift = chunk.chunkShift + @ctz(mesh.pos.voxelSize);
 				const octantIndex: u3 = @intCast((mesh.pos.wx>>sizeShift & 1) | (mesh.pos.wy>>sizeShift & 1)<<1 | (mesh.pos.wz>>sizeShift & 1)<<2);
 				parentMesh.visibilityMask &= ~(@as(u8, 1) << octantIndex);
 			}
 		}
-		mutex.lock();
+		node.mutex.lock();
 		if(mesh.needsMeshUpdate) {
 			mesh.uploadData();
 			mesh.needsMeshUpdate = false;
 		}
-		mutex.unlock();
+		node.mutex.unlock();
 		// Remove empty meshes.
 		if(!mesh.isEmpty()) {
 			meshList.append(mesh);
@@ -924,12 +925,15 @@ pub fn updateMeshes(targetTime: i64) void {
 			continue;
 		}
 		mesh.needsMeshUpdate = false;
-		if(getNodePointer(mesh.pos).mesh != mesh) {
+		const node = getNodePointer(mesh.pos);
+		node.mutex.lock();
+		if(node.mesh != mesh) {
 			mutex.unlock();
 			defer mutex.lock();
 			mesh.decreaseRefCount();
 			continue;
 		}
+		node.mutex.unlock();
 		mutex.unlock();
 		defer mutex.lock();
 		mesh.decreaseRefCount();
@@ -979,10 +983,10 @@ pub fn updateMeshes(targetTime: i64) void {
 			const node = getNodePointer(mesh.pos);
 			mesh.finishedMeshing = true;
 			mesh.uploadData();
-			mutex.lock();
+			node.mutex.lock();
 			const oldMesh = node.mesh;
 			node.mesh = mesh;
-			mutex.unlock();
+			node.mutex.unlock();
 			if(oldMesh) |_oldMesh| {
 				_oldMesh.decreaseRefCount();
 			}
@@ -1019,6 +1023,8 @@ pub fn addMeshToStorage(mesh: *chunk_meshing.ChunkMesh) error{AlreadyStored}!voi
 	defer mutex.unlock();
 	if(isInRenderDistance(mesh.pos)) {
 		const node = getNodePointer(mesh.pos);
+		node.mutex.lock();
+		defer node.mutex.unlock();
 		if(node.mesh != null) {
 			return error.AlreadyStored;
 		}
