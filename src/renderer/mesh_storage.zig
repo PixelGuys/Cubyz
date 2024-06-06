@@ -22,13 +22,13 @@ const chunk_meshing = @import("chunk_meshing.zig");
 
 
 const ChunkMeshNode = struct {
-	mesh: ?*chunk_meshing.ChunkMesh,
-	lod: u3,
-	min: Vec2f,
-	max: Vec2f,
-	active: bool,
-	rendered: bool,
-	mutex: std.Thread.Mutex,
+	mesh: ?*chunk_meshing.ChunkMesh = null,
+	lod: u3 = undefined,
+	min: Vec2f = undefined,
+	max: Vec2f = undefined,
+	active: bool = false,
+	rendered: bool = false,
+	mutex: std.Thread.Mutex = .{},
 };
 const storageSize = 64;
 const storageMask = storageSize - 1;
@@ -59,9 +59,7 @@ pub fn init() void {
 	for(&storageLists) |*storageList| {
 		storageList.* = main.globalAllocator.create([storageSize*storageSize*storageSize]ChunkMeshNode);
 		for(storageList.*) |*val| {
-			val.mesh = null;
-			val.rendered = false;
-			val.active = false;
+			val.* = .{};
 		}
 	}
 	for(&mapStorageLists) |*mapStorageList| {
