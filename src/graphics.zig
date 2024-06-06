@@ -2015,7 +2015,7 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 			.visibilityMask = 255,
 			.voxelSize = 1,
 			.vertexStartOpaque = undefined,
-			.vertexCountOpaque = undefined,
+			.faceCountsByNormalOpaque = undefined,
 			.vertexStartTransparent = undefined,
 			.vertexCountTransparent = undefined,
 		}}, &chunkAllocation);

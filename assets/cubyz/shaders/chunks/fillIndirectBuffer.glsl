@@ -12,7 +12,7 @@ struct ChunkData {
 	int visibilityMask;
 	int voxelSize;
 	uint vertexStartOpaque;
-	uint vertexCountOpaque;
+	uint faceCountsByNormalOpaque[7];
 	uint vertexStartTransparent;
 	uint vertexCountTransparent;
 };
@@ -40,26 +40,62 @@ uniform uint chunkIDIndex;
 uniform uint commandIndexStart;
 uniform uint size;
 uniform bool isTransparent;
+uniform ivec3 playerPositionInteger;
+
+bool isVisible(int dir, ivec3 relativePlayerPos, int voxelSize) {
+	switch(dir) {
+	case 0: // dirUp
+		return relativePlayerPos.z >= 0;
+	case 1: // dirDown
+		return relativePlayerPos.z < 32*voxelSize;
+	case 2: // dirPosX
+		return relativePlayerPos.x >= 0;
+	case 3: // dirNegX
+		return relativePlayerPos.x < 32*voxelSize;
+	case 4: // dirPosY
+		return relativePlayerPos.y >= 0;
+	case 5: // dirNegY
+		return relativePlayerPos.y < 32*voxelSize;
+	}
+	return true;
+}
+
+DrawElementsIndirectCommand addCommand(uint indices, uint vertexOffset, uint chunkID) {
+	return DrawElementsIndirectCommand(indices, 1, 0, int(vertexOffset), chunkID);
+}
 
 void main() {
 	uint chunkID = chunkIDs[chunkIDIndex + gl_GlobalInvocationID.x];
-	uint commandIndex = commandIndexStart + gl_GlobalInvocationID.x;
 	if(gl_GlobalInvocationID.x >= size) return;
 	if(isTransparent) {
-		commands[commandIndex] = DrawElementsIndirectCommand(
-			chunks[chunkID].vertexCountTransparent,
-			1,
-			0,
-			int(chunks[chunkID].vertexStartTransparent),
-			chunkID
-		);
+		uint commandIndex = commandIndexStart + gl_GlobalInvocationID.x;
+		commands[commandIndex] = addCommand(chunks[chunkID].vertexCountTransparent, chunks[chunkID].vertexStartTransparent, chunkID);
 	} else {
-		commands[commandIndex] = DrawElementsIndirectCommand(
-			chunks[chunkID].vertexCountOpaque,
-			1,
-			0,
-			int(chunks[chunkID].vertexStartOpaque),
-			chunkID
-		);
+		uint commandIndex = commandIndexStart + gl_GlobalInvocationID.x*4;
+		uint commandIndexEnd = commandIndex + 4;
+		uint groupFaceOffset = 0;
+		uint groupFaceCount = 0;
+		for(int i = 0; i < 7; i++) {
+			uint faceCount = chunks[chunkID].faceCountsByNormalOpaque[i];
+			if(isVisible(i, playerPositionInteger - chunks[chunkID].position.xyz, chunks[chunkID].voxelSize) || faceCount == 0) {
+				groupFaceCount += faceCount;
+			} else {
+				if(groupFaceCount != 0) {
+					commands[commandIndex] = addCommand(6*groupFaceCount, chunks[chunkID].vertexStartOpaque + 4*groupFaceOffset, chunkID);
+					commandIndex += 1;
+					groupFaceOffset += groupFaceCount;
+					groupFaceCount = 0;
+				}
+				groupFaceOffset += faceCount;
+			}
+		}
+		if(groupFaceCount != 0) {
+			commands[commandIndex] = addCommand(6*groupFaceCount, chunks[chunkID].vertexStartOpaque + 4*groupFaceOffset, chunkID);
+			commandIndex += 1;
+		}
+
+		for(; commandIndex < commandIndexEnd; commandIndex++) {
+			commands[commandIndex] = DrawElementsIndirectCommand(0, 0, 0, 0, 0);
+		}
 	}
 }

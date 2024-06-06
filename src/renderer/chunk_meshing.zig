@@ -51,6 +51,7 @@ pub var commandUniforms: struct {
 	commandIndexStart: c_int,
 	size: c_int,
 	isTransparent: c_int,
+	playerPositionInteger: c_int,
 } = undefined;
 var vao: c_uint = undefined;
 var vbo: c_uint = undefined;
@@ -158,16 +159,18 @@ pub fn bindTransparentShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, playe
 }
 
 pub fn drawChunksIndirect(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d, transparent: bool) void {
+	const drawCallsEstimate: u31 = @intCast(if(transparent) chunkIDs.len else chunkIDs.len*4);
 	var chunkIDAllocation: main.graphics.SubAllocation = .{.start = 0, .len = 0};
 	chunkIDBuffer.uploadData(chunkIDs, &chunkIDAllocation);
 	defer chunkIDBuffer.free(chunkIDAllocation);
-	const allocation = commandBuffer.rawAlloc(@intCast(chunkIDs.len));
+	const allocation = commandBuffer.rawAlloc(drawCallsEstimate);
 	defer commandBuffer.free(allocation);
 	commandShader.bind();
 	c.glUniform1ui(commandUniforms.chunkIDIndex, chunkIDAllocation.start);
 	c.glUniform1ui(commandUniforms.commandIndexStart, allocation.start);
 	c.glUniform1ui(commandUniforms.size, @intCast(chunkIDs.len));
 	c.glUniform1i(commandUniforms.isTransparent, @intFromBool(transparent));
+	c.glUniform3i(commandUniforms.playerPositionInteger, @intFromFloat(playerPos[0]), @intFromFloat(playerPos[1]), @intFromFloat(playerPos[2]));
 	c.glDispatchCompute(@intCast(@divFloor(chunkIDs.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
 	c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT);
 
@@ -177,7 +180,7 @@ pub fn drawChunksIndirect(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec
 		bindShaderAndUniforms(projMatrix, ambient, playerPos);
 	}
 	c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
-	c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), @intCast(chunkIDs.len), 0);
+	c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
 }
 
 pub const FaceData = extern struct {
@@ -208,7 +211,7 @@ pub const ChunkData = extern struct {
 	visibilityMask: i32,
 	voxelSize: i32,
 	vertexStartOpaque: u32,
-	vertexCountOpaque: u32,
+	faceCountsByNormalOpaque: [7]u32,
 	vertexStartTransparent: u32,
 	vertexCountTransparent: u32,
 };
@@ -232,6 +235,7 @@ const PrimitiveMesh = struct {
 	mutex: std.Thread.Mutex = .{},
 	bufferAllocation: graphics.SubAllocation = .{.start = 0, .len = 0},
 	vertexCount: u31 = 0,
+	byNormalCount: [7]u32 = .{0} ** 7,
 	wasChanged: bool = false,
 
 	fn deinit(self: *PrimitiveMesh) void {
@@ -497,12 +501,30 @@ const PrimitiveMesh = struct {
 		}
 		const fullBuffer = faceBuffer.allocateAndMapRange(len, &self.bufferAllocation);
 		defer faceBuffer.unmapRange(fullBuffer);
-		@memcpy(fullBuffer[0..self.coreLen], self.completeList[0..self.coreLen]);
-		var i: usize = self.coreLen;
-		for(0..6) |n| {
-			@memcpy(fullBuffer[i..][0..list[n].len], list[n]);
-			i += list[n].len;
+		// Sort the faces by normal to allow for backface culling on the GPU:
+		var i: u32 = 0;
+		var iStart = i;
+		const coreList = self.completeList[0..self.coreLen];
+		for(0..7) |normal| {
+			for(coreList) |face| {
+				if(main.models.extraQuadInfos.items[face.blockAndQuad.quadIndex].alignedNormalDirection) |normalDir| {
+					if(normalDir == normal) {
+						fullBuffer[i] = face;
+						i += 1;
+					}
+				} else if(normal == 6) {
+					fullBuffer[i] = face;
+					i += 1;
+				}
+			}
+			if(normal < 6) {
+				@memcpy(fullBuffer[i..][0..list[normal ^ 1].len], list[normal ^ 1]);
+				i += @intCast(list[normal ^ 1].len);
+			}
+			self.byNormalCount[normal] = i - iStart;
+			iStart = i;
 		}
+		std.debug.assert(i == fullBuffer.len);
 		self.vertexCount = @intCast(6*fullBuffer.len);
 		self.wasChanged = true;
 	}
@@ -1102,7 +1124,7 @@ pub const ChunkMesh = struct {
 			.voxelSize = self.pos.voxelSize,
 			.visibilityMask = self.visibilityMask,
 			.vertexStartOpaque = self.opaqueMesh.bufferAllocation.start*4,
-			.vertexCountOpaque = self.opaqueMesh.vertexCount,
+			.faceCountsByNormalOpaque = self.opaqueMesh.byNormalCount,
 			.vertexStartTransparent = self.transparentMesh.bufferAllocation.start*4,
 			.vertexCountTransparent = self.transparentMesh.bufferAllocation.len*6,
 		}}, &self.chunkAllocation);
