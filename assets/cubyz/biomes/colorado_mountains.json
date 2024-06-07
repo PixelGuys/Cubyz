@@ -14,11 +14,19 @@
 	"rivers" : true,
 
 	"stripes" : [
+		
 		{
-			"direction": [0, 0, 1],
-			"block": "cubyz:stone",
+			"direction": [1, 1, 5],
+			"block": "cubyz:limestone",
+			"distance": 12,
+			"offset": 6,
+			"width": 6
+		}
+		{
+			"direction": [1, 1, 5],
+			"block": "cubyz:sandstone",
 			"distance": 10,
-			"offset": 3,
+			"offset": 6,
 			"width": 2
 		}
 	],
@@ -28,14 +36,11 @@
 	"stoneBlock" : "cubyz:colorado_stone",
 	"structures" : [
 		{
-			"id" : "cubyz:simple_tree",
-			"leaves" : "cubyz:colorado_stone",
-			"log" : "cubyz:colorado_stone",
-			"top" : "cubyz:colorado_stone",
-			"chance" : 0.001,
-			"type" : "round",
-			"height" : 3,
-			"height_variation" : 1
+			"id" : "cubyz:simple_vegetation",
+			"block" : "cubyz:cactus",
+			"chance" : 0.005,
+			"height" : 1,
+			"height_variation" : 2
 		},
 		{
 			"id" : "cubyz:boulder",
