@@ -19,9 +19,9 @@
 			"block" : "cubyz:ice",
 			"chance" : 0.002,
 			"width" : 6,
-			"variation" : 2,
+			"variation" : 5,
 			"depth" : 3,
-			"smoothness" : 0.2
+			"smoothness" : 0.1
 		}
 	]
 }
