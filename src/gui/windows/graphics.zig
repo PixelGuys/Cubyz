@@ -44,7 +44,7 @@ fn anisotropicFilteringCallback(newValue: bool) void {
 }
 
 fn resolutionScaleCallback(newValue: u16) void {
-	settings.resolutionScale = @as(i32, newValue) - 2;
+	settings.resolutionScale = std.math.pow(f32, 2.0, @as(f32, @floatFromInt(newValue)) - 2.0);
 	main.Window.GLFWCallbacks.framebufferSize(null, main.Window.width, main.Window.height);
 }
 
@@ -54,7 +54,7 @@ pub fn onOpen() void {
 	list.add(CheckBox.init(.{0, 0}, 128, "Bloom", settings.bloom, &bloomCallback));
 	list.add(CheckBox.init(.{0, 0}, 128, "Vertical Synchronization", settings.vsync, &vsyncCallback));
 	list.add(CheckBox.init(.{0, 0}, 128, "Anisotropic Filtering", settings.anisotropicFiltering, &anisotropicFilteringCallback));
-	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffResolution Scale: ", "{}", &resolutions, @intCast(settings.resolutionScale + 2), &resolutionScaleCallback));
+	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffResolution Scale: ", "{}%", &resolutions, @as(u16, @intFromFloat(@log2(settings.resolutionScale) + 2.0)), &resolutionScaleCallback));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));

@@ -13,7 +13,7 @@ pub fn build(b: *std.Build) !void {
 	const optimize = b.standardOptimizeOption(.{});
 	const exe = b.addExecutable(.{
 		.name = "Cubyzig",
-		.root_source_file = .{.path = "src/main.zig"},
+		.root_source_file = b.path("src/main.zig"),
 		.target = target,
 		.optimize = optimize,
 		//.sanitize_thread = true,
@@ -73,9 +73,9 @@ pub fn build(b: *std.Build) !void {
 		exe.linkFramework("Cocoa");
 		exe.linkFramework("QuartzCore");
 		exe.linkSystemLibrary("X11");
-		exe.addLibraryPath(.{.path="/usr/local/GL/lib"});
-		exe.addLibraryPath(.{.path="/opt/X11/lib"});
-		exe.addRPath(.{.path="../Library"});
+		exe.addLibraryPath(b.path("/usr/local/GL/lib"));
+		exe.addLibraryPath(b.path("/opt/X11/lib"));
+		exe.addRPath(b.path("../Library"));
 	} else {
 		std.log.err("Unsupported target: {}\n", .{t.os.tag});
 	}
@@ -83,12 +83,12 @@ pub fn build(b: *std.Build) !void {
 	exe.root_module.addAnonymousImport("gui", .{
 		.target = target,
 		.optimize = optimize,
-		.root_source_file = .{.path = "src/gui/gui.zig"},
+		.root_source_file = b.path("src/gui/gui.zig"),
 	});
 	exe.root_module.addAnonymousImport("server", .{
 		.target = target,
 		.optimize = optimize,
-		.root_source_file = .{.path = "src/server/server.zig"},
+		.root_source_file = b.path("src/server/server.zig"),
 	});
 
 	b.installArtifact(exe);
@@ -103,7 +103,7 @@ pub fn build(b: *std.Build) !void {
 	run_step.dependOn(&run_cmd.step);
 
 	const exe_tests = b.addTest(.{
-		.root_source_file = .{ .path = "src/main.zig" },
+		.root_source_file = b.path("src/main.zig"),
 		.target = target,
 		.optimize = optimize,
 	});
