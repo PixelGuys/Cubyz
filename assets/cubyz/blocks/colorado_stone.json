@@ -6,5 +6,6 @@
 		"auto"
 	],
 	"model" : "cube",
+	"rotation" : "stairs",
 	"texture" : "cubyz:colorado_stone"
 }
