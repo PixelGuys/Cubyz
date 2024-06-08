@@ -1273,8 +1273,8 @@ const Recipe = struct {
 
 var arena: main.utils.NeverFailingArenaAllocator = undefined;
 var reverseIndices: std.StringHashMap(*BaseItem) = undefined;
-var itemList: [65536]BaseItem = undefined;
-var itemListSize: u16 = 0;
+pub var itemList: [65536]BaseItem = undefined;
+pub var itemListSize: u16 = 0;
 
 var recipeList: main.List(Recipe) = undefined;
 
