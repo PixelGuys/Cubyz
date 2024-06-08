@@ -680,7 +680,7 @@ pub const MeshSelection = struct {
 	}
 
 	var posBeforeBlock: Vec3i = undefined;
-	var selectedBlockPos: ?Vec3i = null;
+	pub var selectedBlockPos: ?Vec3i = null;
 	var selectionMin: Vec3f = undefined;
 	var selectionMax: Vec3f = undefined;
 	var lastPos: Vec3d = undefined;
