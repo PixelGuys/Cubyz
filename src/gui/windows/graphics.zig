@@ -19,6 +19,8 @@ pub var window = GuiWindow {
 const padding: f32 = 8;
 const renderDistances = [_]u16{4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24};
 
+const anisotropy = [_]u8{1, 2, 4, 8, 16};
+
 const resolutions = [_]u16{25, 50, 100};
 
 fn renderDistanceCallback(newValue: u16) void {
@@ -38,9 +40,9 @@ fn vsyncCallback(newValue: bool) void {
 	main.Window.reloadSettings();
 }
 
-fn anisotropicFilteringCallback(newValue: bool) void {
-	settings.anisotropicFiltering = newValue;
-	// TODO: Reload the textures.
+fn anisotropicFilteringCallback(newValue: u16) void {
+	settings.anisotropicFiltering = anisotropy[newValue];
+	main.blocks.meshes.reloadTextures(undefined);
 }
 
 fn resolutionScaleCallback(newValue: u16) void {
@@ -53,7 +55,7 @@ pub fn onOpen() void {
 	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffRender Distance: ", "{}", &renderDistances, settings.renderDistance - renderDistances[0], &renderDistanceCallback));
 	list.add(CheckBox.init(.{0, 0}, 128, "Bloom", settings.bloom, &bloomCallback));
 	list.add(CheckBox.init(.{0, 0}, 128, "Vertical Synchronization", settings.vsync, &vsyncCallback));
-	list.add(CheckBox.init(.{0, 0}, 128, "Anisotropic Filtering", settings.anisotropicFiltering, &anisotropicFilteringCallback));
+	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffAnisotropic Filtering: ", "{}x", &anisotropy, switch(settings.anisotropicFiltering) {1 => 0, 2 => 1, 4 => 2, 8 => 3, 16 => 4, else => 2}, &anisotropicFilteringCallback));
 	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffResolution Scale: ", "{}%", &resolutions, @as(u16, @intFromFloat(@log2(settings.resolutionScale) + 2.0)), &resolutionScaleCallback));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();

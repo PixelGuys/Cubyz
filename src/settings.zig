@@ -17,7 +17,7 @@ pub var entityDistance: u16 = 2;
 
 pub var cpuThreads: ?u64 = null;
 
-pub var anisotropicFiltering: bool = true;
+pub var anisotropicFiltering: u8 = 4.0;
 
 
 pub var fov: f32 = 70;
