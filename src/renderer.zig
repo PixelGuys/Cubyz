@@ -512,6 +512,7 @@ pub const MenuBackGround = struct {
 		lastTime = newTime;
 		const viewMatrix = Mat4f.rotationZ(angle);
 		shader.bind();
+		updateViewport(lastWidth, lastHeight, 70.0);
 
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
