@@ -252,10 +252,6 @@ pub fn pressAcquireSelectedBlock() void {
 	Player.acquireSelectedBlock();
 }
 
-pub fn releaseAcquireSelectedBlock() void {
-	
-}
-
 pub fn update(deltaTime: f64) void {
 	var movement = Vec3d{0, 0, 0};
 	const forward = vec.rotateZ(Vec3d{0, 1, 0}, -camera.rotation[2]);
