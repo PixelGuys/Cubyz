@@ -33,7 +33,7 @@
 	
 	"ground_structure" : [
 	],
-	"stoneBlock" : "cubyz:colorado_stone",
+	"stoneBlock" : "cubyz:ferrock",
 	"structures" : [
 		{
 			"id" : "cubyz:simple_vegetation",
@@ -45,7 +45,7 @@
 		{
 			"id" : "cubyz:boulder",
 			"chance" : 0.001,
-			"block" : "cubyz:colorado_stone",
+			"block" : "cubyz:ferrock",
 			"size" : 2,
 			"size_variance" : 7
 		}
