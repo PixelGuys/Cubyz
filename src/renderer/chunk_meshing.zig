@@ -795,45 +795,229 @@ pub const ChunkMesh = struct {
 	}
 
 	pub fn generateMesh(self: *ChunkMesh) void {
+		var canSeeNeighbor: [6][chunk.chunkSize][chunk.chunkSize]u32 = undefined;
+		@memset(std.mem.asBytes(&canSeeNeighbor), 0);
+		var canSeeAllNeighbors: [chunk.chunkSize][chunk.chunkSize]u32 = undefined;
+		@memset(std.mem.asBytes(&canSeeAllNeighbors), 0);
+		var hasFaces: [chunk.chunkSize][chunk.chunkSize]u32 = undefined;
+		@memset(std.mem.asBytes(&hasFaces), 0);
 		self.mutex.lock();
-		var n: u32 = 0;
-		var x: u8 = 0;
-		while(x < chunk.chunkSize): (x += 1) {
-			var y: u8 = 0;
-			while(y < chunk.chunkSize): (y += 1) {
-				var z: u8 = 0;
-				while(z < chunk.chunkSize): (z += 1) {
-					const block = self.chunk.data.getValue(chunk.getIndex(x, y, z));
-					if(block.typ == 0) continue;
-					// Check all neighbors:
-					for(chunk.Neighbors.iterable) |i| {
-						n += 1;
-						const x2 = x + chunk.Neighbors.relX[i];
-						const y2 = y + chunk.Neighbors.relY[i];
-						const z2 = z + chunk.Neighbors.relZ[i];
-						if(x2&chunk.chunkMask != x2 or y2&chunk.chunkMask != y2 or z2&chunk.chunkMask != z2) continue; // Neighbor is outside the chunk.
-						const neighborBlock = self.chunk.data.getValue(chunk.getIndex(x2, y2, z2));
-						if(canBeSeenThroughOtherBlock(block, neighborBlock, i)) {
-							if(block.transparent()) {
-								if(block.hasBackFace()) {
-									self.transparentMesh.appendNeighborFacingQuadsToCore(block, i ^ 1, x, y, z, true);
-								}
-								self.transparentMesh.appendNeighborFacingQuadsToCore(block, i, x2, y2, z2, false);
-							} else {
-								self.opaqueMesh.appendNeighborFacingQuadsToCore(block, i, x2, y2, z2, false);
+		const OcclusionInfo = packed struct {
+			canSeeNeighbor: u6 = 0,
+			canSeeAllNeighbors: bool = false,
+			hasExternalQuads: bool = false,
+			hasInternalQuads: bool = false,
+		};
+		var paletteCache = main.stackAllocator.alloc(OcclusionInfo, self.chunk.data.paletteLength);
+		defer main.stackAllocator.free(paletteCache);
+		for(0..self.chunk.data.paletteLength) |i| {
+			const block = self.chunk.data.palette[i];
+			const model = &models.models.items[blocks.meshes.model(block)];
+			var result: OcclusionInfo = .{};
+			if(model.noNeighborsOccluded or block.viewThrough()) {
+				result.canSeeAllNeighbors = true;
+			} else if(!model.allNeighborsOccluded) {
+				for(chunk.Neighbors.iterable) |neighbor| {
+					if(!model.isNeighborOccluded[neighbor]) {
+						result.canSeeNeighbor |= @as(u6, 1) << neighbor;
+					}
+				}
+			}
+			if(model.hasNeighborFacingQuads) {
+				result.hasExternalQuads = true;
+			}
+			if(model.internalQuads.len != 0) {
+				result.hasInternalQuads = true;
+			}
+			paletteCache[i] = result;
+		}
+		// Generate the bitMasks:
+		for(0..chunk.chunkSize) |_x| {
+			const x: u5 = @intCast(_x);
+			for(0..chunk.chunkSize) |_y| {
+				const y: u5 = @intCast(_y);
+				for(0..chunk.chunkSize) |_z| {
+					const z: u5 = @intCast(_z);
+					const paletteId = self.chunk.data.data.getValue(chunk.getIndex(x, y, z));
+					const occlusionInfo = paletteCache[paletteId];
+					const setBit = @as(u32, 1) << z;
+					if(occlusionInfo.canSeeAllNeighbors) {
+						canSeeAllNeighbors[x][y] |= setBit;
+					} else if(occlusionInfo.canSeeNeighbor != 0) {
+						for(chunk.Neighbors.iterable) |neighbor| {
+							if(occlusionInfo.canSeeNeighbor & @as(u6, 1) << neighbor != 0) {
+								canSeeNeighbor[neighbor][x][y] |= setBit;
 							}
 						}
 					}
-					if(block.transparent()) {
-						self.transparentMesh.appendInternalQuadsToCore(block, x, y, z, false);
-					} else {
-						self.opaqueMesh.appendInternalQuadsToCore(block, x, y, z, false);
+					if(occlusionInfo.hasExternalQuads) {
+						hasFaces[x][y] |= setBit;
+					}
+					if(occlusionInfo.hasInternalQuads) {
+						const block = self.chunk.data.palette[paletteId];
+						if(block.transparent()) {
+							self.transparentMesh.appendInternalQuadsToCore(block, x, y, z, false);
+						} else {
+							self.opaqueMesh.appendInternalQuadsToCore(block, x, y, z, false);
+						}
 					}
 				}
 			}
 		}
+		// Generate the meshes:
+		{
+			const neighbor = chunk.Neighbors.dirNegX;
+			for(1..chunk.chunkSize) |x| {
+				for(0..chunk.chunkSize) |y| {
+					var bitMask = hasFaces[x][y] & (canSeeNeighbor[neighbor ^ 1][x - 1][y] | canSeeAllNeighbors[x - 1][y]);
+					while(bitMask != 0) {
+						const z = @ctz(bitMask);
+						bitMask &= ~(@as(u32, 1) << @intCast(z));
+						const block = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z));
+						if(block.viewThrough() and !block.alwaysViewThrough()) { // Needs to check the neighbor block
+							const neighborBlock = self.chunk.data.getValue(chunk.getIndex(@intCast(x - 1), @intCast(y), z));
+							if(std.meta.eql(block, neighborBlock)) continue;
+						}
+						if(block.transparent()) {
+							if(block.hasBackFace()) {
+								self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor ^ 1, @intCast(x), @intCast(y), z, true);
+							}
+							self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x - 1), @intCast(y), z, false);
+						} else {
+							self.opaqueMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x - 1), @intCast(y), z, false);
+						}
+					}
+				}
+			}
+		}
+		{
+			const neighbor = chunk.Neighbors.dirPosX;
+			for(0..chunk.chunkSize-1) |x| {
+				for(0..chunk.chunkSize) |y| {
+					var bitMask = hasFaces[x][y] & (canSeeNeighbor[neighbor ^ 1][x + 1][y] | canSeeAllNeighbors[x + 1][y]);
+					while(bitMask != 0) {
+						const z = @ctz(bitMask);
+						bitMask &= ~(@as(u32, 1) << @intCast(z));
+						const block = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z));
+						if(block.viewThrough() and !block.alwaysViewThrough()) { // Needs to check the neighbor block
+							const neighborBlock = self.chunk.data.getValue(chunk.getIndex(@intCast(x + 1), @intCast(y), z));
+							if(std.meta.eql(block, neighborBlock)) continue;
+						}
+						if(block.transparent()) {
+							if(block.hasBackFace()) {
+								self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor ^ 1, @intCast(x), @intCast(y), z, true);
+							}
+							self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x + 1), @intCast(y), z, false);
+						} else {
+							self.opaqueMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x + 1), @intCast(y), z, false);
+						}
+					}
+				}
+			}
+		}
+		{
+			const neighbor = chunk.Neighbors.dirNegY;
+			for(0..chunk.chunkSize) |x| {
+				for(1..chunk.chunkSize) |y| {
+					var bitMask = hasFaces[x][y] & (canSeeNeighbor[neighbor ^ 1][x][y - 1] | canSeeAllNeighbors[x][y - 1]);
+					while(bitMask != 0) {
+						const z = @ctz(bitMask);
+						bitMask &= ~(@as(u32, 1) << @intCast(z));
+						const block = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z));
+						if(block.viewThrough() and !block.alwaysViewThrough()) { // Needs to check the neighbor block
+							const neighborBlock = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y - 1), z));
+							if(std.meta.eql(block, neighborBlock)) continue;
+						}
+						if(block.transparent()) {
+							if(block.hasBackFace()) {
+								self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor ^ 1, @intCast(x), @intCast(y), z, true);
+							}
+							self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x), @intCast(y - 1), z, false);
+						} else {
+							self.opaqueMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x), @intCast(y - 1), z, false);
+						}
+					}
+				}
+			}
+		}
+		{
+			const neighbor = chunk.Neighbors.dirPosY;
+			for(0..chunk.chunkSize) |x| {
+				for(0..chunk.chunkSize-1) |y| {
+					var bitMask = hasFaces[x][y] & (canSeeNeighbor[neighbor ^ 1][x][y + 1] | canSeeAllNeighbors[x][y + 1]);
+					while(bitMask != 0) {
+						const z = @ctz(bitMask);
+						bitMask &= ~(@as(u32, 1) << @intCast(z));
+						const block = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z));
+						if(block.viewThrough() and !block.alwaysViewThrough()) { // Needs to check the neighbor block
+							const neighborBlock = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y + 1), z));
+							if(std.meta.eql(block, neighborBlock)) continue;
+						}
+						if(block.transparent()) {
+							if(block.hasBackFace()) {
+								self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor ^ 1, @intCast(x), @intCast(y), z, true);
+							}
+							self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x), @intCast(y + 1), z, false);
+						} else {
+							self.opaqueMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x), @intCast(y + 1), z, false);
+						}
+					}
+				}
+			}
+		}
+		{
+			const neighbor = chunk.Neighbors.dirDown;
+			for(0..chunk.chunkSize) |x| {
+				for(0..chunk.chunkSize) |y| {
+					var bitMask = hasFaces[x][y] & (canSeeNeighbor[neighbor ^ 1][x][y] | canSeeAllNeighbors[x][y]) << 1;
+					while(bitMask != 0) {
+						const z = @ctz(bitMask);
+						bitMask &= ~(@as(u32, 1) << @intCast(z));
+						const block = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z));
+						if(block.viewThrough() and !block.alwaysViewThrough()) { // Needs to check the neighbor block
+							const neighborBlock = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z - 1));
+							if(std.meta.eql(block, neighborBlock)) continue;
+						}
+						if(block.transparent()) {
+							if(block.hasBackFace()) {
+								self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor ^ 1, @intCast(x), @intCast(y), z, true);
+							}
+							self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x), @intCast(y), z - 1, false);
+						} else {
+							self.opaqueMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x), @intCast(y), z - 1, false);
+						}
+					}
+				}
+			}
+		}
+		{
+			const neighbor = chunk.Neighbors.dirUp;
+			for(0..chunk.chunkSize) |x| {
+				for(0..chunk.chunkSize) |y| {
+					var bitMask = hasFaces[x][y] & (canSeeNeighbor[neighbor ^ 1][x][y] | canSeeAllNeighbors[x][y]) >> 1;
+					while(bitMask != 0) {
+						const z = @ctz(bitMask);
+						bitMask &= ~(@as(u32, 1) << @intCast(z));
+						const block = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z));
+						if(block.viewThrough() and !block.alwaysViewThrough()) { // Needs to check the neighbor block
+							const neighborBlock = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z + 1));
+							if(std.meta.eql(block, neighborBlock)) continue;
+						}
+						if(block.transparent()) {
+							if(block.hasBackFace()) {
+								self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor ^ 1, @intCast(x), @intCast(y), z, true);
+							}
+							self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x), @intCast(y), z + 1, false);
+						} else {
+							self.opaqueMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x), @intCast(y), z + 1, false);
+						}
+					}
+				}
+			}
+		}
+
 		// Check out the borders:
-		x = 0;
+		var x: u8 = 0;
 		while(x < chunk.chunkSize): (x += 1) {
 			var y: u8 = 0;
 			while(y < chunk.chunkSize): (y += 1) {

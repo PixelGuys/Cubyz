@@ -3,6 +3,7 @@ logs/
 saves/
 zig-out/
 zig-cache/
+.zig-cache/
 serverAssets/
 settings.json
 gui_layout.json

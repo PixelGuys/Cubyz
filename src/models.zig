@@ -42,6 +42,9 @@ pub const Model = struct {
 	internalQuads: []u16,
 	neighborFacingQuads: [6][]u16,
 	isNeighborOccluded: [6]bool,
+	allNeighborsOccluded: bool,
+	noNeighborsOccluded: bool,
+	hasNeighborFacingQuads: bool,
 
 	fn getFaceNeighbor(quad: *const QuadInfo) ?u3 {
 		var allZero: @Vector(3, bool) = .{true, true, true};
@@ -130,12 +133,18 @@ pub const Model = struct {
 				internalIndex += 1;
 			}
 		}
+		self.hasNeighborFacingQuads = false;
+		self.allNeighborsOccluded = true;
+		self.noNeighborsOccluded = true;
 		for(0..6) |neighbor| {
 			for(self.neighborFacingQuads[neighbor]) |quad| {
 				if(fullyOccludesNeighbor(&quads.items[quad])) {
 					self.isNeighborOccluded[neighbor] = true;
 				}
 			}
+			self.hasNeighborFacingQuads = self.hasNeighborFacingQuads or self.neighborFacingQuads[neighbor].len != 0;
+			self.allNeighborsOccluded = self.allNeighborsOccluded and self.isNeighborOccluded[neighbor];
+			self.noNeighborsOccluded = self.noNeighborsOccluded and !self.isNeighborOccluded[neighbor];
 		}
 		return modelIndex;
 	}
@@ -315,6 +324,8 @@ pub fn init() void {
 	quadDeduplication = std.AutoHashMap([@sizeOf(QuadInfo)]u8, u16).init(main.globalAllocator.allocator);
 
 	nameToIndex = std.StringHashMap(u16).init(main.globalAllocator.allocator);
+
+	nameToIndex.put("none", Model.init(&.{})) catch unreachable;
 
 	const cube = Model.init(&box(.{0, 0, 0}, .{1, 1, 1}, .{0, 0}));
 	nameToIndex.put("cube", cube) catch unreachable;
