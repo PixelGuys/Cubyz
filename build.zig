@@ -50,7 +50,6 @@ pub fn build(b: *std.Build) !void {
 	exe.addLibraryPath(libsDeps.path("lib"));
 	exe.addIncludePath(headersDeps.path("include"));
 	exe.linkSystemLibrary(depsLib);
-	exe.addRPath(libsDeps.path("lib")); // TODO: Maybe move the library next to the executable, to make this more portable?
 
 	if(t.os.tag == .windows) {
 		exe.linkSystemLibrary("ole32");
