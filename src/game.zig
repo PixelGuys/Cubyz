@@ -114,7 +114,8 @@ pub const World = struct {
 	milliTime: i64,
 	gameTime: Atomic(i64) = Atomic(i64).init(0),
 	spawn: Vec3f = undefined,
-	blockPalette: *assets.BlockPalette = undefined,
+	blockPalette: *assets.Palette = undefined,
+	biomePalette: *assets.Palette = undefined,
 	itemDrops: ClientItemDropManager = undefined,
 	playerBiome: Atomic(*const main.server.terrain.biomes.Biome) = undefined,
 
@@ -145,6 +146,7 @@ pub const World = struct {
 		self.conn.deinit();
 		self.itemDrops.deinit();
 		self.blockPalette.deinit();
+		self.biomePalette.deinit();
 		self.manager.deinit();
 		main.server.stop();
 		if(main.server.thread) |serverThread| {
@@ -160,11 +162,13 @@ pub const World = struct {
 
 	pub fn finishHandshake(self: *World, json: JsonElement) !void {
 		// TODO: Consider using a per-world allocator.
-		self.blockPalette = try assets.BlockPalette.init(main.globalAllocator, json.getChild("blockPalette"));
+		self.blockPalette = try assets.Palette.init(main.globalAllocator, json.getChild("blockPalette"), "cubyz:air");
 		errdefer self.blockPalette.deinit();
+		self.biomePalette = try assets.Palette.init(main.globalAllocator, json.getChild("biomePalette"), null);
+		errdefer self.biomePalette.deinit();
 		self.spawn = json.get(Vec3f, "spawn", .{0, 0, 0});
 
-		try assets.loadWorldAssets("serverAssets", self.blockPalette);
+		try assets.loadWorldAssets("serverAssets", self.blockPalette, self.biomePalette);
 		Player.loadFrom(json.getChild("player"));
 		Player.id = json.get(u32, "player_id", std.math.maxInt(u32));
 	}

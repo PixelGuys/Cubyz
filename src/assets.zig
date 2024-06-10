@@ -167,16 +167,16 @@ fn registerRecipesFromFile(file: []const u8) void {
 	items_zig.registerRecipes(file);
 }
 
-pub const BlockPalette = struct {
+pub const Palette = struct {
 	palette: main.List([]const u8),
-	pub fn init(allocator: NeverFailingAllocator, json: JsonElement) !*BlockPalette {
-		const self = allocator.create(BlockPalette);
-		self.* = BlockPalette {
+	pub fn init(allocator: NeverFailingAllocator, json: JsonElement, firstElement: ?[]const u8) !*Palette {
+		const self = allocator.create(Palette);
+		self.* = Palette {
 			.palette = main.List([]const u8).init(allocator),
 		};
 		errdefer self.deinit();
 		if(json != .JsonObject or json.JsonObject.count() == 0) {
-			self.palette.append(allocator.dupe(u8, "cubyz:air"));
+			if(firstElement) |elem| self.palette.append(allocator.dupe(u8, elem));
 		} else {
 			const palette = main.stackAllocator.alloc(?[]const u8, json.JsonObject.count());
 			defer main.stackAllocator.free(palette);
@@ -187,7 +187,7 @@ pub const BlockPalette = struct {
 			while(iterator.next()) |entry| {
 				palette[entry.value_ptr.as(usize, std.math.maxInt(usize))] = entry.key_ptr.*;
 			}
-			std.debug.assert(std.mem.eql(u8, palette[0].?, "cubyz:air"));
+			if(firstElement) |elem| std.debug.assert(std.mem.eql(u8, palette[0].?, elem));
 			for(palette) |val| {
 				std.log.info("palette[{}]: {s}", .{self.palette.items.len, val.?});
 				self.palette.append(allocator.dupe(u8, val orelse return error.MissingKeyInPalette));
@@ -196,7 +196,7 @@ pub const BlockPalette = struct {
 		return self;
 	}
 
-	pub fn deinit(self: *BlockPalette) void {
+	pub fn deinit(self: *Palette) void {
 		for(self.palette.items) |item| {
 			self.palette.allocator.free(item);
 		}
@@ -205,11 +205,11 @@ pub const BlockPalette = struct {
 		allocator.destroy(self);
 	}
 
-	pub fn add(self: *BlockPalette, id: []const u8) void {
+	pub fn add(self: *Palette, id: []const u8) void {
 		self.palette.append(self.palette.allocator.dupe(u8, id));
 	}
 
-	pub fn save(self: *BlockPalette, allocator: NeverFailingAllocator) JsonElement {
+	pub fn save(self: *Palette, allocator: NeverFailingAllocator) JsonElement {
 		const json = JsonElement.initObject(allocator);
 		errdefer json.free(allocator);
 		for(self.palette.items, 0..) |item, i| {
@@ -221,7 +221,7 @@ pub const BlockPalette = struct {
 
 var loadedAssets: bool = false;
 
-pub fn loadWorldAssets(assetFolder: []const u8, palette: *BlockPalette) !void {
+pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePalette: *Palette) !void {
 	if(loadedAssets) return; // The assets already got loaded by the server.
 	loadedAssets = true;
 	var blocks = commonBlocks.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
@@ -238,8 +238,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, palette: *BlockPalette) !void {
 	errdefer unloadAssets();
 
 	// blocks:
-	var block: u32 = 0;
-	for(palette.palette.items) |id| {
+	for(blockPalette.palette.items) |id| {
 		const nullValue = blocks.get(id);
 		var json: JsonElement = undefined;
 		if(nullValue) |value| {
@@ -249,14 +248,12 @@ pub fn loadWorldAssets(assetFolder: []const u8, palette: *BlockPalette) !void {
 			json = .{.JsonNull={}};
 		}
 		try registerBlock(assetFolder, id, json);
-		block += 1;
 	}
 	var iterator = blocks.iterator();
 	while(iterator.next()) |entry| {
 		if(blocks_zig.hasRegistered(entry.key_ptr.*)) continue;
 		try registerBlock(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
-		palette.add(entry.key_ptr.*);
-		block += 1;
+		blockPalette.add(entry.key_ptr.*);
 	}
 
 	// items:
@@ -273,9 +270,22 @@ pub fn loadWorldAssets(assetFolder: []const u8, palette: *BlockPalette) !void {
 	}
 
 	// Biomes:
+	for(biomePalette.palette.items) |id| {
+		const nullValue = biomes.get(id);
+		var json: JsonElement = undefined;
+		if(nullValue) |value| {
+			json = value;
+		} else {
+			std.log.err("Missing biomes: {s}. Replacing it with default biomes.", .{id});
+			json = .{.JsonNull={}};
+		}
+		biomes_zig.register(id, json);
+	}
 	iterator = biomes.iterator();
 	while(iterator.next()) |entry| {
+		if(biomes_zig.hasRegistered(entry.key_ptr.*)) continue;
 		biomes_zig.register(entry.key_ptr.*, entry.value_ptr.*);
+		biomePalette.add(entry.key_ptr.*);
 	}
 	biomes_zig.finishLoading();
 

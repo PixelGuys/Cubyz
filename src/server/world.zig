@@ -311,7 +311,8 @@ pub const ServerWorld = struct {
 	pub const earthGravity: f32 = 9.81;
 
 	itemDropManager: ItemDropManager = undefined,
-	blockPalette: *main.assets.BlockPalette = undefined,
+	blockPalette: *main.assets.Palette = undefined,
+	biomePalette: *main.assets.Palette = undefined,
 	chunkManager: ChunkManager = undefined,
 
 	generated: bool = false,
@@ -376,21 +377,25 @@ pub const ServerWorld = struct {
 		self.wio = WorldIO.init(try files.openDir(try std.fmt.bufPrint(&buf, "saves/{s}", .{name})), self);
 		errdefer self.wio.deinit();
 		const blockPaletteJson = try files.readToJson(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/palette.json", .{name}));
-		self.blockPalette = try main.assets.BlockPalette.init(main.globalAllocator, blockPaletteJson);
+		self.blockPalette = try main.assets.Palette.init(main.globalAllocator, blockPaletteJson, "cubyz:air");
 		errdefer self.blockPalette.deinit();
+		const biomePaletteJson = try files.readToJson(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/biome_palette.json", .{name}));
+		self.biomePalette = try main.assets.Palette.init(main.globalAllocator, biomePaletteJson, null);
+		errdefer self.biomePalette.deinit();
 		errdefer main.assets.unloadAssets();
 
 		if(self.wio.hasWorldData()) {
 			self.seed = try self.wio.loadWorldSeed();
 			self.generated = true;
-			try main.assets.loadWorldAssets(try std.fmt.bufPrint(&buf, "saves/{s}/assets/", .{name}), self.blockPalette);
+			try main.assets.loadWorldAssets(try std.fmt.bufPrint(&buf, "saves/{s}/assets/", .{name}), self.blockPalette, self.biomePalette);
 		} else {
 			self.seed = main.random.nextInt(u48, &main.seed);
-			try main.assets.loadWorldAssets(try std.fmt.bufPrint(&buf, "saves/{s}/assets/", .{name}), self.blockPalette);
+			try main.assets.loadWorldAssets(try std.fmt.bufPrint(&buf, "saves/{s}/assets/", .{name}), self.blockPalette, self.biomePalette);
 			try self.wio.saveWorldData();
 		}
 		// Store the block palette now that everything is loaded.
 		try files.writeJson(try std.fmt.bufPrint(&buf, "saves/{s}/palette.json", .{name}), self.blockPalette.save(arenaAllocator));
+		try files.writeJson(try std.fmt.bufPrint(&buf, "saves/{s}/biome_palette.json", .{name}), self.biomePalette.save(arenaAllocator));
 
 		self.chunkManager = try ChunkManager.init(self, generatorSettings);
 		errdefer self.chunkManager.deinit();
@@ -411,6 +416,7 @@ pub const ServerWorld = struct {
 		self.chunkManager.deinit();
 		self.itemDropManager.deinit();
 		self.blockPalette.deinit();
+		self.biomePalette.deinit();
 		self.wio.deinit();
 		main.globalAllocator.free(self.name);
 		main.globalAllocator.destroy(self);
