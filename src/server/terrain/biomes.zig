@@ -258,7 +258,7 @@ pub const Biome = struct {
 			.supportsRivers = json.get(bool, "rivers", false),
 			.preferredMusic = main.globalAllocator.dupe(u8, json.get([]const u8, "music", "")),
 			.isValidPlayerSpawn = json.get(bool, "validPlayerSpawn", false),
-			.chance = json.get(f32, "chance", 1),
+			.chance = json.get(f32, "chance", if(json == .JsonNull) 0 else 1),
 			.maxSubBiomeCount = json.get(f32, "maxSubBiomeCount", std.math.floatMax(f32)),
 		};
 		if(self.minHeight > self.maxHeight) {
