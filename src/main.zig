@@ -239,6 +239,10 @@ fn logToStdErr(comptime format: []const u8, args: anytype) void {
 }
 
 fn escape() void {
+	if(gui.selectedTextInput != null) {
+		gui.selectedTextInput = null;
+		return;
+	}
 	if(game.world == null) return;
 	gui.toggleGameMenu();
 }
