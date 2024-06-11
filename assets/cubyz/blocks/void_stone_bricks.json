@@ -1,0 +1,11 @@
+{
+	"class" : "stone",
+	"hardness" : 25,
+	"breakingPower" : 1,
+	"drops" : [
+		"auto"
+	],
+	"rotation" : "stairs",
+	"model" : "cube",
+	"texture" : "cubyz:void_stone_bricks"
+}
