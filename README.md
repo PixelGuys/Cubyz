@@ -53,9 +53,18 @@ sudo apt install libgl-dev libasound2-dev libx11-dev libxcursor-dev libxrandr-de
 Try to follow the style of the existing code. The `check_format.py` file can be used to find violations of indentation and line endings. `// TODO: Add a full style guide` <br>
 If you have any more questions, you can ask them over on [Discord](https://discord.gg/XtqCRRG).
 ### Textures
-If you want to add new textures, make sure they fit the style of the game.
+If you want to add new textures, make sure they fit the style of the game. It's recommended that you have baseline skills in pixel art before attempting to make textures. A great collection of tutorials can be found [here](https://lospec.com/pixel-art-tutorials)
+
 If any of the following points are ignored, your texture will be rejected:
-1. The size of block and item textures must be 16×16 Pixels.
-2. There must be at most 16 different colors in the entire texture.
-3. Textures should be shaded with hue shifting, rather than with darkening only.\
-If you are not sure how to use hue shifting, [here](https://www.youtube.com/watch?v=PNtMAxYaGyg&t=11) is a video that explains it well.
+1. Resolution is 16 x 16
+2. Lighting direction is top-left for items and blocks.
+3. Keep colour palettes small. Do not use near-duplicate colours, do not use noise, filters, or brushes that create unnecessary amounts of colours. Most blocks can be textured with ~4-6 colours.
+4. Reference other block textures to see how colours & contrast is used. Test your textures ingame alongside other blocks.
+5. Blocks should tile smoothly. Avoid creating seams or repetitive patterns.
+6. Use hue shifting conservatively. Take the material into account when choosing colours.
+7. Items have full, coloured, 1-pixel outlines. It should be shaded so that the side in light (top left) is brighter, while the side in shadow (bottom right) is darker. 
+8. Items should have higher contrast than their block counterparts.
+
+Your texture may be edited or replaced to ensure a consistent art style throughout the game. 
+
+For further information, ask <img src="https://avatars.githubusercontent.com/u/122191047" width="20" height="20">[careeoki](https://github.com/careeoki) on [Discord](https://discord.gg/XtqCRRG). She has made a majority of the art for Cubyz.
