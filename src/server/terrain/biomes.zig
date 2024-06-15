@@ -7,6 +7,7 @@ const JsonElement = main.JsonElement;
 const terrain = main.server.terrain;
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 const vec = @import("main.vec");
+const Vec3f = main.vec.Vec3f;
 const Vec3d = main.vec.Vec3d;
 
 const StructureModel = struct {
@@ -182,6 +183,14 @@ pub const Interpolation = enum(u8) {
 	square,
 };
 
+fn u32ToVec3(color: u32) Vec3f {
+    const r = @as(f32, @floatFromInt((color >> 16) & 0xFF)) / 255.0;
+    const g = @as(f32, @floatFromInt((color >> 8) & 0xFF)) / 255.0;
+    const b = @as(f32, @floatFromInt(color & 0xFF)) / 255.0;
+    
+    return .{ r, g, b };
+}
+
 /// A climate region with special ground, plants and structures.
 pub const Biome = struct {
 	const GenerationProperties = packed struct(u8) {
@@ -225,6 +234,8 @@ pub const Biome = struct {
 	crystals: u32,
 	stalagmites: u32,
 	stoneBlockType: u16,
+	fogDensity: f32,
+	fogColor: Vec3f,
 	id: []const u8,
 	structure: BlockStructure = undefined,
 	/// Whether the starting point of a river can be in this biome. If false rivers will be able to flow through this biome anyways.
@@ -246,6 +257,8 @@ pub const Biome = struct {
 			.isCave = json.get(bool, "isCave", false),
 			.radius = json.get(f32, "radius", 256),
 			.stoneBlockType = blocks.getByID(json.get([]const u8, "stoneBlock", "cubyz:stone")),
+			.fogColor = u32ToVec3(json.get(u32, "fogColor", 0xffccccff)),
+			.fogDensity = json.get(f32, "fogDensity", 1.0)/15.0/128.0,
 			.roughness = json.get(f32, "roughness", 0),
 			.hills = json.get(f32, "hills", 0),
 			.mountains = json.get(f32, "mountains", 0),

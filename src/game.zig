@@ -103,7 +103,7 @@ pub const Player = struct {
 };
 
 pub const World = struct {
-	const dayCycle: u63 = 12000; // Length of one in-game day in 100ms. Midnight is at DAY_CYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
+	const dayCycle: u63 = 300; // Length of one in-game day in 100ms. Midnight is at DAY_CYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
 
 	conn: *Connection,
 	manager: *ConnectionManager,
@@ -185,6 +185,7 @@ pub const World = struct {
 		// Ambient light:
 		{
 			const dayTime = @abs(@mod(self.gameTime.load(.monotonic), dayCycle) -% dayCycle/2);
+			const biomeFog = fog.fogColor;
 			if(dayTime < dayCycle/4 - dayCycle/16) {
 				self.ambientLight = 0.1;
 				self.clearColor[0] = 0;
@@ -192,29 +193,29 @@ pub const World = struct {
 				self.clearColor[2] = 0;
 			} else if(dayTime > dayCycle/4 + dayCycle/16) {
 				self.ambientLight = 1;
-				self.clearColor[0] = 0.8;
-				self.clearColor[1] = 0.8;
-				self.clearColor[2] = 1.0;
+				self.clearColor[0] = biomeFog[0];
+				self.clearColor[1] = biomeFog[1];
+				self.clearColor[2] = biomeFog[2];
 			} else {
 				// b:
 				if(dayTime > dayCycle/4) {
-					self.clearColor[2] = @as(f32, @floatFromInt(dayTime - dayCycle/4))/@as(f32, @floatFromInt(dayCycle/16));
+					self.clearColor[2] = biomeFog[2] * @as(f32, @floatFromInt(dayTime - dayCycle/4))/@as(f32, @floatFromInt(dayCycle/16));
 				} else {
 					self.clearColor[2] = 0;
 				}
 				// g:
 				if(dayTime > dayCycle/4 + dayCycle/32) {
-					self.clearColor[1] = 0.8;
+					self.clearColor[1] = biomeFog[1];
 				} else if(dayTime > dayCycle/4 - dayCycle/32) {
-					self.clearColor[1] = 0.8 - 0.8*@as(f32, @floatFromInt(dayCycle/4 + dayCycle/32 - dayTime))/@as(f32, @floatFromInt(dayCycle/16));
+					self.clearColor[1] = biomeFog[1] - biomeFog[1]*@as(f32, @floatFromInt(dayCycle/4 + dayCycle/32 - dayTime))/@as(f32, @floatFromInt(dayCycle/16));
 				} else {
 					self.clearColor[1] = 0;
 				}
 				// r:
 				if(dayTime > dayCycle/4) {
-					self.clearColor[0] = 0.8;
+					self.clearColor[0] = biomeFog[0];
 				} else {
-					self.clearColor[0] = 0.8 - 0.8*@as(f32, @floatFromInt(dayCycle/4 - dayTime))/@as(f32, @floatFromInt(dayCycle/16));
+					self.clearColor[0] = biomeFog[0] - biomeFog[0]*@as(f32, @floatFromInt(dayCycle/4 - dayTime))/@as(f32, @floatFromInt(dayCycle/16));
 				}
 				self.ambientLight = 0.1 + 0.9*@as(f32, @floatFromInt(dayTime - (dayCycle/4 - dayCycle/16)))/@as(f32, @floatFromInt(dayCycle/8));
 			}
@@ -227,7 +228,7 @@ pub var world: ?*World = null;
 
 pub var projectionMatrix: Mat4f = Mat4f.identity();
 
-pub var fog = Fog{.color=.{0, 1, 0.5}, .density=1.0/15.0/128.0}; // TODO: Make this depend on the render distance.
+pub var fog = Fog{.color=.{0.8, 0.8, 1}, .fogColor=.{0.8, 0.8, 1}, .density=1.0/15.0/128.0}; // TODO: Make this depend on the render distance.
 
 var nextBlockPlaceTime: ?i64 = null;
 var nextBlockBreakTime: ?i64 = null;
@@ -325,5 +326,14 @@ pub fn update(deltaTime: f64) void {
 		defer Player.mutex.unlock();
 		Player.super.pos += movement*@as(Vec3d, @splat(deltaTime));
 	}
+
+	const biome = world.?.playerBiome.load(.seq_cst);
+	// std.log.debug("r {d}, g {d}, b {d}", .{biome.fogColor[0], biome.fogColor[1], biome.fogColor[2]});
+	
+	const t = 1 - @as(f32, @floatCast(@exp(-2 * deltaTime)));
+
+	fog.fogColor = (biome.fogColor - fog.fogColor) * @as(Vec3f, @splat(t)) + fog.fogColor;
+	fog.density = (biome.fogDensity - fog.density) * t + fog.density;
+
 	world.?.update();
 }

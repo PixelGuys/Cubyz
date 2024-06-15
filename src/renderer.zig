@@ -132,7 +132,7 @@ pub fn render(playerPosition: Vec3d) void {
 		const skyColor = vec.xyz(world.clearColor);
 		game.fog.color = skyColor;
 
-		renderWorld(world, ambient, skyColor, playerPosition);
+		renderWorld(world, ambient, game.fog.color, playerPosition);
 		const startTime = std.time.milliTimestamp();
 		mesh_storage.updateMeshes(startTime + maximumMeshTime);
 	} else {

@@ -1912,6 +1912,7 @@ pub const Image = struct {
 };
 
 pub const Fog = struct {
+	fogColor: Vec3f,
 	color: Vec3f,
 	density: f32,
 };
