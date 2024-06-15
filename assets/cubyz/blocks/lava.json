@@ -1,0 +1,15 @@
+{
+	"class" : "fluid",
+	"drops" : [
+		"auto"
+	],
+	"selectable" : false,
+	"solid" : false,
+	"degradable" : true,
+	"transparent" : true,
+	"hasBackFace" : true,
+	"absorbedLight" : 0x00ffff,
+	"emittedLight" : 0xff0000,
+	"model" : "cube",
+	"texture" : "cubyz:lava"
+}
