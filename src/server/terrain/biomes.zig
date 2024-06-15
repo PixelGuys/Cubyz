@@ -184,11 +184,11 @@ pub const Interpolation = enum(u8) {
 };
 
 fn u32ToVec3(color: u32) Vec3f {
-    const r = @as(f32, @floatFromInt((color >> 16) & 0xFF)) / 255.0;
-    const g = @as(f32, @floatFromInt((color >> 8) & 0xFF)) / 255.0;
-    const b = @as(f32, @floatFromInt(color & 0xFF)) / 255.0;
-    
-    return .{ r, g, b };
+	const r = @as(f32, @floatFromInt((color >> 16) & 0xFF)) / 255.0;
+	const g = @as(f32, @floatFromInt((color >> 8) & 0xFF)) / 255.0;
+	const b = @as(f32, @floatFromInt(color & 0xFF)) / 255.0;
+	
+	return .{ r, g, b };
 }
 
 /// A climate region with special ground, plants and structures.
