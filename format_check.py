@@ -14,6 +14,7 @@ for subdir, dirs, files in os.walk("."):
 		if filepath.startswith("./saves"): continue
 		if filepath.startswith("./serverAssets"): continue
 		if filepath.startswith("./zig-cache"): continue
+		if filepath.startswith("./.zig-cache"): continue
 
 		if filepath.endswith(".json") or filepath.endswith(".zig") or filepath.endswith(".py") or filepath.endswith(".zon") or filepath.endswith(".vs") or filepath.endswith(".fs") or filepath.endswith(".glsl"):
 			with open(filepath, "r", newline = '') as f:
