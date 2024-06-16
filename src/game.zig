@@ -228,7 +228,7 @@ pub var world: ?*World = null;
 
 pub var projectionMatrix: Mat4f = Mat4f.identity();
 
-pub var fog = Fog{.color=.{0.8, 0.8, 1}, .fogColor=.{0.8, 0.8, 1}, .density=1.0/15.0/128.0}; // TODO: Make this depend on the render distance.
+pub var fog = Fog{.skyColor=.{0.8, 0.8, 1}, .fogColor=.{0.8, 0.8, 1}, .density=1.0/15.0/128.0}; // TODO: Make this depend on the render distance.
 
 var nextBlockPlaceTime: ?i64 = null;
 var nextBlockBreakTime: ?i64 = null;
@@ -327,8 +327,7 @@ pub fn update(deltaTime: f64) void {
 		Player.super.pos += movement*@as(Vec3d, @splat(deltaTime));
 	}
 
-	const biome = world.?.playerBiome.load(.seq_cst);
-	// std.log.debug("r {d}, g {d}, b {d}", .{biome.fogColor[0], biome.fogColor[1], biome.fogColor[2]});
+	const biome = world.?.playerBiome.monotonic;
 	
 	const t = 1 - @as(f32, @floatCast(@exp(-2 * deltaTime)));
 

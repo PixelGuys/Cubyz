@@ -11,7 +11,7 @@
 	"music" : "EasternThought",
 
 	"fogDensity" : 20,
-	"fogColor" : 0xffe0dcc3,
+	"fogColor" : 0xe0dcc3,
 	
 	"ground_structure" : [
 		"3 to 4 cubyz:sand"
