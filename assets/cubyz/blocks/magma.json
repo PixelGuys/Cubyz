@@ -1,0 +1,10 @@
+{
+	"class" : "stone",
+	"hardness" : 2,
+	"drops" : [
+		"auto"
+	],
+	"emittedLight" : 0x884928,
+	"model" : "cube",
+	"texture" : "cubyz:magma"
+}
