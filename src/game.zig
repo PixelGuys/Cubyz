@@ -327,7 +327,7 @@ pub fn update(deltaTime: f64) void {
 		Player.super.pos += movement*@as(Vec3d, @splat(deltaTime));
 	}
 
-	const biome = world.?.playerBiome.monotonic;
+	const biome = world.?.playerBiome.load(.monotonic);
 	
 	const t = 1 - @as(f32, @floatCast(@exp(-2 * deltaTime)));
 
