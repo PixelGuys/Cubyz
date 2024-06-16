@@ -130,7 +130,7 @@ pub fn render(playerPosition: Vec3d) void {
 		ambient[1] = @max(0.1, world.ambientLight);
 		ambient[2] = @max(0.1, world.ambientLight);
 		const skyColor = vec.xyz(world.clearColor);
-		game.fog.color = skyColor;
+		game.fog.skyColor = skyColor;
 
 		renderWorld(world, ambient, skyColor, playerPosition);
 		const startTime = std.time.milliTimestamp();
@@ -271,7 +271,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glUniform1i(deferredUniforms.color, 3);
 	c.glUniform1i(deferredUniforms.depthTexture, 4);
 	if(!blocks.meshes.hasFog(playerBlock)) {
-		c.glUniform3fv(deferredUniforms.@"fog.color", 1, @ptrCast(&game.fog.color));
+		c.glUniform3fv(deferredUniforms.@"fog.color", 1, @ptrCast(&game.fog.skyColor));
 		c.glUniform1f(deferredUniforms.@"fog.density", game.fog.density);
 	} else {
 		const fogColor = blocks.meshes.fogColor(playerBlock);
@@ -337,7 +337,7 @@ const Bloom = struct {
 		buffer1.bind();
 		c.glUniform1i(colorExtractUniforms.depthTexture, 4);
 		if(!blocks.meshes.hasFog(playerBlock)) {
-			c.glUniform3fv(colorExtractUniforms.@"fog.color", 1, @ptrCast(&game.fog.color));
+			c.glUniform3fv(colorExtractUniforms.@"fog.color", 1, @ptrCast(&game.fog.skyColor));
 			c.glUniform1f(colorExtractUniforms.@"fog.density", game.fog.density);
 		} else {
 			const fogColor = blocks.meshes.fogColor(playerBlock);

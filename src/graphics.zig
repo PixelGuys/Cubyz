@@ -1912,7 +1912,8 @@ pub const Image = struct {
 };
 
 pub const Fog = struct {
-	color: Vec3f,
+	fogColor: Vec3f,
+	skyColor: Vec3f,
 	density: f32,
 };
 
