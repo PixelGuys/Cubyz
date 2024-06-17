@@ -263,7 +263,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 		Bloom.bindReplacementImage();
 	}
 	gpu_performance_measuring.startQuery(.final_copy);
-	c.glViewport(0, 0, main.Window.width, main.Window.height);
+	if(activeFrameBuffer == 0) c.glViewport(0, 0, main.Window.width, main.Window.height);
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
 	worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
 	worldFrameBuffer.unbind();
@@ -530,7 +530,10 @@ pub const MenuBackGround = struct {
 
 		// Change the viewport and the matrices to render 4 cube faces:
 
+		const oldResolutionScale = main.settings.resolutionScale;
+		main.settings.resolutionScale = 1;
 		updateViewport(size, size, 90.0);
+		main.settings.resolutionScale = oldResolutionScale;
 		defer updateViewport(Window.width, Window.height, settings.fov);
 		
 		var buffer: graphics.FrameBuffer = undefined;
