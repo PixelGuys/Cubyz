@@ -30,11 +30,11 @@ pub fn deinit() void {
 pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView) void {
 	if(chunk.super.pos.voxelSize < 8) {
 		// Uses a blue noise pattern for all structure that shouldn't touch.
-		const blueNoise = noise.BlueNoise.getRegionData(main.stackAllocator, chunk.super.pos.wx -% 8, chunk.super.pos.wy -% 8, chunk.super.width + 16, chunk.super.width + 16);
+		const blueNoise = noise.BlueNoise.getRegionData(main.stackAllocator, chunk.super.pos.wx -% 16, chunk.super.pos.wy -% 16, chunk.super.width + 32, chunk.super.width + 32);
 		defer main.stackAllocator.free(blueNoise);
 		for(blueNoise) |coordinatePair| {
-			const px = @as(i32, @intCast(coordinatePair >> 16)) - 8; // TODO: Maybe add a blue-noise iterator or something like that?
-			const py = @as(i32, @intCast(coordinatePair & 0xffff)) - 8;
+			const px = @as(i32, @intCast(coordinatePair >> 16)) - 16; // TODO: Maybe add a blue-noise iterator or something like that?
+			const py = @as(i32, @intCast(coordinatePair & 0xffff)) - 16;
 			const wpx = chunk.super.pos.wx +% px;
 			const wpy = chunk.super.pos.wy +% py;
 
@@ -65,11 +65,11 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 		}
 	} else { // TODO: Make this case work with cave-structures. Low priority because caves aren't even generated this far out.
 		var px: i32 = 0;
-		while(px < chunk.super.width + 16) : (px += chunk.super.pos.voxelSize) {
+		while(px < chunk.super.width + 32) : (px += chunk.super.pos.voxelSize) {
 			var py: i32 = 0;
-			while(py < chunk.super.width + 16) : (py += chunk.super.pos.voxelSize) {
-				const wpx = px -% 8 +% chunk.super.pos.wx;
-				const wpy = py -% 8 +% chunk.super.pos.wy;
+			while(py < chunk.super.width + 32) : (py += chunk.super.pos.voxelSize) {
+				const wpx = px -% 16 +% chunk.super.pos.wx;
+				const wpy = py -% 16 +% chunk.super.pos.wy;
 
 				const relZ = @as(i32, @intFromFloat(biomeMap.getSurfaceHeight(wpx, wpy))) -% chunk.super.pos.wz;
 				if(relZ < -32 or relZ >= chunk.super.width + 32) continue;
@@ -82,7 +82,7 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 					// Increase chance if there are less spawn points considered. Messes up positions, but at that distance density matters more.
 					adaptedChance = 1 - std.math.pow(f32, 1 - adaptedChance, @as(f32, @floatFromInt(chunk.super.pos.voxelSize*chunk.super.pos.voxelSize)));
 					if(randomValue < adaptedChance) {
-						model.generate(px - 8, py - 8, relZ, chunk, caveMap, &seed);
+						model.generate(px - 16, py - 16, relZ, chunk, caveMap, &seed);
 						break;
 					} else {
 						// Make sure that after the first one was considered all others get the correct chances.
