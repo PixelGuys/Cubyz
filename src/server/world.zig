@@ -425,6 +425,7 @@ pub const ServerWorld = struct {
 
 	const RegenerateLODTask = struct {
 		pos: ChunkPosition,
+		storeMaps: bool,
 
 		const vtable = utils.ThreadPool.VTable{
 			.getPriority = @ptrCast(&getPriority),
@@ -433,10 +434,11 @@ pub const ServerWorld = struct {
 			.clean = @ptrCast(&clean),
 		};
 		
-		pub fn schedule(pos: ChunkPosition) void {
+		pub fn schedule(pos: ChunkPosition, storeMaps: bool) void {
 			const task = main.globalAllocator.create(RegenerateLODTask);
 			task.* = .{
 				.pos = pos,
+				.storeMaps = storeMaps,
 			};
 			main.threadPool.addTask(task, &vtable);
 		}
@@ -469,6 +471,22 @@ pub const ServerWorld = struct {
 							};
 							const ch = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(pos);
 							defer ch.decreaseRefCount();
+							if(self.storeMaps and ch.super.pos.voxelSize == 1) { // TODO: Remove after first release
+								// Store the surrounding map pieces as well:
+								const mapStartX = ch.super.pos.wx -% main.server.terrain.SurfaceMap.MapFragment.mapSize/2 & ~@as(i32, main.server.terrain.SurfaceMap.MapFragment.mapMask);
+								const mapStartY = ch.super.pos.wy -% main.server.terrain.SurfaceMap.MapFragment.mapSize/2 & ~@as(i32, main.server.terrain.SurfaceMap.MapFragment.mapMask);
+								for(0..2) |dx| {
+									for(0..2) |dy| {
+										const mapX = mapStartX +% main.server.terrain.SurfaceMap.MapFragment.mapSize*@as(i32, @intCast(dx));
+										const mapY = mapStartY +% main.server.terrain.SurfaceMap.MapFragment.mapSize*@as(i32, @intCast(dy));
+										const map = main.server.terrain.SurfaceMap.getOrGenerateFragmentAndIncreaseRefCount(mapX, mapY, ch.super.pos.voxelSize);
+										defer map.decreaseRefCount();
+										if(!map.wasStored.swap(true, .monotonic)) {
+											map.save(null, .{});
+										}
+									}
+								}
+							}
 							var nextPos = pos;
 							nextPos.wx &= ~@as(i32, self.pos.voxelSize*chunk.chunkSize);
 							nextPos.wy &= ~@as(i32, self.pos.voxelSize*chunk.chunkSize);
@@ -492,6 +510,16 @@ pub const ServerWorld = struct {
 
 	fn regenerateLOD(self: *ServerWorld, newBiomeCheckSum: i64) !void {
 		std.log.info("Biomes have changed. Regenerating LODs... (this might take some time)", .{});
+		const hasSurfaceMaps = blk: {
+			const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{self.name}) catch unreachable;
+			defer main.stackAllocator.free(path);
+			var dir = std.fs.cwd().openDir(path, .{}) catch break :blk false;
+			defer dir.close();
+			break :blk true;
+		};
+		if(hasSurfaceMaps) {
+			try terrain.SurfaceMap.regenerateLOD(self.name);
+		}
 		// Delete old LODs:
 		for(1..main.settings.highestLOD+1) |i| {
 			const lod = @as(u32, 1) << @intCast(i);
@@ -535,7 +563,7 @@ pub const ServerWorld = struct {
 		}
 		// Load all the stored chunks and update their next LODs.
 		for(chunkPositions.items) |pos| {
-			RegenerateLODTask.schedule(pos);
+			RegenerateLODTask.schedule(pos, !hasSurfaceMaps);
 		}
 
 		self.mutex.lock();

@@ -270,6 +270,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 	}
 
 	// Biomes:
+	var i: u32 = 0;
 	for(biomePalette.palette.items) |id| {
 		const nullValue = biomes.get(id);
 		var json: JsonElement = undefined;
@@ -279,13 +280,15 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 			std.log.err("Missing biomes: {s}. Replacing it with default biomes.", .{id});
 			json = .{.JsonNull={}};
 		}
-		biomes_zig.register(id, json);
+		biomes_zig.register(id, i, json);
+		i += 1;
 	}
 	iterator = biomes.iterator();
 	while(iterator.next()) |entry| {
 		if(biomes_zig.hasRegistered(entry.key_ptr.*)) continue;
-		biomes_zig.register(entry.key_ptr.*, entry.value_ptr.*);
+		biomes_zig.register(entry.key_ptr.*, i, entry.value_ptr.*);
 		biomePalette.add(entry.key_ptr.*);
+		i += 1;
 	}
 	biomes_zig.finishLoading();
 

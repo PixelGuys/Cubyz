@@ -237,6 +237,7 @@ pub const Biome = struct {
 	fogDensity: f32,
 	fogColor: Vec3f,
 	id: []const u8,
+	paletteId: u32,
 	structure: BlockStructure = undefined,
 	/// Whether the starting point of a river can be in this biome. If false rivers will be able to flow through this biome anyways.
 	supportsRivers: bool, // TODO: Reimplement rivers.
@@ -250,9 +251,10 @@ pub const Biome = struct {
 	isValidPlayerSpawn: bool,
 	chance: f32,
 
-	pub fn init(self: *Biome, id: []const u8, json: JsonElement) void {
+	pub fn init(self: *Biome, id: []const u8, paletteId: u32, json: JsonElement) void {
 		self.* = Biome {
 			.id = main.globalAllocator.dupe(u8, id),
+			.paletteId = paletteId,
 			.properties = GenerationProperties.fromJson(json.getChild("properties")),
 			.isCave = json.get(bool, "isCave", false),
 			.radius = json.get(f32, "radius", 256),
@@ -556,11 +558,11 @@ pub fn deinit() void {
 	StructureModel.modelRegistry.clearAndFree(main.globalAllocator.allocator);
 }
 
-pub fn register(id: []const u8, json: JsonElement) void {
+pub fn register(id: []const u8, paletteId: u32, json: JsonElement) void {
 	std.log.debug("Registered biome: {s}", .{id});
 	std.debug.assert(!finishedLoading);
 	var biome: Biome = undefined;
-	biome.init(id, json);
+	biome.init(id, paletteId, json);
 	if(biome.isCave) {
 		caveBiomes.append(biome);
 	} else {
