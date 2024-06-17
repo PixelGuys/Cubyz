@@ -29,8 +29,9 @@ const padding: f32 = 8;
 const messageTimeout: i32 = 10000;
 const messageFade = 1000;
 
-var mutexComponent: MutexComponent = .{};
 var history: main.List(*Label) = undefined;
+var mutex: std.Thread.Mutex = .{};
+var messageQueue: main.List([]const u8) = undefined;
 var expirationTime: main.List(i32) = undefined;
 var historyStart: u32 = 0;
 var fadeOutEnd: u32 = 0;
@@ -38,9 +39,8 @@ var input: *TextInput = undefined;
 var hideInput: bool = true;
 
 fn refresh() void {
-	main.utils.assertLocked(&mutexComponent.mutex);
 	if(window.rootComponent) |old| {
-		old.mutexComponent.child.verticalList.children.clearRetainingCapacity();
+		old.verticalList.children.clearRetainingCapacity();
 		old.deinit();
 	}
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 0);
@@ -54,8 +54,7 @@ fn refresh() void {
 	}
 	list.finish(.center);
 	list.scrollBar.currentState = 1;
-	mutexComponent.updateInner(list);
-	window.rootComponent = mutexComponent.toComponent();
+	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
 	gui.updateWindowPositions();
 	if(!hideInput) {
@@ -71,30 +70,43 @@ fn refresh() void {
 pub fn onOpen() void {
 	history = main.List(*Label).init(main.globalAllocator);
 	expirationTime = main.List(i32).init(main.globalAllocator);
+	messageQueue = main.List([]const u8).init(main.globalAllocator);
 	historyStart = 0;
 	input = TextInput.init(.{0, 0}, 256, 32, "", .{.callback = &sendMessage});
-	mutexComponent.mutex.lock();
-	defer mutexComponent.mutex.unlock();
 	refresh();
 }
 
 pub fn onClose() void {
-	mutexComponent.mutex.lock();
-	defer mutexComponent.mutex.unlock();
 	for(history.items) |label| {
 		label.deinit();
 	}
 	history.deinit();
+	for(messageQueue.items) |msg| {
+		main.globalAllocator.free(msg);
+	}
+	messageQueue.deinit();
 	expirationTime.deinit();
 	input.deinit();
-	window.rootComponent.?.mutexComponent.child.verticalList.children.clearRetainingCapacity();
+	window.rootComponent.?.verticalList.children.clearRetainingCapacity();
 	window.rootComponent.?.deinit();
 	window.rootComponent = null;
 }
 
 pub fn update() void {
-	mutexComponent.mutex.lock();
-	defer mutexComponent.mutex.unlock();
+	{
+		mutex.lock();
+		defer mutex.unlock();
+		if(messageQueue.items.len != 0) {
+			const currentTime: i32 = @truncate(std.time.milliTimestamp());
+			for(messageQueue.items) |msg| {
+				history.append(Label.init(.{0, 0}, 256, msg, .left));
+				main.globalAllocator.free(msg);
+				expirationTime.append(currentTime +% messageTimeout);
+			}
+			refresh();
+			messageQueue.clearRetainingCapacity();
+		}
+	}
 	const currentTime: i32 = @truncate(std.time.milliTimestamp());
 	while(fadeOutEnd < history.items.len and currentTime -% expirationTime.items[fadeOutEnd] >= 0) {
 		fadeOutEnd += 1;
@@ -123,13 +135,10 @@ pub fn render() void {
 	}
 }
 
-pub fn addMessage(message: []const u8) void {
-	mutexComponent.mutex.lock();
-	defer mutexComponent.mutex.unlock();
-	history.append(Label.init(.{0, 0}, 256, message, .left));
-	const currentTime: i32 = @truncate(std.time.milliTimestamp());
-	expirationTime.append(currentTime +% messageTimeout);
-	refresh();
+pub fn addMessage(msg: []const u8) void {
+	mutex.lock();
+	defer mutex.unlock();
+	messageQueue.append(main.globalAllocator.dupe(u8, msg));
 }
 
 pub fn sendMessage(_: usize) void {

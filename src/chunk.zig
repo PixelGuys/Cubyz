@@ -458,6 +458,24 @@ pub const ServerChunk = struct {
 	pub fn save(self: *ServerChunk, world: *main.server.ServerWorld) void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
+		if(!self.wasStored and self.super.pos.voxelSize == 1) {
+			// Store the surrounding map pieces as well:
+			self.mutex.unlock();
+			defer self.mutex.lock();
+			const mapStartX = self.super.pos.wx -% main.server.terrain.SurfaceMap.MapFragment.mapSize/2 & ~@as(i32, main.server.terrain.SurfaceMap.MapFragment.mapMask);
+			const mapStartY = self.super.pos.wy -% main.server.terrain.SurfaceMap.MapFragment.mapSize/2 & ~@as(i32, main.server.terrain.SurfaceMap.MapFragment.mapMask);
+			for(0..2) |dx| {
+				for(0..2) |dy| {
+					const mapX = mapStartX +% main.server.terrain.SurfaceMap.MapFragment.mapSize*@as(i32, @intCast(dx));
+					const mapY = mapStartY +% main.server.terrain.SurfaceMap.MapFragment.mapSize*@as(i32, @intCast(dy));
+					const map = main.server.terrain.SurfaceMap.getOrGenerateFragmentAndIncreaseRefCount(mapX, mapY, self.super.pos.voxelSize);
+					defer map.decreaseRefCount();
+					if(!map.wasStored.swap(true, .monotonic)) {
+						map.save(null, .{});
+					}
+				}
+			}
+		}
 		self.wasStored = true;
 		if(self.wasChanged) {
 			const pos = self.super.pos;

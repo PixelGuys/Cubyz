@@ -52,7 +52,9 @@ fn vsyncCallback(newValue: bool) void {
 
 fn anisotropicFilteringCallback(newValue: u16) void {
 	settings.anisotropicFiltering = anisotropy[newValue];
-	main.blocks.meshes.reloadTextures(undefined);
+	if(main.game.world != null) {
+		main.blocks.meshes.reloadTextures(undefined);
+	}
 }
 
 fn resolutionScaleCallback(newValue: u16) void {
