@@ -133,6 +133,50 @@ pub const RotationModes = struct {
 			return false;
 		}
 	};
+	pub const Planar = struct {
+		pub const id: []const u8 = "planar";
+		var rotatedModels: std.StringHashMap(u16) = undefined;
+
+		fn init() void {
+			rotatedModels = std.StringHashMap(u16).init(main.globalAllocator.allocator);
+		}
+
+		fn deinit() void {
+			rotatedModels.deinit();
+		}
+
+		pub fn createBlockModel(modelId: []const u8) u16 {
+			if(rotatedModels.get(modelId)) |modelIndex| return modelIndex;
+
+			const baseModelIndex = main.models.getModelIndex(modelId);
+			const baseModel = main.models.models.items[baseModelIndex];
+			// Rotate the model:
+			const modelIndex: u16 = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationZ(std.math.pi/2.0)});
+			_ = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationZ(-std.math.pi/2.0)});
+			_ = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationZ(std.math.pi)});
+			_ = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.identity()});
+			rotatedModels.put(modelId, modelIndex) catch unreachable;
+			return modelIndex;
+		}
+
+		pub fn model(block: Block) u16 {
+			return blocks.meshes.modelIndexStart(block) + @min(block.data, 3);
+		}
+
+		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, playerDir: Vec3f, _: Vec3i, currentData: *Block, blockPlacing: bool) bool {
+			if(blockPlacing) {
+				if(@abs(playerDir[0]) > @abs(playerDir[1])) {
+					if(playerDir[0] < 0) currentData.data = chunk.Neighbors.dirNegX - 2
+					else currentData.data = chunk.Neighbors.dirPosX - 2;
+				} else {
+					if(playerDir[1] < 0) currentData.data = chunk.Neighbors.dirNegY - 2
+					else currentData.data = chunk.Neighbors.dirPosY - 2;
+				}
+				return true;
+			}
+			return false;
+		}
+	};
 	pub const Fence = struct {
 		pub const id: []const u8 = "fence";
 		pub const dependsOnNeighbors = true;
