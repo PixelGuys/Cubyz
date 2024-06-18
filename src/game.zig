@@ -19,6 +19,7 @@ const Vec4f = vec.Vec4f;
 const Vec3d = vec.Vec3d;
 const Mat4f = vec.Mat4f;
 const graphics = @import("graphics.zig");
+const models = main.models;
 const Fog = graphics.Fog;
 const renderer = @import("renderer.zig");
 const settings = @import("settings.zig");
@@ -84,66 +85,28 @@ pub const Player = struct {
 		defer mutex.unlock();
 		return super.vel;
 	}
-
+	
 	pub fn collides() bool {
-		if (main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(super.pos[0] - radius)), @intFromFloat(@floor(super.pos[1] - radius)), @intFromFloat(@floor(super.pos[2])))) |block| {
-			if (block.collide())
-				return true;
-		}
+		const minX: i32 = @intFromFloat(@floor(super.pos[0] - radius));
+		const maxX: i32 = @intFromFloat(@floor(super.pos[0] + radius - 0.0001));
+		const minY: i32 = @intFromFloat(@floor(super.pos[1] - radius));
+		const maxY: i32 = @intFromFloat(@floor(super.pos[1] + radius - 0.0001));
+		const minZ: i32 = @intFromFloat(@floor(super.pos[2]));
+		const maxZ: i32 = @intFromFloat(@floor(super.pos[2] + height - 0.0001));
 
-		if (main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(super.pos[0] + radius - 0.0001)), @intFromFloat(@floor(super.pos[1] - radius)), @intFromFloat(@floor(super.pos[2])))) |block| {
-			if (block.collide())
-				return true;
-		}
-
-		if (main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(super.pos[0] + radius - 0.0001)), @intFromFloat(@floor(super.pos[1] + radius - 0.0001)), @intFromFloat(@floor(super.pos[2])))) |block| {
-			if (block.collide())
-				return true;
-		}
-
-		if (main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(super.pos[0] - radius)), @intFromFloat(@floor(super.pos[1] + radius - 0.0001)), @intFromFloat(@floor(super.pos[2])))) |block| {
-			if (block.collide())
-				return true;
-		}
-
-		if (main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(super.pos[0] - radius)), @intFromFloat(@floor(super.pos[1] - radius)), @intFromFloat(@floor(super.pos[2] + height / 2.0)))) |block| {
-			if (block.collide())
-				return true;
-		}
-
-		if (main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(super.pos[0] + radius - 0.0001)), @intFromFloat(@floor(super.pos[1] - radius)), @intFromFloat(@floor(super.pos[2] + height / 2.0)))) |block| {
-			if (block.collide())
-				return true;
-		}
-
-		if (main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(super.pos[0] + radius - 0.0001)), @intFromFloat(@floor(super.pos[1] + radius - 0.0001)), @intFromFloat(@floor(super.pos[2] + height / 2.0)))) |block| {
-			if (block.collide())
-				return true;
-		}
-
-		if (main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(super.pos[0] - radius)), @intFromFloat(@floor(super.pos[1] + radius - 0.0001)), @intFromFloat(@floor(super.pos[2] + height / 2.0)))) |block| {
-			if (block.collide())
-				return true;
-		}
-
-		if (main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(super.pos[0] - radius)), @intFromFloat(@floor(super.pos[1] - radius)), @intFromFloat(@floor(super.pos[2] + height - 0.0001)))) |block| {
-			if (block.collide())
-				return true;
-		}
-
-		if (main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(super.pos[0] + radius - 0.0001)), @intFromFloat(@floor(super.pos[1] - radius)), @intFromFloat(@floor(super.pos[2] + height - 0.0001)))) |block| {
-			if (block.collide())
-				return true;
-		}
-
-		if (main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(super.pos[0] + radius - 0.0001)), @intFromFloat(@floor(super.pos[1] + radius - 0.0001)), @intFromFloat(@floor(super.pos[2] + height - 0.0001)))) |block| {
-			if (block.collide())
-				return true;
-		}
-
-		if (main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(super.pos[0] - radius)), @intFromFloat(@floor(super.pos[1] + radius - 0.0001)), @intFromFloat(@floor(super.pos[2] + height - 0.0001)))) |block| {
-			if (block.collide())
-				return true;
+		var x: i32 = minX;
+		while (x <= maxX) : (x += 1) {
+			var y: i32 = minY;
+			while (y <= maxY) : (y += 1) {
+				var z: i32 = minZ;
+				while (z <= maxZ) : (z += 1) {
+					if (main.renderer.mesh_storage.getBlock(x, y, z)) |block| {
+						if (block.collide()) {
+							return true;
+						}
+					}
+				}
+			}
 		}
 
 		return false;
