@@ -74,7 +74,12 @@ fn flawedCreateWorld() !void {
 		generatorSettings.put("mapGenerator", mapGenerator);
 		try main.files.writeJson(generatorSettingsPath, generatorSettings);
 	}
-	 // TODO: Make the seed configurable
+	{ // Make assets subfolder
+		const assetsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets", .{worldName}) catch unreachable;
+		defer main.stackAllocator.free(assetsPath);
+		try main.files.makeDir(assetsPath);
+	}
+	// TODO: Make the seed configurable
 	gui.windowlist.save_selection.openWorld(worldName);
 }
 

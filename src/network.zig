@@ -661,8 +661,7 @@ pub const Protocols = struct {
 						std.log.info("User {s} joined using version {s}.", .{name, version});
 
 						{
-							// TODO: Send the world data.
-							const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets/", .{"Development"}) catch unreachable; // TODO: Use world name.
+							const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets/", .{main.server.world.?.name}) catch unreachable;
 							defer main.stackAllocator.free(path);
 							var dir = try std.fs.cwd().openDir(path, .{.iterate = true});
 							defer dir.close();
