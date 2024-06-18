@@ -95,7 +95,7 @@ fn parseEscapedFolderName(allocator: NeverFailingAllocator, name: []const u8) []
 pub fn onOpen() void {
 	buttonNameArena = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 8);
-	// TODO: list.add(Button.initText(.{0, 0}, 128, "Create World", gui.openWindowCallback("save_creation")));
+	list.add(Button.initText(.{0, 0}, 128, "Create World", gui.openWindowCallback("save_creation")));
 
 	readingSaves: {
 		var dir = std.fs.cwd().makeOpenPath("saves", .{.iterate = true}) catch |err| {

@@ -381,14 +381,13 @@ pub const ServerWorld = struct {
 		}
 		self.wio = WorldIO.init(try files.openDir(try std.fmt.bufPrint(&buf, "saves/{s}", .{name})), self);
 		errdefer self.wio.deinit();
-		const blockPaletteJson = try files.readToJson(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/palette.json", .{name}));
+		const blockPaletteJson = files.readToJson(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/palette.json", .{name})) catch .JsonNull;
 		self.blockPalette = try main.assets.Palette.init(main.globalAllocator, blockPaletteJson, "cubyz:air");
 		errdefer self.blockPalette.deinit();
-		const biomePaletteJson = try files.readToJson(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/biome_palette.json", .{name}));
+		const biomePaletteJson = files.readToJson(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/biome_palette.json", .{name})) catch .JsonNull;
 		self.biomePalette = try main.assets.Palette.init(main.globalAllocator, biomePaletteJson, null);
 		errdefer self.biomePalette.deinit();
 		errdefer main.assets.unloadAssets();
-
 		if(self.wio.hasWorldData()) {
 			self.seed = try self.wio.loadWorldSeed();
 			self.generated = true;
@@ -621,7 +620,7 @@ pub const ServerWorld = struct {
 		}
 		try self.wio.saveWorldData();
 		var buf: [32768]u8 = undefined;
-		const json = try files.readToJson(main.stackAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/items.json", .{self.name}));
+		const json = files.readToJson(main.stackAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/items.json", .{self.name})) catch .JsonNull;
 		defer json.free(main.stackAllocator);
 		self.itemDropManager.loadFrom(json);
 	}
