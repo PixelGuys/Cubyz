@@ -9,5 +9,5 @@
 	"alwaysViewThrough" : true,
 	"absorbedLight" : 0x121012,
 	"model" : "cube",
-	"texture" : "cubyz:oak_leaves_transparent"
+	"texture" : "cubyz:oak_leaves"
 }
