@@ -46,6 +46,11 @@ pub const camera = struct {
 	}
 };
 
+const Box = struct {
+	min: Vec3d,
+	max: Vec3d,
+};
+
 pub const Player = struct {
 	pub var super: main.server.Entity = .{};
 	pub var id: u32 = 0;
@@ -85,14 +90,115 @@ pub const Player = struct {
 		defer mutex.unlock();
 		return super.vel;
 	}
-	
-	pub fn collides() bool {
+
+	pub fn triangleAABB(triangle: [3]Vec3d, box_center: Vec3d, box_extents: Vec3d) bool {
+		const X = 0;
+		const Y = 1;
+		const Z = 2;
+
+		// Translate triangle as conceptually moving AABB to origin
+		const v0 = triangle[0] - box_center;
+		const v1 = triangle[1] - box_center;
+		const v2 = triangle[2] - box_center;
+
+		// Compute edge vectors for triangle
+		const f0 = triangle[1] - triangle[0];
+		const f1 = triangle[2] - triangle[1];
+		const f2 = triangle[0] - triangle[2];
+
+		// Test axis a00
+		const a00 = Vec3d{0, -f0[Z], f0[Y]};
+		if (!test_axis(a00, v0, v1, v2, box_extents[Y] * @abs(f0[Z]) + box_extents[Z] * @abs(f0[Y]))) {
+			return false;
+		}
+
+		// Test axis a01
+		const a01 = Vec3d{0, -f1[Z], f1[Y]};
+		if (!test_axis(a01, v0, v1, v2, box_extents[Y] * @abs(f1[Z]) + box_extents[Z] * @abs(f1[Y]))) {
+			return false;
+		}
+
+		// Test axis a02
+		const a02 = Vec3d{0, -f2[Z], f2[Y]};
+		if (!test_axis(a02, v0, v1, v2, box_extents[Y] * @abs(f2[Z]) + box_extents[Z] * @abs(f2[Y]))) {
+			return false;
+		}
+
+		// Test axis a10
+		const a10 = Vec3d{f0[Z], 0, -f0[X]};
+		if (!test_axis(a10, v0, v1, v2, box_extents[X] * @abs(f0[Z]) + box_extents[Z] * @abs(f0[X]))) {
+			return false;
+		}
+
+		// Test axis a11
+		const a11 = Vec3d{f1[Z], 0, -f1[X]};
+		if (!test_axis(a11, v0, v1, v2, box_extents[X] * @abs(f1[Z]) + box_extents[Z] * @abs(f1[X]))) {
+			return false;
+		}
+
+		// Test axis a12
+		const a12 = Vec3d{f2[Z], 0, -f2[X]};
+		if (!test_axis(a12, v0, v1, v2, box_extents[X] * @abs(f2[Z]) + box_extents[Z] * @abs(f2[X]))) {
+			return false;
+		}
+
+		// Test axis a20
+		const a20 = Vec3d{-f0[Y], f0[X], 0};
+		if (!test_axis(a20, v0, v1, v2, box_extents[X] * @abs(f0[Y]) + box_extents[Y] * @abs(f0[X]))) {
+			return false;
+		}
+
+		// Test axis a21
+		const a21 = Vec3d{-f1[Y], f1[X], 0};
+		if (!test_axis(a21, v0, v1, v2, box_extents[X] * @abs(f1[Y]) + box_extents[Y] * @abs(f1[X]))) {
+			return false;
+		}
+
+		// Test axis a22
+		const a22 = Vec3d{-f2[Y], f2[X], 0};
+		if (!test_axis(a22, v0, v1, v2, box_extents[X] * @abs(f2[Y]) + box_extents[Y] * @abs(f2[X]))) {
+			return false;
+		}
+
+		// Test the three axes corresponding to the face normals of AABB
+		if (@max(v0[X], @max(v1[X], v2[X])) < -box_extents[X] or @min(v0[X], @min(v1[X], v2[X])) > box_extents[X]) {
+			return false;
+		}
+		if (@max(v0[Y], @max(v1[Y], v2[Y])) < -box_extents[Y] or @min(v0[Y], @min(v1[Y], v2[Y])) > box_extents[Y]) {
+			return false;
+		}
+		if (@max(v0[Z], @max(v1[Z], v2[Z])) < -box_extents[Z] or @min(v0[Z], @min(v1[Z], v2[Z])) > box_extents[Z]) {
+			return false;
+		}
+
+		// Test separating axis corresponding to triangle face normal
+		const plane_normal = vec.cross(f0, f1);
+		const plane_distance = @abs(vec.dot(plane_normal, v0));
+		const r = box_extents[X] * @abs(plane_normal[X]) + box_extents[Y] * @abs(plane_normal[Y]) + box_extents[Z] * @abs(plane_normal[Z]);
+
+		return plane_distance <= r;
+	}
+
+	fn test_axis(axis: Vec3d, v0: Vec3d, v1: Vec3d, v2: Vec3d, r: f64) bool {
+		const p0 = vec.dot(v0, axis);
+		const p1 = vec.dot(v1, axis);
+		const p2 = vec.dot(v2, axis);
+		const min_p = @min(p0, @min(p1, p2));
+		const max_p = @max(p0, @max(p1, p2));
+		return @max(-max_p, min_p) <= r;
+	}
+
+	pub fn collides() ?Box {
 		const minX: i32 = @intFromFloat(@floor(super.pos[0] - radius));
 		const maxX: i32 = @intFromFloat(@floor(super.pos[0] + radius - 0.0001));
 		const minY: i32 = @intFromFloat(@floor(super.pos[1] - radius));
 		const maxY: i32 = @intFromFloat(@floor(super.pos[1] + radius - 0.0001));
 		const minZ: i32 = @intFromFloat(@floor(super.pos[2]));
 		const maxZ: i32 = @intFromFloat(@floor(super.pos[2] + height - 0.0001));
+
+		// std.debug.print("{any}\n", .{triangleAABB(.{Vec3d{20,9,44}, Vec3d{7,7,7}, Vec3d{8,8,8}}, Vec3d{0,1,3}, Vec3d{8,8,4})});
+
+		const playerSize = .{radius - 0.0001, radius - 0.0001, height / 2.0 - 0.0001};
 
 		var x: i32 = minX;
 		while (x <= maxX) : (x += 1) {
@@ -102,14 +208,46 @@ pub const Player = struct {
 				while (z <= maxZ) : (z += 1) {
 					if (main.renderer.mesh_storage.getBlock(x, y, z)) |block| {
 						if (block.collide()) {
-							return true;
+							const model = models.models.items[block.mode().model(block)];
+
+							const pos = Vec3d{@floatFromInt(x), @floatFromInt(y), @floatFromInt(z)};
+
+							for (model.neighborFacingQuads) |quads| {
+								for (quads) |quadIndex| {
+									const quad = &models.quads.items[quadIndex];
+									if (triangleAABB(.{quad.corners[0] + quad.normal + pos, quad.corners[2] + quad.normal + pos, quad.corners[1] + quad.normal + pos}, super.pos + Vec3d{0, 0, height / 2.0}, playerSize))
+										return .{
+											.min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + quad.normal,
+											.max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + quad.normal
+										};
+									if (triangleAABB(.{quad.corners[1] + quad.normal + pos, quad.corners[2] + quad.normal + pos, quad.corners[3] + quad.normal + pos}, super.pos + Vec3d{0, 0, height / 2.0}, playerSize))
+										return .{
+											.min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + quad.normal,
+											.max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + quad.normal
+										};
+								}
+							}
+
+							for (model.internalQuads) |quadIndex| {
+								const quad = &models.quads.items[quadIndex];
+								if (triangleAABB(.{quad.corners[0] + pos, quad.corners[2] + pos, quad.corners[1] + pos}, super.pos + Vec3d{0, 0, height / 2.0}, playerSize))
+									return .{
+										.min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])),
+										.max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3]))
+									};
+								if (triangleAABB(.{quad.corners[1] + pos, quad.corners[2] + pos, quad.corners[3] + pos}, super.pos + Vec3d{0, 0, height / 2.0}, playerSize))
+									return .{
+										.min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])),
+										.max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3]))
+									};
+							}
 						}
 					}
 				}
 			}
 		}
 
-		return false;
+		return null;
 	}
 
 	pub fn placeBlock() void {
@@ -379,30 +517,30 @@ pub fn update(deltaTime: f64) void {
 
 		const move = Player.super.vel*@as(Vec3d, @splat(deltaTime));
 		Player.super.pos[0] += move[0];
-		if (Player.collides()) {
+		if (Player.collides()) |box| {
 			if (Player.super.vel[0] < 0) {
-				Player.super.pos[0] = @ceil(Player.super.pos[0] - Player.radius) + Player.radius;
-				while (Player.collides()) {
+				Player.super.pos[0] = @ceil(Player.super.pos[0] - Player.radius - box.max[0]) + Player.radius + box.max[0];
+				while (Player.collides()) |_| {
 					Player.super.pos[0] += 1;
 				}
 			} else {
-				Player.super.pos[0] = @ceil(Player.super.pos[0] + Player.radius) - Player.radius;
-				while (Player.collides()) {
+				Player.super.pos[0] = @ceil(Player.super.pos[0] + Player.radius + box.min[0]) - Player.radius - box.min[0];
+				while (Player.collides()) |_| {
 					Player.super.pos[0] -= 1;
 				}
 			}
 		}
 
 		Player.super.pos[1] += move[1];
-		if (Player.collides()) {
+		if (Player.collides()) |box| {
 			if (Player.super.vel[1] < 0) {
-				Player.super.pos[1] = @ceil(Player.super.pos[1] - Player.radius) + Player.radius;
-				while (Player.collides()) {
+				Player.super.pos[1] = @floor(Player.super.pos[1] - Player.radius - box.max[1]) + Player.radius + box.max[1];
+				while (Player.collides()) |_| {
 					Player.super.pos[1] += 1;
 				}
 			} else {
-				Player.super.pos[1] = @ceil(Player.super.pos[1] + Player.radius) - Player.radius;
-				while (Player.collides()) {
+				Player.super.pos[1] = @ceil(Player.super.pos[1] + Player.radius - box.min[1]) - Player.radius + box.min[1];
+				while (Player.collides()) |_| {
 					Player.super.pos[1] -= 1;
 				}
 			}
@@ -410,16 +548,16 @@ pub fn update(deltaTime: f64) void {
 		
 		Player.onGround = false;
 		Player.super.pos[2] += move[2];
-		if (Player.collides()) {
+		if (Player.collides()) |box| {
 			if (Player.super.vel[2] < 0) {
-				Player.super.pos[2] = @ceil(Player.super.pos[2]);
-				while (Player.collides()) {
+				Player.super.pos[2] = @ceil(Player.super.pos[2] - box.max[2]) + box.max[2];
+				while (Player.collides()) |_| {
 					Player.super.pos[2] += 1;
 				}
 				Player.onGround = true;
 			} else {
-				Player.super.pos[2] = @ceil(Player.super.pos[2] + Player.height) - Player.height;
-				while (Player.collides()) {
+				Player.super.pos[2] = @ceil(Player.super.pos[2] + Player.height + box.min[2]) - Player.height - box.min[2];
+				while (Player.collides()) |_| {
 					Player.super.pos[2] -= 1;
 				}
 			}
