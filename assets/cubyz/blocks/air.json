@@ -12,8 +12,7 @@
 	"rotation" : "no_rotation",
 	"degradable" : true,
 	"hasItem" : false,
-
-
+	"collide": false,
 
 	"drops" : [],
 	"model" : "none"

@@ -48,13 +48,19 @@ pub const camera = struct {
 pub const Player = struct {
 	pub var super: main.server.Entity = .{};
 	pub var id: u32 = 0;
-	pub var isFlying: Atomic(bool) = Atomic(bool).init(true);
+	pub var isFlying: Atomic(bool) = Atomic(bool).init(false);
 	pub var mutex: std.Thread.Mutex = std.Thread.Mutex{};
 	pub var inventory__SEND_CHANGES_TO_SERVER: Inventory = undefined;
 	pub var selectedSlot: u32 = 0;
 
 	pub var maxHealth: f32 = 8;
 	pub var health: f32 = 4.5;
+
+	pub var onGround: bool = false;
+
+	pub const radius = 0.3;
+	pub const height = 1.8;
+	pub const eye = 1.5;
 
 	fn loadFrom(json: JsonElement) void {
 		super.loadFrom(json);
@@ -77,6 +83,70 @@ pub const Player = struct {
 		mutex.lock();
 		defer mutex.unlock();
 		return super.vel;
+	}
+
+	pub fn collides() bool {
+		if (main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(super.pos[0] - radius)), @intFromFloat(@floor(super.pos[1] - radius)), @intFromFloat(@floor(super.pos[2])))) |block| {
+			if (block.collide())
+				return true;
+		}
+
+		if (main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(super.pos[0] + radius - 0.0001)), @intFromFloat(@floor(super.pos[1] - radius)), @intFromFloat(@floor(super.pos[2])))) |block| {
+			if (block.collide())
+				return true;
+		}
+
+		if (main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(super.pos[0] + radius - 0.0001)), @intFromFloat(@floor(super.pos[1] + radius - 0.0001)), @intFromFloat(@floor(super.pos[2])))) |block| {
+			if (block.collide())
+				return true;
+		}
+
+		if (main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(super.pos[0] - radius)), @intFromFloat(@floor(super.pos[1] + radius - 0.0001)), @intFromFloat(@floor(super.pos[2])))) |block| {
+			if (block.collide())
+				return true;
+		}
+
+		if (main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(super.pos[0] - radius)), @intFromFloat(@floor(super.pos[1] - radius)), @intFromFloat(@floor(super.pos[2] + height / 2.0)))) |block| {
+			if (block.collide())
+				return true;
+		}
+
+		if (main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(super.pos[0] + radius - 0.0001)), @intFromFloat(@floor(super.pos[1] - radius)), @intFromFloat(@floor(super.pos[2] + height / 2.0)))) |block| {
+			if (block.collide())
+				return true;
+		}
+
+		if (main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(super.pos[0] + radius - 0.0001)), @intFromFloat(@floor(super.pos[1] + radius - 0.0001)), @intFromFloat(@floor(super.pos[2] + height / 2.0)))) |block| {
+			if (block.collide())
+				return true;
+		}
+
+		if (main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(super.pos[0] - radius)), @intFromFloat(@floor(super.pos[1] + radius - 0.0001)), @intFromFloat(@floor(super.pos[2] + height / 2.0)))) |block| {
+			if (block.collide())
+				return true;
+		}
+
+		if (main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(super.pos[0] - radius)), @intFromFloat(@floor(super.pos[1] - radius)), @intFromFloat(@floor(super.pos[2] + height - 0.0001)))) |block| {
+			if (block.collide())
+				return true;
+		}
+
+		if (main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(super.pos[0] + radius - 0.0001)), @intFromFloat(@floor(super.pos[1] - radius)), @intFromFloat(@floor(super.pos[2] + height - 0.0001)))) |block| {
+			if (block.collide())
+				return true;
+		}
+
+		if (main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(super.pos[0] + radius - 0.0001)), @intFromFloat(@floor(super.pos[1] + radius - 0.0001)), @intFromFloat(@floor(super.pos[2] + height - 0.0001)))) |block| {
+			if (block.collide())
+				return true;
+		}
+
+		if (main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(super.pos[0] - radius)), @intFromFloat(@floor(super.pos[1] + radius - 0.0001)), @intFromFloat(@floor(super.pos[2] + height - 0.0001)))) |block| {
+			if (block.collide())
+				return true;
+		}
+
+		return false;
 	}
 
 	pub fn placeBlock() void {
@@ -257,54 +327,73 @@ pub fn pressAcquireSelectedBlock() void {
 	Player.acquireSelectedBlock();
 }
 
+pub fn flyToggle() void {
+	Player.isFlying.store(!Player.isFlying.load(.monotonic), .monotonic);
+}
+
 pub fn update(deltaTime: f64) void {
-	var movement = Vec3d{0, 0, 0};
-	const forward = vec.rotateZ(Vec3d{0, 1, 0}, -camera.rotation[2]);
-	const right = Vec3d{-forward[1], forward[0], 0};
-	if(main.Window.grabbed) {
-		if(KeyBoard.key("forward").pressed) {
-			if(KeyBoard.key("sprint").pressed) {
+	if (main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(Player.super.pos[0])), @intFromFloat(@floor(Player.super.pos[1])), @intFromFloat(@floor(Player.super.pos[2]))) != null) {		
+		if (!Player.isFlying.load(.monotonic)) {
+			Player.super.vel[2] -= 30 * deltaTime;
+		}
+
+		var movement = Vec3d{0, 0, 0};
+
+		const forward = vec.rotateZ(Vec3d{0, 1, 0}, -camera.rotation[2]);
+		const right = Vec3d{-forward[1], forward[0], 0};
+		if(main.Window.grabbed) {
+			if(KeyBoard.key("forward").pressed) {
+				if(KeyBoard.key("sprint").pressed) {
+					if(Player.isFlying.load(.monotonic)) {
+						movement += forward*@as(Vec3d, @splat(128));
+					} else {
+						movement += forward*@as(Vec3d, @splat(8));
+					}
+				} else {
+					movement += forward*@as(Vec3d, @splat(4));
+				}
+			}
+			if(KeyBoard.key("backward").pressed) {
+				movement += forward*@as(Vec3d, @splat(-4));
+			}
+			if(KeyBoard.key("left").pressed) {
+				movement += right*@as(Vec3d, @splat(4));
+			}
+			if(KeyBoard.key("right").pressed) {
+				movement += right*@as(Vec3d, @splat(-4));
+			}
+			if(KeyBoard.key("jump").pressed) {
 				if(Player.isFlying.load(.monotonic)) {
-					movement += forward*@as(Vec3d, @splat(128));
-				} else {
-					movement += forward*@as(Vec3d, @splat(8));
-				}
-			} else {
-				movement += forward*@as(Vec3d, @splat(4));
-			}
-		}
-		if(KeyBoard.key("backward").pressed) {
-			movement += forward*@as(Vec3d, @splat(-4));
-		}
-		if(KeyBoard.key("left").pressed) {
-			movement += right*@as(Vec3d, @splat(4));
-		}
-		if(KeyBoard.key("right").pressed) {
-			movement += right*@as(Vec3d, @splat(-4));
-		}
-		if(KeyBoard.key("jump").pressed) {
-			if(Player.isFlying.load(.monotonic)) {
-				if(KeyBoard.key("sprint").pressed) {
-					movement[2] = 59.45;
-				} else {
-					movement[2] = 5.45;
-				}
-			} else { // TODO: if (Cubyz.player.isOnGround())
-				movement[2] = 5.45;
-			}
-		}
-		if(KeyBoard.key("fall").pressed) {
-			if(Player.isFlying.load(.monotonic)) {
-				if(KeyBoard.key("sprint").pressed) {
-					movement[2] = -59.45;
-				} else {
-					movement[2] = -5.45;
+					if(KeyBoard.key("sprint").pressed) {
+						movement[2] += 59.45;
+					} else {
+						movement[2] += 5.45;
+					}
+				} else if (Player.onGround) {
+					Player.super.vel[2] = @sqrt(1.25 * 30 * 2);
 				}
 			}
+			if(KeyBoard.key("fall").pressed) {
+				if(Player.isFlying.load(.monotonic)) {
+					if(KeyBoard.key("sprint").pressed) {
+						movement[2] += -59.45;
+					} else {
+						movement[2] += -5.45;
+					}
+				}
+			}
+
+			const newSlot: i32 = @as(i32, @intCast(Player.selectedSlot)) -% @as(i32, @intFromFloat(main.Window.scrollOffset));
+			Player.selectedSlot = @intCast(@mod(newSlot, 12));
+			main.Window.scrollOffset = 0;
 		}
-		const newSlot: i32 = @as(i32, @intCast(Player.selectedSlot)) -% @as(i32, @intFromFloat(main.Window.scrollOffset));
-		Player.selectedSlot = @intCast(@mod(newSlot, 12));
-		main.Window.scrollOffset = 0;
+
+		Player.super.vel[0] = movement[0];
+		Player.super.vel[1] = movement[1];
+
+		if (Player.isFlying.load(.monotonic)) {
+			Player.super.vel[2] = movement[2];
+		}
 	}
 
 	const time = std.time.milliTimestamp();
@@ -324,7 +413,55 @@ pub fn update(deltaTime: f64) void {
 	{
 		Player.mutex.lock();
 		defer Player.mutex.unlock();
-		Player.super.pos += movement*@as(Vec3d, @splat(deltaTime));
+
+		const move = Player.super.vel*@as(Vec3d, @splat(deltaTime));
+		Player.super.pos[0] += move[0];
+		if (Player.collides()) {
+			if (Player.super.vel[0] < 0) {
+				Player.super.pos[0] = @ceil(Player.super.pos[0] - Player.radius) + Player.radius;
+				while (Player.collides()) {
+					Player.super.pos[0] += 1;
+				}
+			} else {
+				Player.super.pos[0] = @ceil(Player.super.pos[0] + Player.radius) - Player.radius;
+				while (Player.collides()) {
+					Player.super.pos[0] -= 1;
+				}
+			}
+		}
+
+		Player.super.pos[1] += move[1];
+		if (Player.collides()) {
+			if (Player.super.vel[1] < 0) {
+				Player.super.pos[1] = @ceil(Player.super.pos[1] - Player.radius) + Player.radius;
+				while (Player.collides()) {
+					Player.super.pos[1] += 1;
+				}
+			} else {
+				Player.super.pos[1] = @ceil(Player.super.pos[1] + Player.radius) - Player.radius;
+				while (Player.collides()) {
+					Player.super.pos[1] -= 1;
+				}
+			}
+		}
+		
+		Player.onGround = false;
+		Player.super.pos[2] += move[2];
+		if (Player.collides()) {
+			if (Player.super.vel[2] < 0) {
+				Player.super.pos[2] = @ceil(Player.super.pos[2]);
+				while (Player.collides()) {
+					Player.super.pos[2] += 1;
+				}
+				Player.onGround = true;
+			} else {
+				Player.super.pos[2] = @ceil(Player.super.pos[2] + Player.height) - Player.height;
+				while (Player.collides()) {
+					Player.super.pos[2] -= 1;
+				}
+			}
+			Player.super.vel[2] = 0;
+		}
 	}
 
 	const biome = world.?.playerBiome.load(.monotonic);
