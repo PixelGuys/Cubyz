@@ -27,6 +27,10 @@ pub fn build(b: *std.Build) !void {
 		.windows => "gnu",
 		else => "none",
 	}});
+	const artifactName = switch(t.os.tag) {
+		.windows => b.fmt("{s}.lib", .{depsLib}),
+		else => b.fmt("lib{s}.a", .{depsLib}),
+	};
 
 	var depsName: []const u8 = b.fmt("cubyz_deps_{s}_{s}", .{@tagName(t.cpu.arch), @tagName(t.os.tag)});
 	const useLocalDeps = b.option(bool, "local", "Use local cubyz_deps") orelse false;
@@ -47,10 +51,8 @@ pub fn build(b: *std.Build) !void {
 		return;
 	};
 
-	exe.addLibraryPath(libsDeps.path("lib"));
 	exe.addIncludePath(headersDeps.path("include"));
-	exe.linkSystemLibrary(depsLib);
-	exe.addRPath(libsDeps.path("lib")); // TODO: Maybe move the library next to the executable, to make this more portable?
+	exe.addObjectFile(libsDeps.path("lib").path(b, artifactName));
 
 	if(t.os.tag == .windows) {
 		exe.linkSystemLibrary("ole32");
@@ -72,10 +74,9 @@ pub fn build(b: *std.Build) !void {
 		exe.linkFramework("IOKit");
 		exe.linkFramework("Cocoa");
 		exe.linkFramework("QuartzCore");
-		exe.linkSystemLibrary("X11");
-		exe.addLibraryPath(b.path("/usr/local/GL/lib"));
-		exe.addLibraryPath(b.path("/opt/X11/lib"));
-		exe.addRPath(b.path("../Library"));
+		exe.addRPath(.{.cwd_relative = "/usr/local/GL/lib"});
+		exe.root_module.addRPathSpecial("@executable_path/../Library");
+		exe.addRPath(.{.cwd_relative = "/opt/X11/lib"});
 	} else {
 		std.log.err("Unsupported target: {}\n", .{t.os.tag});
 	}
