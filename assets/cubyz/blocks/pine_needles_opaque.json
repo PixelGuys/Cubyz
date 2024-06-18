@@ -1,0 +1,6 @@
+{
+	"class" : "leaf",
+	"absorbedLight" : 0x121012,
+	"model" : "cube",
+	"texture" : "cubyz:pine_needles_opaque"
+}

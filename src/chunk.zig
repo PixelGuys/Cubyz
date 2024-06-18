@@ -412,6 +412,7 @@ pub const ServerChunk = struct {
 								const index = getIndex(x*2 + dx, y*2 + dy, z*2 + dz);
 								const i = dx*4 + dz*2 + dy;
 								octantBlocks[i] = other.super.data.getValue(index);
+								octantBlocks[i].typ = octantBlocks[i].lodReplacement();
 								if(octantBlocks[i].typ == 0) {
 									neighborCount[i] = 0;
 									continue; // I don't care about air blocks.

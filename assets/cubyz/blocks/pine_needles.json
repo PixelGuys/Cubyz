@@ -9,5 +9,6 @@
 	"alwaysViewThrough" : true,
 	"absorbedLight" : 0x121012,
 	"model" : "cube",
-	"texture" : "cubyz:pine_needles"
+	"texture" : "cubyz:pine_needles",
+	"lodReplacement" : "cubyz:pine_needles_opaque"
 }

@@ -79,6 +79,7 @@ var _absorption: [maxBlockCount]u32 = undefined;
 /// GUI that is opened on click.
 var _gui: [maxBlockCount][]u8 = undefined;
 var _mode: [maxBlockCount]*RotationMode = undefined;
+var _lodReplacement: [maxBlockCount]u16 = undefined;
 
 var reverseIndices = std.StringHashMap(u16).init(allocator.allocator);
 
@@ -172,10 +173,22 @@ fn registerBlockDrop(typ: u16, json: JsonElement) void {
 	}
 }
 
+fn registerLodReplacement(typ: u16, json: JsonElement) void {
+	if(json.get(?[]const u8, "lodReplacement", null)) |replacement| {
+		_lodReplacement[typ] = getByID(replacement);
+	} else {
+		_lodReplacement[typ] = typ;
+	}
+}
+
 pub fn finishBlocks(jsonElements: std.StringHashMap(JsonElement)) void {
 	var i: u16 = 0;
 	while(i < size) : (i += 1) {
 		registerBlockDrop(i, jsonElements.get(_id[i]) orelse continue);
+	}
+	i = 0;
+	while(i < size) : (i += 1) {
+		registerLodReplacement(i, jsonElements.get(_id[i]) orelse continue);
 	}
 	for(ores.items, unfinishedOreSourceBlockIds.items) |*ore, oreIds| {
 		ore.sources = allocator.alloc(u16, oreIds.len);
@@ -288,6 +301,10 @@ pub const Block = packed struct {
 	
 	pub inline fn mode(self: Block) *RotationMode {
 		return _mode[self.typ];
+	}
+	
+	pub inline fn lodReplacement(self: Block) u16 {
+		return _lodReplacement[self.typ];
 	}
 };
 
