@@ -6,7 +6,7 @@
 		"0.1 cubyz:apple"
 	],
 	"degradable" : false,
-	"viewThrough" : true,
+	"alwaysViewThrough" : true,
 	"absorbedLight" : 0x121012,
 	"model" : "cube",
 	"texture" : "cubyz:oak_leaves"
