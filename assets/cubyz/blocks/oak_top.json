@@ -6,7 +6,7 @@
 	],
 	"rotation" : "log",
 	"model" : "cube",
-	"texture" : "cubyz:oak_log_side",
-	"texture_top" : "cubyz:oak_log_side",
-	"texture_bottom" : "cubyz:oak_log_rings_top",
+	"texture" : "cubyz:oak_log",
+	"texture_top" : "cubyz:oak_log",
+	"texture_bottom" : "cubyz:oak_log_top",
 }
