@@ -430,6 +430,10 @@ pub fn flyToggle() void {
 	Player.isFlying.store(!Player.isFlying.load(.monotonic), .monotonic);
 }
 
+// pub fn sweepAABB(min: Vec3d, max: Vec3d) Vec3d {
+
+// }
+
 pub fn update(deltaTime: f64) void {
 	if (main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(Player.super.pos[0])), @intFromFloat(@floor(Player.super.pos[1])), @intFromFloat(@floor(Player.super.pos[2]))) != null) {		
 		var acc = Vec3d{0, 0, 0};
@@ -545,14 +549,8 @@ pub fn update(deltaTime: f64) void {
 			{
 				if (Player.super.vel[0] < 0) {
 					Player.super.pos[0] = box.max[0] + Player.radius;
-					while (Player.collides()) |_| {
-						Player.super.pos[0] += 1;
-					}
 				} else {
 					Player.super.pos[0] = box.min[0] - Player.radius;
-					while (Player.collides()) |_| {
-						Player.super.pos[0] -= 1;
-					}
 				}
 				Player.super.vel[0] = 0;
 			}
@@ -574,14 +572,8 @@ pub fn update(deltaTime: f64) void {
 			if (!step) {
 				if (Player.super.vel[1] < 0) {
 					Player.super.pos[1] = box.max[1] + Player.radius;
-					while (Player.collides()) |_| {
-						Player.super.pos[1] += 1;
-					}
 				} else {
 					Player.super.pos[1] = box.min[1] - Player.radius;
-					while (Player.collides()) |_| {
-						Player.super.pos[1] -= 1;
-					}
 				}
 				Player.super.vel[1] = 0;
 			}
@@ -592,15 +584,9 @@ pub fn update(deltaTime: f64) void {
 		if (Player.collides()) |box| {
 			if (Player.super.vel[2] < 0) {
 				Player.super.pos[2] = box.max[2];
-				while (Player.collides()) |_| {
-					Player.super.pos[2] += 1;
-				}
 				Player.onGround = true;
 			} else {
 				Player.super.pos[2] = box.min[2] - Player.height;
-				while (Player.collides()) |_| {
-					Player.super.pos[2] -= 1;
-				}
 			}
 			Player.super.vel[2] = 0;
 		}
