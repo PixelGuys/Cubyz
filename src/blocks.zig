@@ -59,6 +59,7 @@ pub const Ore = struct {
 };
 
 var _transparent: [maxBlockCount]bool = undefined;
+var _collide: [maxBlockCount]bool = undefined;
 var _id: [maxBlockCount][]u8 = undefined;
 /// Time in seconds to break this block by hand.
 var _hardness: [maxBlockCount]f32 = undefined;
@@ -116,6 +117,7 @@ pub fn register(_: []const u8, id: []const u8, json: JsonElement) u16 {
 	_solid[size] = json.get(bool, "solid", true);
 	_gui[size] = allocator.dupe(u8, json.get([]const u8, "GUI", ""));
 	_transparent[size] = json.get(bool, "transparent", false);
+	_collide[size] = json.get(bool, "collide", true);
 	_alwaysViewThrough[size] = json.get(bool, "alwaysViewThrough", false);
 	_viewThrough[size] = json.get(bool, "viewThrough", false) or _transparent[size] or _alwaysViewThrough[size];
 	_hasBackFace[size] = json.get(bool, "hasBackFace", false);
@@ -235,6 +237,10 @@ pub const Block = packed struct {
 
 	pub inline fn transparent(self: Block) bool {
 		return _transparent[self.typ];
+	}
+
+	pub inline fn collide(self: Block) bool {
+		return _collide[self.typ];
 	}
 
 	pub inline fn id(self: Block) []u8 {

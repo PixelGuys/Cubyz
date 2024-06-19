@@ -296,6 +296,7 @@ pub const KeyBoard = struct {
 		.{.name = "right", .key = c.GLFW_KEY_D},
 		.{.name = "sprint", .key = c.GLFW_KEY_LEFT_CONTROL},
 		.{.name = "jump", .key = c.GLFW_KEY_SPACE},
+		.{.name = "fly", .key = c.GLFW_KEY_F, .pressAction = &game.flyToggle},
 		.{.name = "fall", .key = c.GLFW_KEY_LEFT_SHIFT},
 		.{.name = "fullscreen", .key = c.GLFW_KEY_F11, .releaseAction = &Window.toggleFullscreen},
 		.{.name = "placeBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &game.pressPlace, .releaseAction = &game.releasePlace},
@@ -463,7 +464,8 @@ pub fn main() void {
 		if(!isHidden) {
 			c.glEnable(c.GL_CULL_FACE);
 			c.glEnable(c.GL_DEPTH_TEST);
-			renderer.render(game.Player.getPosBlocking());
+			const eye: Vec3d = .{0.0, 0.0, game.Player.eye};
+			renderer.render(game.Player.getPosBlocking() + eye);
 			// Render the GUI
 			gui.windowlist.gpu_performance_measuring.startQuery(.gui);
 			c.glDisable(c.GL_CULL_FACE);

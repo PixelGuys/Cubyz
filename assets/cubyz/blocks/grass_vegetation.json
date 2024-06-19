@@ -7,6 +7,7 @@
 	"degradable" : true,
 	"viewThrough" : true,
 	"absorbedLight" : 0x121012,
+	"collide": false,
 	"model" : "cross",
 	"texture" : "cubyz:grass_vegetation"
 }

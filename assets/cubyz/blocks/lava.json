@@ -8,6 +8,7 @@
 	"degradable" : true,
 	"transparent" : true,
 	"hasBackFace" : true,
+	"collide": false,
 	"absorbedLight" : 0x0084ff,
 	"emittedLight" : 0xff7b00,
 	"model" : "cube",

@@ -8,6 +8,7 @@
 	"emittedLight" : 0x00a09080,
 	"viewThrough" : true,
 	"absorbedLight" : 0x010101,
+	"collide": false,
 	"rotation" : "torch",
 	"model" : "torch",
 	"texture" : "cubyz:torch",
