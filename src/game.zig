@@ -217,13 +217,13 @@ pub const Player = struct {
 									const quad = &models.quads.items[quadIndex];
 									if (triangleAABB(.{quad.corners[0] + quad.normal + pos, quad.corners[2] + quad.normal + pos, quad.corners[1] + quad.normal + pos}, super.pos + Vec3d{0, 0, height / 2.0}, playerSize))
 										return .{
-											.min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + quad.normal,
-											.max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + quad.normal
+											.min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + quad.normal + pos,
+											.max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + quad.normal + pos
 										};
 									if (triangleAABB(.{quad.corners[1] + quad.normal + pos, quad.corners[2] + quad.normal + pos, quad.corners[3] + quad.normal + pos}, super.pos + Vec3d{0, 0, height / 2.0}, playerSize))
 										return .{
-											.min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + quad.normal,
-											.max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + quad.normal
+											.min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + quad.normal + pos,
+											.max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + quad.normal + pos
 										};
 								}
 							}
@@ -232,13 +232,13 @@ pub const Player = struct {
 								const quad = &models.quads.items[quadIndex];
 								if (triangleAABB(.{quad.corners[0] + pos, quad.corners[2] + pos, quad.corners[1] + pos}, super.pos + Vec3d{0, 0, height / 2.0}, playerSize))
 									return .{
-										.min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])),
-										.max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3]))
+										.min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + pos,
+										.max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + pos
 									};
 								if (triangleAABB(.{quad.corners[1] + pos, quad.corners[2] + pos, quad.corners[3] + pos}, super.pos + Vec3d{0, 0, height / 2.0}, playerSize))
 									return .{
-										.min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])),
-										.max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3]))
+										.min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + pos,
+										.max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + pos
 									};
 							}
 						}
@@ -516,7 +516,9 @@ pub fn update(deltaTime: f64) void {
 		defer Player.mutex.unlock();
 
 		const move = Player.super.vel*@as(Vec3d, @splat(deltaTime));
+
 		Player.super.pos[0] += move[0];
+
 		if (Player.collides()) |box| {
 			if (Player.super.vel[0] < 0) {
 				Player.super.pos[0] = @ceil(Player.super.pos[0] - Player.radius - box.max[0]) + Player.radius + box.max[0];
@@ -524,7 +526,7 @@ pub fn update(deltaTime: f64) void {
 					Player.super.pos[0] += 1;
 				}
 			} else {
-				Player.super.pos[0] = @ceil(Player.super.pos[0] + Player.radius + box.min[0]) - Player.radius - box.min[0];
+				Player.super.pos[0] = @floor(Player.super.pos[0] + Player.radius - box.min[0]) - Player.radius + box.min[0];
 				while (Player.collides()) |_| {
 					Player.super.pos[0] -= 1;
 				}
@@ -534,18 +536,18 @@ pub fn update(deltaTime: f64) void {
 		Player.super.pos[1] += move[1];
 		if (Player.collides()) |box| {
 			if (Player.super.vel[1] < 0) {
-				Player.super.pos[1] = @floor(Player.super.pos[1] - Player.radius - box.max[1]) + Player.radius + box.max[1];
+				Player.super.pos[1] = @ceil(Player.super.pos[1] - Player.radius - box.max[1]) + Player.radius + box.max[1];
 				while (Player.collides()) |_| {
 					Player.super.pos[1] += 1;
 				}
 			} else {
-				Player.super.pos[1] = @ceil(Player.super.pos[1] + Player.radius - box.min[1]) - Player.radius + box.min[1];
+				Player.super.pos[1] = @floor(Player.super.pos[1] + Player.radius - box.min[1]) - Player.radius + box.min[1];
 				while (Player.collides()) |_| {
 					Player.super.pos[1] -= 1;
 				}
 			}
 		}
-		
+
 		Player.onGround = false;
 		Player.super.pos[2] += move[2];
 		if (Player.collides()) |box| {
