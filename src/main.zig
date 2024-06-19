@@ -435,6 +435,8 @@ pub fn main() void {
 
 	while(c.glfwWindowShouldClose(Window.window) == 0) {
 		const isHidden = c.glfwGetWindowAttrib(Window.window, c.GLFW_ICONIFIED) == c.GLFW_TRUE;
+		
+		std.time.sleep(16_000_000);
 		if(!isHidden) {
 			c.glfwSwapBuffers(Window.window);
 			// Clear may also wait on vsync, so it's done before handling events:
