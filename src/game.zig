@@ -430,6 +430,85 @@ pub fn flyToggle() void {
 	Player.isFlying.store(!Player.isFlying.load(.monotonic), .monotonic);
 }
 
+pub fn movePlayer(move: Vec3d) void {
+	Player.super.pos[0] += move[0];
+
+	if (Player.collides()) |box| {
+		var step = false;
+		if (box.max[2] - Player.super.pos[2] <= 0.5 and Player.onGround) {
+			const old = Player.super.pos[2];
+			Player.super.pos[2] = box.max[2] + 0.0001;
+			if (Player.collides()) |_| {
+				Player.super.pos[2] = old;
+			} else {
+				step = true;
+			}
+		}
+		if (!step)
+		{
+			if (move[0] < 0) {
+				Player.super.pos[0] = box.max[0] + Player.radius;
+				while (Player.collides()) |_| {
+					Player.super.pos[0] += 1;
+				}
+			} else {
+				Player.super.pos[0] = box.min[0] - Player.radius;
+				while (Player.collides()) |_| {
+					Player.super.pos[0] -= 1;
+				}
+			}
+			Player.super.vel[0] = 0;
+		}
+	}
+
+	Player.super.pos[1] += move[1];
+	if (Player.collides()) |box| {
+		var step = false;
+		if (box.max[2] - Player.super.pos[2] <= 0.5 and Player.onGround) {
+			const old = Player.super.pos[2];
+			Player.super.pos[2] = box.max[2] + 0.0001;
+			if (Player.collides()) |_| {
+				Player.super.pos[2] = old;
+			} else {
+				step = true;
+			}
+		}
+
+		if (!step) {
+			if (move[1] < 0) {
+				Player.super.pos[1] = box.max[1] + Player.radius;
+				while (Player.collides()) |_| {
+					Player.super.pos[1] += 1;
+				}
+			} else {
+				Player.super.pos[1] = box.min[1] - Player.radius;
+				while (Player.collides()) |_| {
+					Player.super.pos[1] -= 1;
+				}
+			}
+			Player.super.vel[1] = 0;
+		}
+	}
+
+	Player.onGround = false;
+	Player.super.pos[2] += move[2];
+	if (Player.collides()) |box| {
+		if (move[2] < 0) {
+			Player.super.pos[2] = box.max[2];
+			while (Player.collides()) |_| {
+				Player.super.pos[2] += 1;
+			}
+			Player.onGround = true;
+		} else {
+			Player.super.pos[2] = box.min[2] - Player.height;
+			while (Player.collides()) |_| {
+				Player.super.pos[2] -= 1;
+			}
+		}
+		Player.super.vel[2] = 0;
+	}
+}
+
 pub fn update(deltaTime: f64) void {
 	if (main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(Player.super.pos[0])), @intFromFloat(@floor(Player.super.pos[1])), @intFromFloat(@floor(Player.super.pos[2]))) != null) {		
 		var acc = Vec3d{0, 0, 0};
@@ -528,81 +607,8 @@ pub fn update(deltaTime: f64) void {
 
 		const move = Player.super.vel*@as(Vec3d, @splat(deltaTime));
 
-		Player.super.pos[0] += move[0];
-
-		if (Player.collides()) |box| {
-			var step = false;
-			if (box.max[2] - Player.super.pos[2] <= 0.5 and Player.onGround) {
-				const old = Player.super.pos[2];
-				Player.super.pos[2] = box.max[2] + 0.0001;
-				if (Player.collides()) |_| {
-					Player.super.pos[2] = old;
-				} else {
-					step = true;
-				}
-			}
-			if (!step)
-			{
-				if (Player.super.vel[0] < 0) {
-					Player.super.pos[0] = box.max[0] + Player.radius;
-					while (Player.collides()) |_| {
-						Player.super.pos[0] += 1;
-					}
-				} else {
-					Player.super.pos[0] = box.min[0] - Player.radius;
-					while (Player.collides()) |_| {
-						Player.super.pos[0] -= 1;
-					}
-				}
-				Player.super.vel[0] = 0;
-			}
-		}
-
-		Player.super.pos[1] += move[1];
-		if (Player.collides()) |box| {
-			var step = false;
-			if (box.max[2] - Player.super.pos[2] <= 0.5 and Player.onGround) {
-				const old = Player.super.pos[2];
-				Player.super.pos[2] = box.max[2] + 0.0001;
-				if (Player.collides()) |_| {
-					Player.super.pos[2] = old;
-				} else {
-					step = true;
-				}
-			}
-
-			if (!step) {
-				if (Player.super.vel[1] < 0) {
-					Player.super.pos[1] = box.max[1] + Player.radius;
-					while (Player.collides()) |_| {
-						Player.super.pos[1] += 1;
-					}
-				} else {
-					Player.super.pos[1] = box.min[1] - Player.radius;
-					while (Player.collides()) |_| {
-						Player.super.pos[1] -= 1;
-					}
-				}
-				Player.super.vel[1] = 0;
-			}
-		}
-
-		Player.onGround = false;
-		Player.super.pos[2] += move[2];
-		if (Player.collides()) |box| {
-			if (Player.super.vel[2] < 0) {
-				Player.super.pos[2] = box.max[2];
-				while (Player.collides()) |_| {
-					Player.super.pos[2] += 1;
-				}
-				Player.onGround = true;
-			} else {
-				Player.super.pos[2] = box.min[2] - Player.height;
-				while (Player.collides()) |_| {
-					Player.super.pos[2] -= 1;
-				}
-			}
-			Player.super.vel[2] = 0;
+		for (0..8) |_| {
+			movePlayer(move * @as(Vec3d, @splat(1.0 / 8.0)));
 		}
 	}
 
