@@ -434,18 +434,18 @@ pub fn update(deltaTime: f64) void {
 	if (main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(Player.super.pos[0])), @intFromFloat(@floor(Player.super.pos[1])), @intFromFloat(@floor(Player.super.pos[2]))) != null) {		
 		var acc = Vec3d{0, 0, 0};
 		if (!Player.isFlying.load(.monotonic)) {
-			acc[2] = -30;
+			acc[2] = -30 * deltaTime;
 		}
 
 		var fric: f32 = 0.7;
 		var speed: f32 = 20.0;
 
-		if (!Player.onGround) {
+		if (!Player.onGround and !Player.isFlying.load(.monotonic)) {
 			fric = 0.99;
 			speed = 0.01;
 		}
 
-		const fricMul = speed / (1.0 / fric - 1.0);
+		const fricMul = (speed / 144) / (1.0 / fric - 1.0);
 
 		const forward = vec.rotateZ(Vec3d{0, 1, 0}, -camera.rotation[2]);
 		const right = Vec3d{-forward[1], forward[0], 0};
@@ -496,9 +496,9 @@ pub fn update(deltaTime: f64) void {
 			main.Window.scrollOffset = 0;
 		}
 
-		Player.super.vel[0] += acc[0] * deltaTime;
-		Player.super.vel[1] += acc[1] * deltaTime;
-		Player.super.vel[2] += acc[2] * deltaTime;
+		Player.super.vel[0] += acc[0];
+		Player.super.vel[1] += acc[1];
+		Player.super.vel[2] += acc[2];
 
 		Player.super.vel[0] *= fric;
 		Player.super.vel[1] *= fric;
