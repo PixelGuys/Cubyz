@@ -7,5 +7,7 @@
 	"absorbedLight" : 0x202830,
 	"rotation" : "fence",
 	"model" : "fence",
-	"texture" : "cubyz:oak_planks"
+	"texture" : "cubyz:oak_fence",
+	"texture_top" : "cubyz:oak_fence_top",
+	"texture_bottom" : "cubyz:oak_fence_top"
 }
