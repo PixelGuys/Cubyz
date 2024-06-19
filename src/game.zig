@@ -434,11 +434,20 @@ pub fn flyToggle() void {
 
 pub fn update(deltaTime: f64) void {
 	if (main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(Player.super.pos[0])), @intFromFloat(@floor(Player.super.pos[1])), @intFromFloat(@floor(Player.super.pos[2]))) != null) {		
+		var acc = Vec3d{0, 0, 0};
 		if (!Player.isFlying.load(.monotonic)) {
-			Player.super.vel[2] -= 30 * deltaTime;
+			acc[2] = -30;
 		}
 
-		var movement = Vec3d{0, 0, 0};
+		var fric: f32 = 0.7;
+		var speed: f32 = 20.0;
+
+		if (!Player.onGround) {
+			fric = 0.99;
+			speed = 0.01;
+		}
+
+		const fricMul = speed / (1.0 / fric - 1.0);
 
 		const forward = vec.rotateZ(Vec3d{0, 1, 0}, -camera.rotation[2]);
 		const right = Vec3d{-forward[1], forward[0], 0};
@@ -446,29 +455,29 @@ pub fn update(deltaTime: f64) void {
 			if(KeyBoard.key("forward").pressed) {
 				if(KeyBoard.key("sprint").pressed) {
 					if(Player.isFlying.load(.monotonic)) {
-						movement += forward*@as(Vec3d, @splat(128));
+						acc += forward*@as(Vec3d, @splat(128 * fricMul));
 					} else {
-						movement += forward*@as(Vec3d, @splat(8));
+						acc += forward*@as(Vec3d, @splat(8 * fricMul));
 					}
 				} else {
-					movement += forward*@as(Vec3d, @splat(4));
+					acc += forward*@as(Vec3d, @splat(4 * fricMul));
 				}
 			}
 			if(KeyBoard.key("backward").pressed) {
-				movement += forward*@as(Vec3d, @splat(-4));
+				acc += forward*@as(Vec3d, @splat(-4 * fricMul));
 			}
 			if(KeyBoard.key("left").pressed) {
-				movement += right*@as(Vec3d, @splat(4));
+				acc += right*@as(Vec3d, @splat(4 * fricMul));
 			}
 			if(KeyBoard.key("right").pressed) {
-				movement += right*@as(Vec3d, @splat(-4));
+				acc += right*@as(Vec3d, @splat(-4 * fricMul));
 			}
 			if(KeyBoard.key("jump").pressed) {
 				if(Player.isFlying.load(.monotonic)) {
 					if(KeyBoard.key("sprint").pressed) {
-						movement[2] += 59.45;
+						acc[2] += 59.45 * fricMul;
 					} else {
-						movement[2] += 5.45;
+						acc[2] += 5.45 * fricMul;
 					}
 				} else if (Player.onGround) {
 					Player.super.vel[2] = @sqrt(1.25 * 30 * 2);
@@ -477,9 +486,9 @@ pub fn update(deltaTime: f64) void {
 			if(KeyBoard.key("fall").pressed) {
 				if(Player.isFlying.load(.monotonic)) {
 					if(KeyBoard.key("sprint").pressed) {
-						movement[2] += -59.45;
+						acc[2] += -59.45 * fricMul;
 					} else {
-						movement[2] += -5.45;
+						acc[2] += -5.45 * fricMul;
 					}
 				}
 			}
@@ -489,11 +498,15 @@ pub fn update(deltaTime: f64) void {
 			main.Window.scrollOffset = 0;
 		}
 
-		Player.super.vel[0] = movement[0];
-		Player.super.vel[1] = movement[1];
+		Player.super.vel[0] += acc[0] * deltaTime;
+		Player.super.vel[1] += acc[1] * deltaTime;
+		Player.super.vel[2] += acc[2] * deltaTime;
+
+		Player.super.vel[0] *= fric;
+		Player.super.vel[1] *= fric;
 
 		if (Player.isFlying.load(.monotonic)) {
-			Player.super.vel[2] = movement[2];
+			Player.super.vel[2] *= fric;
 		}
 	}
 
