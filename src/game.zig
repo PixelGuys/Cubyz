@@ -204,8 +204,8 @@ pub const Player = struct {
 		while (x <= maxX) : (x += 1) {
 			var y: i32 = minY;
 			while (y <= maxY) : (y += 1) {
-				var z: i32 = minZ;
-				while (z <= maxZ) : (z += 1) {
+				var z: i32 = maxZ;
+				while (z >= minZ) : (z -= 1) {
 					if (main.renderer.mesh_storage.getBlock(x, y, z)) |block| {
 						if (block.collide()) {
 							const model = models.models.items[block.mode().model(block)];
@@ -520,30 +520,56 @@ pub fn update(deltaTime: f64) void {
 		Player.super.pos[0] += move[0];
 
 		if (Player.collides()) |box| {
-			if (Player.super.vel[0] < 0) {
-				Player.super.pos[0] = @ceil(Player.super.pos[0] - Player.radius - box.max[0]) + Player.radius + box.max[0];
-				while (Player.collides()) |_| {
-					Player.super.pos[0] += 1;
+			var step = false;
+			if (box.max[2] - Player.super.pos[2] <= 0.5 and Player.onGround) {
+				const old = Player.super.pos[2];
+				Player.super.pos[2] = box.max[2] + 0.0001;
+				if (Player.collides()) |_| {
+					Player.super.pos[2] = old;
+				} else {
+					step = true;
 				}
-			} else {
-				Player.super.pos[0] = @floor(Player.super.pos[0] + Player.radius - box.min[0]) - Player.radius + box.min[0];
-				while (Player.collides()) |_| {
-					Player.super.pos[0] -= 1;
+			}
+			if (!step)
+			{
+				if (Player.super.vel[0] < 0) {
+					Player.super.pos[0] = @ceil(Player.super.pos[0] - Player.radius - box.max[0]) + Player.radius + box.max[0];
+					while (Player.collides()) |_| {
+						Player.super.pos[0] += 1;
+					}
+				} else {
+					Player.super.pos[0] = @floor(Player.super.pos[0] + Player.radius - box.min[0]) - Player.radius + box.min[0];
+					while (Player.collides()) |_| {
+						Player.super.pos[0] -= 1;
+					}
 				}
 			}
 		}
 
 		Player.super.pos[1] += move[1];
 		if (Player.collides()) |box| {
-			if (Player.super.vel[1] < 0) {
-				Player.super.pos[1] = @ceil(Player.super.pos[1] - Player.radius - box.max[1]) + Player.radius + box.max[1];
-				while (Player.collides()) |_| {
-					Player.super.pos[1] += 1;
+			var step = false;
+			if (box.max[2] - Player.super.pos[2] <= 0.5 and Player.onGround) {
+				const old = Player.super.pos[2];
+				Player.super.pos[2] = box.max[2] + 0.0001;
+				if (Player.collides()) |_| {
+					Player.super.pos[2] = old;
+				} else {
+					step = true;
 				}
-			} else {
-				Player.super.pos[1] = @floor(Player.super.pos[1] + Player.radius - box.min[1]) - Player.radius + box.min[1];
-				while (Player.collides()) |_| {
-					Player.super.pos[1] -= 1;
+			}
+
+			if (!step) {
+				if (Player.super.vel[1] < 0) {
+					Player.super.pos[1] = @ceil(Player.super.pos[1] - Player.radius - box.max[1]) + Player.radius + box.max[1];
+					while (Player.collides()) |_| {
+						Player.super.pos[1] += 1;
+					}
+				} else {
+					Player.super.pos[1] = @floor(Player.super.pos[1] + Player.radius - box.min[1]) - Player.radius + box.min[1];
+					while (Player.collides()) |_| {
+						Player.super.pos[1] -= 1;
+					}
 				}
 			}
 		}
