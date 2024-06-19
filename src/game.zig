@@ -196,8 +196,6 @@ pub const Player = struct {
 		const minZ: i32 = @intFromFloat(@floor(super.pos[2]));
 		const maxZ: i32 = @intFromFloat(@floor(super.pos[2] + height - 0.0001));
 
-		// std.debug.print("{any}\n", .{triangleAABB(.{Vec3d{20,9,44}, Vec3d{7,7,7}, Vec3d{8,8,8}}, Vec3d{0,1,3}, Vec3d{8,8,4})});
-
 		const playerSize = .{radius - 0.0001, radius - 0.0001, height / 2.0 - 0.0001};
 
 		var x: i32 = minX;
