@@ -7,5 +7,7 @@
 	"absorbedLight" : 0x202830,
 	"rotation" : "fence",
 	"model" : "fence",
-	"texture" : "cubyz:pine_planks"
+	"texture" : "cubyz:pine_fence",
+	"texture_top" : "cubyz:pine_fence_top",
+	"texture_bottom" : "cubyz:pine_fence_top"
 }

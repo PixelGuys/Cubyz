@@ -6,7 +6,11 @@
 	],
 	"GUI" : "cubyz:workbench",
 	"model" : "cube",
-	"texture" : "cubyz:workbench_side",
+	"rotation" : "planar",
+	"texture" : "cubyz:workbench_back",
+	"texture_front" : "cubyz:workbench_front",
+	"texture_left" : "cubyz:workbench_side",
+	"texture_right" : "cubyz:workbench_side",
 	"texture_top" : "cubyz:workbench_top",
-	"texture_bottom" : "cubyz:workbench_top"
+	"texture_bottom" : "cubyz:workbench_bottom"
 }
