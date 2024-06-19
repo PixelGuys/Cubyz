@@ -554,6 +554,7 @@ pub fn update(deltaTime: f64) void {
 						Player.super.pos[0] -= 1;
 					}
 				}
+				Player.super.vel[0] = 0;
 			}
 		}
 
@@ -582,6 +583,7 @@ pub fn update(deltaTime: f64) void {
 						Player.super.pos[1] -= 1;
 					}
 				}
+				Player.super.vel[1] = 0;
 			}
 		}
 
