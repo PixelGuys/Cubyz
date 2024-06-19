@@ -430,10 +430,6 @@ pub fn flyToggle() void {
 	Player.isFlying.store(!Player.isFlying.load(.monotonic), .monotonic);
 }
 
-// pub fn sweepAABB(min: Vec3d, max: Vec3d) Vec3d {
-
-// }
-
 pub fn update(deltaTime: f64) void {
 	if (main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(Player.super.pos[0])), @intFromFloat(@floor(Player.super.pos[1])), @intFromFloat(@floor(Player.super.pos[2]))) != null) {		
 		var acc = Vec3d{0, 0, 0};
