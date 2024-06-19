@@ -206,7 +206,7 @@ pub const Player = struct {
 				while (z >= minZ) : (z -= 1) {
 					if (main.renderer.mesh_storage.getBlock(x, y, z)) |block| {
 						if (block.collide()) {
-							const model = models.models.items[block.mode().model(block)];
+							const model = &models.models.items[block.mode().model(block)];
 
 							const pos = Vec3d{@floatFromInt(x), @floatFromInt(y), @floatFromInt(z)};
 
