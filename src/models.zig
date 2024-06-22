@@ -36,10 +36,16 @@ fn snapToGrid(x: anytype) @TypeOf(x) {
 	return @as(T, @floatFromInt(int))/@as(T, @splat(gridSize));
 }
 
-const Face = struct {
+const Triangle = struct {
 	vertex: [3]usize,
 	normals: [3]usize,
 	uvs: [3]usize,
+};
+
+const Quad = struct {
+	vertex: [4]usize,
+	normals: [4]usize,
+	uvs: [4]usize,
 };
 
 pub const Model = struct {
@@ -168,23 +174,30 @@ pub const Model = struct {
 		var uvs = std.ArrayList([2]f32).init(main.stackAllocator.allocator);
 		defer uvs.deinit();
 
-		var faces = std.ArrayList(Face).init(main.stackAllocator.allocator);
-		defer faces.deinit();
+		var tris = std.ArrayList(Triangle).init(main.stackAllocator.allocator);
+		defer tris.deinit();
+
+		var quadFaces = std.ArrayList(Quad).init(main.stackAllocator.allocator);
+		defer quadFaces.deinit();
 
 		var buf_reader = std.io.bufferedReader(file.reader());
 		var in_stream = buf_reader.reader();
 		var buf: [128]u8 = undefined;
 		while (try in_stream.readUntilDelimiterOrEof(&buf, '\n')) |line| {
-			if (std.mem.eql(u8, line[0..1], "#")) {
+			if (line.len == 0)
 				continue;
-			} else if (std.mem.eql(u8, line[0..2], "v ")) {
+			
+			if (std.mem.eql(u8, line[0..1], "#"))
+				continue;
+			
+			if (std.mem.eql(u8, line[0..2], "v ")) {
 				var coordsIter = std.mem.split(u8, line[2..], " ");
 				var coords: [3]f32 = undefined;
 				var i: usize = 0;
 				while (coordsIter.next()) |coord| : (i += 1) {
 					coords[i] = try std.fmt.parseFloat(f32, coord);
 				}
-				const coordsCorrect: [3]f32 = .{coords[0], -coords[2], coords[1]};
+				const coordsCorrect: [3]f32 = .{coords[0] + 0.5, -coords[2] + 0.5, coords[1]};
 				try vertices.append(coordsCorrect);
 			} else if (std.mem.eql(u8, line[0..3], "vn ")) {
 				var coordsIter = std.mem.split(u8, line[3..], " ");
@@ -193,7 +206,8 @@ pub const Model = struct {
 				while (coordsIter.next()) |coord| : (i += 1) {
 					norm[i] = try std.fmt.parseFloat(f32, coord);
 				}
-				try normals.append(norm);
+				const normCorrect: [3]f32 = .{norm[0], -norm[2], norm[1]};
+				try normals.append(normCorrect);
 			} else if (std.mem.eql(u8, line[0..3], "vt ")) {
 				var coordsIter = std.mem.split(u8, line[3..], " ");
 				var uv: [2]f32 = undefined;
@@ -203,25 +217,38 @@ pub const Model = struct {
 				}
 				try uvs.append(uv);
 			} else if (std.mem.eql(u8, line[0..2], "f ")) {
-				var coordsIter = std.mem.split(u8, line[2..], " ");
-				var faceData: [3][3]usize = undefined;
-				var i: usize = 0;
-				while (coordsIter.next()) |vertex| : (i += 1) {
-					// verts[i] = try std.fmt.parseFloat(f32, coord);
-					var data = std.mem.split(u8, vertex, "/");
-					var j: usize = 0;
-					while (data.next()) |value| : (j += 1) {
-						faceData[j][i] = try std.fmt.parseUnsigned(usize, value, 10) - 1;
+				if (std.mem.count(u8, line[2..], " ") + 1 == 3) {
+					var coordsIter = std.mem.split(u8, line[2..], " ");
+					var faceData: [3][3]usize = undefined;
+					var i: usize = 0;
+					while (coordsIter.next()) |vertex| : (i += 1) {
+						var data = std.mem.split(u8, vertex, "/");
+						var j: usize = 0;
+						while (data.next()) |value| : (j += 1) {
+							faceData[j][i] = try std.fmt.parseUnsigned(usize, value, 10) - 1;
+						}
 					}
+					try tris.append(.{.vertex=faceData[0], .uvs=faceData[1], .normals=faceData[2]});
+				} else {
+					var coordsIter = std.mem.split(u8, line[2..], " ");
+					var faceData: [3][4]usize = undefined;
+					var i: usize = 0;
+					while (coordsIter.next()) |vertex| : (i += 1) {
+						var data = std.mem.split(u8, vertex, "/");
+						var j: usize = 0;
+						while (data.next()) |value| : (j += 1) {
+							faceData[j][i] = try std.fmt.parseUnsigned(usize, value, 10) - 1;
+						}
+					}
+					try quadFaces.append(.{.vertex=faceData[0], .uvs=faceData[1], .normals=faceData[2]});
 				}
-				try faces.append(.{.vertex=faceData[0], .uvs=faceData[1], .normals=faceData[2]});
 			}
 		}
 
-		var quadinfos = std.ArrayList(QuadInfo).init(main.stackAllocator.allocator);
-		defer quadinfos.deinit();
+		var quadInfos = std.ArrayList(QuadInfo).init(main.stackAllocator.allocator);
+		defer quadInfos.deinit();
 
-		for (faces.items) |face| {
+		for (tris.items) |face| {
 			const normal: Vec3f = .{normals.items[face.normals[0]][0], normals.items[face.normals[0]][1], normals.items[face.normals[0]][2]};
 
 			const cornerA: Vec3f = .{vertices.items[face.vertex[0]][0], vertices.items[face.vertex[0]][1], vertices.items[face.vertex[0]][2]};
@@ -232,7 +259,7 @@ pub const Model = struct {
 			const uvB: Vec2f = .{uvs.items[face.uvs[1]][0], uvs.items[face.uvs[1]][1]};
 			const uvC: Vec2f = .{uvs.items[face.uvs[2]][0], uvs.items[face.uvs[2]][1]};
 
-			try quadinfos.append(.{
+			try quadInfos.append(.{
 				.normal = normal,
 				.corners = .{cornerA, cornerB, cornerC, cornerA},
 				.cornerUV = .{uvA, uvB, uvC, uvA},
@@ -240,7 +267,28 @@ pub const Model = struct {
 			});
 		}
 
-		return Model.init(quadinfos.items);
+		for (quadFaces.items) |face| {
+			const normal: Vec3f = .{normals.items[face.normals[0]][0], normals.items[face.normals[0]][1], normals.items[face.normals[0]][2]};
+
+			const cornerA: Vec3f = .{vertices.items[face.vertex[0]][0], vertices.items[face.vertex[0]][1], vertices.items[face.vertex[0]][2]};
+			const cornerB: Vec3f = .{vertices.items[face.vertex[1]][0], vertices.items[face.vertex[1]][1], vertices.items[face.vertex[1]][2]};
+			const cornerC: Vec3f = .{vertices.items[face.vertex[2]][0], vertices.items[face.vertex[2]][1], vertices.items[face.vertex[2]][2]};
+			const cornerD: Vec3f = .{vertices.items[face.vertex[3]][0], vertices.items[face.vertex[3]][1], vertices.items[face.vertex[3]][2]};
+			
+			const uvA: Vec2f = .{uvs.items[face.uvs[0]][0], uvs.items[face.uvs[0]][1]};
+			const uvB: Vec2f = .{uvs.items[face.uvs[1]][0], uvs.items[face.uvs[1]][1]};
+			const uvC: Vec2f = .{uvs.items[face.uvs[2]][0], uvs.items[face.uvs[2]][1]};
+			const uvD: Vec2f = .{uvs.items[face.uvs[3]][0], uvs.items[face.uvs[3]][1]};
+
+			try quadInfos.append(.{
+				.normal = normal,
+				.corners = .{cornerB, cornerA, cornerC, cornerD},
+				.cornerUV = .{uvA, uvB, uvD, uvC},
+				.textureSlot = 0,
+			});
+		}
+
+		return Model.init(quadInfos.items);
 	}
 
 	fn deinit(self: *const Model) void {
@@ -486,9 +534,9 @@ pub fn init() void {
 	}}));
 	nameToIndex.put("torch", torch) catch unreachable;
 	
-	const sphere = Model.loadModel("assets/cubyz/models/sphere.obj") catch unreachable;
+	const carpet = Model.loadModel("assets/cubyz/models/carpet.obj") catch unreachable;
 
-	nameToIndex.put("sphere", sphere) catch unreachable;
+	nameToIndex.put("carpet", carpet) catch unreachable;
 }
 
 pub fn uploadModels() void {

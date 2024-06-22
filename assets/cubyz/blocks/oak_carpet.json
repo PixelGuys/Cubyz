@@ -4,6 +4,6 @@
 	"drops" : [
 		"auto"
 	],
-	"model" : "sphere",
+	"model" : "carpet",
 	"texture" : "cubyz:oak_planks"
 }
