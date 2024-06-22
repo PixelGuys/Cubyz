@@ -1,9 +1,0 @@
-{
-	"class" : "wood",
-	"hardness" : 7,
-	"drops" : [
-		"auto"
-	],
-	"model" : "carpet",
-	"texture" : "cubyz:oak_planks"
-}
