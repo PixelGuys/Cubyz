@@ -36,6 +36,12 @@ fn snapToGrid(x: anytype) @TypeOf(x) {
 	return @as(T, @floatFromInt(int))/@as(T, @splat(gridSize));
 }
 
+const Face = struct {
+	vertex: [3]usize,
+	normals: [3]usize,
+	uvs: [3]usize,
+};
+
 pub const Model = struct {
 	min: Vec3f,
 	max: Vec3f,
@@ -147,6 +153,93 @@ pub const Model = struct {
 			self.noNeighborsOccluded = self.noNeighborsOccluded and !self.isNeighborOccluded[neighbor];
 		}
 		return modelIndex;
+	}
+
+	pub fn loadModel(path: []const u8) !u16 {
+		var file = try std.fs.cwd().openFile(path, .{});
+		defer file.close();
+
+		var vertices = std.ArrayList([3]f32).init(main.stackAllocator.allocator);
+		defer vertices.deinit();
+
+		var normals = std.ArrayList([3]f32).init(main.stackAllocator.allocator);
+		defer normals.deinit();
+
+		var uvs = std.ArrayList([2]f32).init(main.stackAllocator.allocator);
+		defer uvs.deinit();
+
+		var faces = std.ArrayList(Face).init(main.stackAllocator.allocator);
+		defer faces.deinit();
+
+		var buf_reader = std.io.bufferedReader(file.reader());
+		var in_stream = buf_reader.reader();
+		var buf: [128]u8 = undefined;
+		while (try in_stream.readUntilDelimiterOrEof(&buf, '\n')) |line| {
+			if (std.mem.eql(u8, line[0..1], "#")) {
+				continue;
+			} else if (std.mem.eql(u8, line[0..2], "v ")) {
+				var coordsIter = std.mem.split(u8, line[2..], " ");
+				var coords: [3]f32 = undefined;
+				var i: usize = 0;
+				while (coordsIter.next()) |coord| : (i += 1) {
+					coords[i] = try std.fmt.parseFloat(f32, coord);
+				}
+				try vertices.append(coords);
+			} else if (std.mem.eql(u8, line[0..3], "vn ")) {
+				var coordsIter = std.mem.split(u8, line[3..], " ");
+				var norm: [3]f32 = undefined;
+				var i: usize = 0;
+				while (coordsIter.next()) |coord| : (i += 1) {
+					norm[i] = try std.fmt.parseFloat(f32, coord);
+				}
+				try normals.append(norm);
+			} else if (std.mem.eql(u8, line[0..3], "vt ")) {
+				var coordsIter = std.mem.split(u8, line[3..], " ");
+				var uv: [2]f32 = undefined;
+				var i: usize = 0;
+				while (coordsIter.next()) |coord| : (i += 1) {
+					uv[i] = try std.fmt.parseFloat(f32, coord);
+				}
+				try uvs.append(uv);
+			} else if (std.mem.eql(u8, line[0..2], "f ")) {
+				var coordsIter = std.mem.split(u8, line[2..], " ");
+				var faceData: [3][3]usize = undefined;
+				var i: usize = 0;
+				while (coordsIter.next()) |vertex| : (i += 1) {
+					// verts[i] = try std.fmt.parseFloat(f32, coord);
+					var data = std.mem.split(u8, vertex, "/");
+					var j: usize = 0;
+					while (data.next()) |value| : (j += 1) {
+						faceData[j][i] = try std.fmt.parseUnsigned(usize, value, 10) - 1;
+					}
+				}
+				try faces.append(.{.vertex=faceData[0], .uvs=faceData[1], .normals=faceData[2]});
+			}
+		}
+
+		var quadinfos = std.ArrayList(QuadInfo).init(main.stackAllocator.allocator);
+		defer quadinfos.deinit();
+
+		for (faces.items) |face| {
+			const normal: Vec3f = .{normals.items[face.normals[0]][0], normals.items[face.normals[0]][1], normals.items[face.normals[0]][2]};
+
+			const cornerA: Vec3f = .{vertices.items[face.vertex[0]][0], vertices.items[face.vertex[0]][1], vertices.items[face.vertex[0]][2]};
+			const cornerB: Vec3f = .{vertices.items[face.vertex[1]][0], vertices.items[face.vertex[1]][1], vertices.items[face.vertex[1]][2]};
+			const cornerC: Vec3f = .{vertices.items[face.vertex[2]][0], vertices.items[face.vertex[2]][1], vertices.items[face.vertex[2]][2]};
+			
+			const uvA: Vec2f = .{uvs.items[face.uvs[0]][0], uvs.items[face.uvs[0]][1]};
+			const uvB: Vec2f = .{uvs.items[face.uvs[1]][0], uvs.items[face.uvs[1]][1]};
+			const uvC: Vec2f = .{uvs.items[face.uvs[2]][0], uvs.items[face.uvs[2]][1]};
+
+			try quadinfos.append(.{
+				.normal = normal,
+				.corners = .{cornerA, cornerB, cornerC, cornerA},
+				.cornerUV = .{uvA, uvB, uvC, uvA},
+				.textureSlot = 0,
+			});
+		}
+
+		return Model.init(quadinfos.items);
 	}
 
 	fn deinit(self: *const Model) void {
@@ -391,6 +484,10 @@ pub fn init() void {
 		.textureSlot = chunk.Neighbors.dirDown,
 	}}));
 	nameToIndex.put("torch", torch) catch unreachable;
+	
+	const sphere = Model.loadModel("assets/cubyz/models/sphere.obj") catch unreachable;
+
+	nameToIndex.put("sphere", sphere) catch unreachable;
 }
 
 pub fn uploadModels() void {
