@@ -184,7 +184,8 @@ pub const Model = struct {
 				while (coordsIter.next()) |coord| : (i += 1) {
 					coords[i] = try std.fmt.parseFloat(f32, coord);
 				}
-				try vertices.append(coords);
+				const coordsCorrect: [3]f32 = .{coords[0], -coords[2], coords[1]};
+				try vertices.append(coordsCorrect);
 			} else if (std.mem.eql(u8, line[0..3], "vn ")) {
 				var coordsIter = std.mem.split(u8, line[3..], " ");
 				var norm: [3]f32 = undefined;
