@@ -201,12 +201,6 @@ fn registerItem(assetFolder: []const u8, id: []const u8, json: JsonElement) !*it
 	return items_zig.register(assetFolder, texturePath, replacementTexturePath, id, json);
 }
 
-fn registerModel(id: []const u8, data: []const u8) !u16 {
-	const model = try main.models.Model.loadModel(data);
-	try main.models.nameToIndex.put(id, model);
-	return model;
-}
-
 fn registerBlock(assetFolder: []const u8, id: []const u8, json: JsonElement) !void {
 	const block = blocks_zig.register(assetFolder, id, json);
 	blocks_zig.meshes.register(assetFolder, id, json);
@@ -295,7 +289,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 
 	var modelIterator = models.iterator();
 	while (modelIterator.next()) |entry| {
-		_ = try registerModel(entry.key_ptr.*,  entry.value_ptr.*);
+		_ = try main.models.registerModel(entry.key_ptr.*,  entry.value_ptr.*);
 	}
 
 	// blocks:
