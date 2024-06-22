@@ -9,6 +9,6 @@
 	"hasBackFace" : true,
 	"absorbedLight" : 0x000100,
 
-	"model" : "cube",
+	"model" : "cubyz:cube",
 	"texture" : "cubyz:fog/magenta"
 }

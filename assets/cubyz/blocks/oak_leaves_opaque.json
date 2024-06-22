@@ -1,6 +1,6 @@
 {
 	"class" : "leaf",
 	"absorbedLight" : 0x121012,
-	"model" : "cube",
+	"model" : "cubyz:cube",
 	"texture" : "cubyz:oak_leaves_opaque"
 }

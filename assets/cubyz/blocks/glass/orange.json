@@ -6,6 +6,6 @@
 	],
 	"transparent" : true,
 	"absorbedLight" : 0x1183ee,
-	"model" : "cube",
+	"model" : "cubyz:cube",
 	"texture" : "cubyz:glass/orange"
 }

@@ -275,10 +275,7 @@ pub const Model = struct {
 		try main.files.write(path, data.items);
 	}
 
-	pub fn loadModel(path: []const u8) !u16 {
-		var file = try std.fs.cwd().openFile(path, .{});
-		defer file.close();
-
+	pub fn loadModel(data: []const u8) !u16 {
 		var vertices = std.ArrayList([3]f32).init(main.stackAllocator.allocator);
 		defer vertices.deinit();
 
@@ -294,7 +291,8 @@ pub const Model = struct {
 		var quadFaces = std.ArrayList(Quad).init(main.stackAllocator.allocator);
 		defer quadFaces.deinit();
 
-		var buf_reader = std.io.bufferedReader(file.reader());
+		var fixed_buffer = std.io.fixedBufferStream(data);
+		var buf_reader = std.io.bufferedReader(fixed_buffer.reader());
 		var in_stream = buf_reader.reader();
 		var buf: [128]u8 = undefined;
 		while (try in_stream.readUntilDelimiterOrEof(&buf, '\n')) |line| {
@@ -336,9 +334,9 @@ pub const Model = struct {
 					var faceData: [3][3]usize = undefined;
 					var i: usize = 0;
 					while (coordsIter.next()) |vertex| : (i += 1) {
-						var data = std.mem.split(u8, vertex, "/");
+						var d = std.mem.split(u8, vertex, "/");
 						var j: usize = 0;
-						while (data.next()) |value| : (j += 1) {
+						while (d.next()) |value| : (j += 1) {
 							faceData[j][i] = try std.fmt.parseUnsigned(usize, value, 10) - 1;
 						}
 					}
@@ -348,9 +346,9 @@ pub const Model = struct {
 					var faceData: [3][4]usize = undefined;
 					var i: usize = 0;
 					while (coordsIter.next()) |vertex| : (i += 1) {
-						var data = std.mem.split(u8, vertex, "/");
+						var d = std.mem.split(u8, vertex, "/");
 						var j: usize = 0;
-						while (data.next()) |value| : (j += 1) {
+						while (d.next()) |value| : (j += 1) {
 							faceData[j][i] = try std.fmt.parseUnsigned(usize, value, 10) - 1;
 						}
 					}
@@ -462,7 +460,7 @@ pub const Model = struct {
 	}
 };
 
-var nameToIndex: std.StringHashMap(u16) = undefined;
+pub var nameToIndex: std.StringHashMap(u16) = undefined;
 
 pub fn getModelIndex(string: []const u8) u16 {
 	return nameToIndex.get(string) orelse {
@@ -583,16 +581,16 @@ pub fn init() void {
 
 	nameToIndex.put("none", Model.init(&.{})) catch unreachable;
 
-	var dir = std.fs.cwd().openDir("assets/cubyz/blocks/models", .{.iterate = true}) catch unreachable;
-	defer dir.close();
-	var iterator = dir.iterate();
-	while (iterator.next() catch unreachable) |modelFile| {
-		const name = modelFile.name[0..std.mem.indexOf(u8, modelFile.name, ".") orelse modelFile.name.len];
-		var buffer: [512]u8 = undefined;
-		const path = dir.realpath(modelFile.name, &buffer) catch unreachable;
-		const model = Model.loadModel(path) catch unreachable;
-		nameToIndex.put(name, model) catch unreachable;
-	}
+	// var dir = std.fs.cwd().openDir("assets/cubyz/models", .{.iterate = true}) catch unreachable;
+	// defer dir.close();
+	// var iterator = dir.iterate();
+	// while (iterator.next() catch unreachable) |modelFile| {
+	// 	const name = modelFile.name[0..std.mem.indexOf(u8, modelFile.name, ".") orelse modelFile.name.len];
+	// 	var buffer: [512]u8 = undefined;
+	// 	const path = dir.realpath(modelFile.name, &buffer) catch unreachable;
+	// 	const model = Model.loadModel(path) catch unreachable;
+	// 	nameToIndex.put(name, model) catch unreachable;
+	// }
 }
 
 pub fn uploadModels() void {

@@ -5,7 +5,7 @@
 		"auto"
 	],
 	"GUI" : "cubyz:workbench",
-	"model" : "cube",
+	"model" : "cubyz:cube",
 	"rotation" : "planar",
 	"texture" : "cubyz:workbench_back",
 	"texture_front" : "cubyz:workbench_front",

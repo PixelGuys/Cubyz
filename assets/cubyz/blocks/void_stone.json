@@ -6,6 +6,6 @@
 		"cubyz:void_stone"
 	],
 	"rotation" : "stairs",
-	"model" : "cube",
+	"model" : "cubyz:cube",
 	"texture" : "cubyz:void_stone"
 }
