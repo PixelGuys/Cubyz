@@ -609,7 +609,7 @@ pub const ServerWorld = struct {
 			}
 			const map = terrain.SurfaceMap.getOrGenerateFragmentAndIncreaseRefCount(self.spawn[0], self.spawn[1], 1);
 			defer map.decreaseRefCount();
-			self.spawn[2] = @intFromFloat(map.getHeight(self.spawn[0], self.spawn[1]) + 1);
+			self.spawn[2] = map.getHeight(self.spawn[0], self.spawn[1]) + 1;
 		}
 		self.generated = true;
 		const newBiomeCheckSum: i64 = @bitCast(terrain.biomes.getBiomeCheckSum(self.seed));

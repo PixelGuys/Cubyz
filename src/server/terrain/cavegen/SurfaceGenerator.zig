@@ -38,14 +38,14 @@ pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 		var y: u31 = 0;
 		while(y < width) : (y += map.pos.voxelSize) {
 			const height = biomeMap.getSurfaceHeight(map.pos.wx + x, map.pos.wy + y);
-			const smallestHeight: i32 = @intFromFloat(@floor(@min(
+			const smallestHeight: i32 = @min(
 				biomeMap.getSurfaceHeight(map.pos.wx +% x +% 1, map.pos.wy +% y),
 				biomeMap.getSurfaceHeight(map.pos.wx +% x, map.pos.wy +% y +% 1),
 				biomeMap.getSurfaceHeight(map.pos.wx +% x -% 1, map.pos.wy +% y),
 				biomeMap.getSurfaceHeight(map.pos.wx +% x, map.pos.wy +% y -% 1),
 				height,
-			) - 0.5));
-			const relativeHeight: i32 = @as(i32, @intFromFloat(height)) -% map.pos.wz;
+			);
+			const relativeHeight: i32 = height -% map.pos.wz;
 			map.removeRange(x, y, relativeHeight, CaveMapFragment.height*map.pos.voxelSize);
 			if(smallestHeight < 1) { // Seal off caves that intersect the ocean floor.
 				map.addRange(x, y, smallestHeight -% 1 -% map.pos.wz, relativeHeight);

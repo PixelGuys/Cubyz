@@ -130,10 +130,10 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 			height += (roughMap.get(x, y) - 0.5)*2*roughness;
 			height += (hillMap.get(x, y) - 0.5)*2*hills;
 			height += (mountainMap.get(x, y) - 0.5)*2*mountains;
-			map.heightMap[x][y] = height;
-			map.minHeight = @min(map.minHeight, height);
+			map.heightMap[x][y] = @intFromFloat(height);
+			map.minHeight = @min(map.minHeight, @as(i32, @intFromFloat(height)));
 			map.minHeight = @max(map.minHeight, 0);
-			map.maxHeight = @max(map.maxHeight, height);
+			map.maxHeight = @max(map.maxHeight, @as(i32, @intFromFloat(height)));
 
 
 			// Select a biome. Also adding some white noise to make a smoother transition.
