@@ -22,7 +22,17 @@
 			"leaves" : "cubyz:oak_leaves",
 			"log" : "cubyz:oak_log",
 			"top" : "cubyz:oak_top",
-			"chance" : 0.04,
+			"chance" : 0.03,
+			"type" : "round",
+			"height" : 6,
+			"height_variation" : 3
+		},
+		{
+			"id" : "cubyz:simple_tree",
+			"leaves" : "cubyz:birch_leaves",
+			"log" : "cubyz:birch_log",
+			"top" : "cubyz:birch_top",
+			"chance" : 0.01,
 			"type" : "round",
 			"height" : 6,
 			"height_variation" : 3
@@ -31,9 +41,24 @@
 			"id" : "cubyz:fallen_tree",
 			"log" : "cubyz:oak_log",
 			"top" : "cubyz:oak_top",
-			"chance" : 0.01,
+			"chance" : 0.005,
 			"height" : 6,
 			"height_variation" : 3
 		}
+		{
+			"id" : "cubyz:fallen_tree",
+			"log" : "cubyz:birch_log",
+			"top" : "cubyz:birch_top",
+			"chance" : 0.002,
+			"height" : 6,
+			"height_variation" : 3
+		}
+		{
+			"id" : "cubyz:simple_vegetation",
+			"block" : "cubyz:grass_vegetation",
+			"chance" : 1,
+			"height" : 1,
+			"height_variation" : 0
+		},
 	]
 }

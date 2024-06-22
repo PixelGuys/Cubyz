@@ -1,0 +1,12 @@
+{
+	"class" : "wood",
+	"hardness" : 8,
+	"drops" : [
+		"auto"
+	],
+	"rotation" : "log",
+	"model" : "cube",
+	"texture" : "cubyz:birch_log",
+	"texture_top" : "cubyz:birch_log_top",
+	"texture_bottom" : "cubyz:birch_log_top"
+}
