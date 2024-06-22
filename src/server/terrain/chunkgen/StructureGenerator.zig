@@ -71,7 +71,7 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 				const wpx = px -% 16 +% chunk.super.pos.wx;
 				const wpy = py -% 16 +% chunk.super.pos.wy;
 
-				const relZ = @as(i32, @intFromFloat(biomeMap.getSurfaceHeight(wpx, wpy))) -% chunk.super.pos.wz;
+				const relZ = biomeMap.getSurfaceHeight(wpx, wpy) -% chunk.super.pos.wz;
 				if(relZ < -32 or relZ >= chunk.super.width + 32) continue;
 
 				var seed = random.initSeed3D(worldSeed, .{wpx, wpy, relZ});

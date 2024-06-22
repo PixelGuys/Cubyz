@@ -1,0 +1,13 @@
+{
+	"class" : "wood",
+	"hardness" : 7,
+	"drops" : [
+		"auto"
+	],
+	"absorbedLight" : 0x202830,
+	"rotation" : "fence",
+	"model" : "fence",
+	"texture" : "cubyz:birch_fence",
+	"texture_top" : "cubyz:birch_fence_top",
+	"texture_bottom" : "cubyz:birch_fence_top"
+}

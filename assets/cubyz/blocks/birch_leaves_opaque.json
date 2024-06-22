@@ -1,0 +1,6 @@
+{
+	"class" : "leaf",
+	"absorbedLight" : 0x121012,
+	"model" : "cube",
+	"texture" : "cubyz:birch_leaves_opaque"
+}
