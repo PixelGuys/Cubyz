@@ -67,6 +67,7 @@ pub const Player = struct {
 	pub const radius = 0.3;
 	pub const height = 1.8;
 	pub const eye = 1.5;
+	pub const jumpHeight = 1.25;
 
 	fn loadFrom(json: JsonElement) void {
 		super.loadFrom(json);
@@ -431,21 +432,27 @@ pub fn flyToggle() void {
 }
 
 pub fn update(deltaTime: f64) void {
+	const gravity = 30.0;
+	const terminalVelocity = 90.0;
+	const airFrictionCoefficient = gravity/terminalVelocity; // λ = a/v in equillibrium
+	var move: Vec3d = .{0, 0, 0};
 	if (main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(Player.super.pos[0])), @intFromFloat(@floor(Player.super.pos[1])), @intFromFloat(@floor(Player.super.pos[2]))) != null) {		
 		var acc = Vec3d{0, 0, 0};
 		if (!Player.isFlying.load(.monotonic)) {
-			acc[2] = -30 * deltaTime;
+			acc[2] = -gravity;
 		}
 
-		var fric: f32 = 0.7;
-		var speed: f32 = 20.0;
+		var baseFrictionCoefficient: f32 = 50;
+		var speedMultiplier: f32 = 1.0;
 
 		if (!Player.onGround and !Player.isFlying.load(.monotonic)) {
-			fric = 0.99;
-			speed = 0.01;
+			baseFrictionCoefficient = airFrictionCoefficient;
+			speedMultiplier = 1.0;
 		}
 
-		const fricMul = (speed / 144) / (1.0 / fric - 1.0);
+		var jumping: bool = false;
+		// At equillibrium we want to have dv/dt = a - λv = 0 → a = λ*v
+		const fricMul = speedMultiplier*baseFrictionCoefficient;
 
 		const forward = vec.rotateZ(Vec3d{0, 1, 0}, -camera.rotation[2]);
 		const right = Vec3d{-forward[1], forward[0], 0};
@@ -478,7 +485,7 @@ pub fn update(deltaTime: f64) void {
 						acc[2] += 5.45 * fricMul;
 					}
 				} else if (Player.onGround) {
-					Player.super.vel[2] = @sqrt(1.25 * 30 * 2);
+					jumping = true;
 				}
 			}
 			if(KeyBoard.key("fall").pressed) {
@@ -496,15 +503,45 @@ pub fn update(deltaTime: f64) void {
 			main.Window.scrollOffset = 0;
 		}
 
-		Player.super.vel[0] += acc[0];
-		Player.super.vel[1] += acc[1];
-		Player.super.vel[2] += acc[2];
-
-		Player.super.vel[0] *= fric;
-		Player.super.vel[1] *= fric;
-
-		if (Player.isFlying.load(.monotonic)) {
-			Player.super.vel[2] *= fric;
+		// This our model for movement on a single frame:
+		// dv/dt = a - λ·v
+		// dx/dt = v
+		// Where a is the acceleration, λ is the friction coefficient
+		// The solution is given by:
+		// v(t) = a/λ + c_1 e^(λ (-t))
+		// v(0) = a/λ + c_1 = v₀
+		// c_1 = v₀ - a/λ
+		// x(t) = ∫v(t) dt
+		// x(t) = ∫a/λ + c_1 e^(λ (-t)) dt
+		// x(t) = a/λt - c_1/λ e^(λ (-t)) + C
+		// With x(0) = 0 we get C = c_1/λ
+		// x(t) = a/λt - c_1/λ e^(λ (-t)) + c_1/λ
+		inline for(0..3) |i| {
+			var frictionCoefficient = baseFrictionCoefficient;
+			if(i == 2 and jumping) { // No friction while jumping
+				// Here we want to ensure a specified jump height under air friction.
+				// Maximum height is reached at v(t₀) = 0
+				// a/λ + c_1 e^(λ (-t₀)) = 0, where a = -g
+				// → c_1 e^(λ (-t₀)) = g/λ
+				// → e^(λ (-t₀)) = (g/λ)/c_1
+				// → t₀ = -ln((g/λ)/c_1)/λ
+				// The height at this time point is given by:
+				// x(t₀) = -g/λt₀ - c_1/λ e^(λ (-t₀)) + c_1/λ
+				// x(t₀) = -g/λ ·(-ln((g/λ)/c_1)/λ) - c_1/λ (g/λ)/c_1 + c_1/λ
+				// x(t₀) = -g/λ ·(-ln((g/λ)/c_1)/λ) - g/λ² + c_1/λ
+				// x(t₀) = g/λ²·ln((g/λ)/c_1) - g/λ² + c_1/λ
+				// Now x(t₀) = h is the height we want:
+				// g/λ²·ln((g/λ)/c_1) - g/λ² + c_1/λ = h
+				// g/λ²·ln((g/λ)/(v₀ + g/λ)) - g/λ² + (v₀ + g/λ)/λ = h
+				// g/λ²·ln((g/λ)/(v₀ + g/λ)) + v₀/λ = h
+				// g/λ²·ln(1/(v₀·λ/g + 1)) + v₀/λ = h
+				// -g/λ²·ln(v₀·λ/g + 1) + v₀/λ = h
+				Player.super.vel[i] = @sqrt(Player.jumpHeight * gravity * 2);
+				frictionCoefficient = airFrictionCoefficient;
+			}
+			const c_1 = Player.super.vel[i] - acc[i]/frictionCoefficient;
+			Player.super.vel[i] = acc[i]/frictionCoefficient + c_1*@exp(-frictionCoefficient*deltaTime);
+			move[i] = acc[i]/frictionCoefficient*deltaTime - c_1/frictionCoefficient*@exp(-frictionCoefficient*deltaTime) + c_1/frictionCoefficient;
 		}
 	}
 
@@ -525,8 +562,6 @@ pub fn update(deltaTime: f64) void {
 	{
 		Player.mutex.lock();
 		defer Player.mutex.unlock();
-
-		const move = Player.super.vel*@as(Vec3d, @splat(deltaTime));
 
 		Player.super.pos[0] += move[0];
 
