@@ -520,22 +520,6 @@ pub fn update(deltaTime: f64) void {
 			var frictionCoefficient = baseFrictionCoefficient;
 			if(i == 2 and jumping) { // No friction while jumping
 				// Here we want to ensure a specified jump height under air friction.
-				// Maximum height is reached at v(t₀) = 0
-				// a/λ + c_1 e^(λ (-t₀)) = 0, where a = -g
-				// → c_1 e^(λ (-t₀)) = g/λ
-				// → e^(λ (-t₀)) = (g/λ)/c_1
-				// → t₀ = -ln((g/λ)/c_1)/λ
-				// The height at this time point is given by:
-				// x(t₀) = -g/λt₀ - c_1/λ e^(λ (-t₀)) + c_1/λ
-				// x(t₀) = -g/λ ·(-ln((g/λ)/c_1)/λ) - c_1/λ (g/λ)/c_1 + c_1/λ
-				// x(t₀) = -g/λ ·(-ln((g/λ)/c_1)/λ) - g/λ² + c_1/λ
-				// x(t₀) = g/λ²·ln((g/λ)/c_1) - g/λ² + c_1/λ
-				// Now x(t₀) = h is the height we want:
-				// g/λ²·ln((g/λ)/c_1) - g/λ² + c_1/λ = h
-				// g/λ²·ln((g/λ)/(v₀ + g/λ)) - g/λ² + (v₀ + g/λ)/λ = h
-				// g/λ²·ln((g/λ)/(v₀ + g/λ)) + v₀/λ = h
-				// g/λ²·ln(1/(v₀·λ/g + 1)) + v₀/λ = h
-				// -g/λ²·ln(v₀·λ/g + 1) + v₀/λ = h
 				Player.super.vel[i] = @sqrt(Player.jumpHeight * gravity * 2);
 				frictionCoefficient = airFrictionCoefficient;
 			}
