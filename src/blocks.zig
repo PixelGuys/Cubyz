@@ -21,7 +21,7 @@ pub const BlockClass = enum(u8) {
 	unbreakable,
 	leaf,
 	fluid,
-	air
+	air,
 };
 
 var arena = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
