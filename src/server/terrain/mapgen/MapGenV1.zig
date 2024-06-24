@@ -67,7 +67,7 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 	// A ridgid noise map to generate interesting mountains.
 	const mountainMap = Array2D(f32).init(main.stackAllocator, scaledSize, scaledSize);
 	defer mountainMap.deinit(main.stackAllocator);
-	RandomlyWeightedFractalNoise.generateSparseFractalTerrain(map.pos.wx, map.pos.wy, 64, worldSeed ^ 6758947592930535, mountainMap, map.pos.voxelSize);
+	RandomlyWeightedFractalNoise.generateSparseFractalTerrain(map.pos.wx, map.pos.wy, 256, worldSeed ^ 6758947592930535, mountainMap, map.pos.voxelSize);
 
 	// A smooth map for smaller hills.
 	const hillMap = PerlinNoise.generateSmoothNoise(main.globalAllocator, map.pos.wx, map.pos.wy, mapSize, mapSize, 128, 32, worldSeed ^ 157839765839495820, map.pos.voxelSize, 0.5);
