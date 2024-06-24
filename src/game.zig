@@ -189,15 +189,33 @@ pub const Player = struct {
 		return @max(-max_p, min_p) <= r;
 	}
 
-	pub fn collides() ?Box {
-		const minX: i32 = @intFromFloat(@floor(super.pos[0] - radius));
-		const maxX: i32 = @intFromFloat(@floor(super.pos[0] + radius - 0.0001));
-		const minY: i32 = @intFromFloat(@floor(super.pos[1] - radius));
-		const maxY: i32 = @intFromFloat(@floor(super.pos[1] + radius - 0.0001));
-		const minZ: i32 = @intFromFloat(@floor(super.pos[2]));
-		const maxZ: i32 = @intFromFloat(@floor(super.pos[2] + height - 0.0001));
+	const Direction = enum {x, y, z};
 
-		const playerSize = .{radius - 0.0001, radius - 0.0001, height / 2.0 - 0.0001};
+	pub fn collides(dir: Direction, amount: f64) ?Box {
+		var boundingBox: Box = .{
+			.min = super.pos - Vec3d{radius, radius, 0},
+			.max = super.pos + Vec3d{radius, radius, height},
+		};
+		switch (dir) {
+			.x => {
+				if(amount < 0) boundingBox.min[0] += amount else boundingBox.max[0] += amount;
+			},
+			.y => {
+				if(amount < 0) boundingBox.min[1] += amount else boundingBox.max[1] += amount;
+			},
+			.z => {
+				if(amount < 0) boundingBox.min[2] += amount else boundingBox.max[2] += amount;
+			},
+		}
+		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0]));
+		const maxX: i32 = @intFromFloat(@floor(boundingBox.max[0] - 0.0001));
+		const minY: i32 = @intFromFloat(@floor(boundingBox.min[1]));
+		const maxY: i32 = @intFromFloat(@floor(boundingBox.max[1] - 0.0001));
+		const minZ: i32 = @intFromFloat(@floor(boundingBox.min[2]));
+		const maxZ: i32 = @intFromFloat(@floor(boundingBox.max[2] - 0.0001));
+
+		const boundingBoxCenter = (boundingBox.min + boundingBox.max)/@as(Vec3d, @splat(2));
+		const boundingBoxExtent = (boundingBox.max - boundingBox.min - @as(Vec3d, @splat(0.0001)))/@as(Vec3d, @splat(2));
 
 		var x: i32 = minX;
 		while (x <= maxX) : (x += 1) {
@@ -206,7 +224,7 @@ pub const Player = struct {
 				var z: i32 = maxZ;
 				while (z >= minZ) : (z -= 1) {
 					if (main.renderer.mesh_storage.getBlock(x, y, z)) |block| {
-						if (block.collide()) {
+						if(block.collide()) {
 							const model = &models.models.items[block.mode().model(block)];
 
 							const pos = Vec3d{@floatFromInt(x), @floatFromInt(y), @floatFromInt(z)};
@@ -214,12 +232,12 @@ pub const Player = struct {
 							for (model.neighborFacingQuads) |quads| {
 								for (quads) |quadIndex| {
 									const quad = &models.quads.items[quadIndex];
-									if (triangleAABB(.{quad.corners[0] + quad.normal + pos, quad.corners[2] + quad.normal + pos, quad.corners[1] + quad.normal + pos}, super.pos + Vec3d{0, 0, height / 2.0}, playerSize))
+									if (triangleAABB(.{quad.corners[0] + quad.normal + pos, quad.corners[2] + quad.normal + pos, quad.corners[1] + quad.normal + pos}, boundingBoxCenter, boundingBoxExtent))
 										return .{
 											.min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + quad.normal + pos,
 											.max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + quad.normal + pos
 										};
-									if (triangleAABB(.{quad.corners[1] + quad.normal + pos, quad.corners[2] + quad.normal + pos, quad.corners[3] + quad.normal + pos}, super.pos + Vec3d{0, 0, height / 2.0}, playerSize))
+									if (triangleAABB(.{quad.corners[1] + quad.normal + pos, quad.corners[2] + quad.normal + pos, quad.corners[3] + quad.normal + pos}, boundingBoxCenter, boundingBoxExtent))
 										return .{
 											.min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + quad.normal + pos,
 											.max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + quad.normal + pos
@@ -229,12 +247,12 @@ pub const Player = struct {
 
 							for (model.internalQuads) |quadIndex| {
 								const quad = &models.quads.items[quadIndex];
-								if (triangleAABB(.{quad.corners[0] + pos, quad.corners[2] + pos, quad.corners[1] + pos}, super.pos + Vec3d{0, 0, height / 2.0}, playerSize))
+								if (triangleAABB(.{quad.corners[0] + pos, quad.corners[2] + pos, quad.corners[1] + pos}, boundingBoxCenter, boundingBoxExtent))
 									return .{
 										.min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + pos,
 										.max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + pos
 									};
-								if (triangleAABB(.{quad.corners[1] + pos, quad.corners[2] + pos, quad.corners[3] + pos}, super.pos + Vec3d{0, 0, height / 2.0}, playerSize))
+								if (triangleAABB(.{quad.corners[1] + pos, quad.corners[2] + pos, quad.corners[3] + pos}, boundingBoxCenter, boundingBoxExtent))
 									return .{
 										.min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + pos,
 										.max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + pos
@@ -548,13 +566,13 @@ pub fn update(deltaTime: f64) void {
 		defer Player.mutex.unlock();
 
 		Player.super.pos[0] += move[0];
-
-		if (Player.collides()) |box| {
+		if (Player.collides(.x, -move[0])) |box| {
+			std.log.err("Box: {}", .{box});
 			var step = false;
 			if (box.max[2] - Player.super.pos[2] <= 0.5 and Player.onGround) {
 				const old = Player.super.pos[2];
 				Player.super.pos[2] = box.max[2] + 0.0001;
-				if (Player.collides()) |_| {
+				if (Player.collides(.x, 0)) |_| {
 					Player.super.pos[2] = old;
 				} else {
 					step = true;
@@ -564,12 +582,12 @@ pub fn update(deltaTime: f64) void {
 			{
 				if (Player.super.vel[0] < 0) {
 					Player.super.pos[0] = box.max[0] + Player.radius;
-					while (Player.collides()) |_| {
+					while (Player.collides(.x, 0)) |_| {
 						Player.super.pos[0] += 1;
 					}
 				} else {
 					Player.super.pos[0] = box.min[0] - Player.radius;
-					while (Player.collides()) |_| {
+					while (Player.collides(.x, 0)) |_| {
 						Player.super.pos[0] -= 1;
 					}
 				}
@@ -578,12 +596,13 @@ pub fn update(deltaTime: f64) void {
 		}
 
 		Player.super.pos[1] += move[1];
-		if (Player.collides()) |box| {
+		if (Player.collides(.y, -move[1])) |box| {
+			std.log.err("Box: {}", .{box});
 			var step = false;
 			if (box.max[2] - Player.super.pos[2] <= 0.5 and Player.onGround) {
 				const old = Player.super.pos[2];
 				Player.super.pos[2] = box.max[2] + 0.0001;
-				if (Player.collides()) |_| {
+				if (Player.collides(.y, 0)) |_| {
 					Player.super.pos[2] = old;
 				} else {
 					step = true;
@@ -593,12 +612,12 @@ pub fn update(deltaTime: f64) void {
 			if (!step) {
 				if (Player.super.vel[1] < 0) {
 					Player.super.pos[1] = box.max[1] + Player.radius;
-					while (Player.collides()) |_| {
+					while (Player.collides(.y, 0)) |_| {
 						Player.super.pos[1] += 1;
 					}
 				} else {
 					Player.super.pos[1] = box.min[1] - Player.radius;
-					while (Player.collides()) |_| {
+					while (Player.collides(.y, 0)) |_| {
 						Player.super.pos[1] -= 1;
 					}
 				}
@@ -608,16 +627,16 @@ pub fn update(deltaTime: f64) void {
 
 		Player.onGround = false;
 		Player.super.pos[2] += move[2];
-		if (Player.collides()) |box| {
+		if (Player.collides(.z, -move[2])) |box| {
 			if (Player.super.vel[2] < 0) {
 				Player.super.pos[2] = box.max[2];
-				while (Player.collides()) |_| {
+				while (Player.collides(.z, 0)) |_| {
 					Player.super.pos[2] += 1;
 				}
 				Player.onGround = true;
 			} else {
 				Player.super.pos[2] = box.min[2] - Player.height;
-				while (Player.collides()) |_| {
+				while (Player.collides(.z, 0)) |_| {
 					Player.super.pos[2] -= 1;
 				}
 			}
