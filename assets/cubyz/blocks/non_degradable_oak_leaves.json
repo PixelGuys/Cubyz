@@ -1,5 +1,6 @@
 {
 	"class" : "leaf",
+	"hasItem" : false,
 	"hardness" : 0.4,
 	"drops" : [
 		"cubyz:oak_leaves",

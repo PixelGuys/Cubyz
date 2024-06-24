@@ -1,5 +1,6 @@
 {
 	"class" : "leaf",
+	"hasItem" : false,
 	"absorbedLight" : 0x121012,
 	"model" : "cubyz:cube",
 	"texture" : "cubyz:pine_needles_opaque"
