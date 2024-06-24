@@ -217,6 +217,14 @@ pub const Player = struct {
 		const boundingBoxCenter = (boundingBox.min + boundingBox.max)/@as(Vec3d, @splat(2));
 		const boundingBoxExtent = (boundingBox.max - boundingBox.min - @as(Vec3d, @splat(0.0001)))/@as(Vec3d, @splat(2));
 
+		var resultBox: ?Box = null;
+		var minDistance: f64 = std.math.floatMax(f64);
+		const directionVector: Vec3d = switch (dir) {
+			.x => .{-std.math.sign(amount), 0, 0},
+			.y => .{0, -std.math.sign(amount), 0},
+			.z => .{0, 0, -std.math.sign(amount)},
+		};
+
 		var x: i32 = minX;
 		while (x <= maxX) : (x += 1) {
 			var y: i32 = minY;
@@ -232,31 +240,59 @@ pub const Player = struct {
 							for (model.neighborFacingQuads) |quads| {
 								for (quads) |quadIndex| {
 									const quad = &models.quads.items[quadIndex];
-									if (triangleAABB(.{quad.corners[0] + quad.normal + pos, quad.corners[2] + quad.normal + pos, quad.corners[1] + quad.normal + pos}, boundingBoxCenter, boundingBoxExtent))
-										return .{
-											.min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + quad.normal + pos,
-											.max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + quad.normal + pos
-										};
-									if (triangleAABB(.{quad.corners[1] + quad.normal + pos, quad.corners[2] + quad.normal + pos, quad.corners[3] + quad.normal + pos}, boundingBoxCenter, boundingBoxExtent))
-										return .{
-											.min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + quad.normal + pos,
-											.max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + quad.normal + pos
-										};
+									if (triangleAABB(.{quad.corners[0] + quad.normal + pos, quad.corners[2] + quad.normal + pos, quad.corners[1] + quad.normal + pos}, boundingBoxCenter, boundingBoxExtent)) {
+										const min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + quad.normal + pos;
+										const max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + quad.normal + pos;
+										const dist = @min(vec.dot(directionVector, min), vec.dot(directionVector, max));
+										if(dist < minDistance) {
+											resultBox = .{.min = min, .max = max};
+											minDistance = dist;
+										} else if(dist == minDistance) {
+											resultBox.?.min = @min(resultBox.?.min, min);
+											resultBox.?.max = @min(resultBox.?.max, max);
+										}
+									}
+									if (triangleAABB(.{quad.corners[1] + quad.normal + pos, quad.corners[2] + quad.normal + pos, quad.corners[3] + quad.normal + pos}, boundingBoxCenter, boundingBoxExtent)) {
+										const min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + quad.normal + pos;
+										const max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + quad.normal + pos;
+										const dist = @min(vec.dot(directionVector, min), vec.dot(directionVector, max));
+										if(dist < minDistance) {
+											resultBox = .{.min = min, .max = max};
+											minDistance = dist;
+										} else if(dist == minDistance) {
+											resultBox.?.min = @min(resultBox.?.min, min);
+											resultBox.?.max = @min(resultBox.?.max, max);
+										}
+									}
 								}
 							}
 
 							for (model.internalQuads) |quadIndex| {
 								const quad = &models.quads.items[quadIndex];
-								if (triangleAABB(.{quad.corners[0] + pos, quad.corners[2] + pos, quad.corners[1] + pos}, boundingBoxCenter, boundingBoxExtent))
-									return .{
-										.min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + pos,
-										.max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + pos
-									};
-								if (triangleAABB(.{quad.corners[1] + pos, quad.corners[2] + pos, quad.corners[3] + pos}, boundingBoxCenter, boundingBoxExtent))
-									return .{
-										.min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + pos,
-										.max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + pos
-									};
+								if (triangleAABB(.{quad.corners[0] + pos, quad.corners[2] + pos, quad.corners[1] + pos}, boundingBoxCenter, boundingBoxExtent)) {
+									const min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + pos;
+									const max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + pos;
+									const dist = @min(vec.dot(directionVector, min), vec.dot(directionVector, max));
+									if(dist < minDistance) {
+										resultBox = .{.min = min, .max = max};
+										minDistance = dist;
+									} else if(dist == minDistance) {
+										resultBox.?.min = @min(resultBox.?.min, min);
+										resultBox.?.max = @min(resultBox.?.max, max);
+									}
+								}
+								if (triangleAABB(.{quad.corners[1] + pos, quad.corners[2] + pos, quad.corners[3] + pos}, boundingBoxCenter, boundingBoxExtent)) {
+									const min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + pos;
+									const max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + pos;
+									const dist = @min(vec.dot(directionVector, min), vec.dot(directionVector, max));
+									if(dist < minDistance) {
+										resultBox = .{.min = min, .max = max};
+										minDistance = dist;
+									} else if(dist == minDistance) {
+										resultBox.?.min = @min(resultBox.?.min, min);
+										resultBox.?.max = @min(resultBox.?.max, max);
+									}
+								}
 							}
 						}
 					}
@@ -264,7 +300,7 @@ pub const Player = struct {
 			}
 		}
 
-		return null;
+		return resultBox;
 	}
 
 	pub fn placeBlock() void {
@@ -567,7 +603,6 @@ pub fn update(deltaTime: f64) void {
 
 		Player.super.pos[0] += move[0];
 		if (Player.collides(.x, -move[0])) |box| {
-			std.log.err("Box: {}", .{box});
 			var step = false;
 			if (box.max[2] - Player.super.pos[2] <= 0.5 and Player.onGround) {
 				const old = Player.super.pos[2];
@@ -597,7 +632,6 @@ pub fn update(deltaTime: f64) void {
 
 		Player.super.pos[1] += move[1];
 		if (Player.collides(.y, -move[1])) |box| {
-			std.log.err("Box: {}", .{box});
 			var step = false;
 			if (box.max[2] - Player.super.pos[2] <= 0.5 and Player.onGround) {
 				const old = Player.super.pos[2];
