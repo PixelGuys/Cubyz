@@ -1,5 +1,5 @@
 {
-	"class" : "stone",
+	"class" : "air",
 	"hardness" : 2,
 	"drops" : [
 		"none"
@@ -7,6 +7,8 @@
 	"degradable" : true,
 	"transparent" : true,
 	"hasBackFace" : true,
+	"solid": false,
+	"collide": false,
 	"absorbedLight" : 0x000100,
 
 	"model" : "cube",

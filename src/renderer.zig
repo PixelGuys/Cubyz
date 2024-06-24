@@ -715,7 +715,7 @@ pub const MeshSelection = struct {
 		while(total_tMax < closestDistance) {
 			const block = mesh_storage.getBlock(voxelPos[0], voxelPos[1], voxelPos[2]) orelse break;
 			if(block.typ != 0) {
-				if(block.blockClass() != .fluid) { // TODO: Buckets could select fluids
+				if(block.blockClass() != .fluid and block.blockClass() != .air) { // TODO: Buckets could select fluids
 					const relativePlayerPos: Vec3f = @floatCast(pos - @as(Vec3d, @floatFromInt(voxelPos)));
 					if(block.mode().rayIntersection(block, inventoryStack, voxelPos, relativePlayerPos, _dir)) |intersection| {
 						if(intersection.distance <= closestDistance) {
