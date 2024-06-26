@@ -365,6 +365,9 @@ const PrimitiveMesh = struct {
 		self.min = @splat(std.math.floatMax(f32));
 		self.max = @splat(-std.math.floatMax(f32));
 
+
+		parent.lightingData[0].lock.lockRead();
+		parent.lightingData[1].lock.lockRead();
 		for(completeList) |*face| {
 			face.light = getLight(parent, .{face.position.x, face.position.y, face.position.z}, face.blockAndQuad.quadIndex);
 			const basePos: Vec3f = .{
@@ -377,6 +380,8 @@ const PrimitiveMesh = struct {
 				self.max = @max(self.max, basePos + cornerPos);
 			}
 		}
+		parent.lightingData[0].lock.unlockRead();
+		parent.lightingData[1].lock.unlockRead();
 
 		self.mutex.lock();
 		const oldList = self.completeList;
@@ -408,6 +413,10 @@ const PrimitiveMesh = struct {
 		}
 		const neighborMesh = mesh_storage.getMeshAndIncreaseRefCount(.{.wx = wx, .wy = wy, .wz = wz, .voxelSize = parent.pos.voxelSize}) orelse return .{0, 0, 0, 0, 0, 0};
 		defer neighborMesh.decreaseRefCount();
+		neighborMesh.lightingData[0].lock.lockRead();
+		neighborMesh.lightingData[1].lock.lockRead();
+		defer neighborMesh.lightingData[0].lock.unlockRead();
+		defer neighborMesh.lightingData[1].lock.unlockRead();
 		return getValues(neighborMesh, wx, wy, wz);
 	}
 
