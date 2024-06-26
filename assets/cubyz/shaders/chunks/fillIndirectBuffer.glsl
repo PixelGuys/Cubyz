@@ -9,12 +9,16 @@ struct AnimationData {
 
 struct ChunkData {
 	ivec4 position;
+	vec4 minPos;
+	vec4 maxPos;
 	int visibilityMask;
 	int voxelSize;
 	uint vertexStartOpaque;
 	uint faceCountsByNormalOpaque[7];
 	uint vertexStartTransparent;
 	uint vertexCountTransparent;
+	uint visibilityState;
+	uint oldVisibilityState;
 };
 layout(std430, binding = 6) buffer _chunks
 {
@@ -40,6 +44,7 @@ uniform uint chunkIDIndex;
 uniform uint commandIndexStart;
 uniform uint size;
 uniform bool isTransparent;
+uniform bool onlyDrawPreviouslyInvisible;
 uniform ivec3 playerPositionInteger;
 
 bool isVisible(int dir, ivec3 relativePlayerPos, int voxelSize) {
@@ -69,25 +74,37 @@ void main() {
 	if(gl_GlobalInvocationID.x >= size) return;
 	if(isTransparent) {
 		uint commandIndex = commandIndexStart + gl_GlobalInvocationID.x;
-		commands[commandIndex] = addCommand(chunks[chunkID].vertexCountTransparent, chunks[chunkID].vertexStartTransparent, chunkID);
+		if(chunks[chunkID].visibilityState != 0) {
+			commands[commandIndex] = addCommand(chunks[chunkID].vertexCountTransparent, chunks[chunkID].vertexStartTransparent, chunkID);
+		} else {
+			commands[commandIndex] = DrawElementsIndirectCommand(0, 0, 0, 0, 0);
+		}
+		chunks[chunkID].visibilityState = 0;
 	} else {
 		uint commandIndex = commandIndexStart + gl_GlobalInvocationID.x*4;
 		uint commandIndexEnd = commandIndex + 4;
 		uint groupFaceOffset = 0;
 		uint groupFaceCount = 0;
-		for(int i = 0; i < 7; i++) {
-			uint faceCount = chunks[chunkID].faceCountsByNormalOpaque[i];
-			if(isVisible(i, playerPositionInteger - chunks[chunkID].position.xyz, chunks[chunkID].voxelSize) || faceCount == 0) {
-				groupFaceCount += faceCount;
-			} else {
-				if(groupFaceCount != 0) {
-					commands[commandIndex] = addCommand(6*groupFaceCount, chunks[chunkID].vertexStartOpaque + 4*groupFaceOffset, chunkID);
-					commandIndex += 1;
-					groupFaceOffset += groupFaceCount;
-					groupFaceCount = 0;
+		uint oldoldvisibilityState = chunks[chunkID].oldVisibilityState;
+		if((onlyDrawPreviouslyInvisible && chunks[chunkID].oldVisibilityState == 0 && chunks[chunkID].visibilityState != 0) || (chunks[chunkID].oldVisibilityState != 0 && !onlyDrawPreviouslyInvisible)) {
+			for(int i = 0; i < 7; i++) {
+				uint faceCount = chunks[chunkID].faceCountsByNormalOpaque[i];
+				if(isVisible(i, playerPositionInteger - chunks[chunkID].position.xyz, chunks[chunkID].voxelSize) || faceCount == 0) {
+					groupFaceCount += faceCount;
+				} else {
+					if(groupFaceCount != 0) {
+						commands[commandIndex] = addCommand(6*groupFaceCount, chunks[chunkID].vertexStartOpaque + 4*groupFaceOffset, chunkID);
+						commandIndex += 1;
+						groupFaceOffset += groupFaceCount;
+						groupFaceCount = 0;
+					}
+					groupFaceOffset += faceCount;
 				}
-				groupFaceOffset += faceCount;
 			}
+		}
+		if(onlyDrawPreviouslyInvisible) {
+			chunks[chunkID].oldVisibilityState = chunks[chunkID].visibilityState;
+			chunks[chunkID].visibilityState = 0;
 		}
 		if(groupFaceCount != 0) {
 			commands[commandIndex] = addCommand(6*groupFaceCount, chunks[chunkID].vertexStartOpaque + 4*groupFaceOffset, chunkID);
@@ -95,7 +112,7 @@ void main() {
 		}
 
 		for(; commandIndex < commandIndexEnd; commandIndex++) {
-			commands[commandIndex] = DrawElementsIndirectCommand(0, 0, 0, 0, 0);
+			commands[commandIndex] = DrawElementsIndirectCommand(0, 0, 0, 0, oldoldvisibilityState << 1 | chunks[chunkID].oldVisibilityState);
 		}
 	}
 }

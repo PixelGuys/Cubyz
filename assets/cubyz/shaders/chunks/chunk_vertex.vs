@@ -39,12 +39,16 @@ layout(std430, binding = 4) buffer _quads
 
 struct ChunkData {
 	ivec4 position;
+	vec4 minPos;
+	vec4 maxPos;
 	int visibilityMask;
 	int voxelSize;
 	uint vertexStartOpaque;
 	uint faceCountsByNormalOpaque[7];
 	uint vertexStartTransparent;
 	uint vertexCountTransparent;
+	uint visibilityState;
+	uint oldVisibilityState;
 };
 
 layout(std430, binding = 6) buffer _chunks

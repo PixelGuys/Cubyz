@@ -211,11 +211,9 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 		mesh.prepareRendering(&chunkList);
 	}
 	gpu_performance_measuring.stopQuery();
-	gpu_performance_measuring.startQuery(.chunk_rendering);
 	if(chunkList.items.len != 0) {
 		chunk_meshing.drawChunksIndirect(chunkList.items, game.projectionMatrix, ambientLight, playerPos, false);
 	}
-	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.entity_rendering);
 	entity.ClientEntityManager.render(game.projectionMatrix, ambientLight, .{1, 0.5, 0.25}, playerPos);
@@ -242,7 +240,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 			meshes[i].prepareTransparentRendering(playerPos, &chunkList);
 		}
 		gpu_performance_measuring.stopQuery();
-		gpu_performance_measuring.startQuery(.transparent_rendering);
 		if(chunkList.items.len != 0) {
 			chunk_meshing.drawChunksIndirect(chunkList.items, game.projectionMatrix, ambientLight, playerPos, true);
 		}
@@ -251,7 +248,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glDepthFunc(c.GL_LESS);
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 	chunk_meshing.endRender();
-	gpu_performance_measuring.stopQuery();
 
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
 

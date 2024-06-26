@@ -20,6 +20,7 @@ const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
 const Vec3d = vec.Vec3d;
 const Mat4f = vec.Mat4f;
+const gpu_performance_measuring = main.gui.windowlist.gpu_performance_measuring;
 
 const mesh_storage = @import("mesh_storage.zig");
 
@@ -52,6 +53,14 @@ pub var commandUniforms: struct {
 	size: c_int,
 	isTransparent: c_int,
 	playerPositionInteger: c_int,
+	onlyDrawPreviouslyInvisible: c_int,
+} = undefined;
+pub var occlusionTestShader: Shader = undefined;
+pub var occlusionTestUniforms: struct {
+	projectionMatrix: c_int,
+	viewMatrix: c_int,
+	playerPositionInteger: c_int,
+	playerPositionFraction: c_int,
 } = undefined;
 var vao: c_uint = undefined;
 var vbo: c_uint = undefined;
@@ -68,6 +77,7 @@ pub fn init() void {
 	shader = Shader.initAndGetUniforms("assets/cubyz/shaders/chunks/chunk_vertex.vs", "assets/cubyz/shaders/chunks/chunk_fragment.fs", &uniforms);
 	transparentShader = Shader.initAndGetUniforms("assets/cubyz/shaders/chunks/chunk_vertex.vs", "assets/cubyz/shaders/chunks/transparent_fragment.fs", &transparentUniforms);
 	commandShader = Shader.initComputeAndGetUniforms("assets/cubyz/shaders/chunks/fillIndirectBuffer.glsl", &commandUniforms);
+	occlusionTestShader = Shader.initAndGetUniforms("assets/cubyz/shaders/chunks/occlusionTestVertex.vs", "assets/cubyz/shaders/chunks/occlusionTestFragment.fs", &occlusionTestUniforms);
 
 	var rawData: [6*3 << (3*chunk.chunkShift)]u32 = undefined; // 6 vertices per face, maximum 3 faces/block
 	const lut = [_]u32{0, 2, 1, 1, 2, 3};
@@ -171,16 +181,54 @@ pub fn drawChunksIndirect(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec
 	c.glUniform1ui(commandUniforms.size, @intCast(chunkIDs.len));
 	c.glUniform1i(commandUniforms.isTransparent, @intFromBool(transparent));
 	c.glUniform3i(commandUniforms.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
+	if(!transparent) {
+		gpu_performance_measuring.startQuery(.chunk_rendering_previous_visible);
+		c.glUniform1i(commandUniforms.onlyDrawPreviouslyInvisible, 0);
+		c.glDispatchCompute(@intCast(@divFloor(chunkIDs.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
+		c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT);
+
+		if(transparent) {
+			bindTransparentShaderAndUniforms(projMatrix, ambient, playerPos);
+		} else {
+			bindShaderAndUniforms(projMatrix, ambient, playerPos);
+		}
+		c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
+		c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
+		gpu_performance_measuring.stopQuery();
+	}
+
+	// Occlusion tests:
+	gpu_performance_measuring.startQuery(if(transparent) .transparent_rendering_occlusion_test else .chunk_rendering_occlusion_test);
+	occlusionTestShader.bind();
+	c.glUniform3i(occlusionTestUniforms.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
+	c.glUniform3f(occlusionTestUniforms.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
+	c.glUniformMatrix4fv(occlusionTestUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
+	c.glUniformMatrix4fv(occlusionTestUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&game.camera.viewMatrix));
+	c.glDepthMask(c.GL_FALSE);
+	c.glColorMask(c.GL_FALSE, c.GL_FALSE, c.GL_FALSE, c.GL_FALSE);
+	c.glBindVertexArray(vao);
+	c.glDrawElementsBaseVertex(c.GL_TRIANGLES, @intCast(6*6*chunkIDs.len), c.GL_UNSIGNED_INT, null, chunkIDAllocation.start*24);
+	c.glDepthMask(c.GL_TRUE);
+	c.glColorMask(c.GL_TRUE, c.GL_TRUE, c.GL_TRUE, c.GL_TRUE);
+	c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT);
+	gpu_performance_measuring.stopQuery();
+
+	// Draw again:
+	gpu_performance_measuring.startQuery(if(transparent) .transparent_rendering else .chunk_rendering_new_visible);
+	commandShader.bind();
+	c.glUniform1i(commandUniforms.onlyDrawPreviouslyInvisible, 1);
 	c.glDispatchCompute(@intCast(@divFloor(chunkIDs.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
 	c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT);
 
 	if(transparent) {
 		bindTransparentShaderAndUniforms(projMatrix, ambient, playerPos);
+		c.glDepthMask(c.GL_FALSE);
 	} else {
 		bindShaderAndUniforms(projMatrix, ambient, playerPos);
 	}
 	c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
 	c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
+	gpu_performance_measuring.stopQuery();
 }
 
 pub const FaceData = extern struct {
@@ -208,12 +256,16 @@ pub const FaceData = extern struct {
 
 pub const ChunkData = extern struct {
 	position: Vec3i align(16),
+	min: Vec3f align(16),
+	max: Vec3f align(16),
 	visibilityMask: i32,
 	voxelSize: i32,
 	vertexStartOpaque: u32,
 	faceCountsByNormalOpaque: [7]u32,
 	vertexStartTransparent: u32,
 	vertexCountTransparent: u32,
+	visibilityState: u32,
+	oldVisibilityState: u32,
 };
 
 pub const IndirectData = extern struct {
@@ -237,6 +289,8 @@ const PrimitiveMesh = struct {
 	vertexCount: u31 = 0,
 	byNormalCount: [7]u32 = .{0} ** 7,
 	wasChanged: bool = false,
+	min: Vec3f = undefined,
+	max: Vec3f = undefined,
 
 	fn deinit(self: *PrimitiveMesh) void {
 		faceBuffer.free(self.bufferAllocation);
@@ -308,8 +362,20 @@ const PrimitiveMesh = struct {
 			i += neighborFaces.items.len;
 		}
 
+		self.min = @splat(std.math.floatMax(f32));
+		self.max = @splat(-std.math.floatMax(f32));
+
 		for(completeList) |*face| {
 			face.light = getLight(parent, .{face.position.x, face.position.y, face.position.z}, face.blockAndQuad.quadIndex);
+			const basePos: Vec3f = .{
+				@floatFromInt(face.position.x),
+				@floatFromInt(face.position.y),
+				@floatFromInt(face.position.z),
+			};
+			for(main.models.quads.items[face.blockAndQuad.quadIndex].corners) |cornerPos| {
+				self.min = @min(self.min, basePos + cornerPos);
+				self.max = @max(self.max, basePos + cornerPos);
+			}
 		}
 
 		self.mutex.lock();
@@ -588,6 +654,8 @@ pub const ChunkMesh = struct {
 	litNeighbors: Atomic(u32) = Atomic(u32).init(0),
 	mutex: std.Thread.Mutex = .{},
 	chunkAllocation: graphics.SubAllocation = .{.start = 0, .len = 0},
+	min: Vec3f = undefined,
+	max: Vec3f = undefined,
 
 	chunkBorders: [6]BoundingRectToNeighborChunk = [1]BoundingRectToNeighborChunk{.{}} ** 6,
 
@@ -1137,6 +1205,8 @@ pub const ChunkMesh = struct {
 		main.utils.assertLocked(&self.mutex);
 		self.opaqueMesh.finish(self);
 		self.transparentMesh.finish(self);
+		self.min = @min(self.opaqueMesh.min, self.transparentMesh.min);
+		self.max = @max(self.opaqueMesh.max, self.transparentMesh.max);
 	}
 
 	pub fn uploadData(self: *ChunkMesh) void {
@@ -1314,6 +1384,10 @@ pub const ChunkMesh = struct {
 			.faceCountsByNormalOpaque = self.opaqueMesh.byNormalCount,
 			.vertexStartTransparent = self.transparentMesh.bufferAllocation.start*4,
 			.vertexCountTransparent = self.transparentMesh.bufferAllocation.len*6,
+			.min = self.min,
+			.max = self.max,
+			.visibilityState = 0,
+			.oldVisibilityState = 0,
 		}}, &self.chunkAllocation);
 		self.uploadedVisibilityMask = self.visibilityMask;
 	}
