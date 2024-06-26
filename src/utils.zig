@@ -1617,3 +1617,50 @@ pub fn assertLockedShared(lock: *const std.Thread.RwLock) void {
 		std.debug.assert(!@constCast(lock).tryLock());
 	}
 }
+
+/// A read-write lock with read priority.
+pub const ReadWriteLock = struct {
+	condition: std.Thread.Condition = .{},
+	mutex: std.Thread.Mutex = .{},
+	readers: u32 = 0,
+
+	pub fn lockRead(self: *ReadWriteLock) void {
+		self.mutex.lock();
+		self.readers += 1;
+		self.mutex.unlock();
+	}
+
+	pub fn unlockRead(self: *ReadWriteLock) void {
+		self.mutex.lock();
+		self.readers -= 1;
+		if(self.readers == 0) {
+			self.condition.broadcast();
+		}
+		self.mutex.unlock();
+	}
+
+	pub fn lockWrite(self: *ReadWriteLock) void {
+		self.mutex.lock();
+		while(self.readers != 0) {
+			self.condition.wait(&self.mutex);
+		}
+	}
+
+	pub fn unlockWrite(self: *ReadWriteLock) void {
+		self.mutex.unlock();
+	}
+
+	pub fn assertLockedWrite(self: *ReadWriteLock) void {
+		if(builtin.mode == .Debug) {
+			std.debug.assert(!self.mutex.tryLock());
+		}
+	}
+
+	pub fn assertLockedRead(self: *ReadWriteLock) void {
+		if(builtin.mode == .Debug and !builtin.sanitize_thread) {
+			if(self.readers == 0) {
+				std.debug.assert(!self.mutex.tryLock());
+			}
+		}
+	}
+};

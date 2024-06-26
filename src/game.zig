@@ -66,7 +66,7 @@ pub const Player = struct {
 
 	pub const radius = 0.3;
 	pub const height = 1.8;
-	pub const eye = 1.5;
+	pub const eye = 1.7;
 	pub const jumpHeight = 1.25;
 
 	fn loadFrom(json: JsonElement) void {
