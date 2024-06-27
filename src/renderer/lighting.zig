@@ -103,7 +103,7 @@ pub const ChannelChunk = struct {
 		}
 	}
 
-	fn propagateDirect(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry)) void {
+	fn propagateDirect(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), lightRefreshList: *main.List(*chunk_meshing.ChunkMesh)) void {
 		var neighborLists: [6]main.ListUnmanaged(Entry) = .{.{}} ** 6;
 		defer {
 			for(&neighborLists) |*list| {
@@ -146,19 +146,26 @@ pub const ChannelChunk = struct {
 		}
 		self.data.optimizeLayout();
 		self.lock.unlockWrite();
-		if(mesh_storage.getMeshAndIncreaseRefCount(self.ch.pos)) |mesh| {
-			mesh.scheduleLightRefreshAndDecreaseRefCount();
+		if(mesh_storage.getMeshAndIncreaseRefCount(self.ch.pos)) |mesh| outer: {
+			for(lightRefreshList.items) |other| {
+				if(mesh == other) {
+					mesh.decreaseRefCount();
+					break :outer;
+				}
+			}
+			mesh.needsLightRefresh.store(true, .release);
+			lightRefreshList.append(mesh);
 		}
 
 		for(0..6) |neighbor| {
 			if(neighborLists[neighbor].items.len == 0) continue;
 			const neighborMesh = mesh_storage.getNeighborAndIncreaseRefCount(self.ch.pos, self.ch.pos.voxelSize, @intCast(neighbor)) orelse continue;
 			defer neighborMesh.decreaseRefCount();
-			neighborMesh.lightingData[@intFromBool(self.isSun)].propagateFromNeighbor(lightQueue, neighborLists[neighbor].items);
+			neighborMesh.lightingData[@intFromBool(self.isSun)].propagateFromNeighbor(lightQueue, neighborLists[neighbor].items, lightRefreshList);
 		}
 	}
 
-	fn propagateDestructive(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), constructiveEntries: *main.ListUnmanaged(ChunkEntries), isFirstBlock: bool) main.ListUnmanaged(PositionEntry) {
+	fn propagateDestructive(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), constructiveEntries: *main.ListUnmanaged(ChunkEntries), isFirstBlock: bool, lightRefreshList: *main.List(*chunk_meshing.ChunkMesh)) main.ListUnmanaged(PositionEntry) {
 		var neighborLists: [6]main.ListUnmanaged(Entry) = .{.{}} ** 6;
 		var constructiveList: main.ListUnmanaged(PositionEntry) = .{};
 		defer {
@@ -224,8 +231,15 @@ pub const ChannelChunk = struct {
 			}
 		}
 		self.lock.unlockWrite();
-		if(mesh_storage.getMeshAndIncreaseRefCount(self.ch.pos)) |mesh| {
-			mesh.scheduleLightRefreshAndDecreaseRefCount();
+		if(mesh_storage.getMeshAndIncreaseRefCount(self.ch.pos)) |mesh| outer: {
+			for(lightRefreshList.items) |other| {
+				if(mesh == other) {
+					mesh.decreaseRefCount();
+					break :outer;
+				}
+			}
+			mesh.needsLightRefresh.store(true, .release);
+			lightRefreshList.append(mesh);
 		}
 
 		for(0..6) |neighbor| {
@@ -233,14 +247,14 @@ pub const ChannelChunk = struct {
 			const neighborMesh = mesh_storage.getNeighborAndIncreaseRefCount(self.ch.pos, self.ch.pos.voxelSize, @intCast(neighbor)) orelse continue;
 			constructiveEntries.append(main.stackAllocator, .{
 				.mesh = neighborMesh,
-				.entries = neighborMesh.lightingData[@intFromBool(self.isSun)].propagateDestructiveFromNeighbor(lightQueue, neighborLists[neighbor].items, constructiveEntries),
+				.entries = neighborMesh.lightingData[@intFromBool(self.isSun)].propagateDestructiveFromNeighbor(lightQueue, neighborLists[neighbor].items, constructiveEntries, lightRefreshList),
 			});
 		}
 
 		return constructiveList;
 	}
 
-	fn propagateFromNeighbor(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), lights: []const Entry) void {
+	fn propagateFromNeighbor(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), lights: []const Entry, lightRefreshList: *main.List(*chunk_meshing.ChunkMesh)) void {
 		std.debug.assert(lightQueue.startIndex == lightQueue.endIndex);
 		for(lights) |entry| {
 			const index = chunk.getIndex(entry.x, entry.y, entry.z);
@@ -248,10 +262,10 @@ pub const ChannelChunk = struct {
 			calculateIncomingOcclusion(&result.value, self.ch.data.getValue(index), self.ch.pos.voxelSize, entry.sourceDir);
 			if(result.value[0] != 0 or result.value[1] != 0 or result.value[2] != 0) lightQueue.enqueue(result);
 		}
-		self.propagateDirect(lightQueue);
+		self.propagateDirect(lightQueue, lightRefreshList);
 	}
 
-	fn propagateDestructiveFromNeighbor(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), lights: []const Entry, constructiveEntries: *main.ListUnmanaged(ChunkEntries)) main.ListUnmanaged(PositionEntry) {
+	fn propagateDestructiveFromNeighbor(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), lights: []const Entry, constructiveEntries: *main.ListUnmanaged(ChunkEntries), lightRefreshList: *main.List(*chunk_meshing.ChunkMesh)) main.ListUnmanaged(PositionEntry) {
 		std.debug.assert(lightQueue.startIndex == lightQueue.endIndex);
 		for(lights) |entry| {
 			const index = chunk.getIndex(entry.x, entry.y, entry.z);
@@ -259,10 +273,10 @@ pub const ChannelChunk = struct {
 			calculateIncomingOcclusion(&result.value, self.ch.data.getValue(index), self.ch.pos.voxelSize, entry.sourceDir);
 			lightQueue.enqueue(result);
 		}
-		return self.propagateDestructive(lightQueue, constructiveEntries, false);
+		return self.propagateDestructive(lightQueue, constructiveEntries, false, lightRefreshList);
 	}
 
-	pub fn propagateLights(self: *ChannelChunk, lights: []const [3]u8, comptime checkNeighbors: bool) void {
+	pub fn propagateLights(self: *ChannelChunk, lights: []const [3]u8, comptime checkNeighbors: bool, lightRefreshList: *main.List(*chunk_meshing.ChunkMesh)) void {
 		var lightQueue = main.utils.CircularBufferQueue(Entry).init(main.stackAllocator, 1 << 12);
 		defer lightQueue.deinit();
 		for(lights) |pos| {
@@ -320,10 +334,10 @@ pub const ChannelChunk = struct {
 				}
 			}
 		}
-		self.propagateDirect(&lightQueue);
+		self.propagateDirect(&lightQueue, lightRefreshList);
 	}
 
-	pub fn propagateUniformSun(self: *ChannelChunk) void {
+	pub fn propagateUniformSun(self: *ChannelChunk, lightRefreshList: *main.List(*chunk_meshing.ChunkMesh)) void {
 		std.debug.assert(self.isSun);
 		self.lock.lockWrite();
 		if(self.data.paletteLength != 1) {
@@ -367,11 +381,11 @@ pub const ChannelChunk = struct {
 					entry.sourceDir = neighbor ^ 1;
 				}
 			}
-			neighborMesh.lightingData[1].propagateFromNeighbor(&lightQueue, &list);
+			neighborMesh.lightingData[1].propagateFromNeighbor(&lightQueue, &list, lightRefreshList);
 		}
 	}
 
-	pub fn propagateLightsDestructive(self: *ChannelChunk, lights: []const [3]u8) void {
+	pub fn propagateLightsDestructive(self: *ChannelChunk, lights: []const [3]u8, lightRefreshList: *main.List(*chunk_meshing.ChunkMesh)) void {
 		var lightQueue = main.utils.CircularBufferQueue(Entry).init(main.stackAllocator, 1 << 12);
 		defer lightQueue.deinit();
 		self.lock.lockRead();
@@ -384,7 +398,7 @@ pub const ChannelChunk = struct {
 		defer constructiveEntries.deinit(main.stackAllocator);
 		constructiveEntries.append(main.stackAllocator, .{
 			.mesh = null,
-			.entries = self.propagateDestructive(&lightQueue, &constructiveEntries, true),
+			.entries = self.propagateDestructive(&lightQueue, &constructiveEntries, true, lightRefreshList),
 		});
 		for(constructiveEntries.items) |entries| {
 			const mesh = entries.mesh;
@@ -401,7 +415,7 @@ pub const ChannelChunk = struct {
 				lightQueue.enqueue(.{.x = entry.x, .y = entry.y, .z = entry.z, .value = value, .sourceDir = 6, .activeValue = 0b111});
 			}
 			channelChunk.lock.unlockWrite();
-			channelChunk.propagateDirect(&lightQueue);
+			channelChunk.propagateDirect(&lightQueue, lightRefreshList);
 		}
 	}
 };
