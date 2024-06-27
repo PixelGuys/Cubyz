@@ -185,7 +185,7 @@ pub fn drawChunksIndirect(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec
 		gpu_performance_measuring.startQuery(.chunk_rendering_previous_visible);
 		c.glUniform1i(commandUniforms.onlyDrawPreviouslyInvisible, 0);
 		c.glDispatchCompute(@intCast(@divFloor(chunkIDs.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
-		c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT);
+		c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
 
 		if(transparent) {
 			bindTransparentShaderAndUniforms(projMatrix, ambient, playerPos);
@@ -218,7 +218,7 @@ pub fn drawChunksIndirect(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec
 	commandShader.bind();
 	c.glUniform1i(commandUniforms.onlyDrawPreviouslyInvisible, 1);
 	c.glDispatchCompute(@intCast(@divFloor(chunkIDs.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
-	c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT);
+	c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
 
 	if(transparent) {
 		bindTransparentShaderAndUniforms(projMatrix, ambient, playerPos);
