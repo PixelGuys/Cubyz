@@ -615,7 +615,7 @@ pub fn update(deltaTime: f64) void {
 			}
 			if (!step)
 			{
-				if (Player.super.vel[0] < 0) {
+				if (move[0] < 0) {
 					Player.super.pos[0] = box.max[0] + Player.radius;
 					while (Player.collides(.x, 0)) |_| {
 						Player.super.pos[0] += 1;
@@ -644,7 +644,7 @@ pub fn update(deltaTime: f64) void {
 			}
 
 			if (!step) {
-				if (Player.super.vel[1] < 0) {
+				if (move[1] < 0) {
 					Player.super.pos[1] = box.max[1] + Player.radius;
 					while (Player.collides(.y, 0)) |_| {
 						Player.super.pos[1] += 1;
@@ -662,7 +662,7 @@ pub fn update(deltaTime: f64) void {
 		Player.onGround = false;
 		Player.super.pos[2] += move[2];
 		if (Player.collides(.z, -move[2])) |box| {
-			if (Player.super.vel[2] < 0) {
+			if (move[2] < 0) {
 				Player.super.pos[2] = box.max[2];
 				while (Player.collides(.z, 0)) |_| {
 					Player.super.pos[2] += 1;
