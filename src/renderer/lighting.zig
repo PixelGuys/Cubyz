@@ -193,6 +193,10 @@ pub const ChannelChunk = struct {
 				if(oldValue[2] != 0) append = true;
 				activeValue[2] = false;
 			}
+			const blockLight = extractColor(self.ch.getBlock(entry.x, entry.y, entry.z).light());
+			if((activeValue[0] and blockLight[0] != 0) or (activeValue[1] and blockLight[1] != 0) or (activeValue[2] and blockLight[2] != 0)) {
+				append = true;
+			}
 			if(append) {
 				constructiveList.append(main.stackAllocator, .{.x = entry.x, .y = entry.y, .z = entry.z});
 			}
@@ -409,7 +413,13 @@ pub const ChannelChunk = struct {
 			channelChunk.lock.lockWrite();
 			for(entryList.items) |entry| {
 				const index = chunk.getIndex(entry.x, entry.y, entry.z);
-				const value = channelChunk.data.getValue(index);
+				var value = channelChunk.data.getValue(index);
+				const light = extractColor(channelChunk.ch.data.getValue(index).light());
+				value = .{
+					@max(value[0], light[0]),
+					@max(value[1], light[1]),
+					@max(value[2], light[2]),
+				};
 				if(value[0] == 0 and value[1] == 0 and value[2] == 0) continue;
 				channelChunk.data.setValue(index, .{0, 0, 0});
 				lightQueue.enqueue(.{.x = entry.x, .y = entry.y, .z = entry.z, .value = value, .sourceDir = 6, .activeValue = 0b111});
