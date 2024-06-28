@@ -985,6 +985,12 @@ pub fn BlockingMaxHeap(comptime T: type) type {
 }
 
 pub const ThreadPool = struct {
+	pub const TaskType = enum(usize) {
+		chunkgen,
+		lighting,
+		misc,
+		taskTypes,
+	};
 	const Task = struct {
 		cachedPriority: f32,
 		self: *anyopaque,
@@ -999,6 +1005,23 @@ pub const ThreadPool = struct {
 		isStillNeeded: *const fn(*anyopaque, milliTime: i64) bool,
 		run: *const fn(*anyopaque) void,
 		clean: *const fn(*anyopaque) void,
+		taskType: TaskType = .misc,
+	};
+	pub const Performance = struct {
+		mutex: std.Thread.Mutex = .{},
+		tasks: [@intFromEnum(TaskType.taskTypes)]u32 = {},
+		utime: [@intFromEnum(TaskType.taskTypes)]i64 = {},
+
+		fn clear(self: *Performance) void {
+			for(0..@intFromEnum(TaskType.taskTypes)) |i| {
+				self.tasks[i] = 0;
+				self.utime[i] = 0;
+			}
+		}
+
+		fn init(self: Performance) void {
+			self.clear();
+		}
 	};
 	const refreshTime: u32 = 100; // The time after which all priorities get refreshed in milliseconds.
 
@@ -1007,11 +1030,14 @@ pub const ThreadPool = struct {
 	loadList: *BlockingMaxHeap(Task),
 	allocator: NeverFailingAllocator,
 
+	performance: *Performance,
+
 	pub fn init(allocator: NeverFailingAllocator, threadCount: usize) ThreadPool {
 		const self = ThreadPool {
 			.threads = allocator.alloc(std.Thread, threadCount),
 			.currentTasks = allocator.alloc(Atomic(?*const VTable), threadCount),
 			.loadList = BlockingMaxHeap(Task).init(allocator),
+			.performance = allocator.create(Performance),
 			.allocator = allocator,
 		};
 		for(self.threads, 0..) |*thread, i| {
@@ -1062,6 +1088,15 @@ pub const ThreadPool = struct {
 		}
 	}
 
+	pub fn getPerformance(self: ThreadPool) Performance {
+		self.performance.mutex.lock();
+		defer {
+			self.performance.clear();
+			self.performance.mutex.unlock();
+		}
+		return self.performance.*;
+	}
+
 	fn run(self: ThreadPool, id: usize) void {
 		// In case any of the tasks wants to allocate memory:
 		var sta = StackAllocator.init(main.globalAllocator, 1 << 23);
@@ -1073,7 +1108,14 @@ pub const ThreadPool = struct {
 			{
 				const task = self.loadList.extractMax() catch break;
 				self.currentTasks[id].store(task.vtable, .monotonic);
+				const start = std.time.microTimestamp();
 				task.vtable.run(task.self);
+				const end = std.time.microTimestamp();
+				const taskType = @intFromEnum(task.vtable.taskType);
+				self.performance.mutex.lock();
+				self.performance.tasks[taskType] += 1;
+				self.performance.utime[taskType] += end - start;
+				self.performance.mutex.unlock();
 				self.currentTasks[id].store(null, .monotonic);
 			}
 
