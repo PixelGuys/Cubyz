@@ -21,13 +21,20 @@
 	"structures" : [
 		{
 			"id" : "cubyz:simple_tree",
-			"leaves" : "cubyz:oak_leaves",
-			"log" : "cubyz:oak_log",
-			"top" : "cubyz:oak_top",
+			"leaves" : "cubyz:mahogany_leaves",
+			"log" : "cubyz:mahogany_log",
+			"top" : "cubyz:mahogany_top",
 			"chance" : 0.05,
 			"type" : "round",
-			"height" : 6,
-			"height_variation" : 3
+			"height" : 5,
+			"height_variation" : 5
 		}
+		{
+			"id" : "cubyz:simple_vegetation",
+			"block" : "cubyz:grass_vegetation",
+			"chance" : 1,
+			"height" : 1,
+			"height_variation" : 0
+		},
 	]
 }
