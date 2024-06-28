@@ -455,7 +455,7 @@ pub fn main() void {
 		lastFrameTime.store(deltaTime, .monotonic);
 
 		if(settings.fpsCap) |fpsCap| {
-			const minFrameTime = @divFloor(1000*1000, fpsCap);
+			const minFrameTime = @divFloor(1000*1000*1000, fpsCap);
 			const sleep = @min(minFrameTime, @max(0, minFrameTime - (newTime -% lastTime)));
 			std.time.sleep(sleep);
 		}
