@@ -446,9 +446,6 @@ pub fn main() void {
 			std.time.sleep(16_000_000);
 		}
 
-		Window.handleEvents();
-		file_monitor.handleEvents();
-
 		const newTime = std.time.nanoTimestamp();
 		const deltaTime = @as(f64, @floatFromInt(newTime -% lastTime))/1e9;
 		if(settings.developerGPUInfiniteLoopDetection and deltaTime > 5) { // On linux a process that runs 10 seconds or longer on the GPU will get stopped. This allows detecting an infinite loop on the GPU.
@@ -456,7 +453,17 @@ pub fn main() void {
 			std.posix.exit(1);
 		}
 		lastFrameTime.store(deltaTime, .monotonic);
-		lastTime = newTime;
+
+		if(settings.fpsCap) |fpsCap| {
+			const minFrameTime = @divFloor(1000*1000, fpsCap);
+			const sleep = @min(minFrameTime, @max(0, minFrameTime - (newTime -% lastTime)));
+			std.time.sleep(sleep);
+		}
+		lastTime = std.time.nanoTimestamp();
+
+		Window.handleEvents();
+		file_monitor.handleEvents();
+
 		if(game.world != null) { // Update the game
 			game.update(deltaTime);
 		}
