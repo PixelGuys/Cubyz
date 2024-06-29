@@ -345,7 +345,10 @@ pub const KeyBoard = struct {
 	}
 };
 
+/// Records gpu time per frame.
 pub var lastFrameTime = std.atomic.Value(f64).init(0);
+/// Measures time between different frames' beginnings.
+pub var lastDeltaTime = std.atomic.Value(f64).init(0);
 
 pub fn main() void {
 	seed = @bitCast(std.time.milliTimestamp());
@@ -459,13 +462,16 @@ pub fn main() void {
 			const sleep = @min(minFrameTime, @max(0, minFrameTime - (endRendering -% lastBeginRendering)));
 			std.time.sleep(sleep);
 		}
-		lastBeginRendering = std.time.nanoTimestamp();
+		const begin = std.time.nanoTimestamp();
+		const deltaTime = @as(f64, @floatFromInt(begin - lastBeginRendering))/1e9;
+		lastDeltaTime.store(deltaTime, .monotonic);
+		lastBeginRendering = begin;
 
 		Window.handleEvents();
 		file_monitor.handleEvents();
 
 		if(game.world != null) { // Update the game
-			game.update(frameTime);
+			game.update(deltaTime);
 		}
 
 		if(!isHidden) {
