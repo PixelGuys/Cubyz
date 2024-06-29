@@ -24,6 +24,14 @@ const anisotropy = [_]u8{1, 2, 4, 8, 16};
 
 const resolutions = [_]u16{25, 50, 100};
 
+fn fpsCapFormatter(allocator: main.utils.NeverFailingAllocator, value: f32) []const u8 {
+	return std.fmt.allocPrint(allocator.allocator, "#ffffffFPS Limit: {d:.0}", .{value}) catch unreachable;
+}
+
+fn fpsCapCallback(newValue: f32) void {
+	settings.fpsCap = if(newValue == 144.0) null else @intFromFloat(newValue);
+}
+
 fn renderDistanceCallback(newValue: u16) void {
 	settings.renderDistance = newValue + renderDistances[0];
 }
@@ -64,6 +72,7 @@ fn resolutionScaleCallback(newValue: u16) void {
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
+	list.add(ContinuousSlider.init(.{0, 0}, 128, 10.0, 144.0, @floatFromInt(settings.fpsCap orelse 144), &fpsCapCallback, &fpsCapFormatter));
 	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffRender Distance: ", "{}", &renderDistances, settings.renderDistance - renderDistances[0], &renderDistanceCallback));
 	list.add(ContinuousSlider.init(.{0, 0}, 128, 40.0, 120.0, settings.fov, &fovCallback, &fovFormatter));
 	list.add(CheckBox.init(.{0, 0}, 128, "Bloom", settings.bloom, &bloomCallback));
