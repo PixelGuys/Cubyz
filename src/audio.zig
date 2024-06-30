@@ -30,13 +30,32 @@ const AudioData = struct {
 		defer c.stb_vorbis_close(ogg_stream);
 		if(ogg_stream != null) {
 			const ogg_info: c.stb_vorbis_info = c.stb_vorbis_get_info(ogg_stream);
-			if(sampleRate != @as(f32, @floatFromInt(ogg_info.sample_rate))) { // TODO: Does it make sense to convert it?
-				std.log.warn("Audio file {s} has unsupported sample rate {}. Only {} is supported. Expect distortions.", .{path, ogg_info.sample_rate, sampleRate});
-			}
 			const samples = c.stb_vorbis_stream_length_in_samples(ogg_stream);
 			const channels = 2;
-			self.data = main.globalAllocator.alloc(f32, samples*channels);
-			_ = c.stb_vorbis_get_samples_float_interleaved(ogg_stream, channels, self.data.ptr, @as(c_int, @intCast(samples))*ogg_info.channels);
+			if(sampleRate != @as(f32, @floatFromInt(ogg_info.sample_rate))) {
+				const tempData = main.stackAllocator.alloc(f32, samples*channels);
+				defer main.stackAllocator.free(tempData);
+				_ = c.stb_vorbis_get_samples_float_interleaved(ogg_stream, channels, tempData.ptr, @as(c_int, @intCast(samples))*ogg_info.channels);
+				var stepWidth = @as(f32, @floatFromInt(ogg_info.sample_rate))/sampleRate;
+				const newSamples: usize = @intFromFloat(@as(f32, @floatFromInt(tempData.len/2))/stepWidth);
+				stepWidth = @as(f32, @floatFromInt(samples))/@as(f32, @floatFromInt(newSamples));
+				self.data = main.globalAllocator.alloc(f32, newSamples*channels);
+				for(0..newSamples) |s| {
+					const samplePosition = @as(f32, @floatFromInt(s))*stepWidth;
+					const firstSample: usize = @intFromFloat(@floor(samplePosition));
+					const interpolation = samplePosition - @floor(samplePosition);
+					for(0..channels) |ch| {
+						if(firstSample >= samples - 1) {
+							self.data[s*channels + ch] = tempData[(samples - 1)*channels + ch];
+						} else {
+							self.data[s*channels + ch] = tempData[firstSample*channels + ch]*(1 - interpolation) + tempData[(firstSample + 1)*channels + ch]*interpolation;
+						}
+					}
+				}
+			} else {
+				self.data = main.globalAllocator.alloc(f32, samples*channels);
+				_ = c.stb_vorbis_get_samples_float_interleaved(ogg_stream, channels, self.data.ptr, @as(c_int, @intCast(samples))*ogg_info.channels);
+			}
 		} else {
 			std.log.err("Couldn't read audio with id {s}", .{musicId});
 		}

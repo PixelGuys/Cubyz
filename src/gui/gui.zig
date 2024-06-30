@@ -29,6 +29,7 @@ pub var openWindows: List(*GuiWindow) = undefined;
 var selectedWindow: ?*GuiWindow = null;
 pub var selectedTextInput: ?*TextInput = null;
 var hoveredAWindow: bool = false;
+pub var reorderWindows: bool = false;
 
 pub var scale: f32 = undefined;
 
@@ -341,6 +342,7 @@ pub fn openHud() void {
 			openWindowFromRef(window);
 		}
 	}
+	reorderWindows = false;
 }
 
 fn openWindowCallbackFunction(windowPtr: usize) void {
@@ -563,6 +565,7 @@ pub fn toggleGameMenu() void {
 				i += 1;
 			}
 		}
+		reorderWindows = false;
 	}
 }
 

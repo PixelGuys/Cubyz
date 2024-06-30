@@ -52,7 +52,7 @@ pub const LightMapFragment = struct {
 
 const cacheSize = 1 << 6; // Must be a power of 2!
 const cacheMask = cacheSize - 1;
-const associativity = 8; // ~100MiB MiB Cache size
+const associativity = 8; // 64MiB MiB Cache size
 var cache: Cache(LightMapFragment, cacheSize, associativity, LightMapFragment.decreaseRefCount) = .{};
 
 fn cacheInit(pos: MapFragmentPosition) *LightMapFragment {

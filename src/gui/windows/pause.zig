@@ -15,6 +15,9 @@ pub var window = GuiWindow {
 
 const padding: f32 = 8;
 
+fn reorderHudCallbackFunction(_: usize) void {
+	gui.reorderWindows = !gui.reorderWindows;
+}
 fn exitMenuCallbackFunction(_: usize) void {
 	if(main.game.world) |world| {
 		world.deinit();
@@ -28,6 +31,7 @@ pub fn onOpen() void {
 		list.add(Button.initText(.{0, 0}, 128, "Invite Player", gui.openWindowCallback("invite")));
 	}
 	list.add(Button.initText(.{0, 0}, 128, "Settings", gui.openWindowCallback("settings")));
+	list.add(Button.initText(.{0, 0}, 128, "Reorder HUD", .{.callback = &reorderHudCallbackFunction}));
 	list.add(Button.initText(.{0, 0}, 128, "Exit to Menu TODO", .{
 		.callback = &exitMenuCallbackFunction,
 	}));

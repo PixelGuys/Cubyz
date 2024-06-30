@@ -55,6 +55,8 @@ pub const Player = struct {
 	pub var super: main.server.Entity = .{};
 	pub var id: u32 = 0;
 	pub var isFlying: Atomic(bool) = Atomic(bool).init(false);
+	pub var isGhost: Atomic(bool) = Atomic(bool).init(false);
+	pub var hyperSpeed: Atomic(bool) = Atomic(bool).init(false);
 	pub var mutex: std.Thread.Mutex = std.Thread.Mutex{};
 	pub var inventory__SEND_CHANGES_TO_SERVER: Inventory = undefined;
 	pub var selectedSlot: u32 = 0;
@@ -483,6 +485,16 @@ pub fn pressAcquireSelectedBlock() void {
 
 pub fn flyToggle() void {
 	Player.isFlying.store(!Player.isFlying.load(.monotonic), .monotonic);
+	if(!Player.isFlying.load(.monotonic)) Player.isGhost.store(false, .monotonic);
+}
+
+pub fn ghostToggle() void {
+	Player.isGhost.store(!Player.isGhost.load(.monotonic), .monotonic);
+	if(Player.isGhost.load(.monotonic)) Player.isFlying.store(true, .monotonic);
+}
+
+pub fn hyperSpeedToggle() void {
+	Player.hyperSpeed.store(!Player.hyperSpeed.load(.monotonic), .monotonic);
 }
 
 pub fn update(deltaTime: f64) void {
@@ -497,11 +509,10 @@ pub fn update(deltaTime: f64) void {
 		}
 
 		var baseFrictionCoefficient: f32 = 50;
-		var speedMultiplier: f32 = 1.0;
+		const speedMultiplier: f32 = if(Player.hyperSpeed.load(.monotonic)) 4.0 else 1.0;
 
 		if (!Player.onGround and !Player.isFlying.load(.monotonic)) {
 			baseFrictionCoefficient = airFrictionCoefficient;
-			speedMultiplier = 1.0;
 		}
 
 		var jumping: bool = false;
@@ -513,8 +524,10 @@ pub fn update(deltaTime: f64) void {
 		if(main.Window.grabbed) {
 			if(KeyBoard.key("forward").pressed) {
 				if(KeyBoard.key("sprint").pressed) {
-					if(Player.isFlying.load(.monotonic)) {
+					if(Player.isGhost.load(.monotonic)) {
 						acc += forward*@as(Vec3d, @splat(128 * fricMul));
+					} else if(Player.isFlying.load(.monotonic)) {
+						acc += forward*@as(Vec3d, @splat(32 * fricMul));
 					} else {
 						acc += forward*@as(Vec3d, @splat(8 * fricMul));
 					}
@@ -534,7 +547,11 @@ pub fn update(deltaTime: f64) void {
 			if(KeyBoard.key("jump").pressed) {
 				if(Player.isFlying.load(.monotonic)) {
 					if(KeyBoard.key("sprint").pressed) {
-						acc[2] += 59.45 * fricMul;
+						if(Player.isGhost.load(.monotonic)) {
+							acc[2] += 60 * fricMul;
+						} else {
+							acc[2] += 25 * fricMul;
+						}
 					} else {
 						acc[2] += 5.45 * fricMul;
 					}
@@ -545,7 +562,11 @@ pub fn update(deltaTime: f64) void {
 			if(KeyBoard.key("fall").pressed) {
 				if(Player.isFlying.load(.monotonic)) {
 					if(KeyBoard.key("sprint").pressed) {
-						acc[2] += -59.45 * fricMul;
+						if(Player.isGhost.load(.monotonic)) {
+							acc[2] += -60 * fricMul;
+						} else {
+							acc[2] += -25 * fricMul;
+						}
 					} else {
 						acc[2] += -5.45 * fricMul;
 					}
@@ -597,7 +618,7 @@ pub fn update(deltaTime: f64) void {
 		}
 	}
 
-	{
+	if(!Player.isGhost.load(.monotonic)) {
 		Player.mutex.lock();
 		defer Player.mutex.unlock();
 
@@ -615,7 +636,7 @@ pub fn update(deltaTime: f64) void {
 			}
 			if (!step)
 			{
-				if (Player.super.vel[0] < 0) {
+				if (move[0] < 0) {
 					Player.super.pos[0] = box.max[0] + Player.radius;
 					while (Player.collides(.x, 0)) |_| {
 						Player.super.pos[0] += 1;
@@ -644,7 +665,7 @@ pub fn update(deltaTime: f64) void {
 			}
 
 			if (!step) {
-				if (Player.super.vel[1] < 0) {
+				if (move[1] < 0) {
 					Player.super.pos[1] = box.max[1] + Player.radius;
 					while (Player.collides(.y, 0)) |_| {
 						Player.super.pos[1] += 1;
@@ -662,7 +683,7 @@ pub fn update(deltaTime: f64) void {
 		Player.onGround = false;
 		Player.super.pos[2] += move[2];
 		if (Player.collides(.z, -move[2])) |box| {
-			if (Player.super.vel[2] < 0) {
+			if (move[2] < 0) {
 				Player.super.pos[2] = box.max[2];
 				while (Player.collides(.z, 0)) |_| {
 					Player.super.pos[2] += 1;
@@ -676,6 +697,8 @@ pub fn update(deltaTime: f64) void {
 			}
 			Player.super.vel[2] = 0;
 		}
+	} else {
+		Player.super.pos += move;
 	}
 
 	const biome = world.?.playerBiome.load(.monotonic);

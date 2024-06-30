@@ -1,0 +1,10 @@
+{
+	"class" : "wood",
+	"hardness" : 7,
+	"drops" : [
+		"auto"
+	],
+	"model" : "cube",
+	"rotation" : "stairs",
+	"texture" : "cubyz:mahogany_planks"
+}
