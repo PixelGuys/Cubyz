@@ -463,7 +463,7 @@ pub fn main() void {
 			std.time.sleep(sleep);
 		}
 		const begin = std.time.nanoTimestamp();
-		const deltaTime = @as(f64, @floatFromInt(begin - lastBeginRendering))/1e9;
+		const deltaTime = @as(f64, @floatFromInt(begin -% lastBeginRendering))/1e9;
 		lastDeltaTime.store(deltaTime, .monotonic);
 		lastBeginRendering = begin;
 
