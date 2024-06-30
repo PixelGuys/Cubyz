@@ -189,17 +189,20 @@ pub const Model = struct {
 
 		for (self.internalQuads) |quad| {
 			const q = &quads.items[quad];
+
+			const textureSlotX: f32 = @floatFromInt(q.textureSlot % 4);
+			const textureSlotY: f32 = @floatFromInt(q.textureSlot / 4);
+
 			if (std.meta.eql(q.corners[3], q.corners[1]) or std.meta.eql(q.corners[3], q.corners[2])) {
 				try vertWriter.print("v {d:.4} {d:.4} {d:.4}\n", .{q.corners[0][0] - 0.5, q.corners[0][2], -(q.corners[0][1] - 0.5)});
 				try vertWriter.print("v {d:.4} {d:.4} {d:.4}\n", .{q.corners[1][0] - 0.5, q.corners[1][2], -(q.corners[1][1] - 0.5)});
 				try vertWriter.print("v {d:.4} {d:.4} {d:.4}\n", .{q.corners[2][0] - 0.5, q.corners[2][2], -(q.corners[2][1] - 0.5)});
 
-				try uvWriter.print("vt {d:.4} {d:.4}\n", .{q.cornerUV[0][0], q.cornerUV[0][1]});
-				try uvWriter.print("vt {d:.4} {d:.4}\n", .{q.cornerUV[1][0], q.cornerUV[1][1]});
-				try uvWriter.print("vt {d:.4} {d:.4}\n", .{q.cornerUV[2][0], q.cornerUV[2][1]});
+				try uvWriter.print("vt {d:.4} {d:.4}\n", .{(q.cornerUV[0][0] + textureSlotX) / 4.0, (q.cornerUV[0][1] + textureSlotY) / 4.0});
+				try uvWriter.print("vt {d:.4} {d:.4}\n", .{(q.cornerUV[1][0] + textureSlotX) / 4.0, (q.cornerUV[1][1] + textureSlotY) / 4.0});
+				try uvWriter.print("vt {d:.4} {d:.4}\n", .{(q.cornerUV[2][0] + textureSlotX) / 4.0, (q.cornerUV[2][1] + textureSlotY) / 4.0});
 
 				try normWriter.print("vn {d:.4} {d:.4} {d:.4}\n", .{q.normal[0], q.normal[2], -q.normal[1]});
-				try normWriter.print("vs {d}\n", .{q.textureSlot});
 
 				try faceWriter.print("f {}/{}/{} {}/{}/{} {}/{}/{}\n", .{vertInd, vertInd, normInd, vertInd + 1, vertInd + 1, normInd, vertInd + 2, vertInd + 2, normInd});
 
@@ -211,13 +214,12 @@ pub const Model = struct {
 				try vertWriter.print("v {d:.4} {d:.4} {d:.4}\n", .{q.corners[2][0] - 0.5, q.corners[2][2], -(q.corners[2][1] - 0.5)});
 				try vertWriter.print("v {d:.4} {d:.4} {d:.4}\n", .{q.corners[3][0] - 0.5, q.corners[3][2], -(q.corners[3][1] - 0.5)});
 
-				try uvWriter.print("vt {d:.4} {d:.4}\n", .{q.cornerUV[0][0], q.cornerUV[0][1]});
-				try uvWriter.print("vt {d:.4} {d:.4}\n", .{q.cornerUV[1][0], q.cornerUV[1][1]});
-				try uvWriter.print("vt {d:.4} {d:.4}\n", .{q.cornerUV[2][0], q.cornerUV[2][1]});
-				try uvWriter.print("vt {d:.4} {d:.4}\n", .{q.cornerUV[3][0], q.cornerUV[3][1]});
+				try uvWriter.print("vt {d:.4} {d:.4}\n", .{(q.cornerUV[0][0] + textureSlotX) / 4.0, (q.cornerUV[0][1] + textureSlotY) / 4.0});
+				try uvWriter.print("vt {d:.4} {d:.4}\n", .{(q.cornerUV[1][0] + textureSlotX) / 4.0, (q.cornerUV[1][1] + textureSlotY) / 4.0});
+				try uvWriter.print("vt {d:.4} {d:.4}\n", .{(q.cornerUV[2][0] + textureSlotX) / 4.0, (q.cornerUV[2][1] + textureSlotY) / 4.0});
+				try uvWriter.print("vt {d:.4} {d:.4}\n", .{(q.cornerUV[3][0] + textureSlotX) / 4.0, (q.cornerUV[3][1] + textureSlotY) / 4.0});
 
 				try normWriter.print("vn {d:.4} {d:.4} {d:.4}\n", .{q.normal[0], q.normal[2], -q.normal[1]});
-				try normWriter.print("vs {d}\n", .{q.textureSlot});
 
 				try faceWriter.print("f {}/{}/{} {}/{}/{} {}/{}/{} {}/{}/{}\n", .{vertInd, vertInd, normInd, vertInd + 1, vertInd + 1, normInd, vertInd + 2, vertInd + 2, normInd, vertInd + 3, vertInd + 3, normInd});
 				
@@ -229,17 +231,20 @@ pub const Model = struct {
 		for (self.neighborFacingQuads) |neibquads| {
 			for (neibquads) |quad| {
 				const q = &quads.items[quad];
+
+				const textureSlotX: f32 = @floatFromInt(q.textureSlot % 4);
+				const textureSlotY: f32 = @floatFromInt(q.textureSlot / 4);
+
 				if (std.meta.eql(q.corners[3], q.corners[1]) or std.meta.eql(q.corners[3], q.corners[2])) {
 					try vertWriter.print("v {d:.4} {d:.4} {d:.4}\n", .{q.corners[0][0] - 0.5 + q.normal[0], q.corners[0][2] + q.normal[2], -(q.corners[0][1] - 0.5 + q.normal[1])});
 					try vertWriter.print("v {d:.4} {d:.4} {d:.4}\n", .{q.corners[1][0] - 0.5 + q.normal[0], q.corners[1][2] + q.normal[2], -(q.corners[1][1] - 0.5 + q.normal[1])});
 					try vertWriter.print("v {d:.4} {d:.4} {d:.4}\n", .{q.corners[2][0] - 0.5 + q.normal[0], q.corners[2][2] + q.normal[2], -(q.corners[2][1] - 0.5 + q.normal[1])});
 
-					try uvWriter.print("vt {d:.4} {d:.4}\n", .{q.cornerUV[0][0], q.cornerUV[0][1]});
-					try uvWriter.print("vt {d:.4} {d:.4}\n", .{q.cornerUV[1][0], q.cornerUV[1][1]});
-					try uvWriter.print("vt {d:.4} {d:.4}\n", .{q.cornerUV[2][0], q.cornerUV[2][1]});
+					try uvWriter.print("vt {d:.4} {d:.4}\n", .{(q.cornerUV[0][0] + textureSlotX) / 4.0, (q.cornerUV[0][1] + textureSlotY) / 4.0});
+					try uvWriter.print("vt {d:.4} {d:.4}\n", .{(q.cornerUV[1][0] + textureSlotX) / 4.0, (q.cornerUV[1][1] + textureSlotY) / 4.0});
+					try uvWriter.print("vt {d:.4} {d:.4}\n", .{(q.cornerUV[2][0] + textureSlotX) / 4.0, (q.cornerUV[2][1] + textureSlotY) / 4.0});
 
 					try normWriter.print("vn {d:.4} {d:.4} {d:.4}\n", .{q.normal[0], q.normal[2], -q.normal[1]});
-					try normWriter.print("vs {d}\n", .{q.textureSlot});
 
 					try faceWriter.print("f {}/{}/{} {}/{}/{} {}/{}/{}\n", .{vertInd, vertInd, normInd, vertInd + 1, vertInd + 1, normInd, vertInd + 2, vertInd + 2, normInd});
 
@@ -251,13 +256,12 @@ pub const Model = struct {
 					try vertWriter.print("v {d:.4} {d:.4} {d:.4}\n", .{q.corners[2][0] - 0.5 + q.normal[0], q.corners[2][2] + q.normal[2], -(q.corners[2][1] - 0.5 + q.normal[1])});
 					try vertWriter.print("v {d:.4} {d:.4} {d:.4}\n", .{q.corners[3][0] - 0.5 + q.normal[0], q.corners[3][2] + q.normal[2], -(q.corners[3][1] - 0.5 + q.normal[1])});
 
-					try uvWriter.print("vt {d:.4} {d:.4}\n", .{q.cornerUV[0][0], 1 - q.cornerUV[0][1]});
-					try uvWriter.print("vt {d:.4} {d:.4}\n", .{q.cornerUV[1][0], 1 - q.cornerUV[1][1]});
-					try uvWriter.print("vt {d:.4} {d:.4}\n", .{q.cornerUV[2][0], 1 - q.cornerUV[2][1]});
-					try uvWriter.print("vt {d:.4} {d:.4}\n", .{q.cornerUV[3][0], 1 - q.cornerUV[3][1]});
+					try uvWriter.print("vt {d:.4} {d:.4}\n", .{(q.cornerUV[0][0] + textureSlotX) / 4.0, (q.cornerUV[0][1] + textureSlotY) / 4.0});
+					try uvWriter.print("vt {d:.4} {d:.4}\n", .{(q.cornerUV[1][0] + textureSlotX) / 4.0, (q.cornerUV[1][1] + textureSlotY) / 4.0});
+					try uvWriter.print("vt {d:.4} {d:.4}\n", .{(q.cornerUV[2][0] + textureSlotX) / 4.0, (q.cornerUV[2][1] + textureSlotY) / 4.0});
+					try uvWriter.print("vt {d:.4} {d:.4}\n", .{(q.cornerUV[3][0] + textureSlotX) / 4.0, (q.cornerUV[3][1] + textureSlotY) / 4.0});
 
 					try normWriter.print("vn {d:.4} {d:.4} {d:.4}\n", .{q.normal[0], q.normal[2], -q.normal[1]});
-					try normWriter.print("vs {d}\n", .{q.textureSlot});
 
 					try faceWriter.print("f {}/{}/{} {}/{}/{} {}/{}/{} {}/{}/{}\n", .{vertInd, vertInd, normInd, vertInd + 1, vertInd + 1, normInd, vertInd + 2, vertInd + 2, normInd, vertInd + 3, vertInd + 3, normInd});
 					
@@ -280,16 +284,13 @@ pub const Model = struct {
 	}
 
 	pub fn loadModel(data: []const u8) !u16 {
-		var vertices = std.ArrayList([3]f32).init(main.stackAllocator.allocator);
+		var vertices = std.ArrayList(Vec3f).init(main.stackAllocator.allocator);
 		defer vertices.deinit();
 
-		var normals = std.ArrayList([3]f32).init(main.stackAllocator.allocator);
+		var normals = std.ArrayList(Vec3f).init(main.stackAllocator.allocator);
 		defer normals.deinit();
 
-		var textureSlots = std.ArrayList(u32).init(main.stackAllocator.allocator);
-		defer textureSlots.deinit();
-
-		var uvs = std.ArrayList([2]f32).init(main.stackAllocator.allocator);
+		var uvs = std.ArrayList(Vec2f).init(main.stackAllocator.allocator);
 		defer uvs.deinit();
 
 		var tris = std.ArrayList(Triangle).init(main.stackAllocator.allocator);
@@ -316,33 +317,32 @@ pub const Model = struct {
 			
 			if (std.mem.eql(u8, line[0..2], "v ")) {
 				var coordsIter = std.mem.split(u8, line[2..], " ");
-				var coords: [3]f32 = undefined;
+				var coords: Vec3f = undefined;
 				var i: usize = 0;
 				while (coordsIter.next()) |coord| : (i += 1) {
 					coords[i] = try std.fmt.parseFloat(f32, coord);
 				}
-				const coordsCorrect: [3]f32 = .{coords[0] + 0.5, -coords[2] + 0.5, coords[1]};
+				const coordsCorrect: Vec3f = .{coords[0] + 0.5, -coords[2] + 0.5, coords[1]};
 				try vertices.append(coordsCorrect);
 			} else if (std.mem.eql(u8, line[0..3], "vn ")) {
 				var coordsIter = std.mem.split(u8, line[3..], " ");
-				var norm: [3]f32 = undefined;
+				var norm: Vec3f = undefined;
 				var i: usize = 0;
 				while (coordsIter.next()) |coord| : (i += 1) {
 					norm[i] = try std.fmt.parseFloat(f32, coord);
 				}
-				const normCorrect: [3]f32 = .{norm[0], -norm[2], norm[1]};
+				const normCorrect: Vec3f = .{norm[0], -norm[2], norm[1]};
 				try normals.append(normCorrect);
-			} else if (std.mem.eql(u8, line[0..3], "vs ")) {
-				const val = try std.fmt.parseUnsigned(u32, line[3..], 10);
-				try textureSlots.append(val);
 			} else if (std.mem.eql(u8, line[0..3], "vt ")) {
 				var coordsIter = std.mem.split(u8, line[3..], " ");
-				var uv: [2]f32 = undefined;
+				var uv: Vec2f = undefined;
 				var i: usize = 0;
 				while (coordsIter.next()) |coord| : (i += 1) {
 					uv[i] = try std.fmt.parseFloat(f32, coord);
 				}
-				try uvs.append(.{uv[0], 1 - uv[1]});
+				uv[0] *= 4;
+				uv[1] *= 4;
+				try uvs.append(.{uv[0], uv[1]});
 			} else if (std.mem.eql(u8, line[0..2], "f ")) {
 				if (std.mem.count(u8, line[2..], " ") + 1 == 3) {
 					var coordsIter = std.mem.split(u8, line[2..], " ");
@@ -376,17 +376,31 @@ pub const Model = struct {
 		defer quadInfos.deinit();
 
 		for (tris.items) |face| {
-			const normal: Vec3f = .{normals.items[face.normals[0]][0], normals.items[face.normals[0]][1], normals.items[face.normals[0]][2]};
-			const textureSlot = textureSlots.items[face.normals[0]];
-
-			const cornerA: Vec3f = .{vertices.items[face.vertex[0]][0], vertices.items[face.vertex[0]][1], vertices.items[face.vertex[0]][2]};
-			const cornerB: Vec3f = .{vertices.items[face.vertex[1]][0], vertices.items[face.vertex[1]][1], vertices.items[face.vertex[1]][2]};
-			const cornerC: Vec3f = .{vertices.items[face.vertex[2]][0], vertices.items[face.vertex[2]][1], vertices.items[face.vertex[2]][2]};
+			const normal: Vec3f = normals.items[face.normals[0]];
 			
-			const uvA: Vec2f = .{uvs.items[face.uvs[0]][0], uvs.items[face.uvs[0]][1]};
-			const uvB: Vec2f = .{uvs.items[face.uvs[1]][0], uvs.items[face.uvs[1]][1]};
-			const uvC: Vec2f = .{uvs.items[face.uvs[2]][0], uvs.items[face.uvs[2]][1]};
+			var uvA: Vec2f = uvs.items[face.uvs[0]];
+			var uvB: Vec2f = uvs.items[face.uvs[1]];
+			var uvC: Vec2f = uvs.items[face.uvs[2]];
 
+			
+			var minUv = @floor(@min(@min(uvA, uvB), uvC));
+			const textureSlot = @as(u32, @intFromFloat(@floor(minUv[1]))) * 4 + @as(u32, @intFromFloat(@floor(minUv[0])));
+
+			uvA -= minUv;
+			uvB -= minUv;
+			uvC -= minUv;
+			
+			minUv = @min(@min(uvA, uvB), uvC);
+			const maxUv = @max(@max(uvA, uvB), uvC);
+
+			uvA[1] = (minUv[1] + maxUv[1]) - uvA[1];
+			uvB[1] = (minUv[1] + maxUv[1]) - uvB[1];
+			uvC[1] = (minUv[1] + maxUv[1]) - uvC[1];
+
+			const cornerA: Vec3f = vertices.items[face.vertex[0]];
+			const cornerB: Vec3f = vertices.items[face.vertex[1]];
+			const cornerC: Vec3f = vertices.items[face.vertex[2]];
+			
 			try quadInfos.append(.{
 				.normal = normal,
 				.corners = .{cornerA, cornerB, cornerC, cornerB},
@@ -396,19 +410,36 @@ pub const Model = struct {
 		}
 
 		for (quadFaces.items) |face| {
-			const normal: Vec3f = .{normals.items[face.normals[0]][0], normals.items[face.normals[0]][1], normals.items[face.normals[0]][2]};
-			const textureSlot = textureSlots.items[face.normals[0]];
-
-			const cornerA: Vec3f = .{vertices.items[face.vertex[0]][0], vertices.items[face.vertex[0]][1], vertices.items[face.vertex[0]][2]};
-			const cornerB: Vec3f = .{vertices.items[face.vertex[1]][0], vertices.items[face.vertex[1]][1], vertices.items[face.vertex[1]][2]};
-			const cornerC: Vec3f = .{vertices.items[face.vertex[2]][0], vertices.items[face.vertex[2]][1], vertices.items[face.vertex[2]][2]};
-			const cornerD: Vec3f = .{vertices.items[face.vertex[3]][0], vertices.items[face.vertex[3]][1], vertices.items[face.vertex[3]][2]};
+			const normal: Vec3f = normals.items[face.normals[0]];
 			
-			const uvA: Vec2f = .{uvs.items[face.uvs[0]][0], uvs.items[face.uvs[0]][1]};
-			const uvB: Vec2f = .{uvs.items[face.uvs[1]][0], uvs.items[face.uvs[1]][1]};
-			const uvC: Vec2f = .{uvs.items[face.uvs[2]][0], uvs.items[face.uvs[2]][1]};
-			const uvD: Vec2f = .{uvs.items[face.uvs[3]][0], uvs.items[face.uvs[3]][1]};
+			var uvA: Vec2f = uvs.items[face.uvs[0]];
+			var uvB: Vec2f = uvs.items[face.uvs[1]];
+			var uvC: Vec2f = uvs.items[face.uvs[2]];
+			var uvD: Vec2f = uvs.items[face.uvs[3]];
 
+			var minUv = @floor(@min(@min(uvA, uvB), @min(uvC, uvD)));
+			const textureSlot = @as(u32, @intFromFloat(@floor(minUv[1]))) * 4 + @as(u32, @intFromFloat(@floor(minUv[0])));
+
+			uvA -= minUv;
+			uvB -= minUv;
+			uvC -= minUv;
+			uvD -= minUv;
+			
+			minUv = @min(@min(uvA, uvB), @min(uvC, uvD));
+			const maxUv = @max(@max(uvA, uvB), @max(uvC, uvD));
+
+			uvA[1] = (minUv[1] + maxUv[1]) - uvA[1];
+			uvB[1] = (minUv[1] + maxUv[1]) - uvB[1];
+			uvC[1] = (minUv[1] + maxUv[1]) - uvC[1];
+			uvD[1] = (minUv[1] + maxUv[1]) - uvD[1];
+
+			std.log.info("{any} {any}\n", .{minUv[1], maxUv[1]});
+
+			const cornerA: Vec3f = vertices.items[face.vertex[0]];
+			const cornerB: Vec3f = vertices.items[face.vertex[1]];
+			const cornerC: Vec3f = vertices.items[face.vertex[2]];
+			const cornerD: Vec3f = vertices.items[face.vertex[3]];
+			
 			try quadInfos.append(.{
 				.normal = normal,
 				.corners = .{cornerB, cornerA, cornerC, cornerD},
@@ -590,6 +621,9 @@ pub fn registerModel(id: []const u8, data: []const u8) !u16 {
 	const model = try Model.loadModel(data);
 	try nameToIndex.put(id, model);
 	return model;
+	// _ = id;
+	// _ = data;
+	// return 0;
 }
 
 // TODO: Entity models.
@@ -604,7 +638,7 @@ pub fn init() void {
 	nameToIndex.put("none", Model.init(&.{})) catch unreachable;
 
 	// const cube = Model.init(&box(.{0, 0, 0}, .{1, 1, 1}, .{0, 0}));
-	// nameToIndex.put("cube", cube) catch unreachable;
+	// nameToIndex.put("cubyz:cube", cube) catch unreachable;
 	// Model.exportModel("assets/cubyz/models/cube.obj", cube) catch unreachable;
 	// fullCube = cube;
 
@@ -634,7 +668,7 @@ pub fn init() void {
 	// 		.textureSlot = 0,
 	// 	},
 	// });
-	// nameToIndex.put("cross", cross) catch unreachable;
+	// nameToIndex.put("cubyz:cross", cross) catch unreachable;
 	// Model.exportModel("assets/cubyz/models/cross.obj", cross) catch unreachable;
 
 	// const swapTopUVs = struct{fn swapTopUVs(_quadInfos: [4]QuadInfo) [4]QuadInfo {
@@ -655,7 +689,7 @@ pub fn init() void {
 	// 	++ swapTopUVs(openBox(.{7.0/16.0, 0, 3.0/16.0}, .{9.0/16.0, 1, 6.0/16.0}, .{0, 0}, .y))
 	// 	++ swapTopUVs(openBox(.{7.0/16.0, 0, 10.0/16.0}, .{9.0/16.0, 1, 13.0/16.0}, .{0, 0}, .y))
 	// ));
-	// nameToIndex.put("fence", fence) catch unreachable;
+	// nameToIndex.put("cubyz:fence", fence) catch unreachable;
 	// Model.exportModel("assets/cubyz/models/fence.obj", fence) catch unreachable;
 
 	// const torch = Model.init(&(openBox(.{7.0/16.0, 7.0/16.0, 0}, .{9.0/16.0, 9.0/16.0, 12.0/16.0}, .{-7.0/16.0, 4.0/16.0}, .z) ++ .{.{
@@ -669,7 +703,7 @@ pub fn init() void {
 	// 	.cornerUV = .{.{0, 0}, .{0, 2.0/16.0}, .{2.0/16.0, 0}, .{2.0/16.0, 2.0/16.0}},
 	// 	.textureSlot = chunk.Neighbors.dirDown,
 	// }}));
-	// nameToIndex.put("torch", torch) catch unreachable;
+	// nameToIndex.put("cubyz:torch", torch) catch unreachable;
 	// Model.exportModel("assets/cubyz/models/torch.obj", torch) catch unreachable;
 }
 
