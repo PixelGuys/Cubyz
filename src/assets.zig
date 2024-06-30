@@ -121,8 +121,6 @@ pub fn readAllFilesInAddonsHashmap(externalAllocator: NeverFailingAllocator, add
 					}
 				}
 
-				std.debug.print("{s} {s}\n", .{entry.path, id});
-
 				const file = dir.openFile(entry.path, .{}) catch |err| {
 					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
 					continue;

@@ -621,9 +621,6 @@ pub fn registerModel(id: []const u8, data: []const u8) !u16 {
 	const model = try Model.loadModel(data);
 	try nameToIndex.put(id, model);
 	return model;
-	// _ = id;
-	// _ = data;
-	// return 0;
 }
 
 // TODO: Entity models.
@@ -636,75 +633,6 @@ pub fn init() void {
 	nameToIndex = std.StringHashMap(u16).init(main.globalAllocator.allocator);
 
 	nameToIndex.put("none", Model.init(&.{})) catch unreachable;
-
-	// const cube = Model.init(&box(.{0, 0, 0}, .{1, 1, 1}, .{0, 0}));
-	// nameToIndex.put("cubyz:cube", cube) catch unreachable;
-	// Model.exportModel("assets/cubyz/models/cube.obj", cube) catch unreachable;
-	// fullCube = cube;
-
-	// const cross = Model.init(&.{
-	// 	.{
-	// 		.normal = .{-std.math.sqrt1_2, std.math.sqrt1_2, 0},
-	// 		.corners = .{.{1, 1, 0}, .{1, 1, 1}, .{0, 0, 0}, .{0, 0, 1}},
-	// 		.cornerUV = .{.{0, 0}, .{0, 1}, .{1, 0}, .{1, 1}},
-	// 		.textureSlot = 0,
-	// 	},
-	// 	.{
-	// 		.normal = .{std.math.sqrt1_2, -std.math.sqrt1_2, 0},
-	// 		.corners = .{.{0, 0, 0}, .{0, 0, 1}, .{1, 1, 0}, .{1, 1, 1}},
-	// 		.cornerUV = .{.{0, 0}, .{0, 1}, .{1, 0}, .{1, 1}},
-	// 		.textureSlot = 0,
-	// 	},
-	// 	.{
-	// 		.normal = .{-std.math.sqrt1_2, -std.math.sqrt1_2, 0},
-	// 		.corners = .{.{0, 1, 0}, .{0, 1, 1}, .{1, 0, 0}, .{1, 0, 1}},
-	// 		.cornerUV = .{.{0, 0}, .{0, 1}, .{1, 0}, .{1, 1}},
-	// 		.textureSlot = 0,
-	// 	},
-	// 	.{
-	// 		.normal = .{std.math.sqrt1_2, std.math.sqrt1_2, 0},
-	// 		.corners = .{.{1, 0, 0}, .{1, 0, 1}, .{0, 1, 0}, .{0, 1, 1}},
-	// 		.cornerUV = .{.{0, 0}, .{0, 1}, .{1, 0}, .{1, 1}},
-	// 		.textureSlot = 0,
-	// 	},
-	// });
-	// nameToIndex.put("cubyz:cross", cross) catch unreachable;
-	// Model.exportModel("assets/cubyz/models/cross.obj", cross) catch unreachable;
-
-	// const swapTopUVs = struct{fn swapTopUVs(_quadInfos: [4]QuadInfo) [4]QuadInfo {
-	// 	var quadInfos = _quadInfos;
-	// 	for(&quadInfos) |*quad| {
-	// 		if(quad.normal[2] != 0) {
-	// 			for(&quad.cornerUV) |*uv| {
-	// 				std.mem.swap(f32, &uv[0], &uv[1]);
-	// 			}
-	// 		}
-	// 	}
-	// 	return quadInfos;
-	// }}.swapTopUVs;
-	// const fence = Model.init(&(
-	// 	box(.{6.0/16.0, 6.0/16.0, 0}, .{10.0/16.0, 10.0/16.0, 1}, .{0, 0})
-	// 	++ openBox(.{0, 7.0/16.0, 3.0/16.0}, .{1, 9.0/16.0, 6.0/16.0}, .{0, 0}, .x)
-	// 	++ openBox(.{0, 7.0/16.0, 10.0/16.0}, .{1, 9.0/16.0, 13.0/16.0}, .{0, 0}, .x)
-	// 	++ swapTopUVs(openBox(.{7.0/16.0, 0, 3.0/16.0}, .{9.0/16.0, 1, 6.0/16.0}, .{0, 0}, .y))
-	// 	++ swapTopUVs(openBox(.{7.0/16.0, 0, 10.0/16.0}, .{9.0/16.0, 1, 13.0/16.0}, .{0, 0}, .y))
-	// ));
-	// nameToIndex.put("cubyz:fence", fence) catch unreachable;
-	// Model.exportModel("assets/cubyz/models/fence.obj", fence) catch unreachable;
-
-	// const torch = Model.init(&(openBox(.{7.0/16.0, 7.0/16.0, 0}, .{9.0/16.0, 9.0/16.0, 12.0/16.0}, .{-7.0/16.0, 4.0/16.0}, .z) ++ .{.{
-	// 	.normal = .{0, 0, 1},
-	// 	.corners = .{.{9.0/16.0, 9.0/16.0, 12.0/16.0}, .{9.0/16.0, 7.0/16.0, 12.0/16.0}, .{7.0/16.0, 9.0/16.0, 12.0/16.0}, .{7.0/16.0, 7.0/16.0, 12.0/16.0}},
-	// 	.cornerUV = .{.{0, 2.0/16.0}, .{0, 4.0/16.0}, .{2.0/16.0, 2.0/16.0}, .{2.0/16.0, 4.0/16.0}},
-	// 	.textureSlot = chunk.Neighbors.dirUp,
-	// }} ++ .{.{
-	// 	.normal = .{0, 0, -1},
-	// 	.corners = .{.{7.0/16.0, 9.0/16.0, 0}, .{7.0/16.0, 7.0/16.0, 0}, .{9.0/16.0, 9.0/16.0, 0}, .{9.0/16.0, 7.0/16.0, 0}},
-	// 	.cornerUV = .{.{0, 0}, .{0, 2.0/16.0}, .{2.0/16.0, 0}, .{2.0/16.0, 2.0/16.0}},
-	// 	.textureSlot = chunk.Neighbors.dirDown,
-	// }}));
-	// nameToIndex.put("cubyz:torch", torch) catch unreachable;
-	// Model.exportModel("assets/cubyz/models/torch.obj", torch) catch unreachable;
 }
 
 pub fn uploadModels() void {
