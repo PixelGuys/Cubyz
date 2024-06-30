@@ -8,7 +8,7 @@
 	"degradable" : true,
 	"alwaysViewThrough" : true,
 	"absorbedLight" : 0x121012,
-	"model" : "cube",
+	"model" : "cubyz:cube",
 	"texture" : "cubyz:mahogany_leaves",
 	"lodReplacement" : "cubyz:mahogany_leaves_opaque"
 }
