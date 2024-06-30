@@ -37,7 +37,7 @@ fn fpsCapRound(newValue: f32) ?u32 {
 fn fpsCapFormatter(allocator: main.utils.NeverFailingAllocator, value: f32) []const u8 {
 	const cap = fpsCapRound(value);
 	if(cap == null)
-		return "#ffffffFPS: Unlimited";
+		return allocator.dupe(u8, "#ffffffFPS: Unlimited");
 	return std.fmt.allocPrint(allocator.allocator, "#ffffffFPS Limit: {d:.0}", .{cap.?}) catch unreachable;
 }
 
