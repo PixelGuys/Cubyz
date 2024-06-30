@@ -41,7 +41,6 @@ fn fpsCapFormatter(allocator: main.utils.NeverFailingAllocator, value: f32) []co
 }
 
 fn fpsCapCallback(newValue: f32) void {
-	std.log.debug("value {}", .{newValue});
 	settings.fpsCap = fpsCapRound(newValue);
 }
 
