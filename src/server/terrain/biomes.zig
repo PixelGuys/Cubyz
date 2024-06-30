@@ -269,7 +269,11 @@ pub const Biome = struct {
 			.caves = json.get(f32, "caves", -0.375),
 			.crystals = json.get(u32, "crystals", 0),
 			.stalagmites = json.get(u32, "stalagmites", 0),
+<<<<<<< HEAD
 			.stalagmiteBlock = blocks.getByID(json.get([]const u8, "stalagmiteBlock", "cubyz:limestone")),
+=======
+			.stalagmiteBlock = blocks.getByID(json.get([]const u8, "stalagmiteBlock", "cubyz:stalagmite")),
+>>>>>>> 6892307646addf51598482e02f61d64763bcb7c4
 			.minHeight = json.get(i32, "minHeight", std.math.minInt(i32)),
 			.maxHeight = json.get(i32, "maxHeight", std.math.maxInt(i32)),
 			.supportsRivers = json.get(bool, "rivers", false),
