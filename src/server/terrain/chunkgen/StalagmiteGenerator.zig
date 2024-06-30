@@ -14,14 +14,10 @@ pub const priority = 16384;
 
 pub const generatorSeed = 0x2ba5bef20d6153a5;
 
-var stalagmite: u16 = 0;
-
 const surfaceDist = 2; // How far away stalagmite can spawn from the wall.
 
 pub fn init(parameters: JsonElement) void {
 	_ = parameters;
-	
-	stalagmite = main.blocks.getByID("cubyz:limestone");
 }
 
 pub fn deinit() void {
@@ -49,7 +45,7 @@ fn distSqr(x: f32, y: f32, z: f32) f32 {
 	return x*x + y*y + z*z;
 }
 
-fn considerStalagmite(x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, caveMap: CaveMap.CaveMapView, seed: *u64) void {
+fn considerStalagmite(x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, caveMap: CaveMap.CaveMapView, stalagmiteBlock: u16, seed: *u64) void {
 	const relX: f32 = @as(f32, @floatFromInt(x -% chunk.super.pos.wx)) + main.random.nextFloat(seed);
 	const relY: f32 = @as(f32, @floatFromInt(y -% chunk.super.pos.wy)) + main.random.nextFloat(seed);
 	const relZ: f32 = @as(f32, @floatFromInt(z -% chunk.super.pos.wz)) + main.random.nextFloat(seed);
@@ -97,7 +93,7 @@ fn considerStalagmite(x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, ca
 						if(x3 >= 0 and x3 < chunk.super.width and y3 >= 0 and y3 < chunk.super.width and z3 >= 0 and z3 < chunk.super.width) {
 							const block: main.blocks.Block = chunk.getBlock(x3, y3, z3);
 							if(block.typ == 0 or block.degradable() or block.blockClass() == .fluid) {
-								chunk.updateBlockInGeneration(x3, y3, z3, .{.typ = stalagmite, .data = 0}); // TODO: Use natural standard.
+								chunk.updateBlockInGeneration(x3, y3, z3, .{.typ = stalagmiteBlock, .data = 0}); // TODO: Use natural standard.
 							}
 						}
 					}
@@ -112,7 +108,8 @@ fn considerStalagmite(x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, ca
 
 fn considerCoordinates(x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView, seed: *u64) void {
 	const oldSeed = seed.*;
-	const stalagmiteSpawns = biomeMap.getBiomeAndSeed(x +% main.chunk.chunkSize/2 -% chunk.super.pos.wx, y +% main.chunk.chunkSize/2 -% chunk.super.pos.wy, z +% main.chunk.chunkSize/2 -% chunk.super.pos.wz, true, seed).stalagmites;
+	const biome = biomeMap.getBiomeAndSeed(x +% main.chunk.chunkSize/2 -% chunk.super.pos.wx, y +% main.chunk.chunkSize/2 -% chunk.super.pos.wy, z +% main.chunk.chunkSize/2 -% chunk.super.pos.wz, true, seed);
+	const stalagmiteSpawns = biome.stalagmites;
 	random.scrambleSeed(seed);
 	
 	// Spawn the stalagmites using the old position specific seed:
@@ -132,7 +129,7 @@ fn considerCoordinates(x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, c
 				or (worldZ - z < main.chunk.chunkSize - surfaceDist and !caveMap.isSolid(relX, relY, relZ + surfaceDist))
 			) {
 				// Generate the stalagmite:
-				considerStalagmite(worldX, worldY, worldZ, chunk, caveMap, seed);
+				considerStalagmite(worldX, worldY, worldZ, chunk, caveMap, biome.stalagmiteBlock, seed);
 			}
 		}
 	}
