@@ -1034,7 +1034,7 @@ pub const Protocols = struct {
 						defer json.free(main.stackAllocator);
 						const expectedTime = json.get(i64, "time", 0);
 						var curTime = world.gameTime.load(.monotonic);
-						if(@abs(curTime -% expectedTime) >= 1000) {
+						if(@abs(curTime -% expectedTime) >= 10) {
 							world.gameTime.store(expectedTime, .monotonic);
 						} else if(curTime < expectedTime) { // world.gameTime++
 							while(world.gameTime.cmpxchgWeak(curTime, curTime +% 1, .monotonic, .monotonic)) |actualTime| {
