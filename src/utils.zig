@@ -8,9 +8,9 @@ const main = @import("main.zig");
 pub const file_monitor = @import("utils/file_monitor.zig");
 
 pub const Compression = struct {
-	pub fn deflate(allocator: NeverFailingAllocator, data: []const u8) []u8 {
+	pub fn deflate(allocator: NeverFailingAllocator, data: []const u8, level: std.compress.flate.deflate.Level) []u8 {
 		var result = main.List(u8).init(allocator);
-		var comp = std.compress.flate.compressor(result.writer(), .{}) catch unreachable;
+		var comp = std.compress.flate.compressor(result.writer(), .{.level = level}) catch unreachable;
 		_ = comp.write(data) catch unreachable;
 		comp.finish() catch unreachable;
 		return result.toOwnedSlice();
