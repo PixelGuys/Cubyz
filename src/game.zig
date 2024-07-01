@@ -193,6 +193,76 @@ pub const Player = struct {
 
 	const Direction = enum {x, y, z};
 
+	pub fn collideWithBlock(block: main.blocks.Block, x: i32, y: i32, z: i32, boundingBoxCenter: Vec3d, boundingBoxExtent: Vec3d, directionVector: Vec3d) ?struct{box: Box, dist: f64} {
+		var resultBox: ?Box = null;
+		var minDistance: f64 = std.math.floatMax(f64);
+		if(block.collide()) {
+			const model = &models.models.items[block.mode().model(block)];
+
+			const pos = Vec3d{@floatFromInt(x), @floatFromInt(y), @floatFromInt(z)};
+
+			for (model.neighborFacingQuads) |quads| {
+				for (quads) |quadIndex| {
+					const quad = &models.quads.items[quadIndex];
+					if (triangleAABB(.{quad.corners[0] + quad.normal + pos, quad.corners[2] + quad.normal + pos, quad.corners[1] + quad.normal + pos}, boundingBoxCenter, boundingBoxExtent)) {
+						const min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + quad.normal + pos;
+						const max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + quad.normal + pos;
+						const dist = @min(vec.dot(directionVector, min), vec.dot(directionVector, max));
+						if(dist < minDistance) {
+							resultBox = .{.min = min, .max = max};
+							minDistance = dist;
+						} else if(dist == minDistance) {
+							resultBox.?.min = @min(resultBox.?.min, min);
+							resultBox.?.max = @min(resultBox.?.max, max);
+						}
+					}
+					if (triangleAABB(.{quad.corners[1] + quad.normal + pos, quad.corners[2] + quad.normal + pos, quad.corners[3] + quad.normal + pos}, boundingBoxCenter, boundingBoxExtent)) {
+						const min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + quad.normal + pos;
+						const max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + quad.normal + pos;
+						const dist = @min(vec.dot(directionVector, min), vec.dot(directionVector, max));
+						if(dist < minDistance) {
+							resultBox = .{.min = min, .max = max};
+							minDistance = dist;
+						} else if(dist == minDistance) {
+							resultBox.?.min = @min(resultBox.?.min, min);
+							resultBox.?.max = @min(resultBox.?.max, max);
+						}
+					}
+				}
+			}
+
+			for (model.internalQuads) |quadIndex| {
+				const quad = &models.quads.items[quadIndex];
+				if (triangleAABB(.{quad.corners[0] + pos, quad.corners[2] + pos, quad.corners[1] + pos}, boundingBoxCenter, boundingBoxExtent)) {
+					const min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + pos;
+					const max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + pos;
+					const dist = @min(vec.dot(directionVector, min), vec.dot(directionVector, max));
+					if(dist < minDistance) {
+						resultBox = .{.min = min, .max = max};
+						minDistance = dist;
+					} else if(dist == minDistance) {
+						resultBox.?.min = @min(resultBox.?.min, min);
+						resultBox.?.max = @min(resultBox.?.max, max);
+					}
+				}
+				if (triangleAABB(.{quad.corners[1] + pos, quad.corners[2] + pos, quad.corners[3] + pos}, boundingBoxCenter, boundingBoxExtent)) {
+					const min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + pos;
+					const max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + pos;
+					const dist = @min(vec.dot(directionVector, min), vec.dot(directionVector, max));
+					if(dist < minDistance) {
+						resultBox = .{.min = min, .max = max};
+						minDistance = dist;
+					} else if(dist == minDistance) {
+						resultBox.?.min = @min(resultBox.?.min, min);
+						resultBox.?.max = @min(resultBox.?.max, max);
+					}
+				}
+			}
+		}
+		if(resultBox) |box| return .{.box = box, .dist = minDistance}
+		else return null;
+	}
+
 	pub fn collides(dir: Direction, amount: f64) ?Box {
 		var boundingBox: Box = .{
 			.min = super.pos - Vec3d{radius, radius, 0},
@@ -234,67 +304,13 @@ pub const Player = struct {
 				var z: i32 = maxZ;
 				while (z >= minZ) : (z -= 1) {
 					if (main.renderer.mesh_storage.getBlock(x, y, z)) |block| {
-						if(block.collide()) {
-							const model = &models.models.items[block.mode().model(block)];
-
-							const pos = Vec3d{@floatFromInt(x), @floatFromInt(y), @floatFromInt(z)};
-
-							for (model.neighborFacingQuads) |quads| {
-								for (quads) |quadIndex| {
-									const quad = &models.quads.items[quadIndex];
-									if (triangleAABB(.{quad.corners[0] + quad.normal + pos, quad.corners[2] + quad.normal + pos, quad.corners[1] + quad.normal + pos}, boundingBoxCenter, boundingBoxExtent)) {
-										const min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + quad.normal + pos;
-										const max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + quad.normal + pos;
-										const dist = @min(vec.dot(directionVector, min), vec.dot(directionVector, max));
-										if(dist < minDistance) {
-											resultBox = .{.min = min, .max = max};
-											minDistance = dist;
-										} else if(dist == minDistance) {
-											resultBox.?.min = @min(resultBox.?.min, min);
-											resultBox.?.max = @min(resultBox.?.max, max);
-										}
-									}
-									if (triangleAABB(.{quad.corners[1] + quad.normal + pos, quad.corners[2] + quad.normal + pos, quad.corners[3] + quad.normal + pos}, boundingBoxCenter, boundingBoxExtent)) {
-										const min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + quad.normal + pos;
-										const max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + quad.normal + pos;
-										const dist = @min(vec.dot(directionVector, min), vec.dot(directionVector, max));
-										if(dist < minDistance) {
-											resultBox = .{.min = min, .max = max};
-											minDistance = dist;
-										} else if(dist == minDistance) {
-											resultBox.?.min = @min(resultBox.?.min, min);
-											resultBox.?.max = @min(resultBox.?.max, max);
-										}
-									}
-								}
-							}
-
-							for (model.internalQuads) |quadIndex| {
-								const quad = &models.quads.items[quadIndex];
-								if (triangleAABB(.{quad.corners[0] + pos, quad.corners[2] + pos, quad.corners[1] + pos}, boundingBoxCenter, boundingBoxExtent)) {
-									const min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + pos;
-									const max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + pos;
-									const dist = @min(vec.dot(directionVector, min), vec.dot(directionVector, max));
-									if(dist < minDistance) {
-										resultBox = .{.min = min, .max = max};
-										minDistance = dist;
-									} else if(dist == minDistance) {
-										resultBox.?.min = @min(resultBox.?.min, min);
-										resultBox.?.max = @min(resultBox.?.max, max);
-									}
-								}
-								if (triangleAABB(.{quad.corners[1] + pos, quad.corners[2] + pos, quad.corners[3] + pos}, boundingBoxCenter, boundingBoxExtent)) {
-									const min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + pos;
-									const max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + pos;
-									const dist = @min(vec.dot(directionVector, min), vec.dot(directionVector, max));
-									if(dist < minDistance) {
-										resultBox = .{.min = min, .max = max};
-										minDistance = dist;
-									} else if(dist == minDistance) {
-										resultBox.?.min = @min(resultBox.?.min, min);
-										resultBox.?.max = @min(resultBox.?.max, max);
-									}
-								}
+						if(collideWithBlock(block, x, y, z, boundingBoxCenter, boundingBoxExtent, directionVector)) |res| {
+							if(res.dist < minDistance) {
+								resultBox = res.box;
+								minDistance = res.dist;
+							} else if(res.dist == minDistance) {
+								resultBox.?.min = @min(resultBox.?.min, res.box.min);
+								resultBox.?.max = @min(resultBox.?.max, res.box.max);
 							}
 						}
 					}

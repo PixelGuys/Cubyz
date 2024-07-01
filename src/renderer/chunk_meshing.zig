@@ -1127,7 +1127,6 @@ pub const ChunkMesh = struct {
 	}
 
 	pub fn updateBlock(self: *ChunkMesh, _x: i32, _y: i32, _z: i32, _newBlock: Block) void {
-		std.log.err("Block: {} {} {}", .{_x, _y, _z});
 		var lightRefreshList = main.List(*ChunkMesh).init(main.stackAllocator);
 		defer lightRefreshList.deinit();
 		const x: u5 = @intCast(_x & chunk.chunkMask);

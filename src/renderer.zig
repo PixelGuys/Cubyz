@@ -749,6 +749,13 @@ pub const MeshSelection = struct {
 		// TODO: Test entities
 	}
 
+	fn canPlaceBlock(pos: Vec3i, block: main.blocks.Block) bool {
+		if(main.game.Player.collideWithBlock(block, pos[0], pos[1], pos[2], main.game.Player.getPosBlocking() + Vec3d{0, 0, main.game.Player.height/2.0}, .{main.game.Player.radius, main.game.Player.radius, main.game.Player.height/2.0}, .{0, 0, 0}) != null) {
+			return false;
+		}
+		return true; // TODO: Check other entities
+	}
+
 	pub fn placeBlock(inventoryStack: *main.items.ItemStack) void {
 		if(selectedBlockPos) |selectedPos| {
 			var block = mesh_storage.getBlock(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
@@ -762,6 +769,7 @@ pub const MeshSelection = struct {
 							if(itemBlock == block.typ) {
 								const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
 								if(rotationMode.generateData(main.game.world.?, selectedPos, relPos, lastDir, neighborDir, &block, false)) {
+									if(!canPlaceBlock(selectedPos, block)) return;
 									updateBlockAndSendUpdate(selectedPos[0], selectedPos[1], selectedPos[2], block);
 									_ = inventoryStack.add(item, @as(i32, -1));
 									return;
@@ -774,6 +782,7 @@ pub const MeshSelection = struct {
 							block = mesh_storage.getBlock(neighborPos[0], neighborPos[1], neighborPos[2]) orelse return;
 							if(block.typ == itemBlock) {
 								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, &block, false)) {
+									if(!canPlaceBlock(neighborPos, block)) return;
 									updateBlockAndSendUpdate(neighborPos[0], neighborPos[1], neighborPos[2], block);
 									_ = inventoryStack.add(item, @as(i32, -1));
 									return;
@@ -784,6 +793,7 @@ pub const MeshSelection = struct {
 								block.typ = itemBlock;
 								block.data = 0;
 								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, &block, true)) {
+									if(!canPlaceBlock(neighborPos, block)) return;
 									updateBlockAndSendUpdate(neighborPos[0], neighborPos[1], neighborPos[2], block);
 									_ = inventoryStack.add(item, @as(i32, -1));
 									return;
