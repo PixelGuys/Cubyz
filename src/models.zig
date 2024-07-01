@@ -432,7 +432,6 @@ pub const Model = struct {
 		}
 
 		for (quadFaces.items) |face| {
-			std.log.info("{d} {d}\n", .{normals.items.len, face.normals[0]});
 			const normal: Vec3f = normals.items[face.normals[0]];
 			
 			var uvA: Vec2f = uvs.items[face.uvs[0]];
