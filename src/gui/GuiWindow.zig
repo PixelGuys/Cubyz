@@ -55,7 +55,6 @@ relativePosition: [2]RelativePosition = .{.{.ratio = 0.5}, .{.ratio = 0.5}},
 id: []const u8 = undefined,
 rootComponent: ?GuiComponent = null,
 showTitleBar: bool = true,
-titleBarExpanded: bool = false,
 hasBackground: bool = true,
 hideIfMouseIsGrabbed: bool = true, // TODO: Allow the user to change this with a button, to for example leave the inventory open while playing.
 closeIfMouseIsGrabbed: bool = false,
@@ -85,7 +84,6 @@ var titleTexture: Texture = undefined;
 var closeTexture: Texture = undefined;
 var zoomInTexture: Texture = undefined;
 var zoomOutTexture: Texture = undefined;
-var expandTitleBarTexture: Texture = undefined;
 var shader: Shader = undefined;
 var windowUniforms: struct {
 	screen: c_int,
@@ -119,7 +117,6 @@ pub fn __init() void {
 	closeTexture = Texture.initFromFile("assets/cubyz/ui/window_close.png");
 	zoomInTexture = Texture.initFromFile("assets/cubyz/ui/window_zoom_in.png");
 	zoomOutTexture = Texture.initFromFile("assets/cubyz/ui/window_zoom_out.png");
-	expandTitleBarTexture = Texture.initFromFile("assets/cubyz/ui/window_expand.png");
 }
 
 pub fn __deinit() void {
@@ -132,7 +129,7 @@ pub fn defaultFunction() void {}
 
 pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) void {
 	const scaledMousePos = (mousePosition - self.pos)/@as(Vec2f, @splat(self.scale));
-	if(scaledMousePos[1] < 16 and (self.showTitleBar or self.titleBarExpanded or (!main.Window.grabbed and scaledMousePos[0] < 16))) {
+	if(scaledMousePos[1] < 16 and (self.showTitleBar or gui.reorderWindows)) {
 		grabbedWindow = self;
 		grabPosition = mousePosition;
 		selfPositionWhenGrabbed = self.pos;
@@ -147,12 +144,7 @@ pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) void {
 
 pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 	if(grabPosition != null and @reduce(.And, grabPosition.? == mousePosition) and grabbedWindow == self) {
-		if(!self.showTitleBar) {
-			if(mousePosition[0] - self.pos[0] < 16*self.scale) {
-				self.titleBarExpanded = !self.titleBarExpanded;
-			}
-		}
-		if(self.showTitleBar or self.titleBarExpanded) {
+		if(self.showTitleBar or gui.reorderWindows) {
 			if(mousePosition[0] - self.pos[0] > self.size[0] - 48*self.scale) {
 				if(mousePosition[0] - self.pos[0] > self.size[0] - 32*self.scale) {
 					if(mousePosition[0] - self.pos[0] > self.size[0] - 16*self.scale) {
@@ -327,7 +319,7 @@ pub fn update(self: *GuiWindow) void {
 pub fn updateSelected(self: *GuiWindow, mousePosition: Vec2f) void {
 	self.updateSelectedFn();
 	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
-	if(self == grabbedWindow and (self.titleBarExpanded or self.showTitleBar)) if(grabPosition) |_grabPosition| {
+	if(self == grabbedWindow and (gui.reorderWindows or self.showTitleBar)) if(grabPosition) |_grabPosition| {
 		self.relativePosition[0] = .{.ratio = undefined};
 		self.relativePosition[1] = .{.ratio = undefined};
 		self.pos = (mousePosition - _grabPosition) + selfPositionWhenGrabbed;
@@ -466,36 +458,20 @@ pub fn render(self: *const GuiWindow, mousePosition: Vec2f) void {
 	if(self.rootComponent) |*component| {
 		component.render((mousePosition - self.pos)/@as(Vec2f, @splat(self.scale)));
 	}
-	if(self.showTitleBar) {
+	if(self.showTitleBar or gui.reorderWindows) {
 		shader.bind();
 		titleTexture.bindTo(0);
 		draw.setColor(0xff000000);
 		draw.customShadedRect(windowUniforms, .{0, 0}, .{self.size[0]/self.scale, 18});
 		self.drawIcons();
-	} else if(!main.Window.grabbed) {
-		if(self.titleBarExpanded) {
-			shader.bind();
-			titleTexture.bindTo(0);
-			draw.setColor(0xff000000);
-			draw.customShadedRect(windowUniforms, .{0, 0}, .{self.size[0]/self.scale, 18});
-			self.drawIcons();
-			expandTitleBarTexture.render(.{0, 0}, .{18, 18});
-		} else {
-			shader.bind();
-			titleTexture.bindTo(0);
-			draw.setColor(0xff000000);
-			draw.customShadedRect(windowUniforms, .{0, 0}, .{18, 18});
-			draw.setColor(0xffffffff);
-			expandTitleBarTexture.render(.{0, 0}, .{18, 18});
-		}
 	}
-	if(self.hasBackground or (!main.Window.grabbed and self.titleBarExpanded)) {
+	if(self.hasBackground or (!main.Window.grabbed and gui.reorderWindows)) {
 		draw.setColor(0xff1d1d1d);
 		draw.rectBorder(.{-2, -2}, self.size/@as(Vec2f, @splat(self.scale)) + Vec2f{4, 4}, 2.0);
 	}
 	draw.restoreTranslation(oldTranslation);
 	draw.restoreScale(oldScale);
-	if(self == grabbedWindow and (self.titleBarExpanded or self.showTitleBar) and grabPosition != null) {
+	if(self == grabbedWindow and (gui.reorderWindows or self.showTitleBar) and grabPosition != null) {
 		self.drawOrientationLines();
 	}
 }

@@ -32,9 +32,9 @@ pub fn render() void {
 		if(main.settings.vsync) " (vsync)" else "",
 	}) catch unreachable;
 	defer main.stackAllocator.allocator.free(fpsLimit);
-	draw.print("    fps: {d:.0} Hz{s}", .{1.0/main.lastDeltaTime.load(.monotonic), fpsLimit}, 0, y, 8, .left);
+	draw.print("fps: {d:.0} Hz{s}", .{1.0/main.lastDeltaTime.load(.monotonic), fpsLimit}, 0, y, 8, .left);
 	y += 8;
-	draw.print("    frameTime: {d:.1} ms", .{main.lastFrameTime.load(.monotonic)*1000.0}, 0, y, 8, .left);
+	draw.print("frameTime: {d:.1} ms", .{main.lastFrameTime.load(.monotonic)*1000.0}, 0, y, 8, .left);
 	y += 8;
 	draw.print("window size: {}×{}", .{main.Window.width, main.Window.height}, 0, y, 8, .left);
 	y += 8;

@@ -297,6 +297,8 @@ pub const KeyBoard = struct {
 		.{.name = "sprint", .key = c.GLFW_KEY_LEFT_CONTROL},
 		.{.name = "jump", .key = c.GLFW_KEY_SPACE},
 		.{.name = "fly", .key = c.GLFW_KEY_F, .pressAction = &game.flyToggle},
+		.{.name = "ghost", .key = c.GLFW_KEY_G, .pressAction = &game.ghostToggle},
+		.{.name = "hyperSpeed", .key = c.GLFW_KEY_H, .pressAction = &game.hyperSpeedToggle},
 		.{.name = "fall", .key = c.GLFW_KEY_LEFT_SHIFT},
 		.{.name = "fullscreen", .key = c.GLFW_KEY_F11, .releaseAction = &Window.toggleFullscreen},
 		.{.name = "placeBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &game.pressPlace, .releaseAction = &game.releasePlace},
