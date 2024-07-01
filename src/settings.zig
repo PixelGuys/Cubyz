@@ -20,6 +20,8 @@ pub var cpuThreads: ?u64 = null;
 pub var anisotropicFiltering: u8 = 4.0;
 
 
+pub var fpsCap: ?u32 = null;
+
 pub var fov: f32 = 70;
 
 pub var mouseSensitivity: f32 = 1;

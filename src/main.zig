@@ -347,7 +347,10 @@ pub const KeyBoard = struct {
 	}
 };
 
+/// Records gpu time per frame.
 pub var lastFrameTime = std.atomic.Value(f64).init(0);
+/// Measures time between different frames' beginnings.
+pub var lastDeltaTime = std.atomic.Value(f64).init(0);
 
 pub fn main() void {
 	seed = @bitCast(std.time.milliTimestamp());
@@ -428,7 +431,7 @@ pub fn main() void {
 	c.glDepthFunc(c.GL_LESS);
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
-	var lastTime = std.time.nanoTimestamp();
+	var lastBeginRendering = std.time.nanoTimestamp();
 
 	if(settings.developerAutoEnterWorld.len != 0) {
 		// Speed up the dev process by entering the world directly.
@@ -448,17 +451,27 @@ pub fn main() void {
 			std.time.sleep(16_000_000);
 		}
 
+		const endRendering = std.time.nanoTimestamp();
+		const frameTime = @as(f64, @floatFromInt(endRendering -% lastBeginRendering))/1e9;
+		if(settings.developerGPUInfiniteLoopDetection and frameTime > 5) { // On linux a process that runs 10 seconds or longer on the GPU will get stopped. This allows detecting an infinite loop on the GPU.
+			std.log.err("Frame got too long with {} seconds. Infinite loop on GPU?", .{frameTime});
+			std.posix.exit(1);
+		}
+		lastFrameTime.store(frameTime, .monotonic);
+
+		if(settings.fpsCap) |fpsCap| {
+			const minFrameTime = @divFloor(1000*1000*1000, fpsCap);
+			const sleep = @min(minFrameTime, @max(0, minFrameTime - (endRendering -% lastBeginRendering)));
+			std.time.sleep(sleep);
+		}
+		const begin = std.time.nanoTimestamp();
+		const deltaTime = @as(f64, @floatFromInt(begin -% lastBeginRendering))/1e9;
+		lastDeltaTime.store(deltaTime, .monotonic);
+		lastBeginRendering = begin;
+
 		Window.handleEvents();
 		file_monitor.handleEvents();
 
-		const newTime = std.time.nanoTimestamp();
-		const deltaTime = @as(f64, @floatFromInt(newTime -% lastTime))/1e9;
-		if(settings.developerGPUInfiniteLoopDetection and deltaTime > 5) { // On linux a process that runs 10 seconds or longer on the GPU will get stopped. This allows detecting an infinite loop on the GPU.
-			std.log.err("Frame got too long with {} seconds. Infinite loop on GPU?", .{deltaTime});
-			std.posix.exit(1);
-		}
-		lastFrameTime.store(deltaTime, .monotonic);
-		lastTime = newTime;
 		if(game.world != null) { // Update the game
 			game.update(deltaTime);
 		}
