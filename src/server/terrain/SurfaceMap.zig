@@ -187,7 +187,7 @@ pub const MapFragment = struct {
 				std.mem.writeInt(u32, originalHeightData[4*(x*mapSize + y)..][0..4], @bitCast((if(originalData) |map| map else &self.heightMap)[x][y]), .big);
 			}
 		}
-		const compressedData = main.utils.Compression.deflate(main.stackAllocator, rawData);
+		const compressedData = main.utils.Compression.deflate(main.stackAllocator, rawData, .fast);
 		defer main.stackAllocator.free(compressedData);
 		
 		const fullData = main.stackAllocator.alloc(u8, compressedData.len + @sizeOf(StorageHeader));

@@ -216,7 +216,7 @@ pub const ChunkCompression = struct {
 		for(0..chunk.chunkVolume) |i| {
 			std.mem.writeInt(u32, uncompressedData[4*i..][0..4], ch.data.getValue(i).toInt(), .big);
 		}
-		const compressedData = main.utils.Compression.deflate(main.stackAllocator, &uncompressedData);
+		const compressedData = main.utils.Compression.deflate(main.stackAllocator, &uncompressedData, .default);
 		defer main.stackAllocator.free(compressedData);
 		const data = allocator.alloc(u8, 4 + compressedData.len);
 		@memcpy(data[4..], compressedData);

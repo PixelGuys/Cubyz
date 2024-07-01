@@ -1,0 +1,22 @@
+{
+	"isCave" : true,
+	"maxHeight" : -64,
+	"chance" : 0.4
+
+	"stalagmites" : 160,
+	"stalagmiteBlock" : "cubyz:marble",
+	"fogDensity" : 10,
+
+	"stoneBlock" : "cubyz:marble",
+	"structures" : [
+	{
+		"id" : "cubyz:ground_patch",
+		"block" : "cubyz:water",
+		"chance" : 0.004,
+		"width" : 6,
+		"variation" : 5,
+		"depth" : 1,
+		"smoothness" : 1
+	}
+]
+}
