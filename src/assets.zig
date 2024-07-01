@@ -89,7 +89,7 @@ pub fn readAllFilesInAddons(externalAllocator: NeverFailingAllocator, addons: ma
 		}
 	}
 }
-/// Reads text files recursively from all subfolders.
+/// Reads obj files recursively from all subfolders.
 pub fn readAllFilesInAddonsHashmap(externalAllocator: NeverFailingAllocator, addons: main.List(std.fs.Dir), addonNames: main.List([]const u8), subPath: []const u8, output: *std.StringHashMap([]const u8)) void {
 	for(addons.items, addonNames.items) |addon, addonName| {
 		var dir = addon.openDir(subPath, .{.iterate = true}) catch |err| {
@@ -287,7 +287,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 
 	var modelIterator = models.iterator();
 	while (modelIterator.next()) |entry| {
-		_ = try main.models.registerModel(entry.key_ptr.*,  entry.value_ptr.*);
+		_ = main.models.registerModel(entry.key_ptr.*,  entry.value_ptr.*);
 	}
 
 	// blocks:

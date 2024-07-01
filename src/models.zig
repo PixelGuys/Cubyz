@@ -164,22 +164,22 @@ pub const Model = struct {
 	pub fn exportModel(path: []const u8, model: u16) !void {
 		const self = models.items[model];
 		
-		var vertData = std.ArrayList(u8).init(main.stackAllocator.allocator);
+		var vertData = main.List(u8).init(main.stackAllocator);
 		defer vertData.deinit();
 		
 		var vertWriter = vertData.writer();
 
-		var normData = std.ArrayList(u8).init(main.stackAllocator.allocator);
+		var normData = main.List(u8).init(main.stackAllocator);
 		defer normData.deinit();
 		
 		var normWriter = normData.writer();
 
-		var uvData = std.ArrayList(u8).init(main.stackAllocator.allocator);
+		var uvData = main.List(u8).init(main.stackAllocator);
 		defer uvData.deinit();
 
 		var uvWriter = uvData.writer();
 		
-		var faceData = std.ArrayList(u8).init(main.stackAllocator.allocator);
+		var faceData = main.List(u8).init(main.stackAllocator);
 		defer faceData.deinit();
 
 		var faceWriter = faceData.writer();
@@ -194,32 +194,32 @@ pub const Model = struct {
 			const textureSlotY: f32 = @floatFromInt(q.textureSlot / 4);
 
 			if (std.meta.eql(q.corners[3], q.corners[1]) or std.meta.eql(q.corners[3], q.corners[2])) {
-				try vertWriter.print("v {d:.4} {d:.4} {d:.4}\n", .{q.corners[0][0] - 0.5, q.corners[0][2], -(q.corners[0][1] - 0.5)});
-				try vertWriter.print("v {d:.4} {d:.4} {d:.4}\n", .{q.corners[1][0] - 0.5, q.corners[1][2], -(q.corners[1][1] - 0.5)});
-				try vertWriter.print("v {d:.4} {d:.4} {d:.4}\n", .{q.corners[2][0] - 0.5, q.corners[2][2], -(q.corners[2][1] - 0.5)});
+				try vertWriter.print("v {d} {d} {d}\n", .{q.corners[0][0] - 0.5, q.corners[0][2], -(q.corners[0][1] - 0.5)});
+				try vertWriter.print("v {d} {d} {d}\n", .{q.corners[1][0] - 0.5, q.corners[1][2], -(q.corners[1][1] - 0.5)});
+				try vertWriter.print("v {d} {d} {d}\n", .{q.corners[2][0] - 0.5, q.corners[2][2], -(q.corners[2][1] - 0.5)});
 
-				try uvWriter.print("vt {d:.4} {d:.4}\n", .{(q.cornerUV[0][0] + textureSlotX) / 4.0, (q.cornerUV[0][1] + textureSlotY) / 4.0});
-				try uvWriter.print("vt {d:.4} {d:.4}\n", .{(q.cornerUV[1][0] + textureSlotX) / 4.0, (q.cornerUV[1][1] + textureSlotY) / 4.0});
-				try uvWriter.print("vt {d:.4} {d:.4}\n", .{(q.cornerUV[2][0] + textureSlotX) / 4.0, (q.cornerUV[2][1] + textureSlotY) / 4.0});
+				try uvWriter.print("vt {d} {d}\n", .{(q.cornerUV[0][0] + textureSlotX) / 4.0, (q.cornerUV[0][1] + textureSlotY) / 4.0});
+				try uvWriter.print("vt {d} {d}\n", .{(q.cornerUV[1][0] + textureSlotX) / 4.0, (q.cornerUV[1][1] + textureSlotY) / 4.0});
+				try uvWriter.print("vt {d} {d}\n", .{(q.cornerUV[2][0] + textureSlotX) / 4.0, (q.cornerUV[2][1] + textureSlotY) / 4.0});
 
-				try normWriter.print("vn {d:.4} {d:.4} {d:.4}\n", .{q.normal[0], q.normal[2], -q.normal[1]});
+				try normWriter.print("vn {d} {d} {d}\n", .{q.normal[0], q.normal[2], -q.normal[1]});
 
 				try faceWriter.print("f {}/{}/{} {}/{}/{} {}/{}/{}\n", .{vertInd, vertInd, normInd, vertInd + 1, vertInd + 1, normInd, vertInd + 2, vertInd + 2, normInd});
 
 				vertInd += 3;
 				normInd += 1;
 			} else {
-				try vertWriter.print("v {d:.4} {d:.4} {d:.4}\n", .{q.corners[1][0] - 0.5, q.corners[1][2], -(q.corners[1][1] - 0.5)});
-				try vertWriter.print("v {d:.4} {d:.4} {d:.4}\n", .{q.corners[0][0] - 0.5, q.corners[0][2], -(q.corners[0][1] - 0.5)});
-				try vertWriter.print("v {d:.4} {d:.4} {d:.4}\n", .{q.corners[2][0] - 0.5, q.corners[2][2], -(q.corners[2][1] - 0.5)});
-				try vertWriter.print("v {d:.4} {d:.4} {d:.4}\n", .{q.corners[3][0] - 0.5, q.corners[3][2], -(q.corners[3][1] - 0.5)});
+				try vertWriter.print("v {d} {d} {d}\n", .{q.corners[0][0] - 0.5, q.corners[0][2], -(q.corners[0][1] - 0.5)});
+				try vertWriter.print("v {d} {d} {d}\n", .{q.corners[1][0] - 0.5, q.corners[1][2], -(q.corners[1][1] - 0.5)});
+				try vertWriter.print("v {d} {d} {d}\n", .{q.corners[2][0] - 0.5, q.corners[2][2], -(q.corners[2][1] - 0.5)});
+				try vertWriter.print("v {d} {d} {d}\n", .{q.corners[3][0] - 0.5, q.corners[3][2], -(q.corners[3][1] - 0.5)});
 
-				try uvWriter.print("vt {d:.4} {d:.4}\n", .{(q.cornerUV[0][0] + textureSlotX) / 4.0, (q.cornerUV[0][1] + textureSlotY) / 4.0});
-				try uvWriter.print("vt {d:.4} {d:.4}\n", .{(q.cornerUV[1][0] + textureSlotX) / 4.0, (q.cornerUV[1][1] + textureSlotY) / 4.0});
-				try uvWriter.print("vt {d:.4} {d:.4}\n", .{(q.cornerUV[2][0] + textureSlotX) / 4.0, (q.cornerUV[2][1] + textureSlotY) / 4.0});
-				try uvWriter.print("vt {d:.4} {d:.4}\n", .{(q.cornerUV[3][0] + textureSlotX) / 4.0, (q.cornerUV[3][1] + textureSlotY) / 4.0});
+				try uvWriter.print("vt {d} {d}\n", .{(q.cornerUV[0][0] + textureSlotX) / 4.0, (q.cornerUV[0][1] + textureSlotY) / 4.0});
+				try uvWriter.print("vt {d} {d}\n", .{(q.cornerUV[1][0] + textureSlotX) / 4.0, (q.cornerUV[1][1] + textureSlotY) / 4.0});
+				try uvWriter.print("vt {d} {d}\n", .{(q.cornerUV[2][0] + textureSlotX) / 4.0, (q.cornerUV[2][1] + textureSlotY) / 4.0});
+				try uvWriter.print("vt {d} {d}\n", .{(q.cornerUV[3][0] + textureSlotX) / 4.0, (q.cornerUV[3][1] + textureSlotY) / 4.0});
 
-				try normWriter.print("vn {d:.4} {d:.4} {d:.4}\n", .{q.normal[0], q.normal[2], -q.normal[1]});
+				try normWriter.print("vn {d} {d} {d}\n", .{q.normal[0], q.normal[2], -q.normal[1]});
 
 				try faceWriter.print("f {}/{}/{} {}/{}/{} {}/{}/{} {}/{}/{}\n", .{vertInd, vertInd, normInd, vertInd + 1, vertInd + 1, normInd, vertInd + 2, vertInd + 2, normInd, vertInd + 3, vertInd + 3, normInd});
 				
@@ -236,32 +236,32 @@ pub const Model = struct {
 				const textureSlotY: f32 = @floatFromInt(q.textureSlot / 4);
 
 				if (std.meta.eql(q.corners[3], q.corners[1]) or std.meta.eql(q.corners[3], q.corners[2])) {
-					try vertWriter.print("v {d:.4} {d:.4} {d:.4}\n", .{q.corners[0][0] - 0.5 + q.normal[0], q.corners[0][2] + q.normal[2], -(q.corners[0][1] - 0.5 + q.normal[1])});
-					try vertWriter.print("v {d:.4} {d:.4} {d:.4}\n", .{q.corners[1][0] - 0.5 + q.normal[0], q.corners[1][2] + q.normal[2], -(q.corners[1][1] - 0.5 + q.normal[1])});
-					try vertWriter.print("v {d:.4} {d:.4} {d:.4}\n", .{q.corners[2][0] - 0.5 + q.normal[0], q.corners[2][2] + q.normal[2], -(q.corners[2][1] - 0.5 + q.normal[1])});
+					try vertWriter.print("v {d} {d} {d}\n", .{q.corners[0][0] - 0.5 + q.normal[0], q.corners[0][2] + q.normal[2], -(q.corners[0][1] - 0.5 + q.normal[1])});
+					try vertWriter.print("v {d} {d} {d}\n", .{q.corners[1][0] - 0.5 + q.normal[0], q.corners[1][2] + q.normal[2], -(q.corners[1][1] - 0.5 + q.normal[1])});
+					try vertWriter.print("v {d} {d} {d}\n", .{q.corners[2][0] - 0.5 + q.normal[0], q.corners[2][2] + q.normal[2], -(q.corners[2][1] - 0.5 + q.normal[1])});
 
-					try uvWriter.print("vt {d:.4} {d:.4}\n", .{(q.cornerUV[0][0] + textureSlotX) / 4.0, (q.cornerUV[0][1] + textureSlotY) / 4.0});
-					try uvWriter.print("vt {d:.4} {d:.4}\n", .{(q.cornerUV[1][0] + textureSlotX) / 4.0, (q.cornerUV[1][1] + textureSlotY) / 4.0});
-					try uvWriter.print("vt {d:.4} {d:.4}\n", .{(q.cornerUV[2][0] + textureSlotX) / 4.0, (q.cornerUV[2][1] + textureSlotY) / 4.0});
+					try uvWriter.print("vt {d} {d}\n", .{(q.cornerUV[0][0] + textureSlotX) / 4.0, (q.cornerUV[0][1] + textureSlotY) / 4.0});
+					try uvWriter.print("vt {d} {d}\n", .{(q.cornerUV[1][0] + textureSlotX) / 4.0, (q.cornerUV[1][1] + textureSlotY) / 4.0});
+					try uvWriter.print("vt {d} {d}\n", .{(q.cornerUV[2][0] + textureSlotX) / 4.0, (q.cornerUV[2][1] + textureSlotY) / 4.0});
 
-					try normWriter.print("vn {d:.4} {d:.4} {d:.4}\n", .{q.normal[0], q.normal[2], -q.normal[1]});
+					try normWriter.print("vn {d} {d} {d}\n", .{q.normal[0], q.normal[2], -q.normal[1]});
 
 					try faceWriter.print("f {}/{}/{} {}/{}/{} {}/{}/{}\n", .{vertInd, vertInd, normInd, vertInd + 1, vertInd + 1, normInd, vertInd + 2, vertInd + 2, normInd});
 
 					vertInd += 3;
 					normInd += 1;
 				} else {
-					try vertWriter.print("v {d:.4} {d:.4} {d:.4}\n", .{q.corners[1][0] - 0.5 + q.normal[0], q.corners[1][2] + q.normal[2], -(q.corners[1][1] - 0.5 + q.normal[1])});
-					try vertWriter.print("v {d:.4} {d:.4} {d:.4}\n", .{q.corners[0][0] - 0.5 + q.normal[0], q.corners[0][2] + q.normal[2], -(q.corners[0][1] - 0.5 + q.normal[1])});
-					try vertWriter.print("v {d:.4} {d:.4} {d:.4}\n", .{q.corners[2][0] - 0.5 + q.normal[0], q.corners[2][2] + q.normal[2], -(q.corners[2][1] - 0.5 + q.normal[1])});
-					try vertWriter.print("v {d:.4} {d:.4} {d:.4}\n", .{q.corners[3][0] - 0.5 + q.normal[0], q.corners[3][2] + q.normal[2], -(q.corners[3][1] - 0.5 + q.normal[1])});
+					try vertWriter.print("v {d} {d} {d}\n", .{q.corners[0][0] - 0.5 + q.normal[0], q.corners[0][2] + q.normal[2], -(q.corners[0][1] - 0.5 + q.normal[1])});
+					try vertWriter.print("v {d} {d} {d}\n", .{q.corners[1][0] - 0.5 + q.normal[0], q.corners[1][2] + q.normal[2], -(q.corners[1][1] - 0.5 + q.normal[1])});
+					try vertWriter.print("v {d} {d} {d}\n", .{q.corners[2][0] - 0.5 + q.normal[0], q.corners[2][2] + q.normal[2], -(q.corners[2][1] - 0.5 + q.normal[1])});
+					try vertWriter.print("v {d} {d} {d}\n", .{q.corners[3][0] - 0.5 + q.normal[0], q.corners[3][2] + q.normal[2], -(q.corners[3][1] - 0.5 + q.normal[1])});
 
-					try uvWriter.print("vt {d:.4} {d:.4}\n", .{(q.cornerUV[0][0] + textureSlotX) / 4.0, (q.cornerUV[0][1] + textureSlotY) / 4.0});
-					try uvWriter.print("vt {d:.4} {d:.4}\n", .{(q.cornerUV[1][0] + textureSlotX) / 4.0, (q.cornerUV[1][1] + textureSlotY) / 4.0});
-					try uvWriter.print("vt {d:.4} {d:.4}\n", .{(q.cornerUV[2][0] + textureSlotX) / 4.0, (q.cornerUV[2][1] + textureSlotY) / 4.0});
-					try uvWriter.print("vt {d:.4} {d:.4}\n", .{(q.cornerUV[3][0] + textureSlotX) / 4.0, (q.cornerUV[3][1] + textureSlotY) / 4.0});
+					try uvWriter.print("vt {d} {d}\n", .{(q.cornerUV[0][0] + textureSlotX) / 4.0, (q.cornerUV[0][1] + textureSlotY) / 4.0});
+					try uvWriter.print("vt {d} {d}\n", .{(q.cornerUV[1][0] + textureSlotX) / 4.0, (q.cornerUV[1][1] + textureSlotY) / 4.0});
+					try uvWriter.print("vt {d} {d}\n", .{(q.cornerUV[2][0] + textureSlotX) / 4.0, (q.cornerUV[2][1] + textureSlotY) / 4.0});
+					try uvWriter.print("vt {d} {d}\n", .{(q.cornerUV[3][0] + textureSlotX) / 4.0, (q.cornerUV[3][1] + textureSlotY) / 4.0});
 
-					try normWriter.print("vn {d:.4} {d:.4} {d:.4}\n", .{q.normal[0], q.normal[2], -q.normal[1]});
+					try normWriter.print("vn {d} {d} {d}\n", .{q.normal[0], q.normal[2], -q.normal[1]});
 
 					try faceWriter.print("f {}/{}/{} {}/{}/{} {}/{}/{} {}/{}/{}\n", .{vertInd, vertInd, normInd, vertInd + 1, vertInd + 1, normInd, vertInd + 2, vertInd + 2, normInd, vertInd + 3, vertInd + 3, normInd});
 					
@@ -271,7 +271,7 @@ pub const Model = struct {
 			}
 		}
 
-		var data = std.ArrayList(u8).init(main.stackAllocator.allocator);
+		var data = main.List(u8).init(main.stackAllocator);
 		defer data.deinit();
 		var dataWriter = data.writer();
 
@@ -283,27 +283,30 @@ pub const Model = struct {
 		try main.files.write(path, data.items);
 	}
 
-	pub fn loadModel(data: []const u8) !u16 {
-		var vertices = std.ArrayList(Vec3f).init(main.stackAllocator.allocator);
+	pub fn loadModel(data: []const u8) u16 {
+		var vertices = main.List(Vec3f).init(main.stackAllocator);
 		defer vertices.deinit();
 
-		var normals = std.ArrayList(Vec3f).init(main.stackAllocator.allocator);
+		var normals = main.List(Vec3f).init(main.stackAllocator);
 		defer normals.deinit();
 
-		var uvs = std.ArrayList(Vec2f).init(main.stackAllocator.allocator);
+		var uvs = main.List(Vec2f).init(main.stackAllocator);
 		defer uvs.deinit();
 
-		var tris = std.ArrayList(Triangle).init(main.stackAllocator.allocator);
+		var tris = main.List(Triangle).init(main.stackAllocator);
 		defer tris.deinit();
 
-		var quadFaces = std.ArrayList(Quad).init(main.stackAllocator.allocator);
+		var quadFaces = main.List(Quad).init(main.stackAllocator);
 		defer quadFaces.deinit();
 
 		var fixed_buffer = std.io.fixedBufferStream(data);
 		var buf_reader = std.io.bufferedReader(fixed_buffer.reader());
 		var in_stream = buf_reader.reader();
 		var buf: [128]u8 = undefined;
-		while (try in_stream.readUntilDelimiterOrEof(&buf, '\n')) |lineUntrimmed| {
+		while (in_stream.readUntilDelimiterOrEof(&buf, '\n') catch |e| blk: {
+			std.log.err("Error reading line while loading model: {any}", .{e});
+			break :blk null;
+		}) |lineUntrimmed| {
 			if (lineUntrimmed.len < 3)
 				continue;
 			
@@ -312,7 +315,7 @@ pub const Model = struct {
 				line = line[0..line.len - 1];
 			}
 			
-			if (std.mem.eql(u8, line[0..1], "#"))
+			if (line[0] == '#')
 				continue;
 			
 			if (std.mem.eql(u8, line[0..2], "v ")) {
@@ -320,59 +323,80 @@ pub const Model = struct {
 				var coords: Vec3f = undefined;
 				var i: usize = 0;
 				while (coordsIter.next()) |coord| : (i += 1) {
-					coords[i] = try std.fmt.parseFloat(f32, coord);
+					coords[i] = std.fmt.parseFloat(f32, coord) catch |e| blk: { std.log.err("Failed parsing {s} into float: {any}", .{coord, e}); break :blk 0; };
 				}
 				const coordsCorrect: Vec3f = .{coords[0] + 0.5, -coords[2] + 0.5, coords[1]};
-				try vertices.append(coordsCorrect);
+				vertices.append(coordsCorrect);
 			} else if (std.mem.eql(u8, line[0..3], "vn ")) {
 				var coordsIter = std.mem.split(u8, line[3..], " ");
 				var norm: Vec3f = undefined;
 				var i: usize = 0;
 				while (coordsIter.next()) |coord| : (i += 1) {
-					norm[i] = try std.fmt.parseFloat(f32, coord);
+					norm[i] = std.fmt.parseFloat(f32, coord) catch |e| blk: { std.log.err("Failed parsing {s} into float: {any}", .{coord, e}); break :blk 0; };
 				}
 				const normCorrect: Vec3f = .{norm[0], -norm[2], norm[1]};
-				try normals.append(normCorrect);
+				normals.append(normCorrect);
 			} else if (std.mem.eql(u8, line[0..3], "vt ")) {
 				var coordsIter = std.mem.split(u8, line[3..], " ");
 				var uv: Vec2f = undefined;
 				var i: usize = 0;
 				while (coordsIter.next()) |coord| : (i += 1) {
-					uv[i] = try std.fmt.parseFloat(f32, coord);
+					uv[i] = std.fmt.parseFloat(f32, coord) catch |e| blk: { std.log.err("Failed parsing {s} into float: {any}", .{coord, e}); break :blk 0; };
 				}
 				uv[0] *= 4;
 				uv[1] *= 4;
-				try uvs.append(.{uv[0], uv[1]});
+				uvs.append(.{uv[0], uv[1]});
 			} else if (std.mem.eql(u8, line[0..2], "f ")) {
-				if (std.mem.count(u8, line[2..], " ") + 1 == 3) {
-					var coordsIter = std.mem.split(u8, line[2..], " ");
-					var faceData: [3][3]usize = undefined;
-					var i: usize = 0;
-					while (coordsIter.next()) |vertex| : (i += 1) {
-						var d = std.mem.split(u8, vertex, "/");
-						var j: usize = 0;
-						while (d.next()) |value| : (j += 1) {
-							faceData[j][i] = try std.fmt.parseUnsigned(usize, value, 10) - 1;
+				const n = std.mem.count(u8, line[2..], " ") + 1;
+				switch (n) {
+					3 => {
+						var coordsIter = std.mem.split(u8, line[2..], " ");
+						var faceData: [3][3]usize = undefined;
+						var i: usize = 0;
+						var failed = false;
+						while (coordsIter.next()) |vertex| : (i += 1) {
+							var d = std.mem.split(u8, vertex, "/");
+							var j: usize = 0;
+							if (std.mem.count(u8, vertex, "/") != 2 or std.mem.count(u8, vertex, "//") != 0) {
+								failed = true;
+								std.log.err("Failed loading face {s}. Each vertex must use vertex/uv/normal", .{line, n});
+								break;
+							}
+							while (d.next()) |value| : (j += 1) {
+								faceData[j][i] = std.fmt.parseUnsigned(usize, value, 10) catch |e| blk: { std.log.err("Failed parsing {s} into uint: {any}", .{value, e}); break :blk 1; };
+								faceData[j][i] -= 1;
+							}
 						}
-					}
-					try tris.append(.{.vertex=faceData[0], .uvs=faceData[1], .normals=faceData[2]});
-				} else {
-					var coordsIter = std.mem.split(u8, line[2..], " ");
-					var faceData: [3][4]usize = undefined;
-					var i: usize = 0;
-					while (coordsIter.next()) |vertex| : (i += 1) {
-						var d = std.mem.split(u8, vertex, "/");
-						var j: usize = 0;
-						while (d.next()) |value| : (j += 1) {
-							faceData[j][i] = try std.fmt.parseUnsigned(usize, value, 10) - 1;
+						if (!failed)
+							tris.append(.{.vertex=faceData[0], .uvs=faceData[1], .normals=faceData[2]});
+					},
+					4 => {
+						var coordsIter = std.mem.split(u8, line[2..], " ");
+						var faceData: [3][4]usize = undefined;
+						var i: usize = 0;
+						var failed = false;
+						while (coordsIter.next()) |vertex| : (i += 1) {
+							var d = std.mem.split(u8, vertex, "/");
+							var j: usize = 0;
+							if (std.mem.count(u8, vertex, "/") != 2 or std.mem.count(u8, vertex, "//") != 0) {
+								failed = true;
+								std.log.err("Failed loading face {s}. Each vertex must use vertex/uv/normal", .{line, n});
+								break;
+							}
+							while (d.next()) |value| : (j += 1) {
+								faceData[j][i] = std.fmt.parseUnsigned(usize, value, 10) catch |e| blk: { std.log.err("Failed parsing {s} into uint: {any}", .{value, e}); break :blk 1; };
+								faceData[j][i] -= 1;
+							}
 						}
-					}
-					try quadFaces.append(.{.vertex=faceData[0], .uvs=faceData[1], .normals=faceData[2]});
+						if (!failed)
+							quadFaces.append(.{.vertex=faceData[0], .uvs=faceData[1], .normals=faceData[2]});
+					},
+					else => std.log.err("Failed loading face {s} with {d} vertices", .{line, n})
 				}
 			}
 		}
 
-		var quadInfos = std.ArrayList(QuadInfo).init(main.stackAllocator.allocator);
+		var quadInfos = main.List(QuadInfo).init(main.stackAllocator);
 		defer quadInfos.deinit();
 
 		for (tris.items) |face| {
@@ -382,26 +406,24 @@ pub const Model = struct {
 			var uvB: Vec2f = uvs.items[face.uvs[1]];
 			var uvC: Vec2f = uvs.items[face.uvs[2]];
 
-			
-			var minUv = @floor(@min(@min(uvA, uvB), uvC));
+			const minUv = @floor(@min(@min(uvA, uvB), uvC));
+
+			if (minUv[0] < 0 or minUv[0] > 4 or minUv[1] < 0 or minUv[1] > 4) {
+				std.log.err("Uv value for model is outside of 0-1 range");
+				continue;
+			}
+
 			const textureSlot = @as(u32, @intFromFloat(@floor(minUv[1]))) * 4 + @as(u32, @intFromFloat(@floor(minUv[0])));
 
 			uvA -= minUv;
 			uvB -= minUv;
 			uvC -= minUv;
 			
-			minUv = @min(@min(uvA, uvB), uvC);
-			const maxUv = @max(@max(uvA, uvB), uvC);
-
-			uvA[1] = (minUv[1] + maxUv[1]) - uvA[1];
-			uvB[1] = (minUv[1] + maxUv[1]) - uvB[1];
-			uvC[1] = (minUv[1] + maxUv[1]) - uvC[1];
-
 			const cornerA: Vec3f = vertices.items[face.vertex[0]];
 			const cornerB: Vec3f = vertices.items[face.vertex[1]];
 			const cornerC: Vec3f = vertices.items[face.vertex[2]];
 			
-			try quadInfos.append(.{
+			quadInfos.append(.{
 				.normal = normal,
 				.corners = .{cornerA, cornerB, cornerC, cornerB},
 				.cornerUV = .{uvA, uvB, uvC, uvB},
@@ -410,6 +432,7 @@ pub const Model = struct {
 		}
 
 		for (quadFaces.items) |face| {
+			std.log.info("{d} {d}\n", .{normals.items.len, face.normals[0]});
 			const normal: Vec3f = normals.items[face.normals[0]];
 			
 			var uvA: Vec2f = uvs.items[face.uvs[0]];
@@ -417,33 +440,28 @@ pub const Model = struct {
 			var uvC: Vec2f = uvs.items[face.uvs[2]];
 			var uvD: Vec2f = uvs.items[face.uvs[3]];
 
-			var minUv = @floor(@min(@min(uvA, uvB), @min(uvC, uvD)));
+			const minUv = @floor(@min(@min(uvA, uvB), @min(uvC, uvD)));
 			const textureSlot = @as(u32, @intFromFloat(@floor(minUv[1]))) * 4 + @as(u32, @intFromFloat(@floor(minUv[0])));
+			
+			if (minUv[0] < 0 or minUv[0] > 4 or minUv[1] < 0 or minUv[1] > 4) {
+				std.log.err("Uv value for model is outside of 0-1 range");
+				continue;
+			}
 
 			uvA -= minUv;
 			uvB -= minUv;
 			uvC -= minUv;
 			uvD -= minUv;
-			
-			minUv = @min(@min(uvA, uvB), @min(uvC, uvD));
-			const maxUv = @max(@max(uvA, uvB), @max(uvC, uvD));
-
-			uvA[1] = (minUv[1] + maxUv[1]) - uvA[1];
-			uvB[1] = (minUv[1] + maxUv[1]) - uvB[1];
-			uvC[1] = (minUv[1] + maxUv[1]) - uvC[1];
-			uvD[1] = (minUv[1] + maxUv[1]) - uvD[1];
-
-			std.log.info("{any} {any}\n", .{minUv[1], maxUv[1]});
 
 			const cornerA: Vec3f = vertices.items[face.vertex[0]];
 			const cornerB: Vec3f = vertices.items[face.vertex[1]];
 			const cornerC: Vec3f = vertices.items[face.vertex[2]];
 			const cornerD: Vec3f = vertices.items[face.vertex[3]];
 			
-			try quadInfos.append(.{
+			quadInfos.append(.{
 				.normal = normal,
-				.corners = .{cornerB, cornerA, cornerC, cornerD},
-				.cornerUV = .{uvB, uvA, uvD, uvC},
+				.corners = .{cornerA, cornerB, cornerC, cornerD},
+				.cornerUV = .{uvA, uvB, uvC, uvD},
 				.textureSlot = textureSlot,
 			});
 		}
@@ -617,9 +635,9 @@ fn openBox(min: Vec3f, max: Vec3f, uvOffset: Vec2f, openSide: enum{x, y, z}) [4]
 	}
 }
 
-pub fn registerModel(id: []const u8, data: []const u8) !u16 {
-	const model = try Model.loadModel(data);
-	try nameToIndex.put(id, model);
+pub fn registerModel(id: []const u8, data: []const u8) u16 {
+	const model = Model.loadModel(data);
+	nameToIndex.put(id, model) catch unreachable;
 	return model;
 }
 
@@ -633,6 +651,75 @@ pub fn init() void {
 	nameToIndex = std.StringHashMap(u16).init(main.globalAllocator.allocator);
 
 	nameToIndex.put("none", Model.init(&.{})) catch unreachable;
+
+	// const cube = Model.init(&box(.{0, 0, 0}, .{1, 1, 1}, .{0, 0}));
+	// nameToIndex.put("cubyz:cube", cube) catch unreachable;
+	// Model.exportModel("assets/cubyz/models/cube.obj", cube) catch unreachable;
+	// fullCube = cube;
+
+	// const cross = Model.init(&.{
+	// 	.{
+	// 		.normal = .{-std.math.sqrt1_2, std.math.sqrt1_2, 0},
+	// 		.corners = .{.{1, 1, 0}, .{1, 1, 1}, .{0, 0, 0}, .{0, 0, 1}},
+	// 		.cornerUV = .{.{0, 0}, .{0, 1}, .{1, 0}, .{1, 1}},
+	// 		.textureSlot = 0,
+	// 	},
+	// 	.{
+	// 		.normal = .{std.math.sqrt1_2, -std.math.sqrt1_2, 0},
+	// 		.corners = .{.{0, 0, 0}, .{0, 0, 1}, .{1, 1, 0}, .{1, 1, 1}},
+	// 		.cornerUV = .{.{0, 0}, .{0, 1}, .{1, 0}, .{1, 1}},
+	// 		.textureSlot = 0,
+	// 	},
+	// 	.{
+	// 		.normal = .{-std.math.sqrt1_2, -std.math.sqrt1_2, 0},
+	// 		.corners = .{.{0, 1, 0}, .{0, 1, 1}, .{1, 0, 0}, .{1, 0, 1}},
+	// 		.cornerUV = .{.{0, 0}, .{0, 1}, .{1, 0}, .{1, 1}},
+	// 		.textureSlot = 0,
+	// 	},
+	// 	.{
+	// 		.normal = .{std.math.sqrt1_2, std.math.sqrt1_2, 0},
+	// 		.corners = .{.{1, 0, 0}, .{1, 0, 1}, .{0, 1, 0}, .{0, 1, 1}},
+	// 		.cornerUV = .{.{0, 0}, .{0, 1}, .{1, 0}, .{1, 1}},
+	// 		.textureSlot = 0,
+	// 	},
+	// });
+	// nameToIndex.put("cubyz:cross", cross) catch unreachable;
+	// Model.exportModel("assets/cubyz/models/cross.obj", cross) catch unreachable;
+
+	// const swapTopUVs = struct{fn swapTopUVs(_quadInfos: [4]QuadInfo) [4]QuadInfo {
+	// 	var quadInfos = _quadInfos;
+	// 	for(&quadInfos) |*quad| {
+	// 		if(quad.normal[2] != 0) {
+	// 			for(&quad.cornerUV) |*uv| {
+	// 				std.mem.swap(f32, &uv[0], &uv[1]);
+	// 			}
+	// 		}
+	// 	}
+	// 	return quadInfos;
+	// }}.swapTopUVs;
+	// const fence = Model.init(&(
+	// 	box(.{6.0/16.0, 6.0/16.0, 0}, .{10.0/16.0, 10.0/16.0, 1}, .{0, 0})
+	// 	++ openBox(.{0, 7.0/16.0, 3.0/16.0}, .{1, 9.0/16.0, 6.0/16.0}, .{0, 0}, .x)
+	// 	++ openBox(.{0, 7.0/16.0, 10.0/16.0}, .{1, 9.0/16.0, 13.0/16.0}, .{0, 0}, .x)
+	// 	++ swapTopUVs(openBox(.{7.0/16.0, 0, 3.0/16.0}, .{9.0/16.0, 1, 6.0/16.0}, .{0, 0}, .y))
+	// 	++ swapTopUVs(openBox(.{7.0/16.0, 0, 10.0/16.0}, .{9.0/16.0, 1, 13.0/16.0}, .{0, 0}, .y))
+	// ));
+	// Model.exportModel("assets/cubyz/models/fence.obj", fence) catch unreachable;
+	// nameToIndex.put("cubyz:fence", fence) catch unreachable;
+
+	// const torch = Model.init(&(openBox(.{7.0/16.0, 7.0/16.0, 0}, .{9.0/16.0, 9.0/16.0, 12.0/16.0}, .{-7.0/16.0, 4.0/16.0}, .z) ++ .{.{
+	// 	.normal = .{0, 0, 1},
+	// 	.corners = .{.{9.0/16.0, 9.0/16.0, 12.0/16.0}, .{9.0/16.0, 7.0/16.0, 12.0/16.0}, .{7.0/16.0, 9.0/16.0, 12.0/16.0}, .{7.0/16.0, 7.0/16.0, 12.0/16.0}},
+	// 	.cornerUV = .{.{0, 2.0/16.0}, .{0, 4.0/16.0}, .{2.0/16.0, 2.0/16.0}, .{2.0/16.0, 4.0/16.0}},
+	// 	.textureSlot = chunk.Neighbors.dirUp,
+	// }} ++ .{.{
+	// 	.normal = .{0, 0, -1},
+	// 	.corners = .{.{7.0/16.0, 9.0/16.0, 0}, .{7.0/16.0, 7.0/16.0, 0}, .{9.0/16.0, 9.0/16.0, 0}, .{9.0/16.0, 7.0/16.0, 0}},
+	// 	.cornerUV = .{.{0, 0}, .{0, 2.0/16.0}, .{2.0/16.0, 0}, .{2.0/16.0, 2.0/16.0}},
+	// 	.textureSlot = chunk.Neighbors.dirDown,
+	// }}));
+	// Model.exportModel("assets/cubyz/models/torch.obj", torch) catch unreachable;
+	// nameToIndex.put("cubyz:torch", torch) catch unreachable;
 }
 
 pub fn uploadModels() void {
