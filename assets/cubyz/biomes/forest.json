@@ -34,8 +34,10 @@
 			"top" : "cubyz:birch_top",
 			"chance" : 0.01,
 			"type" : "round",
-			"height" : 6,
-			"height_variation" : 3
+			"height" : 10,
+			"height_variation" : 5,
+			"leafRadius" : 3.5,
+			"leafRadius_variation" : 1.5
 		},
 		{
 			"id" : "cubyz:fallen_tree",

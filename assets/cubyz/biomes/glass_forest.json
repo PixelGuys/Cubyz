@@ -22,8 +22,10 @@
 			"top" :    "cubyz:chalk/aqua",
 			"chance" : 0.0005,
 			"type" : "round",
-			"height" : 6,
-			"height_variation" : 3
+			"height" : 10,
+			"height_variation" : 5,
+			"leafRadius" : 3,
+			"leafRadius_variation" : 3
 		},
 		{
 			"id" : "cubyz:simple_tree",
@@ -32,8 +34,10 @@
 			"top" :    "cubyz:chalk/black",
 			"chance" : 0.0005,
 			"type" : "round",
-			"height" : 6,
-			"height_variation" : 3
+			"height" : 10,
+			"height_variation" : 5,
+			"leafRadius" : 3,
+			"leafRadius_variation" : 3
 		},
 		{
 			"id" : "cubyz:simple_tree",
@@ -42,8 +46,10 @@
 			"top" : "cubyz:chalk/blue",
 			"chance" : 0.0005,
 			"type" : "round",
-			"height" : 6,
-			"height_variation" : 3
+			"height" : 10,
+			"height_variation" : 5,
+			"leafRadius" : 3,
+			"leafRadius_variation" : 3
 		},
 		{
 			"id" : "cubyz:simple_tree",
@@ -52,8 +58,10 @@
 			"top" : "cubyz:chalk/brown",
 			"chance" : 0.0005,
 			"type" : "round",
-			"height" : 6,
-			"height_variation" : 3
+			"height" : 10,
+			"height_variation" : 5,
+			"leafRadius" : 3,
+			"leafRadius_variation" : 3
 		},
 		{
 			"id" : "cubyz:simple_tree",
@@ -62,8 +70,10 @@
 			"top" : "cubyz:chalk/crimson",
 			"chance" : 0.0005,
 			"type" : "round",
-			"height" : 6,
-			"height_variation" : 3
+			"height" : 10,
+			"height_variation" : 5,
+			"leafRadius" : 3,
+			"leafRadius_variation" : 3
 		},
 		{
 			"id" : "cubyz:simple_tree",
@@ -72,8 +82,10 @@
 			"top" :    "cubyz:chalk/cyan",
 			"chance" : 0.0005,
 			"type" : "round",
-			"height" : 6,
-			"height_variation" : 3
+			"height" : 10,
+			"height_variation" : 5,
+			"leafRadius" : 3,
+			"leafRadius_variation" : 3
 		},
 		{
 			"id" : "cubyz:simple_tree",
@@ -82,8 +94,10 @@
 			"top" :    "cubyz:chalk/dark_grey",
 			"chance" : 0.0005,
 			"type" : "round",
-			"height" : 6,
-			"height_variation" : 3
+			"height" : 10,
+			"height_variation" : 5,
+			"leafRadius" : 3,
+			"leafRadius_variation" : 3
 		},
 		{
 			"id" : "cubyz:simple_tree",
@@ -92,8 +106,10 @@
 			"top" :    "cubyz:chalk/green",
 			"chance" : 0.0005,
 			"type" : "round",
-			"height" : 6,
-			"height_variation" : 3
+			"height" : 10,
+			"height_variation" : 5,
+			"leafRadius" : 3,
+			"leafRadius_variation" : 3
 		},
 		{
 			"id" : "cubyz:simple_tree",
@@ -102,8 +118,10 @@
 			"top" :    "cubyz:chalk/grey",
 			"chance" : 0.0005,
 			"type" : "round",
-			"height" : 6,
-			"height_variation" : 3
+			"height" : 10,
+			"height_variation" : 5,
+			"leafRadius" : 3,
+			"leafRadius_variation" : 3
 		},
 		{
 			"id" : "cubyz:simple_tree",
@@ -112,8 +130,10 @@
 			"top" :    "cubyz:chalk/indigo",
 			"chance" : 0.0005,
 			"type" : "round",
-			"height" : 6,
-			"height_variation" : 3
+			"height" : 10,
+			"height_variation" : 5,
+			"leafRadius" : 3,
+			"leafRadius_variation" : 3
 		},
 		{
 			"id" : "cubyz:simple_tree",
@@ -122,8 +142,10 @@
 			"top" :    "cubyz:chalk/lime",
 			"chance" : 0.0005,
 			"type" : "round",
-			"height" : 6,
-			"height_variation" : 3
+			"height" : 10,
+			"height_variation" : 5,
+			"leafRadius" : 3,
+			"leafRadius_variation" : 3
 		},
 		{
 			"id" : "cubyz:simple_tree",
@@ -132,8 +154,10 @@
 			"top" :    "cubyz:chalk/magenta",
 			"chance" : 0.0005,
 			"type" : "round",
-			"height" : 6,
-			"height_variation" : 3
+			"height" : 10,
+			"height_variation" : 5,
+			"leafRadius" : 3,
+			"leafRadius_variation" : 3
 		},
 		{
 			"id" : "cubyz:simple_tree",
@@ -142,8 +166,10 @@
 			"top" :    "cubyz:chalk/orange",
 			"chance" : 0.0005,
 			"type" : "round",
-			"height" : 6,
-			"height_variation" : 3
+			"height" : 10,
+			"height_variation" : 5,
+			"leafRadius" : 3,
+			"leafRadius_variation" : 3
 		},
 		{
 			"id" : "cubyz:simple_tree",
@@ -152,8 +178,10 @@
 			"top" :    "cubyz:chalk/pink",
 			"chance" : 0.0005,
 			"type" : "round",
-			"height" : 6,
-			"height_variation" : 3
+			"height" : 10,
+			"height_variation" : 5,
+			"leafRadius" : 3,
+			"leafRadius_variation" : 3
 		},
 		{
 			"id" : "cubyz:simple_tree",
@@ -162,8 +190,10 @@
 			"top" :    "cubyz:chalk/purple",
 			"chance" : 0.0005,
 			"type" : "round",
-			"height" : 6,
-			"height_variation" : 3
+			"height" : 10,
+			"height_variation" : 5,
+			"leafRadius" : 3,
+			"leafRadius_variation" : 3
 		},
 		{
 			"id" : "cubyz:simple_tree",
@@ -172,8 +202,10 @@
 			"top" :    "cubyz:chalk/red",
 			"chance" : 0.0005,
 			"type" : "round",
-			"height" : 6,
-			"height_variation" : 3
+			"height" : 10,
+			"height_variation" : 5,
+			"leafRadius" : 3,
+			"leafRadius_variation" : 3
 		},
 		{
 			"id" : "cubyz:simple_tree",
@@ -182,8 +214,10 @@
 			"top" :    "cubyz:chalk/violet",
 			"chance" : 0.0005,
 			"type" : "round",
-			"height" : 6,
-			"height_variation" : 3
+			"height" : 10,
+			"height_variation" : 5,
+			"leafRadius" : 3,
+			"leafRadius_variation" : 3
 		},
 		{
 			"id" : "cubyz:simple_tree",
@@ -192,8 +226,10 @@
 			"top" :    "cubyz:chalk/viridian",
 			"chance" : 0.0005,
 			"type" : "round",
-			"height" : 6,
-			"height_variation" : 3
+			"height" : 10,
+			"height_variation" : 5,
+			"leafRadius" : 3,
+			"leafRadius_variation" : 3
 		},
 		{
 			"id" : "cubyz:simple_tree",
@@ -202,8 +238,10 @@
 			"top" :    "cubyz:chalk/white",
 			"chance" : 0.0005,
 			"type" : "round",
-			"height" : 6,
-			"height_variation" : 3
+			"height" : 10,
+			"height_variation" : 5,
+			"leafRadius" : 3,
+			"leafRadius_variation" : 3
 		},
 		{
 			"id" : "cubyz:simple_tree",
@@ -212,8 +250,10 @@
 			"top" :    "cubyz:chalk/yellow",
 			"chance" : 0.0005,
 			"type" : "round",
-			"height" : 6,
-			"height_variation" : 3
+			"height" : 10,
+			"height_variation" : 5,
+			"leafRadius" : 3,
+			"leafRadius_variation" : 3
 		},
 	]
 }

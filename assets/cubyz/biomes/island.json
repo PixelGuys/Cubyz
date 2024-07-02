@@ -23,7 +23,9 @@
 			"chance" : 0.001,
 			"type" : "round",
 			"height" : 12,
-			"height_variation" : 10
+			"height_variation" : 10,
+			"leafRadius" : 5,
+			"leafRadius_variation" : 6
 		}
 	],
 

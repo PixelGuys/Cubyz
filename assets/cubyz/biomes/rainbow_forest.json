@@ -35,9 +35,11 @@
 			"log" : "cubyz:fog/red",
 			"top" : "cubyz:fog/red",
 			"chance" : 0.01,
-			"type" : "bush",
-			"height" : 32,
-			"height_variation" : 3
+			"type" : "round",
+			"height" : 0,
+			"height_variation" : 0,
+			"leafRadius" : 16,
+			"leafRadius_variation" : 3
 		},
 		{
 			"id" : "cubyz:simple_tree",
@@ -45,9 +47,11 @@
 			"log" : "cubyz:fog/green",
 			"top" : "cubyz:fog/green",
 			"chance" : 0.01,
-			"type" : "bush",
-			"height" : 32,
-			"height_variation" : 3
+			"type" : "round",
+			"height" : 0,
+			"height_variation" : 0,
+			"leafRadius" : 16,
+			"leafRadius_variation" : 3
 		},
 		{
 			"id" : "cubyz:simple_tree",
@@ -55,9 +59,11 @@
 			"log" : "cubyz:fog/blue",
 			"top" : "cubyz:fog/blue",
 			"chance" : 0.01,
-			"type" : "bush",
-			"height" : 32,
-			"height_variation" : 3
+			"type" : "round",
+			"height" : 0,
+			"height_variation" : 0,
+			"leafRadius" : 16,
+			"leafRadius_variation" : 3
 		},
 		{
 			"id" : "cubyz:simple_tree",
@@ -65,9 +71,11 @@
 			"log" : "cubyz:fog/yellow",
 			"top" : "cubyz:fog/yellow",
 			"chance" : 0.01,
-			"type" : "bush",
-			"height" : 32,
-			"height_variation" : 3
+			"type" : "round",
+			"height" : 0,
+			"height_variation" : 0,
+			"leafRadius" : 16,
+			"leafRadius_variation" : 3
 		},
 		{
 			"id" : "cubyz:simple_tree",
@@ -75,9 +83,11 @@
 			"log" : "cubyz:fog/cyan",
 			"top" : "cubyz:fog/cyan",
 			"chance" : 0.01,
-			"type" : "bush",
-			"height" : 32,
-			"height_variation" : 3
+			"type" : "round",
+			"height" : 0,
+			"height_variation" : 0,
+			"leafRadius" : 16,
+			"leafRadius_variation" : 3
 		},
 		{
 			"id" : "cubyz:simple_tree",
@@ -85,9 +95,11 @@
 			"log" : "cubyz:fog/magenta",
 			"top" : "cubyz:fog/magenta",
 			"chance" : 0.01,
-			"type" : "bush",
-			"height" : 32,
-			"height_variation" : 3
+			"type" : "round",
+			"height" : 0,
+			"height_variation" : 0,
+			"leafRadius" : 16,
+			"leafRadius_variation" : 3
 		},
 	]
 }
