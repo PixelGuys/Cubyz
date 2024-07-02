@@ -536,39 +536,51 @@ pub fn update(deltaTime: f64) void {
 
 		const forward = vec.rotateZ(Vec3d{0, 1, 0}, -camera.rotation[2]);
 		const right = Vec3d{-forward[1], forward[0], 0};
+		var movementDir: Vec3d = .{0, 0, 0};
+		var movementSpeed: f64 = 0;
 		if(main.Window.grabbed) {
 			if(KeyBoard.key("forward").pressed) {
 				if(KeyBoard.key("sprint").pressed) {
 					if(Player.isGhost.load(.monotonic)) {
-						acc += forward*@as(Vec3d, @splat(128 * fricMul));
+						movementSpeed = @max(movementSpeed, 128);
+						movementDir += forward*@as(Vec3d, @splat(128));
 					} else if(Player.isFlying.load(.monotonic)) {
-						acc += forward*@as(Vec3d, @splat(32 * fricMul));
+						movementSpeed = @max(movementSpeed, 32);
+						movementDir += forward*@as(Vec3d, @splat(32));
 					} else {
-						acc += forward*@as(Vec3d, @splat(8 * fricMul));
+						movementSpeed = @max(movementSpeed, 8);
+						movementDir += forward*@as(Vec3d, @splat(8));
 					}
 				} else {
-					acc += forward*@as(Vec3d, @splat(4 * fricMul));
+					movementSpeed = @max(movementSpeed, 4);
+					movementDir += forward*@as(Vec3d, @splat(4));
 				}
 			}
 			if(KeyBoard.key("backward").pressed) {
-				acc += forward*@as(Vec3d, @splat(-4 * fricMul));
+				movementSpeed = @max(movementSpeed, 4);
+				movementDir += forward*@as(Vec3d, @splat(-4));
 			}
 			if(KeyBoard.key("left").pressed) {
-				acc += right*@as(Vec3d, @splat(4 * fricMul));
+				movementSpeed = @max(movementSpeed, 4);
+				movementDir += right*@as(Vec3d, @splat(4));
 			}
 			if(KeyBoard.key("right").pressed) {
-				acc += right*@as(Vec3d, @splat(-4 * fricMul));
+				movementSpeed = @max(movementSpeed, 4);
+				movementDir += right*@as(Vec3d, @splat(-4));
 			}
 			if(KeyBoard.key("jump").pressed) {
 				if(Player.isFlying.load(.monotonic)) {
 					if(KeyBoard.key("sprint").pressed) {
 						if(Player.isGhost.load(.monotonic)) {
-							acc[2] += 60 * fricMul;
+							movementSpeed = @max(movementSpeed, 60);
+							movementDir[2] += 60;
 						} else {
-							acc[2] += 25 * fricMul;
+							movementSpeed = @max(movementSpeed, 25);
+							movementDir[2] += 25;
 						}
 					} else {
-						acc[2] += 5.45 * fricMul;
+						movementSpeed = @max(movementSpeed, 5.5);
+						movementDir[2] += 5.5;
 					}
 				} else if (Player.onGround) {
 					jumping = true;
@@ -578,14 +590,21 @@ pub fn update(deltaTime: f64) void {
 				if(Player.isFlying.load(.monotonic)) {
 					if(KeyBoard.key("sprint").pressed) {
 						if(Player.isGhost.load(.monotonic)) {
-							acc[2] += -60 * fricMul;
+							movementSpeed = @max(movementSpeed, 60);
+							movementDir[2] -= 60;
 						} else {
-							acc[2] += -25 * fricMul;
+							movementSpeed = @max(movementSpeed, 25);
+							movementDir[2] -= 25;
 						}
 					} else {
-						acc[2] += -5.45 * fricMul;
+						movementSpeed = @max(movementSpeed, 5.5);
+						movementDir[2] -= 5.5;
 					}
 				}
+			}
+			if(movementSpeed != 0 and vec.lengthSquare(movementDir) != 0) {
+				movementDir = vec.normalize(movementDir);
+				acc += movementDir*@as(Vec3d, @splat(movementSpeed*fricMul));
 			}
 
 			const newSlot: i32 = @as(i32, @intCast(Player.selectedSlot)) -% @as(i32, @intFromFloat(main.Window.scrollOffset));
