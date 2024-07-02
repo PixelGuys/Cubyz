@@ -856,6 +856,7 @@ pub const MeshSelection = struct {
 	}
 
 	pub fn render(projectionMatrix: Mat4f, viewMatrix: Mat4f, playerPos: Vec3d) void {
+		if(main.gui.hideGui) return;
 		if(selectedBlockPos) |_selectedBlockPos| {
 			c.glEnable(c.GL_POLYGON_OFFSET_LINE);
 			defer c.glDisable(c.GL_POLYGON_OFFSET_LINE);
