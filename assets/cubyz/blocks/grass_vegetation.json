@@ -9,5 +9,6 @@
 	"absorbedLight" : 0x121012,
 	"collide": false,
 	"model" : "cross",
-	"texture" : "cubyz:grass_vegetation"
+	"texture" : "cubyz:grass_vegetation",
+	"lodReplacement" : "cubyz:air"
 }
