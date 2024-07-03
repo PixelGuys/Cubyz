@@ -6,6 +6,6 @@
 
 	"caves" : -0.1,
 
-	"music" : "heart-of-the-beast",
+	"music" : "cubyz:heart-of-the-beast",
 	"stoneBlock" : "cubyz:void_stone",
 }

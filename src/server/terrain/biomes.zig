@@ -275,7 +275,7 @@ pub const Biome = struct {
 			.minHeight = json.get(i32, "minHeight", std.math.minInt(i32)),
 			.maxHeight = json.get(i32, "maxHeight", std.math.maxInt(i32)),
 			.supportsRivers = json.get(bool, "rivers", false),
-			.preferredMusic = main.globalAllocator.dupe(u8, json.get([]const u8, "music", "")),
+			.preferredMusic = main.globalAllocator.dupe(u8, json.get([]const u8, "music", "cubyz:cubyz")),
 			.isValidPlayerSpawn = json.get(bool, "validPlayerSpawn", false),
 			.chance = json.get(f32, "chance", if(json == .JsonNull) 0 else 1),
 			.maxSubBiomeCount = json.get(f32, "maxSubBiomeCount", std.math.floatMax(f32)),

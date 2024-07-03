@@ -7,7 +7,7 @@
 	"caves" : -0.1,
 	"crystals" : 32,
 
-	"music" : "leaves",
+	"music" : "cubyz:leaves",
 
 	"stoneBlock" : "cubyz:stone",
 	"ground_structure" : [

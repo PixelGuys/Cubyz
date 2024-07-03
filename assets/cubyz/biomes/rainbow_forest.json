@@ -10,7 +10,7 @@
 
 	"chance" : 0.01,
 	
-	"music" : "leaves",
+	"music" : "cubyz:leaves",
 
 	"validPlayerSpawn" : true,
 	

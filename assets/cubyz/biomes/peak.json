@@ -7,7 +7,7 @@
 	
 	"mountains" : 125,
 	
-	"music" : "DarkTimes",
+	"music" : "cubyz:DarkTimes",
 
 	"ground_structure" : [
 		"3 to 6 cubyz:snow"

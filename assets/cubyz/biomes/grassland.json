@@ -7,7 +7,7 @@
 	"roughness" : 1,
 	"hills" : 5,
 	
-	"music" : "sunrise",
+	"music" : "cubyz:sunrise",
 
 	"validPlayerSpawn" : true,
 	

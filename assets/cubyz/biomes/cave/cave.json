@@ -2,7 +2,7 @@
 	"isCave" : true,
 	"maxHeight" : 0,
 
-	"music" : "heart-of-the-beast",
+	"music" : "cubyz:heart-of-the-beast",
 
 	"ground_structure" : [
 		"0 to 1 cubyz:gravel",
