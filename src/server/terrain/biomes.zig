@@ -30,7 +30,7 @@ const StructureModel = struct {
 		return StructureModel {
 			.vtable = vtable,
 			.data = vtable.loadModel(arena.allocator(), parameters),
-			.chance = parameters.get(f32, "chance", 0.5),
+			.chance = 16*parameters.get(f32, "chance", 0.01), // TODO: Should this use the sample point chance directly, instead of the per block chance?
 		};
 	}
 
@@ -293,10 +293,17 @@ pub const Biome = struct {
 		
 		const structures = json.getChild("structures");
 		var vegetation = main.ListUnmanaged(StructureModel){};
+		var totalChance: f32 = 0;
 		defer vegetation.deinit(main.stackAllocator);
 		for(structures.toSlice()) |elem| {
 			if(StructureModel.initModel(elem)) |model| {
 				vegetation.append(main.stackAllocator, model);
+				totalChance += model.chance;
+			}
+		}
+		if(totalChance > 1) {
+			for(vegetation.items) |*model| {
+				model.chance /= totalChance;
 			}
 		}
 		self.vegetationModels = main.globalAllocator.dupe(StructureModel, vegetation.items);

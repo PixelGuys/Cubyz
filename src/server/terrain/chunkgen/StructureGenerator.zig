@@ -52,13 +52,12 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 				const biome = biomeMap.getBiome(px, py, relZ);
 				var randomValue = random.nextFloat(&seed);
 				for(biome.vegetationModels) |model| { // TODO: Could probably use an alias table here.
-					const adaptedChance = model.chance*16;
-					if(randomValue < adaptedChance) {
+					if(randomValue <  model.chance) {
 						model.generate(px, py, relZ, chunk, caveMap, &seed);
 						break;
 					} else {
 						// Make sure that after the first one was considered all others get the correct chances.
-						randomValue = (randomValue - adaptedChance)/(1 - adaptedChance);
+						randomValue -= model.chance;
 					}
 				}
 			}
