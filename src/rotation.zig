@@ -237,7 +237,7 @@ pub const RotationModes = struct {
 
 		pub fn updateData(block: *Block, neighborIndex: u3, neighbor: Block) bool {
 			const blockModel = blocks.meshes.modelIndexStart(block.*);
-			const neighborModel = blocks.meshes.modelIndexStart(neighbor);
+			const neighborModel = blocks.meshes.model(neighbor);
 			const targetVal = neighbor.solid() and (blockModel == neighborModel or main.models.models.items[neighborModel].neighborFacingQuads[neighborIndex ^ 1].len != 0);
 			var currentData: FenceData = @bitCast(@as(u4, @truncate(block.data)));
 			switch(neighborIndex) {
@@ -634,7 +634,7 @@ pub const RotationModes = struct {
 
 		pub fn updateData(block: *Block, neighborIndex: u3, neighbor: Block) bool {
 			const blockModel = blocks.meshes.modelIndexStart(block.*);
-			const neighborModel = blocks.meshes.modelIndexStart(neighbor);
+			const neighborModel = blocks.meshes.model(neighbor);
 			const targetVal = neighbor.solid() and (blockModel == neighborModel or main.models.models.items[neighborModel].neighborFacingQuads[neighborIndex ^ 1].len != 0);
 			var currentData: TorchData = @bitCast(@as(u5, @truncate(block.data)));
 			switch(neighborIndex) {
