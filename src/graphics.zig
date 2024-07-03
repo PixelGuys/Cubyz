@@ -1935,7 +1935,7 @@ const block_texture = struct {
 		const z: f32 = 134;
 		const near = main.renderer.zNear;
 		const far = main.renderer.zFar;
-		const depth = ((far + near)/(near - far)*z + 2*near*far/(near - far))/-z*0.5 + 0.5;
+		const depth = ((far + near)/(near - far)*-z + 2*near*far/(near - far))/z*0.5 + 0.5;
 
 		@memset(&data, depth);
 		c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_R32F, textureSize, textureSize, 0, c.GL_RED, c.GL_FLOAT, &data);
@@ -1985,15 +1985,15 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	var faceData: main.ListUnmanaged(main.renderer.chunk_meshing.FaceData) = .{};
 	defer faceData.deinit(main.stackAllocator);
 	const model = &main.models.models.items[main.blocks.meshes.model(block)];
-	model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, 1, 1, 1, false);
-	for(main.chunk.Neighbors.iterable) |neighbor| {
-		model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, 1 + main.chunk.Neighbors.relX[neighbor], 1 + main.chunk.Neighbors.relY[neighbor], 1 + main.chunk.Neighbors.relZ[neighbor], false);
-	}
 	if(block.hasBackFace()) {
 		model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, 1, 1, 1, true);
 		for(main.chunk.Neighbors.iterable) |neighbor| {
 			model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, 1, 1, 1, true);
 		}
+	}
+	model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, 1, 1, 1, false);
+	for(main.chunk.Neighbors.iterable) |neighbor| {
+		model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, 1 + main.chunk.Neighbors.relX[neighbor], 1 + main.chunk.Neighbors.relY[neighbor], 1 + main.chunk.Neighbors.relZ[neighbor], false);
 	}
 
 	for(faceData.items) |*face| {
