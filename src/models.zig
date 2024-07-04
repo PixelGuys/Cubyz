@@ -40,6 +40,8 @@ const ExtraQuadInfo = struct {
 	isFullQuad: bool,
 	hasOnlyCornerVertices: bool,
 	alignedNormalDirection: ?Neighbor,
+	greedyMeshableInX: bool,
+	greedyMeshableInY: bool,
 };
 
 const gridSize = 4096;
@@ -669,6 +671,27 @@ var models: main.utils.VirtualList(Model, 1 << 20) = undefined;
 
 var quadDeduplication: std.AutoHashMap([@sizeOf(QuadInfo)]u8, QuadIndex) = undefined;
 
+fn isLineGreedyMeshable(corner0: Vec3f, corner1: Vec3f, corner0UV: Vec2f, corner1UV: Vec2f) bool {
+	// One component must wrap around, while the other 2 compoenents must be equal:
+	const equalComponents: u3 = @bitCast(corner0 != corner1);
+	if(@popCount(equalComponents) != 1) return false;
+	const index = @ctz(equalComponents);
+	const component0 = @as([3]f32, @bitCast(corner0))[index];
+	const component1 = @as([3]f32, @bitCast(corner1))[index];
+	if((component0 == 0 and component1 == 1) or (component0 == 1 and component1 == 0)) {
+		// Same for the uvs:
+		const equalComponentsUV: u2 = @bitCast(corner0UV != corner1UV);
+		if(@popCount(equalComponentsUV) != 1) return false;
+		const indexUV = @ctz(equalComponentsUV);
+		const component0UV = @as([2]f32, @bitCast(corner0UV))[indexUV];
+		const component1UV = @as([2]f32, @bitCast(corner1UV))[indexUV];
+		if((component0UV == 0 and component1UV == 1) or (component0UV == 1 and component1UV == 0)) {
+			return true;
+		}
+	}
+	return false;
+}
+
 fn addQuad(info_: QuadInfo) error{Degenerate}!QuadIndex {
 	var info = info_;
 	if(quadDeduplication.get(std.mem.toBytes(info))) |id| {
@@ -713,6 +736,11 @@ fn addQuad(info_: QuadInfo) error{Degenerate}!QuadIndex {
 		if(@reduce(.And, info.normal == Vec3f{0, 0, -1})) extraQuadInfo.alignedNormalDirection = .dirDown;
 		if(@reduce(.And, info.normal == Vec3f{0, 0, 1})) extraQuadInfo.alignedNormalDirection = .dirUp;
 	}
+	{
+		extraQuadInfo.greedyMeshableInX = isLineGreedyMeshable(info.corners[0], info.corners[2], info.cornerUV[0], info.cornerUV[2]) and isLineGreedyMeshable(info.corners[1], info.corners[3], info.cornerUV[1], info.cornerUV[3]);
+		extraQuadInfo.greedyMeshableInY = isLineGreedyMeshable(info.corners[0], info.corners[1], info.cornerUV[0], info.cornerUV[1]) and isLineGreedyMeshable(info.corners[2], info.corners[3], info.cornerUV[2], info.cornerUV[3]);
+	}
+
 	extraQuadInfos.append(extraQuadInfo);
 
 	return index;
