@@ -943,7 +943,7 @@ fn addBreakingAnimationFace(pos: Vec3i, quadIndex: main.models.QuadIndex, textur
 		defer meshData.lock.unlockRead();
 		for(meshData.completeList.getEverything()) |face| {
 			if(face.position.x == relPos[0] and face.position.y == relPos[1] and face.position.z == relPos[2] and face.blockAndQuad.quadIndex == quadIndex) {
-				break :blk face.position.lightIndex;
+				break :blk face.lightIndex;
 			}
 		}
 		// The face doesn't exist.
@@ -956,12 +956,14 @@ fn addBreakingAnimationFace(pos: Vec3i, quadIndex: main.models.QuadIndex, textur
 			.y = @intCast(relPos[1]),
 			.z = @intCast(relPos[2]),
 			.isBackFace = false,
-			.lightIndex = lightIndex,
+			.xSize = 1,
+			.ySize = 1,
 		},
 		.blockAndQuad = .{
 			.texture = texture,
 			.quadIndex = quadIndex,
 		},
+		.lightIndex = lightIndex,
 	});
 }
 

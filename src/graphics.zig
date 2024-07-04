@@ -2646,7 +2646,7 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	}
 
 	for(faceData.items) |*face| {
-		face.position.lightIndex = 0;
+		face.lightIndex = 0;
 	}
 	var allocation: SubAllocation = .{.start = 0, .len = 0};
 	main.renderer.chunk_meshing.faceBuffers[0].uploadData(faceData.items, &allocation);

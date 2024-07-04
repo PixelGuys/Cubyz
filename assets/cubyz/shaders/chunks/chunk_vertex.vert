@@ -18,8 +18,9 @@ layout(location = 3) uniform ivec3 playerPositionInteger;
 layout(location = 4) uniform vec3 playerPositionFraction;
 
 struct FaceData {
-	int encodedPositionAndLightIndex;
+	int encodedPosition;
 	int textureAndQuad;
+	int lightIndex;
 };
 layout(std430, binding = 3) buffer _faceData
 {
@@ -63,30 +64,48 @@ layout(std430, binding = 6) buffer _chunks
 	ChunkData chunks[];
 };
 
+vec3 corner(int quadIndex, int index) {
+	return vec3(quads[quadIndex].corners[index][0], quads[quadIndex].corners[index][1], quads[quadIndex].corners[index][2]);
+}
+
 void main() {
 	int faceID = gl_VertexID >> 2;
 	int vertexID = gl_VertexID & 3;
 	int chunkID = gl_BaseInstance;
 	int voxelSize = chunks[chunkID].voxelSize;
-	int encodedPositionAndLightIndex = faceData[faceID].encodedPositionAndLightIndex;
+	int encodedPosition = faceData[faceID].encodedPosition;
 	int textureAndQuad = faceData[faceID].textureAndQuad;
-	lightBufferIndex = chunks[chunkID].lightStart + 4*(encodedPositionAndLightIndex >> 16);
-	lightArea = uvec2(2, 2);
+	uvec2 quadSize = uvec2(
+		encodedPosition >> 16 & 31,
+		encodedPosition >> 21 & 31
+	);
+	lightBufferIndex = chunks[chunkID].lightStart + 4*faceData[faceID].lightIndex;
+	lightArea = quadSize + uvec2(1, 1);
 	lightPosition = vec2(vertexID >> 1, vertexID & 1);
-	isBackFace = encodedPositionAndLightIndex>>15 & 1;
+	isBackFace = encodedPosition>>15 & 1;
 
 	textureIndex = textureAndQuad & 65535;
 	int quadIndex = textureAndQuad >> 16;
 
 	vec3 position = vec3(
-		encodedPositionAndLightIndex & 31,
-		encodedPositionAndLightIndex >> 5 & 31,
-		encodedPositionAndLightIndex >> 10 & 31
+		encodedPosition & 31,
+		encodedPosition >> 5 & 31,
+		encodedPosition >> 10 & 31
 	);
 
 	normal = quads[quadIndex].normal;
 
-	position += vec3(quads[quadIndex].corners[vertexID][0], quads[quadIndex].corners[vertexID][1], quads[quadIndex].corners[vertexID][2]);
+	vec3 cornerPosition = corner(quadIndex, 0);
+	vec2 uvCornerPosition = quads[quadIndex].cornerUV[0];
+	if((vertexID & 2) != 0) {
+		cornerPosition += (corner(quadIndex, 2) - corner(quadIndex, 0))*quadSize.x;
+		uvCornerPosition += (quads[quadIndex].cornerUV[2] - quads[quadIndex].cornerUV[0])*quadSize.x;
+	}
+	if((vertexID & 1) != 0) {
+		cornerPosition += (corner(quadIndex, vertexID) - corner(quadIndex, vertexID & 2))*quadSize.y;
+		uvCornerPosition += (quads[quadIndex].cornerUV[vertexID] - quads[quadIndex].cornerUV[vertexID & 2])*quadSize.y;
+	}
+	position += cornerPosition;
 	position *= voxelSize;
 	position += vec3(chunks[chunkID].position.xyz - playerPositionInteger);
 	position -= playerPositionFraction;
@@ -97,6 +116,6 @@ void main() {
 	gl_Position = projectionMatrix*mvPos;
 	mvVertexPos = mvPos.xyz;
 	distanceForLodCheck = length(mvPos.xyz) + voxelSize;
-	uv = quads[quadIndex].cornerUV[vertexID]*voxelSize;
+	uv = uvCornerPosition*voxelSize;
 	opaqueInLod = quads[quadIndex].opaqueInLod;
 }

@@ -294,17 +294,21 @@ pub const FaceData = extern struct {
 		y: u5,
 		z: u5,
 		isBackFace: bool,
-		lightIndex: u16 = 0,
+		xSize: u5,
+		ySize: u5,
+		padding: u6 = 0,
 	},
 	blockAndQuad: packed struct(u32) {
 		texture: u16,
 		quadIndex: QuadIndex,
 	},
+	lightIndex: u32,
 
 	pub inline fn init(texture: u16, quadIndex: QuadIndex, pos: chunk.BlockPos, comptime backFace: bool) FaceData {
 		return FaceData{
-			.position = .{.x = pos.x, .y = pos.y, .z = pos.z, .isBackFace = backFace},
+			.position = .{.x = pos.x, .y = pos.y, .z = pos.z, .isBackFace = backFace, .xSize = 1, .ySize = 1},
 			.blockAndQuad = .{.texture = texture, .quadIndex = quadIndex},
+			.lightIndex = 0,
 		};
 	}
 };
@@ -389,7 +393,7 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 				result.value_ptr.* = @intCast(lightList.items.len/4);
 				lightList.appendSlice(&light);
 			}
-			face.position.lightIndex = result.value_ptr.*;
+			face.lightIndex = result.value_ptr.*;
 			const basePos: Vec3f = .{
 				@floatFromInt(face.position.x),
 				@floatFromInt(face.position.y),
