@@ -236,9 +236,10 @@ pub const RotationModes = struct {
 		}
 
 		pub fn updateData(block: *Block, neighborIndex: u3, neighbor: Block) bool {
-			const blockModel = blocks.meshes.modelIndexStart(block.*);
+			const blockBaseModel = blocks.meshes.modelIndexStart(block.*);
+			const neighborBaseModel = blocks.meshes.modelIndexStart(neighbor);
 			const neighborModel = blocks.meshes.model(neighbor);
-			const targetVal = neighbor.solid() and (blockModel == neighborModel or main.models.models.items[neighborModel].neighborFacingQuads[neighborIndex ^ 1].len != 0);
+			const targetVal = neighbor.solid() and (blockBaseModel == neighborBaseModel or main.models.models.items[neighborModel].neighborFacingQuads[neighborIndex ^ 1].len != 0);
 			var currentData: FenceData = @bitCast(@as(u4, @truncate(block.data)));
 			switch(neighborIndex) {
 				Neighbors.dirNegX => {
