@@ -2,15 +2,16 @@
 
 layout(location = 0) out vec3 mvVertexPos;
 layout(location = 1) out vec3 direction;
-layout(location = 2) out vec3 light;
-layout(location = 3) out vec2 uv;
-layout(location = 4) flat out vec3 normal;
-layout(location = 5) flat out int textureIndex;
-layout(location = 6) flat out int isBackFace;
-layout(location = 7) flat out float distanceForLodCheck;
-layout(location = 8) flat out int opaqueInLod;
+layout(location = 2) out vec2 uv;
+layout(location = 3) flat out vec3 normal;
+layout(location = 4) flat out int textureIndex;
+layout(location = 5) flat out int isBackFace;
+layout(location = 6) flat out float distanceForLodCheck;
+layout(location = 7) flat out int opaqueInLod;
+layout(location = 8) flat out uint lightBufferIndex;
+layout(location = 9) flat out uvec2 lightArea;
+layout(location = 10) out vec2 lightPosition;
 
-layout(location = 0) uniform vec3 ambientLight;
 layout(location = 1) uniform mat4 projectionMatrix;
 layout(location = 2) uniform mat4 viewMatrix;
 layout(location = 3) uniform ivec3 playerPositionInteger;
@@ -62,10 +63,6 @@ layout(std430, binding = 6) buffer _chunks
 	ChunkData chunks[];
 };
 
-vec3 square(vec3 x) {
-	return x*x;
-}
-
 void main() {
 	int faceID = gl_VertexID >> 2;
 	int vertexID = gl_VertexID & 3;
@@ -73,19 +70,9 @@ void main() {
 	int voxelSize = chunks[chunkID].voxelSize;
 	int encodedPositionAndLightIndex = faceData[faceID].encodedPositionAndLightIndex;
 	int textureAndQuad = faceData[faceID].textureAndQuad;
-	uint lightIndex = chunks[chunkID].lightStart + 4*(encodedPositionAndLightIndex >> 16);
-	uint fullLight = lightData[lightIndex + vertexID];
-	vec3 sunLight = vec3(
-		fullLight >> 25 & 31u,
-		fullLight >> 20 & 31u,
-		fullLight >> 15 & 31u
-	);
-	vec3 blockLight = vec3(
-		fullLight >> 10 & 31u,
-		fullLight >> 5 & 31u,
-		fullLight >> 0 & 31u
-	);
-	light = min(sqrt(square(sunLight*ambientLight) + square(blockLight)), vec3(31))/31;
+	lightBufferIndex = chunks[chunkID].lightStart + 4*(encodedPositionAndLightIndex >> 16);
+	lightArea = uvec2(2, 2);
+	lightPosition = vec2(vertexID >> 1, vertexID & 1);
 	isBackFace = encodedPositionAndLightIndex>>15 & 1;
 
 	textureIndex = textureAndQuad & 65535;

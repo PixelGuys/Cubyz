@@ -2,13 +2,15 @@
 
 layout(location = 0) in vec3 mvVertexPos;
 layout(location = 1) in vec3 direction;
-layout(location = 2) in vec3 light;
-layout(location = 3) in vec2 uv;
-layout(location = 4) flat in vec3 normal;
-layout(location = 5) flat in int textureIndex;
-layout(location = 6) flat in int isBackFace;
-layout(location = 7) flat in float distanceForLodCheck;
-layout(location = 8) flat in int opaqueInLod;
+layout(location = 2) in vec2 uv;
+layout(location = 3) flat in vec3 normal;
+layout(location = 4) flat in int textureIndex;
+layout(location = 5) flat in int isBackFace;
+layout(location = 6) flat in float distanceForLodCheck;
+layout(location = 7) flat in int opaqueInLod;
+layout(location = 8) flat in uint lightBufferIndex;
+layout(location = 9) flat in uvec2 lightArea;
+layout(location = 10) in vec2 lightPosition;
 
 layout(location = 0) out vec4 fragColor;
 
@@ -21,10 +23,16 @@ layout(binding = 5) uniform sampler2D ditherTexture;
 layout(location = 5) uniform float reflectionMapSize;
 layout(location = 6) uniform float contrast;
 layout(location = 7) uniform float lodDistance;
+layout(location = 0) uniform vec3 ambientLight;
 
 layout(std430, binding = 1) buffer _animatedTexture
 {
 	float animatedTexture[];
+};
+
+layout(std430, binding = 10) buffer _lightData
+{
+	uint lightData[];
 };
 
 float lightVariation(vec3 normal) {
@@ -51,7 +59,42 @@ vec4 fixedCubeMapLookup(vec3 v) { // Taken from http://the-witness.net/news/2012
 	return texture(reflectionMap, v);
 }
 
+vec3 unpack15BitLight(uint val) {
+	return vec3(
+		val >> 10 & 31u,
+		val >> 5 & 31u,
+		val & 31u
+	);
+}
+
+vec3 square(vec3 x) {
+	return x*x;
+}
+
+vec3 readLightValue() {
+	uint x = uint(lightPosition.x);
+	uint y = uint(lightPosition.y);
+	uint light00 = lightData[lightBufferIndex + (x*lightArea.y + y)];
+	uint light01 = lightData[lightBufferIndex + (x*lightArea.y + y + 1)];
+	uint light10 = lightData[lightBufferIndex + ((x + 1)*lightArea.y + y)];
+	uint light11 = lightData[lightBufferIndex + ((x + 1)*lightArea.y + y + 1)];
+	float xFactor = lightPosition.x - x;
+	float yFactor = lightPosition.y - y;
+	vec3 sunLight = mix(
+		mix(unpack15BitLight(light00 >> 15), unpack15BitLight(light01 >> 15), yFactor),
+		mix(unpack15BitLight(light10 >> 15), unpack15BitLight(light11 >> 15), yFactor),
+		xFactor
+	);
+	vec3 blockLight = mix(
+		mix(unpack15BitLight(light00), unpack15BitLight(light01), yFactor),
+		mix(unpack15BitLight(light10), unpack15BitLight(light11), yFactor),
+		xFactor
+	);
+	return min(sqrt(square(sunLight*ambientLight) + square(blockLight)), vec3(31))/31;
+}
+
 void main() {
+	vec3 light = readLightValue();
 	float animatedTextureIndex = animatedTexture[textureIndex];
 	float normalVariation = lightVariation(normal);
 	vec3 textureCoords = vec3(uv, animatedTextureIndex);
