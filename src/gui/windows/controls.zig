@@ -32,10 +32,12 @@ fn keypressListener(key: c_int, mouseButton: c_int, scancode: c_int) void {
 	selectedKey.?.scancode = scancode;
 	selectedKey = null;
 	needsUpdate = true;
+	main.settings.save();
 }
 
 fn updateSensitivity(sensitivity: f32) void {
 	main.settings.mouseSensitivity = sensitivity;
+	main.settings.save();
 }
 
 fn sensitivityFormatter(allocator: main.utils.NeverFailingAllocator, value: f32) []const u8 {

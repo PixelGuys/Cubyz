@@ -59,6 +59,7 @@ fn join(_: usize) void {
 		_connection.world = &main.game.testWorld;
 		main.globalAllocator.free(settings.lastUsedIPAddress);
 		settings.lastUsedIPAddress = main.globalAllocator.dupe(u8, ipAddressEntry.currentString.items);
+		settings.save();
 		main.game.testWorld.init(ipAddressEntry.currentString.items, _connection) catch |err| {
 			std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
 		};

@@ -183,7 +183,7 @@ pub fn deinit() void {
 	GuiCommandQueue.deinit();
 }
 
-fn save() void {
+pub fn save() void {
 	const guiJson = JsonElement.initObject(main.stackAllocator);
 	defer guiJson.free(main.stackAllocator);
 	for(windowList.items) |window| {

@@ -43,14 +43,17 @@ fn fpsCapFormatter(allocator: main.utils.NeverFailingAllocator, value: f32) []co
 
 fn fpsCapCallback(newValue: f32) void {
 	settings.fpsCap = fpsCapRound(newValue);
+	settings.save();
 }
 
 fn renderDistanceCallback(newValue: u16) void {
 	settings.renderDistance = newValue + renderDistances[0];
+	settings.save();
 }
 
 fn fovCallback(newValue: f32) void {
 	settings.fov = newValue;
+	settings.save();
 	main.Window.GLFWCallbacks.framebufferSize(undefined, main.Window.width, main.Window.height);
 }
 
@@ -60,19 +63,23 @@ fn fovFormatter(allocator: main.utils.NeverFailingAllocator, value: f32) []const
 
 fn LODFactorCallback(newValue: u16) void {
 	settings.LODFactor = @as(f32, @floatFromInt(newValue + 1))/2;
+	settings.save();
 }
 
 fn bloomCallback(newValue: bool) void {
 	settings.bloom = newValue;
+	settings.save();
 }
 
 fn vsyncCallback(newValue: bool) void {
 	settings.vsync = newValue;
+	settings.save();
 	main.Window.reloadSettings();
 }
 
 fn anisotropicFilteringCallback(newValue: u16) void {
 	settings.anisotropicFiltering = anisotropy[newValue];
+	settings.save();
 	if(main.game.world != null) {
 		main.blocks.meshes.reloadTextures(undefined);
 	}
@@ -80,6 +87,7 @@ fn anisotropicFilteringCallback(newValue: u16) void {
 
 fn resolutionScaleCallback(newValue: u16) void {
 	settings.resolutionScale = std.math.pow(f32, 2.0, @as(f32, @floatFromInt(newValue)) - 2.0);
+	settings.save();
 	main.Window.GLFWCallbacks.framebufferSize(null, main.Window.width, main.Window.height);
 }
 

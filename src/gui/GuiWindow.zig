@@ -160,6 +160,7 @@ pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 						}
 						self.scale = @max(self.scale, 0.25);
 						gui.updateWindowPositions();
+						gui.save();
 					}
 				} else {
 					// Zoom in
@@ -169,6 +170,7 @@ pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 						self.scale += 0.25;
 					}
 					gui.updateWindowPositions();
+					gui.save();
 				}
 			}
 		}
@@ -334,6 +336,7 @@ pub fn updateSelected(self: *GuiWindow, mousePosition: Vec2f) void {
 		self.pos = @max(self.pos, Vec2f{0, 0});
 		self.pos = @min(self.pos, windowSize - self.size);
 		gui.updateWindowPositions();
+		gui.save();
 	};
 	if(self.rootComponent) |*component| {
 		component.updateSelected();
