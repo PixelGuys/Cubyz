@@ -13,4 +13,7 @@
 
 	"model" : "cube",
 	"texture" : "cubyz:fog/cyan"
+	"item": {
+        "texture" : "fog/cyan.png",
+    },
 }
