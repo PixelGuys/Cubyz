@@ -588,6 +588,7 @@ pub fn update(deltaTime: f64) void {
 			Player.selectedSlot = @intCast(@mod(newSlot, 12));
 			main.Window.scrollOffset = 0;
 		}
+		var shouldStep: bool = false;
 		{ // Collision acceleration:
 			Player.mutex.lock();
 			defer Player.mutex.unlock();
@@ -624,7 +625,7 @@ pub fn update(deltaTime: f64) void {
 				200,
 				200,
 				200,
-				800,
+				400,
 			};
 			const frictionMultipliers = [6]f64 {
 				30,
@@ -647,6 +648,9 @@ pub fn update(deltaTime: f64) void {
 				const collision = Player.collisionBox(box);
 				const strength = vec.dot(@abs(forceDir[i]), collision.max - collision.min)/vec.dot(@abs(forceDir[i]), box.max - box.min);
 				if(strength == 0) continue;
+				if(i == 5 and strength > 0.5) {
+					shouldStep = true;
+				}
 				const dir = forceDir[i];
 				const force = strength*forceMultipliers[i];
 				const friction = frictionMultipliers[i];
@@ -654,6 +658,10 @@ pub fn update(deltaTime: f64) void {
 				directionalFrictionCoefficients += @floatCast(@as(Vec3d, @splat(friction))*@abs(dir));
 				acc += @as(Vec3d, @splat(force))*dir;
 			}
+		}
+
+		if(shouldStep) {
+			acc[2] += @sqrt(acc[0]*acc[0] + acc[1]*acc[1]);
 		}
 
 		// This our model for movement on a single frame:
