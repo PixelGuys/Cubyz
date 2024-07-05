@@ -294,8 +294,8 @@ pub const FaceData = extern struct {
 		y: u5,
 		z: u5,
 		isBackFace: bool,
-		xSize: u5,
-		ySize: u5,
+		xSizeMinusOne: u5,
+		ySizeMinusOne: u5,
 		padding: u6 = 0,
 	},
 	blockAndQuad: packed struct(u32) {
@@ -306,7 +306,7 @@ pub const FaceData = extern struct {
 
 	pub inline fn init(texture: u16, quadIndex: QuadIndex, pos: chunk.BlockPos, comptime backFace: bool) FaceData {
 		return FaceData{
-			.position = .{.x = pos.x, .y = pos.y, .z = pos.z, .isBackFace = backFace, .xSize = 1, .ySize = 1},
+			.position = .{.x = pos.x, .y = pos.y, .z = pos.z, .isBackFace = backFace, .xSizeMinusOne = 0, .ySizeMinusOne = 0},
 			.blockAndQuad = .{.texture = texture, .quadIndex = quadIndex},
 			.lightIndex = 0,
 		};
@@ -849,6 +849,321 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			scheduleLightRefresh(pos);
 		}
 	}
+	fn appendNeighborFacingQuadsToFaceList(list: *main.List(main.ListUnmanaged(FaceData)), quadToListIndex: []u16, block: Block, neighbor: chunk.Neighbor, pos: chunk.BlockPos, comptime backFace: bool) void {
+		const model = blocks.meshes.model(block).model();
+		for(model.neighborFacingQuads[neighbor.toInt()]) |quadIndex| {
+			const texture = main.blocks.meshes.textureIndex(block, quadIndex.quadInfo().textureSlot);
+			const greedyMeshable = quadIndex.extraQuadInfo().greedyMeshable;
+			if(greedyMeshable) {
+				if(quadToListIndex[@intFromEnum(quadIndex)] == 0) {
+					quadToListIndex[@intFromEnum(quadIndex)] = @intCast(list.items.len);
+					list.append(.{});
+				}
+				list.items[quadToListIndex[@intFromEnum(quadIndex)]].append(main.stackAllocator, FaceData.init(texture, quadIndex, pos, backFace));
+			} else {
+				list.items[0].append(main.stackAllocator, FaceData.init(texture, quadIndex, pos, backFace));
+			}
+		}
+	}
+	fn appendInternalQuadsToFaceList(list: *main.List(main.ListUnmanaged(FaceData)), quadToListIndex: []u16, block: Block, pos: chunk.BlockPos, comptime backFace: bool) void {
+		const model = blocks.meshes.model(block).model();
+		for(model.internalQuads) |quadIndex| {
+			const texture = main.blocks.meshes.textureIndex(block, quadIndex.quadInfo().textureSlot);
+			const greedyMeshable = quadIndex.extraQuadInfo().greedyMeshable;
+			if(greedyMeshable) {
+				if(quadToListIndex[@intFromEnum(quadIndex)] == 0) {
+					quadToListIndex[@intFromEnum(quadIndex)] = @intCast(list.items.len);
+					list.append(.{});
+				}
+				list.items[quadToListIndex[@intFromEnum(quadIndex)]].append(main.stackAllocator, FaceData.init(texture, quadIndex, pos, backFace));
+			} else {
+				list.items[0].append(main.stackAllocator, FaceData.init(texture, quadIndex, pos, backFace));
+			}
+		}
+	}
+
+	fn greedyMeshQuadType(outputFaces: *main.List(FaceData), faceList: []const FaceData) void {
+		const quadIndex = faceList[0].blockAndQuad.quadIndex;
+		const extraQuadInfo = quadIndex.extraQuadInfo();
+		if(extraQuadInfo.greedyMeshingXDir != null and extraQuadInfo.greedyMeshingYDir != null) {
+			const xDir = extraQuadInfo.greedyMeshingXDir.?;
+			const yDir = extraQuadInfo.greedyMeshingYDir.?;
+
+			var bitMap: [32][32]u32 = undefined;
+			@memset(@as(*[32*32]u32, @ptrCast(&bitMap)), 0);
+			for(faceList) |face| {
+				var x: u5 = undefined;
+				var y: u5 = undefined;
+				var z: u5 = undefined;
+				switch(xDir) {
+					.dirNegX, .dirPosX => {
+						x = face.position.x;
+						switch(yDir) {
+							.dirNegY, .dirPosY => {
+								y = face.position.y;
+								z = face.position.z;
+							},
+							.dirDown, .dirUp => {
+								y = face.position.z;
+								z = face.position.y;
+							},
+							else => unreachable,
+						}
+					},
+					.dirNegY, .dirPosY => {
+						x = face.position.y;
+						switch(yDir) {
+							.dirNegX, .dirPosX => {
+								y = face.position.x;
+								z = face.position.z;
+							},
+							.dirDown, .dirUp => {
+								y = face.position.z;
+								z = face.position.x;
+							},
+							else => unreachable,
+						}
+					},
+					.dirDown, .dirUp => {
+						x = face.position.z;
+						switch(yDir) {
+							.dirNegX, .dirPosX => {
+								y = face.position.x;
+								z = face.position.y;
+							},
+							.dirNegY, .dirPosY => {
+								y = face.position.y;
+								z = face.position.x;
+							},
+							else => unreachable,
+						}
+					},
+				}
+				bitMap[z][y] |= @as(u32, 1) << x;
+			}
+			for(0..32) |z| {
+				for(0..32) |y| {
+					while(bitMap[z][y] != 0) {
+						const xStart: u5 = @intCast(@ctz(bitMap[z][y]));
+						const xLenMinusOne: u5 = @intCast(@ctz(~(bitMap[z][y] >> xStart)) - 1);
+						const mask = ((@as(u32, 1) << xLenMinusOne) - 1 | (@as(u32, 1) << xLenMinusOne)) << xStart;
+						bitMap[z][y] &= ~mask;
+						var yLenMinusOne: u5 = 0;
+						for(y+1..32) |y2| {
+							if(bitMap[z][y2] & mask == mask) {
+								bitMap[z][y2] &= ~mask;
+								yLenMinusOne += 1;
+							} else break;
+						}
+						var faceX: usize = undefined;
+						var faceY: usize = undefined;
+						var faceZ: usize = undefined;
+						switch(xDir) {
+							.dirNegX, .dirPosX => {
+								faceX = if(xDir.isPositive()) xStart else xStart + xLenMinusOne;
+								switch(yDir) {
+									.dirNegY, .dirPosY => {
+										faceY = if(yDir.isPositive()) y else y + yLenMinusOne;
+										faceZ = z;
+									},
+									.dirDown, .dirUp => {
+										faceZ = if(yDir.isPositive()) y else y + yLenMinusOne;
+										faceY = z;
+									},
+									else => unreachable,
+								}
+							},
+							.dirNegY, .dirPosY => {
+								faceY = if(xDir.isPositive()) xStart else xStart + xLenMinusOne;
+								switch(yDir) {
+									.dirNegX, .dirPosX => {
+										faceX = if(yDir.isPositive()) y else y + yLenMinusOne;
+										faceZ = z;
+									},
+									.dirDown, .dirUp => {
+										faceZ = if(yDir.isPositive()) y else y + yLenMinusOne;
+										faceX = z;
+									},
+									else => unreachable,
+								}
+							},
+							.dirDown, .dirUp => {
+								faceZ = if(xDir.isPositive()) xStart else xStart + xLenMinusOne;
+								switch(yDir) {
+									.dirNegX, .dirPosX => {
+										faceX = if(yDir.isPositive()) y else y + yLenMinusOne;
+										faceY = z;
+									},
+									.dirNegY, .dirPosY => {
+										faceY = if(yDir.isPositive()) y else y + yLenMinusOne;
+										faceX = z;
+									},
+									else => unreachable,
+								}
+							},
+						}
+						outputFaces.append(.{
+							.position = .{
+								.x = @intCast(faceX),
+								.y = @intCast(faceY),
+								.z = @intCast(faceZ),
+								.isBackFace = false,
+								.xSizeMinusOne = xLenMinusOne,
+								.ySizeMinusOne = yLenMinusOne,
+							},
+							.blockAndQuad = .{
+								.texture = faceList[0].blockAndQuad.texture,
+								.quadIndex = quadIndex,
+							},
+							.lightIndex = undefined,
+						});
+					}
+				}
+			}
+		} else if(extraQuadInfo.greedyMeshingXDir) |xDir| {
+			var bitMap: [32][32]u32 = undefined;
+			@memset(@as(*[32*32]u32, @ptrCast(&bitMap)), 0);
+			for(faceList) |face| {
+				var x: u5 = undefined;
+				var y: u5 = undefined;
+				var z: u5 = undefined;
+				switch(xDir) {
+					.dirNegX, .dirPosX => {
+						x = face.position.x;
+						y = face.position.y;
+						z = face.position.z;
+					},
+					.dirNegY, .dirPosY => {
+						x = face.position.y;
+						y = face.position.x;
+						z = face.position.z;
+					},
+					.dirDown, .dirUp => {
+						x = face.position.z;
+						y = face.position.x;
+						z = face.position.y;
+					},
+				}
+				bitMap[z][y] |= @as(u32, 1) << x;
+			}
+			for(0..32) |z| {
+				for(0..32) |y| {
+					while(bitMap[z][y] != 0) {
+						const xStart: u5 = @intCast(@ctz(bitMap[z][y]));
+						const xLenMinusOne: u5 = @intCast(@ctz(~(bitMap[z][y] >> xStart)) - 1);
+						const mask = ((@as(u32, 1) << xLenMinusOne) - 1 | (@as(u32, 1) << xLenMinusOne)) << xStart;
+						bitMap[z][y] &= ~mask;
+						var faceX: usize = undefined;
+						var faceY: usize = undefined;
+						var faceZ: usize = undefined;
+						switch(xDir) {
+							.dirNegX, .dirPosX => {
+								faceX = if(xDir.isPositive()) xStart else xStart + xLenMinusOne;
+								faceY = y;
+								faceZ = z;
+							},
+							.dirNegY, .dirPosY => {
+								faceY = if(xDir.isPositive()) xStart else xStart + xLenMinusOne;
+								faceX = y;
+								faceZ = z;
+							},
+							.dirDown, .dirUp => {
+								faceZ = if(xDir.isPositive()) xStart else xStart + xLenMinusOne;
+								faceX = y;
+								faceY = z;
+							},
+						}
+						outputFaces.append(.{
+							.position = .{
+								.x = @intCast(faceX),
+								.y = @intCast(faceY),
+								.z = @intCast(faceZ),
+								.isBackFace = false,
+								.xSizeMinusOne = xLenMinusOne,
+								.ySizeMinusOne = 0,
+							},
+							.blockAndQuad = .{
+								.texture = faceList[0].blockAndQuad.texture,
+								.quadIndex = quadIndex,
+							},
+							.lightIndex = undefined,
+						});
+					}
+				}
+			}
+		} else if(extraQuadInfo.greedyMeshingYDir) |yDir| {
+			var bitMap: [32][32]u32 = undefined;
+			@memset(@as(*[32*32]u32, @ptrCast(&bitMap)), 0);
+			for(faceList) |face| {
+				var x: u5 = undefined;
+				var y: u5 = undefined;
+				var z: u5 = undefined;
+				switch(yDir) {
+					.dirNegX, .dirPosX => {
+						x = face.position.y;
+						y = face.position.x;
+						z = face.position.z;
+					},
+					.dirNegY, .dirPosY => {
+						x = face.position.x;
+						y = face.position.y;
+						z = face.position.z;
+					},
+					.dirDown, .dirUp => {
+						x = face.position.x;
+						y = face.position.z;
+						z = face.position.y;
+					},
+				}
+				bitMap[z][x] |= @as(u32, 1) << y;
+			}
+			for(0..32) |z| {
+				for(0..32) |x| {
+					while(bitMap[z][x] != 0) {
+						const yStart: u5 = @intCast(@ctz(bitMap[z][x]));
+						const yLenMinusOne: u5 = @intCast(@ctz(~(bitMap[z][x] >> yStart)) - 1);
+						const mask = ((@as(u32, 1) << yLenMinusOne) - 1 | (@as(u32, 1) << yLenMinusOne)) << yStart;
+						bitMap[z][x] &= ~mask;
+						var faceX: usize = undefined;
+						var faceY: usize = undefined;
+						var faceZ: usize = undefined;
+						switch(yDir) {
+							.dirNegX, .dirPosX => {
+								faceX = if(yDir.isPositive()) yStart else yStart + yLenMinusOne;
+								faceY = x;
+								faceZ = z;
+							},
+							.dirNegY, .dirPosY => {
+								faceY = if(yDir.isPositive()) yStart else yStart + yLenMinusOne;
+								faceX = x;
+								faceZ = z;
+							},
+							.dirDown, .dirUp => {
+								faceZ = if(yDir.isPositive()) yStart else yStart + yLenMinusOne;
+								faceX = x;
+								faceY = z;
+							},
+						}
+						outputFaces.append(.{
+							.position = .{
+								.x = @intCast(faceX),
+								.y = @intCast(faceY),
+								.z = @intCast(faceZ),
+								.isBackFace = false,
+								.xSizeMinusOne = 0,
+								.ySizeMinusOne = yLenMinusOne,
+							},
+							.blockAndQuad = .{
+								.texture = faceList[0].blockAndQuad.texture,
+								.quadIndex = quadIndex,
+							},
+							.lightIndex = undefined,
+						});
+					}
+				}
+			}
+		} else unreachable;
+	}
 
 	fn appendInternalQuads(block: Block, pos: chunk.BlockPos, comptime backFace: bool, list: *main.ListUnmanaged(FaceData), allocator: main.heap.NeverFailingAllocator) void {
 		const model = blocks.meshes.model(block).model();
@@ -870,16 +1185,43 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		@memset(std.mem.asBytes(&canSeeAllNeighbors), 0);
 		var hasFaces: [chunk.chunkSize][chunk.chunkSize]u32 = undefined;
 		@memset(std.mem.asBytes(&hasFaces), 0);
+		var transparentFaceList = main.List(main.ListUnmanaged(FaceData)).initCapacity(main.stackAllocator, 256);
+		defer transparentFaceList.deinit();
+		defer for(transparentFaceList.items) |list| {
+			list.deinit(main.stackAllocator);
+		};
+		transparentFaceList.append(.{});
+		var opaqueFaceList = main.List(main.ListUnmanaged(FaceData)).initCapacity(main.stackAllocator, 256);
+		defer opaqueFaceList.deinit();
+		defer for(opaqueFaceList.items) |list| {
+			list.deinit(main.stackAllocator);
+		};
+		opaqueFaceList.append(.{});
+		var optionalOpaqueFaceList = main.List(main.ListUnmanaged(FaceData)).initCapacity(main.stackAllocator, 256);
+		defer optionalOpaqueFaceList.deinit();
+		defer for(optionalOpaqueFaceList.items) |list| {
+			list.deinit(main.stackAllocator);
+		};
+		optionalOpaqueFaceList.append(.{});
+		const quadToListIndexOpaque = main.stackAllocator.alloc(u16, main.models.quads.items.len);
+		defer main.stackAllocator.free(quadToListIndexOpaque);
+		@memset(quadToListIndexOpaque, 0);
+		const quadToListIndexOptionalOpaque = main.stackAllocator.alloc(u16, main.models.quads.items.len);
+		defer main.stackAllocator.free(quadToListIndexOptionalOpaque);
+		@memset(quadToListIndexOptionalOpaque, 0);
+		const quadToListIndexTransparent = main.stackAllocator.alloc(u16, main.models.quads.items.len);
+		defer main.stackAllocator.free(quadToListIndexTransparent);
+		@memset(quadToListIndexTransparent, 0);
 		self.mutex.lock();
 
-		var transparentCore: main.ListUnmanaged(FaceData) = .{};
-		defer transparentCore.deinit(main.stackAllocator);
-		var opaqueCore: main.ListUnmanaged(FaceData) = .{};
-		defer opaqueCore.deinit(main.stackAllocator);
-		var transparentOptional: main.ListUnmanaged(FaceData) = .{};
-		defer transparentOptional.deinit(main.stackAllocator);
-		var opaqueOptional: main.ListUnmanaged(FaceData) = .{};
-		defer opaqueOptional.deinit(main.stackAllocator);
+		var transparentCore: main.List(FaceData) = .init(main.stackAllocator);
+		defer transparentCore.deinit();
+		var opaqueCore: main.List(FaceData) = .init(main.stackAllocator);
+		defer opaqueCore.deinit();
+		var transparentOptional: main.List(FaceData) = .init(main.stackAllocator);
+		defer transparentOptional.deinit();
+		var opaqueOptional: main.List(FaceData) = .init(main.stackAllocator);
+		defer opaqueOptional.deinit();
 
 		const OcclusionInfo = packed struct {
 			canSeeNeighbor: u6 = 0,
@@ -967,9 +1309,20 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			if(occlusionInfo.hasInternalQuads) {
 				const block = self.chunk.data.palette()[paletteId].load(.unordered);
 				if(block.transparent()) {
-					appendInternalQuads(block, pos, false, &transparentCore, main.stackAllocator);
+					appendInternalQuadsToFaceList(&transparentFaceList, quadToListIndexTransparent, block, pos, false);
 				} else {
-					appendInternalQuads(block, pos, false, &opaqueCore, main.stackAllocator);
+					appendInternalQuadsToFaceList(&opaqueFaceList, quadToListIndexOpaque, block, pos, false);
+				}
+			}
+			if(occlusionInfo.hasExternalQuads) {
+				hasFaces[pos.x][pos.y] |= setBit;
+			}
+			if(occlusionInfo.hasInternalQuads) {
+				const block = self.chunk.data.palette()[paletteId].load(.unordered);
+				if(block.transparent()) {
+					appendInternalQuadsToFaceList(&transparentFaceList, quadToListIndexTransparent, block, pos, false);
+				} else {
+					appendInternalQuadsToFaceList(&opaqueFaceList, quadToListIndexOpaque, block, pos, false);
 				}
 			}
 		}
@@ -993,11 +1346,11 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						}
 						if(block.transparent()) {
 							if(block.hasBackFace()) {
-								appendNeighborFacingQuads(block, neighbor.reverse(), pos, true, &transparentCore, main.stackAllocator);
+								appendNeighborFacingQuadsToFaceList(&transparentFaceList, quadToListIndexTransparent, block, neighbor.reverse(), pos, true);
 							}
-							appendNeighborFacingQuads(block, neighbor, neighborPos, false, &transparentCore, main.stackAllocator);
+							appendNeighborFacingQuadsToFaceList(&transparentFaceList, quadToListIndexTransparent, block, neighbor, neighborPos, false);
 						} else {
-							appendNeighborFacingQuads(block, neighbor, neighborPos, false, if(initialAlwaysViewThroughMask[x - 1][y] & setBit != 0) &opaqueOptional else &opaqueCore, main.stackAllocator);
+							appendNeighborFacingQuadsToFaceList(if(initialAlwaysViewThroughMask[x - 1][y] & setBit != 0) &optionalOpaqueFaceList else &opaqueFaceList, if(initialAlwaysViewThroughMask[x - 1][y] & setBit != 0) quadToListIndexOptionalOpaque else quadToListIndexOpaque, block, neighbor, neighborPos, false);
 						}
 					}
 				}
@@ -1022,11 +1375,11 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						}
 						if(block.transparent()) {
 							if(block.hasBackFace()) {
-								appendNeighborFacingQuads(block, neighbor.reverse(), pos, true, &transparentCore, main.stackAllocator);
+								appendNeighborFacingQuadsToFaceList(&transparentFaceList, quadToListIndexTransparent, block, neighbor.reverse(), pos, true);
 							}
-							appendNeighborFacingQuads(block, neighbor, neighborPos, false, &transparentCore, main.stackAllocator);
+							appendNeighborFacingQuadsToFaceList(&transparentFaceList, quadToListIndexTransparent, block, neighbor, neighborPos, false);
 						} else {
-							appendNeighborFacingQuads(block, neighbor, neighborPos, false, if(initialAlwaysViewThroughMask[x + 1][y] & setBit != 0) &opaqueOptional else &opaqueCore, main.stackAllocator);
+							appendNeighborFacingQuadsToFaceList(if(initialAlwaysViewThroughMask[x + 1][y] & setBit != 0) &optionalOpaqueFaceList else &opaqueFaceList, if(initialAlwaysViewThroughMask[x + 1][y] & setBit != 0) quadToListIndexOptionalOpaque else quadToListIndexOpaque, block, neighbor, neighborPos, false);
 						}
 					}
 				}
@@ -1051,11 +1404,11 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						}
 						if(block.transparent()) {
 							if(block.hasBackFace()) {
-								appendNeighborFacingQuads(block, neighbor.reverse(), pos, true, &transparentCore, main.stackAllocator);
+								appendNeighborFacingQuadsToFaceList(&transparentFaceList, quadToListIndexTransparent, block, neighbor.reverse(), pos, true);
 							}
-							appendNeighborFacingQuads(block, neighbor, neighborPos, false, &transparentCore, main.stackAllocator);
+							appendNeighborFacingQuadsToFaceList(&transparentFaceList, quadToListIndexTransparent, block, neighbor, neighborPos, false);
 						} else {
-							appendNeighborFacingQuads(block, neighbor, neighborPos, false, if(initialAlwaysViewThroughMask[x][y - 1] & setBit != 0) &opaqueOptional else &opaqueCore, main.stackAllocator);
+							appendNeighborFacingQuadsToFaceList(if(initialAlwaysViewThroughMask[x][y - 1] & setBit != 0) &optionalOpaqueFaceList else &opaqueFaceList, if(initialAlwaysViewThroughMask[x][y - 1] & setBit != 0) quadToListIndexOptionalOpaque else quadToListIndexOpaque, block, neighbor, neighborPos, false);
 						}
 					}
 				}
@@ -1080,11 +1433,11 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						}
 						if(block.transparent()) {
 							if(block.hasBackFace()) {
-								appendNeighborFacingQuads(block, neighbor.reverse(), pos, true, &transparentCore, main.stackAllocator);
+								appendNeighborFacingQuadsToFaceList(&transparentFaceList, quadToListIndexTransparent, block, neighbor.reverse(), pos, true);
 							}
-							appendNeighborFacingQuads(block, neighbor, neighborPos, false, &transparentCore, main.stackAllocator);
+							appendNeighborFacingQuadsToFaceList(&transparentFaceList, quadToListIndexTransparent, block, neighbor, neighborPos, false);
 						} else {
-							appendNeighborFacingQuads(block, neighbor, neighborPos, false, if(initialAlwaysViewThroughMask[x][y + 1] & setBit != 0) &opaqueOptional else &opaqueCore, main.stackAllocator);
+							appendNeighborFacingQuadsToFaceList(if(initialAlwaysViewThroughMask[x][y + 1] & setBit != 0) &optionalOpaqueFaceList else &opaqueFaceList, if(initialAlwaysViewThroughMask[x][y + 1] & setBit != 0) quadToListIndexOptionalOpaque else quadToListIndexOpaque, block, neighbor, neighborPos, false);
 						}
 					}
 				}
@@ -1109,11 +1462,11 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						}
 						if(block.transparent()) {
 							if(block.hasBackFace()) {
-								appendNeighborFacingQuads(block, neighbor.reverse(), pos, true, &transparentCore, main.stackAllocator);
+								appendNeighborFacingQuadsToFaceList(&transparentFaceList, quadToListIndexTransparent, block, neighbor.reverse(), pos, true);
 							}
-							appendNeighborFacingQuads(block, neighbor, neighborPos, false, &transparentCore, main.stackAllocator);
+							appendNeighborFacingQuadsToFaceList(&transparentFaceList, quadToListIndexTransparent, block, neighbor, neighborPos, false);
 						} else {
-							appendNeighborFacingQuads(block, neighbor, neighborPos, false, if(initialAlwaysViewThroughMask[x][y] << 1 & setBit != 0) &opaqueOptional else &opaqueCore, main.stackAllocator);
+							appendNeighborFacingQuadsToFaceList(if(initialAlwaysViewThroughMask[x][y] << 1 & setBit != 0) &optionalOpaqueFaceList else &opaqueFaceList, if(initialAlwaysViewThroughMask[x][y] << 1 & setBit != 0) quadToListIndexOptionalOpaque else quadToListIndexOpaque, block, neighbor, neighborPos, false);
 						}
 					}
 				}
@@ -1138,14 +1491,44 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						}
 						if(block.transparent()) {
 							if(block.hasBackFace()) {
-								appendNeighborFacingQuads(block, neighbor.reverse(), pos, true, &transparentCore, main.stackAllocator);
+								appendNeighborFacingQuadsToFaceList(&transparentFaceList, quadToListIndexTransparent, block, neighbor.reverse(), pos, true);
 							}
-							appendNeighborFacingQuads(block, neighbor, neighborPos, false, &transparentCore, main.stackAllocator);
+							appendNeighborFacingQuadsToFaceList(&transparentFaceList, quadToListIndexTransparent, block, neighbor, neighborPos, false);
 						} else {
-							appendNeighborFacingQuads(block, neighbor, neighborPos, false, if(initialAlwaysViewThroughMask[x][y] >> 1 & setBit != 0) &opaqueOptional else &opaqueCore, main.stackAllocator);
+							appendNeighborFacingQuadsToFaceList(if(initialAlwaysViewThroughMask[x][y] >> 1 & setBit != 0) &optionalOpaqueFaceList else &opaqueFaceList, if(initialAlwaysViewThroughMask[x][y] >> 1 & setBit != 0) quadToListIndexOptionalOpaque else quadToListIndexOpaque, block, neighbor, neighborPos, false);
 						}
 					}
 				}
+			}
+		}
+
+		for(transparentFaceList.items) |list| { // TODO: greedy mesh transparent quads as well. This requires making sure they still sort correctly.
+			for(list.items) |face| {
+				transparentCore.append(face);
+			}
+		}
+		for(opaqueFaceList.items[0].items) |face| {
+			opaqueCore.append(face);
+		}
+		for(opaqueFaceList.items[1..]) |list| {
+			if(list.items.len <= 1) {
+				for(list.items) |face| {
+					opaqueCore.append(face);
+				}
+			} else {
+				greedyMeshQuadType(&opaqueCore, list.items);
+			}
+		}
+		for(optionalOpaqueFaceList.items[0].items) |face| {
+			opaqueOptional.append(face);
+		}
+		for(optionalOpaqueFaceList.items[1..]) |list| {
+			if(list.items.len <= 1) {
+				for(list.items) |face| {
+					opaqueOptional.append(face);
+				}
+			} else {
+				greedyMeshQuadType(&opaqueCore, list.items);
 			}
 		}
 

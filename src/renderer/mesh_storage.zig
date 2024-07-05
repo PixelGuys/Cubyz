@@ -956,8 +956,8 @@ fn addBreakingAnimationFace(pos: Vec3i, quadIndex: main.models.QuadIndex, textur
 			.y = @intCast(relPos[1]),
 			.z = @intCast(relPos[2]),
 			.isBackFace = false,
-			.xSize = 1,
-			.ySize = 1,
+			.xSizeMinusOne = 0,
+			.ySizeMinusOne = 0,
 		},
 		.blockAndQuad = .{
 			.texture = texture,

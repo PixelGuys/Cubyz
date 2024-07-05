@@ -150,8 +150,8 @@ vec3 square(vec3 x) {
 }
 
 vec3 readLightValue() {
-	uint x = uint(lightPosition.x);
-	uint y = uint(lightPosition.y);
+	uint x = clamp(uint(lightPosition.x), 0, lightArea.x - 1);
+	uint y = clamp(uint(lightPosition.y), 0, lightArea.y - 1);
 	uint light00 = lightData[lightBufferIndex + (x*lightArea.y + y)];
 	uint light01 = lightData[lightBufferIndex + (x*lightArea.y + y + 1)];
 	uint light10 = lightData[lightBufferIndex + ((x + 1)*lightArea.y + y)];
