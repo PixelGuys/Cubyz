@@ -12,5 +12,8 @@
 	"rotation" : "torch",
 	"model" : "torch",
 	"texture" : "cubyz:torch",
+	"item": {
+		"texture" : "torch.png",
+	},
 	"lodReplacement" : "cubyz:air"
 }
