@@ -11,6 +11,6 @@
 	"texture_top" : "cubyz:oak_fence_top",
 	"texture_bottom" : "cubyz:oak_fence_top"
 	"item": {
-        "texture" : "fence/oak.png",
-    }
+		"texture" : "fence/oak.png",
+	}
 }

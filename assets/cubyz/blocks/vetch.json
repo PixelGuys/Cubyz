@@ -11,7 +11,7 @@
 	"model" : "cross",
 	"texture" : "cubyz:vetch",
 	"item": {
-        "texture" : "vetch.png",
-    },
+		"texture" : "vetch.png",
+	},
 	"lodReplacement" : "cubyz:air"
 }

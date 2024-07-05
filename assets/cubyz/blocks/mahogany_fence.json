@@ -11,6 +11,6 @@
 	"texture_top" : "cubyz:mahogany_fence_top",
 	"texture_bottom" : "cubyz:mahogany_fence_top"
 	"item": {
-        "texture" : "fence/mahogany.png",
-    }
+		"texture" : "fence/mahogany.png",
+	}
 }

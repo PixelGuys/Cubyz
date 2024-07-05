@@ -11,6 +11,6 @@
 	"texture_top" : "cubyz:birch_fence_top",
 	"texture_bottom" : "cubyz:birch_fence_top"
 	"item": {
-        "texture" : "fence/birch.png",
-    }
+		"texture" : "fence/birch.png",
+	}
 }

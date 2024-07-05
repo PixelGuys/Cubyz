@@ -11,7 +11,7 @@
 	"model" : "cross",
 	"texture" : "cubyz:grass_vegetation",
 	"item": {
-        "texture" : "grass.png",
-    },
+		"texture" : "grass.png",
+	},
 	"lodReplacement" : "cubyz:air"
 }

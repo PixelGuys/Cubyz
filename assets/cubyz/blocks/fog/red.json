@@ -14,6 +14,6 @@
 	"model" : "cube",
 	"texture" : "cubyz:fog/red"
 	"item": {
-        "texture" : "fog/red.png",
-    },
+		"texture" : "fog/red.png",
+	},
 }
