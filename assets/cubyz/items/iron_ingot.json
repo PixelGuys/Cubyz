@@ -3,10 +3,10 @@
 	"material" : {
 		"density" : 1.0,
 		"resistance" : 1.0,
-		"power" : 1.0,
-		"roughness" : 0.3,
+		"power" : 5.0,
+		"roughness" : 0.1,
 		"colors" : [
-			0xff4a9494, 0xff53a5a5, 0xff59b3b3, 0xff59bbbb, 0xff7dcbcb
+			0xff69696b, 0xff878484, 0xffa3a3a3, 0xffc2c2c2, 0xffe9e9e9
 		]
 	}
 }
