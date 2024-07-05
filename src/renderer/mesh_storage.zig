@@ -932,6 +932,7 @@ pub fn addBreakingAnimation(pos: Vec3i, breakingProgress: f32) void {
 }
 
 fn addBreakingAnimationFace(pos: Vec3i, quadIndex: main.models.QuadIndex, texture: u16, neighbor: ?chunk.Neighbor, isTransparent: bool) void {
+	_ = texture;
 	const worldPos = pos +% if(neighbor) |n| n.relPos() else Vec3i{0, 0, 0};
 	const relPos = worldPos & @as(Vec3i, @splat(main.chunk.chunkMask));
 	const mesh = getMesh(.{.wx = worldPos[0], .wy = worldPos[1], .wz = worldPos[2], .voxelSize = 1}) orelse return;
@@ -942,8 +943,8 @@ fn addBreakingAnimationFace(pos: Vec3i, quadIndex: main.models.QuadIndex, textur
 		meshData.lock.lockRead();
 		defer meshData.lock.unlockRead();
 		for(meshData.completeList.getEverything()) |face| {
-			if(face.position.x == relPos[0] and face.position.y == relPos[1] and face.position.z == relPos[2] and face.blockAndQuad.quadIndex == quadIndex) {
-				break :blk face.lightIndex;
+			if(face.face.position.x == relPos[0] and face.face.position.y == relPos[1] and face.face.position.z == relPos[2] and face.face.blockAndQuad.quadIndex == quadIndex) {
+				break :blk face.face.lightIndex;
 			}
 		}
 		// The face doesn't exist.
@@ -960,7 +961,7 @@ fn addBreakingAnimationFace(pos: Vec3i, quadIndex: main.models.QuadIndex, textur
 			.ySizeMinusOne = 0,
 		},
 		.blockAndQuad = .{
-			.texture = texture,
+			.textureBufferIndex = 0, // TODO
 			.quadIndex = quadIndex,
 		},
 		.lightIndex = lightIndex,

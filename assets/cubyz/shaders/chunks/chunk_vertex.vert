@@ -4,7 +4,7 @@ layout(location = 0) out vec3 mvVertexPos;
 layout(location = 1) out vec3 direction;
 layout(location = 2) out vec2 uv;
 layout(location = 3) flat out vec3 normal;
-layout(location = 4) flat out int textureIndex;
+layout(location = 4) flat out uint textureIndexOffset;
 layout(location = 5) flat out int isBackFace;
 layout(location = 6) flat out float distanceForLodCheck;
 layout(location = 7) flat out int opaqueInLod;
@@ -53,8 +53,10 @@ struct ChunkData {
 	uint lightStart;
 	uint vertexStartOpaque;
 	uint faceCountsByNormalOpaque[14];
+	uint textureStartOpaque;
 	uint vertexStartTransparent;
 	uint vertexCountTransparent;
+	uint textureStartTransparent;
 	uint visibilityState;
 	uint oldVisibilityState;
 };
@@ -81,10 +83,14 @@ void main() {
 	);
 	lightBufferIndex = chunks[chunkID].lightStart + 4*faceData[faceID].lightIndex;
 	lightArea = quadSize + uvec2(1, 1);
-	lightPosition = vec2(vertexID >> 1, vertexID & 1);
+	lightPosition = vec2(vertexID >> 1, vertexID & 1)*quadSize;
 	isBackFace = encodedPosition>>15 & 1;
 
-	textureIndex = textureAndQuad & 65535;
+#ifdef transparent
+	textureIndexOffset = chunks[chunkID].textureStartTransparent + uint(textureAndQuad & 65535);
+#else
+	textureIndexOffset = chunks[chunkID].textureStartOpaque + uint(textureAndQuad & 65535);
+#endif
 	int quadIndex = textureAndQuad >> 16;
 
 	vec3 position = vec3(

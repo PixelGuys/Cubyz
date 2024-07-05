@@ -43,6 +43,7 @@ const ExtraQuadInfo = struct {
 	greedyMeshable: bool,
 	greedyMeshingXDir: ?Neighbor,
 	greedyMeshingYDir: ?Neighbor,
+	offsetByNormal: bool,
 };
 
 const gridSize = 4096;
@@ -178,11 +179,11 @@ pub const Model = struct {
 				for(&quad.corners) |*corner| {
 					corner.* = @as(Vec3f, corner.*) - @as(Vec3f, quad.normal);
 				}
-				const quadIndex = addQuad(quad) catch continue;
+				const quadIndex = addQuad(quad, true) catch continue;
 				self.neighborFacingQuads[neighbor.toInt()][indices[neighbor.toInt()]] = quadIndex;
 				indices[neighbor.toInt()] += 1;
 			} else {
-				const quadIndex = addQuad(quad) catch continue;
+				const quadIndex = addQuad(quad, false) catch continue;
 				self.internalQuads[internalIndex] = quadIndex;
 				internalIndex += 1;
 			}
@@ -640,21 +641,6 @@ pub const Model = struct {
 		}
 		return Model.init(quadList.items);
 	}
-
-	fn appendQuadsToList(quadList: []const QuadIndex, list: *main.ListUnmanaged(FaceData), allocator: NeverFailingAllocator, block: main.blocks.Block, pos: main.chunk.BlockPos, comptime backFace: bool) void {
-		for(quadList) |quadIndex| {
-			const texture = main.blocks.meshes.textureIndex(block, quadIndex.quadInfo().textureSlot);
-			list.append(allocator, FaceData.init(texture, quadIndex, pos, backFace));
-		}
-	}
-
-	pub fn appendInternalQuadsToList(self: *const Model, list: *main.ListUnmanaged(FaceData), allocator: NeverFailingAllocator, block: main.blocks.Block, pos: main.chunk.BlockPos, comptime backFace: bool) void {
-		appendQuadsToList(self.internalQuads, list, allocator, block, pos, backFace);
-	}
-
-	pub fn appendNeighborFacingQuadsToList(self: *const Model, list: *main.ListUnmanaged(FaceData), allocator: NeverFailingAllocator, block: main.blocks.Block, neighbor: Neighbor, pos: main.chunk.BlockPos, comptime backFace: bool) void {
-		appendQuadsToList(self.neighborFacingQuads[neighbor.toInt()], list, allocator, block, pos, backFace);
-	}
 };
 
 var nameToIndex: std.StringHashMap(ModelIndex) = undefined;
@@ -670,7 +656,7 @@ pub var quads: main.List(QuadInfo) = undefined;
 var extraQuadInfos: main.List(ExtraQuadInfo) = undefined;
 var models: main.utils.VirtualList(Model, 1 << 20) = undefined;
 
-var quadDeduplication: std.AutoHashMap([@sizeOf(QuadInfo)]u8, QuadIndex) = undefined;
+var quadDeduplication: std.AutoHashMap([@sizeOf(QuadInfo) + 1]u8, QuadIndex) = undefined;
 
 fn getLineGreedyMeshingDir(corner0: Vec3f, corner1: Vec3f, corner0UV: Vec2f, corner1UV: Vec2f) ?Neighbor {
 	// One component must wrap around, while the other 2 compoenents must be equal:
@@ -700,9 +686,9 @@ fn getLineGreedyMeshingDir(corner0: Vec3f, corner1: Vec3f, corner0UV: Vec2f, cor
 	return null;
 }
 
-fn addQuad(info_: QuadInfo) error{Degenerate}!QuadIndex {
+fn addQuad(info_: QuadInfo, offsetByNormal: bool) error{Degenerate}!QuadIndex {
 	var info = info_;
-	if(quadDeduplication.get(std.mem.toBytes(info))) |id| {
+	if(quadDeduplication.get(std.mem.toBytes(info) ++ .{@intFromBool(offsetByNormal)})) |id| {
 		return id;
 	}
 	// Check if it's degenerate:
@@ -720,7 +706,7 @@ fn addQuad(info_: QuadInfo) error{Degenerate}!QuadIndex {
 		info.opaqueInLod = @intFromBool(Model.getFaceNeighbor(&info) != null);
 	}
 	quads.append(info);
-	quadDeduplication.put(std.mem.toBytes(info), index) catch unreachable;
+	quadDeduplication.put(std.mem.toBytes(info) ++ .{@intFromBool(offsetByNormal)}, index) catch unreachable;
 
 	var extraQuadInfo: ExtraQuadInfo = undefined;
 	extraQuadInfo.faceNeighbor = Model.getFaceNeighbor(&info);
@@ -763,6 +749,7 @@ fn addQuad(info_: QuadInfo) error{Degenerate}!QuadIndex {
 		}
 		extraQuadInfo.greedyMeshable = extraQuadInfo.greedyMeshingXDir != null or extraQuadInfo.greedyMeshingYDir != null;
 	}
+	extraQuadInfo.offsetByNormal = offsetByNormal;
 
 	extraQuadInfos.append(extraQuadInfo);
 
@@ -837,7 +824,7 @@ pub fn registerModel(id: []const u8, data: []const u8) ModelIndex {
 pub fn init() void {
 	models = .init();
 	quads = .init(main.globalAllocator);
-	extraQuadInfos = .init(main.globalAllocator);
+	extraQuadInfos =.init(main.globalAllocator);
 	quadDeduplication = .init(main.globalAllocator.allocator);
 
 	nameToIndex = .init(main.globalAllocator.allocator);

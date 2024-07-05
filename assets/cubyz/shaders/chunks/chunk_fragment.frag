@@ -4,7 +4,7 @@ layout(location = 0) in vec3 mvVertexPos;
 layout(location = 1) in vec3 direction;
 layout(location = 2) in vec2 uv;
 layout(location = 3) flat in vec3 normal;
-layout(location = 4) flat in int textureIndex;
+layout(location = 4) flat in uint textureIndexOffset;
 layout(location = 5) flat in int isBackFace;
 layout(location = 6) flat in float distanceForLodCheck;
 layout(location = 7) flat in int opaqueInLod;
@@ -33,6 +33,11 @@ layout(std430, binding = 1) buffer _animatedTexture
 layout(std430, binding = 10) buffer _lightData
 {
 	uint lightData[];
+};
+
+layout(std430, binding = 13) buffer _textureData
+{
+	uint textureData[];
 };
 
 float lightVariation(vec3 normal) {
@@ -93,8 +98,16 @@ vec3 readLightValue() {
 	return min(sqrt(square(sunLight*ambientLight) + square(blockLight)), vec3(31))/31;
 }
 
+uint readTextureIndex() {
+	uint x = clamp(uint(lightPosition.x), 0, lightArea.x - 2);
+	uint y = clamp(uint(lightPosition.y), 0, lightArea.y - 2);
+	uint index = textureIndexOffset + x*(lightArea.y - 1) + y;
+	return textureData[index >> 1] >> 16*(index & 1u) & 65535u;
+}
+
 void main() {
 	vec3 light = readLightValue();
+	uint textureIndex = readTextureIndex();
 	float animatedTextureIndex = animatedTexture[textureIndex];
 	float normalVariation = lightVariation(normal);
 	vec3 textureCoords = vec3(uv, animatedTextureIndex);
