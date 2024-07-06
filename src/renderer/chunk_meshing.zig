@@ -1000,11 +1000,13 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				for(0..32) |y| {
 					while(bitMap[z][y] != 0) {
 						const xStart: u5 = @intCast(@ctz(bitMap[z][y]));
-						const xLenMinusOne: u5 = @intCast(@ctz(~(bitMap[z][y] >> xStart)) - 1);
+						var xLenMinusOne: u5 = @intCast(@ctz(~(bitMap[z][y] >> xStart)) - 1);
+						if(self.chunk.pos.voxelSize != 1 and xStart <= 15 and xStart + xLenMinusOne >= 15) xLenMinusOne = 15 - xStart;
 						const mask = ((@as(u32, 1) << xLenMinusOne) - 1 | (@as(u32, 1) << xLenMinusOne)) << xStart;
 						bitMap[z][y] &= ~mask;
 						var yLenMinusOne: u5 = 0;
 						for(y+1..32) |y2| {
+							if(self.chunk.pos.voxelSize != 1 and y <= 15 and y + yLenMinusOne == 15) break;
 							if(bitMap[z][y2] & mask == mask) {
 								bitMap[z][y2] &= ~mask;
 								yLenMinusOne += 1;
@@ -1109,7 +1111,8 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				for(0..32) |y| {
 					while(bitMap[z][y] != 0) {
 						const xStart: u5 = @intCast(@ctz(bitMap[z][y]));
-						const xLenMinusOne: u5 = @intCast(@ctz(~(bitMap[z][y] >> xStart)) - 1);
+						var xLenMinusOne: u5 = @intCast(@ctz(~(bitMap[z][y] >> xStart)) - 1);
+						if(self.chunk.pos.voxelSize != 1 and xStart <= 15 and xStart + xLenMinusOne >= 15) xLenMinusOne = 15 - xStart;
 						const mask = ((@as(u32, 1) << xLenMinusOne) - 1 | (@as(u32, 1) << xLenMinusOne)) << xStart;
 						bitMap[z][y] &= ~mask;
 						var faceX: usize = undefined;
@@ -1184,7 +1187,8 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				for(0..32) |x| {
 					while(bitMap[z][x] != 0) {
 						const yStart: u5 = @intCast(@ctz(bitMap[z][x]));
-						const yLenMinusOne: u5 = @intCast(@ctz(~(bitMap[z][x] >> yStart)) - 1);
+						var yLenMinusOne: u5 = @intCast(@ctz(~(bitMap[z][x] >> yStart)) - 1);
+						if(self.chunk.pos.voxelSize != 1 and yStart <= 15 and yStart + yLenMinusOne >= 15) yLenMinusOne = 15 - yStart;
 						const mask = ((@as(u32, 1) << yLenMinusOne) - 1 | (@as(u32, 1) << yLenMinusOne)) << yStart;
 						bitMap[z][x] &= ~mask;
 						var faceX: usize = undefined;
