@@ -7,7 +7,7 @@ const main = @import("main");
 const vec = @import("vec.zig");
 const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
-const Vec3d = vec.Vec3d;
+const Vec2i = vec.Vec2i;
 const Vec2f = vec.Vec2f;
 const Mat4f = vec.Mat4f;
 
@@ -33,6 +33,13 @@ pub const QuadInfo = extern struct {
 	pub fn cornerUvVec(self: QuadInfo, i: usize) Vec2f {
 		return self.cornerUV[i];
 	}
+};
+pub const HashableQuadInfo = extern struct {
+	normal: [3]i32 align(16),
+	corners: [4][3]i32,
+	cornerUV: [4][2]i32 align(8),
+	textureSlot: u32,
+	opaqueInLod: u32 = 0,
 };
 
 const ExtraQuadInfo = struct {
@@ -656,7 +663,7 @@ pub var quads: main.List(QuadInfo) = undefined;
 var extraQuadInfos: main.List(ExtraQuadInfo) = undefined;
 var models: main.utils.VirtualList(Model, 1 << 20) = undefined;
 
-var quadDeduplication: std.AutoHashMap([@sizeOf(QuadInfo) + 1]u8, QuadIndex) = undefined;
+var quadDeduplication: std.AutoHashMap(struct{HashableQuadInfo, bool}, QuadIndex) = undefined;
 
 fn getLineGreedyMeshingDir(corner0: Vec3f, corner1: Vec3f, corner0UV: Vec2f, corner1UV: Vec2f) ?Neighbor {
 	// One component must wrap around, while the other 2 compoenents must be equal:
@@ -688,7 +695,7 @@ fn getLineGreedyMeshingDir(corner0: Vec3f, corner1: Vec3f, corner0UV: Vec2f, cor
 
 fn addQuad(info_: QuadInfo, offsetByNormal: bool) error{Degenerate}!QuadIndex {
 	var info = info_;
-	if(quadDeduplication.get(std.mem.toBytes(info) ++ .{@intFromBool(offsetByNormal)})) |id| {
+	if(quadDeduplication.get(.{@bitCast(info), offsetByNormal})) |id| {
 		return id;
 	}
 	// Check if it's degenerate:
@@ -706,7 +713,7 @@ fn addQuad(info_: QuadInfo, offsetByNormal: bool) error{Degenerate}!QuadIndex {
 		info.opaqueInLod = @intFromBool(Model.getFaceNeighbor(&info) != null);
 	}
 	quads.append(info);
-	quadDeduplication.put(std.mem.toBytes(info) ++ .{@intFromBool(offsetByNormal)}, index) catch unreachable;
+	quadDeduplication.put(.{@bitCast(info), offsetByNormal}, index) catch unreachable;
 
 	var extraQuadInfo: ExtraQuadInfo = undefined;
 	extraQuadInfo.faceNeighbor = Model.getFaceNeighbor(&info);
