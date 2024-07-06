@@ -400,6 +400,7 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 	}
 
 	fn finish(self: *PrimitiveMesh, parent: *ChunkMesh, lightList: *main.List(u32), lightMap: *std.AutoHashMap([4]u32, u16)) void {
+		_ = lightMap; // TODO
 		var completeTextureList = main.List(u16).init(main.globalAllocator);
 
 		self.min = @splat(std.math.floatMax(f32));
@@ -409,13 +410,10 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		for(self.completeList.getEverything()) |*face| {
 			face.face.blockAndQuad.textureBufferIndex = @intCast(completeTextureList.items.len);
 			completeTextureList.appendSlice(face.textures);
-			const light = getLight(parent, .{face.face.position.x, face.face.position.y, face.face.position.z}, completeTextureList.items[face.face.blockAndQuad.textureBufferIndex], face.face.blockAndQuad.quadIndex);
-			const result = lightMap.getOrPut(light) catch unreachable;
-			if(!result.found_existing) {
-				result.value_ptr.* = @intCast(lightList.items.len/4);
-				lightList.appendSlice(&light);
-			}
-			face.face.lightIndex = result.value_ptr.*;
+			const xLightSize: usize = @as(usize, face.face.position.xSizeMinusOne) + 2;
+			const yLightSize: usize = @as(usize, face.face.position.ySizeMinusOne) + 2;
+			face.face.lightIndex = @intCast(lightList.items.len);
+			getLight(parent, .{face.face.position.x, face.face.position.y, face.face.position.z}, completeTextureList.items[face.face.blockAndQuad.textureBufferIndex], face.face.blockAndQuad.quadIndex, xLightSize, yLightSize, lightList.addMany(xLightSize*yLightSize));
 			const basePos: Vec3f = .{
 				@floatFromInt(face.face.position.x),
 				@floatFromInt(face.face.position.y),
@@ -503,9 +501,8 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		return val/@as(LightVector, @splat(256));
 	}
 
-	fn packLightValues(rawVals: [4]LightVector) [4]u32 {
-		var result: [4]u32 = undefined;
-		for(0..4) |i| {
+	fn packLightValues(rawVals: []LightVector, result: []u32) void {
+		for(0..rawVals.len) |i| {
 			result[i] = (@as(u32, rawVals[i][0] >> 3) << 25 |
 				@as(u32, rawVals[i][1] >> 3) << 20 |
 				@as(u32, rawVals[i][2] >> 3) << 15 |
@@ -513,69 +510,112 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 				@as(u32, rawVals[i][5] >> 3) << 5 |
 				@as(u32, rawVals[i][6] >> 3) << 0);
 		}
-		return result;
 	}
 
-	pub fn getLight(parent: *ChunkMesh, blockPos: Vec3i, textureIndex: u16, quadIndex: QuadIndex) [4]u32 {
+	pub fn getLight(parent: *ChunkMesh, blockPos: Vec3i, textureIndex: u16, quadIndex: QuadIndex, xLightSize: usize, yLightSize: usize, resultBuffer: []u32) void {
 		const quadInfo = quadIndex.quadInfo();
 		const extraQuadInfo = quadIndex.extraQuadInfo();
 		const normal = quadInfo.normal;
 		if(!blocks.meshes.textureOcclusionData[textureIndex].load(.unordered)) { // No ambient occlusion (→ no smooth lighting)
 			const fullValues = getLightAt(parent, blockPos[0], blockPos[1], blockPos[2]);
-			return packLightValues(@splat(fullValues));
+			const rawValsBuf: []LightVector = main.stackAllocator.alloc(LightVector, resultBuffer.len);
+			defer main.stackAllocator.free(rawValsBuf);
+			@memset(rawValsBuf, fullValues);
+			return packLightValues(rawValsBuf, resultBuffer);
 		}
 		if(extraQuadInfo.hasOnlyCornerVertices) { // Fast path for simple quads.
-			var rawVals: [4]LightVector = undefined;
-			for(0..4) |i| {
-				const vertexPos: Vec3f = quadInfo.corners[i];
-				const fullPos = blockPos +% @as(Vec3i, @intFromFloat(vertexPos));
-				rawVals[i] = if(extraQuadInfo.alignedNormalDirection) |dir|
-					getCornerLightAligned(parent, fullPos, dir)
-				else
-					getCornerLight(parent, fullPos, normal);
+			const rawVals: []LightVector = main.stackAllocator.alloc(LightVector, resultBuffer.len);
+			defer main.stackAllocator.free(rawVals);
+			for(0..xLightSize) |x| {
+				for(0..yLightSize) |y| {
+					var vertexPos: Vec3f = quadInfo.corners[0];
+					vertexPos += (@as(Vec3f, quadInfo.corners[2]) - @as(Vec3f, quadInfo.corners[0]))*@as(Vec3f, @splat(@floatFromInt(x)));
+					if(x != 0) {
+						vertexPos += (@as(Vec3f, quadInfo.corners[3]) - @as(Vec3f, quadInfo.corners[2]))*@as(Vec3f, @splat(@floatFromInt(y)));
+					} else {
+						vertexPos += (@as(Vec3f, quadInfo.corners[1]) - @as(Vec3f, quadInfo.corners[0]))*@as(Vec3f, @splat(@floatFromInt(y)));
+					}
+					const fullPos = blockPos +% @as(Vec3i, @intFromFloat(vertexPos));
+					rawVals[x*yLightSize + y] = if(extraQuadInfo.alignedNormalDirection) |dir|
+						getCornerLightAligned(parent, fullPos, dir)
+					else
+						getCornerLight(parent, fullPos, normal);
+				}
 			}
-			return packLightValues(rawVals);
+			packLightValues(rawVals, resultBuffer);
+			return;
 		}
-		var rawVals: [4]LightVector = undefined;
-		for(0..4) |i| {
-			const vertexPos: Vec3f = quadInfo.corners[i];
-			const lightPos = vertexPos + @as(Vec3f, @floatFromInt(blockPos));
-			const containingBlockPos: Vec3i = @intFromFloat(@floor(lightPos));
-			const interp = std.math.clamp(lightPos - @as(Vec3f, @floatFromInt(containingBlockPos)), @as(Vec3f, @splat(0)), @as(Vec3f, @splat(1)));
-
-			var cornerVals: [2][2][2]LightVector = undefined;
-			{
+		var volumeStart: [3]i32 = blockPos;
+		var volumeDim: [3]i32 = .{2, 2, 2};
+		if(extraQuadInfo.greedyMeshingXDir) |xDir| {
+			if(xLightSize != 2) {
+				volumeDim[@intFromEnum(xDir.vectorComponent())] = @intCast(xLightSize);
+				if(!xDir.isPositive()) {
+					volumeStart[@intFromEnum(xDir.vectorComponent())] -= @intCast(xLightSize - 1);
+				}
+			}
+		}
+		if(extraQuadInfo.greedyMeshingYDir) |yDir| {
+			if(yLightSize != 2) {
+				volumeDim[@intFromEnum(yDir.vectorComponent())] = @intCast(yLightSize);
+				if(!yDir.isPositive()) {
+					volumeStart[@intFromEnum(yDir.vectorComponent())] -= @intCast(yLightSize - 1);
+				}
+			}
+		}
+		var cornerVals: []LightVector = main.stackAllocator.alloc(LightVector, @intCast(@reduce(.Mul, @as(Vec3i, volumeDim))));
+		defer main.stackAllocator.free(cornerVals);
+		{
+			var dx: u31 = 0;
+			while(dx < volumeDim[0]) : (dx += 1) {
+				var dy: u31 = 0;
+				while(dy < volumeDim[1]) : (dy += 1) {
+					var dz: u31 = 0;
+					while(dz < volumeDim[2]) : (dz += 1) {
+						cornerVals[@intCast((dx*volumeDim[1] + dy)*volumeDim[2] + dz)] = if(extraQuadInfo.alignedNormalDirection) |dir|
+							getCornerLightAligned(parent, volumeStart +% Vec3i{dx, dy, dz}, dir)
+						else
+							getCornerLight(parent, volumeStart +% Vec3i{dx, dy, dz}, normal);
+					}
+				}
+			}
+		}
+		const rawVals: []LightVector = main.stackAllocator.alloc(LightVector, resultBuffer.len);
+		defer main.stackAllocator.free(rawVals);
+		for(0..xLightSize) |x| {
+			for(0..yLightSize) |y| {
+				var vertexPos: Vec3f = quadInfo.corners[0];
+				vertexPos += (@as(Vec3f, quadInfo.corners[2]) - @as(Vec3f, quadInfo.corners[0]))*@as(Vec3f, @splat(@floatFromInt(x)));
+				if(x != 0) {
+					vertexPos += (@as(Vec3f, quadInfo.corners[3]) - @as(Vec3f, quadInfo.corners[2]))*@as(Vec3f, @splat(@floatFromInt(y)));
+				} else {
+					vertexPos += (@as(Vec3f, quadInfo.corners[1]) - @as(Vec3f, quadInfo.corners[0]))*@as(Vec3f, @splat(@floatFromInt(y)));
+				}
+				const lightPos = vertexPos + @as(Vec3f, @floatFromInt(blockPos));
+				const volumePos: Vec3i = @max(Vec3i{0, 0, 0}, @min(volumeDim - Vec3i{2, 2, 2}, @as(Vec3i, @intFromFloat(lightPos)) - volumeStart));
+				const baseIndex: usize = @intCast((volumePos[0]*volumeDim[1] + volumePos[1])*volumeDim[2] + volumePos[2]);
+				const interp = std.math.clamp(lightPos - @as(Vec3f, @floatFromInt(volumePos + volumeStart)), Vec3f{0, 0, 0}, Vec3f{1, 1, 1}); // TODO: unclamp this
+				var val: LightVector = @splat(0);
 				var dx: u31 = 0;
 				while(dx <= 1) : (dx += 1) {
 					var dy: u31 = 0;
 					while(dy <= 1) : (dy += 1) {
 						var dz: u31 = 0;
 						while(dz <= 1) : (dz += 1) {
-							cornerVals[dx][dy][dz] = if(extraQuadInfo.alignedNormalDirection) |dir|
-								getCornerLightAligned(parent, containingBlockPos +% Vec3i{dx, dy, dz}, dir)
-							else
-								getCornerLight(parent, containingBlockPos +% Vec3i{dx, dy, dz}, normal);
+							var weight: f32 = 0;
+							if(dx == 0) weight = 1 - interp[0] else weight = interp[0];
+							if(dy == 0) weight *= 1 - interp[1] else weight *= interp[1];
+							if(dz == 0) weight *= 1 - interp[2] else weight *= interp[2];
+							const lightVal: LightVector = cornerVals[baseIndex + @as(usize, @intCast((dx*volumeDim[1] + dy)*volumeDim[2] + dz))];
+							const integerWeight: u16 = @intFromFloat(weight*256);
+							val += lightVal*@as(LightVector, @splat(integerWeight));
 						}
 					}
 				}
+				rawVals[x*yLightSize + y] = val/@as(LightVector, @splat(256));
 			}
-
-			var val: LightVector = @splat(0);
-			for(0..2) |dx| {
-				for(0..2) |dy| {
-					for(0..2) |dz| {
-						var weight: f32 = 0;
-						if(dx == 0) weight = 1 - interp[0] else weight = interp[0];
-						if(dy == 0) weight *= 1 - interp[1] else weight *= interp[1];
-						if(dz == 0) weight *= 1 - interp[2] else weight *= interp[2];
-						const integerWeight: u16 = @intFromFloat(weight*256);
-						val += cornerVals[dx][dy][dz]*@as(LightVector, @splat(integerWeight));
-					}
-				}
-			}
-			rawVals[i] = val/@as(LightVector, @splat(256));
 		}
-		return packLightValues(rawVals);
+		packLightValues(rawVals, resultBuffer);
 	}
 
 	fn uploadData(self: *PrimitiveMesh, isNeighborLod: [6]bool) void {

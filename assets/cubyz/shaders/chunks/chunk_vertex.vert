@@ -81,7 +81,7 @@ void main() {
 		(encodedPosition >> 16 & 31) + 1,
 		(encodedPosition >> 21 & 31) + 1
 	);
-	lightBufferIndex = chunks[chunkID].lightStart + 4*faceData[faceID].lightIndex;
+	lightBufferIndex = chunks[chunkID].lightStart + faceData[faceID].lightIndex;
 	lightArea = quadSize + uvec2(1, 1);
 	lightPosition = vec2(vertexID >> 1, vertexID & 1)*quadSize;
 	isBackFace = encodedPosition>>15 & 1;
