@@ -25,6 +25,7 @@ const gpu_performance_measuring = main.gui.windowlist.gpu_performance_measuring;
 
 const mesh_storage = @import("mesh_storage.zig");
 
+var depthPrepassPipeline: graphics.Pipeline = undefined;
 var pipeline: graphics.Pipeline = undefined;
 var transparentPipeline: graphics.Pipeline = undefined;
 const UniformStruct = struct {
@@ -44,6 +45,7 @@ const UniformStruct = struct {
 	zNear: c_int,
 	zFar: c_int,
 };
+pub var depthPrepassUniforms: UniformStruct = undefined;
 pub var uniforms: UniformStruct = undefined;
 pub var transparentUniforms: UniformStruct = undefined;
 pub var commandPipeline: graphics.ComputePipeline = undefined;
@@ -77,13 +79,31 @@ pub const maxQuadsInIndexBuffer = 3 << (3*chunk.chunkShift); // maximum 3 faces/
 
 pub fn init() void {
 	lighting.init();
+	depthPrepassPipeline = graphics.Pipeline.init(
+		"assets/cubyz/shaders/chunks/chunk_vertex.vert",
+		"assets/cubyz/shaders/chunks/depth_prepass_fragment.frag",
+		"",
+		&depthPrepassUniforms,
+		.{},
+		.{.depthTest = true, .depthWrite = true},
+		.{.attachments = &.{.{
+			.enabled = false,
+			.srcColorBlendFactor = undefined,
+			.dstColorBlendFactor = undefined,
+			.colorBlendOp = undefined,
+			.srcAlphaBlendFactor = undefined,
+			.dstAlphaBlendFactor = undefined,
+			.alphaBlendOp = undefined,
+			.colorWriteMask = .none,
+		}}},
+	);
 	pipeline = graphics.Pipeline.init(
 		"assets/cubyz/shaders/chunks/chunk_vertex.vert",
 		"assets/cubyz/shaders/chunks/chunk_fragment.frag",
 		"",
 		&uniforms,
 		.{},
-		.{.depthTest = true, .depthWrite = true},
+		.{.depthTest = true, .depthWrite = false, .depthCompare = .equal},
 		.{.attachments = &.{.noBlending}},
 	);
 	transparentPipeline = graphics.Pipeline.init(
@@ -147,6 +167,7 @@ pub fn init() void {
 
 pub fn deinit() void {
 	lighting.deinit();
+	depthPrepassPipeline.deinit();
 	pipeline.deinit();
 	transparentPipeline.deinit();
 	occlusionTestPipeline.deinit();
@@ -203,6 +224,14 @@ fn bindCommonUniforms(locations: *UniformStruct, projMatrix: Mat4f, ambient: Vec
 
 	c.glUniform3i(locations.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
 	c.glUniform3f(locations.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
+}
+
+pub fn bindPrepassShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d) void {
+	depthPrepassPipeline.bind(null);
+
+	bindCommonUniforms(&depthPrepassUniforms, projMatrix, ambient, playerPos);
+
+	c.glBindVertexArray(vao);
 }
 
 pub fn bindShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d) void {
@@ -263,7 +292,7 @@ fn drawChunksOfLod(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec3f, pla
 		if(transparent) {
 			bindTransparentShaderAndUniforms(projMatrix, ambient, playerPos);
 		} else {
-			bindShaderAndUniforms(projMatrix, ambient, playerPos);
+			bindPrepassShaderAndUniforms(projMatrix, ambient, playerPos);
 		}
 		c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
 		c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
@@ -288,10 +317,22 @@ fn drawChunksOfLod(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec3f, pla
 	if(transparent) {
 		bindTransparentShaderAndUniforms(projMatrix, ambient, playerPos);
 	} else {
-		bindShaderAndUniforms(projMatrix, ambient, playerPos);
+		bindPrepassShaderAndUniforms(projMatrix, ambient, playerPos);
 	}
 	c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
 	c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
+
+	if(!transparent) {
+		// Draw after the depth prepass
+		commandPipeline.bind();
+		c.glUniform1i(commandUniforms.onlyDrawPreviouslyInvisible, 0);
+		c.glDispatchCompute(@intCast(@divFloor(chunkIDs.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
+		c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
+
+		bindShaderAndUniforms(projMatrix, ambient, playerPos);
+		c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
+		c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
+	}
 }
 
 pub const FaceData = extern struct {
@@ -419,9 +460,21 @@ pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 				@floatFromInt(face.face.position.y),
 				@floatFromInt(face.face.position.z),
 			};
-			for(face.face.blockAndQuad.quadIndex.quadInfo().corners) |cornerPos| {
-				self.min = @min(self.min, basePos + cornerPos);
-				self.max = @max(self.max, basePos + cornerPos);
+
+			for(0..2) |x| {
+				for(0..2) |y| {
+					const quadIndex = face.face.blockAndQuad.quadIndex;
+					const quadInfo = quadIndex.quadInfo();
+					var vertexPos: Vec3f = quadInfo.corners[0];
+					vertexPos += (@as(Vec3f, quadInfo.corners[2]) - @as(Vec3f, quadInfo.corners[0]))*@as(Vec3f, @splat(@floatFromInt(x*(@as(usize, face.face.position.xSizeMinusOne) + 1))));
+					if(x != 0) {
+						vertexPos += (@as(Vec3f, quadInfo.corners[3]) - @as(Vec3f, quadInfo.corners[2]))*@as(Vec3f, @splat(@floatFromInt(y*(@as(usize, face.face.position.ySizeMinusOne) + 1))));
+					} else {
+						vertexPos += (@as(Vec3f, quadInfo.corners[1]) - @as(Vec3f, quadInfo.corners[0]))*@as(Vec3f, @splat(@floatFromInt(y*(@as(usize, face.face.position.ySizeMinusOne) + 1))));
+					}
+					self.min = @min(self.min, basePos + vertexPos);
+					self.max = @max(self.max, basePos + vertexPos);
+				}
 			}
 		}
 		self.lock.unlockRead();
