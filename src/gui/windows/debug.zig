@@ -27,6 +27,18 @@ pub var window = GuiWindow{
 	.hideIfMouseIsGrabbed = false,
 };
 
+fn renderLargeBufferSize(buffer: anytype, comptime fmt: []const u8, y: f32) void {
+	const dataSize: usize = @sizeOf(@TypeOf(buffer).Entry);
+	const size: usize = buffer.capacity*dataSize;
+	const used: usize = buffer.used*dataSize;
+	var largestFreeBlock: usize = 0;
+	for(buffer.freeBlocks.items) |freeBlock| {
+		largestFreeBlock = @max(largestFreeBlock, freeBlock.len);
+	}
+	const fragmentation = size - used - largestFreeBlock*dataSize;
+	draw.print(fmt, .{used >> 20, size >> 20, fragmentation >> 20}, 0, y, 8, .left);
+}
+
 pub fn render() void {
 	draw.setColor(0xffffffff);
 	var y: f32 = 0;
@@ -95,6 +107,13 @@ pub fn render() void {
 			const size: usize = main.renderer.chunk_meshing.lightBuffers[lod].capacity*lightDataSize;
 			const used: usize = main.renderer.chunk_meshing.lightBuffers[lod].used*lightDataSize;
 			draw.print("Light memory LOD{}: {} MiB / {} MiB", .{lod, used >> 20, size >> 20}, 0, y, 8, .left);
+			y += 8;
+		}
+		for(0..main.settings.highestLod + 1) |lod| {
+			const lightDataSize: usize = @sizeOf(u32);
+			const size: usize = main.renderer.chunk_meshing.textureBuffers[lod].capacity*lightDataSize;
+			const used: usize = main.renderer.chunk_meshing.textureBuffers[lod].used*lightDataSize;
+			draw.print("Texture memory LOD{}: {} MiB / {} MiB", .{lod, used >> 20, size >> 20}, 0, y, 8, .left);
 			y += 8;
 		}
 		{
