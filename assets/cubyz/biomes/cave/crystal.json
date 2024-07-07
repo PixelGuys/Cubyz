@@ -7,7 +7,7 @@
 	"caves" : -0.1,
 	"crystals" : 32,
 
-	"music" : "la_kubisa_caverna",
+	"music" : "cubyz:la_kubisa_caverna",
 	"stoneBlock" : "cubyz:stone",
 	"structures" : [
 		{

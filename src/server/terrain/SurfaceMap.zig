@@ -64,10 +64,10 @@ pub const MapFragment = struct {
 	pub const mapSize = 1 << mapShift;
 	pub const mapMask = mapSize - 1;
 
-	heightMap: [mapSize][mapSize]f32 = undefined,
+	heightMap: [mapSize][mapSize]i32 = undefined,
 	biomeMap: [mapSize][mapSize]*const Biome = undefined,
-	minHeight: f32 = std.math.floatMax(f32),
-	maxHeight: f32 = 0,
+	minHeight: i32 = std.math.maxInt(i32),
+	maxHeight: i32 = 0,
 	pos: MapFragmentPosition,
 
 	wasStored: Atomic(bool) = .{.raw = false},
@@ -99,14 +99,15 @@ pub const MapFragment = struct {
 		return self.biomeMap[@intCast(xIndex)][@intCast(yIndex)];
 	}
 
-	pub fn getHeight(self: *MapFragment, wx: i32, wy: i32) f32 {
+	pub fn getHeight(self: *MapFragment, wx: i32, wy: i32) i32 {
 		const xIndex = wx>>self.pos.voxelSizeShift & mapMask;
 		const yIndex = wy>>self.pos.voxelSizeShift & mapMask;
 		return self.heightMap[@intCast(xIndex)][@intCast(yIndex)];
 	}
 	
 	const StorageHeader = struct {
-		const activeVersion: u8 = 0;
+		const minSupportedVersion: u8 = 0;
+		const activeVersion: u8 = 1;
 		version: u8 = activeVersion,
 		neighborInfo: NeighborInfo,
 	};
@@ -121,7 +122,7 @@ pub const MapFragment = struct {
 		@"++": bool = false,
 	};
 
-	pub fn load(self: *MapFragment, biomePalette: *main.assets.Palette, originalHeightMap: ?*[mapSize][mapSize]f32) !NeighborInfo {
+	pub fn load(self: *MapFragment, biomePalette: *main.assets.Palette, originalHeightMap: ?*[mapSize][mapSize]i32) !NeighborInfo {
 		const saveFolder: []const u8 = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{main.server.world.?.name}) catch unreachable;
 		defer main.stackAllocator.free(saveFolder);
 
@@ -135,26 +136,45 @@ pub const MapFragment = struct {
 			.version = fullData[0],
 			.neighborInfo = @bitCast(fullData[1]),
 		};
-		if(header.version != StorageHeader.activeVersion) return error.OutdatedFileVersion;
 		const compressedData = fullData[@sizeOf(StorageHeader)..];
-		const rawData: []u8 = main.stackAllocator.alloc(u8, mapSize*mapSize*(@sizeOf(u32) + 2*@sizeOf(f32)));
-		defer main.stackAllocator.free(rawData);
-		if(try main.utils.Compression.inflateTo(rawData, compressedData) != rawData.len) return error.CorruptedFile;
-		const biomeData = rawData[0..mapSize*mapSize*@sizeOf(u32)];
-		const heightData = rawData[mapSize*mapSize*@sizeOf(u32)..][0..mapSize*mapSize*@sizeOf(f32)];
-		const originalHeightData = rawData[mapSize*mapSize*(@sizeOf(u32) + @sizeOf(f32))..][0..mapSize*mapSize*@sizeOf(f32)];
-		for(0..mapSize) |x| {
-			for(0..mapSize) |y| {
-				self.biomeMap[x][y] = main.server.terrain.biomes.getById(biomePalette.palette.items[std.mem.readInt(u32, biomeData[4*(x*mapSize + y)..][0..4], .big)]);
-				self.heightMap[x][y] = @bitCast(std.mem.readInt(u32, heightData[4*(x*mapSize + y)..][0..4], .big));
-				if(originalHeightMap) |map| map[x][y] = @bitCast(std.mem.readInt(u32, originalHeightData[4*(x*mapSize + y)..][0..4], .big));
-			}
+		switch(header.version) {
+			0 => { // TODO: Remove after next breaking change
+				const rawData: []u8 = main.stackAllocator.alloc(u8, mapSize*mapSize*(@sizeOf(u32) + 2*@sizeOf(f32)));
+				defer main.stackAllocator.free(rawData);
+				if(try main.utils.Compression.inflateTo(rawData, compressedData) != rawData.len) return error.CorruptedFile;
+				const biomeData = rawData[0..mapSize*mapSize*@sizeOf(u32)];
+				const heightData = rawData[mapSize*mapSize*@sizeOf(u32)..][0..mapSize*mapSize*@sizeOf(f32)];
+				const originalHeightData = rawData[mapSize*mapSize*(@sizeOf(u32) + @sizeOf(f32))..][0..mapSize*mapSize*@sizeOf(f32)];
+				for(0..mapSize) |x| {
+					for(0..mapSize) |y| {
+						self.biomeMap[x][y] = main.server.terrain.biomes.getById(biomePalette.palette.items[std.mem.readInt(u32, biomeData[4*(x*mapSize + y)..][0..4], .big)]);
+						self.heightMap[x][y] = @intFromFloat(@as(f32, @bitCast(std.mem.readInt(u32, heightData[4*(x*mapSize + y)..][0..4], .big))));
+						if(originalHeightMap) |map| map[x][y] = @intFromFloat(@as(f32, @bitCast(std.mem.readInt(u32, originalHeightData[4*(x*mapSize + y)..][0..4], .big))));
+					}
+				}
+			},
+			1 => {
+				const rawData: []u8 = main.stackAllocator.alloc(u8, mapSize*mapSize*(@sizeOf(u32) + 2*@sizeOf(i32)));
+				defer main.stackAllocator.free(rawData);
+				if(try main.utils.Compression.inflateTo(rawData, compressedData) != rawData.len) return error.CorruptedFile;
+				const biomeData = rawData[0..mapSize*mapSize*@sizeOf(u32)];
+				const heightData = rawData[mapSize*mapSize*@sizeOf(u32)..][0..mapSize*mapSize*@sizeOf(i32)];
+				const originalHeightData = rawData[mapSize*mapSize*(@sizeOf(u32) + @sizeOf(i32))..][0..mapSize*mapSize*@sizeOf(i32)];
+				for(0..mapSize) |x| {
+					for(0..mapSize) |y| {
+						self.biomeMap[x][y] = main.server.terrain.biomes.getById(biomePalette.palette.items[std.mem.readInt(u32, biomeData[4*(x*mapSize + y)..][0..4], .big)]);
+						self.heightMap[x][y] = @bitCast(std.mem.readInt(u32, heightData[4*(x*mapSize + y)..][0..4], .big));
+						if(originalHeightMap) |map| map[x][y] = @bitCast(std.mem.readInt(u32, originalHeightData[4*(x*mapSize + y)..][0..4], .big));
+					}
+				}
+			},
+			else => return error.OutdatedFileVersion,
 		}
 		self.wasStored.store(true, .monotonic);
 		return header.neighborInfo;
 	}
 
-	pub fn save(self: *MapFragment, originalData: ?*[mapSize][mapSize]f32, neighborInfo: NeighborInfo) void {
+	pub fn save(self: *MapFragment, originalData: ?*[mapSize][mapSize]i32, neighborInfo: NeighborInfo) void {
 		const rawData: []u8 = main.stackAllocator.alloc(u8, mapSize*mapSize*(@sizeOf(u32) + 2*@sizeOf(f32)));
 		defer main.stackAllocator.free(rawData);
 		const biomeData = rawData[0..mapSize*mapSize*@sizeOf(u32)];
@@ -167,7 +187,7 @@ pub const MapFragment = struct {
 				std.mem.writeInt(u32, originalHeightData[4*(x*mapSize + y)..][0..4], @bitCast((if(originalData) |map| map else &self.heightMap)[x][y]), .big);
 			}
 		}
-		const compressedData = main.utils.Compression.deflate(main.stackAllocator, rawData);
+		const compressedData = main.utils.Compression.deflate(main.stackAllocator, rawData, .fast);
 		defer main.stackAllocator.free(compressedData);
 		
 		const fullData = main.stackAllocator.alloc(u8, compressedData.len + @sizeOf(StorageHeader));
@@ -308,7 +328,7 @@ pub fn regenerateLOD(worldName: []const u8) !void {
 		const mapFragment = main.globalAllocator.create(MapFragment);
 		defer main.stackAllocator.destroy(mapFragment);
 		mapFragment.init(pos.wx, pos.wy, pos.voxelSize);
-		var originalHeightMap: [MapFragment.mapSize][MapFragment.mapSize]f32 = undefined;
+		var originalHeightMap: [MapFragment.mapSize][MapFragment.mapSize]i32 = undefined;
 		const oldNeighborInfo = mapFragment.load(main.server.world.?.biomePalette, &originalHeightMap) catch |err| {
 			std.log.err("Error loading map at position {}: {s}", .{pos, @errorName(err)});
 			continue;
@@ -370,7 +390,7 @@ pub fn regenerateLOD(worldName: []const u8) !void {
 							if(neighborInfo.@"+o" and neighborInfo.@"o+" and neighborInfo.@"++") factor = 1;
 							const x = MapFragment.mapSize - 1 - a;
 							const y = MapFragment.mapSize - 1 - b;
-							originalHeightMap[x][y] = mapFragment.heightMap[x][y]*factor + originalHeightMap[x][y]*(1 - factor);
+							originalHeightMap[x][y] = @intFromFloat(@as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(originalHeightMap[x][y]))*(1 - factor));
 						}
 						if(neighborInfo.@"+o" or neighborInfo.@"o-") {
 							var factor: f32 = 1;
@@ -380,7 +400,7 @@ pub fn regenerateLOD(worldName: []const u8) !void {
 							if(neighborInfo.@"+o" and neighborInfo.@"o-" and neighborInfo.@"+-") factor = 1;
 							const x = MapFragment.mapSize - 1 - a;
 							const y = b;
-							originalHeightMap[x][y] = mapFragment.heightMap[x][y]*factor + originalHeightMap[x][y]*(1 - factor);
+							originalHeightMap[x][y] = @intFromFloat(@as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(originalHeightMap[x][y]))*(1 - factor));
 						}
 						if(neighborInfo.@"-o" or neighborInfo.@"o+") {
 							var factor: f32 = 1;
@@ -390,7 +410,7 @@ pub fn regenerateLOD(worldName: []const u8) !void {
 							if(neighborInfo.@"-o" and neighborInfo.@"o+" and neighborInfo.@"-+") factor = 1;
 							const x = a;
 							const y = MapFragment.mapSize - 1 - b;
-							originalHeightMap[x][y] = mapFragment.heightMap[x][y]*factor + originalHeightMap[x][y]*(1 - factor);
+							originalHeightMap[x][y] = @intFromFloat(@as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(originalHeightMap[x][y]))*(1 - factor));
 						}
 						if(neighborInfo.@"-o" or neighborInfo.@"o-") {
 							var factor: f32 = 1;
@@ -400,7 +420,7 @@ pub fn regenerateLOD(worldName: []const u8) !void {
 							if(neighborInfo.@"-o" and neighborInfo.@"o-" and neighborInfo.@"--") factor = 1;
 							const x = a;
 							const y = b;
-							originalHeightMap[x][y] = mapFragment.heightMap[x][y]*factor + originalHeightMap[x][y]*(1 - factor);
+							originalHeightMap[x][y] = @intFromFloat(@as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(originalHeightMap[x][y]))*(1 - factor));
 						}
 					}
 				}
@@ -420,22 +440,22 @@ pub fn regenerateLOD(worldName: []const u8) !void {
 					if(!neighborInfo.@"+o") {
 						const x = MapFragment.mapSize - 1 - a;
 						const y = b;
-						mapFragment.heightMap[x][y] = mapFragment.heightMap[x][y]*factor + generatedMap.heightMap[x][y]*(1 - factor);
+						mapFragment.heightMap[x][y] = @intFromFloat(@as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
 					}
 					if(!neighborInfo.@"-o") {
 						const x = a;
 						const y = b;
-						mapFragment.heightMap[x][y] = mapFragment.heightMap[x][y]*factor + generatedMap.heightMap[x][y]*(1 - factor);
+						mapFragment.heightMap[x][y] = @intFromFloat(@as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
 					}
 					if(!neighborInfo.@"o+") {
 						const x = b;
 						const y = MapFragment.mapSize - 1 - a;
-						mapFragment.heightMap[x][y] = mapFragment.heightMap[x][y]*factor + generatedMap.heightMap[x][y]*(1 - factor);
+						mapFragment.heightMap[x][y] = @intFromFloat(@as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
 					}
 					if(!neighborInfo.@"o-") {
 						const x = b;
 						const y = a;
-						mapFragment.heightMap[x][y] = mapFragment.heightMap[x][y]*factor + generatedMap.heightMap[x][y]*(1 - factor);
+						mapFragment.heightMap[x][y] = @intFromFloat(@as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
 					}
 				}
 			}
@@ -449,22 +469,22 @@ pub fn regenerateLOD(worldName: []const u8) !void {
 					if(!neighborInfo.@"++" and neighborInfo.@"+o" and neighborInfo.@"o+") {
 						const x = MapFragment.mapSize - 1 - a;
 						const y = MapFragment.mapSize - 1 - b;
-						mapFragment.heightMap[x][y] = mapFragment.heightMap[x][y]*factor + generatedMap.heightMap[x][y]*(1 - factor);
+						mapFragment.heightMap[x][y] = @intFromFloat(@as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
 					}
 					if(!neighborInfo.@"+-" and neighborInfo.@"+o" and neighborInfo.@"o-") {
 						const x = MapFragment.mapSize - 1 - a;
 						const y = b;
-						mapFragment.heightMap[x][y] = mapFragment.heightMap[x][y]*factor + generatedMap.heightMap[x][y]*(1 - factor);
+						mapFragment.heightMap[x][y] = @intFromFloat(@as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
 					}
 					if(!neighborInfo.@"-+" and neighborInfo.@"-o" and neighborInfo.@"o+") {
 						const x = a;
 						const y = MapFragment.mapSize - 1 - b;
-						mapFragment.heightMap[x][y] = mapFragment.heightMap[x][y]*factor + generatedMap.heightMap[x][y]*(1 - factor);
+						mapFragment.heightMap[x][y] = @intFromFloat(@as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
 					}
 					if(!neighborInfo.@"--" and neighborInfo.@"-o" and neighborInfo.@"o-") {
 						const x = a;
 						const y = b;
-						mapFragment.heightMap[x][y] = mapFragment.heightMap[x][y]*factor + generatedMap.heightMap[x][y]*(1 - factor);
+						mapFragment.heightMap[x][y] = @intFromFloat(@as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(generatedMap.heightMap[x][y]))*(1 - factor));
 					}
 				}
 			}
@@ -487,12 +507,12 @@ pub fn regenerateLOD(worldName: []const u8) !void {
 				for(0..MapFragment.mapSize/2) |y| {
 					var biomes: [4]?*const Biome = .{null} ** 4;
 					var biomeCounts: [4]u8 = .{0} ** 4;
-					var height: f32 = 0;
+					var height: i32 = 0;
 					for(0..2) |dx| {
 						for(0..2) |dy| {
 							const curX = x*2 + dx;
 							const curY = y*2 + dy;
-							height += cur.heightMap[curX][curY]/4;
+							height += cur.heightMap[curX][curY];
 							const biome = cur.biomeMap[curX][curY];
 							for(0..4) |i| {
 								if(biomes[i] == biome) {
@@ -516,7 +536,7 @@ pub fn regenerateLOD(worldName: []const u8) !void {
 					}
 					const nextX = offSetX + x;
 					const nextY = offSetY + y;
-					next.heightMap[nextX][nextY] = height;
+					next.heightMap[nextX][nextY] = @divFloor(height, 4);
 					next.biomeMap[nextX][nextY] = bestBiome;
 				}
 			}

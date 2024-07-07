@@ -23,6 +23,8 @@ const padding: f32 = 8;
 const width: f32 = 128;
 var buttonNameArena: main.utils.NeverFailingArenaAllocator = undefined;
 
+var needsUpdate: bool = false;
+
 pub fn openWorld(name: []const u8) void {
 	std.log.info("Opening world {s}", .{name});
 	main.server.thread = std.Thread.spawn(.{}, main.server.start, .{name}) catch |err| {
@@ -53,8 +55,7 @@ fn openWorldWrap(namePtr: usize) void { // TODO: Improve this situation. Maybe i
 
 fn flawedDeleteWorld(name: []const u8) !void {
 	try main.files.deleteDir("saves", name);
-	onClose();
-	onOpen();
+	needsUpdate = true;
 }
 
 fn deleteWorld(namePtr: usize) void {
@@ -90,6 +91,14 @@ fn parseEscapedFolderName(allocator: NeverFailingAllocator, name: []const u8) []
 		}
 	}
 	return result.toOwnedSlice();
+}
+
+pub fn update() void {
+	if(needsUpdate) {
+		needsUpdate = false;
+		onClose();
+		onOpen();
+	}
 }
 
 pub fn onOpen() void {

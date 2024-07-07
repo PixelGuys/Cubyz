@@ -1034,7 +1034,7 @@ pub const Protocols = struct {
 						defer json.free(main.stackAllocator);
 						const expectedTime = json.get(i64, "time", 0);
 						var curTime = world.gameTime.load(.monotonic);
-						if(@abs(curTime -% expectedTime) >= 1000) {
+						if(@abs(curTime -% expectedTime) >= 10) {
 							world.gameTime.store(expectedTime, .monotonic);
 						} else if(curTime < expectedTime) { // world.gameTime++
 							while(world.gameTime.cmpxchgWeak(curTime, curTime +% 1, .monotonic, .monotonic)) |actualTime| {
@@ -1225,7 +1225,7 @@ pub const Protocols = struct {
 			for(&map.startHeight, 0..) |val, i| {
 				std.mem.writeInt(i16, uncompressedData[2*i..][0..2], val, .big);
 			}
-			const compressedData = utils.Compression.deflate(main.stackAllocator, &uncompressedData);
+			const compressedData = utils.Compression.deflate(main.stackAllocator, &uncompressedData, .default);
 			defer main.stackAllocator.free(compressedData);
 			const data = main.stackAllocator.alloc(u8, 9 + compressedData.len);
 			defer main.stackAllocator.free(data);

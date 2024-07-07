@@ -30,7 +30,7 @@ const StructureModel = struct {
 		return StructureModel {
 			.vtable = vtable,
 			.data = vtable.loadModel(arena.allocator(), parameters),
-			.chance = parameters.get(f32, "chance", 0.5),
+			.chance = 16*parameters.get(f32, "chance", 0.01), // TODO: Should this use the sample point chance directly, instead of the per block chance?
 		};
 	}
 
@@ -227,12 +227,14 @@ pub const Biome = struct {
 	minHeight: i32,
 	maxHeight: i32,
 	interpolation: Interpolation,
+	interpolationWeight: f32,
 	roughness: f32,
 	hills: f32,
 	mountains: f32,
 	caves: f32,
 	crystals: u32,
 	stalagmites: u32,
+	stalagmiteBlock: u16,
 	stoneBlockType: u16,
 	fogDensity: f32,
 	fogColor: Vec3f,
@@ -265,13 +267,15 @@ pub const Biome = struct {
 			.hills = json.get(f32, "hills", 0),
 			.mountains = json.get(f32, "mountains", 0),
 			.interpolation = std.meta.stringToEnum(Interpolation, json.get([]const u8, "interpolation", "square")) orelse .square,
+			.interpolationWeight = @max(json.get(f32, "interpolationWeight", 1), std.math.floatMin(f32)),
 			.caves = json.get(f32, "caves", -0.375),
 			.crystals = json.get(u32, "crystals", 0),
 			.stalagmites = json.get(u32, "stalagmites", 0),
+			.stalagmiteBlock = blocks.getByID(json.get([]const u8, "stalagmiteBlock", "cubyz:limestone")),
 			.minHeight = json.get(i32, "minHeight", std.math.minInt(i32)),
 			.maxHeight = json.get(i32, "maxHeight", std.math.maxInt(i32)),
 			.supportsRivers = json.get(bool, "rivers", false),
-			.preferredMusic = main.globalAllocator.dupe(u8, json.get([]const u8, "music", "")),
+			.preferredMusic = main.globalAllocator.dupe(u8, json.get([]const u8, "music", "cubyz:cubyz")),
 			.isValidPlayerSpawn = json.get(bool, "validPlayerSpawn", false),
 			.chance = json.get(f32, "chance", if(json == .JsonNull) 0 else 1),
 			.maxSubBiomeCount = json.get(f32, "maxSubBiomeCount", std.math.floatMax(f32)),
@@ -289,10 +293,17 @@ pub const Biome = struct {
 		
 		const structures = json.getChild("structures");
 		var vegetation = main.ListUnmanaged(StructureModel){};
+		var totalChance: f32 = 0;
 		defer vegetation.deinit(main.stackAllocator);
 		for(structures.toSlice()) |elem| {
 			if(StructureModel.initModel(elem)) |model| {
 				vegetation.append(main.stackAllocator, model);
+				totalChance += model.chance;
+			}
+		}
+		if(totalChance > 1) {
+			for(vegetation.items) |*model| {
+				model.chance /= totalChance;
 			}
 		}
 		self.vegetationModels = main.globalAllocator.dupe(StructureModel, vegetation.items);

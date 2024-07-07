@@ -10,7 +10,7 @@
 
 	"chance" : 0,
 	
-	"music" : "out_of_breath",
+	"music" : "cubyz:out_of_breath",
 
 	"parentBiomes" : [
 		{

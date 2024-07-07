@@ -297,7 +297,7 @@ pub const CaveMapView = struct {
 	}
 };
 
-const cacheSize = 1 << 9; // Must be a power of 2!
+const cacheSize = 1 << 11; // Must be a power of 2!
 const cacheMask = cacheSize - 1;
 const associativity = 8; // 512 MiB Cache size
 var cache: Cache(CaveMapFragment, cacheSize, associativity, CaveMapFragment.decreaseRefCount) = .{};

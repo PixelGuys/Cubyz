@@ -270,6 +270,9 @@ fn takeBackgroundImageFn() void {
 	if(game.world == null) return;
 	renderer.MenuBackGround.takeBackgroundImage();
 }
+fn toggleHideGui() void {
+	gui.hideGui = !gui.hideGui;
+}
 fn toggleDebugOverlay() void {
 	gui.toggleWindow("debug");
 }
@@ -285,6 +288,13 @@ fn toggleNetworkDebugOverlay() void {
 fn toggleAdvancedNetworkDebugOverlay() void {
 	gui.toggleWindow("debug_network_advanced");
 }
+fn setHotbarSlot(i: comptime_int) *const fn() void {
+	return &struct {
+		fn set() void {
+			game.Player.selectedSlot = i - 1;
+		}
+	}.set;
+}
 
 pub const KeyBoard = struct {
 	const c = Window.c;
@@ -297,6 +307,8 @@ pub const KeyBoard = struct {
 		.{.name = "sprint", .key = c.GLFW_KEY_LEFT_CONTROL},
 		.{.name = "jump", .key = c.GLFW_KEY_SPACE},
 		.{.name = "fly", .key = c.GLFW_KEY_F, .pressAction = &game.flyToggle},
+		.{.name = "ghost", .key = c.GLFW_KEY_G, .pressAction = &game.ghostToggle},
+		.{.name = "hyperSpeed", .key = c.GLFW_KEY_H, .pressAction = &game.hyperSpeedToggle},
 		.{.name = "fall", .key = c.GLFW_KEY_LEFT_SHIFT},
 		.{.name = "fullscreen", .key = c.GLFW_KEY_F11, .releaseAction = &Window.toggleFullscreen},
 		.{.name = "placeBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &game.pressPlace, .releaseAction = &game.releasePlace},
@@ -326,7 +338,22 @@ pub const KeyBoard = struct {
 		.{.name = "textCut", .key = c.GLFW_KEY_X, .repeatAction = &gui.textCallbacks.cut},
 		.{.name = "textNewline", .key = c.GLFW_KEY_ENTER, .repeatAction = &gui.textCallbacks.newline},
 
+		// Hotbar shortcuts:
+		.{.name = "Hotbar 1", .key = c.GLFW_KEY_1, .releaseAction = setHotbarSlot(1)},
+		.{.name = "Hotbar 2", .key = c.GLFW_KEY_2, .releaseAction = setHotbarSlot(2)},
+		.{.name = "Hotbar 3", .key = c.GLFW_KEY_3, .releaseAction = setHotbarSlot(3)},
+		.{.name = "Hotbar 4", .key = c.GLFW_KEY_4, .releaseAction = setHotbarSlot(4)},
+		.{.name = "Hotbar 5", .key = c.GLFW_KEY_5, .releaseAction = setHotbarSlot(5)},
+		.{.name = "Hotbar 6", .key = c.GLFW_KEY_6, .releaseAction = setHotbarSlot(6)},
+		.{.name = "Hotbar 7", .key = c.GLFW_KEY_7, .releaseAction = setHotbarSlot(7)},
+		.{.name = "Hotbar 8", .key = c.GLFW_KEY_8, .releaseAction = setHotbarSlot(8)},
+		.{.name = "Hotbar 9", .key = c.GLFW_KEY_9, .releaseAction = setHotbarSlot(9)},
+		.{.name = "Hotbar 10", .key = c.GLFW_KEY_0, .releaseAction = setHotbarSlot(10)},
+		.{.name = "Hotbar 11", .key = c.GLFW_KEY_MINUS, .releaseAction = setHotbarSlot(11)},
+		.{.name = "Hotbar 12", .key = c.GLFW_KEY_EQUAL, .releaseAction = setHotbarSlot(12)},
+
 		// debug:
+		.{.name = "hideMenu", .key = c.GLFW_KEY_F1, .releaseAction = &toggleHideGui},
 		.{.name = "debugOverlay", .key = c.GLFW_KEY_F3, .releaseAction = &toggleDebugOverlay},
 		.{.name = "performanceOverlay", .key = c.GLFW_KEY_F4, .releaseAction = &togglePerformanceOverlay},
 		.{.name = "gpuPerformanceOverlay", .key = c.GLFW_KEY_F5, .releaseAction = &toggleGPUPerformanceOverlay},
@@ -345,7 +372,10 @@ pub const KeyBoard = struct {
 	}
 };
 
+/// Records gpu time per frame.
 pub var lastFrameTime = std.atomic.Value(f64).init(0);
+/// Measures time between different frames' beginnings.
+pub var lastDeltaTime = std.atomic.Value(f64).init(0);
 
 pub fn main() void {
 	seed = @bitCast(std.time.milliTimestamp());
@@ -426,7 +456,7 @@ pub fn main() void {
 	c.glDepthFunc(c.GL_LESS);
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
-	var lastTime = std.time.nanoTimestamp();
+	var lastBeginRendering = std.time.nanoTimestamp();
 
 	if(settings.developerAutoEnterWorld.len != 0) {
 		// Speed up the dev process by entering the world directly.
@@ -446,17 +476,27 @@ pub fn main() void {
 			std.time.sleep(16_000_000);
 		}
 
+		const endRendering = std.time.nanoTimestamp();
+		const frameTime = @as(f64, @floatFromInt(endRendering -% lastBeginRendering))/1e9;
+		if(settings.developerGPUInfiniteLoopDetection and frameTime > 5) { // On linux a process that runs 10 seconds or longer on the GPU will get stopped. This allows detecting an infinite loop on the GPU.
+			std.log.err("Frame got too long with {} seconds. Infinite loop on GPU?", .{frameTime});
+			std.posix.exit(1);
+		}
+		lastFrameTime.store(frameTime, .monotonic);
+
+		if(settings.fpsCap) |fpsCap| {
+			const minFrameTime = @divFloor(1000*1000*1000, fpsCap);
+			const sleep = @min(minFrameTime, @max(0, minFrameTime - (endRendering -% lastBeginRendering)));
+			std.time.sleep(sleep);
+		}
+		const begin = std.time.nanoTimestamp();
+		const deltaTime = @as(f64, @floatFromInt(begin -% lastBeginRendering))/1e9;
+		lastDeltaTime.store(deltaTime, .monotonic);
+		lastBeginRendering = begin;
+
 		Window.handleEvents();
 		file_monitor.handleEvents();
 
-		const newTime = std.time.nanoTimestamp();
-		const deltaTime = @as(f64, @floatFromInt(newTime -% lastTime))/1e9;
-		if(settings.developerGPUInfiniteLoopDetection and deltaTime > 5) { // On linux a process that runs 10 seconds or longer on the GPU will get stopped. This allows detecting an infinite loop on the GPU.
-			std.log.err("Frame got too long with {} seconds. Infinite loop on GPU?", .{deltaTime});
-			std.posix.exit(1);
-		}
-		lastFrameTime.store(deltaTime, .monotonic);
-		lastTime = newTime;
 		if(game.world != null) { // Update the game
 			game.update(deltaTime);
 		}

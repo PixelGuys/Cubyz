@@ -124,15 +124,19 @@ pub const Model = struct {
 				for(&quad.corners) |*corner| {
 					corner.* -= quad.normal;
 				}
-				const quadIndex = addQuad(quad);
+				const quadIndex = addQuad(quad) catch continue;
 				self.neighborFacingQuads[neighbor][indices[neighbor]] = quadIndex;
 				indices[neighbor] += 1;
 			} else {
-				const quadIndex = addQuad(quad);
+				const quadIndex = addQuad(quad) catch continue;
 				self.internalQuads[internalIndex] = quadIndex;
 				internalIndex += 1;
 			}
 		}
+		for(0..6) |i| {
+			self.neighborFacingQuads[i] = main.globalAllocator.realloc(self.neighborFacingQuads[i], indices[i]);
+		}
+		self.internalQuads = main.globalAllocator.realloc(self.internalQuads, internalIndex);
 		self.hasNeighborFacingQuads = false;
 		self.allNeighborsOccluded = true;
 		self.noNeighborsOccluded = true;
@@ -222,10 +226,18 @@ pub var fullCube: u16 = undefined;
 
 var quadDeduplication: std.AutoHashMap([@sizeOf(QuadInfo)]u8, u16) = undefined;
 
-fn addQuad(info: QuadInfo) u16 {
+fn addQuad(info: QuadInfo) error{Degenerate}!u16 {
 	if(quadDeduplication.get(std.mem.toBytes(info))) |id| {
 		return id;
 	}
+	// Check if it's degenerate:
+	var cornerEqualities: u32 = 0;
+	for(0..4) |i| {
+		for(i+1..4) |j| {
+			if(@reduce(.And, info.corners[i] == info.corners[j])) cornerEqualities += 1;
+		}
+	}
+	if(cornerEqualities >= 2) return error.Degenerate; // One corner equality is fine, since then the quad degenerates to a triangle, which has a non-zero area.
 	const index: u16 = @intCast(quads.items.len);
 	quads.append(info);
 	quadDeduplication.put(std.mem.toBytes(info), index) catch unreachable;

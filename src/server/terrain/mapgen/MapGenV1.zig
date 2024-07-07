@@ -10,6 +10,8 @@ const noise = terrain.noise;
 const FractalNoise = noise.FractalNoise;
 const RandomlyWeightedFractalNoise = noise.RandomlyWeightedFractalNoise;
 const PerlinNoise = noise.PerlinNoise;
+const vec = main.vec;
+const Vec2f = vec.Vec2f;
 
 pub const id = "cubyz:mapgen_v1";
 
@@ -22,25 +24,25 @@ pub fn deinit() void {
 }
 
 /// Assumes the 2 points are at tᵢ = (0, 1)
-fn interpolationWeights(t: f32, interpolation: terrain.biomes.Interpolation) [2]f32 {
+fn interpolationWeights(t: f32, interpolation: terrain.biomes.Interpolation) Vec2f {
 	switch (interpolation) {
 		.none => {
 			if(t < 0.5) {
-				return [2]f32 {1, 0};
+				return .{1, 0};
 			} else {
-				return [2]f32 {0, 1};
+				return .{0, 1};
 			}
 		},
 		.linear => {
-			return [2]f32 {1 - t, t};
+			return .{1 - t, t};
 		},
 		.square => {
 			if(t < 0.5) {
 				const tSqr = 2*t*t;
-				return [2]f32 {1 - tSqr, tSqr};
+				return .{1 - tSqr, tSqr};
 			} else {
 				const tSqr = 2*(1 - t)*(1 - t);
-				return [2]f32 {tSqr, 1 - tSqr};
+				return .{tSqr, 1 - tSqr};
 			}
 		},
 	}
@@ -67,7 +69,7 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 	// A ridgid noise map to generate interesting mountains.
 	const mountainMap = Array2D(f32).init(main.stackAllocator, scaledSize, scaledSize);
 	defer mountainMap.deinit(main.stackAllocator);
-	RandomlyWeightedFractalNoise.generateSparseFractalTerrain(map.pos.wx, map.pos.wy, 64, worldSeed ^ 6758947592930535, mountainMap, map.pos.voxelSize);
+	RandomlyWeightedFractalNoise.generateSparseFractalTerrain(map.pos.wx, map.pos.wy, 256, worldSeed ^ 6758947592930535, mountainMap, map.pos.voxelSize);
 
 	// A smooth map for smaller hills.
 	const hillMap = PerlinNoise.generateSmoothNoise(main.globalAllocator, map.pos.wx, map.pos.wy, mapSize, mapSize, 128, 32, worldSeed ^ 157839765839495820, map.pos.voxelSize, 0.5);
@@ -113,8 +115,24 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 					closestBiome = biomePositions.get(@intCast(xBiome + 1), @intCast(yBiome + 1)).biome;
 				}
 			}
-			const coefficientsX = interpolationWeights(relXBiome, closestBiome.interpolation);
-			const coefficientsY = interpolationWeights(relYBiome, closestBiome.interpolation);
+			const interpolationCoefficientsX = interpolationWeights(relXBiome, .square);
+			const interpolationCoefficientsY = interpolationWeights(relYBiome, .square);
+			var coefficientsX: vec.Vec2f = .{0, 0};
+			var coefficientsY: vec.Vec2f = .{0, 0};
+			var totalWeight: f32 = 0;
+			for(0..2) |dx| {
+				for(0..2) |dy| {
+					const biomeMapX = @as(usize, @intCast(xBiome)) + dx;
+					const biomeMapY = @as(usize, @intCast(yBiome)) + dy;
+					const biomeSample = biomePositions.get(biomeMapX, biomeMapY);
+					const weight = interpolationCoefficientsX[dx]*interpolationCoefficientsY[dy]*biomeSample.biome.interpolationWeight;
+					coefficientsX += interpolationWeights(relXBiome, biomeSample.biome.interpolation)*@as(Vec2f, @splat(weight));
+					coefficientsY += interpolationWeights(relYBiome, biomeSample.biome.interpolation)*@as(Vec2f, @splat(weight));
+					totalWeight += weight;
+				}
+			}
+			coefficientsX /= @splat(totalWeight);
+			coefficientsY /= @splat(totalWeight);
 			for(0..2) |dx| {
 				for(0..2) |dy| {
 					const biomeMapX = @as(usize, @intCast(xBiome)) + dx;
@@ -130,10 +148,10 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 			height += (roughMap.get(x, y) - 0.5)*2*roughness;
 			height += (hillMap.get(x, y) - 0.5)*2*hills;
 			height += (mountainMap.get(x, y) - 0.5)*2*mountains;
-			map.heightMap[x][y] = height;
-			map.minHeight = @min(map.minHeight, height);
+			map.heightMap[x][y] = @intFromFloat(height);
+			map.minHeight = @min(map.minHeight, @as(i32, @intFromFloat(height)));
 			map.minHeight = @max(map.minHeight, 0);
-			map.maxHeight = @max(map.maxHeight, height);
+			map.maxHeight = @max(map.maxHeight, @as(i32, @intFromFloat(height)));
 
 
 			// Select a biome. Also adding some white noise to make a smoother transition.

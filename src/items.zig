@@ -128,8 +128,13 @@ pub const BaseItem = struct {
 
 	pub fn getTexture(self: *BaseItem) graphics.Texture {
 		if(self.texture == null) {
-			if(self.block) |blockType| {
-				self.texture = graphics.generateBlockTexture(blockType);
+			if(self.image.imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
+				if(self.block) |blockType| {
+					self.texture = graphics.generateBlockTexture(blockType);
+				} else {
+					self.texture = graphics.Texture.init();
+					self.texture.?.generate(self.image);
+				}
 			} else {
 				self.texture = graphics.Texture.init();
 				self.texture.?.generate(self.image);

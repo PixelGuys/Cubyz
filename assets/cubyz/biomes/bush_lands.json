@@ -9,7 +9,7 @@
 	"hills" : 10,
 	"rivers" : true,
 	
-	"music" : "sunrise",
+	"music" : "cubyz:sunrise",
 
 	"ground_structure" : [
 		"cubyz:grass",
@@ -22,9 +22,11 @@
 			"log" : "cubyz:oak_log",
 			"top" : "cubyz:oak_top",
 			"chance" : 0.01,
-			"type" : "bush",
-			"height" : 4,
-			"height_variation" : 6
+			"type" : "round",
+			"height" : 1,
+			"height_variation" : 1,
+			"leafRadius" : 2,
+			"leafRadius_variation" : 1,
 		},
 		{
 			"id" : "cubyz:ground_patch",

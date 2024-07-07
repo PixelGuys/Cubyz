@@ -211,11 +211,9 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 		mesh.prepareRendering(&chunkList);
 	}
 	gpu_performance_measuring.stopQuery();
-	gpu_performance_measuring.startQuery(.chunk_rendering);
 	if(chunkList.items.len != 0) {
 		chunk_meshing.drawChunksIndirect(chunkList.items, game.projectionMatrix, ambientLight, playerPos, false);
 	}
-	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.entity_rendering);
 	entity.ClientEntityManager.render(game.projectionMatrix, ambientLight, .{1, 0.5, 0.25}, playerPos);
@@ -242,7 +240,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 			meshes[i].prepareTransparentRendering(playerPos, &chunkList);
 		}
 		gpu_performance_measuring.stopQuery();
-		gpu_performance_measuring.startQuery(.transparent_rendering);
 		if(chunkList.items.len != 0) {
 			chunk_meshing.drawChunksIndirect(chunkList.items, game.projectionMatrix, ambientLight, playerPos, true);
 		}
@@ -251,7 +248,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glDepthFunc(c.GL_LESS);
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 	chunk_meshing.endRender();
-	gpu_performance_measuring.stopQuery();
 
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
 
@@ -512,7 +508,7 @@ pub const MenuBackGround = struct {
 		lastTime = newTime;
 		const viewMatrix = Mat4f.rotationZ(angle);
 		shader.bind();
-		updateViewport(lastWidth, lastHeight, 70.0);
+		updateViewport(main.Window.width, main.Window.height, 70.0);
 
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
@@ -715,7 +711,7 @@ pub const MeshSelection = struct {
 		while(total_tMax < closestDistance) {
 			const block = mesh_storage.getBlock(voxelPos[0], voxelPos[1], voxelPos[2]) orelse break;
 			if(block.typ != 0) {
-				if(block.blockClass() != .fluid) { // TODO: Buckets could select fluids
+				if(block.blockClass() != .fluid and block.blockClass() != .air) { // TODO: Buckets could select fluids
 					const relativePlayerPos: Vec3f = @floatCast(pos - @as(Vec3d, @floatFromInt(voxelPos)));
 					if(block.mode().rayIntersection(block, inventoryStack, voxelPos, relativePlayerPos, _dir)) |intersection| {
 						if(intersection.distance <= closestDistance) {
@@ -753,6 +749,13 @@ pub const MeshSelection = struct {
 		// TODO: Test entities
 	}
 
+	fn canPlaceBlock(pos: Vec3i, block: main.blocks.Block) bool {
+		if(main.game.Player.collideWithBlock(block, pos[0], pos[1], pos[2], main.game.Player.getPosBlocking(), main.game.Player.boundingBoxExtent, .{0, 0, 0}) != null) {
+			return false;
+		}
+		return true; // TODO: Check other entities
+	}
+
 	pub fn placeBlock(inventoryStack: *main.items.ItemStack) void {
 		if(selectedBlockPos) |selectedPos| {
 			var block = mesh_storage.getBlock(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
@@ -766,6 +769,7 @@ pub const MeshSelection = struct {
 							if(itemBlock == block.typ) {
 								const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
 								if(rotationMode.generateData(main.game.world.?, selectedPos, relPos, lastDir, neighborDir, &block, false)) {
+									if(!canPlaceBlock(selectedPos, block)) return;
 									updateBlockAndSendUpdate(selectedPos[0], selectedPos[1], selectedPos[2], block);
 									_ = inventoryStack.add(item, @as(i32, -1));
 									return;
@@ -778,6 +782,7 @@ pub const MeshSelection = struct {
 							block = mesh_storage.getBlock(neighborPos[0], neighborPos[1], neighborPos[2]) orelse return;
 							if(block.typ == itemBlock) {
 								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, &block, false)) {
+									if(!canPlaceBlock(neighborPos, block)) return;
 									updateBlockAndSendUpdate(neighborPos[0], neighborPos[1], neighborPos[2], block);
 									_ = inventoryStack.add(item, @as(i32, -1));
 									return;
@@ -788,6 +793,7 @@ pub const MeshSelection = struct {
 								block.typ = itemBlock;
 								block.data = 0;
 								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, &block, true)) {
+									if(!canPlaceBlock(neighborPos, block)) return;
 									updateBlockAndSendUpdate(neighborPos[0], neighborPos[1], neighborPos[2], block);
 									_ = inventoryStack.add(item, @as(i32, -1));
 									return;
@@ -850,6 +856,7 @@ pub const MeshSelection = struct {
 	}
 
 	pub fn render(projectionMatrix: Mat4f, viewMatrix: Mat4f, playerPos: Vec3d) void {
+		if(main.gui.hideGui) return;
 		if(selectedBlockPos) |_selectedBlockPos| {
 			c.glEnable(c.GL_POLYGON_OFFSET_LINE);
 			defer c.glDisable(c.GL_POLYGON_OFFSET_LINE);

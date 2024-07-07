@@ -52,13 +52,11 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 				const biome = biomeMap.getBiome(px, py, relZ);
 				var randomValue = random.nextFloat(&seed);
 				for(biome.vegetationModels) |model| { // TODO: Could probably use an alias table here.
-					const adaptedChance = model.chance*16;
-					if(randomValue < adaptedChance) {
+					if(randomValue <  model.chance) {
 						model.generate(px, py, relZ, chunk, caveMap, &seed);
 						break;
 					} else {
-						// Make sure that after the first one was considered all others get the correct chances.
-						randomValue = (randomValue - adaptedChance)/(1 - adaptedChance);
+						randomValue -= model.chance;
 					}
 				}
 			}
@@ -71,22 +69,21 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 				const wpx = px -% 16 +% chunk.super.pos.wx;
 				const wpy = py -% 16 +% chunk.super.pos.wy;
 
-				const relZ = @as(i32, @intFromFloat(biomeMap.getSurfaceHeight(wpx, wpy))) -% chunk.super.pos.wz;
+				const relZ = biomeMap.getSurfaceHeight(wpx, wpy) -% chunk.super.pos.wz;
 				if(relZ < -32 or relZ >= chunk.super.width + 32) continue;
 
 				var seed = random.initSeed3D(worldSeed, .{wpx, wpy, relZ});
 				var randomValue = random.nextFloat(&seed);
 				const biome = biomeMap.getBiome(px, py, relZ);
 				for(biome.vegetationModels) |model| { // TODO: Could probably use an alias table here.
-					var adaptedChance = model.chance;
+					var adaptedChance = model.chance/16;
 					// Increase chance if there are less spawn points considered. Messes up positions, but at that distance density matters more.
 					adaptedChance = 1 - std.math.pow(f32, 1 - adaptedChance, @as(f32, @floatFromInt(chunk.super.pos.voxelSize*chunk.super.pos.voxelSize)));
 					if(randomValue < adaptedChance) {
 						model.generate(px - 16, py - 16, relZ, chunk, caveMap, &seed);
 						break;
 					} else {
-						// Make sure that after the first one was considered all others get the correct chances.
-						randomValue = (randomValue - adaptedChance)/(1 - adaptedChance);
+						randomValue -= adaptedChance;
 					}
 				}
 			}

@@ -23,6 +23,7 @@ fn apply(_: usize) void {
 	const oldName = settings.playerName;
 	main.globalAllocator.free(settings.playerName);
 	settings.playerName = main.globalAllocator.dupe(u8, textComponent.currentString.items);
+	settings.save();
 
 	gui.closeWindow(&window);
 	if(oldName.len == 0) {

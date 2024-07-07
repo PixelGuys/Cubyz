@@ -29,6 +29,8 @@ pub var openWindows: List(*GuiWindow) = undefined;
 var selectedWindow: ?*GuiWindow = null;
 pub var selectedTextInput: ?*TextInput = null;
 var hoveredAWindow: bool = false;
+pub var reorderWindows: bool = false;
+pub var hideGui: bool = false;
 
 pub var scale: f32 = undefined;
 
@@ -181,7 +183,7 @@ pub fn deinit() void {
 	GuiCommandQueue.deinit();
 }
 
-fn save() void {
+pub fn save() void {
 	const guiJson = JsonElement.initObject(main.stackAllocator);
 	defer guiJson.free(main.stackAllocator);
 	for(windowList.items) |window| {
@@ -341,6 +343,7 @@ pub fn openHud() void {
 			openWindowFromRef(window);
 		}
 	}
+	reorderWindows = false;
 }
 
 fn openWindowCallbackFunction(windowPtr: usize) void {
@@ -527,18 +530,20 @@ pub fn updateAndRenderGui() void {
 	for(openWindows.items) |window| {
 		window.update();
 	}
-	if(!main.Window.grabbed) {
-		draw.setColor(0x80000000);
-		GuiWindow.borderShader.bind();
-		graphics.c.glUniform2f(GuiWindow.borderUniforms.effectLength, main.Window.getWindowSize()[0]/6, main.Window.getWindowSize()[1]/6);
-		draw.customShadedRect(GuiWindow.borderUniforms, .{0, 0}, main.Window.getWindowSize());
+	if(!hideGui) {
+		if(!main.Window.grabbed) {
+			draw.setColor(0x80000000);
+			GuiWindow.borderShader.bind();
+			graphics.c.glUniform2f(GuiWindow.borderUniforms.effectLength, main.Window.getWindowSize()[0]/6, main.Window.getWindowSize()[1]/6);
+			draw.customShadedRect(GuiWindow.borderUniforms, .{0, 0}, main.Window.getWindowSize());
+		}
+		const oldScale = draw.setScale(scale);
+		defer draw.restoreScale(oldScale);
+		for(openWindows.items) |window| {
+			window.render(mousePos);
+		}
+		inventory.render(mousePos);
 	}
-	const oldScale = draw.setScale(scale);
-	defer draw.restoreScale(oldScale);
-	for(openWindows.items) |window| {
-		window.render(mousePos);
-	}
-	inventory.render(mousePos);
 }
 
 pub fn toggleGameMenu() void {
@@ -563,6 +568,7 @@ pub fn toggleGameMenu() void {
 				i += 1;
 			}
 		}
+		reorderWindows = false;
 	}
 }
 

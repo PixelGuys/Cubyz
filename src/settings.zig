@@ -20,6 +20,8 @@ pub var cpuThreads: ?u64 = null;
 pub var anisotropicFiltering: u8 = 4.0;
 
 
+pub var fpsCap: ?u32 = null;
+
 pub var fov: f32 = 70;
 
 pub var mouseSensitivity: f32 = 1;
@@ -94,6 +96,26 @@ pub fn init() void {
 }
 
 pub fn deinit() void {
+	save();
+	inline for(@typeInfo(@This()).Struct.decls) |decl| {
+		const is_const = @typeInfo(@TypeOf(&@field(@This(), decl.name))).Pointer.is_const; // Sadly there is no direct way to check if a declaration is const.
+		if(!is_const) {
+			const declType = @TypeOf(@field(@This(), decl.name));
+			if(@typeInfo(declType) == .Struct) {
+				@compileError("Not implemented yet.");
+			}
+			if(@typeInfo(declType) == .Pointer) {
+				if(@typeInfo(declType).Pointer.size == .Slice) {
+					main.globalAllocator.free(@field(@This(), decl.name));
+				} else {
+					@compileError("Not implemented yet.");
+				}
+			}
+		}
+	}
+}
+
+pub fn save() void {
 	const jsonObject = JsonElement.initObject(main.stackAllocator);
 	defer jsonObject.free(main.stackAllocator);
 
@@ -108,13 +130,6 @@ pub fn deinit() void {
 				jsonObject.putOwnedString(decl.name, @field(@This(), decl.name));
 			} else {
 				jsonObject.put(decl.name, @field(@This(), decl.name));
-			}
-			if(@typeInfo(declType) == .Pointer) {
-				if(@typeInfo(declType).Pointer.size == .Slice) {
-					main.globalAllocator.free(@field(@This(), decl.name));
-				} else {
-					@compileError("Not implemented yet.");
-				}
 			}
 		}
 	}

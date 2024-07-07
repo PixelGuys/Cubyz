@@ -18,6 +18,7 @@ pub var window = GuiWindow {
 
 fn musicCallback(newValue: f32) void {
 	settings.musicVolume = deziBelToLinear(newValue);
+	settings.save();
 }
 
 fn deziBelToLinear(x: f32) f32 {

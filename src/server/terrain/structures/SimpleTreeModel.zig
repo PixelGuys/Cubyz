@@ -18,7 +18,6 @@ const SimpleTreeModel = @This();
 const Type = enum {
 	pyramid,
 	round,
-	bush,
 };
 
 typ: Type,
@@ -27,17 +26,24 @@ woodBlock: u16,
 topWoodBlock: u16,
 height0: i32,
 deltaHeight: u31,
+leafRadius: f32,
+deltaLeafRadius: f32,
 branched: bool,
 
 pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: JsonElement) *SimpleTreeModel {
 	const self = arenaAllocator.create(SimpleTreeModel);
 	self.* = .{
-		.typ = std.meta.stringToEnum(Type, parameters.get([]const u8, "type", "")) orelse .round,
+		.typ = std.meta.stringToEnum(Type, parameters.get([]const u8, "type", "")) orelse blk: {
+			if(parameters.get(?[]const u8, "type", null)) |typ| std.log.err("Unknown tree type \"{s}\"", .{typ});
+			break :blk .round;
+		},
 		.leavesBlock = main.blocks.getByID(parameters.get([]const u8, "leaves", "cubyz:oak_leaves")),
 		.woodBlock = main.blocks.getByID(parameters.get([]const u8, "log", "cubyz:oak_log")),
 		.topWoodBlock = main.blocks.getByID(parameters.get([]const u8, "top", "cubyz:oak_top")),
 		.height0 = parameters.get(i32, "height", 6),
 		.deltaHeight = parameters.get(u31, "height_variation", 3),
+		.leafRadius = parameters.get(f32, "leafRadius", (1 + parameters.get(f32, "height", 6))/2),
+		.deltaLeafRadius = parameters.get(f32, "leafRadius_variation", parameters.get(f32, "height_variation", 3)/2),
 		.branched = parameters.get(bool, "branched", true),
 	};
 	return self;
@@ -78,7 +84,9 @@ pub fn generateBranch(self: *SimpleTreeModel, x: i32, y: i32, z: i32, d: u32, ch
 }
 
 pub fn generate(self: *SimpleTreeModel, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) void {
-	var height = self.height0 + random.nextIntBounded(u31, seed, self.deltaHeight);
+	const factor = random.nextFloat(seed);
+	var height = self.height0 + @as(i32, @intFromFloat(factor*@as(f32, @floatFromInt(self.deltaHeight))));
+	const leafRadius = self.leafRadius + factor*self.deltaLeafRadius;
 
 	if(z + height >= caveMap.findTerrainChangeAbove(x, y, z)) // Space is too small.Allocator
 		return;
@@ -116,17 +124,16 @@ pub fn generate(self: *SimpleTreeModel, x: i32, y: i32, z: i32, chunk: *main.chu
 		.round => {
 			self.generateStem(x, y, z, height, chunk, seed);
 
-			const leafRadius = 1 + @divFloor(height, 2);
-			const floatLeafRadius = @as(f32, @floatFromInt(leafRadius)) - random.nextFloat(seed);
-			const radiusSqr: i32 = @intFromFloat(floatLeafRadius*floatLeafRadius);
-			const randomRadiusSqr: i32 = @intFromFloat((floatLeafRadius - 0.25)*(floatLeafRadius - 0.25));
+			const ceilRadius: i32 = @intFromFloat(@ceil(leafRadius));
+			const radiusSqr: i32 = @intFromFloat(leafRadius*leafRadius);
+			const randomRadiusSqr: i32 = @intFromFloat((leafRadius - 0.25)*(leafRadius - 0.25));
 			const center = z + height;
-			var pz = chunk.startIndex(center - leafRadius);
-			while(pz < center + leafRadius) : (pz += chunk.super.pos.voxelSize) {
-				var px = chunk.startIndex(x - leafRadius);
-				while(px < x + leafRadius) : (px += chunk.super.pos.voxelSize) {
-					var py = chunk.startIndex(y - leafRadius);
-					while(py < y + leafRadius) : (py += chunk.super.pos.voxelSize) {
+			var pz = chunk.startIndex(center - ceilRadius);
+			while(pz < center + ceilRadius) : (pz += chunk.super.pos.voxelSize) {
+				var px = chunk.startIndex(x - ceilRadius);
+				while(px < x + ceilRadius) : (px += chunk.super.pos.voxelSize) {
+					var py = chunk.startIndex(y - ceilRadius);
+					while(py < y + ceilRadius) : (py += chunk.super.pos.voxelSize) {
 						const distSqr = (pz - center)*(pz - center) + (px - x)*(px - x) + (py - y)*(py - y);
 						if(chunk.liesInChunk(px, py, pz) and distSqr < radiusSqr and (distSqr < randomRadiusSqr or random.nextInt(u1, seed) != 0)) { // TODO: Use another seed to make this more reliable!
 							chunk.updateBlockIfDegradable(px, py, pz, .{.typ = self.leavesBlock, .data = 0}); // TODO: Natural standard.
@@ -135,30 +142,5 @@ pub fn generate(self: *SimpleTreeModel, x: i32, y: i32, z: i32, chunk: *main.chu
 				}
 			}
 		},
-		.bush => {
-			const oldHeight = height;
-			height = @min(2, height); // Make sure the stem of the bush stays small.
-
-			self.generateStem(x, y, z, height, chunk, seed);
-
-			const leafRadius = 1 + @divFloor(oldHeight, 2);
-			const floatLeafRadius = @as(f32, @floatFromInt(leafRadius)) - random.nextFloat(seed);
-			const radiusSqr: i32 = @intFromFloat(floatLeafRadius*floatLeafRadius);
-			const randomRadiusSqr: i32 = @intFromFloat((floatLeafRadius - 0.25)*(floatLeafRadius - 0.25));
-			const center = z + height;
-			var pz = chunk.startIndex(center - leafRadius);
-			while(pz < center + leafRadius) : (pz += chunk.super.pos.voxelSize) {
-				var px = chunk.startIndex(x - leafRadius);
-				while(px < x + leafRadius) : (px += chunk.super.pos.voxelSize) {
-					var py = chunk.startIndex(y - leafRadius);
-					while(py < y + leafRadius) : (py += chunk.super.pos.voxelSize) {
-						const distSqr = (pz - center)*(pz - center) + (px - x)*(px - x) + (py - y)*(py - y);
-						if(chunk.liesInChunk(px, py, pz) and distSqr < radiusSqr and (distSqr < randomRadiusSqr or random.nextInt(u1, seed) != 0)) { // TODO: Use another seed to make this more reliable!
-							chunk.updateBlockIfDegradable(px, py, pz, .{.typ = self.leavesBlock, .data = 0}); // TODO: Natural standard.
-						}
-					}
-				}
-			}
-		}
 	}
 }

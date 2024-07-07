@@ -309,12 +309,12 @@ pub const InterpolatableCaveBiomeMapView = struct {
 		if(wy -% self.surfaceFragments[0].pos.wy >= MapFragment.mapSize*self.pos.voxelSize) {
 			index += 1;
 		}
-		const height: i32 = @intFromFloat(self.surfaceFragments[index].getHeight(wx, wy));
+		const height: i32 = self.surfaceFragments[index].getHeight(wx, wy);
 		if(wz < height - 32*self.pos.voxelSize or wz > height + 128 + self.pos.voxelSize) return null;
 		return self.surfaceFragments[index].getBiome(wx, wy);
 	}
 
-	pub fn getSurfaceHeight(self: InterpolatableCaveBiomeMapView, wx: i32, wy: i32) f32 {
+	pub fn getSurfaceHeight(self: InterpolatableCaveBiomeMapView, wx: i32, wy: i32) i32 {
 		var index: u8 = 0;
 		if(wx -% self.surfaceFragments[0].pos.wx >= MapFragment.mapSize*self.pos.voxelSize) {
 			index += 2;
@@ -413,7 +413,7 @@ pub const CaveBiomeMapView = struct {
 		}
 	}
 
-	pub fn getSurfaceHeight(self: CaveBiomeMapView, wx: i32, wy: i32) f32 {
+	pub fn getSurfaceHeight(self: CaveBiomeMapView, wx: i32, wy: i32) i32 {
 		return self.super.getSurfaceHeight(wx, wy);
 	}
 

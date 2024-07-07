@@ -24,12 +24,36 @@ const anisotropy = [_]u8{1, 2, 4, 8, 16};
 
 const resolutions = [_]u16{25, 50, 100};
 
+fn fpsCapRound(newValue: f32) ?u32 {
+	if(newValue < 144.0) {
+		return @as(u32, @intFromFloat(newValue/5.0))*5;
+	} else if (newValue < 149.0) {
+		return 144;
+	} else {
+		return null;
+	}
+}
+
+fn fpsCapFormatter(allocator: main.utils.NeverFailingAllocator, value: f32) []const u8 {
+	const cap = fpsCapRound(value);
+	if(cap == null)
+		return allocator.dupe(u8, "#ffffffFPS: Unlimited");
+	return std.fmt.allocPrint(allocator.allocator, "#ffffffFPS Limit: {d:.0}", .{cap.?}) catch unreachable;
+}
+
+fn fpsCapCallback(newValue: f32) void {
+	settings.fpsCap = fpsCapRound(newValue);
+	settings.save();
+}
+
 fn renderDistanceCallback(newValue: u16) void {
 	settings.renderDistance = newValue + renderDistances[0];
+	settings.save();
 }
 
 fn fovCallback(newValue: f32) void {
 	settings.fov = newValue;
+	settings.save();
 	main.Window.GLFWCallbacks.framebufferSize(undefined, main.Window.width, main.Window.height);
 }
 
@@ -39,19 +63,23 @@ fn fovFormatter(allocator: main.utils.NeverFailingAllocator, value: f32) []const
 
 fn LODFactorCallback(newValue: u16) void {
 	settings.LODFactor = @as(f32, @floatFromInt(newValue + 1))/2;
+	settings.save();
 }
 
 fn bloomCallback(newValue: bool) void {
 	settings.bloom = newValue;
+	settings.save();
 }
 
 fn vsyncCallback(newValue: bool) void {
 	settings.vsync = newValue;
+	settings.save();
 	main.Window.reloadSettings();
 }
 
 fn anisotropicFilteringCallback(newValue: u16) void {
 	settings.anisotropicFiltering = anisotropy[newValue];
+	settings.save();
 	if(main.game.world != null) {
 		main.blocks.meshes.reloadTextures(undefined);
 	}
@@ -59,11 +87,13 @@ fn anisotropicFilteringCallback(newValue: u16) void {
 
 fn resolutionScaleCallback(newValue: u16) void {
 	settings.resolutionScale = std.math.pow(f32, 2.0, @as(f32, @floatFromInt(newValue)) - 2.0);
+	settings.save();
 	main.Window.GLFWCallbacks.framebufferSize(null, main.Window.width, main.Window.height);
 }
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
+	list.add(ContinuousSlider.init(.{0, 0}, 128, 10.0, 154.0, @floatFromInt(settings.fpsCap orelse 144), &fpsCapCallback, &fpsCapFormatter));
 	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffRender Distance: ", "{}", &renderDistances, settings.renderDistance - renderDistances[0], &renderDistanceCallback));
 	list.add(ContinuousSlider.init(.{0, 0}, 128, 40.0, 120.0, settings.fov, &fovCallback, &fovFormatter));
 	list.add(CheckBox.init(.{0, 0}, 128, "Bloom", settings.bloom, &bloomCallback));

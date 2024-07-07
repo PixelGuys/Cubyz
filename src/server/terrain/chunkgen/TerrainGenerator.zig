@@ -83,7 +83,7 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 						chunk.updateBlockInGeneration(x, y, z, .{.typ = typ, .data = 0}); // TODO: Natural standard.
 					}
 				} else {
-					if(z + chunk.super.pos.wz < 0 and z + chunk.super.pos.wz >= @as(i32, @intFromFloat(biomeMap.getSurfaceHeight(x + chunk.super.pos.wx, y + chunk.super.pos.wy))) - (chunk.super.pos.voxelSize - 1)) {
+					if(z + chunk.super.pos.wz < 0 and z + chunk.super.pos.wz >= biomeMap.getSurfaceHeight(x + chunk.super.pos.wx, y + chunk.super.pos.wy) - (chunk.super.pos.voxelSize - 1)) {
 						chunk.updateBlockInGeneration(x, y, z, .{.typ = water, .data = 0}); // TODO: Natural standard.
 					} else {
 						chunk.updateBlockInGeneration(x, y, z, .{.typ = 0, .data = 0});

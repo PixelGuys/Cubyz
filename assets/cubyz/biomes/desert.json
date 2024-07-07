@@ -8,7 +8,7 @@
 	
 	"hills" : 20,
 	
-	"music" : "EasternThought",
+	"music" : "cubyz:EasternThought",
 
 	"fogDensity" : 20,
 	"fogColor" : 0xe0dcc3,

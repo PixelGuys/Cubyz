@@ -2,7 +2,7 @@
 	"isCave" : true,
 	"minHeight" : 0,
 
-	"music" : "GymnopedieNo1",
+	"music" : "cubyz:GymnopedieNo1",
 
 	"ground_structure" : [],
 }
