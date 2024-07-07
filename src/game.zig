@@ -66,7 +66,7 @@ pub const Player = struct {
 
 	pub var onGround: bool = false;
 
-	pub const boundingBoxExtent: Vec3d = .{0.3, 0.3, 0.9};
+	pub const boundingBoxExtent: Vec3d = .{0.4, 0.4, 0.9};
 	pub const eye = 1.7 - boundingBoxExtent[2];
 	pub const jumpHeight = 1.25;
 
@@ -588,8 +588,8 @@ pub fn hyperSpeedToggle() void {
 
 pub fn update(deltaTime: f64) void {
 	const inner: Box = .{
-		.min = -Player.boundingBoxExtent + Vec3d{Player.boundingBoxExtent[0]/4.0, Player.boundingBoxExtent[1]/4.0, Player.boundingBoxExtent[2]/4.0 + 0.5},
-		.max = Player.boundingBoxExtent - Vec3d{Player.boundingBoxExtent[0]/4.0, Player.boundingBoxExtent[1]/4.0, Player.boundingBoxExtent[2]/10.0},
+		.min = -Player.boundingBoxExtent + Vec3d{Player.boundingBoxExtent[0]/3.0, Player.boundingBoxExtent[1]/3.0, Player.boundingBoxExtent[2]/4.0 + 0.5},
+		.max = Player.boundingBoxExtent - Vec3d{Player.boundingBoxExtent[0]/3.0, Player.boundingBoxExtent[1]/3.0, Player.boundingBoxExtent[2]/10.0},
 	};
 	const outer: Box = .{
 		.min = -Player.boundingBoxExtent,
@@ -696,7 +696,7 @@ pub fn update(deltaTime: f64) void {
 			main.Window.scrollOffset = 0;
 		}
 		var shouldStep: bool = false;
-		{ // Collision acceleration:
+		if(!Player.isGhost.load(.monotonic)) { // Collision acceleration:
 			Player.mutex.lock();
 			defer Player.mutex.unlock();
 			const boxes = [6] Box {
