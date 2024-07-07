@@ -49,6 +49,14 @@ pub const camera = struct {
 const Box = struct {
 	min: Vec3d,
 	max: Vec3d,
+
+	pub fn center(self: Box) Vec3d {
+		return (self.min + self.max)*@as(Vec3d, @splat(0.5));
+	}
+
+	pub fn extent(self: Box) Vec3d {
+		return (self.max - self.min)*@as(Vec3d, @splat(0.5));
+	}
 };
 
 pub const Player = struct {
@@ -66,8 +74,16 @@ pub const Player = struct {
 
 	pub var onGround: bool = false;
 
-	pub const boundingBoxExtent: Vec3d = .{0.4, 0.4, 0.9};
-	pub const eye = 1.7 - boundingBoxExtent[2];
+	pub const outerBoundingBoxExtent: Vec3d = .{0.4, 0.4, 0.9};
+	pub const innerBoundingBox: Box = .{
+		.min = -outerBoundingBoxExtent + Vec3d{outerBoundingBoxExtent[0]/3.0, outerBoundingBoxExtent[1]/3.0, outerBoundingBoxExtent[2]/4.0 + 0.5},
+		.max = outerBoundingBoxExtent - Vec3d{outerBoundingBoxExtent[0]/3.0, outerBoundingBoxExtent[1]/3.0, outerBoundingBoxExtent[2]/10.0},
+	};
+	const outerBoundingBox: Box = .{
+		.min = -outerBoundingBoxExtent,
+		.max = outerBoundingBoxExtent,
+	};
+	pub const eye = 1.7 - outerBoundingBoxExtent[2];
 	pub const jumpHeight = 1.25;
 
 	fn loadFrom(json: JsonElement) void {
@@ -194,8 +210,8 @@ pub const Player = struct {
 		var hitBox = relativeHitBox;
 		hitBox.min += super.pos;
 		hitBox.max += super.pos;
-		const hitBoxCenter: Vec3d = (hitBox.min + hitBox.max)*@as(Vec3d, @splat(0.5));
-		const hitBoxExtent: Vec3d = (hitBox.max - hitBox.min)*@as(Vec3d, @splat(0.5)) - @as(Vec3d, @splat(0.0001));
+		const hitBoxCenter: Vec3d = hitBox.center();
+		const hitBoxExtent: Vec3d = hitBox.extent() - @as(Vec3d, @splat(0.0001));
 		var result: Box = .{
 			.min = hitBox.max,
 			.max = hitBox.min,
@@ -359,8 +375,8 @@ pub const Player = struct {
 		const minZ: i32 = @intFromFloat(@floor(boundingBox.min[2]));
 		const maxZ: i32 = @intFromFloat(@floor(boundingBox.max[2] - 0.0001));
 
-		const boundingBoxCenter = (boundingBox.min + boundingBox.max)/@as(Vec3d, @splat(2));
-		const fullBoundingBoxExtent = (boundingBox.max - boundingBox.min - @as(Vec3d, @splat(0.0001)))/@as(Vec3d, @splat(2));
+		const boundingBoxCenter = boundingBox.center();
+		const fullBoundingBoxExtent = boundingBox.extent() - @as(Vec3d, @splat(0.00005));
 
 		var resultBox: ?Box = null;
 		var minDistance: f64 = std.math.floatMax(f64);
@@ -587,14 +603,6 @@ pub fn hyperSpeedToggle() void {
 }
 
 pub fn update(deltaTime: f64) void {
-	const inner: Box = .{
-		.min = -Player.boundingBoxExtent + Vec3d{Player.boundingBoxExtent[0]/3.0, Player.boundingBoxExtent[1]/3.0, Player.boundingBoxExtent[2]/4.0 + 0.5},
-		.max = Player.boundingBoxExtent - Vec3d{Player.boundingBoxExtent[0]/3.0, Player.boundingBoxExtent[1]/3.0, Player.boundingBoxExtent[2]/10.0},
-	};
-	const outer: Box = .{
-		.min = -Player.boundingBoxExtent,
-		.max = Player.boundingBoxExtent,
-	};
 	const gravity = 30.0;
 	const terminalVelocity = 90.0;
 	const airFrictionCoefficient = gravity/terminalVelocity; // λ = a/v in equillibrium
@@ -699,6 +707,8 @@ pub fn update(deltaTime: f64) void {
 		if(!Player.isGhost.load(.monotonic)) { // Collision acceleration:
 			Player.mutex.lock();
 			defer Player.mutex.unlock();
+			const inner = Player.innerBoundingBox;
+			const outer = Player.outerBoundingBox;
 			const boxes = [6] Box {
 				.{
 					.min = .{inner.max[0], inner.min[1], inner.min[2]},
@@ -858,7 +868,7 @@ pub fn update(deltaTime: f64) void {
 		defer Player.mutex.unlock();
 
 		Player.super.pos[0] += move[0];
-		const hitBox = inner;
+		const hitBox = Player.innerBoundingBox;
 
 		if (Player.collides(.x, -move[0], hitBox)) |box| {
 			if (move[0] < 0) {

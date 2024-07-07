@@ -750,7 +750,7 @@ pub const MeshSelection = struct {
 	}
 
 	fn canPlaceBlock(pos: Vec3i, block: main.blocks.Block) bool {
-		if(main.game.Player.collideWithBlock(block, pos[0], pos[1], pos[2], main.game.Player.getPosBlocking(), main.game.Player.boundingBoxExtent, .{0, 0, 0}) != null) {
+		if(main.game.Player.collideWithBlock(block, pos[0], pos[1], pos[2], main.game.Player.getPosBlocking() + main.game.Player.innerBoundingBox.center(), main.game.Player.innerBoundingBox.extent(), .{0, 0, 0}) != null) {
 			return false;
 		}
 		return true; // TODO: Check other entities
