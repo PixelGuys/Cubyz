@@ -36,10 +36,10 @@
 		{
 			"id" : "cubyz:fallen_tree",
 			"log" : "cubyz:oak_log",
-			"top" : "cubyz:oak_top",
+			"top" : "cubyz:oak_log",
 			"height" : 6,
 			"height_variation" : 3,
-			"chance" : 0.0002
+			"chance" : 0.00015
 		}
 	]
 }
