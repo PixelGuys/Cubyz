@@ -194,18 +194,18 @@ pub const Player = struct {
 		var hitBox = relativeHitBox;
 		hitBox.min += super.pos;
 		hitBox.max += super.pos;
-		const hitBoxCenter: Vec3d = (hitBox.min + hitBox.max)/@as(Vec3d, @splat(2.0));
-		const hitBoxExtent: Vec3d = (hitBox.max - hitBox.min)/@as(Vec3d, @splat(2.0));
+		const hitBoxCenter: Vec3d = (hitBox.min + hitBox.max)*@as(Vec3d, @splat(0.5));
+		const hitBoxExtent: Vec3d = (hitBox.max - hitBox.min)*@as(Vec3d, @splat(0.5)) - @as(Vec3d, @splat(0.0001));
 		var result: Box = .{
 			.min = hitBox.max,
 			.max = hitBox.min,
 		};
 		const minX: i32 = @intFromFloat(@floor(hitBoxCenter[0] - hitBoxExtent[0]));
-		const maxX: i32 = @intFromFloat(@floor(hitBoxCenter[0] + hitBoxExtent[0] - 0.00001));
+		const maxX: i32 = @intFromFloat(@floor(hitBoxCenter[0] + hitBoxExtent[0]));
 		const minY: i32 = @intFromFloat(@floor(hitBoxCenter[1] - hitBoxExtent[1]));
-		const maxY: i32 = @intFromFloat(@floor(hitBoxCenter[1] + hitBoxExtent[1] - 0.00001));
+		const maxY: i32 = @intFromFloat(@floor(hitBoxCenter[1] + hitBoxExtent[1]));
 		const minZ: i32 = @intFromFloat(@floor(hitBoxCenter[2] - hitBoxExtent[2]));
-		const maxZ: i32 = @intFromFloat(@floor(hitBoxCenter[2] + hitBoxExtent[2] - 0.00001));
+		const maxZ: i32 = @intFromFloat(@floor(hitBoxCenter[2] + hitBoxExtent[2]));
 
 		var x: i32 = minX;
 		while (x <= maxX) : (x += 1) {
@@ -589,7 +589,7 @@ pub fn hyperSpeedToggle() void {
 pub fn update(deltaTime: f64) void {
 	const inner: Box = .{
 		.min = -Player.boundingBoxExtent + Vec3d{Player.boundingBoxExtent[0]/4.0, Player.boundingBoxExtent[1]/4.0, Player.boundingBoxExtent[2]/4.0 + 0.5},
-		.max = Player.boundingBoxExtent - Vec3d{Player.boundingBoxExtent[0]/4.0, Player.boundingBoxExtent[1]/4.0, Player.boundingBoxExtent[2]/8.0},
+		.max = Player.boundingBoxExtent - Vec3d{Player.boundingBoxExtent[0]/4.0, Player.boundingBoxExtent[1]/4.0, Player.boundingBoxExtent[2]/10.0},
 	};
 	const outer: Box = .{
 		.min = -Player.boundingBoxExtent,
@@ -754,8 +754,8 @@ pub fn update(deltaTime: f64) void {
 				const collision = Player.collisionBox(box);
 				var strength = vec.dot(@abs(forceDir[i]), collision.max - collision.min)/vec.dot(@abs(forceDir[i]), box.max - box.min);
 				if(strength == 0) continue;
-				if(i < 4 and vec.dot(forceDir[i], acc) < 0) {
-					strength -= 1; // Cling to walls
+				if(i < 4 and vec.dot(forceDir[i], movementDir) < 0) {
+					strength += vec.dot(forceDir[i], movementDir)*@sqrt(2.0); // Cling to walls
 				}
 				if(i == 5 and strength > 0.5) {
 					shouldStep = true;
