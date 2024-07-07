@@ -15,13 +15,11 @@
 	"stoneBlock" : "cubyz:glacite",
 	"structures" : [
 		{
-			"id" : "cubyz:ground_patch",
+			"id" : "cubyz:simple_vegetation",
 			"block" : "cubyz:ice",
-			"chance" : 0.002,
-			"width" : 6,
-			"variation" : 5,
-			"depth" : 3,
-			"smoothness" : 0.1
-		}
+			"chance" : 0.005,
+			"height" : 2,
+			"height_variation" : 5
+		},
 	]
 }

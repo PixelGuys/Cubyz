@@ -4,9 +4,7 @@
 	"drops" : [
 		"auto"
 	],
-	"transparent" : true,
-	"absorbedLight" : 0xe95825,
 	"model" : "cube",
-	"texture" : "cubyz:ice",
+	"texture" : "cubyz:frost",
 	"blockEntity" : "cubyz.modding.base.MeltableBlockEntity"
 }

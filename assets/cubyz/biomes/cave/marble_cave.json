@@ -1,7 +1,7 @@
 {
 	"isCave" : true,
 	"maxHeight" : -64,
-	"chance" : 0.4
+	"chance" : 0.2
 
 	"stalagmites" : 160,
 	"stalagmiteBlock" : "cubyz:marble",
