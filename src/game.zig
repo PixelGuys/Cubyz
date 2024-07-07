@@ -646,8 +646,11 @@ pub fn update(deltaTime: f64) void {
 			//const playerCenter = Vec3d{0, 0, Player.height/2.0};
 			for(boxes, 0..) |box, i| {
 				const collision = Player.collisionBox(box);
-				const strength = vec.dot(@abs(forceDir[i]), collision.max - collision.min)/vec.dot(@abs(forceDir[i]), box.max - box.min);
+				var strength = vec.dot(@abs(forceDir[i]), collision.max - collision.min)/vec.dot(@abs(forceDir[i]), box.max - box.min);
 				if(strength == 0) continue;
+				if(i < 4 and vec.dot(forceDir[i], acc) < 0) {
+					strength -= 1; // Cling to walls
+				}
 				if(i == 5 and strength > 0.5) {
 					shouldStep = true;
 				}
