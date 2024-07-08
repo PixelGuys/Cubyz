@@ -22,7 +22,7 @@
 			"leaves" : "cubyz:oak_leaves",
 			"log" : "cubyz:oak_log",
 			"top" : "cubyz:oak_top",
-			"chance" : 0.5,
+			"chance" : 0.4,
 			"type" : "round",
 			"height" : 6,
 			"height_variation" : 3
@@ -32,7 +32,7 @@
 			"leaves" : "cubyz:birch_leaves",
 			"log" : "cubyz:birch_log",
 			"top" : "cubyz:birch_top",
-			"chance" : 0.05,
+			"chance" : 0.2,
 			"type" : "round",
 			"height" : 10,
 			"height_variation" : 5,
