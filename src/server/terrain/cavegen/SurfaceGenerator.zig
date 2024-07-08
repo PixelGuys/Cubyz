@@ -31,7 +31,7 @@ pub fn deinit() void {
 pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 	_ = worldSeed;
 	const width = CaveMapFragment.width*map.pos.voxelSize;
-	const biomeMap = InterpolatableCaveBiomeMapView.init(map.pos, width);
+	const biomeMap = InterpolatableCaveBiomeMapView.init(main.stackAllocator, map.pos, width);
 	defer biomeMap.deinit();
 	var x: u31 = 0;
 	while(x < width) : (x += map.pos.voxelSize) {

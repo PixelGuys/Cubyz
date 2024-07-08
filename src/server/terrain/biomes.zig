@@ -10,7 +10,7 @@ const vec = @import("main.vec");
 const Vec3f = main.vec.Vec3f;
 const Vec3d = main.vec.Vec3d;
 
-const StructureModel = struct {
+pub const SimpleStructureModel = struct {
 	const VTable = struct {
 		loadModel: *const fn(arenaAllocator: NeverFailingAllocator, parameters: JsonElement) *anyopaque,
 		generate: *const fn(self: *anyopaque, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) void,
@@ -21,20 +21,20 @@ const StructureModel = struct {
 	data: *anyopaque,
 	chance: f32,
 
-	pub fn initModel(parameters: JsonElement) ?StructureModel {
+	pub fn initModel(parameters: JsonElement) ?SimpleStructureModel {
 		const id = parameters.get([]const u8, "id", "");
 		const vtable = modelRegistry.get(id) orelse {
 			std.log.err("Couldn't find structure model with id {s}", .{id});
 			return null;
 		};
-		return StructureModel {
+		return SimpleStructureModel {
 			.vtable = vtable,
 			.data = vtable.loadModel(arena.allocator(), parameters),
 			.chance = 16*parameters.get(f32, "chance", 0.01), // TODO: Should this use the sample point chance directly, instead of the per block chance?
 		};
 	}
 
-	pub fn generate(self: StructureModel, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) void {
+	pub fn generate(self: SimpleStructureModel, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) void {
 		self.vtable.generate(self.data, x, y, z, chunk, caveMap, seed);
 	}
 
@@ -58,7 +58,7 @@ const StructureModel = struct {
 		modelRegistry.put(main.globalAllocator.allocator, Generator.id, self) catch unreachable;
 	}
 
-	fn getHash(self: StructureModel) u64 {
+	fn getHash(self: SimpleStructureModel) u64 {
 		return self.vtable.hashFunction(self.data);
 	}
 };
@@ -244,7 +244,7 @@ pub const Biome = struct {
 	/// Whether the starting point of a river can be in this biome. If false rivers will be able to flow through this biome anyways.
 	supportsRivers: bool, // TODO: Reimplement rivers.
 	/// The first members in this array will get prioritized.
-	vegetationModels: []StructureModel = &.{},
+	vegetationModels: []SimpleStructureModel = &.{},
 	stripes: []Stripe = &.{},
 	subBiomes: main.utils.AliasTable(*const Biome) = .{.items = &.{}, .aliasData = &.{}},
 	maxSubBiomeCount: f32,
@@ -292,11 +292,11 @@ pub const Biome = struct {
 		self.structure = BlockStructure.init(main.globalAllocator, json.getChild("ground_structure"));
 		
 		const structures = json.getChild("structures");
-		var vegetation = main.ListUnmanaged(StructureModel){};
+		var vegetation = main.ListUnmanaged(SimpleStructureModel){};
 		var totalChance: f32 = 0;
 		defer vegetation.deinit(main.stackAllocator);
 		for(structures.toSlice()) |elem| {
-			if(StructureModel.initModel(elem)) |model| {
+			if(SimpleStructureModel.initModel(elem)) |model| {
 				vegetation.append(main.stackAllocator, model);
 				totalChance += model.chance;
 			}
@@ -306,7 +306,7 @@ pub const Biome = struct {
 				model.chance /= totalChance;
 			}
 		}
-		self.vegetationModels = main.globalAllocator.dupe(StructureModel, vegetation.items);
+		self.vegetationModels = main.globalAllocator.dupe(SimpleStructureModel, vegetation.items);
 
 		const stripes = json.getChild("stripes");
 		self.stripes = main.globalAllocator.alloc(Stripe, stripes.toSlice().len);
@@ -537,14 +537,14 @@ pub fn init() void {
 	biomes = main.List(Biome).init(main.globalAllocator);
 	caveBiomes = main.List(Biome).init(main.globalAllocator);
 	biomesById = std.StringHashMap(*Biome).init(main.globalAllocator.allocator);
-	const list = @import("structures/_list.zig");
+	const list = @import("simple_structures/_list.zig");
 	inline for(@typeInfo(list).Struct.decls) |decl| {
-		StructureModel.registerGenerator(@field(list, decl.name));
+		SimpleStructureModel.registerGenerator(@field(list, decl.name));
 	}
 }
 
 pub fn reset() void {
-	StructureModel.reset();
+	SimpleStructureModel.reset();
 	finishedLoading = false;
 	for(biomes.items) |*biome| {
 		biome.deinit();
@@ -566,7 +566,7 @@ pub fn deinit() void {
 	caveBiomes.deinit();
 	biomesById.deinit();
 	// TODO? byTypeBiomes.deinit(main.globalAllocator);
-	StructureModel.modelRegistry.clearAndFree(main.globalAllocator.allocator);
+	SimpleStructureModel.modelRegistry.clearAndFree(main.globalAllocator.allocator);
 }
 
 pub fn register(id: []const u8, paletteId: u32, json: JsonElement) void {
