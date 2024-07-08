@@ -4,16 +4,23 @@
 
 	"music" : "cubyz:heart-of-the-beast",
 
-	"ground_structure" : [
-		"0 to 1 cubyz:gravel",
-		"cubyz:stone"
-	],
+
+
 	"structures" : [
+		{
+			"id" : "cubyz:ground_patch",
+			"block" : "cubyz:gravel",
+			"chance" : 0.004,
+			"width" : 5,
+			"variation" : 5,
+			"depth" : 3,
+			"smoothness" : 0.1
+		}
 		{
 			"id" : "cubyz:boulder",
 			"chance" : 0.001,
 			"block" : "cubyz:cobblestone",
-			"size" : 5,
+			"size" : 4,
 			"size_variance" : 3
 		},
 		{
@@ -21,7 +28,7 @@
 			"chance" : 0.001,
 			"block" : "cubyz:stone",
 			"size" : 4,
-			"size_variance" : 2
+			"size_variance" : 4
 		}
 	]
 }
