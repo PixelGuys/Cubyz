@@ -13,6 +13,8 @@ const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 pub const id = "cubyz:ground_patch";
 
+pub const generationMode = .floor;
+
 const GroundPatch = @This();
 
 blockType: u16,
@@ -33,7 +35,7 @@ pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: JsonElement)
 	return self;
 }
 
-pub fn generate(self: *GroundPatch, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) void {
+pub fn generate(self: *GroundPatch, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64, _: bool) void {
 	const width = self.width + (random.nextFloat(seed) - 0.5)*self.variation;
 	const orientation = 2*std.math.pi*random.nextFloat(seed);
 	const ellipseParam = 1 + random.nextFloat(seed);

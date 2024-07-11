@@ -15,11 +15,11 @@
 	"stoneBlock" : "cubyz:glacite",
 	"structures" : [
 		{
-			"id" : "cubyz:simple_vegetation",
+			"id" : "cubyz:stalagmite",
 			"block" : "cubyz:ice",
 			"chance" : 0.005,
-			"height" : 2,
-			"height_variation" : 5
+			"size" : 3,
+			"size_variation" : 5
 		},
 	]
 }

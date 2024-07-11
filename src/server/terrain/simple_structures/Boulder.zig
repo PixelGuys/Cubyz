@@ -13,6 +13,8 @@ const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 pub const id = "cubyz:boulder";
 
+pub const generationMode = .floor;
+
 const Boulder = @This();
 
 blockType: u16,
@@ -29,7 +31,7 @@ pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: JsonElement)
 	return self;
 }
 
-pub fn generate(self: *Boulder, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) void {
+pub fn generate(self: *Boulder, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64, _: bool) void {
 	_ = caveMap;
 	const radius = self.size + self.sizeVariation*(random.nextFloat(seed)*2 - 1);
 	// My basic idea is to use a point cloud and a potential function to achieve somewhat smooth boulders without being a sphere.

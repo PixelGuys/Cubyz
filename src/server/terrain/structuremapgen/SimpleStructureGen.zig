@@ -126,12 +126,51 @@ const SimpleStructure = struct {
 		const px = self.wx - chunk.super.pos.wx;
 		const py = self.wy - chunk.super.pos.wy;
 		var relZ = self.wz -% chunk.super.pos.wz;
-		if(caveMap.isSolid(px, py, relZ)) {
-			relZ = caveMap.findTerrainChangeAbove(px, py, relZ);
-		} else {
-			relZ = caveMap.findTerrainChangeBelow(px, py, relZ) + chunk.super.pos.voxelSize;
+		var isCeiling: bool = false;
+		switch(self.model.vtable.generationMode) {
+			.floor => {
+				if(caveMap.isSolid(px, py, relZ)) {
+					relZ = caveMap.findTerrainChangeAbove(px, py, relZ);
+				} else {
+					relZ = caveMap.findTerrainChangeBelow(px, py, relZ) + chunk.super.pos.voxelSize;
+				}
+				if(relZ & ~@as(i32, 31) != self.wz -% chunk.super.pos.wz & ~@as(i32, 31)) return; // Too far from the surface.
+			},
+			.ceiling => {
+				isCeiling = true;
+				if(caveMap.isSolid(px, py, relZ)) {
+					relZ = caveMap.findTerrainChangeBelow(px, py, relZ) - chunk.super.pos.voxelSize;
+				} else {
+					relZ = caveMap.findTerrainChangeAbove(px, py, relZ);
+				}
+				if(relZ & ~@as(i32, 31) != self.wz -% chunk.super.pos.wz & ~@as(i32, 31)) return; // Too far from the surface.
+			},
+			.floor_and_ceiling => {
+				if(random.nextInt(u1, &seed) != 0) {
+					if(caveMap.isSolid(px, py, relZ)) {
+						relZ = caveMap.findTerrainChangeAbove(px, py, relZ);
+					} else {
+						relZ = caveMap.findTerrainChangeBelow(px, py, relZ) + chunk.super.pos.voxelSize;
+					}
+				} else {
+					isCeiling = true;
+					if(caveMap.isSolid(px, py, relZ)) {
+						relZ = caveMap.findTerrainChangeBelow(px, py, relZ) - chunk.super.pos.voxelSize;
+					} else {
+						relZ = caveMap.findTerrainChangeAbove(px, py, relZ);
+					}
+				}
+				if(relZ & ~@as(i32, 31) != self.wz -% chunk.super.pos.wz & ~@as(i32, 31)) return; // Too far from the surface.
+			},
+			.air => {
+				relZ += -16 + random.nextIntBounded(i32, &seed, 32);
+				if(caveMap.isSolid(px, py, relZ)) return;
+			},
+			.underground => {
+				relZ += -16 + random.nextIntBounded(i32, &seed, 32);
+				if(!caveMap.isSolid(px, py, relZ)) return;
+			},
 		}
-		if(relZ & ~@as(i32, 31) != self.wz -% chunk.super.pos.wz & ~@as(i32, 31)) return; // Too far from the surface.
-		self.model.generate(px, py, relZ, chunk, caveMap, &seed);
+		self.model.generate(px, py, relZ, chunk, caveMap, &seed, isCeiling);
 }
 };

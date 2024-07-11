@@ -13,6 +13,8 @@ const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 pub const id = "cubyz:simple_vegetation";
 
+pub const generationMode = .floor;
+
 const SimpleVegetation = @This();
 
 blockType: u16,
@@ -29,7 +31,7 @@ pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: JsonElement)
 	return self;
 }
 
-pub fn generate(self: *SimpleVegetation, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) void {
+pub fn generate(self: *SimpleVegetation, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64, _: bool) void {
 	if(chunk.super.pos.voxelSize > 2 and (x & chunk.super.pos.voxelSize-1 != 0 or y & chunk.super.pos.voxelSize-1 != 0)) return;
 	if(chunk.liesInChunk(x, y, z)) {
 		const height = self.height0 + random.nextIntBounded(u31, seed, self.deltaHeight+1);

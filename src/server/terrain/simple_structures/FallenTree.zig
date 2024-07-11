@@ -13,6 +13,8 @@ const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 pub const id = "cubyz:fallen_tree";
 
+pub const generationMode = .floor;
+
 const FallenTree = @This();
 
 woodBlock: u16,
@@ -99,7 +101,7 @@ pub fn generateFallen(self: *FallenTree, x: i32, y: i32, z: i32, length: u32, ch
 	}
 }
 
-pub fn generate(self: *FallenTree, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) void {
+pub fn generate(self: *FallenTree, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64, _: bool) void {
 
 	const height = self.height0 + random.nextIntBounded(u31, seed, self.deltaHeight);
 

@@ -11,10 +11,18 @@ const Vec3f = main.vec.Vec3f;
 const Vec3d = main.vec.Vec3d;
 
 pub const SimpleStructureModel = struct {
+	const GenerationMode = enum {
+		floor,
+		ceiling,
+		floor_and_ceiling,
+		air,
+		underground,
+	};
 	const VTable = struct {
 		loadModel: *const fn(arenaAllocator: NeverFailingAllocator, parameters: JsonElement) *anyopaque,
-		generate: *const fn(self: *anyopaque, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) void,
+		generate: *const fn(self: *anyopaque, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64, isCeiling: bool) void,
 		hashFunction: *const fn(self: *anyopaque) u64,
+		generationMode: GenerationMode,
 	};
 
 	vtable: VTable,
@@ -34,8 +42,8 @@ pub const SimpleStructureModel = struct {
 		};
 	}
 
-	pub fn generate(self: SimpleStructureModel, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) void {
-		self.vtable.generate(self.data, x, y, z, chunk, caveMap, seed);
+	pub fn generate(self: SimpleStructureModel, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64, isCeiling: bool) void {
+		self.vtable.generate(self.data, x, y, z, chunk, caveMap, seed, isCeiling);
 	}
 
 
@@ -55,6 +63,7 @@ pub const SimpleStructureModel = struct {
 				return hashGeneric(ptr.*);
 			}
 		}.hash);
+		self.generationMode = Generator.generationMode;
 		modelRegistry.put(main.globalAllocator.allocator, Generator.id, self) catch unreachable;
 	}
 
