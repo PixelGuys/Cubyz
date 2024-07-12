@@ -28,6 +28,7 @@ pub const SimpleStructureModel = struct {
 	vtable: VTable,
 	data: *anyopaque,
 	chance: f32,
+	generationMode: GenerationMode,
 
 	pub fn initModel(parameters: JsonElement) ?SimpleStructureModel {
 		const id = parameters.get([]const u8, "id", "");
@@ -39,6 +40,7 @@ pub const SimpleStructureModel = struct {
 			.vtable = vtable,
 			.data = vtable.loadModel(arena.allocator(), parameters),
 			.chance = 16*parameters.get(f32, "chance", 0.01), // TODO: Should this use the sample point chance directly, instead of the per block chance?
+			.generationMode = std.meta.stringToEnum(GenerationMode, parameters.get([]const u8, "generationMode", "")) orelse vtable.generationMode,
 		};
 	}
 

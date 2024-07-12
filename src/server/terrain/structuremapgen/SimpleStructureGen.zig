@@ -127,7 +127,7 @@ const SimpleStructure = struct {
 		const py = self.wy - chunk.super.pos.wy;
 		var relZ = self.wz -% chunk.super.pos.wz;
 		var isCeiling: bool = false;
-		switch(self.model.vtable.generationMode) {
+		switch(self.model.generationMode) {
 			.floor => {
 				if(caveMap.isSolid(px, py, relZ)) {
 					relZ = caveMap.findTerrainChangeAbove(px, py, relZ);
