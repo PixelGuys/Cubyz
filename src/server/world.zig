@@ -41,6 +41,7 @@ const ChunkManager = struct {
 			.isStillNeeded = @ptrCast(&isStillNeeded),
 			.run = @ptrCast(&run),
 			.clean = @ptrCast(&clean),
+			.taskType = .chunkgen,
 		};
 		
 		pub fn scheduleAndDecreaseRefCount(pos: ChunkPosition, source: ?*User) void {
@@ -105,6 +106,7 @@ const ChunkManager = struct {
 			.isStillNeeded = @ptrCast(&isStillNeeded),
 			.run = @ptrCast(&run),
 			.clean = @ptrCast(&clean),
+			.taskType = .lighting,
 		};
 		
 		pub fn scheduleAndDecreaseRefCount(pos: terrain.SurfaceMap.MapFragmentPosition, source: ?*User) void {
@@ -436,6 +438,7 @@ pub const ServerWorld = struct {
 			.isStillNeeded = @ptrCast(&isStillNeeded),
 			.run = @ptrCast(&run),
 			.clean = @ptrCast(&clean),
+			.taskType = .chunkgen,
 		};
 		
 		pub fn schedule(pos: ChunkPosition, storeMaps: bool) void {

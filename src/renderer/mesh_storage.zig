@@ -1048,6 +1048,7 @@ pub const MeshGenerationTask = struct {
 		.isStillNeeded = @ptrCast(&isStillNeeded),
 		.run = @ptrCast(&run),
 		.clean = @ptrCast(&clean),
+		.taskType = .lighting,
 	};
 
 	pub fn schedule(mesh: *chunk.Chunk) void {

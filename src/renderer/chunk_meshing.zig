@@ -728,6 +728,7 @@ pub const ChunkMesh = struct {
 			.isStillNeeded = @ptrCast(&isStillNeeded),
 			.run = @ptrCast(&run),
 			.clean = @ptrCast(&clean),
+			.taskType = .lighting,
 		};
 
 		pub fn scheduleAndDecreaseRefCount(mesh: *ChunkMesh) void {

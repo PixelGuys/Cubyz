@@ -128,6 +128,7 @@ const MusicLoadTask = struct {
 		.isStillNeeded = @ptrCast(&isStillNeeded),
 		.run = @ptrCast(&run),
 		.clean = @ptrCast(&clean),
+		.taskType = .misc,
 	};
 	
 	pub fn schedule(musicId: []const u8) void {
