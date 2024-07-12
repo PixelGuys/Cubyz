@@ -2,6 +2,8 @@
 	"isCave" : true,
 	"maxHeight" : 0,
 
+	"fogDensity" : 2,
+
 	"music" : "cubyz:heart-of-the-beast",
 
 
@@ -16,6 +18,13 @@
 			"depth" : 3,
 			"smoothness" : 0.1
 		}
+		{
+			"id" : "cubyz:stalagmite",
+			"block" : "cubyz:stone",
+			"chance" : 0.003,
+			"size" : 3,
+			"size_variation" : 6
+		},	
 		{
 			"id" : "cubyz:boulder",
 			"chance" : 0.001,
