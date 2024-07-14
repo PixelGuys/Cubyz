@@ -18,7 +18,7 @@ pub var window = GuiWindow {
 		.{ .attachedToWindow = .{.reference = &hotbar.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper} },
 		.{ .attachedToWindow = .{.reference = &hotbar.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .lower} },
 	},
-	.contentSize = Vec2f{ 160, 20 },
+	.contentSize = Vec2f{160, 20},
 	.isHud = true,
 	.showTitleBar = false,
 	.hasBackground = false,
@@ -58,7 +58,7 @@ pub fn render() void {
 		} else {
 			deadHeartTexture.bindTo(0);
 		}
-		draw.boundImage(Vec2f{x, window.contentSize[1] - y - 20 }, .{ 20, 20 });
+		draw.boundImage(Vec2f{x, window.contentSize[1] - y - 20}, .{20, 20});
 		x += 20;
 	}
 	y += 20;
