@@ -526,7 +526,7 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 	}
 };
 
- // MARK: init/register
+// MARK: init/register
 var finishedLoading: bool = false;
 var biomes: main.List(Biome) = undefined;
 var caveBiomes: main.List(Biome) = undefined;

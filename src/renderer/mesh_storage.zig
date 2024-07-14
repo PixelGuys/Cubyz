@@ -106,7 +106,7 @@ pub fn deinit() void {
 	clearList.clearAndFree();
 }
 
- // MARK: getters
+// MARK: getters
 
 fn getNodePointer(pos: chunk.ChunkPosition) *ChunkMeshNode {
 	const lod = std.math.log2_int(u31, pos.voxelSize);
