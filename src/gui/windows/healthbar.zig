@@ -13,12 +13,12 @@ const GuiComponent = gui.GuiComponent;
 const hotbar = @import("hotbar.zig");
 
 pub var window = GuiWindow{
-	.scale = 0.75,
+	.scale = 0.5,
 	.relativePosition = .{
 		.{ .attachedToWindow = .{ .reference = &hotbar.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper } },
 		.{ .attachedToWindow = .{ .reference = &hotbar.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .lower } },
 	},
-	.contentSize = Vec2f{ 80, 10 },
+	.contentSize = Vec2f{ 160, 20 },
 	.isHud = true,
 	.showTitleBar = false,
 	.hasBackground = false,
@@ -49,7 +49,7 @@ pub fn render() void {
 	while (health < main.game.Player.maxHealth) : (health += 1) {
 		if (x >= window.contentSize[0]) {
 			x = 0;
-			y += 10;
+			y += 20;
 		}
 		if (health + 1 <= main.game.Player.health) {
 			heartTexture.bindTo(0);
@@ -58,10 +58,10 @@ pub fn render() void {
 		} else {
 			deadHeartTexture.bindTo(0);
 		}
-		draw.boundImage(Vec2f{ x, window.contentSize[1] - y - 10 }, .{ 10, 10 });
-		x += 10;
+		draw.boundImage(Vec2f{ x, window.contentSize[1] - y - 20 }, .{ 20, 20 });
+		x += 20;
 	}
-	y += 10;
+	y += 20;
 	if (y != window.contentSize[1]) {
 		window.contentSize[1] = y;
 		gui.updateWindowPositions();
