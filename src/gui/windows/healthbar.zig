@@ -12,11 +12,11 @@ const GuiComponent = gui.GuiComponent;
 
 const hotbar = @import("hotbar.zig");
 
-pub var window = GuiWindow{
+pub var window = GuiWindow {
 	.scale = 0.5,
 	.relativePosition = .{
-		.{ .attachedToWindow = .{ .reference = &hotbar.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper } },
-		.{ .attachedToWindow = .{ .reference = &hotbar.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .lower } },
+		.{ .attachedToWindow = .{.reference = &hotbar.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper} },
+		.{ .attachedToWindow = .{.reference = &hotbar.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .lower} },
 	},
 	.contentSize = Vec2f{ 160, 20 },
 	.isHud = true,
@@ -46,23 +46,23 @@ pub fn render() void {
 	var y: f32 = 0;
 	var x: f32 = 0;
 	var health: f32 = 0;
-	while (health < main.game.Player.maxHealth) : (health += 1) {
-		if (x >= window.contentSize[0]) {
+	while(health < main.game.Player.maxHealth) : (health += 1) {
+		if(x >= window.contentSize[0]) {
 			x = 0;
 			y += 20;
 		}
-		if (health + 1 <= main.game.Player.health) {
+		if(health + 1 <= main.game.Player.health) {
 			heartTexture.bindTo(0);
-		} else if (health + 0.5 <= main.game.Player.health) {
+		} else if(health + 0.5 <= main.game.Player.health) {
 			halfHeartTexture.bindTo(0);
 		} else {
 			deadHeartTexture.bindTo(0);
 		}
-		draw.boundImage(Vec2f{ x, window.contentSize[1] - y - 20 }, .{ 20, 20 });
+		draw.boundImage(Vec2f{x, window.contentSize[1] - y - 20 }, .{ 20, 20 });
 		x += 20;
 	}
 	y += 20;
-	if (y != window.contentSize[1]) {
+	if(y != window.contentSize[1]) {
 		window.contentSize[1] = y;
 		gui.updateWindowPositions();
 	}
