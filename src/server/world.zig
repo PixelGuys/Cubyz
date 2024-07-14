@@ -23,7 +23,7 @@ const Entity = server.Entity;
 
 const storage = @import("storage.zig");
 
-const ChunkManager = struct {
+const ChunkManager = struct { // MARK: ChunkManager
 	world: *ServerWorld,
 	terrainGenerationProfile: server.terrain.TerrainGenerationProfile,
 
@@ -31,7 +31,7 @@ const ChunkManager = struct {
 	const reducedChunkCacheMask = 2047;
 	var chunkCache: Cache(ServerChunk, reducedChunkCacheMask+1, 4, chunkDeinitFunctionForCache) = .{};
 
-	const ChunkLoadTask = struct {
+	const ChunkLoadTask = struct { // MARK: ChunkLoadTask
 		pos: ChunkPosition,
 		creationTime: i64,
 		source: ?*User,
@@ -95,7 +95,7 @@ const ChunkManager = struct {
 		}
 	};
 
-	const LightMapLoadTask = struct {
+	const LightMapLoadTask = struct { // MARK: LightMapLoadTask
 		pos: terrain.SurfaceMap.MapFragmentPosition,
 		creationTime: i64,
 		source: ?*User,
@@ -153,7 +153,7 @@ const ChunkManager = struct {
 		}
 	};
 
-	pub fn init(world: *ServerWorld, settings: JsonElement) !ChunkManager {
+	pub fn init(world: *ServerWorld, settings: JsonElement) !ChunkManager { // MARK: init()
 		const self = ChunkManager {
 			.world = world,
 			.terrainGenerationProfile = try server.terrain.TerrainGenerationProfile.init(settings, world.seed),
@@ -183,7 +183,7 @@ const ChunkManager = struct {
 		ChunkLoadTask.scheduleAndDecreaseRefCount(pos, source);
 	}
 
-	pub fn generateChunk(pos: ChunkPosition, source: ?*User) void {
+	pub fn generateChunk(pos: ChunkPosition, source: ?*User) void { // MARK: generateChunk()
 		if(source != null and !source.?.connected.load(.unordered)) return; // User disconnected.
 		const ch = getOrGenerateChunkAndIncreaseRefCount(pos);
 		defer ch.decreaseRefCount();
@@ -255,7 +255,7 @@ const ChunkManager = struct {
 	}
 };
 
-const WorldIO = struct {
+const WorldIO = struct { // MARK: WorldIO
 	const worldDataVersion: u32 = 2;
 
 	dir: files.Dir,
@@ -311,7 +311,7 @@ const WorldIO = struct {
 	}
 };
 
-pub const ServerWorld = struct {
+pub const ServerWorld = struct { // MARK: ServerWorld
 	pub const dayCycle: u31 = 12000; // Length of one in-game day in units of 100ms. Midnight is at DAY_CYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
 	pub const earthGravity: f32 = 9.81;
 
@@ -352,7 +352,7 @@ pub const ServerWorld = struct {
 		milliTimeStamp: i64,
 	};
 
-	pub fn init(name: []const u8, nullGeneratorSettings: ?JsonElement) !*ServerWorld {
+	pub fn init(name: []const u8, nullGeneratorSettings: ?JsonElement) !*ServerWorld { // MARK: init()
 		const self = main.globalAllocator.create(ServerWorld);
 		errdefer main.globalAllocator.destroy(self);
 		self.* = ServerWorld {
@@ -427,7 +427,7 @@ pub const ServerWorld = struct {
 	}
 
 
-	const RegenerateLODTask = struct {
+	const RegenerateLODTask = struct { // MARK: RegenerateLODTask
 		pos: ChunkPosition,
 		storeMaps: bool,
 
@@ -663,7 +663,7 @@ pub const ServerWorld = struct {
 		self.dropWithCooldown(stack, pos, dir, velocity, 0);
 	}
 
-	pub fn update(self: *ServerWorld) void {
+	pub fn update(self: *ServerWorld) void { // MARK: update()
 		const newTime = std.time.milliTimestamp();
 		var deltaTime = @as(f32, @floatFromInt(newTime - self.lastUpdateTime))/1000.0;
 		self.lastUpdateTime = newTime;

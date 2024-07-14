@@ -17,7 +17,7 @@ pub const storage = @import("storage.zig");
 const command = @import("command/_command.zig");
 
 
-pub const User = struct {
+pub const User = struct { // MARK: User
 	conn: *Connection = undefined,
 	player: Entity = .{},
 	timeDifference: utils.TimeDifference = .{},
@@ -123,7 +123,7 @@ pub var mutex: std.Thread.Mutex = .{};
 
 pub var thread: ?std.Thread = null;
 
-fn init(name: []const u8) void {
+fn init(name: []const u8) void { // MARK: init()
 	std.debug.assert(world == null); // There can only be one world.
 	command.init();
 	users = main.List(*User).init(main.globalAllocator);
@@ -172,7 +172,7 @@ fn deinit() void {
 	command.deinit();
 }
 
-fn update() void {
+fn update() void { // MARK: update()
 	world.?.update();
 	mutex.lock();
 	for(users.items) |user| {
@@ -238,7 +238,7 @@ pub fn stop() void {
 	running.store(false, .monotonic);
 }
 
-pub fn disconnect(user: *User) void {
+pub fn disconnect(user: *User) void { // MARK: disconnect()
 	if(!user.connected.load(.unordered)) return;
 	// TODO: world.forceSave();
 	const message = std.fmt.allocPrint(main.stackAllocator.allocator, "{s} #ffff00left", .{user.name}) catch unreachable;
@@ -312,7 +312,7 @@ pub fn connect(user: *User) void {
 	users.append(user);
 }
 
-pub fn messageFrom(msg: []const u8, source: *User) void {
+pub fn messageFrom(msg: []const u8, source: *User) void { // MARK: message
 	if(msg[0] == '/') { // Command.
 		std.log.info("User \"{s}\" executed command \"{s}\"", .{source.name, msg}); // TODO use color \033[0;32m
 		command.execute(msg[1..], source);

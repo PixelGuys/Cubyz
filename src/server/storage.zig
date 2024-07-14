@@ -5,7 +5,7 @@ const main = @import("root");
 const chunk = main.chunk;
 const server = @import("server.zig");
 
-pub const RegionFile = struct {
+pub const RegionFile = struct { // MARK: RegionFile
 	const version = 0;
 	pub const regionShift = 2;
 	pub const regionSize = 1 << regionShift;
@@ -175,7 +175,7 @@ pub const RegionFile = struct {
 	}
 };
 
-
+// MARK: cache
 const cacheSize = 1 << 8; // Must be a power of 2!
 const cacheMask = cacheSize - 1;
 const associativity = 8;
@@ -205,7 +205,7 @@ pub fn loadRegionFileAndIncreaseRefCount(wx: i32, wy: i32, wz: i32, voxelSize: u
 	return result;
 }
 
-pub const ChunkCompression = struct {
+pub const ChunkCompression = struct { // MARK: ChunkCompression
 	const CompressionAlgo = enum(u32) {
 		deflate_with_position = 0,
 		deflate = 1, // TODO: Investigate if palette compression (or palette compression with huffman coding) is more efficient.

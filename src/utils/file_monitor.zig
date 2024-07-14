@@ -39,7 +39,7 @@ const NoImpl = struct {
 	fn removePath(_: [:0]const u8) void {}
 };
 
-const LinuxImpl = struct {
+const LinuxImpl = struct { // MARK: LinuxImpl
 	const c = @cImport({
 		@cInclude("sys/inotify.h");
 		@cInclude("sys/ioctl.h");
@@ -209,7 +209,7 @@ const LinuxImpl = struct {
 	}
 };
 
-const WindowsImpl = struct {
+const WindowsImpl = struct { // MARK: WindowsImpl
 	const c = @cImport({
 		@cInclude("fileapi.h");
 	});

@@ -17,7 +17,7 @@ const Vec3f = vec.Vec3f;
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 /// Holds the basic properties of a tool crafting material.
-const Material = struct {
+const Material = struct { // MARK: Material
 	/// how much it weighs
 	density: f32 = undefined,
 	/// how long it takes until the tool breaks
@@ -59,7 +59,7 @@ const Material = struct {
 };
 
 
-pub const BaseItem = struct {
+pub const BaseItem = struct { // MARK: BaseItem
 	image: graphics.Image,
 	texture: ?graphics.Texture, // TODO: Properly deinit
 	id: []const u8,
@@ -149,7 +149,7 @@ pub const BaseItem = struct {
 };
 
 ///Generates the texture of a Tool using the material information.
-const TextureGenerator = struct {
+const TextureGenerator = struct { // MARK: TextureGenerator
 	/// Used to translate between grid and pixel coordinates.
 	pub const GRID_CENTERS_X = [_]u8 {
 		2, 5, 8, 11, 14,
@@ -523,7 +523,7 @@ const TextureGenerator = struct {
 };
 
 /// Determines the physical properties of a tool to caclulate in-game parameters such as durability and speed.
-const ToolPhysics = struct {
+const ToolPhysics = struct { // MARK: ToolPhysics
 	/// Finds the handle of the tool.
 	/// Uses a quite simple algorithm:
 	/// It just simply takes the lowest, right-most 2×2 grid of filled pixels.
@@ -871,7 +871,7 @@ const ToolPhysics = struct {
 	}
 };
 
-pub const Tool = struct {
+pub const Tool = struct { // MARK: Tool
 	craftingGrid: [25]?*const BaseItem,
 	materialGrid: [16][16]?*const BaseItem,
 	tooltip: ?[]const u8,
@@ -1020,7 +1020,7 @@ pub const Tool = struct {
 	}
 };
 
-pub const Item = union(enum) {
+pub const Item = union(enum) { // MARK: Item
 	baseItem: *BaseItem,
 	tool: *Tool,
 
@@ -1109,7 +1109,7 @@ pub const Item = union(enum) {
 	}
 };
 
-pub const ItemStack = struct {
+pub const ItemStack = struct { // MARK: ItemStack
 	item: ?Item = null,
 	amount: u16 = 0,
 
@@ -1179,7 +1179,7 @@ pub const ItemStack = struct {
 	}
 };
 
-pub const Inventory = struct {
+pub const Inventory = struct { // MARK: Inventory
 	items: []ItemStack,
 
 	pub fn init(allocator: NeverFailingAllocator, size: usize) Inventory {
@@ -1270,7 +1270,7 @@ pub const Inventory = struct {
 	}
 };
 
-const Recipe = struct {
+const Recipe = struct { // MARK: Recipe
 	sourceItems: []*BaseItem,
 	sourceAmounts: []u16,
 	resultItem: ItemStack,

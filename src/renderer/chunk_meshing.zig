@@ -276,7 +276,7 @@ pub const IndirectData = extern struct {
 	baseInstance: u32,
 };
 
-const PrimitiveMesh = struct {
+const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 	coreFaces: main.ListUnmanaged(FaceData) = .{},
 	neighborFacesSameLod: [6]main.ListUnmanaged(FaceData) = [_]main.ListUnmanaged(FaceData){.{}} ** 6,
 	neighborFacesHigherLod: [6]main.ListUnmanaged(FaceData) = [_]main.ListUnmanaged(FaceData){.{}} ** 6,
@@ -605,7 +605,7 @@ const PrimitiveMesh = struct {
 	}
 };
 
-pub const ChunkMesh = struct {
+pub const ChunkMesh = struct { // MARK: ChunkMesh
 	const SortingData = struct {
 		face: FaceData,
 		distance: u32,

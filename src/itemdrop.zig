@@ -22,7 +22,7 @@ const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
-const ItemDrop = struct {
+const ItemDrop = struct { // MARK: ItemDrop
 	pos: Vec3d,
 	vel: Vec3d,
 	rot: Vec3f,
@@ -33,7 +33,7 @@ const ItemDrop = struct {
 	reverseIndex: u16,
 };
 
-pub const ItemDropManager = struct {
+pub const ItemDropManager = struct { // MARK: ItemDropManager
 	/// Half the side length of all item entities hitboxes as a cube.
 	const radius: f64 = 0.1;
 	/// Side length of all item entities hitboxes as a cube.
@@ -387,7 +387,7 @@ pub const ItemDropManager = struct {
 	}
 };
 
-pub const ClientItemDropManager = struct {
+pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 	const maxf64Capacity = ItemDropManager.maxCapacity*@sizeOf(Vec3d)/@sizeOf(f64);
 
 	super: ItemDropManager,
@@ -479,7 +479,7 @@ pub const ClientItemDropManager = struct {
 	}
 };
 
-pub const ItemDropRenderer = struct {
+pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	var itemShader: graphics.Shader = undefined;
 	var itemUniforms: struct {
 		projectionMatrix: c_int,

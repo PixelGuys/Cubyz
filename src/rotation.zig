@@ -21,7 +21,7 @@ const RayIntersectionResult = struct {
 /// Each block gets 16 bit of additional storage(apart from the reference to the block type).
 /// These 16 bits are accessed and interpreted by the `RotationMode`.
 /// With the `RotationMode` interface there is almost no limit to what can be done with those 16 bit.
-pub const RotationMode = struct {
+pub const RotationMode = struct { // MARK: RotationMode
 	const DefaultFunctions = struct {
 		fn model(block: Block) u16 {
 			return blocks.meshes.modelIndexStart(block);
@@ -83,12 +83,12 @@ fn rotationMatrixTransform(quad: *main.models.QuadInfo, transformMatrix: Mat4f) 
 }
 
 pub const RotationModes = struct {
-	pub const NoRotation = struct {
+	pub const NoRotation = struct { // MARK: NoRotation
 		pub const id: []const u8 = "no_rotation";
 		fn init() void {}
 		fn deinit() void {}
 	};
-	pub const Log = struct {
+	pub const Log = struct { // MARK: Log
 		pub const id: []const u8 = "log";
 		var rotatedModels: std.StringHashMap(u16) = undefined;
 
@@ -133,7 +133,7 @@ pub const RotationModes = struct {
 			return false;
 		}
 	};
-	pub const Planar = struct {
+	pub const Planar = struct { // MARK: Planar
 		pub const id: []const u8 = "planar";
 		var rotatedModels: std.StringHashMap(u16) = undefined;
 
@@ -177,7 +177,7 @@ pub const RotationModes = struct {
 			return false;
 		}
 	};
-	pub const Fence = struct {
+	pub const Fence = struct { // MARK: Fence
 		pub const id: []const u8 = "fence";
 		pub const dependsOnNeighbors = true;
 		var fenceModels: std.StringHashMap(u16) = undefined;
@@ -262,7 +262,7 @@ pub const RotationModes = struct {
 			return true;
 		}
 	};
-	pub const Stairs = struct {
+	pub const Stairs = struct { // MARK: Stairs
 		pub const id: []const u8 = "stairs";
 		var modelIndex: u16 = 0;
 
@@ -544,7 +544,7 @@ pub const RotationModes = struct {
 			return false;
 		}
 	};
-	pub const Torch = struct {
+	pub const Torch = struct { // MARK: Torch
 		pub const id: []const u8 = "torch";
 		pub const dependsOnNeighbors = true;
 		var rotatedModels: std.StringHashMap(u16) = undefined;
@@ -664,6 +664,8 @@ pub const RotationModes = struct {
 		}
 	};
 };
+
+// MARK: init/register
 
 pub fn init() void {
 	rotationModes = std.StringHashMap(RotationMode).init(main.globalAllocator.allocator);

@@ -137,7 +137,7 @@ const Request = struct {
 
 /// Implements parts of the STUN(Session Traversal Utilities for NAT) protocol to discover public IP+Port
 /// Reference: https://datatracker.ietf.org/doc/html/rfc5389
-const STUN = struct {
+const STUN = struct { // MARK: STUN
 	const ipServerList = [_][]const u8 {
 		"iphone-stun.strato-iphone.de:3478",
 		"stun.12connect.com:3478",
@@ -374,7 +374,7 @@ const STUN = struct {
 	}
 };
 
-pub const ConnectionManager = struct {
+pub const ConnectionManager = struct { // MARK: ConnectionManager
 	socket: Socket = undefined,
 	thread: std.Thread = undefined,
 	threadId: std.Thread.Id = undefined,
@@ -632,6 +632,7 @@ const UnconfirmedPacket = struct {
 	id: u32,
 };
 
+// MARK: Protocols
 pub var bytesReceived: [256]Atomic(usize) = [_]Atomic(usize) {Atomic(usize).init(0)} ** 256;
 pub var packetsReceived: [256]Atomic(usize) = [_]Atomic(usize) {Atomic(usize).init(0)} ** 256;
 pub const Protocols = struct {
@@ -1239,7 +1240,7 @@ pub const Protocols = struct {
 };
 
 
-pub const Connection = struct {
+pub const Connection = struct { // MARK: Connection
 	const maxPacketSize: u32 = 65507; // max udp packet size
 	const importantHeaderSize: u32 = 5;
 	const maxImportantPacketSize: u32 = 1500 - 14 - 20 - 8; // Ethernet MTU minus Ethernet header minus IP header minus udp header

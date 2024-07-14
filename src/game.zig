@@ -24,7 +24,7 @@ const Fog = graphics.Fog;
 const renderer = @import("renderer.zig");
 const settings = @import("settings.zig");
 
-pub const camera = struct {
+pub const camera = struct { // MARK: camera
 	pub var rotation: Vec3f = Vec3f{0, 0, 0};
 	pub var direction: Vec3f = Vec3f{0, 0, 0};
 	pub var viewMatrix: Mat4f = Mat4f.identity();
@@ -59,7 +59,7 @@ const Box = struct {
 	}
 };
 
-pub const Player = struct {
+pub const Player = struct { // MARK: Player
 	pub var super: main.server.Entity = .{};
 	pub var id: u32 = 0;
 	pub var isFlying: Atomic(bool) = Atomic(bool).init(false);
@@ -433,7 +433,7 @@ pub const Player = struct {
 	}
 };
 
-pub const World = struct {
+pub const World = struct { // MARK: World
 	const dayCycle: u63 = 12000; // Length of one in-game day in 100ms. Midnight is at DAY_CYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
 
 	conn: *Connection,
@@ -602,7 +602,7 @@ pub fn hyperSpeedToggle() void {
 	Player.hyperSpeed.store(!Player.hyperSpeed.load(.monotonic), .monotonic);
 }
 
-pub fn update(deltaTime: f64) void {
+pub fn update(deltaTime: f64) void { // MARK: update()
 	const gravity = 30.0;
 	const terminalVelocity = 90.0;
 	const airFrictionCoefficient = gravity/terminalVelocity; // λ = a/v in equillibrium

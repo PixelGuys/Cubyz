@@ -16,7 +16,7 @@ pub const chunkVolume: u31 = 1 << 3*chunkShift;
 pub const chunkMask: i32 = chunkSize - 1;
 
 /// Contains a bunch of constants used to describe neighboring blocks.
-pub const Neighbors = struct { // TODO: Should this be an enum?
+pub const Neighbors = struct { // TODO: Should this be an enum? // MARK: Neighbors
 	/// How many neighbors there are.
 	pub const neighbors: u3 = 6;
 	/// Directions → Index
@@ -113,7 +113,7 @@ pub fn deinit() void {
 	serverPool.deinit();
 }
 
-pub const ChunkPosition = struct {
+pub const ChunkPosition = struct { // MARK: ChunkPosition
 	wx: i32,
 	wy: i32,
 	wz: i32,
@@ -175,7 +175,7 @@ pub const ChunkPosition = struct {
 	}
 };
 
-pub const Chunk = struct {
+pub const Chunk = struct { // MARK: Chunk
 	pos: ChunkPosition,
 	data: main.utils.PaletteCompressedRegion(Block, chunkVolume) = undefined,
 
@@ -230,7 +230,7 @@ pub const Chunk = struct {
 	}
 };
 
-pub const ServerChunk = struct {
+pub const ServerChunk = struct { // MARK: ServerChunk
 	super: Chunk,
 
 	wasChanged: bool = false,

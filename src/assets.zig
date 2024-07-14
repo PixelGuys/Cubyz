@@ -167,7 +167,7 @@ fn registerRecipesFromFile(file: []const u8) void {
 	items_zig.registerRecipes(file);
 }
 
-pub const Palette = struct {
+pub const Palette = struct { // MARK: Palette
 	palette: main.List([]const u8),
 	pub fn init(allocator: NeverFailingAllocator, json: JsonElement, firstElement: ?[]const u8) !*Palette {
 		const self = allocator.create(Palette);
@@ -221,7 +221,7 @@ pub const Palette = struct {
 
 var loadedAssets: bool = false;
 
-pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePalette: *Palette) !void {
+pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePalette: *Palette) !void { // MARK: loadWorldAssets()
 	if(loadedAssets) return; // The assets already got loaded by the server.
 	loadedAssets = true;
 	var blocks = commonBlocks.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
@@ -312,7 +312,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 	}
 }
 
-pub fn unloadAssets() void {
+pub fn unloadAssets() void { // MARK: unloadAssets()
 	if(!loadedAssets) return;
 	loadedAssets = false;
 	blocks_zig.reset();

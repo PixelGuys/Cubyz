@@ -39,7 +39,7 @@ pub const stb_image = @cImport ({
 	@cInclude("stb/stb_image_write.h");
 });
 
-pub const draw = struct {
+pub const draw = struct { // MARK: draw
 	var color: u32 = 0;
 	var clip: ?Vec4i = null;
 	var translation: Vec2f = Vec2f{0, 0};
@@ -118,7 +118,7 @@ pub const draw = struct {
 	}
 
 	// ----------------------------------------------------------------------------
-	// Stuff for fillRect:
+	// MARK: fillRect()
 	var rectUniforms: struct {
 		screen: c_int,
 		start: c_int,
@@ -172,7 +172,7 @@ pub const draw = struct {
 	}
 
 	// ----------------------------------------------------------------------------
-	// Stuff for fillRectBorder:
+	// MARK: fillRectBorder()
 	var rectBorderUniforms: struct {
 		screen: c_int,
 		start: c_int,
@@ -236,7 +236,7 @@ pub const draw = struct {
 	}
 
 	// ----------------------------------------------------------------------------
-	// Stuff for drawLine:
+	// MARK: drawLine()
 	var lineUniforms: struct {
 		screen: c_int,
 		start: c_int,
@@ -289,7 +289,7 @@ pub const draw = struct {
 	}
 	
 	// ----------------------------------------------------------------------------
-	// Stuff for drawRect:
+	// MARK: drawRect()
 	// Draw rect can use the same shader as drawline, because it essentially draws lines.
 	var drawRectVAO: c_uint = undefined;
 	var drawRectVBO: c_uint = undefined;
@@ -335,7 +335,7 @@ pub const draw = struct {
 	}
 	
 	// ----------------------------------------------------------------------------
-	// Stuff for fillCircle:
+	// MARK: fillCircle()
 	var circleUniforms: struct {
 		screen: c_int,
 		center: c_int,
@@ -388,7 +388,7 @@ pub const draw = struct {
 	}
 	
 	// ----------------------------------------------------------------------------
-	// Stuff for drawImage:
+	// MARK: drawImage()
 	// Luckily the vao of the regular rect can used.
 	var imageUniforms: struct {
 		screen: c_int,
@@ -454,6 +454,7 @@ pub const draw = struct {
 	}
 
 	// ----------------------------------------------------------------------------
+	// MARK: customShadedRect()
 
 	pub fn customShadedRect(uniforms: anytype, _pos: Vec2f, _dim: Vec2f) void {
 		var pos = _pos;
@@ -475,7 +476,8 @@ pub const draw = struct {
 	}
 
 	// ----------------------------------------------------------------------------
-	
+	// MARK: text()
+
 	pub fn text(_text: []const u8, x: f32, y: f32, fontSize: f32, alignment: TextBuffer.Alignment) void {
 		TextRendering.renderText(_text, x, y, fontSize, .{.color = @truncate(@as(u32, @bitCast(color)))}, alignment);
 	}
@@ -487,7 +489,7 @@ pub const draw = struct {
 	}
 };
 
-pub const TextBuffer = struct {
+pub const TextBuffer = struct { // MARK: TextBuffer
 
 	pub const Alignment = enum {
 		left,
@@ -974,7 +976,7 @@ pub const TextBuffer = struct {
 	}
 };
 
-const TextRendering = struct {
+const TextRendering = struct { // MARK: TextRendering
 	const Glyph = struct {
 		textureX: i32,
 		size: Vec2i,
@@ -1133,7 +1135,7 @@ const TextRendering = struct {
 	}
 };
 
-pub fn init() void {
+pub fn init() void { // MARK: init()
 	draw.initCircle();
 	draw.initDrawRect();
 	draw.initImage();
@@ -1157,7 +1159,7 @@ pub fn deinit() void {
 	block_texture.deinit();
 }
 
-pub const Shader = struct {
+pub const Shader = struct { // MARK: Shader
 	id: c_uint,
 	
 	fn addShader(self: *const Shader, filename: []const u8, shader_stage: c_uint) !void {
@@ -1247,7 +1249,7 @@ pub const Shader = struct {
 	}
 };
 
-pub const SSBO = struct {
+pub const SSBO = struct { // MARK: SSBO
 	bufferID: c_uint,
 	pub fn init() SSBO {
 		var self = SSBO{.bufferID = undefined};
@@ -1298,7 +1300,7 @@ pub const SubAllocation = struct {
 };
 
 /// A big SSBO that is able to allocate/free smaller regions.
-pub fn LargeBuffer(comptime Entry: type) type {
+pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 	return struct {
 		ssbo: SSBO,
 		freeBlocks: main.List(SubAllocation),
@@ -1459,7 +1461,7 @@ pub fn LargeBuffer(comptime Entry: type) type {
 	};
 }
 
-pub const FrameBuffer = struct {
+pub const FrameBuffer = struct { // MARK: FrameBuffer
 	frameBuffer: c_uint,
 	texture: c_uint,
 	hasDepthTexture: bool,
@@ -1550,7 +1552,7 @@ pub const FrameBuffer = struct {
 	}
 };
 
-pub const TextureArray = struct {
+pub const TextureArray = struct { // MARK: TextureArray
 	textureID: c_uint,
 
 	pub fn init() TextureArray {
@@ -1675,7 +1677,7 @@ pub const TextureArray = struct {
 	}
 };
 
-pub const Texture = struct {
+pub const Texture = struct { // MARK: Texture
 	textureID: c_uint,
 
 	pub fn init() Texture {
@@ -1733,7 +1735,7 @@ pub const Texture = struct {
 	}
 };
 
-pub const CubeMapTexture = struct {
+pub const CubeMapTexture = struct { // MARK: CubeMapTexture
 	textureID: c_uint,
 
 	pub fn init() CubeMapTexture {
@@ -1812,7 +1814,7 @@ pub const CubeMapTexture = struct {
 	}
 };
 
-pub const Color = extern struct {
+pub const Color = extern struct { // MARK: Color
 	r: u8,
 	g: u8,
 	b: u8,
@@ -1823,7 +1825,7 @@ pub const Color = extern struct {
 	}
 };
 
-pub const Image = struct {
+pub const Image = struct { // MARK: Image
 	var defaultImageData = [4]Color {
 		Color{.r=0, .g=0, .b=0, .a=255},
 		Color{.r=255, .g=0, .b=255, .a=255},
@@ -1911,13 +1913,13 @@ pub const Image = struct {
 	}
 };
 
-pub const Fog = struct {
+pub const Fog = struct { // MARK: Fog
 	fogColor: Vec3f,
 	skyColor: Vec3f,
 	density: f32,
 };
 
-const block_texture = struct {
+const block_texture = struct { // MARK: block_texture
 	var uniforms: struct {
 		color: c_int,
 		transparent: c_int,

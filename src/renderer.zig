@@ -164,7 +164,7 @@ pub fn crosshairDirection(rotationMatrix: Mat4f, fovY: f32, width: u31, height: 
 	return adjusted;
 }
 
-pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPos: Vec3d) void {
+pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPos: Vec3d) void { // MARK: renderWorld()
 	worldFrameBuffer.bind();
 	c.glViewport(0, 0, lastWidth, lastHeight);
 	gpu_performance_measuring.startQuery(.clear);
@@ -291,7 +291,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.stopQuery();
 }
 
-const Bloom = struct {
+const Bloom = struct { // MARK: Bloom
 	var buffer1: graphics.FrameBuffer = undefined;
 	var buffer2: graphics.FrameBuffer = undefined;
 	var emptyBuffer: graphics.Texture = undefined;
@@ -583,7 +583,7 @@ pub const MenuBackGround = struct {
 	}
 };
 
-pub const Frustum = struct {
+pub const Frustum = struct { // MARK: Frustum
 	const Plane = struct {
 		pos: Vec3f,
 		norm: Vec3f,
@@ -618,7 +618,7 @@ pub const Frustum = struct {
 	}
 };
 
-pub const MeshSelection = struct {
+pub const MeshSelection = struct { // MARK: MeshSelection
 	var shader: Shader = undefined;
 	var uniforms: struct {
 		projectionMatrix: c_int,

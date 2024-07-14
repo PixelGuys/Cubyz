@@ -10,7 +10,7 @@ const vec = @import("main.vec");
 const Vec3f = main.vec.Vec3f;
 const Vec3d = main.vec.Vec3d;
 
-pub const SimpleStructureModel = struct {
+pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 	const GenerationMode = enum {
 		floor,
 		ceiling,
@@ -74,7 +74,7 @@ pub const SimpleStructureModel = struct {
 	}
 };
 
-const Stripe = struct {
+const Stripe = struct { // MARK: Stripe
 	direction: ?Vec3d,
 	block: u16,
 	minDistance: f64,
@@ -203,7 +203,7 @@ fn u32ToVec3(color: u32) Vec3f {
 }
 
 /// A climate region with special ground, plants and structures.
-pub const Biome = struct {
+pub const Biome = struct { // MARK: Biome
 	const GenerationProperties = packed struct(u8) {
 		// pairs of opposite properties. In-between values are allowed.
 		hot: bool = false,
@@ -337,7 +337,7 @@ pub const Biome = struct {
 };
 
 /// Stores the vertical ground structure of a biome from top to bottom.
-pub const BlockStructure = struct {
+pub const BlockStructure = struct { // MARK: BlockStructure
 	pub const BlockStack = struct {
 		blockType: u16 = 0,
 		min: u31 = 0,
@@ -406,7 +406,7 @@ pub const BlockStructure = struct {
 	}
 };
 
-pub const TreeNode = union(enum) {
+pub const TreeNode = union(enum) { // MARK: TreeNode
 	leaf: struct {
 		totalChance: f64 = 0,
 		aliasTable: main.utils.AliasTable(Biome) = undefined,
@@ -526,6 +526,7 @@ pub const TreeNode = union(enum) {
 	}
 };
 
+ // MARK: init/register
 var finishedLoading: bool = false;
 var biomes: main.List(Biome) = undefined;
 var caveBiomes: main.List(Biome) = undefined;

@@ -17,7 +17,7 @@ const Biome = terrain.biomes.Biome;
 const SurfaceMap = terrain.SurfaceMap;
 
 /// Cave biome data from a big chunk of the world.
-pub const CaveBiomeMapFragment = struct {
+pub const CaveBiomeMapFragment = struct { // MARK: caveBiomeMapFragment
 	pub const caveBiomeShift = 7;
 	pub const caveBiomeSize = 1 << caveBiomeShift;
 	pub const caveBiomeMask = caveBiomeSize - 1;
@@ -66,7 +66,7 @@ pub const CaveBiomeMapFragment = struct {
 };
 
 /// A generator for the cave biome map.
-pub const CaveBiomeGenerator = struct {
+pub const CaveBiomeGenerator = struct { // MARK: CaveBiomeGenerator
 	init: *const fn(parameters: JsonElement) void,
 	deinit: *const fn() void,
 	generate: *const fn(map: *CaveBiomeMapFragment, seed: u64) void,
@@ -109,7 +109,7 @@ pub const CaveBiomeGenerator = struct {
 };
 
 /// Doesn't allow getting the biome at one point and instead is only useful for interpolating values between biomes.
-pub const InterpolatableCaveBiomeMapView = struct {
+pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveBiomeMapView
 	fragments: Array3D(*CaveBiomeMapFragment),
 	surfaceFragments: [4]*MapFragment,
 	pos: ChunkPosition,
@@ -382,7 +382,7 @@ pub const InterpolatableCaveBiomeMapView = struct {
 	}
 };
 
-pub const CaveBiomeMapView = struct {
+pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 	const CachedFractalNoise3D = terrain.noise.CachedFractalNoise3D;
 
 	super: InterpolatableCaveBiomeMapView,
@@ -451,6 +451,7 @@ pub const CaveBiomeMapView = struct {
 	}
 };
 
+// MARK: cache
 const cacheSize = 1 << 8; // Must be a power of 2!
 const cacheMask = cacheSize - 1;
 const associativity = 8;

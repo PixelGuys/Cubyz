@@ -51,7 +51,7 @@ var logFile: ?std.fs.File = undefined;
 var logFileTs: ?std.fs.File = undefined;
 var supportsANSIColors: bool = undefined;
 // overwrite the log function:
-pub const std_options: std.Options = .{
+pub const std_options: std.Options = .{ // MARK: std_options
 	.log_level = .debug,
 	.logFn = struct {pub fn logFn(
 		comptime level: std.log.Level,
@@ -238,6 +238,7 @@ fn logToStdErr(comptime format: []const u8, args: anytype) void {
 	nosuspend std.io.getStdErr().writeAll(string) catch {};
 }
 
+// MARK: Callbacks
 fn escape() void {
 	if(gui.selectedTextInput != null) {
 		gui.selectedTextInput = null;
@@ -296,7 +297,7 @@ fn setHotbarSlot(i: comptime_int) *const fn() void {
 	}.set;
 }
 
-pub const KeyBoard = struct {
+pub const KeyBoard = struct { // MARK: KeyBoard
 	const c = Window.c;
 	pub var keys = [_]Window.Key {
 		// Gameplay:
@@ -377,7 +378,7 @@ pub var lastFrameTime = std.atomic.Value(f64).init(0);
 /// Measures time between different frames' beginnings.
 pub var lastDeltaTime = std.atomic.Value(f64).init(0);
 
-pub fn main() void {
+pub fn main() void { // MARK: main()
 	seed = @bitCast(std.time.milliTimestamp());
 	defer if(global_gpa.deinit() == .leak) {
 		std.log.err("Memory leak", .{});

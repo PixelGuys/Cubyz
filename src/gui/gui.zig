@@ -36,7 +36,7 @@ pub var scale: f32 = undefined;
 
 pub var hoveredItemSlot: ?*ItemSlot = null;
 
-const GuiCommandQueue = struct {
+const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 	const Action = enum {
 		open,
 		close,
@@ -126,7 +126,7 @@ pub const Callback = struct {
 	}
 };
 
-pub fn init() void {
+pub fn init() void { // MARK: init()
 	GuiCommandQueue.init();
 	windowList = List(*GuiWindow).init(main.globalAllocator);
 	hudWindows = List(*GuiWindow).init(main.globalAllocator);
@@ -183,7 +183,7 @@ pub fn deinit() void {
 	GuiCommandQueue.deinit();
 }
 
-pub fn save() void {
+pub fn save() void { // MARK: save()
 	const guiJson = JsonElement.initObject(main.stackAllocator);
 	defer guiJson.free(main.stackAllocator);
 	for(windowList.items) |window| {
@@ -572,7 +572,7 @@ pub fn toggleGameMenu() void {
 	}
 }
 
-pub const inventory = struct {
+pub const inventory = struct { // MARK: inventory
 	const ItemStack = main.items.ItemStack;
 	pub var carriedItemStack: ItemStack = .{.item = null, .amount = 0};
 	var carriedItemSlot: *ItemSlot = undefined;

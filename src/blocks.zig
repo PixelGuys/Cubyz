@@ -225,7 +225,7 @@ pub fn hasRegistered(id: []const u8) bool {
 	return reverseIndices.contains(id);
 }
 
-pub const Block = packed struct {
+pub const Block = packed struct { // MARK: Block
 	typ: u16,
 	data: u16,
 	pub fn toInt(self: Block) u32 {
@@ -315,7 +315,7 @@ pub const Block = packed struct {
 };
 
 
-pub const meshes = struct {
+pub const meshes = struct { // MARK: meshes
 	const AnimationData = extern struct {
 		frames: i32,
 		time: i32,

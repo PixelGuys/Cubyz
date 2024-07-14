@@ -7,7 +7,7 @@ const main = @import("main.zig");
 
 pub const file_monitor = @import("utils/file_monitor.zig");
 
-pub const Compression = struct {
+pub const Compression = struct { // MARK: Compression
 	pub fn deflate(allocator: NeverFailingAllocator, data: []const u8, level: std.compress.flate.deflate.Level) []u8 {
 		var result = main.List(u8).init(allocator);
 		var comp = std.compress.flate.compressor(result.writer(), .{.level = level}) catch unreachable;
@@ -86,7 +86,7 @@ pub const Compression = struct {
 };
 
 /// Implementation of https://en.wikipedia.org/wiki/Alias_method
-pub fn AliasTable(comptime T: type) type {
+pub fn AliasTable(comptime T: type) type { // MARK: AliasTable
 	return struct {
 		const AliasData = struct {
 			chance: u16,
@@ -188,7 +188,7 @@ pub fn AliasTable(comptime T: type) type {
 }
 
 /// A list that is always sorted in ascending order based on T.lessThan(lhs, rhs).
-pub fn SortedList(comptime T: type) type {
+pub fn SortedList(comptime T: type) type { // MARK: SortedList
 	return struct {
 		const Self = @This();
 
@@ -236,7 +236,7 @@ pub fn SortedList(comptime T: type) type {
 	};
 }
 
-pub fn Array2D(comptime T: type) type {
+pub fn Array2D(comptime T: type) type { // MARK: Array2D
 	return struct {
 		const Self = @This();
 		mem: []T,
@@ -277,7 +277,7 @@ pub fn Array2D(comptime T: type) type {
 	};
 }
 
-pub fn Array3D(comptime T: type) type {
+pub fn Array3D(comptime T: type) type { // MARK: Array3D
 	return struct {
 		const Self = @This();
 		mem: []T,
@@ -315,7 +315,7 @@ pub fn Array3D(comptime T: type) type {
 	};
 }
 
-pub fn CircularBufferQueue(comptime T: type) type {
+pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 	return struct {
 		const Self = @This();
 		mem: []T,
@@ -375,7 +375,7 @@ pub fn CircularBufferQueue(comptime T: type) type {
 
 /// Allows for stack-like allocations in a fast and safe way.
 /// It is safe in the sense that a regular allocator will be used when the buffer is full.
-pub const StackAllocator = struct {
+pub const StackAllocator = struct { // MARK: StackAllocator
 	const AllocationTrailer = packed struct{wasFreed: bool, previousAllocationTrailer: u31};
 	backingAllocator: NeverFailingAllocator,
 	buffer: []align(4096) u8,
@@ -524,7 +524,7 @@ pub const StackAllocator = struct {
 };
 
 /// An allocator that handles OutOfMemory situations by panicing or freeing memory(TODO), making it safe to ignore errors.
-pub const ErrorHandlingAllocator = struct {
+pub const ErrorHandlingAllocator = struct { // MARK: ErrorHandlingAllocator
 	backingAllocator: Allocator,
 
 	pub fn init(backingAllocator: Allocator) ErrorHandlingAllocator {
@@ -599,7 +599,7 @@ pub const ErrorHandlingAllocator = struct {
 };
 
 /// An allocator interface signaling that you can use 
-pub const NeverFailingAllocator = struct {
+pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 	allocator: Allocator,
 	IAssertThatTheProvidedAllocatorCantFail: void,
 
@@ -760,7 +760,7 @@ pub const NeverFailingAllocator = struct {
 	}
 };
 
-pub const NeverFailingArenaAllocator = struct {
+pub const NeverFailingArenaAllocator = struct { // MARK: NeverFailingArena
 	arena: std.heap.ArenaAllocator,
 
 	pub fn init(child_allocator: NeverFailingAllocator) NeverFailingArenaAllocator {
@@ -796,7 +796,7 @@ pub const NeverFailingArenaAllocator = struct {
 	}
 };
 
-pub const BufferFallbackAllocator = struct {
+pub const BufferFallbackAllocator = struct { // MARK: BufferFallbackAllocator
 	fixedBuffer: std.heap.FixedBufferAllocator,
 	fallbackAllocator: NeverFailingAllocator,
 
@@ -849,7 +849,7 @@ pub const BufferFallbackAllocator = struct {
 /// A simple binary heap.
 /// Thread safe and blocking.
 /// Expects T to have a `biggerThan(T) bool` function
-pub fn BlockingMaxHeap(comptime T: type) type {
+pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 	return struct {
 		const initialSize = 16;
 		size: usize,
@@ -984,7 +984,7 @@ pub fn BlockingMaxHeap(comptime T: type) type {
 	};
 }
 
-pub const ThreadPool = struct {
+pub const ThreadPool = struct { // MARK: ThreadPool
 	const Task = struct {
 		cachedPriority: f32,
 		self: *anyopaque,
@@ -1137,7 +1137,7 @@ pub const ThreadPool = struct {
 
 /// An packed array of integers with dynamic bit size.
 /// The bit size can be changed using the `resize` function.
-pub fn DynamicPackedIntArray(size: comptime_int) type {
+pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIntArray
 	return struct {
 		data: []u8 = &.{},
 		bitSize: u5 = 0,
@@ -1208,7 +1208,7 @@ pub fn DynamicPackedIntArray(size: comptime_int) type {
 	};
 }
 
-pub fn PaletteCompressedRegion(T: type, size: comptime_int) type {
+pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: PaletteCompressedRegion
 	return struct {
 		data: DynamicPackedIntArray(size) = .{},
 		palette: []T,
@@ -1321,7 +1321,7 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type {
 }
 
 /// Implements a simple set associative cache with LRU replacement strategy.
-pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSize: u32, comptime deinitFunction: fn(*T) void) type {
+pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSize: u32, comptime deinitFunction: fn(*T) void) type { // MARK: Cache
 	const hashMask = numberOfBuckets-1;
 	if(numberOfBuckets & hashMask != 0) @compileError("The number of buckets should be a power of 2!");
 
@@ -1438,7 +1438,7 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 }
 
 ///  https://en.wikipedia.org/wiki/Cubic_Hermite_spline#Unit_interval_(0,_1)
-pub fn unitIntervalSpline(comptime Float: type, p0: Float, m0: Float, p1: Float, m1: Float) [4]Float {
+pub fn unitIntervalSpline(comptime Float: type, p0: Float, m0: Float, p1: Float, m1: Float) [4]Float { // MARK: unitIntervalSpline()
 	return .{
 		p0,
 		m0,
@@ -1447,7 +1447,7 @@ pub fn unitIntervalSpline(comptime Float: type, p0: Float, m0: Float, p1: Float,
 	};
 }
 
-pub fn GenericInterpolation(comptime elements: comptime_int) type {
+pub fn GenericInterpolation(comptime elements: comptime_int) type { // MARK: GenericInterpolation
 	const frames: u32 = 8;
 	return struct {
 		lastPos: [frames][elements]f64,
@@ -1587,7 +1587,7 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 	};
 }
 
-pub const TimeDifference = struct {
+pub const TimeDifference = struct { // MARK: TimeDifference
 	difference: Atomic(i16) = Atomic(i16).init(0),
 	firstValue: bool = true,
 
@@ -1606,7 +1606,7 @@ pub const TimeDifference = struct {
 	}
 };
 
-pub fn assertLocked(mutex: *const std.Thread.Mutex) void {
+pub fn assertLocked(mutex: *const std.Thread.Mutex) void { // MARK: assertLocked()
 	if(builtin.mode == .Debug) {
 		std.debug.assert(!@constCast(mutex).tryLock());
 	}
@@ -1619,7 +1619,7 @@ pub fn assertLockedShared(lock: *const std.Thread.RwLock) void {
 }
 
 /// A read-write lock with read priority.
-pub const ReadWriteLock = struct {
+pub const ReadWriteLock = struct { // MARK: ReadWriteLock
 	condition: std.Thread.Condition = .{},
 	mutex: std.Thread.Mutex = .{},
 	readers: u32 = 0,

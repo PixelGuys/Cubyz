@@ -53,7 +53,7 @@ const BlockUpdate = struct {
 };
 var blockUpdateList: main.List(BlockUpdate) = undefined;
 
-pub fn init() void {
+pub fn init() void { // MARK: init()
 	lastRD = 0;
 	blockUpdateList = main.List(BlockUpdate).init(main.globalAllocator);
 	for(&storageLists) |*storageList| {
@@ -105,6 +105,8 @@ pub fn deinit() void {
 	}
 	clearList.clearAndFree();
 }
+
+ // MARK: getters
 
 fn getNodePointer(pos: chunk.ChunkPosition) *ChunkMeshNode {
 	const lod = std.math.log2_int(u31, pos.voxelSize);
@@ -202,7 +204,7 @@ fn reduceRenderDistance(fullRenderDistance: i64, reduction: i64) i32 {
 	return reducedRenderDistance;
 }
 
-fn isInRenderDistance(pos: chunk.ChunkPosition) bool {
+fn isInRenderDistance(pos: chunk.ChunkPosition) bool {  // MARK: isInRenderDistance()
 	const maxRenderDistance = lastRD*chunk.chunkSize*pos.voxelSize;
 	const size: u31 = chunk.chunkSize*pos.voxelSize;
 	const mask: i32 = size - 1;
@@ -254,7 +256,7 @@ fn isMapInRenderDistance(pos: LightMap.MapFragmentPosition) bool {
 	return true;
 }
 
-fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32) void {
+fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32) void { // MARK: freeOldMeshes()
 	for(0..storageLists.len) |_lod| {
 		const lod: u5 = @intCast(_lod);
 		const maxRenderDistanceNew = lastRD*chunk.chunkSize << lod;
@@ -392,7 +394,7 @@ fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32) void {
 	}
 }
 
-fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32, meshRequests: *main.List(chunk.ChunkPosition), mapRequests: *main.List(LightMap.MapFragmentPosition)) void {
+fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32, meshRequests: *main.List(chunk.ChunkPosition), mapRequests: *main.List(LightMap.MapFragmentPosition)) void { // MARK: createNewMeshes()
 	for(0..storageLists.len) |_lod| {
 		const lod: u5 = @intCast(_lod);
 		const maxRenderDistanceNew = lastRD*chunk.chunkSize << lod;
@@ -532,7 +534,7 @@ fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32, meshR
 	}
 }
 
-pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: Vec3d, renderDistance: i32) []*chunk_meshing.ChunkMesh {
+pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: Vec3d, renderDistance: i32) []*chunk_meshing.ChunkMesh { // MARK: updateAndGetRenderChunks()
 	meshList.clearRetainingCapacity();
 	if(lastRD != renderDistance) {
 		network.Protocols.genericUpdate.sendRenderDistance(conn, renderDistance);
@@ -894,7 +896,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 	return meshList.items;
 }
 
-pub fn updateMeshes(targetTime: i64) void {
+pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()
 	{ // First of all process all the block updates:
 		blockUpdateMutex.lock();
 		defer blockUpdateMutex.unlock();
@@ -997,6 +999,8 @@ pub fn updateMeshes(targetTime: i64) void {
 	}
 }
 
+// MARK: adders
+
 pub fn addMeshToClearListAndDecreaseRefCount(mesh: *chunk_meshing.ChunkMesh) void {
 	std.debug.assert(mesh.refCount.load(.monotonic) == 0);
 	mutex.lock();
@@ -1040,7 +1044,7 @@ pub fn finishMesh(mesh: *chunk_meshing.ChunkMesh) void {
 	updatableList.append(mesh);
 }
 
-pub const MeshGenerationTask = struct {
+pub const MeshGenerationTask = struct { // MARK: MeshGenerationTask
 	mesh: *chunk.Chunk,
 
 	pub const vtable = utils.ThreadPool.VTable{
@@ -1083,6 +1087,8 @@ pub const MeshGenerationTask = struct {
 		main.globalAllocator.destroy(self);
 	}
 };
+
+// MARK: updaters
 
 pub fn updateBlock(x: i32, y: i32, z: i32, newBlock: blocks.Block) void {
 	blockUpdateMutex.lock();

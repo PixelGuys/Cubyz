@@ -80,7 +80,7 @@ pub fn rotateZ(self: anytype, angle: @typeInfo(@TypeOf(self)).Vector.child) @Typ
 	};
 }
 
-pub const Mat4f = struct {
+pub const Mat4f = struct { // MARK: Mat4f
 	rows: [4]Vec4f,
 	pub fn identity() Mat4f {
 		return Mat4f {
@@ -191,7 +191,7 @@ pub const Mat4f = struct {
 	}
 };
 
-pub const Complex = struct {
+pub const Complex = struct { // MARK: Complex
 	val: Vec2d,
 
 	fn valSquare(a: Complex) f64 {
