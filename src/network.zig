@@ -272,9 +272,9 @@ const STUN = struct { // MARK: STUN
 
 	fn requestAddress(connection: *ConnectionManager) Address {
 		var oldAddress: ?Address = null;
-		var seed = [_]u8 {0} ** std.rand.DefaultCsprng.secret_seed_length;
+		var seed = [_]u8 {0} ** std.Random.DefaultCsprng.secret_seed_length;
 		std.mem.writeInt(i128, seed[0..16], std.time.nanoTimestamp(), builtin.cpu.arch.endian()); // Not the best seed, but it's not that important.
-		var random = std.rand.DefaultCsprng.init(seed);
+		var random = std.Random.DefaultCsprng.init(seed);
 		for(0..16) |_| {
 			// Choose a somewhat random server, so we faster notice if any one of them stopped working.
 			const server = ipServerList[random.random().intRangeAtMost(usize, 0, ipServerList.len-1)];
@@ -286,7 +286,7 @@ const STUN = struct { // MARK: STUN
 			};
 			random.fill(data[8..]); // Fill the transaction ID.
 
-			var splitter = std.mem.split(u8, server, ":");
+			var splitter = std.mem.splitScalar(u8, server, ':');
 			const ip = splitter.first();
 			const serverAddress = Address {
 				.ip=Socket.resolveIP(ip) catch |err| {
@@ -1320,7 +1320,7 @@ pub const Connection = struct { // MARK: Connection
 		errdefer for(&result.receivedPackets) |*list| {
 			list.deinit();
 		};
-		var splitter = std.mem.split(u8, ipPort, ":");
+		var splitter = std.mem.splitScalar(u8, ipPort, ':');
 		const ip = splitter.first();
 		result.remoteAddress.ip = try Socket.resolveIP(ip);
 		var port = splitter.rest();

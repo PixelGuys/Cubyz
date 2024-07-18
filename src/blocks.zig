@@ -154,7 +154,7 @@ fn registerBlockDrop(typ: u16, json: JsonElement) void {
 	for(drops) |blockDrop| {
 		var string = blockDrop.as([]const u8, "auto");
 		string = std.mem.trim(u8, string, " ");
-		var iterator = std.mem.split(u8, string, " ");
+		var iterator = std.mem.splitScalar(u8, string, ' ');
 
 		var name = iterator.next() orelse continue;
 		var amount: f32 = 1;
@@ -487,7 +487,7 @@ pub const meshes = struct { // MARK: meshes
 		var result: u16 = undefined;
 		if(textureInfo == .JsonString or textureInfo == .JsonStringOwned) {
 			const resource = textureInfo.as([]const u8, "");
-			var splitter = std.mem.split(u8, resource, ":");
+			var splitter = std.mem.splitScalar(u8, resource, ':');
 			const mod = splitter.first();
 			const id = splitter.rest();
 			var buffer: [1024]u8 = undefined;
@@ -527,7 +527,7 @@ pub const meshes = struct { // MARK: meshes
 				} else {
 					animation.append(.{.frames = 1, .time = 1});
 				}
-				var splitter = std.mem.split(u8, item.as([]const u8, "cubyz:undefined"), ":");
+				var splitter = std.mem.splitScalar(u8, item.as([]const u8, "cubyz:undefined"), ':');
 				const mod = splitter.first();
 				const id = splitter.rest();
 				var buffer: [1024]u8 = undefined;

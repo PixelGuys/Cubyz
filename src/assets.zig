@@ -140,7 +140,7 @@ pub fn init() void {
 }
 
 fn registerItem(assetFolder: []const u8, id: []const u8, json: JsonElement) !*items_zig.BaseItem {
-	var split = std.mem.split(u8, id, ":");
+	var split = std.mem.splitScalar(u8, id, ':');
 	const mod = split.first();
 	var texturePath: []const u8 = &[0]u8{};
 	var replacementTexturePath: []const u8 = &[0]u8{};

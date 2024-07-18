@@ -344,7 +344,7 @@ pub const BlockStructure = struct { // MARK: BlockStructure
 		max: u31 = 0,
 
 		fn init(self: *BlockStack, string: []const u8) !void {
-			var tokenIt = std.mem.tokenize(u8, string, &std.ascii.whitespace);
+			var tokenIt = std.mem.tokenizeAny(u8, string, &std.ascii.whitespace);
 			const first = tokenIt.next() orelse return error.@"String is empty.";
 			var blockId: []const u8 = first;
 			if(tokenIt.next()) |second| {

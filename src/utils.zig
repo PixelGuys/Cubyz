@@ -75,7 +75,7 @@ pub const Compression = struct { // MARK: Compression
 			const fileData = data[0..len];
 			data = data[len..];
 
-			var splitter = std.mem.splitBackwards(u8, path, "/");
+			var splitter = std.mem.splitBackwardsScalar(u8, path, '/');
 			_ = splitter.first();
 			try outDir.makePath(splitter.rest());
 			const file = try outDir.createFile(path, .{});

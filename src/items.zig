@@ -1325,11 +1325,11 @@ pub fn registerRecipes(file: []const u8) void {
 	defer itemAmounts.deinit();
 	var string = main.List(u8).init(main.stackAllocator);
 	defer string.deinit();
-	var lines = std.mem.split(u8, file, "\n");
+	var lines = std.mem.splitScalar(u8, file, '\n');
 	while(lines.next()) |line| {
 		// shortcuts:
 		if(std.mem.containsAtLeast(u8, line, 1, "=")) {
-			var parts = std.mem.split(u8, line, "=");
+			var parts = std.mem.splitScalar(u8, line, '=');
 			for(parts.first()) |char| {
 				if(std.ascii.isWhitespace(char)) continue; // TODO: Unicode whitespaces
 				string.append(char);
@@ -1344,7 +1344,7 @@ pub fn registerRecipes(file: []const u8) void {
 			var id = line["result".len..];
 			var amount: u16 = 1;
 			if(std.mem.containsAtLeast(u8, id, 1, "*")) {
-				var parts = std.mem.split(u8, id, "*");
+				var parts = std.mem.splitScalar(u8, id, '*');
 				const amountString = std.mem.trim(u8, parts.first(), &std.ascii.whitespace); // TODO: Unicode whitespaces
 				amount = std.fmt.parseInt(u16, amountString, 0) catch 1;
 				id = parts.rest();
@@ -1358,13 +1358,13 @@ pub fn registerRecipes(file: []const u8) void {
 			};
 			recipeList.append(recipe);
 		} else {
-			var ingredients = std.mem.split(u8, line, ",");
+			var ingredients = std.mem.splitScalar(u8, line, ',');
 			outer: while(ingredients.next()) |ingredient| {
 				var id = ingredient;
 				if(id.len == 0) continue;
 				var amount: u16 = 1;
 				if(std.mem.containsAtLeast(u8, id, 1, "*")) {
-					var parts = std.mem.split(u8, id, "*");
+					var parts = std.mem.splitScalar(u8, id, '*');
 					const amountString = std.mem.trim(u8, parts.first(), &std.ascii.whitespace); // TODO: Unicode whitespaces
 					amount = std.fmt.parseInt(u16, amountString, 0) catch 1;
 					id = parts.rest();
