@@ -956,8 +956,7 @@ pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()
 		// TODO: Find a faster solution than going through the entire list every frame.
 		var closestPriority: f32 = -std.math.floatMax(f32);
 		var closestIndex: usize = 0;
-		const eye: Vec3d = .{0.0, 0.0, game.Player.eye};
-		const playerPos = game.Player.getPosBlocking() + eye;
+		const playerPos = game.Player.getEyePosBlocking();
 		{
 			var i: usize = 0;
 			while(i < updatableList.items.len) {
