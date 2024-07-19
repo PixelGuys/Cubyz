@@ -76,6 +76,8 @@ pub const Player = struct { // MARK: Player
 	pub var health: f32 = 4.5;
 
 	pub var onGround: bool = false;
+	pub var jumpCooldown: f64 = 0;
+	const jumpCooldownConstant = 0.3;
 
 	pub const outerBoundingBoxExtent: Vec3d = .{0.3, 0.3, 0.9};
 	pub const outerBoundingBox: Box = .{
@@ -639,6 +641,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		}
 
 		var jumping: bool = false;
+		Player.jumpCooldown -= deltaTime;
 		// At equillibrium we want to have dv/dt = a - λv = 0 → a = λ*v
 		const fricMul = speedMultiplier*baseFrictionCoefficient;
 
@@ -690,8 +693,9 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 						movementSpeed = @max(movementSpeed, 5.5);
 						movementDir[2] += 5.5;
 					}
-				} else if (Player.onGround) {
+				} else if (Player.onGround and Player.jumpCooldown <= 0) {
 					jumping = true;
+					Player.jumpCooldown = Player.jumpCooldownConstant;
 				}
 			}
 			if(KeyBoard.key("fall").pressed) {
@@ -788,12 +792,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 					Player.eyeStep[i] = false;
 				}
 			}
-			var frictionCoefficient = directionalFrictionCoefficients[i];
-			if(i == 2 and jumping and false) { // No friction while jumping
-				// Here we want to ensure a specified jump height under air friction.
-				Player.eyeVel[i] = @sqrt(Player.jumpHeight * gravity * 2);
-				frictionCoefficient = airFrictionCoefficient;
-			}
+			const frictionCoefficient = directionalFrictionCoefficients[i];
 			const v_0 = Player.eyeVel[i];
 			const k = springConstants[i];
 			const a = acc[i];
@@ -852,7 +851,11 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 		if (Player.collides(.x, -move[0], hitBox)) |box| {
 			var step = false;
-			if (box.max[2] - Player.super.pos[2] + Player.outerBoundingBoxExtent[2] <= Player.steppingHeight()[2]) {
+			var steppingHeight = Player.steppingHeight()[2];
+			if(Player.super.vel[2] > 0) {
+				steppingHeight = Player.super.vel[2]*Player.super.vel[2]/gravity/2;
+			}
+			if (box.max[2] - Player.super.pos[2] + Player.outerBoundingBoxExtent[2] <= steppingHeight) {
 				const old = Player.super.pos[2];
 				Player.super.pos[2] = box.max[2] + Player.outerBoundingBoxExtent[2] + 0.0001;
 				if (Player.eyePos[2] - Player.super.pos[2] - old >= Player.eyeBox.min[2] or Player.collides(.y, 0, hitBox) != null) {
@@ -861,7 +864,12 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 					Player.eyeVel[2] = @max(1.5*vec.length(Player.super.vel), Player.eyeVel[2], 4);
 					Player.eyePos[2] -= Player.super.pos[2] - old;
 					Player.eyeStep[2] = true;
-					move[2] = -0.001;
+					if(Player.super.vel[2] > 0) {
+						Player.eyeVel[2] = Player.super.vel[2];
+						Player.eyeStep[2] = false;
+					}
+					move[2] = -0.01;
+					Player.onGround = true;
 					step = true;
 				}
 			}
@@ -884,7 +892,11 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		Player.super.pos[1] += move[1];
 		if (Player.collides(.y, -move[1], hitBox)) |box| {
 			var step = false;
-			if (box.max[2] - Player.super.pos[2] + Player.outerBoundingBoxExtent[2] <= Player.steppingHeight()[2]) {
+			var steppingHeight = Player.steppingHeight()[2];
+			if(Player.super.vel[2] > 0) {
+				steppingHeight = Player.super.vel[2]*Player.super.vel[2]/gravity/2;
+			}
+			if (box.max[2] - Player.super.pos[2] + Player.outerBoundingBoxExtent[2] <= steppingHeight) {
 				const old = Player.super.pos[2];
 				Player.super.pos[2] = box.max[2] + Player.outerBoundingBoxExtent[2] + 0.0001;
 				if (Player.eyePos[2] - Player.super.pos[2] - old >= Player.eyeBox.min[2] or Player.collides(.y, 0, hitBox) != null) {
@@ -893,7 +905,12 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 					Player.eyeVel[2] = @max(1.5*vec.length(Player.super.vel), Player.eyeVel[2], 4);
 					Player.eyePos[2] -= Player.super.pos[2] - old;
 					Player.eyeStep[2] = true;
-					move[2] = -0.001;
+					if(Player.super.vel[2] > 0) {
+						Player.eyeVel[2] = Player.super.vel[2];
+						Player.eyeStep[2] = false;
+					}
+					move[2] = -0.01;
+					Player.onGround = true;
 					step = true;
 				}
 			}
