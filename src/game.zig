@@ -697,6 +697,8 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 					jumping = true;
 					Player.jumpCooldown = Player.jumpCooldownConstant;
 				}
+			} else {
+				Player.jumpCooldown = 0;
 			}
 			if(KeyBoard.key("fall").pressed) {
 				if(Player.isFlying.load(.monotonic)) {
