@@ -852,15 +852,16 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 		if (Player.collides(.x, -move[0], hitBox)) |box| {
 			var step = false;
-			if (box.max[2] - Player.super.pos[2] + Player.outerBoundingBoxExtent[2] <= Player.steppingHeight()[2] and move[2] <= 0) {
+			if (box.max[2] - Player.super.pos[2] + Player.outerBoundingBoxExtent[2] <= Player.steppingHeight()[2]) {
 				const old = Player.super.pos[2];
 				Player.super.pos[2] = box.max[2] + Player.outerBoundingBoxExtent[2] + 0.0001;
 				if (Player.eyePos[2] - Player.super.pos[2] - old >= Player.eyeBox.min[2] or Player.collides(.y, 0, hitBox) != null) {
 					Player.super.pos[2] = old;
 				} else {
-					Player.eyeVel[2] = @max(1.5*vec.length(Player.super.vel), Player.eyeVel[2]);
+					Player.eyeVel[2] = @max(1.5*vec.length(Player.super.vel), Player.eyeVel[2], 4);
 					Player.eyePos[2] -= Player.super.pos[2] - old;
 					Player.eyeStep[2] = true;
+					move[2] = -0.001;
 					step = true;
 				}
 			}
@@ -883,15 +884,16 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		Player.super.pos[1] += move[1];
 		if (Player.collides(.y, -move[1], hitBox)) |box| {
 			var step = false;
-			if (box.max[2] - Player.super.pos[2] + Player.outerBoundingBoxExtent[2] <= Player.steppingHeight()[2] and move[2] <= 0) {
+			if (box.max[2] - Player.super.pos[2] + Player.outerBoundingBoxExtent[2] <= Player.steppingHeight()[2]) {
 				const old = Player.super.pos[2];
 				Player.super.pos[2] = box.max[2] + Player.outerBoundingBoxExtent[2] + 0.0001;
 				if (Player.eyePos[2] - Player.super.pos[2] - old >= Player.eyeBox.min[2] or Player.collides(.y, 0, hitBox) != null) {
 					Player.super.pos[2] = old;
 				} else {
-					Player.eyeVel[2] = @max(1.5*vec.length(Player.super.vel), Player.eyeVel[2]);
+					Player.eyeVel[2] = @max(1.5*vec.length(Player.super.vel), Player.eyeVel[2], 4);
 					Player.eyePos[2] -= Player.super.pos[2] - old;
 					Player.eyeStep[2] = true;
+					move[2] = -0.001;
 					step = true;
 				}
 			}
