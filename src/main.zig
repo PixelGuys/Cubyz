@@ -505,8 +505,7 @@ pub fn main() void { // MARK: main()
 		if(!isHidden) {
 			c.glEnable(c.GL_CULL_FACE);
 			c.glEnable(c.GL_DEPTH_TEST);
-			const eye: Vec3d = .{0.0, 0.0, game.Player.eye};
-			renderer.render(game.Player.getPosBlocking() + eye);
+			renderer.render(game.Player.getEyePosBlocking());
 			// Render the GUI
 			gui.windowlist.gpu_performance_measuring.startQuery(.gui);
 			c.glDisable(c.GL_CULL_FACE);

@@ -61,6 +61,9 @@ const Box = struct {
 
 pub const Player = struct { // MARK: Player
 	pub var super: main.server.Entity = .{};
+	pub var eyePos: Vec3d = .{0, 0, 0};
+	pub var eyeVel: Vec3d = .{0, 0, 0};
+	pub var eyeStep: @Vector(3, bool) = .{false, false, false};
 	pub var id: u32 = 0;
 	pub var isFlying: Atomic(bool) = Atomic(bool).init(false);
 	pub var isGhost: Atomic(bool) = Atomic(bool).init(false);
@@ -73,17 +76,19 @@ pub const Player = struct { // MARK: Player
 	pub var health: f32 = 4.5;
 
 	pub var onGround: bool = false;
+	pub var jumpCooldown: f64 = 0;
+	const jumpCooldownConstant = 0.3;
 
-	pub const outerBoundingBoxExtent: Vec3d = .{0.4, 0.4, 0.9};
-	pub const innerBoundingBox: Box = .{
-		.min = -outerBoundingBoxExtent + Vec3d{outerBoundingBoxExtent[0]/3.0, outerBoundingBoxExtent[1]/3.0, outerBoundingBoxExtent[2]/4.0 + 0.5},
-		.max = outerBoundingBoxExtent - Vec3d{outerBoundingBoxExtent[0]/3.0, outerBoundingBoxExtent[1]/3.0, outerBoundingBoxExtent[2]/10.0},
-	};
-	const outerBoundingBox: Box = .{
+	pub const outerBoundingBoxExtent: Vec3d = .{0.3, 0.3, 0.9};
+	pub const outerBoundingBox: Box = .{
 		.min = -outerBoundingBoxExtent,
 		.max = outerBoundingBoxExtent,
 	};
-	pub const eye = 1.7 - outerBoundingBoxExtent[2];
+	const eyeBox: Box = .{
+		.min = -Vec3d{outerBoundingBoxExtent[0]*0.2, outerBoundingBoxExtent[1]*0.2, 0.6},
+		.max = Vec3d{outerBoundingBoxExtent[0]*0.2, outerBoundingBoxExtent[1]*0.2, 0.9 - 0.05},
+	};
+	pub const desiredEyePos: Vec3d = .{0, 0, 1.7 - outerBoundingBoxExtent[2]};
 	pub const jumpHeight = 1.25;
 
 	fn loadFrom(json: JsonElement) void {
@@ -103,10 +108,24 @@ pub const Player = struct { // MARK: Player
 		return super.pos;
 	}
 
+	pub fn getEyePosBlocking() Vec3d {
+		mutex.lock();
+		defer mutex.unlock();
+		return eyePos + super.pos + desiredEyePos;
+	}
+
 	pub fn getVelBlocking() Vec3d {
 		mutex.lock();
 		defer mutex.unlock();
 		return super.vel;
+	}
+
+	fn steppingHeight() Vec3d {
+		if(onGround) {
+			return .{0, 0, 0.6};
+		} else {
+			return .{0, 0, 0.1};
+		}
 	}
 
 	pub fn triangleAABB(triangle: [3]Vec3d, box_center: Vec3d, box_extents: Vec3d) bool {
@@ -206,80 +225,6 @@ pub const Player = struct { // MARK: Player
 		return @max(-max_p, min_p) <= r;
 	}
 
-	pub fn collisionBox(relativeHitBox: Box) Box {
-		var hitBox = relativeHitBox;
-		hitBox.min += super.pos;
-		hitBox.max += super.pos;
-		const hitBoxCenter: Vec3d = hitBox.center();
-		const hitBoxExtent: Vec3d = hitBox.extent() - @as(Vec3d, @splat(0.0001));
-		var result: Box = .{
-			.min = hitBox.max,
-			.max = hitBox.min,
-		};
-		const minX: i32 = @intFromFloat(@floor(hitBoxCenter[0] - hitBoxExtent[0]));
-		const maxX: i32 = @intFromFloat(@floor(hitBoxCenter[0] + hitBoxExtent[0]));
-		const minY: i32 = @intFromFloat(@floor(hitBoxCenter[1] - hitBoxExtent[1]));
-		const maxY: i32 = @intFromFloat(@floor(hitBoxCenter[1] + hitBoxExtent[1]));
-		const minZ: i32 = @intFromFloat(@floor(hitBoxCenter[2] - hitBoxExtent[2]));
-		const maxZ: i32 = @intFromFloat(@floor(hitBoxCenter[2] + hitBoxExtent[2]));
-
-		var x: i32 = minX;
-		while (x <= maxX) : (x += 1) {
-			var y: i32 = minY;
-			while (y <= maxY) : (y += 1) {
-				var z: i32 = maxZ;
-				while (z >= minZ) : (z -= 1) {
-					if (main.renderer.mesh_storage.getBlock(x, y, z)) |block| {
-						if (block.collide()) {
-							const model = &models.models.items[block.mode().model(block)];
-
-							const pos = Vec3d{@floatFromInt(x), @floatFromInt(y), @floatFromInt(z)};
-
-							for (model.neighborFacingQuads) |quads| {
-								for (quads) |quadIndex| {
-									const quad = &models.quads.items[quadIndex];
-									if (triangleAABB(.{quad.corners[0] + quad.normal + pos, quad.corners[2] + quad.normal + pos, quad.corners[1] + quad.normal + pos}, hitBoxCenter, hitBoxExtent)) {
-										result.min = @min(result.min, @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + quad.normal + pos);
-										result.max = @max(result.max, @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + quad.normal + pos);
-										result.min = @select(f64, quad.normal > @as(Vec3d, @splat(0.5)), hitBox.min, result.min);
-										result.max = @select(f64, quad.normal < @as(Vec3d, @splat(-0.5)), hitBox.max, result.max);
-									}
-									if (triangleAABB(.{quad.corners[1] + quad.normal + pos, quad.corners[2] + quad.normal + pos, quad.corners[3] + quad.normal + pos}, hitBoxCenter, hitBoxExtent)) {
-										result.min = @min(result.min, @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + quad.normal + pos);
-										result.max = @max(result.max, @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + quad.normal + pos);
-										result.min = @select(f64, quad.normal > @as(Vec3d, @splat(0.5)), hitBox.min, result.min);
-										result.max = @select(f64, quad.normal < @as(Vec3d, @splat(-0.5)), hitBox.max, result.max);
-									}
-								}
-							}
-
-							for (model.internalQuads) |quadIndex| {
-								const quad = &models.quads.items[quadIndex];
-								if (triangleAABB(.{quad.corners[0] + pos, quad.corners[2] + pos, quad.corners[1] + pos}, hitBoxCenter, hitBoxExtent)) {
-									result.min = @min(result.min, @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + pos);
-									result.max = @max(result.max, @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + pos);
-									result.min = @select(f64, quad.normal > @as(Vec3d, @splat(0.5)), hitBox.min, result.min);
-									result.max = @select(f64, quad.normal < @as(Vec3d, @splat(-0.5)), hitBox.max, result.max);
-								}
-								if (triangleAABB(.{quad.corners[1] + pos, quad.corners[2] + pos, quad.corners[3] + pos}, hitBoxCenter, hitBoxExtent)) {
-									result.min = @min(result.min, @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + pos);
-									result.max = @max(result.max, @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + pos);
-									result.min = @select(f64, quad.normal > @as(Vec3d, @splat(0.5)), hitBox.min, result.min);
-									result.max = @select(f64, quad.normal < @as(Vec3d, @splat(-0.5)), hitBox.max, result.max);
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-		result.min = @max(hitBox.min, result.min);
-		result.max = @min(hitBox.max, result.max);
-		result.min = @min(result.min, result.max);
-		result.min -= super.pos;
-		result.max -= super.pos;
-		return result;
-	}
 	const Direction = enum {x, y, z};
 
 	pub fn collideWithBlock(block: main.blocks.Block, x: i32, y: i32, z: i32, entityPosition: Vec3d, entityBoundingBoxExtent: Vec3d, directionVector: Vec3d) ?struct{box: Box, dist: f64} {
@@ -612,7 +557,6 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		if (!Player.isFlying.load(.monotonic)) {
 			acc[2] = -gravity;
 		}
-		var springConstants = Vec3d{0, 0, 0};
 
 		var baseFrictionCoefficient: f32 = 50;
 		var directionalFrictionCoefficients: Vec3f = @splat(0);
@@ -623,6 +567,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		}
 
 		var jumping: bool = false;
+		Player.jumpCooldown -= deltaTime;
 		// At equillibrium we want to have dv/dt = a - λv = 0 → a = λ*v
 		const fricMul = speedMultiplier*baseFrictionCoefficient;
 
@@ -674,9 +619,12 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 						movementSpeed = @max(movementSpeed, 5.5);
 						movementDir[2] += 5.5;
 					}
-				} else if (Player.onGround) {
+				} else if (Player.onGround and Player.jumpCooldown <= 0) {
 					jumping = true;
+					Player.jumpCooldown = Player.jumpCooldownConstant;
 				}
+			} else {
+				Player.jumpCooldown = 0;
 			}
 			if(KeyBoard.key("fall").pressed) {
 				if(Player.isFlying.load(.monotonic)) {
@@ -703,90 +651,11 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			Player.selectedSlot = @intCast(@mod(newSlot, 12));
 			main.Window.scrollOffset = 0;
 		}
-		var shouldStep: bool = false;
-		if(!Player.isGhost.load(.monotonic)) { // Collision acceleration:
-			Player.mutex.lock();
-			defer Player.mutex.unlock();
-			const inner = Player.innerBoundingBox;
-			const outer = Player.outerBoundingBox;
-			const boxes = [6] Box {
-				.{
-					.min = .{inner.max[0], inner.min[1], inner.min[2]},
-					.max = .{outer.max[0], inner.max[1], inner.max[2]},
-				},
-				.{
-					.min = .{outer.min[0], inner.min[1], inner.min[2]},
-					.max = .{inner.min[0], inner.max[1], inner.max[2]},
-				},
-				.{
-					.min = .{inner.min[0], inner.max[1], inner.min[2]},
-					.max = .{inner.max[0], outer.max[1], inner.max[2]},
-				},
-				.{
-					.min = .{inner.min[0], outer.min[1], inner.min[2]},
-					.max = .{inner.max[0], inner.min[1], inner.max[2]},
-				},
-				.{
-					.min = .{inner.min[0], inner.min[1], inner.max[2]},
-					.max = .{inner.max[0], inner.max[1], outer.max[2]},
-				},
-				.{
-					.min = .{inner.min[0], inner.min[1], outer.min[2]},
-					.max = .{inner.max[0], inner.max[1], inner.min[2]},
-				},
-			};
-			const forceMultipliers = [6]f64 {
-				200,
-				200,
-				200,
-				200,
-				200,
-				400,
-			};
-			const frictionMultipliers = [6]f64 {
-				30,
-				30,
-				30,
-				30,
-				30,
-				30,
-			};
-			const forceDir = [6]Vec3d {
-				.{-1, 0, 0},
-				.{1, 0, 0},
-				.{0, -1, 0},
-				.{0, 1, 0},
-				.{0, 0, -1},
-				.{0, 0, 1},
-			};
-
-			for(boxes, 0..) |box, i| {
-				const collision = Player.collisionBox(box);
-				var strength = vec.dot(@abs(forceDir[i]), collision.max - collision.min)/vec.dot(@abs(forceDir[i]), box.max - box.min);
-				if(strength == 0) continue;
-				if(i < 4 and vec.dot(forceDir[i], movementDir) < 0) {
-					strength += vec.dot(forceDir[i], movementDir)*@sqrt(2.0); // Cling to walls
-				}
-				if(i == 5 and strength > 0.5) {
-					shouldStep = true;
-				}
-				const dir = forceDir[i];
-				const force = strength*forceMultipliers[i];
-				const friction = frictionMultipliers[i];
-				springConstants += @as(Vec3d, @splat(forceMultipliers[i]/vec.dot(@abs(forceDir[i]), box.max - box.min)))*@abs(dir);
-				directionalFrictionCoefficients += @floatCast(@as(Vec3d, @splat(friction))*@abs(dir));
-				acc += @as(Vec3d, @splat(force))*dir;
-			}
-		}
-
-		if(shouldStep) {
-			acc[2] += @sqrt(acc[0]*acc[0] + acc[1]*acc[1]);
-		}
 
 		// This our model for movement on a single frame:
-		// dv/dt = a - k*x - λ·v
+		// dv/dt = a - λ·v
 		// dx/dt = v
-		// Where a is the acceleration, k is the spring constant and λ is the friction coefficient
+		// Where a is the acceleration and λ is the friction coefficient
 		inline for(0..3) |i| {
 			var frictionCoefficient = baseFrictionCoefficient + directionalFrictionCoefficients[i];
 			if(i == 2 and jumping) { // No friction while jumping
@@ -795,58 +664,96 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 				frictionCoefficient = airFrictionCoefficient;
 			}
 			const v_0 = Player.super.vel[i];
-			const k = springConstants[i];
 			const a = acc[i];
-			if(k == 0) {
-				// Here we can use a simplified model without the spring constant:
-				// dv/dt = a - λ·v
-				// (1 - a)/v dv = -λ dt
-				// (1 - a)ln(v) + C = -λt
-				// v(t) = a/λ + c_1 e^(λ (-t))
-				// v(0) = a/λ + c_1 = v₀
-				// c_1 = v₀ - a/λ
-				// x(t) = ∫v(t) dt
-				// x(t) = ∫a/λ + c_1 e^(λ (-t)) dt
-				// x(t) = a/λt - c_1/λ e^(λ (-t)) + C
-				// With x(0) = 0 we get C = c_1/λ
-				// x(t) = a/λt - c_1/λ e^(λ (-t)) + c_1/λ
-				const c_1 = v_0 - a/frictionCoefficient;
-				Player.super.vel[i] = a/frictionCoefficient + c_1*@exp(-frictionCoefficient*deltaTime);
-				move[i] = a/frictionCoefficient*deltaTime - c_1/frictionCoefficient*@exp(-frictionCoefficient*deltaTime) + c_1/frictionCoefficient;
-			} else {
-				// here we need to solve the full equation:
-				// The solution of this differential equation is given by
-				// x(t) = a/k + c_1 e^(1/2 t (-c_3 - λ)) + c_2 e^(1/2 t (c_3 - λ))
-				// With c_3 = sqrt(λ^2 - 4 k) which can be imaginary
-				// v(t) is just the derivative, given by
-				// v(t) = 1/2 (-c_3 - λ) c_1 e^(1/2 t (-c_3 - λ)) + (1/2 (c_3 - λ)) c_2 e^(1/2 t (c_3 - λ))
-				// Now for simplicity we set x(0) = 0 and v(0) = v₀
-				// a/k + c_1 + c_2 = 0 → c_1 = -a/k - c_2
-				// (-c_3 - λ) c_1 + (c_3 - λ) c_2 = 2v₀
-				// → (-c_3 - λ) (-a/k - c_2) + (c_3 - λ) c_2 = 2v₀
-				// → (-c_3 - λ) (-a/k) - (-c_3 - λ)c_2 + (c_3 - λ) c_2 = 2v₀
-				// → ((c_3 - λ) - (-c_3 - λ))c_2 = 2v₀ - (c_3 + λ) (a/k)
-				// → (c_3 - λ + c_3 + λ)c_2 = 2v₀ - (c_3 + λ) (a/k)
-				// → 2 c_3 c_2 = 2v₀ - (c_3 + λ) (a/k)
-				// → c_2 = (2v₀ - (c_3 + λ) (a/k))/(2 c_3)
-				// → c_2 = v₀/c_3 - (1 + λ/c_3)/2 (a/k)
-				// In total we get:
-				// c_3 = sqrt(λ^2 - 4 k)
-				// c_2 = (2v₀ - (c_3 + λ) (a/k))/(2 c_3)
-				// c_1 = -a/k - c_2
-				const c_3 = vec.Complex.fromSqrt(frictionCoefficient*frictionCoefficient - 4*k);
-				const c_2 = (((c_3.addScalar(frictionCoefficient).mulScalar(-a/k)).addScalar(2*v_0)).div(c_3.mulScalar(2)));
-				const c_1 = c_2.addScalar(a/k).negate();
-				// v(t) = 1/2 (-c_3 - λ) c_1 e^(1/2 t (-c_3 - λ)) + (1/2 (c_3 - λ)) c_2 e^(1/2 t (c_3 - λ))
-				// x(t) = a/k + c_1 e^(1/2 t (-c_3 - λ)) + c_2 e^(1/2 t (c_3 - λ))
-				const firstTerm = c_1.mul((c_3.negate().subScalar(frictionCoefficient)).mulScalar(deltaTime/2).exp());
-				const secondTerm = c_2.mul((c_3.subScalar(frictionCoefficient)).mulScalar(deltaTime/2).exp());
-				Player.super.vel[i] = firstTerm.mul(c_3.negate().subScalar(frictionCoefficient).mulScalar(0.5)).add(secondTerm.mul((c_3.subScalar(frictionCoefficient)).mulScalar(0.5))).val[0];
-				move[i] = firstTerm.add(secondTerm).addScalar(a/k).val[0];
-			}
+			// Here the solution can be easily derived:
+			// dv/dt = a - λ·v
+			// (1 - a)/v dv = -λ dt
+			// (1 - a)ln(v) + C = -λt
+			// v(t) = a/λ + c_1 e^(λ (-t))
+			// v(0) = a/λ + c_1 = v₀
+			// c_1 = v₀ - a/λ
+			// x(t) = ∫v(t) dt
+			// x(t) = ∫a/λ + c_1 e^(λ (-t)) dt
+			// x(t) = a/λt - c_1/λ e^(λ (-t)) + C
+			// With x(0) = 0 we get C = c_1/λ
+			// x(t) = a/λt - c_1/λ e^(λ (-t)) + c_1/λ
+			const c_1 = v_0 - a/frictionCoefficient;
+			Player.super.vel[i] = a/frictionCoefficient + c_1*@exp(-frictionCoefficient*deltaTime);
+			move[i] = a/frictionCoefficient*deltaTime - c_1/frictionCoefficient*@exp(-frictionCoefficient*deltaTime) + c_1/frictionCoefficient;
 		}
 
-		Player.onGround = acc[2] >= -1;
+		acc = @splat(0);
+		// Apply springs to the eye position:
+		var springConstants = Vec3d{0, 0, 0};
+		{
+			//Player.eyePos += move;
+			const forceMultipliers = Vec3d {
+				400,
+				400,
+				400,
+			};
+			const frictionMultipliers = Vec3d {
+				30,
+				30,
+				30,
+			};
+			const strength = (-Player.eyePos)/(Player.eyeBox.max - Player.eyeBox.min);
+			const force = strength*forceMultipliers;
+			const friction = frictionMultipliers;
+			springConstants += forceMultipliers/(Player.eyeBox.max - Player.eyeBox.min);
+			directionalFrictionCoefficients += @floatCast(friction);
+			acc += force;
+		}
+
+		// This our model for movement of the eye position on a single frame:
+		// dv/dt = a - k*x - λ·v
+		// dx/dt = v
+		// Where a is the acceleration, k is the spring constant and λ is the friction coefficient
+		inline for(0..3) |i| blk: {
+			if(Player.eyeStep[i]) {
+				const oldPos = Player.eyePos[i];
+				const newPos = oldPos + Player.eyeVel[i]*deltaTime;
+				if(newPos*std.math.sign(Player.eyeVel[i]) <= -0.1) {
+					Player.eyePos[i] = newPos;
+					break :blk;
+				} else {
+					Player.eyeStep[i] = false;
+				}
+			}
+			const frictionCoefficient = directionalFrictionCoefficients[i];
+			const v_0 = Player.eyeVel[i];
+			const k = springConstants[i];
+			const a = acc[i];
+			// here we need to solve the full equation:
+			// The solution of this differential equation is given by
+			// x(t) = a/k + c_1 e^(1/2 t (-c_3 - λ)) + c_2 e^(1/2 t (c_3 - λ))
+			// With c_3 = sqrt(λ^2 - 4 k) which can be imaginary
+			// v(t) is just the derivative, given by
+			// v(t) = 1/2 (-c_3 - λ) c_1 e^(1/2 t (-c_3 - λ)) + (1/2 (c_3 - λ)) c_2 e^(1/2 t (c_3 - λ))
+			// Now for simplicity we set x(0) = 0 and v(0) = v₀
+			// a/k + c_1 + c_2 = 0 → c_1 = -a/k - c_2
+			// (-c_3 - λ) c_1 + (c_3 - λ) c_2 = 2v₀
+			// → (-c_3 - λ) (-a/k - c_2) + (c_3 - λ) c_2 = 2v₀
+			// → (-c_3 - λ) (-a/k) - (-c_3 - λ)c_2 + (c_3 - λ) c_2 = 2v₀
+			// → ((c_3 - λ) - (-c_3 - λ))c_2 = 2v₀ - (c_3 + λ) (a/k)
+			// → (c_3 - λ + c_3 + λ)c_2 = 2v₀ - (c_3 + λ) (a/k)
+			// → 2 c_3 c_2 = 2v₀ - (c_3 + λ) (a/k)
+			// → c_2 = (2v₀ - (c_3 + λ) (a/k))/(2 c_3)
+			// → c_2 = v₀/c_3 - (1 + λ/c_3)/2 (a/k)
+			// In total we get:
+			// c_3 = sqrt(λ^2 - 4 k)
+			// c_2 = (2v₀ - (c_3 + λ) (a/k))/(2 c_3)
+			// c_1 = -a/k - c_2
+			const c_3 = vec.Complex.fromSqrt(frictionCoefficient*frictionCoefficient - 4*k);
+			const c_2 = (((c_3.addScalar(frictionCoefficient).mulScalar(-a/k)).addScalar(2*v_0)).div(c_3.mulScalar(2)));
+			const c_1 = c_2.addScalar(a/k).negate();
+			// v(t) = 1/2 (-c_3 - λ) c_1 e^(1/2 t (-c_3 - λ)) + (1/2 (c_3 - λ)) c_2 e^(1/2 t (c_3 - λ))
+			// x(t) = a/k + c_1 e^(1/2 t (-c_3 - λ)) + c_2 e^(1/2 t (c_3 - λ))
+			const firstTerm = c_1.mul((c_3.negate().subScalar(frictionCoefficient)).mulScalar(deltaTime/2).exp());
+			const secondTerm = c_2.mul((c_3.subScalar(frictionCoefficient)).mulScalar(deltaTime/2).exp());
+			Player.eyeVel[i] = firstTerm.mul(c_3.negate().subScalar(frictionCoefficient).mulScalar(0.5)).add(secondTerm.mul((c_3.subScalar(frictionCoefficient)).mulScalar(0.5))).val[0];
+			Player.eyePos[i] += firstTerm.add(secondTerm).addScalar(a/k).val[0];
+		}
 	}
 
 	const time = std.time.milliTimestamp();
@@ -868,42 +775,99 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		defer Player.mutex.unlock();
 
 		Player.super.pos[0] += move[0];
-		const hitBox = Player.innerBoundingBox;
+		const hitBox = Player.outerBoundingBox;
 
 		if (Player.collides(.x, -move[0], hitBox)) |box| {
-			if (move[0] < 0) {
-				Player.super.pos[0] = box.max[0] - hitBox.min[0];
-				while (Player.collides(.x, 0, hitBox)) |_| {
-					Player.super.pos[0] += 1;
-				}
-			} else {
-				Player.super.pos[0] = box.min[0] - hitBox.max[0];
-				while (Player.collides(.x, 0, hitBox)) |_| {
-					Player.super.pos[0] -= 1;
+			var step = false;
+			var steppingHeight = Player.steppingHeight()[2];
+			if(Player.super.vel[2] > 0) {
+				steppingHeight = Player.super.vel[2]*Player.super.vel[2]/gravity/2;
+			}
+			if (box.max[2] - Player.super.pos[2] + Player.outerBoundingBoxExtent[2] <= steppingHeight) {
+				const old = Player.super.pos[2];
+				Player.super.pos[2] = box.max[2] + Player.outerBoundingBoxExtent[2] + 0.0001;
+				if (Player.eyePos[2] - (Player.super.pos[2] - old) <= Player.eyeBox.min[2] or Player.collides(.y, 0, hitBox) != null) {
+					Player.super.pos[2] = old;
+				} else {
+					Player.eyeVel[2] = @max(1.5*vec.length(Player.super.vel), Player.eyeVel[2], 4);
+					Player.eyePos[2] -= Player.super.pos[2] - old;
+					Player.eyeStep[2] = true;
+					if(Player.super.vel[2] > 0) {
+						Player.eyeVel[2] = Player.super.vel[2];
+						Player.eyeStep[2] = false;
+					}
+					move[2] = -0.01;
+					Player.onGround = true;
+					step = true;
 				}
 			}
-			Player.super.vel[0] = 0;
+			if(!step) {
+				if (move[0] < 0) {
+					Player.super.pos[0] = box.max[0] - hitBox.min[0];
+					while (Player.collides(.x, 0, hitBox)) |_| {
+						Player.super.pos[0] += 1;
+					}
+				} else {
+					Player.super.pos[0] = box.min[0] - hitBox.max[0];
+					while (Player.collides(.x, 0, hitBox)) |_| {
+						Player.super.pos[0] -= 1;
+					}
+				}
+				Player.super.vel[0] = 0;
+			}
 		}
 
 		Player.super.pos[1] += move[1];
 		if (Player.collides(.y, -move[1], hitBox)) |box| {
-			if (move[1] < 0) {
-				Player.super.pos[1] = box.max[1] - hitBox.min[1];
-				while (Player.collides(.y, 0, hitBox)) |_| {
-					Player.super.pos[1] += 1;
-				}
-			} else {
-				Player.super.pos[1] = box.min[1] - hitBox.max[1];
-				while (Player.collides(.y, 0, hitBox)) |_| {
-					Player.super.pos[1] -= 1;
+			var step = false;
+			var steppingHeight = Player.steppingHeight()[2];
+			if(Player.super.vel[2] > 0) {
+				steppingHeight = Player.super.vel[2]*Player.super.vel[2]/gravity/2;
+			}
+			if (box.max[2] - Player.super.pos[2] + Player.outerBoundingBoxExtent[2] <= steppingHeight) {
+				const old = Player.super.pos[2];
+				Player.super.pos[2] = box.max[2] + Player.outerBoundingBoxExtent[2] + 0.0001;
+				if (Player.eyePos[2] - (Player.super.pos[2] - old) <= Player.eyeBox.min[2] or Player.collides(.y, 0, hitBox) != null) {
+					Player.super.pos[2] = old;
+				} else {
+					Player.eyeVel[2] = @max(1.5*vec.length(Player.super.vel), Player.eyeVel[2], 4);
+					Player.eyePos[2] -= Player.super.pos[2] - old;
+					Player.eyeStep[2] = true;
+					if(Player.super.vel[2] > 0) {
+						Player.eyeVel[2] = Player.super.vel[2];
+						Player.eyeStep[2] = false;
+					}
+					move[2] = -0.01;
+					Player.onGround = true;
+					step = true;
 				}
 			}
-			Player.super.vel[1] = 0;
+			if(!step) {
+				if (move[1] < 0) {
+					Player.super.pos[1] = box.max[1] - hitBox.min[1];
+					while (Player.collides(.y, 0, hitBox)) |_| {
+						Player.super.pos[1] += 1;
+					}
+				} else {
+					Player.super.pos[1] = box.min[1] - hitBox.max[1];
+					while (Player.collides(.y, 0, hitBox)) |_| {
+						Player.super.pos[1] -= 1;
+					}
+				}
+				Player.super.vel[1] = 0;
+			}
 		}
 
+		const wasOnGround = Player.onGround;
+		Player.onGround = false;
 		Player.super.pos[2] += move[2];
 		if (Player.collides(.z, -move[2], hitBox)) |box| {
 			if (move[2] < 0) {
+				if(!wasOnGround) {
+					Player.eyeVel[2] = Player.super.vel[2];
+					Player.eyePos[2] -= (box.max[2] - hitBox.min[2] - Player.super.pos[2]);
+				}
+				Player.onGround = true;
 				Player.super.pos[2] = box.max[2] - hitBox.min[2];
 				while (Player.collides(.z, 0, hitBox)) |_| {
 					Player.super.pos[2] += 1;
@@ -919,6 +883,9 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	} else {
 		Player.super.pos += move;
 	}
+
+	// Clamp the eyePosition:
+	Player.eyePos = @max(Player.eyeBox.min, @min(Player.eyePos, Player.eyeBox.max));
 
 	const biome = world.?.playerBiome.load(.monotonic);
 	
