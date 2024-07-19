@@ -225,80 +225,6 @@ pub const Player = struct { // MARK: Player
 		return @max(-max_p, min_p) <= r;
 	}
 
-	pub fn collisionBox(relativeHitBox: Box) Box {
-		var hitBox = relativeHitBox;
-		hitBox.min += super.pos;
-		hitBox.max += super.pos;
-		const hitBoxCenter: Vec3d = hitBox.center();
-		const hitBoxExtent: Vec3d = hitBox.extent() - @as(Vec3d, @splat(0.0001));
-		var result: Box = .{
-			.min = hitBox.max,
-			.max = hitBox.min,
-		};
-		const minX: i32 = @intFromFloat(@floor(hitBoxCenter[0] - hitBoxExtent[0]));
-		const maxX: i32 = @intFromFloat(@floor(hitBoxCenter[0] + hitBoxExtent[0]));
-		const minY: i32 = @intFromFloat(@floor(hitBoxCenter[1] - hitBoxExtent[1]));
-		const maxY: i32 = @intFromFloat(@floor(hitBoxCenter[1] + hitBoxExtent[1]));
-		const minZ: i32 = @intFromFloat(@floor(hitBoxCenter[2] - hitBoxExtent[2]));
-		const maxZ: i32 = @intFromFloat(@floor(hitBoxCenter[2] + hitBoxExtent[2]));
-
-		var x: i32 = minX;
-		while (x <= maxX) : (x += 1) {
-			var y: i32 = minY;
-			while (y <= maxY) : (y += 1) {
-				var z: i32 = maxZ;
-				while (z >= minZ) : (z -= 1) {
-					if (main.renderer.mesh_storage.getBlock(x, y, z)) |block| {
-						if (block.collide()) {
-							const model = &models.models.items[block.mode().model(block)];
-
-							const pos = Vec3d{@floatFromInt(x), @floatFromInt(y), @floatFromInt(z)};
-
-							for (model.neighborFacingQuads) |quads| {
-								for (quads) |quadIndex| {
-									const quad = &models.quads.items[quadIndex];
-									if (triangleAABB(.{quad.corners[0] + quad.normal + pos, quad.corners[2] + quad.normal + pos, quad.corners[1] + quad.normal + pos}, hitBoxCenter, hitBoxExtent)) {
-										result.min = @min(result.min, @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + quad.normal + pos);
-										result.max = @max(result.max, @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + quad.normal + pos);
-										result.min = @select(f64, quad.normal > @as(Vec3d, @splat(0.5)), hitBox.min, result.min);
-										result.max = @select(f64, quad.normal < @as(Vec3d, @splat(-0.5)), hitBox.max, result.max);
-									}
-									if (triangleAABB(.{quad.corners[1] + quad.normal + pos, quad.corners[2] + quad.normal + pos, quad.corners[3] + quad.normal + pos}, hitBoxCenter, hitBoxExtent)) {
-										result.min = @min(result.min, @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + quad.normal + pos);
-										result.max = @max(result.max, @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + quad.normal + pos);
-										result.min = @select(f64, quad.normal > @as(Vec3d, @splat(0.5)), hitBox.min, result.min);
-										result.max = @select(f64, quad.normal < @as(Vec3d, @splat(-0.5)), hitBox.max, result.max);
-									}
-								}
-							}
-
-							for (model.internalQuads) |quadIndex| {
-								const quad = &models.quads.items[quadIndex];
-								if (triangleAABB(.{quad.corners[0] + pos, quad.corners[2] + pos, quad.corners[1] + pos}, hitBoxCenter, hitBoxExtent)) {
-									result.min = @min(result.min, @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + pos);
-									result.max = @max(result.max, @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + pos);
-									result.min = @select(f64, quad.normal > @as(Vec3d, @splat(0.5)), hitBox.min, result.min);
-									result.max = @select(f64, quad.normal < @as(Vec3d, @splat(-0.5)), hitBox.max, result.max);
-								}
-								if (triangleAABB(.{quad.corners[1] + pos, quad.corners[2] + pos, quad.corners[3] + pos}, hitBoxCenter, hitBoxExtent)) {
-									result.min = @min(result.min, @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + pos);
-									result.max = @max(result.max, @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + pos);
-									result.min = @select(f64, quad.normal > @as(Vec3d, @splat(0.5)), hitBox.min, result.min);
-									result.max = @select(f64, quad.normal < @as(Vec3d, @splat(-0.5)), hitBox.max, result.max);
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-		result.min = @max(hitBox.min, result.min);
-		result.max = @min(hitBox.max, result.max);
-		result.min = @min(result.min, result.max);
-		result.min -= super.pos;
-		result.max -= super.pos;
-		return result;
-	}
 	const Direction = enum {x, y, z};
 
 	pub fn collideWithBlock(block: main.blocks.Block, x: i32, y: i32, z: i32, entityPosition: Vec3d, entityBoundingBoxExtent: Vec3d, directionVector: Vec3d) ?struct{box: Box, dist: f64} {
@@ -860,7 +786,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			if (box.max[2] - Player.super.pos[2] + Player.outerBoundingBoxExtent[2] <= steppingHeight) {
 				const old = Player.super.pos[2];
 				Player.super.pos[2] = box.max[2] + Player.outerBoundingBoxExtent[2] + 0.0001;
-				if (Player.eyePos[2] - Player.super.pos[2] - old >= Player.eyeBox.min[2] or Player.collides(.y, 0, hitBox) != null) {
+				if (Player.eyePos[2] - (Player.super.pos[2] - old) <= Player.eyeBox.min[2] or Player.collides(.y, 0, hitBox) != null) {
 					Player.super.pos[2] = old;
 				} else {
 					Player.eyeVel[2] = @max(1.5*vec.length(Player.super.vel), Player.eyeVel[2], 4);
@@ -901,7 +827,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			if (box.max[2] - Player.super.pos[2] + Player.outerBoundingBoxExtent[2] <= steppingHeight) {
 				const old = Player.super.pos[2];
 				Player.super.pos[2] = box.max[2] + Player.outerBoundingBoxExtent[2] + 0.0001;
-				if (Player.eyePos[2] - Player.super.pos[2] - old >= Player.eyeBox.min[2] or Player.collides(.y, 0, hitBox) != null) {
+				if (Player.eyePos[2] - (Player.super.pos[2] - old) <= Player.eyeBox.min[2] or Player.collides(.y, 0, hitBox) != null) {
 					Player.super.pos[2] = old;
 				} else {
 					Player.eyeVel[2] = @max(1.5*vec.length(Player.super.vel), Player.eyeVel[2], 4);
