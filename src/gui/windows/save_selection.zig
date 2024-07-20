@@ -1,10 +1,12 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const main = @import("root");
 const ConnectionManager = main.network.ConnectionManager;
 const settings = main.settings;
 const Vec2f = main.vec.Vec2f;
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const Texture = main.graphics.Texture;
 
 const gui = @import("../gui.zig");
 const GuiComponent = gui.GuiComponent;
@@ -23,7 +25,20 @@ const padding: f32 = 8;
 const width: f32 = 128;
 var buttonNameArena: main.utils.NeverFailingArenaAllocator = undefined;
 
-var needsUpdate: bool = false;
+pub var needsUpdate: bool = false;
+
+var deleteIcon: Texture = undefined;
+var fileExplorerIcon: Texture = undefined;
+
+pub fn init() void {
+	deleteIcon = Texture.initFromFile("assets/cubyz/ui/delete_icon.png");
+	fileExplorerIcon = Texture.initFromFile("assets/cubyz/ui/file_explorer_icon.png");
+}
+
+pub fn deinit() void {
+	deleteIcon.deinit();
+	fileExplorerIcon.deinit();
+}
 
 pub fn openWorld(name: []const u8) void {
 	std.log.info("Opening world {s}", .{name});
@@ -42,7 +57,7 @@ pub fn openWorld(name: []const u8) void {
 	};
 	main.game.world = &main.game.testWorld;
 	for(gui.openWindows.items) |openWindow| {
-		gui.closeWindow(openWindow);
+		gui.closeWindowFromRef(openWindow);
 	}
 	gui.openHud();
 }
@@ -53,17 +68,35 @@ fn openWorldWrap(namePtr: usize) void { // TODO: Improve this situation. Maybe i
 	openWorld(name);
 }
 
-fn flawedDeleteWorld(name: []const u8) !void {
-	try main.files.deleteDir("saves", name);
-	needsUpdate = true;
-}
-
 fn deleteWorld(namePtr: usize) void {
 	const nullTerminatedName: [*:0]const u8 = @ptrFromInt(namePtr);
 	const name = std.mem.span(nullTerminatedName);
-	flawedDeleteWorld(name) catch |err| {
-		std.log.err("Encountered error while deleting world \"{s}\": {s}", .{name, @errorName(err)});
+	main.gui.closeWindow("delete_world_confirmation");
+	main.gui.windowlist.delete_world_confirmation.setDeleteWorldName(name);
+	main.gui.openWindow("delete_world_confirmation");
+}
+
+fn openFolder(namePtr: usize) void {
+	const nullTerminatedName: [*:0]const u8 = @ptrFromInt(namePtr);
+	const name = std.mem.span(nullTerminatedName);
+
+	const command = if(builtin.os.tag == .windows) .{"start", "explorer"} else .{"open"};
+	const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{name}) catch unreachable;
+	defer main.stackAllocator.free(path);
+	const result = std.process.Child.run(.{
+		.allocator = main.stackAllocator.allocator,
+		.argv = &(command ++ .{path}),
+	}) catch |err| {
+		std.log.err("Got error while trying to open file explorer: {s}", .{@errorName(err)});
+		return;
 	};
+	defer {
+		main.stackAllocator.free(result.stderr);
+		main.stackAllocator.free(result.stdout);
+	}
+	if(result.stderr.len != 0) {
+		std.log.err("Got error while trying to open file explorer: {s}", .{result.stderr});
+	}
 }
 
 fn parseEscapedFolderName(allocator: NeverFailingAllocator, name: []const u8) []const u8 {
@@ -129,7 +162,8 @@ pub fn onOpen() void {
 				const buttonName = std.fmt.allocPrint(buttonNameArena.allocator().allocator, "Play {s}", .{decodedName}) catch unreachable;
 				
 				row.add(Button.initText(.{0, 0}, 128, buttonName, .{.callback = &openWorldWrap, .arg = @intFromPtr(name.ptr)}));
-				row.add(Button.initText(.{8, 0}, 64, "delete", .{.callback = &deleteWorld, .arg = @intFromPtr(name.ptr)}));
+				row.add(Button.initIcon(.{8, 0}, .{16, 16}, fileExplorerIcon, false, .{.callback = &openFolder, .arg = @intFromPtr(name.ptr)}));
+				row.add(Button.initIcon(.{8, 0}, .{16, 16}, deleteIcon, false, .{.callback = &deleteWorld, .arg = @intFromPtr(name.ptr)}));
 				row.finish(.{0, 0}, .center);
 				list.add(row);
 			}

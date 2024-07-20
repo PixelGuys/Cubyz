@@ -69,7 +69,7 @@ fn join(_: usize) void {
 		std.log.err("No connection found. Cannot connect.", .{});
 	}
 	for(gui.openWindows.items) |openWindow| {
-		gui.closeWindow(openWindow);
+		gui.closeWindowFromRef(openWindow);
 	}
 	gui.openHud();
 }

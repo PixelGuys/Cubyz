@@ -356,8 +356,18 @@ pub fn openWindowCallback(comptime id: []const u8) Callback {
 	};
 }
 
-pub fn closeWindow(window: *GuiWindow) void {
+pub fn closeWindowFromRef(window: *GuiWindow) void {
 	GuiCommandQueue.scheduleCommand(.{.action = .close, .window = window});
+}
+
+pub fn closeWindow(id: []const u8) void {
+	for(windowList.items) |window| {
+		if(std.mem.eql(u8, window.id, id)) {
+			openWindowFromRef(window);
+			return;
+		}
+	}
+	std.log.warn("Could not find window with id {s}.", .{id});
 }
 
 pub fn setSelectedTextInput(newSelectedTextInput: ?*TextInput) void {

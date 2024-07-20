@@ -149,7 +149,7 @@ pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 				if(mousePosition[0] - self.pos[0] > self.size[0] - 32*self.scale) {
 					if(mousePosition[0] - self.pos[0] > self.size[0] - 16*self.scale) {
 						// Close
-						gui.closeWindow(self);
+						gui.closeWindowFromRef(self);
 						return;
 					} else {
 						// Zoom out
