@@ -46,10 +46,9 @@ pub var musicVolume: f32 = 1;
 pub var storageTime: i64 = 5000;
 
 
-pub const updateRepeatSpeed: u31 = 200;
+pub var updateRepeatSpeed: u31 = 200;
 
-pub const updateRepeatDelay: u31 = 500;
-
+pub var updateRepeatDelay: u31 = 500;
 
 pub var developerAutoEnterWorld: []const u8 = "";
 

@@ -1,4 +1,5 @@
 
+pub const advanced_controls = @import("advanced_controls.zig");
 pub const change_name = @import("change_name.zig");
 pub const chat = @import("chat.zig");
 pub const controls = @import("controls.zig");
