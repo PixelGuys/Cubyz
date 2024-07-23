@@ -81,6 +81,7 @@ var _absorption: [maxBlockCount]u32 = undefined;
 var _gui: [maxBlockCount][]u8 = undefined;
 var _mode: [maxBlockCount]*RotationMode = undefined;
 var _lodReplacement: [maxBlockCount]u16 = undefined;
+var _opaqueVariant: [maxBlockCount]u16 = undefined;
 
 var reverseIndices = std.StringHashMap(u16).init(allocator.allocator);
 
@@ -183,6 +184,14 @@ fn registerLodReplacement(typ: u16, json: JsonElement) void {
 	}
 }
 
+fn registerOpaqueVariant(typ: u16, json: JsonElement) void {
+	if(json.get(?[]const u8, "opaqueVariant", null)) |replacement| {
+		_opaqueVariant[typ] = getByID(replacement);
+	} else {
+		_opaqueVariant[typ] = typ;
+	}
+}
+
 pub fn finishBlocks(jsonElements: std.StringHashMap(JsonElement)) void {
 	var i: u16 = 0;
 	while(i < size) : (i += 1) {
@@ -191,6 +200,7 @@ pub fn finishBlocks(jsonElements: std.StringHashMap(JsonElement)) void {
 	i = 0;
 	while(i < size) : (i += 1) {
 		registerLodReplacement(i, jsonElements.get(_id[i]) orelse continue);
+		registerOpaqueVariant(i, jsonElements.get(_id[i]) orelse continue);
 	}
 	for(ores.items, unfinishedOreSourceBlockIds.items) |*ore, oreIds| {
 		ore.sources = allocator.alloc(u16, oreIds.len);
@@ -311,6 +321,10 @@ pub const Block = packed struct { // MARK: Block
 	
 	pub inline fn lodReplacement(self: Block) u16 {
 		return _lodReplacement[self.typ];
+	}
+	
+	pub inline fn opaqueVariant(self: Block) u16 {
+		return _opaqueVariant[self.typ];
 	}
 };
 

@@ -878,6 +878,9 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	}
 
 	pub fn generateMesh(self: *ChunkMesh, lightRefreshList: *main.List(*ChunkMesh)) void {
+		var alwaysViewThroughMask: [chunk.chunkSize][chunk.chunkSize]u32 = undefined;
+		@memset(std.mem.asBytes(&alwaysViewThroughMask), 0);
+		var alwaysViewThroughMask2: [chunk.chunkSize][chunk.chunkSize]u32 = undefined;
 		var canSeeNeighbor: [6][chunk.chunkSize][chunk.chunkSize]u32 = undefined;
 		@memset(std.mem.asBytes(&canSeeNeighbor), 0);
 		var canSeeAllNeighbors: [chunk.chunkSize][chunk.chunkSize]u32 = undefined;
@@ -890,6 +893,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			canSeeAllNeighbors: bool = false,
 			hasExternalQuads: bool = false,
 			hasInternalQuads: bool = false,
+			alwaysViewThrough: bool = false,
 		};
 		var paletteCache = main.stackAllocator.alloc(OcclusionInfo, self.chunk.data.paletteLength);
 		defer main.stackAllocator.free(paletteCache);
@@ -912,6 +916,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			if(model.internalQuads.len != 0) {
 				result.hasInternalQuads = true;
 			}
+			result.alwaysViewThrough = block.alwaysViewThrough() and block.opaqueVariant() != block.typ;
 			paletteCache[i] = result;
 		}
 		// Generate the bitMasks:
@@ -924,7 +929,52 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 					const paletteId = self.chunk.data.data.getValue(chunk.getIndex(x, y, z));
 					const occlusionInfo = paletteCache[paletteId];
 					const setBit = @as(u32, 1) << z;
-					if(occlusionInfo.canSeeAllNeighbors) {
+					if(occlusionInfo.alwaysViewThrough or (!occlusionInfo.canSeeAllNeighbors and occlusionInfo.canSeeNeighbor == 0)) {
+						alwaysViewThroughMask[x][y] |= setBit;
+					}
+				}
+			}
+		}
+		const depthFilteredViewThroughMask = blk: {
+			var a = &alwaysViewThroughMask;
+			var b = &alwaysViewThroughMask2;
+			for(0..main.settings.leavesQuality) |_| {
+				for(0..chunk.chunkSize) |_x| {
+					const x: u5 = @intCast(_x);
+					for(0..chunk.chunkSize) |_y| {
+						const y: u5 = @intCast(_y);
+						var mask = a[x][y];
+						mask &= mask << 1;
+						mask &= mask >> 1;
+						if(x == 0) mask = 0
+						else mask &= a[x-1][y];
+						if(x == chunk.chunkSize-1) mask = 0
+						else mask &= a[x+1][y];
+						if(y == 0) mask = 0
+						else mask &= a[x][y-1];
+						if(y == chunk.chunkSize-1) mask = 0
+						else mask &= a[x][y+1];
+						b[x][y] = mask;
+					}
+				}
+				const swap = a;
+				a = b;
+				b = swap;
+			}
+			break :blk a;
+		};
+		for(0..chunk.chunkSize) |_x| {
+			const x: u5 = @intCast(_x);
+			for(0..chunk.chunkSize) |_y| {
+				const y: u5 = @intCast(_y);
+				for(0..chunk.chunkSize) |_z| {
+					const z: u5 = @intCast(_z);
+					const paletteId = self.chunk.data.data.getValue(chunk.getIndex(x, y, z));
+					const occlusionInfo = paletteCache[paletteId];
+					const setBit = @as(u32, 1) << z;
+					if(depthFilteredViewThroughMask[x][y] & setBit != 0) {
+
+					} else if(occlusionInfo.canSeeAllNeighbors) {
 						canSeeAllNeighbors[x][y] |= setBit;
 					} else if(occlusionInfo.canSeeNeighbor != 0) {
 						for(chunk.Neighbors.iterable) |neighbor| {
@@ -956,7 +1006,8 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 					while(bitMask != 0) {
 						const z = @ctz(bitMask);
 						bitMask &= ~(@as(u32, 1) << @intCast(z));
-						const block = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z));
+						var block = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z));
+						if(depthFilteredViewThroughMask[x][y] & @as(u32, 1) << @intCast(z) != 0) block.typ = block.opaqueVariant();
 						if(block.viewThrough() and !block.alwaysViewThrough()) { // Needs to check the neighbor block
 							const neighborBlock = self.chunk.data.getValue(chunk.getIndex(@intCast(x - 1), @intCast(y), z));
 							if(std.meta.eql(block, neighborBlock)) continue;
@@ -981,7 +1032,8 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 					while(bitMask != 0) {
 						const z = @ctz(bitMask);
 						bitMask &= ~(@as(u32, 1) << @intCast(z));
-						const block = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z));
+						var block = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z));
+						if(depthFilteredViewThroughMask[x][y] & @as(u32, 1) << @intCast(z) != 0) block.typ = block.opaqueVariant();
 						if(block.viewThrough() and !block.alwaysViewThrough()) { // Needs to check the neighbor block
 							const neighborBlock = self.chunk.data.getValue(chunk.getIndex(@intCast(x + 1), @intCast(y), z));
 							if(std.meta.eql(block, neighborBlock)) continue;
@@ -1006,7 +1058,8 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 					while(bitMask != 0) {
 						const z = @ctz(bitMask);
 						bitMask &= ~(@as(u32, 1) << @intCast(z));
-						const block = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z));
+						var block = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z));
+						if(depthFilteredViewThroughMask[x][y] & @as(u32, 1) << @intCast(z) != 0) block.typ = block.opaqueVariant();
 						if(block.viewThrough() and !block.alwaysViewThrough()) { // Needs to check the neighbor block
 							const neighborBlock = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y - 1), z));
 							if(std.meta.eql(block, neighborBlock)) continue;
@@ -1031,7 +1084,8 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 					while(bitMask != 0) {
 						const z = @ctz(bitMask);
 						bitMask &= ~(@as(u32, 1) << @intCast(z));
-						const block = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z));
+						var block = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z));
+						if(depthFilteredViewThroughMask[x][y] & @as(u32, 1) << @intCast(z) != 0) block.typ = block.opaqueVariant();
 						if(block.viewThrough() and !block.alwaysViewThrough()) { // Needs to check the neighbor block
 							const neighborBlock = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y + 1), z));
 							if(std.meta.eql(block, neighborBlock)) continue;
@@ -1056,7 +1110,8 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 					while(bitMask != 0) {
 						const z = @ctz(bitMask);
 						bitMask &= ~(@as(u32, 1) << @intCast(z));
-						const block = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z));
+						var block = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z));
+						if(depthFilteredViewThroughMask[x][y] & @as(u32, 1) << @intCast(z) != 0) block.typ = block.opaqueVariant();
 						if(block.viewThrough() and !block.alwaysViewThrough()) { // Needs to check the neighbor block
 							const neighborBlock = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z - 1));
 							if(std.meta.eql(block, neighborBlock)) continue;
@@ -1081,7 +1136,8 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 					while(bitMask != 0) {
 						const z = @ctz(bitMask);
 						bitMask &= ~(@as(u32, 1) << @intCast(z));
-						const block = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z));
+						var block = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z));
+						if(depthFilteredViewThroughMask[x][y] & @as(u32, 1) << @intCast(z) != 0) block.typ = block.opaqueVariant();
 						if(block.viewThrough() and !block.alwaysViewThrough()) { // Needs to check the neighbor block
 							const neighborBlock = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z + 1));
 							if(std.meta.eql(block, neighborBlock)) continue;
@@ -1300,8 +1356,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						const otherX = x+%chunk.Neighbors.relX[neighbor] & chunk.chunkMask;
 						const otherY = y+%chunk.Neighbors.relY[neighbor] & chunk.chunkMask;
 						const otherZ = z+%chunk.Neighbors.relZ[neighbor] & chunk.chunkMask;
-						const block = self.chunk.data.getValue(chunk.getIndex(x, y, z));
-						const otherBlock = neighborMesh.chunk.data.getValue(chunk.getIndex(otherX, otherY, otherZ));
+						var block = self.chunk.data.getValue(chunk.getIndex(x, y, z));
+						if(settings.leavesQuality == 0) block.typ = block.opaqueVariant();
+						var otherBlock = neighborMesh.chunk.data.getValue(chunk.getIndex(otherX, otherY, otherZ));
+						if(settings.leavesQuality == 0) otherBlock.typ = otherBlock.opaqueVariant();
 						if(canBeSeenThroughOtherBlock(block, otherBlock, neighbor)) {
 							if(block.transparent()) {
 								if(block.hasBackFace()) {
@@ -1380,8 +1438,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 					const otherX = (x+%chunk.Neighbors.relX[neighbor]+%offsetX >> 1) & chunk.chunkMask;
 					const otherY = (y+%chunk.Neighbors.relY[neighbor]+%offsetY >> 1) & chunk.chunkMask;
 					const otherZ = (z+%chunk.Neighbors.relZ[neighbor]+%offsetZ >> 1) & chunk.chunkMask;
-					const block = self.chunk.data.getValue(chunk.getIndex(x, y, z));
-					const otherBlock = neighborMesh.chunk.data.getValue(chunk.getIndex(otherX, otherY, otherZ));
+					var block = self.chunk.data.getValue(chunk.getIndex(x, y, z));
+					if(settings.leavesQuality == 0) block.typ = block.opaqueVariant();
+					var otherBlock = neighborMesh.chunk.data.getValue(chunk.getIndex(otherX, otherY, otherZ));
+					if(settings.leavesQuality == 0) otherBlock.typ = otherBlock.opaqueVariant();
 					if(canBeSeenThroughOtherBlock(otherBlock, block, neighbor ^ 1)) {
 						if(otherBlock.transparent()) {
 							self.transparentMesh.appendNeighborFacingQuadsToNeighbor(otherBlock, neighbor ^ 1, x, y, z, false, true);

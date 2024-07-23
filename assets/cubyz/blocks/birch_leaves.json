@@ -10,5 +10,6 @@
 	"absorbedLight" : 0x121012,
 	"model" : "cube",
 	"texture" : "cubyz:birch_leaves",
-	"lodReplacement" : "cubyz:birch_leaves_opaque"
+	"lodReplacement" : "cubyz:birch_leaves_opaque",
+	"opaqueVariant" : "cubyz:birch_leaves_opaque"
 }

@@ -42,6 +42,8 @@ pub var guiScale: ?f32 = null;
 
 pub var musicVolume: f32 = 1;
 
+pub var leavesQuality: u16 = 2;
+
 
 pub var storageTime: i64 = 5000;
 

@@ -10,5 +10,6 @@
 	"absorbedLight" : 0x121012,
 	"model" : "cube",
 	"texture" : "cubyz:pine_needles",
-	"lodReplacement" : "cubyz:pine_needles_opaque"
+	"lodReplacement" : "cubyz:pine_needles_opaque",
+	"opaqueVariant" : "cubyz:pine_needles_opaque"
 }
