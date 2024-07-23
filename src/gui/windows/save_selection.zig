@@ -137,8 +137,8 @@ pub fn update() void {
 pub fn onOpen() void {
 	buttonNameArena = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 8);
-	list.add(Button.initText(.{0, 0}, 128, "Create World", gui.openWindowCallback("save_creation")));
-
+	list.add(Label.init(.{0, 0}, width, "**Select World**", .center));
+	list.add(Button.initText(.{0, 0}, 128, "Create New World", gui.openWindowCallback("save_creation")));
 	readingSaves: {
 		var dir = std.fs.cwd().makeOpenPath("saves", .{.iterate = true}) catch |err| {
 			list.add(Label.init(.{0, 0}, 128, "Encountered error while trying to open saves folder:", .center));
@@ -159,7 +159,7 @@ pub fn onOpen() void {
 				const decodedName = parseEscapedFolderName(main.stackAllocator, entry.name);
 				defer main.stackAllocator.free(decodedName);
 				const name = buttonNameArena.allocator().dupeZ(u8, entry.name); // Null terminate, so we can later recover the string from just the pointer.
-				const buttonName = std.fmt.allocPrint(buttonNameArena.allocator().allocator, "Play {s}", .{decodedName}) catch unreachable;
+				const buttonName = std.fmt.allocPrint(buttonNameArena.allocator().allocator, "{s}", .{decodedName}) catch unreachable;
 				
 				row.add(Button.initText(.{0, 0}, 128, buttonName, .{.callback = &openWorldWrap, .arg = @intFromPtr(name.ptr)}));
 				row.add(Button.initIcon(.{8, 0}, .{16, 16}, fileExplorerIcon, false, .{.callback = &openFolder, .arg = @intFromPtr(name.ptr)}));
@@ -169,7 +169,7 @@ pub fn onOpen() void {
 			}
 		}
 	}
-
+	
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
