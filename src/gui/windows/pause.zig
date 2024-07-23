@@ -32,7 +32,7 @@ pub fn onOpen() void {
 	}
 	list.add(Button.initText(.{0, 0}, 128, "Settings", gui.openWindowCallback("settings")));
 	list.add(Button.initText(.{0, 0}, 128, "Reorder HUD", .{.callback = &reorderHudCallbackFunction}));
-	list.add(Button.initText(.{0, 0}, 128, "Exit to Menu TODO", .{
+	list.add(Button.initText(.{0, 0}, 128, "Exit World", .{
 		.callback = &exitMenuCallbackFunction,
 	}));
 	list.finish(.center);
