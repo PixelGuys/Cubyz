@@ -80,8 +80,10 @@ fn openFolder(namePtr: usize) void {
 	const nullTerminatedName: [*:0]const u8 = @ptrFromInt(namePtr);
 	const name = std.mem.span(nullTerminatedName);
 
-	const command = if(builtin.os.tag == .windows) .{"start", "explorer"} else .{"open"};
-	const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{name}) catch unreachable;
+	const command = if(builtin.os.tag == .windows) .{"explorer"} else .{"open"};
+
+	const path_fmt = if (builtin.os.tag == .windows) "saves\\{s}" else "saves/{s}"; // Use backslashes on windows because it forces you to
+	const path = std.fmt.allocPrint(main.stackAllocator.allocator, path_fmt, .{name}) catch unreachable;
 	defer main.stackAllocator.free(path);
 	const result = std.process.Child.run(.{
 		.allocator = main.stackAllocator.allocator,
