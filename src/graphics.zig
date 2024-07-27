@@ -2008,7 +2008,7 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	var allocation: SubAllocation = .{.start = 0, .len = 0};
 	main.renderer.chunk_meshing.faceBuffer.uploadData(faceData.items, &allocation);
 	var lightAllocation: SubAllocation = .{.start = 0, .len = 0};
-	main.renderer.chunk_meshing.lightBuffer.uploadData(&.{0, 0, 0, 0}, &lightAllocation);
+	main.renderer.chunk_meshing.lightBuffer.uploadData(&.{0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff}, &lightAllocation);
 
 	{
 		const i = 6; // Easily switch between the 8 rotations.
