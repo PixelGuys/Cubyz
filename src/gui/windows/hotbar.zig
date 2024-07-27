@@ -23,6 +23,7 @@ pub var window = GuiWindow {
 	.showTitleBar = false,
 	.hasBackground = false,
 	.hideIfMouseIsGrabbed = false,
+	.closeable = false,
 	.scale = 0.75,
 };
 

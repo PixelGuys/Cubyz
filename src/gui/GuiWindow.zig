@@ -45,6 +45,8 @@ const RelativePosition = union(enum) {
 };
 
 const snapDistance = 3;
+const titleBarHeight = 18;
+const iconWidth = 18;
 
 pos: Vec2f = undefined,
 size: Vec2f = undefined,
@@ -58,6 +60,7 @@ showTitleBar: bool = true,
 hasBackground: bool = true,
 hideIfMouseIsGrabbed: bool = true, // TODO: Allow the user to change this with a button, to for example leave the inventory open while playing.
 closeIfMouseIsGrabbed: bool = false,
+closeable: bool = true,
 isHud: bool = false,
 
 // TODO: Option to disable the close button for certain windows that cannot be reopened.
@@ -129,7 +132,7 @@ pub fn defaultFunction() void {}
 
 pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) void {
 	const scaledMousePos = (mousePosition - self.pos)/@as(Vec2f, @splat(self.scale));
-	if(scaledMousePos[1] < 16 and (self.showTitleBar or gui.reorderWindows)) {
+	if(scaledMousePos[1] < titleBarHeight and (self.showTitleBar or gui.reorderWindows)) {
 		grabbedWindow = self;
 		grabPosition = mousePosition;
 		selfPositionWhenGrabbed = self.pos;
@@ -145,12 +148,14 @@ pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) void {
 pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 	if(grabPosition != null and @reduce(.And, grabPosition.? == mousePosition) and grabbedWindow == self) {
 		if(self.showTitleBar or gui.reorderWindows) {
-			if(mousePosition[0] - self.pos[0] > self.size[0] - 48*self.scale) {
-				if(mousePosition[0] - self.pos[0] > self.size[0] - 32*self.scale) {
-					if(mousePosition[0] - self.pos[0] > self.size[0] - 16*self.scale) {
+			const closePos = if(self.closeable) self.size[0] - iconWidth*self.scale else self.size[0];
+			const zoomOutPos = closePos - iconWidth*self.scale;
+			const zoomInPos = zoomOutPos - iconWidth*self.scale;
+			if(mousePosition[0] - self.pos[0] > zoomInPos) {
+				if(mousePosition[0] - self.pos[0] > zoomOutPos) {
+					if(mousePosition[0] - self.pos[0] > closePos) {
 						// Close
-						gui.closeWindowFromRef(self);
-						return;
+						if(self.closeable) gui.closeWindowFromRef(self);
 					} else {
 						// Zoom out
 						if(self.scale > 1) {
@@ -442,9 +447,15 @@ fn drawOrientationLines(self: *const GuiWindow) void {
 
 pub fn drawIcons(self: *const GuiWindow) void {
 	draw.setColor(0xffffffff);
-	closeTexture.render(.{self.size[0]/self.scale - 18, 0}, .{18, 18});
-	zoomOutTexture.render(.{self.size[0]/self.scale - 36, 0}, .{18, 18});
-	zoomInTexture.render(.{self.size[0]/self.scale - 54, 0}, .{18, 18});
+	var x = self.size[0]/self.scale;
+	if(self.closeable) {
+		x -= iconWidth;
+		closeTexture.render(.{x, 0}, .{iconWidth, titleBarHeight});
+	}
+	x -= iconWidth;
+	zoomOutTexture.render(.{x, 0}, .{iconWidth, titleBarHeight});
+	x -= iconWidth;
+	zoomInTexture.render(.{x, 0}, .{iconWidth, titleBarHeight});
 }
 
 pub fn render(self: *const GuiWindow, mousePosition: Vec2f) void {
@@ -465,7 +476,7 @@ pub fn render(self: *const GuiWindow, mousePosition: Vec2f) void {
 		shader.bind();
 		titleTexture.bindTo(0);
 		draw.setColor(0xff000000);
-		draw.customShadedRect(windowUniforms, .{0, 0}, .{self.size[0]/self.scale, 18});
+		draw.customShadedRect(windowUniforms, .{0, 0}, .{self.size[0]/self.scale, titleBarHeight});
 		self.drawIcons();
 	}
 	if(self.hasBackground or (!main.Window.grabbed and gui.reorderWindows)) {
