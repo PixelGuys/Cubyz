@@ -16,9 +16,8 @@ uniform ivec3 playerPositionInteger;
 uniform vec3 playerPositionFraction;
 
 struct FaceData {
-	int encodedPosition;
+	int encodedPositionAndLightIndex;
 	int textureAndQuad;
-	int light[4];
 };
 layout(std430, binding = 3) buffer _faceData
 {
@@ -37,6 +36,11 @@ layout(std430, binding = 4) buffer _quads
 	QuadInfo quads[];
 };
 
+layout(std430, binding = 10) buffer _lightData
+{
+	uint lightData[];
+};
+
 struct ChunkData {
 	ivec4 position;
 	vec4 minPos;
@@ -45,8 +49,10 @@ struct ChunkData {
 	int voxelSize;
 	uint vertexStartOpaque;
 	uint faceCountsByNormalOpaque[7];
+	uint lightStartOpaque;
 	uint vertexStartTransparent;
 	uint vertexCountTransparent;
+	uint lightStartTransparent;
 	uint visibilityState;
 	uint oldVisibilityState;
 };
@@ -88,30 +94,35 @@ void main() {
 	int visibilityMask = chunks[chunkID].visibilityMask;
 	int voxelSize = chunks[chunkID].voxelSize;
 	vec3 modelPosition = vec3(chunks[chunkID].position.xyz - playerPositionInteger) - playerPositionFraction;
-	int encodedPosition = faceData[faceID].encodedPosition;
+	int encodedPositionAndLightIndex = faceData[faceID].encodedPositionAndLightIndex;
 	int textureAndQuad = faceData[faceID].textureAndQuad;
-	int fullLight = faceData[faceID].light[vertexID];
+#ifdef transparent
+	uint lightIndex = chunks[chunkID].lightStartTransparent + 4*(encodedPositionAndLightIndex >> 16);
+#else
+	uint lightIndex = chunks[chunkID].lightStartOpaque + 4*(encodedPositionAndLightIndex >> 16);
+#endif
+	uint fullLight = lightData[lightIndex + vertexID];
 	vec3 sunLight = vec3(
-		fullLight >> 25 & 31,
-		fullLight >> 20 & 31,
-		fullLight >> 15 & 31
+		fullLight >> 25 & 31u,
+		fullLight >> 20 & 31u,
+		fullLight >> 15 & 31u
 	);
 	vec3 blockLight = vec3(
-		fullLight >> 10 & 31,
-		fullLight >> 5 & 31,
-		fullLight >> 0 & 31
+		fullLight >> 10 & 31u,
+		fullLight >> 5 & 31u,
+		fullLight >> 0 & 31u
 	);
 	light = max(sunLight*ambientLight, blockLight)/31;
-	isBackFace = encodedPosition>>19 & 1;
-	ditherSeed = encodedPosition & 15;
+	isBackFace = encodedPositionAndLightIndex>>15 & 1;
+	ditherSeed = encodedPositionAndLightIndex & 15;
 
 	textureIndex = textureAndQuad & 65535;
 	int quadIndex = textureAndQuad >> 16;
 
 	vec3 position = vec3(
-		encodedPosition & 31,
-		encodedPosition >> 5 & 31,
-		encodedPosition >> 10 & 31
+		encodedPositionAndLightIndex & 31,
+		encodedPositionAndLightIndex >> 5 & 31,
+		encodedPositionAndLightIndex >> 10 & 31
 	);
 	int octantIndex = (int(position.x) >> 4) | (int(position.y) >> 4)<<1 | (int(position.z) >> 4)<<2;
 	if((visibilityMask & 1<<octantIndex) == 0) { // discard face

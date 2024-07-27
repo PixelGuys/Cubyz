@@ -66,6 +66,7 @@ var vao: c_uint = undefined;
 var vbo: c_uint = undefined;
 var faces: main.List(u32) = undefined;
 pub var faceBuffer: graphics.LargeBuffer(FaceData) = undefined;
+pub var lightBuffer: graphics.LargeBuffer(u32) = undefined;
 pub var chunkBuffer: graphics.LargeBuffer(ChunkData) = undefined;
 pub var commandBuffer: graphics.LargeBuffer(IndirectData) = undefined;
 pub var chunkIDBuffer: graphics.LargeBuffer(u32) = undefined;
@@ -74,10 +75,10 @@ pub var transparentQuadsDrawn: usize = 0;
 
 pub fn init() void {
 	lighting.init();
-	shader = Shader.initAndGetUniforms("assets/cubyz/shaders/chunks/chunk_vertex.vs", "assets/cubyz/shaders/chunks/chunk_fragment.fs", &uniforms);
-	transparentShader = Shader.initAndGetUniforms("assets/cubyz/shaders/chunks/chunk_vertex.vs", "assets/cubyz/shaders/chunks/transparent_fragment.fs", &transparentUniforms);
-	commandShader = Shader.initComputeAndGetUniforms("assets/cubyz/shaders/chunks/fillIndirectBuffer.glsl", &commandUniforms);
-	occlusionTestShader = Shader.initAndGetUniforms("assets/cubyz/shaders/chunks/occlusionTestVertex.vs", "assets/cubyz/shaders/chunks/occlusionTestFragment.fs", &occlusionTestUniforms);
+	shader = Shader.initAndGetUniforms("assets/cubyz/shaders/chunks/chunk_vertex.vs", "assets/cubyz/shaders/chunks/chunk_fragment.fs", "", &uniforms);
+	transparentShader = Shader.initAndGetUniforms("assets/cubyz/shaders/chunks/chunk_vertex.vs", "assets/cubyz/shaders/chunks/transparent_fragment.fs", "#define transparent\n", &transparentUniforms);
+	commandShader = Shader.initComputeAndGetUniforms("assets/cubyz/shaders/chunks/fillIndirectBuffer.glsl", "", &commandUniforms);
+	occlusionTestShader = Shader.initAndGetUniforms("assets/cubyz/shaders/chunks/occlusionTestVertex.vs", "assets/cubyz/shaders/chunks/occlusionTestFragment.fs", "", &occlusionTestUniforms);
 
 	var rawData: [6*3 << (3*chunk.chunkShift)]u32 = undefined; // 6 vertices per face, maximum 3 faces/block
 	const lut = [_]u32{0, 2, 1, 1, 2, 3};
@@ -94,6 +95,7 @@ pub fn init() void {
 
 	faces = main.List(u32).initCapacity(main.globalAllocator, 65536); // TODO: What is this used for?
 	faceBuffer.init(main.globalAllocator, 1 << 20, 3);
+	lightBuffer.init(main.globalAllocator, 1 << 20, 10);
 	chunkBuffer.init(main.globalAllocator, 1 << 20, 6);
 	commandBuffer.init(main.globalAllocator, 1 << 20, 8);
 	chunkIDBuffer.init(main.globalAllocator, 1 << 20, 9);
@@ -108,6 +110,7 @@ pub fn deinit() void {
 	c.glDeleteBuffers(1, &vbo);
 	faces.deinit();
 	faceBuffer.deinit();
+	lightBuffer.deinit();
 	chunkBuffer.deinit();
 	commandBuffer.deinit();
 	chunkIDBuffer.deinit();
@@ -115,6 +118,7 @@ pub fn deinit() void {
 
 pub fn beginRender() void {
 	faceBuffer.beginRender();
+	lightBuffer.beginRender();
 	chunkBuffer.beginRender();
 	commandBuffer.beginRender();
 	chunkIDBuffer.beginRender();
@@ -122,6 +126,7 @@ pub fn beginRender() void {
 
 pub fn endRender() void {
 	faceBuffer.endRender();
+	lightBuffer.endRender();
 	chunkBuffer.endRender();
 	commandBuffer.endRender();
 	chunkIDBuffer.endRender();
@@ -236,15 +241,13 @@ pub const FaceData = extern struct {
 		x: u5,
 		y: u5,
 		z: u5,
-		padding: u4 = 0,
 		isBackFace: bool,
-		padding2: u12 = 0,
+		lightIndex: u16 = 0,
 	},
 	blockAndQuad: packed struct(u32) {
 		texture: u16,
 		quadIndex: u16,
 	},
-	light: [4]u32 = .{0, 0, 0, 0},
 
 	pub inline fn init(texture: u16, quadIndex: u16, x: i32, y: i32, z: i32, comptime backFace: bool) FaceData {
 		return FaceData {
@@ -262,8 +265,10 @@ pub const ChunkData = extern struct {
 	voxelSize: i32,
 	vertexStartOpaque: u32,
 	faceCountsByNormalOpaque: [7]u32,
+	lightStartOpaque: u32,
 	vertexStartTransparent: u32,
 	vertexCountTransparent: u32,
+	lightStartTransparent: u32,
 	visibilityState: u32,
 	oldVisibilityState: u32,
 };
@@ -281,11 +286,14 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 	neighborFacesSameLod: [6]main.ListUnmanaged(FaceData) = [_]main.ListUnmanaged(FaceData){.{}} ** 6,
 	neighborFacesHigherLod: [6]main.ListUnmanaged(FaceData) = [_]main.ListUnmanaged(FaceData){.{}} ** 6,
 	completeList: []FaceData = &.{},
+	lightList: []u32 = &.{},
+	lightListNeedsUpload: bool = false,
 	coreLen: u32 = 0,
 	sameLodLens: [6]u32 = .{0} ** 6,
 	higherLodLens: [6]u32 = .{0} ** 6,
 	mutex: std.Thread.Mutex = .{},
 	bufferAllocation: graphics.SubAllocation = .{.start = 0, .len = 0},
+	lightAllocation: graphics.SubAllocation = .{.start = 0, .len = 0},
 	vertexCount: u31 = 0,
 	byNormalCount: [7]u32 = .{0} ** 7,
 	wasChanged: bool = false,
@@ -294,6 +302,7 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 
 	fn deinit(self: *PrimitiveMesh) void {
 		faceBuffer.free(self.bufferAllocation);
+		lightBuffer.free(self.lightAllocation);
 		self.coreFaces.deinit(main.globalAllocator);
 		for(&self.neighborFacesSameLod) |*neighborFaces| {
 			neighborFaces.deinit(main.globalAllocator);
@@ -302,6 +311,7 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 			neighborFaces.deinit(main.globalAllocator);
 		}
 		main.globalAllocator.free(self.completeList);
+		main.globalAllocator.free(self.lightList);
 	}
 
 	fn reset(self: *PrimitiveMesh) void {
@@ -361,6 +371,10 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 			@memcpy(completeList[i..][0..neighborFaces.items.len], neighborFaces.items);
 			i += neighborFaces.items.len;
 		}
+		var lightList = main.List(u32).init(main.stackAllocator);
+		defer lightList.deinit();
+		var lightMap = std.AutoHashMap([4]u32, u16).init(main.stackAllocator.allocator);
+		defer lightMap.deinit();
 
 		self.min = @splat(std.math.floatMax(f32));
 		self.max = @splat(-std.math.floatMax(f32));
@@ -369,7 +383,13 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		parent.lightingData[0].lock.lockRead();
 		parent.lightingData[1].lock.lockRead();
 		for(completeList) |*face| {
-			face.light = getLight(parent, .{face.position.x, face.position.y, face.position.z}, face.blockAndQuad.quadIndex);
+			const light = getLight(parent, .{face.position.x, face.position.y, face.position.z}, face.blockAndQuad.quadIndex);
+			const result = lightMap.getOrPut(light) catch unreachable;
+			if(!result.found_existing) {
+				result.value_ptr.* = @intCast(lightList.items.len/4);
+				lightList.appendSlice(&light);
+			}
+			face.position.lightIndex = result.value_ptr.*;
 			const basePos: Vec3f = .{
 				@floatFromInt(face.position.x),
 				@floatFromInt(face.position.y),
@@ -383,7 +403,13 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		parent.lightingData[0].lock.unlockRead();
 		parent.lightingData[1].lock.unlockRead();
 
+		const completeLightList = main.globalAllocator.alloc(u32, lightList.items.len);
+		@memcpy(completeLightList, lightList.items);
+
 		self.mutex.lock();
+		const oldLightList = self.lightList;
+		self.lightList = completeLightList;
+		self.lightListNeedsUpload = true;
 		const oldList = self.completeList;
 		self.completeList = completeList;
 		self.coreLen = @intCast(self.coreFaces.items.len);
@@ -395,6 +421,7 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		}
 		self.mutex.unlock();
 		main.globalAllocator.free(oldList);
+		main.globalAllocator.free(oldLightList);
 	}
 
 	fn getValues(mesh: *ChunkMesh, wx: i32, wy: i32, wz: i32) [6]u8 {
@@ -602,6 +629,10 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		std.debug.assert(i == fullBuffer.len);
 		self.vertexCount = @intCast(6*fullBuffer.len);
 		self.wasChanged = true;
+		if(self.lightListNeedsUpload) {
+			self.lightListNeedsUpload = false;
+			lightBuffer.uploadData(self.lightList, &self.lightAllocation);
+		}
 	}
 };
 
@@ -1471,8 +1502,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			.visibilityMask = self.visibilityMask,
 			.vertexStartOpaque = self.opaqueMesh.bufferAllocation.start*4,
 			.faceCountsByNormalOpaque = self.opaqueMesh.byNormalCount,
+			.lightStartOpaque = self.opaqueMesh.lightAllocation.start,
 			.vertexStartTransparent = self.transparentMesh.bufferAllocation.start*4,
 			.vertexCountTransparent = self.transparentMesh.bufferAllocation.len*6,
+			.lightStartTransparent = self.transparentMesh.lightAllocation.start,
 			.min = self.min,
 			.max = self.max,
 			.visibilityState = 0,

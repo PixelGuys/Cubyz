@@ -59,6 +59,18 @@ pub fn render() void {
 			draw.print("ChunkMesh memory: {} MiB / {} MiB (fragmentation: {} MiB)", .{used >> 20, size >> 20, fragmentation >> 20}, 0, y, 8, .left);
 			y += 8;
 		}
+		{
+			const lightDataSize: usize = @sizeOf(u32);
+			const size: usize = main.renderer.chunk_meshing.lightBuffer.capacity*lightDataSize;
+			const used: usize = main.renderer.chunk_meshing.lightBuffer.used*lightDataSize;
+			var largestFreeBlock: usize = 0;
+			for(main.renderer.chunk_meshing.lightBuffer.freeBlocks.items) |freeBlock| {
+				largestFreeBlock = @max(largestFreeBlock, freeBlock.len);
+			}
+			const fragmentation = size - used - largestFreeBlock*lightDataSize;
+			draw.print("Light memory: {} MiB / {} MiB (fragmentation: {} MiB)", .{used >> 20, size >> 20, fragmentation >> 20}, 0, y, 8, .left);
+			y += 8;
+		}
 		draw.print("Biome: {s}", .{main.game.world.?.playerBiome.load(.monotonic).id}, 0, y, 8, .left);
 		y += 8;
 		draw.print("Opaque faces: {}, Transparent faces: {}", .{main.renderer.chunk_meshing.quadsDrawn, main.renderer.chunk_meshing.transparentQuadsDrawn}, 0, y, 8, .left);

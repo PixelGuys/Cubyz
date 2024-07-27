@@ -567,7 +567,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	};
 
 	pub fn init() void {
-		itemShader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/item_drop.vs", "assets/cubyz/shaders/item_drop.fs", &itemUniforms);
+		itemShader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/item_drop.vs", "assets/cubyz/shaders/item_drop.fs", "", &itemUniforms);
 		itemModelSSBO = graphics.SSBO.init();
 		itemModelSSBO.bufferData(i32, &[3]i32{1, 1, 1});
 		itemModelSSBO.bind(2);

@@ -41,7 +41,7 @@ var uniforms: struct {
 
 pub fn init() void {
 	ssbo = graphics.SSBO.init();
-	shader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/graph.vs", "assets/cubyz/shaders/graphics/graph.fs", &uniforms);
+	shader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/graph.vs", "assets/cubyz/shaders/graphics/graph.fs", "", &uniforms);
 }
 
 pub fn deinit() void {

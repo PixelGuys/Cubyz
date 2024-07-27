@@ -106,10 +106,10 @@ pub var borderUniforms: struct {
 } = undefined;
 
 pub fn __init() void {
-	shader = Shader.initAndGetUniforms("assets/cubyz/shaders/ui/button.vs", "assets/cubyz/shaders/ui/button.fs", &windowUniforms);
+	shader = Shader.initAndGetUniforms("assets/cubyz/shaders/ui/button.vs", "assets/cubyz/shaders/ui/button.fs", "", &windowUniforms);
 	shader.bind();
 	graphics.c.glUniform1i(windowUniforms.image, 0);
-	borderShader = Shader.initAndGetUniforms("assets/cubyz/shaders/ui/window_border.vs", "assets/cubyz/shaders/ui/window_border.fs", &borderUniforms);
+	borderShader = Shader.initAndGetUniforms("assets/cubyz/shaders/ui/window_border.vs", "assets/cubyz/shaders/ui/window_border.fs", "", &borderUniforms);
 	borderShader.bind();
 
 	backgroundTexture = Texture.initFromFile("assets/cubyz/ui/window_background.png");

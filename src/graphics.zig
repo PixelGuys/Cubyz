@@ -130,7 +130,7 @@ pub const draw = struct { // MARK: draw
 	var rectVBO: c_uint = undefined;
 
 	fn initRect() void {
-		rectShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Rect.vs", "assets/cubyz/shaders/graphics/Rect.fs", &rectUniforms);
+		rectShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Rect.vs", "assets/cubyz/shaders/graphics/Rect.fs", "", &rectUniforms);
 		const rawData = [_]f32 {
 			0, 0,
 			0, 1,
@@ -185,7 +185,7 @@ pub const draw = struct { // MARK: draw
 	var rectBorderVBO: c_uint = undefined;
 
 	fn initRectBorder() void {
-		rectBorderShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/RectBorder.vs", "assets/cubyz/shaders/graphics/RectBorder.fs", &rectBorderUniforms);
+		rectBorderShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/RectBorder.vs", "assets/cubyz/shaders/graphics/RectBorder.fs", "", &rectBorderUniforms);
 		const rawData = [_]f32 {
 			0, 0, 0, 0,
 			0, 0, 1, 1,
@@ -248,7 +248,7 @@ pub const draw = struct { // MARK: draw
 	var lineVBO: c_uint = undefined;
 
 	fn initLine() void {
-		lineShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Line.vs", "assets/cubyz/shaders/graphics/Line.fs", &lineUniforms);
+		lineShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Line.vs", "assets/cubyz/shaders/graphics/Line.fs", "", &lineUniforms);
 		const rawData = [_]f32 {
 			0, 0,
 			1, 1,
@@ -347,7 +347,7 @@ pub const draw = struct { // MARK: draw
 	var circleVBO: c_uint = undefined;
 
 	fn initCircle() void {
-		circleShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Circle.vs", "assets/cubyz/shaders/graphics/Circle.fs", &circleUniforms);
+		circleShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Circle.vs", "assets/cubyz/shaders/graphics/Circle.fs", "", &circleUniforms);
 		const rawData = [_]f32 {
 			-1, -1,
 			-1, 1,
@@ -402,7 +402,7 @@ pub const draw = struct { // MARK: draw
 	var imageShader: Shader = undefined;
 
 	fn initImage() void {
-		imageShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Image.vs", "assets/cubyz/shaders/graphics/Image.fs", &imageUniforms);
+		imageShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Image.vs", "assets/cubyz/shaders/graphics/Image.fs", "", &imageUniforms);
 	}
 
 	fn deinitImage() void {
@@ -1014,7 +1014,7 @@ const TextRendering = struct { // MARK: TextRendering
 	}
 
 	fn init() !void {
-		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Text.vs", "assets/cubyz/shaders/graphics/Text.fs", &uniforms);
+		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Text.vs", "assets/cubyz/shaders/graphics/Text.fs", "", &uniforms);
 		shader.bind();
 		errdefer shader.deinit();
 		c.glUniform1i(uniforms.texture_sampler, 0);
@@ -1162,7 +1162,7 @@ pub fn deinit() void {
 pub const Shader = struct { // MARK: Shader
 	id: c_uint,
 	
-	fn addShader(self: *const Shader, filename: []const u8, shader_stage: c_uint) !void {
+	fn addShader(self: *const Shader, filename: []const u8, defines: []const u8, shader_stage: c_uint) !void {
 		const source = main.files.read(main.stackAllocator, filename) catch |err| {
 			std.log.warn("Couldn't read file: {s}", .{filename});
 			return err;
@@ -1170,9 +1170,13 @@ pub const Shader = struct { // MARK: Shader
 		defer main.stackAllocator.free(source);
 		const shader = c.glCreateShader(shader_stage);
 		defer c.glDeleteShader(shader);
+
+		const versionLineEnd = if(std.mem.indexOfScalar(u8, source, '\n')) |len| len + 1 else 0;
+		const versionLine = source[0..versionLineEnd];
+		const sourceLines = source[versionLineEnd..];
 		
-		const sourceLen: c_int = @intCast(source.len);
-		c.glShaderSource(shader, 1, &source.ptr, &sourceLen);
+		const sourceLen: [3]c_int = .{@intCast(versionLine.len), @intCast(defines.len), @intCast(sourceLines.len)};
+		c.glShaderSource(shader, 3, &[3][*c]const u8{versionLine.ptr, defines.ptr, sourceLines.ptr}, &sourceLen);
 		
 		c.glCompileShader(shader);
 
@@ -1205,16 +1209,16 @@ pub const Shader = struct { // MARK: Shader
 		}
 	}
 	
-	pub fn init(vertex: []const u8, fragment: []const u8) Shader {
+	pub fn init(vertex: []const u8, fragment: []const u8, defines: []const u8) Shader {
 		const shader = Shader{.id = c.glCreateProgram()};
-		shader.addShader(vertex, c.GL_VERTEX_SHADER) catch return shader;
-		shader.addShader(fragment, c.GL_FRAGMENT_SHADER) catch return shader;
+		shader.addShader(vertex, defines, c.GL_VERTEX_SHADER) catch return shader;
+		shader.addShader(fragment, defines, c.GL_FRAGMENT_SHADER) catch return shader;
 		shader.link() catch return shader;
 		return shader;
 	}
 	
-	pub fn initAndGetUniforms(vertex: []const u8, fragment: []const u8, ptrToUniformStruct: anytype) Shader {
-		const self = Shader.init(vertex, fragment);
+	pub fn initAndGetUniforms(vertex: []const u8, fragment: []const u8, defines: []const u8, ptrToUniformStruct: anytype) Shader {
+		const self = Shader.init(vertex, fragment, defines);
 		inline for(@typeInfo(@TypeOf(ptrToUniformStruct.*)).Struct.fields) |field| {
 			if(field.type == c_int) {
 				@field(ptrToUniformStruct, field.name) = c.glGetUniformLocation(self.id, field.name[0..]);
@@ -1223,15 +1227,15 @@ pub const Shader = struct { // MARK: Shader
 		return self;
 	}
 
-	pub fn initCompute(compute: []const u8) Shader {
+	pub fn initCompute(compute: []const u8, defines: []const u8) Shader {
 		const shader = Shader{.id = c.glCreateProgram()};
-		shader.addShader(compute, c.GL_COMPUTE_SHADER) catch return shader;
+		shader.addShader(compute, defines, c.GL_COMPUTE_SHADER) catch return shader;
 		shader.link() catch return shader;
 		return shader;
 	}
 
-	pub fn initComputeAndGetUniforms(compute: []const u8, ptrToUniformStruct: anytype) Shader {
-		const self = Shader.initCompute(compute);
+	pub fn initComputeAndGetUniforms(compute: []const u8, defines: []const u8, ptrToUniformStruct: anytype) Shader {
+		const self = Shader.initCompute(compute, defines);
 		inline for(@typeInfo(@TypeOf(ptrToUniformStruct.*)).Struct.fields) |field| {
 			if(field.type == c_int) {
 				@field(ptrToUniformStruct, field.name) = c.glGetUniformLocation(self.id, field.name[0..]);
@@ -1929,7 +1933,7 @@ const block_texture = struct { // MARK: block_texture
 	const textureSize = 128;
 
 	fn init() void {
-		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/item_texture_post.vs", "assets/cubyz/shaders/item_texture_post.fs", &uniforms);
+		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/item_texture_post.vs", "assets/cubyz/shaders/item_texture_post.fs", "", &uniforms);
 		depthTexture = Texture.init();
 		depthTexture.bind();
 		var data: [128*128]f32 = undefined;
@@ -1999,10 +2003,12 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	}
 
 	for(faceData.items) |*face| {
-		@memset(&face.light, ~@as(u32, 0));
+		face.position.lightIndex = 0;
 	}
 	var allocation: SubAllocation = .{.start = 0, .len = 0};
 	main.renderer.chunk_meshing.faceBuffer.uploadData(faceData.items, &allocation);
+	var lightAllocation: SubAllocation = .{.start = 0, .len = 0};
+	main.renderer.chunk_meshing.lightBuffer.uploadData(&.{0, 0, 0, 0}, &lightAllocation);
 
 	{
 		const i = 6; // Easily switch between the 8 rotations.
@@ -2021,8 +2027,10 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 			.voxelSize = 1,
 			.vertexStartOpaque = undefined,
 			.faceCountsByNormalOpaque = undefined,
+			.lightStartOpaque = lightAllocation.start,
 			.vertexStartTransparent = undefined,
 			.vertexCountTransparent = undefined,
+			.lightStartTransparent = lightAllocation.start,
 			.visibilityState = 0,
 			.oldVisibilityState = 0,
 		}}, &chunkAllocation);

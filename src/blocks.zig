@@ -393,7 +393,7 @@ pub const meshes = struct { // MARK: meshes
 	const emptyImage = Image{.width = 1, .height = 1, .imageData = emptyTexture[0..]};
 
 	pub fn init() void {
-		animationShader = Shader.initComputeAndGetUniforms("assets/cubyz/shaders/animation_pre_processing.glsl", &animationUniforms);
+		animationShader = Shader.initComputeAndGetUniforms("assets/cubyz/shaders/animation_pre_processing.glsl", "", &animationUniforms);
 		blockTextureArray = TextureArray.init();
 		emissionTextureArray = TextureArray.init();
 		reflectivityAndAbsorptionTextureArray = TextureArray.init();

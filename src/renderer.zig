@@ -58,8 +58,8 @@ pub const reflectionCubeMapSize = 64;
 var reflectionCubeMap: graphics.CubeMapTexture = undefined;
 
 pub fn init() void {
-	deferredRenderPassShader = Shader.initAndGetUniforms("assets/cubyz/shaders/deferred_render_pass.vs", "assets/cubyz/shaders/deferred_render_pass.fs", &deferredUniforms);
-	fakeReflectionShader = Shader.initAndGetUniforms("assets/cubyz/shaders/fake_reflection.vs", "assets/cubyz/shaders/fake_reflection.fs", &fakeReflectionUniforms);
+	deferredRenderPassShader = Shader.initAndGetUniforms("assets/cubyz/shaders/deferred_render_pass.vs", "assets/cubyz/shaders/deferred_render_pass.fs", "", &deferredUniforms);
+	fakeReflectionShader = Shader.initAndGetUniforms("assets/cubyz/shaders/fake_reflection.vs", "assets/cubyz/shaders/fake_reflection.fs", "", &fakeReflectionUniforms);
 	worldFrameBuffer.init(true, c.GL_NEAREST, c.GL_CLAMP_TO_EDGE);
 	worldFrameBuffer.updateSize(Window.width, Window.height, c.GL_RGB16F);
 	Bloom.init();
@@ -314,9 +314,9 @@ const Bloom = struct { // MARK: Bloom
 		buffer2.init(false, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
 		emptyBuffer = graphics.Texture.init();
 		emptyBuffer.generate(graphics.Image.emptyImage);
-		firstPassShader = graphics.Shader.init("assets/cubyz/shaders/bloom/first_pass.vs", "assets/cubyz/shaders/bloom/first_pass.fs");
-		secondPassShader = graphics.Shader.init("assets/cubyz/shaders/bloom/second_pass.vs", "assets/cubyz/shaders/bloom/second_pass.fs");
-		colorExtractAndDownsampleShader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/bloom/color_extractor_downsample.vs", "assets/cubyz/shaders/bloom/color_extractor_downsample.fs", &colorExtractUniforms);
+		firstPassShader = graphics.Shader.init("assets/cubyz/shaders/bloom/first_pass.vs", "assets/cubyz/shaders/bloom/first_pass.fs", "");
+		secondPassShader = graphics.Shader.init("assets/cubyz/shaders/bloom/second_pass.vs", "assets/cubyz/shaders/bloom/second_pass.fs", "");
+		colorExtractAndDownsampleShader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/bloom/color_extractor_downsample.vs", "assets/cubyz/shaders/bloom/color_extractor_downsample.fs", "", &colorExtractUniforms);
 	}
 
 	pub fn deinit() void {
@@ -418,7 +418,7 @@ pub const MenuBackGround = struct {
 
 	fn init() !void {
 		lastTime = std.time.nanoTimestamp();
-		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/background/vertex.vs", "assets/cubyz/shaders/background/fragment.fs", &uniforms);
+		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/background/vertex.vs", "assets/cubyz/shaders/background/fragment.fs", "", &uniforms);
 		shader.bind();
 		c.glUniform1i(uniforms.image, 0);
 		// 4 sides of a simple cube with some panorama texture on it.
@@ -632,7 +632,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	var cubeIBO: c_uint = undefined;
 
 	pub fn init() void {
-		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/block_selection_vertex.vs", "assets/cubyz/shaders/block_selection_fragment.fs", &uniforms);
+		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/block_selection_vertex.vs", "assets/cubyz/shaders/block_selection_fragment.fs", "", &uniforms);
 
 		const rawData = [_]f32 {
 			0, 0, 0,
