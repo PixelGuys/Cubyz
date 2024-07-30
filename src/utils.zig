@@ -1252,7 +1252,7 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			return self.palette[self.data.getValue(i)];
 		}
 
-		pub fn setValue(self: *Self, i: usize, val: T) void {
+		pub fn setValue(noalias self: *Self, i: usize, val: T) void {
 			std.debug.assert(self.paletteLength <= self.palette.len);
 			var paletteIndex: u32 = 0;
 			while(paletteIndex < self.paletteLength) : (paletteIndex += 1) { // TODO: There got to be a faster way to do this. Either using SIMD or using a cache or hashmap.
@@ -1274,13 +1274,15 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			}
 
 			const previousPaletteIndex = self.data.setAndGetValue(i, paletteIndex);
-			if(self.paletteOccupancy[paletteIndex] == 0) {
-				self.activePaletteEntries += 1;
-			}
-			self.paletteOccupancy[paletteIndex] += 1;
-			self.paletteOccupancy[previousPaletteIndex] -= 1;
-			if(self.paletteOccupancy[previousPaletteIndex] == 0) {
-				self.activePaletteEntries -= 1;
+			if(previousPaletteIndex != paletteIndex) {
+				if(self.paletteOccupancy[paletteIndex] == 0) {
+					self.activePaletteEntries += 1;
+				}
+				self.paletteOccupancy[paletteIndex] += 1;
+				self.paletteOccupancy[previousPaletteIndex] -= 1;
+				if(self.paletteOccupancy[previousPaletteIndex] == 0) {
+					self.activePaletteEntries -= 1;
+				}
 			}
 		}
 
