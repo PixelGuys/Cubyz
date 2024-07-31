@@ -64,7 +64,6 @@ pub var occlusionTestUniforms: struct {
 } = undefined;
 var vao: c_uint = undefined;
 var vbo: c_uint = undefined;
-var faces: main.List(u32) = undefined;
 pub var faceBuffer: graphics.LargeBuffer(FaceData) = undefined;
 pub var lightBuffer: graphics.LargeBuffer(u32) = undefined;
 pub var chunkBuffer: graphics.LargeBuffer(ChunkData) = undefined;
@@ -93,7 +92,6 @@ pub fn init() void {
 	c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, rawData.len*@sizeOf(u32), &rawData, c.GL_STATIC_DRAW);
 	c.glBindVertexArray(0);
 
-	faces = main.List(u32).initCapacity(main.globalAllocator, 65536); // TODO: What is this used for?
 	faceBuffer.init(main.globalAllocator, 1 << 20, 3);
 	lightBuffer.init(main.globalAllocator, 1 << 20, 10);
 	chunkBuffer.init(main.globalAllocator, 1 << 20, 6);
@@ -108,7 +106,6 @@ pub fn deinit() void {
 	commandShader.deinit();
 	c.glDeleteVertexArrays(1, &vao);
 	c.glDeleteBuffers(1, &vbo);
-	faces.deinit();
 	faceBuffer.deinit();
 	lightBuffer.deinit();
 	chunkBuffer.deinit();

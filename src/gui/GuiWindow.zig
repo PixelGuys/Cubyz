@@ -63,8 +63,6 @@ closeIfMouseIsGrabbed: bool = false,
 closeable: bool = true,
 isHud: bool = false,
 
-// TODO: Option to disable the close button for certain windows that cannot be reopened.
-
 /// Called every frame.
 renderFn: *const fn()void = &defaultFunction,
 /// Called every frame before rendering.

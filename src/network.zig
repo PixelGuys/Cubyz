@@ -910,7 +910,7 @@ pub const Protocols = struct {
 			const y = std.mem.readInt(i32, data[4..8], .big);
 			const z = std.mem.readInt(i32, data[8..12], .big);
 			const newBlock = Block.fromInt(std.mem.readInt(u32, data[12..16], .big));
-			if(conn.user != null) { // TODO: Send update event to other players.
+			if(conn.user != null) {
 				main.server.world.?.updateBlock(x, y, z, newBlock);
 			} else {
 				renderer.mesh_storage.updateBlock(x, y, z, newBlock);

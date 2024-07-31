@@ -685,9 +685,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	var selectionMax: Vec3f = undefined;
 	var lastPos: Vec3d = undefined;
 	var lastDir: Vec3f = undefined;
-	pub fn select(_pos: Vec3d, _dir: Vec3f, inventoryStack: main.items.ItemStack) void {
-		var pos = _pos;
-		_ = &pos;// TODO: pos.z += Player.cameraHeight;
+	pub fn select(pos: Vec3d, _dir: Vec3f, inventoryStack: main.items.ItemStack) void {
 		lastPos = pos;
 		const dir: Vec3d = @floatCast(_dir);
 		lastDir = _dir;
@@ -787,7 +785,6 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 									return;
 								}
 							} else {
-								// TODO: Check if the block can actually be placed at that point. There might be entities or other blocks in the way.
 								if(block.solid()) return;
 								block.typ = itemBlock;
 								block.data = 0;
