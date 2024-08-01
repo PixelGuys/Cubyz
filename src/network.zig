@@ -102,6 +102,13 @@ const Socket = struct {
 		defer list.deinit();
 		return list.addrs[0].in.sa.addr;
 	}
+
+	fn getPort(self: Socket) !u16 {
+		var addr: posix.sockaddr.in = undefined;
+		var addrLen: posix.socklen_t = @sizeOf(posix.sockaddr.in);
+		try posix.getsockname(self.socketID, @ptrCast(&addr), &addrLen);
+		return @byteSwap(addr.port);
+	}
 };
 
 pub fn init() void {
@@ -392,6 +399,8 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 	world: ?*game.World = null,
 
+	localPort: u16 = undefined,
+
 	packetSendRequests: std.PriorityQueue(PacketSendRequest, void, PacketSendRequest.compare) = undefined,
 
 	const PacketSendRequest = struct {
@@ -412,12 +421,16 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		result.requests = main.List(*Request).init(main.globalAllocator);
 		result.packetSendRequests = std.PriorityQueue(PacketSendRequest, void, PacketSendRequest.compare).init(main.globalAllocator.allocator, {});
 
+		result.localPort = localPort;
 		result.socket = Socket.init(localPort) catch |err| blk: {
 			if(err == error.AddressInUse) {
-				break :blk try Socket.init(0); // Use any port.
+				const socket = try Socket.init(0); // Use any port.
+				result.localPort = try socket.getPort();
+				break :blk socket;
 			} else return err;
 		};
 		errdefer Socket.deinit(result.socket);
+		if(localPort == 0) result.localPort = try result.socket.getPort();
 
 		result.thread = try std.Thread.spawn(.{}, run, .{result});
 		result.thread.setName("Network Thread") catch |err| std.log.err("Couldn't rename thread: {s}", .{@errorName(err)});

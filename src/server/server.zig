@@ -116,14 +116,14 @@ pub var userDeinitList: main.List(*User) = undefined;
 
 pub var connectionManager: *ConnectionManager = undefined;
 
-var running: std.atomic.Value(bool) = std.atomic.Value(bool).init(false);
+pub var running: std.atomic.Value(bool) = std.atomic.Value(bool).init(false);
 var lastTime: i128 = undefined;
 
 pub var mutex: std.Thread.Mutex = .{};
 
 pub var thread: ?std.Thread = null;
 
-fn init(name: []const u8) void { // MARK: init()
+fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 	std.debug.assert(world == null); // There can only be one world.
 	command.init();
 	users = main.List(*User).init(main.globalAllocator);
@@ -133,7 +133,6 @@ fn init(name: []const u8) void { // MARK: init()
 		std.log.err("Couldn't create socket: {s}", .{@errorName(err)});
 		@panic("Could not open Server.");
 	}; // TODO Configure the second argument in the server settings.
-	// TODO: Load the assets.
 
 	world = ServerWorld.init(name, null) catch |err| {
 		std.log.err("Failed to create world: {s}", .{@errorName(err)});
@@ -143,8 +142,10 @@ fn init(name: []const u8) void { // MARK: init()
 		std.log.err("Failed to generate world: {s}", .{@errorName(err)});
 		@panic("Can't generate world.");
 	};
-	if(true) blk: { // singleplayer // TODO: Configure this in the server settings.
-		const user = User.initAndIncreaseRefCount(connectionManager, "127.0.0.1:47650") catch |err| {
+	if(singlePlayerPort) |port| blk: {
+		const ipString = std.fmt.allocPrint(main.stackAllocator.allocator, "127.0.0.1:{}", .{port}) catch unreachable;
+		defer main.stackAllocator.free(ipString);
+		const user = User.initAndIncreaseRefCount(connectionManager, ipString) catch |err| {
 			std.log.err("Cannot create singleplayer user {s}", .{@errorName(err)});
 			break :blk;
 		};
@@ -212,14 +213,14 @@ fn update() void { // MARK: update()
 	mutex.unlock();
 }
 
-pub fn start(name: []const u8) void {
+pub fn start(name: []const u8, port: ?u16) void {
 	var sta = utils.StackAllocator.init(main.globalAllocator, 1 << 23);
 	defer sta.deinit();
 	main.stackAllocator = sta.allocator();
 	std.debug.assert(!running.load(.monotonic)); // There can only be one server.
-	init(name);
+	init(name, port);
 	defer deinit();
-	running.store(true, .monotonic);
+	running.store(true, .release);
 	while(running.load(.monotonic)) {
 		const newTime = std.time.nanoTimestamp();
 		if(newTime -% lastTime < updateNanoTime) {

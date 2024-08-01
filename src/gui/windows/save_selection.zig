@@ -41,18 +41,24 @@ pub fn deinit() void {
 }
 
 pub fn openWorld(name: []const u8) void {
+	const clientConnection = ConnectionManager.init(0, false) catch |err| {
+		std.log.err("Encountered error while opening connection: {s}", .{@errorName(err)});
+		return;
+	};
+
 	std.log.info("Opening world {s}", .{name});
-	main.server.thread = std.Thread.spawn(.{}, main.server.start, .{name}) catch |err| {
+	main.server.thread = std.Thread.spawn(.{}, main.server.start, .{name, clientConnection.localPort}) catch |err| {
 		std.log.err("Encountered error while starting server thread: {s}", .{@errorName(err)});
 		return;
 	};
 
-	const connection = ConnectionManager.init(main.settings.defaultPort+1, false) catch |err| {
-		std.log.err("Encountered error while opening connection: {s}", .{@errorName(err)});
-		return;
-	};
-	connection.world = &main.game.testWorld;
-	main.game.testWorld.init("127.0.0.1", connection) catch |err| {
+	while(!main.server.running.load(.acquire)) {
+		std.time.sleep(1_000_000);
+	}
+	clientConnection.world = &main.game.testWorld;
+	const ipPort = std.fmt.allocPrint(main.stackAllocator.allocator, "127.0.0.1:{}", .{main.server.connectionManager.localPort}) catch unreachable;
+	defer main.stackAllocator.free(ipPort);
+	main.game.testWorld.init(ipPort, clientConnection) catch |err| {
 		std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
 	};
 	main.game.world = &main.game.testWorld;
