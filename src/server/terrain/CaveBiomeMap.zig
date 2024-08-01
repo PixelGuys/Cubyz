@@ -46,7 +46,7 @@ pub const CaveBiomeMapFragment = struct { // MARK: caveBiomeMapFragment
 		@Vector(3, i64){-12*fac, 15*fac,  16*fac},
 	}; // divide result by shift to do a proper rotation
 
-	const inverseRotationMatrix = .{
+	const transposeRotationMatrix = .{
 		@Vector(3, i64){20*fac,   9*fac, -12*fac},
 		@Vector(3, i64){ 0*fac,  20*fac,  15*fac},
 		@Vector(3, i64){15*fac, -12*fac,  16*fac},
@@ -62,9 +62,9 @@ pub const CaveBiomeMapFragment = struct { // MARK: caveBiomeMapFragment
 
 	pub fn rotateInverse(in: Vec3i) Vec3i {
 		return @truncate(@Vector(3, i64){
-			vec.dot(inverseRotationMatrix[0], in) >> rotationMatrixShift,
-			vec.dot(inverseRotationMatrix[1], in) >> rotationMatrixShift,
-			vec.dot(inverseRotationMatrix[2], in) >> rotationMatrixShift,
+			vec.dot(transposeRotationMatrix[0], in) >> rotationMatrixShift,
+			vec.dot(transposeRotationMatrix[1], in) >> rotationMatrixShift,
+			vec.dot(transposeRotationMatrix[2], in) >> rotationMatrixShift,
 		});
 	}
 
@@ -402,19 +402,54 @@ pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveB
 		return frag.biomeMap[indexInArray][map];
 	}
 
-	fn getGridPoint(pos: Vec3i, map: *u1) Vec3i {
-		const rotatedPos = CaveBiomeMapFragment.rotate(pos);
+	fn getGridPointFromPrerotated(rotatedPos: Vec3i, map: *u1) Vec3i {
 		var gridPoint = rotatedPos +% @as(Vec3i, @splat(CaveBiomeMapFragment.caveBiomeSize/2)) & @as(Vec3i, @splat(~@as(i32, CaveBiomeMapFragment.caveBiomeMask)));
 		
 		const distance = rotatedPos -% gridPoint;
 		const totalDistance = @reduce(.Add, @abs(distance));
 		if(totalDistance > CaveBiomeMapFragment.caveBiomeSize*3/4) {
 			// Or with 1 to prevent errors if the value is 0.
-			gridPoint +%= (std.math.sign(distance | @as(Vec3i, @splat(1)) - @as(Vec3i, @splat(1))))*@as(Vec3i, @splat(CaveBiomeMapFragment.caveBiomeSize/2));
+			gridPoint +%= std.math.sign(distance)*@as(Vec3i, @splat(CaveBiomeMapFragment.caveBiomeSize/2));
 			map.* = 1;
 		} else {
 			map.* = 0;
 		}
+		return gridPoint;
+	}
+
+	fn getGridPoint(pos: Vec3i, map: *u1) Vec3i {
+		const rotatedPos = CaveBiomeMapFragment.rotate(pos);
+		return getGridPointFromPrerotated(rotatedPos, map);
+	}
+
+	fn getGridPointAndHeight(pos: Vec3i, map: *u1, returnHeight: *i32, voxelSize: u31) Vec3i {
+		const preRotatedPos = @Vector(3, i64){
+			vec.dot(CaveBiomeMapFragment.rotationMatrix[0], pos),
+			vec.dot(CaveBiomeMapFragment.rotationMatrix[1], pos),
+			vec.dot(CaveBiomeMapFragment.rotationMatrix[2], pos),
+		};
+		var startMap: u1 = undefined;
+		const gridPoint = getGridPointFromPrerotated(@truncate(preRotatedPos >> @splat(CaveBiomeMapFragment.rotationMatrixShift)), &startMap);
+
+		var start: i32 = 0;
+		var end = @min(returnHeight.*, @as(comptime_int, @intFromFloat(@ceil(CaveBiomeMapFragment.caveBiomeSize*@sqrt(5.0)/2.0)))) & ~@as(i32, voxelSize-1);
+		{
+			var otherMap: u1 = undefined;
+			const nextGridPoint = getGridPointFromPrerotated(@truncate(preRotatedPos +% CaveBiomeMapFragment.transposeRotationMatrix[2]*@as(Vec3i, @splat(end)) >> @splat(CaveBiomeMapFragment.rotationMatrixShift)), &otherMap);
+			if(@reduce(.And, nextGridPoint == gridPoint) and otherMap == startMap) start = end;
+		}
+		while(start + voxelSize < end) {
+			const mid = start +% @divTrunc(end -% start, 2) & ~@as(i32, voxelSize-1);
+			var otherMap: u1 = undefined;
+			const nextGridPoint = getGridPointFromPrerotated(@truncate(preRotatedPos +% CaveBiomeMapFragment.transposeRotationMatrix[2]*@as(Vec3i, @splat(mid)) >> @splat(CaveBiomeMapFragment.rotationMatrixShift)), &otherMap);
+			if(@reduce(.Or, nextGridPoint != gridPoint) or otherMap != startMap) {
+				end = mid;
+			} else {
+				start = mid;
+			}
+		}
+		returnHeight.* = end;
+		map.* = startMap;
 		return gridPoint;
 	}
 
@@ -444,25 +479,7 @@ pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveB
 			}
 		}
 		var map: u1 = undefined;
-		const gridPoint = getGridPoint(.{wx, wy, wz}, &map);
-		var start = wz;
-		var end = start +% returnHeight.*;
-		{
-			var otherMap: u1 = undefined;
-			const nextGridPoint = getGridPoint(.{wx, wy, end}, &otherMap);
-			if(@reduce(.And, nextGridPoint == gridPoint) and otherMap == map) start = end;
-		}
-		while(start + 1 < end) {
-			const mid = start +% @divTrunc(end -% start, 2);
-			var otherMap: u1 = undefined;
-			const nextGridPoint = getGridPoint(.{wx, wy, mid}, &otherMap);
-			if(@reduce(.Or, nextGridPoint != gridPoint) or otherMap != map) {
-				end = mid;
-			} else {
-				start = mid;
-			}
-		}
-		returnHeight.* = end -% wz;
+		const gridPoint = getGridPointAndHeight(.{wx, wy, wz}, &map, returnHeight, self.pos.voxelSize);
 
 		if(getSeed) {
 			// A good old "I don't know what I'm doing" hash (TODO: Use some standard hash maybe):

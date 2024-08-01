@@ -385,6 +385,20 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 		self.super.data.setValue(index, newBlock);
 	}
 
+	/// Updates a block if it is inside this chunk. Should be used in generation to prevent accidently storing these as changes.
+	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
+	pub fn updateBlockColumnInGeneration(self: *ServerChunk, _x: i32, _y: i32, _zStartInclusive: i32, _zEndInclusive: i32, newBlock: Block) void {
+		std.debug.assert(_zStartInclusive <= _zEndInclusive);
+		main.utils.assertLocked(&self.mutex);
+		const x = _x >> self.super.voxelSizeShift;
+		const y = _y >> self.super.voxelSizeShift;
+		const zStartInclusive = _zStartInclusive >> self.super.voxelSizeShift;
+		const zEndInclusive = _zEndInclusive >> self.super.voxelSizeShift;
+		const indexStart = getIndex(x, y, zStartInclusive);
+		const indexEnd = getIndex(x, y, zEndInclusive) + 1;
+		self.super.data.setValueInColumn(indexStart, indexEnd, newBlock);
+	}
+
 	pub fn updateFromLowerResolution(self: *ServerChunk, other: *ServerChunk) void {
 		const xOffset = if(other.super.pos.wx != self.super.pos.wx) chunkSize/2 else 0; // Offsets of the lower resolution chunk in this chunk.
 		const yOffset = if(other.super.pos.wy != self.super.pos.wy) chunkSize/2 else 0;

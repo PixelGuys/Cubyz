@@ -1252,7 +1252,7 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			return self.palette[self.data.getValue(i)];
 		}
 
-		pub fn setValue(noalias self: *Self, i: usize, val: T) void {
+		fn getOrInsertPaletteIndex(noalias self: *Self, val: T) u32 {
 			std.debug.assert(self.paletteLength <= self.palette.len);
 			var paletteIndex: u32 = 0;
 			while(paletteIndex < self.paletteLength) : (paletteIndex += 1) { // TODO: There got to be a faster way to do this. Either using SIMD or using a cache or hashmap.
@@ -1272,7 +1272,11 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 				self.paletteLength += 1;
 				std.debug.assert(self.paletteLength <= self.palette.len);
 			}
+			return paletteIndex;
+		}
 
+		pub fn setValue(noalias self: *Self, i: usize, val: T) void {
+			const paletteIndex = self.getOrInsertPaletteIndex(val);
 			const previousPaletteIndex = self.data.setAndGetValue(i, paletteIndex);
 			if(previousPaletteIndex != paletteIndex) {
 				if(self.paletteOccupancy[paletteIndex] == 0) {
@@ -1284,6 +1288,22 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 					self.activePaletteEntries -= 1;
 				}
 			}
+		}
+
+		pub fn setValueInColumn(noalias self: *Self, startIndex: usize, endIndex: usize, val: T) void {
+			std.debug.assert(startIndex < endIndex);
+			const paletteIndex = self.getOrInsertPaletteIndex(val);
+			for(startIndex..endIndex) |i| {
+				const previousPaletteIndex = self.data.setAndGetValue(i, paletteIndex);
+				self.paletteOccupancy[previousPaletteIndex] -= 1;
+				if(self.paletteOccupancy[previousPaletteIndex] == 0) {
+					self.activePaletteEntries -= 1;
+				}
+			}
+			if(self.paletteOccupancy[paletteIndex] == 0) {
+				self.activePaletteEntries += 1;
+			}
+			self.paletteOccupancy[paletteIndex] += @intCast(endIndex - startIndex);
 		}
 
 		pub fn optimizeLayout(self: *Self) void {
