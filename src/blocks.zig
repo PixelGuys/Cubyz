@@ -116,7 +116,7 @@ pub fn register(_: []const u8, id: []const u8, json: JsonElement) u16 {
 	_degradable[size] = json.get(bool, "degradable", false);
 	_selectable[size] = json.get(bool, "selectable", true);
 	_solid[size] = json.get(bool, "solid", true);
-	_gui[size] = allocator.dupe(u8, json.get([]const u8, "GUI", ""));
+	_gui[size] = allocator.dupe(u8, json.get([]const u8, "gui", ""));
 	_transparent[size] = json.get(bool, "transparent", false);
 	_collide[size] = json.get(bool, "collide", true);
 	_alwaysViewThrough[size] = json.get(bool, "alwaysViewThrough", false);

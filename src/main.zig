@@ -311,6 +311,7 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "ghost", .key = c.GLFW_KEY_G, .pressAction = &game.ghostToggle},
 		.{.name = "hyperSpeed", .key = c.GLFW_KEY_H, .pressAction = &game.hyperSpeedToggle},
 		.{.name = "fall", .key = c.GLFW_KEY_LEFT_SHIFT},
+		.{.name = "shift", .key = c.GLFW_KEY_LEFT_SHIFT},
 		.{.name = "fullscreen", .key = c.GLFW_KEY_F11, .releaseAction = &Window.toggleFullscreen},
 		.{.name = "placeBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &game.pressPlace, .releaseAction = &game.releasePlace},
 		.{.name = "breakBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &game.pressBreak, .releaseAction = &game.releaseBreak},
@@ -321,7 +322,6 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		// Gui:
 		.{.name = "escape", .key = c.GLFW_KEY_ESCAPE, .releaseAction = &escape},
 		.{.name = "openInventory", .key = c.GLFW_KEY_E, .releaseAction = &openInventory},
-		.{.name = "openWorkbench", .key = c.GLFW_KEY_R, .releaseAction = &openWorkbench}, // TODO: Remove
 		.{.name = "openCreativeInventory(aka cheat inventory)", .key = c.GLFW_KEY_C, .releaseAction = &openCreativeInventory},
 		.{.name = "mainGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &gui.mainButtonPressed, .releaseAction = &gui.mainButtonReleased},
 		.{.name = "secondaryGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &gui.secondaryButtonPressed, .releaseAction = &gui.secondaryButtonReleased},

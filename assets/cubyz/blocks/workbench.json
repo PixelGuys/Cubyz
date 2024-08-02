@@ -4,7 +4,7 @@
 	"drops" : [
 		"auto"
 	],
-	"GUI" : "cubyz:workbench",
+	"gui" : "workbench",
 	"model" : "cube",
 	"rotation" : "planar",
 	"texture" : "cubyz:workbench_back",
