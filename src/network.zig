@@ -1351,6 +1351,25 @@ pub const Connection = struct { // MARK: Connection
 		return result;
 	}
 
+	fn reinitialize(self: *Connection) void {
+		main.utils.assertLocked(&self.mutex);
+		self.streamPosition = importantHeaderSize;
+		self.messageID = 0;
+		while(self.packetQueue.dequeue()) |packet| {
+			main.globalAllocator.free(packet.data);
+		}
+		for(self.unconfirmedPackets.items) |packet| {
+			main.globalAllocator.free(packet.data);
+		}
+		self.unconfirmedPackets.clearRetainingCapacity();
+		self.receivedPackets[0].clearRetainingCapacity();
+		self.receivedPackets[1].clearRetainingCapacity();
+		self.receivedPackets[2].clearRetainingCapacity();
+		self.lastIndex = 0;
+		self.lastIncompletePacket = 0;
+		self.handShakeState = Atomic(u8).init(Protocols.handShake.stepStart);
+	}
+
 	pub fn deinit(self: *Connection) void {
 		self.disconnect();
 		self.manager.finishCurrentReceive(); // Wait until all currently received packets are done.
@@ -1718,7 +1737,15 @@ pub const Connection = struct { // MARK: Connection
 		if(protocol == Protocols.important) {
 			const id = std.mem.readInt(u32, data[1..5], .big);
 			if(self.handShakeState.load(.monotonic) == Protocols.handShake.stepComplete and id == 0) { // Got a new "first" packet from client. So the client tries to reconnect, but we still think it's connected.
-				// TODO: re-initialize connection.
+				if(self.user) |user| {
+					self.mutex.lock();
+					defer self.mutex.unlock();
+					user.reinitialize();
+					self.reinitialize();
+				} else {
+					std.log.err("Server reconnected?", .{});
+					self.disconnect();
+				}
 			}
 			if(id - @as(i33, self.lastIncompletePacket) >= 65536) {
 				std.log.warn("Many incomplete packages. Cannot process any more packages for now.", .{});

@@ -45,6 +45,13 @@ pub const User = struct { // MARK: User
 		return self;
 	}
 
+	pub fn reinitialize(self: *User) void {
+		removePlayer(self);
+		self.timeDifference = .{};
+		main.globalAllocator.free(self.name);
+		self.name = "";
+	}
+
 	pub fn deinit(self: *User) void {
 		std.debug.assert(self.refCount.load(.monotonic) == 0);
 		self.conn.deinit();
@@ -241,7 +248,13 @@ pub fn stop() void {
 
 pub fn disconnect(user: *User) void { // MARK: disconnect()
 	if(!user.connected.load(.unordered)) return;
-	// TODO: world.forceSave();
+	removePlayer(user);
+	userDeinitList.append(user);
+	user.connected.store(false, .unordered);
+}
+
+pub fn removePlayer(user: *User) void { // MARK: removePlayer()
+	if(!user.connected.load(.unordered)) return;
 	const message = std.fmt.allocPrint(main.stackAllocator.allocator, "{s} #ffff00left", .{user.name}) catch unreachable;
 	defer main.stackAllocator.free(message);
 	mutex.lock();
@@ -263,8 +276,6 @@ pub fn disconnect(user: *User) void { // MARK: disconnect()
 	for(users.items) |other| {
 		main.network.Protocols.entity.send(other.conn, data);
 	}
-	user.connected.store(false, .unordered);
-	userDeinitList.append(user);
 }
 
 var freeId: u32 = 0;
