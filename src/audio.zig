@@ -40,7 +40,7 @@ const AudioData = struct {
 
 	fn init(musicId: []const u8) *AudioData {
 		const self = main.globalAllocator.create(AudioData);
-		self.* = .{.musicId = musicId};
+		self.* = .{.musicId = main.globalAllocator.dupe(u8, musicId)};
 
 		const channels = 2;
 		if(open_vorbis_file_by_id(musicId)) |ogg_stream| {
@@ -80,6 +80,7 @@ const AudioData = struct {
 
 	fn deinit(self: *const AudioData) void {
 		main.globalAllocator.free(self.data);
+		main.globalAllocator.free(self.musicId);
 		main.globalAllocator.destroy(self);
 	}
 
