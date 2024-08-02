@@ -873,6 +873,8 @@ pub const Protocols = struct {
 			conn.disconnect();
 			if(conn.user) |user| {
 				main.server.disconnect(user);
+			} else {
+				main.exitToMenu(undefined);
 			}
 		}
 		pub fn disconnect(conn: *Connection) void {

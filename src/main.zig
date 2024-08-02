@@ -378,6 +378,11 @@ pub var lastFrameTime = std.atomic.Value(f64).init(0);
 /// Measures time between different frames' beginnings.
 pub var lastDeltaTime = std.atomic.Value(f64).init(0);
 
+var shouldExitToMenu = std.atomic.Value(bool).init(false);
+pub fn exitToMenu(_: usize) void {
+	shouldExitToMenu.store(true, .monotonic);
+}
+
 pub fn main() void { // MARK: main()
 	seed = @bitCast(std.time.milliTimestamp());
 	defer if(global_gpa.deinit() == .leak) {
@@ -512,6 +517,15 @@ pub fn main() void { // MARK: main()
 			c.glDisable(c.GL_DEPTH_TEST);
 			gui.updateAndRenderGui();
 			gui.windowlist.gpu_performance_measuring.stopQuery();
+		}
+
+		if(shouldExitToMenu.load(.monotonic)) {
+			shouldExitToMenu.store(false, .monotonic);
+			if(game.world) |world| {
+				world.deinit();
+				game.world = null;
+			}
+			gui.openWindow("main");
 		}
 	}
 
