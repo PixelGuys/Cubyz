@@ -133,12 +133,12 @@ const MusicLoadTask = struct {
 	pub fn schedule(musicId: []const u8) void {
 		const task = main.globalAllocator.create(MusicLoadTask);
 		task.* = MusicLoadTask {
-			.musicId = musicId,
+			.musicId = main.globalAllocator.dupe(u8, musicId),
 		};
 		main.threadPool.addTask(task, &vtable);
 		taskMutex.lock();
 		defer taskMutex.unlock();
-		activeTasks.append(main.globalAllocator, musicId);
+		activeTasks.append(main.globalAllocator, task.musicId);
 	}
 
 	pub fn getPriority(_: *MusicLoadTask) f32 {
@@ -166,6 +166,7 @@ const MusicLoadTask = struct {
 		}
 		_ = activeTasks.swapRemove(index);
 		taskMutex.unlock();
+		main.globalAllocator.free(self.musicId);
 		main.globalAllocator.destroy(self);
 	}
 };
@@ -206,6 +207,9 @@ pub fn deinit() void {
 	main.threadPool.closeAllTasksOfType(&MusicLoadTask.vtable);
 	musicCache.clear();
 	activeTasks.deinit(main.globalAllocator);
+	main.globalAllocator.free(preferredMusic);
+	preferredMusic.len = 0;
+	main.globalAllocator.free(activeMusicId);
 	activeMusicId.len = 0;
 }
 
@@ -246,16 +250,29 @@ const animationLengthInSeconds = 5.0;
 var curIndex: u16 = 0;
 var curEndIndex: std.atomic.Value(u16) = .{.value = sampleRate/60 & ~@as(u16, 1)};
 
+var mutex: std.Thread.Mutex = .{};
+var preferredMusic: []const u8 = "";
+
+pub fn setMusic(music: []const u8) void {
+	mutex.lock();
+	defer mutex.unlock();
+	if(std.mem.eql(u8, music, preferredMusic)) return;
+	main.globalAllocator.free(preferredMusic);
+	preferredMusic = main.globalAllocator.dupe(u8, music);
+}
+
 fn addMusic(buffer: []f32) void {
-	const musicId = if(main.game.world) |world| world.playerBiome.load(.monotonic).preferredMusic else "cubyz:cubyz";
-	if(!std.mem.eql(u8, musicId, activeMusicId)) {
+	mutex.lock();
+	defer mutex.unlock();
+	if(!std.mem.eql(u8, preferredMusic, activeMusicId)) {
 		if(activeMusicId.len == 0) {
-			if(findMusic(musicId)) |musicBuffer| {
+			if(findMusic(preferredMusic)) |musicBuffer| {
 				currentMusic.init(musicBuffer);
-				activeMusicId = musicId;
+				main.globalAllocator.free(activeMusicId);
+				activeMusicId = main.globalAllocator.dupe(u8, preferredMusic);
 			}
 		} else if(!currentMusic.animationDecaying) {
-			_ = findMusic(musicId); // Start loading the next music into the cache ahead of time.
+			_ = findMusic(preferredMusic); // Start loading the next music into the cache ahead of time.
 			currentMusic.animationDecaying = true;
 			currentMusic.animationProgress = 0;
 			currentMusic.interpolationPolynomial = utils.unitIntervalSpline(f32, currentMusic.animationAmplitude, currentMusic.animationVelocity, 0, 0);
@@ -274,6 +291,7 @@ fn addMusic(buffer: []f32) void {
 		var amplitude: f32 = main.settings.musicVolume;
 		if(currentMusic.animationProgress > 1) {
 			if(currentMusic.animationDecaying) {
+				main.globalAllocator.free(activeMusicId);
 				activeMusicId = &.{};
 				amplitude = 0;
 			}

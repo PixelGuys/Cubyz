@@ -469,6 +469,8 @@ pub fn main() void { // MARK: main()
 		gui.windowlist.save_selection.openWorld(settings.developerAutoEnterWorld);
 	}
 
+	audio.setMusic("cubyz:cubyz");
+
 	while(c.glfwWindowShouldClose(Window.window) == 0) {
 		const isHidden = c.glfwGetWindowAttrib(Window.window, c.GLFW_ICONIFIED) == c.GLFW_TRUE;
 		if(!isHidden) {
@@ -526,6 +528,7 @@ pub fn main() void { // MARK: main()
 				game.world = null;
 			}
 			gui.openWindow("main");
+			audio.setMusic("cubyz:cubyz");
 		}
 	}
 

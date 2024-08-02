@@ -1061,7 +1061,11 @@ pub const Protocols = struct {
 								curTime = actualTime;
 							}
 						}
-						world.playerBiome.store(main.server.terrain.biomes.getById(json.get([]const u8, "biome", "")), .monotonic);
+						const newBiome = main.server.terrain.biomes.getById(json.get([]const u8, "biome", ""));
+						const oldBiome = world.playerBiome.swap(newBiome, .monotonic);
+						if(oldBiome != newBiome) {
+							main.audio.setMusic(newBiome.preferredMusic);
+						}
 					}
 				},
 				else => |unrecognizedType| {

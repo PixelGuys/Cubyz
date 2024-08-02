@@ -411,6 +411,7 @@ pub const World = struct { // MARK: World
 		main.blocks.meshes.generateTextureArray();
 		main.models.uploadModels();
 		self.playerBiome = Atomic(*const main.server.terrain.biomes.Biome).init(main.server.terrain.biomes.getById(""));
+		main.audio.setMusic(self.playerBiome.raw.preferredMusic);
 	}
 
 	pub fn deinit(self: *World) void {
