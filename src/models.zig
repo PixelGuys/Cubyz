@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const chunk = @import("chunk.zig");
-const Neighbors = chunk.Neighbors;
+const Neighbor = chunk.Neighbor;
 const graphics = @import("graphics.zig");
 const main = @import("main.zig");
 const vec = @import("vec.zig");
@@ -22,10 +22,10 @@ pub const QuadInfo = extern struct {
 };
 
 const ExtraQuadInfo = struct {
-	faceNeighbor: ?u3,
+	faceNeighbor: ?Neighbor,
 	isFullQuad: bool,
 	hasOnlyCornerVertices: bool,
-	alignedNormalDirection: ?u3,
+	alignedNormalDirection: ?Neighbor,
 };
 
 const gridSize = 4096;
@@ -46,19 +46,19 @@ pub const Model = struct {
 	noNeighborsOccluded: bool,
 	hasNeighborFacingQuads: bool,
 
-	fn getFaceNeighbor(quad: *const QuadInfo) ?u3 {
+	fn getFaceNeighbor(quad: *const QuadInfo) ?chunk.Neighbor {
 		var allZero: @Vector(3, bool) = .{true, true, true};
 		var allOne: @Vector(3, bool) = .{true, true, true};
 		for(quad.corners) |corner| {
 			allZero = @select(bool, allZero, corner == @as(Vec3f, @splat(0)), allZero); // vector and TODO: #14306
 			allOne = @select(bool, allOne, corner == @as(Vec3f, @splat(1)), allOne); // vector and TODO: #14306
 		}
-		if(allZero[0]) return Neighbors.dirNegX;
-		if(allZero[1]) return Neighbors.dirNegY;
-		if(allZero[2]) return Neighbors.dirDown;
-		if(allOne[0]) return Neighbors.dirPosX;
-		if(allOne[1]) return Neighbors.dirPosY;
-		if(allOne[2]) return Neighbors.dirUp;
+		if(allZero[0]) return .dirNegX;
+		if(allZero[1]) return .dirNegY;
+		if(allZero[2]) return .dirDown;
+		if(allOne[0]) return .dirPosX;
+		if(allOne[1]) return .dirPosY;
+		if(allOne[2]) return .dirUp;
 		return null;
 	}
 
@@ -105,7 +105,7 @@ pub const Model = struct {
 				self.max = @max(self.max, corner);
 			}
 			if(getFaceNeighbor(quad)) |neighbor| {
-				amounts[neighbor] += 1;
+				amounts[neighbor.toInt()] += 1;
 			} else {
 				internalAmount += 1;
 			}
@@ -125,8 +125,8 @@ pub const Model = struct {
 					corner.* -= quad.normal;
 				}
 				const quadIndex = addQuad(quad) catch continue;
-				self.neighborFacingQuads[neighbor][indices[neighbor]] = quadIndex;
-				indices[neighbor] += 1;
+				self.neighborFacingQuads[neighbor.toInt()][indices[neighbor.toInt()]] = quadIndex;
+				indices[neighbor.toInt()] += 1;
 			} else {
 				const quadIndex = addQuad(quad) catch continue;
 				self.internalQuads[internalIndex] = quadIndex;
@@ -205,8 +205,8 @@ pub const Model = struct {
 		appendQuadsToList(self.internalQuads, list, allocator, block, x, y, z, backFace);
 	}
 
-	pub fn appendNeighborFacingQuadsToList(self: *const Model, list: *main.ListUnmanaged(FaceData), allocator: NeverFailingAllocator, block: main.blocks.Block, neighbor: u3, x: i32, y: i32, z: i32, comptime backFace: bool) void {
-		appendQuadsToList(self.neighborFacingQuads[neighbor], list, allocator, block, x, y, z, backFace);
+	pub fn appendNeighborFacingQuadsToList(self: *const Model, list: *main.ListUnmanaged(FaceData), allocator: NeverFailingAllocator, block: main.blocks.Block, neighbor: Neighbor, x: i32, y: i32, z: i32, comptime backFace: bool) void {
+		appendQuadsToList(self.neighborFacingQuads[neighbor.toInt()], list, allocator, block, x, y, z, backFace);
 	}
 };
 
@@ -257,12 +257,12 @@ fn addQuad(info: QuadInfo) error{Degenerate}!u16 {
 	}
 	{
 		extraQuadInfo.alignedNormalDirection = null;
-		if(@reduce(.And, info.normal == Vec3f{-1, 0, 0})) extraQuadInfo.alignedNormalDirection = chunk.Neighbors.dirNegX;
-		if(@reduce(.And, info.normal == Vec3f{1, 0, 0})) extraQuadInfo.alignedNormalDirection = chunk.Neighbors.dirPosX;
-		if(@reduce(.And, info.normal == Vec3f{0, -1, 0})) extraQuadInfo.alignedNormalDirection = chunk.Neighbors.dirNegY;
-		if(@reduce(.And, info.normal == Vec3f{0, 1, 0})) extraQuadInfo.alignedNormalDirection = chunk.Neighbors.dirPosY;
-		if(@reduce(.And, info.normal == Vec3f{0, 0, -1})) extraQuadInfo.alignedNormalDirection = chunk.Neighbors.dirDown;
-		if(@reduce(.And, info.normal == Vec3f{0, 0, 1})) extraQuadInfo.alignedNormalDirection = chunk.Neighbors.dirUp;
+		if(@reduce(.And, info.normal == Vec3f{-1, 0, 0})) extraQuadInfo.alignedNormalDirection = .dirNegX;
+		if(@reduce(.And, info.normal == Vec3f{1, 0, 0})) extraQuadInfo.alignedNormalDirection = .dirPosX;
+		if(@reduce(.And, info.normal == Vec3f{0, -1, 0})) extraQuadInfo.alignedNormalDirection = .dirNegY;
+		if(@reduce(.And, info.normal == Vec3f{0, 1, 0})) extraQuadInfo.alignedNormalDirection = .dirPosY;
+		if(@reduce(.And, info.normal == Vec3f{0, 0, -1})) extraQuadInfo.alignedNormalDirection = .dirDown;
+		if(@reduce(.And, info.normal == Vec3f{0, 0, 1})) extraQuadInfo.alignedNormalDirection = .dirUp;
 	}
 	extraQuadInfos.append(extraQuadInfo);
 
@@ -283,37 +283,37 @@ fn box(min: Vec3f, max: Vec3f, uvOffset: Vec2f) [6]QuadInfo {
 			.normal = .{-1, 0, 0},
 			.corners = .{corner010, corner011, corner000, corner001},
 			.cornerUV = .{uvOffset + Vec2f{1 - max[1], min[2]}, uvOffset + Vec2f{1 - max[1], max[2]}, uvOffset + Vec2f{1 - min[1], min[2]}, uvOffset + Vec2f{1 - min[1], max[2]}},
-			.textureSlot = chunk.Neighbors.dirNegX,
+			.textureSlot = Neighbor.dirNegX.toInt(),
 		},
 		.{
 			.normal = .{1, 0, 0},
 			.corners = .{corner100, corner101, corner110, corner111},
 			.cornerUV = .{uvOffset + Vec2f{min[1], min[2]}, uvOffset + Vec2f{min[1], max[2]}, uvOffset + Vec2f{max[1], min[2]}, uvOffset + Vec2f{max[1], max[2]}},
-			.textureSlot = chunk.Neighbors.dirPosX,
+			.textureSlot = Neighbor.dirPosX.toInt(),
 		},
 		.{
 			.normal = .{0, -1, 0},
 			.corners = .{corner000, corner001, corner100, corner101},
 			.cornerUV = .{uvOffset + Vec2f{min[0], min[2]}, uvOffset + Vec2f{min[0], max[2]}, uvOffset + Vec2f{max[0], min[2]}, uvOffset + Vec2f{max[0], max[2]}},
-			.textureSlot = chunk.Neighbors.dirNegY,
+			.textureSlot = Neighbor.dirNegY.toInt(),
 		},
 		.{
 			.normal = .{0, 1, 0},
 			.corners = .{corner110, corner111, corner010, corner011},
 			.cornerUV = .{uvOffset + Vec2f{1 - max[0], min[2]}, uvOffset + Vec2f{1 - max[0], max[2]}, uvOffset + Vec2f{1 - min[0], min[2]}, uvOffset + Vec2f{1 - min[0], max[2]}},
-			.textureSlot = chunk.Neighbors.dirPosY,
+			.textureSlot = Neighbor.dirPosY.toInt(),
 		},
 		.{
 			.normal = .{0, 0, -1},
 			.corners = .{corner010, corner000, corner110, corner100},
 			.cornerUV = .{uvOffset + Vec2f{min[0], 1 - max[1]}, uvOffset + Vec2f{min[0], 1 - min[1]}, uvOffset + Vec2f{max[0], 1 - max[1]}, uvOffset + Vec2f{max[0], 1 - min[1]}},
-			.textureSlot = chunk.Neighbors.dirDown,
+			.textureSlot = Neighbor.dirDown.toInt(),
 		},
 		.{
 			.normal = .{0, 0, 1},
 			.corners = .{corner111, corner101, corner011, corner001},
 			.cornerUV = .{uvOffset + Vec2f{1 - max[0], 1 - max[1]}, uvOffset + Vec2f{1 - max[0], 1 - min[1]}, uvOffset + Vec2f{1 - min[0], 1 - max[1]}, uvOffset + Vec2f{1 - min[0], 1 - min[1]}},
-			.textureSlot = chunk.Neighbors.dirUp,
+			.textureSlot = Neighbor.dirUp.toInt(),
 		},
 	};
 }
@@ -395,12 +395,12 @@ pub fn init() void {
 		.normal = .{0, 0, 1},
 		.corners = .{.{9.0/16.0, 9.0/16.0, 12.0/16.0}, .{9.0/16.0, 7.0/16.0, 12.0/16.0}, .{7.0/16.0, 9.0/16.0, 12.0/16.0}, .{7.0/16.0, 7.0/16.0, 12.0/16.0}},
 		.cornerUV = .{.{0, 2.0/16.0}, .{0, 4.0/16.0}, .{2.0/16.0, 2.0/16.0}, .{2.0/16.0, 4.0/16.0}},
-		.textureSlot = chunk.Neighbors.dirUp,
+		.textureSlot = Neighbor.dirUp.toInt(),
 	}} ++ .{.{
 		.normal = .{0, 0, -1},
 		.corners = .{.{7.0/16.0, 9.0/16.0, 0}, .{7.0/16.0, 7.0/16.0, 0}, .{9.0/16.0, 9.0/16.0, 0}, .{9.0/16.0, 7.0/16.0, 0}},
 		.cornerUV = .{.{0, 0}, .{0, 2.0/16.0}, .{2.0/16.0, 0}, .{2.0/16.0, 2.0/16.0}},
-		.textureSlot = chunk.Neighbors.dirDown,
+		.textureSlot = Neighbor.dirDown.toInt(),
 	}}));
 	nameToIndex.put("torch", torch) catch unreachable;
 }

@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("root");
 const JsonElement = @import("json.zig").JsonElement;
-const Neighbors = @import("chunk.zig").Neighbors;
+const Neighbor = @import("chunk.zig").Neighbor;
 const graphics = @import("graphics.zig");
 const Shader = graphics.Shader;
 const SSBO = graphics.SSBO;
@@ -362,12 +362,12 @@ pub const meshes = struct { // MARK: meshes
 
 	const sideNames = blk: {
 		var names: [6][]const u8 = undefined;
-		names[Neighbors.dirDown] = "texture_bottom";
-		names[Neighbors.dirUp] = "texture_top";
-		names[Neighbors.dirPosX] = "texture_right";
-		names[Neighbors.dirNegX] = "texture_left";
-		names[Neighbors.dirPosY] = "texture_front";
-		names[Neighbors.dirNegY] = "texture_back";
+		names[Neighbor.dirDown.toInt()] = "texture_bottom";
+		names[Neighbor.dirUp.toInt()] = "texture_top";
+		names[Neighbor.dirPosX.toInt()] = "texture_right";
+		names[Neighbor.dirNegX.toInt()] = "texture_left";
+		names[Neighbor.dirPosY.toInt()] = "texture_front";
+		names[Neighbor.dirNegY.toInt()] = "texture_back";
 		break :blk names;
 	};
 

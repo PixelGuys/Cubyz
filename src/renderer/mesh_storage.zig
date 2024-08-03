@@ -189,11 +189,11 @@ pub fn getMeshFromAnyLodAndIncreaseRefCount(wx: i32, wy: i32, wz: i32, voxelSize
 	return null;
 }
 
-pub fn getNeighborAndIncreaseRefCount(_pos: chunk.ChunkPosition, resolution: u31, neighbor: u3) ?*chunk_meshing.ChunkMesh {
+pub fn getNeighborAndIncreaseRefCount(_pos: chunk.ChunkPosition, resolution: u31, neighbor: chunk.Neighbor) ?*chunk_meshing.ChunkMesh {
 	var pos = _pos;
-	pos.wx +%= pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relX[neighbor];
-	pos.wy +%= pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relY[neighbor];
-	pos.wz +%= pos.voxelSize*chunk.chunkSize*chunk.Neighbors.relZ[neighbor];
+	pos.wx +%= pos.voxelSize*chunk.chunkSize*neighbor.relX();
+	pos.wy +%= pos.voxelSize*chunk.chunkSize*neighbor.relY();
+	pos.wz +%= pos.voxelSize*chunk.chunkSize*neighbor.relZ();
 	pos.voxelSize = resolution;
 	return getMeshAndIncreaseRefCount(pos);
 }
@@ -637,13 +637,13 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 		const relPos: Vec3d = @as(Vec3d, @floatFromInt(Vec3i{mesh.pos.wx, mesh.pos.wy, mesh.pos.wz})) - playerPos;
 		const relPosFloat: Vec3f = @floatCast(relPos);
 		var isNeighborLod: [6]bool = .{false} ** 6;
-		for(chunk.Neighbors.iterable) |neighbor| continueNeighborLoop: {
-			const component = chunk.Neighbors.extractDirectionComponent(neighbor, relPos);
-			if(chunk.Neighbors.isPositive[neighbor] and component + @as(f64, @floatFromInt(chunk.chunkSize*mesh.pos.voxelSize)) <= 0) continue;
-			if(!chunk.Neighbors.isPositive[neighbor] and component >= 0) continue;
-			if(@reduce(.Or, @min(mesh.chunkBorders[neighbor].min, mesh.chunkBorders[neighbor].max) != mesh.chunkBorders[neighbor].min)) continue; // There was not a single block in the chunk. TODO: Find a better solution.
-			const minVec: Vec3f = @floatFromInt(mesh.chunkBorders[neighbor].min*@as(Vec3i, @splat(mesh.pos.voxelSize)));
-			const maxVec: Vec3f = @floatFromInt(mesh.chunkBorders[neighbor].max*@as(Vec3i, @splat(mesh.pos.voxelSize)));
+		for(chunk.Neighbor.iterable) |neighbor| continueNeighborLoop: {
+			const component = neighbor.extractDirectionComponent(relPos);
+			if(neighbor.isPositive() and component + @as(f64, @floatFromInt(chunk.chunkSize*mesh.pos.voxelSize)) <= 0) continue;
+			if(!neighbor.isPositive() and component >= 0) continue;
+			if(@reduce(.Or, @min(mesh.chunkBorders[neighbor.toInt()].min, mesh.chunkBorders[neighbor.toInt()].max) != mesh.chunkBorders[neighbor.toInt()].min)) continue; // There was not a single block in the chunk. TODO: Find a better solution.
+			const minVec: Vec3f = @floatFromInt(mesh.chunkBorders[neighbor.toInt()].min*@as(Vec3i, @splat(mesh.pos.voxelSize)));
+			const maxVec: Vec3f = @floatFromInt(mesh.chunkBorders[neighbor.toInt()].max*@as(Vec3i, @splat(mesh.pos.voxelSize)));
 			var xyMin: Vec2f = .{10, 10};
 			var xyMax: Vec2f = .{-10, -10};
 			var numberOfNegatives: u8 = 0;
@@ -653,7 +653,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 				for(0..2) |b| {
 					
 					var cornerVector: Vec3f = undefined;
-					switch(chunk.Neighbors.vectorComponent[neighbor]) {
+					switch(neighbor.vectorComponent()) {
 						.x => {
 							cornerVector = @select(f32, @Vector(3, bool){true, a == 0, b == 0}, minVec, maxVec);
 						},
@@ -775,9 +775,9 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 			const max = @min(xyMax, data.node.max);
 			if(@reduce(.Or, min >= max)) continue; // Nothing to render.
 			var neighborPos = chunk.ChunkPosition{
-				.wx = mesh.pos.wx +% chunk.Neighbors.relX[neighbor]*chunk.chunkSize*mesh.pos.voxelSize,
-				.wy = mesh.pos.wy +% chunk.Neighbors.relY[neighbor]*chunk.chunkSize*mesh.pos.voxelSize,
-				.wz = mesh.pos.wz +% chunk.Neighbors.relZ[neighbor]*chunk.chunkSize*mesh.pos.voxelSize,
+				.wx = mesh.pos.wx +% neighbor.relX()*chunk.chunkSize*mesh.pos.voxelSize,
+				.wy = mesh.pos.wy +% neighbor.relY()*chunk.chunkSize*mesh.pos.voxelSize,
+				.wz = mesh.pos.wz +% neighbor.relZ()*chunk.chunkSize*mesh.pos.voxelSize,
 				.voxelSize = mesh.pos.voxelSize,
 			};
 			var lod: u3 = data.node.lod;
@@ -797,15 +797,15 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 					if(lod == data.node.lod and lod != settings.highestLOD and !node.rendered) {
 						var isValid: bool = true;
 						const relPos2: Vec3d = @as(Vec3d, @floatFromInt(Vec3i{neighborPos.wx, neighborPos.wy, neighborPos.wz})) - playerPos;
-						for(chunk.Neighbors.iterable) |neighbor2| {
-							const component2 = chunk.Neighbors.extractDirectionComponent(neighbor2, relPos2);
-							if(chunk.Neighbors.isPositive[neighbor2] and component2 + @as(f64, @floatFromInt(chunk.chunkSize*neighborMesh.pos.voxelSize)) >= 0) continue;
-							if(!chunk.Neighbors.isPositive[neighbor2] and component2 <= 0) continue;
+						for(chunk.Neighbor.iterable) |neighbor2| {
+							const component2 = neighbor2.extractDirectionComponent(relPos2);
+							if(neighbor2.isPositive() and component2 + @as(f64, @floatFromInt(chunk.chunkSize*neighborMesh.pos.voxelSize)) >= 0) continue;
+							if(!neighbor2.isPositive() and component2 <= 0) continue;
 							{ // Check the chunk of same lod:
 								const neighborPos2 = chunk.ChunkPosition{
-									.wx = neighborPos.wx + chunk.Neighbors.relX[neighbor2]*chunk.chunkSize*neighborPos.voxelSize,
-									.wy = neighborPos.wy + chunk.Neighbors.relY[neighbor2]*chunk.chunkSize*neighborPos.voxelSize,
-									.wz = neighborPos.wz + chunk.Neighbors.relZ[neighbor2]*chunk.chunkSize*neighborPos.voxelSize,
+									.wx = neighborPos.wx + neighbor2.relX()*chunk.chunkSize*neighborPos.voxelSize,
+									.wy = neighborPos.wy + neighbor2.relY()*chunk.chunkSize*neighborPos.voxelSize,
+									.wz = neighborPos.wz + neighbor2.relZ()*chunk.chunkSize*neighborPos.voxelSize,
 									.voxelSize = neighborPos.voxelSize,
 								};
 								const node2 = getNodePointer(neighborPos2);
@@ -815,9 +815,9 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 							}
 							{ // Check the chunk of higher lod
 								const neighborPos2 = chunk.ChunkPosition{
-									.wx = neighborPos.wx + chunk.Neighbors.relX[neighbor2]*chunk.chunkSize*neighborPos.voxelSize,
-									.wy = neighborPos.wy + chunk.Neighbors.relY[neighbor2]*chunk.chunkSize*neighborPos.voxelSize,
-									.wz = neighborPos.wz + chunk.Neighbors.relZ[neighbor2]*chunk.chunkSize*neighborPos.voxelSize,
+									.wx = neighborPos.wx + neighbor2.relX()*chunk.chunkSize*neighborPos.voxelSize,
+									.wy = neighborPos.wy + neighbor2.relY()*chunk.chunkSize*neighborPos.voxelSize,
+									.wz = neighborPos.wz + neighbor2.relZ()*chunk.chunkSize*neighborPos.voxelSize,
 									.voxelSize = neighborPos.voxelSize << 1,
 								};
 								const node2 = getNodePointer(neighborPos2);
@@ -828,12 +828,12 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 							}
 						}
 						if(!isValid) {
-							isNeighborLod[neighbor] = true;
+							isNeighborLod[neighbor.toInt()] = true;
 							continue;
 						}
 					}
 					if(lod != data.node.lod) {
-						isNeighborLod[neighbor] = true;
+						isNeighborLod[neighbor.toInt()] = true;
 					}
 					if(node.active) {
 						node.min = @min(node.min, min);

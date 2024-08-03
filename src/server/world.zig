@@ -758,10 +758,10 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const y: u5 = @intCast(wy & chunk.chunkMask);
 		const z: u5 = @intCast(wz & chunk.chunkMask);
 		var newBlock = _newBlock;
-		for(chunk.Neighbors.iterable) |neighbor| {
-			const nx = x + chunk.Neighbors.relX[neighbor];
-			const ny = y + chunk.Neighbors.relY[neighbor];
-			const nz = z + chunk.Neighbors.relZ[neighbor];
+		for(chunk.Neighbor.iterable) |neighbor| {
+			const nx = x + neighbor.relX();
+			const ny = y + neighbor.relY();
+			const nz = z + neighbor.relZ();
 			var ch = baseChunk;
 			if(nx & chunk.chunkMask != nx or ny & chunk.chunkMask != ny or nz & chunk.chunkMask != nz) {
 				ch = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(.{
@@ -778,7 +778,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			defer ch.mutex.unlock();
 			var neighborBlock = ch.getBlock(nx & chunk.chunkMask, ny & chunk.chunkMask, nz & chunk.chunkMask);
 			if(neighborBlock.mode().dependsOnNeighbors) {
-				if(neighborBlock.mode().updateData(&neighborBlock, neighbor ^ 1, newBlock)) {
+				if(neighborBlock.mode().updateData(&neighborBlock, neighbor.reverse(), newBlock)) {
 					ch.updateBlockAndSetChanged(nx & chunk.chunkMask, ny & chunk.chunkMask, nz & chunk.chunkMask, neighborBlock);
 				}
 			}

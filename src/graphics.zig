@@ -1993,13 +1993,13 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	const model = &main.models.models.items[main.blocks.meshes.model(block)];
 	if(block.hasBackFace()) {
 		model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, 1, 1, 1, true);
-		for(main.chunk.Neighbors.iterable) |neighbor| {
+		for(main.chunk.Neighbor.iterable) |neighbor| {
 			model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, 1, 1, 1, true);
 		}
 	}
 	model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, 1, 1, 1, false);
-	for(main.chunk.Neighbors.iterable) |neighbor| {
-		model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, 1 + main.chunk.Neighbors.relX[neighbor], 1 + main.chunk.Neighbors.relY[neighbor], 1 + main.chunk.Neighbors.relZ[neighbor], false);
+	for(main.chunk.Neighbor.iterable) |neighbor| {
+		model.appendNeighborFacingQuadsToList(&faceData, main.stackAllocator, block, neighbor, 1 + neighbor.relX(), 1 + neighbor.relY(), 1 + neighbor.relZ(), false);
 	}
 
 	for(faceData.items) |*face| {
