@@ -14,6 +14,7 @@ const VerticalList = GuiComponent.VerticalList;
 const ItemSlot = GuiComponent.ItemSlot;
 
 pub var window = GuiWindow {
+	.gameMenuNeed = true,
 	.relativePosition = .{
 		.{ .attachedToFrame = .{.selfAttachmentPoint = .lower, .otherAttachmentPoint = .lower} },
 		.{ .attachedToFrame = .{.selfAttachmentPoint = .middle, .otherAttachmentPoint = .middle} },

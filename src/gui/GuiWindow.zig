@@ -48,6 +48,7 @@ const snapDistance = 3;
 const titleBarHeight = 18;
 const iconWidth = 18;
 
+gameMenuNeed:bool = false,
 pos: Vec2f = undefined,
 size: Vec2f = undefined,
 contentSize: Vec2f,
