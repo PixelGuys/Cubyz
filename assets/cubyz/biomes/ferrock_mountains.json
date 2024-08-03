@@ -38,13 +38,13 @@
 		{
 			"id" : "cubyz:simple_vegetation",
 			"block" : "cubyz:cactus",
-			"chance" : 0.005,
+			"chance" : 0.08,
 			"height" : 1,
 			"height_variation" : 2
 		},
 		{
 			"id" : "cubyz:boulder",
-			"chance" : 0.001,
+			"chance" : 0.016,
 			"block" : "cubyz:ferrock",
 			"size" : 2,
 			"size_variance" : 7

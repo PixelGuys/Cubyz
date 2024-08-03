@@ -21,7 +21,7 @@
 			"leaves" : "cubyz:oak_leaves",
 			"log" : "cubyz:oak_log",
 			"top" : "cubyz:oak_top",
-			"chance" : 0.01,
+			"chance" : 0.16,
 			"type" : "round",
 			"height" : 1,
 			"height_variation" : 1,
@@ -31,7 +31,7 @@
 		{
 			"id" : "cubyz:ground_patch",
 			"block" : "cubyz:soil",
-			"chance" : 0.001,
+			"chance" : 0.016,
 			"width" : 12,
 			"variation" : 4,
 			"depth" : 2,
@@ -40,7 +40,7 @@
 		{
 			"id" : "cubyz:simple_vegetation",
 			"block" : "cubyz:grass_vegetation",
-			"chance" : 1,
+			"chance" : 0.8,
 			"height" : 1,
 			"height_variation" : 0
 		},

@@ -10,14 +10,14 @@
 	{
 		"id" : "cubyz:stalagmite",
 		"block" : "cubyz:marble",
-		"chance" : 0.007,
+		"chance" : 0.112,
 		"size" : 4,
 		"size_variation" : 10
 	},	
 	{
 		"id" : "cubyz:ground_patch",
 		"block" : "cubyz:water",
-		"chance" : 0.004,
+		"chance" : 0.064,
 		"width" : 6,
 		"variation" : 5,
 		"depth" : 1,

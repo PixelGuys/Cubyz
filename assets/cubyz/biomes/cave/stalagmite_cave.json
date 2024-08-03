@@ -14,21 +14,21 @@
 		{
 			"id" : "cubyz:stalagmite",
 			"block" : "cubyz:limestone",
-			"chance" : 0.03,
+			"chance" : 0.48,
 			"size" : 4,
 			"size_variation" : 6
 		},	
 		{
 			"id" : "cubyz:stalagmite",
 			"block" : "cubyz:limestone",
-			"chance" : 0.005,
+			"chance" : 0.08,
 			"size" : 8,
 			"size_variation" : 12
 		},	
 		{
 			"id" : "cubyz:ground_patch",
 			"block" : "cubyz:limestone",
-			"chance" : 0.003,
+			"chance" : 0.048,
 			"width" : 5,
 			"variation" : 6,
 			"depth" : 3,

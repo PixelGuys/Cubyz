@@ -12,14 +12,14 @@
 	"structures" : [
 		{
 			"id" : "cubyz:boulder",
-			"chance" : 0.001,
+			"chance" : 0.016,
 			"block" : "cubyz:cobblestone",
 			"size" : 5,
 			"size_variance" : 3
 		},
 		{
 			"id" : "cubyz:boulder",
-			"chance" : 0.001,
+			"chance" : 0.016,
 			"block" : "cubyz:stone",
 			"size" : 4,
 			"size_variance" : 2

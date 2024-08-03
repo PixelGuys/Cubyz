@@ -39,7 +39,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 		return SimpleStructureModel {
 			.vtable = vtable,
 			.data = vtable.loadModel(arena.allocator(), parameters),
-			.chance = 16*parameters.get(f32, "chance", 0.01), // TODO: Should this use the sample point chance directly, instead of the per block chance?
+			.chance = parameters.get(f32, "chance", 0.1),
 			.generationMode = std.meta.stringToEnum(GenerationMode, parameters.get([]const u8, "generationMode", "")) orelse vtable.generationMode,
 		};
 	}

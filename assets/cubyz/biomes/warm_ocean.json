@@ -21,7 +21,7 @@
 		{
 			"id" : "cubyz:ground_patch",
 			"block" : "cubyz:gravel",
-			"chance" : 0.002,
+			"chance" : 0.032,
 			"width" : 6,
 			"variation" : 2,
 			"depth" : 2,

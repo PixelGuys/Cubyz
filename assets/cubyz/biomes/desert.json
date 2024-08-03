@@ -20,7 +20,7 @@
 		{
 			"id" : "cubyz:simple_vegetation",
 			"block" : "cubyz:cactus",
-			"chance" : 0.01,
+			"chance" : 0.16,
 			"height" : 2,
 			"height_variation" : 3
 		}

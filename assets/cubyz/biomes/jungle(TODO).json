@@ -24,7 +24,7 @@
 			"leaves" : "cubyz:mahogany_leaves",
 			"log" : "cubyz:mahogany_log",
 			"top" : "cubyz:mahogany_top",
-			"chance" : 0.9,
+			"chance" : 0.36,
 			"type" : "round",
 			"height" : 6,
 			"height_variation" : 10,
@@ -36,7 +36,7 @@
 			"leaves" : "cubyz:mahogany_leaves",
 			"log" : "cubyz:mahogany_log",
 			"top" : "cubyz:mahogany_top",
-			"chance" : 0.5,
+			"chance" : 0.2,
 			"type" : "round",
 			"height" : 1,
 			"height_variation" : 0,
@@ -46,7 +46,7 @@
 		{
 			"id" : "cubyz:ground_patch",
 			"block" : "cubyz:soil",
-			"chance" : 0.1,
+			"chance" : 0.04,
 			"width" : 4,
 			"variation" : 4,
 			"depth" : 2,
@@ -55,7 +55,7 @@
 		{
 			"id" : "cubyz:simple_vegetation",
 			"block" : "cubyz:grass_vegetation",
-			"chance" : 1,
+			"chance" : 0.4,
 			"height" : 1,
 			"height_variation" : 0
 		},

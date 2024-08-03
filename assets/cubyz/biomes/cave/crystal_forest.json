@@ -20,7 +20,7 @@
 			"leaves" : "cubyz:oak_leaves",
 			"log" : "cubyz:oak_log",
 			"top" : "cubyz:oak_top",
-			"chance" : 0.02,
+			"chance" : 0.32,
 			"type" : "round",
 			"height" : 4,
 			"height_variation" : 2
