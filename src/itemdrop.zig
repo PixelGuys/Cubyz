@@ -141,7 +141,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		obj.put("i", i);
 		obj.put("pos", itemDrop.pos);
 		obj.put("vel", itemDrop.vel);
-		itemDrop.itemStack.storeToJson(obj);
+		itemDrop.itemStack.storeToJson(allocator, obj);
 		obj.put("despawnTime", itemDrop.despawnTime);
 		return obj;
 	}
@@ -170,9 +170,12 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		var ii: u32 = 0;
 		while(ii < self.size) {
 			const i = self.indices[ii];
-			if(self.world.?.getChunk(@intFromFloat(pos[i][0]), @intFromFloat(pos[i][1]), @intFromFloat(pos[i][2]))) |chunk| {
-				// Check collision with blocks:
-				self.updateEnt(chunk, &pos[i], &vel[i], deltaTime);
+			if(self.world.?.getSimulationChunkAndIncreaseRefCount(@intFromFloat(pos[i][0]), @intFromFloat(pos[i][1]), @intFromFloat(pos[i][2]))) |simChunk| {
+				defer simChunk.decreaseRefCount();
+				if(simChunk.getChunk()) |chunk| {
+					// Check collision with blocks:
+					self.updateEnt(chunk, &pos[i], &vel[i], deltaTime);
+				}
 			}
 			pickupCooldown[i] -= 1;
 			despawnTime[i] -= 1;

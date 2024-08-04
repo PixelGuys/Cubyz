@@ -1025,7 +1025,16 @@ pub const Protocols = struct {
 					// TODO: Clear inventory
 				},
 				type_itemStackDrop => {
-					// TODO: Drop stack
+					const json = JsonElement.parseFromString(main.stackAllocator, data[1..]);
+					defer json.free(main.stackAllocator);
+					const stack = ItemStack.load(json) catch |err| {
+						std.log.err("Received invalid item: {s}, {s}", .{data[1..], @errorName(err)});
+						return;
+					};
+					const pos = json.get(Vec3d, "pos", .{0, 0, 0});
+					const dir = json.get(Vec3f, "dir", .{0, 0, 1});
+					const vel = json.get(f32, "vel", 0);
+					main.server.world.?.drop(stack, pos, dir, vel);
 				},
 				type_itemStackCollect => {
 					const json = JsonElement.parseFromString(main.stackAllocator, data[1..]);

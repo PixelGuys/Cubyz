@@ -24,8 +24,7 @@ const Entity = server.Entity;
 const storage = @import("storage.zig");
 
 pub const EntityChunk = struct {
-	chunk: ?*ServerChunk = null,
-	mutex: std.Thread.Mutex = .{},
+	chunk: std.atomic.Value(?*ServerChunk) = .{.raw = null},
 	refCount: std.atomic.Value(u32),
 	pos: chunk.ChunkPosition,
 
@@ -40,7 +39,7 @@ pub const EntityChunk = struct {
 
 	fn deinit(self: *const EntityChunk) void {
 		std.debug.assert(self.refCount.load(.monotonic) == 0);
-		if(self.chunk) |ch| ch.decreaseRefCount();
+		if(self.chunk.raw) |ch| ch.decreaseRefCount();
 		main.globalAllocator.destroy(self);
 	}
 
@@ -58,6 +57,14 @@ pub const EntityChunk = struct {
 		if(prevVal == 1) {
 			self.deinit();
 		}
+	}
+
+	pub fn getChunk(self: *EntityChunk) ?*ServerChunk {
+		return self.chunk.load(.acquire);
+	}
+
+	pub fn setChunk(self: *EntityChunk, ch: *ServerChunk) void {
+		std.debug.assert(self.chunk.swap(ch, .release) == null);
 	}
 };
 
@@ -99,7 +106,6 @@ const ChunkManager = struct { // MARK: ChunkManager
 			return entityChunk;
 		}
 		const entityChunk = EntityChunk.initAndIncreaseRefCount(pos);
-		std.debug.assert(entityChunk.chunk == null);
 		entityChunkHashMap.put(pos, entityChunk) catch unreachable;
 		entityChunk.increaseRefCount();
 		return entityChunk;
@@ -282,9 +288,7 @@ const ChunkManager = struct { // MARK: ChunkManager
 				main.network.Protocols.chunkTransmission.sendChunk(user.conn, ch);
 			},
 			.entityChunk => |entityChunk| {
-				entityChunk.mutex.lock();
-				defer entityChunk.mutex.unlock();
-				entityChunk.chunk = ch;
+				entityChunk.setChunk(ch);
 			},
 		}
 	}
@@ -292,9 +296,7 @@ const ChunkManager = struct { // MARK: ChunkManager
 	fn chunkInitFunctionForCacheAndIncreaseRefCount(pos: ChunkPosition) *ServerChunk {
 		if(pos.voxelSize == 1) if(getEntityChunkAndIncreaseRefCount(pos)) |entityChunk| { // Check if we already have it in memory.
 			defer entityChunk.decreaseRefCount();
-			entityChunk.mutex.lock();
-			defer entityChunk.mutex.unlock();
-			if(entityChunk.chunk) |ch| {
+			if(entityChunk.getChunk()) |ch| {
 				ch.increaseRefCount();
 				return ch;
 			}
@@ -507,6 +509,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	pub fn deinit(self: *ServerWorld) void {
+		self.forceSave() catch |err| {
+			std.log.err("Error while saving the world: {s}", .{@errorName(err)});
+		};
 		while(self.chunkUpdateQueue.dequeue()) |updateRequest| {
 			updateRequest.ch.save(self);
 			updateRequest.ch.decreaseRefCount();
@@ -754,8 +759,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		return map.getBiome(wx, wy).isValidPlayerSpawn;
 	}
 
-	pub fn dropWithCooldown(self: *ServerWorld, stack: ItemStack, pos: Vec3d, dir: Vec3f, velocity: f32, pickupCooldown: u32) void {
-		const vel = vec.floatCast(f64, dir*@as(Vec3d, @splat(velocity)));
+	pub fn dropWithCooldown(self: *ServerWorld, stack: ItemStack, pos: Vec3d, dir: Vec3f, velocity: f32, pickupCooldown: i32) void {
+		const vel: Vec3d = @floatCast(dir*@as(Vec3f, @splat(velocity)));
 		self.itemDropManager.add(pos, vel, stack, server.updatesPerSec*900, pickupCooldown);
 	}
 
@@ -825,12 +830,10 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.chunkManager.queueLightMapAndDecreaseRefCount(pos, source);
 	}
 
-	pub fn getChunk(self: *ServerWorld, x: i32, y: i32, z: i32) ?*ServerChunk {
-		_ = self;
-		_ = x;
-		_ = y;
-		_ = z;
-		// TODO
+	pub fn getSimulationChunkAndIncreaseRefCount(_: *ServerWorld, x: i32, y: i32, z: i32) ?*EntityChunk {
+		if(ChunkManager.getEntityChunkAndIncreaseRefCount(.{.wx = x & ~@as(i32, chunk.chunkMask), .wy = y & ~@as(i32, chunk.chunkMask), .wz = z & ~@as(i32, chunk.chunkMask), .voxelSize = 1})) |entityChunk| {
+			return entityChunk;
+		}
 		return null;
 	}
 
