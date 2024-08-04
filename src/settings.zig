@@ -13,7 +13,7 @@ pub const version = "Cubyz α 0.12.0";
 pub const highestLOD: u5 = 5;
 
 
-pub var entityDistance: u16 = 2;
+pub var simulationDistance: u16 = 4;
 
 pub var cpuThreads: ?u64 = null;
 

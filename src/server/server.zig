@@ -2,12 +2,14 @@ const std = @import("std");
 const Atomic = std.atomic.Value;
 
 const main = @import("root");
+const chunk = main.chunk;
 const network = main.network;
 const Connection = network.Connection;
 const ConnectionManager = network.ConnectionManager;
 const utils = main.utils;
 const vec = main.vec;
 const Vec3d = vec.Vec3d;
+const Vec3i = vec.Vec3i;
 
 pub const ServerWorld = @import("world.zig").ServerWorld;
 pub const terrain = @import("terrain/terrain.zig");
@@ -18,6 +20,9 @@ const command = @import("command/_command.zig");
 
 
 pub const User = struct { // MARK: User
+	const maxSimulationDistance = 8;
+	const simulationSize = 2*maxSimulationDistance;
+	const simulationMask = simulationSize - 1;
 	conn: *Connection = undefined,
 	player: Entity = .{},
 	timeDifference: utils.TimeDifference = .{},
@@ -29,6 +34,9 @@ pub const User = struct { // MARK: User
 	isLocal: bool = false,
 	id: u32 = 0, // TODO: Use entity id.
 	// TODO: ipPort: []const u8,
+	loadedChunks: [simulationSize][simulationSize][simulationSize]*@import("world.zig").EntityChunk = undefined,
+	lastRenderDistance: u16 = 0,
+	lastPos: Vec3i = @splat(0),
 
 	connected: Atomic(bool) = Atomic(bool).init(true),
 
@@ -54,6 +62,7 @@ pub const User = struct { // MARK: User
 
 	pub fn deinit(self: *User) void {
 		std.debug.assert(self.refCount.load(.monotonic) == 0);
+		self.unloadOldChunk(.{0, 0, 0}, 0);
 		self.conn.deinit();
 		main.globalAllocator.free(self.name);
 		main.globalAllocator.destroy(self);
@@ -77,12 +86,75 @@ pub const User = struct { // MARK: User
 		world.?.findPlayer(self);
 	}
 
+	fn simArrIndex(x: i32) usize {
+		return @intCast(x >> chunk.chunkShift & simulationMask);
+	}
+
+	fn unloadOldChunk(self: *User, newPos: Vec3i, newRenderDistance: u16) void {
+		const lastBoxStart = (self.lastPos -% @as(Vec3i, @splat(self.lastRenderDistance*chunk.chunkSize))) & ~@as(Vec3i, @splat(chunk.chunkMask));
+		const lastBoxEnd = (self.lastPos +% @as(Vec3i, @splat(self.lastRenderDistance*chunk.chunkSize))) +% @as(Vec3i, @splat(chunk.chunkSize - 1)) & ~@as(Vec3i, @splat(chunk.chunkMask));
+		const newBoxStart = (newPos -% @as(Vec3i, @splat(newRenderDistance*chunk.chunkSize))) & ~@as(Vec3i, @splat(chunk.chunkMask));
+		const newBoxEnd = (newPos +% @as(Vec3i, @splat(newRenderDistance*chunk.chunkSize))) +% @as(Vec3i, @splat(chunk.chunkSize - 1)) & ~@as(Vec3i, @splat(chunk.chunkMask));
+		// Clear all chunks not inside the new box:
+		var x: i32 = lastBoxStart[0];
+		while(x != lastBoxEnd[0]) : (x +%= chunk.chunkSize) {
+			const inXDistance = x -% newBoxStart[0] >= 0 and x -% newBoxEnd[0] < 0;
+			var y: i32 = lastBoxStart[1];
+			while(y != lastBoxEnd[1]) : (y +%= chunk.chunkSize) {
+				const inYDistance = y -% newBoxStart[1] >= 0 and y -% newBoxEnd[1] < 0;
+				var z: i32 = lastBoxStart[2];
+				while(z != lastBoxEnd[2]) : (z +%= chunk.chunkSize) {
+					const inZDistance = z -% newBoxStart[2] >= 0 and z -% newBoxEnd[2] < 0;
+					if(!inXDistance or !inYDistance or !inZDistance) {
+						self.loadedChunks[simArrIndex(x)][simArrIndex(y)][simArrIndex(z)].decreaseRefCount();
+						self.loadedChunks[simArrIndex(x)][simArrIndex(y)][simArrIndex(z)] = undefined;
+					}
+				}
+			}
+		}
+	}
+
+	fn loadNewChunk(self: *User, newPos: Vec3i, newRenderDistance: u16) void {
+		const lastBoxStart = (self.lastPos -% @as(Vec3i, @splat(self.lastRenderDistance*chunk.chunkSize))) & ~@as(Vec3i, @splat(chunk.chunkMask));
+		const lastBoxEnd = (self.lastPos +% @as(Vec3i, @splat(self.lastRenderDistance*chunk.chunkSize))) +% @as(Vec3i, @splat(chunk.chunkSize - 1)) & ~@as(Vec3i, @splat(chunk.chunkMask));
+		const newBoxStart = (newPos -% @as(Vec3i, @splat(newRenderDistance*chunk.chunkSize))) & ~@as(Vec3i, @splat(chunk.chunkMask));
+		const newBoxEnd = (newPos +% @as(Vec3i, @splat(newRenderDistance*chunk.chunkSize))) +% @as(Vec3i, @splat(chunk.chunkSize - 1)) & ~@as(Vec3i, @splat(chunk.chunkMask));
+		// Clear all chunks not inside the new box:
+		var x: i32 = newBoxStart[0];
+		while(x != newBoxEnd[0]) : (x +%= chunk.chunkSize) {
+			const inXDistance = x -% lastBoxStart[0] >= 0 and x -% lastBoxEnd[0] < 0;
+			var y: i32 = newBoxStart[1];
+			while(y != newBoxEnd[1]) : (y +%= chunk.chunkSize) {
+				const inYDistance = y -% lastBoxStart[1] >= 0 and y -% lastBoxEnd[1] < 0;
+				var z: i32 = newBoxStart[2];
+				while(z != newBoxEnd[2]) : (z +%= chunk.chunkSize) {
+					const inZDistance = z -% lastBoxStart[2] >= 0 and z -% lastBoxEnd[2] < 0;
+					if(!inXDistance or !inYDistance or !inZDistance) {
+						self.loadedChunks[simArrIndex(x)][simArrIndex(y)][simArrIndex(z)] = @TypeOf(world.?.chunkManager).getOrGenerateEntityChunkAndIncreaseRefCount(.{.wx = x, .wy = y, .wz = z, .voxelSize = 1});
+					}
+				}
+			}
+		}
+	}
+
+	fn loadUnloadChunks(self: *User) void {
+		const newPos: Vec3i = @as(Vec3i, @intFromFloat(self.player.pos)) +% @as(Vec3i, @splat(chunk.chunkSize/2)) & ~@as(Vec3i, @splat(chunk.chunkMask));
+		const newRenderDistance = main.settings.simulationDistance;
+		if(@reduce(.Or, newPos != self.lastPos) or newRenderDistance != self.lastRenderDistance) {
+			self.unloadOldChunk(newPos, newRenderDistance);
+			self.loadNewChunk(newPos, newRenderDistance);
+			self.lastRenderDistance = newRenderDistance;
+			self.lastPos = newPos;
+		}
+	}
+
 	pub fn update(self: *User) void {
 		main.utils.assertLocked(&mutex);
 		var time = @as(i16, @truncate(std.time.milliTimestamp())) -% main.settings.entityLookback;
 		time -%= self.timeDifference.difference.load(.monotonic);
 		self.interpolation.update(time, self.lastTime);
 		self.lastTime = time;
+		self.loadUnloadChunks();
 	}
 
 	pub fn receiveData(self: *User, data: []const u8) void {
