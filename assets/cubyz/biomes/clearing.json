@@ -9,7 +9,7 @@
 	"roughness" : 1,
 	"hills" : 5,
 	
-	"music" : "sunrise",
+	"music" : "cubyz:sunrise",
 
 	"validPlayerSpawn" : true,
 	
@@ -20,7 +20,7 @@
 	"structures" : [
 		{
 			"id" : "cubyz:boulder",
-			"chance" : 0.0001,
+			"chance" : 0.0016,
 			"block" : "cubyz:stone",
 			"size" : 5,
 			"size_variance" : 1

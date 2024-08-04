@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("root");
 const JsonElement = @import("json.zig").JsonElement;
-const Neighbors = @import("chunk.zig").Neighbors;
+const Neighbor = @import("chunk.zig").Neighbor;
 const graphics = @import("graphics.zig");
 const Shader = graphics.Shader;
 const SSBO = graphics.SSBO;
@@ -81,6 +81,7 @@ var _absorption: [maxBlockCount]u32 = undefined;
 var _gui: [maxBlockCount][]u8 = undefined;
 var _mode: [maxBlockCount]*RotationMode = undefined;
 var _lodReplacement: [maxBlockCount]u16 = undefined;
+var _opaqueVariant: [maxBlockCount]u16 = undefined;
 
 var reverseIndices = std.StringHashMap(u16).init(allocator.allocator);
 
@@ -115,7 +116,7 @@ pub fn register(_: []const u8, id: []const u8, json: JsonElement) u16 {
 	_degradable[size] = json.get(bool, "degradable", false);
 	_selectable[size] = json.get(bool, "selectable", true);
 	_solid[size] = json.get(bool, "solid", true);
-	_gui[size] = allocator.dupe(u8, json.get([]const u8, "GUI", ""));
+	_gui[size] = allocator.dupe(u8, json.get([]const u8, "gui", ""));
 	_transparent[size] = json.get(bool, "transparent", false);
 	_collide[size] = json.get(bool, "collide", true);
 	_alwaysViewThrough[size] = json.get(bool, "alwaysViewThrough", false);
@@ -154,7 +155,7 @@ fn registerBlockDrop(typ: u16, json: JsonElement) void {
 	for(drops) |blockDrop| {
 		var string = blockDrop.as([]const u8, "auto");
 		string = std.mem.trim(u8, string, " ");
-		var iterator = std.mem.split(u8, string, " ");
+		var iterator = std.mem.splitScalar(u8, string, ' ');
 
 		var name = iterator.next() orelse continue;
 		var amount: f32 = 1;
@@ -183,6 +184,14 @@ fn registerLodReplacement(typ: u16, json: JsonElement) void {
 	}
 }
 
+fn registerOpaqueVariant(typ: u16, json: JsonElement) void {
+	if(json.get(?[]const u8, "opaqueVariant", null)) |replacement| {
+		_opaqueVariant[typ] = getByID(replacement);
+	} else {
+		_opaqueVariant[typ] = typ;
+	}
+}
+
 pub fn finishBlocks(jsonElements: std.StringHashMap(JsonElement)) void {
 	var i: u16 = 0;
 	while(i < size) : (i += 1) {
@@ -191,6 +200,7 @@ pub fn finishBlocks(jsonElements: std.StringHashMap(JsonElement)) void {
 	i = 0;
 	while(i < size) : (i += 1) {
 		registerLodReplacement(i, jsonElements.get(_id[i]) orelse continue);
+		registerOpaqueVariant(i, jsonElements.get(_id[i]) orelse continue);
 	}
 	for(ores.items, unfinishedOreSourceBlockIds.items) |*ore, oreIds| {
 		ore.sources = allocator.alloc(u16, oreIds.len);
@@ -225,7 +235,7 @@ pub fn hasRegistered(id: []const u8) bool {
 	return reverseIndices.contains(id);
 }
 
-pub const Block = packed struct {
+pub const Block = packed struct { // MARK: Block
 	typ: u16,
 	data: u16,
 	pub fn toInt(self: Block) u32 {
@@ -312,10 +322,14 @@ pub const Block = packed struct {
 	pub inline fn lodReplacement(self: Block) u16 {
 		return _lodReplacement[self.typ];
 	}
+	
+	pub inline fn opaqueVariant(self: Block) u16 {
+		return _opaqueVariant[self.typ];
+	}
 };
 
 
-pub const meshes = struct {
+pub const meshes = struct { // MARK: meshes
 	const AnimationData = extern struct {
 		frames: i32,
 		time: i32,
@@ -348,12 +362,12 @@ pub const meshes = struct {
 
 	const sideNames = blk: {
 		var names: [6][]const u8 = undefined;
-		names[Neighbors.dirDown] = "texture_bottom";
-		names[Neighbors.dirUp] = "texture_top";
-		names[Neighbors.dirPosX] = "texture_right";
-		names[Neighbors.dirNegX] = "texture_left";
-		names[Neighbors.dirPosY] = "texture_front";
-		names[Neighbors.dirNegY] = "texture_back";
+		names[Neighbor.dirDown.toInt()] = "texture_bottom";
+		names[Neighbor.dirUp.toInt()] = "texture_top";
+		names[Neighbor.dirPosX.toInt()] = "texture_right";
+		names[Neighbor.dirNegX.toInt()] = "texture_left";
+		names[Neighbor.dirPosY.toInt()] = "texture_front";
+		names[Neighbor.dirNegY.toInt()] = "texture_back";
 		break :blk names;
 	};
 
@@ -379,7 +393,7 @@ pub const meshes = struct {
 	const emptyImage = Image{.width = 1, .height = 1, .imageData = emptyTexture[0..]};
 
 	pub fn init() void {
-		animationShader = Shader.initComputeAndGetUniforms("assets/cubyz/shaders/animation_pre_processing.glsl", &animationUniforms);
+		animationShader = Shader.initComputeAndGetUniforms("assets/cubyz/shaders/animation_pre_processing.glsl", "", &animationUniforms);
 		blockTextureArray = TextureArray.init();
 		emissionTextureArray = TextureArray.init();
 		reflectivityAndAbsorptionTextureArray = TextureArray.init();
@@ -487,7 +501,7 @@ pub const meshes = struct {
 		var result: u16 = undefined;
 		if(textureInfo == .JsonString or textureInfo == .JsonStringOwned) {
 			const resource = textureInfo.as([]const u8, "");
-			var splitter = std.mem.split(u8, resource, ":");
+			var splitter = std.mem.splitScalar(u8, resource, ':');
 			const mod = splitter.first();
 			const id = splitter.rest();
 			var buffer: [1024]u8 = undefined;
@@ -527,7 +541,7 @@ pub const meshes = struct {
 				} else {
 					animation.append(.{.frames = 1, .time = 1});
 				}
-				var splitter = std.mem.split(u8, item.as([]const u8, "cubyz:undefined"), ":");
+				var splitter = std.mem.splitScalar(u8, item.as([]const u8, "cubyz:undefined"), ':');
 				const mod = splitter.first();
 				const id = splitter.rest();
 				var buffer: [1024]u8 = undefined;

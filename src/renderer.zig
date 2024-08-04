@@ -58,8 +58,8 @@ pub const reflectionCubeMapSize = 64;
 var reflectionCubeMap: graphics.CubeMapTexture = undefined;
 
 pub fn init() void {
-	deferredRenderPassShader = Shader.initAndGetUniforms("assets/cubyz/shaders/deferred_render_pass.vs", "assets/cubyz/shaders/deferred_render_pass.fs", &deferredUniforms);
-	fakeReflectionShader = Shader.initAndGetUniforms("assets/cubyz/shaders/fake_reflection.vs", "assets/cubyz/shaders/fake_reflection.fs", &fakeReflectionUniforms);
+	deferredRenderPassShader = Shader.initAndGetUniforms("assets/cubyz/shaders/deferred_render_pass.vs", "assets/cubyz/shaders/deferred_render_pass.fs", "", &deferredUniforms);
+	fakeReflectionShader = Shader.initAndGetUniforms("assets/cubyz/shaders/fake_reflection.vs", "assets/cubyz/shaders/fake_reflection.fs", "", &fakeReflectionUniforms);
 	worldFrameBuffer.init(true, c.GL_NEAREST, c.GL_CLAMP_TO_EDGE);
 	worldFrameBuffer.updateSize(Window.width, Window.height, c.GL_RGB16F);
 	Bloom.init();
@@ -164,7 +164,7 @@ pub fn crosshairDirection(rotationMatrix: Mat4f, fovY: f32, width: u31, height: 
 	return adjusted;
 }
 
-pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPos: Vec3d) void {
+pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPos: Vec3d) void { // MARK: renderWorld()
 	worldFrameBuffer.bind();
 	c.glViewport(0, 0, lastWidth, lastHeight);
 	gpu_performance_measuring.startQuery(.clear);
@@ -291,7 +291,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.stopQuery();
 }
 
-const Bloom = struct {
+const Bloom = struct { // MARK: Bloom
 	var buffer1: graphics.FrameBuffer = undefined;
 	var buffer2: graphics.FrameBuffer = undefined;
 	var emptyBuffer: graphics.Texture = undefined;
@@ -314,9 +314,9 @@ const Bloom = struct {
 		buffer2.init(false, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
 		emptyBuffer = graphics.Texture.init();
 		emptyBuffer.generate(graphics.Image.emptyImage);
-		firstPassShader = graphics.Shader.init("assets/cubyz/shaders/bloom/first_pass.vs", "assets/cubyz/shaders/bloom/first_pass.fs");
-		secondPassShader = graphics.Shader.init("assets/cubyz/shaders/bloom/second_pass.vs", "assets/cubyz/shaders/bloom/second_pass.fs");
-		colorExtractAndDownsampleShader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/bloom/color_extractor_downsample.vs", "assets/cubyz/shaders/bloom/color_extractor_downsample.fs", &colorExtractUniforms);
+		firstPassShader = graphics.Shader.init("assets/cubyz/shaders/bloom/first_pass.vs", "assets/cubyz/shaders/bloom/first_pass.fs", "");
+		secondPassShader = graphics.Shader.init("assets/cubyz/shaders/bloom/second_pass.vs", "assets/cubyz/shaders/bloom/second_pass.fs", "");
+		colorExtractAndDownsampleShader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/bloom/color_extractor_downsample.vs", "assets/cubyz/shaders/bloom/color_extractor_downsample.fs", "", &colorExtractUniforms);
 	}
 
 	pub fn deinit() void {
@@ -418,7 +418,7 @@ pub const MenuBackGround = struct {
 
 	fn init() !void {
 		lastTime = std.time.nanoTimestamp();
-		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/background/vertex.vs", "assets/cubyz/shaders/background/fragment.fs", &uniforms);
+		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/background/vertex.vs", "assets/cubyz/shaders/background/fragment.fs", "", &uniforms);
 		shader.bind();
 		c.glUniform1i(uniforms.image, 0);
 		// 4 sides of a simple cube with some panorama texture on it.
@@ -556,8 +556,7 @@ pub const MenuBackGround = struct {
 			// Draw to frame buffer.
 			buffer.bind();
 			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
-			const eye: Vec3d = .{0.0, 0.0, game.Player.eye};
-			main.renderer.render(game.Player.getPosBlocking() + eye);
+			main.renderer.render(game.Player.getEyePosBlocking());
 			// Copy the pixels directly from OpenGL
 			buffer.bind();
 			c.glReadPixels(0, 0, size, size, c.GL_RGBA, c.GL_UNSIGNED_BYTE, pixels.ptr);
@@ -583,7 +582,7 @@ pub const MenuBackGround = struct {
 	}
 };
 
-pub const Frustum = struct {
+pub const Frustum = struct { // MARK: Frustum
 	const Plane = struct {
 		pos: Vec3f,
 		norm: Vec3f,
@@ -618,7 +617,7 @@ pub const Frustum = struct {
 	}
 };
 
-pub const MeshSelection = struct {
+pub const MeshSelection = struct { // MARK: MeshSelection
 	var shader: Shader = undefined;
 	var uniforms: struct {
 		projectionMatrix: c_int,
@@ -633,7 +632,7 @@ pub const MeshSelection = struct {
 	var cubeIBO: c_uint = undefined;
 
 	pub fn init() void {
-		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/block_selection_vertex.vs", "assets/cubyz/shaders/block_selection_fragment.fs", &uniforms);
+		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/block_selection_vertex.vs", "assets/cubyz/shaders/block_selection_fragment.fs", "", &uniforms);
 
 		const rawData = [_]f32 {
 			0, 0, 0,
@@ -686,9 +685,7 @@ pub const MeshSelection = struct {
 	var selectionMax: Vec3f = undefined;
 	var lastPos: Vec3d = undefined;
 	var lastDir: Vec3f = undefined;
-	pub fn select(_pos: Vec3d, _dir: Vec3f, inventoryStack: main.items.ItemStack) void {
-		var pos = _pos;
-		_ = &pos;// TODO: pos.z += Player.cameraHeight;
+	pub fn select(pos: Vec3d, _dir: Vec3f, inventoryStack: main.items.ItemStack) void {
 		lastPos = pos;
 		const dir: Vec3d = @floatCast(_dir);
 		lastDir = _dir;
@@ -749,6 +746,13 @@ pub const MeshSelection = struct {
 		// TODO: Test entities
 	}
 
+	fn canPlaceBlock(pos: Vec3i, block: main.blocks.Block) bool {
+		if(main.game.Player.collideWithBlock(block, pos[0], pos[1], pos[2], main.game.Player.getPosBlocking() + main.game.Player.outerBoundingBox.center(), main.game.Player.outerBoundingBox.extent() - @as(Vec3d, @splat(0.00005)), .{0, 0, 0}) != null) {
+			return false;
+		}
+		return true; // TODO: Check other entities
+	}
+
 	pub fn placeBlock(inventoryStack: *main.items.ItemStack) void {
 		if(selectedBlockPos) |selectedPos| {
 			var block = mesh_storage.getBlock(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
@@ -762,6 +766,7 @@ pub const MeshSelection = struct {
 							if(itemBlock == block.typ) {
 								const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
 								if(rotationMode.generateData(main.game.world.?, selectedPos, relPos, lastDir, neighborDir, &block, false)) {
+									if(!canPlaceBlock(selectedPos, block)) return;
 									updateBlockAndSendUpdate(selectedPos[0], selectedPos[1], selectedPos[2], block);
 									_ = inventoryStack.add(item, @as(i32, -1));
 									return;
@@ -774,16 +779,17 @@ pub const MeshSelection = struct {
 							block = mesh_storage.getBlock(neighborPos[0], neighborPos[1], neighborPos[2]) orelse return;
 							if(block.typ == itemBlock) {
 								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, &block, false)) {
+									if(!canPlaceBlock(neighborPos, block)) return;
 									updateBlockAndSendUpdate(neighborPos[0], neighborPos[1], neighborPos[2], block);
 									_ = inventoryStack.add(item, @as(i32, -1));
 									return;
 								}
 							} else {
-								// TODO: Check if the block can actually be placed at that point. There might be entities or other blocks in the way.
 								if(block.solid()) return;
 								block.typ = itemBlock;
 								block.data = 0;
 								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, &block, true)) {
+									if(!canPlaceBlock(neighborPos, block)) return;
 									updateBlockAndSendUpdate(neighborPos[0], neighborPos[1], neighborPos[2], block);
 									_ = inventoryStack.add(item, @as(i32, -1));
 									return;
@@ -846,6 +852,7 @@ pub const MeshSelection = struct {
 	}
 
 	pub fn render(projectionMatrix: Mat4f, viewMatrix: Mat4f, playerPos: Vec3d) void {
+		if(main.gui.hideGui) return;
 		if(selectedBlockPos) |_selectedBlockPos| {
 			c.glEnable(c.GL_POLYGON_OFFSET_LINE);
 			defer c.glDisable(c.GL_POLYGON_OFFSET_LINE);

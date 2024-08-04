@@ -51,7 +51,7 @@ var logFile: ?std.fs.File = undefined;
 var logFileTs: ?std.fs.File = undefined;
 var supportsANSIColors: bool = undefined;
 // overwrite the log function:
-pub const std_options: std.Options = .{
+pub const std_options: std.Options = .{ // MARK: std_options
 	.log_level = .debug,
 	.logFn = struct {pub fn logFn(
 		comptime level: std.log.Level,
@@ -238,6 +238,7 @@ fn logToStdErr(comptime format: []const u8, args: anytype) void {
 	nosuspend std.io.getStdErr().writeAll(string) catch {};
 }
 
+// MARK: Callbacks
 fn escape() void {
 	if(gui.selectedTextInput != null) {
 		gui.selectedTextInput = null;
@@ -270,6 +271,9 @@ fn takeBackgroundImageFn() void {
 	if(game.world == null) return;
 	renderer.MenuBackGround.takeBackgroundImage();
 }
+fn toggleHideGui() void {
+	gui.hideGui = !gui.hideGui;
+}
 fn toggleDebugOverlay() void {
 	gui.toggleWindow("debug");
 }
@@ -285,8 +289,15 @@ fn toggleNetworkDebugOverlay() void {
 fn toggleAdvancedNetworkDebugOverlay() void {
 	gui.toggleWindow("debug_network_advanced");
 }
+fn setHotbarSlot(i: comptime_int) *const fn() void {
+	return &struct {
+		fn set() void {
+			game.Player.selectedSlot = i - 1;
+		}
+	}.set;
+}
 
-pub const KeyBoard = struct {
+pub const KeyBoard = struct { // MARK: KeyBoard
 	const c = Window.c;
 	pub var keys = [_]Window.Key {
 		// Gameplay:
@@ -300,6 +311,7 @@ pub const KeyBoard = struct {
 		.{.name = "ghost", .key = c.GLFW_KEY_G, .pressAction = &game.ghostToggle},
 		.{.name = "hyperSpeed", .key = c.GLFW_KEY_H, .pressAction = &game.hyperSpeedToggle},
 		.{.name = "fall", .key = c.GLFW_KEY_LEFT_SHIFT},
+		.{.name = "shift", .key = c.GLFW_KEY_LEFT_SHIFT},
 		.{.name = "fullscreen", .key = c.GLFW_KEY_F11, .releaseAction = &Window.toggleFullscreen},
 		.{.name = "placeBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &game.pressPlace, .releaseAction = &game.releasePlace},
 		.{.name = "breakBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &game.pressBreak, .releaseAction = &game.releaseBreak},
@@ -310,7 +322,6 @@ pub const KeyBoard = struct {
 		// Gui:
 		.{.name = "escape", .key = c.GLFW_KEY_ESCAPE, .releaseAction = &escape},
 		.{.name = "openInventory", .key = c.GLFW_KEY_E, .releaseAction = &openInventory},
-		.{.name = "openWorkbench", .key = c.GLFW_KEY_R, .releaseAction = &openWorkbench}, // TODO: Remove
 		.{.name = "openCreativeInventory(aka cheat inventory)", .key = c.GLFW_KEY_C, .releaseAction = &openCreativeInventory},
 		.{.name = "mainGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &gui.mainButtonPressed, .releaseAction = &gui.mainButtonReleased},
 		.{.name = "secondaryGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &gui.secondaryButtonPressed, .releaseAction = &gui.secondaryButtonReleased},
@@ -328,7 +339,22 @@ pub const KeyBoard = struct {
 		.{.name = "textCut", .key = c.GLFW_KEY_X, .repeatAction = &gui.textCallbacks.cut},
 		.{.name = "textNewline", .key = c.GLFW_KEY_ENTER, .repeatAction = &gui.textCallbacks.newline},
 
+		// Hotbar shortcuts:
+		.{.name = "Hotbar 1", .key = c.GLFW_KEY_1, .releaseAction = setHotbarSlot(1)},
+		.{.name = "Hotbar 2", .key = c.GLFW_KEY_2, .releaseAction = setHotbarSlot(2)},
+		.{.name = "Hotbar 3", .key = c.GLFW_KEY_3, .releaseAction = setHotbarSlot(3)},
+		.{.name = "Hotbar 4", .key = c.GLFW_KEY_4, .releaseAction = setHotbarSlot(4)},
+		.{.name = "Hotbar 5", .key = c.GLFW_KEY_5, .releaseAction = setHotbarSlot(5)},
+		.{.name = "Hotbar 6", .key = c.GLFW_KEY_6, .releaseAction = setHotbarSlot(6)},
+		.{.name = "Hotbar 7", .key = c.GLFW_KEY_7, .releaseAction = setHotbarSlot(7)},
+		.{.name = "Hotbar 8", .key = c.GLFW_KEY_8, .releaseAction = setHotbarSlot(8)},
+		.{.name = "Hotbar 9", .key = c.GLFW_KEY_9, .releaseAction = setHotbarSlot(9)},
+		.{.name = "Hotbar 10", .key = c.GLFW_KEY_0, .releaseAction = setHotbarSlot(10)},
+		.{.name = "Hotbar 11", .key = c.GLFW_KEY_MINUS, .releaseAction = setHotbarSlot(11)},
+		.{.name = "Hotbar 12", .key = c.GLFW_KEY_EQUAL, .releaseAction = setHotbarSlot(12)},
+
 		// debug:
+		.{.name = "hideMenu", .key = c.GLFW_KEY_F1, .releaseAction = &toggleHideGui},
 		.{.name = "debugOverlay", .key = c.GLFW_KEY_F3, .releaseAction = &toggleDebugOverlay},
 		.{.name = "performanceOverlay", .key = c.GLFW_KEY_F4, .releaseAction = &togglePerformanceOverlay},
 		.{.name = "gpuPerformanceOverlay", .key = c.GLFW_KEY_F5, .releaseAction = &toggleGPUPerformanceOverlay},
@@ -352,7 +378,12 @@ pub var lastFrameTime = std.atomic.Value(f64).init(0);
 /// Measures time between different frames' beginnings.
 pub var lastDeltaTime = std.atomic.Value(f64).init(0);
 
-pub fn main() void {
+var shouldExitToMenu = std.atomic.Value(bool).init(false);
+pub fn exitToMenu(_: usize) void {
+	shouldExitToMenu.store(true, .monotonic);
+}
+
+pub fn main() void { // MARK: main()
 	seed = @bitCast(std.time.milliTimestamp());
 	defer if(global_gpa.deinit() == .leak) {
 		std.log.err("Memory leak", .{});
@@ -438,6 +469,8 @@ pub fn main() void {
 		gui.windowlist.save_selection.openWorld(settings.developerAutoEnterWorld);
 	}
 
+	audio.setMusic("cubyz:cubyz");
+
 	while(c.glfwWindowShouldClose(Window.window) == 0) {
 		const isHidden = c.glfwGetWindowAttrib(Window.window, c.GLFW_ICONIFIED) == c.GLFW_TRUE;
 		if(!isHidden) {
@@ -479,14 +512,23 @@ pub fn main() void {
 		if(!isHidden) {
 			c.glEnable(c.GL_CULL_FACE);
 			c.glEnable(c.GL_DEPTH_TEST);
-			const eye: Vec3d = .{0.0, 0.0, game.Player.eye};
-			renderer.render(game.Player.getPosBlocking() + eye);
+			renderer.render(game.Player.getEyePosBlocking());
 			// Render the GUI
 			gui.windowlist.gpu_performance_measuring.startQuery(.gui);
 			c.glDisable(c.GL_CULL_FACE);
 			c.glDisable(c.GL_DEPTH_TEST);
 			gui.updateAndRenderGui();
 			gui.windowlist.gpu_performance_measuring.stopQuery();
+		}
+
+		if(shouldExitToMenu.load(.monotonic)) {
+			shouldExitToMenu.store(false, .monotonic);
+			if(game.world) |world| {
+				world.deinit();
+				game.world = null;
+			}
+			gui.openWindow("main");
+			audio.setMusic("cubyz:cubyz");
 		}
 	}
 

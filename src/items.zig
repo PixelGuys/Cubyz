@@ -17,7 +17,7 @@ const Vec3f = vec.Vec3f;
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 /// Holds the basic properties of a tool crafting material.
-const Material = struct {
+const Material = struct { // MARK: Material
 	/// how much it weighs
 	density: f32 = undefined,
 	/// how long it takes until the tool breaks
@@ -59,7 +59,7 @@ const Material = struct {
 };
 
 
-pub const BaseItem = struct {
+pub const BaseItem = struct { // MARK: BaseItem
 	image: graphics.Image,
 	texture: ?graphics.Texture, // TODO: Properly deinit
 	id: []const u8,
@@ -128,8 +128,13 @@ pub const BaseItem = struct {
 
 	pub fn getTexture(self: *BaseItem) graphics.Texture {
 		if(self.texture == null) {
-			if(self.block) |blockType| {
-				self.texture = graphics.generateBlockTexture(blockType);
+			if(self.image.imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
+				if(self.block) |blockType| {
+					self.texture = graphics.generateBlockTexture(blockType);
+				} else {
+					self.texture = graphics.Texture.init();
+					self.texture.?.generate(self.image);
+				}
 			} else {
 				self.texture = graphics.Texture.init();
 				self.texture.?.generate(self.image);
@@ -144,7 +149,7 @@ pub const BaseItem = struct {
 };
 
 ///Generates the texture of a Tool using the material information.
-const TextureGenerator = struct {
+const TextureGenerator = struct { // MARK: TextureGenerator
 	/// Used to translate between grid and pixel coordinates.
 	pub const GRID_CENTERS_X = [_]u8 {
 		2, 5, 8, 11, 14,
@@ -518,7 +523,7 @@ const TextureGenerator = struct {
 };
 
 /// Determines the physical properties of a tool to caclulate in-game parameters such as durability and speed.
-const ToolPhysics = struct {
+const ToolPhysics = struct { // MARK: ToolPhysics
 	/// Finds the handle of the tool.
 	/// Uses a quite simple algorithm:
 	/// It just simply takes the lowest, right-most 2×2 grid of filled pixels.
@@ -866,7 +871,7 @@ const ToolPhysics = struct {
 	}
 };
 
-pub const Tool = struct {
+pub const Tool = struct { // MARK: Tool
 	craftingGrid: [25]?*const BaseItem,
 	materialGrid: [16][16]?*const BaseItem,
 	tooltip: ?[]const u8,
@@ -1015,7 +1020,7 @@ pub const Tool = struct {
 	}
 };
 
-pub const Item = union(enum) {
+pub const Item = union(enum) { // MARK: Item
 	baseItem: *BaseItem,
 	tool: *Tool,
 
@@ -1104,7 +1109,7 @@ pub const Item = union(enum) {
 	}
 };
 
-pub const ItemStack = struct {
+pub const ItemStack = struct { // MARK: ItemStack
 	item: ?Item = null,
 	amount: u16 = 0,
 
@@ -1174,7 +1179,7 @@ pub const ItemStack = struct {
 	}
 };
 
-pub const Inventory = struct {
+pub const Inventory = struct { // MARK: Inventory
 	items: []ItemStack,
 
 	pub fn init(allocator: NeverFailingAllocator, size: usize) Inventory {
@@ -1265,7 +1270,7 @@ pub const Inventory = struct {
 	}
 };
 
-const Recipe = struct {
+const Recipe = struct { // MARK: Recipe
 	sourceItems: []*BaseItem,
 	sourceAmounts: []u16,
 	resultItem: ItemStack,
@@ -1320,17 +1325,17 @@ pub fn registerRecipes(file: []const u8) void {
 	defer itemAmounts.deinit();
 	var string = main.List(u8).init(main.stackAllocator);
 	defer string.deinit();
-	var lines = std.mem.split(u8, file, "\n");
+	var lines = std.mem.splitScalar(u8, file, '\n');
 	while(lines.next()) |line| {
 		// shortcuts:
 		if(std.mem.containsAtLeast(u8, line, 1, "=")) {
-			var parts = std.mem.split(u8, line, "=");
+			var parts = std.mem.splitScalar(u8, line, '=');
 			for(parts.first()) |char| {
-				if(std.ascii.isWhitespace(char)) continue; // TODO: Unicode whitespaces
+				if(std.ascii.isWhitespace(char)) continue;
 				string.append(char);
 			}
 			const shortcut = string.toOwnedSlice();
-			const id = std.mem.trim(u8, parts.rest(), &std.ascii.whitespace); // TODO: Unicode whitespaces
+			const id = std.mem.trim(u8, parts.rest(), &std.ascii.whitespace);
 			const item = shortcuts.get(id) orelse getByID(id) orelse &BaseItem.unobtainable;
 			shortcuts.put(shortcut, item) catch unreachable;
 		} else if(std.mem.startsWith(u8, line, "result") and items.items.len != 0) {
@@ -1339,12 +1344,12 @@ pub fn registerRecipes(file: []const u8) void {
 			var id = line["result".len..];
 			var amount: u16 = 1;
 			if(std.mem.containsAtLeast(u8, id, 1, "*")) {
-				var parts = std.mem.split(u8, id, "*");
-				const amountString = std.mem.trim(u8, parts.first(), &std.ascii.whitespace); // TODO: Unicode whitespaces
+				var parts = std.mem.splitScalar(u8, id, '*');
+				const amountString = std.mem.trim(u8, parts.first(), &std.ascii.whitespace);
 				amount = std.fmt.parseInt(u16, amountString, 0) catch 1;
 				id = parts.rest();
 			}
-			id = std.mem.trim(u8, id, &std.ascii.whitespace); // TODO: Unicode whitespaces
+			id = std.mem.trim(u8, id, &std.ascii.whitespace);
 			const item = shortcuts.get(id) orelse getByID(id) orelse continue;
 			const recipe = Recipe {
 				.sourceItems = arena.allocator().dupe(*BaseItem, items.items),
@@ -1353,18 +1358,18 @@ pub fn registerRecipes(file: []const u8) void {
 			};
 			recipeList.append(recipe);
 		} else {
-			var ingredients = std.mem.split(u8, line, ",");
+			var ingredients = std.mem.splitScalar(u8, line, ',');
 			outer: while(ingredients.next()) |ingredient| {
 				var id = ingredient;
 				if(id.len == 0) continue;
 				var amount: u16 = 1;
 				if(std.mem.containsAtLeast(u8, id, 1, "*")) {
-					var parts = std.mem.split(u8, id, "*");
-					const amountString = std.mem.trim(u8, parts.first(), &std.ascii.whitespace); // TODO: Unicode whitespaces
+					var parts = std.mem.splitScalar(u8, id, '*');
+					const amountString = std.mem.trim(u8, parts.first(), &std.ascii.whitespace);
 					amount = std.fmt.parseInt(u16, amountString, 0) catch 1;
 					id = parts.rest();
 				}
-				id = std.mem.trim(u8, id, &std.ascii.whitespace); // TODO: Unicode whitespaces
+				id = std.mem.trim(u8, id, &std.ascii.whitespace);
 				const item = shortcuts.get(id) orelse getByID(id) orelse continue;
 				// Resolve duplicates:
 				for(items.items, 0..) |presentItem, i| {

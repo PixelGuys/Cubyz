@@ -36,7 +36,7 @@ pub fn nextInt(comptime T: type, seed: *u64) T {
 
 pub fn nextIntBounded(comptime T: type, seed: *u64, bound: T) T {
 	if(@typeInfo(T) != .Int) @compileError("Type must be integer.");
-	if(@typeInfo(T).Int.signedness == .signed) @compileError("Type must be unsigned.");
+	if(@typeInfo(T).Int.signedness == .signed) return nextIntBounded(std.meta.Int(.unsigned, @bitSizeOf(T) - 1), seed, @intCast(bound));
 	const bitSize = std.math.log2_int_ceil(T, bound);
 	var result = nextWithBitSize(T, seed, bitSize);
 	while(result >= bound) {

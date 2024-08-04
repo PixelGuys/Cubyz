@@ -5,6 +5,7 @@
 		"none"
 	],
 	"transparent" : true,
+	"hasBackFace" : true,
 	"absorbedLight" : 0xd0c16d,
 	"model" : "cubyz:cube",
 	"texture" : "cubyz:glass/indigo"

@@ -7,7 +7,7 @@
 	
 	"mountains" : 125,
 	
-	"music" : "DarkTimes",
+	"music" : "cubyz:DarkTimes",
 
 	"ground_structure" : [
 		"3 to 6 cubyz:snow"
@@ -15,13 +15,11 @@
 	"stoneBlock" : "cubyz:glacite",
 	"structures" : [
 		{
-			"id" : "cubyz:ground_patch",
+			"id" : "cubyz:stalagmite",
 			"block" : "cubyz:ice",
-			"chance" : 0.002,
-			"width" : 6,
-			"variation" : 5,
-			"depth" : 3,
-			"smoothness" : 0.1
-		}
+			"chance" : 0.08,
+			"size" : 3,
+			"size_variation" : 5
+		},
 	]
 }

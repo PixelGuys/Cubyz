@@ -18,6 +18,8 @@ pub const CaveBiomeMap = @import("CaveBiomeMap.zig");
 
 pub const CaveMap = @import("CaveMap.zig");
 
+pub const StructureMap = @import("StructureMap.zig");
+
 /// A generator for setting the actual Blocks in each Chunk.
 pub const BlockGenerator = struct {
 	init: *const fn(parameters: JsonElement) void,
@@ -69,6 +71,7 @@ pub const TerrainGenerationProfile = struct {
 	climateGenerator: ClimateMap.ClimateMapGenerator = undefined,
 	caveBiomeGenerators: []CaveBiomeMap.CaveBiomeGenerator = undefined,
 	caveGenerators: []CaveMap.CaveGenerator = undefined,
+	structureMapGenerators: []StructureMap.StructureMapGenerator = undefined,
 	generators: []BlockGenerator = undefined,
 	seed: u64,
 
@@ -90,6 +93,9 @@ pub const TerrainGenerationProfile = struct {
 		generator = settings.getChild("caveGenerators");
 		self.caveGenerators = CaveMap.CaveGenerator.getAndInitGenerators(main.globalAllocator, generator);
 
+		generator = settings.getChild("structureMapGenerators");
+		self.structureMapGenerators = StructureMap.StructureMapGenerator.getAndInitGenerators(main.globalAllocator, generator);
+
 		generator = settings.getChild("generators");
 		self.generators = BlockGenerator.getAndInitGenerators(main.globalAllocator, generator);
 
@@ -107,6 +113,10 @@ pub const TerrainGenerationProfile = struct {
 			generator.deinit();
 		}
 		main.globalAllocator.free(self.caveGenerators);
+		for(self.structureMapGenerators) |generator| {
+			generator.deinit();
+		}
+		main.globalAllocator.free(self.structureMapGenerators);
 		for(self.generators) |generator| {
 			generator.deinit();
 		}
@@ -119,6 +129,7 @@ pub fn initGenerators() void {
 	ClimateMap.initGenerators();
 	CaveBiomeMap.initGenerators();
 	CaveMap.initGenerators();
+	StructureMap.initGenerators();
 	const list = @import("chunkgen/_list.zig");
 	inline for(@typeInfo(list).Struct.decls) |decl| {
 		BlockGenerator.registerGenerator(@field(list, decl.name));
@@ -133,12 +144,14 @@ pub fn deinitGenerators() void {
 	ClimateMap.deinitGenerators();
 	CaveBiomeMap.deinitGenerators();
 	CaveMap.deinitGenerators();
+	StructureMap.deinitGenerators();
 	BlockGenerator.generatorRegistry.clearAndFree(main.globalAllocator.allocator);
 }
 
 pub fn init(profile: TerrainGenerationProfile) void {
 	CaveBiomeMap.init(profile);
 	CaveMap.init(profile);
+	StructureMap.init(profile);
 	ClimateMap.init(profile);
 	SurfaceMap.init(profile);
 }
@@ -146,6 +159,7 @@ pub fn init(profile: TerrainGenerationProfile) void {
 pub fn deinit() void {
 	CaveBiomeMap.deinit();
 	CaveMap.deinit();
+	StructureMap.deinit();
 	ClimateMap.deinit();
 	SurfaceMap.deinit();
 	LightMap.deinit();

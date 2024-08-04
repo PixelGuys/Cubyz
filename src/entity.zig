@@ -90,7 +90,7 @@ pub const ClientEntityManager = struct {
 
 	pub fn init() void {
 		entities = main.List(ClientEntity).init(main.globalAllocator);
-		shader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/entity_vertex.vs", "assets/cubyz/shaders/entity_fragment.fs", &uniforms);
+		shader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/entity_vertex.vs", "assets/cubyz/shaders/entity_fragment.fs", "", &uniforms);
 	}
 
 	pub fn deinit() void {

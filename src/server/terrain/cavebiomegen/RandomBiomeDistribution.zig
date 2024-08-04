@@ -30,13 +30,14 @@ pub fn generate(map: *CaveBiomeMapFragment, worldSeed: u64) void {
 	// Select all the biomes that are within the given height range.
 	var validBiomes = main.ListUnmanaged(*const Biome).initCapacity(main.stackAllocator, caveBiomes.len);
 	defer validBiomes.deinit(main.stackAllocator);
+	const worldPos = CaveBiomeMapFragment.rotateInverse(.{map.pos.wx, map.pos.wy, map.pos.wz});
 	for(caveBiomes) |*biome| {
-		if(biome.minHeight < map.pos.wz +% CaveBiomeMapFragment.caveBiomeMapSize and biome.maxHeight > map.pos.wz) {
+		if(biome.minHeight < worldPos[2] +% CaveBiomeMapFragment.caveBiomeMapSize and biome.maxHeight > worldPos[2]) {
 			validBiomes.appendAssumeCapacity(biome);
 		}
 	}
 	if(validBiomes.items.len == 0) {
-		std.log.warn("Couldn't find any cave biome on height {}. Using biome {s} instead.", .{map.pos.wz, caveBiomes[0].id});
+		std.log.warn("Couldn't find any cave biome on height {}. Using biome {s} instead.", .{worldPos[2], caveBiomes[0].id});
 		validBiomes.appendAssumeCapacity(&caveBiomes[0]);
 	}
 
@@ -48,7 +49,7 @@ pub fn generate(map: *CaveBiomeMapFragment, worldSeed: u64) void {
 		var insertionIndex: usize = 0;
 		var i: usize = 0;
 		while(i < validBiomes.items.len) : (i += 1) {
-			if(validBiomes.items[i].minHeight < map.pos.wz + z + (CaveBiomeMapFragment.caveBiomeSize - 1) and validBiomes.items[i].maxHeight > map.pos.wz + z) {
+			if(validBiomes.items[i].minHeight < worldPos[2] + z + (CaveBiomeMapFragment.caveBiomeSize - 1) and validBiomes.items[i].maxHeight > worldPos[2] + z) {
 				if(insertionIndex != i) {
 					const swap = validBiomes.items[i];
 					validBiomes.items[i] = validBiomes.items[insertionIndex];

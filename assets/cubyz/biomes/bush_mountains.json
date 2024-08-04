@@ -21,7 +21,7 @@
 			"leaves" : "cubyz:oak_leaves",
 			"log" : "cubyz:oak_log",
 			"top" : "cubyz:oak_top",
-			"chance" : 0.01,
+			"chance" : 0.16,
 			"type" : "round",
 			"height" : 4,
 			"height_variation" : 1
@@ -29,7 +29,7 @@
 		{
 			"id" : "cubyz:ground_patch",
 			"block" : "cubyz:gravel",
-			"chance" : 0.003,
+			"chance" : 0.048,
 			"width" : 6,
 			"variation" : 2,
 			"depth" : 3,
@@ -38,7 +38,7 @@
 		{
 			"id" : "cubyz:ground_patch",
 			"block" : "cubyz:snow",
-			"chance" : 0.002,
+			"chance" : 0.032,
 			"width" : 6,
 			"variation" : 2,
 			"depth" : 3,

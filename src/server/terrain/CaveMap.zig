@@ -12,7 +12,7 @@ const terrain = @import("terrain.zig");
 const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
 
 /// Cave data represented in a 1-Bit per block format, where 0 means empty and 1 means not empty.
-pub const CaveMapFragment = struct {
+pub const CaveMapFragment = struct { // MARK: CaveMapFragment
 	pub const width = 1 << 6;
 	pub const widthMask = width - 1;
 	pub const height = 64; // Size of u64
@@ -98,7 +98,7 @@ pub const CaveMapFragment = struct {
 };
 
 /// A generator for the cave map.
-pub const CaveGenerator = struct {
+pub const CaveGenerator = struct { // MARK: CaveGenerator
 	init: *const fn(parameters: JsonElement) void,
 	deinit: *const fn() void,
 	generate: *const fn(map: *CaveMapFragment, seed: u64) void,
@@ -140,7 +140,7 @@ pub const CaveGenerator = struct {
 	}
 };
 
-pub const CaveMapView = struct {
+pub const CaveMapView = struct { // MARK: CaveMapView
 	reference: *ServerChunk,
 	fragments: [8]*CaveMapFragment,
 
@@ -297,6 +297,7 @@ pub const CaveMapView = struct {
 	}
 };
 
+// MARK: cache
 const cacheSize = 1 << 11; // Must be a power of 2!
 const cacheMask = cacheSize - 1;
 const associativity = 8; // 512 MiB Cache size

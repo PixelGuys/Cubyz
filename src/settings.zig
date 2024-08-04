@@ -13,7 +13,7 @@ pub const version = "Cubyz α 0.12.0";
 pub const highestLOD: u5 = 5;
 
 
-pub var entityDistance: u16 = 2;
+pub var simulationDistance: u16 = 4;
 
 pub var cpuThreads: ?u64 = null;
 
@@ -42,14 +42,15 @@ pub var guiScale: ?f32 = null;
 
 pub var musicVolume: f32 = 1;
 
+pub var leavesQuality: u16 = 2;
+
 
 pub var storageTime: i64 = 5000;
 
 
-pub const updateRepeatSpeed: u31 = 200;
+pub var updateRepeatSpeed: u31 = 200;
 
-pub const updateRepeatDelay: u31 = 500;
-
+pub var updateRepeatDelay: u31 = 500;
 
 pub var developerAutoEnterWorld: []const u8 = "";
 
@@ -96,6 +97,26 @@ pub fn init() void {
 }
 
 pub fn deinit() void {
+	save();
+	inline for(@typeInfo(@This()).Struct.decls) |decl| {
+		const is_const = @typeInfo(@TypeOf(&@field(@This(), decl.name))).Pointer.is_const; // Sadly there is no direct way to check if a declaration is const.
+		if(!is_const) {
+			const declType = @TypeOf(@field(@This(), decl.name));
+			if(@typeInfo(declType) == .Struct) {
+				@compileError("Not implemented yet.");
+			}
+			if(@typeInfo(declType) == .Pointer) {
+				if(@typeInfo(declType).Pointer.size == .Slice) {
+					main.globalAllocator.free(@field(@This(), decl.name));
+				} else {
+					@compileError("Not implemented yet.");
+				}
+			}
+		}
+	}
+}
+
+pub fn save() void {
 	const jsonObject = JsonElement.initObject(main.stackAllocator);
 	defer jsonObject.free(main.stackAllocator);
 
@@ -110,13 +131,6 @@ pub fn deinit() void {
 				jsonObject.putOwnedString(decl.name, @field(@This(), decl.name));
 			} else {
 				jsonObject.put(decl.name, @field(@This(), decl.name));
-			}
-			if(@typeInfo(declType) == .Pointer) {
-				if(@typeInfo(declType).Pointer.size == .Slice) {
-					main.globalAllocator.free(@field(@This(), decl.name));
-				} else {
-					@compileError("Not implemented yet.");
-				}
 			}
 		}
 	}

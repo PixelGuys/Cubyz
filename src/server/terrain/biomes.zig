@@ -10,32 +10,42 @@ const vec = @import("main.vec");
 const Vec3f = main.vec.Vec3f;
 const Vec3d = main.vec.Vec3d;
 
-const StructureModel = struct {
+pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
+	const GenerationMode = enum {
+		floor,
+		ceiling,
+		floor_and_ceiling,
+		air,
+		underground,
+	};
 	const VTable = struct {
 		loadModel: *const fn(arenaAllocator: NeverFailingAllocator, parameters: JsonElement) *anyopaque,
-		generate: *const fn(self: *anyopaque, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) void,
+		generate: *const fn(self: *anyopaque, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64, isCeiling: bool) void,
 		hashFunction: *const fn(self: *anyopaque) u64,
+		generationMode: GenerationMode,
 	};
 
 	vtable: VTable,
 	data: *anyopaque,
 	chance: f32,
+	generationMode: GenerationMode,
 
-	pub fn initModel(parameters: JsonElement) ?StructureModel {
+	pub fn initModel(parameters: JsonElement) ?SimpleStructureModel {
 		const id = parameters.get([]const u8, "id", "");
 		const vtable = modelRegistry.get(id) orelse {
 			std.log.err("Couldn't find structure model with id {s}", .{id});
 			return null;
 		};
-		return StructureModel {
+		return SimpleStructureModel {
 			.vtable = vtable,
 			.data = vtable.loadModel(arena.allocator(), parameters),
-			.chance = parameters.get(f32, "chance", 0.5),
+			.chance = parameters.get(f32, "chance", 0.1),
+			.generationMode = std.meta.stringToEnum(GenerationMode, parameters.get([]const u8, "generationMode", "")) orelse vtable.generationMode,
 		};
 	}
 
-	pub fn generate(self: StructureModel, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64) void {
-		self.vtable.generate(self.data, x, y, z, chunk, caveMap, seed);
+	pub fn generate(self: SimpleStructureModel, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64, isCeiling: bool) void {
+		self.vtable.generate(self.data, x, y, z, chunk, caveMap, seed, isCeiling);
 	}
 
 
@@ -55,15 +65,16 @@ const StructureModel = struct {
 				return hashGeneric(ptr.*);
 			}
 		}.hash);
+		self.generationMode = Generator.generationMode;
 		modelRegistry.put(main.globalAllocator.allocator, Generator.id, self) catch unreachable;
 	}
 
-	fn getHash(self: StructureModel) u64 {
+	fn getHash(self: SimpleStructureModel) u64 {
 		return self.vtable.hashFunction(self.data);
 	}
 };
 
-const Stripe = struct {
+const Stripe = struct { // MARK: Stripe
 	direction: ?Vec3d,
 	block: u16,
 	minDistance: f64,
@@ -192,7 +203,7 @@ fn u32ToVec3(color: u32) Vec3f {
 }
 
 /// A climate region with special ground, plants and structures.
-pub const Biome = struct {
+pub const Biome = struct { // MARK: Biome
 	const GenerationProperties = packed struct(u8) {
 		// pairs of opposite properties. In-between values are allowed.
 		hot: bool = false,
@@ -227,13 +238,12 @@ pub const Biome = struct {
 	minHeight: i32,
 	maxHeight: i32,
 	interpolation: Interpolation,
+	interpolationWeight: f32,
 	roughness: f32,
 	hills: f32,
 	mountains: f32,
 	caves: f32,
 	crystals: u32,
-	stalagmites: u32,
-	stalagmiteBlock: u16,
 	stoneBlockType: u16,
 	fogDensity: f32,
 	fogColor: Vec3f,
@@ -243,7 +253,7 @@ pub const Biome = struct {
 	/// Whether the starting point of a river can be in this biome. If false rivers will be able to flow through this biome anyways.
 	supportsRivers: bool, // TODO: Reimplement rivers.
 	/// The first members in this array will get prioritized.
-	vegetationModels: []StructureModel = &.{},
+	vegetationModels: []SimpleStructureModel = &.{},
 	stripes: []Stripe = &.{},
 	subBiomes: main.utils.AliasTable(*const Biome) = .{.items = &.{}, .aliasData = &.{}},
 	maxSubBiomeCount: f32,
@@ -266,14 +276,13 @@ pub const Biome = struct {
 			.hills = json.get(f32, "hills", 0),
 			.mountains = json.get(f32, "mountains", 0),
 			.interpolation = std.meta.stringToEnum(Interpolation, json.get([]const u8, "interpolation", "square")) orelse .square,
+			.interpolationWeight = @max(json.get(f32, "interpolationWeight", 1), std.math.floatMin(f32)),
 			.caves = json.get(f32, "caves", -0.375),
 			.crystals = json.get(u32, "crystals", 0),
-			.stalagmites = json.get(u32, "stalagmites", 0),
-			.stalagmiteBlock = blocks.getByID(json.get([]const u8, "stalagmiteBlock", "cubyz:limestone")),
 			.minHeight = json.get(i32, "minHeight", std.math.minInt(i32)),
 			.maxHeight = json.get(i32, "maxHeight", std.math.maxInt(i32)),
 			.supportsRivers = json.get(bool, "rivers", false),
-			.preferredMusic = main.globalAllocator.dupe(u8, json.get([]const u8, "music", "")),
+			.preferredMusic = main.globalAllocator.dupe(u8, json.get([]const u8, "music", "cubyz:cubyz")),
 			.isValidPlayerSpawn = json.get(bool, "validPlayerSpawn", false),
 			.chance = json.get(f32, "chance", if(json == .JsonNull) 0 else 1),
 			.maxSubBiomeCount = json.get(f32, "maxSubBiomeCount", std.math.floatMax(f32)),
@@ -290,14 +299,21 @@ pub const Biome = struct {
 		self.structure = BlockStructure.init(main.globalAllocator, json.getChild("ground_structure"));
 		
 		const structures = json.getChild("structures");
-		var vegetation = main.ListUnmanaged(StructureModel){};
+		var vegetation = main.ListUnmanaged(SimpleStructureModel){};
+		var totalChance: f32 = 0;
 		defer vegetation.deinit(main.stackAllocator);
 		for(structures.toSlice()) |elem| {
-			if(StructureModel.initModel(elem)) |model| {
+			if(SimpleStructureModel.initModel(elem)) |model| {
 				vegetation.append(main.stackAllocator, model);
+				totalChance += model.chance;
 			}
 		}
-		self.vegetationModels = main.globalAllocator.dupe(StructureModel, vegetation.items);
+		if(totalChance > 1) {
+			for(vegetation.items) |*model| {
+				model.chance /= totalChance;
+			}
+		}
+		self.vegetationModels = main.globalAllocator.dupe(SimpleStructureModel, vegetation.items);
 
 		const stripes = json.getChild("stripes");
 		self.stripes = main.globalAllocator.alloc(Stripe, stripes.toSlice().len);
@@ -321,14 +337,14 @@ pub const Biome = struct {
 };
 
 /// Stores the vertical ground structure of a biome from top to bottom.
-pub const BlockStructure = struct {
+pub const BlockStructure = struct { // MARK: BlockStructure
 	pub const BlockStack = struct {
 		blockType: u16 = 0,
 		min: u31 = 0,
 		max: u31 = 0,
 
 		fn init(self: *BlockStack, string: []const u8) !void {
-			var tokenIt = std.mem.tokenize(u8, string, &std.ascii.whitespace);
+			var tokenIt = std.mem.tokenizeAny(u8, string, &std.ascii.whitespace);
 			const first = tokenIt.next() orelse return error.@"String is empty.";
 			var blockId: []const u8 = first;
 			if(tokenIt.next()) |second| {
@@ -390,7 +406,7 @@ pub const BlockStructure = struct {
 	}
 };
 
-pub const TreeNode = union(enum) {
+pub const TreeNode = union(enum) { // MARK: TreeNode
 	leaf: struct {
 		totalChance: f64 = 0,
 		aliasTable: main.utils.AliasTable(Biome) = undefined,
@@ -510,6 +526,7 @@ pub const TreeNode = union(enum) {
 	}
 };
 
+// MARK: init/register
 var finishedLoading: bool = false;
 var biomes: main.List(Biome) = undefined;
 var caveBiomes: main.List(Biome) = undefined;
@@ -528,14 +545,14 @@ pub fn init() void {
 	biomes = main.List(Biome).init(main.globalAllocator);
 	caveBiomes = main.List(Biome).init(main.globalAllocator);
 	biomesById = std.StringHashMap(*Biome).init(main.globalAllocator.allocator);
-	const list = @import("structures/_list.zig");
+	const list = @import("simple_structures/_list.zig");
 	inline for(@typeInfo(list).Struct.decls) |decl| {
-		StructureModel.registerGenerator(@field(list, decl.name));
+		SimpleStructureModel.registerGenerator(@field(list, decl.name));
 	}
 }
 
 pub fn reset() void {
-	StructureModel.reset();
+	SimpleStructureModel.reset();
 	finishedLoading = false;
 	for(biomes.items) |*biome| {
 		biome.deinit();
@@ -557,7 +574,7 @@ pub fn deinit() void {
 	caveBiomes.deinit();
 	biomesById.deinit();
 	// TODO? byTypeBiomes.deinit(main.globalAllocator);
-	StructureModel.modelRegistry.clearAndFree(main.globalAllocator.allocator);
+	SimpleStructureModel.modelRegistry.clearAndFree(main.globalAllocator.allocator);
 }
 
 pub fn register(id: []const u8, paletteId: u32, json: JsonElement) void {

@@ -8,7 +8,7 @@
 	
 	"hills" : 20,
 	
-	"music" : "EasternThought",
+	"music" : "cubyz:EasternThought",
 
 	"fogDensity" : 20,
 	"fogColor" : 0xe0dcc3,
@@ -20,7 +20,7 @@
 		{
 			"id" : "cubyz:simple_vegetation",
 			"block" : "cubyz:cactus",
-			"chance" : 0.01,
+			"chance" : 0.16,
 			"height" : 2,
 			"height_variation" : 3
 		}

@@ -20,6 +20,7 @@ pub fn onOpen() void {
 	list.add(Button.initText(.{0, 0}, 128, "Graphics", gui.openWindowCallback("graphics")));
 	list.add(Button.initText(.{0, 0}, 128, "Sound", gui.openWindowCallback("sound")));
 	list.add(Button.initText(.{0, 0}, 128, "Controls", gui.openWindowCallback("controls")));
+	list.add(Button.initText(.{0, 0}, 128, "Advanced Controls", gui.openWindowCallback("advanced_controls")));
 	list.add(Button.initText(.{0, 0}, 128, "Change Name", gui.openWindowCallback("change_name")));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();

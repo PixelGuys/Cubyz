@@ -80,7 +80,7 @@ pub fn rotateZ(self: anytype, angle: @typeInfo(@TypeOf(self)).Vector.child) @Typ
 	};
 }
 
-pub const Mat4f = struct {
+pub const Mat4f = struct { // MARK: Mat4f
 	rows: [4]Vec4f,
 	pub fn identity() Mat4f {
 		return Mat4f {
@@ -188,5 +188,68 @@ pub const Mat4f = struct {
 			dot(self.rows[2], vec),
 			dot(self.rows[3], vec),
 		};
+	}
+};
+
+pub const Complex = struct { // MARK: Complex
+	val: Vec2d,
+
+	fn valSquare(a: Complex) f64 {
+		return @reduce(.Add, a.val*a.val);
+	}
+
+	fn conjugate(a: Complex) Complex {
+		return .{.val = a.val*Vec2d{1, -1}};
+	}
+
+	pub fn negate(a: Complex) Complex {
+		return .{.val = -a.val};
+	}
+
+	pub fn add(a: Complex, b: Complex) Complex {
+		return .{.val = a.val + b.val};
+	}
+
+	pub fn addScalar(a: Complex, b: f64) Complex {
+		return .{.val = a.val + Vec2d{b, 0}};
+	}
+
+	pub fn sub(a: Complex, b: Complex) Complex {
+		return .{.val = a.val - b.val};
+	}
+
+	pub fn subScalar(a: Complex, b: f64) Complex {
+		return .{.val = a.val - Vec2d{b, 0}};
+	}
+
+	pub fn mul(a: Complex, b: Complex) Complex {
+		return .{.val = .{a.val[0]*b.val[0] - a.val[1]*b.val[1], a.val[0]*b.val[1] + a.val[1]*b.val[0]}};
+	}
+
+	pub fn mulScalar(a: Complex, b: f64) Complex {
+		return .{.val = a.val*@as(Vec2d, @splat(b))};
+	}
+
+	pub fn div(a: Complex, b: Complex) Complex {
+		const denom = b.valSquare();
+		return a.mul(b.conjugate()).divScalar(denom);
+	}
+
+	pub fn divScalar(a: Complex, b: f64) Complex {
+		return .{.val = a.val/@as(Vec2d, @splat(b))};
+	}
+
+	pub fn fromSqrt(val: f64) Complex {
+		if(val < 0) {
+			return .{.val = .{0, @sqrt(-val)}};
+		} else {
+			return .{.val = .{@sqrt(val), 0}};
+		}
+	}
+
+	pub fn exp(a: Complex) Complex {
+		const realFactor = @exp(a.val[0]);
+		const complexFactor: Complex = .{.val = .{@cos(a.val[1]), @sin(a.val[1])}};
+		return complexFactor.mulScalar(realFactor);
 	}
 };

@@ -21,28 +21,6 @@ pub var window = GuiWindow {
 
 const padding: f32 = 8;
 
-pub fn openWorld(name: []const u8) void {
-	std.log.info("Opening world {s}", .{name});
-	main.server.thread = std.Thread.spawn(.{}, main.server.start, .{name}) catch |err| {
-		std.log.err("Encountered error while starting server thread: {s}", .{@errorName(err)});
-		return;
-	};
-
-	const connection = ConnectionManager.init(main.settings.defaultPort+1, false) catch |err| {
-		std.log.err("Encountered error while opening connection: {s}", .{@errorName(err)});
-		return;
-	};
-	connection.world = &main.game.testWorld;
-	main.game.testWorld.init("127.0.0.1", connection) catch |err| {
-		std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
-	};
-	main.game.world = &main.game.testWorld;
-	for(gui.openWindows.items) |openWindow| {
-		gui.closeWindow(openWindow);
-	}
-	gui.openHud();
-}
-
 var textInput: *TextInput = undefined;
 
 fn createWorld(_: usize) void {
@@ -80,7 +58,9 @@ fn flawedCreateWorld() !void {
 		try main.files.makeDir(assetsPath);
 	}
 	// TODO: Make the seed configurable
-	gui.windowlist.save_selection.openWorld(worldName);
+	gui.closeWindowFromRef(&window);
+	gui.windowlist.save_selection.needsUpdate = true;
+	gui.openWindow("save_selection");
 }
 
 pub fn onOpen() void {

@@ -23,18 +23,106 @@ const Entity = server.Entity;
 
 const storage = @import("storage.zig");
 
-const ChunkManager = struct {
+pub const EntityChunk = struct {
+	chunk: ?*ServerChunk = null,
+	mutex: std.Thread.Mutex = .{},
+	refCount: std.atomic.Value(u32),
+	pos: chunk.ChunkPosition,
+
+	pub fn initAndIncreaseRefCount(pos: ChunkPosition) *EntityChunk {
+		const self = main.globalAllocator.create(EntityChunk);
+		self.* = .{
+			.refCount = std.atomic.Value(u32).init(1),
+			.pos = pos,
+		};
+		return self;
+	}
+
+	fn deinit(self: *const EntityChunk) void {
+		std.debug.assert(self.refCount.load(.monotonic) == 0);
+		if(self.chunk) |ch| ch.decreaseRefCount();
+		main.globalAllocator.destroy(self);
+	}
+
+	pub fn increaseRefCount(self: *EntityChunk) void {
+		const prevVal = self.refCount.fetchAdd(1, .monotonic);
+		std.debug.assert(prevVal != 0);
+	}
+
+	pub fn decreaseRefCount(self: *EntityChunk) void {
+		const prevVal = self.refCount.fetchSub(1, .monotonic);
+		std.debug.assert(prevVal != 0);
+		if(prevVal == 2) {
+			ChunkManager.tryRemoveEntityChunk(self);
+		}
+		if(prevVal == 1) {
+			self.deinit();
+		}
+	}
+};
+
+const ChunkManager = struct { // MARK: ChunkManager
 	world: *ServerWorld,
 	terrainGenerationProfile: server.terrain.TerrainGenerationProfile,
 
 	// There will be at most 1 GiB of chunks in here. TODO: Allow configuring this in the server settings.
 	const reducedChunkCacheMask = 2047;
 	var chunkCache: Cache(ServerChunk, reducedChunkCacheMask+1, 4, chunkDeinitFunctionForCache) = .{};
+	const HashContext = struct {
+		pub fn hash(_: HashContext, a: chunk.ChunkPosition) u64 {
+			return a.hashCode();
+		}
+		pub fn eql(_: HashContext, a: chunk.ChunkPosition, b: chunk.ChunkPosition) bool {
+			return std.meta.eql(a, b);
+		}
+	};
+	var entityChunkHashMap: std.HashMap(chunk.ChunkPosition, *EntityChunk, HashContext, 50) = undefined;
+	var mutex: std.Thread.Mutex = .{};
 
-	const ChunkLoadTask = struct {
+	fn getEntityChunkAndIncreaseRefCount(pos: chunk.ChunkPosition) ?*EntityChunk {
+		std.debug.assert(pos.voxelSize == 1);
+		mutex.lock();
+		defer mutex.unlock();
+		if(entityChunkHashMap.get(pos)) |entityChunk| {
+			entityChunk.increaseRefCount();
+			return entityChunk;
+		}
+		return null;
+	}
+
+	pub fn getOrGenerateEntityChunkAndIncreaseRefCount(pos: chunk.ChunkPosition) *EntityChunk {
+		std.debug.assert(pos.voxelSize == 1);
+		mutex.lock();
+		defer mutex.unlock();
+		if(entityChunkHashMap.get(pos)) |entityChunk| {
+			entityChunk.increaseRefCount();
+			return entityChunk;
+		}
+		const entityChunk = EntityChunk.initAndIncreaseRefCount(pos);
+		std.debug.assert(entityChunk.chunk == null);
+		entityChunkHashMap.put(pos, entityChunk) catch unreachable;
+		entityChunk.increaseRefCount();
+		return entityChunk;
+	}
+
+	fn tryRemoveEntityChunk(ch: *EntityChunk) void {
+		mutex.lock();
+		defer mutex.unlock();
+		if(ch.refCount.load(.monotonic) == 1) { // Only we hold it.
+			std.debug.assert(entityChunkHashMap.remove(ch.pos));
+			ch.decreaseRefCount();
+		}
+	}
+
+	const Source = union(enum) {
+		user: *User,
+		entityChunk: *EntityChunk,
+	};
+
+	const ChunkLoadTask = struct { // MARK: ChunkLoadTask
 		pos: ChunkPosition,
 		creationTime: i64,
-		source: ?*User,
+		source: Source,
 
 		const vtable = utils.ThreadPool.VTable{
 			.getPriority = @ptrCast(&getPriority),
@@ -43,7 +131,7 @@ const ChunkManager = struct {
 			.clean = @ptrCast(&clean),
 		};
 		
-		pub fn scheduleAndDecreaseRefCount(pos: ChunkPosition, source: ?*User) void {
+		pub fn scheduleAndDecreaseRefCount(pos: ChunkPosition, source: Source) void {
 			const task = main.globalAllocator.create(ChunkLoadTask);
 			task.* = ChunkLoadTask {
 				.pos = pos,
@@ -54,16 +142,16 @@ const ChunkManager = struct {
 		}
 
 		pub fn getPriority(self: *ChunkLoadTask) f32 {
-			if(self.source) |user| {
-				return self.pos.getPriority(user.player.pos);
-			} else {
-				return std.math.floatMax(f32);
+			switch(self.source) {
+				.user => |user| return self.pos.getPriority(user.player.pos),
+				else => return std.math.floatMax(f32),
 			}
 		}
 
 		pub fn isStillNeeded(self: *ChunkLoadTask, milliTime: i64) bool {
-			if(self.source) |source| { // Remove the task if the player disconnected
-				if(!source.connected.load(.unordered)) return false;
+			switch(self.source) { // Remove the task if the player disconnected
+				.user => |user| if(!user.connected.load(.unordered)) return false,
+				.entityChunk => |ch| if(ch.refCount.load(.monotonic) == 1) return false,
 			}
 			if(milliTime - self.creationTime > 10000) { // Only remove stuff after 10 seconds to account for trouble when for example teleporting.
 				server.mutex.lock();
@@ -88,14 +176,15 @@ const ChunkManager = struct {
 		}
 
 		pub fn clean(self: *ChunkLoadTask) void {
-			if(self.source) |source| {
-				source.decreaseRefCount();
+			switch (self.source) {
+				.user => |user| user.decreaseRefCount(),
+				.entityChunk => |ch| ch.decreaseRefCount(),
 			}
 			main.globalAllocator.destroy(self);
 		}
 	};
 
-	const LightMapLoadTask = struct {
+	const LightMapLoadTask = struct { // MARK: LightMapLoadTask
 		pos: terrain.SurfaceMap.MapFragmentPosition,
 		creationTime: i64,
 		source: ?*User,
@@ -153,11 +242,12 @@ const ChunkManager = struct {
 		}
 	};
 
-	pub fn init(world: *ServerWorld, settings: JsonElement) !ChunkManager {
+	pub fn init(world: *ServerWorld, settings: JsonElement) !ChunkManager { // MARK: init()
 		const self = ChunkManager {
 			.world = world,
 			.terrainGenerationProfile = try server.terrain.TerrainGenerationProfile.init(settings, world.seed),
 		};
+		entityChunkHashMap = @TypeOf(entityChunkHashMap).init(main.globalAllocator.allocator);
 		server.terrain.init(self.terrainGenerationProfile);
 		storage.init();
 		return self;
@@ -167,6 +257,7 @@ const ChunkManager = struct {
 		for(0..main.settings.highestLOD) |_| {
 			chunkCache.clear();
 		}
+		entityChunkHashMap.deinit();
 		server.terrain.deinit();
 		main.assets.unloadAssets();
 		self.terrainGenerationProfile.deinit();
@@ -178,27 +269,36 @@ const ChunkManager = struct {
 		LightMapLoadTask.scheduleAndDecreaseRefCount(pos, source);
 	}
 
-	pub fn queueChunkAndDecreaseRefCount(self: ChunkManager, pos: ChunkPosition, source: ?*User) void {
+	pub fn queueChunkAndDecreaseRefCount(self: ChunkManager, pos: ChunkPosition, source: *User) void {
 		_ = self;
-		ChunkLoadTask.scheduleAndDecreaseRefCount(pos, source);
+		ChunkLoadTask.scheduleAndDecreaseRefCount(pos, .{.user = source});
 	}
 
-	pub fn generateChunk(pos: ChunkPosition, source: ?*User) void {
-		if(source != null and !source.?.connected.load(.unordered)) return; // User disconnected.
+	pub fn generateChunk(pos: ChunkPosition, source: Source) void { // MARK: generateChunk()
 		const ch = getOrGenerateChunkAndIncreaseRefCount(pos);
 		defer ch.decreaseRefCount();
-		if(source) |_source| {
-			main.network.Protocols.chunkTransmission.sendChunk(_source.conn, ch);
-		} else {
-			server.mutex.lock();
-			defer server.mutex.unlock();
-			for(server.users.items) |user| {
+		switch(source) {
+			.user => |user| {
 				main.network.Protocols.chunkTransmission.sendChunk(user.conn, ch);
-			}
+			},
+			.entityChunk => |entityChunk| {
+				entityChunk.mutex.lock();
+				defer entityChunk.mutex.unlock();
+				entityChunk.chunk = ch;
+			},
 		}
 	}
 
 	fn chunkInitFunctionForCacheAndIncreaseRefCount(pos: ChunkPosition) *ServerChunk {
+		if(pos.voxelSize == 1) if(getEntityChunkAndIncreaseRefCount(pos)) |entityChunk| { // Check if we already have it in memory.
+			defer entityChunk.decreaseRefCount();
+			entityChunk.mutex.lock();
+			defer entityChunk.mutex.unlock();
+			if(entityChunk.chunk) |ch| {
+				ch.increaseRefCount();
+				return ch;
+			}
+		};
 		const regionSize = pos.voxelSize*chunk.chunkSize*storage.RegionFile.regionSize;
 		const regionMask: i32 = regionSize - 1;
 		const region = storage.loadRegionFileAndIncreaseRefCount(pos.wx & ~regionMask, pos.wy & ~regionMask, pos.wz & ~regionMask, pos.voxelSize);
@@ -223,7 +323,7 @@ const ChunkManager = struct {
 		ch.generated = true;
 		const caveMap = terrain.CaveMap.CaveMapView.init(ch);
 		defer caveMap.deinit();
-		const biomeMap = terrain.CaveBiomeMap.CaveBiomeMapView.init(ch);
+		const biomeMap = terrain.CaveBiomeMap.CaveBiomeMapView.init(main.stackAllocator, ch.super.pos, ch.super.width, 32);
 		defer biomeMap.deinit();
 		for(server.world.?.chunkManager.terrainGenerationProfile.generators) |generator| {
 			generator.generate(server.world.?.seed ^ generator.generatorSeed, ch, caveMap, biomeMap);
@@ -255,7 +355,7 @@ const ChunkManager = struct {
 	}
 };
 
-const WorldIO = struct {
+const WorldIO = struct { // MARK: WorldIO
 	const worldDataVersion: u32 = 2;
 
 	dir: files.Dir,
@@ -311,7 +411,7 @@ const WorldIO = struct {
 	}
 };
 
-pub const ServerWorld = struct {
+pub const ServerWorld = struct { // MARK: ServerWorld
 	pub const dayCycle: u31 = 12000; // Length of one in-game day in units of 100ms. Midnight is at DAY_CYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
 	pub const earthGravity: f32 = 9.81;
 
@@ -352,7 +452,7 @@ pub const ServerWorld = struct {
 		milliTimeStamp: i64,
 	};
 
-	pub fn init(name: []const u8, nullGeneratorSettings: ?JsonElement) !*ServerWorld {
+	pub fn init(name: []const u8, nullGeneratorSettings: ?JsonElement) !*ServerWorld { // MARK: init()
 		const self = main.globalAllocator.create(ServerWorld);
 		errdefer main.globalAllocator.destroy(self);
 		self.* = ServerWorld {
@@ -427,7 +527,7 @@ pub const ServerWorld = struct {
 	}
 
 
-	const RegenerateLODTask = struct {
+	const RegenerateLODTask = struct { // MARK: RegenerateLODTask
 		pos: ChunkPosition,
 		storeMaps: bool,
 
@@ -663,7 +763,7 @@ pub const ServerWorld = struct {
 		self.dropWithCooldown(stack, pos, dir, velocity, 0);
 	}
 
-	pub fn update(self: *ServerWorld) void {
+	pub fn update(self: *ServerWorld) void { // MARK: update()
 		const newTime = std.time.milliTimestamp();
 		var deltaTime = @as(f32, @floatFromInt(newTime - self.lastUpdateTime))/1000.0;
 		self.lastUpdateTime = newTime;
@@ -717,11 +817,11 @@ pub const ServerWorld = struct {
 		}
 	}
 
-	pub fn queueChunkAndDecreaseRefCount(self: *ServerWorld, pos: ChunkPosition, source: ?*User) void {
+	pub fn queueChunkAndDecreaseRefCount(self: *ServerWorld, pos: ChunkPosition, source: *User) void {
 		self.chunkManager.queueChunkAndDecreaseRefCount(pos, source);
 	}
 
-	pub fn queueLightMapAndDecreaseRefCount(self: *ServerWorld, pos: terrain.SurfaceMap.MapFragmentPosition, source: ?*User) void {
+	pub fn queueLightMapAndDecreaseRefCount(self: *ServerWorld, pos: terrain.SurfaceMap.MapFragmentPosition, source: *User) void {
 		self.chunkManager.queueLightMapAndDecreaseRefCount(pos, source);
 	}
 
@@ -739,7 +839,7 @@ pub const ServerWorld = struct {
 	}
 
 	pub fn getBiome(_: *const ServerWorld, wx: i32, wy: i32, wz: i32) *const terrain.biomes.Biome {
-		const map = terrain.CaveBiomeMap.InterpolatableCaveBiomeMapView.init(.{.wx = wx, .wy = wy, .wz = wz, .voxelSize = 1}, 1);
+		const map = terrain.CaveBiomeMap.InterpolatableCaveBiomeMapView.init(main.stackAllocator, .{.wx = wx, .wy = wy, .wz = wz, .voxelSize = 1}, 1);
 		defer map.deinit();
 		return map.getRoughBiome(wx, wy, wz, false, undefined, true);
 	}
@@ -758,10 +858,10 @@ pub const ServerWorld = struct {
 		const y: u5 = @intCast(wy & chunk.chunkMask);
 		const z: u5 = @intCast(wz & chunk.chunkMask);
 		var newBlock = _newBlock;
-		for(chunk.Neighbors.iterable) |neighbor| {
-			const nx = x + chunk.Neighbors.relX[neighbor];
-			const ny = y + chunk.Neighbors.relY[neighbor];
-			const nz = z + chunk.Neighbors.relZ[neighbor];
+		for(chunk.Neighbor.iterable) |neighbor| {
+			const nx = x + neighbor.relX();
+			const ny = y + neighbor.relY();
+			const nz = z + neighbor.relZ();
 			var ch = baseChunk;
 			if(nx & chunk.chunkMask != nx or ny & chunk.chunkMask != ny or nz & chunk.chunkMask != nz) {
 				ch = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(.{
@@ -778,7 +878,7 @@ pub const ServerWorld = struct {
 			defer ch.mutex.unlock();
 			var neighborBlock = ch.getBlock(nx & chunk.chunkMask, ny & chunk.chunkMask, nz & chunk.chunkMask);
 			if(neighborBlock.mode().dependsOnNeighbors) {
-				if(neighborBlock.mode().updateData(&neighborBlock, neighbor ^ 1, newBlock)) {
+				if(neighborBlock.mode().updateData(&neighborBlock, neighbor.reverse(), newBlock)) {
 					ch.updateBlockAndSetChanged(nx & chunk.chunkMask, ny & chunk.chunkMask, nz & chunk.chunkMask, neighborBlock);
 				}
 			}

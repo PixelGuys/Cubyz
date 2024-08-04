@@ -9,7 +9,7 @@
 	"roughness" : 10,
 	"hills" : 10,
 	
-	"music" : "leaves",
+	"music" : "cubyz:leaves",
 
 	"validPlayerSpawn" : true,
 	
@@ -24,15 +24,38 @@
 			"leaves" : "cubyz:mahogany_leaves",
 			"log" : "cubyz:mahogany_log",
 			"top" : "cubyz:mahogany_top",
-			"chance" : 0.05,
+			"chance" : 0.36,
 			"type" : "round",
-			"height" : 5,
-			"height_variation" : 5
+			"height" : 6,
+			"height_variation" : 10,
+			"leafRadius" : 3.5,
+			"leafRadius_variation" : 1.5
 		}
+		{
+			"id" : "cubyz:simple_tree",
+			"leaves" : "cubyz:mahogany_leaves",
+			"log" : "cubyz:mahogany_log",
+			"top" : "cubyz:mahogany_top",
+			"chance" : 0.2,
+			"type" : "round",
+			"height" : 1,
+			"height_variation" : 0,
+			"leafRadius" : 2,
+			"leafRadius_variation" : 2
+		},
+		{
+			"id" : "cubyz:ground_patch",
+			"block" : "cubyz:soil",
+			"chance" : 0.04,
+			"width" : 4,
+			"variation" : 4,
+			"depth" : 2,
+			"smoothness" : 0.2
+		},
 		{
 			"id" : "cubyz:simple_vegetation",
 			"block" : "cubyz:grass_vegetation",
-			"chance" : 1,
+			"chance" : 0.4,
 			"height" : 1,
 			"height_variation" : 0
 		},

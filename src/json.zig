@@ -14,7 +14,7 @@ const JsonType = enum(u8) {
 	JsonArray,
 	JsonObject
 };
-pub const JsonElement = union(JsonType) {
+pub const JsonElement = union(JsonType) { // MARK: JsonElement
 	JsonInt: i64,
 	JsonFloat: f64,
 	JsonString: []const u8,
@@ -347,7 +347,7 @@ pub const JsonElement = union(JsonType) {
 	}
 };
 
-const Parser = struct {
+const Parser = struct { // MARK: Parser
 	/// All whitespaces from unicode 14.
 	const whitespaces = [_][]const u8 {"\u{0009}", "\u{000A}", "\u{000B}", "\u{000C}", "\u{000D}", "\u{0020}", "\u{0085}", "\u{00A0}", "\u{1680}", "\u{2000}", "\u{2001}", "\u{2002}", "\u{2003}", "\u{2004}", "\u{2005}", "\u{2006}", "\u{2007}", "\u{2008}", "\u{2009}", "\u{200A}", "\u{2028}", "\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}"};
 
@@ -646,7 +646,7 @@ const Parser = struct {
 
 
 // ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
-// TESTING
+// MARK: Testing
 // ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 
 test "skipWhitespaces" {

@@ -56,7 +56,7 @@ pub const MapFragmentPosition = struct {
 };
 
 /// Generates and stores the height and Biome maps of the planet.
-pub const MapFragment = struct {
+pub const MapFragment = struct { // MARK: MapFragment
 	pub const biomeShift = 5;
 	/// The average diameter of a biome.
 	pub const biomeSize = 1 << biomeShift;
@@ -270,7 +270,7 @@ fn cacheInit(pos: MapFragmentPosition) *MapFragment {
 	return mapFragment;
 }
 
-pub fn regenerateLOD(worldName: []const u8) !void {
+pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 	std.log.info("Regenerating map LODs...", .{});
 	// Delete old LODs:
 	for(1..main.settings.highestLOD+1) |i| {

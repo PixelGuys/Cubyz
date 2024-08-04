@@ -30,12 +30,13 @@ var selectedWindow: ?*GuiWindow = null;
 pub var selectedTextInput: ?*TextInput = null;
 var hoveredAWindow: bool = false;
 pub var reorderWindows: bool = false;
+pub var hideGui: bool = false;
 
 pub var scale: f32 = undefined;
 
 pub var hoveredItemSlot: ?*ItemSlot = null;
 
-const GuiCommandQueue = struct {
+const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 	const Action = enum {
 		open,
 		close,
@@ -125,7 +126,7 @@ pub const Callback = struct {
 	}
 };
 
-pub fn init() void {
+pub fn init() void { // MARK: init()
 	GuiCommandQueue.init();
 	windowList = List(*GuiWindow).init(main.globalAllocator);
 	hudWindows = List(*GuiWindow).init(main.globalAllocator);
@@ -182,7 +183,7 @@ pub fn deinit() void {
 	GuiCommandQueue.deinit();
 }
 
-fn save() void {
+pub fn save() void { // MARK: save()
 	const guiJson = JsonElement.initObject(main.stackAllocator);
 	defer guiJson.free(main.stackAllocator);
 	for(windowList.items) |window| {
@@ -355,8 +356,18 @@ pub fn openWindowCallback(comptime id: []const u8) Callback {
 	};
 }
 
-pub fn closeWindow(window: *GuiWindow) void {
+pub fn closeWindowFromRef(window: *GuiWindow) void {
 	GuiCommandQueue.scheduleCommand(.{.action = .close, .window = window});
+}
+
+pub fn closeWindow(id: []const u8) void {
+	for(windowList.items) |window| {
+		if(std.mem.eql(u8, window.id, id)) {
+			openWindowFromRef(window);
+			return;
+		}
+	}
+	std.log.warn("Could not find window with id {s}.", .{id});
 }
 
 pub fn setSelectedTextInput(newSelectedTextInput: ?*TextInput) void {
@@ -529,18 +540,20 @@ pub fn updateAndRenderGui() void {
 	for(openWindows.items) |window| {
 		window.update();
 	}
-	if(!main.Window.grabbed) {
-		draw.setColor(0x80000000);
-		GuiWindow.borderShader.bind();
-		graphics.c.glUniform2f(GuiWindow.borderUniforms.effectLength, main.Window.getWindowSize()[0]/6, main.Window.getWindowSize()[1]/6);
-		draw.customShadedRect(GuiWindow.borderUniforms, .{0, 0}, main.Window.getWindowSize());
+	if(!hideGui) {
+		if(!main.Window.grabbed) {
+			draw.setColor(0x80000000);
+			GuiWindow.borderShader.bind();
+			graphics.c.glUniform2f(GuiWindow.borderUniforms.effectLength, main.Window.getWindowSize()[0]/6, main.Window.getWindowSize()[1]/6);
+			draw.customShadedRect(GuiWindow.borderUniforms, .{0, 0}, main.Window.getWindowSize());
+		}
+		const oldScale = draw.setScale(scale);
+		defer draw.restoreScale(oldScale);
+		for(openWindows.items) |window| {
+			window.render(mousePos);
+		}
+		inventory.render(mousePos);
 	}
-	const oldScale = draw.setScale(scale);
-	defer draw.restoreScale(oldScale);
-	for(openWindows.items) |window| {
-		window.render(mousePos);
-	}
-	inventory.render(mousePos);
 }
 
 pub fn toggleGameMenu() void {
@@ -569,7 +582,7 @@ pub fn toggleGameMenu() void {
 	}
 }
 
-pub const inventory = struct {
+pub const inventory = struct { // MARK: inventory
 	const ItemStack = main.items.ItemStack;
 	pub var carriedItemStack: ItemStack = .{.item = null, .amount = 0};
 	var carriedItemSlot: *ItemSlot = undefined;

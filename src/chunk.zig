@@ -16,65 +16,91 @@ pub const chunkVolume: u31 = 1 << 3*chunkShift;
 pub const chunkMask: i32 = chunkSize - 1;
 
 /// Contains a bunch of constants used to describe neighboring blocks.
-pub const Neighbors = struct { // TODO: Should this be an enum?
-	/// How many neighbors there are.
-	pub const neighbors: u3 = 6;
-	/// Directions → Index
-	pub const dirUp: u3 = 0;
-	/// Directions → Index
-	pub const dirDown: u3 = 1;
-	/// Directions → Index
-	pub const dirPosX: u3 = 2;
-	/// Directions → Index
-	pub const dirNegX: u3 = 3;
-	/// Directions → Index
-	pub const dirPosY: u3 = 4;
-	/// Directions → Index
-	pub const dirNegY: u3 = 5;
+pub const Neighbor = enum(u3) { // MARK: Neighbor
+	dirUp = 0,
+	dirDown = 1,
+	dirPosX = 2,
+	dirNegX = 3,
+	dirPosY = 4,
+	dirNegY = 5,
+
+	pub inline fn toInt(self: Neighbor) u3 {
+		return @intFromEnum(self);
+	}
+
 	/// Index to relative position
-	pub const relX = [_]i32 {0, 0, 1, -1, 0, 0};
+	pub fn relX(self: Neighbor) i32 {
+		const arr = [_]i32 {0, 0, 1, -1, 0, 0};
+		return arr[@intFromEnum(self)];
+	}
 	/// Index to relative position
-	pub const relY = [_]i32 {0, 0, 0, 0, 1, -1};
+	pub fn relY(self: Neighbor) i32 {
+		const arr = [_]i32 {0, 0, 0, 0, 1, -1};
+		return arr[@intFromEnum(self)];
+	}
 	/// Index to relative position
-	pub const relZ = [_]i32 {1, -1, 0, 0, 0, 0};
+	pub fn relZ(self: Neighbor) i32 {
+		const arr = [_]i32 {1, -1, 0, 0, 0, 0};
+		return arr[@intFromEnum(self)];
+	}
 	/// Index to bitMask for bitmap direction data
-	pub const bitMask = [_]u6 {0x01, 0x02, 0x04, 0x08, 0x10, 0x20};
+	pub inline fn bitMask(self: Neighbor) u6 {
+		return @as(u6, 1) << @intFromEnum(self);
+	}
 	/// To iterate over all neighbors easily
-	pub const iterable = [_]u3 {0, 1, 2, 3, 4, 5};
+	pub const iterable = [_]Neighbor {@enumFromInt(0), @enumFromInt(1), @enumFromInt(2), @enumFromInt(3), @enumFromInt(4), @enumFromInt(5)};
 	/// Marks the two dimension that are orthogonal
-	pub const orthogonalComponents = [_]Vec3i {
-		.{1, 1, 0},
-		.{1, 1, 0},
-		.{0, 1, 1},
-		.{0, 1, 1},
-		.{1, 0, 1},
-		.{1, 0, 1},
-	};
-	pub const textureX = [_]Vec3i {
-		.{-1, 0, 0},
-		.{1, 0, 0},
-		.{0, 1, 0},
-		.{0, -1, 0},
-		.{-1, 0, 0},
-		.{1, 0, 0},
-	};
-	pub const textureY = [_]Vec3i {
-		.{0, -1, 0},
-		.{0, -1, 0},
-		.{0, 0, 1},
-		.{0, 0, 1},
-		.{0, 0, 1},
-		.{0, 0, 1},
-	};
+	pub fn orthogonalComponents(self: Neighbor) Vec3i {
+		const arr = [_]Vec3i {
+			.{1, 1, 0},
+			.{1, 1, 0},
+			.{0, 1, 1},
+			.{0, 1, 1},
+			.{1, 0, 1},
+			.{1, 0, 1},
+		};
+		return arr[@intFromEnum(self)];
+	}
+	pub fn textureX(self: Neighbor) Vec3i {
+		const arr = [_]Vec3i {
+			.{-1, 0, 0},
+			.{1, 0, 0},
+			.{0, 1, 0},
+			.{0, -1, 0},
+			.{-1, 0, 0},
+			.{1, 0, 0},
+		};
+		return arr[@intFromEnum(self)];
+	}
+	pub fn textureY(self: Neighbor) Vec3i {
+		const arr = [_]Vec3i {
+			.{0, -1, 0},
+			.{0, -1, 0},
+			.{0, 0, 1},
+			.{0, 0, 1},
+			.{0, 0, 1},
+			.{0, 0, 1},
+		};
+		return arr[@intFromEnum(self)];
+	}
 
-	pub const isPositive = [_]bool {true, false, true, false, true, false};
-	pub const vectorComponent = [_]enum(u2){x = 0, y = 1, z = 2} {.z, .z, .x, .x, .y, .y};
+	pub inline fn reverse(self: Neighbor) Neighbor {
+		return @enumFromInt(@intFromEnum(self) ^ 1);
+	}
 
-	pub fn extractDirectionComponent(self: u3, in: anytype) @TypeOf(in[0]) {
+	pub inline fn isPositive(self: Neighbor) bool {
+		return @intFromEnum(self) & 1 == 0;
+	}
+	const VectorComponentEnum = enum(u2){x = 0, y = 1, z = 2};
+	pub fn vectorComponent(self: Neighbor) VectorComponentEnum {
+		const arr = [_]VectorComponentEnum {.z, .z, .x, .x, .y, .y};
+		return arr[@intFromEnum(self)];
+	}
+
+	pub fn extractDirectionComponent(self: Neighbor, in: anytype) @TypeOf(in[0]) {
 		switch(self) {
 			inline else => |val| {
-				if(val >= 6) unreachable;
-				return in[@intFromEnum(vectorComponent[val])];
+				return in[@intFromEnum(val.vectorComponent())];
 			}
 		}
 	}
@@ -113,7 +139,7 @@ pub fn deinit() void {
 	serverPool.deinit();
 }
 
-pub const ChunkPosition = struct {
+pub const ChunkPosition = struct { // MARK: ChunkPosition
 	wx: i32,
 	wy: i32,
 	wz: i32,
@@ -175,7 +201,7 @@ pub const ChunkPosition = struct {
 	}
 };
 
-pub const Chunk = struct {
+pub const Chunk = struct { // MARK: Chunk
 	pos: ChunkPosition,
 	data: main.utils.PaletteCompressedRegion(Block, chunkVolume) = undefined,
 
@@ -230,7 +256,7 @@ pub const Chunk = struct {
 	}
 };
 
-pub const ServerChunk = struct {
+pub const ServerChunk = struct { // MARK: ServerChunk
 	super: Chunk,
 
 	wasChanged: bool = false,
@@ -385,6 +411,20 @@ pub const ServerChunk = struct {
 		self.super.data.setValue(index, newBlock);
 	}
 
+	/// Updates a block if it is inside this chunk. Should be used in generation to prevent accidently storing these as changes.
+	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
+	pub fn updateBlockColumnInGeneration(self: *ServerChunk, _x: i32, _y: i32, _zStartInclusive: i32, _zEndInclusive: i32, newBlock: Block) void {
+		std.debug.assert(_zStartInclusive <= _zEndInclusive);
+		main.utils.assertLocked(&self.mutex);
+		const x = _x >> self.super.voxelSizeShift;
+		const y = _y >> self.super.voxelSizeShift;
+		const zStartInclusive = _zStartInclusive >> self.super.voxelSizeShift;
+		const zEndInclusive = _zEndInclusive >> self.super.voxelSizeShift;
+		const indexStart = getIndex(x, y, zStartInclusive);
+		const indexEnd = getIndex(x, y, zEndInclusive) + 1;
+		self.super.data.setValueInColumn(indexStart, indexEnd, newBlock);
+	}
+
 	pub fn updateFromLowerResolution(self: *ServerChunk, other: *ServerChunk) void {
 		const xOffset = if(other.super.pos.wx != self.super.pos.wx) chunkSize/2 else 0; // Offsets of the lower resolution chunk in this chunk.
 		const yOffset = if(other.super.pos.wy != self.super.pos.wy) chunkSize/2 else 0;
@@ -419,10 +459,10 @@ pub const ServerChunk = struct {
 								}
 								
 								var count: u31 = 0;
-								for(Neighbors.iterable) |n| {
-									const nx = x*2 + dx + Neighbors.relX[n];
-									const ny = y*2 + dy + Neighbors.relY[n];
-									const nz = z*2 + dz + Neighbors.relZ[n];
+								for(Neighbor.iterable) |n| {
+									const nx = x*2 + dx + n.relX();
+									const ny = y*2 + dy + n.relY();
+									const nz = z*2 + dz + n.relZ();
 									if((nx & chunkMask) == nx and (ny & chunkMask) == ny and (nz & chunkMask) == nz) { // If it's inside the chunk.
 										const neighborIndex = getIndex(nx, ny, nz);
 										if(other.super.data.getValue(neighborIndex).transparent()) {

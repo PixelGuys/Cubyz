@@ -10,16 +10,18 @@
 	"roughness" : 10,
 	"hills" : 20,
 
-	"music" : "tides",
+	"music" : "cubyz:tides",
 	
 	"ground_structure" : [
 		"2 to 4 cubyz:sand"
 	],
+	"stoneBlock" : "cubyz:sandstone",
+	
 	"structures" : [
 		{
 			"id" : "cubyz:ground_patch",
 			"block" : "cubyz:gravel",
-			"chance" : 0.002,
+			"chance" : 0.032,
 			"width" : 6,
 			"variation" : 2,
 			"depth" : 2,

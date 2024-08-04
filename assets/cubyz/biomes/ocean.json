@@ -11,7 +11,7 @@
 	
 	"rivers" : true,
 
-	"music" : "under_the_water_sky",
+	"music" : "cubyz:under_the_water_sky",
 	
 	"ground_structure" : [
 		"2 to 3 cubyz:gravel"
@@ -20,7 +20,7 @@
 		{
 			"id" : "cubyz:ground_patch",
 			"block" : "cubyz:mossy_cobblestone",
-			"chance" : 0.004,
+			"chance" : 0.064,
 			"width" : 6,
 			"variation" : 2,
 			"depth" : 2,
@@ -29,7 +29,7 @@
 		{
 			"id" : "cubyz:ground_patch",
 			"block" : "cubyz:sand",
-			"chance" : 0.002,
+			"chance" : 0.032,
 			"width" : 6,
 			"variation" : 2,
 			"depth" : 2,

@@ -116,22 +116,28 @@ void main() {
 	vec3 fogColor = unpackColor(fogData[int(animatedTextureIndex)].fogColor);
 	vec3 pixelLight = max(light*normalVariation, texture(emissionSampler, textureCoords).r*4);
 	vec4 textureColor = texture(texture_sampler, textureCoords)*vec4(pixelLight, 1);
+
 	float reflectivity = texture(reflectivityAndAbsorptionSampler, textureCoords).a;
-	vec3 absorption = texture(reflectivityAndAbsorptionSampler, textureCoords).rgb;
+	float fresnelReflection = (1 + dot(normalize(direction), normal));
+	fresnelReflection *= fresnelReflection;
+	fresnelReflection *= min(1, 2*reflectivity); // Limit it to 2*reflectivity to avoid making every block reflective.
+	reflectivity = reflectivity*fixedCubeMapLookup(reflect(direction, normal)).x;
+	reflectivity = reflectivity*(1 - fresnelReflection) + fresnelReflection;
+	textureColor.rgb *= textureColor.a;
+	textureColor.rgb += reflectivity*pixelLight;
+	blendColor.rgb = vec3((1 - textureColor.a)*(1 - fresnelReflection));
+
 	if(isBackFace == 0) {
-		textureColor.rgb *= textureColor.a;
-		blendColor.rgb = absorption;
+		vec3 absorption = texture(reflectivityAndAbsorptionSampler, textureCoords).rgb;
+		blendColor.rgb *= absorption;
 
 		// Fake reflection:
 		// TODO: Change this when it rains.
 		// TODO: Normal mapping.
-		textureColor.rgb += (reflectivity*fixedCubeMapLookup(reflect(direction, normal)).xyz)*pixelLight;
 		textureColor.rgb += texture(emissionSampler, textureCoords).rgb;
-		blendColor.rgb *= 1 - textureColor.a;
-		textureColor.a = 1;
 
 		if(fogData[int(animatedTextureIndex)].fogDensity == 0.0) {
-			// Apply the air fog, compensating for the missing back-face:
+			// Apply the air fog, compensating for the potentially missing back-face:
 			applyFrontfaceFog(airFogDistance, fog.color);
 		} else {
 			// Apply the block fog:
@@ -149,12 +155,16 @@ void main() {
 		applyFrontfaceFog(airFogDistance, fog.color);
 
 		// Apply the texture:
-		blendColor.rgb = vec3(1 - textureColor.a);
 		fragColor.rgb *= blendColor.rgb;
-		fragColor.rgb += textureColor.rgb*textureColor.a;
+		fragColor.rgb += textureColor.rgb;
 
 		// Apply the block fog:
-		applyBackfaceFog(fogDistance, fogColor);
+		if(fogData[int(animatedTextureIndex)].fogDensity == 0.0) {
+			// Apply the air fog, compensating for the above line where I compensated for the potentially missing back-face.
+			applyBackfaceFog(airFogDistance, fog.color);
+		} else {
+			applyBackfaceFog(fogDistance, fogColor);
+		}
 	}
 	blendColor.rgb *= fragColor.a;
 	fragColor.a = 1;

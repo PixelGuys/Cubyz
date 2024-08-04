@@ -29,11 +29,11 @@ var thread: ?std.Thread = null;
 const width: f32 = 420;
 
 fn discoverIpAddress() void {
-	connection = ConnectionManager.init(12347, true) catch |err| {
+	connection = ConnectionManager.init(main.settings.defaultPort, true) catch |err| {
 		std.log.err("Could not open Connection: {s}", .{@errorName(err)});
 		ipAddress = main.globalAllocator.dupe(u8, @errorName(err));
 		return;
-	}; // TODO: default port
+	};
 	ipAddress = std.fmt.allocPrint(main.globalAllocator.allocator, "{}", .{connection.?.externalAddress}) catch unreachable;
 	gotIpAddress.store(true, .release);
 }
@@ -59,6 +59,7 @@ fn join(_: usize) void {
 		_connection.world = &main.game.testWorld;
 		main.globalAllocator.free(settings.lastUsedIPAddress);
 		settings.lastUsedIPAddress = main.globalAllocator.dupe(u8, ipAddressEntry.currentString.items);
+		settings.save();
 		main.game.testWorld.init(ipAddressEntry.currentString.items, _connection) catch |err| {
 			std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
 		};
@@ -68,7 +69,7 @@ fn join(_: usize) void {
 		std.log.err("No connection found. Cannot connect.", .{});
 	}
 	for(gui.openWindows.items) |openWindow| {
-		gui.closeWindow(openWindow);
+		gui.closeWindowFromRef(openWindow);
 	}
 	gui.openHud();
 }

@@ -102,6 +102,13 @@ const Socket = struct {
 		defer list.deinit();
 		return list.addrs[0].in.sa.addr;
 	}
+
+	fn getPort(self: Socket) !u16 {
+		var addr: posix.sockaddr.in = undefined;
+		var addrLen: posix.socklen_t = @sizeOf(posix.sockaddr.in);
+		try posix.getsockname(self.socketID, @ptrCast(&addr), &addrLen);
+		return @byteSwap(addr.port);
+	}
 };
 
 pub fn init() void {
@@ -137,7 +144,7 @@ const Request = struct {
 
 /// Implements parts of the STUN(Session Traversal Utilities for NAT) protocol to discover public IP+Port
 /// Reference: https://datatracker.ietf.org/doc/html/rfc5389
-const STUN = struct {
+const STUN = struct { // MARK: STUN
 	const ipServerList = [_][]const u8 {
 		"iphone-stun.strato-iphone.de:3478",
 		"stun.12connect.com:3478",
@@ -272,9 +279,9 @@ const STUN = struct {
 
 	fn requestAddress(connection: *ConnectionManager) Address {
 		var oldAddress: ?Address = null;
-		var seed = [_]u8 {0} ** std.rand.DefaultCsprng.secret_seed_length;
+		var seed = [_]u8 {0} ** std.Random.DefaultCsprng.secret_seed_length;
 		std.mem.writeInt(i128, seed[0..16], std.time.nanoTimestamp(), builtin.cpu.arch.endian()); // Not the best seed, but it's not that important.
-		var random = std.rand.DefaultCsprng.init(seed);
+		var random = std.Random.DefaultCsprng.init(seed);
 		for(0..16) |_| {
 			// Choose a somewhat random server, so we faster notice if any one of them stopped working.
 			const server = ipServerList[random.random().intRangeAtMost(usize, 0, ipServerList.len-1)];
@@ -286,7 +293,7 @@ const STUN = struct {
 			};
 			random.fill(data[8..]); // Fill the transaction ID.
 
-			var splitter = std.mem.split(u8, server, ":");
+			var splitter = std.mem.splitScalar(u8, server, ':');
 			const ip = splitter.first();
 			const serverAddress = Address {
 				.ip=Socket.resolveIP(ip) catch |err| {
@@ -374,7 +381,7 @@ const STUN = struct {
 	}
 };
 
-pub const ConnectionManager = struct {
+pub const ConnectionManager = struct { // MARK: ConnectionManager
 	socket: Socket = undefined,
 	thread: std.Thread = undefined,
 	threadId: std.Thread.Id = undefined,
@@ -391,6 +398,8 @@ pub const ConnectionManager = struct {
 	receiveBuffer: [Connection.maxPacketSize]u8 = undefined,
 
 	world: ?*game.World = null,
+
+	localPort: u16 = undefined,
 
 	packetSendRequests: std.PriorityQueue(PacketSendRequest, void, PacketSendRequest.compare) = undefined,
 
@@ -412,12 +421,16 @@ pub const ConnectionManager = struct {
 		result.requests = main.List(*Request).init(main.globalAllocator);
 		result.packetSendRequests = std.PriorityQueue(PacketSendRequest, void, PacketSendRequest.compare).init(main.globalAllocator.allocator, {});
 
+		result.localPort = localPort;
 		result.socket = Socket.init(localPort) catch |err| blk: {
 			if(err == error.AddressInUse) {
-				break :blk try Socket.init(0); // Use any port.
+				const socket = try Socket.init(0); // Use any port.
+				result.localPort = try socket.getPort();
+				break :blk socket;
 			} else return err;
 		};
 		errdefer Socket.deinit(result.socket);
+		if(localPort == 0) result.localPort = try result.socket.getPort();
 
 		result.thread = try std.Thread.spawn(.{}, run, .{result});
 		result.thread.setName("Network Thread") catch |err| std.log.err("Couldn't rename thread: {s}", .{@errorName(err)});
@@ -632,6 +645,7 @@ const UnconfirmedPacket = struct {
 	id: u32,
 };
 
+// MARK: Protocols
 pub var bytesReceived: [256]Atomic(usize) = [_]Atomic(usize) {Atomic(usize).init(0)} ** 256;
 pub var packetsReceived: [256]Atomic(usize) = [_]Atomic(usize) {Atomic(usize).init(0)} ** 256;
 pub const Protocols = struct {
@@ -859,6 +873,8 @@ pub const Protocols = struct {
 			conn.disconnect();
 			if(conn.user) |user| {
 				main.server.disconnect(user);
+			} else {
+				main.exitToMenu(undefined);
 			}
 		}
 		pub fn disconnect(conn: *Connection) void {
@@ -909,7 +925,7 @@ pub const Protocols = struct {
 			const y = std.mem.readInt(i32, data[4..8], .big);
 			const z = std.mem.readInt(i32, data[8..12], .big);
 			const newBlock = Block.fromInt(std.mem.readInt(u32, data[12..16], .big));
-			if(conn.user != null) { // TODO: Send update event to other players.
+			if(conn.user != null) {
 				main.server.world.?.updateBlock(x, y, z, newBlock);
 			} else {
 				renderer.mesh_storage.updateBlock(x, y, z, newBlock);
@@ -1034,7 +1050,7 @@ pub const Protocols = struct {
 						defer json.free(main.stackAllocator);
 						const expectedTime = json.get(i64, "time", 0);
 						var curTime = world.gameTime.load(.monotonic);
-						if(@abs(curTime -% expectedTime) >= 1000) {
+						if(@abs(curTime -% expectedTime) >= 10) {
 							world.gameTime.store(expectedTime, .monotonic);
 						} else if(curTime < expectedTime) { // world.gameTime++
 							while(world.gameTime.cmpxchgWeak(curTime, curTime +% 1, .monotonic, .monotonic)) |actualTime| {
@@ -1045,7 +1061,11 @@ pub const Protocols = struct {
 								curTime = actualTime;
 							}
 						}
-						world.playerBiome.store(main.server.terrain.biomes.getById(json.get([]const u8, "biome", "")), .monotonic);
+						const newBiome = main.server.terrain.biomes.getById(json.get([]const u8, "biome", ""));
+						const oldBiome = world.playerBiome.swap(newBiome, .monotonic);
+						if(oldBiome != newBiome) {
+							main.audio.setMusic(newBiome.preferredMusic);
+						}
 					}
 				},
 				else => |unrecognizedType| {
@@ -1239,7 +1259,7 @@ pub const Protocols = struct {
 };
 
 
-pub const Connection = struct {
+pub const Connection = struct { // MARK: Connection
 	const maxPacketSize: u32 = 65507; // max udp packet size
 	const importantHeaderSize: u32 = 5;
 	const maxImportantPacketSize: u32 = 1500 - 14 - 20 - 8; // Ethernet MTU minus Ethernet header minus IP header minus udp header
@@ -1319,7 +1339,7 @@ pub const Connection = struct {
 		errdefer for(&result.receivedPackets) |*list| {
 			list.deinit();
 		};
-		var splitter = std.mem.split(u8, ipPort, ":");
+		var splitter = std.mem.splitScalar(u8, ipPort, ':');
 		const ip = splitter.first();
 		result.remoteAddress.ip = try Socket.resolveIP(ip);
 		var port = splitter.rest();
@@ -1335,6 +1355,25 @@ pub const Connection = struct {
 
 		try result.manager.addConnection(result);
 		return result;
+	}
+
+	fn reinitialize(self: *Connection) void {
+		main.utils.assertLocked(&self.mutex);
+		self.streamPosition = importantHeaderSize;
+		self.messageID = 0;
+		while(self.packetQueue.dequeue()) |packet| {
+			main.globalAllocator.free(packet.data);
+		}
+		for(self.unconfirmedPackets.items) |packet| {
+			main.globalAllocator.free(packet.data);
+		}
+		self.unconfirmedPackets.clearRetainingCapacity();
+		self.receivedPackets[0].clearRetainingCapacity();
+		self.receivedPackets[1].clearRetainingCapacity();
+		self.receivedPackets[2].clearRetainingCapacity();
+		self.lastIndex = 0;
+		self.lastIncompletePacket = 0;
+		self.handShakeState = Atomic(u8).init(Protocols.handShake.stepStart);
 	}
 
 	pub fn deinit(self: *Connection) void {
@@ -1704,7 +1743,15 @@ pub const Connection = struct {
 		if(protocol == Protocols.important) {
 			const id = std.mem.readInt(u32, data[1..5], .big);
 			if(self.handShakeState.load(.monotonic) == Protocols.handShake.stepComplete and id == 0) { // Got a new "first" packet from client. So the client tries to reconnect, but we still think it's connected.
-				// TODO: re-initialize connection.
+				if(self.user) |user| {
+					self.mutex.lock();
+					defer self.mutex.unlock();
+					user.reinitialize();
+					self.reinitialize();
+				} else {
+					std.log.err("Server reconnected?", .{});
+					self.disconnect();
+				}
 			}
 			if(id - @as(i33, self.lastIncompletePacket) >= 65536) {
 				std.log.warn("Many incomplete packages. Cannot process any more packages for now.", .{});

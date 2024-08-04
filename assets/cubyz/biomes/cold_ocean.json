@@ -11,7 +11,7 @@
 	"roughness" : 20,
 	"hills" : 10,
 
-	"music" : "under_the_water_sky",
+	"music" : "cubyz:under_the_water_sky",
 
 	"ground_structure" : [
 		"1 to 2 cubyz:cobblestone"
@@ -20,7 +20,7 @@
 		{
 			"id" : "cubyz:ground_patch",
 			"block" : "cubyz:mossy_cobblestone",
-			"chance" : 0.004,
+			"chance" : 0.064,
 			"width" : 6,
 			"variation" : 2,
 			"depth" : 2,
@@ -29,7 +29,7 @@
 		{
 			"id" : "cubyz:ground_patch",
 			"block" : "cubyz:gravel",
-			"chance" : 0.002,
+			"chance" : 0.032,
 			"width" : 6,
 			"variation" : 2,
 			"depth" : 2,

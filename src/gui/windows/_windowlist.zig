@@ -1,4 +1,5 @@
 
+pub const advanced_controls = @import("advanced_controls.zig");
 pub const change_name = @import("change_name.zig");
 pub const chat = @import("chat.zig");
 pub const controls = @import("controls.zig");
@@ -7,6 +8,7 @@ pub const crosshair = @import("crosshair.zig");
 pub const debug_network = @import("debug_network.zig");
 pub const debug_network_advanced = @import("debug_network_advanced.zig");
 pub const debug = @import("debug.zig");
+pub const delete_world_confirmation = @import("delete_world_confirmation.zig");
 pub const gpu_performance_measuring = @import("gpu_performance_measuring.zig");
 pub const graphics = @import("graphics.zig");
 pub const healthbar = @import("healthbar.zig");
@@ -15,6 +17,7 @@ pub const inventory = @import("inventory.zig");
 pub const inventory_crafting = @import("inventory_crafting.zig");
 pub const invite = @import("invite.zig");
 pub const main = @import("main.zig");
+pub const manage_players = @import("manage_players.zig");
 pub const multiplayer = @import("multiplayer.zig");
 pub const pause = @import("pause.zig");
 pub const pause_gear = @import("pause_gear.zig");
