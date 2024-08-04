@@ -4,7 +4,7 @@
 	"drops" : [
 		"auto"
 	],
-	"model" : "cubyz:cube",
+	"model" : "cubyz:sphere",
 	"rotation" : "stairs",
 	"texture" : "cubyz:birch_planks"
 }

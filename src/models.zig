@@ -298,8 +298,16 @@ pub const Model = struct {
 			uvC -= minUv;
 			
 			const cornerA: Vec3f = vertices.items[face.vertex[0]];
-			const cornerB: Vec3f = vertices.items[face.vertex[1]];
-			const cornerC: Vec3f = vertices.items[face.vertex[2]];
+			var cornerB: Vec3f = vertices.items[face.vertex[1]];
+			var cornerC: Vec3f = vertices.items[face.vertex[2]];
+
+			const calcNorm: Vec3f = vec.normalize(vec.cross(cornerB - cornerA, cornerC - cornerA));
+
+			if (vec.dot(normal, calcNorm) < 0) {
+				const temp = cornerB;
+				cornerB = cornerC;
+				cornerC = temp;
+			}
 			
 			quadInfos.append(.{
 				.normal = normal,
@@ -334,6 +342,8 @@ pub const Model = struct {
 			const cornerB: Vec3f = vertices.items[face.vertex[1]];
 			const cornerC: Vec3f = vertices.items[face.vertex[2]];
 			const cornerD: Vec3f = vertices.items[face.vertex[3]];
+			
+			// const lut = [_]u32{0, 2, 1, 1, 2, 3};
 			
 			quadInfos.append(.{
 				.normal = normal,
