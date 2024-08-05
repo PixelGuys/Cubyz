@@ -123,12 +123,12 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		var data = _data;
 		for(self.indices[0..self.size]) |i| {
 			std.mem.writeInt(u16, data[0..2], i, .big);
-			std.mem.writeInt(u64, data[2..10], @bitCast(self.pos[i][0]), .big);
-			std.mem.writeInt(u64, data[10..18], @bitCast(self.pos[i][1]), .big);
-			std.mem.writeInt(u64, data[18..26], @bitCast(self.pos[i][2]), .big);
-			std.mem.writeInt(u64, data[26..34], @bitCast(self.vel[i][0]), .big);
-			std.mem.writeInt(u64, data[34..42], @bitCast(self.vel[i][1]), .big);
-			std.mem.writeInt(u64, data[42..50], @bitCast(self.vel[i][2]), .big);
+			std.mem.writeInt(u64, data[2..10], @bitCast(self.list.items(.pos)[i][0]), .big);
+			std.mem.writeInt(u64, data[10..18], @bitCast(self.list.items(.pos)[i][1]), .big);
+			std.mem.writeInt(u64, data[18..26], @bitCast(self.list.items(.pos)[i][2]), .big);
+			std.mem.writeInt(u64, data[26..34], @bitCast(self.list.items(.vel)[i][0]), .big);
+			std.mem.writeInt(u64, data[34..42], @bitCast(self.list.items(.vel)[i][1]), .big);
+			std.mem.writeInt(u64, data[42..50], @bitCast(self.list.items(.vel)[i][2]), .big);
 			data = data[50..];
 		}
 		return _data;
@@ -263,10 +263,9 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			.pickupCooldown = pickupCooldown,
 			.reverseIndex = @intCast(self.size),
 		});
-// TODO:
-//			if(world instanceof ServerWorld) {
-//				lastUpdates.add(storeSingle(i));
-//			}
+		if(self.world != null) {
+			self.lastUpdates.JsonArray.append(self.storeSingle(self.lastUpdates.JsonArray.allocator, i));
+		}
 		self.indices[self.size] = i;
 		self.size += 1;
 	}
@@ -279,10 +278,9 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		self.indices[ii] = self.indices[self.size];
 		self.list.items(.itemStack)[i].clear();
 		self.isEmpty.set(i);
-		// TODO:
-//			if(world instanceof ServerWorld) {
-//				lastUpdates.add(new JsonInt(i));
-//			}
+		if(self.world != null) {
+			self.lastUpdates.JsonArray.append(.{.JsonInt = i});
+		}
 	}
 
 	fn updateEnt(self: *ItemDropManager, chunk: *ServerChunk, pos: *Vec3d, vel: *Vec3d, deltaTime: f64) void {

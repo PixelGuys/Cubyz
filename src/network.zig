@@ -979,7 +979,6 @@ pub const Protocols = struct {
 		pub fn send(conn: *Connection, msg: []const u8) void {
 			conn.sendImportant(id, msg);
 		}
-		// TODO: Send entity data.
 	};
 	pub const genericUpdate = struct {
 		pub const id: u8 = 9;
