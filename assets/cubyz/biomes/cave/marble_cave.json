@@ -1,6 +1,7 @@
 {
 	"isCave" : true,
 	"maxHeight" : -64,
+	"minHeight" : -512,
 	"chance" : 0.2,
 
 	"fogDensity" : 10,
