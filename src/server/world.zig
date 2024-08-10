@@ -63,7 +63,7 @@ pub const EntityChunk = struct {
 		return self.chunk.load(.acquire);
 	}
 
-	pub fn setChunk(self: *EntityChunk, ch: *ServerChunk) void {
+	pub fn setChunkAndDecreaseRefCount(self: *EntityChunk, ch: *ServerChunk) void {
 		std.debug.assert(self.chunk.swap(ch, .release) == null);
 	}
 };
@@ -106,6 +106,8 @@ const ChunkManager = struct { // MARK: ChunkManager
 			return entityChunk;
 		}
 		const entityChunk = EntityChunk.initAndIncreaseRefCount(pos);
+		entityChunk.increaseRefCount();
+		ChunkLoadTask.scheduleAndDecreaseRefCount(pos, .{.entityChunk = entityChunk});
 		entityChunkHashMap.put(pos, entityChunk) catch unreachable;
 		entityChunk.increaseRefCount();
 		return entityChunk;
@@ -157,21 +159,19 @@ const ChunkManager = struct { // MARK: ChunkManager
 		pub fn isStillNeeded(self: *ChunkLoadTask, milliTime: i64) bool {
 			switch(self.source) { // Remove the task if the player disconnected
 				.user => |user| if(!user.connected.load(.unordered)) return false,
-				.entityChunk => |ch| if(ch.refCount.load(.monotonic) == 1) return false,
+				.entityChunk => |ch| if(ch.refCount.load(.monotonic) == 2) return false,
 			}
 			if(milliTime - self.creationTime > 10000) { // Only remove stuff after 10 seconds to account for trouble when for example teleporting.
-				server.mutex.lock();
-				defer server.mutex.unlock();
-				for(server.users.items) |user| {
-					const minDistSquare = self.pos.getMinDistanceSquared(user.player.pos);
-					//                                                                  ↓ Margin for error. (diagonal of 1 chunk)
-					var targetRenderDistance = (@as(f32, @floatFromInt(user.renderDistance*chunk.chunkSize)) + @as(f32, @floatFromInt(chunk.chunkSize))*@sqrt(3.0));
-					targetRenderDistance *= @as(f32, @floatFromInt(self.pos.voxelSize));
-					if(minDistSquare <= targetRenderDistance*targetRenderDistance) {
-						return true;
-					}
+				switch(self.source) { // Remove the task if it's far enough away from the player:
+					.user => |user| {
+						const minDistSquare = self.pos.getMinDistanceSquared(user.player.pos);
+						//                                                                  ↓ Margin for error. (diagonal of 1 chunk)
+						var targetRenderDistance = (@as(f32, @floatFromInt(user.renderDistance*chunk.chunkSize)) + @as(f32, @floatFromInt(chunk.chunkSize))*@sqrt(3.0));
+						targetRenderDistance *= @as(f32, @floatFromInt(self.pos.voxelSize));
+						return minDistSquare <= targetRenderDistance*targetRenderDistance;
+					},
+					.entityChunk => {},
 				}
-				return false;
 			}
 			return true;
 		}
@@ -282,13 +282,13 @@ const ChunkManager = struct { // MARK: ChunkManager
 
 	pub fn generateChunk(pos: ChunkPosition, source: Source) void { // MARK: generateChunk()
 		const ch = getOrGenerateChunkAndIncreaseRefCount(pos);
-		defer ch.decreaseRefCount();
 		switch(source) {
 			.user => |user| {
 				main.network.Protocols.chunkTransmission.sendChunk(user.conn, ch);
+				ch.decreaseRefCount();
 			},
 			.entityChunk => |entityChunk| {
-				entityChunk.setChunk(ch);
+				entityChunk.setChunkAndDecreaseRefCount(ch);
 			},
 		}
 	}

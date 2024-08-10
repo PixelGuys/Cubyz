@@ -162,6 +162,8 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 	}
 
 	pub fn update(self: *ItemDropManager, deltaTime: f32) void {
+		self.mutex.lock();
+		defer self.mutex.unlock();
 		std.debug.assert(self.world != null);
 		const pos = self.list.items(.pos);
 		const vel = self.list.items(.vel);
@@ -291,7 +293,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			return;
 		}
 		var drag: f64 = self.airDragFactor;
-		const acceleration: Vec3d = Vec3d{0, -self.gravity*deltaTime, 0};
+		const acceleration: Vec3d = Vec3d{0, 0, -self.gravity*deltaTime};
 		// Update gravity:
 		inline for(0..3) |i| {
 			const old = pos.*[i];
@@ -379,12 +381,22 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 	}
 
 	fn checkBlock(self: *ItemDropManager, chunk: *ServerChunk, pos: *Vec3d, blockPos: Vec3i) bool {
-		// TODO: Check if the item drop collides with the block in the given location.
-		_ = self;
-		_ = chunk;
-		_ = pos;
-		_ = blockPos;
-		return false;
+		// Transform to chunk-relative coordinates:
+		const chunkPos = blockPos & ~@as(Vec3i, @splat(main.chunk.chunkMask));
+		var block: blocks.Block = undefined;
+		if(chunk.super.pos.wx == chunkPos[0] and chunk.super.pos.wy == chunkPos[1] and chunk.super.pos.wz == chunkPos[2]) {
+			chunk.mutex.lock();
+			defer chunk.mutex.unlock();
+			block = chunk.getBlock(blockPos[0] - chunk.super.pos.wx, blockPos[1] - chunk.super.pos.wy, blockPos[2] - chunk.super.pos.wz);
+		} else {
+			const otherChunk = self.world.?.getSimulationChunkAndIncreaseRefCount(chunkPos[0], chunkPos[1], chunkPos[2]) orelse return true;
+			defer otherChunk.decreaseRefCount();
+			const ch = otherChunk.getChunk() orelse return true;
+			ch.mutex.lock();
+			defer ch.mutex.unlock();
+			block = ch.getBlock(blockPos[0] - ch.super.pos.wx, blockPos[1] - ch.super.pos.wy, blockPos[2] - ch.super.pos.wz);
+		}
+		return main.game.Player.collideWithBlock(block, blockPos[0], blockPos[1], blockPos[2], pos.*, @splat(radius), @splat(0)) != null;
 	}
 };
 
