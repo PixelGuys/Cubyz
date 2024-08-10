@@ -132,7 +132,11 @@ const Address = struct {
 	isSymmetricNAT: bool = false,
 
 	pub fn format(self: Address, _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
-		try writer.print("{}.{}.{}.{}:{}", .{self.ip & 255, self.ip >> 8 & 255, self.ip >> 16 & 255, self.ip >> 24, self.port});
+		if(self.isSymmetricNAT) {
+			try writer.print("{}.{}.{}.{}:?{}", .{self.ip & 255, self.ip >> 8 & 255, self.ip >> 16 & 255, self.ip >> 24, self.port});
+		} else {
+			try writer.print("{}.{}.{}.{}:{}", .{self.ip & 255, self.ip >> 8 & 255, self.ip >> 16 & 255, self.ip >> 24, self.port});
+		}
 	}
 };
 
