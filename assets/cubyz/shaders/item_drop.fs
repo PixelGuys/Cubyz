@@ -280,11 +280,9 @@ void mainItemDrop() {
 	
 	
 	
-	vec4 color = decodeColor(block);
-	color.a = 1; // No transparency supported!
-	color = color*vec4(ambientLight*normalVariations[lastNormal], 1);
-
-	fragColor.rgb /= 4;
+	fragColor = decodeColor(block);
+	fragColor.a = 1; // No transparency supported!
+	fragColor = fragColor*vec4(ambientLight*normalVariations[lastNormal], 1);
 }
 
 void main() {

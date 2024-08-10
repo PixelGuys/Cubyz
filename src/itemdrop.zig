@@ -541,9 +541,9 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			var z: u32 = 0;
 			while(z < 1) : (z += 1) {
 				var x: u32 = 0;
-				while(x < self.size[0]) : (x += 1) {
+				while(x < img.width) : (x += 1) {
 					var y: u32 = 0;
-					while(y < self.size[1]) : (y += 1) {
+					while(y < img.height) : (y += 1) {
 						dataSection[i] = img.getRGB(x, y).toARBG();
 						i += 1;
 					}
@@ -690,7 +690,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 				modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-rot[2]));
 				c.glUniformMatrix4fv(itemUniforms.modelMatrix, 1, c.GL_TRUE, @ptrCast(&modelMatrix));
 
-				if(item == .baseItem and item.baseItem.block != null) {
+				if(item == .baseItem and item.baseItem.block != null and item.baseItem.image.imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
 					const blockType = item.baseItem.block.?;
 					const block = blocks.Block{.typ = blockType, .data = 0};
 					c.glUniform1i(itemUniforms.modelIndex, block.mode().model(block));
