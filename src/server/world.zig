@@ -100,16 +100,17 @@ const ChunkManager = struct { // MARK: ChunkManager
 	pub fn getOrGenerateEntityChunkAndIncreaseRefCount(pos: chunk.ChunkPosition) *EntityChunk {
 		std.debug.assert(pos.voxelSize == 1);
 		mutex.lock();
-		defer mutex.unlock();
 		if(entityChunkHashMap.get(pos)) |entityChunk| {
 			entityChunk.increaseRefCount();
+			mutex.unlock();
 			return entityChunk;
 		}
 		const entityChunk = EntityChunk.initAndIncreaseRefCount(pos);
 		entityChunk.increaseRefCount();
-		ChunkLoadTask.scheduleAndDecreaseRefCount(pos, .{.entityChunk = entityChunk});
-		entityChunkHashMap.put(pos, entityChunk) catch unreachable;
 		entityChunk.increaseRefCount();
+		entityChunkHashMap.put(pos, entityChunk) catch unreachable;
+		mutex.unlock();
+		ChunkLoadTask.scheduleAndDecreaseRefCount(pos, .{.entityChunk = entityChunk});
 		return entityChunk;
 	}
 
