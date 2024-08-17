@@ -252,14 +252,7 @@ fn deinit() void {
 	command.deinit();
 }
 
-fn update() void { // MARK: update()
-	world.?.update();
-	mutex.lock();
-	for(users.items) |user| {
-		user.update();
-	}
-	mutex.unlock();
-
+fn sendEntityUpdates(comptime getInitialList: bool, allocator: utils.NeverFailingAllocator) if(getInitialList) []const u8 else void {
 	// Send the entity updates:
 	const updateList = main.JsonElement.initArray(main.stackAllocator);
 	defer updateList.free(main.stackAllocator);
@@ -276,13 +269,37 @@ fn update() void { // MARK: update()
 		world.?.itemDropManager.lastUpdates.free(alloc);
 		world.?.itemDropManager.lastUpdates = main.JsonElement.initArray(alloc);
 	}
+	var initialList: []const u8 = undefined;
+	if(getInitialList) {
+		const list = main.JsonElement.initArray(main.stackAllocator);
+		defer list.free(main.stackAllocator);
+		list.JsonArray.append(.{.JsonNull = {}});
+		const itemDropList = world.?.itemDropManager.getInitialList(main.stackAllocator);
+		list.JsonArray.appendSlice(itemDropList.JsonArray.items);
+		itemDropList.JsonArray.items.len = 0;
+		itemDropList.free(main.stackAllocator);
+		initialList = list.toStringEfficient(allocator, &.{});
+	}
 	world.?.itemDropManager.mutex.unlock();
 	mutex.lock();
 	for(users.items) |user| {
 		main.network.Protocols.entity.send(user.conn, updateData);
 	}
 	mutex.unlock();
+	if(getInitialList) {
+		return initialList;
+	}
+}
 
+fn update() void { // MARK: update()
+	world.?.update();
+	mutex.lock();
+	for(users.items) |user| {
+		user.update();
+	}
+	mutex.unlock();
+
+	sendEntityUpdates(false, main.stackAllocator);
 
 
 	// Send the entity data:
@@ -415,6 +432,9 @@ pub fn connect(user: *User) void {
 		if(user.connected.load(.unordered)) main.network.Protocols.entity.send(user.conn, data);
 
 	}
+	const initialList = sendEntityUpdates(true, main.stackAllocator);
+	main.network.Protocols.entity.send(user.conn, initialList);
+	main.stackAllocator.free(initialList);
 	const message = std.fmt.allocPrint(main.stackAllocator.allocator, "{s} #ffff00joined", .{user.name}) catch unreachable;
 	defer main.stackAllocator.free(message);
 	mutex.lock();

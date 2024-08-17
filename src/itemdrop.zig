@@ -134,6 +134,16 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		return _data;
 	}
 
+	pub fn getInitialList(self: *ItemDropManager, allocator: NeverFailingAllocator) JsonElement {
+		var list = JsonElement.initArray(allocator);
+		var ii: u32 = 0;
+		while(ii < self.size) : (ii += 1) {
+			const i = self.indices[ii];
+			list.JsonArray.append(self.storeSingle(self.lastUpdates.JsonArray.allocator, i));
+		}
+		return list;
+	}
+
 	fn storeSingle(self: *ItemDropManager, allocator: NeverFailingAllocator, i: u16) JsonElement {
 		main.utils.assertLocked(&self.mutex);
 		const obj = JsonElement.initObject(allocator);
@@ -182,7 +192,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			pickupCooldown[i] -= 1;
 			despawnTime[i] -= 1;
 			if(despawnTime[i] < 0) {
-				self.remove(i);
+				self.removeLocked(i);
 			} else {
 				ii += 1;
 			}
@@ -272,9 +282,8 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		self.size += 1;
 	}
 
-	pub fn remove(self: *ItemDropManager, i: u16) void {
-		self.mutex.lock();
-		defer self.mutex.unlock();
+	fn removeLocked(self: *ItemDropManager, i: u16) void {
+		main.utils.assertLocked(&self.mutex);
 		self.size -= 1;
 		const ii = self.list.items(.reverseIndex)[i];
 		self.indices[ii] = self.indices[self.size];
@@ -283,6 +292,12 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		if(self.world != null) {
 			self.lastUpdates.JsonArray.append(.{.JsonInt = i});
 		}
+	}
+
+	pub fn remove(self: *ItemDropManager, i: u16) void {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+		self.removeLocked(i);
 	}
 
 	fn updateEnt(self: *ItemDropManager, chunk: *ServerChunk, pos: *Vec3d, vel: *Vec3d, deltaTime: f64) void {
@@ -506,58 +521,84 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		time: c_int,
 		texture_sampler: c_int,
 		emissionSampler: c_int,
+		reflectivityAndAbsorptionSampler: c_int,
+		reflectionMap: c_int,
+		reflectionMapSize: c_int,
+		contrast: c_int,
 	} = undefined;
 
 	var itemModelSSBO: graphics.SSBO = undefined;
-	var itemVAO: c_uint = undefined;
-	var itemVBOs: [2]c_uint = undefined;
 
 	var modelData: main.List(u32) = undefined;
 	var freeSlots: main.List(*ItemVoxelModel) = undefined;
 
 	const ItemVoxelModel = struct {
 		index: u31 = undefined,
-		size: Vec3i = undefined,
+		len: u31 = undefined,
 		item: items.Item,
+
+		fn getSlot(len: u31) u31 {
+			for(freeSlots.items, 0..) |potentialSlot, i| {
+				if(std.meta.eql(len, potentialSlot.len)) {
+					_ = freeSlots.swapRemove(i);
+					const result = potentialSlot.index;
+					main.globalAllocator.destroy(potentialSlot);
+					return result;
+				}
+			}
+			const result: u31 = @intCast(modelData.items.len);
+			modelData.resize(result + len);
+			return result;
+		}
 
 		fn init(template: ItemVoxelModel) *ItemVoxelModel {
 			const self = main.globalAllocator.create(ItemVoxelModel);
 			self.* = ItemVoxelModel{
 				.item = template.item,
 			};
-			// Find sizes and free index:
-			const img = self.item.getImage();
-			self.size = Vec3i{img.width, 1, img.height};
-			var freeSlot: ?*ItemVoxelModel = null;
-			for(freeSlots.items, 0..) |potentialSlot, i| {
-				if(std.meta.eql(self.size, potentialSlot.size)) {
-					freeSlot = potentialSlot;
-					_ = freeSlots.swapRemove(i);
-					break;
+			if(self.item == .baseItem and self.item.baseItem.block != null and self.item.baseItem.image.imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
+				// Find sizes and free index:
+				const block = blocks.Block{.typ = self.item.baseItem.block.?, .data = 0}; // TODO: Natural standard
+				const modelIndex = blocks.meshes.model(block);
+				const model = &main.models.models.items[modelIndex];
+				var data = main.List(u32).init(main.stackAllocator);
+				defer data.deinit();
+				for(model.internalQuads) |quad| {
+					const textureIndex = blocks.meshes.textureIndex(block, main.models.quads.items[quad].textureSlot);
+					data.append(@as(u32, quad) << 16 | textureIndex); // modelAndTexture
+					data.append(0); // offsetByNormal
 				}
-			}
-			const modelDataSize: u32 = @intCast(3 + @reduce(.Mul, self.size));
-			var dataSection: []u32 = undefined;
-			if(freeSlot) |_freeSlot| {
-				main.globalAllocator.destroy(_freeSlot);
-				self.index = _freeSlot.index;
+				for(model.neighborFacingQuads) |list| {
+					for(list) |quad| {
+						const textureIndex = blocks.meshes.textureIndex(block, main.models.quads.items[quad].textureSlot);
+						data.append(@as(u32, quad) << 16 | textureIndex); // modelAndTexture
+						data.append(1); // offsetByNormal
+					}
+				}
+				self.len = @intCast(data.items.len);
+				self.index = getSlot(self.len);
+				@memcpy(modelData.items[self.index..][0..self.len], data.items);
 			} else {
-				self.index = @intCast(modelData.items.len);
-				modelData.resize(self.index + modelDataSize);
-			}
-			dataSection = modelData.items[self.index..][0..modelDataSize];
-			dataSection[0] = @intCast(self.size[0]);
-			dataSection[1] = @intCast(self.size[1]);
-			dataSection[2] = @intCast(self.size[2]);
-			var i: u32 = 3;
-			var z: u32 = 0;
-			while(z < 1) : (z += 1) {
-				var x: u32 = 0;
-				while(x < img.width) : (x += 1) {
-					var y: u32 = 0;
-					while(y < img.height) : (y += 1) {
-						dataSection[i] = img.getRGB(x, y).toARBG();
-						i += 1;
+				// Find sizes and free index:
+				const img = self.item.getImage();
+				const size = Vec3i{img.width, 1, img.height};
+				self.len = @intCast(3 + @reduce(.Mul, size));
+				self.index = getSlot(self.len);
+				var dataSection: []u32 = undefined;
+				dataSection = modelData.items[self.index..][0..self.len];
+				dataSection[0] = @intCast(size[0]);
+				dataSection[1] = @intCast(size[1]);
+				dataSection[2] = @intCast(size[2]);
+				var i: u32 = 3;
+				var z: u32 = 0;
+				while(z < 1) : (z += 1) {
+					var x: u32 = 0;
+					while(x < img.width) : (x += 1) {
+						var y: u32 = 0;
+						while(y < img.height) : (y += 1) {
+							dataSection[i] = img.getRGB(x, y).toARBG();
+							i += 1;
+						}
 					}
 				}
 			}
@@ -585,70 +626,6 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		itemModelSSBO.bufferData(i32, &[3]i32{1, 1, 1});
 		itemModelSSBO.bind(2);
 
-		const positions = [_]i32 {
-			0b011000,
-			0b011001,
-			0b011010,
-			0b011011,
-
-			0b001000,
-			0b001001,
-			0b001100,
-			0b001101,
-
-			0b101000,
-			0b101010,
-			0b101100,
-			0b101110,
-
-			0b010100,
-			0b010101,
-			0b010110,
-			0b010111,
-
-			0b000010,
-			0b000011,
-			0b000110,
-			0b000111,
-			
-			0b100001,
-			0b100011,
-			0b100101,
-			0b100111,
-		};
-		const indices = [_]i32 {
-			0, 1, 3,
-			0, 3, 2,
-
-			4, 7, 5,
-			4, 6, 7,
-
-			8, 9, 11,
-			8, 11, 10,
-			
-			12, 15, 13,
-			12, 14, 15,
-
-			16, 17, 19,
-			16, 19, 18,
-
-			20, 23, 21,
-			20, 22, 23,
-		};
-		c.glGenVertexArrays(1, &itemVAO);
-		c.glBindVertexArray(itemVAO);
-		c.glEnableVertexAttribArray(0);
-
-		c.glGenBuffers(2, &itemVBOs);
-		c.glBindBuffer(c.GL_ARRAY_BUFFER, itemVBOs[0]);
-		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(positions.len*@sizeOf(i32)), &positions, c.GL_STATIC_DRAW);
-		c.glVertexAttribPointer(0, 1, c.GL_FLOAT, c.GL_FALSE, @sizeOf(i32), null);
-
-		c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, itemVBOs[1]);
-		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.len*@sizeOf(i32)), &indices, c.GL_STATIC_DRAW);
-
-		c.glBindVertexArray(0);
-
 		modelData = main.List(u32).init(main.globalAllocator);
 		freeSlots = main.List(*ItemVoxelModel).init(main.globalAllocator);
 	}
@@ -656,8 +633,6 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	pub fn deinit() void {
 		itemShader.deinit();
 		itemModelSSBO.deinit();
-		c.glDeleteVertexArrays(1, &itemVAO);
-		c.glDeleteBuffers(2, &itemVBOs);
 		modelData.deinit();
 		voxelModels.clear();
 		for(freeSlots.items) |freeSlot| {
@@ -668,9 +643,9 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 
 	var voxelModels: utils.Cache(ItemVoxelModel, 32, 32, ItemVoxelModel.deinit) = .{};
 
-	fn getModelIndex(item: items.Item) u31 {
+	fn getModel(item: items.Item) *ItemVoxelModel {
 		const compareObject = ItemVoxelModel{.item = item};
-		return voxelModels.findOrCreate(compareObject, ItemVoxelModel.init, null).index;
+		return voxelModels.findOrCreate(compareObject, ItemVoxelModel.init, null);
 	}
 
 	pub fn renderItemDrops(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d, time: u32) void {
@@ -678,11 +653,15 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		itemShader.bind();
 		c.glUniform1i(itemUniforms.texture_sampler, 0);
 		c.glUniform1i(itemUniforms.emissionSampler, 1);
+		c.glUniform1i(itemUniforms.reflectivityAndAbsorptionSampler, 2);
+		c.glUniform1i(itemUniforms.reflectionMap, 4);
+		c.glUniform1f(itemUniforms.reflectionMapSize, main.renderer.reflectionCubeMapSize);
 		c.glUniform1i(itemUniforms.time, @as(u31, @truncate(time)));
 		c.glUniformMatrix4fv(itemUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 		c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniformMatrix4fv(itemUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&game.camera.viewMatrix));
 		c.glUniform1f(itemUniforms.sizeScale, @floatCast(ItemDropManager.diameter/4.0));
+		c.glUniform1f(itemUniforms.contrast, 0.12);
 		const itemDrops = &game.world.?.itemDrops.super;
 		itemDrops.mutex.lock();
 		defer itemDrops.mutex.unlock();
@@ -702,18 +681,19 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 				modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-rot[2]));
 				c.glUniformMatrix4fv(itemUniforms.modelMatrix, 1, c.GL_TRUE, @ptrCast(&modelMatrix));
 
+				const model = getModel(item);
+				c.glUniform1i(itemUniforms.modelIndex, model.index);
+				var vertices: u31 = 36;
+
 				if(item == .baseItem and item.baseItem.block != null and item.baseItem.image.imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
 					const blockType = item.baseItem.block.?;
-					const block = blocks.Block{.typ = blockType, .data = 0};
-					c.glUniform1i(itemUniforms.modelIndex, block.mode().model(block));
 					c.glUniform1i(itemUniforms.block, blockType);
+					vertices = model.len/2*6;
 				} else {
-					const index = getModelIndex(item);
-					c.glUniform1i(itemUniforms.modelIndex, index);
 					c.glUniform1i(itemUniforms.block, 0);
 				}
-				c.glBindVertexArray(itemVAO);
-				c.glDrawElements(c.GL_TRIANGLES, 36, c.GL_UNSIGNED_INT, null);
+				c.glBindVertexArray(main.renderer.chunk_meshing.vao);
+				c.glDrawElements(c.GL_TRIANGLES, vertices, c.GL_UNSIGNED_INT, null);
 			}
 		}
 	}
