@@ -1686,3 +1686,8 @@ pub const ReadWriteLock = struct { // MARK: ReadWriteLock
 		}
 	}
 };
+
+pub const Side = enum {
+	client,
+	server,
+};

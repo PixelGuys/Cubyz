@@ -225,7 +225,7 @@ pub const Player = struct { // MARK: Player
 		return @max(-max_p, min_p) <= r;
 	}
 
-	const Direction = enum {x, y, z};
+	const Direction = enum(u2) {x = 0, y = 1, z = 2};
 
 	pub fn collideWithBlock(block: main.blocks.Block, x: i32, y: i32, z: i32, entityPosition: Vec3d, entityBoundingBoxExtent: Vec3d, directionVector: Vec3d) ?struct{box: Box, dist: f64} {
 		var resultBox: ?Box = null;
@@ -297,10 +297,10 @@ pub const Player = struct { // MARK: Player
 		else return null;
 	}
 
-	pub fn collides(dir: Direction, amount: f64, hitBox: Box) ?Box {
+	pub fn collides(comptime side: main.utils.Side, dir: Direction, amount: f64, pos: Vec3d, hitBox: Box) ?Box {
 		var boundingBox: Box = .{
-			.min = super.pos + hitBox.min,
-			.max = super.pos + hitBox.max,
+			.min = pos + hitBox.min,
+			.max = pos + hitBox.max,
 		};
 		switch (dir) {
 			.x => {
@@ -337,7 +337,9 @@ pub const Player = struct { // MARK: Player
 			while (y <= maxY) : (y += 1) {
 				var z: i32 = maxZ;
 				while (z >= minZ) : (z -= 1) {
-					if (main.renderer.mesh_storage.getBlock(x, y, z)) |block| {
+					const _block = if(side == .client) main.renderer.mesh_storage.getBlock(x, y, z)
+					else main.server.world.?.getBlock(x, y, z);
+					if (_block) |block| {
 						if(collideWithBlock(block, x, y, z, boundingBoxCenter, fullBoundingBoxExtent, directionVector)) |res| {
 							if(res.dist < minDistance) {
 								resultBox = res.box;
@@ -787,7 +789,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		Player.super.pos[0] += move[0];
 		const hitBox = Player.outerBoundingBox;
 
-		if (Player.collides(.x, -move[0], hitBox)) |box| {
+		if (Player.collides(.client, .x, -move[0], Player.super.pos, hitBox)) |box| {
 			var step = false;
 			var steppingHeight = Player.steppingHeight()[2];
 			if(Player.super.vel[2] > 0) {
@@ -796,7 +798,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			if (box.max[2] - Player.super.pos[2] + Player.outerBoundingBoxExtent[2] <= steppingHeight) {
 				const old = Player.super.pos[2];
 				Player.super.pos[2] = box.max[2] + Player.outerBoundingBoxExtent[2] + 0.0001;
-				if (Player.eyePos[2] - (Player.super.pos[2] - old) <= Player.eyeBox.min[2] or Player.collides(.y, 0, hitBox) != null) {
+				if (Player.eyePos[2] - (Player.super.pos[2] - old) <= Player.eyeBox.min[2] or Player.collides(.client, .y, 0, Player.super.pos, hitBox) != null) {
 					Player.super.pos[2] = old;
 				} else {
 					Player.eyeVel[2] = @max(1.5*vec.length(Player.super.vel), Player.eyeVel[2], 4);
@@ -814,12 +816,12 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			if(!step) {
 				if (move[0] < 0) {
 					Player.super.pos[0] = box.max[0] - hitBox.min[0];
-					while (Player.collides(.x, 0, hitBox)) |_| {
+					while (Player.collides(.client, .x, 0, Player.super.pos, hitBox)) |_| {
 						Player.super.pos[0] += 1;
 					}
 				} else {
 					Player.super.pos[0] = box.min[0] - hitBox.max[0];
-					while (Player.collides(.x, 0, hitBox)) |_| {
+					while (Player.collides(.client, .x, 0, Player.super.pos, hitBox)) |_| {
 						Player.super.pos[0] -= 1;
 					}
 				}
@@ -828,7 +830,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		}
 
 		Player.super.pos[1] += move[1];
-		if (Player.collides(.y, -move[1], hitBox)) |box| {
+		if (Player.collides(.client, .y, -move[1], Player.super.pos, hitBox)) |box| {
 			var step = false;
 			var steppingHeight = Player.steppingHeight()[2];
 			if(Player.super.vel[2] > 0) {
@@ -837,7 +839,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			if (box.max[2] - Player.super.pos[2] + Player.outerBoundingBoxExtent[2] <= steppingHeight) {
 				const old = Player.super.pos[2];
 				Player.super.pos[2] = box.max[2] + Player.outerBoundingBoxExtent[2] + 0.0001;
-				if (Player.eyePos[2] - (Player.super.pos[2] - old) <= Player.eyeBox.min[2] or Player.collides(.y, 0, hitBox) != null) {
+				if (Player.eyePos[2] - (Player.super.pos[2] - old) <= Player.eyeBox.min[2] or Player.collides(.client, .y, 0, Player.super.pos, hitBox) != null) {
 					Player.super.pos[2] = old;
 				} else {
 					Player.eyeVel[2] = @max(1.5*vec.length(Player.super.vel), Player.eyeVel[2], 4);
@@ -855,12 +857,12 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			if(!step) {
 				if (move[1] < 0) {
 					Player.super.pos[1] = box.max[1] - hitBox.min[1];
-					while (Player.collides(.y, 0, hitBox)) |_| {
+					while (Player.collides(.client, .y, 0, Player.super.pos, hitBox)) |_| {
 						Player.super.pos[1] += 1;
 					}
 				} else {
 					Player.super.pos[1] = box.min[1] - hitBox.max[1];
-					while (Player.collides(.y, 0, hitBox)) |_| {
+					while (Player.collides(.client, .y, 0, Player.super.pos, hitBox)) |_| {
 						Player.super.pos[1] -= 1;
 					}
 				}
@@ -871,7 +873,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		const wasOnGround = Player.onGround;
 		Player.onGround = false;
 		Player.super.pos[2] += move[2];
-		if (Player.collides(.z, -move[2], hitBox)) |box| {
+		if (Player.collides(.client, .z, -move[2], Player.super.pos, hitBox)) |box| {
 			if (move[2] < 0) {
 				if(!wasOnGround) {
 					Player.eyeVel[2] = Player.super.vel[2];
@@ -879,12 +881,12 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 				}
 				Player.onGround = true;
 				Player.super.pos[2] = box.max[2] - hitBox.min[2];
-				while (Player.collides(.z, 0, hitBox)) |_| {
+				while (Player.collides(.client, .z, 0, Player.super.pos, hitBox)) |_| {
 					Player.super.pos[2] += 1;
 				}
 			} else {
 				Player.super.pos[2] = box.min[2] - hitBox.max[2];
-				while (Player.collides(.z, 0, hitBox)) |_| {
+				while (Player.collides(.client, .z, 0, Player.super.pos, hitBox)) |_| {
 					Player.super.pos[2] -= 1;
 				}
 			}

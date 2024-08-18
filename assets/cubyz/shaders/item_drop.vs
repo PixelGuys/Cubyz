@@ -16,7 +16,6 @@ uniform mat4 viewMatrix;
 uniform mat4 modelMatrix;
 uniform int modelIndex;
 uniform int block;
-uniform float sizeScale;
 
 layout(std430, binding = 2) buffer _modelInfo
 {
@@ -100,7 +99,8 @@ void main() {
 		lower = uvec3(0);
 
 		startPosition = lower + vec3(upper - lower)*0.999*pos;
-		pos = pos*(upper - lower)*sizeScale + sizeScale/2;
+		float scale = max(upper.x - lower.x, max(upper.y - lower.y, upper.z - lower.z));
+		pos = pos*(upper - lower)/scale + (0.5 - (lower + upper)/scale/2);
 		textureIndex = -1;
 	}
 	voxelModel = voxelModelIndex;

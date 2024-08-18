@@ -302,25 +302,27 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 
 	fn updateEnt(self: *ItemDropManager, chunk: *ServerChunk, pos: *Vec3d, vel: *Vec3d, deltaTime: f64) void {
 		main.utils.assertLocked(&self.mutex);
-		const startedInABlock = self.checkBlocks(chunk, pos);
-		if(startedInABlock) {
+		if(main.game.Player.collides(.server, .x, 0, pos.*, .{.min = @splat(-radius), .max = @splat(radius)}) != null) {
 			self.fixStuckInBlock(chunk, pos, vel, deltaTime);
 			return;
 		}
 		var drag: f64 = self.airDragFactor;
-		const acceleration: Vec3d = Vec3d{0, 0, -self.gravity*deltaTime};
-		// Update gravity:
+		vel.* += Vec3d{0, 0, -self.gravity*deltaTime};
 		inline for(0..3) |i| {
-			const old = pos.*[i];
-			pos.*[i] += vel.*[i]*deltaTime + acceleration[i]*deltaTime;
-			if(self.checkBlocks(chunk, pos)) {
-				pos.*[i] = old;
-				vel.*[i] *= 0.5; // Effectively performing binary search over multiple frames.
+			const move = vel.*[i]*deltaTime;// + acceleration[i]*deltaTime;
+			if(main.game.Player.collides(.server, @enumFromInt(i), move, pos.*, .{.min = @splat(-radius), .max = @splat(radius)})) |box| {
+				if (move < 0) {
+					pos.*[i] = box.max[i] + radius;
+				} else {
+					pos.*[i] = box.max[i] - radius;
+				}
+				vel.*[i] = 0;
+			} else {
+				pos.*[i] += move;
 			}
 			drag += 0.5; // TODO: Calculate drag from block properties and add buoyancy.
 		}
 		// Apply drag:
-		vel.* += acceleration;
 		vel.* *= @splat(@max(0, 1 - drag*deltaTime));
 	}
 
@@ -362,6 +364,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 	}
 
 	fn checkBlocks(self: *ItemDropManager, chunk: *ServerChunk, pos: *Vec3d) bool {
+
 		const lowerCornerPos = pos.* - @as(Vec3d, @splat(radius));
 		const pos0f64 = @floor(lowerCornerPos);
 		const pos0: Vec3i = @intFromFloat(pos0f64);
@@ -517,7 +520,6 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		ambientLight: c_int,
 		modelIndex: c_int,
 		block: c_int,
-		sizeScale: c_int,
 		time: c_int,
 		texture_sampler: c_int,
 		emissionSampler: c_int,
@@ -660,7 +662,6 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		c.glUniformMatrix4fv(itemUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 		c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniformMatrix4fv(itemUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&game.camera.viewMatrix));
-		c.glUniform1f(itemUniforms.sizeScale, @floatCast(ItemDropManager.diameter/4.0));
 		c.glUniform1f(itemUniforms.contrast, 0.12);
 		const itemDrops = &game.world.?.itemDrops.super;
 		itemDrops.mutex.lock();
@@ -675,25 +676,29 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 					Vec3f{light >> 16 & 255, light >> 8 & 255, light & 255}/@as(Vec3f, @splat(255))
 				)));
 				pos -= playerPos;
-				var modelMatrix = Mat4f.translation(@floatCast(pos));
-				modelMatrix = modelMatrix.mul(Mat4f.rotationX(-rot[0]));
-				modelMatrix = modelMatrix.mul(Mat4f.rotationY(-rot[1]));
-				modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-rot[2]));
-				modelMatrix = modelMatrix.mul(Mat4f.scale(@splat(0.25)));
-				modelMatrix = modelMatrix.mul(Mat4f.translation(@splat(-0.5)));
-				c.glUniformMatrix4fv(itemUniforms.modelMatrix, 1, c.GL_TRUE, @ptrCast(&modelMatrix));
 
 				const model = getModel(item);
 				c.glUniform1i(itemUniforms.modelIndex, model.index);
 				var vertices: u31 = 36;
 
+				var scale: f32 = 0.3;
 				if(item == .baseItem and item.baseItem.block != null and item.baseItem.image.imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
 					const blockType = item.baseItem.block.?;
 					c.glUniform1i(itemUniforms.block, blockType);
 					vertices = model.len/2*6;
 				} else {
 					c.glUniform1i(itemUniforms.block, 0);
+					scale = 0.5;
 				}
+
+				var modelMatrix = Mat4f.translation(@floatCast(pos));
+				modelMatrix = modelMatrix.mul(Mat4f.rotationX(-rot[0]));
+				modelMatrix = modelMatrix.mul(Mat4f.rotationY(-rot[1]));
+				modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-rot[2]));
+				modelMatrix = modelMatrix.mul(Mat4f.scale(@splat(scale)));
+				modelMatrix = modelMatrix.mul(Mat4f.translation(@splat(-0.5)));
+				c.glUniformMatrix4fv(itemUniforms.modelMatrix, 1, c.GL_TRUE, @ptrCast(&modelMatrix));
+
 				c.glBindVertexArray(main.renderer.chunk_meshing.vao);
 				c.glDrawElements(c.GL_TRIANGLES, vertices, c.GL_UNSIGNED_INT, null);
 			}

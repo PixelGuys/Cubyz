@@ -848,11 +848,14 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		return map.getRoughBiome(wx, wy, wz, false, undefined, true);
 	}
 
-	pub fn getBlock(self: *ServerWorld, x: i32, y: i32, z: i32) Block {
-		if(self.getChunk(x, y, z)) |ch| {
-			return ch.getBlock(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask);
-		}
-		return Block {.typ = 0, .data = 0};
+	pub fn getBlock(self: *ServerWorld, x: i32, y: i32, z: i32) ?Block {
+		const chunkPos = Vec3i{x, y, z} & ~@as(Vec3i, @splat(main.chunk.chunkMask));
+		const otherChunk = self.getSimulationChunkAndIncreaseRefCount(chunkPos[0], chunkPos[1], chunkPos[2]) orelse return null;
+		defer otherChunk.decreaseRefCount();
+		const ch = otherChunk.getChunk() orelse return null;
+		ch.mutex.lock();
+		defer ch.mutex.unlock();
+		return ch.getBlock(x - ch.super.pos.wx, y - ch.super.pos.wy, z - ch.super.pos.wz);
 	}
 
 	pub fn updateBlock(_: *ServerWorld, wx: i32, wy: i32, wz: i32, _newBlock: Block) void {
