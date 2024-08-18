@@ -675,11 +675,12 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 					Vec3f{light >> 16 & 255, light >> 8 & 255, light & 255}/@as(Vec3f, @splat(255))
 				)));
 				pos -= playerPos;
-				var modelMatrix = Mat4f.translation(@floatCast(pos + Vec3d{0.5, 0.5, 0.5}));
+				var modelMatrix = Mat4f.translation(@floatCast(pos));
 				modelMatrix = modelMatrix.mul(Mat4f.rotationX(-rot[0]));
 				modelMatrix = modelMatrix.mul(Mat4f.rotationY(-rot[1]));
 				modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-rot[2]));
-				modelMatrix = modelMatrix.mul(Mat4f.translation(.{-0.5, -0.5, -0.5}));
+				modelMatrix = modelMatrix.mul(Mat4f.scale(@splat(0.25)));
+				modelMatrix = modelMatrix.mul(Mat4f.translation(@splat(-0.5)));
 				c.glUniformMatrix4fv(itemUniforms.modelMatrix, 1, c.GL_TRUE, @ptrCast(&modelMatrix));
 
 				const model = getModel(item);
