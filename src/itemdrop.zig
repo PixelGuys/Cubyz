@@ -302,7 +302,8 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 
 	fn updateEnt(self: *ItemDropManager, chunk: *ServerChunk, pos: *Vec3d, vel: *Vec3d, deltaTime: f64) void {
 		main.utils.assertLocked(&self.mutex);
-		if(main.game.Player.collides(.server, .x, 0, pos.*, .{.min = @splat(-radius), .max = @splat(radius)}) != null) {
+		const hitBox = main.game.collision.Box{.min = @splat(-radius), .max = @splat(radius)};
+		if(main.game.collision.collides(.server, .x, 0, pos.*, hitBox) != null) {
 			self.fixStuckInBlock(chunk, pos, vel, deltaTime);
 			return;
 		}
@@ -310,7 +311,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		vel.* += Vec3d{0, 0, -self.gravity*deltaTime};
 		inline for(0..3) |i| {
 			const move = vel.*[i]*deltaTime;// + acceleration[i]*deltaTime;
-			if(main.game.Player.collides(.server, @enumFromInt(i), move, pos.*, .{.min = @splat(-radius), .max = @splat(radius)})) |box| {
+			if(main.game.collision.collides(.server, @enumFromInt(i), move, pos.*, hitBox)) |box| {
 				if (move < 0) {
 					pos.*[i] = box.max[i] + radius;
 				} else {
@@ -363,41 +364,6 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		}
 	}
 
-	fn checkBlocks(self: *ItemDropManager, chunk: *ServerChunk, pos: *Vec3d) bool {
-
-		const lowerCornerPos = pos.* - @as(Vec3d, @splat(radius));
-		const pos0f64 = @floor(lowerCornerPos);
-		const pos0: Vec3i = @intFromFloat(pos0f64);
-		var isSolid = self.checkBlock(chunk, pos, pos0);
-		if(pos.*[0] - pos0f64[0] + diameter >= 1) {
-			isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{1, 0, 0});
-			if(pos.*[1] - pos0f64[1] + diameter >= 1) {
-				isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{0, 1, 0});
-				isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{1, 0, 0});
-				if(pos.*[2] - pos0f64[2] + diameter >= 1) {
-					isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{0, 0, 1});
-					isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{1, 0, 1});
-					isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{0, 1, 1});
-					isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{1, 1, 1});
-				}
-			} else {
-				isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{0, 0, 1});
-				isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{1, 0, 1});
-			}
-		} else {
-			if(pos.*[1] - pos0f64[1] + diameter >= 1) {
-				isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{0, 1, 0});
-				if(pos.*[2] - pos0f64[2] + diameter >= 1) {
-					isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{0, 0, 1});
-					isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{0, 1, 1});
-				}
-			} else {
-				isSolid = isSolid or self.checkBlock(chunk, pos, pos0 + Vec3i{0, 0, 1});
-			}
-		}
-		return isSolid;
-	}
-
 	fn checkBlock(self: *ItemDropManager, chunk: *ServerChunk, pos: *Vec3d, blockPos: Vec3i) bool {
 		// Transform to chunk-relative coordinates:
 		const chunkPos = blockPos & ~@as(Vec3i, @splat(main.chunk.chunkMask));
@@ -414,7 +380,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			defer ch.mutex.unlock();
 			block = ch.getBlock(blockPos[0] - ch.super.pos.wx, blockPos[1] - ch.super.pos.wy, blockPos[2] - ch.super.pos.wz);
 		}
-		return main.game.Player.collideWithBlock(block, blockPos[0], blockPos[1], blockPos[2], pos.*, @splat(radius), @splat(0)) != null;
+		return main.game.collision.collideWithBlock(block, blockPos[0], blockPos[1], blockPos[2], pos.*, @splat(radius), @splat(0)) != null;
 	}
 };
 
