@@ -1493,6 +1493,7 @@ pub const Connection = struct { // MARK: Connection
 
 	fn receiveKeepAlive(self: *Connection, data: []const u8) void {
 		std.debug.assert(self.manager.threadId == std.Thread.getCurrentId());
+		if(data.len == 0) return; // This is sent when brute forcing the port.
 		self.mutex.lock();
 		defer self.mutex.unlock();
 
