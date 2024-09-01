@@ -52,7 +52,6 @@ pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	list.add(ContinuousSlider.init(.{0, 0}, 128, 1.0, 1000.0, @floatFromInt(settings.updateRepeatDelay), &delayCallback, &delayFormatter));
 	list.add(ContinuousSlider.init(.{0, 0}, 128, 1.0, 500.0, @floatFromInt(settings.updateRepeatSpeed), &speedCallback, &speedFormatter));
-	// list.add(ContinuousSlider.init(.{0, 0}, 128, 1.0, 5.0, @floatFromInt(settings.selectionLineWidth), &selectionWidthCallback, &selectionWidthFormatter));
 	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffLine Width: ", "{}", &lineWidths, 1, &selectionWidthCallback));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
