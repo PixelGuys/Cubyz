@@ -378,13 +378,23 @@ pub const Player = struct { // MARK: Player
 		main.renderer.MeshSelection.breakBlock(&inventory__SEND_CHANGES_TO_SERVER.items[selectedSlot]);
 	}
 
-	pub fn acquireSelectedBlock() void { 
+	pub fn acquireSelectedBlock() void {
 		if (main.renderer.MeshSelection.selectedBlockPos) |selectedPos| {
 			const block = main.renderer.mesh_storage.getBlock(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
 			for (0..items.itemListSize) |idx|{
 				if (items.itemList[idx].block == block.typ){
 					const item = items.Item {.baseItem = &items.itemList[idx]};
+					if (inventory__SEND_CHANGES_TO_SERVER.items[selectedSlot].item != null) {
+						for (0..12) |slotIdx| {
+							if (inventory__SEND_CHANGES_TO_SERVER.items[slotIdx].item == null) {
+								inventory__SEND_CHANGES_TO_SERVER.items[slotIdx] = items.ItemStack {.item = item, .amount = items.itemList[idx].stackSize};
+								selectedSlot = @intCast(slotIdx);
+								return;
+							}
+						}
+					}
 					inventory__SEND_CHANGES_TO_SERVER.items[selectedSlot] = items.ItemStack {.item = item, .amount = items.itemList[idx].stackSize};
+					return;
 				}
 			}
 		}
