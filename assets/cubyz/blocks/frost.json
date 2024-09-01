@@ -4,7 +4,7 @@
 	"drops" : [
 		"auto"
 	],
-	"model" : "cube",
+	"model" : "cubyz:cube",
 	"texture" : "cubyz:frost",
 	"blockEntity" : "cubyz.modding.base.MeltableBlockEntity"
 }
