@@ -62,7 +62,7 @@ pub var occlusionTestUniforms: struct {
 	playerPositionInteger: c_int,
 	playerPositionFraction: c_int,
 } = undefined;
-var vao: c_uint = undefined;
+pub var vao: c_uint = undefined;
 var vbo: c_uint = undefined;
 pub var faceBuffer: graphics.LargeBuffer(FaceData) = undefined;
 pub var lightBuffer: graphics.LargeBuffer(u32) = undefined;

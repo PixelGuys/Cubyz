@@ -252,6 +252,45 @@ fn deinit() void {
 	command.deinit();
 }
 
+fn sendEntityUpdates(comptime getInitialList: bool, allocator: utils.NeverFailingAllocator) if(getInitialList) []const u8 else void {
+	// Send the entity updates:
+	const updateList = main.JsonElement.initArray(main.stackAllocator);
+	defer updateList.free(main.stackAllocator);
+	defer updateList.JsonArray.clearAndFree(); // The children are freed in other locations.
+	world.?.itemDropManager.mutex.lock();
+	if(world.?.itemDropManager.lastUpdates.JsonArray.items.len != 0) {
+		updateList.JsonArray.append(.{.JsonNull = {}});
+		updateList.JsonArray.appendSlice(world.?.itemDropManager.lastUpdates.JsonArray.items);
+	}
+	const updateData = updateList.toStringEfficient(main.stackAllocator, &.{});
+	defer main.stackAllocator.free(updateData);
+	if(world.?.itemDropManager.lastUpdates.JsonArray.items.len != 0) {
+		const alloc = world.?.itemDropManager.lastUpdates.JsonArray.allocator;
+		world.?.itemDropManager.lastUpdates.free(alloc);
+		world.?.itemDropManager.lastUpdates = main.JsonElement.initArray(alloc);
+	}
+	var initialList: []const u8 = undefined;
+	if(getInitialList) {
+		const list = main.JsonElement.initArray(main.stackAllocator);
+		defer list.free(main.stackAllocator);
+		list.JsonArray.append(.{.JsonNull = {}});
+		const itemDropList = world.?.itemDropManager.getInitialList(main.stackAllocator);
+		list.JsonArray.appendSlice(itemDropList.JsonArray.items);
+		itemDropList.JsonArray.items.len = 0;
+		itemDropList.free(main.stackAllocator);
+		initialList = list.toStringEfficient(allocator, &.{});
+	}
+	world.?.itemDropManager.mutex.unlock();
+	mutex.lock();
+	for(users.items) |user| {
+		main.network.Protocols.entity.send(user.conn, updateData);
+	}
+	mutex.unlock();
+	if(getInitialList) {
+		return initialList;
+	}
+}
+
 fn update() void { // MARK: update()
 	world.?.update();
 	mutex.lock();
@@ -260,8 +299,14 @@ fn update() void { // MARK: update()
 	}
 	mutex.unlock();
 
+	sendEntityUpdates(false, main.stackAllocator);
+
+
+	// Send the entity data:
 	const data = main.stackAllocator.alloc(u8, (4 + 24 + 12 + 24)*users.items.len);
 	defer main.stackAllocator.free(data);
+	const itemData = world.?.itemDropManager.getPositionAndVelocityData(main.stackAllocator);
+	defer main.stackAllocator.free(itemData);
 	var remaining = data;
 	mutex.lock();
 	for(users.items) |user| {
@@ -281,7 +326,7 @@ fn update() void { // MARK: update()
 		remaining = remaining[24..];
 	}
 	for(users.items) |user| {
-		main.network.Protocols.entityPosition.send(user.conn, data, &.{});
+		main.network.Protocols.entityPosition.send(user.conn, data, itemData);
 	}
 
 	while(userDeinitList.popOrNull()) |user| {
@@ -387,6 +432,9 @@ pub fn connect(user: *User) void {
 		if(user.connected.load(.unordered)) main.network.Protocols.entity.send(user.conn, data);
 
 	}
+	const initialList = sendEntityUpdates(true, main.stackAllocator);
+	main.network.Protocols.entity.send(user.conn, initialList);
+	main.stackAllocator.free(initialList);
 	const message = std.fmt.allocPrint(main.stackAllocator.allocator, "{s} #ffff00joined", .{user.name}) catch unreachable;
 	defer main.stackAllocator.free(message);
 	mutex.lock();

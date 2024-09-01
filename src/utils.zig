@@ -949,6 +949,22 @@ pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 			self.waitingThreads.signal();
 		}
 
+		pub fn addMany(self: *@This(), elems: []const T) void {
+			self.mutex.lock();
+			defer self.mutex.unlock();
+
+			if(self.size + elems.len > self.array.len) {
+				self.increaseCapacity(self.size*2 + elems.len);
+			}
+			for(elems) |elem| {
+				self.array[self.size] = elem;
+				self.siftUp(self.size);
+				self.size += 1;
+			}
+
+			self.waitingThreads.signal();
+		}
+
 		fn removeIndex(self: *@This(), i: usize) void {
 			assertLocked(&self.mutex);
 			self.size -= 1;
@@ -976,6 +992,15 @@ pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 					return error.Closed;
 				}
 			}
+		}
+
+
+		fn extractAny(self: *@This()) ?T {
+			self.mutex.lock();
+			defer self.mutex.unlock();
+			if(self.size == 0) return null;
+			self.size -= 1;
+			return self.array[self.size];
 		}
 
 		fn increaseCapacity(self: *@This(), newCapacity: usize) void {
@@ -1078,24 +1103,19 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 			}
 
 			if(id == 0 and std.time.milliTimestamp() -% lastUpdate > refreshTime) {
-				if(self.loadList.mutex.tryLock()) {
-					lastUpdate = std.time.milliTimestamp();
-					{
-						defer self.loadList.mutex.unlock();
-						var i: u32 = 0;
-						while(i < self.loadList.size) {
-							const task = &self.loadList.array[i];
-							if(!task.vtable.isStillNeeded(task.self, lastUpdate)) {
-								task.vtable.clean(task.self);
-								self.loadList.removeIndex(i);
-							} else {
-								task.cachedPriority = task.vtable.getPriority(task.self);
-								i += 1;
-							}
-						}
+				var temporaryTaskList = main.List(Task).init(main.stackAllocator);
+				defer temporaryTaskList.deinit();
+				while(self.loadList.extractAny()) |task| {
+					if(!task.vtable.isStillNeeded(task.self, lastUpdate)) {
+						task.vtable.clean(task.self);
+					} else {
+						const taskPtr = temporaryTaskList.addOne();
+						taskPtr.* = task;
+						taskPtr.cachedPriority = task.vtable.getPriority(task.self);
 					}
-					self.loadList.updatePriority();
 				}
+				self.loadList.addMany(temporaryTaskList.items);
+				lastUpdate = std.time.milliTimestamp();
 			}
 		}
 	}
@@ -1535,7 +1555,7 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type { // MARK: Gen
 				var smallestTime: i16 = std.math.maxInt(i16);
 				var smallestIndex: ?u31 = null;
 				for(self.lastTimes, 0..) |lastTimeI, i| {
-					//					 ↓ Only using a future time value that is far enough away to prevent jumping.
+					//                   ↓ Only using a future time value that is far enough away to prevent jumping.
 					if(lastTimeI -% time >= 50 and lastTimeI -% time < smallestTime) {
 						smallestTime = lastTimeI -% time;
 						smallestIndex = @intCast(i);
@@ -1685,4 +1705,9 @@ pub const ReadWriteLock = struct { // MARK: ReadWriteLock
 			}
 		}
 	}
+};
+
+pub const Side = enum {
+	client,
+	server,
 };

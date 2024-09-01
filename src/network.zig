@@ -132,7 +132,11 @@ const Address = struct {
 	isSymmetricNAT: bool = false,
 
 	pub fn format(self: Address, _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
-		try writer.print("{}.{}.{}.{}:{}", .{self.ip & 255, self.ip >> 8 & 255, self.ip >> 16 & 255, self.ip >> 24, self.port});
+		if(self.isSymmetricNAT) {
+			try writer.print("{}.{}.{}.{}:?{}", .{self.ip & 255, self.ip >> 8 & 255, self.ip >> 16 & 255, self.ip >> 24, self.port});
+		} else {
+			try writer.print("{}.{}.{}.{}:{}", .{self.ip & 255, self.ip >> 8 & 255, self.ip >> 16 & 255, self.ip >> 24, self.port});
+		}
 	}
 };
 
@@ -979,7 +983,6 @@ pub const Protocols = struct {
 		pub fn send(conn: *Connection, msg: []const u8) void {
 			conn.sendImportant(id, msg);
 		}
-		// TODO: Send entity data.
 	};
 	pub const genericUpdate = struct {
 		pub const id: u8 = 9;
@@ -1025,7 +1028,16 @@ pub const Protocols = struct {
 					// TODO: Clear inventory
 				},
 				type_itemStackDrop => {
-					// TODO: Drop stack
+					const json = JsonElement.parseFromString(main.stackAllocator, data[1..]);
+					defer json.free(main.stackAllocator);
+					const stack = ItemStack.load(json) catch |err| {
+						std.log.err("Received invalid item: {s}, {s}", .{data[1..], @errorName(err)});
+						return;
+					};
+					const pos = json.get(Vec3d, "pos", .{0, 0, 0});
+					const dir = json.get(Vec3f, "dir", .{0, 0, 1});
+					const vel = json.get(f32, "vel", 0);
+					main.server.world.?.drop(stack, pos, dir, vel);
 				},
 				type_itemStackCollect => {
 					const json = JsonElement.parseFromString(main.stackAllocator, data[1..]);
@@ -1481,6 +1493,7 @@ pub const Connection = struct { // MARK: Connection
 
 	fn receiveKeepAlive(self: *Connection, data: []const u8) void {
 		std.debug.assert(self.manager.threadId == std.Thread.getCurrentId());
+		if(data.len == 0) return; // This is sent when brute forcing the port.
 		self.mutex.lock();
 		defer self.mutex.unlock();
 

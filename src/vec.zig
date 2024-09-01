@@ -104,6 +104,17 @@ pub const Mat4f = struct { // MARK: Mat4f
 		};
 	}
 
+	pub fn scale(vector: Vec3f) Mat4f {
+		return Mat4f {
+			.rows = [4]Vec4f {
+				Vec4f{vector[0], 0,         0,         0},
+				Vec4f{0,         vector[1], 0,         0},
+				Vec4f{0,         0,         vector[2], 0},
+				Vec4f{0,         0,         0,         1},
+			}
+		};
+	}
+
 	pub fn rotationX(rad: f32) Mat4f {
 		const s = @sin(rad);
 		const c = @cos(rad);

@@ -1113,6 +1113,13 @@ pub const ItemStack = struct { // MARK: ItemStack
 	item: ?Item = null,
 	amount: u16 = 0,
 
+	pub fn load(json: JsonElement) !ItemStack {
+		return .{
+			.item = try Item.init(json),
+			.amount = json.get(?u16, "amount", null) orelse return error.InvalidAmount,
+		};
+	}
+
 	/// Moves the content of the given ItemStack into a new ItemStack.
 	pub fn moveFrom(self: *ItemStack, supplier: *ItemStack) void {
 		std.debug.assert(self.item == null); // Don't want to delete matter.

@@ -46,88 +46,7 @@ pub const camera = struct { // MARK: camera
 	}
 };
 
-const Box = struct {
-	min: Vec3d,
-	max: Vec3d,
-
-	pub fn center(self: Box) Vec3d {
-		return (self.min + self.max)*@as(Vec3d, @splat(0.5));
-	}
-
-	pub fn extent(self: Box) Vec3d {
-		return (self.max - self.min)*@as(Vec3d, @splat(0.5));
-	}
-};
-
-pub const Player = struct { // MARK: Player
-	pub var super: main.server.Entity = .{};
-	pub var eyePos: Vec3d = .{0, 0, 0};
-	pub var eyeVel: Vec3d = .{0, 0, 0};
-	pub var eyeStep: @Vector(3, bool) = .{false, false, false};
-	pub var id: u32 = 0;
-	pub var isFlying: Atomic(bool) = Atomic(bool).init(false);
-	pub var isGhost: Atomic(bool) = Atomic(bool).init(false);
-	pub var hyperSpeed: Atomic(bool) = Atomic(bool).init(false);
-	pub var mutex: std.Thread.Mutex = std.Thread.Mutex{};
-	pub var inventory__SEND_CHANGES_TO_SERVER: Inventory = undefined;
-	pub var selectedSlot: u32 = 0;
-
-	pub var maxHealth: f32 = 8;
-	pub var health: f32 = 4.5;
-
-	pub var onGround: bool = false;
-	pub var jumpCooldown: f64 = 0;
-	const jumpCooldownConstant = 0.3;
-
-	pub const outerBoundingBoxExtent: Vec3d = .{0.3, 0.3, 0.9};
-	pub const outerBoundingBox: Box = .{
-		.min = -outerBoundingBoxExtent,
-		.max = outerBoundingBoxExtent,
-	};
-	const eyeBox: Box = .{
-		.min = -Vec3d{outerBoundingBoxExtent[0]*0.2, outerBoundingBoxExtent[1]*0.2, 0.6},
-		.max = Vec3d{outerBoundingBoxExtent[0]*0.2, outerBoundingBoxExtent[1]*0.2, 0.9 - 0.05},
-	};
-	pub const desiredEyePos: Vec3d = .{0, 0, 1.7 - outerBoundingBoxExtent[2]};
-	pub const jumpHeight = 1.25;
-
-	fn loadFrom(json: JsonElement) void {
-		super.loadFrom(json);
-		inventory__SEND_CHANGES_TO_SERVER.loadFromJson(json.getChild("inventory"));
-	}
-
-	pub fn setPosBlocking(newPos: Vec3d) void {
-		mutex.lock();
-		defer mutex.unlock();
-		super.pos = newPos;
-	}
-
-	pub fn getPosBlocking() Vec3d {
-		mutex.lock();
-		defer mutex.unlock();
-		return super.pos;
-	}
-
-	pub fn getEyePosBlocking() Vec3d {
-		mutex.lock();
-		defer mutex.unlock();
-		return eyePos + super.pos + desiredEyePos;
-	}
-
-	pub fn getVelBlocking() Vec3d {
-		mutex.lock();
-		defer mutex.unlock();
-		return super.vel;
-	}
-
-	fn steppingHeight() Vec3d {
-		if(onGround) {
-			return .{0, 0, 0.6};
-		} else {
-			return .{0, 0, 0.1};
-		}
-	}
-
+pub const collision = struct {
 	pub fn triangleAABB(triangle: [3]Vec3d, box_center: Vec3d, box_extents: Vec3d) bool {
 		const X = 0;
 		const Y = 1;
@@ -225,7 +144,7 @@ pub const Player = struct { // MARK: Player
 		return @max(-max_p, min_p) <= r;
 	}
 
-	const Direction = enum {x, y, z};
+	const Direction = enum(u2) {x = 0, y = 1, z = 2};
 
 	pub fn collideWithBlock(block: main.blocks.Block, x: i32, y: i32, z: i32, entityPosition: Vec3d, entityBoundingBoxExtent: Vec3d, directionVector: Vec3d) ?struct{box: Box, dist: f64} {
 		var resultBox: ?Box = null;
@@ -297,10 +216,10 @@ pub const Player = struct { // MARK: Player
 		else return null;
 	}
 
-	pub fn collides(dir: Direction, amount: f64, hitBox: Box) ?Box {
+	pub fn collides(comptime side: main.utils.Side, dir: Direction, amount: f64, pos: Vec3d, hitBox: Box) ?Box {
 		var boundingBox: Box = .{
-			.min = super.pos + hitBox.min,
-			.max = super.pos + hitBox.max,
+			.min = pos + hitBox.min,
+			.max = pos + hitBox.max,
 		};
 		switch (dir) {
 			.x => {
@@ -337,7 +256,9 @@ pub const Player = struct { // MARK: Player
 			while (y <= maxY) : (y += 1) {
 				var z: i32 = maxZ;
 				while (z >= minZ) : (z -= 1) {
-					if (main.renderer.mesh_storage.getBlock(x, y, z)) |block| {
+					const _block = if(side == .client) main.renderer.mesh_storage.getBlock(x, y, z)
+					else main.server.world.?.getBlock(x, y, z);
+					if (_block) |block| {
 						if(collideWithBlock(block, x, y, z, boundingBoxCenter, fullBoundingBoxExtent, directionVector)) |res| {
 							if(res.dist < minDistance) {
 								resultBox = res.box;
@@ -353,6 +274,89 @@ pub const Player = struct { // MARK: Player
 		}
 
 		return resultBox;
+	}
+
+	pub const Box = struct {
+		min: Vec3d,
+		max: Vec3d,
+
+		pub fn center(self: Box) Vec3d {
+			return (self.min + self.max)*@as(Vec3d, @splat(0.5));
+		}
+
+		pub fn extent(self: Box) Vec3d {
+			return (self.max - self.min)*@as(Vec3d, @splat(0.5));
+		}
+	};
+};
+
+pub const Player = struct { // MARK: Player
+	pub var super: main.server.Entity = .{};
+	pub var eyePos: Vec3d = .{0, 0, 0};
+	pub var eyeVel: Vec3d = .{0, 0, 0};
+	pub var eyeStep: @Vector(3, bool) = .{false, false, false};
+	pub var id: u32 = 0;
+	pub var isFlying: Atomic(bool) = Atomic(bool).init(false);
+	pub var isGhost: Atomic(bool) = Atomic(bool).init(false);
+	pub var hyperSpeed: Atomic(bool) = Atomic(bool).init(false);
+	pub var mutex: std.Thread.Mutex = std.Thread.Mutex{};
+	pub var inventory__SEND_CHANGES_TO_SERVER: Inventory = undefined;
+	pub var selectedSlot: u32 = 0;
+
+	pub var maxHealth: f32 = 8;
+	pub var health: f32 = 4.5;
+
+	pub var onGround: bool = false;
+	pub var jumpCooldown: f64 = 0;
+	const jumpCooldownConstant = 0.3;
+
+	pub const outerBoundingBoxExtent: Vec3d = .{0.3, 0.3, 0.9};
+	pub const outerBoundingBox: collision.Box = .{
+		.min = -outerBoundingBoxExtent,
+		.max = outerBoundingBoxExtent,
+	};
+	const eyeBox: collision.Box = .{
+		.min = -Vec3d{outerBoundingBoxExtent[0]*0.2, outerBoundingBoxExtent[1]*0.2, 0.6},
+		.max = Vec3d{outerBoundingBoxExtent[0]*0.2, outerBoundingBoxExtent[1]*0.2, 0.9 - 0.05},
+	};
+	pub const desiredEyePos: Vec3d = .{0, 0, 1.7 - outerBoundingBoxExtent[2]};
+	pub const jumpHeight = 1.25;
+
+	fn loadFrom(json: JsonElement) void {
+		super.loadFrom(json);
+		inventory__SEND_CHANGES_TO_SERVER.loadFromJson(json.getChild("inventory"));
+	}
+
+	pub fn setPosBlocking(newPos: Vec3d) void {
+		mutex.lock();
+		defer mutex.unlock();
+		super.pos = newPos;
+	}
+
+	pub fn getPosBlocking() Vec3d {
+		mutex.lock();
+		defer mutex.unlock();
+		return super.pos;
+	}
+
+	pub fn getEyePosBlocking() Vec3d {
+		mutex.lock();
+		defer mutex.unlock();
+		return eyePos + super.pos + desiredEyePos;
+	}
+
+	pub fn getVelBlocking() Vec3d {
+		mutex.lock();
+		defer mutex.unlock();
+		return super.vel;
+	}
+
+	fn steppingHeight() Vec3d {
+		if(onGround) {
+			return .{0, 0, 0.6};
+		} else {
+			return .{0, 0, 0.1};
+		}
 	}
 
 	pub fn placeBlock() void {
@@ -787,7 +791,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		Player.super.pos[0] += move[0];
 		const hitBox = Player.outerBoundingBox;
 
-		if (Player.collides(.x, -move[0], hitBox)) |box| {
+		if (collision.collides(.client, .x, -move[0], Player.super.pos, hitBox)) |box| {
 			var step = false;
 			var steppingHeight = Player.steppingHeight()[2];
 			if(Player.super.vel[2] > 0) {
@@ -796,7 +800,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			if (box.max[2] - Player.super.pos[2] + Player.outerBoundingBoxExtent[2] <= steppingHeight) {
 				const old = Player.super.pos[2];
 				Player.super.pos[2] = box.max[2] + Player.outerBoundingBoxExtent[2] + 0.0001;
-				if (Player.eyePos[2] - (Player.super.pos[2] - old) <= Player.eyeBox.min[2] or Player.collides(.y, 0, hitBox) != null) {
+				if (Player.eyePos[2] - (Player.super.pos[2] - old) <= Player.eyeBox.min[2] or collision.collides(.client, .y, 0, Player.super.pos, hitBox) != null) {
 					Player.super.pos[2] = old;
 				} else {
 					Player.eyeVel[2] = @max(1.5*vec.length(Player.super.vel), Player.eyeVel[2], 4);
@@ -814,12 +818,12 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			if(!step) {
 				if (move[0] < 0) {
 					Player.super.pos[0] = box.max[0] - hitBox.min[0];
-					while (Player.collides(.x, 0, hitBox)) |_| {
+					while (collision.collides(.client, .x, 0, Player.super.pos, hitBox)) |_| {
 						Player.super.pos[0] += 1;
 					}
 				} else {
 					Player.super.pos[0] = box.min[0] - hitBox.max[0];
-					while (Player.collides(.x, 0, hitBox)) |_| {
+					while (collision.collides(.client, .x, 0, Player.super.pos, hitBox)) |_| {
 						Player.super.pos[0] -= 1;
 					}
 				}
@@ -828,7 +832,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		}
 
 		Player.super.pos[1] += move[1];
-		if (Player.collides(.y, -move[1], hitBox)) |box| {
+		if (collision.collides(.client, .y, -move[1], Player.super.pos, hitBox)) |box| {
 			var step = false;
 			var steppingHeight = Player.steppingHeight()[2];
 			if(Player.super.vel[2] > 0) {
@@ -837,7 +841,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			if (box.max[2] - Player.super.pos[2] + Player.outerBoundingBoxExtent[2] <= steppingHeight) {
 				const old = Player.super.pos[2];
 				Player.super.pos[2] = box.max[2] + Player.outerBoundingBoxExtent[2] + 0.0001;
-				if (Player.eyePos[2] - (Player.super.pos[2] - old) <= Player.eyeBox.min[2] or Player.collides(.y, 0, hitBox) != null) {
+				if (Player.eyePos[2] - (Player.super.pos[2] - old) <= Player.eyeBox.min[2] or collision.collides(.client, .y, 0, Player.super.pos, hitBox) != null) {
 					Player.super.pos[2] = old;
 				} else {
 					Player.eyeVel[2] = @max(1.5*vec.length(Player.super.vel), Player.eyeVel[2], 4);
@@ -855,12 +859,12 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			if(!step) {
 				if (move[1] < 0) {
 					Player.super.pos[1] = box.max[1] - hitBox.min[1];
-					while (Player.collides(.y, 0, hitBox)) |_| {
+					while (collision.collides(.client, .y, 0, Player.super.pos, hitBox)) |_| {
 						Player.super.pos[1] += 1;
 					}
 				} else {
 					Player.super.pos[1] = box.min[1] - hitBox.max[1];
-					while (Player.collides(.y, 0, hitBox)) |_| {
+					while (collision.collides(.client, .y, 0, Player.super.pos, hitBox)) |_| {
 						Player.super.pos[1] -= 1;
 					}
 				}
@@ -871,7 +875,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		const wasOnGround = Player.onGround;
 		Player.onGround = false;
 		Player.super.pos[2] += move[2];
-		if (Player.collides(.z, -move[2], hitBox)) |box| {
+		if (collision.collides(.client, .z, -move[2], Player.super.pos, hitBox)) |box| {
 			if (move[2] < 0) {
 				if(!wasOnGround) {
 					Player.eyeVel[2] = Player.super.vel[2];
@@ -879,12 +883,12 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 				}
 				Player.onGround = true;
 				Player.super.pos[2] = box.max[2] - hitBox.min[2];
-				while (Player.collides(.z, 0, hitBox)) |_| {
+				while (collision.collides(.client, .z, 0, Player.super.pos, hitBox)) |_| {
 					Player.super.pos[2] += 1;
 				}
 			} else {
 				Player.super.pos[2] = box.min[2] - hitBox.max[2];
-				while (Player.collides(.z, 0, hitBox)) |_| {
+				while (collision.collides(.client, .z, 0, Player.super.pos, hitBox)) |_| {
 					Player.super.pos[2] -= 1;
 				}
 			}

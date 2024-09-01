@@ -24,8 +24,7 @@ const Entity = server.Entity;
 const storage = @import("storage.zig");
 
 pub const EntityChunk = struct {
-	chunk: ?*ServerChunk = null,
-	mutex: std.Thread.Mutex = .{},
+	chunk: std.atomic.Value(?*ServerChunk) = .{.raw = null},
 	refCount: std.atomic.Value(u32),
 	pos: chunk.ChunkPosition,
 
@@ -40,7 +39,7 @@ pub const EntityChunk = struct {
 
 	fn deinit(self: *const EntityChunk) void {
 		std.debug.assert(self.refCount.load(.monotonic) == 0);
-		if(self.chunk) |ch| ch.decreaseRefCount();
+		if(self.chunk.raw) |ch| ch.decreaseRefCount();
 		main.globalAllocator.destroy(self);
 	}
 
@@ -58,6 +57,14 @@ pub const EntityChunk = struct {
 		if(prevVal == 1) {
 			self.deinit();
 		}
+	}
+
+	pub fn getChunk(self: *EntityChunk) ?*ServerChunk {
+		return self.chunk.load(.acquire);
+	}
+
+	pub fn setChunkAndDecreaseRefCount(self: *EntityChunk, ch: *ServerChunk) void {
+		std.debug.assert(self.chunk.swap(ch, .release) == null);
 	}
 };
 
@@ -93,15 +100,17 @@ const ChunkManager = struct { // MARK: ChunkManager
 	pub fn getOrGenerateEntityChunkAndIncreaseRefCount(pos: chunk.ChunkPosition) *EntityChunk {
 		std.debug.assert(pos.voxelSize == 1);
 		mutex.lock();
-		defer mutex.unlock();
 		if(entityChunkHashMap.get(pos)) |entityChunk| {
 			entityChunk.increaseRefCount();
+			mutex.unlock();
 			return entityChunk;
 		}
 		const entityChunk = EntityChunk.initAndIncreaseRefCount(pos);
-		std.debug.assert(entityChunk.chunk == null);
-		entityChunkHashMap.put(pos, entityChunk) catch unreachable;
 		entityChunk.increaseRefCount();
+		entityChunk.increaseRefCount();
+		entityChunkHashMap.put(pos, entityChunk) catch unreachable;
+		mutex.unlock();
+		ChunkLoadTask.scheduleAndDecreaseRefCount(pos, .{.entityChunk = entityChunk});
 		return entityChunk;
 	}
 
@@ -151,21 +160,19 @@ const ChunkManager = struct { // MARK: ChunkManager
 		pub fn isStillNeeded(self: *ChunkLoadTask, milliTime: i64) bool {
 			switch(self.source) { // Remove the task if the player disconnected
 				.user => |user| if(!user.connected.load(.unordered)) return false,
-				.entityChunk => |ch| if(ch.refCount.load(.monotonic) == 1) return false,
+				.entityChunk => |ch| if(ch.refCount.load(.monotonic) == 2) return false,
 			}
 			if(milliTime - self.creationTime > 10000) { // Only remove stuff after 10 seconds to account for trouble when for example teleporting.
-				server.mutex.lock();
-				defer server.mutex.unlock();
-				for(server.users.items) |user| {
-					const minDistSquare = self.pos.getMinDistanceSquared(user.player.pos);
-					//                                                                  ↓ Margin for error. (diagonal of 1 chunk)
-					var targetRenderDistance = (@as(f32, @floatFromInt(user.renderDistance*chunk.chunkSize)) + @as(f32, @floatFromInt(chunk.chunkSize))*@sqrt(3.0));
-					targetRenderDistance *= @as(f32, @floatFromInt(self.pos.voxelSize));
-					if(minDistSquare <= targetRenderDistance*targetRenderDistance) {
-						return true;
-					}
+				switch(self.source) { // Remove the task if it's far enough away from the player:
+					.user => |user| {
+						const minDistSquare = self.pos.getMinDistanceSquared(user.player.pos);
+						//                                                                  ↓ Margin for error. (diagonal of 1 chunk)
+						var targetRenderDistance = (@as(f32, @floatFromInt(user.renderDistance*chunk.chunkSize)) + @as(f32, @floatFromInt(chunk.chunkSize))*@sqrt(3.0));
+						targetRenderDistance *= @as(f32, @floatFromInt(self.pos.voxelSize));
+						return minDistSquare <= targetRenderDistance*targetRenderDistance;
+					},
+					.entityChunk => {},
 				}
-				return false;
 			}
 			return true;
 		}
@@ -276,15 +283,13 @@ const ChunkManager = struct { // MARK: ChunkManager
 
 	pub fn generateChunk(pos: ChunkPosition, source: Source) void { // MARK: generateChunk()
 		const ch = getOrGenerateChunkAndIncreaseRefCount(pos);
-		defer ch.decreaseRefCount();
 		switch(source) {
 			.user => |user| {
 				main.network.Protocols.chunkTransmission.sendChunk(user.conn, ch);
+				ch.decreaseRefCount();
 			},
 			.entityChunk => |entityChunk| {
-				entityChunk.mutex.lock();
-				defer entityChunk.mutex.unlock();
-				entityChunk.chunk = ch;
+				entityChunk.setChunkAndDecreaseRefCount(ch);
 			},
 		}
 	}
@@ -292,9 +297,7 @@ const ChunkManager = struct { // MARK: ChunkManager
 	fn chunkInitFunctionForCacheAndIncreaseRefCount(pos: ChunkPosition) *ServerChunk {
 		if(pos.voxelSize == 1) if(getEntityChunkAndIncreaseRefCount(pos)) |entityChunk| { // Check if we already have it in memory.
 			defer entityChunk.decreaseRefCount();
-			entityChunk.mutex.lock();
-			defer entityChunk.mutex.unlock();
-			if(entityChunk.chunk) |ch| {
+			if(entityChunk.getChunk()) |ch| {
 				ch.increaseRefCount();
 				return ch;
 			}
@@ -507,6 +510,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	pub fn deinit(self: *ServerWorld) void {
+		self.forceSave() catch |err| {
+			std.log.err("Error while saving the world: {s}", .{@errorName(err)});
+		};
 		while(self.chunkUpdateQueue.dequeue()) |updateRequest| {
 			updateRequest.ch.save(self);
 			updateRequest.ch.decreaseRefCount();
@@ -754,8 +760,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		return map.getBiome(wx, wy).isValidPlayerSpawn;
 	}
 
-	pub fn dropWithCooldown(self: *ServerWorld, stack: ItemStack, pos: Vec3d, dir: Vec3f, velocity: f32, pickupCooldown: u32) void {
-		const vel = vec.floatCast(f64, dir*@as(Vec3d, @splat(velocity)));
+	pub fn dropWithCooldown(self: *ServerWorld, stack: ItemStack, pos: Vec3d, dir: Vec3f, velocity: f32, pickupCooldown: i32) void {
+		const vel: Vec3d = @floatCast(dir*@as(Vec3f, @splat(velocity)));
 		self.itemDropManager.add(pos, vel, stack, server.updatesPerSec*900, pickupCooldown);
 	}
 
@@ -825,12 +831,10 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.chunkManager.queueLightMapAndDecreaseRefCount(pos, source);
 	}
 
-	pub fn getChunk(self: *ServerWorld, x: i32, y: i32, z: i32) ?*ServerChunk {
-		_ = self;
-		_ = x;
-		_ = y;
-		_ = z;
-		// TODO
+	pub fn getSimulationChunkAndIncreaseRefCount(_: *ServerWorld, x: i32, y: i32, z: i32) ?*EntityChunk {
+		if(ChunkManager.getEntityChunkAndIncreaseRefCount(.{.wx = x & ~@as(i32, chunk.chunkMask), .wy = y & ~@as(i32, chunk.chunkMask), .wz = z & ~@as(i32, chunk.chunkMask), .voxelSize = 1})) |entityChunk| {
+			return entityChunk;
+		}
 		return null;
 	}
 
@@ -844,11 +848,14 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		return map.getRoughBiome(wx, wy, wz, false, undefined, true);
 	}
 
-	pub fn getBlock(self: *ServerWorld, x: i32, y: i32, z: i32) Block {
-		if(self.getChunk(x, y, z)) |ch| {
-			return ch.getBlock(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask);
-		}
-		return Block {.typ = 0, .data = 0};
+	pub fn getBlock(self: *ServerWorld, x: i32, y: i32, z: i32) ?Block {
+		const chunkPos = Vec3i{x, y, z} & ~@as(Vec3i, @splat(main.chunk.chunkMask));
+		const otherChunk = self.getSimulationChunkAndIncreaseRefCount(chunkPos[0], chunkPos[1], chunkPos[2]) orelse return null;
+		defer otherChunk.decreaseRefCount();
+		const ch = otherChunk.getChunk() orelse return null;
+		ch.mutex.lock();
+		defer ch.mutex.unlock();
+		return ch.getBlock(x - ch.super.pos.wx, y - ch.super.pos.wy, z - ch.super.pos.wz);
 	}
 
 	pub fn updateBlock(_: *ServerWorld, wx: i32, wy: i32, wz: i32, _newBlock: Block) void {
