@@ -4,9 +4,9 @@
 		"density" : 1.0,
 		"resistance" : 1.0,
 		"power" : 1.0,
-		"roughness" : 0.3,
+		"roughness" : 0.1,
 		"colors" : [
-			0xff4a9494, 0xff53a5a5, 0xff59b3b3, 0xff59bbbb, 0xff7dcbcb
+			0xff847bce, 0xff8b9fe0, 0xff94c6ea, 0xffb0eaf6, 0xffffffff
 		]
 	}
 }
