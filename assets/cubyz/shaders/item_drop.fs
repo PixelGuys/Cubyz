@@ -128,15 +128,19 @@ void mainItemDrop() {
 		if(tMax.x < tMax.y) {
 			if(tMax.x < tMax.z) {
 				voxelPosition.x += step.x;
-				if((voxelPosition.x & sizeMask.x) != voxelPosition.x)
-					discard;
+				if((voxelPosition.x & sizeMask.x) != voxelPosition.x) {
+					block = 0;
+					break;
+				}
 				total_tMax = tMax.x;
 				tMax.x += tDelta.x;
 				lastNormal = 2 + (1 + int(step.x))/2;
 			} else {
 				voxelPosition.z += step.z;
-				if((voxelPosition.z & sizeMask.z) != voxelPosition.z)
-					discard;
+				if((voxelPosition.z & sizeMask.z) != voxelPosition.z) {
+					block = 0;
+					break;
+				}
 				total_tMax = tMax.z;
 				tMax.z += tDelta.z;
 				lastNormal = 4 + (1 + int(step.z))/2;
@@ -144,15 +148,19 @@ void mainItemDrop() {
 		} else {
 			if(tMax.y < tMax.z) {
 				voxelPosition.y += step.y;
-				if((voxelPosition.y & sizeMask.y) != voxelPosition.y)
-					discard;
+				if((voxelPosition.y & sizeMask.y) != voxelPosition.y) {
+					block = 0;
+					break;
+				}
 				total_tMax = tMax.y;
 				tMax.y += tDelta.y;
 				lastNormal = 0 + (1 + int(step.y))/2;
 			} else {
 				voxelPosition.z += step.z;
-				if((voxelPosition.z & sizeMask.z) != voxelPosition.z)
-					discard;
+				if((voxelPosition.z & sizeMask.z) != voxelPosition.z) {
+					block = 0;
+					break;
+				}
 				total_tMax = tMax.z;
 				tMax.z += tDelta.z;
 				lastNormal = 4 + (1 + int(step.z))/2;
