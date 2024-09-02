@@ -326,6 +326,7 @@ pub const Player = struct { // MARK: Player
 	pub var super: main.server.Entity = .{};
 	pub var eyePos: Vec3d = .{0, 0, 0};
 	pub var eyeVel: Vec3d = .{0, 0, 0};
+	pub var eyeCoyote: f64 = 0;
 	pub var eyeStep: @Vector(3, bool) = .{false, false, false};
 	pub var id: u32 = 0;
 	pub var isFlying: Atomic(bool) = Atomic(bool).init(false);
@@ -767,6 +768,9 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 					Player.eyeStep[i] = false;
 				}
 			}
+			if(i == 2 and Player.eyeCoyote > 0){
+				break :blk;
+			}
 			const frictionCoefficient = directionalFrictionCoefficients[i];
 			const v_0 = Player.eyeVel[i];
 			const k = springConstants[i];
@@ -842,13 +846,17 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 		const stepAmount = xMovement[1] + yMovement[1];
 		if (stepAmount > 0) {
-			Player.eyeVel[2] = @max(1.5*vec.length(Player.super.vel), Player.eyeVel[2], 4);
-			Player.eyePos[2] -= stepAmount;
-			Player.eyeStep[2] = true;
-			if(Player.super.vel[2] > 0){
-				Player.eyeVel[2] = Player.super.vel[2];
-				Player.eyeStep[2] = false;
+			if (Player.eyeCoyote <= 0) {
+				Player.eyeVel[2] = @max(1.5*vec.length(Player.super.vel), Player.eyeVel[2], 4);
+				Player.eyeStep[2] = true;
+				if(Player.super.vel[2] > 0){
+					Player.eyeVel[2] = Player.super.vel[2];
+					Player.eyeStep[2] = false;
+				}
+			} else {
+				Player.eyeCoyote = 0;
 			}
+			Player.eyePos[2] -= stepAmount;
 			move[2] = -0.01;
 			Player.onGround = true;
 		}
@@ -864,6 +872,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 				}
 				Player.onGround = true;
 				Player.super.pos[2] = box.max[2] - hitBox.min[2];
+				Player.eyeCoyote = 0;
 			} else {
 				Player.super.pos[2] = box.min[2] - hitBox.max[2];
 			}
@@ -873,14 +882,23 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			while (collision.collides(.client, .z, 0, Player.super.pos, hitBox)) |_| {
 				Player.super.pos[2] += 1;
 			}
+		} else if (wasOnGround and move[2] < 0) {
+			// If the player drops off a ledge, they might just be walking over a small gap, so lock the y position of the eyes that long.
+			// This calculates how long the player has to fall until we know they're not walking over a small gap.
+			// We add deltaTime because we subtract deltaTime at the bottom of update
+			Player.eyeCoyote = @sqrt(2 * Player.steppingHeight()[2] / gravity) + deltaTime;
+			Player.eyePos[2] -= move[2];
+		} else if (Player.eyeCoyote > 0) {
+			Player.eyePos[2] -= move[2];
 		}
 
 	} else {
 		Player.super.pos += move;
 	}
 
-	// Clamp the eyePosition:
+	// Clamp the eyePosition and subtract eye coyote time.
 	Player.eyePos = @max(Player.eyeBox.min, @min(Player.eyePos, Player.eyeBox.max));
+	Player.eyeCoyote -= deltaTime;
 
 	const biome = world.?.playerBiome.load(.monotonic);
 
