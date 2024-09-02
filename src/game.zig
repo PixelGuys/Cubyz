@@ -372,16 +372,28 @@ pub const Player = struct { // MARK: Player
 		return super.pos;
 	}
 
+	pub fn getVelBlocking() Vec3d {
+		mutex.lock();
+		defer mutex.unlock();
+		return super.vel;
+	}
+
 	pub fn getEyePosBlocking() Vec3d {
 		mutex.lock();
 		defer mutex.unlock();
 		return eyePos + super.pos + desiredEyePos;
 	}
 
-	pub fn getVelBlocking() Vec3d {
+	pub fn getEyeVelBlocking() Vec3d {
 		mutex.lock();
 		defer mutex.unlock();
-		return super.vel;
+		return eyeVel;
+	}
+
+	pub fn getEyeCoyoteBlocking() f64 {
+		mutex.lock();
+		defer mutex.unlock();
+		return eyeCoyote;
 	}
 
 	fn steppingHeight() Vec3d {
