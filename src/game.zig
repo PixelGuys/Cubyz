@@ -14,6 +14,7 @@ const network = @import("network.zig");
 const Connection = network.Connection;
 const ConnectionManager = network.ConnectionManager;
 const vec = @import("vec.zig");
+const Vec2d = vec.Vec2d;
 const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
 const Vec3d = vec.Vec3d;
@@ -274,6 +275,37 @@ pub const collision = struct {
 		}
 
 		return resultBox;
+	}
+
+	pub fn collideOrStep(comptime side: main.utils.Side, comptime dir: Direction, amount: f64, pos: Vec3d, hitBox: Box, steppingHeight: f64) Vec2d {
+		const index = @intFromEnum(dir);
+
+		// First argument is amount we end up moving in dir, second argument is how far up we step
+		var resultingMovement: Vec2d = .{amount, 0};
+		var checkPos = pos;
+		checkPos[index] += amount;
+
+		if (collision.collides(side, dir, -amount, checkPos, hitBox)) |box| {
+			const height = box.max[2] - checkPos[2] + hitBox.max[2];
+			if (height <= steppingHeight) {
+				// If we collide but might be able to step up
+				checkPos[2] += steppingHeight;
+				if (collision.collides(side, dir, -amount, checkPos, hitBox) == null) {
+					// If there's no new collision then we can execute the step-up
+					resultingMovement[1] = height;
+					return resultingMovement;
+				}
+			}
+
+			// Otherwise move as close to the container as possible
+			if (amount < 0) {
+				resultingMovement[0] = box.max[index] - hitBox.min[index] - pos[index];
+			} else {
+				resultingMovement[0] = box.min[index] - hitBox.max[index] - pos[index];
+			}
+		}
+
+		return resultingMovement;
 	}
 
 	pub const Box = struct {
@@ -561,6 +593,7 @@ pub fn hyperSpeedToggle() void {
 	Player.hyperSpeed.store(!Player.hyperSpeed.load(.monotonic), .monotonic);
 }
 
+
 pub fn update(deltaTime: f64) void { // MARK: update()
 	const gravity = 30.0;
 	const terminalVelocity = 90.0;
@@ -788,88 +821,30 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		Player.mutex.lock();
 		defer Player.mutex.unlock();
 
-		Player.super.pos[0] += move[0];
 		const hitBox = Player.outerBoundingBox;
-
-		if (collision.collides(.client, .x, -move[0], Player.super.pos, hitBox)) |box| {
-			var step = false;
-			var steppingHeight = Player.steppingHeight()[2];
-			if(Player.super.vel[2] > 0) {
-				steppingHeight = Player.super.vel[2]*Player.super.vel[2]/gravity/2;
-			}
-			if (box.max[2] - Player.super.pos[2] + Player.outerBoundingBoxExtent[2] <= steppingHeight) {
-				const old = Player.super.pos[2];
-				Player.super.pos[2] = box.max[2] + Player.outerBoundingBoxExtent[2] + 0.0001;
-				if (Player.eyePos[2] - (Player.super.pos[2] - old) <= Player.eyeBox.min[2] or collision.collides(.client, .y, 0, Player.super.pos, hitBox) != null) {
-					Player.super.pos[2] = old;
-				} else {
-					Player.eyeVel[2] = @max(1.5*vec.length(Player.super.vel), Player.eyeVel[2], 4);
-					Player.eyePos[2] -= Player.super.pos[2] - old;
-					Player.eyeStep[2] = true;
-					if(Player.super.vel[2] > 0) {
-						Player.eyeVel[2] = Player.super.vel[2];
-						Player.eyeStep[2] = false;
-					}
-					move[2] = -0.01;
-					Player.onGround = true;
-					step = true;
-				}
-			}
-			if(!step) {
-				if (move[0] < 0) {
-					Player.super.pos[0] = box.max[0] - hitBox.min[0];
-					while (collision.collides(.client, .x, 0, Player.super.pos, hitBox)) |_| {
-						Player.super.pos[0] += 1;
-					}
-				} else {
-					Player.super.pos[0] = box.min[0] - hitBox.max[0];
-					while (collision.collides(.client, .x, 0, Player.super.pos, hitBox)) |_| {
-						Player.super.pos[0] -= 1;
-					}
-				}
-				Player.super.vel[0] = 0;
-			}
+		var steppingHeight = Player.steppingHeight()[2];
+		if (Player.super.vel[2] > 0) {
+			steppingHeight = Player.super.vel[2]*Player.super.vel[2]/gravity/2;
 		}
 
-		Player.super.pos[1] += move[1];
-		if (collision.collides(.client, .y, -move[1], Player.super.pos, hitBox)) |box| {
-			var step = false;
-			var steppingHeight = Player.steppingHeight()[2];
-			if(Player.super.vel[2] > 0) {
-				steppingHeight = Player.super.vel[2]*Player.super.vel[2]/gravity/2;
+		const xMovement = collision.collideOrStep(.client, .x, move[0], Player.super.pos, hitBox, steppingHeight);
+		Player.super.pos[0] += xMovement[0];
+		Player.super.pos[2] += xMovement[1];
+		const yMovement = collision.collideOrStep(.client, .y, move[1], Player.super.pos, hitBox, steppingHeight);
+		Player.super.pos[1] += yMovement[0];
+		Player.super.pos[2] += yMovement[1];
+
+		const stepAmount = xMovement[1] + yMovement[1];
+		if (stepAmount > 0) {
+			Player.eyeVel[2] = @max(1.5*vec.length(Player.super.vel), Player.eyeVel[2], 4);
+			Player.eyePos[2] -= stepAmount;
+			Player.eyeStep[2] = true;
+			if(Player.super.vel[2] > 0){
+				Player.eyeVel[2] = Player.super.vel[2];
+				Player.eyeStep[2] = false;
 			}
-			if (box.max[2] - Player.super.pos[2] + Player.outerBoundingBoxExtent[2] <= steppingHeight) {
-				const old = Player.super.pos[2];
-				Player.super.pos[2] = box.max[2] + Player.outerBoundingBoxExtent[2] + 0.0001;
-				if (Player.eyePos[2] - (Player.super.pos[2] - old) <= Player.eyeBox.min[2] or collision.collides(.client, .y, 0, Player.super.pos, hitBox) != null) {
-					Player.super.pos[2] = old;
-				} else {
-					Player.eyeVel[2] = @max(1.5*vec.length(Player.super.vel), Player.eyeVel[2], 4);
-					Player.eyePos[2] -= Player.super.pos[2] - old;
-					Player.eyeStep[2] = true;
-					if(Player.super.vel[2] > 0) {
-						Player.eyeVel[2] = Player.super.vel[2];
-						Player.eyeStep[2] = false;
-					}
-					move[2] = -0.01;
-					Player.onGround = true;
-					step = true;
-				}
-			}
-			if(!step) {
-				if (move[1] < 0) {
-					Player.super.pos[1] = box.max[1] - hitBox.min[1];
-					while (collision.collides(.client, .y, 0, Player.super.pos, hitBox)) |_| {
-						Player.super.pos[1] += 1;
-					}
-				} else {
-					Player.super.pos[1] = box.min[1] - hitBox.max[1];
-					while (collision.collides(.client, .y, 0, Player.super.pos, hitBox)) |_| {
-						Player.super.pos[1] -= 1;
-					}
-				}
-				Player.super.vel[1] = 0;
-			}
+			move[2] = -0.01;
+			Player.onGround = true;
 		}
 
 		const wasOnGround = Player.onGround;
@@ -894,6 +869,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			}
 			Player.super.vel[2] = 0;
 		}
+
 	} else {
 		Player.super.pos += move;
 	}
@@ -902,7 +878,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	Player.eyePos = @max(Player.eyeBox.min, @min(Player.eyePos, Player.eyeBox.max));
 
 	const biome = world.?.playerBiome.load(.monotonic);
-	
+
 	const t = 1 - @as(f32, @floatCast(@exp(-2 * deltaTime)));
 
 	fog.fogColor = (biome.fogColor - fog.fogColor) * @as(Vec3f, @splat(t)) + fog.fogColor;
