@@ -827,10 +827,16 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			steppingHeight = Player.super.vel[2]*Player.super.vel[2]/gravity/2;
 		}
 
-		const xMovement = collision.collideOrStep(.client, .x, move[0], Player.super.pos, hitBox, steppingHeight);
+		var xMovement = collision.collideOrStep(.client, .x, move[0], Player.super.pos, hitBox, steppingHeight);
+		if (Player.eyePos[2] - xMovement[1] <= Player.eyeBox.min[2]) {
+			xMovement = .{0, 0};
+		}
 		Player.super.pos[0] += xMovement[0];
 		Player.super.pos[2] += xMovement[1];
-		const yMovement = collision.collideOrStep(.client, .y, move[1], Player.super.pos, hitBox, steppingHeight);
+		var yMovement = collision.collideOrStep(.client, .y, move[1], Player.super.pos, hitBox, steppingHeight);
+		if (Player.eyePos[2] - yMovement[1] <= Player.eyeBox.min[2]) {
+			yMovement = .{0, 0};
+		}
 		Player.super.pos[1] += yMovement[0];
 		Player.super.pos[2] += yMovement[1];
 
