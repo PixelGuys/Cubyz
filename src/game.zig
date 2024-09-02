@@ -384,9 +384,10 @@ pub const Player = struct { // MARK: Player
 			for (0..items.itemListSize) |idx|{
 				if (items.itemList[idx].block == block.typ){
 					const item = items.Item {.baseItem = &items.itemList[idx]};
-					if (inventory__SEND_CHANGES_TO_SERVER.items[selectedSlot].item != null) {
+					const slotItem = inventory__SEND_CHANGES_TO_SERVER.items[selectedSlot];
+					if (slotItem.empty() or !std.meta.eql(slotItem.item, item)) {
 						for (0..12) |slotIdx| {
-							if (inventory__SEND_CHANGES_TO_SERVER.items[slotIdx].item == null) {
+							if (inventory__SEND_CHANGES_TO_SERVER.items[slotIdx].empty()) {
 								inventory__SEND_CHANGES_TO_SERVER.items[slotIdx] = items.ItemStack {.item = item, .amount = items.itemList[idx].stackSize};
 								selectedSlot = @intCast(slotIdx);
 								return;
