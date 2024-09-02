@@ -864,16 +864,15 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 				}
 				Player.onGround = true;
 				Player.super.pos[2] = box.max[2] - hitBox.min[2];
-				while (collision.collides(.client, .z, 0, Player.super.pos, hitBox)) |_| {
-					Player.super.pos[2] += 1;
-				}
 			} else {
 				Player.super.pos[2] = box.min[2] - hitBox.max[2];
-				while (collision.collides(.client, .z, 0, Player.super.pos, hitBox)) |_| {
-					Player.super.pos[2] -= 1;
-				}
 			}
 			Player.super.vel[2] = 0;
+
+			// Always unstuck upwards for now
+			while (collision.collides(.client, .z, 0, Player.super.pos, hitBox)) |_| {
+				Player.super.pos[2] += 1;
+			}
 		}
 
 	} else {
