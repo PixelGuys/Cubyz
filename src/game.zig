@@ -299,9 +299,9 @@ pub const Player = struct { // MARK: Player
 	pub var eyePos: Vec3d = .{0, 0, 0};
 	pub var eyeVel: Vec3d = .{0, 0, 0};
 	pub var eyeStep: @Vector(3, bool) = .{false, false, false};
-    pub var bobTime: f64 = 0;
-    pub var bobVel: f64 = 0;
-    pub var bobVec: Vec3d = .{0, 0, 0};
+	pub var bobTime: f64 = 0;
+	pub var bobVel: f64 = 0;
+	pub var bobVec: Vec3d = .{0, 0, 0};
 	pub var id: u32 = 0;
 	pub var isFlying: Atomic(bool) = Atomic(bool).init(false);
 	pub var isGhost: Atomic(bool) = Atomic(bool).init(false);
@@ -672,22 +672,22 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			Player.selectedSlot = @intCast(@mod(newSlot, 12));
 			main.Window.scrollOffset = 0;
 		}
-        
-        // View Bobbing
-        if (Player.onGround) { // No view bobbing in the air
-            // Smooth lerping of bobTime with framerate independent damping
-            const fac: f64 = 1 - std.math.exp(-10 * deltaTime);
-            var targetBobVel: f64 = 0;
-            if (movementSpeed > 0) {
-                targetBobVel = vec.dot(movementDir * @as(Vec3d, @splat(std.math.log2(movementSpeed / 4 + 1))), forward);
-            }
-            Player.bobVel = Player.bobVel * (1 - fac) + targetBobVel * fac;
-            Player.bobTime += std.math.pow(f64, @abs(Player.bobVel), 0.7) * std.math.sign(Player.bobVel) * 8 * deltaTime;
-        }
-        const bobStrength: f64 = @min(@abs(Player.bobVel) / 4, 1) * 0.3 * settings.viewBobStrength;
-        const xBob = @sin(Player.bobTime) * 0.5; // Horizontal Component
-        const zBob = -@abs(@cos(Player.bobTime)); // Vertical Component
-        Player.bobVec = vec.rotateZ(Vec3d{ xBob * bobStrength, 0, zBob * bobStrength }, -camera.rotation[2]);
+		
+		// View Bobbing
+		if (Player.onGround) { // No view bobbing in the air
+			// Smooth lerping of bobTime with framerate independent damping
+			const fac: f64 = 1 - std.math.exp(-10 * deltaTime);
+			var targetBobVel: f64 = 0;
+			if (movementSpeed > 0) {
+				targetBobVel = vec.dot(movementDir * @as(Vec3d, @splat(std.math.log2(movementSpeed / 4 + 1))), forward);
+			}
+			Player.bobVel = Player.bobVel * (1 - fac) + targetBobVel * fac;
+			Player.bobTime += std.math.pow(f64, @abs(Player.bobVel), 0.7) * std.math.sign(Player.bobVel) * 8 * deltaTime;
+		}
+		const bobStrength: f64 = @min(@abs(Player.bobVel) / 4, 1) * 0.3 * settings.viewBobStrength;
+		const xBob = @sin(Player.bobTime) * 0.5; // Horizontal Component
+		const zBob = -@abs(@cos(Player.bobTime)); // Vertical Component
+		Player.bobVec = vec.rotateZ(Vec3d{ xBob * bobStrength, 0, zBob * bobStrength }, -camera.rotation[2]);
 
 		// This our model for movement on a single frame:
 		// dv/dt = a - λ·v
