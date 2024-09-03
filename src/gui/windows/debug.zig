@@ -43,9 +43,9 @@ pub fn render() void {
 		draw.print("Pos: {d:.1}", .{player.getPosBlocking()}, 0, y, 8, .left);
 		y += 8;
 		draw.print("IsFlying: {} IsGhost: {} HyperSpeed: {}", .{
-			player.isFlying.raw,
-			player.isGhost.raw,
-			player.hyperSpeed.raw,
+			player.isFlying.load(.unordered),
+			player.isGhost.load(.unordered),
+			player.hyperSpeed.load(.unordered),
 		}, 0, y, 8, .left);
 		y += 8;
 		draw.print("OnGround: {} JumpCooldown: {d:.3}", .{
