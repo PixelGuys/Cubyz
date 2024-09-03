@@ -146,14 +146,16 @@ pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveB
 	width: i32,
 	allocator: NeverFailingAllocator,
 
-	pub fn init(allocator: main.utils.NeverFailingAllocator, pos: ChunkPosition, width: u31) InterpolatableCaveBiomeMapView {
+	pub fn init(allocator: main.utils.NeverFailingAllocator, pos: ChunkPosition, width: u31, margin: u31) InterpolatableCaveBiomeMapView {
 		const center = Vec3i{
 			pos.wx +% width/2,
 			pos.wy +% width/2,
 			pos.wz +% width/2,
 		};
 		const rotatedCenter = CaveBiomeMapFragment.rotate(center);
-		const caveBiomeFragmentWidth = 2 + width/CaveBiomeMapFragment.caveBiomeMapSize;
+		const marginDiv = 1024;
+		const marginMul: comptime_int = @reduce(.Max, @abs(comptime CaveBiomeMapFragment.rotate(.{marginDiv, marginDiv, marginDiv})));
+		const caveBiomeFragmentWidth = 1 + (width + margin + CaveBiomeMapFragment.caveBiomeMapSize)*marginMul/marginDiv/CaveBiomeMapFragment.caveBiomeMapSize;
 		var result = InterpolatableCaveBiomeMapView {
 			.fragments = Array3D(*CaveBiomeMapFragment).init(allocator, caveBiomeFragmentWidth, caveBiomeFragmentWidth, caveBiomeFragmentWidth),
 			.surfaceFragments = [_]*MapFragment {
@@ -498,7 +500,7 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 
 	pub fn init(allocator: NeverFailingAllocator, pos: ChunkPosition, width: u31, margin: u31) CaveBiomeMapView {
 		var self = CaveBiomeMapView {
-			.super = InterpolatableCaveBiomeMapView.init(allocator, pos, width),
+			.super = InterpolatableCaveBiomeMapView.init(allocator, pos, width, margin),
 		};
 		if(pos.voxelSize < 8) {
 			const startX = (pos.wx -% margin) & ~@as(i32, 63);
