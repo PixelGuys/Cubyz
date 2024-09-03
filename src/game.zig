@@ -678,7 +678,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
                 targetBobVel = vec.dot(movementDir * @as(Vec3d, @splat(std.math.log2(movementSpeed / 4 + 1))), forward);
             }
             Player.bobVel = Player.bobVel * (1 - fac) + targetBobVel * fac;
-            Player.bobTime += std.math.pow(f64, Player.bobVel, 0.7) * 8 * deltaTime;
+            Player.bobTime += std.math.pow(f64, @abs(Player.bobVel), 0.7) * std.math.sign(Player.bobVel) * 8 * deltaTime;
         }
         const bobStrength: f64 = Player.bobVel * 0.04 * settings.viewBobStrength;
         const xBob = std.math.cos(Player.bobTime); // Horizontal Component
