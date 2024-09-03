@@ -98,6 +98,15 @@ fn resolutionScaleCallback(newValue: u16) void {
 	main.Window.GLFWCallbacks.framebufferSize(null, main.Window.width, main.Window.height);
 }
 
+fn viewBobbingCallback(newValue: f32) void {
+	settings.viewBobStrength = newValue;
+	settings.save();
+}
+
+fn viewBobbingFormatter(allocator: main.utils.NeverFailingAllocator, value: f32) []const u8 {
+	return std.fmt.allocPrint(allocator.allocator, "#ffffffView Bobbing Strength: {d:.2}", .{value}) catch unreachable;
+}
+
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	list.add(ContinuousSlider.init(.{0, 0}, 128, 10.0, 154.0, @floatFromInt(settings.fpsCap orelse 144), &fpsCapCallback, &fpsCapFormatter));
@@ -108,6 +117,7 @@ pub fn onOpen() void {
 	list.add(CheckBox.init(.{0, 0}, 128, "Vertical Synchronization", settings.vsync, &vsyncCallback));
 	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffAnisotropic Filtering: ", "{}x", &anisotropy, switch(settings.anisotropicFiltering) {1 => 0, 2 => 1, 4 => 2, 8 => 3, 16 => 4, else => 2}, &anisotropicFilteringCallback));
 	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffResolution Scale: ", "{}%", &resolutions, @as(u16, @intFromFloat(@log2(settings.resolutionScale) + 2.0)), &resolutionScaleCallback));
+	list.add(ContinuousSlider.init(.{0, 0}, 128, 0.0, 1.0, settings.viewBobStrength, &viewBobbingCallback, &viewBobbingFormatter));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
