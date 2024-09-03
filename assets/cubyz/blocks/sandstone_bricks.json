@@ -5,6 +5,6 @@
 		"auto"
 	],
 	"rotation": "stairs",
-	"model": "cubyz:cubyz:cube",
+	"model": "cubyz:cube",
 	"texture": "cubyz:sandstone_bricks"
 }

@@ -858,9 +858,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			defer c.glDisable(c.GL_POLYGON_OFFSET_LINE);
 			c.glPolygonOffset(-2, 0);
 
-			c.glLineWidth(@floatFromInt(main.settings.selectionLineWidth));
-			const offset: Vec3f = @as(Vec3f, @splat(0.001));
-			drawCube(projectionMatrix, viewMatrix, @as(Vec3d, @floatFromInt(_selectedBlockPos)) - playerPos, selectionMin - offset, selectionMax + offset);
+			drawCube(projectionMatrix, viewMatrix, @as(Vec3d, @floatFromInt(_selectedBlockPos)) - playerPos, selectionMin, selectionMax);
 		}
 	}
 };

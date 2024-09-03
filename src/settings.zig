@@ -47,8 +47,6 @@ pub var leavesQuality: u16 = 2;
 
 pub var storageTime: i64 = 5000;
 
-pub var selectionLineWidth: u31 = 1;
-
 pub var updateRepeatSpeed: u31 = 200;
 
 pub var updateRepeatDelay: u31 = 500;
