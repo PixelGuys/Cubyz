@@ -87,8 +87,6 @@ pub const Model = struct {
 		return @popCount(@as(u3, @bitCast(hasTwoOnes))) == 2 and @popCount(@as(u3, @bitCast(hasTwoZeroes))) == 2;
 	}
 
-
-
 	pub fn init(quadInfos: []const QuadInfo) u16 {
 		const adjustedQuads = main.stackAllocator.alloc(QuadInfo, quadInfos.len);
 		defer main.stackAllocator.free(adjustedQuads);
@@ -305,56 +303,17 @@ pub const Model = struct {
 		}
 
 		for (triangleList.items) |t| {
-			try faceWriter.print("f {}/{}/{} {}/{}/{} {}/{}/{}\n", .{t.vertex[0], t.uvs[0], t.normals[0],
-																				  t.vertex[1], t.uvs[1], t.normals[1],
-																				  t.vertex[2], t.uvs[2], t.normals[2]});
+			try faceWriter.print("f {}/{}/{} {}/{}/{} {}/{}/{}\n", .{t.vertex[0] + 1, t.uvs[0] + 1, t.normals[0] + 1,
+																				  t.vertex[1] + 1, t.uvs[1] + 1, t.normals[1] + 1,
+																				  t.vertex[2] + 1, t.uvs[2] + 1, t.normals[2] + 1});
 		}
 
 		for (quadList.items) |t| {
-			try faceWriter.print("f {}/{}/{} {}/{}/{} {}/{}/{} {}/{}/{}\n", .{t.vertex[0], t.uvs[0], t.normals[0],
-																				  t.vertex[1], t.uvs[1], t.normals[1],
-																				  t.vertex[2], t.uvs[2], t.normals[2],
-																				  t.vertex[3], t.uvs[3], t.normals[3]});
+			try faceWriter.print("f {}/{}/{} {}/{}/{} {}/{}/{} {}/{}/{}\n", .{t.vertex[0] + 1, t.uvs[0] + 1, t.normals[0] + 1,
+																						   t.vertex[1] + 1, t.uvs[1] + 1, t.normals[1] + 1,
+																						   t.vertex[2] + 1, t.uvs[2] + 1, t.normals[2] + 1,
+																						   t.vertex[3] + 1, t.uvs[3] + 1, t.normals[3] + 1});
 		}
-
-				// const q = &quads.items[quad];
-
-				// const textureSlotX: f32 = @floatFromInt(q.textureSlot % 4);
-				// const textureSlotY: f32 = @floatFromInt(q.textureSlot / 4);
-
-				// if (std.meta.eql(q.corners[3], q.corners[1]) or std.meta.eql(q.corners[3], q.corners[2])) {
-				// 	try vertWriter.print("v {d} {d} {d}\n", .{q.corners[0][0] + q.normal[0], q.corners[0][2] + q.normal[2], q.corners[0][1] + q.normal[1]});
-				// 	try vertWriter.print("v {d} {d} {d}\n", .{q.corners[1][0] + q.normal[0], q.corners[1][2] + q.normal[2], q.corners[1][1] + q.normal[1]});
-				// 	try vertWriter.print("v {d} {d} {d}\n", .{q.corners[2][0] + q.normal[0], q.corners[2][2] + q.normal[2], q.corners[2][1] + q.normal[1]});
-
-				// 	try uvWriter.print("vt {d} {d}\n", .{(q.cornerUV[0][0] + textureSlotX) / 4.0, (q.cornerUV[0][1] + textureSlotY) / 4.0});
-				// 	try uvWriter.print("vt {d} {d}\n", .{(q.cornerUV[1][0] + textureSlotX) / 4.0, (q.cornerUV[1][1] + textureSlotY) / 4.0});
-				// 	try uvWriter.print("vt {d} {d}\n", .{(q.cornerUV[2][0] + textureSlotX) / 4.0, (q.cornerUV[2][1] + textureSlotY) / 4.0});
-
-				// 	try normWriter.print("vn {d} {d} {d}\n", .{q.normal[0], q.normal[2], -q.normal[1]});
-
-				// 	try faceWriter.print("f {}/{}/{} {}/{}/{} {}/{}/{}\n", .{vertInd, vertInd, normInd, vertInd + 1, vertInd + 1, normInd, vertInd + 2, vertInd + 2, normInd});
-
-				// 	vertInd += 3;
-				// 	normInd += 1;
-				// } else {
-				// 	try vertWriter.print("v {d} {d} {d}\n", .{q.corners[1][0] + q.normal[0], q.corners[1][2] + q.normal[2], q.corners[1][1] + q.normal[1]});
-				// 	try vertWriter.print("v {d} {d} {d}\n", .{q.corners[0][0] + q.normal[0], q.corners[0][2] + q.normal[2], q.corners[0][1] + q.normal[1]});
-				// 	try vertWriter.print("v {d} {d} {d}\n", .{q.corners[2][0] + q.normal[0], q.corners[2][2] + q.normal[2], q.corners[2][1] + q.normal[1]});
-				// 	try vertWriter.print("v {d} {d} {d}\n", .{q.corners[3][0] + q.normal[0], q.corners[3][2] + q.normal[2], q.corners[3][1] + q.normal[1]});
-
-				// 	try uvWriter.print("vt {d} {d}\n", .{(q.cornerUV[1][0] + textureSlotX) / 4.0, (q.cornerUV[1][1] + textureSlotY) / 4.0});
-				// 	try uvWriter.print("vt {d} {d}\n", .{(q.cornerUV[0][0] + textureSlotX) / 4.0, (q.cornerUV[0][1] + textureSlotY) / 4.0});
-				// 	try uvWriter.print("vt {d} {d}\n", .{(q.cornerUV[2][0] + textureSlotX) / 4.0, (q.cornerUV[2][1] + textureSlotY) / 4.0});
-				// 	try uvWriter.print("vt {d} {d}\n", .{(q.cornerUV[3][0] + textureSlotX) / 4.0, (q.cornerUV[3][1] + textureSlotY) / 4.0});
-
-				// 	try normWriter.print("vn {d} {d} {d}\n", .{q.normal[0], q.normal[2], -q.normal[1]});
-
-				// 	try faceWriter.print("f {}/{}/{} {}/{}/{} {}/{}/{} {}/{}/{}\n", .{vertInd, vertInd, normInd, vertInd + 1, vertInd + 1, normInd, vertInd + 2, vertInd + 2, normInd, vertInd + 3, vertInd + 3, normInd});
-
-				// 	vertInd += 4;
-				// 	normInd += 1;
-				// }
 
 		var data = main.List(u8).init(main.stackAllocator);
 		defer data.deinit();
