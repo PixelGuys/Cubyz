@@ -309,8 +309,8 @@ pub const Model = struct {
 		}
 
 		for (quadList.items) |t| {
-			try faceWriter.print("f {}/{}/{} {}/{}/{} {}/{}/{} {}/{}/{}\n", .{t.vertex[0] + 1, t.uvs[0] + 1, t.normals[0] + 1,
-																						   t.vertex[1] + 1, t.uvs[1] + 1, t.normals[1] + 1,
+			try faceWriter.print("f {}/{}/{} {}/{}/{} {}/{}/{} {}/{}/{}\n", .{t.vertex[1] + 1, t.uvs[1] + 1, t.normals[1] + 1,
+																						   t.vertex[0] + 1, t.uvs[0] + 1, t.normals[0] + 1,
 																						   t.vertex[2] + 1, t.uvs[2] + 1, t.normals[2] + 1,
 																						   t.vertex[3] + 1, t.uvs[3] + 1, t.normals[3] + 1});
 		}
