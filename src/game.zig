@@ -14,7 +14,6 @@ const network = @import("network.zig");
 const Connection = network.Connection;
 const ConnectionManager = network.ConnectionManager;
 const vec = @import("vec.zig");
-const Vec2d = vec.Vec2d;
 const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
 const Vec3d = vec.Vec3d;
@@ -277,11 +276,12 @@ pub const collision = struct {
 		return resultBox;
 	}
 
-	pub fn collideOrStep(comptime side: main.utils.Side, comptime dir: Direction, amount: f64, pos: Vec3d, hitBox: Box, steppingHeight: f64) Vec2d {
+	pub fn collideOrStep(comptime side: main.utils.Side, comptime dir: Direction, amount: f64, pos: Vec3d, hitBox: Box, steppingHeight: f64) Vec3d {
 		const index = @intFromEnum(dir);
 
 		// First argument is amount we end up moving in dir, second argument is how far up we step
-		var resultingMovement: Vec2d = .{amount, 0};
+		var resultingMovement: Vec3d = .{0, 0, 0};
+		resultingMovement[index] = amount;
 		var checkPos = pos;
 		checkPos[index] += amount;
 
@@ -292,16 +292,16 @@ pub const collision = struct {
 				checkPos[2] += steppingHeight;
 				if (collision.collides(side, dir, -amount, checkPos, hitBox) == null) {
 					// If there's no new collision then we can execute the step-up
-					resultingMovement[1] = height;
+					resultingMovement[2] = height;
 					return resultingMovement;
 				}
 			}
 
 			// Otherwise move as close to the container as possible
 			if (amount < 0) {
-				resultingMovement[0] = box.max[index] - hitBox.min[index] - pos[index];
+				resultingMovement[index] = box.max[index] - hitBox.min[index] - pos[index];
 			} else {
-				resultingMovement[0] = box.min[index] - hitBox.max[index] - pos[index];
+				resultingMovement[index] = box.min[index] - hitBox.max[index] - pos[index];
 			}
 		}
 
@@ -845,13 +845,11 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		steppingHeight = @min(steppingHeight, Player.eyePos[2] - Player.eyeBox.min[2]);
 
 		const xMovement = collision.collideOrStep(.client, .x, move[0], Player.super.pos, hitBox, steppingHeight);
-		Player.super.pos[0] += xMovement[0];
-		Player.super.pos[2] += xMovement[1];
+		Player.super.pos += xMovement;
 		const yMovement = collision.collideOrStep(.client, .y, move[1], Player.super.pos, hitBox, steppingHeight);
-		Player.super.pos[1] += yMovement[0];
-		Player.super.pos[2] += yMovement[1];
+		Player.super.pos += yMovement;
 
-		const stepAmount = xMovement[1] + yMovement[1];
+		const stepAmount = xMovement[2] + yMovement[2];
 		if (stepAmount > 0) {
 			if (Player.eyeCoyote <= 0) {
 				Player.eyeVel[2] = @max(1.5*vec.length(Player.super.vel), Player.eyeVel[2], 4);
