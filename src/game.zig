@@ -41,8 +41,12 @@ pub const camera = struct { // MARK: camera
 	}
 
 	pub fn updateViewMatrix() void {
-		direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -rotation[0]), -rotation[2]);
-		viewMatrix = Mat4f.identity().mul(Mat4f.rotationX(rotation[0])).mul(Mat4f.rotationZ(rotation[2]));
+		const bobStrength = @min(@abs(Player.bobVel) / 4, 1);
+		const xRot: f32 = @floatCast(rotation[0] + @cos(Player.bobTime + 0.20) * -0.005 * bobStrength);
+		const yRot: f32 = @floatCast(@sin(Player.bobTime) * 0.003 * bobStrength);
+		const zRot: f32 = rotation[2];
+		direction = vec.rotateZ(vec.rotateY(vec.rotateX(Vec3f{0, 1, 0}, -xRot), -yRot), -zRot);
+		viewMatrix = Mat4f.identity().mul(Mat4f.rotationX(xRot)).mul(Mat4f.rotationY(yRot)).mul(Mat4f.rotationZ(zRot));
 	}
 };
 
@@ -680,9 +684,9 @@ pub fn update(deltaTime: f64) void { // MARK: update()
             Player.bobVel = Player.bobVel * (1 - fac) + targetBobVel * fac;
             Player.bobTime += std.math.pow(f64, @abs(Player.bobVel), 0.7) * std.math.sign(Player.bobVel) * 8 * deltaTime;
         }
-        const bobStrength: f64 = Player.bobVel * 0.04 * settings.viewBobStrength;
-        const xBob = std.math.cos(Player.bobTime); // Horizontal Component
-        const zBob = std.math.pow(f64, std.math.sin(Player.bobTime), 2) * 1.5; // Vertical Component
+        const bobStrength: f64 = @min(@abs(Player.bobVel) / 4, 1) * 0.3 * settings.viewBobStrength;
+        const xBob = @sin(Player.bobTime) * 0.5; // Horizontal Component
+        const zBob = -@abs(@cos(Player.bobTime)); // Vertical Component
         Player.bobVec = vec.rotateZ(Vec3d{ xBob * bobStrength, 0, zBob * bobStrength }, -camera.rotation[2]);
 
 		// This our model for movement on a single frame:
