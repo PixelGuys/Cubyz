@@ -90,7 +90,7 @@ pub fn readAllFilesInAddons(externalAllocator: NeverFailingAllocator, addons: ma
 	}
 }
 /// Reads obj files recursively from all subfolders.
-pub fn readAllFilesInAddonsHashmap(externalAllocator: NeverFailingAllocator, addons: main.List(std.fs.Dir), addonNames: main.List([]const u8), subPath: []const u8, output: *std.StringHashMap([]const u8)) void {
+pub fn readAllObjFilesInAddonsHashmap(externalAllocator: NeverFailingAllocator, addons: main.List(std.fs.Dir), addonNames: main.List([]const u8), subPath: []const u8, output: *std.StringHashMap([]const u8)) void {
 	for(addons.items, addonNames.items) |addon, addonName| {
 		var dir = addon.openDir(subPath, .{.iterate = true}) catch |err| {
 			if(err != error.FileNotFound) {
@@ -168,7 +168,7 @@ pub fn readAssets(externalAllocator: NeverFailingAllocator, assetPath: []const u
 	readAllJsonFilesInAddons(externalAllocator, addons, addonNames, "items", items);
 	readAllJsonFilesInAddons(externalAllocator, addons, addonNames, "biomes", biomes);
 	readAllFilesInAddons(externalAllocator, addons, "recipes", recipes);
-	readAllFilesInAddonsHashmap(externalAllocator, addons, addonNames, "models", models);
+	readAllObjFilesInAddonsHashmap(externalAllocator, addons, addonNames, "models", models);
 }
 
 pub fn init() void {
