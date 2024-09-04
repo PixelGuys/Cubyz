@@ -240,18 +240,21 @@ pub const Model = struct {
 				uv[1] *= 4;
 				uvs.append(.{uv[0], uv[1]});
 			} else if (std.mem.eql(u8, line[0..2], "f ")) {
-				const n = std.mem.count(u8, line[2..], " ") + 1;
-
 				var coordsIter = std.mem.split(u8, line[2..], " ");
 				var faceData: [3][4]usize = undefined;
 				var i: usize = 0;
 				var failed = false;
 				while (coordsIter.next()) |vertex| : (i += 1) {
+					if (i >= 4) {
+						failed = true;
+						std.log.err("More than 4 verticies in a face", .{});
+						break;
+					}
 					var d = std.mem.split(u8, vertex, "/");
 					var j: usize = 0;
 					if (std.mem.count(u8, vertex, "/") != 2 or std.mem.count(u8, vertex, "//") != 0) {
 						failed = true;
-						std.log.err("Failed loading face {s}. Each vertex must use vertex/uv/normal", .{line, n});
+						std.log.err("Failed loading face {s}. Each vertex must use vertex/uv/normal", .{line});
 						break;
 					}
 					while (d.next()) |value| : (j += 1) {
@@ -260,14 +263,14 @@ pub const Model = struct {
 					}
 				}
 				if (!failed) {
-					switch (n) {
+					switch (i) {
 						3 => {
 							tris.append(.{.vertex=faceData[0][0..3].*, .uvs=faceData[1][0..3].*, .normal=faceData[2][0]});
 						},
 						4 => {
 							quadFaces.append(.{.vertex=faceData[0], .uvs=faceData[1], .normal=faceData[2][0]});
 						},
-						else => std.log.err("Failed loading face {s} with {d} vertices", .{line, n})
+						else => std.log.err("Failed loading face {s} with {d} vertices", .{line, i})
 					}
 				}
 			}
