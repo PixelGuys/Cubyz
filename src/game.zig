@@ -384,34 +384,35 @@ pub const Player = struct { // MARK: Player
 			for (0..items.itemListSize) |idx|{
 				if (items.itemList[idx].block == block.typ){
 					const item = items.Item {.baseItem = &items.itemList[idx]};
-					const slotItem = inventory__SEND_CHANGES_TO_SERVER.items[selectedSlot];
-					if (slotItem.empty() or !std.meta.eql(slotItem.item, item)) {
-						var isDone = false;
-
-						// First check if there is already a slot with that type of item
-						for (0..12) |slotIdx| {
-							if (std.meta.eql(inventory__SEND_CHANGES_TO_SERVER.items[slotIdx].item, item)) {
-								inventory__SEND_CHANGES_TO_SERVER.items[slotIdx] = items.ItemStack {.item = item, .amount = items.itemList[idx].stackSize};
-								selectedSlot = @intCast(slotIdx);
-								isDone = true;
-								break;
-							}
+					var isDone = false;
+					
+					// Check if there is already a slot with that item type
+					for (0..12) |slotIdx| {
+						if (std.meta.eql(inventory__SEND_CHANGES_TO_SERVER.items[slotIdx].item, item)) {
+							inventory__SEND_CHANGES_TO_SERVER.items[slotIdx] = items.ItemStack {.item = item, .amount = items.itemList[idx].stackSize};
+							selectedSlot = @intCast(slotIdx);
+							isDone = true;
+							break;
 						}
-						if (isDone) break;
-
-						// And if there was no item with the same type, look for an empty slot
-						for (0..12) |slotIdx| {
-							if (inventory__SEND_CHANGES_TO_SERVER.items[slotIdx].empty()) {
-								inventory__SEND_CHANGES_TO_SERVER.items[slotIdx] = items.ItemStack {.item = item, .amount = items.itemList[idx].stackSize};
-								selectedSlot = @intCast(slotIdx);
-								isDone = true;
-								break;
-							}
-						}
-						if (isDone) break;
-
-						// And if none of that worked, just replace the current slot
 					}
+					if (isDone) break;
+
+					if (inventory__SEND_CHANGES_TO_SERVER.items[selectedSlot].empty()) {
+						inventory__SEND_CHANGES_TO_SERVER.items[selectedSlot] = items.ItemStack {.item = item, .amount = items.itemList[idx].stackSize};
+						break;
+					}
+					
+					// Look for an empty slot
+					for (0..12) |slotIdx| {
+						if (inventory__SEND_CHANGES_TO_SERVER.items[slotIdx].empty()) {
+							inventory__SEND_CHANGES_TO_SERVER.items[slotIdx] = items.ItemStack {.item = item, .amount = items.itemList[idx].stackSize};
+							selectedSlot = @intCast(slotIdx);
+							isDone = true;
+							break;
+						}
+					}
+					if (isDone) break;
+
 					inventory__SEND_CHANGES_TO_SERVER.items[selectedSlot] = items.ItemStack {.item = item, .amount = items.itemList[idx].stackSize};
 					break;
 				}
