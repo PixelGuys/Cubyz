@@ -7,7 +7,7 @@
 	"transparent" : true,
 	"hasBackFace" : true,
 	"absorbedLight" : 0xe95825,
-	"model" : "cube",
+	"model" : "cubyz:cube",
 	"texture" : "cubyz:ice",
 	"blockEntity" : "cubyz.modding.base.MeltableBlockEntity"
 }

@@ -5,7 +5,7 @@
 	"drops" : [
 		"auto"
 	],
-	"model" : "cube",
+	"model" : "cubyz:cube",
 	"rotation" : "stairs",
 	"texture" : "cubyz:ferrock"
 }

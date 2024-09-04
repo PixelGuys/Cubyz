@@ -13,6 +13,7 @@ var commonBlocks: std.StringHashMap(JsonElement) = undefined;
 var commonBiomes: std.StringHashMap(JsonElement) = undefined;
 var commonItems: std.StringHashMap(JsonElement) = undefined;
 var commonRecipes: main.List([]const u8) = undefined;
+var commonModels: std.StringHashMap([]const u8) = undefined;
 
 /// Reads json files recursively from all subfolders.
 pub fn readAllJsonFilesInAddons(externalAllocator: NeverFailingAllocator, addons: main.List(std.fs.Dir), addonNames: main.List([]const u8), subPath: []const u8, output: *std.StringHashMap(JsonElement)) void {
@@ -88,8 +89,51 @@ pub fn readAllFilesInAddons(externalAllocator: NeverFailingAllocator, addons: ma
 		}
 	}
 }
+/// Reads obj files recursively from all subfolders.
+pub fn readAllObjFilesInAddonsHashmap(externalAllocator: NeverFailingAllocator, addons: main.List(std.fs.Dir), addonNames: main.List([]const u8), subPath: []const u8, output: *std.StringHashMap([]const u8)) void {
+	for(addons.items, addonNames.items) |addon, addonName| {
+		var dir = addon.openDir(subPath, .{.iterate = true}) catch |err| {
+			if(err != error.FileNotFound) {
+				std.log.err("Could not open addon directory {s}: {s}", .{subPath, @errorName(err)});
+			}
+			continue;
+		};
+		defer dir.close();
 
-pub fn readAssets(externalAllocator: NeverFailingAllocator, assetPath: []const u8, blocks: *std.StringHashMap(JsonElement), items: *std.StringHashMap(JsonElement), biomes: *std.StringHashMap(JsonElement), recipes: *main.List([]const u8)) void {
+		var walker = dir.walk(main.stackAllocator.allocator) catch unreachable;
+		defer walker.deinit();
+
+		while(walker.next() catch |err| blk: {
+			std.log.err("Got error while iterating addon directory {s}: {s}", .{subPath, @errorName(err)});
+			break :blk null;
+		}) |entry| {
+			if(entry.kind == .file and std.ascii.endsWithIgnoreCase(entry.basename, ".obj")) {
+				const folderName = addonName;
+				const id: []u8 = externalAllocator.alloc(u8, folderName.len + 1 + entry.path.len - 4);
+				errdefer externalAllocator.free(id);
+				@memcpy(id[0..folderName.len], folderName);
+				id[folderName.len] = ':';
+				for(0..entry.path.len-4) |i| {
+					if(entry.path[i] == '\\') { // Convert windows path seperators
+						id[folderName.len+1+i] = '/';
+					} else {
+						id[folderName.len+1+i] = entry.path[i];
+					}
+				}
+
+				const file = dir.openFile(entry.path, .{}) catch |err| {
+					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
+					continue;
+				};
+				defer file.close();
+				const string = file.readToEndAlloc(externalAllocator.allocator, std.math.maxInt(usize)) catch unreachable;
+				output.put(id, string) catch unreachable;
+			}
+		}
+	}
+}
+
+pub fn readAssets(externalAllocator: NeverFailingAllocator, assetPath: []const u8, blocks: *std.StringHashMap(JsonElement), items: *std.StringHashMap(JsonElement), biomes: *std.StringHashMap(JsonElement), recipes: *main.List([]const u8), models: *std.StringHashMap([]const u8)) void {
 	var addons = main.List(std.fs.Dir).init(main.stackAllocator);
 	defer addons.deinit();
 	var addonNames = main.List([]const u8).init(main.stackAllocator);
@@ -124,6 +168,7 @@ pub fn readAssets(externalAllocator: NeverFailingAllocator, assetPath: []const u
 	readAllJsonFilesInAddons(externalAllocator, addons, addonNames, "items", items);
 	readAllJsonFilesInAddons(externalAllocator, addons, addonNames, "biomes", biomes);
 	readAllFilesInAddons(externalAllocator, addons, "recipes", recipes);
+	readAllObjFilesInAddonsHashmap(externalAllocator, addons, addonNames, "models", models);
 }
 
 pub fn init() void {
@@ -135,8 +180,9 @@ pub fn init() void {
 	commonItems = std.StringHashMap(JsonElement).init(arenaAllocator.allocator);
 	commonBiomes = std.StringHashMap(JsonElement).init(arenaAllocator.allocator);
 	commonRecipes = main.List([]const u8).init(arenaAllocator);
+	commonModels = std.StringHashMap([]const u8).init(arenaAllocator.allocator);
 
-	readAssets(arenaAllocator, "assets/", &commonBlocks, &commonItems, &commonBiomes, &commonRecipes);
+	readAssets(arenaAllocator, "assets/", &commonBlocks, &commonItems, &commonBiomes, &commonRecipes, &commonModels);
 }
 
 fn registerItem(assetFolder: []const u8, id: []const u8, json: JsonElement) !*items_zig.BaseItem {
@@ -233,9 +279,16 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 	var recipes = main.List([]const u8).init(main.stackAllocator);
 	recipes.appendSlice(commonRecipes.items);
 	defer recipes.clearAndFree();
+	var models = commonModels.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
+	defer models.clearAndFree();
 
-	readAssets(arenaAllocator, assetFolder, &blocks, &items, &biomes, &recipes);
+	readAssets(arenaAllocator, assetFolder, &blocks, &items, &biomes, &recipes, &models);
 	errdefer unloadAssets();
+
+	var modelIterator = models.iterator();
+	while (modelIterator.next()) |entry| {
+		_ = main.models.registerModel(entry.key_ptr.*,  entry.value_ptr.*);
+	}
 
 	// blocks:
 	for(blockPalette.palette.items) |id| {

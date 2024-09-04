@@ -11,7 +11,7 @@
 	"collide": false,
 	"absorbedLight" : 0x000101,
 
-	"model" : "cube",
+	"model" : "cubyz:cube",
 	"texture" : "cubyz:fog/red"
 	"item": {
 		"texture" : "fog/red.png",

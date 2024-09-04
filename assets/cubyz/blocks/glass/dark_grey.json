@@ -7,6 +7,6 @@
 	"transparent" : true,
 	"hasBackFace" : true,
 	"absorbedLight" : 0xacacac,
-	"model" : "cube",
+	"model" : "cubyz:cube",
 	"texture" : "cubyz:glass/dark_grey"
 }
