@@ -41,9 +41,9 @@ pub const camera = struct { // MARK: camera
 	}
 
 	pub fn updateViewMatrix() void {
-		const bobStrength = @min(@abs(Player.bobVel) / 4, 1);
-		const xRot: f32 = @floatCast(rotation[0] + @cos(Player.bobTime + 0.20) * -0.005 * bobStrength);
-		const yRot: f32 = @floatCast(@sin(Player.bobTime) * 0.003 * bobStrength);
+		const bobStrength = @min(@abs(Player.bobVel) / 4, 1) * settings.viewBobStrength;
+		const xRot: f32 = @floatCast(rotation[0] + @cos(Player.bobTime + 0.20) * -0.008 * bobStrength);
+		const yRot: f32 = @floatCast(@sin(Player.bobTime) * 0.005 * bobStrength);
 		const zRot: f32 = rotation[2];
 		direction = vec.rotateZ(vec.rotateY(vec.rotateX(Vec3f{0, 1, 0}, -xRot), -yRot), -zRot);
 		viewMatrix = Mat4f.identity().mul(Mat4f.rotationX(xRot)).mul(Mat4f.rotationY(yRot)).mul(Mat4f.rotationZ(zRot));
