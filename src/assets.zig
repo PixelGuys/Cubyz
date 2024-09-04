@@ -126,7 +126,7 @@ pub fn readAllObjFilesInAddonsHashmap(externalAllocator: NeverFailingAllocator, 
 					continue;
 				};
 				defer file.close();
-				const string = file.readToEndAlloc(main.stackAllocator.allocator, std.math.maxInt(usize)) catch unreachable;
+				const string = file.readToEndAlloc(externalAllocator.allocator, std.math.maxInt(usize)) catch unreachable;
 				output.put(id, string) catch unreachable;
 			}
 		}
