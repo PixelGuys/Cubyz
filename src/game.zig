@@ -378,7 +378,7 @@ pub const Player = struct { // MARK: Player
 		main.renderer.MeshSelection.breakBlock(&inventory__SEND_CHANGES_TO_SERVER.items[selectedSlot]);
 	}
 
-	pub fn acquireSelectedBlock() void {
+pub fn acquireSelectedBlock() void {
 		if (main.renderer.MeshSelection.selectedBlockPos) |selectedPos| {
 			const block = main.renderer.mesh_storage.getBlock(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
 			for (0..items.itemListSize) |idx|{
@@ -386,16 +386,34 @@ pub const Player = struct { // MARK: Player
 					const item = items.Item {.baseItem = &items.itemList[idx]};
 					const slotItem = inventory__SEND_CHANGES_TO_SERVER.items[selectedSlot];
 					if (slotItem.empty() or !std.meta.eql(slotItem.item, item)) {
+						var isDone = false;
+
+						// First check if there is already a slot with that type of item
+						for (0..12) |slotIdx| {
+							if (std.meta.eql(inventory__SEND_CHANGES_TO_SERVER.items[slotIdx].item, item)) {
+								inventory__SEND_CHANGES_TO_SERVER.items[slotIdx] = items.ItemStack {.item = item, .amount = items.itemList[idx].stackSize};
+								selectedSlot = @intCast(slotIdx);
+								isDone = true;
+								break;
+							}
+						}
+						if (isDone) break;
+
+						// And if there was no item with the same type, look for an empty slot
 						for (0..12) |slotIdx| {
 							if (inventory__SEND_CHANGES_TO_SERVER.items[slotIdx].empty()) {
 								inventory__SEND_CHANGES_TO_SERVER.items[slotIdx] = items.ItemStack {.item = item, .amount = items.itemList[idx].stackSize};
 								selectedSlot = @intCast(slotIdx);
-								return;
+								isDone = true;
+								break;
 							}
 						}
+						if (isDone) break;
+
+						// And if none of that worked, just replace the current slot
 					}
 					inventory__SEND_CHANGES_TO_SERVER.items[selectedSlot] = items.ItemStack {.item = item, .amount = items.itemList[idx].stackSize};
-					return;
+					break;
 				}
 			}
 		}
