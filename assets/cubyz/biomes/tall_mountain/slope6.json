@@ -2,7 +2,7 @@
 	"properties" : [
 		"mountain"
 	],
-	"radius" : 90,
+	"radius" : 80,
 	"minHeight" : 768,
 	"maxHeight" : 768,
 
