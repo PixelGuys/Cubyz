@@ -512,7 +512,7 @@ pub fn main() void { // MARK: main()
 		if(!isHidden) {
 			c.glEnable(c.GL_CULL_FACE);
 			c.glEnable(c.GL_DEPTH_TEST);
-			renderer.render(game.Player.getEyePosBlocking());
+			renderer.render();
 			// Render the GUI
 			gui.windowlist.gpu_performance_measuring.startQuery(.gui);
 			c.glDisable(c.GL_CULL_FACE);

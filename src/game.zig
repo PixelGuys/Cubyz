@@ -41,12 +41,8 @@ pub const camera = struct { // MARK: camera
 	}
 
 	pub fn updateViewMatrix() void {
-		const bobStrength = @min(@abs(Player.bobVel) / 4, 1) * settings.viewBobStrength;
-		const xRot: f32 = @floatCast(rotation[0] + @cos(Player.bobTime + 0.20) * -0.008 * bobStrength);
-		const yRot: f32 = @floatCast(@sin(Player.bobTime) * 0.005 * bobStrength);
-		const zRot: f32 = rotation[2];
-		direction = vec.rotateZ(vec.rotateY(vec.rotateX(Vec3f{0, 1, 0}, -xRot), -yRot), -zRot);
-		viewMatrix = Mat4f.identity().mul(Mat4f.rotationX(xRot)).mul(Mat4f.rotationY(yRot)).mul(Mat4f.rotationZ(zRot));
+		direction = vec.rotateZ(vec.rotateY(vec.rotateX(Vec3f{0, 1, 0}, -rotation[0]), -rotation[1]), -rotation[2]);
+		viewMatrix = Mat4f.identity().mul(Mat4f.rotationX(rotation[0])).mul(Mat4f.rotationY(rotation[1])).mul(Mat4f.rotationZ(rotation[2]));
 	}
 };
 
@@ -301,7 +297,7 @@ pub const Player = struct { // MARK: Player
 	pub var eyeStep: @Vector(3, bool) = .{false, false, false};
 	pub var bobTime: f64 = 0;
 	pub var bobVel: f64 = 0;
-	pub var bobVec: Vec3d = .{0, 0, 0};
+	pub var bobMag: f64 = 0;
 	pub var id: u32 = 0;
 	pub var isFlying: Atomic(bool) = Atomic(bool).init(false);
 	pub var isGhost: Atomic(bool) = Atomic(bool).init(false);
@@ -349,7 +345,24 @@ pub const Player = struct { // MARK: Player
 	pub fn getEyePosBlocking() Vec3d {
 		mutex.lock();
 		defer mutex.unlock();
-		return eyePos + super.pos + desiredEyePos + bobVec;
+		return eyePos + super.pos + desiredEyePos;
+	}
+
+	pub fn applyViewBobbingPosBlocking(pos: Vec3d) Vec3d {
+		mutex.lock();
+		defer mutex.unlock();
+		const xBob = @sin(bobTime) * 0.5 * 0.05; // Horizontal Component
+		const zBob = -@abs(@cos(bobTime)) * 0.05; // Vertical Component
+		const bobVec = vec.rotateZ(Vec3d{ xBob * bobMag, 0, zBob * bobMag }, -camera.rotation[2]);
+		return pos + bobVec;
+	}
+
+	pub fn applyViewBobbingRotBlocking(rot: Vec3f) Vec3f {
+		mutex.lock();
+		defer mutex.unlock();
+		const xRot: f32 = @as(f32, @floatCast(@cos(bobTime + 0.20) * -0.005 * bobMag));
+		const yRot: f32 = @as(f32, @floatCast(@sin(bobTime) * 0.003 * bobMag));
+		return rot + Vec3f{ xRot, yRot, 0 };
 	}
 
 	pub fn getVelBlocking() Vec3d {
@@ -674,20 +687,17 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		}
 		
 		// View Bobbing
-		if (Player.onGround) { // No view bobbing in the air
-			// Smooth lerping of bobTime with framerate independent damping
-			const fac: f64 = 1 - std.math.exp(-10 * deltaTime);
-			var targetBobVel: f64 = 0;
-			if (movementSpeed > 0) {
-				targetBobVel = vec.dot(movementDir * @as(Vec3d, @splat(std.math.log2(movementSpeed / 4 + 1))), forward);
-			}
-			Player.bobVel = Player.bobVel * (1 - fac) + targetBobVel * fac;
-			Player.bobTime += std.math.pow(f64, @abs(Player.bobVel), 0.7) * std.math.sign(Player.bobVel) * 8 * deltaTime;
+		// Smooth lerping of bobTime with framerate independent damping
+		const fac: f64 = 1 - std.math.exp(-10 * deltaTime);
+		var targetBobVel: f64 = 0;
+		if (movementSpeed > 0) {
+			targetBobVel = vec.length(vec.xy(Player.getVelBlocking()) * @as(vec.Vec2d, @splat(std.math.pow(f64, movementSpeed / 4, 0.7)))) / movementSpeed;
 		}
-		const bobStrength: f64 = @min(@abs(Player.bobVel) / 4, 1) * 0.3 * settings.viewBobStrength;
-		const xBob = @sin(Player.bobTime) * 0.5; // Horizontal Component
-		const zBob = -@abs(@cos(Player.bobTime)); // Vertical Component
-		Player.bobVec = vec.rotateZ(Vec3d{ xBob * bobStrength, 0, zBob * bobStrength }, -camera.rotation[2]);
+		Player.bobVel = Player.bobVel * (1 - fac) + targetBobVel * fac;
+		if (Player.onGround) { // No view bobbing in the air
+			Player.bobTime += std.math.pow(f64, Player.bobVel, 0.7) * 8 * deltaTime;
+		}
+		Player.bobMag = @min(@sqrt(Player.bobVel), 2) * settings.viewBobStrength;
 
 		// This our model for movement on a single frame:
 		// dv/dt = a - λ·v
