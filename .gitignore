@@ -9,3 +9,6 @@ settings.json
 gui_layout.json
 
 test.png
+
+# Ignore user generated backgrounds
+/assets/backgrounds/client_*.png
