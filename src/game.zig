@@ -879,10 +879,10 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		const yMovement = collision.collideOrStep(.client, .y, move[1], Player.super.pos, hitBox, steppingHeight);
 		Player.super.pos += yMovement;
 
-		if (xMovement[0] == 0) {
+		if (xMovement[0] != move[0]) {
 			Player.super.vel[0] = 0;
 		}
-		if (yMovement[1] == 0) {
+		if (yMovement[1] != move[1]) {
 			Player.super.vel[1] = 0;
 		}
 
