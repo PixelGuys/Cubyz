@@ -27,6 +27,7 @@ pub const Window = @import("graphics/Window.zig");
 
 pub const List = @import("utils/list.zig").List;
 pub const ListUnmanaged = @import("utils/list.zig").ListUnmanaged;
+pub const VirtualList = @import("utils/list.zig").VirtualList;
 
 const file_monitor = utils.file_monitor;
 
