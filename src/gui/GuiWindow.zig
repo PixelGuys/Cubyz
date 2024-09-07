@@ -53,7 +53,7 @@ size: Vec2f = undefined,
 contentSize: Vec2f,
 scale: f32 = 1,
 spacing: f32 = 0,
-relativePosition: [2]RelativePosition = .{ .{ .ratio = 0.5 }, .{ .ratio = 0.5 } },
+relativePosition: [2]RelativePosition = .{.{.ratio = 0.5}, .{.ratio = 0.5}},
 id: []const u8 = undefined,
 rootComponent: ?GuiComponent = null,
 showTitleBar: bool = true,
@@ -64,17 +64,17 @@ closeable: bool = true,
 isHud: bool = false,
 
 /// Called every frame.
-renderFn: *const fn () void = &defaultFunction,
+renderFn: *const fn()void = &defaultFunction,
 /// Called every frame before rendering.
-updateFn: *const fn () void = &defaultFunction,
+updateFn: *const fn()void = &defaultFunction,
 /// Called every frame for the currently selected window.
-updateSelectedFn: *const fn () void = &defaultFunction,
+updateSelectedFn: *const fn()void = &defaultFunction,
 /// Called every frame for the currently hovered window.
-updateHoveredFn: *const fn () void = &defaultFunction,
+updateHoveredFn: *const fn()void = &defaultFunction,
 
-onOpenFn: *const fn () void = &defaultFunction,
+onOpenFn: *const fn()void = &defaultFunction,
 
-onCloseFn: *const fn () void = &defaultFunction,
+onCloseFn: *const fn()void = &defaultFunction,
 
 var grabbedWindow: *const GuiWindow = undefined;
 var windowMoving: bool = false;
@@ -130,44 +130,44 @@ pub fn __deinit() void {
 pub fn defaultFunction() void {}
 
 pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) void {
-	const scaledMousePos = (mousePosition - self.pos) / @as(Vec2f, @splat(self.scale));
+	const scaledMousePos = (mousePosition - self.pos)/@as(Vec2f, @splat(self.scale));
 	const btnPos = self.getButtonPositions();
 	const zoomInPos = btnPos[2];
-	if (scaledMousePos[1] < titleBarHeight and (self.showTitleBar or gui.reorderWindows)) {
+	if(scaledMousePos[1] < titleBarHeight and (self.showTitleBar or gui.reorderWindows)) {
 		grabbedWindow = self;
 		grabPosition = mousePosition;
 		selfPositionWhenGrabbed = self.pos;
 		windowMoving = scaledMousePos[0] <= zoomInPos;
 	} else {
-		if (self.rootComponent) |*component| {
-			if (GuiComponent.contains(component.pos(), component.size(), scaledMousePos)) {
+		if(self.rootComponent) |*component| {
+			if(GuiComponent.contains(component.pos(), component.size(), scaledMousePos)) {
 				component.mainButtonPressed(scaledMousePos);
 			}
 		}
 	}
 }
 
-pub fn getButtonPositions(self: *const GuiWindow) std.meta.Tuple(&.{ f32, f32, f32 }) {
-	const closePos = if (self.closeable) self.size[0] - iconWidth * self.scale else self.size[0];
-	const zoomOutPos = closePos - iconWidth * self.scale;
-	const zoomInPos = zoomOutPos - iconWidth * self.scale;
-	return .{ closePos, zoomOutPos, zoomInPos };
+pub fn getButtonPositions(self: *const GuiWindow) [3]f32 {
+	const closePos = if(self.closeable) self.size[0] - iconWidth*self.scale else self.size[0];
+	const zoomOutPos = closePos - iconWidth*self.scale;
+	const zoomInPos = zoomOutPos - iconWidth*self.scale;
+	return .{closePos, zoomOutPos, zoomInPos};
 }
 pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
-	if (grabPosition != null and @reduce(.And, grabPosition.? == mousePosition) and grabbedWindow == self) {
-		if (self.showTitleBar or gui.reorderWindows) {
+	if(grabPosition != null and @reduce(.And, grabPosition.? == mousePosition) and grabbedWindow == self) {
+		if(self.showTitleBar or gui.reorderWindows) {
 			const btnPos = self.getButtonPositions();
 			const closePos = btnPos[0];
 			const zoomOutPos = btnPos[1];
 			const zoomInPos = btnPos[2];
-			if (mousePosition[0] - self.pos[0] > zoomInPos) {
-				if (mousePosition[0] - self.pos[0] > zoomOutPos) {
-					if (mousePosition[0] - self.pos[0] > closePos) {
+			if(mousePosition[0] - self.pos[0] > zoomInPos) {
+				if(mousePosition[0] - self.pos[0] > zoomOutPos) {
+					if(mousePosition[0] - self.pos[0] > closePos) {
 						// Close
-						if (self.closeable) gui.closeWindowFromRef(self);
+						if(self.closeable) gui.closeWindowFromRef(self);
 					} else {
 						// Zoom out
-						if (self.scale > 1) {
+						if(self.scale > 1) {
 							self.scale -= 0.5;
 						} else {
 							self.scale -= 0.25;
@@ -178,7 +178,7 @@ pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 					}
 				} else {
 					// Zoom in
-					if (self.scale >= 1) {
+					if(self.scale >= 1) {
 						self.scale += 0.5;
 					} else {
 						self.scale += 0.25;
@@ -191,17 +191,17 @@ pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 	}
 	grabPosition = null;
 	grabbedWindow = undefined;
-	if (self.rootComponent) |*component| {
-		component.mainButtonReleased((mousePosition - self.pos) / @as(Vec2f, @splat(self.scale)));
+	if(self.rootComponent) |*component| {
+		component.mainButtonReleased((mousePosition - self.pos)/@as(Vec2f, @splat(self.scale)));
 	}
 }
 
 fn detectCycles(self: *GuiWindow, other: *GuiWindow) bool {
-	for (0..2) |xy| {
+	for(0..2) |xy| {
 		var win: ?*GuiWindow = other;
-		while (win) |_win| {
-			if (win == self) return true;
-			switch (_win.relativePosition[xy]) {
+		while(win) |_win| {
+			if(win == self) return true;
+			switch(_win.relativePosition[xy]) {
 				.ratio => {
 					win = null;
 				},
@@ -221,66 +221,66 @@ fn detectCycles(self: *GuiWindow, other: *GuiWindow) bool {
 }
 
 fn snapToOtherWindow(self: *GuiWindow) void {
-	for (&self.relativePosition, 0..) |*relPos, i| {
+	for(&self.relativePosition, 0..) |*relPos, i| {
 		var minDist: f32 = snapDistance;
 		var minWindow: ?*GuiWindow = null;
 		var selfAttachment: AttachmentPoint = undefined;
 		var otherAttachment: AttachmentPoint = undefined;
-		for (gui.openWindows.items) |other| {
+		for(gui.openWindows.items) |other| {
 			// Check if they touch:
-			const start = @max(self.pos[i ^ 1], other.pos[i ^ 1]);
-			const end = @min(self.pos[i ^ 1] + self.size[i ^ 1], other.pos[i ^ 1] + other.size[i ^ 1]);
-			if (start >= end) continue;
-			if (detectCycles(self, other)) continue;
+			const start = @max(self.pos[i^1], other.pos[i^1]);
+			const end = @min(self.pos[i^1] + self.size[i^1], other.pos[i^1] + other.size[i^1]);
+			if(start >= end) continue;
+			if(detectCycles(self, other)) continue;
 
 			const dist1 = @abs(self.pos[i] - other.pos[i] - other.size[i]);
-			if (dist1 < minDist) {
+			if(dist1 < minDist) {
 				minDist = dist1;
 				minWindow = other;
 				selfAttachment = .lower;
 				otherAttachment = .upper;
 			}
 			const dist2 = @abs(self.pos[i] + self.size[i] - other.pos[i]);
-			if (dist2 < minDist) {
+			if(dist2 < minDist) {
 				minDist = dist2;
 				minWindow = other;
 				selfAttachment = .upper;
 				otherAttachment = .lower;
 			}
 		}
-		if (minWindow) |other| {
-			relPos.* = .{ .attachedToWindow = .{ .reference = other, .selfAttachmentPoint = selfAttachment, .otherAttachmentPoint = otherAttachment } };
+		if(minWindow) |other| {
+			relPos.* = .{.attachedToWindow = .{.reference = other, .selfAttachmentPoint = selfAttachment, .otherAttachmentPoint = otherAttachment}};
 		}
 	}
 }
 
 fn positionRelativeToFrame(self: *GuiWindow) void {
-	const windowSize = main.Window.getWindowSize() / @as(Vec2f, @splat(gui.scale));
-	for (&self.relativePosition, 0..) |*relPos, i| {
+	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
+	for(&self.relativePosition, 0..) |*relPos, i| {
 		// Snap to the center:
-		if (@abs(self.pos[i] + self.size[i] - windowSize[i] / 2) <= snapDistance) {
-			relPos.* = .{ .attachedToFrame = .{
+		if(@abs(self.pos[i] + self.size[i] - windowSize[i]/2) <= snapDistance) {
+			relPos.* = .{.attachedToFrame = .{
 				.selfAttachmentPoint = .upper,
 				.otherAttachmentPoint = .middle,
-			} };
-		} else if (@abs(self.pos[i] + self.size[i] / 2 - windowSize[i] / 2) <= snapDistance) {
-			relPos.* = .{ .attachedToFrame = .{
+			}};
+		} else if(@abs(self.pos[i] + self.size[i]/2 - windowSize[i]/2) <= snapDistance) {
+			relPos.* = .{.attachedToFrame = .{
 				.selfAttachmentPoint = .middle,
 				.otherAttachmentPoint = .middle,
-			} };
-		} else if (@abs(self.pos[i] - windowSize[i] / 2) <= snapDistance) {
-			relPos.* = .{ .attachedToFrame = .{
+			}};
+		} else if(@abs(self.pos[i] - windowSize[i]/2) <= snapDistance) {
+			relPos.* = .{.attachedToFrame = .{
 				.selfAttachmentPoint = .lower,
 				.otherAttachmentPoint = .middle,
-			} };
+			}};
 		} else {
-			var ratio: f32 = (self.pos[i] + self.size[i] / 2) / windowSize[i];
-			if (self.pos[i] <= 0) {
+			var ratio: f32 = (self.pos[i] + self.size[i]/2)/windowSize[i];
+			if(self.pos[i] <= 0) {
 				ratio = 0;
-			} else if (self.pos[i] + self.size[i] >= windowSize[i]) {
+			} else if(self.pos[i] + self.size[i] >= windowSize[i]) {
 				ratio = 1;
 			}
-			relPos.* = .{ .ratio = ratio };
+			relPos.* = .{.ratio = ratio};
 		}
 	}
 }
@@ -289,39 +289,42 @@ fn positionRelativeToConnectedWindow(self: *GuiWindow, other: *GuiWindow, i: usi
 	const otherSize = other.size;
 	const relPos = &self.relativePosition[i];
 	// Snap to the center:
-	if (@abs(self.pos[i] + self.size[i] - (other.pos[i] + otherSize[i] / 2)) <= snapDistance) {
-		relPos.* = .{ .attachedToWindow = .{
+	if(@abs(self.pos[i] + self.size[i] - (other.pos[i] + otherSize[i]/2)) <= snapDistance) {
+		relPos.* = .{.attachedToWindow = .{
 			.reference = other,
 			.selfAttachmentPoint = .upper,
 			.otherAttachmentPoint = .middle,
-		} };
-	} else if (@abs(self.pos[i] + self.size[i] / 2 - (other.pos[i] + otherSize[i] / 2)) <= snapDistance) {
-		relPos.* = .{ .attachedToWindow = .{
+		}};
+	} else if(@abs(self.pos[i] + self.size[i]/2 - (other.pos[i] + otherSize[i]/2)) <= snapDistance) {
+		relPos.* = .{.attachedToWindow = .{
 			.reference = other,
 			.selfAttachmentPoint = .middle,
 			.otherAttachmentPoint = .middle,
-		} };
-	} else if (@abs(self.pos[i] - (other.pos[i] + otherSize[i] / 2)) <= snapDistance) {
-		relPos.* = .{ .attachedToWindow = .{
+		}};
+	} else if(@abs(self.pos[i] - (other.pos[i] + otherSize[i]/2)) <= snapDistance) {
+		relPos.* = .{.attachedToWindow = .{
 			.reference = other,
 			.selfAttachmentPoint = .lower,
 			.otherAttachmentPoint = .middle,
-		} };
-		// Snap to the edges:
-	} else if (@abs(self.pos[i] - other.pos[i]) <= snapDistance) {
-		relPos.* = .{ .attachedToWindow = .{
+		}};
+	// Snap to the edges:
+	} else if(@abs(self.pos[i] - other.pos[i]) <= snapDistance) {
+		relPos.* = .{.attachedToWindow = .{
 			.reference = other,
 			.selfAttachmentPoint = .lower,
 			.otherAttachmentPoint = .lower,
-		} };
-	} else if (@abs(self.pos[i] + self.size[i] - (other.pos[i] + otherSize[i])) <= snapDistance) {
-		relPos.* = .{ .attachedToWindow = .{
+		}};
+	} else if(@abs(self.pos[i] + self.size[i] - (other.pos[i] + otherSize[i])) <= snapDistance) {
+		relPos.* = .{.attachedToWindow = .{
 			.reference = other,
 			.selfAttachmentPoint = .upper,
 			.otherAttachmentPoint = .upper,
-		} };
+		}};
 	} else {
-		relPos.* = .{ .relativeToWindow = .{ .reference = other, .ratio = (self.pos[i] + self.size[i] / 2 - other.pos[i]) / otherSize[i] } };
+		relPos.* = .{.relativeToWindow = .{
+			.reference = other,
+			.ratio = (self.pos[i] + self.size[i]/2 - other.pos[i])/otherSize[i]
+		}};
 	}
 }
 
@@ -331,68 +334,72 @@ pub fn update(self: *GuiWindow) void {
 
 pub fn updateSelected(self: *GuiWindow, mousePosition: Vec2f) void {
 	self.updateSelectedFn();
-	const windowSize = main.Window.getWindowSize() / @as(Vec2f, @splat(gui.scale));
-	if (self == grabbedWindow and windowMoving and (gui.reorderWindows or self.showTitleBar)) if (grabPosition) |_grabPosition| {
-		self.relativePosition[0] = .{ .ratio = undefined };
-		self.relativePosition[1] = .{ .ratio = undefined };
+	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
+	if(self == grabbedWindow and windowMoving and (gui.reorderWindows or self.showTitleBar)) if(grabPosition) |_grabPosition| {
+		self.relativePosition[0] = .{.ratio = undefined};
+		self.relativePosition[1] = .{.ratio = undefined};
 		self.pos = (mousePosition - _grabPosition) + selfPositionWhenGrabbed;
 		self.snapToOtherWindow();
-		if (self.relativePosition[0] == .ratio and self.relativePosition[1] == .ratio) {
+		if(self.relativePosition[0] == .ratio and self.relativePosition[1] == .ratio) {
 			self.positionRelativeToFrame();
-		} else if (self.relativePosition[0] == .ratio) {
+		} else if(self.relativePosition[0] == .ratio) {
 			self.positionRelativeToConnectedWindow(self.relativePosition[1].attachedToWindow.reference, 0);
-		} else if (self.relativePosition[1] == .ratio) {
+		} else if(self.relativePosition[1] == .ratio) {
 			self.positionRelativeToConnectedWindow(self.relativePosition[0].attachedToWindow.reference, 1);
 		}
-		self.pos = @max(self.pos, Vec2f{ 0, 0 });
+		self.pos = @max(self.pos, Vec2f{0, 0});
 		self.pos = @min(self.pos, windowSize - self.size);
 		gui.updateWindowPositions();
 		gui.save();
 	};
-	if (self.rootComponent) |*component| {
+	if(self.rootComponent) |*component| {
 		component.updateSelected();
 	}
 }
 
 pub fn updateHovered(self: *GuiWindow, mousePosition: Vec2f) void {
 	self.updateHoveredFn();
-	if (self.rootComponent) |component| {
-		if (GuiComponent.contains(component.pos(), component.size(), (mousePosition - self.pos) / @as(Vec2f, @splat(self.scale)))) {
-			component.updateHovered((mousePosition - self.pos) / @as(Vec2f, @splat(self.scale)));
+	if(self.rootComponent) |component| {
+		if(GuiComponent.contains(component.pos(), component.size(), (mousePosition - self.pos)/@as(Vec2f, @splat(self.scale)))) {
+			component.updateHovered((mousePosition - self.pos)/@as(Vec2f, @splat(self.scale)));
 		}
 	}
 }
 
 pub fn updateWindowPosition(self: *GuiWindow) void {
-	self.size = self.contentSize * @as(Vec2f, @splat(self.scale));
-	const windowSize = main.Window.getWindowSize() / @as(Vec2f, @splat(gui.scale));
-	for (self.relativePosition, 0..) |relPos, i| {
-		switch (relPos) {
+	if(self.contentSize[0] < iconWidth*4) {
+		std.log.err("Window width is too small: {d}px before scaling", .{self.contentSize[0]});
+		self.contentSize[0] = iconWidth*4;
+	}
+	self.size = self.contentSize*@as(Vec2f, @splat(self.scale));
+	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
+	for(self.relativePosition, 0..) |relPos, i| {
+		switch(relPos) {
 			.ratio => |ratio| {
-				self.pos[i] = windowSize[i] * ratio - self.size[i] / 2;
+				self.pos[i] = windowSize[i]*ratio - self.size[i]/2;
 			},
 			.attachedToFrame => |attachedToFrame| {
-				const otherPos = switch (attachedToFrame.otherAttachmentPoint) {
+				const otherPos = switch(attachedToFrame.otherAttachmentPoint) {
 					.lower => 0,
-					.middle => 0.5 * windowSize[i],
+					.middle => 0.5*windowSize[i],
 					.upper => windowSize[i],
 				};
-				self.pos[i] = switch (attachedToFrame.selfAttachmentPoint) {
+				self.pos[i] = switch(attachedToFrame.selfAttachmentPoint) {
 					.lower => otherPos,
-					.middle => otherPos - 0.5 * self.size[i],
+					.middle => otherPos - 0.5*self.size[i],
 					.upper => otherPos - self.size[i],
 				};
 			},
 			.attachedToWindow => |attachedToWindow| {
 				const other = attachedToWindow.reference;
-				const otherPos = switch (attachedToWindow.otherAttachmentPoint) {
+				const otherPos = switch(attachedToWindow.otherAttachmentPoint) {
 					.lower => other.pos[i],
-					.middle => other.pos[i] + 0.5 * other.size[i],
+					.middle => other.pos[i] + 0.5*other.size[i],
 					.upper => other.pos[i] + other.size[i],
 				};
-				self.pos[i] = switch (attachedToWindow.selfAttachmentPoint) {
+				self.pos[i] = switch(attachedToWindow.selfAttachmentPoint) {
 					.lower => otherPos,
-					.middle => otherPos - 0.5 * self.size[i],
+					.middle => otherPos - 0.5*self.size[i],
 					.upper => otherPos - self.size[i],
 				};
 			},
@@ -400,7 +407,7 @@ pub fn updateWindowPosition(self: *GuiWindow) void {
 				const other = relativeToWindow.reference;
 				const otherSize = other.size[i];
 				const otherPos = other.pos[i];
-				self.pos[i] = otherPos + relativeToWindow.ratio * otherSize - self.size[i] / 2;
+				self.pos[i] = otherPos + relativeToWindow.ratio*otherSize - self.size[i]/2;
 			},
 		}
 	}
@@ -413,38 +420,38 @@ pub fn updateWindowPosition(self: *GuiWindow) void {
 
 fn drawOrientationLines(self: *const GuiWindow) void {
 	draw.setColor(0x80000000);
-	const windowSize = main.Window.getWindowSize() / @as(Vec2f, @splat(gui.scale));
-	for (self.relativePosition, 0..) |relPos, i| {
-		switch (relPos) {
+	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
+	for(self.relativePosition, 0..) |relPos, i| {
+		switch(relPos) {
 			.ratio, .relativeToWindow => {
 				continue;
 			},
 			.attachedToFrame => |attachedToFrame| {
-				const pos = switch (attachedToFrame.otherAttachmentPoint) {
+				const pos = switch(attachedToFrame.otherAttachmentPoint) {
 					.lower => 0,
-					.middle => 0.5 * windowSize[i],
+					.middle => 0.5*windowSize[i],
 					.upper => windowSize[i],
 				};
-				if (i == 0) {
-					draw.line(.{ pos, 0 }, .{ pos, windowSize[i ^ 1] });
+				if(i == 0) {
+					draw.line(.{pos, 0}, .{pos, windowSize[i^1]});
 				} else {
-					draw.line(.{ 0, pos }, .{ windowSize[i ^ 1], pos });
+					draw.line(.{0, pos}, .{windowSize[i^1], pos});
 				}
 			},
 			.attachedToWindow => |attachedToWindow| {
 				const other = attachedToWindow.reference;
 				const otherSize = other.size;
-				const pos = switch (attachedToWindow.otherAttachmentPoint) {
+				const pos = switch(attachedToWindow.otherAttachmentPoint) {
 					.lower => other.pos[i],
-					.middle => other.pos[i] + 0.5 * otherSize[i],
+					.middle => other.pos[i] + 0.5*otherSize[i],
 					.upper => other.pos[i] + otherSize[i],
 				};
-				const start = @min(self.pos[i ^ 1], other.pos[i ^ 1]);
-				const end = @max(self.pos[i ^ 1] + self.size[i ^ 1], other.pos[i ^ 1] + otherSize[i ^ 1]);
-				if (i == 0) {
-					draw.line(.{ pos, start }, .{ pos, end });
+				const start = @min(self.pos[i^1], other.pos[i^1]);
+				const end = @max(self.pos[i^1] + self.size[i^1], other.pos[i^1] + otherSize[i^1]);
+				if(i == 0) {
+					draw.line(.{pos, start}, .{pos, end});
 				} else {
-					draw.line(.{ start, pos }, .{ end, pos });
+					draw.line(.{start, pos}, .{end, pos});
 				}
 			},
 		}
@@ -453,45 +460,45 @@ fn drawOrientationLines(self: *const GuiWindow) void {
 
 pub fn drawIcons(self: *const GuiWindow) void {
 	draw.setColor(0xffffffff);
-	var x = self.size[0] / self.scale;
-	if (self.closeable) {
+	var x = self.size[0]/self.scale;
+	if(self.closeable) {
 		x -= iconWidth;
-		closeTexture.render(.{ x, 0 }, .{ iconWidth, titleBarHeight });
+		closeTexture.render(.{x, 0}, .{iconWidth, titleBarHeight});
 	}
 	x -= iconWidth;
-	zoomOutTexture.render(.{ x, 0 }, .{ iconWidth, titleBarHeight });
+	zoomOutTexture.render(.{x, 0}, .{iconWidth, titleBarHeight});
 	x -= iconWidth;
-	zoomInTexture.render(.{ x, 0 }, .{ iconWidth, titleBarHeight });
+	zoomInTexture.render(.{x, 0}, .{iconWidth, titleBarHeight});
 }
 
 pub fn render(self: *const GuiWindow, mousePosition: Vec2f) void {
-	if (self.hideIfMouseIsGrabbed and main.Window.grabbed) return;
+	if(self.hideIfMouseIsGrabbed and main.Window.grabbed) return;
 	const oldTranslation = draw.setTranslation(self.pos);
 	const oldScale = draw.setScale(self.scale);
-	if (self.hasBackground) {
+	if(self.hasBackground) {
 		draw.setColor(0xff000000);
 		shader.bind();
 		backgroundTexture.bindTo(0);
-		draw.customShadedRect(windowUniforms, .{ 0, 0 }, self.size / @as(Vec2f, @splat(self.scale)));
+		draw.customShadedRect(windowUniforms, .{0, 0}, self.size/@as(Vec2f, @splat(self.scale)));
 	}
 	self.renderFn();
-	if (self.rootComponent) |*component| {
-		component.render((mousePosition - self.pos) / @as(Vec2f, @splat(self.scale)));
+	if(self.rootComponent) |*component| {
+		component.render((mousePosition - self.pos)/@as(Vec2f, @splat(self.scale)));
 	}
-	if (self.showTitleBar or gui.reorderWindows) {
+	if(self.showTitleBar or gui.reorderWindows) {
 		shader.bind();
 		titleTexture.bindTo(0);
 		draw.setColor(0xff000000);
-		draw.customShadedRect(windowUniforms, .{ 0, 0 }, .{ self.size[0] / self.scale, titleBarHeight });
+		draw.customShadedRect(windowUniforms, .{0, 0}, .{self.size[0]/self.scale, titleBarHeight});
 		self.drawIcons();
 	}
-	if (self.hasBackground or (!main.Window.grabbed and gui.reorderWindows)) {
+	if(self.hasBackground or (!main.Window.grabbed and gui.reorderWindows)) {
 		draw.setColor(0xff1d1d1d);
-		draw.rectBorder(.{ -2, -2 }, self.size / @as(Vec2f, @splat(self.scale)) + Vec2f{ 4, 4 }, 2.0);
+		draw.rectBorder(.{-2, -2}, self.size/@as(Vec2f, @splat(self.scale)) + Vec2f{4, 4}, 2.0);
 	}
 	draw.restoreTranslation(oldTranslation);
 	draw.restoreScale(oldScale);
-	if (self == grabbedWindow and (gui.reorderWindows or self.showTitleBar) and grabPosition != null) {
+	if(self == grabbedWindow and (gui.reorderWindows or self.showTitleBar) and grabPosition != null) {
 		self.drawOrientationLines();
 	}
 }
