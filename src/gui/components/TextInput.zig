@@ -387,6 +387,14 @@ pub fn inputCharacter(self: *TextInput, character: u21) void {
 	}
 }
 
+pub fn selectAll(self: *TextInput, mods: main.Window.Key.Modifiers) void {
+	if(mods.control) {
+		self.selectionStart = 0;
+		self.cursor = @intCast(self.currentString.items.len);
+		self.ensureCursorVisibility();
+	}
+}
+
 pub fn copy(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	if(mods.control) {
 		if(self.cursor) |cursor| {

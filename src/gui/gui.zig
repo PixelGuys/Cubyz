@@ -425,6 +425,11 @@ pub const textCallbacks = struct {
 			current.deleteRight(mods);
 		}
 	}
+	pub fn selectAll(mods: main.Window.Key.Modifiers) void {
+		if(selectedTextInput) |current| {
+			current.selectAll(mods);
+		}
+	}
 	pub fn copy(mods: main.Window.Key.Modifiers) void {
 		if(selectedTextInput) |current| {
 			current.copy(mods);
