@@ -77,6 +77,7 @@ onOpenFn: *const fn () void = &defaultFunction,
 onCloseFn: *const fn () void = &defaultFunction,
 
 var grabbedWindow: *const GuiWindow = undefined;
+var windowMoving: bool = false;
 var grabPosition: ?Vec2f = null;
 var selfPositionWhenGrabbed: Vec2f = undefined;
 
@@ -130,10 +131,13 @@ pub fn defaultFunction() void {}
 
 pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) void {
     const scaledMousePos = (mousePosition - self.pos) / @as(Vec2f, @splat(self.scale));
+    const btnPos = self.getButtonPositions();
+    const zoomInPos = btnPos[2];
     if (scaledMousePos[1] < titleBarHeight and (self.showTitleBar or gui.reorderWindows)) {
         grabbedWindow = self;
         grabPosition = mousePosition;
         selfPositionWhenGrabbed = self.pos;
+        windowMoving = scaledMousePos[0] <= zoomInPos;
     } else {
         if (self.rootComponent) |*component| {
             if (GuiComponent.contains(component.pos(), component.size(), scaledMousePos)) {
@@ -149,7 +153,6 @@ pub fn getButtonPositions(self: *const GuiWindow) std.meta.Tuple(&.{ f32, f32, f
     const zoomInPos = zoomOutPos - iconWidth * self.scale;
     return .{ closePos, zoomOutPos, zoomInPos };
 }
-
 pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
     if (grabPosition != null and @reduce(.And, grabPosition.? == mousePosition) and grabbedWindow == self) {
         if (self.showTitleBar or gui.reorderWindows) {
@@ -329,7 +332,7 @@ pub fn update(self: *GuiWindow) void {
 pub fn updateSelected(self: *GuiWindow, mousePosition: Vec2f) void {
     self.updateSelectedFn();
     const windowSize = main.Window.getWindowSize() / @as(Vec2f, @splat(gui.scale));
-    if (self == grabbedWindow and (gui.reorderWindows or self.showTitleBar)) if (grabPosition) |_grabPosition| {
+    if (self == grabbedWindow and windowMoving and (gui.reorderWindows or self.showTitleBar)) if (grabPosition) |_grabPosition| {
         self.relativePosition[0] = .{ .ratio = undefined };
         self.relativePosition[1] = .{ .ratio = undefined };
         self.pos = (mousePosition - _grabPosition) + selfPositionWhenGrabbed;
