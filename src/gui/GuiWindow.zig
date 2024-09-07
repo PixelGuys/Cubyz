@@ -132,7 +132,7 @@ pub fn defaultFunction() void {}
 pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) void {
 	const scaledMousePos = (mousePosition - self.pos)/@as(Vec2f, @splat(self.scale));
 	const btnPos = self.getButtonPositions();
-	const zoomInPos = btnPos[2];
+	const zoomInPos = btnPos[2]/self.scale;
 	if(scaledMousePos[1] < titleBarHeight and (self.showTitleBar or gui.reorderWindows)) {
 		grabbedWindow = self;
 		grabPosition = mousePosition;
@@ -498,7 +498,7 @@ pub fn render(self: *const GuiWindow, mousePosition: Vec2f) void {
 	}
 	draw.restoreTranslation(oldTranslation);
 	draw.restoreScale(oldScale);
-	if(self == grabbedWindow and (gui.reorderWindows or self.showTitleBar) and grabPosition != null) {
+	if(self == grabbedWindow and windowMoving and (gui.reorderWindows or self.showTitleBar) and grabPosition != null) {
 		self.drawOrientationLines();
 	}
 }
