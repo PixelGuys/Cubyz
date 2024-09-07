@@ -141,7 +141,7 @@ pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) void {
 	} else {
 		if (self.rootComponent) |*component| {
 			if (GuiComponent.contains(component.pos(), component.size(), scaledMousePos)) {
-	component.mainButtonPressed(scaledMousePos);
+				component.mainButtonPressed(scaledMousePos);
 			}
 		}
 	}
@@ -161,31 +161,31 @@ pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 			const zoomOutPos = btnPos[1];
 			const zoomInPos = btnPos[2];
 			if (mousePosition[0] - self.pos[0] > zoomInPos) {
-	if (mousePosition[0] - self.pos[0] > zoomOutPos) {
-		if (mousePosition[0] - self.pos[0] > closePos) {
-			// Close
-			if (self.closeable) gui.closeWindowFromRef(self);
-		} else {
-			// Zoom out
-			if (self.scale > 1) {
+				if (mousePosition[0] - self.pos[0] > zoomOutPos) {
+					if (mousePosition[0] - self.pos[0] > closePos) {
+						// Close
+						if (self.closeable) gui.closeWindowFromRef(self);
+					} else {
+						// Zoom out
+						if (self.scale > 1) {
 							self.scale -= 0.5;
-			} else {
+						} else {
 							self.scale -= 0.25;
-			}
-			self.scale = @max(self.scale, 0.25);
-			gui.updateWindowPositions();
-			gui.save();
-		}
-	} else {
-		// Zoom in
-		if (self.scale >= 1) {
-			self.scale += 0.5;
-		} else {
-			self.scale += 0.25;
-		}
-		gui.updateWindowPositions();
-		gui.save();
-	}
+						}
+						self.scale = @max(self.scale, 0.25);
+						gui.updateWindowPositions();
+						gui.save();
+					}
+				} else {
+					// Zoom in
+					if (self.scale >= 1) {
+						self.scale += 0.5;
+					} else {
+						self.scale += 0.25;
+					}
+					gui.updateWindowPositions();
+					gui.save();
+				}
 			}
 		}
 	}
@@ -202,18 +202,18 @@ fn detectCycles(self: *GuiWindow, other: *GuiWindow) bool {
 		while (win) |_win| {
 			if (win == self) return true;
 			switch (_win.relativePosition[xy]) {
-	.ratio => {
-		win = null;
-	},
-	.attachedToFrame => {
-		win = null;
-	},
-	.relativeToWindow => |relativeToWindow| {
-		win = relativeToWindow.reference;
-	},
-	.attachedToWindow => |attachedToWindow| {
-		win = attachedToWindow.reference;
-	},
+				.ratio => {
+					win = null;
+				},
+				.attachedToFrame => {
+					win = null;
+				},
+				.relativeToWindow => |relativeToWindow| {
+					win = relativeToWindow.reference;
+				},
+				.attachedToWindow => |attachedToWindow| {
+					win = attachedToWindow.reference;
+				},
 			}
 		}
 	}
@@ -235,17 +235,17 @@ fn snapToOtherWindow(self: *GuiWindow) void {
 
 			const dist1 = @abs(self.pos[i] - other.pos[i] - other.size[i]);
 			if (dist1 < minDist) {
-	minDist = dist1;
-	minWindow = other;
-	selfAttachment = .lower;
-	otherAttachment = .upper;
+				minDist = dist1;
+				minWindow = other;
+				selfAttachment = .lower;
+				otherAttachment = .upper;
 			}
 			const dist2 = @abs(self.pos[i] + self.size[i] - other.pos[i]);
 			if (dist2 < minDist) {
-	minDist = dist2;
-	minWindow = other;
-	selfAttachment = .upper;
-	otherAttachment = .lower;
+				minDist = dist2;
+				minWindow = other;
+				selfAttachment = .upper;
+				otherAttachment = .lower;
 			}
 		}
 		if (minWindow) |other| {
@@ -260,25 +260,25 @@ fn positionRelativeToFrame(self: *GuiWindow) void {
 		// Snap to the center:
 		if (@abs(self.pos[i] + self.size[i] - windowSize[i] / 2) <= snapDistance) {
 			relPos.* = .{ .attachedToFrame = .{
-	.selfAttachmentPoint = .upper,
-	.otherAttachmentPoint = .middle,
+				.selfAttachmentPoint = .upper,
+				.otherAttachmentPoint = .middle,
 			} };
 		} else if (@abs(self.pos[i] + self.size[i] / 2 - windowSize[i] / 2) <= snapDistance) {
 			relPos.* = .{ .attachedToFrame = .{
-	.selfAttachmentPoint = .middle,
-	.otherAttachmentPoint = .middle,
+				.selfAttachmentPoint = .middle,
+				.otherAttachmentPoint = .middle,
 			} };
 		} else if (@abs(self.pos[i] - windowSize[i] / 2) <= snapDistance) {
 			relPos.* = .{ .attachedToFrame = .{
-	.selfAttachmentPoint = .lower,
-	.otherAttachmentPoint = .middle,
+				.selfAttachmentPoint = .lower,
+				.otherAttachmentPoint = .middle,
 			} };
 		} else {
 			var ratio: f32 = (self.pos[i] + self.size[i] / 2) / windowSize[i];
 			if (self.pos[i] <= 0) {
-	ratio = 0;
+				ratio = 0;
 			} else if (self.pos[i] + self.size[i] >= windowSize[i]) {
-	ratio = 1;
+				ratio = 1;
 			}
 			relPos.* = .{ .ratio = ratio };
 		}
@@ -369,38 +369,38 @@ pub fn updateWindowPosition(self: *GuiWindow) void {
 	for (self.relativePosition, 0..) |relPos, i| {
 		switch (relPos) {
 			.ratio => |ratio| {
-	self.pos[i] = windowSize[i] * ratio - self.size[i] / 2;
+				self.pos[i] = windowSize[i] * ratio - self.size[i] / 2;
 			},
 			.attachedToFrame => |attachedToFrame| {
-	const otherPos = switch (attachedToFrame.otherAttachmentPoint) {
-		.lower => 0,
-		.middle => 0.5 * windowSize[i],
-		.upper => windowSize[i],
-	};
-	self.pos[i] = switch (attachedToFrame.selfAttachmentPoint) {
-		.lower => otherPos,
-		.middle => otherPos - 0.5 * self.size[i],
-		.upper => otherPos - self.size[i],
-	};
+				const otherPos = switch (attachedToFrame.otherAttachmentPoint) {
+					.lower => 0,
+					.middle => 0.5 * windowSize[i],
+					.upper => windowSize[i],
+				};
+				self.pos[i] = switch (attachedToFrame.selfAttachmentPoint) {
+					.lower => otherPos,
+					.middle => otherPos - 0.5 * self.size[i],
+					.upper => otherPos - self.size[i],
+				};
 			},
 			.attachedToWindow => |attachedToWindow| {
-	const other = attachedToWindow.reference;
-	const otherPos = switch (attachedToWindow.otherAttachmentPoint) {
-		.lower => other.pos[i],
-		.middle => other.pos[i] + 0.5 * other.size[i],
-		.upper => other.pos[i] + other.size[i],
-	};
-	self.pos[i] = switch (attachedToWindow.selfAttachmentPoint) {
-		.lower => otherPos,
-		.middle => otherPos - 0.5 * self.size[i],
-		.upper => otherPos - self.size[i],
-	};
+				const other = attachedToWindow.reference;
+				const otherPos = switch (attachedToWindow.otherAttachmentPoint) {
+					.lower => other.pos[i],
+					.middle => other.pos[i] + 0.5 * other.size[i],
+					.upper => other.pos[i] + other.size[i],
+				};
+				self.pos[i] = switch (attachedToWindow.selfAttachmentPoint) {
+					.lower => otherPos,
+					.middle => otherPos - 0.5 * self.size[i],
+					.upper => otherPos - self.size[i],
+				};
 			},
 			.relativeToWindow => |relativeToWindow| {
-	const other = relativeToWindow.reference;
-	const otherSize = other.size[i];
-	const otherPos = other.pos[i];
-	self.pos[i] = otherPos + relativeToWindow.ratio * otherSize - self.size[i] / 2;
+				const other = relativeToWindow.reference;
+				const otherSize = other.size[i];
+				const otherPos = other.pos[i];
+				self.pos[i] = otherPos + relativeToWindow.ratio * otherSize - self.size[i] / 2;
 			},
 		}
 	}
@@ -417,35 +417,35 @@ fn drawOrientationLines(self: *const GuiWindow) void {
 	for (self.relativePosition, 0..) |relPos, i| {
 		switch (relPos) {
 			.ratio, .relativeToWindow => {
-	continue;
+				continue;
 			},
 			.attachedToFrame => |attachedToFrame| {
-	const pos = switch (attachedToFrame.otherAttachmentPoint) {
-		.lower => 0,
-		.middle => 0.5 * windowSize[i],
-		.upper => windowSize[i],
-	};
-	if (i == 0) {
-		draw.line(.{ pos, 0 }, .{ pos, windowSize[i ^ 1] });
-	} else {
-		draw.line(.{ 0, pos }, .{ windowSize[i ^ 1], pos });
-	}
+				const pos = switch (attachedToFrame.otherAttachmentPoint) {
+					.lower => 0,
+					.middle => 0.5 * windowSize[i],
+					.upper => windowSize[i],
+				};
+				if (i == 0) {
+					draw.line(.{ pos, 0 }, .{ pos, windowSize[i ^ 1] });
+				} else {
+					draw.line(.{ 0, pos }, .{ windowSize[i ^ 1], pos });
+				}
 			},
 			.attachedToWindow => |attachedToWindow| {
-	const other = attachedToWindow.reference;
-	const otherSize = other.size;
-	const pos = switch (attachedToWindow.otherAttachmentPoint) {
-		.lower => other.pos[i],
-		.middle => other.pos[i] + 0.5 * otherSize[i],
-		.upper => other.pos[i] + otherSize[i],
-	};
-	const start = @min(self.pos[i ^ 1], other.pos[i ^ 1]);
-	const end = @max(self.pos[i ^ 1] + self.size[i ^ 1], other.pos[i ^ 1] + otherSize[i ^ 1]);
-	if (i == 0) {
-		draw.line(.{ pos, start }, .{ pos, end });
-	} else {
-		draw.line(.{ start, pos }, .{ end, pos });
-	}
+				const other = attachedToWindow.reference;
+				const otherSize = other.size;
+				const pos = switch (attachedToWindow.otherAttachmentPoint) {
+					.lower => other.pos[i],
+					.middle => other.pos[i] + 0.5 * otherSize[i],
+					.upper => other.pos[i] + otherSize[i],
+				};
+				const start = @min(self.pos[i ^ 1], other.pos[i ^ 1]);
+				const end = @max(self.pos[i ^ 1] + self.size[i ^ 1], other.pos[i ^ 1] + otherSize[i ^ 1]);
+				if (i == 0) {
+					draw.line(.{ pos, start }, .{ pos, end });
+				} else {
+					draw.line(.{ start, pos }, .{ end, pos });
+				}
 			},
 		}
 	}
