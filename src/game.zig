@@ -14,6 +14,7 @@ const network = @import("network.zig");
 const Connection = network.Connection;
 const ConnectionManager = network.ConnectionManager;
 const vec = @import("vec.zig");
+const Vec2f = vec.Vec2f;
 const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
 const Vec3d = vec.Vec3d;
@@ -431,7 +432,7 @@ pub const Player = struct { // MARK: Player
 				if (items.itemList[idx].block == block.typ){
 					const item = items.Item {.baseItem = &items.itemList[idx]};
 					var isDone = false;
-					
+
 					// Check if there is already a slot with that item type
 					for (0..12) |slotIdx| {
 						if (std.meta.eql(inventory.items[slotIdx].item, item)) {
@@ -447,7 +448,7 @@ pub const Player = struct { // MARK: Player
 						inventory.items[selectedSlot] = items.ItemStack {.item = item, .amount = items.itemList[idx].stackSize};
 						break;
 					}
-					
+
 					// Look for an empty slot
 					for (0..12) |slotIdx| {
 						if (inventory.items[slotIdx].empty()) {
@@ -643,7 +644,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	const terminalVelocity = 90.0;
 	const airFrictionCoefficient = gravity/terminalVelocity; // λ = a/v in equillibrium
 	var move: Vec3d = .{0, 0, 0};
-	if (main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(Player.super.pos[0])), @intFromFloat(@floor(Player.super.pos[1])), @intFromFloat(@floor(Player.super.pos[2]))) != null) {		
+	if (main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(Player.super.pos[0])), @intFromFloat(@floor(Player.super.pos[1])), @intFromFloat(@floor(Player.super.pos[2]))) != null) {
 		var acc = Vec3d{0, 0, 0};
 		if (!Player.isFlying.load(.monotonic)) {
 			acc[2] = -gravity;
@@ -667,34 +668,34 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		var movementDir: Vec3d = .{0, 0, 0};
 		var movementSpeed: f64 = 0;
 		if(main.Window.grabbed) {
-			if(KeyBoard.key("forward").pressed) {
+			if(KeyBoard.key("forward").value > 0.0) {
 				if(KeyBoard.key("sprint").pressed) {
 					if(Player.isGhost.load(.monotonic)) {
-						movementSpeed = @max(movementSpeed, 128);
-						movementDir += forward*@as(Vec3d, @splat(128));
+						movementSpeed = @max(movementSpeed, 128)*KeyBoard.key("forward").value;
+						movementDir += forward*@as(Vec3d, @splat(128*KeyBoard.key("forward").value));
 					} else if(Player.isFlying.load(.monotonic)) {
-						movementSpeed = @max(movementSpeed, 32);
-						movementDir += forward*@as(Vec3d, @splat(32));
+						movementSpeed = @max(movementSpeed, 32)*KeyBoard.key("forward").value;
+						movementDir += forward*@as(Vec3d, @splat(32*KeyBoard.key("forward").value));
 					} else {
-						movementSpeed = @max(movementSpeed, 8);
-						movementDir += forward*@as(Vec3d, @splat(8));
+						movementSpeed = @max(movementSpeed, 8)*KeyBoard.key("forward").value;
+						movementDir += forward*@as(Vec3d, @splat(8*KeyBoard.key("forward").value));
 					}
 				} else {
-					movementSpeed = @max(movementSpeed, 4);
-					movementDir += forward*@as(Vec3d, @splat(4));
+					movementSpeed = @max(movementSpeed, 4)*KeyBoard.key("forward").value;
+					movementDir += forward*@as(Vec3d, @splat(4*KeyBoard.key("forward").value));
 				}
 			}
-			if(KeyBoard.key("backward").pressed) {
-				movementSpeed = @max(movementSpeed, 4);
-				movementDir += forward*@as(Vec3d, @splat(-4));
+			if(KeyBoard.key("backward").value > 0.0) {
+				movementSpeed = @max(movementSpeed, 4)*KeyBoard.key("backward").value;
+				movementDir += forward*@as(Vec3d, @splat(-4*KeyBoard.key("backward").value));
 			}
-			if(KeyBoard.key("left").pressed) {
-				movementSpeed = @max(movementSpeed, 4);
-				movementDir += right*@as(Vec3d, @splat(4));
+			if(KeyBoard.key("left").value > 0.0) {
+				movementSpeed = @max(movementSpeed, 4*KeyBoard.key("left").value);
+				movementDir += right*@as(Vec3d, @splat(4*KeyBoard.key("left").value));
 			}
-			if(KeyBoard.key("right").pressed) {
-				movementSpeed = @max(movementSpeed, 4);
-				movementDir += right*@as(Vec3d, @splat(-4));
+			if(KeyBoard.key("right").value > 0.0) {
+				movementSpeed = @max(movementSpeed, 4*KeyBoard.key("right").value);
+				movementDir += right*@as(Vec3d, @splat(-4*KeyBoard.key("right").value));
 			}
 			if(KeyBoard.key("jump").pressed) {
 				if(Player.isFlying.load(.monotonic)) {
@@ -741,6 +742,11 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			const newSlot: i32 = @as(i32, @intCast(Player.selectedSlot)) -% @as(i32, @intFromFloat(main.Window.scrollOffset));
 			Player.selectedSlot = @intCast(@mod(newSlot, 12));
 			main.Window.scrollOffset = 0;
+			const newPos = Vec2f {
+				@floatCast(main.KeyBoard.key("cameraRight").value - main.KeyBoard.key("cameraLeft").value),
+				@floatCast(main.KeyBoard.key("cameraDown").value - main.KeyBoard.key("cameraUp").value),
+			};
+			main.game.camera.moveRotation(newPos[0] / 64.0, newPos[1] / 64.0);
 		}
 
 		// This our model for movement on a single frame:

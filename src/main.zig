@@ -297,6 +297,13 @@ fn toggleNetworkDebugOverlay() void {
 fn toggleAdvancedNetworkDebugOverlay() void {
 	gui.toggleWindow("debug_network_advanced");
 }
+fn cycleHotbarSlot(i: comptime_int) *const fn() void {
+	return &struct {
+		fn set() void {
+			game.Player.selectedSlot = @as(u32, @intCast(@mod(@as(i33, game.Player.selectedSlot) + i, 12)));
+		}
+	}.set;
+}
 fn setHotbarSlot(i: comptime_int) *const fn() void {
 	return &struct {
 		fn set() void {
@@ -309,31 +316,35 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 	const c = Window.c;
 	pub var keys = [_]Window.Key {
 		// Gameplay:
-		.{.name = "forward", .key = c.GLFW_KEY_W},
-		.{.name = "left", .key = c.GLFW_KEY_A},
-		.{.name = "backward", .key = c.GLFW_KEY_S},
-		.{.name = "right", .key = c.GLFW_KEY_D},
-		.{.name = "sprint", .key = c.GLFW_KEY_LEFT_CONTROL},
-		.{.name = "jump", .key = c.GLFW_KEY_SPACE},
+		.{.name = "forward", .key = c.GLFW_KEY_W, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = false}},
+		.{.name = "left", .key = c.GLFW_KEY_A, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = false}},
+		.{.name = "backward", .key = c.GLFW_KEY_S, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = true}},
+		.{.name = "right", .key = c.GLFW_KEY_D, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = true}},
+		.{.name = "uiUp", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = false}},
+		.{.name = "uiLeft", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = false}},
+		.{.name = "uiDown",  .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = true}},
+		.{.name = "uiRight", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = true}},
+		.{.name = "sprint", .key = c.GLFW_KEY_LEFT_CONTROL, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_LEFT_THUMB},
+		.{.name = "jump", .key = c.GLFW_KEY_SPACE, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_A},
 		.{.name = "fly", .key = c.GLFW_KEY_F, .pressAction = &game.flyToggle},
 		.{.name = "ghost", .key = c.GLFW_KEY_G, .pressAction = &game.ghostToggle},
 		.{.name = "hyperSpeed", .key = c.GLFW_KEY_H, .pressAction = &game.hyperSpeedToggle},
-		.{.name = "fall", .key = c.GLFW_KEY_LEFT_SHIFT},
-		.{.name = "shift", .key = c.GLFW_KEY_LEFT_SHIFT},
+		.{.name = "fall", .key = c.GLFW_KEY_LEFT_SHIFT, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_RIGHT_THUMB},
+		.{.name = "shift", .key = c.GLFW_KEY_LEFT_SHIFT, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_RIGHT_THUMB},
 		.{.name = "fullscreen", .key = c.GLFW_KEY_F11, .releaseAction = &Window.toggleFullscreen},
-		.{.name = "placeBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &game.pressPlace, .releaseAction = &game.releasePlace},
-		.{.name = "breakBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &game.pressBreak, .releaseAction = &game.releaseBreak},
-		.{.name = "acquireSelectedBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_MIDDLE, .pressAction = &game.pressAcquireSelectedBlock},
+		.{.name = "placeBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_TRIGGER}, .pressAction = &game.pressPlace, .releaseAction = &game.releasePlace},
+		.{.name = "breakBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER}, .pressAction = &game.pressBreak, .releaseAction = &game.releaseBreak},
+		.{.name = "acquireSelectedBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_MIDDLE, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_DPAD_LEFT, .pressAction = &game.pressAcquireSelectedBlock},
 
 		.{.name = "takeBackgroundImage", .key = c.GLFW_KEY_PRINT_SCREEN, .releaseAction = &takeBackgroundImageFn},
 
 		// Gui:
-		.{.name = "escape", .key = c.GLFW_KEY_ESCAPE, .releaseAction = &escape},
-		.{.name = "openInventory", .key = c.GLFW_KEY_E, .releaseAction = &openInventory},
-		.{.name = "openCreativeInventory(aka cheat inventory)", .key = c.GLFW_KEY_C, .releaseAction = &openCreativeInventory},
+		.{.name = "escape", .key = c.GLFW_KEY_ESCAPE, .releaseAction = &escape, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_B},
+		.{.name = "openInventory", .key = c.GLFW_KEY_E, .releaseAction = &openInventory, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_X},
+		.{.name = "openCreativeInventory(aka cheat inventory)", .key = c.GLFW_KEY_C, .releaseAction = &openCreativeInventory, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_Y},
 		.{.name = "openChat", .key = c.GLFW_KEY_T, .releaseAction = &openChat},
-		.{.name = "mainGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &gui.mainButtonPressed, .releaseAction = &gui.mainButtonReleased},
-		.{.name = "secondaryGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &gui.secondaryButtonPressed, .releaseAction = &gui.secondaryButtonReleased},
+		.{.name = "mainGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &gui.mainButtonPressed, .releaseAction = &gui.mainButtonReleased, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_A},
+		.{.name = "secondaryGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &gui.secondaryButtonPressed, .releaseAction = &gui.secondaryButtonReleased, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_Y},
 		// text:
 		.{.name = "textCursorLeft", .key = c.GLFW_KEY_LEFT, .repeatAction = &gui.textCallbacks.left},
 		.{.name = "textCursorRight", .key = c.GLFW_KEY_RIGHT, .repeatAction = &gui.textCallbacks.right},
@@ -362,7 +373,12 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "Hotbar 10", .key = c.GLFW_KEY_0, .releaseAction = setHotbarSlot(10)},
 		.{.name = "Hotbar 11", .key = c.GLFW_KEY_MINUS, .releaseAction = setHotbarSlot(11)},
 		.{.name = "Hotbar 12", .key = c.GLFW_KEY_EQUAL, .releaseAction = setHotbarSlot(12)},
-
+		.{.name = "Hotbar left", .gamepadButton = c.GLFW_GAMEPAD_BUTTON_LEFT_BUMPER, .releaseAction = cycleHotbarSlot(-1)},
+		.{.name = "Hotbar right", .gamepadButton = c.GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER, .releaseAction = cycleHotbarSlot(1)},
+		.{.name = "cameraLeft", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_X, .positive = false}},
+		.{.name = "cameraRight", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_X, .positive = true}},
+		.{.name = "cameraUp", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_Y, .positive = false}},
+		.{.name = "cameraDown", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_Y, .positive = true}},
 		// debug:
 		.{.name = "hideMenu", .key = c.GLFW_KEY_F1, .releaseAction = &toggleHideGui},
 		.{.name = "debugOverlay", .key = c.GLFW_KEY_F3, .releaseAction = &toggleDebugOverlay},
@@ -569,7 +585,6 @@ pub fn main() void { // MARK: main()
 	}
 
 	audio.setMusic("cubyz:cubyz");
-
 	while(c.glfwWindowShouldClose(Window.window) == 0) {
 		const isHidden = c.glfwGetWindowAttrib(Window.window, c.GLFW_ICONIFIED) == c.GLFW_TRUE;
 		if(!isHidden) {
