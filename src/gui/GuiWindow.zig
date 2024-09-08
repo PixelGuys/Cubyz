@@ -367,7 +367,7 @@ pub fn updateHovered(self: *GuiWindow, mousePosition: Vec2f) void {
 }
 
 pub fn updateWindowPosition(self: *GuiWindow) void {
-	if(self.contentSize[0] < iconWidth*4) {
+	if(self.showTitleBar and self.contentSize[0] < iconWidth*4) {
 		std.log.err("Window {s} width is too small: {d}px before scaling", .{self.id, self.contentSize[0]});
 		self.contentSize[0] = iconWidth*4;
 	}
