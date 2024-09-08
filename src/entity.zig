@@ -85,16 +85,16 @@ pub const ClientEntityManager = struct {
 		directionalLight: c_int,
 	} = undefined;
 	var shader: graphics.Shader = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
-	pub var entities: main.List(ClientEntity) = undefined;
+	pub var entities: main.VirtualList(ClientEntity, 1 << 20) = undefined;
 	pub var mutex: std.Thread.Mutex = std.Thread.Mutex{};
 
 	pub fn init() void {
-		entities = main.List(ClientEntity).init(main.globalAllocator);
+		entities = main.VirtualList(ClientEntity, 1 << 20).init();
 		shader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/entity_vertex.vs", "assets/cubyz/shaders/entity_fragment.fs", "", &uniforms);
 	}
 
 	pub fn deinit() void {
-		for(entities.items) |ent| {
+		for(entities.items()) |ent| {
 			ent.deinit(main.globalAllocator);
 		}
 		entities.deinit();
@@ -110,7 +110,7 @@ pub const ClientEntityManager = struct {
 		main.utils.assertLocked(&mutex);
 		var time: i16 = @truncate(std.time.milliTimestamp() -% settings.entityLookback);
 		time -%= timeDifference.difference.load(.monotonic);
-		for(entities.items) |*ent| {
+		for(entities.items()) |*ent| {
 			ent.update(time, lastTime);
 		}
 		lastTime = time;
@@ -120,7 +120,7 @@ pub const ClientEntityManager = struct {
 		mutex.lock();
 		defer mutex.unlock();
 
-		for(entities.items) |ent| {
+		for(entities.items()) |ent| {
 			if(ent.id == game.Player.id or ent.name.len == 0) continue; // don't render local player
 			const pos3d = ent.getRenderPosition() - playerPos;
 			const pos4f = Vec4f{
@@ -151,7 +151,7 @@ pub const ClientEntityManager = struct {
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniform3fv(uniforms.directionalLight, 1, @ptrCast(&directionalLight));
 
-		for(entities.items) |ent| {
+		for(entities.items()) |ent| {
 			if(ent.id == game.Player.id) continue; // don't render local player
 
 			// TODO: Entity meshes.
@@ -187,7 +187,7 @@ pub const ClientEntityManager = struct {
 	pub fn removeEntity(id: u32) void {
 		mutex.lock();
 		defer mutex.unlock();
-		for(entities.items, 0..) |*ent, i| {
+		for(entities.items(), 0..) |*ent, i| {
 			if(ent.id == id) {
 				ent.deinit(main.globalAllocator);
 				_ = entities.swapRemove(i);
@@ -221,7 +221,7 @@ pub const ClientEntityManager = struct {
 				0, 0, 0,
 			};
 			remaining = remaining[24..];
-			for(entities.items) |*ent| {
+			for(entities.items()) |*ent| {
 				if(ent.id == id) {
 					ent.updatePosition(&pos, &vel, time);
 					break;
