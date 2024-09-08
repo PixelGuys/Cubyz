@@ -3,7 +3,7 @@ const std = @import("std");
 const main = @import("root");
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
-
+pub var lastUsedMouse = true;
 pub const c = @cImport ({
 	@cInclude("glad/glad.h");
 	@cInclude("GLFW/glfw3.h");
@@ -14,12 +14,165 @@ pub var width: u31 = 1280;
 pub var height: u31 = 720;
 pub var window: *c.GLFWwindow = undefined;
 pub var grabbed: bool = false;
-pub var scrollOffset: f32 = 0;
 
+pub var scrollOffset: f32 = 0;
+var gamepadState: ?std.AutoHashMap(c_int, *c.GLFWgamepadstate) = null;
+pub fn updateGamepadState() void {
+	var jid: c_int = 0;
+	if (gamepadState == null) {
+		return;
+	}
+	while (jid < c.GLFW_JOYSTICK_LAST) {
+		var oldGamepadState: ?[]c.GLFWgamepadstate = null;
+		if (gamepadState.?.contains(jid)) {
+			oldGamepadState = main.globalAllocator.dupe(c.GLFWgamepadstate, &.{gamepadState.?.get(jid).?.*});
+		}
+		if (c.glfwJoystickPresent(jid) != 0 and c.glfwJoystickIsGamepad(jid) != 0) {
+			if (!gamepadState.?.contains(jid)) {
+				gamepadState.?.put(jid, main.globalAllocator.create(c.GLFWgamepadstate)) catch unreachable;
+			}
+			_ = c.glfwGetGamepadState(jid, gamepadState.?.get(jid).?);
+			var oldState: c.GLFWgamepadstate = std.mem.zeroes(c.GLFWgamepadstate);
+			if (oldGamepadState != null) {
+				oldState = oldGamepadState.?[0];
+			}
+			const newState = gamepadState.?.get(jid);
+			for(&main.KeyBoard.keys) |*key| {
+				if(key.gamepadAxis == null) {
+					if(key.gamepadButton >= 0) {
+						const oldPressed = oldState.buttons[@intCast(key.gamepadButton)] != 0;
+						const newPressed = newState.?.*.buttons[@intCast(key.gamepadButton)] != 0;
+						if(oldPressed != newPressed) {
+							key.pressed = newPressed;
+							if(newPressed) {
+								key.value = 1.0;
+							} else {
+								key.value = 0.0;
+							}
+							if(key.pressed) {
+								if(key.pressAction) |pressAction| {
+									pressAction();
+								}
+							} else {
+								if(key.releaseAction) |releaseAction| {
+									releaseAction();
+								}
+							}
+						}
+					}
+				} else {
+					const axis = key.gamepadAxis.?.axis;
+					const positive = key.gamepadAxis.?.positive;
+					var newAxis = newState.?.*.axes[@intCast(axis)];
+					var oldAxis = oldState.axes[@intCast(axis)];
+					if(!positive) {
+						newAxis *= -1;
+						oldAxis *= -1;
+					}
+					if(newAxis < 0.0) {
+						newAxis = 0.0;
+					}
+					if(oldAxis < 0.0) {
+						oldAxis = 0.0;
+					}
+					const oldPressed = oldAxis > 0.5;
+					const newPressed = newAxis > 0.5;
+					if (oldPressed != newPressed) {
+						key.pressed = newPressed;
+						if (newPressed) {
+							if (key.pressAction) |pressAction| {
+								pressAction();
+							}
+						} else {
+							if (key.releaseAction) |releaseAction| {
+								releaseAction();
+							}
+						}
+					}
+					if (newAxis != oldAxis) {
+						key.value = newAxis;
+					}
+				}
+			}
+		} else {
+			if (gamepadState.?.contains(jid)) {
+				main.globalAllocator.destroy(gamepadState.?.get(jid).?);
+				_ = gamepadState.?.remove(jid);
+			}
+			if (oldGamepadState != null) {
+				const oldState = oldGamepadState.?[0];
+				for(&main.KeyBoard.keys) |*key| {
+					if(key.gamepadAxis == null) {
+						if(key.gamepadButton >= 0) {
+							const oldPressed = oldState.buttons[@intCast(key.gamepadButton)] != 0;
+							const newPressed = false;
+							if(oldPressed != newPressed) {
+								key.pressed = newPressed;
+								if(newPressed) {
+									key.value = 1.0;
+								} else {
+									key.value = 0.0;
+								}
+								if(key.pressed) {
+									if(key.pressAction) |pressAction| {
+										pressAction();
+									}
+								} else {
+									if(key.releaseAction) |releaseAction| {
+										releaseAction();
+									}
+								}
+							}
+						}
+					} else {
+						const axis = key.gamepadAxis.?.axis;
+						const positive = key.gamepadAxis.?.positive;
+						var oldAxis = oldState.axes[@intCast(axis)];
+						if(!positive) {
+							oldAxis *= -1;
+						}
+						const newAxis = 0.0;
+						if(oldAxis < 0.0) {
+							oldAxis = 0.0;
+						}
+						const oldPressed = oldAxis > 0.5;
+						const newPressed = newAxis > 0.5;
+						if (oldPressed != newPressed) {
+							key.pressed = newPressed;
+							if (newPressed) {
+								if (key.pressAction) |pressAction| {
+									pressAction();
+								}
+							} else {
+								if (key.releaseAction) |releaseAction| {
+									releaseAction();
+								}
+							}
+						}
+						if (newAxis != oldAxis) {
+							key.value = newAxis;
+						}
+					}
+				}
+			}
+		}
+		if (oldGamepadState != null) {
+			main.globalAllocator.free(oldGamepadState.?);
+		}
+		jid += 1;
+	}
+}
+pub const GamepadAxis = struct {
+	axis: c_int,
+	positive: bool = true
+};
 pub const Key = struct { // MARK: Key
 	name: []const u8,
 	pressed: bool = false,
+	value: f32 = 0.0,
 	key: c_int = c.GLFW_KEY_UNKNOWN,
+	gamepadAxis: ?GamepadAxis = null,
+	gamepadButton: c_int = -1,
 	mouseButton: c_int = -1,
 	scancode: c_int = 0,
 	releaseAction: ?*const fn() void = null,
@@ -34,6 +187,39 @@ pub const Key = struct { // MARK: Key
 		capsLock: bool = false,
 		numLock: bool = false,
 	};
+	pub fn getGamepadName(self: Key) []const u8 {
+		if(self.gamepadAxis != null) {
+			const positive = self.gamepadAxis.?.positive;
+			return switch(self.gamepadAxis.?.axis) {
+				c.GLFW_GAMEPAD_AXIS_LEFT_X => if(positive) "Left stick right" else "Left stick left",
+				c.GLFW_GAMEPAD_AXIS_RIGHT_X => if(positive) "Right stick right" else "Right stick left",
+				c.GLFW_GAMEPAD_AXIS_LEFT_Y => if(positive) "Left stick down" else "Left stick up",
+				c.GLFW_GAMEPAD_AXIS_RIGHT_Y => if(positive) "Right stick down" else "Right stick up",
+				c.GLFW_GAMEPAD_AXIS_LEFT_TRIGGER => if(positive) "Left trigger" else "Left trigger (Negative)",
+				c.GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER => if(positive) "Right trigger" else "Right trigger (Negative)",
+				else => "(Invalid axis)"
+			};
+		} else {
+			return switch(self.gamepadButton) {
+				c.GLFW_GAMEPAD_BUTTON_A => "A",
+				c.GLFW_GAMEPAD_BUTTON_B => "B",
+				c.GLFW_GAMEPAD_BUTTON_X => "X",
+				c.GLFW_GAMEPAD_BUTTON_Y => "Y",
+				c.GLFW_GAMEPAD_BUTTON_BACK => "Back",
+				c.GLFW_GAMEPAD_BUTTON_DPAD_DOWN => "Down",
+				c.GLFW_GAMEPAD_BUTTON_DPAD_LEFT => "Left",
+				c.GLFW_GAMEPAD_BUTTON_DPAD_RIGHT => "Right",
+				c.GLFW_GAMEPAD_BUTTON_DPAD_UP => "Up",
+				c.GLFW_GAMEPAD_BUTTON_GUIDE => "Guide",
+				c.GLFW_GAMEPAD_BUTTON_LEFT_BUMPER => "Left bumper",
+				c.GLFW_GAMEPAD_BUTTON_LEFT_THUMB => "Left stick press",
+				c.GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER => "Right bumper",
+				c.GLFW_GAMEPAD_BUTTON_RIGHT_THUMB => "Right stick press",
+				c.GLFW_GAMEPAD_BUTTON_START => "Start",
+				else => "(Unrecognized button)"
+			};
+		}
+	}
 
 	pub fn getName(self: Key) []const u8 {
 		if(self.mouseButton == -1) {
@@ -121,6 +307,7 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 				if(glfw_key == key.key) {
 					if(glfw_key != c.GLFW_KEY_UNKNOWN or scancode == key.scancode) {
 						key.pressed = true;
+						key.value = 1.0;
 						if(key.pressAction) |pressAction| {
 							pressAction();
 						}
@@ -139,6 +326,7 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 				if(glfw_key == key.key) {
 					if(glfw_key != c.GLFW_KEY_UNKNOWN or scancode == key.scancode) {
 						key.pressed = false;
+						key.value = 0.0;
 						if(key.releaseAction) |releaseAction| {
 							releaseAction();
 						}
@@ -195,6 +383,7 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 		}
 		ignoreDataAfterRecentGrab = false;
 		currentPos = newPos;
+		lastUsedMouse = true;
 	}
 	fn mouseButton(_: ?*c.GLFWwindow, button: c_int, action: c_int, mods: c_int) callconv(.C) void {
 		_ = mods;
@@ -202,6 +391,7 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 			for(&main.KeyBoard.keys) |*key| {
 				if(button == key.mouseButton) {
 					key.pressed = true;
+					key.value = 1.0;
 					if(key.pressAction) |pressAction| {
 						pressAction();
 					}
@@ -215,6 +405,7 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 			for(&main.KeyBoard.keys) |*key| {
 				if(button == key.mouseButton) {
 					key.pressed = false;
+					key.value = 0.0;
 					if(key.releaseAction) |releaseAction| {
 						releaseAction();
 					}
@@ -349,9 +540,40 @@ pub fn init() void { // MARK: init()
 	c.glEnable(c.GL_DEBUG_OUTPUT_SYNCHRONOUS);
 	c.glDebugMessageCallback(GLFWCallbacks.glDebugOutput, null);
 	c.glDebugMessageControl(c.GL_DONT_CARE, c.GL_DONT_CARE, c.GL_DONT_CARE, 0, null, c.GL_TRUE);
+	if (std.fs.selfExeDirPathAlloc(main.globalAllocator.allocator) catch null) |selfExeDirPath| {
+		if (std.fs.path.join(main.globalAllocator.allocator, &.{selfExeDirPath, "gamecontrollerdb.txt"}) catch null) |mappings_path| {
+			if (std.fs.openFileAbsolute(mappings_path, .{.mode = .read_only}) catch null) |file| {
+				const data = main.globalAllocator.alloc(u8, file.getEndPos() catch 0);
+				const size = file.readAll(data) catch 0;
+				if (size > 0) {
+					_ = main.globalAllocator.resize(data, size);
+					_ = c.glfwUpdateGamepadMappings(@ptrCast(data));
+				}
+				main.globalAllocator.free(data);
+			}
+			main.globalAllocator.free(mappings_path);
+		}
+		main.globalAllocator.free(selfExeDirPath);
+	}
+	gamepadState = std.AutoHashMap(c_int, *c.GLFWgamepadstate).init(main.globalAllocator.allocator);
+	updateGamepadState();
+	std.log.debug("Gamepads at init: {d}", .{gamepadState.?.count()});
 }
 
 pub fn deinit() void {
+	const iter = gamepadState.?.keyIterator();
+	var i: usize = 0;
+	while (i < iter.len) {
+		const key = iter.items[i];
+		const value = gamepadState.?.get(key);
+		if (value != null) {
+			main.globalAllocator.destroy(value.?);
+			_ = gamepadState.?.remove(key);
+		}
+		i += 1;
+	}
+	gamepadState.?.deinit();
+	gamepadState = null;
 	c.glfwDestroyWindow(window);
 	c.glfwTerminate();
 }
@@ -359,6 +581,20 @@ pub fn deinit() void {
 pub fn handleEvents() void {
 	scrollOffset = 0;
 	c.glfwPollEvents();
+	if (gamepadState == null) {
+		std.log.err("gamepadState was null.", .{});
+		return;
+	}
+	updateGamepadState();
+	if (!grabbed) {
+		const x = main.KeyBoard.key("uiRight").value - main.KeyBoard.key("uiLeft").value;
+		const y = main.KeyBoard.key("uiDown").value - main.KeyBoard.key("uiUp").value;
+		if (x != 0 and y != 0) {
+			lastUsedMouse = false;
+			GLFWCallbacks.currentPos[0] += x;
+			GLFWCallbacks.currentPos[1] += y;
+		}
+	}
 }
 
 var oldX: c_int = 0;
