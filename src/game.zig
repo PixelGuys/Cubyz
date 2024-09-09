@@ -286,13 +286,14 @@ pub const collision = struct {
 		checkPos[index] += amount;
 
 		if (collision.collides(side, dir, -amount, checkPos, hitBox)) |box| {
-			const height = box.max[2] - checkPos[2] + hitBox.max[2];
-			if (height <= steppingHeight) {
+			const newFloor = box.max[2] + hitBox.max[2];
+			const heightDifference = newFloor - checkPos[2];
+			if (heightDifference <= steppingHeight) {
 				// If we collide but might be able to step up
-				checkPos[2] += steppingHeight;
+				checkPos[2] = newFloor + 0.0001;
 				if (collision.collides(side, dir, -amount, checkPos, hitBox) == null) {
 					// If there's no new collision then we can execute the step-up
-					resultingMovement[2] = height;
+					resultingMovement[2] = heightDifference;
 					return resultingMovement;
 				}
 			}
