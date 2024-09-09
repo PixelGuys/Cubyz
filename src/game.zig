@@ -351,8 +351,8 @@ pub const Player = struct { // MARK: Player
 	pub fn applyViewBobbingPosBlocking(pos: Vec3d) Vec3d {
 		mutex.lock();
 		defer mutex.unlock();
-		const xBob = @sin(bobTime) * 0.5 * 0.05; // Horizontal Component
-		const zBob = -@abs(@cos(bobTime)) * 0.05; // Vertical Component
+		const xBob = @sin(bobTime) * 0.5 * 0.07; // Horizontal Component
+		const zBob = -@abs(@cos(bobTime)) * 0.07; // Vertical Component
 		const bobVec = vec.rotateZ(Vec3d{ xBob * bobMag, 0, zBob * bobMag }, -camera.rotation[2]);
 		return pos + bobVec;
 	}
@@ -360,9 +360,10 @@ pub const Player = struct { // MARK: Player
 	pub fn applyViewBobbingRotBlocking(rot: Vec3f) Vec3f {
 		mutex.lock();
 		defer mutex.unlock();
-		const xRot: f32 = @as(f32, @floatCast(@cos(bobTime + 0.20) * -0.005 * bobMag));
-		const yRot: f32 = @as(f32, @floatCast(@sin(bobTime) * 0.003 * bobMag));
-		return rot + Vec3f{ xRot, yRot, 0 };
+		const xRot: f32 = @as(f32, @floatCast(@cos(bobTime * 1.5 + 0.20) * -0.002 * bobMag));
+		const yRot: f32 = @as(f32, @floatCast(@sin(bobTime * 1.5) * 0.002 * bobMag));
+		const zRot: f32 = @as(f32, @floatCast(@sin(bobTime * 0.75 + 0.5) * 0.001 * bobMag));
+		return rot + Vec3f{ xRot, yRot, zRot };
 	}
 
 	pub fn getVelBlocking() Vec3d {
