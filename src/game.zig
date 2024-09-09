@@ -684,16 +684,55 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 				}
 			}
 			if(KeyBoard.key("backward").pressed) {
-				movementSpeed = @max(movementSpeed, 4);
-				movementDir += forward*@as(Vec3d, @splat(-4));
+				if(KeyBoard.key("sprint").pressed) {
+					if(Player.isGhost.load(.monotonic)) {
+						movementSpeed = @max(movementSpeed, 128);
+						movementDir += forward*@as(Vec3d, @splat(-128));
+					} else if(Player.isFlying.load(.monotonic)) {
+						movementSpeed = @max(movementSpeed, 32);
+						movementDir += forward*@as(Vec3d, @splat(-32));
+					} else {
+						movementSpeed = @max(movementSpeed, 4);
+						movementDir += forward*@as(Vec3d, @splat(-4));
+					}
+				} else {
+					movementSpeed = @max(movementSpeed, 4);
+					movementDir += forward*@as(Vec3d, @splat(-4));
+				}
 			}
 			if(KeyBoard.key("left").pressed) {
-				movementSpeed = @max(movementSpeed, 4);
-				movementDir += right*@as(Vec3d, @splat(4));
+				if(KeyBoard.key("sprint").pressed) {
+					if(Player.isGhost.load(.monotonic)) {
+						movementSpeed = @max(movementSpeed, 128);
+						movementDir += right*@as(Vec3d, @splat(128));
+					} else if(Player.isFlying.load(.monotonic)) {
+						movementSpeed = @max(movementSpeed, 32);
+						movementDir += right*@as(Vec3d, @splat(32));
+					} else {
+						movementSpeed = @max(movementSpeed, 4);
+						movementDir += right*@as(Vec3d, @splat(4));
+					}
+				} else {
+					movementSpeed = @max(movementSpeed, 4);
+					movementDir += right*@as(Vec3d, @splat(4));
+				}
 			}
 			if(KeyBoard.key("right").pressed) {
-				movementSpeed = @max(movementSpeed, 4);
-				movementDir += right*@as(Vec3d, @splat(-4));
+				if(KeyBoard.key("sprint").pressed) {
+					if(Player.isGhost.load(.monotonic)) {
+						movementSpeed = @max(movementSpeed, 128);
+						movementDir += right*@as(Vec3d, @splat(-128));
+					} else if(Player.isFlying.load(.monotonic)) {
+						movementSpeed = @max(movementSpeed, 32);
+						movementDir += right*@as(Vec3d, @splat(-32));
+					} else {
+						movementSpeed = @max(movementSpeed, 4);
+						movementDir += right*@as(Vec3d, @splat(-4));
+					}
+				} else {
+					movementSpeed = @max(movementSpeed, 4);
+					movementDir += right*@as(Vec3d, @splat(-4));
+				}
 			}
 			if(KeyBoard.key("jump").pressed) {
 				if(Player.isFlying.load(.monotonic)) {
