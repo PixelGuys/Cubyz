@@ -268,6 +268,12 @@ fn openCreativeInventory() void {
 	gui.toggleGameMenu();
 	gui.openWindow("creative_inventory");
 }
+fn openChat() void {
+	if(game.world == null) return;
+	ungrabMouse();
+	gui.openWindow("chat");
+	gui.windowlist.chat.input.select();
+}
 fn takeBackgroundImageFn() void {
 	if(game.world == null) return;
 	renderer.MenuBackGround.takeBackgroundImage();
@@ -324,6 +330,7 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "escape", .key = c.GLFW_KEY_ESCAPE, .releaseAction = &escape},
 		.{.name = "openInventory", .key = c.GLFW_KEY_E, .releaseAction = &openInventory},
 		.{.name = "openCreativeInventory(aka cheat inventory)", .key = c.GLFW_KEY_C, .releaseAction = &openCreativeInventory},
+		.{.name = "openChat", .key = c.GLFW_KEY_T, .releaseAction = &openChat},
 		.{.name = "mainGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &gui.mainButtonPressed, .releaseAction = &gui.mainButtonReleased},
 		.{.name = "secondaryGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &gui.secondaryButtonPressed, .releaseAction = &gui.secondaryButtonReleased},
 		// text:
