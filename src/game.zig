@@ -930,6 +930,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		}
 	} else {
 		Player.super.pos += move;
+		Player.onGround = false;
 	}
 
 	// Clamp the eyePosition:
