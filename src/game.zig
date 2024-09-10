@@ -352,7 +352,7 @@ pub const Player = struct { // MARK: Player
 		mutex.lock();
 		defer mutex.unlock();
 		const xBob = @sin(bobTime) * 0.5 * 0.07; // Horizontal Component
-		const zBob = (-0.5 + @abs(@cos(bobTime))) * 0.07; // Vertical Component
+		const zBob = (0.5 - @abs(@cos(bobTime))) * 0.07; // Vertical Component
 		const bobVec = vec.rotateZ(Vec3d{ xBob * bobMag, 0, zBob * bobMag }, -camera.rotation[2]);
 		return pos + bobVec;
 	}
