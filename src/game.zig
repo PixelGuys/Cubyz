@@ -671,7 +671,11 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			} else if(Player.isFlying.load(.monotonic)) {
 				movementSpeed = @max(movementSpeed, 32);
 			} else {
-				movementSpeed = @max(movementSpeed, 8);
+				if(KeyBoard.key("forward").pressed) {
+					movementSpeed = @max(movementSpeed, 8);
+				} else {
+					movementSpeed = @max(movementSpeed, 4);
+				}
 			}
 		} else {
 			movementSpeed = @max(movementSpeed, 4);
