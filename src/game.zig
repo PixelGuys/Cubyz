@@ -352,7 +352,7 @@ pub const Player = struct { // MARK: Player
 		mutex.lock();
 		defer mutex.unlock();
 		const xBob = @sin(bobTime) * 0.5 * 0.07; // Horizontal Component
-		const zBob = -@abs(@cos(bobTime)) * 0.07; // Vertical Component
+		const zBob = (-0.5 + @abs(@cos(bobTime))) * 0.07; // Vertical Component
 		const bobVec = vec.rotateZ(Vec3d{ xBob * bobMag, 0, zBob * bobMag }, -camera.rotation[2]);
 		return pos + bobVec;
 	}
@@ -361,9 +361,8 @@ pub const Player = struct { // MARK: Player
 		mutex.lock();
 		defer mutex.unlock();
 		const xRot: f32 = @as(f32, @floatCast(@cos(bobTime * 1.5 + 0.20) * -0.002 * bobMag));
-		const yRot: f32 = @as(f32, @floatCast(@sin(bobTime * 1.5) * 0.002 * bobMag));
 		const zRot: f32 = @as(f32, @floatCast(@sin(bobTime * 0.75 + 0.5) * 0.001 * bobMag));
-		return rot + Vec3f{ xRot, yRot, zRot };
+		return rot + Vec3f{ xRot, 0, zRot };
 	}
 
 	pub fn getVelBlocking() Vec3d {
@@ -692,13 +691,13 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		const fac: f64 = 1 - std.math.exp(-10 * deltaTime);
 		var targetBobVel: f64 = 0;
 		if (movementSpeed > 0) {
-			targetBobVel = vec.length(vec.xy(Player.getVelBlocking()) * @as(vec.Vec2d, @splat(std.math.pow(f64, movementSpeed / 4, 0.7)))) / movementSpeed;
+			targetBobVel = vec.length(vec.xy(Player.getVelBlocking()) * @as(vec.Vec2d, @splat(std.math.pow(f64, movementSpeed / 4, 0.5)))) / movementSpeed;
 		}
 		Player.bobVel = Player.bobVel * (1 - fac) + targetBobVel * fac;
 		if (Player.onGround) { // No view bobbing in the air
-			Player.bobTime += std.math.pow(f64, Player.bobVel, 0.7) * 8 * deltaTime;
+			Player.bobTime += std.math.pow(f64, Player.bobVel, 0.9) * 8 * deltaTime;
 		}
-		Player.bobMag = @min(@sqrt(Player.bobVel), 2) * settings.viewBobStrength;
+		Player.bobMag = @min(@sqrt(Player.bobVel), 1.2) * settings.viewBobStrength;
 
 		// This our model for movement on a single frame:
 		// dv/dt = a - λ·v
