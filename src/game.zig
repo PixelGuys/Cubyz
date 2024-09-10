@@ -351,8 +351,8 @@ pub const Player = struct { // MARK: Player
 	pub fn applyViewBobbingPosBlocking(pos: Vec3d) Vec3d {
 		mutex.lock();
 		defer mutex.unlock();
-		const xBob = @sin(bobTime) * 0.5 * 0.07; // Horizontal Component
-		const zBob = (0.5 - @abs(@cos(bobTime))) * 0.07; // Vertical Component
+		const xBob = (std.math.atan(0.25 * @sin(bobTime)) / std.math.atan(@as(f64, 0.25))) * 0.07; // Horizontal Component
+		const zBob = (std.math.atan(0.5 * @cos(2 * bobTime + std.math.pi * 0.5)) / std.math.atan(@as(f64, 0.5)) + 0.5 * std.math.pow(f64, @cos(bobTime + std.math.pi * 0.5), 2)) * 0.6 * 0.07; // Vertical Component
 		const bobVec = vec.rotateZ(Vec3d{ xBob * bobMag, 0, zBob * bobMag }, -camera.rotation[2]);
 		return pos + bobVec;
 	}
