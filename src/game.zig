@@ -351,8 +351,8 @@ pub const Player = struct { // MARK: Player
 	pub fn applyViewBobbingPosBlocking(pos: Vec3d) Vec3d {
 		mutex.lock();
 		defer mutex.unlock();
-		const xBob = (std.math.atan(0.25 * @sin(bobTime)) / std.math.atan(@as(f64, 0.25))) * 0.07; // Horizontal Component
-		const zBob = (std.math.atan(0.5 * @cos(2 * bobTime + std.math.pi * 0.5)) / std.math.atan(@as(f64, 0.5)) + 0.5 * std.math.pow(f64, @cos(bobTime + std.math.pi * 0.5), 2)) * 0.8 * 0.07; // Vertical Component
+		const xBob = (std.math.atan(0.25 * @sin(bobTime)) / std.math.atan(@as(f64, 0.25))) * 0.05; // Horizontal Component
+		const zBob = (std.math.atan(0.5 * @cos(2 * bobTime + std.math.pi * 0.5)) / std.math.atan(@as(f64, 0.5)) + 0.5 * std.math.pow(f64, @cos(bobTime + std.math.pi * 0.5), 2)) * 0.8 * 0.05; // Vertical Component
 		const bobVec = vec.rotateZ(Vec3d{ xBob * bobMag, 0, zBob * bobMag }, -camera.rotation[2]);
 		return pos + bobVec;
 	}
@@ -360,7 +360,7 @@ pub const Player = struct { // MARK: Player
 	pub fn applyViewBobbingRotBlocking(rot: Vec3f) Vec3f {
 		mutex.lock();
 		defer mutex.unlock();
-		const xRot: f32 = @as(f32, @floatCast(@cos(bobTime * 2 + 0.20) * -0.002 * bobMag));
+		const xRot: f32 = @as(f32, @floatCast(@cos(bobTime * 2 + 0.20) * -0.0015 * bobMag));
 		const zRot: f32 = @as(f32, @floatCast(@sin(bobTime + 0.5) * 0.001 * bobMag));
 		return rot + Vec3f{ xRot, 0, zRot };
 	}
