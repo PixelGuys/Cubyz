@@ -22,6 +22,7 @@ pub const GuiComponent = @import("gui_component.zig").GuiComponent;
 pub const GuiWindow = @import("GuiWindow.zig");
 
 pub const windowlist = @import("windows/_windowlist.zig");
+const Cursor = @import("cursor.zig");
 
 var windowList: List(*GuiWindow) = undefined;
 var hudWindows: List(*GuiWindow) = undefined;
@@ -155,10 +156,12 @@ pub fn init() void { // MARK: init()
 	TextInput.__init();
 	load();
 	inventory.init();
+	Cursor.init();
 }
 
 pub fn deinit() void {
 	save();
+	Cursor.deinit();
 	windowList.deinit();
 	hudWindows.deinit();
 	for(openWindows.items) |window| {
@@ -559,6 +562,9 @@ pub fn updateAndRenderGui() void {
 		}
 		inventory.render(mousePos);
 	}
+	const oldScale = draw.setScale(scale);
+	Cursor.render();
+	defer draw.restoreScale(oldScale);
 }
 
 pub fn toggleGameMenu() void {
