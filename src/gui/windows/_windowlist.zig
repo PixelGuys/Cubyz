@@ -5,7 +5,6 @@ pub const chat = @import("chat.zig");
 pub const controls = @import("controls.zig");
 pub const creative_inventory = @import("creative_inventory.zig");
 pub const crosshair = @import("crosshair.zig");
-pub const cursor = @import("cursor.zig");
 pub const debug_network = @import("debug_network.zig");
 pub const debug_network_advanced = @import("debug_network_advanced.zig");
 pub const debug = @import("debug.zig");

@@ -456,10 +456,10 @@ pub fn setNextKeypressListener(listener: ?*const fn(c_int, c_int, c_int) void) !
 	nextKeypressListener = listener;
 }
 
-pub fn setMouseGrabbed(grab: bool) void {
-	if(grabbed != grab) {
-		if(grab) {
-			c.glfwSetInputMode(window, c.GLFW_CURSOR, c.GLFW_CURSOR_DISABLED);
+fn updateCursor() void {
+	if (grabbed) {
+
+		c.glfwSetInputMode(window, c.GLFW_CURSOR, c.GLFW_CURSOR_DISABLED);
 			// Behavior seems much more intended without this line on MacOS.
 			// Perhaps this is an inconsistency in GLFW due to its fresh XQuartz support?
 			if(@import("builtin").target.os.tag != .macos) {
@@ -467,10 +467,19 @@ pub fn setMouseGrabbed(grab: bool) void {
 					c.glfwSetInputMode(window, c.GLFW_RAW_MOUSE_MOTION, c.GLFW_TRUE);
 			}
 			GLFWCallbacks.ignoreDataAfterRecentGrab = true;
-		} else {
+	} else {
+		if (cursorVisible) {
 			c.glfwSetInputMode(window, c.GLFW_CURSOR, c.GLFW_CURSOR_NORMAL);
+		} else {
+			c.glfwSetInputMode(window, c.GLFW_CURSOR, c.GLFW_CURSOR_HIDDEN);
 		}
+	}
+}
+
+pub fn setMouseGrabbed(grab: bool) void {
+	if(grabbed != grab) {
 		grabbed = grab;
+		updateCursor();
 	}
 }
 
@@ -577,6 +586,13 @@ pub fn deinit() void {
 	c.glfwDestroyWindow(window);
 	c.glfwTerminate();
 }
+var cursorVisible: bool = true;
+pub fn setCursorVisible(visible: bool) void {
+	if (cursorVisible != visible) {
+		cursorVisible = visible;
+		updateCursor();
+	}
+}
 
 pub fn handleEvents() void {
 	scrollOffset = 0;
@@ -595,6 +611,7 @@ pub fn handleEvents() void {
 			GLFWCallbacks.currentPos[1] += y;
 		}
 	}
+	setCursorVisible(!grabbed and lastUsedMouse);
 }
 
 var oldX: c_int = 0;
