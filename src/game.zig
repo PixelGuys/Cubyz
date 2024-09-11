@@ -690,8 +690,9 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		// Smooth lerping of bobTime with framerate independent damping
 		const fac: f64 = 1 - std.math.exp(-15 * deltaTime);
 		var targetBobVel: f64 = 0;
-		if (movementSpeed > 0) {
-			targetBobVel = std.math.pow(f64, vec.length(vec.xy(Player.getVelBlocking())) / 4, 0.5);
+		const horizontalMovementSpeed = vec.length(vec.xy(Player.getVelBlocking()));
+		if (horizontalMovementSpeed > 0.01 and Player.onGround) {
+			targetBobVel = std.math.pow(f64, horizontalMovementSpeed / 4, 0.5);
 		}
 		Player.bobVel = Player.bobVel * (1 - fac) + targetBobVel * fac;
 		if (Player.onGround) { // No view bobbing in the air
