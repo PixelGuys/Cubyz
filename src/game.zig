@@ -352,7 +352,7 @@ pub const Player = struct { // MARK: Player
 		mutex.lock();
 		defer mutex.unlock();
 		const xBob = (std.math.atan(0.25 * @sin(bobTime)) / std.math.atan(@as(f64, 0.25))) * 0.07; // Horizontal Component
-		const zBob = (std.math.atan(0.5 * @cos(2 * bobTime + std.math.pi * 0.5)) / std.math.atan(@as(f64, 0.5)) + 0.5 * std.math.pow(f64, @cos(bobTime + std.math.pi * 0.5), 2)) * 0.6 * 0.07; // Vertical Component
+		const zBob = (std.math.atan(0.5 * @cos(2 * bobTime + std.math.pi * 0.5)) / std.math.atan(@as(f64, 0.5)) + 0.5 * std.math.pow(f64, @cos(bobTime + std.math.pi * 0.5), 2)) * 0.8 * 0.07; // Vertical Component
 		const bobVec = vec.rotateZ(Vec3d{ xBob * bobMag, 0, zBob * bobMag }, -camera.rotation[2]);
 		return pos + bobVec;
 	}
@@ -360,8 +360,8 @@ pub const Player = struct { // MARK: Player
 	pub fn applyViewBobbingRotBlocking(rot: Vec3f) Vec3f {
 		mutex.lock();
 		defer mutex.unlock();
-		const xRot: f32 = @as(f32, @floatCast(@cos(bobTime * 1.5 + 0.20) * -0.002 * bobMag));
-		const zRot: f32 = @as(f32, @floatCast(@sin(bobTime * 0.75 + 0.5) * 0.001 * bobMag));
+		const xRot: f32 = @as(f32, @floatCast(@cos(bobTime * 2 + 0.20) * -0.002 * bobMag));
+		const zRot: f32 = @as(f32, @floatCast(@sin(bobTime + 0.5) * 0.001 * bobMag));
 		return rot + Vec3f{ xRot, 0, zRot };
 	}
 
@@ -688,10 +688,10 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		
 		// View Bobbing
 		// Smooth lerping of bobTime with framerate independent damping
-		const fac: f64 = 1 - std.math.exp(-10 * deltaTime);
+		const fac: f64 = 1 - std.math.exp(-15 * deltaTime);
 		var targetBobVel: f64 = 0;
 		if (movementSpeed > 0) {
-			targetBobVel = vec.length(vec.xy(Player.getVelBlocking()) * @as(vec.Vec2d, @splat(std.math.pow(f64, movementSpeed / 4, 0.5)))) / movementSpeed;
+			targetBobVel = std.math.pow(f64, vec.length(vec.xy(Player.getVelBlocking())) / 4, 0.5);
 		}
 		Player.bobVel = Player.bobVel * (1 - fac) + targetBobVel * fac;
 		if (Player.onGround) { // No view bobbing in the air
