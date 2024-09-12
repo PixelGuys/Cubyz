@@ -56,6 +56,16 @@ pub var developerAutoEnterWorld: []const u8 = "";
 
 pub var developerGPUInfiniteLoopDetection: bool = false;
 
+pub var askToDownloadControllerMappings: bool = true;
+
+pub var downloadControllerMappings: bool = false;
+
+pub const downloadControllerMappingsInterval: i128 = std.time.ns_per_week;
+
+pub var downloadControllerMappingsWhenUnrecognized: bool = false;
+
+pub const minTimeToDownloadControllerMappingsWhenUnrecognized: i128 = std.time.ns_per_day;
+
 
 pub fn init() void {
 	const zon: ZonElement = main.files.readToZon(main.stackAllocator, "settings.zig.zon") catch |err| blk: {
