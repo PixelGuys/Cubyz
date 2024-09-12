@@ -351,9 +351,13 @@ pub const Player = struct { // MARK: Player
 	pub fn applyViewBobbingPosBlocking(pos: Vec3d) Vec3d {
 		mutex.lock();
 		defer mutex.unlock();
-		const xBob = (std.math.atan(0.25 * @sin(bobTime)) / std.math.atan(@as(f64, 0.25))) * 0.05; // Horizontal Component
-		const zBob = (std.math.atan(0.5 * @cos(2 * bobTime + std.math.pi * 0.5)) / std.math.atan(@as(f64, 0.5)) + 0.5 * std.math.pow(f64, @cos(bobTime + std.math.pi * 0.5), 2)) * 0.8 * 0.05; // Vertical Component
-		const bobVec = vec.rotateZ(Vec3d{ xBob * bobMag, 0, zBob * bobMag }, -camera.rotation[2]);
+		// Horizontal Component - atan(0.25 * sin(bobTime)) / atan(0.25)
+		const xBob = 1.0204970377 * @sin(bobTime);
+		// Vertical Component (*0.8) - atan(0.5 * -sin(2 * bobTime)) / atan(0.5) + 0.5 * (-@sin(bobTime))^2
+		const a = 0.5 * -@sin(2 * bobTime);
+		const b = -@sin(bobTime);
+		const zBob = ((a - a * a * a / 3) / 0.4636476090 + 0.5 * b * b) * 0.8;
+		const bobVec = vec.rotateZ(Vec3d{ xBob * bobMag * 0.05, 0, zBob * bobMag * 0.05 }, -camera.rotation[2]);
 		return pos + bobVec;
 	}
 
@@ -685,20 +689,24 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			Player.selectedSlot = @intCast(@mod(newSlot, 12));
 			main.Window.scrollOffset = 0;
 		}
-		
-		// View Bobbing
-		// Smooth lerping of bobTime with framerate independent damping
-		const fac: f64 = 1 - std.math.exp(-15 * deltaTime);
-		var targetBobVel: f64 = 0;
-		const horizontalMovementSpeed = vec.length(vec.xy(Player.getVelBlocking()));
-		if (horizontalMovementSpeed > 0.01 and Player.onGround) {
-			targetBobVel = std.math.pow(f64, horizontalMovementSpeed / 4, 0.5);
+
+		{   // View Bobbing
+			Player.mutex.lock();
+			defer Player.mutex.unlock();
+			var targetBobVel: f64 = 0;
+			const horizontalMovementSpeed = vec.length(vec.xy(Player.super.vel));
+			if (horizontalMovementSpeed > 0.01 and Player.onGround) {
+				targetBobVel = @sqrt(horizontalMovementSpeed / 4);
+			}
+			// Smooth lerping of bobVel with framerate independent damping
+			const fac: f64 = 1 - std.math.exp(-15 * deltaTime);
+			Player.bobVel = Player.bobVel * (1 - fac) + targetBobVel * fac;
+			if (Player.onGround) { // No view bobbing in the air
+				Player.bobTime += Player.bobVel * 8 * deltaTime;
+			}
+			// Maximum magnitude when sprinting (2x walking speed)
+			Player.bobMag = @sqrt(@min(Player.bobVel, 2)) * settings.viewBobStrength;
 		}
-		Player.bobVel = Player.bobVel * (1 - fac) + targetBobVel * fac;
-		if (Player.onGround) { // No view bobbing in the air
-			Player.bobTime += std.math.pow(f64, Player.bobVel, 0.9) * 8 * deltaTime;
-		}
-		Player.bobMag = @min(@sqrt(Player.bobVel), 1.2) * settings.viewBobStrength;
 
 		// This our model for movement on a single frame:
 		// dv/dt = a - λ·v
