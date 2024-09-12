@@ -10,12 +10,12 @@ const gui = @import("gui.zig");
 const GuiWindow = gui.GuiWindow;
 const GuiComponent = gui.GuiComponent;
 
-const size: f32 = 64;
+const size: f32 = 16;
 
 var texture: Texture = undefined;
 
 pub fn init() void {
-	texture = Texture.initFromFile("assets/cubyz/ui/hud/crosshair.png");
+	texture = Texture.initFromFile("assets/cubyz/ui/cursor.png");
 }
 
 pub fn deinit() void {
