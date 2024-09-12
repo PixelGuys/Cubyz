@@ -365,9 +365,11 @@ pub fn updateHovered(self: *GuiWindow, mousePosition: Vec2f) void {
 		}
 	}
 }
-
+pub fn getMinWindowWidth(self: *GuiWindow) f32 {
+	return iconWidth * @as(f32, (if (self.closeable) 4 else 3));
+}
 pub fn updateWindowPosition(self: *GuiWindow) void {
-	const minSize = iconWidth * @as(f32, (if (self.closeable) 4 else 3));
+	const minSize = self.getMinWindowWidth();
 	if(self.contentSize[0] < minSize) {
 		std.log.err("Window '{s}' width is too small: {d}px before scaling", .{self.id, self.contentSize[0]});
 		self.contentSize[0] = minSize;
