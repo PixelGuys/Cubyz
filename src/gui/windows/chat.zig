@@ -36,7 +36,7 @@ var messageQueue: main.List([]const u8) = undefined;
 var expirationTime: main.List(i32) = undefined;
 var historyStart: u32 = 0;
 var fadeOutEnd: u32 = 0;
-var input: *TextInput = undefined;
+pub var input: *TextInput = undefined;
 var hideInput: bool = true;
 
 fn refresh() void {
@@ -73,6 +73,7 @@ pub fn onOpen() void {
 	expirationTime = main.List(i32).init(main.globalAllocator);
 	messageQueue = main.List([]const u8).init(main.globalAllocator);
 	historyStart = 0;
+	fadeOutEnd = 0;
 	input = TextInput.init(.{0, 0}, 256, 32, "", .{.callback = &sendMessage});
 	refresh();
 }

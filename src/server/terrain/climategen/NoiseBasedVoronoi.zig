@@ -305,7 +305,6 @@ const GenerationStructure = struct {
 			const subBiome = biome.biome.subBiomes.sample(&seed).*;
 			var maxCenterOffset: f32 = biome.biome.radius - subBiome.radius - 32;
 			if(maxCenterOffset < 0) {
-				std.log.warn("SubBiome {s} of {s} is too big", .{subBiome.id, biome.biome.id});
 				maxCenterOffset = 0;
 			}
 			const point = biome.pos +% @as(Vec2i, @intFromFloat(random.nextPointInUnitCircle(&seed)*@as(Vec2f, @splat(maxCenterOffset))));

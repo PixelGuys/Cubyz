@@ -10,7 +10,7 @@
 	"hasBackFace" : true,
 	"collide": false,
 	"absorbedLight" : 0x090501,
-	"model" : "cube",
+	"model" : "cubyz:cube",
 	"texture" : {
 		"time" : 500,
 		"textures": [

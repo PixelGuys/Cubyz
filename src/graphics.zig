@@ -666,6 +666,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		self.lineBreaks = main.List(LineBreak).init(allocator);
 		parser.parse();
 		if(parser.parsedText.items.len == 0) {
+			self.lineBreaks.append(.{.index = 0, .width = 0});
 			self.glyphs = &[0]GlyphData{};
 			return self;
 		}

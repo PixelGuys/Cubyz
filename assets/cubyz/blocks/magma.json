@@ -5,6 +5,6 @@
 		"auto"
 	],
 	"emittedLight" : 0x884928,
-	"model" : "cube",
+	"model" : "cubyz:cube",
 	"texture" : "cubyz:magma"
 }

@@ -4,6 +4,6 @@
 	"drops" : [
 		"auto"
 	],
-	"model" : "cube",
+	"model" : "cubyz:cube",
 	"texture" : "cubyz:dirt"
 }

@@ -276,6 +276,39 @@ pub const collision = struct {
 		return resultBox;
 	}
 
+	pub fn collideOrStep(comptime side: main.utils.Side, comptime dir: Direction, amount: f64, pos: Vec3d, hitBox: Box, steppingHeight: f64) Vec3d {
+		const index = @intFromEnum(dir);
+
+		// First argument is amount we end up moving in dir, second argument is how far up we step
+		var resultingMovement: Vec3d = .{0, 0, 0};
+		resultingMovement[index] = amount;
+		var checkPos = pos;
+		checkPos[index] += amount;
+
+		if (collision.collides(side, dir, -amount, checkPos, hitBox)) |box| {
+			const newFloor = box.max[2] + hitBox.max[2];
+			const heightDifference = newFloor - checkPos[2];
+			if (heightDifference <= steppingHeight) {
+				// If we collide but might be able to step up
+				checkPos[2] = newFloor + 0.0001;
+				if (collision.collides(side, dir, -amount, checkPos, hitBox) == null) {
+					// If there's no new collision then we can execute the step-up
+					resultingMovement[2] = heightDifference;
+					return resultingMovement;
+				}
+			}
+
+			// Otherwise move as close to the container as possible
+			if (amount < 0) {
+				resultingMovement[index] = box.max[index] - hitBox.min[index] - pos[index];
+			} else {
+				resultingMovement[index] = box.min[index] - hitBox.max[index] - pos[index];
+			}
+		}
+
+		return resultingMovement;
+	}
+
 	pub const Box = struct {
 		min: Vec3d,
 		max: Vec3d,
@@ -294,6 +327,7 @@ pub const Player = struct { // MARK: Player
 	pub var super: main.server.Entity = .{};
 	pub var eyePos: Vec3d = .{0, 0, 0};
 	pub var eyeVel: Vec3d = .{0, 0, 0};
+	pub var eyeCoyote: f64 = 0;
 	pub var eyeStep: @Vector(3, bool) = .{false, false, false};
 	pub var bobTime: f64 = 0;
 	pub var bobVel: f64 = 0;
@@ -342,6 +376,12 @@ pub const Player = struct { // MARK: Player
 		return super.pos;
 	}
 
+	pub fn getVelBlocking() Vec3d {
+		mutex.lock();
+		defer mutex.unlock();
+		return super.vel;
+	}
+
 	pub fn getEyePosBlocking() Vec3d {
 		mutex.lock();
 		defer mutex.unlock();
@@ -369,10 +409,16 @@ pub const Player = struct { // MARK: Player
 		return rot + Vec3f{ xRot, 0, zRot };
 	}
 
-	pub fn getVelBlocking() Vec3d {
+	pub fn getEyeVelBlocking() Vec3d {
 		mutex.lock();
 		defer mutex.unlock();
-		return super.vel;
+		return eyeVel;
+	}
+
+	pub fn getEyeCoyoteBlocking() f64 {
+		mutex.lock();
+		defer mutex.unlock();
+		return eyeCoyote;
 	}
 
 	fn steppingHeight() Vec3d {
@@ -402,13 +448,43 @@ pub const Player = struct { // MARK: Player
 		main.renderer.MeshSelection.breakBlock(&inventory__SEND_CHANGES_TO_SERVER.items[selectedSlot]);
 	}
 
-	pub fn acquireSelectedBlock() void { 
+	pub fn acquireSelectedBlock() void {
 		if (main.renderer.MeshSelection.selectedBlockPos) |selectedPos| {
 			const block = main.renderer.mesh_storage.getBlock(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
 			for (0..items.itemListSize) |idx|{
 				if (items.itemList[idx].block == block.typ){
 					const item = items.Item {.baseItem = &items.itemList[idx]};
+					var isDone = false;
+					
+					// Check if there is already a slot with that item type
+					for (0..12) |slotIdx| {
+						if (std.meta.eql(inventory__SEND_CHANGES_TO_SERVER.items[slotIdx].item, item)) {
+							inventory__SEND_CHANGES_TO_SERVER.items[slotIdx] = items.ItemStack {.item = item, .amount = items.itemList[idx].stackSize};
+							selectedSlot = @intCast(slotIdx);
+							isDone = true;
+							break;
+						}
+					}
+					if (isDone) break;
+
+					if (inventory__SEND_CHANGES_TO_SERVER.items[selectedSlot].empty()) {
+						inventory__SEND_CHANGES_TO_SERVER.items[selectedSlot] = items.ItemStack {.item = item, .amount = items.itemList[idx].stackSize};
+						break;
+					}
+					
+					// Look for an empty slot
+					for (0..12) |slotIdx| {
+						if (inventory__SEND_CHANGES_TO_SERVER.items[slotIdx].empty()) {
+							inventory__SEND_CHANGES_TO_SERVER.items[slotIdx] = items.ItemStack {.item = item, .amount = items.itemList[idx].stackSize};
+							selectedSlot = @intCast(slotIdx);
+							isDone = true;
+							break;
+						}
+					}
+					if (isDone) break;
+
 					inventory__SEND_CHANGES_TO_SERVER.items[selectedSlot] = items.ItemStack {.item = item, .amount = items.itemList[idx].stackSize};
+					break;
 				}
 			}
 		}
@@ -584,6 +660,7 @@ pub fn ghostToggle() void {
 pub fn hyperSpeedToggle() void {
 	Player.hyperSpeed.store(!Player.hyperSpeed.load(.monotonic), .monotonic);
 }
+
 
 pub fn update(deltaTime: f64) void { // MARK: update()
 	const gravity = 30.0;
@@ -776,6 +853,9 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 					Player.eyeStep[i] = false;
 				}
 			}
+			if(i == 2 and Player.eyeCoyote > 0){
+				break :blk;
+			}
 			const frictionCoefficient = directionalFrictionCoefficients[i];
 			const v_0 = Player.eyeVel[i];
 			const k = springConstants[i];
@@ -830,88 +910,40 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		Player.mutex.lock();
 		defer Player.mutex.unlock();
 
-		Player.super.pos[0] += move[0];
 		const hitBox = Player.outerBoundingBox;
+		var steppingHeight = Player.steppingHeight()[2];
+		if (Player.super.vel[2] > 0) {
+			steppingHeight = Player.super.vel[2]*Player.super.vel[2]/gravity/2;
+		}
+		steppingHeight = @min(steppingHeight, Player.eyePos[2] - Player.eyeBox.min[2]);
 
-		if (collision.collides(.client, .x, -move[0], Player.super.pos, hitBox)) |box| {
-			var step = false;
-			var steppingHeight = Player.steppingHeight()[2];
-			if(Player.super.vel[2] > 0) {
-				steppingHeight = Player.super.vel[2]*Player.super.vel[2]/gravity/2;
-			}
-			if (box.max[2] - Player.super.pos[2] + Player.outerBoundingBoxExtent[2] <= steppingHeight) {
-				const old = Player.super.pos[2];
-				Player.super.pos[2] = box.max[2] + Player.outerBoundingBoxExtent[2] + 0.0001;
-				if (Player.eyePos[2] - (Player.super.pos[2] - old) <= Player.eyeBox.min[2] or collision.collides(.client, .y, 0, Player.super.pos, hitBox) != null) {
-					Player.super.pos[2] = old;
-				} else {
-					Player.eyeVel[2] = @max(1.5*vec.length(Player.super.vel), Player.eyeVel[2], 4);
-					Player.eyePos[2] -= Player.super.pos[2] - old;
-					Player.eyeStep[2] = true;
-					if(Player.super.vel[2] > 0) {
-						Player.eyeVel[2] = Player.super.vel[2];
-						Player.eyeStep[2] = false;
-					}
-					move[2] = -0.01;
-					Player.onGround = true;
-					step = true;
-				}
-			}
-			if(!step) {
-				if (move[0] < 0) {
-					Player.super.pos[0] = box.max[0] - hitBox.min[0];
-					while (collision.collides(.client, .x, 0, Player.super.pos, hitBox)) |_| {
-						Player.super.pos[0] += 1;
-					}
-				} else {
-					Player.super.pos[0] = box.min[0] - hitBox.max[0];
-					while (collision.collides(.client, .x, 0, Player.super.pos, hitBox)) |_| {
-						Player.super.pos[0] -= 1;
-					}
-				}
-				Player.super.vel[0] = 0;
-			}
+		const xMovement = collision.collideOrStep(.client, .x, move[0], Player.super.pos, hitBox, steppingHeight);
+		Player.super.pos += xMovement;
+		const yMovement = collision.collideOrStep(.client, .y, move[1], Player.super.pos, hitBox, steppingHeight);
+		Player.super.pos += yMovement;
+
+		if (xMovement[0] != move[0]) {
+			Player.super.vel[0] = 0;
+		}
+		if (yMovement[1] != move[1]) {
+			Player.super.vel[1] = 0;
 		}
 
-		Player.super.pos[1] += move[1];
-		if (collision.collides(.client, .y, -move[1], Player.super.pos, hitBox)) |box| {
-			var step = false;
-			var steppingHeight = Player.steppingHeight()[2];
-			if(Player.super.vel[2] > 0) {
-				steppingHeight = Player.super.vel[2]*Player.super.vel[2]/gravity/2;
-			}
-			if (box.max[2] - Player.super.pos[2] + Player.outerBoundingBoxExtent[2] <= steppingHeight) {
-				const old = Player.super.pos[2];
-				Player.super.pos[2] = box.max[2] + Player.outerBoundingBoxExtent[2] + 0.0001;
-				if (Player.eyePos[2] - (Player.super.pos[2] - old) <= Player.eyeBox.min[2] or collision.collides(.client, .y, 0, Player.super.pos, hitBox) != null) {
-					Player.super.pos[2] = old;
-				} else {
-					Player.eyeVel[2] = @max(1.5*vec.length(Player.super.vel), Player.eyeVel[2], 4);
-					Player.eyePos[2] -= Player.super.pos[2] - old;
-					Player.eyeStep[2] = true;
-					if(Player.super.vel[2] > 0) {
-						Player.eyeVel[2] = Player.super.vel[2];
-						Player.eyeStep[2] = false;
-					}
-					move[2] = -0.01;
-					Player.onGround = true;
-					step = true;
+		const stepAmount = xMovement[2] + yMovement[2];
+		if (stepAmount > 0) {
+			if (Player.eyeCoyote <= 0) {
+				Player.eyeVel[2] = @max(1.5*vec.length(Player.super.vel), Player.eyeVel[2], 4);
+				Player.eyeStep[2] = true;
+				if(Player.super.vel[2] > 0){
+					Player.eyeVel[2] = Player.super.vel[2];
+					Player.eyeStep[2] = false;
 				}
+			} else {
+				Player.eyeCoyote = 0;
 			}
-			if(!step) {
-				if (move[1] < 0) {
-					Player.super.pos[1] = box.max[1] - hitBox.min[1];
-					while (collision.collides(.client, .y, 0, Player.super.pos, hitBox)) |_| {
-						Player.super.pos[1] += 1;
-					}
-				} else {
-					Player.super.pos[1] = box.min[1] - hitBox.max[1];
-					while (collision.collides(.client, .y, 0, Player.super.pos, hitBox)) |_| {
-						Player.super.pos[1] -= 1;
-					}
-				}
-				Player.super.vel[1] = 0;
-			}
+			Player.eyePos[2] -= stepAmount;
+			move[2] = -0.01;
+			Player.onGround = true;
 		}
 
 		const wasOnGround = Player.onGround;
@@ -925,27 +957,37 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 				}
 				Player.onGround = true;
 				Player.super.pos[2] = box.max[2] - hitBox.min[2];
-				while (collision.collides(.client, .z, 0, Player.super.pos, hitBox)) |_| {
-					Player.super.pos[2] += 1;
-				}
+				Player.eyeCoyote = 0;
 			} else {
 				Player.super.pos[2] = box.min[2] - hitBox.max[2];
-				while (collision.collides(.client, .z, 0, Player.super.pos, hitBox)) |_| {
-					Player.super.pos[2] -= 1;
-				}
 			}
 			Player.super.vel[2] = 0;
+
+			// Always unstuck upwards for now
+			while (collision.collides(.client, .z, 0, Player.super.pos, hitBox)) |_| {
+				Player.super.pos[2] += 1;
+			}
+		} else if (wasOnGround and move[2] < 0) {
+			// If the player drops off a ledge, they might just be walking over a small gap, so lock the y position of the eyes that long.
+			// This calculates how long the player has to fall until we know they're not walking over a small gap.
+			// We add deltaTime because we subtract deltaTime at the bottom of update
+			Player.eyeCoyote = @sqrt(2 * Player.steppingHeight()[2] / gravity) + deltaTime;
+			Player.eyePos[2] -= move[2];
+		} else if (Player.eyeCoyote > 0) {
+			Player.eyePos[2] -= move[2];
 		}
+
 	} else {
 		Player.super.pos += move;
 		Player.onGround = false;
 	}
 
-	// Clamp the eyePosition:
+	// Clamp the eyePosition and subtract eye coyote time.
 	Player.eyePos = @max(Player.eyeBox.min, @min(Player.eyePos, Player.eyeBox.max));
+	Player.eyeCoyote -= deltaTime;
 
 	const biome = world.?.playerBiome.load(.monotonic);
-	
+
 	const t = 1 - @as(f32, @floatCast(@exp(-2 * deltaTime)));
 
 	fog.fogColor = (biome.fogColor - fog.fogColor) * @as(Vec3f, @splat(t)) + fog.fogColor;

@@ -39,7 +39,23 @@ pub fn render() void {
 	draw.print("window size: {}×{}", .{main.Window.width, main.Window.height}, 0, y, 8, .left);
 	y += 8;
 	if (main.game.world != null) {
-		draw.print("Pos: {d:.1}", .{main.game.Player.getPosBlocking()}, 0, y, 8, .left);
+		const player = main.game.Player;
+		draw.print("Pos: {d:.1}", .{player.getPosBlocking()}, 0, y, 8, .left);
+		y += 8;
+		draw.print("IsFlying: {} IsGhost: {} HyperSpeed: {}", .{
+			player.isFlying.load(.unordered),
+			player.isGhost.load(.unordered),
+			player.hyperSpeed.load(.unordered),
+		}, 0, y, 8, .left);
+		y += 8;
+		draw.print("OnGround: {} JumpCooldown: {d:.3}", .{
+			player.onGround,
+			player.jumpCooldown,
+		}, 0, y, 8, .left);
+		y += 8;
+		draw.print("Velocity: {d:.1}", .{player.getVelBlocking()}, 0, y, 8, .left);
+		y += 8;
+		draw.print("EyePos: {d:.1} EyeVelocity: {d:.1} EyeCoyote: {d:.3}", .{player.getEyePosBlocking(), player.getEyeVelBlocking(), @max(0, player.getEyeCoyoteBlocking())}, 0, y, 8, .left);
 		y += 8;
 		draw.print("Game Time: {}", .{main.game.world.?.gameTime.load(.monotonic)}, 0, y, 8, .left);
 		y += 8;

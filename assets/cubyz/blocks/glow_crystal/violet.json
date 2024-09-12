@@ -5,6 +5,6 @@
 		"none"
 	],
 	"emittedLight" : 0x8000ff,
-	"model" : "cube",
+	"model" : "cubyz:cube",
 	"texture" : "cubyz:glow_crystal/violet"
 }

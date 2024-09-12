@@ -10,7 +10,7 @@
 	"absorbedLight" : 0x010101,
 	"collide": false,
 	"rotation" : "torch",
-	"model" : "torch",
+	"model" : "cubyz:torch",
 	"texture" : "cubyz:torch",
 	"item": {
 		"texture" : "torch.png",

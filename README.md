@@ -50,7 +50,7 @@ sudo apt install libgl-dev libasound2-dev libx11-dev libxcursor-dev libxrandr-de
 
 # Contributing
 ### Code
-Try to follow the style of the existing code. The `check_format.py` file can be used to find violations of indentation and line endings. `// TODO: Add a full style guide` <br>
+Try to follow the style of the existing code. The `format_check.py` file can be used to find violations of indentation and line endings. `// TODO: Add a full style guide` <br>
 If you have any more questions, you can ask them over on [Discord](https://discord.gg/XtqCRRG).
 ### Textures
 If you want to add new textures, make sure they fit the style of the game. It's recommended that you have baseline skills in pixel art before attempting to make textures. A great collection of tutorials can be found [here](https://lospec.com/pixel-art-tutorials)
