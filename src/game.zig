@@ -781,8 +781,8 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			if (Player.onGround) { // No view bobbing in the air
 				Player.bobTime += Player.bobVel * 8 * deltaTime;
 			}
-			// Maximum magnitude when sprinting (2x walking speed)
-			Player.bobMag = @sqrt(@min(Player.bobVel, 2)) * settings.viewBobStrength;
+			// Maximum magnitude when sprinting (2x walking speed). Magnitude is scaled by player bounding box height
+			Player.bobMag = @sqrt(@min(Player.bobVel, 2)) * settings.viewBobStrength * Player.outerBoundingBoxExtent[2];
 		}
 
 		// This our model for movement on a single frame:
