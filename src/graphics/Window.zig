@@ -1,6 +1,8 @@
 const std = @import("std");
 
 const main = @import("root");
+const settings = main.settings;
+const files = main.files;
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
 pub var lastUsedMouse = true;
@@ -17,6 +19,7 @@ pub var grabbed: bool = false;
 
 pub var scrollOffset: f32 = 0;
 var gamepadState: ?std.AutoHashMap(c_int, *c.GLFWgamepadstate) = null;
+
 pub fn updateGamepadState() void {
 	var jid: c_int = 0;
 	if (gamepadState == null) {
@@ -549,6 +552,81 @@ pub fn init() void { // MARK: init()
 	c.glEnable(c.GL_DEBUG_OUTPUT_SYNCHRONOUS);
 	c.glDebugMessageCallback(GLFWCallbacks.glDebugOutput, null);
 	c.glDebugMessageControl(c.GL_DONT_CARE, c.GL_DONT_CARE, c.GL_DONT_CARE, 0, null, c.GL_TRUE);
+	if (!settings.askToDownloadControllerMappings) {
+		downloadControllerMappings();
+	}
+	updateControllerMappings();
+	gamepadState = std.AutoHashMap(c_int, *c.GLFWgamepadstate).init(main.globalAllocator.allocator);
+	updateGamepadState();
+	std.log.debug("Gamepads at init: {d}", .{gamepadState.?.count()});
+}
+pub fn isControllerConnected() bool {
+	return gamepadState.?.count() > 0;
+}
+var controllerMappingsDownloaded: bool = false;
+var downloadControllerMappingsThread: ?std.Thread = null;
+pub fn controllerMappingsDownloading() bool {
+	return !controllerMappingsDownloaded and downloadControllerMappingsThread != null;
+}
+fn downloadControllerMappingsThreadFunc(curTimestamp: i128) void {
+	var client: std.http.Client = .{.allocator = main.globalAllocator.allocator};
+	var list = std.ArrayList(u8).init(main.globalAllocator.allocator);
+	if (client.fetch(.{
+		.method = .GET,
+		.location = .{.url = "https://raw.githubusercontent.com/mdqinc/SDL_GameControllerDB/master/gamecontrollerdb.txt"},
+		.response_storage = .{ .dynamic = &list }
+	}) catch null) |_| {
+		if (files.openDir(".") catch null) |dir| {
+			dir.write("gamecontrollerdb.txt", list.items) catch unreachable;
+			const timeStampStr = std.fmt.allocPrint(main.globalAllocator.allocator, "{d}", .{curTimestamp}) catch unreachable;
+			dir.write("gamecontrollerdb.stamp", timeStampStr) catch unreachable;
+			main.globalAllocator.free(timeStampStr);
+		}
+	}
+	list.deinit();
+	client.deinit();
+	controllerMappingsDownloaded = true;
+
+}
+pub fn downloadControllerMappings() void {
+
+	var needDownload: bool = false;
+	const curTimestamp = std.time.nanoTimestamp();
+	if (settings.downloadControllerMappings) {
+		var timestamp: i128 = 0;
+		if (files.openDir(".") catch null) |dir| {
+			var _dir: files.Dir =dir;
+			if (_dir.hasFile("gamecontrollerdb.stamp")) {
+				const stamp = _dir.read(main.globalAllocator, "gamecontrollerdb.stamp") catch unreachable;
+				if (std.fmt.parseInt(i128, stamp, 16) catch null) |newTimestamp| {
+					timestamp = newTimestamp;
+				}
+				main.globalAllocator.free(stamp);
+			}
+		}
+		const delta = curTimestamp - timestamp;
+		const deltaDays = @divTrunc(delta, std.time.ns_per_day);
+		needDownload = deltaDays >= 7;
+	}
+
+	if (settings.downloadControllerMappingsWhenUnrecognized) {
+		for (0..c.GLFW_JOYSTICK_LAST) |jsid| {
+			if ((c.glfwJoystickPresent(@intCast(jsid)) != 0) and (c.glfwJoystickIsGamepad(@intCast(jsid)) == 0)) {
+				needDownload = true;
+				break;
+			}
+		}
+	}
+	controllerMappingsDownloaded = !needDownload;
+	if (needDownload) {
+		downloadControllerMappingsThread = std.Thread.spawn(.{}, downloadControllerMappingsThreadFunc, .{curTimestamp}) catch null;
+		if (downloadControllerMappingsThread == null) {
+			std.log.err("Couldn't spawn controller mapping download thread!", .{});
+			controllerMappingsDownloaded = true;
+		}
+	}
+}
+pub fn updateControllerMappings() void {
 	if (std.fs.selfExeDirPathAlloc(main.globalAllocator.allocator) catch null) |selfExeDirPath| {
 		if (std.fs.path.join(main.globalAllocator.allocator, &.{selfExeDirPath, "gamecontrollerdb.txt"}) catch null) |mappings_path| {
 			if (std.fs.openFileAbsolute(mappings_path, .{.mode = .read_only}) catch null) |file| {
@@ -564,9 +642,21 @@ pub fn init() void { // MARK: init()
 		}
 		main.globalAllocator.free(selfExeDirPath);
 	}
-	gamepadState = std.AutoHashMap(c_int, *c.GLFWgamepadstate).init(main.globalAllocator.allocator);
-	updateGamepadState();
-	std.log.debug("Gamepads at init: {d}", .{gamepadState.?.count()});
+	var _envMap = std.process.getEnvMap(main.globalAllocator.allocator) catch null;
+	if (_envMap) |*envMap| {
+		if (envMap.get("SDL_GAMECONTROLLERCONFIG")) |controller_config_env| {
+			_ = c.glfwUpdateGamepadMappings(@ptrCast(controller_config_env));
+		}
+		envMap.deinit();
+	}
+	if (files.openDir(".") catch null) |dir| {
+		if (dir.read(main.globalAllocator, "gamecontrollerdb.txt") catch null) |data| {
+			var newData = main.globalAllocator.realloc(data, data.len + 1);
+			newData[data.len - 1] = 0;
+			_ = c.glfwUpdateGamepadMappings(@ptrCast(newData));
+			main.globalAllocator.free(newData);
+		}
+	}
 }
 
 pub fn deinit() void {
@@ -605,7 +695,7 @@ pub fn handleEvents() void {
 	if (!grabbed) {
 		const x = main.KeyBoard.key("uiRight").value - main.KeyBoard.key("uiLeft").value;
 		const y = main.KeyBoard.key("uiDown").value - main.KeyBoard.key("uiUp").value;
-		if (x != 0 and y != 0) {
+		if (x != 0 or y != 0) {
 			lastUsedMouse = false;
 			GLFWCallbacks.currentPos[0] += x;
 			GLFWCallbacks.currentPos[1] += y;

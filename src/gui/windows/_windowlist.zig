@@ -27,3 +27,5 @@ pub const save_selection = @import("save_selection.zig");
 pub const settings = @import("settings.zig");
 pub const sound = @import("sound.zig");
 pub const workbench = @import("workbench.zig");
+pub const download_controller_mappings = @import("download_controller_mappings.zig");
+pub const controller_mappings_settings = @import("controller_mappings_settings.zig");

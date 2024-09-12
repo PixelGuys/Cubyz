@@ -579,7 +579,9 @@ pub fn main() void { // MARK: main()
 	entity.ClientEntityManager.init();
 	defer entity.ClientEntityManager.deinit();
 
-	if(settings.playerName.len == 0) {
+	if(Window.isControllerConnected() and settings.askToDownloadControllerMappings) {
+		gui.openWindow("controller_mappings_settings");
+	} else if(settings.playerName.len == 0) {
 		gui.openWindow("change_name");
 	} else {
 		gui.openWindow("main");
