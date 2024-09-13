@@ -20,9 +20,8 @@ pub var window = GuiWindow {
 };
 
 const padding: f32 = 8;
-var startup_finished: bool = false;
+pub var startup_finished: bool = false;
 pub fn update() void {
-
 	if (!main.Window.controllerMappingsDownloading()) {
 		gui.closeWindowFromRef(&window);
 		if(!startup_finished) {
@@ -36,9 +35,6 @@ pub fn update() void {
 	}
 }
 pub fn onOpen() void {
-	if(!settings.askToDownloadControllerMappings) {
-		startup_finished = true;
-	}
 	const label = Label.init(.{padding, 16 + padding}, 300, "Downloading controller mappings...", .center);
 	window.rootComponent = label.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
@@ -48,7 +44,6 @@ pub fn onOpen() void {
 
 pub fn onClose() void {
 	main.Window.updateControllerMappings();
-	startup_finished = true;
 	if(window.rootComponent) |*comp| {
 		comp.deinit();
 	}

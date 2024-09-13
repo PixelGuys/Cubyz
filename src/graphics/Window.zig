@@ -40,6 +40,24 @@ pub fn updateGamepadState() void {
 				oldState = oldGamepadState.?[0];
 			}
 			const newState = gamepadState.?.get(jid);
+			if (nextGamepadListener != null) {
+				for (0..c.GLFW_GAMEPAD_BUTTON_LAST) |btn| {
+					if ((newState.?.buttons[btn] == 0) and (oldState.buttons[btn] != 0)) {
+						nextGamepadListener.?(null, @intCast(btn));
+						nextGamepadListener = null;
+						break;
+					}
+				}
+			}
+			if (nextGamepadListener != null) {
+				for (0..c.GLFW_GAMEPAD_AXIS_LAST) |axis| {
+					if (newState.?.axes[axis] != 0 and oldState.axes[axis] == 0) {
+						nextGamepadListener.?(.{.axis = @intCast(axis), .positive = newState.?.axes[axis] > 0}, -1);
+						nextGamepadListener = null;
+						break;
+					}
+				}
+			}
 			for(&main.KeyBoard.keys) |*key| {
 				if(key.gamepadAxis == null) {
 					if(key.gamepadButton >= 0) {
@@ -219,6 +237,7 @@ pub const Key = struct { // MARK: Key
 				c.GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER => "Right bumper",
 				c.GLFW_GAMEPAD_BUTTON_RIGHT_THUMB => "Right stick press",
 				c.GLFW_GAMEPAD_BUTTON_START => "Start",
+				-1 => "(Unbound)",
 				else => "(Unrecognized button)"
 			};
 		}
@@ -285,6 +304,7 @@ pub const Key = struct { // MARK: Key
 				c.GLFW_KEY_RIGHT_ALT => "Right Alt",
 				c.GLFW_KEY_RIGHT_SUPER => "Right Super",
 				c.GLFW_KEY_MENU => "Menu",
+				c.GLFW_KEY_UNKNOWN => "(Unbound)",
 				else => "Unknown Key",
 			};
 		} else {
@@ -457,6 +477,11 @@ var nextKeypressListener: ?*const fn(c_int, c_int, c_int) void = null;
 pub fn setNextKeypressListener(listener: ?*const fn(c_int, c_int, c_int) void) !void {
 	if(nextKeypressListener != null) return error.AlreadyUsed;
 	nextKeypressListener = listener;
+}
+var nextGamepadListener: ?*const fn(?GamepadAxis, c_int) void = null;
+pub fn setNextGamepadListener(listener: ?*const fn(?GamepadAxis, c_int) void) !void {
+	if (nextGamepadListener != null) return error.AlreadyUsed;
+	nextGamepadListener = listener;
 }
 
 fn updateCursor() void {
@@ -687,6 +712,9 @@ pub fn setCursorVisible(visible: bool) void {
 pub fn handleEvents() void {
 	scrollOffset = 0;
 	c.glfwPollEvents();
+}
+pub fn updateGamepad(delta: f64) void {
+
 	if (gamepadState == null) {
 		std.log.err("gamepadState was null.", .{});
 		return;
@@ -697,10 +725,11 @@ pub fn handleEvents() void {
 		const y = main.KeyBoard.key("uiDown").value - main.KeyBoard.key("uiUp").value;
 		if (x != 0 or y != 0) {
 			lastUsedMouse = false;
-			GLFWCallbacks.currentPos[0] += x;
-			GLFWCallbacks.currentPos[1] += y;
+			GLFWCallbacks.currentPos[0] += @floatCast(x * delta * 256);
+			GLFWCallbacks.currentPos[1] += @floatCast(y * delta * 256);
 		}
 	}
+	scrollOffset += @floatCast((main.KeyBoard.key("scrollUp").value - main.KeyBoard.key("scrollDown").value) * delta * 4);
 	setCursorVisible(!grabbed and lastUsedMouse);
 }
 

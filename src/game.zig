@@ -740,7 +740,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			const newPos = Vec2f {
 				@floatCast(main.KeyBoard.key("cameraRight").value - main.KeyBoard.key("cameraLeft").value),
 				@floatCast(main.KeyBoard.key("cameraDown").value - main.KeyBoard.key("cameraUp").value),
-			};
+			} * @as(Vec2f, @splat(3.14 * settings.controllerSensitivity));
 			main.game.camera.moveRotation(newPos[0] / 64.0, newPos[1] / 64.0);
 		}
 
