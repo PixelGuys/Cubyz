@@ -20,18 +20,10 @@ pub var window = GuiWindow {
 };
 
 const padding: f32 = 8;
-pub var startup_finished: bool = false;
 pub fn update() void {
 	if (!main.Window.controllerMappingsDownloading()) {
 		gui.closeWindowFromRef(&window);
-		if(!startup_finished) {
-			startup_finished = true;
-			if(settings.playerName.len == 0) {
-				gui.openWindow("change_name");
-			} else {
-				gui.openWindow("main");
-			}
-		}
+		main.openNextStartupWindow();
 	}
 }
 pub fn onOpen() void {

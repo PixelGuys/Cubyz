@@ -420,6 +420,27 @@ fn isValidIdentifierName(str: []const u8) bool { // TODO: Remove after #480
 	}
 	return true;
 }
+var startup_finished: bool = false;
+var controller_mappings_window_shown: bool = false;
+pub fn openNextStartupWindow() void {
+	if(startup_finished) {
+		return;
+	}
+	if(!controller_mappings_window_shown and Window.isControllerConnected()) {
+		if (settings.askToDownloadControllerMappings) {
+			gui.openWindow("controller_mappings_settings");
+		} else {
+			gui.openWindow("download_controller_mappings");
+		}
+		controller_mappings_window_shown = true;
+	} else if(settings.playerName.len == 0) {
+		gui.openWindow("change_name");
+	} else {
+		startup_finished = true;
+		gui.openWindow("main");
+	}
+}
+
 
 pub fn convertJsonToZon(jsonPath: []const u8) void { // TODO: Remove after #480
 	std.log.info("Converting {s}:", .{jsonPath});
@@ -463,6 +484,12 @@ pub fn convertJsonToZon(jsonPath: []const u8) void { // TODO: Remove after #480
 				zonString.append(c);
 			},
 		}
+		controller_mappings_window_shown = true;
+	} else if(settings.playerName.len == 0) {
+		gui.openWindow("change_name");
+	} else {
+		startup_finished = true;
+		gui.openWindow("main");
 	}
 	const zonPath = std.fmt.allocPrint(stackAllocator.allocator, "{s}.zig.zon", .{jsonPath[0..std.mem.lastIndexOfScalar(u8, jsonPath, '.') orelse unreachable]}) catch unreachable;
 	defer stackAllocator.free(zonPath);
@@ -562,13 +589,7 @@ pub fn main() void { // MARK: main()
 	entity.ClientEntityManager.init();
 	defer entity.ClientEntityManager.deinit();
 
-	if(Window.isControllerConnected() and settings.askToDownloadControllerMappings) {
-		gui.openWindow("controller_mappings_settings");
-	} else if(settings.playerName.len == 0) {
-		gui.openWindow("change_name");
-	} else {
-		gui.openWindow("main");
-	}
+	openNextStartupWindow();
 
 	server.terrain.initGenerators();
 	defer server.terrain.deinitGenerators();

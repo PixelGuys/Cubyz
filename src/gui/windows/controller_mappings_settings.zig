@@ -37,9 +37,6 @@ fn onSave(_: usize) void {
 	gui.openWindow("download_controller_mappings");
 }
 pub fn onOpen() void {
-	if(!settings.askToDownloadControllerMappings) {
-		download_controller_mappings.startup_finished = true;
-	}
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	list.add(Label.init(.{0, 0}, 256, "Controller Mapping Settings", .center));
 	list.add(CheckBox.init(.{0, 0}, 256, "Don't ask at startup", !settings.askToDownloadControllerMappings, &askCallback));
