@@ -727,6 +727,19 @@ pub fn updateGamepad(delta: f64) void {
 			lastUsedMouse = false;
 			GLFWCallbacks.currentPos[0] += @floatCast(x * delta * 256);
 			GLFWCallbacks.currentPos[1] += @floatCast(y * delta * 256);
+			const winSize = getWindowSize();
+			if (GLFWCallbacks.currentPos[0] < 0) {
+				GLFWCallbacks.currentPos[0] = 0;
+			}
+			if(GLFWCallbacks.currentPos[0] >= winSize[0]) {
+				GLFWCallbacks.currentPos[0] = winSize[0] - 1;
+			}
+			if (GLFWCallbacks.currentPos[1] < 0) {
+				GLFWCallbacks.currentPos[1] = 0;
+			}
+			if(GLFWCallbacks.currentPos[1] >= winSize[1]) {
+				GLFWCallbacks.currentPos[1] = winSize[1] - 1;
+			}
 		}
 	}
 	scrollOffset += @floatCast((main.KeyBoard.key("scrollUp").value - main.KeyBoard.key("scrollDown").value) * delta * 4);
