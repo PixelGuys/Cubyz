@@ -48,7 +48,7 @@ if [[ "$CURRENT_VERSION" != "$VERSION" ]]; then
 	rm -r compiler/zig
 	mkdir compiler/zig
 	echo "Downloading $VERSION..."
-	wget -O compiler/archive.tar.xz https://ziglang.org/builds/"$VERSION".tar.xz
+	wget -O compiler/archive.tar.xz https://ziglang.org/download/$BASE_VERSION/"$VERSION".tar.xz
 	if [ $? != 0 ]
 	then
 		echo "Failed to download the Zig compiler."
