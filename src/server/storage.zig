@@ -17,7 +17,7 @@ pub const RegionFile = struct { // MARK: RegionFile
 	pos: chunk.ChunkPosition,
 	mutex: std.Thread.Mutex = .{},
 	modified: bool = false,
-	refCount: Atomic(u16) = Atomic(u16).init(1),
+	refCount: Atomic(u16) = .init(1),
 	saveFolder: []const u8,
 
 	pub fn getIndex(x: usize, y: usize, z: usize) usize {

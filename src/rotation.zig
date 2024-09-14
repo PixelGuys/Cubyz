@@ -93,7 +93,7 @@ pub const RotationModes = struct {
 		var rotatedModels: std.StringHashMap(u16) = undefined;
 
 		fn init() void {
-			rotatedModels = std.StringHashMap(u16).init(main.globalAllocator.allocator);
+			rotatedModels = .init(main.globalAllocator.allocator);
 		}
 
 		fn deinit() void {
@@ -138,7 +138,7 @@ pub const RotationModes = struct {
 		var rotatedModels: std.StringHashMap(u16) = undefined;
 
 		fn init() void {
-			rotatedModels = std.StringHashMap(u16).init(main.globalAllocator.allocator);
+			rotatedModels = .init(main.globalAllocator.allocator);
 		}
 
 		fn deinit() void {
@@ -189,7 +189,7 @@ pub const RotationModes = struct {
 		};
 
 		fn init() void {
-			fenceModels = std.StringHashMap(u16).init(main.globalAllocator.allocator);
+			fenceModels = .init(main.globalAllocator.allocator);
 		}
 
 		fn deinit() void {
@@ -557,7 +557,7 @@ pub const RotationModes = struct {
 		};
 
 		fn init() void {
-			rotatedModels = std.StringHashMap(u16).init(main.globalAllocator.allocator);
+			rotatedModels = .init(main.globalAllocator.allocator);
 		}
 
 		fn deinit() void {
@@ -668,7 +668,7 @@ pub const RotationModes = struct {
 // MARK: init/register
 
 pub fn init() void {
-	rotationModes = std.StringHashMap(RotationMode).init(main.globalAllocator.allocator);
+	rotationModes = .init(main.globalAllocator.allocator);
 	inline for(@typeInfo(RotationModes).@"struct".decls) |declaration| {
 		register(@field(RotationModes, declaration.name));
 	}

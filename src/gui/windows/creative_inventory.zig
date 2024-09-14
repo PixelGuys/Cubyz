@@ -48,7 +48,7 @@ fn lessThan(_: void, lhs: Item, rhs: Item) bool {
 }
 
 pub fn onOpen() void {
-	items = main.List(Item).init(main.globalAllocator);
+	items = .init(main.globalAllocator);
 	var itemIterator = main.items.iterator();
 	while(itemIterator.next()) |item| {
 		items.append(Item{.baseItem = item.*});

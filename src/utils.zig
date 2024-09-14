@@ -765,7 +765,7 @@ pub const NeverFailingArenaAllocator = struct { // MARK: NeverFailingArena
 
 	pub fn init(child_allocator: NeverFailingAllocator) NeverFailingArenaAllocator {
 		return .{
-			.arena = std.heap.ArenaAllocator.init(child_allocator.allocator),
+			.arena = .init(child_allocator.allocator),
 		};
 	}
 
@@ -802,7 +802,7 @@ pub const BufferFallbackAllocator = struct { // MARK: BufferFallbackAllocator
 
 	pub fn init(buffer: []u8, fallbackAllocator: NeverFailingAllocator) BufferFallbackAllocator {
 		return .{
-			.fixedBuffer = std.heap.FixedBufferAllocator.init(buffer),
+			.fixedBuffer = .init(buffer),
 			.fallbackAllocator = fallbackAllocator,
 		};
 	}
@@ -1178,7 +1178,7 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 
 		pub fn resize(self: *Self, allocator: main.utils.NeverFailingAllocator, newBitSize: u5) void {
 			if(newBitSize == self.bitSize) return;
-			var newSelf: Self = Self.initCapacity(allocator, newBitSize);
+			var newSelf = Self.initCapacity(allocator, newBitSize);
 
 			for(0..size) |i| {
 				newSelf.setValue(i, self.getValue(i));
@@ -1430,8 +1430,8 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 
 	return struct {
 		buckets: [numberOfBuckets]Bucket = [_]Bucket {Bucket{}} ** numberOfBuckets,
-		cacheRequests: Atomic(usize) = Atomic(usize).init(0),
-		cacheMisses: Atomic(usize) = Atomic(usize).init(0),
+		cacheRequests: Atomic(usize) = .init(0),
+		cacheMisses: Atomic(usize) = .init(0),
 
 		///  Tries to find the entry that fits to the supplied hashable.
 		pub fn find(self: *@This(), compareAndHash: anytype, comptime postGetFunction: ?fn(*T) void) ?*T {
@@ -1630,7 +1630,7 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type { // MARK: Gen
 }
 
 pub const TimeDifference = struct { // MARK: TimeDifference
-	difference: Atomic(i16) = Atomic(i16).init(0),
+	difference: Atomic(i16) = .init(0),
 	firstValue: bool = true,
 
 	pub fn addDataPoint(self: *TimeDifference, time: i16) void {

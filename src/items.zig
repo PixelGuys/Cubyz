@@ -173,7 +173,7 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 		items: main.List(*const BaseItem),
 		pub fn init(allocator: NeverFailingAllocator) PixelData {
 			return PixelData {
-				.items = main.List(*const BaseItem).init(allocator),
+				.items = .init(allocator),
 			};
 		}
 		pub fn deinit(self: *PixelData) void {
@@ -1299,9 +1299,9 @@ pub fn recipes() []Recipe {
 }
 
 pub fn globalInit() void {
-	arena = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
-	reverseIndices = std.StringHashMap(*BaseItem).init(arena.allocator().allocator);
-	recipeList = main.List(Recipe).init(arena.allocator());
+	arena = .init(main.globalAllocator);
+	reverseIndices = .init(arena.allocator().allocator);
+	recipeList = .init(arena.allocator());
 	itemListSize = 0;
 }
 

@@ -38,9 +38,9 @@ pub const User = struct { // MARK: User
 	lastRenderDistance: u16 = 0,
 	lastPos: Vec3i = @splat(0),
 
-	connected: Atomic(bool) = Atomic(bool).init(true),
+	connected: Atomic(bool) = .init(true),
 
-	refCount: Atomic(u32) = Atomic(u32).init(1),
+	refCount: Atomic(u32) = .init(1),
 
 	pub fn initAndIncreaseRefCount(manager: *ConnectionManager, ipPort: []const u8) !*User {
 		const self = main.globalAllocator.create(User);
@@ -195,7 +195,7 @@ pub var userDeinitList: main.List(*User) = undefined;
 
 pub var connectionManager: *ConnectionManager = undefined;
 
-pub var running: std.atomic.Value(bool) = std.atomic.Value(bool).init(false);
+pub var running: std.atomic.Value(bool) = .init(false);
 var lastTime: i128 = undefined;
 
 pub var mutex: std.Thread.Mutex = .{};
@@ -205,8 +205,8 @@ pub var thread: ?std.Thread = null;
 fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 	std.debug.assert(world == null); // There can only be one world.
 	command.init();
-	users = main.List(*User).init(main.globalAllocator);
-	userDeinitList = main.List(*User).init(main.globalAllocator);
+	users = .init(main.globalAllocator);
+	userDeinitList = .init(main.globalAllocator);
 	lastTime = std.time.nanoTimestamp();
 	connectionManager = ConnectionManager.init(main.settings.defaultPort, false) catch |err| {
 		std.log.err("Couldn't create socket: {s}", .{@errorName(err)});

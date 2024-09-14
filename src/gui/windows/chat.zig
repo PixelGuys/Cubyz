@@ -70,9 +70,9 @@ fn refresh() void {
 }
 
 pub fn onOpen() void {
-	history = main.List(*Label).init(main.globalAllocator);
-	expirationTime = main.List(i32).init(main.globalAllocator);
-	messageQueue = main.List([]const u8).init(main.globalAllocator);
+	history = .init(main.globalAllocator);
+	expirationTime = .init(main.globalAllocator);
+	messageQueue = .init(main.globalAllocator);
 	historyStart = 0;
 	fadeOutEnd = 0;
 	input = TextInput.init(.{0, 0}, 256, 32, "", .{.callback = &sendMessage});

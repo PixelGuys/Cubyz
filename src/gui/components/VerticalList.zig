@@ -29,7 +29,7 @@ pub fn init(pos: Vec2f, maxHeight: f32, padding: f32) *VerticalList {
 	const scrollBar = ScrollBar.init(undefined, scrollBarWidth, maxHeight - 2*border, 0);
 	const self = main.globalAllocator.create(VerticalList);
 	self.* = VerticalList {
-		.children = main.List(GuiComponent).init(main.globalAllocator),
+		.children = .init(main.globalAllocator),
 		.pos = pos,
 		.size = .{0, 0},
 		.padding = padding,

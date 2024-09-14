@@ -130,8 +130,8 @@ var serverPool: std.heap.MemoryPoolAligned(ServerChunk, @alignOf(ServerChunk)) =
 var serverPoolMutex: std.Thread.Mutex = .{};
 
 pub fn init() void {
-	memoryPool = std.heap.MemoryPoolAligned(Chunk, @alignOf(Chunk)).init(main.globalAllocator.allocator);
-	serverPool = std.heap.MemoryPoolAligned(ServerChunk, @alignOf(ServerChunk)).init(main.globalAllocator.allocator);
+	memoryPool = .init(main.globalAllocator.allocator);
+	serverPool = .init(main.globalAllocator.allocator);
 }
 
 pub fn deinit() void {
@@ -281,7 +281,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 				.voxelSizeMask = pos.voxelSize - 1,
 				.widthShift = voxelSizeShift + chunkShift,
 			},
-			.refCount = std.atomic.Value(u16).init(1),
+			.refCount = .init(1),
 		};
 		self.super.data.init();
 		return self;

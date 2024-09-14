@@ -70,9 +70,9 @@ pub const MapFragment = struct { // MARK: MapFragment
 	maxHeight: i32 = 0,
 	pos: MapFragmentPosition,
 
-	wasStored: Atomic(bool) = .{.raw = false},
+	wasStored: Atomic(bool) = .init(false),
 	
-	refCount: Atomic(u16) = Atomic(u16).init(0),
+	refCount: Atomic(u16) = .init(0),
 
 	pub fn init(self: *MapFragment, wx: i32, wy: i32, voxelSize: u31) void {
 		self.* = .{

@@ -529,12 +529,12 @@ pub fn registerModel(id: []const u8, data: []const u8) u16 {
 
 // TODO: Entity models.
 pub fn init() void {
-	models = main.List(Model).init(main.globalAllocator);
-	quads = main.List(QuadInfo).init(main.globalAllocator);
-	extraQuadInfos = main.List(ExtraQuadInfo).init(main.globalAllocator);
-	quadDeduplication = std.AutoHashMap([@sizeOf(QuadInfo)]u8, u16).init(main.globalAllocator.allocator);
+	models = .init(main.globalAllocator);
+	quads = .init(main.globalAllocator);
+	extraQuadInfos = .init(main.globalAllocator);
+	quadDeduplication = .init(main.globalAllocator.allocator);
 
-	nameToIndex = std.StringHashMap(u16).init(main.globalAllocator.allocator);
+	nameToIndex = .init(main.globalAllocator.allocator);
 
 	nameToIndex.put("none", Model.init(&.{})) catch unreachable;
 }

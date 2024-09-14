@@ -174,13 +174,13 @@ pub fn readAssets(externalAllocator: NeverFailingAllocator, assetPath: []const u
 pub fn init() void {
 	biomes_zig.init();
 	blocks_zig.init();
-	arena = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
+	arena = .init(main.globalAllocator);
 	arenaAllocator = arena.allocator();
-	commonBlocks = std.StringHashMap(JsonElement).init(arenaAllocator.allocator);
-	commonItems = std.StringHashMap(JsonElement).init(arenaAllocator.allocator);
-	commonBiomes = std.StringHashMap(JsonElement).init(arenaAllocator.allocator);
-	commonRecipes = main.List([]const u8).init(arenaAllocator);
-	commonModels = std.StringHashMap([]const u8).init(arenaAllocator.allocator);
+	commonBlocks = .init(arenaAllocator.allocator);
+	commonItems = .init(arenaAllocator.allocator);
+	commonBiomes = .init(arenaAllocator.allocator);
+	commonRecipes = .init(arenaAllocator);
+	commonModels = .init(arenaAllocator.allocator);
 
 	readAssets(arenaAllocator, "assets/", &commonBlocks, &commonItems, &commonBiomes, &commonRecipes, &commonModels);
 }
@@ -218,7 +218,7 @@ pub const Palette = struct { // MARK: Palette
 	pub fn init(allocator: NeverFailingAllocator, json: JsonElement, firstElement: ?[]const u8) !*Palette {
 		const self = allocator.create(Palette);
 		self.* = Palette {
-			.palette = main.List([]const u8).init(allocator),
+			.palette = .init(allocator),
 		};
 		errdefer self.deinit();
 		if(json != .JsonObject or json.JsonObject.count() == 0) {

@@ -50,7 +50,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 
 
 	var modelRegistry: std.StringHashMapUnmanaged(VTable) = .{};
-	var arena: main.utils.NeverFailingArenaAllocator = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
+	var arena: main.utils.NeverFailingArenaAllocator = .init(main.globalAllocator);
 
 	pub fn reset() void {
 		std.debug.assert(arena.reset(.free_all));
@@ -425,7 +425,7 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 			for(currentSlice) |biome| {
 				self.leaf.totalChance += biome.chance;
 			}
-			self.leaf.aliasTable = main.utils.AliasTable(Biome).init(allocator, currentSlice);
+			self.leaf.aliasTable = .init(allocator, currentSlice);
 			return self;
 		}
 		var chanceLower: f32 = 0;
@@ -462,9 +462,9 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 		var upperIndex: usize = undefined;
 		{
 			var lists: [3]main.ListUnmanaged(Biome) = .{
-				main.ListUnmanaged(Biome).initCapacity(main.stackAllocator, currentSlice.len),
-				main.ListUnmanaged(Biome).initCapacity(main.stackAllocator, currentSlice.len),
-				main.ListUnmanaged(Biome).initCapacity(main.stackAllocator, currentSlice.len),
+				.initCapacity(main.stackAllocator, currentSlice.len),
+				.initCapacity(main.stackAllocator, currentSlice.len),
+				.initCapacity(main.stackAllocator, currentSlice.len),
 			};
 			defer for(lists) |list| {
 				list.deinit(main.stackAllocator);
@@ -542,9 +542,9 @@ const UnfinishedSubBiomeData = struct {
 var unfinishedSubBiomes: std.StringHashMapUnmanaged(main.ListUnmanaged(UnfinishedSubBiomeData)) = .{};
 
 pub fn init() void {
-	biomes = main.List(Biome).init(main.globalAllocator);
-	caveBiomes = main.List(Biome).init(main.globalAllocator);
-	biomesById = std.StringHashMap(*Biome).init(main.globalAllocator.allocator);
+	biomes = .init(main.globalAllocator);
+	caveBiomes = .init(main.globalAllocator);
+	biomesById = .init(main.globalAllocator.allocator);
 	const list = @import("simple_structures/_list.zig");
 	inline for(@typeInfo(list).@"struct".decls) |decl| {
 		SimpleStructureModel.registerGenerator(@field(list, decl.name));
@@ -609,7 +609,7 @@ pub fn finishLoading() void {
 		for(subBiomeDataList.items) |item| {
 			parentBiome.subBiomeTotalChance += item.chance;
 		}
-		parentBiome.subBiomes = main.utils.AliasTable(*const Biome).initFromContext(main.globalAllocator, subBiomeDataList.items);
+		parentBiome.subBiomes = .initFromContext(main.globalAllocator, subBiomeDataList.items);
 		subBiomeDataList.deinit(main.globalAllocator);
 	}
 	unfinishedSubBiomes.clearAndFree(main.globalAllocator.allocator);

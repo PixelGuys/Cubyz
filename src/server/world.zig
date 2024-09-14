@@ -24,14 +24,14 @@ const Entity = server.Entity;
 const storage = @import("storage.zig");
 
 pub const EntityChunk = struct {
-	chunk: std.atomic.Value(?*ServerChunk) = .{.raw = null},
+	chunk: std.atomic.Value(?*ServerChunk) = .init(null),
 	refCount: std.atomic.Value(u32),
 	pos: chunk.ChunkPosition,
 
 	pub fn initAndIncreaseRefCount(pos: ChunkPosition) *EntityChunk {
 		const self = main.globalAllocator.create(EntityChunk);
 		self.* = .{
-			.refCount = std.atomic.Value(u32).init(1),
+			.refCount = .init(1),
 			.pos = pos,
 		};
 		return self;
@@ -254,7 +254,7 @@ const ChunkManager = struct { // MARK: ChunkManager
 			.world = world,
 			.terrainGenerationProfile = try server.terrain.TerrainGenerationProfile.init(settings, world.seed),
 		};
-		entityChunkHashMap = @TypeOf(entityChunkHashMap).init(main.globalAllocator.allocator);
+		entityChunkHashMap = .init(main.globalAllocator.allocator);
 		server.terrain.init(self.terrainGenerationProfile);
 		storage.init();
 		return self;
@@ -381,7 +381,7 @@ const WorldIO = struct { // MARK: WorldIO
 
 	/// Load the seed, which is needed before custom item and ore generation.
 	pub fn loadWorldSeed(self: WorldIO) !u64 {
-		const worldData: JsonElement = try self.dir.readToJson(main.stackAllocator, "world.dat");
+		const worldData = try self.dir.readToJson(main.stackAllocator, "world.dat");
 		defer worldData.free(main.stackAllocator);
 		if(worldData.get(u32, "version", 0) != worldDataVersion) {
 			std.log.err("Cannot read world file version {}. Expected version {}.", .{worldData.get(u32, "version", 0), worldDataVersion});
@@ -391,7 +391,7 @@ const WorldIO = struct { // MARK: WorldIO
 	}
 
 	pub fn loadWorldData(self: WorldIO) !void {
-		const worldData: JsonElement = try self.dir.readToJson(main.stackAllocator, "world.dat");
+		const worldData = try self.dir.readToJson(main.stackAllocator, "world.dat");
 		defer worldData.free(main.stackAllocator);
 
 		self.world.doGameTimeCycle = worldData.get(bool, "doGameTimeCycle", true);
@@ -401,7 +401,7 @@ const WorldIO = struct { // MARK: WorldIO
 	}
 
 	pub fn saveWorldData(self: WorldIO) !void {
-		const worldData: JsonElement = JsonElement.initObject(main.stackAllocator);
+		const worldData = JsonElement.initObject(main.stackAllocator);
 		defer worldData.free(main.stackAllocator);
 		worldData.put("version", worldDataVersion);
 		worldData.put("seed", self.world.seed);
@@ -464,8 +464,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			.lastUnimportantDataSent = std.time.milliTimestamp(),
 			.seed = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp()))),
 			.name = main.globalAllocator.dupe(u8, name),
-			.chunkUpdateQueue = main.utils.CircularBufferQueue(ChunkUpdateRequest).init(main.globalAllocator, 256),
-			.regionUpdateQueue = main.utils.CircularBufferQueue(RegionUpdateRequest).init(main.globalAllocator, 256),
+			.chunkUpdateQueue = .init(main.globalAllocator, 256),
+			.regionUpdateQueue = .init(main.globalAllocator, 256),
 		};
 		self.itemDropManager.init(main.globalAllocator, self, self.gravity);
 		errdefer self.itemDropManager.deinit();

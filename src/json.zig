@@ -25,14 +25,14 @@ pub const JsonElement = union(JsonType) { // MARK: JsonElement
 	JsonObject: *std.StringHashMap(JsonElement),
 
 	pub fn initObject(allocator: NeverFailingAllocator) JsonElement {
-		const map: *std.StringHashMap(JsonElement) = allocator.create(std.StringHashMap(JsonElement));
-		map.* = std.StringHashMap(JsonElement).init(allocator.allocator);
+		const map = allocator.create(std.StringHashMap(JsonElement));
+		map.* = .init(allocator.allocator);
 		return JsonElement{.JsonObject=map};
 	}
 
 	pub fn initArray(allocator: NeverFailingAllocator) JsonElement {
-		const list: *List(JsonElement) = allocator.create(List(JsonElement));
-		list.* = List(JsonElement).init(allocator);
+		const list = allocator.create(List(JsonElement));
+		list.* = .init(allocator);
 		return JsonElement{.JsonArray=list};
 	}
 
@@ -456,7 +456,7 @@ const Parser = struct { // MARK: Parser
 	}
 
 	fn parseString(allocator: NeverFailingAllocator, chars: []const u8, index: *u32) []const u8 {
-		var builder: List(u8) = List(u8).init(allocator);
+		var builder = List(u8).init(allocator);
 		while(index.* < chars.len): (index.* += 1) {
 			if(chars[index.*] == '\"') {
 				index.* += 1;
@@ -487,8 +487,8 @@ const Parser = struct { // MARK: Parser
 	}
 
 	fn parseArray(allocator: NeverFailingAllocator, chars: []const u8, index: *u32) JsonElement {
-		const list: *List(JsonElement) = allocator.create(List(JsonElement));
-		list.* = List(JsonElement).init(allocator);
+		const list = allocator.create(List(JsonElement));
+		list.* = .init(allocator);
 		while(index.* < chars.len) {
 			skipWhitespaces(chars, index);
 			if(index.* >= chars.len) break;
@@ -507,8 +507,8 @@ const Parser = struct { // MARK: Parser
 	}
 
 	fn parseObject(allocator: NeverFailingAllocator, chars: []const u8, index: *u32) JsonElement {
-		const map: *std.StringHashMap(JsonElement) = allocator.create(std.StringHashMap(JsonElement));
-		map.* = std.StringHashMap(JsonElement).init(allocator.allocator);
+		const map = allocator.create(std.StringHashMap(JsonElement));
+		map.* = .init(allocator.allocator);
 		while(index.* < chars.len) {
 			skipWhitespaces(chars, index);
 			if(index.* >= chars.len) break;

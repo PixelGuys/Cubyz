@@ -55,7 +55,7 @@ var blockUpdateList: main.List(BlockUpdate) = undefined;
 
 pub fn init() void { // MARK: init()
 	lastRD = 0;
-	blockUpdateList = main.List(BlockUpdate).init(main.globalAllocator);
+	blockUpdateList = .init(main.globalAllocator);
 	for(&storageLists) |*storageList| {
 		storageList.* = main.globalAllocator.create([storageSize*storageSize*storageSize]ChunkMeshNode);
 		for(storageList.*) |*val| {

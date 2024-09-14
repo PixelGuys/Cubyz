@@ -52,7 +52,7 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 	fn init() void {
 		mutex.lock();
 		defer mutex.unlock();
-		commands = List(Command).init(main.globalAllocator);
+		commands = .init(main.globalAllocator);
 	}
 
 	fn deinit() void {
@@ -128,9 +128,9 @@ pub const Callback = struct {
 
 pub fn init() void { // MARK: init()
 	GuiCommandQueue.init();
-	windowList = List(*GuiWindow).init(main.globalAllocator);
-	hudWindows = List(*GuiWindow).init(main.globalAllocator);
-	openWindows = List(*GuiWindow).init(main.globalAllocator);
+	windowList = .init(main.globalAllocator);
+	hudWindows = .init(main.globalAllocator);
+	openWindows = .init(main.globalAllocator);
 	inline for(@typeInfo(windowlist).@"struct".decls) |decl| {
 		const windowStruct = @field(windowlist, decl.name);
 		windowStruct.window.id = decl.name;
@@ -596,8 +596,8 @@ pub const inventory = struct { // MARK: inventory
 	var initialAmount: u16 = 0;
 
 	pub fn init() void {
-		deliveredItemSlots = List(*ItemSlot).init(main.globalAllocator);
-		deliveredItemStacksAmountAdded = List(u16).init(main.globalAllocator);
+		deliveredItemSlots = .init(main.globalAllocator);
+		deliveredItemStacksAmountAdded = .init(main.globalAllocator);
 		carriedItemSlot = ItemSlot.init(.{0, 0}, carriedItemStack, undefined, undefined, .default, .normal);
 		carriedItemSlot.renderFrame = false;
 	}
@@ -695,7 +695,7 @@ pub const inventory = struct { // MARK: inventory
 		if(carriedItemStack.amount == 0) if(hoveredItemSlot) |hovered| {
 			if(hovered.itemStack.item) |item| {
 				const tooltip = item.getTooltip();
-				var textBuffer: graphics.TextBuffer = graphics.TextBuffer.init(main.stackAllocator, tooltip, .{}, false, .left);
+				var textBuffer = graphics.TextBuffer.init(main.stackAllocator, tooltip, .{}, false, .left);
 				defer textBuffer.deinit();
 				var size = textBuffer.calculateLineBreaks(16, 256);
 				size[0] = 0;

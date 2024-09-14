@@ -69,7 +69,7 @@ pub fn init() void {
 	};
 	chunk_meshing.init();
 	mesh_storage.init();
-	reflectionCubeMap = graphics.CubeMapTexture.init();
+	reflectionCubeMap = .init();
 	reflectionCubeMap.generate(reflectionCubeMapSize, reflectionCubeMapSize);
 	initReflectionCubeMap();
 }
@@ -312,7 +312,7 @@ const Bloom = struct { // MARK: Bloom
 	pub fn init() void {
 		buffer1.init(false, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
 		buffer2.init(false, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
-		emptyBuffer = graphics.Texture.init();
+		emptyBuffer = .init();
 		emptyBuffer.generate(graphics.Image.emptyImage);
 		firstPassShader = graphics.Shader.init("assets/cubyz/shaders/bloom/first_pass.vs", "assets/cubyz/shaders/bloom/first_pass.fs", "");
 		secondPassShader = graphics.Shader.init("assets/cubyz/shaders/bloom/second_pass.vs", "assets/cubyz/shaders/bloom/second_pass.fs", "");

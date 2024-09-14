@@ -330,9 +330,9 @@ pub const Player = struct { // MARK: Player
 	pub var eyeCoyote: f64 = 0;
 	pub var eyeStep: @Vector(3, bool) = .{false, false, false};
 	pub var id: u32 = 0;
-	pub var isFlying: Atomic(bool) = Atomic(bool).init(false);
-	pub var isGhost: Atomic(bool) = Atomic(bool).init(false);
-	pub var hyperSpeed: Atomic(bool) = Atomic(bool).init(false);
+	pub var isFlying: Atomic(bool) = .init(false);
+	pub var isGhost: Atomic(bool) = .init(false);
+	pub var hyperSpeed: Atomic(bool) = .init(false);
 	pub var mutex: std.Thread.Mutex = std.Thread.Mutex{};
 	pub var inventory__SEND_CHANGES_TO_SERVER: Inventory = undefined;
 	pub var selectedSlot: u32 = 0;
@@ -477,7 +477,7 @@ pub const World = struct { // MARK: World
 	gravity: f64 = 9.81*1.5, // TODO: Balance
 	name: []const u8,
 	milliTime: i64,
-	gameTime: Atomic(i64) = Atomic(i64).init(0),
+	gameTime: Atomic(i64) = .init(0),
 	spawn: Vec3f = undefined,
 	blockPalette: *assets.Palette = undefined,
 	biomePalette: *assets.Palette = undefined,
@@ -499,7 +499,7 @@ pub const World = struct { // MARK: World
 
 		main.blocks.meshes.generateTextureArray();
 		main.models.uploadModels();
-		self.playerBiome = Atomic(*const main.server.terrain.biomes.Biome).init(main.server.terrain.biomes.getById(""));
+		self.playerBiome = .init(main.server.terrain.biomes.getById(""));
 		main.audio.setMusic(self.playerBiome.raw.preferredMusic);
 	}
 

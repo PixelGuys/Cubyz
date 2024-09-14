@@ -21,7 +21,7 @@ pub const LightMapFragment = struct {
 	startHeight: [mapSize*mapSize]i16 = undefined,
 	pos: MapFragmentPosition,
 	
-	refCount: Atomic(u16) = Atomic(u16).init(0),
+	refCount: Atomic(u16) = .init(0),
 
 	pub fn init(self: *LightMapFragment, wx: i32, wy: i32, voxelSize: u31) void {
 		self.* = .{
