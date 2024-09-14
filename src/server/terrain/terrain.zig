@@ -131,7 +131,7 @@ pub fn initGenerators() void {
 	CaveMap.initGenerators();
 	StructureMap.initGenerators();
 	const list = @import("chunkgen/_list.zig");
-	inline for(@typeInfo(list).Struct.decls) |decl| {
+	inline for(@typeInfo(list).@"struct".decls) |decl| {
 		BlockGenerator.registerGenerator(@field(list, decl.name));
 	}
 	const t1 = std.time.milliTimestamp();

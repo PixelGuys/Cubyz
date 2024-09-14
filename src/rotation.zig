@@ -669,14 +669,14 @@ pub const RotationModes = struct {
 
 pub fn init() void {
 	rotationModes = std.StringHashMap(RotationMode).init(main.globalAllocator.allocator);
-	inline for(@typeInfo(RotationModes).Struct.decls) |declaration| {
+	inline for(@typeInfo(RotationModes).@"struct".decls) |declaration| {
 		register(@field(RotationModes, declaration.name));
 	}
 }
 
 pub fn deinit() void {
 	rotationModes.deinit();
-	inline for(@typeInfo(RotationModes).Struct.decls) |declaration| {
+	inline for(@typeInfo(RotationModes).@"struct".decls) |declaration| {
 		@field(RotationModes, declaration.name).deinit();
 	}
 }
@@ -690,7 +690,7 @@ pub fn getByID(id: []const u8) *RotationMode {
 pub fn register(comptime Mode: type) void {
 	Mode.init();
 	var result: RotationMode = RotationMode{};
-	inline for(@typeInfo(RotationMode).Struct.fields) |field| {
+	inline for(@typeInfo(RotationMode).@"struct".fields) |field| {
 		if(@hasDecl(Mode, field.name)) {
 			if(field.type == @TypeOf(@field(Mode, field.name))) {
 				@field(result, field.name) = @field(Mode, field.name);

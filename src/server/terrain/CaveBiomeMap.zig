@@ -575,7 +575,7 @@ var profile: TerrainGenerationProfile = undefined;
 
 pub fn initGenerators() void {
 	const list = @import("cavebiomegen/_list.zig");
-	inline for(@typeInfo(list).Struct.decls) |decl| {
+	inline for(@typeInfo(list).@"struct".decls) |decl| {
 		CaveBiomeGenerator.registerGenerator(@field(list, decl.name));
 	}
 }

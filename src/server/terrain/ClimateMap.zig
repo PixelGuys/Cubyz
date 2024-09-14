@@ -109,7 +109,7 @@ var profile: TerrainGenerationProfile = undefined;
 
 pub fn initGenerators() void {
 	const list = @import("climategen/_list.zig");
-	inline for(@typeInfo(list).Struct.decls) |decl| {
+	inline for(@typeInfo(list).@"struct".decls) |decl| {
 		ClimateMapGenerator.registerGenerator(@field(list, decl.name));
 	}
 }

@@ -151,14 +151,14 @@ pub const ChunkPosition = struct { // MARK: ChunkPosition
 	}
 
 	pub fn equals(self: ChunkPosition, other: anytype) bool {
-		if(@typeInfo(@TypeOf(other)) == .Optional) {
+		if(@typeInfo(@TypeOf(other)) == .optional) {
 			if(other) |notNull| {
 				return self.equals(notNull);
 			}
 			return false;
 		} else if(@TypeOf(other.*) == ServerChunk) {
 			return self.wx == other.super.pos.wx and self.wy == other.super.pos.wy and self.wz == other.super.pos.wz and self.voxelSize == other.super.pos.voxelSize;
-		} else if(@typeInfo(@TypeOf(other)) == .Pointer) {
+		} else if(@typeInfo(@TypeOf(other)) == .pointer) {
 			return self.wx == other.pos.wx and self.wy == other.pos.wy and self.wz == other.pos.wz and self.voxelSize == other.pos.voxelSize;
 		} else @compileError("Unsupported");
 	}

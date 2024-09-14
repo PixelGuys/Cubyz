@@ -1220,7 +1220,7 @@ pub const Shader = struct { // MARK: Shader
 	
 	pub fn initAndGetUniforms(vertex: []const u8, fragment: []const u8, defines: []const u8, ptrToUniformStruct: anytype) Shader {
 		const self = Shader.init(vertex, fragment, defines);
-		inline for(@typeInfo(@TypeOf(ptrToUniformStruct.*)).Struct.fields) |field| {
+		inline for(@typeInfo(@TypeOf(ptrToUniformStruct.*)).@"struct".fields) |field| {
 			if(field.type == c_int) {
 				@field(ptrToUniformStruct, field.name) = c.glGetUniformLocation(self.id, field.name[0..]);
 			}
@@ -1237,7 +1237,7 @@ pub const Shader = struct { // MARK: Shader
 
 	pub fn initComputeAndGetUniforms(compute: []const u8, defines: []const u8, ptrToUniformStruct: anytype) Shader {
 		const self = Shader.initCompute(compute, defines);
-		inline for(@typeInfo(@TypeOf(ptrToUniformStruct.*)).Struct.fields) |field| {
+		inline for(@typeInfo(@TypeOf(ptrToUniformStruct.*)).@"struct".fields) |field| {
 			if(field.type == c_int) {
 				@field(ptrToUniformStruct, field.name) = c.glGetUniformLocation(self.id, field.name[0..]);
 			}

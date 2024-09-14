@@ -131,7 +131,7 @@ pub fn init() void { // MARK: init()
 	windowList = List(*GuiWindow).init(main.globalAllocator);
 	hudWindows = List(*GuiWindow).init(main.globalAllocator);
 	openWindows = List(*GuiWindow).init(main.globalAllocator);
-	inline for(@typeInfo(windowlist).Struct.decls) |decl| {
+	inline for(@typeInfo(windowlist).@"struct".decls) |decl| {
 		const windowStruct = @field(windowlist, decl.name);
 		windowStruct.window.id = decl.name;
 		addWindow(&windowStruct.window);
@@ -173,7 +173,7 @@ pub fn deinit() void {
 	ContinuousSlider.__deinit();
 	DiscreteSlider.__deinit();
 	TextInput.__deinit();
-	inline for(@typeInfo(windowlist).Struct.decls) |decl| {
+	inline for(@typeInfo(windowlist).@"struct".decls) |decl| {
 		const WindowStruct = @field(windowlist, decl.name);
 		if(@hasDecl(WindowStruct, "deinit")) {
 			WindowStruct.deinit();

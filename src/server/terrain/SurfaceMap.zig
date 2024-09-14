@@ -251,7 +251,7 @@ var profile: TerrainGenerationProfile = undefined;
 
 pub fn initGenerators() void {
 	const list = @import("mapgen/_list.zig");
-	inline for(@typeInfo(list).Struct.decls) |decl| {
+	inline for(@typeInfo(list).@"struct".decls) |decl| {
 		MapGenerator.registerGenerator(@field(list, decl.name));
 	}
 }

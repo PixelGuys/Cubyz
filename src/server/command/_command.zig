@@ -15,7 +15,7 @@ pub var commands: std.StringHashMap(Command) = undefined;
 pub fn init() void {
 	commands = std.StringHashMap(Command).init(main.globalAllocator.allocator);
 	const commandList = @import("_list.zig");
-	inline for(@typeInfo(commandList).Struct.decls) |decl| {
+	inline for(@typeInfo(commandList).@"struct".decls) |decl| {
 		commands.put(decl.name, .{
 			.name = decl.name,
 			.description = @field(commandList, decl.name).description,

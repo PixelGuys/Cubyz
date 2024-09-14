@@ -316,7 +316,7 @@ fn cacheInit(pos: ChunkPosition) *CaveMapFragment {
 
 pub fn initGenerators() void {
 	const list = @import("cavegen/_list.zig");
-	inline for(@typeInfo(list).Struct.decls) |decl| {
+	inline for(@typeInfo(list).@"struct".decls) |decl| {
 		CaveGenerator.registerGenerator(@field(list, decl.name));
 	}
 }

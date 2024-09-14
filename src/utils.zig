@@ -725,7 +725,7 @@ pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 	/// can be larger, smaller, or the same size as the old memory allocation.
 	/// If `new_n` is 0, this is the same as `free` and it always succeeds.
 	pub fn realloc(self: NeverFailingAllocator, old_mem: anytype, new_n: usize) t: {
-		const Slice = @typeInfo(@TypeOf(old_mem)).Pointer;
+		const Slice = @typeInfo(@TypeOf(old_mem)).pointer;
 		break :t []align(Slice.alignment) Slice.child;
 	} {
 		return self.allocator.realloc(old_mem, new_n) catch unreachable;
@@ -737,7 +737,7 @@ pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 		new_n: usize,
 		return_address: usize,
 	) t: {
-		const Slice = @typeInfo(@TypeOf(old_mem)).Pointer;
+		const Slice = @typeInfo(@TypeOf(old_mem)).pointer;
 		break :t []align(Slice.alignment) Slice.child;
 	} {
 		return self.allocator.reallocAdvanced(old_mem, new_n, return_address) catch unreachable;

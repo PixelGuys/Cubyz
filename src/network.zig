@@ -113,7 +113,7 @@ const Socket = struct {
 
 pub fn init() void {
 	Socket.startup();
-	inline for(@typeInfo(Protocols).Struct.decls) |decl| {
+	inline for(@typeInfo(Protocols).@"struct".decls) |decl| {
 		if(@TypeOf(@field(Protocols, decl.name)) == type) {
 			const id = @field(Protocols, decl.name).id;
 			if(id != Protocols.keepAlive and id != Protocols.important and Protocols.list[id] == null) {

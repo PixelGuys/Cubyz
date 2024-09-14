@@ -141,24 +141,24 @@ const Stripe = struct { // MARK: Stripe
 fn hashGeneric(input: anytype) u64 {
 	const T = @TypeOf(input);
 	return switch(@typeInfo(T)) {
-		.Bool => @intFromBool(input),
-		.Enum => @intFromEnum(input),
-		.Int, .Float => @as(std.meta.Int(.unsigned, @bitSizeOf(T)), @bitCast(input)),
-		.Struct => blk: {
+		.bool => @intFromBool(input),
+		.@"enum" => @intFromEnum(input),
+		.int, .float => @as(std.meta.Int(.unsigned, @bitSizeOf(T)), @bitCast(input)),
+		.@"struct" => blk: {
 			if(@hasDecl(T, "getHash")) {
 				break :blk input.getHash();
 			}
 			var result: u64 = 0;
-			inline for(@typeInfo(T).Struct.fields) |field| {
+			inline for(@typeInfo(T).@"struct".fields) |field| {
 				result ^= hashGeneric(@field(input, field.name))*%hashGeneric(@as([]const u8, field.name));
 			}
 			break :blk result;
 		},
-		.Optional => if(input) |_input| hashGeneric(_input) else 0,
-		.Pointer => switch(@typeInfo(T).Pointer.size) {
+		.optional => if(input) |_input| hashGeneric(_input) else 0,
+		.pointer => switch(@typeInfo(T).pointer.size) {
 			.One => blk: {
-				if(@typeInfo(@typeInfo(T).Pointer.child) == .Fn) break :blk 0;
-				if(@typeInfo(T).Pointer.child == anyopaque) break :blk 0;
+				if(@typeInfo(@typeInfo(T).pointer.child) == .@"fn") break :blk 0;
+				if(@typeInfo(T).pointer.child == anyopaque) break :blk 0;
 				break :blk hashGeneric(input.*);
 			},
 			.Slice => blk: {
@@ -170,16 +170,16 @@ fn hashGeneric(input: anytype) u64 {
 			},
 			else => @compileError("Unsupported type " ++ @typeName(T)),
 		},
-		.Array => blk: {
+		.array => blk: {
 			var result: u64 = 0;
 			for(input) |val| {
 				result = result*%33 +% hashGeneric(val);
 			}
 			break :blk result;
 		},
-		.Vector => blk: {
+		.vector => blk: {
 			var result: u64 = 0;
-			inline for(0..@typeInfo(T).Vector.len) |i| {
+			inline for(0..@typeInfo(T).vector.len) |i| {
 				result = result*%33 +% hashGeneric(input[i]);
 			}
 			break :blk result;
@@ -222,7 +222,7 @@ pub const Biome = struct { // MARK: Biome
 			var result: GenerationProperties = .{};
 			for(json.toSlice()) |child| {
 				const property = child.as([]const u8, "");
-				inline for(@typeInfo(GenerationProperties).Struct.fields) |field| {
+				inline for(@typeInfo(GenerationProperties).@"struct".fields) |field| {
 					if(std.mem.eql(u8, field.name, property)) {
 						@field(result, field.name) = true;
 					}
@@ -546,7 +546,7 @@ pub fn init() void {
 	caveBiomes = main.List(Biome).init(main.globalAllocator);
 	biomesById = std.StringHashMap(*Biome).init(main.globalAllocator.allocator);
 	const list = @import("simple_structures/_list.zig");
-	inline for(@typeInfo(list).Struct.decls) |decl| {
+	inline for(@typeInfo(list).@"struct".decls) |decl| {
 		SimpleStructureModel.registerGenerator(@field(list, decl.name));
 	}
 }

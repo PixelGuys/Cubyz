@@ -157,7 +157,7 @@ fn cacheInit(pos: ChunkPosition) *StructureMapFragment {
 
 pub fn initGenerators() void {
 	const list = @import("structuremapgen/_list.zig");
-	inline for(@typeInfo(list).Struct.decls) |decl| {
+	inline for(@typeInfo(list).@"struct".decls) |decl| {
 		StructureMapGenerator.registerGenerator(@field(list, decl.name));
 	}
 }

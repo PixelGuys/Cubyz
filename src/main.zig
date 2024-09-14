@@ -56,7 +56,7 @@ pub const std_options: std.Options = .{ // MARK: std_options
 	.log_level = .debug,
 	.logFn = struct {pub fn logFn(
 		comptime level: std.log.Level,
-		comptime _: @Type(.EnumLiteral),
+		comptime _: @Type(.enum_literal),
 		comptime format: []const u8,
 		args: anytype,
 	) void {
@@ -125,10 +125,10 @@ pub const std_options: std.Options = .{ // MARK: std_options
 				types = types ++ &[_]type{i64};
 			} else if(@TypeOf(args[i_1]) == comptime_float) {
 				types = types ++ &[_]type{f64};
-			} else if(TI == .Pointer and TI.Pointer.size == .Slice and TI.Pointer.child == u8) {
+			} else if(TI == .pointer and TI.pointer.size == .Slice and TI.pointer.child == u8) {
 				types = types ++ &[_]type{[]const u8};
-			} else if(TI == .Int and TI.Int.bits <= 64) {
-				if(TI.Int.signedness == .signed) {
+			} else if(TI == .int and TI.int.bits <= 64) {
+				if(TI.int.signedness == .signed) {
 					types = types ++ &[_]type{i64};
 				} else {
 					types = types ++ &[_]type{u64};
