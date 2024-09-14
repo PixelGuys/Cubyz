@@ -1031,7 +1031,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			const neighbor = chunk.Neighbor.dirNegX;
 			for(1..chunk.chunkSize) |x| {
 				for(0..chunk.chunkSize) |y| {
-					var bitMask = hasFaces[x][y] & (canSeeNeighbor[neighbor.reverse().toInt()][x - 1][y] | canSeeAllNeighbors[x - 1][y]);
+					var bitMask = hasFaces[x][y] & (canSeeNeighbor[comptime neighbor.reverse().toInt()][x - 1][y] | canSeeAllNeighbors[x - 1][y]);
 					while(bitMask != 0) {
 						const z = @ctz(bitMask);
 						bitMask &= ~(@as(u32, 1) << @intCast(z));
@@ -1057,7 +1057,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			const neighbor = chunk.Neighbor.dirPosX;
 			for(0..chunk.chunkSize-1) |x| {
 				for(0..chunk.chunkSize) |y| {
-					var bitMask = hasFaces[x][y] & (canSeeNeighbor[neighbor.reverse().toInt()][x + 1][y] | canSeeAllNeighbors[x + 1][y]);
+					var bitMask = hasFaces[x][y] & (canSeeNeighbor[comptime neighbor.reverse().toInt()][x + 1][y] | canSeeAllNeighbors[x + 1][y]);
 					while(bitMask != 0) {
 						const z = @ctz(bitMask);
 						bitMask &= ~(@as(u32, 1) << @intCast(z));
@@ -1083,7 +1083,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			const neighbor = chunk.Neighbor.dirNegY;
 			for(0..chunk.chunkSize) |x| {
 				for(1..chunk.chunkSize) |y| {
-					var bitMask = hasFaces[x][y] & (canSeeNeighbor[neighbor.reverse().toInt()][x][y - 1] | canSeeAllNeighbors[x][y - 1]);
+					var bitMask = hasFaces[x][y] & (canSeeNeighbor[comptime neighbor.reverse().toInt()][x][y - 1] | canSeeAllNeighbors[x][y - 1]);
 					while(bitMask != 0) {
 						const z = @ctz(bitMask);
 						bitMask &= ~(@as(u32, 1) << @intCast(z));
@@ -1109,7 +1109,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			const neighbor = chunk.Neighbor.dirPosY;
 			for(0..chunk.chunkSize) |x| {
 				for(0..chunk.chunkSize-1) |y| {
-					var bitMask = hasFaces[x][y] & (canSeeNeighbor[neighbor.reverse().toInt()][x][y + 1] | canSeeAllNeighbors[x][y + 1]);
+					var bitMask = hasFaces[x][y] & (canSeeNeighbor[comptime neighbor.reverse().toInt()][x][y + 1] | canSeeAllNeighbors[x][y + 1]);
 					while(bitMask != 0) {
 						const z = @ctz(bitMask);
 						bitMask &= ~(@as(u32, 1) << @intCast(z));
@@ -1135,7 +1135,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			const neighbor = chunk.Neighbor.dirDown;
 			for(0..chunk.chunkSize) |x| {
 				for(0..chunk.chunkSize) |y| {
-					var bitMask = hasFaces[x][y] & (canSeeNeighbor[neighbor.reverse().toInt()][x][y] | canSeeAllNeighbors[x][y]) << 1;
+					var bitMask = hasFaces[x][y] & (canSeeNeighbor[comptime neighbor.reverse().toInt()][x][y] | canSeeAllNeighbors[x][y]) << 1;
 					while(bitMask != 0) {
 						const z = @ctz(bitMask);
 						bitMask &= ~(@as(u32, 1) << @intCast(z));
@@ -1161,7 +1161,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			const neighbor = chunk.Neighbor.dirUp;
 			for(0..chunk.chunkSize) |x| {
 				for(0..chunk.chunkSize) |y| {
-					var bitMask = hasFaces[x][y] & (canSeeNeighbor[neighbor.reverse().toInt()][x][y] | canSeeAllNeighbors[x][y]) >> 1;
+					var bitMask = hasFaces[x][y] & (canSeeNeighbor[comptime neighbor.reverse().toInt()][x][y] | canSeeAllNeighbors[x][y]) >> 1;
 					while(bitMask != 0) {
 						const z = @ctz(bitMask);
 						bitMask &= ~(@as(u32, 1) << @intCast(z));
