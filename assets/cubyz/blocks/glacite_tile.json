@@ -7,5 +7,5 @@
 	],
 	"rotation" : "stairs",
 	"model" : "cubyz:cube",
-	"texture" : "cubyz:glacite"
+	"texture" : "cubyz:glacite_tile"
 }
