@@ -28,6 +28,7 @@ const ChunkMeshNode = struct {
 	max: Vec2f = undefined,
 	active: bool = false,
 	rendered: bool = false,
+	finishedMeshing: bool = false, // Must be synced with mesh.finishedMeshing
 	mutex: std.Thread.Mutex = .{},
 };
 const storageSize = 64;
@@ -323,6 +324,7 @@ fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32) void { 
 					node.mutex.lock();
 					const oldMesh = node.mesh;
 					node.mesh = null;
+					node.finishedMeshing = false;
 					node.mutex.unlock();
 					if(oldMesh) |mesh| {
 						mesh.decreaseRefCount();
@@ -592,9 +594,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 		var lod: u3 = 0;
 		while(lod <= settings.highestLOD) : (lod += 1) {
 			const node = getNodePointer(firstPos);
-			node.mutex.lock();
-			const hasMesh = node.mesh != null and node.mesh.?.finishedMeshing;
-			node.mutex.unlock();
+			const hasMesh = node.finishedMeshing;
 			if(hasMesh) {
 				node.lod = lod;
 				node.min = @splat(-1);
@@ -617,6 +617,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 	defer nodeList.deinit();
 	const projRotMat = game.projectionMatrix.mul(game.camera.viewMatrix);
 	while(searchList.removeOrNull()) |data| {
+		std.debug.assert(data.node.finishedMeshing);
 		nodeList.append(data.node);
 		data.node.active = false;
 
@@ -625,10 +626,6 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 			mutex.unlock();
 			continue;
 		};
-		if(!mesh.finishedMeshing) {
-			mutex.unlock();
-			continue;
-		}
 		mesh.increaseRefCount();
 		defer mesh.decreaseRefCount();
 		mutex.unlock();
@@ -638,10 +635,10 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 		const relPosFloat: Vec3f = @floatCast(relPos);
 		var isNeighborLod: [6]bool = .{false} ** 6;
 		for(chunk.Neighbor.iterable) |neighbor| continueNeighborLoop: {
-			const component = neighbor.extractDirectionComponent(relPos);
-			if(neighbor.isPositive() and component + @as(f64, @floatFromInt(chunk.chunkSize*mesh.pos.voxelSize)) <= 0) continue;
+			const component = neighbor.extractDirectionComponent(relPosFloat);
+			if(neighbor.isPositive() and component + @as(f32, @floatFromInt(chunk.chunkSize*mesh.pos.voxelSize)) <= 0) continue;
 			if(!neighbor.isPositive() and component >= 0) continue;
-			if(@reduce(.Or, @min(mesh.chunkBorders[neighbor.toInt()].min, mesh.chunkBorders[neighbor.toInt()].max) != mesh.chunkBorders[neighbor.toInt()].min)) continue; // There was not a single block in the chunk. TODO: Find a better solution.
+			if(@reduce(.Or, mesh.chunkBorders[neighbor.toInt()].max < mesh.chunkBorders[neighbor.toInt()].min)) continue; // There was not a single transparent block along the chunk border. TODO: Find a better solution.
 			const minVec: Vec3f = @floatFromInt(mesh.chunkBorders[neighbor.toInt()].min*@as(Vec3i, @splat(mesh.pos.voxelSize)));
 			const maxVec: Vec3f = @floatFromInt(mesh.chunkBorders[neighbor.toInt()].max*@as(Vec3i, @splat(mesh.pos.voxelSize)));
 			var xyMin: Vec2f = .{10, 10};
@@ -781,7 +778,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 				.voxelSize = mesh.pos.voxelSize,
 			};
 			var lod: u3 = data.node.lod;
-			while(lod <= settings.highestLOD) : (lod += 1) {
+			lodLoop: while(lod <= settings.highestLOD) : (lod += 1) {
 				defer {
 					neighborPos.wx &= ~@as(i32, neighborPos.voxelSize*chunk.chunkSize);
 					neighborPos.wy &= ~@as(i32, neighborPos.voxelSize*chunk.chunkSize);
@@ -789,17 +786,13 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 					neighborPos.voxelSize *= 2;
 				}
 				const node = getNodePointer(neighborPos);
-				if(getMeshAndIncreaseRefCount(neighborPos)) |neighborMesh| {
-					std.debug.assert(std.meta.eql(neighborPos, neighborMesh.pos));
-					defer neighborMesh.decreaseRefCount();
-					if(!neighborMesh.finishedMeshing) continue;
+				if(node.finishedMeshing) {
 					// Ensure that there are no high-to-low lod transitions, which would produce cracks.
 					if(lod == data.node.lod and lod != settings.highestLOD and !node.rendered) {
-						var isValid: bool = true;
 						const relPos2: Vec3d = @as(Vec3d, @floatFromInt(Vec3i{neighborPos.wx, neighborPos.wy, neighborPos.wz})) - playerPos;
 						for(chunk.Neighbor.iterable) |neighbor2| {
 							const component2 = neighbor2.extractDirectionComponent(relPos2);
-							if(neighbor2.isPositive() and component2 + @as(f64, @floatFromInt(chunk.chunkSize*neighborMesh.pos.voxelSize)) >= 0) continue;
+							if(neighbor2.isPositive() and component2 + @as(f64, @floatFromInt(chunk.chunkSize*neighborPos.voxelSize)) >= 0) continue;
 							if(!neighbor2.isPositive() and component2 <= 0) continue;
 							{ // Check the chunk of same lod:
 								const neighborPos2 = chunk.ChunkPosition{
@@ -822,14 +815,10 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 								};
 								const node2 = getNodePointer(neighborPos2);
 								if(node2.rendered) {
-									isValid = false;
-									break;
+									isNeighborLod[neighbor.toInt()] = true;
+									continue :lodLoop;
 								}
 							}
-						}
-						if(!isValid) {
-							isNeighborLod[neighbor.toInt()] = true;
-							continue;
 						}
 					}
 					if(lod != data.node.lod) {
@@ -845,7 +834,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 						node.active = true;
 						searchList.add(.{
 							.node = node,
-							.distance = neighborMesh.pos.getMaxDistanceSquared(playerPos),
+							.distance = neighborPos.getMaxDistanceSquared(playerPos),
 						}) catch unreachable;
 						node.rendered = true;
 					}
@@ -857,16 +846,13 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 	}
 	for(nodeList.items) |node| {
 		node.rendered = false;
+		if(!node.finishedMeshing) continue;
 
 		node.mutex.lock();
 		const mesh = node.mesh orelse {
 			node.mutex.unlock();
 			continue;
 		};
-		if(!mesh.finishedMeshing) {
-			node.mutex.unlock();
-			continue;
-		}
 		mesh.increaseRefCount();
 		defer mesh.decreaseRefCount();
 		node.mutex.unlock();
@@ -982,6 +968,7 @@ pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()
 		defer mutex.lock();
 		if(isInRenderDistance(mesh.pos)) {
 			const node = getNodePointer(mesh.pos);
+			node.finishedMeshing = true;
 			mesh.finishedMeshing = true;
 			mesh.uploadData();
 			node.mutex.lock();
@@ -1032,6 +1019,7 @@ pub fn addMeshToStorage(mesh: *chunk_meshing.ChunkMesh) error{AlreadyStored}!voi
 			return error.AlreadyStored;
 		}
 		node.mesh = mesh;
+		node.finishedMeshing = mesh.finishedMeshing;
 		mesh.increaseRefCount();
 	}
 }
