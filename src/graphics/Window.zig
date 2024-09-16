@@ -40,10 +40,7 @@ const Gamepad = struct {
 					self.gamepadState.put(jid, main.globalAllocator.create(c.GLFWgamepadstate)) catch unreachable;
 				}
 				_ = c.glfwGetGamepadState(jid, self.gamepadState.get(jid).?);
-				var oldState: c.GLFWgamepadstate = std.mem.zeroes(c.GLFWgamepadstate);
-				if (oldGamepadState != null) {
-					oldState = oldGamepadState.?;
-				}
+				const oldState: c.GLFWgamepadstate = oldGamepadState orelse std.mem.zeroes(c.GLFWgamepadstate);
 				const newState = self.gamepadState.get(jid).?;
 				if (nextGamepadListener != null) {
 					for (0..c.GLFW_GAMEPAD_BUTTON_LAST) |btn| {
