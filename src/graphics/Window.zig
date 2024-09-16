@@ -22,7 +22,7 @@ pub var scrollOffset: f32 = 0;
 const Gamepad = struct {
 	gamepadState: std.AutoHashMap(c_int, *c.GLFWgamepadstate) = undefined,
 	controllerMappingsDownloaded: bool = false,
-	downloadControllerMappingsThread: ?std.Thread = null,
+	controllerMappingsTask: ?ControllerMappingDownloadTask = null,
 	fn applyDeadzone(value: f32) f32 {
 		const minValue = settings.controllerAxisDeadzone;
 		const maxRange = 1.0 - minValue;
@@ -31,10 +31,9 @@ const Gamepad = struct {
 	pub fn update(self: *Gamepad, delta: f64) void {
 		var jid: c_int = 0;
 		while (jid < c.GLFW_JOYSTICK_LAST) : (jid += 1) {
-			var oldGamepadState: ?[]c.GLFWgamepadstate = null;
+			var oldGamepadState: ?c.GLFWgamepadstate = null;
 			if (self.*.gamepadState.contains(jid)) {
-				oldGamepadState = main.stackAllocator.dupe(c.GLFWgamepadstate, &.{self.gamepadState.get(jid).?.*});
-				defer main.stackAllocator.free(oldGamepadState.?);
+				oldGamepadState = self.gamepadState.get(jid).?.*;
 			}
 			if (c.glfwJoystickPresent(jid) != 0 and c.glfwJoystickIsGamepad(jid) != 0) {
 				if (!self.gamepadState.contains(jid)) {
@@ -43,12 +42,12 @@ const Gamepad = struct {
 				_ = c.glfwGetGamepadState(jid, self.gamepadState.get(jid).?);
 				var oldState: c.GLFWgamepadstate = std.mem.zeroes(c.GLFWgamepadstate);
 				if (oldGamepadState != null) {
-					oldState = oldGamepadState.?[0];
+					oldState = oldGamepadState.?;
 				}
-				const newState = self.gamepadState.get(jid);
+				const newState = self.gamepadState.get(jid).?;
 				if (nextGamepadListener != null) {
 					for (0..c.GLFW_GAMEPAD_BUTTON_LAST) |btn| {
-						if ((newState.?.buttons[btn] == 0) and (oldState.buttons[btn] != 0)) {
+						if ((newState.buttons[btn] == 0) and (oldState.buttons[btn] != 0)) {
 							nextGamepadListener.?(null, @intCast(btn));
 							nextGamepadListener = null;
 							break;
@@ -57,10 +56,10 @@ const Gamepad = struct {
 				}
 				if (nextGamepadListener != null) {
 					for (0..c.GLFW_GAMEPAD_AXIS_LAST) |axis| {
-						const newAxis = applyDeadzone(newState.?.axes[axis]);
+						const newAxis = applyDeadzone(newState.axes[axis]);
 						const oldAxis = applyDeadzone(oldState.axes[axis]);
 						if (newAxis != 0 and oldAxis == 0) {
-							nextGamepadListener.?(.{.axis = @intCast(axis), .positive = newState.?.axes[axis] > 0}, -1);
+							nextGamepadListener.?(.{.axis = @intCast(axis), .positive = newState.axes[axis] > 0}, -1);
 							nextGamepadListener = null;
 							break;
 						}
@@ -70,7 +69,7 @@ const Gamepad = struct {
 					if(key.gamepadAxis == null) {
 						if(key.gamepadButton >= 0) {
 							const oldPressed = oldState.buttons[@intCast(key.gamepadButton)] != 0;
-							const newPressed = newState.?.*.buttons[@intCast(key.gamepadButton)] != 0;
+							const newPressed = newState.buttons[@intCast(key.gamepadButton)] != 0;
 							if(oldPressed != newPressed) {
 								key.pressed = newPressed;
 								if(newPressed) {
@@ -92,7 +91,7 @@ const Gamepad = struct {
 					} else {
 						const axis = key.gamepadAxis.?.axis;
 						const positive = key.gamepadAxis.?.positive;
-						var newAxis = applyDeadzone(newState.?.*.axes[@intCast(axis)]);
+						var newAxis = applyDeadzone(newState.axes[@intCast(axis)]);
 						var oldAxis = applyDeadzone(oldState.axes[@intCast(axis)]);
 						if(!positive) {
 							newAxis *= -1;
@@ -129,7 +128,7 @@ const Gamepad = struct {
 					_ = self.gamepadState.remove(jid);
 				}
 				if (oldGamepadState != null) {
-					const oldState = oldGamepadState.?[0];
+					const oldState = oldGamepadState.?;
 					for(&main.KeyBoard.keys) |*key| {
 						if(key.gamepadAxis == null) {
 							if(key.gamepadButton >= 0) {
@@ -215,27 +214,66 @@ const Gamepad = struct {
 		return self.gamepadState.count() > 0;
 	}
 	pub fn controllerMappingsDownloading(self: *Gamepad) bool {
-		return !self.controllerMappingsDownloaded and self.downloadControllerMappingsThread != null;
+		return !self.*.controllerMappingsDownloaded;
 	}
-	fn downloadControllerMappingsThreadFunc(self: *Gamepad, curTimestamp: i128) void {
-		var client: std.http.Client = .{.allocator = main.stackAllocator.allocator};
-		var list = std.ArrayList(u8).init(main.stackAllocator.allocator);
-		if (client.fetch(.{
-			.method = .GET,
-			.location = .{.url = "https://raw.githubusercontent.com/mdqinc/SDL_GameControllerDB/master/gamecontrollerdb.txt"},
-			.response_storage = .{ .dynamic = &list }
-		}) catch null) |_| {
-			if (files.openDir(".") catch null) |dir| {
-				dir.write("gamecontrollerdb.txt", list.items) catch unreachable;
-				const timeStampStr = std.fmt.allocPrint(main.stackAllocator.allocator, "{d}", .{curTimestamp}) catch unreachable;
-				defer main.stackAllocator.free(timeStampStr);
-				dir.write("gamecontrollerdb.stamp", timeStampStr) catch unreachable;
-			}
+	const ControllerMappingDownloadTask = struct { // MARK: ControllerMappingDownloadTask
+		curTimestamp: i128,
+		controllerMappingsDownloaded: *bool,
+		const vtable = main.utils.ThreadPool.VTable{
+			.getPriority = @ptrCast(&getPriority),
+			.isStillNeeded = @ptrCast(&isStillNeeded),
+			.run = @ptrCast(&run),
+			.clean = @ptrCast(&clean),
+		};
+
+		pub fn schedule(curTimestamp: i128, controllerMappingsDownloaded: *bool) void {
+			const task = main.globalAllocator.create(ControllerMappingDownloadTask);
+			task.* = ControllerMappingDownloadTask {
+				.curTimestamp = curTimestamp,
+				.controllerMappingsDownloaded = controllerMappingsDownloaded,
+			};
+			main.threadPool.addTask(task, &vtable);
 		}
-		list.deinit();
-		client.deinit();
-		self.*.controllerMappingsDownloaded = true;
-	}
+
+		pub fn getPriority(_: *ControllerMappingDownloadTask) f32 {
+			return 64.0;
+		}
+
+		pub fn isStillNeeded(self: *ControllerMappingDownloadTask, _: i64) bool {
+			return !self.*.controllerMappingsDownloaded.*;
+		}
+
+		pub fn run(self: *ControllerMappingDownloadTask) void {
+			defer self.clean();
+			var client: std.http.Client = .{.allocator = main.stackAllocator.allocator};
+			var list = std.ArrayList(u8).init(main.stackAllocator.allocator);
+			defer client.deinit();
+			defer list.deinit();
+			defer self.*.controllerMappingsDownloaded.* = true;
+			_ = client.fetch(.{
+				.method = .GET,
+				.location = .{.url = "https://raw.githubusercontent.com/mdqinc/SDL_GameControllerDB/master/gamecontrollerdb.txt"},
+				.response_storage = .{ .dynamic = &list }
+			}) catch |err| {
+				std.log.err("Failed to download controller mappings: {s}", .{@errorName(err)});
+				return;
+			};
+			files.write("gamecontrollerdb.txt", list.items) catch |err| {
+				std.log.err("Failed to write controller mappings: {s}", .{@errorName(err)});
+				return;
+			};
+			const timeStampStr = std.fmt.allocPrint(main.stackAllocator.allocator, "{d}", .{self.*.curTimestamp}) catch unreachable;
+			defer main.stackAllocator.free(timeStampStr);
+			files.write("gamecontrollerdb.stamp", timeStampStr) catch |err| {
+				std.log.err("Failed to write controller mappings: {s}", .{@errorName(err)});
+				return;
+			};
+		}
+
+		pub fn clean(self: *ControllerMappingDownloadTask) void {
+			main.globalAllocator.destroy(self);
+		}
+	};
 	pub fn downloadControllerMappings(self: *Gamepad) void {
 		var needDownload: bool = false;
 		const curTimestamp = std.time.nanoTimestamp();
@@ -266,11 +304,7 @@ const Gamepad = struct {
 		}
 		self.controllerMappingsDownloaded = !needDownload;
 		if (needDownload) {
-			self.downloadControllerMappingsThread = std.Thread.spawn(.{}, Gamepad.downloadControllerMappingsThreadFunc, .{self, curTimestamp}) catch null;
-			if (self.downloadControllerMappingsThread == null) {
-				std.log.err("Couldn't spawn controller mapping download thread!", .{});
-				self.controllerMappingsDownloaded = true;
-			}
+			ControllerMappingDownloadTask.schedule(curTimestamp, &self.controllerMappingsDownloaded);
 		}
 	}
 	pub fn updateControllerMappings(_: *Gamepad) void {
