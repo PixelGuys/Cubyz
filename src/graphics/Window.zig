@@ -240,7 +240,7 @@ const Gamepad = struct {
 		}
 
 		pub fn isStillNeeded(self: *ControllerMappingDownloadTask, _: i64) bool {
-			return !self.*.controllerMappingsDownloaded.*;
+			return !@atomicLoad(bool, self.*.controllerMappingsDownloaded, std.builtin.AtomicOrder.acquire);
 		}
 
 		pub fn run(self: *ControllerMappingDownloadTask) void {
@@ -249,7 +249,7 @@ const Gamepad = struct {
 			var list = std.ArrayList(u8).init(main.stackAllocator.allocator);
 			defer client.deinit();
 			defer list.deinit();
-			defer self.*.controllerMappingsDownloaded.* = true;
+			defer @atomicStore(bool, self.*.controllerMappingsDownloaded, true, std.builtin.AtomicOrder.release);
 			_ = client.fetch(.{
 				.method = .GET,
 				.location = .{.url = "https://raw.githubusercontent.com/mdqinc/SDL_GameControllerDB/master/gamecontrollerdb.txt"},
@@ -302,8 +302,10 @@ const Gamepad = struct {
 				}
 			}
 		}
-		self.controllerMappingsDownloaded = !needDownload;
 		if (needDownload) {
+			if (@atomicRmw(bool, &self.controllerMappingsDownloaded, std.builtin.AtomicRmwOp.Xchg, false, std.builtin.AtomicOrder.monotonic)) {
+				return; // Controller mappings are already downloading.
+			}
 			ControllerMappingDownloadTask.schedule(curTimestamp, &self.controllerMappingsDownloaded);
 		}
 	}
