@@ -426,7 +426,7 @@ pub fn openNextStartupWindow() void {
 	if(startup_finished) {
 		return;
 	}
-	if(!controller_mappings_window_shown and Window.isControllerConnected()) {
+	if(!controller_mappings_window_shown and Window.gamepad.isControllerConnected()) {
 		if (settings.askToDownloadControllerMappings) {
 			gui.openWindow("controller_mappings_settings");
 		} else {
@@ -647,7 +647,7 @@ pub fn main() void { // MARK: main()
 		if(game.world != null) { // Update the game
 			game.update(deltaTime);
 		}
-		Window.updateGamepad(deltaTime);
+		Window.gamepad.update(deltaTime);
 
 		if(!isHidden) {
 			c.glEnable(c.GL_CULL_FACE);
