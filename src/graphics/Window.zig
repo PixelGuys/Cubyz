@@ -19,7 +19,11 @@ pub var grabbed: bool = false;
 
 pub var scrollOffset: f32 = 0;
 var gamepadState: ?std.AutoHashMap(c_int, *c.GLFWgamepadstate) = null;
-
+fn applyDeadzone(value: f32) f32 {
+	const minValue = settings.controllerAxisDeadzone;
+	const maxRange = 1.0 - minValue;
+	return (value * maxRange) + minValue;
+}
 pub fn updateGamepadState() void {
 	var jid: c_int = 0;
 	if (gamepadState == null) {
@@ -51,7 +55,9 @@ pub fn updateGamepadState() void {
 			}
 			if (nextGamepadListener != null) {
 				for (0..c.GLFW_GAMEPAD_AXIS_LAST) |axis| {
-					if (newState.?.axes[axis] != 0 and oldState.axes[axis] == 0) {
+					const newAxis = applyDeadzone(newState.?.axes[axis]);
+					const oldAxis = applyDeadzone(oldState.axes[axis]);
+					if (newAxis != 0 and oldAxis == 0) {
 						nextGamepadListener.?(.{.axis = @intCast(axis), .positive = newState.?.axes[axis] > 0}, -1);
 						nextGamepadListener = null;
 						break;
@@ -84,8 +90,8 @@ pub fn updateGamepadState() void {
 				} else {
 					const axis = key.gamepadAxis.?.axis;
 					const positive = key.gamepadAxis.?.positive;
-					var newAxis = newState.?.*.axes[@intCast(axis)];
-					var oldAxis = oldState.axes[@intCast(axis)];
+					var newAxis = applyDeadzone(newState.?.*.axes[@intCast(axis)]);
+					var oldAxis = applyDeadzone(oldState.axes[@intCast(axis)]);
 					if(!positive) {
 						newAxis *= -1;
 						oldAxis *= -1;
