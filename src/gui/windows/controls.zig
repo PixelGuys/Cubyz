@@ -55,6 +55,14 @@ fn updateSensitivity(sensitivity: f32) void {
 	main.settings.save();
 }
 
+fn updateDeadzone(deadzone: f32) void {
+	main.settings.controllerAxisDeadzone = deadzone;
+}
+
+fn deadzoneFormatter(allocator: main.utils.NeverFailingAllocator, value: f32) []const u8 {
+	return std.fmt.allocPrint(allocator.allocator, "Deadzone: {d:.0}%", .{value*100}) catch unreachable;
+}
+
 fn sensitivityFormatter(allocator: main.utils.NeverFailingAllocator, value: f32) []const u8 {
 	return std.fmt.allocPrint(allocator.allocator, "{s} Sensitivity: {d:.0}%", .{if (kbd) "Mouse" else "Controller", value*100}) catch unreachable;
 }
@@ -80,6 +88,9 @@ pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 364, 8);
 	list.add(Button.initText(.{0, 0}, 128, if (kbd) "Gamepad" else "Keyboard", .{.callback = &setKeyboard, .arg = if (kbd) 0 else 1}));
 	list.add(ContinuousSlider.init(.{0, 0}, 256, 0, 5, if (kbd) main.settings.mouseSensitivity else main.settings.controllerSensitivity, &updateSensitivity, &sensitivityFormatter));
+	if (!kbd) {
+		list.add(ContinuousSlider.init(.{0, 0}, 256, 0, 5, main.settings.controllerAxisDeadzone, &updateDeadzone, &deadzoneFormatter));
+	}
 	for(&main.KeyBoard.keys) |*key| {
 		const label = Label.init(.{0, 0}, 128, key.name, .left);
 		const button = if(key == selectedKey) (
