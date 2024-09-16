@@ -5,134 +5,72 @@ const settings = main.settings;
 const files = main.files;
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
-pub var lastUsedMouse = true;
 pub const c = @cImport ({
 	@cInclude("glad/glad.h");
 	@cInclude("GLFW/glfw3.h");
 });
 
 var isFullscreen: bool = false;
+pub var lastUsedMouse = true;
 pub var width: u31 = 1280;
 pub var height: u31 = 720;
 pub var window: *c.GLFWwindow = undefined;
 pub var grabbed: bool = false;
+pub var gamepad: *Gamepad = undefined;
 
 pub var scrollOffset: f32 = 0;
-var gamepadState: ?std.AutoHashMap(c_int, *c.GLFWgamepadstate) = null;
-fn applyDeadzone(value: f32) f32 {
-	const minValue = settings.controllerAxisDeadzone;
-	const maxRange = 1.0 - minValue;
-	return (value * maxRange) + minValue;
-}
-pub fn updateGamepadState() void {
-	var jid: c_int = 0;
-	if (gamepadState == null) {
-		return;
+const Gamepad = struct {
+	gamepadState: std.AutoHashMap(c_int, *c.GLFWgamepadstate) = undefined,
+	controllerMappingsDownloaded: bool = false,
+	downloadControllerMappingsThread: ?std.Thread = null,
+	fn applyDeadzone(value: f32) f32 {
+		const minValue = settings.controllerAxisDeadzone;
+		const maxRange = 1.0 - minValue;
+		return (value * maxRange) + minValue;
 	}
-	while (jid < c.GLFW_JOYSTICK_LAST) {
-		var oldGamepadState: ?[]c.GLFWgamepadstate = null;
-		if (gamepadState.?.contains(jid)) {
-			oldGamepadState = main.globalAllocator.dupe(c.GLFWgamepadstate, &.{gamepadState.?.get(jid).?.*});
-		}
-		if (c.glfwJoystickPresent(jid) != 0 and c.glfwJoystickIsGamepad(jid) != 0) {
-			if (!gamepadState.?.contains(jid)) {
-				gamepadState.?.put(jid, main.globalAllocator.create(c.GLFWgamepadstate)) catch unreachable;
+	pub fn update(self: *Gamepad, delta: f64) void {
+		var jid: c_int = 0;
+		while (jid < c.GLFW_JOYSTICK_LAST) : (jid += 1) {
+			var oldGamepadState: ?[]c.GLFWgamepadstate = null;
+			if (self.*.gamepadState.contains(jid)) {
+				oldGamepadState = main.stackAllocator.dupe(c.GLFWgamepadstate, &.{self.gamepadState.get(jid).?.*});
+				defer main.stackAllocator.free(oldGamepadState.?);
 			}
-			_ = c.glfwGetGamepadState(jid, gamepadState.?.get(jid).?);
-			var oldState: c.GLFWgamepadstate = std.mem.zeroes(c.GLFWgamepadstate);
-			if (oldGamepadState != null) {
-				oldState = oldGamepadState.?[0];
-			}
-			const newState = gamepadState.?.get(jid);
-			if (nextGamepadListener != null) {
-				for (0..c.GLFW_GAMEPAD_BUTTON_LAST) |btn| {
-					if ((newState.?.buttons[btn] == 0) and (oldState.buttons[btn] != 0)) {
-						nextGamepadListener.?(null, @intCast(btn));
-						nextGamepadListener = null;
-						break;
-					}
+			if (c.glfwJoystickPresent(jid) != 0 and c.glfwJoystickIsGamepad(jid) != 0) {
+				if (!self.gamepadState.contains(jid)) {
+					self.gamepadState.put(jid, main.globalAllocator.create(c.GLFWgamepadstate)) catch unreachable;
 				}
-			}
-			if (nextGamepadListener != null) {
-				for (0..c.GLFW_GAMEPAD_AXIS_LAST) |axis| {
-					const newAxis = applyDeadzone(newState.?.axes[axis]);
-					const oldAxis = applyDeadzone(oldState.axes[axis]);
-					if (newAxis != 0 and oldAxis == 0) {
-						nextGamepadListener.?(.{.axis = @intCast(axis), .positive = newState.?.axes[axis] > 0}, -1);
-						nextGamepadListener = null;
-						break;
-					}
+				_ = c.glfwGetGamepadState(jid, self.gamepadState.get(jid).?);
+				var oldState: c.GLFWgamepadstate = std.mem.zeroes(c.GLFWgamepadstate);
+				if (oldGamepadState != null) {
+					oldState = oldGamepadState.?[0];
 				}
-			}
-			for(&main.KeyBoard.keys) |*key| {
-				if(key.gamepadAxis == null) {
-					if(key.gamepadButton >= 0) {
-						const oldPressed = oldState.buttons[@intCast(key.gamepadButton)] != 0;
-						const newPressed = newState.?.*.buttons[@intCast(key.gamepadButton)] != 0;
-						if(oldPressed != newPressed) {
-							key.pressed = newPressed;
-							if(newPressed) {
-								key.value = 1.0;
-							} else {
-								key.value = 0.0;
-							}
-							if(key.pressed) {
-								if(key.pressAction) |pressAction| {
-									pressAction();
-								}
-							} else {
-								if(key.releaseAction) |releaseAction| {
-									releaseAction();
-								}
-							}
+				const newState = self.gamepadState.get(jid);
+				if (nextGamepadListener != null) {
+					for (0..c.GLFW_GAMEPAD_BUTTON_LAST) |btn| {
+						if ((newState.?.buttons[btn] == 0) and (oldState.buttons[btn] != 0)) {
+							nextGamepadListener.?(null, @intCast(btn));
+							nextGamepadListener = null;
+							break;
 						}
 					}
-				} else {
-					const axis = key.gamepadAxis.?.axis;
-					const positive = key.gamepadAxis.?.positive;
-					var newAxis = applyDeadzone(newState.?.*.axes[@intCast(axis)]);
-					var oldAxis = applyDeadzone(oldState.axes[@intCast(axis)]);
-					if(!positive) {
-						newAxis *= -1;
-						oldAxis *= -1;
-					}
-					if(newAxis < 0.0) {
-						newAxis = 0.0;
-					}
-					if(oldAxis < 0.0) {
-						oldAxis = 0.0;
-					}
-					const oldPressed = oldAxis > 0.5;
-					const newPressed = newAxis > 0.5;
-					if (oldPressed != newPressed) {
-						key.pressed = newPressed;
-						if (newPressed) {
-							if (key.pressAction) |pressAction| {
-								pressAction();
-							}
-						} else {
-							if (key.releaseAction) |releaseAction| {
-								releaseAction();
-							}
+				}
+				if (nextGamepadListener != null) {
+					for (0..c.GLFW_GAMEPAD_AXIS_LAST) |axis| {
+						const newAxis = applyDeadzone(newState.?.axes[axis]);
+						const oldAxis = applyDeadzone(oldState.axes[axis]);
+						if (newAxis != 0 and oldAxis == 0) {
+							nextGamepadListener.?(.{.axis = @intCast(axis), .positive = newState.?.axes[axis] > 0}, -1);
+							nextGamepadListener = null;
+							break;
 						}
 					}
-					if (newAxis != oldAxis) {
-						key.value = newAxis;
-					}
 				}
-			}
-		} else {
-			if (gamepadState.?.contains(jid)) {
-				main.globalAllocator.destroy(gamepadState.?.get(jid).?);
-				_ = gamepadState.?.remove(jid);
-			}
-			if (oldGamepadState != null) {
-				const oldState = oldGamepadState.?[0];
 				for(&main.KeyBoard.keys) |*key| {
 					if(key.gamepadAxis == null) {
 						if(key.gamepadButton >= 0) {
 							const oldPressed = oldState.buttons[@intCast(key.gamepadButton)] != 0;
-							const newPressed = false;
+							const newPressed = newState.?.*.buttons[@intCast(key.gamepadButton)] != 0;
 							if(oldPressed != newPressed) {
 								key.pressed = newPressed;
 								if(newPressed) {
@@ -154,11 +92,15 @@ pub fn updateGamepadState() void {
 					} else {
 						const axis = key.gamepadAxis.?.axis;
 						const positive = key.gamepadAxis.?.positive;
-						var oldAxis = oldState.axes[@intCast(axis)];
+						var newAxis = applyDeadzone(newState.?.*.axes[@intCast(axis)]);
+						var oldAxis = applyDeadzone(oldState.axes[@intCast(axis)]);
 						if(!positive) {
+							newAxis *= -1;
 							oldAxis *= -1;
 						}
-						const newAxis = 0.0;
+						if(newAxis < 0.0) {
+							newAxis = 0.0;
+						}
 						if(oldAxis < 0.0) {
 							oldAxis = 0.0;
 						}
@@ -181,14 +123,215 @@ pub fn updateGamepadState() void {
 						}
 					}
 				}
+			} else {
+				if (self.gamepadState.contains(jid)) {
+					main.globalAllocator.destroy(self.gamepadState.get(jid).?);
+					_ = self.gamepadState.remove(jid);
+				}
+				if (oldGamepadState != null) {
+					const oldState = oldGamepadState.?[0];
+					for(&main.KeyBoard.keys) |*key| {
+						if(key.gamepadAxis == null) {
+							if(key.gamepadButton >= 0) {
+								const oldPressed = oldState.buttons[@intCast(key.gamepadButton)] != 0;
+								const newPressed = false;
+								if(oldPressed != newPressed) {
+									key.pressed = newPressed;
+									if(newPressed) {
+										key.value = 1.0;
+									} else {
+										key.value = 0.0;
+									}
+									if(key.pressed) {
+										if(key.pressAction) |pressAction| {
+											pressAction();
+										}
+									} else {
+										if(key.releaseAction) |releaseAction| {
+											releaseAction();
+										}
+									}
+								}
+							}
+						} else {
+							const axis = key.gamepadAxis.?.axis;
+							const positive = key.gamepadAxis.?.positive;
+							var oldAxis = oldState.axes[@intCast(axis)];
+							if(!positive) {
+								oldAxis *= -1;
+							}
+							const newAxis = 0.0;
+							if(oldAxis < 0.0) {
+								oldAxis = 0.0;
+							}
+							const oldPressed = oldAxis > 0.5;
+							const newPressed = newAxis > 0.5;
+							if (oldPressed != newPressed) {
+								key.pressed = newPressed;
+								if (newPressed) {
+									if (key.pressAction) |pressAction| {
+										pressAction();
+									}
+								} else {
+									if (key.releaseAction) |releaseAction| {
+										releaseAction();
+									}
+								}
+							}
+							if (newAxis != oldAxis) {
+								key.value = newAxis;
+							}
+						}
+					}
+				}
 			}
 		}
-		if (oldGamepadState != null) {
-			main.globalAllocator.free(oldGamepadState.?);
+		if (!grabbed) {
+			const x = main.KeyBoard.key("uiRight").value - main.KeyBoard.key("uiLeft").value;
+			const y = main.KeyBoard.key("uiDown").value - main.KeyBoard.key("uiUp").value;
+			if (x != 0 or y != 0) {
+				lastUsedMouse = false;
+				GLFWCallbacks.currentPos[0] += @floatCast(x * delta * 256);
+				GLFWCallbacks.currentPos[1] += @floatCast(y * delta * 256);
+				const winSize = getWindowSize();
+				if (GLFWCallbacks.currentPos[0] < 0) {
+					GLFWCallbacks.currentPos[0] = 0;
+				}
+				if(GLFWCallbacks.currentPos[0] >= winSize[0]) {
+					GLFWCallbacks.currentPos[0] = winSize[0] - 1;
+				}
+				if (GLFWCallbacks.currentPos[1] < 0) {
+					GLFWCallbacks.currentPos[1] = 0;
+				}
+				if(GLFWCallbacks.currentPos[1] >= winSize[1]) {
+					GLFWCallbacks.currentPos[1] = winSize[1] - 1;
+				}
+			}
 		}
-		jid += 1;
+		scrollOffset += @floatCast((main.KeyBoard.key("scrollUp").value - main.KeyBoard.key("scrollDown").value) * delta * 4);
+		setCursorVisible(!grabbed and lastUsedMouse);
 	}
-}
+	pub fn isControllerConnected(self: *Gamepad) bool {
+		return self.gamepadState.count() > 0;
+	}
+	pub fn controllerMappingsDownloading(self: *Gamepad) bool {
+		return !self.controllerMappingsDownloaded and self.downloadControllerMappingsThread != null;
+	}
+	fn downloadControllerMappingsThreadFunc(self: *Gamepad, curTimestamp: i128) void {
+		var client: std.http.Client = .{.allocator = main.stackAllocator.allocator};
+		var list = std.ArrayList(u8).init(main.stackAllocator.allocator);
+		if (client.fetch(.{
+			.method = .GET,
+			.location = .{.url = "https://raw.githubusercontent.com/mdqinc/SDL_GameControllerDB/master/gamecontrollerdb.txt"},
+			.response_storage = .{ .dynamic = &list }
+		}) catch null) |_| {
+			if (files.openDir(".") catch null) |dir| {
+				dir.write("gamecontrollerdb.txt", list.items) catch unreachable;
+				const timeStampStr = std.fmt.allocPrint(main.stackAllocator.allocator, "{d}", .{curTimestamp}) catch unreachable;
+				defer main.stackAllocator.free(timeStampStr);
+				dir.write("gamecontrollerdb.stamp", timeStampStr) catch unreachable;
+			}
+		}
+		list.deinit();
+		client.deinit();
+		self.*.controllerMappingsDownloaded = true;
+	}
+	pub fn downloadControllerMappings(self: *Gamepad) void {
+		var needDownload: bool = false;
+		const curTimestamp = std.time.nanoTimestamp();
+		if (settings.downloadControllerMappings) {
+			var timestamp: i128 = 0;
+			if (files.openDir(".") catch null) |dir| {
+				var _dir: files.Dir =dir;
+				if (_dir.hasFile("gamecontrollerdb.stamp")) {
+					const stamp = _dir.read(main.globalAllocator, "gamecontrollerdb.stamp") catch unreachable;
+					defer main.globalAllocator.free(stamp);
+					if (std.fmt.parseInt(i128, stamp, 16) catch null) |newTimestamp| {
+						timestamp = newTimestamp;
+					}
+				}
+			}
+			const delta = curTimestamp - timestamp;
+			const deltaDays = @divTrunc(delta, std.time.ns_per_day);
+			needDownload = deltaDays >= 7;
+		}
+
+		if (settings.downloadControllerMappingsWhenUnrecognized) {
+			for (0..c.GLFW_JOYSTICK_LAST) |jsid| {
+				if ((c.glfwJoystickPresent(@intCast(jsid)) != 0) and (c.glfwJoystickIsGamepad(@intCast(jsid)) == 0)) {
+					needDownload = true;
+					break;
+				}
+			}
+		}
+		self.controllerMappingsDownloaded = !needDownload;
+		if (needDownload) {
+			self.downloadControllerMappingsThread = std.Thread.spawn(.{}, Gamepad.downloadControllerMappingsThreadFunc, .{self, curTimestamp}) catch null;
+			if (self.downloadControllerMappingsThread == null) {
+				std.log.err("Couldn't spawn controller mapping download thread!", .{});
+				self.controllerMappingsDownloaded = true;
+			}
+		}
+	}
+	pub fn updateControllerMappings(_: *Gamepad) void {
+		var _envMap = std.process.getEnvMap(main.stackAllocator.allocator) catch null;
+		if (_envMap) |*envMap| {
+			defer envMap.deinit();
+			if (envMap.get("SDL_GAMECONTROLLERCONFIG")) |controller_config_env| {
+				_ = c.glfwUpdateGamepadMappings(@ptrCast(controller_config_env));
+			}
+		}
+		if (files.openDir(".") catch null) |dir| {
+			if (dir.read(main.stackAllocator, "gamecontrollerdb.txt") catch null) |data| {
+				var newData = main.stackAllocator.realloc(data, data.len + 1);
+				defer main.stackAllocator.free(newData);
+				newData[data.len - 1] = 0;
+				_ = c.glfwUpdateGamepadMappings(@ptrCast(newData));
+			}
+		}
+		const selfExeDirPath = std.fs.selfExeDirPathAlloc(main.stackAllocator.allocator) catch |err| {
+			std.log.err("Error getting executable directory{s}", .{@errorName(err)});
+			return;
+		};
+		defer main.stackAllocator.free(selfExeDirPath);
+		const mappings_path = std.fs.path.join(main.stackAllocator.allocator, &.{selfExeDirPath, "gamecontrollerdb.txt"}) catch unreachable;
+		defer main.stackAllocator.free(mappings_path);
+		const data =  main.files.read(main.stackAllocator, mappings_path) catch |err| {
+			if (@TypeOf(err) == std.fs.File.OpenError and err == std.fs.File.OpenError.FileNotFound) {
+				return; // Ignore not finding mappings.
+			}
+			std.log.err("Error opening gamepad mappings file: {s}", .{@errorName(err)});
+			return;
+		};
+		defer main.stackAllocator.free(data);
+		_ = c.glfwUpdateGamepadMappings(@ptrCast(data));
+	}
+
+	pub fn init() *Gamepad {
+		const self: *Gamepad = main.globalAllocator.create(Gamepad);
+		if (!settings.askToDownloadControllerMappings) {
+			self.*.downloadControllerMappings();
+		}
+		self.*.updateControllerMappings();
+		self.*.gamepadState = std.AutoHashMap(c_int, *c.GLFWgamepadstate).init(main.globalAllocator.allocator);
+		self.*.update(0.0);
+		std.log.debug("Gamepads at init: {d}", .{self.*.gamepadState.count()});
+		return self;
+	}
+	pub fn deinit(self: *Gamepad) void {
+		defer main.globalAllocator.destroy(self);
+		const iter = self.*.gamepadState.keyIterator();
+		var i: usize = 0;
+		while (i < iter.len) {
+			const key = iter.items[i];
+			const value = self.*.gamepadState.get(key);
+			defer main.globalAllocator.destroy(value.?);
+			_ = self.*.gamepadState.remove(key);
+			i += 1;
+		}
+		self.*.gamepadState.deinit();
+	}
+};
 pub const GamepadAxis = struct {
 	axis: c_int,
 	positive: bool = true
@@ -583,127 +726,10 @@ pub fn init() void { // MARK: init()
 	c.glEnable(c.GL_DEBUG_OUTPUT_SYNCHRONOUS);
 	c.glDebugMessageCallback(GLFWCallbacks.glDebugOutput, null);
 	c.glDebugMessageControl(c.GL_DONT_CARE, c.GL_DONT_CARE, c.GL_DONT_CARE, 0, null, c.GL_TRUE);
-	if (!settings.askToDownloadControllerMappings) {
-		downloadControllerMappings();
-	}
-	updateControllerMappings();
-	gamepadState = std.AutoHashMap(c_int, *c.GLFWgamepadstate).init(main.globalAllocator.allocator);
-	updateGamepadState();
-	std.log.debug("Gamepads at init: {d}", .{gamepadState.?.count()});
+	gamepad = Gamepad.init();
 }
-pub fn isControllerConnected() bool {
-	return gamepadState.?.count() > 0;
-}
-var controllerMappingsDownloaded: bool = false;
-var downloadControllerMappingsThread: ?std.Thread = null;
-pub fn controllerMappingsDownloading() bool {
-	return !controllerMappingsDownloaded and downloadControllerMappingsThread != null;
-}
-fn downloadControllerMappingsThreadFunc(curTimestamp: i128) void {
-	var client: std.http.Client = .{.allocator = main.globalAllocator.allocator};
-	var list = std.ArrayList(u8).init(main.globalAllocator.allocator);
-	if (client.fetch(.{
-		.method = .GET,
-		.location = .{.url = "https://raw.githubusercontent.com/mdqinc/SDL_GameControllerDB/master/gamecontrollerdb.txt"},
-		.response_storage = .{ .dynamic = &list }
-	}) catch null) |_| {
-		if (files.openDir(".") catch null) |dir| {
-			dir.write("gamecontrollerdb.txt", list.items) catch unreachable;
-			const timeStampStr = std.fmt.allocPrint(main.globalAllocator.allocator, "{d}", .{curTimestamp}) catch unreachable;
-			dir.write("gamecontrollerdb.stamp", timeStampStr) catch unreachable;
-			main.globalAllocator.free(timeStampStr);
-		}
-	}
-	list.deinit();
-	client.deinit();
-	controllerMappingsDownloaded = true;
-
-}
-pub fn downloadControllerMappings() void {
-
-	var needDownload: bool = false;
-	const curTimestamp = std.time.nanoTimestamp();
-	if (settings.downloadControllerMappings) {
-		var timestamp: i128 = 0;
-		if (files.openDir(".") catch null) |dir| {
-			var _dir: files.Dir =dir;
-			if (_dir.hasFile("gamecontrollerdb.stamp")) {
-				const stamp = _dir.read(main.globalAllocator, "gamecontrollerdb.stamp") catch unreachable;
-				if (std.fmt.parseInt(i128, stamp, 16) catch null) |newTimestamp| {
-					timestamp = newTimestamp;
-				}
-				main.globalAllocator.free(stamp);
-			}
-		}
-		const delta = curTimestamp - timestamp;
-		const deltaDays = @divTrunc(delta, std.time.ns_per_day);
-		needDownload = deltaDays >= 7;
-	}
-
-	if (settings.downloadControllerMappingsWhenUnrecognized) {
-		for (0..c.GLFW_JOYSTICK_LAST) |jsid| {
-			if ((c.glfwJoystickPresent(@intCast(jsid)) != 0) and (c.glfwJoystickIsGamepad(@intCast(jsid)) == 0)) {
-				needDownload = true;
-				break;
-			}
-		}
-	}
-	controllerMappingsDownloaded = !needDownload;
-	if (needDownload) {
-		downloadControllerMappingsThread = std.Thread.spawn(.{}, downloadControllerMappingsThreadFunc, .{curTimestamp}) catch null;
-		if (downloadControllerMappingsThread == null) {
-			std.log.err("Couldn't spawn controller mapping download thread!", .{});
-			controllerMappingsDownloaded = true;
-		}
-	}
-}
-pub fn updateControllerMappings() void {
-	if (std.fs.selfExeDirPathAlloc(main.globalAllocator.allocator) catch null) |selfExeDirPath| {
-		if (std.fs.path.join(main.globalAllocator.allocator, &.{selfExeDirPath, "gamecontrollerdb.txt"}) catch null) |mappings_path| {
-			if (std.fs.openFileAbsolute(mappings_path, .{.mode = .read_only}) catch null) |file| {
-				const data = main.globalAllocator.alloc(u8, file.getEndPos() catch 0);
-				const size = file.readAll(data) catch 0;
-				if (size > 0) {
-					_ = main.globalAllocator.resize(data, size);
-					_ = c.glfwUpdateGamepadMappings(@ptrCast(data));
-				}
-				main.globalAllocator.free(data);
-			}
-			main.globalAllocator.free(mappings_path);
-		}
-		main.globalAllocator.free(selfExeDirPath);
-	}
-	var _envMap = std.process.getEnvMap(main.globalAllocator.allocator) catch null;
-	if (_envMap) |*envMap| {
-		if (envMap.get("SDL_GAMECONTROLLERCONFIG")) |controller_config_env| {
-			_ = c.glfwUpdateGamepadMappings(@ptrCast(controller_config_env));
-		}
-		envMap.deinit();
-	}
-	if (files.openDir(".") catch null) |dir| {
-		if (dir.read(main.globalAllocator, "gamecontrollerdb.txt") catch null) |data| {
-			var newData = main.globalAllocator.realloc(data, data.len + 1);
-			newData[data.len - 1] = 0;
-			_ = c.glfwUpdateGamepadMappings(@ptrCast(newData));
-			main.globalAllocator.free(newData);
-		}
-	}
-}
-
 pub fn deinit() void {
-	const iter = gamepadState.?.keyIterator();
-	var i: usize = 0;
-	while (i < iter.len) {
-		const key = iter.items[i];
-		const value = gamepadState.?.get(key);
-		if (value != null) {
-			main.globalAllocator.destroy(value.?);
-			_ = gamepadState.?.remove(key);
-		}
-		i += 1;
-	}
-	gamepadState.?.deinit();
-	gamepadState = null;
+	gamepad.deinit();
 	c.glfwDestroyWindow(window);
 	c.glfwTerminate();
 }
@@ -718,38 +744,6 @@ pub fn setCursorVisible(visible: bool) void {
 pub fn handleEvents() void {
 	scrollOffset = 0;
 	c.glfwPollEvents();
-}
-pub fn updateGamepad(delta: f64) void {
-
-	if (gamepadState == null) {
-		std.log.err("gamepadState was null.", .{});
-		return;
-	}
-	updateGamepadState();
-	if (!grabbed) {
-		const x = main.KeyBoard.key("uiRight").value - main.KeyBoard.key("uiLeft").value;
-		const y = main.KeyBoard.key("uiDown").value - main.KeyBoard.key("uiUp").value;
-		if (x != 0 or y != 0) {
-			lastUsedMouse = false;
-			GLFWCallbacks.currentPos[0] += @floatCast(x * delta * 256);
-			GLFWCallbacks.currentPos[1] += @floatCast(y * delta * 256);
-			const winSize = getWindowSize();
-			if (GLFWCallbacks.currentPos[0] < 0) {
-				GLFWCallbacks.currentPos[0] = 0;
-			}
-			if(GLFWCallbacks.currentPos[0] >= winSize[0]) {
-				GLFWCallbacks.currentPos[0] = winSize[0] - 1;
-			}
-			if (GLFWCallbacks.currentPos[1] < 0) {
-				GLFWCallbacks.currentPos[1] = 0;
-			}
-			if(GLFWCallbacks.currentPos[1] >= winSize[1]) {
-				GLFWCallbacks.currentPos[1] = winSize[1] - 1;
-			}
-		}
-	}
-	scrollOffset += @floatCast((main.KeyBoard.key("scrollUp").value - main.KeyBoard.key("scrollDown").value) * delta * 4);
-	setCursorVisible(!grabbed and lastUsedMouse);
 }
 
 var oldX: c_int = 0;
