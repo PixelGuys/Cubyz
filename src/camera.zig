@@ -9,8 +9,6 @@ const game = @import("game.zig");
 const settings = @import("settings.zig");
 
 // MARK: camera
-// A zig file is implicitly a struct, so when importing we can have camera.position, camera.rotation, etc.
-// instead of camera.camera.position, camera.camera.rotation, etc.
 pub var position: Vec3d = Vec3d{0, 0, 0};
 pub var rotation: Vec3f = Vec3f{0, 0, 0};
 pub var direction: Vec3f = Vec3f{0, 0, 0};
