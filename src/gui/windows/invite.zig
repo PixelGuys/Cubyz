@@ -23,7 +23,7 @@ var ipAddressEntry: *TextInput = undefined;
 const padding: f32 = 8;
 
 var ipAddress: []const u8 = "";
-var gotIpAddress: std.atomic.Value(bool) = std.atomic.Value(bool).init(false);
+var gotIpAddress: std.atomic.Value(bool) = .init(false);
 var thread: ?std.Thread = null;
 const width: f32 = 420;
 

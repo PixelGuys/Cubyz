@@ -159,8 +159,8 @@ fn refresh() void {
 }
 
 pub fn onOpen() void {
-	availableItems = main.List(*BaseItem).init(main.globalAllocator);
-	itemAmount = main.List(u32).init(main.globalAllocator);
+	availableItems = .init(main.globalAllocator);
+	itemAmount = .init(main.globalAllocator);
 	refresh();
 }
 

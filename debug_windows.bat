@@ -29,7 +29,7 @@ if not "%version%" == "%currVersion%" (
 	echo Deleting current Zig installation ...
 	if exist compiler\zig rmdir /s /q compiler\zig
 	echo Downloading %version% ...
-	powershell -Command $ProgressPreference = 'SilentlyContinue'; "Invoke-WebRequest -uri https://ziglang.org/builds/%version%.zip -OutFile compiler\archive.zip"
+	powershell -Command $ProgressPreference = 'SilentlyContinue'; "Invoke-WebRequest -uri https://github.com/PixelGuys/Cubyz-zig-versions/releases/download/%baseVersion%/%version%.zip -OutFile compiler\archive.zip"
 	if errorlevel 1 (
 		echo Failed to download the Zig compiler.
 		exit /b 1

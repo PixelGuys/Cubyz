@@ -14,23 +14,23 @@ pub inline fn combine(pos: Vec3f, w: f32) Vec4f {
 	return .{pos[0], pos[1], pos[2], w};
 }
 
-pub fn xyz(self: anytype) @Vector(3, @typeInfo(@TypeOf(self)).Vector.child) {
-	return @Vector(3, @typeInfo(@TypeOf(self)).Vector.child){self[0], self[1], self[2]};
+pub fn xyz(self: anytype) @Vector(3, @typeInfo(@TypeOf(self)).vector.child) {
+	return @Vector(3, @typeInfo(@TypeOf(self)).vector.child){self[0], self[1], self[2]};
 }
 
-pub fn xy(self: anytype) @Vector(2, @typeInfo(@TypeOf(self)).Vector.child) {
-	return @Vector(2, @typeInfo(@TypeOf(self)).Vector.child){self[0], self[1]};
+pub fn xy(self: anytype) @Vector(2, @typeInfo(@TypeOf(self)).vector.child) {
+	return @Vector(2, @typeInfo(@TypeOf(self)).vector.child){self[0], self[1]};
 }
 
-pub fn dot(self: anytype, other: @TypeOf(self)) @typeInfo(@TypeOf(self)).Vector.child {
+pub fn dot(self: anytype, other: @TypeOf(self)) @typeInfo(@TypeOf(self)).vector.child {
 	return @reduce(.Add, self*other);
 }
 
-pub fn lengthSquare(self: anytype) @typeInfo(@TypeOf(self)).Vector.child {
+pub fn lengthSquare(self: anytype) @typeInfo(@TypeOf(self)).vector.child {
 	return @reduce(.Add, self*self);
 }
 
-pub fn length(self: anytype) @typeInfo(@TypeOf(self)).Vector.child {
+pub fn length(self: anytype) @typeInfo(@TypeOf(self)).vector.child {
 	return @sqrt(@reduce(.Add, self*self));
 }
 
@@ -39,7 +39,7 @@ pub fn normalize(self: anytype) @TypeOf(self) {
 }
 
 pub fn cross(self: anytype, other: @TypeOf(self)) @TypeOf(self) {
-	if(@typeInfo(@TypeOf(self)).Vector.len != 3) @compileError("Only available for vectors of length 3.");
+	if(@typeInfo(@TypeOf(self)).vector.len != 3) @compileError("Only available for vectors of length 3.");
 	return @TypeOf(self) {
 		self[1]*other[2] - self[2]*other[1],
 		self[2]*other[0] - self[0]*other[2],
@@ -47,8 +47,8 @@ pub fn cross(self: anytype, other: @TypeOf(self)) @TypeOf(self) {
 	};
 }
 
-pub fn rotateX(self: anytype, angle: @typeInfo(@TypeOf(self)).Vector.child) @TypeOf(self) {
-	if(@typeInfo(@TypeOf(self)).Vector.len != 3) @compileError("Only available for vectors of length 3.");
+pub fn rotateX(self: anytype, angle: @typeInfo(@TypeOf(self)).vector.child) @TypeOf(self) {
+	if(@typeInfo(@TypeOf(self)).vector.len != 3) @compileError("Only available for vectors of length 3.");
 	const sin = @sin(angle);
 	const cos = @cos(angle);
 	return @TypeOf(self){
@@ -58,8 +58,8 @@ pub fn rotateX(self: anytype, angle: @typeInfo(@TypeOf(self)).Vector.child) @Typ
 	};
 }
 
-pub fn rotateY(self: anytype, angle: @typeInfo(@TypeOf(self)).Vector.child) @TypeOf(self) {
-	if(@typeInfo(@TypeOf(self)).Vector.len != 3) @compileError("Only available for vectors of length 3.");
+pub fn rotateY(self: anytype, angle: @typeInfo(@TypeOf(self)).vector.child) @TypeOf(self) {
+	if(@typeInfo(@TypeOf(self)).vector.len != 3) @compileError("Only available for vectors of length 3.");
 	const sin = @sin(angle);
 	const cos = @cos(angle);
 	return @TypeOf(self){
@@ -69,8 +69,8 @@ pub fn rotateY(self: anytype, angle: @typeInfo(@TypeOf(self)).Vector.child) @Typ
 	};
 }
 
-pub fn rotateZ(self: anytype, angle: @typeInfo(@TypeOf(self)).Vector.child) @TypeOf(self) {
-	if(@typeInfo(@TypeOf(self)).Vector.len != 3) @compileError("Only available for vectors of length 3.");
+pub fn rotateZ(self: anytype, angle: @typeInfo(@TypeOf(self)).vector.child) @TypeOf(self) {
+	if(@typeInfo(@TypeOf(self)).vector.len != 3) @compileError("Only available for vectors of length 3.");
 	const sin = @sin(angle);
 	const cos = @cos(angle);
 	return @TypeOf(self){

@@ -654,16 +654,16 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		var parser = Parser {
 			.unicodeIterator = std.unicode.Utf8Iterator{.bytes = text, .i = 0},
 			.currentFontEffect = initialFontEffect,
-			.parsedText = main.List(u32).init(main.stackAllocator),
-			.fontEffects = main.List(FontEffect).init(allocator),
-			.characterIndex = main.List(u32).init(allocator),
+			.parsedText = .init(main.stackAllocator),
+			.fontEffects = .init(allocator),
+			.characterIndex = .init(allocator),
 			.showControlCharacters = showControlCharacters
 		};
 		defer parser.fontEffects.deinit();
 		defer parser.parsedText.deinit();
 		defer parser.characterIndex.deinit();
-		self.lines = main.List(Line).init(allocator);
-		self.lineBreaks = main.List(LineBreak).init(allocator);
+		self.lines = .init(allocator);
+		self.lineBreaks = .init(allocator);
 		parser.parse();
 		if(parser.parsedText.items.len == 0) {
 			self.lineBreaks.append(.{.index = 0, .width = 0});
@@ -1027,8 +1027,8 @@ const TextRendering = struct { // MARK: TextRendering
 		harfbuzzFace = hbft.hb_ft_face_create_referenced(freetypeFace);
 		harfbuzzFont = hbft.hb_font_create(harfbuzzFace);
 
-		glyphMapping = main.List(u31).init(main.globalAllocator);
-		glyphData = main.List(Glyph).init(main.globalAllocator);
+		glyphMapping = .init(main.globalAllocator);
+		glyphData = .init(main.globalAllocator);
 		glyphData.append(undefined); // 0 is a reserved value.
 		c.glGenTextures(2, &glyphTexture);
 		c.glBindTexture(c.GL_TEXTURE_2D, glyphTexture[0]);
@@ -1220,7 +1220,7 @@ pub const Shader = struct { // MARK: Shader
 	
 	pub fn initAndGetUniforms(vertex: []const u8, fragment: []const u8, defines: []const u8, ptrToUniformStruct: anytype) Shader {
 		const self = Shader.init(vertex, fragment, defines);
-		inline for(@typeInfo(@TypeOf(ptrToUniformStruct.*)).Struct.fields) |field| {
+		inline for(@typeInfo(@TypeOf(ptrToUniformStruct.*)).@"struct".fields) |field| {
 			if(field.type == c_int) {
 				@field(ptrToUniformStruct, field.name) = c.glGetUniformLocation(self.id, field.name[0..]);
 			}
@@ -1237,7 +1237,7 @@ pub const Shader = struct { // MARK: Shader
 
 	pub fn initComputeAndGetUniforms(compute: []const u8, defines: []const u8, ptrToUniformStruct: anytype) Shader {
 		const self = Shader.initCompute(compute, defines);
-		inline for(@typeInfo(@TypeOf(ptrToUniformStruct.*)).Struct.fields) |field| {
+		inline for(@typeInfo(@TypeOf(ptrToUniformStruct.*)).@"struct".fields) |field| {
 			if(field.type == c_int) {
 				@field(ptrToUniformStruct, field.name) = c.glGetUniformLocation(self.id, field.name[0..]);
 			}
@@ -1319,7 +1319,7 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 		const Self = @This();
 
 		fn createBuffer(self: *Self, size: u31) void {
-			self.ssbo = SSBO.init();
+			self.ssbo = .init();
 			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.ssbo.bufferID);
 			const flags = c.GL_MAP_WRITE_BIT | c.GL_DYNAMIC_STORAGE_BIT;
 			const bytes = @as(c.GLsizeiptr, size)*@sizeOf(Entry);
@@ -1336,10 +1336,10 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 				fence.* = c.glFenceSync(c.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 			}
 			for(&self.fencedFreeLists) |*list| {
-				list.* = main.List(SubAllocation).init(allocator);
+				list.* = .init(allocator);
 			}
 
-			self.freeBlocks = main.List(SubAllocation).init(allocator);
+			self.freeBlocks = .init(allocator);
 			self.freeBlocks.append(.{.start = 0, .len = size});
 		}
 
@@ -1935,7 +1935,7 @@ const block_texture = struct { // MARK: block_texture
 
 	fn init() void {
 		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/item_texture_post.vs", "assets/cubyz/shaders/item_texture_post.fs", "", &uniforms);
-		depthTexture = Texture.init();
+		depthTexture = .init();
 		depthTexture.bind();
 		var data: [128*128]f32 = undefined;
 

@@ -31,7 +31,7 @@ pub const StructureMapFragment = struct {
 
 	pos: ChunkPosition,
 	voxelShift: u5,
-	refCount: Atomic(u16) = Atomic(u16).init(0),
+	refCount: Atomic(u16) = .init(0),
 	arena: main.utils.NeverFailingArenaAllocator,
 	allocator: main.utils.NeverFailingAllocator,
 
@@ -43,7 +43,7 @@ pub const StructureMapFragment = struct {
 				.voxelSize = voxelSize,
 			},
 			.voxelShift = @ctz(voxelSize),
-			.arena = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator),
+			.arena = .init(main.globalAllocator),
 			.allocator = self.arena.allocator(),
 		};
 		@memset(&self.data, .{});
@@ -157,7 +157,7 @@ fn cacheInit(pos: ChunkPosition) *StructureMapFragment {
 
 pub fn initGenerators() void {
 	const list = @import("structuremapgen/_list.zig");
-	inline for(@typeInfo(list).Struct.decls) |decl| {
+	inline for(@typeInfo(list).@"struct".decls) |decl| {
 		StructureMapGenerator.registerGenerator(@field(list, decl.name));
 	}
 }

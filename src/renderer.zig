@@ -70,7 +70,7 @@ pub fn init() void {
 	};
 	chunk_meshing.init();
 	mesh_storage.init();
-	reflectionCubeMap = graphics.CubeMapTexture.init();
+	reflectionCubeMap = .init();
 	reflectionCubeMap.generate(reflectionCubeMapSize, reflectionCubeMapSize);
 	initReflectionCubeMap();
 }
@@ -186,7 +186,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f) void { /
 
 	// Uses FrustumCulling on the chunks.
 	const frustum = Frustum.init(Vec3f{0, 0, 0}, camera.viewMatrix, lastFov, lastWidth, lastHeight);
-	_ = frustum;
 
 	const time: u32 = @intCast(std.time.milliTimestamp() & std.math.maxInt(u32));
 
@@ -207,7 +206,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f) void { /
 
 	chunk_meshing.quadsDrawn = 0;
 	chunk_meshing.transparentQuadsDrawn = 0;
-	const meshes = mesh_storage.updateAndGetRenderChunks(world.conn, cameraPos, settings.renderDistance);
+	const meshes = mesh_storage.updateAndGetRenderChunks(world.conn, &frustum, cameraPos, settings.renderDistance);
 
 	gpu_performance_measuring.startQuery(.chunk_rendering_preparation);
 	const direction = crosshairDirection(lookMatrix, lastFov, lastWidth, lastHeight);
@@ -323,7 +322,7 @@ const Bloom = struct { // MARK: Bloom
 	pub fn init() void {
 		buffer1.init(false, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
 		buffer2.init(false, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
-		emptyBuffer = graphics.Texture.init();
+		emptyBuffer = .init();
 		emptyBuffer.generate(graphics.Image.emptyImage);
 		firstPassShader = graphics.Shader.init("assets/cubyz/shaders/bloom/first_pass.vs", "assets/cubyz/shaders/bloom/first_pass.fs", "");
 		secondPassShader = graphics.Shader.init("assets/cubyz/shaders/bloom/second_pass.vs", "assets/cubyz/shaders/bloom/second_pass.fs", "");

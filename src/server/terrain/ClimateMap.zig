@@ -45,7 +45,7 @@ pub const ClimateMapFragment = struct {
 	pos: ClimateMapFragmentPosition,
 	map: [mapSize >> MapFragment.biomeShift][mapSize >> MapFragment.biomeShift]BiomeSample = undefined,
 	
-	refCount: Atomic(u16) = Atomic(u16).init(0),
+	refCount: Atomic(u16) = .init(0),
 
 	pub fn init(self: *ClimateMapFragment, wx: i32, wy: i32) void {
 		self.* = .{
@@ -109,7 +109,7 @@ var profile: TerrainGenerationProfile = undefined;
 
 pub fn initGenerators() void {
 	const list = @import("climategen/_list.zig");
-	inline for(@typeInfo(list).Struct.decls) |decl| {
+	inline for(@typeInfo(list).@"struct".decls) |decl| {
 		ClimateMapGenerator.registerGenerator(@field(list, decl.name));
 	}
 }

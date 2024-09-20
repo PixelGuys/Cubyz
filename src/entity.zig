@@ -89,7 +89,7 @@ pub const ClientEntityManager = struct {
 	pub var mutex: std.Thread.Mutex = std.Thread.Mutex{};
 
 	pub fn init() void {
-		entities = main.VirtualList(ClientEntity, 1 << 20).init();
+		entities = .init();
 		shader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/entity_vertex.vs", "assets/cubyz/shaders/entity_fragment.fs", "", &uniforms);
 	}
 

@@ -87,12 +87,12 @@ var reverseIndices = std.StringHashMap(u16).init(allocator.allocator);
 
 var size: u32 = 0;
 
-pub var ores: main.List(Ore) = main.List(Ore).init(allocator);
+pub var ores: main.List(Ore) = .init(allocator);
 
 var unfinishedOreSourceBlockIds: main.List([][]const u8) = undefined;
 
 pub fn init() void {
-	unfinishedOreSourceBlockIds = main.List([][]const u8).init(main.globalAllocator);
+	unfinishedOreSourceBlockIds = .init(main.globalAllocator);
 }
 
 pub fn deinit() void {
@@ -218,7 +218,7 @@ pub fn reset() void {
 	ores.clearAndFree();
 	meshes.reset();
 	_ = arena.reset(.free_all);
-	reverseIndices = std.StringHashMap(u16).init(arena.allocator().allocator);
+	reverseIndices = .init(arena.allocator().allocator);
 	std.debug.assert(unfinishedOreSourceBlockIds.items.len == 0);
 }
 
@@ -394,17 +394,17 @@ pub const meshes = struct { // MARK: meshes
 
 	pub fn init() void {
 		animationShader = Shader.initComputeAndGetUniforms("assets/cubyz/shaders/animation_pre_processing.glsl", "", &animationUniforms);
-		blockTextureArray = TextureArray.init();
-		emissionTextureArray = TextureArray.init();
-		reflectivityAndAbsorptionTextureArray = TextureArray.init();
-		textureIDs = main.List([]const u8).init(main.globalAllocator);
-		animation = main.List(AnimationData).init(main.globalAllocator);
-		blockTextures = main.List(Image).init(main.globalAllocator);
-		emissionTextures = main.List(Image).init(main.globalAllocator);
-		reflectivityTextures = main.List(Image).init(main.globalAllocator);
-		absorptionTextures = main.List(Image).init(main.globalAllocator);
-		textureFogData = main.List(FogData).init(main.globalAllocator);
-		arenaForWorld = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
+		blockTextureArray = .init();
+		emissionTextureArray = .init();
+		reflectivityAndAbsorptionTextureArray = .init();
+		textureIDs = .init(main.globalAllocator);
+		animation = .init(main.globalAllocator);
+		blockTextures = .init(main.globalAllocator);
+		emissionTextures = .init(main.globalAllocator);
+		reflectivityTextures = .init(main.globalAllocator);
+		absorptionTextures = .init(main.globalAllocator);
+		textureFogData = .init(main.globalAllocator);
+		arenaForWorld = .init(main.globalAllocator);
 	}
 
 	pub fn deinit() void {

@@ -21,7 +21,7 @@ pub const CaveMapFragment = struct { // MARK: CaveMapFragment
 	data: [width*width]u64 = undefined,
 	pos: ChunkPosition,
 	voxelShift: u5,
-	refCount: Atomic(u16) = Atomic(u16).init(0),
+	refCount: Atomic(u16) = .init(0),
 
 
 	pub fn init(self: *CaveMapFragment, wx: i32, wy: i32, wz: i32, voxelSize: u31) void {
@@ -316,7 +316,7 @@ fn cacheInit(pos: ChunkPosition) *CaveMapFragment {
 
 pub fn initGenerators() void {
 	const list = @import("cavegen/_list.zig");
-	inline for(@typeInfo(list).Struct.decls) |decl| {
+	inline for(@typeInfo(list).@"struct".decls) |decl| {
 		CaveGenerator.registerGenerator(@field(list, decl.name));
 	}
 }

@@ -113,7 +113,7 @@ const Socket = struct {
 
 pub fn init() void {
 	Socket.startup();
-	inline for(@typeInfo(Protocols).Struct.decls) |decl| {
+	inline for(@typeInfo(Protocols).@"struct".decls) |decl| {
 		if(@TypeOf(@field(Protocols, decl.name)) == type) {
 			const id = @field(Protocols, decl.name).id;
 			if(id != Protocols.keepAlive and id != Protocols.important and Protocols.list[id] == null) {
@@ -390,8 +390,8 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	thread: std.Thread = undefined,
 	threadId: std.Thread.Id = undefined,
 	externalAddress: Address = undefined,
-	online: Atomic(bool) = Atomic(bool).init(false),
-	running: Atomic(bool) = Atomic(bool).init(true),
+	online: Atomic(bool) = .init(false),
+	running: Atomic(bool) = .init(true),
 
 	connections: main.List(*Connection) = undefined,
 	requests: main.List(*Request) = undefined,
@@ -421,9 +421,9 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		const result: *ConnectionManager = main.globalAllocator.create(ConnectionManager);
 		errdefer main.globalAllocator.destroy(result);
 		result.* = .{};
-		result.connections = main.List(*Connection).init(main.globalAllocator);
-		result.requests = main.List(*Request).init(main.globalAllocator);
-		result.packetSendRequests = std.PriorityQueue(PacketSendRequest, void, PacketSendRequest.compare).init(main.globalAllocator.allocator, {});
+		result.connections = .init(main.globalAllocator);
+		result.requests = .init(main.globalAllocator);
+		result.packetSendRequests = .init(main.globalAllocator.allocator, {});
 
 		result.localPort = localPort;
 		result.socket = Socket.init(localPort) catch |err| blk: {
@@ -650,8 +650,8 @@ const UnconfirmedPacket = struct {
 };
 
 // MARK: Protocols
-pub var bytesReceived: [256]Atomic(usize) = [_]Atomic(usize) {Atomic(usize).init(0)} ** 256;
-pub var packetsReceived: [256]Atomic(usize) = [_]Atomic(usize) {Atomic(usize).init(0)} ** 256;
+pub var bytesReceived: [256]Atomic(usize) = .{Atomic(usize).init(0)} ** 256;
+pub var packetsReceived: [256]Atomic(usize) = .{Atomic(usize).init(0)} ** 256;
 pub const Protocols = struct {
 	pub var list: [256]?*const fn(*Connection, []const u8) anyerror!void = [_]?*const fn(*Connection, []const u8) anyerror!void {null} ** 256;
 	pub var isAsynchronous: [256]bool = .{false} ** 256;
@@ -1282,8 +1282,8 @@ pub const Connection = struct { // MARK: Connection
 	const timeUnit = 100_000_000;
 
 	// Statistics:
-	pub var packetsSent: Atomic(u32) = Atomic(u32).init(0);
-	pub var packetsResent: Atomic(u32) = Atomic(u32).init(0);
+	pub var packetsSent: Atomic(u32) = .init(0);
+	pub var packetsResent: Atomic(u32) = .init(0);
 
 	manager: *ConnectionManager,
 	user: ?*main.server.User,
@@ -1318,8 +1318,8 @@ pub const Connection = struct { // MARK: Connection
 	congestionControl_bandWidthUsed: usize = 0,
 	congestionControl_curPosition: usize = 0,
 
-	disconnected: Atomic(bool) = Atomic(bool).init(false),
-	handShakeState: Atomic(u8) = Atomic(u8).init(Protocols.handShake.stepStart),
+	disconnected: Atomic(bool) = .init(false),
+	handShakeState: Atomic(u8) = .init(Protocols.handShake.stepStart),
 	handShakeWaiting: std.Thread.Condition = std.Thread.Condition{},
 	lastConnection: i64,
 
@@ -1339,14 +1339,14 @@ pub const Connection = struct { // MARK: Connection
 			.congestionControl_sendTimeLimit = @as(i64, @truncate(std.time.nanoTimestamp())) +% timeUnit*21/20,
 		};
 		errdefer main.globalAllocator.free(result.packetMemory);
-		result.unconfirmedPackets = main.List(UnconfirmedPacket).init(main.globalAllocator);
+		result.unconfirmedPackets = .init(main.globalAllocator);
 		errdefer result.unconfirmedPackets.deinit();
-		result.packetQueue = main.utils.CircularBufferQueue(UnconfirmedPacket).init(main.globalAllocator, 1024);
+		result.packetQueue = .init(main.globalAllocator, 1024);
 		errdefer result.packetQueue.deinit();
 		result.receivedPackets = [3]main.List(u32){
-			main.List(u32).init(main.globalAllocator),
-			main.List(u32).init(main.globalAllocator),
-			main.List(u32).init(main.globalAllocator),
+			.init(main.globalAllocator),
+			.init(main.globalAllocator),
+			.init(main.globalAllocator),
 		};
 		errdefer for(&result.receivedPackets) |*list| {
 			list.deinit();
@@ -1385,7 +1385,7 @@ pub const Connection = struct { // MARK: Connection
 		self.receivedPackets[2].clearRetainingCapacity();
 		self.lastIndex = 0;
 		self.lastIncompletePacket = 0;
-		self.handShakeState = Atomic(u8).init(Protocols.handShake.stepStart);
+		self.handShakeState = .init(Protocols.handShake.stepStart);
 	}
 
 	pub fn deinit(self: *Connection) void {
@@ -1524,9 +1524,9 @@ pub const Connection = struct { // MARK: Connection
 		self.mutex.lock();
 		defer self.mutex.unlock();
 
-		var runLengthEncodingStarts: main.List(u32) = main.List(u32).init(main.stackAllocator);
+		var runLengthEncodingStarts = main.List(u32).init(main.stackAllocator);
 		defer runLengthEncodingStarts.deinit();
-		var runLengthEncodingLengths: main.List(u32) = main.List(u32).init(main.stackAllocator);
+		var runLengthEncodingLengths = main.List(u32).init(main.stackAllocator);
 		defer runLengthEncodingLengths.deinit();
 
 		for(self.receivedPackets) |list| {

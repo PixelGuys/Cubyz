@@ -71,7 +71,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			.allocator = allocator,
 			.list = std.MultiArrayList(ItemDrop){},
 			.lastUpdates = JsonElement.initArray(allocator),
-			.isEmpty = std.bit_set.ArrayBitSet(usize, maxCapacity).initFull(),
+			.isEmpty = .initFull(),
 			.world = world,
 			.gravity = gravity,
 			.airDragFactor = gravity/maxSpeed,
@@ -590,12 +590,12 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 
 	pub fn init() void {
 		itemShader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/item_drop.vs", "assets/cubyz/shaders/item_drop.fs", "", &itemUniforms);
-		itemModelSSBO = graphics.SSBO.init();
+		itemModelSSBO = .init();
 		itemModelSSBO.bufferData(i32, &[3]i32{1, 1, 1});
 		itemModelSSBO.bind(2);
 
-		modelData = main.List(u32).init(main.globalAllocator);
-		freeSlots = main.List(*ItemVoxelModel).init(main.globalAllocator);
+		modelData = .init(main.globalAllocator);
+		freeSlots = .init(main.globalAllocator);
 	}
 
 	pub fn deinit() void {

@@ -25,14 +25,14 @@ pub const JsonElement = union(JsonType) { // MARK: JsonElement
 	JsonObject: *std.StringHashMap(JsonElement),
 
 	pub fn initObject(allocator: NeverFailingAllocator) JsonElement {
-		const map: *std.StringHashMap(JsonElement) = allocator.create(std.StringHashMap(JsonElement));
-		map.* = std.StringHashMap(JsonElement).init(allocator.allocator);
+		const map = allocator.create(std.StringHashMap(JsonElement));
+		map.* = .init(allocator.allocator);
 		return JsonElement{.JsonObject=map};
 	}
 
 	pub fn initArray(allocator: NeverFailingAllocator) JsonElement {
-		const list: *List(JsonElement) = allocator.create(List(JsonElement));
-		list.* = List(JsonElement).init(allocator);
+		const list = allocator.create(List(JsonElement));
+		list.* = .init(allocator);
 		return JsonElement{.JsonArray=list};
 	}
 
@@ -87,36 +87,36 @@ pub const JsonElement = union(JsonType) { // MARK: JsonElement
 	pub fn as(self: *const JsonElement, comptime T: type, replacement: T) T {
 		comptime var typeInfo : std.builtin.Type = @typeInfo(T);
 		comptime var innerType = T;
-		inline while(typeInfo == .Optional) {
-			innerType = typeInfo.Optional.child;
+		inline while(typeInfo == .optional) {
+			innerType = typeInfo.optional.child;
 			typeInfo = @typeInfo(innerType);
 		}
 		switch(typeInfo) {
-			.Int => {
+			.int => {
 				switch(self.*) {
 					.JsonInt => return std.math.cast(innerType, self.JsonInt) orelse replacement,
 					.JsonFloat => return std.math.lossyCast(innerType, std.math.round(self.JsonFloat)),
 					else => return replacement,
 				}
 			},
-			.Float => {
+			.float => {
 				switch(self.*) {
 					.JsonInt => return @floatFromInt(self.JsonInt),
 					.JsonFloat => return @floatCast(self.JsonFloat),
 					else => return replacement,
 				}
 			},
-			.Vector => {
-				const len = typeInfo.Vector.len;
+			.vector => {
+				const len = typeInfo.vector.len;
 				const elems = self.toSlice();
 				if(elems.len != len) return replacement;
 				var result: innerType = undefined;
 				if(innerType == T) result = replacement;
 				inline for(0..len) |i| {
 					if(innerType == T) {
-						result[i] = elems[i].as(typeInfo.Vector.child, result[i]);
+						result[i] = elems[i].as(typeInfo.vector.child, result[i]);
 					} else {
-						result[i] = elems[i].as(?typeInfo.Vector.child, null) orelse return replacement;
+						result[i] = elems[i].as(?typeInfo.vector.child, null) orelse return replacement;
 					}
 				}
 				return result;
@@ -146,39 +146,39 @@ pub const JsonElement = union(JsonType) { // MARK: JsonElement
 
 	fn createElementFromRandomType(value: anytype, allocator: std.mem.Allocator) JsonElement {
 		switch(@typeInfo(@TypeOf(value))) {
-			.Void => return JsonElement{.JsonNull={}},
-			.Null => return JsonElement{.JsonNull={}},
-			.Bool => return JsonElement{.JsonBool=value},
-			.Int, .ComptimeInt => return JsonElement{.JsonInt=@intCast(value)},
-			.Float, .ComptimeFloat => return JsonElement{.JsonFloat=@floatCast(value)},
-			.Union => {
+			.void => return JsonElement{.JsonNull={}},
+			.null => return JsonElement{.JsonNull={}},
+			.bool => return JsonElement{.JsonBool=value},
+			.int, .comptime_int => return JsonElement{.JsonInt=@intCast(value)},
+			.float, .comptime_float => return JsonElement{.JsonFloat=@floatCast(value)},
+			.@"union" => {
 				if(@TypeOf(value) == JsonElement) {
 					return value;
 				} else {
 					@compileError("Unknown value type.");
 				}
 			},
-			.Pointer => |ptr| {
+			.pointer => |ptr| {
 				if(ptr.child == u8 and ptr.size == .Slice) {
 					return JsonElement{.JsonString=value};
 				} else {
 					const childInfo = @typeInfo(ptr.child);
-					if(ptr.size == .One and childInfo == .Array and childInfo.Array.child == u8) {
+					if(ptr.size == .One and childInfo == .array and childInfo.array.child == u8) {
 						return JsonElement{.JsonString=value};
 					} else {
 						@compileError("Unknown value type.");
 					}
 				}
 			},
-			.Optional => {
+			.optional => {
 				if(value) |val| {
 					return createElementFromRandomType(val, allocator);
 				} else {
 					return JsonElement{.JsonNull={}};
 				}
 			},
-			.Vector => {
-				const len = @typeInfo(@TypeOf(value)).Vector.len;
+			.vector => {
+				const len = @typeInfo(@TypeOf(value)).vector.len;
 				const result = initArray(main.utils.NeverFailingAllocator{.allocator = allocator, .IAssertThatTheProvidedAllocatorCantFail = {}});
 				result.JsonArray.ensureCapacity(len);
 				inline for(0..len) |i| {
@@ -456,7 +456,7 @@ const Parser = struct { // MARK: Parser
 	}
 
 	fn parseString(allocator: NeverFailingAllocator, chars: []const u8, index: *u32) []const u8 {
-		var builder: List(u8) = List(u8).init(allocator);
+		var builder = List(u8).init(allocator);
 		while(index.* < chars.len): (index.* += 1) {
 			if(chars[index.*] == '\"') {
 				index.* += 1;
@@ -487,8 +487,8 @@ const Parser = struct { // MARK: Parser
 	}
 
 	fn parseArray(allocator: NeverFailingAllocator, chars: []const u8, index: *u32) JsonElement {
-		const list: *List(JsonElement) = allocator.create(List(JsonElement));
-		list.* = List(JsonElement).init(allocator);
+		const list = allocator.create(List(JsonElement));
+		list.* = .init(allocator);
 		while(index.* < chars.len) {
 			skipWhitespaces(chars, index);
 			if(index.* >= chars.len) break;
@@ -507,8 +507,8 @@ const Parser = struct { // MARK: Parser
 	}
 
 	fn parseObject(allocator: NeverFailingAllocator, chars: []const u8, index: *u32) JsonElement {
-		const map: *std.StringHashMap(JsonElement) = allocator.create(std.StringHashMap(JsonElement));
-		map.* = std.StringHashMap(JsonElement).init(allocator.allocator);
+		const map = allocator.create(std.StringHashMap(JsonElement));
+		map.* = .init(allocator.allocator);
 		while(index.* < chars.len) {
 			skipWhitespaces(chars, index);
 			if(index.* >= chars.len) break;

@@ -27,7 +27,7 @@ pub const CaveBiomeMapFragment = struct { // MARK: caveBiomeMapFragment
 
 	pos: main.chunk.ChunkPosition,
 	biomeMap: [1 << 3*(caveBiomeMapShift - caveBiomeShift)][2]*const Biome = undefined,
-	refCount: std.atomic.Value(u16) = std.atomic.Value(u16).init(0),
+	refCount: std.atomic.Value(u16) = .init(0),
 
 	pub fn init(self: *CaveBiomeMapFragment, wx: i32, wy: i32, wz: i32) void {
 		self.* = .{
@@ -575,7 +575,7 @@ var profile: TerrainGenerationProfile = undefined;
 
 pub fn initGenerators() void {
 	const list = @import("cavebiomegen/_list.zig");
-	inline for(@typeInfo(list).Struct.decls) |decl| {
+	inline for(@typeInfo(list).@"struct".decls) |decl| {
 		CaveBiomeGenerator.registerGenerator(@field(list, decl.name));
 	}
 }

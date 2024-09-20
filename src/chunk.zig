@@ -130,8 +130,8 @@ var serverPool: std.heap.MemoryPoolAligned(ServerChunk, @alignOf(ServerChunk)) =
 var serverPoolMutex: std.Thread.Mutex = .{};
 
 pub fn init() void {
-	memoryPool = std.heap.MemoryPoolAligned(Chunk, @alignOf(Chunk)).init(main.globalAllocator.allocator);
-	serverPool = std.heap.MemoryPoolAligned(ServerChunk, @alignOf(ServerChunk)).init(main.globalAllocator.allocator);
+	memoryPool = .init(main.globalAllocator.allocator);
+	serverPool = .init(main.globalAllocator.allocator);
 }
 
 pub fn deinit() void {
@@ -151,14 +151,14 @@ pub const ChunkPosition = struct { // MARK: ChunkPosition
 	}
 
 	pub fn equals(self: ChunkPosition, other: anytype) bool {
-		if(@typeInfo(@TypeOf(other)) == .Optional) {
+		if(@typeInfo(@TypeOf(other)) == .optional) {
 			if(other) |notNull| {
 				return self.equals(notNull);
 			}
 			return false;
 		} else if(@TypeOf(other.*) == ServerChunk) {
 			return self.wx == other.super.pos.wx and self.wy == other.super.pos.wy and self.wz == other.super.pos.wz and self.voxelSize == other.super.pos.voxelSize;
-		} else if(@typeInfo(@TypeOf(other)) == .Pointer) {
+		} else if(@typeInfo(@TypeOf(other)) == .pointer) {
 			return self.wx == other.pos.wx and self.wy == other.pos.wy and self.wz == other.pos.wz and self.voxelSize == other.pos.voxelSize;
 		} else @compileError("Unsupported");
 	}
@@ -281,7 +281,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 				.voxelSizeMask = pos.voxelSize - 1,
 				.widthShift = voxelSizeShift + chunkShift,
 			},
-			.refCount = std.atomic.Value(u16).init(1),
+			.refCount = .init(1),
 		};
 		self.super.data.init();
 		return self;

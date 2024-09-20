@@ -48,7 +48,7 @@ pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, onNewli
 	self.* = TextInput {
 		.pos = pos,
 		.size = .{maxWidth, maxHeight},
-		.currentString = main.List(u8).init(main.globalAllocator),
+		.currentString = .init(main.globalAllocator),
 		.textBuffer = TextBuffer.init(main.globalAllocator, text, .{}, true, .left),
 		.maxWidth = maxWidth,
 		.maxHeight = maxHeight,

@@ -50,7 +50,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 
 
 	var modelRegistry: std.StringHashMapUnmanaged(VTable) = .{};
-	var arena: main.utils.NeverFailingArenaAllocator = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
+	var arena: main.utils.NeverFailingArenaAllocator = .init(main.globalAllocator);
 
 	pub fn reset() void {
 		std.debug.assert(arena.reset(.free_all));
@@ -141,24 +141,24 @@ const Stripe = struct { // MARK: Stripe
 fn hashGeneric(input: anytype) u64 {
 	const T = @TypeOf(input);
 	return switch(@typeInfo(T)) {
-		.Bool => @intFromBool(input),
-		.Enum => @intFromEnum(input),
-		.Int, .Float => @as(std.meta.Int(.unsigned, @bitSizeOf(T)), @bitCast(input)),
-		.Struct => blk: {
+		.bool => @intFromBool(input),
+		.@"enum" => @intFromEnum(input),
+		.int, .float => @as(std.meta.Int(.unsigned, @bitSizeOf(T)), @bitCast(input)),
+		.@"struct" => blk: {
 			if(@hasDecl(T, "getHash")) {
 				break :blk input.getHash();
 			}
 			var result: u64 = 0;
-			inline for(@typeInfo(T).Struct.fields) |field| {
+			inline for(@typeInfo(T).@"struct".fields) |field| {
 				result ^= hashGeneric(@field(input, field.name))*%hashGeneric(@as([]const u8, field.name));
 			}
 			break :blk result;
 		},
-		.Optional => if(input) |_input| hashGeneric(_input) else 0,
-		.Pointer => switch(@typeInfo(T).Pointer.size) {
+		.optional => if(input) |_input| hashGeneric(_input) else 0,
+		.pointer => switch(@typeInfo(T).pointer.size) {
 			.One => blk: {
-				if(@typeInfo(@typeInfo(T).Pointer.child) == .Fn) break :blk 0;
-				if(@typeInfo(T).Pointer.child == anyopaque) break :blk 0;
+				if(@typeInfo(@typeInfo(T).pointer.child) == .@"fn") break :blk 0;
+				if(@typeInfo(T).pointer.child == anyopaque) break :blk 0;
 				break :blk hashGeneric(input.*);
 			},
 			.Slice => blk: {
@@ -170,16 +170,16 @@ fn hashGeneric(input: anytype) u64 {
 			},
 			else => @compileError("Unsupported type " ++ @typeName(T)),
 		},
-		.Array => blk: {
+		.array => blk: {
 			var result: u64 = 0;
 			for(input) |val| {
 				result = result*%33 +% hashGeneric(val);
 			}
 			break :blk result;
 		},
-		.Vector => blk: {
+		.vector => blk: {
 			var result: u64 = 0;
-			inline for(0..@typeInfo(T).Vector.len) |i| {
+			inline for(0..@typeInfo(T).vector.len) |i| {
 				result = result*%33 +% hashGeneric(input[i]);
 			}
 			break :blk result;
@@ -222,7 +222,7 @@ pub const Biome = struct { // MARK: Biome
 			var result: GenerationProperties = .{};
 			for(json.toSlice()) |child| {
 				const property = child.as([]const u8, "");
-				inline for(@typeInfo(GenerationProperties).Struct.fields) |field| {
+				inline for(@typeInfo(GenerationProperties).@"struct".fields) |field| {
 					if(std.mem.eql(u8, field.name, property)) {
 						@field(result, field.name) = true;
 					}
@@ -243,6 +243,7 @@ pub const Biome = struct { // MARK: Biome
 	hills: f32,
 	mountains: f32,
 	caves: f32,
+	caveRadiusFactor: f32,
 	crystals: u32,
 	stoneBlockType: u16,
 	fogDensity: f32,
@@ -278,6 +279,7 @@ pub const Biome = struct { // MARK: Biome
 			.interpolation = std.meta.stringToEnum(Interpolation, json.get([]const u8, "interpolation", "square")) orelse .square,
 			.interpolationWeight = @max(json.get(f32, "interpolationWeight", 1), std.math.floatMin(f32)),
 			.caves = json.get(f32, "caves", -0.375),
+			.caveRadiusFactor = @max(-2, @min(2, json.get(f32, "caveRadiusFactor", 1))),
 			.crystals = json.get(u32, "crystals", 0),
 			.minHeight = json.get(i32, "minHeight", std.math.minInt(i32)),
 			.maxHeight = json.get(i32, "maxHeight", std.math.maxInt(i32)),
@@ -425,7 +427,7 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 			for(currentSlice) |biome| {
 				self.leaf.totalChance += biome.chance;
 			}
-			self.leaf.aliasTable = main.utils.AliasTable(Biome).init(allocator, currentSlice);
+			self.leaf.aliasTable = .init(allocator, currentSlice);
 			return self;
 		}
 		var chanceLower: f32 = 0;
@@ -462,9 +464,9 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 		var upperIndex: usize = undefined;
 		{
 			var lists: [3]main.ListUnmanaged(Biome) = .{
-				main.ListUnmanaged(Biome).initCapacity(main.stackAllocator, currentSlice.len),
-				main.ListUnmanaged(Biome).initCapacity(main.stackAllocator, currentSlice.len),
-				main.ListUnmanaged(Biome).initCapacity(main.stackAllocator, currentSlice.len),
+				.initCapacity(main.stackAllocator, currentSlice.len),
+				.initCapacity(main.stackAllocator, currentSlice.len),
+				.initCapacity(main.stackAllocator, currentSlice.len),
 			};
 			defer for(lists) |list| {
 				list.deinit(main.stackAllocator);
@@ -542,11 +544,11 @@ const UnfinishedSubBiomeData = struct {
 var unfinishedSubBiomes: std.StringHashMapUnmanaged(main.ListUnmanaged(UnfinishedSubBiomeData)) = .{};
 
 pub fn init() void {
-	biomes = main.List(Biome).init(main.globalAllocator);
-	caveBiomes = main.List(Biome).init(main.globalAllocator);
-	biomesById = std.StringHashMap(*Biome).init(main.globalAllocator.allocator);
+	biomes = .init(main.globalAllocator);
+	caveBiomes = .init(main.globalAllocator);
+	biomesById = .init(main.globalAllocator.allocator);
 	const list = @import("simple_structures/_list.zig");
-	inline for(@typeInfo(list).Struct.decls) |decl| {
+	inline for(@typeInfo(list).@"struct".decls) |decl| {
 		SimpleStructureModel.registerGenerator(@field(list, decl.name));
 	}
 }
@@ -609,7 +611,7 @@ pub fn finishLoading() void {
 		for(subBiomeDataList.items) |item| {
 			parentBiome.subBiomeTotalChance += item.chance;
 		}
-		parentBiome.subBiomes = main.utils.AliasTable(*const Biome).initFromContext(main.globalAllocator, subBiomeDataList.items);
+		parentBiome.subBiomes = .initFromContext(main.globalAllocator, subBiomeDataList.items);
 		subBiomeDataList.deinit(main.globalAllocator);
 	}
 	unfinishedSubBiomes.clearAndFree(main.globalAllocator.allocator);

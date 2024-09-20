@@ -68,17 +68,17 @@ pub fn init() void {
 	};
 	defer json.free(main.stackAllocator);
 
-	inline for(@typeInfo(@This()).Struct.decls) |decl| {
-		const is_const = @typeInfo(@TypeOf(&@field(@This(), decl.name))).Pointer.is_const; // Sadly there is no direct way to check if a declaration is const.
+	inline for(@typeInfo(@This()).@"struct".decls) |decl| {
+		const is_const = @typeInfo(@TypeOf(&@field(@This(), decl.name))).pointer.is_const; // Sadly there is no direct way to check if a declaration is const.
 		if(!is_const) {
 			const declType = @TypeOf(@field(@This(), decl.name));
-			if(@typeInfo(declType) == .Struct) {
+			if(@typeInfo(declType) == .@"struct") {
 				@compileError("Not implemented yet.");
 			}
 			@field(@This(), decl.name) = json.get(declType, decl.name, @field(@This(), decl.name));
-			if(@typeInfo(declType) == .Pointer) {
-				if(@typeInfo(declType).Pointer.size == .Slice) {
-					@field(@This(), decl.name) = main.globalAllocator.dupe(@typeInfo(declType).Pointer.child, @field(@This(), decl.name));
+			if(@typeInfo(declType) == .pointer) {
+				if(@typeInfo(declType).pointer.size == .Slice) {
+					@field(@This(), decl.name) = main.globalAllocator.dupe(@typeInfo(declType).pointer.child, @field(@This(), decl.name));
 				} else {
 					@compileError("Not implemented yet.");
 				}
@@ -100,15 +100,15 @@ pub fn init() void {
 
 pub fn deinit() void {
 	save();
-	inline for(@typeInfo(@This()).Struct.decls) |decl| {
-		const is_const = @typeInfo(@TypeOf(&@field(@This(), decl.name))).Pointer.is_const; // Sadly there is no direct way to check if a declaration is const.
+	inline for(@typeInfo(@This()).@"struct".decls) |decl| {
+		const is_const = @typeInfo(@TypeOf(&@field(@This(), decl.name))).pointer.is_const; // Sadly there is no direct way to check if a declaration is const.
 		if(!is_const) {
 			const declType = @TypeOf(@field(@This(), decl.name));
-			if(@typeInfo(declType) == .Struct) {
+			if(@typeInfo(declType) == .@"struct") {
 				@compileError("Not implemented yet.");
 			}
-			if(@typeInfo(declType) == .Pointer) {
-				if(@typeInfo(declType).Pointer.size == .Slice) {
+			if(@typeInfo(declType) == .pointer) {
+				if(@typeInfo(declType).pointer.size == .Slice) {
 					main.globalAllocator.free(@field(@This(), decl.name));
 				} else {
 					@compileError("Not implemented yet.");
@@ -122,11 +122,11 @@ pub fn save() void {
 	const jsonObject = JsonElement.initObject(main.stackAllocator);
 	defer jsonObject.free(main.stackAllocator);
 
-	inline for(@typeInfo(@This()).Struct.decls) |decl| {
-		const is_const = @typeInfo(@TypeOf(&@field(@This(), decl.name))).Pointer.is_const; // Sadly there is no direct way to check if a declaration is const.
+	inline for(@typeInfo(@This()).@"struct".decls) |decl| {
+		const is_const = @typeInfo(@TypeOf(&@field(@This(), decl.name))).pointer.is_const; // Sadly there is no direct way to check if a declaration is const.
 		if(!is_const) {
 			const declType = @TypeOf(@field(@This(), decl.name));
-			if(@typeInfo(declType) == .Struct) {
+			if(@typeInfo(declType) == .@"struct") {
 				@compileError("Not implemented yet.");
 			}
 			if(declType == []const u8) {
