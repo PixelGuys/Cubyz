@@ -164,7 +164,7 @@ pub fn onClose() void {
 		if(!itemStack.empty()) {
 			itemStack.amount = main.game.Player.inventory__SEND_CHANGES_TO_SERVER.addItem(itemStack.item.?, itemStack.amount);
 			if(!itemStack.empty()) {
-				main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, itemStack.*, .{0, 0, 0}, main.game.camera.direction, 20);
+				main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, itemStack.*, .{0, 0, 0}, main.camera.direction, 20);
 				itemStack.clear();
 			}
 		}

@@ -615,7 +615,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, playerPos: V
 	}
 	var nodeList = main.List(*ChunkMeshNode).init(main.stackAllocator);
 	defer nodeList.deinit();
-	const projRotMat = game.projectionMatrix.mul(game.camera.viewMatrix);
+	const projRotMat = game.projectionMatrix.mul(main.camera.viewMatrix);
 	while(searchList.removeOrNull()) |data| {
 		nodeList.append(data.node);
 		data.node.active = false;

@@ -130,7 +130,7 @@ pub const ClientEntityManager = struct {
 				1,
 			};
 
-			const rotatedPos = game.camera.viewMatrix.mulVec(pos4f);
+			const rotatedPos = main.camera.viewMatrix.mulVec(pos4f);
 			const projectedPos = projMatrix.mulVec(rotatedPos);
 			if(projectedPos[2] < 0) continue;
 			const xCenter = (1 + projectedPos[0]/projectedPos[3])*@as(f32, @floatFromInt(main.Window.width/2));
@@ -171,7 +171,7 @@ pub const ClientEntityManager = struct {
 					@floatCast(pos[2]),
 				}))
 			);
-			const modelViewMatrix = modelMatrix.mul(game.camera.viewMatrix);
+			const modelViewMatrix = modelMatrix.mul(main.camera.viewMatrix);
 			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));
 			// TODO: c.glDrawElements(...);
 		}

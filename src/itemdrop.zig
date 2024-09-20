@@ -627,7 +627,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		c.glUniform1i(itemUniforms.time, @as(u31, @truncate(time)));
 		c.glUniformMatrix4fv(itemUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 		c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&ambientLight));
-		c.glUniformMatrix4fv(itemUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&game.camera.viewMatrix));
+		c.glUniformMatrix4fv(itemUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&main.camera.viewMatrix));
 		c.glUniform1f(itemUniforms.contrast, 0.12);
 		const itemDrops = &game.world.?.itemDrops.super;
 		itemDrops.mutex.lock();

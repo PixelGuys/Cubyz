@@ -568,7 +568,7 @@ pub fn toggleGameMenu() void {
 			inventory.carriedItemStack.amount = main.game.Player.inventory__SEND_CHANGES_TO_SERVER.addItem(item, inventory.carriedItemStack.amount);
 			main.network.Protocols.genericUpdate.sendInventory_full(main.game.world.?.conn, main.game.Player.inventory__SEND_CHANGES_TO_SERVER); // TODO(post-java): Add better options to the protocol.
 			if(inventory.carriedItemStack.amount != 0) {
-				main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, inventory.carriedItemStack, @floatCast(main.game.Player.getPosBlocking()), main.game.camera.direction, 20);
+				main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, inventory.carriedItemStack, @floatCast(main.game.Player.getPosBlocking()), main.camera.direction, 20);
 			}
 			inventory.carriedItemStack.clear();
 		}
@@ -678,10 +678,10 @@ pub const inventory = struct { // MARK: inventory
 			}
 		} else if(!hoveredAWindow) {
 			if(leftClick or carriedItemStack.amount == 1) {
-				main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, carriedItemStack, @floatCast(main.game.Player.getPosBlocking()), main.game.camera.direction, 20);
+				main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, carriedItemStack, @floatCast(main.game.Player.getPosBlocking()), main.camera.direction, 20);
 				carriedItemStack.clear();
 			} else if(carriedItemStack.amount != 0) {
-				main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, .{.item = carriedItemStack.item, .amount = 1}, @floatCast(main.game.Player.getPosBlocking()), main.game.camera.direction, 20);
+				main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, .{.item = carriedItemStack.item, .amount = 1}, @floatCast(main.game.Player.getPosBlocking()), main.camera.direction, 20);
 				_ = carriedItemStack.add(carriedItemStack.item.?, @as(i32, -1));
 			}
 		}

@@ -23,28 +23,7 @@ const models = main.models;
 const Fog = graphics.Fog;
 const renderer = @import("renderer.zig");
 const settings = @import("settings.zig");
-
-pub const camera = struct { // MARK: camera
-	pub var rotation: Vec3f = Vec3f{0, 0, 0};
-	pub var direction: Vec3f = Vec3f{0, 0, 0};
-	pub var viewMatrix: Mat4f = Mat4f.identity();
-	pub fn moveRotation(mouseX: f32, mouseY: f32) void {
-		// Mouse movement along the y-axis rotates the image along the x-axis.
-		rotation[0] += mouseY;
-		if(rotation[0] > std.math.pi/2.0) {
-			rotation[0] = std.math.pi/2.0;
-		} else if(rotation[0] < -std.math.pi/2.0) {
-			rotation[0] = -std.math.pi/2.0;
-		}
-		// Mouse movement along the x-axis rotates the image along the z-axis.
-		rotation[2] += mouseX;
-	}
-
-	pub fn updateViewMatrix() void {
-		direction = vec.rotateZ(vec.rotateY(vec.rotateX(Vec3f{0, 1, 0}, -rotation[0]), -rotation[1]), -rotation[2]);
-		viewMatrix = Mat4f.identity().mul(Mat4f.rotationX(rotation[0])).mul(Mat4f.rotationY(rotation[1])).mul(Mat4f.rotationZ(rotation[2]));
-	}
-};
+const camera = @import("camera.zig");
 
 pub const collision = struct {
 	pub fn triangleAABB(triangle: [3]Vec3d, box_center: Vec3d, box_extents: Vec3d) bool {
@@ -329,9 +308,6 @@ pub const Player = struct { // MARK: Player
 	pub var eyeVel: Vec3d = .{0, 0, 0};
 	pub var eyeCoyote: f64 = 0;
 	pub var eyeStep: @Vector(3, bool) = .{false, false, false};
-	pub var bobTime: f64 = 0;
-	pub var bobVel: f64 = 0;
-	pub var bobMag: f64 = 0;
 	pub var id: u32 = 0;
 	pub var isFlying: Atomic(bool) = Atomic(bool).init(false);
 	pub var isGhost: Atomic(bool) = Atomic(bool).init(false);
@@ -386,27 +362,6 @@ pub const Player = struct { // MARK: Player
 		mutex.lock();
 		defer mutex.unlock();
 		return eyePos + super.pos + desiredEyePos;
-	}
-
-	pub fn applyViewBobbingPosBlocking(pos: Vec3d) Vec3d {
-		mutex.lock();
-		defer mutex.unlock();
-		// Horizontal Component - atan(0.25 * sin(bobTime)) / atan(0.25)
-		const xBob = 1.0204970377 * @sin(bobTime);
-		// Vertical Component (*0.8) - atan(0.5 * -sin(2 * bobTime)) / atan(0.5) + 0.5 * (-@sin(bobTime))^2
-		const a = 0.5 * -@sin(2 * bobTime);
-		const b = -@sin(bobTime);
-		const zBob = ((a - a * a * a / 3) / 0.4636476090 + 0.5 * b * b) * 0.8;
-		const bobVec = vec.rotateZ(Vec3d{ xBob * bobMag * 0.05, 0, zBob * bobMag * 0.05 }, -camera.rotation[2]);
-		return pos + bobVec;
-	}
-
-	pub fn applyViewBobbingRotBlocking(rot: Vec3f) Vec3f {
-		mutex.lock();
-		defer mutex.unlock();
-		const xRot: f32 = @as(f32, @floatCast(@cos(bobTime * 2 + 0.20) * -0.0015 * bobMag));
-		const zRot: f32 = @as(f32, @floatCast(@sin(bobTime + 0.5) * 0.001 * bobMag));
-		return rot + Vec3f{ xRot, 0, zRot };
 	}
 
 	pub fn getEyeVelBlocking() Vec3d {
@@ -767,23 +722,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			main.Window.scrollOffset = 0;
 		}
 
-		{   // View Bobbing
-			Player.mutex.lock();
-			defer Player.mutex.unlock();
-			var targetBobVel: f64 = 0;
-			const horizontalMovementSpeed = vec.length(vec.xy(Player.super.vel));
-			if (horizontalMovementSpeed > 0.01 and Player.onGround) {
-				targetBobVel = @sqrt(horizontalMovementSpeed / 4);
-			}
-			// Smooth lerping of bobVel with framerate independent damping
-			const fac: f64 = 1 - std.math.exp(-15 * deltaTime);
-			Player.bobVel = Player.bobVel * (1 - fac) + targetBobVel * fac;
-			if (Player.onGround) { // No view bobbing in the air
-				Player.bobTime += Player.bobVel * 8 * deltaTime;
-			}
-			// Maximum magnitude when sprinting (2x walking speed). Magnitude is scaled by player bounding box height
-			Player.bobMag = @sqrt(@min(Player.bobVel, 2)) * settings.viewBobStrength * Player.outerBoundingBoxExtent[2];
-		}
+		camera.ViewBobbing.update(deltaTime);
 
 		// This our model for movement on a single frame:
 		// dv/dt = a - λ·v
@@ -985,6 +924,8 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	// Clamp the eyePosition and subtract eye coyote time.
 	Player.eyePos = @max(Player.eyeBox.min, @min(Player.eyePos, Player.eyeBox.max));
 	Player.eyeCoyote -= deltaTime;
+
+	camera.position = Player.getEyePosBlocking();
 
 	const biome = world.?.playerBiome.load(.monotonic);
 

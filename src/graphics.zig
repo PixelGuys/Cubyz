@@ -1984,9 +1984,9 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	}
 
 	const projMatrix = Mat4f.perspective(0.013, 1, 64, 256);
-	const oldViewMatrix = main.game.camera.viewMatrix;
-	main.game.camera.viewMatrix = Mat4f.identity().mul(Mat4f.rotationX(std.math.pi/4.0)).mul(Mat4f.rotationZ(-5.0*std.math.pi/4.0));
-	defer main.game.camera.viewMatrix = oldViewMatrix;
+	const oldViewMatrix = main.camera.viewMatrix;
+	main.camera.viewMatrix = Mat4f.identity().mul(Mat4f.rotationX(std.math.pi/4.0)).mul(Mat4f.rotationZ(-5.0*std.math.pi/4.0));
+	defer main.camera.viewMatrix = oldViewMatrix;
 	const uniforms = if(block.transparent()) &main.renderer.chunk_meshing.transparentUniforms else &main.renderer.chunk_meshing.uniforms;
 
 	var faceData: main.ListUnmanaged(main.renderer.chunk_meshing.FaceData) = .{};

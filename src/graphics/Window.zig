@@ -189,7 +189,7 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 				averagedDelta += delta;
 			}
 			averagedDelta /= @splat(deltasLen);
-			main.game.camera.moveRotation(averagedDelta[0]*0.0089, averagedDelta[1]*0.0089);
+			main.camera.moveRotation(averagedDelta[0]*0.0089, averagedDelta[1]*0.0089);
 			deltaBufferPosition = (deltaBufferPosition + 1)%deltasLen;
 			deltas[deltaBufferPosition] = Vec2f{0, 0};
 		}

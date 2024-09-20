@@ -863,9 +863,9 @@ pub const Protocols = struct {
 			std.mem.writeInt(u64, data[24..32], @as(u64, @bitCast(playerVel[0])), .big);
 			std.mem.writeInt(u64, data[32..40], @as(u64, @bitCast(playerVel[1])), .big);
 			std.mem.writeInt(u64, data[40..48], @as(u64, @bitCast(playerVel[2])), .big);
-			std.mem.writeInt(u32, data[48..52], @as(u32, @bitCast(game.camera.rotation[0])), .big);
-			std.mem.writeInt(u32, data[52..56], @as(u32, @bitCast(game.camera.rotation[1])), .big);
-			std.mem.writeInt(u32, data[56..60], @as(u32, @bitCast(game.camera.rotation[2])), .big);
+			std.mem.writeInt(u32, data[48..52], @as(u32, @bitCast(main.camera.rotation[0])), .big);
+			std.mem.writeInt(u32, data[52..56], @as(u32, @bitCast(main.camera.rotation[1])), .big);
+			std.mem.writeInt(u32, data[56..60], @as(u32, @bitCast(main.camera.rotation[2])), .big);
 			std.mem.writeInt(u16, data[60..62], time, .big);
 			conn.sendUnimportant(id, &data);
 		}
