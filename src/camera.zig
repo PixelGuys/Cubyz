@@ -31,6 +31,7 @@ pub fn updateViewMatrix() void {
 }
 
 pub const ViewBobbing = struct { // MARK: ViewBobber
+	pub var enabled: bool = true;
 	var time: f64 = 0;
 	var velocity: f64 = 0;
 	var magnitude: f64 = 0;
@@ -72,11 +73,13 @@ pub const ViewBobbing = struct { // MARK: ViewBobber
 	}
 
 	pub fn apply() void {
+		if (!enabled) return;
 		position += getPositionBobbing();
 		rotation += getRotationBobbing();
 	}
 
 	pub fn remove() void {
+		if (!enabled) return;
 		position -= getPositionBobbing();
 		rotation -= getRotationBobbing();
 	}

@@ -553,6 +553,10 @@ pub const MenuBackGround = struct {
 		const oldRotation = camera.rotation;
 		defer camera.rotation = oldRotation;
 
+		const oldViewBobEnabled = camera.ViewBobbing.enabled;
+		defer camera.ViewBobbing.enabled = oldViewBobEnabled;
+		camera.ViewBobbing.enabled = false;
+
 		const angles = [_]f32 {std.math.pi/2.0, std.math.pi, std.math.pi*3/2.0, std.math.pi*2};
 
 		// All 4 sides are stored in a single image.
