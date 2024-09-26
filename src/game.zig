@@ -328,7 +328,7 @@ pub const Player = struct { // MARK: Player
 		.min = -outerBoundingBoxExtent,
 		.max = outerBoundingBoxExtent,
 	};
-	const eyeBox: collision.Box = .{
+	pub const eyeBox: collision.Box = .{
 		.min = -Vec3d{outerBoundingBoxExtent[0]*0.2, outerBoundingBoxExtent[1]*0.2, 0.6},
 		.max = Vec3d{outerBoundingBoxExtent[0]*0.2, outerBoundingBoxExtent[1]*0.2, 0.9 - 0.05},
 	};
@@ -722,8 +722,6 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			main.Window.scrollOffset = 0;
 		}
 
-		camera.ViewBobbing.update(deltaTime);
-
 		// This our model for movement on a single frame:
 		// dv/dt = a - λ·v
 		// dx/dt = v
@@ -925,6 +923,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	Player.eyePos = @max(Player.eyeBox.min, @min(Player.eyePos, Player.eyeBox.max));
 	Player.eyeCoyote -= deltaTime;
 
+	camera.ViewBobbing.update(deltaTime);
 	camera.position = Player.getEyePosBlocking();
 
 	const biome = world.?.playerBiome.load(.monotonic);
