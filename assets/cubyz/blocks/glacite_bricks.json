@@ -1,6 +1,6 @@
 {
 	"class" : "stone",
-	"hardness" : 25,
+	"hardness" : 20,
 	"breakingPower" : 1,
 	"drops" : [
 		"auto"

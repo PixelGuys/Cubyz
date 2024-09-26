@@ -11,12 +11,5 @@
 	"collide": false,
 	"absorbedLight" : 0x090501,
 	"model" : "cubyz:cube",
-	"texture" : {
-		"time" : 500,
-		"textures": [
-			"cubyz:water",
-			"cubyz:water_1",
-			"cubyz:water_2"
-		]
-	}
+	"texture" : "cubyz:water",
 }

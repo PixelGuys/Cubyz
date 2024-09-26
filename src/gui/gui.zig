@@ -565,8 +565,8 @@ pub fn toggleGameMenu() void {
 	main.Window.setMouseGrabbed(!main.Window.grabbed);
 	if(main.Window.grabbed) { // Take of the currently held item stack and close some windows
 		if(inventory.carriedItemStack.item) |item| {
-			inventory.carriedItemStack.amount = main.game.Player.inventory__SEND_CHANGES_TO_SERVER.addItem(item, inventory.carriedItemStack.amount);
-			main.network.Protocols.genericUpdate.sendInventory_full(main.game.world.?.conn, main.game.Player.inventory__SEND_CHANGES_TO_SERVER); // TODO(post-java): Add better options to the protocol.
+			inventory.carriedItemStack.amount = main.game.Player.inventory.addItem(item, inventory.carriedItemStack.amount);
+			main.network.Protocols.genericUpdate.sendInventory_full(main.game.world.?.conn, main.game.Player.inventory); // TODO(post-java): Add better options to the protocol.
 			if(inventory.carriedItemStack.amount != 0) {
 				main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, inventory.carriedItemStack, @floatCast(main.game.Player.getPosBlocking()), main.camera.direction, 20);
 			}

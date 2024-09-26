@@ -162,14 +162,14 @@ pub fn onClose() void {
 	availableItems = undefined;
 	for(&craftingGrid) |*itemStack| {
 		if(!itemStack.empty()) {
-			itemStack.amount = main.game.Player.inventory__SEND_CHANGES_TO_SERVER.addItem(itemStack.item.?, itemStack.amount);
+			itemStack.amount = main.game.Player.inventory.addItem(itemStack.item.?, itemStack.amount);
 			if(!itemStack.empty()) {
 				main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, itemStack.*, .{0, 0, 0}, main.camera.direction, 20);
 				itemStack.clear();
 			}
 		}
 	}
-	main.network.Protocols.genericUpdate.sendInventory_full(main.game.world.?.conn, Player.inventory__SEND_CHANGES_TO_SERVER); // TODO(post-java): Add better options to the protocol.
+	main.network.Protocols.genericUpdate.sendInventory_full(main.game.world.?.conn, Player.inventory); // TODO(post-java): Add better options to the protocol.
 	craftingGrid = undefined;
 }
 
