@@ -42,36 +42,36 @@ var itemSlots: [20]*ItemSlot = undefined;
 pub fn tryAddingItems(index: usize, source: *ItemStack, desiredAmount: u16) void {
 	Player.mutex.lock();
 	defer Player.mutex.unlock();
-	const destination = &Player.inventory__SEND_CHANGES_TO_SERVER.items[index];
+	const destination = &Player.inventory.items[index];
 	if(destination.item != null and !std.meta.eql(source.item, destination.item)) return;
 	const actual = destination.add(source.item.?, desiredAmount);
 	source.amount -= actual;
 	if(source.amount == 0) source.item = null;
-	main.network.Protocols.genericUpdate.sendInventory_full(main.game.world.?.conn, Player.inventory__SEND_CHANGES_TO_SERVER); // TODO(post-java): Add better options to the protocol.
+	main.network.Protocols.genericUpdate.sendInventory_full(main.game.world.?.conn, Player.inventory); // TODO(post-java): Add better options to the protocol.
 }
 
 pub fn tryTakingItems(index: usize, destination: *ItemStack, desiredAmount: u16) void {
 	var amount = desiredAmount;
 	Player.mutex.lock();
 	defer Player.mutex.unlock();
-	const source = &Player.inventory__SEND_CHANGES_TO_SERVER.items[index];
+	const source = &Player.inventory.items[index];
 	if(destination.item != null and !std.meta.eql(source.item, destination.item)) return;
 	if(source.item == null) return;
 	amount = @min(amount, source.amount);
 	const actual = destination.add(source.item.?, amount);
 	source.amount -= actual;
 	if(source.amount == 0) source.item = null;
-	main.network.Protocols.genericUpdate.sendInventory_full(main.game.world.?.conn, Player.inventory__SEND_CHANGES_TO_SERVER); // TODO(post-java): Add better options to the protocol.
+	main.network.Protocols.genericUpdate.sendInventory_full(main.game.world.?.conn, Player.inventory); // TODO(post-java): Add better options to the protocol.
 }
 
 pub fn trySwappingItems(index: usize, source: *ItemStack) void {
 	Player.mutex.lock();
 	defer Player.mutex.unlock();
-	const destination = &Player.inventory__SEND_CHANGES_TO_SERVER.items[index];
+	const destination = &Player.inventory.items[index];
 	const swap = destination.*;
 	destination.* = source.*;
 	source.* = swap;
-	main.network.Protocols.genericUpdate.sendInventory_full(main.game.world.?.conn, Player.inventory__SEND_CHANGES_TO_SERVER); // TODO(post-java): Add better options to the protocol.
+	main.network.Protocols.genericUpdate.sendInventory_full(main.game.world.?.conn, Player.inventory); // TODO(post-java): Add better options to the protocol.
 }
 
 const vtable = ItemSlot.VTable {
@@ -93,7 +93,7 @@ pub fn onOpen() void {
 		const row = HorizontalList.init();
 		for(0..10) |x| {
 			const index: usize = 12 + y*10 + x;
-			const slot = ItemSlot.init(.{0, 0}, Player.inventory__SEND_CHANGES_TO_SERVER.items[index], &vtable, index, .default, .normal);
+			const slot = ItemSlot.init(.{0, 0}, Player.inventory.items[index], &vtable, index, .default, .normal);
 			itemSlots[index - 12] = slot;
 			row.add(slot);
 		}
@@ -115,6 +115,6 @@ pub fn update() void {
 	Player.mutex.lock();
 	defer Player.mutex.unlock();
 	for(&itemSlots, 12..) |slot, i| {
-		slot.updateItemStack(Player.inventory__SEND_CHANGES_TO_SERVER.items[i]);
+		slot.updateItemStack(Player.inventory.items[i]);
 	}
 }

@@ -334,7 +334,7 @@ pub const Player = struct { // MARK: Player
 	pub var isGhost: Atomic(bool) = .init(false);
 	pub var hyperSpeed: Atomic(bool) = .init(false);
 	pub var mutex: std.Thread.Mutex = std.Thread.Mutex{};
-	pub var inventory__SEND_CHANGES_TO_SERVER: Inventory = undefined;
+	pub var inventory: Inventory = undefined;
 	pub var selectedSlot: u32 = 0;
 
 	pub var maxHealth: f32 = 8;
@@ -358,7 +358,7 @@ pub const Player = struct { // MARK: Player
 
 	fn loadFrom(json: JsonElement) void {
 		super.loadFrom(json);
-		inventory__SEND_CHANGES_TO_SERVER.loadFromJson(json.getChild("inventory"));
+		inventory.loadFromJson(json.getChild("inventory"));
 	}
 
 	pub fn setPosBlocking(newPos: Vec3d) void {
@@ -416,12 +416,12 @@ pub const Player = struct { // MARK: Player
 				return;
 			}
 		}
-		main.renderer.MeshSelection.placeBlock(&inventory__SEND_CHANGES_TO_SERVER.items[selectedSlot]);
+		main.renderer.MeshSelection.placeBlock(&inventory.items[selectedSlot]);
 	}
 
 	pub fn breakBlock() void { // TODO: Breaking animation and tools
 		if(!main.Window.grabbed) return;
-		main.renderer.MeshSelection.breakBlock(&inventory__SEND_CHANGES_TO_SERVER.items[selectedSlot]);
+		main.renderer.MeshSelection.breakBlock(&inventory.items[selectedSlot]);
 	}
 
 	pub fn acquireSelectedBlock() void {
@@ -434,8 +434,8 @@ pub const Player = struct { // MARK: Player
 					
 					// Check if there is already a slot with that item type
 					for (0..12) |slotIdx| {
-						if (std.meta.eql(inventory__SEND_CHANGES_TO_SERVER.items[slotIdx].item, item)) {
-							inventory__SEND_CHANGES_TO_SERVER.items[slotIdx] = items.ItemStack {.item = item, .amount = items.itemList[idx].stackSize};
+						if (std.meta.eql(inventory.items[slotIdx].item, item)) {
+							inventory.items[slotIdx] = items.ItemStack {.item = item, .amount = items.itemList[idx].stackSize};
 							selectedSlot = @intCast(slotIdx);
 							isDone = true;
 							break;
@@ -443,15 +443,15 @@ pub const Player = struct { // MARK: Player
 					}
 					if (isDone) break;
 
-					if (inventory__SEND_CHANGES_TO_SERVER.items[selectedSlot].empty()) {
-						inventory__SEND_CHANGES_TO_SERVER.items[selectedSlot] = items.ItemStack {.item = item, .amount = items.itemList[idx].stackSize};
+					if (inventory.items[selectedSlot].empty()) {
+						inventory.items[selectedSlot] = items.ItemStack {.item = item, .amount = items.itemList[idx].stackSize};
 						break;
 					}
 					
 					// Look for an empty slot
 					for (0..12) |slotIdx| {
-						if (inventory__SEND_CHANGES_TO_SERVER.items[slotIdx].empty()) {
-							inventory__SEND_CHANGES_TO_SERVER.items[slotIdx] = items.ItemStack {.item = item, .amount = items.itemList[idx].stackSize};
+						if (inventory.items[slotIdx].empty()) {
+							inventory.items[slotIdx] = items.ItemStack {.item = item, .amount = items.itemList[idx].stackSize};
 							selectedSlot = @intCast(slotIdx);
 							isDone = true;
 							break;
@@ -459,7 +459,7 @@ pub const Player = struct { // MARK: Player
 					}
 					if (isDone) break;
 
-					inventory__SEND_CHANGES_TO_SERVER.items[selectedSlot] = items.ItemStack {.item = item, .amount = items.itemList[idx].stackSize};
+					inventory.items[selectedSlot] = items.ItemStack {.item = item, .amount = items.itemList[idx].stackSize};
 					break;
 				}
 			}
@@ -492,7 +492,7 @@ pub const World = struct { // MARK: World
 			.milliTime = std.time.milliTimestamp(),
 		};
 		self.itemDrops.init(main.globalAllocator, self);
-		Player.inventory__SEND_CHANGES_TO_SERVER = Inventory.init(main.globalAllocator, 32);
+		Player.inventory = Inventory.init(main.globalAllocator, 32);
 		network.Protocols.handShake.clientSide(self.conn, settings.playerName);
 
 		main.Window.setMouseGrabbed(true);
@@ -523,7 +523,7 @@ pub const World = struct { // MARK: World
 		renderer.mesh_storage.deinit();
 		renderer.mesh_storage.init();
 		assets.unloadAssets();
-		Player.inventory__SEND_CHANGES_TO_SERVER.deinit(main.globalAllocator);
+		Player.inventory.deinit(main.globalAllocator);
 	}
 
 	pub fn finishHandshake(self: *World, json: JsonElement) !void {

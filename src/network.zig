@@ -1048,9 +1048,9 @@ pub const Protocols = struct {
 					};
 					game.Player.mutex.lock();
 					defer game.Player.mutex.unlock();
-					const remaining = game.Player.inventory__SEND_CHANGES_TO_SERVER.addItem(item, json.get(u16, "amount", 0));
+					const remaining = game.Player.inventory.addItem(item, json.get(u16, "amount", 0));
 
-					sendInventory_full(conn, game.Player.inventory__SEND_CHANGES_TO_SERVER);
+					sendInventory_full(conn, game.Player.inventory);
 					if(remaining != 0) {
 						// Couldn't collect everything → drop it again.
 						itemStackDrop(conn, ItemStack{.item=item, .amount=remaining}, game.Player.super.pos, Vec3f{0, 0, 0}, 0);

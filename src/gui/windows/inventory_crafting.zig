@@ -66,7 +66,7 @@ fn tryTakingItems(recipeIndex: usize, destination: *ItemStack, _: u16) void {
 	if(!destination.canAddAll(resultItem.item.?, resultItem.amount)) return;
 	for(recipe.sourceItems, recipe.sourceAmounts) |item, _amount| {
 		var amount = _amount;
-		for(main.game.Player.inventory__SEND_CHANGES_TO_SERVER.items) |*itemStack| {
+		for(main.game.Player.inventory.items) |*itemStack| {
 			if(itemStack.item) |invItem| {
 				if(invItem == .baseItem and invItem.baseItem == item) {
 					if(amount >= itemStack.amount) {
@@ -94,7 +94,7 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 		amount.* = 0;
 	}
 	// Figure out what items are available in the inventory:
-	for(main.game.Player.inventory__SEND_CHANGES_TO_SERVER.items) |itemStack| {
+	for(main.game.Player.inventory.items) |itemStack| {
 		addItemStackToAvailable(itemStack);
 	}
 	addItemStackToAvailable(gui.inventory.carriedItemStack);

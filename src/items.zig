@@ -1238,8 +1238,8 @@ pub const Inventory = struct { // MARK: Inventory
 		return self.items[slot].item;
 	}
 
-	pub fn getStack(self: Inventory, slot: usize) *ItemStack {
-		return &self.items[slot];
+	pub fn getStack(self: Inventory, slot: usize) ItemStack {
+		return self.items[slot];
 	}
 
 	pub fn getAmount(self: Inventory, slot: usize) u16 {
