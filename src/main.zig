@@ -22,6 +22,7 @@ pub const rotation = @import("rotation.zig");
 pub const settings = @import("settings.zig");
 pub const utils = @import("utils.zig");
 pub const vec = @import("vec.zig");
+pub const ZonElement = @import("zon.zig").ZonElement;
 
 pub const Window = @import("graphics/Window.zig");
 
@@ -549,4 +550,5 @@ pub fn main() void { // MARK: main()
 
 test "abc" {
 	_ = @import("json.zig");
+	_ = @import("zon.zig");
 }

@@ -4,67 +4,57 @@ const main = @import("main.zig");
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 const List = main.List;
 
-const JsonType = enum(u8) {
-	JsonInt,
-	JsonFloat,
-	JsonString,
-	JsonStringOwned,
-	JsonBool,
-	JsonNull,
-	JsonArray,
-	JsonObject
-};
-pub const JsonElement = union(JsonType) { // MARK: JsonElement
-	JsonInt: i64,
-	JsonFloat: f64,
-	JsonString: []const u8,
-	JsonStringOwned: []const u8,
-	JsonBool: bool,
-	JsonNull: void,
-	JsonArray: *List(JsonElement),
-	JsonObject: *std.StringHashMap(JsonElement),
+pub const ZonElement = union(enum) { // MARK: Zon
+	int: i64,
+	float: f64,
+	string: []const u8,
+	stringOwned: []const u8,
+	bool: bool,
+	null: void,
+	array: *List(ZonElement),
+	object: *std.StringHashMap(ZonElement),
 
-	pub fn initObject(allocator: NeverFailingAllocator) JsonElement {
-		const map = allocator.create(std.StringHashMap(JsonElement));
+	pub fn initObject(allocator: NeverFailingAllocator) ZonElement {
+		const map = allocator.create(std.StringHashMap(ZonElement));
 		map.* = .init(allocator.allocator);
-		return JsonElement{.JsonObject=map};
+		return .{.object = map};
 	}
 
-	pub fn initArray(allocator: NeverFailingAllocator) JsonElement {
-		const list = allocator.create(List(JsonElement));
+	pub fn initArray(allocator: NeverFailingAllocator) ZonElement {
+		const list = allocator.create(List(ZonElement));
 		list.* = .init(allocator);
-		return JsonElement{.JsonArray=list};
+		return .{.array = list};
 	}
 
-	pub fn getAtIndex(self: *const JsonElement, comptime _type: type, index: usize, replacement: _type) _type {
-		if(self.* != .JsonArray) {
+	pub fn getAtIndex(self: *const ZonElement, comptime _type: type, index: usize, replacement: _type) _type {
+		if(self.* != .array) {
 			return replacement;
 		} else {
-			if(index < self.JsonArray.items.len) {
-				return self.JsonArray.items[index].as(_type, replacement);
+			if(index < self.array.items.len) {
+				return self.array.items[index].as(_type, replacement);
 			} else {
 				return replacement;
 			}
 		}
 	}
 
-	pub fn getChildAtIndex(self: *const JsonElement, index: usize) JsonElement {
-		if(self.* != .JsonArray) {
-			return JsonElement{.JsonNull={}};
+	pub fn getChildAtIndex(self: *const ZonElement, index: usize) ZonElement {
+		if(self.* != .array) {
+			return .null;
 		} else {
-			if(index < self.JsonArray.items.len) {
-				return self.JsonArray.items[index];
+			if(index < self.array.items.len) {
+				return self.array.items[index];
 			} else {
-				return JsonElement{.JsonNull={}};
+				return .null;
 			}
 		}
 	}
 
-	pub fn get(self: *const JsonElement, comptime _type: type, key: []const u8, replacement: _type) _type {
-		if(self.* != .JsonObject) {
+	pub fn get(self: *const ZonElement, comptime _type: type, key: []const u8, replacement: _type) _type {
+		if(self.* != .object) {
 			return replacement;
 		} else {
-			if(self.JsonObject.get(key)) |elem| {
+			if(self.object.get(key)) |elem| {
 				return elem.as(_type, replacement);
 			} else {
 				return replacement;
@@ -72,19 +62,19 @@ pub const JsonElement = union(JsonType) { // MARK: JsonElement
 		}
 	}
 
-	pub fn getChild(self: *const JsonElement, key: []const u8) JsonElement {
-		if(self.* != .JsonObject) {
-			return JsonElement{.JsonNull={}};
+	pub fn getChild(self: *const ZonElement, key: []const u8) ZonElement {
+		if(self.* != .object) {
+			return .null;
 		} else {
-			if(self.JsonObject.get(key)) |elem| {
+			if(self.object.get(key)) |elem| {
 				return elem;
 			} else {
-				return JsonElement{.JsonNull={}};
+				return .null;
 			}
 		}
 	}
 
-	pub fn as(self: *const JsonElement, comptime T: type, replacement: T) T {
+	pub fn as(self: *const ZonElement, comptime T: type, replacement: T) T {
 		comptime var typeInfo : std.builtin.Type = @typeInfo(T);
 		comptime var innerType = T;
 		inline while(typeInfo == .optional) {
@@ -94,15 +84,15 @@ pub const JsonElement = union(JsonType) { // MARK: JsonElement
 		switch(typeInfo) {
 			.int => {
 				switch(self.*) {
-					.JsonInt => return std.math.cast(innerType, self.JsonInt) orelse replacement,
-					.JsonFloat => return std.math.lossyCast(innerType, std.math.round(self.JsonFloat)),
+					.int => return std.math.cast(innerType, self.int) orelse replacement,
+					.float => return std.math.lossyCast(innerType, std.math.round(self.float)),
 					else => return replacement,
 				}
 			},
 			.float => {
 				switch(self.*) {
-					.JsonInt => return @floatFromInt(self.JsonInt),
-					.JsonFloat => return @floatCast(self.JsonFloat),
+					.int => return @floatFromInt(self.int),
+					.float => return @floatCast(self.float),
 					else => return replacement,
 				}
 			},
@@ -125,14 +115,14 @@ pub const JsonElement = union(JsonType) { // MARK: JsonElement
 				switch(innerType) {
 					[]const u8 => {
 						switch(self.*) {
-							.JsonString => return self.JsonString,
-							.JsonStringOwned => return self.JsonStringOwned,
+							.string => return self.string,
+							.stringOwned => return self.stringOwned,
 							else => return replacement,
 						}
 					},
 					bool => {
 						switch(self.*) {
-							.JsonBool => return self.JsonBool,
+							.bool => return self.bool,
 							else => return replacement,
 						}
 					},
@@ -144,15 +134,15 @@ pub const JsonElement = union(JsonType) { // MARK: JsonElement
 		}
 	}
 
-	fn createElementFromRandomType(value: anytype, allocator: std.mem.Allocator) JsonElement {
+	fn createElementFromRandomType(value: anytype, allocator: std.mem.Allocator) ZonElement {
 		switch(@typeInfo(@TypeOf(value))) {
-			.void => return JsonElement{.JsonNull={}},
-			.null => return JsonElement{.JsonNull={}},
-			.bool => return JsonElement{.JsonBool=value},
-			.int, .comptime_int => return JsonElement{.JsonInt=@intCast(value)},
-			.float, .comptime_float => return JsonElement{.JsonFloat=@floatCast(value)},
+			.void => return .null,
+			.null => return .null,
+			.bool => return .{.bool = value},
+			.int, .comptime_int => return .{.int = @intCast(value)},
+			.float, .comptime_float => return .{.float = @floatCast(value)},
 			.@"union" => {
-				if(@TypeOf(value) == JsonElement) {
+				if(@TypeOf(value) == ZonElement) {
 					return value;
 				} else {
 					@compileError("Unknown value type.");
@@ -160,11 +150,11 @@ pub const JsonElement = union(JsonType) { // MARK: JsonElement
 			},
 			.pointer => |ptr| {
 				if(ptr.child == u8 and ptr.size == .Slice) {
-					return JsonElement{.JsonString=value};
+					return .{.string = value};
 				} else {
 					const childInfo = @typeInfo(ptr.child);
 					if(ptr.size == .One and childInfo == .array and childInfo.array.child == u8) {
-						return JsonElement{.JsonString=value};
+						return .{.string = value};
 					} else {
 						@compileError("Unknown value type.");
 					}
@@ -174,20 +164,20 @@ pub const JsonElement = union(JsonType) { // MARK: JsonElement
 				if(value) |val| {
 					return createElementFromRandomType(val, allocator);
 				} else {
-					return JsonElement{.JsonNull={}};
+					return .null;
 				}
 			},
 			.vector => {
 				const len = @typeInfo(@TypeOf(value)).vector.len;
 				const result = initArray(main.utils.NeverFailingAllocator{.allocator = allocator, .IAssertThatTheProvidedAllocatorCantFail = {}});
-				result.JsonArray.ensureCapacity(len);
+				result.array.ensureCapacity(len);
 				inline for(0..len) |i| {
-					result.JsonArray.appendAssumeCapacity(createElementFromRandomType(value[i], allocator));
+					result.array.appendAssumeCapacity(createElementFromRandomType(value[i], allocator));
 				}
 				return result;
 			},
 			else => {
-				if(@TypeOf(value) == JsonElement) {
+				if(@TypeOf(value) == ZonElement) {
 					return value;
 				} else {
 					@compileError("Unknown value type.");
@@ -196,53 +186,53 @@ pub const JsonElement = union(JsonType) { // MARK: JsonElement
 		}
 	}
 
-	pub fn put(self: *const JsonElement, key: []const u8, value: anytype) void {
-		const result = createElementFromRandomType(value, self.JsonObject.allocator);
-		self.JsonObject.put(self.JsonObject.allocator.dupe(u8, key) catch unreachable, result) catch unreachable;
+	pub fn put(self: *const ZonElement, key: []const u8, value: anytype) void {
+		const result = createElementFromRandomType(value, self.object.allocator);
+		self.object.put(self.object.allocator.dupe(u8, key) catch unreachable, result) catch unreachable;
 	}
 
-	pub fn putOwnedString(self: *const JsonElement, key: []const u8, value: []const u8) void {
-		const result = JsonElement{.JsonStringOwned = self.JsonObject.allocator.dupe(u8, value) catch unreachable};
-		self.JsonObject.put(self.JsonObject.allocator.dupe(u8, key) catch unreachable, result) catch unreachable;
+	pub fn putOwnedString(self: *const ZonElement, key: []const u8, value: []const u8) void {
+		const result = ZonElement{.stringOwned = self.object.allocator.dupe(u8, value) catch unreachable};
+		self.object.put(self.object.allocator.dupe(u8, key) catch unreachable, result) catch unreachable;
 	}
 
-	pub fn toSlice(self: *const JsonElement) []JsonElement {
+	pub fn toSlice(self: *const ZonElement) []ZonElement {
 		switch(self.*) {
-			.JsonArray => |arr| {
+			.array => |arr| {
 				return arr.items;
 			},
-			else => return &[0]JsonElement{},
+			else => return &.{},
 		}
 	}
 
-	pub fn free(self: *const JsonElement, allocator: NeverFailingAllocator) void {
+	pub fn free(self: *const ZonElement, allocator: NeverFailingAllocator) void {
 		switch(self.*) {
-			.JsonInt, .JsonFloat, .JsonBool, .JsonNull, .JsonString => return,
-			.JsonStringOwned => {
-				allocator.free(self.JsonStringOwned);
+			.int, .float, .bool, .null, .string => return,
+			.stringOwned => {
+				allocator.free(self.stringOwned);
 			},
-			.JsonArray => {
-				for(self.JsonArray.items) |*elem| {
+			.array => {
+				for(self.array.items) |*elem| {
 					elem.free(allocator);
 				}
-				self.JsonArray.clearAndFree();
-				allocator.destroy(self.JsonArray);
+				self.array.clearAndFree();
+				allocator.destroy(self.array);
 			},
-			.JsonObject => {
-				var iterator = self.JsonObject.iterator();
+			.object => {
+				var iterator = self.object.iterator();
 				while(true) {
 					const elem = iterator.next() orelse break;
 					allocator.free(elem.key_ptr.*);
 					elem.value_ptr.free(allocator);
 				}
-				self.JsonObject.clearAndFree();
-				allocator.destroy(self.JsonObject);
+				self.object.clearAndFree();
+				allocator.destroy(self.object);
 			},
 		}
 	}
 
-	pub fn isNull(self: *const JsonElement) bool {
-		return self.* == .JsonNull;
+	pub fn isNull(self: *const ZonElement) bool {
+		return self.* == .null;
 	}
 
 	fn escape(list: *List(u8), string: []const u8) void {
@@ -261,32 +251,47 @@ pub const JsonElement = union(JsonType) { // MARK: JsonElement
 			list.append('\t');
 		}
 	}
-	fn recurseToString(json: JsonElement, list: *List(u8), tabs: u32, comptime visualCharacters: bool) void {
-		switch(json) {
-			.JsonInt => |value| {
+	fn isValidIdentifierName(str: []const u8) bool {
+		if(str.len == 0) return false;
+		if(!std.ascii.isAlphabetic(str[0])) return false;
+		for(str[1..]) |c| {
+			if(!std.ascii.isAlphanumeric(c)) return false;
+		}
+		return true;
+	}
+	fn recurseToString(zon: ZonElement, list: *List(u8), tabs: u32, comptime visualCharacters: bool) void {
+		switch(zon) {
+			.int => |value| {
 				std.fmt.formatInt(value, 10, .lower, .{}, list.writer()) catch unreachable;
 			},
-			.JsonFloat => |value| {
+			.float => |value| {
 				var buf: [std.fmt.format_float.bufferSize(.scientific, @TypeOf(value))]u8 = undefined;
 				list.appendSlice(std.fmt.format_float.formatFloat(&buf, value, .{.mode = .scientific}) catch unreachable);
 			},
-			.JsonBool => |value| {
+			.bool => |value| {
 				if(value) {
 					list.appendSlice("true");
 				} else {
 					list.appendSlice("false");
 				}
 			},
-			.JsonNull => {
+			.null => {
 				list.appendSlice("null");
 			},
-			.JsonString, .JsonStringOwned => |value| {
-				list.append('\"');
-				escape(list, value);
-				list.append('\"');
+			.string, .stringOwned => |value| {
+				if(isValidIdentifierName(value)) {
+					// Can use an enum literal:
+					list.append('.');
+					list.appendSlice(value);
+				} else {
+					list.append('\"');
+					escape(list, value);
+					list.append('\"');
+				}
 			},
-			.JsonArray => |array| {
-				list.append('[');
+			.array => |array| {
+				if(visualCharacters) list.append('.');
+				list.append('{');
 				for(array.items, 0..) |elem, i| {
 					if(i != 0) {
 						list.append(',');
@@ -295,11 +300,13 @@ pub const JsonElement = union(JsonType) { // MARK: JsonElement
 					if(visualCharacters) writeTabs(list, tabs + 1);
 					recurseToString(elem, list, tabs + 1, visualCharacters);
 				}
+				if(visualCharacters) list.append(',');
 				if(visualCharacters) list.append('\n');
 				if(visualCharacters) writeTabs(list, tabs);
-				list.append(']');
+				list.append('}');
 			},
-			.JsonObject => |obj| {
+			.object => |obj| {
+				if(visualCharacters) list.append('.');
 				list.append('{');
 				var iterator = obj.iterator();
 				var first: bool = true;
@@ -310,37 +317,44 @@ pub const JsonElement = union(JsonType) { // MARK: JsonElement
 					}
 					if(visualCharacters) list.append('\n');
 					if(visualCharacters) writeTabs(list, tabs + 1);
-					list.append('\"');
-					list.appendSlice(elem.key_ptr.*);
-					list.append('\"');
+					if(isValidIdentifierName(elem.key_ptr.*)) {
+						if(visualCharacters) list.append('.');
+						list.appendSlice(elem.key_ptr.*);
+					} else {
+						if(visualCharacters) list.append('@');
+						list.append('\"');
+						escape(list, elem.key_ptr.*);
+						list.append('\"');
+					}
 					if(visualCharacters) list.append(' ');
-					list.append(':');
+					list.append('=');
 					if(visualCharacters) list.append(' ');
 
 					recurseToString(elem.value_ptr.*, list, tabs + 1, visualCharacters);
 					first = false;
 				}
+				if(visualCharacters) list.append(',');
 				if(visualCharacters) list.append('\n');
 				if(visualCharacters) writeTabs(list, tabs);
 				list.append('}');
 			},
 		}
 	}
-	pub fn toString(json: JsonElement, allocator: NeverFailingAllocator) []const u8 {
+	pub fn toString(zon: ZonElement, allocator: NeverFailingAllocator) []const u8 {
 		var string = List(u8).init(allocator);
-		recurseToString(json, &string, 0, true);
+		recurseToString(zon, &string, 0, true);
 		return string.toOwnedSlice();
 	}
 
 	/// Ignores all the visual characters(spaces, tabs and newlines) and allows adding a custom prefix(which is for example required by networking).
-	pub fn toStringEfficient(json: JsonElement, allocator: NeverFailingAllocator, prefix: []const u8) []const u8 {
+	pub fn toStringEfficient(zon: ZonElement, allocator: NeverFailingAllocator, prefix: []const u8) []const u8 {
 		var string = List(u8).init(allocator);
 		string.appendSlice(prefix);
-		recurseToString(json, &string, 0, false);
+		recurseToString(zon, &string, 0, false);
 		return string.toOwnedSlice();
 	}
 
-	pub fn parseFromString(allocator: NeverFailingAllocator, string: []const u8) JsonElement {
+	pub fn parseFromString(allocator: NeverFailingAllocator, string: []const u8) ZonElement {
 		var index: u32 = 0;
 		Parser.skipWhitespaces(string, &index);
 		return Parser.parseElement(allocator, string, &index);
@@ -370,7 +384,7 @@ const Parser = struct { // MARK: Parser
 	}
 
 	/// Assumes that the region starts with a number character ('+', '-', '.' or a digit).
-	fn parseNumber(chars: []const u8, index: *u32) JsonElement {
+	fn parseNumber(chars: []const u8, index: *u32) ZonElement {
 		var sign: i2 = 1;
 		if(chars[index.*] == '-') {
 			sign = -1;
@@ -398,7 +412,7 @@ const Parser = struct { // MARK: Parser
 					}
 				}
 			}
-			return JsonElement{.JsonInt = sign*intPart};
+			return .{.int = sign*intPart};
 		}
 		while(index.* < chars.len): (index.* += 1) {
 			switch(chars[index.*]) {
@@ -411,7 +425,7 @@ const Parser = struct { // MARK: Parser
 			}
 		}
 		if(index.* >= chars.len or (chars[index.*] != '.' and chars[index.*] != 'e' and chars[index.*] != 'E')) { // This is an int
-			return JsonElement{.JsonInt = sign*intPart};
+			return .{.int = sign*intPart};
 		}
 		// So this is a float apparently.
 
@@ -452,7 +466,7 @@ const Parser = struct { // MARK: Parser
 				}
 			}
 		}
-		return JsonElement{.JsonFloat = @as(f64, @floatFromInt(sign))*(@as(f64, @floatFromInt(intPart)) + floatPart)*std.math.pow(f64, 10, @as(f64, @floatFromInt(exponentSign*exponent)))};
+		return .{.float = @as(f64, @floatFromInt(sign))*(@as(f64, @floatFromInt(intPart)) + floatPart)*std.math.pow(f64, 10, @as(f64, @floatFromInt(exponentSign*exponent)))};
 	}
 
 	fn parseString(allocator: NeverFailingAllocator, chars: []const u8, index: *u32) []const u8 {
@@ -486,15 +500,35 @@ const Parser = struct { // MARK: Parser
 		return builder.toOwnedSlice();
 	}
 
-	fn parseArray(allocator: NeverFailingAllocator, chars: []const u8, index: *u32) JsonElement {
-		const list = allocator.create(List(JsonElement));
+	fn parseIdentifierOrStringOrEnumLiteral(allocator: NeverFailingAllocator, chars: []const u8, index: *u32) []const u8 {
+		var builder = List(u8).init(allocator);
+		if(index.* == chars.len) return &.{};
+		if(chars[index.*] == '@') {
+			index.* += 1;
+		}
+		if(index.* == chars.len) return &.{};
+		if(chars[index.*] == '"') {
+			index.* += 1;
+			return parseString(allocator, chars, index);
+		}
+		while(index.* < chars.len): (index.* += 1) {
+			switch(chars[index.*]) {
+				'a'...'z', 'A'...'Z', '0'...'9' => |c| builder.append(c),
+				else => break,
+			}
+		}
+		return builder.toOwnedSlice();
+	}
+
+	fn parseArray(allocator: NeverFailingAllocator, chars: []const u8, index: *u32) ZonElement {
+		const list = allocator.create(List(ZonElement));
 		list.* = .init(allocator);
 		while(index.* < chars.len) {
 			skipWhitespaces(chars, index);
 			if(index.* >= chars.len) break;
-			if(chars[index.*] == ']') {
+			if(chars[index.*] == '}') {
 				index.* += 1;
-				return JsonElement{.JsonArray=list};
+				return .{.array = list};
 			}
 			list.append(parseElement(allocator, chars, index));
 			skipWhitespaces(chars, index);
@@ -503,33 +537,29 @@ const Parser = struct { // MARK: Parser
 			}
 		}
 		printError(chars, index.*, "Unexpected end of file in array parsing.");
-		return JsonElement{.JsonArray=list};
+		return .{.array=list};
 	}
 
-	fn parseObject(allocator: NeverFailingAllocator, chars: []const u8, index: *u32) JsonElement {
-		const map = allocator.create(std.StringHashMap(JsonElement));
+	fn parseObject(allocator: NeverFailingAllocator, chars: []const u8, index: *u32) ZonElement {
+		const map = allocator.create(std.StringHashMap(ZonElement));
 		map.* = .init(allocator.allocator);
 		while(index.* < chars.len) {
 			skipWhitespaces(chars, index);
 			if(index.* >= chars.len) break;
 			if(chars[index.*] == '}') {
 				index.* += 1;
-				return JsonElement{.JsonObject=map};
-			} else if(chars[index.*] != '\"') {
-				printError(chars, index.*, "Unexpected character in object parsing.");
-				index.* += 1;
-				continue;
+				return .{.object = map};
 			}
-			index.* += 1;
-			const key: []const u8 = parseString(allocator, chars, index);
+			if(chars[index.*] == '.') index.* += 1; // Just ignoring the dot in front of identifiers, the file might as well not have for all I care.
+			const key: []const u8 = parseIdentifierOrStringOrEnumLiteral(allocator, chars, index);
 			skipWhitespaces(chars, index);
-			while(index.* < chars.len and chars[index.*] != ':') {
-				printError(chars, index.*, "Unexpected character in object parsing, expected ':'.");
+			while(index.* < chars.len and chars[index.*] != '=') {
+				printError(chars, index.*, "Unexpected character in object parsing, expected '='.");
 				index.* += 1;
 			}
 			index.* += 1;
 			skipWhitespaces(chars, index);
-			const value: JsonElement = parseElement(allocator, chars, index);
+			const value: ZonElement = parseElement(allocator, chars, index);
 			if(map.fetchPut(key, value) catch unreachable) |old| {
 				printError(chars, index.*, "Duplicate key.");
 				allocator.free(old.key);
@@ -541,7 +571,7 @@ const Parser = struct { // MARK: Parser
 			}
 		}
 		printError(chars, index.*, "Unexpected end of file in object parsing.");
-		return JsonElement{.JsonObject=map};
+		return .{.object = map};
 	}
 
 	fn printError(chars: []const u8, index: u32, msg: []const u8) void {
@@ -587,13 +617,13 @@ const Parser = struct { // MARK: Parser
 	}
 
 	/// Assumes that the region starts with a non-space character.
-	fn parseElement(allocator: NeverFailingAllocator, chars: []const u8, index: *u32) JsonElement {
+	fn parseElement(allocator: NeverFailingAllocator, chars: []const u8, index: *u32) ZonElement {
 		if(index.* >= chars.len) {
 			printError(chars, index.*, "Unexpected end of file.");
-			return JsonElement{.JsonNull={}};
+			return .null;
 		}
-		switch(chars[index.*]) {
-			'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '-', '.' => {
+		sw: switch(chars[index.*]) {
+			'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '-' => {
 				return parseNumber(chars, index);
 			},
 			't' => { // Value can only be true.
@@ -603,7 +633,7 @@ const Parser = struct { // MARK: Parser
 					printError(chars, index.*, "Unknown expression, interpreting as true.");
 				}
 				index.* += 4;
-				return JsonElement{.JsonBool=true};
+				return .{.bool = true};
 			},
 			'f' => { // Value can only be false.
 				if(index.* + 4 >= chars.len) {
@@ -612,7 +642,7 @@ const Parser = struct { // MARK: Parser
 					printError(chars, index.*, "Unknown expression, interpreting as false.");
 				}
 				index.* += 5;
-				return JsonElement{.JsonBool=false};
+				return .{.bool = false};
 			},
 			'n' => { // Value can only be null.
 				if(index.* + 3 >= chars.len) {
@@ -621,23 +651,54 @@ const Parser = struct { // MARK: Parser
 					printError(chars, index.*, "Unknown expression, interpreting as null.");
 				}
 				index.* += 4;
-				return JsonElement{.JsonNull={}};
+				return .{.null = {}};
 			},
 			'\"' => {
 				index.* += 1;
-				return JsonElement{.JsonStringOwned = parseString(allocator, chars, index)};
+				return .{.stringOwned = parseString(allocator, chars, index)};
 			},
-			'[' => {
+			'.' => {
 				index.* += 1;
-				return parseArray(allocator, chars, index);
+				if(index.* >= chars.len) {
+					printError(chars, index.*, "Unexpected end of file.");
+					return .null;
+				}
+				if(chars[index.*] == '{') continue :sw '{';
+				if(std.ascii.isDigit(chars[index.*])) {
+					index.* -= 1;
+					return parseNumber(chars, index);
+				}
+				return .{.stringOwned = parseIdentifierOrStringOrEnumLiteral(allocator, chars, index)};
 			},
 			'{' => {
 				index.* += 1;
-				return parseObject(allocator, chars, index);
+				skipWhitespaces(chars, index);
+				var foundEqualSign: bool = false;
+				var i: usize = index.*;
+				while(i < chars.len) : (i += 1) {
+					if(chars[i] == '"') {
+						i += 1;
+						while(chars[i] != '"' and i < chars.len) {
+							if(chars[i] == '\\') i += 1;
+							i += 1;
+						}
+						continue;
+					}
+					if(chars[i] == ',') break;
+					if(chars[i] == '=') {
+						foundEqualSign = true;
+						break;
+					}
+				}
+				if(foundEqualSign) {
+					return parseObject(allocator, chars, index);
+				} else {
+					return parseArray(allocator, chars, index);
+				}
 			},
 			else => {
 				printError(chars, index.*, "Unexpected character.");
-				return JsonElement{.JsonNull={}};
+				return .null;
 			}
 		}
 	}
@@ -679,30 +740,30 @@ test "skipWhitespaces" {
 test "number parsing" {
 	// Integers:
 	var index: u32 = 0;
-	try std.testing.expectEqual(Parser.parseNumber("0", &index), JsonElement{.JsonInt = 0});
+	try std.testing.expectEqual(Parser.parseNumber("0", &index), ZonElement{.int = 0});
 	index = 0;
-	try std.testing.expectEqual(Parser.parseNumber("+0", &index), JsonElement{.JsonInt = 0});
+	try std.testing.expectEqual(Parser.parseNumber("+0", &index), ZonElement{.int = 0});
 	index = 0;
-	try std.testing.expectEqual(Parser.parseNumber("abcd", &index), JsonElement{.JsonInt = 0});
+	try std.testing.expectEqual(Parser.parseNumber("abcd", &index), ZonElement{.int = 0});
 	index = 0;
-	try std.testing.expectEqual(Parser.parseNumber("-0+1", &index), JsonElement{.JsonInt = 0});
+	try std.testing.expectEqual(Parser.parseNumber("-0+1", &index), ZonElement{.int = 0});
 	index = 5;
-	try std.testing.expectEqual(Parser.parseNumber(" abcd185473896", &index), JsonElement{.JsonInt = 185473896});
+	try std.testing.expectEqual(Parser.parseNumber(" abcd185473896", &index), ZonElement{.int = 185473896});
 	index = 0;
-	try std.testing.expectEqual(Parser.parseNumber("0xff34786056.0", &index), JsonElement{.JsonInt = 0xff34786056});
+	try std.testing.expectEqual(Parser.parseNumber("0xff34786056.0", &index), ZonElement{.int = 0xff34786056});
 	// Floats:
 	index = 0;
-	try std.testing.expectEqual(Parser.parseNumber("0.0", &index), JsonElement{.JsonFloat = 0.0});
+	try std.testing.expectEqual(Parser.parseNumber("0.0", &index), ZonElement{.float = 0.0});
 	index = 0;
-	try std.testing.expectEqual(Parser.parseNumber("0e10e10", &index), JsonElement{.JsonFloat = 0.0});
+	try std.testing.expectEqual(Parser.parseNumber("0e10e10", &index), ZonElement{.float = 0.0});
 	index = 0;
-	try std.testing.expectEqual(Parser.parseNumber("-0.0.0", &index), JsonElement{.JsonFloat = 0.0});
+	try std.testing.expectEqual(Parser.parseNumber("-0.0.0", &index), ZonElement{.float = 0.0});
 	index = 0;
-	try std.testing.expectEqual(Parser.parseNumber("0xabcd.0e10+-+-", &index), JsonElement{.JsonInt = 0xabcd});
+	try std.testing.expectEqual(Parser.parseNumber("0xabcd.0e10+-+-", &index), ZonElement{.int = 0xabcd});
 	index = 0;
-	try std.testing.expectApproxEqAbs(Parser.parseNumber("1.234589e10", &index).JsonFloat, 1.234589e10, 1.0);
+	try std.testing.expectApproxEqAbs(Parser.parseNumber("1.234589e10", &index).float, 1.234589e10, 1.0);
 	index = 5;
-	try std.testing.expectApproxEqAbs(Parser.parseNumber("_____0.0000000000234589e10abcdfe", &index).JsonFloat, 0.234589, 1e-10);
+	try std.testing.expectApproxEqAbs(Parser.parseNumber("_____0.0000000000234589e10abcdfe", &index).float, 0.234589, 1e-10);
 }
 
 test "element parsing" {
@@ -710,29 +771,29 @@ test "element parsing" {
 	const allocator = wrap.allocator();
 	// Integers:
 	var index: u32 = 0;
-	try std.testing.expectEqual(Parser.parseElement(allocator, "0", &index), JsonElement{.JsonInt = 0});
+	try std.testing.expectEqual(Parser.parseElement(allocator, "0", &index), ZonElement{.int = 0});
 	index = 0;
-	try std.testing.expectEqual(Parser.parseElement(allocator, "0xff34786056.0, true", &index), JsonElement{.JsonInt = 0xff34786056});
+	try std.testing.expectEqual(Parser.parseElement(allocator, "0xff34786056.0, true", &index), ZonElement{.int = 0xff34786056});
 	// Floats:
-	index = 9;
-	try std.testing.expectEqual(Parser.parseElement(allocator, "{\"abcd\": 0.0,}", &index), JsonElement{.JsonFloat = 0.0});
+	index = 10;
+	try std.testing.expectEqual(Parser.parseElement(allocator, ".{.abcd = 0.0,}", &index), ZonElement{.float = 0.0});
 	index = 0;
-	try std.testing.expectApproxEqAbs((Parser.parseElement(allocator, "1543.234589e10", &index)).JsonFloat, 1543.234589e10, 1.0);
+	try std.testing.expectApproxEqAbs((Parser.parseElement(allocator, "1543.234589e10", &index)).float, 1543.234589e10, 1.0);
 	index = 5;
-	try std.testing.expectApproxEqAbs((Parser.parseElement(allocator, "_____0.0000000000675849301354e10abcdfe", &index)).JsonFloat, 0.675849301354, 1e-10);
+	try std.testing.expectApproxEqAbs((Parser.parseElement(allocator, "_____0.0000000000675849301354e10abcdfe", &index)).float, 0.675849301354, 1e-10);
 	// Null:
 	index = 0;
-	try std.testing.expectEqual(Parser.parseElement(allocator, "null", &index), JsonElement{.JsonNull={}});
+	try std.testing.expectEqual(Parser.parseElement(allocator, "null", &index), ZonElement{.null={}});
 	// true:
 	index = 0;
-	try std.testing.expectEqual(Parser.parseElement(allocator, "true", &index), JsonElement{.JsonBool=true});
+	try std.testing.expectEqual(Parser.parseElement(allocator, "true", &index), ZonElement{.bool=true});
 	// false:
 	index = 0;
-	try std.testing.expectEqual(Parser.parseElement(allocator, "false", &index), JsonElement{.JsonBool=false});
+	try std.testing.expectEqual(Parser.parseElement(allocator, "false", &index), ZonElement{.bool=false});
 
 	// String:
 	index = 0;
-	var result: JsonElement = Parser.parseElement(allocator, "\"abcd\\\"\\\\ħσ→ ↑Φ∫€ ⌬ ε→Π\"", &index);
+	var result: ZonElement = Parser.parseElement(allocator, "\"abcd\\\"\\\\ħσ→ ↑Φ∫€ ⌬ ε→Π\"", &index);
 	try std.testing.expectEqualStrings("abcd\"\\ħσ→ ↑Φ∫€ ⌬ ε→Π", result.as([]const u8, ""));
 	result.free(allocator);
 	index = 0;
@@ -742,36 +803,36 @@ test "element parsing" {
 
 	// Object:
 	index = 0;
-	result = Parser.parseElement(allocator, "{\"name\": 1}", &index);
-	try std.testing.expectEqual(JsonType.JsonObject, std.meta.activeTag(result));
-	try std.testing.expectEqual(result.JsonObject.get("name"), JsonElement{.JsonInt = 1});
+	result = Parser.parseElement(allocator, ".{.name = 1}", &index);
+	try std.testing.expectEqual(.object, std.meta.activeTag(result));
+	try std.testing.expectEqual(result.object.get("name"), ZonElement{.int = 1});
 	result.free(allocator);
 	index = 0;
-	result = Parser.parseElement(allocator, "{\"object\":{},}", &index);
-	try std.testing.expectEqual(JsonType.JsonObject, std.meta.activeTag(result));
-	try std.testing.expectEqual(JsonType.JsonObject, std.meta.activeTag(result.JsonObject.get("object") orelse JsonType.JsonNull));
+	result = Parser.parseElement(allocator, ".{@\"object\"=.{},}", &index);
+	try std.testing.expectEqual(.object, std.meta.activeTag(result));
+	try std.testing.expectEqual(.array, std.meta.activeTag(result.object.get("object") orelse .null));
 	result.free(allocator);
 	index = 0;
-	result = Parser.parseElement(allocator, "{   \"object1\"   :   \"\"  \n, \"object2\"  :\t{\n},\"object3\"   :1.0e4\t,\"\nobject1\":{},\"\tobject1θ\":[],}", &index);
-	try std.testing.expectEqual(JsonType.JsonObject, std.meta.activeTag(result));
-	try std.testing.expectEqual(JsonType.JsonFloat, std.meta.activeTag(result.JsonObject.get("object3") orelse JsonType.JsonNull));
-	try std.testing.expectEqual(JsonType.JsonStringOwned, std.meta.activeTag(result.JsonObject.get("object1") orelse JsonType.JsonNull));
-	try std.testing.expectEqual(JsonType.JsonObject, std.meta.activeTag(result.JsonObject.get("\nobject1") orelse JsonType.JsonNull));
-	try std.testing.expectEqual(JsonType.JsonArray, std.meta.activeTag(result.JsonObject.get("\tobject1θ") orelse JsonType.JsonNull));
+	result = Parser.parseElement(allocator, ".{   .object1   =   \"\"  \n, .object2  =\t.{\n},.object3   =1.0e4\t,@\"\nobject1\"=.{},@\"\tobject1θ\"=.{},}", &index);
+	try std.testing.expectEqual(.object, std.meta.activeTag(result));
+	try std.testing.expectEqual(.float, std.meta.activeTag(result.object.get("object3") orelse .null));
+	try std.testing.expectEqual(.stringOwned, std.meta.activeTag(result.object.get("object1") orelse .null));
+	try std.testing.expectEqual(.array, std.meta.activeTag(result.object.get("\nobject1") orelse .null));
+	try std.testing.expectEqual(.array, std.meta.activeTag(result.object.get("\tobject1θ") orelse .null));
 	result.free(allocator);
 
 	//Array:
 	index = 0;
-	result = Parser.parseElement(allocator, "[\"name\",1]", &index);
-	try std.testing.expectEqual(JsonType.JsonArray, std.meta.activeTag(result));
-	try std.testing.expectEqual(JsonType.JsonStringOwned, std.meta.activeTag(result.JsonArray.items[0]));
-	try std.testing.expectEqual(JsonElement{.JsonInt=1}, result.JsonArray.items[1]);
+	result = Parser.parseElement(allocator, ".{.name,1}", &index);
+	try std.testing.expectEqual(.array, std.meta.activeTag(result));
+	try std.testing.expectEqual(.stringOwned, std.meta.activeTag(result.array.items[0]));
+	try std.testing.expectEqual(ZonElement{.int=1}, result.array.items[1]);
 	result.free(allocator);
 	index = 0;
-	result = Parser.parseElement(allocator, "[   \"name\"\t1\n,    17.1]", &index);
-	try std.testing.expectEqual(JsonType.JsonArray, std.meta.activeTag(result));
-	try std.testing.expectEqual(JsonType.JsonStringOwned, std.meta.activeTag(result.JsonArray.items[0]));
-	try std.testing.expectEqual(JsonElement{.JsonInt=1}, result.JsonArray.items[1]);
-	try std.testing.expectEqual(JsonElement{.JsonFloat=17.1}, result.JsonArray.items[2]);
+	result = Parser.parseElement(allocator, ".{   \"name\"\t1\n,    17.1}", &index);
+	try std.testing.expectEqual(.array, std.meta.activeTag(result));
+	try std.testing.expectEqual(.stringOwned, std.meta.activeTag(result.array.items[0]));
+	try std.testing.expectEqual(ZonElement{.int=1}, result.array.items[1]);
+	try std.testing.expectEqual(ZonElement{.float=17.1}, result.array.items[2]);
 	result.free(allocator);
 }
