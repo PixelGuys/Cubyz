@@ -1,0 +1,28 @@
+.{
+	.properties = .{
+		.mountain
+	},
+	.radius = 320,
+	.minHeight = 128,
+	.maxHeight = 128,
+	
+	.interpolation = .linear,
+	.mountains = 150,
+
+	.chance = 0,
+	
+	.music = "cubyz:out_of_breath",
+
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:mountains",
+			.chance = 0.2,
+		},
+	},
+
+	.maxSubBiomeCount = 1,
+
+	.ground_structure = .{
+		"cubyz:cobblestone",
+	},
+}

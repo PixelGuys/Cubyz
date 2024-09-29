@@ -1,0 +1,30 @@
+.{
+	.properties = .{
+		.cold,
+	},
+	.minHeight = 22,
+	.maxHeight = 40,
+	
+	.roughness = 10,
+	.hills = 10,
+
+	.validPlayerSpawn = true,
+	
+	.ground_structure = .{
+		"0 to 1 cubyz:grass",
+		"2 to 3 cubyz:soil",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:simple_tree",
+			.leaves = "cubyz:pine_needles",
+			.log = "cubyz:pine_log",
+			.top = "cubyz:pine_top",
+			.chance = 0.4,
+			.type = .pyramid,
+			.height = 8,
+			.height_variation = 5,
+			.branched = false,
+		},
+	},
+}
