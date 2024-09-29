@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("root");
 const random = main.random;
-const JsonElement = main.JsonElement;
+const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
 const CaveMap = terrain.CaveMap;
 const CaveBiomeMap = terrain.CaveBiomeMap;
@@ -20,7 +20,7 @@ pub const generatorSeed = 0x65c7f9fdc0641f94;
 
 var water: u16 = undefined;
 
-pub fn init(parameters: JsonElement) void {
+pub fn init(parameters: ZonElement) void {
 	_ = parameters;
 	water = main.blocks.getByID("cubyz:water");
 }

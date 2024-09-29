@@ -10,7 +10,7 @@ const files = main.files;
 const utils = main.utils;
 const ItemDropManager = main.itemdrop.ItemDropManager;
 const ItemStack = main.items.ItemStack;
-const JsonElement = main.JsonElement;
+const ZonElement = main.ZonElement;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
 const Vec3d = vec.Vec3d;
@@ -249,7 +249,7 @@ const ChunkManager = struct { // MARK: ChunkManager
 		}
 	};
 
-	pub fn init(world: *ServerWorld, settings: JsonElement) !ChunkManager { // MARK: init()
+	pub fn init(world: *ServerWorld, settings: ZonElement) !ChunkManager { // MARK: init()
 		const self = ChunkManager {
 			.world = world,
 			.terrainGenerationProfile = try server.terrain.TerrainGenerationProfile.init(settings, world.seed),
@@ -376,12 +376,12 @@ const WorldIO = struct { // MARK: WorldIO
 	}
 
 	pub fn hasWorldData(self: WorldIO) bool {
-		return self.dir.hasFile("world.dat");
+		return self.dir.hasFile("world.zig.zon");
 	}
 
 	/// Load the seed, which is needed before custom item and ore generation.
 	pub fn loadWorldSeed(self: WorldIO) !u64 {
-		const worldData = try self.dir.readToJson(main.stackAllocator, "world.dat");
+		const worldData = try self.dir.readToZon(main.stackAllocator, "world.zig.zon");
 		defer worldData.free(main.stackAllocator);
 		if(worldData.get(u32, "version", 0) != worldDataVersion) {
 			std.log.err("Cannot read world file version {}. Expected version {}.", .{worldData.get(u32, "version", 0), worldDataVersion});
@@ -391,7 +391,7 @@ const WorldIO = struct { // MARK: WorldIO
 	}
 
 	pub fn loadWorldData(self: WorldIO) !void {
-		const worldData = try self.dir.readToJson(main.stackAllocator, "world.dat");
+		const worldData = try self.dir.readToZon(main.stackAllocator, "world.zig.zon");
 		defer worldData.free(main.stackAllocator);
 
 		self.world.doGameTimeCycle = worldData.get(bool, "doGameTimeCycle", true);
@@ -401,7 +401,7 @@ const WorldIO = struct { // MARK: WorldIO
 	}
 
 	pub fn saveWorldData(self: WorldIO) !void {
-		const worldData = JsonElement.initObject(main.stackAllocator);
+		const worldData = ZonElement.initObject(main.stackAllocator);
 		defer worldData.free(main.stackAllocator);
 		worldData.put("version", worldDataVersion);
 		worldData.put("seed", self.world.seed);
@@ -410,7 +410,7 @@ const WorldIO = struct { // MARK: WorldIO
 		worldData.put("spawn", self.world.spawn);
 		worldData.put("biomeChecksum", self.world.biomeChecksum);
 		// TODO: Save entities
-		try self.dir.writeJson("world.dat", worldData);
+		try self.dir.writeZon("world.zig.zon", worldData);
 	}
 };
 
@@ -455,7 +455,35 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		milliTimeStamp: i64,
 	};
 
-	pub fn init(name: []const u8, nullGeneratorSettings: ?JsonElement) !*ServerWorld { // MARK: init()
+	pub fn init(name: []const u8, nullGeneratorSettings: ?ZonElement) !*ServerWorld { // MARK: init()
+		covert_old_worlds: { // TODO: Remove after #480
+			const worldDatPath = try std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/world.dat", .{name});
+			defer main.stackAllocator.free(worldDatPath);
+			if(std.fs.cwd().openFile(worldDatPath, .{})) |file| {
+				file.close();
+				std.log.warn("Detected old world in saves/{s}. Converting all .json files to .zig.zon", .{name});
+				const dirPath = try std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{name});
+				defer main.stackAllocator.free(dirPath);
+				var dir = std.fs.cwd().openDir(dirPath, .{.iterate = true}) catch |err| {
+					std.log.err("Could not open world directory to convert json files: {s}. Conversion aborted", .{@errorName(err)});
+					break :covert_old_worlds;
+				};
+				defer dir.close();
+
+				var walker = dir.walk(main.stackAllocator.allocator) catch unreachable;
+				defer walker.deinit();
+				while(walker.next() catch |err| {
+					std.log.err("Got error while iterating through json files directory: {s}", .{@errorName(err)});
+					break :covert_old_worlds;
+				}) |entry| {
+					if(entry.kind == .file and (std.ascii.endsWithIgnoreCase(entry.basename, ".json") or std.mem.eql(u8, entry.basename, "world.dat"))) {
+						const fullPath = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}", .{dirPath, entry.path}) catch unreachable;
+						defer main.stackAllocator.free(fullPath);
+						main.convertJsonToZon(fullPath);
+					}
+				}
+			} else |_| {}
+		}
 		const self = main.globalAllocator.create(ServerWorld);
 		errdefer main.globalAllocator.destroy(self);
 		self.* = ServerWorld {
@@ -474,21 +502,21 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		defer loadArena.deinit();
 		const arenaAllocator = loadArena.allocator();
 		var buf: [32768]u8 = undefined;
-		var generatorSettings: JsonElement = undefined;
+		var generatorSettings: ZonElement = undefined;
 		if(nullGeneratorSettings) |_generatorSettings| {
 			generatorSettings = _generatorSettings;
 			// Store generator settings:
-			try files.writeJson(try std.fmt.bufPrint(&buf, "saves/{s}/generatorSettings.json", .{name}), generatorSettings);
+			try files.writeZon(try std.fmt.bufPrint(&buf, "saves/{s}/generatorSettings.zig.zon", .{name}), generatorSettings);
 		} else { // Read the generator settings:
-			generatorSettings = try files.readToJson(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/generatorSettings.json", .{name}));
+			generatorSettings = try files.readToZon(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/generatorSettings.zig.zon", .{name}));
 		}
 		self.wio = WorldIO.init(try files.openDir(try std.fmt.bufPrint(&buf, "saves/{s}", .{name})), self);
 		errdefer self.wio.deinit();
-		const blockPaletteJson = files.readToJson(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/palette.json", .{name})) catch .JsonNull;
-		self.blockPalette = try main.assets.Palette.init(main.globalAllocator, blockPaletteJson, "cubyz:air");
+		const blockPaletteZon = files.readToZon(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/palette.zig.zon", .{name})) catch .null;
+		self.blockPalette = try main.assets.Palette.init(main.globalAllocator, blockPaletteZon, "cubyz:air");
 		errdefer self.blockPalette.deinit();
-		const biomePaletteJson = files.readToJson(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/biome_palette.json", .{name})) catch .JsonNull;
-		self.biomePalette = try main.assets.Palette.init(main.globalAllocator, biomePaletteJson, null);
+		const biomePaletteZon = files.readToZon(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/biome_palette.zig.zon", .{name})) catch .null;
+		self.biomePalette = try main.assets.Palette.init(main.globalAllocator, biomePaletteZon, null);
 		errdefer self.biomePalette.deinit();
 		errdefer main.assets.unloadAssets();
 		if(self.wio.hasWorldData()) {
@@ -501,8 +529,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			try self.wio.saveWorldData();
 		}
 		// Store the block palette now that everything is loaded.
-		try files.writeJson(try std.fmt.bufPrint(&buf, "saves/{s}/palette.json", .{name}), self.blockPalette.save(arenaAllocator));
-		try files.writeJson(try std.fmt.bufPrint(&buf, "saves/{s}/biome_palette.json", .{name}), self.biomePalette.save(arenaAllocator));
+		try files.writeZon(try std.fmt.bufPrint(&buf, "saves/{s}/palette.zig.zon", .{name}), self.blockPalette.save(arenaAllocator));
+		try files.writeZon(try std.fmt.bufPrint(&buf, "saves/{s}/biome_palette.zig.zon", .{name}), self.biomePalette.save(arenaAllocator));
 
 		self.chunkManager = try ChunkManager.init(self, generatorSettings);
 		errdefer self.chunkManager.deinit();
@@ -726,18 +754,18 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 		try self.wio.saveWorldData();
 		var buf: [32768]u8 = undefined;
-		const json = files.readToJson(main.stackAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/items.json", .{self.name})) catch .JsonNull;
-		defer json.free(main.stackAllocator);
-		self.itemDropManager.loadFrom(json);
+		const zon = files.readToZon(main.stackAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/items.zig.zon", .{self.name})) catch .null;
+		defer zon.free(main.stackAllocator);
+		self.itemDropManager.loadFrom(zon);
 	}
 
 
 	pub fn findPlayer(self: *ServerWorld, user: *User) void {
 		var buf: [1024]u8 = undefined;
-		const playerData = files.readToJson(main.stackAllocator, std.fmt.bufPrint(&buf, "saves/{s}/player/{s}.json", .{self.name, user.name}) catch "") catch .JsonNull; // TODO: Utils.escapeFolderName(user.name)
+		const playerData = files.readToZon(main.stackAllocator, std.fmt.bufPrint(&buf, "saves/{s}/player/{s}.zig.zon", .{self.name, user.name}) catch "") catch .null; // TODO: Utils.escapeFolderName(user.name)
 		defer playerData.free(main.stackAllocator);
 		const player = &user.player;
-		if(playerData == .JsonNull) {
+		if(playerData == .null) {
 			// Generate a new player:
 			player.pos = @floatFromInt(self.spawn);
 		} else {
@@ -748,10 +776,10 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	pub fn forceSave(self: *ServerWorld) !void {
 		// TODO: Save chunks and player data
 		try self.wio.saveWorldData();
-		const itemDropJson = self.itemDropManager.store(main.stackAllocator);
-		defer itemDropJson.free(main.stackAllocator);
+		const itemDropZon = self.itemDropManager.store(main.stackAllocator);
+		defer itemDropZon.free(main.stackAllocator);
 		var buf: [32768]u8 = undefined;
-		try files.writeJson(try std.fmt.bufPrint(&buf, "saves/{s}/items.json", .{self.name}), itemDropJson);
+		try files.writeZon(try std.fmt.bufPrint(&buf, "saves/{s}/items.zig.zon", .{self.name}), itemDropZon);
 	}
 
 	fn isValidSpawnLocation(_: *ServerWorld, wx: i32, wy: i32) bool {

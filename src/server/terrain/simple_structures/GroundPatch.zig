@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("root");
 const random = main.random;
-const JsonElement = main.JsonElement;
+const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
 const CaveMap = terrain.CaveMap;
 const vec = main.vec;
@@ -23,7 +23,7 @@ variation: f32,
 depth: i32,
 smoothness: f32,
 
-pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: JsonElement) *GroundPatch {
+pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) *GroundPatch {
 	const self = arenaAllocator.create(GroundPatch);
 	self.* = .{
 		.blockType = main.blocks.getByID(parameters.get([]const u8, "block", "")),

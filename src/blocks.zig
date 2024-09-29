@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const main = @import("root");
-const JsonElement = @import("json.zig").JsonElement;
+const ZonElement = @import("zon.zig").ZonElement;
 const Neighbor = @import("chunk.zig").Neighbor;
 const graphics = @import("graphics.zig");
 const Shader = graphics.Shader;
@@ -99,32 +99,32 @@ pub fn deinit() void {
 	unfinishedOreSourceBlockIds.deinit();
 }
 
-pub fn register(_: []const u8, id: []const u8, json: JsonElement) u16 {
+pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	if(reverseIndices.contains(id)) {
 		std.log.warn("Registered block with id {s} twice!", .{id});
 	}
 	_id[size] = allocator.dupe(u8, id);
 	reverseIndices.put(_id[size], @intCast(size)) catch unreachable;
 
-	_mode[size] = rotation.getByID(json.get([]const u8, "rotation", "no_rotation"));
-	_breakingPower[size] = json.get(f32, "breakingPower", 0);
-	_hardness[size] = json.get(f32, "hardness", 1);
+	_mode[size] = rotation.getByID(zon.get([]const u8, "rotation", "no_rotation"));
+	_breakingPower[size] = zon.get(f32, "breakingPower", 0);
+	_hardness[size] = zon.get(f32, "hardness", 1);
 
-	_blockClass[size] = std.meta.stringToEnum(BlockClass, json.get([]const u8, "class", "stone")) orelse .stone;
-	_light[size] = json.get(u32, "emittedLight", 0);
-	_absorption[size] = json.get(u32, "absorbedLight", 0xffffff);
-	_degradable[size] = json.get(bool, "degradable", false);
-	_selectable[size] = json.get(bool, "selectable", true);
-	_solid[size] = json.get(bool, "solid", true);
-	_gui[size] = allocator.dupe(u8, json.get([]const u8, "gui", ""));
-	_transparent[size] = json.get(bool, "transparent", false);
-	_collide[size] = json.get(bool, "collide", true);
-	_alwaysViewThrough[size] = json.get(bool, "alwaysViewThrough", false);
-	_viewThrough[size] = json.get(bool, "viewThrough", false) or _transparent[size] or _alwaysViewThrough[size];
-	_hasBackFace[size] = json.get(bool, "hasBackFace", false);
+	_blockClass[size] = std.meta.stringToEnum(BlockClass, zon.get([]const u8, "class", "stone")) orelse .stone;
+	_light[size] = zon.get(u32, "emittedLight", 0);
+	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
+	_degradable[size] = zon.get(bool, "degradable", false);
+	_selectable[size] = zon.get(bool, "selectable", true);
+	_solid[size] = zon.get(bool, "solid", true);
+	_gui[size] = allocator.dupe(u8, zon.get([]const u8, "gui", ""));
+	_transparent[size] = zon.get(bool, "transparent", false);
+	_collide[size] = zon.get(bool, "collide", true);
+	_alwaysViewThrough[size] = zon.get(bool, "alwaysViewThrough", false);
+	_viewThrough[size] = zon.get(bool, "viewThrough", false) or _transparent[size] or _alwaysViewThrough[size];
+	_hasBackFace[size] = zon.get(bool, "hasBackFace", false);
 
-	const oreProperties = json.getChild("ore");
-	if (oreProperties != .JsonNull) {
+	const oreProperties = zon.getChild("ore");
+	if (oreProperties != .null) {
 		// Extract the ids:
 		const sourceBlocks = oreProperties.getChild("sources").toSlice();
 		const oreIds = main.globalAllocator.alloc([]const u8, sourceBlocks.len);
@@ -146,8 +146,8 @@ pub fn register(_: []const u8, id: []const u8, json: JsonElement) u16 {
 	return @intCast(size - 1);
 }
 
-fn registerBlockDrop(typ: u16, json: JsonElement) void {
-	const drops = json.toSlice();
+fn registerBlockDrop(typ: u16, zon: ZonElement) void {
+	const drops = zon.toSlice();
 
 	var result = allocator.alloc(BlockDrop, drops.len);
 	result.len = 0;
@@ -176,31 +176,31 @@ fn registerBlockDrop(typ: u16, json: JsonElement) void {
 	}
 }
 
-fn registerLodReplacement(typ: u16, json: JsonElement) void {
-	if(json.get(?[]const u8, "lodReplacement", null)) |replacement| {
+fn registerLodReplacement(typ: u16, zon: ZonElement) void {
+	if(zon.get(?[]const u8, "lodReplacement", null)) |replacement| {
 		_lodReplacement[typ] = getByID(replacement);
 	} else {
 		_lodReplacement[typ] = typ;
 	}
 }
 
-fn registerOpaqueVariant(typ: u16, json: JsonElement) void {
-	if(json.get(?[]const u8, "opaqueVariant", null)) |replacement| {
+fn registerOpaqueVariant(typ: u16, zon: ZonElement) void {
+	if(zon.get(?[]const u8, "opaqueVariant", null)) |replacement| {
 		_opaqueVariant[typ] = getByID(replacement);
 	} else {
 		_opaqueVariant[typ] = typ;
 	}
 }
 
-pub fn finishBlocks(jsonElements: std.StringHashMap(JsonElement)) void {
+pub fn finishBlocks(zonElements: std.StringHashMap(ZonElement)) void {
 	var i: u16 = 0;
 	while(i < size) : (i += 1) {
-		registerBlockDrop(i, jsonElements.get(_id[i]) orelse continue);
+		registerBlockDrop(i, zonElements.get(_id[i]) orelse continue);
 	}
 	i = 0;
 	while(i < size) : (i += 1) {
-		registerLodReplacement(i, jsonElements.get(_id[i]) orelse continue);
-		registerOpaqueVariant(i, jsonElements.get(_id[i]) orelse continue);
+		registerLodReplacement(i, zonElements.get(_id[i]) orelse continue);
+		registerOpaqueVariant(i, zonElements.get(_id[i]) orelse continue);
 	}
 	for(ores.items, unfinishedOreSourceBlockIds.items) |*ore, oreIds| {
 		ore.sources = allocator.alloc(u16, oreIds.len);
@@ -499,11 +499,11 @@ pub const meshes = struct { // MARK: meshes
 		var buffer: [1024]u8 = undefined;
 		@memcpy(buffer[0.._path.len], _path);
 		const path = buffer[0.._path.len];
-		const textureInfoPath = extendedPath(path, &buffer, "_textureInfo.json");
-		const textureInfoJson = main.files.readToJson(main.stackAllocator, textureInfoPath) catch .JsonNull;
-		defer textureInfoJson.free(main.stackAllocator);
-		const animationFrames = textureInfoJson.get(u32, "frames", 1);
-		const animationTime = textureInfoJson.get(u32, "time", 1);
+		const textureInfoPath = extendedPath(path, &buffer, "_textureInfo.zig.zon");
+		const textureInfoZon = main.files.readToZon(main.stackAllocator, textureInfoPath) catch .null;
+		defer textureInfoZon.free(main.stackAllocator);
+		const animationFrames = textureInfoZon.get(u32, "frames", 1);
+		const animationTime = textureInfoZon.get(u32, "time", 1);
 		animation.append(.{.startFrame = @intCast(blockTextures.items.len), .frames = animationFrames, .time = animationTime});
 		const base = Image.readFromFile(arenaForWorld.allocator(), path) catch Image.defaultImage;
 		const emission = readAuxillaryTexture(path, &buffer, "_emission.png", Image.emptyImage);
@@ -515,8 +515,8 @@ pub const meshes = struct { // MARK: meshes
 			reflectivityTextures.append(extractAnimationSlice(reflectivity, i, animationFrames));
 			absorptionTextures.append(extractAnimationSlice(absorption, i, animationFrames));
 			textureFogData.append(.{
-				.fogDensity = textureInfoJson.get(f32, "fogDensity", 0.0),
-				.fogColor = textureInfoJson.get(u32, "fogColor", 0xffffff),
+				.fogDensity = textureInfoZon.get(f32, "fogDensity", 0.0),
+				.fogColor = textureInfoZon.get(u32, "fogColor", 0xffffff),
 			});
 		}
 	}
@@ -554,21 +554,21 @@ pub const meshes = struct { // MARK: meshes
 		return result;
 	}
 
-	pub fn getTextureIndices(json: JsonElement, assetFolder: []const u8, textureIndicesRef: []u16) void {
-		const defaultIndex = readTexture(json.get([]const u8, "texture", ""), assetFolder) catch 0;
+	pub fn getTextureIndices(zon: ZonElement, assetFolder: []const u8, textureIndicesRef: []u16) void {
+		const defaultIndex = readTexture(zon.get([]const u8, "texture", ""), assetFolder) catch 0;
 		for(textureIndicesRef, sideNames) |*ref, name| {
-			const textureId = json.get([]const u8, name, "");
+			const textureId = zon.get([]const u8, name, "");
 			ref.* = readTexture(textureId, assetFolder) catch defaultIndex;
 		}
 	}
 
-	pub fn register(assetFolder: []const u8, _: []const u8, json: JsonElement) void {
-		_modelIndex[meshes.size] = _mode[meshes.size].createBlockModel(json.get([]const u8, "model", "cubyz:cube"));
+	pub fn register(assetFolder: []const u8, _: []const u8, zon: ZonElement) void {
+		_modelIndex[meshes.size] = _mode[meshes.size].createBlockModel(zon.get([]const u8, "model", "cubyz:cube"));
 
 		// The actual model is loaded later, in the rendering thread.
 		// But textures can be loaded here:
 
-		getTextureIndices(json, assetFolder, &textureData[meshes.size].textureIndices);
+		getTextureIndices(zon, assetFolder, &textureData[meshes.size].textureIndices);
 
 		maxTextureCount[meshes.size] = @intCast(textureIDs.items.len);
 

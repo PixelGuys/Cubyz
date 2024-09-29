@@ -40,17 +40,17 @@ fn flawedCreateWorld() !void {
 	} else |_| {}
 	try main.files.makeDir(saveFolder);
 	{
-		const generatorSettingsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/generatorSettings.json", .{worldName}) catch unreachable;
+		const generatorSettingsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/generatorSettings.zig.zon", .{worldName}) catch unreachable;
 		defer main.stackAllocator.free(generatorSettingsPath);
-		const generatorSettings = main.JsonElement.initObject(main.stackAllocator);
+		const generatorSettings = main.ZonElement.initObject(main.stackAllocator);
 		defer generatorSettings.free(main.stackAllocator);
-		const climateGenerator = main.JsonElement.initObject(main.stackAllocator);
+		const climateGenerator = main.ZonElement.initObject(main.stackAllocator);
 		climateGenerator.put("id", "cubyz:noise_based_voronoi"); // TODO: Make this configurable
 		generatorSettings.put("climateGenerator", climateGenerator);
-		const mapGenerator = main.JsonElement.initObject(main.stackAllocator);
+		const mapGenerator = main.ZonElement.initObject(main.stackAllocator);
 		mapGenerator.put("id", "cubyz:mapgen_v1"); // TODO: Make this configurable
 		generatorSettings.put("mapGenerator", mapGenerator);
-		try main.files.writeJson(generatorSettingsPath, generatorSettings);
+		try main.files.writeZon(generatorSettingsPath, generatorSettings);
 	}
 	{ // Make assets subfolder
 		const assetsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets", .{worldName}) catch unreachable;

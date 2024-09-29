@@ -5,7 +5,7 @@ const main = @import("root");
 const ServerChunk = main.chunk.ServerChunk;
 const ChunkPosition = main.chunk.ChunkPosition;
 const Cache = main.utils.Cache;
-const JsonElement = main.JsonElement;
+const ZonElement = main.ZonElement;
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
@@ -98,7 +98,7 @@ pub const StructureMapFragment = struct {
 
 /// A generator for the cave map.
 pub const StructureMapGenerator = struct {
-	init: *const fn(parameters: JsonElement) void,
+	init: *const fn(parameters: ZonElement) void,
 	deinit: *const fn() void,
 	generate: *const fn(map: *StructureMapFragment, seed: u64) void,
 	/// Used to prioritize certain generators over others.
@@ -120,7 +120,7 @@ pub const StructureMapGenerator = struct {
 		generatorRegistry.put(main.globalAllocator.allocator, Generator.id, self) catch unreachable;
 	}
 
-	pub fn getAndInitGenerators(allocator: NeverFailingAllocator, settings: JsonElement) []StructureMapGenerator {
+	pub fn getAndInitGenerators(allocator: NeverFailingAllocator, settings: ZonElement) []StructureMapGenerator {
 		const list = allocator.alloc(StructureMapGenerator, generatorRegistry.size);
 		var iterator = generatorRegistry.iterator();
 		var i: usize = 0;

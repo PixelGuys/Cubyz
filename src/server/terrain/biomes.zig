@@ -3,7 +3,7 @@ const std = @import("std");
 const main = @import("root");
 const blocks = main.blocks;
 const ServerChunk = main.chunk.ServerChunk;
-const JsonElement = main.JsonElement;
+const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 const vec = @import("main.vec");
@@ -19,7 +19,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 		underground,
 	};
 	const VTable = struct {
-		loadModel: *const fn(arenaAllocator: NeverFailingAllocator, parameters: JsonElement) *anyopaque,
+		loadModel: *const fn(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) *anyopaque,
 		generate: *const fn(self: *anyopaque, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64, isCeiling: bool) void,
 		hashFunction: *const fn(self: *anyopaque) u64,
 		generationMode: GenerationMode,
@@ -30,7 +30,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 	chance: f32,
 	generationMode: GenerationMode,
 
-	pub fn initModel(parameters: JsonElement) ?SimpleStructureModel {
+	pub fn initModel(parameters: ZonElement) ?SimpleStructureModel {
 		const id = parameters.get([]const u8, "id", "");
 		const vtable = modelRegistry.get(id) orelse {
 			std.log.err("Couldn't find structure model with id {s}", .{id});
@@ -84,7 +84,7 @@ const Stripe = struct { // MARK: Stripe
 	minWidth: f64,
 	maxWidth: f64,
 
-	pub fn init(parameters: JsonElement) Stripe {
+	pub fn init(parameters: ZonElement) Stripe {
 		var dir: ?Vec3d = parameters.get(?Vec3d, "direction", null);
 		if(dir != null) {
 			dir = main.vec.normalize(dir.?);
@@ -94,7 +94,7 @@ const Stripe = struct { // MARK: Stripe
 		
 		var minDistance: f64 = 0;
 		var maxDistance: f64 = 0;
-		if (parameters.JsonObject.get("distance")) |dist| {
+		if (parameters.object.get("distance")) |dist| {
 			minDistance = dist.as(f64, 0);
 			maxDistance = dist.as(f64, 0);
 		} else {
@@ -104,7 +104,7 @@ const Stripe = struct { // MARK: Stripe
 
 		var minOffset: f64 = 0;
 		var maxOffset: f64 = 0;
-		if (parameters.JsonObject.get("offset")) |off| {
+		if (parameters.object.get("offset")) |off| {
 			minOffset = off.as(f64, 0);
 			maxOffset = off.as(f64, 0);
 		} else {
@@ -114,7 +114,7 @@ const Stripe = struct { // MARK: Stripe
 
 		var minWidth: f64 = 0;
 		var maxWidth: f64 = 0;
-		if (parameters.JsonObject.get("width")) |width| {
+		if (parameters.object.get("width")) |width| {
 			minWidth = width.as(f64, 0);
 			maxWidth = width.as(f64, 0);
 		} else {
@@ -218,9 +218,9 @@ pub const Biome = struct { // MARK: Biome
 		mountain: bool = false,
 		antiMountain: bool = false, //???
 
-		pub fn fromJson(json: JsonElement) GenerationProperties {
+		pub fn fromZon(zon: ZonElement) GenerationProperties {
 			var result: GenerationProperties = .{};
-			for(json.toSlice()) |child| {
+			for(zon.toSlice()) |child| {
 				const property = child.as([]const u8, "");
 				inline for(@typeInfo(GenerationProperties).@"struct".fields) |field| {
 					if(std.mem.eql(u8, field.name, property)) {
@@ -263,44 +263,44 @@ pub const Biome = struct { // MARK: Biome
 	isValidPlayerSpawn: bool,
 	chance: f32,
 
-	pub fn init(self: *Biome, id: []const u8, paletteId: u32, json: JsonElement) void {
+	pub fn init(self: *Biome, id: []const u8, paletteId: u32, zon: ZonElement) void {
 		self.* = Biome {
 			.id = main.globalAllocator.dupe(u8, id),
 			.paletteId = paletteId,
-			.properties = GenerationProperties.fromJson(json.getChild("properties")),
-			.isCave = json.get(bool, "isCave", false),
-			.radius = json.get(f32, "radius", 256),
-			.stoneBlockType = blocks.getByID(json.get([]const u8, "stoneBlock", "cubyz:stone")),
-			.fogColor = u32ToVec3(json.get(u32, "fogColor", 0xffccccff)),
-			.fogDensity = json.get(f32, "fogDensity", 1.0)/15.0/128.0,
-			.roughness = json.get(f32, "roughness", 0),
-			.hills = json.get(f32, "hills", 0),
-			.mountains = json.get(f32, "mountains", 0),
-			.interpolation = std.meta.stringToEnum(Interpolation, json.get([]const u8, "interpolation", "square")) orelse .square,
-			.interpolationWeight = @max(json.get(f32, "interpolationWeight", 1), std.math.floatMin(f32)),
-			.caves = json.get(f32, "caves", -0.375),
-			.caveRadiusFactor = @max(-2, @min(2, json.get(f32, "caveRadiusFactor", 1))),
-			.crystals = json.get(u32, "crystals", 0),
-			.minHeight = json.get(i32, "minHeight", std.math.minInt(i32)),
-			.maxHeight = json.get(i32, "maxHeight", std.math.maxInt(i32)),
-			.supportsRivers = json.get(bool, "rivers", false),
-			.preferredMusic = main.globalAllocator.dupe(u8, json.get([]const u8, "music", "cubyz:cubyz")),
-			.isValidPlayerSpawn = json.get(bool, "validPlayerSpawn", false),
-			.chance = json.get(f32, "chance", if(json == .JsonNull) 0 else 1),
-			.maxSubBiomeCount = json.get(f32, "maxSubBiomeCount", std.math.floatMax(f32)),
+			.properties = GenerationProperties.fromZon(zon.getChild("properties")),
+			.isCave = zon.get(bool, "isCave", false),
+			.radius = zon.get(f32, "radius", 256),
+			.stoneBlockType = blocks.getByID(zon.get([]const u8, "stoneBlock", "cubyz:stone")),
+			.fogColor = u32ToVec3(zon.get(u32, "fogColor", 0xffccccff)),
+			.fogDensity = zon.get(f32, "fogDensity", 1.0)/15.0/128.0,
+			.roughness = zon.get(f32, "roughness", 0),
+			.hills = zon.get(f32, "hills", 0),
+			.mountains = zon.get(f32, "mountains", 0),
+			.interpolation = std.meta.stringToEnum(Interpolation, zon.get([]const u8, "interpolation", "square")) orelse .square,
+			.interpolationWeight = @max(zon.get(f32, "interpolationWeight", 1), std.math.floatMin(f32)),
+			.caves = zon.get(f32, "caves", -0.375),
+			.caveRadiusFactor = @max(-2, @min(2, zon.get(f32, "caveRadiusFactor", 1))),
+			.crystals = zon.get(u32, "crystals", 0),
+			.minHeight = zon.get(i32, "minHeight", std.math.minInt(i32)),
+			.maxHeight = zon.get(i32, "maxHeight", std.math.maxInt(i32)),
+			.supportsRivers = zon.get(bool, "rivers", false),
+			.preferredMusic = main.globalAllocator.dupe(u8, zon.get([]const u8, "music", "cubyz:cubyz")),
+			.isValidPlayerSpawn = zon.get(bool, "validPlayerSpawn", false),
+			.chance = zon.get(f32, "chance", if(zon == .null) 0 else 1),
+			.maxSubBiomeCount = zon.get(f32, "maxSubBiomeCount", std.math.floatMax(f32)),
 		};
 		if(self.minHeight > self.maxHeight) {
 			std.log.warn("Biome {s} has invalid height range ({}, {})", .{self.id, self.minHeight, self.maxHeight});
 		}
-		const parentBiomeList = json.getChild("parentBiomes");
+		const parentBiomeList = zon.getChild("parentBiomes");
 		for(parentBiomeList.toSlice()) |parent| {
 			const result = unfinishedSubBiomes.getOrPutValue(main.globalAllocator.allocator, parent.get([]const u8, "id", ""), .{}) catch unreachable;
 			result.value_ptr.append(main.globalAllocator, .{.biomeId = self.id, .chance = parent.get(f32, "chance", 1)});
 		}
 
-		self.structure = BlockStructure.init(main.globalAllocator, json.getChild("ground_structure"));
+		self.structure = BlockStructure.init(main.globalAllocator, zon.getChild("ground_structure"));
 		
-		const structures = json.getChild("structures");
+		const structures = zon.getChild("structures");
 		var vegetation = main.ListUnmanaged(SimpleStructureModel){};
 		var totalChance: f32 = 0;
 		defer vegetation.deinit(main.stackAllocator);
@@ -317,7 +317,7 @@ pub const Biome = struct { // MARK: Biome
 		}
 		self.vegetationModels = main.globalAllocator.dupe(SimpleStructureModel, vegetation.items);
 
-		const stripes = json.getChild("stripes");
+		const stripes = zon.getChild("stripes");
 		self.stripes = main.globalAllocator.alloc(Stripe, stripes.toSlice().len);
 		for (stripes.toSlice(), 0..) |elem, i| {
 			self.stripes[i] = Stripe.init(elem);
@@ -371,14 +371,14 @@ pub const BlockStructure = struct { // MARK: BlockStructure
 	};
 	structure: []BlockStack,
 
-	pub fn init(allocator: NeverFailingAllocator, jsonArray: JsonElement) BlockStructure {
-		const blockStackDescriptions = jsonArray.toSlice();
+	pub fn init(allocator: NeverFailingAllocator, zonArray: ZonElement) BlockStructure {
+		const blockStackDescriptions = zonArray.toSlice();
 		const self = BlockStructure {
 			.structure = allocator.alloc(BlockStack, blockStackDescriptions.len),
 		};
-		for(blockStackDescriptions, self.structure) |jsonString, *blockStack| {
-			blockStack.init(jsonString.as([]const u8, "That's not a json string.")) catch |err| {
-				std.log.warn("Couldn't parse blockStack '{s}': {s} Removing it.", .{jsonString.as([]const u8, "(not a json string)"), @errorName(err)});
+		for(blockStackDescriptions, self.structure) |zonString, *blockStack| {
+			blockStack.init(zonString.as([]const u8, "That's not a zon string.")) catch |err| {
+				std.log.warn("Couldn't parse blockStack '{s}': {s} Removing it.", .{zonString.as([]const u8, "(not a zon string)"), @errorName(err)});
 				blockStack.* = .{};
 			};
 		}
@@ -579,11 +579,11 @@ pub fn deinit() void {
 	SimpleStructureModel.modelRegistry.clearAndFree(main.globalAllocator.allocator);
 }
 
-pub fn register(id: []const u8, paletteId: u32, json: JsonElement) void {
+pub fn register(id: []const u8, paletteId: u32, zon: ZonElement) void {
 	std.log.debug("Registered biome: {s}", .{id});
 	std.debug.assert(!finishedLoading);
 	var biome: Biome = undefined;
-	biome.init(id, paletteId, json);
+	biome.init(id, paletteId, zon);
 	if(biome.isCave) {
 		caveBiomes.append(biome);
 	} else {

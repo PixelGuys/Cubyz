@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("root");
 const random = main.random;
-const JsonElement = main.JsonElement;
+const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
 const CaveMap = terrain.CaveMap;
 const CaveBiomeMap = terrain.CaveBiomeMap;
@@ -19,7 +19,7 @@ pub const priority = 131072;
 
 pub const generatorSeed = 0x2026b65487da9226;
 
-pub fn init(parameters: JsonElement) void {
+pub fn init(parameters: ZonElement) void {
 	_ = parameters;
 }
 

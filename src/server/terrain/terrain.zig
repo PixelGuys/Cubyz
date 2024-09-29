@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const main = @import("root");
-const JsonElement = main.JsonElement;
+const ZonElement = main.ZonElement;
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 pub const biomes = @import("biomes.zig");
@@ -22,7 +22,7 @@ pub const StructureMap = @import("StructureMap.zig");
 
 /// A generator for setting the actual Blocks in each Chunk.
 pub const BlockGenerator = struct {
-	init: *const fn(parameters: JsonElement) void,
+	init: *const fn(parameters: ZonElement) void,
 	deinit: *const fn() void,
 	generate: *const fn(seed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView) void,
 	/// Used to prioritize certain generators over others.
@@ -44,7 +44,7 @@ pub const BlockGenerator = struct {
 		generatorRegistry.put(main.globalAllocator.allocator, GeneratorType.id, self) catch unreachable;
 	}
 
-	fn getAndInitGenerators(allocator: NeverFailingAllocator, settings: JsonElement) []BlockGenerator {
+	fn getAndInitGenerators(allocator: NeverFailingAllocator, settings: ZonElement) []BlockGenerator {
 		const list = allocator.alloc(BlockGenerator, generatorRegistry.size);
 		var iterator = generatorRegistry.iterator();
 		var i: usize = 0;
@@ -75,7 +75,7 @@ pub const TerrainGenerationProfile = struct {
 	generators: []BlockGenerator = undefined,
 	seed: u64,
 
-	pub fn init(settings: JsonElement, seed: u64) !TerrainGenerationProfile {
+	pub fn init(settings: ZonElement, seed: u64) !TerrainGenerationProfile {
 		var self = TerrainGenerationProfile {
 			.seed = seed,
 		};

@@ -3,7 +3,7 @@ const std = @import("std");
 const main = @import("root");
 const graphics = main.graphics;
 const draw = graphics.draw;
-const JsonElement = main.JsonElement;
+const ZonElement = main.ZonElement;
 const settings = main.settings;
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
@@ -184,85 +184,85 @@ pub fn deinit() void {
 }
 
 pub fn save() void { // MARK: save()
-	const guiJson = JsonElement.initObject(main.stackAllocator);
-	defer guiJson.free(main.stackAllocator);
+	const guiZon = ZonElement.initObject(main.stackAllocator);
+	defer guiZon.free(main.stackAllocator);
 	for(windowList.items) |window| {
-		const windowJson = JsonElement.initObject(main.stackAllocator);
+		const windowZon = ZonElement.initObject(main.stackAllocator);
 		for(window.relativePosition, 0..) |relPos, i| {
-			const relPosJson = JsonElement.initObject(main.stackAllocator);
+			const relPosZon = ZonElement.initObject(main.stackAllocator);
 			switch(relPos) {
 				.ratio => |ratio| {
-					relPosJson.put("type", "ratio");
-					relPosJson.put("ratio", ratio);
+					relPosZon.put("type", "ratio");
+					relPosZon.put("ratio", ratio);
 				},
 				.attachedToFrame => |attachedToFrame| {
-					relPosJson.put("type", "attachedToFrame");
-					relPosJson.put("selfAttachmentPoint", @intFromEnum(attachedToFrame.selfAttachmentPoint));
-					relPosJson.put("otherAttachmentPoint", @intFromEnum(attachedToFrame.otherAttachmentPoint));
+					relPosZon.put("type", "attachedToFrame");
+					relPosZon.put("selfAttachmentPoint", @intFromEnum(attachedToFrame.selfAttachmentPoint));
+					relPosZon.put("otherAttachmentPoint", @intFromEnum(attachedToFrame.otherAttachmentPoint));
 				},
 				.relativeToWindow => |relativeToWindow| {
-					relPosJson.put("type", "relativeToWindow");
-					relPosJson.put("reference", relativeToWindow.reference.id);
-					relPosJson.put("ratio", relativeToWindow.ratio);
+					relPosZon.put("type", "relativeToWindow");
+					relPosZon.put("reference", relativeToWindow.reference.id);
+					relPosZon.put("ratio", relativeToWindow.ratio);
 				},
 				.attachedToWindow => |attachedToWindow| {
-					relPosJson.put("type", "attachedToWindow");
-					relPosJson.put("reference", attachedToWindow.reference.id);
-					relPosJson.put("selfAttachmentPoint", @intFromEnum(attachedToWindow.selfAttachmentPoint));
-					relPosJson.put("otherAttachmentPoint", @intFromEnum(attachedToWindow.otherAttachmentPoint));
+					relPosZon.put("type", "attachedToWindow");
+					relPosZon.put("reference", attachedToWindow.reference.id);
+					relPosZon.put("selfAttachmentPoint", @intFromEnum(attachedToWindow.selfAttachmentPoint));
+					relPosZon.put("otherAttachmentPoint", @intFromEnum(attachedToWindow.otherAttachmentPoint));
 				},
 			}
-			windowJson.put(([_][]const u8{"relPos0", "relPos1"})[i], relPosJson);
+			windowZon.put(([_][]const u8{"relPos0", "relPos1"})[i], relPosZon);
 		}
-		windowJson.put("scale", window.scale);
-		guiJson.put(window.id, windowJson);
+		windowZon.put("scale", window.scale);
+		guiZon.put(window.id, windowZon);
 	}
 	
-	main.files.writeJson("gui_layout.json", guiJson) catch |err| {
-		std.log.err("Could not write gui_layout.json: {s}", .{@errorName(err)});
+	main.files.writeZon("gui_layout.zig.zon", guiZon) catch |err| {
+		std.log.err("Could not write gui_layout.zig.zon: {s}", .{@errorName(err)});
 	};
 }
 
 fn load() void {
-	const json: JsonElement = main.files.readToJson(main.stackAllocator, "gui_layout.json") catch |err| blk: {
+	const zon: ZonElement = main.files.readToZon(main.stackAllocator, "gui_layout.zig.zon") catch |err| blk: {
 		if(err != error.FileNotFound) {
-			std.log.err("Could not read gui_layout.json: {s}", .{@errorName(err)});
+			std.log.err("Could not read gui_layout.zig.zon: {s}", .{@errorName(err)});
 		}
-		break :blk JsonElement{.JsonNull={}};
+		break :blk .null;
 	};
-	defer json.free(main.stackAllocator);
+	defer zon.free(main.stackAllocator);
 
 	for(windowList.items) |window| {
-		const windowJson = json.getChild(window.id);
-		if(windowJson == .JsonNull) continue;
+		const windowZon = zon.getChild(window.id);
+		if(windowZon == .null) continue;
 		for(&window.relativePosition, 0..) |*relPos, i| {
-			const relPosJson = windowJson.getChild(([_][]const u8{"relPos0", "relPos1"})[i]);
-			const typ = relPosJson.get([]const u8, "type", "ratio");
+			const relPosZon = windowZon.getChild(([_][]const u8{"relPos0", "relPos1"})[i]);
+			const typ = relPosZon.get([]const u8, "type", "ratio");
 			if(std.mem.eql(u8, typ, "ratio")) {
-				relPos.* = .{.ratio = relPosJson.get(f32, "ratio", 0.5)};
+				relPos.* = .{.ratio = relPosZon.get(f32, "ratio", 0.5)};
 			} else if(std.mem.eql(u8, typ, "attachedToFrame")) {
 				relPos.* = .{.attachedToFrame = .{
-					.selfAttachmentPoint = @enumFromInt(relPosJson.get(u8, "selfAttachmentPoint", 0)),
-					.otherAttachmentPoint = @enumFromInt(relPosJson.get(u8, "otherAttachmentPoint", 0)),
+					.selfAttachmentPoint = @enumFromInt(relPosZon.get(u8, "selfAttachmentPoint", 0)),
+					.otherAttachmentPoint = @enumFromInt(relPosZon.get(u8, "otherAttachmentPoint", 0)),
 				}};
 			} else if(std.mem.eql(u8, typ, "relativeToWindow")) {
-				const reference = getWindowById(relPosJson.get([]const u8, "reference", "")) orelse continue;
+				const reference = getWindowById(relPosZon.get([]const u8, "reference", "")) orelse continue;
 				relPos.* = .{.relativeToWindow = .{
 					.reference = reference,
-					.ratio = relPosJson.get(f32, "ratio", 0.5),
+					.ratio = relPosZon.get(f32, "ratio", 0.5),
 				}};
 			} else if(std.mem.eql(u8, typ, "attachedToWindow")) {
-				const reference = getWindowById(relPosJson.get([]const u8, "reference", "")) orelse continue;
+				const reference = getWindowById(relPosZon.get([]const u8, "reference", "")) orelse continue;
 				relPos.* = .{.attachedToWindow = .{
 					.reference = reference,
-					.selfAttachmentPoint = @enumFromInt(relPosJson.get(u8, "selfAttachmentPoint", 0)),
-					.otherAttachmentPoint = @enumFromInt(relPosJson.get(u8, "otherAttachmentPoint", 0)),
+					.selfAttachmentPoint = @enumFromInt(relPosZon.get(u8, "selfAttachmentPoint", 0)),
+					.otherAttachmentPoint = @enumFromInt(relPosZon.get(u8, "otherAttachmentPoint", 0)),
 				}};
 			} else {
 				std.log.warn("Unknown window attachment type: {s}", .{typ});
 			}
 		}
-		window.scale = windowJson.get(f32, "scale", 1);
+		window.scale = windowZon.get(f32, "scale", 1);
 	}
 }
 

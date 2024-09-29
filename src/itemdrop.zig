@@ -10,7 +10,7 @@ const graphics = @import("graphics.zig");
 const c = graphics.c;
 const items = @import("items.zig");
 const ItemStack = items.ItemStack;
-const JsonElement = @import("json.zig").JsonElement;
+const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main.zig");
 const random = @import("random.zig");
 const settings = @import("settings.zig");
@@ -61,7 +61,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 
 	size: u32 = 0,
 
-	lastUpdates: JsonElement,
+	lastUpdates: ZonElement,
 
 	// TODO: Get rid of this inheritance pattern.
 	addWithIndexAndRotation: *const fn(*ItemDropManager, u16, Vec3d, Vec3d, Vec3f, ItemStack, i32, i32) void,
@@ -70,7 +70,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		self.* = ItemDropManager {
 			.allocator = allocator,
 			.list = std.MultiArrayList(ItemDrop){},
-			.lastUpdates = JsonElement.initArray(allocator),
+			.lastUpdates = ZonElement.initArray(allocator),
 			.isEmpty = .initFull(),
 			.world = world,
 			.gravity = gravity,
@@ -90,28 +90,28 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		self.lastUpdates.free(self.allocator);
 	}
 
-	pub fn loadFrom(self: *ItemDropManager, json: JsonElement) void {
-		const jsonArray = json.getChild("array");
-		for(jsonArray.toSlice()) |elem| {
-			self.addFromJson(elem);
+	pub fn loadFrom(self: *ItemDropManager, zon: ZonElement) void {
+		const zonArray = zon.getChild("array");
+		for(zonArray.toSlice()) |elem| {
+			self.addFromZon(elem);
 		}
 	}
 
-	pub fn addFromJson(self: *ItemDropManager, json: JsonElement) void {
-		const item = items.Item.init(json) catch |err| {
-			const msg = json.toStringEfficient(main.stackAllocator, "");
+	pub fn addFromZon(self: *ItemDropManager, zon: ZonElement) void {
+		const item = items.Item.init(zon) catch |err| {
+			const msg = zon.toStringEfficient(main.stackAllocator, "");
 			defer main.stackAllocator.free(msg);
 			std.log.err("Ignoring invalid item drop {s} which caused {s}", .{msg, @errorName(err)});
 			return;
 		};
 		const properties = .{
-			json.get(Vec3d, "pos", .{0, 0, 0}),
-			json.get(Vec3d, "vel", .{0, 0, 0}),
-			items.ItemStack{.item = item, .amount = json.get(u16, "amount", 1)},
-			json.get(i32, "despawnTime", 60),
+			zon.get(Vec3d, "pos", .{0, 0, 0}),
+			zon.get(Vec3d, "vel", .{0, 0, 0}),
+			items.ItemStack{.item = item, .amount = zon.get(u16, "amount", 1)},
+			zon.get(i32, "despawnTime", 60),
 			0
 		};
-		if(json.get(?u16, "i", null)) |i| {
+		if(zon.get(?u16, "i", null)) |i| {
 			@call(.auto, addWithIndex, .{self, i} ++ properties);
 		} else {
 			@call(.auto, add, .{self} ++ properties);
@@ -134,41 +134,41 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		return _data;
 	}
 
-	pub fn getInitialList(self: *ItemDropManager, allocator: NeverFailingAllocator) JsonElement {
-		var list = JsonElement.initArray(allocator);
+	pub fn getInitialList(self: *ItemDropManager, allocator: NeverFailingAllocator) ZonElement {
+		var list = ZonElement.initArray(allocator);
 		var ii: u32 = 0;
 		while(ii < self.size) : (ii += 1) {
 			const i = self.indices[ii];
-			list.JsonArray.append(self.storeSingle(self.lastUpdates.JsonArray.allocator, i));
+			list.array.append(self.storeSingle(self.lastUpdates.array.allocator, i));
 		}
 		return list;
 	}
 
-	fn storeSingle(self: *ItemDropManager, allocator: NeverFailingAllocator, i: u16) JsonElement {
+	fn storeSingle(self: *ItemDropManager, allocator: NeverFailingAllocator, i: u16) ZonElement {
 		main.utils.assertLocked(&self.mutex);
-		const obj = JsonElement.initObject(allocator);
+		const obj = ZonElement.initObject(allocator);
 		const itemDrop = self.list.get(i);
 		obj.put("i", i);
 		obj.put("pos", itemDrop.pos);
 		obj.put("vel", itemDrop.vel);
-		itemDrop.itemStack.storeToJson(allocator, obj);
+		itemDrop.itemStack.storeToZon(allocator, obj);
 		obj.put("despawnTime", itemDrop.despawnTime);
 		return obj;
 	}
 
-	pub fn store(self: *ItemDropManager, allocator: NeverFailingAllocator) JsonElement {
-		const jsonArray = JsonElement.initArray(allocator);
+	pub fn store(self: *ItemDropManager, allocator: NeverFailingAllocator) ZonElement {
+		const zonArray = ZonElement.initArray(allocator);
 		{
 			self.mutex.lock();
 			defer self.mutex.unlock();
 			for(self.indices[0..self.size]) |i| {
 				const item = self.storeSingle(allocator, i);
-				jsonArray.JsonArray.append(item);
+				zonArray.array.append(item);
 			}
 		}
-		const json = JsonElement.initObject(allocator);
-		json.put("array", jsonArray);
-		return json;
+		const zon = ZonElement.initObject(allocator);
+		zon.put("array", zonArray);
+		return zon;
 	}
 
 	pub fn update(self: *ItemDropManager, deltaTime: f32) void {
@@ -246,9 +246,9 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			self.mutex.lock();
 			defer self.mutex.unlock();
 			if(self.size == maxCapacity) {
-				const json = itemStack.store(main.stackAllocator);
-				defer json.free(main.stackAllocator);
-				const string = json.toString(main.stackAllocator);
+				const zon = itemStack.store(main.stackAllocator);
+				defer zon.free(main.stackAllocator);
+				const string = zon.toString(main.stackAllocator);
 				defer main.stackAllocator.free(string);
 				std.log.err("Item drop capacitiy limit reached. Failed to add itemStack: {s}", .{string});
 				if(itemStack.item) |item| {
@@ -276,7 +276,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			.reverseIndex = @intCast(self.size),
 		});
 		if(self.world != null) {
-			self.lastUpdates.JsonArray.append(self.storeSingle(self.lastUpdates.JsonArray.allocator, i));
+			self.lastUpdates.array.append(self.storeSingle(self.lastUpdates.array.allocator, i));
 		}
 		self.indices[self.size] = i;
 		self.size += 1;
@@ -290,7 +290,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		self.list.items(.itemStack)[i].clear();
 		self.isEmpty.set(i);
 		if(self.world != null) {
-			self.lastUpdates.JsonArray.append(.{.JsonInt = i});
+			self.lastUpdates.array.append(.{.int = i});
 		}
 	}
 
@@ -467,12 +467,12 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 		self.super.remove(i);
 	}
 
-	pub fn loadFrom(self: *ClientItemDropManager, json: JsonElement) void {
-		self.super.loadFrom(json);
+	pub fn loadFrom(self: *ClientItemDropManager, zon: ZonElement) void {
+		self.super.loadFrom(zon);
 	}
 
-	pub fn addFromJson(self: *ClientItemDropManager, json: JsonElement) void {
-		self.super.addFromJson(json);
+	pub fn addFromZon(self: *ClientItemDropManager, zon: ZonElement) void {
+		self.super.addFromZon(zon);
 	}
 };
 

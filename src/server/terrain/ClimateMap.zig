@@ -4,7 +4,7 @@ const Atomic = std.atomic.Value;
 const main = @import("root");
 const Array2D = main.utils.Array2D;
 const Cache = main.utils.Cache;
-const JsonElement = main.JsonElement;
+const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
 const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
 const Biome = terrain.biomes.Biome;
@@ -77,7 +77,7 @@ pub const ClimateMapFragment = struct {
 
 /// Generates the climate(aka Biome) map, which is a rough representation of the world.
 pub const ClimateMapGenerator = struct {
-	init: *const fn(parameters: JsonElement) void,
+	init: *const fn(parameters: ZonElement) void,
 	deinit: *const fn() void,
 	generateMapFragment: *const fn(fragment: *ClimateMapFragment, seed: u64) void,
 

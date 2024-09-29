@@ -5,7 +5,7 @@ const main = @import("root");
 const Chunk = main.chunk.Chunk;
 const ChunkPosition = main.chunk.ChunkPosition;
 const Cache = main.utils.Cache;
-const JsonElement = main.JsonElement;
+const ZonElement = main.ZonElement;
 const Vec3d = main.vec.Vec3d;
 
 const terrain = @import("terrain.zig");
@@ -219,7 +219,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 
 /// Generates the detailed(block-level precision) height and biome maps from the climate map.
 pub const MapGenerator = struct {
-	init: *const fn(parameters: JsonElement) void,
+	init: *const fn(parameters: ZonElement) void,
 	deinit: *const fn() void,
 	generateMapFragment: *const fn(fragment: *MapFragment, seed: u64) void,
 

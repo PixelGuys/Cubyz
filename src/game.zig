@@ -7,7 +7,7 @@ const itemdrop = @import("itemdrop.zig");
 const ClientItemDropManager = itemdrop.ClientItemDropManager;
 const items = @import("items.zig");
 const Inventory = items.Inventory;
-const JsonElement = @import("json.zig").JsonElement;
+const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main.zig");
 const KeyBoard = main.KeyBoard;
 const network = @import("network.zig");
@@ -356,9 +356,9 @@ pub const Player = struct { // MARK: Player
 	pub const desiredEyePos: Vec3d = .{0, 0, 1.7 - outerBoundingBoxExtent[2]};
 	pub const jumpHeight = 1.25;
 
-	fn loadFrom(json: JsonElement) void {
-		super.loadFrom(json);
-		inventory.loadFromJson(json.getChild("inventory"));
+	fn loadFrom(zon: ZonElement) void {
+		super.loadFrom(zon);
+		inventory.loadFromZon(zon.getChild("inventory"));
 	}
 
 	pub fn setPosBlocking(newPos: Vec3d) void {
@@ -526,17 +526,17 @@ pub const World = struct { // MARK: World
 		Player.inventory.deinit(main.globalAllocator);
 	}
 
-	pub fn finishHandshake(self: *World, json: JsonElement) !void {
+	pub fn finishHandshake(self: *World, zon: ZonElement) !void {
 		// TODO: Consider using a per-world allocator.
-		self.blockPalette = try assets.Palette.init(main.globalAllocator, json.getChild("blockPalette"), "cubyz:air");
+		self.blockPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("blockPalette"), "cubyz:air");
 		errdefer self.blockPalette.deinit();
-		self.biomePalette = try assets.Palette.init(main.globalAllocator, json.getChild("biomePalette"), null);
+		self.biomePalette = try assets.Palette.init(main.globalAllocator, zon.getChild("biomePalette"), null);
 		errdefer self.biomePalette.deinit();
-		self.spawn = json.get(Vec3f, "spawn", .{0, 0, 0});
+		self.spawn = zon.get(Vec3f, "spawn", .{0, 0, 0});
 
 		try assets.loadWorldAssets("serverAssets", self.blockPalette, self.biomePalette);
-		Player.loadFrom(json.getChild("player"));
-		Player.id = json.get(u32, "player_id", std.math.maxInt(u32));
+		Player.loadFrom(zon.getChild("player"));
+		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
 	}
 
 	pub fn update(self: *World) void {

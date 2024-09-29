@@ -2,21 +2,21 @@ const std = @import("std");
 
 const blocks_zig = @import("blocks.zig");
 const items_zig = @import("items.zig");
-const JsonElement = @import("json.zig").JsonElement;
+const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main.zig");
 const biomes_zig = main.server.terrain.biomes;
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 var arena: main.utils.NeverFailingArenaAllocator = undefined;
 var arenaAllocator: NeverFailingAllocator = undefined;
-var commonBlocks: std.StringHashMap(JsonElement) = undefined;
-var commonBiomes: std.StringHashMap(JsonElement) = undefined;
-var commonItems: std.StringHashMap(JsonElement) = undefined;
+var commonBlocks: std.StringHashMap(ZonElement) = undefined;
+var commonBiomes: std.StringHashMap(ZonElement) = undefined;
+var commonItems: std.StringHashMap(ZonElement) = undefined;
 var commonRecipes: main.List([]const u8) = undefined;
 var commonModels: std.StringHashMap([]const u8) = undefined;
 
-/// Reads json files recursively from all subfolders.
-pub fn readAllJsonFilesInAddons(externalAllocator: NeverFailingAllocator, addons: main.List(std.fs.Dir), addonNames: main.List([]const u8), subPath: []const u8, output: *std.StringHashMap(JsonElement)) void {
+/// Reads .zig.zon files recursively from all subfolders.
+pub fn readAllZonFilesInAddons(externalAllocator: NeverFailingAllocator, addons: main.List(std.fs.Dir), addonNames: main.List([]const u8), subPath: []const u8, output: *std.StringHashMap(ZonElement)) void {
 	for(addons.items, addonNames.items) |addon, addonName| {
 		var dir = addon.openDir(subPath, .{.iterate = true}) catch |err| {
 			if(err != error.FileNotFound) {
@@ -33,13 +33,13 @@ pub fn readAllJsonFilesInAddons(externalAllocator: NeverFailingAllocator, addons
 			std.log.err("Got error while iterating addon directory {s}: {s}", .{subPath, @errorName(err)});
 			break :blk null;
 		}) |entry| {
-			if(entry.kind == .file and std.ascii.endsWithIgnoreCase(entry.basename, ".json") and !std.ascii.startsWithIgnoreCase(entry.path, "textures")) {
+			if(entry.kind == .file and std.ascii.endsWithIgnoreCase(entry.basename, ".zig.zon") and !std.ascii.startsWithIgnoreCase(entry.path, "textures")) {
 				const folderName = addonName;
-				const id: []u8 = externalAllocator.alloc(u8, folderName.len + 1 + entry.path.len - 5);
+				const id: []u8 = externalAllocator.alloc(u8, folderName.len + 1 + entry.path.len - ".zig.zon".len);
 				errdefer externalAllocator.free(id);
 				@memcpy(id[0..folderName.len], folderName);
 				id[folderName.len] = ':';
-				for(0..entry.path.len-5) |i| {
+				for(0..entry.path.len - ".zig.zon".len) |i| {
 					if(entry.path[i] == '\\') { // Convert windows path seperators
 						id[folderName.len+1+i] = '/';
 					} else {
@@ -54,7 +54,7 @@ pub fn readAllJsonFilesInAddons(externalAllocator: NeverFailingAllocator, addons
 				defer file.close();
 				const string = file.readToEndAlloc(main.stackAllocator.allocator, std.math.maxInt(usize)) catch unreachable;
 				defer main.stackAllocator.free(string);
-				output.put(id, JsonElement.parseFromString(externalAllocator, string)) catch unreachable;
+				output.put(id, ZonElement.parseFromString(externalAllocator, string)) catch unreachable;
 			}
 		}
 	}
@@ -133,7 +133,7 @@ pub fn readAllObjFilesInAddonsHashmap(externalAllocator: NeverFailingAllocator, 
 	}
 }
 
-pub fn readAssets(externalAllocator: NeverFailingAllocator, assetPath: []const u8, blocks: *std.StringHashMap(JsonElement), items: *std.StringHashMap(JsonElement), biomes: *std.StringHashMap(JsonElement), recipes: *main.List([]const u8), models: *std.StringHashMap([]const u8)) void {
+pub fn readAssets(externalAllocator: NeverFailingAllocator, assetPath: []const u8, blocks: *std.StringHashMap(ZonElement), items: *std.StringHashMap(ZonElement), biomes: *std.StringHashMap(ZonElement), recipes: *main.List([]const u8), models: *std.StringHashMap([]const u8)) void {
 	var addons = main.List(std.fs.Dir).init(main.stackAllocator);
 	defer addons.deinit();
 	var addonNames = main.List([]const u8).init(main.stackAllocator);
@@ -164,9 +164,9 @@ pub fn readAssets(externalAllocator: NeverFailingAllocator, assetPath: []const u
 		main.stackAllocator.free(addonName);
 	};
 
-	readAllJsonFilesInAddons(externalAllocator, addons, addonNames, "blocks", blocks);
-	readAllJsonFilesInAddons(externalAllocator, addons, addonNames, "items", items);
-	readAllJsonFilesInAddons(externalAllocator, addons, addonNames, "biomes", biomes);
+	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "blocks", blocks);
+	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "items", items);
+	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "biomes", biomes);
 	readAllFilesInAddons(externalAllocator, addons, "recipes", recipes);
 	readAllObjFilesInAddonsHashmap(externalAllocator, addons, addonNames, "models", models);
 }
@@ -185,26 +185,26 @@ pub fn init() void {
 	readAssets(arenaAllocator, "assets/", &commonBlocks, &commonItems, &commonBiomes, &commonRecipes, &commonModels);
 }
 
-fn registerItem(assetFolder: []const u8, id: []const u8, json: JsonElement) !*items_zig.BaseItem {
+fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !*items_zig.BaseItem {
 	var split = std.mem.splitScalar(u8, id, ':');
 	const mod = split.first();
 	var texturePath: []const u8 = &[0]u8{};
 	var replacementTexturePath: []const u8 = &[0]u8{};
 	var buf1: [4096]u8 = undefined;
 	var buf2: [4096]u8 = undefined;
-	if(json.get(?[]const u8, "texture", null)) |texture| {
+	if(zon.get(?[]const u8, "texture", null)) |texture| {
 		texturePath = try std.fmt.bufPrint(&buf1, "{s}/{s}/items/textures/{s}", .{assetFolder, mod, texture});
 		replacementTexturePath = try std.fmt.bufPrint(&buf2, "assets/{s}/items/textures/{s}", .{mod, texture});
 	}
-	return items_zig.register(assetFolder, texturePath, replacementTexturePath, id, json);
+	return items_zig.register(assetFolder, texturePath, replacementTexturePath, id, zon);
 }
 
-fn registerBlock(assetFolder: []const u8, id: []const u8, json: JsonElement) !void {
-	const block = blocks_zig.register(assetFolder, id, json);
-	blocks_zig.meshes.register(assetFolder, id, json);
+fn registerBlock(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void {
+	const block = blocks_zig.register(assetFolder, id, zon);
+	blocks_zig.meshes.register(assetFolder, id, zon);
 
-	if(json.get(bool, "hasItem", true)) {
-		const item = try registerItem(assetFolder, id, json.getChild("item"));
+	if(zon.get(bool, "hasItem", true)) {
+		const item = try registerItem(assetFolder, id, zon.getChild("item"));
 		item.block = block;
 	}
 }
@@ -215,21 +215,21 @@ fn registerRecipesFromFile(file: []const u8) void {
 
 pub const Palette = struct { // MARK: Palette
 	palette: main.List([]const u8),
-	pub fn init(allocator: NeverFailingAllocator, json: JsonElement, firstElement: ?[]const u8) !*Palette {
+	pub fn init(allocator: NeverFailingAllocator, zon: ZonElement, firstElement: ?[]const u8) !*Palette {
 		const self = allocator.create(Palette);
 		self.* = Palette {
 			.palette = .init(allocator),
 		};
 		errdefer self.deinit();
-		if(json != .JsonObject or json.JsonObject.count() == 0) {
+		if(zon != .object or zon.object.count() == 0) {
 			if(firstElement) |elem| self.palette.append(allocator.dupe(u8, elem));
 		} else {
-			const palette = main.stackAllocator.alloc(?[]const u8, json.JsonObject.count());
+			const palette = main.stackAllocator.alloc(?[]const u8, zon.object.count());
 			defer main.stackAllocator.free(palette);
 			for(palette) |*val| {
 				val.* = null;
 			}
-			var iterator = json.JsonObject.iterator();
+			var iterator = zon.object.iterator();
 			while(iterator.next()) |entry| {
 				palette[entry.value_ptr.as(usize, std.math.maxInt(usize))] = entry.key_ptr.*;
 			}
@@ -255,13 +255,13 @@ pub const Palette = struct { // MARK: Palette
 		self.palette.append(self.palette.allocator.dupe(u8, id));
 	}
 
-	pub fn save(self: *Palette, allocator: NeverFailingAllocator) JsonElement {
-		const json = JsonElement.initObject(allocator);
-		errdefer json.free(allocator);
+	pub fn save(self: *Palette, allocator: NeverFailingAllocator) ZonElement {
+		const zon = ZonElement.initObject(allocator);
+		errdefer zon.free(allocator);
 		for(self.palette.items, 0..) |item, i| {
-			json.put(item, i);
+			zon.put(item, i);
 		}
-		return json;
+		return zon;
 	}
 };
 
@@ -293,14 +293,14 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 	// blocks:
 	for(blockPalette.palette.items) |id| {
 		const nullValue = blocks.get(id);
-		var json: JsonElement = undefined;
+		var zon: ZonElement = undefined;
 		if(nullValue) |value| {
-			json = value;
+			zon = value;
 		} else {
 			std.log.err("Missing block: {s}. Replacing it with default block.", .{id});
-			json = .{.JsonNull={}};
+			zon = .null;
 		}
-		try registerBlock(assetFolder, id, json);
+		try registerBlock(assetFolder, id, zon);
 	}
 	var iterator = blocks.iterator();
 	while(iterator.next()) |entry| {
@@ -326,14 +326,14 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 	var i: u32 = 0;
 	for(biomePalette.palette.items) |id| {
 		const nullValue = biomes.get(id);
-		var json: JsonElement = undefined;
+		var zon: ZonElement = undefined;
 		if(nullValue) |value| {
-			json = value;
+			zon = value;
 		} else {
 			std.log.err("Missing biomes: {s}. Replacing it with default biomes.", .{id});
-			json = .{.JsonNull={}};
+			zon = .null;
 		}
-		biomes_zig.register(id, i, json);
+		biomes_zig.register(id, i, zon);
 		i += 1;
 	}
 	iterator = biomes.iterator();

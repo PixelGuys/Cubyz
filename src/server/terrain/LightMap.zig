@@ -5,7 +5,6 @@ const main = @import("root");
 const Chunk = main.chunk.Chunk;
 const ChunkPosition = main.chunk.ChunkPosition;
 const Cache = main.utils.Cache;
-const JsonElement = main.JsonElement;
 
 const terrain = @import("terrain.zig");
 const TerrainGenerationProfile = terrain.TerrainGenerationProfile;

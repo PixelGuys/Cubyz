@@ -5,7 +5,7 @@ const Array3D = main.utils.Array3D;
 const Cache = main.utils.Cache;
 const ServerChunk = main.chunk.ServerChunk;
 const ChunkPosition = main.chunk.ChunkPosition;
-const JsonElement = main.JsonElement;
+const ZonElement = main.ZonElement;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
@@ -97,7 +97,7 @@ pub const CaveBiomeMapFragment = struct { // MARK: caveBiomeMapFragment
 
 /// A generator for the cave biome map.
 pub const CaveBiomeGenerator = struct { // MARK: CaveBiomeGenerator
-	init: *const fn(parameters: JsonElement) void,
+	init: *const fn(parameters: ZonElement) void,
 	deinit: *const fn() void,
 	generate: *const fn(map: *CaveBiomeMapFragment, seed: u64) void,
 	/// Used to prioritize certain generators over others.
@@ -119,7 +119,7 @@ pub const CaveBiomeGenerator = struct { // MARK: CaveBiomeGenerator
 		generatorRegistry.put(main.globalAllocator.allocator, Generator.id, self) catch unreachable;
 	}
 
-	pub fn getAndInitGenerators(allocator: NeverFailingAllocator, settings: JsonElement) []CaveBiomeGenerator {
+	pub fn getAndInitGenerators(allocator: NeverFailingAllocator, settings: ZonElement) []CaveBiomeGenerator {
 		const list = allocator.alloc(CaveBiomeGenerator, generatorRegistry.size);
 		var iterator = generatorRegistry.iterator();
 		var i: usize = 0;

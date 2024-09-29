@@ -3,7 +3,7 @@ const std = @import("std");
 const main = @import("root");
 const Array2D = main.utils.Array2D;
 const random = main.random;
-const JsonElement = main.JsonElement;
+const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
 const MapFragment = terrain.SurfaceMap.MapFragment;
 const noise = terrain.noise;
@@ -15,7 +15,7 @@ const Vec2f = vec.Vec2f;
 
 pub const id = "cubyz:mapgen_v1";
 
-pub fn init(parameters: JsonElement) void {
+pub fn init(parameters: ZonElement) void {
 	_ = parameters;
 }
 

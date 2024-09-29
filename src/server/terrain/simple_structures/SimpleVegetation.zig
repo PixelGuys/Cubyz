@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("root");
 const random = main.random;
-const JsonElement = main.JsonElement;
+const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
 const CaveMap = terrain.CaveMap;
 const vec = main.vec;
@@ -21,7 +21,7 @@ blockType: u16,
 height0: u31,
 deltaHeight: u31,
 
-pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: JsonElement) *SimpleVegetation {
+pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) *SimpleVegetation {
 	const self = arenaAllocator.create(SimpleVegetation);
 	self.* = .{
 		.blockType = main.blocks.getByID(parameters.get([]const u8, "block", "")),
