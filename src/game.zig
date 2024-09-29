@@ -432,7 +432,7 @@ pub const Player = struct { // MARK: Player
 				if (items.itemList[idx].block == block.typ){
 					const item = items.Item {.baseItem = &items.itemList[idx]};
 					var isDone = false;
-
+                                        
 					// Check if there is already a slot with that item type
 					for (0..12) |slotIdx| {
 						if (std.meta.eql(inventory.items[slotIdx].item, item)) {
@@ -448,7 +448,7 @@ pub const Player = struct { // MARK: Player
 						inventory.items[selectedSlot] = items.ItemStack {.item = item, .amount = items.itemList[idx].stackSize};
 						break;
 					}
-
+                                        
 					// Look for an empty slot
 					for (0..12) |slotIdx| {
 						if (inventory.items[slotIdx].empty()) {
