@@ -253,9 +253,9 @@ pub const ZonElement = union(enum) { // MARK: Zon
 	}
 	fn isValidIdentifierName(str: []const u8) bool {
 		if(str.len == 0) return false;
-		if(!std.ascii.isAlphabetic(str[0])) return false;
+		if(!std.ascii.isAlphabetic(str[0]) and str[0] != '_') return false;
 		for(str[1..]) |c| {
-			if(!std.ascii.isAlphanumeric(c)) return false;
+			if(!std.ascii.isAlphanumeric(c) and c != '_') return false;
 		}
 		return true;
 	}
@@ -513,7 +513,7 @@ const Parser = struct { // MARK: Parser
 		}
 		while(index.* < chars.len): (index.* += 1) {
 			switch(chars[index.*]) {
-				'a'...'z', 'A'...'Z', '0'...'9' => |c| builder.append(c),
+				'a'...'z', 'A'...'Z', '0'...'9', '_' => |c| builder.append(c),
 				else => break,
 			}
 		}
@@ -684,7 +684,7 @@ const Parser = struct { // MARK: Parser
 						}
 						continue;
 					}
-					if(chars[i] == ',') break;
+					if(chars[i] == ',' or chars[i] == '{') break;
 					if(chars[i] == '=') {
 						foundEqualSign = true;
 						break;
