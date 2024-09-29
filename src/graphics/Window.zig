@@ -31,7 +31,7 @@ const Gamepad = struct {
 	pub fn update(_: *Gamepad, delta: f64) void {
 		var jid: c_int = 0;
 		while (jid < c.GLFW_JOYSTICK_LAST) : (jid += 1) {
-			const oldGamepadState: c.GLFWgamepadstate = (gamepadState.get(jid) orelse &std.mem.zeroes(c.GLFWgamepadstate)).*;
+			const oldGamepadState: c.GLFWgamepadstate = if (gamepadState.get(jid)) |v| v.* else std.mem.zeroes(c.GLFWgamepadstate);
 			const joystickFound = c.glfwJoystickPresent(jid) != 0 and c.glfwJoystickIsGamepad(jid) != 0;
 			if (joystickFound) {
 				if (!gamepadState.contains(jid)) {
@@ -45,7 +45,7 @@ const Gamepad = struct {
 				}
 			}
 			const oldState: c.GLFWgamepadstate = oldGamepadState;
-			const newState: c.GLFWgamepadstate = (gamepadState.get(jid) orelse &std.mem.zeroes(c.GLFWgamepadstate)).*;
+			const newState: c.GLFWgamepadstate = if (gamepadState.get(jid)) |v| v.* else std.mem.zeroes(c.GLFWgamepadstate);
 			if (nextGamepadListener != null) {
 				for (0..c.GLFW_GAMEPAD_BUTTON_LAST) |btn| {
 					if ((newState.buttons[btn] == 0) and (oldState.buttons[btn] != 0)) {
