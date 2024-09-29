@@ -83,9 +83,19 @@ fn unbindKey(keyPtr: usize) void {
 	}
 	needsUpdate = true;
 }
+fn cancelBindKey(_: usize) void {
+	selectedKey = null;
+	needsUpdate = true;
+}
+fn resetKeyBinding(keyPtr: usize) void {
+	const key: ?*main.Window.Key = @ptrFromInt(keyPtr);
+	main.KeyBoard.resetKey(key.?.name);
+	selectedKey = null;
+	needsUpdate = true;
+}
 
 pub fn onOpen() void {
-	const list = VerticalList.init(.{padding, 16 + padding}, 364, 8);
+	const list = VerticalList.init(.{padding, 16 + padding}, 428, 8);
 	list.add(Button.initText(.{0, 0}, 128, if (kbd) "Gamepad" else "Keyboard", .{.callback = &setKeyboard, .arg = if (kbd) 0 else 1}));
 	list.add(ContinuousSlider.init(.{0, 0}, 256, 0, 5, if (kbd) main.settings.mouseSensitivity else main.settings.controllerSensitivity, &updateSensitivity, &sensitivityFormatter));
 	if (!kbd) {
@@ -98,11 +108,19 @@ pub fn onOpen() void {
 		) else (
 			Button.initText(.{16, 0}, 128, if (kbd) key.getName() else key.getGamepadName(), .{.callback = if (kbd) &keyFunction else &gamepadFunction, .arg = @intFromPtr(key)})
 		);
-		const unbindBtn = Button.initText(.{16, 0}, 64, "Unbind", .{.callback = &unbindKey, .arg = @intFromPtr(key)});
 		const row = HorizontalList.init();
 		row.add(label);
 		row.add(button);
-		row.add(unbindBtn);
+		if (key == selectedKey) {
+
+			const cancelBtn = Button.initText(.{16, 0}, 128, "Cancel", .{.callback = &cancelBindKey, .arg = 0});
+			row.add(cancelBtn);
+		} else {
+			const resetBtn = Button.initText(.{16, 0}, 64, "Reset", .{.callback = &resetKeyBinding, .arg = @intFromPtr(key)});
+			const unbindBtn = Button.initText(.{16, 0}, 64, "Unbind", .{.callback = &unbindKey, .arg = @intFromPtr(key)});
+			row.add(resetBtn);
+			row.add(unbindBtn);
+		}
 		row.finish(.{0, 0}, .center);
 		list.add(row);
 	}

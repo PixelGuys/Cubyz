@@ -314,7 +314,7 @@ fn setHotbarSlot(i: comptime_int) *const fn() void {
 
 pub const KeyBoard = struct { // MARK: KeyBoard
 	const c = Window.c;
-	pub var keys = [_]Window.Key {
+	pub const defaultKeys = [_]Window.Key {
 		// Gameplay:
 		.{.name = "forward", .key = c.GLFW_KEY_W, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = false}},
 		.{.name = "left", .key = c.GLFW_KEY_A, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = false}},
@@ -389,6 +389,39 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "networkDebugOverlay", .key = c.GLFW_KEY_F6, .releaseAction = &toggleNetworkDebugOverlay},
 		.{.name = "advancedNetworkDebugOverlay", .key = c.GLFW_KEY_F7, .releaseAction = &toggleAdvancedNetworkDebugOverlay},
 	};
+	pub var keys = defaultKeys;
+
+	pub fn resetKey(name: []const u8) void {
+		var defaultKeyMaybe: ?*const Window.Key = null;
+		var actualKeyMaybe: ?*Window.Key = null;
+		for(&defaultKeys) |*_key| {
+			if(std.mem.eql(u8, name, _key.name)) {
+				defaultKeyMaybe = _key;
+				break;
+			}
+		}
+		if (defaultKeyMaybe == null) {
+			std.log.err("Couldn't find default for key {s}", .{name});
+			return;
+		}
+		const defaultKey = defaultKeyMaybe.?.*;
+		for(&keys) |*_key| {
+			if(std.mem.eql(u8, name, _key.name)) {
+				actualKeyMaybe = _key;
+				break;
+			}
+		}
+		if (actualKeyMaybe == null) {
+			std.log.err("Key list missing default key {s}", .{name});
+			return;
+		}
+		var actualKey = actualKeyMaybe.?;
+		actualKey.gamepadAxis = defaultKey.gamepadAxis;
+		actualKey.gamepadButton = defaultKey.gamepadButton;
+		actualKey.key = defaultKey.key;
+		actualKey.scancode = defaultKey.scancode;
+		actualKey.mouseButton = defaultKey.mouseButton;
+	}
 
 	pub fn key(name: []const u8) *const Window.Key { // TODO: Maybe I should use a hashmap here?
 		for(&keys) |*_key| {
@@ -452,7 +485,7 @@ pub fn convertJsonToZon(jsonPath: []const u8) void { // TODO: Remove after #480
 	var zonString = List(u8).init(stackAllocator);
 	defer zonString.deinit();
 	std.log.debug("{s}", .{jsonString});
-	
+
 	var i: usize = 0;
 	while(i < jsonString.len) : (i += 1) {
 		switch(jsonString[i]) {

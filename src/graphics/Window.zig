@@ -305,6 +305,7 @@ pub const Key = struct { // MARK: Key
 	gamepadButton: c_int = -1,
 	mouseButton: c_int = -1,
 	scancode: c_int = 0,
+
 	releaseAction: ?*const fn() void = null,
 	pressAction: ?*const fn() void = null,
 	repeatAction: ?*const fn(Modifiers) void = null,
