@@ -28,27 +28,24 @@ const Gamepad = struct {
 		const maxRange = 1.0 - minValue;
 		return (value * maxRange) + minValue;
 	}
-	pub fn update(self: *Gamepad, delta: f64) void {
+	pub fn update(_: *Gamepad, delta: f64) void {
 		var jid: c_int = 0;
 		while (jid < c.GLFW_JOYSTICK_LAST) : (jid += 1) {
-			var oldGamepadState: c.GLFWgamepadstate = std.mem.zeroes(c.GLFWgamepadstate);
-			if (self.*.gamepadState.contains(jid)) {
-				oldGamepadState = self.gamepadState.get(jid).?.*;
-			}
+			const oldGamepadState: c.GLFWgamepadstate = (gamepadState.get(jid) orelse &std.mem.zeroes(c.GLFWgamepadstate)).*;
 			const joystickFound = c.glfwJoystickPresent(jid) != 0 and c.glfwJoystickIsGamepad(jid) != 0;
 			if (joystickFound) {
-				if (!self.gamepadState.contains(jid)) {
-					self.gamepadState.put(jid, main.globalAllocator.create(c.GLFWgamepadstate)) catch unreachable;
+				if (!gamepadState.contains(jid)) {
+					gamepadState.put(jid, main.globalAllocator.create(c.GLFWgamepadstate)) catch unreachable;
 				}
-				_ = c.glfwGetGamepadState(jid, self.gamepadState.get(jid).?);
+				_ = c.glfwGetGamepadState(jid, gamepadState.get(jid).?);
 			} else {
-				if (self.gamepadState.contains(jid)) {
-					main.globalAllocator.destroy(self.gamepadState.get(jid).?);
-					_ = self.gamepadState.remove(jid);
+				if (gamepadState.contains(jid)) {
+					main.globalAllocator.destroy(gamepadState.get(jid).?);
+					_ = gamepadState.remove(jid);
 				}
 			}
-			const oldState: c.GLFWgamepadstate = oldGamepadState orelse std.mem.zeroes(c.GLFWgamepadstate);
-			const newState: c.GLFWgamepadstate = self.gamepadState.get(jid) orelse std.mem.zeroes(c.GLFWgamepadstate);
+			const oldState: c.GLFWgamepadstate = oldGamepadState;
+			const newState: c.GLFWgamepadstate = (gamepadState.get(jid) orelse &std.mem.zeroes(c.GLFWgamepadstate)).*;
 			if (nextGamepadListener != null) {
 				for (0..c.GLFW_GAMEPAD_BUTTON_LAST) |btn| {
 					if ((newState.buttons[btn] == 0) and (oldState.buttons[btn] != 0)) {
@@ -142,11 +139,11 @@ const Gamepad = struct {
 		scrollOffset += @floatCast((main.KeyBoard.key("scrollUp").value - main.KeyBoard.key("scrollDown").value) * delta * 4);
 		setCursorVisible(!grabbed and lastUsedMouse);
 	}
-	pub fn isControllerConnected(self: *Gamepad) bool {
-		return self.gamepadState.count() > 0;
+	pub fn isControllerConnected(_: *Gamepad) bool {
+		return gamepadState.count() > 0;
 	}
-	pub fn controllerMappingsDownloading(self: *Gamepad) bool {
-		return !self.*.controllerMappingsDownloaded;
+	pub fn controllerMappingsDownloading(_: *Gamepad) bool {
+		return !controllerMappingsDownloaded.load(std.builtin.AtomicOrder.acquire);
 	}
 	const ControllerMappingDownloadTask = struct { // MARK: ControllerMappingDownloadTask
 		curTimestamp: i128,
@@ -165,7 +162,6 @@ const Gamepad = struct {
 			const task = main.globalAllocator.create(ControllerMappingDownloadTask);
 			task.* = ControllerMappingDownloadTask {
 				.curTimestamp = curTimestamp,
-				.controllerMappingsDownloaded = controllerMappingsDownloaded,
 			};
 			main.threadPool.addTask(task, &vtable);
 		}
@@ -213,10 +209,10 @@ const Gamepad = struct {
 		var needDownload: bool = false;
 		const curTimestamp = std.time.nanoTimestamp();
 		if (settings.downloadControllerMappings) {
-			const timestamp: i127 = blk: {
+			const timestamp: i128 = blk: {
 				var dir = files.openDir(".") catch break :blk 0;
 				if (!dir.hasFile("gamecontrollerdb.stamp")) break :blk 0;
-				const stamp = dir.read(main.stackAllocator, "gamecontrollerdb.stamp") catch break :brk 0;
+				const stamp = dir.read(main.stackAllocator, "gamecontrollerdb.stamp") catch break :blk 0;
 				defer main.stackAllocator.free(stamp);
 				break :blk std.fmt.parseInt(i128, stamp, 16) catch 0;
 			};
@@ -277,23 +273,23 @@ const Gamepad = struct {
 			self.downloadControllerMappings();
 		}
 		self.updateControllerMappings();
-		self.gamepadState = .init(main.globalAllocator.allocator);
+		gamepadState = .init(main.globalAllocator.allocator);
 		self.update(0.0);
-		std.log.debug("Gamepads at init: {d}", .{self.*.gamepadState.count()});
+		std.log.debug("Gamepads at init: {d}", .{gamepadState.count()});
 		return self;
 	}
 	pub fn deinit(self: *Gamepad) void {
 		defer main.globalAllocator.destroy(self);
-		const iter = self.*.gamepadState.keyIterator();
+		const iter = gamepadState.keyIterator();
 		var i: usize = 0;
 		while (i < iter.len) {
 			const key = iter.items[i];
-			const value = self.*.gamepadState.get(key);
+			const value = gamepadState.get(key);
 			defer main.globalAllocator.destroy(value.?);
-			_ = self.*.gamepadState.remove(key);
+			_ = gamepadState.remove(key);
 			i += 1;
 		}
-		self.*.gamepadState.deinit();
+		gamepadState.deinit();
 	}
 };
 pub const GamepadAxis = struct {
