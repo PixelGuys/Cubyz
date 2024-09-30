@@ -402,8 +402,30 @@ fn isValidIdentifierName(str: []const u8) bool { // TODO: Remove after #480
 	}
 	return true;
 }
-
+fn isHiddenOrParentHiddenPosix(path: []const u8) bool {
+	var iter = std.fs.path.componentIterator(path) catch |err| {
+		std.log.err("Cannot iterate on path {s}: {s}!", .{path, @errorName(err)});
+		return false;
+	};
+	var componentMaybe = iter.next();
+	while (componentMaybe != null) {
+		if (componentMaybe) |component| {
+			if (std.mem.eql(u8, component.name, ".") or std.mem.eql(u8, component.name, "..")) {
+				continue;
+			}
+			if (component.name.len > 0 and component.name[0] == '.') {
+				return true;
+			}
+		}
+		componentMaybe = iter.next();
+	}
+	return false;
+}
 pub fn convertJsonToZon(jsonPath: []const u8) void { // TODO: Remove after #480
+	if (isHiddenOrParentHiddenPosix(jsonPath)) {
+		std.log.info("NOT converting {s}.", .{jsonPath});
+		return;
+	}
 	std.log.info("Converting {s}:", .{jsonPath});
 	const jsonString = files.read(stackAllocator, jsonPath) catch |err| {
 		std.log.err("Could convert file {s}: {s}", .{jsonPath, @errorName(err)});
@@ -413,7 +435,7 @@ pub fn convertJsonToZon(jsonPath: []const u8) void { // TODO: Remove after #480
 	var zonString = List(u8).init(stackAllocator);
 	defer zonString.deinit();
 	std.log.debug("{s}", .{jsonString});
-	
+
 	var i: usize = 0;
 	while(i < jsonString.len) : (i += 1) {
 		switch(jsonString[i]) {
