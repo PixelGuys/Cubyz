@@ -435,7 +435,7 @@ pub fn convertJsonToZon(jsonPath: []const u8) void { // TODO: Remove after #480
 	var zonString = List(u8).init(stackAllocator);
 	defer zonString.deinit();
 	std.log.debug("{s}", .{jsonString});
-
+	
 	var i: usize = 0;
 	while(i < jsonString.len) : (i += 1) {
 		switch(jsonString[i]) {
