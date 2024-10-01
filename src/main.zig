@@ -402,6 +402,7 @@ fn isValidIdentifierName(str: []const u8) bool { // TODO: Remove after #480
 	}
 	return true;
 }
+
 fn isHiddenOrParentHiddenPosix(path: []const u8) bool {
 	var iter = std.fs.path.componentIterator(path) catch |err| {
 		std.log.err("Cannot iterate on path {s}: {s}!", .{path, @errorName(err)});
