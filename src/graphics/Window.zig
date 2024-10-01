@@ -124,8 +124,7 @@ pub const Gamepad = struct {
 				GLFWCallbacks.currentPos[0] += @floatCast(x * delta * 256);
 				GLFWCallbacks.currentPos[1] += @floatCast(y * delta * 256);
 				const winSize = getWindowSize();
-				GLFWCallbacks.currentPos[0] = std.math.clamp(GLFWCallbacks.currentPos[0], 0, winSize[0]);
-				GLFWCallbacks.currentPos[1] = std.math.clamp(GLFWCallbacks.currentPos[1], 0, winSize[1]);
+				GLFWCallbacks.currentPos = std.math.clamp(GLFWCallbacks.currentPos, .{0, 0}, winSize);
 			}
 		}
 		scrollOffset += @floatCast((main.KeyBoard.key("scrollUp").value - main.KeyBoard.key("scrollDown").value) * delta * 4);
@@ -578,13 +577,13 @@ pub fn setNextGamepadListener(listener: ?*const fn(?GamepadAxis, c_int) void) !v
 fn updateCursor() void {
 	if(grabbed) {
 		c.glfwSetInputMode(window, c.GLFW_CURSOR, c.GLFW_CURSOR_DISABLED);
-			// Behavior seems much more intended without this line on MacOS.
-			// Perhaps this is an inconsistency in GLFW due to its fresh XQuartz support?
-			if(@import("builtin").target.os.tag != .macos) {
-				if (c.glfwRawMouseMotionSupported() != 0)
-					c.glfwSetInputMode(window, c.GLFW_RAW_MOUSE_MOTION, c.GLFW_TRUE);
-			}
-			GLFWCallbacks.ignoreDataAfterRecentGrab = true;
+		// Behavior seems much more intended without this line on MacOS.
+		// Perhaps this is an inconsistency in GLFW due to its fresh XQuartz support?
+		if(@import("builtin").target.os.tag != .macos) {
+			if (c.glfwRawMouseMotionSupported() != 0)
+				c.glfwSetInputMode(window, c.GLFW_RAW_MOUSE_MOTION, c.GLFW_TRUE);
+		}
+		GLFWCallbacks.ignoreDataAfterRecentGrab = true;
 	} else {
 		if (cursorVisible) {
 			c.glfwSetInputMode(window, c.GLFW_CURSOR, c.GLFW_CURSOR_NORMAL);
