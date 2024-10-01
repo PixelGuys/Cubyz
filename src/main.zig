@@ -407,17 +407,13 @@ fn isHiddenOrParentHiddenPosix(path: []const u8) bool {
 		std.log.err("Cannot iterate on path {s}: {s}!", .{path, @errorName(err)});
 		return false;
 	};
-	var componentMaybe = iter.next();
-	while (componentMaybe != null) {
-		if (componentMaybe) |component| {
-			if (std.mem.eql(u8, component.name, ".") or std.mem.eql(u8, component.name, "..")) {
-				continue;
-			}
-			if (component.name.len > 0 and component.name[0] == '.') {
-				return true;
-			}
+	while (iter.next()) |component| {
+		if (std.mem.eql(u8, component.name, ".") or std.mem.eql(u8, component.name, "..")) {
+			continue;
 		}
-		componentMaybe = iter.next();
+		if (component.name.len > 0 and component.name[0] == '.') {
+			return true;
+		}
 	}
 	return false;
 }
