@@ -21,7 +21,7 @@ pub var window = GuiWindow {
 
 const padding: f32 = 8;
 pub fn update() void {
-	if (!main.Window.gamepad.controllerMappingsDownloading()) {
+	if (main.Window.Gamepad.wereControllerMappingsDownloaded()) {
 		gui.closeWindowFromRef(&window);
 		main.openNextStartupWindow();
 	}
@@ -31,11 +31,11 @@ pub fn onOpen() void {
 	window.rootComponent = label.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
 	gui.updateWindowPositions();
-	main.Window.gamepad.downloadControllerMappings();
+	main.Window.Gamepad.downloadControllerMappings();
 }
 
 pub fn onClose() void {
-	main.Window.gamepad.updateControllerMappings();
+	main.Window.Gamepad.updateControllerMappings();
 	if(window.rootComponent) |*comp| {
 		comp.deinit();
 	}

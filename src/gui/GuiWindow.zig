@@ -153,7 +153,6 @@ pub fn getButtonPositions(self: *const GuiWindow) [3]f32 {
 	const zoomInPos = zoomOutPos - iconWidth*self.scale;
 	return .{closePos, zoomOutPos, zoomInPos};
 }
-
 pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 	if(grabPosition != null and @reduce(.And, grabPosition.? == mousePosition) and grabbedWindow == self) {
 		if(self.showTitleBar or gui.reorderWindows) {
