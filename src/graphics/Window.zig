@@ -5,13 +5,14 @@ const settings = main.settings;
 const files = main.files;
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
+
 pub const c = @cImport ({
 	@cInclude("glad/glad.h");
 	@cInclude("GLFW/glfw3.h");
 });
 
 var isFullscreen: bool = false;
-pub var lastUsedMouse = true;
+pub var lastUsedMouse: bool = true;
 pub var width: u31 = 1280;
 pub var height: u31 = 720;
 pub var window: *c.GLFWwindow = undefined;
@@ -72,11 +73,7 @@ pub const Gamepad = struct {
 						const newPressed = newState.buttons[@intCast(key.gamepadButton)] != 0;
 						if(oldPressed != newPressed) {
 							key.pressed = newPressed;
-							if(newPressed) {
-								key.value = 1.0;
-							} else {
-								key.value = 0.0;
-							}
+							key.value = if(newPressed) 1.0 else 0.0;
 							if(key.pressed) {
 								if(key.pressAction) |pressAction| {
 									pressAction();
@@ -97,12 +94,8 @@ pub const Gamepad = struct {
 						newAxis *= -1;
 						oldAxis *= -1;
 					}
-					if(newAxis < 0.0) {
-						newAxis = 0.0;
-					}
-					if(oldAxis < 0.0) {
-						oldAxis = 0.0;
-					}
+					newAxis = @max(newAxis, 0);
+					oldAxis = @max(oldAxis, 0);
 					const oldPressed = oldAxis > 0.5;
 					const newPressed = newAxis > 0.5;
 					if (oldPressed != newPressed) {
