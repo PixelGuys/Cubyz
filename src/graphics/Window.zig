@@ -16,10 +16,9 @@ pub var width: u31 = 1280;
 pub var height: u31 = 720;
 pub var window: *c.GLFWwindow = undefined;
 pub var grabbed: bool = false;
-pub var gamepad: *Gamepad = undefined;
 
 pub var scrollOffset: f32 = 0;
-const Gamepad = struct {
+pub const Gamepad = struct {
 	pub var gamepadState: std.AutoHashMap(c_int, *c.GLFWgamepadstate) = undefined;
 	pub var controllerMappingsDownloaded: std.atomic.Value(bool) = std.atomic.Value(bool).init(false);
 	pub var controllerMappingsTask: ?ControllerMappingDownloadTask = null;
@@ -28,7 +27,7 @@ const Gamepad = struct {
 		const maxRange = 1.0 - minValue;
 		return (value * maxRange) + minValue;
 	}
-	pub fn update(_: *Gamepad, delta: f64) void {
+	pub fn update(delta: f64) void {
 		var jid: c_int = 0;
 		while (jid < c.GLFW_JOYSTICK_LAST) : (jid += 1) {
 			const oldGamepadState: c.GLFWgamepadstate = if (gamepadState.get(jid)) |v| v.* else std.mem.zeroes(c.GLFWgamepadstate);
@@ -139,14 +138,15 @@ const Gamepad = struct {
 		scrollOffset += @floatCast((main.KeyBoard.key("scrollUp").value - main.KeyBoard.key("scrollDown").value) * delta * 4);
 		setCursorVisible(!grabbed and lastUsedMouse);
 	}
-	pub fn isControllerConnected(_: *Gamepad) bool {
+	pub fn isControllerConnected() bool {
 		return gamepadState.count() > 0;
 	}
-	pub fn controllerMappingsDownloading(_: *Gamepad) bool {
-		return !controllerMappingsDownloaded.load(std.builtin.AtomicOrder.acquire);
+	pub fn wereControllerMappingsDownloaded() bool {
+		return controllerMappingsDownloaded.load(std.builtin.AtomicOrder.acquire);
 	}
 	const ControllerMappingDownloadTask = struct { // MARK: ControllerMappingDownloadTask
 		curTimestamp: i128,
+		var running = std.atomic.Value(bool).init(false);
 		const vtable = main.utils.ThreadPool.VTable{
 			.getPriority = @ptrCast(&getPriority),
 			.isStillNeeded = @ptrCast(&isStillNeeded),
@@ -156,9 +156,11 @@ const Gamepad = struct {
 
 		pub fn schedule(curTimestamp: i128) void {
 
-			if (controllerMappingsDownloaded.load(std.builtin.AtomicOrder.monotonic)) {
+			if (running.swap(true, .monotonic)) {
+				std.log.warn("Attempt to schedule a duplicate controller mapping download task!", .{});
 				return; // Controller mappings are already downloading.
 			}
+			controllerMappingsDownloaded.store(false, .monotonic);
 			const task = main.globalAllocator.create(ControllerMappingDownloadTask);
 			task.* = ControllerMappingDownloadTask {
 				.curTimestamp = curTimestamp,
@@ -167,18 +169,19 @@ const Gamepad = struct {
 		}
 
 		pub fn getPriority(_: *ControllerMappingDownloadTask) f32 {
-			return 64.0;
+			return std.math.inf(f32);
 		}
 
 		pub fn isStillNeeded(_: *ControllerMappingDownloadTask, _: i64) bool {
-			return !controllerMappingsDownloaded.load(std.builtin.AtomicOrder.acquire);
+			return true;
 		}
 
 		pub fn run(self: *ControllerMappingDownloadTask) void {
+			std.log.info("Starting controller mapping download...", .{});
 			defer self.clean();
 			var client: std.http.Client = .{.allocator = main.stackAllocator.allocator};
-			var list = std.ArrayList(u8).init(main.stackAllocator.allocator);
 			defer client.deinit();
+			var list = std.ArrayList(u8).init(main.stackAllocator.allocator);
 			defer list.deinit();
 			defer controllerMappingsDownloaded.store(true, std.builtin.AtomicOrder.release);
 			_ = client.fetch(.{
@@ -189,51 +192,54 @@ const Gamepad = struct {
 				std.log.err("Failed to download controller mappings: {s}", .{@errorName(err)});
 				return;
 			};
-			files.write("gamecontrollerdb.txt", list.items) catch |err| {
+			files.write("./gamecontrollerdb.txt", list.items) catch |err| {
 				std.log.err("Failed to write controller mappings: {s}", .{@errorName(err)});
 				return;
 			};
-			const timeStampStr = std.fmt.allocPrint(main.stackAllocator.allocator, "{d}", .{self.*.curTimestamp}) catch unreachable;
+			const timeStampStr = std.fmt.allocPrint(main.stackAllocator.allocator, "{x}", .{self.*.curTimestamp}) catch unreachable;
 			defer main.stackAllocator.free(timeStampStr);
 			files.write("gamecontrollerdb.stamp", timeStampStr) catch |err| {
 				std.log.err("Failed to write controller mappings: {s}", .{@errorName(err)});
 				return;
 			};
+			std.log.info("Controller mappings downloaded succesfully!", .{});
 		}
 
 		pub fn clean(self: *ControllerMappingDownloadTask) void {
 			main.globalAllocator.destroy(self);
+			updateControllerMappings();
+			running.store(false, .monotonic);
 		}
 	};
-	pub fn downloadControllerMappings(_: *Gamepad) void {
-		var needDownload: bool = false;
+	pub fn downloadControllerMappings() void {
+		var needsDownload: bool = false;
 		const curTimestamp = std.time.nanoTimestamp();
 		if (settings.downloadControllerMappings) {
 			const timestamp: i128 = blk: {
-				var dir = files.openDir(".") catch break :blk 0;
-				if (!dir.hasFile("gamecontrollerdb.stamp")) break :blk 0;
-				const stamp = dir.read(main.stackAllocator, "gamecontrollerdb.stamp") catch break :blk 0;
+				const stamp = files.read(main.stackAllocator, "./gamecontrollerdb.stamp") catch break :blk 0;
 				defer main.stackAllocator.free(stamp);
 				break :blk std.fmt.parseInt(i128, stamp, 16) catch 0;
 			};
-			const delta = curTimestamp - timestamp;
-			const deltaDays = @divTrunc(delta, std.time.ns_per_day);
-			needDownload = deltaDays >= 7;
+			const delta = curTimestamp-|timestamp;
+			needsDownload = delta >= 7*std.time.ns_per_day;
 		}
 
 		if (settings.downloadControllerMappingsWhenUnrecognized) {
 			for (0..c.GLFW_JOYSTICK_LAST) |jsid| {
 				if ((c.glfwJoystickPresent(@intCast(jsid)) != 0) and (c.glfwJoystickIsGamepad(@intCast(jsid)) == 0)) {
-					needDownload = true;
+					needsDownload = true;
 					break;
 				}
 			}
 		}
-		if (needDownload) {
+		std.log.info("Game controller mappings {s}need downloading.", .{if (needsDownload) "" else "do not "});
+		if (needsDownload) {
 			ControllerMappingDownloadTask.schedule(curTimestamp);
+		} else {
+			controllerMappingsDownloaded.store(true, .monotonic);
 		}
 	}
-	pub fn updateControllerMappings(_: *Gamepad) void {
+	pub fn updateControllerMappings() void {
 		var _envMap = std.process.getEnvMap(main.stackAllocator.allocator) catch null;
 		if (_envMap) |*envMap| {
 			defer envMap.deinit();
@@ -241,51 +247,34 @@ const Gamepad = struct {
 				_ = c.glfwUpdateGamepadMappings(@ptrCast(controller_config_env));
 			}
 		}
-		if (files.openDir(".") catch null) |dir| {
-			if (dir.read(main.stackAllocator, "gamecontrollerdb.txt") catch null) |data| {
-				var newData = main.stackAllocator.realloc(data, data.len + 1);
-				defer main.stackAllocator.free(newData);
-				newData[data.len - 1] = 0;
-				_ = c.glfwUpdateGamepadMappings(@ptrCast(newData));
-			}
-		}
-		const selfExeDirPath = std.fs.selfExeDirPathAlloc(main.stackAllocator.allocator) catch |err| {
-			std.log.err("Error getting executable directory{s}", .{@errorName(err)});
-			return;
-		};
-		defer main.stackAllocator.free(selfExeDirPath);
-		const mappings_path = std.fs.path.join(main.stackAllocator.allocator, &.{selfExeDirPath, "gamecontrollerdb.txt"}) catch unreachable;
-		defer main.stackAllocator.free(mappings_path);
-		const data =  main.files.read(main.stackAllocator, mappings_path) catch |err| {
+		const data = main.files.read(main.stackAllocator, "./gamecontrollerdb.txt") catch |err| {
 			if (@TypeOf(err) == std.fs.File.OpenError and err == std.fs.File.OpenError.FileNotFound) {
 				return; // Ignore not finding mappings.
 			}
 			std.log.err("Error opening gamepad mappings file: {s}", .{@errorName(err)});
 			return;
 		};
-		defer main.stackAllocator.free(data);
-		_ = c.glfwUpdateGamepadMappings(@ptrCast(data));
+		var newData = main.stackAllocator.realloc(data, data.len + 1);
+		defer main.stackAllocator.free(newData);
+		newData[data.len - 1] = 0;
+		_ = c.glfwUpdateGamepadMappings(newData.ptr);
 	}
 
-	pub fn init() *Gamepad {
-		const self: *Gamepad = main.globalAllocator.create(Gamepad);
-		if (!settings.askToDownloadControllerMappings) {
-			self.downloadControllerMappings();
+	pub fn init() void {
+		if (settings.askToDownloadControllerMappings) {
+			updateControllerMappings();
 		}
-		self.updateControllerMappings();
 		gamepadState = .init(main.globalAllocator.allocator);
-		self.update(0.0);
+		update(0.0);
 		std.log.debug("Gamepads at init: {d}", .{gamepadState.count()});
-		return self;
 	}
-	pub fn deinit(self: *Gamepad) void {
-		defer main.globalAllocator.destroy(self);
+	pub fn deinit() void {
 		const iter = gamepadState.keyIterator();
 		var i: usize = 0;
 		while (i < iter.len) {
 			const key = iter.items[i];
-			const value = gamepadState.get(key);
-			defer main.globalAllocator.destroy(value.?);
+			const valueMaybe = gamepadState.get(key);
+			if (valueMaybe) |value| main.globalAllocator.destroy(value);
 			_ = gamepadState.remove(key);
 			i += 1;
 		}
@@ -594,8 +583,7 @@ pub fn setNextGamepadListener(listener: ?*const fn(?GamepadAxis, c_int) void) !v
 }
 
 fn updateCursor() void {
-	if (grabbed) {
-
+	if(grabbed) {
 		c.glfwSetInputMode(window, c.GLFW_CURSOR, c.GLFW_CURSOR_DISABLED);
 			// Behavior seems much more intended without this line on MacOS.
 			// Perhaps this is an inconsistency in GLFW due to its fresh XQuartz support?
@@ -686,15 +674,15 @@ pub fn init() void { // MARK: init()
 	c.glEnable(c.GL_DEBUG_OUTPUT_SYNCHRONOUS);
 	c.glDebugMessageCallback(GLFWCallbacks.glDebugOutput, null);
 	c.glDebugMessageControl(c.GL_DONT_CARE, c.GL_DONT_CARE, c.GL_DONT_CARE, 0, null, c.GL_TRUE);
-	gamepad = Gamepad.init();
+	Gamepad.init();
 }
 pub fn deinit() void {
-	gamepad.deinit();
+	Gamepad.deinit();
 	c.glfwDestroyWindow(window);
 	c.glfwTerminate();
 }
 var cursorVisible: bool = true;
-pub fn setCursorVisible(visible: bool) void {
+fn setCursorVisible(visible: bool) void {
 	if (cursorVisible != visible) {
 		cursorVisible = visible;
 		updateCursor();

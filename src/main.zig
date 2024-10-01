@@ -300,7 +300,7 @@ fn toggleAdvancedNetworkDebugOverlay() void {
 fn cycleHotbarSlot(i: comptime_int) *const fn() void {
 	return &struct {
 		fn set() void {
-			game.Player.selectedSlot = @as(u32, @intCast(@mod(@as(i33, game.Player.selectedSlot) + i, 12)));
+			game.Player.selectedSlot = @intCast(@mod(@as(i33, game.Player.selectedSlot) + i, 12));
 		}
 	}.set;
 }
@@ -320,12 +320,6 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "left", .key = c.GLFW_KEY_A, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = false}},
 		.{.name = "backward", .key = c.GLFW_KEY_S, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = true}},
 		.{.name = "right", .key = c.GLFW_KEY_D, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = true}},
-		.{.name = "scrollUp", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_Y, .positive = false}},
-		.{.name = "scrollDown", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_Y, .positive = true}},
-		.{.name = "uiUp", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = false}},
-		.{.name = "uiLeft", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = false}},
-		.{.name = "uiDown",  .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = true}},
-		.{.name = "uiRight", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = true}},
 		.{.name = "sprint", .key = c.GLFW_KEY_LEFT_CONTROL, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_LEFT_THUMB},
 		.{.name = "jump", .key = c.GLFW_KEY_SPACE, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_A},
 		.{.name = "fly", .key = c.GLFW_KEY_F, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_DPAD_DOWN, .pressAction = &game.flyToggle},
@@ -347,6 +341,13 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "openChat", .key = c.GLFW_KEY_T, .releaseAction = &openChat},
 		.{.name = "mainGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &gui.mainButtonPressed, .releaseAction = &gui.mainButtonReleased, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_A},
 		.{.name = "secondaryGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &gui.secondaryButtonPressed, .releaseAction = &gui.secondaryButtonReleased, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_Y},
+		// gamepad gui.
+		.{.name = "scrollUp", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_Y, .positive = false}},
+		.{.name = "scrollDown", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_Y, .positive = true}},
+		.{.name = "uiUp", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = false}},
+		.{.name = "uiLeft", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = false}},
+		.{.name = "uiDown",  .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = true}},
+		.{.name = "uiRight", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = true}},
 		// text:
 		.{.name = "textCursorLeft", .key = c.GLFW_KEY_LEFT, .repeatAction = &gui.textCallbacks.left},
 		.{.name = "textCursorRight", .key = c.GLFW_KEY_RIGHT, .repeatAction = &gui.textCallbacks.right},
@@ -420,24 +421,40 @@ fn isValidIdentifierName(str: []const u8) bool { // TODO: Remove after #480
 	}
 	return true;
 }
-var startup_finished: bool = false;
-var controller_mappings_window_shown: bool = false;
+const StartupStatus = enum {
+	showController,
+	showNamePrompt,
+	showMainWindow,
+	finished
+};
+var startup_status: StartupStatus = .showController;
 pub fn openNextStartupWindow() void {
-	if(startup_finished) {
-		return;
-	}
-	if(!controller_mappings_window_shown and Window.gamepad.isControllerConnected()) {
-		if (settings.askToDownloadControllerMappings) {
-			gui.openWindow("controller_mappings_settings");
-		} else {
-			gui.openWindow("download_controller_mappings");
-		}
-		controller_mappings_window_shown = true;
-	} else if(settings.playerName.len == 0) {
-		gui.openWindow("change_name");
-	} else {
-		startup_finished = true;
-		gui.openWindow("main");
+	switch(startup_status) {
+		.showController => {
+			startup_status = .showNamePrompt;
+			if (Window.Gamepad.isControllerConnected()) {
+				if (settings.askToDownloadControllerMappings) {
+					gui.openWindow("controller_mappings_settings");
+				} else {
+					gui.openWindow("download_controller_mappings");
+				}
+			} else {
+				openNextStartupWindow();
+			}
+		},
+		.showNamePrompt => {
+			startup_status = .showMainWindow;
+			if (settings.playerName.len == 0) {
+				gui.openWindow("change_name");
+			} else {
+				openNextStartupWindow();
+			}
+		},
+		.showMainWindow => {
+			startup_status = .finished;
+			gui.openWindow("main");
+		},
+		.finished => { }
 	}
 }
 
@@ -471,7 +488,7 @@ pub fn convertJsonToZon(jsonPath: []const u8) void { // TODO: Remove after #480
 	var zonString = List(u8).init(stackAllocator);
 	defer zonString.deinit();
 	std.log.debug("{s}", .{jsonString});
-	
+
 	var i: usize = 0;
 	while(i < jsonString.len) : (i += 1) {
 		switch(jsonString[i]) {
@@ -503,12 +520,6 @@ pub fn convertJsonToZon(jsonPath: []const u8) void { // TODO: Remove after #480
 				zonString.append(c);
 			},
 		}
-		controller_mappings_window_shown = true;
-	} else if(settings.playerName.len == 0) {
-		gui.openWindow("change_name");
-	} else {
-		startup_finished = true;
-		gui.openWindow("main");
 	}
 	const zonPath = std.fmt.allocPrint(stackAllocator.allocator, "{s}.zig.zon", .{jsonPath[0..std.mem.lastIndexOfScalar(u8, jsonPath, '.') orelse unreachable]}) catch unreachable;
 	defer stackAllocator.free(zonPath);
@@ -629,6 +640,7 @@ pub fn main() void { // MARK: main()
 	}
 
 	audio.setMusic("cubyz:cubyz");
+
 	while(c.glfwWindowShouldClose(Window.window) == 0) {
 		const isHidden = c.glfwGetWindowAttrib(Window.window, c.GLFW_ICONIFIED) == c.GLFW_TRUE;
 		if(!isHidden) {
@@ -666,7 +678,7 @@ pub fn main() void { // MARK: main()
 		if(game.world != null) { // Update the game
 			game.update(deltaTime);
 		}
-		Window.gamepad.update(deltaTime);
+		Window.Gamepad.update(deltaTime);
 
 		if(!isHidden) {
 			c.glEnable(c.GL_CULL_FACE);
