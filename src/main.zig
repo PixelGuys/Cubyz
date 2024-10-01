@@ -403,7 +403,26 @@ fn isValidIdentifierName(str: []const u8) bool { // TODO: Remove after #480
 	return true;
 }
 
+fn isHiddenOrParentHiddenPosix(path: []const u8) bool {
+	var iter = std.fs.path.componentIterator(path) catch |err| {
+		std.log.err("Cannot iterate on path {s}: {s}!", .{path, @errorName(err)});
+		return false;
+	};
+	while (iter.next()) |component| {
+		if (std.mem.eql(u8, component.name, ".") or std.mem.eql(u8, component.name, "..")) {
+			continue;
+		}
+		if (component.name.len > 0 and component.name[0] == '.') {
+			return true;
+		}
+	}
+	return false;
+}
 pub fn convertJsonToZon(jsonPath: []const u8) void { // TODO: Remove after #480
+	if (isHiddenOrParentHiddenPosix(jsonPath)) {
+		std.log.info("NOT converting {s}.", .{jsonPath});
+		return;
+	}
 	std.log.info("Converting {s}:", .{jsonPath});
 	const jsonString = files.read(stackAllocator, jsonPath) catch |err| {
 		std.log.err("Could convert file {s}: {s}", .{jsonPath, @errorName(err)});
