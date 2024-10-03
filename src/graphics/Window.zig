@@ -17,8 +17,8 @@ pub var width: u31 = 1280;
 pub var height: u31 = 720;
 pub var window: *c.GLFWwindow = undefined;
 pub var grabbed: bool = false;
-
 pub var scrollOffset: f32 = 0;
+
 pub const Gamepad = struct {
 	pub var gamepadState: std.AutoHashMap(c_int, *c.GLFWgamepadstate) = undefined;
 	pub var controllerMappingsDownloaded: std.atomic.Value(bool) = std.atomic.Value(bool).init(false);
@@ -124,7 +124,8 @@ pub const Gamepad = struct {
 				GLFWCallbacks.currentPos[0] += @floatCast(x * delta * 256);
 				GLFWCallbacks.currentPos[1] += @floatCast(y * delta * 256);
 				const winSize = getWindowSize();
-				GLFWCallbacks.currentPos = std.math.clamp(GLFWCallbacks.currentPos, .{0, 0}, winSize);
+				GLFWCallbacks.currentPos[0] = std.math.clamp(GLFWCallbacks.currentPos[0], 0, winSize[0]);
+				GLFWCallbacks.currentPos[1] = std.math.clamp(GLFWCallbacks.currentPos[1], 0, winSize[1]);
 			}
 		}
 		scrollOffset += @floatCast((main.KeyBoard.key("scrollUp").value - main.KeyBoard.key("scrollDown").value) * delta * 4);
@@ -212,7 +213,7 @@ pub const Gamepad = struct {
 				defer main.stackAllocator.free(stamp);
 				break :blk std.fmt.parseInt(i128, stamp, 16) catch 0;
 			};
-			const delta = curTimestamp-|timestamp;
+			const delta = curTimestamp-%timestamp;
 			needsDownload = delta >= 7*std.time.ns_per_day;
 		}
 
@@ -681,9 +682,10 @@ fn setCursorVisible(visible: bool) void {
 	}
 }
 
-pub fn handleEvents() void {
+pub fn handleEvents(deltaTime: f64) void {
 	scrollOffset = 0;
 	c.glfwPollEvents();
+	Gamepad.update(deltaTime);
 }
 
 var oldX: c_int = 0;
