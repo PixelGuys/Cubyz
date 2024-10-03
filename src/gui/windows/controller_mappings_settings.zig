@@ -42,7 +42,7 @@ pub fn onOpen() void {
 	list.add(CheckBox.init(.{0, 0}, 256, "Don't ask at startup", !settings.askToDownloadControllerMappings, &askCallback));
 	list.add(CheckBox.init(.{0, 0}, 256, "Download controller mappings periodically", settings.downloadControllerMappings, &periodicCallback));
 	list.add(CheckBox.init(.{0, 0}, 256, "Download controller mappings when unrecognized controller plugged in", settings.downloadControllerMappingsWhenUnrecognized, &unrecognizedCallback));
-	list.add(Button.initText(.{0, 0}, 256, "Close", .{.callback = &onSave}));
+	list.add(Button.initText(.{0, 0}, 256, "Close and download any requested controller mappings", .{.callback = &onSave}));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));

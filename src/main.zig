@@ -672,13 +672,12 @@ pub fn main() void { // MARK: main()
 		lastDeltaTime.store(deltaTime, .monotonic);
 		lastBeginRendering = begin;
 
-		Window.handleEvents();
+		Window.handleEvents(deltaTime);
 		file_monitor.handleEvents();
 
 		if(game.world != null) { // Update the game
 			game.update(deltaTime);
 		}
-		Window.Gamepad.update(deltaTime);
 
 		if(!isHidden) {
 			c.glEnable(c.GL_CULL_FACE);

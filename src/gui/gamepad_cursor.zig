@@ -15,7 +15,7 @@ const size: f32 = 16;
 var texture: Texture = undefined;
 
 pub fn init() void {
-	texture = Texture.initFromFile("assets/cubyz/ui/cursor.png");
+	texture = Texture.initFromFile("assets/cubyz/ui/gamepad_cursor.png");
 }
 
 pub fn deinit() void {
