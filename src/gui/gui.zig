@@ -47,7 +47,7 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 	};
 
 	var commands: List(Command) = undefined;
-	var mutex: std.Thread.Mutex = .{};
+	var mutex: std.Thread.Mutex.Recursive = std.Thread.Mutex.Recursive.init;
 
 	fn init() void {
 		mutex.lock();
@@ -84,7 +84,7 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 	}
 
 	fn executeOpenWindowCommand(window: *GuiWindow) void {
-		main.utils.assertLocked(&mutex);
+		main.utils.assertLocked(&mutex.mutex);
 		defer updateWindowPositions();
 		for(openWindows.items, 0..) |_openWindow, i| {
 			if(_openWindow == window) {
@@ -100,7 +100,7 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 	}
 
 	fn executeCloseWindowCommand(window: *GuiWindow) void {
-		main.utils.assertLocked(&mutex);
+		main.utils.assertLocked(&mutex.mutex);
 		defer updateWindowPositions();
 		if(selectedWindow == window) {
 			selectedWindow = null;
@@ -217,7 +217,7 @@ pub fn save() void { // MARK: save()
 		windowZon.put("scale", window.scale);
 		guiZon.put(window.id, windowZon);
 	}
-	
+
 	main.files.writeZon("gui_layout.zig.zon", guiZon) catch |err| {
 		std.log.err("Could not write gui_layout.zig.zon: {s}", .{@errorName(err)});
 	};
