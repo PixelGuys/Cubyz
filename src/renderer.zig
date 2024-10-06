@@ -199,7 +199,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	gpu_performance_measuring.startQuery(.chunk_rendering_preparation);
 	const direction = crosshairDirection(game.camera.viewMatrix, lastFov, lastWidth, lastHeight);
-	MeshSelection.select(playerPos, direction, game.Player.inventory.items[game.Player.selectedSlot]);
+	MeshSelection.select(playerPos, direction, game.Player.inventory.getItem(game.Player.selectedSlot));
 	MeshSelection.render(game.projectionMatrix, game.camera.viewMatrix, playerPos);
 
 	chunk_meshing.beginRender();
@@ -684,7 +684,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	var selectionMax: Vec3f = undefined;
 	var lastPos: Vec3d = undefined;
 	var lastDir: Vec3f = undefined;
-	pub fn select(pos: Vec3d, _dir: Vec3f, inventoryStack: main.items.ItemStack) void {
+	pub fn select(pos: Vec3d, _dir: Vec3f, item: ?main.items.Item) void {
 		lastPos = pos;
 		const dir: Vec3d = @floatCast(_dir);
 		lastDir = _dir;
@@ -709,7 +709,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			if(block.typ != 0) {
 				if(block.blockClass() != .fluid and block.blockClass() != .air) { // TODO: Buckets could select fluids
 					const relativePlayerPos: Vec3f = @floatCast(pos - @as(Vec3d, @floatFromInt(voxelPos)));
-					if(block.mode().rayIntersection(block, inventoryStack, voxelPos, relativePlayerPos, _dir)) |intersection| {
+					if(block.mode().rayIntersection(block, item, voxelPos, relativePlayerPos, _dir)) |intersection| {
 						if(intersection.distance <= closestDistance) {
 							selectedBlockPos = voxelPos;
 							selectionMin = intersection.min;

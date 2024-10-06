@@ -416,50 +416,45 @@ pub const Player = struct { // MARK: Player
 				return;
 			}
 		}
-		main.renderer.MeshSelection.placeBlock(&inventory.items[selectedSlot]);
+		inventory.placeBlock(selectedSlot);
 	}
 
 	pub fn breakBlock() void { // TODO: Breaking animation and tools
 		if(!main.Window.grabbed) return;
-		main.renderer.MeshSelection.breakBlock(&inventory.items[selectedSlot]);
+		inventory.breakBlock(selectedSlot);
 	}
 
 	pub fn acquireSelectedBlock() void {
 		if (main.renderer.MeshSelection.selectedBlockPos) |selectedPos| {
 			const block = main.renderer.mesh_storage.getBlock(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
-			for (0..items.itemListSize) |idx|{
-				if (items.itemList[idx].block == block.typ){
+			for (0..items.itemListSize) |idx| outer: {
+				if (items.itemList[idx].block == block.typ) {
 					const item = items.Item {.baseItem = &items.itemList[idx]};
-					var isDone = false;
-					
+
 					// Check if there is already a slot with that item type
 					for (0..12) |slotIdx| {
-						if (std.meta.eql(inventory.items[slotIdx].item, item)) {
-							inventory.items[slotIdx] = items.ItemStack {.item = item, .amount = items.itemList[idx].stackSize};
+						if (std.meta.eql(inventory.getItem(slotIdx), item)) {
+							inventory.fillFromCreative(@intCast(slotIdx), item);
 							selectedSlot = @intCast(slotIdx);
-							isDone = true;
-							break;
+							break :outer;
 						}
 					}
-					if (isDone) break;
 
-					if (inventory.items[selectedSlot].empty()) {
-						inventory.items[selectedSlot] = items.ItemStack {.item = item, .amount = items.itemList[idx].stackSize};
+					if (inventory.getItem(selectedSlot) == null) {
+						inventory.fillFromCreative(selectedSlot, item);
 						break;
 					}
-					
+
 					// Look for an empty slot
 					for (0..12) |slotIdx| {
-						if (inventory.items[slotIdx].empty()) {
-							inventory.items[slotIdx] = items.ItemStack {.item = item, .amount = items.itemList[idx].stackSize};
+						if (inventory.getItem(slotIdx) == null) {
+							inventory.fillFromCreative(@intCast(slotIdx), item);
 							selectedSlot = @intCast(slotIdx);
-							isDone = true;
-							break;
+							break :outer;
 						}
 					}
-					if (isDone) break;
 
-					inventory.items[selectedSlot] = items.ItemStack {.item = item, .amount = items.itemList[idx].stackSize};
+					inventory.fillFromCreative(selectedSlot, item);
 					break;
 				}
 			}
@@ -492,7 +487,7 @@ pub const World = struct { // MARK: World
 			.milliTime = std.time.milliTimestamp(),
 		};
 		self.itemDrops.init(main.globalAllocator, self);
-		Player.inventory = Inventory.init(main.globalAllocator, 32);
+		Player.inventory = Inventory.init(main.globalAllocator, 32, .normal);
 		network.Protocols.handShake.clientSide(self.conn, settings.playerName);
 
 		main.Window.setMouseGrabbed(true);

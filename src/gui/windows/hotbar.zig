@@ -39,51 +39,10 @@ pub fn deinit() void {
 
 var itemSlots: [12]*ItemSlot = undefined;
 
-pub fn tryAddingItems(index: usize, source: *ItemStack, desiredAmount: u16) void {
-	Player.mutex.lock();
-	defer Player.mutex.unlock();
-	const destination = &Player.inventory.items[index];
-	if(destination.item != null and !std.meta.eql(source.item, destination.item)) return;
-	const actual = destination.add(source.item.?, desiredAmount);
-	source.amount -= actual;
-	if(source.amount == 0) source.item = null;
-	main.network.Protocols.genericUpdate.sendInventory_full(main.game.world.?.conn, Player.inventory); // TODO(post-java): Add better options to the protocol.
-}
-
-pub fn tryTakingItems(index: usize, destination: *ItemStack, desiredAmount: u16) void {
-	var amount = desiredAmount;
-	Player.mutex.lock();
-	defer Player.mutex.unlock();
-	const source = &Player.inventory.items[index];
-	if(destination.item != null and !std.meta.eql(source.item, destination.item)) return;
-	if(source.item == null) return;
-	amount = @min(amount, source.amount);
-	const actual = destination.add(source.item.?, amount);
-	source.amount -= actual;
-	if(source.amount == 0) source.item = null;
-	main.network.Protocols.genericUpdate.sendInventory_full(main.game.world.?.conn, Player.inventory); // TODO(post-java): Add better options to the protocol.
-}
-
-pub fn trySwappingItems(index: usize, source: *ItemStack) void {
-	Player.mutex.lock();
-	defer Player.mutex.unlock();
-	const destination = &Player.inventory.items[index];
-	const swap = destination.*;
-	destination.* = source.*;
-	source.* = swap;
-	main.network.Protocols.genericUpdate.sendInventory_full(main.game.world.?.conn, Player.inventory); // TODO(post-java): Add better options to the protocol.
-}
-
-const vtable = ItemSlot.VTable {
-	.tryAddingItems = &tryAddingItems,
-	.tryTakingItems = &tryTakingItems,
-	.trySwappingItems = &trySwappingItems,
-};
-
 pub fn onOpen() void {
 	const list = HorizontalList.init();
 	for(0..12) |i| {
-		itemSlots[i] = ItemSlot.init(.{0, 0}, Player.inventory.items[i], &vtable, i, .{.custom = hotbarSlotTexture}, .normal);
+		itemSlots[i] = ItemSlot.init(.{0, 0}, Player.inventory, @intCast(i), .{.custom = hotbarSlotTexture}, .normal);
 		list.add(itemSlots[i]);
 	}
 	list.finish(.{0, 0}, .center);
@@ -101,8 +60,5 @@ pub fn onClose() void {
 pub fn update() void {
 	Player.mutex.lock();
 	defer Player.mutex.unlock();
-	for(&itemSlots, 0..) |slot, i| {
-		slot.updateItemStack(Player.inventory.items[i]);
-	}
 	itemSlots[Player.selectedSlot].hovered = true;
 }

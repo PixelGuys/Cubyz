@@ -35,7 +35,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 		fn updateData(_: *Block, _: Neighbor, _: Block) bool {
 			return false;
 		}
-		fn rayIntersection(block: Block, _: main.items.ItemStack, _: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
+		fn rayIntersection(block: Block, _: ?main.items.Item, _: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
 			// Check the true bounding box (using this algorithm here: https://tavianator.com/2011/ray_box.html):
 			const invDir = @as(Vec3f, @splat(1))/playerDir;
 			const modelData = &main.models.models.items[blocks.meshes.model(block)];
@@ -70,7 +70,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 	/// Updates data of a placed block if the RotationMode dependsOnNeighbors.
 	updateData: *const fn(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool = &DefaultFunctions.updateData,
 
-	rayIntersection: *const fn(block: Block, item: main.items.ItemStack, voxelPos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult = &DefaultFunctions.rayIntersection,
+	rayIntersection: *const fn(block: Block, item: ?main.items.Item, voxelPos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult = &DefaultFunctions.rayIntersection,
 };
 
 var rotationModes: std.StringHashMap(RotationMode) = undefined;
@@ -512,8 +512,8 @@ pub const RotationModes = struct {
 			return null;
 		}
 
-		pub fn rayIntersection(block: Block, item: main.items.ItemStack, blockPos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
-			if(item.item) |_item| {
+		pub fn rayIntersection(block: Block, item: ?main.items.Item, blockPos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
+			if(item) |_item| {
 				switch(_item) {
 					.baseItem => |baseItem| {
 						if(std.mem.eql(u8, baseItem.id, "cubyz:chisel")) { // Select only one eigth of a block
