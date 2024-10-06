@@ -62,12 +62,14 @@ pub fn render() void {
 		y += 8;
 		draw.print("Queue size: {}", .{main.threadPool.queueSize()}, 0, y, 8, .left);
 		y += 8;
-		const perf = main.threadPool.performance.readAndReset();
+		if (main.frameCount % main.perfUpdateFrequency == 0)
+			main.lastPerformance = main.threadPool.performance.readAndReset();
+		const perf = main.lastPerformance;
 		const values = comptime std.enums.values(TaskType);
 		inline for(values) |t| {
 			const name = @tagName(t);
 			const i = @intFromEnum(t);
-			draw.print("    " ++ name ++ " time: {} ms ({} µs/task)", .{@divFloor(perf.utime[i], 1000), @divFloor(perf.utime[i], @max(1, perf.tasks[i]))}, 0, y, 8, .left);
+			draw.print("    " ++ name ++ " time: {} ms/frame ({} µs/task)", .{@divFloor(perf.utime[i], 1000*main.perfUpdateFrequency), @divFloor(perf.utime[i], @max(1, perf.tasks[i]))}, 0, y, 8, .left);
 		y += 8;
 		}
 		draw.print("Mesh Queue size: {}", .{main.renderer.mesh_storage.updatableList.items.len}, 0, y, 8, .left);
