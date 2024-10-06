@@ -202,7 +202,7 @@ const ChunkManager = struct { // MARK: ChunkManager
 			.isStillNeeded = @ptrCast(&isStillNeeded),
 			.run = @ptrCast(&run),
 			.clean = @ptrCast(&clean),
-			.taskType = .lighting,
+			.taskType = .misc,
 		};
 		
 		pub fn scheduleAndDecreaseRefCount(pos: terrain.SurfaceMap.MapFragmentPosition, source: ?*User) void {
