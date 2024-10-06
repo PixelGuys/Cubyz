@@ -20,31 +20,67 @@ const AudioData = struct {
 	musicId: []const u8,
 	data: []f32 = &.{},
 
+	fn open_vorbis_file_by_id(id: []const u8) ?*c.stb_vorbis {
+		const colonIndex = std.mem.indexOfScalar(u8, id, ':') orelse {
+			std.log.err("Invalid music id: {s}. Must be addon:file_name", .{id});
+			return null;
+		};
+		const addon = id[0..colonIndex];
+		const fileName = id[colonIndex+1..];
+		const path1 = std.fmt.allocPrintZ(main.stackAllocator.allocator, "assets/{s}/music/{s}.ogg", .{addon, fileName}) catch unreachable;
+		defer main.stackAllocator.free(path1);
+		var err: c_int = 0;
+		if(c.stb_vorbis_open_filename(path1.ptr, &err, null)) |ogg_stream| return ogg_stream;
+		const path2 = std.fmt.allocPrintZ(main.stackAllocator.allocator, "serverAssets/{s}/music/{s}.ogg", .{addon, fileName}) catch unreachable;
+		defer main.stackAllocator.free(path2);
+		if(c.stb_vorbis_open_filename(path2.ptr, &err, null)) |ogg_stream| return ogg_stream;
+		std.log.err("Couldn't find music with id \"{s}\". Searched path \"{s}\" and \"{s}\"", .{id, path1, path2});
+		return null;
+	}
+
 	fn init(musicId: []const u8) *AudioData {
 		const self = main.globalAllocator.create(AudioData);
-		self.* = .{.musicId = musicId};
-		var err: c_int = 0;
-		const path = std.fmt.allocPrintZ(main.stackAllocator.allocator, "assets/cubyz/music/{s}.ogg", .{musicId}) catch unreachable;
-		defer main.stackAllocator.free(path);
-		const ogg_stream = c.stb_vorbis_open_filename(path.ptr, &err, null);
-		defer c.stb_vorbis_close(ogg_stream);
-		if(ogg_stream != null) {
+		self.* = .{.musicId = main.globalAllocator.dupe(u8, musicId)};
+
+		const channels = 2;
+		if(open_vorbis_file_by_id(musicId)) |ogg_stream| {
+			defer c.stb_vorbis_close(ogg_stream);
 			const ogg_info: c.stb_vorbis_info = c.stb_vorbis_get_info(ogg_stream);
-			if(sampleRate != @as(f32, @floatFromInt(ogg_info.sample_rate))) { // TODO: Does it make sense to convert it?
-				std.log.warn("Audio file {s} has unsupported sample rate {}. Only {} is supported. Expect distortions.", .{path, ogg_info.sample_rate, sampleRate});
-			}
 			const samples = c.stb_vorbis_stream_length_in_samples(ogg_stream);
-			const channels = 2;
-			self.data = main.globalAllocator.alloc(f32, samples*channels);
-			_ = c.stb_vorbis_get_samples_float_interleaved(ogg_stream, channels, self.data.ptr, @as(c_int, @intCast(samples))*ogg_info.channels);
+			if(sampleRate != @as(f32, @floatFromInt(ogg_info.sample_rate))) {
+				const tempData = main.stackAllocator.alloc(f32, samples*channels);
+				defer main.stackAllocator.free(tempData);
+				_ = c.stb_vorbis_get_samples_float_interleaved(ogg_stream, channels, tempData.ptr, @as(c_int, @intCast(samples))*ogg_info.channels);
+				var stepWidth = @as(f32, @floatFromInt(ogg_info.sample_rate))/sampleRate;
+				const newSamples: usize = @intFromFloat(@as(f32, @floatFromInt(tempData.len/2))/stepWidth);
+				stepWidth = @as(f32, @floatFromInt(samples))/@as(f32, @floatFromInt(newSamples));
+				self.data = main.globalAllocator.alloc(f32, newSamples*channels);
+				for(0..newSamples) |s| {
+					const samplePosition = @as(f32, @floatFromInt(s))*stepWidth;
+					const firstSample: usize = @intFromFloat(@floor(samplePosition));
+					const interpolation = samplePosition - @floor(samplePosition);
+					for(0..channels) |ch| {
+						if(firstSample >= samples - 1) {
+							self.data[s*channels + ch] = tempData[(samples - 1)*channels + ch];
+						} else {
+							self.data[s*channels + ch] = tempData[firstSample*channels + ch]*(1 - interpolation) + tempData[(firstSample + 1)*channels + ch]*interpolation;
+						}
+					}
+				}
+			} else {
+				self.data = main.globalAllocator.alloc(f32, samples*channels);
+				_ = c.stb_vorbis_get_samples_float_interleaved(ogg_stream, channels, self.data.ptr, @as(c_int, @intCast(samples))*ogg_info.channels);
+			}
 		} else {
-			std.log.err("Couldn't read audio with id {s}", .{musicId});
+			self.data = main.globalAllocator.alloc(f32, channels);
+			@memset(self.data, 0);
 		}
 		return self;
 	}
 
 	fn deinit(self: *const AudioData) void {
 		main.globalAllocator.free(self.data);
+		main.globalAllocator.free(self.musicId);
 		main.globalAllocator.destroy(self);
 	}
 
@@ -99,12 +135,12 @@ const MusicLoadTask = struct {
 	pub fn schedule(musicId: []const u8) void {
 		const task = main.globalAllocator.create(MusicLoadTask);
 		task.* = MusicLoadTask {
-			.musicId = musicId,
+			.musicId = main.globalAllocator.dupe(u8, musicId),
 		};
 		main.threadPool.addTask(task, &vtable);
 		taskMutex.lock();
 		defer taskMutex.unlock();
-		activeTasks.append(main.globalAllocator, musicId);
+		activeTasks.append(main.globalAllocator, task.musicId);
 	}
 
 	pub fn getPriority(_: *MusicLoadTask) f32 {
@@ -132,6 +168,7 @@ const MusicLoadTask = struct {
 		}
 		_ = activeTasks.swapRemove(index);
 		taskMutex.unlock();
+		main.globalAllocator.free(self.musicId);
 		main.globalAllocator.destroy(self);
 	}
 };
@@ -172,6 +209,9 @@ pub fn deinit() void {
 	main.threadPool.closeAllTasksOfType(&MusicLoadTask.vtable);
 	musicCache.clear();
 	activeTasks.deinit(main.globalAllocator);
+	main.globalAllocator.free(preferredMusic);
+	preferredMusic.len = 0;
+	main.globalAllocator.free(activeMusicId);
 	activeMusicId.len = 0;
 }
 
@@ -212,16 +252,29 @@ const animationLengthInSeconds = 5.0;
 var curIndex: u16 = 0;
 var curEndIndex: std.atomic.Value(u16) = .{.value = sampleRate/60 & ~@as(u16, 1)};
 
+var mutex: std.Thread.Mutex = .{};
+var preferredMusic: []const u8 = "";
+
+pub fn setMusic(music: []const u8) void {
+	mutex.lock();
+	defer mutex.unlock();
+	if(std.mem.eql(u8, music, preferredMusic)) return;
+	main.globalAllocator.free(preferredMusic);
+	preferredMusic = main.globalAllocator.dupe(u8, music);
+}
+
 fn addMusic(buffer: []f32) void {
-	const musicId = if(main.game.world) |world| world.playerBiome.load(.monotonic).preferredMusic else "cubyz";
-	if(!std.mem.eql(u8, musicId, activeMusicId)) {
+	mutex.lock();
+	defer mutex.unlock();
+	if(!std.mem.eql(u8, preferredMusic, activeMusicId)) {
 		if(activeMusicId.len == 0) {
-			if(findMusic(musicId)) |musicBuffer| {
+			if(findMusic(preferredMusic)) |musicBuffer| {
 				currentMusic.init(musicBuffer);
-				activeMusicId = musicId;
+				main.globalAllocator.free(activeMusicId);
+				activeMusicId = main.globalAllocator.dupe(u8, preferredMusic);
 			}
 		} else if(!currentMusic.animationDecaying) {
-			_ = findMusic(musicId); // Start loading the next music into the cache ahead of time.
+			_ = findMusic(preferredMusic); // Start loading the next music into the cache ahead of time.
 			currentMusic.animationDecaying = true;
 			currentMusic.animationProgress = 0;
 			currentMusic.interpolationPolynomial = utils.unitIntervalSpline(f32, currentMusic.animationAmplitude, currentMusic.animationVelocity, 0, 0);
@@ -240,6 +293,7 @@ fn addMusic(buffer: []f32) void {
 		var amplitude: f32 = main.settings.musicVolume;
 		if(currentMusic.animationProgress > 1) {
 			if(currentMusic.animationDecaying) {
+				main.globalAllocator.free(activeMusicId);
 				activeMusicId = &.{};
 				amplitude = 0;
 			}

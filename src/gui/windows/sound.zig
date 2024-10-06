@@ -18,6 +18,7 @@ pub var window = GuiWindow {
 
 fn musicCallback(newValue: f32) void {
 	settings.musicVolume = deziBelToLinear(newValue);
+	settings.save();
 }
 
 fn deziBelToLinear(x: f32) f32 {
@@ -28,7 +29,7 @@ fn deziBelToLinear(x: f32) f32 {
 fn linearToDezibel(x: f32) f32 {
 	const db = 20*std.math.log10(x);
 	if(db < -59.95) return -60;
-	return 0;
+	return db;
 }
 
 fn musicFormatter(allocator: NeverFailingAllocator, value: f32) []const u8 {

@@ -4,7 +4,7 @@ const chunk = @import("chunk.zig");
 const game = @import("game.zig");
 const graphics = @import("graphics.zig");
 const c = graphics.c;
-const JsonElement = @import("json.zig").JsonElement;
+const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main.zig");
 const renderer = @import("renderer.zig");
 const settings = @import("settings.zig");
@@ -30,12 +30,12 @@ pub const ClientEntity = struct {
 	id: u32,
 	name: []const u8,
 
-	pub fn init(self: *ClientEntity, json: JsonElement, allocator: NeverFailingAllocator) void {
+	pub fn init(self: *ClientEntity, zon: ZonElement, allocator: NeverFailingAllocator) void {
 		self.* = ClientEntity{
-			.id = json.get(u32, "id", std.math.maxInt(u32)),
-			.width = json.get(f64, "width", 1),
-			.height = json.get(f64, "height", 1),
-			.name = allocator.dupe(u8, json.get([]const u8, "name", "")),
+			.id = zon.get(u32, "id", std.math.maxInt(u32)),
+			.width = zon.get(f64, "width", 1),
+			.height = zon.get(f64, "height", 1),
+			.name = allocator.dupe(u8, zon.get([]const u8, "name", "")),
 		};
 		self._interpolationPos = [_]f64 {
 			self.pos[0],
@@ -85,16 +85,16 @@ pub const ClientEntityManager = struct {
 		directionalLight: c_int,
 	} = undefined;
 	var shader: graphics.Shader = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
-	pub var entities: main.List(ClientEntity) = undefined;
+	pub var entities: main.VirtualList(ClientEntity, 1 << 20) = undefined;
 	pub var mutex: std.Thread.Mutex = std.Thread.Mutex{};
 
 	pub fn init() void {
-		entities = main.List(ClientEntity).init(main.globalAllocator);
-		shader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/entity_vertex.vs", "assets/cubyz/shaders/entity_fragment.fs", &uniforms);
+		entities = .init();
+		shader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/entity_vertex.vs", "assets/cubyz/shaders/entity_fragment.fs", "", &uniforms);
 	}
 
 	pub fn deinit() void {
-		for(entities.items) |ent| {
+		for(entities.items()) |ent| {
 			ent.deinit(main.globalAllocator);
 		}
 		entities.deinit();
@@ -110,7 +110,7 @@ pub const ClientEntityManager = struct {
 		main.utils.assertLocked(&mutex);
 		var time: i16 = @truncate(std.time.milliTimestamp() -% settings.entityLookback);
 		time -%= timeDifference.difference.load(.monotonic);
-		for(entities.items) |*ent| {
+		for(entities.items()) |*ent| {
 			ent.update(time, lastTime);
 		}
 		lastTime = time;
@@ -120,7 +120,7 @@ pub const ClientEntityManager = struct {
 		mutex.lock();
 		defer mutex.unlock();
 
-		for(entities.items) |ent| {
+		for(entities.items()) |ent| {
 			if(ent.id == game.Player.id or ent.name.len == 0) continue; // don't render local player
 			const pos3d = ent.getRenderPosition() - playerPos;
 			const pos4f = Vec4f{
@@ -151,7 +151,7 @@ pub const ClientEntityManager = struct {
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniform3fv(uniforms.directionalLight, 1, @ptrCast(&directionalLight));
 
-		for(entities.items) |ent| {
+		for(entities.items()) |ent| {
 			if(ent.id == game.Player.id) continue; // don't render local player
 
 			// TODO: Entity meshes.
@@ -177,17 +177,17 @@ pub const ClientEntityManager = struct {
 		}
 	}
 
-	pub fn addEntity(json: JsonElement) void {
+	pub fn addEntity(zon: ZonElement) void {
 		mutex.lock();
 		defer mutex.unlock();
 		var ent = entities.addOne();
-		ent.init(json, main.globalAllocator);
+		ent.init(zon, main.globalAllocator);
 	}
 
 	pub fn removeEntity(id: u32) void {
 		mutex.lock();
 		defer mutex.unlock();
-		for(entities.items, 0..) |*ent, i| {
+		for(entities.items(), 0..) |*ent, i| {
 			if(ent.id == id) {
 				ent.deinit(main.globalAllocator);
 				_ = entities.swapRemove(i);
@@ -221,7 +221,7 @@ pub const ClientEntityManager = struct {
 				0, 0, 0,
 			};
 			remaining = remaining[24..];
-			for(entities.items) |*ent| {
+			for(entities.items()) |*ent| {
 				if(ent.id == id) {
 					ent.updatePosition(&pos, &vel, time);
 					break;

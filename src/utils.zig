@@ -7,10 +7,10 @@ const main = @import("main.zig");
 
 pub const file_monitor = @import("utils/file_monitor.zig");
 
-pub const Compression = struct {
-	pub fn deflate(allocator: NeverFailingAllocator, data: []const u8) []u8 {
+pub const Compression = struct { // MARK: Compression
+	pub fn deflate(allocator: NeverFailingAllocator, data: []const u8, level: std.compress.flate.deflate.Level) []u8 {
 		var result = main.List(u8).init(allocator);
-		var comp = std.compress.flate.compressor(result.writer(), .{}) catch unreachable;
+		var comp = std.compress.flate.compressor(result.writer(), .{.level = level}) catch unreachable;
 		_ = comp.write(data) catch unreachable;
 		comp.finish() catch unreachable;
 		return result.toOwnedSlice();
@@ -75,7 +75,7 @@ pub const Compression = struct {
 			const fileData = data[0..len];
 			data = data[len..];
 
-			var splitter = std.mem.splitBackwards(u8, path, "/");
+			var splitter = std.mem.splitBackwardsScalar(u8, path, '/');
 			_ = splitter.first();
 			try outDir.makePath(splitter.rest());
 			const file = try outDir.createFile(path, .{});
@@ -86,7 +86,7 @@ pub const Compression = struct {
 };
 
 /// Implementation of https://en.wikipedia.org/wiki/Alias_method
-pub fn AliasTable(comptime T: type) type {
+pub fn AliasTable(comptime T: type) type { // MARK: AliasTable
 	return struct {
 		const AliasData = struct {
 			chance: u16,
@@ -188,7 +188,7 @@ pub fn AliasTable(comptime T: type) type {
 }
 
 /// A list that is always sorted in ascending order based on T.lessThan(lhs, rhs).
-pub fn SortedList(comptime T: type) type {
+pub fn SortedList(comptime T: type) type { // MARK: SortedList
 	return struct {
 		const Self = @This();
 
@@ -236,7 +236,7 @@ pub fn SortedList(comptime T: type) type {
 	};
 }
 
-pub fn Array2D(comptime T: type) type {
+pub fn Array2D(comptime T: type) type { // MARK: Array2D
 	return struct {
 		const Self = @This();
 		mem: []T,
@@ -277,7 +277,7 @@ pub fn Array2D(comptime T: type) type {
 	};
 }
 
-pub fn Array3D(comptime T: type) type {
+pub fn Array3D(comptime T: type) type { // MARK: Array3D
 	return struct {
 		const Self = @This();
 		mem: []T,
@@ -315,7 +315,7 @@ pub fn Array3D(comptime T: type) type {
 	};
 }
 
-pub fn CircularBufferQueue(comptime T: type) type {
+pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 	return struct {
 		const Self = @This();
 		mem: []T,
@@ -375,7 +375,7 @@ pub fn CircularBufferQueue(comptime T: type) type {
 
 /// Allows for stack-like allocations in a fast and safe way.
 /// It is safe in the sense that a regular allocator will be used when the buffer is full.
-pub const StackAllocator = struct {
+pub const StackAllocator = struct { // MARK: StackAllocator
 	const AllocationTrailer = packed struct{wasFreed: bool, previousAllocationTrailer: u31};
 	backingAllocator: NeverFailingAllocator,
 	buffer: []align(4096) u8,
@@ -524,7 +524,7 @@ pub const StackAllocator = struct {
 };
 
 /// An allocator that handles OutOfMemory situations by panicing or freeing memory(TODO), making it safe to ignore errors.
-pub const ErrorHandlingAllocator = struct {
+pub const ErrorHandlingAllocator = struct { // MARK: ErrorHandlingAllocator
 	backingAllocator: Allocator,
 
 	pub fn init(backingAllocator: Allocator) ErrorHandlingAllocator {
@@ -599,7 +599,7 @@ pub const ErrorHandlingAllocator = struct {
 };
 
 /// An allocator interface signaling that you can use 
-pub const NeverFailingAllocator = struct {
+pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 	allocator: Allocator,
 	IAssertThatTheProvidedAllocatorCantFail: void,
 
@@ -725,7 +725,7 @@ pub const NeverFailingAllocator = struct {
 	/// can be larger, smaller, or the same size as the old memory allocation.
 	/// If `new_n` is 0, this is the same as `free` and it always succeeds.
 	pub fn realloc(self: NeverFailingAllocator, old_mem: anytype, new_n: usize) t: {
-		const Slice = @typeInfo(@TypeOf(old_mem)).Pointer;
+		const Slice = @typeInfo(@TypeOf(old_mem)).pointer;
 		break :t []align(Slice.alignment) Slice.child;
 	} {
 		return self.allocator.realloc(old_mem, new_n) catch unreachable;
@@ -737,7 +737,7 @@ pub const NeverFailingAllocator = struct {
 		new_n: usize,
 		return_address: usize,
 	) t: {
-		const Slice = @typeInfo(@TypeOf(old_mem)).Pointer;
+		const Slice = @typeInfo(@TypeOf(old_mem)).pointer;
 		break :t []align(Slice.alignment) Slice.child;
 	} {
 		return self.allocator.reallocAdvanced(old_mem, new_n, return_address) catch unreachable;
@@ -760,12 +760,12 @@ pub const NeverFailingAllocator = struct {
 	}
 };
 
-pub const NeverFailingArenaAllocator = struct {
+pub const NeverFailingArenaAllocator = struct { // MARK: NeverFailingArena
 	arena: std.heap.ArenaAllocator,
 
 	pub fn init(child_allocator: NeverFailingAllocator) NeverFailingArenaAllocator {
 		return .{
-			.arena = std.heap.ArenaAllocator.init(child_allocator.allocator),
+			.arena = .init(child_allocator.allocator),
 		};
 	}
 
@@ -796,13 +796,13 @@ pub const NeverFailingArenaAllocator = struct {
 	}
 };
 
-pub const BufferFallbackAllocator = struct {
+pub const BufferFallbackAllocator = struct { // MARK: BufferFallbackAllocator
 	fixedBuffer: std.heap.FixedBufferAllocator,
 	fallbackAllocator: NeverFailingAllocator,
 
 	pub fn init(buffer: []u8, fallbackAllocator: NeverFailingAllocator) BufferFallbackAllocator {
 		return .{
-			.fixedBuffer = std.heap.FixedBufferAllocator.init(buffer),
+			.fixedBuffer = .init(buffer),
 			.fallbackAllocator = fallbackAllocator,
 		};
 	}
@@ -849,7 +849,7 @@ pub const BufferFallbackAllocator = struct {
 /// A simple binary heap.
 /// Thread safe and blocking.
 /// Expects T to have a `biggerThan(T) bool` function
-pub fn BlockingMaxHeap(comptime T: type) type {
+pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 	return struct {
 		const initialSize = 16;
 		size: usize,
@@ -949,6 +949,22 @@ pub fn BlockingMaxHeap(comptime T: type) type {
 			self.waitingThreads.signal();
 		}
 
+		pub fn addMany(self: *@This(), elems: []const T) void {
+			self.mutex.lock();
+			defer self.mutex.unlock();
+
+			if(self.size + elems.len > self.array.len) {
+				self.increaseCapacity(self.size*2 + elems.len);
+			}
+			for(elems) |elem| {
+				self.array[self.size] = elem;
+				self.siftUp(self.size);
+				self.size += 1;
+			}
+
+			self.waitingThreads.signal();
+		}
+
 		fn removeIndex(self: *@This(), i: usize) void {
 			assertLocked(&self.mutex);
 			self.size -= 1;
@@ -978,19 +994,22 @@ pub fn BlockingMaxHeap(comptime T: type) type {
 			}
 		}
 
+
+		fn extractAny(self: *@This()) ?T {
+			self.mutex.lock();
+			defer self.mutex.unlock();
+			if(self.size == 0) return null;
+			self.size -= 1;
+			return self.array[self.size];
+		}
+
 		fn increaseCapacity(self: *@This(), newCapacity: usize) void {
 			self.array = self.allocator.realloc(self.array, newCapacity);
 		}
 	};
 }
 
-pub const ThreadPool = struct {
-	pub const TaskType = enum(usize) {
-		chunkgen,
-		lighting,
-		misc,
-		taskTypes,
-	};
+pub const ThreadPool = struct { // MARK: ThreadPool
 	const Task = struct {
 		cachedPriority: f32,
 		self: *anyopaque,
@@ -1120,24 +1139,19 @@ pub const ThreadPool = struct {
 			}
 
 			if(id == 0 and std.time.milliTimestamp() -% lastUpdate > refreshTime) {
-				if(self.loadList.mutex.tryLock()) {
-					lastUpdate = std.time.milliTimestamp();
-					{
-						defer self.loadList.mutex.unlock();
-						var i: u32 = 0;
-						while(i < self.loadList.size) {
-							const task = &self.loadList.array[i];
-							if(!task.vtable.isStillNeeded(task.self, lastUpdate)) {
-								task.vtable.clean(task.self);
-								self.loadList.removeIndex(i);
-							} else {
-								task.cachedPriority = task.vtable.getPriority(task.self);
-								i += 1;
-							}
-						}
+				var temporaryTaskList = main.List(Task).init(main.stackAllocator);
+				defer temporaryTaskList.deinit();
+				while(self.loadList.extractAny()) |task| {
+					if(!task.vtable.isStillNeeded(task.self, lastUpdate)) {
+						task.vtable.clean(task.self);
+					} else {
+						const taskPtr = temporaryTaskList.addOne();
+						taskPtr.* = task;
+						taskPtr.cachedPriority = task.vtable.getPriority(task.self);
 					}
-					self.loadList.updatePriority();
 				}
+				self.loadList.addMany(temporaryTaskList.items);
+				lastUpdate = std.time.milliTimestamp();
 			}
 		}
 	}
@@ -1179,7 +1193,7 @@ pub const ThreadPool = struct {
 
 /// An packed array of integers with dynamic bit size.
 /// The bit size can be changed using the `resize` function.
-pub fn DynamicPackedIntArray(size: comptime_int) type {
+pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIntArray
 	return struct {
 		data: []u8 = &.{},
 		bitSize: u5 = 0,
@@ -1200,7 +1214,7 @@ pub fn DynamicPackedIntArray(size: comptime_int) type {
 
 		pub fn resize(self: *Self, allocator: main.utils.NeverFailingAllocator, newBitSize: u5) void {
 			if(newBitSize == self.bitSize) return;
-			var newSelf: Self = Self.initCapacity(allocator, newBitSize);
+			var newSelf = Self.initCapacity(allocator, newBitSize);
 
 			for(0..size) |i| {
 				newSelf.setValue(i, self.getValue(i));
@@ -1250,7 +1264,7 @@ pub fn DynamicPackedIntArray(size: comptime_int) type {
 	};
 }
 
-pub fn PaletteCompressedRegion(T: type, size: comptime_int) type {
+pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: PaletteCompressedRegion
 	return struct {
 		data: DynamicPackedIntArray(size) = .{},
 		palette: []T,
@@ -1284,6 +1298,21 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type {
 			};
 		}
 
+		pub fn initCapacity(self: *Self, paletteLength: u32) void {
+			std.debug.assert(paletteLength < 0x80000000 and paletteLength > 0);
+			const bitSize: u5 = @intCast(std.math.log2_int_ceil(u32, paletteLength));
+			const bufferLength = @as(u32, 1) << bitSize;
+			self.* = .{
+				.data = DynamicPackedIntArray(size).initCapacity(main.globalAllocator, bitSize),
+				.palette = main.globalAllocator.alloc(T, bufferLength),
+				.paletteOccupancy = main.globalAllocator.alloc(u32, bufferLength),
+				.paletteLength = paletteLength,
+				.activePaletteEntries = 1,
+			};
+			self.palette[0] = std.mem.zeroes(T);
+			self.paletteOccupancy[0] = size;
+		}
+
 		pub fn deinit(self: *Self) void {
 			self.data.deinit(main.globalAllocator);
 			main.globalAllocator.free(self.palette);
@@ -1294,7 +1323,7 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type {
 			return self.palette[self.data.getValue(i)];
 		}
 
-		pub fn setValue(self: *Self, i: usize, val: T) void {
+		fn getOrInsertPaletteIndex(noalias self: *Self, val: T) u32 {
 			std.debug.assert(self.paletteLength <= self.palette.len);
 			var paletteIndex: u32 = 0;
 			while(paletteIndex < self.paletteLength) : (paletteIndex += 1) { // TODO: There got to be a faster way to do this. Either using SIMD or using a cache or hashmap.
@@ -1314,16 +1343,52 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type {
 				self.paletteLength += 1;
 				std.debug.assert(self.paletteLength <= self.palette.len);
 			}
+			return paletteIndex;
+		}
 
+		pub fn setRawValue(noalias self: *Self, i: usize, paletteIndex: u32) void {
 			const previousPaletteIndex = self.data.setAndGetValue(i, paletteIndex);
+			if(previousPaletteIndex != paletteIndex) {
+				if(self.paletteOccupancy[paletteIndex] == 0) {
+					self.activePaletteEntries += 1;
+				}
+				self.paletteOccupancy[paletteIndex] += 1;
+				self.paletteOccupancy[previousPaletteIndex] -= 1;
+				if(self.paletteOccupancy[previousPaletteIndex] == 0) {
+					self.activePaletteEntries -= 1;
+				}
+			}
+		}
+
+		pub fn setValue(noalias self: *Self, i: usize, val: T) void {
+			const paletteIndex = self.getOrInsertPaletteIndex(val);
+			const previousPaletteIndex = self.data.setAndGetValue(i, paletteIndex);
+			if(previousPaletteIndex != paletteIndex) {
+				if(self.paletteOccupancy[paletteIndex] == 0) {
+					self.activePaletteEntries += 1;
+				}
+				self.paletteOccupancy[paletteIndex] += 1;
+				self.paletteOccupancy[previousPaletteIndex] -= 1;
+				if(self.paletteOccupancy[previousPaletteIndex] == 0) {
+					self.activePaletteEntries -= 1;
+				}
+			}
+		}
+
+		pub fn setValueInColumn(noalias self: *Self, startIndex: usize, endIndex: usize, val: T) void {
+			std.debug.assert(startIndex < endIndex);
+			const paletteIndex = self.getOrInsertPaletteIndex(val);
+			for(startIndex..endIndex) |i| {
+				const previousPaletteIndex = self.data.setAndGetValue(i, paletteIndex);
+				self.paletteOccupancy[previousPaletteIndex] -= 1;
+				if(self.paletteOccupancy[previousPaletteIndex] == 0) {
+					self.activePaletteEntries -= 1;
+				}
+			}
 			if(self.paletteOccupancy[paletteIndex] == 0) {
 				self.activePaletteEntries += 1;
 			}
-			self.paletteOccupancy[paletteIndex] += 1;
-			self.paletteOccupancy[previousPaletteIndex] -= 1;
-			if(self.paletteOccupancy[previousPaletteIndex] == 0) {
-				self.activePaletteEntries -= 1;
-			}
+			self.paletteOccupancy[paletteIndex] += @intCast(endIndex - startIndex);
 		}
 
 		pub fn optimizeLayout(self: *Self) void {
@@ -1363,7 +1428,7 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type {
 }
 
 /// Implements a simple set associative cache with LRU replacement strategy.
-pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSize: u32, comptime deinitFunction: fn(*T) void) type {
+pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSize: u32, comptime deinitFunction: fn(*T) void) type { // MARK: Cache
 	const hashMask = numberOfBuckets-1;
 	if(numberOfBuckets & hashMask != 0) @compileError("The number of buckets should be a power of 2!");
 
@@ -1430,8 +1495,8 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 
 	return struct {
 		buckets: [numberOfBuckets]Bucket = [_]Bucket {Bucket{}} ** numberOfBuckets,
-		cacheRequests: Atomic(usize) = Atomic(usize).init(0),
-		cacheMisses: Atomic(usize) = Atomic(usize).init(0),
+		cacheRequests: Atomic(usize) = .init(0),
+		cacheMisses: Atomic(usize) = .init(0),
 
 		///  Tries to find the entry that fits to the supplied hashable.
 		pub fn find(self: *@This(), compareAndHash: anytype, comptime postGetFunction: ?fn(*T) void) ?*T {
@@ -1480,7 +1545,7 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 }
 
 ///  https://en.wikipedia.org/wiki/Cubic_Hermite_spline#Unit_interval_(0,_1)
-pub fn unitIntervalSpline(comptime Float: type, p0: Float, m0: Float, p1: Float, m1: Float) [4]Float {
+pub fn unitIntervalSpline(comptime Float: type, p0: Float, m0: Float, p1: Float, m1: Float) [4]Float { // MARK: unitIntervalSpline()
 	return .{
 		p0,
 		m0,
@@ -1489,7 +1554,7 @@ pub fn unitIntervalSpline(comptime Float: type, p0: Float, m0: Float, p1: Float,
 	};
 }
 
-pub fn GenericInterpolation(comptime elements: comptime_int) type {
+pub fn GenericInterpolation(comptime elements: comptime_int) type { // MARK: GenericInterpolation
 	const frames: u32 = 8;
 	return struct {
 		lastPos: [frames][elements]f64,
@@ -1555,7 +1620,7 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 				var smallestTime: i16 = std.math.maxInt(i16);
 				var smallestIndex: ?u31 = null;
 				for(self.lastTimes, 0..) |lastTimeI, i| {
-					//					 ↓ Only using a future time value that is far enough away to prevent jumping.
+					//                   ↓ Only using a future time value that is far enough away to prevent jumping.
 					if(lastTimeI -% time >= 50 and lastTimeI -% time < smallestTime) {
 						smallestTime = lastTimeI -% time;
 						smallestIndex = @intCast(i);
@@ -1629,8 +1694,8 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type {
 	};
 }
 
-pub const TimeDifference = struct {
-	difference: Atomic(i16) = Atomic(i16).init(0),
+pub const TimeDifference = struct { // MARK: TimeDifference
+	difference: Atomic(i16) = .init(0),
 	firstValue: bool = true,
 
 	pub fn addDataPoint(self: *TimeDifference, time: i16) void {
@@ -1648,7 +1713,7 @@ pub const TimeDifference = struct {
 	}
 };
 
-pub fn assertLocked(mutex: *const std.Thread.Mutex) void {
+pub fn assertLocked(mutex: *const std.Thread.Mutex) void { // MARK: assertLocked()
 	if(builtin.mode == .Debug) {
 		std.debug.assert(!@constCast(mutex).tryLock());
 	}
@@ -1659,3 +1724,55 @@ pub fn assertLockedShared(lock: *const std.Thread.RwLock) void {
 		std.debug.assert(!@constCast(lock).tryLock());
 	}
 }
+
+/// A read-write lock with read priority.
+pub const ReadWriteLock = struct { // MARK: ReadWriteLock
+	condition: std.Thread.Condition = .{},
+	mutex: std.Thread.Mutex = .{},
+	readers: u32 = 0,
+
+	pub fn lockRead(self: *ReadWriteLock) void {
+		self.mutex.lock();
+		self.readers += 1;
+		self.mutex.unlock();
+	}
+
+	pub fn unlockRead(self: *ReadWriteLock) void {
+		self.mutex.lock();
+		self.readers -= 1;
+		if(self.readers == 0) {
+			self.condition.broadcast();
+		}
+		self.mutex.unlock();
+	}
+
+	pub fn lockWrite(self: *ReadWriteLock) void {
+		self.mutex.lock();
+		while(self.readers != 0) {
+			self.condition.wait(&self.mutex);
+		}
+	}
+
+	pub fn unlockWrite(self: *ReadWriteLock) void {
+		self.mutex.unlock();
+	}
+
+	pub fn assertLockedWrite(self: *ReadWriteLock) void {
+		if(builtin.mode == .Debug) {
+			std.debug.assert(!self.mutex.tryLock());
+		}
+	}
+
+	pub fn assertLockedRead(self: *ReadWriteLock) void {
+		if(builtin.mode == .Debug and !builtin.sanitize_thread) {
+			if(self.readers == 0) {
+				std.debug.assert(!self.mutex.tryLock());
+			}
+		}
+	}
+};
+
+pub const Side = enum {
+	client,
+	server,
+};

@@ -1,10 +1,12 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const main = @import("root");
 const ConnectionManager = main.network.ConnectionManager;
 const settings = main.settings;
 const Vec2f = main.vec.Vec2f;
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const Texture = main.graphics.Texture;
 
 const gui = @import("../gui.zig");
 const GuiComponent = gui.GuiComponent;
@@ -23,24 +25,45 @@ const padding: f32 = 8;
 const width: f32 = 128;
 var buttonNameArena: main.utils.NeverFailingArenaAllocator = undefined;
 
+pub var needsUpdate: bool = false;
+
+var deleteIcon: Texture = undefined;
+var fileExplorerIcon: Texture = undefined;
+
+pub fn init() void {
+	deleteIcon = Texture.initFromFile("assets/cubyz/ui/delete_icon.png");
+	fileExplorerIcon = Texture.initFromFile("assets/cubyz/ui/file_explorer_icon.png");
+}
+
+pub fn deinit() void {
+	deleteIcon.deinit();
+	fileExplorerIcon.deinit();
+}
+
 pub fn openWorld(name: []const u8) void {
+	const clientConnection = ConnectionManager.init(0, false) catch |err| {
+		std.log.err("Encountered error while opening connection: {s}", .{@errorName(err)});
+		return;
+	};
+
 	std.log.info("Opening world {s}", .{name});
-	main.server.thread = std.Thread.spawn(.{}, main.server.start, .{name}) catch |err| {
+	main.server.thread = std.Thread.spawn(.{}, main.server.start, .{name, clientConnection.localPort}) catch |err| {
 		std.log.err("Encountered error while starting server thread: {s}", .{@errorName(err)});
 		return;
 	};
 
-	const connection = ConnectionManager.init(main.settings.defaultPort+1, false) catch |err| {
-		std.log.err("Encountered error while opening connection: {s}", .{@errorName(err)});
-		return;
-	};
-	connection.world = &main.game.testWorld;
-	main.game.testWorld.init("127.0.0.1", connection) catch |err| {
+	while(!main.server.running.load(.acquire)) {
+		std.time.sleep(1_000_000);
+	}
+	clientConnection.world = &main.game.testWorld;
+	const ipPort = std.fmt.allocPrint(main.stackAllocator.allocator, "127.0.0.1:{}", .{main.server.connectionManager.localPort}) catch unreachable;
+	defer main.stackAllocator.free(ipPort);
+	main.game.testWorld.init(ipPort, clientConnection) catch |err| {
 		std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
 	};
 	main.game.world = &main.game.testWorld;
 	for(gui.openWindows.items) |openWindow| {
-		gui.closeWindow(openWindow);
+		gui.closeWindowFromRef(openWindow);
 	}
 	gui.openHud();
 }
@@ -51,18 +74,37 @@ fn openWorldWrap(namePtr: usize) void { // TODO: Improve this situation. Maybe i
 	openWorld(name);
 }
 
-fn flawedDeleteWorld(name: []const u8) !void {
-	try main.files.deleteDir("saves", name);
-	onClose();
-	onOpen();
-}
-
 fn deleteWorld(namePtr: usize) void {
 	const nullTerminatedName: [*:0]const u8 = @ptrFromInt(namePtr);
 	const name = std.mem.span(nullTerminatedName);
-	flawedDeleteWorld(name) catch |err| {
-		std.log.err("Encountered error while deleting world \"{s}\": {s}", .{name, @errorName(err)});
+	main.gui.closeWindow("delete_world_confirmation");
+	main.gui.windowlist.delete_world_confirmation.setDeleteWorldName(name);
+	main.gui.openWindow("delete_world_confirmation");
+}
+
+fn openFolder(namePtr: usize) void {
+	const nullTerminatedName: [*:0]const u8 = @ptrFromInt(namePtr);
+	const name = std.mem.span(nullTerminatedName);
+
+	const command = if(builtin.os.tag == .windows) .{"explorer"} else .{"open"};
+
+	const path_fmt = if (builtin.os.tag == .windows) "saves\\{s}" else "saves/{s}"; // Use backslashes on windows because it forces you to
+	const path = std.fmt.allocPrint(main.stackAllocator.allocator, path_fmt, .{name}) catch unreachable;
+	defer main.stackAllocator.free(path);
+	const result = std.process.Child.run(.{
+		.allocator = main.stackAllocator.allocator,
+		.argv = &(command ++ .{path}),
+	}) catch |err| {
+		std.log.err("Got error while trying to open file explorer: {s}", .{@errorName(err)});
+		return;
 	};
+	defer {
+		main.stackAllocator.free(result.stderr);
+		main.stackAllocator.free(result.stdout);
+	}
+	if(result.stderr.len != 0) {
+		std.log.err("Got error while trying to open file explorer: {s}", .{result.stderr});
+	}
 }
 
 fn parseEscapedFolderName(allocator: NeverFailingAllocator, name: []const u8) []const u8 {
@@ -92,11 +134,19 @@ fn parseEscapedFolderName(allocator: NeverFailingAllocator, name: []const u8) []
 	return result.toOwnedSlice();
 }
 
+pub fn update() void {
+	if(needsUpdate) {
+		needsUpdate = false;
+		onClose();
+		onOpen();
+	}
+}
+
 pub fn onOpen() void {
 	buttonNameArena = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 8);
-	// TODO: list.add(Button.initText(.{0, 0}, 128, "Create World", gui.openWindowCallback("save_creation")));
-
+	list.add(Label.init(.{0, 0}, width, "**Select World**", .center));
+	list.add(Button.initText(.{0, 0}, 128, "Create New World", gui.openWindowCallback("save_creation")));
 	readingSaves: {
 		var dir = std.fs.cwd().makeOpenPath("saves", .{.iterate = true}) catch |err| {
 			list.add(Label.init(.{0, 0}, 128, "Encountered error while trying to open saves folder:", .center));
@@ -117,16 +167,17 @@ pub fn onOpen() void {
 				const decodedName = parseEscapedFolderName(main.stackAllocator, entry.name);
 				defer main.stackAllocator.free(decodedName);
 				const name = buttonNameArena.allocator().dupeZ(u8, entry.name); // Null terminate, so we can later recover the string from just the pointer.
-				const buttonName = std.fmt.allocPrint(buttonNameArena.allocator().allocator, "Play {s}", .{decodedName}) catch unreachable;
+				const buttonName = std.fmt.allocPrint(buttonNameArena.allocator().allocator, "{s}", .{decodedName}) catch unreachable;
 				
 				row.add(Button.initText(.{0, 0}, 128, buttonName, .{.callback = &openWorldWrap, .arg = @intFromPtr(name.ptr)}));
-				row.add(Button.initText(.{8, 0}, 64, "delete", .{.callback = &deleteWorld, .arg = @intFromPtr(name.ptr)}));
+				row.add(Button.initIcon(.{8, 0}, .{16, 16}, fileExplorerIcon, false, .{.callback = &openFolder, .arg = @intFromPtr(name.ptr)}));
+				row.add(Button.initIcon(.{8, 0}, .{16, 16}, deleteIcon, false, .{.callback = &deleteWorld, .arg = @intFromPtr(name.ptr)}));
 				row.finish(.{0, 0}, .center);
 				list.add(row);
 			}
 		}
 	}
-
+	
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));

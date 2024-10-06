@@ -13,7 +13,7 @@ pub fn build(b: *std.Build) !void {
 	const optimize = b.standardOptimizeOption(.{});
 	const exe = b.addExecutable(.{
 		.name = "Cubyzig",
-		.root_source_file = .{.path = "src/main.zig"},
+		.root_source_file = b.path("src/main.zig"),
 		.target = target,
 		.optimize = optimize,
 		//.sanitize_thread = true,
@@ -27,6 +27,10 @@ pub fn build(b: *std.Build) !void {
 		.windows => "gnu",
 		else => "none",
 	}});
+	const artifactName = switch(t.os.tag) {
+		.windows => b.fmt("{s}.lib", .{depsLib}),
+		else => b.fmt("lib{s}.a", .{depsLib}),
+	};
 
 	var depsName: []const u8 = b.fmt("cubyz_deps_{s}_{s}", .{@tagName(t.cpu.arch), @tagName(t.os.tag)});
 	const useLocalDeps = b.option(bool, "local", "Use local cubyz_deps") orelse false;
@@ -47,10 +51,8 @@ pub fn build(b: *std.Build) !void {
 		return;
 	};
 
-	exe.addLibraryPath(libsDeps.path("lib"));
 	exe.addIncludePath(headersDeps.path("include"));
-	exe.linkSystemLibrary(depsLib);
-	exe.addRPath(libsDeps.path("lib")); // TODO: Maybe move the library next to the executable, to make this more portable?
+	exe.addObjectFile(libsDeps.path("lib").path(b, artifactName));
 
 	if(t.os.tag == .windows) {
 		exe.linkSystemLibrary("ole32");
@@ -72,10 +74,9 @@ pub fn build(b: *std.Build) !void {
 		exe.linkFramework("IOKit");
 		exe.linkFramework("Cocoa");
 		exe.linkFramework("QuartzCore");
-		exe.linkSystemLibrary("X11");
-		exe.addLibraryPath(.{.path="/usr/local/GL/lib"});
-		exe.addLibraryPath(.{.path="/opt/X11/lib"});
-		exe.addRPath(.{.path="../Library"});
+		exe.addRPath(.{.cwd_relative = "/usr/local/GL/lib"});
+		exe.root_module.addRPathSpecial("@executable_path/../Library");
+		exe.addRPath(.{.cwd_relative = "/opt/X11/lib"});
 	} else {
 		std.log.err("Unsupported target: {}\n", .{t.os.tag});
 	}
@@ -83,12 +84,12 @@ pub fn build(b: *std.Build) !void {
 	exe.root_module.addAnonymousImport("gui", .{
 		.target = target,
 		.optimize = optimize,
-		.root_source_file = .{.path = "src/gui/gui.zig"},
+		.root_source_file = b.path("src/gui/gui.zig"),
 	});
 	exe.root_module.addAnonymousImport("server", .{
 		.target = target,
 		.optimize = optimize,
-		.root_source_file = .{.path = "src/server/server.zig"},
+		.root_source_file = b.path("src/server/server.zig"),
 	});
 
 	b.installArtifact(exe);
@@ -103,11 +104,12 @@ pub fn build(b: *std.Build) !void {
 	run_step.dependOn(&run_cmd.step);
 
 	const exe_tests = b.addTest(.{
-		.root_source_file = .{ .path = "src/main.zig" },
+		.root_source_file = b.path("src/main.zig"),
 		.target = target,
 		.optimize = optimize,
 	});
+	const run_exe_tests = b.addRunArtifact(exe_tests);
 
 	const test_step = b.step("test", "Run unit tests");
-	test_step.dependOn(&exe_tests.step);
+	test_step.dependOn(&run_exe_tests.step);
 }

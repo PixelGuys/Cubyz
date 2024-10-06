@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("root");
 const random = main.random;
-const JsonElement = main.JsonElement;
+const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
 const CaveBiomeMapFragment = terrain.CaveBiomeMap.CaveBiomeMapFragment;
 const Biome = terrain.biomes.Biome;
@@ -17,7 +17,7 @@ pub const generatorSeed = 765893678349;
 
 var caveBiomes: []const Biome = undefined;
 
-pub fn init(parameters: JsonElement) void {
+pub fn init(parameters: ZonElement) void {
 	_ = parameters;
 	caveBiomes = terrain.biomes.getCaveBiomes();
 }
@@ -30,13 +30,16 @@ pub fn generate(map: *CaveBiomeMapFragment, worldSeed: u64) void {
 	// Select all the biomes that are within the given height range.
 	var validBiomes = main.ListUnmanaged(*const Biome).initCapacity(main.stackAllocator, caveBiomes.len);
 	defer validBiomes.deinit(main.stackAllocator);
+	const worldPos = CaveBiomeMapFragment.rotateInverse(.{map.pos.wx, map.pos.wy, map.pos.wz});
+	const marginDiv = 1024;
+	const marginMul: comptime_int = @reduce(.Max, @abs(comptime CaveBiomeMapFragment.rotate(.{marginDiv, marginDiv, marginDiv})));
 	for(caveBiomes) |*biome| {
-		if(biome.minHeight < map.pos.wz +% CaveBiomeMapFragment.caveBiomeMapSize and biome.maxHeight > map.pos.wz) {
+		if(biome.minHeight < worldPos[2] +% CaveBiomeMapFragment.caveBiomeMapSize*marginMul/marginDiv and biome.maxHeight > worldPos[2]) {
 			validBiomes.appendAssumeCapacity(biome);
 		}
 	}
 	if(validBiomes.items.len == 0) {
-		std.log.warn("Couldn't find any cave biome on height {}. Using biome {s} instead.", .{map.pos.wz, caveBiomes[0].id});
+		std.log.warn("Couldn't find any cave biome on height {}. Using biome {s} instead.", .{worldPos[2], caveBiomes[0].id});
 		validBiomes.appendAssumeCapacity(&caveBiomes[0]);
 	}
 
@@ -45,18 +48,8 @@ pub fn generate(map: *CaveBiomeMapFragment, worldSeed: u64) void {
 	while(z < CaveBiomeMapFragment.caveBiomeMapSize) : (z += CaveBiomeMapFragment.caveBiomeSize) {
 		// Sort all biomes to the start that fit into the height region of the given z plane:
 		var totalChance: f64 = 0;
-		var insertionIndex: usize = 0;
-		var i: usize = 0;
-		while(i < validBiomes.items.len) : (i += 1) {
-			if(validBiomes.items[i].minHeight < map.pos.wz + z + (CaveBiomeMapFragment.caveBiomeSize - 1) and validBiomes.items[i].maxHeight > map.pos.wz + z) {
-				if(insertionIndex != i) {
-					const swap = validBiomes.items[i];
-					validBiomes.items[i] = validBiomes.items[insertionIndex];
-					validBiomes.items[insertionIndex] = swap;
-				}
-				totalChance += validBiomes.items[insertionIndex].chance;
-				insertionIndex += 1;
-			}
+		for(validBiomes.items) |b| {
+			totalChance += b.chance;
 		}
 		if(totalChance == 0) {
 			totalChance = 1;
@@ -65,18 +58,24 @@ pub fn generate(map: *CaveBiomeMapFragment, worldSeed: u64) void {
 		while(x < CaveBiomeMapFragment.caveBiomeMapSize) : (x += CaveBiomeMapFragment.caveBiomeSize) {
 			var y: u31 = 0;
 			while(y < CaveBiomeMapFragment.caveBiomeMapSize) : (y += CaveBiomeMapFragment.caveBiomeSize) {
+				const biomeWorldPos = CaveBiomeMapFragment.rotateInverse(.{map.pos.wx + x, map.pos.wy + y, map.pos.wz + z});
 				for(0..2) |_map| {
-					var randomValue = random.nextDouble(&seed)*totalChance;
-					var biome: *const Biome = undefined;
-					i = 0;
 					while(true) {
-						biome = validBiomes.items[i];
-						i += 1;
-						randomValue -= biome.chance;
-						if(randomValue < 0) break;
+						var randomValue = random.nextDouble(&seed)*totalChance;
+						var biome: *const Biome = undefined;
+						var i: usize = 0;
+						while(true) {
+							biome = validBiomes.items[i];
+							i += 1;
+							randomValue -= biome.chance;
+							if(randomValue < 0) break;
+						}
+						const index = CaveBiomeMapFragment.getIndex(x, y, z);
+						map.biomeMap[index][_map] = biome;
+						if(biome.minHeight < biomeWorldPos[2] + CaveBiomeMapFragment.caveBiomeSize*marginMul/marginDiv and biome.maxHeight > biomeWorldPos[2]) {
+							break;
+						}
 					}
-					const index = CaveBiomeMapFragment.getIndex(x, y, z);
-					map.biomeMap[index][_map] = biome;
 				}
 			}
 		}

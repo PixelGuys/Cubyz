@@ -45,6 +45,8 @@ const RelativePosition = union(enum) {
 };
 
 const snapDistance = 3;
+const titleBarHeight = 18;
+const iconWidth = 18;
 
 pos: Vec2f = undefined,
 size: Vec2f = undefined,
@@ -55,13 +57,11 @@ relativePosition: [2]RelativePosition = .{.{.ratio = 0.5}, .{.ratio = 0.5}},
 id: []const u8 = undefined,
 rootComponent: ?GuiComponent = null,
 showTitleBar: bool = true,
-titleBarExpanded: bool = false,
 hasBackground: bool = true,
 hideIfMouseIsGrabbed: bool = true, // TODO: Allow the user to change this with a button, to for example leave the inventory open while playing.
 closeIfMouseIsGrabbed: bool = false,
+closeable: bool = true,
 isHud: bool = false,
-
-// TODO: Option to disable the close button for certain windows that cannot be reopened.
 
 /// Called every frame.
 renderFn: *const fn()void = &defaultFunction,
@@ -77,6 +77,7 @@ onOpenFn: *const fn()void = &defaultFunction,
 onCloseFn: *const fn()void = &defaultFunction,
 
 var grabbedWindow: *const GuiWindow = undefined;
+var windowMoving: bool = false;
 var grabPosition: ?Vec2f = null;
 var selfPositionWhenGrabbed: Vec2f = undefined;
 
@@ -85,7 +86,6 @@ var titleTexture: Texture = undefined;
 var closeTexture: Texture = undefined;
 var zoomInTexture: Texture = undefined;
 var zoomOutTexture: Texture = undefined;
-var expandTitleBarTexture: Texture = undefined;
 var shader: Shader = undefined;
 var windowUniforms: struct {
 	screen: c_int,
@@ -108,10 +108,10 @@ pub var borderUniforms: struct {
 } = undefined;
 
 pub fn __init() void {
-	shader = Shader.initAndGetUniforms("assets/cubyz/shaders/ui/button.vs", "assets/cubyz/shaders/ui/button.fs", &windowUniforms);
+	shader = Shader.initAndGetUniforms("assets/cubyz/shaders/ui/button.vs", "assets/cubyz/shaders/ui/button.fs", "", &windowUniforms);
 	shader.bind();
 	graphics.c.glUniform1i(windowUniforms.image, 0);
-	borderShader = Shader.initAndGetUniforms("assets/cubyz/shaders/ui/window_border.vs", "assets/cubyz/shaders/ui/window_border.fs", &borderUniforms);
+	borderShader = Shader.initAndGetUniforms("assets/cubyz/shaders/ui/window_border.vs", "assets/cubyz/shaders/ui/window_border.fs", "", &borderUniforms);
 	borderShader.bind();
 
 	backgroundTexture = Texture.initFromFile("assets/cubyz/ui/window_background.png");
@@ -119,7 +119,6 @@ pub fn __init() void {
 	closeTexture = Texture.initFromFile("assets/cubyz/ui/window_close.png");
 	zoomInTexture = Texture.initFromFile("assets/cubyz/ui/window_zoom_in.png");
 	zoomOutTexture = Texture.initFromFile("assets/cubyz/ui/window_zoom_out.png");
-	expandTitleBarTexture = Texture.initFromFile("assets/cubyz/ui/window_expand.png");
 }
 
 pub fn __deinit() void {
@@ -132,10 +131,13 @@ pub fn defaultFunction() void {}
 
 pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) void {
 	const scaledMousePos = (mousePosition - self.pos)/@as(Vec2f, @splat(self.scale));
-	if(scaledMousePos[1] < 16 and (self.showTitleBar or self.titleBarExpanded or (!main.Window.grabbed and scaledMousePos[0] < 16))) {
+	const btnPos = self.getButtonPositions();
+	const zoomInPos = btnPos[2]/self.scale;
+	if(scaledMousePos[1] < titleBarHeight and (self.showTitleBar or gui.reorderWindows)) {
 		grabbedWindow = self;
 		grabPosition = mousePosition;
 		selfPositionWhenGrabbed = self.pos;
+		windowMoving = scaledMousePos[0] <= zoomInPos;
 	} else {
 		if(self.rootComponent) |*component| {
 			if(GuiComponent.contains(component.pos(), component.size(), scaledMousePos)) {
@@ -145,20 +147,24 @@ pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) void {
 	}
 }
 
+pub fn getButtonPositions(self: *const GuiWindow) [3]f32 {
+	const closePos = if(self.closeable) self.size[0] - iconWidth*self.scale else self.size[0];
+	const zoomOutPos = closePos - iconWidth*self.scale;
+	const zoomInPos = zoomOutPos - iconWidth*self.scale;
+	return .{closePos, zoomOutPos, zoomInPos};
+}
 pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 	if(grabPosition != null and @reduce(.And, grabPosition.? == mousePosition) and grabbedWindow == self) {
-		if(!self.showTitleBar) {
-			if(mousePosition[0] - self.pos[0] < 16*self.scale) {
-				self.titleBarExpanded = !self.titleBarExpanded;
-			}
-		}
-		if(self.showTitleBar or self.titleBarExpanded) {
-			if(mousePosition[0] - self.pos[0] > self.size[0] - 48*self.scale) {
-				if(mousePosition[0] - self.pos[0] > self.size[0] - 32*self.scale) {
-					if(mousePosition[0] - self.pos[0] > self.size[0] - 16*self.scale) {
+		if(self.showTitleBar or gui.reorderWindows) {
+			const btnPos = self.getButtonPositions();
+			const closePos = btnPos[0];
+			const zoomOutPos = btnPos[1];
+			const zoomInPos = btnPos[2];
+			if(mousePosition[0] - self.pos[0] > zoomInPos) {
+				if(mousePosition[0] - self.pos[0] > zoomOutPos) {
+					if(mousePosition[0] - self.pos[0] > closePos) {
 						// Close
-						gui.closeWindow(self);
-						return;
+						if(self.closeable) gui.closeWindowFromRef(self);
 					} else {
 						// Zoom out
 						if(self.scale > 1) {
@@ -168,6 +174,7 @@ pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 						}
 						self.scale = @max(self.scale, 0.25);
 						gui.updateWindowPositions();
+						gui.save();
 					}
 				} else {
 					// Zoom in
@@ -177,6 +184,7 @@ pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 						self.scale += 0.25;
 					}
 					gui.updateWindowPositions();
+					gui.save();
 				}
 			}
 		}
@@ -327,7 +335,7 @@ pub fn update(self: *GuiWindow) void {
 pub fn updateSelected(self: *GuiWindow, mousePosition: Vec2f) void {
 	self.updateSelectedFn();
 	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
-	if(self == grabbedWindow and (self.titleBarExpanded or self.showTitleBar)) if(grabPosition) |_grabPosition| {
+	if(self == grabbedWindow and windowMoving and (gui.reorderWindows or self.showTitleBar)) if(grabPosition) |_grabPosition| {
 		self.relativePosition[0] = .{.ratio = undefined};
 		self.relativePosition[1] = .{.ratio = undefined};
 		self.pos = (mousePosition - _grabPosition) + selfPositionWhenGrabbed;
@@ -342,6 +350,7 @@ pub fn updateSelected(self: *GuiWindow, mousePosition: Vec2f) void {
 		self.pos = @max(self.pos, Vec2f{0, 0});
 		self.pos = @min(self.pos, windowSize - self.size);
 		gui.updateWindowPositions();
+		gui.save();
 	};
 	if(self.rootComponent) |*component| {
 		component.updateSelected();
@@ -356,8 +365,16 @@ pub fn updateHovered(self: *GuiWindow, mousePosition: Vec2f) void {
 		}
 	}
 }
-
+pub fn getMinWindowWidth(self: *GuiWindow) f32 {
+	return iconWidth * @as(f32, (if (self.closeable) 4 else 3));
+}
 pub fn updateWindowPosition(self: *GuiWindow) void {
+	const minSize = self.getMinWindowWidth();
+	if(self.contentSize[0] < minSize) {
+		std.log.err("Window '{s}' width is too small: {d}px before scaling", .{self.id, self.contentSize[0]});
+		self.contentSize[0] = minSize;
+		std.log.debug("Resized width to {d}px unscaled", .{self.contentSize[0]});
+	}
 	self.size = self.contentSize*@as(Vec2f, @splat(self.scale));
 	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
 	for(self.relativePosition, 0..) |relPos, i| {
@@ -447,9 +464,15 @@ fn drawOrientationLines(self: *const GuiWindow) void {
 
 pub fn drawIcons(self: *const GuiWindow) void {
 	draw.setColor(0xffffffff);
-	closeTexture.render(.{self.size[0]/self.scale - 18, 0}, .{18, 18});
-	zoomOutTexture.render(.{self.size[0]/self.scale - 36, 0}, .{18, 18});
-	zoomInTexture.render(.{self.size[0]/self.scale - 54, 0}, .{18, 18});
+	var x = self.size[0]/self.scale;
+	if(self.closeable) {
+		x -= iconWidth;
+		closeTexture.render(.{x, 0}, .{iconWidth, titleBarHeight});
+	}
+	x -= iconWidth;
+	zoomOutTexture.render(.{x, 0}, .{iconWidth, titleBarHeight});
+	x -= iconWidth;
+	zoomInTexture.render(.{x, 0}, .{iconWidth, titleBarHeight});
 }
 
 pub fn render(self: *const GuiWindow, mousePosition: Vec2f) void {
@@ -466,36 +489,20 @@ pub fn render(self: *const GuiWindow, mousePosition: Vec2f) void {
 	if(self.rootComponent) |*component| {
 		component.render((mousePosition - self.pos)/@as(Vec2f, @splat(self.scale)));
 	}
-	if(self.showTitleBar) {
+	if(self.showTitleBar or gui.reorderWindows) {
 		shader.bind();
 		titleTexture.bindTo(0);
 		draw.setColor(0xff000000);
-		draw.customShadedRect(windowUniforms, .{0, 0}, .{self.size[0]/self.scale, 18});
+		draw.customShadedRect(windowUniforms, .{0, 0}, .{self.size[0]/self.scale, titleBarHeight});
 		self.drawIcons();
-	} else if(!main.Window.grabbed) {
-		if(self.titleBarExpanded) {
-			shader.bind();
-			titleTexture.bindTo(0);
-			draw.setColor(0xff000000);
-			draw.customShadedRect(windowUniforms, .{0, 0}, .{self.size[0]/self.scale, 18});
-			self.drawIcons();
-			expandTitleBarTexture.render(.{0, 0}, .{18, 18});
-		} else {
-			shader.bind();
-			titleTexture.bindTo(0);
-			draw.setColor(0xff000000);
-			draw.customShadedRect(windowUniforms, .{0, 0}, .{18, 18});
-			draw.setColor(0xffffffff);
-			expandTitleBarTexture.render(.{0, 0}, .{18, 18});
-		}
 	}
-	if(self.hasBackground or (!main.Window.grabbed and self.titleBarExpanded)) {
+	if(self.hasBackground or (!main.Window.grabbed and gui.reorderWindows)) {
 		draw.setColor(0xff1d1d1d);
 		draw.rectBorder(.{-2, -2}, self.size/@as(Vec2f, @splat(self.scale)) + Vec2f{4, 4}, 2.0);
 	}
 	draw.restoreTranslation(oldTranslation);
 	draw.restoreScale(oldScale);
-	if(self == grabbedWindow and (self.titleBarExpanded or self.showTitleBar) and grabPosition != null) {
+	if(self == grabbedWindow and windowMoving and (gui.reorderWindows or self.showTitleBar) and grabPosition != null) {
 		self.drawOrientationLines();
 	}
 }

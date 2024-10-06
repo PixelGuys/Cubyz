@@ -5,14 +5,14 @@ const main = @import("root");
 const ServerChunk = main.chunk.ServerChunk;
 const ChunkPosition = main.chunk.ChunkPosition;
 const Cache = main.utils.Cache;
-const JsonElement = main.JsonElement;
+const ZonElement = main.ZonElement;
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 const terrain = @import("terrain.zig");
 const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
 
 /// Cave data represented in a 1-Bit per block format, where 0 means empty and 1 means not empty.
-pub const CaveMapFragment = struct {
+pub const CaveMapFragment = struct { // MARK: CaveMapFragment
 	pub const width = 1 << 6;
 	pub const widthMask = width - 1;
 	pub const height = 64; // Size of u64
@@ -21,7 +21,7 @@ pub const CaveMapFragment = struct {
 	data: [width*width]u64 = undefined,
 	pos: ChunkPosition,
 	voxelShift: u5,
-	refCount: Atomic(u16) = Atomic(u16).init(0),
+	refCount: Atomic(u16) = .init(0),
 
 
 	pub fn init(self: *CaveMapFragment, wx: i32, wy: i32, wz: i32, voxelSize: u31) void {
@@ -98,8 +98,8 @@ pub const CaveMapFragment = struct {
 };
 
 /// A generator for the cave map.
-pub const CaveGenerator = struct {
-	init: *const fn(parameters: JsonElement) void,
+pub const CaveGenerator = struct { // MARK: CaveGenerator
+	init: *const fn(parameters: ZonElement) void,
 	deinit: *const fn() void,
 	generate: *const fn(map: *CaveMapFragment, seed: u64) void,
 	/// Used to prioritize certain generators over others.
@@ -121,7 +121,7 @@ pub const CaveGenerator = struct {
 		generatorRegistry.put(main.globalAllocator.allocator, Generator.id, self) catch unreachable;
 	}
 
-	pub fn getAndInitGenerators(allocator: NeverFailingAllocator, settings: JsonElement) []CaveGenerator {
+	pub fn getAndInitGenerators(allocator: NeverFailingAllocator, settings: ZonElement) []CaveGenerator {
 		const list = allocator.alloc(CaveGenerator, generatorRegistry.size);
 		var iterator = generatorRegistry.iterator();
 		var i: usize = 0;
@@ -140,7 +140,7 @@ pub const CaveGenerator = struct {
 	}
 };
 
-pub const CaveMapView = struct {
+pub const CaveMapView = struct { // MARK: CaveMapView
 	reference: *ServerChunk,
 	fragments: [8]*CaveMapFragment,
 
@@ -297,7 +297,8 @@ pub const CaveMapView = struct {
 	}
 };
 
-const cacheSize = 1 << 9; // Must be a power of 2!
+// MARK: cache
+const cacheSize = 1 << 11; // Must be a power of 2!
 const cacheMask = cacheSize - 1;
 const associativity = 8; // 512 MiB Cache size
 var cache: Cache(CaveMapFragment, cacheSize, associativity, CaveMapFragment.decreaseRefCount) = .{};
@@ -315,7 +316,7 @@ fn cacheInit(pos: ChunkPosition) *CaveMapFragment {
 
 pub fn initGenerators() void {
 	const list = @import("cavegen/_list.zig");
-	inline for(@typeInfo(list).Struct.decls) |decl| {
+	inline for(@typeInfo(list).@"struct".decls) |decl| {
 		CaveGenerator.registerGenerator(@field(list, decl.name));
 	}
 }

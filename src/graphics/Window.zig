@@ -16,7 +16,7 @@ pub var window: *c.GLFWwindow = undefined;
 pub var grabbed: bool = false;
 pub var scrollOffset: f32 = 0;
 
-pub const Key = struct {
+pub const Key = struct { // MARK: Key
 	name: []const u8,
 	pressed: bool = false,
 	key: c_int = c.GLFW_KEY_UNKNOWN,
@@ -109,7 +109,7 @@ pub const Key = struct {
 	}
 };
 
-pub const GLFWCallbacks = struct {
+pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 	fn errorCallback(errorCode: c_int, description: [*c]const u8) callconv(.C) void {
 		std.log.err("GLFW Error({}): {s}", .{errorCode, description});
 	}
@@ -305,7 +305,7 @@ pub fn setClipboardString(string: []const u8) void {
 	c.glfwSetClipboardString(window, nullTerminatedString.ptr);
 }
 
-pub fn init() void {
+pub fn init() void { // MARK: init()
 	_ = c.glfwSetErrorCallback(GLFWCallbacks.errorCallback);
 
 	if(c.glfwInit() == 0) {

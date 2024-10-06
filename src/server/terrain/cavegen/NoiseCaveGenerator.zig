@@ -4,7 +4,7 @@ const sign = std.math.sign;
 const main = @import("root");
 const Array3D = main.utils.Array3D;
 const random = main.random;
-const JsonElement = main.JsonElement;
+const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
 const CaveMapFragment = terrain.CaveMap.CaveMapFragment;
 const InterpolatableCaveBiomeMapView = terrain.CaveBiomeMap.InterpolatableCaveBiomeMapView;
@@ -20,7 +20,7 @@ pub const priority = 65536;
 
 pub const generatorSeed = 0x76490367012869;
 
-pub fn init(parameters: JsonElement) void {
+pub fn init(parameters: ZonElement) void {
 	_ = parameters;
 }
 
@@ -37,7 +37,7 @@ fn getValue(noise: Array3D(f32), outerSizeShift: u5, relX: u31, relY: u31, relZ:
 
 pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 	if(map.pos.voxelSize > 2) return;
-	const biomeMap = InterpolatableCaveBiomeMapView.init(map.pos, CaveMapFragment.width*map.pos.voxelSize);
+	const biomeMap = InterpolatableCaveBiomeMapView.init(main.stackAllocator, map.pos, CaveMapFragment.width*map.pos.voxelSize, 0);
 	defer biomeMap.deinit();
 	const outerSize = @max(map.pos.voxelSize, interpolatedPart);
 	const outerSizeShift = std.math.log2_int(u31, outerSize);

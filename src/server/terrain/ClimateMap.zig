@@ -4,7 +4,7 @@ const Atomic = std.atomic.Value;
 const main = @import("root");
 const Array2D = main.utils.Array2D;
 const Cache = main.utils.Cache;
-const JsonElement = main.JsonElement;
+const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
 const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
 const Biome = terrain.biomes.Biome;
@@ -45,7 +45,7 @@ pub const ClimateMapFragment = struct {
 	pos: ClimateMapFragmentPosition,
 	map: [mapSize >> MapFragment.biomeShift][mapSize >> MapFragment.biomeShift]BiomeSample = undefined,
 	
-	refCount: Atomic(u16) = Atomic(u16).init(0),
+	refCount: Atomic(u16) = .init(0),
 
 	pub fn init(self: *ClimateMapFragment, wx: i32, wy: i32) void {
 		self.* = .{
@@ -77,7 +77,7 @@ pub const ClimateMapFragment = struct {
 
 /// Generates the climate(aka Biome) map, which is a rough representation of the world.
 pub const ClimateMapGenerator = struct {
-	init: *const fn(parameters: JsonElement) void,
+	init: *const fn(parameters: ZonElement) void,
 	deinit: *const fn() void,
 	generateMapFragment: *const fn(fragment: *ClimateMapFragment, seed: u64) void,
 
@@ -109,7 +109,7 @@ var profile: TerrainGenerationProfile = undefined;
 
 pub fn initGenerators() void {
 	const list = @import("climategen/_list.zig");
-	inline for(@typeInfo(list).Struct.decls) |decl| {
+	inline for(@typeInfo(list).@"struct".decls) |decl| {
 		ClimateMapGenerator.registerGenerator(@field(list, decl.name));
 	}
 }

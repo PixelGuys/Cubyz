@@ -5,7 +5,7 @@ const main = @import("root");
 const chunk = main.chunk;
 const server = @import("server.zig");
 
-pub const RegionFile = struct {
+pub const RegionFile = struct { // MARK: RegionFile
 	const version = 0;
 	pub const regionShift = 2;
 	pub const regionSize = 1 << regionShift;
@@ -17,7 +17,7 @@ pub const RegionFile = struct {
 	pos: chunk.ChunkPosition,
 	mutex: std.Thread.Mutex = .{},
 	modified: bool = false,
-	refCount: Atomic(u16) = Atomic(u16).init(1),
+	refCount: Atomic(u16) = .init(1),
 	saveFolder: []const u8,
 
 	pub fn getIndex(x: usize, y: usize, z: usize) usize {
@@ -175,7 +175,7 @@ pub const RegionFile = struct {
 	}
 };
 
-
+// MARK: cache
 const cacheSize = 1 << 8; // Must be a power of 2!
 const cacheMask = cacheSize - 1;
 const associativity = 8;
@@ -205,33 +205,60 @@ pub fn loadRegionFileAndIncreaseRefCount(wx: i32, wy: i32, wz: i32, voxelSize: u
 	return result;
 }
 
-pub const ChunkCompression = struct {
+pub const ChunkCompression = struct { // MARK: ChunkCompression
 	const CompressionAlgo = enum(u32) {
 		deflate_with_position = 0,
-		deflate = 1, // TODO: Investigate if palette compression (or palette compression with huffman coding) is more efficient.
-		_, // TODO: Add more algorithms for specific cases like uniform chunks.
+		deflate = 1,
+		uniform = 2,
+		deflate_with_8bit_palette = 3,
+		_,
 	};
 	pub fn compressChunk(allocator: main.utils.NeverFailingAllocator, ch: *chunk.Chunk) []const u8 {
+		if(ch.data.paletteLength == 1) {
+			const data = allocator.alloc(u8, 8);
+			std.mem.writeInt(u32, data[0..4], @intFromEnum(CompressionAlgo.uniform), .big);
+			std.mem.writeInt(u32, data[4..8], ch.data.palette[0].toInt(), .big);
+			return data;
+		}
+		if(ch.data.paletteLength < 256) {
+			var uncompressedData: [chunk.chunkVolume]u8 = undefined;
+			for(0..chunk.chunkVolume) |i| {
+				uncompressedData[i] = @intCast(ch.data.data.getValue(i));
+			}
+			const compressedData = main.utils.Compression.deflate(main.stackAllocator, &uncompressedData, .default);
+			defer main.stackAllocator.free(compressedData);
+
+			const data = allocator.alloc(u8, 4 + 1 + 4*ch.data.paletteLength + compressedData.len);
+			std.mem.writeInt(i32, data[0..4], @intFromEnum(CompressionAlgo.deflate_with_8bit_palette), .big);
+			data[4] = @intCast(ch.data.paletteLength);
+			for(0..ch.data.paletteLength) |i| {
+				std.mem.writeInt(u32, data[5 + 4*i..][0..4], ch.data.palette[i].toInt(), .big);
+			}
+			@memcpy(data[5 + 4*ch.data.paletteLength..], compressedData);
+			return data;
+		}
 		var uncompressedData: [chunk.chunkVolume*@sizeOf(u32)]u8 = undefined;
 		for(0..chunk.chunkVolume) |i| {
 			std.mem.writeInt(u32, uncompressedData[4*i..][0..4], ch.data.getValue(i).toInt(), .big);
 		}
-		const compressedData = main.utils.Compression.deflate(main.stackAllocator, &uncompressedData);
+		const compressedData = main.utils.Compression.deflate(main.stackAllocator, &uncompressedData, .default);
 		defer main.stackAllocator.free(compressedData);
 		const data = allocator.alloc(u8, 4 + compressedData.len);
+
 		@memcpy(data[4..], compressedData);
 		std.mem.writeInt(i32, data[0..4], @intFromEnum(CompressionAlgo.deflate), .big);
 		return data;
 	}
 
 	pub fn decompressChunk(ch: *chunk.Chunk, _data: []const u8) error{corrupted}!void {
+		std.debug.assert(ch.data.paletteLength == 1);
 		var data = _data;
 		if(data.len < 4) return error.corrupted;
 		const algo: CompressionAlgo = @enumFromInt(std.mem.readInt(u32, data[0..4], .big));
 		data = data[4..];
-		if(algo == .deflate_with_position) data = data[16..];
 		switch(algo) {
 			.deflate, .deflate_with_position => {
+				if(algo == .deflate_with_position) data = data[16..];
 				const _inflatedData = main.stackAllocator.alloc(u8, chunk.chunkVolume*4);
 				defer main.stackAllocator.free(_inflatedData);
 				const _inflatedLen = main.utils.Compression.inflateTo(_inflatedData, data[0..]) catch return error.corrupted;
@@ -243,7 +270,29 @@ pub const ChunkCompression = struct {
 					ch.data.setValue(i, main.blocks.Block.fromInt(std.mem.readInt(u32, data[0..4], .big)));
 					data = data[4..];
 				}
-				return;
+			},
+			.deflate_with_8bit_palette => {
+				const paletteLength = data[0];
+				data = data[1..];
+				ch.data.deinit();
+				ch.data.initCapacity(paletteLength);
+				for(0..paletteLength) |i| {
+					ch.data.palette[i] = main.blocks.Block.fromInt(std.mem.readInt(u32, data[0..4], .big));
+					data = data[4..];
+				}
+				const _inflatedData = main.stackAllocator.alloc(u8, chunk.chunkVolume);
+				defer main.stackAllocator.free(_inflatedData);
+				const _inflatedLen = main.utils.Compression.inflateTo(_inflatedData, data[0..]) catch return error.corrupted;
+				if(_inflatedLen != chunk.chunkVolume) {
+					return error.corrupted;
+				}
+				data = _inflatedData;
+				for(0..chunk.chunkVolume) |i| {
+					ch.data.setRawValue(i, data[i]);
+				}
+			},
+			.uniform => {
+				ch.data.palette[0] = main.blocks.Block.fromInt(std.mem.readInt(u32, data[0..4], .big));
 			},
 			_ => {
 				return error.corrupted;

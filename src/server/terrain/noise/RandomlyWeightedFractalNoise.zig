@@ -24,14 +24,14 @@ pub fn generateFractalTerrain(wx: i32, wy: i32, x0: u31, y0: u31, width: u32, he
 	bigMap.ptr(scale, 0).* = main.random.nextFloat(&seed);
 	setSeed(scale, scale, offsetX, offsetY, &seed, worldSeed, scale, maxResolution);
 	bigMap.ptr(scale, scale).* = main.random.nextFloat(&seed);
-	generateInitializedFractalTerrain(offsetX, offsetY, scale, scale, worldSeed, bigMap, 0, 0.9999, maxResolution);
+	generateInitializedFractalTerrain(offsetX, offsetY, scale, scale, worldSeed, bigMap, maxResolution);
 	var px: u31 = 0;
 	while(px < width) : (px += 1) {
 		@memcpy(map.getRow(x0 + px)[y0..][0..height], bigMap.getRow(@intCast((wx & mask) + px))[@intCast((wy & mask))..][0..height]);
 	}
 }
 
-pub fn generateInitializedFractalTerrain(offsetX: i32, offsetY: i32, scale: u31, startingScale: u31, worldSeed: u64, bigMap: Array2D(f32), lowerLimit: f32, upperLimit: f32, maxResolution: u31) void {
+pub fn generateInitializedFractalTerrain(offsetX: i32, offsetY: i32, scale: u31, startingScale: u31, worldSeed: u64, bigMap: Array2D(f32), maxResolution: u31) void {
 	// Increase the "grid" of points with already known heights in each round by a factor of 2×2, like so(# marks the gridpoints of the first grid, * the points of the second grid and + the points of the third grid(and so on…)):
 	//
 	//  #+*+#
@@ -66,7 +66,7 @@ pub fn generateInitializedFractalTerrain(offsetX: i32, offsetY: i32, scale: u31,
 				setSeed(x, y, offsetX, offsetY, &seed, worldSeed, res, maxResolution);
 				const w = main.random.nextFloat(&seed);
 				bigMap.ptr(x, y).* = bigMap.get(x, y-res)*(1-w)+bigMap.get(x, y+res)*w + main.random.nextFloatSigned(&seed)*randomnessScale;
-				bigMap.ptr(x, y).* = @min(upperLimit, @max(lowerLimit, bigMap.get(x, y)));
+				bigMap.ptr(x, y).* = bigMap.get(x, y);
 			}
 		}
 		// y coordinate on the grid:
@@ -77,7 +77,7 @@ pub fn generateInitializedFractalTerrain(offsetX: i32, offsetY: i32, scale: u31,
 				setSeed(x, y, offsetX, offsetY, &seed, worldSeed, res, maxResolution);
 				const w = main.random.nextFloat(&seed);
 				bigMap.ptr(x, y).* = bigMap.get(x-res, y)*(1-w)+bigMap.get(x+res, y)*w + main.random.nextFloatSigned(&seed)*randomnessScale;
-				bigMap.ptr(x, y).* = @min(upperLimit, @max(lowerLimit, bigMap.get(x, y)));
+				bigMap.ptr(x, y).* = bigMap.get(x, y);
 			}
 		}
 		// No coordinate on the grid:
@@ -89,7 +89,7 @@ pub fn generateInitializedFractalTerrain(offsetX: i32, offsetY: i32, scale: u31,
 				const w1 = main.random.nextFloat(&seed);
 				const w2 = main.random.nextFloat(&seed);
 				bigMap.ptr(x, y).* = (bigMap.get(x-res, y-res)*(1-w1) + bigMap.get(x-res, y+res)*w1)*(1-w2) + (bigMap.get(x+res, y-res)*(1-w1) + bigMap.get(x+res, y+res)*w1)*w2 + main.random.nextFloatSigned(&seed)*randomnessScale;
-				bigMap.ptr(x, y).* = @min(upperLimit, @max(lowerLimit, bigMap.get(x, y)));
+				bigMap.ptr(x, y).* = bigMap.get(x, y);
 			}
 		}
 	}

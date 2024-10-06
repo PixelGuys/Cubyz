@@ -1,0 +1,48 @@
+.{
+	.properties = .{
+		.hot,
+	},
+	.minHeight = 24,
+	.maxHeight = 60,
+	
+	.roughness = 20,
+	.hills = 10,
+	.rivers = true,
+	
+	.music = "cubyz:sunrise",
+
+	.ground_structure = .{
+		"cubyz:grass",
+		"2 cubyz:soil",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:simple_tree",
+			.leaves = "cubyz:oak_leaves",
+			.log = "cubyz:oak_log",
+			.top = "cubyz:oak_top",
+			.chance = 0.16,
+			.type = .round,
+			.height = 1,
+			.height_variation = 1,
+			.leafRadius = 2,
+			.leafRadius_variation = 1,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:soil",
+			.chance = 0.016,
+			.width = 12,
+			.variation = 4,
+			.depth = 2,
+			.smoothness = 0.2,
+		},
+		.{
+			.id = "cubyz:simple_vegetation",
+			.block = "cubyz:grass_vegetation",
+			.chance = 0.8,
+			.height = 1,
+			.height_variation = 0,
+		},
+	},
+}

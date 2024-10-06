@@ -72,10 +72,17 @@ void main() {
 	float animatedTextureIndex = animatedTexture[textureIndex];
 	float normalVariation = lightVariation(normal);
 	vec3 textureCoords = vec3(uv, animatedTextureIndex);
+
 	float reflectivity = texture(reflectivityAndAbsorptionSampler, textureCoords).a;
+	float fresnelReflection = (1 + dot(normalize(direction), normal));
+	fresnelReflection *= fresnelReflection;
+	fresnelReflection *= min(1, 2*reflectivity); // Limit it to 2*reflectivity to avoid making every block reflective.
+	reflectivity = reflectivity*fixedCubeMapLookup(reflect(direction, normal)).x;
+	reflectivity = reflectivity*(1 - fresnelReflection) + fresnelReflection;
+
 	vec3 pixelLight = max(light*normalVariation, texture(emissionSampler, textureCoords).r*4);
 	fragColor = texture(texture_sampler, textureCoords)*vec4(pixelLight, 1);
-	fragColor.rgb += (reflectivity*fixedCubeMapLookup(reflect(direction, normal)).xyz)*pixelLight;
+	fragColor.rgb += reflectivity*pixelLight;
 
 	if(!passDitherTest(fragColor.a)) discard;
 	fragColor.a = 1;

@@ -14,23 +14,23 @@ pub inline fn combine(pos: Vec3f, w: f32) Vec4f {
 	return .{pos[0], pos[1], pos[2], w};
 }
 
-pub fn xyz(self: anytype) @Vector(3, @typeInfo(@TypeOf(self)).Vector.child) {
-	return @Vector(3, @typeInfo(@TypeOf(self)).Vector.child){self[0], self[1], self[2]};
+pub fn xyz(self: anytype) @Vector(3, @typeInfo(@TypeOf(self)).vector.child) {
+	return @Vector(3, @typeInfo(@TypeOf(self)).vector.child){self[0], self[1], self[2]};
 }
 
-pub fn xy(self: anytype) @Vector(2, @typeInfo(@TypeOf(self)).Vector.child) {
-	return @Vector(2, @typeInfo(@TypeOf(self)).Vector.child){self[0], self[1]};
+pub fn xy(self: anytype) @Vector(2, @typeInfo(@TypeOf(self)).vector.child) {
+	return @Vector(2, @typeInfo(@TypeOf(self)).vector.child){self[0], self[1]};
 }
 
-pub fn dot(self: anytype, other: @TypeOf(self)) @typeInfo(@TypeOf(self)).Vector.child {
+pub fn dot(self: anytype, other: @TypeOf(self)) @typeInfo(@TypeOf(self)).vector.child {
 	return @reduce(.Add, self*other);
 }
 
-pub fn lengthSquare(self: anytype) @typeInfo(@TypeOf(self)).Vector.child {
+pub fn lengthSquare(self: anytype) @typeInfo(@TypeOf(self)).vector.child {
 	return @reduce(.Add, self*self);
 }
 
-pub fn length(self: anytype) @typeInfo(@TypeOf(self)).Vector.child {
+pub fn length(self: anytype) @typeInfo(@TypeOf(self)).vector.child {
 	return @sqrt(@reduce(.Add, self*self));
 }
 
@@ -39,7 +39,7 @@ pub fn normalize(self: anytype) @TypeOf(self) {
 }
 
 pub fn cross(self: anytype, other: @TypeOf(self)) @TypeOf(self) {
-	if(@typeInfo(@TypeOf(self)).Vector.len != 3) @compileError("Only available for vectors of length 3.");
+	if(@typeInfo(@TypeOf(self)).vector.len != 3) @compileError("Only available for vectors of length 3.");
 	return @TypeOf(self) {
 		self[1]*other[2] - self[2]*other[1],
 		self[2]*other[0] - self[0]*other[2],
@@ -47,8 +47,8 @@ pub fn cross(self: anytype, other: @TypeOf(self)) @TypeOf(self) {
 	};
 }
 
-pub fn rotateX(self: anytype, angle: @typeInfo(@TypeOf(self)).Vector.child) @TypeOf(self) {
-	if(@typeInfo(@TypeOf(self)).Vector.len != 3) @compileError("Only available for vectors of length 3.");
+pub fn rotateX(self: anytype, angle: @typeInfo(@TypeOf(self)).vector.child) @TypeOf(self) {
+	if(@typeInfo(@TypeOf(self)).vector.len != 3) @compileError("Only available for vectors of length 3.");
 	const sin = @sin(angle);
 	const cos = @cos(angle);
 	return @TypeOf(self){
@@ -58,8 +58,8 @@ pub fn rotateX(self: anytype, angle: @typeInfo(@TypeOf(self)).Vector.child) @Typ
 	};
 }
 
-pub fn rotateY(self: anytype, angle: @typeInfo(@TypeOf(self)).Vector.child) @TypeOf(self) {
-	if(@typeInfo(@TypeOf(self)).Vector.len != 3) @compileError("Only available for vectors of length 3.");
+pub fn rotateY(self: anytype, angle: @typeInfo(@TypeOf(self)).vector.child) @TypeOf(self) {
+	if(@typeInfo(@TypeOf(self)).vector.len != 3) @compileError("Only available for vectors of length 3.");
 	const sin = @sin(angle);
 	const cos = @cos(angle);
 	return @TypeOf(self){
@@ -69,8 +69,8 @@ pub fn rotateY(self: anytype, angle: @typeInfo(@TypeOf(self)).Vector.child) @Typ
 	};
 }
 
-pub fn rotateZ(self: anytype, angle: @typeInfo(@TypeOf(self)).Vector.child) @TypeOf(self) {
-	if(@typeInfo(@TypeOf(self)).Vector.len != 3) @compileError("Only available for vectors of length 3.");
+pub fn rotateZ(self: anytype, angle: @typeInfo(@TypeOf(self)).vector.child) @TypeOf(self) {
+	if(@typeInfo(@TypeOf(self)).vector.len != 3) @compileError("Only available for vectors of length 3.");
 	const sin = @sin(angle);
 	const cos = @cos(angle);
 	return @TypeOf(self){
@@ -80,7 +80,7 @@ pub fn rotateZ(self: anytype, angle: @typeInfo(@TypeOf(self)).Vector.child) @Typ
 	};
 }
 
-pub const Mat4f = struct {
+pub const Mat4f = struct { // MARK: Mat4f
 	rows: [4]Vec4f,
 	pub fn identity() Mat4f {
 		return Mat4f {
@@ -100,6 +100,17 @@ pub const Mat4f = struct {
 				Vec4f{0, 1, 0, pos[1]},
 				Vec4f{0, 0, 1, pos[2]},
 				Vec4f{0, 0, 0, 1},
+			}
+		};
+	}
+
+	pub fn scale(vector: Vec3f) Mat4f {
+		return Mat4f {
+			.rows = [4]Vec4f {
+				Vec4f{vector[0], 0,         0,         0},
+				Vec4f{0,         vector[1], 0,         0},
+				Vec4f{0,         0,         vector[2], 0},
+				Vec4f{0,         0,         0,         1},
 			}
 		};
 	}
@@ -188,5 +199,68 @@ pub const Mat4f = struct {
 			dot(self.rows[2], vec),
 			dot(self.rows[3], vec),
 		};
+	}
+};
+
+pub const Complex = struct { // MARK: Complex
+	val: Vec2d,
+
+	fn valSquare(a: Complex) f64 {
+		return @reduce(.Add, a.val*a.val);
+	}
+
+	fn conjugate(a: Complex) Complex {
+		return .{.val = a.val*Vec2d{1, -1}};
+	}
+
+	pub fn negate(a: Complex) Complex {
+		return .{.val = -a.val};
+	}
+
+	pub fn add(a: Complex, b: Complex) Complex {
+		return .{.val = a.val + b.val};
+	}
+
+	pub fn addScalar(a: Complex, b: f64) Complex {
+		return .{.val = a.val + Vec2d{b, 0}};
+	}
+
+	pub fn sub(a: Complex, b: Complex) Complex {
+		return .{.val = a.val - b.val};
+	}
+
+	pub fn subScalar(a: Complex, b: f64) Complex {
+		return .{.val = a.val - Vec2d{b, 0}};
+	}
+
+	pub fn mul(a: Complex, b: Complex) Complex {
+		return .{.val = .{a.val[0]*b.val[0] - a.val[1]*b.val[1], a.val[0]*b.val[1] + a.val[1]*b.val[0]}};
+	}
+
+	pub fn mulScalar(a: Complex, b: f64) Complex {
+		return .{.val = a.val*@as(Vec2d, @splat(b))};
+	}
+
+	pub fn div(a: Complex, b: Complex) Complex {
+		const denom = b.valSquare();
+		return a.mul(b.conjugate()).divScalar(denom);
+	}
+
+	pub fn divScalar(a: Complex, b: f64) Complex {
+		return .{.val = a.val/@as(Vec2d, @splat(b))};
+	}
+
+	pub fn fromSqrt(val: f64) Complex {
+		if(val < 0) {
+			return .{.val = .{0, @sqrt(-val)}};
+		} else {
+			return .{.val = .{@sqrt(val), 0}};
+		}
+	}
+
+	pub fn exp(a: Complex) Complex {
+		const realFactor = @exp(a.val[0]);
+		const complexFactor: Complex = .{.val = .{@cos(a.val[1]), @sin(a.val[1])}};
+		return complexFactor.mulScalar(realFactor);
 	}
 };

@@ -8,6 +8,9 @@ pub const FractalNoise3D = @import("FractalNoise3D.zig");
 /// Uses a recursive subdivision algorithm to generate a noise map.
 pub const FractalNoise = @import("FractalNoise.zig");
 
+/// Like FractalNoise, except it generates values on demand and caches results, instead of generating everything at once.
+pub const CachedFractalNoise = @import("CachedFractalNoise.zig");
+
 /// The same as fractal noise, but uses random weigths during interpolation phase.
 /// This generates a rough terrain with some cliffs.
 pub const RandomlyWeightedFractalNoise = @import("RandomlyWeightedFractalNoise.zig");

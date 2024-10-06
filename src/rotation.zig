@@ -3,7 +3,7 @@ const std = @import("std");
 const blocks = @import("blocks.zig");
 const Block = blocks.Block;
 const chunk = @import("chunk.zig");
-const Neighbors = chunk.Neighbors;
+const Neighbor = chunk.Neighbor;
 const main = @import("main.zig");
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
@@ -21,7 +21,7 @@ const RayIntersectionResult = struct {
 /// Each block gets 16 bit of additional storage(apart from the reference to the block type).
 /// These 16 bits are accessed and interpreted by the `RotationMode`.
 /// With the `RotationMode` interface there is almost no limit to what can be done with those 16 bit.
-pub const RotationMode = struct {
+pub const RotationMode = struct { // MARK: RotationMode
 	const DefaultFunctions = struct {
 		fn model(block: Block) u16 {
 			return blocks.meshes.modelIndexStart(block);
@@ -32,10 +32,10 @@ pub const RotationMode = struct {
 		fn createBlockModel(modelId: []const u8) u16 {
 			return main.models.getModelIndex(modelId);
 		}
-		fn updateData(_: *Block, _: u3, _: Block) bool {
+		fn updateData(_: *Block, _: Neighbor, _: Block) bool {
 			return false;
 		}
-		fn rayIntersection(block: Block, _: main.items.ItemStack, _: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
+		fn rayIntersection(block: Block, _: ?main.items.Item, _: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
 			// Check the true bounding box (using this algorithm here: https://tavianator.com/2011/ray_box.html):
 			const invDir = @as(Vec3f, @splat(1))/playerDir;
 			const modelData = &main.models.models.items[blocks.meshes.model(block)];
@@ -68,9 +68,9 @@ pub const RotationMode = struct {
 	generateData: *const fn(world: *main.game.World, pos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, relativeDir: Vec3i, currentData: *Block, blockPlacing: bool) bool = DefaultFunctions.generateData,
 
 	/// Updates data of a placed block if the RotationMode dependsOnNeighbors.
-	updateData: *const fn(block: *Block, neighborIndex: u3, neighbor: Block) bool = &DefaultFunctions.updateData,
+	updateData: *const fn(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool = &DefaultFunctions.updateData,
 
-	rayIntersection: *const fn(block: Block, item: main.items.ItemStack, voxelPos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult = &DefaultFunctions.rayIntersection,
+	rayIntersection: *const fn(block: Block, item: ?main.items.Item, voxelPos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult = &DefaultFunctions.rayIntersection,
 };
 
 var rotationModes: std.StringHashMap(RotationMode) = undefined;
@@ -83,17 +83,17 @@ fn rotationMatrixTransform(quad: *main.models.QuadInfo, transformMatrix: Mat4f) 
 }
 
 pub const RotationModes = struct {
-	pub const NoRotation = struct {
+	pub const NoRotation = struct { // MARK: NoRotation
 		pub const id: []const u8 = "no_rotation";
 		fn init() void {}
 		fn deinit() void {}
 	};
-	pub const Log = struct {
+	pub const Log = struct { // MARK: Log
 		pub const id: []const u8 = "log";
 		var rotatedModels: std.StringHashMap(u16) = undefined;
 
 		fn init() void {
-			rotatedModels = std.StringHashMap(u16).init(main.globalAllocator.allocator);
+			rotatedModels = .init(main.globalAllocator.allocator);
 		}
 
 		fn deinit() void {
@@ -122,18 +122,62 @@ pub const RotationModes = struct {
 
 		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, relativeDir: Vec3i, currentData: *Block, blockPlacing: bool) bool {
 			if(blockPlacing) {
-				if(relativeDir[0] == 1) currentData.data = chunk.Neighbors.dirNegX;
-				if(relativeDir[0] == -1) currentData.data = chunk.Neighbors.dirPosX;
-				if(relativeDir[1] == 1) currentData.data = chunk.Neighbors.dirNegY;
-				if(relativeDir[1] == -1) currentData.data = chunk.Neighbors.dirPosY;
-				if(relativeDir[2] == 1) currentData.data = chunk.Neighbors.dirDown;
-				if(relativeDir[2] == -1) currentData.data = chunk.Neighbors.dirUp;
+				if(relativeDir[0] == 1) currentData.data = Neighbor.dirNegX.toInt();
+				if(relativeDir[0] == -1) currentData.data = Neighbor.dirPosX.toInt();
+				if(relativeDir[1] == 1) currentData.data = Neighbor.dirNegY.toInt();
+				if(relativeDir[1] == -1) currentData.data = Neighbor.dirPosY.toInt();
+				if(relativeDir[2] == 1) currentData.data = Neighbor.dirDown.toInt();
+				if(relativeDir[2] == -1) currentData.data = Neighbor.dirUp.toInt();
 				return true;
 			}
 			return false;
 		}
 	};
-	pub const Fence = struct {
+	pub const Planar = struct { // MARK: Planar
+		pub const id: []const u8 = "planar";
+		var rotatedModels: std.StringHashMap(u16) = undefined;
+
+		fn init() void {
+			rotatedModels = .init(main.globalAllocator.allocator);
+		}
+
+		fn deinit() void {
+			rotatedModels.deinit();
+		}
+
+		pub fn createBlockModel(modelId: []const u8) u16 {
+			if(rotatedModels.get(modelId)) |modelIndex| return modelIndex;
+
+			const baseModelIndex = main.models.getModelIndex(modelId);
+			const baseModel = main.models.models.items[baseModelIndex];
+			// Rotate the model:
+			const modelIndex: u16 = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationZ(std.math.pi/2.0)});
+			_ = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationZ(-std.math.pi/2.0)});
+			_ = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationZ(std.math.pi)});
+			_ = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.identity()});
+			rotatedModels.put(modelId, modelIndex) catch unreachable;
+			return modelIndex;
+		}
+
+		pub fn model(block: Block) u16 {
+			return blocks.meshes.modelIndexStart(block) + @min(block.data, 3);
+		}
+
+		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, playerDir: Vec3f, _: Vec3i, currentData: *Block, blockPlacing: bool) bool {
+			if(blockPlacing) {
+				if(@abs(playerDir[0]) > @abs(playerDir[1])) {
+					if(playerDir[0] < 0) currentData.data = Neighbor.dirNegX.toInt() - 2
+					else currentData.data = Neighbor.dirPosX.toInt() - 2;
+				} else {
+					if(playerDir[1] < 0) currentData.data = Neighbor.dirNegY.toInt() - 2
+					else currentData.data = Neighbor.dirPosY.toInt() - 2;
+				}
+				return true;
+			}
+			return false;
+		}
+	};
+	pub const Fence = struct { // MARK: Fence
 		pub const id: []const u8 = "fence";
 		pub const dependsOnNeighbors = true;
 		var fenceModels: std.StringHashMap(u16) = undefined;
@@ -145,7 +189,7 @@ pub const RotationModes = struct {
 		};
 
 		fn init() void {
-			fenceModels = std.StringHashMap(u16).init(main.globalAllocator.allocator);
+			fenceModels = .init(main.globalAllocator.allocator);
 		}
 
 		fn deinit() void {
@@ -191,22 +235,23 @@ pub const RotationModes = struct {
 			return blocks.meshes.modelIndexStart(block) + (block.data & 15);
 		}
 
-		pub fn updateData(block: *Block, neighborIndex: u3, neighbor: Block) bool {
-			const blockModel = blocks.meshes.modelIndexStart(block.*);
-			const neighborModel = blocks.meshes.modelIndexStart(neighbor);
-			const targetVal = neighbor.solid() and (blockModel == neighborModel or main.models.models.items[neighborModel].neighborFacingQuads[neighborIndex ^ 1].len != 0);
+		pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool {
+			const blockBaseModel = blocks.meshes.modelIndexStart(block.*);
+			const neighborBaseModel = blocks.meshes.modelIndexStart(neighborBlock);
+			const neighborModel = blocks.meshes.model(neighborBlock);
+			const targetVal = neighborBlock.solid() and (blockBaseModel == neighborBaseModel or main.models.models.items[neighborModel].neighborFacingQuads[neighbor.reverse().toInt()].len != 0);
 			var currentData: FenceData = @bitCast(@as(u4, @truncate(block.data)));
-			switch(neighborIndex) {
-				Neighbors.dirNegX => {
+			switch(neighbor) {
+				.dirNegX => {
 					currentData.isConnectedNegX = targetVal;
 				},
-				Neighbors.dirPosX => {
+				.dirPosX => {
 					currentData.isConnectedPosX = targetVal;
 				},
-				Neighbors.dirNegY => {
+				.dirNegY => {
 					currentData.isConnectedNegY = targetVal;
 				},
-				Neighbors.dirPosY => {
+				.dirPosY => {
 					currentData.isConnectedPosY = targetVal;
 				},
 				else => {},
@@ -217,7 +262,7 @@ pub const RotationModes = struct {
 			return true;
 		}
 	};
-	pub const Stairs = struct {
+	pub const Stairs = struct { // MARK: Stairs
 		pub const id: []const u8 = "stairs";
 		var modelIndex: u16 = 0;
 
@@ -305,10 +350,10 @@ pub const RotationModes = struct {
 			for(0..256) |i| {
 				var quads = main.List(main.models.QuadInfo).init(main.stackAllocator);
 				defer quads.deinit();
-				for(Neighbors.iterable) |neighbor| {
-					const xComponent = @abs(Neighbors.textureX[neighbor]);
-					const yComponent = @abs(Neighbors.textureY[neighbor]);
-					const normal = Vec3i{Neighbors.relX[neighbor], Neighbors.relY[neighbor], Neighbors.relZ[neighbor]};
+				for(Neighbor.iterable) |neighbor| {
+					const xComponent = @abs(neighbor.textureX());
+					const yComponent = @abs(neighbor.textureY());
+					const normal = Vec3i{neighbor.relX(), neighbor.relY(), neighbor.relZ()};
 					const zComponent = @abs(normal);
 					const zMap: [2]@Vector(3, u32) = if(@reduce(.Add, normal) > 0) .{@splat(0), @splat(1)} else .{@splat(1), @splat(0)};
 					var visibleFront: [2][2]bool = undefined;
@@ -323,8 +368,8 @@ pub const RotationModes = struct {
 							visibleMiddle[x][y] = !visibleFront[x][y] and hasSubBlock(@intCast(i), @intCast(posBack[0]), @intCast(posBack[1]), @intCast(posBack[2]));
 						}
 					}
-					const xAxis = @as(Vec3f, @floatFromInt(Neighbors.textureX[neighbor]));
-					const yAxis = @as(Vec3f, @floatFromInt(Neighbors.textureY[neighbor]));
+					const xAxis = @as(Vec3f, @floatFromInt(neighbor.textureX()));
+					const yAxis = @as(Vec3f, @floatFromInt(neighbor.textureY()));
 					const zAxis = @as(Vec3f, @floatFromInt(normal));
 					// Greedy mesh it:
 					var faces: [2]GreedyFaceInfo = undefined;
@@ -337,19 +382,19 @@ pub const RotationModes = struct {
 						var yUpper = @abs(yAxis)*@as(Vec3f, @splat(face.max[1]));
 						if(@reduce(.Add, yAxis) < 0) std.mem.swap(Vec3f, &yLower, &yUpper);
 						const zValue: Vec3f = @floatFromInt(zComponent*zMap[1]);
-						if(neighbor == chunk.Neighbors.dirNegX or neighbor == chunk.Neighbors.dirPosY) {
+						if(neighbor == .dirNegX or neighbor == .dirPosY) {
 							face.min[0] = 1 - face.min[0];
 							face.max[0] = 1 - face.max[0];
 							const swap = face.min[0];
 							face.min[0] = face.max[0];
 							face.max[0] = swap;
 						}
-						if(neighbor == chunk.Neighbors.dirUp) {
+						if(neighbor == .dirUp) {
 							face.min = Vec2f{1, 1} - face.min;
 							face.max = Vec2f{1, 1} - face.max;
 							std.mem.swap(Vec2f, &face.min, &face.max);
 						}
-						if(neighbor == chunk.Neighbors.dirDown) {
+						if(neighbor == .dirDown) {
 							face.min[1] = 1 - face.min[1];
 							face.max[1] = 1 - face.max[1];
 							const swap = face.min[1];
@@ -365,7 +410,7 @@ pub const RotationModes = struct {
 								xUpper + yUpper + zValue,
 							},
 							.cornerUV = .{.{face.min[0], face.min[1]}, .{face.min[0], face.max[1]}, .{face.max[0], face.min[1]}, .{face.max[0], face.max[1]}},
-							.textureSlot = neighbor,
+							.textureSlot = neighbor.toInt(),
 						});
 					}
 					const middleFaces = mergeFaces(visibleMiddle, &faces);
@@ -377,19 +422,19 @@ pub const RotationModes = struct {
 						var yUpper = @abs(yAxis)*@as(Vec3f, @splat(face.max[1]));
 						if(@reduce(.Add, yAxis) < 0) std.mem.swap(Vec3f, &yLower, &yUpper);
 						const zValue = @as(Vec3f, @floatFromInt(zComponent))*@as(Vec3f, @splat(0.5));
-						if(neighbor == chunk.Neighbors.dirNegX or neighbor == chunk.Neighbors.dirPosY) {
+						if(neighbor == .dirNegX or neighbor == .dirPosY) {
 							face.min[0] = 1 - face.min[0];
 							face.max[0] = 1 - face.max[0];
 							const swap = face.min[0];
 							face.min[0] = face.max[0];
 							face.max[0] = swap;
 						}
-						if(neighbor == chunk.Neighbors.dirUp) {
+						if(neighbor == .dirUp) {
 							face.min = Vec2f{1, 1} - face.min;
 							face.max = Vec2f{1, 1} - face.max;
 							std.mem.swap(Vec2f, &face.min, &face.max);
 						}
-						if(neighbor == chunk.Neighbors.dirDown) {
+						if(neighbor == .dirDown) {
 							face.min[1] = 1 - face.min[1];
 							face.max[1] = 1 - face.max[1];
 							const swap = face.min[1];
@@ -405,7 +450,7 @@ pub const RotationModes = struct {
 								xUpper + yUpper + zValue,
 							},
 							.cornerUV = .{.{face.min[0], face.min[1]}, .{face.min[0], face.max[1]}, .{face.max[0], face.min[1]}, .{face.max[0], face.max[1]}},
-							.textureSlot = neighbor,
+							.textureSlot = neighbor.toInt(),
 						});
 					}
 				}
@@ -467,8 +512,8 @@ pub const RotationModes = struct {
 			return null;
 		}
 
-		pub fn rayIntersection(block: Block, item: main.items.ItemStack, blockPos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
-			if(item.item) |_item| {
+		pub fn rayIntersection(block: Block, item: ?main.items.Item, blockPos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
+			if(item) |_item| {
 				switch(_item) {
 					.baseItem => |baseItem| {
 						if(std.mem.eql(u8, baseItem.id, "cubyz:chisel")) { // Select only one eigth of a block
@@ -499,7 +544,7 @@ pub const RotationModes = struct {
 			return false;
 		}
 	};
-	pub const Torch = struct {
+	pub const Torch = struct { // MARK: Torch
 		pub const id: []const u8 = "torch";
 		pub const dependsOnNeighbors = true;
 		var rotatedModels: std.StringHashMap(u16) = undefined;
@@ -512,7 +557,7 @@ pub const RotationModes = struct {
 		};
 
 		fn init() void {
-			rotatedModels = std.StringHashMap(u16).init(main.globalAllocator.allocator);
+			rotatedModels = .init(main.globalAllocator.allocator);
 		}
 
 		fn deinit() void {
@@ -588,25 +633,25 @@ pub const RotationModes = struct {
 			}
 		}
 
-		pub fn updateData(block: *Block, neighborIndex: u3, neighbor: Block) bool {
+		pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool {
 			const blockModel = blocks.meshes.modelIndexStart(block.*);
-			const neighborModel = blocks.meshes.modelIndexStart(neighbor);
-			const targetVal = neighbor.solid() and (blockModel == neighborModel or main.models.models.items[neighborModel].neighborFacingQuads[neighborIndex ^ 1].len != 0);
+			const neighborModel = blocks.meshes.model(neighborBlock);
+			const targetVal = neighborBlock.solid() and (blockModel == neighborModel or main.models.models.items[neighborModel].neighborFacingQuads[neighbor.reverse().toInt()].len != 0);
 			var currentData: TorchData = @bitCast(@as(u5, @truncate(block.data)));
-			switch(neighborIndex) {
-				Neighbors.dirNegX => {
+			switch(neighbor) {
+				.dirNegX => {
 					currentData.negX = currentData.negX and targetVal;
 				},
-				Neighbors.dirPosX => {
+				.dirPosX => {
 					currentData.posX = currentData.posX and targetVal;
 				},
-				Neighbors.dirNegY => {
+				.dirNegY => {
 					currentData.negY = currentData.negY and targetVal;
 				},
-				Neighbors.dirPosY => {
+				.dirPosY => {
 					currentData.posY = currentData.posY and targetVal;
 				},
-				Neighbors.dirDown => {
+				.dirDown => {
 					currentData.center = currentData.center and targetVal;
 				},
 				else => {},
@@ -620,16 +665,18 @@ pub const RotationModes = struct {
 	};
 };
 
+// MARK: init/register
+
 pub fn init() void {
-	rotationModes = std.StringHashMap(RotationMode).init(main.globalAllocator.allocator);
-	inline for(@typeInfo(RotationModes).Struct.decls) |declaration| {
+	rotationModes = .init(main.globalAllocator.allocator);
+	inline for(@typeInfo(RotationModes).@"struct".decls) |declaration| {
 		register(@field(RotationModes, declaration.name));
 	}
 }
 
 pub fn deinit() void {
 	rotationModes.deinit();
-	inline for(@typeInfo(RotationModes).Struct.decls) |declaration| {
+	inline for(@typeInfo(RotationModes).@"struct".decls) |declaration| {
 		@field(RotationModes, declaration.name).deinit();
 	}
 }
@@ -643,7 +690,7 @@ pub fn getByID(id: []const u8) *RotationMode {
 pub fn register(comptime Mode: type) void {
 	Mode.init();
 	var result: RotationMode = RotationMode{};
-	inline for(@typeInfo(RotationMode).Struct.fields) |field| {
+	inline for(@typeInfo(RotationMode).@"struct".fields) |field| {
 		if(@hasDecl(Mode, field.name)) {
 			if(field.type == @TypeOf(@field(Mode, field.name))) {
 				@field(result, field.name) = @field(Mode, field.name);

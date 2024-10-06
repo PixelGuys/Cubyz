@@ -19,7 +19,7 @@ children: main.List(GuiComponent),
 pub fn init() *HorizontalList {
 	const self = main.globalAllocator.create(HorizontalList);
 	self.* = HorizontalList {
-		.children = main.List(GuiComponent).init(main.globalAllocator),
+		.children = .init(main.globalAllocator),
 		.pos = .{0, 0},
 		.size = .{0, 0},
 	};

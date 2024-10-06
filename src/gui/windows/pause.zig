@@ -15,12 +15,8 @@ pub var window = GuiWindow {
 
 const padding: f32 = 8;
 
-fn exitMenuCallbackFunction(_: usize) void {
-	if(main.game.world) |world| {
-		world.deinit();
-		main.game.world = null;
-	}
-	gui.openWindow("main");
+fn reorderHudCallbackFunction(_: usize) void {
+	gui.reorderWindows = !gui.reorderWindows;
 }
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
@@ -28,9 +24,8 @@ pub fn onOpen() void {
 		list.add(Button.initText(.{0, 0}, 128, "Invite Player", gui.openWindowCallback("invite")));
 	}
 	list.add(Button.initText(.{0, 0}, 128, "Settings", gui.openWindowCallback("settings")));
-	list.add(Button.initText(.{0, 0}, 128, "Exit to Menu TODO", .{
-		.callback = &exitMenuCallbackFunction,
-	}));
+	list.add(Button.initText(.{0, 0}, 128, "Reorder HUD", .{.callback = &reorderHudCallbackFunction}));
+	list.add(Button.initText(.{0, 0}, 128, "Exit World", .{.callback = &main.exitToMenu}));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));

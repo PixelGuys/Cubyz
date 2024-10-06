@@ -5,7 +5,6 @@ const main = @import("root");
 const Chunk = main.chunk.Chunk;
 const ChunkPosition = main.chunk.ChunkPosition;
 const Cache = main.utils.Cache;
-const JsonElement = main.JsonElement;
 
 const terrain = @import("terrain.zig");
 const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
@@ -21,7 +20,7 @@ pub const LightMapFragment = struct {
 	startHeight: [mapSize*mapSize]i16 = undefined,
 	pos: MapFragmentPosition,
 	
-	refCount: Atomic(u16) = Atomic(u16).init(0),
+	refCount: Atomic(u16) = .init(0),
 
 	pub fn init(self: *LightMapFragment, wx: i32, wy: i32, voxelSize: u31) void {
 		self.* = .{
@@ -52,7 +51,7 @@ pub const LightMapFragment = struct {
 
 const cacheSize = 1 << 6; // Must be a power of 2!
 const cacheMask = cacheSize - 1;
-const associativity = 8; // ~100MiB MiB Cache size
+const associativity = 8; // 64MiB MiB Cache size
 var cache: Cache(LightMapFragment, cacheSize, associativity, LightMapFragment.decreaseRefCount) = .{};
 
 fn cacheInit(pos: MapFragmentPosition) *LightMapFragment {

@@ -3,6 +3,7 @@ const std = @import("std");
 const main = @import("root");
 const items = main.items;
 const BaseItem = items.BaseItem;
+const Inventory = items.Inventory;
 const ItemStack = items.ItemStack;
 const Player = main.game.Player;
 const Texture = main.graphics.Texture;
@@ -32,9 +33,9 @@ const padding: f32 = 8;
 
 var availableItems: main.List(*BaseItem) = undefined;
 var itemAmount: main.List(u32) = undefined;
+var inventories: main.List(Inventory) = undefined;
 
 pub var arrowTexture: Texture = undefined;
-var recipeResult: ItemStack = undefined;
 
 pub fn init() void {
 	arrowTexture = Texture.initFromFile("assets/cubyz/ui/inventory/crafting_arrow.png");
@@ -60,33 +61,6 @@ fn addItemStackToAvailable(itemStack: ItemStack) void {
 	}
 }
 
-fn tryTakingItems(recipeIndex: usize, destination: *ItemStack, _: u16) void {
-	const recipe = items.recipes()[recipeIndex];
-	const resultItem = recipe.resultItem;
-	if(!destination.canAddAll(resultItem.item.?, resultItem.amount)) return;
-	for(recipe.sourceItems, recipe.sourceAmounts) |item, _amount| {
-		var amount = _amount;
-		for(main.game.Player.inventory__SEND_CHANGES_TO_SERVER.items) |*itemStack| {
-			if(itemStack.item) |invItem| {
-				if(invItem == .baseItem and invItem.baseItem == item) {
-					if(amount >= itemStack.amount) {
-						amount -= itemStack.amount;
-						itemStack.clear();
-					} else {
-						itemStack.amount -= @intCast(amount);
-						amount = 0;
-					}
-					if(amount == 0) break;
-				}
-			}
-		}
-		if(amount != 0) {
-			std.log.warn("Congratulations, you just managed to cheat {}*{s}, thanks to my lazy coding. Have fun with that :D", .{amount, item.id});
-		}
-	}
-	std.debug.assert(destination.add(resultItem.item.?, resultItem.amount) == resultItem.amount);
-}
-
 fn findAvailableRecipes(list: *VerticalList) bool {
 	const oldAmounts = main.stackAllocator.dupe(u32, itemAmount.items);
 	defer main.stackAllocator.free(oldAmounts);
@@ -94,10 +68,9 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 		amount.* = 0;
 	}
 	// Figure out what items are available in the inventory:
-	for(main.game.Player.inventory__SEND_CHANGES_TO_SERVER.items) |itemStack| {
-		addItemStackToAvailable(itemStack);
+	for(0..main.game.Player.inventory.size()) |i| {
+		addItemStackToAvailable(main.game.Player.inventory.getStack(i));
 	}
-	addItemStackToAvailable(gui.inventory.carriedItemStack);
 	if(std.mem.eql(u32, oldAmounts, itemAmount.items)) return false;
 	// Remove no longer present items:
 	var i: u32 = 0;
@@ -107,8 +80,12 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 			_ = availableItems.swapRemove(i);
 		}
 	}
+	for(inventories.items) |inv| {
+		inv.deinit(main.globalAllocator);
+	}
+	inventories.clearRetainingCapacity();
 	// Find all recipes the player can make:
-	outer: for(items.recipes(), 0..) |*recipe, recipeIndex| {
+	outer: for(items.recipes()) |*recipe| {
 		middle: for(recipe.sourceItems, recipe.sourceAmounts) |sourceItem, sourceAmount| {
 			for(availableItems.items, itemAmount.items) |availableItem, availableAmount| {
 				if(availableItem == sourceItem and availableAmount >= sourceAmount) {
@@ -118,6 +95,8 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 			continue :outer; // Ingredient not found.
 		}
 		// All ingredients found: Add it to the list.
+		const inv = Inventory.init(main.globalAllocator, recipe.sourceItems.len + 1, .crafting);
+		inventories.append(inv);
 		const rowList = HorizontalList.init();
 		const maxColumns: u32 = 4;
 		const itemsPerColumn = recipe.sourceItems.len/maxColumns;
@@ -128,14 +107,16 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 			if(col < remainder) itemsThisColumn += 1;
 			const columnList = VerticalList.init(.{0, 0}, std.math.inf(f32), 0);
 			for(0..itemsThisColumn) |_| {
-				columnList.add(ItemSlot.init(.{0, 0}, .{.item = .{.baseItem = recipe.sourceItems[i]}, .amount = recipe.sourceAmounts[i]}, &.{}, 0, .immutable, .immutable));
+				inv._items[i] = .{.item = .{.baseItem = recipe.sourceItems[i]}, .amount = recipe.sourceAmounts[i]};
+				columnList.add(ItemSlot.init(.{0, 0}, inv, i, .immutable, .immutable));
 				i += 1;
 			}
 			columnList.finish(.center);
 			rowList.add(columnList);
 		}
+		inv._items[recipe.sourceItems.len] = recipe.resultItem;
 		rowList.add(Icon.init(.{8, 0}, .{32, 32}, arrowTexture, false));
-		const itemSlot = ItemSlot.init(.{8, 0}, recipe.resultItem, &.{.tryTakingItems = &tryTakingItems}, recipeIndex, .craftingResult, .takeOnly);
+		const itemSlot = ItemSlot.init(.{8, 0}, inv, @intCast(recipe.sourceItems.len), .craftingResult, .takeOnly);
 		rowList.add(itemSlot);
 		rowList.finish(.{0, 0}, .center);
 		list.add(rowList);
@@ -159,8 +140,9 @@ fn refresh() void {
 }
 
 pub fn onOpen() void {
-	availableItems = main.List(*BaseItem).init(main.globalAllocator);
-	itemAmount = main.List(u32).init(main.globalAllocator);
+	availableItems = .init(main.globalAllocator);
+	itemAmount = .init(main.globalAllocator);
+	inventories = .init(main.globalAllocator);
 	refresh();
 }
 
@@ -171,6 +153,10 @@ pub fn onClose() void {
 	}
 	availableItems.deinit();
 	itemAmount.deinit();
+	for(inventories.items) |inv| {
+		inv.deinit(main.globalAllocator);
+	}
+	inventories.deinit();
 }
 
 pub fn update() void {

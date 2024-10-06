@@ -3,8 +3,14 @@ logs/
 saves/
 zig-out/
 zig-cache/
+.zig-cache/
 serverAssets/
 settings.json
 gui_layout.json
+settings.zig.zon
+gui_layout.zig.zon
 
 test.png
+
+# Ignore user generated backgrounds
+/assets/backgrounds/client_*.png

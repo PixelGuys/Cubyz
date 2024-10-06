@@ -4,7 +4,7 @@ const blocks = @import("blocks.zig");
 const Block = blocks.Block;
 const graphics = @import("graphics.zig");
 const Color = graphics.Color;
-const JsonElement = @import("json.zig").JsonElement;
+const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main.zig");
 const chunk = main.chunk;
 const random = @import("random.zig");
@@ -17,7 +17,7 @@ const Vec3f = vec.Vec3f;
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 /// Holds the basic properties of a tool crafting material.
-const Material = struct {
+const Material = struct { // MARK: Material
 	/// how much it weighs
 	density: f32 = undefined,
 	/// how long it takes until the tool breaks
@@ -30,14 +30,14 @@ const Material = struct {
 	/// The colors that are used to make tool textures.
 	colorPalette: []Color = undefined,
 
-	pub fn init(self: *Material, allocator: NeverFailingAllocator, json: JsonElement) void {
-		self.density = json.get(f32, "density", 1.0);
-		self.resistance = json.get(f32, "resistance", 1.0);
-		self.power = json.get(f32, "power", 1.0);
-		self.roughness = @max(0, json.get(f32, "roughness", 1.0));
-		const colors = json.getChild("colors");
-		self.colorPalette = allocator.alloc(Color, colors.JsonArray.items.len);
-		for(colors.JsonArray.items, self.colorPalette) |item, *color| {
+	pub fn init(self: *Material, allocator: NeverFailingAllocator, zon: ZonElement) void {
+		self.density = zon.get(f32, "density", 1.0);
+		self.resistance = zon.get(f32, "resistance", 1.0);
+		self.power = zon.get(f32, "power", 1.0);
+		self.roughness = @max(0, zon.get(f32, "roughness", 1.0));
+		const colors = zon.getChild("colors");
+		self.colorPalette = allocator.alloc(Color, colors.array.items.len);
+		for(colors.array.items, self.colorPalette) |item, *color| {
 			const colorInt: u32 = @intCast(item.as(i64, 0xff000000) & 0xffffffff);
 			color.* = Color {
 				.r = @intCast(colorInt>>16 & 0xff),
@@ -59,7 +59,7 @@ const Material = struct {
 };
 
 
-pub const BaseItem = struct {
+pub const BaseItem = struct { // MARK: BaseItem
 	image: graphics.Image,
 	texture: ?graphics.Texture, // TODO: Properly deinit
 	id: []const u8,
@@ -84,7 +84,7 @@ pub const BaseItem = struct {
 		.leftClickUse = null,
 	};
 
-	fn init(self: *BaseItem, allocator: NeverFailingAllocator, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, json: JsonElement) void {
+	fn init(self: *BaseItem, allocator: NeverFailingAllocator, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, zon: ZonElement) void {
 		self.id = allocator.dupe(u8, id);
 		if(texturePath.len == 0) {
 			self.image = graphics.Image.defaultImage;
@@ -94,21 +94,21 @@ pub const BaseItem = struct {
 				break :blk graphics.Image.defaultImage;
 			};
 		}
-		self.name = allocator.dupe(u8, json.get([]const u8, "name", id));
-		self.stackSize = json.get(u16, "stackSize", 64);
-		const material = json.getChild("material");
-		if(material == .JsonObject) {
+		self.name = allocator.dupe(u8, zon.get([]const u8, "name", id));
+		self.stackSize = zon.get(u16, "stackSize", 64);
+		const material = zon.getChild("material");
+		if(material == .object) {
 			self.material = Material{};
 			self.material.?.init(allocator, material);
 		} else {
 			self.material = null;
 		}
 		self.block = blk: {
-			break :blk blocks.getByID(json.get(?[]const u8, "block", null) orelse break :blk null);
+			break :blk blocks.getByID(zon.get(?[]const u8, "block", null) orelse break :blk null);
 		};
 		self.texture = null;
-		self.foodValue = json.get(f32, "food", 0);
-		self.leftClickUse = if(std.mem.eql(u8, json.get([]const u8, "onLeftUse", ""), "chisel")) &chiselFunction else null; // TODO: Proper registry.
+		self.foodValue = zon.get(f32, "food", 0);
+		self.leftClickUse = if(std.mem.eql(u8, zon.get([]const u8, "onLeftUse", ""), "chisel")) &chiselFunction else null; // TODO: Proper registry.
 	}
 
 	fn chiselFunction(world: *main.game.World, pos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) bool {
@@ -128,8 +128,13 @@ pub const BaseItem = struct {
 
 	pub fn getTexture(self: *BaseItem) graphics.Texture {
 		if(self.texture == null) {
-			if(self.block) |blockType| {
-				self.texture = graphics.generateBlockTexture(blockType);
+			if(self.image.imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
+				if(self.block) |blockType| {
+					self.texture = graphics.generateBlockTexture(blockType);
+				} else {
+					self.texture = graphics.Texture.init();
+					self.texture.?.generate(self.image);
+				}
 			} else {
 				self.texture = graphics.Texture.init();
 				self.texture.?.generate(self.image);
@@ -144,7 +149,7 @@ pub const BaseItem = struct {
 };
 
 ///Generates the texture of a Tool using the material information.
-const TextureGenerator = struct {
+const TextureGenerator = struct { // MARK: TextureGenerator
 	/// Used to translate between grid and pixel coordinates.
 	pub const GRID_CENTERS_X = [_]u8 {
 		2, 5, 8, 11, 14,
@@ -168,7 +173,7 @@ const TextureGenerator = struct {
 		items: main.List(*const BaseItem),
 		pub fn init(allocator: NeverFailingAllocator) PixelData {
 			return PixelData {
-				.items = main.List(*const BaseItem).init(allocator),
+				.items = .init(allocator),
 			};
 		}
 		pub fn deinit(self: *PixelData) void {
@@ -518,7 +523,7 @@ const TextureGenerator = struct {
 };
 
 /// Determines the physical properties of a tool to caclulate in-game parameters such as durability and speed.
-const ToolPhysics = struct {
+const ToolPhysics = struct { // MARK: ToolPhysics
 	/// Finds the handle of the tool.
 	/// Uses a quite simple algorithm:
 	/// It just simply takes the lowest, right-most 2×2 grid of filled pixels.
@@ -866,7 +871,7 @@ const ToolPhysics = struct {
 	}
 };
 
-pub const Tool = struct {
+pub const Tool = struct { // MARK: Tool
 	craftingGrid: [25]?*const BaseItem,
 	materialGrid: [16][16]?*const BaseItem,
 	tooltip: ?[]const u8,
@@ -929,34 +934,34 @@ pub const Tool = struct {
 		return self;
 	}
 
-	pub fn initFromJson(json: JsonElement) *Tool {
-		const self = initFromCraftingGrid(extractItemsFromJson(json.getChild("grid")), json.get(u32, "seed", 0));
-		self.durability = json.get(u32, "durability", self.maxDurability);
+	pub fn initFromZon(zon: ZonElement) *Tool {
+		const self = initFromCraftingGrid(extractItemsFromZon(zon.getChild("grid")), zon.get(u32, "seed", 0));
+		self.durability = zon.get(u32, "durability", self.maxDurability);
 		return self;
 	}
 
-	fn extractItemsFromJson(jsonArray: JsonElement) [25]?*const BaseItem {
+	fn extractItemsFromZon(zonArray: ZonElement) [25]?*const BaseItem {
 		var items: [25]?*const BaseItem = undefined;
 		for(&items, 0..) |*item, i| {
-			item.* = reverseIndices.get(jsonArray.getAtIndex([]const u8, i, "null"));
+			item.* = reverseIndices.get(zonArray.getAtIndex([]const u8, i, "null"));
 		}
 		return items;
 	}
 
-	pub fn save(self: *const Tool, allocator: NeverFailingAllocator) JsonElement {
-		const jsonObject = JsonElement.initObject(allocator);
-		const jsonArray = JsonElement.initArray(allocator);
+	pub fn save(self: *const Tool, allocator: NeverFailingAllocator) ZonElement {
+		const zonObject = ZonElement.initObject(allocator);
+		const zonArray = ZonElement.initArray(allocator);
 		for(self.craftingGrid) |nullItem| {
 			if(nullItem) |item| {
-				jsonArray.JsonArray.append(JsonElement{.JsonString=item.id});
+				zonArray.array.append(.{.string=item.id});
 			} else {
-				jsonArray.JsonArray.append(JsonElement{.JsonNull={}});
+				zonArray.array.append(.null);
 			}
 		}
-		jsonObject.put("grid", jsonArray);
-		jsonObject.put("durability", self.durability);
-		jsonObject.put("seed", self.seed);
-		return jsonObject;
+		zonObject.put("grid", zonArray);
+		zonObject.put("durability", self.durability);
+		zonObject.put("seed", self.seed);
+		return zonObject;
 	}
 
 	pub fn hashCode(self: Tool) u32 {
@@ -1015,17 +1020,17 @@ pub const Tool = struct {
 	}
 };
 
-pub const Item = union(enum) {
+pub const Item = union(enum) { // MARK: Item
 	baseItem: *BaseItem,
 	tool: *Tool,
 
-	pub fn init(json: JsonElement) !Item {
-		if(reverseIndices.get(json.get([]const u8, "item", "null"))) |baseItem| {
+	pub fn init(zon: ZonElement) !Item {
+		if(reverseIndices.get(zon.get([]const u8, "item", "null"))) |baseItem| {
 			return Item{.baseItem = baseItem};
 		} else {
-			const toolJson = json.getChild("tool");
-			if(toolJson != .JsonObject) return error.ItemNotFound;
-			return Item{.tool = Tool.initFromJson(toolJson)};
+			const toolZon = zon.getChild("tool");
+			if(toolZon != .object) return error.ItemNotFound;
+			return Item{.tool = Tool.initFromZon(toolZon)};
 		}
 	}
 
@@ -1051,13 +1056,13 @@ pub const Item = union(enum) {
 		}
 	}
 
-	pub fn insertIntoJson(self: Item, allocator: NeverFailingAllocator, jsonObject: JsonElement) void {
+	pub fn insertIntoZon(self: Item, allocator: NeverFailingAllocator, zonObject: ZonElement) void {
 		switch(self) {
 			.baseItem => |_baseItem| {
-				jsonObject.put("item", _baseItem.id);
+				zonObject.put("item", _baseItem.id);
 			},
 			.tool => |_tool| {
-				jsonObject.put("tool", _tool.save(allocator));
+				zonObject.put("tool", _tool.save(allocator));
 			},
 		}
 	}
@@ -1104,9 +1109,16 @@ pub const Item = union(enum) {
 	}
 };
 
-pub const ItemStack = struct {
+pub const ItemStack = struct { // MARK: ItemStack
 	item: ?Item = null,
 	amount: u16 = 0,
+
+	pub fn load(zon: ZonElement) !ItemStack {
+		return .{
+			.item = try Item.init(zon),
+			.amount = zon.get(?u16, "amount", null) orelse return error.InvalidAmount,
+		};
+	}
 
 	/// Moves the content of the given ItemStack into a new ItemStack.
 	pub fn moveFrom(self: *ItemStack, supplier: *ItemStack) void {
@@ -1160,112 +1172,365 @@ pub const ItemStack = struct {
 		self.amount = 0;
 	}
 
-	pub fn storeToJson(self: *const ItemStack, allocator: NeverFailingAllocator, jsonObject: JsonElement) void {
+	pub fn storeToZon(self: *const ItemStack, allocator: NeverFailingAllocator, zonObject: ZonElement) void {
 		if(self.item) |item| {
-			item.insertIntoJson(allocator, jsonObject);
-			jsonObject.put("amount", self.amount);
+			item.insertIntoZon(allocator, zonObject);
+			zonObject.put("amount", self.amount);
 		}
 	}
 
-	pub fn store(self: *const ItemStack, allocator: NeverFailingAllocator) JsonElement {
-		const result = JsonElement.initObject(allocator);
-		self.storeToJson(allocator, result);
+	pub fn store(self: *const ItemStack, allocator: NeverFailingAllocator) ZonElement {
+		const result = ZonElement.initObject(allocator);
+		self.storeToZon(allocator, result);
 		return result;
 	}
 };
 
-pub const Inventory = struct {
-	items: []ItemStack,
+pub const Inventory = struct { // MARK: Inventory
+	const Type = enum {
+		normal,
+		creative,
+		crafting,
+		workbench,
+	};
+	type: Type,
+	_items: []ItemStack,
 
-	pub fn init(allocator: NeverFailingAllocator, size: usize) Inventory {
+	pub fn init(allocator: NeverFailingAllocator, _size: usize, _type: Type) Inventory {
+		if(_type == .workbench) std.debug.assert(_size == 26);
 		const self = Inventory{
-			.items = allocator.alloc(ItemStack, size),
+			.type = _type,
+			._items = allocator.alloc(ItemStack, _size),
 		};
-		for(self.items) |*item| {
+		for(self._items) |*item| {
 			item.* = ItemStack{};
 		}
 		return self;
 	}
 
 	pub fn deinit(self: Inventory, allocator: NeverFailingAllocator) void {
-		for(self.items) |*item| {
+		for(self._items) |*item| {
 			item.clear();
 		}
-		allocator.free(self.items);
+		allocator.free(self._items);
 	}
 
-	/// Returns the amount of items that didn't fit in the inventory.
-	pub fn addItem(self: Inventory, item: Item, _amount: u16) u16 {
-		var amount = _amount;
-		for(self.items) |*stack| {
-			if(!stack.empty() and std.meta.eql(stack.item, item) and !stack.filled()) {
-				amount -= stack.add(item, amount);
-				if(amount == 0) return 0;
+	fn update(self: Inventory) void {
+		if(self.type == .workbench) {
+			self._items[self._items.len - 1].clear();
+			var availableItems: [25]?*const BaseItem = undefined;
+			var nonEmpty: bool = false;
+			for(0..25) |i| {
+				if(self._items[i].item != null and self._items[i].item.? == .baseItem) {
+					availableItems[i] = self._items[i].item.?.baseItem;
+					nonEmpty = true;
+				} else {
+					availableItems[i] = null;
+				}
+			}
+			if(nonEmpty) {
+				self._items[self._items.len - 1].item = Item{.tool = Tool.initFromCraftingGrid(availableItems, @intCast(std.time.nanoTimestamp() & 0xffffffff))}; // TODO
+				self._items[self._items.len - 1].amount = 1;
 			}
 		}
-		for(self.items) |*stack| {
-			if(stack.empty()) {
-				amount -= stack.add(item, amount);
-				if(amount == 0) return 0;
-			}
-		}
-		return amount;
 	}
 
-	pub fn canCollect(self: Inventory, item: Item) bool {
-		for(self.items) |*stack| {
-			if(stack.empty()) return true;
-			if(stack.item == item and !stack.filled()) {
-				return true;
+	fn removeToolCraftingIngredients(self: Inventory) void {
+		std.debug.assert(self.type == .workbench);
+		for(0..25) |i| {
+			if(self._items[i].amount != 0) {
+				self._items[i].amount -= 1;
+				if(self._items[i].amount == 0) {
+					self._items[i].item = null;
+				}
 			}
 		}
-		return false;
+	}
+
+	fn tryCraftingToCarried(inv: Inventory, slot: u32, carried: Inventory) void {
+		std.debug.assert(inv.type == .crafting);
+		if(slot != inv._items.len - 1) return;
+		if(carried._items[0].item != null and !std.meta.eql(carried._items[0].item, inv._items[slot].item)) return;
+		if(carried._items[0].amount + inv._items[slot].amount > inv._items[slot].item.?.stackSize()) return;
+
+		// Can we even craft it?
+		for(inv._items[0..slot]) |requiredStack| {
+			var amount: usize = 0;
+			// There might be duplicate entries:
+			for(inv._items[0..slot]) |otherStack| {
+				if(std.meta.eql(requiredStack.item, otherStack.item))
+					amount += otherStack.amount;
+			}
+			for(main.game.Player.inventory._items) |otherStack| {
+				if(std.meta.eql(requiredStack.item, otherStack.item))
+					amount -|= otherStack.amount;
+			}
+			// Not enough ingredients
+			if(amount != 0)
+				return;
+		}
+
+		// Craft it
+		for(inv._items[0..slot]) |requiredStack| {
+			var remainingAmount: usize = requiredStack.amount;
+			for(main.game.Player.inventory._items) |*otherStack| {
+				if(std.meta.eql(requiredStack.item, otherStack.item)) {
+					const amount = @min(remainingAmount, otherStack.amount);
+					otherStack.amount -= amount;
+					remainingAmount -= amount;
+					if(otherStack.amount == 0) otherStack.item = null;
+					if(remainingAmount == 0) break;
+				}
+			}
+			std.debug.assert(remainingAmount == 0);
+		}
+		carried._items[0].item = inv._items[slot].item;
+		carried._items[0].amount += inv._items[slot].amount;
+	}
+
+	pub fn depositOrSwap(dest: Inventory, destSlot: u32, carried: Inventory) void {
+		if(dest.type == .creative) {
+			return fillFromCreative(carried, 0, dest._items[destSlot].item);
+		}
+		if(dest.type == .crafting) {
+			tryCraftingToCarried(dest, destSlot, carried);
+			return;
+		}
+		if(dest.type == .workbench and destSlot == 25) {
+			if(carried._items[0].item == null and dest._items[destSlot].item != null) {
+				carried._items[0] = dest._items[destSlot];
+				dest._items[destSlot] = .{.item = null, .amount = 0};
+				dest.removeToolCraftingIngredients();
+				dest.update();
+			}
+			return;
+		}
+		defer dest.update();
+		if(dest._items[destSlot].item) |itemDest| {
+			if(carried._items[0].item) |itemSource| {
+				if(std.meta.eql(itemDest, itemSource)) {
+					if(dest._items[destSlot].amount >= itemDest.stackSize()) return;
+					const amount = @min(itemDest.stackSize() - dest._items[destSlot].amount, carried._items[0].amount);
+					dest._items[destSlot].amount += amount;
+					carried._items[0].amount -= amount;
+					if(carried._items[0].amount == 0) carried._items[0].item = null;
+					return;
+				}
+			}
+		}
+		const temp = dest._items[destSlot];
+		dest._items[destSlot] = carried._items[0];
+		carried._items[0] = temp;
+	}
+
+	pub fn deposit(dest: Inventory, destSlot: u32, carried: Inventory, amount: u16) void {
+		if(dest.type == .creative) return;
+		if(dest.type == .crafting) return;
+		if(dest.type == .workbench and destSlot == 25) return;
+		defer dest.update();
+		const itemSource = carried._items[0].item orelse return;
+		if(dest._items[destSlot].item) |itemDest| {
+			if(std.meta.eql(itemDest, itemSource)) {
+				if(dest._items[destSlot].amount >= itemDest.stackSize()) return;
+				dest._items[destSlot].amount += amount;
+				carried._items[0].amount -= amount;
+				if(carried._items[0].amount == 0) carried._items[0].item = null;
+			}
+		} else {
+			dest._items[destSlot].item = carried._items[0].item;
+			dest._items[destSlot].amount = amount;
+			carried._items[0].amount -= amount;
+			if(carried._items[0].amount == 0) carried._items[0].item = null;
+		}
+	}
+
+	pub fn takeHalf(source: Inventory, sourceSlot: u32, carried: Inventory) void {
+		if(source.type == .creative) {
+			if(carried._items[0].item == null) {
+				fillFromCreative(carried, 0, source._items[sourceSlot].item);
+			}
+			return;
+		}
+		if(source.type == .crafting) {
+			tryCraftingToCarried(source, sourceSlot, carried);
+			return;
+		}
+		if(source.type == .workbench and sourceSlot == 25) {
+			if(carried._items[0].item == null and source._items[sourceSlot].item != null) {
+				carried._items[0] = source._items[sourceSlot];
+				source._items[sourceSlot] = .{.item = null, .amount = 0};
+				source.removeToolCraftingIngredients();
+				source.update();
+			}
+			return;
+		}
+		defer source.update();
+		const itemSource = source._items[sourceSlot].item orelse return;
+		const desiredAmount = (1 + source._items[sourceSlot].amount)/2;
+		if(carried._items[0].item) |itemDest| {
+			if(std.meta.eql(itemDest, itemSource)) {
+				if(carried._items[0].amount >= itemDest.stackSize()) return;
+				const amount = @min(itemDest.stackSize() - carried._items[0].amount, desiredAmount);
+				carried._items[0].amount += amount;
+				source._items[sourceSlot].amount -= amount;
+				if(source._items[sourceSlot].amount == 0) source._items[sourceSlot].item = null;
+			}
+		} else {
+			carried._items[0].item = source._items[sourceSlot].item;
+			carried._items[0].amount = desiredAmount;
+			source._items[sourceSlot].amount -= desiredAmount;
+			if(source._items[sourceSlot].amount == 0) source._items[sourceSlot].item = null;
+		}
+	}
+
+	pub fn distribute(carried: Inventory, destinationInventories: []const Inventory, destinationSlots: []const u32) void {
+		const amount = carried._items[0].amount/destinationInventories.len;
+		if(amount == 0) return;
+		for(0..destinationInventories.len) |i| {
+			destinationInventories[i].deposit(destinationSlots[i], carried, @intCast(amount));
+		}
+	}
+
+	pub fn depositOrDrop(dest: Inventory, source: Inventory) void {
+		std.debug.assert(dest.type == .normal);
+		if(source.type == .creative) return;
+		if(source.type == .crafting) return;
+		defer dest.update();
+		defer source.update();
+		var sourceItems = source._items;
+		if(source.type == .workbench) sourceItems = source._items[0..25];
+		outer: for(sourceItems) |*sourceStack| {
+			if(sourceStack.item == null) continue;
+			for(dest._items) |*destStack| {
+				if(std.meta.eql(destStack.item, sourceStack.item)) {
+					const amount = @min(destStack.item.?.stackSize() - destStack.amount, sourceStack.amount);
+					destStack.amount += amount;
+					sourceStack.amount -= amount;
+					if(sourceStack.amount == 0) {
+						sourceStack.item = null;
+						continue :outer;
+					}
+				}
+			}
+			for(dest._items) |*destStack| {
+				if(destStack.item == null) {
+					destStack.* = sourceStack.*;
+					sourceStack.amount = 0;
+					sourceStack.item = null;
+					continue :outer;
+				}
+			}
+			main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, sourceStack.*, @floatCast(main.game.Player.getPosBlocking()), main.game.camera.direction, 20);
+			sourceStack.clear();
+		}
+	}
+
+	pub fn dropStack(source: Inventory, sourceSlot: u32) void {
+		if(source.type == .creative) return;
+		if(source._items[sourceSlot].item == null) return;
+		if(source.type == .crafting) {
+			var _items: [1]ItemStack = .{.{.item = null, .amount = 0}};
+			const temp: Inventory = .{
+				.type = .normal,
+				._items = &_items,
+			};
+			tryCraftingToCarried(source, sourceSlot, temp);
+			if(_items[0].item != null) {
+				main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, _items[0], @floatCast(main.game.Player.getPosBlocking()), main.game.camera.direction, 20);
+			}
+			return;
+		}
+		if(source.type == .workbench and sourceSlot == 25) {
+			source.removeToolCraftingIngredients();
+		}
+		main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, source.getStack(sourceSlot), @floatCast(main.game.Player.getPosBlocking()), main.game.camera.direction, 20);
+		source._items[sourceSlot].clear();
+		source.update();
+	}
+
+	pub fn dropOne(source: Inventory, sourceSlot: u32) void {
+		if(source.type == .creative) return;
+		if(source.type == .crafting) return;
+		if(source._items[sourceSlot].item == null) return;
+		if(source.type == .workbench and sourceSlot == 25) {
+			source.removeToolCraftingIngredients();
+		}
+		main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, .{.item = source.getStack(sourceSlot).item, .amount = 1}, @floatCast(main.game.Player.getPosBlocking()), main.game.camera.direction, 20);
+		if(source._items[sourceSlot].amount == 1) {
+			source._items[sourceSlot].clear();
+		} else {
+			source._items[sourceSlot].amount -= 1;
+		}
+		source.update();
+	}
+
+	pub fn fillFromCreative(dest: Inventory, destSlot: u32, item: ?Item) void {
+		if(dest.type == .crafting) return;
+		if(dest.type == .workbench and destSlot == 25) return;
+		dest._items[destSlot].clear();
+		if(item) |_item| {
+			dest._items[destSlot].item = _item;
+			dest._items[destSlot].amount = _item.stackSize();
+		}
+		dest.update();
+	}
+
+	pub fn placeBlock(self: Inventory, slot: u32) void {
+		main.renderer.MeshSelection.placeBlock(&self._items[slot]);
+	}
+
+	pub fn breakBlock(self: Inventory, slot: u32) void {
+		main.renderer.MeshSelection.breakBlock(&self._items[slot]);
+	}
+
+	pub fn size(self: Inventory) usize {
+		return self._items.len;
 	}
 
 	pub fn getItem(self: Inventory, slot: usize) ?Item {
-		return self.items[slot].item;
+		return self._items[slot].item;
 	}
 
-	pub fn getStack(self: Inventory, slot: usize) *ItemStack {
-		return &self.items[slot];
+	pub fn getStack(self: Inventory, slot: usize) ItemStack {
+		return self._items[slot];
 	}
 
 	pub fn getAmount(self: Inventory, slot: usize) u16 {
-		return self.items[slot].amount;
+		return self._items[slot].amount;
 	}
 
-	pub fn save(self: Inventory, allocator: NeverFailingAllocator) JsonElement {
-		const jsonObject = JsonElement.initObject(allocator);
-		jsonObject.put("capacity", self.items.len);
-		for(self.items, 0..) |stack, i| {
+	pub fn save(self: Inventory, allocator: NeverFailingAllocator) ZonElement {
+		const zonObject = ZonElement.initObject(allocator);
+		zonObject.put("capacity", self._items.len);
+		for(self._items, 0..) |stack, i| {
 			if(!stack.empty()) {
 				var buf: [1024]u8 = undefined;
-				jsonObject.put(buf[0..std.fmt.formatIntBuf(&buf, i, 10, .lower, .{})], stack.store(allocator));
+				zonObject.put(buf[0..std.fmt.formatIntBuf(&buf, i, 10, .lower, .{})], stack.store(allocator));
 			}
 		}
-		return jsonObject;
+		return zonObject;
 	}
 
-	pub fn loadFromJson(self: Inventory, json: JsonElement) void {
-		for(self.items, 0..) |*stack, i| {
+	pub fn loadFromZon(self: Inventory, zon: ZonElement) void {
+		for(self._items, 0..) |*stack, i| {
 			stack.clear();
 			var buf: [1024]u8 = undefined;
-			const stackJson = json.getChild(buf[0..std.fmt.formatIntBuf(&buf, i, 10, .lower, .{})]);
-			if(stackJson == .JsonObject) {
-				stack.item = Item.init(stackJson) catch |err| {
-					const msg = stackJson.toStringEfficient(main.stackAllocator, "");
+			const stackZon = zon.getChild(buf[0..std.fmt.formatIntBuf(&buf, i, 10, .lower, .{})]);
+			if(stackZon == .object) {
+				stack.item = Item.init(stackZon) catch |err| {
+					const msg = stackZon.toStringEfficient(main.stackAllocator, "");
 					defer main.stackAllocator.free(msg);
 					std.log.err("Couldn't find item {s}: {s}", .{msg, @errorName(err)});
 					stack.clear();
 					continue;
 				};
-				stack.amount = stackJson.get(u16, "amount", 0);
+				stack.amount = stackZon.get(u16, "amount", 0);
 			}
 		}
 	}
 };
 
-const Recipe = struct {
+const Recipe = struct { // MARK: Recipe
 	sourceItems: []*BaseItem,
 	sourceAmounts: []u16,
 	resultItem: ItemStack,
@@ -1273,8 +1538,8 @@ const Recipe = struct {
 
 var arena: main.utils.NeverFailingArenaAllocator = undefined;
 var reverseIndices: std.StringHashMap(*BaseItem) = undefined;
-var itemList: [65536]BaseItem = undefined;
-var itemListSize: u16 = 0;
+pub var itemList: [65536]BaseItem = undefined;
+pub var itemListSize: u16 = 0;
 
 var recipeList: main.List(Recipe) = undefined;
 
@@ -1287,19 +1552,19 @@ pub fn recipes() []Recipe {
 }
 
 pub fn globalInit() void {
-	arena = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
-	reverseIndices = std.StringHashMap(*BaseItem).init(arena.allocator().allocator);
-	recipeList = main.List(Recipe).init(arena.allocator());
+	arena = .init(main.globalAllocator);
+	reverseIndices = .init(arena.allocator().allocator);
+	recipeList = .init(arena.allocator());
 	itemListSize = 0;
 }
 
-pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, json: JsonElement) *BaseItem {
+pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, zon: ZonElement) *BaseItem {
 	std.log.info("{s}", .{id});
 	if(reverseIndices.contains(id)) {
 		std.log.warn("Registered item with id {s} twice!", .{id});
 	}
 	const newItem = &itemList[itemListSize];
-	newItem.init(arena.allocator(), texturePath, replacementTexturePath, id, json);
+	newItem.init(arena.allocator(), texturePath, replacementTexturePath, id, zon);
 	reverseIndices.put(newItem.id, newItem) catch unreachable;
 	itemListSize += 1;
 	return newItem;
@@ -1320,17 +1585,17 @@ pub fn registerRecipes(file: []const u8) void {
 	defer itemAmounts.deinit();
 	var string = main.List(u8).init(main.stackAllocator);
 	defer string.deinit();
-	var lines = std.mem.split(u8, file, "\n");
+	var lines = std.mem.splitScalar(u8, file, '\n');
 	while(lines.next()) |line| {
 		// shortcuts:
 		if(std.mem.containsAtLeast(u8, line, 1, "=")) {
-			var parts = std.mem.split(u8, line, "=");
+			var parts = std.mem.splitScalar(u8, line, '=');
 			for(parts.first()) |char| {
-				if(std.ascii.isWhitespace(char)) continue; // TODO: Unicode whitespaces
+				if(std.ascii.isWhitespace(char)) continue;
 				string.append(char);
 			}
 			const shortcut = string.toOwnedSlice();
-			const id = std.mem.trim(u8, parts.rest(), &std.ascii.whitespace); // TODO: Unicode whitespaces
+			const id = std.mem.trim(u8, parts.rest(), &std.ascii.whitespace);
 			const item = shortcuts.get(id) orelse getByID(id) orelse &BaseItem.unobtainable;
 			shortcuts.put(shortcut, item) catch unreachable;
 		} else if(std.mem.startsWith(u8, line, "result") and items.items.len != 0) {
@@ -1339,12 +1604,12 @@ pub fn registerRecipes(file: []const u8) void {
 			var id = line["result".len..];
 			var amount: u16 = 1;
 			if(std.mem.containsAtLeast(u8, id, 1, "*")) {
-				var parts = std.mem.split(u8, id, "*");
-				const amountString = std.mem.trim(u8, parts.first(), &std.ascii.whitespace); // TODO: Unicode whitespaces
+				var parts = std.mem.splitScalar(u8, id, '*');
+				const amountString = std.mem.trim(u8, parts.first(), &std.ascii.whitespace);
 				amount = std.fmt.parseInt(u16, amountString, 0) catch 1;
 				id = parts.rest();
 			}
-			id = std.mem.trim(u8, id, &std.ascii.whitespace); // TODO: Unicode whitespaces
+			id = std.mem.trim(u8, id, &std.ascii.whitespace);
 			const item = shortcuts.get(id) orelse getByID(id) orelse continue;
 			const recipe = Recipe {
 				.sourceItems = arena.allocator().dupe(*BaseItem, items.items),
@@ -1353,18 +1618,18 @@ pub fn registerRecipes(file: []const u8) void {
 			};
 			recipeList.append(recipe);
 		} else {
-			var ingredients = std.mem.split(u8, line, ",");
+			var ingredients = std.mem.splitScalar(u8, line, ',');
 			outer: while(ingredients.next()) |ingredient| {
 				var id = ingredient;
 				if(id.len == 0) continue;
 				var amount: u16 = 1;
 				if(std.mem.containsAtLeast(u8, id, 1, "*")) {
-					var parts = std.mem.split(u8, id, "*");
-					const amountString = std.mem.trim(u8, parts.first(), &std.ascii.whitespace); // TODO: Unicode whitespaces
+					var parts = std.mem.splitScalar(u8, id, '*');
+					const amountString = std.mem.trim(u8, parts.first(), &std.ascii.whitespace);
 					amount = std.fmt.parseInt(u16, amountString, 0) catch 1;
 					id = parts.rest();
 				}
-				id = std.mem.trim(u8, id, &std.ascii.whitespace); // TODO: Unicode whitespaces
+				id = std.mem.trim(u8, id, &std.ascii.whitespace);
 				const item = shortcuts.get(id) orelse getByID(id) orelse continue;
 				// Resolve duplicates:
 				for(items.items, 0..) |presentItem, i| {

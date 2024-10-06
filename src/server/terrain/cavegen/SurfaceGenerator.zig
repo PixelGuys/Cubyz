@@ -3,7 +3,7 @@ const sign = std.math.sign;
 
 const main = @import("root");
 const random = main.random;
-const JsonElement = main.JsonElement;
+const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
 const CaveMapFragment = terrain.CaveMap.CaveMapFragment;
 const SurfaceMap = terrain.SurfaceMap;
@@ -20,7 +20,7 @@ pub const priority = 131072;
 
 pub const generatorSeed = 0x7658930674389;
 
-pub fn init(parameters: JsonElement) void {
+pub fn init(parameters: ZonElement) void {
 	_ = parameters;
 }
 
@@ -31,21 +31,21 @@ pub fn deinit() void {
 pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 	_ = worldSeed;
 	const width = CaveMapFragment.width*map.pos.voxelSize;
-	const biomeMap = InterpolatableCaveBiomeMapView.init(map.pos, width);
+	const biomeMap = InterpolatableCaveBiomeMapView.init(main.stackAllocator, map.pos, width, 0);
 	defer biomeMap.deinit();
 	var x: u31 = 0;
 	while(x < width) : (x += map.pos.voxelSize) {
 		var y: u31 = 0;
 		while(y < width) : (y += map.pos.voxelSize) {
 			const height = biomeMap.getSurfaceHeight(map.pos.wx + x, map.pos.wy + y);
-			const smallestHeight: i32 = @intFromFloat(@floor(@min(
+			const smallestHeight: i32 = @min(
 				biomeMap.getSurfaceHeight(map.pos.wx +% x +% 1, map.pos.wy +% y),
 				biomeMap.getSurfaceHeight(map.pos.wx +% x, map.pos.wy +% y +% 1),
 				biomeMap.getSurfaceHeight(map.pos.wx +% x -% 1, map.pos.wy +% y),
 				biomeMap.getSurfaceHeight(map.pos.wx +% x, map.pos.wy +% y -% 1),
 				height,
-			) - 0.5));
-			const relativeHeight: i32 = @as(i32, @intFromFloat(height)) -% map.pos.wz;
+			);
+			const relativeHeight: i32 = height -% map.pos.wz;
 			map.removeRange(x, y, relativeHeight, CaveMapFragment.height*map.pos.voxelSize);
 			if(smallestHeight < 1) { // Seal off caves that intersect the ocean floor.
 				map.addRange(x, y, smallestHeight -% 1 -% map.pos.wz, relativeHeight);

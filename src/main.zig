@@ -22,11 +22,13 @@ pub const rotation = @import("rotation.zig");
 pub const settings = @import("settings.zig");
 pub const utils = @import("utils.zig");
 pub const vec = @import("vec.zig");
+pub const ZonElement = @import("zon.zig").ZonElement;
 
 pub const Window = @import("graphics/Window.zig");
 
 pub const List = @import("utils/list.zig").List;
 pub const ListUnmanaged = @import("utils/list.zig").ListUnmanaged;
+pub const VirtualList = @import("utils/list.zig").VirtualList;
 
 const file_monitor = utils.file_monitor;
 
@@ -51,11 +53,11 @@ var logFile: ?std.fs.File = undefined;
 var logFileTs: ?std.fs.File = undefined;
 var supportsANSIColors: bool = undefined;
 // overwrite the log function:
-pub const std_options: std.Options = .{
+pub const std_options: std.Options = .{ // MARK: std_options
 	.log_level = .debug,
 	.logFn = struct {pub fn logFn(
 		comptime level: std.log.Level,
-		comptime _: @Type(.EnumLiteral),
+		comptime _: @Type(.enum_literal),
 		comptime format: []const u8,
 		args: anytype,
 	) void {
@@ -124,10 +126,10 @@ pub const std_options: std.Options = .{
 				types = types ++ &[_]type{i64};
 			} else if(@TypeOf(args[i_1]) == comptime_float) {
 				types = types ++ &[_]type{f64};
-			} else if(TI == .Pointer and TI.Pointer.size == .Slice and TI.Pointer.child == u8) {
+			} else if(TI == .pointer and TI.pointer.size == .Slice and TI.pointer.child == u8) {
 				types = types ++ &[_]type{[]const u8};
-			} else if(TI == .Int and TI.Int.bits <= 64) {
-				if(TI.Int.signedness == .signed) {
+			} else if(TI == .int and TI.int.bits <= 64) {
+				if(TI.int.signedness == .signed) {
 					types = types ++ &[_]type{i64};
 				} else {
 					types = types ++ &[_]type{u64};
@@ -238,7 +240,12 @@ fn logToStdErr(comptime format: []const u8, args: anytype) void {
 	nosuspend std.io.getStdErr().writeAll(string) catch {};
 }
 
+// MARK: Callbacks
 fn escape() void {
+	if(gui.selectedTextInput != null) {
+		gui.selectedTextInput = null;
+		return;
+	}
 	if(game.world == null) return;
 	gui.toggleGameMenu();
 }
@@ -262,9 +269,18 @@ fn openCreativeInventory() void {
 	gui.toggleGameMenu();
 	gui.openWindow("creative_inventory");
 }
+fn openChat() void {
+	if(game.world == null) return;
+	ungrabMouse();
+	gui.openWindow("chat");
+	gui.windowlist.chat.input.select();
+}
 fn takeBackgroundImageFn() void {
 	if(game.world == null) return;
 	renderer.MenuBackGround.takeBackgroundImage();
+}
+fn toggleHideGui() void {
+	gui.hideGui = !gui.hideGui;
 }
 fn toggleDebugOverlay() void {
 	gui.toggleWindow("debug");
@@ -281,8 +297,15 @@ fn toggleNetworkDebugOverlay() void {
 fn toggleAdvancedNetworkDebugOverlay() void {
 	gui.toggleWindow("debug_network_advanced");
 }
+fn setHotbarSlot(i: comptime_int) *const fn() void {
+	return &struct {
+		fn set() void {
+			game.Player.selectedSlot = i - 1;
+		}
+	}.set;
+}
 
-pub const KeyBoard = struct {
+pub const KeyBoard = struct { // MARK: KeyBoard
 	const c = Window.c;
 	pub var keys = [_]Window.Key {
 		// Gameplay:
@@ -292,18 +315,23 @@ pub const KeyBoard = struct {
 		.{.name = "right", .key = c.GLFW_KEY_D},
 		.{.name = "sprint", .key = c.GLFW_KEY_LEFT_CONTROL},
 		.{.name = "jump", .key = c.GLFW_KEY_SPACE},
+		.{.name = "fly", .key = c.GLFW_KEY_F, .pressAction = &game.flyToggle},
+		.{.name = "ghost", .key = c.GLFW_KEY_G, .pressAction = &game.ghostToggle},
+		.{.name = "hyperSpeed", .key = c.GLFW_KEY_H, .pressAction = &game.hyperSpeedToggle},
 		.{.name = "fall", .key = c.GLFW_KEY_LEFT_SHIFT},
+		.{.name = "shift", .key = c.GLFW_KEY_LEFT_SHIFT},
 		.{.name = "fullscreen", .key = c.GLFW_KEY_F11, .releaseAction = &Window.toggleFullscreen},
 		.{.name = "placeBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &game.pressPlace, .releaseAction = &game.releasePlace},
 		.{.name = "breakBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &game.pressBreak, .releaseAction = &game.releaseBreak},
+		.{.name = "acquireSelectedBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_MIDDLE, .pressAction = &game.pressAcquireSelectedBlock},
 
 		.{.name = "takeBackgroundImage", .key = c.GLFW_KEY_PRINT_SCREEN, .releaseAction = &takeBackgroundImageFn},
 
 		// Gui:
 		.{.name = "escape", .key = c.GLFW_KEY_ESCAPE, .releaseAction = &escape},
 		.{.name = "openInventory", .key = c.GLFW_KEY_E, .releaseAction = &openInventory},
-		.{.name = "openWorkbench", .key = c.GLFW_KEY_R, .releaseAction = &openWorkbench}, // TODO: Remove
 		.{.name = "openCreativeInventory(aka cheat inventory)", .key = c.GLFW_KEY_C, .releaseAction = &openCreativeInventory},
+		.{.name = "openChat", .key = c.GLFW_KEY_T, .releaseAction = &openChat},
 		.{.name = "mainGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &gui.mainButtonPressed, .releaseAction = &gui.mainButtonReleased},
 		.{.name = "secondaryGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &gui.secondaryButtonPressed, .releaseAction = &gui.secondaryButtonReleased},
 		// text:
@@ -315,12 +343,28 @@ pub const KeyBoard = struct {
 		.{.name = "textGotoEnd", .key = c.GLFW_KEY_END, .repeatAction = &gui.textCallbacks.gotoEnd},
 		.{.name = "textDeleteLeft", .key = c.GLFW_KEY_BACKSPACE, .repeatAction = &gui.textCallbacks.deleteLeft},
 		.{.name = "textDeleteRight", .key = c.GLFW_KEY_DELETE, .repeatAction = &gui.textCallbacks.deleteRight},
+		.{.name = "textSelectAll", .key = c.GLFW_KEY_A, .repeatAction = &gui.textCallbacks.selectAll},
 		.{.name = "textCopy", .key = c.GLFW_KEY_C, .repeatAction = &gui.textCallbacks.copy},
 		.{.name = "textPaste", .key = c.GLFW_KEY_V, .repeatAction = &gui.textCallbacks.paste},
 		.{.name = "textCut", .key = c.GLFW_KEY_X, .repeatAction = &gui.textCallbacks.cut},
 		.{.name = "textNewline", .key = c.GLFW_KEY_ENTER, .repeatAction = &gui.textCallbacks.newline},
 
+		// Hotbar shortcuts:
+		.{.name = "Hotbar 1", .key = c.GLFW_KEY_1, .releaseAction = setHotbarSlot(1)},
+		.{.name = "Hotbar 2", .key = c.GLFW_KEY_2, .releaseAction = setHotbarSlot(2)},
+		.{.name = "Hotbar 3", .key = c.GLFW_KEY_3, .releaseAction = setHotbarSlot(3)},
+		.{.name = "Hotbar 4", .key = c.GLFW_KEY_4, .releaseAction = setHotbarSlot(4)},
+		.{.name = "Hotbar 5", .key = c.GLFW_KEY_5, .releaseAction = setHotbarSlot(5)},
+		.{.name = "Hotbar 6", .key = c.GLFW_KEY_6, .releaseAction = setHotbarSlot(6)},
+		.{.name = "Hotbar 7", .key = c.GLFW_KEY_7, .releaseAction = setHotbarSlot(7)},
+		.{.name = "Hotbar 8", .key = c.GLFW_KEY_8, .releaseAction = setHotbarSlot(8)},
+		.{.name = "Hotbar 9", .key = c.GLFW_KEY_9, .releaseAction = setHotbarSlot(9)},
+		.{.name = "Hotbar 10", .key = c.GLFW_KEY_0, .releaseAction = setHotbarSlot(10)},
+		.{.name = "Hotbar 11", .key = c.GLFW_KEY_MINUS, .releaseAction = setHotbarSlot(11)},
+		.{.name = "Hotbar 12", .key = c.GLFW_KEY_EQUAL, .releaseAction = setHotbarSlot(12)},
+
 		// debug:
+		.{.name = "hideMenu", .key = c.GLFW_KEY_F1, .releaseAction = &toggleHideGui},
 		.{.name = "debugOverlay", .key = c.GLFW_KEY_F3, .releaseAction = &toggleDebugOverlay},
 		.{.name = "performanceOverlay", .key = c.GLFW_KEY_F4, .releaseAction = &togglePerformanceOverlay},
 		.{.name = "gpuPerformanceOverlay", .key = c.GLFW_KEY_F5, .releaseAction = &toggleGPUPerformanceOverlay},
@@ -339,9 +383,104 @@ pub const KeyBoard = struct {
 	}
 };
 
+/// Records gpu time per frame.
 pub var lastFrameTime = std.atomic.Value(f64).init(0);
+/// Measures time between different frames' beginnings.
+pub var lastDeltaTime = std.atomic.Value(f64).init(0);
 
-pub fn main() void {
+var shouldExitToMenu = std.atomic.Value(bool).init(false);
+pub fn exitToMenu(_: usize) void {
+	shouldExitToMenu.store(true, .monotonic);
+}
+
+
+fn isValidIdentifierName(str: []const u8) bool { // TODO: Remove after #480
+	if(str.len == 0) return false;
+	if(!std.ascii.isAlphabetic(str[0]) and str[0] != '_') return false;
+	for(str[1..]) |c| {
+		if(!std.ascii.isAlphanumeric(c) and c != '_') return false;
+	}
+	return true;
+}
+
+fn isHiddenOrParentHiddenPosix(path: []const u8) bool {
+	var iter = std.fs.path.componentIterator(path) catch |err| {
+		std.log.err("Cannot iterate on path {s}: {s}!", .{path, @errorName(err)});
+		return false;
+	};
+	while (iter.next()) |component| {
+		if (std.mem.eql(u8, component.name, ".") or std.mem.eql(u8, component.name, "..")) {
+			continue;
+		}
+		if (component.name.len > 0 and component.name[0] == '.') {
+			return true;
+		}
+	}
+	return false;
+}
+pub fn convertJsonToZon(jsonPath: []const u8) void { // TODO: Remove after #480
+	if (isHiddenOrParentHiddenPosix(jsonPath)) {
+		std.log.info("NOT converting {s}.", .{jsonPath});
+		return;
+	}
+	std.log.info("Converting {s}:", .{jsonPath});
+	const jsonString = files.read(stackAllocator, jsonPath) catch |err| {
+		std.log.err("Could convert file {s}: {s}", .{jsonPath, @errorName(err)});
+		return;
+	};
+	defer stackAllocator.free(jsonString);
+	var zonString = List(u8).init(stackAllocator);
+	defer zonString.deinit();
+	std.log.debug("{s}", .{jsonString});
+	
+	var i: usize = 0;
+	while(i < jsonString.len) : (i += 1) {
+		switch(jsonString[i]) {
+			'\"' => {
+				var j = i + 1;
+				while(j < jsonString.len and jsonString[j] != '"') : (j += 1) {}
+				const string = jsonString[i+1..j];
+				if(isValidIdentifierName(string)) {
+					zonString.append('.');
+					zonString.appendSlice(string);
+				} else {
+					zonString.append('"');
+					zonString.appendSlice(string);
+					zonString.append('"');
+				}
+				i = j;
+			},
+			'[', '{' => {
+				zonString.append('.');
+				zonString.append('{');
+			},
+			']', '}' => {
+				zonString.append('}');
+			},
+			':' => {
+				zonString.append('=');
+			},
+			else => |c| {
+				zonString.append(c);
+			},
+		}
+	}
+	const zonPath = std.fmt.allocPrint(stackAllocator.allocator, "{s}.zig.zon", .{jsonPath[0..std.mem.lastIndexOfScalar(u8, jsonPath, '.') orelse unreachable]}) catch unreachable;
+	defer stackAllocator.free(zonPath);
+	std.log.info("Outputting to {s}:", .{zonPath});
+	std.log.debug("{s}", .{zonString.items});
+	files.write(zonPath, zonString.items) catch |err| {
+		std.log.err("Got error while writing to file: {s}", .{@errorName(err)});
+		return;
+	};
+	std.log.info("Deleting file {s}", .{jsonPath});
+	std.fs.cwd().deleteFile(jsonPath) catch |err| {
+		std.log.err("Got error while deleting file: {s}", .{@errorName(err)});
+		return;
+	};
+}
+
+pub fn main() void { // MARK: main()
 	seed = @bitCast(std.time.milliTimestamp());
 	defer if(global_gpa.deinit() == .leak) {
 		std.log.err("Memory leak", .{});
@@ -353,14 +492,35 @@ pub fn main() void {
 	initLogging();
 	defer deinitLogging();
 
-	threadPool = utils.ThreadPool.init(globalAllocator, @max(1, (std.Thread.getCpuCount() catch 4) -| 1));
+	if(std.fs.cwd().openFile("settings.json", .{})) |file| blk: { // TODO: Remove after #480
+		file.close();
+		std.log.warn("Detected old game client. Converting all .json files to .zig.zon", .{});
+		var dir = std.fs.cwd().openDir(".", .{.iterate = true}) catch |err| {
+			std.log.err("Could not open game directory to convert json files: {s}. Conversion aborted", .{@errorName(err)});
+			break :blk;
+		};
+		defer dir.close();
+
+		var walker = dir.walk(stackAllocator.allocator) catch unreachable;
+		defer walker.deinit();
+		while(walker.next() catch |err| {
+			std.log.err("Got error while iterating through json files directory: {s}", .{@errorName(err)});
+			break :blk;
+		}) |entry| {
+			if(entry.kind == .file and (std.ascii.endsWithIgnoreCase(entry.basename, ".json") or std.mem.eql(u8, entry.basename, "world.dat")) and !std.ascii.startsWithIgnoreCase(entry.path, "compiler") and !std.ascii.startsWithIgnoreCase(entry.path, ".zig-cache") and !std.ascii.startsWithIgnoreCase(entry.path, ".vscode")) {
+				convertJsonToZon(entry.path);
+			}
+		}
+	} else |_| {}
+
+	settings.init();
+	defer settings.deinit();
+
+	threadPool = utils.ThreadPool.init(globalAllocator, settings.cpuThreads orelse @max(1, (std.Thread.getCpuCount() catch 4) -| 1));
 	defer threadPool.deinit();
 
 	file_monitor.init();
 	defer file_monitor.deinit();
-
-	settings.init();
-	defer settings.deinit();
 
 	Window.init();
 	defer Window.deinit();
@@ -420,45 +580,73 @@ pub fn main() void {
 	c.glDepthFunc(c.GL_LESS);
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
-	var lastTime = std.time.nanoTimestamp();
+	var lastBeginRendering = std.time.nanoTimestamp();
 
 	if(settings.developerAutoEnterWorld.len != 0) {
 		// Speed up the dev process by entering the world directly.
 		gui.windowlist.save_selection.openWorld(settings.developerAutoEnterWorld);
 	}
 
+	audio.setMusic("cubyz:cubyz");
+
 	while(c.glfwWindowShouldClose(Window.window) == 0) {
-		c.glfwSwapBuffers(Window.window);
-		// Clear may also wait on vsync, so it's done before handling events:
-		gui.windowlist.gpu_performance_measuring.startQuery(.screenbuffer_clear);
-		c.glClearColor(0.5, 1, 1, 1);
-		c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
-		gui.windowlist.gpu_performance_measuring.stopQuery();
+		const isHidden = c.glfwGetWindowAttrib(Window.window, c.GLFW_ICONIFIED) == c.GLFW_TRUE;
+		if(!isHidden) {
+			c.glfwSwapBuffers(Window.window);
+			// Clear may also wait on vsync, so it's done before handling events:
+			gui.windowlist.gpu_performance_measuring.startQuery(.screenbuffer_clear);
+			c.glClearColor(0.5, 1, 1, 1);
+			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
+			gui.windowlist.gpu_performance_measuring.stopQuery();
+		} else {
+			std.time.sleep(16_000_000);
+		}
+
+		const endRendering = std.time.nanoTimestamp();
+		const frameTime = @as(f64, @floatFromInt(endRendering -% lastBeginRendering))/1e9;
+		if(settings.developerGPUInfiniteLoopDetection and frameTime > 5) { // On linux a process that runs 10 seconds or longer on the GPU will get stopped. This allows detecting an infinite loop on the GPU.
+			std.log.err("Frame got too long with {} seconds. Infinite loop on GPU?", .{frameTime});
+			std.posix.exit(1);
+		}
+		lastFrameTime.store(frameTime, .monotonic);
+
+		if(settings.fpsCap) |fpsCap| {
+			const minFrameTime = @divFloor(1000*1000*1000, fpsCap);
+			const sleep = @min(minFrameTime, @max(0, minFrameTime - (endRendering -% lastBeginRendering)));
+			std.time.sleep(sleep);
+		}
+		const begin = std.time.nanoTimestamp();
+		const deltaTime = @as(f64, @floatFromInt(begin -% lastBeginRendering))/1e9;
+		lastDeltaTime.store(deltaTime, .monotonic);
+		lastBeginRendering = begin;
 
 		Window.handleEvents();
 		file_monitor.handleEvents();
 
-		const newTime = std.time.nanoTimestamp();
-		const deltaTime = @as(f64, @floatFromInt(newTime -% lastTime))/1e9;
-		if(settings.developerGPUInfiniteLoopDetection and deltaTime > 5) { // On linux a process that runs 10 seconds or longer on the GPU will get stopped. This allows detecting an infinite loop on the GPU.
-			std.log.err("Frame got too long with {} seconds. Infinite loop on GPU?", .{deltaTime});
-			std.posix.exit(1);
-		}
-		lastFrameTime.store(deltaTime, .monotonic);
-		lastTime = newTime;
 		if(game.world != null) { // Update the game
 			game.update(deltaTime);
 		}
-		c.glEnable(c.GL_CULL_FACE);
-		c.glEnable(c.GL_DEPTH_TEST);
-		renderer.render(game.Player.getPosBlocking());
 
-		{ // Render the GUI
+		if(!isHidden) {
+			c.glEnable(c.GL_CULL_FACE);
+			c.glEnable(c.GL_DEPTH_TEST);
+			renderer.render(game.Player.getEyePosBlocking());
+			// Render the GUI
 			gui.windowlist.gpu_performance_measuring.startQuery(.gui);
 			c.glDisable(c.GL_CULL_FACE);
 			c.glDisable(c.GL_DEPTH_TEST);
 			gui.updateAndRenderGui();
 			gui.windowlist.gpu_performance_measuring.stopQuery();
+		}
+
+		if(shouldExitToMenu.load(.monotonic)) {
+			shouldExitToMenu.store(false, .monotonic);
+			if(game.world) |world| {
+				world.deinit();
+				game.world = null;
+			}
+			gui.openWindow("main");
+			audio.setMusic("cubyz:cubyz");
 		}
 	}
 
@@ -470,4 +658,5 @@ pub fn main() void {
 
 test "abc" {
 	_ = @import("json.zig");
+	_ = @import("zon.zig");
 }

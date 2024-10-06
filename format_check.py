@@ -10,13 +10,14 @@ for subdir, dirs, files in os.walk("."):
 	for file in files:
 		#print os.path.join(subdir, file)
 		filepath = subdir + os.sep + file
-		if filepath.startswith("./compiler"): continue
-		if filepath.startswith("./saves"): continue
-		if filepath.startswith("./serverAssets"): continue
-		if filepath.startswith("./zig-cache"): continue
+		if filepath.startswith(f".{os.sep}compiler"): continue
+		if filepath.startswith(f".{os.sep}saves"): continue
+		if filepath.startswith(f".{os.sep}serverAssets"): continue
+		if filepath.startswith(f".{os.sep}zig-cache"): continue
+		if filepath.startswith(f".{os.sep}.zig-cache"): continue
 
 		if filepath.endswith(".json") or filepath.endswith(".zig") or filepath.endswith(".py") or filepath.endswith(".zon") or filepath.endswith(".vs") or filepath.endswith(".fs") or filepath.endswith(".glsl"):
-			with open(filepath, "r", newline = '') as f:
+			with open(filepath, "r", newline = '', encoding="utf-8") as f:
 				string = f.read()
 				line = 1
 				lineStart = True

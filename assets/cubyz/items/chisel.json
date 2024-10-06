@@ -1,5 +1,0 @@
-{
-	"texture" : "special/chisel.png",
-	"stackSize" : 1,
-	"onLeftUse" : "chisel",
-}

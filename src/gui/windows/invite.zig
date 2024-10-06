@@ -23,7 +23,7 @@ var ipAddressEntry: *TextInput = undefined;
 const padding: f32 = 8;
 
 var ipAddress: []const u8 = "";
-var gotIpAddress: std.atomic.Value(bool) = std.atomic.Value(bool).init(false);
+var gotIpAddress: std.atomic.Value(bool) = .init(false);
 var thread: ?std.Thread = null;
 const width: f32 = 420;
 
@@ -67,6 +67,7 @@ pub fn onOpen() void {
 	ipAddressEntry = TextInput.init(.{0, 0}, width, 32, settings.lastUsedIPAddress, .{.callback = &invite});
 	list.add(ipAddressEntry);
 	list.add(Button.initText(.{0, 0}, 100, "Invite", .{.callback = &invite}));
+	list.add(Button.initText(.{0, 0}, 100, "Manage Players", gui.openWindowCallback("manage_players")));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));

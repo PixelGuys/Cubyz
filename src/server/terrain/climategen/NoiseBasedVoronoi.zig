@@ -3,7 +3,7 @@ const std = @import("std");
 const main = @import("root");
 const Array2D = main.utils.Array2D;
 const random = main.random;
-const JsonElement = main.JsonElement;
+const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
 const ClimateMapFragment = terrain.ClimateMap.ClimateMapFragment;
 const BiomeSample = terrain.ClimateMap.BiomeSample;
@@ -19,7 +19,7 @@ const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 pub const id = "cubyz:noise_based_voronoi";
 
-pub fn init(parameters: JsonElement) void {
+pub fn init(parameters: ZonElement) void {
 	_ = parameters;
 }
 
@@ -233,7 +233,10 @@ const GenerationStructure = struct {
 				for(list) |biomePoint| {
 					if(biomePoint.pos[0] -% maxX >= 0) break;
 					const dist = biomePoint.voronoiDistanceFunction(.{x, y});
-					var weight: f32 = @max(1.0 - @sqrt(dist), 0);
+					var weight: f32 = 1.0 - @sqrt(dist);
+					if(weight < 0.01) {
+						weight = @exp((weight - 0.01))*0.01; // Make sure the weight doesn't really become zero.
+					}
 					weight *= weight;
 					// The important bit is the ocean height, that's the only point where we actually need the transition point to be exact for beaches to occur.
 					weight /= @abs(biomePoint.height - 16);
@@ -251,9 +254,7 @@ const GenerationStructure = struct {
 				}
 			}
 		}
-		const diff = (secondClosestDist - closestDist)*1e-9; // Makes sure the total weight never gets 0.
-		height += diff*closestBiomePoint.height;
-		totalWeight += diff;
+		std.debug.assert(totalWeight > 0);
 		std.debug.assert(closestDist != std.math.floatMax(f32));
 		return .{
 			.biome = closestBiomePoint.biome,
@@ -304,7 +305,6 @@ const GenerationStructure = struct {
 			const subBiome = biome.biome.subBiomes.sample(&seed).*;
 			var maxCenterOffset: f32 = biome.biome.radius - subBiome.radius - 32;
 			if(maxCenterOffset < 0) {
-				std.log.warn("SubBiome {s} of {s} is too big", .{subBiome.id, biome.biome.id});
 				maxCenterOffset = 0;
 			}
 			const point = biome.pos +% @as(Vec2i, @intFromFloat(random.nextPointInUnitCircle(&seed)*@as(Vec2f, @splat(maxCenterOffset))));

@@ -39,7 +39,7 @@ const NoImpl = struct {
 	fn removePath(_: [:0]const u8) void {}
 };
 
-const LinuxImpl = struct {
+const LinuxImpl = struct { // MARK: LinuxImpl
 	const c = @cImport({
 		@cInclude("sys/inotify.h");
 		@cInclude("sys/ioctl.h");
@@ -65,8 +65,8 @@ const LinuxImpl = struct {
 		if(fd == -1) {
 			std.log.err("Error while initializing inotifiy: {}", .{std.posix.errno(fd)});
 		}
-		watchDescriptors = std.StringHashMap(*DirectoryInfo).init(main.globalAllocator.allocator);
-		callbacks = std.AutoHashMap(c_int, *DirectoryInfo).init(main.globalAllocator.allocator);
+		watchDescriptors = .init(main.globalAllocator.allocator);
+		callbacks = .init(main.globalAllocator.allocator);
 	}
 
 	fn deinit() void {
@@ -209,7 +209,7 @@ const LinuxImpl = struct {
 	}
 };
 
-const WindowsImpl = struct {
+const WindowsImpl = struct { // MARK: WindowsImpl
 	const c = @cImport({
 		@cInclude("fileapi.h");
 	});
@@ -228,9 +228,9 @@ const WindowsImpl = struct {
 	};
 
 	fn init() void {
-		notificationHandlers = std.StringHashMap(*DirectoryInfo).init(main.globalAllocator.allocator);
-		callbacks = main.List(*DirectoryInfo).init(main.globalAllocator);
-		justTheHandles = main.List(HANDLE).init(main.globalAllocator);
+		notificationHandlers = .init(main.globalAllocator.allocator);
+		callbacks = .init(main.globalAllocator);
+		justTheHandles = .init(main.globalAllocator);
 	}
 
 	fn deinit() void {

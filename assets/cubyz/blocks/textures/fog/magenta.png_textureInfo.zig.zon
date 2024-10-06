@@ -1,0 +1,4 @@
+.{
+	.fogDensity = 0.02,
+	.fogColor = 0xff00ff,
+}
