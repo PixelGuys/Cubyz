@@ -388,6 +388,8 @@ pub var lastFrameTime = std.atomic.Value(f64).init(0);
 /// Measures time between different frames' beginnings.
 pub var lastDeltaTime = std.atomic.Value(f64).init(0);
 
+pub var frameCount = 0;
+
 var shouldExitToMenu = std.atomic.Value(bool).init(false);
 pub fn exitToMenu(_: usize) void {
 	shouldExitToMenu.store(true, .monotonic);
@@ -598,6 +600,7 @@ pub fn main() void { // MARK: main()
 			c.glClearColor(0.5, 1, 1, 1);
 			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
 			gui.windowlist.gpu_performance_measuring.stopQuery();
+			frameCount += 1;
 		} else {
 			std.time.sleep(16_000_000);
 		}
@@ -648,6 +651,7 @@ pub fn main() void { // MARK: main()
 			gui.openWindow("main");
 			audio.setMusic("cubyz:cubyz");
 		}
+
 	}
 
 	if(game.world) |world| {
