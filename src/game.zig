@@ -449,36 +449,36 @@ pub const Player = struct { // MARK: Player
 	pub fn acquireSelectedBlock() void {
 		if (main.renderer.MeshSelection.selectedBlockPos) |selectedPos| {
 			const block = main.renderer.mesh_storage.getBlock(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
-			for (0..items.itemListSize) |idx| outer: {
+
+			const item = for (0..items.itemListSize) |idx| {
 				if (items.itemList[idx].block == block.typ) {
-					const item = items.Item {.baseItem = &items.itemList[idx]};
-
-					// Check if there is already a slot with that item type
-					for (0..12) |slotIdx| {
-						if (std.meta.eql(inventory.getItem(slotIdx), item)) {
-							inventory.fillFromCreative(@intCast(slotIdx), item);
-							selectedSlot = @intCast(slotIdx);
-							break :outer;
-						}
-					}
-
-					if (inventory.getItem(selectedSlot) == null) {
-						inventory.fillFromCreative(selectedSlot, item);
-						break;
-					}
-
-					// Look for an empty slot
-					for (0..12) |slotIdx| {
-						if (inventory.getItem(slotIdx) == null) {
-							inventory.fillFromCreative(@intCast(slotIdx), item);
-							selectedSlot = @intCast(slotIdx);
-							break :outer;
-						}
-					}
-
-					inventory.fillFromCreative(selectedSlot, item);
-					break;
+					break items.Item {.baseItem = &items.itemList[idx]};
 				}
+			} else return;
+
+			// Check if there is already a slot with that item type
+			for (0..12) |slotIdx| {
+				if (std.meta.eql(inventory.getItem(slotIdx), item)) {
+					if (isCreative()) {
+						inventory.fillFromCreative(@intCast(slotIdx), item);
+					}
+					selectedSlot = @intCast(slotIdx);
+					return;
+				}
+			}
+
+			if (isCreative()) {
+				const targetSlot =
+					if (inventory.getItem(selectedSlot) == null) selectedSlot
+					// Look for an empty slot
+					else for (0..12) |slotIdx| {
+						if (inventory.getItem(slotIdx) == null) {
+							break slotIdx;
+						}
+					} else selectedSlot;
+
+				inventory.fillFromCreative(@intCast(targetSlot), item);
+				selectedSlot = @intCast(targetSlot);
 			}
 		}
 	}
