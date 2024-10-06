@@ -1010,6 +1010,12 @@ pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 }
 
 pub const ThreadPool = struct { // MARK: ThreadPool
+	pub const TaskType = enum(usize) {
+		chunkgen,
+		lighting,
+		misc,
+	};
+	pub const taskTypes = std.enums.directEnumArrayLen(TaskType, 0);
 	const Task = struct {
 		cachedPriority: f32,
 		self: *anyopaque,
@@ -1028,11 +1034,11 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 	};
 	pub const Performance = struct {
 		mutex: std.Thread.Mutex = .{},
-		tasks: [@intFromEnum(TaskType.taskTypes)]u32 = {},
-		utime: [@intFromEnum(TaskType.taskTypes)]i64 = {},
+		tasks: [taskTypes]u32 = {},
+		utime: [taskTypes]i64 = {},
 
 		fn clear(self: *Performance) void {
-			for(0..@intFromEnum(TaskType.taskTypes)) |i| {
+			for(0..taskTypes) |i| {
 				self.tasks[i] = 0;
 				self.utime[i] = 0;
 			}

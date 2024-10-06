@@ -69,7 +69,6 @@ pub fn render() void {
 				.chunkgen => "chunkgen",
 				.lighting => "lighting",
 				.misc => "other",
-				else => continue,
 			};
 			const i = @intFromEnum(t);
 			draw.print("    " ++ name ++ " time: {} ms ({} µs/task)", .{@divFloor(perf.utime[i], 1000), @divFloor(perf.utime[i], @max(1, perf.tasks[i]))}, 0, y, 8, .left);
