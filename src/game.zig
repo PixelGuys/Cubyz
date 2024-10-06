@@ -323,6 +323,8 @@ pub const collision = struct {
 	};
 };
 
+pub const Gamemode = enum(u8) { survival, creative };
+
 pub const Player = struct { // MARK: Player
 	pub var super: main.server.Entity = .{};
 	pub var eyePos: Vec3d = .{0, 0, 0};
@@ -330,11 +332,10 @@ pub const Player = struct { // MARK: Player
 	pub var eyeCoyote: f64 = 0;
 	pub var eyeStep: @Vector(3, bool) = .{false, false, false};
 	pub var id: u32 = 0;
-	pub var gamemode: Atomic(u8) = .init(1);
+	pub var gamemode: Atomic(Gamemode) = .init(.creative);
 	pub var isFlying: Atomic(bool) = .init(false);
 	pub var isGhost: Atomic(bool) = .init(false);
 	pub var hyperSpeed: Atomic(bool) = .init(false);
-	pub var unlimitedBlocks: Atomic(bool) = .init(false);
 	pub var mutex: std.Thread.Mutex = std.Thread.Mutex{};
 	pub var inventory: Inventory = undefined;
 	pub var selectedSlot: u32 = 0;
@@ -399,20 +400,18 @@ pub const Player = struct { // MARK: Player
 		return eyeCoyote;
 	}
 
-	// unused but can be hooked up to a command like /creative
-	pub fn setGamemode(newGamemode: u8, resetCheats: bool) void {
+	pub fn setGamemode(newGamemode: Gamemode) void {
 		gamemode.store(newGamemode, .monotonic);
 
-		if(resetCheats) {
+		if(newGamemode != .creative) {
 			isFlying.store(false, .monotonic);
 			isGhost.store(false, .monotonic);
 			hyperSpeed.store(false, .monotonic);
-			unlimitedBlocks.store(false, .monotonic);
 		}
 	}
 
-	pub fn hasRights() bool {
-		return gamemode.load(.monotonic) == 1;
+	pub fn isCreative() bool {
+		return gamemode.load(.monotonic) == .creative;
 	}
 
 	pub fn isActuallyFlying() bool {
@@ -439,7 +438,7 @@ pub const Player = struct { // MARK: Player
 			}
 		}
 
-		inventory.placeBlock(selectedSlot, unlimitedBlocks.load(.monotonic));
+		inventory.placeBlock(selectedSlot, isCreative());
 	}
 
 	pub fn breakBlock() void { // TODO: Breaking animation and tools
@@ -642,7 +641,7 @@ pub fn pressAcquireSelectedBlock() void {
 }
 
 pub fn flyToggle() void {
-	if(!Player.hasRights()) return;
+	if(!Player.isCreative()) return;
 
 	const newIsFlying = !Player.isActuallyFlying();
 
@@ -651,7 +650,7 @@ pub fn flyToggle() void {
 }
 
 pub fn ghostToggle() void {
-	if(!Player.hasRights()) return;
+	if(!Player.isCreative()) return;
 
 	const newIsGhost = !Player.isGhost.load(.monotonic);
 
@@ -660,15 +659,18 @@ pub fn ghostToggle() void {
 }
 
 pub fn hyperSpeedToggle() void {
-	if(!Player.hasRights()) return;
+	if(!Player.isCreative()) return;
 
 	Player.hyperSpeed.store(!Player.hyperSpeed.load(.monotonic), .monotonic);
 }
 
-pub fn unlimitedBlockToggle() void {
-	if(!Player.hasRights()) return;
+pub fn gamemodeToggle() void {
+	const newGamemode = switch(Player.gamemode.load(.monotonic)) {
+		.survival => Gamemode.creative,
+		.creative => Gamemode.survival
+	};
 
-	Player.unlimitedBlocks.store(!Player.unlimitedBlocks.load(.monotonic), .monotonic);
+	Player.setGamemode(newGamemode);
 }
 
 
