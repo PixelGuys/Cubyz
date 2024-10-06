@@ -65,11 +65,7 @@ pub fn render() void {
 		const perf = main.threadPool.getPerformance();
 		const values = comptime std.enums.values(TaskType);
 		inline for(values) |t| {
-			const name = switch (t) {
-				.chunkgen => "chunkgen",
-				.lighting => "lighting",
-				.misc => "other",
-			};
+			const name = @tagName(t)
 			const i = @intFromEnum(t);
 			draw.print("    " ++ name ++ " time: {} ms ({} µs/task)", .{@divFloor(perf.utime[i], 1000), @divFloor(perf.utime[i], @max(1, perf.tasks[i]))}, 0, y, 8, .left);
 		y += 8;
