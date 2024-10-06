@@ -3,6 +3,7 @@
 layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 struct AnimationData {
+	uint startFrame;
 	uint frames;
 	uint time;
 };
@@ -22,5 +23,5 @@ uniform uint size;
 void main() {
 	uint textureIndex = gl_GlobalInvocationID.x;
 	if(textureIndex >= size) return;
-	animatedTexture[textureIndex] = textureIndex + time / animation[textureIndex].time % animation[textureIndex].frames;
+	animatedTexture[textureIndex] = animation[textureIndex].startFrame + time / animation[textureIndex].time % animation[textureIndex].frames;
 }

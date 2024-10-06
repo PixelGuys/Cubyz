@@ -69,7 +69,7 @@ pub fn init() void {
 	};
 	chunk_meshing.init();
 	mesh_storage.init();
-	reflectionCubeMap = graphics.CubeMapTexture.init();
+	reflectionCubeMap = .init();
 	reflectionCubeMap.generate(reflectionCubeMapSize, reflectionCubeMapSize);
 	initReflectionCubeMap();
 }
@@ -174,7 +174,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	// Uses FrustumCulling on the chunks.
 	const frustum = Frustum.init(Vec3f{0, 0, 0}, game.camera.viewMatrix, lastFov, lastWidth, lastHeight);
-	_ = frustum;
 
 	const time: u32 = @intCast(std.time.milliTimestamp() & std.math.maxInt(u32));
 
@@ -196,11 +195,11 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	chunk_meshing.quadsDrawn = 0;
 	chunk_meshing.transparentQuadsDrawn = 0;
-	const meshes = mesh_storage.updateAndGetRenderChunks(world.conn, playerPos, settings.renderDistance);
+	const meshes = mesh_storage.updateAndGetRenderChunks(world.conn, &frustum, playerPos, settings.renderDistance);
 
 	gpu_performance_measuring.startQuery(.chunk_rendering_preparation);
 	const direction = crosshairDirection(game.camera.viewMatrix, lastFov, lastWidth, lastHeight);
-	MeshSelection.select(playerPos, direction, game.Player.inventory__SEND_CHANGES_TO_SERVER.items[game.Player.selectedSlot]);
+	MeshSelection.select(playerPos, direction, game.Player.inventory.getItem(game.Player.selectedSlot));
 	MeshSelection.render(game.projectionMatrix, game.camera.viewMatrix, playerPos);
 
 	chunk_meshing.beginRender();
@@ -312,7 +311,7 @@ const Bloom = struct { // MARK: Bloom
 	pub fn init() void {
 		buffer1.init(false, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
 		buffer2.init(false, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
-		emptyBuffer = graphics.Texture.init();
+		emptyBuffer = .init();
 		emptyBuffer.generate(graphics.Image.emptyImage);
 		firstPassShader = graphics.Shader.init("assets/cubyz/shaders/bloom/first_pass.vs", "assets/cubyz/shaders/bloom/first_pass.fs", "");
 		secondPassShader = graphics.Shader.init("assets/cubyz/shaders/bloom/second_pass.vs", "assets/cubyz/shaders/bloom/second_pass.fs", "");
@@ -685,7 +684,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	var selectionMax: Vec3f = undefined;
 	var lastPos: Vec3d = undefined;
 	var lastDir: Vec3f = undefined;
-	pub fn select(pos: Vec3d, _dir: Vec3f, inventoryStack: main.items.ItemStack) void {
+	pub fn select(pos: Vec3d, _dir: Vec3f, item: ?main.items.Item) void {
 		lastPos = pos;
 		const dir: Vec3d = @floatCast(_dir);
 		lastDir = _dir;
@@ -710,7 +709,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			if(block.typ != 0) {
 				if(block.blockClass() != .fluid and block.blockClass() != .air) { // TODO: Buckets could select fluids
 					const relativePlayerPos: Vec3f = @floatCast(pos - @as(Vec3d, @floatFromInt(voxelPos)));
-					if(block.mode().rayIntersection(block, inventoryStack, voxelPos, relativePlayerPos, _dir)) |intersection| {
+					if(block.mode().rayIntersection(block, item, voxelPos, relativePlayerPos, _dir)) |intersection| {
 						if(intersection.distance <= closestDistance) {
 							selectedBlockPos = voxelPos;
 							selectionMin = intersection.min;

@@ -4,7 +4,7 @@ const sign = std.math.sign;
 const main = @import("root");
 const Array3D = main.utils.Array3D;
 const random = main.random;
-const JsonElement = main.JsonElement;
+const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
 const CaveMapFragment = terrain.CaveMap.CaveMapFragment;
 const InterpolatableCaveBiomeMapView = terrain.CaveBiomeMap.InterpolatableCaveBiomeMapView;
@@ -20,7 +20,7 @@ pub const priority = 65536;
 
 pub const generatorSeed = 0x76490367012869;
 
-pub fn init(parameters: JsonElement) void {
+pub fn init(parameters: ZonElement) void {
 	_ = parameters;
 }
 

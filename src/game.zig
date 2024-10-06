@@ -7,7 +7,7 @@ const itemdrop = @import("itemdrop.zig");
 const ClientItemDropManager = itemdrop.ClientItemDropManager;
 const items = @import("items.zig");
 const Inventory = items.Inventory;
-const JsonElement = @import("json.zig").JsonElement;
+const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main.zig");
 const KeyBoard = main.KeyBoard;
 const network = @import("network.zig");
@@ -286,13 +286,14 @@ pub const collision = struct {
 		checkPos[index] += amount;
 
 		if (collision.collides(side, dir, -amount, checkPos, hitBox)) |box| {
-			const height = box.max[2] - checkPos[2] + hitBox.max[2];
-			if (height <= steppingHeight) {
+			const newFloor = box.max[2] + hitBox.max[2];
+			const heightDifference = newFloor - checkPos[2];
+			if (heightDifference <= steppingHeight) {
 				// If we collide but might be able to step up
-				checkPos[2] += steppingHeight;
+				checkPos[2] = newFloor + 0.0001;
 				if (collision.collides(side, dir, -amount, checkPos, hitBox) == null) {
 					// If there's no new collision then we can execute the step-up
-					resultingMovement[2] = height;
+					resultingMovement[2] = heightDifference;
 					return resultingMovement;
 				}
 			}
@@ -329,11 +330,11 @@ pub const Player = struct { // MARK: Player
 	pub var eyeCoyote: f64 = 0;
 	pub var eyeStep: @Vector(3, bool) = .{false, false, false};
 	pub var id: u32 = 0;
-	pub var isFlying: Atomic(bool) = Atomic(bool).init(false);
-	pub var isGhost: Atomic(bool) = Atomic(bool).init(false);
-	pub var hyperSpeed: Atomic(bool) = Atomic(bool).init(false);
+	pub var isFlying: Atomic(bool) = .init(false);
+	pub var isGhost: Atomic(bool) = .init(false);
+	pub var hyperSpeed: Atomic(bool) = .init(false);
 	pub var mutex: std.Thread.Mutex = std.Thread.Mutex{};
-	pub var inventory__SEND_CHANGES_TO_SERVER: Inventory = undefined;
+	pub var inventory: Inventory = undefined;
 	pub var selectedSlot: u32 = 0;
 
 	pub var maxHealth: f32 = 8;
@@ -355,9 +356,9 @@ pub const Player = struct { // MARK: Player
 	pub const desiredEyePos: Vec3d = .{0, 0, 1.7 - outerBoundingBoxExtent[2]};
 	pub const jumpHeight = 1.25;
 
-	fn loadFrom(json: JsonElement) void {
-		super.loadFrom(json);
-		inventory__SEND_CHANGES_TO_SERVER.loadFromJson(json.getChild("inventory"));
+	fn loadFrom(zon: ZonElement) void {
+		super.loadFrom(zon);
+		inventory.loadFromZon(zon.getChild("inventory"));
 	}
 
 	pub fn setPosBlocking(newPos: Vec3d) void {
@@ -415,50 +416,45 @@ pub const Player = struct { // MARK: Player
 				return;
 			}
 		}
-		main.renderer.MeshSelection.placeBlock(&inventory__SEND_CHANGES_TO_SERVER.items[selectedSlot]);
+		inventory.placeBlock(selectedSlot);
 	}
 
 	pub fn breakBlock() void { // TODO: Breaking animation and tools
 		if(!main.Window.grabbed) return;
-		main.renderer.MeshSelection.breakBlock(&inventory__SEND_CHANGES_TO_SERVER.items[selectedSlot]);
+		inventory.breakBlock(selectedSlot);
 	}
 
 	pub fn acquireSelectedBlock() void {
 		if (main.renderer.MeshSelection.selectedBlockPos) |selectedPos| {
 			const block = main.renderer.mesh_storage.getBlock(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
-			for (0..items.itemListSize) |idx|{
-				if (items.itemList[idx].block == block.typ){
+			for (0..items.itemListSize) |idx| outer: {
+				if (items.itemList[idx].block == block.typ) {
 					const item = items.Item {.baseItem = &items.itemList[idx]};
-					var isDone = false;
-					
+
 					// Check if there is already a slot with that item type
 					for (0..12) |slotIdx| {
-						if (std.meta.eql(inventory__SEND_CHANGES_TO_SERVER.items[slotIdx].item, item)) {
-							inventory__SEND_CHANGES_TO_SERVER.items[slotIdx] = items.ItemStack {.item = item, .amount = items.itemList[idx].stackSize};
+						if (std.meta.eql(inventory.getItem(slotIdx), item)) {
+							inventory.fillFromCreative(@intCast(slotIdx), item);
 							selectedSlot = @intCast(slotIdx);
-							isDone = true;
-							break;
+							break :outer;
 						}
 					}
-					if (isDone) break;
 
-					if (inventory__SEND_CHANGES_TO_SERVER.items[selectedSlot].empty()) {
-						inventory__SEND_CHANGES_TO_SERVER.items[selectedSlot] = items.ItemStack {.item = item, .amount = items.itemList[idx].stackSize};
+					if (inventory.getItem(selectedSlot) == null) {
+						inventory.fillFromCreative(selectedSlot, item);
 						break;
 					}
-					
+
 					// Look for an empty slot
 					for (0..12) |slotIdx| {
-						if (inventory__SEND_CHANGES_TO_SERVER.items[slotIdx].empty()) {
-							inventory__SEND_CHANGES_TO_SERVER.items[slotIdx] = items.ItemStack {.item = item, .amount = items.itemList[idx].stackSize};
+						if (inventory.getItem(slotIdx) == null) {
+							inventory.fillFromCreative(@intCast(slotIdx), item);
 							selectedSlot = @intCast(slotIdx);
-							isDone = true;
-							break;
+							break :outer;
 						}
 					}
-					if (isDone) break;
 
-					inventory__SEND_CHANGES_TO_SERVER.items[selectedSlot] = items.ItemStack {.item = item, .amount = items.itemList[idx].stackSize};
+					inventory.fillFromCreative(selectedSlot, item);
 					break;
 				}
 			}
@@ -476,7 +472,7 @@ pub const World = struct { // MARK: World
 	gravity: f64 = 9.81*1.5, // TODO: Balance
 	name: []const u8,
 	milliTime: i64,
-	gameTime: Atomic(i64) = Atomic(i64).init(0),
+	gameTime: Atomic(i64) = .init(0),
 	spawn: Vec3f = undefined,
 	blockPalette: *assets.Palette = undefined,
 	biomePalette: *assets.Palette = undefined,
@@ -491,14 +487,14 @@ pub const World = struct { // MARK: World
 			.milliTime = std.time.milliTimestamp(),
 		};
 		self.itemDrops.init(main.globalAllocator, self);
-		Player.inventory__SEND_CHANGES_TO_SERVER = Inventory.init(main.globalAllocator, 32);
+		Player.inventory = Inventory.init(main.globalAllocator, 32, .normal);
 		network.Protocols.handShake.clientSide(self.conn, settings.playerName);
 
 		main.Window.setMouseGrabbed(true);
 
 		main.blocks.meshes.generateTextureArray();
 		main.models.uploadModels();
-		self.playerBiome = Atomic(*const main.server.terrain.biomes.Biome).init(main.server.terrain.biomes.getById(""));
+		self.playerBiome = .init(main.server.terrain.biomes.getById(""));
 		main.audio.setMusic(self.playerBiome.raw.preferredMusic);
 	}
 
@@ -522,20 +518,20 @@ pub const World = struct { // MARK: World
 		renderer.mesh_storage.deinit();
 		renderer.mesh_storage.init();
 		assets.unloadAssets();
-		Player.inventory__SEND_CHANGES_TO_SERVER.deinit(main.globalAllocator);
+		Player.inventory.deinit(main.globalAllocator);
 	}
 
-	pub fn finishHandshake(self: *World, json: JsonElement) !void {
+	pub fn finishHandshake(self: *World, zon: ZonElement) !void {
 		// TODO: Consider using a per-world allocator.
-		self.blockPalette = try assets.Palette.init(main.globalAllocator, json.getChild("blockPalette"), "cubyz:air");
+		self.blockPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("blockPalette"), "cubyz:air");
 		errdefer self.blockPalette.deinit();
-		self.biomePalette = try assets.Palette.init(main.globalAllocator, json.getChild("biomePalette"), null);
+		self.biomePalette = try assets.Palette.init(main.globalAllocator, zon.getChild("biomePalette"), null);
 		errdefer self.biomePalette.deinit();
-		self.spawn = json.get(Vec3f, "spawn", .{0, 0, 0});
+		self.spawn = zon.get(Vec3f, "spawn", .{0, 0, 0});
 
 		try assets.loadWorldAssets("serverAssets", self.blockPalette, self.biomePalette);
-		Player.loadFrom(json.getChild("player"));
-		Player.id = json.get(u32, "player_id", std.math.maxInt(u32));
+		Player.loadFrom(zon.getChild("player"));
+		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
 	}
 
 	pub fn update(self: *World) void {

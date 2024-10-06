@@ -658,17 +658,6 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			self.distance = @abs(fullDx) + @abs(fullDy) + @abs(fullDz);
 		}
 	};
-	const BoundingRectToNeighborChunk = struct {
-		min: Vec3i = @splat(std.math.maxInt(i32)),
-		max: Vec3i = @splat(0),
-
-		fn adjustToBlock(self: *BoundingRectToNeighborChunk, block: Block, pos: Vec3i, neighbor: chunk.Neighbor) void {
-			if(block.viewThrough()) {
-				self.min = @min(self.min, pos);
-				self.max = @max(self.max, pos + neighbor.orthogonalComponents());
-			}
-		}
-	};
 	pos: chunk.ChunkPosition,
 	size: i32,
 	chunk: *chunk.Chunk,
@@ -684,18 +673,16 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	sortingOutputBuffer: []FaceData = &.{},
 	culledSortingCount: u31 = 0,
 	lastTransparentUpdatePos: Vec3i = Vec3i{0, 0, 0},
-	refCount: std.atomic.Value(u32) = std.atomic.Value(u32).init(1),
-	needsLightRefresh: std.atomic.Value(bool) = std.atomic.Value(bool).init(false),
+	refCount: std.atomic.Value(u32) = .init(1),
+	needsLightRefresh: std.atomic.Value(bool) = .init(false),
 	needsMeshUpdate: bool = false,
-	finishedMeshing: bool = false,
+	finishedMeshing: bool = false, // Must be synced with node.finishedMeshing in mesh_storage.zig
 	finishedLighting: bool = false,
-	litNeighbors: Atomic(u32) = Atomic(u32).init(0),
+	litNeighbors: Atomic(u32) = .init(0),
 	mutex: std.Thread.Mutex = .{},
 	chunkAllocation: graphics.SubAllocation = .{.start = 0, .len = 0},
 	min: Vec3f = undefined,
 	max: Vec3f = undefined,
-
-	chunkBorders: [6]BoundingRectToNeighborChunk = [1]BoundingRectToNeighborChunk{.{}} ** 6,
 
 	pub fn init(self: *ChunkMesh, pos: chunk.ChunkPosition, ch: *chunk.Chunk) void {
 		self.* = ChunkMesh{
@@ -1031,7 +1018,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			const neighbor = chunk.Neighbor.dirNegX;
 			for(1..chunk.chunkSize) |x| {
 				for(0..chunk.chunkSize) |y| {
-					var bitMask = hasFaces[x][y] & (canSeeNeighbor[neighbor.reverse().toInt()][x - 1][y] | canSeeAllNeighbors[x - 1][y]);
+					var bitMask = hasFaces[x][y] & (canSeeNeighbor[comptime neighbor.reverse().toInt()][x - 1][y] | canSeeAllNeighbors[x - 1][y]);
 					while(bitMask != 0) {
 						const z = @ctz(bitMask);
 						bitMask &= ~(@as(u32, 1) << @intCast(z));
@@ -1057,7 +1044,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			const neighbor = chunk.Neighbor.dirPosX;
 			for(0..chunk.chunkSize-1) |x| {
 				for(0..chunk.chunkSize) |y| {
-					var bitMask = hasFaces[x][y] & (canSeeNeighbor[neighbor.reverse().toInt()][x + 1][y] | canSeeAllNeighbors[x + 1][y]);
+					var bitMask = hasFaces[x][y] & (canSeeNeighbor[comptime neighbor.reverse().toInt()][x + 1][y] | canSeeAllNeighbors[x + 1][y]);
 					while(bitMask != 0) {
 						const z = @ctz(bitMask);
 						bitMask &= ~(@as(u32, 1) << @intCast(z));
@@ -1083,7 +1070,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			const neighbor = chunk.Neighbor.dirNegY;
 			for(0..chunk.chunkSize) |x| {
 				for(1..chunk.chunkSize) |y| {
-					var bitMask = hasFaces[x][y] & (canSeeNeighbor[neighbor.reverse().toInt()][x][y - 1] | canSeeAllNeighbors[x][y - 1]);
+					var bitMask = hasFaces[x][y] & (canSeeNeighbor[comptime neighbor.reverse().toInt()][x][y - 1] | canSeeAllNeighbors[x][y - 1]);
 					while(bitMask != 0) {
 						const z = @ctz(bitMask);
 						bitMask &= ~(@as(u32, 1) << @intCast(z));
@@ -1109,7 +1096,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			const neighbor = chunk.Neighbor.dirPosY;
 			for(0..chunk.chunkSize) |x| {
 				for(0..chunk.chunkSize-1) |y| {
-					var bitMask = hasFaces[x][y] & (canSeeNeighbor[neighbor.reverse().toInt()][x][y + 1] | canSeeAllNeighbors[x][y + 1]);
+					var bitMask = hasFaces[x][y] & (canSeeNeighbor[comptime neighbor.reverse().toInt()][x][y + 1] | canSeeAllNeighbors[x][y + 1]);
 					while(bitMask != 0) {
 						const z = @ctz(bitMask);
 						bitMask &= ~(@as(u32, 1) << @intCast(z));
@@ -1135,7 +1122,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			const neighbor = chunk.Neighbor.dirDown;
 			for(0..chunk.chunkSize) |x| {
 				for(0..chunk.chunkSize) |y| {
-					var bitMask = hasFaces[x][y] & (canSeeNeighbor[neighbor.reverse().toInt()][x][y] | canSeeAllNeighbors[x][y]) << 1;
+					var bitMask = hasFaces[x][y] & (canSeeNeighbor[comptime neighbor.reverse().toInt()][x][y] | canSeeAllNeighbors[x][y]) << 1;
 					while(bitMask != 0) {
 						const z = @ctz(bitMask);
 						bitMask &= ~(@as(u32, 1) << @intCast(z));
@@ -1161,7 +1148,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			const neighbor = chunk.Neighbor.dirUp;
 			for(0..chunk.chunkSize) |x| {
 				for(0..chunk.chunkSize) |y| {
-					var bitMask = hasFaces[x][y] & (canSeeNeighbor[neighbor.reverse().toInt()][x][y] | canSeeAllNeighbors[x][y]) >> 1;
+					var bitMask = hasFaces[x][y] & (canSeeNeighbor[comptime neighbor.reverse().toInt()][x][y] | canSeeAllNeighbors[x][y]) >> 1;
 					while(bitMask != 0) {
 						const z = @ctz(bitMask);
 						bitMask &= ~(@as(u32, 1) << @intCast(z));
@@ -1184,19 +1171,6 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			}
 		}
 
-		// Check out the borders:
-		var x: u8 = 0;
-		while(x < chunk.chunkSize): (x += 1) {
-			var y: u8 = 0;
-			while(y < chunk.chunkSize): (y += 1) {
-				self.chunkBorders[chunk.Neighbor.dirNegX.toInt()].adjustToBlock(self.chunk.data.getValue(chunk.getIndex(0, x, y)), .{0, x, y}, chunk.Neighbor.dirNegX);
-				self.chunkBorders[chunk.Neighbor.dirPosX.toInt()].adjustToBlock(self.chunk.data.getValue(chunk.getIndex(chunk.chunkSize-1, x, y)), .{chunk.chunkSize, x, y}, chunk.Neighbor.dirPosX);
-				self.chunkBorders[chunk.Neighbor.dirNegY.toInt()].adjustToBlock(self.chunk.data.getValue(chunk.getIndex(x, 0, y)), .{x, 0, y}, chunk.Neighbor.dirNegY);
-				self.chunkBorders[chunk.Neighbor.dirPosY.toInt()].adjustToBlock(self.chunk.data.getValue(chunk.getIndex(x, chunk.chunkSize-1, y)), .{x, chunk.chunkSize, y}, chunk.Neighbor.dirPosY);
-				self.chunkBorders[chunk.Neighbor.dirDown.toInt()].adjustToBlock(self.chunk.data.getValue(chunk.getIndex(x, y, 0)), .{x, y, 0}, chunk.Neighbor.dirDown);
-				self.chunkBorders[chunk.Neighbor.dirUp.toInt()].adjustToBlock(self.chunk.data.getValue(chunk.getIndex(x, y, chunk.chunkSize-1)), .{x, y, chunk.chunkSize}, chunk.Neighbor.dirUp);
-			}
-		}
 		self.mutex.unlock();
 
 		self.finishNeighbors(lightRefreshList);

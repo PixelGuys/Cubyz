@@ -38,9 +38,9 @@ pub const User = struct { // MARK: User
 	lastRenderDistance: u16 = 0,
 	lastPos: Vec3i = @splat(0),
 
-	connected: Atomic(bool) = Atomic(bool).init(true),
+	connected: Atomic(bool) = .init(true),
 
-	refCount: Atomic(u32) = Atomic(u32).init(1),
+	refCount: Atomic(u32) = .init(1),
 
 	pub fn initAndIncreaseRefCount(manager: *ConnectionManager, ipPort: []const u8) !*User {
 		const self = main.globalAllocator.create(User);
@@ -195,7 +195,7 @@ pub var userDeinitList: main.List(*User) = undefined;
 
 pub var connectionManager: *ConnectionManager = undefined;
 
-pub var running: std.atomic.Value(bool) = std.atomic.Value(bool).init(false);
+pub var running: std.atomic.Value(bool) = .init(false);
 var lastTime: i128 = undefined;
 
 pub var mutex: std.Thread.Mutex = .{};
@@ -205,8 +205,8 @@ pub var thread: ?std.Thread = null;
 fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 	std.debug.assert(world == null); // There can only be one world.
 	command.init();
-	users = main.List(*User).init(main.globalAllocator);
-	userDeinitList = main.List(*User).init(main.globalAllocator);
+	users = .init(main.globalAllocator);
+	userDeinitList = .init(main.globalAllocator);
 	lastTime = std.time.nanoTimestamp();
 	connectionManager = ConnectionManager.init(main.settings.defaultPort, false) catch |err| {
 		std.log.err("Couldn't create socket: {s}", .{@errorName(err)});
@@ -254,29 +254,29 @@ fn deinit() void {
 
 fn sendEntityUpdates(comptime getInitialList: bool, allocator: utils.NeverFailingAllocator) if(getInitialList) []const u8 else void {
 	// Send the entity updates:
-	const updateList = main.JsonElement.initArray(main.stackAllocator);
+	const updateList = main.ZonElement.initArray(main.stackAllocator);
 	defer updateList.free(main.stackAllocator);
-	defer updateList.JsonArray.clearAndFree(); // The children are freed in other locations.
+	defer updateList.array.clearAndFree(); // The children are freed in other locations.
 	world.?.itemDropManager.mutex.lock();
-	if(world.?.itemDropManager.lastUpdates.JsonArray.items.len != 0) {
-		updateList.JsonArray.append(.{.JsonNull = {}});
-		updateList.JsonArray.appendSlice(world.?.itemDropManager.lastUpdates.JsonArray.items);
+	if(world.?.itemDropManager.lastUpdates.array.items.len != 0) {
+		updateList.array.append(.null);
+		updateList.array.appendSlice(world.?.itemDropManager.lastUpdates.array.items);
 	}
 	const updateData = updateList.toStringEfficient(main.stackAllocator, &.{});
 	defer main.stackAllocator.free(updateData);
-	if(world.?.itemDropManager.lastUpdates.JsonArray.items.len != 0) {
-		const alloc = world.?.itemDropManager.lastUpdates.JsonArray.allocator;
+	if(world.?.itemDropManager.lastUpdates.array.items.len != 0) {
+		const alloc = world.?.itemDropManager.lastUpdates.array.allocator;
 		world.?.itemDropManager.lastUpdates.free(alloc);
-		world.?.itemDropManager.lastUpdates = main.JsonElement.initArray(alloc);
+		world.?.itemDropManager.lastUpdates = main.ZonElement.initArray(alloc);
 	}
 	var initialList: []const u8 = undefined;
 	if(getInitialList) {
-		const list = main.JsonElement.initArray(main.stackAllocator);
+		const list = main.ZonElement.initArray(main.stackAllocator);
 		defer list.free(main.stackAllocator);
-		list.JsonArray.append(.{.JsonNull = {}});
+		list.array.append(.null);
 		const itemDropList = world.?.itemDropManager.getInitialList(main.stackAllocator);
-		list.JsonArray.appendSlice(itemDropList.JsonArray.items);
-		itemDropList.JsonArray.items.len = 0;
+		list.array.appendSlice(itemDropList.array.items);
+		itemDropList.array.items.len = 0;
 		itemDropList.free(main.stackAllocator);
 		initialList = list.toStringEfficient(allocator, &.{});
 	}
@@ -385,10 +385,10 @@ pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 	}
 	sendMessage(message);
 	// Let the other clients know about that this new one left.
-	const jsonArray = main.JsonElement.initArray(main.stackAllocator);
-	defer jsonArray.free(main.stackAllocator);
-	jsonArray.JsonArray.append(.{.JsonInt = user.id});
-	const data = jsonArray.toStringEfficient(main.stackAllocator, &.{});
+	const zonArray = main.ZonElement.initArray(main.stackAllocator);
+	defer zonArray.free(main.stackAllocator);
+	zonArray.array.append(.{.int = user.id});
+	const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 	defer main.stackAllocator.free(data);
 	for(users.items) |other| {
 		main.network.Protocols.entity.send(other.conn, data);
@@ -402,13 +402,13 @@ pub fn connect(user: *User) void {
 	freeId += 1;
 	// Let the other clients know about this new one.
 	{
-		const jsonArray = main.JsonElement.initArray(main.stackAllocator);
-		defer jsonArray.free(main.stackAllocator);
-		const entityJson = main.JsonElement.initObject(main.stackAllocator);
-		entityJson.put("id", user.id);
-		entityJson.put("name", user.name);
-		jsonArray.JsonArray.append(entityJson);
-		const data = jsonArray.toStringEfficient(main.stackAllocator, &.{});
+		const zonArray = main.ZonElement.initArray(main.stackAllocator);
+		defer zonArray.free(main.stackAllocator);
+		const entityZon = main.ZonElement.initObject(main.stackAllocator);
+		entityZon.put("id", user.id);
+		entityZon.put("name", user.name);
+		zonArray.array.append(entityZon);
+		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(data);
 		mutex.lock();
 		defer mutex.unlock();
@@ -417,17 +417,17 @@ pub fn connect(user: *User) void {
 		}
 	}
 	{ // Let this client know about the others:
-		const jsonArray = main.JsonElement.initArray(main.stackAllocator);
-		defer jsonArray.free(main.stackAllocator);
+		const zonArray = main.ZonElement.initArray(main.stackAllocator);
+		defer zonArray.free(main.stackAllocator);
 		mutex.lock();
 		for(users.items) |other| {
-			const entityJson = main.JsonElement.initObject(main.stackAllocator);
-			entityJson.put("id", other.id);
-			entityJson.put("name", other.name);
-			jsonArray.JsonArray.append(entityJson);
+			const entityZon = main.ZonElement.initObject(main.stackAllocator);
+			entityZon.put("id", other.id);
+			entityZon.put("name", other.name);
+			zonArray.array.append(entityZon);
 		}
 		mutex.unlock();
-		const data = jsonArray.toStringEfficient(main.stackAllocator, &.{});
+		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(data);
 		if(user.connected.load(.unordered)) main.network.Protocols.entity.send(user.conn, data);
 

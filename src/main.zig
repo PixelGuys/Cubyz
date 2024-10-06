@@ -22,6 +22,7 @@ pub const rotation = @import("rotation.zig");
 pub const settings = @import("settings.zig");
 pub const utils = @import("utils.zig");
 pub const vec = @import("vec.zig");
+pub const ZonElement = @import("zon.zig").ZonElement;
 
 pub const Window = @import("graphics/Window.zig");
 
@@ -56,7 +57,7 @@ pub const std_options: std.Options = .{ // MARK: std_options
 	.log_level = .debug,
 	.logFn = struct {pub fn logFn(
 		comptime level: std.log.Level,
-		comptime _: @Type(.EnumLiteral),
+		comptime _: @Type(.enum_literal),
 		comptime format: []const u8,
 		args: anytype,
 	) void {
@@ -125,10 +126,10 @@ pub const std_options: std.Options = .{ // MARK: std_options
 				types = types ++ &[_]type{i64};
 			} else if(@TypeOf(args[i_1]) == comptime_float) {
 				types = types ++ &[_]type{f64};
-			} else if(TI == .Pointer and TI.Pointer.size == .Slice and TI.Pointer.child == u8) {
+			} else if(TI == .pointer and TI.pointer.size == .Slice and TI.pointer.child == u8) {
 				types = types ++ &[_]type{[]const u8};
-			} else if(TI == .Int and TI.Int.bits <= 64) {
-				if(TI.Int.signedness == .signed) {
+			} else if(TI == .int and TI.int.bits <= 64) {
+				if(TI.int.signedness == .signed) {
 					types = types ++ &[_]type{i64};
 				} else {
 					types = types ++ &[_]type{u64};
@@ -268,6 +269,12 @@ fn openCreativeInventory() void {
 	gui.toggleGameMenu();
 	gui.openWindow("creative_inventory");
 }
+fn openChat() void {
+	if(game.world == null) return;
+	ungrabMouse();
+	gui.openWindow("chat");
+	gui.windowlist.chat.input.select();
+}
 fn takeBackgroundImageFn() void {
 	if(game.world == null) return;
 	renderer.MenuBackGround.takeBackgroundImage();
@@ -324,6 +331,7 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "escape", .key = c.GLFW_KEY_ESCAPE, .releaseAction = &escape},
 		.{.name = "openInventory", .key = c.GLFW_KEY_E, .releaseAction = &openInventory},
 		.{.name = "openCreativeInventory(aka cheat inventory)", .key = c.GLFW_KEY_C, .releaseAction = &openCreativeInventory},
+		.{.name = "openChat", .key = c.GLFW_KEY_T, .releaseAction = &openChat},
 		.{.name = "mainGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &gui.mainButtonPressed, .releaseAction = &gui.mainButtonReleased},
 		.{.name = "secondaryGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &gui.secondaryButtonPressed, .releaseAction = &gui.secondaryButtonReleased},
 		// text:
@@ -385,6 +393,93 @@ pub fn exitToMenu(_: usize) void {
 	shouldExitToMenu.store(true, .monotonic);
 }
 
+
+fn isValidIdentifierName(str: []const u8) bool { // TODO: Remove after #480
+	if(str.len == 0) return false;
+	if(!std.ascii.isAlphabetic(str[0]) and str[0] != '_') return false;
+	for(str[1..]) |c| {
+		if(!std.ascii.isAlphanumeric(c) and c != '_') return false;
+	}
+	return true;
+}
+
+fn isHiddenOrParentHiddenPosix(path: []const u8) bool {
+	var iter = std.fs.path.componentIterator(path) catch |err| {
+		std.log.err("Cannot iterate on path {s}: {s}!", .{path, @errorName(err)});
+		return false;
+	};
+	while (iter.next()) |component| {
+		if (std.mem.eql(u8, component.name, ".") or std.mem.eql(u8, component.name, "..")) {
+			continue;
+		}
+		if (component.name.len > 0 and component.name[0] == '.') {
+			return true;
+		}
+	}
+	return false;
+}
+pub fn convertJsonToZon(jsonPath: []const u8) void { // TODO: Remove after #480
+	if (isHiddenOrParentHiddenPosix(jsonPath)) {
+		std.log.info("NOT converting {s}.", .{jsonPath});
+		return;
+	}
+	std.log.info("Converting {s}:", .{jsonPath});
+	const jsonString = files.read(stackAllocator, jsonPath) catch |err| {
+		std.log.err("Could convert file {s}: {s}", .{jsonPath, @errorName(err)});
+		return;
+	};
+	defer stackAllocator.free(jsonString);
+	var zonString = List(u8).init(stackAllocator);
+	defer zonString.deinit();
+	std.log.debug("{s}", .{jsonString});
+	
+	var i: usize = 0;
+	while(i < jsonString.len) : (i += 1) {
+		switch(jsonString[i]) {
+			'\"' => {
+				var j = i + 1;
+				while(j < jsonString.len and jsonString[j] != '"') : (j += 1) {}
+				const string = jsonString[i+1..j];
+				if(isValidIdentifierName(string)) {
+					zonString.append('.');
+					zonString.appendSlice(string);
+				} else {
+					zonString.append('"');
+					zonString.appendSlice(string);
+					zonString.append('"');
+				}
+				i = j;
+			},
+			'[', '{' => {
+				zonString.append('.');
+				zonString.append('{');
+			},
+			']', '}' => {
+				zonString.append('}');
+			},
+			':' => {
+				zonString.append('=');
+			},
+			else => |c| {
+				zonString.append(c);
+			},
+		}
+	}
+	const zonPath = std.fmt.allocPrint(stackAllocator.allocator, "{s}.zig.zon", .{jsonPath[0..std.mem.lastIndexOfScalar(u8, jsonPath, '.') orelse unreachable]}) catch unreachable;
+	defer stackAllocator.free(zonPath);
+	std.log.info("Outputting to {s}:", .{zonPath});
+	std.log.debug("{s}", .{zonString.items});
+	files.write(zonPath, zonString.items) catch |err| {
+		std.log.err("Got error while writing to file: {s}", .{@errorName(err)});
+		return;
+	};
+	std.log.info("Deleting file {s}", .{jsonPath});
+	std.fs.cwd().deleteFile(jsonPath) catch |err| {
+		std.log.err("Got error while deleting file: {s}", .{@errorName(err)});
+		return;
+	};
+}
+
 pub fn main() void { // MARK: main()
 	seed = @bitCast(std.time.milliTimestamp());
 	defer if(global_gpa.deinit() == .leak) {
@@ -396,6 +491,27 @@ pub fn main() void { // MARK: main()
 
 	initLogging();
 	defer deinitLogging();
+
+	if(std.fs.cwd().openFile("settings.json", .{})) |file| blk: { // TODO: Remove after #480
+		file.close();
+		std.log.warn("Detected old game client. Converting all .json files to .zig.zon", .{});
+		var dir = std.fs.cwd().openDir(".", .{.iterate = true}) catch |err| {
+			std.log.err("Could not open game directory to convert json files: {s}. Conversion aborted", .{@errorName(err)});
+			break :blk;
+		};
+		defer dir.close();
+
+		var walker = dir.walk(stackAllocator.allocator) catch unreachable;
+		defer walker.deinit();
+		while(walker.next() catch |err| {
+			std.log.err("Got error while iterating through json files directory: {s}", .{@errorName(err)});
+			break :blk;
+		}) |entry| {
+			if(entry.kind == .file and (std.ascii.endsWithIgnoreCase(entry.basename, ".json") or std.mem.eql(u8, entry.basename, "world.dat")) and !std.ascii.startsWithIgnoreCase(entry.path, "compiler") and !std.ascii.startsWithIgnoreCase(entry.path, ".zig-cache") and !std.ascii.startsWithIgnoreCase(entry.path, ".vscode")) {
+				convertJsonToZon(entry.path);
+			}
+		}
+	} else |_| {}
 
 	settings.init();
 	defer settings.deinit();
@@ -542,4 +658,5 @@ pub fn main() void { // MARK: main()
 
 test "abc" {
 	_ = @import("json.zig");
+	_ = @import("zon.zig");
 }

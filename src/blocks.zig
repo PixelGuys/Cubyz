@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const main = @import("root");
-const JsonElement = @import("json.zig").JsonElement;
+const ZonElement = @import("zon.zig").ZonElement;
 const Neighbor = @import("chunk.zig").Neighbor;
 const graphics = @import("graphics.zig");
 const Shader = graphics.Shader;
@@ -87,44 +87,44 @@ var reverseIndices = std.StringHashMap(u16).init(allocator.allocator);
 
 var size: u32 = 0;
 
-pub var ores: main.List(Ore) = main.List(Ore).init(allocator);
+pub var ores: main.List(Ore) = .init(allocator);
 
 var unfinishedOreSourceBlockIds: main.List([][]const u8) = undefined;
 
 pub fn init() void {
-	unfinishedOreSourceBlockIds = main.List([][]const u8).init(main.globalAllocator);
+	unfinishedOreSourceBlockIds = .init(main.globalAllocator);
 }
 
 pub fn deinit() void {
 	unfinishedOreSourceBlockIds.deinit();
 }
 
-pub fn register(_: []const u8, id: []const u8, json: JsonElement) u16 {
+pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	if(reverseIndices.contains(id)) {
 		std.log.warn("Registered block with id {s} twice!", .{id});
 	}
 	_id[size] = allocator.dupe(u8, id);
 	reverseIndices.put(_id[size], @intCast(size)) catch unreachable;
 
-	_mode[size] = rotation.getByID(json.get([]const u8, "rotation", "no_rotation"));
-	_breakingPower[size] = json.get(f32, "breakingPower", 0);
-	_hardness[size] = json.get(f32, "hardness", 1);
+	_mode[size] = rotation.getByID(zon.get([]const u8, "rotation", "no_rotation"));
+	_breakingPower[size] = zon.get(f32, "breakingPower", 0);
+	_hardness[size] = zon.get(f32, "hardness", 1);
 
-	_blockClass[size] = std.meta.stringToEnum(BlockClass, json.get([]const u8, "class", "stone")) orelse .stone;
-	_light[size] = json.get(u32, "emittedLight", 0);
-	_absorption[size] = json.get(u32, "absorbedLight", 0xffffff);
-	_degradable[size] = json.get(bool, "degradable", false);
-	_selectable[size] = json.get(bool, "selectable", true);
-	_solid[size] = json.get(bool, "solid", true);
-	_gui[size] = allocator.dupe(u8, json.get([]const u8, "gui", ""));
-	_transparent[size] = json.get(bool, "transparent", false);
-	_collide[size] = json.get(bool, "collide", true);
-	_alwaysViewThrough[size] = json.get(bool, "alwaysViewThrough", false);
-	_viewThrough[size] = json.get(bool, "viewThrough", false) or _transparent[size] or _alwaysViewThrough[size];
-	_hasBackFace[size] = json.get(bool, "hasBackFace", false);
+	_blockClass[size] = std.meta.stringToEnum(BlockClass, zon.get([]const u8, "class", "stone")) orelse .stone;
+	_light[size] = zon.get(u32, "emittedLight", 0);
+	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
+	_degradable[size] = zon.get(bool, "degradable", false);
+	_selectable[size] = zon.get(bool, "selectable", true);
+	_solid[size] = zon.get(bool, "solid", true);
+	_gui[size] = allocator.dupe(u8, zon.get([]const u8, "gui", ""));
+	_transparent[size] = zon.get(bool, "transparent", false);
+	_collide[size] = zon.get(bool, "collide", true);
+	_alwaysViewThrough[size] = zon.get(bool, "alwaysViewThrough", false);
+	_viewThrough[size] = zon.get(bool, "viewThrough", false) or _transparent[size] or _alwaysViewThrough[size];
+	_hasBackFace[size] = zon.get(bool, "hasBackFace", false);
 
-	const oreProperties = json.getChild("ore");
-	if (oreProperties != .JsonNull) {
+	const oreProperties = zon.getChild("ore");
+	if (oreProperties != .null) {
 		// Extract the ids:
 		const sourceBlocks = oreProperties.getChild("sources").toSlice();
 		const oreIds = main.globalAllocator.alloc([]const u8, sourceBlocks.len);
@@ -146,8 +146,8 @@ pub fn register(_: []const u8, id: []const u8, json: JsonElement) u16 {
 	return @intCast(size - 1);
 }
 
-fn registerBlockDrop(typ: u16, json: JsonElement) void {
-	const drops = json.toSlice();
+fn registerBlockDrop(typ: u16, zon: ZonElement) void {
+	const drops = zon.toSlice();
 
 	var result = allocator.alloc(BlockDrop, drops.len);
 	result.len = 0;
@@ -176,31 +176,31 @@ fn registerBlockDrop(typ: u16, json: JsonElement) void {
 	}
 }
 
-fn registerLodReplacement(typ: u16, json: JsonElement) void {
-	if(json.get(?[]const u8, "lodReplacement", null)) |replacement| {
+fn registerLodReplacement(typ: u16, zon: ZonElement) void {
+	if(zon.get(?[]const u8, "lodReplacement", null)) |replacement| {
 		_lodReplacement[typ] = getByID(replacement);
 	} else {
 		_lodReplacement[typ] = typ;
 	}
 }
 
-fn registerOpaqueVariant(typ: u16, json: JsonElement) void {
-	if(json.get(?[]const u8, "opaqueVariant", null)) |replacement| {
+fn registerOpaqueVariant(typ: u16, zon: ZonElement) void {
+	if(zon.get(?[]const u8, "opaqueVariant", null)) |replacement| {
 		_opaqueVariant[typ] = getByID(replacement);
 	} else {
 		_opaqueVariant[typ] = typ;
 	}
 }
 
-pub fn finishBlocks(jsonElements: std.StringHashMap(JsonElement)) void {
+pub fn finishBlocks(zonElements: std.StringHashMap(ZonElement)) void {
 	var i: u16 = 0;
 	while(i < size) : (i += 1) {
-		registerBlockDrop(i, jsonElements.get(_id[i]) orelse continue);
+		registerBlockDrop(i, zonElements.get(_id[i]) orelse continue);
 	}
 	i = 0;
 	while(i < size) : (i += 1) {
-		registerLodReplacement(i, jsonElements.get(_id[i]) orelse continue);
-		registerOpaqueVariant(i, jsonElements.get(_id[i]) orelse continue);
+		registerLodReplacement(i, zonElements.get(_id[i]) orelse continue);
+		registerOpaqueVariant(i, zonElements.get(_id[i]) orelse continue);
 	}
 	for(ores.items, unfinishedOreSourceBlockIds.items) |*ore, oreIds| {
 		ore.sources = allocator.alloc(u16, oreIds.len);
@@ -218,7 +218,7 @@ pub fn reset() void {
 	ores.clearAndFree();
 	meshes.reset();
 	_ = arena.reset(.free_all);
-	reverseIndices = std.StringHashMap(u16).init(arena.allocator().allocator);
+	reverseIndices = .init(arena.allocator().allocator);
 	std.debug.assert(unfinishedOreSourceBlockIds.items.len == 0);
 }
 
@@ -331,8 +331,9 @@ pub const Block = packed struct { // MARK: Block
 
 pub const meshes = struct { // MARK: meshes
 	const AnimationData = extern struct {
-		frames: i32,
-		time: i32,
+		startFrame: u32,
+		frames: u32,
+		time: u32,
 	};
 
 	const TextureData = extern struct {
@@ -394,17 +395,17 @@ pub const meshes = struct { // MARK: meshes
 
 	pub fn init() void {
 		animationShader = Shader.initComputeAndGetUniforms("assets/cubyz/shaders/animation_pre_processing.glsl", "", &animationUniforms);
-		blockTextureArray = TextureArray.init();
-		emissionTextureArray = TextureArray.init();
-		reflectivityAndAbsorptionTextureArray = TextureArray.init();
-		textureIDs = main.List([]const u8).init(main.globalAllocator);
-		animation = main.List(AnimationData).init(main.globalAllocator);
-		blockTextures = main.List(Image).init(main.globalAllocator);
-		emissionTextures = main.List(Image).init(main.globalAllocator);
-		reflectivityTextures = main.List(Image).init(main.globalAllocator);
-		absorptionTextures = main.List(Image).init(main.globalAllocator);
-		textureFogData = main.List(FogData).init(main.globalAllocator);
-		arenaForWorld = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
+		blockTextureArray = .init();
+		emissionTextureArray = .init();
+		reflectivityAndAbsorptionTextureArray = .init();
+		textureIDs = .init(main.globalAllocator);
+		animation = .init(main.globalAllocator);
+		blockTextures = .init(main.globalAllocator);
+		emissionTextures = .init(main.globalAllocator);
+		reflectivityTextures = .init(main.globalAllocator);
+		absorptionTextures = .init(main.globalAllocator);
+		textureFogData = .init(main.globalAllocator);
+		arenaForWorld = .init(main.globalAllocator);
 	}
 
 	pub fn deinit() void {
@@ -474,114 +475,100 @@ pub const meshes = struct { // MARK: meshes
 		return pathBuffer[0..path.len+ending.len];
 	}
 
-	fn readAuxillaryTexture(_path: []const u8, pathBuffer: []u8, ending: []const u8, list: *main.List(Image), default: Image) void {
+	fn readAuxillaryTexture(_path: []const u8, pathBuffer: []u8, ending: []const u8, default: Image) Image {
 		const path = extendedPath(_path, pathBuffer, ending);
 		const texture = Image.readFromFile(arenaForWorld.allocator(), path) catch default;
-		list.append(texture);
+		return texture;
+	}
+
+	fn extractAnimationSlice(image: Image, frame: usize, frames: usize) Image {
+		if(image.height < frames) return image;
+		var startHeight = image.height/frames*frame;
+		if(image.height%frames > frame) startHeight += frame
+		else startHeight += image.height%frames;
+		var endHeight = image.height/frames*(frame + 1);
+		if(image.height%frames > frame + 1) endHeight += frame + 1
+		else endHeight += image.height%frames;
+		var result = image;
+		result.height = @intCast(endHeight - startHeight);
+		result.imageData = result.imageData[startHeight*image.width..endHeight*image.width];
+		return result;
 	}
 
 	fn readTextureData(_path: []const u8) void {
 		var buffer: [1024]u8 = undefined;
 		@memcpy(buffer[0.._path.len], _path);
 		const path = buffer[0.._path.len];
-		blockTextures.append(Image.readFromFile(arenaForWorld.allocator(), path) catch Image.defaultImage);
-		readAuxillaryTexture(path, &buffer, "_emission.png", &emissionTextures, Image.emptyImage);
-		readAuxillaryTexture(path, &buffer, "_reflectivity.png", &reflectivityTextures, Image.emptyImage);
-		readAuxillaryTexture(path, &buffer, "_absorption.png", &absorptionTextures, Image.whiteEmptyImage);
-		const textureInfoPath = extendedPath(path, &buffer, "_textureInfo.json");
-		const textureInfoJson = main.files.readToJson(main.stackAllocator, textureInfoPath) catch .JsonNull;
-		defer textureInfoJson.free(main.stackAllocator);
-		textureFogData.append(.{
-			.fogDensity = textureInfoJson.get(f32, "fogDensity", 0.0),
-			.fogColor = textureInfoJson.get(u32, "fogColor", 0xffffff),
-		});
+		const textureInfoPath = extendedPath(path, &buffer, "_textureInfo.zig.zon");
+		const textureInfoZon = main.files.readToZon(main.stackAllocator, textureInfoPath) catch .null;
+		defer textureInfoZon.free(main.stackAllocator);
+		const animationFrames = textureInfoZon.get(u32, "frames", 1);
+		const animationTime = textureInfoZon.get(u32, "time", 1);
+		animation.append(.{.startFrame = @intCast(blockTextures.items.len), .frames = animationFrames, .time = animationTime});
+		const base = Image.readFromFile(arenaForWorld.allocator(), path) catch Image.defaultImage;
+		const emission = readAuxillaryTexture(path, &buffer, "_emission.png", Image.emptyImage);
+		const reflectivity = readAuxillaryTexture(path, &buffer, "_reflectivity.png", Image.emptyImage);
+		const absorption = readAuxillaryTexture(path, &buffer, "_absorption.png", Image.whiteEmptyImage);
+		for(0..animationFrames) |i| {
+			blockTextures.append(extractAnimationSlice(base, i, animationFrames));
+			emissionTextures.append(extractAnimationSlice(emission, i, animationFrames));
+			reflectivityTextures.append(extractAnimationSlice(reflectivity, i, animationFrames));
+			absorptionTextures.append(extractAnimationSlice(absorption, i, animationFrames));
+			textureFogData.append(.{
+				.fogDensity = textureInfoZon.get(f32, "fogDensity", 0.0),
+				.fogColor = textureInfoZon.get(u32, "fogColor", 0xffffff),
+			});
+		}
 	}
 
-	pub fn readTexture(textureInfo: JsonElement, assetFolder: []const u8) !u16 {
+	pub fn readTexture(textureId: []const u8, assetFolder: []const u8) !u16 {
 		var result: u16 = undefined;
-		if(textureInfo == .JsonString or textureInfo == .JsonStringOwned) {
-			const resource = textureInfo.as([]const u8, "");
-			var splitter = std.mem.splitScalar(u8, resource, ':');
-			const mod = splitter.first();
-			const id = splitter.rest();
-			var buffer: [1024]u8 = undefined;
-			var path = try std.fmt.bufPrint(&buffer, "{s}/{s}/blocks/textures/{s}.png", .{assetFolder, mod, id});
-			// Test if it's already in the list:
-			for(textureIDs.items, 0..) |other, j| {
-				if(std.mem.eql(u8, other, path)) {
-					result = @intCast(j);
-					return result;
-				}
+		var splitter = std.mem.splitScalar(u8, textureId, ':');
+		const mod = splitter.first();
+		const id = splitter.rest();
+		var buffer: [1024]u8 = undefined;
+		var path = try std.fmt.bufPrint(&buffer, "{s}/{s}/blocks/textures/{s}.png", .{assetFolder, mod, id});
+		// Test if it's already in the list:
+		for(textureIDs.items, 0..) |other, j| {
+			if(std.mem.eql(u8, other, path)) {
+				result = @intCast(j);
+				return result;
 			}
-			const file = std.fs.cwd().openFile(path, .{}) catch |err| blk: {
-				if(err != error.FileNotFound) {
-					std.log.err("Could not open file {s}: {s}", .{path, @errorName(err)});
-				}
-				path = try std.fmt.bufPrint(&buffer, "assets/{s}/blocks/textures/{s}.png", .{mod, id}); // Default to global assets.
-				break :blk std.fs.cwd().openFile(path, .{}) catch |err2| {
-					std.log.err("File not found. Searched in \"{s}\" and also in the assetFolder \"{s}\"", .{path, assetFolder});
-					return err2;
-				};
-			};
-			file.close(); // It was only openend to check if it exists.
-			// Otherwise read it into the list:
-			result = @intCast(blockTextures.items.len);
-
-			textureIDs.append(arenaForWorld.allocator().dupe(u8, path));
-			animation.append(.{.frames = 1, .time = 1});
-			readTextureData(path);
-		} else if(textureInfo == .JsonObject) {
-			const animationTime = textureInfo.get(i32, "time", 500);
-			const textures = textureInfo.getChild("textures").toSlice();
-			// Add the new textures into the list. Since this is an animation all textures that weren't found need to be replaced with undefined.
-			result = @intCast(blockTextures.items.len);
-			for(textures, 0..) |item, i| {
-				if(i == 0) {
-					animation.append(.{.frames = @intCast(textures.len), .time = animationTime});
-				} else {
-					animation.append(.{.frames = 1, .time = 1});
-				}
-				var splitter = std.mem.splitScalar(u8, item.as([]const u8, "cubyz:undefined"), ':');
-				const mod = splitter.first();
-				const id = splitter.rest();
-				var buffer: [1024]u8 = undefined;
-				var path = try std.fmt.bufPrint(&buffer, "{s}/{s}/blocks/textures/{s}.png", .{assetFolder, mod, id});
-				const file = std.fs.cwd().openFile(path, .{}) catch |err| blk: {
-					if(err != error.FileNotFound) {
-						std.log.err("Could not open file {s}: {s}", .{path, @errorName(err)});
-					}
-					path = try std.fmt.bufPrint(&buffer, "assets/{s}/blocks/textures/{s}.png", .{mod, id}); // Default to global assets.
-					break :blk std.fs.cwd().openFile(path, .{}) catch |err2| {
-						std.log.err("File not found. Searched in \"{s}\" and also in the assetFolder \"{s}\"", .{path, assetFolder});
-						return err2;
-					};
-				};
-				file.close(); // It was only openend to check if it exists.
-
-				textureIDs.append(arenaForWorld.allocator().dupe(u8, path));
-				readTextureData(path);
-			}
-		} else {
-			return error.NotSpecified;
 		}
+		const file = std.fs.cwd().openFile(path, .{}) catch |err| blk: {
+			if(err != error.FileNotFound) {
+				std.log.err("Could not open file {s}: {s}", .{path, @errorName(err)});
+			}
+			path = try std.fmt.bufPrint(&buffer, "assets/{s}/blocks/textures/{s}.png", .{mod, id}); // Default to global assets.
+			break :blk std.fs.cwd().openFile(path, .{}) catch |err2| {
+				std.log.err("File not found. Searched in \"{s}\" and also in the assetFolder \"{s}\"", .{path, assetFolder});
+				return err2;
+			};
+		};
+		file.close(); // It was only openend to check if it exists.
+		// Otherwise read it into the list:
+		result = @intCast(textureIDs.items.len);
+
+		textureIDs.append(arenaForWorld.allocator().dupe(u8, path));
+		readTextureData(path);
 		return result;
 	}
 
-	pub fn getTextureIndices(json: JsonElement, assetFolder: []const u8, textureIndicesRef: []u16) void {
-		const defaultIndex = readTexture(json.getChild("texture"), assetFolder) catch 0;
+	pub fn getTextureIndices(zon: ZonElement, assetFolder: []const u8, textureIndicesRef: []u16) void {
+		const defaultIndex = readTexture(zon.get([]const u8, "texture", ""), assetFolder) catch 0;
 		for(textureIndicesRef, sideNames) |*ref, name| {
-			const textureInfo = json.getChild(name);
-			ref.* = readTexture(textureInfo, assetFolder) catch defaultIndex;
+			const textureId = zon.get([]const u8, name, "");
+			ref.* = readTexture(textureId, assetFolder) catch defaultIndex;
 		}
 	}
 
-	pub fn register(assetFolder: []const u8, _: []const u8, json: JsonElement) void {
-		_modelIndex[meshes.size] = _mode[meshes.size].createBlockModel(json.get([]const u8, "model", "cubyz:cube"));
+	pub fn register(assetFolder: []const u8, _: []const u8, zon: ZonElement) void {
+		_modelIndex[meshes.size] = _mode[meshes.size].createBlockModel(zon.get([]const u8, "model", "cubyz:cube"));
 
 		// The actual model is loaded later, in the rendering thread.
 		// But textures can be loaded here:
 
-		getTextureIndices(json, assetFolder, &textureData[meshes.size].textureIndices);
+		getTextureIndices(zon, assetFolder, &textureData[meshes.size].textureIndices);
 
 		maxTextureCount[meshes.size] = @intCast(textureIDs.items.len);
 
@@ -591,8 +578,8 @@ pub const meshes = struct { // MARK: meshes
 	pub fn preProcessAnimationData(time: u32) void {
 		animationShader.bind();
 		graphics.c.glUniform1ui(animationUniforms.time, time);
-		graphics.c.glUniform1ui(animationUniforms.size, @intCast(blockTextures.items.len));
-		graphics.c.glDispatchCompute(@intCast(@divFloor(blockTextures.items.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
+		graphics.c.glUniform1ui(animationUniforms.size, @intCast(animation.items.len));
+		graphics.c.glDispatchCompute(@intCast(@divFloor(animation.items.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
 		graphics.c.glMemoryBarrier(graphics.c.GL_SHADER_STORAGE_BARRIER_BIT);
 	}
 
@@ -647,7 +634,7 @@ pub const meshes = struct { // MARK: meshes
 		animationSSBO = SSBO.initStatic(AnimationData, animation.items);
 		animationSSBO.?.bind(0);
 		
-		animatedTextureSSBO = SSBO.initStaticSize(u32, blockTextures.items.len);
+		animatedTextureSSBO = SSBO.initStaticSize(u32, animation.items.len);
 		animatedTextureSSBO.?.bind(1);
 		fogSSBO = SSBO.initStatic(FogData, textureFogData.items);
 		fogSSBO.?.bind(7);

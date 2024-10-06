@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("root");
 const random = main.random;
-const JsonElement = main.JsonElement;
+const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
 const CaveMap = terrain.CaveMap;
 const CaveBiomeMap = terrain.CaveBiomeMap;
@@ -26,7 +26,7 @@ var glowCrystals: [crystalColor.len]u16 = undefined;
 
 const surfaceDist = 2; // How far away crystal can spawn from the wall.
 
-pub fn init(parameters: JsonElement) void {
+pub fn init(parameters: ZonElement) void {
 	_ = parameters;
 	// Find all the glow crystal ores:
 	inline for(crystalColor[0..], glowCrystals[0..]) |color, *block| {

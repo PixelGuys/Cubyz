@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("root");
 const random = main.random;
-const JsonElement = main.JsonElement;
+const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
 const CaveMap = terrain.CaveMap;
 const CaveBiomeMap = terrain.CaveBiomeMap;
@@ -22,7 +22,7 @@ var ores: []main.blocks.Ore = undefined;
 // TODO: Idea:
 // Add a RotationMode that allows you to overlay the ore texture onto a regular block to get more ore-in-stone-types for free.
 
-pub fn init(parameters: JsonElement) void {
+pub fn init(parameters: ZonElement) void {
 	_ = parameters;
 	ores = main.blocks.ores.items;
 }

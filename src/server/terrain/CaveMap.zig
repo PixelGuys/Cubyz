@@ -5,7 +5,7 @@ const main = @import("root");
 const ServerChunk = main.chunk.ServerChunk;
 const ChunkPosition = main.chunk.ChunkPosition;
 const Cache = main.utils.Cache;
-const JsonElement = main.JsonElement;
+const ZonElement = main.ZonElement;
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 const terrain = @import("terrain.zig");
@@ -21,7 +21,7 @@ pub const CaveMapFragment = struct { // MARK: CaveMapFragment
 	data: [width*width]u64 = undefined,
 	pos: ChunkPosition,
 	voxelShift: u5,
-	refCount: Atomic(u16) = Atomic(u16).init(0),
+	refCount: Atomic(u16) = .init(0),
 
 
 	pub fn init(self: *CaveMapFragment, wx: i32, wy: i32, wz: i32, voxelSize: u31) void {
@@ -99,7 +99,7 @@ pub const CaveMapFragment = struct { // MARK: CaveMapFragment
 
 /// A generator for the cave map.
 pub const CaveGenerator = struct { // MARK: CaveGenerator
-	init: *const fn(parameters: JsonElement) void,
+	init: *const fn(parameters: ZonElement) void,
 	deinit: *const fn() void,
 	generate: *const fn(map: *CaveMapFragment, seed: u64) void,
 	/// Used to prioritize certain generators over others.
@@ -121,7 +121,7 @@ pub const CaveGenerator = struct { // MARK: CaveGenerator
 		generatorRegistry.put(main.globalAllocator.allocator, Generator.id, self) catch unreachable;
 	}
 
-	pub fn getAndInitGenerators(allocator: NeverFailingAllocator, settings: JsonElement) []CaveGenerator {
+	pub fn getAndInitGenerators(allocator: NeverFailingAllocator, settings: ZonElement) []CaveGenerator {
 		const list = allocator.alloc(CaveGenerator, generatorRegistry.size);
 		var iterator = generatorRegistry.iterator();
 		var i: usize = 0;
@@ -316,7 +316,7 @@ fn cacheInit(pos: ChunkPosition) *CaveMapFragment {
 
 pub fn initGenerators() void {
 	const list = @import("cavegen/_list.zig");
-	inline for(@typeInfo(list).Struct.decls) |decl| {
+	inline for(@typeInfo(list).@"struct".decls) |decl| {
 		CaveGenerator.registerGenerator(@field(list, decl.name));
 	}
 }

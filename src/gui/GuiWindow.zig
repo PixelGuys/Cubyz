@@ -77,6 +77,7 @@ onOpenFn: *const fn()void = &defaultFunction,
 onCloseFn: *const fn()void = &defaultFunction,
 
 var grabbedWindow: *const GuiWindow = undefined;
+var windowMoving: bool = false;
 var grabPosition: ?Vec2f = null;
 var selfPositionWhenGrabbed: Vec2f = undefined;
 
@@ -130,10 +131,13 @@ pub fn defaultFunction() void {}
 
 pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) void {
 	const scaledMousePos = (mousePosition - self.pos)/@as(Vec2f, @splat(self.scale));
+	const btnPos = self.getButtonPositions();
+	const zoomInPos = btnPos[2]/self.scale;
 	if(scaledMousePos[1] < titleBarHeight and (self.showTitleBar or gui.reorderWindows)) {
 		grabbedWindow = self;
 		grabPosition = mousePosition;
 		selfPositionWhenGrabbed = self.pos;
+		windowMoving = scaledMousePos[0] <= zoomInPos;
 	} else {
 		if(self.rootComponent) |*component| {
 			if(GuiComponent.contains(component.pos(), component.size(), scaledMousePos)) {
@@ -143,12 +147,19 @@ pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) void {
 	}
 }
 
+pub fn getButtonPositions(self: *const GuiWindow) [3]f32 {
+	const closePos = if(self.closeable) self.size[0] - iconWidth*self.scale else self.size[0];
+	const zoomOutPos = closePos - iconWidth*self.scale;
+	const zoomInPos = zoomOutPos - iconWidth*self.scale;
+	return .{closePos, zoomOutPos, zoomInPos};
+}
 pub fn mainButtonReleased(self: *GuiWindow, mousePosition: Vec2f) void {
 	if(grabPosition != null and @reduce(.And, grabPosition.? == mousePosition) and grabbedWindow == self) {
 		if(self.showTitleBar or gui.reorderWindows) {
-			const closePos = if(self.closeable) self.size[0] - iconWidth*self.scale else self.size[0];
-			const zoomOutPos = closePos - iconWidth*self.scale;
-			const zoomInPos = zoomOutPos - iconWidth*self.scale;
+			const btnPos = self.getButtonPositions();
+			const closePos = btnPos[0];
+			const zoomOutPos = btnPos[1];
+			const zoomInPos = btnPos[2];
 			if(mousePosition[0] - self.pos[0] > zoomInPos) {
 				if(mousePosition[0] - self.pos[0] > zoomOutPos) {
 					if(mousePosition[0] - self.pos[0] > closePos) {
@@ -324,7 +335,7 @@ pub fn update(self: *GuiWindow) void {
 pub fn updateSelected(self: *GuiWindow, mousePosition: Vec2f) void {
 	self.updateSelectedFn();
 	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
-	if(self == grabbedWindow and (gui.reorderWindows or self.showTitleBar)) if(grabPosition) |_grabPosition| {
+	if(self == grabbedWindow and windowMoving and (gui.reorderWindows or self.showTitleBar)) if(grabPosition) |_grabPosition| {
 		self.relativePosition[0] = .{.ratio = undefined};
 		self.relativePosition[1] = .{.ratio = undefined};
 		self.pos = (mousePosition - _grabPosition) + selfPositionWhenGrabbed;
@@ -354,8 +365,16 @@ pub fn updateHovered(self: *GuiWindow, mousePosition: Vec2f) void {
 		}
 	}
 }
-
+pub fn getMinWindowWidth(self: *GuiWindow) f32 {
+	return iconWidth * @as(f32, (if (self.closeable) 4 else 3));
+}
 pub fn updateWindowPosition(self: *GuiWindow) void {
+	const minSize = self.getMinWindowWidth();
+	if(self.contentSize[0] < minSize) {
+		std.log.err("Window '{s}' width is too small: {d}px before scaling", .{self.id, self.contentSize[0]});
+		self.contentSize[0] = minSize;
+		std.log.debug("Resized width to {d}px unscaled", .{self.contentSize[0]});
+	}
 	self.size = self.contentSize*@as(Vec2f, @splat(self.scale));
 	const windowSize = main.Window.getWindowSize()/@as(Vec2f, @splat(gui.scale));
 	for(self.relativePosition, 0..) |relPos, i| {
@@ -483,7 +502,7 @@ pub fn render(self: *const GuiWindow, mousePosition: Vec2f) void {
 	}
 	draw.restoreTranslation(oldTranslation);
 	draw.restoreScale(oldScale);
-	if(self == grabbedWindow and (gui.reorderWindows or self.showTitleBar) and grabPosition != null) {
+	if(self == grabbedWindow and windowMoving and (gui.reorderWindows or self.showTitleBar) and grabPosition != null) {
 		self.drawOrientationLines();
 	}
 }

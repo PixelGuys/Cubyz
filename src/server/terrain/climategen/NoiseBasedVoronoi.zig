@@ -3,7 +3,7 @@ const std = @import("std");
 const main = @import("root");
 const Array2D = main.utils.Array2D;
 const random = main.random;
-const JsonElement = main.JsonElement;
+const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
 const ClimateMapFragment = terrain.ClimateMap.ClimateMapFragment;
 const BiomeSample = terrain.ClimateMap.BiomeSample;
@@ -19,7 +19,7 @@ const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 pub const id = "cubyz:noise_based_voronoi";
 
-pub fn init(parameters: JsonElement) void {
+pub fn init(parameters: ZonElement) void {
 	_ = parameters;
 }
 

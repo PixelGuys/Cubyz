@@ -5,7 +5,7 @@ const main = @import("root");
 const Chunk = main.chunk.Chunk;
 const ChunkPosition = main.chunk.ChunkPosition;
 const Cache = main.utils.Cache;
-const JsonElement = main.JsonElement;
+const ZonElement = main.ZonElement;
 const Vec3d = main.vec.Vec3d;
 
 const terrain = @import("terrain.zig");
@@ -70,9 +70,9 @@ pub const MapFragment = struct { // MARK: MapFragment
 	maxHeight: i32 = 0,
 	pos: MapFragmentPosition,
 
-	wasStored: Atomic(bool) = .{.raw = false},
+	wasStored: Atomic(bool) = .init(false),
 	
-	refCount: Atomic(u16) = Atomic(u16).init(0),
+	refCount: Atomic(u16) = .init(0),
 
 	pub fn init(self: *MapFragment, wx: i32, wy: i32, voxelSize: u31) void {
 		self.* = .{
@@ -219,7 +219,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 
 /// Generates the detailed(block-level precision) height and biome maps from the climate map.
 pub const MapGenerator = struct {
-	init: *const fn(parameters: JsonElement) void,
+	init: *const fn(parameters: ZonElement) void,
 	deinit: *const fn() void,
 	generateMapFragment: *const fn(fragment: *MapFragment, seed: u64) void,
 
@@ -251,7 +251,7 @@ var profile: TerrainGenerationProfile = undefined;
 
 pub fn initGenerators() void {
 	const list = @import("mapgen/_list.zig");
-	inline for(@typeInfo(list).Struct.decls) |decl| {
+	inline for(@typeInfo(list).@"struct".decls) |decl| {
 		MapGenerator.registerGenerator(@field(list, decl.name));
 	}
 }

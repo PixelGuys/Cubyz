@@ -35,7 +35,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 		fn updateData(_: *Block, _: Neighbor, _: Block) bool {
 			return false;
 		}
-		fn rayIntersection(block: Block, _: main.items.ItemStack, _: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
+		fn rayIntersection(block: Block, _: ?main.items.Item, _: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
 			// Check the true bounding box (using this algorithm here: https://tavianator.com/2011/ray_box.html):
 			const invDir = @as(Vec3f, @splat(1))/playerDir;
 			const modelData = &main.models.models.items[blocks.meshes.model(block)];
@@ -70,7 +70,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 	/// Updates data of a placed block if the RotationMode dependsOnNeighbors.
 	updateData: *const fn(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool = &DefaultFunctions.updateData,
 
-	rayIntersection: *const fn(block: Block, item: main.items.ItemStack, voxelPos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult = &DefaultFunctions.rayIntersection,
+	rayIntersection: *const fn(block: Block, item: ?main.items.Item, voxelPos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult = &DefaultFunctions.rayIntersection,
 };
 
 var rotationModes: std.StringHashMap(RotationMode) = undefined;
@@ -93,7 +93,7 @@ pub const RotationModes = struct {
 		var rotatedModels: std.StringHashMap(u16) = undefined;
 
 		fn init() void {
-			rotatedModels = std.StringHashMap(u16).init(main.globalAllocator.allocator);
+			rotatedModels = .init(main.globalAllocator.allocator);
 		}
 
 		fn deinit() void {
@@ -138,7 +138,7 @@ pub const RotationModes = struct {
 		var rotatedModels: std.StringHashMap(u16) = undefined;
 
 		fn init() void {
-			rotatedModels = std.StringHashMap(u16).init(main.globalAllocator.allocator);
+			rotatedModels = .init(main.globalAllocator.allocator);
 		}
 
 		fn deinit() void {
@@ -189,7 +189,7 @@ pub const RotationModes = struct {
 		};
 
 		fn init() void {
-			fenceModels = std.StringHashMap(u16).init(main.globalAllocator.allocator);
+			fenceModels = .init(main.globalAllocator.allocator);
 		}
 
 		fn deinit() void {
@@ -512,8 +512,8 @@ pub const RotationModes = struct {
 			return null;
 		}
 
-		pub fn rayIntersection(block: Block, item: main.items.ItemStack, blockPos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
-			if(item.item) |_item| {
+		pub fn rayIntersection(block: Block, item: ?main.items.Item, blockPos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
+			if(item) |_item| {
 				switch(_item) {
 					.baseItem => |baseItem| {
 						if(std.mem.eql(u8, baseItem.id, "cubyz:chisel")) { // Select only one eigth of a block
@@ -557,7 +557,7 @@ pub const RotationModes = struct {
 		};
 
 		fn init() void {
-			rotatedModels = std.StringHashMap(u16).init(main.globalAllocator.allocator);
+			rotatedModels = .init(main.globalAllocator.allocator);
 		}
 
 		fn deinit() void {
@@ -668,15 +668,15 @@ pub const RotationModes = struct {
 // MARK: init/register
 
 pub fn init() void {
-	rotationModes = std.StringHashMap(RotationMode).init(main.globalAllocator.allocator);
-	inline for(@typeInfo(RotationModes).Struct.decls) |declaration| {
+	rotationModes = .init(main.globalAllocator.allocator);
+	inline for(@typeInfo(RotationModes).@"struct".decls) |declaration| {
 		register(@field(RotationModes, declaration.name));
 	}
 }
 
 pub fn deinit() void {
 	rotationModes.deinit();
-	inline for(@typeInfo(RotationModes).Struct.decls) |declaration| {
+	inline for(@typeInfo(RotationModes).@"struct".decls) |declaration| {
 		@field(RotationModes, declaration.name).deinit();
 	}
 }
@@ -690,7 +690,7 @@ pub fn getByID(id: []const u8) *RotationMode {
 pub fn register(comptime Mode: type) void {
 	Mode.init();
 	var result: RotationMode = RotationMode{};
-	inline for(@typeInfo(RotationMode).Struct.fields) |field| {
+	inline for(@typeInfo(RotationMode).@"struct".fields) |field| {
 		if(@hasDecl(Mode, field.name)) {
 			if(field.type == @TypeOf(@field(Mode, field.name))) {
 				@field(result, field.name) = @field(Mode, field.name);

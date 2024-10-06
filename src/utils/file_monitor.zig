@@ -65,8 +65,8 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 		if(fd == -1) {
 			std.log.err("Error while initializing inotifiy: {}", .{std.posix.errno(fd)});
 		}
-		watchDescriptors = std.StringHashMap(*DirectoryInfo).init(main.globalAllocator.allocator);
-		callbacks = std.AutoHashMap(c_int, *DirectoryInfo).init(main.globalAllocator.allocator);
+		watchDescriptors = .init(main.globalAllocator.allocator);
+		callbacks = .init(main.globalAllocator.allocator);
 	}
 
 	fn deinit() void {
@@ -228,9 +228,9 @@ const WindowsImpl = struct { // MARK: WindowsImpl
 	};
 
 	fn init() void {
-		notificationHandlers = std.StringHashMap(*DirectoryInfo).init(main.globalAllocator.allocator);
-		callbacks = main.List(*DirectoryInfo).init(main.globalAllocator);
-		justTheHandles = main.List(HANDLE).init(main.globalAllocator);
+		notificationHandlers = .init(main.globalAllocator.allocator);
+		callbacks = .init(main.globalAllocator);
+		justTheHandles = .init(main.globalAllocator);
 	}
 
 	fn deinit() void {

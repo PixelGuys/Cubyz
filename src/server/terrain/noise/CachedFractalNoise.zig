@@ -20,7 +20,7 @@ pub fn init(wx: i32, wy: i32, voxelSize: u31, size: u31, worldSeed: u64, scale: 
 			.voxelSize = voxelSize,
 			.voxelSizeShift = @ctz(voxelSize),
 		},
-		.cache = Array2D(f32).init(main.globalAllocator, cacheWidth, cacheWidth),
+		.cache = .init(main.globalAllocator, cacheWidth, cacheWidth),
 		.scale = scale,
 		.worldSeed = worldSeed,
 	};

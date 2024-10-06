@@ -48,7 +48,7 @@ pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, onNewli
 	self.* = TextInput {
 		.pos = pos,
 		.size = .{maxWidth, maxHeight},
-		.currentString = main.List(u8).init(main.globalAllocator),
+		.currentString = .init(main.globalAllocator),
 		.textBuffer = TextBuffer.init(main.globalAllocator, text, .{}, true, .left),
 		.maxWidth = maxWidth,
 		.maxHeight = maxHeight,
@@ -132,6 +132,14 @@ pub fn mainButtonReleased(self: *TextInput, mousePosition: Vec2f) void {
 		self.scrollBar.mainButtonReleased(mousePosition - self.pos);
 		gui.setSelectedTextInput(self);
 	}
+}
+
+pub fn select(self: *TextInput) void {
+	gui.setSelectedTextInput(self);
+	self.pressed = false;
+	self.selectionStart = null;
+	if(self.cursor == null)
+		self.cursor = @intCast(self.currentString.items.len);
 }
 
 pub fn deselect(self: *TextInput) void {

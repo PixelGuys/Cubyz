@@ -1,7 +1,0 @@
-{
-	"class" : "leaf",
-	"hasItem" : false,
-	"absorbedLight" : 0x121012,
-	"model" : "cubyz:cube",
-	"texture" : "cubyz:mahogany_leaves_opaque"
-}

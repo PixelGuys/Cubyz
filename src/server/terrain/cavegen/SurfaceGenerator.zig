@@ -3,7 +3,7 @@ const sign = std.math.sign;
 
 const main = @import("root");
 const random = main.random;
-const JsonElement = main.JsonElement;
+const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
 const CaveMapFragment = terrain.CaveMap.CaveMapFragment;
 const SurfaceMap = terrain.SurfaceMap;
@@ -20,7 +20,7 @@ pub const priority = 131072;
 
 pub const generatorSeed = 0x7658930674389;
 
-pub fn init(parameters: JsonElement) void {
+pub fn init(parameters: ZonElement) void {
 	_ = parameters;
 }
 

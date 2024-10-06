@@ -108,7 +108,8 @@ pub fn build(b: *std.Build) !void {
 		.target = target,
 		.optimize = optimize,
 	});
+	const run_exe_tests = b.addRunArtifact(exe_tests);
 
 	const test_step = b.step("test", "Run unit tests");
-	test_step.dependOn(&exe_tests.step);
+	test_step.dependOn(&run_exe_tests.step);
 }

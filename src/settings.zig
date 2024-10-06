@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const JsonElement = @import("json.zig").JsonElement;
+const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main.zig");
 
 pub const defaultPort: u16 = 47649;
@@ -58,25 +58,25 @@ pub var developerGPUInfiniteLoopDetection: bool = false;
 
 
 pub fn init() void {
-	const json: JsonElement = main.files.readToJson(main.stackAllocator, "settings.json") catch |err| blk: {
+	const zon: ZonElement = main.files.readToZon(main.stackAllocator, "settings.zig.zon") catch |err| blk: {
 		if(err != error.FileNotFound) {
 			std.log.err("Could not read settings file: {s}", .{@errorName(err)});
 		}
-		break :blk .JsonNull;
+		break :blk .null;
 	};
-	defer json.free(main.stackAllocator);
+	defer zon.free(main.stackAllocator);
 
-	inline for(@typeInfo(@This()).Struct.decls) |decl| {
-		const is_const = @typeInfo(@TypeOf(&@field(@This(), decl.name))).Pointer.is_const; // Sadly there is no direct way to check if a declaration is const.
+	inline for(@typeInfo(@This()).@"struct".decls) |decl| {
+		const is_const = @typeInfo(@TypeOf(&@field(@This(), decl.name))).pointer.is_const; // Sadly there is no direct way to check if a declaration is const.
 		if(!is_const) {
 			const declType = @TypeOf(@field(@This(), decl.name));
-			if(@typeInfo(declType) == .Struct) {
+			if(@typeInfo(declType) == .@"struct") {
 				@compileError("Not implemented yet.");
 			}
-			@field(@This(), decl.name) = json.get(declType, decl.name, @field(@This(), decl.name));
-			if(@typeInfo(declType) == .Pointer) {
-				if(@typeInfo(declType).Pointer.size == .Slice) {
-					@field(@This(), decl.name) = main.globalAllocator.dupe(@typeInfo(declType).Pointer.child, @field(@This(), decl.name));
+			@field(@This(), decl.name) = zon.get(declType, decl.name, @field(@This(), decl.name));
+			if(@typeInfo(declType) == .pointer) {
+				if(@typeInfo(declType).pointer.size == .Slice) {
+					@field(@This(), decl.name) = main.globalAllocator.dupe(@typeInfo(declType).pointer.child, @field(@This(), decl.name));
 				} else {
 					@compileError("Not implemented yet.");
 				}
@@ -87,26 +87,26 @@ pub fn init() void {
 	if(resolutionScale != 1 and resolutionScale != 0.5 and resolutionScale != 0.25) resolutionScale = 1;
 
 	// keyboard settings:
-	const keyboard = json.getChild("keyboard");
+	const keyboard = zon.getChild("keyboard");
 	for(&main.KeyBoard.keys) |*key| {
-		const keyJson = keyboard.getChild(key.name);
-		key.key = keyJson.get(c_int, "key", key.key);
-		key.mouseButton = keyJson.get(c_int, "mouseButton", key.mouseButton);
-		key.scancode = keyJson.get(c_int, "scancode", key.scancode);
+		const keyZon = keyboard.getChild(key.name);
+		key.key = keyZon.get(c_int, "key", key.key);
+		key.mouseButton = keyZon.get(c_int, "mouseButton", key.mouseButton);
+		key.scancode = keyZon.get(c_int, "scancode", key.scancode);
 	}
 }
 
 pub fn deinit() void {
 	save();
-	inline for(@typeInfo(@This()).Struct.decls) |decl| {
-		const is_const = @typeInfo(@TypeOf(&@field(@This(), decl.name))).Pointer.is_const; // Sadly there is no direct way to check if a declaration is const.
+	inline for(@typeInfo(@This()).@"struct".decls) |decl| {
+		const is_const = @typeInfo(@TypeOf(&@field(@This(), decl.name))).pointer.is_const; // Sadly there is no direct way to check if a declaration is const.
 		if(!is_const) {
 			const declType = @TypeOf(@field(@This(), decl.name));
-			if(@typeInfo(declType) == .Struct) {
+			if(@typeInfo(declType) == .@"struct") {
 				@compileError("Not implemented yet.");
 			}
-			if(@typeInfo(declType) == .Pointer) {
-				if(@typeInfo(declType).Pointer.size == .Slice) {
+			if(@typeInfo(declType) == .pointer) {
+				if(@typeInfo(declType).pointer.size == .Slice) {
 					main.globalAllocator.free(@field(@This(), decl.name));
 				} else {
 					@compileError("Not implemented yet.");
@@ -117,37 +117,37 @@ pub fn deinit() void {
 }
 
 pub fn save() void {
-	const jsonObject = JsonElement.initObject(main.stackAllocator);
-	defer jsonObject.free(main.stackAllocator);
+	const zonObject = ZonElement.initObject(main.stackAllocator);
+	defer zonObject.free(main.stackAllocator);
 
-	inline for(@typeInfo(@This()).Struct.decls) |decl| {
-		const is_const = @typeInfo(@TypeOf(&@field(@This(), decl.name))).Pointer.is_const; // Sadly there is no direct way to check if a declaration is const.
+	inline for(@typeInfo(@This()).@"struct".decls) |decl| {
+		const is_const = @typeInfo(@TypeOf(&@field(@This(), decl.name))).pointer.is_const; // Sadly there is no direct way to check if a declaration is const.
 		if(!is_const) {
 			const declType = @TypeOf(@field(@This(), decl.name));
-			if(@typeInfo(declType) == .Struct) {
+			if(@typeInfo(declType) == .@"struct") {
 				@compileError("Not implemented yet.");
 			}
 			if(declType == []const u8) {
-				jsonObject.putOwnedString(decl.name, @field(@This(), decl.name));
+				zonObject.putOwnedString(decl.name, @field(@This(), decl.name));
 			} else {
-				jsonObject.put(decl.name, @field(@This(), decl.name));
+				zonObject.put(decl.name, @field(@This(), decl.name));
 			}
 		}
 	}
 
 	// keyboard settings:
-	const keyboard = JsonElement.initObject(main.stackAllocator);
+	const keyboard = ZonElement.initObject(main.stackAllocator);
 	for(&main.KeyBoard.keys) |key| {
-		const keyJson = JsonElement.initObject(main.stackAllocator);
-		keyJson.put("key", key.key);
-		keyJson.put("mouseButton", key.mouseButton);
-		keyJson.put("scancode", key.scancode);
-		keyboard.put(key.name, keyJson);
+		const keyZon = ZonElement.initObject(main.stackAllocator);
+		keyZon.put("key", key.key);
+		keyZon.put("mouseButton", key.mouseButton);
+		keyZon.put("scancode", key.scancode);
+		keyboard.put(key.name, keyZon);
 	}
-	jsonObject.put("keyboard", keyboard);
+	zonObject.put("keyboard", keyboard);
 
 	// Write to file:
-	main.files.writeJson("settings.json", jsonObject) catch |err| {
+	main.files.writeZon("settings.zig.zon", zonObject) catch |err| {
 		std.log.err("Couldn't write settings to file: {s}", .{@errorName(err)});
 	};
 }

@@ -4,7 +4,7 @@ const chunk = @import("chunk.zig");
 const game = @import("game.zig");
 const graphics = @import("graphics.zig");
 const c = graphics.c;
-const JsonElement = @import("json.zig").JsonElement;
+const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main.zig");
 const renderer = @import("renderer.zig");
 const settings = @import("settings.zig");
@@ -30,12 +30,12 @@ pub const ClientEntity = struct {
 	id: u32,
 	name: []const u8,
 
-	pub fn init(self: *ClientEntity, json: JsonElement, allocator: NeverFailingAllocator) void {
+	pub fn init(self: *ClientEntity, zon: ZonElement, allocator: NeverFailingAllocator) void {
 		self.* = ClientEntity{
-			.id = json.get(u32, "id", std.math.maxInt(u32)),
-			.width = json.get(f64, "width", 1),
-			.height = json.get(f64, "height", 1),
-			.name = allocator.dupe(u8, json.get([]const u8, "name", "")),
+			.id = zon.get(u32, "id", std.math.maxInt(u32)),
+			.width = zon.get(f64, "width", 1),
+			.height = zon.get(f64, "height", 1),
+			.name = allocator.dupe(u8, zon.get([]const u8, "name", "")),
 		};
 		self._interpolationPos = [_]f64 {
 			self.pos[0],
@@ -89,7 +89,7 @@ pub const ClientEntityManager = struct {
 	pub var mutex: std.Thread.Mutex = std.Thread.Mutex{};
 
 	pub fn init() void {
-		entities = main.VirtualList(ClientEntity, 1 << 20).init();
+		entities = .init();
 		shader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/entity_vertex.vs", "assets/cubyz/shaders/entity_fragment.fs", "", &uniforms);
 	}
 
@@ -177,11 +177,11 @@ pub const ClientEntityManager = struct {
 		}
 	}
 
-	pub fn addEntity(json: JsonElement) void {
+	pub fn addEntity(zon: ZonElement) void {
 		mutex.lock();
 		defer mutex.unlock();
 		var ent = entities.addOne();
-		ent.init(json, main.globalAllocator);
+		ent.init(zon, main.globalAllocator);
 	}
 
 	pub fn removeEntity(id: u32) void {

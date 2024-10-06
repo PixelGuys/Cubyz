@@ -5,7 +5,7 @@ const main = @import("root");
 const ServerChunk = main.chunk.ServerChunk;
 const ChunkPosition = main.chunk.ChunkPosition;
 const Cache = main.utils.Cache;
-const JsonElement = main.JsonElement;
+const ZonElement = main.ZonElement;
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
@@ -31,7 +31,7 @@ pub const StructureMapFragment = struct {
 
 	pos: ChunkPosition,
 	voxelShift: u5,
-	refCount: Atomic(u16) = Atomic(u16).init(0),
+	refCount: Atomic(u16) = .init(0),
 	arena: main.utils.NeverFailingArenaAllocator,
 	allocator: main.utils.NeverFailingAllocator,
 
@@ -43,7 +43,7 @@ pub const StructureMapFragment = struct {
 				.voxelSize = voxelSize,
 			},
 			.voxelShift = @ctz(voxelSize),
-			.arena = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator),
+			.arena = .init(main.globalAllocator),
 			.allocator = self.arena.allocator(),
 		};
 		@memset(&self.data, .{});
@@ -98,7 +98,7 @@ pub const StructureMapFragment = struct {
 
 /// A generator for the cave map.
 pub const StructureMapGenerator = struct {
-	init: *const fn(parameters: JsonElement) void,
+	init: *const fn(parameters: ZonElement) void,
 	deinit: *const fn() void,
 	generate: *const fn(map: *StructureMapFragment, seed: u64) void,
 	/// Used to prioritize certain generators over others.
@@ -120,7 +120,7 @@ pub const StructureMapGenerator = struct {
 		generatorRegistry.put(main.globalAllocator.allocator, Generator.id, self) catch unreachable;
 	}
 
-	pub fn getAndInitGenerators(allocator: NeverFailingAllocator, settings: JsonElement) []StructureMapGenerator {
+	pub fn getAndInitGenerators(allocator: NeverFailingAllocator, settings: ZonElement) []StructureMapGenerator {
 		const list = allocator.alloc(StructureMapGenerator, generatorRegistry.size);
 		var iterator = generatorRegistry.iterator();
 		var i: usize = 0;
@@ -157,7 +157,7 @@ fn cacheInit(pos: ChunkPosition) *StructureMapFragment {
 
 pub fn initGenerators() void {
 	const list = @import("structuremapgen/_list.zig");
-	inline for(@typeInfo(list).Struct.decls) |decl| {
+	inline for(@typeInfo(list).@"struct".decls) |decl| {
 		StructureMapGenerator.registerGenerator(@field(list, decl.name));
 	}
 }

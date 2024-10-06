@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("root");
 const random = main.random;
-const JsonElement = main.JsonElement;
+const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
 const CaveMap = terrain.CaveMap;
 const vec = main.vec;
@@ -32,7 +32,7 @@ leafRadius: f32,
 deltaLeafRadius: f32,
 branched: bool,
 
-pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: JsonElement) *SimpleTreeModel {
+pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) *SimpleTreeModel {
 	const self = arenaAllocator.create(SimpleTreeModel);
 	self.* = .{
 		.typ = std.meta.stringToEnum(Type, parameters.get([]const u8, "type", "")) orelse blk: {

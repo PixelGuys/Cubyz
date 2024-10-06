@@ -36,7 +36,7 @@ var messageQueue: main.List([]const u8) = undefined;
 var expirationTime: main.List(i32) = undefined;
 var historyStart: u32 = 0;
 var fadeOutEnd: u32 = 0;
-var input: *TextInput = undefined;
+pub var input: *TextInput = undefined;
 var hideInput: bool = true;
 
 fn refresh() void {
@@ -57,6 +57,7 @@ fn refresh() void {
 	list.scrollBar.currentState = 1;
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
+	window.contentSize[0] = @max(window.contentSize[0], window.getMinWindowWidth());
 	gui.updateWindowPositions();
 	if(!hideInput) {
 		for(history.items) |label| {
@@ -69,9 +70,9 @@ fn refresh() void {
 }
 
 pub fn onOpen() void {
-	history = main.List(*Label).init(main.globalAllocator);
-	expirationTime = main.List(i32).init(main.globalAllocator);
-	messageQueue = main.List([]const u8).init(main.globalAllocator);
+	history = .init(main.globalAllocator);
+	expirationTime = .init(main.globalAllocator);
+	messageQueue = .init(main.globalAllocator);
 	historyStart = 0;
 	fadeOutEnd = 0;
 	input = TextInput.init(.{0, 0}, 256, 32, "", .{.callback = &sendMessage});

@@ -32,7 +32,7 @@ const gridSize = 4096;
 
 fn snapToGrid(x: anytype) @TypeOf(x) {
 	const T = @TypeOf(x);
-	const int = @as(@Vector(@typeInfo(T).Vector.len, i32), @intFromFloat(std.math.round(x*@as(T, @splat(gridSize)))));
+	const int = @as(@Vector(@typeInfo(T).vector.len, i32), @intFromFloat(std.math.round(x*@as(T, @splat(gridSize)))));
 	return @as(T, @floatFromInt(int))/@as(T, @splat(gridSize));
 }
 
@@ -212,7 +212,7 @@ pub const Model = struct {
 				continue;
 			
 			if (std.mem.eql(u8, line[0..2], "v ")) {
-				var coordsIter = std.mem.split(u8, line[2..], " ");
+				var coordsIter = std.mem.splitScalar(u8, line[2..], ' ');
 				var coords: Vec3f = undefined;
 				var i: usize = 0;
 				while (coordsIter.next()) |coord| : (i += 1) {
@@ -221,7 +221,7 @@ pub const Model = struct {
 				const coordsCorrect: Vec3f = .{coords[0], coords[1], coords[2]};
 				vertices.append(coordsCorrect);
 			} else if (std.mem.eql(u8, line[0..3], "vn ")) {
-				var coordsIter = std.mem.split(u8, line[3..], " ");
+				var coordsIter = std.mem.splitScalar(u8, line[3..], ' ');
 				var norm: Vec3f = undefined;
 				var i: usize = 0;
 				while (coordsIter.next()) |coord| : (i += 1) {
@@ -230,7 +230,7 @@ pub const Model = struct {
 				const normCorrect: Vec3f = .{norm[0], norm[1], norm[2]};
 				normals.append(normCorrect);
 			} else if (std.mem.eql(u8, line[0..3], "vt ")) {
-				var coordsIter = std.mem.split(u8, line[3..], " ");
+				var coordsIter = std.mem.splitScalar(u8, line[3..], ' ');
 				var uv: Vec2f = undefined;
 				var i: usize = 0;
 				while (coordsIter.next()) |coord| : (i += 1) {
@@ -240,7 +240,7 @@ pub const Model = struct {
 				uv[1] *= 4;
 				uvs.append(.{uv[0], uv[1]});
 			} else if (std.mem.eql(u8, line[0..2], "f ")) {
-				var coordsIter = std.mem.split(u8, line[2..], " ");
+				var coordsIter = std.mem.splitScalar(u8, line[2..], ' ');
 				var faceData: [3][4]usize = undefined;
 				var i: usize = 0;
 				var failed = false;
@@ -250,7 +250,7 @@ pub const Model = struct {
 						std.log.err("More than 4 verticies in a face", .{});
 						break;
 					}
-					var d = std.mem.split(u8, vertex, "/");
+					var d = std.mem.splitScalar(u8, vertex, '/');
 					var j: usize = 0;
 					if (std.mem.count(u8, vertex, "/") != 2 or std.mem.count(u8, vertex, "//") != 0) {
 						failed = true;
@@ -529,12 +529,12 @@ pub fn registerModel(id: []const u8, data: []const u8) u16 {
 
 // TODO: Entity models.
 pub fn init() void {
-	models = main.List(Model).init(main.globalAllocator);
-	quads = main.List(QuadInfo).init(main.globalAllocator);
-	extraQuadInfos = main.List(ExtraQuadInfo).init(main.globalAllocator);
-	quadDeduplication = std.AutoHashMap([@sizeOf(QuadInfo)]u8, u16).init(main.globalAllocator.allocator);
+	models = .init(main.globalAllocator);
+	quads = .init(main.globalAllocator);
+	extraQuadInfos = .init(main.globalAllocator);
+	quadDeduplication = .init(main.globalAllocator.allocator);
 
-	nameToIndex = std.StringHashMap(u16).init(main.globalAllocator.allocator);
+	nameToIndex = .init(main.globalAllocator.allocator);
 
 	nameToIndex.put("none", Model.init(&.{})) catch unreachable;
 }

@@ -3,7 +3,7 @@ const sign = std.math.sign;
 
 const main = @import("root");
 const random = main.random;
-const JsonElement = main.JsonElement;
+const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
 const biomes = terrain.biomes;
 const noise = terrain.noise;
@@ -23,7 +23,7 @@ pub const priority = 131072;
 
 pub const generatorSeed = 0x7568492764892;
 
-pub fn init(parameters: JsonElement) void {
+pub fn init(parameters: ZonElement) void {
 	_ = parameters;
 }
 

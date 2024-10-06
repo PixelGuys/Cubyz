@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("root");
 const random = main.random;
-const JsonElement = main.JsonElement;
+const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
 const CaveMap = terrain.CaveMap;
 const vec = main.vec;
@@ -22,7 +22,7 @@ topWoodBlock: u16,
 height0: u32,
 deltaHeight: u31,
 
-pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: JsonElement) *FallenTree {
+pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) *FallenTree {
 	const self = arenaAllocator.create(FallenTree);
 	self.* = .{
 		.woodBlock = main.blocks.getByID(parameters.get([]const u8, "log", "cubyz:oak_log")),

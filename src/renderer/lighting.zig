@@ -11,7 +11,7 @@ var memoryPool: std.heap.MemoryPool(ChannelChunk) = undefined;
 var memoryPoolMutex: std.Thread.Mutex = .{};
 
 pub fn init() void {
-	memoryPool = std.heap.MemoryPool(ChannelChunk).init(main.globalAllocator.allocator);
+	memoryPool = .init(main.globalAllocator.allocator);
 }
 
 pub fn deinit() void {

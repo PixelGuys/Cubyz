@@ -1,0 +1,35 @@
+.{
+	.properties = .{
+	},
+	.chance = 0.04,
+	.minHeight = 20,
+	.maxHeight = 40,
+	
+	.mountains = 30,
+	
+	.music = "cubyz:sunrise",
+	
+	.ground_structure = .{
+		"cubyz:grass",
+		"0 to 1 cubyz:soil",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:simple_tree",
+			.leaves = "cubyz:oak_leaves",
+			.log = "cubyz:oak_log",
+			.top = "cubyz:oak_top",
+			.chance = 0.016,
+			.type = .round,
+			.height = 6,
+			.height_variation = 3,
+		},
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.016,
+			.block = "cubyz:cobblestone",
+			.size = 5,
+			.size_variance = 4,
+		},
+	},
+}
