@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("root");
 const Item = main.items.Item;
-const ItemStack = main.items.ItemStack;
+const Inventory = main.items.Inventory;
 const Player = main.game.Player;
 const Vec2f = main.vec.Vec2f;
 
@@ -24,15 +24,7 @@ pub var window = GuiWindow {
 
 const padding: f32 = 8;
 var items: main.List(Item) = undefined;
-
-pub fn tryTakingItems(index: usize, destination: *ItemStack, _: u16) void {
-	trySwappingItems(index, destination);
-}
-pub fn trySwappingItems(index: usize, destination: *ItemStack) void {
-	destination.clear(); // Always replace the destination.
-	destination.item = items.items[index];
-	destination.amount = destination.item.?.stackSize();
-}
+var inventory: Inventory = undefined;
 
 fn lessThan(_: void, lhs: Item, rhs: Item) bool {
 	if(lhs == .baseItem and rhs == .baseItem) {
@@ -54,6 +46,10 @@ pub fn onOpen() void {
 		items.append(Item{.baseItem = item.*});
 	}
 	std.mem.sort(Item, items.items, {}, lessThan);
+	inventory = Inventory.init(main.globalAllocator, items.items.len, .creative);
+	for(0..items.items.len) |i| {
+		inventory.fillFromCreative(@intCast(i), items.items[i]);
+	}
 
 	const list = VerticalList.init(.{padding, padding + 16}, 140, 0);
 	var i: u32 = 0;
@@ -61,8 +57,7 @@ pub fn onOpen() void {
 		const row = HorizontalList.init();
 		for(0..8) |_| {
 			if(i >= items.items.len) break;
-			const item = items.items[i];
-			row.add(ItemSlot.init(.{0, 0}, .{.item = item, .amount = 1}, &.{.tryTakingItems = &tryTakingItems, .trySwappingItems = &trySwappingItems}, i, .default, .takeOnly));
+			row.add(ItemSlot.init(.{0, 0}, inventory, i, .default, .takeOnly));
 			i += 1;
 		}
 		list.add(row);
@@ -78,4 +73,5 @@ pub fn onClose() void {
 		comp.deinit();
 	}
 	items.deinit();
+	inventory.deinit(main.globalAllocator);
 }

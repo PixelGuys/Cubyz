@@ -1,8 +1,7 @@
 const std = @import("std");
 
 const main = @import("root");
-const ItemStack = main.items.ItemStack;
-const Item = main.items.Items;
+const Inventory = main.items.Inventory;
 const graphics = main.graphics;
 const draw = graphics.draw;
 const Texture = graphics.Texture;
@@ -17,16 +16,6 @@ const ItemSlot = @This();
 
 const border: f32 = 2;
 
-pub const VTable = struct {
-	tryAddingItems: *const fn(usize, *ItemStack, u16) void = &defaultAddingItems,
-	tryTakingItems: *const fn(usize, *ItemStack, u16) void = &defaultTakingItems,
-	trySwappingItems: *const fn(usize, *ItemStack) void = &defaultSwappingItems,
-
-	fn defaultAddingItems(_: usize, _: *ItemStack, _: u16) void {}
-	fn defaultTakingItems(_: usize, _: *ItemStack, _: u16) void {}
-	fn defaultSwappingItems(_: usize, _: *ItemStack) void {}
-};
-
 const Mode = enum {
 	normal,
 	takeOnly,
@@ -35,14 +24,14 @@ const Mode = enum {
 
 pos: Vec2f,
 size: Vec2f = .{32 + 2*border, 32 + 2*border},
-itemStack: ItemStack,
+inventory: Inventory,
+itemSlot: u32,
+lastItemAmount: u16 = 0,
 text: TextBuffer,
 textSize: Vec2f = .{0, 0},
 hovered: bool = false,
 pressed: bool = false,
 renderFrame: bool = true,
-userData: usize,
-vtable: *const VTable,
 texture: Texture,
 mode: Mode,
 
@@ -76,15 +65,16 @@ pub fn __deinit() void {
 	craftingResultTexture.deinit();
 }
 
-pub fn init(pos: Vec2f, itemStack: ItemStack, vtable: *const VTable, userData: usize, texture: TextureParamType, mode: Mode) *ItemSlot {
+pub fn init(pos: Vec2f, inventory: Inventory, itemSlot: u32, texture: TextureParamType, mode: Mode) *ItemSlot {
 	const self = main.globalAllocator.create(ItemSlot);
+	const amount = inventory.getAmount(itemSlot);
 	var buf: [16]u8 = undefined;
 	self.* = ItemSlot {
-		.itemStack = itemStack,
-		.vtable = vtable,
-		.userData = userData,
+		.inventory = inventory,
+		.itemSlot = itemSlot,
 		.pos = pos,
-		.text = TextBuffer.init(main.globalAllocator, std.fmt.bufPrint(&buf, "{}", .{itemStack.amount}) catch "∞", .{}, false, .right),
+		.text = TextBuffer.init(main.globalAllocator, std.fmt.bufPrint(&buf, "{}", .{amount}) catch "∞", .{}, false, .right),
+		.lastItemAmount = amount,
 		.texture = texture.value(),
 		.mode = mode,
 	};
@@ -97,35 +87,15 @@ pub fn deinit(self: *const ItemSlot) void {
 	main.globalAllocator.destroy(self);
 }
 
-pub fn tryAddingItems(self: *ItemSlot, source: *ItemStack, desiredAmount: u16) void {
-	std.debug.assert(source.item != null);
-	std.debug.assert(desiredAmount <= source.amount);
-	self.vtable.tryAddingItems(self.userData, source, desiredAmount);
-}
-
-pub fn tryTakingItems(self: *ItemSlot, destination: *ItemStack, desiredAmount: u16) void {
-	self.vtable.tryTakingItems(self.userData, destination, desiredAmount);
-}
-
-pub fn trySwappingItems(self: *ItemSlot, destination: *ItemStack) void {
-	self.vtable.trySwappingItems(self.userData, destination);
-}
-
-pub fn updateItemStack(self: *ItemSlot, newStack: ItemStack) void {
-	const oldAmount = self.itemStack.amount;
-	self.itemStack = newStack;
-	if(oldAmount != newStack.amount) {
-		self.refreshText();
-	}
-}
-
 fn refreshText(self: *ItemSlot) void {
+	const amount = self.inventory.getAmount(self.itemSlot);
+	if(self.lastItemAmount == amount) return;
 	self.text.deinit();
 	var buf: [16]u8 = undefined;
 	self.text = TextBuffer.init(
 		main.globalAllocator,
-		std.fmt.bufPrint(&buf, "{}", .{self.itemStack.amount}) catch "∞",
-		.{.color = if(self.itemStack.amount == 0) 0xff0000 else 0xffffff},
+		std.fmt.bufPrint(&buf, "{}", .{amount}) catch "∞",
+		.{.color = if(amount == 0) 0xff0000 else 0xffffff},
 		false,
 		.right
 	);
@@ -154,19 +124,20 @@ pub fn mainButtonReleased(self: *ItemSlot, _: Vec2f) void {
 }
 
 pub fn render(self: *ItemSlot, _: Vec2f) void {
+	self.refreshText();
 	draw.setColor(0xffffffff);
 	if(self.renderFrame) {
 		self.texture.bindTo(0);
 		draw.boundImage(self.pos, self.size);
 	}
-	if(self.itemStack.item) |item| {
+	if(self.inventory.getItem(self.itemSlot)) |item| {
 		const itemTexture = item.getTexture();
 		itemTexture.bindTo(0);
 		draw.setColor(0xff000000);
 		draw.boundImage(self.pos + @as(Vec2f, @splat(border)) + Vec2f{1.0, 1.0}, self.size - @as(Vec2f, @splat(2*border)));
 		draw.setColor(0xffffffff);
 		draw.boundImage(self.pos + @as(Vec2f, @splat(border)), self.size - @as(Vec2f, @splat(2*border)));
-		if(self.itemStack.amount != 1) {
+		if(self.inventory.getAmount(self.itemSlot) != 1) {
 			self.text.render(self.pos[0] + self.size[0] - self.textSize[0] - border, self.pos[1] + self.size[1] - self.textSize[1] - border, 8);
 		}
 	}

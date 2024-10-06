@@ -698,6 +698,7 @@ const Parser = struct { // MARK: Parser
 			},
 			else => {
 				printError(chars, index.*, "Unexpected character.");
+				index.* += 1;
 				return .null;
 			}
 		}

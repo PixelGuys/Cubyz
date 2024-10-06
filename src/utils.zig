@@ -1262,6 +1262,21 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			};
 		}
 
+		pub fn initCapacity(self: *Self, paletteLength: u32) void {
+			std.debug.assert(paletteLength < 0x80000000 and paletteLength > 0);
+			const bitSize: u5 = @intCast(std.math.log2_int_ceil(u32, paletteLength));
+			const bufferLength = @as(u32, 1) << bitSize;
+			self.* = .{
+				.data = DynamicPackedIntArray(size).initCapacity(main.globalAllocator, bitSize),
+				.palette = main.globalAllocator.alloc(T, bufferLength),
+				.paletteOccupancy = main.globalAllocator.alloc(u32, bufferLength),
+				.paletteLength = paletteLength,
+				.activePaletteEntries = 1,
+			};
+			self.palette[0] = std.mem.zeroes(T);
+			self.paletteOccupancy[0] = size;
+		}
+
 		pub fn deinit(self: *Self) void {
 			self.data.deinit(main.globalAllocator);
 			main.globalAllocator.free(self.palette);
@@ -1293,6 +1308,20 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 				std.debug.assert(self.paletteLength <= self.palette.len);
 			}
 			return paletteIndex;
+		}
+
+		pub fn setRawValue(noalias self: *Self, i: usize, paletteIndex: u32) void {
+			const previousPaletteIndex = self.data.setAndGetValue(i, paletteIndex);
+			if(previousPaletteIndex != paletteIndex) {
+				if(self.paletteOccupancy[paletteIndex] == 0) {
+					self.activePaletteEntries += 1;
+				}
+				self.paletteOccupancy[paletteIndex] += 1;
+				self.paletteOccupancy[previousPaletteIndex] -= 1;
+				if(self.paletteOccupancy[previousPaletteIndex] == 0) {
+					self.activePaletteEntries -= 1;
+				}
+			}
 		}
 
 		pub fn setValue(noalias self: *Self, i: usize, val: T) void {

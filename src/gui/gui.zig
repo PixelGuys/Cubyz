@@ -471,7 +471,7 @@ pub fn mainButtonPressed() void {
 		_selectedWindow.mainButtonPressed(mousePosition);
 		_ = openWindows.orderedRemove(selectedI);
 		openWindows.appendAssumeCapacity(_selectedWindow);
-	} else if(main.game.world != null and inventory.carriedItemSlot.itemStack.item == null) {
+	} else if(main.game.world != null and inventory.carried.getItem(0) == null) {
 		toggleGameMenu();
 	}
 }
@@ -500,7 +500,6 @@ pub fn mainButtonReleased() void {
 pub fn secondaryButtonPressed() void {
 	if(main.Window.grabbed) return;
 	inventory.update();
-	if(inventory.carriedItemStack.amount != 0) return;
 }
 
 pub fn secondaryButtonReleased() void {
@@ -564,14 +563,7 @@ pub fn updateAndRenderGui() void {
 pub fn toggleGameMenu() void {
 	main.Window.setMouseGrabbed(!main.Window.grabbed);
 	if(main.Window.grabbed) { // Take of the currently held item stack and close some windows
-		if(inventory.carriedItemStack.item) |item| {
-			inventory.carriedItemStack.amount = main.game.Player.inventory.addItem(item, inventory.carriedItemStack.amount);
-			main.network.Protocols.genericUpdate.sendInventory_full(main.game.world.?.conn, main.game.Player.inventory); // TODO(post-java): Add better options to the protocol.
-			if(inventory.carriedItemStack.amount != 0) {
-				main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, inventory.carriedItemStack, @floatCast(main.game.Player.getPosBlocking()), main.game.camera.direction, 20);
-			}
-			inventory.carriedItemStack.clear();
-		}
+		main.game.Player.inventory.depositOrDrop(inventory.carried);
 		hoveredItemSlot = null;
 		var i: usize = 0;
 		while(i < openWindows.items.len) {
@@ -589,111 +581,87 @@ pub fn toggleGameMenu() void {
 
 pub const inventory = struct { // MARK: inventory
 	const ItemStack = main.items.ItemStack;
-	pub var carriedItemStack: ItemStack = .{.item = null, .amount = 0};
+	const Inventory = main.items.Inventory;
+	pub var carried: Inventory = undefined;
 	var carriedItemSlot: *ItemSlot = undefined;
-	var deliveredItemSlots: List(*ItemSlot) = undefined;
-	var deliveredItemStacksAmountAdded: List(u16) = undefined;
-	var initialAmount: u16 = 0;
+	var leftClickSlots: List(*ItemSlot) = undefined;
+	var rightClickSlots: List(*ItemSlot) = undefined;
 
 	pub fn init() void {
-		deliveredItemSlots = .init(main.globalAllocator);
-		deliveredItemStacksAmountAdded = .init(main.globalAllocator);
-		carriedItemSlot = ItemSlot.init(.{0, 0}, carriedItemStack, undefined, undefined, .default, .normal);
+		carried = Inventory.init(main.globalAllocator, 1, .normal);
+		leftClickSlots = .init(main.globalAllocator);
+		rightClickSlots = .init(main.globalAllocator);
+		carriedItemSlot = ItemSlot.init(.{0, 0}, carried, 0, .default, .normal);
 		carriedItemSlot.renderFrame = false;
 	}
 
 	fn deinit() void {
+		carried.deinit(main.globalAllocator);
 		carriedItemSlot.deinit();
-		deliveredItemSlots.deinit();
-		deliveredItemStacksAmountAdded.deinit();
-		std.debug.assert(carriedItemStack.amount == 0);
+		leftClickSlots.deinit();
+		rightClickSlots.deinit();
 	}
 
 	fn update() void {
-		if(deliveredItemSlots.items.len == 0) {
-			initialAmount = carriedItemStack.amount;
-		}
 		if(hoveredItemSlot) |itemSlot| {
 			if(itemSlot.mode != .normal) return;
-			if(initialAmount == 0) return;
-			if(!std.meta.eql(itemSlot.itemStack.item, carriedItemStack.item) and itemSlot.itemStack.item != null) return;
 
+			if(carried.getAmount(0) == 0) return;
 			if(main.KeyBoard.key("mainGuiButton").pressed) {
-				for(deliveredItemSlots.items) |deliveredSlot| {
+				for(leftClickSlots.items) |deliveredSlot| {
 					if(itemSlot == deliveredSlot) {
 						return;
 					}
 				}
-				for(deliveredItemSlots.items, deliveredItemStacksAmountAdded.items) |deliveredSlot, oldAmountAdded| {
-					deliveredSlot.tryTakingItems(&carriedItemStack, oldAmountAdded);
-				}
-				initialAmount = carriedItemStack.amount;
-				deliveredItemSlots.append(itemSlot);
-				deliveredItemStacksAmountAdded.append(0);
-				carriedItemStack.amount = initialAmount;
-				const addedAmount: u16 = @intCast(initialAmount/deliveredItemSlots.items.len);
-				for(deliveredItemSlots.items, deliveredItemStacksAmountAdded.items) |deliveredSlot, *amountAdded| {
-					const old = carriedItemStack.amount;
-					deliveredSlot.tryAddingItems(&carriedItemStack, addedAmount);
-					amountAdded.* = old - carriedItemStack.amount;
-				}
+				leftClickSlots.append(itemSlot);
 			} else if(main.KeyBoard.key("secondaryGuiButton").pressed) {
-				for(deliveredItemSlots.items) |deliveredStack| {
-					if(itemSlot == deliveredStack) {
+				for(rightClickSlots.items) |deliveredSlot| {
+					if(itemSlot == deliveredSlot) {
 						return;
 					}
 				}
-				if(carriedItemStack.amount != 0) {
-					itemSlot.tryAddingItems(&carriedItemStack, 1);
-					deliveredItemSlots.append(itemSlot);
-					deliveredItemStacksAmountAdded.append(1);
-				}
+				itemSlot.inventory.deposit(itemSlot.itemSlot, carried, 1);
+				rightClickSlots.append(itemSlot);
 			}
 		}
 	}
 
 	fn applyChanges(leftClick: bool) void {
 		if(main.game.world == null) return;
-		if(deliveredItemSlots.items.len != 0) {
-			deliveredItemSlots.clearRetainingCapacity();
-			deliveredItemStacksAmountAdded.clearRetainingCapacity();
-			if(carriedItemStack.amount == 0) {
-				carriedItemStack.item = null;
-			}
-		} else if(hoveredItemSlot) |hovered| {
-			if(carriedItemStack.amount != 0) {
-				if(leftClick) {
-					if(std.meta.eql(carriedItemStack.item, hovered.itemStack.item)) {
-						hovered.tryTakingItems(&carriedItemStack, hovered.itemStack.amount);
-					} else {
-						hovered.trySwappingItems(&carriedItemStack);
-					}
+		if(leftClick) {
+			if(leftClickSlots.items.len != 0) {
+				const targetInventories = main.stackAllocator.alloc(Inventory, leftClickSlots.items.len);
+				defer main.stackAllocator.free(targetInventories);
+				const targetSlots = main.stackAllocator.alloc(u32, leftClickSlots.items.len);
+				defer main.stackAllocator.free(targetSlots);
+				for(0..leftClickSlots.items.len) |i| {
+					targetInventories[i] = leftClickSlots.items[i].inventory;
+					targetSlots[i] = leftClickSlots.items[i].itemSlot;
 				}
-			} else {
-				if(leftClick) {
-					hovered.tryTakingItems(&carriedItemStack, hovered.itemStack.amount);
-				} else {
-					hovered.tryTakingItems(&carriedItemStack, hovered.itemStack.amount/2);
-				}
+				carried.distribute(targetInventories, targetSlots);
+				leftClickSlots.clearRetainingCapacity();
+			} else if(hoveredItemSlot) |hovered| {
+				hovered.inventory.depositOrSwap(hovered.itemSlot, carried);
+			} else if(!hoveredAWindow) {
+				carried.dropStack(0);
 			}
-		} else if(!hoveredAWindow) {
-			if(leftClick or carriedItemStack.amount == 1) {
-				main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, carriedItemStack, @floatCast(main.game.Player.getPosBlocking()), main.game.camera.direction, 20);
-				carriedItemStack.clear();
-			} else if(carriedItemStack.amount != 0) {
-				main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, .{.item = carriedItemStack.item, .amount = 1}, @floatCast(main.game.Player.getPosBlocking()), main.game.camera.direction, 20);
-				_ = carriedItemStack.add(carriedItemStack.item.?, @as(i32, -1));
+		} else {
+			if(leftClickSlots.items.len != 0) {
+				rightClickSlots.clearRetainingCapacity();
+			} else if(hoveredItemSlot) |hovered| {
+				hovered.inventory.takeHalf(hovered.itemSlot, carried);
+			} else if(!hoveredAWindow) {
+				carried.dropOne(0);
 			}
 		}
 	}
 
 	fn render(mousePos: Vec2f) void {
-		carriedItemSlot.updateItemStack(carriedItemStack);
 		carriedItemSlot.pos = mousePos - Vec2f{12, 12};
 		carriedItemSlot.render(.{0, 0});
 		// Draw tooltip:
-		if(carriedItemStack.amount == 0) if(hoveredItemSlot) |hovered| {
-			if(hovered.itemStack.item) |item| {
+		if(carried.getAmount(0) == 0) if(hoveredItemSlot) |hovered| {
+			if(hovered.inventory.getItem(hovered.itemSlot)) |item| {
 				const tooltip = item.getTooltip();
 				var textBuffer = graphics.TextBuffer.init(main.stackAllocator, tooltip, .{}, false, .left);
 				defer textBuffer.deinit();
