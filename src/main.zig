@@ -481,7 +481,7 @@ pub fn convertJsonToZon(jsonPath: []const u8) void { // TODO: Remove after #480
 	var zonString = List(u8).init(stackAllocator);
 	defer zonString.deinit();
 	std.log.debug("{s}", .{jsonString});
-
+	
 	var i: usize = 0;
 	while(i < jsonString.len) : (i += 1) {
 		switch(jsonString[i]) {
@@ -612,6 +612,8 @@ pub fn main() void { // MARK: main()
 	entity.ClientEntityManager.init();
 	defer entity.ClientEntityManager.deinit();
 
+	openNextStartupWindow();
+
 	server.terrain.initGenerators();
 	defer server.terrain.deinitGenerators();
 
@@ -631,7 +633,6 @@ pub fn main() void { // MARK: main()
 	}
 
 	audio.setMusic("cubyz:cubyz");
-	openNextStartupWindow();
 
 	while(c.glfwWindowShouldClose(Window.window) == 0) {
 		const isHidden = c.glfwGetWindowAttrib(Window.window, c.GLFW_ICONIFIED) == c.GLFW_TRUE;

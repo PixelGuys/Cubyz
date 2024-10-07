@@ -673,6 +673,7 @@ pub fn init() void { // MARK: init()
 	c.glDebugMessageControl(c.GL_DONT_CARE, c.GL_DONT_CARE, c.GL_DONT_CARE, 0, null, c.GL_TRUE);
 	Gamepad.init();
 }
+
 pub fn deinit() void {
 	Gamepad.deinit();
 	c.glfwDestroyWindow(window);
