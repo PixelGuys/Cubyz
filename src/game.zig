@@ -450,9 +450,9 @@ pub const Player = struct { // MARK: Player
 		if (main.renderer.MeshSelection.selectedBlockPos) |selectedPos| {
 			const block = main.renderer.mesh_storage.getBlock(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
 
-			const item = for (0..items.itemListSize) |idx| {
+			const item: items.Item = for (0..items.itemListSize) |idx| {
 				if (items.itemList[idx].block == block.typ) {
-					break items.Item {.baseItem = &items.itemList[idx]};
+					break .{.baseItem = &items.itemList[idx]};
 				}
 			} else return;
 
@@ -468,14 +468,16 @@ pub const Player = struct { // MARK: Player
 			}
 
 			if (isCreative()) {
-				const targetSlot =
-					if (inventory.getItem(selectedSlot) == null) selectedSlot
+				const targetSlot = blk: {
+					if (inventory.getItem(selectedSlot) == null) break :blk selectedSlot;
 					// Look for an empty slot
-					else for (0..12) |slotIdx| {
+					for (0..12) |slotIdx| {
 						if (inventory.getItem(slotIdx) == null) {
-							break slotIdx;
+							break :blk slotIdx;
 						}
-					} else selectedSlot;
+					}
+					break :blk selectedSlot;
+				};
 
 				inventory.fillFromCreative(@intCast(targetSlot), item);
 				selectedSlot = @intCast(targetSlot);
