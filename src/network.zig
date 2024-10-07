@@ -990,11 +990,11 @@ pub const Protocols = struct {
 		const type_renderDistance: u8 = 0;
 		const type_teleport: u8 = 1;
 		const type_cure: u8 = 2;
-		const type_inventoryAdd: u8 = 3;
-		const type_inventoryFull: u8 = 4;
-		const type_inventoryClear: u8 = 5;
+		const type_Reserved1: u8 = 3;
+		const type_Reserved2: u8 = 4;
+		const type_Reserved3: u8 = 5;
 		const type_itemStackDrop: u8 = 6;
-		const type_itemStackCollect: u8 = 7;
+		const type_Reserved4: u8 = 7;
 		const type_timeAndBiome: u8 = 8;
 		fn receive(conn: *Connection, data: []const u8) !void {
 			switch(data[0]) {
@@ -1014,19 +1014,10 @@ pub const Protocols = struct {
 				type_cure => {
 					// TODO: health and hunger
 				},
-				type_inventoryAdd => {
-					const slot = std.mem.readInt(u32, data[1..5], .big);
-					const amount = std.mem.readInt(u32, data[5..9], .big);
-					_ = slot;
-					_ = amount;
-					// TODO
-				},
-				type_inventoryFull => {
-					// TODO: Parse inventory from zon
-				},
-				type_inventoryClear => {
-					// TODO: Clear inventory
-				},
+				type_Reserved1 => {},
+				type_Reserved2 => {},
+				type_Reserved3 => {},
+				type_Reserved4 => {},
 				type_itemStackDrop => {
 					const zon = ZonElement.parseFromString(main.stackAllocator, data[1..]);
 					defer zon.free(main.stackAllocator);
@@ -1038,23 +1029,6 @@ pub const Protocols = struct {
 					const dir = zon.get(Vec3f, "dir", .{0, 0, 1});
 					const vel = zon.get(f32, "vel", 0);
 					main.server.world.?.drop(stack, pos, dir, vel);
-				},
-				type_itemStackCollect => {
-					const zon = ZonElement.parseFromString(main.stackAllocator, data[1..]);
-					defer zon.free(main.stackAllocator);
-					const item = items.Item.init(zon) catch |err| {
-						std.log.err("Error {s} while collecting item {s}. Ignoring it.", .{@errorName(err), data[1..]});
-						return;
-					};
-					game.Player.mutex.lock();
-					defer game.Player.mutex.unlock();
-					const remaining = game.Player.inventory.addItem(item, zon.get(u16, "amount", 0));
-
-					sendInventory_full(conn, game.Player.inventory);
-					if(remaining != 0) {
-						// Couldn't collect everything → drop it again.
-						itemStackDrop(conn, ItemStack{.item=item, .amount=remaining}, game.Player.super.pos, Vec3f{0, 0, 0}, 0);
-					}
 				},
 				type_timeAndBiome => {
 					if(conn.manager.world) |world| {
@@ -1124,29 +1098,6 @@ pub const Protocols = struct {
 			conn.sendImportant(id, &data);
 		}
 
-		pub fn sendInventory_ItemStack_add(conn: *Connection, slot: u32, amount: i32) void {
-			var data: [9]u8 = undefined;
-			data[0] = type_inventoryAdd;
-			std.mem.writeInt(u32, data[1..5], slot, .big);
-			std.mem.writeInt(u32, data[5..9], amount, .big);
-			conn.sendImportant(id, &data);
-		}
-
-
-		pub fn sendInventory_full(conn: *Connection, inv: Inventory) void {
-			const zon = inv.save(main.stackAllocator);
-			defer zon.free(main.stackAllocator);
-			const string = zon.toString(main.stackAllocator);
-			defer main.stackAllocator.free(string);
-			addHeaderAndSendImportant(conn, type_inventoryFull, string);
-		}
-
-		pub fn clearInventory(conn: *Connection) void {
-			var data: [1]u8 = undefined;
-			data[0] = type_inventoryClear;
-			conn.sendImportant(id, &data);
-		}
-
 		pub fn itemStackDrop(conn: *Connection, stack: ItemStack, pos: Vec3d, dir: Vec3f, vel: f32) void {
 			const zonObject = stack.store(main.stackAllocator);
 			defer zonObject.free(main.stackAllocator);
@@ -1156,14 +1107,6 @@ pub const Protocols = struct {
 			const string = zonObject.toString(main.stackAllocator);
 			defer main.stackAllocator.free(string);
 			addHeaderAndSendImportant(conn, type_itemStackDrop, string);
-		}
-
-		pub fn itemStackCollect(conn: *Connection, stack: ItemStack) void {
-			const zon = stack.store(main.stackAllocator);
-			defer zon.free(main.stackAllocator);
-			const string = zon.toString(main.stackAllocator);
-			defer main.stackAllocator.free(string);
-			addHeaderAndSendImportant(conn, type_itemStackCollect, string);
 		}
 
 		pub fn sendTimeAndBiome(conn: *Connection, world: *const main.server.ServerWorld) void {
