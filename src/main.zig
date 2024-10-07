@@ -433,13 +433,13 @@ pub fn openNextStartupWindow() void {
 		.showController => {
 			startup_status = .showNamePrompt;
 			gui.openWindow("download_controller_mappings");
+			openNextStartupWindow();
 		},
 		.showNamePrompt => {
-			if (gui.isWindowOpen("change_name")) return;
+			startup_status = .showMainWindow;
 			if (settings.playerName.len == 0) {
 				gui.openWindow("change_name");
 			} else {
-				startup_status = .showMainWindow;
 				openNextStartupWindow();
 			}
 		},
@@ -631,9 +631,9 @@ pub fn main() void { // MARK: main()
 	}
 
 	audio.setMusic("cubyz:cubyz");
+	openNextStartupWindow();
 
 	while(c.glfwWindowShouldClose(Window.window) == 0) {
-		openNextStartupWindow();
 		const isHidden = c.glfwGetWindowAttrib(Window.window, c.GLFW_ICONIFIED) == c.GLFW_TRUE;
 		if(!isHidden) {
 			c.glfwSwapBuffers(Window.window);

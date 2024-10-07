@@ -237,7 +237,7 @@ pub const Gamepad = struct {
 		}
 	}
 	pub fn updateControllerMappings() void {
-		std.log.debug("Updating controller mappings in-memory...", .{});
+		std.log.info("Updating controller mappings in-memory...", .{});
 		var _envMap = std.process.getEnvMap(main.stackAllocator.allocator) catch null;
 		if (_envMap) |*envMap| {
 			defer envMap.deinit();
@@ -256,7 +256,7 @@ pub const Gamepad = struct {
 		defer main.stackAllocator.free(newData);
 		newData[data.len - 1] = 0;
 		_ = c.glfwUpdateGamepadMappings(newData.ptr);
-		std.log.debug("Controller mappings updated!", .{});
+		std.log.info("Controller mappings updated!", .{});
 	}
 
 	pub fn init() void {
