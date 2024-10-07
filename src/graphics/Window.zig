@@ -233,7 +233,7 @@ pub const Gamepad = struct {
 			ControllerMappingDownloadTask.schedule(curTimestamp);
 		} else {
 			controllerMappingsDownloaded.store(true, .monotonic);
-                        updateControllerMappings();
+			updateControllerMappings();
 		}
 	}
 	pub fn updateControllerMappings() void {
