@@ -41,7 +41,7 @@ var clearList = main.List(*chunk_meshing.ChunkMesh).init(main.globalAllocator);
 var lastPx: i32 = 0;
 var lastPy: i32 = 0;
 var lastPz: i32 = 0;
-var lastRD: i32 = 0;
+var lastRD: u16 = 0;
 var mutex = std.Thread.Mutex{};
 var blockUpdateMutex = std.Thread.Mutex{};
 const BlockUpdate = struct {
@@ -255,7 +255,7 @@ fn isMapInRenderDistance(pos: LightMap.MapFragmentPosition) bool {
 	return true;
 }
 
-fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32) void { // MARK: freeOldMeshes()
+fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16) void { // MARK: freeOldMeshes()
 	for(0..storageLists.len) |_lod| {
 		const lod: u5 = @intCast(_lod);
 		const maxRenderDistanceNew = lastRD*chunk.chunkSize << lod;
@@ -394,7 +394,7 @@ fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32) void { 
 	}
 }
 
-fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32, meshRequests: *main.List(chunk.ChunkPosition), mapRequests: *main.List(LightMap.MapFragmentPosition)) void { // MARK: createNewMeshes()
+fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16, meshRequests: *main.List(chunk.ChunkPosition), mapRequests: *main.List(LightMap.MapFragmentPosition)) void { // MARK: createNewMeshes()
 	for(0..storageLists.len) |_lod| {
 		const lod: u5 = @intCast(_lod);
 		const maxRenderDistanceNew = lastRD*chunk.chunkSize << lod;
@@ -534,11 +534,8 @@ fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: i32, meshR
 	}
 }
 
-pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *const main.renderer.Frustum, playerPos: Vec3d, renderDistance: i32) []*chunk_meshing.ChunkMesh { // MARK: updateAndGetRenderChunks()
+pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *const main.renderer.Frustum, playerPos: Vec3d, renderDistance: u16) []*chunk_meshing.ChunkMesh { // MARK: updateAndGetRenderChunks()
 	meshList.clearRetainingCapacity();
-	if(lastRD != renderDistance) {
-		network.Protocols.genericUpdate.sendRenderDistance(conn, renderDistance);
-	}
 
 	var meshRequests = main.List(chunk.ChunkPosition).init(main.stackAllocator);
 	defer meshRequests.deinit();
@@ -561,7 +558,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 
 	// Make requests as soon as possible to reduce latency:
 	network.Protocols.lightMapRequest.sendRequest(conn, mapRequests.items);
-	network.Protocols.chunkRequest.sendRequest(conn, meshRequests.items, .{lastPx, lastPy, lastPz});
+	network.Protocols.chunkRequest.sendRequest(conn, meshRequests.items, .{lastPx, lastPy, lastPz}, lastRD);
 
 	// Finds all visible chunks and lod chunks using a breadth-first search.
 
@@ -900,10 +897,10 @@ pub const MeshGenerationTask = struct { // MARK: MeshGenerationTask
 	}
 
 	pub fn isStillNeeded(self: *MeshGenerationTask, _: i64) bool {
-		const distanceSqr = self.mesh.pos.getMinDistanceSquared(game.Player.getPosBlocking()); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
+		const distanceSqr = self.mesh.pos.getMinDistanceSquared(@intFromFloat(game.Player.getPosBlocking())); // TODO: This is called in loop, find a way to do this without calling the mutex every time.
 		var maxRenderDistance = settings.renderDistance*chunk.chunkSize*self.mesh.pos.voxelSize;
 		maxRenderDistance += 2*self.mesh.pos.voxelSize*chunk.chunkSize;
-		return distanceSqr < @as(f64, @floatFromInt(maxRenderDistance*maxRenderDistance));
+		return distanceSqr < maxRenderDistance*maxRenderDistance;
 	}
 
 	pub fn run(self: *MeshGenerationTask) void {

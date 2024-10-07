@@ -30,6 +30,7 @@ pub const User = struct { // MARK: User
 	lastTime: i16 = undefined,
 	name: []const u8 = "",
 	renderDistance: u16 = undefined,
+	clientUpdatePos: Vec3i = .{0, 0, 0},
 	receivedFirstEntityData: bool = false,
 	isLocal: bool = false,
 	id: u32 = 0, // TODO: Use entity id.

@@ -157,22 +157,20 @@ const ChunkManager = struct { // MARK: ChunkManager
 			}
 		}
 
-		pub fn isStillNeeded(self: *ChunkLoadTask, milliTime: i64) bool {
+		pub fn isStillNeeded(self: *ChunkLoadTask, _: i64) bool {
 			switch(self.source) { // Remove the task if the player disconnected
 				.user => |user| if(!user.connected.load(.unordered)) return false,
 				.entityChunk => |ch| if(ch.refCount.load(.monotonic) == 2) return false,
 			}
-			if(milliTime - self.creationTime > 10000) { // Only remove stuff after 10 seconds to account for trouble when for example teleporting.
-				switch(self.source) { // Remove the task if it's far enough away from the player:
-					.user => |user| {
-						const minDistSquare = self.pos.getMinDistanceSquared(user.player.pos);
-						//                                                                  ↓ Margin for error. (diagonal of 1 chunk)
-						var targetRenderDistance = (@as(f32, @floatFromInt(user.renderDistance*chunk.chunkSize)) + @as(f32, @floatFromInt(chunk.chunkSize))*@sqrt(3.0));
-						targetRenderDistance *= @as(f32, @floatFromInt(self.pos.voxelSize));
-						return minDistSquare <= targetRenderDistance*targetRenderDistance;
-					},
-					.entityChunk => {},
-				}
+			switch(self.source) { // Remove the task if it's far enough away from the player:
+				.user => |user| {
+					const minDistSquare = self.pos.getMinDistanceSquared(user.clientUpdatePos);
+					//                                                                              ↓ Margin for error. (diagonal of 1 chunk)
+					var targetRenderDistance: i64 = @as(i64, user.renderDistance)*chunk.chunkSize + @as(i64, @intFromFloat(@as(comptime_int, chunk.chunkSize)*@sqrt(3.0)));
+					targetRenderDistance *= self.pos.voxelSize;
+					return minDistSquare <= targetRenderDistance*targetRenderDistance;
+				},
+				.entityChunk => {},
 			}
 			return true;
 		}

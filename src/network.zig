@@ -764,7 +764,9 @@ pub const Protocols = struct {
 				std.mem.readInt(i32, remaining[4..8], .big),
 				std.mem.readInt(i32, remaining[8..12], .big),
 			};
-			remaining = remaining[12..];
+			conn.user.?.clientUpdatePos = basePosition;
+			conn.user.?.renderDistance = std.mem.readInt(u16, remaining[12..14], .big);
+			remaining = remaining[14..];
 			while(remaining.len >= 4) {
 				const voxelSizeShift: u5 = @intCast(remaining[3]);
 				const positionMask = ~((@as(i32, 1) << voxelSizeShift+chunk.chunkShift) - 1);
@@ -781,15 +783,16 @@ pub const Protocols = struct {
 				remaining = remaining[4..];
 			}
 		}
-		pub fn sendRequest(conn: *Connection, requests: []chunk.ChunkPosition, basePosition: Vec3i) void {
+		pub fn sendRequest(conn: *Connection, requests: []chunk.ChunkPosition, basePosition: Vec3i, renderDistance: u16) void {
 			if(requests.len == 0) return;
-			const data = main.stackAllocator.alloc(u8, 12 + 4*requests.len);
+			const data = main.stackAllocator.alloc(u8, 14 + 4*requests.len);
 			defer main.stackAllocator.free(data);
 			var remaining = data;
 			std.mem.writeInt(i32, remaining[0..4], basePosition[0], .big);
 			std.mem.writeInt(i32, remaining[4..8], basePosition[1], .big);
 			std.mem.writeInt(i32, remaining[8..12], basePosition[2], .big);
-			remaining = remaining[12..];
+			std.mem.writeInt(u16, remaining[12..14], renderDistance, .big);
+			remaining = remaining[14..];
 			for(requests) |req| {
 				const voxelSizeShift: u5 = std.math.log2_int(u31, req.voxelSize);
 				const positionMask = ~((@as(i32, 1) << voxelSizeShift+chunk.chunkShift) - 1);
@@ -987,23 +990,17 @@ pub const Protocols = struct {
 	pub const genericUpdate = struct {
 		pub const id: u8 = 9;
 		pub const asynchronous = false;
-		const type_renderDistance: u8 = 0;
+		const type_reserved1: u8 = 0;
 		const type_teleport: u8 = 1;
 		const type_cure: u8 = 2;
-		const type_Reserved1: u8 = 3;
-		const type_Reserved2: u8 = 4;
-		const type_Reserved3: u8 = 5;
+		const type_reserved2: u8 = 3;
+		const type_reserved3: u8 = 4;
+		const type_reserved4: u8 = 5;
 		const type_itemStackDrop: u8 = 6;
-		const type_Reserved4: u8 = 7;
+		const type_reserved5: u8 = 7;
 		const type_timeAndBiome: u8 = 8;
 		fn receive(conn: *Connection, data: []const u8) !void {
 			switch(data[0]) {
-				type_renderDistance => {
-					const renderDistance = std.mem.readInt(i32, data[1..5], .big);
-					if(conn.user) |user| {
-						user.renderDistance = @intCast(renderDistance); // TODO: Update the protocol to use u16.
-					}
-				},
 				type_teleport => {
 					game.Player.setPosBlocking(Vec3d{
 						@bitCast(std.mem.readInt(u64, data[1..9], .big)),
@@ -1014,10 +1011,11 @@ pub const Protocols = struct {
 				type_cure => {
 					// TODO: health and hunger
 				},
-				type_Reserved1 => {},
-				type_Reserved2 => {},
-				type_Reserved3 => {},
-				type_Reserved4 => {},
+				type_reserved1 => {},
+				type_reserved2 => {},
+				type_reserved3 => {},
+				type_reserved4 => {},
+				type_reserved5 => {},
 				type_itemStackDrop => {
 					const zon = ZonElement.parseFromString(main.stackAllocator, data[1..]);
 					defer zon.free(main.stackAllocator);
@@ -1074,13 +1072,6 @@ pub const Protocols = struct {
 			headeredData[0] = header;
 			@memcpy(headeredData[1..], data);
 			conn.sendUnimportant(id, headeredData);
-		}
-
-		pub fn sendRenderDistance(conn: *Connection, renderDistance: i32) void {
-			var data: [5]u8 = undefined;
-			data[0] = type_renderDistance;
-			std.mem.writeInt(i32, data[1..5], renderDistance, .big);
-			conn.sendImportant(id, &data);
 		}
 
 		pub fn sendTPCoordinates(conn: *Connection, pos: Vec3d) void {
