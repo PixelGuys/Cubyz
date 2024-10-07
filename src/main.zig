@@ -432,8 +432,8 @@ pub fn openNextStartupWindow() void {
 	switch(startup_status) {
 		.showController => {
 			startup_status = .showNamePrompt;
-			gui.openWindow("download_controller_mappings");
 			openNextStartupWindow();
+			gui.openWindow("download_controller_mappings");
 		},
 		.showNamePrompt => {
 			startup_status = .showMainWindow;
