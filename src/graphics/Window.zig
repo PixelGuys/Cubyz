@@ -172,7 +172,7 @@ pub const Gamepad = struct {
 			return std.math.inf(f32);
 		}
 
-		pub fn isStillNeeded(_: *ControllerMappingDownloadTask, _: i64) bool {
+		pub fn isStillNeeded(_: *ControllerMappingDownloadTask) bool {
 			return true;
 		}
 
