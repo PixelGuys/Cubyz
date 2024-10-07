@@ -432,21 +432,14 @@ pub fn openNextStartupWindow() void {
 	switch(startup_status) {
 		.showController => {
 			startup_status = .showNamePrompt;
-			if (Window.Gamepad.isControllerConnected()) {
-				if (settings.askToDownloadControllerMappings) {
-					gui.openWindow("controller_mappings_settings");
-				} else {
-					gui.openWindow("download_controller_mappings");
-				}
-			} else {
-				openNextStartupWindow();
-			}
+			gui.openWindow("download_controller_mappings");
 		},
 		.showNamePrompt => {
-			startup_status = .showMainWindow;
+			if (gui.isWindowOpen("change_name")) return;
 			if (settings.playerName.len == 0) {
 				gui.openWindow("change_name");
 			} else {
+				startup_status = .showMainWindow;
 				openNextStartupWindow();
 			}
 		},
@@ -619,8 +612,6 @@ pub fn main() void { // MARK: main()
 	entity.ClientEntityManager.init();
 	defer entity.ClientEntityManager.deinit();
 
-	openNextStartupWindow();
-
 	server.terrain.initGenerators();
 	defer server.terrain.deinitGenerators();
 
@@ -642,6 +633,7 @@ pub fn main() void { // MARK: main()
 	audio.setMusic("cubyz:cubyz");
 
 	while(c.glfwWindowShouldClose(Window.window) == 0) {
+		openNextStartupWindow();
 		const isHidden = c.glfwGetWindowAttrib(Window.window, c.GLFW_ICONIFIED) == c.GLFW_TRUE;
 		if(!isHidden) {
 			c.glfwSwapBuffers(Window.window);

@@ -57,11 +57,6 @@ pub var developerAutoEnterWorld: []const u8 = "";
 
 pub var developerGPUInfiniteLoopDetection: bool = false;
 
-pub var askToDownloadControllerMappings: bool = true;
-
-pub var downloadControllerMappings: bool = false;
-
-pub var downloadControllerMappingsWhenUnrecognized: bool = false;
 pub var controllerAxisDeadzone: f32 = 0.0;
 
 pub fn init() void {
