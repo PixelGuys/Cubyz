@@ -2,7 +2,6 @@
 pub const advanced_controls = @import("advanced_controls.zig");
 pub const change_name = @import("change_name.zig");
 pub const chat = @import("chat.zig");
-pub const controller_mappings_settings = @import("controller_mappings_settings.zig");
 pub const controls = @import("controls.zig");
 pub const creative_inventory = @import("creative_inventory.zig");
 pub const crosshair = @import("crosshair.zig");

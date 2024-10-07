@@ -31,7 +31,11 @@ pub const Gamepad = struct {
 	pub fn update(delta: f64) void {
 		var jid: c_int = 0;
 		while (jid < c.GLFW_JOYSTICK_LAST) : (jid += 1) {
-			const oldGamepadState: c.GLFWgamepadstate = if (gamepadState.get(jid)) |v| v.* else std.mem.zeroes(c.GLFWgamepadstate);
+			// Can't initialize with the state, or it will become a reference.
+			var oldGamepadState: c.GLFWgamepadstate = std.mem.zeroes(c.GLFWgamepadstate);
+			if (gamepadState.get(jid)) |v| {
+				oldGamepadState = v.*;
+			}
 			const joystickFound = c.glfwJoystickPresent(jid) != 0 and c.glfwJoystickIsGamepad(jid) != 0;
 			if (joystickFound) {
 				if (!gamepadState.contains(jid)) {
@@ -40,6 +44,9 @@ pub const Gamepad = struct {
 				_ = c.glfwGetGamepadState(jid, gamepadState.get(jid).?);
 			} else {
 				if (gamepadState.contains(jid)) {
+					if (c.glfwJoystickPresent(jid) != 0) {
+						std.log.warn("Joystick {d} lost controller mapping!", .{jid});
+					}
 					main.globalAllocator.destroy(gamepadState.get(jid).?);
 					_ = gamepadState.remove(jid);
 				}
@@ -91,11 +98,11 @@ pub const Gamepad = struct {
 					var newAxis = applyDeadzone(newState.axes[@intCast(axis)]);
 					var oldAxis = applyDeadzone(oldState.axes[@intCast(axis)]);
 					if(!positive) {
-						newAxis *= -1;
-						oldAxis *= -1;
+						newAxis *= -1.0;
+						oldAxis *= -1.0;
 					}
-					newAxis = @max(newAxis, 0);
-					oldAxis = @max(oldAxis, 0);
+					newAxis = @max(newAxis, 0.0);
+					oldAxis = @max(oldAxis, 0.0);
 					const oldPressed = oldAxis > 0.5;
 					const newPressed = newAxis > 0.5;
 					if (oldPressed != newPressed) {
@@ -207,22 +214,18 @@ pub const Gamepad = struct {
 	pub fn downloadControllerMappings() void {
 		var needsDownload: bool = false;
 		const curTimestamp = std.time.nanoTimestamp();
-		if (settings.downloadControllerMappings) {
-			const timestamp: i128 = blk: {
-				const stamp = files.read(main.stackAllocator, "./gamecontrollerdb.stamp") catch break :blk 0;
-				defer main.stackAllocator.free(stamp);
-				break :blk std.fmt.parseInt(i128, stamp, 16) catch 0;
-			};
-			const delta = curTimestamp-%timestamp;
-			needsDownload = delta >= 7*std.time.ns_per_day;
-		}
+		const timestamp: i128 = blk: {
+			const stamp = files.read(main.stackAllocator, "./gamecontrollerdb.stamp") catch break :blk 0;
+			defer main.stackAllocator.free(stamp);
+			break :blk std.fmt.parseInt(i128, stamp, 16) catch 0;
+		};
+		const delta = curTimestamp-%timestamp;
+		needsDownload = delta >= 7*std.time.ns_per_day;
 
-		if (settings.downloadControllerMappingsWhenUnrecognized) {
-			for (0..c.GLFW_JOYSTICK_LAST) |jsid| {
-				if ((c.glfwJoystickPresent(@intCast(jsid)) != 0) and (c.glfwJoystickIsGamepad(@intCast(jsid)) == 0)) {
-					needsDownload = true;
-					break;
-				}
+		for (0..c.GLFW_JOYSTICK_LAST) |jsid| {
+			if ((c.glfwJoystickPresent(@intCast(jsid)) != 0) and (c.glfwJoystickIsGamepad(@intCast(jsid)) == 0)) {
+				needsDownload = true;
+				break;
 			}
 		}
 		std.log.info("Game controller mappings {s}need downloading.", .{if (needsDownload) "" else "do not "});
@@ -230,9 +233,11 @@ pub const Gamepad = struct {
 			ControllerMappingDownloadTask.schedule(curTimestamp);
 		} else {
 			controllerMappingsDownloaded.store(true, .monotonic);
+                        updateControllerMappings();
 		}
 	}
 	pub fn updateControllerMappings() void {
+		std.log.debug("Updating controller mappings in-memory...", .{});
 		var _envMap = std.process.getEnvMap(main.stackAllocator.allocator) catch null;
 		if (_envMap) |*envMap| {
 			defer envMap.deinit();
@@ -251,12 +256,11 @@ pub const Gamepad = struct {
 		defer main.stackAllocator.free(newData);
 		newData[data.len - 1] = 0;
 		_ = c.glfwUpdateGamepadMappings(newData.ptr);
+		std.log.debug("Controller mappings updated!", .{});
 	}
 
 	pub fn init() void {
-		if (settings.askToDownloadControllerMappings) {
-			updateControllerMappings();
-		}
+		downloadControllerMappings();
 		gamepadState = .init(main.globalAllocator.allocator);
 		update(0.0);
 		std.log.debug("Gamepads at init: {d}", .{gamepadState.count()});

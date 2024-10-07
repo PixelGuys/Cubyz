@@ -87,9 +87,6 @@ fn unbindKey(keyPtr: usize) void {
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 364, 8);
 	list.add(Button.initText(.{0, 0}, 128, if (editingKeyboard) "Gamepad" else "Keyboard", .{.callback = &setKeyboard, .arg = if (editingKeyboard) 0 else 1}));
-	if (!editingKeyboard) {
-		list.add(Button.initText(.{0, 0}, 128, "Controller mappings", gui.openWindowCallback("controller_mappings_settings")));
-	}
 	list.add(ContinuousSlider.init(.{0, 0}, 256, 0, 5, if (editingKeyboard) main.settings.mouseSensitivity else main.settings.controllerSensitivity, &updateSensitivity, &sensitivityFormatter));
 	if (!editingKeyboard) {
 		list.add(ContinuousSlider.init(.{0, 0}, 256, 0, 5, main.settings.controllerAxisDeadzone, &updateDeadzone, &deadzoneFormatter));
