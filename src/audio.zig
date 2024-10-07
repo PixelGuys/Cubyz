@@ -146,7 +146,7 @@ const MusicLoadTask = struct {
 		return std.math.floatMax(f32);
 	}
 
-	pub fn isStillNeeded(_: *MusicLoadTask, _: i64) bool {
+	pub fn isStillNeeded(_: *MusicLoadTask) bool {
 		return true;
 	}
 

@@ -1764,7 +1764,7 @@ const ProtocolTask = struct {
 		return std.math.floatMax(f32);
 	}
 
-	pub fn isStillNeeded(_: *ProtocolTask, _: i64) bool {
+	pub fn isStillNeeded(_: *ProtocolTask) bool {
 		return true;
 	}
 

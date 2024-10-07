@@ -1021,7 +1021,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 	};
 	pub const VTable = struct {
 		getPriority: *const fn(*anyopaque) f32,
-		isStillNeeded: *const fn(*anyopaque, milliTime: i64) bool,
+		isStillNeeded: *const fn(*anyopaque) bool,
 		run: *const fn(*anyopaque) void,
 		clean: *const fn(*anyopaque) void,
 	};
@@ -1106,7 +1106,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 				var temporaryTaskList = main.List(Task).init(main.stackAllocator);
 				defer temporaryTaskList.deinit();
 				while(self.loadList.extractAny()) |task| {
-					if(!task.vtable.isStillNeeded(task.self, lastUpdate)) {
+					if(!task.vtable.isStillNeeded(task.self)) {
 						task.vtable.clean(task.self);
 					} else {
 						const taskPtr = temporaryTaskList.addOne();

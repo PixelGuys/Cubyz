@@ -758,7 +758,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			return 1000000;
 		}
 
-		pub fn isStillNeeded(_: *LightRefreshTask, _: i64) bool {
+		pub fn isStillNeeded(_: *LightRefreshTask) bool {
 			return true; // TODO: Is it worth checking for this?
 		}
 
