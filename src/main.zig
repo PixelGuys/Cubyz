@@ -432,8 +432,8 @@ pub fn openNextStartupWindow() void {
 	switch(startup_status) {
 		.showController => {
 			startup_status = .showNamePrompt;
-			openNextStartupWindow();
 			gui.openWindow("download_controller_mappings");
+			openNextStartupWindow();
 		},
 		.showNamePrompt => {
 			startup_status = .showMainWindow;
@@ -481,7 +481,7 @@ pub fn convertJsonToZon(jsonPath: []const u8) void { // TODO: Remove after #480
 	var zonString = List(u8).init(stackAllocator);
 	defer zonString.deinit();
 	std.log.debug("{s}", .{jsonString});
-	
+
 	var i: usize = 0;
 	while(i < jsonString.len) : (i += 1) {
 		switch(jsonString[i]) {
