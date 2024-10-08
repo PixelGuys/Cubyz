@@ -1012,7 +1012,7 @@ pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 pub const ThreadPool = struct { // MARK: ThreadPool
 	pub const TaskType = enum(usize) {
 		chunkgen,
-		lighting,
+		meshgenAndLighting,
 		misc,
 	};
 	pub const taskTypes = std.enums.directEnumArrayLen(TaskType, 0);
