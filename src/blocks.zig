@@ -454,11 +454,11 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	pub inline fn fogDensity(block: Block) f32 {
-		return textureFogData.items[textureData[block.typ].textureIndices[0]].fogDensity;
+		return textureFogData.items[animation.items[textureData[block.typ].textureIndices[0]].startFrame].fogDensity;
 	}
 
 	pub inline fn fogColor(block: Block) u32 {
-		return textureFogData.items[textureData[block.typ].textureIndices[0]].fogColor;
+		return textureFogData.items[animation.items[textureData[block.typ].textureIndices[0]].startFrame].fogColor;
 	}
 
 	pub inline fn hasFog(block: Block) bool {

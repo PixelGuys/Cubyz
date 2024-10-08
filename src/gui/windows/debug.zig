@@ -42,7 +42,8 @@ pub fn render() void {
 		const player = main.game.Player;
 		draw.print("Pos: {d:.1}", .{player.getPosBlocking()}, 0, y, 8, .left);
 		y += 8;
-		draw.print("IsFlying: {} IsGhost: {} HyperSpeed: {}", .{
+		draw.print("Gamemode: {} IsFlying: {} IsGhost: {} HyperSpeed: {}", .{
+			player.gamemode.load(.unordered),
 			player.isFlying.load(.unordered),
 			player.isGhost.load(.unordered),
 			player.hyperSpeed.load(.unordered),

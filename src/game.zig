@@ -324,6 +324,8 @@ pub const collision = struct {
 	};
 };
 
+pub const Gamemode = enum(u8) { survival, creative };
+
 pub const Player = struct { // MARK: Player
 	pub var super: main.server.Entity = .{};
 	pub var eyePos: Vec3d = .{0, 0, 0};
@@ -331,6 +333,7 @@ pub const Player = struct { // MARK: Player
 	pub var eyeCoyote: f64 = 0;
 	pub var eyeStep: @Vector(3, bool) = .{false, false, false};
 	pub var id: u32 = 0;
+	pub var gamemode: Atomic(Gamemode) = .init(.creative);
 	pub var isFlying: Atomic(bool) = .init(false);
 	pub var isGhost: Atomic(bool) = .init(false);
 	pub var hyperSpeed: Atomic(bool) = .init(false);
@@ -398,6 +401,24 @@ pub const Player = struct { // MARK: Player
 		return eyeCoyote;
 	}
 
+	pub fn setGamemode(newGamemode: Gamemode) void {
+		gamemode.store(newGamemode, .monotonic);
+
+		if(newGamemode != .creative) {
+			isFlying.store(false, .monotonic);
+			isGhost.store(false, .monotonic);
+			hyperSpeed.store(false, .monotonic);
+		}
+	}
+
+	pub fn isCreative() bool {
+		return gamemode.load(.monotonic) == .creative;
+	}
+
+	pub fn isActuallyFlying() bool {
+		return isFlying.load(.monotonic) and !isGhost.load(.monotonic);
+	}
+
 	fn steppingHeight() Vec3d {
 		if(onGround) {
 			return .{0, 0, 0.6};
@@ -417,7 +438,8 @@ pub const Player = struct { // MARK: Player
 				return;
 			}
 		}
-		inventory.placeBlock(selectedSlot);
+
+		inventory.placeBlock(selectedSlot, isCreative());
 	}
 
 	pub fn breakBlock() void { // TODO: Breaking animation and tools
@@ -428,36 +450,38 @@ pub const Player = struct { // MARK: Player
 	pub fn acquireSelectedBlock() void {
 		if (main.renderer.MeshSelection.selectedBlockPos) |selectedPos| {
 			const block = main.renderer.mesh_storage.getBlock(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
-			for (0..items.itemListSize) |idx| outer: {
+
+			const item: items.Item = for (0..items.itemListSize) |idx| {
 				if (items.itemList[idx].block == block.typ) {
-					const item = items.Item {.baseItem = &items.itemList[idx]};
+					break .{.baseItem = &items.itemList[idx]};
+				}
+			} else return;
 
-					// Check if there is already a slot with that item type
-					for (0..12) |slotIdx| {
-						if (std.meta.eql(inventory.getItem(slotIdx), item)) {
-							inventory.fillFromCreative(@intCast(slotIdx), item);
-							selectedSlot = @intCast(slotIdx);
-							break :outer;
-						}
+			// Check if there is already a slot with that item type
+			for (0..12) |slotIdx| {
+				if (std.meta.eql(inventory.getItem(slotIdx), item)) {
+					if (isCreative()) {
+						inventory.fillFromCreative(@intCast(slotIdx), item);
 					}
+					selectedSlot = @intCast(slotIdx);
+					return;
+				}
+			}
 
-					if (inventory.getItem(selectedSlot) == null) {
-						inventory.fillFromCreative(selectedSlot, item);
-						break;
-					}
-
+			if (isCreative()) {
+				const targetSlot = blk: {
+					if (inventory.getItem(selectedSlot) == null) break :blk selectedSlot;
 					// Look for an empty slot
 					for (0..12) |slotIdx| {
 						if (inventory.getItem(slotIdx) == null) {
-							inventory.fillFromCreative(@intCast(slotIdx), item);
-							selectedSlot = @intCast(slotIdx);
-							break :outer;
+							break :blk slotIdx;
 						}
 					}
+					break :blk selectedSlot;
+				};
 
-					inventory.fillFromCreative(selectedSlot, item);
-					break;
-				}
+				inventory.fillFromCreative(@intCast(targetSlot), item);
+				selectedSlot = @intCast(targetSlot);
 			}
 		}
 	}
@@ -620,17 +644,36 @@ pub fn pressAcquireSelectedBlock() void {
 }
 
 pub fn flyToggle() void {
-	Player.isFlying.store(!Player.isFlying.load(.monotonic), .monotonic);
-	if(!Player.isFlying.load(.monotonic)) Player.isGhost.store(false, .monotonic);
+	if(!Player.isCreative()) return;
+
+	const newIsFlying = !Player.isActuallyFlying();
+
+	Player.isFlying.store(newIsFlying, .monotonic);
+	Player.isGhost.store(false, .monotonic);
 }
 
 pub fn ghostToggle() void {
-	Player.isGhost.store(!Player.isGhost.load(.monotonic), .monotonic);
-	if(Player.isGhost.load(.monotonic)) Player.isFlying.store(true, .monotonic);
+	if(!Player.isCreative()) return;
+
+	const newIsGhost = !Player.isGhost.load(.monotonic);
+
+	Player.isGhost.store(newIsGhost, .monotonic);
+	Player.isFlying.store(newIsGhost, .monotonic);
 }
 
 pub fn hyperSpeedToggle() void {
+	if(!Player.isCreative()) return;
+
 	Player.hyperSpeed.store(!Player.hyperSpeed.load(.monotonic), .monotonic);
+}
+
+pub fn gamemodeToggle() void {
+	const newGamemode = switch(Player.gamemode.load(.monotonic)) {
+		.survival => Gamemode.creative,
+		.creative => Gamemode.survival
+	};
+
+	Player.setGamemode(newGamemode);
 }
 
 

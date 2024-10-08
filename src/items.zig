@@ -1475,8 +1475,8 @@ pub const Inventory = struct { // MARK: Inventory
 		dest.update();
 	}
 
-	pub fn placeBlock(self: Inventory, slot: u32) void {
-		main.renderer.MeshSelection.placeBlock(&self._items[slot]);
+	pub fn placeBlock(self: Inventory, slot: u32, unlimitedBlocks: bool) void {
+		main.renderer.MeshSelection.placeBlock(&self._items[slot], unlimitedBlocks);
 	}
 
 	pub fn breakBlock(self: Inventory, slot: u32) void {

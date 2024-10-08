@@ -266,6 +266,7 @@ fn openWorkbench() void {
 }
 fn openCreativeInventory() void {
 	if(game.world == null) return;
+	if(!game.Player.isCreative()) return;
 	gui.toggleGameMenu();
 	gui.openWindow("creative_inventory");
 }
@@ -325,6 +326,7 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "fly", .key = c.GLFW_KEY_F, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_DPAD_DOWN, .pressAction = &game.flyToggle},
 		.{.name = "ghost", .key = c.GLFW_KEY_G, .pressAction = &game.ghostToggle},
 		.{.name = "hyperSpeed", .key = c.GLFW_KEY_H, .pressAction = &game.hyperSpeedToggle},
+		.{.name = "gamemode", .key = c.GLFW_KEY_M, .releaseAction = &game.gamemodeToggle},
 		.{.name = "fall", .key = c.GLFW_KEY_LEFT_SHIFT, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_RIGHT_THUMB},
 		.{.name = "shift", .key = c.GLFW_KEY_LEFT_SHIFT, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_RIGHT_THUMB},
 		.{.name = "fullscreen", .key = c.GLFW_KEY_F11, .releaseAction = &Window.toggleFullscreen},
@@ -421,36 +423,6 @@ fn isValidIdentifierName(str: []const u8) bool { // TODO: Remove after #480
 	}
 	return true;
 }
-const StartupStatus = enum {
-	showController,
-	showNamePrompt,
-	showMainWindow,
-	finished
-};
-var startup_status: StartupStatus = .showController;
-pub fn openNextStartupWindow() void {
-	switch(startup_status) {
-		.showController => {
-			startup_status = .showNamePrompt;
-			gui.openWindow("download_controller_mappings");
-			openNextStartupWindow();
-		},
-		.showNamePrompt => {
-			startup_status = .showMainWindow;
-			if (settings.playerName.len == 0) {
-				gui.openWindow("change_name");
-			} else {
-				openNextStartupWindow();
-			}
-		},
-		.showMainWindow => {
-			startup_status = .finished;
-			gui.openWindow("main");
-		},
-		.finished => { }
-	}
-}
-
 
 fn isHiddenOrParentHiddenPosix(path: []const u8) bool {
 	var iter = std.fs.path.componentIterator(path) catch |err| {
@@ -612,7 +584,12 @@ pub fn main() void { // MARK: main()
 	entity.ClientEntityManager.init();
 	defer entity.ClientEntityManager.deinit();
 
-	openNextStartupWindow();
+	gui.openWindow("download_controller_mappings");
+	if(settings.playerName.len == 0) {
+		gui.openWindow("change_name");
+	} else {
+		gui.openWindow("main");
+	}
 
 	server.terrain.initGenerators();
 	defer server.terrain.deinitGenerators();
