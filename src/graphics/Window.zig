@@ -23,12 +23,20 @@ pub const Gamepad = struct {
 	pub var gamepadState: std.AutoHashMap(c_int, *c.GLFWgamepadstate) = undefined;
 	pub var controllerMappingsDownloaded: std.atomic.Value(bool) = std.atomic.Value(bool).init(false);
 	pub var controllerMappingsTask: ?ControllerMappingDownloadTask = null;
+	var controllerConnectedPreviously: bool = false;
 	fn applyDeadzone(value: f32) f32 {
 		const minValue = settings.controllerAxisDeadzone;
 		const maxRange = 1.0 - minValue;
 		return (value * maxRange) + minValue;
 	}
+	pub fn areControllerMappingsDownloading() bool {
+		return ControllerMappingDownloadTask.running.load(.acquire);
+	}
 	pub fn update(delta: f64) void {
+		if (!controllerConnectedPreviously and isControllerConnected()) {
+			controllerConnectedPreviously = true;
+			downloadControllerMappings();
+		}
 		var jid: c_int = 0;
 		while (jid < c.GLFW_JOYSTICK_LAST) : (jid += 1) {
 			// Can't initialize with the state, or it will become a reference.
@@ -260,7 +268,10 @@ pub const Gamepad = struct {
 	}
 
 	pub fn init() void {
-		downloadControllerMappings();
+		controllerConnectedPreviously = isControllerConnected();
+		if (controllerConnectedPreviously) {
+			downloadControllerMappings();
+		}
 		gamepadState = .init(main.globalAllocator.allocator);
 		update(0.0);
 		std.log.debug("Gamepads at init: {d}", .{gamepadState.count()});

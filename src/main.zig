@@ -584,7 +584,6 @@ pub fn main() void { // MARK: main()
 	entity.ClientEntityManager.init();
 	defer entity.ClientEntityManager.deinit();
 
-	gui.openWindow("download_controller_mappings");
 	if(settings.playerName.len == 0) {
 		gui.openWindow("change_name");
 	} else {
@@ -643,6 +642,10 @@ pub fn main() void { // MARK: main()
 		lastBeginRendering = begin;
 
 		Window.handleEvents(deltaTime);
+		if (Window.Gamepad.areControllerMappingsDownloading() and !gui.isWindowOpen("download_controller_mappings")) {
+			gui.openWindow("download_controller_mappings");
+		}
+
 		file_monitor.handleEvents();
 
 		if(game.world != null) { // Update the game
