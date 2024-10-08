@@ -266,6 +266,7 @@ fn openWorkbench() void {
 }
 fn openCreativeInventory() void {
 	if(game.world == null) return;
+	if(!game.Player.isCreative()) return;
 	gui.toggleGameMenu();
 	gui.openWindow("creative_inventory");
 }
@@ -318,6 +319,7 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "fly", .key = c.GLFW_KEY_F, .pressAction = &game.flyToggle},
 		.{.name = "ghost", .key = c.GLFW_KEY_G, .pressAction = &game.ghostToggle},
 		.{.name = "hyperSpeed", .key = c.GLFW_KEY_H, .pressAction = &game.hyperSpeedToggle},
+		.{.name = "gamemode", .key = c.GLFW_KEY_M, .releaseAction = &game.gamemodeToggle},
 		.{.name = "fall", .key = c.GLFW_KEY_LEFT_SHIFT},
 		.{.name = "shift", .key = c.GLFW_KEY_LEFT_SHIFT},
 		.{.name = "fullscreen", .key = c.GLFW_KEY_F11, .releaseAction = &Window.toggleFullscreen},

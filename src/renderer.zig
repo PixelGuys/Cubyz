@@ -752,7 +752,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		return true; // TODO: Check other entities
 	}
 
-	pub fn placeBlock(inventoryStack: *main.items.ItemStack) void {
+	pub fn placeBlock(inventoryStack: *main.items.ItemStack, unlimitedBlocks: bool) void {
+		const removeAmount: i32 = if(unlimitedBlocks) 0 else -1;
 		if(selectedBlockPos) |selectedPos| {
 			var block = mesh_storage.getBlock(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
 			if(inventoryStack.item) |item| {
@@ -767,7 +768,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 								if(rotationMode.generateData(main.game.world.?, selectedPos, relPos, lastDir, neighborDir, &block, false)) {
 									if(!canPlaceBlock(selectedPos, block)) return;
 									updateBlockAndSendUpdate(selectedPos[0], selectedPos[1], selectedPos[2], block);
-									_ = inventoryStack.add(item, @as(i32, -1));
+									_ = inventoryStack.add(item, @as(i32, removeAmount));
 									return;
 								}
 							}
@@ -780,7 +781,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, &block, false)) {
 									if(!canPlaceBlock(neighborPos, block)) return;
 									updateBlockAndSendUpdate(neighborPos[0], neighborPos[1], neighborPos[2], block);
-									_ = inventoryStack.add(item, @as(i32, -1));
+									_ = inventoryStack.add(item, @as(i32, removeAmount));
 									return;
 								}
 							} else {
@@ -790,7 +791,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, &block, true)) {
 									if(!canPlaceBlock(neighborPos, block)) return;
 									updateBlockAndSendUpdate(neighborPos[0], neighborPos[1], neighborPos[2], block);
-									_ = inventoryStack.add(item, @as(i32, -1));
+									_ = inventoryStack.add(item, @as(i32, removeAmount));
 									return;
 								}
 							}
