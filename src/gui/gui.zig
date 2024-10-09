@@ -32,6 +32,7 @@ pub var selectedTextInput: ?*TextInput = null;
 var hoveredAWindow: bool = false;
 pub var reorderWindows: bool = false;
 pub var hideGui: bool = false;
+pub var initialized: bool = false;
 
 pub var scale: f32 = undefined;
 
@@ -128,6 +129,7 @@ pub const Callback = struct {
 };
 
 pub fn init() void { // MARK: init()
+	defer initialized = true;
 	GuiCommandQueue.init();
 	windowList = .init(main.globalAllocator);
 	hudWindows = .init(main.globalAllocator);
@@ -160,6 +162,7 @@ pub fn init() void { // MARK: init()
 }
 
 pub fn deinit() void {
+	initialized = false;
 	save();
 	GamepadCursor.deinit();
 	windowList.deinit();
