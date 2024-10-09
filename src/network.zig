@@ -593,6 +593,8 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 			} else |err| {
 				if(err == error.Timeout) {
 					// No message within the last ~100 ms.
+				} else if(err == error.ConnectionResetByPeer) {
+					std.log.warn("Got error.ConnectionResetByPeer on receive. This indicates that a previous message did not find a valid destination.", .{});
 				} else {
 					std.log.err("Got error on receive: {s}", .{@errorName(err)});
 					@panic("Network failed.");
