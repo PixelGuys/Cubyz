@@ -433,7 +433,7 @@ pub fn ListUnmanaged(comptime T: type) type {
 	};
 }
 
-const pageSize = 4 << 10;
+const pageSize = 4096;
 
 fn reserveMemory(len: usize) [*]align(pageSize) u8 {
 	if(builtin.os.tag == .windows) {
