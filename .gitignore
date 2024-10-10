@@ -10,6 +10,10 @@ gui_layout.json
 settings.zig.zon
 gui_layout.zig.zon
 
+# editor files
+.vimrc
+.*.sw[nop]
+
 test.png
 
 # Ignore user generated backgrounds
