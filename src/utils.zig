@@ -1054,8 +1054,10 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 			}
 		}
 
-		fn init(self: Performance) void {
+		fn init(allocator: NeverFailingAllocator) *Performance {
+			const self = allocator.create(Performance);
 			self.clear();
+			return self;
 		}
 
 		pub fn read(self: *Performance) Performance {
@@ -1083,7 +1085,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 			.threads = allocator.alloc(std.Thread, threadCount),
 			.currentTasks = allocator.alloc(Atomic(?*const VTable), threadCount),
 			.loadList = BlockingMaxHeap(Task).init(allocator),
-			.performance = allocator.create(Performance),
+			.performance = Performance.init(allocator),
 			.allocator = allocator,
 		};
 		for(self.threads, 0..) |*thread, i| {
