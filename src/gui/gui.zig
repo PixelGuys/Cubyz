@@ -22,6 +22,7 @@ pub const GuiComponent = @import("gui_component.zig").GuiComponent;
 pub const GuiWindow = @import("GuiWindow.zig");
 
 pub const windowlist = @import("windows/_windowlist.zig");
+const GamepadCursor = @import("gamepad_cursor.zig");
 
 var windowList: List(*GuiWindow) = undefined;
 var hudWindows: List(*GuiWindow) = undefined;
@@ -31,6 +32,7 @@ pub var selectedTextInput: ?*TextInput = null;
 var hoveredAWindow: bool = false;
 pub var reorderWindows: bool = false;
 pub var hideGui: bool = false;
+pub var initialized: bool = false;
 
 pub var scale: f32 = undefined;
 
@@ -130,6 +132,7 @@ pub const Callback = struct {
 };
 
 pub fn init() void { // MARK: init()
+	defer initialized = true;
 	GuiCommandQueue.init();
 	windowList = .init(main.globalAllocator);
 	hudWindows = .init(main.globalAllocator);
@@ -158,10 +161,13 @@ pub fn init() void { // MARK: init()
 	TextInput.__init();
 	load();
 	inventory.init();
+	GamepadCursor.init();
 }
 
 pub fn deinit() void {
+	initialized = false;
 	save();
+	GamepadCursor.deinit();
 	windowList.deinit();
 	hudWindows.deinit();
 	for(openWindows.items) |window| {
@@ -220,7 +226,7 @@ pub fn save() void { // MARK: save()
 		windowZon.put("scale", window.scale);
 		guiZon.put(window.id, windowZon);
 	}
-	
+
 	main.files.writeZon("gui_layout.zig.zon", guiZon) catch |err| {
 		std.log.err("Could not write gui_layout.zig.zon: {s}", .{@errorName(err)});
 	};
@@ -371,6 +377,15 @@ pub fn closeWindow(id: []const u8) void {
 		}
 	}
 	std.log.warn("Could not find window with id {s}.", .{id});
+}
+
+pub fn isWindowOpen(id: []const u8) bool {
+	for(openWindows.items) |other| {
+		if(std.mem.eql(u8, id, other.id)) {
+			return true;
+		}
+	}
+	return false;
 }
 
 pub fn setSelectedTextInput(newSelectedTextInput: ?*TextInput) void {
@@ -561,6 +576,9 @@ pub fn updateAndRenderGui() void {
 		}
 		inventory.render(mousePos);
 	}
+	const oldScale = draw.setScale(scale);
+	defer draw.restoreScale(oldScale);
+	GamepadCursor.render();
 }
 
 pub fn toggleGameMenu() void {

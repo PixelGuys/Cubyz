@@ -9,6 +9,8 @@ settings.json
 gui_layout.json
 settings.zig.zon
 gui_layout.zig.zon
+gamecontrollerdb.txt
+gamecontrollerdb.stamp
 
 test.png
 
