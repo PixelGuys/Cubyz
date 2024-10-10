@@ -388,9 +388,6 @@ pub var lastFrameTime = std.atomic.Value(f64).init(0);
 /// Measures time between different frames' beginnings.
 pub var lastDeltaTime = std.atomic.Value(f64).init(0);
 
-/// Records threadpool task count and times.
-pub var lastPerformance = utils.ThreadPool.Performance{.tasks = [1]u32 {0} ** utils.ThreadPool.taskTypes, .utime = [1]i64 {0} ** utils.ThreadPool.taskTypes};
-
 var shouldExitToMenu = std.atomic.Value(bool).init(false);
 pub fn exitToMenu(_: usize) void {
 	shouldExitToMenu.store(true, .monotonic);
@@ -651,7 +648,6 @@ pub fn main() void { // MARK: main()
 			gui.openWindow("main");
 			audio.setMusic("cubyz:cubyz");
 		}
-
 	}
 
 	if(game.world) |world| {
