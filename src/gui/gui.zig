@@ -70,7 +70,7 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 	fn executeCommands() void {
 		mutex.lock();
 		defer mutex.unlock();
-		for(commands.items) |command| {
+		while(commands.popOrNull()) |command| {
 			switch(command.action) {
 				.open => {
 					executeOpenWindowCommand(command.window);
@@ -80,7 +80,6 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 				}
 			}
 		}
-		commands.clearRetainingCapacity();
 	}
 
 	fn executeOpenWindowCommand(window: *GuiWindow) void {
@@ -95,7 +94,9 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 			}
 		}
 		openWindows.append(window);
+		mutex.unlock();
 		window.onOpenFn();
+		mutex.lock();
 		selectedWindow = null;
 	}
 
@@ -111,7 +112,9 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 				break;
 			}
 		}
+		mutex.unlock();
 		window.onCloseFn();
+		mutex.lock();
 	}
 };
 
