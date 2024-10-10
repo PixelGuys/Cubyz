@@ -12,5 +12,9 @@ gui_layout.zig.zon
 
 test.png
 
+# editor files
+.vimrc
+.*.sw[nop]
+
 # Ignore user generated backgrounds
 /assets/backgrounds/client_*.png
