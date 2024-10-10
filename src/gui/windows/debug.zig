@@ -11,6 +11,10 @@ const gui = @import("../gui.zig");
 const GuiWindow = gui.GuiWindow;
 const GuiComponent = gui.GuiComponent;
 
+pub fn onOpen() void {
+	main.threadPool.performance.clear();
+}
+
 pub var window = GuiWindow {
 	.relativePosition = .{
 		.{ .attachedToFrame = .{.selfAttachmentPoint = .lower, .otherAttachmentPoint = .lower} },
@@ -62,14 +66,12 @@ pub fn render() void {
 		y += 8;
 		draw.print("Queue size: {}", .{main.threadPool.queueSize()}, 0, y, 8, .left);
 		y += 8;
-		if (main.frameCount % main.perfUpdateFrequency == 0)
-			main.lastPerformance = main.threadPool.performance.readAndReset();
-		const perf = main.lastPerformance;
+		const perf = main.threadPool.performance.read();
 		const values = comptime std.enums.values(TaskType);
 		inline for(values) |t| {
 			const name = @tagName(t);
 			const i = @intFromEnum(t);
-			draw.print("    " ++ name ++ " time: {} ms/frame ({} µs/task)", .{@divFloor(perf.utime[i], 1000*main.perfUpdateFrequency), @divFloor(perf.utime[i], @max(1, perf.tasks[i]))}, 0, y, 8, .left);
+			draw.print("    " ++ name ++ " time: {} ms/frame ({} µs/task)", .{@divFloor(perf.utime[i], 1000), @divFloor(perf.utime[i], @max(1, perf.tasks[i]))}, 0, y, 8, .left);
 		y += 8;
 		}
 		draw.print("Mesh Queue size: {}", .{main.renderer.mesh_storage.updatableList.items.len}, 0, y, 8, .left);

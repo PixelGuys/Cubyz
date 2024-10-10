@@ -390,10 +390,6 @@ pub var lastDeltaTime = std.atomic.Value(f64).init(0);
 
 /// Records threadpool task count and times.
 pub var lastPerformance = utils.ThreadPool.Performance{.tasks = [1]u32 {0} ** utils.ThreadPool.taskTypes, .utime = [1]i64 {0} ** utils.ThreadPool.taskTypes};
-/// Frames between updating threadpool performance figures.
-pub const perfUpdateFrequency = 10;
-
-pub var frameCount: u64 = 0;
 
 var shouldExitToMenu = std.atomic.Value(bool).init(false);
 pub fn exitToMenu(_: usize) void {
@@ -605,7 +601,6 @@ pub fn main() void { // MARK: main()
 			c.glClearColor(0.5, 1, 1, 1);
 			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
 			gui.windowlist.gpu_performance_measuring.stopQuery();
-			frameCount += 1;
 		} else {
 			std.time.sleep(16_000_000);
 		}

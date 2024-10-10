@@ -1042,7 +1042,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 			_ = @atomicRmw(i64, &self.utime[i], .Add, time, .monotonic);
 		}
 
-		fn clear(self: *Performance) void {
+		pub fn clear(self: *Performance) void {
 			for(0..taskTypes) |task| {
 				@atomicStore(u32, &self.tasks[task], 0, .monotonic);
 				@atomicStore(i64, &self.utime[task], 0, .monotonic);
@@ -1053,7 +1053,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 			self.clear();
 		}
 
-		pub fn readAndReset(self: *Performance) Performance {
+		pub fn read(self: *Performance) Performance {
 			var copy = Performance{.tasks = undefined, .utime = undefined};
 			// atomics of dubious quality
 			for(0..taskTypes) |task| {
