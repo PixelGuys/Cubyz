@@ -1061,14 +1061,9 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		}
 
 		pub fn read(self: *Performance) Performance {
-			var copy = Performance{.tasks = undefined, .utime = undefined};
 			self.mutex.lock();
 			defer self.mutex.unlock();
-			for(0..taskTypes) |i| {
-				copy.tasks[i] = self.tasks[i];
-				copy.utime[i] = self.utime[i];
-			}
-			return copy;
+			return self.*;
 		}
 	};
 	const refreshTime: u32 = 100; // The time after which all priorities get refreshed in milliseconds.
