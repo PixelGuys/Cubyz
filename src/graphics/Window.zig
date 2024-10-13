@@ -270,7 +270,6 @@ pub const Gamepad = struct {
 		gamepadState = .init(main.globalAllocator.allocator);
 	}
 	pub fn deinit() void {
-		std.log.debug("Window.Gamepad.deinit()", .{});
 		var iter = gamepadState.valueIterator();
 		while (iter.next()) |value| {
 			main.globalAllocator.destroy(value.*);
