@@ -22,15 +22,11 @@ pub var scrollOffset: f32 = 0;
 pub const Gamepad = struct {
 	pub var gamepadState: std.AutoHashMap(c_int, *c.GLFWgamepadstate) = undefined;
 	pub var controllerMappingsDownloaded: std.atomic.Value(bool) = std.atomic.Value(bool).init(false);
-	pub var controllerMappingsTask: ?ControllerMappingDownloadTask = null;
 	var controllerConnectedPreviously: bool = false;
 	fn applyDeadzone(value: f32) f32 {
 		const minValue = settings.controllerAxisDeadzone;
 		const maxRange = 1.0 - minValue;
 		return (value * maxRange) + minValue;
-	}
-	pub fn areControllerMappingsDownloading() bool {
-		return ControllerMappingDownloadTask.running.load(.acquire);
 	}
 	pub fn update(delta: f64) void {
 		if (!controllerConnectedPreviously and isControllerConnected()) {
@@ -40,9 +36,9 @@ pub const Gamepad = struct {
 		var jid: c_int = 0;
 		while (jid < c.GLFW_JOYSTICK_LAST) : (jid += 1) {
 			// Can't initialize with the state, or it will become a reference.
-			var oldGamepadState: c.GLFWgamepadstate = std.mem.zeroes(c.GLFWgamepadstate);
+			var oldState: c.GLFWgamepadstate = std.mem.zeroes(c.GLFWgamepadstate);
 			if (gamepadState.get(jid)) |v| {
-				oldGamepadState = v.*;
+				oldState = v.*;
 			}
 			const joystickFound = c.glfwJoystickPresent(jid) != 0 and c.glfwJoystickIsGamepad(jid) != 0;
 			if (joystickFound) {
@@ -52,14 +48,10 @@ pub const Gamepad = struct {
 				_ = c.glfwGetGamepadState(jid, gamepadState.get(jid).?);
 			} else {
 				if (gamepadState.contains(jid)) {
-					if (c.glfwJoystickPresent(jid) != 0) {
-						std.log.warn("Joystick {d} lost controller mapping!", .{jid});
-					}
 					main.globalAllocator.destroy(gamepadState.get(jid).?);
 					_ = gamepadState.remove(jid);
 				}
 			}
-			const oldState: c.GLFWgamepadstate = oldGamepadState;
 			const newState: c.GLFWgamepadstate = if (gamepadState.get(jid)) |v| v.* else std.mem.zeroes(c.GLFWgamepadstate);
 			if (nextGamepadListener != null) {
 				for (0..c.GLFW_GAMEPAD_BUTTON_LAST) |btn| {
@@ -175,9 +167,7 @@ pub const Gamepad = struct {
 			};
 			main.threadPool.addTask(task, &vtable);
 			// Don't attempt to open the window before the GUI is initialized.
-			if (main.gui.initialized) {
-				main.gui.openWindow("download_controller_mappings");
-			}
+			main.gui.openWindow("download_controller_mappings");
 		}
 
 		pub fn getPriority(_: *ControllerMappingDownloadTask) f32 {
@@ -196,7 +186,7 @@ pub const Gamepad = struct {
 			var list = std.ArrayList(u8).init(main.stackAllocator.allocator);
 			defer list.deinit();
 			defer controllerMappingsDownloaded.store(true, std.builtin.AtomicOrder.release);
-			_ = client.fetch(.{
+			const fetchResult = client.fetch(.{
 				.method = .GET,
 				.location = .{.url = "https://raw.githubusercontent.com/mdqinc/SDL_GameControllerDB/master/gamecontrollerdb.txt"},
 				.response_storage = .{ .dynamic = &list }
@@ -204,6 +194,10 @@ pub const Gamepad = struct {
 				std.log.err("Failed to download controller mappings: {s}", .{@errorName(err)});
 				return;
 			};
+			if (fetchResult.status != .ok) {
+				std.log.err("Failed to download controller mappings: HTTP error {d}", .{@intFromEnum(fetchResult.status)});
+				return;
+			}
 			files.write("./gamecontrollerdb.txt", list.items) catch |err| {
 				std.log.err("Failed to write controller mappings: {s}", .{@errorName(err)});
 				return;
@@ -255,6 +249,7 @@ pub const Gamepad = struct {
 			defer envMap.deinit();
 			if (envMap.get("SDL_GAMECONTROLLERCONFIG")) |controller_config_env| {
 				_ = c.glfwUpdateGamepadMappings(@ptrCast(controller_config_env));
+				return;
 			}
 		}
 		const data = main.files.read(main.stackAllocator, "./gamecontrollerdb.txt") catch |err| {
@@ -273,18 +268,12 @@ pub const Gamepad = struct {
 
 	pub fn init() void {
 		gamepadState = .init(main.globalAllocator.allocator);
-		update(0.0);
-		std.log.debug("Gamepads at init: {d}", .{gamepadState.count()});
 	}
 	pub fn deinit() void {
-		const iter = gamepadState.keyIterator();
-		var i: usize = 0;
-		while (i < iter.len) {
-			const key = iter.items[i];
-			const valueMaybe = gamepadState.get(key);
-			if (valueMaybe) |value| main.globalAllocator.destroy(value);
-			_ = gamepadState.remove(key);
-			i += 1;
+		std.log.debug("Window.Gamepad.deinit()", .{});
+		var iter = gamepadState.valueIterator();
+		while (iter.next()) |value| {
+			main.globalAllocator.destroy(value.*);
 		}
 		gamepadState.deinit();
 	}

@@ -32,7 +32,6 @@ pub var selectedTextInput: ?*TextInput = null;
 var hoveredAWindow: bool = false;
 pub var reorderWindows: bool = false;
 pub var hideGui: bool = false;
-pub var initialized: bool = false;
 
 pub var scale: f32 = undefined;
 
@@ -132,7 +131,6 @@ pub const Callback = struct {
 };
 
 pub fn init() void { // MARK: init()
-	defer initialized = true;
 	GuiCommandQueue.init();
 	windowList = .init(main.globalAllocator);
 	hudWindows = .init(main.globalAllocator);
@@ -165,7 +163,6 @@ pub fn init() void { // MARK: init()
 }
 
 pub fn deinit() void {
-	initialized = false;
 	save();
 	GamepadCursor.deinit();
 	windowList.deinit();
@@ -377,15 +374,6 @@ pub fn closeWindow(id: []const u8) void {
 		}
 	}
 	std.log.warn("Could not find window with id {s}.", .{id});
-}
-
-pub fn isWindowOpen(id: []const u8) bool {
-	for(openWindows.items) |other| {
-		if(std.mem.eql(u8, id, other.id)) {
-			return true;
-		}
-	}
-	return false;
 }
 
 pub fn setSelectedTextInput(newSelectedTextInput: ?*TextInput) void {

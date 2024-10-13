@@ -2,13 +2,10 @@ const std = @import("std");
 
 const main = @import("root");
 const graphics = main.graphics;
-const Shader = graphics.Shader;
 const Texture = graphics.Texture;
 const Vec2f = main.vec.Vec2f;
 
 const gui = @import("gui.zig");
-const GuiWindow = gui.GuiWindow;
-const GuiComponent = gui.GuiComponent;
 
 const size: f32 = 16;
 

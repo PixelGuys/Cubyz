@@ -25,6 +25,15 @@ fn keyFunction(keyPtr: usize) void {
 	selectedKey = @ptrFromInt(keyPtr);
 	needsUpdate = true;
 }
+fn keypressListener(key: c_int, mouseButton: c_int, scancode: c_int) void {
+	selectedKey.?.key = key;
+	selectedKey.?.mouseButton = mouseButton;
+	selectedKey.?.scancode = scancode;
+	selectedKey = null;
+	needsUpdate = true;
+	main.settings.save();
+}
+
 fn gamepadFunction(keyPtr: usize) void {
 	main.Window.setNextGamepadListener(&gamepadListener) catch return;
 	selectedKey = @ptrFromInt(keyPtr);
@@ -37,15 +46,6 @@ fn gamepadListener(axis: ?main.Window.GamepadAxis, btn: c_int) void {
 	needsUpdate = true;
 	main.settings.save();
 }
-fn keypressListener(key: c_int, mouseButton: c_int, scancode: c_int) void {
-	selectedKey.?.key = key;
-	selectedKey.?.mouseButton = mouseButton;
-	selectedKey.?.scancode = scancode;
-	selectedKey = null;
-	needsUpdate = true;
-	main.settings.save();
-}
-
 fn updateSensitivity(sensitivity: f32) void {
 	if (editingKeyboard) {
 		main.settings.mouseSensitivity = sensitivity;
@@ -67,8 +67,8 @@ fn sensitivityFormatter(allocator: main.utils.NeverFailingAllocator, value: f32)
 	return std.fmt.allocPrint(allocator.allocator, "{s} Sensitivity: {d:.0}%", .{if (editingKeyboard) "Mouse" else "Controller", value*100}) catch unreachable;
 }
 
-fn setKeyboard(isKeyboard: usize) void {
-	editingKeyboard = isKeyboard != 0;
+fn toggleKeyboard(_: usize) void {
+	editingKeyboard = !editingKeyboard;
 	needsUpdate = true;
 }
 fn unbindKey(keyPtr: usize) void {
@@ -86,7 +86,7 @@ fn unbindKey(keyPtr: usize) void {
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 364, 8);
-	list.add(Button.initText(.{0, 0}, 128, if (editingKeyboard) "Gamepad" else "Keyboard", .{.callback = &setKeyboard, .arg = if (editingKeyboard) 0 else 1}));
+	list.add(Button.initText(.{0, 0}, 128, if (editingKeyboard) "Gamepad" else "Keyboard", .{.callback = &toggleKeyboard}));
 	list.add(ContinuousSlider.init(.{0, 0}, 256, 0, 5, if (editingKeyboard) main.settings.mouseSensitivity else main.settings.controllerSensitivity, &updateSensitivity, &sensitivityFormatter));
 	if (!editingKeyboard) {
 		list.add(ContinuousSlider.init(.{0, 0}, 256, 0, 5, main.settings.controllerAxisDeadzone, &updateDeadzone, &deadzoneFormatter));
