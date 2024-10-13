@@ -16,17 +16,12 @@ const HorizontalList = @import("../components/HorizontalList.zig");
 
 pub var window = GuiWindow {
 	.contentSize = Vec2f{128, 64},
-	.showTitleBar = true,
 	.hasBackground = true,
 	.closeable = false,
 	.relativePosition = .{
-		.{
-			.ratio = 1.0,
-		},
-		.{
-			.ratio = 1.0
-		}
-	}
+		.{ .attachedToFrame = .{.selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper} },
+		.{ .attachedToFrame = .{.selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper} },
+	},
 };
 
 const padding: f32 = 8;
