@@ -272,10 +272,6 @@ pub const Gamepad = struct {
 	}
 
 	pub fn init() void {
-		controllerConnectedPreviously = isControllerConnected();
-		if (controllerConnectedPreviously) {
-			downloadControllerMappings();
-		}
 		gamepadState = .init(main.globalAllocator.allocator);
 		update(0.0);
 		std.log.debug("Gamepads at init: {d}", .{gamepadState.count()});

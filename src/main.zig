@@ -584,9 +584,6 @@ pub fn main() void { // MARK: main()
 	entity.ClientEntityManager.init();
 	defer entity.ClientEntityManager.deinit();
 
-	if(Window.Gamepad.areControllerMappingsDownloading()) {
-		gui.openWindow("download_controller_mappings");
-	}
 	if(settings.playerName.len == 0) {
 		gui.openWindow("change_name");
 	} else {
