@@ -11,11 +11,9 @@ const gui = @import("../gui.zig");
 const GuiWindow = gui.GuiWindow;
 const GuiComponent = gui.GuiComponent;
 
-var trackedFrames: u64 = 0;
 
 pub fn onOpen() void {
 	main.threadPool.performance.clear();
-	trackedFrames = 0;
 }
 
 pub var window = GuiWindow {
@@ -31,7 +29,6 @@ pub var window = GuiWindow {
 };
 
 pub fn render() void {
-	trackedFrames += 1;
 	draw.setColor(0xffffffff);
 	var y: f32 = 0;
 	const fpsCapText = if(main.settings.fpsCap) |fpsCap| std.fmt.allocPrint(main.stackAllocator.allocator, " (limit: {d:.0} Hz)", .{fpsCap}) catch unreachable else "";
@@ -72,10 +69,17 @@ pub fn render() void {
 		y += 8;
 		const perf = main.threadPool.performance.read();
 		const values = comptime std.enums.values(TaskType);
+		var totalUtime: i64 = 0;
+		for(values) |task|
+			totalUtime += perf.utime[@intFromEnum(task)];
+		draw.print("total task time: {} µs", .{totalUtime}, 0, y, 8, .left);
+		y += 8;
 		for(values) |t| {
 			const name = @tagName(t);
 			const i = @intFromEnum(t);
-			draw.print("    {s} time: {} ms/frame ({} µs/task)", .{name, @divFloor(perf.utime[i], 1000*trackedFrames), @divFloor(perf.utime[i], @max(1, perf.tasks[i]))}, 0, y, 8, .left);
+			const taskTime = @divFloor(perf.utime[i], @max(1, perf.tasks[i]));
+			const relativeTime = 100.0 * @as(f32, @floatFromInt(perf.utime[i])) / @as(f32, @floatFromInt(totalUtime));
+			draw.print("    {s}: {} µs/task ({d:.1}%)", .{name, taskTime, relativeTime}, 0, y, 8, .left);
 			y += 8;
 		}
 		draw.print("Mesh Queue size: {}", .{main.renderer.mesh_storage.updatableList.items.len}, 0, y, 8, .left);
