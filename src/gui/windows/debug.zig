@@ -72,7 +72,7 @@ pub fn render() void {
 		var totalUtime: i64 = 0;
 		for(values) |task|
 			totalUtime += perf.utime[@intFromEnum(task)];
-		draw.print("total task time: {} µs", .{totalUtime}, 0, y, 8, .left);
+		draw.print("Total task time: {} µs", .{totalUtime}, 0, y, 8, .left);
 		y += 8;
 		for(values) |t| {
 			const name = @tagName(t);
