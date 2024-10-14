@@ -22,6 +22,7 @@ pub const GuiComponent = @import("gui_component.zig").GuiComponent;
 pub const GuiWindow = @import("GuiWindow.zig");
 
 pub const windowlist = @import("windows/_windowlist.zig");
+const GamepadCursor = @import("gamepad_cursor.zig");
 
 var windowList: List(*GuiWindow) = undefined;
 var hudWindows: List(*GuiWindow) = undefined;
@@ -158,10 +159,12 @@ pub fn init() void { // MARK: init()
 	TextInput.__init();
 	load();
 	inventory.init();
+	GamepadCursor.init();
 }
 
 pub fn deinit() void {
 	save();
+	GamepadCursor.deinit();
 	windowList.deinit();
 	hudWindows.deinit();
 	for(openWindows.items) |window| {
@@ -220,7 +223,7 @@ pub fn save() void { // MARK: save()
 		windowZon.put("scale", window.scale);
 		guiZon.put(window.id, windowZon);
 	}
-	
+
 	main.files.writeZon("gui_layout.zig.zon", guiZon) catch |err| {
 		std.log.err("Could not write gui_layout.zig.zon: {s}", .{@errorName(err)});
 	};
@@ -561,6 +564,9 @@ pub fn updateAndRenderGui() void {
 		}
 		inventory.render(mousePos);
 	}
+	const oldScale = draw.setScale(scale);
+	defer draw.restoreScale(oldScale);
+	GamepadCursor.render();
 }
 
 pub fn toggleGameMenu() void {
