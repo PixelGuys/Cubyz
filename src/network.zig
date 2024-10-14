@@ -1720,6 +1720,7 @@ const ProtocolTask = struct {
 		.isStillNeeded = @ptrCast(&isStillNeeded),
 		.run = @ptrCast(&run),
 		.clean = @ptrCast(&clean),
+		.taskType = .misc,
 	};
 	
 	pub fn schedule(conn: *Connection, protocol: u8, data: []const u8) void {
