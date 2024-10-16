@@ -622,7 +622,9 @@ pub const inventory = struct { // MARK: inventory
 						return;
 					}
 				}
-				leftClickSlots.append(itemSlot);
+				if(itemSlot.inventory.getItem(itemSlot.itemSlot) == null) {
+					leftClickSlots.append(itemSlot);
+				}
 			} else if(main.KeyBoard.key("secondaryGuiButton").pressed) {
 				for(rightClickSlots.items) |deliveredSlot| {
 					if(itemSlot == deliveredSlot) {
