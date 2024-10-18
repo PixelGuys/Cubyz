@@ -657,7 +657,7 @@ pub const inventory = struct { // MARK: inventory
 				carried.dropStack(0);
 			}
 		} else {
-			if(leftClickSlots.items.len != 0) {
+			if(rightClickSlots.items.len != 0) {
 				rightClickSlots.clearRetainingCapacity();
 			} else if(hoveredItemSlot) |hovered| {
 				hovered.inventory.takeHalf(hovered.itemSlot, carried);

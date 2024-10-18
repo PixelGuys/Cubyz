@@ -366,6 +366,12 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 			return result;
 		}
 
+		pub fn dequeue_front(self: *Self) ?T {
+			if(self.startIndex == self.endIndex) return null;
+			self.endIndex = (self.endIndex -% 1) & self.mask;
+			return self.mem[self.endIndex];
+		}
+
 		pub fn peek(self: *Self) ?T {
 			if(self.startIndex == self.endIndex) return null;
 			return self.mem[self.startIndex];
