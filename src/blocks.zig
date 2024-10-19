@@ -521,7 +521,8 @@ pub const meshes = struct { // MARK: meshes
 		}
 	}
 
-	pub fn readTexture(textureId: []const u8, assetFolder: []const u8) !u16 {
+	pub fn readTexture(_textureId: ?[]const u8, assetFolder: []const u8) !u16 {
+		const textureId = _textureId orelse return error.NotFound;
 		var result: u16 = undefined;
 		var splitter = std.mem.splitScalar(u8, textureId, ':');
 		const mod = splitter.first();
@@ -555,9 +556,9 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	pub fn getTextureIndices(zon: ZonElement, assetFolder: []const u8, textureIndicesRef: []u16) void {
-		const defaultIndex = readTexture(zon.get([]const u8, "texture", ""), assetFolder) catch 0;
+		const defaultIndex = readTexture(zon.get(?[]const u8, "texture", null), assetFolder) catch 0;
 		for(textureIndicesRef, sideNames) |*ref, name| {
-			const textureId = zon.get([]const u8, name, "");
+			const textureId = zon.get(?[]const u8, name, null);
 			ref.* = readTexture(textureId, assetFolder) catch defaultIndex;
 		}
 	}
