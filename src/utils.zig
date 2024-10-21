@@ -1108,6 +1108,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		}
 		self.allocator.free(self.currentTasks);
 		self.allocator.free(self.threads);
+		self.allocator.destroy(self.performance);
 	}
 
 	pub fn closeAllTasksOfType(self: ThreadPool, vtable: *const VTable) void {
