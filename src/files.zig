@@ -50,9 +50,7 @@ pub const Dir = struct {
 	}
 
 	pub fn read(self: Dir, allocator: NeverFailingAllocator, path: []const u8) ![]u8 {
-		const file = try self.dir.openFile(path, .{});
-		defer file.close();
-		return file.readToEndAlloc(allocator.allocator, std.math.maxInt(usize)) catch unreachable;
+		return self.dir.readFileAlloc(allocator.allocator, path, std.math.maxInt(usize));
 	}
 
 	pub fn readToZon(self: Dir, allocator: NeverFailingAllocator, path: []const u8) !ZonElement {
@@ -62,9 +60,7 @@ pub const Dir = struct {
 	}
 
 	pub fn write(self: Dir, path: []const u8, data: []const u8) !void {
-		const file = try self.dir.createFile(path, .{});
-		defer file.close();
-		try file.writeAll(data);
+		return self.dir.writeFile(.{.data = data, .sub_path = path});
 	}
 
 	pub fn writeZon(self: Dir, path: []const u8, zon: ZonElement) !void {

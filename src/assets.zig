@@ -47,12 +47,10 @@ pub fn readAllZonFilesInAddons(externalAllocator: NeverFailingAllocator, addons:
 					}
 				}
 
-				const file = dir.openFile(entry.path, .{}) catch |err| {
+				const string = dir.readFileAlloc(main.stackAllocator.allocator, entry.path, std.math.maxInt(usize)) catch |err| {
 					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
 					continue;
 				};
-				defer file.close();
-				const string = file.readToEndAlloc(main.stackAllocator.allocator, std.math.maxInt(usize)) catch unreachable;
 				defer main.stackAllocator.free(string);
 				output.put(id, ZonElement.parseFromString(externalAllocator, string)) catch unreachable;
 			}
@@ -78,12 +76,10 @@ pub fn readAllFilesInAddons(externalAllocator: NeverFailingAllocator, addons: ma
 			break :blk null;
 		}) |entry| {
 			if(entry.kind == .file) {
-				const file = dir.openFile(entry.path, .{}) catch |err| {
+				const string = dir.readFileAlloc(externalAllocator.allocator, entry.path, std.math.maxInt(usize)) catch |err| {
 					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
 					continue;
 				};
-				defer file.close();
-				const string = file.readToEndAlloc(externalAllocator.allocator, std.math.maxInt(usize)) catch unreachable;
 				output.append(string);
 			}
 		}
@@ -121,12 +117,10 @@ pub fn readAllObjFilesInAddonsHashmap(externalAllocator: NeverFailingAllocator, 
 					}
 				}
 
-				const file = dir.openFile(entry.path, .{}) catch |err| {
+				const string = dir.readFileAlloc(externalAllocator.allocator, entry.path, std.math.maxInt(usize)) catch |err| {
 					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
 					continue;
 				};
-				defer file.close();
-				const string = file.readToEndAlloc(externalAllocator.allocator, std.math.maxInt(usize)) catch unreachable;
 				output.put(id, string) catch unreachable;
 			}
 		}

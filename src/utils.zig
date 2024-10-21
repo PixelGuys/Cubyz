@@ -45,9 +45,7 @@ pub const Compression = struct { // MARK: Compression
 				_ = try comp.write(&len);
 				_ = try comp.write(relPath);
 
-				const file = try sourceDir.openFile(relPath, .{});
-				defer file.close();
-				const fileData = try file.readToEndAlloc(main.stackAllocator.allocator, std.math.maxInt(u32));
+				const fileData = try sourceDir.readFileAlloc(main.stackAllocator.allocator, relPath, std.math.maxInt(usize));
 				defer main.stackAllocator.free(fileData);
 
 				std.mem.writeInt(u32, &len, @as(u32, @intCast(fileData.len)), .big);
@@ -78,9 +76,7 @@ pub const Compression = struct { // MARK: Compression
 			var splitter = std.mem.splitBackwardsScalar(u8, path, '/');
 			_ = splitter.first();
 			try outDir.makePath(splitter.rest());
-			const file = try outDir.createFile(path, .{});
-			defer file.close();
-			try file.writeAll(fileData);
+			try outDir.writeFile(.{.data = fileData, .sub_path = path});
 		}
 	}
 };
