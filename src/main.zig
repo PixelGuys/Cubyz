@@ -552,9 +552,6 @@ pub fn main() void { // MARK: main()
 	audio.init() catch std.log.err("Failed to initialize audio. Continuing the game without sounds.", .{});
 	defer audio.deinit();
 
-	gui.init();
-	defer gui.deinit();
-
 	chunk.init();
 	defer chunk.deinit();
 
@@ -583,6 +580,9 @@ pub fn main() void { // MARK: main()
 
 	entity.ClientEntityManager.init();
 	defer entity.ClientEntityManager.deinit();
+
+	gui.init();
+	defer gui.deinit();
 
 	if(settings.playerName.len == 0) {
 		gui.openWindow("change_name");

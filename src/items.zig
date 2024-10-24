@@ -1120,6 +1120,12 @@ pub const ItemStack = struct { // MARK: ItemStack
 		};
 	}
 
+	pub fn deinit(self: *ItemStack) void {
+		if(self.item) |item| {
+			item.deinit();
+		}
+	}
+
 	/// Moves the content of the given ItemStack into a new ItemStack.
 	pub fn moveFrom(self: *ItemStack, supplier: *ItemStack) void {
 		std.debug.assert(self.item == null); // Don't want to delete matter.
@@ -1165,9 +1171,6 @@ pub const ItemStack = struct { // MARK: ItemStack
 	}
 
 	pub fn clear(self: *ItemStack) void {
-		if(self.item) |item| {
-			item.deinit();
-		}
 		self.item = null;
 		self.amount = 0;
 	}
@@ -1197,7 +1200,7 @@ pub const InventorySync = struct { // MARK: InventorySync
 
 		pub fn deinit() void {
 			while(commands.dequeue()) |cmd| {
-				cmd.deinit(main.globalAllocator);
+				cmd.finalize(main.globalAllocator);
 			}
 			commands.deinit();
 		}
@@ -1219,7 +1222,7 @@ pub const InventorySync = struct { // MARK: InventorySync
 				mutex.lock();
 				defer mutex.unlock();
 				cmd.undo();
-				cmd.deinit(main.globalAllocator); // TODO: Return it or something.
+				cmd.undoSteps.deinit(main.globalAllocator); // TODO: This should be put on some kind of redo queue once the testing phase is over.
 			}
 		}
 	};
@@ -1231,6 +1234,8 @@ pub const InventorySync = struct { // MARK: InventorySync
 
 const InventoryCommand = struct { // MARK: InventoryCommand
 	const PayloadType = enum {
+		open,
+		close,
 		depositOrSwap,
 		deposit,
 		takeHalf,
@@ -1240,6 +1245,8 @@ const InventoryCommand = struct { // MARK: InventoryCommand
 		depositOrDrop,
 	};
 	const CommandPayload = union(PayloadType) {
+		open: Open,
+		close: Close,
 		depositOrSwap: DepositOrSwap,
 		deposit: Deposit,
 		takeHalf: TakeHalf,
@@ -1320,6 +1327,7 @@ const InventoryCommand = struct { // MARK: InventoryCommand
 					std.debug.assert(info.dest._items[info.destSlot].amount >= info.amount);
 					info.dest._items[info.destSlot].amount -= info.amount;
 					if(info.dest._items[info.destSlot].amount == 0) {
+						info.dest._items[info.destSlot].item.?.deinit();
 						info.dest._items[info.destSlot].item = null;
 					}
 					info.dest.update();
@@ -1329,8 +1337,24 @@ const InventoryCommand = struct { // MARK: InventoryCommand
 		self.undoSteps.clearRetainingCapacity();
 	}
 
-	fn deinit(self: InventoryCommand, allocator: NeverFailingAllocator) void {
+	fn finalize(self: InventoryCommand, allocator: NeverFailingAllocator) void {
+		for(self.undoSteps.items) |step| {
+			switch(step) {
+				.move, .swap, .create => {},
+				.delete => |info| {
+					info.item.item.?.deinit();
+				},
+			}
+		}
 		self.undoSteps.deinit(allocator);
+
+		switch(self.payload) {
+			inline else => |payload| {
+				if(@hasDecl(@TypeOf(payload), "finalize")) {
+					payload.finalize();
+				}
+			},
+		}
 	}
 
 	fn removeToolCraftingIngredients(self: *InventoryCommand, allocator: NeverFailingAllocator, inv: Inventory) void {
@@ -1407,6 +1431,23 @@ const InventoryCommand = struct { // MARK: InventoryCommand
 			.amount = source._items[sourceSlot].amount,
 		}});
 	}
+
+	const Open = struct {
+		inv: Inventory,
+
+		fn run(_: Open, _: NeverFailingAllocator, _: *InventoryCommand) void {}
+	};
+
+	const Close = struct {
+		inv: Inventory,
+		allocator: NeverFailingAllocator,
+
+		fn run(_: Close, _: NeverFailingAllocator, _: *InventoryCommand) void {}
+
+		fn finalize(self: Close) void {
+			self.inv._deinit(self.allocator);
+		}
+	};
 
 	const DepositOrSwap = struct {
 		dest: Inventory,
@@ -1748,18 +1789,24 @@ pub const Inventory = struct { // MARK: Inventory
 		for(self._items) |*item| {
 			item.* = ItemStack{};
 		}
+		InventorySync.executeCommand(.{.open = .{.inv = self}});
 		return self;
 	}
 
 	pub fn deinit(self: Inventory, allocator: NeverFailingAllocator) void {
+		InventorySync.executeCommand(.{.close = .{.inv = self, .allocator = allocator}});
+	}
+
+	fn _deinit(self: Inventory, allocator: NeverFailingAllocator) void {
 		for(self._items) |*item| {
-			item.clear();
+			item.deinit();
 		}
 		allocator.free(self._items);
 	}
 
 	fn update(self: Inventory) void {
 		if(self.type == .workbench) {
+			self._items[self._items.len - 1].deinit();
 			self._items[self._items.len - 1].clear();
 			var availableItems: [25]?*const BaseItem = undefined;
 			var nonEmpty: bool = false;
