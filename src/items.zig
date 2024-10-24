@@ -1126,27 +1126,12 @@ pub const ItemStack = struct { // MARK: ItemStack
 		}
 	}
 
-	/// Moves the content of the given ItemStack into a new ItemStack.
-	pub fn moveFrom(self: *ItemStack, supplier: *ItemStack) void {
-		std.debug.assert(self.item == null); // Don't want to delete matter.
-		self.item = supplier.item;
-		self.amount = supplier.amount;
-		supplier.clear();
-	}
-
-	pub fn filled(self: *const ItemStack) bool {
-		if(self.item) |item| {
-			return self.amount >= item.stackSize();
-		}
-		return false;
-	}
-
 	pub fn empty(self: *const ItemStack) bool {
 		return self.amount == 0;
 	}
 
 	/// Returns the number of items actually added/removed.
-	pub fn add(self: *ItemStack, item: Item, number: anytype) @TypeOf(number) {
+	pub fn add(self: *ItemStack, item: Item, number: anytype) @TypeOf(number) { // TODO: This function should be removed.
 		if(self.item == null) self.item = item;
 		var newAmount = self.amount + number;
 		var returnValue = number;
@@ -1159,15 +1144,10 @@ pub const ItemStack = struct { // MARK: ItemStack
 		}
 		self.amount = @intCast(newAmount);
 		if(self.empty()) {
+			self.deinit();
 			self.clear();
 		}
 		return returnValue;
-	}
-
-	/// whether the given number of items can be added to this stack.
-	pub fn canAddAll(self: *const ItemStack, item: Item, number: u16) bool {
-		if(self.item != null and !std.meta.eql(self.item.?, item)) return false;
-		return @as(u32, self.amount) + number <= item.stackSize();
 	}
 
 	pub fn clear(self: *ItemStack) void {
