@@ -1150,12 +1150,16 @@ pub const ItemStack = struct { // MARK: ItemStack
 };
 
 pub const InventorySync = struct { // MARK: InventorySync
+
 	pub const ClientSide = struct {
 		var mutex: std.Thread.Mutex = .{};
 		var commands: main.utils.CircularBufferQueue(InventoryCommand) = undefined;
+		var maxId: u32 = 0;
+		var freeIdList: main.List(u32) = undefined;
 
 		pub fn init() void {
 			commands = main.utils.CircularBufferQueue(InventoryCommand).init(main.globalAllocator, 256);
+			freeIdList = .init(main.globalAllocator);
 		}
 
 		pub fn deinit() void {
@@ -1163,6 +1167,8 @@ pub const InventorySync = struct { // MARK: InventorySync
 				cmd.finalize(main.globalAllocator);
 			}
 			commands.deinit();
+			std.debug.assert(freeIdList.items.len == maxId); // leak
+			freeIdList.deinit();
 		}
 
 		pub fn executeCommand(payload: InventoryCommand.CommandPayload) void {
@@ -1184,6 +1190,22 @@ pub const InventorySync = struct { // MARK: InventorySync
 				cmd.undo();
 				cmd.undoSteps.deinit(main.globalAllocator); // TODO: This should be put on some kind of redo queue once the testing phase is over.
 			}
+		}
+
+		fn nextId() u32 {
+			mutex.lock();
+			defer mutex.unlock();
+			if(freeIdList.popOrNull()) |id| {
+				return id;
+			}
+			defer maxId += 1;
+			return maxId;
+		}
+
+		fn freeId(id: u32) void {
+			mutex.lock();
+			defer mutex.unlock();
+			freeIdList.append(id);
 		}
 	};
 
@@ -1595,6 +1617,7 @@ const InventoryCommand = struct { // MARK: InventoryCommand
 				const temp: Inventory = .{
 					.type = .normal,
 					._items = &_items,
+					.id = undefined,
 				};
 				cmd.tryCraftingTo(allocator, temp, 0, self.source, self.sourceSlot);
 				std.debug.assert(cmd.undoSteps.pop().create.dest._items.ptr == temp._items.ptr); // Remove the extra step from undo list (we cannot undo dropped items)
@@ -1738,6 +1761,7 @@ pub const Inventory = struct { // MARK: Inventory
 		workbench,
 	};
 	type: Type,
+	id: u32,
 	_items: []ItemStack,
 
 	pub fn init(allocator: NeverFailingAllocator, _size: usize, _type: Type) Inventory {
@@ -1745,6 +1769,7 @@ pub const Inventory = struct { // MARK: Inventory
 		const self = Inventory{
 			.type = _type,
 			._items = allocator.alloc(ItemStack, _size),
+			.id = InventorySync.ClientSide.nextId(),
 		};
 		for(self._items) |*item| {
 			item.* = ItemStack{};
@@ -1758,6 +1783,7 @@ pub const Inventory = struct { // MARK: Inventory
 	}
 
 	fn _deinit(self: Inventory, allocator: NeverFailingAllocator) void {
+		InventorySync.ClientSide.freeId(self.id);
 		for(self._items) |*item| {
 			item.deinit();
 		}
