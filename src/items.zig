@@ -1130,26 +1130,6 @@ pub const ItemStack = struct { // MARK: ItemStack
 		return self.amount == 0;
 	}
 
-	/// Returns the number of items actually added/removed.
-	pub fn add(self: *ItemStack, item: Item, number: anytype) @TypeOf(number) { // TODO: This function should be removed.
-		if(self.item == null) self.item = item;
-		var newAmount = self.amount + number;
-		var returnValue = number;
-		if(newAmount < 0) {
-			newAmount = 0;
-			returnValue = newAmount - self.amount;
-		} else if(newAmount > self.item.?.stackSize()) {
-			newAmount = self.item.?.stackSize();
-			returnValue = newAmount - self.amount;
-		}
-		self.amount = @intCast(newAmount);
-		if(self.empty()) {
-			self.deinit();
-			self.clear();
-		}
-		return returnValue;
-	}
-
 	pub fn clear(self: *ItemStack) void {
 		self.item = null;
 		self.amount = 0;
