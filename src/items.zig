@@ -1149,6 +1149,8 @@ pub const ItemStack = struct { // MARK: ItemStack
 	}
 };
 
+const Side = enum{client, server};
+
 pub const InventorySync = struct { // MARK: InventorySync
 
 	pub const ClientSide = struct {
@@ -1156,19 +1158,22 @@ pub const InventorySync = struct { // MARK: InventorySync
 		var commands: main.utils.CircularBufferQueue(InventoryCommand) = undefined;
 		var maxId: u32 = 0;
 		var freeIdList: main.List(u32) = undefined;
+		var serverToClientMap: std.AutoHashMap(u32, Inventory) = undefined;
 
 		pub fn init() void {
 			commands = main.utils.CircularBufferQueue(InventoryCommand).init(main.globalAllocator, 256);
 			freeIdList = .init(main.globalAllocator);
+			serverToClientMap = .init(main.globalAllocator.allocator);
 		}
 
 		pub fn deinit() void {
 			while(commands.dequeue()) |cmd| {
-				cmd.finalize(main.globalAllocator);
+				cmd.finalize(main.globalAllocator, .client, &.{});
 			}
 			commands.deinit();
 			std.debug.assert(freeIdList.items.len == maxId); // leak
 			freeIdList.deinit();
+			serverToClientMap.deinit();
 		}
 
 		pub fn executeCommand(payload: InventoryCommand.CommandPayload) void {
@@ -1178,7 +1183,10 @@ pub const InventorySync = struct { // MARK: InventorySync
 
 			mutex.lock();
 			defer mutex.unlock();
-			cmd.do(main.globalAllocator);
+			cmd.do(main.globalAllocator, .client);
+			const data = cmd.serializePayload(main.stackAllocator);
+			defer main.stackAllocator.free(data);
+			main.network.Protocols.inventory.sendCommand(main.game.world.?.conn, cmd.payload, data);
 			commands.enqueue(cmd);
 		}
 
@@ -1207,26 +1215,164 @@ pub const InventorySync = struct { // MARK: InventorySync
 			defer mutex.unlock();
 			freeIdList.append(id);
 		}
+
+		fn mapServerId(serverId: u32, inventory: Inventory) void {
+			serverToClientMap.put(serverId, inventory) catch unreachable;
+		}
+
+		fn unmapServerId(serverId: u32, clientId: u32) void {
+			std.debug.assert(serverToClientMap.fetchRemove(serverId).?.value.id == clientId);
+		}
+
+		fn getInventory(serverId: u32) ?Inventory {
+			mutex.lock();
+			defer mutex.unlock();
+			return serverToClientMap.get(serverId);
+		}
+
+		pub fn receiveConfirmation(data: []const u8) void {
+			mutex.lock();
+			defer mutex.unlock();
+			commands.dequeue().?.finalize(main.globalAllocator, .client, data);
+		}
+	};
+
+	pub const ServerSide = struct {
+		const ServerInventory = struct {
+			inv: Inventory,
+			users: main.ListUnmanaged(*main.server.User),
+
+			fn init(len: usize, typ: Inventory.Type) ServerInventory {
+				return .{
+					.inv = Inventory._init(main.globalAllocator, len, typ, .server),
+					.users = .{},
+				};
+			}
+
+			fn deinit(self: ServerInventory) void {
+				std.debug.assert(self.users.items.len == 0);
+				self.users.deinit(main.globalAllocator);
+				self.inv._deinit(main.globalAllocator, .server);
+			}
+
+			fn addUser(self: *ServerInventory, user: *main.server.User, clientId: u32) void {
+				main.utils.assertLocked(&mutex);
+				self.users.append(main.globalAllocator, user);
+				user.inventoryClientToServerIdMap.put(clientId, self.inv.id) catch unreachable;
+			}
+
+			fn removeUser(self: *ServerInventory, user: *main.server.User, clientId: u32) void {
+				main.utils.assertLocked(&mutex);
+				_ = self.users.swapRemove(std.mem.indexOfScalar(*main.server.User, self.users.items, user).?);
+				std.debug.assert(user.inventoryClientToServerIdMap.fetchRemove(clientId).?.value == self.inv.id);
+				if(self.users.items.len == 0) {
+					self.deinit();
+				}
+			}
+		};
+		var mutex: std.Thread.Mutex = .{};
+
+		var inventories: main.List(ServerInventory) = undefined;
+		var maxId: u32 = 0;
+		var freeIdList: main.List(u32) = undefined;
+
+		pub fn init() void {
+			inventories = .initCapacity(main.globalAllocator, 256);
+			freeIdList = .init(main.globalAllocator);
+		}
+
+		pub fn deinit() void {
+			std.debug.assert(freeIdList.items.len == maxId); // leak
+			freeIdList.deinit();
+			inventories.deinit();
+		}
+
+		pub fn disconnectUser(user: *main.server.User) void {
+			mutex.lock();
+			defer mutex.unlock();
+			while(true) {
+				// Reinitializing the iterator in the loop to allow for removal:
+				var iter = user.inventoryClientToServerIdMap.keyIterator();
+				const clientId = iter.next() orelse break;
+				closeInventory(user, clientId.*) catch unreachable;
+			}
+		}
+
+		fn nextId() u32 {
+			main.utils.assertLocked(&mutex);
+			if(freeIdList.popOrNull()) |id| {
+				return id;
+			}
+			defer maxId += 1;
+			_ = inventories.addOne();
+			return maxId;
+		}
+
+		fn freeId(id: u32) void {
+			main.utils.assertLocked(&mutex);
+			freeIdList.append(id);
+		}
+
+		pub fn receiveCommand(source: *main.server.User, data: []const u8) !void {
+			mutex.lock();
+			defer mutex.unlock();
+			const typ: InventoryCommand.PayloadType = @enumFromInt(data[0]);
+			@setEvalBranchQuota(100000);
+			const payload: InventoryCommand.CommandPayload = switch(typ) {
+				inline else => |_typ| @unionInit(InventoryCommand.CommandPayload, @tagName(_typ), try std.meta.FieldType(InventoryCommand.CommandPayload, _typ).deserialize(data[1..], .server, source)),
+			};
+			var command = InventoryCommand {
+				.payload = payload,
+			};
+			command.do(main.globalAllocator, .server);
+			command.finalize(main.globalAllocator, .server, &.{});
+		}
+
+		fn createInventory(user: *main.server.User, clientId: u32, len: usize, typ: Inventory.Type) void {
+			main.utils.assertLocked(&mutex);
+			const inventory = ServerInventory.init(len, typ);
+			inventories.items[inventory.inv.id] = inventory;
+			inventories.items[inventory.inv.id].addUser(user, clientId);
+		}
+
+		fn closeInventory(user: *main.server.User, clientId: u32) !void {
+			main.utils.assertLocked(&mutex);
+			const serverId = user.inventoryClientToServerIdMap.get(clientId) orelse return error.Invalid;
+			inventories.items[serverId].removeUser(user, clientId);
+		}
+
+		fn getInventory(user: *main.server.User, clientId: u32) ?Inventory {
+			main.utils.assertLocked(&mutex);
+			const serverId = user.inventoryClientToServerIdMap.get(clientId) orelse return null;
+			return inventories.items[serverId].inv;
+		}
 	};
 
 	pub fn executeCommand(payload: InventoryCommand.CommandPayload) void {
 		ClientSide.executeCommand(payload);
 	}
+
+	pub fn getInventory(id: u32, side: Side, user: ?*main.server.User) ?Inventory {
+		return switch(side) {
+			.client => InventorySync.ClientSide.getInventory(id),
+			.server => InventorySync.ServerSide.getInventory(user.?, id),
+		};
+	}
 };
 
-const InventoryCommand = struct { // MARK: InventoryCommand
-	const PayloadType = enum {
-		open,
-		close,
-		depositOrSwap,
-		deposit,
-		takeHalf,
-		dropStack,
-		dropOne,
-		fillFromCreative,
-		depositOrDrop,
+pub const InventoryCommand = struct { // MARK: InventoryCommand
+	pub const PayloadType = enum(u8) {
+		open = 0,
+		close = 1,
+		depositOrSwap = 2,
+		deposit = 3,
+		takeHalf = 4,
+		dropStack = 5,
+		dropOne = 6,
+		fillFromCreative = 7,
+		depositOrDrop = 8,
 	};
-	const CommandPayload = union(PayloadType) {
+	pub const CommandPayload = union(PayloadType) {
 		open: Open,
 		close: Close,
 		depositOrSwap: DepositOrSwap,
@@ -1267,11 +1413,21 @@ const InventoryCommand = struct { // MARK: InventoryCommand
 	payload: CommandPayload,
 	undoSteps: main.ListUnmanaged(UndoInfo) = .{},
 
-	fn do(self: *InventoryCommand, allocator: NeverFailingAllocator) void {
+	fn serializePayload(self: *InventoryCommand, allocator: NeverFailingAllocator) []const u8 {
+		var list = main.List(u8).init(allocator);
+		switch(self.payload) {
+			inline else => |payload| {
+				payload.serialize(&list);
+			},
+		}
+		return list.toOwnedSlice();
+	}
+
+	fn do(self: *InventoryCommand, allocator: NeverFailingAllocator, side: Side) void {
 		std.debug.assert(self.undoSteps.items.len == 0); // do called twice without cleaning up
 		switch(self.payload) {
 			inline else => |payload| {
-				payload.run(allocator, self);
+				payload.run(allocator, self, side);
 			},
 		}
 	}
@@ -1319,7 +1475,7 @@ const InventoryCommand = struct { // MARK: InventoryCommand
 		self.undoSteps.clearRetainingCapacity();
 	}
 
-	fn finalize(self: InventoryCommand, allocator: NeverFailingAllocator) void {
+	fn finalize(self: InventoryCommand, allocator: NeverFailingAllocator, side: Side, data: []const u8) void {
 		for(self.undoSteps.items) |step| {
 			switch(step) {
 				.move, .swap, .create => {},
@@ -1333,7 +1489,7 @@ const InventoryCommand = struct { // MARK: InventoryCommand
 		switch(self.payload) {
 			inline else => |payload| {
 				if(@hasDecl(@TypeOf(payload), "finalize")) {
-					payload.finalize();
+					payload.finalize(side, data);
 				}
 			},
 		}
@@ -1360,6 +1516,7 @@ const InventoryCommand = struct { // MARK: InventoryCommand
 	}
 
 	fn tryCraftingTo(self: *InventoryCommand, allocator: NeverFailingAllocator, dest: Inventory, destSlot: u32, source: Inventory, sourceSlot: u32) void {
+		if(true) return; // TODO: Figure out how to send the source inventories to the server.
 		std.debug.assert(source.type == .crafting);
 		std.debug.assert(dest.type == .normal);
 		if(sourceSlot != source._items.len - 1) return;
@@ -1417,17 +1574,65 @@ const InventoryCommand = struct { // MARK: InventoryCommand
 	const Open = struct {
 		inv: Inventory,
 
-		fn run(_: Open, _: NeverFailingAllocator, _: *InventoryCommand) void {}
+		fn run(_: Open, _: NeverFailingAllocator, _: *InventoryCommand, _: Side) void {}
+
+		fn finalize(self: Open, side: Side, data: []const u8) void {
+			if(side != .client) return;
+			if(data.len >= 4) {
+				const serverId = std.mem.readInt(u32, data[0..4], .big);
+				InventorySync.ClientSide.mapServerId(serverId, self.inv);
+			}
+		}
+
+		fn confirmationData(self: Open, allocator: NeverFailingAllocator) []const u8 {
+			const data = allocator.alloc(u8, 4);
+			std.mem.writeInt(u32, data[0..4], self.inv.id, .big);
+		}
+
+		fn serialize(self: Open, data: *main.List(u8)) void {
+			std.mem.writeInt(u32, data.addMany(4)[0..4], self.inv.id, .big);
+			std.mem.writeInt(usize, data.addMany(8)[0..8], self.inv._items.len, .big);
+			data.append(@intFromEnum(self.inv.type));
+		}
+
+		fn deserialize(data: []const u8, side: Side, user: ?*main.server.User) !Open {
+			if(data.len != 13) return error.Invalid;
+			if(side != .server or user == null) return error.Invalid;
+			const id = std.mem.readInt(u32, data[0..4], .big);
+			const len = std.mem.readInt(usize, data[4..12], .big);
+			const typ: Inventory.Type = @enumFromInt(data[12]);
+			InventorySync.ServerSide.createInventory(user.?, id, len, typ);
+			return .{
+				.inv = InventorySync.ServerSide.getInventory(user.?, id) orelse return error.Invalid,
+			};
+		}
 	};
 
 	const Close = struct {
 		inv: Inventory,
 		allocator: NeverFailingAllocator,
 
-		fn run(_: Close, _: NeverFailingAllocator, _: *InventoryCommand) void {}
+		fn run(_: Close, _: NeverFailingAllocator, _: *InventoryCommand, _: Side) void {}
 
-		fn finalize(self: Close) void {
-			self.inv._deinit(self.allocator);
+		fn finalize(self: Close, side: Side, data: []const u8) void {
+			if(side != .client) return;
+			self.inv._deinit(self.allocator, .client);
+			if(data.len >= 4) {
+				const serverId = std.mem.readInt(u32, data[0..4], .big);
+				InventorySync.ClientSide.unmapServerId(serverId, self.inv.id);
+			}
+		}
+
+		fn serialize(self: Close, data: *main.List(u8)) void {
+			std.mem.writeInt(u32, data.addMany(4)[0..4], self.inv.id, .big);
+		}
+
+		fn deserialize(data: []const u8, side: Side, user: ?*main.server.User) !Close {
+			if(data.len != 4) return error.Invalid;
+			if(side != .server or user == null) return error.Invalid;
+			const id = std.mem.readInt(u32, data[0..4], .big);
+			try InventorySync.ServerSide.closeInventory(user.?, id);
+			return undefined;
 		}
 	};
 
@@ -1437,10 +1642,10 @@ const InventoryCommand = struct { // MARK: InventoryCommand
 		source: Inventory,
 		sourceSlot: u32,
 
-		fn run(self: DepositOrSwap, allocator: NeverFailingAllocator, cmd: *InventoryCommand) void {
+		fn run(self: DepositOrSwap, allocator: NeverFailingAllocator, cmd: *InventoryCommand, side: Side) void {
 			std.debug.assert(self.source.type == .normal);
 			if(self.dest.type == .creative) {
-				FillFromCreative.run(.{.dest = self.source, .destSlot = self.sourceSlot, .item = self.dest._items[self.destSlot].item}, allocator, cmd);
+				FillFromCreative.run(.{.dest = self.source, .destSlot = self.sourceSlot, .item = self.dest._items[self.destSlot].item}, allocator, cmd, side);
 			}
 			if(self.dest.type == .crafting) {
 				cmd.tryCraftingTo(allocator, self.source, self.sourceSlot, self.dest, self.destSlot);
@@ -1490,6 +1695,25 @@ const InventoryCommand = struct { // MARK: InventoryCommand
 				.sourceSlot = self.sourceSlot,
 			}});
 		}
+
+		fn serialize(self: DepositOrSwap, data: *main.List(u8)) void {
+			std.mem.writeInt(u32, data.addMany(4)[0..4], self.dest.id, .big);
+			std.mem.writeInt(u32, data.addMany(4)[0..4], self.destSlot, .big);
+			std.mem.writeInt(u32, data.addMany(4)[0..4], self.source.id, .big);
+			std.mem.writeInt(u32, data.addMany(4)[0..4], self.sourceSlot, .big);
+		}
+
+		fn deserialize(data: []const u8, side: Side, user: ?*main.server.User) !DepositOrSwap {
+			if(data.len != 16) return error.Invalid;
+			const destId = std.mem.readInt(u32, data[0..4], .big);
+			const sourceId = std.mem.readInt(u32, data[8..12], .big);
+			return .{
+				.dest = InventorySync.getInventory(destId, side, user) orelse return error.Invalid,
+				.destSlot = std.mem.readInt(u32, data[4..8], .big),
+				.source = InventorySync.getInventory(sourceId, side, user) orelse return error.Invalid,
+				.sourceSlot = std.mem.readInt(u32, data[12..16], .big),
+			};
+		}
 	};
 
 	const Deposit = struct {
@@ -1499,7 +1723,7 @@ const InventoryCommand = struct { // MARK: InventoryCommand
 		sourceSlot: u32,
 		amount: u16,
 
-		fn run(self: Deposit, allocator: NeverFailingAllocator, cmd: *InventoryCommand) void {
+		fn run(self: Deposit, allocator: NeverFailingAllocator, cmd: *InventoryCommand, _: Side) void {
 			std.debug.assert(self.source.type == .normal);
 			if(self.dest.type == .creative) return;
 			if(self.dest.type == .crafting) return;
@@ -1535,6 +1759,27 @@ const InventoryCommand = struct { // MARK: InventoryCommand
 				}});
 			}
 		}
+
+		fn serialize(self: Deposit, data: *main.List(u8)) void {
+			std.mem.writeInt(u32, data.addMany(4)[0..4], self.dest.id, .big);
+			std.mem.writeInt(u32, data.addMany(4)[0..4], self.destSlot, .big);
+			std.mem.writeInt(u32, data.addMany(4)[0..4], self.source.id, .big);
+			std.mem.writeInt(u32, data.addMany(4)[0..4], self.sourceSlot, .big);
+			std.mem.writeInt(u16, data.addMany(2)[0..2], self.amount, .big);
+		}
+
+		fn deserialize(data: []const u8, side: Side, user: ?*main.server.User) !Deposit {
+			if(data.len != 18) return error.Invalid;
+			const destId = std.mem.readInt(u32, data[0..4], .big);
+			const sourceId = std.mem.readInt(u32, data[8..12], .big);
+			return .{
+				.dest = InventorySync.getInventory(destId, side, user) orelse return error.Invalid,
+				.destSlot = std.mem.readInt(u32, data[4..8], .big),
+				.source = InventorySync.getInventory(sourceId, side, user) orelse return error.Invalid,
+				.sourceSlot = std.mem.readInt(u32, data[12..16], .big),
+				.amount = std.mem.readInt(u16, data[16..18], .big),
+			};
+		}
 	};
 
 	const TakeHalf = struct {
@@ -1543,12 +1788,12 @@ const InventoryCommand = struct { // MARK: InventoryCommand
 		source: Inventory,
 		sourceSlot: u32,
 
-		fn run(self: TakeHalf, allocator: NeverFailingAllocator, cmd: *InventoryCommand) void {
+		fn run(self: TakeHalf, allocator: NeverFailingAllocator, cmd: *InventoryCommand, side: Side) void {
 			std.debug.assert(self.dest.type == .normal);
 			if(self.source.type == .creative) {
 				if(self.dest._items[self.destSlot].item == null) {
 					const item = self.source._items[self.sourceSlot].item;
-					FillFromCreative.run(.{.dest = self.dest, .destSlot = self.destSlot, .item = item}, allocator, cmd);
+					FillFromCreative.run(.{.dest = self.dest, .destSlot = self.destSlot, .item = item}, allocator, cmd, side);
 				}
 				return;
 			}
@@ -1602,13 +1847,32 @@ const InventoryCommand = struct { // MARK: InventoryCommand
 				}});
 			}
 		}
+
+		fn serialize(self: TakeHalf, data: *main.List(u8)) void {
+			std.mem.writeInt(u32, data.addMany(4)[0..4], self.dest.id, .big);
+			std.mem.writeInt(u32, data.addMany(4)[0..4], self.destSlot, .big);
+			std.mem.writeInt(u32, data.addMany(4)[0..4], self.source.id, .big);
+			std.mem.writeInt(u32, data.addMany(4)[0..4], self.sourceSlot, .big);
+		}
+
+		fn deserialize(data: []const u8, side: Side, user: ?*main.server.User) !TakeHalf {
+			if(data.len != 16) return error.Invalid;
+			const destId = std.mem.readInt(u32, data[0..4], .big);
+			const sourceId = std.mem.readInt(u32, data[8..12], .big);
+			return .{
+				.dest = InventorySync.getInventory(destId, side, user) orelse return error.Invalid,
+				.destSlot = std.mem.readInt(u32, data[4..8], .big),
+				.source = InventorySync.getInventory(sourceId, side, user) orelse return error.Invalid,
+				.sourceSlot = std.mem.readInt(u32, data[12..16], .big),
+			};
+		}
 	};
 
 	const DropStack = struct {
 		source: Inventory,
 		sourceSlot: u32,
 
-		fn run(self: DropStack, allocator: NeverFailingAllocator, cmd: *InventoryCommand) void {
+		fn run(self: DropStack, allocator: NeverFailingAllocator, cmd: *InventoryCommand, side: Side) void {
 			if(self.source.type == .creative) return;
 			if(self.source._items[self.sourceSlot].item == null) return;
 			if(self.source.type == .crafting) {
@@ -1622,14 +1886,18 @@ const InventoryCommand = struct { // MARK: InventoryCommand
 				cmd.tryCraftingTo(allocator, temp, 0, self.source, self.sourceSlot);
 				std.debug.assert(cmd.undoSteps.pop().create.dest._items.ptr == temp._items.ptr); // Remove the extra step from undo list (we cannot undo dropped items)
 				if(_items[0].item != null) {
-					main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, _items[0], @floatCast(main.game.Player.getPosBlocking()), main.game.camera.direction, 20);
+					if(side == .client) {
+						main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, _items[0], @floatCast(main.game.Player.getPosBlocking()), main.game.camera.direction, 20);
+					}
 				}
 				return;
 			}
 			if(self.source.type == .workbench and self.sourceSlot == 25) {
 				cmd.removeToolCraftingIngredients(allocator, self.source);
 			}
-			main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, self.source.getStack(self.sourceSlot), @floatCast(main.game.Player.getPosBlocking()), main.game.camera.direction, 20);
+			if(side == .client) {
+				main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, self.source.getStack(self.sourceSlot), @floatCast(main.game.Player.getPosBlocking()), main.game.camera.direction, 20);
+			}
 			cmd.undoSteps.append(allocator, .{.delete = .{
 				.source = self.source,
 				.sourceSlot = self.sourceSlot,
@@ -1638,19 +1906,35 @@ const InventoryCommand = struct { // MARK: InventoryCommand
 			self.source._items[self.sourceSlot].clear();
 			self.source.update();
 		}
+
+		fn serialize(self: DropStack, data: *main.List(u8)) void {
+			std.mem.writeInt(u32, data.addMany(4)[0..4], self.source.id, .big);
+			std.mem.writeInt(u32, data.addMany(4)[0..4], self.sourceSlot, .big);
+		}
+
+		fn deserialize(data: []const u8, side: Side, user: ?*main.server.User) !DropStack {
+			if(data.len != 8) return error.Invalid;
+			const sourceId = std.mem.readInt(u32, data[0..4], .big);
+			return .{
+				.source = InventorySync.getInventory(sourceId, side, user) orelse return error.Invalid,
+				.sourceSlot = std.mem.readInt(u32, data[4..8], .big),
+			};
+		}
 	};
 
 	const DropOne = struct {
 		source: Inventory,
 		sourceSlot: u32,
 
-		fn run(self: DropOne, allocator: NeverFailingAllocator, cmd: *InventoryCommand) void {
+		fn run(self: DropOne, allocator: NeverFailingAllocator, cmd: *InventoryCommand, side: Side) void {
 			if((self.source.type == .workbench or self.source.type == .crafting) and self.sourceSlot == self.source._items.len - 1) {
-				DropStack.run(.{.source = self.source, .sourceSlot = self.sourceSlot}, allocator, cmd);
+				DropStack.run(.{.source = self.source, .sourceSlot = self.sourceSlot}, allocator, cmd, side);
 			}
 			if(self.source.type == .crafting) return;
 			if(self.source._items[self.sourceSlot].item == null) return;
-			main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, .{.item = self.source.getStack(self.sourceSlot).item, .amount = 1}, @floatCast(main.game.Player.getPosBlocking()), main.game.camera.direction, 20);
+			if(side == .client) {
+				main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, .{.item = self.source.getStack(self.sourceSlot).item, .amount = 1}, @floatCast(main.game.Player.getPosBlocking()), main.game.camera.direction, 20);
+			}
 			cmd.undoSteps.append(allocator, .{.delete = .{
 				.source = self.source,
 				.sourceSlot = self.sourceSlot,
@@ -1663,6 +1947,20 @@ const InventoryCommand = struct { // MARK: InventoryCommand
 			}
 			self.source.update();
 		}
+
+		fn serialize(self: DropOne, data: *main.List(u8)) void {
+			std.mem.writeInt(u32, data.addMany(4)[0..4], self.source.id, .big);
+			std.mem.writeInt(u32, data.addMany(4)[0..4], self.sourceSlot, .big);
+		}
+
+		fn deserialize(data: []const u8, side: Side, user: ?*main.server.User) !DropOne {
+			if(data.len != 8) return error.Invalid;
+			const sourceId = std.mem.readInt(u32, data[0..4], .big);
+			return .{
+				.source = InventorySync.getInventory(sourceId, side, user) orelse return error.Invalid,
+				.sourceSlot = std.mem.readInt(u32, data[4..8], .big),
+			};
+		}
 	};
 
 	const FillFromCreative = struct {
@@ -1670,7 +1968,7 @@ const InventoryCommand = struct { // MARK: InventoryCommand
 		destSlot: u32,
 		item: ?Item,
 
-		fn run(self: FillFromCreative, allocator: NeverFailingAllocator, cmd: *InventoryCommand) void {
+		fn run(self: FillFromCreative, allocator: NeverFailingAllocator, cmd: *InventoryCommand, _: Side) void {
 			if(self.dest.type == .crafting) return;
 			if(self.dest.type == .workbench and self.destSlot == 25) return;
 
@@ -1693,13 +1991,43 @@ const InventoryCommand = struct { // MARK: InventoryCommand
 			}
 			self.dest.update();
 		}
+
+		fn serialize(self: FillFromCreative, data: *main.List(u8)) void {
+			std.mem.writeInt(u32, data.addMany(4)[0..4], self.dest.id, .big);
+			std.mem.writeInt(u32, data.addMany(4)[0..4], self.destSlot, .big);
+			if(self.item) |item| {
+				const zon = ZonElement.initObject(main.stackAllocator);
+				defer zon.free(main.stackAllocator);
+				item.insertIntoZon(main.stackAllocator, zon);
+				const string = zon.toStringEfficient(main.stackAllocator, &.{});
+				defer main.stackAllocator.free(string);
+				data.appendSlice(string);
+			}
+		}
+
+		fn deserialize(data: []const u8, side: Side, user: ?*main.server.User) !FillFromCreative {
+			if(data.len < 8) return error.Invalid;
+			const destId = std.mem.readInt(u32, data[0..4], .big);
+			const destSlot = std.mem.readInt(u32, data[4..8], .big);
+			var item: ?Item = null;
+			if(data.len > 8) {
+				const zon = ZonElement.parseFromString(main.stackAllocator, data[8..]);
+				defer zon.free(main.stackAllocator);
+				item = try Item.init(zon);
+			}
+			return .{
+				.dest = InventorySync.getInventory(destId, side, user) orelse return error.Invalid,
+				.destSlot = destSlot,
+				.item = item,
+			};
+		}
 	};
 
 	const DepositOrDrop = struct {
 		dest: Inventory,
 		source: Inventory,
 
-		pub fn run(self: DepositOrDrop, allocator: NeverFailingAllocator, cmd: *InventoryCommand) void {
+		pub fn run(self: DepositOrDrop, allocator: NeverFailingAllocator, cmd: *InventoryCommand, side: Side) void {
 			std.debug.assert(self.dest.type == .normal);
 			if(self.source.type == .creative) return;
 			if(self.source.type == .crafting) return;
@@ -1741,7 +2069,9 @@ const InventoryCommand = struct { // MARK: InventoryCommand
 						continue :outer;
 					}
 				}
-				main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, sourceStack.*, @floatCast(main.game.Player.getPosBlocking()), main.game.camera.direction, 20);
+				if(side == .client) {
+					main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, sourceStack.*, @floatCast(main.game.Player.getPosBlocking()), main.game.camera.direction, 20);
+				}
 				cmd.undoSteps.append(allocator, .{.delete = .{
 					.source = self.source,
 					.sourceSlot = @intCast(sourceSlot),
@@ -1750,31 +2080,54 @@ const InventoryCommand = struct { // MARK: InventoryCommand
 				sourceStack.clear();
 			}
 		}
+
+		fn serialize(self: DepositOrDrop, data: *main.List(u8)) void {
+			std.mem.writeInt(u32, data.addMany(4)[0..4], self.dest.id, .big);
+			std.mem.writeInt(u32, data.addMany(4)[0..4], self.source.id, .big);
+		}
+
+		fn deserialize(data: []const u8, side: Side, user: ?*main.server.User) !DepositOrDrop {
+			if(data.len != 8) return error.Invalid;
+			const destId = std.mem.readInt(u32, data[0..4], .big);
+			const sourceId = std.mem.readInt(u32, data[4..8], .big);
+			return .{
+				.dest = InventorySync.getInventory(destId, side, user) orelse return error.Invalid,
+				.source = InventorySync.getInventory(sourceId, side, user) orelse return error.Invalid,
+			};
+		}
 	};
 };
 
 pub const Inventory = struct { // MARK: Inventory
-	const Type = enum {
-		normal,
-		creative,
-		crafting,
-		workbench,
+	const Type = enum(u8) {
+		normal = 0,
+		creative = 1,
+		crafting = 2,
+		workbench = 3,
 	};
 	type: Type,
 	id: u32,
 	_items: []ItemStack,
 
 	pub fn init(allocator: NeverFailingAllocator, _size: usize, _type: Type) Inventory {
+		const self = _init(allocator, _size, _type, .client);
+		InventorySync.executeCommand(.{.open = .{.inv = self}});
+		return self;
+	}
+
+	fn _init(allocator: NeverFailingAllocator, _size: usize, _type: Type, side: Side) Inventory {
 		if(_type == .workbench) std.debug.assert(_size == 26);
 		const self = Inventory{
 			.type = _type,
 			._items = allocator.alloc(ItemStack, _size),
-			.id = InventorySync.ClientSide.nextId(),
+			.id = switch(side) {
+				.client => InventorySync.ClientSide.nextId(),
+				.server => InventorySync.ServerSide.nextId(),
+			},
 		};
 		for(self._items) |*item| {
 			item.* = ItemStack{};
 		}
-		InventorySync.executeCommand(.{.open = .{.inv = self}});
 		return self;
 	}
 
@@ -1782,8 +2135,11 @@ pub const Inventory = struct { // MARK: Inventory
 		InventorySync.executeCommand(.{.close = .{.inv = self, .allocator = allocator}});
 	}
 
-	fn _deinit(self: Inventory, allocator: NeverFailingAllocator) void {
-		InventorySync.ClientSide.freeId(self.id);
+	fn _deinit(self: Inventory, allocator: NeverFailingAllocator, side: Side) void {
+		switch(side) {
+			.client => InventorySync.ClientSide.freeId(self.id),
+			.server => InventorySync.ServerSide.freeId(self.id),
+		}
 		for(self._items) |*item| {
 			item.deinit();
 		}

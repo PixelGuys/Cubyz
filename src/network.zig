@@ -1174,6 +1174,33 @@ pub const Protocols = struct {
 			conn.sendImportant(id, data);
 		}
 	};
+	pub const inventory = struct {
+		pub const id: u8 = 13;
+		pub const asynchronous = false;
+		fn receive(conn: *Connection, data: []const u8) !void {
+			if(conn.user) |user| {
+				if(data[0] == 0xff) return error.InvalidPacket;
+				try items.InventorySync.ServerSide.receiveCommand(user, data);
+			} else {
+				if(data[0] == 0xff) { // Confirmation
+					items.InventorySync.ClientSide.receiveConfirmation(data[1..]);
+				} else {
+					return error.InvalidPacket;
+				}
+			}
+		}
+		pub fn sendCommand(conn: *Connection, payloadType: items.InventoryCommand.PayloadType, _data: []const u8) void {
+			var data = main.stackAllocator.alloc(u8, _data.len + 1);
+			defer main.stackAllocator.free(data);
+			data[0] = @intFromEnum(payloadType);
+			std.debug.assert(data[0] != 0xff);
+			@memcpy(data[1..], _data);
+			conn.sendImportant(id, data);
+		}
+		pub fn sendConfirmation(conn: *Connection) void {
+			conn.sendImportant(id, &.{0xff});
+		}
+	};
 };
 
 
@@ -1646,6 +1673,9 @@ pub const Connection = struct { // MARK: Connection
 	pub fn receive(self: *Connection, data: []const u8) void {
 		self.flawedReceive(data) catch |err| {
 			std.log.err("Got error while processing received network data: {s}", .{@errorName(err)});
+			if(@errorReturnTrace()) |trace| {
+				std.log.info("{}", .{trace});
+			}
 			self.disconnect();
 		};
 	}

@@ -525,8 +525,11 @@ pub const World = struct { // MARK: World
 
 	pub fn deinit(self: *World) void {
 		// TODO: Close all world related guis.
+		main.gui.inventory.deinit();
 		main.gui.deinit();
 		main.gui.init();
+
+		Player.inventory.deinit(main.globalAllocator);
 
 		main.threadPool.clear();
 		self.conn.deinit();
@@ -543,7 +546,6 @@ pub const World = struct { // MARK: World
 		renderer.mesh_storage.deinit();
 		renderer.mesh_storage.init();
 		assets.unloadAssets();
-		Player.inventory.deinit(main.globalAllocator);
 	}
 
 	pub fn finishHandshake(self: *World, zon: ZonElement) !void {

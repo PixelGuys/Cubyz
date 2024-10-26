@@ -39,6 +39,8 @@ pub const User = struct { // MARK: User
 	lastRenderDistance: u16 = 0,
 	lastPos: Vec3i = @splat(0),
 
+	inventoryClientToServerIdMap: std.AutoHashMap(u32, u32) = undefined,
+
 	connected: Atomic(bool) = .init(true),
 
 	refCount: Atomic(u32) = .init(1),
@@ -47,6 +49,7 @@ pub const User = struct { // MARK: User
 		const self = main.globalAllocator.create(User);
 		errdefer main.globalAllocator.destroy(self);
 		self.* = .{};
+		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
 		self.interpolation.init(@ptrCast(&self.player.pos), @ptrCast(&self.player.vel));
 		self.conn = try Connection.init(manager, ipPort, self);
 		self.increaseRefCount();
@@ -63,6 +66,9 @@ pub const User = struct { // MARK: User
 
 	pub fn deinit(self: *User) void {
 		std.debug.assert(self.refCount.load(.monotonic) == 0);
+		main.items.InventorySync.ServerSide.disconnectUser(self);
+		std.debug.assert(self.inventoryClientToServerIdMap.count() == 0); // leak
+		self.inventoryClientToServerIdMap.deinit();
 		self.unloadOldChunk(.{0, 0, 0}, 0);
 		self.conn.deinit();
 		main.globalAllocator.free(self.name);
@@ -214,6 +220,8 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		@panic("Could not open Server.");
 	}; // TODO Configure the second argument in the server settings.
 
+	main.items.InventorySync.ServerSide.init();
+
 	world = ServerWorld.init(name, null) catch |err| {
 		std.log.err("Failed to create world: {s}", .{@errorName(err)});
 		@panic("Can't create world.");
@@ -245,6 +253,8 @@ fn deinit() void {
 	}
 	connectionManager.deinit();
 	connectionManager = undefined;
+
+	main.items.InventorySync.ServerSide.deinit();
 
 	if(world) |_world| {
 		_world.deinit();

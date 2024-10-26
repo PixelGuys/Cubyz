@@ -158,7 +158,6 @@ pub fn init() void { // MARK: init()
 	DiscreteSlider.__init();
 	TextInput.__init();
 	load();
-	inventory.init();
 	GamepadCursor.init();
 }
 
@@ -185,7 +184,6 @@ pub fn deinit() void {
 			WindowStruct.deinit();
 		}
 	}
-	inventory.deinit();
 	GuiCommandQueue.deinit();
 }
 
@@ -344,6 +342,7 @@ pub fn toggleWindow(id: []const u8) void {
 }
 
 pub fn openHud() void {
+	inventory.init();
 	for(windowList.items) |window| {
 		if(window.isHud) {
 			openWindowFromRef(window);
@@ -595,6 +594,7 @@ pub const inventory = struct { // MARK: inventory
 	var carriedItemSlot: *ItemSlot = undefined;
 	var leftClickSlots: List(*ItemSlot) = undefined;
 	var rightClickSlots: List(*ItemSlot) = undefined;
+	var initialized: bool = false;
 
 	pub fn init() void {
 		carried = Inventory.init(main.globalAllocator, 1, .normal);
@@ -602,9 +602,11 @@ pub const inventory = struct { // MARK: inventory
 		rightClickSlots = .init(main.globalAllocator);
 		carriedItemSlot = ItemSlot.init(.{0, 0}, carried, 0, .default, .normal);
 		carriedItemSlot.renderFrame = false;
+		initialized = true;
 	}
 
-	fn deinit() void {
+	pub fn deinit() void {
+		initialized = false;
 		carried.deinit(main.globalAllocator);
 		carriedItemSlot.deinit();
 		leftClickSlots.deinit();
@@ -612,6 +614,7 @@ pub const inventory = struct { // MARK: inventory
 	}
 
 	fn update() void {
+		if(!initialized) return;
 		if(hoveredItemSlot) |itemSlot| {
 			if(itemSlot.mode != .normal) return;
 
@@ -638,6 +641,7 @@ pub const inventory = struct { // MARK: inventory
 	}
 
 	fn applyChanges(leftClick: bool) void {
+		if(!initialized) return;
 		if(main.game.world == null) return;
 		if(leftClick) {
 			if(leftClickSlots.items.len != 0) {
@@ -668,6 +672,7 @@ pub const inventory = struct { // MARK: inventory
 	}
 
 	fn render(mousePos: Vec2f) void {
+		if(!initialized) return;
 		carriedItemSlot.pos = mousePos - Vec2f{12, 12};
 		carriedItemSlot.render(.{0, 0});
 		// Draw tooltip:
