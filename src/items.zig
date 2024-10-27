@@ -1167,9 +1167,11 @@ pub const InventorySync = struct { // MARK: InventorySync
 		}
 
 		pub fn deinit() void {
+			mutex.lock();
 			while(commands.dequeue()) |cmd| {
 				cmd.finalize(main.globalAllocator, .client, &.{});
 			}
+			mutex.unlock();
 			commands.deinit();
 			std.debug.assert(freeIdList.items.len == maxId); // leak
 			freeIdList.deinit();
@@ -1211,8 +1213,7 @@ pub const InventorySync = struct { // MARK: InventorySync
 		}
 
 		fn freeId(id: u32) void {
-			mutex.lock();
-			defer mutex.unlock();
+			main.utils.assertLocked(&mutex);
 			freeIdList.append(id);
 		}
 
@@ -1325,6 +1326,9 @@ pub const InventorySync = struct { // MARK: InventorySync
 				.payload = payload,
 			};
 			command.do(main.globalAllocator, .server);
+			const confirmationData = command.confirmationData(main.stackAllocator);
+			defer main.stackAllocator.free(confirmationData);
+			main.network.Protocols.inventory.sendConfirmation(source.conn, confirmationData);
 			command.finalize(main.globalAllocator, .server, &.{});
 		}
 
@@ -1495,6 +1499,17 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 		}
 	}
 
+	fn confirmationData(self: *InventoryCommand, allocator: NeverFailingAllocator) []const u8 {
+		switch(self.payload) {
+			inline else => |payload| {
+				if(@hasDecl(@TypeOf(payload), "confirmationData")) {
+					return payload.confirmationData(allocator);
+				}
+			},
+		}
+		return &.{};
+	}
+
 	fn removeToolCraftingIngredients(self: *InventoryCommand, allocator: NeverFailingAllocator, inv: Inventory) void {
 		std.debug.assert(inv.type == .workbench);
 		for(0..25) |i| {
@@ -1587,6 +1602,7 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 		fn confirmationData(self: Open, allocator: NeverFailingAllocator) []const u8 {
 			const data = allocator.alloc(u8, 4);
 			std.mem.writeInt(u32, data[0..4], self.inv.id, .big);
+			return data;
 		}
 
 		fn serialize(self: Open, data: *main.List(u8)) void {

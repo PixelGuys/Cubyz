@@ -1197,8 +1197,12 @@ pub const Protocols = struct {
 			@memcpy(data[1..], _data);
 			conn.sendImportant(id, data);
 		}
-		pub fn sendConfirmation(conn: *Connection) void {
-			conn.sendImportant(id, &.{0xff});
+		pub fn sendConfirmation(conn: *Connection, _data: []const u8) void {
+			var data = main.stackAllocator.alloc(u8, _data.len + 1);
+			defer main.stackAllocator.free(data);
+			data[0] = 0xff;
+			@memcpy(data[1..], _data);
+			conn.sendImportant(id, data);
 		}
 	};
 };
