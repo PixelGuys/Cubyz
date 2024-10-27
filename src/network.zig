@@ -1185,11 +1185,12 @@ pub const Protocols = struct {
 				if(data[0] == 0xff) { // Confirmation
 					items.InventorySync.ClientSide.receiveConfirmation(data[1..]);
 				} else {
-					return error.InvalidPacket;
+					try items.InventorySync.ClientSide.receiveSyncOperation(data[1..]);
 				}
 			}
 		}
 		pub fn sendCommand(conn: *Connection, payloadType: items.InventoryCommand.PayloadType, _data: []const u8) void {
+			std.debug.assert(conn.user == null);
 			var data = main.stackAllocator.alloc(u8, _data.len + 1);
 			defer main.stackAllocator.free(data);
 			data[0] = @intFromEnum(payloadType);
@@ -1198,9 +1199,18 @@ pub const Protocols = struct {
 			conn.sendImportant(id, data);
 		}
 		pub fn sendConfirmation(conn: *Connection, _data: []const u8) void {
+			std.debug.assert(conn.user != null);
 			var data = main.stackAllocator.alloc(u8, _data.len + 1);
 			defer main.stackAllocator.free(data);
 			data[0] = 0xff;
+			@memcpy(data[1..], _data);
+			conn.sendImportant(id, data);
+		}
+		pub fn sendSyncOperation(conn: *Connection, _data: []const u8) void {
+			std.debug.assert(conn.user != null);
+			var data = main.stackAllocator.alloc(u8, _data.len + 1);
+			defer main.stackAllocator.free(data);
+			data[0] = 0;
 			@memcpy(data[1..], _data);
 			conn.sendImportant(id, data);
 		}
