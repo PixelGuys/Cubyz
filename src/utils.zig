@@ -1036,8 +1036,8 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 	};
 	pub const Performance = struct {
 		mutex: std.Thread.Mutex = .{},
-		tasks: [taskTypes]u32,
-		utime: [taskTypes]i64,
+		tasks: [taskTypes]u32 = undefined,
+		utime: [taskTypes]i64 = undefined,
 
 		fn add(self: *Performance, task: TaskType, time: i64) void {
 			self.mutex.lock();
@@ -1058,6 +1058,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 
 		fn init(allocator: NeverFailingAllocator) *Performance {
 			const self = allocator.create(Performance);
+			self.* = .{};
 			self.clear();
 			return self;
 		}
