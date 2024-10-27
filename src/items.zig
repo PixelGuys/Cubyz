@@ -1388,7 +1388,14 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 		depositOrDrop: DepositOrDrop,
 	};
 
-	const UndoInfo = union(enum) {
+	const BaseOperationType = enum(u8) {
+		move = 0,
+		swap = 1,
+		delete = 2,
+		create = 3,
+	};
+
+	const BaseOperation = union(BaseOperationType) {
 		move: struct {
 			dest: Inventory,
 			destSlot: u32,
@@ -1405,17 +1412,19 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 		delete: struct {
 			source: Inventory,
 			sourceSlot: u32,
-			item: ItemStack,
+			item: ?Item = undefined,
+			amount: u16,
 		},
 		create: struct {
 			dest: Inventory,
 			destSlot: u32,
+			item: ?Item,
 			amount: u16,
 		},
 	};
 
 	payload: CommandPayload,
-	undoSteps: main.ListUnmanaged(UndoInfo) = .{},
+	baseOperations: main.ListUnmanaged(BaseOperation) = .{},
 
 	fn serializePayload(self: *InventoryCommand, allocator: NeverFailingAllocator) []const u8 {
 		var list = main.List(u8).init(allocator);
@@ -1428,7 +1437,7 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 	}
 
 	fn do(self: *InventoryCommand, allocator: NeverFailingAllocator, side: Side) void {
-		std.debug.assert(self.undoSteps.items.len == 0); // do called twice without cleaning up
+		std.debug.assert(self.baseOperations.items.len == 0); // do called twice without cleaning up
 		switch(self.payload) {
 			inline else => |payload| {
 				payload.run(allocator, self, side);
@@ -1438,7 +1447,7 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 
 	fn undo(self: *InventoryCommand) void {
 		// Iterating in reverse order!
-		while(self.undoSteps.popOrNull()) |step| {
+		while(self.baseOperations.popOrNull()) |step| {
 			switch(step) {
 				.move => |info| {
 					if(info.amount == 0) continue;
@@ -1460,9 +1469,9 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 					info.dest.update();
 				},
 				.delete => |info| {
-					std.debug.assert(info.source._items[info.sourceSlot].item == null or std.meta.eql(info.source._items[info.sourceSlot].item, info.item.item));
-					info.source._items[info.sourceSlot].item = info.item.item;
-					info.source._items[info.sourceSlot].amount += info.item.amount;
+					std.debug.assert(info.source._items[info.sourceSlot].item == null or std.meta.eql(info.source._items[info.sourceSlot].item, info.item));
+					info.source._items[info.sourceSlot].item = info.item;
+					info.source._items[info.sourceSlot].amount += info.amount;
 					info.source.update();
 				},
 				.create => |info| {
@@ -1476,19 +1485,18 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 				},
 			}
 		}
-		self.undoSteps.clearRetainingCapacity();
 	}
 
 	fn finalize(self: InventoryCommand, allocator: NeverFailingAllocator, side: Side, data: []const u8) void {
-		for(self.undoSteps.items) |step| {
+		for(self.baseOperations.items) |step| {
 			switch(step) {
 				.move, .swap, .create => {},
 				.delete => |info| {
-					info.item.item.?.deinit();
+					info.item.?.deinit();
 				},
 			}
 		}
-		self.undoSteps.deinit(allocator);
+		self.baseOperations.deinit(allocator);
 
 		switch(self.payload) {
 			inline else => |payload| {
@@ -1510,22 +1518,57 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 		return &.{};
 	}
 
+	fn executeBaseOperation(self: *InventoryCommand, allocator: NeverFailingAllocator, _op: BaseOperation) void {
+		var op = _op;
+		blk: switch(op) {
+			.move => |info| {
+				if(info.amount == 0) break :blk;
+				std.debug.assert(std.meta.eql(info.source._items[info.sourceSlot].item, info.dest._items[info.destSlot].item) or info.dest._items[info.destSlot].item == null);
+				
+				info.dest._items[info.destSlot].item = info.source._items[info.sourceSlot].item;
+				info.dest._items[info.destSlot].amount += info.amount;
+				info.source._items[info.sourceSlot].amount -= info.amount;
+				if(info.source._items[info.sourceSlot].amount == 0) {
+					info.source._items[info.sourceSlot].item = null;
+				}
+				info.source.update();
+				info.dest.update();
+			},
+			.swap => |info| {
+				const temp = info.dest._items[info.destSlot];
+				info.dest._items[info.destSlot] = info.source._items[info.sourceSlot];
+				info.source._items[info.sourceSlot] = temp;
+				info.source.update();
+				info.dest.update();
+			},
+			.delete => |*info| {
+				std.debug.assert(info.source._items[info.sourceSlot].amount >= info.amount);
+				info.source._items[info.sourceSlot].amount -= info.amount;
+				info.item = info.source._items[info.sourceSlot].item;
+				if(info.source._items[info.sourceSlot].amount == 0) {
+					info.source._items[info.sourceSlot].item = null;
+				}
+				info.source.update();
+			},
+			.create => |info| {
+				std.debug.assert(info.dest._items[info.destSlot].item == null or std.meta.eql(info.dest._items[info.destSlot].item, info.item));
+				info.dest._items[info.destSlot].item = info.item;
+				info.dest._items[info.destSlot].amount += info.amount;
+				info.dest.update();
+			},
+		}
+		self.baseOperations.append(allocator, op);
+	}
+
 	fn removeToolCraftingIngredients(self: *InventoryCommand, allocator: NeverFailingAllocator, inv: Inventory) void {
 		std.debug.assert(inv.type == .workbench);
 		for(0..25) |i| {
 			if(inv._items[i].amount != 0) {
-				inv._items[i].amount -= 1;
-				self.undoSteps.append(allocator, .{.delete = .{
+				self.executeBaseOperation(allocator, .{.delete = .{
 					.source = inv,
 					.sourceSlot = @intCast(i),
-					.item = .{
-						.item = inv._items[i].item,
-						.amount = 1,
-					},
+					.amount = 1,
 				}});
-				if(inv._items[i].amount == 0) {
-					inv._items[i].item = null;
-				}
 			}
 		}
 	}
@@ -1561,28 +1604,22 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 			for(main.game.Player.inventory._items, 0..) |*otherStack, i| {
 				if(std.meta.eql(requiredStack.item, otherStack.item)) {
 					const amount = @min(remainingAmount, otherStack.amount);
-					otherStack.amount -= amount;
-					remainingAmount -= amount;
-					self.undoSteps.append(allocator, .{.delete = .{
+					self.executeBaseOperation(allocator, .{.delete = .{
 						.source = main.game.Player.inventory,
 						.sourceSlot = @intCast(i),
-						.item = .{
-							.item = otherStack.item,
-							.amount = amount,
-						},
+						.amount = amount,
 					}});
-					if(otherStack.amount == 0) otherStack.item = null;
+					remainingAmount -= amount;
 					if(remainingAmount == 0) break;
 				}
 			}
 			std.debug.assert(remainingAmount == 0);
 		}
-		dest._items[destSlot].item = source._items[sourceSlot].item;
-		dest._items[destSlot].amount += source._items[sourceSlot].amount;
-		self.undoSteps.append(allocator, .{.create = .{
+		self.executeBaseOperation(allocator, .{.create = .{
 			.dest = dest,
 			.destSlot = destSlot,
 			.amount = source._items[sourceSlot].amount,
+			.item = source._items[sourceSlot].item,
 		}});
 	}
 
@@ -1669,28 +1706,23 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 			}
 			if(self.dest.type == .workbench and self.destSlot == 25) {
 				if(self.source._items[self.sourceSlot].item == null and self.dest._items[self.destSlot].item != null) {
-					self.source._items[self.sourceSlot] = self.dest._items[self.destSlot];
-					cmd.undoSteps.append(allocator, .{.create = .{
+					cmd.executeBaseOperation(allocator, .{.move = .{
 						.dest = self.source,
 						.destSlot = self.sourceSlot,
+						.source = self.dest,
+						.sourceSlot = self.destSlot,
 						.amount = 1,
 					}});
-					self.dest._items[self.destSlot] = .{.item = null, .amount = 0};
 					cmd.removeToolCraftingIngredients(allocator, self.dest);
-					self.dest.update();
 				}
 				return;
 			}
-			defer self.dest.update();
 			if(self.dest._items[self.destSlot].item) |itemDest| {
 				if(self.source._items[self.sourceSlot].item) |itemSource| {
 					if(std.meta.eql(itemDest, itemSource)) {
 						if(self.dest._items[self.destSlot].amount >= itemDest.stackSize()) return;
 						const amount = @min(itemDest.stackSize() - self.dest._items[self.destSlot].amount, self.source._items[self.sourceSlot].amount);
-						self.dest._items[self.destSlot].amount += amount;
-						self.source._items[self.sourceSlot].amount -= amount;
-						if(self.source._items[self.sourceSlot].amount == 0) self.source._items[self.sourceSlot].item = null;
-						cmd.undoSteps.append(allocator, .{.move = .{
+						cmd.executeBaseOperation(allocator, .{.move = .{
 							.dest = self.dest,
 							.destSlot = self.destSlot,
 							.source = self.source,
@@ -1701,10 +1733,7 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 					}
 				}
 			}
-			const temp = self.dest._items[self.destSlot];
-			self.dest._items[self.destSlot] = self.source._items[self.sourceSlot];
-			self.source._items[self.sourceSlot] = temp;
-			cmd.undoSteps.append(allocator, .{.swap = .{
+			cmd.executeBaseOperation(allocator, .{.swap = .{
 				.dest = self.dest,
 				.destSlot = self.destSlot,
 				.source = self.source,
@@ -1744,16 +1773,12 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 			if(self.dest.type == .creative) return;
 			if(self.dest.type == .crafting) return;
 			if(self.dest.type == .workbench and self.destSlot == 25) return;
-			defer self.dest.update();
 			const itemSource = self.source._items[self.sourceSlot].item orelse return;
 			if(self.dest._items[self.destSlot].item) |itemDest| {
 				if(std.meta.eql(itemDest, itemSource)) {
 					if(self.dest._items[self.destSlot].amount >= itemDest.stackSize()) return;
 					const amount = @min(itemDest.stackSize() - self.dest._items[self.destSlot].amount, self.amount);
-					self.dest._items[self.destSlot].amount += amount;
-					self.source._items[self.sourceSlot].amount -= amount;
-					if(self.source._items[self.sourceSlot].amount == 0) self.source._items[self.sourceSlot].item = null;
-					cmd.undoSteps.append(allocator, .{.move = .{
+					cmd.executeBaseOperation(allocator, .{.move = .{
 						.dest = self.dest,
 						.destSlot = self.destSlot,
 						.source = self.source,
@@ -1762,11 +1787,7 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 					}});
 				}
 			} else {
-				self.dest._items[self.destSlot].item = self.source._items[self.sourceSlot].item;
-				self.dest._items[self.destSlot].amount = self.amount;
-				self.source._items[self.sourceSlot].amount -= self.amount;
-				if(self.source._items[self.sourceSlot].amount == 0) self.source._items[self.sourceSlot].item = null;
-				cmd.undoSteps.append(allocator, .{.move = .{
+				cmd.executeBaseOperation(allocator, .{.move = .{
 					.dest = self.dest,
 					.destSlot = self.destSlot,
 					.source = self.source,
@@ -1819,29 +1840,24 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 			}
 			if(self.source.type == .workbench and self.sourceSlot == 25) {
 				if(self.dest._items[self.destSlot].item == null and self.source._items[self.sourceSlot].item != null) {
-					self.dest._items[self.destSlot] = self.source._items[self.sourceSlot];
-					cmd.undoSteps.append(allocator, .{.create = .{
+					cmd.executeBaseOperation(allocator, .{.move = .{
 						.dest = self.dest,
 						.destSlot = self.destSlot,
+						.source = self.source,
+						.sourceSlot = self.sourceSlot,
 						.amount = 1,
 					}});
-					self.source._items[self.sourceSlot] = .{.item = null, .amount = 0};
-					cmd.removeToolCraftingIngredients(allocator, self.source);
-					self.source.update();
+					cmd.removeToolCraftingIngredients(allocator, self.dest);
 				}
 				return;
 			}
-			defer self.source.update();
 			const itemSource = self.source._items[self.sourceSlot].item orelse return;
 			const desiredAmount = (1 + self.source._items[self.sourceSlot].amount)/2;
 			if(self.dest._items[self.destSlot].item) |itemDest| {
 				if(std.meta.eql(itemDest, itemSource)) {
 					if(self.dest._items[self.destSlot].amount >= itemDest.stackSize()) return;
 					const amount = @min(itemDest.stackSize() - self.dest._items[self.destSlot].amount, desiredAmount);
-					self.dest._items[self.destSlot].amount += amount;
-					self.source._items[self.sourceSlot].amount -= amount;
-					if(self.source._items[self.sourceSlot].amount == 0) self.source._items[self.sourceSlot].item = null;
-					cmd.undoSteps.append(allocator, .{ .move = .{
+					cmd.executeBaseOperation(allocator, .{ .move = .{
 						.dest = self.dest,
 						.destSlot = self.destSlot,
 						.source = self.source,
@@ -1850,11 +1866,7 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 					}});
 				}
 			} else {
-				self.dest._items[self.destSlot].item = self.source._items[self.sourceSlot].item;
-				self.dest._items[self.destSlot].amount = desiredAmount;
-				self.source._items[self.sourceSlot].amount -= desiredAmount;
-				if(self.source._items[self.sourceSlot].amount == 0) self.source._items[self.sourceSlot].item = null;
-				cmd.undoSteps.append(allocator, .{ .move = .{
+				cmd.executeBaseOperation(allocator, .{ .move = .{
 					.dest = self.dest,
 					.destSlot = self.destSlot,
 					.source = self.source,
@@ -1900,7 +1912,7 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 					.id = undefined,
 				};
 				cmd.tryCraftingTo(allocator, temp, 0, self.source, self.sourceSlot);
-				std.debug.assert(cmd.undoSteps.pop().create.dest._items.ptr == temp._items.ptr); // Remove the extra step from undo list (we cannot undo dropped items)
+				std.debug.assert(cmd.baseOperations.pop().create.dest._items.ptr == temp._items.ptr); // Remove the extra step from undo list (we cannot undo dropped items)
 				if(_items[0].item != null) {
 					if(side == .client) {
 						main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, _items[0], @floatCast(main.game.Player.getPosBlocking()), main.game.camera.direction, 20);
@@ -1914,13 +1926,11 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 			if(side == .client) {
 				main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, self.source.getStack(self.sourceSlot), @floatCast(main.game.Player.getPosBlocking()), main.game.camera.direction, 20);
 			}
-			cmd.undoSteps.append(allocator, .{.delete = .{
+			cmd.executeBaseOperation(allocator, .{.delete = .{
 				.source = self.source,
 				.sourceSlot = self.sourceSlot,
-				.item = self.source._items[self.sourceSlot],
+				.amount = self.source._items[self.sourceSlot].amount,
 			}});
-			self.source._items[self.sourceSlot].clear();
-			self.source.update();
 		}
 
 		fn serialize(self: DropStack, data: *main.List(u8)) void {
@@ -1951,17 +1961,11 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 			if(side == .client) {
 				main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, .{.item = self.source.getStack(self.sourceSlot).item, .amount = 1}, @floatCast(main.game.Player.getPosBlocking()), main.game.camera.direction, 20);
 			}
-			cmd.undoSteps.append(allocator, .{.delete = .{
+			cmd.executeBaseOperation(allocator, .{.delete = .{
 				.source = self.source,
 				.sourceSlot = self.sourceSlot,
-				.item = .{.item = self.source._items[self.sourceSlot].item, .amount = 1},
+				.amount = 1,
 			}});
-			if(self.source._items[self.sourceSlot].amount == 1) {
-				self.source._items[self.sourceSlot].clear();
-			} else {
-				self.source._items[self.sourceSlot].amount -= 1;
-			}
-			self.source.update();
 		}
 
 		fn serialize(self: DropOne, data: *main.List(u8)) void {
@@ -1989,23 +1993,20 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 			if(self.dest.type == .workbench and self.destSlot == 25) return;
 
 			if(!self.dest._items[self.destSlot].empty()) {
-				cmd.undoSteps.append(allocator, .{.delete = .{
+				cmd.executeBaseOperation(allocator, .{.delete = .{
 					.source = self.dest,
 					.sourceSlot = self.destSlot,
-					.item = self.dest._items[self.destSlot],
+					.amount = self.dest._items[self.destSlot].amount,
 				}});
-				self.dest._items[self.destSlot].clear();
 			}
 			if(self.item) |_item| {
-				self.dest._items[self.destSlot].item = _item;
-				self.dest._items[self.destSlot].amount = _item.stackSize();
-				cmd.undoSteps.append(allocator, .{.create = .{
+				cmd.executeBaseOperation(allocator, .{.create = .{
 					.dest = self.dest,
 					.destSlot = self.destSlot,
+					.item = _item,
 					.amount = _item.stackSize(),
 				}});
 			}
-			self.dest.update();
 		}
 
 		fn serialize(self: FillFromCreative, data: *main.List(u8)) void {
@@ -2047,8 +2048,6 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 			std.debug.assert(self.dest.type == .normal);
 			if(self.source.type == .creative) return;
 			if(self.source.type == .crafting) return;
-			defer self.dest.update();
-			defer self.source.update();
 			var sourceItems = self.source._items;
 			if(self.source.type == .workbench) sourceItems = self.source._items[0..25];
 			outer: for(sourceItems, 0..) |*sourceStack, sourceSlot| {
@@ -2056,9 +2055,7 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 				for(self.dest._items, 0..) |*destStack, destSlot| {
 					if(std.meta.eql(destStack.item, sourceStack.item)) {
 						const amount = @min(destStack.item.?.stackSize() - destStack.amount, sourceStack.amount);
-						destStack.amount += amount;
-						sourceStack.amount -= amount;
-						cmd.undoSteps.append(allocator, .{.move = .{
+						cmd.executeBaseOperation(allocator, .{.move = .{
 							.dest = self.dest,
 							.destSlot = @intCast(destSlot),
 							.source = self.source,
@@ -2066,17 +2063,13 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 							.amount = amount,
 						}});
 						if(sourceStack.amount == 0) {
-							sourceStack.item = null;
 							continue :outer;
 						}
 					}
 				}
 				for(self.dest._items, 0..) |*destStack, destSlot| {
 					if(destStack.item == null) {
-						destStack.* = sourceStack.*;
-						sourceStack.amount = 0;
-						sourceStack.item = null;
-						cmd.undoSteps.append(allocator, .{.swap = .{
+						cmd.executeBaseOperation(allocator, .{.swap = .{
 							.dest = self.dest,
 							.destSlot = @intCast(destSlot),
 							.source = self.source,
@@ -2088,12 +2081,11 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 				if(side == .client) {
 					main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, sourceStack.*, @floatCast(main.game.Player.getPosBlocking()), main.game.camera.direction, 20);
 				}
-				cmd.undoSteps.append(allocator, .{.delete = .{
+				cmd.executeBaseOperation(allocator, .{.delete = .{
 					.source = self.source,
 					.sourceSlot = @intCast(sourceSlot),
-					.item = self.source._items[sourceSlot],
+					.amount = self.source._items[sourceSlot].amount,
 				}});
-				sourceStack.clear();
 			}
 		}
 
