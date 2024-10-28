@@ -43,7 +43,7 @@ var itemSlots: [25]*ItemSlot = undefined;
 
 pub fn onOpen() void {
 	seed = @truncate(@as(u128, @bitCast(std.time.nanoTimestamp())));
-	inv = Inventory.init(main.globalAllocator, 26, .workbench);
+	inv = Inventory.init(main.globalAllocator, 26, .workbench, .other);
 	const list = HorizontalList.init();
 	{ // crafting grid
 		const grid = VerticalList.init(.{0, 0}, 300, 0);

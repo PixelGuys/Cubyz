@@ -95,7 +95,7 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 			continue :outer; // Ingredient not found.
 		}
 		// All ingredients found: Add it to the list.
-		const inv = Inventory.init(main.globalAllocator, recipe.sourceItems.len + 1, .crafting);
+		const inv = Inventory.init(main.globalAllocator, recipe.sourceItems.len + 1, .crafting, .other);
 		inventories.append(inv);
 		const rowList = HorizontalList.init();
 		const maxColumns: u32 = 4;

@@ -36,7 +36,7 @@ const padding: f32 = 8;
 var inv: Inventory = undefined;
 
 pub fn onOpen() void {
-	inv = Inventory.init(main.globalAllocator, 49, .normal);
+	inv = Inventory.init(main.globalAllocator, 49, .normal, .sharedTestingInventory);
 	const list = VerticalList.init(.{padding, padding + 16}, 128, 0);
 	var i: u32 = 0;
 	for(0..7) |_| {

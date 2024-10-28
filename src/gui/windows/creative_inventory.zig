@@ -46,7 +46,7 @@ pub fn onOpen() void {
 		items.append(Item{.baseItem = item.*});
 	}
 	std.mem.sort(Item, items.items, {}, lessThan);
-	inventory = Inventory.init(main.globalAllocator, items.items.len, .creative);
+	inventory = Inventory.init(main.globalAllocator, items.items.len, .creative, .other);
 	for(0..items.items.len) |i| {
 		inventory.fillFromCreative(@intCast(i), items.items[i]);
 	}

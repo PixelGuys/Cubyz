@@ -1259,11 +1259,13 @@ pub const InventorySync = struct { // MARK: InventorySync
 		const ServerInventory = struct {
 			inv: Inventory,
 			users: main.ListUnmanaged(*main.server.User),
+			source: InventorySource,
 
-			fn init(len: usize, typ: Inventory.Type) ServerInventory {
+			fn init(len: usize, typ: Inventory.Type, source: InventorySource) ServerInventory {
 				return .{
 					.inv = Inventory._init(main.globalAllocator, len, typ, .server),
 					.users = .{},
+					.source = source,
 				};
 			}
 
@@ -1373,17 +1375,20 @@ pub const InventorySync = struct { // MARK: InventorySync
 			command.finalize(main.globalAllocator, .server, &.{});
 		}
 
-		fn createInventory(user: *main.server.User, clientId: u32, len: usize, typ: Inventory.Type) void {
+		fn createInventory(user: *main.server.User, clientId: u32, len: usize, typ: Inventory.Type, source: InventorySource) void {
 			main.utils.assertLocked(&mutex);
-			if(len == 49) { // TODO: For testing all inventories of size 49 are shared.
-				for(inventories.items) |*inv| {
-					if(inv.inv._items.len == 49) {
-						inv.addUser(user, clientId);
-						return;
+			switch(source) {
+				.sharedTestingInventory => {
+					for(inventories.items) |*inv| {
+						if(std.meta.eql(inv.source, source)) {
+							inv.addUser(user, clientId);
+							return;
+						}
 					}
-				}
+				},
+				.playerInventory, .other => {},
 			}
-			const inventory = ServerInventory.init(len, typ);
+			const inventory = ServerInventory.init(len, typ, source);
 			inventories.items[inventory.inv.id] = inventory;
 			inventories.items[inventory.inv.id].addUser(user, clientId);
 		}
@@ -1813,6 +1818,7 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 
 	const Open = struct {
 		inv: Inventory,
+		source: InventorySource,
 
 		fn run(_: Open, _: NeverFailingAllocator, _: *InventoryCommand, _: Side) void {}
 
@@ -1834,17 +1840,28 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 			std.mem.writeInt(u32, data.addMany(4)[0..4], self.inv.id, .big);
 			std.mem.writeInt(usize, data.addMany(8)[0..8], self.inv._items.len, .big);
 			data.append(@intFromEnum(self.inv.type));
+			data.append(@intFromEnum(self.source));
+			switch(self.source) {
+				.playerInventory, .sharedTestingInventory, .other => {},
+			}
 		}
 
 		fn deserialize(data: []const u8, side: Side, user: ?*main.server.User) !Open {
-			if(data.len != 13) return error.Invalid;
+			if(data.len < 14) return error.Invalid;
 			if(side != .server or user == null) return error.Invalid;
 			const id = std.mem.readInt(u32, data[0..4], .big);
 			const len = std.mem.readInt(usize, data[4..12], .big);
 			const typ: Inventory.Type = @enumFromInt(data[12]);
-			InventorySync.ServerSide.createInventory(user.?, id, len, typ);
+			const sourceType: InventorySourceType = @enumFromInt(data[13]);
+			const source: InventorySource = switch(sourceType) {
+				.playerInventory => .{.playerInventory = {}},
+				.sharedTestingInventory => .{.sharedTestingInventory = {}},
+				.other => .{.other = {}},
+			};
+			InventorySync.ServerSide.createInventory(user.?, id, len, typ, source);
 			return .{
 				.inv = InventorySync.ServerSide.getInventory(user.?, id) orelse return error.Invalid,
+				.source = source,
 			};
 		}
 	};
@@ -2294,6 +2311,17 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 	};
 };
 
+const InventorySourceType = enum(u8) {
+	playerInventory = 0,
+	sharedTestingInventory = 1,
+	other = 0xff, // TODO: List every type separately here.
+};
+const InventorySource = union(InventorySourceType) {
+	playerInventory: void,
+	sharedTestingInventory: void,
+	other: void,
+};
+
 pub const Inventory = struct { // MARK: Inventory
 	const Type = enum(u8) {
 		normal = 0,
@@ -2305,9 +2333,9 @@ pub const Inventory = struct { // MARK: Inventory
 	id: u32,
 	_items: []ItemStack,
 
-	pub fn init(allocator: NeverFailingAllocator, _size: usize, _type: Type) Inventory {
+	pub fn init(allocator: NeverFailingAllocator, _size: usize, _type: Type, source: InventorySource) Inventory {
 		const self = _init(allocator, _size, _type, .client);
-		InventorySync.executeCommand(.{.open = .{.inv = self}});
+		InventorySync.executeCommand(.{.open = .{.inv = self, .source = source}});
 		return self;
 	}
 
