@@ -7,7 +7,7 @@
 	.caves = -0.1,
 	.crystals = 32,
 
-	.music = "cubyz:la_kubisa_caverna",
+	.music = "cubyz:LaKubisaCaverna",
 	.stoneBlock = "cubyz:stone",
 	.structures = .{
 		.{

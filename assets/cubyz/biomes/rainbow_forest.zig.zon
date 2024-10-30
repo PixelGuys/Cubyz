@@ -10,7 +10,7 @@
 
 	.chance = 0.01,
 	
-	.music = "cubyz:leaves",
+	.music = "cubyz:Leaves",
 
 	.validPlayerSpawn = true,
 	

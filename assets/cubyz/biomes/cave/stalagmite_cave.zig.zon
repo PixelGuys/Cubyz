@@ -8,7 +8,7 @@
 
 	.caves = -0.1,
 
-	.music = "cubyz:heart-of-the-beast",
+	.music = "cubyz:HeartOfTheBeast",
 
 	.structures = .{
 		.{

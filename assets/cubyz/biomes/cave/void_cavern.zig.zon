@@ -6,6 +6,6 @@
 
 	.caves = -0.1,
 
-	.music = "cubyz:heart-of-the-beast",
+	.music = "cubyz:HeartOfTheBeast",
 	.stoneBlock = "cubyz:void_stone",
 }

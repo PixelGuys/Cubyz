@@ -9,7 +9,7 @@
 	.hills = 10,
 	.rivers = true,
 	
-	.music = "cubyz:sunrise",
+	.music = "cubyz:Sunrise",
 
 	.ground_structure = .{
 		"cubyz:grass",

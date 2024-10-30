@@ -11,7 +11,7 @@
 	
 	.rivers = true,
 
-	.music = "cubyz:under_the_water_sky",
+	.music = "cubyz:UnderTheWaterSky",
 	
 	.ground_structure = .{
 		"2 to 3 cubyz:gravel",

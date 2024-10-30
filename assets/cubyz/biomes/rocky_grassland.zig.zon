@@ -7,7 +7,7 @@
 	
 	.mountains = 30,
 	
-	.music = "cubyz:sunrise",
+	.music = "cubyz:Sunrise",
 	
 	.ground_structure = .{
 		"cubyz:grass",
