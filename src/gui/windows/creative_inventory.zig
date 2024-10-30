@@ -48,7 +48,7 @@ pub fn onOpen() void {
 	std.mem.sort(Item, items.items, {}, lessThan);
 	inventory = Inventory.init(main.globalAllocator, items.items.len, .creative, .other);
 	for(0..items.items.len) |i| {
-		inventory.fillFromCreative(@intCast(i), items.items[i]);
+		inventory.fillAmountFromCreative(@intCast(i), items.items[i], 1);
 	}
 
 	const list = VerticalList.init(.{padding, padding + 16}, 140, 0);

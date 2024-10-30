@@ -1918,6 +1918,7 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 			std.debug.assert(self.source.type == .normal);
 			if(self.dest.type == .creative) {
 				FillFromCreative.run(.{.dest = self.source, .destSlot = self.sourceSlot, .item = self.dest._items[self.destSlot].item}, allocator, cmd, side, user);
+				return;
 			}
 			if(self.dest.type == .crafting) {
 				cmd.tryCraftingTo(allocator, self.source, self.sourceSlot, self.dest, self.destSlot, side, user);
