@@ -2146,8 +2146,9 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 				cmd.tryCraftingTo(allocator, temp, 0, self.source, self.sourceSlot, side, user);
 				std.debug.assert(cmd.baseOperations.pop().create.dest._items.ptr == temp._items.ptr); // Remove the extra step from undo list (we cannot undo dropped items)
 				if(_items[0].item != null) {
-					if(side == .client) {
-						main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, _items[0], @floatCast(main.game.Player.getPosBlocking()), main.game.camera.direction, 20);
+					if(side == .server) {
+						const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.player.rot[0]), -user.?.player.rot[2]);
+						main.server.world.?.drop(_items[0], user.?.player.pos, direction, 20);
 					}
 				}
 				return;
@@ -2155,8 +2156,9 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 			if(self.source.type == .workbench and self.sourceSlot == 25) {
 				cmd.removeToolCraftingIngredients(allocator, self.source, side);
 			}
-			if(side == .client) {
-				main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, self.source.getStack(self.sourceSlot), @floatCast(main.game.Player.getPosBlocking()), main.game.camera.direction, 20);
+			if(side == .server) {
+				const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.player.rot[0]), -user.?.player.rot[2]);
+				main.server.world.?.drop(self.source.getStack(self.sourceSlot), user.?.player.pos, direction, 20);
 			}
 			cmd.executeBaseOperation(allocator, .{.delete = .{
 				.source = self.source,
@@ -2190,8 +2192,9 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 			}
 			if(self.source.type == .crafting) return;
 			if(self.source._items[self.sourceSlot].item == null) return;
-			if(side == .client) {
-				main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, .{.item = self.source.getStack(self.sourceSlot).item, .amount = 1}, @floatCast(main.game.Player.getPosBlocking()), main.game.camera.direction, 20);
+			if(side == .server) {
+				const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.player.rot[0]), -user.?.player.rot[2]);
+				main.server.world.?.drop(.{.item = self.source.getStack(self.sourceSlot).item, .amount = 1}, user.?.player.pos, direction, 20);
 			}
 			cmd.executeBaseOperation(allocator, .{.delete = .{
 				.source = self.source,
@@ -2279,7 +2282,7 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 		dest: Inventory,
 		source: Inventory,
 
-		pub fn run(self: DepositOrDrop, allocator: NeverFailingAllocator, cmd: *InventoryCommand, side: Side, _: ?*main.server.User) void {
+		pub fn run(self: DepositOrDrop, allocator: NeverFailingAllocator, cmd: *InventoryCommand, side: Side, user: ?*main.server.User) void {
 			std.debug.assert(self.dest.type == .normal);
 			if(self.source.type == .creative) return;
 			if(self.source.type == .crafting) return;
@@ -2313,8 +2316,9 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 						continue :outer;
 					}
 				}
-				if(side == .client) {
-					main.network.Protocols.genericUpdate.itemStackDrop(main.game.world.?.conn, sourceStack.*, @floatCast(main.game.Player.getPosBlocking()), main.game.camera.direction, 20);
+				if(side == .server) {
+					const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.player.rot[0]), -user.?.player.rot[2]);
+					main.server.world.?.drop(sourceStack.*, user.?.player.pos, direction, 20);
 				}
 				cmd.executeBaseOperation(allocator, .{.delete = .{
 					.source = self.source,

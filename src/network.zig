@@ -968,8 +968,8 @@ pub const Protocols = struct {
 		const type_reserved2: u8 = 3;
 		const type_reserved3: u8 = 4;
 		const type_reserved4: u8 = 5;
-		const type_itemStackDrop: u8 = 6;
-		const type_reserved5: u8 = 7;
+		const type_reserved5: u8 = 6;
+		const type_reserved6: u8 = 7;
 		const type_timeAndBiome: u8 = 8;
 		fn receive(conn: *Connection, data: []const u8) !void {
 			switch(data[0]) {
@@ -988,18 +988,7 @@ pub const Protocols = struct {
 				type_reserved3 => {},
 				type_reserved4 => {},
 				type_reserved5 => {},
-				type_itemStackDrop => {
-					const zon = ZonElement.parseFromString(main.stackAllocator, data[1..]);
-					defer zon.free(main.stackAllocator);
-					const stack = ItemStack.load(zon) catch |err| {
-						std.log.err("Received invalid item: {s}, {s}", .{data[1..], @errorName(err)});
-						return;
-					};
-					const pos = zon.get(Vec3d, "pos", .{0, 0, 0});
-					const dir = zon.get(Vec3f, "dir", .{0, 0, 1});
-					const vel = zon.get(f32, "vel", 0);
-					main.server.world.?.drop(stack, pos, dir, vel);
-				},
+				type_reserved6 => {},
 				type_timeAndBiome => {
 					if(conn.manager.world) |world| {
 						const zon = ZonElement.parseFromString(main.stackAllocator, data[1..]);
@@ -1059,17 +1048,6 @@ pub const Protocols = struct {
 			var data: [1]u8 = undefined;
 			data[0] = type_cure;
 			conn.sendImportant(id, &data);
-		}
-
-		pub fn itemStackDrop(conn: *Connection, stack: ItemStack, pos: Vec3d, dir: Vec3f, vel: f32) void {
-			const zonObject = stack.store(main.stackAllocator);
-			defer zonObject.free(main.stackAllocator);
-			zonObject.put("pos", pos);
-			zonObject.put("dir", dir);
-			zonObject.put("vel", vel);
-			const string = zonObject.toString(main.stackAllocator);
-			defer main.stackAllocator.free(string);
-			addHeaderAndSendImportant(conn, type_itemStackDrop, string);
 		}
 
 		pub fn sendTimeAndBiome(conn: *Connection, world: *const main.server.ServerWorld) void {
