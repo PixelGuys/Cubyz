@@ -107,14 +107,14 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 			if(col < remainder) itemsThisColumn += 1;
 			const columnList = VerticalList.init(.{0, 0}, std.math.inf(f32), 0);
 			for(0..itemsThisColumn) |_| {
-				inv._items[i] = .{.item = .{.baseItem = recipe.sourceItems[i]}, .amount = recipe.sourceAmounts[i]};
+				inv.fillAmountFromCreative(i, .{.baseItem = recipe.sourceItems[i]}, recipe.sourceAmounts[i]);
 				columnList.add(ItemSlot.init(.{0, 0}, inv, i, .immutable, .immutable));
 				i += 1;
 			}
 			columnList.finish(.center);
 			rowList.add(columnList);
 		}
-		inv._items[recipe.sourceItems.len] = recipe.resultItem;
+		inv.fillAmountFromCreative(@intCast(recipe.sourceItems.len), recipe.resultItem.item, recipe.resultItem.amount);
 		rowList.add(Icon.init(.{8, 0}, .{32, 32}, arrowTexture, false));
 		const itemSlot = ItemSlot.init(.{8, 0}, inv, @intCast(recipe.sourceItems.len), .craftingResult, .takeOnly);
 		rowList.add(itemSlot);
