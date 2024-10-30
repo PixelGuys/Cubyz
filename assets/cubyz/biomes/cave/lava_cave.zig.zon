@@ -5,7 +5,7 @@
 	.fogDensity = 20,
 	.fogColor = 0x51240c,
 
-	.music = "cubyz:LaKubisaCaverna69",
+	.music = "cubyz:Scoria",
 
 	.caves = -0.03,
 
