@@ -1766,6 +1766,14 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 		}
 	}
 
+	fn canPutIntoWorkbench(source: Inventory, sourceSlot: u32) bool {
+		if(source._items[sourceSlot].item) |item| {
+			if(item != .baseItem) return false;
+			return item.baseItem.material != null;
+		}
+		return true;
+	}
+
 	fn tryCraftingTo(self: *InventoryCommand, allocator: NeverFailingAllocator, dest: Inventory, destSlot: u32, source: Inventory, sourceSlot: u32, side: Side, user: ?*main.server.User) void {
 		std.debug.assert(source.type == .crafting);
 		std.debug.assert(dest.type == .normal);
@@ -1937,6 +1945,8 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 				}
 				return;
 			}
+			if(self.dest.type == .workbench and !canPutIntoWorkbench(self.source, self.sourceSlot)) return;
+
 			if(self.dest._items[self.destSlot].item) |itemDest| {
 				if(self.source._items[self.sourceSlot].item) |itemSource| {
 					if(std.meta.eql(itemDest, itemSource)) {
@@ -1953,6 +1963,7 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 					}
 				}
 			}
+			if(self.source.type == .workbench and !canPutIntoWorkbench(self.dest, self.destSlot)) return;
 			cmd.executeBaseOperation(allocator, .{.swap = .{
 				.dest = self.dest,
 				.destSlot = self.destSlot,
@@ -1993,6 +2004,7 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 			if(self.dest.type == .creative) return;
 			if(self.dest.type == .crafting) return;
 			if(self.dest.type == .workbench and self.destSlot == 25) return;
+			if(self.dest.type == .workbench and !canPutIntoWorkbench(self.source, self.sourceSlot)) return;
 			const itemSource = self.source._items[self.sourceSlot].item orelse return;
 			if(self.dest._items[self.destSlot].item) |itemDest| {
 				if(std.meta.eql(itemDest, itemSource)) {
