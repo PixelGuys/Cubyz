@@ -1425,10 +1425,9 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 		depositOrSwap = 2,
 		deposit = 3,
 		takeHalf = 4,
-		dropStack = 5,
-		dropOne = 6,
-		fillFromCreative = 7,
-		depositOrDrop = 8,
+		drop = 5,
+		fillFromCreative = 6,
+		depositOrDrop = 7,
 	};
 	pub const CommandPayload = union(PayloadType) {
 		open: Open,
@@ -1436,8 +1435,7 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 		depositOrSwap: DepositOrSwap,
 		deposit: Deposit,
 		takeHalf: TakeHalf,
-		dropStack: DropStack,
-		dropOne: DropOne,
+		drop: Drop,
 		fillFromCreative: FillFromCreative,
 		depositOrDrop: DepositOrDrop,
 	};
@@ -2009,7 +2007,7 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 			if(self.dest._items[self.destSlot].item) |itemDest| {
 				if(std.meta.eql(itemDest, itemSource)) {
 					if(self.dest._items[self.destSlot].amount >= itemDest.stackSize()) return;
-					const amount = @min(itemDest.stackSize() - self.dest._items[self.destSlot].amount, self.amount);
+					const amount = @min(itemDest.stackSize() - self.dest._items[self.destSlot].amount, self.source._items[self.sourceSlot].amount, self.amount);
 					cmd.executeBaseOperation(allocator, .{.move = .{
 						.dest = self.dest,
 						.destSlot = self.destSlot,
@@ -2128,11 +2126,12 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 		}
 	};
 
-	const DropStack = struct {
+	const Drop = struct {
 		source: Inventory,
 		sourceSlot: u32,
+		desiredAmount: u16 = 0xffff,
 
-		fn run(self: DropStack, allocator: NeverFailingAllocator, cmd: *InventoryCommand, side: Side, user: ?*main.server.User) void {
+		fn run(self: Drop, allocator: NeverFailingAllocator, cmd: *InventoryCommand, side: Side, user: ?*main.server.User) void {
 			if(self.source.type == .creative) return;
 			if(self.source._items[self.sourceSlot].item == null) return;
 			if(self.source.type == .crafting) {
@@ -2163,57 +2162,25 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 			cmd.executeBaseOperation(allocator, .{.delete = .{
 				.source = self.source,
 				.sourceSlot = self.sourceSlot,
-				.amount = self.source._items[self.sourceSlot].amount,
+				.amount = @min(self.source._items[self.sourceSlot].amount, self.desiredAmount),
 			}}, side);
 		}
 
-		fn serialize(self: DropStack, data: *main.List(u8)) void {
+		fn serialize(self: Drop, data: *main.List(u8)) void {
 			std.mem.writeInt(u32, data.addMany(4)[0..4], self.source.id, .big);
 			std.mem.writeInt(u32, data.addMany(4)[0..4], self.sourceSlot, .big);
+			if(self.desiredAmount != 0xffff) {
+				std.mem.writeInt(u16, data.addMany(2)[0..2], self.desiredAmount, .big);
+			}
 		}
 
-		fn deserialize(data: []const u8, side: Side, user: ?*main.server.User) !DropStack {
-			if(data.len != 8) return error.Invalid;
+		fn deserialize(data: []const u8, side: Side, user: ?*main.server.User) !Drop {
+			if(data.len != 8 and data.len != 10) return error.Invalid;
 			const sourceId = std.mem.readInt(u32, data[0..4], .big);
 			return .{
 				.source = InventorySync.getInventory(sourceId, side, user) orelse return error.Invalid,
 				.sourceSlot = std.mem.readInt(u32, data[4..8], .big),
-			};
-		}
-	};
-
-	const DropOne = struct {
-		source: Inventory,
-		sourceSlot: u32,
-
-		fn run(self: DropOne, allocator: NeverFailingAllocator, cmd: *InventoryCommand, side: Side, user: ?*main.server.User) void {
-			if((self.source.type == .workbench or self.source.type == .crafting) and self.sourceSlot == self.source._items.len - 1) {
-				DropStack.run(.{.source = self.source, .sourceSlot = self.sourceSlot}, allocator, cmd, side, user);
-			}
-			if(self.source.type == .crafting) return;
-			if(self.source._items[self.sourceSlot].item == null) return;
-			if(side == .server) {
-				const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.player.rot[0]), -user.?.player.rot[2]);
-				main.server.world.?.drop(.{.item = self.source.getStack(self.sourceSlot).item, .amount = 1}, user.?.player.pos, direction, 20);
-			}
-			cmd.executeBaseOperation(allocator, .{.delete = .{
-				.source = self.source,
-				.sourceSlot = self.sourceSlot,
-				.amount = 1,
-			}}, side);
-		}
-
-		fn serialize(self: DropOne, data: *main.List(u8)) void {
-			std.mem.writeInt(u32, data.addMany(4)[0..4], self.source.id, .big);
-			std.mem.writeInt(u32, data.addMany(4)[0..4], self.sourceSlot, .big);
-		}
-
-		fn deserialize(data: []const u8, side: Side, user: ?*main.server.User) !DropOne {
-			if(data.len != 8) return error.Invalid;
-			const sourceId = std.mem.readInt(u32, data[0..4], .big);
-			return .{
-				.source = InventorySync.getInventory(sourceId, side, user) orelse return error.Invalid,
-				.sourceSlot = std.mem.readInt(u32, data[4..8], .big),
+				.desiredAmount = if(data.len == 10) std.mem.readInt(u16, data[8..10], .big) else 0xffff,
 			};
 		}
 	};
@@ -2450,11 +2417,11 @@ pub const Inventory = struct { // MARK: Inventory
 	}
 
 	pub fn dropStack(source: Inventory, sourceSlot: u32) void {
-		InventorySync.executeCommand(.{.dropStack = .{.source = source, .sourceSlot = sourceSlot}});
+		InventorySync.executeCommand(.{.drop = .{.source = source, .sourceSlot = sourceSlot}});
 	}
 
 	pub fn dropOne(source: Inventory, sourceSlot: u32) void {
-		InventorySync.executeCommand(.{.dropOne = .{.source = source, .sourceSlot = sourceSlot}});
+		InventorySync.executeCommand(.{.drop = .{.source = source, .sourceSlot = sourceSlot, .desiredAmount = 1}});
 	}
 
 	pub fn fillFromCreative(dest: Inventory, destSlot: u32, item: ?Item) void {
