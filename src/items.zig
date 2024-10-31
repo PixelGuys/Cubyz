@@ -1638,113 +1638,65 @@ pub const InventoryCommand = struct { // MARK: InventoryCommand
 		return &.{};
 	}
 
+	fn executeAddOperation(self: *InventoryCommand, allocator: NeverFailingAllocator, side: Side, inv: Inventory, slot: u32, amount: u16, item: ?Item) void {
+		if(amount == 0) return;
+		if(item == null) return;
+		if(side == .server) {
+			self.syncOperations.append(allocator, .{
+				.inv = inv,
+				.slot = slot,
+				.amount = amount,
+				.item = if(inv._items[slot].amount == 0) item else null,
+			});
+		}
+		std.debug.assert(inv._items[slot].item == null or std.meta.eql(inv._items[slot].item.?, item.?));
+		inv._items[slot].item = item.?;
+		inv._items[slot].amount += amount;
+		std.debug.assert(inv._items[slot].amount <= item.?.stackSize());
+	}
+
+	fn executeRemoveOperation(self: *InventoryCommand, allocator: NeverFailingAllocator, side: Side, inv: Inventory, slot: u32, amount: u16) void {
+		if(amount == 0) return;
+		if(side == .server) {
+			self.syncOperations.append(allocator, .{
+				.inv = inv,
+				.slot = slot,
+				.amount = -@as(i32, amount),
+				.item = null,
+			});
+		}
+		inv._items[slot].amount -= amount;
+		if(inv._items[slot].amount == 0) {
+			inv._items[slot].item = null;
+		}
+	}
+
 	fn executeBaseOperation(self: *InventoryCommand, allocator: NeverFailingAllocator, _op: BaseOperation, side: Side) void {
 		var op = _op;
-		blk: switch(op) {
+		switch(op) {
 			.move => |info| {
-				if(info.amount == 0) break :blk;
-				std.debug.assert(std.meta.eql(info.source._items[info.sourceSlot].item, info.dest._items[info.destSlot].item) or info.dest._items[info.destSlot].item == null);
-
-				if(side == .server) {
-					self.syncOperations.append(allocator, .{
-						.inv = info.source,
-						.slot = info.sourceSlot,
-						.amount = -@as(i32, info.amount),
-						.item = null,
-					});
-					self.syncOperations.append(allocator, .{
-						.inv = info.dest,
-						.slot = info.destSlot,
-						.amount = info.amount,
-						.item = if(info.dest._items[info.destSlot].amount == 0) info.source._items[info.sourceSlot].item else null,
-					});
-				}
-				
-				info.dest._items[info.destSlot].item = info.source._items[info.sourceSlot].item;
-				info.dest._items[info.destSlot].amount += info.amount;
-				info.source._items[info.sourceSlot].amount -= info.amount;
-				if(info.source._items[info.sourceSlot].amount == 0) {
-					info.source._items[info.sourceSlot].item = null;
-				}
+				self.executeAddOperation(allocator, side, info.dest, info.destSlot, info.amount, info.source._items[info.sourceSlot].item);
+				self.executeRemoveOperation(allocator, side, info.source, info.sourceSlot, info.amount);
 				info.source.update();
 				info.dest.update();
 			},
 			.swap => |info| {
-
-				if(side == .server) {
-					if(info.dest._items[info.destSlot].amount != 0) {
-						self.syncOperations.append(allocator, .{
-							.inv = info.dest,
-							.slot = info.destSlot,
-							.amount = -@as(i32, info.dest._items[info.destSlot].amount),
-							.item = null,
-						});
-					}
-					if(info.source._items[info.sourceSlot].amount != 0) {
-						self.syncOperations.append(allocator, .{
-							.inv = info.source,
-							.slot = info.sourceSlot,
-							.amount = -@as(i32, info.source._items[info.sourceSlot].amount),
-							.item = null,
-						});
-					}
-					if(info.dest._items[info.destSlot].amount != 0) {
-						self.syncOperations.append(allocator, .{
-							.inv = info.source,
-							.slot = info.sourceSlot,
-							.amount = info.dest._items[info.destSlot].amount,
-							.item = info.dest._items[info.destSlot].item,
-						});
-					}
-					if(info.source._items[info.sourceSlot].amount != 0) {
-						self.syncOperations.append(allocator, .{
-							.inv = info.dest,
-							.slot = info.destSlot,
-							.amount = info.source._items[info.sourceSlot].amount,
-							.item = info.source._items[info.sourceSlot].item,
-						});
-					}
-				}
-
-				const temp = info.dest._items[info.destSlot];
-				info.dest._items[info.destSlot] = info.source._items[info.sourceSlot];
-				info.source._items[info.sourceSlot] = temp;
+				const oldDestStack = info.dest._items[info.destSlot];
+				const oldSourceStack = info.source._items[info.sourceSlot];
+				self.executeRemoveOperation(allocator, side, info.source, info.sourceSlot, oldSourceStack.amount);
+				self.executeRemoveOperation(allocator, side, info.dest, info.destSlot, oldDestStack.amount);
+				self.executeAddOperation(allocator, side, info.source, info.sourceSlot, oldDestStack.amount, oldDestStack.item);
+				self.executeAddOperation(allocator, side, info.dest, info.destSlot, oldSourceStack.amount, oldSourceStack.item);
 				info.source.update();
 				info.dest.update();
 			},
 			.delete => |*info| {
-				std.debug.assert(info.source._items[info.sourceSlot].amount >= info.amount);
-
-				if(side == .server) {
-					self.syncOperations.append(allocator, .{
-						.inv = info.source,
-						.slot = info.sourceSlot,
-						.amount = -@as(i32, info.amount),
-						.item = null,
-					});
-				}
-
-				info.source._items[info.sourceSlot].amount -= info.amount;
 				info.item = info.source._items[info.sourceSlot].item;
-				if(info.source._items[info.sourceSlot].amount == 0) {
-					info.source._items[info.sourceSlot].item = null;
-				}
+				self.executeRemoveOperation(allocator, side, info.source, info.sourceSlot, info.amount);
 				info.source.update();
 			},
 			.create => |info| {
-				std.debug.assert(info.dest._items[info.destSlot].item == null or std.meta.eql(info.dest._items[info.destSlot].item, info.item));
-
-				if(side == .server) {
-					self.syncOperations.append(allocator, .{
-						.inv = info.dest,
-						.slot = info.destSlot,
-						.amount = info.amount,
-						.item = if(info.dest._items[info.destSlot].amount == 0) info.dest._items[info.destSlot].item else null,
-					});
-				}
-
-				info.dest._items[info.destSlot].item = info.item;
-				info.dest._items[info.destSlot].amount += info.amount;
+				self.executeAddOperation(allocator, side, info.dest, info.destSlot, info.amount, info.item);
 				info.dest.update();
 			},
 		}
