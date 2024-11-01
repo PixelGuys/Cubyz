@@ -5,7 +5,7 @@
 
 	.caves = -0.2,
 
-	.music = "cubyz:HeartOfTheBeast",
+	.music = "cubyz:heart-of-the-beast",
 
 	.ground_structure = .{
 		"0 to 1 cubyz:gravel",

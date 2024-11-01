@@ -5,8 +5,6 @@
 	.fogDensity = 20,
 	.fogColor = 0x51240c,
 
-	.music = "cubyz:Scoria",
-
 	.caves = -0.03,
 
 	.stoneBlock = "cubyz:obsidian",

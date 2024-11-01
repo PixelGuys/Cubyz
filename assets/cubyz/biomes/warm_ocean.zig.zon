@@ -10,7 +10,7 @@
 	.roughness = 10,
 	.hills = 20,
 
-	.music = "cubyz:Tides",
+	.music = "cubyz:tides",
 	
 	.ground_structure = .{
 		"2 to 4 cubyz:sand",

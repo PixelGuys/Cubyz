@@ -7,7 +7,7 @@
 	.caves = -0.1,
 	.crystals = 32,
 
-	.music = "cubyz:Vitreous",
+	.music = "cubyz:leaves",
 
 	.stoneBlock = "cubyz:stone",
 	.ground_structure = .{

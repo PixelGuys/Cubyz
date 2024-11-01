@@ -10,7 +10,7 @@
 	.roughness = 10,
 	.hills = 10,
 	
-	.music = "cubyz:Leaves",
+	.music = "cubyz:leaves",
 
 	.validPlayerSpawn = true,
 	

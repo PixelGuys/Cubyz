@@ -7,7 +7,7 @@
 	.roughness = 1,
 	.hills = 5,
 	
-	.music = "cubyz:Sunrise",
+	.music = "cubyz:sunrise",
 
 	.validPlayerSpawn = true,
 	

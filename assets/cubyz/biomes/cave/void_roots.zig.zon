@@ -7,7 +7,7 @@
 	.caveRadiusFactor = -1,
 	.caves = 0.5,
 
-	.music = "cubyz:StaticMotion",
+	.music = "cubyz:heart-of-the-beast",
 
 	.structures = .{
 		.{
