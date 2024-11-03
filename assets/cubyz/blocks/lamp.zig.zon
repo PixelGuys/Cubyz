@@ -1,0 +1,11 @@
+.{
+	.class = .wood,
+	.hardness = 8,
+	.drops = .{
+		.auto,
+	},
+	.emittedLight = 0xd9cab4,
+	.texture = "cubyz:lamp",
+	.texture_top = "cubyz:lamp_top",
+	.texture_bottom = "cubyz:lamp_top",
+}
