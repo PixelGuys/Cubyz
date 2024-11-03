@@ -5,7 +5,7 @@
 		.auto,
 	},
 	.solid = false,
-	.emittedLight = 0xa28d6e,
+	.emittedLight = 0xa2896e,
 	.viewThrough = true,
 	.absorbedLight = 0x010101,
 	.collide= false,
