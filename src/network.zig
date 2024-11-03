@@ -1158,16 +1158,16 @@ pub const Protocols = struct {
 		fn receive(conn: *Connection, data: []const u8) !void {
 			if(conn.user) |user| {
 				if(data[0] == 0xff) return error.InvalidPacket;
-				try items.InventorySync.ServerSide.receiveCommand(user, data);
+				try items.Inventory.Sync.ServerSide.receiveCommand(user, data);
 			} else {
 				if(data[0] == 0xff) { // Confirmation
-					items.InventorySync.ClientSide.receiveConfirmation(data[1..]);
+					items.Inventory.Sync.ClientSide.receiveConfirmation(data[1..]);
 				} else {
-					try items.InventorySync.ClientSide.receiveSyncOperation(data[1..]);
+					try items.Inventory.Sync.ClientSide.receiveSyncOperation(data[1..]);
 				}
 			}
 		}
-		pub fn sendCommand(conn: *Connection, payloadType: items.InventoryCommand.PayloadType, _data: []const u8) void {
+		pub fn sendCommand(conn: *Connection, payloadType: items.Inventory.Command.PayloadType, _data: []const u8) void {
 			std.debug.assert(conn.user == null);
 			var data = main.stackAllocator.alloc(u8, _data.len + 1);
 			defer main.stackAllocator.free(data);
