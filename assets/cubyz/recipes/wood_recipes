@@ -1,15 +1,3 @@
-cubyz:birch_planks
-result 2*cubyz:stick
-
-cubyz:oak_planks
-result 2*cubyz:stick
-
-cubyz:mahogany_planks
-result 2*cubyz:stick
-
-cubyz:pine_planks
-result 2*cubyz:stick
-
 4*cubyz:birch_planks
 result cubyz:workbench
 
