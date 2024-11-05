@@ -1,6 +1,15 @@
-P = cubyz:oak_planks
-I = cubyz:iron_ore
+cubyz:birch_planks
+cubyz:iron_ingot
+result cubyz:chisel
 
-P
-I
+cubyz:oak_planks
+cubyz:iron_ingot
+result cubyz:chisel
+
+cubyz:mahogany_planks
+cubyz:iron_ingot
+result cubyz:chisel
+
+cubyz:pine_planks
+cubyz:iron_ingot
 result cubyz:chisel
