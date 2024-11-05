@@ -66,7 +66,7 @@ pub const User = struct { // MARK: User
 
 	pub fn deinit(self: *User) void {
 		std.debug.assert(self.refCount.load(.monotonic) == 0);
-		main.items.InventorySync.ServerSide.disconnectUser(self);
+		main.items.Inventory.Sync.ServerSide.disconnectUser(self);
 		std.debug.assert(self.inventoryClientToServerIdMap.count() == 0); // leak
 		self.inventoryClientToServerIdMap.deinit();
 		self.unloadOldChunk(.{0, 0, 0}, 0);
@@ -220,7 +220,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 		@panic("Could not open Server.");
 	}; // TODO Configure the second argument in the server settings.
 
-	main.items.InventorySync.ServerSide.init();
+	main.items.Inventory.Sync.ServerSide.init();
 
 	world = ServerWorld.init(name, null) catch |err| {
 		std.log.err("Failed to create world: {s}", .{@errorName(err)});
@@ -254,7 +254,7 @@ fn deinit() void {
 	connectionManager.deinit();
 	connectionManager = undefined;
 
-	main.items.InventorySync.ServerSide.deinit();
+	main.items.Inventory.Sync.ServerSide.deinit();
 
 	if(world) |_world| {
 		_world.deinit();

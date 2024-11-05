@@ -1,0 +1,8 @@
+.{
+	.class = .stone,
+	.hardness = 25,
+	.breakingPower = 1,
+	.rotation = .stairs,
+	.model = "cubyz:cube",
+	.texture = "cubyz:basalt_tile",
+}

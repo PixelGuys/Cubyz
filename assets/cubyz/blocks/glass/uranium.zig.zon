@@ -7,7 +7,7 @@
 	.transparent = true,
 	.hasBackFace = true,
 	.absorbedLight = 0x4001ff,
-	.emittedLight = 0x80ff00,
+	.emittedLight = 0x214200,
 	.model = "cubyz:cube",
 	.texture = "cubyz:glass/uranium",
 }
