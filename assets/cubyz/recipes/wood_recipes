@@ -47,17 +47,17 @@ cubyz:pine_planks
 result 2*cubyz:pine_fence
 
 cubyz:coal
-1*cubyz:birch_planks
-result 2*cubyz:torch
+cubyz:birch_planks
+result 8*cubyz:torch
 
 cubyz:coal
-1*cubyz:oak_planks
-result 2*cubyz:torch
+cubyz:oak_planks
+result 8*cubyz:torch
 
 cubyz:coal
-1*cubyz:mahogany_planks
-result 2*cubyz:torch
+cubyz:mahogany_planks
+result 8*cubyz:torch
 
 cubyz:coal
-1*cubyz:pine_planks
-result 2*cubyz:torch
+cubyz:pine_planks
+result 8*cubyz:torch
