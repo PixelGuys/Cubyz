@@ -1,15 +1,3 @@
-cubyz:birch_planks
-result 2*cubyz:stick
-
-cubyz:oak_planks
-result 2*cubyz:stick
-
-cubyz:mahogany_planks
-result 2*cubyz:stick
-
-cubyz:pine_planks
-result 2*cubyz:stick
-
 4*cubyz:birch_planks
 result cubyz:workbench
 
@@ -59,5 +47,17 @@ cubyz:pine_planks
 result 2*cubyz:pine_fence
 
 cubyz:coal
-2*cubyz:stick
+1*cubyz:birch_planks
+result 2*cubyz:torch
+
+cubyz:coal
+1*cubyz:oak_planks
+result 2*cubyz:torch
+
+cubyz:coal
+1*cubyz:mahogany_planks
+result 2*cubyz:torch
+
+cubyz:coal
+1*cubyz:pine_planks
 result 2*cubyz:torch
