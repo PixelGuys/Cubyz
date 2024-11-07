@@ -594,7 +594,19 @@ pub fn register(id: []const u8, paletteId: u32, zon: ZonElement) void {
 pub fn finishLoading() void {
 	std.debug.assert(!finishedLoading);
 	finishedLoading = true;
-	byTypeBiomes = TreeNode.init(main.globalAllocator, biomes.items, 0);
+	var nonZeroBiomes: usize = biomes.items.len;
+	for(0..biomes.items.len) |_i| {
+		const i = biomes.items.len - _i - 1;
+		if(biomes.items[i].chance == 0) {
+			nonZeroBiomes -= 1;
+			const biome = biomes.items[i];
+			for(i..nonZeroBiomes) |j| {
+				biomes.items[j] = biomes.items[j + 1];
+			}
+			biomes.items[nonZeroBiomes] = biome;
+		}
+	}
+	byTypeBiomes = TreeNode.init(main.globalAllocator, biomes.items[0..nonZeroBiomes], 0);
 	for(biomes.items) |*biome| {
 		biomesById.put(biome.id, biome) catch unreachable;
 	}
