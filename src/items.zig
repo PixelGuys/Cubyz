@@ -1192,78 +1192,43 @@ pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: 
 	return newItem;
 }
 
-pub fn registerRecipes(file: []const u8) void {
-	var shortcuts = std.StringHashMap(*BaseItem).init(main.stackAllocator.allocator);
-	defer shortcuts.deinit();
-	defer {
-		var keyIterator = shortcuts.keyIterator();
-		while(keyIterator.next()) |key| {
-			main.stackAllocator.free(key.*);
-		}
+fn parseRecipeItem(zon: ZonElement) !ItemStack {
+	var id = zon.as([]const u8, "");
+	id = std.mem.trim(u8, id, &std.ascii.whitespace);
+	var result: ItemStack = .{.amount = 1};
+	if(std.mem.indexOfScalar(u8, id, ' ')) |index| blk: {
+		result.amount = std.fmt.parseInt(u16, id[0..index], 0) catch break :blk;
+		id = id[index + 1..];
+		id = std.mem.trim(u8, id, &std.ascii.whitespace);
 	}
-	var items = main.List(*BaseItem).init(main.stackAllocator);
-	defer items.deinit();
-	var itemAmounts = main.List(u16).init(main.stackAllocator);
-	defer itemAmounts.deinit();
-	var string = main.List(u8).init(main.stackAllocator);
-	defer string.deinit();
-	var lines = std.mem.splitScalar(u8, file, '\n');
-	while(lines.next()) |line| {
-		// shortcuts:
-		if(std.mem.containsAtLeast(u8, line, 1, "=")) {
-			var parts = std.mem.splitScalar(u8, line, '=');
-			for(parts.first()) |char| {
-				if(std.ascii.isWhitespace(char)) continue;
-				string.append(char);
-			}
-			const shortcut = string.toOwnedSlice();
-			const id = std.mem.trim(u8, parts.rest(), &std.ascii.whitespace);
-			const item = shortcuts.get(id) orelse getByID(id) orelse &BaseItem.unobtainable;
-			shortcuts.put(shortcut, item) catch unreachable;
-		} else if(std.mem.startsWith(u8, line, "result") and items.items.len != 0) {
-			defer items.clearAndFree();
-			defer itemAmounts.clearAndFree();
-			var id = line["result".len..];
-			var amount: u16 = 1;
-			if(std.mem.containsAtLeast(u8, id, 1, "*")) {
-				var parts = std.mem.splitScalar(u8, id, '*');
-				const amountString = std.mem.trim(u8, parts.first(), &std.ascii.whitespace);
-				amount = std.fmt.parseInt(u16, amountString, 0) catch 1;
-				id = parts.rest();
-			}
-			id = std.mem.trim(u8, id, &std.ascii.whitespace);
-			const item = shortcuts.get(id) orelse getByID(id) orelse continue;
-			const recipe = Recipe {
-				.sourceItems = arena.allocator().dupe(*BaseItem, items.items),
-				.sourceAmounts = arena.allocator().dupe(u16, itemAmounts.items),
-				.resultItem = ItemStack{.item = Item{.baseItem = item}, .amount = amount},
-			};
-			recipeList.append(recipe);
-		} else {
-			var ingredients = std.mem.splitScalar(u8, line, ',');
-			outer: while(ingredients.next()) |ingredient| {
-				var id = ingredient;
-				if(id.len == 0) continue;
-				var amount: u16 = 1;
-				if(std.mem.containsAtLeast(u8, id, 1, "*")) {
-					var parts = std.mem.splitScalar(u8, id, '*');
-					const amountString = std.mem.trim(u8, parts.first(), &std.ascii.whitespace);
-					amount = std.fmt.parseInt(u16, amountString, 0) catch 1;
-					id = parts.rest();
-				}
-				id = std.mem.trim(u8, id, &std.ascii.whitespace);
-				const item = shortcuts.get(id) orelse getByID(id) orelse continue;
-				// Resolve duplicates:
-				for(items.items, 0..) |presentItem, i| {
-					if(presentItem == item) {
-						itemAmounts.items[i] += amount;
-						continue :outer;
-					}
-				}
-				items.append(item);
-				itemAmounts.append(amount);
-			}
-		}
+	result.item = .{.baseItem = getByID(id) orelse return error.ItemNotFound};
+	return result;
+}
+
+fn parseRecipe(zon: ZonElement) !Recipe {
+	const inputs = zon.getChild("inputs").toSlice();
+	const output = try parseRecipeItem(zon.getChild("output"));
+	const recipe = Recipe {
+		.sourceItems = arena.allocator().alloc(*BaseItem, inputs.len),
+		.sourceAmounts = arena.allocator().alloc(u16, inputs.len),
+		.resultItem = output,
+	};
+	errdefer {
+		arena.allocator().free(recipe.sourceAmounts);
+		arena.allocator().free(recipe.sourceItems);
+	}
+	for(inputs, 0..) |inputZon, i| {
+		const input = try parseRecipeItem(inputZon);
+		recipe.sourceItems[i] = input.item.?.baseItem;
+		recipe.sourceAmounts[i] = input.amount;
+	}
+	return recipe;
+}
+
+pub fn registerRecipes(zon: ZonElement) void {
+	for(zon.toSlice()) |recipeZon| {
+		const recipe = parseRecipe(recipeZon) catch continue;
+		recipeList.append(recipe);
 	}
 }
 

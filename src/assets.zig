@@ -12,7 +12,7 @@ var arenaAllocator: NeverFailingAllocator = undefined;
 var commonBlocks: std.StringHashMap(ZonElement) = undefined;
 var commonBiomes: std.StringHashMap(ZonElement) = undefined;
 var commonItems: std.StringHashMap(ZonElement) = undefined;
-var commonRecipes: main.List([]const u8) = undefined;
+var commonRecipes: std.StringHashMap(ZonElement) = undefined;
 var commonModels: std.StringHashMap([]const u8) = undefined;
 
 /// Reads .zig.zon files recursively from all subfolders.
@@ -127,7 +127,7 @@ pub fn readAllObjFilesInAddonsHashmap(externalAllocator: NeverFailingAllocator, 
 	}
 }
 
-pub fn readAssets(externalAllocator: NeverFailingAllocator, assetPath: []const u8, blocks: *std.StringHashMap(ZonElement), items: *std.StringHashMap(ZonElement), biomes: *std.StringHashMap(ZonElement), recipes: *main.List([]const u8), models: *std.StringHashMap([]const u8)) void {
+pub fn readAssets(externalAllocator: NeverFailingAllocator, assetPath: []const u8, blocks: *std.StringHashMap(ZonElement), items: *std.StringHashMap(ZonElement), biomes: *std.StringHashMap(ZonElement), recipes: *std.StringHashMap(ZonElement), models: *std.StringHashMap([]const u8)) void {
 	var addons = main.List(std.fs.Dir).init(main.stackAllocator);
 	defer addons.deinit();
 	var addonNames = main.List([]const u8).init(main.stackAllocator);
@@ -161,7 +161,7 @@ pub fn readAssets(externalAllocator: NeverFailingAllocator, assetPath: []const u
 	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "blocks", blocks);
 	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "items", items);
 	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "biomes", biomes);
-	readAllFilesInAddons(externalAllocator, addons, "recipes", recipes);
+	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "recipes", recipes);
 	readAllObjFilesInAddonsHashmap(externalAllocator, addons, addonNames, "models", models);
 }
 
@@ -173,7 +173,7 @@ pub fn init() void {
 	commonBlocks = .init(arenaAllocator.allocator);
 	commonItems = .init(arenaAllocator.allocator);
 	commonBiomes = .init(arenaAllocator.allocator);
-	commonRecipes = .init(arenaAllocator);
+	commonRecipes = .init(arenaAllocator.allocator);
 	commonModels = .init(arenaAllocator.allocator);
 
 	readAssets(arenaAllocator, "assets/", &commonBlocks, &commonItems, &commonBiomes, &commonRecipes, &commonModels);
@@ -203,8 +203,8 @@ fn registerBlock(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void
 	}
 }
 
-fn registerRecipesFromFile(file: []const u8) void {
-	items_zig.registerRecipes(file);
+fn registerRecipesFromZon(zon: ZonElement) void {
+	items_zig.registerRecipes(zon);
 }
 
 pub const Palette = struct { // MARK: Palette
@@ -270,8 +270,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 	defer items.clearAndFree();
 	var biomes = commonBiomes.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer biomes.clearAndFree();
-	var recipes = main.List([]const u8).init(main.stackAllocator);
-	recipes.appendSlice(commonRecipes.items);
+	var recipes = commonRecipes.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer recipes.clearAndFree();
 	var models = commonModels.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer models.clearAndFree();
@@ -312,8 +311,9 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 	// block drops:
 	blocks_zig.finishBlocks(blocks);
 
-	for(recipes.items) |recipe| {
-		registerRecipesFromFile(recipe);
+	iterator = recipes.iterator();
+	while(iterator.next()) |entry| {
+		registerRecipesFromZon(entry.value_ptr.*);
 	}
 
 	// Biomes:

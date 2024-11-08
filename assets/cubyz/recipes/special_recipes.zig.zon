@@ -1,0 +1,18 @@
+.{
+	.{
+		.inputs = .{"cubyz:birch_planks", "cubyz:iron_ingot"},
+		.output = "cubyz:chisel",
+	},
+	.{
+		.inputs = .{"cubyz:oak_planks", "cubyz:iron_ingot"},
+		.output = "cubyz:chisel",
+	},
+	.{
+		.inputs = .{"cubyz:mahogany_planks", "cubyz:iron_ingot"},
+		.output = "cubyz:chisel",
+	},
+	.{
+		.inputs = .{"cubyz:pine_planks", "cubyz:iron_ingot"},
+		.output = "cubyz:chisel",
+	},
+}
