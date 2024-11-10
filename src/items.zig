@@ -925,6 +925,33 @@ pub const Tool = struct { // MARK: Tool
 		main.globalAllocator.destroy(self);
 	}
 
+	pub fn clone(self: *const Tool) *Tool {
+		const result = main.globalAllocator.create(Tool);
+		result.* = .{
+			.craftingGrid = self.craftingGrid,
+			.materialGrid = self.materialGrid,
+			.tooltip = null,
+			.image = graphics.Image.init(main.globalAllocator, self.image.width, self.image.height),
+			.texture = null,
+			.seed = self.seed,
+			.pickaxePower = self.pickaxePower,
+			.axePower = self.axePower,
+			.shovelPower = self.shovelPower,
+			.damage = self.damage,
+			.durability = self.durability,
+			.maxDurability = self.maxDurability,
+			.swingTime = self.swingTime,
+			.mass = self.mass,
+			.handlePosition = self.handlePosition,
+			.inertiaHandle = self.inertiaHandle,
+			.centerOfMass = self.centerOfMass,
+			.inertiaCenterOfMass = self.inertiaCenterOfMass,
+		};
+		@memcpy(result.image.imageData, self.image.imageData);
+		return result;
+
+	}
+
 	pub fn initFromCraftingGrid(craftingGrid: [25]?*const BaseItem, seed: u32) *Tool {
 		const self = init();
 		self.seed = seed;
@@ -1047,6 +1074,15 @@ pub const Item = union(enum) { // MARK: Item
 		}
 	}
 
+	pub fn clone(self: Item) Item {
+		switch(self) {
+			.baseItem => return self,
+			.tool => |tool| {
+				return .{.tool = tool.clone()};
+			}
+		}
+	}
+
 	pub fn stackSize(self: Item) u16 {
 		switch(self) {
 			.baseItem => |_baseItem| {
@@ -1126,6 +1162,14 @@ pub const ItemStack = struct { // MARK: ItemStack
 		if(self.item) |item| {
 			item.deinit();
 		}
+	}
+
+	pub fn clone(self: *const ItemStack) ItemStack {
+		const item = self.item orelse return .{};
+		return .{
+			.item = item.clone(),
+			.amount = self.amount,
+		};
 	}
 
 	pub fn empty(self: *const ItemStack) bool {

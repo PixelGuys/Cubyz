@@ -930,7 +930,7 @@ pub const Command = struct { // MARK: Command
 				if(_items[0].item != null) {
 					if(side == .server) {
 						const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.player.rot[0]), -user.?.player.rot[2]);
-						main.server.world.?.drop(_items[0], user.?.player.pos, direction, 20);
+						main.server.world.?.drop(_items[0].clone(), user.?.player.pos, direction, 20);
 					}
 				}
 				return;
@@ -940,7 +940,7 @@ pub const Command = struct { // MARK: Command
 			}
 			if(side == .server) {
 				const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.player.rot[0]), -user.?.player.rot[2]);
-				main.server.world.?.drop(self.source.ref().*, user.?.player.pos, direction, 20);
+				main.server.world.?.drop(self.source.ref().clone(), user.?.player.pos, direction, 20);
 			}
 			cmd.executeBaseOperation(allocator, .{.delete = .{
 				.source = self.source,
@@ -1053,7 +1053,7 @@ pub const Command = struct { // MARK: Command
 				}
 				if(side == .server) {
 					const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.player.rot[0]), -user.?.player.rot[2]);
-					main.server.world.?.drop(sourceStack.*, user.?.player.pos, direction, 20);
+					main.server.world.?.drop(sourceStack.clone(), user.?.player.pos, direction, 20);
 				}
 				cmd.executeBaseOperation(allocator, .{.delete = .{
 					.source = .{.inv = self.source, .slot = @intCast(sourceSlot)},
