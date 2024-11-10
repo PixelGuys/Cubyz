@@ -371,7 +371,6 @@ pub const Command = struct { // MARK: Command
 				defer zon.free(main.stackAllocator);
 				self.item = try Item.init(zon);
 			}
-			std.log.debug("{any} {s}", .{data[0..12], data[12..]});
 			if(self.amount > 0) { // Create
 				if(self.item) |item| {
 					self.inv.ref().item = item;
