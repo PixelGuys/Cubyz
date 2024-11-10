@@ -56,10 +56,10 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		pub fn undo() void {
+			mutex.lock();
+			defer mutex.unlock();
 			if(commands.dequeue_front()) |_cmd| {
 				var cmd = _cmd;
-				mutex.lock();
-				defer mutex.unlock();
 				cmd.undo();
 				cmd.undoSteps.deinit(main.globalAllocator); // TODO: This should be put on some kind of redo queue once the testing phase is over.
 			}
@@ -81,10 +81,12 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		fn mapServerId(serverId: u32, inventory: Inventory) void {
+			main.utils.assertLocked(&mutex);
 			serverToClientMap.put(serverId, inventory) catch unreachable;
 		}
 
 		fn unmapServerId(serverId: u32, clientId: u32) void {
+			main.utils.assertLocked(&mutex);
 			std.debug.assert(serverToClientMap.fetchRemove(serverId).?.value.id == clientId);
 		}
 
@@ -125,6 +127,7 @@ pub const Sync = struct { // MARK: Sync
 			source: Source,
 
 			fn init(len: usize, typ: Inventory.Type, source: Source) ServerInventory {
+				main.utils.assertLocked(&mutex);
 				return .{
 					.inv = Inventory._init(main.globalAllocator, len, typ, .server),
 					.users = .{},
@@ -133,6 +136,7 @@ pub const Sync = struct { // MARK: Sync
 			}
 
 			fn deinit(self: *ServerInventory) void {
+				main.utils.assertLocked(&mutex);
 				std.debug.assert(self.users.items.len == 0);
 				self.users.deinit(main.globalAllocator);
 				self.inv._deinit(main.globalAllocator, .server);
@@ -867,7 +871,7 @@ pub const Command = struct { // MARK: Command
 						.source = self.source,
 						.amount = 1,
 					}}, side);
-					cmd.removeToolCraftingIngredients(allocator, self.dest.inv, side);
+					cmd.removeToolCraftingIngredients(allocator, self.source.inv, side);
 				}
 				return;
 			}
