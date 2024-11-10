@@ -1,6 +1,18 @@
 .{
 	.class = .wood,
 	.hardness = 7,
+	.item = .{
+		.material = .{
+		.density = 1.0,
+		.resistance = 1.0,
+		.power = 0.2,
+		.roughness = 0.7,
+		.colors = .{
+			0xff835e37, 0xffa37543, 0xffbd8a4f, 0xffd3a164, 0xffe5b570,
+		},
+	},
+	}
+
 	.drops = .{
 		.auto,
 	},
