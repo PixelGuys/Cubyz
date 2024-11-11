@@ -3,15 +3,15 @@
 	.hardness = 7,
 	.item = .{
 		.material = .{
-		.density = 0.6,
-		.resistance = 0.8,
-		.power = 0.2,
-		.roughness = 0.7,
-		.colors = .{
-			0xff9b7a5b, 0xffbf9872, 0xffdeb287, 0xfff2c89c, 0xffffdfb7,
+			.density = 0.6,
+			.resistance = 0.8,
+			.power = 0.2,
+			.roughness = 0.7,
+			.colors = .{
+				0xff9b7a5b, 0xffbf9872, 0xffdeb287, 0xfff2c89c, 0xffffdfb7,
+			},
 		},
 	},
-	}
 
 	.drops = .{
 		.auto,
