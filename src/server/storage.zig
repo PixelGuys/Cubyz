@@ -18,6 +18,7 @@ pub const RegionFile = struct { // MARK: RegionFile
 	mutex: std.Thread.Mutex = .{},
 	modified: bool = false,
 	refCount: Atomic(u16) = .init(1),
+	storedInHashMap: bool = false,
 	saveFolder: []const u8,
 
 	pub fn getIndex(x: usize, y: usize, z: usize) usize {
@@ -101,6 +102,8 @@ pub const RegionFile = struct { // MARK: RegionFile
 				self.store();
 			}
 			self.deinit();
+		} else if(prevVal == 2) {
+			tryHashmapDeinit(self);
 		}
 	}
 
@@ -179,19 +182,60 @@ pub const RegionFile = struct { // MARK: RegionFile
 const cacheSize = 1 << 8; // Must be a power of 2!
 const cacheMask = cacheSize - 1;
 const associativity = 8;
-var cache: main.utils.Cache(RegionFile, cacheSize, associativity, RegionFile.decreaseRefCount) = .{};
+var cache: main.utils.Cache(RegionFile, cacheSize, associativity, cacheDeinit) = .{};
+const HashContext = struct {
+	pub fn hash(_: HashContext, a: chunk.ChunkPosition) u64 {
+		return a.hashCode();
+	}
+	pub fn eql(_: HashContext, a: chunk.ChunkPosition, b: chunk.ChunkPosition) bool {
+		return std.meta.eql(a, b);
+	}
+};
+var stillUsedHashMap: std.HashMap(chunk.ChunkPosition, *RegionFile, HashContext, 50) = undefined;
+var hashMapMutex: std.Thread.Mutex = .{};
 
+fn cacheDeinit(region: *RegionFile) void {
+	if(region.refCount.load(.monotonic) != 1) { // Someone else might still use it, so we store it in the hashmap.
+		hashMapMutex.lock();
+		defer hashMapMutex.unlock();
+		region.storedInHashMap = true;
+		stillUsedHashMap.put(region.pos, region) catch unreachable;
+	} else {
+		region.decreaseRefCount();
+	}
+}
 fn cacheInit(pos: chunk.ChunkPosition) *RegionFile {
+	hashMapMutex.lock();
+	if(stillUsedHashMap.fetchRemove(pos)) |kv| {
+		const region = kv.value;
+		region.storedInHashMap = false;
+		hashMapMutex.unlock();
+		return region;
+	}
+	hashMapMutex.unlock();
 	const path: []const u8 = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/chunks", .{server.world.?.name}) catch unreachable;
 	defer main.stackAllocator.free(path);
 	return RegionFile.init(pos, path);
 }
+fn tryHashmapDeinit(region: *RegionFile) void {
+	{
+		hashMapMutex.lock();
+		defer hashMapMutex.unlock();
+		if(!region.storedInHashMap) return;
+		std.debug.assert(stillUsedHashMap.fetchRemove(region.pos).?.value == region);
+		region.storedInHashMap = false;
+	}
+	std.debug.assert(region.refCount.load(.unordered) == 1);
+	region.decreaseRefCount();
+}
 
 pub fn init() void {
+	stillUsedHashMap = .init(main.globalAllocator.allocator);
 }
 
 pub fn deinit() void {
 	cache.clear();
+	stillUsedHashMap.deinit();
 }
 
 pub fn loadRegionFileAndIncreaseRefCount(wx: i32, wy: i32, wz: i32, voxelSize: u31) *RegionFile {
