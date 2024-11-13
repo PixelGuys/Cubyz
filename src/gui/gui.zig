@@ -613,6 +613,28 @@ pub const inventory = struct { // MARK: inventory
 		rightClickSlots.deinit();
 	}
 
+	pub fn deleteItemSlotReferences(slot: *const ItemSlot) void {
+		if(slot == hoveredItemSlot) {
+			hoveredItemSlot = null;
+		}
+		var i: usize = 0;
+		while(i < leftClickSlots.items.len) {
+			if(leftClickSlots.items[i] == slot) {
+				_ = leftClickSlots.swapRemove(i);
+				continue;
+			}
+			i += 1;
+		}
+		i = 0;
+		while(i < rightClickSlots.items.len) {
+			if(rightClickSlots.items[i] == slot) {
+				_ = rightClickSlots.swapRemove(i);
+				continue;
+			}
+			i += 1;
+		}
+	}
+
 	fn update() void {
 		if(!initialized) return;
 		if(hoveredItemSlot) |itemSlot| {

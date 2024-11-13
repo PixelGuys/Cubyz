@@ -83,6 +83,7 @@ pub fn init(pos: Vec2f, inventory: Inventory, itemSlot: u32, texture: TexturePar
 }
 
 pub fn deinit(self: *const ItemSlot) void {
+	main.gui.inventory.deleteItemSlotReferences(self);
 	self.text.deinit();
 	main.globalAllocator.destroy(self);
 }
