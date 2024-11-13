@@ -600,6 +600,12 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 			self.curChar = self.unicodeIterator.nextCodepoint() orelse return null;
 		}
 
+		fn peekNextByte(self: *Parser) u8 {
+			const next = self.unicodeIterator.peek(1);
+			if(next.len == 0) return 0;
+			return next[0];
+		}
+
 		fn parse(self: *Parser) void {
 			self.curIndex = @intCast(self.unicodeIterator.i);
 			self.curChar = self.unicodeIterator.nextCodepoint() orelse return;
@@ -614,12 +620,21 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 					}
 				},
 				'_' => {
-					self.appendControlGetNext() orelse return;
-					if(self.curChar == '_') {
+					if(self.peekNextByte() == '_') {
+						self.appendControlGetNext() orelse return;
+						self.appendControlGetNext() orelse return;
+						self.currentFontEffect.underline = !self.currentFontEffect.underline;
+					} else {
+						self.appendGetNext() orelse return;
+					}
+				},
+				'~' => {
+					if(self.peekNextByte() == '~') {
+						self.appendControlGetNext() orelse return;
 						self.appendControlGetNext() orelse return;
 						self.currentFontEffect.strikethrough = !self.currentFontEffect.strikethrough;
 					} else {
-						self.currentFontEffect.underline = !self.currentFontEffect.underline;
+						self.appendGetNext() orelse return;
 					}
 				},
 				'\\' => {
