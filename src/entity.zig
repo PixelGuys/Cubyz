@@ -126,7 +126,7 @@ pub const ClientEntityManager = struct {
 			const pos4f = Vec4f{
 				@floatCast(pos3d[0]),
 				@floatCast(pos3d[1]),
-				@floatCast(pos3d[2] + 1.5),
+				@floatCast(pos3d[2] + 1.0),
 				1,
 			};
 
@@ -137,7 +137,10 @@ pub const ClientEntityManager = struct {
 			const yCenter = (1 - projectedPos[1]/projectedPos[3])*@as(f32, @floatFromInt(main.Window.height/2));
 			
 			graphics.draw.setColor(0xff000000);
-			graphics.draw.text(ent.name, xCenter, yCenter, 32, .center);
+			var buf = graphics.TextBuffer.init(main.stackAllocator, ent.name, .{.color = 0}, false, .center);
+			defer buf.deinit();
+			const size = buf.calculateLineBreaks(32, 1024);
+			buf.render(xCenter - size[0]/2, yCenter - size[1], 32);
 		}
 	}
 
