@@ -663,6 +663,135 @@ pub const RotationModes = struct {
 			return true;
 		}
 	};
+	pub const Carpet = struct { // MARK: Carpet
+		pub const id: []const u8 = "carpet";
+		pub const dependsOnNeighbors = true;
+		var rotatedModels: std.StringHashMap(u16) = undefined;
+		const CarpetData = packed struct(u6) {
+			negX: bool,
+			posX: bool,
+			negY: bool,
+			posY: bool,
+			negZ: bool,
+			posZ: bool,
+		};
+
+		fn init() void {
+			rotatedModels = .init(main.globalAllocator.allocator);
+		}
+
+		fn deinit() void {
+			rotatedModels.deinit();
+		}
+
+		pub fn createBlockModel(modelId: []const u8) u16 {
+			if(rotatedModels.get(modelId)) |modelIndex| return modelIndex;
+
+			const baseModelIndex = main.models.getModelIndex(modelId);
+			const baseModel = main.models.models.items[baseModelIndex];
+			// Rotate the model:
+			var negXModel: u16 = undefined;
+			var posXModel: u16 = undefined;
+			var negYModel: u16 = undefined;
+			var posYModel: u16 = undefined;
+			var negZModel: u16 = undefined;
+			var posZModel: u16 = undefined;
+			for(1..64) |i| {
+				const carpetData: CarpetData = @bitCast(@as(u6, @intCast(i)));
+				if(i & i-1 == 0) {
+					if(carpetData.negX) negXModel = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationY(std.math.pi/2.0)});
+					if(carpetData.posX) posXModel = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationY(-std.math.pi/2.0)});
+					if(carpetData.negY) negYModel = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationX(-std.math.pi/2.0)});
+					if(carpetData.posY) posYModel = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationX(std.math.pi/2.0)});
+					if(carpetData.negZ) negZModel = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.identity()});
+					if(carpetData.posZ) posZModel = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationY(std.math.pi)});
+				} else {
+					var models: [6]u16 = undefined;
+					var amount: usize = 0;
+					if(carpetData.negX) {
+						models[amount] = negXModel;
+						amount += 1;
+					}
+					if(carpetData.posX) {
+						models[amount] = posXModel;
+						amount += 1;
+					}
+					if(carpetData.negY) {
+						models[amount] = negYModel;
+						amount += 1;
+					}
+					if(carpetData.posY) {
+						models[amount] = posYModel;
+						amount += 1;
+					}
+					if(carpetData.negZ) {
+						models[amount] = negZModel;
+						amount += 1;
+					}
+					if(carpetData.posZ) {
+						models[amount] = posZModel;
+						amount += 1;
+					}
+					_ = main.models.Model.mergeModels(models[0..amount]);
+				}
+			}
+			const modelIndex = negXModel;
+			rotatedModels.put(modelId, modelIndex) catch unreachable;
+			return modelIndex;
+		}
+
+		pub fn model(block: Block) u16 {
+			return blocks.meshes.modelIndexStart(block) + (@as(u6, @truncate(block.data)) -| 1);
+		}
+
+		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, relativeDir: Vec3i, currentData: *Block, _: bool) bool {
+			var data: CarpetData = @bitCast(@as(u6, @truncate(currentData.data)));
+			if(relativeDir[0] == 1) data.posX = true;
+			if(relativeDir[0] == -1) data.negX = true;
+			if(relativeDir[1] == 1) data.posY = true;
+			if(relativeDir[1] == -1) data.negY = true;
+			if(relativeDir[2] == 1) data.posZ = true;
+			if(relativeDir[2] == -1) data.negZ = true;
+			if(@as(u6, @bitCast(data)) != currentData.data) {
+				currentData.data = @as(u6, @bitCast(data));
+				return true;
+			} else {
+				return false;
+			}
+		}
+
+		pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool {
+			const blockModel = blocks.meshes.modelIndexStart(block.*);
+			const neighborModel = blocks.meshes.model(neighborBlock);
+			const targetVal = neighborBlock.solid() and (blockModel == neighborModel or main.models.models.items[neighborModel].neighborFacingQuads[neighbor.reverse().toInt()].len != 0);
+			var currentData: CarpetData = @bitCast(@as(u6, @truncate(block.data)));
+			switch(neighbor) {
+				.dirNegX => {
+					currentData.negX = currentData.negX and targetVal;
+				},
+				.dirPosX => {
+					currentData.posX = currentData.posX and targetVal;
+				},
+				.dirNegY => {
+					currentData.negY = currentData.negY and targetVal;
+				},
+				.dirPosY => {
+					currentData.posY = currentData.posY and targetVal;
+				},
+				.dirDown => {
+					currentData.negZ = currentData.negZ and targetVal;
+				},
+				.dirUp => {
+					currentData.posZ = currentData.posZ and targetVal;
+				},
+			}
+			const result: u16 = @as(u6, @bitCast(currentData));
+			if(result == block.data) return false;
+			if(result == 0) block.* = .{.typ = 0, .data = 0}
+			else block.data = result;
+			return true;
+		}
+	};
 };
 
 // MARK: init/register
