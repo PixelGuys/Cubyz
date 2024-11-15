@@ -663,7 +663,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			const dir = std.fmt.allocPrint(main.stackAllocator.allocator, "{}", .{lod}) catch unreachable;
 			defer main.stackAllocator.free(dir);
 			main.files.deleteDir(path, dir) catch |err| {
-				std.log.err("Error while deleting directory {s}/{s}: {s}", .{path, dir, @errorName(err)});
+				if(err != error.FileNotFound) {
+					std.log.err("Error while deleting directory {s}/{s}: {s}", .{path, dir, @errorName(err)});
+				}
 			};
 		}
 		// Find all the stored chunks:
@@ -671,8 +673,11 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		defer chunkPositions.deinit();
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/chunks/1", .{self.name}) catch unreachable;
 		defer main.stackAllocator.free(path);
-		{
-			var dirX = try std.fs.cwd().openDir(path, .{.iterate = true});
+		blk: {
+			var dirX = std.fs.cwd().openDir(path, .{.iterate = true}) catch |err| {
+				if(err == error.FileNotFound) break :blk;
+				return err;
+			};
 			defer dirX.close();
 			var iterX = dirX.iterate();
 			while(try iterX.next()) |entryX| {

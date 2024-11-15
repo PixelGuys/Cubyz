@@ -280,7 +280,9 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 		const dir = std.fmt.allocPrint(main.stackAllocator.allocator, "{}", .{lod}) catch unreachable;
 		defer main.stackAllocator.free(dir);
 		main.files.deleteDir(path, dir) catch |err| {
-			std.log.err("Error while deleting directory {s}/{s}: {s}", .{path, dir, @errorName(err)});
+			if(err != error.FileNotFound) {
+				std.log.err("Error while deleting directory {s}/{s}: {s}", .{path, dir, @errorName(err)});
+			}
 		};
 	}
 	// Find all the stored maps:
