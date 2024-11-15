@@ -655,6 +655,10 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 						if(shift == 0) break;
 					}
 				},
+				'§' => {
+					self.currentFontEffect = .{.color = self.currentFontEffect.color};
+					self.appendControlGetNext() orelse return;
+				},
 				else => {
 					self.appendGetNext() orelse return;
 				}
@@ -908,7 +912,9 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 			y = 0;
 			if(line.isUnderline) y += 15
 			else y += 8;
+			const oldColor = draw.color;
 			draw.setColor(line.color | (@as(u32, 0xff000000) & draw.color));
+			defer draw.setColor(oldColor);
 			for(lineWraps, 0..) |lineWrap, j| {
 				const lineStart = @max(0, line.start);
 				const lineEnd = @min(lineWrap, line.end);
@@ -975,7 +981,9 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 			y = 0;
 			if(line.isUnderline) y += 15
 			else y += 8;
+			const oldColor = draw.color;
 			draw.setColor(shadowColor(line.color) | (@as(u32, 0xff000000) & draw.color));
+			defer draw.setColor(oldColor);
 			for(lineWraps, 0..) |lineWrap, j| {
 				const lineStart = @max(0, line.start);
 				const lineEnd = @min(lineWrap, line.end);
