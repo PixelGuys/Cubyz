@@ -328,6 +328,7 @@ pub fn toggleWindow(id: []const u8) void {
 			for(openWindows.items, 0..) |_openWindow, i| {
 				if(_openWindow == window) {
 					_ = openWindows.swapRemove(i);
+					window.onCloseFn();
 					selectedWindow = null;
 					return;
 				}
