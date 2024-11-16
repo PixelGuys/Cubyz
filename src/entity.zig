@@ -194,6 +194,10 @@ pub const ClientEntityManager = struct {
 			if(ent.id == id) {
 				ent.deinit(main.globalAllocator);
 				_ = entities.swapRemove(i);
+				if(i != entities.len) {
+					entities.items()[i].interpolatedValues.outPos = &entities.items()[i]._interpolationPos;
+					entities.items()[i].interpolatedValues.outVel = &entities.items()[i]._interpolationVel;
+				}
 				break;
 			}
 		}
