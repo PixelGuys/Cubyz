@@ -141,6 +141,7 @@ pub const Sync = struct { // MARK: Sync
 				self.users.deinit(main.globalAllocator);
 				self.inv._deinit(main.globalAllocator, .server);
 				self.inv._items.len = 0;
+				self.source = .alreadyFreed;
 			}
 
 			fn addUser(self: *ServerInventory, user: *main.server.User, clientId: u32) void {
@@ -253,6 +254,7 @@ pub const Sync = struct { // MARK: Sync
 					}
 				},
 				.playerInventory, .other => {},
+				.alreadyFreed => unreachable,
 			}
 			const inventory = ServerInventory.init(len, typ, source);
 			inventories.items[inventory.inv.id] = inventory;
@@ -687,6 +689,7 @@ pub const Command = struct { // MARK: Command
 			data.append(@intFromEnum(self.source));
 			switch(self.source) {
 				.playerInventory, .sharedTestingInventory, .other => {},
+				.alreadyFreed => unreachable,
 			}
 		}
 
@@ -701,6 +704,7 @@ pub const Command = struct { // MARK: Command
 				.playerInventory => .{.playerInventory = {}},
 				.sharedTestingInventory => .{.sharedTestingInventory = {}},
 				.other => .{.other = {}},
+				.alreadyFreed => unreachable,
 			};
 			Sync.ServerSide.createInventory(user.?, id, len, typ, source);
 			return .{
@@ -1080,11 +1084,13 @@ pub const Command = struct { // MARK: Command
 };
 
 const SourceType = enum(u8) {
-	playerInventory = 0,
-	sharedTestingInventory = 1,
+	alreadyFreed = 0,
+	playerInventory = 1,
+	sharedTestingInventory = 2,
 	other = 0xff, // TODO: List every type separately here.
 };
 const Source = union(SourceType) {
+	alreadyFreed: void,
 	playerInventory: void,
 	sharedTestingInventory: void,
 	other: void,
