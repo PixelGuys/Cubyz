@@ -824,6 +824,14 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		// Item Entities
 		self.itemDropManager.update(deltaTime);
+		{ // Collect item entities:
+			self.lastUnimportantDataSent = newTime;
+			server.mutex.lock();
+			defer server.mutex.unlock();
+			for(server.users.items) |user| {
+				self.itemDropManager.checkEntity(user);
+			}
+		}
 
 		// Store chunks and regions.
 		// Stores at least one chunk and one region per iteration.

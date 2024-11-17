@@ -289,6 +289,34 @@ pub const Sync = struct { // MARK: Sync
 				}
 			}
 		}
+
+		pub fn tryCollectingToPlayerInventory(user: *main.server.User, itemStack: *ItemStack) void {
+			if(itemStack.item == null) return;
+			mutex.lock();
+			defer mutex.unlock();
+			var inventoryIdIterator = user.inventoryClientToServerIdMap.valueIterator();
+			outer: while(inventoryIdIterator.next()) |inventoryId| {
+				if(inventories.items[inventoryId.*].source == .playerInventory) {
+					const inv = inventories.items[inventoryId.*].inv;
+					for(inv._items, 0..) |invStack, slot| {
+						if(std.meta.eql(invStack.item, itemStack.item)) {
+							const amount = @min(itemStack.item.?.stackSize() - invStack.amount, itemStack.amount);
+							executeCommand(.{.fillFromCreative = .{.dest = .{.inv = inv, .slot = @intCast(slot)}, .item = itemStack.item, .amount = invStack.amount + amount}}, null);
+							itemStack.amount -= amount;
+							if(itemStack.amount == 0) break :outer;
+						}
+					}
+					for(inv._items, 0..) |invStack, slot| {
+						if(invStack.item == null) {
+							executeCommand(.{.fillFromCreative = .{.dest = .{.inv = inv, .slot = @intCast(slot)}, .item = itemStack.item, .amount = itemStack.amount}}, null);
+							itemStack.amount = 0;
+							break :outer;
+						}
+					}
+				}
+			}
+			if(itemStack.amount == 0) itemStack.item = null;
+		}
 	};
 
 	pub fn getInventory(id: u32, side: Side, user: ?*main.server.User) ?Inventory {
@@ -949,7 +977,7 @@ pub const Command = struct { // MARK: Command
 				if(_items[0].item != null) {
 					if(side == .server) {
 						const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.player.rot[0]), -user.?.player.rot[2]);
-						main.server.world.?.drop(_items[0].clone(), user.?.player.pos, direction, 20);
+						main.server.world.?.dropWithCooldown(_items[0], user.?.player.pos, direction, 20, main.server.updatesPerSec*2);
 					}
 				}
 				return;
@@ -957,13 +985,14 @@ pub const Command = struct { // MARK: Command
 			if(self.source.inv.type == .workbench and self.source.slot == 25) {
 				cmd.removeToolCraftingIngredients(allocator, self.source.inv, side);
 			}
+			const amount = @min(self.source.ref().amount, self.desiredAmount);
 			if(side == .server) {
 				const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.player.rot[0]), -user.?.player.rot[2]);
-				main.server.world.?.drop(self.source.ref().clone(), user.?.player.pos, direction, 20);
+				main.server.world.?.dropWithCooldown(.{.item = self.source.ref().item.?.clone(), .amount = amount}, user.?.player.pos, direction, 20, main.server.updatesPerSec*2);
 			}
 			cmd.executeBaseOperation(allocator, .{.delete = .{
 				.source = self.source,
-				.amount = @min(self.source.ref().amount, self.desiredAmount),
+				.amount = amount,
 			}}, side);
 		}
 

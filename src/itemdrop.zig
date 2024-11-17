@@ -382,6 +382,33 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		}
 		return main.game.collision.collideWithBlock(block, blockPos[0], blockPos[1], blockPos[2], pos.*, @splat(radius), @splat(0)) != null;
 	}
+
+	pub fn checkEntity(self: *ItemDropManager, user: *main.server.User) void {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+		var ii: u32 = 0;
+		while(ii < self.size) {
+			const i = self.indices[ii];
+			if(self.list.items(.pickupCooldown)[i] > 0) {
+				ii += 1;
+				continue;
+			}
+			const hitbox = main.game.Player.outerBoundingBox;
+			const min = user.player.pos + hitbox.min;
+			const max = user.player.pos + hitbox.max;
+			const itemPos = self.list.items(.pos)[i];
+			const dist = @max(min - itemPos, itemPos - max);
+			if(@reduce(.Max, dist) < radius + pickupRange) {
+				const itemStack = &self.list.items(.itemStack)[i];
+				main.items.Inventory.Sync.ServerSide.tryCollectingToPlayerInventory(user, itemStack);
+				if(itemStack.amount == 0) {
+					self.removeLocked(i);
+					continue;
+				}
+			}
+			ii += 1;
+		}
+	}
 };
 
 pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
