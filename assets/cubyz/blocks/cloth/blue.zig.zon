@@ -6,8 +6,8 @@
 	},
 	.model = "cubyz:carpet",
 	.rotation = .carpet,
-	.texture = "cubyz:cloth/white",
+	.texture = "cubyz:cloth/blue",
 	.item = .{
-		.texture = "cloth/white.png",
+		.texture = "cloth/blue.png",
 	},	
 }
