@@ -62,31 +62,6 @@ layout(std430, binding = 6) buffer _chunks
 	ChunkData chunks[];
 };
 
-const vec3[6] normals = vec3[6](
-	vec3(0, 0, 1),
-	vec3(0, 0, -1),
-	vec3(1, 0, 0),
-	vec3(-1, 0, 0),
-	vec3(0, 1, 0),
-	vec3(0, -1, 0)
-);
-const ivec3[6] textureX = ivec3[6](
-	ivec3(1, 0, 0),
-	ivec3(-1, 0, 0),
-	ivec3(0, -1, 0),
-	ivec3(0, 1, 0),
-	ivec3(1, 0, 0),
-	ivec3(-1, 0, 0)
-);
-const ivec3[6] textureY = ivec3[6](
-	ivec3(0, 1, 0),
-	ivec3(0, 1, 0),
-	ivec3(0, 0, -1),
-	ivec3(0, 0, -1),
-	ivec3(0, 0, -1),
-	ivec3(0, 0, -1)
-);
-
 void main() {
 	int faceID = gl_VertexID >> 2;
 	int vertexID = gl_VertexID & 3;
