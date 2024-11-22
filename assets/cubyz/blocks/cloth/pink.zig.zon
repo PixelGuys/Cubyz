@@ -4,6 +4,7 @@
 	.drops = .{
 		.auto,
 	},
+	.collide = false,
 	.model = "cubyz:carpet",
 	.rotation = .carpet,
 	.texture = "cubyz:cloth/pink",
