@@ -217,10 +217,6 @@ pub fn drawChunksIndirect(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec
 
 	// Draw again:
 	gpu_performance_measuring.startQuery(if(transparent) .transparent_rendering else .chunk_rendering_new_visible);
-	if(transparent) {
-		c.glEnable(c.GL_POLYGON_OFFSET_FILL);
-		c.glPolygonOffset(1, 1); // Fixes z-fighting when directly on top of an opaque face.
-	}
 	commandShader.bind();
 	c.glUniform1i(commandUniforms.onlyDrawPreviouslyInvisible, 1);
 	c.glDispatchCompute(@intCast(@divFloor(chunkIDs.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
@@ -234,9 +230,6 @@ pub fn drawChunksIndirect(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec
 	}
 	c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
 	c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
-	if(transparent) {
-		c.glDisable(c.GL_POLYGON_OFFSET_FILL);
-	}
 	gpu_performance_measuring.stopQuery();
 }
 
