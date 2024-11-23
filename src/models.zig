@@ -185,7 +185,8 @@ pub const Model = struct {
 				quad.cornerUV[i] *= @splat(4);
 				minUv = @min(minUv, quad.cornerUV[i]);
 			}
-			quad.textureSlot = @as(u32, @intFromFloat(@floor(minUv[1]))) * 4 + @as(u32, @intFromFloat(@floor(minUv[0])));
+			minUv = @floor(minUv);
+			quad.textureSlot = @as(u32, @intFromFloat(minUv[1])) * 4 + @as(u32, @intFromFloat(minUv[0]));
 			
 			if (minUv[0] < 0 or minUv[0] > 4 or minUv[1] < 0 or minUv[1] > 4) {
 				std.log.err("Uv value for model is outside of 0-1 range", .{});
