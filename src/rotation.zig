@@ -108,10 +108,10 @@ pub const RotationModes = struct {
 			// Rotate the model:
 			const modelIndex: u16 = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.identity()});
 			_ = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationY(std.math.pi)});
-			_ = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationY(std.math.pi/2.0)});
-			_ = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationY(-std.math.pi/2.0)});
+			_ = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationZ(-std.math.pi/2.0).mul(Mat4f.rotationX(-std.math.pi/2.0))});
+			_ = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationZ(std.math.pi/2.0).mul(Mat4f.rotationX(-std.math.pi/2.0))});
 			_ = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationX(-std.math.pi/2.0)});
-			_ = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationX(std.math.pi/2.0)});
+			_ = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationZ(std.math.pi).mul(Mat4f.rotationX(-std.math.pi/2.0))});
 			rotatedModels.put(modelId, modelIndex) catch unreachable;
 			return modelIndex;
 		}
@@ -665,7 +665,6 @@ pub const RotationModes = struct {
 	};
 	pub const Carpet = struct { // MARK: Carpet
 		pub const id: []const u8 = "carpet";
-		pub const dependsOnNeighbors = true;
 		var rotatedModels: std.StringHashMap(u16) = undefined;
 		const CarpetData = packed struct(u6) {
 			negX: bool,
@@ -699,10 +698,10 @@ pub const RotationModes = struct {
 			for(1..64) |i| {
 				const carpetData: CarpetData = @bitCast(@as(u6, @intCast(i)));
 				if(i & i-1 == 0) {
-					if(carpetData.negX) negXModel = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationY(std.math.pi/2.0)});
-					if(carpetData.posX) posXModel = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationY(-std.math.pi/2.0)});
+					if(carpetData.negX) negXModel = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationZ(-std.math.pi/2.0).mul(Mat4f.rotationX(-std.math.pi/2.0))});
+					if(carpetData.posX) posXModel = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationZ(std.math.pi/2.0).mul(Mat4f.rotationX(-std.math.pi/2.0))});
 					if(carpetData.negY) negYModel = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationX(-std.math.pi/2.0)});
-					if(carpetData.posY) posYModel = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationX(std.math.pi/2.0)});
+					if(carpetData.posY) posYModel = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationZ(std.math.pi).mul(Mat4f.rotationX(-std.math.pi/2.0))});
 					if(carpetData.negZ) negZModel = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.identity()});
 					if(carpetData.posZ) posZModel = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationY(std.math.pi)});
 				} else {
