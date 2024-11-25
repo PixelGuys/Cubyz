@@ -57,6 +57,9 @@ pub const RotationMode = struct { // MARK: RotationMode
 			}
 			return null;
 		}
+		fn onBlockBreaking(_: ?main.items.Item, _: Vec3f, _: Vec3f, currentData: *Block) void {
+			currentData.* = .{.typ = 0, .data = 0};
+		}
 	};
 
 	/// if the block should be destroyed or changed when a certain neighbor is removed.
@@ -74,6 +77,8 @@ pub const RotationMode = struct { // MARK: RotationMode
 	updateData: *const fn(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool = &DefaultFunctions.updateData,
 
 	rayIntersection: *const fn(block: Block, item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult = &DefaultFunctions.rayIntersection,
+
+	onBlockBreaking: *const fn(item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void = &DefaultFunctions.onBlockBreaking,
 };
 
 var rotationModes: std.StringHashMap(RotationMode) = undefined;
@@ -538,13 +543,22 @@ pub const RotationModes = struct {
 			return RotationMode.DefaultFunctions.rayIntersection(block, item, relativePlayerPos, playerDir);
 		}
 
-		pub fn chisel(_: *main.game.World, _: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) bool {
-			if(intersectionPos(currentData.*, relativePlayerPos, playerDir)) |intersection| {
-				currentData.data = currentData.data | subBlockMask(intersection.minPos[0], intersection.minPos[1], intersection.minPos[2]);
-				if(currentData.data == 255) currentData.* = .{.typ = 0, .data = 0};
-				return true;
+		pub fn onBlockBreaking(item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void {
+			if(item) |_item| {
+				switch(_item) {
+					.baseItem => |baseItem| {
+						if(std.mem.eql(u8, baseItem.id, "cubyz:chisel")) { // Break only one eigth of a block
+							if(intersectionPos(currentData.*, relativePlayerPos, playerDir)) |intersection| {
+								currentData.data = currentData.data | subBlockMask(intersection.minPos[0], intersection.minPos[1], intersection.minPos[2]);
+								if(currentData.data == 255) currentData.* = .{.typ = 0, .data = 0};
+								return;
+							}
+						}
+					},
+					else => {},
+				}
 			}
-			return false;
+			return RotationMode.DefaultFunctions.onBlockBreaking(item, relativePlayerPos, playerDir, currentData);
 		}
 	};
 	pub const Torch = struct { // MARK: Torch

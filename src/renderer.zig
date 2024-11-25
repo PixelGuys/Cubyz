@@ -808,23 +808,14 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 	pub fn breakBlock(inventoryStack: *main.items.ItemStack) void {
 		if(selectedBlockPos) |selectedPos| {
-			var block = mesh_storage.getBlock(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
+			const block = mesh_storage.getBlock(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
+			var newBlock = block;
 			// TODO: Breaking animation and tools.
-			if(inventoryStack.item) |item| {
-				switch(item) {
-					.baseItem => |baseItem| {
-						if(baseItem.leftClickUse) |leftClick| {
-							const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
-							if(leftClick(main.game.world.?, selectedPos, relPos, lastDir, &block)) {
-								updateBlockAndSendUpdate(selectedPos[0], selectedPos[1], selectedPos[2], block);
-							}
-							return;
-						}
-					},
-					else => {},
-				}
+			const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
+			block.mode().onBlockBreaking(inventoryStack.item, relPos, lastDir, &newBlock);
+			if(!std.meta.eql(newBlock, block)) {
+				updateBlockAndSendUpdate(selectedPos[0], selectedPos[1], selectedPos[2], newBlock);
 			}
-			updateBlockAndSendUpdate(selectedPos[0], selectedPos[1], selectedPos[2], .{.typ = 0, .data = 0});
 		}
 	}
 

@@ -72,8 +72,6 @@ pub const BaseItem = struct { // MARK: BaseItem
 	block: ?u16,
 	foodValue: f32, // TODO: Effects.
 
-	leftClickUse: ?*const fn(world: *main.game.World, pos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) bool,
-
 	var unobtainable = BaseItem {
 		.image = graphics.Image.defaultImage,
 		.texture = null,
@@ -83,7 +81,6 @@ pub const BaseItem = struct { // MARK: BaseItem
 		.material = null,
 		.block = null,
 		.foodValue = 0,
-		.leftClickUse = null,
 	};
 
 	fn init(self: *BaseItem, allocator: NeverFailingAllocator, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, zon: ZonElement) void {
@@ -110,14 +107,6 @@ pub const BaseItem = struct { // MARK: BaseItem
 		};
 		self.texture = null;
 		self.foodValue = zon.get(f32, "food", 0);
-		self.leftClickUse = if(std.mem.eql(u8, zon.get([]const u8, "onLeftUse", ""), "chisel")) &chiselFunction else null; // TODO: Proper registry.
-	}
-
-	fn chiselFunction(world: *main.game.World, pos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) bool {
-		if(currentData.mode() == main.rotation.getByID("stairs")) {
-			return main.rotation.RotationModes.Stairs.chisel(world, pos, relativePlayerPos, playerDir, currentData);
-		}
-		return false;
 	}
 
 	fn hashCode(self: BaseItem) u32 {
