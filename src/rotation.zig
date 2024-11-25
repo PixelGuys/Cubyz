@@ -35,10 +35,13 @@ pub const RotationMode = struct { // MARK: RotationMode
 		fn updateData(_: *Block, _: Neighbor, _: Block) bool {
 			return false;
 		}
-		fn rayIntersection(block: Block, _: ?main.items.Item, _: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
+		fn rayIntersection(block: Block, _: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
+			return rayModelIntersection(blocks.meshes.model(block), relativePlayerPos, playerDir);
+		}
+		fn rayModelIntersection(modelIndex: u32, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
 			// Check the true bounding box (using this algorithm here: https://tavianator.com/2011/ray_box.html):
 			const invDir = @as(Vec3f, @splat(1))/playerDir;
-			const modelData = &main.models.models.items[blocks.meshes.model(block)];
+			const modelData = &main.models.models.items[modelIndex];
 			const min: Vec3f = modelData.min;
 			const max: Vec3f = modelData.max;
 			const t1 = (min - relativePlayerPos)*invDir;
@@ -70,7 +73,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 	/// Updates data of a placed block if the RotationMode dependsOnNeighbors.
 	updateData: *const fn(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool = &DefaultFunctions.updateData,
 
-	rayIntersection: *const fn(block: Block, item: ?main.items.Item, voxelPos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult = &DefaultFunctions.rayIntersection,
+	rayIntersection: *const fn(block: Block, item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult = &DefaultFunctions.rayIntersection,
 };
 
 var rotationModes: std.StringHashMap(RotationMode) = undefined;
@@ -512,7 +515,7 @@ pub const RotationModes = struct {
 			return null;
 		}
 
-		pub fn rayIntersection(block: Block, item: ?main.items.Item, blockPos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
+		pub fn rayIntersection(block: Block, item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
 			if(item) |_item| {
 				switch(_item) {
 					.baseItem => |baseItem| {
@@ -532,7 +535,7 @@ pub const RotationModes = struct {
 					else => {},
 				}
 			}
-			return RotationMode.DefaultFunctions.rayIntersection(block, item, blockPos, relativePlayerPos, playerDir);
+			return RotationMode.DefaultFunctions.rayIntersection(block, item, relativePlayerPos, playerDir);
 		}
 
 		pub fn chisel(_: *main.game.World, _: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) bool {
@@ -662,6 +665,21 @@ pub const RotationModes = struct {
 			else block.data = result;
 			return true;
 		}
+
+		pub fn rayIntersection(block: Block, _: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
+			var result: ?RayIntersectionResult = null;
+			for([_]u16{1, 2, 4, 8, 16}) |bit| {
+				if(block.data & bit != 0) {
+					const modelIndex = blocks.meshes.modelIndexStart(block) + bit - 1;
+					if(RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
+						if(result == null or result.?.distance > intersection.distance) {
+							result = intersection;
+						}
+					}
+				}
+			}
+			return result;
+		}
 	};
 	pub const Carpet = struct { // MARK: Carpet
 		pub const id: []const u8 = "carpet";
@@ -789,6 +807,21 @@ pub const RotationModes = struct {
 			if(result == 0) block.* = .{.typ = 0, .data = 0}
 			else block.data = result;
 			return true;
+		}
+
+		pub fn rayIntersection(block: Block, _: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
+			var result: ?RayIntersectionResult = null;
+			for([_]u16{1, 2, 4, 8, 16, 32}) |bit| {
+				if(block.data & bit != 0) {
+					const modelIndex = blocks.meshes.modelIndexStart(block) + bit - 1;
+					if(RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
+						if(result == null or result.?.distance > intersection.distance) {
+							result = intersection;
+						}
+					}
+				}
+			}
+			return result;
 		}
 	};
 };

@@ -709,7 +709,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			if(block.typ != 0) {
 				if(block.blockClass() != .fluid and block.blockClass() != .air) { // TODO: Buckets could select fluids
 					const relativePlayerPos: Vec3f = @floatCast(pos - @as(Vec3d, @floatFromInt(voxelPos)));
-					if(block.mode().rayIntersection(block, item, voxelPos, relativePlayerPos, _dir)) |intersection| {
+					if(block.mode().rayIntersection(block, item, relativePlayerPos, _dir)) |intersection| {
 						if(intersection.distance <= closestDistance) {
 							selectedBlockPos = voxelPos;
 							selectionMin = intersection.min;
