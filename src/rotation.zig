@@ -680,19 +680,32 @@ pub const RotationModes = struct {
 			return true;
 		}
 
-		pub fn rayIntersection(block: Block, _: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
+		fn closestRay(comptime typ: enum{bit, intersection}, block: Block, _: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) if(typ == .intersection) ?RayIntersectionResult else u16 {
 			var result: ?RayIntersectionResult = null;
+			var resultBit: u16 = 0;
 			for([_]u16{1, 2, 4, 8, 16}) |bit| {
 				if(block.data & bit != 0) {
 					const modelIndex = blocks.meshes.modelIndexStart(block) + bit - 1;
 					if(RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
 						if(result == null or result.?.distance > intersection.distance) {
 							result = intersection;
+							resultBit = bit;
 						}
 					}
 				}
 			}
+			if(typ == .bit) return resultBit;
 			return result;
+		}
+
+		pub fn rayIntersection(block: Block, item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
+			return closestRay(.intersection, block, item, relativePlayerPos, playerDir);
+		}
+
+		pub fn onBlockBreaking(item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void {
+			const bit = closestRay(.bit, currentData.*, item, relativePlayerPos, playerDir);
+			currentData.data &= ~bit;
+			if(currentData.data == 0) currentData.typ = 0;
 		}
 	};
 	pub const Carpet = struct { // MARK: Carpet
@@ -823,19 +836,32 @@ pub const RotationModes = struct {
 			return true;
 		}
 
-		pub fn rayIntersection(block: Block, _: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
+		fn closestRay(comptime typ: enum{bit, intersection}, block: Block, _: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) if(typ == .intersection) ?RayIntersectionResult else u16 {
 			var result: ?RayIntersectionResult = null;
+			var resultBit: u16 = 0;
 			for([_]u16{1, 2, 4, 8, 16, 32}) |bit| {
 				if(block.data & bit != 0) {
 					const modelIndex = blocks.meshes.modelIndexStart(block) + bit - 1;
 					if(RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
 						if(result == null or result.?.distance > intersection.distance) {
 							result = intersection;
+							resultBit = bit;
 						}
 					}
 				}
 			}
+			if(typ == .bit) return resultBit;
 			return result;
+		}
+
+		pub fn rayIntersection(block: Block, item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
+			return closestRay(.intersection, block, item, relativePlayerPos, playerDir);
+		}
+
+		pub fn onBlockBreaking(item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void {
+			const bit = closestRay(.bit, currentData.*, item, relativePlayerPos, playerDir);
+			currentData.data &= ~bit;
+			if(currentData.data == 0) currentData.typ = 0;
 		}
 	};
 };
