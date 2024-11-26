@@ -55,7 +55,7 @@ pub fn onOpen() void {
 	var i: u32 = 0;
 	while(i < items.items.len) {
 		const row = HorizontalList.init();
-		for(0..8) |_| {
+		for(0..10) |_| {
 			if(i >= items.items.len) break;
 			row.add(ItemSlot.init(.{0, 0}, inventory, i, .default, .takeOnly));
 			i += 1;
