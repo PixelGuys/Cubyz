@@ -26,7 +26,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 		fn model(block: Block) u16 {
 			return blocks.meshes.modelIndexStart(block);
 		}
-		fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: *Block, blockPlacing: bool) bool {
+		fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: *Block, _: Block, blockPlacing: bool) bool {
 			return blockPlacing;
 		}
 		fn createBlockModel(modelId: []const u8) u16 {
@@ -71,7 +71,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 
 	/// Updates the block data of a block in the world or places a block in the world.
 	/// return true if the placing was successful, false otherwise.
-	generateData: *const fn(world: *main.game.World, pos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, relativeDir: Vec3i, currentData: *Block, blockPlacing: bool) bool = DefaultFunctions.generateData,
+	generateData: *const fn(world: *main.game.World, pos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, relativeDir: Vec3i, currentData: *Block, neighborBlock: Block, blockPlacing: bool) bool = DefaultFunctions.generateData,
 
 	/// Updates data of a placed block if the RotationMode dependsOnNeighbors.
 	updateData: *const fn(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool = &DefaultFunctions.updateData,
@@ -128,7 +128,7 @@ pub const RotationModes = struct {
 			return blocks.meshes.modelIndexStart(block) + @min(block.data, 5);
 		}
 
-		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, relativeDir: Vec3i, currentData: *Block, blockPlacing: bool) bool {
+		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, relativeDir: Vec3i, currentData: *Block, _: Block, blockPlacing: bool) bool {
 			if(blockPlacing) {
 				if(relativeDir[0] == 1) currentData.data = Neighbor.dirNegX.toInt();
 				if(relativeDir[0] == -1) currentData.data = Neighbor.dirPosX.toInt();
@@ -171,7 +171,7 @@ pub const RotationModes = struct {
 			return blocks.meshes.modelIndexStart(block) + @min(block.data, 3);
 		}
 
-		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, playerDir: Vec3f, _: Vec3i, currentData: *Block, blockPlacing: bool) bool {
+		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, playerDir: Vec3f, _: Vec3i, currentData: *Block, _: Block, blockPlacing: bool) bool {
 			if(blockPlacing) {
 				if(@abs(playerDir[0]) > @abs(playerDir[1])) {
 					if(playerDir[0] < 0) currentData.data = Neighbor.dirNegX.toInt() - 2
@@ -474,7 +474,7 @@ pub const RotationModes = struct {
 			return blocks.meshes.modelIndexStart(block) + (block.data & 255);
 		}
 
-		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, currentData: *Block, blockPlacing: bool) bool {
+		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, currentData: *Block, _: Block, blockPlacing: bool) bool {
 			if(blockPlacing) {
 				currentData.data = 0;
 				return true;
@@ -635,7 +635,7 @@ pub const RotationModes = struct {
 			return blocks.meshes.modelIndexStart(block) + (@as(u5, @truncate(block.data)) -| 1);
 		}
 
-		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, relativeDir: Vec3i, currentData: *Block, _: bool) bool {
+		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, relativeDir: Vec3i, currentData: *Block, _: Block, _: bool) bool {
 			var data: TorchData = @bitCast(@as(u5, @truncate(currentData.data)));
 			if(relativeDir[0] == 1) data.posX = true;
 			if(relativeDir[0] == -1) data.negX = true;
@@ -788,7 +788,17 @@ pub const RotationModes = struct {
 			return blocks.meshes.modelIndexStart(block) + (@as(u6, @truncate(block.data)) -| 1);
 		}
 
-		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, relativeDir: Vec3i, currentData: *Block, _: bool) bool {
+		pub fn generateData(_: *main.game.World, _: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, relativeDir: Vec3i, currentData: *Block, neighbor: Block, _: bool) bool {
+			if(neighbor.mode() == currentData.mode()) parallelPlacing: {
+				const bit = closestRay(.bit, neighbor, null, relativePlayerPos - @as(Vec3f, @floatFromInt(relativeDir)), playerDir);
+				const bitData: CarpetData = @bitCast(@as(u6, @truncate(bit)));
+				if((bitData.negX or bitData.posX) and relativeDir[0] != 0) break :parallelPlacing;
+				if((bitData.negY or bitData.posY) and relativeDir[1] != 0) break :parallelPlacing;
+				if((bitData.negZ or bitData.posZ) and relativeDir[2] != 0) break :parallelPlacing;
+				if(currentData.data & bit == bit) return false;
+				currentData.data |= bit;
+				return true;
+			}
 			var data: CarpetData = @bitCast(@as(u6, @truncate(currentData.data)));
 			if(relativeDir[0] == 1) data.posX = true;
 			if(relativeDir[0] == -1) data.negX = true;
