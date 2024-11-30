@@ -1302,13 +1302,6 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		self.uploadChunkPosition();
 	}
 
-	pub fn changeLodBorders(self: *ChunkMesh, isNeighborLod: [6]bool) void {
-		if(!std.meta.eql(isNeighborLod, self.isNeighborLod)) {
-			self.isNeighborLod = isNeighborLod;
-			self.uploadData();
-		}
-	}
-
 	fn deadlockFreeDoubleLock(m1: *std.Thread.Mutex, m2: *std.Thread.Mutex) void {
 		if(@intFromPtr(m1) < @intFromPtr(m2)) {
 			m1.lock();

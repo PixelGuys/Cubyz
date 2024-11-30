@@ -27,6 +27,8 @@ const ChunkMeshNode = struct {
 	rendered: bool = false,
 	finishedMeshing: bool = false, // Must be synced with mesh.finishedMeshing
 	finishedMeshingHigherResolution: u8 = 0, // Must be synced with finishedMeshing of the 8 higher resolution chunks.
+	pos: chunk.ChunkPosition = undefined,
+	isNeighborLod: [6]bool = .{false} ** 6, // Must be synced with mesh.isNeighborLod
 	mutex: std.Thread.Mutex = .{},
 };
 const storageSize = 64;
@@ -52,9 +54,13 @@ const BlockUpdate = struct {
 };
 var blockUpdateList: main.List(BlockUpdate) = undefined;
 
+var meshMemoryPool: std.heap.MemoryPoolAligned(chunk_meshing.ChunkMesh, @alignOf(chunk_meshing.ChunkMesh)) = undefined;
+var meshMemoryPoolMutex: std.Thread.Mutex = .{};
+
 pub fn init() void { // MARK: init()
 	lastRD = 0;
 	blockUpdateList = .init(main.globalAllocator);
+	meshMemoryPool = .init(main.globalAllocator.allocator);
 	for(&storageLists) |*storageList| {
 		storageList.* = main.globalAllocator.create([storageSize*storageSize*storageSize]ChunkMeshNode);
 		for(storageList.*) |*val| {
@@ -100,9 +106,10 @@ pub fn deinit() void {
 	meshList.clearAndFree();
 	for(clearList.items) |mesh| {
 		mesh.deinit();
-		main.globalAllocator.destroy(mesh);
+		meshMemoryPool.destroy(mesh);
 	}
 	clearList.clearAndFree();
+	meshMemoryPool.deinit();
 }
 
 // MARK: getters
@@ -344,11 +351,13 @@ fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16) void { 
 					const oldMesh = node.mesh;
 					node.mesh = null;
 					node.mutex.unlock();
+					node.pos = undefined;
 					if(oldMesh) |mesh| {
 						node.finishedMeshing = false;
 						updateHigherLodNodeFinishedMeshing(mesh.pos, false);
 						mesh.decreaseRefCount();
 					}
+					node.isNeighborLod = .{false} ** 6;
 				}
 			}
 		}
@@ -482,6 +491,7 @@ fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16, meshR
 
 					const node = &storageLists[_lod][@intCast(index)];
 					node.mutex.lock();
+					node.pos = pos;
 					if(node.mesh) |mesh| {
 						std.debug.assert(std.meta.eql(pos, mesh.pos));
 					} else {
@@ -616,8 +626,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 		if(!node.active) continue;
 		node.active = false;
 
-		const mesh = node.mesh.?; // No need to lock the mutex, since no other thread is allowed to overwrite the mesh (unless it's null).
-		const pos = mesh.pos;
+		const pos = node.pos;
 
 		const relPos: Vec3d = @as(Vec3d, @floatFromInt(Vec3i{pos.wx, pos.wy, pos.wz})) - playerPos;
 		const relPosFloat: Vec3f = @floatCast(relPos);
@@ -676,8 +685,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 		}
 	}
 	for(nodeList.items) |node| {
-		const mesh = node.mesh.?; // No need to lock the mutex, since no other thread is allowed to overwrite the mesh (unless it's null).
-		const pos = mesh.pos;
+		const pos = node.pos;
 		var isNeighborLod: [6]bool = .{false} ** 6;
 		if(pos.voxelSize != @as(i32, 1) << settings.highestLOD) {
 			for(chunk.Neighbor.iterable) |neighbor| {
@@ -695,7 +703,12 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 				isNeighborLod[neighbor.toInt()] = node2.finishedMeshingHigherResolution != 0xff;
 			}
 		}
-		mesh.changeLodBorders(isNeighborLod);
+		if(!std.meta.eql(node.isNeighborLod, isNeighborLod)) {
+			const mesh = node.mesh.?; // No need to lock the mutex, since no other thread is allowed to overwrite the mesh (unless it's null).
+			mesh.isNeighborLod = isNeighborLod;
+			node.isNeighborLod = isNeighborLod;
+			mesh.uploadData();
+		}
 	}
 	for(nodeList.items) |node| {
 		node.rendered = false;
@@ -735,7 +748,9 @@ pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()
 	defer mutex.unlock();
 	for(clearList.items) |mesh| {
 		mesh.deinit();
-		main.globalAllocator.destroy(mesh);
+		meshMemoryPoolMutex.lock();
+		meshMemoryPool.destroy(mesh);
+		meshMemoryPoolMutex.unlock();
 	}
 	clearList.clearRetainingCapacity();
 	while (priorityMeshUpdateList.items.len != 0) {
@@ -804,6 +819,7 @@ pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()
 		defer mutex.lock();
 		if(isInRenderDistance(mesh.pos)) {
 			const node = getNodePointer(mesh.pos);
+			std.debug.assert(std.meta.eql(node.pos, mesh.pos));
 			node.finishedMeshing = true;
 			mesh.finishedMeshing = true;
 			updateHigherLodNodeFinishedMeshing(mesh.pos, true);
@@ -902,7 +918,9 @@ pub const MeshGenerationTask = struct { // MARK: MeshGenerationTask
 	pub fn run(self: *MeshGenerationTask) void {
 		defer main.globalAllocator.destroy(self);
 		const pos = self.mesh.pos;
-		const mesh = main.globalAllocator.create(chunk_meshing.ChunkMesh);
+		meshMemoryPoolMutex.lock();
+		const mesh = meshMemoryPool.create() catch unreachable;
+		meshMemoryPoolMutex.unlock();
 		mesh.init(pos, self.mesh);
 		defer mesh.decreaseRefCount();
 		mesh.generateLightingData() catch return;
