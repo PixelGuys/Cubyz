@@ -355,6 +355,14 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 			}
 		}
 
+		pub fn enqueue_back(self: *Self, elem: T) void {
+			self.startIndex = (self.startIndex -% 1) & self.mask;
+			self.mem[self.startIndex] = elem;
+			if(self.endIndex == self.startIndex) {
+				self.increaseCapacity();
+			}
+		}
+
 		pub fn dequeue(self: *Self) ?T {
 			if(self.startIndex == self.endIndex) return null;
 			const result = self.mem[self.startIndex];

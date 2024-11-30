@@ -23,10 +23,10 @@ const chunk_meshing = @import("chunk_meshing.zig");
 
 const ChunkMeshNode = struct {
 	mesh: ?*chunk_meshing.ChunkMesh = null,
-	lod: u3 = undefined,
 	active: bool = false,
 	rendered: bool = false,
 	finishedMeshing: bool = false, // Must be synced with mesh.finishedMeshing
+	finishedMeshingHigherResolution: u8 = 0, // Must be synced with finishedMeshing of the 8 higher resolution chunks.
 	mutex: std.Thread.Mutex = .{},
 };
 const storageSize = 64;
@@ -117,6 +117,27 @@ fn getNodePointer(pos: chunk.ChunkPosition) *ChunkMeshNode {
 	zIndex &= storageMask;
 	const index = (xIndex*storageSize + yIndex)*storageSize + zIndex;
 	return &storageLists[lod][@intCast(index)];
+}
+
+fn finishedMeshingMask(x: bool, y: bool, z: bool) u8 {
+	return @as(u8, 1) << (@as(u3, @intFromBool(x))*4 + @as(u3, @intFromBool(y))*2 + @as(u3, @intFromBool(z)));
+}
+
+fn updateHigherLodNodeFinishedMeshing(pos_: chunk.ChunkPosition, finishedMeshing: bool) void {
+	const lod = std.math.log2_int(u31, pos_.voxelSize);
+	if(lod == settings.highestLOD) return;
+	var pos = pos_;
+	pos.wx &= ~@as(i32, pos.voxelSize*chunk.chunkSize);
+	pos.wy &= ~@as(i32, pos.voxelSize*chunk.chunkSize);
+	pos.wz &= ~@as(i32, pos.voxelSize*chunk.chunkSize);
+	pos.voxelSize *= 2;
+	const mask = finishedMeshingMask(pos.wx != pos_.wx, pos.wy != pos_.wy, pos.wz != pos_.wz);
+	const node = getNodePointer(pos);
+	if(finishedMeshing) {
+		node.finishedMeshingHigherResolution |= mask;
+	} else {
+		node.finishedMeshingHigherResolution &= ~mask;
+	}
 }
 
 fn getMapPiecePointer(x: i32, y: i32, voxelSize: u31) *?*LightMap.LightMapFragment {
@@ -322,9 +343,10 @@ fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16) void { 
 					node.mutex.lock();
 					const oldMesh = node.mesh;
 					node.mesh = null;
-					node.finishedMeshing = false;
 					node.mutex.unlock();
 					if(oldMesh) |mesh| {
+						node.finishedMeshing = false;
+						updateHigherLodNodeFinishedMeshing(mesh.pos, false);
 						mesh.decreaseRefCount();
 					}
 				}
@@ -537,6 +559,8 @@ fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16, meshR
 pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *const main.renderer.Frustum, playerPos: Vec3d, renderDistance: u16) []*chunk_meshing.ChunkMesh { // MARK: updateAndGetRenderChunks()
 	meshList.clearRetainingCapacity();
 
+	const playerPosInt: Vec3i = @intFromFloat(@floor(playerPos));
+
 	var meshRequests = main.List(chunk.ChunkPosition).init(main.stackAllocator);
 	defer meshRequests.deinit();
 	var mapRequests = main.List(LightMap.MapFragmentPosition).init(main.stackAllocator);
@@ -560,20 +584,9 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 	network.Protocols.lightMapRequest.sendRequest(conn, mapRequests.items);
 	network.Protocols.chunkRequest.sendRequest(conn, meshRequests.items, .{lastPx, lastPy, lastPz}, lastRD);
 
-	// Finds all visible chunks and lod chunks using a breadth-first search.
+	// Finds all visible chunks and lod chunks using a breadth-first hierarchical search.
 
-	const SearchData = struct {
-		node: *ChunkMeshNode,
-		distance: f64,
-
-		pub fn compare(_: void, a: @This(), b: @This()) std.math.Order {
-			if(a.distance < b.distance) return .lt;
-			if(a.distance > b.distance) return .gt;
-			return .eq;
-		}
-	};
-
-	var searchList = std.PriorityQueue(SearchData, void, SearchData.compare).init(main.stackAllocator.allocator, {});
+	var searchList = main.utils.CircularBufferQueue(*ChunkMeshNode).init(main.stackAllocator, 1024);
 	defer searchList.deinit();
 	{
 		var firstPos = chunk.ChunkPosition{
@@ -582,115 +595,104 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 			.wz = @intFromFloat(@floor(playerPos[2])),
 			.voxelSize = 1,
 		};
-		firstPos.wx &= ~@as(i32, chunk.chunkMask);
-		firstPos.wy &= ~@as(i32, chunk.chunkMask);
-		firstPos.wz &= ~@as(i32, chunk.chunkMask);
-		var lod: u3 = 0;
-		while(lod <= settings.highestLOD) : (lod += 1) {
-			const node = getNodePointer(firstPos);
-			const hasMesh = node.finishedMeshing;
-			if(hasMesh) {
-				node.lod = lod;
-				node.active = true;
-				node.rendered = true;
-				searchList.add(.{
-					.node = node,
-					.distance = 0,
-				}) catch unreachable;
-				break;
-			}
-			firstPos.wx &= ~@as(i32, firstPos.voxelSize*chunk.chunkSize);
-			firstPos.wy &= ~@as(i32, firstPos.voxelSize*chunk.chunkSize);
-			firstPos.wz &= ~@as(i32, firstPos.voxelSize*chunk.chunkSize);
-			firstPos.voxelSize *= 2;
+		const lod: u3 = settings.highestLOD;
+		firstPos.wx &= ~@as(i32, chunk.chunkMask << lod | (@as(i32, 1) << lod)-1);
+		firstPos.wy &= ~@as(i32, chunk.chunkMask << lod | (@as(i32, 1) << lod)-1);
+		firstPos.wz &= ~@as(i32, chunk.chunkMask << lod | (@as(i32, 1) << lod)-1);
+		firstPos.voxelSize <<= lod;
+		const node = getNodePointer(firstPos);
+		const hasMesh = node.finishedMeshing;
+		if(hasMesh) {
+			node.active = true;
+			node.rendered = true;
+			searchList.enqueue(node);
 		}
 	}
-	var nodeList = main.List(*ChunkMeshNode).init(main.stackAllocator);
+	var nodeList = main.List(*ChunkMeshNode).initCapacity(main.stackAllocator, 1024);
 	defer nodeList.deinit();
-	while(searchList.removeOrNull()) |data| {
-		std.debug.assert(data.node.finishedMeshing);
-		nodeList.append(data.node);
-		data.node.active = false;
+	while(searchList.dequeue()) |node| {
+		std.debug.assert(node.finishedMeshing);
+		std.debug.assert(node.active);
+		if(!node.active) continue;
+		node.active = false;
 
-		const mesh = data.node.mesh.?; // No need to lock the mutex, since no other thread is allowed to overwrite the mesh (unless it's null).
+		const mesh = node.mesh.?; // No need to lock the mutex, since no other thread is allowed to overwrite the mesh (unless it's null).
 		const pos = mesh.pos;
 
-		mesh.visibilityMask = 0xff;
 		const relPos: Vec3d = @as(Vec3d, @floatFromInt(Vec3i{pos.wx, pos.wy, pos.wz})) - playerPos;
 		const relPosFloat: Vec3f = @floatCast(relPos);
-		var isNeighborLod: [6]bool = .{false} ** 6;
-		neighborLoop: for(chunk.Neighbor.iterable) |neighbor| {
-			const component = neighbor.extractDirectionComponent(relPosFloat);
-			if(neighbor.isPositive() and component + @as(f32, @floatFromInt(chunk.chunkSize*pos.voxelSize)) <= 0) continue;
-			if(!neighbor.isPositive() and component >= 0) continue;
-			var neighborPos = chunk.ChunkPosition{
-				.wx = pos.wx +% neighbor.relX()*chunk.chunkSize*pos.voxelSize,
-				.wy = pos.wy +% neighbor.relY()*chunk.chunkSize*pos.voxelSize,
-				.wz = pos.wz +% neighbor.relZ()*chunk.chunkSize*pos.voxelSize,
-				.voxelSize = pos.voxelSize,
-			};
-			if(!getNodePointer(neighborPos).active) { // Don't repeat the same frustum check all the time.
-				if(!frustum.testAAB(relPosFloat + @as(Vec3f, @floatFromInt(Vec3i{neighbor.relX()*chunk.chunkSize*pos.voxelSize, neighbor.relY()*chunk.chunkSize*pos.voxelSize, neighbor.relZ()*chunk.chunkSize*pos.voxelSize})), @splat(@floatFromInt(chunk.chunkSize*pos.voxelSize))))
-					continue;
+
+		if(pos.voxelSize == @as(i32, 1) << settings.highestLOD) {
+			for(chunk.Neighbor.iterable) |neighbor| {
+				const component = neighbor.extractDirectionComponent(relPosFloat);
+				if(neighbor.isPositive() and component + @as(f32, @floatFromInt(chunk.chunkSize*pos.voxelSize)) <= 0) continue;
+				if(!neighbor.isPositive() and component >= 0) continue;
+				const neighborPos = chunk.ChunkPosition{
+					.wx = pos.wx +% neighbor.relX()*chunk.chunkSize*pos.voxelSize,
+					.wy = pos.wy +% neighbor.relY()*chunk.chunkSize*pos.voxelSize,
+					.wz = pos.wz +% neighbor.relZ()*chunk.chunkSize*pos.voxelSize,
+					.voxelSize = pos.voxelSize,
+				};
+				const node2 = getNodePointer(neighborPos);
+				if(!node2.active and node2.finishedMeshing) {
+					if(!frustum.testAAB(relPosFloat + @as(Vec3f, @floatFromInt(Vec3i{neighbor.relX()*chunk.chunkSize*pos.voxelSize, neighbor.relY()*chunk.chunkSize*pos.voxelSize, neighbor.relZ()*chunk.chunkSize*pos.voxelSize})), @splat(@floatFromInt(chunk.chunkSize*pos.voxelSize))))
+						continue;
+					node2.active = true;
+					node2.rendered = true;
+					searchList.enqueue(node2);
+				}
 			}
-			var lod: u3 = data.node.lod;
-			lodLoop: while(lod <= settings.highestLOD) : (lod += 1) {
-				defer {
-					neighborPos.wx &= ~@as(i32, neighborPos.voxelSize*chunk.chunkSize);
-					neighborPos.wy &= ~@as(i32, neighborPos.voxelSize*chunk.chunkSize);
-					neighborPos.wz &= ~@as(i32, neighborPos.voxelSize*chunk.chunkSize);
-					neighborPos.voxelSize *= 2;
+		}
+
+		if(node.finishedMeshingHigherResolution == 0xff) {
+			node.rendered = false;
+			const lowerLodBit: i32 = pos.voxelSize*chunk.chunkSize >> 1;
+			const startPos: chunk.ChunkPosition = .{
+				.wx = pos.wx | if((pos.wx | lowerLodBit) -% playerPosInt[0] > 0) lowerLodBit else 0,
+				.wy = pos.wy | if((pos.wy | lowerLodBit) -% playerPosInt[1] > 0) lowerLodBit else 0,
+				.wz = pos.wz | if((pos.wz | lowerLodBit) -% playerPosInt[2] > 0) lowerLodBit else 0,
+				.voxelSize = pos.voxelSize >> 1,
+			};
+			for(0..2) |dx| {
+				for(0..2) |dy| {
+					for(0..2) |dz| {
+						var nextPos = startPos;
+						if(dx == 1) nextPos.wx ^= lowerLodBit;
+						if(dy == 1) nextPos.wy ^= lowerLodBit;
+						if(dz == 1) nextPos.wz ^= lowerLodBit;
+						const node2 = getNodePointer(nextPos);
+						const relNextPos: Vec3d = @as(Vec3d, @floatFromInt(Vec3i{nextPos.wx, nextPos.wy, nextPos.wz})) - playerPos;
+						if(!frustum.testAAB(@floatCast(relNextPos), @splat(@floatFromInt(chunk.chunkSize*nextPos.voxelSize))))
+							continue;
+						std.debug.assert(node2.finishedMeshing);
+						node2.active = true;
+						node2.rendered = true;
+						searchList.enqueue_back(node2);
+					}
 				}
-				const node = getNodePointer(neighborPos);
-				if(node.finishedMeshing) {
-					// Ensure that there are no high-to-low lod transitions, which would produce cracks.
-					if(lod == data.node.lod and lod != settings.highestLOD and !node.rendered) {
-						const relPos2: Vec3d = @as(Vec3d, @floatFromInt(Vec3i{neighborPos.wx, neighborPos.wy, neighborPos.wz})) - playerPos;
-						for(chunk.Neighbor.iterable) |neighbor2| {
-							const component2 = neighbor2.extractDirectionComponent(relPos2);
-							if(neighbor2.isPositive() and component2 + @as(f64, @floatFromInt(chunk.chunkSize*neighborPos.voxelSize)) >= 0) continue;
-							if(!neighbor2.isPositive() and component2 <= 0) continue;
-							{ // Check the chunk of same lod:
-								const neighborPos2 = chunk.ChunkPosition{
-									.wx = neighborPos.wx + neighbor2.relX()*chunk.chunkSize*neighborPos.voxelSize,
-									.wy = neighborPos.wy + neighbor2.relY()*chunk.chunkSize*neighborPos.voxelSize,
-									.wz = neighborPos.wz + neighbor2.relZ()*chunk.chunkSize*neighborPos.voxelSize,
-									.voxelSize = neighborPos.voxelSize,
-								};
-								const node2 = getNodePointer(neighborPos2);
-								if(node2.rendered) {
-									continue;
-								}
-							}
-							{ // Check the chunk of higher lod
-								const neighborPos2 = chunk.ChunkPosition{
-									.wx = neighborPos.wx + neighbor2.relX()*chunk.chunkSize*neighborPos.voxelSize,
-									.wy = neighborPos.wy + neighbor2.relY()*chunk.chunkSize*neighborPos.voxelSize,
-									.wz = neighborPos.wz + neighbor2.relZ()*chunk.chunkSize*neighborPos.voxelSize,
-									.voxelSize = neighborPos.voxelSize << 1,
-								};
-								const node2 = getNodePointer(neighborPos2);
-								if(node2.rendered) {
-									isNeighborLod[neighbor.toInt()] = true;
-									continue :lodLoop;
-								}
-							}
-						}
-					}
-					if(lod != data.node.lod) {
-						isNeighborLod[neighbor.toInt()] = true;
-					}
-					if(!node.active) {
-						node.lod = lod;
-						node.active = true;
-						searchList.add(.{
-							.node = node,
-							.distance = neighborPos.getMaxDistanceSquared(playerPos),
-						}) catch unreachable;
-						node.rendered = true;
-					}
-					continue :neighborLoop;
-				}
+			}
+		} else {
+			nodeList.append(node);
+		}
+	}
+	for(nodeList.items) |node| {
+		const mesh = node.mesh.?; // No need to lock the mutex, since no other thread is allowed to overwrite the mesh (unless it's null).
+		const pos = mesh.pos;
+		var isNeighborLod: [6]bool = .{false} ** 6;
+		if(pos.voxelSize != @as(i32, 1) << settings.highestLOD) {
+			for(chunk.Neighbor.iterable) |neighbor| {
+				var neighborPos = chunk.ChunkPosition{
+					.wx = pos.wx +% neighbor.relX()*chunk.chunkSize*pos.voxelSize,
+					.wy = pos.wy +% neighbor.relY()*chunk.chunkSize*pos.voxelSize,
+					.wz = pos.wz +% neighbor.relZ()*chunk.chunkSize*pos.voxelSize,
+					.voxelSize = pos.voxelSize,
+				};
+				neighborPos.wx &= ~@as(i32, neighborPos.voxelSize*chunk.chunkSize);
+				neighborPos.wy &= ~@as(i32, neighborPos.voxelSize*chunk.chunkSize);
+				neighborPos.wz &= ~@as(i32, neighborPos.voxelSize*chunk.chunkSize);
+				neighborPos.voxelSize *= 2;
+				const node2 = getNodePointer(neighborPos);
+				isNeighborLod[neighbor.toInt()] = node2.finishedMeshingHigherResolution != 0xff;
 			}
 		}
 		mesh.changeLodBorders(isNeighborLod);
@@ -701,15 +703,6 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 
 		const mesh = node.mesh.?; // No need to lock the mutex, since no other thread is allowed to overwrite the mesh (unless it's null).
 
-		if(mesh.pos.voxelSize != @as(u31, 1) << settings.highestLOD) {
-			const parent = getNodePointer(.{.wx=mesh.pos.wx, .wy=mesh.pos.wy, .wz=mesh.pos.wz, .voxelSize=mesh.pos.voxelSize << 1});
-			if(parent.finishedMeshing) {
-				const parentMesh = parent.mesh.?; // No need to lock the mutex, since no other thread is allowed to overwrite the mesh (unless it's null).
-				const sizeShift = chunk.chunkShift + @ctz(mesh.pos.voxelSize);
-				const octantIndex: u3 = @intCast((mesh.pos.wx>>sizeShift & 1) | (mesh.pos.wy>>sizeShift & 1)<<1 | (mesh.pos.wz>>sizeShift & 1)<<2);
-				parentMesh.visibilityMask &= ~(@as(u8, 1) << octantIndex);
-			}
-		}
 		node.mutex.lock();
 		if(mesh.needsMeshUpdate) {
 			mesh.uploadData();
@@ -813,6 +806,7 @@ pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()
 			const node = getNodePointer(mesh.pos);
 			node.finishedMeshing = true;
 			mesh.finishedMeshing = true;
+			updateHigherLodNodeFinishedMeshing(mesh.pos, true);
 			mesh.uploadData();
 			node.mutex.lock();
 			const oldMesh = node.mesh;
@@ -863,6 +857,7 @@ pub fn addMeshToStorage(mesh: *chunk_meshing.ChunkMesh) error{AlreadyStored}!voi
 		}
 		node.mesh = mesh;
 		node.finishedMeshing = mesh.finishedMeshing;
+		updateHigherLodNodeFinishedMeshing(mesh.pos, mesh.finishedMeshing);
 		mesh.increaseRefCount();
 	}
 }

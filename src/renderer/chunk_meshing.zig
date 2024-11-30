@@ -258,7 +258,6 @@ pub const ChunkData = extern struct {
 	position: Vec3i align(16),
 	min: Vec3f align(16),
 	max: Vec3f align(16),
-	visibilityMask: i32,
 	voxelSize: i32,
 	vertexStartOpaque: u32,
 	faceCountsByNormalOpaque: [7]u32,
@@ -667,8 +666,6 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	lastNeighborsSameLod: [6]?*const ChunkMesh = [_]?*const ChunkMesh{null} ** 6,
 	lastNeighborsHigherLod: [6]?*const ChunkMesh = [_]?*const ChunkMesh{null} ** 6,
 	isNeighborLod: [6]bool = .{false} ** 6,
-	visibilityMask: u8 = 0xff,
-	uploadedVisibilityMask: u8 = 0xff,
 	currentSorting: []SortingData = &.{},
 	sortingOutputBuffer: []FaceData = &.{},
 	culledSortingCount: u31 = 0,
@@ -1469,10 +1466,9 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	}
 
 	fn uploadChunkPosition(self: *ChunkMesh) void {
-		chunkBuffer.uploadData(&.{ChunkData{ // TODO: Only upload data when the visibilityMask changes.
+		chunkBuffer.uploadData(&.{ChunkData{
 			.position = .{self.pos.wx, self.pos.wy, self.pos.wz},
 			.voxelSize = self.pos.voxelSize,
-			.visibilityMask = self.visibilityMask,
 			.vertexStartOpaque = self.opaqueMesh.bufferAllocation.start*4,
 			.faceCountsByNormalOpaque = self.opaqueMesh.byNormalCount,
 			.lightStartOpaque = self.opaqueMesh.lightAllocation.start,
@@ -1484,12 +1480,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			.visibilityState = 0,
 			.oldVisibilityState = 0,
 		}}, &self.chunkAllocation);
-		self.uploadedVisibilityMask = self.visibilityMask;
 	}
 
 	pub fn prepareRendering(self: *ChunkMesh, chunkList: *main.List(u32)) void {
 		if(self.opaqueMesh.vertexCount == 0) return;
-		if(self.uploadedVisibilityMask != self.visibilityMask) self.uploadChunkPosition();
 
 		chunkList.append(self.chunkAllocation.start);
 
@@ -1613,8 +1607,6 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			faceBuffer.uploadData(self.sortingOutputBuffer[0..self.culledSortingCount], &self.transparentMesh.bufferAllocation);
 			self.uploadChunkPosition();
 		}
-
-		if(self.uploadedVisibilityMask != self.visibilityMask) self.uploadChunkPosition();
 
 		chunkList.append(self.chunkAllocation.start);
 		transparentQuadsDrawn += self.culledSortingCount;

@@ -45,7 +45,6 @@ struct ChunkData {
 	ivec4 position;
 	vec4 minPos;
 	vec4 maxPos;
-	int visibilityMask;
 	int voxelSize;
 	uint vertexStartOpaque;
 	uint faceCountsByNormalOpaque[7];
@@ -66,7 +65,6 @@ void main() {
 	int faceID = gl_VertexID >> 2;
 	int vertexID = gl_VertexID & 3;
 	int chunkID = gl_BaseInstance;
-	int visibilityMask = chunks[chunkID].visibilityMask;
 	int voxelSize = chunks[chunkID].voxelSize;
 	vec3 modelPosition = vec3(chunks[chunkID].position.xyz - playerPositionInteger) - playerPositionFraction;
 	int encodedPositionAndLightIndex = faceData[faceID].encodedPositionAndLightIndex;
@@ -99,11 +97,6 @@ void main() {
 		encodedPositionAndLightIndex >> 5 & 31,
 		encodedPositionAndLightIndex >> 10 & 31
 	);
-	int octantIndex = (int(position.x) >> 4) | (int(position.y) >> 4)<<1 | (int(position.z) >> 4)<<2;
-	if((visibilityMask & 1<<octantIndex) == 0) { // discard face
-		gl_Position = vec4(-2, -2, -2, 1);
-		return;
-	}
 
 	normal = quads[quadIndex].normal;
 	

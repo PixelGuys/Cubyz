@@ -2047,7 +2047,6 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 			.position = .{0, 0, 0},
 			.min = undefined,
 			.max = undefined,
-			.visibilityMask = 255,
 			.voxelSize = 1,
 			.vertexStartOpaque = undefined,
 			.faceCountsByNormalOpaque = undefined,
