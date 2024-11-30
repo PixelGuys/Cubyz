@@ -793,7 +793,7 @@ pub const Protocols = struct {
 		}
 		fn sendChunkOverTheNetwork(conn: *Connection, ch: *chunk.ServerChunk) void {
 			ch.mutex.lock();
-			const chunkData = main.server.storage.ChunkCompression.compressChunk(main.stackAllocator, &ch.super);
+			const chunkData = main.server.storage.ChunkCompression.compressChunk(main.stackAllocator, &ch.super, ch.super.pos.voxelSize != 1);
 			ch.mutex.unlock();
 			defer main.stackAllocator.free(chunkData);
 			const data = main.stackAllocator.alloc(u8, chunkData.len + 16);

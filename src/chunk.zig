@@ -535,7 +535,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 			const regionMask: i32 = regionSize - 1;
 			const region = main.server.storage.loadRegionFileAndIncreaseRefCount(pos.wx & ~regionMask, pos.wy & ~regionMask, pos.wz & ~regionMask, pos.voxelSize);
 			defer region.decreaseRefCount();
-			const data = main.server.storage.ChunkCompression.compressChunk(main.stackAllocator, &self.super);
+			const data = main.server.storage.ChunkCompression.compressChunk(main.stackAllocator, &self.super, false);
 			defer main.stackAllocator.free(data);
 			region.storeChunk(
 				data,
