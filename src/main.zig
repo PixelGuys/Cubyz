@@ -541,6 +541,9 @@ pub fn main() void { // MARK: main()
 		}
 	} else |_| {}
 
+	files.init();
+	defer files.deinit();
+
 	settings.init();
 	defer settings.deinit();
 

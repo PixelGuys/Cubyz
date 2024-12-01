@@ -222,13 +222,13 @@ pub fn save() void { // MARK: save()
 		guiZon.put(window.id, windowZon);
 	}
 
-	main.files.writeZon("gui_layout.zig.zon", guiZon) catch |err| {
+	main.files.cubyzDir().writeZon("gui_layout.zig.zon", guiZon) catch |err| {
 		std.log.err("Could not write gui_layout.zig.zon: {s}", .{@errorName(err)});
 	};
 }
 
 fn load() void {
-	const zon: ZonElement = main.files.readToZon(main.stackAllocator, "gui_layout.zig.zon") catch |err| blk: {
+	const zon: ZonElement = main.files.cubyzDir().readToZon(main.stackAllocator, "gui_layout.zig.zon") catch |err| blk: {
 		if(err != error.FileNotFound) {
 			std.log.err("Could not read gui_layout.zig.zon: {s}", .{@errorName(err)});
 		}

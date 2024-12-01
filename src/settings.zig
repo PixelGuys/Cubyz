@@ -60,7 +60,7 @@ pub var developerGPUInfiniteLoopDetection: bool = false;
 pub var controllerAxisDeadzone: f32 = 0.0;
 
 pub fn init() void {
-	const zon: ZonElement = main.files.readToZon(main.stackAllocator, "settings.zig.zon") catch |err| blk: {
+	const zon: ZonElement = main.files.cubyzDir().readToZon(main.stackAllocator, "settings.zig.zon") catch |err| blk: {
 		if(err != error.FileNotFound) {
 			std.log.err("Could not read settings file: {s}", .{@errorName(err)});
 		}
@@ -149,7 +149,7 @@ pub fn save() void {
 	zonObject.put("keyboard", keyboard);
 
 	// Write to file:
-	main.files.writeZon("settings.zig.zon", zonObject) catch |err| {
+	main.files.cubyzDir().writeZon("settings.zig.zon", zonObject) catch |err| {
 		std.log.err("Couldn't write settings to file: {s}", .{@errorName(err)});
 	};
 }
