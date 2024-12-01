@@ -497,7 +497,7 @@ pub fn render(self: *const GuiWindow, mousePosition: Vec2f) void {
 		self.drawIcons();
 	}
 	if(self.hasBackground or (!main.Window.grabbed and gui.reorderWindows)) {
-		draw.setColor(0xff1d1d1d);
+		draw.setColor(0xff2d2d2d);
 		draw.rectBorder(.{-2, -2}, self.size/@as(Vec2f, @splat(self.scale)) + Vec2f{4, 4}, 2.0);
 	}
 	draw.restoreTranslation(oldTranslation);
