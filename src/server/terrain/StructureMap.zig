@@ -16,9 +16,14 @@ const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
 pub const Structure = struct {
 	generateFn: *const fn(self: *const anyopaque, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView) void,
 	data: *const anyopaque,
+	priority: f32,
 
 	pub fn generate(self: Structure, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView) void {
 		self.generateFn(self.data, chunk, caveMap);
+	}
+
+	fn lessThan(_: void, lhs: Structure, rhs: Structure) bool {
+		return lhs.priority < rhs.priority;
 	}
 };
 
@@ -52,6 +57,12 @@ pub const StructureMapFragment = struct {
 	pub fn deinit(self: *StructureMapFragment) void {
 		self.arena.deinit();
 		main.globalAllocator.destroy(self);
+	}
+
+	fn finishGeneration(self: *StructureMapFragment) void {
+		for(&self.data) |list| {
+			std.sort.insertion(Structure, list.items, {}, Structure.lessThan);
+		}
 	}
 
 	fn getIndex(self: *const StructureMapFragment, x: i32, y: i32, z: i32) usize {
@@ -151,6 +162,7 @@ fn cacheInit(pos: ChunkPosition) *StructureMapFragment {
 	for(profile.structureMapGenerators) |generator| {
 		generator.generate(mapFragment, profile.seed ^ generator.generatorSeed);
 	}
+	mapFragment.finishGeneration();
 	_ = @atomicRmw(u16, &mapFragment.refCount.raw, .Add, 1, .monotonic);
 	return mapFragment;
 }

@@ -64,6 +64,7 @@ pub fn generate(map: *StructureMapFragment, worldSeed: u64) void {
 						map.addStructure(.{
 							.data = @ptrCast(data),
 							.generateFn = &SimpleStructure.generate,
+							.priority = model.priority,
 						}, .{px -% margin, py -% margin, relZ -% margin -% 15}, .{px +% margin, py +% margin, relZ +% margin +% 15});
 						break;
 					} else {
@@ -102,6 +103,7 @@ pub fn generate(map: *StructureMapFragment, worldSeed: u64) void {
 						map.addStructure(.{
 							.data = @ptrCast(data),
 							.generateFn = &SimpleStructure.generate,
+							.priority = model.priority,
 						}, .{px -% margin, py -% margin, relZ -% margin -% 15}, .{px +% margin, py +% margin, relZ +% margin +% 15});
 						break;
 					} else {

@@ -28,6 +28,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 	vtable: VTable,
 	data: *anyopaque,
 	chance: f32,
+	priority: f32,
 	generationMode: GenerationMode,
 
 	pub fn initModel(parameters: ZonElement) ?SimpleStructureModel {
@@ -40,6 +41,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 			.vtable = vtable,
 			.data = vtable.loadModel(arena.allocator(), parameters),
 			.chance = parameters.get(f32, "chance", 0.1),
+			.priority = parameters.get(f32, "priority", 1),
 			.generationMode = std.meta.stringToEnum(GenerationMode, parameters.get([]const u8, "generationMode", "")) orelse vtable.generationMode,
 		};
 	}
