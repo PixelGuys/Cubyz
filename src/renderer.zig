@@ -366,9 +366,9 @@ const Bloom = struct { // MARK: Bloom
 		if(width != currentWidth or height != currentHeight) {
 			width = currentWidth;
 			height = currentHeight;
-			buffer1.updateSize(width/4, height/4, c.GL_RGB16F);
+			buffer1.updateSize(width/4, height/4, c.GL_R11F_G11F_B10F);
 			std.debug.assert(buffer1.validate());
-			buffer2.updateSize(width/4, height/4, c.GL_RGB16F);
+			buffer2.updateSize(width/4, height/4, c.GL_R11F_G11F_B10F);
 			std.debug.assert(buffer2.validate());
 		}
 		gpu_performance_measuring.startQuery(.bloom_extract_downsample);
