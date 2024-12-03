@@ -35,7 +35,7 @@ fn linearToDezibel(x: f32) f32 {
 fn musicFormatter(allocator: NeverFailingAllocator, value: f32) []const u8 {
 	const percentage = 100*deziBelToLinear(value);
 	if(percentage == 0) return allocator.dupe(u8, "Music volume: Off");
-	return std.fmt.allocPrint(allocator.allocator, "Music volume: {d:.1} dB ({d:.1}%)", .{value, percentage}) catch unreachable;
+	return std.fmt.allocPrint(allocator.allocator, "Music volume:", .{}) catch unreachable;
 }
 
 const padding: f32 = 8;

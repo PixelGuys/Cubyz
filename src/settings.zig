@@ -37,7 +37,7 @@ pub var vsync: bool = true;
 
 pub var playerName: []const u8 = "";
 
-pub var lastUsedIPAddress: []const u8 = "127.0.0.1";
+pub var lastUsedIPAddress: []const u8 = "";
 
 pub var guiScale: ?f32 = null;
 
