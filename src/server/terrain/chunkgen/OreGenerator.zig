@@ -106,7 +106,7 @@ fn considerCoordinates(ore: *const main.blocks.Ore, relX: f32, relY: f32, relZ: 
 						// Add some roughness. The ore density gets smaller at the edges:
 						if((1 - distSqr)*ore.density >= random.nextFloat(&veinSeed)) {
 							if(ore.canCreateVeinInBlock(chunk.getBlock(curX, curY, curZ).typ)) {
-								chunk.updateBlockInGeneration(curX, curY, curZ, .{.typ = ore.blockType, .data = 0}); // TODO: Use natural standard.
+								chunk.updateBlockInGeneration(curX, curY, curZ, .{.typ = ore.blockType, .data = 0});
 							}
 						}
 					}

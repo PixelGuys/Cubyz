@@ -553,7 +553,8 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			};
 			if(self.item == .baseItem and self.item.baseItem.block != null and self.item.baseItem.image.imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
 				// Find sizes and free index:
-				const block = blocks.Block{.typ = self.item.baseItem.block.?, .data = 0}; // TODO: Natural standard
+				var block = blocks.Block{.typ = self.item.baseItem.block.?, .data = 0};
+				block.data = block.mode().naturalStandard;
 				const modelIndex = blocks.meshes.model(block);
 				const model = &main.models.models.items[modelIndex];
 				var data = main.List(u32).init(main.stackAllocator);

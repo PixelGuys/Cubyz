@@ -78,7 +78,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 
 const Stripe = struct { // MARK: Stripe
 	direction: ?Vec3d,
-	block: u16,
+	block: main.blocks.Block,
 	minDistance: f64,
 	maxDistance: f64,
 	minOffset: f64,
@@ -92,7 +92,7 @@ const Stripe = struct { // MARK: Stripe
 			dir = main.vec.normalize(dir.?);
 		}
 
-		const block: u16 = blocks.getByID(parameters.get([]const u8, "block", ""));
+		const block: main.blocks.Block = blocks.getBlockById(parameters.get([]const u8, "block", ""));
 		
 		var minDistance: f64 = 0;
 		var maxDistance: f64 = 0;
@@ -247,7 +247,7 @@ pub const Biome = struct { // MARK: Biome
 	caves: f32,
 	caveRadiusFactor: f32,
 	crystals: u32,
-	stoneBlockType: u16,
+	stoneBlock: main.blocks.Block,
 	fogDensity: f32,
 	fogColor: Vec3f,
 	id: []const u8,
@@ -272,7 +272,7 @@ pub const Biome = struct { // MARK: Biome
 			.properties = GenerationProperties.fromZon(zon.getChild("properties")),
 			.isCave = zon.get(bool, "isCave", false),
 			.radius = zon.get(f32, "radius", 256),
-			.stoneBlockType = blocks.getByID(zon.get([]const u8, "stoneBlock", "cubyz:stone")),
+			.stoneBlock = blocks.getBlockById(zon.get([]const u8, "stoneBlock", "cubyz:stone")),
 			.fogColor = u32ToVec3(zon.get(u32, "fogColor", 0xffccccff)),
 			.fogDensity = zon.get(f32, "fogDensity", 1.0)/15.0/128.0,
 			.roughness = zon.get(f32, "roughness", 0),
@@ -343,7 +343,7 @@ pub const Biome = struct { // MARK: Biome
 /// Stores the vertical ground structure of a biome from top to bottom.
 pub const BlockStructure = struct { // MARK: BlockStructure
 	pub const BlockStack = struct {
-		blockType: u16 = 0,
+		block: main.blocks.Block = .{.typ = 0, .data = 0},
 		min: u31 = 0,
 		max: u31 = 0,
 
@@ -368,7 +368,7 @@ pub const BlockStructure = struct { // MARK: BlockStructure
 				self.min = 1;
 				self.max = 1;
 			}
-			self.blockType = blocks.getByID(blockId);
+			self.block = blocks.getBlockById(blockId);
 		}
 	};
 	structure: []BlockStack,
@@ -396,10 +396,8 @@ pub const BlockStructure = struct { // MARK: BlockStructure
 		for(self.structure) |blockStack| {
 			const total = blockStack.min + main.random.nextIntBounded(u32, seed, @as(u32, 1) + blockStack.max - blockStack.min);
 			for(0..total) |_| {
-				const block = blocks.Block{.typ = blockStack.blockType, .data = 0};
-				// TODO: block = block.mode().getNaturalStandard(block);
 				if(chunk.liesInChunk(x, y, depth)) {
-					chunk.updateBlockInGeneration(x, y, depth, block);
+					chunk.updateBlockInGeneration(x, y, depth, blockStack.block);
 				}
 				depth -%= chunk.super.pos.voxelSize;
 				if(depth -% minDepth <= 0)

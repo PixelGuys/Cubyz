@@ -17,14 +17,14 @@ pub const generationMode = .floor;
 
 const SimpleVegetation = @This();
 
-blockType: u16,
+block: main.blocks.Block,
 height0: u31,
 deltaHeight: u31,
 
 pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) *SimpleVegetation {
 	const self = arenaAllocator.create(SimpleVegetation);
 	self.* = .{
-		.blockType = main.blocks.getByID(parameters.get([]const u8, "block", "")),
+		.block = main.blocks.getBlockById(parameters.get([]const u8, "block", "")),
 		.height0 = parameters.get(u31, "height", 1),
 		.deltaHeight = parameters.get(u31, "height_variation", 0),
 	};
@@ -39,13 +39,13 @@ pub fn generate(self: *SimpleVegetation, x: i32, y: i32, z: i32, chunk: *main.ch
 	if(isCeiling) {
 		while(pz >= z - height) : (pz -= chunk.super.pos.voxelSize) {
 			if(chunk.liesInChunk(x, y, pz)) {
-				chunk.updateBlockIfDegradable(x, y, pz, .{.typ = self.blockType, .data = 0}); // TODO: Natural standard.
+				chunk.updateBlockIfDegradable(x, y, pz, self.block);
 			}
 		}
 	} else {
 		while(pz < z + height) : (pz += chunk.super.pos.voxelSize) {
 			if(chunk.liesInChunk(x, y, pz)) {
-				chunk.updateBlockIfDegradable(x, y, pz, .{.typ = self.blockType, .data = 0}); // TODO: Natural standard.
+				chunk.updateBlockIfDegradable(x, y, pz, self.block);
 			}
 		}
 	}

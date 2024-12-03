@@ -65,6 +65,9 @@ pub const RotationMode = struct { // MARK: RotationMode
 	/// if the block should be destroyed or changed when a certain neighbor is removed.
 	dependsOnNeighbors: bool = false,
 
+	/// The default rotation data intended for generation algorithms
+	naturalStandard: u16 = 0,
+
 	model: *const fn(block: Block) u16 = &DefaultFunctions.model,
 
 	createBlockModel: *const fn(modelId: []const u8) u16 = &DefaultFunctions.createBlockModel,
@@ -563,6 +566,7 @@ pub const RotationModes = struct {
 	};
 	pub const Torch = struct { // MARK: Torch
 		pub const id: []const u8 = "torch";
+		pub const naturalStandard: u16 = 1;
 		pub const dependsOnNeighbors = true;
 		var rotatedModels: std.StringHashMap(u16) = undefined;
 		const TorchData = packed struct(u5) {
@@ -710,6 +714,7 @@ pub const RotationModes = struct {
 	};
 	pub const Carpet = struct { // MARK: Carpet
 		pub const id: []const u8 = "carpet";
+		pub const naturalStandard: u16 = 0b10000;
 		var rotatedModels: std.StringHashMap(u16) = undefined;
 		const CarpetData = packed struct(u6) {
 			negX: bool,

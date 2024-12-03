@@ -103,7 +103,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 			self.material = null;
 		}
 		self.block = blk: {
-			break :blk blocks.getByID(zon.get(?[]const u8, "block", null) orelse break :blk null);
+			break :blk blocks.getTypeById(zon.get(?[]const u8, "block", null) orelse break :blk null);
 		};
 		self.texture = null;
 		self.foodValue = zon.get(f32, "food", 0);

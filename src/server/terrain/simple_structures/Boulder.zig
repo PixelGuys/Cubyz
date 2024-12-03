@@ -17,14 +17,14 @@ pub const generationMode = .floor;
 
 const Boulder = @This();
 
-blockType: u16,
+block: main.blocks.Block,
 size: f32,
 sizeVariation: f32,
 
 pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) *Boulder {
 	const self = arenaAllocator.create(Boulder);
 	self.* = .{
-		.blockType = main.blocks.getByID(parameters.get([]const u8, "block", "cubyz:stone")),
+		.block = main.blocks.getBlockById(parameters.get([]const u8, "block", "cubyz:stone")),
 		.size = parameters.get(f32, "size", 4),
 		.sizeVariation = parameters.get(f32, "size_variation", 1),
 	};
@@ -62,7 +62,7 @@ pub fn generate(self: *Boulder, x: i32, y: i32, z: i32, chunk: *main.chunk.Serve
 				}
 				potential *= radius*radius/4/numberOfPoints;
 				if(potential >= 1) {
-					chunk.updateBlockInGeneration(px, py, pz, .{.typ = self.blockType, .data = 0}); // TODO: Natural standard.
+					chunk.updateBlockInGeneration(px, py, pz, self.block);
 				}
 			}
 		}
