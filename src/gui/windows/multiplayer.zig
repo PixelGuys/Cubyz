@@ -58,7 +58,8 @@ fn join(_: usize) void {
 	if(connection) |_connection| {
 		if (ipAddressEntry.currentString.items.len == 0) {
 			std.log.err("IP address cannot be empty", .{});
-			gui.showNotification("IP address cannot be empty");
+			gui.windowlist.notification.text = "IP address cannot be empty";
+			gui.openWindow("notification");
 			return;
 		}
 		_connection.world = &main.game.testWorld;
@@ -66,7 +67,7 @@ fn join(_: usize) void {
 		settings.lastUsedIPAddress = main.globalAllocator.dupe(u8, ipAddressEntry.currentString.items);
 		settings.save();
 		main.game.world = &main.game.testWorld;
-		std.log.info("Connecting to world: {s}", .{ipAddressEntry.currentString.items});
+		std.log.info("Connecting to server: {s}", .{ipAddressEntry.currentString.items});
 		main.game.testWorld.init(ipAddressEntry.currentString.items, _connection) catch |err| {
 			std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
 		};

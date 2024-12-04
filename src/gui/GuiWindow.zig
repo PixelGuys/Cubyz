@@ -62,7 +62,6 @@ hideIfMouseIsGrabbed: bool = true, // TODO: Allow the user to change this with a
 closeIfMouseIsGrabbed: bool = false,
 closeable: bool = true,
 isHud: bool = false,
-text: []const u8 = "",
 
 /// Called every frame.
 renderFn: *const fn()void = &defaultFunction,
