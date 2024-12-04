@@ -67,6 +67,9 @@ fn join(_: usize) void {
 		settings.save();
 		main.game.world = &main.game.testWorld;
 		std.log.info("Connecting to world: {s}", .{ipAddressEntry.currentString.items});
+		main.game.testWorld.init(ipAddressEntry.currentString.items, _connection) catch |err| {
+			std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
+		};
 		connection = null;
 	} else {
 		std.log.err("No connection found. Cannot connect.", .{});
