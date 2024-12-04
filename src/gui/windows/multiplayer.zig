@@ -57,8 +57,8 @@ fn join(_: usize) void {
 	}
 	if(connection) |_connection| {
 		if (ipAddressEntry.currentString.items.len == 0) {
-			// TODO: Show error message in the GUI
 			std.log.err("IP address cannot be empty", .{});
+			gui.showNotification("IP address cannot be empty");
 			return;
 		}
 		_connection.world = &main.game.testWorld;

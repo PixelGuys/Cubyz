@@ -22,6 +22,7 @@ pub const GuiComponent = @import("gui_component.zig").GuiComponent;
 pub const GuiWindow = @import("GuiWindow.zig");
 
 pub const windowlist = @import("windows/_windowlist.zig");
+pub const notification = @import("windows/notification.zig");
 const GamepadCursor = @import("gamepad_cursor.zig");
 
 var windowList: List(*GuiWindow) = undefined;
@@ -371,6 +372,14 @@ pub fn closeWindow(id: []const u8) void {
 		}
 	}
 	std.log.warn("Could not find window with id {s}.", .{id});
+}
+
+pub fn showNotification(message: []const u8) void {
+	notification.onOpen();
+	openWindow("notification");
+	if (getWindowById("notification")) |notificationWindow| {
+        notificationWindow.text = message;
+    }
 }
 
 pub fn setSelectedTextInput(newSelectedTextInput: ?*TextInput) void {

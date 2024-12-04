@@ -29,3 +29,4 @@ pub const settings = @import("settings.zig");
 pub const shared_inventory_testing = @import("shared_inventory_testing.zig");
 pub const sound = @import("sound.zig");
 pub const workbench = @import("workbench.zig");
+pub const notification = @import("notification.zig");
