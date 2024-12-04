@@ -378,8 +378,8 @@ pub fn showNotification(message: []const u8) void {
 	notification.onOpen();
 	openWindow("notification");
 	if (getWindowById("notification")) |notificationWindow| {
-        notificationWindow.text = message;
-    }
+		notificationWindow.text = message;
+	}
 }
 
 pub fn setSelectedTextInput(newSelectedTextInput: ?*TextInput) void {

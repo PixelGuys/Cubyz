@@ -11,7 +11,7 @@ const Label = @import("../components/Label.zig");
 
 pub var window: GuiWindow = GuiWindow {
 	.contentSize = Vec2f{128, 256},
-    .text = "",
+	.text = "",
 };
 
 const padding: f32 = 16;
@@ -27,7 +27,7 @@ pub fn onOpen() void {
 	list.add(Button.initText(.{0, 0}, 100, "OK", .{ .callback = &ack }));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
-    window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
+	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
 	gui.updateWindowPositions();
 }
 
