@@ -710,9 +710,6 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		// At equillibrium we want to have dv/dt = a - λv = 0 → a = λ*v
 		const fricMul = speedMultiplier*baseFrictionCoefficient;
 
-		const MaxSpeedWalking: f64 = 4;
-		const MaxSpeedRunning: f64 = 8;
-
 		const forward = vec.rotateZ(Vec3d{0, 1, 0}, -camera.rotation[2]);
 		const right = Vec3d{-forward[1], forward[0], 0};
 		var movementDir: Vec3d = .{0, 0, 0};
@@ -727,25 +724,25 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 						movementSpeed = @max(movementSpeed, 32)*KeyBoard.key("forward").value;
 						movementDir += forward*@as(Vec3d, @splat(32*KeyBoard.key("forward").value));
 					} else {
-						movementSpeed = @max(movementSpeed, MaxSpeedRunning)*KeyBoard.key("forward").value;
-						movementDir += forward*@as(Vec3d, @splat(MaxSpeedRunning*KeyBoard.key("forward").value));
+						movementSpeed = @max(movementSpeed, 8)*KeyBoard.key("forward").value;
+						movementDir += forward*@as(Vec3d, @splat(8*KeyBoard.key("forward").value));
 					}
 				} else {
-					movementSpeed = @max(movementSpeed, MaxSpeedWalking)*KeyBoard.key("forward").value;
-					movementDir += forward*@as(Vec3d, @splat(MaxSpeedWalking*KeyBoard.key("forward").value));
+					movementSpeed = @max(movementSpeed, 4)*KeyBoard.key("forward").value;
+					movementDir += forward*@as(Vec3d, @splat(4*KeyBoard.key("forward").value));
 				}
 			}
 			if(KeyBoard.key("backward").value > 0.0) {
-				movementSpeed = @max(movementSpeed, MaxSpeedWalking)*KeyBoard.key("backward").value;
-				movementDir += forward*@as(Vec3d, @splat(-MaxSpeedWalking*KeyBoard.key("backward").value));
+				movementSpeed = @max(movementSpeed, 4)*KeyBoard.key("backward").value;
+				movementDir += forward*@as(Vec3d, @splat(-4*KeyBoard.key("backward").value));
 			}
 			if(KeyBoard.key("left").value > 0.0) {
-				movementSpeed = @max(movementSpeed, MaxSpeedWalking*KeyBoard.key("left").value);
-				movementDir += right*@as(Vec3d, @splat(MaxSpeedWalking*KeyBoard.key("left").value));
+				movementSpeed = @max(movementSpeed, 4*KeyBoard.key("left").value);
+				movementDir += right*@as(Vec3d, @splat(4*KeyBoard.key("left").value));
 			}
 			if(KeyBoard.key("right").value > 0.0) {
-				movementSpeed = @max(movementSpeed, MaxSpeedWalking*KeyBoard.key("right").value);
-				movementDir += right*@as(Vec3d, @splat(-MaxSpeedWalking*KeyBoard.key("right").value));
+				movementSpeed = @max(movementSpeed, 4*KeyBoard.key("right").value);
+				movementDir += right*@as(Vec3d, @splat(-4*KeyBoard.key("right").value));
 			}
 			if(KeyBoard.key("jump").pressed) {
 				if(Player.isFlying.load(.monotonic)) {
@@ -907,11 +904,8 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 		// Calculate our FOV modifier based on our current speed.
 		{
-			const fovModStartSpeed: f32 = @as(f32, @floatCast(MaxSpeedWalking));
-			const fovModEndSpeed: f32 = @as(f32, @floatCast(MaxSpeedRunning));
-
-			// Clamped between 0-1. We'll let the renderer decide what the acual FOV values are
-			const fovModGoal : f32 =  std.math.clamp((@as(f32, @floatCast(movementSpeed)) - fovModStartSpeed) / (fovModEndSpeed - fovModStartSpeed), 0, 1);
+			const x : f32 = @as(f32, @floatCast(movementSpeed));
+			const fovModGoal : f32 =  @max(@log10((x*x)-15)/1.8, 0);
 			const fovModDir: f32 = if(Player.fovMod < fovModGoal) 1 else -1;
 			const fovModNext: f32 = Player.fovMod + (fovModDir * @as(f32, @floatCast(deltaTime)) * 5.0);
 
