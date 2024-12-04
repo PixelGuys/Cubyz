@@ -300,7 +300,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 					if(visualCharacters) writeTabs(list, tabs + 1);
 					recurseToString(elem, list, tabs + 1, visualCharacters);
 				}
-				if(visualCharacters) list.append(',');
+				if(visualCharacters and array.items.len != 0) list.append(',');
 				if(visualCharacters) list.append('\n');
 				if(visualCharacters) writeTabs(list, tabs);
 				list.append('}');
@@ -333,7 +333,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 					recurseToString(elem.value_ptr.*, list, tabs + 1, visualCharacters);
 					first = false;
 				}
-				if(visualCharacters) list.append(',');
+				if(visualCharacters and !first) list.append(',');
 				if(visualCharacters) list.append('\n');
 				if(visualCharacters) writeTabs(list, tabs);
 				list.append('}');
