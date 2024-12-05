@@ -13,5 +13,5 @@
 	.model = "cubyz:cube",
 	.texture = "cubyz:water",
 
-	.bodyDensity = "1.025",
+	.density = "1.025",
 }

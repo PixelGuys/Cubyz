@@ -321,7 +321,7 @@ pub const collision = struct {
 
 		var relDisplacedFluidMass: f32 = 0;
 		const totalBlocks: i32 = (maxX - minX + 1)*(maxY - minY + 1)*(maxZ - minZ + 1);
-		const relPlayerMass: f32 = @as(f32,@floatFromInt(totalBlocks)) * 0.98; // pass player bodyDensity thru arg
+		const relPlayerMass: f32 = @as(f32,@floatFromInt(totalBlocks)) * 0.98; // pass player density thru arg
 
 		var x: i32 = minX;
 		while (x <= maxX) : (x += 1) {
@@ -331,7 +331,7 @@ pub const collision = struct {
 				while (z >= minZ) : (z -= 1) {
 					const block = main.renderer.mesh_storage.getBlock(x, y, z) orelse continue;
 					if (block.blockClass() == .fluid) {
-						relDisplacedFluidMass += block.bodyDensity();
+						relDisplacedFluidMass += block.density();
 					}
 				}
 			}
@@ -372,7 +372,7 @@ pub const Player = struct { // MARK: Player
 
 	pub var maxHealth: f32 = 8;
 	pub var health: f32 = 4.5;
-	pub var bodyDensity: f32 = 0.98;
+	pub var density: f32 = 0.98;
 
 	pub var onGround: bool = false;
 	pub var jumpCooldown: f64 = 0;
