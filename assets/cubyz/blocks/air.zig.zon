@@ -16,4 +16,6 @@
 
 	.drops = .{},
 	.model = .none,
+
+	.bodyDensity = "0.001",
 }
