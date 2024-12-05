@@ -310,6 +310,35 @@ pub const collision = struct {
 		return resultingMovement;
 	}
 
+	pub fn isPlayerInFluid(playerPos: Vec3d, playerBoundingBox: collision.Box) f32 {
+		const minX: i32 = @intFromFloat(@floor(playerBoundingBox.min[0] + playerPos[0]));
+		const maxX: i32 = @intFromFloat(@floor(playerBoundingBox.max[0] + playerPos[0]));
+		const minY: i32 = @intFromFloat(@floor(playerBoundingBox.min[1] + playerPos[1]));
+		const maxY: i32 = @intFromFloat(@floor(playerBoundingBox.max[1] + playerPos[1]));
+		const minZ: i32 = @intFromFloat(@floor(playerBoundingBox.min[2] + playerPos[2]));
+		const maxZ: i32 = @intFromFloat(@floor(playerBoundingBox.max[2] + playerPos[2]));
+
+		var submergedBlocks: f32 = 0;
+		const totalBlocks: i32 = (maxX - minX + 1)*(maxY - minY + 1)*(maxZ - minZ + 1);
+
+		var x: i32 = minX;
+		while (x <= maxX) : (x += 1) {
+			var y: i32 = minY;
+			while (y <= maxY) : (y += 1) {
+				var z: i32 = maxZ;
+				while (z >= minZ) : (z -= 1) {
+					const block = main.renderer.mesh_storage.getBlock(x, y, z) orelse continue;
+					if (block.blockClass() == .fluid) {
+						submergedBlocks += block.bodyDensity();
+					}
+				}
+			}
+		}
+		// Essentially the effective ratio of the player's bounding box that is submerged in fluid
+		// This can be used to calculate the effective gravity on the player...
+		return submergedBlocks/@as(f32, @floatFromInt(totalBlocks));
+	}
+
 	pub const Box = struct {
 		min: Vec3d,
 		max: Vec3d,
@@ -680,7 +709,7 @@ pub fn gamemodeToggle() void {
 
 
 pub fn update(deltaTime: f64) void { // MARK: update()
-	const gravity = 30.0;
+	const gravity = 30.0 * (1 - @round(collision.isPlayerInFluid(Player.super.pos, Player.outerBoundingBox) * 100) / 100);
 	const terminalVelocity = 90.0;
 	const airFrictionCoefficient = gravity/terminalVelocity; // λ = a/v in equillibrium
 	var move: Vec3d = .{0, 0, 0};
