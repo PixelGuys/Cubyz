@@ -16,7 +16,7 @@ pub var window: GuiWindow = GuiWindow {
 pub var text: []const u8 = "";
 
 const padding: f32 = 16;
-const width: f32 = 128;
+const width: f32 = 256;
 
 fn ack(_: usize) void {
 	gui.closeWindowFromRef(&window);
