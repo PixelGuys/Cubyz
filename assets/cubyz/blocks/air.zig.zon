@@ -17,5 +17,5 @@
 	.drops = .{},
 	.model = .none,
 
-	.density = "0.001",
+	.density = 0.001,
 }

@@ -14,5 +14,5 @@
 	.model = "cubyz:cube",
 	.texture = "cubyz:lava",
 
-	.density = "2.8",
+	.density = 2.8,
 }
