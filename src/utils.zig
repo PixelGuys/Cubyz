@@ -804,6 +804,15 @@ pub const NeverFailingArenaAllocator = struct { // MARK: NeverFailingArena
 	pub fn reset(self: *NeverFailingArenaAllocator, mode: std.heap.ArenaAllocator.ResetMode) bool {
 		return self.arena.reset(mode);
 	}
+
+	pub fn shrinkAndFree(self: *NeverFailingArenaAllocator) void {
+		const node = self.arena.state.buffer_list.first orelse return;
+		const allocBuf = @as([*]u8, @ptrCast(node))[0..node.data];
+		const dataSize = @sizeOf(std.SinglyLinkedList(usize).Node) + self.arena.state.end_index;
+		if(self.arena.child_allocator.resize(allocBuf, dataSize)) {
+			node.data = @sizeOf(std.SinglyLinkedList(usize).Node) + dataSize;
+		}
+	}
 };
 
 pub const BufferFallbackAllocator = struct { // MARK: BufferFallbackAllocator
