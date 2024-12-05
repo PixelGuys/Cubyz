@@ -320,8 +320,8 @@ pub const collision = struct {
 		const maxZ: i32 = @intFromFloat(@floor(playerBoundingBox.max[2] + playerPos[2]));
 
 		var relDisplacedFluidMass: f32 = 0;
-		const totalBlocks: f32 = (maxX - minX + 1)*(maxY - minY + 1)*(maxZ - minZ + 1);
-		const relPlayerMass: f32 = totalBlocks * 0.98; // pass player bodyDensity thru arg
+		const totalBlocks: i32 = (maxX - minX + 1)*(maxY - minY + 1)*(maxZ - minZ + 1);
+		const relPlayerMass: f32 = @as(f32,@floatFromInt(totalBlocks)) * 0.98; // pass player bodyDensity thru arg
 
 		var x: i32 = minX;
 		while (x <= maxX) : (x += 1) {
