@@ -808,9 +808,9 @@ pub const NeverFailingArenaAllocator = struct { // MARK: NeverFailingArena
 	pub fn shrinkAndFree(self: *NeverFailingArenaAllocator) void {
 		const node = self.arena.state.buffer_list.first orelse return;
 		const allocBuf = @as([*]u8, @ptrCast(node))[0..node.data];
-		const dataSize = @sizeOf(std.SinglyLinkedList(usize).Node) + self.arena.state.end_index;
-		if(self.arena.child_allocator.resize(allocBuf, dataSize)) {
-			node.data = @sizeOf(std.SinglyLinkedList(usize).Node) + dataSize;
+		const dataSize = std.mem.alignForward(usize, @sizeOf(std.SinglyLinkedList(usize).Node) + self.arena.state.end_index, @alignOf(std.SinglyLinkedList(usize).Node));
+		if(self.arena.child_allocator.rawResize(allocBuf, std.math.log2(@alignOf(std.SinglyLinkedList(usize).Node)), dataSize, @returnAddress())) {
+			node.data = dataSize;
 		}
 	}
 };
