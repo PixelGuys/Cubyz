@@ -46,6 +46,12 @@ fn discoverIpAddressFromNewThread() void {
 	discoverIpAddress();
 }
 
+fn raiseNotification(text: []const u8) void {
+	main.gui.closeWindow("notification");
+	main.gui.windowlist.notification.setNotificationText(text);
+	main.gui.openWindow("notification");
+}
+
 fn join(_: usize) void {
 	if(thread) |_thread| {
 		_thread.join();
@@ -58,8 +64,7 @@ fn join(_: usize) void {
 	if(connection) |_connection| {
 		if (ipAddressEntry.currentString.items.len == 0) {
 			std.log.err("IP address cannot be empty", .{});
-			gui.windowlist.notification.text = "IP address cannot be empty";
-			gui.openWindow("notification");
+			raiseNotification("IP address cannot be empty");
 			return;
 		}
 		_connection.world = &main.game.testWorld;
@@ -69,15 +74,16 @@ fn join(_: usize) void {
 		main.game.world = &main.game.testWorld;
 		std.log.info("Connecting to server: {s}", .{ipAddressEntry.currentString.items});
 		main.game.testWorld.init(ipAddressEntry.currentString.items, _connection) catch |err| {
-			std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
-			gui.windowlist.notification.text = std.fmt.allocPrint(main.globalAllocator.allocator, "Encountered error while opening world: {}", .{err}) catch unreachable;
-			gui.openWindow("notification");
+			const formattedError = std.fmt.allocPrint(main.globalAllocator.allocator, "Encountered error while opening world: {s}", .{@errorName(err)}) catch unreachable;
+			std.log.err("{s}", .{formattedError});
+			raiseNotification(formattedError);
+			main.globalAllocator.free(formattedError);
+			return;
 		};
 		connection = null;
 	} else {
 		std.log.err("No connection found. Cannot connect.", .{});
-		gui.windowlist.notification.text = "No connection found. Cannot connect.";
-		gui.openWindow("notification");
+		raiseNotification("No connection found. Cannot connect.");
 	}
 	for(gui.openWindows.items) |openWindow| {
 		gui.closeWindowFromRef(openWindow);

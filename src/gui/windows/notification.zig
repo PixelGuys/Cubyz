@@ -13,10 +13,19 @@ pub var window: GuiWindow = GuiWindow {
 	.contentSize = Vec2f{128, 256},
 };
 
-pub var text: []const u8 = "";
-
 const padding: f32 = 16;
 const width: f32 = 256;
+
+var text: []const u8 = "";
+
+pub fn deinit() void {
+	main.globalAllocator.free(text);
+}
+
+pub fn setNotificationText(newText: []const u8) void {
+	main.globalAllocator.free(text);
+	text = main.globalAllocator.dupe(u8, newText);
+}
 
 fn ack(_: usize) void {
 	gui.closeWindowFromRef(&window);
