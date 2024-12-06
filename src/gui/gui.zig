@@ -307,9 +307,6 @@ pub fn openWindow(id: []const u8) void {
 	defer updateWindowPositions();
 	for(windowList.items) |window| {
 		if(std.mem.eql(u8, window.id, id)) {
-			if (std.mem.eql(u8, id, "notification")) {
-				window.onOpenFn();
-			}
 			openWindowFromRef(window);
 			return;
 		}
