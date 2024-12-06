@@ -43,6 +43,11 @@ var deferredUniforms: struct {
 	zNear: c_int,
 	zFar: c_int,
 } = undefined;
+var depthCopyShader: graphics.Shader = undefined;
+var depthCopyUniforms: struct {
+	zNear: c_int,
+	zFar: c_int,
+} = undefined;
 var fakeReflectionShader: graphics.Shader = undefined;
 var fakeReflectionUniforms: struct {
 	normalVector: c_int,
@@ -60,8 +65,11 @@ var reflectionCubeMap: graphics.CubeMapTexture = undefined;
 pub fn init() void {
 	deferredRenderPassShader = Shader.initAndGetUniforms("assets/cubyz/shaders/deferred_render_pass.vs", "assets/cubyz/shaders/deferred_render_pass.fs", "", &deferredUniforms);
 	fakeReflectionShader = Shader.initAndGetUniforms("assets/cubyz/shaders/fake_reflection.vs", "assets/cubyz/shaders/fake_reflection.fs", "", &fakeReflectionUniforms);
+	depthCopyShader = Shader.initAndGetUniforms("assets/cubyz/shaders/depth_copy.vs", "assets/cubyz/shaders/depth_copy.fs", "", &depthCopyUniforms);
 	worldFrameBuffer.init(true, c.GL_NEAREST, c.GL_CLAMP_TO_EDGE);
 	worldFrameBuffer.updateSize(Window.width, Window.height, c.GL_RGB16F);
+	transparentDepthFrameBuffer.init(false, c.GL_NEAREST, c.GL_CLAMP_TO_EDGE);
+	transparentDepthFrameBuffer.updateSize(Window.width, Window.height, c.GL_R16F);
 	Bloom.init();
 	MeshSelection.init();
 	MenuBackGround.init() catch |err| {
@@ -78,6 +86,7 @@ pub fn deinit() void {
 	deferredRenderPassShader.deinit();
 	fakeReflectionShader.deinit();
 	worldFrameBuffer.deinit();
+	transparentDepthFrameBuffer.deinit();
 	Bloom.deinit();
 	MeshSelection.deinit();
 	MenuBackGround.deinit();
@@ -108,6 +117,7 @@ fn initReflectionCubeMap() void {
 }
 
 var worldFrameBuffer: graphics.FrameBuffer = undefined;
+var transparentDepthFrameBuffer: graphics.FrameBuffer = undefined;
 
 var lastWidth: u31 = 0;
 var lastHeight: u31 = 0;
@@ -119,6 +129,8 @@ pub fn updateViewport(width: u31, height: u31, fov: f32) void {
 	game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(fov), @as(f32, @floatFromInt(lastWidth))/@as(f32, @floatFromInt(lastHeight)), zNear, zFar);
 	worldFrameBuffer.updateSize(lastWidth, lastHeight, c.GL_RGB16F);
 	worldFrameBuffer.unbind();
+	transparentDepthFrameBuffer.updateSize(lastWidth, lastHeight, c.GL_R16F);
+	transparentDepthFrameBuffer.unbind();
 }
 
 pub fn render(playerPosition: Vec3d) void {
@@ -221,9 +233,27 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.stopQuery();
 
 	// Render transparent chunk meshes:
-	worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE5);
+
 
 	gpu_performance_measuring.startQuery(.transparent_rendering_preparation);
+
+	worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE5);
+	c.glTextureBarrier();
+	transparentDepthFrameBuffer.bind();
+	depthCopyShader.bind();
+	c.glUniform1f(depthCopyUniforms.zNear, zNear);
+	c.glUniform1f(depthCopyUniforms.zFar, zFar);
+	c.glDisable(c.GL_DEPTH_TEST);
+	c.glDisable(c.GL_CULL_FACE);
+	c.glDisable(c.GL_BLEND);
+	c.glBindVertexArray(graphics.draw.rectVAO);
+	c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+	c.glEnable(c.GL_BLEND);
+	c.glEnable(c.GL_DEPTH_TEST);
+	c.glEnable(c.GL_CULL_FACE);
+	worldFrameBuffer.bind();
+	transparentDepthFrameBuffer.bindImage(5, c.GL_R16F);
+	c.glMemoryBarrier(c.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 	c.glTextureBarrier();
 
 	c.glBlendEquation(c.GL_FUNC_ADD);
@@ -260,7 +290,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.startQuery(.final_copy);
 	if(activeFrameBuffer == 0) c.glViewport(0, 0, main.Window.width, main.Window.height);
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
-	worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
+	transparentDepthFrameBuffer.bindTexture(c.GL_TEXTURE4);
 	worldFrameBuffer.unbind();
 	deferredRenderPassShader.bind();
 	c.glUniform1i(deferredUniforms.color, 3);

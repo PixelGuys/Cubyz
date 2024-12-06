@@ -1,5 +1,9 @@
 #version 430
 
+#extension GL_ARB_fragment_shader_interlock : require
+layout(sample_interlock_ordered) in;
+layout(early_fragment_tests) in;
+
 in vec3 mvVertexPos;
 in vec3 direction;
 in vec3 light;
@@ -16,7 +20,7 @@ uniform samplerCube reflectionMap;
 uniform float reflectionMapSize;
 uniform float contrast;
 
-layout(binding = 5) uniform sampler2D depthTexture;
+layout(binding = 5, r16f) coherent uniform image2D depthTexture;
 
 layout (location = 0, index = 0) out vec4 fragColor;
 layout (location = 0, index = 1) out vec4 blendColor;
@@ -91,9 +95,9 @@ void applyFrontfaceFog(float fogDistance, vec3 fogColor) {
 }
 
 void applyBackfaceFog(float fogDistance, vec3 fogColor) {
-	float fogFactor = exp(-fogDistance);
-	fragColor.rgb = fragColor.rgb*fogFactor + fogColor*(1 - fogFactor);
-	fragColor.a *= fogFactor;
+	//float fogFactor = exp(-fogDistance);
+	//fragColor.rgb = fragColor.rgb*fogFactor + fogColor*(1 - fogFactor);
+	//fragColor.a *= fogFactor;
 }
 
 vec4 fixedCubeMapLookup(vec3 v) { // Taken from http://the-witness.net/news/2012/02/seamless-cube-map-filtering/
@@ -106,13 +110,17 @@ vec4 fixedCubeMapLookup(vec3 v) { // Taken from http://the-witness.net/news/2012
 }
 
 void main() {
+	beginInvocationInterlockARB();
+	float prevDepth = imageLoad(depthTexture, ivec2(gl_FragCoord.xy)).r;
+	imageStore(depthTexture, ivec2(gl_FragCoord.xy), vec4(abs(mvVertexPos.y), 0, 0, 0));
+	endInvocationInterlockARB();
 	float animatedTextureIndex = animatedTexture[textureIndex];
 	vec3 textureCoords = vec3(uv, animatedTextureIndex);
 	float normalVariation = lightVariation(normal);
 	float densityAdjustment = sqrt(dot(mvVertexPos, mvVertexPos))/abs(mvVertexPos.y);
-	float dist = zFromDepth(texelFetch(depthTexture, ivec2(gl_FragCoord.xy), 0).r);
-	float fogDistance = calculateFogDistance(dist, fogData[int(animatedTextureIndex)].fogDensity*densityAdjustment);
-	float airFogDistance = calculateFogDistance(dist, fog.density*densityAdjustment);
+	float dist = abs(mvVertexPos.y) - prevDepth;//zFromDepth(texelFetch(depthTexture1, ivec2(gl_FragCoord.xy), 0).r);
+	float fogDistance = dist*fogData[int(animatedTextureIndex)].fogDensity*densityAdjustment;
+	float airFogDistance = dist*fog.density*densityAdjustment;
 	vec3 fogColor = unpackColor(fogData[int(animatedTextureIndex)].fogColor);
 	vec3 pixelLight = max(light*normalVariation, texture(emissionSampler, textureCoords).r*4);
 	vec4 textureColor = texture(texture_sampler, textureCoords)*vec4(pixelLight, 1);

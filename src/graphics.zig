@@ -1565,6 +1565,10 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 		c.glBindTexture(c.GL_TEXTURE_2D, self.texture);
 	}
 
+	pub fn bindImage(self: *const FrameBuffer, binding: u5, format: c_uint) void {
+		c.glBindImageTexture(binding, self.texture, 0, c.GL_FALSE, 0, c.GL_READ_WRITE, format);
+	}
+
 	pub fn bindDepthTexture(self: *const FrameBuffer, target: c_uint) void {
 		std.debug.assert(self.hasDepthTexture);
 		c.glActiveTexture(target);
