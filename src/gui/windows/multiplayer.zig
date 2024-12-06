@@ -72,10 +72,10 @@ fn join(_: usize) void {
 			defer main.stackAllocator.free(formattedError);
 			std.log.err("{s}", .{formattedError});
 			main.gui.windowlist.notification.raiseNotification(formattedError);
-            main.globalAllocator.free(settings.lastUsedIPAddress);
-            settings.lastUsedIPAddress = "";
-            main.game.world = null;
-            _connection.world = null;
+			main.globalAllocator.free(settings.lastUsedIPAddress);
+			settings.lastUsedIPAddress = "";
+			main.game.world = null;
+			_connection.world = null;
 			return;
 		};
 		connection = null;
