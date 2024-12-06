@@ -22,10 +22,17 @@ pub fn deinit() void {
 	main.globalAllocator.free(text);
 }
 
-pub fn setNotificationText(newText: []const u8) void {
+fn setNotificationText(newText: []const u8) void {
 	main.globalAllocator.free(text);
 	text = main.globalAllocator.dupe(u8, newText);
 }
+
+pub fn raiseNotification(notifText: []const u8) void {
+	main.gui.closeWindow("notification");
+	setNotificationText(notifText);
+	main.gui.openWindow("notification");
+}
+
 
 fn ack(_: usize) void {
 	gui.closeWindowFromRef(&window);
