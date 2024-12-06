@@ -69,8 +69,8 @@ fn join(_: usize) void {
 		std.log.info("Connecting to server: {s}", .{ipAddressEntry.currentString.items});
 		main.game.testWorld.init(ipAddressEntry.currentString.items, _connection) catch |err| {
 			const formattedError = std.fmt.allocPrint(main.stackAllocator.allocator, "Encountered error while opening world: {s}", .{@errorName(err)}) catch unreachable;
-			std.log.err("{s}", .{formattedError});
 			defer main.stackAllocator.free(formattedError);
+			std.log.err("{s}", .{formattedError});
 			main.gui.windowlist.notification.raiseNotification(formattedError);
 			return;
 		};
