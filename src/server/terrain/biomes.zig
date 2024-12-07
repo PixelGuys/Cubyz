@@ -237,6 +237,7 @@ pub const Biome = struct { // MARK: Biome
 	properties: GenerationProperties,
 	isCave: bool,
 	radius: f32,
+	radiusVariation: f32,
 	minHeight: i32,
 	maxHeight: i32,
 	interpolation: Interpolation,
@@ -266,12 +267,15 @@ pub const Biome = struct { // MARK: Biome
 	chance: f32,
 
 	pub fn init(self: *Biome, id: []const u8, paletteId: u32, zon: ZonElement) void {
+		const minRadius = zon.get(f32, "radius", zon.get(f32, "minRadius", 256));
+		const maxRadius = zon.get(f32, "maxRadius", minRadius);
 		self.* = Biome {
 			.id = main.globalAllocator.dupe(u8, id),
 			.paletteId = paletteId,
 			.properties = GenerationProperties.fromZon(zon.getChild("properties")),
 			.isCave = zon.get(bool, "isCave", false),
-			.radius = zon.get(f32, "radius", 256),
+			.radius = (maxRadius + minRadius)/2,
+			.radiusVariation = (maxRadius - minRadius)/2,
 			.stoneBlock = blocks.getBlockById(zon.get([]const u8, "stoneBlock", "cubyz:stone")),
 			.fogColor = u32ToVec3(zon.get(u32, "fogColor", 0xffccccff)),
 			.fogDensity = zon.get(f32, "fogDensity", 1.0)/15.0/128.0,
