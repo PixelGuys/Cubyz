@@ -1685,9 +1685,9 @@ pub const Connection = struct { // MARK: Connection
 			const id = std.mem.readInt(u32, data[1..5], .big);
 			if(self.handShakeState.load(.monotonic) == Protocols.handShake.stepComplete and id == 0) { // Got a new "first" packet from client. So the client tries to reconnect, but we still think it's connected.
 				if(self.user) |user| {
+					user.reinitialize();
 					self.mutex.lock();
 					defer self.mutex.unlock();
-					user.reinitialize();
 					self.reinitialize();
 				} else {
 					std.log.err("Server reconnected?", .{});
