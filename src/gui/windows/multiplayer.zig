@@ -57,16 +57,24 @@ fn join(_: usize) void {
 	}
 	if(connection) |_connection| {
 		_connection.world = &main.game.testWorld;
+		main.game.world = &main.game.testWorld;
+		std.log.info("Connecting to server: {s}", .{ipAddressEntry.currentString.items});
+		main.game.testWorld.init(ipAddressEntry.currentString.items, _connection) catch |err| {
+			const formattedError = std.fmt.allocPrint(main.stackAllocator.allocator, "Encountered error while opening world: {s}", .{@errorName(err)}) catch unreachable;
+			defer main.stackAllocator.free(formattedError);
+			std.log.err("{s}", .{formattedError});
+			main.gui.windowlist.notification.raiseNotification(formattedError);
+			main.game.world = null;
+			_connection.world = null;
+			return;
+		};
 		main.globalAllocator.free(settings.lastUsedIPAddress);
 		settings.lastUsedIPAddress = main.globalAllocator.dupe(u8, ipAddressEntry.currentString.items);
 		settings.save();
-		main.game.world = &main.game.testWorld;
-		main.game.testWorld.init(ipAddressEntry.currentString.items, _connection) catch |err| {
-			std.log.err("Encountered error while opening world: {s}", .{@errorName(err)});
-		};
 		connection = null;
 	} else {
 		std.log.err("No connection found. Cannot connect.", .{});
+		main.gui.windowlist.notification.raiseNotification("No connection found. Cannot connect.");
 	}
 	for(gui.openWindows.items) |openWindow| {
 		gui.closeWindowFromRef(openWindow);
