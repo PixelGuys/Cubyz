@@ -70,8 +70,11 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 
 	fn executeCommands() void {
 		mutex.lock();
-		defer mutex.unlock();
-		while(commands.popOrNull()) |command| {
+		const commands_ = main.stackAllocator.dupe(Command, commands.items);
+		defer main.stackAllocator.free(commands_);
+		commands.clearAndFree();
+		mutex.unlock();
+		for(commands_) |command| {
 			switch(command.action) {
 				.open => {
 					executeOpenWindowCommand(command.window);
@@ -84,7 +87,6 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 	}
 
 	fn executeOpenWindowCommand(window: *GuiWindow) void {
-		main.utils.assertLocked(&mutex);
 		defer updateWindowPositions();
 		for(openWindows.items, 0..) |_openWindow, i| {
 			if(_openWindow == window) {
@@ -95,14 +97,11 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 			}
 		}
 		openWindows.append(window);
-		mutex.unlock();
 		window.onOpenFn();
-		mutex.lock();
 		selectedWindow = null;
 	}
 
 	fn executeCloseWindowCommand(window: *GuiWindow) void {
-		main.utils.assertLocked(&mutex);
 		defer updateWindowPositions();
 		if(selectedWindow == window) {
 			selectedWindow = null;
@@ -110,12 +109,10 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 		for(openWindows.items, 0..) |_openWindow, i| {
 			if(_openWindow == window) {
 				_ = openWindows.swapRemove(i);
+				window.onCloseFn();
 				break;
 			}
 		}
-		mutex.unlock();
-		window.onCloseFn();
-		mutex.lock();
 	}
 };
 
@@ -369,7 +366,7 @@ pub fn closeWindowFromRef(window: *GuiWindow) void {
 pub fn closeWindow(id: []const u8) void {
 	for(windowList.items) |window| {
 		if(std.mem.eql(u8, window.id, id)) {
-			openWindowFromRef(window);
+			closeWindowFromRef(window);
 			return;
 		}
 	}

@@ -18,6 +18,10 @@ const padding: f32 = 8;
 
 var deleteWorldName: []const u8 = "";
 
+pub fn deinit() void {
+	main.globalAllocator.free(deleteWorldName);
+}
+
 pub fn setDeleteWorldName(name: []const u8) void {
 	main.globalAllocator.free(deleteWorldName);
 	deleteWorldName = main.globalAllocator.dupe(u8, name);
@@ -48,8 +52,6 @@ pub fn onOpen() void {
 }
 
 pub fn onClose() void {
-	main.globalAllocator.free(deleteWorldName);
-	deleteWorldName = "";
 	if(window.rootComponent) |*comp| {
 		comp.deinit();
 	}

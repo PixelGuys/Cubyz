@@ -63,6 +63,7 @@ pub const StructureMapFragment = struct {
 		for(&self.data) |list| {
 			std.sort.insertion(Structure, list.items, {}, Structure.lessThan);
 		}
+		self.arena.shrinkAndFree();
 	}
 
 	fn getIndex(self: *const StructureMapFragment, x: i32, y: i32, z: i32) usize {
