@@ -56,15 +56,7 @@ fn join(_: usize) void {
 		ipAddress = "";
 	}
 	if(connection) |_connection| {
-		if (ipAddressEntry.currentString.items.len == 0) {
-			std.log.err("IP address cannot be empty", .{});
-			main.gui.windowlist.notification.raiseNotification("IP address cannot be empty");
-			return;
-		}
 		_connection.world = &main.game.testWorld;
-		main.globalAllocator.free(settings.lastUsedIPAddress);
-		settings.lastUsedIPAddress = main.globalAllocator.dupe(u8, ipAddressEntry.currentString.items);
-		settings.save();
 		main.game.world = &main.game.testWorld;
 		std.log.info("Connecting to server: {s}", .{ipAddressEntry.currentString.items});
 		main.game.testWorld.init(ipAddressEntry.currentString.items, _connection) catch |err| {
@@ -72,12 +64,13 @@ fn join(_: usize) void {
 			defer main.stackAllocator.free(formattedError);
 			std.log.err("{s}", .{formattedError});
 			main.gui.windowlist.notification.raiseNotification(formattedError);
-			main.globalAllocator.free(settings.lastUsedIPAddress);
-			settings.lastUsedIPAddress = "";
 			main.game.world = null;
 			_connection.world = null;
 			return;
 		};
+		main.globalAllocator.free(settings.lastUsedIPAddress);
+		settings.lastUsedIPAddress = main.globalAllocator.dupe(u8, ipAddressEntry.currentString.items);
+		settings.save();
 		connection = null;
 	} else {
 		std.log.err("No connection found. Cannot connect.", .{});
