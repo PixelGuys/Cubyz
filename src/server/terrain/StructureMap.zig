@@ -68,17 +68,6 @@ pub const StructureMapFragment = struct {
 	}
 
 	pub fn deinit(self: *StructureMapFragment) void {
-		var actual: usize = 0;
-		for(self.data) |i| {
-			actual += i.len*@sizeOf(StructureInternal);
-		}
-		var expected: usize = 0;
-		var it = self.arena.arena.state.buffer_list.first;
-		while(it) |node| {
-			expected += node.data;
-			it = node.next;
-		}
-		std.log.err("{} {}", .{expected, actual});
 		self.arena.deinit();
 		main.globalAllocator.destroy(self);
 	}

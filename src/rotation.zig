@@ -250,7 +250,7 @@ pub const RotationModes = struct {
 			const blockBaseModel = blocks.meshes.modelIndexStart(block.*);
 			const neighborBaseModel = blocks.meshes.modelIndexStart(neighborBlock);
 			const neighborModel = blocks.meshes.model(neighborBlock);
-			const targetVal = neighborBlock.solid() and (blockBaseModel == neighborBaseModel or main.models.models.items[neighborModel].neighborFacingQuads[neighbor.reverse().toInt()].len != 0);
+			const targetVal = neighborBlock.solid() and (blockBaseModel == neighborBaseModel or main.models.models.items[neighborModel].isNeighborOccluded[neighbor.reverse().toInt()]);
 			var currentData: FenceData = @bitCast(@as(u4, @truncate(block.data)));
 			switch(neighbor) {
 				.dirNegX => {
