@@ -6,7 +6,6 @@
 	.selectable = false,
 	.solid = false,
 	.degradable = true,
-	.transparent = true,
 	.hasBackFace = true,
 	.collide= false,
 	.absorbedLight = 0x0084ff,
