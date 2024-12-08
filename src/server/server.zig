@@ -273,6 +273,10 @@ fn sendEntityUpdates(comptime getInitialList: bool, allocator: utils.NeverFailin
 		updateList.array.append(.null);
 		updateList.array.appendSlice(world.?.itemDropManager.lastUpdates.array.items);
 	}
+	if(!getInitialList and updateList.array.items.len == 0) {
+		world.?.itemDropManager.mutex.unlock();
+		return;
+	}
 	const updateData = updateList.toStringEfficient(main.stackAllocator, &.{});
 	defer main.stackAllocator.free(updateData);
 	if(world.?.itemDropManager.lastUpdates.array.items.len != 0) {
