@@ -82,6 +82,8 @@ var _gui: [maxBlockCount][]u8 = undefined;
 var _mode: [maxBlockCount]*RotationMode = undefined;
 var _lodReplacement: [maxBlockCount]u16 = undefined;
 var _opaqueVariant: [maxBlockCount]u16 = undefined;
+/// For buoyancy and other fluid mechanics.
+var _density: [maxBlockCount]f32 = undefined;
 
 var reverseIndices = std.StringHashMap(u16).init(allocator.allocator);
 
@@ -122,6 +124,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_alwaysViewThrough[size] = zon.get(bool, "alwaysViewThrough", false);
 	_viewThrough[size] = zon.get(bool, "viewThrough", false) or _transparent[size] or _alwaysViewThrough[size];
 	_hasBackFace[size] = zon.get(bool, "hasBackFace", false);
+	_density[size] = zon.get(f32, "density", 0.7);
 
 	const oreProperties = zon.getChild("ore");
 	if (oreProperties != .null) {
@@ -337,6 +340,12 @@ pub const Block = packed struct { // MARK: Block
 	pub inline fn opaqueVariant(self: Block) u16 {
 		return _opaqueVariant[self.typ];
 	}
+
+	/// For buoyancy and other fluid mechanics.
+	pub inline fn density(self: Block) f32 {
+		return _density[self.typ];
+	}
+	
 };
 
 

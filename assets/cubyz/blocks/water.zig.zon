@@ -12,4 +12,6 @@
 	.absorbedLight = 0x090501,
 	.model = "cubyz:cube",
 	.texture = "cubyz:water",
+
+	.density = 1.025,
 }

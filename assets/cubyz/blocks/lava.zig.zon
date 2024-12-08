@@ -13,4 +13,6 @@
 	.emittedLight = 0xff7b00,
 	.model = "cubyz:cube",
 	.texture = "cubyz:lava",
+
+	.density = 2.8,
 }
