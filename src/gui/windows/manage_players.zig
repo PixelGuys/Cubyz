@@ -22,7 +22,7 @@ const padding: f32 = 8;
 var userList: []*main.server.User = &.{};
 
 fn kick(conn: *main.network.Connection) void {
-	conn.disconnect();
+	conn.kick();
 }
 
 pub fn onOpen() void {
