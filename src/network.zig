@@ -861,6 +861,17 @@ pub const Protocols = struct {
 			conn.sendUnimportant(id, &noData);
 		}
 	};
+	pub const kick = struct {
+		pub const id: u8 = 21;
+		pub const asynchronous = false;
+		fn receive(_: *Connection, _: []const u8) !void {
+			main.gui.windowlist.notification.raiseNotification("You were kicked from the server.");
+		}
+		pub fn send(conn: *Connection) void {
+			const noData = [0]u8 {};
+			conn.sendUnimportant(id, &noData);
+		}
+	};
 	pub const entityPosition = struct {
 		pub const id: u8 = 6;
 		pub const asynchronous = false;
@@ -1729,6 +1740,11 @@ pub const Connection = struct { // MARK: Connection
 		self.disconnected.store(true, .unordered);
 		self.manager.removeConnection(self);
 		std.log.info("Disconnected", .{});
+	}
+
+	pub fn kick(self: *Connection) void {
+		Protocols.kick.send(self);
+		self.disconnect();
 	}
 };
 
