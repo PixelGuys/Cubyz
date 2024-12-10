@@ -21,6 +21,22 @@ const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
+pub const DisconnectType = enum(u8) {
+	exit,
+	timeout,
+	kick,
+	connError,
+};
+
+pub fn getDisconnectMessage(disconnectType: DisconnectType) []const u8 {
+	switch(disconnectType) {
+		.exit => return "Disconnected from server.",
+		.timeout => return "Connection timed out.",
+		.kick => return "Kicked from server.",
+		.connError => return "Connection error.",
+	}
+}
+
 //TODO: Might want to use SSL or something similar to encode the message
 
 const Socket = struct {
@@ -416,7 +432,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 	pub fn deinit(self: *ConnectionManager) void {
 		for(self.connections.items) |conn| {
-			conn.disconnect();
+			conn.disconnect(DisconnectType.exit);
 		}
 
 		self.running.store(false, .monotonic);
@@ -593,7 +609,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 						std.log.info("timeout", .{});
 						// Timeout a connection if it was connect at some point. New connections are not timed out because that could annoy players(having to restart the connection several times).
 						self.mutex.unlock();
-						conn.disconnect();
+						conn.disconnect(DisconnectType.timeout);
 						if(conn.user) |user| {
 							main.server.disconnect(user);
 						}
@@ -848,28 +864,18 @@ pub const Protocols = struct {
 	pub const disconnect = struct {
 		pub const id: u8 = 5;
 		pub const asynchronous = false;
-		fn receive(conn: *Connection, _: []const u8) !void {
-			conn.disconnect();
+		fn receive(conn: *Connection, typeData: []const u8) !void {
+			const disconnectType: DisconnectType = @enumFromInt(typeData[0]);
+			conn.disconnect(disconnectType);
 			if(conn.user) |user| {
 				main.server.disconnect(user);
 			} else {
-				main.exitToMenu(undefined);
+				main.exitToMenu(disconnectType);
 			}
 		}
-		pub fn disconnect(conn: *Connection) void {
-			const noData = [0]u8 {};
-			conn.sendUnimportant(id, &noData);
-		}
-	};
-	pub const kick = struct {
-		pub const id: u8 = 21;
-		pub const asynchronous = false;
-		fn receive(_: *Connection, _: []const u8) !void {
-			main.gui.windowlist.notification.raiseNotification("You were kicked from the server.");
-		}
-		pub fn send(conn: *Connection) void {
-			const noData = [0]u8 {};
-			conn.sendUnimportant(id, &noData);
+		pub fn disconnect(conn: *Connection, disconnectType: DisconnectType) void {
+			const typeData = [1]u8{ @intFromEnum(disconnectType) };
+			conn.sendUnimportant(id, &typeData);
 		}
 	};
 	pub const entityPosition = struct {
@@ -1325,7 +1331,7 @@ pub const Connection = struct { // MARK: Connection
 	}
 
 	pub fn deinit(self: *Connection) void {
-		self.disconnect();
+		self.disconnect(DisconnectType.exit);
 		self.manager.finishCurrentReceive(); // Wait until all currently received packets are done.
 		for(self.unconfirmedPackets.items) |packet| {
 			main.globalAllocator.free(packet.data);
@@ -1679,7 +1685,7 @@ pub const Connection = struct { // MARK: Connection
 			if(@errorReturnTrace()) |trace| {
 				std.log.info("{}", .{trace});
 			}
-			self.disconnect();
+			self.disconnect(DisconnectType.connError);
 		};
 	}
 
@@ -1702,7 +1708,7 @@ pub const Connection = struct { // MARK: Connection
 					self.reinitialize();
 				} else {
 					std.log.err("Server reconnected?", .{});
-					self.disconnect();
+					self.disconnect(DisconnectType.connError);
 				}
 			}
 			if(id - @as(i33, self.lastIncompletePacket) >= 65536) {
@@ -1729,22 +1735,17 @@ pub const Connection = struct { // MARK: Connection
 		}
 	}
 
-	pub fn disconnect(self: *Connection) void {
+	pub fn disconnect(self: *Connection, disconnectType: DisconnectType) void {
 		// Send 3 disconnect packages to the other side, just to be sure.
 		// If all of them don't get through then there is probably a network issue anyways which would lead to a timeout.
-		Protocols.disconnect.disconnect(self);
+		Protocols.disconnect.disconnect(self, disconnectType);
 		std.time.sleep(10000000);
-		Protocols.disconnect.disconnect(self);
+		Protocols.disconnect.disconnect(self, disconnectType);
 		std.time.sleep(10000000);
-		Protocols.disconnect.disconnect(self);
+		Protocols.disconnect.disconnect(self, disconnectType);
 		self.disconnected.store(true, .unordered);
 		self.manager.removeConnection(self);
 		std.log.info("Disconnected", .{});
-	}
-
-	pub fn kick(self: *Connection) void {
-		Protocols.kick.send(self);
-		self.disconnect();
 	}
 };
 
