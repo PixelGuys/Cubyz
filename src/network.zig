@@ -1199,7 +1199,7 @@ pub const Protocols = struct {
 pub const Connection = struct { // MARK: Connection
 	const maxPacketSize: u32 = 65507; // max udp packet size
 	const importantHeaderSize: u32 = 5;
-	const maxImportantPacketSize: u32 = 1500 - 14 - 20 - 8; // Ethernet MTU minus Ethernet header minus IP header minus udp header
+	const maxImportantPacketSize: u32 = 576 - 20 - 8; // IPv4 MTU minus IP header minus udp header
 	const headerOverhead = 20 + 8 + 42; // IP Header + UDP Header + Ethernet header/footer
 	const congestionControl_historySize = 16;
 	const congestionControl_historyMask = congestionControl_historySize - 1;
@@ -1685,9 +1685,9 @@ pub const Connection = struct { // MARK: Connection
 			const id = std.mem.readInt(u32, data[1..5], .big);
 			if(self.handShakeState.load(.monotonic) == Protocols.handShake.stepComplete and id == 0) { // Got a new "first" packet from client. So the client tries to reconnect, but we still think it's connected.
 				if(self.user) |user| {
+					user.reinitialize();
 					self.mutex.lock();
 					defer self.mutex.unlock();
-					user.reinitialize();
 					self.reinitialize();
 				} else {
 					std.log.err("Server reconnected?", .{});

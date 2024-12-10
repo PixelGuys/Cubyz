@@ -20,6 +20,7 @@ pub const invite = @import("invite.zig");
 pub const main = @import("main.zig");
 pub const manage_players = @import("manage_players.zig");
 pub const multiplayer = @import("multiplayer.zig");
+pub const notification = @import("notification.zig");
 pub const pause = @import("pause.zig");
 pub const pause_gear = @import("pause_gear.zig");
 pub const performance_graph = @import("performance_graph.zig");

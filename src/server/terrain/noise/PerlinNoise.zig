@@ -129,6 +129,7 @@ const Context = struct {
 /// Returns a ridgid map of floats with values between 0 and 1.
 pub fn generateRidgidNoise(allocator: NeverFailingAllocator, x: i32, y: i32, width: u31, height: u31, maxScale: u31, minScale: u31, worldSeed: u64, voxelSize: u31, reductionFactor: f32) Array2D(f32) {
 	const map = Array2D(f32).init(allocator, width/voxelSize, height/voxelSize);
+	@memset(map.mem, 0);
 	var seed = worldSeed;
 	random.scrambleSeed(&seed);
 	var context = Context {
@@ -161,6 +162,7 @@ pub fn generateRidgidNoise(allocator: NeverFailingAllocator, x: i32, y: i32, wid
 /// Returns a smooth map of floats with values between 0 and 1.
 pub fn generateSmoothNoise(allocator: NeverFailingAllocator, x: i32, y: i32, width: u31, height: u31, maxScale: u31, minScale: u31, worldSeed: u64, voxelSize: u31, reductionFactor: f32) Array2D(f32) {
 	const map = Array2D(f32).init(allocator, width/voxelSize, height/voxelSize);
+	@memset(map.mem, 0);
 	var seed = worldSeed;
 	random.scrambleSeed(&seed);
 	var context = Context {

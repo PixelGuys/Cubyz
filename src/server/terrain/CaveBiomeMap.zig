@@ -568,7 +568,7 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 // MARK: cache
 const cacheSize = 1 << 8; // Must be a power of 2!
 const cacheMask = cacheSize - 1;
-const associativity = 8;
+const associativity = 8; // 128 MiB
 var cache: Cache(CaveBiomeMapFragment, cacheSize, associativity, CaveBiomeMapFragment.decreaseRefCount) = .{};
 
 var profile: TerrainGenerationProfile = undefined;

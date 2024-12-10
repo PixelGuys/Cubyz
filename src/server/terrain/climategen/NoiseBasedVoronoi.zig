@@ -55,6 +55,7 @@ const BiomePoint = struct {
 	height: f32,
 	pos: Vec2i = .{0, 0},
 	weight: f32 = 1,
+	radius: f32,
 
 	fn voronoiDistanceFunction(self: @This(), pos: Vec2i) f32 {
 		const len: f32 = @floatFromInt(vec.lengthSquare(self.pos -% pos));
@@ -102,7 +103,7 @@ const Chunk = struct {
 		const i: usize = getStartCoordinate(minX, biomesSortedByX);
 		for(biomesSortedByX[i..]) |other| {
 			if(other.pos[0] -% maxX >= 0) break;
-			const minDistance = (biomeRadius + other.biome.radius)*0.85;
+			const minDistance = (biomeRadius + other.radius)*0.85;
 
 			if(@as(f32, @floatFromInt(vec.lengthSquare(other.pos -% Vec2i{x, y}))) < minDistance*minDistance) {
 				return false;
@@ -143,23 +144,25 @@ const Chunk = struct {
 			const y = random.nextIntBounded(u31, &seed, chunkSize) + wy;
 			var biomeSeed: u64 = 562478564;
 			const drawnBiome = tree.getBiome(&biomeSeed, x, y);
-			if(!checkIfBiomeIsValid(x, y, drawnBiome.radius, selectedBiomes.items(), chunkLocalMaxBiomeRadius)) {
+			const radius = drawnBiome.radius + drawnBiome.radiusVariation*random.nextFloatSigned(&seed);
+			if(!checkIfBiomeIsValid(x, y, radius, selectedBiomes.items(), chunkLocalMaxBiomeRadius)) {
 				rejections += 1;
 				continue :outer;
 			}
 			for(neighbors.items) |otherChunk| {
-				if(!checkIfBiomeIsValid(x, y, drawnBiome.radius, otherChunk.biomesSortedByX, otherChunk.maxBiomeRadius)) {
+				if(!checkIfBiomeIsValid(x, y, radius, otherChunk.biomesSortedByX, otherChunk.maxBiomeRadius)) {
 					rejections += 1;
 					continue :outer;
 				}
 			}
 			rejections = 0;
-			chunkLocalMaxBiomeRadius = @max(chunkLocalMaxBiomeRadius, @as(i32, @intFromFloat(@ceil(drawnBiome.radius))));
+			chunkLocalMaxBiomeRadius = @max(chunkLocalMaxBiomeRadius, @as(i32, @intFromFloat(@ceil(radius))));
 			selectedBiomes.insertSorted(allocator, .{
 				.biome = drawnBiome,
 				.pos = .{x, y},
 				.height = random.nextFloat(&seed)*@as(f32, @floatFromInt(drawnBiome.maxHeight - drawnBiome.minHeight)) + @as(f32, @floatFromInt(drawnBiome.minHeight)),
-				.weight = 1.0/(std.math.pi*drawnBiome.radius*drawnBiome.radius),
+				.weight = 1.0/(std.math.pi*radius*radius),
+				.radius = radius,
 			});
 		}
 
@@ -265,9 +268,9 @@ const GenerationStructure = struct {
 		};
 	}
 
-	fn drawCircleOnTheMap(map: *ClimateMapFragment, biome: *const Biome, wx: i32, wy: i32, width: u31, height: u31, pos: Vec2i) void {
+	fn drawCircleOnTheMap(map: *ClimateMapFragment, biome: *const Biome, biomeRadius: f32, wx: i32, wy: i32, width: u31, height: u31, pos: Vec2i) void {
 		const relPos = @as(Vec2f, @floatFromInt(pos -% Vec2i{wx, wy}))/@as(Vec2f, @splat(terrain.SurfaceMap.MapFragment.biomeSize));
-		const relRadius = biome.radius/terrain.SurfaceMap.MapFragment.biomeSize;
+		const relRadius = biomeRadius/terrain.SurfaceMap.MapFragment.biomeSize;
 		const min = @floor(@max(Vec2f{0, 0}, relPos - @as(Vec2f, @splat(relRadius))));
 		const max = @ceil(@min(@as(Vec2f, @floatFromInt(Vec2i{width, height}))/@as(Vec2f, @splat(terrain.SurfaceMap.MapFragment.biomeSize)), relPos + @as(Vec2f, @splat(relRadius))));
 		var x: f32 = min[0];
@@ -303,17 +306,19 @@ const GenerationStructure = struct {
 		while(i < biomeCount) : (i += 1) {
 			if(biomeCount - i < random.nextFloat(&seed)) break;
 			const subBiome = biome.biome.subBiomes.sample(&seed).*;
-			var maxCenterOffset: f32 = biome.biome.radius - subBiome.radius - 32;
+			const radius = subBiome.radius + subBiome.radiusVariation*random.nextFloatSigned(&seed);
+			var maxCenterOffset: f32 = biome.radius - radius - 32;
 			if(maxCenterOffset < 0) {
 				maxCenterOffset = 0;
 			}
 			const point = biome.pos +% @as(Vec2i, @intFromFloat(random.nextPointInUnitCircle(&seed)*@as(Vec2f, @splat(maxCenterOffset))));
-			drawCircleOnTheMap(map, subBiome, wx, wy, width, height, point);
+			drawCircleOnTheMap(map, subBiome, radius, wx, wy, width, height, point);
 			extraBiomes.append(.{
 				.biome = subBiome,
 				.pos = point,
 				.height = random.nextFloat(&seed)*@as(f32, @floatFromInt(subBiome.maxHeight - subBiome.minHeight)) + @as(f32, @floatFromInt(subBiome.minHeight)),
-				.weight = 1.0/(std.math.pi*subBiome.radius*subBiome.radius)
+				.weight = 1.0/(std.math.pi*radius*radius),
+				.radius = radius,
 			});
 		}
 	}

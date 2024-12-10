@@ -72,8 +72,8 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 	RandomlyWeightedFractalNoise.generateSparseFractalTerrain(map.pos.wx, map.pos.wy, 256, worldSeed ^ 6758947592930535, mountainMap, map.pos.voxelSize);
 
 	// A smooth map for smaller hills.
-	const hillMap = PerlinNoise.generateSmoothNoise(main.globalAllocator, map.pos.wx, map.pos.wy, mapSize, mapSize, 128, 32, worldSeed ^ 157839765839495820, map.pos.voxelSize, 0.5);
-	defer hillMap.deinit(main.globalAllocator);
+	const hillMap = PerlinNoise.generateSmoothNoise(main.stackAllocator, map.pos.wx, map.pos.wy, mapSize, mapSize, 128, 32, worldSeed ^ 157839765839495820, map.pos.voxelSize, 0.5);
+	defer hillMap.deinit(main.stackAllocator);
 
 	// A fractal map to generate high-detail roughness.
 	const roughMap = Array2D(f32).init(main.stackAllocator, scaledSize, scaledSize);
