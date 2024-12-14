@@ -188,13 +188,13 @@ const GenerationStructure = struct {
 	
 	pub fn init(allocator: NeverFailingAllocator, wx: i32, wy: i32, width: u31, height: u31, tree: *TreeNode, worldSeed: u64) GenerationStructure {
 		const self: GenerationStructure = .{
-			.chunks = Array2D(*Chunk).init(allocator, 2 + @divExact(width, chunkSize), 2 + @divExact(height, chunkSize)),
+			.chunks = Array2D(*Chunk).init(allocator, 4 + @divExact(width, chunkSize), 4 + @divExact(height, chunkSize)),
 		};
 		var x: u31 = 0;
 		while(x < self.chunks.width) : (x += 1) {
 			var y: u31 = 0;
 			while(y < self.chunks.height) : (y += 1) {
-				self.chunks.ptr(x, y).* = Chunk.init(allocator, tree, worldSeed, wx +% x*chunkSize -% chunkSize, wy +% y*chunkSize -% chunkSize);
+				self.chunks.ptr(x, y).* = Chunk.init(allocator, tree, worldSeed, wx +% x*chunkSize -% 2*chunkSize, wy +% y*chunkSize -% 2*chunkSize);
 			}
 		}
 		return self;
@@ -207,7 +207,7 @@ const GenerationStructure = struct {
 		self.chunks.deinit(allocator);
 	}
 
-	fn findClosestBiomeTo(self: GenerationStructure, wx: i32, wy: i32, relX: u31, relY: u31) BiomeSample {
+	fn findClosestBiomeTo(self: GenerationStructure, wx: i32, wy: i32, relX: i32, relY: i32, worldSeed: u64) BiomeSample {
 		const x = wx +% relX*terrain.SurfaceMap.MapFragment.biomeSize;
 		const y = wy +% relY*terrain.SurfaceMap.MapFragment.biomeSize;
 		var closestDist = std.math.floatMax(f32);
@@ -218,15 +218,15 @@ const GenerationStructure = struct {
 		var hills: f32 = 0;
 		var mountains: f32 = 0;
 		var totalWeight: f32 = 0;
-		const cellX: i32 = relX/(chunkSize/terrain.SurfaceMap.MapFragment.biomeSize);
-		const cellY: i32 = relY/(chunkSize/terrain.SurfaceMap.MapFragment.biomeSize);
+		const cellX: i32 = @divFloor(relX, (chunkSize/terrain.SurfaceMap.MapFragment.biomeSize));
+		const cellY: i32 = @divFloor(relY, (chunkSize/terrain.SurfaceMap.MapFragment.biomeSize));
 		// Note that at a small loss of details we can assume that all BiomePoints are withing ±1 chunks of the current one.
-		var dx: i32 = 0;
-		while(dx <= 2) : (dx += 1) {
+		var dx: i32 = 1;
+		while(dx <= 3) : (dx += 1) {
 			const totalX = cellX + dx;
 			if(totalX < 0 or totalX >= self.chunks.width) continue;
-			var dy: i32 = 0;
-			while(dy <= 2) : (dy += 1) {
+			var dy: i32 = 1;
+			while(dy <= 3) : (dy += 1) {
 				const totalY = cellY + dy;
 				if(totalY < 0 or totalY >= self.chunks.height) continue;
 				const chunk = self.chunks.get(@intCast(totalX), @intCast(totalY));
@@ -242,7 +242,7 @@ const GenerationStructure = struct {
 					}
 					weight *= weight;
 					// The important bit is the ocean height, that's the only point where we actually need the transition point to be exact for beaches to occur.
-					weight /= @abs(biomePoint.height - 16);
+					weight /= @abs(biomePoint.height - 12);
 					height += biomePoint.height*weight;
 					roughness += biomePoint.biome.roughness*weight;
 					hills += biomePoint.biome.hills*weight;
@@ -265,6 +265,7 @@ const GenerationStructure = struct {
 			.roughness = roughness/totalWeight,
 			.hills = hills/totalWeight,
 			.mountains = mountains/totalWeight,
+			.seed = random.initSeed2D(worldSeed, closestBiomePoint.pos),
 		};
 	}
 
@@ -279,12 +280,14 @@ const GenerationStructure = struct {
 			while(y < max[1]) : (y += 1) {
 				const distSquare = vec.lengthSquare(Vec2f{x, y} - relPos);
 				if(distSquare < relRadius*relRadius) {
+					var seed = map.map[@intFromFloat(x)][@intFromFloat(y)].seed;
 					map.map[@intFromFloat(x)][@intFromFloat(y)] = .{
 						.biome = biome,
 						.roughness = biome.roughness,
 						.hills = biome.hills,
 						.mountains = biome.mountains,
-						.height = (@as(f32, @floatFromInt(biome.minHeight)) + @as(f32, @floatFromInt(biome.maxHeight)))/2, // TODO: Randomize
+						.height = @as(f32, @floatFromInt(biome.minHeight)) + @as(f32, @floatFromInt(biome.maxHeight - biome.minHeight))*random.nextFloat(&seed),
+						.seed = map.map[@intFromFloat(x)][@intFromFloat(y)].seed,
 					};
 				}
 			}
@@ -323,13 +326,67 @@ const GenerationStructure = struct {
 		}
 	}
 
-	pub fn toMap(self: GenerationStructure, map: *ClimateMapFragment, width: u31, height: u31, worldSeed: u64) void {
-		var x: u31 = 0;
-		while(x < width/terrain.SurfaceMap.MapFragment.biomeSize) : (x += 1) {
-			var y: u31 = 0;
-			while(y < height/terrain.SurfaceMap.MapFragment.biomeSize) : (y += 1) {
-				map.map[x][y] = self.findClosestBiomeTo(map.pos.wx, map.pos.wy, x, y);
+	fn addTransitionBiomes(comptime size: usize, comptime margin: usize, map: *[size][size]BiomeSample) void {
+		const neighborData = main.stackAllocator.create([16][size][size]u12);
+		defer main.stackAllocator.free(neighborData);
+		for(0..size) |x| {
+			for(0..size) |y| {
+				neighborData[0][x][y] = @bitCast(map[x][y].biome.properties);
 			}
+		}
+		for(1..neighborData.len) |i| {
+			for(1..size - 1) |x| {
+				for(1..size - 1) |y| {
+					neighborData[i][x][y] = neighborData[i-1][x][y] | neighborData[i-1][x-1][y] | neighborData[i-1][x+1][y] | neighborData[i-1][x][y-1] | neighborData[i-1][x][y+1];
+				}
+			}
+		}
+		for(margin..size - margin) |x| {
+			for(margin..size - margin) |y| {
+				const point = map[x][y];
+				if(point.biome.transitionBiomes.len == 0) {
+					std.debug.assert(!std.mem.eql(u8, "cubyz:ocean", point.biome.id));
+					continue;
+				}
+				var seed = point.seed;
+				for(point.biome.transitionBiomes) |transitionBiome| {
+					const biomeMask: u12 = @bitCast(transitionBiome.propertyMask);
+					const neighborMask = neighborData[@min(neighborData.len - 1, transitionBiome.width)][x][y];
+					// Check if all triplets have a matching entry:
+					const mask: u12 = 0b001001001001;
+					var result = biomeMask & neighborMask;
+					result = (result | result >> 1 | result >> 2);
+					if(result & mask == mask) {
+						if(random.nextFloat(&seed) < transitionBiome.chance) {
+							map[x][y] = .{
+								.biome = transitionBiome.biome,
+								.roughness = transitionBiome.biome.roughness,
+								.hills = transitionBiome.biome.hills,
+								.mountains = transitionBiome.biome.mountains,
+								.height = @as(f32, @floatFromInt(transitionBiome.biome.minHeight)) + @as(f32, @floatFromInt(transitionBiome.biome.maxHeight - transitionBiome.biome.minHeight))*random.nextFloat(&seed),
+								.seed = map[x][y].seed,
+							};
+							break;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	pub fn toMap(self: GenerationStructure, map: *ClimateMapFragment, width: u31, height: u31, worldSeed: u64) void {
+		const margin: u31 = chunkSize >> terrain.SurfaceMap.MapFragment.biomeShift;
+		var preMap: [ClimateMapFragment.mapEntrysSize + 2*margin][ClimateMapFragment.mapEntrysSize + 2*margin]BiomeSample = undefined;
+		var x: i32 = -@as(i32, margin);
+		while(x < width/terrain.SurfaceMap.MapFragment.biomeSize + margin) : (x += 1) {
+			var y: i32 = -@as(i32, margin);
+			while(y < height/terrain.SurfaceMap.MapFragment.biomeSize + margin) : (y += 1) {
+				preMap[@intCast(x + margin)][@intCast(y + margin)] = self.findClosestBiomeTo(map.pos.wx, map.pos.wy, x, y, worldSeed);
+			}
+		}
+		addTransitionBiomes(ClimateMapFragment.mapEntrysSize + 2*margin, margin, &preMap);
+		for(0..ClimateMapFragment.mapEntrysSize) |_x| {
+			@memcpy(&map.map[_x], preMap[_x + margin][margin..][0..ClimateMapFragment.mapEntrysSize]);
 		}
 
 		// Add some sub-biomes:
