@@ -472,7 +472,8 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 		std.log.info("Framebuffer: {}, {}", .{newWidth, newHeight});
 		width = @intCast(newWidth);
 		height = @intCast(newHeight);
-		main.renderer.updateViewport(width, height, main.settings.fov);
+		main.renderer.updateViewport(width, height);
+		main.renderer.updateFOV(main.settings.fov);
 		main.gui.updateGuiScale();
 		main.gui.updateWindowPositions();
 	}

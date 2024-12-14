@@ -112,19 +112,16 @@ var worldFrameBuffer: graphics.FrameBuffer = undefined;
 var lastWidth: u31 = 0;
 var lastHeight: u31 = 0;
 var lastFov: f32 = 0;
-var lastFovExtra: f32 = 0;
-pub fn updateViewport(width: u31, height: u31, fov: f32) void {
+pub fn updateViewport(width: u31, height: u31) void {
 	lastWidth = @intFromFloat(@as(f32, @floatFromInt(width))*main.settings.resolutionScale);
 	lastHeight = @intFromFloat(@as(f32, @floatFromInt(height))*main.settings.resolutionScale);
-	lastFov = fov;
-	game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(fov+lastFovExtra), @as(f32, @floatFromInt(lastWidth))/@as(f32, @floatFromInt(lastHeight)), zNear, zFar);
 	worldFrameBuffer.updateSize(lastWidth, lastHeight, c.GL_RGB16F);
 	worldFrameBuffer.unbind();
 }
 
-pub fn updateFovModifier(fovMod: f32) void {
-	lastFovExtra = fovMod * 20;
-	game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(lastFov+lastFovExtra), @as(f32, @floatFromInt(lastWidth))/@as(f32, @floatFromInt(lastHeight)), zNear, zFar);
+pub fn updateFOV(fov: f32) void {
+	lastFov = fov;
+	game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(fov), @as(f32, @floatFromInt(lastWidth))/@as(f32, @floatFromInt(lastHeight)), zNear, zFar);
 }
 
 pub fn render(playerPosition: Vec3d) void {
@@ -137,6 +134,9 @@ pub fn render(playerPosition: Vec3d) void {
 		ambient[2] = @max(0.1, world.ambientLight);
 		const skyColor = vec.xyz(world.clearColor);
 		game.fog.skyColor = skyColor;
+
+		const fov: f32 = settings.fov + (game.Player.getSpeedModifierBlocking() * 20);
+		updateFOV(fov);
 
 		renderWorld(world, ambient, skyColor, playerPosition);
 		const startTime = std.time.milliTimestamp();
@@ -179,7 +179,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	game.camera.updateViewMatrix();
 
 	// Uses FrustumCulling on the chunks.
-	const frustum = Frustum.init(Vec3f{0, 0, 0}, game.camera.viewMatrix, lastFov+lastFovExtra, lastWidth, lastHeight);
+	const frustum = Frustum.init(Vec3f{0, 0, 0}, game.camera.viewMatrix, lastFov, lastWidth, lastHeight);
 
 	const time: u32 = @intCast(std.time.milliTimestamp() & std.math.maxInt(u32));
 
@@ -204,7 +204,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	const meshes = mesh_storage.updateAndGetRenderChunks(world.conn, &frustum, playerPos, settings.renderDistance);
 
 	gpu_performance_measuring.startQuery(.chunk_rendering_preparation);
-	const direction = crosshairDirection(game.camera.viewMatrix, lastFov+lastFovExtra, lastWidth, lastHeight);
+	const direction = crosshairDirection(game.camera.viewMatrix, lastFov, lastWidth, lastHeight);
 	MeshSelection.select(playerPos, direction, game.Player.inventory.getItem(game.Player.selectedSlot));
 	MeshSelection.render(game.projectionMatrix, game.camera.viewMatrix, playerPos);
 
@@ -513,7 +513,8 @@ pub const MenuBackGround = struct {
 		lastTime = newTime;
 		const viewMatrix = Mat4f.rotationZ(angle);
 		shader.bind();
-		updateViewport(main.Window.width, main.Window.height, 70.0);
+		updateViewport(main.Window.width, main.Window.height);
+		updateFOV(70.0);
 
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
@@ -533,9 +534,11 @@ pub const MenuBackGround = struct {
 
 		const oldResolutionScale = main.settings.resolutionScale;
 		main.settings.resolutionScale = 1;
-		updateViewport(size, size, 90.0);
+		updateViewport(size, size);
+		updateFOV(90.0);
 		main.settings.resolutionScale = oldResolutionScale;
-		defer updateViewport(Window.width, Window.height, settings.fov);
+		defer updateViewport(Window.width, Window.height);
+		defer updateFOV(settings.fov);
 		
 		var buffer: graphics.FrameBuffer = undefined;
 		buffer.init(true, c.GL_NEAREST, c.GL_REPEAT);
