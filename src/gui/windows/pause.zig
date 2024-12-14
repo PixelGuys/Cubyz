@@ -20,7 +20,7 @@ fn reorderHudCallbackFunction(_: usize) void {
 }
 
 fn exitToMenu(_: usize) void {
-	main.exitToMenu(main.network.DisconnectType.exit);
+	main.exitToMenu(.exit);
 }
 
 pub fn onOpen() void {

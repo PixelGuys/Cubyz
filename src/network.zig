@@ -22,20 +22,20 @@ const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 pub const DisconnectType = enum(u8) {
-	exit,
-	timeout,
-	kick,
-	connError,
-};
+    exit = 0,
+    timeout = 1,
+    kick = 2,
+    connError = 3,
 
-pub fn getDisconnectMessage(disconnectType: DisconnectType) []const u8 {
-	switch(disconnectType) {
-		.exit => return "Disconnected from server.",
-		.timeout => return "Connection timed out.",
-		.kick => return "Kicked from server.",
-		.connError => return "Connection error.",
-	}
-}
+    pub fn getDisconnectMessage(self: DisconnectType) []const u8 {
+        switch(self) {
+            .exit => return "Disconnected from server.",
+            .timeout => return "Connection timed out.",
+            .kick => return "Kicked from server.",
+            .connError => return "Connection error.",
+        }
+    }
+};
 
 //TODO: Might want to use SSL or something similar to encode the message
 
@@ -432,7 +432,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 	pub fn deinit(self: *ConnectionManager) void {
 		for(self.connections.items) |conn| {
-			conn.disconnect(DisconnectType.exit);
+			conn.disconnect(.exit);
 		}
 
 		self.running.store(false, .monotonic);
@@ -609,7 +609,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 						std.log.info("timeout", .{});
 						// Timeout a connection if it was connect at some point. New connections are not timed out because that could annoy players(having to restart the connection several times).
 						self.mutex.unlock();
-						conn.disconnect(DisconnectType.timeout);
+						conn.disconnect(.timeout);
 						if(conn.user) |user| {
 							main.server.disconnect(user);
 						}
@@ -874,8 +874,7 @@ pub const Protocols = struct {
 			}
 		}
 		pub fn disconnect(conn: *Connection, disconnectType: DisconnectType) void {
-			const typeData = [1]u8{ @intFromEnum(disconnectType) };
-			conn.sendUnimportant(id, &typeData);
+            conn.sendUnimportant(id, &.{@intFromEnum(disconnectType)});
 		}
 	};
 	pub const entityPosition = struct {
@@ -1331,7 +1330,7 @@ pub const Connection = struct { // MARK: Connection
 	}
 
 	pub fn deinit(self: *Connection) void {
-		self.disconnect(DisconnectType.exit);
+		self.disconnect(.exit);
 		self.manager.finishCurrentReceive(); // Wait until all currently received packets are done.
 		for(self.unconfirmedPackets.items) |packet| {
 			main.globalAllocator.free(packet.data);
@@ -1685,7 +1684,7 @@ pub const Connection = struct { // MARK: Connection
 			if(@errorReturnTrace()) |trace| {
 				std.log.info("{}", .{trace});
 			}
-			self.disconnect(DisconnectType.connError);
+			self.disconnect(.connError);
 		};
 	}
 
@@ -1708,7 +1707,7 @@ pub const Connection = struct { // MARK: Connection
 					self.reinitialize();
 				} else {
 					std.log.err("Server reconnected?", .{});
-					self.disconnect(DisconnectType.connError);
+					self.disconnect(.connError);
 				}
 			}
 			if(id - @as(i33, self.lastIncompletePacket) >= 65536) {

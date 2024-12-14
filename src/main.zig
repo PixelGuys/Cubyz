@@ -680,9 +680,7 @@ pub fn main() void { // MARK: main()
 				game.world = null;
 			}
 			gui.openWindow("main");
-			const formattedError = std.fmt.allocPrint(stackAllocator.allocator, "{s}", .{network.getDisconnectMessage(exitNotification.load(.monotonic))}) catch unreachable;
-			defer stackAllocator.free(formattedError);
-			gui.windowlist.notification.raiseNotification(formattedError);
+			gui.windowlist.notification.raiseNotification(network.DisconnectType.getDisconnectMessage(exitNotification.load(.monotonic)));
 			audio.setMusic("cubyz:cubyz");
 		}
 	}
