@@ -112,10 +112,11 @@ var worldFrameBuffer: graphics.FrameBuffer = undefined;
 var lastWidth: u31 = 0;
 var lastHeight: u31 = 0;
 var lastFov: f32 = 0;
-pub fn updateViewport(width: u31, height: u31) void {
+pub fn updateViewport(width: u31, height: u31, fov: f32) void {
 	lastWidth = @intFromFloat(@as(f32, @floatFromInt(width))*main.settings.resolutionScale);
 	lastHeight = @intFromFloat(@as(f32, @floatFromInt(height))*main.settings.resolutionScale);
-	worldFrameBuffer.updateSize(lastWidth, lastHeight, c.GL_RGB16F);
+	updateFOV(fov);
+	worldFrameBuffer.updateSize(lastWidth, lastHeight, c.GL_RGB16F);	
 	worldFrameBuffer.unbind();
 }
 
@@ -134,9 +135,6 @@ pub fn render(playerPosition: Vec3d) void {
 		ambient[2] = @max(0.1, world.ambientLight);
 		const skyColor = vec.xyz(world.clearColor);
 		game.fog.skyColor = skyColor;
-
-		const fov: f32 = settings.fov + (game.Player.getSpeedModifierBlocking() * 20);
-		updateFOV(fov);
 
 		renderWorld(world, ambient, skyColor, playerPosition);
 		const startTime = std.time.milliTimestamp();
@@ -513,8 +511,7 @@ pub const MenuBackGround = struct {
 		lastTime = newTime;
 		const viewMatrix = Mat4f.rotationZ(angle);
 		shader.bind();
-		updateViewport(main.Window.width, main.Window.height);
-		updateFOV(70.0);
+		updateViewport(main.Window.width, main.Window.height, 70.0);
 
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
@@ -534,11 +531,10 @@ pub const MenuBackGround = struct {
 
 		const oldResolutionScale = main.settings.resolutionScale;
 		main.settings.resolutionScale = 1;
-		updateViewport(size, size);
-		updateFOV(90.0);
+		const fovPrev: f32 = lastFov;
+		updateViewport(size, size, 90.0);
 		main.settings.resolutionScale = oldResolutionScale;
-		defer updateViewport(Window.width, Window.height);
-		defer updateFOV(settings.fov);
+		defer updateViewport(Window.width, Window.height, fovPrev);
 		
 		var buffer: graphics.FrameBuffer = undefined;
 		buffer.init(true, c.GL_NEAREST, c.GL_REPEAT);
