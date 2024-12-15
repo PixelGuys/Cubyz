@@ -22,23 +22,23 @@ const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 pub const DisconnectType = enum(u8) {
-    exit = 0,
-    timeout = 1,
-    kick = 2,
-    connError = 3,
+	exit = 0,
+	timeout = 1,
+	kick = 2,
+	connError = 3,
 
 	pub fn showDisconnectNotification(self: DisconnectType) void {
 		main.gui.windowlist.notification.raiseNotification(self.getDisconnectMessage());
 	}
 
-    fn getDisconnectMessage(self: DisconnectType) []const u8 {
-        switch(self) {
-            .exit => return "Disconnected from server.",
-            .timeout => return "Connection timed out.",
-            .kick => return "Kicked from server.",
-            .connError => return "Connection error.",
-        }
-    }
+	fn getDisconnectMessage(self: DisconnectType) []const u8 {
+		switch(self) {
+			.exit => return "Disconnected from server.",
+			.timeout => return "Connection timed out.",
+			.kick => return "Kicked from server.",
+			.connError => return "Connection error.",
+		}
+	}
 };
 
 //TODO: Might want to use SSL or something similar to encode the message
@@ -878,7 +878,7 @@ pub const Protocols = struct {
 			}
 		}
 		pub fn disconnect(conn: *Connection, disconnectType: DisconnectType) void {
-            conn.sendUnimportant(id, &.{@intFromEnum(disconnectType)});
+			conn.sendUnimportant(id, &.{@intFromEnum(disconnectType)});
 		}
 	};
 	pub const entityPosition = struct {
@@ -1749,7 +1749,7 @@ pub const Connection = struct { // MARK: Connection
 		self.disconnected.store(true, .unordered);
 		self.manager.removeConnection(self);
 		std.log.info("Disconnected", .{});
-	}
+		}
 };
 
 const ProtocolTask = struct {
