@@ -326,6 +326,7 @@ pub const Biome = struct { // MARK: Biome
 					.chance = src.get(f32, "chance", 1),
 					.propertyMask = GenerationProperties.fromZon(src.getChild("properties"), false),
 					.width = src.get(u8, "width", 2),
+					.keepOriginalTerrain = src.get(f32, "keepOriginalTerrain", 0),
 				};
 				// Fill all unspecified property groups:
 				var properties: u12 = @bitCast(dst.propertyMask);
@@ -587,12 +588,14 @@ const UnfinishedTransitionBiomeData = struct {
 	chance: f32,
 	propertyMask: Biome.GenerationProperties,
 	width: u8,
+	keepOriginalTerrain: f32,
 };
 const TransitionBiome = struct {
 	biome: *const Biome,
 	chance: f32,
 	propertyMask: Biome.GenerationProperties,
 	width: u8,
+	keepOriginalTerrain: f32,
 };
 var unfinishedTransitionBiomes: std.StringHashMapUnmanaged([]UnfinishedTransitionBiomeData) = .{};
 
@@ -695,12 +698,14 @@ pub fn finishLoading() void {
 						.chance = 0,
 						.propertyMask = .{},
 						.width = 0,
+						.keepOriginalTerrain = 0,
 					};
 					continue;
 				},
 				.chance = src.chance,
 				.propertyMask = src.propertyMask,
 				.width = src.width,
+				.keepOriginalTerrain = src.keepOriginalTerrain,
 			};
 		}
 		main.globalAllocator.free(transitionBiomes);

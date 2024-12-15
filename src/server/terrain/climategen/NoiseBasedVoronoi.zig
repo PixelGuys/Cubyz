@@ -358,12 +358,13 @@ const GenerationStructure = struct {
 					result = (result | result >> 1 | result >> 2);
 					if(result & mask == mask) {
 						if(random.nextFloat(&seed) < transitionBiome.chance) {
+							const newHeight = @as(f32, @floatFromInt(transitionBiome.biome.minHeight)) + @as(f32, @floatFromInt(transitionBiome.biome.maxHeight - transitionBiome.biome.minHeight))*random.nextFloat(&seed);
 							map[x][y] = .{
 								.biome = transitionBiome.biome,
-								.roughness = transitionBiome.biome.roughness,
-								.hills = transitionBiome.biome.hills,
-								.mountains = transitionBiome.biome.mountains,
-								.height = @as(f32, @floatFromInt(transitionBiome.biome.minHeight)) + @as(f32, @floatFromInt(transitionBiome.biome.maxHeight - transitionBiome.biome.minHeight))*random.nextFloat(&seed),
+								.roughness = std.math.lerp(transitionBiome.biome.roughness, map[x][y].roughness, transitionBiome.keepOriginalTerrain),
+								.hills = std.math.lerp(transitionBiome.biome.hills, map[x][y].hills, transitionBiome.keepOriginalTerrain),
+								.mountains = std.math.lerp(transitionBiome.biome.mountains, map[x][y].mountains, transitionBiome.keepOriginalTerrain),
+								.height = std.math.lerp(newHeight, map[x][y].height, transitionBiome.keepOriginalTerrain),
 								.seed = map[x][y].seed,
 							};
 							break;
