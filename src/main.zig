@@ -680,7 +680,7 @@ pub fn main() void { // MARK: main()
 				game.world = null;
 			}
 			gui.openWindow("main");
-			gui.windowlist.notification.raiseNotification(network.DisconnectType.getDisconnectMessage(exitNotification.load(.monotonic)));
+			exitNotification.load(.monotonic).showDisconnectNotification();
 			audio.setMusic("cubyz:cubyz");
 		}
 	}

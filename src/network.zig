@@ -27,7 +27,11 @@ pub const DisconnectType = enum(u8) {
     kick = 2,
     connError = 3,
 
-    pub fn getDisconnectMessage(self: DisconnectType) []const u8 {
+	pub fn showDisconnectNotification(self: DisconnectType) void {
+		main.gui.windowlist.notification.raiseNotification(self.getDisconnectMessage());
+	}
+
+    fn getDisconnectMessage(self: DisconnectType) []const u8 {
         switch(self) {
             .exit => return "Disconnected from server.",
             .timeout => return "Connection timed out.",
