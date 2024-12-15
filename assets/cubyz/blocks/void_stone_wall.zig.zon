@@ -10,6 +10,6 @@
 	.texture_top = "cubyz:void_stone_wall_top",
 	.texture_bottom = "cubyz:void_stone_wall_top",
 	.item = .{
-		.texture = "wall/stone.png",
+		.texture = "wall/void_stone.png",
 	},
 }
