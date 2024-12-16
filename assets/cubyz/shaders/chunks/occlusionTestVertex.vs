@@ -8,7 +8,7 @@ struct ChunkData {
 	vec4 maxPos;
 	int voxelSize;
 	uint vertexStartOpaque;
-	uint faceCountsByNormalOpaque[7];
+	uint faceCountsByNormalOpaque[14];
 	uint lightStartOpaque;
 	uint vertexStartTransparent;
 	uint vertexCountTransparent;

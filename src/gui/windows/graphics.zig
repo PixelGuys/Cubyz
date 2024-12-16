@@ -68,8 +68,12 @@ fn fovFormatter(allocator: main.utils.NeverFailingAllocator, value: f32) []const
 	return std.fmt.allocPrint(allocator.allocator, "#ffffffField Of View: {d:.0}°", .{value}) catch unreachable;
 }
 
-fn LODFactorCallback(newValue: u16) void {
-	settings.LODFactor = @as(f32, @floatFromInt(newValue + 1))/2;
+fn lodDistanceFormatter(allocator: main.utils.NeverFailingAllocator, value: f32) []const u8 {
+	return std.fmt.allocPrint(allocator.allocator, "#ffffffOpaque leaves distance: {d:.0}", .{@round(value)}) catch unreachable;
+}
+
+fn lodDistanceCallback(newValue: f32) void {
+	settings.@"lod0.5Distance" = @round(newValue);
 	settings.save();
 }
 
@@ -103,6 +107,7 @@ pub fn onOpen() void {
 	list.add(ContinuousSlider.init(.{0, 0}, 128, 10.0, 154.0, @floatFromInt(settings.fpsCap orelse 154), &fpsCapCallback, &fpsCapFormatter));
 	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffRender Distance: ", "{}", &renderDistances, @min(@max(settings.renderDistance, renderDistances[0]) - renderDistances[0], renderDistances.len - 1), &renderDistanceCallback));
 	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffLeaves Quality (TODO: requires reload): ", "{}", &leavesQualities, settings.leavesQuality - leavesQualities[0], &leavesQualityCallback));
+	list.add(ContinuousSlider.init(.{0, 0}, 128, 50.0, 400.0, settings.@"lod0.5Distance", &lodDistanceCallback, &lodDistanceFormatter));
 	list.add(ContinuousSlider.init(.{0, 0}, 128, 40.0, 120.0, settings.fov, &fovCallback, &fovFormatter));
 	list.add(CheckBox.init(.{0, 0}, 128, "Bloom", settings.bloom, &bloomCallback));
 	list.add(CheckBox.init(.{0, 0}, 128, "Vertical Synchronization", settings.vsync, &vsyncCallback));

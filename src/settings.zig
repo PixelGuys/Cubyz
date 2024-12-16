@@ -45,6 +45,8 @@ pub var musicVolume: f32 = 1;
 
 pub var leavesQuality: u16 = 2;
 
+pub var @"lod0.5Distance": f32 = 200;
+
 
 pub var storageTime: i64 = 5000;
 
