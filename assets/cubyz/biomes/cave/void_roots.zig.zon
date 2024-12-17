@@ -27,15 +27,6 @@
 			.smoothness = 0.1,
 		},
 		.{
-			.id = "cubyz:ground_patch",
-			.block = "cubyz:air",
-			.chance = 0.005,
-			.width = 10,
-			.variation = 5,
-			.depth = 5,
-			.smoothness = 0.1,
-		},
-		.{
 			.id = "cubyz:stalagmite",
 			.block = "cubyz:stone",
 			.chance = 0.048,
