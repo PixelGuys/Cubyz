@@ -19,6 +19,7 @@ pub var window = GuiWindow {
 
 const padding: f32 = 8;
 const renderDistances = [_]u16{5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24};
+const lodValues = [_][]const u8{"0.5", "1", "2", "3", "4", "5"};
 
 const anisotropy = [_]u8{1, 2, 4, 8, 16};
 
@@ -50,6 +51,11 @@ fn fpsCapCallback(newValue: f32) void {
 
 fn renderDistanceCallback(newValue: u16) void {
 	settings.renderDistance = newValue + renderDistances[0];
+	settings.save();
+}
+
+fn highestLodCallback(newValue: u16) void {
+	settings.highestLod = @intCast(@min(newValue, settings.highestSupportedLod));
 	settings.save();
 }
 
@@ -106,6 +112,9 @@ pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	list.add(ContinuousSlider.init(.{0, 0}, 128, 10.0, 154.0, @floatFromInt(settings.fpsCap orelse 154), &fpsCapCallback, &fpsCapFormatter));
 	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffRender Distance: ", "{}", &renderDistances, @min(@max(settings.renderDistance, renderDistances[0]) - renderDistances[0], renderDistances.len - 1), &renderDistanceCallback));
+	if(main.game.world == null) {
+		list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffHighest LOD: ", "{s}", &lodValues, @min(settings.highestLod, settings.highestSupportedLod), &highestLodCallback));
+	}
 	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffLeaves Quality (TODO: requires reload): ", "{}", &leavesQualities, settings.leavesQuality - leavesQualities[0], &leavesQualityCallback));
 	list.add(ContinuousSlider.init(.{0, 0}, 128, 50.0, 400.0, settings.@"lod0.5Distance", &lodDistanceCallback, &lodDistanceFormatter));
 	list.add(ContinuousSlider.init(.{0, 0}, 128, 40.0, 120.0, settings.fov, &fovCallback, &fovFormatter));

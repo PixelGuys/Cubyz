@@ -1430,7 +1430,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				}
 			}
 			// lod border:
-			if(self.pos.voxelSize == 1 << settings.highestLOD) continue;
+			if(self.pos.voxelSize == @as(u31, 1) << settings.highestLod) continue;
 			const neighborMesh = mesh_storage.getNeighborAndIncreaseRefCount(self.pos, 2*self.pos.voxelSize, neighbor) orelse {
 				self.mutex.lock();
 				defer self.mutex.unlock();
