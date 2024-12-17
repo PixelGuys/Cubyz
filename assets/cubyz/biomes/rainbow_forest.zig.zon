@@ -21,7 +21,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:non_degradable_oak_leaves",
+			.leaves = "cubyz:oak_leaves",
 			.log = "cubyz:oak_log",
 			.top = "cubyz:oak_top",
 			.chance = 0.48,
@@ -40,6 +40,7 @@
 			.height_variation = 0,
 			.leafRadius = 16,
 			.leafRadius_variation = 3,
+			.priority = 0.1,
 		},
 		.{
 			.id = "cubyz:simple_tree",
@@ -52,6 +53,7 @@
 			.height_variation = 0,
 			.leafRadius = 16,
 			.leafRadius_variation = 3,
+			.priority = 0.1,
 		},
 		.{
 			.id = "cubyz:simple_tree",
@@ -64,6 +66,7 @@
 			.height_variation = 0,
 			.leafRadius = 16,
 			.leafRadius_variation = 3,
+			.priority = 0.1,
 		},
 		.{
 			.id = "cubyz:simple_tree",
@@ -76,6 +79,7 @@
 			.height_variation = 0,
 			.leafRadius = 16,
 			.leafRadius_variation = 3,
+			.priority = 0.1,
 		},
 		.{
 			.id = "cubyz:simple_tree",
@@ -88,6 +92,7 @@
 			.height_variation = 0,
 			.leafRadius = 16,
 			.leafRadius_variation = 3,
+			.priority = 0.1,
 		},
 		.{
 			.id = "cubyz:simple_tree",
@@ -100,6 +105,7 @@
 			.height_variation = 0,
 			.leafRadius = 16,
 			.leafRadius_variation = 3,
+			.priority = 0.1,
 		},
 	},
 }

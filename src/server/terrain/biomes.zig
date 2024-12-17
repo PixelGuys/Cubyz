@@ -28,6 +28,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 	vtable: VTable,
 	data: *anyopaque,
 	chance: f32,
+	priority: f32,
 	generationMode: GenerationMode,
 
 	pub fn initModel(parameters: ZonElement) ?SimpleStructureModel {
@@ -40,6 +41,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 			.vtable = vtable,
 			.data = vtable.loadModel(arena.allocator(), parameters),
 			.chance = parameters.get(f32, "chance", 0.1),
+			.priority = parameters.get(f32, "priority", 1),
 			.generationMode = std.meta.stringToEnum(GenerationMode, parameters.get([]const u8, "generationMode", "")) orelse vtable.generationMode,
 		};
 	}
@@ -76,7 +78,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 
 const Stripe = struct { // MARK: Stripe
 	direction: ?Vec3d,
-	block: u16,
+	block: main.blocks.Block,
 	minDistance: f64,
 	maxDistance: f64,
 	minOffset: f64,
@@ -90,7 +92,7 @@ const Stripe = struct { // MARK: Stripe
 			dir = main.vec.normalize(dir.?);
 		}
 
-		const block: u16 = blocks.getByID(parameters.get([]const u8, "block", ""));
+		const block: main.blocks.Block = blocks.getBlockById(parameters.get([]const u8, "block", ""));
 		
 		var minDistance: f64 = 0;
 		var maxDistance: f64 = 0;
@@ -158,6 +160,7 @@ fn hashGeneric(input: anytype) u64 {
 		.pointer => switch(@typeInfo(T).pointer.size) {
 			.One => blk: {
 				if(@typeInfo(@typeInfo(T).pointer.child) == .@"fn") break :blk 0;
+				if(@typeInfo(T).pointer.child == Biome) return hashGeneric(input.id);
 				if(@typeInfo(T).pointer.child == anyopaque) break :blk 0;
 				break :blk hashGeneric(input.*);
 			},
@@ -204,21 +207,25 @@ fn u32ToVec3(color: u32) Vec3f {
 
 /// A climate region with special ground, plants and structures.
 pub const Biome = struct { // MARK: Biome
-	const GenerationProperties = packed struct(u8) {
+	const GenerationProperties = packed struct(u12) {
 		// pairs of opposite properties. In-between values are allowed.
 		hot: bool = false,
+		temperate: bool = false,
 		cold: bool = false,
 
 		inland: bool = false,
+		land: bool = false,
 		ocean: bool = false,
 
 		wet: bool = false,
+		neitherWetNorDry: bool = false,
 		dry: bool = false,
 
 		mountain: bool = false,
+		lowTerrain: bool = false,
 		antiMountain: bool = false, //???
 
-		pub fn fromZon(zon: ZonElement) GenerationProperties {
+		pub fn fromZon(zon: ZonElement, initMidValues: bool) GenerationProperties {
 			var result: GenerationProperties = .{};
 			for(zon.toSlice()) |child| {
 				const property = child.as([]const u8, "");
@@ -228,6 +235,13 @@ pub const Biome = struct { // MARK: Biome
 					}
 				}
 			}
+			if(initMidValues) {
+				// Fill all mid values if no value was specified in a group:
+				const val: u12 = @bitCast(result);
+				const mask: u12 = 0b001001001001;
+				const empty = ~val & ~val >> 1 & ~val >> 2 & mask;
+				result = @bitCast(val | empty << 1);
+			}
 			return result;
 		}
 	};
@@ -235,6 +249,7 @@ pub const Biome = struct { // MARK: Biome
 	properties: GenerationProperties,
 	isCave: bool,
 	radius: f32,
+	radiusVariation: f32,
 	minHeight: i32,
 	maxHeight: i32,
 	interpolation: Interpolation,
@@ -245,7 +260,7 @@ pub const Biome = struct { // MARK: Biome
 	caves: f32,
 	caveRadiusFactor: f32,
 	crystals: u32,
-	stoneBlockType: u16,
+	stoneBlock: main.blocks.Block,
 	fogDensity: f32,
 	fogColor: Vec3f,
 	id: []const u8,
@@ -257,6 +272,7 @@ pub const Biome = struct { // MARK: Biome
 	vegetationModels: []SimpleStructureModel = &.{},
 	stripes: []Stripe = &.{},
 	subBiomes: main.utils.AliasTable(*const Biome) = .{.items = &.{}, .aliasData = &.{}},
+	transitionBiomes: []TransitionBiome = &.{},
 	maxSubBiomeCount: f32,
 	subBiomeTotalChance: f32 = 0,
 	preferredMusic: []const u8, // TODO: Support multiple possibilities that are chosen based on time and danger.
@@ -264,13 +280,16 @@ pub const Biome = struct { // MARK: Biome
 	chance: f32,
 
 	pub fn init(self: *Biome, id: []const u8, paletteId: u32, zon: ZonElement) void {
+		const minRadius = zon.get(f32, "radius", zon.get(f32, "minRadius", 256));
+		const maxRadius = zon.get(f32, "maxRadius", minRadius);
 		self.* = Biome {
 			.id = main.globalAllocator.dupe(u8, id),
 			.paletteId = paletteId,
-			.properties = GenerationProperties.fromZon(zon.getChild("properties")),
+			.properties = GenerationProperties.fromZon(zon.getChild("properties"), true),
 			.isCave = zon.get(bool, "isCave", false),
-			.radius = zon.get(f32, "radius", 256),
-			.stoneBlockType = blocks.getByID(zon.get([]const u8, "stoneBlock", "cubyz:stone")),
+			.radius = (maxRadius + minRadius)/2,
+			.radiusVariation = (maxRadius - minRadius)/2,
+			.stoneBlock = blocks.getBlockById(zon.get([]const u8, "stoneBlock", "cubyz:stone")),
 			.fogColor = u32ToVec3(zon.get(u32, "fogColor", 0xffccccff)),
 			.fogDensity = zon.get(f32, "fogDensity", 1.0)/15.0/128.0,
 			.roughness = zon.get(f32, "roughness", 0),
@@ -296,6 +315,27 @@ pub const Biome = struct { // MARK: Biome
 		for(parentBiomeList.toSlice()) |parent| {
 			const result = unfinishedSubBiomes.getOrPutValue(main.globalAllocator.allocator, parent.get([]const u8, "id", ""), .{}) catch unreachable;
 			result.value_ptr.append(main.globalAllocator, .{.biomeId = self.id, .chance = parent.get(f32, "chance", 1)});
+		}
+
+		const transitionBiomeList = zon.getChild("transitionBiomes").toSlice();
+		if(transitionBiomeList.len != 0) {
+			const transitionBiomes = main.globalAllocator.alloc(UnfinishedTransitionBiomeData, transitionBiomeList.len);
+			for(transitionBiomes, transitionBiomeList) |*dst, src| {
+				dst.* = .{
+					.biomeId = src.get([]const u8, "id", ""),
+					.chance = src.get(f32, "chance", 1),
+					.propertyMask = GenerationProperties.fromZon(src.getChild("properties"), false),
+					.width = src.get(u8, "width", 2),
+					.keepOriginalTerrain = src.get(f32, "keepOriginalTerrain", 0),
+				};
+				// Fill all unspecified property groups:
+				var properties: u12 = @bitCast(dst.propertyMask);
+				const mask: u12 = 0b001001001001;
+				const empty = ~properties & ~properties >> 1 & ~properties >> 2 & mask;
+				properties |= empty | empty << 1 | empty << 2;
+				dst.propertyMask = @bitCast(properties);
+			}
+			unfinishedTransitionBiomes.put(main.globalAllocator.allocator, self.id, transitionBiomes) catch unreachable;
 		}
 
 		self.structure = BlockStructure.init(main.globalAllocator, zon.getChild("ground_structure"));
@@ -327,6 +367,7 @@ pub const Biome = struct { // MARK: Biome
 	pub fn deinit(self: *Biome) void {
 		self.subBiomes.deinit(main.globalAllocator);
 		self.structure.deinit(main.globalAllocator);
+		main.globalAllocator.free(self.transitionBiomes);
 		main.globalAllocator.free(self.vegetationModels);
 		main.globalAllocator.free(self.stripes);
 		main.globalAllocator.free(self.preferredMusic);
@@ -341,7 +382,7 @@ pub const Biome = struct { // MARK: Biome
 /// Stores the vertical ground structure of a biome from top to bottom.
 pub const BlockStructure = struct { // MARK: BlockStructure
 	pub const BlockStack = struct {
-		blockType: u16 = 0,
+		block: main.blocks.Block = .{.typ = 0, .data = 0},
 		min: u31 = 0,
 		max: u31 = 0,
 
@@ -366,7 +407,7 @@ pub const BlockStructure = struct { // MARK: BlockStructure
 				self.min = 1;
 				self.max = 1;
 			}
-			self.blockType = blocks.getByID(blockId);
+			self.block = blocks.getBlockById(blockId);
 		}
 	};
 	structure: []BlockStack,
@@ -394,10 +435,8 @@ pub const BlockStructure = struct { // MARK: BlockStructure
 		for(self.structure) |blockStack| {
 			const total = blockStack.min + main.random.nextIntBounded(u32, seed, @as(u32, 1) + blockStack.max - blockStack.min);
 			for(0..total) |_| {
-				const block = blocks.Block{.typ = blockStack.blockType, .data = 0};
-				// TODO: block = block.mode().getNaturalStandard(block);
 				if(chunk.liesInChunk(x, y, depth)) {
-					chunk.updateBlockInGeneration(x, y, depth, block);
+					chunk.updateBlockInGeneration(x, y, depth, blockStack.block);
 				}
 				depth -%= chunk.super.pos.voxelSize;
 				if(depth -% minDepth <= 0)
@@ -434,16 +473,16 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 		var chanceMiddle: f32 = 0;
 		var chanceUpper: f32 = 0;
 		for(currentSlice) |*biome| {
-			var properties: u32 = @as(u8, @bitCast(biome.properties));
+			var properties: u32 = @as(u12, @bitCast(biome.properties));
 			properties >>= parameterShift;
-			properties = properties & 3;
-			if(properties == 0) {
-				chanceMiddle += biome.chance;
-			} else if(properties == 1) {
+			properties = properties & 7;
+			if(properties == 1) {
 				chanceLower += biome.chance;
-			} else if(properties == 2) {
+			} else if(properties == 4) {
 				chanceUpper += biome.chance;
-			} else unreachable;
+			} else {
+				chanceMiddle += biome.chance;
+			}
 		}
 		const totalChance = chanceLower + chanceMiddle + chanceUpper;
 		chanceLower /= totalChance;
@@ -472,10 +511,10 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 				list.deinit(main.stackAllocator);
 			};
 			for(currentSlice) |biome| {
-				var properties: u32 = @as(u8, @bitCast(biome.properties));
+				var properties: u32 = @as(u12, @bitCast(biome.properties));
 				properties >>= parameterShift;
-				const valueMap = [_]usize{1, 0, 2, 1};
-				lists[valueMap[properties & 3]].appendAssumeCapacity(biome);
+				const valueMap = [8]usize{1, 0, 1, 1, 2, 1, 1, 1};
+				lists[valueMap[properties & 7]].appendAssumeCapacity(biome);
 			}
 			lowerIndex = lists[0].items.len;
 			@memcpy(currentSlice[0..lowerIndex], lists[0].items);
@@ -484,9 +523,9 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 			@memcpy(currentSlice[upperIndex..], lists[2].items);
 		}
 
-		self.branch.children[0] = TreeNode.init(allocator, currentSlice[0..lowerIndex], parameterShift+2);
-		self.branch.children[1] = TreeNode.init(allocator, currentSlice[lowerIndex..upperIndex], parameterShift+2);
-		self.branch.children[2] = TreeNode.init(allocator, currentSlice[upperIndex..], parameterShift+2);
+		self.branch.children[0] = TreeNode.init(allocator, currentSlice[0..lowerIndex], parameterShift+3);
+		self.branch.children[1] = TreeNode.init(allocator, currentSlice[lowerIndex..upperIndex], parameterShift+3);
+		self.branch.children[2] = TreeNode.init(allocator, currentSlice[upperIndex..], parameterShift+3);
 
 		return self;
 	}
@@ -534,6 +573,7 @@ var biomes: main.List(Biome) = undefined;
 var caveBiomes: main.List(Biome) = undefined;
 var biomesById: std.StringHashMap(*Biome) = undefined;
 pub var byTypeBiomes: *TreeNode = undefined;
+
 const UnfinishedSubBiomeData = struct {
 	biomeId: []const u8,
 	chance: f32,
@@ -542,6 +582,22 @@ const UnfinishedSubBiomeData = struct {
 	}
 };
 var unfinishedSubBiomes: std.StringHashMapUnmanaged(main.ListUnmanaged(UnfinishedSubBiomeData)) = .{};
+
+const UnfinishedTransitionBiomeData = struct {
+	biomeId: []const u8,
+	chance: f32,
+	propertyMask: Biome.GenerationProperties,
+	width: u8,
+	keepOriginalTerrain: f32,
+};
+const TransitionBiome = struct {
+	biome: *const Biome,
+	chance: f32,
+	propertyMask: Biome.GenerationProperties,
+	width: u8,
+	keepOriginalTerrain: f32,
+};
+var unfinishedTransitionBiomes: std.StringHashMapUnmanaged([]UnfinishedTransitionBiomeData) = .{};
 
 pub fn init() void {
 	biomes = .init(main.globalAllocator);
@@ -594,7 +650,19 @@ pub fn register(id: []const u8, paletteId: u32, zon: ZonElement) void {
 pub fn finishLoading() void {
 	std.debug.assert(!finishedLoading);
 	finishedLoading = true;
-	byTypeBiomes = TreeNode.init(main.globalAllocator, biomes.items, 0);
+	var nonZeroBiomes: usize = biomes.items.len;
+	for(0..biomes.items.len) |_i| {
+		const i = biomes.items.len - _i - 1;
+		if(biomes.items[i].chance == 0) {
+			nonZeroBiomes -= 1;
+			const biome = biomes.items[i];
+			for(i..nonZeroBiomes) |j| {
+				biomes.items[j] = biomes.items[j + 1];
+			}
+			biomes.items[nonZeroBiomes] = biome;
+		}
+	}
+	byTypeBiomes = TreeNode.init(main.globalAllocator, biomes.items[0..nonZeroBiomes], 0);
 	for(biomes.items) |*biome| {
 		biomesById.put(biome.id, biome) catch unreachable;
 	}
@@ -615,6 +683,34 @@ pub fn finishLoading() void {
 		subBiomeDataList.deinit(main.globalAllocator);
 	}
 	unfinishedSubBiomes.clearAndFree(main.globalAllocator.allocator);
+
+	var transitionBiomeIterator = unfinishedTransitionBiomes.iterator();
+	while(transitionBiomeIterator.next()) |transitionBiomeData| {
+		const parentBiome = biomesById.get(transitionBiomeData.key_ptr.*) orelse unreachable;
+		const transitionBiomes = transitionBiomeData.value_ptr.*;
+		parentBiome.transitionBiomes = main.globalAllocator.alloc(TransitionBiome, transitionBiomes.len);
+		for(parentBiome.transitionBiomes, transitionBiomes) |*res, src| {
+			res.* = .{
+				.biome = biomesById.get(src.biomeId) orelse {
+					std.log.warn("Skipping transition biome with unknown id {s}", .{src.biomeId});
+					res.* = .{
+						.biome = &biomes.items[0],
+						.chance = 0,
+						.propertyMask = .{},
+						.width = 0,
+						.keepOriginalTerrain = 0,
+					};
+					continue;
+				},
+				.chance = src.chance,
+				.propertyMask = src.propertyMask,
+				.width = src.width,
+				.keepOriginalTerrain = src.keepOriginalTerrain,
+			};
+		}
+		main.globalAllocator.free(transitionBiomes);
+	}
+	unfinishedTransitionBiomes.clearAndFree(main.globalAllocator.allocator);
 }
 
 pub fn hasRegistered(id: []const u8) bool {

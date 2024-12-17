@@ -257,7 +257,7 @@ const ChunkManager = struct { // MARK: ChunkManager
 	}
 
 	pub fn deinit(self: ChunkManager) void {
-		for(0..main.settings.highestLOD) |_| {
+		for(0..main.settings.highestSupportedLod) |_| {
 			chunkCache.clear();
 		}
 		entityChunkHashMap.deinit();
@@ -656,14 +656,16 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			try terrain.SurfaceMap.regenerateLOD(self.name);
 		}
 		// Delete old LODs:
-		for(1..main.settings.highestLOD+1) |i| {
+		for(1..main.settings.highestSupportedLod+1) |i| {
 			const lod = @as(u32, 1) << @intCast(i);
 			const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/chunks", .{self.name}) catch unreachable;
 			defer main.stackAllocator.free(path);
 			const dir = std.fmt.allocPrint(main.stackAllocator.allocator, "{}", .{lod}) catch unreachable;
 			defer main.stackAllocator.free(dir);
 			main.files.deleteDir(path, dir) catch |err| {
-				std.log.err("Error while deleting directory {s}/{s}: {s}", .{path, dir, @errorName(err)});
+				if(err != error.FileNotFound) {
+					std.log.err("Error while deleting directory {s}/{s}: {s}", .{path, dir, @errorName(err)});
+				}
 			};
 		}
 		// Find all the stored chunks:
@@ -671,8 +673,11 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		defer chunkPositions.deinit();
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/chunks/1", .{self.name}) catch unreachable;
 		defer main.stackAllocator.free(path);
-		{
-			var dirX = try std.fs.cwd().openDir(path, .{.iterate = true});
+		blk: {
+			var dirX = std.fs.cwd().openDir(path, .{.iterate = true}) catch |err| {
+				if(err == error.FileNotFound) break :blk;
+				return err;
+			};
 			defer dirX.close();
 			var iterX = dirX.iterate();
 			while(try iterX.next()) |entryX| {
@@ -819,6 +824,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		// Item Entities
 		self.itemDropManager.update(deltaTime);
+		{ // Collect item entities:
+			server.mutex.lock();
+			defer server.mutex.unlock();
+			for(server.users.items) |user| {
+				self.itemDropManager.checkEntity(user);
+			}
+		}
 
 		// Store chunks and regions.
 		// Stores at least one chunk and one region per iteration.

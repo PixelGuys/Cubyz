@@ -1,0 +1,18 @@
+.{
+	.class = .leaf,
+	.hardness = 0.1,
+	.drops = .{
+		.auto,
+	},
+	.degradable = true,
+	.collide = false,
+	.alwaysViewThrough = true,
+	.absorbedLight = 0x121012,	
+	.model = "cubyz:plane",
+	.rotation = .carpet,
+	.texture = "cubyz:ivy",
+	.item= .{
+		.texture = "ivy.png",
+	},	
+	.lodReplacement = "cubyz:air",
+}

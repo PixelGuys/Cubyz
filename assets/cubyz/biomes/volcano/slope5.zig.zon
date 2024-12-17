@@ -1,0 +1,29 @@
+.{
+	.properties = .{
+		.mountain
+	},
+	.radius = 100,
+	.minHeight = 672,
+	.maxHeight = 672,
+	.roughness = 100,
+	.mountains = 50,
+
+	.interpolation = .linear,
+	.chance = 0,
+	
+	.music = "cubyz:out_of_breath",
+
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:volcano/slope4",
+			.chance = 1,
+		},
+	},
+
+	.maxSubBiomeCount = 1,
+
+	.ground_structure = .{
+		"0 to 10 cubyz:magma",
+	},
+	.stoneBlock = "cubyz:basalt",
+}

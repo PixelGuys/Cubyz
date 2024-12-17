@@ -54,7 +54,7 @@ pub const ClientEntity = struct {
 	}
 
 	pub fn getRenderPosition(self: *const ClientEntity) Vec3d {
-		return Vec3d{self.pos[0], self.pos[1], self.pos[2] + self.height/2};
+		return Vec3d{self.pos[0], self.pos[1], self.pos[2]};
 	}
 
 	pub fn updatePosition(self: *ClientEntity, pos: *const [6]f64, vel: *const [6]f64, time: i16) void {
@@ -79,11 +79,14 @@ pub const ClientEntityManager = struct {
 		projectionMatrix: c_int,
 		viewMatrix: c_int,
 		texture_sampler: c_int,
-		materialHasTexture: c_int,
 		light: c_int,
+		contrast: c_int,
 		ambientLight: c_int,
 		directionalLight: c_int,
 	} = undefined;
+	var modelBuffer: main.graphics.SSBO = undefined;
+	var modelSize: c_int = 0;
+	var modelTexture: main.graphics.Texture = undefined;
 	var shader: graphics.Shader = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
 	pub var entities: main.VirtualList(ClientEntity, 1 << 20) = undefined;
 	pub var mutex: std.Thread.Mutex = std.Thread.Mutex{};
@@ -91,6 +94,18 @@ pub const ClientEntityManager = struct {
 	pub fn init() void {
 		entities = .init();
 		shader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/entity_vertex.vs", "assets/cubyz/shaders/entity_fragment.fs", "", &uniforms);
+		
+		modelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entity/textures/snail_player.png");
+		const modelFile = main.files.read(main.stackAllocator, "assets/cubyz/entity/models/snail_player.obj") catch |err| blk: {
+			std.log.err("Error while reading player model: {s}", .{@errorName(err)});
+			break :blk &.{};
+		};
+		defer main.stackAllocator.free(modelFile);
+		const quadInfos = main.models.Model.loadRawModelDataFromObj(main.stackAllocator, modelFile);
+		defer main.stackAllocator.free(quadInfos);
+		modelBuffer = .initStatic(main.models.QuadInfo, quadInfos);
+		modelBuffer.bind(11);
+		modelSize = @intCast(quadInfos.len);
 	}
 
 	pub fn deinit() void {
@@ -126,7 +141,7 @@ pub const ClientEntityManager = struct {
 			const pos4f = Vec4f{
 				@floatCast(pos3d[0]),
 				@floatCast(pos3d[1]),
-				@floatCast(pos3d[2] + 1.5),
+				@floatCast(pos3d[2] + 1.0),
 				1,
 			};
 
@@ -137,7 +152,10 @@ pub const ClientEntityManager = struct {
 			const yCenter = (1 - projectedPos[1]/projectedPos[3])*@as(f32, @floatFromInt(main.Window.height/2));
 			
 			graphics.draw.setColor(0xff000000);
-			graphics.draw.text(ent.name, xCenter, yCenter, 32, .center);
+			var buf = graphics.TextBuffer.init(main.stackAllocator, ent.name, .{.color = 0}, false, .center);
+			defer buf.deinit();
+			const size = buf.calculateLineBreaks(32, 1024);
+			buf.render(xCenter - size[0]/2, yCenter - size[1], 32);
 		}
 	}
 
@@ -146,34 +164,34 @@ pub const ClientEntityManager = struct {
 		defer mutex.unlock();
 		update();
 		shader.bind();
+		c.glBindVertexArray(main.renderer.chunk_meshing.vao);
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
+		modelTexture.bindTo(0);
 		c.glUniform1i(uniforms.texture_sampler, 0);
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniform3fv(uniforms.directionalLight, 1, @ptrCast(&directionalLight));
+		c.glUniform1f(uniforms.contrast, 0.12);
 
 		for(entities.items()) |ent| {
 			if(ent.id == game.Player.id) continue; // don't render local player
 
-			// TODO: Entity meshes.
-			// TODO: c.glBindVertexArray(vao);
-			c.glUniform1i(uniforms.materialHasTexture, c.GL_TRUE);
 			c.glUniform1i(uniforms.light, @bitCast(@as(u32, 0xffffffff))); // TODO: Lighting
 
 			const pos: Vec3d = ent.getRenderPosition() - playerPos;
 			const modelMatrix = (
-				Mat4f.identity() // TODO: .scale(scale);
-				.mul(Mat4f.rotationZ(-ent.rot[2]))
-				.mul(Mat4f.rotationY(-ent.rot[1]))
-				.mul(Mat4f.rotationX(-ent.rot[0]))
+				Mat4f.identity()
 				.mul(Mat4f.translation(Vec3f{
 					@floatCast(pos[0]),
 					@floatCast(pos[1]),
-					@floatCast(pos[2]),
+					@floatCast(pos[2] - 1.0 + 0.09375),
 				}))
+				.mul(Mat4f.rotationZ(-ent.rot[2]))
+				//.mul(Mat4f.rotationY(-ent.rot[1]))
+				//.mul(Mat4f.rotationX(-ent.rot[0]))
 			);
-			const modelViewMatrix = modelMatrix.mul(game.camera.viewMatrix);
+			const modelViewMatrix = game.camera.viewMatrix.mul(modelMatrix);
 			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));
-			// TODO: c.glDrawElements(...);
+			c.glDrawElements(c.GL_TRIANGLES, 6*modelSize, c.GL_UNSIGNED_INT, null);
 		}
 	}
 
@@ -191,6 +209,10 @@ pub const ClientEntityManager = struct {
 			if(ent.id == id) {
 				ent.deinit(main.globalAllocator);
 				_ = entities.swapRemove(i);
+				if(i != entities.len) {
+					entities.items()[i].interpolatedValues.outPos = &entities.items()[i]._interpolationPos;
+					entities.items()[i].interpolatedValues.outVel = &entities.items()[i]._interpolationVel;
+				}
 				break;
 			}
 		}

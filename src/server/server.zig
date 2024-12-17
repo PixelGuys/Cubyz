@@ -273,6 +273,10 @@ fn sendEntityUpdates(comptime getInitialList: bool, allocator: utils.NeverFailin
 		updateList.array.append(.null);
 		updateList.array.appendSlice(world.?.itemDropManager.lastUpdates.array.items);
 	}
+	if(!getInitialList and updateList.array.items.len == 0) {
+		world.?.itemDropManager.mutex.unlock();
+		return;
+	}
 	const updateData = updateList.toStringEfficient(main.stackAllocator, &.{});
 	defer main.stackAllocator.free(updateData);
 	if(world.?.itemDropManager.lastUpdates.array.items.len != 0) {
@@ -383,7 +387,7 @@ pub fn disconnect(user: *User) void { // MARK: disconnect()
 
 pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 	if(!user.connected.load(.unordered)) return;
-	const message = std.fmt.allocPrint(main.stackAllocator.allocator, "{s} #ffff00left", .{user.name}) catch unreachable;
+	const message = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}§#ffff00 left", .{user.name}) catch unreachable;
 	defer main.stackAllocator.free(message);
 	mutex.lock();
 	defer mutex.unlock();
@@ -446,7 +450,7 @@ pub fn connect(user: *User) void {
 	const initialList = sendEntityUpdates(true, main.stackAllocator);
 	main.network.Protocols.entity.send(user.conn, initialList);
 	main.stackAllocator.free(initialList);
-	const message = std.fmt.allocPrint(main.stackAllocator.allocator, "{s} #ffff00joined", .{user.name}) catch unreachable;
+	const message = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}§#ffff00 joined", .{user.name}) catch unreachable;
 	defer main.stackAllocator.free(message);
 	mutex.lock();
 	defer mutex.unlock();
@@ -460,7 +464,7 @@ pub fn messageFrom(msg: []const u8, source: *User) void { // MARK: message
 		std.log.info("User \"{s}\" executed command \"{s}\"", .{source.name, msg}); // TODO use color \033[0;32m
 		command.execute(msg[1..], source);
 	} else {
-		const newMessage = std.fmt.allocPrint(main.stackAllocator.allocator, "[{s}#ffffff]{s}", .{source.name, msg}) catch unreachable;
+		const newMessage = std.fmt.allocPrint(main.stackAllocator.allocator, "[{s}§#ffffff] {s}", .{source.name, msg}) catch unreachable;
 		defer main.stackAllocator.free(newMessage);
 		main.server.mutex.lock();
 		defer main.server.mutex.unlock();

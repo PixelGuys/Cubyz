@@ -19,6 +19,7 @@ pub const QuadInfo = extern struct {
 	corners: [4]Vec3f,
 	cornerUV: [4]Vec2f,
 	textureSlot: u32,
+	opaqueInLod: u32 = 0,
 };
 
 const ExtraQuadInfo = struct {
@@ -177,6 +178,29 @@ pub const Model = struct {
 	}
 
 	pub fn loadModel(data: []const u8) u16 {
+		const quadInfos = loadRawModelDataFromObj(main.stackAllocator, data);
+		defer main.stackAllocator.free(quadInfos);
+		for(quadInfos) |*quad| {
+			var minUv: Vec2f = @splat(std.math.inf(f32));
+			for(0..4) |i| {
+				quad.cornerUV[i] *= @splat(4);
+				minUv = @min(minUv, quad.cornerUV[i]);
+			}
+			minUv = @floor(minUv);
+			quad.textureSlot = @as(u32, @intFromFloat(minUv[1])) * 4 + @as(u32, @intFromFloat(minUv[0]));
+			
+			if (minUv[0] < 0 or minUv[0] > 4 or minUv[1] < 0 or minUv[1] > 4) {
+				std.log.err("Uv value for model is outside of 0-1 range", .{});
+			}
+
+			for(0..4) |i| {
+				quad.cornerUV[i] -= minUv;
+			}
+		}
+		return Model.init(quadInfos);
+	}
+
+	pub fn loadRawModelDataFromObj(allocator: main.utils.NeverFailingAllocator, data: []const u8) []QuadInfo {
 		var vertices = main.List(Vec3f).init(main.stackAllocator);
 		defer vertices.deinit();
 
@@ -236,8 +260,6 @@ pub const Model = struct {
 				while (coordsIter.next()) |coord| : (i += 1) {
 					uv[i] = std.fmt.parseFloat(f32, coord) catch |e| blk: { std.log.err("Failed parsing {s} into float: {any}", .{coord, e}); break :blk 0; };
 				}
-				uv[0] *= 4;
-				uv[1] *= 4;
 				uvs.append(.{uv[0], uv[1]});
 			} else if (std.mem.eql(u8, line[0..2], "f ")) {
 				var coordsIter = std.mem.splitScalar(u8, line[2..], ' ');
@@ -276,29 +298,16 @@ pub const Model = struct {
 			}
 		}
 
-		var quadInfos = main.List(QuadInfo).init(main.stackAllocator);
+		var quadInfos = main.List(QuadInfo).initCapacity(allocator, tris.items.len + quads.items.len);
 		defer quadInfos.deinit();
 
 		for (tris.items) |face| {
 			const normal: Vec3f = normals.items[face.normal];
 			
-			var uvA: Vec2f = uvs.items[face.uvs[0]];
-			var uvB: Vec2f = uvs.items[face.uvs[2]];
-			var uvC: Vec2f = uvs.items[face.uvs[1]];
+			const uvA: Vec2f = uvs.items[face.uvs[0]];
+			const uvB: Vec2f = uvs.items[face.uvs[2]];
+			const uvC: Vec2f = uvs.items[face.uvs[1]];
 
-			const minUv = @floor(@min(@min(uvA, uvB), uvC));
-
-			if (minUv[0] < 0 or minUv[0] > 4 or minUv[1] < 0 or minUv[1] > 4) {
-				std.log.err("Uv value for model is outside of 0-1 range", .{});
-				continue;
-			}
-
-			const textureSlot = @as(u32, @intFromFloat(@floor(minUv[1]))) * 4 + @as(u32, @intFromFloat(@floor(minUv[0])));
-
-			uvA -= minUv;
-			uvB -= minUv;
-			uvC -= minUv;
-			
 			const cornerA: Vec3f = vertices.items[face.vertex[0]];
 			const cornerB: Vec3f = vertices.items[face.vertex[2]];
 			const cornerC: Vec3f = vertices.items[face.vertex[1]];
@@ -307,30 +316,17 @@ pub const Model = struct {
 				.normal = normal,
 				.corners = .{cornerA, cornerB, cornerC, cornerB},
 				.cornerUV = .{uvA, uvB, uvC, uvB},
-				.textureSlot = textureSlot,
+				.textureSlot = 0,
 			});
 		}
 
 		for (quadFaces.items) |face| {
 			const normal: Vec3f = normals.items[face.normal];
-			
-			var uvA: Vec2f = uvs.items[face.uvs[1]];
-			var uvB: Vec2f = uvs.items[face.uvs[0]];
-			var uvC: Vec2f = uvs.items[face.uvs[2]];
-			var uvD: Vec2f = uvs.items[face.uvs[3]];
 
-			const minUv = @floor(@min(@min(uvA, uvB), @min(uvC, uvD)));
-			const textureSlot = @as(u32, @intFromFloat(@floor(minUv[1]))) * 4 + @as(u32, @intFromFloat(@floor(minUv[0])));
-			
-			if (minUv[0] < 0 or minUv[0] > 4 or minUv[1] < 0 or minUv[1] > 4) {
-				std.log.err("Uv value for model is outside of 0-1 range", .{});
-				continue;
-			}
-
-			uvA -= minUv;
-			uvB -= minUv;
-			uvC -= minUv;
-			uvD -= minUv;
+			const uvA: Vec2f = uvs.items[face.uvs[1]];
+			const uvB: Vec2f = uvs.items[face.uvs[0]];
+			const uvC: Vec2f = uvs.items[face.uvs[2]];
+			const uvD: Vec2f = uvs.items[face.uvs[3]];
 
 			const cornerA: Vec3f = vertices.items[face.vertex[1]];
 			const cornerB: Vec3f = vertices.items[face.vertex[0]];
@@ -341,11 +337,11 @@ pub const Model = struct {
 				.normal = normal,
 				.corners = .{cornerA, cornerB, cornerC, cornerD},
 				.cornerUV = .{uvA, uvB, uvC, uvD},
-				.textureSlot = textureSlot,
+				.textureSlot = 0,
 			});
 		}
 
-		return Model.init(quadInfos.items);
+		return quadInfos.toOwnedSlice();
 	}
 
 	fn deinit(self: *const Model) void {
@@ -420,7 +416,8 @@ pub var models: main.List(Model) = undefined;
 
 var quadDeduplication: std.AutoHashMap([@sizeOf(QuadInfo)]u8, u16) = undefined;
 
-fn addQuad(info: QuadInfo) error{Degenerate}!u16 {
+fn addQuad(info_: QuadInfo) error{Degenerate}!u16 {
+	var info = info_;
 	if(quadDeduplication.get(std.mem.toBytes(info))) |id| {
 		return id;
 	}
@@ -433,6 +430,7 @@ fn addQuad(info: QuadInfo) error{Degenerate}!u16 {
 	}
 	if(cornerEqualities >= 2) return error.Degenerate; // One corner equality is fine, since then the quad degenerates to a triangle, which has a non-zero area.
 	const index: u16 = @intCast(quads.items.len);
+	info.opaqueInLod = @intFromBool(Model.getFaceNeighbor(&info) != null);
 	quads.append(info);
 	quadDeduplication.put(std.mem.toBytes(info), index) catch unreachable;
 

@@ -366,9 +366,9 @@ const Bloom = struct { // MARK: Bloom
 		if(width != currentWidth or height != currentHeight) {
 			width = currentWidth;
 			height = currentHeight;
-			buffer1.updateSize(width/4, height/4, c.GL_RGB16F);
+			buffer1.updateSize(width/4, height/4, c.GL_R11F_G11F_B10F);
 			std.debug.assert(buffer1.validate());
-			buffer2.updateSize(width/4, height/4, c.GL_RGB16F);
+			buffer2.updateSize(width/4, height/4, c.GL_R11F_G11F_B10F);
 			std.debug.assert(buffer2.validate());
 		}
 		gpu_performance_measuring.startQuery(.bloom_extract_downsample);
@@ -709,7 +709,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			if(block.typ != 0) {
 				if(block.blockClass() != .fluid and block.blockClass() != .air) { // TODO: Buckets could select fluids
 					const relativePlayerPos: Vec3f = @floatCast(pos - @as(Vec3d, @floatFromInt(voxelPos)));
-					if(block.mode().rayIntersection(block, item, voxelPos, relativePlayerPos, _dir)) |intersection| {
+					if(block.mode().rayIntersection(block, item, relativePlayerPos, _dir)) |intersection| {
 						if(intersection.distance <= closestDistance) {
 							selectedBlockPos = voxelPos;
 							selectionMin = intersection.min;
@@ -766,7 +766,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 							// Check if stuff can be added to the block itself:
 							if(itemBlock == block.typ) {
 								const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
-								if(rotationMode.generateData(main.game.world.?, selectedPos, relPos, lastDir, neighborDir, &block, false)) {
+								if(rotationMode.generateData(main.game.world.?, selectedPos, relPos, lastDir, neighborDir, &block, .{.typ = 0, .data = 0}, false)) {
 									if(!canPlaceBlock(selectedPos, block)) return;
 									updateBlockAndSendUpdate(selectedPos[0], selectedPos[1], selectedPos[2], block);
 									// TODO: _ = inventoryStack.add(item, @as(i32, removeAmount));
@@ -777,9 +777,10 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 							const neighborPos = posBeforeBlock;
 							neighborDir = selectedPos - posBeforeBlock;
 							const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(neighborPos)));
+							const neighborBlock = block;
 							block = mesh_storage.getBlock(neighborPos[0], neighborPos[1], neighborPos[2]) orelse return;
 							if(block.typ == itemBlock) {
-								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, &block, false)) {
+								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, &block, neighborBlock, false)) {
 									if(!canPlaceBlock(neighborPos, block)) return;
 									updateBlockAndSendUpdate(neighborPos[0], neighborPos[1], neighborPos[2], block);
 									// TODO: _ = inventoryStack.add(item, @as(i32, removeAmount));
@@ -789,7 +790,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 								if(block.solid()) return;
 								block.typ = itemBlock;
 								block.data = 0;
-								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, &block, true)) {
+								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, &block, neighborBlock, true)) {
 									if(!canPlaceBlock(neighborPos, block)) return;
 									updateBlockAndSendUpdate(neighborPos[0], neighborPos[1], neighborPos[2], block);
 									// TODO: _ = inventoryStack.add(item, @as(i32, removeAmount));
@@ -808,23 +809,14 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 	pub fn breakBlock(inventoryStack: *main.items.ItemStack) void {
 		if(selectedBlockPos) |selectedPos| {
-			var block = mesh_storage.getBlock(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
+			const block = mesh_storage.getBlock(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
+			var newBlock = block;
 			// TODO: Breaking animation and tools.
-			if(inventoryStack.item) |item| {
-				switch(item) {
-					.baseItem => |baseItem| {
-						if(baseItem.leftClickUse) |leftClick| {
-							const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
-							if(leftClick(main.game.world.?, selectedPos, relPos, lastDir, &block)) {
-								updateBlockAndSendUpdate(selectedPos[0], selectedPos[1], selectedPos[2], block);
-							}
-							return;
-						}
-					},
-					else => {},
-				}
+			const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
+			block.mode().onBlockBreaking(inventoryStack.item, relPos, lastDir, &newBlock);
+			if(!std.meta.eql(newBlock, block)) {
+				updateBlockAndSendUpdate(selectedPos[0], selectedPos[1], selectedPos[2], newBlock);
 			}
-			updateBlockAndSendUpdate(selectedPos[0], selectedPos[1], selectedPos[2], .{.typ = 0, .data = 0});
 		}
 	}
 

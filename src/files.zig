@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const main = @import("root");
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
@@ -40,6 +41,38 @@ fn cwd() Dir {
 	return Dir {
 		.dir = std.fs.cwd(),
 	};
+}
+
+var cubyzDir_: ?std.fs.Dir = null;
+
+pub fn cubyzDir() Dir {
+	return .{
+		.dir = cubyzDir_ orelse std.fs.cwd(),
+	};
+}
+
+fn flawedInit() !void {
+	const homePath = try std.process.getEnvVarOwned(main.stackAllocator.allocator, if(builtin.os.tag == .windows) "USERPROFILE" else "HOME");
+	defer main.stackAllocator.free(homePath);
+	var homeDir = try std.fs.openDirAbsolute(homePath, .{});
+	defer homeDir.close();
+	if(builtin.os.tag == .windows) {
+		cubyzDir_ = try homeDir.makeOpenPath("Saved Games/Cubyz", .{});
+	} else {
+		cubyzDir_ = try homeDir.makeOpenPath(".cubyz", .{});
+	}
+}
+
+pub fn init() void {
+	flawedInit() catch |err| {
+		std.log.err("Error {s} while opening global Cubyz directory. Using working directory instead.", .{@errorName(err)});
+	};
+}
+
+pub fn deinit() void {
+	if(cubyzDir_ != null) {
+		cubyzDir_.?.close();
+	}
 }
 
 pub const Dir = struct {

@@ -382,6 +382,33 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		}
 		return main.game.collision.collideWithBlock(block, blockPos[0], blockPos[1], blockPos[2], pos.*, @splat(radius), @splat(0)) != null;
 	}
+
+	pub fn checkEntity(self: *ItemDropManager, user: *main.server.User) void {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+		var ii: u32 = 0;
+		while(ii < self.size) {
+			const i = self.indices[ii];
+			if(self.list.items(.pickupCooldown)[i] > 0) {
+				ii += 1;
+				continue;
+			}
+			const hitbox = main.game.Player.outerBoundingBox;
+			const min = user.player.pos + hitbox.min;
+			const max = user.player.pos + hitbox.max;
+			const itemPos = self.list.items(.pos)[i];
+			const dist = @max(min - itemPos, itemPos - max);
+			if(@reduce(.Max, dist) < radius + pickupRange) {
+				const itemStack = &self.list.items(.itemStack)[i];
+				main.items.Inventory.Sync.ServerSide.tryCollectingToPlayerInventory(user, itemStack);
+				if(itemStack.amount == 0) {
+					self.removeLocked(i);
+					continue;
+				}
+			}
+			ii += 1;
+		}
+	}
 };
 
 pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
@@ -526,7 +553,8 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			};
 			if(self.item == .baseItem and self.item.baseItem.block != null and self.item.baseItem.image.imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
 				// Find sizes and free index:
-				const block = blocks.Block{.typ = self.item.baseItem.block.?, .data = 0}; // TODO: Natural standard
+				var block = blocks.Block{.typ = self.item.baseItem.block.?, .data = 0};
+				block.data = block.mode().naturalStandard;
 				const modelIndex = blocks.meshes.model(block);
 				const model = &main.models.models.items[modelIndex];
 				var data = main.List(u32).init(main.stackAllocator);

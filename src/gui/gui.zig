@@ -70,8 +70,11 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 
 	fn executeCommands() void {
 		mutex.lock();
-		defer mutex.unlock();
-		while(commands.popOrNull()) |command| {
+		const commands_ = main.stackAllocator.dupe(Command, commands.items);
+		defer main.stackAllocator.free(commands_);
+		commands.clearAndFree();
+		mutex.unlock();
+		for(commands_) |command| {
 			switch(command.action) {
 				.open => {
 					executeOpenWindowCommand(command.window);
@@ -84,7 +87,6 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 	}
 
 	fn executeOpenWindowCommand(window: *GuiWindow) void {
-		main.utils.assertLocked(&mutex);
 		defer updateWindowPositions();
 		for(openWindows.items, 0..) |_openWindow, i| {
 			if(_openWindow == window) {
@@ -95,14 +97,11 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 			}
 		}
 		openWindows.append(window);
-		mutex.unlock();
 		window.onOpenFn();
-		mutex.lock();
 		selectedWindow = null;
 	}
 
 	fn executeCloseWindowCommand(window: *GuiWindow) void {
-		main.utils.assertLocked(&mutex);
 		defer updateWindowPositions();
 		if(selectedWindow == window) {
 			selectedWindow = null;
@@ -110,12 +109,10 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 		for(openWindows.items, 0..) |_openWindow, i| {
 			if(_openWindow == window) {
 				_ = openWindows.swapRemove(i);
+				window.onCloseFn();
 				break;
 			}
 		}
-		mutex.unlock();
-		window.onCloseFn();
-		mutex.lock();
 	}
 };
 
@@ -222,13 +219,13 @@ pub fn save() void { // MARK: save()
 		guiZon.put(window.id, windowZon);
 	}
 
-	main.files.writeZon("gui_layout.zig.zon", guiZon) catch |err| {
+	main.files.cubyzDir().writeZon("gui_layout.zig.zon", guiZon) catch |err| {
 		std.log.err("Could not write gui_layout.zig.zon: {s}", .{@errorName(err)});
 	};
 }
 
 fn load() void {
-	const zon: ZonElement = main.files.readToZon(main.stackAllocator, "gui_layout.zig.zon") catch |err| blk: {
+	const zon: ZonElement = main.files.cubyzDir().readToZon(main.stackAllocator, "gui_layout.zig.zon") catch |err| blk: {
 		if(err != error.FileNotFound) {
 			std.log.err("Could not read gui_layout.zig.zon: {s}", .{@errorName(err)});
 		}
@@ -328,6 +325,7 @@ pub fn toggleWindow(id: []const u8) void {
 			for(openWindows.items, 0..) |_openWindow, i| {
 				if(_openWindow == window) {
 					_ = openWindows.swapRemove(i);
+					window.onCloseFn();
 					selectedWindow = null;
 					return;
 				}
@@ -368,7 +366,7 @@ pub fn closeWindowFromRef(window: *GuiWindow) void {
 pub fn closeWindow(id: []const u8) void {
 	for(windowList.items) |window| {
 		if(std.mem.eql(u8, window.id, id)) {
-			openWindowFromRef(window);
+			closeWindowFromRef(window);
 			return;
 		}
 	}
@@ -611,6 +609,28 @@ pub const inventory = struct { // MARK: inventory
 		carriedItemSlot.deinit();
 		leftClickSlots.deinit();
 		rightClickSlots.deinit();
+	}
+
+	pub fn deleteItemSlotReferences(slot: *const ItemSlot) void {
+		if(slot == hoveredItemSlot) {
+			hoveredItemSlot = null;
+		}
+		var i: usize = 0;
+		while(i < leftClickSlots.items.len) {
+			if(leftClickSlots.items[i] == slot) {
+				_ = leftClickSlots.swapRemove(i);
+				continue;
+			}
+			i += 1;
+		}
+		i = 0;
+		while(i < rightClickSlots.items.len) {
+			if(rightClickSlots.items[i] == slot) {
+				_ = rightClickSlots.swapRemove(i);
+				continue;
+			}
+			i += 1;
+		}
 	}
 
 	fn update() void {

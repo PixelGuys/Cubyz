@@ -18,11 +18,11 @@ pub const priority = 1024; // Within Cubyz the first to be executed, but mods mi
 
 pub const generatorSeed = 0x65c7f9fdc0641f94;
 
-var water: u16 = undefined;
+var water: main.blocks.Block = undefined;
 
 pub fn init(parameters: ZonElement) void {
 	_ = parameters;
-	water = main.blocks.getByID("cubyz:water");
+	water = main.blocks.getBlockById("cubyz:water");
 }
 
 pub fn deinit() void {
@@ -56,12 +56,11 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 						if(z > airBlockBelow) {
 							const zMin = @max(airBlockBelow + 1, zBiome);
 							if(biome.stripes.len == 0) {
-								const typ = biome.stoneBlockType;
-								chunk.updateBlockColumnInGeneration(x, y, zMin, z, .{.typ = typ, .data = 0}); // TODO: Natural standard.
+								chunk.updateBlockColumnInGeneration(x, y, zMin, z, biome.stoneBlock);
 								z = zMin;
 							} else {
 								while(z >= zMin) : (z -= chunk.super.pos.voxelSize) {
-									var typ = biome.stoneBlockType;
+									var block = biome.stoneBlock;
 									var seed = baseSeed;
 									for (biome.stripes) |stripe| {
 										const pos: Vec3d = .{
@@ -87,11 +86,11 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 										const width = (stripe.maxWidth - stripe.minWidth) * main.random.nextDouble(&seed) + stripe.minWidth;
 
 										if (@mod(d + offset, distance) < width) {
-											typ = stripe.block;
+											block = stripe.block;
 											break;
 										}
 									}
-									chunk.updateBlockInGeneration(x, y, z, .{.typ = typ, .data = 0}); // TODO: Natural standard.
+									chunk.updateBlockInGeneration(x, y, z, block);
 								}
 								z += chunk.super.pos.voxelSize;
 							}
@@ -108,7 +107,7 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 								chunk.updateBlockColumnInGeneration(x, y, oceanHeight, z, .{.typ = 0, .data = 0});
 								z = oceanHeight - chunk.super.pos.voxelSize;
 							}
-							chunk.updateBlockColumnInGeneration(x, y, zStart, z, .{.typ = water, .data = 0}); // TODO: Natural standard.
+							chunk.updateBlockColumnInGeneration(x, y, zStart, z, water);
 						}
 						z = zStart;
 					}

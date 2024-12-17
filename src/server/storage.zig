@@ -18,6 +18,7 @@ pub const RegionFile = struct { // MARK: RegionFile
 	mutex: std.Thread.Mutex = .{},
 	modified: bool = false,
 	refCount: Atomic(u16) = .init(1),
+	storedInHashMap: bool = false,
 	saveFolder: []const u8,
 
 	pub fn getIndex(x: usize, y: usize, z: usize) usize {
@@ -101,6 +102,8 @@ pub const RegionFile = struct { // MARK: RegionFile
 				self.store();
 			}
 			self.deinit();
+		} else if(prevVal == 2) {
+			tryHashmapDeinit(self);
 		}
 	}
 
@@ -179,19 +182,60 @@ pub const RegionFile = struct { // MARK: RegionFile
 const cacheSize = 1 << 8; // Must be a power of 2!
 const cacheMask = cacheSize - 1;
 const associativity = 8;
-var cache: main.utils.Cache(RegionFile, cacheSize, associativity, RegionFile.decreaseRefCount) = .{};
+var cache: main.utils.Cache(RegionFile, cacheSize, associativity, cacheDeinit) = .{};
+const HashContext = struct {
+	pub fn hash(_: HashContext, a: chunk.ChunkPosition) u64 {
+		return a.hashCode();
+	}
+	pub fn eql(_: HashContext, a: chunk.ChunkPosition, b: chunk.ChunkPosition) bool {
+		return std.meta.eql(a, b);
+	}
+};
+var stillUsedHashMap: std.HashMap(chunk.ChunkPosition, *RegionFile, HashContext, 50) = undefined;
+var hashMapMutex: std.Thread.Mutex = .{};
 
+fn cacheDeinit(region: *RegionFile) void {
+	if(region.refCount.load(.monotonic) != 1) { // Someone else might still use it, so we store it in the hashmap.
+		hashMapMutex.lock();
+		defer hashMapMutex.unlock();
+		region.storedInHashMap = true;
+		stillUsedHashMap.put(region.pos, region) catch unreachable;
+	} else {
+		region.decreaseRefCount();
+	}
+}
 fn cacheInit(pos: chunk.ChunkPosition) *RegionFile {
+	hashMapMutex.lock();
+	if(stillUsedHashMap.fetchRemove(pos)) |kv| {
+		const region = kv.value;
+		region.storedInHashMap = false;
+		hashMapMutex.unlock();
+		return region;
+	}
+	hashMapMutex.unlock();
 	const path: []const u8 = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/chunks", .{server.world.?.name}) catch unreachable;
 	defer main.stackAllocator.free(path);
 	return RegionFile.init(pos, path);
 }
+fn tryHashmapDeinit(region: *RegionFile) void {
+	{
+		hashMapMutex.lock();
+		defer hashMapMutex.unlock();
+		if(!region.storedInHashMap) return;
+		std.debug.assert(stillUsedHashMap.fetchRemove(region.pos).?.value == region);
+		region.storedInHashMap = false;
+	}
+	std.debug.assert(region.refCount.load(.unordered) == 1);
+	region.decreaseRefCount();
+}
 
 pub fn init() void {
+	stillUsedHashMap = .init(main.globalAllocator.allocator);
 }
 
 pub fn deinit() void {
 	cache.clear();
+	stillUsedHashMap.deinit();
 }
 
 pub fn loadRegionFileAndIncreaseRefCount(wx: i32, wy: i32, wz: i32, voxelSize: u31) *RegionFile {
@@ -213,7 +257,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 		deflate_with_8bit_palette = 3,
 		_,
 	};
-	pub fn compressChunk(allocator: main.utils.NeverFailingAllocator, ch: *chunk.Chunk) []const u8 {
+	pub fn compressChunk(allocator: main.utils.NeverFailingAllocator, ch: *chunk.Chunk, allowLossy: bool) []const u8 {
 		if(ch.data.paletteLength == 1) {
 			const data = allocator.alloc(u8, 8);
 			std.mem.writeInt(u32, data[0..4], @intFromEnum(CompressionAlgo.uniform), .big);
@@ -222,8 +266,32 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 		}
 		if(ch.data.paletteLength < 256) {
 			var uncompressedData: [chunk.chunkVolume]u8 = undefined;
+			var solidMask: [chunk.chunkSize*chunk.chunkSize]u32 = undefined;
 			for(0..chunk.chunkVolume) |i| {
 				uncompressedData[i] = @intCast(ch.data.data.getValue(i));
+				if(allowLossy) {
+					if(ch.data.palette[uncompressedData[i]].solid()) {
+						solidMask[i >> 5] |= @as(u32, 1) << @intCast(i & 31);
+					} else {
+						solidMask[i >> 5] &= ~(@as(u32, 1) << @intCast(i & 31));
+					}
+				}
+			}
+			if(allowLossy) {
+				for(0..32) |x| {
+					for(0..32) |y| {
+						if(x == 0 or x == 31 or y == 0 or y == 31) {
+							continue;
+						}
+						const index = x*32 + y;
+						var colMask = solidMask[index] >> 1 & solidMask[index] << 1 & solidMask[index - 1] & solidMask[index + 1] & solidMask[index - 32] & solidMask[index + 32];
+						while(colMask != 0) {
+							const z = @ctz(colMask);
+							colMask &= ~(@as(u32, 1) << @intCast(z));
+							uncompressedData[index*32 + z] = uncompressedData[index*32 + z - 1];
+						}
+					}
+				}
 			}
 			const compressedData = main.utils.Compression.deflate(main.stackAllocator, &uncompressedData, .default);
 			defer main.stackAllocator.free(compressedData);

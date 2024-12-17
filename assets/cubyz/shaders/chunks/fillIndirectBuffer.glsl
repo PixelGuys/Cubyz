@@ -11,10 +11,9 @@ struct ChunkData {
 	ivec4 position;
 	vec4 minPos;
 	vec4 maxPos;
-	int visibilityMask;
 	int voxelSize;
 	uint vertexStartOpaque;
-	uint faceCountsByNormalOpaque[7];
+	uint faceCountsByNormalOpaque[14];
 	uint lightStartOpaque;
 	uint vertexStartTransparent;
 	uint vertexCountTransparent;
@@ -49,20 +48,22 @@ uniform bool isTransparent;
 uniform bool onlyDrawPreviouslyInvisible;
 uniform ivec3 playerPositionInteger;
 
-bool isVisible(int dir, ivec3 relativePlayerPos, int voxelSize) {
+uniform float lodDistance;
+
+bool isVisible(int dir, ivec3 playerDist) {
 	switch(dir) {
 	case 0: // dirUp
-		return relativePlayerPos.z >= 0;
+		return playerDist.z >= 0;
 	case 1: // dirDown
-		return relativePlayerPos.z < 32*voxelSize;
+		return playerDist.z <= 0;
 	case 2: // dirPosX
-		return relativePlayerPos.x >= 0;
+		return playerDist.x >= 0;
 	case 3: // dirNegX
-		return relativePlayerPos.x < 32*voxelSize;
+		return playerDist.x <= 0;
 	case 4: // dirPosY
-		return relativePlayerPos.y >= 0;
+		return playerDist.y >= 0;
 	case 5: // dirNegY
-		return relativePlayerPos.y < 32*voxelSize;
+		return playerDist.y <= 0;
 	}
 	return true;
 }
@@ -83,15 +84,22 @@ void main() {
 		}
 		chunks[chunkID].visibilityState = 0;
 	} else {
-		uint commandIndex = commandIndexStart + gl_GlobalInvocationID.x*4;
-		uint commandIndexEnd = commandIndex + 4;
+		uint commandIndex = commandIndexStart + gl_GlobalInvocationID.x*8;
+		uint commandIndexEnd = commandIndex + 8;
 		uint groupFaceOffset = 0;
 		uint groupFaceCount = 0;
 		uint oldoldvisibilityState = chunks[chunkID].oldVisibilityState;
+		ivec3 playerDist = playerPositionInteger - chunks[chunkID].position.xyz;
+		if(playerDist.x > 0) playerDist.x = max(0, playerDist.x - 32*chunks[chunkID].voxelSize);
+		if(playerDist.y > 0) playerDist.y = max(0, playerDist.y - 32*chunks[chunkID].voxelSize);
+		if(playerDist.z > 0) playerDist.z = max(0, playerDist.z - 32*chunks[chunkID].voxelSize);
+		float playerDistSquare = dot(playerDist, playerDist);
+
 		if((onlyDrawPreviouslyInvisible && chunks[chunkID].oldVisibilityState == 0 && chunks[chunkID].visibilityState != 0) || (chunks[chunkID].oldVisibilityState != 0 && !onlyDrawPreviouslyInvisible)) {
-			for(int i = 0; i < 7; i++) {
+			for(int i = 0; i < 14; i++) {
+				if(playerDistSquare >= lodDistance*lodDistance && i == 7) break;
 				uint faceCount = chunks[chunkID].faceCountsByNormalOpaque[i];
-				if(isVisible(i, playerPositionInteger - chunks[chunkID].position.xyz, chunks[chunkID].voxelSize) || faceCount == 0) {
+				if(isVisible(i%7, playerDist) || faceCount == 0) {
 					groupFaceCount += faceCount;
 				} else {
 					if(groupFaceCount != 0) {

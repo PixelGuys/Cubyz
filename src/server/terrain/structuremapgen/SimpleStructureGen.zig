@@ -62,8 +62,11 @@ pub fn generate(map: *StructureMapFragment, worldSeed: u64) void {
 							.model = model,
 						};
 						map.addStructure(.{
-							.data = @ptrCast(data),
-							.generateFn = &SimpleStructure.generate,
+							.internal = .{
+								.data = @ptrCast(data),
+								.generateFn = &SimpleStructure.generate,
+							},
+							.priority = model.priority,
 						}, .{px -% margin, py -% margin, relZ -% margin -% 15}, .{px +% margin, py +% margin, relZ +% margin +% 15});
 						break;
 					} else {
@@ -100,8 +103,11 @@ pub fn generate(map: *StructureMapFragment, worldSeed: u64) void {
 							.model = model,
 						};
 						map.addStructure(.{
-							.data = @ptrCast(data),
-							.generateFn = &SimpleStructure.generate,
+							.internal = .{
+								.data = @ptrCast(data),
+								.generateFn = &SimpleStructure.generate,
+							},
+							.priority = model.priority,
 						}, .{px -% margin, py -% margin, relZ -% margin -% 15}, .{px +% margin, py +% margin, relZ +% margin +% 15});
 						break;
 					} else {

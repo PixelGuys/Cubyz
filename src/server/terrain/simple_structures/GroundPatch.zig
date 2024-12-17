@@ -17,7 +17,7 @@ pub const generationMode = .floor;
 
 const GroundPatch = @This();
 
-blockType: u16,
+block: main.blocks.Block,
 width: f32,
 variation: f32,
 depth: i32,
@@ -26,7 +26,7 @@ smoothness: f32,
 pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) *GroundPatch {
 	const self = arenaAllocator.create(GroundPatch);
 	self.* = .{
-		.blockType = main.blocks.getByID(parameters.get([]const u8, "block", "")),
+		.block = main.blocks.getBlockById(parameters.get([]const u8, "block", "")),
 		.width = parameters.get(f32, "width", 5),
 		.variation = parameters.get(f32, "variation", 1),
 		.depth = parameters.get(i32, "depth", 2),
@@ -52,6 +52,13 @@ pub fn generate(self: *GroundPatch, x: i32, y: i32, z: i32, chunk: *main.chunk.S
 	const yMin = @max(0, y - @as(i32, @intFromFloat(@ceil(width))));
 	const yMax = @min(chunk.super.width, y + @as(i32, @intFromFloat(@ceil(width))));
 
+	var baseHeight = z;
+	if(caveMap.isSolid(x, y, baseHeight)) {
+		baseHeight = caveMap.findTerrainChangeAbove(x, y, baseHeight) - 1;
+	} else {
+		baseHeight = caveMap.findTerrainChangeBelow(x, y, baseHeight);
+	}
+
 	var px = chunk.startIndex(xMin);
 	while(px < xMax) : (px += 1) {
 		var py = chunk.startIndex(yMin);
@@ -67,11 +74,12 @@ pub fn generate(self: *GroundPatch, x: i32, y: i32, z: i32, chunk: *main.chunk.S
 				} else {
 					startHeight = caveMap.findTerrainChangeBelow(px, py, startHeight);
 				}
+				if(@abs(startHeight -% baseHeight) > 5) continue;
 				var pz = chunk.startIndex(startHeight - self.depth + 1);
 				while(pz <= startHeight) : (pz += chunk.super.pos.voxelSize) {
 					if(dist <= self.smoothness or (dist - self.smoothness)/(1 - self.smoothness) < random.nextFloat(seed)) {
 						if(chunk.liesInChunk(px, py, pz))  {
-							chunk.updateBlockInGeneration(px, py, pz, .{.typ = self.blockType, .data = 0}); // TODO: Natural standard.
+							chunk.updateBlockInGeneration(px, py, pz, self.block);
 						}
 					}
 				}

@@ -17,6 +17,7 @@ pub const BiomeSample = struct {
 	roughness: f32,
 	hills: f32,
 	mountains: f32,
+	seed: u64,
 };
 
 const ClimateMapFragmentPosition = struct {
@@ -42,8 +43,10 @@ pub const ClimateMapFragment = struct {
 	pub const mapSize = 1 << mapShift;
 	pub const mapMask: i32 = mapSize - 1;
 
+	pub const mapEntrysSize = mapSize >> MapFragment.biomeShift;
+
 	pos: ClimateMapFragmentPosition,
-	map: [mapSize >> MapFragment.biomeShift][mapSize >> MapFragment.biomeShift]BiomeSample = undefined,
+	map: [mapEntrysSize][mapEntrysSize]BiomeSample = undefined,
 	
 	refCount: Atomic(u16) = .init(0),
 
@@ -101,9 +104,9 @@ pub const ClimateMapGenerator = struct {
 };
 
 
-const cacheSize = 1 << 8; // Must be a power of 2!
+const cacheSize = 1 << 5; // Must be a power of 2!
 const cacheMask = cacheSize - 1;
-const associativity = 4;
+const associativity = 8; // ~400 MiB
 var cache: Cache(ClimateMapFragment, cacheSize, associativity, ClimateMapFragment.decreaseRefCount) = .{};
 var profile: TerrainGenerationProfile = undefined;
 

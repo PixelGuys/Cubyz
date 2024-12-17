@@ -178,7 +178,7 @@ fn registerBlockDrop(typ: u16, zon: ZonElement) void {
 
 fn registerLodReplacement(typ: u16, zon: ZonElement) void {
 	if(zon.get(?[]const u8, "lodReplacement", null)) |replacement| {
-		_lodReplacement[typ] = getByID(replacement);
+		_lodReplacement[typ] = getTypeById(replacement);
 	} else {
 		_lodReplacement[typ] = typ;
 	}
@@ -186,7 +186,7 @@ fn registerLodReplacement(typ: u16, zon: ZonElement) void {
 
 fn registerOpaqueVariant(typ: u16, zon: ZonElement) void {
 	if(zon.get(?[]const u8, "opaqueVariant", null)) |replacement| {
-		_opaqueVariant[typ] = getByID(replacement);
+		_opaqueVariant[typ] = getTypeById(replacement);
 	} else {
 		_opaqueVariant[typ] = typ;
 	}
@@ -205,7 +205,7 @@ pub fn finishBlocks(zonElements: std.StringHashMap(ZonElement)) void {
 	for(ores.items, unfinishedOreSourceBlockIds.items) |*ore, oreIds| {
 		ore.sources = allocator.alloc(u16, oreIds.len);
 		for(ore.sources, oreIds) |*source, id| {
-			source.* = getByID(id);
+			source.* = getTypeById(id);
 			main.globalAllocator.free(id);
 		}
 		main.globalAllocator.free(oreIds);
@@ -222,12 +222,23 @@ pub fn reset() void {
 	std.debug.assert(unfinishedOreSourceBlockIds.items.len == 0);
 }
 
-pub fn getByID(id: []const u8) u16 {
+pub fn getTypeById(id: []const u8) u16 {
 	if(reverseIndices.get(id)) |result| {
 		return result;
 	} else {
 		std.log.warn("Couldn't find block {s}. Replacing it with air...", .{id});
 		return 0;
+	}
+}
+
+pub fn getBlockById(id: []const u8) Block {
+	if(reverseIndices.get(id)) |resultType| {
+		var result: Block = .{.typ = resultType, .data = 0};
+		result.data = result.mode().naturalStandard;
+		return result;
+	} else {
+		std.log.warn("Couldn't find block {s}. Replacing it with air...", .{id});
+		return .{.typ = 0, .data = 0};
 	}
 }
 

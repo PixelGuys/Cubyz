@@ -10,7 +10,7 @@ pub const entityLookback: i16 = 100;
 
 pub const version = "Cubyz α 0.12.0";
 
-pub const highestLOD: u5 = 5;
+pub const highestSupportedLod: u3 = 5;
 
 
 pub var simulationDistance: u16 = 4;
@@ -29,6 +29,8 @@ pub var controllerSensitivity: f32 = 1;
 
 pub var renderDistance: u16 = 7;
 
+pub var highestLod: u3 = highestSupportedLod;
+
 pub var resolutionScale: f32 = 1;
 
 pub var bloom: bool = true;
@@ -37,13 +39,15 @@ pub var vsync: bool = true;
 
 pub var playerName: []const u8 = "";
 
-pub var lastUsedIPAddress: []const u8 = "127.0.0.1";
+pub var lastUsedIPAddress: []const u8 = "";
 
 pub var guiScale: ?f32 = null;
 
 pub var musicVolume: f32 = 1;
 
 pub var leavesQuality: u16 = 2;
+
+pub var @"lod0.5Distance": f32 = 200;
 
 
 pub var storageTime: i64 = 5000;
@@ -60,7 +64,7 @@ pub var developerGPUInfiniteLoopDetection: bool = false;
 pub var controllerAxisDeadzone: f32 = 0.0;
 
 pub fn init() void {
-	const zon: ZonElement = main.files.readToZon(main.stackAllocator, "settings.zig.zon") catch |err| blk: {
+	const zon: ZonElement = main.files.cubyzDir().readToZon(main.stackAllocator, "settings.zig.zon") catch |err| blk: {
 		if(err != error.FileNotFound) {
 			std.log.err("Could not read settings file: {s}", .{@errorName(err)});
 		}
@@ -149,7 +153,7 @@ pub fn save() void {
 	zonObject.put("keyboard", keyboard);
 
 	// Write to file:
-	main.files.writeZon("settings.zig.zon", zonObject) catch |err| {
+	main.files.cubyzDir().writeZon("settings.zig.zon", zonObject) catch |err| {
 		std.log.err("Couldn't write settings to file: {s}", .{@errorName(err)});
 	};
 }

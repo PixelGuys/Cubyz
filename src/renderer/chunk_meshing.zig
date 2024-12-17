@@ -41,6 +41,7 @@ const UniformStruct = struct {
 	reflectivityAndAbsorptionSampler: c_int,
 	reflectionMap: c_int,
 	reflectionMapSize: c_int,
+	lodDistance: c_int,
 	zNear: c_int,
 	zFar: c_int,
 };
@@ -54,6 +55,7 @@ pub var commandUniforms: struct {
 	isTransparent: c_int,
 	playerPositionInteger: c_int,
 	onlyDrawPreviouslyInvisible: c_int,
+	lodDistance: c_int,
 } = undefined;
 pub var occlusionTestShader: Shader = undefined;
 pub var occlusionTestUniforms: struct {
@@ -140,6 +142,8 @@ fn bindCommonUniforms(locations: *UniformStruct, projMatrix: Mat4f, ambient: Vec
 
 	c.glUniform1f(locations.contrast, 0.12);
 
+	c.glUniform1f(locations.lodDistance, main.settings.@"lod0.5Distance");
+
 	c.glUniformMatrix4fv(locations.viewMatrix, 1, c.GL_TRUE, @ptrCast(&game.camera.viewMatrix));
 
 	c.glUniform3f(locations.ambientLight, ambient[0], ambient[1], ambient[2]);
@@ -171,13 +175,14 @@ pub fn bindTransparentShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, playe
 }
 
 pub fn drawChunksIndirect(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d, transparent: bool) void {
-	const drawCallsEstimate: u31 = @intCast(if(transparent) chunkIDs.len else chunkIDs.len*4);
+	const drawCallsEstimate: u31 = @intCast(if(transparent) chunkIDs.len else chunkIDs.len*8);
 	var chunkIDAllocation: main.graphics.SubAllocation = .{.start = 0, .len = 0};
 	chunkIDBuffer.uploadData(chunkIDs, &chunkIDAllocation);
 	defer chunkIDBuffer.free(chunkIDAllocation);
 	const allocation = commandBuffer.rawAlloc(drawCallsEstimate);
 	defer commandBuffer.free(allocation);
 	commandShader.bind();
+	c.glUniform1f(commandUniforms.lodDistance, main.settings.@"lod0.5Distance");
 	c.glUniform1ui(commandUniforms.chunkIDIndex, chunkIDAllocation.start);
 	c.glUniform1ui(commandUniforms.commandIndexStart, allocation.start);
 	c.glUniform1ui(commandUniforms.size, @intCast(chunkIDs.len));
@@ -217,10 +222,6 @@ pub fn drawChunksIndirect(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec
 
 	// Draw again:
 	gpu_performance_measuring.startQuery(if(transparent) .transparent_rendering else .chunk_rendering_new_visible);
-	if(transparent) {
-		c.glEnable(c.GL_POLYGON_OFFSET_FILL);
-		c.glPolygonOffset(1, 1); // Fixes z-fighting when directly on top of an opaque face.
-	}
 	commandShader.bind();
 	c.glUniform1i(commandUniforms.onlyDrawPreviouslyInvisible, 1);
 	c.glDispatchCompute(@intCast(@divFloor(chunkIDs.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
@@ -234,9 +235,6 @@ pub fn drawChunksIndirect(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec
 	}
 	c.glBindBuffer(c.GL_DRAW_INDIRECT_BUFFER, commandBuffer.ssbo.bufferID);
 	c.glMultiDrawElementsIndirect(c.GL_TRIANGLES, c.GL_UNSIGNED_INT, @ptrFromInt(allocation.start*@sizeOf(IndirectData)), drawCallsEstimate, 0);
-	if(transparent) {
-		c.glDisable(c.GL_POLYGON_OFFSET_FILL);
-	}
 	gpu_performance_measuring.stopQuery();
 }
 
@@ -265,10 +263,9 @@ pub const ChunkData = extern struct {
 	position: Vec3i align(16),
 	min: Vec3f align(16),
 	max: Vec3f align(16),
-	visibilityMask: i32,
 	voxelSize: i32,
 	vertexStartOpaque: u32,
-	faceCountsByNormalOpaque: [7]u32,
+	faceCountsByNormalOpaque: [14]u32,
 	lightStartOpaque: u32,
 	vertexStartTransparent: u32,
 	vertexCountTransparent: u32,
@@ -289,17 +286,19 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 	coreFaces: main.ListUnmanaged(FaceData) = .{},
 	neighborFacesSameLod: [6]main.ListUnmanaged(FaceData) = [_]main.ListUnmanaged(FaceData){.{}} ** 6,
 	neighborFacesHigherLod: [6]main.ListUnmanaged(FaceData) = [_]main.ListUnmanaged(FaceData){.{}} ** 6,
+	optionalFaces: main.ListUnmanaged(FaceData) = .{},
 	completeList: []FaceData = &.{},
 	lightList: []u32 = &.{},
 	lightListNeedsUpload: bool = false,
 	coreLen: u32 = 0,
 	sameLodLens: [6]u32 = .{0} ** 6,
 	higherLodLens: [6]u32 = .{0} ** 6,
+	optionalLen: u32 = 0,
 	mutex: std.Thread.Mutex = .{},
 	bufferAllocation: graphics.SubAllocation = .{.start = 0, .len = 0},
 	lightAllocation: graphics.SubAllocation = .{.start = 0, .len = 0},
 	vertexCount: u31 = 0,
-	byNormalCount: [7]u32 = .{0} ** 7,
+	byNormalCount: [14]u32 = .{0} ** 14,
 	wasChanged: bool = false,
 	min: Vec3f = undefined,
 	max: Vec3f = undefined,
@@ -308,6 +307,7 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		faceBuffer.free(self.bufferAllocation);
 		lightBuffer.free(self.lightAllocation);
 		self.coreFaces.deinit(main.globalAllocator);
+		self.optionalFaces.deinit(main.globalAllocator);
 		for(&self.neighborFacesSameLod) |*neighborFaces| {
 			neighborFaces.deinit(main.globalAllocator);
 		}
@@ -326,16 +326,17 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		for(&self.neighborFacesHigherLod) |*neighborFaces| {
 			neighborFaces.clearRetainingCapacity();
 		}
+		self.optionalFaces.clearRetainingCapacity();
 	}
 
-	fn appendInternalQuadsToCore(self: *PrimitiveMesh, block: Block, x: i32, y: i32, z: i32, comptime backFace: bool) void {
+	fn appendInternalQuadsToCore(self: *PrimitiveMesh, block: Block, x: i32, y: i32, z: i32, comptime backFace: bool, optional: bool) void {
 		const model = blocks.meshes.model(block);
-		models.models.items[model].appendInternalQuadsToList(&self.coreFaces, main.globalAllocator, block, x, y, z, backFace);
+		models.models.items[model].appendInternalQuadsToList(if(optional) &self.optionalFaces else &self.coreFaces, main.globalAllocator, block, x, y, z, backFace);
 	}
 
-	fn appendNeighborFacingQuadsToCore(self: *PrimitiveMesh, block: Block, neighbor: chunk.Neighbor, x: i32, y: i32, z: i32, comptime backFace: bool) void {
+	fn appendNeighborFacingQuadsToCore(self: *PrimitiveMesh, block: Block, neighbor: chunk.Neighbor, x: i32, y: i32, z: i32, comptime backFace: bool, optional: bool) void {
 		const model = blocks.meshes.model(block);
-		models.models.items[model].appendNeighborFacingQuadsToList(&self.coreFaces, main.globalAllocator, block, neighbor, x, y, z, backFace);
+		models.models.items[model].appendNeighborFacingQuadsToList(if(optional) &self.optionalFaces else &self.coreFaces, main.globalAllocator, block, neighbor, x, y, z, backFace);
 	}
 
 	fn appendNeighborFacingQuadsToNeighbor(self: *PrimitiveMesh, block: Block, neighbor: chunk.Neighbor, x: i32, y: i32, z: i32, comptime backFace: bool, comptime isLod: bool) void {
@@ -363,6 +364,7 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		for(self.neighborFacesHigherLod) |neighborFaces| {
 			len += neighborFaces.items.len;
 		}
+		len += self.optionalFaces.items.len;
 		const completeList = main.globalAllocator.alloc(FaceData, len);
 		var i: usize = 0;
 		@memcpy(completeList[i..][0..self.coreFaces.items.len], self.coreFaces.items);
@@ -375,6 +377,8 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 			@memcpy(completeList[i..][0..neighborFaces.items.len], neighborFaces.items);
 			i += neighborFaces.items.len;
 		}
+		@memcpy(completeList[i..][0..self.optionalFaces.items.len], self.optionalFaces.items);
+		i += self.optionalFaces.items.len;
 		var lightList = main.List(u32).init(main.stackAllocator);
 		defer lightList.deinit();
 		var lightMap = std.AutoHashMap([4]u32, u16).init(main.stackAllocator.allocator);
@@ -423,6 +427,7 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		for(self.neighborFacesHigherLod, 0..) |neighborFaces, j| {
 			self.higherLodLens[j] = @intCast(neighborFaces.items.len);
 		}
+		self.optionalLen = @intCast(self.optionalFaces.items.len);
 		self.mutex.unlock();
 		main.globalAllocator.free(oldList);
 		main.globalAllocator.free(oldLightList);
@@ -605,6 +610,9 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 			}
 			offset += neighborLen;
 		}
+		const optionalList = self.completeList[offset..][0..self.optionalLen];
+		offset += self.optionalLen;
+		len += self.optionalLen;
 		const fullBuffer = faceBuffer.allocateAndMapRange(len, &self.bufferAllocation);
 		defer faceBuffer.unmapRange(fullBuffer);
 		// Sort the faces by normal to allow for backface culling on the GPU:
@@ -629,6 +637,21 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 				i += @intCast(list[normalDir.reverse().toInt()].len);
 			}
 			self.byNormalCount[normal] = i - iStart;
+			iStart = i;
+		}
+		for(0..7) |normal| {
+			for(optionalList) |face| {
+				if(main.models.extraQuadInfos.items[face.blockAndQuad.quadIndex].alignedNormalDirection) |normalDir| {
+					if(normalDir.toInt() == normal) {
+						fullBuffer[i] = face;
+						i += 1;
+					}
+				} else if(normal == 6) {
+					fullBuffer[i] = face;
+					i += 1;
+				}
+			}
+			self.byNormalCount[normal + 7] = i - iStart;
 			iStart = i;
 		}
 		std.debug.assert(i == fullBuffer.len);
@@ -674,8 +697,6 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	lastNeighborsSameLod: [6]?*const ChunkMesh = [_]?*const ChunkMesh{null} ** 6,
 	lastNeighborsHigherLod: [6]?*const ChunkMesh = [_]?*const ChunkMesh{null} ** 6,
 	isNeighborLod: [6]bool = .{false} ** 6,
-	visibilityMask: u8 = 0xff,
-	uploadedVisibilityMask: u8 = 0xff,
 	currentSorting: []SortingData = &.{},
 	sortingOutputBuffer: []FaceData = &.{},
 	culledSortingCount: u31 = 0,
@@ -959,6 +980,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				}
 			}
 		}
+		const initialAlwaysViewThroughMask = alwaysViewThroughMask;
 		const depthFilteredViewThroughMask = blk: {
 			var a = &alwaysViewThroughMask;
 			var b = &alwaysViewThroughMask2;
@@ -1013,9 +1035,9 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 					if(occlusionInfo.hasInternalQuads) {
 						const block = self.chunk.data.palette[paletteId];
 						if(block.transparent()) {
-							self.transparentMesh.appendInternalQuadsToCore(block, x, y, z, false);
+							self.transparentMesh.appendInternalQuadsToCore(block, x, y, z, false, false);
 						} else {
-							self.opaqueMesh.appendInternalQuadsToCore(block, x, y, z, false);
+							self.opaqueMesh.appendInternalQuadsToCore(block, x, y, z, false, false);
 						}
 					}
 				}
@@ -1029,20 +1051,21 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 					var bitMask = hasFaces[x][y] & (canSeeNeighbor[comptime neighbor.reverse().toInt()][x - 1][y] | canSeeAllNeighbors[x - 1][y]);
 					while(bitMask != 0) {
 						const z = @ctz(bitMask);
-						bitMask &= ~(@as(u32, 1) << @intCast(z));
+						const setBit = @as(u32, 1) << @intCast(z);
+						bitMask &= ~setBit;
 						var block = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z));
-						if(depthFilteredViewThroughMask[x][y] & @as(u32, 1) << @intCast(z) != 0) block.typ = block.opaqueVariant();
+						if(depthFilteredViewThroughMask[x][y] & setBit != 0) block.typ = block.opaqueVariant();
 						if(block.viewThrough() and !block.alwaysViewThrough()) { // Needs to check the neighbor block
 							const neighborBlock = self.chunk.data.getValue(chunk.getIndex(@intCast(x - 1), @intCast(y), z));
 							if(std.meta.eql(block, neighborBlock)) continue;
 						}
 						if(block.transparent()) {
 							if(block.hasBackFace()) {
-								self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor.reverse(), @intCast(x), @intCast(y), z, true);
+								self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor.reverse(), @intCast(x), @intCast(y), z, true, false);
 							}
-							self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x - 1), @intCast(y), z, false);
+							self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x - 1), @intCast(y), z, false, false);
 						} else {
-							self.opaqueMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x - 1), @intCast(y), z, false);
+							self.opaqueMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x - 1), @intCast(y), z, false, initialAlwaysViewThroughMask[x - 1][y] & setBit != 0);
 						}
 					}
 				}
@@ -1055,20 +1078,21 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 					var bitMask = hasFaces[x][y] & (canSeeNeighbor[comptime neighbor.reverse().toInt()][x + 1][y] | canSeeAllNeighbors[x + 1][y]);
 					while(bitMask != 0) {
 						const z = @ctz(bitMask);
-						bitMask &= ~(@as(u32, 1) << @intCast(z));
+						const setBit = @as(u32, 1) << @intCast(z);
+						bitMask &= ~setBit;
 						var block = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z));
-						if(depthFilteredViewThroughMask[x][y] & @as(u32, 1) << @intCast(z) != 0) block.typ = block.opaqueVariant();
+						if(depthFilteredViewThroughMask[x][y] & setBit != 0) block.typ = block.opaqueVariant();
 						if(block.viewThrough() and !block.alwaysViewThrough()) { // Needs to check the neighbor block
 							const neighborBlock = self.chunk.data.getValue(chunk.getIndex(@intCast(x + 1), @intCast(y), z));
 							if(std.meta.eql(block, neighborBlock)) continue;
 						}
 						if(block.transparent()) {
 							if(block.hasBackFace()) {
-								self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor.reverse(), @intCast(x), @intCast(y), z, true);
+								self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor.reverse(), @intCast(x), @intCast(y), z, true, false);
 							}
-							self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x + 1), @intCast(y), z, false);
+							self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x + 1), @intCast(y), z, false, false);
 						} else {
-							self.opaqueMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x + 1), @intCast(y), z, false);
+							self.opaqueMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x + 1), @intCast(y), z, false, initialAlwaysViewThroughMask[x + 1][y] & setBit != 0);
 						}
 					}
 				}
@@ -1081,20 +1105,21 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 					var bitMask = hasFaces[x][y] & (canSeeNeighbor[comptime neighbor.reverse().toInt()][x][y - 1] | canSeeAllNeighbors[x][y - 1]);
 					while(bitMask != 0) {
 						const z = @ctz(bitMask);
-						bitMask &= ~(@as(u32, 1) << @intCast(z));
+						const setBit = @as(u32, 1) << @intCast(z);
+						bitMask &= ~setBit;
 						var block = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z));
-						if(depthFilteredViewThroughMask[x][y] & @as(u32, 1) << @intCast(z) != 0) block.typ = block.opaqueVariant();
+						if(depthFilteredViewThroughMask[x][y] & setBit != 0) block.typ = block.opaqueVariant();
 						if(block.viewThrough() and !block.alwaysViewThrough()) { // Needs to check the neighbor block
 							const neighborBlock = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y - 1), z));
 							if(std.meta.eql(block, neighborBlock)) continue;
 						}
 						if(block.transparent()) {
 							if(block.hasBackFace()) {
-								self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor.reverse(), @intCast(x), @intCast(y), z, true);
+								self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor.reverse(), @intCast(x), @intCast(y), z, true, false);
 							}
-							self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x), @intCast(y - 1), z, false);
+							self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x), @intCast(y - 1), z, false, false);
 						} else {
-							self.opaqueMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x), @intCast(y - 1), z, false);
+							self.opaqueMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x), @intCast(y - 1), z, false, initialAlwaysViewThroughMask[x][y - 1] & setBit != 0);
 						}
 					}
 				}
@@ -1107,20 +1132,21 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 					var bitMask = hasFaces[x][y] & (canSeeNeighbor[comptime neighbor.reverse().toInt()][x][y + 1] | canSeeAllNeighbors[x][y + 1]);
 					while(bitMask != 0) {
 						const z = @ctz(bitMask);
-						bitMask &= ~(@as(u32, 1) << @intCast(z));
+						const setBit = @as(u32, 1) << @intCast(z);
+						bitMask &= ~setBit;
 						var block = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z));
-						if(depthFilteredViewThroughMask[x][y] & @as(u32, 1) << @intCast(z) != 0) block.typ = block.opaqueVariant();
+						if(depthFilteredViewThroughMask[x][y] & setBit != 0) block.typ = block.opaqueVariant();
 						if(block.viewThrough() and !block.alwaysViewThrough()) { // Needs to check the neighbor block
 							const neighborBlock = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y + 1), z));
 							if(std.meta.eql(block, neighborBlock)) continue;
 						}
 						if(block.transparent()) {
 							if(block.hasBackFace()) {
-								self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor.reverse(), @intCast(x), @intCast(y), z, true);
+								self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor.reverse(), @intCast(x), @intCast(y), z, true, false);
 							}
-							self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x), @intCast(y + 1), z, false);
+							self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x), @intCast(y + 1), z, false, false);
 						} else {
-							self.opaqueMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x), @intCast(y + 1), z, false);
+							self.opaqueMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x), @intCast(y + 1), z, false, initialAlwaysViewThroughMask[x][y + 1] & setBit != 0);
 						}
 					}
 				}
@@ -1133,20 +1159,21 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 					var bitMask = hasFaces[x][y] & (canSeeNeighbor[comptime neighbor.reverse().toInt()][x][y] | canSeeAllNeighbors[x][y]) << 1;
 					while(bitMask != 0) {
 						const z = @ctz(bitMask);
-						bitMask &= ~(@as(u32, 1) << @intCast(z));
+						const setBit = @as(u32, 1) << @intCast(z);
+						bitMask &= ~setBit;
 						var block = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z));
-						if(depthFilteredViewThroughMask[x][y] & @as(u32, 1) << @intCast(z) != 0) block.typ = block.opaqueVariant();
+						if(depthFilteredViewThroughMask[x][y] & setBit != 0) block.typ = block.opaqueVariant();
 						if(block.viewThrough() and !block.alwaysViewThrough()) { // Needs to check the neighbor block
 							const neighborBlock = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z - 1));
 							if(std.meta.eql(block, neighborBlock)) continue;
 						}
 						if(block.transparent()) {
 							if(block.hasBackFace()) {
-								self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor.reverse(), @intCast(x), @intCast(y), z, true);
+								self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor.reverse(), @intCast(x), @intCast(y), z, true, false);
 							}
-							self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x), @intCast(y), z - 1, false);
+							self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x), @intCast(y), z - 1, false, false);
 						} else {
-							self.opaqueMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x), @intCast(y), z - 1, false);
+							self.opaqueMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x), @intCast(y), z - 1, false, initialAlwaysViewThroughMask[x][y] << 1 & setBit != 0);
 						}
 					}
 				}
@@ -1159,20 +1186,21 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 					var bitMask = hasFaces[x][y] & (canSeeNeighbor[comptime neighbor.reverse().toInt()][x][y] | canSeeAllNeighbors[x][y]) >> 1;
 					while(bitMask != 0) {
 						const z = @ctz(bitMask);
-						bitMask &= ~(@as(u32, 1) << @intCast(z));
+						const setBit = @as(u32, 1) << @intCast(z);
+						bitMask &= ~setBit;
 						var block = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z));
-						if(depthFilteredViewThroughMask[x][y] & @as(u32, 1) << @intCast(z) != 0) block.typ = block.opaqueVariant();
+						if(depthFilteredViewThroughMask[x][y] & setBit != 0) block.typ = block.opaqueVariant();
 						if(block.viewThrough() and !block.alwaysViewThrough()) { // Needs to check the neighbor block
 							const neighborBlock = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z + 1));
 							if(std.meta.eql(block, neighborBlock)) continue;
 						}
 						if(block.transparent()) {
 							if(block.hasBackFace()) {
-								self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor.reverse(), @intCast(x), @intCast(y), z, true);
+								self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor.reverse(), @intCast(x), @intCast(y), z, true, false);
 							}
-							self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x), @intCast(y), z + 1, false);
+							self.transparentMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x), @intCast(y), z + 1, false, false);
 						} else {
-							self.opaqueMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x), @intCast(y), z + 1, false);
+							self.opaqueMesh.appendNeighborFacingQuadsToCore(block, neighbor, @intCast(x), @intCast(y), z + 1, false, initialAlwaysViewThroughMask[x][y] >> 1 & setBit != 0);
 						}
 					}
 				}
@@ -1223,6 +1251,8 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						neighborChunkMesh.chunk.data.setValue(index, neighborBlock);
 						neighborChunkMesh.opaqueMesh.coreFaces.clearRetainingCapacity();
 						neighborChunkMesh.transparentMesh.coreFaces.clearRetainingCapacity();
+						neighborChunkMesh.opaqueMesh.optionalFaces.clearRetainingCapacity();
+						neighborChunkMesh.transparentMesh.optionalFaces.clearRetainingCapacity();
 						neighborChunkMesh.mutex.unlock();
 						neighborChunkMesh.updateBlockLight(@intCast(nx & chunk.chunkMask), @intCast(ny & chunk.chunkMask), @intCast(nz & chunk.chunkMask), neighborBlock, &lightRefreshList);
 						neighborChunkMesh.generateMesh(&lightRefreshList);
@@ -1280,6 +1310,8 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 		self.opaqueMesh.coreFaces.clearRetainingCapacity();
 		self.transparentMesh.coreFaces.clearRetainingCapacity();
+		self.opaqueMesh.optionalFaces.clearRetainingCapacity();
+		self.transparentMesh.optionalFaces.clearRetainingCapacity();
 		self.mutex.unlock();
 		self.generateMesh(&lightRefreshList); // TODO: Batch mesh updates instead of applying them for each block changes.
 		self.mutex.lock();
@@ -1310,13 +1342,6 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		self.opaqueMesh.uploadData(self.isNeighborLod);
 		self.transparentMesh.uploadData(self.isNeighborLod);
 		self.uploadChunkPosition();
-	}
-
-	pub fn changeLodBorders(self: *ChunkMesh, isNeighborLod: [6]bool) void {
-		if(!std.meta.eql(isNeighborLod, self.isNeighborLod)) {
-			self.isNeighborLod = isNeighborLod;
-			self.uploadData();
-		}
 	}
 
 	fn deadlockFreeDoubleLock(m1: *std.Thread.Mutex, m2: *std.Thread.Mutex) void {
@@ -1405,7 +1430,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				}
 			}
 			// lod border:
-			if(self.pos.voxelSize == 1 << settings.highestLOD) continue;
+			if(self.pos.voxelSize == @as(u31, 1) << settings.highestLod) continue;
 			const neighborMesh = mesh_storage.getNeighborAndIncreaseRefCount(self.pos, 2*self.pos.voxelSize, neighbor) orelse {
 				self.mutex.lock();
 				defer self.mutex.unlock();
@@ -1476,10 +1501,9 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	}
 
 	fn uploadChunkPosition(self: *ChunkMesh) void {
-		chunkBuffer.uploadData(&.{ChunkData{ // TODO: Only upload data when the visibilityMask changes.
+		chunkBuffer.uploadData(&.{ChunkData{
 			.position = .{self.pos.wx, self.pos.wy, self.pos.wz},
 			.voxelSize = self.pos.voxelSize,
-			.visibilityMask = self.visibilityMask,
 			.vertexStartOpaque = self.opaqueMesh.bufferAllocation.start*4,
 			.faceCountsByNormalOpaque = self.opaqueMesh.byNormalCount,
 			.lightStartOpaque = self.opaqueMesh.lightAllocation.start,
@@ -1491,12 +1515,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			.visibilityState = 0,
 			.oldVisibilityState = 0,
 		}}, &self.chunkAllocation);
-		self.uploadedVisibilityMask = self.visibilityMask;
 	}
 
 	pub fn prepareRendering(self: *ChunkMesh, chunkList: *main.List(u32)) void {
 		if(self.opaqueMesh.vertexCount == 0) return;
-		if(self.uploadedVisibilityMask != self.visibilityMask) self.uploadChunkPosition();
 
 		chunkList.append(self.chunkAllocation.start);
 
@@ -1620,8 +1642,6 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			faceBuffer.uploadData(self.sortingOutputBuffer[0..self.culledSortingCount], &self.transparentMesh.bufferAllocation);
 			self.uploadChunkPosition();
 		}
-
-		if(self.uploadedVisibilityMask != self.visibilityMask) self.uploadChunkPosition();
 
 		chunkList.append(self.chunkAllocation.start);
 		transparentQuadsDrawn += self.culledSortingCount;

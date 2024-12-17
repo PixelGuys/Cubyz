@@ -600,6 +600,12 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 			self.curChar = self.unicodeIterator.nextCodepoint() orelse return null;
 		}
 
+		fn peekNextByte(self: *Parser) u8 {
+			const next = self.unicodeIterator.peek(1);
+			if(next.len == 0) return 0;
+			return next[0];
+		}
+
 		fn parse(self: *Parser) void {
 			self.curIndex = @intCast(self.unicodeIterator.i);
 			self.curChar = self.unicodeIterator.nextCodepoint() orelse return;
@@ -614,12 +620,21 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 					}
 				},
 				'_' => {
-					self.appendControlGetNext() orelse return;
-					if(self.curChar == '_') {
+					if(self.peekNextByte() == '_') {
+						self.appendControlGetNext() orelse return;
+						self.appendControlGetNext() orelse return;
+						self.currentFontEffect.underline = !self.currentFontEffect.underline;
+					} else {
+						self.appendGetNext() orelse return;
+					}
+				},
+				'~' => {
+					if(self.peekNextByte() == '~') {
+						self.appendControlGetNext() orelse return;
 						self.appendControlGetNext() orelse return;
 						self.currentFontEffect.strikethrough = !self.currentFontEffect.strikethrough;
 					} else {
-						self.currentFontEffect.underline = !self.currentFontEffect.underline;
+						self.appendGetNext() orelse return;
 					}
 				},
 				'\\' => {
@@ -639,6 +654,10 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 						self.appendControlGetNext() orelse return;
 						if(shift == 0) break;
 					}
+				},
+				'§' => {
+					self.currentFontEffect = .{.color = self.currentFontEffect.color};
+					self.appendControlGetNext() orelse return;
 				},
 				else => {
 					self.appendGetNext() orelse return;
@@ -893,7 +912,9 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 			y = 0;
 			if(line.isUnderline) y += 15
 			else y += 8;
+			const oldColor = draw.color;
 			draw.setColor(line.color | (@as(u32, 0xff000000) & draw.color));
+			defer draw.setColor(oldColor);
 			for(lineWraps, 0..) |lineWrap, j| {
 				const lineStart = @max(0, line.start);
 				const lineEnd = @min(lineWrap, line.end);
@@ -960,7 +981,9 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 			y = 0;
 			if(line.isUnderline) y += 15
 			else y += 8;
+			const oldColor = draw.color;
 			draw.setColor(shadowColor(line.color) | (@as(u32, 0xff000000) & draw.color));
+			defer draw.setColor(oldColor);
 			for(lineWraps, 0..) |lineWrap, j| {
 				const lineStart = @max(0, line.start);
 				const lineEnd = @min(lineWrap, line.end);
@@ -1651,7 +1674,7 @@ pub const TextureArray = struct { // MARK: TextureArray
 			}
 
 			// Calculate the mipmap levels:
-			for(lodBuffer, 0..) |_, _lod| {
+			for(0..lodBuffer.len) |_lod| {
 				const lod: u5 = @intCast(_lod);
 				const curWidth = maxWidth >> lod;
 				const curHeight = maxHeight >> lod;
@@ -1670,6 +1693,29 @@ pub const TextureArray = struct { // MARK: TextureArray
 						}
 					}
 				}
+			}
+			// Give the correct color to alpha 0 pixels, to avoid dark pixels:
+			for(1..lodBuffer.len) |_lod| {
+				const lod: u5 = @intCast(lodBuffer.len - 1 - _lod);
+				const curWidth = maxWidth >> lod;
+				const curHeight = maxHeight >> lod;
+				for(0..curWidth) |x| {
+					for(0..curHeight) |y| {
+						const index = x + y*curWidth;
+						const index2 = x/2 + y/2*curWidth/2;
+						if(lodBuffer[lod][index].a == 0) {
+							lodBuffer[lod][index].r = lodBuffer[lod + 1][index2].r;
+							lodBuffer[lod][index].g = lodBuffer[lod + 1][index2].g;
+							lodBuffer[lod][index].b = lodBuffer[lod + 1][index2].b;
+						}
+					}
+				}
+			}
+			// Upload:
+			for(0..lodBuffer.len) |_lod| {
+				const lod: u5 = @intCast(lodBuffer.len - 1 - _lod);
+				const curWidth = maxWidth >> lod;
+				const curHeight = maxHeight >> lod;
 				c.glTexSubImage3D(c.GL_TEXTURE_2D_ARRAY, lod, 0, 0, @intCast(i), curWidth, curHeight, 1, c.GL_RGBA, c.GL_UNSIGNED_BYTE, lodBuffer[lod].ptr);
 			}
 		}
@@ -2024,7 +2070,6 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 			.position = .{0, 0, 0},
 			.min = undefined,
 			.max = undefined,
-			.visibilityMask = 255,
 			.voxelSize = 1,
 			.vertexStartOpaque = undefined,
 			.faceCountsByNormalOpaque = undefined,

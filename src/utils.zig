@@ -355,6 +355,14 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 			}
 		}
 
+		pub fn enqueue_back(self: *Self, elem: T) void {
+			self.startIndex = (self.startIndex -% 1) & self.mask;
+			self.mem[self.startIndex] = elem;
+			if(self.endIndex == self.startIndex) {
+				self.increaseCapacity();
+			}
+		}
+
 		pub fn dequeue(self: *Self) ?T {
 			if(self.startIndex == self.endIndex) return null;
 			const result = self.mem[self.startIndex];
@@ -796,6 +804,15 @@ pub const NeverFailingArenaAllocator = struct { // MARK: NeverFailingArena
 	pub fn reset(self: *NeverFailingArenaAllocator, mode: std.heap.ArenaAllocator.ResetMode) bool {
 		return self.arena.reset(mode);
 	}
+
+	pub fn shrinkAndFree(self: *NeverFailingArenaAllocator) void {
+		const node = self.arena.state.buffer_list.first orelse return;
+		const allocBuf = @as([*]u8, @ptrCast(node))[0..node.data];
+		const dataSize = std.mem.alignForward(usize, @sizeOf(std.SinglyLinkedList(usize).Node) + self.arena.state.end_index, @alignOf(std.SinglyLinkedList(usize).Node));
+		if(self.arena.child_allocator.rawResize(allocBuf, std.math.log2(@alignOf(std.SinglyLinkedList(usize).Node)), dataSize, @returnAddress())) {
+			node.data = dataSize;
+		}
+	}
 };
 
 pub const BufferFallbackAllocator = struct { // MARK: BufferFallbackAllocator
@@ -862,16 +879,14 @@ pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 		allocator: NeverFailingAllocator,
 		closed: bool = false,
 
-		pub fn init(allocator: NeverFailingAllocator) *@This() {
-			const self = allocator.create(@This());
-			self.* = @This() {
+		pub fn init(allocator: NeverFailingAllocator) @This() {
+			return .{
 				.size = 0,
 				.array = allocator.alloc(T, initialSize),
 				.waitingThreads = .{},
 				.mutex = .{},
 				.allocator = allocator,
 			};
-			return self;
 		}
 
 		pub fn deinit(self: *@This()) void {
@@ -886,7 +901,6 @@ pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 			}
 			self.mutex.unlock();
 			self.allocator.free(self.array);
-			self.allocator.destroy(self);
 		}
 
 		/// Moves an element from a given index down the heap, such that all children are always smaller than their parents.
@@ -1056,13 +1070,6 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 			}
 		}
 
-		fn init(allocator: NeverFailingAllocator) *Performance {
-			const self = allocator.create(Performance);
-			self.* = .{};
-			self.clear();
-			return self;
-		}
-
 		pub fn read(self: *Performance) Performance {
 			self.mutex.lock();
 			defer self.mutex.unlock();
@@ -1073,19 +1080,23 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 
 	threads: []std.Thread,
 	currentTasks: []Atomic(?*const VTable),
-	loadList: *BlockingMaxHeap(Task),
+	loadList: BlockingMaxHeap(Task),
 	allocator: NeverFailingAllocator,
 
-	performance: *Performance,
+	performance: Performance,
 
-	pub fn init(allocator: NeverFailingAllocator, threadCount: usize) ThreadPool {
-		const self = ThreadPool {
+	trueQueueSize: Atomic(usize) = .init(0),
+
+	pub fn init(allocator: NeverFailingAllocator, threadCount: usize) *ThreadPool {
+		const self = allocator.create(ThreadPool);
+		self.* = .{
 			.threads = allocator.alloc(std.Thread, threadCount),
 			.currentTasks = allocator.alloc(Atomic(?*const VTable), threadCount),
 			.loadList = BlockingMaxHeap(Task).init(allocator),
-			.performance = Performance.init(allocator),
+			.performance = .{},
 			.allocator = allocator,
 		};
+		self.performance.clear();
 		for(self.threads, 0..) |*thread, i| {
 			thread.* = std.Thread.spawn(.{}, run, .{self, i}) catch |err| {
 				std.log.err("Could not spawn Thread due to {s}", .{@errorName(err)});
@@ -1097,7 +1108,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		return self;
 	}
 
-	pub fn deinit(self: ThreadPool) void {
+	pub fn deinit(self: *ThreadPool) void {
 		// Clear the remaining tasks:
 		self.loadList.mutex.lock();
 		for(self.loadList.array[0..self.loadList.size]) |task| {
@@ -1111,10 +1122,10 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		}
 		self.allocator.free(self.currentTasks);
 		self.allocator.free(self.threads);
-		self.allocator.destroy(self.performance);
+		self.allocator.destroy(self);
 	}
 
-	pub fn closeAllTasksOfType(self: ThreadPool, vtable: *const VTable) void {
+	pub fn closeAllTasksOfType(self: *ThreadPool, vtable: *const VTable) void {
 		self.loadList.mutex.lock();
 		defer self.loadList.mutex.unlock();
 		var i: u32 = 0;
@@ -1135,7 +1146,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		}
 	}
 
-	fn run(self: ThreadPool, id: usize) void {
+	fn run(self: *ThreadPool, id: usize) void {
 		// In case any of the tasks wants to allocate memory:
 		var sta = StackAllocator.init(main.globalAllocator, 1 << 23);
 		defer sta.deinit();
@@ -1151,6 +1162,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 				const end = std.time.microTimestamp();
 				self.performance.add(task.vtable.taskType, end - start);
 				self.currentTasks[id].store(null, .monotonic);
+				_ = self.trueQueueSize.fetchSub(1, .monotonic);
 			}
 
 			if(id == 0 and std.time.milliTimestamp() -% lastUpdate > refreshTime) {
@@ -1159,6 +1171,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 				while(self.loadList.extractAny()) |task| {
 					if(!task.vtable.isStillNeeded(task.self)) {
 						task.vtable.clean(task.self);
+						_ = self.trueQueueSize.fetchSub(1, .monotonic);
 					} else {
 						const taskPtr = temporaryTaskList.addOne();
 						taskPtr.* = task;
@@ -1171,15 +1184,16 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		}
 	}
 
-	pub fn addTask(self: ThreadPool, task: *anyopaque, vtable: *const VTable) void {
+	pub fn addTask(self: *ThreadPool, task: *anyopaque, vtable: *const VTable) void {
 		self.loadList.add(Task {
 			.cachedPriority = vtable.getPriority(task),
 			.vtable = vtable,
 			.self = task,
 		});
+		_ = self.trueQueueSize.fetchAdd(1, .monotonic);
 	}
 
-	pub fn clear(self: ThreadPool) void {
+	pub fn clear(self: *ThreadPool) void {
 		// Clear the remaining tasks:
 		self.loadList.mutex.lock();
 		for(self.loadList.array[0..self.loadList.size]) |task| {
@@ -1199,10 +1213,8 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		}
 	}
 
-	pub fn queueSize(self: ThreadPool) usize {
-		self.loadList.mutex.lock();
-		defer self.loadList.mutex.unlock();
-		return self.loadList.size;
+	pub fn queueSize(self: *const ThreadPool) usize {
+		return self.trueQueueSize.load(.monotonic);
 	}
 };
 

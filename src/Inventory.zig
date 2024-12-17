@@ -56,10 +56,10 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		pub fn undo() void {
+			mutex.lock();
+			defer mutex.unlock();
 			if(commands.dequeue_front()) |_cmd| {
 				var cmd = _cmd;
-				mutex.lock();
-				defer mutex.unlock();
 				cmd.undo();
 				cmd.undoSteps.deinit(main.globalAllocator); // TODO: This should be put on some kind of redo queue once the testing phase is over.
 			}
@@ -81,10 +81,12 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		fn mapServerId(serverId: u32, inventory: Inventory) void {
+			main.utils.assertLocked(&mutex);
 			serverToClientMap.put(serverId, inventory) catch unreachable;
 		}
 
 		fn unmapServerId(serverId: u32, clientId: u32) void {
+			main.utils.assertLocked(&mutex);
 			std.debug.assert(serverToClientMap.fetchRemove(serverId).?.value.id == clientId);
 		}
 
@@ -125,6 +127,7 @@ pub const Sync = struct { // MARK: Sync
 			source: Source,
 
 			fn init(len: usize, typ: Inventory.Type, source: Source) ServerInventory {
+				main.utils.assertLocked(&mutex);
 				return .{
 					.inv = Inventory._init(main.globalAllocator, len, typ, .server),
 					.users = .{},
@@ -133,10 +136,12 @@ pub const Sync = struct { // MARK: Sync
 			}
 
 			fn deinit(self: *ServerInventory) void {
+				main.utils.assertLocked(&mutex);
 				std.debug.assert(self.users.items.len == 0);
 				self.users.deinit(main.globalAllocator);
 				self.inv._deinit(main.globalAllocator, .server);
 				self.inv._items.len = 0;
+				self.source = .alreadyFreed;
 			}
 
 			fn addUser(self: *ServerInventory, user: *main.server.User, clientId: u32) void {
@@ -197,21 +202,16 @@ pub const Sync = struct { // MARK: Sync
 			freeIdList.append(id);
 		}
 
-		pub fn receiveCommand(source: *main.server.User, data: []const u8) !void {
-			mutex.lock();
-			defer mutex.unlock();
-			const typ: Command.PayloadType = @enumFromInt(data[0]);
-			@setEvalBranchQuota(100000);
-			const payload: Command.Payload = switch(typ) {
-				inline else => |_typ| @unionInit(Command.Payload, @tagName(_typ), try std.meta.FieldType(Command.Payload, _typ).deserialize(data[1..], .server, source)),
-			};
+		fn executeCommand(payload: Command.Payload, source: ?*main.server.User) void {
 			var command = Command {
 				.payload = payload,
 			};
 			command.do(main.globalAllocator, .server, source);
-			const confirmationData = command.confirmationData(main.stackAllocator);
-			defer main.stackAllocator.free(confirmationData);
-			main.network.Protocols.inventory.sendConfirmation(source.conn, confirmationData);
+			if(source != null) {
+				const confirmationData = command.confirmationData(main.stackAllocator);
+				defer main.stackAllocator.free(confirmationData);
+				main.network.Protocols.inventory.sendConfirmation(source.?.conn, confirmationData);
+			}
 			for(command.syncOperations.items) |op| {
 				const syncData = op.serialize(main.stackAllocator);
 				defer main.stackAllocator.free(syncData);
@@ -220,7 +220,7 @@ pub const Sync = struct { // MARK: Sync
 					main.network.Protocols.inventory.sendSyncOperation(otherUser.conn, syncData);
 				}
 			}
-			if(command.payload == .open) { // Send initial items
+			if(source != null and command.payload == .open) { // Send initial items
 				for(command.payload.open.inv._items, 0..) |stack, slot| {
 					if(stack.item != null) {
 						const syncOp = Command.SyncOperation {
@@ -230,11 +230,22 @@ pub const Sync = struct { // MARK: Sync
 						};
 						const syncData = syncOp.serialize(main.stackAllocator);
 						defer main.stackAllocator.free(syncData);
-						main.network.Protocols.inventory.sendSyncOperation(source.conn, syncData);
+						main.network.Protocols.inventory.sendSyncOperation(source.?.conn, syncData);
 					}
 				}
 			}
 			command.finalize(main.globalAllocator, .server, &.{});
+		}
+
+		pub fn receiveCommand(source: *main.server.User, data: []const u8) !void {
+			mutex.lock();
+			defer mutex.unlock();
+			const typ: Command.PayloadType = @enumFromInt(data[0]);
+			@setEvalBranchQuota(100000);
+			const payload: Command.Payload = switch(typ) {
+				inline else => |_typ| @unionInit(Command.Payload, @tagName(_typ), try std.meta.FieldType(Command.Payload, _typ).deserialize(data[1..], .server, source)),
+			};
+			executeCommand(payload, source);
 		}
 
 		fn createInventory(user: *main.server.User, clientId: u32, len: usize, typ: Inventory.Type, source: Source) void {
@@ -249,6 +260,7 @@ pub const Sync = struct { // MARK: Sync
 					}
 				},
 				.playerInventory, .other => {},
+				.alreadyFreed => unreachable,
 			}
 			const inventory = ServerInventory.init(len, typ, source);
 			inventories.items[inventory.inv.id] = inventory;
@@ -266,11 +278,46 @@ pub const Sync = struct { // MARK: Sync
 			const serverId = user.inventoryClientToServerIdMap.get(clientId) orelse return null;
 			return inventories.items[serverId].inv;
 		}
-	};
 
-	pub fn executeCommand(payload: Command.Payload) void {
-		ClientSide.executeCommand(payload);
-	}
+		pub fn clearPlayerInventory(user: *main.server.User) void {
+			mutex.lock();
+			defer mutex.unlock();
+			var inventoryIdIterator = user.inventoryClientToServerIdMap.valueIterator();
+			while(inventoryIdIterator.next()) |inventoryId| {
+				if(inventories.items[inventoryId.*].source == .playerInventory) {
+					executeCommand(.{.clear = .{.inv = inventories.items[inventoryId.*].inv}}, null);
+				}
+			}
+		}
+
+		pub fn tryCollectingToPlayerInventory(user: *main.server.User, itemStack: *ItemStack) void {
+			if(itemStack.item == null) return;
+			mutex.lock();
+			defer mutex.unlock();
+			var inventoryIdIterator = user.inventoryClientToServerIdMap.valueIterator();
+			outer: while(inventoryIdIterator.next()) |inventoryId| {
+				if(inventories.items[inventoryId.*].source == .playerInventory) {
+					const inv = inventories.items[inventoryId.*].inv;
+					for(inv._items, 0..) |invStack, slot| {
+						if(std.meta.eql(invStack.item, itemStack.item)) {
+							const amount = @min(itemStack.item.?.stackSize() - invStack.amount, itemStack.amount);
+							executeCommand(.{.fillFromCreative = .{.dest = .{.inv = inv, .slot = @intCast(slot)}, .item = itemStack.item, .amount = invStack.amount + amount}}, null);
+							itemStack.amount -= amount;
+							if(itemStack.amount == 0) break :outer;
+						}
+					}
+					for(inv._items, 0..) |invStack, slot| {
+						if(invStack.item == null) {
+							executeCommand(.{.fillFromCreative = .{.dest = .{.inv = inv, .slot = @intCast(slot)}, .item = itemStack.item, .amount = itemStack.amount}}, null);
+							itemStack.amount = 0;
+							break :outer;
+						}
+					}
+				}
+			}
+			if(itemStack.amount == 0) itemStack.item = null;
+		}
+	};
 
 	pub fn getInventory(id: u32, side: Side, user: ?*main.server.User) ?Inventory {
 		return switch(side) {
@@ -290,6 +337,7 @@ pub const Command = struct { // MARK: Command
 		drop = 5,
 		fillFromCreative = 6,
 		depositOrDrop = 7,
+		clear = 8,
 	};
 	pub const Payload = union(PayloadType) {
 		open: Open,
@@ -300,6 +348,7 @@ pub const Command = struct { // MARK: Command
 		drop: Drop,
 		fillFromCreative: FillFromCreative,
 		depositOrDrop: DepositOrDrop,
+		clear: Clear,
 	};
 
 	const BaseOperationType = enum(u8) {
@@ -371,7 +420,6 @@ pub const Command = struct { // MARK: Command
 				defer zon.free(main.stackAllocator);
 				self.item = try Item.init(zon);
 			}
-			std.log.debug("{any} {s}", .{data[0..12], data[12..]});
 			if(self.amount > 0) { // Create
 				if(self.item) |item| {
 					self.inv.ref().item = item;
@@ -684,6 +732,7 @@ pub const Command = struct { // MARK: Command
 			data.append(@intFromEnum(self.source));
 			switch(self.source) {
 				.playerInventory, .sharedTestingInventory, .other => {},
+				.alreadyFreed => unreachable,
 			}
 		}
 
@@ -698,6 +747,7 @@ pub const Command = struct { // MARK: Command
 				.playerInventory => .{.playerInventory = {}},
 				.sharedTestingInventory => .{.sharedTestingInventory = {}},
 				.other => .{.other = {}},
+				.alreadyFreed => unreachable,
 			};
 			Sync.ServerSide.createInventory(user.?, id, len, typ, source);
 			return .{
@@ -868,7 +918,7 @@ pub const Command = struct { // MARK: Command
 						.source = self.source,
 						.amount = 1,
 					}}, side);
-					cmd.removeToolCraftingIngredients(allocator, self.dest.inv, side);
+					cmd.removeToolCraftingIngredients(allocator, self.source.inv, side);
 				}
 				return;
 			}
@@ -927,7 +977,7 @@ pub const Command = struct { // MARK: Command
 				if(_items[0].item != null) {
 					if(side == .server) {
 						const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.player.rot[0]), -user.?.player.rot[2]);
-						main.server.world.?.drop(_items[0], user.?.player.pos, direction, 20);
+						main.server.world.?.dropWithCooldown(_items[0], user.?.player.pos, direction, 20, main.server.updatesPerSec*2);
 					}
 				}
 				return;
@@ -935,13 +985,14 @@ pub const Command = struct { // MARK: Command
 			if(self.source.inv.type == .workbench and self.source.slot == 25) {
 				cmd.removeToolCraftingIngredients(allocator, self.source.inv, side);
 			}
+			const amount = @min(self.source.ref().amount, self.desiredAmount);
 			if(side == .server) {
 				const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.player.rot[0]), -user.?.player.rot[2]);
-				main.server.world.?.drop(self.source.ref().*, user.?.player.pos, direction, 20);
+				main.server.world.?.dropWithCooldown(.{.item = self.source.ref().item.?.clone(), .amount = amount}, user.?.player.pos, direction, 20, main.server.updatesPerSec*2);
 			}
 			cmd.executeBaseOperation(allocator, .{.delete = .{
 				.source = self.source,
-				.amount = @min(self.source.ref().amount, self.desiredAmount),
+				.amount = amount,
 			}}, side);
 		}
 
@@ -1050,7 +1101,7 @@ pub const Command = struct { // MARK: Command
 				}
 				if(side == .server) {
 					const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.player.rot[0]), -user.?.player.rot[2]);
-					main.server.world.?.drop(sourceStack.*, user.?.player.pos, direction, 20);
+					main.server.world.?.drop(sourceStack.clone(), user.?.player.pos, direction, 20);
 				}
 				cmd.executeBaseOperation(allocator, .{.delete = .{
 					.source = .{.inv = self.source, .slot = @intCast(sourceSlot)},
@@ -1074,14 +1125,47 @@ pub const Command = struct { // MARK: Command
 			};
 		}
 	};
+
+	const Clear = struct {
+		inv: Inventory,
+
+		pub fn run(self: Clear, allocator: NeverFailingAllocator, cmd: *Command, side: Side, _: ?*main.server.User) void {
+			if(self.inv.type == .creative) return;
+			if(self.inv.type == .crafting) return;
+			var items = self.inv._items;
+			if(self.inv.type == .workbench) items = self.inv._items[0..25];
+			for(items, 0..) |stack, slot| {
+				if(stack.item == null) continue;
+				
+				cmd.executeBaseOperation(allocator, .{.delete = .{
+					.source = .{.inv = self.inv, .slot = @intCast(slot)},
+					.amount = stack.amount,
+				}}, side);
+			}
+		}
+
+		fn serialize(self: Clear, data: *main.List(u8)) void {
+			std.mem.writeInt(u32, data.addMany(4)[0..4], self.inv.id, .big);
+		}
+
+		fn deserialize(data: []const u8, side: Side, user: ?*main.server.User) !Clear {
+			if(data.len != 4) return error.Invalid;
+			const invId = std.mem.readInt(u32, data[0..4], .big);
+			return .{
+				.inv = Sync.getInventory(invId, side, user) orelse return error.Invalid,
+			};
+		}
+	};
 };
 
 const SourceType = enum(u8) {
-	playerInventory = 0,
-	sharedTestingInventory = 1,
+	alreadyFreed = 0,
+	playerInventory = 1,
+	sharedTestingInventory = 2,
 	other = 0xff, // TODO: List every type separately here.
 };
 const Source = union(SourceType) {
+	alreadyFreed: void,
 	playerInventory: void,
 	sharedTestingInventory: void,
 	other: void,
@@ -1101,7 +1185,7 @@ _items: []ItemStack,
 
 pub fn init(allocator: NeverFailingAllocator, _size: usize, _type: Type, source: Source) Inventory {
 	const self = _init(allocator, _size, _type, .client);
-	Sync.executeCommand(.{.open = .{.inv = self, .source = source}});
+	Sync.ClientSide.executeCommand(.{.open = .{.inv = self, .source = source}});
 	return self;
 }
 
@@ -1122,7 +1206,7 @@ fn _init(allocator: NeverFailingAllocator, _size: usize, _type: Type, side: Side
 }
 
 pub fn deinit(self: Inventory, allocator: NeverFailingAllocator) void {
-	Sync.executeCommand(.{.close = .{.inv = self, .allocator = allocator}});
+	Sync.ClientSide.executeCommand(.{.close = .{.inv = self, .allocator = allocator}});
 }
 
 fn _deinit(self: Inventory, allocator: NeverFailingAllocator, side: Side) void {
@@ -1158,15 +1242,15 @@ fn update(self: Inventory) void {
 }
 
 pub fn depositOrSwap(dest: Inventory, destSlot: u32, carried: Inventory) void {
-	Sync.executeCommand(.{.depositOrSwap = .{.dest = .{.inv = dest, .slot = destSlot}, .source = .{.inv = carried, .slot = 0}}});
+	Sync.ClientSide.executeCommand(.{.depositOrSwap = .{.dest = .{.inv = dest, .slot = destSlot}, .source = .{.inv = carried, .slot = 0}}});
 }
 
 pub fn deposit(dest: Inventory, destSlot: u32, carried: Inventory, amount: u16) void {
-	Sync.executeCommand(.{.deposit = .{.dest = .{.inv = dest, .slot = destSlot}, .source = .{.inv = carried, .slot = 0}, .amount = amount}});
+	Sync.ClientSide.executeCommand(.{.deposit = .{.dest = .{.inv = dest, .slot = destSlot}, .source = .{.inv = carried, .slot = 0}, .amount = amount}});
 }
 
 pub fn takeHalf(source: Inventory, sourceSlot: u32, carried: Inventory) void {
-	Sync.executeCommand(.{.takeHalf = .{.dest = .{.inv = carried, .slot = 0}, .source = .{.inv = source, .slot = sourceSlot}}});
+	Sync.ClientSide.executeCommand(.{.takeHalf = .{.dest = .{.inv = carried, .slot = 0}, .source = .{.inv = source, .slot = sourceSlot}}});
 }
 
 pub fn distribute(carried: Inventory, destinationInventories: []const Inventory, destinationSlots: []const u32) void {
@@ -1178,23 +1262,23 @@ pub fn distribute(carried: Inventory, destinationInventories: []const Inventory,
 }
 
 pub fn depositOrDrop(dest: Inventory, source: Inventory) void {
-	Sync.executeCommand(.{.depositOrDrop = .{.dest = dest, .source = source}});
+	Sync.ClientSide.executeCommand(.{.depositOrDrop = .{.dest = dest, .source = source}});
 }
 
 pub fn dropStack(source: Inventory, sourceSlot: u32) void {
-	Sync.executeCommand(.{.drop = .{.source = .{.inv = source, .slot = sourceSlot}}});
+	Sync.ClientSide.executeCommand(.{.drop = .{.source = .{.inv = source, .slot = sourceSlot}}});
 }
 
 pub fn dropOne(source: Inventory, sourceSlot: u32) void {
-	Sync.executeCommand(.{.drop = .{.source = .{.inv = source, .slot = sourceSlot}, .desiredAmount = 1}});
+	Sync.ClientSide.executeCommand(.{.drop = .{.source = .{.inv = source, .slot = sourceSlot}, .desiredAmount = 1}});
 }
 
 pub fn fillFromCreative(dest: Inventory, destSlot: u32, item: ?Item) void {
-	Sync.executeCommand(.{.fillFromCreative = .{.dest = .{.inv = dest, .slot = destSlot}, .item = item}});
+	Sync.ClientSide.executeCommand(.{.fillFromCreative = .{.dest = .{.inv = dest, .slot = destSlot}, .item = item}});
 }
 
 pub fn fillAmountFromCreative(dest: Inventory, destSlot: u32, item: ?Item, amount: u16) void {
-	Sync.executeCommand(.{.fillFromCreative = .{.dest = .{.inv = dest, .slot = destSlot}, .item = item, .amount = amount}});
+	Sync.ClientSide.executeCommand(.{.fillFromCreative = .{.dest = .{.inv = dest, .slot = destSlot}, .item = item, .amount = amount}});
 }
 
 pub fn placeBlock(self: Inventory, slot: u32, unlimitedBlocks: bool) void {

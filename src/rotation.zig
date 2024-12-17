@@ -26,7 +26,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 		fn model(block: Block) u16 {
 			return blocks.meshes.modelIndexStart(block);
 		}
-		fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: *Block, blockPlacing: bool) bool {
+		fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: *Block, _: Block, blockPlacing: bool) bool {
 			return blockPlacing;
 		}
 		fn createBlockModel(modelId: []const u8) u16 {
@@ -35,10 +35,13 @@ pub const RotationMode = struct { // MARK: RotationMode
 		fn updateData(_: *Block, _: Neighbor, _: Block) bool {
 			return false;
 		}
-		fn rayIntersection(block: Block, _: ?main.items.Item, _: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
+		fn rayIntersection(block: Block, _: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
+			return rayModelIntersection(blocks.meshes.model(block), relativePlayerPos, playerDir);
+		}
+		fn rayModelIntersection(modelIndex: u32, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
 			// Check the true bounding box (using this algorithm here: https://tavianator.com/2011/ray_box.html):
 			const invDir = @as(Vec3f, @splat(1))/playerDir;
-			const modelData = &main.models.models.items[blocks.meshes.model(block)];
+			const modelData = &main.models.models.items[modelIndex];
 			const min: Vec3f = modelData.min;
 			const max: Vec3f = modelData.max;
 			const t1 = (min - relativePlayerPos)*invDir;
@@ -54,10 +57,16 @@ pub const RotationMode = struct { // MARK: RotationMode
 			}
 			return null;
 		}
+		fn onBlockBreaking(_: ?main.items.Item, _: Vec3f, _: Vec3f, currentData: *Block) void {
+			currentData.* = .{.typ = 0, .data = 0};
+		}
 	};
 
 	/// if the block should be destroyed or changed when a certain neighbor is removed.
 	dependsOnNeighbors: bool = false,
+
+	/// The default rotation data intended for generation algorithms
+	naturalStandard: u16 = 0,
 
 	model: *const fn(block: Block) u16 = &DefaultFunctions.model,
 
@@ -65,12 +74,14 @@ pub const RotationMode = struct { // MARK: RotationMode
 
 	/// Updates the block data of a block in the world or places a block in the world.
 	/// return true if the placing was successful, false otherwise.
-	generateData: *const fn(world: *main.game.World, pos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, relativeDir: Vec3i, currentData: *Block, blockPlacing: bool) bool = DefaultFunctions.generateData,
+	generateData: *const fn(world: *main.game.World, pos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, relativeDir: Vec3i, currentData: *Block, neighborBlock: Block, blockPlacing: bool) bool = DefaultFunctions.generateData,
 
 	/// Updates data of a placed block if the RotationMode dependsOnNeighbors.
 	updateData: *const fn(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool = &DefaultFunctions.updateData,
 
-	rayIntersection: *const fn(block: Block, item: ?main.items.Item, voxelPos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult = &DefaultFunctions.rayIntersection,
+	rayIntersection: *const fn(block: Block, item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult = &DefaultFunctions.rayIntersection,
+
+	onBlockBreaking: *const fn(item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void = &DefaultFunctions.onBlockBreaking,
 };
 
 var rotationModes: std.StringHashMap(RotationMode) = undefined;
@@ -108,10 +119,10 @@ pub const RotationModes = struct {
 			// Rotate the model:
 			const modelIndex: u16 = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.identity()});
 			_ = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationY(std.math.pi)});
-			_ = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationY(std.math.pi/2.0)});
-			_ = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationY(-std.math.pi/2.0)});
+			_ = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationZ(-std.math.pi/2.0).mul(Mat4f.rotationX(-std.math.pi/2.0))});
+			_ = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationZ(std.math.pi/2.0).mul(Mat4f.rotationX(-std.math.pi/2.0))});
 			_ = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationX(-std.math.pi/2.0)});
-			_ = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationX(std.math.pi/2.0)});
+			_ = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationZ(std.math.pi).mul(Mat4f.rotationX(-std.math.pi/2.0))});
 			rotatedModels.put(modelId, modelIndex) catch unreachable;
 			return modelIndex;
 		}
@@ -120,7 +131,7 @@ pub const RotationModes = struct {
 			return blocks.meshes.modelIndexStart(block) + @min(block.data, 5);
 		}
 
-		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, relativeDir: Vec3i, currentData: *Block, blockPlacing: bool) bool {
+		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, relativeDir: Vec3i, currentData: *Block, _: Block, blockPlacing: bool) bool {
 			if(blockPlacing) {
 				if(relativeDir[0] == 1) currentData.data = Neighbor.dirNegX.toInt();
 				if(relativeDir[0] == -1) currentData.data = Neighbor.dirPosX.toInt();
@@ -163,7 +174,7 @@ pub const RotationModes = struct {
 			return blocks.meshes.modelIndexStart(block) + @min(block.data, 3);
 		}
 
-		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, playerDir: Vec3f, _: Vec3i, currentData: *Block, blockPlacing: bool) bool {
+		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, playerDir: Vec3f, _: Vec3i, currentData: *Block, _: Block, blockPlacing: bool) bool {
 			if(blockPlacing) {
 				if(@abs(playerDir[0]) > @abs(playerDir[1])) {
 					if(playerDir[0] < 0) currentData.data = Neighbor.dirNegX.toInt() - 2
@@ -239,7 +250,7 @@ pub const RotationModes = struct {
 			const blockBaseModel = blocks.meshes.modelIndexStart(block.*);
 			const neighborBaseModel = blocks.meshes.modelIndexStart(neighborBlock);
 			const neighborModel = blocks.meshes.model(neighborBlock);
-			const targetVal = neighborBlock.solid() and (blockBaseModel == neighborBaseModel or main.models.models.items[neighborModel].neighborFacingQuads[neighbor.reverse().toInt()].len != 0);
+			const targetVal = neighborBlock.solid() and (blockBaseModel == neighborBaseModel or main.models.models.items[neighborModel].isNeighborOccluded[neighbor.reverse().toInt()]);
 			var currentData: FenceData = @bitCast(@as(u4, @truncate(block.data)));
 			switch(neighbor) {
 				.dirNegX => {
@@ -466,7 +477,7 @@ pub const RotationModes = struct {
 			return blocks.meshes.modelIndexStart(block) + (block.data & 255);
 		}
 
-		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, currentData: *Block, blockPlacing: bool) bool {
+		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, currentData: *Block, _: Block, blockPlacing: bool) bool {
 			if(blockPlacing) {
 				currentData.data = 0;
 				return true;
@@ -512,7 +523,7 @@ pub const RotationModes = struct {
 			return null;
 		}
 
-		pub fn rayIntersection(block: Block, item: ?main.items.Item, blockPos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
+		pub fn rayIntersection(block: Block, item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
 			if(item) |_item| {
 				switch(_item) {
 					.baseItem => |baseItem| {
@@ -532,20 +543,30 @@ pub const RotationModes = struct {
 					else => {},
 				}
 			}
-			return RotationMode.DefaultFunctions.rayIntersection(block, item, blockPos, relativePlayerPos, playerDir);
+			return RotationMode.DefaultFunctions.rayIntersection(block, item, relativePlayerPos, playerDir);
 		}
 
-		pub fn chisel(_: *main.game.World, _: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) bool {
-			if(intersectionPos(currentData.*, relativePlayerPos, playerDir)) |intersection| {
-				currentData.data = currentData.data | subBlockMask(intersection.minPos[0], intersection.minPos[1], intersection.minPos[2]);
-				if(currentData.data == 255) currentData.* = .{.typ = 0, .data = 0};
-				return true;
+		pub fn onBlockBreaking(item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void {
+			if(item) |_item| {
+				switch(_item) {
+					.baseItem => |baseItem| {
+						if(std.mem.eql(u8, baseItem.id, "cubyz:chisel")) { // Break only one eigth of a block
+							if(intersectionPos(currentData.*, relativePlayerPos, playerDir)) |intersection| {
+								currentData.data = currentData.data | subBlockMask(intersection.minPos[0], intersection.minPos[1], intersection.minPos[2]);
+								if(currentData.data == 255) currentData.* = .{.typ = 0, .data = 0};
+								return;
+							}
+						}
+					},
+					else => {},
+				}
 			}
-			return false;
+			return RotationMode.DefaultFunctions.onBlockBreaking(item, relativePlayerPos, playerDir, currentData);
 		}
 	};
 	pub const Torch = struct { // MARK: Torch
 		pub const id: []const u8 = "torch";
+		pub const naturalStandard: u16 = 1;
 		pub const dependsOnNeighbors = true;
 		var rotatedModels: std.StringHashMap(u16) = undefined;
 		const TorchData = packed struct(u5) {
@@ -618,7 +639,7 @@ pub const RotationModes = struct {
 			return blocks.meshes.modelIndexStart(block) + (@as(u5, @truncate(block.data)) -| 1);
 		}
 
-		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, relativeDir: Vec3i, currentData: *Block, _: bool) bool {
+		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, relativeDir: Vec3i, currentData: *Block, _: Block, _: bool) bool {
 			var data: TorchData = @bitCast(@as(u5, @truncate(currentData.data)));
 			if(relativeDir[0] == 1) data.posX = true;
 			if(relativeDir[0] == -1) data.negX = true;
@@ -661,6 +682,201 @@ pub const RotationModes = struct {
 			if(result == 0) block.* = .{.typ = 0, .data = 0}
 			else block.data = result;
 			return true;
+		}
+
+		fn closestRay(comptime typ: enum{bit, intersection}, block: Block, _: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) if(typ == .intersection) ?RayIntersectionResult else u16 {
+			var result: ?RayIntersectionResult = null;
+			var resultBit: u16 = 0;
+			for([_]u16{1, 2, 4, 8, 16}) |bit| {
+				if(block.data & bit != 0) {
+					const modelIndex = blocks.meshes.modelIndexStart(block) + bit - 1;
+					if(RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
+						if(result == null or result.?.distance > intersection.distance) {
+							result = intersection;
+							resultBit = bit;
+						}
+					}
+				}
+			}
+			if(typ == .bit) return resultBit;
+			return result;
+		}
+
+		pub fn rayIntersection(block: Block, item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
+			return closestRay(.intersection, block, item, relativePlayerPos, playerDir);
+		}
+
+		pub fn onBlockBreaking(item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void {
+			const bit = closestRay(.bit, currentData.*, item, relativePlayerPos, playerDir);
+			currentData.data &= ~bit;
+			if(currentData.data == 0) currentData.typ = 0;
+		}
+	};
+	pub const Carpet = struct { // MARK: Carpet
+		pub const id: []const u8 = "carpet";
+		pub const naturalStandard: u16 = 0b10000;
+		var rotatedModels: std.StringHashMap(u16) = undefined;
+		const CarpetData = packed struct(u6) {
+			negX: bool,
+			posX: bool,
+			negY: bool,
+			posY: bool,
+			negZ: bool,
+			posZ: bool,
+		};
+
+		fn init() void {
+			rotatedModels = .init(main.globalAllocator.allocator);
+		}
+
+		fn deinit() void {
+			rotatedModels.deinit();
+		}
+
+		pub fn createBlockModel(modelId: []const u8) u16 {
+			if(rotatedModels.get(modelId)) |modelIndex| return modelIndex;
+
+			const baseModelIndex = main.models.getModelIndex(modelId);
+			const baseModel = main.models.models.items[baseModelIndex];
+			// Rotate the model:
+			var negXModel: u16 = undefined;
+			var posXModel: u16 = undefined;
+			var negYModel: u16 = undefined;
+			var posYModel: u16 = undefined;
+			var negZModel: u16 = undefined;
+			var posZModel: u16 = undefined;
+			for(1..64) |i| {
+				const carpetData: CarpetData = @bitCast(@as(u6, @intCast(i)));
+				if(i & i-1 == 0) {
+					if(carpetData.negX) negXModel = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationZ(-std.math.pi/2.0).mul(Mat4f.rotationX(-std.math.pi/2.0))});
+					if(carpetData.posX) posXModel = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationZ(std.math.pi/2.0).mul(Mat4f.rotationX(-std.math.pi/2.0))});
+					if(carpetData.negY) negYModel = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationX(-std.math.pi/2.0)});
+					if(carpetData.posY) posYModel = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationZ(std.math.pi).mul(Mat4f.rotationX(-std.math.pi/2.0))});
+					if(carpetData.negZ) negZModel = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.identity()});
+					if(carpetData.posZ) posZModel = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationY(std.math.pi)});
+				} else {
+					var models: [6]u16 = undefined;
+					var amount: usize = 0;
+					if(carpetData.negX) {
+						models[amount] = negXModel;
+						amount += 1;
+					}
+					if(carpetData.posX) {
+						models[amount] = posXModel;
+						amount += 1;
+					}
+					if(carpetData.negY) {
+						models[amount] = negYModel;
+						amount += 1;
+					}
+					if(carpetData.posY) {
+						models[amount] = posYModel;
+						amount += 1;
+					}
+					if(carpetData.negZ) {
+						models[amount] = negZModel;
+						amount += 1;
+					}
+					if(carpetData.posZ) {
+						models[amount] = posZModel;
+						amount += 1;
+					}
+					_ = main.models.Model.mergeModels(models[0..amount]);
+				}
+			}
+			const modelIndex = negXModel;
+			rotatedModels.put(modelId, modelIndex) catch unreachable;
+			return modelIndex;
+		}
+
+		pub fn model(block: Block) u16 {
+			return blocks.meshes.modelIndexStart(block) + (@as(u6, @truncate(block.data)) -| 1);
+		}
+
+		pub fn generateData(_: *main.game.World, _: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, relativeDir: Vec3i, currentData: *Block, neighbor: Block, _: bool) bool {
+			if(neighbor.mode() == currentData.mode()) parallelPlacing: {
+				const bit = closestRay(.bit, neighbor, null, relativePlayerPos - @as(Vec3f, @floatFromInt(relativeDir)), playerDir);
+				const bitData: CarpetData = @bitCast(@as(u6, @truncate(bit)));
+				if((bitData.negX or bitData.posX) and relativeDir[0] != 0) break :parallelPlacing;
+				if((bitData.negY or bitData.posY) and relativeDir[1] != 0) break :parallelPlacing;
+				if((bitData.negZ or bitData.posZ) and relativeDir[2] != 0) break :parallelPlacing;
+				if(currentData.data & bit == bit) return false;
+				currentData.data |= bit;
+				return true;
+			}
+			var data: CarpetData = @bitCast(@as(u6, @truncate(currentData.data)));
+			if(relativeDir[0] == 1) data.posX = true;
+			if(relativeDir[0] == -1) data.negX = true;
+			if(relativeDir[1] == 1) data.posY = true;
+			if(relativeDir[1] == -1) data.negY = true;
+			if(relativeDir[2] == 1) data.posZ = true;
+			if(relativeDir[2] == -1) data.negZ = true;
+			if(@as(u6, @bitCast(data)) != currentData.data) {
+				currentData.data = @as(u6, @bitCast(data));
+				return true;
+			} else {
+				return false;
+			}
+		}
+
+		pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool {
+			const blockModel = blocks.meshes.modelIndexStart(block.*);
+			const neighborModel = blocks.meshes.model(neighborBlock);
+			const targetVal = neighborBlock.solid() and (blockModel == neighborModel or main.models.models.items[neighborModel].neighborFacingQuads[neighbor.reverse().toInt()].len != 0);
+			var currentData: CarpetData = @bitCast(@as(u6, @truncate(block.data)));
+			switch(neighbor) {
+				.dirNegX => {
+					currentData.negX = currentData.negX and targetVal;
+				},
+				.dirPosX => {
+					currentData.posX = currentData.posX and targetVal;
+				},
+				.dirNegY => {
+					currentData.negY = currentData.negY and targetVal;
+				},
+				.dirPosY => {
+					currentData.posY = currentData.posY and targetVal;
+				},
+				.dirDown => {
+					currentData.negZ = currentData.negZ and targetVal;
+				},
+				.dirUp => {
+					currentData.posZ = currentData.posZ and targetVal;
+				},
+			}
+			const result: u16 = @as(u6, @bitCast(currentData));
+			if(result == block.data) return false;
+			if(result == 0) block.* = .{.typ = 0, .data = 0}
+			else block.data = result;
+			return true;
+		}
+
+		fn closestRay(comptime typ: enum{bit, intersection}, block: Block, _: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) if(typ == .intersection) ?RayIntersectionResult else u16 {
+			var result: ?RayIntersectionResult = null;
+			var resultBit: u16 = 0;
+			for([_]u16{1, 2, 4, 8, 16, 32}) |bit| {
+				if(block.data & bit != 0) {
+					const modelIndex = blocks.meshes.modelIndexStart(block) + bit - 1;
+					if(RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
+						if(result == null or result.?.distance > intersection.distance) {
+							result = intersection;
+							resultBit = bit;
+						}
+					}
+				}
+			}
+			if(typ == .bit) return resultBit;
+			return result;
+		}
+
+		pub fn rayIntersection(block: Block, item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
+			return closestRay(.intersection, block, item, relativePlayerPos, playerDir);
+		}
+
+		pub fn onBlockBreaking(item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void {
+			const bit = closestRay(.bit, currentData.*, item, relativePlayerPos, playerDir);
+			currentData.data &= ~bit;
+			if(currentData.data == 0) currentData.typ = 0;
 		}
 	};
 };

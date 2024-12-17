@@ -40,7 +40,7 @@ pub threadlocal var seed: u64 = undefined;
 var global_gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe=true}){};
 var handled_gpa = utils.ErrorHandlingAllocator.init(global_gpa.allocator());
 pub const globalAllocator: utils.NeverFailingAllocator = handled_gpa.allocator();
-pub var threadPool: utils.ThreadPool = undefined;
+pub var threadPool: *utils.ThreadPool = undefined;
 
 fn cacheStringImpl(comptime len: usize, comptime str: [len]u8) []const u8 {
 	return str[0..len];
@@ -540,6 +540,9 @@ pub fn main() void { // MARK: main()
 			}
 		}
 	} else |_| {}
+
+	files.init();
+	defer files.deinit();
 
 	settings.init();
 	defer settings.deinit();

@@ -13,12 +13,21 @@ const Vec3i = vec.Vec3i;
 const terrain = @import("terrain.zig");
 const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
 
-pub const Structure = struct {
+const StructureInternal = struct {
 	generateFn: *const fn(self: *const anyopaque, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView) void,
 	data: *const anyopaque,
 
-	pub fn generate(self: Structure, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView) void {
+	pub fn generate(self: StructureInternal, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView) void {
 		self.generateFn(self.data, chunk, caveMap);
+	}
+};
+
+pub const Structure = struct {
+	internal: StructureInternal,
+	priority: f32,
+
+	fn lessThan(_: void, lhs: Structure, rhs: Structure) bool {
+		return lhs.priority < rhs.priority;
 	}
 };
 
@@ -27,7 +36,7 @@ pub const StructureMapFragment = struct {
 	pub const sizeMask = size - 1;
 	pub const chunkedSize = size >> main.chunk.chunkShift;
 
-	data: [chunkedSize*chunkedSize*chunkedSize]main.ListUnmanaged(Structure) = undefined,
+	data: [chunkedSize*chunkedSize*chunkedSize][]StructureInternal = undefined,
 
 	pos: ChunkPosition,
 	voxelShift: u5,
@@ -35,8 +44,13 @@ pub const StructureMapFragment = struct {
 	arena: main.utils.NeverFailingArenaAllocator,
 	allocator: main.utils.NeverFailingAllocator,
 
+	tempData: struct {
+		lists: *[chunkedSize*chunkedSize*chunkedSize]main.ListUnmanaged(Structure),
+		allocator: NeverFailingAllocator,
+	},
 
-	pub fn init(self: *StructureMapFragment, wx: i32, wy: i32, wz: i32, voxelSize: u31) void {
+
+	pub fn init(self: *StructureMapFragment, tempAllocator: NeverFailingAllocator, wx: i32, wy: i32, wz: i32, voxelSize: u31) void {
 		self.* = .{
 			.pos = .{
 				.wx = wx, .wy = wy, .wz = wz,
@@ -45,13 +59,32 @@ pub const StructureMapFragment = struct {
 			.voxelShift = @ctz(voxelSize),
 			.arena = .init(main.globalAllocator),
 			.allocator = self.arena.allocator(),
+			.tempData = .{
+				.lists = tempAllocator.create([chunkedSize*chunkedSize*chunkedSize]main.ListUnmanaged(Structure)),
+				.allocator = tempAllocator,
+			},
 		};
-		@memset(&self.data, .{});
+		@memset(self.tempData.lists, .{});
 	}
 
 	pub fn deinit(self: *StructureMapFragment) void {
 		self.arena.deinit();
 		main.globalAllocator.destroy(self);
+	}
+
+	fn finishGeneration(self: *StructureMapFragment) void {
+		for(0..self.data.len) |i| {
+			std.sort.insertion(Structure, self.tempData.lists[i].items, {}, Structure.lessThan);
+			self.data[i] = self.allocator.alloc(StructureInternal, self.tempData.lists[i].items.len);
+			for(0..self.tempData.lists[i].items.len) |j| {
+				self.data[i][j] = self.tempData.lists[i].items[j].internal;
+			}
+			self.tempData.lists[i].deinit(self.tempData.allocator);
+			self.tempData.lists[i] = undefined;
+		}
+		self.tempData.allocator.destroy(self.tempData.lists);
+		self.tempData = undefined;
+		self.arena.shrinkAndFree();
 	}
 
 	fn getIndex(self: *const StructureMapFragment, x: i32, y: i32, z: i32) usize {
@@ -74,7 +107,7 @@ pub const StructureMapFragment = struct {
 
 	pub fn generateStructuresInChunk(self: *const StructureMapFragment, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView) void {
 		const index = self.getIndex(chunk.super.pos.wx - self.pos.wx, chunk.super.pos.wy - self.pos.wy, chunk.super.pos.wz - self.pos.wz);
-		for(self.data[index].items) |structure| {
+		for(self.data[index]) |structure| {
 			structure.generate(chunk, caveMap);
 		}
 	}
@@ -89,7 +122,7 @@ pub const StructureMapFragment = struct {
 				var z = min[2] & ~@as(i32, main.chunk.chunkMask << self.voxelShift | self.pos.voxelSize-1);
 				while(z < max[2]) : (z += main.chunk.chunkSize << self.voxelShift) {
 					if(z < 0 or z >= size*self.pos.voxelSize) continue;
-					self.data[self.getIndex(x, y, z)].append(self.allocator, structure);
+					self.tempData.lists[self.getIndex(x, y, z)].append(self.tempData.allocator, structure);
 				}
 			}
 		}
@@ -147,10 +180,11 @@ var profile: TerrainGenerationProfile = undefined;
 
 fn cacheInit(pos: ChunkPosition) *StructureMapFragment {
 	const mapFragment = main.globalAllocator.create(StructureMapFragment);
-	mapFragment.init(pos.wx, pos.wy, pos.wz, pos.voxelSize);
+	mapFragment.init(main.stackAllocator, pos.wx, pos.wy, pos.wz, pos.voxelSize);
 	for(profile.structureMapGenerators) |generator| {
 		generator.generate(mapFragment, profile.seed ^ generator.generatorSeed);
 	}
+	mapFragment.finishGeneration();
 	_ = @atomicRmw(u16, &mapFragment.refCount.raw, .Add, 1, .monotonic);
 	return mapFragment;
 }
