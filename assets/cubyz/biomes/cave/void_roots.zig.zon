@@ -1,8 +1,8 @@
 .{
 	.isCave = true,
-	.maxHeight = -50000,
-
-	.fogDensity = 2,
+	.maxHeight = -15000,
+	.fogDensity = 10,
+	.fogColor = 0x090511,
 	.chance = 100,
 	.caveRadiusFactor = -1,
 	.caves = 0.5,
@@ -11,12 +11,28 @@
 
 	.structures = .{
 		.{
+			.id = "cubyz:simple_vegetation",
+			.chance = 0.001,
+			.block = "cubyz:torch",
+			.height = 1,
+			.height_variation = 0,
+		},
+		.{
 			.id = "cubyz:ground_patch",
 			.block = "cubyz:gravel",
 			.chance = 0.064,
 			.width = 5,
 			.variation = 5,
 			.depth = 3,
+			.smoothness = 0.1,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:air",
+			.chance = 0.005,
+			.width = 10,
+			.variation = 5,
+			.depth = 5,
 			.smoothness = 0.1,
 		},
 		.{

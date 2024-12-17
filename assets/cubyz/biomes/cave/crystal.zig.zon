@@ -1,6 +1,7 @@
 .{
 	.isCave = true,
 	.maxHeight = -512,
+	.minHeight = -9750,
 
 	.chance = 0.2,
 
