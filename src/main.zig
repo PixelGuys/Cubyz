@@ -417,8 +417,10 @@ pub var lastFrameTime = std.atomic.Value(f64).init(0);
 pub var lastDeltaTime = std.atomic.Value(f64).init(0);
 
 var shouldExitToMenu = std.atomic.Value(bool).init(false);
-pub fn exitToMenu(_: usize) void {
+var exitNotification = std.atomic.Value(network.DisconnectType).init(.exit);
+pub fn exitToMenu(exitData: network.DisconnectType) void {
 	shouldExitToMenu.store(true, .monotonic);
+	exitNotification.store(exitData, .monotonic);
 }
 
 
@@ -678,6 +680,7 @@ pub fn main() void { // MARK: main()
 				game.world = null;
 			}
 			gui.openWindow("main");
+			exitNotification.load(.monotonic).showDisconnectNotification();
 			audio.setMusic("cubyz:cubyz");
 		}
 	}
