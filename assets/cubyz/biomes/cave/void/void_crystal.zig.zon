@@ -1,11 +1,10 @@
 .{
 	.isCave = true,
-	.maxHeight = -512,
-	.minHeight = -44750,
+	.maxHeight = -50000,
 
-	.chance = 0.2,
-
-	.caves = -0.1,
+	.chance = 0.1,
+	.caveRadiusFactor = -1,
+	.caves = 0.5,
 	.crystals = 32,
 
 	.music = "cubyz:la_kubisa_caverna",
