@@ -1,7 +1,7 @@
 .{
 	.isCave = true,
-	.maxHeight = -9750,
-	.minHeight = -10000,
+	.maxHeight = -44750,
+	.minHeight = -45000,
 	.stoneBlock = "cubyz:stone",
 	.fogDensity = 10,
 	.fogColor = 0x090511,

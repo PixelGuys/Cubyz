@@ -3,7 +3,7 @@
 
 	.chance = 0.01,
 	.maxHeight = -50,
-	.minHeight = -9750,
+	.minHeight = -44750,
 	.caves = -0.2,
 
 	.music = "cubyz:heart-of-the-beast",
