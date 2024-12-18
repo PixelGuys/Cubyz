@@ -1,8 +1,0 @@
-.{
-	.isCave = true,
-	.minHeight = 0,
-
-	.music = "cubyz:GymnopedieNo1",
-
-	.ground_structure = .{},
-}
