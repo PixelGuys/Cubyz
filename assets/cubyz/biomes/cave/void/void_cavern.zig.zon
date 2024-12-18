@@ -1,9 +1,9 @@
 .{
 	.isCave = true,
-	.maxHeight = -44750,
-	.chance = 0.05,
+	.maxHeight = -50000,
+	.chance = 0.1,
 	.fogDensity = 10,
-	.fogColor = 0x090511,
+	.fogColor = 0x5f5c64,
 	.caves = -0.1,
 
 	.music = "cubyz:heart-of-the-beast",

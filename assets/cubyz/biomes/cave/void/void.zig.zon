@@ -4,7 +4,7 @@
 	.minHeight = -50000,
 	.stoneBlock = "cubyz:air",
 	.fogDensity = 10,
-	.fogColor = 0x090511,
+	.fogColor = 0x5f5c64,
 	.chance = 100,
 
 	.music = "cubyz:heart-of-the-beast",

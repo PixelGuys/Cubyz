@@ -2,7 +2,7 @@
 	.isCave = true,
 	.maxHeight = -50000,
 	.fogDensity = 10,
-	.fogColor = 0x090511,
+	.fogColor = 0x5f5c64,
 	.chance = 100,
 	.caveRadiusFactor = -1,
 	.caves = 0.5,
@@ -12,8 +12,15 @@
 	.structures = .{
 		.{
 			.id = "cubyz:simple_vegetation",
-			.chance = 0.001,
+			.chance = 0.00001,
 			.block = "cubyz:torch",
+			.height = 1,
+			.height_variation = 0,
+		},
+		.{
+			.id = "cubyz:simple_vegetation",
+			.chance = 0.000001,
+			.block = "cubyz:workbench",
 			.height = 1,
 			.height_variation = 0,
 		},
