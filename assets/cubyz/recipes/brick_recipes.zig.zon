@@ -8,12 +8,20 @@
 		.output = "cubyz:marble_bricks",
 	},
 	.{
+		.inputs = .{"cubyz:marble"},
+		.output = "2 cubyz:marble_wall",
+	},
+	.{
 		.inputs = .{"cubyz:glacite"},
 		.output = "cubyz:glacite_tile",
 	},
 	.{
 		.inputs = .{"cubyz:glacite"},
 		.output = "cubyz:glacite_bricks",
+	},
+	.{
+		.inputs = .{"cubyz:glacite"},
+		.output = "2 cubyz:glacite_wall",
 	},
 	.{
 		.inputs = .{"cubyz:stone"},
@@ -24,12 +32,20 @@
 		.output = "cubyz:stone_bricks",
 	},
 	.{
+		.inputs = .{"cubyz:stone"},
+		.output = "2 cubyz:stone_wall",
+	},
+	.{
 		.inputs = .{"cubyz:sandstone"},
 		.output = "cubyz:sandstone_tile",
 	},
 	.{
 		.inputs = .{"cubyz:sandstone"},
 		.output = "cubyz:sandstone_bricks",
+	},
+	.{
+		.inputs = .{"cubyz:sandstone"},
+		.output = "2 cubyz:sandstone_wall",
 	},
 	.{
 		.inputs = .{"cubyz:limestone"},
@@ -40,6 +56,10 @@
 		.output = "cubyz:limestone_bricks",
 	},
 	.{
+		.inputs = .{"cubyz:limestone"},
+		.output = "2 cubyz:limestone_wall",
+	},
+	.{
 		.inputs = .{"cubyz:basalt"},
 		.output = "cubyz:basalt_tile",
 	},
@@ -48,11 +68,31 @@
 		.output = "cubyz:basalt_bricks",
 	},
 	.{
+		.inputs = .{"cubyz:basalt"},
+		.output = "2 cubyz:basalt_wall",
+	},
+	.{
+		.inputs = .{"cubyz:ferrock"},
+		.output = "cubyz:ferrock_tiles",
+	},
+	.{
 		.inputs = .{"cubyz:ferrock"},
 		.output = "cubyz:ferrock_bricks",
 	},
 	.{
+		.inputs = .{"cubyz:ferrock"},
+		.output = "2 cubyz:ferrock_wall",
+	},
+	.{
+		.inputs = .{"cubyz:void_stone"},
+		.output = "cubyz:void_stone_tile",
+	},
+	.{
 		.inputs = .{"cubyz:void_stone"},
 		.output = "cubyz:void_stone_bricks",
+	},
+	.{
+		.inputs = .{"cubyz:void_stone"},
+		.output = "2 cubyz:void_stone_wall",
 	},
 },
