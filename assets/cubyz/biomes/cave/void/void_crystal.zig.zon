@@ -1,7 +1,8 @@
 .{
 	.isCave = true,
 	.maxHeight = -50000,
-
+	.fogDensity = 10,
+	.fogColor = 0x1B1333,
 	.chance = 0.1,
 	.caveRadiusFactor = -1,
 	.caves = 0.5,

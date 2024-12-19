@@ -1,10 +1,10 @@
 .{
 	.isCave = true,
-	.maxHeight = -45000,
+	.maxHeight = -48000,
 	.minHeight = -50000,
 	.stoneBlock = "cubyz:air",
 	.fogDensity = 10,
-	.fogColor = 0x5f5c64,
+	.fogColor = 0x1B1333,
 	.chance = 100,
 
 	.music = "cubyz:heart-of-the-beast",

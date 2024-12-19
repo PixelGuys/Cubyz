@@ -3,7 +3,7 @@
 	.maxHeight = -50000,
 	.chance = 0.1,
 	.fogDensity = 10,
-	.fogColor = 0x5f5c64,
+	.fogColor = 0x1B1333,
 	.caves = -0.1,
 
 	.music = "cubyz:heart-of-the-beast",
