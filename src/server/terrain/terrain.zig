@@ -73,6 +73,7 @@ pub const TerrainGenerationProfile = struct {
 	caveGenerators: []CaveMap.CaveGenerator = undefined,
 	structureMapGenerators: []StructureMap.StructureMapGenerator = undefined,
 	generators: []BlockGenerator = undefined,
+	climateWavelengths: [4]f32 = undefined,
 	seed: u64,
 
 	pub fn init(settings: ZonElement, seed: u64) !TerrainGenerationProfile {
@@ -98,6 +99,12 @@ pub const TerrainGenerationProfile = struct {
 
 		generator = settings.getChild("generators");
 		self.generators = BlockGenerator.getAndInitGenerators(main.globalAllocator, generator);
+
+		const climateWavelengths = settings.getChild("climateWavelengths");
+		self.climateWavelengths[0] = climateWavelengths.get(f32, "hot_cold", 4096);
+		self.climateWavelengths[1] = climateWavelengths.get(f32, "land_ocean", 4096);
+		self.climateWavelengths[2] = climateWavelengths.get(f32, "wet_dry", 4096);
+		self.climateWavelengths[3] = climateWavelengths.get(f32, "mountain", 4096);
 
 		return self;
 	}
