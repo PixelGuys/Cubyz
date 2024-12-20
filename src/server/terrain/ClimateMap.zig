@@ -137,7 +137,7 @@ pub fn deinit() void {
 	cache.clear();
 }
 
-fn getOrGenerateFragmentAndIncreaseRefCount(wx: i32, wy: i32) *ClimateMapFragment {
+pub fn getOrGenerateFragmentAndIncreaseRefCount(wx: i32, wy: i32) *ClimateMapFragment {
 	const compare = ClimateMapFragmentPosition{.wx = wx, .wy = wy};
 	const result = cache.findOrCreate(compare, cacheInit, ClimateMapFragment.increaseRefCount);
 	return result;
