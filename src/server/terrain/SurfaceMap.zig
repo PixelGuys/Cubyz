@@ -273,7 +273,7 @@ fn cacheInit(pos: MapFragmentPosition) *MapFragment {
 pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 	std.log.info("Regenerating map LODs...", .{});
 	// Delete old LODs:
-	for(1..main.settings.highestLOD+1) |i| {
+	for(1..main.settings.highestSupportedLod+1) |i| {
 		const lod = @as(u32, 1) << @intCast(i);
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{worldName}) catch unreachable;
 		defer main.stackAllocator.free(path);
@@ -568,7 +568,7 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 		// Generate LODs
 		var cur = mapFragment;
 		defer if(cur.pos.voxelSize != 1) cur.decreaseRefCount();
-		while(cur.pos.voxelSizeShift < main.settings.highestLOD) {
+		while(cur.pos.voxelSizeShift < main.settings.highestSupportedLod) {
 			var nextPos = cur.pos;
 			nextPos.voxelSize *= 2;
 			nextPos.voxelSizeShift += 1;

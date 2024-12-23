@@ -10,7 +10,7 @@ pub const entityLookback: i16 = 100;
 
 pub const version = "Cubyz α 0.12.0";
 
-pub const highestLOD: u5 = 5;
+pub const highestSupportedLod: u3 = 5;
 
 
 pub var simulationDistance: u16 = 4;
@@ -29,6 +29,8 @@ pub var controllerSensitivity: f32 = 1;
 
 pub var renderDistance: u16 = 7;
 
+pub var highestLod: u3 = highestSupportedLod;
+
 pub var resolutionScale: f32 = 1;
 
 pub var bloom: bool = true;
@@ -44,6 +46,8 @@ pub var guiScale: ?f32 = null;
 pub var musicVolume: f32 = 1;
 
 pub var leavesQuality: u16 = 2;
+
+pub var @"lod0.5Distance": f32 = 200;
 
 
 pub var storageTime: i64 = 5000;

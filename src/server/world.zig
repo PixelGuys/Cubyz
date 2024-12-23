@@ -257,7 +257,7 @@ const ChunkManager = struct { // MARK: ChunkManager
 	}
 
 	pub fn deinit(self: ChunkManager) void {
-		for(0..main.settings.highestLOD) |_| {
+		for(0..main.settings.highestSupportedLod) |_| {
 			chunkCache.clear();
 		}
 		entityChunkHashMap.deinit();
@@ -656,7 +656,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			try terrain.SurfaceMap.regenerateLOD(self.name);
 		}
 		// Delete old LODs:
-		for(1..main.settings.highestLOD+1) |i| {
+		for(1..main.settings.highestSupportedLod+1) |i| {
 			const lod = @as(u32, 1) << @intCast(i);
 			const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/chunks", .{self.name}) catch unreachable;
 			defer main.stackAllocator.free(path);

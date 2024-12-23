@@ -1674,7 +1674,7 @@ pub const TextureArray = struct { // MARK: TextureArray
 			}
 
 			// Calculate the mipmap levels:
-			for(lodBuffer, 0..) |_, _lod| {
+			for(0..lodBuffer.len) |_lod| {
 				const lod: u5 = @intCast(_lod);
 				const curWidth = maxWidth >> lod;
 				const curHeight = maxHeight >> lod;
@@ -1693,6 +1693,29 @@ pub const TextureArray = struct { // MARK: TextureArray
 						}
 					}
 				}
+			}
+			// Give the correct color to alpha 0 pixels, to avoid dark pixels:
+			for(1..lodBuffer.len) |_lod| {
+				const lod: u5 = @intCast(lodBuffer.len - 1 - _lod);
+				const curWidth = maxWidth >> lod;
+				const curHeight = maxHeight >> lod;
+				for(0..curWidth) |x| {
+					for(0..curHeight) |y| {
+						const index = x + y*curWidth;
+						const index2 = x/2 + y/2*curWidth/2;
+						if(lodBuffer[lod][index].a == 0) {
+							lodBuffer[lod][index].r = lodBuffer[lod + 1][index2].r;
+							lodBuffer[lod][index].g = lodBuffer[lod + 1][index2].g;
+							lodBuffer[lod][index].b = lodBuffer[lod + 1][index2].b;
+						}
+					}
+				}
+			}
+			// Upload:
+			for(0..lodBuffer.len) |_lod| {
+				const lod: u5 = @intCast(lodBuffer.len - 1 - _lod);
+				const curWidth = maxWidth >> lod;
+				const curHeight = maxHeight >> lod;
 				c.glTexSubImage3D(c.GL_TEXTURE_2D_ARRAY, lod, 0, 0, @intCast(i), curWidth, curHeight, 1, c.GL_RGBA, c.GL_UNSIGNED_BYTE, lodBuffer[lod].ptr);
 			}
 		}

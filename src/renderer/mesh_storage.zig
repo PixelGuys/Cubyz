@@ -33,8 +33,8 @@ const ChunkMeshNode = struct {
 };
 const storageSize = 64;
 const storageMask = storageSize - 1;
-var storageLists: [settings.highestLOD + 1]*[storageSize*storageSize*storageSize]ChunkMeshNode = undefined;
-var mapStorageLists: [settings.highestLOD + 1]*[storageSize*storageSize]?*LightMap.LightMapFragment = undefined;
+var storageLists: [settings.highestSupportedLod + 1]*[storageSize*storageSize*storageSize]ChunkMeshNode = undefined;
+var mapStorageLists: [settings.highestSupportedLod + 1]*[storageSize*storageSize]?*LightMap.LightMapFragment = undefined;
 var meshList = main.List(*chunk_meshing.ChunkMesh).init(main.globalAllocator);
 var priorityMeshUpdateList = main.List(*chunk_meshing.ChunkMesh).init(main.globalAllocator);
 pub var updatableList = main.List(*chunk_meshing.ChunkMesh).init(main.globalAllocator);
@@ -132,7 +132,7 @@ fn finishedMeshingMask(x: bool, y: bool, z: bool) u8 {
 
 fn updateHigherLodNodeFinishedMeshing(pos_: chunk.ChunkPosition, finishedMeshing: bool) void {
 	const lod = std.math.log2_int(u31, pos_.voxelSize);
-	if(lod == settings.highestLOD) return;
+	if(lod == settings.highestLod) return;
 	var pos = pos_;
 	pos.wx &= ~@as(i32, pos.voxelSize*chunk.chunkSize);
 	pos.wy &= ~@as(i32, pos.voxelSize*chunk.chunkSize);
@@ -178,7 +178,7 @@ pub fn getBlock(x: i32, y: i32, z: i32) ?blocks.Block {
 
 pub fn getBlockFromAnyLod(x: i32, y: i32, z: i32) blocks.Block {
 	var lod: u5 = 0;
-	while(lod < settings.highestLOD) : (lod += 1) {
+	while(lod < settings.highestLod) : (lod += 1) {
 		const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize=@as(u31, 1) << lod});
 		node.mutex.lock();
 		defer node.mutex.unlock();
@@ -209,7 +209,7 @@ pub fn getMeshAndIncreaseRefCount(pos: chunk.ChunkPosition) ?*chunk_meshing.Chun
 
 pub fn getMeshFromAnyLodAndIncreaseRefCount(wx: i32, wy: i32, wz: i32, voxelSize: u31) ?*chunk_meshing.ChunkMesh {
 	var lod: u5 = @ctz(voxelSize);
-	while(lod < settings.highestLOD) : (lod += 1) {
+	while(lod < settings.highestLod) : (lod += 1) {
 		const mesh = getMeshAndIncreaseRefCount(.{.wx = wx & ~chunk.chunkMask<<lod, .wy = wy & ~chunk.chunkMask<<lod, .wz = wz & ~chunk.chunkMask<<lod, .voxelSize=@as(u31, 1) << lod});
 		return mesh orelse continue;
 	}
@@ -284,7 +284,7 @@ fn isMapInRenderDistance(pos: LightMap.MapFragmentPosition) bool {
 }
 
 fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16) void { // MARK: freeOldMeshes()
-	for(0..storageLists.len) |_lod| {
+	for(0..settings.highestLod + 1) |_lod| {
 		const lod: u5 = @intCast(_lod);
 		const maxRenderDistanceNew = lastRD*chunk.chunkSize << lod;
 		const maxRenderDistanceOld = olderRD*chunk.chunkSize << lod;
@@ -362,7 +362,7 @@ fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16) void { 
 			}
 		}
 	}
-	for(0..mapStorageLists.len) |_lod| {
+	for(0..settings.highestLod + 1) |_lod| {
 		const lod: u5 = @intCast(_lod);
 		const maxRenderDistanceNew = lastRD*chunk.chunkSize << lod;
 		const maxRenderDistanceOld = olderRD*chunk.chunkSize << lod;
@@ -426,7 +426,7 @@ fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16) void { 
 }
 
 fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16, meshRequests: *main.List(chunk.ChunkPosition), mapRequests: *main.List(LightMap.MapFragmentPosition)) void { // MARK: createNewMeshes()
-	for(0..storageLists.len) |_lod| {
+	for(0..settings.highestLod + 1) |_lod| {
 		const lod: u5 = @intCast(_lod);
 		const maxRenderDistanceNew = lastRD*chunk.chunkSize << lod;
 		const maxRenderDistanceOld = olderRD*chunk.chunkSize << lod;
@@ -502,7 +502,7 @@ fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16, meshR
 			}
 		}
 	}
-	for(0..mapStorageLists.len) |_lod| {
+	for(0..settings.highestLod + 1) |_lod| {
 		const lod: u5 = @intCast(_lod);
 		const maxRenderDistanceNew = lastRD*chunk.chunkSize << lod;
 		const maxRenderDistanceOld = olderRD*chunk.chunkSize << lod;
@@ -605,7 +605,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 			.wz = @intFromFloat(@floor(playerPos[2])),
 			.voxelSize = 1,
 		};
-		const lod: u3 = settings.highestLOD;
+		const lod: u3 = settings.highestLod;
 		firstPos.wx &= ~@as(i32, chunk.chunkMask << lod | (@as(i32, 1) << lod)-1);
 		firstPos.wy &= ~@as(i32, chunk.chunkMask << lod | (@as(i32, 1) << lod)-1);
 		firstPos.wz &= ~@as(i32, chunk.chunkMask << lod | (@as(i32, 1) << lod)-1);
@@ -631,7 +631,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 		const relPos: Vec3d = @as(Vec3d, @floatFromInt(Vec3i{pos.wx, pos.wy, pos.wz})) - playerPos;
 		const relPosFloat: Vec3f = @floatCast(relPos);
 
-		if(pos.voxelSize == @as(i32, 1) << settings.highestLOD) {
+		if(pos.voxelSize == @as(i32, 1) << settings.highestLod) {
 			for(chunk.Neighbor.iterable) |neighbor| {
 				const component = neighbor.extractDirectionComponent(relPosFloat);
 				if(neighbor.isPositive() and component + @as(f32, @floatFromInt(chunk.chunkSize*pos.voxelSize)) <= 0) continue;
@@ -687,7 +687,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 	for(nodeList.items) |node| {
 		const pos = node.pos;
 		var isNeighborLod: [6]bool = .{false} ** 6;
-		if(pos.voxelSize != @as(i32, 1) << settings.highestLOD) {
+		if(pos.voxelSize != @as(i32, 1) << settings.highestLod) {
 			for(chunk.Neighbor.iterable) |neighbor| {
 				var neighborPos = chunk.ChunkPosition{
 					.wx = pos.wx +% neighbor.relX()*chunk.chunkSize*pos.voxelSize,

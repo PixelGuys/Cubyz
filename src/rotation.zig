@@ -219,11 +219,19 @@ pub const RotationModes = struct {
 				}
 				if(!data.isConnectedNegY and corner[1] == 0) {
 					corner[1] = 0.5;
-					cornerUV[0] = 0.5;
+					if(@abs(quad.normal[2]) > 0.7) {
+						cornerUV[1] = 0.5;
+					} else {
+						cornerUV[0] = 0.5;
+					}
 				}
 				if(!data.isConnectedPosY and corner[1] == 1) {
 					corner[1] = 0.5;
-					cornerUV[0] = 0.5;
+					if(@abs(quad.normal[2]) > 0.7) {
+						cornerUV[1] = 0.5;
+					} else {
+						cornerUV[0] = 0.5;
+					}
 				}
 			}
 		}

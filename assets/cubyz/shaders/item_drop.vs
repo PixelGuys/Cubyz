@@ -27,6 +27,7 @@ struct QuadInfo {
 	vec3 corners[4];
 	vec2 cornerUV[4];
 	uint textureSlot;
+	int opaqueInLod;
 };
 
 layout(std430, binding = 4) buffer _quads
