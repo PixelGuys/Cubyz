@@ -23,6 +23,7 @@ pub var anisotropicFiltering: u8 = 4.0;
 pub var fpsCap: ?u32 = null;
 
 pub var fov: f32 = 70;
+pub var speedFovAdd: f32 = 15;
 
 pub var mouseSensitivity: f32 = 1;
 pub var controllerSensitivity: f32 = 1;

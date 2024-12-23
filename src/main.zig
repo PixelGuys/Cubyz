@@ -663,7 +663,7 @@ pub fn main() void { // MARK: main()
 			c.glEnable(c.GL_CULL_FACE);
 			c.glEnable(c.GL_DEPTH_TEST);
 
-			const fov: f32 = if (game.world != null) settings.fov + (game.Player.getSpeedModifierBlocking() * 20) else 70.0;
+			 const fov: f32 = if (game.world != null) settings.fov + (game.Player.getSpeedModifierBlocking() * settings.speedFovAdd) else 70.0;
 			renderer.updateFOV(fov);
 
 			renderer.render(game.Player.getEyePosBlocking());
