@@ -115,10 +115,14 @@ var lastFov: f32 = 0;
 pub fn updateViewport(width: u31, height: u31, fov: f32) void {
 	lastWidth = @intFromFloat(@as(f32, @floatFromInt(width))*main.settings.resolutionScale);
 	lastHeight = @intFromFloat(@as(f32, @floatFromInt(height))*main.settings.resolutionScale);
+	updateFOV(fov);
+	worldFrameBuffer.updateSize(lastWidth, lastHeight, c.GL_RGB16F);	
+	worldFrameBuffer.unbind();
+}
+
+pub fn updateFOV(fov: f32) void {
 	lastFov = fov;
 	game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(fov), @as(f32, @floatFromInt(lastWidth))/@as(f32, @floatFromInt(lastHeight)), zNear, zFar);
-	worldFrameBuffer.updateSize(lastWidth, lastHeight, c.GL_RGB16F);
-	worldFrameBuffer.unbind();
 }
 
 pub fn render(playerPosition: Vec3d) void {
@@ -527,9 +531,10 @@ pub const MenuBackGround = struct {
 
 		const oldResolutionScale = main.settings.resolutionScale;
 		main.settings.resolutionScale = 1;
+		const fovPrev: f32 = lastFov;
 		updateViewport(size, size, 90.0);
 		main.settings.resolutionScale = oldResolutionScale;
-		defer updateViewport(Window.width, Window.height, settings.fov);
+		defer updateViewport(Window.width, Window.height, fovPrev);
 		
 		var buffer: graphics.FrameBuffer = undefined;
 		buffer.init(true, c.GL_NEAREST, c.GL_REPEAT);
