@@ -75,12 +75,12 @@ fn fovFormatter(allocator: main.utils.NeverFailingAllocator, value: f32) []const
 }
 
 fn fovSpeedAddCallback(newValue: f32) void {
-    settings.speedFovAdd = newValue;
-    settings.save();
+	settings.speedFovAdd = newValue;
+	settings.save();
 }
 
 fn fovSpeedAddFormatter(allocator: main.utils.NeverFailingAllocator, value: f32) []const u8 {
-    return std.fmt.allocPrint(allocator.allocator, "#ffffffFoV Speed Widening: {d:.0}°", .{value}) catch unreachable;
+	return std.fmt.allocPrint(allocator.allocator, "#ffffffFoV Speed Widening: {d:.0}°", .{value}) catch unreachable;
 }
 
 fn lodDistanceFormatter(allocator: main.utils.NeverFailingAllocator, value: f32) []const u8 {
