@@ -439,7 +439,7 @@ pub const Player = struct { // MARK: Player
 			}
 		}
 
-		inventory.placeBlock(selectedSlot, isCreative());
+		inventory.placeBlock(selectedSlot);
 	}
 
 	pub fn breakBlock() void { // TODO: Breaking animation and tools

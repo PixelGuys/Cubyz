@@ -1029,6 +1029,7 @@ pub const Tool = struct { // MARK: Tool
 			.stone => self.pickaxePower,
 			.unbreakable => 0,
 			.wood => self.axePower,
+			.air => 0,
 		};
 	}
 

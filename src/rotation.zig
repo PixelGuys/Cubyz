@@ -60,6 +60,39 @@ pub const RotationMode = struct { // MARK: RotationMode
 		fn onBlockBreaking(_: ?main.items.Item, _: Vec3f, _: Vec3f, currentData: *Block) void {
 			currentData.* = .{.typ = 0, .data = 0};
 		}
+		fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack) CanBeChangedInto {
+			if(std.meta.eql(oldBlock, newBlock)) return .no;
+			if(oldBlock.typ == newBlock.typ) return .yes;
+			if(oldBlock.solid()) {
+				var power: f32 = 0;
+				const isTool = item.item != null and item.item.? == .tool;
+				if(isTool) {
+					power = item.item.?.tool.getPowerByBlockClass(oldBlock.blockClass());
+				}
+				if(power >= oldBlock.breakingPower()) {
+					if(isTool) {
+						return .{.yes_costsDurability = 1};
+					} else return .yes;
+				}
+			} else {
+				if(item.item) |_item| {
+					if(_item == .baseItem) {
+						if(_item.baseItem.block != null and _item.baseItem.block.? == newBlock.typ) {
+							return .{.yes_costsItems = 1};
+						}
+					}
+				}
+			}
+			return .no;
+		}
+	};
+
+	pub const CanBeChangedInto = union(enum) {
+		no: void,
+		yes: void,
+		yes_costsDurability: u16,
+		yes_costsItems: u16,
+		yes_dropsItems: u16,
 	};
 
 	/// if the block should be destroyed or changed when a certain neighbor is removed.
@@ -82,6 +115,8 @@ pub const RotationMode = struct { // MARK: RotationMode
 	rayIntersection: *const fn(block: Block, item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult = &DefaultFunctions.rayIntersection,
 
 	onBlockBreaking: *const fn(item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void = &DefaultFunctions.onBlockBreaking,
+
+	canBeChangedInto: *const fn(oldBlock: Block, newBlock: Block, item: main.items.ItemStack) CanBeChangedInto = DefaultFunctions.canBeChangedInto,
 };
 
 var rotationModes: std.StringHashMap(RotationMode) = undefined;
@@ -571,6 +606,15 @@ pub const RotationModes = struct {
 			}
 			return RotationMode.DefaultFunctions.onBlockBreaking(item, relativePlayerPos, playerDir, currentData);
 		}
+
+		pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack) RotationMode.CanBeChangedInto {
+			if(oldBlock.typ != newBlock.typ) return RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item);
+			if(oldBlock.data == newBlock.data) return .no;
+			if(item.item != null and item.item.? == .baseItem and std.mem.eql(u8, item.item.?.baseItem.id, "cubyz:chisel")) {
+				return .yes; // TODO: Durability change, after making the chisel a proper tool.
+			}
+			return .no;
+		}
 	};
 	pub const Torch = struct { // MARK: Torch
 		pub const id: []const u8 = "torch";
@@ -718,6 +762,21 @@ pub const RotationModes = struct {
 			const bit = closestRay(.bit, currentData.*, item, relativePlayerPos, playerDir);
 			currentData.data &= ~bit;
 			if(currentData.data == 0) currentData.typ = 0;
+		}
+
+		pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack) RotationMode.CanBeChangedInto {
+			switch(RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item)) {
+				.no, .yes_costsDurability, .yes_dropsItems => return .no,
+				.yes, .yes_costsItems => {
+					const torchAmountChange = @as(i32, @popCount(newBlock.data)) - if(oldBlock.typ == newBlock.typ) @as(i32, @popCount(oldBlock.data)) else 0;
+					if(torchAmountChange <= 0) {
+						return .{.yes_dropsItems = @intCast(-torchAmountChange)};
+					} else {
+						if(item.item == null or item.item.? != .baseItem or !std.meta.eql(item.item.?.baseItem.block, newBlock.typ)) return .no;
+						return .{.yes_costsItems = @intCast(torchAmountChange)};
+					}
+				},
+			}
 		}
 	};
 	pub const Carpet = struct { // MARK: Carpet
@@ -885,6 +944,10 @@ pub const RotationModes = struct {
 			const bit = closestRay(.bit, currentData.*, item, relativePlayerPos, playerDir);
 			currentData.data &= ~bit;
 			if(currentData.data == 0) currentData.typ = 0;
+		}
+
+		pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack) RotationMode.CanBeChangedInto {
+			return Torch.canBeChangedInto(oldBlock, newBlock, item);
 		}
 	};
 };

@@ -905,7 +905,7 @@ pub const Protocols = struct {
 			const z = std.mem.readInt(i32, data[8..12], .big);
 			const newBlock = Block.fromInt(std.mem.readInt(u32, data[12..16], .big));
 			if(conn.user != null) {
-				main.server.world.?.updateBlock(x, y, z, newBlock);
+				return error.InvalidPacket;
 			} else {
 				renderer.mesh_storage.updateBlock(x, y, z, newBlock);
 			}
@@ -1162,6 +1162,8 @@ pub const Protocols = struct {
 			} else {
 				if(data[0] == 0xff) { // Confirmation
 					items.Inventory.Sync.ClientSide.receiveConfirmation(data[1..]);
+				} else if(data[0] == 0xfe) { // Failure
+					items.Inventory.Sync.ClientSide.receiveFailure();
 				} else {
 					try items.Inventory.Sync.ClientSide.receiveSyncOperation(data[1..]);
 				}
@@ -1183,6 +1185,10 @@ pub const Protocols = struct {
 			data[0] = 0xff;
 			@memcpy(data[1..], _data);
 			conn.sendImportant(id, data);
+		}
+		pub fn sendFailure(conn: *Connection) void {
+			std.debug.assert(conn.user != null);
+			conn.sendImportant(id, &.{0xfe});
 		}
 		pub fn sendSyncOperation(conn: *Connection, _data: []const u8) void {
 			std.debug.assert(conn.user != null);

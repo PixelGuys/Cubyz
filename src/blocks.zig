@@ -337,6 +337,10 @@ pub const Block = packed struct { // MARK: Block
 	pub inline fn opaqueVariant(self: Block) u16 {
 		return _opaqueVariant[self.typ];
 	}
+
+	pub fn canBeChangedInto(self: Block, newBlock: Block, item: main.items.ItemStack) main.rotation.RotationMode.CanBeChangedInto {
+		return newBlock.mode().canBeChangedInto(self, newBlock, item);
+	}
 };
 
 
