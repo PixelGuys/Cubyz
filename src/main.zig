@@ -331,7 +331,6 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "fly", .key = c.GLFW_KEY_F, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_DPAD_DOWN, .pressAction = &game.flyToggle},
 		.{.name = "ghost", .key = c.GLFW_KEY_G, .pressAction = &game.ghostToggle},
 		.{.name = "hyperSpeed", .key = c.GLFW_KEY_H, .pressAction = &game.hyperSpeedToggle},
-		.{.name = "gamemode", .key = c.GLFW_KEY_M, .pressAction = &game.gamemodeToggle},
 		.{.name = "fall", .key = c.GLFW_KEY_LEFT_SHIFT, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_RIGHT_THUMB},
 		.{.name = "shift", .key = c.GLFW_KEY_LEFT_SHIFT, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_RIGHT_THUMB},
 		.{.name = "fullscreen", .key = c.GLFW_KEY_F11, .pressAction = &Window.toggleFullscreen},

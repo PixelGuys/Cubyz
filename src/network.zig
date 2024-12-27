@@ -962,7 +962,7 @@ pub const Protocols = struct {
 	pub const genericUpdate = struct {
 		pub const id: u8 = 9;
 		pub const asynchronous = false;
-		const type_reserved1: u8 = 0;
+		const type_gamemode: u8 = 0;
 		const type_teleport: u8 = 1;
 		const type_cure: u8 = 2;
 		const type_reserved2: u8 = 3;
@@ -973,6 +973,11 @@ pub const Protocols = struct {
 		const type_timeAndBiome: u8 = 8;
 		fn receive(conn: *Connection, data: []const u8) !void {
 			switch(data[0]) {
+				type_gamemode => {
+					if(conn.user != null) return error.InvalidPacket;
+					if(data.len != 2) return error.InvalidPacket;
+					main.items.Inventory.Sync.setGamemode(null, @enumFromInt(data[1]));
+				},
 				type_teleport => {
 					game.Player.setPosBlocking(Vec3d{
 						@bitCast(std.mem.readInt(u64, data[1..9], .big)),
@@ -983,7 +988,6 @@ pub const Protocols = struct {
 				type_cure => {
 					// TODO: health and hunger
 				},
-				type_reserved1 => {},
 				type_reserved2 => {},
 				type_reserved3 => {},
 				type_reserved4 => {},
@@ -1033,6 +1037,10 @@ pub const Protocols = struct {
 			headeredData[0] = header;
 			@memcpy(headeredData[1..], data);
 			conn.sendUnimportant(id, headeredData);
+		}
+
+		pub fn sendGamemode(conn: *Connection, gamemode: main.game.Gamemode) void {
+			conn.sendImportant(id, &.{type_gamemode, @intFromEnum(gamemode)});
 		}
 
 		pub fn sendTPCoordinates(conn: *Connection, pos: Vec3d) void {

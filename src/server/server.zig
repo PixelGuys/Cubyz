@@ -38,6 +38,7 @@ pub const User = struct { // MARK: User
 	loadedChunks: [simulationSize][simulationSize][simulationSize]*@import("world.zig").EntityChunk = undefined,
 	lastRenderDistance: u16 = 0,
 	lastPos: Vec3i = @splat(0),
+	gamemode: std.atomic.Value(main.game.Gamemode) = .init(.creative),
 
 	inventoryClientToServerIdMap: std.AutoHashMap(u32, u32) = undefined,
 
