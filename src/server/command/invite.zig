@@ -23,5 +23,5 @@ pub fn execute(args: []const u8, source: *User) void {
 		user.decreaseRefCount();
 		return;
 	}
-	source.sendMessage("#ff0000Too few arguments for command /tp");
+	source.sendMessage("#ff0000Too few arguments for command /invite");
 }
