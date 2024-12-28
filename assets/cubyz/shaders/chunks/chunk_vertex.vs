@@ -8,6 +8,8 @@ flat out vec3 normal;
 flat out int textureIndex;
 flat out int isBackFace;
 flat out int ditherSeed;
+flat out float distanceForLodCheck;
+flat out int opaqueInLod;
 
 uniform vec3 ambientLight;
 uniform mat4 projectionMatrix;
@@ -29,6 +31,7 @@ struct QuadInfo {
 	vec3 corners[4];
 	vec2 cornerUV[4];
 	uint textureSlot;
+	int opaqueInLod;
 };
 
 layout(std430, binding = 4) buffer _quads
@@ -47,7 +50,7 @@ struct ChunkData {
 	vec4 maxPos;
 	int voxelSize;
 	uint vertexStartOpaque;
-	uint faceCountsByNormalOpaque[7];
+	uint faceCountsByNormalOpaque[14];
 	uint lightStartOpaque;
 	uint vertexStartTransparent;
 	uint vertexCountTransparent;
@@ -109,5 +112,7 @@ void main() {
 	vec4 mvPos = viewMatrix*vec4(position, 1);
 	gl_Position = projectionMatrix*mvPos;
 	mvVertexPos = mvPos.xyz;
+	distanceForLodCheck = length(mvPos.xyz) + voxelSize;
 	uv = quads[quadIndex].cornerUV[vertexID]*voxelSize;
+	opaqueInLod = quads[quadIndex].opaqueInLod;
 }

@@ -1,0 +1,15 @@
+.{
+	.class = .stone,
+	.hardness = 12,
+	.drops = .{
+		.auto,
+	},
+	.rotation = .fence,
+	.model = "cubyz:wall",
+	.texture = "cubyz:stone_wall",
+	.texture_top = "cubyz:stone_wall_top",
+	.texture_bottom = "cubyz:stone_wall_top",
+	.item = .{
+		.texture = "wall/stone.png",
+	},
+}

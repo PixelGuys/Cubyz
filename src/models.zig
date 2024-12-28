@@ -19,6 +19,7 @@ pub const QuadInfo = extern struct {
 	corners: [4]Vec3f,
 	cornerUV: [4]Vec2f,
 	textureSlot: u32,
+	opaqueInLod: u32 = 0,
 };
 
 const ExtraQuadInfo = struct {
@@ -415,7 +416,8 @@ pub var models: main.List(Model) = undefined;
 
 var quadDeduplication: std.AutoHashMap([@sizeOf(QuadInfo)]u8, u16) = undefined;
 
-fn addQuad(info: QuadInfo) error{Degenerate}!u16 {
+fn addQuad(info_: QuadInfo) error{Degenerate}!u16 {
+	var info = info_;
 	if(quadDeduplication.get(std.mem.toBytes(info))) |id| {
 		return id;
 	}
@@ -428,6 +430,7 @@ fn addQuad(info: QuadInfo) error{Degenerate}!u16 {
 	}
 	if(cornerEqualities >= 2) return error.Degenerate; // One corner equality is fine, since then the quad degenerates to a triangle, which has a non-zero area.
 	const index: u16 = @intCast(quads.items.len);
+	info.opaqueInLod = @intFromBool(Model.getFaceNeighbor(&info) != null);
 	quads.append(info);
 	quadDeduplication.put(std.mem.toBytes(info), index) catch unreachable;
 

@@ -33,13 +33,14 @@ pub fn readAllZonFilesInAddons(externalAllocator: NeverFailingAllocator, addons:
 			std.log.err("Got error while iterating addon directory {s}: {s}", .{subPath, @errorName(err)});
 			break :blk null;
 		}) |entry| {
-			if(entry.kind == .file and std.ascii.endsWithIgnoreCase(entry.basename, ".zig.zon") and !std.ascii.startsWithIgnoreCase(entry.path, "textures")) {
+			if(entry.kind == .file and std.ascii.endsWithIgnoreCase(entry.basename, ".zon") and !std.ascii.startsWithIgnoreCase(entry.path, "textures")) {
+				const fileSuffixLen = if(std.ascii.endsWithIgnoreCase(entry.basename, ".zig.zon")) ".zig.zon".len else ".zon".len;
 				const folderName = addonName;
-				const id: []u8 = externalAllocator.alloc(u8, folderName.len + 1 + entry.path.len - ".zig.zon".len);
+				const id: []u8 = externalAllocator.alloc(u8, folderName.len + 1 + entry.path.len - fileSuffixLen);
 				errdefer externalAllocator.free(id);
 				@memcpy(id[0..folderName.len], folderName);
 				id[folderName.len] = ':';
-				for(0..entry.path.len - ".zig.zon".len) |i| {
+				for(0..entry.path.len - fileSuffixLen) |i| {
 					if(entry.path[i] == '\\') { // Convert windows path seperators
 						id[folderName.len+1+i] = '/';
 					} else {

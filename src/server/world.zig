@@ -257,7 +257,7 @@ const ChunkManager = struct { // MARK: ChunkManager
 	}
 
 	pub fn deinit(self: ChunkManager) void {
-		for(0..main.settings.highestLOD) |_| {
+		for(0..main.settings.highestSupportedLod) |_| {
 			chunkCache.clear();
 		}
 		entityChunkHashMap.deinit();
@@ -656,7 +656,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			try terrain.SurfaceMap.regenerateLOD(self.name);
 		}
 		// Delete old LODs:
-		for(1..main.settings.highestLOD+1) |i| {
+		for(1..main.settings.highestSupportedLod+1) |i| {
 			const lod = @as(u32, 1) << @intCast(i);
 			const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/chunks", .{self.name}) catch unreachable;
 			defer main.stackAllocator.free(path);
@@ -895,12 +895,23 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		return ch.getBlock(x - ch.super.pos.wx, y - ch.super.pos.wy, z - ch.super.pos.wz);
 	}
 
-	pub fn updateBlock(_: *ServerWorld, wx: i32, wy: i32, wz: i32, _newBlock: Block) void {
+	/// Returns the actual block on failure
+	pub fn cmpxchgBlock(_: *ServerWorld, wx: i32, wy: i32, wz: i32, oldBlock: ?Block, _newBlock: Block) ?Block {
 		const baseChunk = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(.{.wx = wx & ~@as(i32, chunk.chunkMask), .wy = wy & ~@as(i32, chunk.chunkMask), .wz = wz & ~@as(i32, chunk.chunkMask), .voxelSize = 1});
 		defer baseChunk.decreaseRefCount();
 		const x: u5 = @intCast(wx & chunk.chunkMask);
 		const y: u5 = @intCast(wy & chunk.chunkMask);
 		const z: u5 = @intCast(wz & chunk.chunkMask);
+		baseChunk.mutex.lock();
+		const currentBlock = baseChunk.getBlock(x, y, z);
+		if(oldBlock != null) {
+			if(!std.meta.eql(oldBlock.?, currentBlock)) {
+				baseChunk.mutex.unlock();
+				return currentBlock;
+			}
+			baseChunk.updateBlockAndSetChanged(x, y, z, _newBlock);
+		}
+		baseChunk.mutex.unlock();
 		var newBlock = _newBlock;
 		for(chunk.Neighbor.iterable) |neighbor| {
 			const nx = x + neighbor.relX();
@@ -938,6 +949,11 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		for(main.server.users.items) |user| {
 			main.network.Protocols.blockUpdate.send(user.conn, wx, wy, wz, _newBlock);
 		}
+		return null;
+	}
+
+	pub fn updateBlock(self: *ServerWorld, wx: i32, wy: i32, wz: i32, newBlock: Block) void {
+		_ = self.cmpxchgBlock(wx, wy, wz, null, newBlock);
 	}
 
 	pub fn queueChunkUpdateAndDecreaseRefCount(self: *ServerWorld, ch: *ServerChunk) void {

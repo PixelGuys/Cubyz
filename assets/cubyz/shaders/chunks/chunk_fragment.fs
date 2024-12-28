@@ -8,6 +8,8 @@ flat in vec3 normal;
 flat in int textureIndex;
 flat in int isBackFace;
 flat in int ditherSeed;
+flat in float distanceForLodCheck;
+flat in int opaqueInLod;
 
 uniform sampler2DArray texture_sampler;
 uniform sampler2DArray emissionSampler;
@@ -15,6 +17,7 @@ uniform sampler2DArray reflectivityAndAbsorptionSampler;
 uniform samplerCube reflectionMap;
 uniform float reflectionMapSize;
 uniform float contrast;
+uniform float lodDistance;
 
 layout(location = 0) out vec4 fragColor;
 
@@ -53,6 +56,11 @@ ivec2 random1to2(int v) {
 }
 
 bool passDitherTest(float alpha) {
+	if(opaqueInLod != 0) {
+		if(distanceForLodCheck > lodDistance) return true;
+		float factor = max(0, distanceForLodCheck - (lodDistance - 32.0))/32.0;
+		alpha = alpha*(1 - factor) + factor;
+	}
 	ivec2 screenPos = ivec2(gl_FragCoord.xy);
 	screenPos += random1to2(ditherSeed);
 	screenPos &= 3;

@@ -8,6 +8,8 @@ flat in vec3 normal;
 flat in int textureIndex;
 flat in int isBackFace;
 flat in int ditherSeed;
+flat in float distanceForLodCheck;
+flat in int opaqueInLod;
 
 uniform sampler2DArray texture_sampler;
 uniform sampler2DArray emissionSampler;

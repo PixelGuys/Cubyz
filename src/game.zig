@@ -324,7 +324,7 @@ pub const collision = struct {
 	};
 };
 
-pub const Gamemode = enum(u8) { survival, creative };
+pub const Gamemode = enum(u8) { survival = 0, creative = 1 };
 
 pub const Player = struct { // MARK: Player
 	pub var super: main.server.Entity = .{};
@@ -439,7 +439,7 @@ pub const Player = struct { // MARK: Player
 			}
 		}
 
-		inventory.placeBlock(selectedSlot, isCreative());
+		inventory.placeBlock(selectedSlot);
 	}
 
 	pub fn breakBlock() void { // TODO: Breaking animation and tools
@@ -668,16 +668,6 @@ pub fn hyperSpeedToggle() void {
 
 	Player.hyperSpeed.store(!Player.hyperSpeed.load(.monotonic), .monotonic);
 }
-
-pub fn gamemodeToggle() void {
-	const newGamemode = switch(Player.gamemode.load(.monotonic)) {
-		.survival => Gamemode.creative,
-		.creative => Gamemode.survival
-	};
-
-	Player.setGamemode(newGamemode);
-}
-
 
 pub fn update(deltaTime: f64) void { // MARK: update()
 	const gravity = 30.0;

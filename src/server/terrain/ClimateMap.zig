@@ -17,6 +17,7 @@ pub const BiomeSample = struct {
 	roughness: f32,
 	hills: f32,
 	mountains: f32,
+	seed: u64,
 };
 
 const ClimateMapFragmentPosition = struct {
@@ -42,8 +43,10 @@ pub const ClimateMapFragment = struct {
 	pub const mapSize = 1 << mapShift;
 	pub const mapMask: i32 = mapSize - 1;
 
+	pub const mapEntrysSize = mapSize >> MapFragment.biomeShift;
+
 	pos: ClimateMapFragmentPosition,
-	map: [mapSize >> MapFragment.biomeShift][mapSize >> MapFragment.biomeShift]BiomeSample = undefined,
+	map: [mapEntrysSize][mapEntrysSize]BiomeSample = undefined,
 	
 	refCount: Atomic(u16) = .init(0),
 
@@ -134,7 +137,7 @@ pub fn deinit() void {
 	cache.clear();
 }
 
-fn getOrGenerateFragmentAndIncreaseRefCount(wx: i32, wy: i32) *ClimateMapFragment {
+pub fn getOrGenerateFragmentAndIncreaseRefCount(wx: i32, wy: i32) *ClimateMapFragment {
 	const compare = ClimateMapFragmentPosition{.wx = wx, .wy = wy};
 	const result = cache.findOrCreate(compare, cacheInit, ClimateMapFragment.increaseRefCount);
 	return result;

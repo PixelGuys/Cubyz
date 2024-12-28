@@ -32,9 +32,10 @@ pub fn generate(map: *CaveBiomeMapFragment, worldSeed: u64) void {
 	defer validBiomes.deinit(main.stackAllocator);
 	const worldPos = CaveBiomeMapFragment.rotateInverse(.{map.pos.wx, map.pos.wy, map.pos.wz});
 	const marginDiv = 1024;
-	const marginMul: comptime_int = @reduce(.Max, @abs(comptime CaveBiomeMapFragment.rotate(.{marginDiv, marginDiv, marginDiv})));
+	const marginMulPositive: comptime_int = comptime CaveBiomeMapFragment.rotateInverse(.{marginDiv, 0, marginDiv})[2];
+	const marginMulNegative: comptime_int = comptime CaveBiomeMapFragment.rotateInverse(.{0, marginDiv, 0})[2];
 	for(caveBiomes) |*biome| {
-		if(biome.minHeight < worldPos[2] +% CaveBiomeMapFragment.caveBiomeMapSize*marginMul/marginDiv and biome.maxHeight > worldPos[2]) {
+		if(biome.minHeight < worldPos[2] +% CaveBiomeMapFragment.caveBiomeMapSize*marginMulPositive/marginDiv and biome.maxHeight > worldPos[2] +% CaveBiomeMapFragment.caveBiomeMapSize*marginMulNegative/marginDiv) {
 			validBiomes.appendAssumeCapacity(biome);
 		}
 	}
@@ -72,7 +73,7 @@ pub fn generate(map: *CaveBiomeMapFragment, worldSeed: u64) void {
 						}
 						const index = CaveBiomeMapFragment.getIndex(x, y, z);
 						map.biomeMap[index][_map] = biome;
-						if(biome.minHeight < biomeWorldPos[2] + CaveBiomeMapFragment.caveBiomeSize*marginMul/marginDiv and biome.maxHeight > biomeWorldPos[2]) {
+						if(biome.minHeight < biomeWorldPos[2] + CaveBiomeMapFragment.caveBiomeSize*marginMulPositive/marginDiv and biome.maxHeight > biomeWorldPos[2] + CaveBiomeMapFragment.caveBiomeSize*marginMulNegative/marginDiv) {
 							break;
 						}
 					}

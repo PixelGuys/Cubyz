@@ -546,7 +546,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 
 			self.wasChanged = false;
 			// Update the next lod chunk:
-			if(pos.voxelSize != 1 << settings.highestLOD) {
+			if(pos.voxelSize != 1 << settings.highestSupportedLod) {
 				var nextPos = pos;
 				nextPos.wx &= ~@as(i32, pos.voxelSize*chunkSize);
 				nextPos.wy &= ~@as(i32, pos.voxelSize*chunkSize);
