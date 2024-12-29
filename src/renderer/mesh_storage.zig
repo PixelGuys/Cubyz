@@ -36,30 +36,29 @@ const storageMask = storageSize - 1;
 var storageLists: [settings.highestSupportedLod + 1]*[storageSize*storageSize*storageSize]ChunkMeshNode = undefined;
 var mapStorageLists: [settings.highestSupportedLod + 1]*[storageSize*storageSize]?*LightMap.LightMapFragment = undefined;
 var meshList = main.List(*chunk_meshing.ChunkMesh).init(main.globalAllocator);
-var priorityMeshUpdateList = main.List(*chunk_meshing.ChunkMesh).init(main.globalAllocator);
+var priorityMeshUpdateList: main.utils.ConcurrentQueue(*chunk_meshing.ChunkMesh) = undefined;
 pub var updatableList = main.List(*chunk_meshing.ChunkMesh).init(main.globalAllocator);
-var mapUpdatableList = main.List(*LightMap.LightMapFragment).init(main.globalAllocator);
+var mapUpdatableList: main.utils.ConcurrentQueue(*LightMap.LightMapFragment) = undefined;
 var clearList = main.List(*chunk_meshing.ChunkMesh).init(main.globalAllocator);
 var lastPx: i32 = 0;
 var lastPy: i32 = 0;
 var lastPz: i32 = 0;
 var lastRD: u16 = 0;
-var mutex = std.Thread.Mutex{};
-var blockUpdateMutex = std.Thread.Mutex{};
+var mutex: std.Thread.Mutex = .{};
 const BlockUpdate = struct {
 	x: i32,
 	y: i32,
 	z: i32,
 	newBlock: blocks.Block,
 };
-var blockUpdateList: main.List(BlockUpdate) = undefined;
+var blockUpdateList: main.utils.ConcurrentQueue(BlockUpdate) = undefined;
 
 var meshMemoryPool: std.heap.MemoryPoolAligned(chunk_meshing.ChunkMesh, @alignOf(chunk_meshing.ChunkMesh)) = undefined;
 var meshMemoryPoolMutex: std.Thread.Mutex = .{};
 
 pub fn init() void { // MARK: init()
 	lastRD = 0;
-	blockUpdateList = .init(main.globalAllocator);
+	blockUpdateList = .init(main.globalAllocator, 16);
 	meshMemoryPool = .init(main.globalAllocator.allocator);
 	for(&storageLists) |*storageList| {
 		storageList.* = main.globalAllocator.create([storageSize*storageSize*storageSize]ChunkMeshNode);
@@ -71,6 +70,8 @@ pub fn init() void { // MARK: init()
 		mapStorageList.* = main.globalAllocator.create([storageSize*storageSize]?*LightMap.LightMapFragment);
 		@memset(mapStorageList.*, null);
 	}
+	priorityMeshUpdateList = .init(main.globalAllocator, 16);
+	mapUpdatableList = .init(main.globalAllocator, 16);
 }
 
 pub fn deinit() void {
@@ -94,15 +95,15 @@ pub fn deinit() void {
 		mesh.decreaseRefCount();
 	}
 	updatableList.clearAndFree();
-	for(mapUpdatableList.items) |map| {
+	while(mapUpdatableList.dequeue()) |map| {
 		map.decreaseRefCount();
 	}
-	mapUpdatableList.clearAndFree();
-	for(priorityMeshUpdateList.items) |mesh| {
+	mapUpdatableList.deinit();
+	while(priorityMeshUpdateList.dequeue()) |mesh| {
 		mesh.decreaseRefCount();
 	}
-	priorityMeshUpdateList.clearAndFree();
-	blockUpdateList.clearAndFree();
+	priorityMeshUpdateList.deinit();
+	blockUpdateList.deinit();
 	meshList.clearAndFree();
 	for(clearList.items) |mesh| {
 		mesh.deinit();
@@ -732,18 +733,15 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 }
 
 pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()
-	{ // First of all process all the block updates:
-		blockUpdateMutex.lock();
-		defer blockUpdateMutex.unlock();
-		for(blockUpdateList.items) |blockUpdate| {
-			const pos = chunk.ChunkPosition{.wx=blockUpdate.x, .wy=blockUpdate.y, .wz=blockUpdate.z, .voxelSize=1};
-			if(getMeshAndIncreaseRefCount(pos)) |mesh| {
-				defer mesh.decreaseRefCount();
-				mesh.updateBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock);
-			} // TODO: It seems like we simply ignore the block update if we don't have the mesh yet.
-		}
-		blockUpdateList.clearRetainingCapacity();
+	// First of all process all the block updates:
+	while(blockUpdateList.dequeue()) |blockUpdate| {
+		const pos = chunk.ChunkPosition{.wx=blockUpdate.x, .wy=blockUpdate.y, .wz=blockUpdate.z, .voxelSize=1};
+		if(getMeshAndIncreaseRefCount(pos)) |mesh| {
+			defer mesh.decreaseRefCount();
+			mesh.updateBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock);
+		} // TODO: It seems like we simply ignore the block update if we don't have the mesh yet.
 	}
+
 	mutex.lock();
 	defer mutex.unlock();
 	for(clearList.items) |mesh| {
@@ -753,8 +751,7 @@ pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()
 		meshMemoryPoolMutex.unlock();
 	}
 	clearList.clearRetainingCapacity();
-	while (priorityMeshUpdateList.items.len != 0) {
-		const mesh = priorityMeshUpdateList.orderedRemove(0);
+	while(priorityMeshUpdateList.dequeue()) |mesh| {
 		if(!mesh.needsMeshUpdate) {
 			mutex.unlock();
 			defer mutex.lock();
@@ -778,7 +775,7 @@ pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()
 		mesh.uploadData();
 		if(std.time.milliTimestamp() >= targetTime) break; // Update at least one mesh.
 	}
-	while(mapUpdatableList.popOrNull()) |map| {
+	while(mapUpdatableList.dequeue()) |map| {
 		if(!isMapInRenderDistance(map.pos)) {
 			map.decreaseRefCount();
 		} else {
@@ -852,7 +849,7 @@ pub fn addToUpdateListAndDecreaseRefCount(mesh: *chunk_meshing.ChunkMesh) void {
 	mutex.lock();
 	defer mutex.unlock();
 	if(mesh.finishedMeshing) {
-		priorityMeshUpdateList.append(mesh);
+		priorityMeshUpdateList.enqueue(mesh);
 		mesh.needsMeshUpdate = true;
 	} else {
 		mutex.unlock();
@@ -935,9 +932,7 @@ pub const MeshGenerationTask = struct { // MARK: MeshGenerationTask
 // MARK: updaters
 
 pub fn updateBlock(x: i32, y: i32, z: i32, newBlock: blocks.Block) void {
-	blockUpdateMutex.lock();
-	defer blockUpdateMutex.unlock();
-	blockUpdateList.append(BlockUpdate{.x=x, .y=y, .z=z, .newBlock=newBlock});
+	blockUpdateList.enqueue(.{.x=x, .y=y, .z=z, .newBlock=newBlock});
 }
 
 pub fn updateChunkMesh(mesh: *chunk.Chunk) void {
@@ -945,7 +940,5 @@ pub fn updateChunkMesh(mesh: *chunk.Chunk) void {
 }
 
 pub fn updateLightMap(map: *LightMap.LightMapFragment) void {
-	mutex.lock();
-	defer mutex.unlock();
-	mapUpdatableList.append(map);
+	mapUpdatableList.enqueue(map);
 }

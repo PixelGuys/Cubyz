@@ -47,7 +47,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 
 	allocator: NeverFailingAllocator,
 
-	mutex: std.Thread.Mutex = std.Thread.Mutex{},
+	mutex: std.Thread.Mutex = .{},
 
 	list: std.MultiArrayList(ItemDrop),
 

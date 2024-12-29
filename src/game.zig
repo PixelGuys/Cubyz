@@ -337,7 +337,7 @@ pub const Player = struct { // MARK: Player
 	pub var isFlying: Atomic(bool) = .init(false);
 	pub var isGhost: Atomic(bool) = .init(false);
 	pub var hyperSpeed: Atomic(bool) = .init(false);
-	pub var mutex: std.Thread.Mutex = std.Thread.Mutex{};
+	pub var mutex: std.Thread.Mutex = .{};
 	pub var inventory: Inventory = undefined;
 	pub var selectedSlot: u32 = 0;
 

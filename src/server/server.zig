@@ -199,7 +199,7 @@ const updateNanoTime: u32 = 1000000000/20;
 
 pub var world: ?*ServerWorld = null;
 pub var users: main.List(*User) = undefined;
-pub var userDeinitList: main.List(*User) = undefined;
+pub var userDeinitList: main.utils.ConcurrentQueue(*User) = undefined;
 
 pub var connectionManager: *ConnectionManager = undefined;
 
@@ -214,7 +214,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 	std.debug.assert(world == null); // There can only be one world.
 	command.init();
 	users = .init(main.globalAllocator);
-	userDeinitList = .init(main.globalAllocator);
+	userDeinitList = .init(main.globalAllocator, 16);
 	lastTime = std.time.nanoTimestamp();
 	connectionManager = ConnectionManager.init(main.settings.defaultPort, false) catch |err| {
 		std.log.err("Couldn't create socket: {s}", .{@errorName(err)});
@@ -245,10 +245,10 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 
 fn deinit() void {
 	users.clearAndFree();
-	for(userDeinitList.items) |user| {
+	while(userDeinitList.dequeue()) |user| {
 		user.deinit();
 	}
-	userDeinitList.clearAndFree();
+	userDeinitList.deinit();
 	for(connectionManager.connections.items) |conn| {
 		conn.user.?.decreaseRefCount();
 	}
@@ -345,12 +345,11 @@ fn update() void { // MARK: update()
 		main.network.Protocols.entityPosition.send(user.conn, data, itemData);
 	}
 
-	while(userDeinitList.popOrNull()) |user| {
-		mutex.unlock();
-		user.decreaseRefCount();
-		mutex.lock();
-	}
 	mutex.unlock();
+
+	while(userDeinitList.dequeue()) |user| {
+		user.decreaseRefCount();
+	}
 }
 
 pub fn start(name: []const u8, port: ?u16) void {
@@ -382,7 +381,7 @@ pub fn stop() void {
 pub fn disconnect(user: *User) void { // MARK: disconnect()
 	if(!user.connected.load(.unordered)) return;
 	removePlayer(user);
-	userDeinitList.append(user);
+	userDeinitList.enqueue(user);
 	user.connected.store(false, .unordered);
 }
 

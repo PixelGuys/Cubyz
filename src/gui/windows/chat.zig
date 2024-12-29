@@ -31,8 +31,7 @@ const messageTimeout: i32 = 10000;
 const messageFade = 1000;
 
 var history: main.List(*Label) = undefined;
-var mutex: std.Thread.Mutex = .{};
-var messageQueue: main.List([]const u8) = undefined;
+var messageQueue: main.utils.ConcurrentQueue([]const u8) = undefined;
 var expirationTime: main.List(i32) = undefined;
 var historyStart: u32 = 0;
 var fadeOutEnd: u32 = 0;
@@ -72,7 +71,7 @@ fn refresh() void {
 pub fn onOpen() void {
 	history = .init(main.globalAllocator);
 	expirationTime = .init(main.globalAllocator);
-	messageQueue = .init(main.globalAllocator);
+	messageQueue = .init(main.globalAllocator, 16);
 	historyStart = 0;
 	fadeOutEnd = 0;
 	input = TextInput.init(.{0, 0}, 256, 32, "", .{.callback = &sendMessage});
@@ -84,7 +83,7 @@ pub fn onClose() void {
 		label.deinit();
 	}
 	history.deinit();
-	for(messageQueue.items) |msg| {
+	while(messageQueue.dequeue()) |msg| {
 		main.globalAllocator.free(msg);
 	}
 	messageQueue.deinit();
@@ -96,20 +95,16 @@ pub fn onClose() void {
 }
 
 pub fn update() void {
-	{
-		mutex.lock();
-		defer mutex.unlock();
-		if(messageQueue.items.len != 0) {
-			const currentTime: i32 = @truncate(std.time.milliTimestamp());
-			for(messageQueue.items) |msg| {
-				history.append(Label.init(.{0, 0}, 256, msg, .left));
-				main.globalAllocator.free(msg);
-				expirationTime.append(currentTime +% messageTimeout);
-			}
-			refresh();
-			messageQueue.clearRetainingCapacity();
+	if(!messageQueue.empty()) {
+		const currentTime: i32 = @truncate(std.time.milliTimestamp());
+		while(messageQueue.dequeue()) |msg| {
+			history.append(Label.init(.{0, 0}, 256, msg, .left));
+			main.globalAllocator.free(msg);
+			expirationTime.append(currentTime +% messageTimeout);
 		}
+		refresh();
 	}
+
 	const currentTime: i32 = @truncate(std.time.milliTimestamp());
 	while(fadeOutEnd < history.items.len and currentTime -% expirationTime.items[fadeOutEnd] >= 0) {
 		fadeOutEnd += 1;
@@ -139,9 +134,7 @@ pub fn render() void {
 }
 
 pub fn addMessage(msg: []const u8) void {
-	mutex.lock();
-	defer mutex.unlock();
-	messageQueue.append(main.globalAllocator.dupe(u8, msg));
+	messageQueue.enqueue(main.globalAllocator.dupe(u8, msg));
 }
 
 pub fn sendMessage(_: usize) void {

@@ -366,7 +366,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	connections: main.List(*Connection) = undefined,
 	requests: main.List(*Request) = undefined,
 
-	mutex: std.Thread.Mutex = std.Thread.Mutex{},
+	mutex: std.Thread.Mutex = .{},
 	waitingToFinishReceive: std.Thread.Condition = std.Thread.Condition{},
 
 	receiveBuffer: [Connection.maxPacketSize]u8 = undefined,
@@ -1262,7 +1262,7 @@ pub const Connection = struct { // MARK: Connection
 	handShakeWaiting: std.Thread.Condition = std.Thread.Condition{},
 	lastConnection: i64,
 
-	mutex: std.Thread.Mutex = std.Thread.Mutex{},
+	mutex: std.Thread.Mutex = .{},
 
 	pub fn init(manager: *ConnectionManager, ipPort: []const u8, user: ?*main.server.User) !*Connection {
 		const result: *Connection = main.globalAllocator.create(Connection);
