@@ -2,7 +2,7 @@
 	.class = .wood,
 	.hardness = 7,
 	.drops = .{
-		.auto,
+		.{.items = .{.auto}},
 	},
 	.absorbedLight = 0x202830,
 	.rotation = .fence,

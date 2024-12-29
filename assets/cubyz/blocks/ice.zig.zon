@@ -2,7 +2,7 @@
 	.class = .stone,
 	.hardness = 10,
 	.drops = .{
-		.auto,
+		.{.items = .{.auto}},
 	},
 	.transparent = true,
 	.hasBackFace = true,

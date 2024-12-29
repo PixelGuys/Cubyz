@@ -2,7 +2,7 @@
 	.class = .air,
 	.hardness = 2,
 	.drops = .{
-		.none,
+		.{.items = .{.auto}},
 	},
 	.degradable = true,
 	.transparent = true,

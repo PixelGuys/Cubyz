@@ -1,7 +1,7 @@
 .{
 	.class = .fluid,
 	.drops = .{
-		.auto,
+		.{.items = .{.auto}},
 	},
 	.selectable = false,
 	.solid = false,

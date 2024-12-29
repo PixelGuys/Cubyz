@@ -2,7 +2,7 @@
 	.class = .stone,
 	.hardness = 25,
 	.drops = .{
-		.auto,
+		.{.items = .{.auto}},
 	},
 	.model = "cubyz:cube",
 	.texture = "cubyz:mossy_cobblestone",

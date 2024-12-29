@@ -2,7 +2,7 @@
 	.class = .sand,
 	.hardness = 6.5,
 	.drops = .{
-		.auto,
+		.{.items = .{.auto}},
 	},
 	.rotation = .stackable,
 	.model = "cubyz:cube",

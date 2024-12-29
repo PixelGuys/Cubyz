@@ -2,7 +2,7 @@
 	.class = .leaf,
 	.hardness = 0.1,
 	.drops = .{
-		.auto,
+		.{.items = .{.auto}},
 	},
 	.degradable = true,
 	.viewThrough = true,

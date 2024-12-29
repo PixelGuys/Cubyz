@@ -12,7 +12,7 @@
 		},
 	},
 	.drops = .{
-		"cubyz:diamond"
+		.{.items = .{"cubyz:diamond"}},
 	},
 	.model = "cubyz:cube",
 	.texture = "cubyz:diamond_ore",

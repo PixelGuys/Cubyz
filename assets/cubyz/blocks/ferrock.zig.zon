@@ -3,7 +3,7 @@
 	.hardness = 20,
 	.breakingPower = 1,
 	.drops = .{
-		.auto,
+		.{.items = .{.auto}},
 	},
 	.model = "cubyz:cube",
 	.rotation = .stairs,

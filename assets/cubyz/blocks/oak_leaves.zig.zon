@@ -2,8 +2,8 @@
 	.class = .leaf,
 	.hardness = 0.4,
 	.drops = .{
-		.auto,
-		"0.1 cubyz:apple",
+		.{.items = .{.auto}},
+		.{.chance = 0.1, .items = .{"cubyz:apple"}},
 	},
 	.degradable = true,
 	.alwaysViewThrough = true,

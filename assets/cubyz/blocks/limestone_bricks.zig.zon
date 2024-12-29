@@ -1,8 +1,8 @@
 .{
 	.class= .stone,
 	.hardness= 12,
-	.drops= .{
-		.auto,
+	.drops = .{
+		.{.items = .{.auto}},
 	},
 	.rotation= .stairs,
 	.model= "cubyz:cube",
