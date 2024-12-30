@@ -200,6 +200,7 @@ const updateNanoTime: u32 = 1000000000/20;
 pub var world: ?*ServerWorld = null;
 pub var users: main.List(*User) = undefined;
 pub var userDeinitList: main.utils.ConcurrentQueue(*User) = undefined;
+pub var userConnectList: main.utils.ConcurrentQueue(*User) = undefined;
 
 pub var connectionManager: *ConnectionManager = undefined;
 
@@ -215,6 +216,7 @@ fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 	command.init();
 	users = .init(main.globalAllocator);
 	userDeinitList = .init(main.globalAllocator, 16);
+	userConnectList = .init(main.globalAllocator, 16);
 	lastTime = std.time.nanoTimestamp();
 	connectionManager = ConnectionManager.init(main.settings.defaultPort, false) catch |err| {
 		std.log.err("Couldn't create socket: {s}", .{@errorName(err)});
@@ -249,6 +251,7 @@ fn deinit() void {
 		user.deinit();
 	}
 	userDeinitList.deinit();
+	userConnectList.deinit();
 	for(connectionManager.connections.items) |conn| {
 		conn.user.?.decreaseRefCount();
 	}
@@ -269,13 +272,11 @@ fn sendEntityUpdates(comptime getInitialList: bool, allocator: utils.NeverFailin
 	const updateList = main.ZonElement.initArray(main.stackAllocator);
 	defer updateList.free(main.stackAllocator);
 	defer updateList.array.clearAndFree(); // The children are freed in other locations.
-	world.?.itemDropManager.mutex.lock();
 	if(world.?.itemDropManager.lastUpdates.array.items.len != 0) {
 		updateList.array.append(.null);
 		updateList.array.appendSlice(world.?.itemDropManager.lastUpdates.array.items);
 	}
 	if(!getInitialList and updateList.array.items.len == 0) {
-		world.?.itemDropManager.mutex.unlock();
 		return;
 	}
 	const updateData = updateList.toStringEfficient(main.stackAllocator, &.{});
@@ -296,7 +297,6 @@ fn sendEntityUpdates(comptime getInitialList: bool, allocator: utils.NeverFailin
 		itemDropList.free(main.stackAllocator);
 		initialList = list.toStringEfficient(allocator, &.{});
 	}
-	world.?.itemDropManager.mutex.unlock();
 	mutex.lock();
 	for(users.items) |user| {
 		main.network.Protocols.entity.send(user.conn, updateData);
@@ -314,6 +314,10 @@ fn update() void { // MARK: update()
 		user.update();
 	}
 	mutex.unlock();
+
+	while(userConnectList.dequeue()) |user| {
+		connectInternal(user);
+	}
 
 	sendEntityUpdates(false, main.stackAllocator);
 
@@ -410,8 +414,12 @@ pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 	}
 }
 
-var freeId: u32 = 0;
 pub fn connect(user: *User) void {
+	userConnectList.enqueue(user);
+}
+
+var freeId: u32 = 0;
+pub fn connectInternal(user: *User) void {
 	// TODO: addEntity(player);
 	user.id = freeId;
 	freeId += 1;

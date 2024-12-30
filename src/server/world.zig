@@ -792,7 +792,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	pub fn dropWithCooldown(self: *ServerWorld, stack: ItemStack, pos: Vec3d, dir: Vec3f, velocity: f32, pickupCooldown: i32) void {
 		const vel: Vec3d = @floatCast(dir*@as(Vec3f, @splat(velocity)));
-		self.itemDropManager.add(pos, vel, stack, server.updatesPerSec*900, pickupCooldown);
+		const rot = main.random.nextFloatVector(3, &main.seed)*@as(Vec3f, @splat(2*std.math.pi));
+		self.itemDropManager.add(pos, vel, rot, stack, server.updatesPerSec*900, pickupCooldown);
 	}
 
 	pub fn drop(self: *ServerWorld, stack: ItemStack, pos: Vec3d, dir: Vec3f, velocity: f32) void {
