@@ -20,7 +20,7 @@ const Side = enum{client, server};
 pub const Sync = struct { // MARK: Sync
 
 	pub const ClientSide = struct {
-		var mutex: std.Thread.Mutex = .{};
+		pub var mutex: std.Thread.Mutex = .{};
 		var commands: main.utils.CircularBufferQueue(Command) = undefined;
 		var maxId: u32 = 0;
 		var freeIdList: main.List(u32) = undefined;

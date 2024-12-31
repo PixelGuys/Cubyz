@@ -55,9 +55,9 @@ pub fn render() void {
 		renderConnectionData(main.game.world.?.conn, &y);
 	}
 	if(main.server.world != null) {
-		main.server.mutex.lock();
-		defer main.server.mutex.unlock();
-		for(main.server.users.items) |user| {
+		const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
+		defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+		for(userList) |user| {
 			draw.print("{s}", .{user.name}, 0, y, 8, .left);
 			y += 8;
 			renderConnectionData(user.conn, &y);

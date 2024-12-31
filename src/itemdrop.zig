@@ -202,7 +202,9 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 	}
 
 	pub fn add(self: *ItemDropManager, pos: Vec3d, vel: Vec3d, rot: Vec3f, itemStack: ItemStack, despawnTime: i32, pickupCooldown: i32) void {
-		if(self.size == maxCapacity) {
+		self.emptyMutex.lock();
+		const i: u16 = @intCast(self.isEmpty.findFirstSet() orelse {
+			self.emptyMutex.unlock();
 			const zon = itemStack.store(main.stackAllocator);
 			defer zon.free(main.stackAllocator);
 			const string = zon.toString(main.stackAllocator);
@@ -212,10 +214,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 				item.deinit();
 			}
 			return;
-		}
-
-		self.emptyMutex.lock();
-		const i: u16 = @intCast(self.isEmpty.findFirstSet().?);
+		});
 		self.isEmpty.unset(i);
 		self.emptyMutex.unlock();
 		self.changeQueue.enqueue(.{.add = .{i, .{

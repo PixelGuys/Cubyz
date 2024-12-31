@@ -810,7 +810,9 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			var newBlock = block;
 			// TODO: Breaking animation and tools.
 			const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
+			main.items.Inventory.Sync.ClientSide.mutex.lock();
 			block.mode().onBlockBreaking(inventory.getStack(slot).item, relPos, lastDir, &newBlock);
+			main.items.Inventory.Sync.ClientSide.mutex.unlock();
 			if(!std.meta.eql(newBlock, block)) {
 				updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], block, newBlock);
 			}

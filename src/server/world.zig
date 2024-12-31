@@ -229,9 +229,9 @@ const ChunkManager = struct { // MARK: ChunkManager
 			if(self.source) |source| {
 				if(source.connected.load(.unordered)) main.network.Protocols.lightMapTransmission.sendLightMap(source.conn, map);
 			} else {
-				server.mutex.lock();
-				defer server.mutex.unlock();
-				for(server.users.items) |user| {
+				const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
+				defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+				for(userList) |user| {
 					main.network.Protocols.lightMapTransmission.sendLightMap(user.conn, map);
 				}
 			}
@@ -815,9 +815,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 		if(self.lastUnimportantDataSent + 2000 < newTime) {// Send unimportant data every ~2s.
 			self.lastUnimportantDataSent = newTime;
-			server.mutex.lock();
-			defer server.mutex.unlock();
-			for(server.users.items) |user| {
+			const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
+			defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+			for(userList) |user| {
 				main.network.Protocols.genericUpdate.sendTimeAndBiome(user.conn, self);
 			}
 		}
@@ -826,9 +826,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		// Item Entities
 		self.itemDropManager.update(deltaTime);
 		{ // Collect item entities:
-			server.mutex.lock();
-			defer server.mutex.unlock();
-			for(server.users.items) |user| {
+			const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
+			defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+			for(userList) |user| {
 				self.itemDropManager.checkEntity(user);
 			}
 		}
@@ -945,9 +945,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		baseChunk.mutex.lock();
 		defer baseChunk.mutex.unlock();
 		baseChunk.updateBlockAndSetChanged(x, y, z, newBlock);
-		server.mutex.lock();
-		defer server.mutex.unlock();
-		for(main.server.users.items) |user| {
+		const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
+		defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+		for(userList) |user| {
 			main.network.Protocols.blockUpdate.send(user.conn, wx, wy, wz, _newBlock);
 		}
 		return null;

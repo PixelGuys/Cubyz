@@ -46,6 +46,8 @@ pub const User = struct { // MARK: User
 
 	refCount: Atomic(u32) = .init(1),
 
+	mutex: std.Thread.Mutex = .{},
+
 	pub fn initAndIncreaseRefCount(manager: *ConnectionManager, ipPort: []const u8) !*User {
 		const self = main.globalAllocator.create(User);
 		errdefer main.globalAllocator.destroy(self);
@@ -157,7 +159,8 @@ pub const User = struct { // MARK: User
 	}
 
 	pub fn update(self: *User) void {
-		main.utils.assertLocked(&mutex);
+		self.mutex.lock();
+		defer self.mutex.unlock();
 		var time = @as(i16, @truncate(std.time.milliTimestamp())) -% main.settings.entityLookback;
 		time -%= self.timeDifference.difference.load(.monotonic);
 		self.interpolation.update(time, self.lastTime);
@@ -166,8 +169,8 @@ pub const User = struct { // MARK: User
 	}
 
 	pub fn receiveData(self: *User, data: []const u8) void {
-		mutex.lock();
-		defer mutex.unlock();
+		self.mutex.lock();
+		defer self.mutex.unlock();
 		const position: [3]f64 = .{
 			@bitCast(std.mem.readInt(u64, data[0..8], .big)),
 			@bitCast(std.mem.readInt(u64, data[8..16], .big)),
@@ -198,16 +201,15 @@ pub const updatesPerSec: u32 = 20;
 const updateNanoTime: u32 = 1000000000/20;
 
 pub var world: ?*ServerWorld = null;
-pub var users: main.List(*User) = undefined;
-pub var userDeinitList: main.utils.ConcurrentQueue(*User) = undefined;
-pub var userConnectList: main.utils.ConcurrentQueue(*User) = undefined;
+var userMutex: std.Thread.Mutex = .{};
+var users: main.List(*User) = undefined;
+var userDeinitList: main.utils.ConcurrentQueue(*User) = undefined;
+var userConnectList: main.utils.ConcurrentQueue(*User) = undefined;
 
 pub var connectionManager: *ConnectionManager = undefined;
 
 pub var running: std.atomic.Value(bool) = .init(false);
 var lastTime: i128 = undefined;
-
-pub var mutex: std.Thread.Mutex = .{};
 
 pub var thread: ?std.Thread = null;
 
@@ -267,6 +269,23 @@ fn deinit() void {
 	command.deinit();
 }
 
+pub fn getUserListAndIncreaseRefCount(allocator: utils.NeverFailingAllocator) []*User {
+	userMutex.lock();
+	defer userMutex.unlock();
+	const result = allocator.dupe(*User, users.items);
+	for(result) |user| {
+		user.increaseRefCount();
+	}
+	return result;
+}
+
+pub fn freeUserListAndDecreaseRefCount(allocator: utils.NeverFailingAllocator, list: []*User) void {
+	for(list) |user| {
+		user.decreaseRefCount();
+	}
+	allocator.free(list);
+}
+
 fn sendEntityUpdates(comptime getInitialList: bool, allocator: utils.NeverFailingAllocator) if(getInitialList) []const u8 else void {
 	// Send the entity updates:
 	const updateList = main.ZonElement.initArray(main.stackAllocator);
@@ -297,11 +316,11 @@ fn sendEntityUpdates(comptime getInitialList: bool, allocator: utils.NeverFailin
 		itemDropList.free(main.stackAllocator);
 		initialList = list.toStringEfficient(allocator, &.{});
 	}
-	mutex.lock();
-	for(users.items) |user| {
+	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
+	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+	for(userList) |user| {
 		main.network.Protocols.entity.send(user.conn, updateData);
 	}
-	mutex.unlock();
 	if(getInitialList) {
 		return initialList;
 	}
@@ -309,27 +328,27 @@ fn sendEntityUpdates(comptime getInitialList: bool, allocator: utils.NeverFailin
 
 fn update() void { // MARK: update()
 	world.?.update();
-	mutex.lock();
-	for(users.items) |user| {
-		user.update();
-	}
-	mutex.unlock();
 
 	while(userConnectList.dequeue()) |user| {
 		connectInternal(user);
+	}
+
+	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
+	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+	for(userList) |user| {
+		user.update();
 	}
 
 	sendEntityUpdates(false, main.stackAllocator);
 
 
 	// Send the entity data:
-	const data = main.stackAllocator.alloc(u8, (4 + 24 + 12 + 24)*users.items.len);
+	const data = main.stackAllocator.alloc(u8, (4 + 24 + 12 + 24)*userList.len);
 	defer main.stackAllocator.free(data);
 	const itemData = world.?.itemDropManager.getPositionAndVelocityData(main.stackAllocator);
 	defer main.stackAllocator.free(itemData);
 	var remaining = data;
-	mutex.lock();
-	for(users.items) |user| {
+	for(userList) |user| {
 		const id = user.id; // TODO
 		std.mem.writeInt(u32, remaining[0..4], id, .big);
 		remaining = remaining[4..];
@@ -345,11 +364,9 @@ fn update() void { // MARK: update()
 		std.mem.writeInt(u64, remaining[16..24], @bitCast(user.player.vel[2]), .big);
 		remaining = remaining[24..];
 	}
-	for(users.items) |user| {
+	for(userList) |user| {
 		main.network.Protocols.entityPosition.send(user.conn, data, itemData);
 	}
-
-	mutex.unlock();
 
 	while(userDeinitList.dequeue()) |user| {
 		user.decreaseRefCount();
@@ -393,15 +410,16 @@ pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 	if(!user.connected.load(.unordered)) return;
 	const message = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}§#ffff00 left", .{user.name}) catch unreachable;
 	defer main.stackAllocator.free(message);
-	mutex.lock();
-	defer mutex.unlock();
 
+	userMutex.lock();
 	for(users.items, 0..) |other, i| {
 		if(other == user) {
 			_ = users.swapRemove(i);
 			break;
 		}
 	}
+	userMutex.unlock();
+
 	sendMessage(message);
 	// Let the other clients know about that this new one left.
 	const zonArray = main.ZonElement.initArray(main.stackAllocator);
@@ -409,7 +427,9 @@ pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 	zonArray.array.append(.{.int = user.id});
 	const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 	defer main.stackAllocator.free(data);
-	for(users.items) |other| {
+	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
+	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+	for(userList) |other| {
 		main.network.Protocols.entity.send(other.conn, data);
 	}
 }
@@ -423,6 +443,8 @@ pub fn connectInternal(user: *User) void {
 	// TODO: addEntity(player);
 	user.id = freeId;
 	freeId += 1;
+	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
+	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 	// Let the other clients know about this new one.
 	{
 		const zonArray = main.ZonElement.initArray(main.stackAllocator);
@@ -433,38 +455,33 @@ pub fn connectInternal(user: *User) void {
 		zonArray.array.append(entityZon);
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(data);
-		mutex.lock();
-		defer mutex.unlock();
-		for(users.items) |other| {
+		for(userList) |other| {
 			main.network.Protocols.entity.send(other.conn, data);
 		}
 	}
 	{ // Let this client know about the others:
 		const zonArray = main.ZonElement.initArray(main.stackAllocator);
 		defer zonArray.free(main.stackAllocator);
-		mutex.lock();
-		for(users.items) |other| {
+		for(userList) |other| {
 			const entityZon = main.ZonElement.initObject(main.stackAllocator);
 			entityZon.put("id", other.id);
 			entityZon.put("name", other.name);
 			zonArray.array.append(entityZon);
 		}
-		mutex.unlock();
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(data);
 		if(user.connected.load(.unordered)) main.network.Protocols.entity.send(user.conn, data);
-
 	}
 	const initialList = sendEntityUpdates(true, main.stackAllocator);
 	main.network.Protocols.entity.send(user.conn, initialList);
 	main.stackAllocator.free(initialList);
 	const message = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}§#ffff00 joined", .{user.name}) catch unreachable;
 	defer main.stackAllocator.free(message);
-	mutex.lock();
-	defer mutex.unlock();
 	sendMessage(message);
 
+	userMutex.lock();
 	users.append(user);
+	userMutex.unlock();
 }
 
 pub fn messageFrom(msg: []const u8, source: *User) void { // MARK: message
@@ -474,16 +491,18 @@ pub fn messageFrom(msg: []const u8, source: *User) void { // MARK: message
 	} else {
 		const newMessage = std.fmt.allocPrint(main.stackAllocator.allocator, "[{s}§#ffffff] {s}", .{source.name, msg}) catch unreachable;
 		defer main.stackAllocator.free(newMessage);
-		main.server.mutex.lock();
-		defer main.server.mutex.unlock();
 		main.server.sendMessage(newMessage);
 	}
 }
 
+var chatMutex: std.Thread.Mutex = .{};
 pub fn sendMessage(msg: []const u8) void {
-	main.utils.assertLocked(&mutex);
+	chatMutex.lock();
+	defer chatMutex.unlock();
 	std.log.info("Chat: {s}", .{msg}); // TODO use color \033[0;32m
-	for(users.items) |user| {
+	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
+	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+	for(userList) |user| {
 		user.sendMessage(msg);
 	}
 }
