@@ -82,6 +82,9 @@ pub const RotationMode = struct { // MARK: RotationMode
 						}
 					}
 				}
+				if(newBlock.typ == 0) {
+					return .yes;
+				}
 			}
 			return .no;
 		}
