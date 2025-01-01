@@ -64,9 +64,6 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 
 	lastUpdates: ZonElement,
 
-	// TODO: Get rid of this inheritance pattern.
-	internalAdd: *const fn(self: *ItemDropManager, i: u16, drop: ItemDrop) void,
-
 	pub fn init(self: *ItemDropManager, allocator: NeverFailingAllocator, world: ?*ServerWorld, gravity: f64) void {
 		self.* = ItemDropManager {
 			.allocator = allocator,
@@ -77,7 +74,6 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			.world = world,
 			.gravity = gravity,
 			.airDragFactor = gravity/maxSpeed,
-			.internalAdd = &defaultInternalAdd,
 		};
 		self.list.resize(self.allocator.allocator, maxCapacity) catch unreachable;
 	}
@@ -91,7 +87,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			}
 		}
 		self.list.deinit(self.allocator.allocator);
-		self.lastUpdates.free(self.allocator);
+		self.lastUpdates.deinit(self.allocator);
 	}
 
 	pub fn loadFrom(self: *ItemDropManager, zon: ZonElement) void {
@@ -206,7 +202,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		const i: u16 = @intCast(self.isEmpty.findFirstSet() orelse {
 			self.emptyMutex.unlock();
 			const zon = itemStack.store(main.stackAllocator);
-			defer zon.free(main.stackAllocator);
+			defer zon.deinit(main.stackAllocator);
 			const string = zon.toString(main.stackAllocator);
 			defer main.stackAllocator.free(string);
 			std.log.err("Item drop capacitiy limit reached. Failed to add itemStack: {s}", .{string});
@@ -248,7 +244,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		while(self.changeQueue.dequeue()) |data| {
 			switch(data) {
 				.add => |addData| {
-					self.internalAdd(self, addData[0], addData[1]);
+					self.internalAdd(addData[0], addData[1]);
 				},
 				.remove => |index| {
 					self.internalRemove(index);
@@ -257,8 +253,11 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		}
 	}
 
-	fn defaultInternalAdd(self: *ItemDropManager, i: u16, drop_: ItemDrop) void {
+	fn internalAdd(self: *ItemDropManager, i: u16, drop_: ItemDrop) void {
 		var drop = drop_;
+		if(self.world == null) {
+			ClientItemDropManager.clientSideInternalAdd(self, i, drop);
+		}
 		drop.reverseIndex = @intCast(self.size);
 		self.list.set(i, drop);
 		if(self.world != null) {
@@ -410,7 +409,6 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 			.lastTime = @as(i16, @truncate(std.time.milliTimestamp())) -% settings.entityLookback,
 		};
 		self.super.init(allocator, null, world.gravity);
-		self.super.internalAdd = &overrideInternalAdd;
 		self.interpolation.init(
 			@ptrCast(self.super.list.items(.pos).ptr),
 			@ptrCast(self.super.list.items(.vel).ptr)
@@ -455,18 +453,15 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 		self.lastTime = time;
 	}
 
-	fn overrideInternalAdd(super: *ItemDropManager, i: u16, drop: ItemDrop) void {
-		{
-			mutex.lock();
-			defer mutex.unlock();
-			for(&instance.?.interpolation.lastVel) |*lastVel| {
-				@as(*align(8)[ItemDropManager.maxCapacity]Vec3d, @ptrCast(lastVel))[i] = Vec3d{0, 0, 0};
-			}
-			for(&instance.?.interpolation.lastPos) |*lastPos| {
-				@as(*align(8)[ItemDropManager.maxCapacity]Vec3d, @ptrCast(lastPos))[i] = drop.pos;
-			}
+	fn clientSideInternalAdd(_: *ItemDropManager, i: u16, drop: ItemDrop) void {
+		mutex.lock();
+		defer mutex.unlock();
+		for(&instance.?.interpolation.lastVel) |*lastVel| {
+			@as(*align(8)[ItemDropManager.maxCapacity]Vec3d, @ptrCast(lastVel))[i] = Vec3d{0, 0, 0};
 		}
-		super.defaultInternalAdd(i, drop);
+		for(&instance.?.interpolation.lastPos) |*lastPos| {
+			@as(*align(8)[ItemDropManager.maxCapacity]Vec3d, @ptrCast(lastPos))[i] = drop.pos;
+		}
 	}
 
 	pub fn remove(self: *ClientItemDropManager, i: u16) void {

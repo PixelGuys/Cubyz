@@ -378,7 +378,7 @@ const WorldIO = struct { // MARK: WorldIO
 	/// Load the seed, which is needed before custom item and ore generation.
 	pub fn loadWorldSeed(self: WorldIO) !u64 {
 		const worldData = try self.dir.readToZon(main.stackAllocator, "world.zig.zon");
-		defer worldData.free(main.stackAllocator);
+		defer worldData.deinit(main.stackAllocator);
 		if(worldData.get(u32, "version", 0) != worldDataVersion) {
 			std.log.err("Cannot read world file version {}. Expected version {}.", .{worldData.get(u32, "version", 0), worldDataVersion});
 			return error.OldWorld;
@@ -388,7 +388,7 @@ const WorldIO = struct { // MARK: WorldIO
 
 	pub fn loadWorldData(self: WorldIO) !void {
 		const worldData = try self.dir.readToZon(main.stackAllocator, "world.zig.zon");
-		defer worldData.free(main.stackAllocator);
+		defer worldData.deinit(main.stackAllocator);
 
 		self.world.doGameTimeCycle = worldData.get(bool, "doGameTimeCycle", true);
 		self.world.gameTime = worldData.get(i64, "gameTime", 0);
@@ -398,7 +398,7 @@ const WorldIO = struct { // MARK: WorldIO
 
 	pub fn saveWorldData(self: WorldIO) !void {
 		const worldData = ZonElement.initObject(main.stackAllocator);
-		defer worldData.free(main.stackAllocator);
+		defer worldData.deinit(main.stackAllocator);
 		worldData.put("version", worldDataVersion);
 		worldData.put("seed", self.world.seed);
 		worldData.put("doGameTimeCycle", self.world.doGameTimeCycle);
@@ -757,7 +757,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		try self.wio.saveWorldData();
 		var buf: [32768]u8 = undefined;
 		const zon = files.readToZon(main.stackAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/items.zig.zon", .{self.name})) catch .null;
-		defer zon.free(main.stackAllocator);
+		defer zon.deinit(main.stackAllocator);
 		self.itemDropManager.loadFrom(zon);
 	}
 
@@ -767,7 +767,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		var buf: [32768]u8 = undefined;
 		const playerData = files.readToZon(main.stackAllocator, std.fmt.bufPrint(&buf, "saves/{s}/players/{s}.zig.zon", .{self.name, hashedName}) catch "") catch .null; // TODO: Utils.escapeFolderName(user.name)
-		defer playerData.free(main.stackAllocator);
+		defer playerData.deinit(main.stackAllocator);
 		const player = &user.player;
 		if(playerData == .null) {
 			player.pos = @floatFromInt(self.spawn);
@@ -785,25 +785,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		var buf: [32768]u8 = undefined;
 		const path = try std.fmt.bufPrint(&buf, "saves/{s}/players/{s}.zig.zon", .{self.name, hashedName});
 		
-		var oldZon: ?ZonElement = undefined;
+		var playerZon: ZonElement = files.readToZon(main.stackAllocator, path) catch ZonElement.initObject(main.stackAllocator);
+		playerZon.deinit(main.stackAllocator);
 		
-		oldZon = files.readToZon(main.stackAllocator, path) catch null;
-
-		var playerZon = ZonElement.initObject(main.stackAllocator);
-		defer playerZon.free(main.stackAllocator);
-
 		playerZon.put("name", user.name);
 		
 		playerZon.put("entity", user.player.save(main.stackAllocator));
 		playerZon.put("gamemode", @tagName(user.gamemode.load(.monotonic)));
-
-		var inventoryZon: ZonElement = undefined;
-
-		if (oldZon) |zon| {
-			inventoryZon = zon.getChild("inventory");
-		} else {
-			inventoryZon = ZonElement.initObject(main.stackAllocator);
-		}
 
 		main.items.Inventory.Sync.ServerSide.mutex.lock();
 		defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
@@ -812,16 +800,12 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		while (iterator.next()) |entry| {
 			if (main.items.Inventory.Sync.ServerSide.getServerInventory(user, entry.value_ptr.*)) |inventory| {
 				if (inventory.source == .playerInventory) {
-					inventoryZon = inventory.inv.save(main.stackAllocator);
-
-					if (oldZon) |zon| {
-						zon.free(main.stackAllocator);
-					}
+					playerZon.put("inventory", inventory.inv.save(main.stackAllocator));
 				}
 			}
 		}
 
-		playerZon.put("inventory", inventoryZon);
+		try files.makeDir(try std.fmt.bufPrint(&buf, "saves/{s}/players", .{self.name}));
 
 		try files.writeZon(path, playerZon);
 	}
@@ -842,7 +826,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		try self.saveAllPlayers();
 
 		const itemDropZon = self.itemDropManager.store(main.stackAllocator);
-		defer itemDropZon.free(main.stackAllocator);
+		defer itemDropZon.deinit(main.stackAllocator);
 		var buf: [32768]u8 = undefined;
 		try files.writeZon(try std.fmt.bufPrint(&buf, "saves/{s}/items.zig.zon", .{self.name}), itemDropZon);
 	}

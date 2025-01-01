@@ -43,7 +43,7 @@ fn flawedCreateWorld() !void {
 		const generatorSettingsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/generatorSettings.zig.zon", .{worldName}) catch unreachable;
 		defer main.stackAllocator.free(generatorSettingsPath);
 		const generatorSettings = main.ZonElement.initObject(main.stackAllocator);
-		defer generatorSettings.free(main.stackAllocator);
+		defer generatorSettings.deinit(main.stackAllocator);
 		const climateGenerator = main.ZonElement.initObject(main.stackAllocator);
 		climateGenerator.put("id", "cubyz:noise_based_voronoi"); // TODO: Make this configurable
 		generatorSettings.put("climateGenerator", climateGenerator);

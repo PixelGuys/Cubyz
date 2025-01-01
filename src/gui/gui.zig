@@ -174,7 +174,7 @@ pub fn deinit() void {
 
 pub fn save() void { // MARK: save()
 	const guiZon = ZonElement.initObject(main.stackAllocator);
-	defer guiZon.free(main.stackAllocator);
+	defer guiZon.deinit(main.stackAllocator);
 	for(windowList.items) |window| {
 		const windowZon = ZonElement.initObject(main.stackAllocator);
 		for(window.relativePosition, 0..) |relPos, i| {
@@ -219,7 +219,7 @@ fn load() void {
 		}
 		break :blk .null;
 	};
-	defer zon.free(main.stackAllocator);
+	defer zon.deinit(main.stackAllocator);
 
 	for(windowList.items) |window| {
 		const windowZon = zon.getChild(window.id);

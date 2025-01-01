@@ -302,7 +302,7 @@ pub fn freeUserListAndDecreaseRefCount(allocator: utils.NeverFailingAllocator, l
 fn sendEntityUpdates(comptime getInitialList: bool, allocator: utils.NeverFailingAllocator) if(getInitialList) []const u8 else void {
 	// Send the entity updates:
 	const updateList = main.ZonElement.initArray(main.stackAllocator);
-	defer updateList.free(main.stackAllocator);
+	defer updateList.deinit(main.stackAllocator);
 	defer updateList.array.clearAndFree(); // The children are freed in other locations.
 	if(world.?.itemDropManager.lastUpdates.array.items.len != 0) {
 		updateList.array.append(.null);
@@ -315,18 +315,18 @@ fn sendEntityUpdates(comptime getInitialList: bool, allocator: utils.NeverFailin
 	defer main.stackAllocator.free(updateData);
 	if(world.?.itemDropManager.lastUpdates.array.items.len != 0) {
 		const alloc = world.?.itemDropManager.lastUpdates.array.allocator;
-		world.?.itemDropManager.lastUpdates.free(alloc);
+		world.?.itemDropManager.lastUpdates.deinit(alloc);
 		world.?.itemDropManager.lastUpdates = main.ZonElement.initArray(alloc);
 	}
 	var initialList: []const u8 = undefined;
 	if(getInitialList) {
 		const list = main.ZonElement.initArray(main.stackAllocator);
-		defer list.free(main.stackAllocator);
+		defer list.deinit(main.stackAllocator);
 		list.array.append(.null);
 		const itemDropList = world.?.itemDropManager.getInitialList(main.stackAllocator);
 		list.array.appendSlice(itemDropList.array.items);
 		itemDropList.array.items.len = 0;
-		itemDropList.free(main.stackAllocator);
+		itemDropList.deinit(main.stackAllocator);
 		initialList = list.toStringEfficient(allocator, &.{});
 	}
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
@@ -436,7 +436,7 @@ pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 	sendMessage(message);
 	// Let the other clients know about that this new one left.
 	const zonArray = main.ZonElement.initArray(main.stackAllocator);
-	defer zonArray.free(main.stackAllocator);
+	defer zonArray.deinit(main.stackAllocator);
 	zonArray.array.append(.{.int = user.id});
 	const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 	defer main.stackAllocator.free(data);
@@ -461,7 +461,7 @@ pub fn connectInternal(user: *User) void {
 	// Let the other clients know about this new one.
 	{
 		const zonArray = main.ZonElement.initArray(main.stackAllocator);
-		defer zonArray.free(main.stackAllocator);
+		defer zonArray.deinit(main.stackAllocator);
 		const entityZon = main.ZonElement.initObject(main.stackAllocator);
 		entityZon.put("id", user.id);
 		entityZon.put("name", user.name);
@@ -474,7 +474,7 @@ pub fn connectInternal(user: *User) void {
 	}
 	{ // Let this client know about the others:
 		const zonArray = main.ZonElement.initArray(main.stackAllocator);
-		defer zonArray.free(main.stackAllocator);
+		defer zonArray.deinit(main.stackAllocator);
 		for(userList) |other| {
 			const entityZon = main.ZonElement.initObject(main.stackAllocator);
 			entityZon.put("id", other.id);

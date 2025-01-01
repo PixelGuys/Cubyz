@@ -310,13 +310,9 @@ pub const Sync = struct { // MARK: Sync
 
 					var buf: [32768]u8 = undefined;
 					const playerData = main.files.readToZon(main.stackAllocator, std.fmt.bufPrint(&buf, "saves/{s}/players/{s}.zig.zon", .{main.server.world.?.name, hashedName}) catch "") catch .null; // TODO: Utils.escapeFolderName(user.name)
-					defer playerData.free(main.stackAllocator);
+					defer playerData.deinit(main.stackAllocator);
 
 					const inventoryZon = playerData.getChild("inventory");
-
-					const string = playerData.toString(main.stackAllocator);
-					defer main.stackAllocator.free(string);
-					std.debug.print("{s}", .{string});
 
 					const inventory = ServerInventory.init(len, typ, source);
 
@@ -508,7 +504,7 @@ pub const Command = struct { // MARK: Command
 			};
 			if(data.len > 12) {
 				const zon = ZonElement.parseFromString(main.stackAllocator, data[12..]);
-				defer zon.free(main.stackAllocator);
+				defer zon.deinit(main.stackAllocator);
 				self.item = try Item.init(zon);
 			}
 			if(self.amount > 0) { // Create
@@ -540,7 +536,7 @@ pub const Command = struct { // MARK: Command
 			std.mem.writeInt(i32, data.addMany(4)[0..4], self.amount, .big);
 			if(self.item) |item| {
 				const zon = ZonElement.initObject(main.stackAllocator);
-				defer zon.free(main.stackAllocator);
+				defer zon.deinit(main.stackAllocator);
 				item.insertIntoZon(main.stackAllocator, zon);
 				const string = zon.toStringEfficient(main.stackAllocator, &.{});
 				defer main.stackAllocator.free(string);
@@ -1131,7 +1127,7 @@ pub const Command = struct { // MARK: Command
 			std.mem.writeInt(u16, data.addMany(2)[0..2], self.amount, .big);
 			if(self.item) |item| {
 				const zon = ZonElement.initObject(main.stackAllocator);
-				defer zon.free(main.stackAllocator);
+				defer zon.deinit(main.stackAllocator);
 				item.insertIntoZon(main.stackAllocator, zon);
 				const string = zon.toStringEfficient(main.stackAllocator, &.{});
 				defer main.stackAllocator.free(string);
@@ -1145,7 +1141,7 @@ pub const Command = struct { // MARK: Command
 			var item: ?Item = null;
 			if(data.len > 10) {
 				const zon = ZonElement.parseFromString(main.stackAllocator, data[10..]);
-				defer zon.free(main.stackAllocator);
+				defer zon.deinit(main.stackAllocator);
 				item = try Item.init(zon);
 			}
 			return .{

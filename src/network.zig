@@ -645,7 +645,7 @@ pub const Protocols = struct {
 				switch(data[0]) {
 					stepUserData => {
 						const zon = ZonElement.parseFromString(main.stackAllocator, data[1..]);
-						defer zon.free(main.stackAllocator);
+						defer zon.deinit(main.stackAllocator);
 						const name = zon.get([]const u8, "name", "unnamed");
 						const version = zon.get([]const u8, "version", "unknown");
 						std.log.info("User {s} joined using version {s}.", .{name, version});
@@ -664,7 +664,7 @@ pub const Protocols = struct {
 
 						conn.user.?.initPlayer(name);
 						const zonObject = ZonElement.initObject(main.stackAllocator);
-						defer zonObject.free(main.stackAllocator);
+						defer zonObject.deinit(main.stackAllocator);
 						zonObject.put("player", conn.user.?.player.save(main.stackAllocator));
 						zonObject.put("spawn", main.server.world.?.spawn);
 						zonObject.put("blockPalette", main.server.world.?.blockPalette.save(main.stackAllocator));
@@ -689,7 +689,7 @@ pub const Protocols = struct {
 					},
 					stepServerData => {
 						const zon = ZonElement.parseFromString(main.stackAllocator, data[1..]);
-						defer zon.free(main.stackAllocator);
+						defer zon.deinit(main.stackAllocator);
 						try conn.manager.world.?.finishHandshake(zon);
 						conn.handShakeState.store(stepComplete, .monotonic);
 						conn.handShakeWaiting.broadcast(); // Notify the waiting client thread.
@@ -712,7 +712,7 @@ pub const Protocols = struct {
 
 		pub fn clientSide(conn: *Connection, name: []const u8) void {
 			const zonObject = ZonElement.initObject(main.stackAllocator);
-			defer zonObject.free(main.stackAllocator);
+			defer zonObject.deinit(main.stackAllocator);
 			zonObject.putOwnedString("version", settings.version);
 			zonObject.putOwnedString("name", name);
 			const prefix = [1]u8 {stepUserData};
@@ -924,7 +924,7 @@ pub const Protocols = struct {
 		pub const asynchronous = false;
 		fn receive(conn: *Connection, data: []const u8) !void {
 			const zonArray = ZonElement.parseFromString(main.stackAllocator, data);
-			defer zonArray.free(main.stackAllocator);
+			defer zonArray.deinit(main.stackAllocator);
 			var i: u32 = 0;
 			while(i < zonArray.array.items.len) : (i += 1) {
 				const elem = zonArray.array.items[i];
@@ -996,7 +996,7 @@ pub const Protocols = struct {
 				type_timeAndBiome => {
 					if(conn.manager.world) |world| {
 						const zon = ZonElement.parseFromString(main.stackAllocator, data[1..]);
-						defer zon.free(main.stackAllocator);
+						defer zon.deinit(main.stackAllocator);
 						const expectedTime = zon.get(i64, "time", 0);
 						var curTime = world.gameTime.load(.monotonic);
 						if(@abs(curTime -% expectedTime) >= 10) {
@@ -1060,7 +1060,7 @@ pub const Protocols = struct {
 
 		pub fn sendTimeAndBiome(conn: *Connection, world: *const main.server.ServerWorld) void {
 			const zon = ZonElement.initObject(main.stackAllocator);
-			defer zon.free(main.stackAllocator);
+			defer zon.deinit(main.stackAllocator);
 			zon.put("time", world.gameTime);
 			const pos = conn.user.?.player.pos;
 			zon.put("biome", (world.getBiome(@intFromFloat(pos[0]), @intFromFloat(pos[1]), @intFromFloat(pos[2]))).id);
