@@ -762,8 +762,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	pub fn findPlayer(self: *ServerWorld, user: *User) void {
-		var dest: [1024]u8 = undefined;
-		const hashedName = std.base64.url_safe.Encoder.encode(&dest, user.name);
+		const dest: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Encoder.calcSize(user.name.len));
+		defer main.stackAllocator.free(dest);
+		const hashedName = std.base64.url_safe.Encoder.encode(dest, user.name);
 
 		var buf: [32768]u8 = undefined;
 		const playerData = files.readToZon(main.stackAllocator, std.fmt.bufPrint(&buf, "saves/{s}/players/{s}.zig.zon", .{self.name, hashedName}) catch "") catch .null; // TODO: Utils.escapeFolderName(user.name)
@@ -774,38 +775,46 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		} else {
 			player.loadFrom(playerData.getChild("entity"));
 
-			main.items.Inventory.Sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", "survival")).?);
+			main.items.Inventory.Sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", "survival")) orelse .creative);
 		}
 	}
 
 	pub fn savePlayer(self: *ServerWorld, user: *User) !void {
-		var dest: [1024]u8 = undefined;
-		const hashedName = std.base64.url_safe.Encoder.encode(&dest, user.name);
+		const dest: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Encoder.calcSize(user.name.len));
+		defer main.stackAllocator.free(dest);
+		const hashedName = std.base64.url_safe.Encoder.encode(dest, user.name);
 
-		var buf: [32768]u8 = undefined;
-		const path = try std.fmt.bufPrint(&buf, "saves/{s}/players/{s}.zig.zon", .{self.name, hashedName});
-		
-		var playerZon: ZonElement = files.readToZon(main.stackAllocator, path) catch ZonElement.initObject(main.stackAllocator);
+		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players/{s}.zig.zon", .{self.name, hashedName}) catch "";
+		defer main.stackAllocator.free(path);
+
+		const playerData = main.files.readToZon(main.stackAllocator, path) catch .null;
+		defer playerData.deinit(main.stackAllocator);
+
+		var playerZon: ZonElement = files.readToZon(main.stackAllocator, path) catch .null;
 		defer playerZon.deinit(main.stackAllocator);
+
+		if (playerZon != .object) {
+			playerZon.deinit(main.stackAllocator);
+			playerZon = ZonElement.initObject(main.stackAllocator);
+		}
 		
 		playerZon.put("name", user.name);
 		
 		playerZon.put("entity", user.player.save(main.stackAllocator));
 		playerZon.put("gamemode", @tagName(user.gamemode.load(.monotonic)));
-
-		main.items.Inventory.Sync.ServerSide.mutex.lock();
-		defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
-
-		var iterator = user.inventoryClientToServerIdMap.iterator();
-		while (iterator.next()) |entry| {
-			if (main.items.Inventory.Sync.ServerSide.getServerInventory(user, entry.value_ptr.*)) |inventory| {
-				if (inventory.source == .playerInventory) {
-					playerZon.put("inventory", inventory.inv.save(main.stackAllocator));
-				}
+		
+		{
+			main.items.Inventory.Sync.ServerSide.mutex.lock();
+			defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
+			if (main.items.Inventory.Sync.ServerSide.getInventoryFromSource(.playerInventory)) |inv| {
+				playerZon.put("inventory", inv.save(main.stackAllocator));
 			}
 		}
 
-		try files.makeDir(try std.fmt.bufPrint(&buf, "saves/{s}/players", .{self.name}));
+		const playerPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players", .{self.name}) catch "";
+		defer main.stackAllocator.free(playerPath);
+
+		try files.makeDir(playerPath);
 
 		try files.writeZon(path, playerZon);
 	}

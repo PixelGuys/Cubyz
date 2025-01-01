@@ -305,29 +305,33 @@ pub const Sync = struct { // MARK: Sync
 						}
 					}
 				},
-				.playerInventory => {
-					var dest: [1024]u8 = undefined;
-					const hashedName = std.base64.url_safe.Encoder.encode(&dest, user.name);
-
-					var buf: [32768]u8 = undefined;
-					const playerData = main.files.readToZon(main.stackAllocator, std.fmt.bufPrint(&buf, "saves/{s}/players/{s}.zig.zon", .{main.server.world.?.name, hashedName}) catch "") catch .null; // TODO: Utils.escapeFolderName(user.name)
-					defer playerData.deinit(main.stackAllocator);
-
-					const inventoryZon = playerData.getChild("inventory");
-
-					const inventory = ServerInventory.init(len, typ, source);
-
-					inventory.inv.loadFromZon(inventoryZon);
-
-					inventories.items[inventory.inv.id] = inventory;
-					inventories.items[inventory.inv.id].addUser(user, clientId);
-
-					return;
-				},
+				.playerInventory => {},
 				.other => {},
 				.alreadyFreed => unreachable,
 			}
 			const inventory = ServerInventory.init(len, typ, source);
+
+			switch (source) {
+				.sharedTestingInventory => {},
+				.playerInventory => {
+					const dest: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Encoder.calcSize(user.name.len));
+					defer main.stackAllocator.free(dest);
+					const hashedName = std.base64.url_safe.Encoder.encode(dest, user.name);
+
+					const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players/{s}.zig.zon", .{main.server.world.?.name, hashedName}) catch "";
+					defer main.stackAllocator.free(path);
+		
+					const playerData = main.files.readToZon(main.stackAllocator, path) catch .null;
+					defer playerData.deinit(main.stackAllocator);
+
+					const inventoryZon = playerData.getChild("inventory");
+
+					inventory.inv.loadFromZon(inventoryZon);
+				},
+				.other => {},
+				.alreadyFreed => unreachable,
+			}
+
 			inventories.items[inventory.inv.id] = inventory;
 			inventories.items[inventory.inv.id].addUser(user, clientId);
 		}
@@ -344,10 +348,14 @@ pub const Sync = struct { // MARK: Sync
 			return inventories.items[serverId].inv;
 		}
 
-		pub fn getServerInventory(user: *main.server.User, clientId: u32) ?ServerInventory {
+		pub fn getInventoryFromSource(source: SourceType) ?Inventory {
 			main.utils.assertLocked(&mutex);
-			const serverId = user.inventoryClientToServerIdMap.get(clientId) orelse return null;
-			return inventories.items[serverId];
+			for(inventories.items) |inv| {
+				if (inv.source == source) {
+					return inv.inv;
+				}
+			}
+			return null;
 		}
 
 		pub fn clearPlayerInventory(user: *main.server.User) void {
