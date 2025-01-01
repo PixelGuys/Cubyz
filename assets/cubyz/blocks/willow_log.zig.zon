@@ -1,0 +1,12 @@
+.{
+	.class = .wood,
+	.hardness = 8,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.rotation = .log,
+	.model = "cubyz:cube",
+	.texture = "cubyz:willow_log",
+	.texture_top = "cubyz:willow_log_top",
+	.texture_bottom = "cubyz:willow_log_top",
+}
