@@ -205,7 +205,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		}
 	}
 
-	pub fn free(self: *const ZonElement, allocator: NeverFailingAllocator) void {
+	pub fn deinit(self: *const ZonElement, allocator: NeverFailingAllocator) void {
 		switch(self.*) {
 			.int, .float, .bool, .null, .string => return,
 			.stringOwned => {
@@ -213,7 +213,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 			},
 			.array => {
 				for(self.array.items) |*elem| {
-					elem.free(allocator);
+					elem.deinit(allocator);
 				}
 				self.array.clearAndFree();
 				allocator.destroy(self.array);
@@ -223,7 +223,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 				while(true) {
 					const elem = iterator.next() orelse break;
 					allocator.free(elem.key_ptr.*);
-					elem.value_ptr.free(allocator);
+					elem.value_ptr.deinit(allocator);
 				}
 				self.object.clearAndFree();
 				allocator.destroy(self.object);
@@ -563,7 +563,7 @@ const Parser = struct { // MARK: Parser
 			if(map.fetchPut(key, value) catch unreachable) |old| {
 				printError(chars, index.*, "Duplicate key.");
 				allocator.free(old.key);
-				old.value.free(allocator);
+				old.value.deinit(allocator);
 			}
 			skipWhitespaces(chars, index);
 			if(index.* < chars.len and chars[index.*] == ',') {
@@ -796,23 +796,23 @@ test "element parsing" {
 	index = 0;
 	var result: ZonElement = Parser.parseElement(allocator, "\"abcd\\\"\\\\ħσ→ ↑Φ∫€ ⌬ ε→Π\"", &index);
 	try std.testing.expectEqualStrings("abcd\"\\ħσ→ ↑Φ∫€ ⌬ ε→Π", result.as([]const u8, ""));
-	result.free(allocator);
+	result.deinit(allocator);
 	index = 0;
 	result = Parser.parseElement(allocator, "\"12345", &index);
 	try std.testing.expectEqualStrings("12345", result.as([]const u8, ""));
-	result.free(allocator);
+	result.deinit(allocator);
 
 	// Object:
 	index = 0;
 	result = Parser.parseElement(allocator, ".{.name = 1}", &index);
 	try std.testing.expectEqual(.object, std.meta.activeTag(result));
 	try std.testing.expectEqual(result.object.get("name"), ZonElement{.int = 1});
-	result.free(allocator);
+	result.deinit(allocator);
 	index = 0;
 	result = Parser.parseElement(allocator, ".{@\"object\"=.{},}", &index);
 	try std.testing.expectEqual(.object, std.meta.activeTag(result));
 	try std.testing.expectEqual(.array, std.meta.activeTag(result.object.get("object") orelse .null));
-	result.free(allocator);
+	result.deinit(allocator);
 	index = 0;
 	result = Parser.parseElement(allocator, ".{   .object1   =   \"\"  \n, .object2  =\t.{\n},.object3   =1.0e4\t,@\"\nobject1\"=.{},@\"\tobject1θ\"=.{},}", &index);
 	try std.testing.expectEqual(.object, std.meta.activeTag(result));
@@ -820,7 +820,7 @@ test "element parsing" {
 	try std.testing.expectEqual(.stringOwned, std.meta.activeTag(result.object.get("object1") orelse .null));
 	try std.testing.expectEqual(.array, std.meta.activeTag(result.object.get("\nobject1") orelse .null));
 	try std.testing.expectEqual(.array, std.meta.activeTag(result.object.get("\tobject1θ") orelse .null));
-	result.free(allocator);
+	result.deinit(allocator);
 
 	//Array:
 	index = 0;
@@ -828,12 +828,12 @@ test "element parsing" {
 	try std.testing.expectEqual(.array, std.meta.activeTag(result));
 	try std.testing.expectEqual(.stringOwned, std.meta.activeTag(result.array.items[0]));
 	try std.testing.expectEqual(ZonElement{.int=1}, result.array.items[1]);
-	result.free(allocator);
+	result.deinit(allocator);
 	index = 0;
 	result = Parser.parseElement(allocator, ".{   \"name\"\t1\n,    17.1}", &index);
 	try std.testing.expectEqual(.array, std.meta.activeTag(result));
 	try std.testing.expectEqual(.stringOwned, std.meta.activeTag(result.array.items[0]));
 	try std.testing.expectEqual(ZonElement{.int=1}, result.array.items[1]);
 	try std.testing.expectEqual(ZonElement{.float=17.1}, result.array.items[2]);
-	result.free(allocator);
+	result.deinit(allocator);
 }

@@ -521,7 +521,7 @@ pub const meshes = struct { // MARK: meshes
 		const path = buffer[0.._path.len];
 		const textureInfoPath = extendedPath(path, &buffer, "_textureInfo.zig.zon");
 		const textureInfoZon = main.files.readToZon(main.stackAllocator, textureInfoPath) catch .null;
-		defer textureInfoZon.free(main.stackAllocator);
+		defer textureInfoZon.deinit(main.stackAllocator);
 		const animationFrames = textureInfoZon.get(u32, "frames", 1);
 		const animationTime = textureInfoZon.get(u32, "time", 1);
 		animation.append(.{.startFrame = @intCast(blockTextures.items.len), .frames = animationFrames, .time = animationTime});

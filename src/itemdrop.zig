@@ -91,7 +91,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			}
 		}
 		self.list.deinit(self.allocator.allocator);
-		self.lastUpdates.free(self.allocator);
+		self.lastUpdates.deinit(self.allocator);
 	}
 
 	pub fn loadFrom(self: *ItemDropManager, zon: ZonElement) void {
@@ -206,7 +206,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		const i: u16 = @intCast(self.isEmpty.findFirstSet() orelse {
 			self.emptyMutex.unlock();
 			const zon = itemStack.store(main.stackAllocator);
-			defer zon.free(main.stackAllocator);
+			defer zon.deinit(main.stackAllocator);
 			const string = zon.toString(main.stackAllocator);
 			defer main.stackAllocator.free(string);
 			std.log.err("Item drop capacitiy limit reached. Failed to add itemStack: {s}", .{string});

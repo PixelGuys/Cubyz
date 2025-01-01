@@ -481,7 +481,7 @@ pub const Command = struct { // MARK: Command
 			};
 			if(data.len > 12) {
 				const zon = ZonElement.parseFromString(main.stackAllocator, data[12..]);
-				defer zon.free(main.stackAllocator);
+				defer zon.deinit(main.stackAllocator);
 				self.item = try Item.init(zon);
 			}
 			if(self.amount > 0) { // Create
@@ -513,7 +513,7 @@ pub const Command = struct { // MARK: Command
 			std.mem.writeInt(i32, data.addMany(4)[0..4], self.amount, .big);
 			if(self.item) |item| {
 				const zon = ZonElement.initObject(main.stackAllocator);
-				defer zon.free(main.stackAllocator);
+				defer zon.deinit(main.stackAllocator);
 				item.insertIntoZon(main.stackAllocator, zon);
 				const string = zon.toStringEfficient(main.stackAllocator, &.{});
 				defer main.stackAllocator.free(string);
@@ -1104,7 +1104,7 @@ pub const Command = struct { // MARK: Command
 			std.mem.writeInt(u16, data.addMany(2)[0..2], self.amount, .big);
 			if(self.item) |item| {
 				const zon = ZonElement.initObject(main.stackAllocator);
-				defer zon.free(main.stackAllocator);
+				defer zon.deinit(main.stackAllocator);
 				item.insertIntoZon(main.stackAllocator, zon);
 				const string = zon.toStringEfficient(main.stackAllocator, &.{});
 				defer main.stackAllocator.free(string);
@@ -1118,7 +1118,7 @@ pub const Command = struct { // MARK: Command
 			var item: ?Item = null;
 			if(data.len > 10) {
 				const zon = ZonElement.parseFromString(main.stackAllocator, data[10..]);
-				defer zon.free(main.stackAllocator);
+				defer zon.deinit(main.stackAllocator);
 				item = try Item.init(zon);
 			}
 			return .{

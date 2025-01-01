@@ -378,7 +378,7 @@ const WorldIO = struct { // MARK: WorldIO
 	/// Load the seed, which is needed before custom item and ore generation.
 	pub fn loadWorldSeed(self: WorldIO) !u64 {
 		const worldData = try self.dir.readToZon(main.stackAllocator, "world.zig.zon");
-		defer worldData.free(main.stackAllocator);
+		defer worldData.deinit(main.stackAllocator);
 		if(worldData.get(u32, "version", 0) != worldDataVersion) {
 			std.log.err("Cannot read world file version {}. Expected version {}.", .{worldData.get(u32, "version", 0), worldDataVersion});
 			return error.OldWorld;
@@ -388,7 +388,7 @@ const WorldIO = struct { // MARK: WorldIO
 
 	pub fn loadWorldData(self: WorldIO) !void {
 		const worldData = try self.dir.readToZon(main.stackAllocator, "world.zig.zon");
-		defer worldData.free(main.stackAllocator);
+		defer worldData.deinit(main.stackAllocator);
 
 		self.world.doGameTimeCycle = worldData.get(bool, "doGameTimeCycle", true);
 		self.world.gameTime = worldData.get(i64, "gameTime", 0);
@@ -398,7 +398,7 @@ const WorldIO = struct { // MARK: WorldIO
 
 	pub fn saveWorldData(self: WorldIO) !void {
 		const worldData = ZonElement.initObject(main.stackAllocator);
-		defer worldData.free(main.stackAllocator);
+		defer worldData.deinit(main.stackAllocator);
 		worldData.put("version", worldDataVersion);
 		worldData.put("seed", self.world.seed);
 		worldData.put("doGameTimeCycle", self.world.doGameTimeCycle);
@@ -757,7 +757,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		try self.wio.saveWorldData();
 		var buf: [32768]u8 = undefined;
 		const zon = files.readToZon(main.stackAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/items.zig.zon", .{self.name})) catch .null;
-		defer zon.free(main.stackAllocator);
+		defer zon.deinit(main.stackAllocator);
 		self.itemDropManager.loadFrom(zon);
 	}
 
@@ -765,7 +765,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	pub fn findPlayer(self: *ServerWorld, user: *User) void {
 		var buf: [1024]u8 = undefined;
 		const playerData = files.readToZon(main.stackAllocator, std.fmt.bufPrint(&buf, "saves/{s}/player/{s}.zig.zon", .{self.name, user.name}) catch "") catch .null; // TODO: Utils.escapeFolderName(user.name)
-		defer playerData.free(main.stackAllocator);
+		defer playerData.deinit(main.stackAllocator);
 		const player = &user.player;
 		if(playerData == .null) {
 			// Generate a new player:
@@ -779,7 +779,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		// TODO: Save chunks and player data
 		try self.wio.saveWorldData();
 		const itemDropZon = self.itemDropManager.store(main.stackAllocator);
-		defer itemDropZon.free(main.stackAllocator);
+		defer itemDropZon.deinit(main.stackAllocator);
 		var buf: [32768]u8 = undefined;
 		try files.writeZon(try std.fmt.bufPrint(&buf, "saves/{s}/items.zig.zon", .{self.name}), itemDropZon);
 	}
