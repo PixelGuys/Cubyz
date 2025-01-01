@@ -190,6 +190,8 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		const result = createElementFromRandomType(value, self.object.allocator);
 
 		if (self.object.contains(key)) {
+			self.getChild(key).deinit(NeverFailingAllocator{.allocator = self.object.allocator, .IAssertThatTheProvidedAllocatorCantFail = {}});
+
 			self.object.put(key, result) catch unreachable;
 			return;
 		}
@@ -201,6 +203,8 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		const result = ZonElement{.stringOwned = self.object.allocator.dupe(u8, value) catch unreachable};
 
 		if (self.object.contains(key)) {
+			self.getChild(key).deinit(NeverFailingAllocator{.allocator = self.object.allocator, .IAssertThatTheProvidedAllocatorCantFail = {}});
+
 			self.object.put(key, result) catch unreachable;
 			return;
 		}
