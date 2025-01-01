@@ -858,7 +858,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		while(self.milliTime + 100 < newTime) {
 			self.milliTime += 100;
-			if(self.doGameTimeCycle) self.gameTime += 1; // gameTime is measured in 100ms.
+			if(self.doGameTimeCycle) self.gameTime +%= 1; // gameTime is measured in 100ms.
 		}
 		if(self.lastUnimportantDataSent + 2000 < newTime) {// Send unimportant data every ~2s.
 			self.lastUnimportantDataSent = newTime;
