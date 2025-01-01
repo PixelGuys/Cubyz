@@ -775,7 +775,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		} else {
 			player.loadFrom(playerData.getChild("entity"));
 
-			user.gamemode.store(std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", "survival")).?, .monotonic);
+			main.items.Inventory.Sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", "survival")).?);
+
+			// user.gamemode.store(std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", "survival")).?, .monotonic);
 		}
 	}
 
