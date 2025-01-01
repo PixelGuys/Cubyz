@@ -202,7 +202,7 @@ pub const Sync = struct { // MARK: Sync
 				}
 			}
 		};
-		var mutex: std.Thread.Mutex = .{};
+		pub var mutex: std.Thread.Mutex = .{};
 
 		var inventories: main.List(ServerInventory) = undefined;
 		var maxId: u32 = 0;

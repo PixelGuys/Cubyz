@@ -761,23 +761,65 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.itemDropManager.loadFrom(zon);
 	}
 
-
 	pub fn findPlayer(self: *ServerWorld, user: *User) void {
-		var buf: [1024]u8 = undefined;
-		const playerData = files.readToZon(main.stackAllocator, std.fmt.bufPrint(&buf, "saves/{s}/player/{s}.zig.zon", .{self.name, user.name}) catch "") catch .null; // TODO: Utils.escapeFolderName(user.name)
+		var dest: [1024]u8 = undefined;
+		const hashedName = std.base64.url_safe.Encoder.encode(&dest, user.name);
+
+		var buf: [32768]u8 = undefined;
+		const playerData = files.readToZon(main.stackAllocator, std.fmt.bufPrint(&buf, "saves/{s}/players/{s}.zig.zon", .{self.name, hashedName}) catch "") catch .null; // TODO: Utils.escapeFolderName(user.name)
 		defer playerData.free(main.stackAllocator);
 		const player = &user.player;
 		if(playerData == .null) {
 			// Generate a new player:
 			player.pos = @floatFromInt(self.spawn);
 		} else {
-			player.loadFrom(playerData);
+			player.loadFrom(playerData.getChild("entity"));
+
+			user.gamemode.store(std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", "survival")).?, .monotonic);
 		}
+	}
+
+	fn savePlayer(self: *ServerWorld, user: *User) !void {
+		var playerZon = ZonElement.initObject(main.stackAllocator);
+		defer playerZon.free(main.stackAllocator);
+
+		playerZon.put("name", user.name);
+		
+		playerZon.put("entity", user.player.save(main.stackAllocator));
+		playerZon.put("gamemode", @tagName(user.gamemode.load(.monotonic)));
+
+		const inventoryZon = ZonElement.initArray(main.stackAllocator);
+
+		main.items.Inventory.Sync.ServerSide.mutex.lock();
+		defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
+
+		var iterator = user.inventoryClientToServerIdMap.iterator();
+		while (iterator.next()) |entry| {
+			if (main.items.Inventory.Sync.getInventory(entry.value_ptr.*, .server, user)) |inventory| {
+				inventoryZon.array.append(inventory.save(main.stackAllocator));
+			}
+		}
+
+		playerZon.put("inventory", inventoryZon);
+
+		var dest: [1024]u8 = undefined;
+		const hashedName = std.base64.url_safe.Encoder.encode(&dest, user.name);
+
+		var buf: [32768]u8 = undefined;
+		try files.writeZon(try std.fmt.bufPrint(&buf, "saves/{s}/players/{s}.zig.zon", .{self.name, hashedName}), playerZon);
 	}
 
 	pub fn forceSave(self: *ServerWorld) !void {
 		// TODO: Save chunks and player data
 		try self.wio.saveWorldData();
+	
+		const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
+		defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+		
+		for (userList) |user| {
+			try savePlayer(self, user);
+		}
+
 		const itemDropZon = self.itemDropManager.store(main.stackAllocator);
 		defer itemDropZon.free(main.stackAllocator);
 		var buf: [32768]u8 = undefined;
