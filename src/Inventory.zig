@@ -8,6 +8,7 @@ const ItemStack = main.items.ItemStack;
 const Tool = main.items.Tool;
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 const vec = main.vec;
+const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
@@ -465,7 +466,7 @@ pub const Command = struct { // MARK: Command
 		},
 	};
 
-	const SyncOperation = struct {
+	const SyncOperation = struct { // MARK: SyncOperation
 		// Since the client doesn't know about all inventories, we can only use create(+amount)/delete(-amount) operations to apply the server side updates.
 		inv: InventoryAndSlot,
 		amount: i32,
@@ -536,7 +537,7 @@ pub const Command = struct { // MARK: Command
 		return list.toOwnedSlice();
 	}
 
-	fn do(self: *Command, allocator: NeverFailingAllocator, side: Side, user: ?*main.server.User, gamemode: main.game.Gamemode) error{serverFailure}!void {
+	fn do(self: *Command, allocator: NeverFailingAllocator, side: Side, user: ?*main.server.User, gamemode: main.game.Gamemode) error{serverFailure}!void { // MARK: do()
 		std.debug.assert(self.baseOperations.items.len == 0); // do called twice without cleaning up
 		switch(self.payload) {
 			inline else => |payload| {
@@ -654,7 +655,7 @@ pub const Command = struct { // MARK: Command
 		}
 	}
 
-	fn executeBaseOperation(self: *Command, allocator: NeverFailingAllocator, _op: BaseOperation, side: Side) void {
+	fn executeBaseOperation(self: *Command, allocator: NeverFailingAllocator, _op: BaseOperation, side: Side) void { // MARK: executeBaseOperation()
 		var op = _op;
 		switch(op) {
 			.move => |info| {
@@ -706,7 +707,7 @@ pub const Command = struct { // MARK: Command
 		return true;
 	}
 
-	fn tryCraftingTo(self: *Command, allocator: NeverFailingAllocator, dest: InventoryAndSlot, source: InventoryAndSlot, side: Side, user: ?*main.server.User) void {
+	fn tryCraftingTo(self: *Command, allocator: NeverFailingAllocator, dest: InventoryAndSlot, source: InventoryAndSlot, side: Side, user: ?*main.server.User) void { // MARK: tryCraftingTo()
 		std.debug.assert(source.inv.type == .crafting);
 		std.debug.assert(dest.inv.type == .normal);
 		if(source.slot != source.inv._items.len - 1) return;
@@ -768,7 +769,7 @@ pub const Command = struct { // MARK: Command
 		}}, side);
 	}
 
-	const Open = struct {
+	const Open = struct { // MARK: Open
 		inv: Inventory,
 		source: Source,
 
@@ -820,7 +821,7 @@ pub const Command = struct { // MARK: Command
 		}
 	};
 
-	const Close = struct {
+	const Close = struct { // MARK: Close
 		inv: Inventory,
 		allocator: NeverFailingAllocator,
 
@@ -848,7 +849,7 @@ pub const Command = struct { // MARK: Command
 		}
 	};
 
-	const DepositOrSwap = struct {
+	const DepositOrSwap = struct { // MARK: DepositOrSwap
 		dest: InventoryAndSlot,
 		source: InventoryAndSlot,
 
@@ -910,7 +911,7 @@ pub const Command = struct { // MARK: Command
 		}
 	};
 
-	const Deposit = struct {
+	const Deposit = struct { // MARK: Deposit
 		dest: InventoryAndSlot,
 		source: InventoryAndSlot,
 		amount: u16,
@@ -957,7 +958,7 @@ pub const Command = struct { // MARK: Command
 		}
 	};
 
-	const TakeHalf = struct {
+	const TakeHalf = struct { // MARK: TakeHalf
 		dest: InventoryAndSlot,
 		source: InventoryAndSlot,
 
@@ -1020,7 +1021,7 @@ pub const Command = struct { // MARK: Command
 		}
 	};
 
-	const Drop = struct {
+	const Drop = struct { // MARK: Drop
 		source: InventoryAndSlot,
 		desiredAmount: u16 = 0xffff,
 
@@ -1075,7 +1076,7 @@ pub const Command = struct { // MARK: Command
 		}
 	};
 
-	const FillFromCreative = struct {
+	const FillFromCreative = struct { // MARK: FillFromCreative
 		dest: InventoryAndSlot,
 		item: ?Item,
 		amount: u16 = 0,
@@ -1128,7 +1129,7 @@ pub const Command = struct { // MARK: Command
 		}
 	};
 
-	const DepositOrDrop = struct {
+	const DepositOrDrop = struct { // MARK: DepositOrDrop
 		dest: Inventory,
 		source: Inventory,
 
@@ -1189,7 +1190,7 @@ pub const Command = struct { // MARK: Command
 		}
 	};
 
-	const Clear = struct {
+	const Clear = struct { // MARK: Clear
 		inv: Inventory,
 
 		pub fn run(self: Clear, allocator: NeverFailingAllocator, cmd: *Command, side: Side, _: ?*main.server.User, _: Gamemode) error{serverFailure}!void {
@@ -1220,7 +1221,7 @@ pub const Command = struct { // MARK: Command
 		}
 	};
 
-	const UpdateBlock = struct {
+	const UpdateBlock = struct { // MARK: UpdateBlock
 		source: InventoryAndSlot,
 		pos: Vec3i,
 		oldBlock: Block,
@@ -1275,9 +1276,7 @@ pub const Command = struct { // MARK: Command
 						for(0..amount) |_| {
 							for(self.newBlock.blockDrops()) |drop| {
 								if(drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
-									for(drop.items) |itemStack| {
-										main.server.world.?.drop(itemStack.clone(), @as(vec.Vec3d, @floatFromInt(self.pos)) + vec.Vec3d{0.5, 0.5, 0.5}, main.random.nextFloatVectorSigned(3, &main.seed), main.random.nextFloat(&main.seed)*20);
-									}
+									blockDrop(self.pos, drop);
 								}
 							}
 						}
@@ -1288,11 +1287,17 @@ pub const Command = struct { // MARK: Command
 			if(side == .server and gamemode != .creative and self.oldBlock.typ != self.newBlock.typ) {
 				for(self.oldBlock.blockDrops()) |drop| {
 					if(drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
-						for(drop.items) |itemStack| {
-							main.server.world.?.drop(itemStack.clone(), @as(vec.Vec3d, @floatFromInt(self.pos)) + vec.Vec3d{0.5, 0.5, 0.5}, main.random.nextFloatVectorSigned(3, &main.seed), main.random.nextFloat(&main.seed)*20);
-						}
+						blockDrop(self.pos, drop);
 					}
 				}
+			}
+		}
+
+		fn blockDrop(pos: Vec3i, drop: main.blocks.BlockDrop) void {
+			for(drop.items) |itemStack| {
+				const dropPos = @as(Vec3d, @floatFromInt(pos)) + @as(Vec3d, @splat(0.5)) + main.random.nextDoubleVectorSigned(3, &main.seed)*@as(Vec3d, @splat(0.5 - main.itemdrop.ItemDropManager.radius));
+				const dir = vec.normalize(main.random.nextFloatVectorSigned(3, &main.seed));
+				main.server.world.?.drop(itemStack.clone(), dropPos, dir, main.random.nextFloat(&main.seed)*1.5);
 			}
 		}
 
@@ -1334,7 +1339,7 @@ const Source = union(SourceType) {
 	other: void,
 };
 
-const Inventory = @This();
+const Inventory = @This(); // MARK: Inventory
 
 const Type = enum(u8) {
 	normal = 0,

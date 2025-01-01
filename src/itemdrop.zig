@@ -35,11 +35,11 @@ const ItemDrop = struct { // MARK: ItemDrop
 
 pub const ItemDropManager = struct { // MARK: ItemDropManager
 	/// Half the side length of all item entities hitboxes as a cube.
-	const radius: f64 = 0.1;
+	pub const radius: f64 = 0.1;
 	/// Side length of all item entities hitboxes as a cube.
-	const diameter: f64 = 2*radius;
+	pub const diameter: f64 = 2*radius;
 
-	const pickupRange: f64 = 1.0;
+	pub const pickupRange: f64 = 1.0;
 
 	const maxSpeed = 10;
 
@@ -285,7 +285,6 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			self.fixStuckInBlock(chunk, pos, vel, deltaTime);
 			return;
 		}
-		var drag: f64 = self.airDragFactor;
 		vel.* += Vec3d{0, 0, -self.gravity*deltaTime};
 		inline for(0..3) |i| {
 			const move = vel.*[i]*deltaTime;// + acceleration[i]*deltaTime;
@@ -299,10 +298,9 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			} else {
 				pos.*[i] += move;
 			}
-			drag += 0.5; // TODO: Calculate drag from block properties and add buoyancy.
 		}
 		// Apply drag:
-		vel.* *= @splat(@max(0, 1 - drag*deltaTime));
+		vel.* *= @splat(@max(0, 1 - self.airDragFactor*deltaTime));
 	}
 
 	fn fixStuckInBlock(self: *ItemDropManager, chunk: *ServerChunk, pos: *Vec3d, vel: *Vec3d, deltaTime: f64) void {
