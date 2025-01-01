@@ -779,7 +779,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 	}
 
-	fn savePlayer(self: *ServerWorld, user: *User) !void {
+	pub fn savePlayer(self: *ServerWorld, user: *User) !void {
 		var playerZon = ZonElement.initObject(main.stackAllocator);
 		defer playerZon.free(main.stackAllocator);
 
@@ -809,16 +809,20 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		try files.writeZon(try std.fmt.bufPrint(&buf, "saves/{s}/players/{s}.zig.zon", .{self.name, hashedName}), playerZon);
 	}
 
-	pub fn forceSave(self: *ServerWorld) !void {
-		// TODO: Save chunks and player data
-		try self.wio.saveWorldData();
-	
+	pub fn saveAllPlayers(self: *ServerWorld) !void {
 		const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
 		defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 		
 		for (userList) |user| {
 			try savePlayer(self, user);
 		}
+	}
+
+	pub fn forceSave(self: *ServerWorld) !void {
+		// TODO: Save chunks and player data
+		try self.wio.saveWorldData();
+	
+		try self.saveAllPlayers();
 
 		const itemDropZon = self.itemDropManager.store(main.stackAllocator);
 		defer itemDropZon.free(main.stackAllocator);
