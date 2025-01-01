@@ -8,7 +8,6 @@ const ItemStack = main.items.ItemStack;
 const Tool = main.items.Tool;
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 const vec = main.vec;
-const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
@@ -305,7 +304,30 @@ pub const Sync = struct { // MARK: Sync
 						}
 					}
 				},
-				.playerInventory, .other => {},
+				.playerInventory => {
+					var dest: [1024]u8 = undefined;
+					const hashedName = std.base64.url_safe.Encoder.encode(&dest, user.name);
+
+					var buf: [32768]u8 = undefined;
+					const playerData = main.files.readToZon(main.stackAllocator, std.fmt.bufPrint(&buf, "saves/{s}/players/{s}.zig.zon", .{main.server.world.?.name, hashedName}) catch "") catch .null; // TODO: Utils.escapeFolderName(user.name)
+					defer playerData.free(main.stackAllocator);
+
+					const inventoryZon = playerData.getChild("inventory");
+
+					const string = playerData.toString(main.stackAllocator);
+					defer main.stackAllocator.free(string);
+					std.debug.print("{s}", .{string});
+
+					const inventory = ServerInventory.init(len, typ, source);
+
+					inventory.inv.loadFromZon(inventoryZon);
+
+					inventories.items[inventory.inv.id] = inventory;
+					inventories.items[inventory.inv.id].addUser(user, clientId);
+
+					return;
+				},
+				.other => {},
 				.alreadyFreed => unreachable,
 			}
 			const inventory = ServerInventory.init(len, typ, source);
@@ -323,6 +345,12 @@ pub const Sync = struct { // MARK: Sync
 			main.utils.assertLocked(&mutex);
 			const serverId = user.inventoryClientToServerIdMap.get(clientId) orelse return null;
 			return inventories.items[serverId].inv;
+		}
+
+		pub fn getServerInventory(user: *main.server.User, clientId: u32) ?ServerInventory {
+			main.utils.assertLocked(&mutex);
+			const serverId = user.inventoryClientToServerIdMap.get(clientId) orelse return null;
+			return inventories.items[serverId];
 		}
 
 		pub fn clearPlayerInventory(user: *main.server.User) void {
@@ -347,7 +375,6 @@ pub const Sync = struct { // MARK: Sync
 					for(inv._items, 0..) |invStack, slot| {
 						if(std.meta.eql(invStack.item, itemStack.item)) {
 							const amount = @min(itemStack.item.?.stackSize() - invStack.amount, itemStack.amount);
-							if(amount == 0) continue;
 							executeCommand(.{.fillFromCreative = .{.dest = .{.inv = inv, .slot = @intCast(slot)}, .item = itemStack.item, .amount = invStack.amount + amount}}, null);
 							itemStack.amount -= amount;
 							if(itemStack.amount == 0) break :outer;
@@ -466,7 +493,7 @@ pub const Command = struct { // MARK: Command
 		},
 	};
 
-	const SyncOperation = struct { // MARK: SyncOperation
+	const SyncOperation = struct {
 		// Since the client doesn't know about all inventories, we can only use create(+amount)/delete(-amount) operations to apply the server side updates.
 		inv: InventoryAndSlot,
 		amount: i32,
@@ -537,7 +564,7 @@ pub const Command = struct { // MARK: Command
 		return list.toOwnedSlice();
 	}
 
-	fn do(self: *Command, allocator: NeverFailingAllocator, side: Side, user: ?*main.server.User, gamemode: main.game.Gamemode) error{serverFailure}!void { // MARK: do()
+	fn do(self: *Command, allocator: NeverFailingAllocator, side: Side, user: ?*main.server.User, gamemode: main.game.Gamemode) error{serverFailure}!void {
 		std.debug.assert(self.baseOperations.items.len == 0); // do called twice without cleaning up
 		switch(self.payload) {
 			inline else => |payload| {
@@ -655,7 +682,7 @@ pub const Command = struct { // MARK: Command
 		}
 	}
 
-	fn executeBaseOperation(self: *Command, allocator: NeverFailingAllocator, _op: BaseOperation, side: Side) void { // MARK: executeBaseOperation()
+	fn executeBaseOperation(self: *Command, allocator: NeverFailingAllocator, _op: BaseOperation, side: Side) void {
 		var op = _op;
 		switch(op) {
 			.move => |info| {
@@ -707,7 +734,7 @@ pub const Command = struct { // MARK: Command
 		return true;
 	}
 
-	fn tryCraftingTo(self: *Command, allocator: NeverFailingAllocator, dest: InventoryAndSlot, source: InventoryAndSlot, side: Side, user: ?*main.server.User) void { // MARK: tryCraftingTo()
+	fn tryCraftingTo(self: *Command, allocator: NeverFailingAllocator, dest: InventoryAndSlot, source: InventoryAndSlot, side: Side, user: ?*main.server.User) void {
 		std.debug.assert(source.inv.type == .crafting);
 		std.debug.assert(dest.inv.type == .normal);
 		if(source.slot != source.inv._items.len - 1) return;
@@ -769,7 +796,7 @@ pub const Command = struct { // MARK: Command
 		}}, side);
 	}
 
-	const Open = struct { // MARK: Open
+	const Open = struct {
 		inv: Inventory,
 		source: Source,
 
@@ -821,7 +848,7 @@ pub const Command = struct { // MARK: Command
 		}
 	};
 
-	const Close = struct { // MARK: Close
+	const Close = struct {
 		inv: Inventory,
 		allocator: NeverFailingAllocator,
 
@@ -849,7 +876,7 @@ pub const Command = struct { // MARK: Command
 		}
 	};
 
-	const DepositOrSwap = struct { // MARK: DepositOrSwap
+	const DepositOrSwap = struct {
 		dest: InventoryAndSlot,
 		source: InventoryAndSlot,
 
@@ -911,7 +938,7 @@ pub const Command = struct { // MARK: Command
 		}
 	};
 
-	const Deposit = struct { // MARK: Deposit
+	const Deposit = struct {
 		dest: InventoryAndSlot,
 		source: InventoryAndSlot,
 		amount: u16,
@@ -958,7 +985,7 @@ pub const Command = struct { // MARK: Command
 		}
 	};
 
-	const TakeHalf = struct { // MARK: TakeHalf
+	const TakeHalf = struct {
 		dest: InventoryAndSlot,
 		source: InventoryAndSlot,
 
@@ -1021,7 +1048,7 @@ pub const Command = struct { // MARK: Command
 		}
 	};
 
-	const Drop = struct { // MARK: Drop
+	const Drop = struct {
 		source: InventoryAndSlot,
 		desiredAmount: u16 = 0xffff,
 
@@ -1076,7 +1103,7 @@ pub const Command = struct { // MARK: Command
 		}
 	};
 
-	const FillFromCreative = struct { // MARK: FillFromCreative
+	const FillFromCreative = struct {
 		dest: InventoryAndSlot,
 		item: ?Item,
 		amount: u16 = 0,
@@ -1129,7 +1156,7 @@ pub const Command = struct { // MARK: Command
 		}
 	};
 
-	const DepositOrDrop = struct { // MARK: DepositOrDrop
+	const DepositOrDrop = struct {
 		dest: Inventory,
 		source: Inventory,
 
@@ -1190,7 +1217,7 @@ pub const Command = struct { // MARK: Command
 		}
 	};
 
-	const Clear = struct { // MARK: Clear
+	const Clear = struct {
 		inv: Inventory,
 
 		pub fn run(self: Clear, allocator: NeverFailingAllocator, cmd: *Command, side: Side, _: ?*main.server.User, _: Gamemode) error{serverFailure}!void {
@@ -1221,7 +1248,7 @@ pub const Command = struct { // MARK: Command
 		}
 	};
 
-	const UpdateBlock = struct { // MARK: UpdateBlock
+	const UpdateBlock = struct {
 		source: InventoryAndSlot,
 		pos: Vec3i,
 		oldBlock: Block,
@@ -1276,7 +1303,9 @@ pub const Command = struct { // MARK: Command
 						for(0..amount) |_| {
 							for(self.newBlock.blockDrops()) |drop| {
 								if(drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
-									blockDrop(self.pos, drop);
+									for(drop.items) |itemStack| {
+										main.server.world.?.drop(itemStack.clone(), @as(vec.Vec3d, @floatFromInt(self.pos)) + vec.Vec3d{0.5, 0.5, 0.5}, main.random.nextFloatVectorSigned(3, &main.seed), main.random.nextFloat(&main.seed)*20);
+									}
 								}
 							}
 						}
@@ -1287,17 +1316,11 @@ pub const Command = struct { // MARK: Command
 			if(side == .server and gamemode != .creative and self.oldBlock.typ != self.newBlock.typ) {
 				for(self.oldBlock.blockDrops()) |drop| {
 					if(drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
-						blockDrop(self.pos, drop);
+						for(drop.items) |itemStack| {
+							main.server.world.?.drop(itemStack.clone(), @as(vec.Vec3d, @floatFromInt(self.pos)) + vec.Vec3d{0.5, 0.5, 0.5}, main.random.nextFloatVectorSigned(3, &main.seed), main.random.nextFloat(&main.seed)*20);
+						}
 					}
 				}
-			}
-		}
-
-		fn blockDrop(pos: Vec3i, drop: main.blocks.BlockDrop) void {
-			for(drop.items) |itemStack| {
-				const dropPos = @as(Vec3d, @floatFromInt(pos)) + @as(Vec3d, @splat(0.5)) + main.random.nextDoubleVectorSigned(3, &main.seed)*@as(Vec3d, @splat(0.5 - main.itemdrop.ItemDropManager.radius));
-				const dir = vec.normalize(main.random.nextFloatVectorSigned(3, &main.seed));
-				main.server.world.?.drop(itemStack.clone(), dropPos, dir, main.random.nextFloat(&main.seed)*1.5);
 			}
 		}
 
@@ -1339,7 +1362,7 @@ const Source = union(SourceType) {
 	other: void,
 };
 
-const Inventory = @This(); // MARK: Inventory
+const Inventory = @This();
 
 const Type = enum(u8) {
 	normal = 0,

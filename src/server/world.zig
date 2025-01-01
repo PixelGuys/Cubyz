@@ -770,7 +770,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		defer playerData.free(main.stackAllocator);
 		const player = &user.player;
 		if(playerData == .null) {
-			// Generate a new player:
 			player.pos = @floatFromInt(self.spawn);
 		} else {
 			player.loadFrom(playerData.getChild("entity"));
@@ -780,6 +779,16 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	pub fn savePlayer(self: *ServerWorld, user: *User) !void {
+		var dest: [1024]u8 = undefined;
+		const hashedName = std.base64.url_safe.Encoder.encode(&dest, user.name);
+
+		var buf: [32768]u8 = undefined;
+		const path = try std.fmt.bufPrint(&buf, "saves/{s}/players/{s}.zig.zon", .{self.name, hashedName});
+		
+		var oldZon: ?ZonElement = undefined;
+		
+		oldZon = files.readToZon(main.stackAllocator, path) catch null;
+
 		var playerZon = ZonElement.initObject(main.stackAllocator);
 		defer playerZon.free(main.stackAllocator);
 
@@ -788,25 +797,33 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		playerZon.put("entity", user.player.save(main.stackAllocator));
 		playerZon.put("gamemode", @tagName(user.gamemode.load(.monotonic)));
 
-		const inventoryZon = ZonElement.initArray(main.stackAllocator);
+		var inventoryZon: ZonElement = undefined;
+
+		if (oldZon) |zon| {
+			inventoryZon = zon.getChild("inventory");
+		} else {
+			inventoryZon = ZonElement.initObject(main.stackAllocator);
+		}
 
 		main.items.Inventory.Sync.ServerSide.mutex.lock();
 		defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
 
 		var iterator = user.inventoryClientToServerIdMap.iterator();
 		while (iterator.next()) |entry| {
-			if (main.items.Inventory.Sync.getInventory(entry.value_ptr.*, .server, user)) |inventory| {
-				inventoryZon.array.append(inventory.save(main.stackAllocator));
+			if (main.items.Inventory.Sync.ServerSide.getServerInventory(user, entry.value_ptr.*)) |inventory| {
+				if (inventory.source == .playerInventory) {
+					inventoryZon = inventory.inv.save(main.stackAllocator);
+
+					if (oldZon) |zon| {
+						zon.free(main.stackAllocator);
+					}
+				}
 			}
 		}
 
 		playerZon.put("inventory", inventoryZon);
 
-		var dest: [1024]u8 = undefined;
-		const hashedName = std.base64.url_safe.Encoder.encode(&dest, user.name);
-
-		var buf: [32768]u8 = undefined;
-		try files.writeZon(try std.fmt.bufPrint(&buf, "saves/{s}/players/{s}.zig.zon", .{self.name, hashedName}), playerZon);
+		try files.writeZon(path, playerZon);
 	}
 
 	pub fn saveAllPlayers(self: *ServerWorld) !void {
