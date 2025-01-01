@@ -786,7 +786,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const path = try std.fmt.bufPrint(&buf, "saves/{s}/players/{s}.zig.zon", .{self.name, hashedName});
 		
 		var playerZon: ZonElement = files.readToZon(main.stackAllocator, path) catch ZonElement.initObject(main.stackAllocator);
-		playerZon.deinit(main.stackAllocator);
+		defer playerZon.deinit(main.stackAllocator);
 		
 		playerZon.put("name", user.name);
 		
