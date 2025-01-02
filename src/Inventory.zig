@@ -217,6 +217,7 @@ pub const Sync = struct { // MARK: Sync
 			std.debug.assert(freeIdList.items.len == maxId); // leak
 			freeIdList.deinit();
 			inventories.deinit();
+			maxId = 0;
 		}
 
 		pub fn disconnectUser(user: *main.server.User) void {
