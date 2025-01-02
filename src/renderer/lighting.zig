@@ -193,7 +193,7 @@ pub const ChannelChunk = struct {
 				if(oldValue[2] != 0) append = true;
 				activeValue[2] = false;
 			}
-			const blockLight = extractColor(self.ch.getBlock(entry.x, entry.y, entry.z).light());
+			const blockLight = if(self.isSun) .{0, 0, 0} else extractColor(self.ch.getBlock(entry.x, entry.y, entry.z).light());
 			if((activeValue[0] and blockLight[0] != 0) or (activeValue[1] and blockLight[1] != 0) or (activeValue[2] and blockLight[2] != 0)) {
 				append = true;
 			}
@@ -414,7 +414,7 @@ pub const ChannelChunk = struct {
 			for(entryList.items) |entry| {
 				const index = chunk.getIndex(entry.x, entry.y, entry.z);
 				var value = channelChunk.data.getValue(index);
-				const light = extractColor(channelChunk.ch.data.getValue(index).light());
+				const light = if(self.isSun) .{0, 0, 0} else extractColor(channelChunk.ch.data.getValue(index).light());
 				value = .{
 					@max(value[0], light[0]),
 					@max(value[1], light[1]),
