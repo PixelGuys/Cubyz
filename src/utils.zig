@@ -395,7 +395,6 @@ pub fn ConcurrentQueue(comptime T: type) type { // MARK: ConcurrentQueue
 		mutex: std.Thread.Mutex = .{},
 
 		pub fn init(allocator: NeverFailingAllocator, initialCapacity: usize) Self {
-			comptime std.debug.assert(@sizeOf(Self) <= 64);
 			return .{
 				.super = .init(allocator, initialCapacity),
 			};

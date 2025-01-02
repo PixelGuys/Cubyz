@@ -188,11 +188,27 @@ pub const ZonElement = union(enum) { // MARK: Zon
 
 	pub fn put(self: *const ZonElement, key: []const u8, value: anytype) void {
 		const result = createElementFromRandomType(value, self.object.allocator);
+
+		if (self.object.contains(key)) {
+			self.getChild(key).deinit(NeverFailingAllocator{.allocator = self.object.allocator, .IAssertThatTheProvidedAllocatorCantFail = {}});
+
+			self.object.put(key, result) catch unreachable;
+			return;
+		}
+
 		self.object.put(self.object.allocator.dupe(u8, key) catch unreachable, result) catch unreachable;
 	}
 
 	pub fn putOwnedString(self: *const ZonElement, key: []const u8, value: []const u8) void {
 		const result = ZonElement{.stringOwned = self.object.allocator.dupe(u8, value) catch unreachable};
+
+		if (self.object.contains(key)) {
+			self.getChild(key).deinit(NeverFailingAllocator{.allocator = self.object.allocator, .IAssertThatTheProvidedAllocatorCantFail = {}});
+
+			self.object.put(key, result) catch unreachable;
+			return;
+		}
+
 		self.object.put(self.object.allocator.dupe(u8, key) catch unreachable, result) catch unreachable;
 	}
 

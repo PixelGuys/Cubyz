@@ -28,6 +28,7 @@ pub const User = struct { // MARK: User
 	timeDifference: utils.TimeDifference = .{},
 	interpolation: utils.GenericInterpolation(3) = undefined,
 	lastTime: i16 = undefined,
+	lastSaveTime: i64 = 0,
 	name: []const u8 = "",
 	renderDistance: u16 = undefined,
 	clientUpdatePos: Vec3i = .{0, 0, 0},
@@ -165,6 +166,15 @@ pub const User = struct { // MARK: User
 		time -%= self.timeDifference.difference.load(.monotonic);
 		self.interpolation.update(time, self.lastTime);
 		self.lastTime = time;
+
+		const saveTime = std.time.milliTimestamp();
+		if (saveTime -% self.lastSaveTime > 5000) {
+			world.?.savePlayer(self) catch |err| {
+				std.log.err("Failed to save player {s}: {s}", .{self.name, @errorName(err)});
+			};
+			self.lastSaveTime = saveTime;
+		}
+
 		self.loadUnloadChunks();
 	}
 

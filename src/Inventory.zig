@@ -202,7 +202,7 @@ pub const Sync = struct { // MARK: Sync
 				}
 			}
 		};
-		var mutex: std.Thread.Mutex = .{};
+		pub var mutex: std.Thread.Mutex = .{};
 
 		var inventories: main.List(ServerInventory) = undefined;
 		var maxId: u32 = 0;
@@ -309,6 +309,28 @@ pub const Sync = struct { // MARK: Sync
 				.alreadyFreed => unreachable,
 			}
 			const inventory = ServerInventory.init(len, typ, source);
+
+			switch (source) {
+				.sharedTestingInventory => {},
+				.playerInventory => {
+					const dest: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Encoder.calcSize(user.name.len));
+					defer main.stackAllocator.free(dest);
+					const hashedName = std.base64.url_safe.Encoder.encode(dest, user.name);
+
+					const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players/{s}.zig.zon", .{main.server.world.?.name, hashedName}) catch unreachable;
+					defer main.stackAllocator.free(path);
+		
+					const playerData = main.files.readToZon(main.stackAllocator, path) catch .null;
+					defer playerData.deinit(main.stackAllocator);
+
+					const inventoryZon = playerData.getChild("inventory");
+
+					inventory.inv.loadFromZon(inventoryZon);
+				},
+				.other => {},
+				.alreadyFreed => unreachable,
+			}
+
 			inventories.items[inventory.inv.id] = inventory;
 			inventories.items[inventory.inv.id].addUser(user, clientId);
 		}
@@ -323,6 +345,16 @@ pub const Sync = struct { // MARK: Sync
 			main.utils.assertLocked(&mutex);
 			const serverId = user.inventoryClientToServerIdMap.get(clientId) orelse return null;
 			return inventories.items[serverId].inv;
+		}
+
+		pub fn getInventoryFromSource(source: SourceType) ?Inventory {
+			main.utils.assertLocked(&mutex);
+			for(inventories.items) |inv| {
+				if (inv.source == source) {
+					return inv.inv;
+				}
+			}
+			return null;
 		}
 
 		pub fn clearPlayerInventory(user: *main.server.User) void {
