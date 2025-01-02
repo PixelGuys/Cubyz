@@ -1436,7 +1436,15 @@ fn update(self: Inventory) void {
 			}
 		}
 		if(nonEmpty) {
-			self._items[self._items.len - 1].item = Item{.tool = Tool.initFromCraftingGrid(availableItems, @intCast(std.time.nanoTimestamp() & 0xffffffff))}; // TODO
+			var hash = std.hash.Crc32.init();
+			for(availableItems) |item| {
+				if(item != null) {
+					hash.update(item.?.id);
+				} else {
+					hash.update("none");
+				}
+			}
+			self._items[self._items.len - 1].item = Item{.tool = Tool.initFromCraftingGrid(availableItems, hash.final())};
 			self._items[self._items.len - 1].amount = 1;
 		}
 	}
