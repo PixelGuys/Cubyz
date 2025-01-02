@@ -1,0 +1,16 @@
+.{
+	.class = .wood,
+	.hardness = 7,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.absorbedLight = 0x202830,
+	.rotation = .fence,
+	.model = "cubyz:fence",
+	.texture = "cubyz:baobab_fence",
+	.texture_top = "cubyz:baobab_fence_top",
+	.texture_bottom = "cubyz:baobab_fence_top",
+	.item = .{
+		.texture = "fence/baobab.png",
+	},
+}
