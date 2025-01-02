@@ -1,0 +1,22 @@
+.{
+	.class = .wood,
+	.hardness = 7,
+	.item = .{
+		.material = .{
+			.density = 1.0,
+			.resistance = 1.0,
+			.power = 0.2,
+			.roughness = 0.7,
+			.colors = .{
+				0xff35281b, 0xff493523, 0xff60462e, 0xff6f5133, 0xff815d39,
+			},
+		},
+	},
+
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.model = "cubyz:cube",
+	.rotation = .stairs,
+	.texture = "cubyz:willow_planks",
+}

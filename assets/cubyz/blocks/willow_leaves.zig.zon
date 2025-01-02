@@ -1,0 +1,15 @@
+.{
+	.class = .leaf,
+	.hardness = 0.4,
+	.drops = .{
+		.auto,
+		"0.1 cubyz:apple",
+	},
+	.degradable = true,
+	.alwaysViewThrough = true,
+	.absorbedLight = 0x363436,
+	.model = "cubyz:cube",
+	.texture = "cubyz:willow_leaves",
+	.lodReplacement = "cubyz:willow_leaves_opaque",
+	.opaqueVariant = "cubyz:willow_leaves_opaque",
+}
