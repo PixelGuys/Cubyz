@@ -332,6 +332,7 @@ pub const Player = struct { // MARK: Player
 	pub var eyeVel: Vec3d = .{0, 0, 0};
 	pub var eyeCoyote: f64 = 0;
 	pub var eyeStep: @Vector(3, bool) = .{false, false, false};
+	pub var speedMod: f32 = 0.0;
 	pub var id: u32 = 0;
 	pub var gamemode: Atomic(Gamemode) = .init(.creative);
 	pub var isFlying: Atomic(bool) = .init(false);
@@ -399,6 +400,12 @@ pub const Player = struct { // MARK: Player
 		mutex.lock();
 		defer mutex.unlock();
 		return eyeCoyote;
+	}
+
+	pub fn getSpeedModifierBlocking() f32 {
+		mutex.lock();
+		defer mutex.unlock();
+		return speedMod;
 	}
 
 	pub fn setGamemode(newGamemode: Gamemode) void {
@@ -884,6 +891,20 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			Player.eyeVel[i] = firstTerm.mul(c_3.negate().subScalar(frictionCoefficient).mulScalar(0.5)).add(secondTerm.mul((c_3.subScalar(frictionCoefficient)).mulScalar(0.5))).val[0];
 			Player.eyePos[i] += firstTerm.add(secondTerm).addScalar(a/k).val[0];
 		}
+
+		// Calculate our FOV modifier based on our current speed.
+		{
+			const x : f32 = @as(f32, @floatCast(movementSpeed));
+			const speedModGoal : f32 =  @max(@log10((x*x)-15)/1.8, 0);
+			const speedModDir: f32 = if(Player.speedMod < speedModGoal) 1 else -1;
+			const speedModNext: f32 = Player.speedMod + (speedModDir * @as(f32, @floatCast(deltaTime)) * 5.0);
+
+			if((Player.speedMod < speedModGoal and speedModNext < speedModGoal) or (Player.speedMod > speedModGoal and speedModNext > speedModGoal)) {
+				Player.speedMod = speedModNext;
+			} else {
+				Player.speedMod = speedModGoal;	
+			}
+		} 
 	}
 
 	const time = std.time.milliTimestamp();
