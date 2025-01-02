@@ -766,8 +766,10 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		defer main.stackAllocator.free(dest);
 		const hashedName = std.base64.url_safe.Encoder.encode(dest, user.name);
 
-		var buf: [32768]u8 = undefined;
-		const playerData = files.readToZon(main.stackAllocator, std.fmt.bufPrint(&buf, "saves/{s}/players/{s}.zig.zon", .{self.name, hashedName}) catch "") catch .null; // TODO: Utils.escapeFolderName(user.name)
+		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players/{s}.zig.zon", .{self.name, hashedName}) catch unreachable;
+		defer main.stackAllocator.free(path);
+
+		const playerData = files.readToZon(main.stackAllocator, path) catch .null;
 		defer playerData.deinit(main.stackAllocator);
 		const player = &user.player;
 		if(playerData == .null) {
@@ -775,7 +777,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		} else {
 			player.loadFrom(playerData.getChild("entity"));
 
-			main.items.Inventory.Sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", "survival")) orelse .creative);
+			main.items.Inventory.Sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", "survival")) orelse .survival);
 		}
 	}
 
@@ -784,11 +786,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		defer main.stackAllocator.free(dest);
 		const hashedName = std.base64.url_safe.Encoder.encode(dest, user.name);
 
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players/{s}.zig.zon", .{self.name, hashedName}) catch "";
+		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players/{s}.zig.zon", .{self.name, hashedName}) catch unreachable;
 		defer main.stackAllocator.free(path);
-
-		const playerData = main.files.readToZon(main.stackAllocator, path) catch .null;
-		defer playerData.deinit(main.stackAllocator);
 
 		var playerZon: ZonElement = files.readToZon(main.stackAllocator, path) catch .null;
 		defer playerZon.deinit(main.stackAllocator);
@@ -811,7 +810,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			}
 		}
 
-		const playerPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players", .{self.name}) catch "";
+		const playerPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players", .{self.name}) catch unreachable;
 		defer main.stackAllocator.free(playerPath);
 
 		try files.makeDir(playerPath);
