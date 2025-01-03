@@ -62,13 +62,10 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 
 	size: u32 = 0,
 
-	lastUpdates: ZonElement,
-
 	pub fn init(self: *ItemDropManager, allocator: NeverFailingAllocator, world: ?*ServerWorld, gravity: f64) void {
 		self.* = ItemDropManager {
 			.allocator = allocator,
 			.list = std.MultiArrayList(ItemDrop){},
-			.lastUpdates = ZonElement.initArray(allocator),
 			.isEmpty = .initFull(),
 			.changeQueue = .init(allocator, 16),
 			.world = world,
@@ -87,7 +84,6 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			}
 		}
 		self.list.deinit(self.allocator.allocator);
-		self.lastUpdates.deinit(self.allocator);
 	}
 
 	pub fn loadFrom(self: *ItemDropManager, zon: ZonElement) void {
@@ -136,24 +132,28 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 	}
 
 	pub fn getInitialList(self: *ItemDropManager, allocator: NeverFailingAllocator) ZonElement {
+		self.processChanges(); // Make sure all the items from the queue are included.
 		var list = ZonElement.initArray(allocator);
 		var ii: u32 = 0;
 		while(ii < self.size) : (ii += 1) {
 			const i = self.indices[ii];
-			list.array.append(self.storeSingle(self.lastUpdates.array.allocator, i));
+			list.array.append(self.storeSingle(allocator, i));
 		}
 		return list;
 	}
 
-	fn storeSingle(self: *ItemDropManager, allocator: NeverFailingAllocator, i: u16) ZonElement {
+	fn storeDrop(allocator: NeverFailingAllocator, itemDrop: ItemDrop, i: u16) ZonElement {
 		const obj = ZonElement.initObject(allocator);
-		const itemDrop = self.list.get(i);
 		obj.put("i", i);
 		obj.put("pos", itemDrop.pos);
 		obj.put("vel", itemDrop.vel);
 		itemDrop.itemStack.storeToZon(allocator, obj);
 		obj.put("despawnTime", itemDrop.despawnTime);
 		return obj;
+	}
+
+	fn storeSingle(self: *ItemDropManager, allocator: NeverFailingAllocator, i: u16) ZonElement {
+		return storeDrop(allocator, self.list.get(i), i);
 	}
 
 	pub fn store(self: *ItemDropManager, allocator: NeverFailingAllocator) ZonElement {
@@ -187,10 +187,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			pickupCooldown[i] -= 1;
 			despawnTime[i] -= 1;
 			if(despawnTime[i] < 0) {
-				self.emptyMutex.lock();
-				self.isEmpty.set(i);
-				self.emptyMutex.unlock();
-				self.internalRemove(i);
+				self.directRemove(i);
 			} else {
 				ii += 1;
 			}
@@ -212,8 +209,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			return;
 		});
 		self.isEmpty.unset(i);
-		self.emptyMutex.unlock();
-		self.changeQueue.enqueue(.{.add = .{i, .{
+		const drop = ItemDrop {
 			.pos = pos,
 			.vel = vel,
 			.rot = rot,
@@ -221,15 +217,32 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			.despawnTime = despawnTime,
 			.pickupCooldown = pickupCooldown,
 			.reverseIndex = undefined,
-		}}});
+		};
+		if(self.world != null) {
+			const list = ZonElement.initArray(main.stackAllocator);
+			defer list.deinit(main.stackAllocator);
+			list.array.append(.null);
+			list.array.append(storeDrop(main.stackAllocator, drop, i));
+			const updateData = list.toStringEfficient(main.stackAllocator, &.{});
+			defer main.stackAllocator.free(updateData);
+
+			const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
+			defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+			for(userList) |user| {
+				main.network.Protocols.entity.send(user.conn, updateData);
+			}
+		}
+
+		self.emptyMutex.unlock();
+		self.changeQueue.enqueue(.{.add = .{i, drop}});
+
 	}
 
 	fn addWithIndex(self: *ItemDropManager, i: u16, pos: Vec3d, vel: Vec3d, rot: Vec3f, itemStack: ItemStack, despawnTime: i32, pickupCooldown: i32) void {
 		self.emptyMutex.lock();
 		std.debug.assert(self.isEmpty.isSet(i));
 		self.isEmpty.unset(i);
-		self.emptyMutex.unlock();
-		self.changeQueue.enqueue(.{.add = .{i, .{
+		const drop = ItemDrop {
 			.pos = pos,
 			.vel = vel,
 			.rot = rot,
@@ -237,7 +250,24 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			.despawnTime = despawnTime,
 			.pickupCooldown = pickupCooldown,
 			.reverseIndex = undefined,
-		}}});
+		};
+		if(self.world != null) {
+			const list = ZonElement.initArray(main.stackAllocator);
+			defer list.deinit(main.stackAllocator);
+			list.array.append(.null);
+			list.array.append(storeDrop(main.stackAllocator, drop, i));
+			const updateData = list.toStringEfficient(main.stackAllocator, &.{});
+			defer main.stackAllocator.free(updateData);
+
+			const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
+			defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+			for(userList) |user| {
+				main.network.Protocols.entity.send(user.conn, updateData);
+			}
+		}
+
+		self.emptyMutex.unlock();
+		self.changeQueue.enqueue(.{.add = .{i, drop}});
 	}
 
 	fn processChanges(self: *ItemDropManager) void {
@@ -260,9 +290,6 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		}
 		drop.reverseIndex = @intCast(self.size);
 		self.list.set(i, drop);
-		if(self.world != null) {
-			self.lastUpdates.array.append(self.storeSingle(self.lastUpdates.array.allocator, i));
-		}
 		self.indices[self.size] = i;
 		self.size += 1;
 	}
@@ -273,9 +300,28 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		self.list.items(.itemStack)[i].clear();
 		self.indices[ii] = self.indices[self.size];
 		self.list.items(.reverseIndex)[self.indices[self.size]] = ii;
-		if(self.world != null) {
-			self.lastUpdates.array.append(.{.int = i});
+	}
+
+	fn directRemove(self: *ItemDropManager, i: u16) void {
+		std.debug.assert(self.world != null);
+		self.emptyMutex.lock();
+		self.isEmpty.set(i);
+
+		const list = ZonElement.initArray(main.stackAllocator);
+		defer list.deinit(main.stackAllocator);
+		list.array.append(.null);
+		list.array.append(.{.int = i});
+		const updateData = list.toStringEfficient(main.stackAllocator, &.{});
+		defer main.stackAllocator.free(updateData);
+
+		const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
+		defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+		for(userList) |user| {
+			main.network.Protocols.entity.send(user.conn, updateData);
 		}
+
+		self.emptyMutex.unlock();
+		self.internalRemove(i);
 	}
 
 	fn updateEnt(self: *ItemDropManager, chunk: *ServerChunk, pos: *Vec3d, vel: *Vec3d, deltaTime: f64) void {
@@ -374,10 +420,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 				const itemStack = &self.list.items(.itemStack)[i];
 				main.items.Inventory.Sync.ServerSide.tryCollectingToPlayerInventory(user, itemStack);
 				if(itemStack.amount == 0) {
-					self.emptyMutex.lock();
-					self.isEmpty.set(i);
-					self.emptyMutex.unlock();
-					self.internalRemove(i);
+					self.directRemove(i);
 					continue;
 				}
 			}

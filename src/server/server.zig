@@ -296,44 +296,18 @@ pub fn freeUserListAndDecreaseRefCount(allocator: utils.NeverFailingAllocator, l
 	allocator.free(list);
 }
 
-fn sendEntityUpdates(comptime getInitialList: bool, allocator: utils.NeverFailingAllocator) if(getInitialList) []const u8 else void {
+fn getInitialEntityList(allocator: utils.NeverFailingAllocator) []const u8 {
 	// Send the entity updates:
-	const updateList = main.ZonElement.initArray(main.stackAllocator);
-	defer updateList.deinit(main.stackAllocator);
-	defer updateList.array.clearAndFree(); // The children are freed in other locations.
-	if(world.?.itemDropManager.lastUpdates.array.items.len != 0) {
-		updateList.array.append(.null);
-		updateList.array.appendSlice(world.?.itemDropManager.lastUpdates.array.items);
-	}
-	if(!getInitialList and updateList.array.items.len == 0) {
-		return;
-	}
-	const updateData = updateList.toStringEfficient(main.stackAllocator, &.{});
-	defer main.stackAllocator.free(updateData);
-	if(world.?.itemDropManager.lastUpdates.array.items.len != 0) {
-		const alloc = world.?.itemDropManager.lastUpdates.array.allocator;
-		world.?.itemDropManager.lastUpdates.deinit(alloc);
-		world.?.itemDropManager.lastUpdates = main.ZonElement.initArray(alloc);
-	}
 	var initialList: []const u8 = undefined;
-	if(getInitialList) {
-		const list = main.ZonElement.initArray(main.stackAllocator);
-		defer list.deinit(main.stackAllocator);
-		list.array.append(.null);
-		const itemDropList = world.?.itemDropManager.getInitialList(main.stackAllocator);
-		list.array.appendSlice(itemDropList.array.items);
-		itemDropList.array.items.len = 0;
-		itemDropList.deinit(main.stackAllocator);
-		initialList = list.toStringEfficient(allocator, &.{});
-	}
-	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
-	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
-	for(userList) |user| {
-		main.network.Protocols.entity.send(user.conn, updateData);
-	}
-	if(getInitialList) {
-		return initialList;
-	}
+	const list = main.ZonElement.initArray(main.stackAllocator);
+	defer list.deinit(main.stackAllocator);
+	list.array.append(.null);
+	const itemDropList = world.?.itemDropManager.getInitialList(main.stackAllocator);
+	list.array.appendSlice(itemDropList.array.items);
+	itemDropList.array.items.len = 0;
+	itemDropList.deinit(main.stackAllocator);
+	initialList = list.toStringEfficient(allocator, &.{});
+	return initialList;
 }
 
 fn update() void { // MARK: update()
@@ -348,9 +322,6 @@ fn update() void { // MARK: update()
 	for(userList) |user| {
 		user.update();
 	}
-
-	sendEntityUpdates(false, main.stackAllocator);
-
 
 	// Send the entity data:
 	const data = main.stackAllocator.alloc(u8, (4 + 24 + 12 + 24)*userList.len);
@@ -482,7 +453,7 @@ pub fn connectInternal(user: *User) void {
 		defer main.stackAllocator.free(data);
 		if(user.connected.load(.unordered)) main.network.Protocols.entity.send(user.conn, data);
 	}
-	const initialList = sendEntityUpdates(true, main.stackAllocator);
+	const initialList = getInitialEntityList(main.stackAllocator);
 	main.network.Protocols.entity.send(user.conn, initialList);
 	main.stackAllocator.free(initialList);
 	const message = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}§#ffff00 joined", .{user.name}) catch unreachable;
