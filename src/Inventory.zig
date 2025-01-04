@@ -274,6 +274,7 @@ pub const Sync = struct { // MARK: Sync
 							.inv = .{.inv = command.payload.open.inv, .slot = @intCast(slot)},
 							.amount = stack.amount,
 							.item = stack.item,
+							.durability = 0,
 						};
 						const syncData = syncOp.serialize(main.stackAllocator);
 						defer main.stackAllocator.free(syncData);
@@ -453,6 +454,7 @@ pub const Command = struct { // MARK: Command
 		swap = 1,
 		delete = 2,
 		create = 3,
+		useDurability = 4,
 	};
 
 	const InventoryAndSlot = struct {
@@ -497,23 +499,31 @@ pub const Command = struct { // MARK: Command
 			item: ?Item,
 			amount: u16,
 		},
+		useDurability: struct {
+			source: InventoryAndSlot,
+			item: main.items.Item = undefined,
+			durability: u31,
+			previousDurability: u32 = undefined,
+		},
 	};
 
 	const SyncOperation = struct { // MARK: SyncOperation
-		// Since the client doesn't know about all inventories, we can only use create(+amount)/delete(-amount) operations to apply the server side updates.
+		// Since the client doesn't know about all inventories, we can only use create(+amount)/delete(-amount) and use durability operations to apply the server side updates.
 		inv: InventoryAndSlot,
 		amount: i32,
 		item: ?Item,
+		durability: i32,
 
 		pub fn executeFromData(data: []const u8) !void {
-			std.debug.assert(data.len >= 12);
+			std.debug.assert(data.len >= 16);
 			var self = SyncOperation {
 				.inv = try InventoryAndSlot.read(data[0..8], .client, null),
 				.amount = std.mem.readInt(i32, data[8..12], .big),
+				.durability = std.mem.readInt(i32, data[12..16], .big),
 				.item = null,
 			};
-			if(data.len > 12) {
-				const zon = ZonElement.parseFromString(main.stackAllocator, data[12..]);
+			if(data.len > 16) {
+				const zon = ZonElement.parseFromString(main.stackAllocator, data[16..]);
 				defer zon.deinit(main.stackAllocator);
 				self.item = try Item.init(zon);
 			}
@@ -527,7 +537,7 @@ pub const Command = struct { // MARK: Command
 					return error.Invalid;
 				}
 				self.inv.ref().amount += @intCast(self.amount);
-			} else { // Delete
+			} else if(self.amount < 0) { // Delete
 				if(self.inv.ref().amount < -self.amount) {
 					return error.Invalid;
 				}
@@ -537,13 +547,22 @@ pub const Command = struct { // MARK: Command
 				}
 			}
 
+			if(self.durability < 0) { // useDurability
+				self.inv.ref().item.?.tool.durability -|= @intCast(-self.durability);
+				if(self.inv.ref().item.?.tool.durability == 0) {
+					self.inv.ref().item = null;
+					self.inv.ref().amount = 0;
+				}
+			}
+
 			self.inv.inv.update();
 		}
 
 		pub fn serialize(self: SyncOperation, allocator: NeverFailingAllocator) []const u8 {
-			var data = main.List(u8).initCapacity(allocator, 12);
+			var data = main.List(u8).initCapacity(allocator, 16);
 			self.inv.write(data.addMany(8)[0..8]);
 			std.mem.writeInt(i32, data.addMany(4)[0..4], self.amount, .big);
+			std.mem.writeInt(i32, data.addMany(4)[0..4], self.durability, .big);
 			if(self.item) |item| {
 				const zon = ZonElement.initObject(main.stackAllocator);
 				defer zon.deinit(main.stackAllocator);
@@ -617,6 +636,12 @@ pub const Command = struct { // MARK: Command
 					}
 					info.dest.inv.update();
 				},
+				.useDurability => |info| {
+					std.debug.assert(info.source.ref().item == null or std.meta.eql(info.source.ref().item, info.item));
+					info.source.ref().item = info.item;
+					info.item.tool.durability = info.previousDurability;
+					info.source.inv.update();
+				}
 			}
 		}
 	}
@@ -628,6 +653,11 @@ pub const Command = struct { // MARK: Command
 				.delete => |info| {
 					info.item.?.deinit();
 				},
+				.useDurability => |info| {
+					if(info.previousDurability <= info.durability) {
+						info.item.deinit();
+					}
+				}
 			}
 		}
 		self.baseOperations.deinit(allocator);
@@ -665,6 +695,7 @@ pub const Command = struct { // MARK: Command
 				.inv = inv,
 				.amount = amount,
 				.item = if(inv.ref().amount == 0) item else null,
+				.durability = 0,
 			});
 		}
 		std.debug.assert(inv.ref().item == null or std.meta.eql(inv.ref().item.?, item.?));
@@ -680,11 +711,29 @@ pub const Command = struct { // MARK: Command
 				.inv = inv,
 				.amount = -@as(i32, amount),
 				.item = null,
+				.durability = 0,
 			});
 		}
 		inv.ref().amount -= amount;
 		if(inv.ref().amount == 0) {
 			inv.ref().item = null;
+		}
+	}
+
+	fn executeDurabilityUseOperation(self: *Command, allocator: NeverFailingAllocator, side: Side, inv: InventoryAndSlot, durability: u31) void {
+		if(durability == 0) return;
+		if(side == .server) {
+			self.syncOperations.append(allocator, .{
+				.inv = inv,
+				.amount = 0,
+				.item = null,
+				.durability = -@as(i32, durability),
+			});
+		}
+		inv.ref().item.?.tool.durability -|= durability;
+		if(inv.ref().item.?.tool.durability == 0) {
+			inv.ref().item = null;
+			inv.ref().amount = 0;
 		}
 	}
 
@@ -715,6 +764,12 @@ pub const Command = struct { // MARK: Command
 			.create => |info| {
 				self.executeAddOperation(allocator, side, info.dest, info.amount, info.item);
 				info.dest.inv.update();
+			},
+			.useDurability => |*info| {
+				info.item = info.source.ref().item.?;
+				info.previousDurability = info.item.tool.durability;
+				self.executeDurabilityUseOperation(allocator, side, info.source, info.durability);
+				info.source.inv.update();
 			},
 		}
 		self.baseOperations.append(allocator, op);
@@ -1295,8 +1350,10 @@ pub const Command = struct { // MARK: Command
 				.no => unreachable,
 				.yes => {},
 				.yes_costsDurability => |durability| {
-					// TODO: Add operations to track tool durability.
-					_ = durability;
+					cmd.executeBaseOperation(allocator, .{.useDurability = .{
+						.source = self.source,
+						.durability = durability,
+					}}, side);
 				},
 				.yes_costsItems => |amount| {
 					cmd.executeBaseOperation(allocator, .{.delete = .{

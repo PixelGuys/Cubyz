@@ -865,7 +865,7 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 pub const Tool = struct { // MARK: Tool
 	craftingGrid: [25]?*const BaseItem,
 	materialGrid: [16][16]?*const BaseItem,
-	tooltip: ?[]const u8,
+	tooltip: main.List(u8),
 	image: graphics.Image,
 	texture: ?graphics.Texture,
 	seed: u32,
@@ -901,7 +901,7 @@ pub const Tool = struct { // MARK: Tool
 		const self = main.globalAllocator.create(Tool);
 		self.image = graphics.Image.init(main.globalAllocator, 16, 16);
 		self.texture = null;
-		self.tooltip = null;
+		self.tooltip = .init(main.globalAllocator);
 		return self;
 	}
 
@@ -910,7 +910,7 @@ pub const Tool = struct { // MARK: Tool
 			texture.deinit();
 		}
 		self.image.deinit(main.globalAllocator);
-		if(self.tooltip) |tooltip| main.globalAllocator.free(tooltip);
+		self.tooltip.deinit();
 		main.globalAllocator.destroy(self);
 	}
 
@@ -919,7 +919,7 @@ pub const Tool = struct { // MARK: Tool
 		result.* = .{
 			.craftingGrid = self.craftingGrid,
 			.materialGrid = self.materialGrid,
-			.tooltip = null,
+			.tooltip = .init(main.globalAllocator),
 			.image = graphics.Image.init(main.globalAllocator, self.image.width, self.image.height),
 			.texture = null,
 			.seed = self.seed,
@@ -1001,9 +1001,8 @@ pub const Tool = struct { // MARK: Tool
 	}
 	
 	fn getTooltip(self: *Tool) []const u8 {
-		if(self.tooltip) |tooltip| return tooltip;
-		self.tooltip = std.fmt.allocPrint(
-			main.globalAllocator.allocator,
+		self.tooltip.clearRetainingCapacity();
+		self.tooltip.writer().print(
 			\\Time to swing: {d:.2} s
 			\\Pickaxe power: {} %
 			\\Axe power: {} %
@@ -1018,7 +1017,7 @@ pub const Tool = struct { // MARK: Tool
 				self.durability, self.maxDurability,
 			}
 		) catch unreachable;
-		return self.tooltip.?;
+		return self.tooltip.items;
 	}
 
 	pub fn getPowerByBlockClass(self: *Tool, blockClass: blocks.BlockClass) f32 {
