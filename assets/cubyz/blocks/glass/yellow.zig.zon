@@ -6,7 +6,7 @@
 	},
 	.transparent = true,
 	.hasBackFace = true,
-	.absorbedLight = 0xf2c90e,
+	.absorbedLight = 0x0d36f1,
 	.model = "cubyz:cube",
 	.texture = "cubyz:glass/yellow",
 }
