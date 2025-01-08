@@ -16,7 +16,7 @@
 
 
 	.ground_structure = .{
-		"1 cubyz:mud_grass",
+		"1 cubyz:lush_grass",
 		"5 to 6 cubyz:mud",
 	},
 	.structures = .{
