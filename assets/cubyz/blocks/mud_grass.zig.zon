@@ -5,7 +5,7 @@
 		.{.items = .{"cubyz:mud"}},
 	},
 	.model = "cubyz:cube",
-	.texture = "cubyz:mud_grass_top",
-	.texture_top = "cubyz:mud_grass_top",
+	.texture = "cubyz:lush_grass_top",
+	.texture_top = "cubyz:lush_grass_top",
 	.texture_bottom = "cubyz:mud",
 }
