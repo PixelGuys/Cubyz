@@ -7,7 +7,7 @@
 	},
 	.degradable = true,
 	.alwaysViewThrough = true,
-	.absorbedLight = 0x121012,
+	.absorbedLight = 0x363436,
 	.model = "cubyz:cube",
 	.texture = "cubyz:oak_leaves",
 	.lodReplacement = "cubyz:oak_leaves_opaque",

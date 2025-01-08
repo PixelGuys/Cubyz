@@ -1,0 +1,10 @@
+.{
+	.class = .sand,
+	.hardness = 6,
+	.drops = .{
+		.{.items = .{"cubyz:dirt"}},
+	},
+	.model = "cubyz:cube",
+	.texture = "cubyz:dry_grass",
+	.texture_bottom = "cubyz:dirt",
+}

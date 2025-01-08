@@ -1,0 +1,14 @@
+.{
+	.class = .leaf,
+	.hardness = 0.4,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.degradable = true,
+	.alwaysViewThrough = true,
+	.absorbedLight = 0x222222,
+	.model = "cubyz:cube",
+	.texture = "cubyz:dead_leaves",
+	.lodReplacement = "cubyz:dead_leaves_opaque",
+	.opaqueVariant = "cubyz:dead_leaves_opaque",
+}

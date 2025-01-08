@@ -1,7 +1,7 @@
 .{
 	.class = .leaf,
 	.hasItem = false,
-	.absorbedLight = 0x121012,
+	.absorbedLight = 0x363436,
 	.model = "cubyz:cube",
 	.texture = "cubyz:birch_leaves_opaque",
 }

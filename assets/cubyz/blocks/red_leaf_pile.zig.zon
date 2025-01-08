@@ -1,0 +1,18 @@
+.{
+	.class = .leaf,
+	.hardness = 0.1,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.degradable = true,
+	.collide = false,
+	.alwaysViewThrough = true,
+	.absorbedLight = 0x000000,	
+	.model = "cubyz:plane",
+	.rotation = .carpet,
+	.texture = "cubyz:red_leaf_pile",
+	.item= .{
+		.texture = "red_leaf_pile.png",
+	},
+	.lodReplacement = "cubyz:air",
+}
