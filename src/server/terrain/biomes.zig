@@ -670,16 +670,16 @@ pub fn finishLoading() void {
 	}
 	var subBiomeIterator = unfinishedSubBiomes.iterator();
 	while(subBiomeIterator.next()) |subBiomeData| {
+		const subBiomeDataList = subBiomeData.value_ptr;
+		defer subBiomeDataList.deinit(main.globalAllocator);
 		const parentBiome = biomesById.get(subBiomeData.key_ptr.*) orelse {
 			std.log.warn("Couldn't find biome with id {s}. Cannot add sub-biomes.", .{subBiomeData.key_ptr.*});
 			continue;
 		};
-		const subBiomeDataList = subBiomeData.value_ptr;
 		for(subBiomeDataList.items) |item| {
 			parentBiome.subBiomeTotalChance += item.chance;
 		}
 		parentBiome.subBiomes = .initFromContext(main.globalAllocator, subBiomeDataList.items);
-		subBiomeDataList.deinit(main.globalAllocator);
 	}
 	unfinishedSubBiomes.clearAndFree(main.globalAllocator.allocator);
 
