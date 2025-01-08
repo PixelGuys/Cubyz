@@ -25,8 +25,8 @@
 		.{
 			.id = "cubyz:trans/ferrock_mountain_base",
 			.chance = 1,
-			.width = 1,
-			.keepOriginalTerrain = 0.5,
+			.width = 2,
+			.keepOriginalTerrain = 0.2,
 			.properties = .{.land, .inland, .lowTerrain, .antiMountain},
 		},
 	},

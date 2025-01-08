@@ -11,7 +11,7 @@
 	
 	.music = "cubyz:sunrise",
 
-	.validPlayerSpawn = false,
+	.validPlayerSpawn = true,
 	
 	.ground_structure = .{
 		"3 to 4 cubyz:dirt",
@@ -26,7 +26,7 @@
 		},
 		.{
 			.id = "cubyz:trans/prairie_widow",
-			.chance = 5,
+			.chance = 1,
 			.width = 1,
 			.keepOriginalTerrain = 1,
 			.properties = .{.hot, .dry, .inland, .land},
