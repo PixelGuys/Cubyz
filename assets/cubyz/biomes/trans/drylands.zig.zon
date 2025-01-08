@@ -1,0 +1,29 @@
+.{
+	.properties = .{
+		.dry,
+	},
+	.minHeight = 22,
+	.maxHeight = 40,
+	.chance = 0,
+	.hills = 15,
+	.roughness = 5,
+	.music = "cubyz:EasternThought",
+
+	
+	.structures = .{
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:sand",
+			.chance = 0.25,
+			.width = 7,
+			.variation = 8,
+			.depth = 6,
+			.smoothness = 0.8,
+		},
+	},
+
+	.ground_structure = .{
+		"3 to 4 cubyz:dirt",
+		"3 to 4 cubyz:sandstone",
+	},
+}

@@ -1,0 +1,56 @@
+.{
+	.properties = .{
+	},
+
+	.radius = 10,
+	.chance = 0
+
+	.minHeight = 50,
+	.maxHeight = 80,
+	
+	.roughness = 1,
+	
+	.mountains = 50,
+	.hills = 20,
+	
+	.rivers = true,
+
+	.ground_structure = .{
+	},
+	.stoneBlock = "cubyz:stone",
+
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:beach",
+			.chance = 2,
+		},
+		.{
+			.id = "cubyz:rocky_grassland",
+			.chance = 32,
+		},
+		.{
+			.id = "cubyz:fall_forest",
+			.chance = 2,
+		},
+		.{
+			.id = "cubyz:mixed_fall_forest",
+			.chance = 2,
+		},
+		.{
+			.id = "cubyz:grassland",
+			.chance = 3,
+		},
+		.{
+			.id = "cubyz:rocky_grassland",
+			.chance = 2,
+		},
+		.{
+			.id = "cubyz:taiga",
+			.chance = 3,
+		},
+		.{
+			.id = "cubyz:forest",
+			.chance = 4,
+		},
+	},
+}

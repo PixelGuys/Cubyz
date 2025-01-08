@@ -1,0 +1,75 @@
+.{
+	.properties = .{
+		.hot,
+		.wet,
+		.mountain,
+	},
+	.minHeight = 40,
+	.maxHeight = 60,
+	.mountains = 10,
+	.roughness = 20,
+	.minRadius = 120,
+	.maxRadius = 160,
+
+	.music = "cubyz:leaves",
+
+	.validPlayerSpawn = false,
+
+	.transitionBiomes = .{
+		.{
+			.id = "cubyz:trans/jungle_coast",
+			.chance = 1,
+			.keepOriginalTerrain = 0.5,
+			.width = 1,
+			.properties = .{.ocean},
+		},
+		.{
+			.id = "cubyz:trans/sparse_jungle",
+			.chance = 1,
+			.keepOriginalTerrain = 0.2,
+			.width = 2,
+			.properties = .{.inland, .land, .lowTerrain},
+		},
+	},
+
+	.ground_structure = .{
+		"1 cubyz:lush_grass",
+		"0 to 1 cubyz:mud",
+		"5 to 6 cubyz:basalt",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:flower_patch",
+			.block = "cubyz:lush_grass_vegetation",
+			.chance = 0.5,
+			.width = 10,
+			.variation = 6,
+			.density = 0.3,
+			.priority = 0.1,
+		},
+		.{
+			.id = "cubyz:simple_tree",
+			.leaves = "cubyz:mahogany_leaves",
+			.log = "cubyz:mahogany_log",
+			.top = "cubyz:mahogany_top",
+			.chance = 2,
+			.type = .round,
+			.height = 20,
+			.height_variation = 3,
+			.leafRadius = 3.5,
+			.leafRadius_variation = 1.5,
+		},
+		.{
+			.id = "cubyz:simple_tree",
+			.leaves = "cubyz:mahogany_leaves",
+			.log = "cubyz:mahogany_log",
+			.top = "cubyz:mahogany_top",
+			.chance = 0.1,
+			.type = .round,
+			.height = 2,
+			.height_variation = 1,
+			.leafRadius = 2.5,
+			.leafRadius_variation = 1.5,
+		},
+	},
+}

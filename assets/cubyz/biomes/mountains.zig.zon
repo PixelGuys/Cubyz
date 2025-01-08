@@ -2,12 +2,12 @@
 	.properties = .{
 		.mountain,
 	},
-	.radius = 400,
-	.minHeight = 60,
-	.maxHeight = 256,
-	
+	.minHeight = 128,
+	.maxHeight = 300,
+	.minRadius = 64,
+	.maxRadius = 100,
 	.roughness = 10,
-	.mountains = 100,
+	.mountains = 80,
 	
 	.rivers = true,
 	
@@ -15,6 +15,16 @@
 		"cubyz:grass",
 		"1 to 2 cubyz:soil",
 	},
+	.transitionBiomes = .{
+		.{
+			.id = "cubyz:trans/mountain_coast",
+			.chance = 1,
+			.width = 1,
+			.keepOriginalTerrain = 0.5,
+			.properties = .{.ocean},
+		},
+	},
+
 	.structures = .{
 		.{
 			.id = "cubyz:simple_tree",

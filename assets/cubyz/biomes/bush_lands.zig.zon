@@ -1,20 +1,40 @@
 .{
 	.properties = .{
 		.hot,
+		.land,
 	},
 	.minHeight = 24,
 	.maxHeight = 60,
-	
+	.minRadius = 100,
+	.maxRadius = 160,
 	.roughness = 20,
 	.hills = 10,
 	.rivers = true,
-	
+	.validPlayerSpawn = true,
 	.music = "cubyz:sunrise",
 
 	.ground_structure = .{
 		"cubyz:grass",
 		"2 cubyz:soil",
 	},
+
+	.transitionBiomes = .{
+		.{
+			.id = "cubyz:trans/grassy_coast",
+			.chance = 1,
+			.keepOriginalTerrain = 0.5,
+			.width = 1,
+			.properties = .{.ocean},
+		},
+		.{
+			.id = "cubyz:trans/sparse_bushlands",
+			.chance = 1,
+			.keepOriginalTerrain = 1,
+			.width = 2,
+			.properties = .{.hot, .dry, .inland, .land},
+		},
+	},
+
 	.structures = .{
 		.{
 			.id = "cubyz:simple_tree",

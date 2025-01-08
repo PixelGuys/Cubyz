@@ -1,14 +1,25 @@
 .{
 	.properties = .{
 		.mountain,
+		.cold,
+		.dry
 	},
-	.minHeight = 120,
+	.minHeight = 128,
 	.maxHeight = 256,
-	
+	.minRadius = 100,
+	.maxRadius = 160,
 	.mountains = 125,
 	
 	.music = "cubyz:DarkTimes",
-
+	.transitionBiomes = .{
+		.{
+			.id = "cubyz:trans/coast",
+			.chance = 1,
+			.width = 1,
+			.keepOriginalTerrain = 0.5,
+			.properties = .{.ocean},
+		},
+	},
 	.ground_structure = .{
 		"3 to 6 cubyz:snow",
 	},

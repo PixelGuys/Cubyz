@@ -1,17 +1,18 @@
 .{
 	.properties = .{
-		.cold,
-		.dry,
+		.mountain,
 	},
-	.minHeight = 22,
-	.maxHeight = 40,
-	.minRadius = 100,
-	.maxRadius = 160,
+	.minHeight = 128,
+	.maxHeight = 300,
+	.minRadius = 64,
+	.maxRadius = 100,
 	.roughness = 10,
-	.hills = 15,
-	.mountains = 20,
-
-
+	.mountains = 100,
+	
+	.rivers = true,
+	
+	.ground_structure = .{
+	},
 	.transitionBiomes = .{
 		.{
 			.id = "cubyz:trans/mountain_coast",
@@ -22,8 +23,6 @@
 		},
 	},
 
-	.ground_structure = .{
-		"0 to 1 cubyz:dry_grass",
-		"0 to 1 cubyz:gravel",
+	.structures = .{
 	},
 }

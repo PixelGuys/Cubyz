@@ -3,10 +3,10 @@
 	},
 	.minHeight = 22,
 	.maxHeight = 40,
-	
 	.roughness = 1,
 	.hills = 5,
-	
+	.minRadius = 100,
+	.maxRadius = 160,
 	.music = "cubyz:sunrise",
 
 	.validPlayerSpawn = true,
@@ -14,6 +14,23 @@
 	.ground_structure = .{
 		"cubyz:grass",
 		"2 to 3 cubyz:soil",
+	},
+	.transitionBiomes = .{
+		.{
+			.id = "cubyz:trans/grassy_coast",
+			.chance = 1,
+			.width = 1,
+			.keepOriginalTerrain = 0.5,
+			.properties = .{.ocean},
+		},
+		.{
+			.id = "cubyz:trans/widow",
+			.chance = 5,
+			.width = 1,
+			.keepOriginalTerrain = 1,
+			.properties = .{.hot, .dry, .inland, .land},
+		},
+
 	},
 	.structures = .{
 		.{

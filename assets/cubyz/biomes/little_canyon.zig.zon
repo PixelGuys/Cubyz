@@ -1,15 +1,21 @@
 .{
 	.properties = .{
+		.mountain,
+		.wet,
 	},
-	.chance = 0.5,
-	.minRadius = 100,
-	.maxRadius = 160,
-	.minHeight = 20,
-	.maxHeight = 40,
-	.mountains = 30,
+	.minHeight = 128,
+	.maxHeight = 300,
+	.minRadius = 64,
+	.maxRadius = 100,
+	.roughness = 10,
+	.mountains = 80,
 	
-	.music = "cubyz:sunrise",
+	.rivers = true,
 	
+	.ground_structure = .{
+		"cubyz:grass",
+		"1 to 2 cubyz:soil",
+	},
 	.transitionBiomes = .{
 		.{
 			.id = "cubyz:trans/mountain_coast",
@@ -20,27 +26,16 @@
 		},
 	},
 
-	.ground_structure = .{
-		"cubyz:grass",
-		"0 to 1 cubyz:soil",
-	},
 	.structures = .{
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:oak_leaves",
 			.log = "cubyz:oak_log",
 			.top = "cubyz:oak_top",
-			.chance = 0.016,
+			.chance = 0.8,
 			.type = .round,
-			.height = 6,
+			.height = 3,
 			.height_variation = 3,
-		},
-		.{
-			.id = "cubyz:boulder",
-			.chance = 0.016,
-			.block = "cubyz:cobblestone",
-			.size = 5,
-			.size_variance = 4,
 		},
 	},
 }

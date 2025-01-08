@@ -1,0 +1,44 @@
+.{
+	.properties = .{
+		.ocean,
+		.wet,
+	},
+	.radius = 90,
+	.minHeight = 5,
+	.maxHeight = 7,
+	.chance = 0,
+	.roughness = 3,
+
+	.interpolation = .linear,
+	
+	.hills = 1,
+
+	.music = "cubyz:tides",
+	
+	.ground_structure = .{
+		"2 to 4 cubyz:sand",
+		"3 to 4 cubyz:sandstone",
+	},
+
+	.structures = .{
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:soil",
+			.chance = 0.25,
+			.width = 6,
+			.variation = 4,
+			.depth = 5,
+			.smoothness = 0.3,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:soil",
+			.chance = 0.25,
+			.width = 2,
+			.variation = 3,
+			.depth = 5,
+			.smoothness = 0.25,
+		},
+	},
+
+}

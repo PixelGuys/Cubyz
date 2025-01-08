@@ -1,0 +1,60 @@
+.{
+	.properties = .{
+		.wet,
+	},
+	.minHeight = -5,
+	.maxHeight = 5,
+	.roughness = 2,
+	.hills = 10,
+	.minRadius = 100,
+	.maxRadius = 160,
+	.music = "cubyz:sunrise",
+
+	.validPlayerSpawn = false,
+	
+	.ground_structure = .{
+		"cubyz:lush_grass",
+		"5 to 7 cubyz:mud",
+	},
+	.transitionBiomes = .{
+		.{
+			.id = "cubyz:trans/grassy_coast",
+			.chance = 1,
+			.width = 1,
+			.keepOriginalTerrain = 0.5,
+			.properties = .{.ocean},
+		},
+		.{
+			.id = "cubyz:trans/widow",
+			.chance = 5,
+			.width = 1,
+			.keepOriginalTerrain = 1,
+			.properties = .{.hot, .dry, .inland, .land},
+		},
+
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:mud",
+			.chance = 0.33,
+			.width = 5,
+			.variation = 4,
+			.depth = 1,
+			.smoothness = 0.5,
+		},
+		.{
+			.id = "cubyz:simple_tree",
+			.leaves = "cubyz:willow_leaves",
+			.log = "cubyz:willow_log",
+			.top = "cubyz:willow_top",
+			.chance = 0.1,
+			.type = .round,
+			.height = 13,
+			.height_variation = 4,
+			.leafRadius = 3,
+			.leafRadius_variation = 1,
+			.branched = false,
+		},
+	},
+}
