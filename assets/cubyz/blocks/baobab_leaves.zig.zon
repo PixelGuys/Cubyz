@@ -3,11 +3,10 @@
 	.hardness = 0.4,
 	.drops = .{
 		.{.items = .{.auto}},
-		.{.chance = 0.1, .items = .{"cubyz:apple"}},
 	},
 	.degradable = true,
 	.alwaysViewThrough = true,
-	.absorbedLight = 0x121012,
+	.absorbedLight = 0x363436,
 	.model = "cubyz:cube",
 	.texture = "cubyz:baobab_leaves",
 	.lodReplacement = "cubyz:baobab_leaves_opaque",

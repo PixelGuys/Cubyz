@@ -9,7 +9,7 @@
 	.absorbedLight = 0x000000,
 	.collide= false,
 	.model = "cubyz:cross",
-	.texture = "cubyz:grass_vegetation",
+	.texture = "cubyz:dry_grass_vegetation",
 	.item= .{
 		.texture = "grass.png",
 	},
