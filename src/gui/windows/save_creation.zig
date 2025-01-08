@@ -51,10 +51,10 @@ fn flawedCreateWorld() !void {
 		mapGenerator.put("id", "cubyz:mapgen_v1"); // TODO: Make this configurable
 		generatorSettings.put("mapGenerator", mapGenerator);
 		const climateWavelengths = main.ZonElement.initObject(main.stackAllocator);
-		climateWavelengths.put("hot_cold", 4096);
-		climateWavelengths.put("land_ocean", 4096);
-		climateWavelengths.put("wet_dry", 4096);
-		climateWavelengths.put("mountain", 4096);
+		climateWavelengths.put("hot_cold", 2400);
+		climateWavelengths.put("land_ocean", 3200);
+		climateWavelengths.put("wet_dry", 2400);
+		climateWavelengths.put("mountain", 500);
 		generatorSettings.put("climateWavelengths", climateWavelengths);
 		try main.files.writeZon(generatorSettingsPath, generatorSettings);
 	}
