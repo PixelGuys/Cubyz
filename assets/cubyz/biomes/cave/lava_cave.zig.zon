@@ -4,7 +4,7 @@
 	.minHeight = -48250,
 	.fogDensity = 20,
 	.fogColor = 0x51240c,
-
+	.chance = 0.2,
 	.caves = -0.03,
 
 	.stoneBlock = "cubyz:obsidian",

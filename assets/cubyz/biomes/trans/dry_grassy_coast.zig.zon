@@ -1,0 +1,61 @@
+.{
+	.properties = .{
+		.ocean,
+		.wet,
+	},
+	.radius = 90,
+	.minHeight = 5,
+	.maxHeight = 7,
+	.chance = 0,
+	.roughness = 3,
+
+	.interpolation = .linear,
+	
+	.hills = 1,
+
+	.music = "cubyz:tides",
+	
+	.ground_structure = .{
+		"2 to 4 cubyz:gravel",
+	},
+
+	.structures = .{
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:grass",
+			.chance = 0.15,
+			.width = 7,
+			.variation = 12,
+			.depth = 1,
+			.smoothness = 0.3,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:dry_grass",
+			.chance = 0.16,
+			.width = 7,
+			.variation = 12,
+			.depth = 1,
+			.smoothness = 0.4,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:dirt",
+			.chance = 0.1,
+			.width = 16,
+			.variation = 12,
+			.depth = 5,
+			.smoothness = 0.4,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:grass",
+			.chance = 0.16,
+			.width = 7,
+			.variation = 12,
+			.depth = 1,
+			.smoothness = 0.6,
+		},
+	},
+
+}

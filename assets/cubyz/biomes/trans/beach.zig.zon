@@ -1,0 +1,33 @@
+.{
+	.properties = .{
+		.ocean,
+		.wet,
+	},
+	.radius = 128,
+	.minHeight = 2,
+	.maxHeight = 12,
+	.chance = 0,
+	.roughness = 1,
+
+	.interpolation = .linear,
+	
+	.hills = 2,
+
+	.music = "cubyz:tides",
+
+		.structures = .{
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:sand",
+			.chance = 1,
+			.width = 4,
+			.variation = 8,
+			.depth = 4,
+			.smoothness = 0.8,
+		},
+	},
+
+	.ground_structure = .{
+		"2 to 4 cubyz:sand",
+	},
+}

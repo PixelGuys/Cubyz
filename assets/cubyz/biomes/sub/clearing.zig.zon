@@ -1,0 +1,36 @@
+.{
+	.chance = 0,
+	.properties = .{
+	},
+	.radius = 32,
+	.minHeight = 22,
+	.maxHeight = 40,
+	
+	.roughness = 1,
+	.hills = 5,
+	
+	.music = "cubyz:sunrise",
+
+	.validPlayerSpawn = true,
+	
+	.ground_structure = .{
+		"cubyz:grass",
+		"2 to 3 cubyz:soil",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.0016,
+			.block = "cubyz:stone",
+			.size = 5,
+			.size_variance = 1,
+		},
+	},
+
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:forest",
+			.chance = 0.2,
+		},
+	},
+}

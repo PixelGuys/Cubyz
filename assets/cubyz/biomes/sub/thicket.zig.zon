@@ -1,0 +1,40 @@
+.{
+	.chance= 0,
+	.properties = .{
+		.wet,
+	},
+	.radius = 32,
+	.minHeight = 22,
+	.maxHeight = 40,
+	
+	.roughness = 10,
+	.hills = 10,
+	
+	.music = "cubyz:leaves",
+
+	.validPlayerSpawn = true,
+	
+	.ground_structure = .{
+		"cubyz:grass",
+		"2 to 3 cubyz:soil",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:simple_tree",
+			.leaves = "cubyz:oak_leaves",
+			.log = "cubyz:oak_log",
+			.top = "cubyz:oak_top",
+			.chance = 0.8,
+			.type = .round,
+			.height = 6,
+			.height_variation = 3,
+		},
+	},
+
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:grassland",
+			.chance = 0.2,
+		},
+	},
+}
