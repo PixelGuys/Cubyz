@@ -5,13 +5,10 @@
 	.maxHeight = 40,
 	.chance = 0,
 	.hills = 10,
-	
 	.music = "cubyz:EasternThought",
-	
 	.ground_structure = .{
 		"3 to 4 cubyz:soil",
 	},
-
 	.structures = .{
 		.{
 			.id = "cubyz:simple_tree",

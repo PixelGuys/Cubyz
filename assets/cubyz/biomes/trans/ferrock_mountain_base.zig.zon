@@ -4,14 +4,11 @@
 		.hot,
 		.dry,
 	},
-	.radius = 90,
 	.minHeight = 50,
 	.maxHeight = 60,
 	.chance = 0,
 	.roughness = 3,
-
 	.interpolation = .linear,
-	
 	.hills = 4,
 	.stripes = .{
 		.{

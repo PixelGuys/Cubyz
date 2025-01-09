@@ -4,14 +4,11 @@
 		.ocean,
 		.wet,
 	},
-	.radius = 90,
 	.minHeight = 20,
 	.maxHeight = 30,
 	.chance = 0,
 	.roughness = 3,
-
 	.interpolation = .linear,
-	
 	.hills = 5,
 	.stripes = .{
 		.{

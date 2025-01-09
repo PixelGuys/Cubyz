@@ -10,11 +10,9 @@
 	.hills = 5,
 	.music = "cubyz:EasternThought",
 	.interpolation = .linear,
-	
 	.ground_structure = .{
 		"2 to 4 cubyz:limestone",
 	},
-
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
