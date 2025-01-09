@@ -15,5 +15,5 @@
 		.texture = "ivy.png",
 	},	
 	.lodReplacement = "cubyz:air",
-	.opaqueVariant = "cubyz:ivy_simple",
+	.opaqueVariant = "cubyz:air",
 }

@@ -15,5 +15,5 @@
 		.texture = "yellow_leaf_pile.png",
 	},
 	.lodReplacement = "cubyz:air",
-	.opaqueVariant = "cubyz:yellow_leaf_pile_simple",
+	.opaqueVariant = "cubyz:air",
 }

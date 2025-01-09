@@ -1,9 +1,0 @@
-.{
-	.class = .leaf,
-	.hasItem = false,
-	.alwaysViewThrough = true,
-	.absorbedLight = 0x121012,
-	.model = "cubyz:plane_simple",
-	.texture = "cubyz:ivy",
-	.lodReplacement = "cubyz:air",
-}

@@ -15,5 +15,5 @@
 		.texture = "daisies.png",
 	},
 	.lodReplacement = "cubyz:air",
-	.opaqueVariant = "cubyz:daises_simple",
+	.opaqueVariant = "cubyz:air",
 }
