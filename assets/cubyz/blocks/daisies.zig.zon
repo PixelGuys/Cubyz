@@ -6,6 +6,7 @@
 	},
 	.degradable = true,
 	.collide = false,
+	.alwaysViewThrough = true,
 	.absorbedLight = 0x121012,	
 	.model = "cubyz:plane",
 	.rotation = .carpet,

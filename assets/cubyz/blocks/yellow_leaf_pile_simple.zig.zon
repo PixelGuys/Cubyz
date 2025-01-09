@@ -2,8 +2,8 @@
 	.class = .leaf,
 	.hasItem = false,
 	.alwaysViewThrough = true,
-	.absorbedLight = 0x121012,	
+	.absorbedLight = 0x000000,
 	.model = "cubyz:plane_simple",
-	.texture = "cubyz:daisies",
+	.texture = "cubyz:yellow_leaf_pile",
 	.lodReplacement = "cubyz:air",
 }
