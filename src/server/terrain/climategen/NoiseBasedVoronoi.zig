@@ -327,7 +327,7 @@ const GenerationStructure = struct {
 	}
 
 	fn addTransitionBiomes(comptime size: usize, comptime margin: usize, map: *[size][size]BiomeSample) void {
-		const neighborData = main.stackAllocator.create([16][size][size]u12);
+		const neighborData = main.stackAllocator.create([16][size][size]u15);
 		defer main.stackAllocator.free(neighborData);
 		for(0..size) |x| {
 			for(0..size) |y| {
@@ -350,13 +350,12 @@ const GenerationStructure = struct {
 				}
 				var seed = point.seed;
 				for(point.biome.transitionBiomes) |transitionBiome| {
-					const biomeMask: u12 = @bitCast(transitionBiome.propertyMask);
+					const biomeMask: u15 = @bitCast(transitionBiome.propertyMask);
 					const neighborMask = neighborData[@min(neighborData.len - 1, transitionBiome.width)][x][y];
 					// Check if all triplets have a matching entry:
-					const mask: u12 = 0b001001001001;
 					var result = biomeMask & neighborMask;
 					result = (result | result >> 1 | result >> 2);
-					if(result & mask == mask) {
+					if(result & Biome.GenerationProperties.mask == Biome.GenerationProperties.mask) {
 						if(random.nextFloat(&seed) < transitionBiome.chance) {
 							const newHeight = @as(f32, @floatFromInt(transitionBiome.biome.minHeight)) + @as(f32, @floatFromInt(transitionBiome.biome.maxHeight - transitionBiome.biome.minHeight))*random.nextFloat(&seed);
 							map[x][y] = .{

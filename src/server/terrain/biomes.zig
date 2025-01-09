@@ -207,7 +207,7 @@ fn u32ToVec3(color: u32) Vec3f {
 
 /// A climate region with special ground, plants and structures.
 pub const Biome = struct { // MARK: Biome
-	const GenerationProperties = packed struct(u12) {
+	pub const GenerationProperties = packed struct(u15) {
 		// pairs of opposite properties. In-between values are allowed.
 		hot: bool = false,
 		temperate: bool = false,
@@ -221,9 +221,15 @@ pub const Biome = struct { // MARK: Biome
 		neitherWetNorDry: bool = false,
 		dry: bool = false,
 
+		barren: bool = false,
+		balanced: bool = false,
+		overgrown: bool = false,
+
 		mountain: bool = false,
 		lowTerrain: bool = false,
 		antiMountain: bool = false, //???
+
+		pub const mask: u15 = 0b001001001001001;
 
 		pub fn fromZon(zon: ZonElement, initMidValues: bool) GenerationProperties {
 			var result: GenerationProperties = .{};
@@ -237,8 +243,7 @@ pub const Biome = struct { // MARK: Biome
 			}
 			if(initMidValues) {
 				// Fill all mid values if no value was specified in a group:
-				const val: u12 = @bitCast(result);
-				const mask: u12 = 0b001001001001;
+				const val: u15 = @bitCast(result);
 				const empty = ~val & ~val >> 1 & ~val >> 2 & mask;
 				result = @bitCast(val | empty << 1);
 			}
@@ -329,9 +334,8 @@ pub const Biome = struct { // MARK: Biome
 					.keepOriginalTerrain = src.get(f32, "keepOriginalTerrain", 0),
 				};
 				// Fill all unspecified property groups:
-				var properties: u12 = @bitCast(dst.propertyMask);
-				const mask: u12 = 0b001001001001;
-				const empty = ~properties & ~properties >> 1 & ~properties >> 2 & mask;
+				var properties: u15 = @bitCast(dst.propertyMask);
+				const empty = ~properties & ~properties >> 1 & ~properties >> 2 & GenerationProperties.mask;
 				properties |= empty | empty << 1 | empty << 2;
 				dst.propertyMask = @bitCast(properties);
 			}
@@ -472,7 +476,7 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 		var chanceMiddle: f32 = 0;
 		var chanceUpper: f32 = 0;
 		for(currentSlice) |*biome| {
-			var properties: u32 = @as(u12, @bitCast(biome.properties));
+			var properties: u32 = @as(u15, @bitCast(biome.properties));
 			properties >>= parameterShift;
 			properties = properties & 7;
 			if(properties == 1) {
@@ -509,7 +513,7 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 				list.deinit(main.stackAllocator);
 			};
 			for(currentSlice) |biome| {
-				var properties: u32 = @as(u12, @bitCast(biome.properties));
+				var properties: u32 = @as(u15, @bitCast(biome.properties));
 				properties >>= parameterShift;
 				const valueMap = [8]usize{1, 0, 1, 1, 2, 1, 1, 1};
 				lists[valueMap[properties & 7]].appendAssumeCapacity(biome);
