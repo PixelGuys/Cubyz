@@ -1,0 +1,8 @@
+.{
+	.class = .leaf,
+	.hasItem = false,
+	.absorbedLight = 0x121012,	
+	.model = "cubyz:plane_simple",
+	.texture = "cubyz:daisies",
+	.lodReplacement = "cubyz:air",
+}

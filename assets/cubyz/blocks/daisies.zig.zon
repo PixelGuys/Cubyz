@@ -6,7 +6,6 @@
 	},
 	.degradable = true,
 	.collide = false,
-	.alwaysViewThrough = true,
 	.absorbedLight = 0x121012,	
 	.model = "cubyz:plane",
 	.rotation = .carpet,
@@ -15,4 +14,5 @@
 		.texture = "daisies.png",
 	},
 	.lodReplacement = "cubyz:air",
+	.opaqueVariant = "cubyz:daises_simple",
 }
