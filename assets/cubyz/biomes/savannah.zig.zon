@@ -1,7 +1,7 @@
 .{
 	.properties = .{
+		.hot,
 		.dry,
-		.land,
 	},
 	.minHeight = 30,
 	.maxHeight = 40,
@@ -10,9 +10,8 @@
 	.hills = 6,
 	.validPlayerSpawn = true,
 	.music = "cubyz:EasternThought",
-	
 	.ground_structure = .{
-		"3 to 4 cubyz:limestone",
+		"7 to 8 cubyz:limestone",
 	},
 	.structures = .{
 		.{
@@ -71,13 +70,6 @@
 			.properties = .{.ocean},
 		},
 		.{
-			.id = "cubyz:trans/sparse_bushlands",
-			.chance = 1,
-			.width = 2,
-			.keepOriginalTerrain = 1,
-			.properties = .{.neitherWetNorDry, .inland, .land},
-		},
-		.{
 			.id = "cubyz:trans/savannah_widow",
 			.chance = 1,
 			.width = 2,
@@ -85,9 +77,5 @@
 			.properties = .{.dry, .hot, .inland, .land},
 		},
 	},
-
-
-
 	.stoneBlock = "cubyz:sandstone",
-
 }
