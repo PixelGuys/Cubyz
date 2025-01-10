@@ -54,6 +54,7 @@ fn flawedCreateWorld() !void {
 		climateWavelengths.put("hot_cold", 2400);
 		climateWavelengths.put("land_ocean", 3200);
 		climateWavelengths.put("wet_dry", 2400);
+		climateWavelengths.put("vegetation", 2400);
 		climateWavelengths.put("mountain", 500);
 		generatorSettings.put("climateWavelengths", climateWavelengths);
 		try main.files.writeZon(generatorSettingsPath, generatorSettings);
