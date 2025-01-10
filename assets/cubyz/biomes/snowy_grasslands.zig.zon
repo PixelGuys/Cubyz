@@ -22,6 +22,18 @@
 		},
 	},
 
+	.structures = .{
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:snow",
+			.chance = 0.05,
+			.width = 15,
+			.variation = 7,
+			.depth = 2,
+			.smoothness = 0.5,
+		},
+	},
+
 	.ground_structure = .{
 		"0 to 1 cubyz:dry_grass",
 		"0 to 1 cubyz:gravel",

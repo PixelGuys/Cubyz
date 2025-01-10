@@ -6,13 +6,23 @@
 	},
 	.minHeight = 80,
 	.maxHeight = 256,
-	
+	.minRadius = 100,
+	.maxRadius = 160,
 	.roughness = 10,
 	.mountains = 20,
 	.hills = 50,
-	
+	.validPlayerSpawn = false,
 	.rivers = true,
 
+	.transitionBiomes = .{
+		.{
+			.id = "cubyz:trans/ferrock_mountain_coast",
+			.chance = 1,
+			.width = 1,
+			.keepOriginalTerrain = 0.5,
+			.properties = .{.ocean},
+		},
+	},
 	.stripes = .{
 		.{
 			.direction= .{1, 1, 5},

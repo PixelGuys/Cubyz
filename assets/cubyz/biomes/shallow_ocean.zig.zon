@@ -1,26 +1,28 @@
 .{
 	.properties = .{
-		.cold,
 		.ocean,
+		.wet,
 	},
-	.type = .arctic_ocean,
-	.minHeight = -100,
-	.maxHeight = -22,
-	.radius = 500,
+	.minRadius = 100,
+	.maxRadius = 160,
+	.minHeight = -64,
+	.maxHeight = -32,
+	.chance = 30,
+	.roughness = 15,
+	.hills = 15,
 	
-	.roughness = 20,
-	.hills = 10,
+	.rivers = true,
 
 	.music = "cubyz:under_the_water_sky",
-
+	
 	.ground_structure = .{
-		"1 to 2 cubyz:cobblestone",
+		"2 to 3 cubyz:gravel",
 	},
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
 			.block = "cubyz:mossy_cobblestone",
-			.chance = 0.064,
+			.chance = 0.1,
 			.width = 6,
 			.variation = 2,
 			.depth = 2,
@@ -28,26 +30,29 @@
 		},
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:gravel",
-			.chance = 0.032,
+			.block = "cubyz:sand",
+			.chance = 0.25,
 			.width = 6,
-			.variation = 2,
+			.variation = 6,
 			.depth = 2,
 			.smoothness = 0.2,
 		},
 	},
 	.transitionBiomes = .{
 		.{
-			.id = "cubyz:beach",
+			.id = "cubyz:trans/stone_beach",
 			.chance = 1,
-			.width = 1,
-			.properties = .{.land, .inland},
+			.keepOriginalTerrain = 0.1,
+			.width = 2,
+			.properties = .{.mountain, .land, .inland},
 		},
 		.{
-			.id = "cubyz:ocean_shelf",
+			.id = "cubyz:trans/beach",
 			.chance = 1,
+			.keepOriginalTerrain = 0.1,
 			.width = 2,
 			.properties = .{.land, .inland},
 		},
+
 	},
 }

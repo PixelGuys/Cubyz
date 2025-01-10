@@ -2,16 +2,16 @@
 	.properties = .{
 		.hot,
 		.dry,
+		.land,
 	},
+	.chance = 2,
 	.minHeight = 22,
 	.maxHeight = 40,
-	
+	.minRadius = 100,
+	.maxRadius = 160,
 	.hills = 20,
-	
+	.validPlayerSpawn = false,
 	.music = "cubyz:EasternThought",
-
-	.fogDensity = 20,
-	.fogColor = 0xe0dcc3,
 	
 	.ground_structure = .{
 		"3 to 4 cubyz:sand",
@@ -23,6 +23,29 @@
 			.chance = 0.16,
 			.height = 2,
 			.height_variation = 3,
+		},
+	},
+	.transitionBiomes = .{
+		.{
+			.id = "cubyz:trans/sandy_coast",
+			.chance = 1,
+			.width = 1,
+			.keepOriginalTerrain = 0.5,
+			.properties = .{.ocean, .wet},
+		},
+		.{
+			.id = "cubyz:trans/drylands",
+			.chance = 1,
+			.width = 2,
+			.keepOriginalTerrain = 1,
+			.properties = .{.neitherWetNorDry, .inland, .land},
+		},
+		.{
+			.id = "cubyz:trans/drylands",
+			.chance = 1,
+			.width = 2,
+			.keepOriginalTerrain = 1,
+			.properties = .{.dry, .temperate, .inland, .land},
 		},
 	},
 	.stoneBlock = "cubyz:sandstone",

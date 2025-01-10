@@ -1,0 +1,29 @@
+.{
+	.properties = .{
+		.dry,
+	},
+	.minRadius = 6,
+	.maxRadius = 12,
+	.chance = 0
+	.minHeight = 30,
+	.maxHeight = 36,
+	.roughness = 1,
+	.hills = 10,
+	
+	.rivers = true,
+
+	.ground_structure = .{
+	},
+	.stoneBlock = "cubyz:limestone",
+
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:prairie",
+			.chance = 24,
+		},
+		.{
+			.id = "cubyz:prairie",
+			.chance = 10,
+		},
+	},
+}

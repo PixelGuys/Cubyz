@@ -1,0 +1,34 @@
+.{
+	.properties = .{
+		.hot,
+		.wet,
+		.mountain,
+	},
+	.minHeight = 0,
+	.maxHeight = 0,
+	.mountains = 10,
+	.roughness = 20,
+	.minRadius = 48,
+	.maxRadius = 128,
+
+	.music = "cubyz:leaves",
+
+	.validPlayerSpawn = false,
+
+	.transitionBiomes = .{
+		.{
+			.id = "cubyz:trans/jungle_coast",
+			.chance = 1,
+			.keepOriginalTerrain = 0.5,
+			.width = 1,
+			.properties = .{.ocean},
+		},
+	},
+
+	.ground_structure = .{
+		"5 to 6 cubyz:basalt",
+	},
+
+	.structures = .{
+	},
+}

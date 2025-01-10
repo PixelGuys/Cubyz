@@ -4,7 +4,8 @@
 	},
 	.minHeight = 22,
 	.maxHeight = 40,
-	
+	.minRadius = 100,
+	.maxRadius = 160,
 	.roughness = 10,
 	.hills = 10,
 
@@ -13,6 +14,29 @@
 	.ground_structure = .{
 		"0 to 1 cubyz:grass",
 		"2 to 3 cubyz:soil",
+	},
+	.transitionBiomes = .{
+		.{
+			.id = "cubyz:trans/grassy_coast",
+			.chance = 1,
+			.width = 1,
+			.keepOriginalTerrain = 0.5,
+			.properties = .{.ocean},
+		},
+		.{
+			.id = "cubyz:trans/sparse_taiga",
+			.chance = 1,
+			.width = 2,
+			.keepOriginalTerrain = 1,
+			.properties = .{.temperate, .inland, .land},
+		},
+		.{
+			.id = "cubyz:trans/dying_taiga",
+			.chance = 1,
+			.width = 2,
+			.keepOriginalTerrain = 1,
+			.properties = .{.cold, .dry, .inland, .land},
+		},
 	},
 	.structures = .{
 		.{

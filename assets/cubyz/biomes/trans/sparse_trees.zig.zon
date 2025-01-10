@@ -1,0 +1,47 @@
+.{
+	.properties = .{
+	},
+	.minHeight = 22,
+	.maxHeight = 40,
+	.chance = 0,
+	.hills = 10,
+	.music = "cubyz:leaves",
+	
+	.ground_structure = .{
+		"3 to 4 cubyz:soil",
+	},
+
+	.structures = .{
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:grass",
+			.chance = 0.5,
+			.width = 5,
+			.variation = 4,
+			.depth = 1,
+			.smoothness = 0.3,
+		},
+		.{
+			.id = "cubyz:simple_tree",
+			.leaves = "cubyz:oak_leaves",
+			.log = "cubyz:oak_log",
+			.top = "cubyz:oak_top",
+			.chance = 0.05,
+			.type = .round,
+			.height = 6,
+			.height_variation = 3,
+		},
+		.{
+			.id = "cubyz:simple_tree",
+			.leaves = "cubyz:birch_leaves",
+			.log = "cubyz:birch_log",
+			.top = "cubyz:birch_top",
+			.chance = 0.09,
+			.type = .round,
+			.height = 10,
+			.height_variation = 5,
+			.leafRadius = 3.5,
+			.leafRadius_variation = 1.5,
+		},
+	},
+}

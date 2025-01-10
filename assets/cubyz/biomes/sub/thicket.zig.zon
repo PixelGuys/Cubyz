@@ -1,15 +1,19 @@
 .{
-	.chance = 0,
+	.chance= 0,
 	.properties = .{
-		.ocean,
+		.wet,
 	},
-	.minHeight = 4,
-	.maxHeight = 4,
+	.radius = 32,
+	.minHeight = 22,
+	.maxHeight = 40,
+	
+	.roughness = 10,
+	.hills = 10,
+	
+	.music = "cubyz:leaves",
 
-	.music = "cubyz:sunrise",
-
-	.radius = 24,
-
+	.validPlayerSpawn = true,
+	
 	.ground_structure = .{
 		"cubyz:grass",
 		"2 to 3 cubyz:soil",
@@ -20,19 +24,17 @@
 			.leaves = "cubyz:oak_leaves",
 			.log = "cubyz:oak_log",
 			.top = "cubyz:oak_top",
-			.chance = 0.016,
+			.chance = 0.8,
 			.type = .round,
-			.height = 12,
-			.height_variation = 10,
-			.leafRadius = 5,
-			.leafRadius_variation = 6,
+			.height = 6,
+			.height_variation = 3,
 		},
 	},
 
 	.parentBiomes = .{
 		.{
-			.id = "cubyz:island_shelf",
-			.chance = 1,
+			.id = "cubyz:grassland",
+			.chance = 0.2,
 		},
 	},
 }

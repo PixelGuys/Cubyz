@@ -1,0 +1,21 @@
+.{
+	.properties = .{
+		.ocean,
+		.wet,
+	},
+	.radius = 90,
+	.minHeight = 5,
+	.maxHeight = 7,
+	.chance = 0,
+	.roughness = 3,
+
+	.interpolation = .linear,
+	
+	.hills = 1,
+
+	.music = "cubyz:tides",
+	
+	.ground_structure = .{
+		"3 to 4 cubyz:limestone",
+	},
+}
