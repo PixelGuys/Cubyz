@@ -14,7 +14,8 @@
 	.validPlayerSpawn = true,
 	
 	.ground_structure = .{
-		"3 to 4 cubyz:dirt",
+		"1 cubyz:dirt",
+		"3 to 4 cubyz:limestone",
 	},
 	.transitionBiomes = .{
 		.{
@@ -40,7 +41,7 @@
 			.chance = 0.33,
 			.width = 5,
 			.variation = 4,
-			.depth = 2,
+			.depth = 1,
 			.smoothness = 0.5,
 		},
 		.{
@@ -49,7 +50,7 @@
 			.chance = 0.05,
 			.width = 15,
 			.variation = 7,
-			.depth = 2,
+			.depth = 1,
 			.smoothness = 0.5,
 		},
 		.{
