@@ -40,7 +40,7 @@
 			.chance = 0.33,
 			.width = 5,
 			.variation = 4,
-			.depth = 2,
+			.depth = 1,
 			.smoothness = 0.1,
 		},
 		.{
@@ -49,7 +49,7 @@
 			.chance = 0.33,
 			.width = 5,
 			.variation = 4,
-			.depth = 2,
+			.depth = 1,
 			.smoothness = 0.1,
 		},
 		.{
