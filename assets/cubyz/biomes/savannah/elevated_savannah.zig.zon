@@ -10,9 +10,6 @@
 	.roughness = 15,
 	.chance = 0,
 	.hills = 2,
-	
-	.rivers = true,
-	
 	.ground_structure = .{
 		"cubyz:grass",
 	},
@@ -67,7 +64,7 @@
 	},
 	.parentBiomes = .{
 		.{
-			.id = "cubyz:savannah",
+			.id = "cubyz:savannah/savannah",
 			.chance = 8,
 		},
 	},

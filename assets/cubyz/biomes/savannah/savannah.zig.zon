@@ -61,14 +61,5 @@
 			.height_variation = 3,
 		},
 	},
-	.transitionBiomes = .{
-		.{
-			.id = "cubyz:trans/savannah_coast",
-			.chance = 1,
-			.width = 1,
-			.keepOriginalTerrain = 0.5,
-			.properties = .{.ocean},
-		},
-	},
 	.stoneBlock = "cubyz:sandstone",
 }

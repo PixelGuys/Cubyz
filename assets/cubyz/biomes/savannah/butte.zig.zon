@@ -11,7 +11,6 @@
 	.roughness = 15,
 	.chance = 0,
 	.hills = 40,
-	.rivers = true,
 	.stripes = .{
 		.{
 			.direction = .{1, 1, 5},
@@ -31,7 +30,7 @@
 	.stoneBlock = "cubyz:limestone",
 	.parentBiomes = .{
 		.{
-			.id = "cubyz:savannah",
+			.id = "cubyz:savannah/savannah",
 			.chance = 24,
 		},
 	},
