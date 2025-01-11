@@ -27,15 +27,15 @@ var textInput: *TextInput = undefined;
 var gamemode: main.game.Gamemode = .creative;
 var gamemodeInput: *Button = undefined;
 
-var cheatsInput: *CheckBox = undefined;
+var allowCheats: bool = true;
 
 fn gamemodeCallback(_: usize) void {
 	gamemode = std.meta.intToEnum(main.game.Gamemode, @intFromEnum(gamemode) + 1) catch @enumFromInt(0);
 	gamemodeInput.child.label.updateText(@tagName(gamemode));
 }
 
-fn allowCheatsCallback(_: bool) void {
-	
+fn allowCheatsCallback(allow: bool) void {
+	allowCheats = allow;
 }
 
 fn createWorld(_: usize) void {
@@ -81,7 +81,7 @@ fn flawedCreateWorld() !void {
 		defer gamerules.deinit(main.stackAllocator);
 
 		gamerules.put("default_gamemode", @tagName(gamemode));
-		gamerules.put("cheats", cheatsInput.state);
+		gamerules.put("cheats", allowCheats);
 		
 		try main.files.writeZon(gamerulePath, gamerules);
 	}
