@@ -91,6 +91,7 @@ pub fn deinit(self: *const ItemSlot) void {
 fn refreshText(self: *ItemSlot) void {
 	const amount = self.inventory.getAmount(self.itemSlot);
 	if(self.lastItemAmount == amount) return;
+	self.lastItemAmount = amount;
 	self.text.deinit();
 	var buf: [16]u8 = undefined;
 	self.text = TextBuffer.init(

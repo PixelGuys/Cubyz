@@ -2,17 +2,16 @@
 	.properties = .{
 		.hot,
 		.dry,
+		.barren,
 	},
+	.chance = 2,
 	.minHeight = 22,
 	.maxHeight = 40,
-	
+	.minRadius = 150,
+	.maxRadius = 200,
 	.hills = 20,
-	
+	.validPlayerSpawn = false,
 	.music = "cubyz:EasternThought",
-
-	.fogDensity = 20,
-	.fogColor = 0xe0dcc3,
-	
 	.ground_structure = .{
 		"3 to 4 cubyz:sand",
 	},

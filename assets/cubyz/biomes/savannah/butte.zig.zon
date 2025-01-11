@@ -1,0 +1,37 @@
+.{
+	.properties = .{
+		.hot,
+		.dry,
+		.barren,
+	},
+	.minHeight = 75,
+	.maxHeight = 100,
+	.minRadius = 33,
+	.maxRadius = 48,
+	.roughness = 15,
+	.chance = 0,
+	.hills = 40,
+	.stripes = .{
+		.{
+			.direction = .{1, 1, 5},
+			.block = "cubyz:ferrock",
+			.distance = 12,
+			.offset = 6,
+			.width = 1,
+		},
+		.{
+			.direction = .{1, 1, 5},
+			.block= "cubyz:sandstone",
+			.distance = 10,
+			.offset = 6,
+			.width = 1,
+		},
+	},
+	.stoneBlock = "cubyz:limestone",
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:savannah/base",
+			.chance = 24,
+		},
+	},
+}
