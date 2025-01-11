@@ -531,13 +531,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		try files.writeZon(try std.fmt.bufPrint(&buf, "saves/{s}/palette.zig.zon", .{name}), self.blockPalette.save(arenaAllocator));
 		try files.writeZon(try std.fmt.bufPrint(&buf, "saves/{s}/biome_palette.zig.zon", .{name}), self.biomePalette.save(arenaAllocator));
 
-		var gamerules = files.readToZon(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/gamerules.zig.zon", .{name})) catch blk: {
-			const gameruleZon = ZonElement.initObject(arenaAllocator);
-
-			try files.writeZon(try std.fmt.bufPrint(&buf, "saves/{s}/gamerules.zig.zon", .{name}), gameruleZon);
-
-			break :blk gameruleZon;
-		};
+		var gamerules = files.readToZon(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/gamerules.zig.zon", .{name})) catch ZonElement.initObject(arenaAllocator);
 		
 		self.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, gamerules.get([]const u8, "default_gamemode", "creative")) orelse .creative;
 		self.allowCheats = gamerules.get(bool, "cheats", true);
