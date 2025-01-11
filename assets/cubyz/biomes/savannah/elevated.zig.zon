@@ -10,6 +10,7 @@
 	.roughness = 15,
 	.chance = 0,
 	.hills = 2,
+	.validPlayerSpawn = true,
 	.ground_structure = .{
 		"cubyz:grass",
 	},
