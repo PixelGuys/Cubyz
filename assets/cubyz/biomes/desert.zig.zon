@@ -24,14 +24,5 @@
 			.height_variation = 3,
 		},
 	},
-	.transitionBiomes = .{
-		.{
-			.id = "cubyz:trans/sandy_coast",
-			.chance = 1,
-			.width = 1,
-			.keepOriginalTerrain = 0.5,
-			.properties = .{.ocean, .wet},
-		},
-	},
 	.stoneBlock = "cubyz:sandstone",
 }

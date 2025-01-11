@@ -32,15 +32,6 @@
 			.depth = 5,
 			.smoothness = 0.5,
 		},
-		.{
-			.id = "cubyz:ground_patch",
-			.block = "cubyz:sand",
-			.chance = 0.5,
-			.width = 3,
-			.variation = 16,
-			.depth = 5,
-			.smoothness = 0.5,
-		},
 	},
 
 }

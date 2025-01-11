@@ -74,7 +74,7 @@
 			.chance = 1,
 			.width = 2,
 			.keepOriginalTerrain = 1,
-			.properties = .{.dry, .hot, .inland, .land},
+			.properties = .{.dry, .hot, .barren, .lowTerrain, .inland, .land},
 		},
 	},
 	.stoneBlock = "cubyz:sandstone",
