@@ -27,20 +27,15 @@ var textInput: *TextInput = undefined;
 var gamemode: main.game.Gamemode = .creative;
 var gamemodeInput: *Button = undefined;
 
-var allowCheats: bool = true;
 var cheatsInput: *CheckBox = undefined;
 
 fn gamemodeCallback(_: usize) void {
-	if (@intFromEnum(gamemode) < @typeInfo(main.game.Gamemode).@"enum".fields.len - 1) {
-		gamemode = @enumFromInt(@intFromEnum(gamemode) + 1);
-	} else {
-		gamemode = @enumFromInt(0);
-	}
+	gamemode = std.meta.intToEnum(main.game.Gamemode, @intFromEnum(gamemode) + 1) catch @enumFromInt(0);
 	gamemodeInput.child.label.updateText(@tagName(gamemode));
 }
 
-fn allowCheatsCallback(allow: bool) void {
-	allowCheats = allow;
+fn allowCheatsCallback(_: bool) void {
+	
 }
 
 fn createWorld(_: usize) void {
@@ -86,7 +81,7 @@ fn flawedCreateWorld() !void {
 		defer gamerules.deinit(main.stackAllocator);
 
 		gamerules.put("default_gamemode", @tagName(gamemode));
-		gamerules.put("cheats", allowCheats);
+		gamerules.put("cheats", cheatsInput.state);
 		
 		try main.files.writeZon(gamerulePath, gamerules);
 	}
@@ -118,8 +113,7 @@ pub fn onOpen() void {
 	gamemodeInput = Button.initText(.{0, 0}, 128, @tagName(gamemode), .{.callback = &gamemodeCallback});
 	list.add(gamemodeInput);
 
-	cheatsInput = CheckBox.init(.{0, 0}, 128, "Allow Cheats", true, &allowCheatsCallback);
-	list.add(cheatsInput);
+	list.add(CheckBox.init(.{0, 0}, 128, "Allow Cheats", true, &allowCheatsCallback));
 
 	list.add(Button.initText(.{0, 0}, 128, "Create World", .{.callback = &createWorld}));
 

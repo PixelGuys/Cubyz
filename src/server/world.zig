@@ -538,8 +538,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 			break :blk gameruleZon;
 		};
-		defer gamerules.deinit(arenaAllocator);
-
+		
 		self.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, gamerules.get([]const u8, "default_gamemode", "creative")) orelse .creative;
 		self.allowCheats = gamerules.get(bool, "cheats", true);
 
