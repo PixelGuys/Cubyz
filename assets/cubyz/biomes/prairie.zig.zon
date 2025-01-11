@@ -25,14 +25,6 @@
 			.keepOriginalTerrain = 0.5,
 			.properties = .{.ocean},
 		},
-		.{
-			.id = "cubyz:trans/prairie_widow",
-			.chance = 1,
-			.width = 1,
-			.keepOriginalTerrain = 1,
-			.properties = .{.hot, .dry, .inland, .land},
-		},
-
 	},
 	.structures = .{
 		.{
