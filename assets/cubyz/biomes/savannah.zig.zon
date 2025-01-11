@@ -69,13 +69,6 @@
 			.keepOriginalTerrain = 0.5,
 			.properties = .{.ocean},
 		},
-		.{
-			.id = "cubyz:trans/savannah_widow",
-			.chance = 1,
-			.width = 2,
-			.keepOriginalTerrain = 1,
-			.properties = .{.dry, .hot, .barren, .lowTerrain, .inland, .land},
-		},
 	},
 	.stoneBlock = "cubyz:sandstone",
 }
