@@ -17,15 +17,6 @@
 		"1 cubyz:dirt",
 		"3 to 4 cubyz:limestone",
 	},
-	.transitionBiomes = .{
-		.{
-			.id = "cubyz:trans/dry_grassy_coast",
-			.chance = 1,
-			.width = 1,
-			.keepOriginalTerrain = 0.5,
-			.properties = .{.ocean},
-		},
-	},
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
