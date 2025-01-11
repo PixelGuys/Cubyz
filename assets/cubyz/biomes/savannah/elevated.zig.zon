@@ -64,7 +64,7 @@
 	},
 	.parentBiomes = .{
 		.{
-			.id = "cubyz:savannah/savannah",
+			.id = "cubyz:savannah/base",
 			.chance = 8,
 		},
 	},

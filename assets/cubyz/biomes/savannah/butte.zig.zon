@@ -30,7 +30,7 @@
 	.stoneBlock = "cubyz:limestone",
 	.parentBiomes = .{
 		.{
-			.id = "cubyz:savannah/savannah",
+			.id = "cubyz:savannah/base",
 			.chance = 24,
 		},
 	},
