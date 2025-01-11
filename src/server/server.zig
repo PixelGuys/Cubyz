@@ -467,8 +467,12 @@ pub fn connectInternal(user: *User) void {
 
 pub fn messageFrom(msg: []const u8, source: *User) void { // MARK: message
 	if(msg[0] == '/') { // Command.
-		std.log.info("User \"{s}\" executed command \"{s}\"", .{source.name, msg}); // TODO use color \033[0;32m
-		command.execute(msg[1..], source);
+		if (world.?.allowCheats) {
+			std.log.info("User \"{s}\" executed command \"{s}\"", .{source.name, msg}); // TODO use color \033[0;32m
+			command.execute(msg[1..], source);
+		} else {
+			source.sendMessage("Commands are disabled");
+		}
 	} else {
 		const newMessage = std.fmt.allocPrint(main.stackAllocator.allocator, "[{s}§#ffffff] {s}", .{source.name, msg}) catch unreachable;
 		defer main.stackAllocator.free(newMessage);

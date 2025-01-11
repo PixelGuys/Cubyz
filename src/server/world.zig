@@ -428,6 +428,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	doGameTimeCycle: bool = true,
 	gravity: f32 = earthGravity,
 
+	defaultGamemode: main.game.Gamemode = undefined,
+	allowCheats: bool = undefined,
+
 	seed: u64,
 	name: []const u8,
 	spawn: Vec3i = undefined,
@@ -527,6 +530,18 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		// Store the block palette now that everything is loaded.
 		try files.writeZon(try std.fmt.bufPrint(&buf, "saves/{s}/palette.zig.zon", .{name}), self.blockPalette.save(arenaAllocator));
 		try files.writeZon(try std.fmt.bufPrint(&buf, "saves/{s}/biome_palette.zig.zon", .{name}), self.biomePalette.save(arenaAllocator));
+
+		var gamerules = files.readToZon(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/gamerules.zig.zon", .{name})) catch blk: {
+			const gameruleZon = ZonElement.initObject(arenaAllocator);
+
+			try files.writeZon(try std.fmt.bufPrint(&buf, "saves/{s}/gamerules.zig.zon", .{name}), gameruleZon);
+
+			break :blk gameruleZon;
+		};
+		defer gamerules.deinit(arenaAllocator);
+
+		self.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, gamerules.get([]const u8, "default_gamemode", "creative")) orelse .creative;
+		self.allowCheats = gamerules.get(bool, "cheats", true);
 
 		self.chunkManager = try ChunkManager.init(self, generatorSettings);
 		errdefer self.chunkManager.deinit();
@@ -774,10 +789,12 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const player = &user.player;
 		if(playerData == .null) {
 			player.pos = @floatFromInt(self.spawn);
+
+			main.items.Inventory.Sync.setGamemode(user, self.defaultGamemode);
 		} else {
 			player.loadFrom(playerData.getChild("entity"));
 
-			main.items.Inventory.Sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", "survival")) orelse .survival);
+			main.items.Inventory.Sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", @tagName(self.defaultGamemode))) orelse self.defaultGamemode);
 		}
 	}
 
