@@ -370,6 +370,10 @@ pub const Sync = struct { // MARK: Sync
 			}
 		}
 
+		pub fn addHealth(user: *main.server.User, health: f32, cause: main.game.DamageType) void {
+			executeCommand(.{.addHealth = .{.health = health, .cause = cause, .previous = user.player.health}});
+		}
+
 		pub fn tryCollectingToPlayerInventory(user: *main.server.User, itemStack: *ItemStack) void {
 			if(itemStack.item == null) return;
 			mutex.lock();
@@ -435,6 +439,7 @@ pub const Command = struct { // MARK: Command
 		depositOrDrop = 7,
 		clear = 8,
 		updateBlock = 9,
+		addHealth = 10,
 	};
 	pub const Payload = union(PayloadType) {
 		open: Open,
@@ -447,6 +452,7 @@ pub const Command = struct { // MARK: Command
 		depositOrDrop: DepositOrDrop,
 		clear: Clear,
 		updateBlock: UpdateBlock,
+		addHealth: AddHealth,
 	};
 
 	const BaseOperationType = enum(u8) {
@@ -455,6 +461,7 @@ pub const Command = struct { // MARK: Command
 		delete = 2,
 		create = 3,
 		useDurability = 4,
+		addHealth = 5,
 	};
 
 	const InventoryAndSlot = struct {
@@ -505,6 +512,12 @@ pub const Command = struct { // MARK: Command
 			durability: u31,
 			previousDurability: u32 = undefined,
 		},
+		addHealth: struct {
+			source: ?*main.server.User,
+			health: f32,
+			cause: main.game.DamageType,
+			previous: f32
+		}
 	};
 
 	const SyncOperation = struct { // MARK: SyncOperation
@@ -641,6 +654,9 @@ pub const Command = struct { // MARK: Command
 					info.source.ref().item = info.item;
 					info.item.tool.durability = info.previousDurability;
 					info.source.inv.update();
+				},
+				.addHealth => |info| {
+					main.game.Player.super.health = info.previous;
 				}
 			}
 		}
@@ -656,6 +672,17 @@ pub const Command = struct { // MARK: Command
 				.useDurability => |info| {
 					if(info.previousDurability <= info.durability) {
 						info.item.deinit();
+					}
+				},
+				.addHealth => |info| {
+					if (side == .server) {
+						if (info.source.?.player.health <= 0) {
+							const message = info.cause.message(info.source.?.name, main.stackAllocator);
+							defer main.stackAllocator.free(message);
+							main.server.sendMessage(message);
+
+							main.network.Protocols.genericUpdate.sendKill(info.source.?.conn);
+						}
 					}
 				}
 			}
@@ -771,6 +798,13 @@ pub const Command = struct { // MARK: Command
 				self.executeDurabilityUseOperation(allocator, side, info.source, info.durability);
 				info.source.inv.update();
 			},
+			.addHealth => |info| {
+				if (side == .server) {
+					info.source.?.player.health = std.math.clamp(main.game.Player.super.health + info.health, 0, 8);
+				} else {
+					main.game.Player.super.health = std.math.clamp(main.game.Player.super.health + info.health, 0, 8);
+				}
+			}
 		}
 		self.baseOperations.append(allocator, op);
 	}
@@ -1414,6 +1448,39 @@ pub const Command = struct { // MARK: Command
 			};
 		}
 	};
+
+	const AddHealth = struct { // MARK: AddHealth
+		health: f32,
+		cause: main.game.DamageType,
+		previous: f32,
+
+		pub fn run(self: AddHealth, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, gamemode: Gamemode) error{serverFailure}!void {
+			if (gamemode == .creative) return;
+
+			cmd.executeBaseOperation(allocator, .{.addHealth = .{
+				.health = self.health,
+				.cause = self.cause,
+				.previous = self.previous,
+				.source = user,
+			}}, side);
+		}
+
+		fn serialize(self: AddHealth, data: *main.List(u8)) void {
+			std.mem.writeInt(u32, data.addMany(4)[0..4], @bitCast(self.health), .big);
+			data.append(@intFromEnum(self.cause));
+			std.mem.writeInt(u32, data.addMany(4)[0..4], @bitCast(self.previous), .big);
+		}
+
+		fn deserialize(data: []const u8, _: Side, _: ?*main.server.User) !AddHealth {
+			if(data.len != 9) return error.Invalid;
+
+			return .{
+				.health = @bitCast(std.mem.readInt(u32, data[0..4], .big)),
+				.cause = @enumFromInt(data[4]),
+				.previous = @bitCast(std.mem.readInt(u32, data[5..9], .big)),
+			};
+		}
+	};
 };
 
 const SourceType = enum(u8) {
@@ -1513,6 +1580,10 @@ pub fn depositOrSwap(dest: Inventory, destSlot: u32, carried: Inventory) void {
 
 pub fn deposit(dest: Inventory, destSlot: u32, carried: Inventory, amount: u16) void {
 	Sync.ClientSide.executeCommand(.{.deposit = .{.dest = .{.inv = dest, .slot = destSlot}, .source = .{.inv = carried, .slot = 0}, .amount = amount}});
+}
+
+pub fn addHealth(health: f32, cause: main.game.DamageType) void {
+	Sync.ClientSide.executeCommand(.{.addHealth = .{.health = health, .cause = cause, .previous = main.game.Player.super.health}});
 }
 
 pub fn takeHalf(source: Inventory, sourceSlot: u32, carried: Inventory) void {

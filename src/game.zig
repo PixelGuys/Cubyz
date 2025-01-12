@@ -327,8 +327,17 @@ pub const collision = struct {
 pub const Gamemode = enum(u8) { survival = 0, creative = 1 };
 
 pub const DamageType = enum(u8) {
-	none,
-	fall,
+	none = 0, // For when you are adding health
+	kill = 1,
+	fall = 2,
+	
+	pub fn message(self: DamageType, name: []const u8, allocator: main.utils.NeverFailingAllocator) []u8 {
+		return switch (self) {
+			.none => std.fmt.allocPrint(allocator.allocator, "", .{}) catch unreachable,
+			.kill => std.fmt.allocPrint(allocator.allocator, "{s}§#ffffff died", .{name}) catch unreachable,
+			.fall => std.fmt.allocPrint(allocator.allocator, "{s}§#ffffff died of fall damage", .{name}) catch unreachable,
+		};
+	}
 };
 
 pub const Player = struct { // MARK: Player
@@ -447,14 +456,20 @@ pub const Player = struct { // MARK: Player
 	}
 
 	pub fn damage(dam: f32, cause: DamageType) void {
+		if (Player.isCreative()) {
+			return;
+		}
+
 		Player.super.health -= dam;
-		main.network.Protocols.genericUpdate.sendDamage(world.?.conn, dam, cause);
+
+		Inventory.addHealth(-dam, cause);
 	}
 
 	pub fn kill() void {
 		Player.super.pos = world.?.spawn;
 		Player.super.vel = .{0, 0, 0};
-		Player.super.health = 8;
+		
+		Inventory.addHealth(8, .none);
 
 		Player.eyeVel = .{0, 0, 0};
 		Player.eyeCoyote = 0;

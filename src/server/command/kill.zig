@@ -11,5 +11,5 @@ pub fn execute(args: []const u8, source: *User) void {
 		source.sendMessage("#ff0000Too many arguments for command /kill. Expected no arguments.");
 		return;
 	}
-	source.kill(.none);
+	source.kill(.kill);
 }
