@@ -738,8 +738,8 @@ pub fn getById(id: []const u8) *const Biome {
 	};
 }
 
-pub fn getRandomly(typ: Biome.Type, seed: *u64) *const Biome {
-	return byTypeBiomes[@intFromEnum(typ)].getRandomly(seed);
+pub fn getPlaceholderBiome() *const Biome {
+	return &biomes.items[0];
 }
 
 pub fn getCaveBiomes() []const Biome {

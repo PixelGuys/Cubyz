@@ -518,7 +518,7 @@ pub const World = struct { // MARK: World
 
 		main.blocks.meshes.generateTextureArray();
 		main.models.uploadModels();
-		self.playerBiome = .init(main.server.terrain.biomes.getById(""));
+		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());
 		main.audio.setMusic(self.playerBiome.raw.preferredMusic);
 	}
 
