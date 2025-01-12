@@ -11,17 +11,15 @@ pub fn execute(args: []const u8, source: *User) void {
 	if(split.next()) |arg| blk: {
 		if(arg.len == 0) break :blk;
 		if(split.next() != null) {
-			source.sendMessage("#ff0000Too many arguments for command /invite");
+			source.sendMessage("#ff0000Too many arguments for command /invite", .{});
 		}
 		const user = main.server.User.initAndIncreaseRefCount(main.server.connectionManager, arg) catch |err| {
-			const msg = std.fmt.allocPrint(main.stackAllocator.allocator, "#ff0000Error while trying to connect: {s}", .{@errorName(err)}) catch unreachable;
-			defer main.stackAllocator.free(msg);
-			std.log.err("{s}", .{msg[7..]});
-			source.sendMessage(msg);
+			std.log.err("Error while trying to connect: {s}", .{@errorName(err)});
+			source.sendMessage("#ff0000Error while trying to connect: {s}", .{@errorName(err)});
 			return;
 		};
 		user.decreaseRefCount();
 		return;
 	}
-	source.sendMessage("#ff0000Too few arguments for command /invite");
+	source.sendMessage("#ff0000Too few arguments for command /invite", .{});
 }

@@ -202,8 +202,13 @@ pub const User = struct { // MARK: User
 		self.interpolation.updatePosition(&position, &velocity, time);
 	}
 
-	pub fn sendMessage(user: *User, msg: []const u8) void {
-		main.network.Protocols.chat.send(user.conn, msg);
+	pub fn sendMessage(self: *User, comptime fmt: []const u8, args: anytype) void {
+		const msg = std.fmt.allocPrint(main.stackAllocator.allocator, fmt, args) catch unreachable;
+		defer main.stackAllocator.free(msg);
+		self.sendRawMessage(msg);
+	}
+	fn sendRawMessage(self: *User, msg: []const u8) void {
+		main.network.Protocols.chat.send(self.conn, msg);
 	}
 };
 
@@ -389,8 +394,6 @@ pub fn disconnect(user: *User) void { // MARK: disconnect()
 
 pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 	if(!user.connected.load(.unordered)) return;
-	const message = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}§#ffff00 left", .{user.name}) catch unreachable;
-	defer main.stackAllocator.free(message);
 
 	userMutex.lock();
 	for(users.items, 0..) |other, i| {
@@ -401,7 +404,7 @@ pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 	}
 	userMutex.unlock();
 
-	sendMessage(message);
+	sendMessage("{s}§#ffff00 left", .{user.name});
 	// Let the other clients know about that this new one left.
 	const zonArray = main.ZonElement.initArray(main.stackAllocator);
 	defer zonArray.deinit(main.stackAllocator);
@@ -456,9 +459,7 @@ pub fn connectInternal(user: *User) void {
 	const initialList = getInitialEntityList(main.stackAllocator);
 	main.network.Protocols.entity.send(user.conn, initialList);
 	main.stackAllocator.free(initialList);
-	const message = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}§#ffff00 joined", .{user.name}) catch unreachable;
-	defer main.stackAllocator.free(message);
-	sendMessage(message);
+	sendMessage("{s}§#ffff00 joined", .{user.name});
 
 	userMutex.lock();
 	users.append(user);
@@ -471,23 +472,27 @@ pub fn messageFrom(msg: []const u8, source: *User) void { // MARK: message
 			std.log.info("User \"{s}\" executed command \"{s}\"", .{source.name, msg}); // TODO use color \033[0;32m
 			command.execute(msg[1..], source);
 		} else {
-			source.sendMessage("Commands are not allowed because cheats are disabled");
+			source.sendRawMessage("Commands are not allowed because cheats are disabled");
 		}
 	} else {
-		const newMessage = std.fmt.allocPrint(main.stackAllocator.allocator, "[{s}§#ffffff] {s}", .{source.name, msg}) catch unreachable;
-		defer main.stackAllocator.free(newMessage);
-		main.server.sendMessage(newMessage);
+		main.server.sendMessage("[{s}§#ffffff] {s}", .{source.name, msg});
 	}
 }
 
-var chatMutex: std.Thread.Mutex = .{};
-pub fn sendMessage(msg: []const u8) void {
+fn sendRawMessage(msg: []const u8) void {
 	chatMutex.lock();
 	defer chatMutex.unlock();
 	std.log.info("Chat: {s}", .{msg}); // TODO use color \033[0;32m
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 	for(userList) |user| {
-		user.sendMessage(msg);
+		user.sendRawMessage(msg);
 	}
+}
+
+var chatMutex: std.Thread.Mutex = .{};
+pub fn sendMessage(comptime fmt: []const u8, args: anytype) void {
+	const msg = std.fmt.allocPrint(main.stackAllocator.allocator, fmt, args) catch unreachable;
+	defer main.stackAllocator.free(msg);
+	sendRawMessage(msg);
 }

@@ -10,13 +10,11 @@ pub fn execute(args: []const u8, source: *User) void {
 	if(std.mem.containsAtLeast(u8, args, 1, ":")) {
 		const biome = main.server.terrain.biomes.getById(args);
 		if(!std.mem.eql(u8, biome.id, args)) {
-			const msg = std.fmt.allocPrint(main.stackAllocator.allocator, "#ff0000Couldn't find biome with id \"{s}\"", .{args}) catch unreachable;
-			defer main.stackAllocator.free(msg);
-			source.sendMessage(msg);
+			source.sendMessage("#ff0000Couldn't find biome with id \"{s}\"", .{args});
 			return;
 		}
 		if(biome.isCave) {
-			source.sendMessage("#ff0000Teleport to biome is only available for surface biomes.");
+			source.sendMessage("#ff0000Teleport to biome is only available for surface biomes.", .{});
 			return;
 		}
 		const radius = 16384;
@@ -63,7 +61,7 @@ pub fn execute(args: []const u8, source: *User) void {
 				stepsRemaining = dirChanges/2;
 			}
 		}
-		source.sendMessage("#ff0000Couldn't find biome. Searched in a radius of 16384 blocks.");
+		source.sendMessage("#ff0000Couldn't find biome. Searched in a radius of 16384 blocks.", .{});
 		return;
 	}
 	var x: ?f64 = null;
@@ -72,9 +70,7 @@ pub fn execute(args: []const u8, source: *User) void {
 	var split = std.mem.splitScalar(u8, args, ' ');
 	while(split.next()) |arg| {
 		const num: f64 = std.fmt.parseFloat(f64, arg) catch {
-			const msg = std.fmt.allocPrint(main.stackAllocator.allocator, "#ff0000Expected number, found \"{s}\"", .{arg}) catch unreachable;
-			defer main.stackAllocator.free(msg);
-			source.sendMessage(msg);
+			source.sendMessage("#ff0000Expected number, found \"{s}\"", .{arg});
 			return;
 		};
 		if(x == null) {
@@ -84,12 +80,12 @@ pub fn execute(args: []const u8, source: *User) void {
 		} else if(z == null) {
 			z = num;
 		} else {
-			source.sendMessage("#ff0000Too many arguments for command /tp");
+			source.sendMessage("#ff0000Too many arguments for command /tp", .{});
 			return;
 		}
 	}
 	if(x == null or y == null) {
-		source.sendMessage("#ff0000Too few arguments for command /tp");
+		source.sendMessage("#ff0000Too few arguments for command /tp", .{});
 		return;
 	}
 	if(z == null) {
