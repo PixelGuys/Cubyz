@@ -285,6 +285,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 	}
 
 	// blocks:
+	blocks_zig.meshes.registerBlockBreakingAnimation(assetFolder);
 	for(blockPalette.palette.items) |id| {
 		const nullValue = blocks.get(id);
 		var zon: ZonElement = undefined;

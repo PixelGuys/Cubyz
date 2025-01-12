@@ -37,6 +37,10 @@ pub fn deleteDir(path: []const u8, dirName: []const u8) !void {
 	try saveDir.deleteTree(dirName);
 }
 
+pub fn hasFile(path: []const u8) bool {
+	return cwd().hasFile(path);
+}
+
 fn cwd() Dir {
 	return Dir {
 		.dir = std.fs.cwd(),

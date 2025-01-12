@@ -381,6 +381,8 @@ pub const meshes = struct { // MARK: meshes
 
 	var arenaForWorld: main.utils.NeverFailingArenaAllocator = undefined;
 
+	pub var blockBreakingTextures: main.List(u16) = undefined;
+
 	const sideNames = blk: {
 		var names: [6][]const u8 = undefined;
 		names[Neighbor.dirDown.toInt()] = "texture_bottom";
@@ -426,6 +428,7 @@ pub const meshes = struct { // MARK: meshes
 		absorptionTextures = .init(main.globalAllocator);
 		textureFogData = .init(main.globalAllocator);
 		arenaForWorld = .init(main.globalAllocator);
+		blockBreakingTextures = .init(main.globalAllocator);
 	}
 
 	pub fn deinit() void {
@@ -450,6 +453,7 @@ pub const meshes = struct { // MARK: meshes
 		absorptionTextures.deinit();
 		textureFogData.deinit();
 		arenaForWorld.deinit();
+		blockBreakingTextures.deinit();
 	}
 
 	pub fn reset() void {
@@ -462,6 +466,7 @@ pub const meshes = struct { // MARK: meshes
 		reflectivityTextures.clearRetainingCapacity();
 		absorptionTextures.clearRetainingCapacity();
 		textureFogData.clearRetainingCapacity();
+		blockBreakingTextures.clearRetainingCapacity();
 		_ = arenaForWorld.reset(.free_all);
 	}
 
@@ -594,6 +599,21 @@ pub const meshes = struct { // MARK: meshes
 		maxTextureCount[meshes.size] = @intCast(textureIDs.items.len);
 
 		meshes.size += 1;
+	}
+
+	pub fn registerBlockBreakingAnimation(assetFolder: []const u8) void {
+		var i: usize = 0;
+		while(true) : (i += 1) {
+			const path1 = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/cubyz/blocks/textures/{}.png", .{i}) catch unreachable;
+			defer main.stackAllocator.free(path1);
+			const path2 = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/cubyz/blocks/textures/{}.png", .{assetFolder, i}) catch unreachable;
+			defer main.stackAllocator.free(path2);
+			if(!main.files.hasFile(path1) and !main.files.hasFile(path2)) break;
+
+			const id = std.fmt.allocPrint(main.stackAllocator.allocator, "cubyz:breaking/{}", .{i}) catch unreachable;
+			defer main.stackAllocator.free(id);
+			blockBreakingTextures.append(readTexture(id, assetFolder) catch break);
+		}
 	}
 
 	pub fn preProcessAnimationData(time: u32) void {
