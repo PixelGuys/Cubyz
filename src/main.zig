@@ -180,6 +180,9 @@ pub const std_options: std.Options = .{ // MARK: std_options
 			resultArgs[resultArgs.len - 1] = colorReset;
 		}
 		logToStdErr(formatString, resultArgs);
+		if(level == .err) {
+			gui.openWindow("error_prompt");
+		}
 	}}.logFn,
 };
 
@@ -539,6 +542,9 @@ pub fn main() void { // MARK: main()
 			}
 		}
 	} else |_| {}
+
+	gui.initWindowList();
+	defer gui.deinitWindowList();
 
 	files.init();
 	defer files.deinit();
