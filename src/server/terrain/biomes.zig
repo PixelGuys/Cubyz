@@ -314,7 +314,7 @@ pub const Biome = struct { // MARK: Biome
 			.maxSubBiomeCount = zon.get(f32, "maxSubBiomeCount", std.math.floatMax(f32)),
 		};
 		if(self.minHeight > self.maxHeight) {
-			std.log.warn("Biome {s} has invalid height range ({}, {})", .{self.id, self.minHeight, self.maxHeight});
+			std.log.err("Biome {s} has invalid height range ({}, {})", .{self.id, self.minHeight, self.maxHeight});
 		}
 		const parentBiomeList = zon.getChild("parentBiomes");
 		for(parentBiomeList.toSlice()) |parent| {
@@ -423,7 +423,7 @@ pub const BlockStructure = struct { // MARK: BlockStructure
 		};
 		for(blockStackDescriptions, self.structure) |zonString, *blockStack| {
 			blockStack.init(zonString.as([]const u8, "That's not a zon string.")) catch |err| {
-				std.log.warn("Couldn't parse blockStack '{s}': {s} Removing it.", .{zonString.as([]const u8, "(not a zon string)"), @errorName(err)});
+				std.log.err("Couldn't parse blockStack '{s}': {s} Removing it.", .{zonString.as([]const u8, "(not a zon string)"), @errorName(err)});
 				blockStack.* = .{};
 			};
 		}
@@ -677,7 +677,7 @@ pub fn finishLoading() void {
 		const subBiomeDataList = subBiomeData.value_ptr;
 		defer subBiomeDataList.deinit(main.globalAllocator);
 		const parentBiome = biomesById.get(subBiomeData.key_ptr.*) orelse {
-			std.log.warn("Couldn't find biome with id {s}. Cannot add sub-biomes.", .{subBiomeData.key_ptr.*});
+			std.log.err("Couldn't find biome with id {s}. Cannot add sub-biomes.", .{subBiomeData.key_ptr.*});
 			continue;
 		};
 		for(subBiomeDataList.items) |item| {
@@ -695,7 +695,7 @@ pub fn finishLoading() void {
 		for(parentBiome.transitionBiomes, transitionBiomes) |*res, src| {
 			res.* = .{
 				.biome = biomesById.get(src.biomeId) orelse {
-					std.log.warn("Skipping transition biome with unknown id {s}", .{src.biomeId});
+					std.log.err("Skipping transition biome with unknown id {s}", .{src.biomeId});
 					res.* = .{
 						.biome = &biomes.items[0],
 						.chance = 0,
@@ -733,13 +733,13 @@ pub fn hasRegistered(id: []const u8) bool {
 pub fn getById(id: []const u8) *const Biome {
 	std.debug.assert(finishedLoading);
 	return biomesById.get(id) orelse {
-		std.log.warn("Couldn't find biome with id {s}. Replacing it with some other biome.", .{id});
+		std.log.err("Couldn't find biome with id {s}. Replacing it with some other biome.", .{id});
 		return &biomes.items[0];
 	};
 }
 
-pub fn getRandomly(typ: Biome.Type, seed: *u64) *const Biome {
-	return byTypeBiomes[@intFromEnum(typ)].getRandomly(seed);
+pub fn getPlaceholderBiome() *const Biome {
+	return &biomes.items[0];
 }
 
 pub fn getCaveBiomes() []const Biome {

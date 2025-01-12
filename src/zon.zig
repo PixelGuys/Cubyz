@@ -606,8 +606,8 @@ const Parser = struct { // MARK: Parser
 			}
 		}
 		const lineEnd: u32 = i;
-		std.log.warn("Error in line {}: {s}", .{lineNumber, msg});
-		std.log.warn("{s}", .{chars[lineStart..lineEnd]});
+		std.log.err("Error in line {}: {s}", .{lineNumber, msg});
+		std.log.err("{s}", .{chars[lineStart..lineEnd]});
 		// Mark the position:
 		var message: [512]u8 = undefined;
 		i = lineStart;
@@ -629,7 +629,7 @@ const Parser = struct { // MARK: Parser
 		}
 		message[outputI] = '^';
 		outputI += 1;
-		std.log.warn("{s}", .{message[0..outputI]});
+		std.log.err("{s}", .{message[0..outputI]});
 	}
 
 	/// Assumes that the region starts with a non-space character.

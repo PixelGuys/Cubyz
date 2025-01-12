@@ -1188,7 +1188,7 @@ pub const Shader = struct { // MARK: Shader
 	
 	fn addShader(self: *const Shader, filename: []const u8, defines: []const u8, shader_stage: c_uint) !void {
 		const source = main.files.read(main.stackAllocator, filename) catch |err| {
-			std.log.warn("Couldn't read file: {s}", .{filename});
+			std.log.err("Couldn't read shader file: {s}", .{filename});
 			return err;
 		};
 		defer main.stackAllocator.free(source);

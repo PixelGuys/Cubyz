@@ -1216,7 +1216,7 @@ pub fn globalInit() void {
 pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, zon: ZonElement) *BaseItem {
 	std.log.info("{s}", .{id});
 	if(reverseIndices.contains(id)) {
-		std.log.warn("Registered item with id {s} twice!", .{id});
+		std.log.err("Registered item with id {s} twice!", .{id});
 	}
 	const newItem = &itemList[itemListSize];
 	newItem.init(arena.allocator(), texturePath, replacementTexturePath, id, zon);
@@ -1283,7 +1283,7 @@ pub fn getByID(id: []const u8) ?*BaseItem {
 	if(reverseIndices.get(id)) |result| {
 		return result;
 	} else {
-		std.log.warn("Couldn't find item {s}.", .{id});
+		std.log.err("Couldn't find item {s}.", .{id});
 		return null;
 	}
 }

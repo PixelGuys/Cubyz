@@ -1,9 +1,7 @@
 .{
 	.class = .leaf,
 	.hardness = 0.1,
-	.drops = .{
-		.{.items = .{"cubyz:air"}},
-	},
+	.drops = .{},
 	.degradable = true,
 	.collide = false,
 	.alwaysViewThrough = true,

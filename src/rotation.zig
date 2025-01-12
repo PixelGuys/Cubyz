@@ -973,7 +973,7 @@ pub fn deinit() void {
 
 pub fn getByID(id: []const u8) *RotationMode {
 	if(rotationModes.getPtr(id)) |mode| return mode;
-	std.log.warn("Could not find rotation mode {s}. Using no_rotation instead.", .{id});
+	std.log.err("Could not find rotation mode {s}. Using no_rotation instead.", .{id});
 	return rotationModes.getPtr("no_rotation").?;
 }
 

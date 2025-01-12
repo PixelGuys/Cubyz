@@ -4,7 +4,6 @@
 	.drops = .{
 		.{.items = .{.auto}},
 	},
-	.rotation = .stackable,
 	.model = "cubyz:cube",
 	.texture = "cubyz:snow",
 	.blockEntity = "cubyz.modding.base.MeltableBlockEntity",
