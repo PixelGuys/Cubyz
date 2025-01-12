@@ -965,8 +965,8 @@ pub const Protocols = struct {
 		const type_gamemode: u8 = 0;
 		const type_teleport: u8 = 1;
 		const type_cure: u8 = 2;
-		const type_reserved2: u8 = 3;
-		const type_reserved3: u8 = 4;
+		const type_damage: u8 = 3;
+		const type_kill: u8 = 4;
 		const type_reserved4: u8 = 5;
 		const type_reserved5: u8 = 6;
 		const type_reserved6: u8 = 7;
@@ -986,10 +986,16 @@ pub const Protocols = struct {
 					});
 				},
 				type_cure => {
-					// TODO: health and hunger
+					// TODO: hunger
 				},
-				type_reserved2 => {},
-				type_reserved3 => {},
+				type_damage => {
+					const damage: f32 = @bitCast(std.mem.readInt(u32, data[1..5], .big));
+					const cause: game.DamageType = @enumFromInt(data[5]);
+					conn.user.?.damage(damage, cause);
+				},
+				type_kill => {
+					game.Player.kill();
+				},
 				type_reserved4 => {},
 				type_reserved5 => {},
 				type_reserved6 => {},
@@ -1055,6 +1061,21 @@ pub const Protocols = struct {
 		pub fn sendCure(conn: *Connection) void {
 			var data: [1]u8 = undefined;
 			data[0] = type_cure;
+			conn.sendImportant(id, &data);
+		}
+
+		pub fn sendDamage(conn: *Connection, damage: f32, cause: game.DamageType) void {
+			var data: [1 + 5]u8 = undefined;
+			data[0] = type_damage;
+			std.mem.writeInt(u32, data[1..5], @as(u32, @bitCast(damage)), .big);
+			data[5] = @intFromEnum(cause);
+			conn.sendImportant(id, &data);
+		}
+
+		pub fn sendKill(conn: *Connection, cause: game.DamageType) void {
+			var data: [1 + 1]u8 = undefined;
+			data[0] = type_kill;
+			data[1] = @intFromEnum(cause);
 			conn.sendImportant(id, &data);
 		}
 

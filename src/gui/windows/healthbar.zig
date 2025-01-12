@@ -46,21 +46,23 @@ pub fn render() void {
 	draw.setColor(0xffffffff);
 	var y: f32 = 0;
 	var x: f32 = 0;
-	var health: f32 = 0;
-	while(health < main.game.Player.maxHealth) : (health += 1) {
+	var healthLeft: f32 = main.game.Player.super.health;
+	for(0..@as(usize, @intFromFloat(@ceil(main.game.Player.maxHealth)))) |_| {
 		if(x >= window.contentSize[0]) {
 			x = 0;
 			y += 20;
 		}
-		if(health + 1 <= main.game.Player.health) {
+		if(healthLeft >= 1) {
 			heartTexture.bindTo(0);
-		} else if(health + 0.5 <= main.game.Player.health) {
-			halfHeartTexture.bindTo(0);
-		} else {
+		} else if(healthLeft <= 0) {
 			deadHeartTexture.bindTo(0);
+		} else {
+			halfHeartTexture.bindTo(0);
 		}
 		draw.boundImage(Vec2f{x, window.contentSize[1] - y - 20}, .{20, 20});
 		x += 20;
+
+		healthLeft -= 1;
 	}
 	y += 20;
 	if(y != window.contentSize[1]) {

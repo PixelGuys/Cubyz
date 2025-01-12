@@ -18,6 +18,7 @@ pub const storage = @import("storage.zig");
 
 const command = @import("command/_command.zig");
 
+const server = @This();
 
 pub const User = struct { // MARK: User
 	const maxSimulationDistance = 8;
@@ -90,6 +91,30 @@ pub const User = struct { // MARK: User
 		if(prevVal == 1) {
 			self.deinit();
 		}
+	}
+
+	pub fn damage(self: *User, dam: f32, cause: main.game.DamageType) void {
+		if (self.gamemode.load(.monotonic) == .creative) {
+			return;
+		}
+
+		self.player.health -= dam;
+
+		if (self.player.health <= 0) {
+			self.kill(cause);
+		}
+	}
+
+	pub fn kill(self: *User, cause: main.game.DamageType) void {
+		const message = switch (cause) {
+			.none => std.fmt.allocPrint(main.stackAllocator.allocator, "{s}§#ffffff died", .{self.name}) catch unreachable,
+			.fall => std.fmt.allocPrint(main.stackAllocator.allocator, "{s}§#ffffff died of fall damage", .{self.name}) catch unreachable,
+		};
+		defer main.stackAllocator.free(message);
+		server.sendMessage(message);
+		
+		self.player.health = 8;
+		main.network.Protocols.genericUpdate.sendKill(self.conn, cause);
 	}
 
 	pub fn initPlayer(self: *User, name: []const u8) void {
