@@ -101,7 +101,7 @@ pub fn deinit() void {
 
 pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	if(reverseIndices.contains(id)) {
-		std.log.warn("Registered block with id {s} twice!", .{id});
+		std.log.err("Registered block with id {s} twice!", .{id});
 	}
 	_id[size] = allocator.dupe(u8, id);
 	reverseIndices.put(_id[size], @intCast(size)) catch unreachable;
@@ -231,7 +231,7 @@ pub fn getTypeById(id: []const u8) u16 {
 	if(reverseIndices.get(id)) |result| {
 		return result;
 	} else {
-		std.log.warn("Couldn't find block {s}. Replacing it with air...", .{id});
+		std.log.err("Couldn't find block {s}. Replacing it with air...", .{id});
 		return 0;
 	}
 }
@@ -242,7 +242,7 @@ pub fn getBlockById(id: []const u8) Block {
 		result.data = result.mode().naturalStandard;
 		return result;
 	} else {
-		std.log.warn("Couldn't find block {s}. Replacing it with air...", .{id});
+		std.log.err("Couldn't find block {s}. Replacing it with air...", .{id});
 		return .{.typ = 0, .data = 0};
 	}
 }

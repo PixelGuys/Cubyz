@@ -279,11 +279,11 @@ const STUN = struct { // MARK: STUN
 			if(connection.sendRequest(main.globalAllocator, &data, serverAddress, 500*1000000)) |answer| {
 				defer main.globalAllocator.free(answer);
 				verifyHeader(answer, data[8..20]) catch |err| {
-					std.log.warn("Header verification failed with {s} for STUN server: {s} data: {any}", .{@errorName(err), server, answer});
+					std.log.err("Header verification failed with {s} for STUN server: {s} data: {any}", .{@errorName(err), server, answer});
 					continue;
 				};
 				var result = findIPPort(answer) catch |err| {
-					std.log.warn("Could not parse IP+Port: {s} for STUN server: {s} data: {any}", .{@errorName(err), server, answer});
+					std.log.err("Could not parse IP+Port: {s} for STUN server: {s} data: {any}", .{@errorName(err), server, answer});
 					continue;
 				};
 				if(oldAddress) |other| {
@@ -298,7 +298,7 @@ const STUN = struct { // MARK: STUN
 					oldAddress = result;
 				}
 			} else {
-				std.log.warn("Couldn't reach STUN server: {s}", .{server});
+				std.log.err("Couldn't reach STUN server: {s}", .{server});
 			}
 		}
 		return Address{.ip=Socket.resolveIP("127.0.0.1") catch unreachable, .port=settings.defaultPort}; // TODO: Return ip address in LAN.
@@ -564,7 +564,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 				if(err == error.Timeout) {
 					// No message within the last ~100 ms.
 				} else if(err == error.ConnectionResetByPeer) {
-					std.log.warn("Got error.ConnectionResetByPeer on receive. This indicates that a previous message did not find a valid destination.", .{});
+					std.log.err("Got error.ConnectionResetByPeer on receive. This indicates that a previous message did not find a valid destination.", .{});
 				} else {
 					std.log.err("Got error on receive: {s}", .{@errorName(err)});
 					@panic("Network failed.");
@@ -940,7 +940,7 @@ pub const Protocols = struct {
 						break;
 					},
 					else => {
-						std.log.warn("Unrecognized zon parameters for protocol {}: {s}", .{id, data});
+						std.log.err("Unrecognized zon parameters for protocol {}: {s}", .{id, data});
 					},
 				}
 			}
@@ -1300,7 +1300,7 @@ pub const Connection = struct { // MARK: Connection
 			port = port[1..];
 		}
 		result.remoteAddress.port = std.fmt.parseUnsigned(u16, port, 10) catch blk: {
-			if(ip.len != ipPort.len) std.log.warn("Could not parse port \"{s}\". Using default port instead.", .{port});
+			if(ip.len != ipPort.len) std.log.err("Could not parse port \"{s}\". Using default port instead.", .{port});
 			break :blk settings.defaultPort;
 		};
 
@@ -1671,7 +1671,7 @@ pub const Connection = struct { // MARK: Connection
 					try prot(self, data);
 				}
 			} else {
-				std.log.warn("Received unknown important protocol with id {}", .{protocol});
+				std.log.err("Received unknown important protocol with id {}", .{protocol});
 			}
 		}
 	}
@@ -1727,7 +1727,7 @@ pub const Connection = struct { // MARK: Connection
 			if(Protocols.list[protocol]) |prot| {
 				try prot(self, data[1..]);
 			} else {
-				std.log.warn("Received unknown protocol with id {}", .{protocol});
+				std.log.err("Received unknown protocol with id {}", .{protocol});
 			}
 		}
 	}

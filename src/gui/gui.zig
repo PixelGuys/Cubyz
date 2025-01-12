@@ -248,7 +248,7 @@ fn load() void {
 					.otherAttachmentPoint = @enumFromInt(relPosZon.get(u8, "otherAttachmentPoint", 0)),
 				}};
 			} else {
-				std.log.warn("Unknown window attachment type: {s}", .{typ});
+				std.log.err("Unknown window attachment type: {s}", .{typ});
 			}
 		}
 		window.scale = windowZon.get(f32, "scale", 1);
@@ -261,7 +261,7 @@ fn getWindowById(id: []const u8) ?*GuiWindow {
 			return window;
 		}
 	}
-	std.log.warn("Could not find window with id: {s}", .{id});
+	std.log.err("Could not find window with id: {s}", .{id});
 	return null;
 }
 
@@ -299,7 +299,7 @@ pub fn openWindow(id: []const u8) void {
 			return;
 		}
 	}
-	std.log.warn("Could not find window with id {s}.", .{id});
+	std.log.err("Could not find window with id {s}.", .{id});
 }
 
 pub fn openWindowFromRef(window: *GuiWindow) void {
@@ -324,7 +324,7 @@ pub fn toggleWindow(id: []const u8) void {
 			return;
 		}
 	}
-	std.log.warn("Could not find window with id {s}.", .{id});
+	std.log.err("Could not find window with id {s}.", .{id});
 }
 
 pub fn openHud() void {
@@ -358,7 +358,7 @@ pub fn closeWindow(id: []const u8) void {
 			return;
 		}
 	}
-	std.log.warn("Could not find window with id {s}.", .{id});
+	std.log.err("Could not find window with id {s}.", .{id});
 }
 
 pub fn setSelectedTextInput(newSelectedTextInput: ?*TextInput) void {
