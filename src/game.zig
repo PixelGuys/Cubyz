@@ -331,7 +331,7 @@ pub const DamageType = enum(u8) {
 	kill = 1,
 	fall = 2,
 	
-	pub fn message(self: DamageType, name: []const u8) void {
+	pub fn sendMessage(self: DamageType, name: []const u8) void {
 		switch (self) {
 			.none => main.server.sendMessage("", .{}),
 			.kill => main.server.sendMessage("{s}§#ffffff died", .{name}),
