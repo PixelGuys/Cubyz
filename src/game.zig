@@ -331,12 +331,12 @@ pub const DamageType = enum(u8) {
 	kill = 1,
 	fall = 2,
 	
-	pub fn message(self: DamageType, name: []const u8, allocator: main.utils.NeverFailingAllocator) []u8 {
-		return switch (self) {
-			.none => std.fmt.allocPrint(allocator.allocator, "", .{}) catch unreachable,
-			.kill => std.fmt.allocPrint(allocator.allocator, "{s}§#ffffff died", .{name}) catch unreachable,
-			.fall => std.fmt.allocPrint(allocator.allocator, "{s}§#ffffff died of fall damage", .{name}) catch unreachable,
-		};
+	pub fn message(self: DamageType, name: []const u8) void {
+		switch (self) {
+			.none => main.server.sendMessage("", .{}),
+			.kill => main.server.sendMessage("{s}§#ffffff died", .{name}),
+			.fall => main.server.sendMessage("{s}§#ffffff died of fall damage", .{name}),
+		}
 	}
 };
 

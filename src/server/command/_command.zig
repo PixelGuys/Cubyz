@@ -33,13 +33,9 @@ pub fn execute(msg: []const u8, source: *User) void {
 	const end = std.mem.indexOfScalar(u8, msg, ' ') orelse msg.len;
 	const command = msg[0..end];
 	if(commands.get(command)) |cmd| {
-		const result = std.fmt.allocPrint(main.stackAllocator.allocator, "#00ff00Executing Command /{s}", .{msg}) catch unreachable;
-		defer main.stackAllocator.free(result);
-		source.sendMessage(result);
+		source.sendMessage("#00ff00Executing Command /{s}", .{msg});
 		cmd.exec(msg[@min(end + 1, msg.len)..], source);
 	} else {
-		const result = std.fmt.allocPrint(main.stackAllocator.allocator, "#ff0000Unrecognized Command \"{s}\"", .{command}) catch unreachable;
-		defer main.stackAllocator.free(result);
-		source.sendMessage(result);
+		source.sendMessage("#ff0000Unrecognized Command \"{s}\"", .{command});
 	}
 }

@@ -23,20 +23,16 @@ pub fn execute(args: []const u8, source: *User) void {
 			return;
 		} else {
 			gameTime = std.fmt.parseInt(i64, arg, 0) catch {
-				const msg = std.fmt.allocPrint(main.stackAllocator.allocator, "#ff0000Expected i64 number, found \"{s}\"", .{arg}) catch unreachable;
-				defer main.stackAllocator.free(msg);
-				source.sendMessage(msg);
+				source.sendMessage("#ff0000Expected i64 number, found \"{s}\"", .{arg});
 				return;
 			};
 		}
 		if(split.next() != null) {
-			source.sendMessage("#ff0000Too many arguments for command /time");
+			source.sendMessage("#ff0000Too many arguments for command /time", .{});
 			return;
 		}
 		main.server.world.?.gameTime = gameTime;
 		return;
 	}
-	const msg = std.fmt.allocPrint(main.stackAllocator.allocator, "#ffff00{}", .{main.server.world.?.gameTime}) catch unreachable;
-	defer main.stackAllocator.free(msg);
-	source.sendMessage(msg);
+	source.sendMessage("#ffff00{}", .{main.server.world.?.gameTime});
 }

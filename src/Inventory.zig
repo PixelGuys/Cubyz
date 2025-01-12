@@ -677,10 +677,8 @@ pub const Command = struct { // MARK: Command
 				.addHealth => |info| {
 					if (side == .server) {
 						if (info.source.?.player.health <= 0) {
-							const message = info.cause.message(info.source.?.name, main.stackAllocator);
-							defer main.stackAllocator.free(message);
-							main.server.sendMessage(message);
-
+							info.cause.sendMessage(info.source.?.name);
+							
 							main.network.Protocols.genericUpdate.sendKill(info.source.?.conn);
 						}
 					}
