@@ -74,6 +74,45 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		}
 	}
 
+	pub fn clone(self: *const ZonElement, allocator: NeverFailingAllocator) ZonElement {
+		return switch (self.*) {
+			.int, .float, .string, .bool, .null => self.*,
+			.stringOwned => |stringOwned| .{.stringOwned = allocator.allocator.dupe(u8, stringOwned) catch unreachable},
+			.array => |array| blk: {
+				const out = ZonElement.initArray(allocator);
+
+				for (0..array.items.len) |i| {
+					out.array.append(array.items[i].clone(allocator));
+				}
+				
+				break :blk out;
+			},
+			.object => |object| blk: {
+				const out = ZonElement.initObject(allocator);
+
+				var iter = object.iterator();
+				while (iter.next()) |entry| {
+					out.put(entry.key_ptr.*, entry.value_ptr.clone(allocator));
+				}
+
+				break :blk out;
+			}
+		};
+	}
+
+	pub fn join(self: *const ZonElement, other: ZonElement, overlapMode: enum { keep, replace }) void {
+		if (other == .null) {
+			return;
+		}
+		
+		var iter = other.object.iterator();
+		while (iter.next()) |entry| {
+			if (self.object.contains(entry.key_ptr.*) and overlapMode == .keep) continue;
+
+			self.put(entry.key_ptr.*, entry.value_ptr.clone(NeverFailingAllocator {.allocator = self.object.allocator, .IAssertThatTheProvidedAllocatorCantFail = {}}));
+		}
+	}
+
 	pub fn as(self: *const ZonElement, comptime T: type, replacement: T) T {
 		comptime var typeInfo : std.builtin.Type = @typeInfo(T);
 		comptime var innerType = T;
