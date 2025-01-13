@@ -332,6 +332,7 @@ pub const Player = struct { // MARK: Player
 	pub var eyeVel: Vec3d = .{0, 0, 0};
 	pub var eyeCoyote: f64 = 0;
 	pub var eyeStep: @Vector(3, bool) = .{false, false, false};
+	pub var crouching: bool = false;
 	pub var id: u32 = 0;
 	pub var gamemode: Atomic(Gamemode) = .init(.creative);
 	pub var isFlying: Atomic(bool) = .init(false);
@@ -348,16 +349,19 @@ pub const Player = struct { // MARK: Player
 	pub var jumpCooldown: f64 = 0;
 	const jumpCooldownConstant = 0.3;
 
-	pub const outerBoundingBoxExtent: Vec3d = .{0.3, 0.3, 0.9};
-	pub const outerBoundingBox: collision.Box = .{
-		.min = -outerBoundingBoxExtent,
-		.max = outerBoundingBoxExtent,
+	pub const standingBoundingBoxExtent: Vec3d = .{0.3, 0.3, 0.9};
+	pub const crouchingBoundingBoxExtent: Vec3d = .{0.3, 0.3, 0.75};
+
+	pub var outerBoundingBoxExtent: Vec3d = standingBoundingBoxExtent;
+	pub var outerBoundingBox: collision.Box = .{
+		.min = -standingBoundingBoxExtent,
+		.max = standingBoundingBoxExtent,
 	};
-	const eyeBox: collision.Box = .{
-		.min = -Vec3d{outerBoundingBoxExtent[0]*0.2, outerBoundingBoxExtent[1]*0.2, 0.6},
-		.max = Vec3d{outerBoundingBoxExtent[0]*0.2, outerBoundingBoxExtent[1]*0.2, 0.9 - 0.05},
+	pub var eyeBox: collision.Box = .{
+		.min = -Vec3d{standingBoundingBoxExtent[0]*0.2, standingBoundingBoxExtent[1]*0.2, 0.6},
+		.max = Vec3d{standingBoundingBoxExtent[0]*0.2, standingBoundingBoxExtent[1]*0.2, 0.9 - 0.05},
 	};
-	pub const desiredEyePos: Vec3d = .{0, 0, 1.7 - outerBoundingBoxExtent[2]};
+	pub var desiredEyePos: Vec3d = .{0, 0, 1.7 - standingBoundingBoxExtent[2]};
 	pub const jumpHeight = 1.25;
 
 	fn loadFrom(zon: ZonElement) void {
@@ -697,9 +701,26 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		const right = Vec3d{-forward[1], forward[0], 0};
 		var movementDir: Vec3d = .{0, 0, 0};
 		var movementSpeed: f64 = 0;
+		
+		var crouch: bool = false;
+
 		if(main.Window.grabbed) {
+			if (KeyBoard.key("crouch").pressed) {
+				crouch = true;
+			}
 			if(KeyBoard.key("forward").value > 0.0) {
-				if(KeyBoard.key("sprint").pressed) {
+				if (KeyBoard.key("crouch").pressed) {
+					if(Player.isGhost.load(.monotonic)) {
+						movementSpeed = @max(movementSpeed, 32)*KeyBoard.key("forward").value;
+						movementDir += forward*@as(Vec3d, @splat(32*KeyBoard.key("forward").value));
+					} else if(Player.isFlying.load(.monotonic)) {
+						movementSpeed = @max(movementSpeed, 4)*KeyBoard.key("forward").value;
+						movementDir += forward*@as(Vec3d, @splat(4*KeyBoard.key("forward").value));
+					} else {
+						movementSpeed = @max(movementSpeed, 2)*KeyBoard.key("forward").value;
+						movementDir += forward*@as(Vec3d, @splat(2*KeyBoard.key("forward").value));
+					}
+				} else if (KeyBoard.key("sprint").pressed) {
 					if(Player.isGhost.load(.monotonic)) {
 						movementSpeed = @max(movementSpeed, 128)*KeyBoard.key("forward").value;
 						movementDir += forward*@as(Vec3d, @splat(128*KeyBoard.key("forward").value));
@@ -777,6 +798,31 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 				@floatCast(main.KeyBoard.key("cameraDown").value - main.KeyBoard.key("cameraUp").value),
 			} * @as(Vec2f, @splat(3.14 * settings.controllerSensitivity));
 			main.game.camera.moveRotation(newPos[0] / 64.0, newPos[1] / 64.0);
+		}
+
+		if (crouch != Player.crouching) {
+			if (collision.collides(.client, .x, 0, Player.super.pos + Player.standingBoundingBoxExtent - Player.crouchingBoundingBoxExtent, .{
+				.min = -Player.standingBoundingBoxExtent,
+				.max = Player.standingBoundingBoxExtent,
+			}) == null) {
+				Player.crouching = crouch;
+
+				const newOuterBox = if (crouch) Player.crouchingBoundingBoxExtent else Player.standingBoundingBoxExtent;
+				
+				Player.super.pos += newOuterBox - Player.outerBoundingBoxExtent;
+				
+				Player.outerBoundingBoxExtent = newOuterBox;
+				
+				Player.outerBoundingBox = .{
+					.min = -Player.outerBoundingBoxExtent,
+					.max = Player.outerBoundingBoxExtent,
+				};
+				Player.eyeBox = .{
+					.min = -Vec3d{Player.outerBoundingBoxExtent[0]*0.2, Player.outerBoundingBoxExtent[1]*0.2, Player.outerBoundingBoxExtent[2] - 0.3},
+					.max = Vec3d{Player.outerBoundingBoxExtent[0]*0.2, Player.outerBoundingBoxExtent[1]*0.2, Player.outerBoundingBoxExtent[2] - 0.05},
+				};
+				Player.desiredEyePos = if (crouch) .{0, 0, 1.3 - Player.crouchingBoundingBoxExtent[2]} else .{0, 0, 1.7 - Player.standingBoundingBoxExtent[2]};
+			}
 		}
 
 		// This our model for movement on a single frame:
