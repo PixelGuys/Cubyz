@@ -52,6 +52,7 @@ fn cacheString(comptime str: []const u8) []const u8 {
 var logFile: ?std.fs.File = undefined;
 var logFileTs: ?std.fs.File = undefined;
 var supportsANSIColors: bool = undefined;
+var openingErrorWindow: bool = false;
 // overwrite the log function:
 pub const std_options: std.Options = .{ // MARK: std_options
 	.log_level = .debug,
@@ -180,8 +181,10 @@ pub const std_options: std.Options = .{ // MARK: std_options
 			resultArgs[resultArgs.len - 1] = colorReset;
 		}
 		logToStdErr(formatString, resultArgs);
-		if(level == .err) {
+		if(level == .err and !openingErrorWindow) {
+			openingErrorWindow = true;
 			gui.openWindow("error_prompt");
+			openingErrorWindow = false;
 		}
 	}}.logFn,
 };
