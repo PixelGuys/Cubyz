@@ -1038,8 +1038,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			steppingHeight = Player.super.vel[2]*Player.super.vel[2]/gravity/2;
 		}
 		steppingHeight = @min(steppingHeight, Player.eyePos[2] - Player.eyeBox.min[2]);
-		std.debug.print("{d}\n", .{steppingHeight});
-
+		
 		const xMovement = collision.collideOrStep(.client, .x, move[0], Player.super.pos, hitBox, steppingHeight);
 		Player.super.pos += xMovement;
 		if (KeyBoard.key("crouch").pressed and Player.onGround) {
