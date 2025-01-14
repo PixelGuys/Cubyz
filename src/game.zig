@@ -748,7 +748,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			acc[2] = -gravity;
 		}
 
-		Player.currentFriction = if (Player.isFlying.load(.monotonic)) 25 else collision.calculateFriction(.client, Player.super.pos, Player.outerBoundingBox, 25);
+		Player.currentFriction = if (Player.isFlying.load(.monotonic)) 25 else collision.calculateFriction(.client, Player.super.pos, Player.outerBoundingBox, 20);
 		var baseFrictionCoefficient: f32 = Player.currentFriction;
 		var directionalFrictionCoefficients: Vec3f = @splat(0);
 		const speedMultiplier: f32 = if(Player.hyperSpeed.load(.monotonic)) 4.0 else 1.0;
@@ -1042,7 +1042,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		}
 		steppingHeight = @min(steppingHeight, Player.eyePos[2] - Player.eyeBox.min[2]);
 
-		const slipLimit = 0.1 * Player.currentFriction;
+		const slipLimit = 0.2 * Player.currentFriction;
 		const speed = vec.length(vec.xy(Player.super.vel));
 		
 		const xMovement = collision.collideOrStep(.client, .x, move[0], Player.super.pos, hitBox, steppingHeight);
