@@ -746,7 +746,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			acc[2] = -gravity;
 		}
 
-		var baseFrictionCoefficient: f32 = collision.calculateFriction(.client, Player.super.pos, Player.outerBoundingBox, 25);
+		var baseFrictionCoefficient: f32 = if (Player.isFlying.load(.monotonic)) 25 else collision.calculateFriction(.client, Player.super.pos, Player.outerBoundingBox, 25);
 		var directionalFrictionCoefficients: Vec3f = @splat(0);
 		const speedMultiplier: f32 = if(Player.hyperSpeed.load(.monotonic)) 4.0 else 1.0;
 
