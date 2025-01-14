@@ -305,14 +305,14 @@ pub const collision = struct {
 				const area = (max[0] - min[0]) * (max[1] - min[1]);
 				
 				if (_block) |block| {
-					friction += @as(f32, @floatCast(area / areaBottom)) * block.friction();
+					friction += @as(f32, @floatCast(area / areaBottom)) * (1 / block.friction());
 				} else {
-					friction += @as(f32, @floatCast(area / areaBottom)) * defaultFriction;
+					friction += @as(f32, @floatCast(area / areaBottom)) * (1 / defaultFriction);
 				}
 			}
 		}
 
-		return friction;
+		return 1 / friction;
 	}
 
 	pub fn collideOrStep(comptime side: main.utils.Side, comptime dir: Direction, amount: f64, pos: Vec3d, hitBox: Box, steppingHeight: f64) Vec3d {
