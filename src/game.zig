@@ -15,6 +15,7 @@ const Connection = network.Connection;
 const ConnectionManager = network.ConnectionManager;
 const vec = @import("vec.zig");
 const Vec2f = vec.Vec2f;
+const Vec2d = vec.Vec2d;
 const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
 const Vec3d = vec.Vec3d;
@@ -277,6 +278,43 @@ pub const collision = struct {
 		return resultBox;
 	}
 
+	pub fn calculateFriction(comptime side: main.utils.Side, pos: Vec3d, hitBox: Box, defaultFriction: f32) f32 {
+		const boundingBox: Box = .{
+			.min = pos + hitBox.min,
+			.max = pos + hitBox.max,
+		};
+		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0]));
+		const maxX: i32 = @intFromFloat(@floor(boundingBox.max[0] - 0.0001));
+		const minY: i32 = @intFromFloat(@floor(boundingBox.min[1]));
+		const maxY: i32 = @intFromFloat(@floor(boundingBox.max[1] - 0.0001));
+
+		const areaBottom = (boundingBox.max[0] - boundingBox.min[0]) * (boundingBox.max[1] - boundingBox.min[1]);
+		
+		const z: i32 = @intFromFloat(@floor(boundingBox.min[2] - 0.01));
+
+		var friction: f32 = 0;
+
+		var x: i32 = minX;
+		while (x <= maxX) : (x += 1) {
+			var y: i32 = minY;
+			while (y <= maxY) : (y += 1) {
+				const _block = if(side == .client) main.renderer.mesh_storage.getBlock(x, y, z)
+				else main.server.world.?.getBlock(x, y, z);
+				const min = @max(Vec2d{@floatFromInt(x), @floatFromInt(y)}, vec.xy(boundingBox.min));
+				const max = @min(Vec2d{@floatFromInt(x + 1), @floatFromInt(y + 1)}, vec.xy(boundingBox.max));
+				const area = (max[0] - min[0]) * (max[1] - min[1]);
+				
+				if (_block) |block| {
+					friction += @as(f32, @floatCast(area / areaBottom)) * block.friction();
+				} else {
+					friction += @as(f32, @floatCast(area / areaBottom)) * defaultFriction;
+				}
+			}
+		}
+
+		return friction;
+	}
+
 	pub fn collideOrStep(comptime side: main.utils.Side, comptime dir: Direction, amount: f64, pos: Vec3d, hitBox: Box, steppingHeight: f64) Vec3d {
 		const index = @intFromEnum(dir);
 
@@ -351,6 +389,7 @@ pub const Player = struct { // MARK: Player
 
 	pub const standingBoundingBoxExtent: Vec3d = .{0.3, 0.3, 0.9};
 	pub const crouchingBoundingBoxExtent: Vec3d = .{0.3, 0.3, 0.75};
+	pub var crouchPerc: f32 = 0;
 
 	pub var outerBoundingBoxExtent: Vec3d = standingBoundingBoxExtent;
 	pub var outerBoundingBox: collision.Box = .{
@@ -684,7 +723,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			acc[2] = -gravity;
 		}
 
-		var baseFrictionCoefficient: f32 = 50;
+		var baseFrictionCoefficient: f32 = collision.calculateFriction(.client, Player.super.pos, Player.outerBoundingBox, 50);
 		var directionalFrictionCoefficients: Vec3f = @splat(0);
 		const speedMultiplier: f32 = if(Player.hyperSpeed.load(.monotonic)) 4.0 else 1.0;
 
@@ -709,17 +748,9 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 				crouch = true;
 			}
 			if(KeyBoard.key("forward").value > 0.0) {
-				if (KeyBoard.key("crouch").pressed) {
-					if(Player.isGhost.load(.monotonic)) {
-						movementSpeed = @max(movementSpeed, 32)*KeyBoard.key("forward").value;
-						movementDir += forward*@as(Vec3d, @splat(32*KeyBoard.key("forward").value));
-					} else if(Player.isFlying.load(.monotonic)) {
-						movementSpeed = @max(movementSpeed, 4)*KeyBoard.key("forward").value;
-						movementDir += forward*@as(Vec3d, @splat(4*KeyBoard.key("forward").value));
-					} else {
-						movementSpeed = @max(movementSpeed, 2)*KeyBoard.key("forward").value;
-						movementDir += forward*@as(Vec3d, @splat(2*KeyBoard.key("forward").value));
-					}
+				if (Player.crouching) {
+					movementSpeed = @max(movementSpeed, 2)*KeyBoard.key("forward").value;
+					movementDir += forward*@as(Vec3d, @splat(2*KeyBoard.key("forward").value));
 				} else if (KeyBoard.key("sprint").pressed) {
 					if(Player.isGhost.load(.monotonic)) {
 						movementSpeed = @max(movementSpeed, 128)*KeyBoard.key("forward").value;
@@ -737,16 +768,31 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 				}
 			}
 			if(KeyBoard.key("backward").value > 0.0) {
-				movementSpeed = @max(movementSpeed, 4)*KeyBoard.key("backward").value;
-				movementDir += forward*@as(Vec3d, @splat(-4*KeyBoard.key("backward").value));
+				if (Player.crouching) {
+					movementSpeed = @max(movementSpeed, 2)*KeyBoard.key("backward").value;
+					movementDir += forward*@as(Vec3d, @splat(-2*KeyBoard.key("backward").value));
+				} else {
+					movementSpeed = @max(movementSpeed, 4)*KeyBoard.key("backward").value;
+					movementDir += forward*@as(Vec3d, @splat(-4*KeyBoard.key("backward").value));
+				}
 			}
 			if(KeyBoard.key("left").value > 0.0) {
-				movementSpeed = @max(movementSpeed, 4*KeyBoard.key("left").value);
-				movementDir += right*@as(Vec3d, @splat(4*KeyBoard.key("left").value));
+				if (Player.crouching) {
+					movementSpeed = @max(movementSpeed, 2)*KeyBoard.key("left").value;
+					movementDir += right*@as(Vec3d, @splat(2*KeyBoard.key("left").value));
+				} else {
+					movementSpeed = @max(movementSpeed, 4)*KeyBoard.key("left").value;
+					movementDir += right*@as(Vec3d, @splat(4*KeyBoard.key("left").value));
+				}
 			}
 			if(KeyBoard.key("right").value > 0.0) {
-				movementSpeed = @max(movementSpeed, 4*KeyBoard.key("right").value);
-				movementDir += right*@as(Vec3d, @splat(-4*KeyBoard.key("right").value));
+				if (Player.crouching) {
+					movementSpeed = @max(movementSpeed, 2)*KeyBoard.key("right").value;
+					movementDir += right*@as(Vec3d, @splat(-2*KeyBoard.key("right").value));
+				} else {
+					movementSpeed = @max(movementSpeed, 4)*KeyBoard.key("right").value;
+					movementDir += right*@as(Vec3d, @splat(-4*KeyBoard.key("right").value));
+				}
 			}
 			if(KeyBoard.key("jump").pressed) {
 				if(Player.isFlying.load(.monotonic)) {
@@ -800,30 +846,44 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			main.game.camera.moveRotation(newPos[0] / 64.0, newPos[1] / 64.0);
 		}
 
-		if (crouch != Player.crouching) {
-			if (collision.collides(.client, .x, 0, Player.super.pos + Player.standingBoundingBoxExtent - Player.crouchingBoundingBoxExtent, .{
-				.min = -Player.standingBoundingBoxExtent,
-				.max = Player.standingBoundingBoxExtent,
-			}) == null) {
-				Player.crouching = crouch;
+		// if (crouch != Player.crouching) {
+		if (collision.collides(.client, .x, 0, Player.super.pos + Player.standingBoundingBoxExtent - Player.crouchingBoundingBoxExtent, .{
+			.min = -Player.standingBoundingBoxExtent,
+			.max = Player.standingBoundingBoxExtent,
+		}) == null) {
+			Player.crouching = crouch;
 
-				const newOuterBox = if (crouch) Player.crouchingBoundingBoxExtent else Player.standingBoundingBoxExtent;
-				
-				Player.super.pos += newOuterBox - Player.outerBoundingBoxExtent;
-				
-				Player.outerBoundingBoxExtent = newOuterBox;
-				
-				Player.outerBoundingBox = .{
-					.min = -Player.outerBoundingBoxExtent,
-					.max = Player.outerBoundingBoxExtent,
-				};
-				Player.eyeBox = .{
-					.min = -Vec3d{Player.outerBoundingBoxExtent[0]*0.2, Player.outerBoundingBoxExtent[1]*0.2, Player.outerBoundingBoxExtent[2] - 0.3},
-					.max = Vec3d{Player.outerBoundingBoxExtent[0]*0.2, Player.outerBoundingBoxExtent[1]*0.2, Player.outerBoundingBoxExtent[2] - 0.05},
-				};
-				Player.desiredEyePos = if (crouch) .{0, 0, 1.3 - Player.crouchingBoundingBoxExtent[2]} else .{0, 0, 1.7 - Player.standingBoundingBoxExtent[2]};
+			if (crouch) {
+				Player.crouchPerc += @floatCast(deltaTime * 10);
+				if (Player.crouchPerc > 1) {
+					Player.crouchPerc = 1;
+				}
+			} else {
+				Player.crouchPerc -= @floatCast(deltaTime * 10);
+				if (Player.crouchPerc < 0) {
+					Player.crouchPerc = 0;
+				}
 			}
+
+			const smoothPerc = Player.crouchPerc * Player.crouchPerc * (3 - 2 * Player.crouchPerc);
+
+			const newOuterBox = (Player.crouchingBoundingBoxExtent - Player.standingBoundingBoxExtent) * @as(Vec3d, @splat(smoothPerc)) + Player.standingBoundingBoxExtent;//if (crouch) Player.crouchingBoundingBoxExtent else Player.standingBoundingBoxExtent;
+			
+			Player.super.pos += newOuterBox - Player.outerBoundingBoxExtent;
+			
+			Player.outerBoundingBoxExtent = newOuterBox;
+			
+			Player.outerBoundingBox = .{
+				.min = -Player.outerBoundingBoxExtent,
+				.max = Player.outerBoundingBoxExtent,
+			};
+			Player.eyeBox = .{
+				.min = -Vec3d{Player.outerBoundingBoxExtent[0]*0.2, Player.outerBoundingBoxExtent[1]*0.2, Player.outerBoundingBoxExtent[2] - 0.3},
+				.max = Vec3d{Player.outerBoundingBoxExtent[0]*0.2, Player.outerBoundingBoxExtent[1]*0.2, Player.outerBoundingBoxExtent[2] - 0.05},
+			};
+			Player.desiredEyePos = (Vec3d{0, 0, 1.3 - Player.crouchingBoundingBoxExtent[2]} - Vec3d{0, 0, 1.7 - Player.standingBoundingBoxExtent[2]}) * @as(Vec3f, @splat(smoothPerc)) + Vec3d{0, 0, 1.7 - Player.standingBoundingBoxExtent[2]};
 		}
+		// }
 
 		// This our model for movement on a single frame:
 		// dv/dt = a - λ·v
@@ -959,8 +1019,19 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 		const xMovement = collision.collideOrStep(.client, .x, move[0], Player.super.pos, hitBox, steppingHeight);
 		Player.super.pos += xMovement;
+		if (Player.crouching and collision.collides(.client, .x, 0, Player.super.pos - xMovement - Vec3d{0, 0, 0.01}, hitBox) != null) {
+			if (collision.collides(.client, .x, 0, Player.super.pos - Vec3d{0, 0, 1}, hitBox) == null) {
+				Player.super.pos -= xMovement;
+			}
+		}
+
 		const yMovement = collision.collideOrStep(.client, .y, move[1], Player.super.pos, hitBox, steppingHeight);
 		Player.super.pos += yMovement;
+		if (Player.crouching and collision.collides(.client, .y, 0, Player.super.pos - yMovement - Vec3d{0, 0, 0.01}, hitBox) != null) {
+			if (collision.collides(.client, .y, 0, Player.super.pos - Vec3d{0, 0, 1}, hitBox) == null) {
+				Player.super.pos -= yMovement;
+			}
+		}
 
 		if (xMovement[0] != move[0]) {
 			Player.super.vel[0] = 0;
