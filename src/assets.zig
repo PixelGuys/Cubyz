@@ -15,16 +15,20 @@ var commonItems: std.StringHashMap(ZonElement) = undefined;
 var commonRecipes: std.StringHashMap(ZonElement) = undefined;
 var commonModels: std.StringHashMap([]const u8) = undefined;
 
-fn findDefaultInAddon(dir: std.fs.Dir) ?std.fs.File {
+fn readDefaultFile(allocator: NeverFailingAllocator, dir: std.fs.Dir) !ZonElement {
 	if (dir.openFile("_defaults.zig.zon", .{})) |val| {
-		return val;
+		const string = try val.readToEndAlloc(main.stackAllocator.allocator, std.math.maxInt(usize));
+
+		return ZonElement.parseFromString(allocator, string);
 	} else |_| {}
 
 	if (dir.openFile("_defaults.zon", .{})) |val| {
-		return val;
+		const string = try val.readToEndAlloc(main.stackAllocator.allocator, std.math.maxInt(usize));
+
+		return ZonElement.parseFromString(allocator, string);
 	} else |_| {}
 
-	return null;
+	return .null;
 }
 
 /// Reads .zig.zon files recursively from all subfolders.
@@ -81,26 +85,17 @@ pub fn readAllZonFilesInAddons(externalAllocator: NeverFailingAllocator, addons:
 					const path = entry.dir.realpathAlloc(main.stackAllocator.allocator, ".") catch unreachable;
 					defer main.stackAllocator.free(path);
 					if (defaultMap.get(path)) |default| {
-						zon.join(default, .keep);
+						zon.join(default);
 					} else {
-						var default: ZonElement = .null;
-						
-						if (findDefaultInAddon(entry.dir)) |defaultFile| {
-							defer defaultFile.close();
-
-							const str = defaultFile.readToEndAlloc(main.stackAllocator.allocator, std.math.maxInt(usize)) catch |err| {
-								std.log.err("Failed to read default zon file: {s}", .{@errorName(err)});
-								continue;
-							};
-							defer main.stackAllocator.free(str);
-							
-							default = ZonElement.parseFromString(main.stackAllocator, str);
-						}
+						const default: ZonElement = readDefaultFile(main.stackAllocator, entry.dir) catch |err| blk: {
+							std.log.err("Failed to read default file: {s}", .{@errorName(err)});
+							break :blk .null;
+						};
 						
 						const key = entry.dir.realpathAlloc(main.stackAllocator.allocator, ".") catch unreachable;
 						defaultMap.put(key, default) catch unreachable;
 						
-						zon.join(default, .keep);
+						zon.join(default);
 					}
 				}
 				output.put(id, zon) catch unreachable;
@@ -210,7 +205,7 @@ pub fn readAssets(externalAllocator: NeverFailingAllocator, assetPath: []const u
 	};
 
 	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "blocks", true, blocks);
-	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "items", false, items);
+	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "items", true, items);
 	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "biomes", true, biomes);
 	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "recipes", false, recipes);
 	readAllObjFilesInAddonsHashmap(externalAllocator, addons, addonNames, "models", models);

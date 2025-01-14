@@ -7,8 +7,8 @@
 	.degradable = true,
 	.transparent = true,
 	.hasBackFace = true,
-	.solid= false,
-	.collide= false,
+	.solid = false,
+	.collide = false,
 
 	.model = "cubyz:cube",
 }

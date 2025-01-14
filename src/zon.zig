@@ -100,16 +100,47 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		};
 	}
 
-	pub fn join(self: *const ZonElement, other: ZonElement, overlapMode: enum { keep, replace }) void {
+	fn joinGetNew(self: ZonElement, _: ZonElement, allocator: NeverFailingAllocator) ZonElement {
+		switch (self) {
+			.int, .float, .string, .stringOwned, .bool, .null => {
+				return self.clone(allocator);
+			},
+			.array => {
+				const out = self.clone(allocator);
+				// for (self.array.items) |item| {
+				//  out.array.append(item.clone(allocator));
+				// }
+				// for (other.array.items) |item| {
+				//  out.array.append(item.clone(allocator));
+				// }
+				return out;
+			},
+			.object => {
+				const out = self.clone(allocator);//ZonElement.initObject(allocator);
+
+				// var selfIter = self.object.iterator();
+				// while (selfIter.next()) |entry| {
+				// out.put(entry.key_ptr.*, entry.value_ptr.clone(allocator));
+				// }
+				return out;
+			},
+		}
+
+		return .null;
+	}
+
+	pub fn join(self: *const ZonElement, other: ZonElement) void {
 		if (other == .null) {
 			return;
 		}
-		
+
 		var iter = other.object.iterator();
 		while (iter.next()) |entry| {
-			if (self.object.contains(entry.key_ptr.*) and overlapMode == .keep) continue;
-
-			self.put(entry.key_ptr.*, entry.value_ptr.clone(NeverFailingAllocator {.allocator = self.object.allocator, .IAssertThatTheProvidedAllocatorCantFail = {}}));
+			if (self.object.get(entry.key_ptr.*)) |_| {
+				// self.put(entry.key_ptr.*, entry.value_ptr.joinGetNew(val, NeverFailingAllocator {.allocator = self.object.allocator, .IAssertThatTheProvidedAllocatorCantFail = {}}));
+			} else {
+				self.put(entry.key_ptr.*, entry.value_ptr.clone(NeverFailingAllocator {.allocator = self.object.allocator, .IAssertThatTheProvidedAllocatorCantFail = {}}));
+			}
 		}
 	}
 
