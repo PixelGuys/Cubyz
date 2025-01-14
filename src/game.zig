@@ -403,6 +403,8 @@ pub const Player = struct { // MARK: Player
 	pub var inventory: Inventory = undefined;
 	pub var selectedSlot: u32 = 0;
 
+	pub var currentFriction: f32 = 0;
+
 	pub var maxHealth: f32 = 8;
 	pub var health: f32 = 4.5;
 
@@ -746,7 +748,8 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			acc[2] = -gravity;
 		}
 
-		var baseFrictionCoefficient: f32 = if (Player.isFlying.load(.monotonic)) 25 else collision.calculateFriction(.client, Player.super.pos, Player.outerBoundingBox, 25);
+		Player.currentFriction = if (Player.isFlying.load(.monotonic)) 25 else collision.calculateFriction(.client, Player.super.pos, Player.outerBoundingBox, 25);
+		var baseFrictionCoefficient: f32 = Player.currentFriction;
 		var directionalFrictionCoefficients: Vec3f = @splat(0);
 		const speedMultiplier: f32 = if(Player.hyperSpeed.load(.monotonic)) 4.0 else 1.0;
 
@@ -1038,10 +1041,13 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			steppingHeight = Player.super.vel[2]*Player.super.vel[2]/gravity/2;
 		}
 		steppingHeight = @min(steppingHeight, Player.eyePos[2] - Player.eyeBox.min[2]);
+
+		const slipLimit = 0.1 * Player.currentFriction;
+		const speed = vec.length(vec.xy(Player.super.vel));
 		
 		const xMovement = collision.collideOrStep(.client, .x, move[0], Player.super.pos, hitBox, steppingHeight);
 		Player.super.pos += xMovement;
-		if (KeyBoard.key("crouch").pressed and Player.onGround) {
+		if (KeyBoard.key("crouch").pressed and Player.onGround and speed < slipLimit) {
 			if (collision.collides(.client, .x, 0, Player.super.pos - Vec3d{0, 0, 1}, hitBox) == null) {
 				Player.super.pos -= xMovement;
 			}
@@ -1049,7 +1055,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 		const yMovement = collision.collideOrStep(.client, .y, move[1], Player.super.pos, hitBox, steppingHeight);
 		Player.super.pos += yMovement;
-		if (KeyBoard.key("crouch").pressed and Player.onGround) {
+		if (KeyBoard.key("crouch").pressed and Player.onGround and speed < slipLimit) {
 			if (collision.collides(.client, .y, 0, Player.super.pos - Vec3d{0, 0, 1}, hitBox) == null) {
 				Player.super.pos -= yMovement;
 			}
