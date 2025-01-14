@@ -100,28 +100,25 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		};
 	}
 
-	fn joinGetNew(self: ZonElement, _: ZonElement, allocator: NeverFailingAllocator) ZonElement {
+	fn joinGetNew(self: ZonElement, other: ZonElement, allocator: NeverFailingAllocator) ZonElement {
 		switch (self) {
 			.int, .float, .string, .stringOwned, .bool, .null => {
 				return self.clone(allocator);
 			},
 			.array => {
 				const out = self.clone(allocator);
-				// for (self.array.items) |item| {
-				//  out.array.append(item.clone(allocator));
-				// }
-				// for (other.array.items) |item| {
-				//  out.array.append(item.clone(allocator));
-				// }
+				for (other.array.items) |item| {
+					out.array.append(item.clone(allocator));
+				}
 				return out;
 			},
 			.object => {
-				const out = self.clone(allocator);//ZonElement.initObject(allocator);
+				const out = self.clone(allocator);
 
-				// var selfIter = self.object.iterator();
-				// while (selfIter.next()) |entry| {
-				// out.put(entry.key_ptr.*, entry.value_ptr.clone(allocator));
-				// }
+				var selfIter = self.object.iterator();
+				while (selfIter.next()) |entry| {
+					out.put(entry.key_ptr.*, entry.value_ptr.clone(allocator));
+				}
 				return out;
 			},
 		}
@@ -136,8 +133,8 @@ pub const ZonElement = union(enum) { // MARK: Zon
 
 		var iter = other.object.iterator();
 		while (iter.next()) |entry| {
-			if (self.object.get(entry.key_ptr.*)) |_| {
-				// self.put(entry.key_ptr.*, entry.value_ptr.joinGetNew(val, NeverFailingAllocator {.allocator = self.object.allocator, .IAssertThatTheProvidedAllocatorCantFail = {}}));
+			if (self.object.get(entry.key_ptr.*)) |val| {
+				self.put(entry.key_ptr.*, entry.value_ptr.joinGetNew(val, NeverFailingAllocator {.allocator = self.object.allocator, .IAssertThatTheProvidedAllocatorCantFail = {}}));
 			} else {
 				self.put(entry.key_ptr.*, entry.value_ptr.clone(NeverFailingAllocator {.allocator = self.object.allocator, .IAssertThatTheProvidedAllocatorCantFail = {}}));
 			}
