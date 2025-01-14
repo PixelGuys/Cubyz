@@ -5,7 +5,7 @@
 	.degradable = true,
 	.collide = false,
 	.alwaysViewThrough = true,
-	.absorbedLight = 0x000000,	
+	.absorbedLight = 0x000000,
 	.model = "cubyz:plane",
 	.rotation = .carpet,
 	.texture = "cubyz:dead_leaf_pile",
@@ -13,4 +13,5 @@
 		.texture = "dead_leaf_pile.png",
 	},
 	.lodReplacement = "cubyz:air",
+	.opaqueVariant = "cubyz:air",
 }
