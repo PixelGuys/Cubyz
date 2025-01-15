@@ -2,7 +2,6 @@
 	.properties = .{
 		.wet,
 		.hot,
-		.overgrown,
 	},
 	.minHeight = -4,
 	.maxHeight = 4,
