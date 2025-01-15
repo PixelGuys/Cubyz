@@ -1042,22 +1042,23 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		}
 		steppingHeight = @min(steppingHeight, Player.eyePos[2] - Player.eyeBox.min[2]);
 
-		const slipLimit = 0.2 * Player.currentFriction;
-		const speed = vec.length(vec.xy(Player.super.vel));
+		const slipLimit = 0.1 * Player.currentFriction;
 		
-		const xMovement = collision.collideOrStep(.client, .x, move[0], Player.super.pos, hitBox, steppingHeight);
+		var xMovement = collision.collideOrStep(.client, .x, move[0], Player.super.pos, hitBox, steppingHeight);
 		Player.super.pos += xMovement;
-		if (KeyBoard.key("crouch").pressed and Player.onGround and speed < slipLimit) {
+		if (KeyBoard.key("crouch").pressed and Player.onGround and @abs(xMovement[0]) < slipLimit) {
 			if (collision.collides(.client, .x, 0, Player.super.pos - Vec3d{0, 0, 1}, hitBox) == null) {
 				Player.super.pos -= xMovement;
+				xMovement[0] = 0;
 			}
 		}
 
-		const yMovement = collision.collideOrStep(.client, .y, move[1], Player.super.pos, hitBox, steppingHeight);
+		var yMovement = collision.collideOrStep(.client, .y, move[1], Player.super.pos, hitBox, steppingHeight);
 		Player.super.pos += yMovement;
-		if (KeyBoard.key("crouch").pressed and Player.onGround and speed < slipLimit) {
+		if (KeyBoard.key("crouch").pressed and Player.onGround and @abs(yMovement[1]) < slipLimit) {
 			if (collision.collides(.client, .y, 0, Player.super.pos - Vec3d{0, 0, 1}, hitBox) == null) {
 				Player.super.pos -= yMovement;
+				yMovement[1] = 0;
 			}
 		}
 
