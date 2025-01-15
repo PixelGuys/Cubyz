@@ -1,0 +1,25 @@
+.{
+	.properties = .{
+		.hot,
+		.wet,
+		.overgrown,
+	},
+	.minHeight = -4,
+	.maxHeight = 1,
+	.minRadius = 32,
+	.maxRadius = 48,
+	.chance = 0,
+	.roughness = 4,
+	.hills = 3,
+	.music = "cubyz:leaves",
+	.validPlayerSpawn = true,
+	.ground_structure = .{
+		"4 to 5 cubyz:mud",
+	},
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:swamp/base",
+			.chance = 24,
+		},
+	},
+}
