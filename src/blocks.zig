@@ -123,7 +123,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_alwaysViewThrough[size] = zon.get(bool, "alwaysViewThrough", false);
 	_viewThrough[size] = zon.get(bool, "viewThrough", false) or _transparent[size] or _alwaysViewThrough[size];
 	_hasBackFace[size] = zon.get(bool, "hasBackFace", false);
-	_friction[size] = zon.get(f32, "friction", 25);
+	_friction[size] = zon.get(f32, "friction", 20);
 
 	const oreProperties = zon.getChild("ore");
 	if (oreProperties != .null) {
