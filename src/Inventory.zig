@@ -1551,8 +1551,8 @@ pub fn placeBlock(self: Inventory, slot: u32) void {
 	main.renderer.MeshSelection.placeBlock(self, slot);
 }
 
-pub fn breakBlock(self: Inventory, slot: u32) void {
-	main.renderer.MeshSelection.breakBlock(self, slot);
+pub fn breakBlock(self: Inventory, slot: u32, deltaTime: f64) void {
+	main.renderer.MeshSelection.breakBlock(self, slot, deltaTime);
 }
 
 pub fn size(self: Inventory) usize {

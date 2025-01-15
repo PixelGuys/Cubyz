@@ -442,9 +442,9 @@ pub const Player = struct { // MARK: Player
 		inventory.placeBlock(selectedSlot);
 	}
 
-	pub fn breakBlock() void { // TODO: Breaking animation and tools
+	pub fn breakBlock(deltaTime: f64) void {
 		if(!main.Window.grabbed) return;
-		inventory.breakBlock(selectedSlot);
+		inventory.breakBlock(selectedSlot, deltaTime);
 	}
 
 	pub fn acquireSelectedBlock() void {
@@ -634,7 +634,7 @@ pub fn releasePlace() void {
 pub fn pressBreak() void {
 	const time = std.time.milliTimestamp();
 	nextBlockBreakTime = time + main.settings.updateRepeatDelay;
-	Player.breakBlock();
+	Player.breakBlock(0);
 }
 
 pub fn releaseBreak() void {
@@ -894,9 +894,9 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		}
 	}
 	if(nextBlockBreakTime) |*breakTime| {
-		if(time -% breakTime.* >= 0) {
+		if(time -% breakTime.* >= 0 or !Player.isCreative()) {
 			breakTime.* += main.settings.updateRepeatSpeed;
-			Player.breakBlock();
+			Player.breakBlock(deltaTime);
 		}
 	}
 
