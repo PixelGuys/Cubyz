@@ -327,14 +327,14 @@ pub const collision = struct {
 pub const Gamemode = enum(u8) { survival = 0, creative = 1 };
 
 pub const DamageType = enum(u8) {
-	none = 0, // For when you are adding health
+	heal = 0, // For when you are adding health
 	kill = 1,
 	fall = 2,
 	
 	pub fn sendMessage(self: DamageType, name: []const u8) void {
 		switch (self) {
-			.none => main.server.sendMessage("", .{}),
-			.kill => main.server.sendMessage("{s}§#ffffff died", .{name}),
+			.heal => main.server.sendMessage("", .{}),
+			.kill => main.server.sendMessage("{s}§#ffffff was killed", .{name}),
 			.fall => main.server.sendMessage("{s}§#ffffff died of fall damage", .{name}),
 		}
 	}
@@ -455,21 +455,11 @@ pub const Player = struct { // MARK: Player
 		inventory.placeBlock(selectedSlot);
 	}
 
-	pub fn damage(dam: f32, cause: DamageType) void {
-		if (Player.isCreative()) {
-			return;
-		}
-
-		Player.super.health -= dam;
-
-		Inventory.addHealth(-dam, cause);
-	}
-
 	pub fn kill() void {
 		Player.super.pos = world.?.spawn;
 		Player.super.vel = .{0, 0, 0};
 		
-		Inventory.addHealth(8, .none);
+		Inventory.addHealth(8, .heal);
 
 		Player.eyeVel = .{0, 0, 0};
 		Player.eyeCoyote = 0;
@@ -992,7 +982,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 			const damage: f32 = @floatCast(@max((Player.super.vel[2] * Player.super.vel[2]) / (2 * gravity) - 3, 0) * 0.5);
 			if (damage > 0.01) {
-				Player.damage(damage, .fall);
+				Inventory.addHealth(-damage, .fall);
 			}
 			Player.super.vel[2] = 0;
 
