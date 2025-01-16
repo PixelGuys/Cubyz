@@ -23,7 +23,6 @@
 		.inputs = .{"4 cubyz:willow_planks"},
 		.output = "cubyz:workbench",
 	},
-
 	.{
 		.inputs = .{"cubyz:birch_log"},
 		.output = "4 cubyz:birch_planks",
@@ -72,7 +71,6 @@
 		.inputs = .{"cubyz:willow_top"},
 		.output = "3 cubyz:willow_planks",
 	},
-
 	.{
 		.inputs = .{"cubyz:birch_planks"},
 		.output = "2 cubyz:birch_fence",
