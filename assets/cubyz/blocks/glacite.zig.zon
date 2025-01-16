@@ -5,6 +5,17 @@
 	.drops = .{
 		.{.items = .{.auto}},
 	},
+	.item = .{
+		.material = .{
+			.density = 0.8,
+			.resistance = 0.9,
+			.power = 0.4,
+			.roughness = 1.5,
+			.colors = .{
+				0xff3d3d3d, 0xff535353, 0xff6b6b6b, 0xff81807e, 0xff9c9996,
+			},
+		},
+	},
 	.rotation = .stairs,
 	.model = "cubyz:cube",
 	.texture = "cubyz:glacite",
