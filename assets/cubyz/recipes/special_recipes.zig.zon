@@ -15,4 +15,8 @@
 		.inputs = .{"cubyz:pine_planks", "cubyz:iron_ingot"},
 		.output = "cubyz:chisel",
 	},
+	.{
+		.inputs = .{"cubyz:coal", "cubyz:iron_ore"},
+		.output = "cubyz:iron_ingot",
+	},
 }
