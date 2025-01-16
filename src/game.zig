@@ -290,32 +290,8 @@ pub const collision = struct {
 
 		const z: i32 = @intFromFloat(@floor(boundingBox.min[2] - 0.01));
 
-		var friction: f32 = 0;
+		var friction: f64 = 0;
 		var totalArea: f64 = 0;
-
-		{
-			var x: i32 = minX;
-			while (x <= maxX) : (x += 1) {
-				var y: i32 = minY;
-				while (y <= maxY) : (y += 1) {
-					const _block = if(side == .client) main.renderer.mesh_storage.getBlock(x, y, z)
-					else main.server.world.?.getBlock(x, y, z);
-					const min = @max(Vec2d{@floatFromInt(x), @floatFromInt(y)}, vec.xy(boundingBox.min));
-					const max = @min(Vec2d{@floatFromInt(x + 1), @floatFromInt(y + 1)}, vec.xy(boundingBox.max));
-					const area = (max[0] - min[0]) * (max[1] - min[1]);
-
-					if (_block) |block| {
-						if (block.collide()) {
-							totalArea += area;
-						}
-					}
-				}
-			}
-		}
-
-		if (totalArea == 0) {
-			return defaultFriction;
-		}
 
 		var x = minX;
 		while (x <= maxX) : (x += 1) {
@@ -329,13 +305,18 @@ pub const collision = struct {
 				
 				if (_block) |block| {
 					if (block.collide()) {
-						friction += @as(f32, @floatCast(area / totalArea)) * (1 / block.friction());
+						totalArea += area;
+						friction += area * @as(f64, @floatCast(1 / block.friction()));
 					}
 				}
 			}
 		}
+		
+		if (totalArea == 0) {
+			return defaultFriction;
+		}
 
-		return 1 / friction;
+		return @floatCast(totalArea / friction);
 	}
 
 	pub fn collideOrStep(comptime side: main.utils.Side, comptime dir: Direction, amount: f64, pos: Vec3d, hitBox: Box, steppingHeight: f64) Vec3d {
@@ -908,7 +889,6 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			};
 			Player.desiredEyePos = (Vec3d{0, 0, 1.3 - Player.crouchingBoundingBoxExtent[2]} - Vec3d{0, 0, 1.7 - Player.standingBoundingBoxExtent[2]}) * @as(Vec3f, @splat(smoothPerc)) + Vec3d{0, 0, 1.7 - Player.standingBoundingBoxExtent[2]};
 		}
-		// }
 
 		// This our model for movement on a single frame:
 		// dv/dt = a - λ·v
