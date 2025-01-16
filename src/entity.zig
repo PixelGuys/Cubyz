@@ -89,7 +89,7 @@ pub const ClientEntityManager = struct {
 	var modelTexture: main.graphics.Texture = undefined;
 	var shader: graphics.Shader = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
 	pub var entities: main.VirtualList(ClientEntity, 1 << 20) = undefined;
-	pub var mutex: std.Thread.Mutex = std.Thread.Mutex{};
+	pub var mutex: std.Thread.Mutex = .{};
 
 	pub fn init() void {
 		entities = .init();

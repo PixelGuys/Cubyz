@@ -107,8 +107,21 @@ pub fn render() void {
 			draw.print("Light memory: {} MiB / {} MiB (fragmentation: {} MiB)", .{used >> 20, size >> 20, fragmentation >> 20}, 0, y, 8, .left);
 			y += 8;
 		}
-		draw.print("Biome: {s}", .{main.game.world.?.playerBiome.load(.monotonic).id}, 0, y, 8, .left);
-		y += 8;
+		{
+			const biome = main.game.world.?.playerBiome.load(.monotonic);
+			var tags = main.List(u8).init(main.stackAllocator);
+			defer tags.deinit();
+			inline for(comptime std.meta.fieldNames(main.server.terrain.biomes.Biome.GenerationProperties)) |name| {
+				if(@field(biome.properties, name)) {
+					if(tags.items.len != 0) tags.appendSlice(", ");
+					tags.appendSlice(name);
+				}
+			}
+			draw.print("Biome: {s}", .{biome.id}, 0, y, 8, .left);
+			y += 8;
+			draw.print("Biome Properties: {s}", .{tags.items}, 0, y, 8, .left);
+			y += 8;
+		}
 		draw.print("Opaque faces: {}, Transparent faces: {}", .{main.renderer.chunk_meshing.quadsDrawn, main.renderer.chunk_meshing.transparentQuadsDrawn}, 0, y, 8, .left);
 		y += 8;
 	}

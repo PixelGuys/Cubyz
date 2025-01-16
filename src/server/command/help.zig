@@ -40,5 +40,5 @@ pub fn execute(args: []const u8, source: *User) void {
 		}
 	}
 	if(msg.items[msg.items.len - 1] == '\n') _ = msg.pop();
-	source.sendMessage(msg.items);
+	source.sendMessage("{s}", .{msg.items});
 }

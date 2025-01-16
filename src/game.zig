@@ -324,7 +324,7 @@ pub const collision = struct {
 	};
 };
 
-pub const Gamemode = enum(u8) { survival, creative };
+pub const Gamemode = enum(u8) { survival = 0, creative = 1 };
 
 pub const Player = struct { // MARK: Player
 	pub var super: main.server.Entity = .{};
@@ -338,7 +338,7 @@ pub const Player = struct { // MARK: Player
 	pub var isFlying: Atomic(bool) = .init(false);
 	pub var isGhost: Atomic(bool) = .init(false);
 	pub var hyperSpeed: Atomic(bool) = .init(false);
-	pub var mutex: std.Thread.Mutex = std.Thread.Mutex{};
+	pub var mutex: std.Thread.Mutex = .{};
 	pub var inventory: Inventory = undefined;
 	pub var selectedSlot: u32 = 0;
 
@@ -446,12 +446,12 @@ pub const Player = struct { // MARK: Player
 			}
 		}
 
-		inventory.placeBlock(selectedSlot, isCreative());
+		inventory.placeBlock(selectedSlot);
 	}
 
-	pub fn breakBlock() void { // TODO: Breaking animation and tools
+	pub fn breakBlock(deltaTime: f64) void {
 		if(!main.Window.grabbed) return;
-		inventory.breakBlock(selectedSlot);
+		inventory.breakBlock(selectedSlot, deltaTime);
 	}
 
 	pub fn acquireSelectedBlock() void {
@@ -525,7 +525,7 @@ pub const World = struct { // MARK: World
 
 		main.blocks.meshes.generateTextureArray();
 		main.models.uploadModels();
-		self.playerBiome = .init(main.server.terrain.biomes.getById(""));
+		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());
 		main.audio.setMusic(self.playerBiome.raw.preferredMusic);
 	}
 
@@ -641,7 +641,7 @@ pub fn releasePlace() void {
 pub fn pressBreak() void {
 	const time = std.time.milliTimestamp();
 	nextBlockBreakTime = time + main.settings.updateRepeatDelay;
-	Player.breakBlock();
+	Player.breakBlock(0);
 }
 
 pub fn releaseBreak() void {
@@ -675,16 +675,6 @@ pub fn hyperSpeedToggle() void {
 
 	Player.hyperSpeed.store(!Player.hyperSpeed.load(.monotonic), .monotonic);
 }
-
-pub fn gamemodeToggle() void {
-	const newGamemode = switch(Player.gamemode.load(.monotonic)) {
-		.survival => Gamemode.creative,
-		.creative => Gamemode.survival
-	};
-
-	Player.setGamemode(newGamemode);
-}
-
 
 pub fn update(deltaTime: f64) void { // MARK: update()
 	const gravity = 30.0;
@@ -925,9 +915,9 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		}
 	}
 	if(nextBlockBreakTime) |*breakTime| {
-		if(time -% breakTime.* >= 0) {
+		if(time -% breakTime.* >= 0 or !Player.isCreative()) {
 			breakTime.* += main.settings.updateRepeatSpeed;
-			Player.breakBlock();
+			Player.breakBlock(deltaTime);
 		}
 	}
 

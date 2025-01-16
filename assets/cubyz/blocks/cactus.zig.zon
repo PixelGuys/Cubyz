@@ -2,7 +2,7 @@
 	.class = .leaf,
 	.hardness = 4,
 	.drops = .{
-		.auto,
+		.{.items = .{.auto}},
 	},
 	.model = "cubyz:cube",
 	.texture = "cubyz:cactus",

@@ -2,7 +2,7 @@
 	.class = .wood,
 	.hardness = 0.3,
 	.drops = .{
-		.auto,
+		.{.items = .{.auto}},
 	},
 	.solid = false,
 	.emittedLight = 0xa58d73,

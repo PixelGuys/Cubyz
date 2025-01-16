@@ -2,7 +2,7 @@
 	.class = .stone,
 	.hardness = 2,
 	.drops = .{
-		.auto,
+		.{.items = .{.auto}},
 	},
 	.emittedLight = 0x884928,
 	.model = "cubyz:cube",

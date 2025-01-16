@@ -2,11 +2,11 @@
 	.class = .leaf,
 	.hardness = 0.1,
 	.drops = .{
-		.auto,
+		.{.items = .{.auto}},
 	},
 	.degradable = true,
 	.viewThrough = true,
-	.absorbedLight = 0x121012,
+	.absorbedLight = 0x000000,
 	.collide= false,
 	.model = "cubyz:cross",
 	.texture = "cubyz:grass_vegetation",

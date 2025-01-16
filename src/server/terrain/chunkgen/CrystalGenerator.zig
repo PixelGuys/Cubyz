@@ -18,9 +18,9 @@ pub const priority = 65537;
 pub const generatorSeed = 0x9b450ffb0d415317;
 
 const crystalColor = [_][]const u8 {
-	"red", "orange", "yellow", "green", "cyan", "blue", "violet", "purple", // 8 Base colors
-	"dark_red", "dark_green", "light_blue", "brown", // 4 darker colors
-	"white", "gray", "dark_gray", "black", // 4 grayscale colors
+	"red", "orange", "yellow", "lime", "green", "cyan", "aqua", "blue", "pink", "magenta", "violet", // 8 Base colors
+	"crimson", "viridian", "indigo", "purple", "brown", // 5 darker colors
+	"white", "grey", "dark_grey", "black", // 4 grayscale colors
 };
 var glowCrystals: [crystalColor.len]u16 = undefined;
 

@@ -364,21 +364,62 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 		}
 
 		pub fn dequeue(self: *Self) ?T {
-			if(self.startIndex == self.endIndex) return null;
+			if(self.empty()) return null;
 			const result = self.mem[self.startIndex];
 			self.startIndex = (self.startIndex + 1) & self.mask;
 			return result;
 		}
 
 		pub fn dequeue_front(self: *Self) ?T {
-			if(self.startIndex == self.endIndex) return null;
+			if(self.empty()) return null;
 			self.endIndex = (self.endIndex -% 1) & self.mask;
 			return self.mem[self.endIndex];
 		}
 
 		pub fn peek(self: *Self) ?T {
-			if(self.startIndex == self.endIndex) return null;
+			if(self.empty()) return null;
 			return self.mem[self.startIndex];
+		}
+
+		pub fn empty(self: *Self) bool {
+			return self.startIndex == self.endIndex;
+		}
+	};
+}
+
+/// Basically just a regular queue with a mutex. TODO: Find a good lock-free implementation.
+pub fn ConcurrentQueue(comptime T: type) type { // MARK: ConcurrentQueue
+	return struct {
+		const Self = @This();
+		super: CircularBufferQueue(T),
+		mutex: std.Thread.Mutex = .{},
+
+		pub fn init(allocator: NeverFailingAllocator, initialCapacity: usize) Self {
+			return .{
+				.super = .init(allocator, initialCapacity),
+			};
+		}
+
+		pub fn deinit(self: Self) void {
+			self.super.deinit();
+		}
+
+		pub fn enqueue(self: *Self, elem: T) void {
+			self.mutex.lock();
+			defer self.mutex.unlock();
+			self.super.enqueue(elem);
+		}
+
+		pub fn dequeue(self: *Self) ?T {
+			self.mutex.lock();
+			defer self.mutex.unlock();
+			return self.super.dequeue();
+		}
+
+		pub fn empty(self: *Self) bool {
+			self.mutex.lock();
+			defer self.mutex.unlock();
+			return self.super.empty();
 		}
 	};
 }
@@ -1663,7 +1704,7 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type { // MARK: Gen
 
 			var deltaTime = @as(f64, @floatFromInt(time -% lastTime))/1000;
 			if(deltaTime < 0) {
-				std.log.err("Experienced time travel. Current time: {} Last time: {}", .{time, lastTime});
+				std.log.warn("Experienced time travel. Current time: {} Last time: {}", .{time, lastTime});
 				lastTime = time;
 				deltaTime = 0;
 			}
@@ -1691,7 +1732,7 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type { // MARK: Gen
 
 			var deltaTime = @as(f64, @floatFromInt(time -% lastTime))/1000;
 			if(deltaTime < 0) {
-				std.log.err("Experienced time travel. Current time: {} Last time: {}", .{time, lastTime});
+				std.log.warn("Experienced time travel. Current time: {} Last time: {}", .{time, lastTime});
 				lastTime = time;
 				deltaTime = 0;
 			}

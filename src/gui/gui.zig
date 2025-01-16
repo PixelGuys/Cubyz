@@ -47,34 +47,22 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 		action: Action,
 	};
 
-	var commands: List(Command) = undefined;
-	var mutex: std.Thread.Mutex = .{};
+	var commands: main.utils.ConcurrentQueue(Command) = undefined;
 
 	fn init() void {
-		mutex.lock();
-		defer mutex.unlock();
-		commands = .init(main.globalAllocator);
+		commands = .init(main.globalAllocator, 16);
 	}
 
 	fn deinit() void {
-		mutex.lock();
-		defer mutex.unlock();
 		commands.deinit();
 	}
 
 	fn scheduleCommand(command: Command) void {
-		mutex.lock();
-		defer mutex.unlock();
-		commands.append(command);
+		commands.enqueue(command);
 	}
 
 	fn executeCommands() void {
-		mutex.lock();
-		const commands_ = main.stackAllocator.dupe(Command, commands.items);
-		defer main.stackAllocator.free(commands_);
-		commands.clearAndFree();
-		mutex.unlock();
-		for(commands_) |command| {
+		while(commands.dequeue()) |command| {
 			switch(command.action) {
 				.open => {
 					executeOpenWindowCommand(command.window);
@@ -127,7 +115,7 @@ pub const Callback = struct {
 	}
 };
 
-pub fn init() void { // MARK: init()
+pub fn initWindowList() void {
 	GuiCommandQueue.init();
 	windowList = .init(main.globalAllocator);
 	hudWindows = .init(main.globalAllocator);
@@ -136,14 +124,27 @@ pub fn init() void { // MARK: init()
 		const windowStruct = @field(windowlist, decl.name);
 		windowStruct.window.id = decl.name;
 		addWindow(&windowStruct.window);
-		if(@hasDecl(windowStruct, "init")) {
-			windowStruct.init();
-		}
 		const functionNames = [_][]const u8{"render", "update", "updateSelected", "updateHovered", "onOpen", "onClose"};
 		inline for(functionNames) |function| {
 			if(@hasDecl(windowStruct, function)) {
 				@field(windowStruct.window, function ++ "Fn") = &@field(windowStruct, function);
 			}
+		}
+	}
+}
+
+pub fn deinitWindowList() void {
+	windowList.deinit();
+	hudWindows.deinit();
+	openWindows.deinit();
+	GuiCommandQueue.deinit();
+}
+
+pub fn init() void { // MARK: init()
+	inline for(@typeInfo(windowlist).@"struct".decls) |decl| {
+		const windowStruct = @field(windowlist, decl.name);
+		if(@hasDecl(windowStruct, "init")) {
+			windowStruct.init();
 		}
 	}
 	GuiWindow.__init();
@@ -161,12 +162,10 @@ pub fn init() void { // MARK: init()
 pub fn deinit() void {
 	save();
 	GamepadCursor.deinit();
-	windowList.deinit();
-	hudWindows.deinit();
 	for(openWindows.items) |window| {
 		window.onCloseFn();
 	}
-	openWindows.deinit();
+	openWindows.clearRetainingCapacity();
 	GuiWindow.__deinit();
 	Button.__deinit();
 	CheckBox.__deinit();
@@ -181,12 +180,11 @@ pub fn deinit() void {
 			WindowStruct.deinit();
 		}
 	}
-	GuiCommandQueue.deinit();
 }
 
 pub fn save() void { // MARK: save()
 	const guiZon = ZonElement.initObject(main.stackAllocator);
-	defer guiZon.free(main.stackAllocator);
+	defer guiZon.deinit(main.stackAllocator);
 	for(windowList.items) |window| {
 		const windowZon = ZonElement.initObject(main.stackAllocator);
 		for(window.relativePosition, 0..) |relPos, i| {
@@ -231,7 +229,7 @@ fn load() void {
 		}
 		break :blk .null;
 	};
-	defer zon.free(main.stackAllocator);
+	defer zon.deinit(main.stackAllocator);
 
 	for(windowList.items) |window| {
 		const windowZon = zon.getChild(window.id);
@@ -260,7 +258,7 @@ fn load() void {
 					.otherAttachmentPoint = @enumFromInt(relPosZon.get(u8, "otherAttachmentPoint", 0)),
 				}};
 			} else {
-				std.log.warn("Unknown window attachment type: {s}", .{typ});
+				std.log.err("Unknown window attachment type: {s}", .{typ});
 			}
 		}
 		window.scale = windowZon.get(f32, "scale", 1);
@@ -273,7 +271,7 @@ fn getWindowById(id: []const u8) ?*GuiWindow {
 			return window;
 		}
 	}
-	std.log.warn("Could not find window with id: {s}", .{id});
+	std.log.err("Could not find window with id: {s}", .{id});
 	return null;
 }
 
@@ -311,7 +309,7 @@ pub fn openWindow(id: []const u8) void {
 			return;
 		}
 	}
-	std.log.warn("Could not find window with id {s}.", .{id});
+	std.log.err("Could not find window with id {s}.", .{id});
 }
 
 pub fn openWindowFromRef(window: *GuiWindow) void {
@@ -336,7 +334,7 @@ pub fn toggleWindow(id: []const u8) void {
 			return;
 		}
 	}
-	std.log.warn("Could not find window with id {s}.", .{id});
+	std.log.err("Could not find window with id {s}.", .{id});
 }
 
 pub fn openHud() void {
@@ -370,7 +368,7 @@ pub fn closeWindow(id: []const u8) void {
 			return;
 		}
 	}
-	std.log.warn("Could not find window with id {s}.", .{id});
+	std.log.err("Could not find window with id {s}.", .{id});
 }
 
 pub fn setSelectedTextInput(newSelectedTextInput: ?*TextInput) void {

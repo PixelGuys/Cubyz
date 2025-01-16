@@ -3,34 +3,32 @@
 		.mountain,
 		.hot,
 		.dry,
+		.barren,
 	},
 	.minHeight = 80,
 	.maxHeight = 256,
-	
+	.minRadius = 150,
+	.maxRadius = 200,
 	.roughness = 10,
 	.mountains = 20,
 	.hills = 50,
-	
+	.validPlayerSpawn = false,
 	.rivers = true,
-
 	.stripes = .{
 		.{
-			.direction= .{1, 1, 5},
-			.block= "cubyz:limestone",
-			.distance= 12,
-			.offset= 6,
-			.width= 6,
+			.direction = .{1, 1, 5},
+			.block = "cubyz:limestone",
+			.distance = 12,
+			.offset = 6,
+			.width = 6,
 		},
 		.{
-			.direction= .{1, 1, 5},
-			.block= "cubyz:sandstone",
-			.distance= 10,
-			.offset= 6,
-			.width= 2,
+			.direction = .{1, 1, 5},
+			.block = "cubyz:sandstone",
+			.distance = 10,
+			.offset = 6,
+			.width = 2,
 		},
-	},
-	
-	.ground_structure = .{
 	},
 	.stoneBlock = "cubyz:ferrock",
 	.structures = .{

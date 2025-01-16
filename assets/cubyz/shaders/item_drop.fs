@@ -65,6 +65,7 @@ float ditherThresholds[16] = float[16] (
 
 bool passDitherTest(float alpha) {
 	ivec2 screenPos = ivec2(gl_FragCoord.xy);
+	screenPos &= 3;
 	return alpha > ditherThresholds[screenPos.x*4 + screenPos.y];
 }
 

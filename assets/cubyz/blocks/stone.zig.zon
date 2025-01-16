@@ -3,7 +3,7 @@
 	.hardness = 25,
 	.breakingPower = 1,
 	.drops = .{
-		"cubyz:cobblestone",
+		.{.items = .{"cubyz:cobblestone"}},
 	},
 	.rotation = .stairs,
 	.model = "cubyz:cube",

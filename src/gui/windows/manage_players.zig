@@ -28,8 +28,6 @@ fn kick(conn: *main.network.Connection) void {
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
 	{
-		main.server.mutex.lock();
-		defer main.server.mutex.unlock();
 		main.server.connectionManager.mutex.lock();
 		defer main.server.connectionManager.mutex.unlock();
 		std.debug.assert(userList.len == 0);
@@ -68,11 +66,9 @@ pub fn onClose() void {
 }
 
 pub fn update() void {
-	main.server.mutex.lock();
 	main.server.connectionManager.mutex.lock();
 	const serverListLen = main.server.connectionManager.connections.items.len;
 	main.server.connectionManager.mutex.unlock();
-	main.server.mutex.unlock();
 	if(userList.len != serverListLen) {
 		std.log.err("{} {}", .{userList.len, serverListLen});
 		onClose();

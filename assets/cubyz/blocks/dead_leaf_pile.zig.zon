@@ -1,0 +1,16 @@
+.{
+	.class = .leaf,
+	.hardness = 0.1,
+	.drops = .{},
+	.degradable = true,
+	.collide = false,
+	.alwaysViewThrough = true,
+	.absorbedLight = 0x000000,	
+	.model = "cubyz:plane",
+	.rotation = .carpet,
+	.texture = "cubyz:dead_leaf_pile",
+	.item= .{
+		.texture = "dead_leaf_pile.png",
+	},
+	.lodReplacement = "cubyz:air",
+}

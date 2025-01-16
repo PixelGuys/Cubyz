@@ -3,7 +3,7 @@
 	.hardness = 60,
 	.breakingPower = 2,
 	.drops = .{
-		"cubyz:void_stone",
+		.{.items = .{.auto}},
 	},
 	.rotation = .stairs,
 	.model = "cubyz:cube",

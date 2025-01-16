@@ -40,7 +40,7 @@ pub fn generate(map: *CaveBiomeMapFragment, worldSeed: u64) void {
 		}
 	}
 	if(validBiomes.items.len == 0) {
-		std.log.warn("Couldn't find any cave biome on height {}. Using biome {s} instead.", .{worldPos[2], caveBiomes[0].id});
+		std.log.err("Couldn't find any cave biome on height {}. Using biome {s} instead.", .{worldPos[2], caveBiomes[0].id});
 		validBiomes.appendAssumeCapacity(&caveBiomes[0]);
 	}
 

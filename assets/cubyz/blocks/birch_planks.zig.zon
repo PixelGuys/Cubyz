@@ -14,7 +14,7 @@
 	},
 
 	.drops = .{
-		.auto,
+		.{.items = .{.auto}},
 	},
 	.model = "cubyz:cube",
 	.rotation = .stairs,

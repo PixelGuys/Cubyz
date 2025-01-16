@@ -2,7 +2,7 @@
 	.class = .wood,
 	.hardness = 8,
 	.drops = .{
-		.auto,
+		.{.items = .{.auto}},
 	},
 	.emittedLight = 0xd9cab4,
 	.texture = "cubyz:lamp",

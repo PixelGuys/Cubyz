@@ -2,7 +2,7 @@
 	.class = .stone,
 	.hardness = 20,
 	.drops = .{
-		.auto,
+		.{.items = .{.auto}},
 	},
 	.rotation = .fence,
 	.model = "cubyz:wall",

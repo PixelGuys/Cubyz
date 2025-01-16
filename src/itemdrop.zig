@@ -35,11 +35,11 @@ const ItemDrop = struct { // MARK: ItemDrop
 
 pub const ItemDropManager = struct { // MARK: ItemDropManager
 	/// Half the side length of all item entities hitboxes as a cube.
-	const radius: f64 = 0.1;
+	pub const radius: f64 = 0.1;
 	/// Side length of all item entities hitboxes as a cube.
-	const diameter: f64 = 2*radius;
+	pub const diameter: f64 = 2*radius;
 
-	const pickupRange: f64 = 1.0;
+	pub const pickupRange: f64 = 1.0;
 
 	const maxSpeed = 10;
 
@@ -47,13 +47,14 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 
 	allocator: NeverFailingAllocator,
 
-	mutex: std.Thread.Mutex = std.Thread.Mutex{},
-
 	list: std.MultiArrayList(ItemDrop),
 
 	indices: [maxCapacity]u16 = undefined,
 
+	emptyMutex: std.Thread.Mutex = .{},
 	isEmpty: std.bit_set.ArrayBitSet(usize, maxCapacity),
+
+	changeQueue: main.utils.ConcurrentQueue(union(enum) {add: struct{u16, ItemDrop}, remove: u16}),
 
 	world: ?*ServerWorld,
 	gravity: f64,
@@ -61,33 +62,28 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 
 	size: u32 = 0,
 
-	lastUpdates: ZonElement,
-
-	// TODO: Get rid of this inheritance pattern.
-	addWithIndexAndRotation: *const fn(*ItemDropManager, u16, Vec3d, Vec3d, Vec3f, ItemStack, i32, i32) void,
-
 	pub fn init(self: *ItemDropManager, allocator: NeverFailingAllocator, world: ?*ServerWorld, gravity: f64) void {
 		self.* = ItemDropManager {
 			.allocator = allocator,
 			.list = std.MultiArrayList(ItemDrop){},
-			.lastUpdates = ZonElement.initArray(allocator),
 			.isEmpty = .initFull(),
+			.changeQueue = .init(allocator, 16),
 			.world = world,
 			.gravity = gravity,
 			.airDragFactor = gravity/maxSpeed,
-			.addWithIndexAndRotation = &defaultAddWithIndexAndRotation,
 		};
 		self.list.resize(self.allocator.allocator, maxCapacity) catch unreachable;
 	}
 
 	pub fn deinit(self: *ItemDropManager) void {
+		self.processChanges();
+		self.changeQueue.deinit();
 		for(self.indices[0..self.size]) |i| {
 			if(self.list.items(.itemStack)[i].item) |item| {
 				item.deinit();
 			}
 		}
 		self.list.deinit(self.allocator.allocator);
-		self.lastUpdates.free(self.allocator);
 	}
 
 	pub fn loadFrom(self: *ItemDropManager, zon: ZonElement) void {
@@ -97,7 +93,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		}
 	}
 
-	pub fn addFromZon(self: *ItemDropManager, zon: ZonElement) void {
+	fn addFromZon(self: *ItemDropManager, zon: ZonElement) void {
 		const item = items.Item.init(zon) catch |err| {
 			const msg = zon.toStringEfficient(main.stackAllocator, "");
 			defer main.stackAllocator.free(msg);
@@ -107,6 +103,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		const properties = .{
 			zon.get(Vec3d, "pos", .{0, 0, 0}),
 			zon.get(Vec3d, "vel", .{0, 0, 0}),
+			random.nextFloatVector(3, &main.seed)*@as(Vec3f, @splat(2*std.math.pi)),
 			items.ItemStack{.item = item, .amount = zon.get(u16, "amount", 1)},
 			zon.get(i32, "despawnTime", 60),
 			0
@@ -135,19 +132,18 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 	}
 
 	pub fn getInitialList(self: *ItemDropManager, allocator: NeverFailingAllocator) ZonElement {
+		self.processChanges(); // Make sure all the items from the queue are included.
 		var list = ZonElement.initArray(allocator);
 		var ii: u32 = 0;
 		while(ii < self.size) : (ii += 1) {
 			const i = self.indices[ii];
-			list.array.append(self.storeSingle(self.lastUpdates.array.allocator, i));
+			list.array.append(self.storeSingle(allocator, i));
 		}
 		return list;
 	}
 
-	fn storeSingle(self: *ItemDropManager, allocator: NeverFailingAllocator, i: u16) ZonElement {
-		main.utils.assertLocked(&self.mutex);
+	fn storeDrop(allocator: NeverFailingAllocator, itemDrop: ItemDrop, i: u16) ZonElement {
 		const obj = ZonElement.initObject(allocator);
-		const itemDrop = self.list.get(i);
 		obj.put("i", i);
 		obj.put("pos", itemDrop.pos);
 		obj.put("vel", itemDrop.vel);
@@ -156,15 +152,15 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		return obj;
 	}
 
+	fn storeSingle(self: *ItemDropManager, allocator: NeverFailingAllocator, i: u16) ZonElement {
+		return storeDrop(allocator, self.list.get(i), i);
+	}
+
 	pub fn store(self: *ItemDropManager, allocator: NeverFailingAllocator) ZonElement {
 		const zonArray = ZonElement.initArray(allocator);
-		{
-			self.mutex.lock();
-			defer self.mutex.unlock();
-			for(self.indices[0..self.size]) |i| {
-				const item = self.storeSingle(allocator, i);
-				zonArray.array.append(item);
-			}
+		for(self.indices[0..self.size]) |i| {
+			const item = self.storeSingle(allocator, i);
+			zonArray.array.append(item);
 		}
 		const zon = ZonElement.initObject(allocator);
 		zon.put("array", zonArray);
@@ -172,9 +168,8 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 	}
 
 	pub fn update(self: *ItemDropManager, deltaTime: f32) void {
-		self.mutex.lock();
-		defer self.mutex.unlock();
 		std.debug.assert(self.world != null);
+		self.processChanges();
 		const pos = self.list.items(.pos);
 		const vel = self.list.items(.vel);
 		const pickupCooldown = self.list.items(.pickupCooldown);
@@ -192,122 +187,149 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			pickupCooldown[i] -= 1;
 			despawnTime[i] -= 1;
 			if(despawnTime[i] < 0) {
-				self.removeLocked(i);
+				self.directRemove(i);
 			} else {
 				ii += 1;
 			}
 		}
 	}
 
-	pub fn addFromBlockPosition(self: *ItemDropManager, blockPos: Vec3i, vel: Vec3d, itemStack: ItemStack, despawnTime: i32) void {
-		self.add(
-			vec.floatFromInt(f64, blockPos) + Vec3d { // TODO: Consider block bounding boxes.
-				random.nextDouble(&main.seed),
-				random.nextDouble(&main.seed),
-				random.nextDouble(&main.seed),
-			} + @as(Vec3d, @splat(radius)),
-			vel,
-			Vec3f {
-				2*std.math.pi*random.nextFloat(&main.seed),
-				2*std.math.pi*random.nextFloat(&main.seed),
-				2*std.math.pi*random.nextFloat(&main.seed),
-			},
-			itemStack, despawnTime, 0
-		);
-	}
-
-	pub fn add(self: *ItemDropManager, pos: Vec3d, vel: Vec3d, itemStack: ItemStack, despawnTime: i32, pickupCooldown: i32) void {
-		self.addWithRotation(
-			pos, vel,
-			Vec3f {
-				2*std.math.pi*random.nextFloat(&main.seed),
-				2*std.math.pi*random.nextFloat(&main.seed),
-				2*std.math.pi*random.nextFloat(&main.seed),
-			},
-			itemStack, despawnTime, pickupCooldown
-		);
-	}
-	
-	pub fn addWithIndex(self: *ItemDropManager, i: u16, pos: Vec3d, vel: Vec3d, itemStack: ItemStack, despawnTime: i32, pickupCooldown: i32) void {
-		self.addWithIndexAndRotation(
-			self, i, pos, vel,
-			Vec3f {
-				2*std.math.pi*random.nextFloat(&main.seed),
-				2*std.math.pi*random.nextFloat(&main.seed),
-				2*std.math.pi*random.nextFloat(&main.seed),
-			},
-			itemStack, despawnTime, pickupCooldown
-		);
-	}
-
-	pub fn addWithRotation(self: *ItemDropManager, pos: Vec3d, vel: Vec3d, rot: Vec3f, itemStack: ItemStack, despawnTime: i32, pickupCooldown: i32) void {
-		var i: u16 = undefined;
-		{
-			self.mutex.lock();
-			defer self.mutex.unlock();
-			if(self.size == maxCapacity) {
-				const zon = itemStack.store(main.stackAllocator);
-				defer zon.free(main.stackAllocator);
-				const string = zon.toString(main.stackAllocator);
-				defer main.stackAllocator.free(string);
-				std.log.err("Item drop capacitiy limit reached. Failed to add itemStack: {s}", .{string});
-				if(itemStack.item) |item| {
-					item.deinit();
-				}
-				return;
+	pub fn add(self: *ItemDropManager, pos: Vec3d, vel: Vec3d, rot: Vec3f, itemStack: ItemStack, despawnTime: i32, pickupCooldown: i32) void {
+		self.emptyMutex.lock();
+		const i: u16 = @intCast(self.isEmpty.findFirstSet() orelse {
+			self.emptyMutex.unlock();
+			const zon = itemStack.store(main.stackAllocator);
+			defer zon.deinit(main.stackAllocator);
+			const string = zon.toString(main.stackAllocator);
+			defer main.stackAllocator.free(string);
+			std.log.err("Item drop capacitiy limit reached. Failed to add itemStack: {s}", .{string});
+			if(itemStack.item) |item| {
+				item.deinit();
 			}
-			i = @intCast(self.isEmpty.findFirstSet().?);
-		}
-		self.addWithIndexAndRotation(self, i, pos, vel, rot, itemStack, despawnTime, pickupCooldown);
-	}
-
-	fn defaultAddWithIndexAndRotation(self: *ItemDropManager, i: u16, pos: Vec3d, vel: Vec3d, rot: Vec3f, itemStack: ItemStack, despawnTime: i32, pickupCooldown: i32) void {
-		self.mutex.lock();
-		defer self.mutex.unlock();
-		std.debug.assert(self.isEmpty.isSet(i));
+			return;
+		});
 		self.isEmpty.unset(i);
-		self.list.set(i, ItemDrop {
+		const drop = ItemDrop {
 			.pos = pos,
 			.vel = vel,
 			.rot = rot,
 			.itemStack = itemStack,
 			.despawnTime = despawnTime,
 			.pickupCooldown = pickupCooldown,
-			.reverseIndex = @intCast(self.size),
-		});
+			.reverseIndex = undefined,
+		};
 		if(self.world != null) {
-			self.lastUpdates.array.append(self.storeSingle(self.lastUpdates.array.allocator, i));
+			const list = ZonElement.initArray(main.stackAllocator);
+			defer list.deinit(main.stackAllocator);
+			list.array.append(.null);
+			list.array.append(storeDrop(main.stackAllocator, drop, i));
+			const updateData = list.toStringEfficient(main.stackAllocator, &.{});
+			defer main.stackAllocator.free(updateData);
+
+			const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
+			defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+			for(userList) |user| {
+				main.network.Protocols.entity.send(user.conn, updateData);
+			}
 		}
+
+		self.emptyMutex.unlock();
+		self.changeQueue.enqueue(.{.add = .{i, drop}});
+
+	}
+
+	fn addWithIndex(self: *ItemDropManager, i: u16, pos: Vec3d, vel: Vec3d, rot: Vec3f, itemStack: ItemStack, despawnTime: i32, pickupCooldown: i32) void {
+		self.emptyMutex.lock();
+		std.debug.assert(self.isEmpty.isSet(i));
+		self.isEmpty.unset(i);
+		const drop = ItemDrop {
+			.pos = pos,
+			.vel = vel,
+			.rot = rot,
+			.itemStack = itemStack,
+			.despawnTime = despawnTime,
+			.pickupCooldown = pickupCooldown,
+			.reverseIndex = undefined,
+		};
+		if(self.world != null) {
+			const list = ZonElement.initArray(main.stackAllocator);
+			defer list.deinit(main.stackAllocator);
+			list.array.append(.null);
+			list.array.append(storeDrop(main.stackAllocator, drop, i));
+			const updateData = list.toStringEfficient(main.stackAllocator, &.{});
+			defer main.stackAllocator.free(updateData);
+
+			const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
+			defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+			for(userList) |user| {
+				main.network.Protocols.entity.send(user.conn, updateData);
+			}
+		}
+
+		self.emptyMutex.unlock();
+		self.changeQueue.enqueue(.{.add = .{i, drop}});
+	}
+
+	fn processChanges(self: *ItemDropManager) void {
+		while(self.changeQueue.dequeue()) |data| {
+			switch(data) {
+				.add => |addData| {
+					self.internalAdd(addData[0], addData[1]);
+				},
+				.remove => |index| {
+					self.internalRemove(index);
+				},
+			}
+		}
+	}
+
+	fn internalAdd(self: *ItemDropManager, i: u16, drop_: ItemDrop) void {
+		var drop = drop_;
+		if(self.world == null) {
+			ClientItemDropManager.clientSideInternalAdd(self, i, drop);
+		}
+		drop.reverseIndex = @intCast(self.size);
+		self.list.set(i, drop);
 		self.indices[self.size] = i;
 		self.size += 1;
 	}
 
-	fn removeLocked(self: *ItemDropManager, i: u16) void {
-		main.utils.assertLocked(&self.mutex);
+	fn internalRemove(self: *ItemDropManager, i: u16) void {
 		self.size -= 1;
 		const ii = self.list.items(.reverseIndex)[i];
-		self.indices[ii] = self.indices[self.size];
 		self.list.items(.itemStack)[i].clear();
-		self.isEmpty.set(i);
-		if(self.world != null) {
-			self.lastUpdates.array.append(.{.int = i});
-		}
+		self.indices[ii] = self.indices[self.size];
+		self.list.items(.reverseIndex)[self.indices[self.size]] = ii;
 	}
 
-	pub fn remove(self: *ItemDropManager, i: u16) void {
-		self.mutex.lock();
-		defer self.mutex.unlock();
-		self.removeLocked(i);
+	fn directRemove(self: *ItemDropManager, i: u16) void {
+		std.debug.assert(self.world != null);
+		self.emptyMutex.lock();
+		self.isEmpty.set(i);
+
+		const list = ZonElement.initArray(main.stackAllocator);
+		defer list.deinit(main.stackAllocator);
+		list.array.append(.null);
+		list.array.append(.{.int = i});
+		const updateData = list.toStringEfficient(main.stackAllocator, &.{});
+		defer main.stackAllocator.free(updateData);
+
+		const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
+		defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+		for(userList) |user| {
+			main.network.Protocols.entity.send(user.conn, updateData);
+		}
+
+		self.emptyMutex.unlock();
+		self.internalRemove(i);
 	}
 
 	fn updateEnt(self: *ItemDropManager, chunk: *ServerChunk, pos: *Vec3d, vel: *Vec3d, deltaTime: f64) void {
-		main.utils.assertLocked(&self.mutex);
 		const hitBox = main.game.collision.Box{.min = @splat(-radius), .max = @splat(radius)};
 		if(main.game.collision.collides(.server, .x, 0, pos.*, hitBox) != null) {
 			self.fixStuckInBlock(chunk, pos, vel, deltaTime);
 			return;
 		}
-		var drag: f64 = self.airDragFactor;
 		vel.* += Vec3d{0, 0, -self.gravity*deltaTime};
 		inline for(0..3) |i| {
 			const move = vel.*[i]*deltaTime;// + acceleration[i]*deltaTime;
@@ -321,14 +343,12 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			} else {
 				pos.*[i] += move;
 			}
-			drag += 0.5; // TODO: Calculate drag from block properties and add buoyancy.
 		}
 		// Apply drag:
-		vel.* *= @splat(@max(0, 1 - drag*deltaTime));
+		vel.* *= @splat(@max(0, 1 - self.airDragFactor*deltaTime));
 	}
 
 	fn fixStuckInBlock(self: *ItemDropManager, chunk: *ServerChunk, pos: *Vec3d, vel: *Vec3d, deltaTime: f64) void {
-		main.utils.assertLocked(&self.mutex);
 		const centeredPos = pos.* - @as(Vec3d, @splat(0.5));
 		const pos0: Vec3i = @intFromFloat(@floor(centeredPos));
 
@@ -384,8 +404,6 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 	}
 
 	pub fn checkEntity(self: *ItemDropManager, user: *main.server.User) void {
-		self.mutex.lock();
-		defer self.mutex.unlock();
 		var ii: u32 = 0;
 		while(ii < self.size) {
 			const i = self.indices[ii];
@@ -402,7 +420,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 				const itemStack = &self.list.items(.itemStack)[i];
 				main.items.Inventory.Sync.ServerSide.tryCollectingToPlayerInventory(user, itemStack);
 				if(itemStack.amount == 0) {
-					self.removeLocked(i);
+					self.directRemove(i);
 					continue;
 				}
 			}
@@ -424,6 +442,8 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 
 	var instance: ?*ClientItemDropManager = null;
 
+	var mutex: std.Thread.Mutex = .{};
+
 	pub fn init(self: *ClientItemDropManager, allocator: NeverFailingAllocator, world: *World) void {
 		std.debug.assert(instance == null); // Only one instance allowed.
 		instance = self;
@@ -432,7 +452,6 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 			.lastTime = @as(i16, @truncate(std.time.milliTimestamp())) -% settings.entityLookback,
 		};
 		self.super.init(allocator, null, world.gravity);
-		self.super.addWithIndexAndRotation = &overrideAddWithIndexAndRotation;
 		self.interpolation.init(
 			@ptrCast(self.super.list.items(.pos).ptr),
 			@ptrCast(self.super.list.items(.vel).ptr)
@@ -460,38 +479,39 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 			vel[i][2] = @bitCast(std.mem.readInt(u64, data[42..50], .big));
 			data = data[50..];
 		}
-		self.super.mutex.lock();
-		defer self.super.mutex.unlock();
+		mutex.lock();
+		defer mutex.unlock();
 		self.interpolation.updatePosition(@ptrCast(&pos), @ptrCast(&vel), time); // TODO: Only update the ones we actually changed.
 	}
 
 	pub fn updateInterpolationData(self: *ClientItemDropManager) void {
+		self.super.processChanges();
 		var time = @as(i16, @truncate(std.time.milliTimestamp())) -% settings.entityLookback;
 		time -%= self.timeDifference.difference.load(.monotonic);
 		{
-			self.super.mutex.lock();
-			defer self.super.mutex.unlock();
+			mutex.lock();
+			defer mutex.unlock();
 			self.interpolation.updateIndexed(time, self.lastTime, self.super.indices[0..self.super.size], 4);
 		}
 		self.lastTime = time;
 	}
 
-	fn overrideAddWithIndexAndRotation(super: *ItemDropManager, i: u16, pos: Vec3d, vel: Vec3d, rot: Vec3f, itemStack: ItemStack, despawnTime: i32, pickupCooldown: i32) void {
-		{
-			super.mutex.lock();
-			defer super.mutex.unlock();
-			for(&instance.?.interpolation.lastVel) |*lastVel| {
-				@as(*align(8)[ItemDropManager.maxCapacity]Vec3d, @ptrCast(lastVel))[i] = Vec3d{0, 0, 0};
-			}
-			for(&instance.?.interpolation.lastPos) |*lastPos| {
-				@as(*align(8)[ItemDropManager.maxCapacity]Vec3d, @ptrCast(lastPos))[i] = pos;
-			}
+	fn clientSideInternalAdd(_: *ItemDropManager, i: u16, drop: ItemDrop) void {
+		mutex.lock();
+		defer mutex.unlock();
+		for(&instance.?.interpolation.lastVel) |*lastVel| {
+			@as(*align(8)[ItemDropManager.maxCapacity]Vec3d, @ptrCast(lastVel))[i] = Vec3d{0, 0, 0};
 		}
-		super.defaultAddWithIndexAndRotation(i, pos, vel, rot, itemStack, despawnTime, pickupCooldown);
+		for(&instance.?.interpolation.lastPos) |*lastPos| {
+			@as(*align(8)[ItemDropManager.maxCapacity]Vec3d, @ptrCast(lastPos))[i] = drop.pos;
+		}
 	}
 
 	pub fn remove(self: *ClientItemDropManager, i: u16) void {
-		self.super.remove(i);
+		self.super.emptyMutex.lock();
+		self.super.isEmpty.set(i);
+		self.super.emptyMutex.unlock();
+		self.super.changeQueue.enqueue(.{.remove = i});
 	}
 
 	pub fn loadFrom(self: *ClientItemDropManager, zon: ZonElement) void {
@@ -658,8 +678,6 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		c.glUniformMatrix4fv(itemUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&game.camera.viewMatrix));
 		c.glUniform1f(itemUniforms.contrast, 0.12);
 		const itemDrops = &game.world.?.itemDrops.super;
-		itemDrops.mutex.lock();
-		defer itemDrops.mutex.unlock();
 		for(itemDrops.indices[0..itemDrops.size]) |i| {
 			if(itemDrops.list.items(.itemStack)[i].item) |item| {
 				var pos = itemDrops.list.items(.pos)[i];

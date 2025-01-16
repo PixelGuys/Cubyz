@@ -53,6 +53,22 @@ pub fn nextFloatSigned(seed: *u64) f32 {
 	return @as(f32, @floatFromInt(@as(i24, @bitCast(nextInt(u24, seed)))))/(1 << 23);
 }
 
+pub fn nextFloatVector(len: comptime_int, seed: *u64) @Vector(len, f32) {
+	var result: @Vector(len, f32) = undefined;
+	inline for(0..len) |i| {
+		result[i] = nextFloat(seed);
+	}
+	return result;
+}
+
+pub fn nextFloatVectorSigned(len: comptime_int, seed: *u64) @Vector(len, f32) {
+	var result: @Vector(len, f32) = undefined;
+	inline for(0..len) |i| {
+		result[i] = nextFloatSigned(seed);
+	}
+	return result;
+}
+
 pub fn nextDouble(seed: *u64) f64 {
 	const lower: u52 = nextInt(u32, seed);
 	const upper: u52 = nextInt(u20, seed);
@@ -63,6 +79,22 @@ pub fn nextDoubleSigned(seed: *u64) f64 {
 	const lower: i52 = nextInt(u32, seed);
 	const upper: i52 = nextInt(u20, seed);
 	return @as(f64, @floatFromInt(upper<<32 | lower))/(1 << 51);
+}
+
+pub fn nextDoubleVector(len: comptime_int, seed: *u64) @Vector(len, f64) {
+	var result: @Vector(len, f64) = undefined;
+	inline for(0..len) |i| {
+		result[i] = nextDouble(seed);
+	}
+	return result;
+}
+
+pub fn nextDoubleVectorSigned(len: comptime_int, seed: *u64) @Vector(len, f64) {
+	var result: @Vector(len, f64) = undefined;
+	inline for(0..len) |i| {
+		result[i] = nextDoubleSigned(seed);
+	}
+	return result;
 }
 
 pub fn nextPointInUnitCircle(seed: *u64) Vec2f {

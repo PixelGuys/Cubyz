@@ -177,7 +177,7 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 		mutex.lock();
 		defer mutex.unlock();
 		if(watchDescriptors.contains(path)) {
-			std.log.warn("Tried to add duplicate watch descriptor for path {s}", .{path});
+			std.log.err("Tried to add duplicate watch descriptor for path {s}", .{path});
 			return;
 		}
 		const callbackInfo = main.globalAllocator.create(DirectoryInfo);
@@ -204,7 +204,7 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 			kv.value.watchDescriptors.deinit(main.globalAllocator);
 			main.globalAllocator.destroy(kv.value);
 		} else {
-			std.log.warn("Tried to remove non-existent watch descriptor for path {s}", .{path});
+			std.log.err("Tried to remove non-existent watch descriptor for path {s}", .{path});
 		}
 	}
 };
@@ -274,7 +274,7 @@ const WindowsImpl = struct { // MARK: WindowsImpl
 		mutex.lock();
 		defer mutex.unlock();
 		if(notificationHandlers.contains(path)) {
-			std.log.warn("Tried to add duplicate notification handler for path {s}", .{path});
+			std.log.err("Tried to add duplicate notification handler for path {s}", .{path});
 			return;
 		}
 		const handle = c.FindFirstChangeNotificationA(path.ptr, @intFromBool(true), c.FILE_NOTIFY_CHANGE_LAST_WRITE);
@@ -308,7 +308,7 @@ const WindowsImpl = struct { // MARK: WindowsImpl
 			main.globalAllocator.free(kv.key);
 			main.globalAllocator.destroy(kv.value);
 		} else {
-			std.log.warn("Tried to remove non-existent notification handler for path {s}", .{path});
+			std.log.err("Tried to remove non-existent notification handler for path {s}", .{path});
 		}
 	}
 };

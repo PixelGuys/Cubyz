@@ -2,7 +2,7 @@
 	.class = .stone,
 	.hardness = 6,
 	.drops = .{
-		.auto,
+		.{.items = .{.auto}},
 	},
 	.model = "cubyz:cube",
 	.rotation = .stairs,

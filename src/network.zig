@@ -279,11 +279,11 @@ const STUN = struct { // MARK: STUN
 			if(connection.sendRequest(main.globalAllocator, &data, serverAddress, 500*1000000)) |answer| {
 				defer main.globalAllocator.free(answer);
 				verifyHeader(answer, data[8..20]) catch |err| {
-					std.log.warn("Header verification failed with {s} for STUN server: {s} data: {any}", .{@errorName(err), server, answer});
+					std.log.err("Header verification failed with {s} for STUN server: {s} data: {any}", .{@errorName(err), server, answer});
 					continue;
 				};
 				var result = findIPPort(answer) catch |err| {
-					std.log.warn("Could not parse IP+Port: {s} for STUN server: {s} data: {any}", .{@errorName(err), server, answer});
+					std.log.err("Could not parse IP+Port: {s} for STUN server: {s} data: {any}", .{@errorName(err), server, answer});
 					continue;
 				};
 				if(oldAddress) |other| {
@@ -298,7 +298,7 @@ const STUN = struct { // MARK: STUN
 					oldAddress = result;
 				}
 			} else {
-				std.log.warn("Couldn't reach STUN server: {s}", .{server});
+				std.log.err("Couldn't reach STUN server: {s}", .{server});
 			}
 		}
 		return Address{.ip=Socket.resolveIP("127.0.0.1") catch unreachable, .port=settings.defaultPort}; // TODO: Return ip address in LAN.
@@ -366,7 +366,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	connections: main.List(*Connection) = undefined,
 	requests: main.List(*Request) = undefined,
 
-	mutex: std.Thread.Mutex = std.Thread.Mutex{},
+	mutex: std.Thread.Mutex = .{},
 	waitingToFinishReceive: std.Thread.Condition = std.Thread.Condition{},
 
 	receiveBuffer: [Connection.maxPacketSize]u8 = undefined,
@@ -564,7 +564,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 				if(err == error.Timeout) {
 					// No message within the last ~100 ms.
 				} else if(err == error.ConnectionResetByPeer) {
-					std.log.warn("Got error.ConnectionResetByPeer on receive. This indicates that a previous message did not find a valid destination.", .{});
+					std.log.err("Got error.ConnectionResetByPeer on receive. This indicates that a previous message did not find a valid destination.", .{});
 				} else {
 					std.log.err("Got error on receive: {s}", .{@errorName(err)});
 					@panic("Network failed.");
@@ -645,7 +645,7 @@ pub const Protocols = struct {
 				switch(data[0]) {
 					stepUserData => {
 						const zon = ZonElement.parseFromString(main.stackAllocator, data[1..]);
-						defer zon.free(main.stackAllocator);
+						defer zon.deinit(main.stackAllocator);
 						const name = zon.get([]const u8, "name", "unnamed");
 						const version = zon.get([]const u8, "version", "unknown");
 						std.log.info("User {s} joined using version {s}.", .{name, version});
@@ -664,7 +664,7 @@ pub const Protocols = struct {
 
 						conn.user.?.initPlayer(name);
 						const zonObject = ZonElement.initObject(main.stackAllocator);
-						defer zonObject.free(main.stackAllocator);
+						defer zonObject.deinit(main.stackAllocator);
 						zonObject.put("player", conn.user.?.player.save(main.stackAllocator));
 						zonObject.put("spawn", main.server.world.?.spawn);
 						zonObject.put("blockPalette", main.server.world.?.blockPalette.save(main.stackAllocator));
@@ -689,7 +689,7 @@ pub const Protocols = struct {
 					},
 					stepServerData => {
 						const zon = ZonElement.parseFromString(main.stackAllocator, data[1..]);
-						defer zon.free(main.stackAllocator);
+						defer zon.deinit(main.stackAllocator);
 						try conn.manager.world.?.finishHandshake(zon);
 						conn.handShakeState.store(stepComplete, .monotonic);
 						conn.handShakeWaiting.broadcast(); // Notify the waiting client thread.
@@ -712,7 +712,7 @@ pub const Protocols = struct {
 
 		pub fn clientSide(conn: *Connection, name: []const u8) void {
 			const zonObject = ZonElement.initObject(main.stackAllocator);
-			defer zonObject.free(main.stackAllocator);
+			defer zonObject.deinit(main.stackAllocator);
 			zonObject.putOwnedString("version", settings.version);
 			zonObject.putOwnedString("name", name);
 			const prefix = [1]u8 {stepUserData};
@@ -905,7 +905,7 @@ pub const Protocols = struct {
 			const z = std.mem.readInt(i32, data[8..12], .big);
 			const newBlock = Block.fromInt(std.mem.readInt(u32, data[12..16], .big));
 			if(conn.user != null) {
-				main.server.world.?.updateBlock(x, y, z, newBlock);
+				return error.InvalidPacket;
 			} else {
 				renderer.mesh_storage.updateBlock(x, y, z, newBlock);
 			}
@@ -924,7 +924,7 @@ pub const Protocols = struct {
 		pub const asynchronous = false;
 		fn receive(conn: *Connection, data: []const u8) !void {
 			const zonArray = ZonElement.parseFromString(main.stackAllocator, data);
-			defer zonArray.free(main.stackAllocator);
+			defer zonArray.deinit(main.stackAllocator);
 			var i: u32 = 0;
 			while(i < zonArray.array.items.len) : (i += 1) {
 				const elem = zonArray.array.items[i];
@@ -940,7 +940,7 @@ pub const Protocols = struct {
 						break;
 					},
 					else => {
-						std.log.warn("Unrecognized zon parameters for protocol {}: {s}", .{id, data});
+						std.log.err("Unrecognized zon parameters for protocol {}: {s}", .{id, data});
 					},
 				}
 			}
@@ -962,7 +962,7 @@ pub const Protocols = struct {
 	pub const genericUpdate = struct {
 		pub const id: u8 = 9;
 		pub const asynchronous = false;
-		const type_reserved1: u8 = 0;
+		const type_gamemode: u8 = 0;
 		const type_teleport: u8 = 1;
 		const type_cure: u8 = 2;
 		const type_reserved2: u8 = 3;
@@ -973,6 +973,11 @@ pub const Protocols = struct {
 		const type_timeAndBiome: u8 = 8;
 		fn receive(conn: *Connection, data: []const u8) !void {
 			switch(data[0]) {
+				type_gamemode => {
+					if(conn.user != null) return error.InvalidPacket;
+					if(data.len != 2) return error.InvalidPacket;
+					main.items.Inventory.Sync.setGamemode(null, @enumFromInt(data[1]));
+				},
 				type_teleport => {
 					game.Player.setPosBlocking(Vec3d{
 						@bitCast(std.mem.readInt(u64, data[1..9], .big)),
@@ -983,7 +988,6 @@ pub const Protocols = struct {
 				type_cure => {
 					// TODO: health and hunger
 				},
-				type_reserved1 => {},
 				type_reserved2 => {},
 				type_reserved3 => {},
 				type_reserved4 => {},
@@ -992,7 +996,7 @@ pub const Protocols = struct {
 				type_timeAndBiome => {
 					if(conn.manager.world) |world| {
 						const zon = ZonElement.parseFromString(main.stackAllocator, data[1..]);
-						defer zon.free(main.stackAllocator);
+						defer zon.deinit(main.stackAllocator);
 						const expectedTime = zon.get(i64, "time", 0);
 						var curTime = world.gameTime.load(.monotonic);
 						if(@abs(curTime -% expectedTime) >= 10) {
@@ -1035,6 +1039,10 @@ pub const Protocols = struct {
 			conn.sendUnimportant(id, headeredData);
 		}
 
+		pub fn sendGamemode(conn: *Connection, gamemode: main.game.Gamemode) void {
+			conn.sendImportant(id, &.{type_gamemode, @intFromEnum(gamemode)});
+		}
+
 		pub fn sendTPCoordinates(conn: *Connection, pos: Vec3d) void {
 			var data: [1+24]u8 = undefined;
 			data[0] = type_teleport;
@@ -1052,7 +1060,7 @@ pub const Protocols = struct {
 
 		pub fn sendTimeAndBiome(conn: *Connection, world: *const main.server.ServerWorld) void {
 			const zon = ZonElement.initObject(main.stackAllocator);
-			defer zon.free(main.stackAllocator);
+			defer zon.deinit(main.stackAllocator);
 			zon.put("time", world.gameTime);
 			const pos = conn.user.?.player.pos;
 			zon.put("biome", (world.getBiome(@intFromFloat(pos[0]), @intFromFloat(pos[1]), @intFromFloat(pos[2]))).id);
@@ -1162,6 +1170,8 @@ pub const Protocols = struct {
 			} else {
 				if(data[0] == 0xff) { // Confirmation
 					items.Inventory.Sync.ClientSide.receiveConfirmation(data[1..]);
+				} else if(data[0] == 0xfe) { // Failure
+					items.Inventory.Sync.ClientSide.receiveFailure();
 				} else {
 					try items.Inventory.Sync.ClientSide.receiveSyncOperation(data[1..]);
 				}
@@ -1183,6 +1193,10 @@ pub const Protocols = struct {
 			data[0] = 0xff;
 			@memcpy(data[1..], _data);
 			conn.sendImportant(id, data);
+		}
+		pub fn sendFailure(conn: *Connection) void {
+			std.debug.assert(conn.user != null);
+			conn.sendImportant(id, &.{0xfe});
 		}
 		pub fn sendSyncOperation(conn: *Connection, _data: []const u8) void {
 			std.debug.assert(conn.user != null);
@@ -1248,7 +1262,7 @@ pub const Connection = struct { // MARK: Connection
 	handShakeWaiting: std.Thread.Condition = std.Thread.Condition{},
 	lastConnection: i64,
 
-	mutex: std.Thread.Mutex = std.Thread.Mutex{},
+	mutex: std.Thread.Mutex = .{},
 
 	pub fn init(manager: *ConnectionManager, ipPort: []const u8, user: ?*main.server.User) !*Connection {
 		const result: *Connection = main.globalAllocator.create(Connection);
@@ -1286,7 +1300,7 @@ pub const Connection = struct { // MARK: Connection
 			port = port[1..];
 		}
 		result.remoteAddress.port = std.fmt.parseUnsigned(u16, port, 10) catch blk: {
-			if(ip.len != ipPort.len) std.log.warn("Could not parse port \"{s}\". Using default port instead.", .{port});
+			if(ip.len != ipPort.len) std.log.err("Could not parse port \"{s}\". Using default port instead.", .{port});
 			break :blk settings.defaultPort;
 		};
 
@@ -1657,7 +1671,7 @@ pub const Connection = struct { // MARK: Connection
 					try prot(self, data);
 				}
 			} else {
-				std.log.warn("Received unknown important protocol with id {}", .{protocol});
+				std.log.err("Received unknown important protocol with id {}", .{protocol});
 			}
 		}
 	}
@@ -1713,7 +1727,7 @@ pub const Connection = struct { // MARK: Connection
 			if(Protocols.list[protocol]) |prot| {
 				try prot(self, data[1..]);
 			} else {
-				std.log.warn("Received unknown protocol with id {}", .{protocol});
+				std.log.err("Received unknown protocol with id {}", .{protocol});
 			}
 		}
 	}

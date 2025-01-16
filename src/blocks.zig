@@ -30,8 +30,8 @@ const allocator = arena.allocator();
 pub const maxBlockCount: usize = 65536; // 16 bit limit
 
 pub const BlockDrop = struct {
-	item: items.Item,
-	amount: f32,
+	items: []const items.ItemStack,
+	chance: f32,
 };
 
 /// Ores can be found underground in veins.
@@ -101,7 +101,7 @@ pub fn deinit() void {
 
 pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	if(reverseIndices.contains(id)) {
-		std.log.warn("Registered block with id {s} twice!", .{id});
+		std.log.err("Registered block with id {s} twice!", .{id});
 	}
 	_id[size] = allocator.dupe(u8, id);
 	reverseIndices.put(_id[size], @intCast(size)) catch unreachable;
@@ -147,32 +147,37 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 }
 
 fn registerBlockDrop(typ: u16, zon: ZonElement) void {
-	const drops = zon.toSlice();
+	const drops = zon.getChild("drops").toSlice();
+	_blockDrops[typ] = allocator.alloc(BlockDrop, drops.len);
 
-	var result = allocator.alloc(BlockDrop, drops.len);
-	result.len = 0;
+	for(drops, 0..) |blockDrop, i| {
+		_blockDrops[typ][i].chance = blockDrop.get(f32, "chance", 1);
+		const itemZons = blockDrop.getChild("items").toSlice();
+		var resultItems = main.List(items.ItemStack).initCapacity(main.stackAllocator, itemZons.len);
+		defer resultItems.deinit();
 
-	for(drops) |blockDrop| {
-		var string = blockDrop.as([]const u8, "auto");
-		string = std.mem.trim(u8, string, " ");
-		var iterator = std.mem.splitScalar(u8, string, ' ');
+		for(itemZons) |itemZon| {
+			var string = itemZon.as([]const u8, "auto");
+			string = std.mem.trim(u8, string, " ");
+			var iterator = std.mem.splitScalar(u8, string, ' ');
+			var name = iterator.first();
+			var amount: u16 = 1;
+			while(iterator.next()) |next| {
+				if(next.len == 0) continue; // skip multiple spaces.
+				amount = std.fmt.parseInt(u16, name, 0) catch 1;
+				name = next;
+				break;
+			}
 
-		var name = iterator.next() orelse continue;
-		var amount: f32 = 1;
-		while(iterator.next()) |next| {
-			if(next.len == 0) continue; // skip multiple spaces.
-			amount = std.fmt.parseFloat(f32, name) catch 1;
-			name = next;
-			break;
+			if(std.mem.eql(u8, name, "auto")) {
+				name = _id[typ];
+			}
+
+			const item = items.getByID(name) orelse continue;
+			resultItems.append(.{.item = .{.baseItem = item}, .amount = amount});
 		}
 
-		if(std.mem.eql(u8, name, "auto")) {
-			name = _id[typ];
-		}
-
-		const item = items.getByID(name) orelse continue;
-		result.len += 1;
-		result[result.len - 1] = BlockDrop{.item = items.Item{.baseItem = item}, .amount = amount};
+		_blockDrops[typ][i].items = allocator.dupe(items.ItemStack, resultItems.items);
 	}
 }
 
@@ -226,7 +231,7 @@ pub fn getTypeById(id: []const u8) u16 {
 	if(reverseIndices.get(id)) |result| {
 		return result;
 	} else {
-		std.log.warn("Couldn't find block {s}. Replacing it with air...", .{id});
+		std.log.err("Couldn't find block {s}. Replacing it with air...", .{id});
 		return 0;
 	}
 }
@@ -237,7 +242,7 @@ pub fn getBlockById(id: []const u8) Block {
 		result.data = result.mode().naturalStandard;
 		return result;
 	} else {
-		std.log.warn("Couldn't find block {s}. Replacing it with air...", .{id});
+		std.log.err("Couldn't find block {s}. Replacing it with air...", .{id});
 		return .{.typ = 0, .data = 0};
 	}
 }
@@ -337,6 +342,10 @@ pub const Block = packed struct { // MARK: Block
 	pub inline fn opaqueVariant(self: Block) u16 {
 		return _opaqueVariant[self.typ];
 	}
+
+	pub fn canBeChangedInto(self: Block, newBlock: Block, item: main.items.ItemStack) main.rotation.RotationMode.CanBeChangedInto {
+		return newBlock.mode().canBeChangedInto(self, newBlock, item);
+	}
 };
 
 
@@ -371,6 +380,8 @@ pub const meshes = struct { // MARK: meshes
 	var textureFogData: main.List(FogData) = undefined;
 
 	var arenaForWorld: main.utils.NeverFailingArenaAllocator = undefined;
+
+	pub var blockBreakingTextures: main.List(u16) = undefined;
 
 	const sideNames = blk: {
 		var names: [6][]const u8 = undefined;
@@ -417,6 +428,7 @@ pub const meshes = struct { // MARK: meshes
 		absorptionTextures = .init(main.globalAllocator);
 		textureFogData = .init(main.globalAllocator);
 		arenaForWorld = .init(main.globalAllocator);
+		blockBreakingTextures = .init(main.globalAllocator);
 	}
 
 	pub fn deinit() void {
@@ -441,6 +453,7 @@ pub const meshes = struct { // MARK: meshes
 		absorptionTextures.deinit();
 		textureFogData.deinit();
 		arenaForWorld.deinit();
+		blockBreakingTextures.deinit();
 	}
 
 	pub fn reset() void {
@@ -453,6 +466,7 @@ pub const meshes = struct { // MARK: meshes
 		reflectivityTextures.clearRetainingCapacity();
 		absorptionTextures.clearRetainingCapacity();
 		textureFogData.clearRetainingCapacity();
+		blockBreakingTextures.clearRetainingCapacity();
 		_ = arenaForWorld.reset(.free_all);
 	}
 
@@ -512,7 +526,7 @@ pub const meshes = struct { // MARK: meshes
 		const path = buffer[0.._path.len];
 		const textureInfoPath = extendedPath(path, &buffer, "_textureInfo.zig.zon");
 		const textureInfoZon = main.files.readToZon(main.stackAllocator, textureInfoPath) catch .null;
-		defer textureInfoZon.free(main.stackAllocator);
+		defer textureInfoZon.deinit(main.stackAllocator);
 		const animationFrames = textureInfoZon.get(u32, "frames", 1);
 		const animationTime = textureInfoZon.get(u32, "time", 1);
 		animation.append(.{.startFrame = @intCast(blockTextures.items.len), .frames = animationFrames, .time = animationTime});
@@ -585,6 +599,21 @@ pub const meshes = struct { // MARK: meshes
 		maxTextureCount[meshes.size] = @intCast(textureIDs.items.len);
 
 		meshes.size += 1;
+	}
+
+	pub fn registerBlockBreakingAnimation(assetFolder: []const u8) void {
+		var i: usize = 0;
+		while(true) : (i += 1) {
+			const path1 = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/cubyz/blocks/textures/{}.png", .{i}) catch unreachable;
+			defer main.stackAllocator.free(path1);
+			const path2 = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/cubyz/blocks/textures/{}.png", .{assetFolder, i}) catch unreachable;
+			defer main.stackAllocator.free(path2);
+			if(!main.files.hasFile(path1) and !main.files.hasFile(path2)) break;
+
+			const id = std.fmt.allocPrint(main.stackAllocator.allocator, "cubyz:breaking/{}", .{i}) catch unreachable;
+			defer main.stackAllocator.free(id);
+			blockBreakingTextures.append(readTexture(id, assetFolder) catch break);
+		}
 	}
 
 	pub fn preProcessAnimationData(time: u32) void {

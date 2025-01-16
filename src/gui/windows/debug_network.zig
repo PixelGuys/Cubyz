@@ -28,7 +28,9 @@ pub fn render() void {
 	var y: f32 = 0;
 	if (main.game.world != null) {
 		if(main.server.world != null) {
-			draw.print("Players Connected: {}", .{main.server.users.items.len}, 0, y, 8, .left);
+			const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
+			defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+			draw.print("Players Connected: {}", .{userList.len}, 0, y, 8, .left);
 			y += 8;
 		}
 		const sent = network.Connection.packetsSent.load(.monotonic);

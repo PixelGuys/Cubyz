@@ -2,7 +2,7 @@
 	.class = .sand,
 	.hardness = 5.5,
 	.drops = .{
-		.auto,
+		.{.items = .{.auto}},
 	},
 	.model = "cubyz:cube",
 	.texture = "cubyz:dirt",

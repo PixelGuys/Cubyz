@@ -12,7 +12,7 @@
 		},
 	},
 	.drops = .{
-		"cubyz:coal",
+		.{.items = .{"cubyz:coal"}},
 	},
 	.model = "cubyz:cube",
 	.texture = "cubyz:coal_ore",

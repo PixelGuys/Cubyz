@@ -13,6 +13,7 @@ const Button = @import("../components/Button.zig");
 const HorizontalList = @import("../components/HorizontalList.zig");
 const Label = @import("../components/Label.zig");
 const TextInput = @import("../components/TextInput.zig");
+const CheckBox = @import("../components/CheckBox.zig");
 const VerticalList = @import("../components/VerticalList.zig");
 
 pub var window = GuiWindow {
@@ -22,6 +23,20 @@ pub var window = GuiWindow {
 const padding: f32 = 8;
 
 var textInput: *TextInput = undefined;
+
+var gamemode: main.game.Gamemode = .creative;
+var gamemodeInput: *Button = undefined;
+
+var allowCheats: bool = true;
+
+fn gamemodeCallback(_: usize) void {
+	gamemode = std.meta.intToEnum(main.game.Gamemode, @intFromEnum(gamemode) + 1) catch @enumFromInt(0);
+	gamemodeInput.child.label.updateText(@tagName(gamemode));
+}
+
+fn allowCheatsCallback(allow: bool) void {
+	allowCheats = allow;
+}
 
 fn createWorld(_: usize) void {
 	flawedCreateWorld() catch |err| {
@@ -43,7 +58,7 @@ fn flawedCreateWorld() !void {
 		const generatorSettingsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/generatorSettings.zig.zon", .{worldName}) catch unreachable;
 		defer main.stackAllocator.free(generatorSettingsPath);
 		const generatorSettings = main.ZonElement.initObject(main.stackAllocator);
-		defer generatorSettings.free(main.stackAllocator);
+		defer generatorSettings.deinit(main.stackAllocator);
 		const climateGenerator = main.ZonElement.initObject(main.stackAllocator);
 		climateGenerator.put("id", "cubyz:noise_based_voronoi"); // TODO: Make this configurable
 		generatorSettings.put("climateGenerator", climateGenerator);
@@ -51,12 +66,24 @@ fn flawedCreateWorld() !void {
 		mapGenerator.put("id", "cubyz:mapgen_v1"); // TODO: Make this configurable
 		generatorSettings.put("mapGenerator", mapGenerator);
 		const climateWavelengths = main.ZonElement.initObject(main.stackAllocator);
-		climateWavelengths.put("hot_cold", 4096);
-		climateWavelengths.put("land_ocean", 4096);
-		climateWavelengths.put("wet_dry", 4096);
-		climateWavelengths.put("mountain", 4096);
+		climateWavelengths.put("hot_cold", 2400);
+		climateWavelengths.put("land_ocean", 3200);
+		climateWavelengths.put("wet_dry", 2400);
+		climateWavelengths.put("vegetation", 2400);
+		climateWavelengths.put("mountain", 500);
 		generatorSettings.put("climateWavelengths", climateWavelengths);
 		try main.files.writeZon(generatorSettingsPath, generatorSettings);
+	}
+	{
+		const gamerulePath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/gamerules.zig.zon", .{worldName}) catch unreachable;
+		defer main.stackAllocator.free(gamerulePath);
+		const gamerules = main.ZonElement.initObject(main.stackAllocator);
+		defer gamerules.deinit(main.stackAllocator);
+
+		gamerules.put("default_gamemode", @tagName(gamemode));
+		gamerules.put("cheats", allowCheats);
+		
+		try main.files.writeZon(gamerulePath, gamerules);
 	}
 	{ // Make assets subfolder
 		const assetsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets", .{worldName}) catch unreachable;
@@ -82,6 +109,12 @@ pub fn onOpen() void {
 	const name = std.fmt.bufPrint(&buf, "Save{}", .{num}) catch unreachable;
 	textInput = TextInput.init(.{0, 0}, 128, 22, name, .{.callback = &createWorld});
 	list.add(textInput);
+
+	gamemodeInput = Button.initText(.{0, 0}, 128, @tagName(gamemode), .{.callback = &gamemodeCallback});
+	list.add(gamemodeInput);
+
+	list.add(CheckBox.init(.{0, 0}, 128, "Allow Cheats", true, &allowCheatsCallback));
+
 	list.add(Button.initText(.{0, 0}, 128, "Create World", .{.callback = &createWorld}));
 
 	list.finish(.center);

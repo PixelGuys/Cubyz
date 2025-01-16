@@ -2,7 +2,7 @@
 	.class = .wood,
 	.hardness = 8,
 	.drops = .{
-		.auto,
+		.{.items = .{.auto}},
 	},
 	.rotation = .log,
 	.model = "cubyz:cube",

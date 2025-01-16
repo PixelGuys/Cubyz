@@ -2,7 +2,7 @@
 	.class = .sand,
 	.hardness = 6,
 	.drops = .{
-		"cubyz:soil",
+		.{.items = .{"cubyz:soil"}},
 	},
 	.model = "cubyz:cube",
 	.texture = "cubyz:grass_top",
