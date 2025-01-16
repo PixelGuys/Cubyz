@@ -264,7 +264,7 @@ pub const Sync = struct { // MARK: Sync
 				defer main.stackAllocator.free(syncData);
 
 				if (op == .health) {
-					main.network.Protocols.inventory.sendSyncOperation(source.?.conn, syncData);
+					main.network.Protocols.inventory.sendSyncOperation(command.payload.addHealth.source.?.conn, syncData);
 				} else {
 					for(inventories.items[op.inv().?.inv.id].users.items) |otherUser| {
 						if(otherUser == source) continue;
@@ -375,7 +375,7 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		pub fn addHealth(user: *main.server.User, health: f32, cause: main.game.DamageType) void {
-			executeCommand(.{.addHealth = .{.health = health, .cause = cause, .previous = user.player.health}}, user);
+			executeCommand(.{.addHealth = .{.source = user, .health = health, .cause = cause, .previous = user.player.health}}, null);
 		}
 
 		pub fn tryCollectingToPlayerInventory(user: *main.server.User, itemStack: *ItemStack) void {
@@ -919,7 +919,6 @@ pub const Command = struct { // MARK: Command
 			},
 			.addHealth => |info| {
 				if (side == .server) {
-					// std.debug.print("HI little timmy\n", .{});
 					info.source.?.player.health = std.math.clamp(info.source.?.player.health + info.health, 0, 8);
 					self.syncOperations.append(allocator, .{.health = .{
 						.health = info.health
@@ -1573,21 +1572,31 @@ pub const Command = struct { // MARK: Command
 	};
 
 	const AddHealth = struct { // MARK: AddHealth
+		source: ?*main.server.User,
 		health: f32,
 		cause: main.game.DamageType,
 		previous: f32,
 
-		pub fn run(self: AddHealth, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, gamemode: Gamemode) error{serverFailure}!void {
-			if (gamemode == .creative) return;
+		pub fn run(self: AddHealth, allocator: NeverFailingAllocator, cmd: *Command, side: Side, _: ?*main.server.User, _: Gamemode) error{serverFailure}!void {
+			if (side == .server) {
+				if (self.source.?.gamemode.raw == .creative) return;
 
-			// std.debug.print("Hi\n", .{});
+				cmd.executeBaseOperation(allocator, .{.addHealth = .{
+					.health = self.health,
+					.cause = self.cause,
+					.previous = self.previous,
+					.source = self.source,
+				}}, side);
+			} else {
+				if (main.game.Player.gamemode.raw == .creative) return;
 
-			cmd.executeBaseOperation(allocator, .{.addHealth = .{
-				.health = self.health,
-				.cause = self.cause,
-				.previous = self.previous,
-				.source = user,
-			}}, side);
+				cmd.executeBaseOperation(allocator, .{.addHealth = .{
+					.health = self.health,
+					.cause = self.cause,
+					.previous = self.previous,
+					.source = null,
+				}}, side);
+			}
 		}
 
 		fn confirmationData(self: AddHealth, allocator: NeverFailingAllocator) []const u8 {
@@ -1606,6 +1615,7 @@ pub const Command = struct { // MARK: Command
 			if(data.len != 9) return error.Invalid;
 
 			return .{
+				.source = null,
 				.health = @bitCast(std.mem.readInt(u32, data[0..4], .big)),
 				.cause = @enumFromInt(data[4]),
 				.previous = @bitCast(std.mem.readInt(u32, data[5..9], .big)),
@@ -1770,7 +1780,7 @@ pub fn getAmount(self: Inventory, slot: usize) u16 {
 }
 
 pub fn addHealth(health: f32, cause: main.game.DamageType) void {
-	Sync.ClientSide.executeCommand(.{.addHealth = .{.health = health, .cause = cause, .previous = main.game.Player.super.health}});
+	Sync.ClientSide.executeCommand(.{.addHealth = .{.source = null, .health = health, .cause = cause, .previous = main.game.Player.super.health}});
 }
 
 pub fn save(self: Inventory, allocator: NeverFailingAllocator) ZonElement {
