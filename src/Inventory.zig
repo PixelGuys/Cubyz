@@ -591,7 +591,7 @@ pub const Command = struct { // MARK: Command
 					durability.inv.inv.update();
 				},
 				.health => |health| {
-					std.debug.print("HIHIHIIHIHIHIHIHIHIHIHIHI\n", .{});
+					// std.debug.print("HIHIHIIHIHIHIHIHIHIHIHIHI\n", .{});
 					main.game.Player.super.health = std.math.clamp(main.game.Player.super.health + health.health, 0, 8);
 				}
 			}
@@ -919,6 +919,7 @@ pub const Command = struct { // MARK: Command
 			},
 			.addHealth => |info| {
 				if (side == .server) {
+					// std.debug.print("HI little timmy\n", .{});
 					info.source.?.player.health = std.math.clamp(info.source.?.player.health + info.health, 0, 8);
 					self.syncOperations.append(allocator, .{.health = .{
 						.health = info.health
@@ -1579,12 +1580,20 @@ pub const Command = struct { // MARK: Command
 		pub fn run(self: AddHealth, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, gamemode: Gamemode) error{serverFailure}!void {
 			if (gamemode == .creative) return;
 
+			// std.debug.print("Hi\n", .{});
+
 			cmd.executeBaseOperation(allocator, .{.addHealth = .{
 				.health = self.health,
 				.cause = self.cause,
 				.previous = self.previous,
 				.source = user,
 			}}, side);
+		}
+
+		fn confirmationData(self: AddHealth, allocator: NeverFailingAllocator) []const u8 {
+			const data = allocator.alloc(u8, 4);
+			std.mem.writeInt(u32, data[0..4], @bitCast(self.health), .big);
+			return data;
 		}
 
 		fn serialize(self: AddHealth, data: *main.List(u8)) void {
@@ -1761,7 +1770,6 @@ pub fn getAmount(self: Inventory, slot: usize) u16 {
 }
 
 pub fn addHealth(health: f32, cause: main.game.DamageType) void {
-	// main.game.Player.super.health = std.math.clamp(main.game.Player.super.health + health, 0, 8);
 	Sync.ClientSide.executeCommand(.{.addHealth = .{.health = health, .cause = cause, .previous = main.game.Player.super.health}});
 }
 
