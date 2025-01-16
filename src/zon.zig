@@ -115,9 +115,13 @@ pub const ZonElement = union(enum) { // MARK: Zon
 			.object => {
 				const out = self.clone(allocator);
 
-				var selfIter = self.object.iterator();
-				while (selfIter.next()) |entry| {
-					out.put(entry.key_ptr.*, entry.value_ptr.clone(allocator));
+				var otherIter = other.object.iterator();
+				while (otherIter.next()) |entry| {
+					if (out.object.get(entry.key_ptr.*)) |val| {
+						self.put(entry.key_ptr.*, entry.value_ptr.joinGetNew(val, allocator));
+					} else {
+						self.put(entry.key_ptr.*, entry.value_ptr.clone(allocator));
+					}
 				}
 				return out;
 			},

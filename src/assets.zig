@@ -21,14 +21,22 @@ fn readDefaultFile(allocator: NeverFailingAllocator, dir: std.fs.Dir) !ZonElemen
 		defer main.stackAllocator.free(string);
 
 		return ZonElement.parseFromString(allocator, string);
-	} else |_| {}
+	} else |err| {
+		if (err != error.FileNotFound) {
+			return err;
+		}
+	}
 
 	if (dir.openFile("_defaults.zon", .{})) |val| {
 		const string = try val.readToEndAlloc(main.stackAllocator.allocator, std.math.maxInt(usize));
 		defer main.stackAllocator.free(string);
 
 		return ZonElement.parseFromString(allocator, string);
-	} else |_| {}
+	} else |err| {
+		if (err != error.FileNotFound) {
+			return err;
+		}
+	}
 
 	return .null;
 }
@@ -43,16 +51,13 @@ pub fn readAllZonFilesInAddons(externalAllocator: NeverFailingAllocator, addons:
 			continue;
 		};
 		defer dir.close();
+
+		var defaultsArena: main.utils.NeverFailingArenaAllocator = .init(main.stackAllocator);
+		defer defaultsArena.deinit();
+
+		const defaultsArenaAllocator = defaultsArena.allocator();
 		
-		var defaultMap = std.StringHashMap(ZonElement).init(main.stackAllocator.allocator);
-		defer {
-			var iter = defaultMap.iterator();
-			while (iter.next()) |entry| {
-				main.stackAllocator.free(entry.key_ptr.*);
-				entry.value_ptr.*.deinit(main.stackAllocator);
-			}
-			defaultMap.deinit();
-		}
+		var defaultMap = std.StringHashMap(ZonElement).init(defaultsArenaAllocator.allocator);
 		
 		var walker = dir.walk(main.stackAllocator.allocator) catch unreachable;
 		defer walker.deinit();
@@ -86,19 +91,19 @@ pub fn readAllZonFilesInAddons(externalAllocator: NeverFailingAllocator, addons:
 				if (defaults) {
 					const path = entry.dir.realpathAlloc(main.stackAllocator.allocator, ".") catch unreachable;
 					defer main.stackAllocator.free(path);
-					if (defaultMap.get(path)) |default| {
-						zon.join(default);
-					} else {
-						const default: ZonElement = readDefaultFile(main.stackAllocator, entry.dir) catch |err| blk: {
+
+					const result = defaultMap.getOrPut(path) catch unreachable;
+
+					if (!result.found_existing) {
+						const default: ZonElement = readDefaultFile(defaultsArenaAllocator, entry.dir) catch |err| blk: {
 							std.log.err("Failed to read default file: {s}", .{@errorName(err)});
 							break :blk .null;
 						};
 						
-						const key = entry.dir.realpathAlloc(main.stackAllocator.allocator, ".") catch unreachable;
-						defaultMap.put(key, default) catch unreachable;
-						
-						zon.join(default);
+						result.value_ptr.* = default;
 					}
+
+					zon.join(result.value_ptr.*);
 				}
 				output.put(id, zon) catch unreachable;
 			}
