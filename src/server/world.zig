@@ -819,7 +819,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				playerZon.put("inventory", inv.save(main.stackAllocator));
 			}
 
-			if (main.items.Inventory.Sync.ServerSide.getInventoryFromUserAndSource(user, .other)) |inv| {
+			if (main.items.Inventory.Sync.ServerSide.getInventoryFromSource(.hand)) |inv| {
 				playerZon.put("hand", inv.save(main.stackAllocator));
 			}
 		}

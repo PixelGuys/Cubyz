@@ -307,7 +307,7 @@ pub const Sync = struct { // MARK: Sync
 						}
 					}
 				},
-				.playerInventory, .other => {},
+				.playerInventory, .hand, .other => {},
 				.alreadyFreed => unreachable,
 			}
 			const inventory = ServerInventory.init(len, typ, source);
@@ -329,7 +329,7 @@ pub const Sync = struct { // MARK: Sync
 
 					inventory.inv.loadFromZon(inventoryZon);
 				},
-				.other => {
+				.hand => {
 					const dest: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Encoder.calcSize(user.name.len));
 					defer main.stackAllocator.free(dest);
 					const hashedName = std.base64.url_safe.Encoder.encode(dest, user.name);
@@ -344,6 +344,7 @@ pub const Sync = struct { // MARK: Sync
 
 					inventory.inv.loadFromZon(inventoryZon);
 				},
+				.other => {},
 				.alreadyFreed => unreachable,
 			}
 
@@ -367,16 +368,6 @@ pub const Sync = struct { // MARK: Sync
 			main.utils.assertLocked(&mutex);
 			for(inventories.items) |inv| {
 				if (inv.source == source) {
-					return inv.inv;
-				}
-			}
-			return null;
-		}
-
-		pub fn getInventoryFromUserAndSource(user: *main.server.User, source: SourceType) ?Inventory {
-			main.utils.assertLocked(&mutex);
-			for(inventories.items) |inv| {
-				if (std.mem.containsAtLeast(*main.server.User, inv.users.items, 1, &[_]*main.server.User{user}) and inv.source == source) {
 					return inv.inv;
 				}
 			}
@@ -907,7 +898,7 @@ pub const Command = struct { // MARK: Command
 			data.append(@intFromEnum(self.inv.type));
 			data.append(@intFromEnum(self.source));
 			switch(self.source) {
-				.playerInventory, .sharedTestingInventory, .other => {},
+				.playerInventory, .sharedTestingInventory, .hand, .other => {},
 				.alreadyFreed => unreachable,
 			}
 		}
@@ -922,6 +913,7 @@ pub const Command = struct { // MARK: Command
 			const source: Source = switch(sourceType) {
 				.playerInventory => .{.playerInventory = {}},
 				.sharedTestingInventory => .{.sharedTestingInventory = {}},
+				.hand => .{.hand = {}},
 				.other => .{.other = {}},
 				.alreadyFreed => unreachable,
 			};
@@ -1444,12 +1436,14 @@ const SourceType = enum(u8) {
 	alreadyFreed = 0,
 	playerInventory = 1,
 	sharedTestingInventory = 2,
+	hand = 3,
 	other = 0xff, // TODO: List every type separately here.
 };
 const Source = union(SourceType) {
 	alreadyFreed: void,
 	playerInventory: void,
 	sharedTestingInventory: void,
+	hand: void,
 	other: void,
 };
 
