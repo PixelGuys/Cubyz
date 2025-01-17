@@ -818,6 +818,10 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			if (main.items.Inventory.Sync.ServerSide.getInventoryFromSource(.playerInventory)) |inv| {
 				playerZon.put("inventory", inv.save(main.stackAllocator));
 			}
+
+			if (main.items.Inventory.Sync.ServerSide.getInventoryFromUserAndSource(user, .other)) |inv| {
+				playerZon.put("hand", inv.save(main.stackAllocator));
+			}
 		}
 
 		const playerPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players", .{self.name}) catch unreachable;

@@ -851,6 +851,11 @@ pub const Protocols = struct {
 		fn receive(conn: *Connection, _: []const u8) !void {
 			conn.disconnect();
 			if(conn.user) |user| {
+				main.server.world.?.savePlayer(user) catch |err| {
+					std.log.err("Failed to save player: {s}", .{@errorName(err)});
+					return;
+				};
+				
 				main.server.disconnect(user);
 			} else {
 				main.exitToMenu(undefined);

@@ -329,7 +329,21 @@ pub const Sync = struct { // MARK: Sync
 
 					inventory.inv.loadFromZon(inventoryZon);
 				},
-				.other => {},
+				.other => {
+					const dest: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Encoder.calcSize(user.name.len));
+					defer main.stackAllocator.free(dest);
+					const hashedName = std.base64.url_safe.Encoder.encode(dest, user.name);
+
+					const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players/{s}.zig.zon", .{main.server.world.?.name, hashedName}) catch unreachable;
+					defer main.stackAllocator.free(path);
+		
+					const playerData = main.files.readToZon(main.stackAllocator, path) catch .null;
+					defer playerData.deinit(main.stackAllocator);
+
+					const inventoryZon = playerData.getChild("hand");
+
+					inventory.inv.loadFromZon(inventoryZon);
+				},
 				.alreadyFreed => unreachable,
 			}
 
@@ -353,6 +367,16 @@ pub const Sync = struct { // MARK: Sync
 			main.utils.assertLocked(&mutex);
 			for(inventories.items) |inv| {
 				if (inv.source == source) {
+					return inv.inv;
+				}
+			}
+			return null;
+		}
+
+		pub fn getInventoryFromUserAndSource(user: *main.server.User, source: SourceType) ?Inventory {
+			main.utils.assertLocked(&mutex);
+			for(inventories.items) |inv| {
+				if (std.mem.containsAtLeast(*main.server.User, inv.users.items, 1, &[_]*main.server.User{user}) and inv.source == source) {
 					return inv.inv;
 				}
 			}
