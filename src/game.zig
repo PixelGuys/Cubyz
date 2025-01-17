@@ -1022,7 +1022,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		}
 		steppingHeight = @min(steppingHeight, Player.eyePos[2] - Player.eyeBox.min[2]);
 
-		const slipLimit = 0.1 * Player.currentFriction;
+		const slipLimit = 0.05 * Player.currentFriction;
 		
 		var xMovement = collision.collideOrStep(.client, .x, move[0], Player.super.pos, hitBox, steppingHeight);
 		Player.super.pos += xMovement;
