@@ -62,7 +62,7 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 fn considerCoordinates(ore: *const main.blocks.Ore, relX: f32, relY: f32, relZ: f32, chunk: *main.chunk.ServerChunk, startSeed: u64) void {
 	const chunkSizeFloat: f32 = @floatFromInt(main.chunk.chunkSize);
 	// Compose the seeds from some random stats of the ore. They generally shouldn't be the same for two different ores. TODO: Give each block a hash function (id based) that can be used in cases like this.
-	var seed = startSeed ^ @as(u32, @bitCast(ore.maxHeight)) ^ @as(u32, @bitCast(ore.size)) ^ @as(u32, @bitCast(main.blocks.Block.hardness(.{.typ = ore.blockType, .data = 0})));
+	var seed = startSeed ^ @as(u32, @bitCast(ore.maxHeight)) ^ @as(u32, @bitCast(ore.size)) ^ @as(u32, @bitCast(main.blocks.Block.blockHealth(.{.typ = ore.blockType, .data = 0})));
 	random.scrambleSeed(&seed);
 	// Determine how many veins of this type start in this chunk. The number depends on parameters set for the specific ore:
 	const veins: u32 = @intFromFloat(random.nextFloat(&seed)*ore.veins*2);
