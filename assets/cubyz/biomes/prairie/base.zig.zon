@@ -8,11 +8,8 @@
 	.maxRadius = 160,
 	.roughness = 1,
 	.hills = 3,
-	
 	.music = "cubyz:sunrise",
-
 	.validPlayerSpawn = true,
-	
 	.ground_structure = .{
 		"1 cubyz:dirt",
 		"3 to 4 cubyz:limestone",
