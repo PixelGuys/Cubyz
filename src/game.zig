@@ -857,9 +857,9 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			.min = -Player.standingBoundingBoxExtent,
 			.max = Player.standingBoundingBoxExtent,
 		}) == null) {
-			Player.crouching = crouch;
+			Player.crouching = crouch and !Player.isFlying.load(.monotonic);
 
-			if (crouch) {
+			if (Player.crouching) {
 				Player.crouchPerc += @floatCast(deltaTime * 10);
 				if (Player.crouchPerc > 1) {
 					Player.crouchPerc = 1;
