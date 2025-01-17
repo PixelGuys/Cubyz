@@ -591,7 +591,6 @@ pub const Command = struct { // MARK: Command
 					durability.inv.inv.update();
 				},
 				.health => |health| {
-					// std.debug.print("HIHIHIIHIHIHIHIHIHIHIHIHI\n", .{});
 					main.game.Player.super.health = std.math.clamp(main.game.Player.super.health + health.health, 0, 8);
 				}
 			}
@@ -1611,11 +1610,11 @@ pub const Command = struct { // MARK: Command
 			std.mem.writeInt(u32, data.addMany(4)[0..4], @bitCast(self.previous), .big);
 		}
 
-		fn deserialize(data: []const u8, _: Side, _: ?*main.server.User) !AddHealth {
+		fn deserialize(data: []const u8, _: Side, source: ?*main.server.User) !AddHealth {
 			if(data.len != 9) return error.Invalid;
 
 			return .{
-				.source = null,
+				.source = source,
 				.health = @bitCast(std.mem.readInt(u32, data[0..4], .big)),
 				.cause = @enumFromInt(data[4]),
 				.previous = @bitCast(std.mem.readInt(u32, data[5..9], .big)),
