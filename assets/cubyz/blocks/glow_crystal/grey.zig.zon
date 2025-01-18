@@ -1,8 +1,4 @@
 .{
-	.class = .stone,
-	.hardness = 2,
-	.drops = .{},
 	.emittedLight = 0xc1c1c1,
-	.model = "cubyz:cube",
 	.texture = "cubyz:glow_crystal/grey",
 }
