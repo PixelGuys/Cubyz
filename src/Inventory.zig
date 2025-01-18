@@ -364,11 +364,13 @@ pub const Sync = struct { // MARK: Sync
 			return inventories.items[serverId].inv;
 		}
 
-		pub fn getInventoryFromSource(source: SourceType) ?Inventory {
+		pub fn getUserInventoryFromSource(user: *main.game.User, source: SourceType) ?Inventory {
 			main.utils.assertLocked(&mutex);
 			for(inventories.items) |inv| {
-				if (inv.source == source) {
-					return inv.inv;
+				for (inv.users.items) |u| {
+					if (u.id == user.id and inv.source == source) {
+						return inv;
+					}
 				}
 			}
 			return null;
