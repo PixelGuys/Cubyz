@@ -964,7 +964,6 @@ pub const Protocols = struct {
 		pub const asynchronous = false;
 		const type_gamemode: u8 = 0;
 		const type_teleport: u8 = 1;
-		const type_kill: u8 = 2;
 		const type_timeAndBiome: u8 = 8;
 		fn receive(conn: *Connection, data: []const u8) !void {
 			switch(data[0]) {
@@ -979,9 +978,6 @@ pub const Protocols = struct {
 						@bitCast(std.mem.readInt(u64, data[9..17], .big)),
 						@bitCast(std.mem.readInt(u64, data[17..25], .big)),
 					});
-				},
-				type_kill => {
-					game.Player.kill();
 				},
 				type_timeAndBiome => {
 					if(conn.manager.world) |world| {
@@ -1042,11 +1038,6 @@ pub const Protocols = struct {
 			conn.sendImportant(id, &data);
 		}
 
-		pub fn sendKill(conn: *Connection) void {
-			var data: [1]u8 = undefined;
-			data[0] = type_kill;
-			conn.sendImportant(id, &data);
-		}
 
 		pub fn sendTimeAndBiome(conn: *Connection, world: *const main.server.ServerWorld) void {
 			const zon = ZonElement.initObject(main.stackAllocator);

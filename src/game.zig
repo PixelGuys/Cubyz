@@ -456,9 +456,9 @@ pub const Player = struct { // MARK: Player
 	pub fn kill() void {
 		Player.super.pos = world.?.spawn;
 		Player.super.vel = .{0, 0, 0};
-		
-		Inventory.addHealth(std.math.floatMax(f32), .heal);
 
+		Player.super.health = Player.super.maxHealth;
+		
 		Player.eyeVel = .{0, 0, 0};
 		Player.eyeCoyote = 0;
 		Player.eyeStep = .{false, false, false};
@@ -980,7 +980,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 			const damage: f32 = @floatCast(@max((Player.super.vel[2] * Player.super.vel[2]) / (2 * gravity) - 3, 0) * 0.5);
 			if (damage > 0.01) {
-				Inventory.addHealth(-damage, .fall);
+				Inventory.Sync.addHealth(-damage, .fall, .client, null);
 			}
 			Player.super.vel[2] = 0;
 

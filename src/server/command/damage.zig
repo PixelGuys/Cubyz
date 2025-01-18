@@ -11,5 +11,5 @@ pub fn execute(args: []const u8, source: *User) void {
 		source.sendMessage("#ff0000Too many arguments for command /clear. Expected no arguments.", .{});
 		return;
 	}
-	main.items.Inventory.Sync.ServerSide.addHealth(source, -1, .kill);
+	main.items.Inventory.Sync.addHealth(-1, .kill, .server, source);
 }

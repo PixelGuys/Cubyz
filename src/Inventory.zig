@@ -376,10 +376,6 @@ pub const Sync = struct { // MARK: Sync
 			}
 		}
 
-		pub fn addHealth(user: *main.server.User, health: f32, cause: main.game.DamageType) void {
-			executeCommand(.{.addHealth = .{.target = user, .health = health, .cause = cause}}, null);
-		}
-
 		pub fn tryCollectingToPlayerInventory(user: *main.server.User, itemStack: *ItemStack) void {
 			if(itemStack.item == null) return;
 			mutex.lock();
@@ -416,6 +412,14 @@ pub const Sync = struct { // MARK: Sync
 			main.network.Protocols.genericUpdate.sendGamemode(user.conn, gamemode);
 		}
 	};
+
+	pub fn addHealth(health: f32, cause: main.game.DamageType, side: Side, user: ?*main.server.User) void {
+		if (side == .client) {
+			Sync.ClientSide.executeCommand(.{.addHealth = .{.target = user, .health = health, .cause = cause}});
+		} else {
+			Sync.ServerSide.executeCommand(.{.addHealth = .{.target = user, .health = health, .cause = cause}}, null);
+		}
+	}
 
 	pub fn getInventory(id: u32, side: Side, user: ?*main.server.User) ?Inventory {
 		return switch(side) {
@@ -791,11 +795,14 @@ pub const Command = struct { // MARK: Command
 					}
 				},
 				.addHealth => |info| {
-					if (info.target) |target| {
-						if (target.player.health <= 0) {
+					if (side == .server) {
+						if (info.target.?.player.health <= 0) {
+							info.target.?.player.health = info.target.?.player.maxHealth;
 							info.cause.sendMessage(info.target.?.name);
-
-							main.network.Protocols.genericUpdate.sendKill(target.conn);
+						}
+					} else {
+						if (main.game.Player.super.health <= 0) {
+							main.game.Player.kill();
 						}
 					}
 				}
@@ -1752,10 +1759,6 @@ pub fn getStack(self: Inventory, slot: usize) ItemStack {
 
 pub fn getAmount(self: Inventory, slot: usize) u16 {
 	return self._items[slot].amount;
-}
-
-pub fn addHealth(health: f32, cause: main.game.DamageType) void {
-	Sync.ClientSide.executeCommand(.{.addHealth = .{.target = null, .health = health, .cause = cause}});
 }
 
 pub fn save(self: Inventory, allocator: NeverFailingAllocator) ZonElement {
