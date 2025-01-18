@@ -907,8 +907,9 @@ pub const Command = struct { // MARK: Command
 				self.executeDurabilityUseOperation(allocator, side, info.source, info.durability);
 				info.source.inv.update();
 			},
-			.addHealth => |info| {
+			.addHealth => |*info| {
 				if (side == .server) {
+					info.previous = info.target.?.player.health;
 					info.target.?.player.health = std.math.clamp(info.target.?.player.health + info.health, 0, main.game.Player.super.maxHealth);
 					self.syncOperations.append(allocator, .{.health = .{
 						.health = info.health

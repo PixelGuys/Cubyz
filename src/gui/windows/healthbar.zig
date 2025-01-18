@@ -52,7 +52,7 @@ pub fn render() void {
 			x = 0;
 			y += 20;
 		}
-		if(healthLeft >= 1) {
+		if(healthLeft >= 0.9) {
 			heartTexture.bindTo(0);
 		} else if(healthLeft <= 0) {
 			deadHeartTexture.bindTo(0);
