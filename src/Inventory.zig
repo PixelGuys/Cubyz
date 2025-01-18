@@ -263,7 +263,7 @@ pub const Sync = struct { // MARK: Sync
 				const syncData = op.serialize(main.stackAllocator);
 				defer main.stackAllocator.free(syncData);
 
-				if (op == .health) {
+				if (op == .health or op == .kill) {
 					if (source != command.payload.addHealth.target) {
 						main.network.Protocols.inventory.sendSyncOperation(command.payload.addHealth.target.?.conn, syncData);
 					}
@@ -534,7 +534,8 @@ pub const Command = struct { // MARK: Command
 		create = 0,
 		delete = 1,
 		useDurability = 2,
-		health = 3
+		health = 3,
+		kill = 4,
 	};
 
 	const SyncOperation = union(SyncOperationType) { // MARK: SyncOperation
@@ -555,9 +556,10 @@ pub const Command = struct { // MARK: Command
 		health: struct {
 			health: f32
 		},
+		kill: void,
 
 		pub fn executeFromData(data: []const u8) !void {
-			std.debug.assert(data.len >= 5);
+			std.debug.assert(data.len >= 1);
 
 			switch (try deserialize(data)) {
 				.create => |create| {
@@ -596,6 +598,9 @@ pub const Command = struct { // MARK: Command
 				},
 				.health => |health| {
 					main.game.Player.super.health = std.math.clamp(main.game.Player.super.health + health.health, 0, main.game.Player.super.maxHealth);
+				},
+				.kill => {
+					main.game.Player.kill();
 				}
 			}
 		}
@@ -611,7 +616,7 @@ pub const Command = struct { // MARK: Command
 				.useDurability => |durability| {
 					return durability.inv;
 				},
-				.health => unreachable
+				.health, .kill => unreachable
 			}
 		}
 
@@ -672,6 +677,13 @@ pub const Command = struct { // MARK: Command
 					return .{.health = .{
 						.health = @bitCast(std.mem.readInt(u32, data[0..4], .big))
 					}};
+				},
+				.kill => {
+					if (data.len != 0) {
+						return error.Invalid;
+					}
+
+					return .{.kill = {}};
 				}
 			}
 		}
@@ -702,7 +714,8 @@ pub const Command = struct { // MARK: Command
 				},
 				.health => |health| {
 					std.mem.writeInt(u32, data.addMany(4)[0..4], @bitCast(health.health), .big);
-				}
+				},
+				.kill => {}
 			}
 			return data.toOwnedSlice();
 		}
@@ -785,25 +798,13 @@ pub const Command = struct { // MARK: Command
 	fn finalize(self: Command, allocator: NeverFailingAllocator, side: Side, data: []const u8) void {
 		for(self.baseOperations.items) |step| {
 			switch(step) {
-				.move, .swap, .create => {},
+				.move, .swap, .create, .addHealth => {},
 				.delete => |info| {
 					info.item.?.deinit();
 				},
 				.useDurability => |info| {
 					if(info.previousDurability <= info.durability) {
 						info.item.deinit();
-					}
-				},
-				.addHealth => |info| {
-					if (side == .server) {
-						if (info.target.?.player.health <= 0) {
-							info.target.?.player.health = info.target.?.player.maxHealth;
-							info.cause.sendMessage(info.target.?.name);
-						}
-					} else {
-						if (main.game.Player.super.health <= 0) {
-							main.game.Player.kill();
-						}
 					}
 				}
 			}
@@ -921,6 +922,13 @@ pub const Command = struct { // MARK: Command
 					self.syncOperations.append(allocator, .{.health = .{
 						.health = info.health
 					}});
+
+					if (info.target.?.player.health <= 0) {
+						info.target.?.player.health = info.target.?.player.maxHealth;
+						info.cause.sendMessage(info.target.?.name);
+					
+						self.syncOperations.append(allocator, .{.kill = {}});
+					}
 				} else {
 					main.game.Player.super.health = std.math.clamp(main.game.Player.super.health + info.health, 0, main.game.Player.super.maxHealth);
 				}
