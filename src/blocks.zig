@@ -62,7 +62,7 @@ var _transparent: [maxBlockCount]bool = undefined;
 var _collide: [maxBlockCount]bool = undefined;
 var _id: [maxBlockCount][]u8 = undefined;
 /// Time in seconds to break this block by hand.
-var _hardness: [maxBlockCount]f32 = undefined;
+var _blockHealth: [maxBlockCount]f32 = undefined;
 /// Minimum pickaxe/axe/shovel power required.
 var _breakingPower: [maxBlockCount]f32 = undefined;
 var _solid: [maxBlockCount]bool = undefined;
@@ -108,7 +108,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 
 	_mode[size] = rotation.getByID(zon.get([]const u8, "rotation", "no_rotation"));
 	_breakingPower[size] = zon.get(f32, "breakingPower", 0);
-	_hardness[size] = zon.get(f32, "hardness", 1);
+	_blockHealth[size] = zon.get(f32, "blockHealth", 1);
 
 	_blockClass[size] = std.meta.stringToEnum(BlockClass, zon.get([]const u8, "class", "stone")) orelse .stone;
 	_light[size] = zon.get(u32, "emittedLight", 0);
@@ -274,8 +274,8 @@ pub const Block = packed struct { // MARK: Block
 	}
 
 	/// Time in seconds to break this block by hand.
-	pub inline fn hardness(self: Block) f32 {
-		return _hardness[self.typ];
+	pub inline fn blockHealth(self: Block) f32 {
+		return _blockHealth[self.typ];
 	}
 
 	/// Minimum pickaxe/axe/shovel power required.

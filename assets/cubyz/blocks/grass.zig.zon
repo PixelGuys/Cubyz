@@ -1,6 +1,6 @@
 .{
 	.class = .sand,
-	.hardness = 6,
+	.hardness = 5,
 	.drops = .{
 		.{.items = .{"cubyz:soil"}},
 	},

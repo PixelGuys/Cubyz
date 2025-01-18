@@ -824,7 +824,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 					power = stack.item.?.tool.getPowerByBlockClass(block.blockClass());
 				}
 				if(power >= block.breakingPower()) {
-					var breakTime: f32 = block.hardness();
+					var breakTime: f32 = block.blockHealth();
 					if(isTool) {
 						breakTime = breakTime*stack.item.?.tool.swingTime/power;
 					}
