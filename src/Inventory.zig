@@ -263,15 +263,12 @@ pub const Sync = struct { // MARK: Sync
 				const syncData = op.serialize(main.stackAllocator);
 				defer main.stackAllocator.free(syncData);
 
-				if (op == .health or op == .kill) {
-					if (source != command.payload.addHealth.target) {
-						main.network.Protocols.inventory.sendSyncOperation(command.payload.addHealth.target.?.conn, syncData);
-					}
-				} else {
-					for(inventories.items[op.inv().inv.id].users.items) |otherUser| {
-						if(otherUser == source) continue;
-						main.network.Protocols.inventory.sendSyncOperation(otherUser.conn, syncData);
-					}
+				const users = op.getUsers(main.stackAllocator);
+				defer main.stackAllocator.free(users);
+
+				for (users) |user| {
+					if (user == source and op.ignoreSource()) continue;
+					main.network.Protocols.inventory.sendSyncOperation(user.conn, syncData);
 				}
 			}
 			if(source != null and command.payload == .open) { // Send initial items
@@ -413,11 +410,11 @@ pub const Sync = struct { // MARK: Sync
 		}
 	};
 
-	pub fn addHealth(health: f32, cause: main.game.DamageType, side: Side, user: ?*main.server.User) void {
+	pub fn addHealth(health: f32, cause: main.game.DamageType, side: Side, id: u32) void {
 		if (side == .client) {
-			Sync.ClientSide.executeCommand(.{.addHealth = .{.target = user, .health = health, .cause = cause}});
+			Sync.ClientSide.executeCommand(.{.addHealth = .{.target = id, .health = health, .cause = cause}});
 		} else {
-			Sync.ServerSide.executeCommand(.{.addHealth = .{.target = user, .health = health, .cause = cause}}, null);
+			Sync.ServerSide.executeCommand(.{.addHealth = .{.target = id, .health = health, .cause = cause}}, null);
 		}
 	}
 
@@ -554,9 +551,12 @@ pub const Command = struct { // MARK: Command
 			durability: u32
 		},
 		health: struct {
+			target: *main.server.User,
 			health: f32
 		},
-		kill: void,
+		kill: struct {
+			target: *main.server.User,
+		},
 
 		pub fn executeFromData(data: []const u8) !void {
 			std.debug.assert(data.len >= 1);
@@ -605,19 +605,35 @@ pub const Command = struct { // MARK: Command
 			}
 		}
 
-		pub fn inv(self: SyncOperation) InventoryAndSlot {
+		pub fn getUsers(self: SyncOperation, allocator: NeverFailingAllocator) []*main.server.User {
 			switch (self) {
 				.create => |create| {
-					return create.inv;
+					return allocator.dupe(*main.server.User, Sync.ServerSide.inventories.items[create.inv.inv.id].users.items);
 				},
 				.delete => |delete| {
-					return delete.inv;
+					return allocator.dupe(*main.server.User, Sync.ServerSide.inventories.items[delete.inv.inv.id].users.items);
 				},
 				.useDurability => |durability| {
-					return durability.inv;
+					return allocator.dupe(*main.server.User, Sync.ServerSide.inventories.items[durability.inv.inv.id].users.items);
 				},
-				.health, .kill => unreachable
+				.health => |health| {
+					const out = allocator.alloc(*main.server.User, 1);
+					out[0] = health.target;
+					return out;
+				},
+				.kill => |kill| {
+					const out = allocator.alloc(*main.server.User, 1);
+					out[0] = kill.target;
+					return out;
+				}
 			}
+		}
+
+		pub fn ignoreSource(self: SyncOperation) bool {
+			return switch (self) {
+				.create, .delete, .useDurability => true,
+				.health, .kill => false
+			};
 		}
 
 		fn deserialize(fullData: []const u8) !SyncOperation {
@@ -671,19 +687,47 @@ pub const Command = struct { // MARK: Command
 					return out;
 				},
 				.health => {
-					if (data.len != 4) {
-						return error.Invalid;
-					}
-					return .{.health = .{
-						.health = @bitCast(std.mem.readInt(u32, data[0..4], .big))
-					}};
-				},
-				.kill => {
-					if (data.len != 0) {
+					if (data.len != 8) {
 						return error.Invalid;
 					}
 
-					return .{.kill = {}};
+					const id = std.mem.readInt(u32, data[0..4], .big);
+
+					var target: *main.server.User = undefined;
+					const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
+					defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+					for (userList) |user| {
+						if (user.id == id) {
+							target = user;
+							break;
+						}
+					}
+
+					return .{.health = .{
+						.target = target,
+						.health = @bitCast(std.mem.readInt(u32, data[4..8], .big))
+					}};
+				},
+				.kill => {
+					if (data.len != 4) {
+						return error.Invalid;
+					}
+
+					const id = std.mem.readInt(u32, data[0..4], .big);
+
+					var target: *main.server.User = undefined;
+					const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
+					defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+					for (userList) |user| {
+						if (user.id == id) {
+							target = user;
+							break;
+						}
+					}
+
+					return .{.kill = .{
+						.target = target,
+					}};
 				}
 			}
 		}
@@ -713,9 +757,12 @@ pub const Command = struct { // MARK: Command
 					std.mem.writeInt(u32, data.addMany(4)[0..4], durability.durability, .big);
 				},
 				.health => |health| {
+					std.mem.writeInt(u32, data.addMany(4)[0..4], health.target.id, .big);
 					std.mem.writeInt(u32, data.addMany(4)[0..4], @bitCast(health.health), .big);
 				},
-				.kill => {}
+				.kill => |kill| {
+					std.mem.writeInt(u32, data.addMany(4)[0..4], kill.target.id, .big);
+				}
 			}
 			return data.toOwnedSlice();
 		}
@@ -918,19 +965,22 @@ pub const Command = struct { // MARK: Command
 			.addHealth => |*info| {
 				if (side == .server) {
 					info.previous = info.target.?.player.health;
-					info.target.?.player.health = std.math.clamp(info.target.?.player.health + info.health, 0, main.game.Player.super.maxHealth);
-					self.syncOperations.append(allocator, .{.health = .{
-						.health = info.health
-					}});
+
+					info.target.?.player.health = std.math.clamp(info.target.?.player.health + info.health, 0, info.target.?.player.maxHealth);
 
 					if (info.target.?.player.health <= 0) {
 						info.target.?.player.health = info.target.?.player.maxHealth;
 						info.cause.sendMessage(info.target.?.name);
-					
-						self.syncOperations.append(allocator, .{.kill = {}});
+
+						self.syncOperations.append(allocator, .{.kill = .{
+							.target = info.target.?
+						}});
+					} else {
+						self.syncOperations.append(allocator, .{.health = .{
+							.target = info.target.?,
+							.health = info.health
+						}});
 					}
-				} else {
-					main.game.Player.super.health = std.math.clamp(main.game.Player.super.health + info.health, 0, main.game.Player.super.maxHealth);
 				}
 			}
 		}
@@ -1578,37 +1628,49 @@ pub const Command = struct { // MARK: Command
 	};
 
 	const AddHealth = struct { // MARK: AddHealth
-		target: ?*main.server.User,
+		target: u32,
 		health: f32,
 		cause: main.game.DamageType,
 
 		pub fn run(self: AddHealth, allocator: NeverFailingAllocator, cmd: *Command, side: Side, _: ?*main.server.User, _: Gamemode) error{serverFailure}!void {
+			var target: ?*main.server.User = null;
+
 			if (side == .server) {
-				if (self.target.?.gamemode.raw == .creative) return;
+				const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
+				defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+				for (userList) |user| {
+					if (user.id == self.target) {
+						target = user;
+						break;
+					}
+				}
+
+				if (target.?.gamemode.raw == .creative) return;
 			} else {
 				if (main.game.Player.gamemode.raw == .creative) return;
 			}
 
 			cmd.executeBaseOperation(allocator, .{.addHealth = .{
-				.target = self.target,
+				.target = target,
 				.health = self.health,
 				.cause = self.cause,
-				.previous = if (side == .server) self.target.?.player.health else main.game.Player.super.health
+				.previous = if (side == .server) target.?.player.health else main.game.Player.super.health
 			}}, side);
 		}
 
 		fn serialize(self: AddHealth, data: *main.List(u8)) void {
+			std.mem.writeInt(u32, data.addMany(4)[0..4], self.target, .big);
 			std.mem.writeInt(u32, data.addMany(4)[0..4], @bitCast(self.health), .big);
 			data.append(@intFromEnum(self.cause));
 		}
 
-		fn deserialize(data: []const u8, _: Side, source: ?*main.server.User) !AddHealth {
-			if(data.len != 5) return error.Invalid;
+		fn deserialize(data: []const u8, _: Side, _: ?*main.server.User) !AddHealth {
+			if(data.len != 9) return error.Invalid;
 
 			return .{
-				.target = source,
-				.health = @bitCast(std.mem.readInt(u32, data[0..4], .big)),
-				.cause = @enumFromInt(data[4]),
+				.target = std.mem.readInt(u32, data[0..4], .big),
+				.health = @bitCast(std.mem.readInt(u32, data[4..8], .big)),
+				.cause = @enumFromInt(data[8]),
 			};
 		}
 	};

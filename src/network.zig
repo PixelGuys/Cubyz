@@ -666,6 +666,7 @@ pub const Protocols = struct {
 						const zonObject = ZonElement.initObject(main.stackAllocator);
 						defer zonObject.deinit(main.stackAllocator);
 						zonObject.put("player", conn.user.?.player.save(main.stackAllocator));
+						zonObject.put("id", conn.user.?.id);
 						zonObject.put("spawn", main.server.world.?.spawn);
 						zonObject.put("blockPalette", main.server.world.?.blockPalette.save(main.stackAllocator));
 						zonObject.put("biomePalette", main.server.world.?.biomePalette.save(main.stackAllocator));

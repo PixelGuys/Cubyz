@@ -577,9 +577,8 @@ pub const World = struct { // MARK: World
 		errdefer self.biomePalette.deinit();
 		self.spawn = zon.get(Vec3f, "spawn", .{0, 0, 0});
 
-		try assets.loadWorldAssets("serverAssets", self.blockPalette, self.biomePalette);
 		Player.loadFrom(zon.getChild("player"));
-		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
+		Player.id = zon.get(u32, "id", std.math.maxInt(u32));
 		Player.inventory = Inventory.init(main.globalAllocator, 32, .normal, .playerInventory);
 	}
 
@@ -980,7 +979,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 			const damage: f32 = @floatCast(@max((Player.super.vel[2] * Player.super.vel[2]) / (2 * gravity) - 3, 0) * 0.5);
 			if (damage > 0.01) {
-				Inventory.Sync.addHealth(-damage, .fall, .client, null);
+				Inventory.Sync.addHealth(-damage, .fall, .client, Player.id);
 			}
 			Player.super.vel[2] = 0;
 
