@@ -52,6 +52,7 @@ fn cacheString(comptime str: []const u8) []const u8 {
 var logFile: ?std.fs.File = undefined;
 var logFileTs: ?std.fs.File = undefined;
 var supportsANSIColors: bool = undefined;
+var openingErrorWindow: bool = false;
 // overwrite the log function:
 pub const std_options: std.Options = .{ // MARK: std_options
 	.log_level = .debug,
@@ -180,8 +181,10 @@ pub const std_options: std.Options = .{ // MARK: std_options
 			resultArgs[resultArgs.len - 1] = colorReset;
 		}
 		logToStdErr(formatString, resultArgs);
-		if(level == .err) {
+		if(level == .err and !openingErrorWindow) {
+			openingErrorWindow = true;
 			gui.openWindow("error_prompt");
+			openingErrorWindow = false;
 		}
 	}}.logFn,
 };
@@ -284,6 +287,11 @@ fn openChat() void {
 	gui.openWindow("chat");
 	gui.windowlist.chat.input.select();
 }
+fn openCommand() void {
+	openChat();
+	gui.windowlist.chat.input.clear();
+	gui.windowlist.chat.input.inputCharacter('/');
+}
 fn takeBackgroundImageFn() void {
 	if(game.world == null) return;
 	renderer.MenuBackGround.takeBackgroundImage();
@@ -348,6 +356,7 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "openInventory", .key = c.GLFW_KEY_E, .pressAction = &openInventory, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_X},
 		.{.name = "openCreativeInventory(aka cheat inventory)", .key = c.GLFW_KEY_C, .pressAction = &openCreativeInventory, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_Y},
 		.{.name = "openChat", .key = c.GLFW_KEY_T, .releaseAction = &openChat},
+		.{.name = "openCommand", .key = c.GLFW_KEY_SLASH, .releaseAction = &openCommand},
 		.{.name = "mainGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &gui.mainButtonPressed, .releaseAction = &gui.mainButtonReleased, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_A},
 		.{.name = "secondaryGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &gui.secondaryButtonPressed, .releaseAction = &gui.secondaryButtonReleased, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_Y},
 		// gamepad gui.

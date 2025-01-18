@@ -1,0 +1,41 @@
+.{
+	.properties = .{
+		.wet,
+		.hot,
+	},
+	.minHeight = 2,
+	.maxHeight = 2,
+	.roughness = 2,
+	.hills = 10,
+	.minRadius = 160,
+	.maxRadius = 200,
+	.music = "cubyz:sunrise",
+	.ground_structure = .{
+		"cubyz:lush_grass",
+		"5 to 7 cubyz:mud",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:mud",
+			.chance = 0.33,
+			.width = 5,
+			.variation = 4,
+			.depth = 1,
+			.smoothness = 0.5,
+		},
+		.{
+			.id = "cubyz:simple_tree",
+			.leaves = "cubyz:willow_leaves",
+			.log = "cubyz:willow_log",
+			.top = "cubyz:willow_top",
+			.chance = 0.033,
+			.type = .round,
+			.height = 13,
+			.height_variation = 4,
+			.leafRadius = 2,
+			.leafRadius_variation = 1,
+			.branched = false,
+		},
+	},
+}
