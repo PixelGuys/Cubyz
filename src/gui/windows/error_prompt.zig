@@ -24,22 +24,7 @@ pub var window = GuiWindow {
 };
 
 fn openLog(_: usize) void {
-	const command = if(builtin.os.tag == .windows) .{"explorer", "logs"} else .{"open", "logs"};
-
-	const result = std.process.Child.run(.{
-		.allocator = main.stackAllocator.allocator,
-		.argv = &command,
-	}) catch |err| {
-		std.log.err("Got error while trying to open file explorer: {s}", .{@errorName(err)});
-		return;
-	};
-	defer {
-		main.stackAllocator.free(result.stderr);
-		main.stackAllocator.free(result.stdout);
-	}
-	if(result.stderr.len != 0) {
-		std.log.err("Got error while trying to open file explorer: {s}", .{result.stderr});
-	}
+	main.files.openDirInWindow("logs");
 }
 
 const padding: f32 = 8;
