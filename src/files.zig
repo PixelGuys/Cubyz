@@ -22,12 +22,12 @@ pub fn writeZon(path: []const u8, zon: ZonElement) !void {
 }
 
 pub fn openDirInWindow(path: []const u8) void {
-	const newPath: []u8 = undefined;
+	var newPath: []u8 = undefined;
 	defer if (builtin.os.tag == .windows) main.stackAllocator.free(newPath);
 
 	if (builtin.os.tag == .windows) {
 		newPath = main.stackAllocator.alloc(u8, std.mem.replacementSize(u8, path, "/", "\\"));
-		std.mem.replace(u8, path, "/", "\\", newPath);
+		_ = std.mem.replace(u8, path, "/", "\\", newPath);
 	} else {
 		newPath = path;
 	}
