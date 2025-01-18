@@ -47,7 +47,7 @@ pub fn render() void {
 	var y: f32 = 0;
 	var x: f32 = 0;
 	var healthLeft: f32 = main.game.Player.super.health;
-	for(0..@as(usize, @intFromFloat(@ceil(main.game.Player.maxHealth)))) |_| {
+	for(0..@as(usize, @intFromFloat(@ceil(main.game.Player.super.maxHealth)))) |_| {
 		if(x >= window.contentSize[0]) {
 			x = 0;
 			y += 20;

@@ -12,6 +12,7 @@ vel: Vec3d = .{0, 0, 0},
 rot: Vec3f = .{0, 0, 0},
 
 health: f32 = 8,
+maxHealth: f32 = 8,
 
 // TODO: Hunger
 // TODO: Name

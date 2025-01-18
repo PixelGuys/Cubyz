@@ -333,7 +333,7 @@ pub const DamageType = enum(u8) {
 	
 	pub fn sendMessage(self: DamageType, name: []const u8) void {
 		switch (self) {
-			.heal => main.server.sendMessage("", .{}),
+			.heal => main.server.sendMessage("{s}§#ffffff was healed", .{name}),
 			.kill => main.server.sendMessage("{s}§#ffffff was killed", .{name}),
 			.fall => main.server.sendMessage("{s}§#ffffff died of fall damage", .{name}),
 		}
@@ -354,8 +354,6 @@ pub const Player = struct { // MARK: Player
 	pub var mutex: std.Thread.Mutex = .{};
 	pub var inventory: Inventory = undefined;
 	pub var selectedSlot: u32 = 0;
-
-	pub var maxHealth: f32 = 8;
 
 	pub var onGround: bool = false;
 	pub var jumpCooldown: f64 = 0;
@@ -459,7 +457,7 @@ pub const Player = struct { // MARK: Player
 		Player.super.pos = world.?.spawn;
 		Player.super.vel = .{0, 0, 0};
 		
-		Inventory.addHealth(8, .heal);
+		Inventory.addHealth(std.math.floatMax(f32), .heal);
 
 		Player.eyeVel = .{0, 0, 0};
 		Player.eyeCoyote = 0;
