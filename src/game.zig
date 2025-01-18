@@ -859,15 +859,17 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		}) == null) {
 			Player.crouching = crouch and !Player.isFlying.load(.monotonic);
 
-			if (Player.crouching) {
-				Player.crouchPerc += @floatCast(deltaTime * 10);
-				if (Player.crouchPerc > 1) {
-					Player.crouchPerc = 1;
-				}
-			} else {
-				Player.crouchPerc -= @floatCast(deltaTime * 10);
-				if (Player.crouchPerc < 0) {
-					Player.crouchPerc = 0;
+			if (Player.onGround) {
+				if (Player.crouching) {
+					Player.crouchPerc += @floatCast(deltaTime * 10);
+					if (Player.crouchPerc > 1) {
+						Player.crouchPerc = 1;
+					}
+				} else {
+					Player.crouchPerc -= @floatCast(deltaTime * 10);
+					if (Player.crouchPerc < 0) {
+						Player.crouchPerc = 0;
+					}
 				}
 			}
 
