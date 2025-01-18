@@ -1,5 +1,7 @@
 const std = @import("std");
 
+const builtin = @import("builtin");
+
 const main = @import("root");
 const files = main.files;
 const settings = main.settings;
@@ -8,6 +10,8 @@ const Vec2f = main.vec.Vec2f;
 const gui = @import("../gui.zig");
 const GuiWindow = gui.GuiWindow;
 const Label = @import("../components/Label.zig");
+const VerticalList = @import("../components/VerticalList.zig");
+const Button = @import("../components/Button.zig");
 
 pub var window = GuiWindow {
 	.contentSize = Vec2f{128, 64},
@@ -19,15 +23,38 @@ pub var window = GuiWindow {
 	},
 };
 
+fn openLog(_: usize) void {
+	const command = if(builtin.os.tag == .windows) .{"explorer", "logs"} else .{"open", "logs"};
+
+	const result = std.process.Child.run(.{
+		.allocator = main.stackAllocator.allocator,
+		.argv = &command,
+	}) catch |err| {
+		std.log.err("Got error while trying to open file explorer: {s}", .{@errorName(err)});
+		return;
+	};
+	defer {
+		main.stackAllocator.free(result.stderr);
+		main.stackAllocator.free(result.stdout);
+	}
+	if(result.stderr.len != 0) {
+		std.log.err("Got error while trying to open file explorer: {s}", .{result.stderr});
+	}
+}
+
 const padding: f32 = 8;
 pub fn update() void {
 	if (main.Window.Gamepad.wereControllerMappingsDownloaded()) {
 		gui.closeWindowFromRef(&window);
 	}
 }
+
 pub fn onOpen() void {
-	const label = Label.init(.{padding, 16 + padding}, 128, "#ffff00The game encountered errors. Check the logs for details", .center);
-	window.rootComponent = label.toComponent();
+	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
+	list.add(Label.init(.{padding, 16 + padding}, 128, "#ffff00The game encountered errors. Check the logs for details", .center));
+	list.add(Button.initText(.{0, 0}, 128, "Open Log",  .{.callback = &openLog}));
+	list.finish(.center);
+	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
 	gui.updateWindowPositions();
 }
