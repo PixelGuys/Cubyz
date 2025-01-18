@@ -368,7 +368,7 @@ pub const Sync = struct { // MARK: Sync
 			main.utils.assertLocked(&mutex);
 			for(inventories.items) |inv| {
 				for (inv.users.items) |u| {
-					if (u.id == user.id and inv.source == source) {
+					if (u == user and inv.source == source) {
 						return inv;
 					}
 				}
