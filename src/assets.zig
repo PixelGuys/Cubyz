@@ -95,6 +95,7 @@ pub fn readAllZonFilesInAddons(externalAllocator: NeverFailingAllocator, addons:
 					const result = defaultMap.getOrPut(path) catch unreachable;
 
 					if (!result.found_existing) {
+						result.key_ptr.* = defaultsArenaAllocator.dupe(u8, path);
 						const default: ZonElement = readDefaultFile(defaultsArenaAllocator, entry.dir) catch |err| blk: {
 							std.log.err("Failed to read default file: {s}", .{@errorName(err)});
 							break :blk .null;
