@@ -666,6 +666,7 @@ pub const Protocols = struct {
 						const zonObject = ZonElement.initObject(main.stackAllocator);
 						defer zonObject.deinit(main.stackAllocator);
 						zonObject.put("player", conn.user.?.player.save(main.stackAllocator));
+						zonObject.put("player_id", conn.user.?.id);
 						zonObject.put("spawn", main.server.world.?.spawn);
 						zonObject.put("blockPalette", main.server.world.?.blockPalette.save(main.stackAllocator));
 						zonObject.put("biomePalette", main.server.world.?.biomePalette.save(main.stackAllocator));
@@ -964,12 +965,6 @@ pub const Protocols = struct {
 		pub const asynchronous = false;
 		const type_gamemode: u8 = 0;
 		const type_teleport: u8 = 1;
-		const type_cure: u8 = 2;
-		const type_reserved2: u8 = 3;
-		const type_reserved3: u8 = 4;
-		const type_reserved4: u8 = 5;
-		const type_reserved5: u8 = 6;
-		const type_reserved6: u8 = 7;
 		const type_timeAndBiome: u8 = 8;
 		fn receive(conn: *Connection, data: []const u8) !void {
 			switch(data[0]) {
@@ -985,14 +980,6 @@ pub const Protocols = struct {
 						@bitCast(std.mem.readInt(u64, data[17..25], .big)),
 					});
 				},
-				type_cure => {
-					// TODO: health and hunger
-				},
-				type_reserved2 => {},
-				type_reserved3 => {},
-				type_reserved4 => {},
-				type_reserved5 => {},
-				type_reserved6 => {},
 				type_timeAndBiome => {
 					if(conn.manager.world) |world| {
 						const zon = ZonElement.parseFromString(main.stackAllocator, data[1..]);
@@ -1052,11 +1039,6 @@ pub const Protocols = struct {
 			conn.sendImportant(id, &data);
 		}
 
-		pub fn sendCure(conn: *Connection) void {
-			var data: [1]u8 = undefined;
-			data[0] = type_cure;
-			conn.sendImportant(id, &data);
-		}
 
 		pub fn sendTimeAndBiome(conn: *Connection, world: *const main.server.ServerWorld) void {
 			const zon = ZonElement.initObject(main.stackAllocator);
