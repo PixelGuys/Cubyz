@@ -11,7 +11,7 @@
 	.model = "cubyz:cross",
 	.texture = "cubyz:fern",
 	.item= .{
-		.texture = "dry_grass.png",
+		.texture = "fern.png",
 	},
 	.lodReplacement = "cubyz:air",
 }
