@@ -23,6 +23,9 @@ float zFromDepth(float depthBufferValue) {
 }
 
 float calculateFogDistance(float depthBufferValue, float fogDensity) {
+	if (depthBufferValue == 1) {
+		return 0;
+	}
 	float distCameraTerrain = zFromDepth(depthBufferValue)*fogDensity;
 	float distFromCamera = 0;
 	float distFromTerrain = distFromCamera - distCameraTerrain;
@@ -53,9 +56,13 @@ vec3 applyFrontfaceFog(float fogDistance, vec3 fogColor, vec3 inColor) {
 void main() {
 	fragColor = texture(color, texCoords);
 	fragColor += texture(bloomColor, texCoords);
-	float densityAdjustment = sqrt(dot(tanXY*(texCoords*2 - 1), tanXY*(texCoords*2 - 1)) + 1);
-	float fogDistance = calculateFogDistance(texture(depthTexture, texCoords).r, fog.density*densityAdjustment);
-	fragColor.rgb = applyFrontfaceFog(fogDistance, fog.color, fragColor.rgb);
+	
+	// if (texture(depthTexture, texCoords).r != 1) { // Don't calculate fog for the skybox
+		float densityAdjustment = sqrt(dot(tanXY*(texCoords*2 - 1), tanXY*(texCoords*2 - 1)) + 1);
+		float fogDistance = calculateFogDistance(texture(depthTexture, texCoords).r, fog.density*densityAdjustment);
+		fragColor.rgb = applyFrontfaceFog(fogDistance, fog.color, fragColor.rgb);
+	// }
+	
 	float maxColor = max(1.0, max(fragColor.r, max(fragColor.g, fragColor.b)));
 	fragColor.rgb = fragColor.rgb/maxColor;
 }

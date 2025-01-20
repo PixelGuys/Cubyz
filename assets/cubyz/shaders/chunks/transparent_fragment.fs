@@ -67,6 +67,9 @@ float zFromDepth(float depthBufferValue) {
 }
 
 float calculateFogDistance(float dist, float fogDensity) {
+	if (texelFetch(depthTexture, ivec2(gl_FragCoord.xy), 0).r == 1) { // No fog if it is a skybox
+		return 0;
+	}
 	float distCameraTerrain = dist*fogDensity;
 	float distFromCamera = abs(mvVertexPos.y)*fogDensity;
 	float distFromTerrain = distFromCamera - distCameraTerrain;

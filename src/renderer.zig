@@ -60,6 +60,7 @@ var reflectionCubeMap: graphics.CubeMapTexture = undefined;
 pub fn init() void {
 	deferredRenderPassShader = Shader.initAndGetUniforms("assets/cubyz/shaders/deferred_render_pass.vs", "assets/cubyz/shaders/deferred_render_pass.fs", "", &deferredUniforms);
 	fakeReflectionShader = Shader.initAndGetUniforms("assets/cubyz/shaders/fake_reflection.vs", "assets/cubyz/shaders/fake_reflection.fs", "", &fakeReflectionUniforms);
+	
 	worldFrameBuffer.init(true, c.GL_NEAREST, c.GL_CLAMP_TO_EDGE);
 	worldFrameBuffer.updateSize(Window.width, Window.height, c.GL_RGB16F);
 	Bloom.init();
@@ -67,6 +68,7 @@ pub fn init() void {
 	MenuBackGround.init() catch |err| {
 		std.log.err("Failed to initialize the Menu Background: {s}", .{@errorName(err)});
 	};
+	Skybox.init();
 	chunk_meshing.init();
 	mesh_storage.init();
 	reflectionCubeMap = .init();
@@ -81,6 +83,7 @@ pub fn deinit() void {
 	Bloom.deinit();
 	MeshSelection.deinit();
 	MenuBackGround.deinit();
+	Skybox.deinit();
 	mesh_storage.deinit();
 	chunk_meshing.deinit();
 	reflectionCubeMap.deinit();
@@ -176,6 +179,8 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	const frustum = Frustum.init(Vec3f{0, 0, 0}, game.camera.viewMatrix, lastFov, lastWidth, lastHeight);
 
 	const time: u32 = @intCast(std.time.milliTimestamp() & std.math.maxInt(u32));
+
+	Skybox.render();
 
 	gpu_performance_measuring.startQuery(.animation);
 	blocks.meshes.preProcessAnimationData(time);
@@ -578,6 +583,92 @@ pub const MenuBackGround = struct {
 			std.log.err("Cannot write file {s} due to {s}", .{fileName, @errorName(err)});
 		};
 		// TODO: Performance is terrible even with -O3. Consider using qoi instead.
+	}
+};
+
+pub const Skybox = struct {
+	var shader: Shader = undefined;
+	var uniforms: struct {
+		time: c_int,
+		sunPos: c_int,
+		viewMatrix: c_int,
+		projectionMatrix: c_int,
+	} = undefined;
+
+	var vao: c_uint = undefined;
+	var vbos: [2]c_uint = undefined;
+
+	var lastTime: i128 = undefined;
+	var time: f32 = 0;
+
+	fn init() void {
+		lastTime = std.time.nanoTimestamp();
+		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/skybox/vertex.vs", "assets/cubyz/shaders/skybox/fragment.fs", "", &uniforms);
+		shader.bind();
+		// 4 sides of a simple cube with some panorama texture on it.
+		const rawData = [_]f32 {
+			-1, -1, -1,
+			1, -1, -1,
+			1, 1, -1,
+			-1, 1, -1,
+			-1, -1, 1,
+			1, -1, 1,
+			1, 1, 1,
+			-1, 1, 1
+		};
+
+		const indices = [_]c_int {
+			0, 3, 1, 1, 3, 2,
+			5, 6, 4, 4, 6, 7,
+			3, 7, 2, 2, 7, 6,
+			1, 5, 0, 0, 5, 4,
+			4, 7, 0, 0, 7, 3,
+			1, 2, 5, 5, 2, 6,
+		};
+
+		c.glGenVertexArrays(1, &vao);
+		c.glBindVertexArray(vao);
+		c.glGenBuffers(2, &vbos);
+		c.glBindBuffer(c.GL_ARRAY_BUFFER, vbos[0]);
+		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(rawData.len*@sizeOf(f32)), &rawData, c.GL_STATIC_DRAW);
+		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, 3*@sizeOf(f32), null);
+		c.glEnableVertexAttribArray(0);
+		c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, vbos[1]);
+		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.len*@sizeOf(c_int)), &indices, c.GL_STATIC_DRAW);
+	}
+
+	pub fn deinit() void {
+		shader.deinit();
+		c.glDeleteVertexArrays(1, &vao);
+		c.glDeleteBuffers(2, &vbos);
+	}
+
+	pub fn render() void {
+		c.glDisable(c.GL_CULL_FACE);
+		c.glDisable(c.GL_DEPTH_TEST);
+
+		const viewMatrix = game.camera.viewMatrix;
+		shader.bind();
+
+		const newTime = std.time.nanoTimestamp();
+		time += @as(f32, @floatFromInt(newTime - lastTime))/1e9;
+		lastTime = newTime;
+
+		var sunPos = Vec3f {1, 0, 0};
+		sunPos = vec.rotateZ(sunPos, time * std.math.pi * 2);
+		sunPos = vec.rotateX(sunPos, 60 * std.math.rad_per_deg);
+		
+		c.glUniform1f(uniforms.time, time);
+		c.glUniform3fv(uniforms.sunPos, 1, @ptrCast(&sunPos));
+		
+		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
+		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
+
+		c.glBindVertexArray(vao);
+		c.glDrawElements(c.GL_TRIANGLES, 36, c.GL_UNSIGNED_INT, null);
+
+		c.glEnable(c.GL_CULL_FACE);
+		c.glEnable(c.GL_DEPTH_TEST);
 	}
 };
 
