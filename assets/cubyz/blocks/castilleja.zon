@@ -1,0 +1,19 @@
+.{
+	.class = .leaf,
+	.hardness = 0.1,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.degradable = true,
+	.viewThrough = true,
+	.absorbedLight = 0x000000,
+	.collide= false,
+	.model = "cubyz:flower/height_10",
+	.texture = "cubyz:castilleja",
+	.texture_top = "cubyz:castilleja_top",
+	.texture_bottom = "cubyz:castilleja_top",
+	.item= .{
+		.texture = "castilleja.png",
+	},
+	.lodReplacement = "cubyz:air",
+}
