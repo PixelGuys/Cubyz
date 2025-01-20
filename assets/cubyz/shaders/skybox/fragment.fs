@@ -93,9 +93,9 @@ vec3 atmosphere(vec3 r, vec3 r0, vec3 pSun, float iSun, float rPlanet, float rAt
 
 vec3 hash( vec3 x )
 {
-	x = vec3( dot(x,vec3(127.1,311.7, 74.7)),
-			  dot(x,vec3(269.5,183.3,246.1)),
-			  dot(x,vec3(113.5,271.9,124.6)));
+	x = vec3(dot(x,vec3(127.1,311.7, 74.7)),
+			 dot(x,vec3(269.5,183.3,246.1)),
+			 dot(x,vec3(113.5,271.9,124.6)));
 
 	return fract(sin(x)*43758.5453123);
 }
@@ -150,16 +150,16 @@ void main() {
 
 	vec3 color = atmosphere(
 		rayDir,
-		vec3(0,0,6372e3 + altitude),               
-		sunDir,                        
-		22.0,                           
-		6371e3,                         
-		6471e3,                         
-		vec3(5.5e-6, 13.0e-6, 22.4e-6), 
-		21e-6,                          
-		8e3,                            
-		1.2e3,                          
-		0.758                           
+		vec3(0,0,6372e3 + altitude),
+		sunDir,
+		22.0,
+		6371e3,
+		6471e3,
+		vec3(5.5e-6, 13.0e-6, 22.4e-6),
+		21e-6,
+		8e3,
+		1.2e3,
+		0.758
 	);
 
 	color += smoothstep(0.998, 0.999, dot(rayDir, sunDir)) * 20;
