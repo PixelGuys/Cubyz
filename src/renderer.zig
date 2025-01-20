@@ -590,7 +590,9 @@ pub const Skybox = struct {
 	var shader: Shader = undefined;
 	var uniforms: struct {
 		time: c_int,
-		sunPos: c_int,
+		altitude: c_int,
+		lightDir: c_int,
+		invLightDir: c_int,
 		viewMatrix: c_int,
 		projectionMatrix: c_int,
 	} = undefined;
@@ -598,14 +600,10 @@ pub const Skybox = struct {
 	var vao: c_uint = undefined;
 	var vbos: [2]c_uint = undefined;
 
-	var lastTime: i128 = undefined;
-	var time: f32 = 0;
-
 	fn init() void {
-		lastTime = std.time.nanoTimestamp();
 		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/skybox/vertex.vs", "assets/cubyz/shaders/skybox/fragment.fs", "", &uniforms);
 		shader.bind();
-		// 4 sides of a simple cube with some panorama texture on it.
+		
 		const rawData = [_]f32 {
 			-1, -1, -1,
 			1, -1, -1,
@@ -650,16 +648,16 @@ pub const Skybox = struct {
 		const viewMatrix = game.camera.viewMatrix;
 		shader.bind();
 
-		const newTime = std.time.nanoTimestamp();
-		time += @as(f32, @floatFromInt(newTime - lastTime))/1e9;
-		lastTime = newTime;
+		const time = @as(f32, @floatFromInt(@mod(main.game.world.?.gameTime.load(.monotonic), main.game.World.dayCycle))) / (main.game.World.dayCycle);
 
-		var sunPos = Vec3f {1, 0, 0};
-		sunPos = vec.rotateZ(sunPos, time * std.math.pi * 2);
-		sunPos = vec.rotateX(sunPos, 60 * std.math.rad_per_deg);
-		
+		const lightMatrix = Mat4f.rotationY(-std.math.pi / 2.0 - time * std.math.pi * 2);
+
+		const invLightMatrix = Mat4f.rotationY(time * std.math.pi * 2 + std.math.pi / 2.0);
+
 		c.glUniform1f(uniforms.time, time);
-		c.glUniform3fv(uniforms.sunPos, 1, @ptrCast(&sunPos));
+		c.glUniform1f(uniforms.altitude, @floatCast(game.Player.super.pos[2]));
+		c.glUniformMatrix4fv(uniforms.lightDir, 1, c.GL_TRUE, @ptrCast(&lightMatrix));
+		c.glUniformMatrix4fv(uniforms.invLightDir, 1, c.GL_TRUE, @ptrCast(&invLightMatrix));
 		
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
