@@ -57,11 +57,9 @@ void main() {
 	fragColor = texture(color, texCoords);
 	fragColor += texture(bloomColor, texCoords);
 	
-	// if (texture(depthTexture, texCoords).r != 1) { // Don't calculate fog for the skybox
-		float densityAdjustment = sqrt(dot(tanXY*(texCoords*2 - 1), tanXY*(texCoords*2 - 1)) + 1);
-		float fogDistance = calculateFogDistance(texture(depthTexture, texCoords).r, fog.density*densityAdjustment);
-		fragColor.rgb = applyFrontfaceFog(fogDistance, fog.color, fragColor.rgb);
-	// }
+	float densityAdjustment = sqrt(dot(tanXY*(texCoords*2 - 1), tanXY*(texCoords*2 - 1)) + 1);
+	float fogDistance = calculateFogDistance(texture(depthTexture, texCoords).r, fog.density*densityAdjustment);
+	fragColor.rgb = applyFrontfaceFog(fogDistance, fog.color, fragColor.rgb);
 	
 	float maxColor = max(1.0, max(fragColor.r, max(fragColor.g, fragColor.b)));
 	fragColor.rgb = fragColor.rgb/maxColor;
