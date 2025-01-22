@@ -604,9 +604,9 @@ pub const meshes = struct { // MARK: meshes
 	pub fn registerBlockBreakingAnimation(assetFolder: []const u8) void {
 		var i: usize = 0;
 		while(true) : (i += 1) {
-			const path1 = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/cubyz/blocks/textures/{}.png", .{i}) catch unreachable;
+			const path1 = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/cubyz/blocks/textures/breaking/{}.png", .{i}) catch unreachable;
 			defer main.stackAllocator.free(path1);
-			const path2 = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/cubyz/blocks/textures/{}.png", .{assetFolder, i}) catch unreachable;
+			const path2 = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/cubyz/blocks/textures/breaking/{}.png", .{assetFolder, i}) catch unreachable;
 			defer main.stackAllocator.free(path2);
 			if(!main.files.hasFile(path1) and !main.files.hasFile(path2)) break;
 
