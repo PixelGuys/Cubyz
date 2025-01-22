@@ -1,5 +1,4 @@
 const std = @import("std");
-const builtin = @import("builtin");
 
 const main = @import("root");
 const ConnectionManager = main.network.ConnectionManager;
