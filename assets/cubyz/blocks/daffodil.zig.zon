@@ -8,10 +8,12 @@
 	.viewThrough = true,
 	.absorbedLight = 0x000000,
 	.collide = false,
-	.model = "cubyz:cross",
-	.texture = "cubyz:lush_grass_vegetation",
+	.model = "cubyz:flower/height_8",
+	.texture = "cubyz:daffodil",
+	.texture_top = "cubyz:daffodil_top",
+	.texture_bottom = "cubyz:daffodil_top",
 	.item = .{
-		.texture = "lush_grass.png",
+		.texture = "daffodil.png",
 	},
 	.lodReplacement = "cubyz:air",
 }
