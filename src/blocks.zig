@@ -378,6 +378,7 @@ pub const meshes = struct { // MARK: meshes
 	var reflectivityTextures: main.List(Image) = undefined;
 	var absorptionTextures: main.List(Image) = undefined;
 	var textureFogData: main.List(FogData) = undefined;
+	pub var textureOcclusionData: main.List(bool) = undefined;
 
 	var arenaForWorld: main.utils.NeverFailingArenaAllocator = undefined;
 
@@ -427,6 +428,7 @@ pub const meshes = struct { // MARK: meshes
 		reflectivityTextures = .init(main.globalAllocator);
 		absorptionTextures = .init(main.globalAllocator);
 		textureFogData = .init(main.globalAllocator);
+		textureOcclusionData = .init(main.globalAllocator);
 		arenaForWorld = .init(main.globalAllocator);
 		blockBreakingTextures = .init(main.globalAllocator);
 	}
@@ -452,6 +454,7 @@ pub const meshes = struct { // MARK: meshes
 		reflectivityTextures.deinit();
 		absorptionTextures.deinit();
 		textureFogData.deinit();
+		textureOcclusionData.deinit();
 		arenaForWorld.deinit();
 		blockBreakingTextures.deinit();
 	}
@@ -466,6 +469,7 @@ pub const meshes = struct { // MARK: meshes
 		reflectivityTextures.clearRetainingCapacity();
 		absorptionTextures.clearRetainingCapacity();
 		textureFogData.clearRetainingCapacity();
+		textureOcclusionData.clearRetainingCapacity();
 		blockBreakingTextures.clearRetainingCapacity();
 		_ = arenaForWorld.reset(.free_all);
 	}
@@ -544,6 +548,7 @@ pub const meshes = struct { // MARK: meshes
 				.fogColor = textureInfoZon.get(u32, "fogColor", 0xffffff),
 			});
 		}
+		textureOcclusionData.append(textureInfoZon.get(bool, "hasOcclusion", true));
 	}
 
 	pub fn readTexture(_textureId: ?[]const u8, assetFolder: []const u8) !u16 {
@@ -630,6 +635,7 @@ pub const meshes = struct { // MARK: meshes
 		reflectivityTextures.clearRetainingCapacity();
 		absorptionTextures.clearRetainingCapacity();
 		textureFogData.clearAndFree();
+		textureOcclusionData.clearAndFree();
 		for(textureIDs.items) |path| {
 			readTextureData(path);
 		}

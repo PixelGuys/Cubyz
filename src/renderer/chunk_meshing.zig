@@ -381,7 +381,7 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		parent.lightingData[0].lock.lockRead();
 		parent.lightingData[1].lock.lockRead();
 		for(completeList) |*face| {
-			const light = getLight(parent, .{face.position.x, face.position.y, face.position.z}, face.blockAndQuad.quadIndex);
+			const light = getLight(parent, .{face.position.x, face.position.y, face.position.z}, face.blockAndQuad.texture, face.blockAndQuad.quadIndex);
 			const result = lightMap.getOrPut(light) catch unreachable;
 			if(!result.found_existing) {
 				result.value_ptr.* = @intCast(lightList.items.len/4);
@@ -510,8 +510,16 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		return result;
 	}
 
-	fn getLight(parent: *ChunkMesh, blockPos: Vec3i, quadIndex: u16) [4]u32 {
+	fn getLight(parent: *ChunkMesh, blockPos: Vec3i, textureIndex: u16, quadIndex: u16) [4]u32 {
 		const normal = models.quads.items[quadIndex].normal;
+		if(!blocks.meshes.textureOcclusionData.items[textureIndex]) { // No ambient occlusion (→ no smooth lighting)
+			const fullValues = getLightAt(parent, blockPos[0], blockPos[1], blockPos[2]);
+			var rawVals: [6]u5 = undefined;
+			for(0..6) |i| {
+				rawVals[i] = std.math.lossyCast(u5, fullValues[i]/8);
+			}
+			return packLightValues(.{rawVals} ** 4);
+		}
 		if(models.extraQuadInfos.items[quadIndex].hasOnlyCornerVertices) { // Fast path for simple quads.
 			var rawVals: [4][6]u5 = undefined;
 			for(0..4) |i| {
