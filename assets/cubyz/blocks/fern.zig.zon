@@ -7,10 +7,10 @@
 	.degradable = true,
 	.viewThrough = true,
 	.absorbedLight = 0x000000,
-	.collide= false,
+	.collide = false,
 	.model = "cubyz:cross",
 	.texture = "cubyz:fern",
-	.item= .{
+	.item = .{
 		.texture = "fern.png",
 	},
 	.lodReplacement = "cubyz:air",
