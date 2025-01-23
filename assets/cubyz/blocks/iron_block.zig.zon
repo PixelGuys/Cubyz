@@ -1,6 +1,6 @@
 .{
 	.class = .stone,
-	.hardness = 25,
+	.blockHealth = 50,
 	.breakingPower = 1,
 	.drops = .{
 		.{.items = .{.auto}},

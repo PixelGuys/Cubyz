@@ -1,6 +1,6 @@
 .{
 	.class = .leaf,
-	.hardness = 0.1,
+	.blockHealth = 1,
 	.drops = .{},
 	.degradable = true,
 	.collide = false,
