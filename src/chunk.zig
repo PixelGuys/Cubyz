@@ -43,6 +43,10 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 		const arr = [_]i32 {1, -1, 0, 0, 0, 0};
 		return arr[@intFromEnum(self)];
 	}
+	/// Index to relative position
+	pub fn relPos(self: Neighbor) Vec3i {
+		return .{self.relX(), self.relY(), self.relZ()};
+	}
 	/// Index to bitMask for bitmap direction data
 	pub inline fn bitMask(self: Neighbor) u6 {
 		return @as(u6, 1) << @intFromEnum(self);
