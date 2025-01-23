@@ -748,12 +748,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		var movementDir: Vec3d = .{0, 0, 0};
 		var movementSpeed: f64 = 0;
 		
-		var crouch: bool = false;
-
 		if(main.Window.grabbed) {
-			if (KeyBoard.key("crouch").pressed) {
-				crouch = true;
-			}
 			if(KeyBoard.key("forward").value > 0.0) {
 				if (Player.crouching) {
 					movementSpeed = @max(movementSpeed, 2)*KeyBoard.key("forward").value;
@@ -857,20 +852,15 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			.min = -Player.standingBoundingBoxExtent,
 			.max = Player.standingBoundingBoxExtent,
 		}) == null) {
-			Player.crouching = crouch and !Player.isFlying.load(.monotonic);
+			Player.crouching = KeyBoard.key("crouch").pressed and !Player.isFlying.load(.monotonic);
 
 			if (Player.onGround) {
 				if (Player.crouching) {
 					Player.crouchPerc += @floatCast(deltaTime * 10);
-					if (Player.crouchPerc > 1) {
-						Player.crouchPerc = 1;
-					}
 				} else {
 					Player.crouchPerc -= @floatCast(deltaTime * 10);
-					if (Player.crouchPerc < 0) {
-						Player.crouchPerc = 0;
-					}
 				}
+				Player.crouchPerc = std.math.clamp(Player.crouchPerc, 0, 1);
 			}
 
 			const smoothPerc = Player.crouchPerc * Player.crouchPerc * (3 - 2 * Player.crouchPerc);
@@ -1026,21 +1016,19 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 		const slipLimit = 0.00175 * Player.currentFriction;
 		
-		var xMovement = collision.collideOrStep(.client, .x, move[0], Player.super.pos, hitBox, steppingHeight);
+		const xMovement = collision.collideOrStep(.client, .x, move[0], Player.super.pos, hitBox, steppingHeight);
 		Player.super.pos += xMovement;
-		if (KeyBoard.key("crouch").pressed and Player.onGround and @abs(xMovement[0]) < slipLimit) {
+		if (KeyBoard.key("crouch").pressed and Player.onGround and @abs(Player.super.vel[0]) < slipLimit) {
 			if (collision.collides(.client, .x, 0, Player.super.pos - Vec3d{0, 0, 1}, hitBox) == null) {
 				Player.super.pos -= xMovement;
-				xMovement[0] = 0;
 			}
 		}
 
-		var yMovement = collision.collideOrStep(.client, .y, move[1], Player.super.pos, hitBox, steppingHeight);
+		const yMovement = collision.collideOrStep(.client, .y, move[1], Player.super.pos, hitBox, steppingHeight);
 		Player.super.pos += yMovement;
-		if (KeyBoard.key("crouch").pressed and Player.onGround and @abs(yMovement[1]) < slipLimit) {
+		if (KeyBoard.key("crouch").pressed and Player.onGround and @abs(Player.super.vel[1]) < slipLimit) {
 			if (collision.collides(.client, .y, 0, Player.super.pos - Vec3d{0, 0, 1}, hitBox) == null) {
 				Player.super.pos -= yMovement;
-				yMovement[1] = 0;
 			}
 		}
 
