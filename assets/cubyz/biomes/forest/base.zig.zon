@@ -1,17 +1,14 @@
 .{
 	.properties = .{
-		.wet,
 	},
 	.minHeight = 22,
 	.maxHeight = 40,
-	
+	.minRadius = 150,
+	.maxRadius = 200,
 	.roughness = 10,
 	.hills = 10,
-	
 	.music = "cubyz:leaves",
-
 	.validPlayerSpawn = true,
-	
 	.ground_structure = .{
 		"cubyz:grass",
 		"2 to 3 cubyz:soil",
