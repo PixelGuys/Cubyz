@@ -574,7 +574,6 @@ pub const Command = struct { // MARK: Command
 		}
 
 		pub fn getUsers(self: SyncOperation, allocator: NeverFailingAllocator) []*main.server.User {
-			// I also do this for when i add health (comment will be removed when i add health)
 			switch (self) {
 				.create => |create| {
 					return allocator.dupe(*main.server.User, Sync.ServerSide.inventories.items[create.inv.inv.id].users.items);
@@ -589,7 +588,6 @@ pub const Command = struct { // MARK: Command
 		}
 
 
-		// Will be important when I add health (comment will be removed when i add health)
 		pub fn ignoreSource(self: SyncOperation) bool {
 			return switch (self) {
 				.create, .delete, .useDurability => true,
