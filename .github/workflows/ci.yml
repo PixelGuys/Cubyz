@@ -9,6 +9,15 @@ on:
     branches: [ "master" ]
 
 jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: mlugg/setup-zig@v1
+        with:
+          mirror: https://github.com/PixelGuys/Cubyz-zig-versions/releases/download/
+      - run: zig build
+
   format_check:
     runs-on: ubuntu-latest
 
