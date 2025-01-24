@@ -92,7 +92,11 @@ pub const User = struct { // MARK: User
 		}
 	}
 
+	var freeId: u32 = 0;
 	pub fn initPlayer(self: *User, name: []const u8) void {
+		self.id = freeId;
+		freeId += 1;
+
 		self.name = main.globalAllocator.dupe(u8, name);
 		world.?.findPlayer(self);
 	}
@@ -422,11 +426,8 @@ pub fn connect(user: *User) void {
 	userConnectList.enqueue(user);
 }
 
-var freeId: u32 = 0;
 pub fn connectInternal(user: *User) void {
 	// TODO: addEntity(player);
-	user.id = freeId;
-	freeId += 1;
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 	// Let the other clients know about this new one.
