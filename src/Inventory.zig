@@ -262,20 +262,23 @@ pub const Sync = struct { // MARK: Sync
 			for(command.syncOperations.items) |op| {
 				const syncData = op.serialize(main.stackAllocator);
 				defer main.stackAllocator.free(syncData);
-				for(inventories.items[op.inv.inv.id].users.items) |otherUser| {
-					if(otherUser == source) continue;
-					main.network.Protocols.inventory.sendSyncOperation(otherUser.conn, syncData);
+				
+				const users = op.getUsers(main.stackAllocator);
+				defer main.stackAllocator.free(users);
+
+				for (users) |user| {
+					if (user == source) continue;
+					main.network.Protocols.inventory.sendSyncOperation(user.conn, syncData);
 				}
 			}
 			if(source != null and command.payload == .open) { // Send initial items
 				for(command.payload.open.inv._items, 0..) |stack, slot| {
 					if(stack.item != null) {
-						const syncOp = Command.SyncOperation {
+						const syncOp = Command.SyncOperation {.create = .{
 							.inv = .{.inv = command.payload.open.inv, .slot = @intCast(slot)},
 							.amount = stack.amount,
 							.item = stack.item,
-							.durability = 0,
-						};
+						}};
 						const syncData = syncOp.serialize(main.stackAllocator);
 						defer main.stackAllocator.free(syncData);
 						main.network.Protocols.inventory.sendSyncOperation(source.?.conn, syncData);
@@ -507,69 +510,154 @@ pub const Command = struct { // MARK: Command
 		},
 	};
 
-	const SyncOperation = struct { // MARK: SyncOperation
+	const SyncOperationType = enum(u8) {
+		create = 0,
+		delete = 1,
+		useDurability = 2,
+	};
+
+	const SyncOperation = union(SyncOperationType) { // MARK: SyncOperation
 		// Since the client doesn't know about all inventories, we can only use create(+amount)/delete(-amount) and use durability operations to apply the server side updates.
-		inv: InventoryAndSlot,
-		amount: i32,
-		item: ?Item,
-		durability: i32,
+		create: struct {
+			inv: InventoryAndSlot,
+			amount: u16,
+			item: ?Item
+		},
+		delete: struct {
+			inv: InventoryAndSlot,
+			amount: u16
+		},
+		useDurability: struct {
+			inv: InventoryAndSlot,
+			durability: u32
+		},
 
 		pub fn executeFromData(data: []const u8) !void {
-			std.debug.assert(data.len >= 16);
-			var self = SyncOperation {
-				.inv = try InventoryAndSlot.read(data[0..8], .client, null),
-				.amount = std.mem.readInt(i32, data[8..12], .big),
-				.durability = std.mem.readInt(i32, data[12..16], .big),
-				.item = null,
-			};
-			if(data.len > 16) {
-				const zon = ZonElement.parseFromString(main.stackAllocator, data[16..]);
-				defer zon.deinit(main.stackAllocator);
-				self.item = try Item.init(zon);
+			std.debug.assert(data.len >= 1);
+
+			switch (try deserialize(data)) {
+				.create => |create| {
+					if (create.item) |item| {
+						create.inv.ref().item = item;
+					} else if (create.inv.ref().item == null) {
+						return error.Invalid;
+					}
+
+					if (create.inv.ref().amount +| create.amount > create.inv.ref().item.?.stackSize()) {
+						return error.Invalid;
+					}
+					create.inv.ref().amount += create.amount;
+					
+					create.inv.inv.update();
+				},
+				.delete => |delete| {
+					if (delete.inv.ref().amount < delete.amount) {
+						return error.Invalid;
+					}
+					delete.inv.ref().amount -= delete.amount;
+					if (delete.inv.ref().amount == 0) {
+						delete.inv.ref().item = null;
+					}
+					
+					delete.inv.inv.update();
+				},
+				.useDurability => |durability| {
+					durability.inv.ref().item.?.tool.durability -|= durability.durability;
+					if (durability.inv.ref().item.?.tool.durability == 0) {
+						durability.inv.ref().item = null;
+						durability.inv.ref().amount = 0;
+					}
+					
+					durability.inv.inv.update();
+				}
 			}
-			if(self.amount > 0) { // Create
-				if(self.item) |item| {
-					self.inv.ref().item = item;
-				} else if(self.inv.ref().item == null) {
-					return error.Invalid;
+		}
+
+		pub fn getUsers(self: SyncOperation, allocator: NeverFailingAllocator) []*main.server.User {
+			switch (self) {
+				inline .create, .delete, .useDurability => |data| {
+					return allocator.dupe(*main.server.User, Sync.ServerSide.inventories.items[data.inv.inv.id].users.items);
 				}
-				if(self.inv.ref().amount +| self.amount > self.inv.ref().item.?.stackSize()) {
-					return error.Invalid;
-				}
-				self.inv.ref().amount += @intCast(self.amount);
-			} else if(self.amount < 0) { // Delete
-				if(self.inv.ref().amount < -self.amount) {
-					return error.Invalid;
-				}
-				self.inv.ref().amount -= @intCast(-self.amount);
-				if(self.inv.ref().amount == 0) {
-					self.inv.ref().item = null;
-				}
+			}
+		}
+
+		fn deserialize(fullData: []const u8) !SyncOperation {
+			if (fullData.len == 0) {
+				return error.Invalid;
 			}
 
-			if(self.durability < 0) { // useDurability
-				self.inv.ref().item.?.tool.durability -|= @intCast(-self.durability);
-				if(self.inv.ref().item.?.tool.durability == 0) {
-					self.inv.ref().item = null;
-					self.inv.ref().amount = 0;
+			const typ: SyncOperationType = @enumFromInt(fullData[0]);
+
+			const data = fullData[1..];
+
+			switch (typ) {
+				.create => {
+					if (data.len < 10) {
+						return error.Invalid;
+					}
+					var out: SyncOperation = .{.create = .{
+						.inv = try InventoryAndSlot.read(data[0..8], .client, null),
+						.amount = std.mem.readInt(u16, data[8..10], .big),
+						.item = null
+					}};
+
+					if (data.len > 10) {
+						const zon = ZonElement.parseFromString(main.stackAllocator, data[10..]);
+						defer zon.deinit(main.stackAllocator);
+						out.create.item = try Item.init(zon);
+					}
+
+					return out;
+				},
+				.delete => {
+					if (data.len != 10) {
+						return error.Invalid;
+					}
+					const out: SyncOperation = .{.delete = .{
+						.inv = try InventoryAndSlot.read(data[0..8], .client, null),
+						.amount = std.mem.readInt(u16, data[8..10], .big)
+					}};
+
+					return out;
+				},
+				.useDurability => {
+					if (data.len != 12) {
+						return error.Invalid;
+					}
+					const out: SyncOperation = .{.useDurability = .{
+						.inv = try InventoryAndSlot.read(data[0..8], .client, null),
+						.durability = std.mem.readInt(u32, data[8..12], .big)
+					}};
+
+					return out;
 				}
 			}
-
-			self.inv.inv.update();
 		}
 
 		pub fn serialize(self: SyncOperation, allocator: NeverFailingAllocator) []const u8 {
-			var data = main.List(u8).initCapacity(allocator, 16);
-			self.inv.write(data.addMany(8)[0..8]);
-			std.mem.writeInt(i32, data.addMany(4)[0..4], self.amount, .big);
-			std.mem.writeInt(i32, data.addMany(4)[0..4], self.durability, .big);
-			if(self.item) |item| {
-				const zon = ZonElement.initObject(main.stackAllocator);
-				defer zon.deinit(main.stackAllocator);
-				item.insertIntoZon(main.stackAllocator, zon);
-				const string = zon.toStringEfficient(main.stackAllocator, &.{});
-				defer main.stackAllocator.free(string);
-				data.appendSlice(string);
+			var data = main.List(u8).initCapacity(allocator, 13);
+			data.append(@intFromEnum(self));
+			switch (self) {
+				.create => |create| {
+					create.inv.write(data.addMany(8)[0..8]);
+					std.mem.writeInt(u16, data.addMany(2)[0..2], create.amount, .big);
+					if(create.item) |item| {
+						const zon = ZonElement.initObject(main.stackAllocator);
+						defer zon.deinit(main.stackAllocator);
+						item.insertIntoZon(main.stackAllocator, zon);
+						const string = zon.toStringEfficient(main.stackAllocator, &.{});
+						defer main.stackAllocator.free(string);
+						data.appendSlice(string);
+					}
+				},
+				.delete => |delete| {
+					delete.inv.write(data.addMany(8)[0..8]);
+					std.mem.writeInt(u16, data.addMany(2)[0..2], delete.amount, .big);
+				},
+				.useDurability => |durability| {
+					durability.inv.write(data.addMany(8)[0..8]);
+					std.mem.writeInt(u32, data.addMany(4)[0..4], durability.durability, .big);
+				}
 			}
 			return data.toOwnedSlice();
 		}
@@ -691,12 +779,11 @@ pub const Command = struct { // MARK: Command
 		if(amount == 0) return;
 		if(item == null) return;
 		if(side == .server) {
-			self.syncOperations.append(allocator, .{
+			self.syncOperations.append(allocator, .{.create = .{
 				.inv = inv,
 				.amount = amount,
 				.item = if(inv.ref().amount == 0) item else null,
-				.durability = 0,
-			});
+			}});
 		}
 		std.debug.assert(inv.ref().item == null or std.meta.eql(inv.ref().item.?, item.?));
 		inv.ref().item = item.?;
@@ -707,12 +794,10 @@ pub const Command = struct { // MARK: Command
 	fn executeRemoveOperation(self: *Command, allocator: NeverFailingAllocator, side: Side, inv: InventoryAndSlot, amount: u16) void {
 		if(amount == 0) return;
 		if(side == .server) {
-			self.syncOperations.append(allocator, .{
+			self.syncOperations.append(allocator, .{.delete = .{
 				.inv = inv,
-				.amount = -@as(i32, amount),
-				.item = null,
-				.durability = 0,
-			});
+				.amount = amount
+			}});
 		}
 		inv.ref().amount -= amount;
 		if(inv.ref().amount == 0) {
@@ -723,12 +808,10 @@ pub const Command = struct { // MARK: Command
 	fn executeDurabilityUseOperation(self: *Command, allocator: NeverFailingAllocator, side: Side, inv: InventoryAndSlot, durability: u31) void {
 		if(durability == 0) return;
 		if(side == .server) {
-			self.syncOperations.append(allocator, .{
+			self.syncOperations.append(allocator, .{.useDurability = .{
 				.inv = inv,
-				.amount = 0,
-				.item = null,
-				.durability = -@as(i32, durability),
-			});
+				.durability = durability
+			}});
 		}
 		inv.ref().item.?.tool.durability -|= durability;
 		if(inv.ref().item.?.tool.durability == 0) {
