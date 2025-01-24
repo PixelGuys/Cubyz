@@ -1,6 +1,6 @@
 # This is a basic workflow that is manually triggered
 
-name: CI
+name: Compilation and Format Check
 
 on:
   push:
@@ -20,15 +20,4 @@ jobs:
       - run: sudo apt install libgl-dev libasound2-dev libx11-dev
       - run: zig build
       - run: zig build -Dtarget=x86_64-windows-gnu
-
-  format_check:
-    runs-on: ubuntu-latest
-    name: Format Check
-
-    steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python 3.10
-      uses: actions/setup-python@v3
-      with:
-        python-version: "3.10"
-    - run: python3 "format_check.py"
+      - run: zig build format --summary none
