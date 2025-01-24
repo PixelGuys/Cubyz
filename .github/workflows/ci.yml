@@ -17,6 +17,7 @@ jobs:
       - uses: mlugg/setup-zig@v1
         with:
           version: 0.14.0-dev.1550+4fba7336a
+      - run: sudo apt install libgl-dev libasound2-dev libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxext-dev libxi-dev
       - run: zig build
 
   format_check:
@@ -26,8 +27,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python 3.10
-      uses: actions/setup-python@v3
+    - uses: actions/setup-python@v3
       with:
         python-version: "3.10"
-    - name: Check Format
-      run: python3 "format_check.py"
+    - run: python3 "format_check.py"
