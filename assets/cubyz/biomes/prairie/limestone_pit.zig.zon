@@ -17,4 +17,13 @@
 			.chance = 24,
 		},
 	},
+	.structures = .{
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.5,
+			.block = "cubyz:limestone",
+			.size = 2,
+			.size_variance = 9,
+		},
+	},
 }
