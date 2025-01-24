@@ -997,13 +997,14 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		}
 		steppingHeight = @min(steppingHeight, Player.eyePos[2] - Player.eyeBox.min[2]);
 
-		const slipLimit = 0.00175 * Player.currentFriction;
+		const slipLimit = 0.25 * Player.currentFriction;
 		
 		const xMovement = collision.collideOrStep(.client, .x, move[0], Player.super.pos, hitBox, steppingHeight);
 		Player.super.pos += xMovement;
 		if (KeyBoard.key("crouch").pressed and Player.onGround and @abs(Player.super.vel[0]) < slipLimit) {
 			if (collision.collides(.client, .x, 0, Player.super.pos - Vec3d{0, 0, 1}, hitBox) == null) {
 				Player.super.pos -= xMovement;
+				Player.super.vel[0] = 0;
 			}
 		}
 
@@ -1012,6 +1013,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		if (KeyBoard.key("crouch").pressed and Player.onGround and @abs(Player.super.vel[1]) < slipLimit) {
 			if (collision.collides(.client, .y, 0, Player.super.pos - Vec3d{0, 0, 1}, hitBox) == null) {
 				Player.super.pos -= yMovement;
+				Player.super.vel[1] = 0;
 			}
 		}
 
