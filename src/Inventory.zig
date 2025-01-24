@@ -267,7 +267,7 @@ pub const Sync = struct { // MARK: Sync
 				defer main.stackAllocator.free(users);
 
 				for (users) |user| {
-					if (user == source and op.ignoreSource()) continue;
+					if (user == source) continue;
 					main.network.Protocols.inventory.sendSyncOperation(user.conn, syncData);
 				}
 			}
@@ -562,7 +562,7 @@ pub const Command = struct { // MARK: Command
 					delete.inv.inv.update();
 				},
 				.useDurability => |durability| {
-					durability.inv.ref().item.?.tool.durability = @intCast(durability.durability);
+					durability.inv.ref().item.?.tool.durability -|= durability.durability;
 					if (durability.inv.ref().item.?.tool.durability == 0) {
 						durability.inv.ref().item = null;
 						durability.inv.ref().amount = 0;
@@ -575,23 +575,10 @@ pub const Command = struct { // MARK: Command
 
 		pub fn getUsers(self: SyncOperation, allocator: NeverFailingAllocator) []*main.server.User {
 			switch (self) {
-				.create => |create| {
-					return allocator.dupe(*main.server.User, Sync.ServerSide.inventories.items[create.inv.inv.id].users.items);
-				},
-				.delete => |delete| {
-					return allocator.dupe(*main.server.User, Sync.ServerSide.inventories.items[delete.inv.inv.id].users.items);
-				},
-				.useDurability => |durability| {
-					return allocator.dupe(*main.server.User, Sync.ServerSide.inventories.items[durability.inv.inv.id].users.items);
+				inline .create, .delete, .useDurability => |data| {
+					return allocator.dupe(*main.server.User, Sync.ServerSide.inventories.items[data.inv.inv.id].users.items);
 				}
 			}
-		}
-
-
-		pub fn ignoreSource(self: SyncOperation) bool {
-			return switch (self) {
-				.create, .delete, .useDurability => true,
-			};
 		}
 
 		fn deserialize(fullData: []const u8) !SyncOperation {
@@ -648,7 +635,7 @@ pub const Command = struct { // MARK: Command
 		}
 
 		pub fn serialize(self: SyncOperation, allocator: NeverFailingAllocator) []const u8 {
-			var data = main.List(u8).initCapacity(allocator, 5);
+			var data = main.List(u8).initCapacity(allocator, 13);
 			data.append(@intFromEnum(self));
 			switch (self) {
 				.create => |create| {
@@ -807,12 +794,10 @@ pub const Command = struct { // MARK: Command
 	fn executeRemoveOperation(self: *Command, allocator: NeverFailingAllocator, side: Side, inv: InventoryAndSlot, amount: u16) void {
 		if(amount == 0) return;
 		if(side == .server) {
-			if(side == .server) {
 			self.syncOperations.append(allocator, .{.delete = .{
 				.inv = inv,
 				.amount = amount
 			}});
-		}
 		}
 		inv.ref().amount -= amount;
 		if(inv.ref().amount == 0) {
