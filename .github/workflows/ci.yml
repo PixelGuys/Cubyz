@@ -1,6 +1,6 @@
 # This is a basic workflow that is manually triggered
 
-name: Format Check
+name: CI
 
 on:
   push:
@@ -11,15 +11,18 @@ on:
 jobs:
   compile:
     runs-on: ubuntu-latest
+    name: Compilation Check
     steps:
       - uses: actions/checkout@v3
       - uses: mlugg/setup-zig@v1
         with:
+          version: 0.14.0-dev.1550+4fba7336a
           mirror: https://github.com/PixelGuys/Cubyz-zig-versions/releases/download/
       - run: zig build
 
   format_check:
     runs-on: ubuntu-latest
+    name: Format Check
 
     steps:
     - uses: actions/checkout@v4
