@@ -17,7 +17,7 @@ jobs:
       - uses: mlugg/setup-zig@v1
         with:
           version: 0.14.0-dev.1550+4fba7336a
-          mirror: https://github.com/PixelGuys/Cubyz-zig-versions/releases/
+          mirror: https://github.com/PixelGuys/Cubyz-zig-versions/releases/download/0.14.0-dev.1550+4fba7336a/
       - run: zig build
 
   format_check:
