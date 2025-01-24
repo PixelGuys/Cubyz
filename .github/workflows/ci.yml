@@ -17,7 +17,7 @@ jobs:
       - uses: mlugg/setup-zig@v1
         with:
           version: 0.14.0-dev.1550+4fba7336a
-      - run: sudo apt install libgl-dev libasound2-dev libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxext-dev libxi-dev
+      - run: sudo apt install libgl-dev libasound2-dev libx11-dev
       - run: zig build
 
   format_check:
