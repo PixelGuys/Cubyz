@@ -393,21 +393,21 @@ pub const Player = struct { // MARK: Player
 	pub var jumpCooldown: f64 = 0;
 	const jumpCooldownConstant = 0.3;
 
-	pub const standingBoundingBoxExtent: Vec3d = .{0.3, 0.3, 0.9};
-	pub const crouchingBoundingBoxExtent: Vec3d = .{0.3, 0.3, 0.725};
-	pub var crouchPerc: f32 = 0;
+	const standingBoundingBoxExtent: Vec3d = .{0.3, 0.3, 0.9};
+	const crouchingBoundingBoxExtent: Vec3d = .{0.3, 0.3, 0.725};
+	var crouchPerc: f32 = 0;
 
-	pub var outerBoundingBoxExtent: Vec3d = standingBoundingBoxExtent;
+	var outerBoundingBoxExtent: Vec3d = standingBoundingBoxExtent;
 	pub var outerBoundingBox: collision.Box = .{
 		.min = -standingBoundingBoxExtent,
 		.max = standingBoundingBoxExtent,
 	};
-	pub var eyeBox: collision.Box = .{
+	var eyeBox: collision.Box = .{
 		.min = -Vec3d{standingBoundingBoxExtent[0]*0.2, standingBoundingBoxExtent[1]*0.2, 0.6},
 		.max = Vec3d{standingBoundingBoxExtent[0]*0.2, standingBoundingBoxExtent[1]*0.2, 0.9 - 0.05},
 	};
-	pub var desiredEyePos: Vec3d = .{0, 0, 1.7 - standingBoundingBoxExtent[2]};
-	pub const jumpHeight = 1.25;
+	var desiredEyePos: Vec3d = .{0, 0, 1.7 - standingBoundingBoxExtent[2]};
+	const jumpHeight = 1.25;
 
 	fn loadFrom(zon: ZonElement) void {
 		super.loadFrom(zon);
@@ -749,11 +749,9 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		var movementSpeed: f64 = 0;
 		
 		if(main.Window.grabbed) {
+			const walkingSpeed: f64 = if (Player.crouching) 2 else 4;
 			if(KeyBoard.key("forward").value > 0.0) {
-				if (Player.crouching) {
-					movementSpeed = @max(movementSpeed, 2)*KeyBoard.key("forward").value;
-					movementDir += forward*@as(Vec3d, @splat(2*KeyBoard.key("forward").value));
-				} else if (KeyBoard.key("sprint").pressed) {
+				if (KeyBoard.key("sprint").pressed and !Player.crouching) {
 					if(Player.isGhost.load(.monotonic)) {
 						movementSpeed = @max(movementSpeed, 128)*KeyBoard.key("forward").value;
 						movementDir += forward*@as(Vec3d, @splat(128*KeyBoard.key("forward").value));
@@ -765,36 +763,21 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 						movementDir += forward*@as(Vec3d, @splat(8*KeyBoard.key("forward").value));
 					}
 				} else {
-					movementSpeed = @max(movementSpeed, 4)*KeyBoard.key("forward").value;
-					movementDir += forward*@as(Vec3d, @splat(4*KeyBoard.key("forward").value));
+					movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("forward").value;
+					movementDir += forward*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("forward").value));
 				}
 			}
 			if(KeyBoard.key("backward").value > 0.0) {
-				if (Player.crouching) {
-					movementSpeed = @max(movementSpeed, 2)*KeyBoard.key("backward").value;
-					movementDir += forward*@as(Vec3d, @splat(-2*KeyBoard.key("backward").value));
-				} else {
-					movementSpeed = @max(movementSpeed, 4)*KeyBoard.key("backward").value;
-					movementDir += forward*@as(Vec3d, @splat(-4*KeyBoard.key("backward").value));
-				}
+				movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("backward").value;
+				movementDir += forward*@as(Vec3d, @splat(-walkingSpeed*KeyBoard.key("backward").value));
 			}
 			if(KeyBoard.key("left").value > 0.0) {
-				if (Player.crouching) {
-					movementSpeed = @max(movementSpeed, 2)*KeyBoard.key("left").value;
-					movementDir += right*@as(Vec3d, @splat(2*KeyBoard.key("left").value));
-				} else {
-					movementSpeed = @max(movementSpeed, 4)*KeyBoard.key("left").value;
-					movementDir += right*@as(Vec3d, @splat(4*KeyBoard.key("left").value));
-				}
+				movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("left").value;
+				movementDir += right*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("left").value));
 			}
 			if(KeyBoard.key("right").value > 0.0) {
-				if (Player.crouching) {
-					movementSpeed = @max(movementSpeed, 2)*KeyBoard.key("right").value;
-					movementDir += right*@as(Vec3d, @splat(-2*KeyBoard.key("right").value));
-				} else {
-					movementSpeed = @max(movementSpeed, 4)*KeyBoard.key("right").value;
-					movementDir += right*@as(Vec3d, @splat(-4*KeyBoard.key("right").value));
-				}
+				movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("right").value;
+				movementDir += right*@as(Vec3d, @splat(-walkingSpeed*KeyBoard.key("right").value));
 			}
 			if(KeyBoard.key("jump").pressed) {
 				if(Player.isFlying.load(.monotonic)) {
