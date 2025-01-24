@@ -498,16 +498,14 @@ pub const meshes = struct { // MARK: meshes
 		return textureData[block.typ].textureIndices[orientation];
 	}
 
-	fn extendedPath(path: []const u8, pathBuffer: []u8, ending: []const u8) []const u8 {
-		std.debug.assert(path.ptr == pathBuffer.ptr);
-		@memcpy(pathBuffer[path.len..][0..ending.len], ending);
-		return pathBuffer[0..path.len+ending.len];
+	fn extendedPath(_allocator: main.utils.NeverFailingAllocator, path: []const u8, ending: []const u8) []const u8 {
+		return std.fmt.allocPrint(_allocator.allocator, "{s}{s}", .{path, ending}) catch unreachable;
 	}
 
-	fn readAuxillaryTexture(_path: []const u8, pathBuffer: []u8, ending: []const u8, default: Image) Image {
-		const path = extendedPath(_path, pathBuffer, ending);
-		const texture = Image.readFromFile(arenaForWorld.allocator(), path) catch default;
-		return texture;
+	fn readTextureFile(_path: []const u8, ending: []const u8, default: Image) Image {
+		const path = extendedPath(main.stackAllocator, _path, ending);
+		defer main.stackAllocator.free(path);
+		return Image.readFromFile(arenaForWorld.allocator(), path) catch default;
 	}
 
 	fn extractAnimationSlice(image: Image, frame: usize, frames: usize) Image {
@@ -525,19 +523,18 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	fn readTextureData(_path: []const u8) void {
-		var buffer: [1024]u8 = undefined;
-		@memcpy(buffer[0.._path.len], _path);
-		const path = buffer[0.._path.len];
-		const textureInfoPath = extendedPath(path, &buffer, "_textureInfo.zig.zon");
+		const path = _path[0.._path.len - ".png".len];
+		const textureInfoPath = extendedPath(main.stackAllocator, path, ".zig.zon");
+		defer main.stackAllocator.free(textureInfoPath);
 		const textureInfoZon = main.files.readToZon(main.stackAllocator, textureInfoPath) catch .null;
 		defer textureInfoZon.deinit(main.stackAllocator);
 		const animationFrames = textureInfoZon.get(u32, "frames", 1);
 		const animationTime = textureInfoZon.get(u32, "time", 1);
 		animation.append(.{.startFrame = @intCast(blockTextures.items.len), .frames = animationFrames, .time = animationTime});
-		const base = Image.readFromFile(arenaForWorld.allocator(), path) catch Image.defaultImage;
-		const emission = readAuxillaryTexture(path, &buffer, "_emission.png", Image.emptyImage);
-		const reflectivity = readAuxillaryTexture(path, &buffer, "_reflectivity.png", Image.emptyImage);
-		const absorption = readAuxillaryTexture(path, &buffer, "_absorption.png", Image.whiteEmptyImage);
+		const base = readTextureFile(path, ".png", Image.defaultImage);
+		const emission = readTextureFile(path, "_emission.png", Image.emptyImage);
+		const reflectivity = readTextureFile(path, "_reflectivity.png", Image.emptyImage);
+		const absorption = readTextureFile(path, "_absorption.png", Image.whiteEmptyImage);
 		for(0..animationFrames) |i| {
 			blockTextures.append(extractAnimationSlice(base, i, animationFrames));
 			emissionTextures.append(extractAnimationSlice(emission, i, animationFrames));
