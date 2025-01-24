@@ -369,7 +369,7 @@ pub const Sync = struct { // MARK: Sync
 			for(inventories.items) |inv| {
 				for (inv.users.items) |u| {
 					if (u == user and inv.source == source) {
-						return inv;
+						return inv.inv;
 					}
 				}
 			}
