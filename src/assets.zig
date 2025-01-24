@@ -18,7 +18,7 @@ var commonModels: std.StringHashMap([]const u8) = undefined;
 fn readDefaultFile(allocator: NeverFailingAllocator, dir: std.fs.Dir) !ZonElement {
 	if (dir.openFile("_defaults.zig.zon", .{})) |val| {
 		const string = try val.readToEndAlloc(main.stackAllocator.allocator, std.math.maxInt(usize));
-		defer main.stackAllocator.free(string)
+		defer main.stackAllocator.free(string);
 
 		return ZonElement.parseFromString(allocator, string);
 	} else |err| {
