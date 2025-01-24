@@ -19,6 +19,7 @@ jobs:
           version: 0.14.0-dev.1550+4fba7336a
       - run: sudo apt install libgl-dev libasound2-dev libx11-dev
       - run: zig build
+      - run: zig build -Dtarget=x86_64-windows-gnu
 
   format_check:
     runs-on: ubuntu-latest
