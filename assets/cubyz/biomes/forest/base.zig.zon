@@ -3,8 +3,8 @@
 	},
 	.minHeight = 22,
 	.maxHeight = 40,
-	.minRadius = 100,
-	.maxRadius = 160,
+	.minRadius = 120,
+	.maxRadius = 180,
 	.roughness = 10,
 	.hills = 10,
 	.music = "cubyz:leaves",
@@ -13,16 +13,6 @@
 		"cubyz:grass",
 		"2 to 3 cubyz:soil",
 	},
-	.transitionBiomes = .{
-		.{
-			.id = "cubyz:forest/sparse",
-			.chance = 1,
-			.width = 2,
-			.keepOriginalTerrain = 1,
-			.properties = .{.dry, .land, .inland},
-		},
-	},
-
 	.structures = .{
 		.{
 			.id = "cubyz:simple_tree",

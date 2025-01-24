@@ -5,7 +5,7 @@
 	},
 	.minRadius = 6,
 	.maxRadius = 12,
-	.chance = 0
+	.chance = 0,
 	.minHeight = 30,
 	.maxHeight = 36,
 	.roughness = 1,
