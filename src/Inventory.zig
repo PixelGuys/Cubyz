@@ -1610,9 +1610,7 @@ pub const Command = struct { // MARK: Command
 					}
 				}
 
-				if (target == null) {
-					return;
-				}
+				if (target == null) return .serverFailure;
 
 				if (target.?.gamemode.raw == .creative) return;
 			} else {
