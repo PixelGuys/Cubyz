@@ -620,8 +620,8 @@ pub const Command = struct { // MARK: Command
 
 		pub fn ignoreSource(self: SyncOperation) bool {
 			return switch (self) {
-				.create, .delete, .useDurability => true,
-				.health, .kill => false
+				.create, .delete, .useDurability, .health => true,
+				.kill => false
 			};
 		}
 
@@ -970,6 +970,8 @@ pub const Command = struct { // MARK: Command
 							.health = info.health
 						}});
 					}
+				} else {
+					main.game.Player.super.health += info.health;
 				}
 			}
 		}
