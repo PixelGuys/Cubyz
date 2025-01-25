@@ -352,7 +352,7 @@ pub const Sync = struct { // MARK: Sync
 		pub fn getInventoryFromSource(source: Source) ?Inventory {
 			main.utils.assertLocked(&mutex);
 			for(inventories.items) |inv| {
-				if (inv.source == source) {
+				if (std.meta.eql(inv.source, source)) {
 					return inv.inv;
 				}
 			}
@@ -896,7 +896,7 @@ pub const Command = struct { // MARK: Command
 			const typ: Inventory.Type = @enumFromInt(data[12]);
 			const sourceType: SourceType = @enumFromInt(data[13]);
 			const source: Source = switch(sourceType) {
-				.playerInventory => .{.playerInventory = {}},
+				.playerInventory => .{.playerInventory = std.math.maxInt(u32)},
 				.sharedTestingInventory => .{.sharedTestingInventory = {}},
 				.hand => .{.hand = std.math.maxInt(u32)},
 				.other => .{.other = {}},
