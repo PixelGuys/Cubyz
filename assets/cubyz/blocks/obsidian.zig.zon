@@ -1,9 +1,20 @@
 .{
 	.class = .stone,
-	.hardness = 50,
+	.blockHealth = 16,
 	.breakingPower = 2,
 	.drops = .{
 		.{.items = .{.auto}},
+	},
+	.item = .{
+		.material = .{
+			.density = 0.5,
+			.resistance = 0.1,
+			.power = 0.5,
+			.roughness = 0.1,
+			.colors = .{
+				0xff0F0811, 0xff19121C, 0xff312436, 0xff69486B, 0xff462F47,
+			},
+		},
 	},
 	.rotation = .stairs,
 	.model = "cubyz:cube",

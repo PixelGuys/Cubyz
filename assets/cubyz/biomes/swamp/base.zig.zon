@@ -1,0 +1,48 @@
+.{
+	.properties = .{
+		.hot,
+		.wet,
+		.overgrown,
+	},
+	.minHeight = 4,
+	.maxHeight = 4,
+	.minRadius = 160,
+	.maxRadius = 200,
+	.roughness = 3,
+	.hills = 1,
+	.music = "cubyz:leaves",
+	.validPlayerSpawn = true,
+	.ground_structure = .{
+		"4 to 5 cubyz:mud",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:lush_grass",
+			.chance = 0.33,
+			.width = 5,
+			.variation = 4,
+			.depth = 1,
+			.smoothness = 0.5,
+		},
+		.{
+			.id = "cubyz:simple_tree",
+			.leaves = "cubyz:willow_leaves",
+			.log = "cubyz:willow_log",
+			.top = "cubyz:willow_leaves",
+			.chance = 0.8,
+			.type = .round,
+			.height = 6,
+			.height_variation = 3,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.block = "cubyz:lush_grass_vegetation",
+			.chance = 0.1,
+			.width = 10,
+			.variation = 6,
+			.density = 0.3,
+			.priority = 0.1,
+		},
+	},
+}

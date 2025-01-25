@@ -74,6 +74,70 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		}
 	}
 
+	pub fn clone(self: *const ZonElement, allocator: NeverFailingAllocator) ZonElement {
+		return switch (self.*) {
+			.int, .float, .string, .bool, .null => self.*,
+			.stringOwned => |stringOwned| .{.stringOwned = allocator.allocator.dupe(u8, stringOwned) catch unreachable},
+			.array => |array| blk: {
+				const out = ZonElement.initArray(allocator);
+
+				for (0..array.items.len) |i| {
+					out.array.append(array.items[i].clone(allocator));
+				}
+				
+				break :blk out;
+			},
+			.object => |object| blk: {
+				const out = ZonElement.initObject(allocator);
+
+				var iter = object.iterator();
+				while (iter.next()) |entry| {
+					out.put(entry.key_ptr.*, entry.value_ptr.clone(allocator));
+				}
+
+				break :blk out;
+			}
+		};
+	}
+
+	fn joinGetNew(self: ZonElement, other: ZonElement, allocator: NeverFailingAllocator) ZonElement {
+		switch (self) {
+			.int, .float, .string, .stringOwned, .bool, .null => {
+				return self.clone(allocator);
+			},
+			.array => {
+				const out = self.clone(allocator);
+				for (other.array.items) |item| {
+					out.array.append(item.clone(allocator));
+				}
+				return out;
+			},
+			.object => {
+				const out = self.clone(allocator);
+
+				out.join(other);
+				return out;
+			},
+		}
+
+		return .null;
+	}
+
+	pub fn join(self: *const ZonElement, other: ZonElement) void {
+		if (other == .null) {
+			return;
+		}
+
+		var iter = other.object.iterator();
+		while (iter.next()) |entry| {
+			if (self.object.get(entry.key_ptr.*)) |val| {
+				self.put(entry.key_ptr.*, entry.value_ptr.joinGetNew(val, NeverFailingAllocator {.allocator = self.object.allocator, .IAssertThatTheProvidedAllocatorCantFail = {}}));
+			} else {
+				self.put(entry.key_ptr.*, entry.value_ptr.clone(NeverFailingAllocator {.allocator = self.object.allocator, .IAssertThatTheProvidedAllocatorCantFail = {}}));
+			}
+		}
+	}
+
 	pub fn as(self: *const ZonElement, comptime T: type, replacement: T) T {
 		comptime var typeInfo : std.builtin.Type = @typeInfo(T);
 		comptime var innerType = T;

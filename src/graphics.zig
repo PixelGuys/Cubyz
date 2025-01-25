@@ -2071,12 +2071,11 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 			.min = undefined,
 			.max = undefined,
 			.voxelSize = 1,
+			.lightStart = lightAllocation.start,
 			.vertexStartOpaque = undefined,
 			.faceCountsByNormalOpaque = undefined,
-			.lightStartOpaque = lightAllocation.start,
 			.vertexStartTransparent = undefined,
 			.vertexCountTransparent = undefined,
-			.lightStartTransparent = lightAllocation.start,
 			.visibilityState = 0,
 			.oldVisibilityState = 0,
 		}}, &chunkAllocation);

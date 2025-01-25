@@ -1,6 +1,6 @@
 .{
 	.class = .sand,
-	.hardness = 11,
+	.blockHealth = 5.5,
 	.drops = .{
 		.{.items = .{.auto}},
 	},

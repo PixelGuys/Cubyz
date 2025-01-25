@@ -680,6 +680,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 	var posBeforeBlock: Vec3i = undefined;
 	pub var selectedBlockPos: ?Vec3i = null;
+	var lastSelectedBlockPos: Vec3i = undefined;
+	var currentBlockProgress: f32 = 0;
 	var selectionMin: Vec3f = undefined;
 	var selectionMax: Vec3f = undefined;
 	var lastPos: Vec3d = undefined;
@@ -804,15 +806,50 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		}
 	}
 
-	pub fn breakBlock(inventory: main.items.Inventory, slot: u32) void {
+	pub fn breakBlock(inventory: main.items.Inventory, slot: u32, deltaTime: f64) void {
 		if(selectedBlockPos) |selectedPos| {
+			if(@reduce(.Or, lastSelectedBlockPos != selectedPos)) {
+				mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
+				lastSelectedBlockPos = selectedPos;
+				currentBlockProgress = 0;
+			}
 			const block = mesh_storage.getBlock(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
-			var newBlock = block;
-			// TODO: Breaking animation and tools.
 			const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
+
 			main.items.Inventory.Sync.ClientSide.mutex.lock();
+			if(!game.Player.isCreative()) {
+				const stack = inventory.getStack(slot);
+				var power: f32 = 0;
+				const isTool = stack.item != null and stack.item.? == .tool;
+				if(isTool) {
+					power = stack.item.?.tool.getPowerByBlockClass(block.blockClass());
+				}
+				if(power >= block.breakingPower()) {
+					var breakTime: f32 = block.blockHealth();
+					if(isTool) {
+						breakTime = breakTime*stack.item.?.tool.swingTime/power;
+					}
+					currentBlockProgress += @as(f32, @floatCast(deltaTime))/breakTime;
+					if(currentBlockProgress < 1) {
+						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
+						mesh_storage.addBreakingAnimation(lastSelectedBlockPos, currentBlockProgress);
+						main.items.Inventory.Sync.ClientSide.mutex.unlock();
+
+						return;
+					} else {
+						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
+						currentBlockProgress = 0;
+					}
+				} else {
+					main.items.Inventory.Sync.ClientSide.mutex.unlock();
+					return;
+				}
+			}
+
+			var newBlock = block;
 			block.mode().onBlockBreaking(inventory.getStack(slot).item, relPos, lastDir, &newBlock);
 			main.items.Inventory.Sync.ClientSide.mutex.unlock();
+
 			if(!std.meta.eql(newBlock, block)) {
 				updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], block, newBlock);
 			}

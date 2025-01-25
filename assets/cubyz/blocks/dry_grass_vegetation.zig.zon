@@ -1,16 +1,16 @@
 .{
 	.class = .leaf,
-	.hardness = 0.1,
+	.blockHealth = 1,
 	.drops = .{
 		.{.items = .{.auto}},
 	},
 	.degradable = true,
 	.viewThrough = true,
 	.absorbedLight = 0x000000,
-	.collide= false,
+	.collide = false,
 	.model = "cubyz:cross",
 	.texture = "cubyz:dry_grass_vegetation",
-	.item= .{
+	.item = .{
 		.texture = "dry_grass.png",
 	},
 	.lodReplacement = "cubyz:air",

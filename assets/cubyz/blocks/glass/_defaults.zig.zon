@@ -1,0 +1,10 @@
+.{
+	.class = .stone,
+	.blockHealth = 2.5,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.transparent = true,
+	.hasBackFace = true,
+	.model = "cubyz:cube",
+}

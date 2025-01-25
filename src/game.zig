@@ -368,6 +368,20 @@ pub const collision = struct {
 
 pub const Gamemode = enum(u8) { survival = 0, creative = 1 };
 
+pub const DamageType = enum(u8) {
+	heal = 0, // For when you are adding health
+	kill = 1,
+	fall = 2,
+	
+	pub fn sendMessage(self: DamageType, name: []const u8) void {
+		switch (self) {
+			.heal => main.server.sendMessage("{s}§#ffffff was healed", .{name}),
+			.kill => main.server.sendMessage("{s}§#ffffff was killed", .{name}),
+			.fall => main.server.sendMessage("{s}§#ffffff died of fall damage", .{name}),
+		}
+	}
+};
+
 pub const Player = struct { // MARK: Player
 	pub var super: main.server.Entity = .{};
 	pub var eyePos: Vec3d = .{0, 0, 0};
@@ -491,9 +505,20 @@ pub const Player = struct { // MARK: Player
 		inventory.placeBlock(selectedSlot);
 	}
 
-	pub fn breakBlock() void { // TODO: Breaking animation and tools
+	pub fn kill() void {
+		Player.super.pos = world.?.spawn;
+		Player.super.vel = .{0, 0, 0};
+
+		Player.super.health = Player.super.maxHealth;
+		
+		Player.eyeVel = .{0, 0, 0};
+		Player.eyeCoyote = 0;
+		Player.eyeStep = .{false, false, false};
+	}
+
+	pub fn breakBlock(deltaTime: f64) void {
 		if(!main.Window.grabbed) return;
-		inventory.breakBlock(selectedSlot);
+		inventory.breakBlock(selectedSlot, deltaTime);
 	}
 
 	pub fn acquireSelectedBlock() void {
@@ -683,7 +708,7 @@ pub fn releasePlace() void {
 pub fn pressBreak() void {
 	const time = std.time.milliTimestamp();
 	nextBlockBreakTime = time + main.settings.updateRepeatDelay;
-	Player.breakBlock();
+	Player.breakBlock(0);
 }
 
 pub fn releaseBreak() void {
@@ -980,9 +1005,9 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		}
 	}
 	if(nextBlockBreakTime) |*breakTime| {
-		if(time -% breakTime.* >= 0) {
+		if(time -% breakTime.* >= 0 or !Player.isCreative()) {
 			breakTime.* += main.settings.updateRepeatSpeed;
-			Player.breakBlock();
+			Player.breakBlock(deltaTime);
 		}
 	}
 
@@ -1056,6 +1081,12 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			} else {
 				Player.super.pos[2] = box.min[2] - hitBox.max[2];
 			}
+
+			const damage: f32 = @floatCast(@round(@max((Player.super.vel[2] * Player.super.vel[2]) / (2 * gravity) - 3, 0)) / 2);
+			if (damage > 0.01) {
+				Inventory.Sync.addHealth(-damage, .fall, .client, Player.id);
+			}
+
 			Player.super.vel[2] = 0;
 
 			// Always unstuck upwards for now

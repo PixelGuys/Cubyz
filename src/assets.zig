@@ -15,8 +15,34 @@ var commonItems: std.StringHashMap(ZonElement) = undefined;
 var commonRecipes: std.StringHashMap(ZonElement) = undefined;
 var commonModels: std.StringHashMap([]const u8) = undefined;
 
+fn readDefaultFile(allocator: NeverFailingAllocator, dir: std.fs.Dir) !ZonElement {
+	if (dir.openFile("_defaults.zig.zon", .{})) |val| {
+		const string = try val.readToEndAlloc(main.stackAllocator.allocator, std.math.maxInt(usize));
+		defer main.stackAllocator.free(string);
+
+		return ZonElement.parseFromString(allocator, string);
+	} else |err| {
+		if (err != error.FileNotFound) {
+			return err;
+		}
+	}
+
+	if (dir.openFile("_defaults.zon", .{})) |val| {
+		const string = try val.readToEndAlloc(main.stackAllocator.allocator, std.math.maxInt(usize));
+		defer main.stackAllocator.free(string);
+
+		return ZonElement.parseFromString(allocator, string);
+	} else |err| {
+		if (err != error.FileNotFound) {
+			return err;
+		}
+	}
+
+	return .null;
+}
+
 /// Reads .zig.zon files recursively from all subfolders.
-pub fn readAllZonFilesInAddons(externalAllocator: NeverFailingAllocator, addons: main.List(std.fs.Dir), addonNames: main.List([]const u8), subPath: []const u8, output: *std.StringHashMap(ZonElement)) void {
+pub fn readAllZonFilesInAddons(externalAllocator: NeverFailingAllocator, addons: main.List(std.fs.Dir), addonNames: main.List([]const u8), subPath: []const u8, defaults: bool, output: *std.StringHashMap(ZonElement)) void {
 	for(addons.items, addonNames.items) |addon, addonName| {
 		var dir = addon.openDir(subPath, .{.iterate = true}) catch |err| {
 			if(err != error.FileNotFound) {
@@ -26,6 +52,13 @@ pub fn readAllZonFilesInAddons(externalAllocator: NeverFailingAllocator, addons:
 		};
 		defer dir.close();
 
+		var defaultsArena: main.utils.NeverFailingArenaAllocator = .init(main.stackAllocator);
+		defer defaultsArena.deinit();
+
+		const defaultsArenaAllocator = defaultsArena.allocator();
+		
+		var defaultMap = std.StringHashMap(ZonElement).init(defaultsArenaAllocator.allocator);
+		
 		var walker = dir.walk(main.stackAllocator.allocator) catch unreachable;
 		defer walker.deinit();
 
@@ -33,7 +66,7 @@ pub fn readAllZonFilesInAddons(externalAllocator: NeverFailingAllocator, addons:
 			std.log.err("Got error while iterating addon directory {s}: {s}", .{subPath, @errorName(err)});
 			break :blk null;
 		}) |entry| {
-			if(entry.kind == .file and std.ascii.endsWithIgnoreCase(entry.basename, ".zon") and !std.ascii.startsWithIgnoreCase(entry.path, "textures")) {
+			if(entry.kind == .file and !std.ascii.startsWithIgnoreCase(entry.basename, "_defaults") and std.ascii.endsWithIgnoreCase(entry.basename, ".zon") and !std.ascii.startsWithIgnoreCase(entry.path, "textures")) {
 				const fileSuffixLen = if(std.ascii.endsWithIgnoreCase(entry.basename, ".zig.zon")) ".zig.zon".len else ".zon".len;
 				const folderName = addonName;
 				const id: []u8 = externalAllocator.alloc(u8, folderName.len + 1 + entry.path.len - fileSuffixLen);
@@ -53,7 +86,27 @@ pub fn readAllZonFilesInAddons(externalAllocator: NeverFailingAllocator, addons:
 					continue;
 				};
 				defer main.stackAllocator.free(string);
-				output.put(id, ZonElement.parseFromString(externalAllocator, string)) catch unreachable;
+
+				const zon = ZonElement.parseFromString(externalAllocator, string);
+				if (defaults) {
+					const path = entry.dir.realpathAlloc(main.stackAllocator.allocator, ".") catch unreachable;
+					defer main.stackAllocator.free(path);
+
+					const result = defaultMap.getOrPut(path) catch unreachable;
+
+					if (!result.found_existing) {
+						result.key_ptr.* = defaultsArenaAllocator.dupe(u8, path);
+						const default: ZonElement = readDefaultFile(defaultsArenaAllocator, entry.dir) catch |err| blk: {
+							std.log.err("Failed to read default file: {s}", .{@errorName(err)});
+							break :blk .null;
+						};
+						
+						result.value_ptr.* = default;
+					}
+
+					zon.join(result.value_ptr.*);
+				}
+				output.put(id, zon) catch unreachable;
 			}
 		}
 	}
@@ -159,10 +212,10 @@ pub fn readAssets(externalAllocator: NeverFailingAllocator, assetPath: []const u
 		main.stackAllocator.free(addonName);
 	};
 
-	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "blocks", blocks);
-	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "items", items);
-	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "biomes", biomes);
-	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "recipes", recipes);
+	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "blocks", true, blocks);
+	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "items", true, items);
+	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "biomes", true, biomes);
+	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "recipes", false, recipes);
 	readAllObjFilesInAddonsHashmap(externalAllocator, addons, addonNames, "models", models);
 }
 
