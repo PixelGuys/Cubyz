@@ -551,11 +551,11 @@ pub const Command = struct { // MARK: Command
 			durability: u32
 		},
 		health: struct {
-			target: *main.server.User,
+			target: ?*main.server.User,
 			health: f32
 		},
 		kill: struct {
-			target: *main.server.User
+			target: ?*main.server.User
 		},
 
 		pub fn executeFromData(data: []const u8) !void {
@@ -612,7 +612,7 @@ pub const Command = struct { // MARK: Command
 				},
 				inline .health, .kill => |data| {
 					const out = allocator.alloc(*main.server.User, 1);
-					out[0] = data.target;
+					out[0] = data.target.?;
 					return out;
 				}
 			}
@@ -676,46 +676,22 @@ pub const Command = struct { // MARK: Command
 					return out;
 				},
 				.health => {
-					if (data.len != 8) {
-						return error.Invalid;
-					}
-
-					const id = std.mem.readInt(u32, data[0..4], .big);
-
-					var target: *main.server.User = undefined;
-					const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
-					defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
-					for (userList) |user| {
-						if (user.id == id) {
-							target = user;
-							break;
-						}
-					}
-
-					return .{.health = .{
-						.target = target,
-						.health = @bitCast(std.mem.readInt(u32, data[4..8], .big))
-					}};
-				},
-				.kill => {
 					if (data.len != 4) {
 						return error.Invalid;
 					}
 
-					const id = std.mem.readInt(u32, data[0..4], .big);
-
-					var target: *main.server.User = undefined;
-					const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
-					defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
-					for (userList) |user| {
-						if (user.id == id) {
-							target = user;
-							break;
-						}
+					return .{.health = .{
+						.target = null,
+						.health = @bitCast(std.mem.readInt(u32, data[0..4], .big))
+					}};
+				},
+				.kill => {
+					if (data.len != 0) {
+						return error.Invalid;
 					}
 
 					return .{.kill = .{
-						.target = target,
+						.target = null,
 					}};
 				}
 			}
@@ -746,12 +722,9 @@ pub const Command = struct { // MARK: Command
 					std.mem.writeInt(u32, data.addMany(4)[0..4], durability.durability, .big);
 				},
 				.health => |health| {
-					std.mem.writeInt(u32, data.addMany(4)[0..4], health.target.id, .big);
 					std.mem.writeInt(u32, data.addMany(4)[0..4], @bitCast(health.health), .big);
 				},
-				.kill => |kill| {
-					std.mem.writeInt(u32, data.addMany(4)[0..4], kill.target.id, .big);
-				}
+				.kill => {},
 			}
 			return data.toOwnedSlice();
 		}
@@ -971,7 +944,7 @@ pub const Command = struct { // MARK: Command
 						}});
 					}
 				} else {
-					main.game.Player.super.health = std.math.clamp(info.health, 0, main.game.Player.super.maxHealth);
+					main.game.Player.super.health = std.math.clamp(main.game.Player.super.health + info.health, 0, main.game.Player.super.maxHealth);
 				}
 			}
 		}
