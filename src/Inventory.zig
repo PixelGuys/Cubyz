@@ -971,7 +971,7 @@ pub const Command = struct { // MARK: Command
 						}});
 					}
 				} else {
-					main.game.Player.super.health += info.health;
+					main.game.Player.super.health = std.math.clamp(info.health, 0, main.game.Player.super.maxHealth);
 				}
 			}
 		}
