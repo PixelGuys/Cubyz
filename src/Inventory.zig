@@ -944,6 +944,7 @@ pub const Command = struct { // MARK: Command
 						}});
 					}
 				} else {
+					info.previous = main.game.Player.super.health;
 					main.game.Player.super.health = std.math.clamp(main.game.Player.super.health + info.health, 0, main.game.Player.super.maxHealth);
 				}
 			}
@@ -1607,6 +1608,10 @@ pub const Command = struct { // MARK: Command
 						target = user;
 						break;
 					}
+				}
+
+				if (target == null) {
+					return;
 				}
 
 				if (target.?.gamemode.raw == .creative) return;
