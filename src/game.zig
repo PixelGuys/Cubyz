@@ -306,7 +306,7 @@ pub const collision = struct {
 				if (_block) |block| {
 					if (block.collide()) {
 						totalArea += area;
-						friction += area * @as(f64, @floatCast(1 / block.friction()));
+						friction += area * @as(f64, @floatCast(block.friction()));
 					}
 				}
 			}
@@ -316,7 +316,7 @@ pub const collision = struct {
 			return defaultFriction;
 		}
 
-		return @floatCast(totalArea / friction);
+		return @floatCast(friction / totalArea);
 	}
 
 	pub fn collideOrStep(comptime side: main.utils.Side, comptime dir: Direction, amount: f64, pos: Vec3d, hitBox: Box, steppingHeight: f64) Vec3d {
