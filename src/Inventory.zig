@@ -314,7 +314,7 @@ pub const Sync = struct { // MARK: Sync
 
 			switch (source) {
 				.sharedTestingInventory => {},
-				.playerInventory => {
+				.playerInventory, .hand => {
 					const dest: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Encoder.calcSize(user.name.len));
 					defer main.stackAllocator.free(dest);
 					const hashedName = std.base64.url_safe.Encoder.encode(dest, user.name);
@@ -325,22 +325,7 @@ pub const Sync = struct { // MARK: Sync
 					const playerData = main.files.readToZon(main.stackAllocator, path) catch .null;
 					defer playerData.deinit(main.stackAllocator);
 
-					const inventoryZon = playerData.getChild("inventory");
-
-					inventory.inv.loadFromZon(inventoryZon);
-				},
-				.hand => {
-					const dest: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Encoder.calcSize(user.name.len));
-					defer main.stackAllocator.free(dest);
-					const hashedName = std.base64.url_safe.Encoder.encode(dest, user.name);
-
-					const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players/{s}.zig.zon", .{main.server.world.?.name, hashedName}) catch unreachable;
-					defer main.stackAllocator.free(path);
-		
-					const playerData = main.files.readToZon(main.stackAllocator, path) catch .null;
-					defer playerData.deinit(main.stackAllocator);
-
-					const inventoryZon = playerData.getChild("hand");
+					const inventoryZon = playerData.getChild(@tagName(source));
 
 					inventory.inv.loadFromZon(inventoryZon);
 				},
@@ -364,13 +349,11 @@ pub const Sync = struct { // MARK: Sync
 			return inventories.items[serverId].inv;
 		}
 
-		pub fn getUserInventoryFromSource(user: *main.server.User, source: SourceType) ?Inventory {
+		pub fn getInventoryFromSource(source: Source) ?Inventory {
 			main.utils.assertLocked(&mutex);
 			for(inventories.items) |inv| {
-				for (inv.users.items) |u| {
-					if (u == user and inv.source == source) {
-						return inv.inv;
-					}
+				if (inv.source == source) {
+					return inv.inv;
 				}
 			}
 			return null;
@@ -915,7 +898,7 @@ pub const Command = struct { // MARK: Command
 			const source: Source = switch(sourceType) {
 				.playerInventory => .{.playerInventory = {}},
 				.sharedTestingInventory => .{.sharedTestingInventory = {}},
-				.hand => .{.hand = {}},
+				.hand => .{.hand = std.math.maxInt(u32)},
 				.other => .{.other = {}},
 				.alreadyFreed => unreachable,
 			};
@@ -1443,9 +1426,9 @@ const SourceType = enum(u8) {
 };
 const Source = union(SourceType) {
 	alreadyFreed: void,
-	playerInventory: void,
+	playerInventory: u32,
 	sharedTestingInventory: void,
-	hand: void,
+	hand: u32,
 	other: void,
 };
 

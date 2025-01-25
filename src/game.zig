@@ -563,7 +563,7 @@ pub const World = struct { // MARK: World
 		try assets.loadWorldAssets("serverAssets", self.blockPalette, self.biomePalette);
 		Player.loadFrom(zon.getChild("player"));
 		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
-		Player.inventory = Inventory.init(main.globalAllocator, 32, .normal, .playerInventory);
+		Player.inventory = Inventory.init(main.globalAllocator, 32, .normal, .{.playerInventory = Player.id});
 	}
 
 	pub fn update(self: *World) void {
