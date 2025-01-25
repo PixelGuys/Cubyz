@@ -882,6 +882,12 @@ pub const Command = struct { // MARK: Command
 			std.mem.writeInt(usize, data.addMany(8)[0..8], self.inv._items.len, .big);
 			data.append(@intFromEnum(self.inv.type));
 			data.append(@intFromEnum(self.source));
+			switch (self.source) {
+				.playerInventory, .hand => |val| {
+					std.mem.writeInt(u32, data.addMany(4)[0..4], val, .big);
+				},
+				else => {}
+			}
 			switch(self.source) {
 				.playerInventory, .sharedTestingInventory, .hand, .other => {},
 				.alreadyFreed => unreachable,
@@ -889,16 +895,16 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn deserialize(data: []const u8, side: Side, user: ?*main.server.User) !Open {
-			if(data.len < 14) return error.Invalid;
+			if(data.len < 22) return error.Invalid;
 			if(side != .server or user == null) return error.Invalid;
 			const id = std.mem.readInt(u32, data[0..4], .big);
 			const len = std.mem.readInt(usize, data[4..12], .big);
 			const typ: Inventory.Type = @enumFromInt(data[12]);
 			const sourceType: SourceType = @enumFromInt(data[13]);
 			const source: Source = switch(sourceType) {
-				.playerInventory => .{.playerInventory = std.math.maxInt(u32)},
+				.playerInventory => .{.playerInventory = std.mem.readInt(u32, data[12..16], .big)},
 				.sharedTestingInventory => .{.sharedTestingInventory = {}},
-				.hand => .{.hand = std.math.maxInt(u32)},
+				.hand => .{.hand = std.mem.readInt(u32, data[12..16], .big)},
 				.other => .{.other = {}},
 				.alreadyFreed => unreachable,
 			};
