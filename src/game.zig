@@ -528,11 +528,6 @@ pub const World = struct { // MARK: World
 		main.gui.deinit();
 		main.gui.init();
 
-		main.server.world.?.saveAllPlayers() catch |err| {
-			std.log.err("Failed to save players in server: {s}", .{@errorName(err)});
-			return;
-		};
-
 		Player.inventory.deinit(main.globalAllocator);
 
 		main.threadPool.clear();
