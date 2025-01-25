@@ -47,14 +47,14 @@ pub fn render() void {
 	var y: f32 = 0;
 	var x: f32 = 0;
 	var health: f32 = 0;
-	while(health < main.game.Player.maxHealth) : (health += 1) {
+	while(health < main.game.Player.super.maxHealth) : (health += 1) {
 		if(x >= window.contentSize[0]) {
 			x = 0;
 			y += 20;
 		}
-		if(health + 1 <= main.game.Player.health) {
+		if(health + 1 <= main.game.Player.super.health) {
 			heartTexture.bindTo(0);
-		} else if(health + 0.5 <= main.game.Player.health) {
+		} else if(health + 0.5 <= main.game.Player.super.health) {
 			halfHeartTexture.bindTo(0);
 		} else {
 			deadHeartTexture.bindTo(0);
