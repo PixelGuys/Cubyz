@@ -1700,7 +1700,7 @@ fn _init(allocator: NeverFailingAllocator, _size: usize, _type: Type, side: Side
 }
 
 pub fn deinit(self: Inventory, allocator: NeverFailingAllocator) void {
-	if (main.game.world.?.isConnected()) {
+	if (main.game.world.?.connected) {
 		Sync.ClientSide.executeCommand(.{.close = .{.inv = self, .allocator = allocator}});
 	} else {
 		Sync.ClientSide.mutex.lock();

@@ -587,10 +587,6 @@ pub const World = struct { // MARK: World
 		Player.inventory = Inventory.init(main.globalAllocator, 32, .normal, .{.playerInventory = Player.id});
 	}
 
-	pub fn isConnected(self: *World) bool {
-		return self.connected;
-	}
-
 	pub fn update(self: *World) void {
 		const newTime: i64 = std.time.milliTimestamp();
 		while(self.milliTime +% 100 -% newTime < 0) {
