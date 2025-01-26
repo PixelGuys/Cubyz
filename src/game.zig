@@ -299,11 +299,23 @@ pub const collision = struct {
 			while (y <= maxY) : (y += 1) {
 				const _block = if(side == .client) main.renderer.mesh_storage.getBlock(x, y, z)
 				else main.server.world.?.getBlock(x, y, z);
-				const min = @max(Vec2d{@floatFromInt(x), @floatFromInt(y)}, vec.xy(boundingBox.min));
-				const max = @min(Vec2d{@floatFromInt(x + 1), @floatFromInt(y + 1)}, vec.xy(boundingBox.max));
-				const area = (max[0] - min[0]) * (max[1] - min[1]);
-				
+
 				if (_block) |block| {
+					const blockPos: Vec3d = .{@floatFromInt(x), @floatFromInt(y), @floatFromInt(z)};
+
+					const blockBox: Box = .{
+						.min = blockPos + @as(Vec3d, @floatCast(main.models.models.items[block.mode().model(block)].min)),
+						.max = blockPos + @as(Vec3d, @floatCast(main.models.models.items[block.mode().model(block)].max)),
+					};
+
+					if (boundingBox.min[0] > blockBox.max[0] or boundingBox.max[0] < blockBox.min[0] or
+						boundingBox.min[1] > blockBox.max[1] or boundingBox.max[1] < blockBox.min[1] or
+						boundingBox.min[2] > blockBox.max[2] or boundingBox.max[2] < blockBox.min[2]) {
+						continue;
+					}
+
+					const area = (blockBox.max[0] - blockBox.min[0]) * (blockBox.max[1] - blockBox.min[1]);
+				
 					if (block.collide()) {
 						totalArea += area;
 						friction += area * @as(f64, @floatCast(block.friction()));
@@ -399,9 +411,6 @@ pub const Player = struct { // MARK: Player
 	pub var selectedSlot: u32 = 0;
 
 	pub var currentFriction: f32 = 0;
-
-	pub var maxHealth: f32 = 8;
-	pub var health: f32 = 4.5;
 
 	pub var onGround: bool = false;
 	pub var jumpCooldown: f64 = 0;
