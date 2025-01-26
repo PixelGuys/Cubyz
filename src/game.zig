@@ -312,7 +312,10 @@ pub const collision = struct {
 						continue;
 					}
 
-					const area = @max((blockBox.max[0] - blockBox.min[0]) * (blockBox.max[1] - blockBox.min[1]), 0);
+					const min = @max(vec.xy(blockBox.min), vec.xy(boundingBox.min));
+					const max = @min(vec.xy(blockBox.max), vec.xy(boundingBox.max));
+
+					const area = (max[0] - min[0]) * (max[1] - min[1]);
 				
 					if (block.collide()) {
 						totalArea += area;
