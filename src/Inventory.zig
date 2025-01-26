@@ -310,14 +310,14 @@ pub const Sync = struct { // MARK: Sync
 						}
 					}
 				},
-				.playerInventory, .other => {},
+				.playerInventory, .hand, .other => {},
 				.alreadyFreed => unreachable,
 			}
 			const inventory = ServerInventory.init(len, typ, source);
 
 			switch (source) {
 				.sharedTestingInventory => {},
-				.playerInventory => {
+				.playerInventory, .hand => {
 					const dest: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Encoder.calcSize(user.name.len));
 					defer main.stackAllocator.free(dest);
 					const hashedName = std.base64.url_safe.Encoder.encode(dest, user.name);
@@ -328,7 +328,7 @@ pub const Sync = struct { // MARK: Sync
 					const playerData = main.files.readToZon(main.stackAllocator, path) catch .null;
 					defer playerData.deinit(main.stackAllocator);
 
-					const inventoryZon = playerData.getChild("inventory");
+					const inventoryZon = playerData.getChild(@tagName(source));
 
 					inventory.inv.loadFromZon(inventoryZon);
 				},
@@ -352,10 +352,10 @@ pub const Sync = struct { // MARK: Sync
 			return inventories.items[serverId].inv;
 		}
 
-		pub fn getInventoryFromSource(source: SourceType) ?Inventory {
+		pub fn getInventoryFromSource(source: Source) ?Inventory {
 			main.utils.assertLocked(&mutex);
 			for(inventories.items) |inv| {
-				if (inv.source == source) {
+				if (std.meta.eql(inv.source, source)) {
 					return inv.inv;
 				}
 			}
@@ -1059,8 +1059,14 @@ pub const Command = struct { // MARK: Command
 			std.mem.writeInt(usize, data.addMany(8)[0..8], self.inv._items.len, .big);
 			data.append(@intFromEnum(self.inv.type));
 			data.append(@intFromEnum(self.source));
+			switch (self.source) {
+				.playerInventory, .hand => |val| {
+					std.mem.writeInt(u32, data.addMany(4)[0..4], val, .big);
+				},
+				else => {}
+			}
 			switch(self.source) {
-				.playerInventory, .sharedTestingInventory, .other => {},
+				.playerInventory, .sharedTestingInventory, .hand, .other => {},
 				.alreadyFreed => unreachable,
 			}
 		}
@@ -1073,8 +1079,9 @@ pub const Command = struct { // MARK: Command
 			const typ: Inventory.Type = @enumFromInt(data[12]);
 			const sourceType: SourceType = @enumFromInt(data[13]);
 			const source: Source = switch(sourceType) {
-				.playerInventory => .{.playerInventory = {}},
+				.playerInventory => .{.playerInventory = std.mem.readInt(u32, data[14..18], .big)},
 				.sharedTestingInventory => .{.sharedTestingInventory = {}},
+				.hand => .{.hand = std.mem.readInt(u32, data[14..18], .big)},
 				.other => .{.other = {}},
 				.alreadyFreed => unreachable,
 			};
@@ -1647,12 +1654,14 @@ const SourceType = enum(u8) {
 	alreadyFreed = 0,
 	playerInventory = 1,
 	sharedTestingInventory = 2,
+	hand = 3,
 	other = 0xff, // TODO: List every type separately here.
 };
 const Source = union(SourceType) {
 	alreadyFreed: void,
-	playerInventory: void,
+	playerInventory: u32,
 	sharedTestingInventory: void,
+	hand: u32,
 	other: void,
 };
 
@@ -1691,7 +1700,13 @@ fn _init(allocator: NeverFailingAllocator, _size: usize, _type: Type, side: Side
 }
 
 pub fn deinit(self: Inventory, allocator: NeverFailingAllocator) void {
-	Sync.ClientSide.executeCommand(.{.close = .{.inv = self, .allocator = allocator}});
+	if (main.game.world.?.connected) {
+		Sync.ClientSide.executeCommand(.{.close = .{.inv = self, .allocator = allocator}});
+	} else {
+		Sync.ClientSide.mutex.lock();
+		defer Sync.ClientSide.mutex.unlock();
+		self._deinit(allocator, .client);
+	}
 }
 
 fn _deinit(self: Inventory, allocator: NeverFailingAllocator, side: Side) void {

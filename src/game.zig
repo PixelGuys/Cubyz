@@ -583,6 +583,7 @@ pub const World = struct { // MARK: World
 	milliTime: i64,
 	gameTime: Atomic(i64) = .init(0),
 	spawn: Vec3f = undefined,
+	connected: bool = true,
 	blockPalette: *assets.Palette = undefined,
 	biomePalette: *assets.Palette = undefined,
 	itemDrops: ClientItemDropManager = undefined,
@@ -595,6 +596,7 @@ pub const World = struct { // MARK: World
 			.name = "client",
 			.milliTime = std.time.milliTimestamp(),
 		};
+
 		self.itemDrops.init(main.globalAllocator, self);
 		network.Protocols.handShake.clientSide(self.conn, settings.playerName);
 
@@ -607,15 +609,17 @@ pub const World = struct { // MARK: World
 	}
 
 	pub fn deinit(self: *World) void {
+		self.conn.deinit();
+
+		self.connected = false;
+
 		// TODO: Close all world related guis.
 		main.gui.inventory.deinit();
 		main.gui.deinit();
 		main.gui.init();
-
 		Player.inventory.deinit(main.globalAllocator);
 
 		main.threadPool.clear();
-		self.conn.deinit();
 		self.itemDrops.deinit();
 		self.blockPalette.deinit();
 		self.biomePalette.deinit();
@@ -642,7 +646,7 @@ pub const World = struct { // MARK: World
 		try assets.loadWorldAssets("serverAssets", self.blockPalette, self.biomePalette);
 		Player.loadFrom(zon.getChild("player"));
 		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
-		Player.inventory = Inventory.init(main.globalAllocator, 32, .normal, .playerInventory);
+		Player.inventory = Inventory.init(main.globalAllocator, 32, .normal, .{.playerInventory = Player.id});
 	}
 
 	pub fn update(self: *World) void {
