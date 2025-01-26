@@ -308,13 +308,11 @@ pub const collision = struct {
 						.max = blockPos + @as(Vec3d, @floatCast(main.models.models.items[block.mode().model(block)].max)),
 					};
 
-					if (boundingBox.min[0] > blockBox.max[0] or boundingBox.max[0] < blockBox.min[0] or
-						boundingBox.min[1] > blockBox.max[1] or boundingBox.max[1] < blockBox.min[1] or
-						boundingBox.min[2] > blockBox.max[2] or boundingBox.max[2] < blockBox.min[2]) {
+					if (boundingBox.min[2] > blockBox.max[2] or boundingBox.max[2] < blockBox.min[2]) {
 						continue;
 					}
 
-					const area = (blockBox.max[0] - blockBox.min[0]) * (blockBox.max[1] - blockBox.min[1]);
+					const area = @max((blockBox.max[0] - blockBox.min[0]) * (blockBox.max[1] - blockBox.min[1]), 0);
 				
 					if (block.collide()) {
 						totalArea += area;
