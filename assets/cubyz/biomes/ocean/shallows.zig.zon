@@ -11,31 +11,35 @@
 	.hills = 15,
 	.music = "cubyz:under_the_water_sky",
 	.ground_structure = .{
-		"2 to 3 cubyz:gravel",
+		"0 to 1 cubyz:gravel",
+		"0 to 2 cubyz:cobblestone",
 	},
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
 			.block = "cubyz:mossy_cobblestone",
-			.chance = 0.1,
-			.width = 6,
-			.variation = 2,
-			.depth = 2,
-			.smoothness = 0.2,
-		},
-		.{
-			.id = "cubyz:ground_patch",
-			.block = "cubyz:sand",
-			.chance = 0.25,
-			.width = 6,
-			.variation = 6,
+			.chance = 0.05,
+			.width = 12,
+			.variation = 4,
 			.depth = 2,
 			.smoothness = 0.2,
 		},
 	},
 	.transitionBiomes = .{
 		.{
+			.id = "cubyz:ocean/cliffs",
+			.chance = 0.25,
+			.width = 2,
+			.properties = .{.antiMountain, .ocean},
+		},
+		.{
 			.id = "cubyz:ocean/beach",
+			.chance = 1,
+			.width = 1,
+			.properties = .{.land, .inland},
+		},
+		.{
+			.id = "cubyz:ocean/shelf",
 			.chance = 1,
 			.keepOriginalTerrain = 0.1,
 			.width = 2,

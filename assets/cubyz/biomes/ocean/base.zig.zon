@@ -13,7 +13,8 @@
 	.rivers = true,
 	.music = "cubyz:under_the_water_sky",
 	.ground_structure = .{
-		"2 to 3 cubyz:gravel",
+		"1 to 2 cubyz:gravel",
+		"1 to 2 cubyz:cobblestone",
 	},
 	.structures = .{
 		.{
@@ -22,22 +23,19 @@
 			.chance = 0.064,
 			.width = 6,
 			.variation = 2,
-			.depth = 2,
-			.smoothness = 0.2,
-		},
-		.{
-			.id = "cubyz:ground_patch",
-			.block = "cubyz:sand",
-			.chance = 0.032,
-			.width = 6,
-			.variation = 2,
-			.depth = 2,
+			.depth = 3,
 			.smoothness = 0.2,
 		},
 	},
 	.transitionBiomes = .{
 		.{
 			.id = "cubyz:ocean/beach",
+			.chance = 1,
+			.width = 1,
+			.properties = .{.land, .inland},
+		},
+		.{
+			.id = "cubyz:ocean/shelf",
 			.chance = 1,
 			.keepOriginalTerrain = 0.1,
 			.width = 2,
