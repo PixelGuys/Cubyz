@@ -895,7 +895,7 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn deserialize(data: []const u8, side: Side, user: ?*main.server.User) !Open {
-			if(data.len < 22) return error.Invalid;
+			if(data.len < 14) return error.Invalid;
 			if(side != .server or user == null) return error.Invalid;
 			const id = std.mem.readInt(u32, data[0..4], .big);
 			const len = std.mem.readInt(usize, data[4..12], .big);
