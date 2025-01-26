@@ -1,0 +1,38 @@
+.{
+	.properties = .{
+		.ocean,
+		.wet,
+		.mountain,
+	},
+	.radius = 128,
+	.minHeight = -1,
+	.maxHeight = 5,
+	.chance = 0.25,
+	.mountains = 50,
+	.roughness = 15,
+	.hills = 15,
+	.music = "cubyz:under_the_water_sky",
+	.ground_structure = .{
+		"2 to 3 cubyz:gravel",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:mossy_cobblestone",
+			.chance = 0.1,
+			.width = 6,
+			.variation = 2,
+			.depth = 2,
+			.smoothness = 0.2,
+		},
+	},
+	.transitionBiomes = .{
+		.{
+			.id = "cubyz:ocean/beach",
+			.chance = 1,
+			.keepOriginalTerrain = 0.1,
+			.width = 2,
+			.properties = .{.land, .inland},
+		},
+	},
+}
