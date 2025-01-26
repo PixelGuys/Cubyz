@@ -1,8 +1,19 @@
 .{
 	.class = .stone,
-	.hardness = 25,
+	.blockHealth = 20,
 	.drops = .{
 		.{.items = .{.auto}},
+	},
+	.item = .{
+		.material = .{
+			.density = 0.7,
+			.resistance = 0.7,
+			.power = 0.3,
+			.roughness = 2.5,
+			.colors = .{
+				0xff282328, 0xff353135, 0xff434041, 0xff4A4849, 0xff605E5F,
+			},
+		},
 	},
 	.breakingPower = 1,
 	.rotation = .stairs,

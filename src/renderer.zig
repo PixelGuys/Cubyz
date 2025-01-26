@@ -809,6 +809,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	pub fn breakBlock(inventory: main.items.Inventory, slot: u32, deltaTime: f64) void {
 		if(selectedBlockPos) |selectedPos| {
 			if(@reduce(.Or, lastSelectedBlockPos != selectedPos)) {
+				mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
 				lastSelectedBlockPos = selectedPos;
 				currentBlockProgress = 0;
 			}
@@ -824,15 +825,19 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 					power = stack.item.?.tool.getPowerByBlockClass(block.blockClass());
 				}
 				if(power >= block.breakingPower()) {
-					var breakTime: f32 = block.hardness();
+					var breakTime: f32 = block.blockHealth();
 					if(isTool) {
 						breakTime = breakTime*stack.item.?.tool.swingTime/power;
 					}
 					currentBlockProgress += @as(f32, @floatCast(deltaTime))/breakTime;
 					if(currentBlockProgress < 1) {
+						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
+						mesh_storage.addBreakingAnimation(lastSelectedBlockPos, currentBlockProgress);
 						main.items.Inventory.Sync.ClientSide.mutex.unlock();
+
 						return;
 					} else {
+						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
 						currentBlockProgress = 0;
 					}
 				} else {

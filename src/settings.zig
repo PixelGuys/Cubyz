@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main.zig");
@@ -63,8 +64,10 @@ pub var developerGPUInfiniteLoopDetection: bool = false;
 
 pub var controllerAxisDeadzone: f32 = 0.0;
 
+const settingsFile = if(builtin.mode == .Debug) "debug_settings.zig.zon" else "settings.zig.zon";
+
 pub fn init() void {
-	const zon: ZonElement = main.files.cubyzDir().readToZon(main.stackAllocator, "settings.zig.zon") catch |err| blk: {
+	const zon: ZonElement = main.files.cubyzDir().readToZon(main.stackAllocator, settingsFile) catch |err| blk: {
 		if(err != error.FileNotFound) {
 			std.log.err("Could not read settings file: {s}", .{@errorName(err)});
 		}
@@ -153,7 +156,7 @@ pub fn save() void {
 	zonObject.put("keyboard", keyboard);
 
 	// Write to file:
-	main.files.cubyzDir().writeZon("settings.zig.zon", zonObject) catch |err| {
+	main.files.cubyzDir().writeZon(settingsFile, zonObject) catch |err| {
 		std.log.err("Couldn't write settings to file: {s}", .{@errorName(err)});
 	};
 }

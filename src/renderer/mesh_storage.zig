@@ -942,3 +942,85 @@ pub fn updateChunkMesh(mesh: *chunk.Chunk) void {
 pub fn updateLightMap(map: *LightMap.LightMapFragment) void {
 	mapUpdatableList.enqueue(map);
 }
+
+// MARK: Block breaking animation
+
+pub fn addBreakingAnimation(pos: Vec3i, breakingProgress: f32) void {
+	const animationFrame: usize = @intFromFloat(breakingProgress*@as(f32, @floatFromInt(main.blocks.meshes.blockBreakingTextures.items.len)));
+	const texture = main.blocks.meshes.blockBreakingTextures.items[animationFrame];
+
+	const block = getBlock(pos[0], pos[1], pos[2]) orelse return;
+	const modelIndex = main.blocks.meshes.model(block);
+	const model = &main.models.models.items[modelIndex];
+
+	for(model.internalQuads) |quadIndex| {
+		addBreakingAnimationFace(pos, quadIndex, texture, null, block.transparent());
+	}
+	for(&model.neighborFacingQuads, 0..) |quads, n| {
+		for(quads) |quadIndex| {
+			addBreakingAnimationFace(pos, quadIndex, texture, @enumFromInt(n), block.transparent());
+		}
+	}
+}
+
+fn addBreakingAnimationFace(pos: Vec3i, quadIndex: u16, texture: u16, neighbor: ?chunk.Neighbor, isTransparent: bool) void {
+	const worldPos = pos +% if(neighbor) |n| n.relPos() else Vec3i{0, 0, 0};
+	const relPos = worldPos & @as(Vec3i, @splat(main.chunk.chunkMask));
+	const mesh = getMeshAndIncreaseRefCount(.{.wx = worldPos[0], .wy = worldPos[1], .wz = worldPos[2], .voxelSize = 1}) orelse return;
+	defer mesh.decreaseRefCount();
+	mesh.mutex.lock();
+	defer mesh.mutex.unlock();
+	const lightIndex = blk: {
+		const meshData = if(isTransparent) &mesh.transparentMesh else &mesh.opaqueMesh;
+		for(meshData.completeList) |face| {
+			if(face.position.x == relPos[0] and face.position.y == relPos[1] and face.position.z == relPos[2] and face.blockAndQuad.quadIndex == quadIndex) {
+				break :blk face.position.lightIndex;
+			}
+		}
+		// The face doesn't exist.
+		return;
+	};
+	mesh.blockBreakingFacesChanged = true;
+	mesh.blockBreakingFaces.append(.{
+		.position = .{
+			.x = @intCast(relPos[0]),
+			.y = @intCast(relPos[1]),
+			.z = @intCast(relPos[2]),
+			.isBackFace = false,
+			.lightIndex = lightIndex,
+		},
+		.blockAndQuad = .{
+			.texture = texture,
+			.quadIndex = quadIndex,
+		},
+	});
+}
+
+fn removeBreakingAnimationFace(pos: Vec3i, quadIndex: u16, neighbor: ?chunk.Neighbor) void {
+	const worldPos = pos +% if(neighbor) |n| n.relPos() else Vec3i{0, 0, 0};
+	const relPos = worldPos & @as(Vec3i, @splat(main.chunk.chunkMask));
+	const mesh = getMeshAndIncreaseRefCount(.{.wx = worldPos[0], .wy = worldPos[1], .wz = worldPos[2], .voxelSize = 1}) orelse return;
+	defer mesh.decreaseRefCount();
+	for(mesh.blockBreakingFaces.items, 0..) |face, i| {
+		if(face.position.x == relPos[0] and face.position.y == relPos[1] and face.position.z == relPos[2] and face.blockAndQuad.quadIndex == quadIndex) {
+			_ = mesh.blockBreakingFaces.swapRemove(i);
+			mesh.blockBreakingFacesChanged = true;
+			break;
+		}
+	}
+}
+
+pub fn removeBreakingAnimation(pos: Vec3i) void {
+	const block = getBlock(pos[0], pos[1], pos[2]) orelse return;
+	const modelIndex = main.blocks.meshes.model(block);
+	const model = &main.models.models.items[modelIndex];
+
+	for(model.internalQuads) |quadIndex| {
+		removeBreakingAnimationFace(pos, quadIndex, null);
+	}
+	for(&model.neighborFacingQuads, 0..) |quads, n| {
+		for(quads) |quadIndex| {
+			removeBreakingAnimationFace(pos, quadIndex, @enumFromInt(n));
+		}
+	}
+}

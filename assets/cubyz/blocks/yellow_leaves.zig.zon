@@ -1,6 +1,6 @@
 .{
 	.class = .leaf,
-	.hardness = 0.4,
+	.blockHealth = 1.25,
 	.drops = .{
 		.{.items = .{.auto}},
 	},

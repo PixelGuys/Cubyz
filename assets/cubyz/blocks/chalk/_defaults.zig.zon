@@ -1,0 +1,9 @@
+.{
+	.class = .stone,
+	.blockHealth = 12,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.model = "cubyz:cube",
+	.rotation = .stairs,
+}

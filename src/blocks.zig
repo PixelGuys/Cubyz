@@ -62,7 +62,7 @@ var _transparent: [maxBlockCount]bool = undefined;
 var _collide: [maxBlockCount]bool = undefined;
 var _id: [maxBlockCount][]u8 = undefined;
 /// Time in seconds to break this block by hand.
-var _hardness: [maxBlockCount]f32 = undefined;
+var _blockHealth: [maxBlockCount]f32 = undefined;
 /// Minimum pickaxe/axe/shovel power required.
 var _breakingPower: [maxBlockCount]f32 = undefined;
 var _solid: [maxBlockCount]bool = undefined;
@@ -108,7 +108,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 
 	_mode[size] = rotation.getByID(zon.get([]const u8, "rotation", "no_rotation"));
 	_breakingPower[size] = zon.get(f32, "breakingPower", 0);
-	_hardness[size] = zon.get(f32, "hardness", 1);
+	_blockHealth[size] = zon.get(f32, "blockHealth", 1);
 
 	_blockClass[size] = std.meta.stringToEnum(BlockClass, zon.get([]const u8, "class", "stone")) orelse .stone;
 	_light[size] = zon.get(u32, "emittedLight", 0);
@@ -274,8 +274,8 @@ pub const Block = packed struct { // MARK: Block
 	}
 
 	/// Time in seconds to break this block by hand.
-	pub inline fn hardness(self: Block) f32 {
-		return _hardness[self.typ];
+	pub inline fn blockHealth(self: Block) f32 {
+		return _blockHealth[self.typ];
 	}
 
 	/// Minimum pickaxe/axe/shovel power required.
@@ -378,6 +378,7 @@ pub const meshes = struct { // MARK: meshes
 	var reflectivityTextures: main.List(Image) = undefined;
 	var absorptionTextures: main.List(Image) = undefined;
 	var textureFogData: main.List(FogData) = undefined;
+	pub var textureOcclusionData: main.List(bool) = undefined;
 
 	var arenaForWorld: main.utils.NeverFailingArenaAllocator = undefined;
 
@@ -427,6 +428,7 @@ pub const meshes = struct { // MARK: meshes
 		reflectivityTextures = .init(main.globalAllocator);
 		absorptionTextures = .init(main.globalAllocator);
 		textureFogData = .init(main.globalAllocator);
+		textureOcclusionData = .init(main.globalAllocator);
 		arenaForWorld = .init(main.globalAllocator);
 		blockBreakingTextures = .init(main.globalAllocator);
 	}
@@ -452,6 +454,7 @@ pub const meshes = struct { // MARK: meshes
 		reflectivityTextures.deinit();
 		absorptionTextures.deinit();
 		textureFogData.deinit();
+		textureOcclusionData.deinit();
 		arenaForWorld.deinit();
 		blockBreakingTextures.deinit();
 	}
@@ -466,6 +469,7 @@ pub const meshes = struct { // MARK: meshes
 		reflectivityTextures.clearRetainingCapacity();
 		absorptionTextures.clearRetainingCapacity();
 		textureFogData.clearRetainingCapacity();
+		textureOcclusionData.clearRetainingCapacity();
 		blockBreakingTextures.clearRetainingCapacity();
 		_ = arenaForWorld.reset(.free_all);
 	}
@@ -494,16 +498,14 @@ pub const meshes = struct { // MARK: meshes
 		return textureData[block.typ].textureIndices[orientation];
 	}
 
-	fn extendedPath(path: []const u8, pathBuffer: []u8, ending: []const u8) []const u8 {
-		std.debug.assert(path.ptr == pathBuffer.ptr);
-		@memcpy(pathBuffer[path.len..][0..ending.len], ending);
-		return pathBuffer[0..path.len+ending.len];
+	fn extendedPath(_allocator: main.utils.NeverFailingAllocator, path: []const u8, ending: []const u8) []const u8 {
+		return std.fmt.allocPrint(_allocator.allocator, "{s}{s}", .{path, ending}) catch unreachable;
 	}
 
-	fn readAuxillaryTexture(_path: []const u8, pathBuffer: []u8, ending: []const u8, default: Image) Image {
-		const path = extendedPath(_path, pathBuffer, ending);
-		const texture = Image.readFromFile(arenaForWorld.allocator(), path) catch default;
-		return texture;
+	fn readTextureFile(_path: []const u8, ending: []const u8, default: Image) Image {
+		const path = extendedPath(main.stackAllocator, _path, ending);
+		defer main.stackAllocator.free(path);
+		return Image.readFromFile(arenaForWorld.allocator(), path) catch default;
 	}
 
 	fn extractAnimationSlice(image: Image, frame: usize, frames: usize) Image {
@@ -521,19 +523,18 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	fn readTextureData(_path: []const u8) void {
-		var buffer: [1024]u8 = undefined;
-		@memcpy(buffer[0.._path.len], _path);
-		const path = buffer[0.._path.len];
-		const textureInfoPath = extendedPath(path, &buffer, "_textureInfo.zig.zon");
+		const path = _path[0.._path.len - ".png".len];
+		const textureInfoPath = extendedPath(main.stackAllocator, path, ".zig.zon");
+		defer main.stackAllocator.free(textureInfoPath);
 		const textureInfoZon = main.files.readToZon(main.stackAllocator, textureInfoPath) catch .null;
 		defer textureInfoZon.deinit(main.stackAllocator);
 		const animationFrames = textureInfoZon.get(u32, "frames", 1);
 		const animationTime = textureInfoZon.get(u32, "time", 1);
 		animation.append(.{.startFrame = @intCast(blockTextures.items.len), .frames = animationFrames, .time = animationTime});
-		const base = Image.readFromFile(arenaForWorld.allocator(), path) catch Image.defaultImage;
-		const emission = readAuxillaryTexture(path, &buffer, "_emission.png", Image.emptyImage);
-		const reflectivity = readAuxillaryTexture(path, &buffer, "_reflectivity.png", Image.emptyImage);
-		const absorption = readAuxillaryTexture(path, &buffer, "_absorption.png", Image.whiteEmptyImage);
+		const base = readTextureFile(path, ".png", Image.defaultImage);
+		const emission = readTextureFile(path, "_emission.png", Image.emptyImage);
+		const reflectivity = readTextureFile(path, "_reflectivity.png", Image.emptyImage);
+		const absorption = readTextureFile(path, "_absorption.png", Image.whiteEmptyImage);
 		for(0..animationFrames) |i| {
 			blockTextures.append(extractAnimationSlice(base, i, animationFrames));
 			emissionTextures.append(extractAnimationSlice(emission, i, animationFrames));
@@ -544,6 +545,7 @@ pub const meshes = struct { // MARK: meshes
 				.fogColor = textureInfoZon.get(u32, "fogColor", 0xffffff),
 			});
 		}
+		textureOcclusionData.append(textureInfoZon.get(bool, "hasOcclusion", true));
 	}
 
 	pub fn readTexture(_textureId: ?[]const u8, assetFolder: []const u8) !u16 {
@@ -604,9 +606,9 @@ pub const meshes = struct { // MARK: meshes
 	pub fn registerBlockBreakingAnimation(assetFolder: []const u8) void {
 		var i: usize = 0;
 		while(true) : (i += 1) {
-			const path1 = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/cubyz/blocks/textures/{}.png", .{i}) catch unreachable;
+			const path1 = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/cubyz/blocks/textures/breaking/{}.png", .{i}) catch unreachable;
 			defer main.stackAllocator.free(path1);
-			const path2 = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/cubyz/blocks/textures/{}.png", .{assetFolder, i}) catch unreachable;
+			const path2 = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/cubyz/blocks/textures/breaking/{}.png", .{assetFolder, i}) catch unreachable;
 			defer main.stackAllocator.free(path2);
 			if(!main.files.hasFile(path1) and !main.files.hasFile(path2)) break;
 
@@ -630,6 +632,7 @@ pub const meshes = struct { // MARK: meshes
 		reflectivityTextures.clearRetainingCapacity();
 		absorptionTextures.clearRetainingCapacity();
 		textureFogData.clearAndFree();
+		textureOcclusionData.clearAndFree();
 		for(textureIDs.items) |path| {
 			readTextureData(path);
 		}

@@ -1,6 +1,9 @@
 .{
 	.class = .stone,
-	.hardness = 25,
+	.blockHealth = 25,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
 	.item = .{
 		.material = .{
 			.density = 1.0,
@@ -12,12 +15,7 @@
 			},
 		},
 	},
-	
-	.drops = .{
-		.{.items = .{.auto}},
-	},
 	.model = "cubyz:cube",
 	.texture = "cubyz:cobblestone",
-
 	.rotation = .stairs,
 }

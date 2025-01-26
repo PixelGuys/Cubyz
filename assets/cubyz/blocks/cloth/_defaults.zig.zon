@@ -1,0 +1,10 @@
+.{
+	.class = .stone,
+	.blockHealth = 2,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.collide = false,
+	.model = "cubyz:carpet",
+	.rotation = .carpet,
+}
