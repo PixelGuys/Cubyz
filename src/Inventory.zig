@@ -1700,7 +1700,13 @@ fn _init(allocator: NeverFailingAllocator, _size: usize, _type: Type, side: Side
 }
 
 pub fn deinit(self: Inventory, allocator: NeverFailingAllocator) void {
-	Sync.ClientSide.executeCommand(.{.close = .{.inv = self, .allocator = allocator}});
+	if (main.game.world.?.isConnected()) {
+		Sync.ClientSide.executeCommand(.{.close = .{.inv = self, .allocator = allocator}});
+	} else {
+		Sync.ClientSide.mutex.lock();
+		defer Sync.ClientSide.mutex.unlock();
+		self._deinit(allocator, .client);
+	}
 }
 
 fn _deinit(self: Inventory, allocator: NeverFailingAllocator, side: Side) void {
