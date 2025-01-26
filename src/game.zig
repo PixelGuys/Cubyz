@@ -521,7 +521,7 @@ pub const World = struct { // MARK: World
 	milliTime: i64,
 	gameTime: Atomic(i64) = .init(0),
 	spawn: Vec3f = undefined,
-	connected: Atomic(bool) = .init(false),
+	connected: bool = true,
 	blockPalette: *assets.Palette = undefined,
 	biomePalette: *assets.Palette = undefined,
 	itemDrops: ClientItemDropManager = undefined,
@@ -534,7 +534,6 @@ pub const World = struct { // MARK: World
 			.name = "client",
 			.milliTime = std.time.milliTimestamp(),
 		};
-		self.connected.store(true, .monotonic);
 
 		self.itemDrops.init(main.globalAllocator, self);
 		network.Protocols.handShake.clientSide(self.conn, settings.playerName);
@@ -550,7 +549,7 @@ pub const World = struct { // MARK: World
 	pub fn deinit(self: *World) void {
 		self.conn.deinit();
 
-		self.connected.store(false, .monotonic);
+		self.connected = false;
 
 		// TODO: Close all world related guis.
 		main.gui.inventory.deinit();
@@ -589,7 +588,7 @@ pub const World = struct { // MARK: World
 	}
 
 	pub fn isConnected(self: *World) bool {
-		return self.connected.load(.monotonic);
+		return self.connected;
 	}
 
 	pub fn update(self: *World) void {
