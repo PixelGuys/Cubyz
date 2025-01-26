@@ -902,9 +902,9 @@ pub const Command = struct { // MARK: Command
 			const typ: Inventory.Type = @enumFromInt(data[12]);
 			const sourceType: SourceType = @enumFromInt(data[13]);
 			const source: Source = switch(sourceType) {
-				.playerInventory => .{.playerInventory = std.mem.readInt(u32, data[12..16], .big)},
+				.playerInventory => .{.playerInventory = std.mem.readInt(u32, data[14..18], .big)},
 				.sharedTestingInventory => .{.sharedTestingInventory = {}},
-				.hand => .{.hand = std.mem.readInt(u32, data[12..16], .big)},
+				.hand => .{.hand = std.mem.readInt(u32, data[14..18], .big)},
 				.other => .{.other = {}},
 				.alreadyFreed => unreachable,
 			};
