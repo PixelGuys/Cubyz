@@ -41,6 +41,10 @@ var seed: u32 = undefined;
 
 var itemSlots: [25]*ItemSlot = undefined;
 
+fn toggleTool(_: usize) void {
+
+}
+
 pub fn onOpen() void {
 	seed = @truncate(@as(u128, @bitCast(std.time.nanoTimestamp())));
 	inv = Inventory.init(main.globalAllocator, 26, .workbench, .other);
@@ -61,8 +65,17 @@ pub fn onOpen() void {
 		grid.finish(.center);
 		list.add(grid);
 	}
-	list.add(Icon.init(.{8, 0}, .{32, 32}, inventory_crafting.arrowTexture, false));
-	list.add(ItemSlot.init(.{8, 0}, inv, 25, .craftingResult, .takeOnly));
+	const verticalThing = VerticalList.init(.{0, 0}, 300, padding);
+	verticalThing.add(Button.initText(.{8, 0}, 104, "Test", .{.callback = &toggleTool}));
+	const buttonHeight = verticalThing.size[1];
+	const craftingResultList = HorizontalList.init();
+	craftingResultList.add(Icon.init(.{0, 0}, .{32, 32}, inventory_crafting.arrowTexture, false));
+	craftingResultList.add(ItemSlot.init(.{8, 0}, inv, 25, .craftingResult, .takeOnly));
+	craftingResultList.finish(.{padding, padding}, .center);
+	verticalThing.add(craftingResultList);
+	verticalThing.size[1] += buttonHeight + 2*padding; // Centering the thing
+	verticalThing.finish(.center);
+	list.add(verticalThing);
 	list.finish(.{padding, padding + 16}, .center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
