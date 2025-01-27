@@ -1,5 +1,5 @@
 .{
-	.texture = "materials/diamond.png",
+	.texture = "diamond.png",
 	.material = .{
 		.density = 1.0,
 		.resistance = 1.0,

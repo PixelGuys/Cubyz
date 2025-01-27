@@ -1,5 +1,5 @@
 .{
-	.texture = "materials/iron_ingot.png",
+	.texture = "iron_ingot.png",
 	.material = .{
 		.density = 1.0,
 		.resistance = 1.0,
