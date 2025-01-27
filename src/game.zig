@@ -704,7 +704,7 @@ pub var world: ?*World = null;
 
 pub var projectionMatrix: Mat4f = Mat4f.identity();
 
-pub var fog = Fog{.skyColor=.{0.8, 0.8, 1}, .fogColor=.{0.8, 0.8, 1}, .density=1.0/15.0/128.0}; // TODO: Make this depend on the render distance.
+pub var fog = Fog{.skyColor=.{0.8, 0.8, 1}, .fogColor=.{0.8, 0.8, 1}, .density=1.0/15.0/128.0, .fogLower = 100, .fogHigher = 1000};
 
 var nextBlockPlaceTime: ?i64 = null;
 var nextBlockBreakTime: ?i64 = null;
@@ -1131,6 +1131,8 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 	fog.fogColor = (biome.fogColor - fog.fogColor) * @as(Vec3f, @splat(t)) + fog.fogColor;
 	fog.density = (biome.fogDensity - fog.density) * t + fog.density;
+	fog.fogLower = (biome.fogLower - fog.fogLower) * t + fog.fogLower;
+	fog.fogHigher = (biome.fogHigher - fog.fogHigher) * t + fog.fogHigher;
 
 	world.?.update();
 }

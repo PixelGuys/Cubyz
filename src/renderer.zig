@@ -39,9 +39,14 @@ var deferredUniforms: struct {
 	depthTexture: c_int,
 	@"fog.color": c_int,
 	@"fog.density": c_int,
+	@"fog.fogLower": c_int,
+	@"fog.fogHigher": c_int,
 	tanXY: c_int,
 	zNear: c_int,
 	zFar: c_int,
+	invViewMatrix: c_int,
+	playerPositionInteger: c_int,
+	playerPositionFraction: c_int,
 } = undefined;
 var fakeReflectionShader: graphics.Shader = undefined;
 var fakeReflectionUniforms: struct {
@@ -253,7 +258,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	const playerBlock = mesh_storage.getBlockFromAnyLod(@intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
 	
 	if(settings.bloom) {
-		Bloom.render(lastWidth, lastHeight, playerBlock);
+		Bloom.render(lastWidth, lastHeight, playerBlock, playerPos, game.camera.viewMatrix);
 	} else {
 		Bloom.bindReplacementImage();
 	}
@@ -268,11 +273,18 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	if(!blocks.meshes.hasFog(playerBlock)) {
 		c.glUniform3fv(deferredUniforms.@"fog.color", 1, @ptrCast(&game.fog.skyColor));
 		c.glUniform1f(deferredUniforms.@"fog.density", game.fog.density);
+		c.glUniform1f(deferredUniforms.@"fog.fogLower", game.fog.fogLower);
+		c.glUniform1f(deferredUniforms.@"fog.fogHigher", game.fog.fogHigher);
 	} else {
 		const fogColor = blocks.meshes.fogColor(playerBlock);
 		c.glUniform3f(deferredUniforms.@"fog.color", @as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0);
 		c.glUniform1f(deferredUniforms.@"fog.density", blocks.meshes.fogDensity(playerBlock));
+		c.glUniform1f(deferredUniforms.@"fog.fogLower", 1e10);
+		c.glUniform1f(deferredUniforms.@"fog.fogHigher", 1e10);
 	}
+	c.glUniformMatrix4fv(deferredUniforms.invViewMatrix, 1, c.GL_TRUE, @ptrCast(&game.camera.viewMatrix.transpose()));
+	c.glUniform3i(deferredUniforms.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
+	c.glUniform3f(deferredUniforms.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
 	c.glUniform1f(deferredUniforms.zNear, zNear);
 	c.glUniform1f(deferredUniforms.zFar, zFar);
 	c.glUniform2f(deferredUniforms.tanXY, 1.0/game.projectionMatrix.rows[0][0], 1.0/game.projectionMatrix.rows[1][2]);
@@ -306,6 +318,11 @@ const Bloom = struct { // MARK: Bloom
 		tanXY: c_int,
 		@"fog.color": c_int,
 		@"fog.density": c_int,
+		@"fog.fogLower": c_int,
+		@"fog.fogHigher": c_int,
+		invViewMatrix: c_int,
+		playerPositionInteger: c_int,
+		playerPositionFraction: c_int,
 	} = undefined;
 
 	pub fn init() void {
@@ -325,7 +342,7 @@ const Bloom = struct { // MARK: Bloom
 		secondPassShader.deinit();
 	}
 
-	fn extractImageDataAndDownsample(playerBlock: blocks.Block) void {
+	fn extractImageDataAndDownsample(playerBlock: blocks.Block, playerPos: Vec3d, viewMatrix: Mat4f) void {
 		colorExtractAndDownsampleShader.bind();
 		worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
 		worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
@@ -334,11 +351,19 @@ const Bloom = struct { // MARK: Bloom
 		if(!blocks.meshes.hasFog(playerBlock)) {
 			c.glUniform3fv(colorExtractUniforms.@"fog.color", 1, @ptrCast(&game.fog.skyColor));
 			c.glUniform1f(colorExtractUniforms.@"fog.density", game.fog.density);
+			c.glUniform1f(colorExtractUniforms.@"fog.fogLower", game.fog.fogLower);
+			c.glUniform1f(colorExtractUniforms.@"fog.fogHigher", game.fog.fogHigher);
 		} else {
 			const fogColor = blocks.meshes.fogColor(playerBlock);
 			c.glUniform3f(colorExtractUniforms.@"fog.color", @as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0);
 			c.glUniform1f(colorExtractUniforms.@"fog.density", blocks.meshes.fogDensity(playerBlock));
+			c.glUniform1f(colorExtractUniforms.@"fog.fogLower", 1e10);
+			c.glUniform1f(colorExtractUniforms.@"fog.fogHigher", 1e10);
 		}
+
+		c.glUniformMatrix4fv(colorExtractUniforms.invViewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix.transpose()));
+		c.glUniform3i(colorExtractUniforms.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
+		c.glUniform3f(colorExtractUniforms.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
 		c.glUniform1f(colorExtractUniforms.zNear, zNear);
 		c.glUniform1f(colorExtractUniforms.zFar, zFar);
 		c.glUniform2f(colorExtractUniforms.tanXY, 1.0/game.projectionMatrix.rows[0][0], 1.0/game.projectionMatrix.rows[1][2]);
@@ -362,7 +387,7 @@ const Bloom = struct { // MARK: Bloom
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
 
-	fn render(currentWidth: u31, currentHeight: u31, playerBlock: blocks.Block) void {
+	fn render(currentWidth: u31, currentHeight: u31, playerBlock: blocks.Block, playerPos: Vec3d, viewMatrix: Mat4f) void {
 		if(width != currentWidth or height != currentHeight) {
 			width = currentWidth;
 			height = currentHeight;
@@ -377,7 +402,7 @@ const Bloom = struct { // MARK: Bloom
 		c.glDepthMask(c.GL_FALSE);
 
 		c.glViewport(0, 0, width/4, height/4);
-		extractImageDataAndDownsample(playerBlock);
+		extractImageDataAndDownsample(playerBlock, playerPos, viewMatrix);
 		gpu_performance_measuring.stopQuery();
 		gpu_performance_measuring.startQuery(.bloom_first_pass);
 		firstPass();

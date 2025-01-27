@@ -36,6 +36,8 @@ const UniformStruct = struct {
 	contrast: c_int,
 	@"fog.color": c_int,
 	@"fog.density": c_int,
+	@"fog.fogLower": c_int,
+	@"fog.fogHigher": c_int,
 	texture_sampler: c_int,
 	emissionSampler: c_int,
 	reflectivityAndAbsorptionSampler: c_int,
@@ -168,6 +170,8 @@ pub fn bindTransparentShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, playe
 
 	c.glUniform3fv(transparentUniforms.@"fog.color", 1, @ptrCast(&game.fog.skyColor));
 	c.glUniform1f(transparentUniforms.@"fog.density", game.fog.density);
+	c.glUniform1f(transparentUniforms.@"fog.fogLower", game.fog.fogLower);
+	c.glUniform1f(transparentUniforms.@"fog.fogHigher", game.fog.fogHigher);
 
 	bindCommonUniforms(&transparentUniforms, projMatrix, ambient, playerPos);
 

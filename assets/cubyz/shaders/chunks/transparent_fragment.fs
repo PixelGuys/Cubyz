@@ -18,6 +18,9 @@ uniform samplerCube reflectionMap;
 uniform float reflectionMapSize;
 uniform float contrast;
 
+uniform ivec3 playerPositionInteger;
+uniform vec3 playerPositionFraction;
+
 layout(binding = 5) uniform sampler2D depthTexture;
 
 layout (location = 0, index = 0) out vec4 fragColor;
@@ -26,6 +29,8 @@ layout (location = 0, index = 1) out vec4 blendColor;
 struct Fog {
 	vec3 color;
 	float density;
+	float fogLower;
+	float fogHigher;
 };
 
 layout(std430, binding = 1) buffer _animatedTexture
@@ -66,9 +71,32 @@ float zFromDepth(float depthBufferValue) {
 	return zNear*zFar/(depthBufferValue*(zNear - zFar) + zFar);
 }
 
-float calculateFogDistance(float dist, float fogDensity) {
-	float distCameraTerrain = dist*fogDensity;
-	float distFromCamera = abs(mvVertexPos.y)*fogDensity;
+float densityIntegral(float dist, float zStart, float zDist, float fogLower, float fogHigher) {
+	// The density is constant until fogLower, then gets smaller linearly until reaching fogHigher, past which there is no fog.
+	if(zDist < 0) {
+		zStart += zDist;
+		zDist = -zDist;
+	}
+	if(zDist == 0) {
+		zDist = 0.1;
+	}
+	zStart /= zDist;
+	fogLower /= zDist;
+	fogHigher /= zDist;
+	zDist = 1;
+	float beginLower = min(fogLower, zStart);
+	float endLower = min(fogLower, zStart + zDist);
+	float beginMid = max(fogLower, min(fogHigher, zStart));
+	float endMid = max(fogLower, min(fogHigher, zStart + zDist));
+	float midIntegral = -0.5*(endMid - fogHigher)*(endMid - fogHigher)/(fogHigher - fogLower) - -0.5*(beginMid - fogHigher)*(beginMid - fogHigher)/(fogHigher - fogLower);
+	if(fogHigher == fogLower) midIntegral = 0;
+
+	return (endLower - beginLower + midIntegral)/zDist*dist;
+}
+
+float calculateFogDistance(float dist, float densityAdjustment, float zStart, float zScale, float fogDensity, float fogLower, float fogHigher) {
+	float distCameraTerrain = densityIntegral(dist*densityAdjustment, zStart, zScale*dist*densityAdjustment, fogLower, fogHigher)*fogDensity;
+	float distFromCamera = abs(densityIntegral(mvVertexPos.y*densityAdjustment, zStart, zScale*mvVertexPos.y*densityAdjustment, fogLower, fogHigher))*fogDensity;
 	float distFromTerrain = distFromCamera - distCameraTerrain;
 	if(distCameraTerrain < 10) { // Resolution range is sufficient.
 		return distFromTerrain;
@@ -113,8 +141,9 @@ void main() {
 	float normalVariation = lightVariation(normal);
 	float densityAdjustment = sqrt(dot(mvVertexPos, mvVertexPos))/abs(mvVertexPos.y);
 	float dist = zFromDepth(texelFetch(depthTexture, ivec2(gl_FragCoord.xy), 0).r);
-	float fogDistance = calculateFogDistance(dist, fogData[int(animatedTextureIndex)].fogDensity*densityAdjustment);
-	float airFogDistance = calculateFogDistance(dist, fog.density*densityAdjustment);
+	float playerZ = playerPositionFraction.z + playerPositionInteger.z;
+	float fogDistance = calculateFogDistance(dist, densityAdjustment, playerZ, normalize(direction).z, fogData[int(animatedTextureIndex)].fogDensity, 1e10, 1e10);
+	float airFogDistance = calculateFogDistance(dist, densityAdjustment, playerZ, normalize(direction).z, fog.density, fog.fogLower, fog.fogHigher);
 	vec3 fogColor = unpackColor(fogData[int(animatedTextureIndex)].fogColor);
 	vec3 pixelLight = max(light*normalVariation, texture(emissionSampler, textureCoords).r*4);
 	vec4 textureColor = texture(texture_sampler, textureCoords)*vec4(pixelLight, 1);
