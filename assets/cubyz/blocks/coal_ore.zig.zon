@@ -1,6 +1,6 @@
 .{
 	.class = .stone,
-	.hardness = 40,
+	.blockHealth = 30,
 	.breakingPower = 1,
 	.ore = .{
 		.veins = 10,

@@ -326,6 +326,20 @@ pub const collision = struct {
 
 pub const Gamemode = enum(u8) { survival = 0, creative = 1 };
 
+pub const DamageType = enum(u8) {
+	heal = 0, // For when you are adding health
+	kill = 1,
+	fall = 2,
+	
+	pub fn sendMessage(self: DamageType, name: []const u8) void {
+		switch (self) {
+			.heal => main.server.sendMessage("{s}§#ffffff was healed", .{name}),
+			.kill => main.server.sendMessage("{s}§#ffffff was killed", .{name}),
+			.fall => main.server.sendMessage("{s}§#ffffff died of fall damage", .{name}),
+		}
+	}
+};
+
 pub const Player = struct { // MARK: Player
 	pub var super: main.server.Entity = .{};
 	pub var eyePos: Vec3d = .{0, 0, 0};
@@ -340,9 +354,6 @@ pub const Player = struct { // MARK: Player
 	pub var mutex: std.Thread.Mutex = .{};
 	pub var inventory: Inventory = undefined;
 	pub var selectedSlot: u32 = 0;
-
-	pub var maxHealth: f32 = 8;
-	pub var health: f32 = 4.5;
 
 	pub var onGround: bool = false;
 	pub var jumpCooldown: f64 = 0;
@@ -440,6 +451,17 @@ pub const Player = struct { // MARK: Player
 		}
 
 		inventory.placeBlock(selectedSlot);
+	}
+
+	pub fn kill() void {
+		Player.super.pos = world.?.spawn;
+		Player.super.vel = .{0, 0, 0};
+
+		Player.super.health = Player.super.maxHealth;
+		
+		Player.eyeVel = .{0, 0, 0};
+		Player.eyeCoyote = 0;
+		Player.eyeStep = .{false, false, false};
 	}
 
 	pub fn breakBlock(deltaTime: f64) void {
@@ -955,6 +977,12 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			} else {
 				Player.super.pos[2] = box.min[2] - hitBox.max[2];
 			}
+
+			const damage: f32 = @floatCast(@round(@max((Player.super.vel[2] * Player.super.vel[2]) / (2 * gravity) - 3, 0)) / 2);
+			if (damage > 0.01) {
+				Inventory.Sync.addHealth(-damage, .fall, .client, Player.id);
+			}
+
 			Player.super.vel[2] = 0;
 
 			// Always unstuck upwards for now

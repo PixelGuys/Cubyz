@@ -264,12 +264,11 @@ pub const ChunkData = extern struct {
 	min: Vec3f align(16),
 	max: Vec3f align(16),
 	voxelSize: i32,
+	lightStart: u32,
 	vertexStartOpaque: u32,
 	faceCountsByNormalOpaque: [14]u32,
-	lightStartOpaque: u32,
 	vertexStartTransparent: u32,
 	vertexCountTransparent: u32,
-	lightStartTransparent: u32,
 	visibilityState: u32,
 	oldVisibilityState: u32,
 };
@@ -288,15 +287,12 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 	neighborFacesHigherLod: [6]main.ListUnmanaged(FaceData) = [_]main.ListUnmanaged(FaceData){.{}} ** 6,
 	optionalFaces: main.ListUnmanaged(FaceData) = .{},
 	completeList: []FaceData = &.{},
-	lightList: []u32 = &.{},
-	lightListNeedsUpload: bool = false,
 	coreLen: u32 = 0,
 	sameLodLens: [6]u32 = .{0} ** 6,
 	higherLodLens: [6]u32 = .{0} ** 6,
 	optionalLen: u32 = 0,
 	mutex: std.Thread.Mutex = .{},
 	bufferAllocation: graphics.SubAllocation = .{.start = 0, .len = 0},
-	lightAllocation: graphics.SubAllocation = .{.start = 0, .len = 0},
 	vertexCount: u31 = 0,
 	byNormalCount: [14]u32 = .{0} ** 14,
 	wasChanged: bool = false,
@@ -305,7 +301,6 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 
 	fn deinit(self: *PrimitiveMesh) void {
 		faceBuffer.free(self.bufferAllocation);
-		lightBuffer.free(self.lightAllocation);
 		self.coreFaces.deinit(main.globalAllocator);
 		self.optionalFaces.deinit(main.globalAllocator);
 		for(&self.neighborFacesSameLod) |*neighborFaces| {
@@ -315,7 +310,6 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 			neighborFaces.deinit(main.globalAllocator);
 		}
 		main.globalAllocator.free(self.completeList);
-		main.globalAllocator.free(self.lightList);
 	}
 
 	fn reset(self: *PrimitiveMesh) void {
@@ -356,7 +350,7 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		}
 	}
 
-	fn finish(self: *PrimitiveMesh, parent: *ChunkMesh) void {
+	fn finish(self: *PrimitiveMesh, parent: *ChunkMesh, lightList: *main.List(u32), lightMap: *std.AutoHashMap([4]u32, u16)) void {
 		var len: usize = self.coreFaces.items.len;
 		for(self.neighborFacesSameLod) |neighborFaces| {
 			len += neighborFaces.items.len;
@@ -379,10 +373,6 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		}
 		@memcpy(completeList[i..][0..self.optionalFaces.items.len], self.optionalFaces.items);
 		i += self.optionalFaces.items.len;
-		var lightList = main.List(u32).init(main.stackAllocator);
-		defer lightList.deinit();
-		var lightMap = std.AutoHashMap([4]u32, u16).init(main.stackAllocator.allocator);
-		defer lightMap.deinit();
 
 		self.min = @splat(std.math.floatMax(f32));
 		self.max = @splat(-std.math.floatMax(f32));
@@ -391,7 +381,7 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		parent.lightingData[0].lock.lockRead();
 		parent.lightingData[1].lock.lockRead();
 		for(completeList) |*face| {
-			const light = getLight(parent, .{face.position.x, face.position.y, face.position.z}, face.blockAndQuad.quadIndex);
+			const light = getLight(parent, .{face.position.x, face.position.y, face.position.z}, face.blockAndQuad.texture, face.blockAndQuad.quadIndex);
 			const result = lightMap.getOrPut(light) catch unreachable;
 			if(!result.found_existing) {
 				result.value_ptr.* = @intCast(lightList.items.len/4);
@@ -411,13 +401,7 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		parent.lightingData[0].lock.unlockRead();
 		parent.lightingData[1].lock.unlockRead();
 
-		const completeLightList = main.globalAllocator.alloc(u32, lightList.items.len);
-		@memcpy(completeLightList, lightList.items);
-
 		self.mutex.lock();
-		const oldLightList = self.lightList;
-		self.lightList = completeLightList;
-		self.lightListNeedsUpload = true;
 		const oldList = self.completeList;
 		self.completeList = completeList;
 		self.coreLen = @intCast(self.coreFaces.items.len);
@@ -430,7 +414,6 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		self.optionalLen = @intCast(self.optionalFaces.items.len);
 		self.mutex.unlock();
 		main.globalAllocator.free(oldList);
-		main.globalAllocator.free(oldLightList);
 	}
 
 	fn getValues(mesh: *ChunkMesh, wx: i32, wy: i32, wz: i32) [6]u8 {
@@ -527,8 +510,16 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		return result;
 	}
 
-	fn getLight(parent: *ChunkMesh, blockPos: Vec3i, quadIndex: u16) [4]u32 {
+	fn getLight(parent: *ChunkMesh, blockPos: Vec3i, textureIndex: u16, quadIndex: u16) [4]u32 {
 		const normal = models.quads.items[quadIndex].normal;
+		if(!blocks.meshes.textureOcclusionData.items[textureIndex]) { // No ambient occlusion (→ no smooth lighting)
+			const fullValues = getLightAt(parent, blockPos[0], blockPos[1], blockPos[2]);
+			var rawVals: [6]u5 = undefined;
+			for(0..6) |i| {
+				rawVals[i] = std.math.lossyCast(u5, fullValues[i]/8);
+			}
+			return packLightValues(.{rawVals} ** 4);
+		}
 		if(models.extraQuadInfos.items[quadIndex].hasOnlyCornerVertices) { // Fast path for simple quads.
 			var rawVals: [4][6]u5 = undefined;
 			for(0..4) |i| {
@@ -657,10 +648,6 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		std.debug.assert(i == fullBuffer.len);
 		self.vertexCount = @intCast(6*fullBuffer.len);
 		self.wasChanged = true;
-		if(self.lightListNeedsUpload) {
-			self.lightListNeedsUpload = false;
-			lightBuffer.uploadData(self.lightList, &self.lightAllocation);
-		}
 	}
 };
 
@@ -694,6 +681,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	lightingData: [2]*lighting.ChannelChunk,
 	opaqueMesh: PrimitiveMesh,
 	transparentMesh: PrimitiveMesh,
+	lightList: []u32 = &.{},
+	lightListNeedsUpload: bool = false,
+	lightAllocation: graphics.SubAllocation = .{.start = 0, .len = 0},
+
 	lastNeighborsSameLod: [6]?*const ChunkMesh = [_]?*const ChunkMesh{null} ** 6,
 	lastNeighborsHigherLod: [6]?*const ChunkMesh = [_]?*const ChunkMesh{null} ** 6,
 	isNeighborLod: [6]bool = .{false} ** 6,
@@ -712,6 +703,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	min: Vec3f = undefined,
 	max: Vec3f = undefined,
 
+	blockBreakingFaces: main.List(FaceData),
+	blockBreakingFacesSortingData: []SortingData = &.{},
+	blockBreakingFacesChanged: bool = false,
+
 	pub fn init(self: *ChunkMesh, pos: chunk.ChunkPosition, ch: *chunk.Chunk) void {
 		self.* = ChunkMesh{
 			.pos = pos,
@@ -723,6 +718,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				lighting.ChannelChunk.init(ch, false),
 				lighting.ChannelChunk.init(ch, true),
 			},
+			.blockBreakingFaces = .init(main.globalAllocator),
 		};
 	}
 
@@ -737,6 +733,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		for(self.lightingData) |lightingChunk| {
 			lightingChunk.deinit();
 		}
+		self.blockBreakingFaces.deinit();
+		main.globalAllocator.free(self.blockBreakingFacesSortingData);
+		main.globalAllocator.free(self.lightList);
+		lightBuffer.free(self.lightAllocation);
 	}
 
 	pub fn increaseRefCount(self: *ChunkMesh) void {
@@ -1332,8 +1332,19 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 
 	pub fn finishData(self: *ChunkMesh) void {
 		main.utils.assertLocked(&self.mutex);
-		self.opaqueMesh.finish(self);
-		self.transparentMesh.finish(self);
+
+		var lightList = main.List(u32).init(main.stackAllocator);
+		defer lightList.deinit();
+		var lightMap = std.AutoHashMap([4]u32, u16).init(main.stackAllocator.allocator);
+		defer lightMap.deinit();
+
+		self.opaqueMesh.finish(self, &lightList, &lightMap);
+		self.transparentMesh.finish(self, &lightList, &lightMap);
+
+		self.lightList = main.globalAllocator.realloc(self.lightList, lightList.items.len);
+		@memcpy(self.lightList, lightList.items);
+		self.lightListNeedsUpload = true;
+
 		self.min = @min(self.opaqueMesh.min, self.transparentMesh.min);
 		self.max = @max(self.opaqueMesh.max, self.transparentMesh.max);
 	}
@@ -1341,6 +1352,12 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	pub fn uploadData(self: *ChunkMesh) void {
 		self.opaqueMesh.uploadData(self.isNeighborLod);
 		self.transparentMesh.uploadData(self.isNeighborLod);
+
+		if(self.lightListNeedsUpload) {
+			self.lightListNeedsUpload = false;
+			lightBuffer.uploadData(self.lightList, &self.lightAllocation);
+		}
+
 		self.uploadChunkPosition();
 	}
 
@@ -1504,12 +1521,11 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		chunkBuffer.uploadData(&.{ChunkData{
 			.position = .{self.pos.wx, self.pos.wy, self.pos.wz},
 			.voxelSize = self.pos.voxelSize,
+			.lightStart = self.lightAllocation.start,
 			.vertexStartOpaque = self.opaqueMesh.bufferAllocation.start*4,
 			.faceCountsByNormalOpaque = self.opaqueMesh.byNormalCount,
-			.lightStartOpaque = self.opaqueMesh.lightAllocation.start,
 			.vertexStartTransparent = self.transparentMesh.bufferAllocation.start*4,
 			.vertexCountTransparent = self.transparentMesh.bufferAllocation.len*6,
-			.lightStartTransparent = self.transparentMesh.lightAllocation.start,
 			.min = self.min,
 			.max = self.max,
 			.visibilityState = 0,
@@ -1526,7 +1542,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	}
 
 	pub fn prepareTransparentRendering(self: *ChunkMesh, playerPosition: Vec3d, chunkList: *main.List(u32)) void {
-		if(self.transparentMesh.vertexCount == 0) return;
+		if(self.transparentMesh.vertexCount == 0 and self.blockBreakingFaces.items.len == 0) return;
 
 		var needsUpdate: bool = false;
 		if(self.transparentMesh.wasChanged) {
@@ -1552,8 +1568,8 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				}
 				offset += neighborLen;
 			}
-			self.sortingOutputBuffer = main.globalAllocator.realloc(self.sortingOutputBuffer, len);
 			self.currentSorting = main.globalAllocator.realloc(self.currentSorting, len);
+			self.sortingOutputBuffer = main.globalAllocator.realloc(self.sortingOutputBuffer, len + self.blockBreakingFaces.items.len);
 			for(0..self.transparentMesh.coreLen) |i| {
 				self.currentSorting[i].face = self.transparentMesh.completeList[i];
 			}
@@ -1580,6 +1596,15 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			self.lastTransparentUpdatePos = updatePos;
 			needsUpdate = true;
 		}
+		if(self.blockBreakingFacesChanged) {
+			self.blockBreakingFacesChanged = false;
+			self.sortingOutputBuffer = main.globalAllocator.realloc(self.sortingOutputBuffer, self.currentSorting.len + self.blockBreakingFaces.items.len);
+			self.blockBreakingFacesSortingData = main.globalAllocator.realloc(self.blockBreakingFacesSortingData, self.blockBreakingFaces.items.len);
+			for(0..self.blockBreakingFaces.items.len) |i| {
+				self.blockBreakingFacesSortingData[i].face = self.blockBreakingFaces.items[i];
+			}
+			needsUpdate = true;
+		}
 		if(needsUpdate) {
 			for(self.currentSorting) |*val| {
 				val.update(
@@ -1588,10 +1613,13 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 					updatePos[2],
 				);
 			}
+			for(0..self.blockBreakingFaces.items.len) |i| {
+				self.blockBreakingFacesSortingData[i].update(updatePos[0], updatePos[1], updatePos[2]);
+			}
 
 			// Sort by back vs front face:
+			var backFaceStart: usize = 0;
 			{
-				var backFaceStart: usize = 0;
 				var i: usize = 0;
 				var culledStart: usize = self.currentSorting.len;
 				while(culledStart > 0) {
@@ -1622,6 +1650,9 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			// Sort it using bucket sort:
 			var buckets: [34*3]u32 = undefined;
 			@memset(&buckets, 0);
+			for(self.blockBreakingFacesSortingData) |val| {
+				buckets[34*3 - 1 - val.distance] += 1;
+			}
 			for(self.currentSorting[0..self.culledSortingCount]) |val| {
 				buckets[34*3 - 1 - val.distance] += 1;
 			}
@@ -1632,12 +1663,23 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				prefixSum += copy;
 			}
 			// Move it over into a new buffer:
-			for(0..self.culledSortingCount) |i| {
+			for(0..backFaceStart) |i| {
 				const bucket = 34*3 - 1 - self.currentSorting[i].distance;
 				self.sortingOutputBuffer[buckets[bucket]] = self.currentSorting[i].face;
 				buckets[bucket] += 1;
 			}
-
+			// Block breaking faces should be drawn after front faces, but before the corresponding backfaces.
+			for(self.blockBreakingFacesSortingData) |val| {
+				const bucket = 34*3 - 1 - val.distance;
+				self.sortingOutputBuffer[buckets[bucket]] = val.face;
+				buckets[bucket] += 1;
+			}
+			for(backFaceStart..self.culledSortingCount) |i| {
+				const bucket = 34*3 - 1 - self.currentSorting[i].distance;
+				self.sortingOutputBuffer[buckets[bucket]] = self.currentSorting[i].face;
+				buckets[bucket] += 1;
+			}
+			self.culledSortingCount += @intCast(self.blockBreakingFaces.items.len);
 			// Upload:
 			faceBuffer.uploadData(self.sortingOutputBuffer[0..self.culledSortingCount], &self.transparentMesh.bufferAllocation);
 			self.uploadChunkPosition();

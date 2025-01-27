@@ -21,6 +21,32 @@ pub fn writeZon(path: []const u8, zon: ZonElement) !void {
 	try cwd().writeZon(path, zon);
 }
 
+pub fn openDirInWindow(path: []const u8) void {
+	const newPath = main.stackAllocator.dupe(u8, path);
+	defer main.stackAllocator.free(newPath);
+
+	if (builtin.os.tag == .windows) {
+		std.mem.replaceScalar(u8, newPath, '/', '\\');
+	}
+
+	const command = if(builtin.os.tag == .windows) .{"explorer", newPath} else .{"open", newPath};
+
+	const result = std.process.Child.run(.{
+		.allocator = main.stackAllocator.allocator,
+		.argv = &command,
+	}) catch |err| {
+		std.log.err("Got error while trying to open file explorer: {s}", .{@errorName(err)});
+		return;
+	};
+	defer {
+		main.stackAllocator.free(result.stderr);
+		main.stackAllocator.free(result.stdout);
+	}
+	if(result.stderr.len != 0) {
+		std.log.err("Got error while trying to open file explorer: {s}", .{result.stderr});
+	}
+}
+
 pub fn openDir(path: []const u8) !Dir {
 	return Dir {
 		.dir = try std.fs.cwd().makeOpenPath(path, .{}),

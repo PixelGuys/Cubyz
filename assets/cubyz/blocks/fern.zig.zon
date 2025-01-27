@@ -1,0 +1,17 @@
+.{
+	.class = .leaf,
+	.blockHealth = 1,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.degradable = true,
+	.viewThrough = true,
+	.absorbedLight = 0x000000,
+	.collide = false,
+	.model = "cubyz:cross",
+	.texture = "cubyz:fern",
+	.item = .{
+		.texture = "fern.png",
+	},
+	.lodReplacement = "cubyz:air",
+}

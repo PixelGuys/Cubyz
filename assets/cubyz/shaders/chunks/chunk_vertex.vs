@@ -49,12 +49,11 @@ struct ChunkData {
 	vec4 minPos;
 	vec4 maxPos;
 	int voxelSize;
+	uint lightStart;
 	uint vertexStartOpaque;
 	uint faceCountsByNormalOpaque[14];
-	uint lightStartOpaque;
 	uint vertexStartTransparent;
 	uint vertexCountTransparent;
-	uint lightStartTransparent;
 	uint visibilityState;
 	uint oldVisibilityState;
 };
@@ -72,11 +71,7 @@ void main() {
 	vec3 modelPosition = vec3(chunks[chunkID].position.xyz - playerPositionInteger) - playerPositionFraction;
 	int encodedPositionAndLightIndex = faceData[faceID].encodedPositionAndLightIndex;
 	int textureAndQuad = faceData[faceID].textureAndQuad;
-#ifdef transparent
-	uint lightIndex = chunks[chunkID].lightStartTransparent + 4*(encodedPositionAndLightIndex >> 16);
-#else
-	uint lightIndex = chunks[chunkID].lightStartOpaque + 4*(encodedPositionAndLightIndex >> 16);
-#endif
+	uint lightIndex = chunks[chunkID].lightStart + 4*(encodedPositionAndLightIndex >> 16);
 	uint fullLight = lightData[lightIndex + vertexID];
 	vec3 sunLight = vec3(
 		fullLight >> 25 & 31u,
