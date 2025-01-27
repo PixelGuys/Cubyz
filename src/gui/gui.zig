@@ -593,7 +593,7 @@ pub const inventory = struct { // MARK: inventory
 	var initialized: bool = false;
 
 	pub fn init() void {
-		carried = Inventory.init(main.globalAllocator, 1, .normal, .other);
+		carried = Inventory.init(main.globalAllocator, 1, .normal, .{.hand = main.game.Player.id});
 		leftClickSlots = .init(main.globalAllocator);
 		rightClickSlots = .init(main.globalAllocator);
 		carriedItemSlot = ItemSlot.init(.{0, 0}, carried, 0, .default, .normal);
