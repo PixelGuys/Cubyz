@@ -12,6 +12,7 @@ var arenaAllocator: NeverFailingAllocator = undefined;
 var commonBlocks: std.StringHashMap(ZonElement) = undefined;
 var commonBiomes: std.StringHashMap(ZonElement) = undefined;
 var commonItems: std.StringHashMap(ZonElement) = undefined;
+var commonTools: std.StringHashMap(ZonElement) = undefined;
 var commonRecipes: std.StringHashMap(ZonElement) = undefined;
 var commonModels: std.StringHashMap([]const u8) = undefined;
 
@@ -181,7 +182,7 @@ pub fn readAllObjFilesInAddonsHashmap(externalAllocator: NeverFailingAllocator, 
 	}
 }
 
-pub fn readAssets(externalAllocator: NeverFailingAllocator, assetPath: []const u8, blocks: *std.StringHashMap(ZonElement), items: *std.StringHashMap(ZonElement), biomes: *std.StringHashMap(ZonElement), recipes: *std.StringHashMap(ZonElement), models: *std.StringHashMap([]const u8)) void {
+pub fn readAssets(externalAllocator: NeverFailingAllocator, assetPath: []const u8, blocks: *std.StringHashMap(ZonElement), items: *std.StringHashMap(ZonElement), tools: *std.StringHashMap(ZonElement), biomes: *std.StringHashMap(ZonElement), recipes: *std.StringHashMap(ZonElement), models: *std.StringHashMap([]const u8)) void {
 	var addons = main.List(std.fs.Dir).init(main.stackAllocator);
 	defer addons.deinit();
 	var addonNames = main.List([]const u8).init(main.stackAllocator);
@@ -214,6 +215,7 @@ pub fn readAssets(externalAllocator: NeverFailingAllocator, assetPath: []const u
 
 	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "blocks", true, blocks);
 	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "items", true, items);
+	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "tools", true, tools);
 	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "biomes", true, biomes);
 	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "recipes", false, recipes);
 	readAllObjFilesInAddonsHashmap(externalAllocator, addons, addonNames, "models", models);
@@ -226,11 +228,12 @@ pub fn init() void {
 	arenaAllocator = arena.allocator();
 	commonBlocks = .init(arenaAllocator.allocator);
 	commonItems = .init(arenaAllocator.allocator);
+	commonTools = .init(arenaAllocator.allocator);
 	commonBiomes = .init(arenaAllocator.allocator);
 	commonRecipes = .init(arenaAllocator.allocator);
 	commonModels = .init(arenaAllocator.allocator);
 
-	readAssets(arenaAllocator, "assets/", &commonBlocks, &commonItems, &commonBiomes, &commonRecipes, &commonModels);
+	readAssets(arenaAllocator, "assets/", &commonBlocks, &commonItems, &commonTools, &commonBiomes, &commonRecipes, &commonModels);
 }
 
 fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !*items_zig.BaseItem {
@@ -245,6 +248,10 @@ fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !*item
 		replacementTexturePath = try std.fmt.bufPrint(&buf2, "assets/{s}/items/textures/{s}", .{mod, texture});
 	}
 	return items_zig.register(assetFolder, texturePath, replacementTexturePath, id, zon);
+}
+
+fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
+	items_zig.registerTool(assetFolder, id, zon);
 }
 
 fn registerBlock(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void {
@@ -322,6 +329,8 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 	defer blocks.clearAndFree();
 	var items = commonItems.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer items.clearAndFree();
+	var tools = commonTools.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
+	defer tools.clearAndFree();
 	var biomes = commonBiomes.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer biomes.clearAndFree();
 	var recipes = commonRecipes.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
@@ -329,7 +338,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 	var models = commonModels.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer models.clearAndFree();
 
-	readAssets(arenaAllocator, assetFolder, &blocks, &items, &biomes, &recipes, &models);
+	readAssets(arenaAllocator, assetFolder, &blocks, &items, &tools, &biomes, &recipes, &models);
 	errdefer unloadAssets();
 
 	var modelIterator = models.iterator();
@@ -361,6 +370,12 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 	iterator = items.iterator();
 	while(iterator.next()) |entry| {
 		_ = try registerItem(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
+	}
+
+	// tools:
+	iterator = tools.iterator();
+	while(iterator.next()) |entry| {
+		registerTool(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
 	}
 
 	// block drops:

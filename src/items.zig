@@ -862,6 +862,12 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 	}
 };
 
+const ToolType = struct { // MARK: ToolType
+	id: []const u8,
+	blockClass: main.blocks.BlockClass,
+	// TODO
+};
+
 pub const Tool = struct { // MARK: Tool
 	craftingGrid: [25]?*const BaseItem,
 	materialGrid: [16][16]?*const BaseItem,
@@ -1191,11 +1197,16 @@ pub const Recipe = struct { // MARK: Recipe
 };
 
 var arena: main.utils.NeverFailingArenaAllocator = undefined;
+var toolTypes: std.StringHashMap(ToolType) = undefined;
 var reverseIndices: std.StringHashMap(*BaseItem) = undefined;
 pub var itemList: [65536]BaseItem = undefined;
 pub var itemListSize: u16 = 0;
 
 var recipeList: main.List(Recipe) = undefined;
+
+pub fn toolTypeIterator() std.StringHashMap(ToolType).ValueIterator {
+	return toolTypes.valueIterator();
+}
 
 pub fn iterator() std.StringHashMap(*BaseItem).ValueIterator {
 	return reverseIndices.valueIterator();
@@ -1207,6 +1218,7 @@ pub fn recipes() []Recipe {
 
 pub fn globalInit() void {
 	arena = .init(main.globalAllocator);
+	toolTypes = .init(arena.allocator().allocator);
 	reverseIndices = .init(arena.allocator().allocator);
 	recipeList = .init(arena.allocator());
 	itemListSize = 0;
@@ -1223,6 +1235,18 @@ pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: 
 	reverseIndices.put(newItem.id, newItem) catch unreachable;
 	itemListSize += 1;
 	return newItem;
+}
+
+pub fn registerTool(_: []const u8, id: []const u8, zon: ZonElement) void {
+	std.log.info("Registering tool type {s}", .{id});
+	if(toolTypes.contains(id)) {
+		std.log.err("Registered tool type with id {s} twice!", .{id});
+	}
+	const idDupe = arena.allocator().dupe(u8, id);
+	toolTypes.put(idDupe, .{
+		.id = idDupe,
+		.blockClass = std.meta.stringToEnum(main.blocks.BlockClass, zon.get([]const u8, "blockClass", "none")) orelse .air,
+	}) catch unreachable;
 }
 
 fn parseRecipeItem(zon: ZonElement) !ItemStack {
@@ -1267,6 +1291,7 @@ pub fn registerRecipes(zon: ZonElement) void {
 }
 
 pub fn reset() void {
+	toolTypes.clearAndFree();
 	reverseIndices.clearAndFree();
 	for(recipeList.items) |recipe| {
 		if(recipe.cachedInventory) |inv| {
@@ -1279,6 +1304,7 @@ pub fn reset() void {
 }
 
 pub fn deinit() void {
+	toolTypes.clearAndFree();
 	reverseIndices.clearAndFree();
 	for(recipeList.items) |recipe| {
 		if(recipe.cachedInventory) |inv| {
