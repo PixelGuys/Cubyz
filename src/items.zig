@@ -862,7 +862,7 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 	}
 };
 
-const ToolType = struct { // MARK: ToolType
+pub const ToolType = struct { // MARK: ToolType
 	id: []const u8,
 	blockClass: main.blocks.BlockClass,
 	// TODO

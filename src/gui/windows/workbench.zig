@@ -41,11 +41,24 @@ var seed: u32 = undefined;
 
 var itemSlots: [25]*ItemSlot = undefined;
 
-fn toggleTool(_: usize) void {
+var toolTypes: main.ListUnmanaged(*const main.items.ToolType) = .{};
+var currentToolType: usize = 0;
 
+var toolButton: *Button = undefined;
+
+fn toggleTool(_: usize) void {
+	currentToolType += 1;
+	currentToolType %= toolTypes.items.len;
+	toolButton.child.label.updateText(toolTypes.items[currentToolType].id);
 }
 
 pub fn onOpen() void {
+	currentToolType = 0;
+	var iterator = main.items.toolTypeIterator();
+
+	while(iterator.next()) |toolType| {
+		toolTypes.append(main.globalAllocator, toolType);
+	}
 	seed = @truncate(@as(u128, @bitCast(std.time.nanoTimestamp())));
 	inv = Inventory.init(main.globalAllocator, 26, .workbench, .other);
 	const list = HorizontalList.init();
@@ -66,7 +79,8 @@ pub fn onOpen() void {
 		list.add(grid);
 	}
 	const verticalThing = VerticalList.init(.{0, 0}, 300, padding);
-	verticalThing.add(Button.initText(.{8, 0}, 104, "Test", .{.callback = &toggleTool}));
+	toolButton = Button.initText(.{8, 0}, 116, toolTypes.items[currentToolType].id, .{.callback = &toggleTool});
+	verticalThing.add(toolButton);
 	const buttonHeight = verticalThing.size[1];
 	const craftingResultList = HorizontalList.init();
 	craftingResultList.add(Icon.init(.{0, 0}, .{32, 32}, inventory_crafting.arrowTexture, false));
@@ -89,4 +103,5 @@ pub fn onClose() void {
 		comp.deinit();
 		window.rootComponent = null;
 	}
+	toolTypes.clearAndFree(main.globalAllocator);
 }
