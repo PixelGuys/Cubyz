@@ -30,7 +30,7 @@
 			.id = "cubyz:ocean/cliffs",
 			.chance = 0.075,
 			.width = 2,
-			.properties = .{.antiMountain, .ocean},
+			.properties = .{.antiMountain},
 		},
 		.{
 			.id = "cubyz:ocean/beach",
