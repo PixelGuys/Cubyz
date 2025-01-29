@@ -12,8 +12,8 @@
 		},
 	},
 	.drops = .{
-		.{.items = .{.auto}},
+		.{.items = .{"cubyz:raw_iron"}},
 	},
 	.model = "cubyz:cube",
-	.texture = "cubyz:iron_ore",
+	.texture = "cubyz:stone_iron_ore",
 }

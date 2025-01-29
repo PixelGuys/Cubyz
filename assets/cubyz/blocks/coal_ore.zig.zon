@@ -15,5 +15,5 @@
 		.{.items = .{"cubyz:coal"}},
 	},
 	.model = "cubyz:cube",
-	.texture = "cubyz:coal_ore",
+	.texture = "cubyz:stone_coal_ore",
 }

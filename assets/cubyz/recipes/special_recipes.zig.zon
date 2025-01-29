@@ -24,7 +24,7 @@
 		.output = "cubyz:chisel",
 	},
 	.{
-		.inputs = .{"cubyz:coal", "cubyz:iron_ore"},
+		.inputs = .{"cubyz:coal", "cubyz:raw_iron"},
 		.output = "cubyz:iron_ingot",
 	},
 }
