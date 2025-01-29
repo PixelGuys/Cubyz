@@ -18,10 +18,14 @@ pub const priority = 1024; // Within Cubyz the first to be executed, but mods mi
 
 pub const generatorSeed = 0x65c7f9fdc0641f94;
 
+var air: main.blocks.Block = undefined;
+var stone: main.blocks.Block = undefined;
 var water: main.blocks.Block = undefined;
 
 pub fn init(parameters: ZonElement) void {
 	_ = parameters;
+	air = main.blocks.getBlockById("cubyz:air");
+	stone = main.blocks.getBlockById("cubyz:stone");
 	water = main.blocks.getBlockById("cubyz:water");
 }
 
@@ -30,6 +34,31 @@ pub fn deinit() void {
 }
 
 pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView) void {
+	if(chunk.super.pos.voxelSize >= 8) {
+		var maxHeight: i32 = 0;
+		var minHeight: i32 = std.math.maxInt(i32);
+		var dx: i32 = -1;
+		while(dx < main.chunk.chunkSize + 1) : (dx += 1) {
+			var dy: i32 = -1;
+			while(dy < main.chunk.chunkSize + 1) : (dy += 1) {
+				const height = biomeMap.getSurfaceHeight(chunk.super.pos.wx +% dx*chunk.super.pos.voxelSize, chunk.super.pos.wy +% dy*chunk.super.pos.voxelSize);
+				maxHeight = @max(maxHeight, height);
+				minHeight = @min(minHeight, height);
+			}
+		}
+		if(minHeight > chunk.super.pos.wz +| chunk.super.width) {
+			chunk.super.data.deinit();
+			chunk.super.data.init();
+			chunk.super.data.palette[0] = stone;
+			return;
+		}
+		if(maxHeight < chunk.super.pos.wz) {
+			chunk.super.data.deinit();
+			chunk.super.data.init();
+			chunk.super.data.palette[0] = air;
+			return;
+		}
+	}
 	const voxelSizeShift = @ctz(chunk.super.pos.voxelSize);
 	var x: u31 = 0;
 	while(x < chunk.super.width) : (x += chunk.super.pos.voxelSize) {
