@@ -4,8 +4,8 @@
 		.wet,
 	},
 	.radius = 128,
-	.minHeight = -64,
-	.maxHeight = -32,
+	.minHeight = -48,
+	.maxHeight = -24,
 	.chance = 10,
 	.roughness = 15,
 	.hills = 15,
@@ -28,7 +28,7 @@
 	.transitionBiomes = .{
 		.{
 			.id = "cubyz:ocean/cliffs",
-			.chance = 0.25,
+			.chance = 0.075,
 			.width = 2,
 			.properties = .{.antiMountain, .ocean},
 		},
@@ -41,7 +41,6 @@
 		.{
 			.id = "cubyz:ocean/shelf",
 			.chance = 1,
-			.keepOriginalTerrain = 0.1,
 			.width = 2,
 			.properties = .{.land, .inland},
 		},

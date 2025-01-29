@@ -37,7 +37,6 @@
 		.{
 			.id = "cubyz:ocean/shelf",
 			.chance = 1,
-			.keepOriginalTerrain = 0.1,
 			.width = 2,
 			.properties = .{.land, .inland},
 		},
