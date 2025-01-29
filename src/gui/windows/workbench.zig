@@ -37,8 +37,6 @@ var inv: Inventory = undefined;
 
 var craftingResult: *ItemSlot = undefined;
 
-var seed: u32 = undefined;
-
 var itemSlots: [25]*ItemSlot = undefined;
 
 var toolTypes: main.ListUnmanaged(*const main.items.ToolType) = .{};
@@ -46,21 +44,17 @@ var currentToolType: usize = 0;
 
 var toolButton: *Button = undefined;
 
+var needsUpdate: bool = false;
+
 fn toggleTool(_: usize) void {
 	currentToolType += 1;
 	currentToolType %= toolTypes.items.len;
 	toolButton.child.label.updateText(toolTypes.items[currentToolType].id);
+	needsUpdate = true;
 }
 
-pub fn onOpen() void {
-	currentToolType = 0;
-	var iterator = main.items.toolTypeIterator();
-
-	while(iterator.next()) |toolType| {
-		toolTypes.append(main.globalAllocator, toolType);
-	}
-	seed = @truncate(@as(u128, @bitCast(std.time.nanoTimestamp())));
-	inv = Inventory.init(main.globalAllocator, 26, .workbench, .other);
+fn openInventory() void {
+	inv = Inventory.init(main.globalAllocator, 26, .{.workbench = toolTypes.items[currentToolType]}, .other);
 	const list = HorizontalList.init();
 	{ // crafting grid
 		const grid = VerticalList.init(.{0, 0}, 300, 0);
@@ -96,12 +90,34 @@ pub fn onOpen() void {
 	gui.updateWindowPositions();
 }
 
-pub fn onClose() void {
+fn closeInventory() void {
 	main.game.Player.inventory.depositOrDrop(inv);
 	inv.deinit(main.globalAllocator);
 	if(window.rootComponent) |*comp| {
 		comp.deinit();
 		window.rootComponent = null;
 	}
+}
+
+pub fn update() void {
+	if(needsUpdate) {
+		needsUpdate = false;
+		closeInventory();
+		openInventory();
+	}
+}
+
+pub fn onOpen() void {
+	currentToolType = 0;
+	var iterator = main.items.toolTypeIterator();
+
+	while(iterator.next()) |toolType| {
+		toolTypes.append(main.globalAllocator, toolType);
+	}
+	openInventory();
+}
+
+pub fn onClose() void {
+	closeInventory();
 	toolTypes.clearAndFree(main.globalAllocator);
 }

@@ -1324,3 +1324,12 @@ pub fn getByID(id: []const u8) ?*BaseItem {
 		return null;
 	}
 }
+
+pub fn getToolTypeByID(id: []const u8) ?*const ToolType {
+	if(toolTypes.getPtr(id)) |result| {
+		return result;
+	} else {
+		std.log.err("Couldn't find item {s}.", .{id});
+		return null;
+	}
+}

@@ -1065,7 +1065,7 @@ pub const Command = struct { // MARK: Command
 		fn serialize(self: Open, data: *main.List(u8)) void {
 			std.mem.writeInt(u32, data.addMany(4)[0..4], self.inv.id, .big);
 			std.mem.writeInt(usize, data.addMany(8)[0..8], self.inv._items.len, .big);
-			data.append(@intFromEnum(self.inv.type));
+			data.append(@intFromEnum(std.meta.activeTag(self.inv.type)));
 			data.append(@intFromEnum(self.source));
 			switch (self.source) {
 				.playerInventory, .hand => |val| {
@@ -1084,6 +1084,12 @@ pub const Command = struct { // MARK: Command
 				.sharedTestingInventory, .other => {},
 				.alreadyFreed => unreachable,
 			}
+			switch(self.inv.type) {
+				.normal, .creative, .crafting => {},
+				.workbench => {
+					data.appendSlice(self.inv.type.workbench.id);
+				},
+			}
 		}
 
 		fn deserialize(data: []const u8, side: Side, user: ?*main.server.User) !Open {
@@ -1091,7 +1097,7 @@ pub const Command = struct { // MARK: Command
 			if(side != .server or user == null) return error.Invalid;
 			const id = std.mem.readInt(u32, data[0..4], .big);
 			const len = std.mem.readInt(usize, data[4..12], .big);
-			const typ: Inventory.Type = @enumFromInt(data[12]);
+			const typeEnum: TypeEnum = @enumFromInt(data[12]);
 			const sourceType: SourceType = @enumFromInt(data[13]);
 			const source: Source = switch(sourceType) {
 				.playerInventory => .{.playerInventory = std.mem.readInt(u32, data[14..18], .big)},
@@ -1125,6 +1131,16 @@ pub const Command = struct { // MARK: Command
 				}},
 				.other => .{.other = {}},
 				.alreadyFreed => unreachable,
+			};
+			const remainingLen: usize = switch(sourceType) {
+				.playerInventory, .hand => 18,
+				.sharedTestingInventory, .other => 14,
+				.recipe => data.len,
+				.alreadyFreed => unreachable,
+			};
+			const typ: Type = switch(typeEnum) {
+				inline .normal, .creative, .crafting => |tag| tag,
+				.workbench => .{.workbench = main.items.getToolTypeByID(data[remainingLen..]) orelse return error.Invalid},
 			};
 			Sync.ServerSide.createInventory(user.?, id, len, typ, source);
 			return .{
@@ -1713,11 +1729,17 @@ const Source = union(SourceType) {
 
 const Inventory = @This(); // MARK: Inventory
 
-const Type = enum(u8) {
+const TypeEnum = enum(u8) {
 	normal = 0,
 	creative = 1,
 	crafting = 2,
 	workbench = 3,
+};
+const Type = union(TypeEnum) {
+	normal: void,
+	creative: void,
+	crafting: void,
+	workbench: *const main.items.ToolType,
 };
 type: Type,
 id: u32,
