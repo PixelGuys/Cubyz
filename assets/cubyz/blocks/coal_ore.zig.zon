@@ -16,5 +16,5 @@
 	},
 	.rotation = .ore,
 	.model = "cubyz:cube",
-	.texture = "cubyz:stone_coal_ore",
+	.texture = "cubyz:coal_ore",
 }
