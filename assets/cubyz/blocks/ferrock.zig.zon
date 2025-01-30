@@ -16,6 +16,7 @@
 			},
 		},
 	},
+	.allowOres = true,
 	.model = "cubyz:cube",
 	.rotation = .stairs,
 	.texture = "cubyz:ferrock",

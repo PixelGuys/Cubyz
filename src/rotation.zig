@@ -953,6 +953,34 @@ pub const RotationModes = struct {
 			return Torch.canBeChangedInto(oldBlock, newBlock, item);
 		}
 	};
+	pub const Ore = struct { // MARK: Ore
+		pub const id: []const u8 = "ore";
+		var modelCache: ?u16 = null;
+
+		fn init() void {}
+		fn deinit() void {}
+
+		pub fn createBlockModel(modelId: []const u8) u16 {
+			if(!std.mem.eql(u8, modelId, "cubyz:cube")) {
+				std.log.err("Ores can only be use on cube models.", .{modelId});
+			}
+			if(modelCache) |modelIndex| return modelIndex;
+
+			const baseModelIndex = main.models.getModelIndex("cubyz:cube");
+			const baseModel = main.models.models.items[baseModelIndex];
+			var quadList = main.List(main.models.QuadInfo).init(main.stackAllocator);
+			defer quadList.deinit();
+			baseModel.getRawFaces(&quadList);
+			const len = quadList.items.len;
+			for(0..len) |i| {
+				quadList.append(quadList.items[i]);
+				quadList.items[i + len].textureSlot += 16;
+			}
+			const modelIndex = main.models.Model.init(quadList.items);
+			modelCache = modelIndex;
+			return modelIndex;
+		}
+	};
 };
 
 // MARK: init/register

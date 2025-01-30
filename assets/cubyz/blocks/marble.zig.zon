@@ -15,6 +15,7 @@
 			},
 		},
 	},
+	.allowOres = true,
 	.rotation= .stairs,
 	.model= "cubyz:cube",
 	.texture= "cubyz:marble",

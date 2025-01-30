@@ -47,15 +47,6 @@ pub const Ore = struct {
 	maxHeight: i32,
 
 	blockType: u16,
-
-	sources: []u16,
-
-	pub fn canCreateVeinInBlock(self: Ore, blockType: u16) bool {
-		for(self.sources) |source| {
-			if(blockType == source) return true;
-		}
-		return false;
-	}
 };
 
 var _transparent: [maxBlockCount]bool = undefined;
@@ -84,20 +75,18 @@ var _lodReplacement: [maxBlockCount]u16 = undefined;
 var _opaqueVariant: [maxBlockCount]u16 = undefined;
 var _friction: [maxBlockCount]f32 = undefined;
 
+var _allowOres: [maxBlockCount]bool = undefined;
+
 var reverseIndices = std.StringHashMap(u16).init(allocator.allocator);
 
 var size: u32 = 0;
 
 pub var ores: main.List(Ore) = .init(allocator);
 
-var unfinishedOreSourceBlockIds: main.List([][]const u8) = undefined;
-
 pub fn init() void {
-	unfinishedOreSourceBlockIds = .init(main.globalAllocator);
 }
 
 pub fn deinit() void {
-	unfinishedOreSourceBlockIds.deinit();
 }
 
 pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
@@ -124,23 +113,20 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_viewThrough[size] = zon.get(bool, "viewThrough", false) or _transparent[size] or _alwaysViewThrough[size];
 	_hasBackFace[size] = zon.get(bool, "hasBackFace", false);
 	_friction[size] = zon.get(f32, "friction", 20);
+	_allowOres[size] = zon.get(bool, "allowOres", false);
 
 	const oreProperties = zon.getChild("ore");
-	if (oreProperties != .null) {
-		// Extract the ids:
-		const sourceBlocks = oreProperties.getChild("sources").toSlice();
-		const oreIds = main.globalAllocator.alloc([]const u8, sourceBlocks.len);
-		for(sourceBlocks, oreIds) |source, *oreId| {
-			oreId.* = main.globalAllocator.dupe(u8, source.as([]const u8, ""));
+	if (oreProperties != .null) blk: {
+		if(!std.mem.eql(u8, zon.get([]const u8, "rotation", "no_rotation"), "ore")) {
+			std.log.err("Ore must have rotation mode \"ore\"!", .{});
+			break :blk;
 		}
-		unfinishedOreSourceBlockIds.append(oreIds);
 		ores.append(Ore {
 			.veins = oreProperties.get(f32, "veins", 0),
 			.size = oreProperties.get(f32, "size", 0),
 			.maxHeight = oreProperties.get(i32, "height", 0),
 			.density = oreProperties.get(f32, "density", 0.5),
 			.blockType = @intCast(size),
-			.sources = &.{},
 		});
 	}
 
@@ -209,15 +195,6 @@ pub fn finishBlocks(zonElements: std.StringHashMap(ZonElement)) void {
 		registerLodReplacement(i, zonElements.get(_id[i]) orelse continue);
 		registerOpaqueVariant(i, zonElements.get(_id[i]) orelse continue);
 	}
-	for(ores.items, unfinishedOreSourceBlockIds.items) |*ore, oreIds| {
-		ore.sources = allocator.alloc(u16, oreIds.len);
-		for(ore.sources, oreIds) |*source, id| {
-			source.* = getTypeById(id);
-			main.globalAllocator.free(id);
-		}
-		main.globalAllocator.free(oreIds);
-	}
-	unfinishedOreSourceBlockIds.clearRetainingCapacity();
 }
 
 pub fn reset() void {
@@ -226,7 +203,6 @@ pub fn reset() void {
 	meshes.reset();
 	_ = arena.reset(.free_all);
 	reverseIndices = .init(arena.allocator().allocator);
-	std.debug.assert(unfinishedOreSourceBlockIds.items.len == 0);
 }
 
 pub fn getTypeById(id: []const u8) u16 {
@@ -347,6 +323,10 @@ pub const Block = packed struct { // MARK: Block
 
 	pub inline fn friction(self: Block) f32 {
 		return _friction[self.typ];
+	}
+
+	pub inline fn allowOres(self: Block) bool {
+		return _allowOres[self.typ];
 	}
 
 	pub fn canBeChangedInto(self: Block, newBlock: Block, item: main.items.ItemStack) main.rotation.RotationMode.CanBeChangedInto {
@@ -501,7 +481,11 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	pub inline fn textureIndex(block: Block, orientation: usize) u16 {
-		return textureData[block.typ].textureIndices[orientation];
+		if(orientation < 16) {
+			return textureData[block.typ].textureIndices[orientation];
+		} else {
+			return textureData[block.data].textureIndices[orientation - 16];
+		}
 	}
 
 	fn extendedPath(_allocator: main.utils.NeverFailingAllocator, path: []const u8, ending: []const u8) []const u8 {

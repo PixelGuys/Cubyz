@@ -351,7 +351,7 @@ pub const Model = struct {
 		main.globalAllocator.free(self.internalQuads);
 	}
 
-	fn getRawFaces(model: Model, quadList: *main.List(QuadInfo)) void {
+	pub fn getRawFaces(model: Model, quadList: *main.List(QuadInfo)) void {
 		for(model.internalQuads) |quadIndex| {
 			quadList.append(quads.items[quadIndex]);
 		}
