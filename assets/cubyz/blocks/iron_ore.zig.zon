@@ -12,9 +12,12 @@
 		},
 	},
 	.drops = .{
-		.{.items = .{"cubyz:raw_iron"}},
+		.{.items = .{.auto}},
 	},
 	.rotation = .ore,
 	.model = "cubyz:cube",
 	.texture = "cubyz:iron_ore",
+	.item = .{
+		.texture = "raw_iron.png",
+	},
 }

@@ -1,5 +1,0 @@
-.{
-	.item = .{
-		.texture = "raw_iron.png",
-	},
-}
