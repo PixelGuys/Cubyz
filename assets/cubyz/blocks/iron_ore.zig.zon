@@ -17,4 +17,7 @@
 	.rotation = .ore,
 	.model = "cubyz:cube",
 	.texture = "cubyz:iron_ore",
+	.item = .{
+		.texture = "raw_iron.png",
+	},
 }
