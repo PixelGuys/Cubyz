@@ -15,6 +15,7 @@
 			},
 		},
 	},
+	.allowOres = true,
 	.breakingPower = 1,
 	.rotation = .stairs,
 	.model = "cubyz:cube",

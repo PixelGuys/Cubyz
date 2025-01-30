@@ -105,8 +105,9 @@ fn considerCoordinates(ore: *const main.blocks.Ore, relX: f32, relY: f32, relZ: 
 					if(distSqr < 1) {
 						// Add some roughness. The ore density gets smaller at the edges:
 						if((1 - distSqr)*ore.density >= random.nextFloat(&veinSeed)) {
-							if(ore.canCreateVeinInBlock(chunk.getBlock(curX, curY, curZ).typ)) {
-								chunk.updateBlockInGeneration(curX, curY, curZ, .{.typ = ore.blockType, .data = 0});
+							const stoneBlock = chunk.getBlock(curX, curY, curZ);
+							if(chunk.getBlock(curX, curY, curZ).allowOres()) {
+								chunk.updateBlockInGeneration(curX, curY, curZ, .{.typ = ore.blockType, .data = stoneBlock.typ});
 							}
 						}
 					}
