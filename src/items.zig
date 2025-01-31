@@ -94,7 +94,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 			};
 		}
 		self.name = allocator.dupe(u8, zon.get([]const u8, "name", id));
-		self.stackSize = zon.get(u16, "stackSize", 64);
+		self.stackSize = zon.get(u16, "stackSize", 120);
 		const material = zon.getChild("material");
 		if(material == .object) {
 			self.material = Material{};
