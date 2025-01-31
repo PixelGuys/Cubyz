@@ -975,6 +975,7 @@ pub const RotationModes = struct {
 			for(0..len) |i| {
 				quadList.append(quadList.items[i]);
 				quadList.items[i + len].textureSlot += 16;
+				quadList.items[i].opaqueInLod = 2;
 			}
 			const modelIndex = main.models.Model.init(quadList.items);
 			modelCache = modelIndex;
