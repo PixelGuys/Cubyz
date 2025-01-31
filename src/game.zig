@@ -1096,7 +1096,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 				Player.super.pos[2] = box.min[2] - hitBox.max[2];
 			}
 
-			const damage: f32 = @floatCast(@round(@max((Player.super.vel[2] * Player.super.vel[2]) / (2 * gravity) - 3, 0)) / 2);
+			const damage: f32 = @floatCast(@round(@max((Player.super.vel[2] * Player.super.vel[2]) / (2 * gravity) - 8, 0)) / 2);
 			if (damage > 0.01) {
 				Inventory.Sync.addHealth(-damage, .fall, .client, Player.id);
 			}
