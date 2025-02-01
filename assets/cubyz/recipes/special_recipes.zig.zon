@@ -27,4 +27,12 @@
 		.inputs = .{"cubyz:coal", "cubyz:iron_ore"},
 		.output = "cubyz:iron_ingot",
 	},
+	.{
+		.inputs = .{"4 cubyz:torch", "cubyz:iron_ingot"},
+		.output = "2 cubyz:lamp",
+	},
+	.{
+		.inputs = .{"4 cubyz:iron_ingot"},
+		.output = "cubyz:iron_block",
+	},
 }
