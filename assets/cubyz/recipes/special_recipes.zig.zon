@@ -28,11 +28,15 @@
 		.output = "cubyz:iron_ingot",
 	},
 	.{
-		.inputs = .{"4 cubyz:torch", "cubyz:iron_ingot"},
-		.output = "2 cubyz:lamp",
+		.inputs = .{"1 cubyz:torch", "2 cubyz:iron_ingot"},
+		.output = "cubyz:lamp",
 	},
 	.{
 		.inputs = .{"4 cubyz:iron_ingot"},
 		.output = "cubyz:iron_block",
+	},
+	.{
+		.inputs = .{"cubyz:iron_block"},
+		.output = "4 cubyz:iron_ingot",
 	},
 }
