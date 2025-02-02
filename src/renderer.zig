@@ -704,6 +704,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	}
 
 	var posBeforeBlock: Vec3i = undefined;
+	var neighborOfSelection: chunk.Neighbor = undefined;
 	pub var selectedBlockPos: ?Vec3i = null;
 	var lastSelectedBlockPos: Vec3i = undefined;
 	var currentBlockProgress: f32 = 0;
@@ -752,20 +753,24 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 					voxelPos[0] +%= step[0];
 					total_tMax = tMax[0];
 					tMax[0] += tDelta[0];
+					neighborOfSelection = if(step[0] == 1) .dirPosX else .dirNegX;
 				} else {
 					voxelPos[2] +%= step[2];
 					total_tMax = tMax[2];
 					tMax[2] += tDelta[2];
+					neighborOfSelection = if(step[2] == 1) .dirUp else .dirDown;
 				}
 			} else {
 				if(tMax[1] < tMax[2]) {
 					voxelPos[1] +%= step[1];
 					total_tMax = tMax[1];
 					tMax[1] += tDelta[1];
+					neighborOfSelection = if(step[1] == 1) .dirPosY else .dirNegY;
 				} else {
 					voxelPos[2] +%= step[2];
 					total_tMax = tMax[2];
 					tMax[2] += tDelta[2];
+					neighborOfSelection = if(step[2] == 1) .dirUp else .dirDown;
 				}
 			}
 		}
@@ -792,7 +797,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 							// Check if stuff can be added to the block itself:
 							if(itemBlock == block.typ) {
 								const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
-								if(rotationMode.generateData(main.game.world.?, selectedPos, relPos, lastDir, neighborDir, &block, .{.typ = 0, .data = 0}, false)) {
+								if(rotationMode.generateData(main.game.world.?, selectedPos, relPos, lastDir, neighborDir, null, &block, .{.typ = 0, .data = 0}, false)) {
 									if(!canPlaceBlock(selectedPos, block)) return;
 									updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], oldBlock, block);
 									return;
@@ -806,7 +811,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 							oldBlock = mesh_storage.getBlock(neighborPos[0], neighborPos[1], neighborPos[2]) orelse return;
 							block = oldBlock;
 							if(block.typ == itemBlock) {
-								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, &block, neighborBlock, false)) {
+								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, neighborOfSelection, &block, neighborBlock, false)) {
 									if(!canPlaceBlock(neighborPos, block)) return;
 									updateBlockAndSendUpdate(inventory, slot, neighborPos[0], neighborPos[1], neighborPos[2], oldBlock, block);
 									return;
@@ -815,7 +820,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 								if(block.solid()) return;
 								block.typ = itemBlock;
 								block.data = 0;
-								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, &block, neighborBlock, true)) {
+								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, neighborOfSelection, &block, neighborBlock, true)) {
 									if(!canPlaceBlock(neighborPos, block)) return;
 									updateBlockAndSendUpdate(inventory, slot, neighborPos[0], neighborPos[1], neighborPos[2], oldBlock, block);
 									return;
