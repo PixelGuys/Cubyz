@@ -47,7 +47,9 @@ fn invite(_: usize) void {
 		thread = null;
 	}
 	const user = main.server.User.initAndIncreaseRefCount(main.server.connectionManager, ipAddressEntry.currentString.items) catch |err| {
-		std.log.err("Cannot connect user: {s}", .{@errorName(err)});
+		if(err != error.AlreadyConnected) {
+			std.log.err("Cannot connect user: {s}", .{@errorName(err)});
+		}
 		return;
 	};
 	user.decreaseRefCount();

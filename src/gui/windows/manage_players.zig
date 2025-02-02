@@ -70,7 +70,6 @@ pub fn update() void {
 	const serverListLen = main.server.connectionManager.connections.items.len;
 	main.server.connectionManager.mutex.unlock();
 	if(userList.len != serverListLen) {
-		std.log.err("{} {}", .{userList.len, serverListLen});
 		onClose();
 		onOpen();
 	}
