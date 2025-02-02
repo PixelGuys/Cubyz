@@ -501,7 +501,6 @@ pub const Player = struct { // MARK: Player
 	}
 
 	pub fn placeBlock() void {
-		if(!main.Window.grabbed) return;
 		if(main.renderer.MeshSelection.selectedBlockPos) |blockPos| {
 			const block = main.renderer.mesh_storage.getBlock(blockPos[0], blockPos[1], blockPos[2]) orelse main.blocks.Block{.typ = 0, .data = 0};
 			const gui = block.gui();
@@ -527,7 +526,6 @@ pub const Player = struct { // MARK: Player
 	}
 
 	pub fn breakBlock(deltaTime: f64) void {
-		if(!main.Window.grabbed) return;
 		inventory.breakBlock(selectedSlot, deltaTime);
 	}
 

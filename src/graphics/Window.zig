@@ -73,6 +73,7 @@ pub const Gamepad = struct {
 					}
 				}
 			}
+			const isGrabbed = grabbed;
 			for(&main.KeyBoard.keys) |*key| {
 				if(key.gamepadAxis == null) {
 					if(key.gamepadButton >= 0) {
@@ -81,15 +82,7 @@ pub const Gamepad = struct {
 						if(oldPressed != newPressed) {
 							key.pressed = newPressed;
 							key.value = if(newPressed) 1.0 else 0.0;
-							if(key.pressed) {
-								if(key.pressAction) |pressAction| {
-									pressAction();
-								}
-							} else {
-								if(key.releaseAction) |releaseAction| {
-									releaseAction();
-								}
-							}
+							key.action(if(key.pressed) .press else .release, isGrabbed, .{});
 						}
 					}
 				} else {
@@ -107,15 +100,7 @@ pub const Gamepad = struct {
 					const newPressed = newAxis > 0.5;
 					if (oldPressed != newPressed) {
 						key.pressed = newPressed;
-						if (newPressed) {
-							if (key.pressAction) |pressAction| {
-								pressAction();
-							}
-						} else {
-							if (key.releaseAction) |releaseAction| {
-								releaseAction();
-							}
-						}
+						key.action(if(key.pressed) .press else .release, isGrabbed, .{});
 					}
 					if (newAxis != oldAxis) {
 						key.value = newAxis;
@@ -293,6 +278,8 @@ pub const Key = struct { // MARK: Key
 	releaseAction: ?*const fn() void = null,
 	pressAction: ?*const fn() void = null,
 	repeatAction: ?*const fn(Modifiers) void = null,
+	notifyRequirement: Requirement = .always,
+	grabbedOnPress: bool = false,
 
 	pub const Modifiers = packed struct(u6) {
 		shift: bool = false,
@@ -301,6 +288,19 @@ pub const Key = struct { // MARK: Key
 		super: bool = false,
 		capsLock: bool = false,
 		numLock: bool = false,
+	};
+	const Requirement = enum {
+		always,
+		inGame,
+		inMenu,
+
+		fn met(self: Requirement, isGrabbed: bool) bool {
+			switch(self) {
+				.always => return true,
+				.inGame => return isGrabbed,
+				.inMenu => return !isGrabbed,
+			}
+		}
 	};
 	pub fn getGamepadName(self: Key) []const u8 {
 		if(self.gamepadAxis != null) {
@@ -410,6 +410,16 @@ pub const Key = struct { // MARK: Key
 			};
 		}
 	}
+
+	fn action(self: *Key, typ: enum{press, release, repeat}, isGrabbed: bool, mods: Modifiers) void {
+		if(typ == .press) self.grabbedOnPress = isGrabbed;
+		if(!self.notifyRequirement.met(self.grabbedOnPress)) return;
+		switch(typ) {
+			.press => if(self.pressAction) |a| a(),
+			.release => if(self.releaseAction) |a| a(),
+			.repeat => if(self.repeatAction) |a| a(mods),
+		}
+	}
 };
 
 pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
@@ -419,18 +429,15 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 	fn keyCallback(_: ?*c.GLFWwindow, glfw_key: c_int, scancode: c_int, action: c_int, _mods: c_int) callconv(.C) void {
 		const mods: Key.Modifiers = @bitCast(@as(u6, @intCast(_mods)));
 		if(!mods.control and main.gui.selectedTextInput != null and c.glfwGetKeyName(glfw_key, scancode) != null) return; // Don't send events for keys that are used in writing letters.
+		const isGrabbed = grabbed;
 		if(action == c.GLFW_PRESS) {
 			for(&main.KeyBoard.keys) |*key| {
 				if(glfw_key == key.key) {
 					if(glfw_key != c.GLFW_KEY_UNKNOWN or scancode == key.scancode) {
 						key.pressed = true;
 						key.value = 1.0;
-						if(key.pressAction) |pressAction| {
-							pressAction();
-						}
-						if(key.repeatAction) |repeatAction| {
-							repeatAction(mods);
-						}
+						key.action(.press, isGrabbed, mods);
+						key.action(.repeat, isGrabbed, mods);
 					}
 				}
 			}
@@ -444,9 +451,7 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 					if(glfw_key != c.GLFW_KEY_UNKNOWN or scancode == key.scancode) {
 						key.pressed = false;
 						key.value = 0.0;
-						if(key.releaseAction) |releaseAction| {
-							releaseAction();
-						}
+						key.action(.release, isGrabbed, mods);
 					}
 				}
 			}
@@ -454,9 +459,7 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 			for(&main.KeyBoard.keys) |*key| {
 				if(glfw_key == key.key) {
 					if(glfw_key != c.GLFW_KEY_UNKNOWN or scancode == key.scancode) {
-						if(key.repeatAction) |repeatAction| {
-							repeatAction(mods);
-						}
+						key.action(.repeat, isGrabbed, mods);
 					}
 				}
 			}
@@ -502,16 +505,15 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 		currentPos = newPos;
 		lastUsedMouse = true;
 	}
-	fn mouseButton(_: ?*c.GLFWwindow, button: c_int, action: c_int, mods: c_int) callconv(.C) void {
-		_ = mods;
+	fn mouseButton(_: ?*c.GLFWwindow, button: c_int, action: c_int, _mods: c_int) callconv(.C) void {
+		const mods: Key.Modifiers = @bitCast(@as(u6, @intCast(_mods)));
+		const isGrabbed = grabbed;
 		if(action == c.GLFW_PRESS) {
 			for(&main.KeyBoard.keys) |*key| {
 				if(button == key.mouseButton) {
 					key.pressed = true;
 					key.value = 1.0;
-					if(key.pressAction) |pressAction| {
-						pressAction();
-					}
+					key.action(.press, isGrabbed, mods);
 				}
 			}
 			if(nextKeypressListener) |listener| {
@@ -523,9 +525,7 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 				if(button == key.mouseButton) {
 					key.pressed = false;
 					key.value = 0.0;
-					if(key.releaseAction) |releaseAction| {
-						releaseAction();
-					}
+					key.action(.release, isGrabbed, mods);
 				}
 			}
 		}
