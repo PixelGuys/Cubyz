@@ -1,6 +1,8 @@
 .{
 	.class = .stone,
 	.blockHealth = 5,
-	.drops = .{},
+	.drops = .{
+		.{.items = .{.auto}},
+	},
 	.model = "cubyz:cube",
 }
