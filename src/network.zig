@@ -637,7 +637,7 @@ pub const Protocols = struct {
 		const stepUserData: u8 = 1;
 		const stepAssets: u8 = 2;
 		const stepServerData: u8 = 3;
-		const stepComplete: u8 = 255;
+		pub const stepComplete: u8 = 255;
 
 		fn receive(conn: *Connection, data: []const u8) !void {
 			if(conn.handShakeState.load(.monotonic) < data[0]) {
@@ -678,7 +678,6 @@ pub const Protocols = struct {
 						conn.flush();
 						conn.mutex.unlock();
 						conn.handShakeState.store(stepServerData, .monotonic);
-						conn.handShakeState.store(stepComplete, .monotonic);
 						main.server.connect(conn.user.?);
 					},
 					stepAssets => {
