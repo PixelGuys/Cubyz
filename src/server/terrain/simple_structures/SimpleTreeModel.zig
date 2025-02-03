@@ -30,6 +30,8 @@ height0: i32,
 deltaHeight: u31,
 leafRadius: f32,
 deltaLeafRadius: f32,
+leafElongation: f32,
+deltaLeafElongation: f32,
 branched: bool,
 
 pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) *SimpleTreeModel {
@@ -46,6 +48,8 @@ pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) 
 		.deltaHeight = parameters.get(u31, "height_variation", 3),
 		.leafRadius = parameters.get(f32, "leafRadius", (1 + parameters.get(f32, "height", 6))/2),
 		.deltaLeafRadius = parameters.get(f32, "leafRadius_variation", parameters.get(f32, "height_variation", 3)/2),
+		.leafElongation = parameters.get(f32, "leafElongation", 1),
+		.deltaLeafElongation = parameters.get(f32, "deltaLeafElongation", 0),
 		.branched = parameters.get(bool, "branched", true),
 	};
 	return self;
@@ -89,6 +93,7 @@ pub fn generate(self: *SimpleTreeModel, x: i32, y: i32, z: i32, chunk: *main.chu
 	const factor = random.nextFloat(seed);
 	var height = self.height0 + @as(i32, @intFromFloat(factor*@as(f32, @floatFromInt(self.deltaHeight))));
 	const leafRadius = self.leafRadius + factor*self.deltaLeafRadius;
+	const leafElongation: f32 = self.leafElongation + random.nextFloatSigned(seed)*self.deltaLeafElongation;
 
 	if(z + height >= caveMap.findTerrainChangeAbove(x, y, z)) // Space is too small.Allocator
 		return;
@@ -126,17 +131,19 @@ pub fn generate(self: *SimpleTreeModel, x: i32, y: i32, z: i32, chunk: *main.chu
 		.round => {
 			self.generateStem(x, y, z, height, chunk, seed);
 
+			const ceilZRadius: i32 = @intFromFloat(@ceil(leafRadius*leafElongation));
 			const ceilRadius: i32 = @intFromFloat(@ceil(leafRadius));
-			const radiusSqr: i32 = @intFromFloat(leafRadius*leafRadius);
-			const randomRadiusSqr: i32 = @intFromFloat((leafRadius - 0.25)*(leafRadius - 0.25));
+			const radiusSqr: f32 = leafRadius*leafRadius;
+			const randomRadiusSqr: f32 = (leafRadius - 0.25)*(leafRadius - 0.25);
+			const invLeafElongationSqr = 1.0/(leafElongation*leafElongation);
 			const center = z + height;
-			var pz = chunk.startIndex(center - ceilRadius);
-			while(pz < center + ceilRadius) : (pz += chunk.super.pos.voxelSize) {
+			var pz = chunk.startIndex(center - ceilZRadius);
+			while(pz < center + ceilZRadius) : (pz += chunk.super.pos.voxelSize) {
 				var px = chunk.startIndex(x - ceilRadius);
 				while(px < x + ceilRadius) : (px += chunk.super.pos.voxelSize) {
 					var py = chunk.startIndex(y - ceilRadius);
 					while(py < y + ceilRadius) : (py += chunk.super.pos.voxelSize) {
-						const distSqr = (pz - center)*(pz - center) + (px - x)*(px - x) + (py - y)*(py - y);
+						const distSqr = @as(f32, @floatFromInt((pz - center)*(pz - center)))*invLeafElongationSqr + @as(f32, @floatFromInt((px - x)*(px - x) + (py - y)*(py - y)));
 						if(chunk.liesInChunk(px, py, pz) and distSqr < radiusSqr and (distSqr < randomRadiusSqr or random.nextInt(u1, seed) != 0)) { // TODO: Use another seed to make this more reliable!
 							chunk.updateBlockIfDegradable(px, py, pz, self.leavesBlock);
 						}

@@ -351,7 +351,7 @@ pub const Model = struct {
 		main.globalAllocator.free(self.internalQuads);
 	}
 
-	fn getRawFaces(model: Model, quadList: *main.List(QuadInfo)) void {
+	pub fn getRawFaces(model: Model, quadList: *main.List(QuadInfo)) void {
 		for(model.internalQuads) |quadIndex| {
 			quadList.append(quads.items[quadIndex]);
 		}
@@ -430,7 +430,11 @@ fn addQuad(info_: QuadInfo) error{Degenerate}!u16 {
 	}
 	if(cornerEqualities >= 2) return error.Degenerate; // One corner equality is fine, since then the quad degenerates to a triangle, which has a non-zero area.
 	const index: u16 = @intCast(quads.items.len);
-	info.opaqueInLod = @intFromBool(Model.getFaceNeighbor(&info) != null);
+	if(info.opaqueInLod == 2) {
+		info.opaqueInLod = 0;
+	} else {
+		info.opaqueInLod = @intFromBool(Model.getFaceNeighbor(&info) != null);
+	}
 	quads.append(info);
 	quadDeduplication.put(std.mem.toBytes(info), index) catch unreachable;
 

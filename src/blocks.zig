@@ -47,15 +47,6 @@ pub const Ore = struct {
 	maxHeight: i32,
 
 	blockType: u16,
-
-	sources: []u16,
-
-	pub fn canCreateVeinInBlock(self: Ore, blockType: u16) bool {
-		for(self.sources) |source| {
-			if(blockType == source) return true;
-		}
-		return false;
-	}
 };
 
 var _transparent: [maxBlockCount]bool = undefined;
@@ -82,6 +73,9 @@ var _gui: [maxBlockCount][]u8 = undefined;
 var _mode: [maxBlockCount]*RotationMode = undefined;
 var _lodReplacement: [maxBlockCount]u16 = undefined;
 var _opaqueVariant: [maxBlockCount]u16 = undefined;
+var _friction: [maxBlockCount]f32 = undefined;
+
+var _allowOres: [maxBlockCount]bool = undefined;
 
 var reverseIndices = std.StringHashMap(u16).init(allocator.allocator);
 
@@ -89,14 +83,10 @@ var size: u32 = 0;
 
 pub var ores: main.List(Ore) = .init(allocator);
 
-var unfinishedOreSourceBlockIds: main.List([][]const u8) = undefined;
-
 pub fn init() void {
-	unfinishedOreSourceBlockIds = .init(main.globalAllocator);
 }
 
 pub fn deinit() void {
-	unfinishedOreSourceBlockIds.deinit();
 }
 
 pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
@@ -122,23 +112,21 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_alwaysViewThrough[size] = zon.get(bool, "alwaysViewThrough", false);
 	_viewThrough[size] = zon.get(bool, "viewThrough", false) or _transparent[size] or _alwaysViewThrough[size];
 	_hasBackFace[size] = zon.get(bool, "hasBackFace", false);
+	_friction[size] = zon.get(f32, "friction", 20);
+	_allowOres[size] = zon.get(bool, "allowOres", false);
 
 	const oreProperties = zon.getChild("ore");
-	if (oreProperties != .null) {
-		// Extract the ids:
-		const sourceBlocks = oreProperties.getChild("sources").toSlice();
-		const oreIds = main.globalAllocator.alloc([]const u8, sourceBlocks.len);
-		for(sourceBlocks, oreIds) |source, *oreId| {
-			oreId.* = main.globalAllocator.dupe(u8, source.as([]const u8, ""));
+	if (oreProperties != .null) blk: {
+		if(!std.mem.eql(u8, zon.get([]const u8, "rotation", "no_rotation"), "ore")) {
+			std.log.err("Ore must have rotation mode \"ore\"!", .{});
+			break :blk;
 		}
-		unfinishedOreSourceBlockIds.append(oreIds);
 		ores.append(Ore {
 			.veins = oreProperties.get(f32, "veins", 0),
 			.size = oreProperties.get(f32, "size", 0),
 			.maxHeight = oreProperties.get(i32, "height", 0),
 			.density = oreProperties.get(f32, "density", 0.5),
 			.blockType = @intCast(size),
-			.sources = &.{},
 		});
 	}
 
@@ -207,15 +195,6 @@ pub fn finishBlocks(zonElements: std.StringHashMap(ZonElement)) void {
 		registerLodReplacement(i, zonElements.get(_id[i]) orelse continue);
 		registerOpaqueVariant(i, zonElements.get(_id[i]) orelse continue);
 	}
-	for(ores.items, unfinishedOreSourceBlockIds.items) |*ore, oreIds| {
-		ore.sources = allocator.alloc(u16, oreIds.len);
-		for(ore.sources, oreIds) |*source, id| {
-			source.* = getTypeById(id);
-			main.globalAllocator.free(id);
-		}
-		main.globalAllocator.free(oreIds);
-	}
-	unfinishedOreSourceBlockIds.clearRetainingCapacity();
 }
 
 pub fn reset() void {
@@ -224,7 +203,6 @@ pub fn reset() void {
 	meshes.reset();
 	_ = arena.reset(.free_all);
 	reverseIndices = .init(arena.allocator().allocator);
-	std.debug.assert(unfinishedOreSourceBlockIds.items.len == 0);
 }
 
 pub fn getTypeById(id: []const u8) u16 {
@@ -341,6 +319,14 @@ pub const Block = packed struct { // MARK: Block
 	
 	pub inline fn opaqueVariant(self: Block) u16 {
 		return _opaqueVariant[self.typ];
+	}
+
+	pub inline fn friction(self: Block) f32 {
+		return _friction[self.typ];
+	}
+
+	pub inline fn allowOres(self: Block) bool {
+		return _allowOres[self.typ];
 	}
 
 	pub fn canBeChangedInto(self: Block, newBlock: Block, item: main.items.ItemStack) main.rotation.RotationMode.CanBeChangedInto {
@@ -495,19 +481,21 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	pub inline fn textureIndex(block: Block, orientation: usize) u16 {
-		return textureData[block.typ].textureIndices[orientation];
+		if(orientation < 16) {
+			return textureData[block.typ].textureIndices[orientation];
+		} else {
+			return textureData[block.data].textureIndices[orientation - 16];
+		}
 	}
 
-	fn extendedPath(path: []const u8, pathBuffer: []u8, ending: []const u8) []const u8 {
-		std.debug.assert(path.ptr == pathBuffer.ptr);
-		@memcpy(pathBuffer[path.len..][0..ending.len], ending);
-		return pathBuffer[0..path.len+ending.len];
+	fn extendedPath(_allocator: main.utils.NeverFailingAllocator, path: []const u8, ending: []const u8) []const u8 {
+		return std.fmt.allocPrint(_allocator.allocator, "{s}{s}", .{path, ending}) catch unreachable;
 	}
 
-	fn readAuxillaryTexture(_path: []const u8, pathBuffer: []u8, ending: []const u8, default: Image) Image {
-		const path = extendedPath(_path, pathBuffer, ending);
-		const texture = Image.readFromFile(arenaForWorld.allocator(), path) catch default;
-		return texture;
+	fn readTextureFile(_path: []const u8, ending: []const u8, default: Image) Image {
+		const path = extendedPath(main.stackAllocator, _path, ending);
+		defer main.stackAllocator.free(path);
+		return Image.readFromFile(arenaForWorld.allocator(), path) catch default;
 	}
 
 	fn extractAnimationSlice(image: Image, frame: usize, frames: usize) Image {
@@ -525,19 +513,18 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	fn readTextureData(_path: []const u8) void {
-		var buffer: [1024]u8 = undefined;
-		@memcpy(buffer[0.._path.len], _path);
-		const path = buffer[0.._path.len];
-		const textureInfoPath = extendedPath(path, &buffer, "_textureInfo.zig.zon");
+		const path = _path[0.._path.len - ".png".len];
+		const textureInfoPath = extendedPath(main.stackAllocator, path, ".zig.zon");
+		defer main.stackAllocator.free(textureInfoPath);
 		const textureInfoZon = main.files.readToZon(main.stackAllocator, textureInfoPath) catch .null;
 		defer textureInfoZon.deinit(main.stackAllocator);
 		const animationFrames = textureInfoZon.get(u32, "frames", 1);
 		const animationTime = textureInfoZon.get(u32, "time", 1);
 		animation.append(.{.startFrame = @intCast(blockTextures.items.len), .frames = animationFrames, .time = animationTime});
-		const base = Image.readFromFile(arenaForWorld.allocator(), path) catch Image.defaultImage;
-		const emission = readAuxillaryTexture(path, &buffer, "_emission.png", Image.emptyImage);
-		const reflectivity = readAuxillaryTexture(path, &buffer, "_reflectivity.png", Image.emptyImage);
-		const absorption = readAuxillaryTexture(path, &buffer, "_absorption.png", Image.whiteEmptyImage);
+		const base = readTextureFile(path, ".png", Image.defaultImage);
+		const emission = readTextureFile(path, "_emission.png", Image.emptyImage);
+		const reflectivity = readTextureFile(path, "_reflectivity.png", Image.emptyImage);
+		const absorption = readTextureFile(path, "_absorption.png", Image.whiteEmptyImage);
 		for(0..animationFrames) |i| {
 			blockTextures.append(extractAnimationSlice(base, i, animationFrames));
 			emissionTextures.append(extractAnimationSlice(emission, i, animationFrames));

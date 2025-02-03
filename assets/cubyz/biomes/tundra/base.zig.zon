@@ -1,0 +1,17 @@
+.{
+	.properties = .{
+		.cold,
+		.dry,
+	},
+	.minHeight = 22,
+	.maxHeight = 40,
+	.minRadius = 128,
+	.maxRadius = 180,
+	.roughness = 10,
+	.hills = 15,
+	.mountains = 20,
+	.ground_structure = .{
+		"0 to 1 cubyz:dry_grass",
+		"0 to 1 cubyz:gravel",
+	},
+}

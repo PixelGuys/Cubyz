@@ -26,7 +26,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 		fn model(block: Block) u16 {
 			return blocks.meshes.modelIndexStart(block);
 		}
-		fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: *Block, _: Block, blockPlacing: bool) bool {
+		fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: ?Neighbor, _: *Block, _: Block, blockPlacing: bool) bool {
 			return blockPlacing;
 		}
 		fn createBlockModel(modelId: []const u8) u16 {
@@ -110,7 +110,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 
 	/// Updates the block data of a block in the world or places a block in the world.
 	/// return true if the placing was successful, false otherwise.
-	generateData: *const fn(world: *main.game.World, pos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, relativeDir: Vec3i, currentData: *Block, neighborBlock: Block, blockPlacing: bool) bool = DefaultFunctions.generateData,
+	generateData: *const fn(world: *main.game.World, pos: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, relativeDir: Vec3i, neighbor: ?Neighbor, currentData: *Block, neighborBlock: Block, blockPlacing: bool) bool = DefaultFunctions.generateData,
 
 	/// Updates data of a placed block if the RotationMode dependsOnNeighbors.
 	updateData: *const fn(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool = &DefaultFunctions.updateData,
@@ -169,14 +169,9 @@ pub const RotationModes = struct {
 			return blocks.meshes.modelIndexStart(block) + @min(block.data, 5);
 		}
 
-		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, relativeDir: Vec3i, currentData: *Block, _: Block, blockPlacing: bool) bool {
+		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, neighbor: ?Neighbor, currentData: *Block, _: Block, blockPlacing: bool) bool {
 			if(blockPlacing) {
-				if(relativeDir[0] == 1) currentData.data = Neighbor.dirNegX.toInt();
-				if(relativeDir[0] == -1) currentData.data = Neighbor.dirPosX.toInt();
-				if(relativeDir[1] == 1) currentData.data = Neighbor.dirNegY.toInt();
-				if(relativeDir[1] == -1) currentData.data = Neighbor.dirPosY.toInt();
-				if(relativeDir[2] == 1) currentData.data = Neighbor.dirDown.toInt();
-				if(relativeDir[2] == -1) currentData.data = Neighbor.dirUp.toInt();
+				currentData.data = neighbor.?.reverse().toInt();
 				return true;
 			}
 			return false;
@@ -212,7 +207,7 @@ pub const RotationModes = struct {
 			return blocks.meshes.modelIndexStart(block) + @min(block.data, 3);
 		}
 
-		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, playerDir: Vec3f, _: Vec3i, currentData: *Block, _: Block, blockPlacing: bool) bool {
+		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, playerDir: Vec3f, _: Vec3i, _: ?Neighbor, currentData: *Block, _: Block, blockPlacing: bool) bool {
 			if(blockPlacing) {
 				if(@abs(playerDir[0]) > @abs(playerDir[1])) {
 					if(playerDir[0] < 0) currentData.data = Neighbor.dirNegX.toInt() - 2
@@ -523,7 +518,7 @@ pub const RotationModes = struct {
 			return blocks.meshes.modelIndexStart(block) + (block.data & 255);
 		}
 
-		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, currentData: *Block, _: Block, blockPlacing: bool) bool {
+		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: ?Neighbor, currentData: *Block, _: Block, blockPlacing: bool) bool {
 			if(blockPlacing) {
 				currentData.data = 0;
 				return true;
@@ -694,7 +689,11 @@ pub const RotationModes = struct {
 			return blocks.meshes.modelIndexStart(block) + (@as(u5, @truncate(block.data)) -| 1);
 		}
 
-		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, relativeDir: Vec3i, currentData: *Block, _: Block, _: bool) bool {
+		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, relativeDir: Vec3i, neighbor: ?Neighbor, currentData: *Block, neighborBlock: Block, _: bool) bool {
+			if(neighbor == null) return false;
+			const neighborModel = blocks.meshes.model(neighborBlock);
+			const neighborSupport = neighborBlock.solid() and main.models.models.items[neighborModel].neighborFacingQuads[neighbor.?.reverse().toInt()].len != 0;
+			if(!neighborSupport) return false;
 			var data: TorchData = @bitCast(@as(u5, @truncate(currentData.data)));
 			if(relativeDir[0] == 1) data.posX = true;
 			if(relativeDir[0] == -1) data.negX = true;
@@ -710,25 +709,24 @@ pub const RotationModes = struct {
 		}
 
 		pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool {
-			const blockModel = blocks.meshes.modelIndexStart(block.*);
 			const neighborModel = blocks.meshes.model(neighborBlock);
-			const targetVal = neighborBlock.solid() and (blockModel == neighborModel or main.models.models.items[neighborModel].neighborFacingQuads[neighbor.reverse().toInt()].len != 0);
+			const neighborSupport = neighborBlock.solid() and main.models.models.items[neighborModel].neighborFacingQuads[neighbor.reverse().toInt()].len != 0;
 			var currentData: TorchData = @bitCast(@as(u5, @truncate(block.data)));
 			switch(neighbor) {
 				.dirNegX => {
-					currentData.negX = currentData.negX and targetVal;
+					currentData.negX = currentData.negX and neighborSupport;
 				},
 				.dirPosX => {
-					currentData.posX = currentData.posX and targetVal;
+					currentData.posX = currentData.posX and neighborSupport;
 				},
 				.dirNegY => {
-					currentData.negY = currentData.negY and targetVal;
+					currentData.negY = currentData.negY and neighborSupport;
 				},
 				.dirPosY => {
-					currentData.posY = currentData.posY and targetVal;
+					currentData.posY = currentData.posY and neighborSupport;
 				},
 				.dirDown => {
-					currentData.center = currentData.center and targetVal;
+					currentData.center = currentData.center and neighborSupport;
 				},
 				else => {},
 			}
@@ -863,7 +861,7 @@ pub const RotationModes = struct {
 			return blocks.meshes.modelIndexStart(block) + (@as(u6, @truncate(block.data)) -| 1);
 		}
 
-		pub fn generateData(_: *main.game.World, _: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, relativeDir: Vec3i, currentData: *Block, neighbor: Block, _: bool) bool {
+		pub fn generateData(_: *main.game.World, _: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, relativeDir: Vec3i, _: ?Neighbor, currentData: *Block, neighbor: Block, _: bool) bool {
 			if(neighbor.mode() == currentData.mode()) parallelPlacing: {
 				const bit = closestRay(.bit, neighbor, null, relativePlayerPos - @as(Vec3f, @floatFromInt(relativeDir)), playerDir);
 				const bitData: CarpetData = @bitCast(@as(u6, @truncate(bit)));
@@ -887,38 +885,6 @@ pub const RotationModes = struct {
 			} else {
 				return false;
 			}
-		}
-
-		pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool {
-			const blockModel = blocks.meshes.modelIndexStart(block.*);
-			const neighborModel = blocks.meshes.model(neighborBlock);
-			const targetVal = neighborBlock.solid() and (blockModel == neighborModel or main.models.models.items[neighborModel].neighborFacingQuads[neighbor.reverse().toInt()].len != 0);
-			var currentData: CarpetData = @bitCast(@as(u6, @truncate(block.data)));
-			switch(neighbor) {
-				.dirNegX => {
-					currentData.negX = currentData.negX and targetVal;
-				},
-				.dirPosX => {
-					currentData.posX = currentData.posX and targetVal;
-				},
-				.dirNegY => {
-					currentData.negY = currentData.negY and targetVal;
-				},
-				.dirPosY => {
-					currentData.posY = currentData.posY and targetVal;
-				},
-				.dirDown => {
-					currentData.negZ = currentData.negZ and targetVal;
-				},
-				.dirUp => {
-					currentData.posZ = currentData.posZ and targetVal;
-				},
-			}
-			const result: u16 = @as(u6, @bitCast(currentData));
-			if(result == block.data) return false;
-			if(result == 0) block.* = .{.typ = 0, .data = 0}
-			else block.data = result;
-			return true;
 		}
 
 		fn closestRay(comptime typ: enum{bit, intersection}, block: Block, _: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) if(typ == .intersection) ?RayIntersectionResult else u16 {
@@ -951,6 +917,35 @@ pub const RotationModes = struct {
 
 		pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack) RotationMode.CanBeChangedInto {
 			return Torch.canBeChangedInto(oldBlock, newBlock, item);
+		}
+	};
+	pub const Ore = struct { // MARK: Ore
+		pub const id: []const u8 = "ore";
+		var modelCache: ?u16 = null;
+
+		fn init() void {}
+		fn deinit() void {}
+
+		pub fn createBlockModel(modelId: []const u8) u16 {
+			if(!std.mem.eql(u8, modelId, "cubyz:cube")) {
+				std.log.err("Ores can only be use on cube models.", .{modelId});
+			}
+			if(modelCache) |modelIndex| return modelIndex;
+
+			const baseModelIndex = main.models.getModelIndex("cubyz:cube");
+			const baseModel = main.models.models.items[baseModelIndex];
+			var quadList = main.List(main.models.QuadInfo).init(main.stackAllocator);
+			defer quadList.deinit();
+			baseModel.getRawFaces(&quadList);
+			const len = quadList.items.len;
+			for(0..len) |i| {
+				quadList.append(quadList.items[i]);
+				quadList.items[i + len].textureSlot += 16;
+				quadList.items[i].opaqueInLod = 2;
+			}
+			const modelIndex = main.models.Model.init(quadList.items);
+			modelCache = modelIndex;
+			return modelIndex;
 		}
 	};
 };

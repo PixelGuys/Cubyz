@@ -10,4 +10,5 @@
 	.model = "cubyz:cube",
 	.texture = "cubyz:ice",
 	.blockEntity = "cubyz.modding.base.MeltableBlockEntity",
+	.friction = 1,
 }

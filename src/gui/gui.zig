@@ -454,7 +454,6 @@ pub const textCallbacks = struct {
 };
 
 pub fn mainButtonPressed() void {
-	if(main.Window.grabbed) return;
 	inventory.update();
 	selectedWindow = null;
 	selectedTextInput = null;
@@ -478,7 +477,6 @@ pub fn mainButtonPressed() void {
 }
 
 pub fn mainButtonReleased() void {
-	if(main.Window.grabbed) return;
 	inventory.applyChanges(true);
 	const oldWindow = selectedWindow;
 	selectedWindow = null;
@@ -499,12 +497,10 @@ pub fn mainButtonReleased() void {
 }
 
 pub fn secondaryButtonPressed() void {
-	if(main.Window.grabbed) return;
 	inventory.update();
 }
 
 pub fn secondaryButtonReleased() void {
-	if(main.Window.grabbed) return;
 	inventory.applyChanges(false);
 }
 
@@ -593,7 +589,7 @@ pub const inventory = struct { // MARK: inventory
 	var initialized: bool = false;
 
 	pub fn init() void {
-		carried = Inventory.init(main.globalAllocator, 1, .normal, .other);
+		carried = Inventory.init(main.globalAllocator, 1, .normal, .{.hand = main.game.Player.id});
 		leftClickSlots = .init(main.globalAllocator);
 		rightClickSlots = .init(main.globalAllocator);
 		carriedItemSlot = ItemSlot.init(.{0, 0}, carried, 0, .default, .normal);

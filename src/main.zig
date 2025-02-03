@@ -339,17 +339,18 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "right", .key = c.GLFW_KEY_D, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = true}},
 		.{.name = "sprint", .key = c.GLFW_KEY_LEFT_CONTROL, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_LEFT_THUMB},
 		.{.name = "jump", .key = c.GLFW_KEY_SPACE, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_A},
+		.{.name = "crouch", .key = c.GLFW_KEY_LEFT_SHIFT, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_RIGHT_THUMB},
 		.{.name = "fly", .key = c.GLFW_KEY_F, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_DPAD_DOWN, .pressAction = &game.flyToggle},
 		.{.name = "ghost", .key = c.GLFW_KEY_G, .pressAction = &game.ghostToggle},
 		.{.name = "hyperSpeed", .key = c.GLFW_KEY_H, .pressAction = &game.hyperSpeedToggle},
 		.{.name = "fall", .key = c.GLFW_KEY_LEFT_SHIFT, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_RIGHT_THUMB},
 		.{.name = "shift", .key = c.GLFW_KEY_LEFT_SHIFT, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_RIGHT_THUMB},
-		.{.name = "fullscreen", .key = c.GLFW_KEY_F11, .pressAction = &Window.toggleFullscreen},
-		.{.name = "placeBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_TRIGGER}, .pressAction = &game.pressPlace, .releaseAction = &game.releasePlace},
-		.{.name = "breakBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER}, .pressAction = &game.pressBreak, .releaseAction = &game.releaseBreak},
-		.{.name = "acquireSelectedBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_MIDDLE, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_DPAD_LEFT, .pressAction = &game.pressAcquireSelectedBlock},
+		.{.name = "placeBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_TRIGGER}, .pressAction = &game.pressPlace, .releaseAction = &game.releasePlace, .notifyRequirement = .inGame},
+		.{.name = "breakBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER}, .pressAction = &game.pressBreak, .releaseAction = &game.releaseBreak, .notifyRequirement = .inGame},
+		.{.name = "acquireSelectedBlock", .mouseButton = c.GLFW_MOUSE_BUTTON_MIDDLE, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_DPAD_LEFT, .pressAction = &game.pressAcquireSelectedBlock, .notifyRequirement = .inGame},
 
 		.{.name = "takeBackgroundImage", .key = c.GLFW_KEY_PRINT_SCREEN, .pressAction = &takeBackgroundImageFn},
+		.{.name = "fullscreen", .key = c.GLFW_KEY_F11, .pressAction = &Window.toggleFullscreen},
 
 		// Gui:
 		.{.name = "escape", .key = c.GLFW_KEY_ESCAPE, .pressAction = &escape, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_B},
@@ -357,8 +358,8 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "openCreativeInventory(aka cheat inventory)", .key = c.GLFW_KEY_C, .pressAction = &openCreativeInventory, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_Y},
 		.{.name = "openChat", .key = c.GLFW_KEY_T, .releaseAction = &openChat},
 		.{.name = "openCommand", .key = c.GLFW_KEY_SLASH, .releaseAction = &openCommand},
-		.{.name = "mainGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &gui.mainButtonPressed, .releaseAction = &gui.mainButtonReleased, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_A},
-		.{.name = "secondaryGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &gui.secondaryButtonPressed, .releaseAction = &gui.secondaryButtonReleased, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_Y},
+		.{.name = "mainGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &gui.mainButtonPressed, .releaseAction = &gui.mainButtonReleased, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_A, .notifyRequirement = .inMenu},
+		.{.name = "secondaryGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_RIGHT, .pressAction = &gui.secondaryButtonPressed, .releaseAction = &gui.secondaryButtonReleased, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_Y, .notifyRequirement = .inMenu},
 		// gamepad gui.
 		.{.name = "scrollUp", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_Y, .positive = false}},
 		.{.name = "scrollDown", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_Y, .positive = true}},

@@ -1,5 +1,4 @@
 .{
-	.texture = "food/raw_meat.png",
-	.translationId = "item.cubyz.raw_meat.name",
+	.texture = "raw_meat.png",
 	.food = 3,
 }

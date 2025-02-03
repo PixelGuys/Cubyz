@@ -1,0 +1,101 @@
+const std = @import("std");
+
+var global_gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe=true}){};
+pub const globalAllocator = global_gpa.allocator();
+
+var failed: bool = false;
+
+fn printError(msg: []const u8, filePath: []const u8, data: []const u8, charIndex: usize) void {
+	var lineStart: usize = 0;
+	var lineNumber: usize = 1;
+	var lineEnd: usize = 0;
+	for(data[0..charIndex], 0..) |c, i| {
+		if(c == '\n') {
+			lineStart = i + 1;
+			lineNumber += 1;
+		}
+	}
+	for(data[charIndex..], charIndex..) |c, i| {
+		if(c == '\n') {
+			lineEnd = i;
+			break;
+		}
+	}
+
+	var startLineChars = std.ArrayList(u8).init(globalAllocator);
+	defer startLineChars.deinit();
+	for(data[lineStart..charIndex]) |c| {
+		if(c == '\t') {
+			startLineChars.append('\t') catch {};
+		} else {
+			startLineChars.append(' ') catch {};
+		}
+	}
+
+	failed = true;
+
+	std.log.err("Found formatting error in line {} of file {s}: {s}\n{s}\n{s}^", .{lineNumber, filePath, msg, data[lineStart..lineEnd], startLineChars.items});
+}
+
+fn checkFile(dir: std.fs.Dir, filePath: []const u8) !void {
+	const data = try dir.readFileAlloc(globalAllocator, filePath, std.math.maxInt(usize));
+	defer globalAllocator.free(data);
+
+	var lineStart: bool = true;
+
+	for(data, 0..) |c, i| {
+		switch(c) {
+			'\n' => {
+				lineStart = true;
+			},
+			'\r' => {
+				printError("Incorrect line ending \\r. Please configure your editor to use LF instead CRLF.", filePath, data, i);
+			},
+			' ' => {
+				if(lineStart) {
+					printError("Incorrect indentation. Please use tabs instead of spaces.", filePath, data, i);
+				}
+			},
+			'\t' => {},
+			else => {
+				lineStart = false;
+			}
+		}
+	}
+}
+
+fn checkDirectory(dir: std.fs.Dir) !void {
+	var walker = try dir.walk(globalAllocator);
+	defer walker.deinit();
+	while(try walker.next()) |child| {
+		if(std.mem.endsWith(u8, child.basename, ".zon") and !std.mem.endsWith(u8, child.basename, ".zig.zon")) {
+			std.log.err("File name should end with .zig.zon so it gets syntax highlighting on github.", .{});
+			failed = true;
+		}
+		if(child.kind == .file and (
+			std.mem.endsWith(u8, child.basename, ".zig")
+			or std.mem.endsWith(u8, child.basename, ".zon")
+			or std.mem.endsWith(u8, child.basename, ".vs")
+			or std.mem.endsWith(u8, child.basename, ".fs")
+			or std.mem.endsWith(u8, child.basename, ".glsl")
+		)) {
+			try checkFile(dir, child.path);
+		}
+	}
+}
+
+pub fn main() !void {
+	defer _ = global_gpa.deinit();
+
+	var dir = try std.fs.cwd().openDir("src", .{.iterate = true});
+	defer dir.close();
+	try checkDirectory(dir);
+	dir.close();
+	dir = try std.fs.cwd().openDir("assets", .{.iterate = true});
+	try checkDirectory(dir);
+
+	try checkFile(std.fs.cwd(), "build.zig");
+	try checkFile(std.fs.cwd(), "build.zig.zon");
+
+	if(failed) std.posix.exit(1);
+}

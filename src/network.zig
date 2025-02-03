@@ -637,7 +637,7 @@ pub const Protocols = struct {
 		const stepUserData: u8 = 1;
 		const stepAssets: u8 = 2;
 		const stepServerData: u8 = 3;
-		const stepComplete: u8 = 255;
+		pub const stepComplete: u8 = 255;
 
 		fn receive(conn: *Connection, data: []const u8) !void {
 			if(conn.handShakeState.load(.monotonic) < data[0]) {
@@ -666,6 +666,7 @@ pub const Protocols = struct {
 						const zonObject = ZonElement.initObject(main.stackAllocator);
 						defer zonObject.deinit(main.stackAllocator);
 						zonObject.put("player", conn.user.?.player.save(main.stackAllocator));
+						zonObject.put("player_id", conn.user.?.id);
 						zonObject.put("spawn", main.server.world.?.spawn);
 						zonObject.put("blockPalette", main.server.world.?.blockPalette.save(main.stackAllocator));
 						zonObject.put("biomePalette", main.server.world.?.biomePalette.save(main.stackAllocator));
@@ -677,7 +678,6 @@ pub const Protocols = struct {
 						conn.flush();
 						conn.mutex.unlock();
 						conn.handShakeState.store(stepServerData, .monotonic);
-						conn.handShakeState.store(stepComplete, .monotonic);
 						main.server.connect(conn.user.?);
 					},
 					stepAssets => {

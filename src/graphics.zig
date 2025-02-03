@@ -1968,6 +1968,8 @@ pub const Fog = struct { // MARK: Fog
 	fogColor: Vec3f,
 	skyColor: Vec3f,
 	density: f32,
+	fogLower: f32,
+	fogHigher: f32,
 };
 
 const block_texture = struct { // MARK: block_texture

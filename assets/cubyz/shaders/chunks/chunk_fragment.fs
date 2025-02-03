@@ -26,16 +26,6 @@ layout(std430, binding = 1) buffer _animatedTexture
 	float animatedTexture[];
 };
 
-struct FogData {
-	float fogDensity;
-	uint fogColor;
-};
-
-layout(std430, binding = 7) buffer _fogData
-{
-	FogData fogData[];
-};
-
 float lightVariation(vec3 normal) {
 	const vec3 directionalPart = vec3(0, contrast/2, contrast);
 	const float baseLighting = 1 - contrast;

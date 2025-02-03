@@ -15,6 +15,7 @@ const Connection = network.Connection;
 const ConnectionManager = network.ConnectionManager;
 const vec = @import("vec.zig");
 const Vec2f = vec.Vec2f;
+const Vec2d = vec.Vec2d;
 const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
 const Vec3d = vec.Vec3d;
@@ -277,6 +278,60 @@ pub const collision = struct {
 		return resultBox;
 	}
 
+	pub fn calculateFriction(comptime side: main.utils.Side, pos: Vec3d, hitBox: Box, defaultFriction: f32) f32 {
+		const boundingBox: Box = .{
+			.min = pos + hitBox.min,
+			.max = pos + hitBox.max,
+		};
+		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0]));
+		const maxX: i32 = @intFromFloat(@floor(boundingBox.max[0] - 0.0001));
+		const minY: i32 = @intFromFloat(@floor(boundingBox.min[1]));
+		const maxY: i32 = @intFromFloat(@floor(boundingBox.max[1] - 0.0001));
+
+		const z: i32 = @intFromFloat(@floor(boundingBox.min[2] - 0.01));
+
+		var friction: f64 = 0;
+		var totalArea: f64 = 0;
+
+		var x = minX;
+		while (x <= maxX) : (x += 1) {
+			var y = minY;
+			while (y <= maxY) : (y += 1) {
+				const _block = if(side == .client) main.renderer.mesh_storage.getBlock(x, y, z)
+				else main.server.world.?.getBlock(x, y, z);
+
+				if (_block) |block| {
+					const blockPos: Vec3d = .{@floatFromInt(x), @floatFromInt(y), @floatFromInt(z)};
+
+					const blockBox: Box = .{
+						.min = blockPos + @as(Vec3d, @floatCast(main.models.models.items[block.mode().model(block)].min)),
+						.max = blockPos + @as(Vec3d, @floatCast(main.models.models.items[block.mode().model(block)].max)),
+					};
+
+					if (boundingBox.min[2] > blockBox.max[2] or boundingBox.max[2] < blockBox.min[2]) {
+						continue;
+					}
+
+					const max = std.math.clamp(vec.xy(blockBox.max), vec.xy(boundingBox.min), vec.xy(boundingBox.max));
+					const min = std.math.clamp(vec.xy(blockBox.min), vec.xy(boundingBox.min), vec.xy(boundingBox.max));
+
+					const area = (max[0] - min[0]) * (max[1] - min[1]);
+				
+					if (block.collide()) {
+						totalArea += area;
+						friction += area * @as(f64, @floatCast(block.friction()));
+					}
+				}
+			}
+		}
+		
+		if (totalArea == 0) {
+			return defaultFriction;
+		}
+
+		return @floatCast(friction / totalArea);
+	}
+
 	pub fn collideOrStep(comptime side: main.utils.Side, comptime dir: Direction, amount: f64, pos: Vec3d, hitBox: Box, steppingHeight: f64) Vec3d {
 		const index = @intFromEnum(dir);
 
@@ -326,12 +381,27 @@ pub const collision = struct {
 
 pub const Gamemode = enum(u8) { survival = 0, creative = 1 };
 
+pub const DamageType = enum(u8) {
+	heal = 0, // For when you are adding health
+	kill = 1,
+	fall = 2,
+	
+	pub fn sendMessage(self: DamageType, name: []const u8) void {
+		switch (self) {
+			.heal => main.server.sendMessage("{s}§#ffffff was healed", .{name}),
+			.kill => main.server.sendMessage("{s}§#ffffff was killed", .{name}),
+			.fall => main.server.sendMessage("{s}§#ffffff died of fall damage", .{name}),
+		}
+	}
+};
+
 pub const Player = struct { // MARK: Player
 	pub var super: main.server.Entity = .{};
 	pub var eyePos: Vec3d = .{0, 0, 0};
 	pub var eyeVel: Vec3d = .{0, 0, 0};
 	pub var eyeCoyote: f64 = 0;
 	pub var eyeStep: @Vector(3, bool) = .{false, false, false};
+	pub var crouching: bool = false;
 	pub var id: u32 = 0;
 	pub var gamemode: Atomic(Gamemode) = .init(.creative);
 	pub var isFlying: Atomic(bool) = .init(false);
@@ -341,24 +411,27 @@ pub const Player = struct { // MARK: Player
 	pub var inventory: Inventory = undefined;
 	pub var selectedSlot: u32 = 0;
 
-	pub var maxHealth: f32 = 8;
-	pub var health: f32 = 4.5;
+	pub var currentFriction: f32 = 0;
 
 	pub var onGround: bool = false;
 	pub var jumpCooldown: f64 = 0;
 	const jumpCooldownConstant = 0.3;
 
-	pub const outerBoundingBoxExtent: Vec3d = .{0.3, 0.3, 0.9};
-	pub const outerBoundingBox: collision.Box = .{
-		.min = -outerBoundingBoxExtent,
-		.max = outerBoundingBoxExtent,
+	const standingBoundingBoxExtent: Vec3d = .{0.3, 0.3, 0.9};
+	const crouchingBoundingBoxExtent: Vec3d = .{0.3, 0.3, 0.725};
+	var crouchPerc: f32 = 0;
+
+	var outerBoundingBoxExtent: Vec3d = standingBoundingBoxExtent;
+	pub var outerBoundingBox: collision.Box = .{
+		.min = -standingBoundingBoxExtent,
+		.max = standingBoundingBoxExtent,
 	};
-	const eyeBox: collision.Box = .{
-		.min = -Vec3d{outerBoundingBoxExtent[0]*0.2, outerBoundingBoxExtent[1]*0.2, 0.6},
-		.max = Vec3d{outerBoundingBoxExtent[0]*0.2, outerBoundingBoxExtent[1]*0.2, 0.9 - 0.05},
+	var eyeBox: collision.Box = .{
+		.min = -Vec3d{standingBoundingBoxExtent[0]*0.2, standingBoundingBoxExtent[1]*0.2, 0.6},
+		.max = Vec3d{standingBoundingBoxExtent[0]*0.2, standingBoundingBoxExtent[1]*0.2, 0.9 - 0.05},
 	};
-	pub const desiredEyePos: Vec3d = .{0, 0, 1.7 - outerBoundingBoxExtent[2]};
-	pub const jumpHeight = 1.25;
+	var desiredEyePos: Vec3d = .{0, 0, 1.7 - standingBoundingBoxExtent[2]};
+	const jumpHeight = 1.25;
 
 	fn loadFrom(zon: ZonElement) void {
 		super.loadFrom(zon);
@@ -428,7 +501,6 @@ pub const Player = struct { // MARK: Player
 	}
 
 	pub fn placeBlock() void {
-		if(!main.Window.grabbed) return;
 		if(main.renderer.MeshSelection.selectedBlockPos) |blockPos| {
 			const block = main.renderer.mesh_storage.getBlock(blockPos[0], blockPos[1], blockPos[2]) orelse main.blocks.Block{.typ = 0, .data = 0};
 			const gui = block.gui();
@@ -442,8 +514,18 @@ pub const Player = struct { // MARK: Player
 		inventory.placeBlock(selectedSlot);
 	}
 
+	pub fn kill() void {
+		Player.super.pos = world.?.spawn;
+		Player.super.vel = .{0, 0, 0};
+
+		Player.super.health = Player.super.maxHealth;
+		
+		Player.eyeVel = .{0, 0, 0};
+		Player.eyeCoyote = 0;
+		Player.eyeStep = .{false, false, false};
+	}
+
 	pub fn breakBlock(deltaTime: f64) void {
-		if(!main.Window.grabbed) return;
 		inventory.breakBlock(selectedSlot, deltaTime);
 	}
 
@@ -499,6 +581,7 @@ pub const World = struct { // MARK: World
 	milliTime: i64,
 	gameTime: Atomic(i64) = .init(0),
 	spawn: Vec3f = undefined,
+	connected: bool = true,
 	blockPalette: *assets.Palette = undefined,
 	biomePalette: *assets.Palette = undefined,
 	itemDrops: ClientItemDropManager = undefined,
@@ -511,6 +594,7 @@ pub const World = struct { // MARK: World
 			.name = "client",
 			.milliTime = std.time.milliTimestamp(),
 		};
+
 		self.itemDrops.init(main.globalAllocator, self);
 		network.Protocols.handShake.clientSide(self.conn, settings.playerName);
 
@@ -523,15 +607,17 @@ pub const World = struct { // MARK: World
 	}
 
 	pub fn deinit(self: *World) void {
+		self.conn.deinit();
+
+		self.connected = false;
+
 		// TODO: Close all world related guis.
 		main.gui.inventory.deinit();
 		main.gui.deinit();
 		main.gui.init();
-
 		Player.inventory.deinit(main.globalAllocator);
 
 		main.threadPool.clear();
-		self.conn.deinit();
 		self.itemDrops.deinit();
 		self.blockPalette.deinit();
 		self.biomePalette.deinit();
@@ -558,7 +644,7 @@ pub const World = struct { // MARK: World
 		try assets.loadWorldAssets("serverAssets", self.blockPalette, self.biomePalette);
 		Player.loadFrom(zon.getChild("player"));
 		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
-		Player.inventory = Inventory.init(main.globalAllocator, 32, .normal, .playerInventory);
+		Player.inventory = Inventory.init(main.globalAllocator, 32, .normal, .{.playerInventory = Player.id});
 	}
 
 	pub fn update(self: *World) void {
@@ -616,7 +702,7 @@ pub var world: ?*World = null;
 
 pub var projectionMatrix: Mat4f = Mat4f.identity();
 
-pub var fog = Fog{.skyColor=.{0.8, 0.8, 1}, .fogColor=.{0.8, 0.8, 1}, .density=1.0/15.0/128.0}; // TODO: Make this depend on the render distance.
+pub var fog = Fog{.skyColor=.{0.8, 0.8, 1}, .fogColor=.{0.8, 0.8, 1}, .density=1.0/15.0/128.0, .fogLower = 100, .fogHigher = 1000};
 
 var nextBlockPlaceTime: ?i64 = null;
 var nextBlockBreakTime: ?i64 = null;
@@ -680,7 +766,8 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			acc[2] = -gravity;
 		}
 
-		var baseFrictionCoefficient: f32 = 50;
+		Player.currentFriction = if (Player.isFlying.load(.monotonic)) 20 else collision.calculateFriction(.client, Player.super.pos, Player.outerBoundingBox, 20);
+		var baseFrictionCoefficient: f32 = Player.currentFriction;
 		var directionalFrictionCoefficients: Vec3f = @splat(0);
 		const speedMultiplier: f32 = if(Player.hyperSpeed.load(.monotonic)) 4.0 else 1.0;
 
@@ -697,9 +784,11 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		const right = Vec3d{-forward[1], forward[0], 0};
 		var movementDir: Vec3d = .{0, 0, 0};
 		var movementSpeed: f64 = 0;
+		
 		if(main.Window.grabbed) {
+			const walkingSpeed: f64 = if (Player.crouching) 2 else 4;
 			if(KeyBoard.key("forward").value > 0.0) {
-				if(KeyBoard.key("sprint").pressed) {
+				if (KeyBoard.key("sprint").pressed and !Player.crouching) {
 					if(Player.isGhost.load(.monotonic)) {
 						movementSpeed = @max(movementSpeed, 128)*KeyBoard.key("forward").value;
 						movementDir += forward*@as(Vec3d, @splat(128*KeyBoard.key("forward").value));
@@ -711,21 +800,21 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 						movementDir += forward*@as(Vec3d, @splat(8*KeyBoard.key("forward").value));
 					}
 				} else {
-					movementSpeed = @max(movementSpeed, 4)*KeyBoard.key("forward").value;
-					movementDir += forward*@as(Vec3d, @splat(4*KeyBoard.key("forward").value));
+					movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("forward").value;
+					movementDir += forward*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("forward").value));
 				}
 			}
 			if(KeyBoard.key("backward").value > 0.0) {
-				movementSpeed = @max(movementSpeed, 4)*KeyBoard.key("backward").value;
-				movementDir += forward*@as(Vec3d, @splat(-4*KeyBoard.key("backward").value));
+				movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("backward").value;
+				movementDir += forward*@as(Vec3d, @splat(-walkingSpeed*KeyBoard.key("backward").value));
 			}
 			if(KeyBoard.key("left").value > 0.0) {
-				movementSpeed = @max(movementSpeed, 4*KeyBoard.key("left").value);
-				movementDir += right*@as(Vec3d, @splat(4*KeyBoard.key("left").value));
+				movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("left").value;
+				movementDir += right*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("left").value));
 			}
 			if(KeyBoard.key("right").value > 0.0) {
-				movementSpeed = @max(movementSpeed, 4*KeyBoard.key("right").value);
-				movementDir += right*@as(Vec3d, @splat(-4*KeyBoard.key("right").value));
+				movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("right").value;
+				movementDir += right*@as(Vec3d, @splat(-walkingSpeed*KeyBoard.key("right").value));
 			}
 			if(KeyBoard.key("jump").pressed) {
 				if(Player.isFlying.load(.monotonic)) {
@@ -777,6 +866,40 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 				@floatCast(main.KeyBoard.key("cameraDown").value - main.KeyBoard.key("cameraUp").value),
 			} * @as(Vec2f, @splat(3.14 * settings.controllerSensitivity));
 			main.game.camera.moveRotation(newPos[0] / 64.0, newPos[1] / 64.0);
+		}
+
+		if (collision.collides(.client, .x, 0, Player.super.pos + Player.standingBoundingBoxExtent - Player.crouchingBoundingBoxExtent, .{
+			.min = -Player.standingBoundingBoxExtent,
+			.max = Player.standingBoundingBoxExtent,
+		}) == null) {
+			Player.crouching = KeyBoard.key("crouch").pressed and !Player.isFlying.load(.monotonic);
+
+			if (Player.onGround) {
+				if (Player.crouching) {
+					Player.crouchPerc += @floatCast(deltaTime * 10);
+				} else {
+					Player.crouchPerc -= @floatCast(deltaTime * 10);
+				}
+				Player.crouchPerc = std.math.clamp(Player.crouchPerc, 0, 1);
+			}
+
+			const smoothPerc = Player.crouchPerc * Player.crouchPerc * (3 - 2 * Player.crouchPerc);
+
+			const newOuterBox = (Player.crouchingBoundingBoxExtent - Player.standingBoundingBoxExtent) * @as(Vec3d, @splat(smoothPerc)) + Player.standingBoundingBoxExtent;
+			
+			Player.super.pos += newOuterBox - Player.outerBoundingBoxExtent;
+			
+			Player.outerBoundingBoxExtent = newOuterBox;
+			
+			Player.outerBoundingBox = .{
+				.min = -Player.outerBoundingBoxExtent,
+				.max = Player.outerBoundingBoxExtent,
+			};
+			Player.eyeBox = .{
+				.min = -Vec3d{Player.outerBoundingBoxExtent[0]*0.2, Player.outerBoundingBoxExtent[1]*0.2, Player.outerBoundingBoxExtent[2] - 0.2},
+				.max = Vec3d{Player.outerBoundingBoxExtent[0]*0.2, Player.outerBoundingBoxExtent[1]*0.2, Player.outerBoundingBoxExtent[2] - 0.05},
+			};
+			Player.desiredEyePos = (Vec3d{0, 0, 1.3 - Player.crouchingBoundingBoxExtent[2]} - Vec3d{0, 0, 1.7 - Player.standingBoundingBoxExtent[2]}) * @as(Vec3f, @splat(smoothPerc)) + Vec3d{0, 0, 1.7 - Player.standingBoundingBoxExtent[2]};
 		}
 
 		// This our model for movement on a single frame:
@@ -911,10 +1034,25 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		}
 		steppingHeight = @min(steppingHeight, Player.eyePos[2] - Player.eyeBox.min[2]);
 
+		const slipLimit = 0.25 * Player.currentFriction;
+		
 		const xMovement = collision.collideOrStep(.client, .x, move[0], Player.super.pos, hitBox, steppingHeight);
 		Player.super.pos += xMovement;
+		if (KeyBoard.key("crouch").pressed and Player.onGround and @abs(Player.super.vel[0]) < slipLimit) {
+			if (collision.collides(.client, .x, 0, Player.super.pos - Vec3d{0, 0, 1}, hitBox) == null) {
+				Player.super.pos -= xMovement;
+				Player.super.vel[0] = 0;
+			}
+		}
+
 		const yMovement = collision.collideOrStep(.client, .y, move[1], Player.super.pos, hitBox, steppingHeight);
 		Player.super.pos += yMovement;
+		if (KeyBoard.key("crouch").pressed and Player.onGround and @abs(Player.super.vel[1]) < slipLimit) {
+			if (collision.collides(.client, .y, 0, Player.super.pos - Vec3d{0, 0, 1}, hitBox) == null) {
+				Player.super.pos -= yMovement;
+				Player.super.vel[1] = 0;
+			}
+		}
 
 		if (xMovement[0] != move[0]) {
 			Player.super.vel[0] = 0;
@@ -955,6 +1093,12 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			} else {
 				Player.super.pos[2] = box.min[2] - hitBox.max[2];
 			}
+
+			const damage: f32 = @floatCast(@round(@max((Player.super.vel[2] * Player.super.vel[2]) / (2 * gravity) - 7, 0)) / 2);
+			if (damage > 0.01) {
+				Inventory.Sync.addHealth(-damage, .fall, .client, Player.id);
+			}
+
 			Player.super.vel[2] = 0;
 
 			// Always unstuck upwards for now
@@ -985,6 +1129,8 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 	fog.fogColor = (biome.fogColor - fog.fogColor) * @as(Vec3f, @splat(t)) + fog.fogColor;
 	fog.density = (biome.fogDensity - fog.density) * t + fog.density;
+	fog.fogLower = (biome.fogLower - fog.fogLower) * t + fog.fogLower;
+	fog.fogHigher = (biome.fogHigher - fog.fogHigher) * t + fog.fogHigher;
 
 	world.?.update();
 }

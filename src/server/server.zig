@@ -70,6 +70,12 @@ pub const User = struct { // MARK: User
 
 	pub fn deinit(self: *User) void {
 		std.debug.assert(self.refCount.load(.monotonic) == 0);
+		
+		world.?.savePlayer(self) catch |err| {
+			std.log.err("Failed to save player: {s}", .{@errorName(err)});
+			return;
+		};
+
 		main.items.Inventory.Sync.ServerSide.disconnectUser(self);
 		std.debug.assert(self.inventoryClientToServerIdMap.count() == 0); // leak
 		self.inventoryClientToServerIdMap.deinit();
@@ -92,7 +98,11 @@ pub const User = struct { // MARK: User
 		}
 	}
 
+	var freeId: u32 = 0;
 	pub fn initPlayer(self: *User, name: []const u8) void {
+		self.id = freeId;
+		freeId += 1;
+
 		self.name = main.globalAllocator.dupe(u8, name);
 		world.?.findPlayer(self);
 	}
@@ -422,11 +432,8 @@ pub fn connect(user: *User) void {
 	userConnectList.enqueue(user);
 }
 
-var freeId: u32 = 0;
 pub fn connectInternal(user: *User) void {
 	// TODO: addEntity(player);
-	user.id = freeId;
-	freeId += 1;
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 	// Let the other clients know about this new one.
@@ -464,6 +471,7 @@ pub fn connectInternal(user: *User) void {
 	userMutex.lock();
 	users.append(user);
 	userMutex.unlock();
+	user.conn.handShakeState.store(main.network.Protocols.handShake.stepComplete, .monotonic);
 }
 
 pub fn messageFrom(msg: []const u8, source: *User) void { // MARK: message
