@@ -25,6 +25,8 @@
 			.type = .round,
 			.height = 6,
 			.height_variation = 3,
+			.leafElongation = 1.0,
+			.deltaLeafElongation = 0.2,
 		},
 		.{
 			.id = "cubyz:boulder",
