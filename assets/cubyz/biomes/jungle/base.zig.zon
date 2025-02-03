@@ -13,8 +13,7 @@
 	.music = "cubyz:leaves",
 	.ground_structure = .{
 		"1 cubyz:lush_grass",
-		"0 to 1 cubyz:mud",
-		"5 to 6 cubyz:basalt",
+		"5 to 6 cubyz:mud",
 	},
 	.structures = .{
 		.{
