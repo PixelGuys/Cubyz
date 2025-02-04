@@ -18,6 +18,27 @@
 	},
 	.structures = .{
 		.{
+			.id = "cubyz:boulder",
+			.chance = 0.025,
+			.block = "cubyz:basalt",
+			.size = 3,
+			.size_variance = 7,
+		},
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.05,
+			.block = "cubyz:cobblestone",
+			.size = 2,
+			.size_variance = 9,
+		},
+		.{
+			.id = "cubyz:boulder",
+			.chance = 0.1,
+			.block = "cubyz:mossy_cobblestone",
+			.size = 3,
+			.size_variance = 5,
+		},
+		.{
 			.id = "cubyz:flower_patch",
 			.block = "cubyz:lush_grass_vegetation",
 			.chance = 0.25,

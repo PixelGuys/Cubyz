@@ -59,8 +59,9 @@
 			.type = .round,
 			.height = 1,
 			.height_variation = 7,
-			.leafRadius = 2,
+			.leafRadius = 2.5,
 			.leafRadius_variation = 1,
+			.leafElongation = 0.5,
 		},
 	},
 	.parentBiomes = .{
