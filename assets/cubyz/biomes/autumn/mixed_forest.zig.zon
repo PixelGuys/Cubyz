@@ -2,6 +2,7 @@
 	.properties = .{
 		.cold,
 	},
+	.chance = 0.33,
 	.minHeight = 30,
 	.maxHeight = 50,
 	.minRadius = 100,

@@ -2,11 +2,11 @@
 	.properties = .{
 		.cold,
 	},
+	.chance = 0.33,
 	.minHeight = 25,
 	.maxHeight = 45,
 	.minRadius = 128,
 	.maxRadius = 180,
-	.chance = 0.25,
 	.roughness = 10,
 	.hills = 10,
 	.music = "cubyz:leaves",
