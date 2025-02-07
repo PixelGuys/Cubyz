@@ -24,9 +24,9 @@ var water: main.blocks.Block = undefined;
 
 pub fn init(parameters: ZonElement) void {
 	_ = parameters;
-	air = main.blocks.getBlockById("cubyz:air");
-	stone = main.blocks.getBlockById("cubyz:stone");
-	water = main.blocks.getBlockById("cubyz:water");
+	air = main.blocks.parseBlock("cubyz:air");
+	stone = main.blocks.parseBlock("cubyz:stone");
+	water = main.blocks.parseBlock("cubyz:water");
 }
 
 pub fn deinit() void {

@@ -214,10 +214,19 @@ pub fn getTypeById(id: []const u8) u16 {
 	}
 }
 
-pub fn getBlockById(id: []const u8) Block {
+pub fn parseBlock(data: []const u8) Block {
+	var id: []const u8 = data;
+	var blockData: ?u16 = null;
+	if(std.mem.indexOfScalarPos(u8, data, 1 + (std.mem.indexOfScalar(u8, data, ':') orelse 0), ':')) |pos| {
+		id = data[0..pos];
+		blockData = std.fmt.parseInt(u16, data[pos + 1..], 0) catch |err| blk: {
+			std.log.err("Error while parsing block data of '{s}': {s}", .{data, @errorName(err)});
+			break :blk null;
+		};	
+	}
 	if(reverseIndices.get(id)) |resultType| {
 		var result: Block = .{.typ = resultType, .data = 0};
-		result.data = result.mode().naturalStandard;
+		result.data = blockData orelse result.mode().naturalStandard;
 		return result;
 	} else {
 		std.log.err("Couldn't find block {s}. Replacing it with air...", .{id});

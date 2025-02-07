@@ -25,7 +25,7 @@ density: f32,
 pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) *FlowerPatch {
 	const self = arenaAllocator.create(FlowerPatch);
 	self.* = .{
-		.block = main.blocks.getBlockById(parameters.get([]const u8, "block", "")),
+		.block = main.blocks.parseBlock(parameters.get([]const u8, "block", "")),
 		.width = parameters.get(f32, "width", 5),
 		.variation = parameters.get(f32, "variation", 1),
 		.density = parameters.get(f32, "density", 0.5),
