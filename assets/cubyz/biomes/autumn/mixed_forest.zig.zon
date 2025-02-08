@@ -35,8 +35,11 @@
 			.chance = 0.1,
 			.type = .round,
 			.height = 10,
-			.height_variation = 3,
-			.leafRadius = 3,
+			.height_variation = 5,
+			.leafRadius = 2.5,
+			.leafRadius_variation = 1.5,
+			.leafElongation = 1.7,
+			.deltaLeafElongation = 0.2,
 		},
 		.{
 			.id = "cubyz:fallen_tree",
