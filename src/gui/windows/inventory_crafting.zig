@@ -125,6 +125,7 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 }
 
 fn refresh() void {
+	const oldScrollState = if(window.rootComponent) |oldList| oldList.verticalList.scrollBar.currentState else 0;
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 8);
 	if(!findAvailableRecipes(list)) {
 		list.deinit();
@@ -134,6 +135,7 @@ fn refresh() void {
 		comp.deinit();
 	}
 	list.finish(.center);
+	list.scrollBar.currentState = oldScrollState;
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
 	window.contentSize[0] = @max(window.contentSize[0], window.getMinWindowWidth());
