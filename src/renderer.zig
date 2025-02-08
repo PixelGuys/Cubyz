@@ -854,10 +854,17 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				if(isTool) {
 					power = stack.item.?.tool.getPowerByBlockClass(block.blockClass());
 				}
+				const isChisel = stack.item != null and stack.item.? == .baseItem and std.mem.eql(u8, stack.item.?.baseItem.id, "cubyz:chisel");
+				if(isChisel and block.mode() == main.rotation.getByID("stairs")) { // TODO: Remove once the chisel is a tool.
+					power = 10;
+				}
 				if(power >= block.breakingPower()) {
 					var breakTime: f32 = block.blockHealth();
 					if(isTool) {
 						breakTime = breakTime*stack.item.?.tool.swingTime/power;
+					}
+					if(isChisel and block.mode() == main.rotation.getByID("stairs")) { // TODO: Remove once the chisel is a tool.
+						breakTime = 0.5;
 					}
 					currentBlockProgress += @as(f32, @floatCast(deltaTime))/breakTime;
 					if(currentBlockProgress < 1) {
