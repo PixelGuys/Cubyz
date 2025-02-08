@@ -25,6 +25,10 @@
 	},
 	.{
 		.inputs = .{"cubyz:stone"},
+		.output = "cubyz:cobblestone,
+	},
+	.{
+		.inputs = .{"cubyz:stone"},
 		.output = "cubyz:stone_tile",
 	},
 	.{
