@@ -1,8 +1,6 @@
 .{
 	.class = .fluid,
-	.drops = .{
-		.{.items = .{.auto}},
-	},
+	.drops = .{},
 	.selectable = false,
 	.solid = false,
 	.degradable = true,
