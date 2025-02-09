@@ -1184,10 +1184,12 @@ pub const ItemStack = struct { // MARK: ItemStack
 	}
 };
 
-const Recipe = struct { // MARK: Recipe
+pub const Recipe = struct { // MARK: Recipe
 	sourceItems: []*BaseItem,
 	sourceAmounts: []u16,
-	resultItem: ItemStack,
+	resultItem: *BaseItem,
+	resultAmount: u16,
+	cachedInventory: ?Inventory = null,
 };
 
 var arena: main.utils.NeverFailingArenaAllocator = undefined;
@@ -1244,7 +1246,8 @@ fn parseRecipe(zon: ZonElement) !Recipe {
 	const recipe = Recipe {
 		.sourceItems = arena.allocator().alloc(*BaseItem, inputs.len),
 		.sourceAmounts = arena.allocator().alloc(u16, inputs.len),
-		.resultItem = output,
+		.resultItem = output.item.?.baseItem,
+		.resultAmount = output.amount,
 	};
 	errdefer {
 		arena.allocator().free(recipe.sourceAmounts);
@@ -1267,6 +1270,11 @@ pub fn registerRecipes(zon: ZonElement) void {
 
 pub fn reset() void {
 	reverseIndices.clearAndFree();
+	for(recipeList.items) |recipe| {
+		if(recipe.cachedInventory) |inv| {
+			inv.deinit(main.globalAllocator);
+		}
+	}
 	recipeList.clearAndFree();
 	itemListSize = 0;
 	_ = arena.reset(.free_all);
@@ -1274,6 +1282,11 @@ pub fn reset() void {
 
 pub fn deinit() void {
 	reverseIndices.clearAndFree();
+	for(recipeList.items) |recipe| {
+		if(recipe.cachedInventory) |inv| {
+			inv.deinit(main.globalAllocator);
+		}
+	}
 	recipeList.clearAndFree();
 	arena.deinit();
 	Inventory.Sync.ClientSide.deinit();

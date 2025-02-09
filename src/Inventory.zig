@@ -302,7 +302,7 @@ pub const Sync = struct { // MARK: Sync
 		fn createInventory(user: *main.server.User, clientId: u32, len: usize, typ: Inventory.Type, source: Source) void {
 			main.utils.assertLocked(&mutex);
 			switch(source) {
-				.sharedTestingInventory => {
+				.sharedTestingInventory, .recipe => {
 					for(inventories.items) |*inv| {
 						if(std.meta.eql(inv.source, source)) {
 							inv.addUser(user, clientId);
@@ -331,6 +331,14 @@ pub const Sync = struct { // MARK: Sync
 					const inventoryZon = playerData.getChild(@tagName(source));
 
 					inventory.inv.loadFromZon(inventoryZon);
+				},
+				.recipe => |recipe| {
+					for(0..recipe.sourceAmounts.len) |i| {
+						inventory.inv._items[i].amount = recipe.sourceAmounts[i];
+						inventory.inv._items[i].item = .{.baseItem = recipe.sourceItems[i]};
+					}
+					inventory.inv._items[inventory.inv._items.len - 1].amount = recipe.resultAmount;
+					inventory.inv._items[inventory.inv._items.len - 1].item = .{.baseItem = recipe.resultItem};
 				},
 				.other => {},
 				.alreadyFreed => unreachable,
@@ -1063,10 +1071,17 @@ pub const Command = struct { // MARK: Command
 				.playerInventory, .hand => |val| {
 					std.mem.writeInt(u32, data.addMany(4)[0..4], val, .big);
 				},
-				else => {}
-			}
-			switch(self.source) {
-				.playerInventory, .sharedTestingInventory, .hand, .other => {},
+				.recipe => |val| {
+					std.mem.writeInt(u16, data.addMany(2)[0..2], val.resultAmount, .big);
+					data.appendSlice(val.resultItem.id);
+					data.append(0);
+					for(0..val.sourceItems.len) |i| {
+						std.mem.writeInt(u16, data.addMany(2)[0..2], val.sourceAmounts[i], .big);
+						data.appendSlice(val.sourceItems[i].id);
+						data.append(0);
+					}
+				},
+				.sharedTestingInventory, .other => {},
 				.alreadyFreed => unreachable,
 			}
 		}
@@ -1082,6 +1097,32 @@ pub const Command = struct { // MARK: Command
 				.playerInventory => .{.playerInventory = std.mem.readInt(u32, data[14..18], .big)},
 				.sharedTestingInventory => .{.sharedTestingInventory = {}},
 				.hand => .{.hand = std.mem.readInt(u32, data[14..18], .big)},
+				.recipe => .{.recipe = blk: {
+					var itemList = main.List(struct{amount: u16, item: *const main.items.BaseItem}).initCapacity(main.stackAllocator, len);
+					defer itemList.deinit();
+					var index: usize = 14;
+					while(index + 2 < data.len) {
+						const resultAmount = std.mem.readInt(u16, data[index..][0..2], .big);
+						index += 2;
+						const resultItem = if(std.mem.indexOfScalarPos(u8, data, index, 0)) |endIndex| blk2: {
+							const itemId = data[index..endIndex];
+							index = endIndex + 1;
+							break :blk2 main.items.getByID(itemId) orelse return error.Invalid;
+						} else return error.Invalid;
+						itemList.append(.{.amount = resultAmount, .item = resultItem});
+					}
+					if(itemList.items.len != len) return error.Invalid;
+					// Find the recipe in our list:
+					outer: for(main.items.recipes()) |*recipe| {
+						if(recipe.resultAmount == itemList.items[0].amount and recipe.resultItem == itemList.items[0].item and recipe.sourceItems.len == itemList.items.len - 1) {
+							for(itemList.items[1..], 0..) |item, i| {
+								if(item.amount != recipe.sourceAmounts[i] or item.item != recipe.sourceItems[i]) continue :outer;
+							}
+							break :blk recipe;
+						}
+					}
+					return error.Invalid;
+				}},
 				.other => .{.other = {}},
 				.alreadyFreed => unreachable,
 			};
@@ -1655,6 +1696,7 @@ const SourceType = enum(u8) {
 	playerInventory = 1,
 	sharedTestingInventory = 2,
 	hand = 3,
+	recipe = 4,
 	other = 0xff, // TODO: List every type separately here.
 };
 const Source = union(SourceType) {
@@ -1662,6 +1704,7 @@ const Source = union(SourceType) {
 	playerInventory: u32,
 	sharedTestingInventory: void,
 	hand: u32,
+	recipe: *const main.items.Recipe,
 	other: void,
 };
 
