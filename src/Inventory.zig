@@ -1394,8 +1394,10 @@ pub const Command = struct { // MARK: Command
 		item: ?Item,
 		amount: u16 = 0,
 
-		fn run(self: FillFromCreative, allocator: NeverFailingAllocator, cmd: *Command, side: Side, _: ?*main.server.User, _: Gamemode) error{serverFailure}!void {
+		fn run(self: FillFromCreative, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, mode: Gamemode) error{serverFailure}!void {
 			if(self.dest.inv.type == .workbench and self.dest.slot == 25) return;
+			if(side == .server and user != null and mode != .creative) return;
+			if(side == .client and mode != .creative) return;
 
 			if(!self.dest.ref().empty()) {
 				cmd.executeBaseOperation(allocator, .{.delete = .{
