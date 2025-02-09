@@ -802,6 +802,12 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 									updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], oldBlock, block);
 									return;
 								}
+							} else {
+								if(rotationMode.modifyBlock(&block, itemBlock)) {
+									if(!canPlaceBlock(selectedPos, block)) return;
+									updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], oldBlock, block);
+									return;
+								}
 							}
 							// Check the block in front of it:
 							const neighborPos = posBeforeBlock;

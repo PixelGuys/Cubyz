@@ -35,6 +35,9 @@ pub const RotationMode = struct { // MARK: RotationMode
 		fn updateData(_: *Block, _: Neighbor, _: Block) bool {
 			return false;
 		}
+		fn modifyBlock(_: *Block, _: u16) bool {
+			return false;
+		}
 		fn rayIntersection(block: Block, _: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
 			return rayModelIntersection(blocks.meshes.model(block), relativePlayerPos, playerDir);
 		}
@@ -114,6 +117,8 @@ pub const RotationMode = struct { // MARK: RotationMode
 
 	/// Updates data of a placed block if the RotationMode dependsOnNeighbors.
 	updateData: *const fn(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool = &DefaultFunctions.updateData,
+
+	modifyBlock: *const fn(block: *Block, newType: u16) bool = DefaultFunctions.modifyBlock,
 
 	rayIntersection: *const fn(block: Block, item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult = &DefaultFunctions.rayIntersection,
 
@@ -946,6 +951,19 @@ pub const RotationModes = struct {
 			const modelIndex = main.models.Model.init(quadList.items);
 			modelCache = modelIndex;
 			return modelIndex;
+		}
+
+		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: ?Neighbor, _: *Block, _: Block, _: bool) bool {
+			return false;
+		}
+
+		pub fn modifyBlock(block: *Block, newBlockType: u16) bool {
+			if(block.transparent() or block.viewThrough()) return false;
+			if(!main.models.models.items[main.blocks.meshes.modelIndexStart(block.*)].allNeighborsOccluded) return false;
+			if(block.data != 0) return false;
+			block.data = block.typ;
+			block.typ = newBlockType;
+			return true;
 		}
 	};
 };
