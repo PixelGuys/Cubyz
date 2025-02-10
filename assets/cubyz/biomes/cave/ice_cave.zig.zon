@@ -1,0 +1,26 @@
+.{
+	.isCave = true,
+	.maxHeight = -256,
+	.minHeight = -48250,
+	.chance = 0.2,
+	.caves = -0.025,
+	.stoneBlock = "cubyz:frost",
+	.structures = .{
+		.{
+			.id = "cubyz:stalagmite",
+			.block = "cubyz:ice",
+			.chance = 0.5,
+			.size = 4,
+			.size_variation = 6,
+		},
+	},
+	.stripes = .{
+		.{
+			.direction= .{4, 4, 4},
+			.block= "cubyz:glacite",
+			.distance= 8,
+			.offset= 8,
+			.width= 2,
+		},
+	},
+}
