@@ -17,7 +17,7 @@
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:swamp/base",
-			.chance = 24,
+			.chance = 6,
 		},
 	},
 }

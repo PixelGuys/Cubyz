@@ -12,18 +12,17 @@
 	.maxRadius = 140,
 	.music = "cubyz:sunrise",
 	.ground_structure = .{
-		"cubyz:lush_grass",
-		"5 to 7 cubyz:mud",
+		"6 to 8 cubyz:mud",
 	},
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:mud",
-			.chance = 0.33,
-			.width = 5,
-			.variation = 4,
-			.depth = 1,
-			.smoothness = 0.5,
+			.block = "cubyz:clay",
+			.chance = 0.25,
+			.width = 1,
+			.variation = 6,
+			.depth = 2,
+			.smoothness = 0.6,
 		},
 		.{
 			.id = "cubyz:simple_tree",
