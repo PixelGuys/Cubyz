@@ -20,4 +20,5 @@
 	.rotation = .stairs,
 	.model = "cubyz:cube",
 	.texture = "cubyz:glacite",
+	.friction = 7,
 }
