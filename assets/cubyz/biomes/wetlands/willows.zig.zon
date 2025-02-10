@@ -8,8 +8,8 @@
 	.roughness = 2,
 	.chance = 0,
 	.hills = 3.5,
-	.minRadius = 100,
-	.maxRadius = 140,
+	.minRadius = 64,
+	.maxRadius = 128,
 	.music = "cubyz:sunrise",
 	.ground_structure = .{
 		"6 to 8 cubyz:mud",
@@ -58,7 +58,7 @@
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:wetlands/base",
-			.chance = 16,
+			.chance = 8,
 		},
 	},
 }
