@@ -72,6 +72,7 @@ pub fn init() void {
 	MenuBackGround.init() catch |err| {
 		std.log.err("Failed to initialize the Menu Background: {s}", .{@errorName(err)});
 	};
+	Skybox.init();
 	chunk_meshing.init();
 	mesh_storage.init();
 	reflectionCubeMap = .init();
@@ -86,6 +87,7 @@ pub fn deinit() void {
 	Bloom.deinit();
 	MeshSelection.deinit();
 	MenuBackGround.deinit();
+	Skybox.deinit();
 	mesh_storage.deinit();
 	chunk_meshing.deinit();
 	reflectionCubeMap.deinit();
@@ -182,6 +184,8 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	const frustum = Frustum.init(Vec3f{0, 0, 0}, game.camera.viewMatrix, lastFov, lastWidth, lastHeight);
 
 	const time: u32 = @intCast(std.time.milliTimestamp() & std.math.maxInt(u32));
+
+	Skybox.render();
 
 	gpu_performance_measuring.startQuery(.animation);
 	blocks.meshes.preProcessAnimationData(time);
@@ -608,6 +612,80 @@ pub const MenuBackGround = struct {
 			std.log.err("Cannot write file {s} due to {s}", .{fileName, @errorName(err)});
 		};
 		// TODO: Performance is terrible even with -O3. Consider using qoi instead.
+	}
+};
+
+pub const Skybox = struct {
+	var shader: Shader = undefined;
+	var uniforms: struct {
+		viewMatrix: c_int,
+		projectionMatrix: c_int,
+		position: c_int,
+	} = undefined;
+
+	var vao: c_uint = undefined;
+	var vbo: c_uint = undefined;
+
+	const NUM_STARS = 100000;
+
+	fn init() void {
+		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/skybox/vertex.vs", "assets/cubyz/shaders/skybox/fragment.fs", "", &uniforms);
+		shader.bind();
+		
+		var rawData: [NUM_STARS * 3]f32 = undefined;
+
+		var starRandom = std.Random.DefaultPrng.init(0);
+
+		for (0..NUM_STARS) |i| {
+			const distanceR = @abs(starRandom.random().floatNorm(f32));
+			const distance = distanceR * 52850.0;
+
+			var angle = starRandom.random().float(f32) * 2.0 * std.math.pi;
+			angle = std.math.lerp((@sin(2.0 * angle) + 2.0 * angle) / 2.0, angle, distanceR * distanceR);
+			angle += distanceR * distanceR * 1.5 * std.math.pi;
+
+			const maxDepth = 10000.0 * @exp(-(distance / 17000.0) * (distance / 17000.0));//10000.0 * @exp(-distance / 10000.0);//10000.0 * (1.0 - distanceR) * (1.0 - distanceR);
+
+			const z = (starRandom.random().float(f32) * 2.0 - 1.0) * maxDepth;
+
+			const x = @cos(angle) * distance;
+			const y = @sin(angle) * distance;
+
+			rawData[i * 3] = x - 26000;
+			rawData[i * 3 + 1] = y;
+			rawData[i * 3 + 2] = z;
+		}
+
+		c.glGenVertexArrays(1, &vao);
+		c.glBindVertexArray(vao);
+		c.glGenBuffers(2, @ptrCast(&vbo));
+		c.glBindBuffer(c.GL_ARRAY_BUFFER, vbo);
+		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(rawData.len*@sizeOf(f32)), &rawData, c.GL_STATIC_DRAW);
+		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, 3*@sizeOf(f32), null);
+		c.glEnableVertexAttribArray(0);
+	}
+
+	pub fn deinit() void {
+		shader.deinit();
+		c.glDeleteVertexArrays(1, &vao);
+		c.glDeleteBuffers(1, @ptrCast(&vbo));
+	}
+
+	pub fn render() void {
+		c.glDisable(c.GL_CULL_FACE);
+		c.glDisable(c.GL_DEPTH_TEST);
+
+		const viewMatrix = game.camera.viewMatrix;
+		shader.bind();
+
+		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
+		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
+
+		c.glBindVertexArray(vao);
+		c.glDrawArrays(c.GL_POINTS, 0, NUM_STARS * 3);
+
+		c.glEnable(c.GL_CULL_FACE);
+		c.glEnable(c.GL_DEPTH_TEST);
 	}
 };
 
