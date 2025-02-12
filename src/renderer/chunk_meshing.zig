@@ -490,7 +490,7 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 				var finished: [6]bool = .{false} ** 6;
 				for(1..4) |i| {
 					const _i: i32 = @intCast(i);
-					const nextVal = getLightAt(parent, finalPos[0] +% direction.relX()*_i, finalPos[1] +% direction.relY()*_i, finalPos[2] +% direction.relY()*_i);
+					const nextVal = getLightAt(parent, finalPos[0] +% direction.relX()*_i, finalPos[1] +% direction.relY()*_i, finalPos[2] +% direction.relZ()*_i);
 					for(0..6) |j| {
 						if(nextVal[j] == 0) {
 							finished[j] = true;
