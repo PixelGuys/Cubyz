@@ -476,17 +476,32 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 	}
 
 	fn getCornerLightAligned(parent: *ChunkMesh, pos: Vec3i, direction: chunk.Neighbor) [6]u8 { // Fast path for algined normals, leading to 4 instead of 8 light samples.
+		var val: [6]f32 = .{0, 0, 0, 0, 0, 0};
 		const normal: Vec3f = @floatFromInt(Vec3i{direction.relX(), direction.relY(), direction.relZ()});
 		const lightPos = @as(Vec3f, @floatFromInt(pos)) + normal*@as(Vec3f, @splat(0.5)) - @as(Vec3f, @splat(0.5));
 		const startPos: Vec3i = @intFromFloat(@floor(lightPos));
-		var val: [6]f32 = .{0, 0, 0, 0, 0, 0};
 		var dx: i32 = 0;
 		while(dx <= 1): (dx += 1) {
 			var dy: i32 = 0;
 			while(dy <= 1): (dy += 1) {
 				const weight: f32 = 1.0/4.0;
 				const finalPos = startPos +% @as(Vec3i, @intCast(@abs(direction.textureX())))*@as(Vec3i, @splat(dx)) +% @as(Vec3i, @intCast(@abs(direction.textureY()*@as(Vec3i, @splat(dy)))));
-				const lightVal: [6]u8 = getLightAt(parent, finalPos[0], finalPos[1], finalPos[2]);
+				var lightVal: [6]u8 = getLightAt(parent, finalPos[0], finalPos[1], finalPos[2]);
+				var finished: [6]bool = .{false} ** 6;
+				for(1..4) |i| {
+					const _i: i32 = @intCast(i);
+					const nextVal = getLightAt(parent, finalPos[0] +% direction.relX()*_i, finalPos[1] +% direction.relY()*_i, finalPos[2] +% direction.relY()*_i);
+					for(0..6) |j| {
+						if(nextVal[j] == 0) {
+							finished[j] = true;
+						}
+						if(finished[j]) {
+							lightVal[j] -|= 8;
+							continue;
+						}
+						lightVal[j] = @min(lightVal[j], nextVal[j]);
+					}
+				}
 				for(0..6) |i| {
 					val[i] += @as(f32, @floatFromInt(lightVal[i]))*weight;
 				}
