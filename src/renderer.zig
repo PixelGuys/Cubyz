@@ -629,21 +629,13 @@ pub const Skybox = struct {
 	const NUM_STARS = 100000;
 
 	fn getStarPos(starRandom: std.Random) Vec3d {
-		const distanceR = @abs(starRandom.floatNorm(f64));
-		const distance = distanceR * 52850.0;
+		const x = starRandom.floatNorm(f64);
+		const y = starRandom.floatNorm(f64);
+		const z = starRandom.floatNorm(f64);
 
-		var angle = starRandom.float(f64) * 2.0 * std.math.pi;
-		angle = std.math.lerp((@sin(2.0 * angle) + 2.0 * angle) / 2.0, angle, distanceR * distanceR);
-		angle += distanceR * distanceR * 1.5 * std.math.pi;
+		const r = std.math.cbrt(starRandom.float(f64)) * 5000.0;
 
-		const maxDepth = 10000.0 * @exp(-(distance / 17000.0) * (distance / 17000.0));//10000.0 * @exp(-distance / 10000.0);//10000.0 * (1.0 - distanceR) * (1.0 - distanceR);
-
-		const z = (starRandom.float(f64) * 2.0 - 1.0) * maxDepth;
-
-		const x = @cos(angle) * distance - 26000.0;
-		const y = @sin(angle) * distance;
-
-		return .{x, y, z};
+		return vec.normalize(Vec3d {x, y, z}) * @as(Vec3d, @splat(r));
 	}
 
 	fn init() void {
@@ -655,10 +647,7 @@ pub const Skybox = struct {
 		var starRandom = std.Random.DefaultPrng.init(0);
 
 		for (0..NUM_STARS) |i| {
-			var pos = getStarPos(starRandom.random());
-			while (starRandom.random().float(f64) > @exp(-vec.length(pos) / 5000.0)) {
-				pos = getStarPos(starRandom.random());
-			}
+			const pos = getStarPos(starRandom.random());
 
 			const radius: f64 = starRandom.random().floatExp(f64) * 4 + 0.2;
 			
