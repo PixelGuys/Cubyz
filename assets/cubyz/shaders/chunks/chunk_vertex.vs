@@ -68,7 +68,6 @@ void main() {
 	int vertexID = gl_VertexID & 3;
 	int chunkID = gl_BaseInstance;
 	int voxelSize = chunks[chunkID].voxelSize;
-	vec3 modelPosition = vec3(chunks[chunkID].position.xyz - playerPositionInteger) - playerPositionFraction;
 	int encodedPositionAndLightIndex = faceData[faceID].encodedPositionAndLightIndex;
 	int textureAndQuad = faceData[faceID].textureAndQuad;
 	uint lightIndex = chunks[chunkID].lightStart + 4*(encodedPositionAndLightIndex >> 16);
@@ -100,7 +99,8 @@ void main() {
 
 	position += quads[quadIndex].corners[vertexID];
 	position *= voxelSize;
-	position += modelPosition;
+	position += vec3(chunks[chunkID].position.xyz - playerPositionInteger);
+	position -= playerPositionFraction;
 
 	direction = position;
 
