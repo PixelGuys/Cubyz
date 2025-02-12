@@ -628,32 +628,54 @@ pub const Skybox = struct {
 
 	const NUM_STARS = 100000;
 
+	fn getStarPos(starRandom: std.Random) Vec3d {
+		const distanceR = @abs(starRandom.floatNorm(f64));
+		const distance = distanceR * 52850.0;
+
+		var angle = starRandom.float(f64) * 2.0 * std.math.pi;
+		angle = std.math.lerp((@sin(2.0 * angle) + 2.0 * angle) / 2.0, angle, distanceR * distanceR);
+		angle += distanceR * distanceR * 1.5 * std.math.pi;
+
+		const maxDepth = 10000.0 * @exp(-(distance / 17000.0) * (distance / 17000.0));//10000.0 * @exp(-distance / 10000.0);//10000.0 * (1.0 - distanceR) * (1.0 - distanceR);
+
+		const z = (starRandom.float(f64) * 2.0 - 1.0) * maxDepth;
+
+		const x = @cos(angle) * distance - 26000.0;
+		const y = @sin(angle) * distance;
+
+		return .{x, y, z};
+	}
+
 	fn init() void {
 		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/skybox/vertex.vs", "assets/cubyz/shaders/skybox/fragment.fs", "", &uniforms);
 		shader.bind();
 		
-		var rawData: [NUM_STARS * 3]f32 = undefined;
+		var rawData: [NUM_STARS * 5]f32 = undefined;
 
 		var starRandom = std.Random.DefaultPrng.init(0);
 
 		for (0..NUM_STARS) |i| {
-			const distanceR = @abs(starRandom.random().floatNorm(f32));
-			const distance = distanceR * 52850.0;
+			var pos = getStarPos(starRandom.random());
+			while (starRandom.random().float(f64) > @exp(-vec.length(pos) / 5000.0)) {
+				pos = getStarPos(starRandom.random());
+			}
 
-			var angle = starRandom.random().float(f32) * 2.0 * std.math.pi;
-			angle = std.math.lerp((@sin(2.0 * angle) + 2.0 * angle) / 2.0, angle, distanceR * distanceR);
-			angle += distanceR * distanceR * 1.5 * std.math.pi;
+			const radius: f64 = starRandom.random().floatExp(f64) * 4 + 0.2;
+			
+			const temperature: f64 = @abs((starRandom.random().floatNorm(f64) * 3000.0 + 6000.0) / 5772.0);
 
-			const maxDepth = 10000.0 * @exp(-(distance / 17000.0) * (distance / 17000.0));//10000.0 * @exp(-distance / 10000.0);//10000.0 * (1.0 - distanceR) * (1.0 - distanceR);
+			const luminosity = 4.0 * std.math.pi * radius * radius * temperature * temperature * temperature * temperature;
 
-			const z = (starRandom.random().float(f32) * 2.0 - 1.0) * maxDepth;
+			const flux = luminosity / (4.0 * std.math.pi * 1.36e+7 * vec.length(pos) * vec.length(pos));
 
-			const x = @cos(angle) * distance;
-			const y = @sin(angle) * distance;
+			const magnitude = -2.5 * @log10(flux) - 26.83;
 
-			rawData[i * 3] = x - 26000;
-			rawData[i * 3 + 1] = y;
-			rawData[i * 3 + 2] = z;
+			rawData[i * 5] = @floatCast(pos[0]);
+			rawData[i * 5 + 1] = @floatCast(pos[1]);
+			rawData[i * 5 + 2] = @floatCast(pos[2]);
+			
+			rawData[i * 5 + 3] = @floatCast(temperature * 5772.0);
+			rawData[i * 5 + 4] = @floatCast(magnitude);
 		}
 
 		c.glGenVertexArrays(1, &vao);
@@ -661,8 +683,15 @@ pub const Skybox = struct {
 		c.glGenBuffers(2, @ptrCast(&vbo));
 		c.glBindBuffer(c.GL_ARRAY_BUFFER, vbo);
 		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(rawData.len*@sizeOf(f32)), &rawData, c.GL_STATIC_DRAW);
-		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, 3*@sizeOf(f32), null);
+
+		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, 5*@sizeOf(f32), null);
 		c.glEnableVertexAttribArray(0);
+		
+		c.glVertexAttribPointer(1, 1, c.GL_FLOAT, c.GL_FALSE, 5*@sizeOf(f32), @ptrFromInt(3*@sizeOf(f32)));
+		c.glEnableVertexAttribArray(1);
+		
+		c.glVertexAttribPointer(2, 1, c.GL_FLOAT, c.GL_FALSE, 5*@sizeOf(f32), @ptrFromInt(4*@sizeOf(f32)));
+		c.glEnableVertexAttribArray(2);
 	}
 
 	pub fn deinit() void {
@@ -674,6 +703,7 @@ pub const Skybox = struct {
 	pub fn render() void {
 		c.glDisable(c.GL_CULL_FACE);
 		c.glDisable(c.GL_DEPTH_TEST);
+		c.glEnable(c.GL_BLEND);
 
 		const viewMatrix = game.camera.viewMatrix;
 		shader.bind();
