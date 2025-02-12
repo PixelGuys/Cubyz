@@ -7,12 +7,12 @@
 	.degradable = true,
 	.collide = false,
 	.alwaysViewThrough = true,
-	.absorbedLight = 0x121012,	
+	.absorbedLight = 0x121012,
 	.model = "cubyz:plane",
 	.rotation = .carpet,
 	.texture = "cubyz:ivy",
-	.item= .{
+	.item = .{
 		.texture = "ivy.png",
-	},	
+	},
 	.lodReplacement = "cubyz:air",
 }

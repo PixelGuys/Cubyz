@@ -157,7 +157,7 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 		11, 11, 11, 11, 11,
 		14, 14, 14, 14, 14,
 	};
-	
+
 	/// Contains the material(s) of a single pixel and tries to avoid multiple materials.
 	const PixelData = struct {
 		maxNeighbors: u8 = 0,
@@ -389,7 +389,7 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 				if(hasDifferentItems) {
 					heightMap[x][y] -= 1;
 				}
-				
+
 				// Take into account further neighbors with lower priority:
 				dx = -2;
 				while(dx <= 1) : (dx += 1) {
@@ -423,7 +423,7 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 				}
 			}
 		}
-		
+
 		var seed: u64 = tool.seed;
 		random.scrambleSeed(&seed);
 
@@ -999,7 +999,7 @@ pub const Tool = struct { // MARK: Tool
 		}
 		return self.texture.?;
 	}
-	
+
 	fn getTooltip(self: *Tool) []const u8 {
 		self.tooltip.clearRetainingCapacity();
 		self.tooltip.writer().print(
@@ -1054,9 +1054,7 @@ pub const Item = union(enum) { // MARK: Item
 
 	pub fn deinit(self: Item) void {
 		switch(self) {
-			.baseItem => {
-				
-			},
+			.baseItem => {},
 			.tool => |_tool| {
 				_tool.deinit();
 			},

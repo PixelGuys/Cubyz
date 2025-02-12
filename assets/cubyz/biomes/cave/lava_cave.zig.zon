@@ -39,7 +39,6 @@
 			.size_variation = 6,
 		},
 		.{
-			
 			.id = "cubyz:ground_patch",
 			.block = "cubyz:lava",
 			.chance = 0.064,

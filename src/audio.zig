@@ -131,7 +131,7 @@ const MusicLoadTask = struct {
 		.clean = @ptrCast(&clean),
 		.taskType = .misc,
 	};
-	
+
 	pub fn schedule(musicId: []const u8) void {
 		const task = main.globalAllocator.create(MusicLoadTask);
 		task.* = MusicLoadTask {
@@ -331,5 +331,3 @@ fn patestCallback(
 	addMusic(buffer);
 	return 0;
 }
-
-

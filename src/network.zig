@@ -507,7 +507,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	pub fn removeConnection(self: *ConnectionManager, conn: *Connection) void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
-		
+
 		for(self.connections.items, 0..) |other, i| {
 			if(other == conn) {
 				_ = self.connections.swapRemove(i);
@@ -519,7 +519,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	fn onReceive(self: *ConnectionManager, data: []const u8, source: Address) void {
 		std.debug.assert(self.threadId == std.Thread.getCurrentId());
 		self.mutex.lock();
-		
+
 		for(self.connections.items) |conn| {
 			if(conn.remoteAddress.ip == source.ip) {
 				if(conn.bruteforcingPort) {
@@ -670,7 +670,7 @@ pub const Protocols = struct {
 						zonObject.put("spawn", main.server.world.?.spawn);
 						zonObject.put("blockPalette", main.server.world.?.blockPalette.save(main.stackAllocator));
 						zonObject.put("biomePalette", main.server.world.?.biomePalette.save(main.stackAllocator));
-						
+
 						const outData = zonObject.toStringEfficient(main.stackAllocator, &[1]u8{stepServerData});
 						defer main.stackAllocator.free(outData);
 						conn.sendImportant(id, outData);
@@ -1758,7 +1758,7 @@ const ProtocolTask = struct {
 		.clean = @ptrCast(&clean),
 		.taskType = .misc,
 	};
-	
+
 	pub fn schedule(conn: *Connection, protocol: u8, data: []const u8) void {
 		const task = main.globalAllocator.create(ProtocolTask);
 		task.* = ProtocolTask {

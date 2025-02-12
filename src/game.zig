@@ -316,7 +316,7 @@ pub const collision = struct {
 					const min = std.math.clamp(vec.xy(blockBox.min), vec.xy(boundingBox.min), vec.xy(boundingBox.max));
 
 					const area = (max[0] - min[0]) * (max[1] - min[1]);
-				
+
 					if (block.collide()) {
 						totalArea += area;
 						friction += area * @as(f64, @floatCast(block.friction()));
@@ -324,7 +324,7 @@ pub const collision = struct {
 				}
 			}
 		}
-		
+
 		if (totalArea == 0) {
 			return defaultFriction;
 		}
@@ -385,7 +385,7 @@ pub const DamageType = enum(u8) {
 	heal = 0, // For when you are adding health
 	kill = 1,
 	fall = 2,
-	
+
 	pub fn sendMessage(self: DamageType, name: []const u8) void {
 		switch (self) {
 			.heal => main.server.sendMessage("{s}§#ffffff was healed", .{name}),
@@ -519,7 +519,7 @@ pub const Player = struct { // MARK: Player
 		Player.super.vel = .{0, 0, 0};
 
 		Player.super.health = Player.super.maxHealth;
-		
+
 		Player.eyeVel = .{0, 0, 0};
 		Player.eyeCoyote = 0;
 		Player.eyeStep = .{false, false, false};
@@ -784,7 +784,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		const right = Vec3d{-forward[1], forward[0], 0};
 		var movementDir: Vec3d = .{0, 0, 0};
 		var movementSpeed: f64 = 0;
-		
+
 		if(main.Window.grabbed) {
 			const walkingSpeed: f64 = if (Player.crouching) 2 else 4;
 			if(KeyBoard.key("forward").value > 0.0) {
@@ -886,11 +886,11 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			const smoothPerc = Player.crouchPerc * Player.crouchPerc * (3 - 2 * Player.crouchPerc);
 
 			const newOuterBox = (Player.crouchingBoundingBoxExtent - Player.standingBoundingBoxExtent) * @as(Vec3d, @splat(smoothPerc)) + Player.standingBoundingBoxExtent;
-			
+
 			Player.super.pos += newOuterBox - Player.outerBoundingBoxExtent;
-			
+
 			Player.outerBoundingBoxExtent = newOuterBox;
-			
+
 			Player.outerBoundingBox = .{
 				.min = -Player.outerBoundingBoxExtent,
 				.max = Player.outerBoundingBoxExtent,
@@ -1035,7 +1035,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		steppingHeight = @min(steppingHeight, Player.eyePos[2] - Player.eyeBox.min[2]);
 
 		const slipLimit = 0.25 * Player.currentFriction;
-		
+
 		const xMovement = collision.collideOrStep(.client, .x, move[0], Player.super.pos, hitBox, steppingHeight);
 		Player.super.pos += xMovement;
 		if (KeyBoard.key("crouch").pressed and Player.onGround and @abs(Player.super.vel[0]) < slipLimit) {

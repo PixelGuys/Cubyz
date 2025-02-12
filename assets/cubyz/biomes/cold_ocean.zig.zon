@@ -7,7 +7,7 @@
 	.minHeight = -100,
 	.maxHeight = -22,
 	.radius = 500,
-	
+
 	.roughness = 20,
 	.hills = 10,
 

@@ -97,7 +97,7 @@ void main() {
 	);
 
 	normal = quads[quadIndex].normal;
-	
+
 	position += quads[quadIndex].corners[vertexID];
 	position *= voxelSize;
 	position += modelPosition;

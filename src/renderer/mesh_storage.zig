@@ -346,7 +346,7 @@ fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16) void { 
 				for(zValues[0..zValuesLen]) |z| {
 					const zIndex = @divExact(z, size) & storageMask;
 					const index = (xIndex*storageSize + yIndex)*storageSize + zIndex;
-					
+
 					const node = &storageLists[_lod][@intCast(index)];
 					node.mutex.lock();
 					const oldMesh = node.mesh;
@@ -412,7 +412,7 @@ fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16) void { 
 			for(yValues[0..yValuesLen]) |y| {
 				const yIndex = @divExact(y, size) & storageMask;
 				const index = xIndex*storageSize + yIndex;
-				
+
 				const mapPointer = &mapStorageLists[_lod][@intCast(index)];
 				mutex.lock();
 				const oldMap = mapPointer.*;

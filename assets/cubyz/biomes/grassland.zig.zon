@@ -3,14 +3,14 @@
 	},
 	.minHeight = 22,
 	.maxHeight = 40,
-	
+
 	.roughness = 1,
 	.hills = 5,
-	
+
 	.music = "cubyz:sunrise",
 
 	.validPlayerSpawn = true,
-	
+
 	.ground_structure = .{
 		"cubyz:grass",
 		"2 to 3 cubyz:soil",

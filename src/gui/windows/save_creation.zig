@@ -82,7 +82,7 @@ fn flawedCreateWorld() !void {
 
 		gamerules.put("default_gamemode", @tagName(gamemode));
 		gamerules.put("cheats", allowCheats);
-		
+
 		try main.files.writeZon(gamerulePath, gamerules);
 	}
 	{ // Make assets subfolder

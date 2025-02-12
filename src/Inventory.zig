@@ -262,7 +262,7 @@ pub const Sync = struct { // MARK: Sync
 			for(command.syncOperations.items) |op| {
 				const syncData = op.serialize(main.stackAllocator);
 				defer main.stackAllocator.free(syncData);
-				
+
 				const users = op.getUsers(main.stackAllocator);
 				defer main.stackAllocator.free(users);
 
@@ -324,7 +324,7 @@ pub const Sync = struct { // MARK: Sync
 
 					const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players/{s}.zig.zon", .{main.server.world.?.name, hashedName}) catch unreachable;
 					defer main.stackAllocator.free(path);
-		
+
 					const playerData = main.files.readToZon(main.stackAllocator, path) catch .null;
 					defer playerData.deinit(main.stackAllocator);
 
@@ -581,7 +581,7 @@ pub const Command = struct { // MARK: Command
 						return error.Invalid;
 					}
 					create.inv.ref().amount += create.amount;
-					
+
 					create.inv.inv.update();
 				},
 				.delete => |delete| {
@@ -592,7 +592,7 @@ pub const Command = struct { // MARK: Command
 					if (delete.inv.ref().amount == 0) {
 						delete.inv.ref().item = null;
 					}
-					
+
 					delete.inv.inv.update();
 				},
 				.useDurability => |durability| {
@@ -601,7 +601,7 @@ pub const Command = struct { // MARK: Command
 						durability.inv.ref().item = null;
 						durability.inv.ref().amount = 0;
 					}
-					
+
 					durability.inv.inv.update();
 				},
 				.health => |health| {
@@ -1515,7 +1515,7 @@ pub const Command = struct { // MARK: Command
 			if(self.inv.type == .workbench) items = self.inv._items[0..25];
 			for(items, 0..) |stack, slot| {
 				if(stack.item == null) continue;
-				
+
 				cmd.executeBaseOperation(allocator, .{.delete = .{
 					.source = .{.inv = self.inv, .slot = @intCast(slot)},
 					.amount = stack.amount,
@@ -1548,7 +1548,7 @@ pub const Command = struct { // MARK: Command
 			const stack = self.source.ref();
 
 			const costOfChange = if(gamemode != .creative) self.oldBlock.canBeChangedInto(self.newBlock, stack.*) else .yes;
-			
+
 			// Check if we can change it:
 			if(!switch(costOfChange) {
 				.no => false,

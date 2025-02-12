@@ -56,9 +56,9 @@ pub fn readAllZonFilesInAddons(externalAllocator: NeverFailingAllocator, addons:
 		defer defaultsArena.deinit();
 
 		const defaultsArenaAllocator = defaultsArena.allocator();
-		
+
 		var defaultMap = std.StringHashMap(ZonElement).init(defaultsArenaAllocator.allocator);
-		
+
 		var walker = dir.walk(main.stackAllocator.allocator) catch unreachable;
 		defer walker.deinit();
 
@@ -100,7 +100,7 @@ pub fn readAllZonFilesInAddons(externalAllocator: NeverFailingAllocator, addons:
 							std.log.err("Failed to read default file: {s}", .{@errorName(err)});
 							break :blk .null;
 						};
-						
+
 						result.value_ptr.* = default;
 					}
 
@@ -186,7 +186,7 @@ pub fn readAssets(externalAllocator: NeverFailingAllocator, assetPath: []const u
 	defer addons.deinit();
 	var addonNames = main.List([]const u8).init(main.stackAllocator);
 	defer addonNames.deinit();
-	
+
 	{ // Find all the sub-directories to the assets folder.
 		var dir = std.fs.cwd().openDir(assetPath, .{.iterate = true}) catch |err| {
 			std.log.err("Can't open asset path {s}: {s}", .{assetPath, @errorName(err)});

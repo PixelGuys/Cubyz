@@ -5,14 +5,14 @@
 	},
 	.minHeight = 22,
 	.maxHeight = 40,
-	
+
 	.roughness = 10,
 	.hills = 10,
-	
+
 	.music = "cubyz:leaves",
 
 	.validPlayerSpawn = true,
-	
+
 	.ground_structure = .{
 		"cubyz:grass",
 	},

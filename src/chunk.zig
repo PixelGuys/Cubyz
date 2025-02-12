@@ -148,7 +148,7 @@ pub const ChunkPosition = struct { // MARK: ChunkPosition
 	wy: i32,
 	wz: i32,
 	voxelSize: u31,
-	
+
 	pub fn hashCode(self: ChunkPosition) u32 {
 		const shift: u5 = @truncate(@min(@ctz(self.wx), @ctz(self.wy), @ctz(self.wz)));
 		return (((@as(u32, @bitCast(self.wx)) >> shift) *% 31 +% (@as(u32, @bitCast(self.wy)) >> shift)) *% 31 +% (@as(u32, @bitCast(self.wz)) >> shift)) *% 31 +% self.voxelSize; // TODO: Can I use one of zigs standard hash functions?
@@ -447,7 +447,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 		self.mutex.lock();
 		defer self.mutex.unlock();
 		main.utils.assertLocked(&other.mutex);
-		
+
 		var x: u31 = 0;
 		while(x < chunkSize/2): (x += 1) {
 			var y: u31 = 0;
@@ -472,7 +472,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 									neighborCount[i] = 0;
 									continue; // I don't care about air blocks.
 								}
-								
+
 								var count: u31 = 0;
 								for(Neighbor.iterable) |n| {
 									const nx = x*2 + dx + n.relX();
