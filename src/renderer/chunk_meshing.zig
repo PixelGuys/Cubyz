@@ -142,7 +142,7 @@ fn bindCommonUniforms(locations: *UniformStruct, projMatrix: Mat4f, ambient: Vec
 	c.glUniform1i(locations.reflectionMap, 4);
 	c.glUniform1f(locations.reflectionMapSize, renderer.reflectionCubeMapSize);
 
-	c.glUniform1f(locations.contrast, 0.12);
+	c.glUniform1f(locations.contrast, 0);
 
 	c.glUniform1f(locations.lodDistance, main.settings.@"lod0.5Distance");
 
