@@ -35,13 +35,9 @@ float densityIntegral(float dist, float zStart, float zDist, float fogLower, flo
 		zStart += zDist;
 		zDist = -zDist;
 	}
-	if(zDist == 0) {
-		zDist = 0.1;
+	if(abs(zDist) < 0.001) {
+		zDist = 0.001;
 	}
-	zStart /= zDist;
-	fogLower /= zDist;
-	fogHigher /= zDist;
-	zDist = 1;
 	float beginLower = min(fogLower, zStart);
 	float endLower = min(fogLower, zStart + zDist);
 	float beginMid = max(fogLower, min(fogHigher, zStart));
