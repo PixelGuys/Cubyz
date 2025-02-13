@@ -476,10 +476,10 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 	}
 
 	fn getCornerLightAligned(parent: *ChunkMesh, pos: Vec3i, direction: chunk.Neighbor) [6]u8 { // Fast path for algined normals, leading to 4 instead of 8 light samples.
-		var val: [6]f32 = .{0, 0, 0, 0, 0, 0};
 		const normal: Vec3f = @floatFromInt(Vec3i{direction.relX(), direction.relY(), direction.relZ()});
 		const lightPos = @as(Vec3f, @floatFromInt(pos)) + normal*@as(Vec3f, @splat(0.5)) - @as(Vec3f, @splat(0.5));
 		const startPos: Vec3i = @intFromFloat(@floor(lightPos));
+		var val: [6]f32 = .{0, 0, 0, 0, 0, 0};
 		var dx: i32 = 0;
 		while(dx <= 1): (dx += 1) {
 			var dy: i32 = 0;
