@@ -8,13 +8,13 @@
 	.viewThrough = true,
 	.absorbedLight = 0x000000,
 	.collide = false,
-	.model = "cubyz:flower/height_8",
+	.model = "cubyz:flower/height_10",
 	.rotation = .planar,
-	.texture = "cubyz:daffodil",
-	.texture_top = "cubyz:daffodil_top",
-	.texture_bottom = "cubyz:daffodil_top",
+	.texture = "cubyz:trumpet_lily",
+	.texture_top = "cubyz:trumpet_lily_top",
+	.texture_bottom = "cubyz:trumpet_lily_top",
 	.item = .{
-		.texture = "daffodil.png",
+		.texture = "castilleja.png",
 	},
 	.lodReplacement = "cubyz:air",
 }

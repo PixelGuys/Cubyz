@@ -10,9 +10,9 @@
 	.collide = false,
 	.model = "cubyz:flower/height_8",
 	.rotation = .planar,
-	.texture = "cubyz:daffodil",
-	.texture_top = "cubyz:daffodil_top",
-	.texture_bottom = "cubyz:daffodil_top",
+	.texture = "cubyz:hibiscus",
+	.texture_top = "cubyz:hibiscus_top",
+	.texture_bottom = "cubyz:hibiscus_top",
 	.item = .{
 		.texture = "daffodil.png",
 	},
