@@ -486,10 +486,15 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 			while(dy <= 1): (dy += 1) {
 				const weight: f32 = 1.0/4.0;
 				const finalPos = startPos +% @as(Vec3i, @intCast(@abs(direction.textureX())))*@as(Vec3i, @splat(dx)) +% @as(Vec3i, @intCast(@abs(direction.textureY()*@as(Vec3i, @splat(dy)))));
-				const lightVal: [6]u8 = getLightAt(parent, finalPos[0], finalPos[1], finalPos[2]);
-				const nextVal = getLightAt(parent, finalPos[0] +% direction.relX(), finalPos[1] +% direction.relY(), finalPos[2] +% direction.relZ());
+				var lightVal: [6]u8 = getLightAt(parent, finalPos[0], finalPos[1], finalPos[2]);
+				if(parent.pos.voxelSize == 1) {
+					const nextVal = getLightAt(parent, finalPos[0] +% direction.relX(), finalPos[1] +% direction.relY(), finalPos[2] +% direction.relZ());
+					for(0..6) |i| {
+						lightVal[i] = @min(lightVal[i], @max(lightVal[i] -| 8, nextVal[i]));
+					}
+				}
 				for(0..6) |i| {
-					val[i] += @as(f32, @floatFromInt(@min(lightVal[i], @max(lightVal[i], nextVal[i]))))*weight;
+					val[i] += @as(f32, @floatFromInt(lightVal[i]))*weight;
 				}
 			}
 		}
