@@ -196,8 +196,6 @@ void applyFrontfaceFog(float fogDistance, vec3 fogColor) {
 
 void main() {
 	float light = pow(10.0, -0.4 * magnitude);
-	float brightness = max(light, 1);
-	float opacity = min(light, 1);
 
 	fragColor = vec4(calculateColor() * light, 1);
 }
