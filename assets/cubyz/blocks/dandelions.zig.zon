@@ -12,7 +12,7 @@
 	.rotation = .carpet,
 	.texture = "cubyz:dandelions",
 	.item= .{
-		.texture = "daisies.png",
+		.texture = "dandelions.png",
 	},
 	.lodReplacement = "cubyz:air",
 }

@@ -14,7 +14,7 @@
 	.texture_top = "cubyz:hibiscus_top",
 	.texture_bottom = "cubyz:hibiscus_top",
 	.item = .{
-		.texture = "daffodil.png",
+		.texture = "hibiscus.png",
 	},
 	.lodReplacement = "cubyz:air",
 }

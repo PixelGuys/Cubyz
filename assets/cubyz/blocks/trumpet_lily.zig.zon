@@ -14,7 +14,7 @@
 	.texture_top = "cubyz:trumpet_lily_top",
 	.texture_bottom = "cubyz:trumpet_lily_top",
 	.item = .{
-		.texture = "castilleja.png",
+		.texture = "trumpet_lily.png",
 	},
 	.lodReplacement = "cubyz:air",
 }
