@@ -732,7 +732,6 @@ pub const Skybox = struct {
 	pub fn render(playerPos: Vec3d) void {
 		c.glDisable(c.GL_CULL_FACE);
 		c.glDisable(c.GL_DEPTH_TEST);
-		c.glEnable(c.GL_BLEND);
 
 		const viewMatrix = game.camera.viewMatrix;
 		skyShader.bind();
@@ -746,6 +745,9 @@ pub const Skybox = struct {
 		c.glBindVertexArray(skyVao);
 		c.glDrawElements(c.GL_TRIANGLES, 36, c.GL_UNSIGNED_INT, null);
 		
+		c.glBlendFunc(c.GL_ONE, c.GL_ONE);
+		c.glEnable(c.GL_BLEND);
+
 		starShader.bind();
 
 		c.glUniformMatrix4fv(starUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
@@ -759,6 +761,8 @@ pub const Skybox = struct {
 
 		c.glEnable(c.GL_CULL_FACE);
 		c.glEnable(c.GL_DEPTH_TEST);
+		
+		c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 	}
 };
 
