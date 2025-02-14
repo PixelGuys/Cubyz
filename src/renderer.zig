@@ -793,7 +793,14 @@ pub const Skybox = struct {
 
 		const light = std.math.pow(f64, 10.0, -0.4 * magnitude);
 
-		return rgb * @as(Vec3d, @splat(light));
+		rgb *= @as(Vec3d, @splat(light));
+
+		const m = @reduce(.Max, rgb);
+		if (m > 1.0) {
+			rgb /= @as(Vec3d, @splat(m));
+		}
+
+		return rgb;
 	}
 
 	fn init() void {
@@ -809,7 +816,7 @@ pub const Skybox = struct {
 
 			const radius: f64 = starRandom.random().floatExp(f64) * 4 + 0.2;
 			
-			const temperature: f64 = (@abs(starRandom.random().floatNorm(f64) * 3000.0 + 6000.0 - 1000.0) + 1000.0) / 5772.0;
+			const temperature: f64 = (@abs(starRandom.random().floatNorm(f64) * 3000.0 + 5000.0) + 1000.0) / 5772.0;
 
 			const luminosity = 4.0 * std.math.pi * radius * radius * temperature * temperature * temperature * temperature;
 
