@@ -185,7 +185,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	const time: u32 = @intCast(std.time.milliTimestamp() & std.math.maxInt(u32));
 
-	Skybox.render();
+	Skybox.render(playerPos);
 
 	gpu_performance_measuring.startQuery(.animation);
 	blocks.meshes.preProcessAnimationData(time);
@@ -620,7 +620,8 @@ pub const Skybox = struct {
 	var starUniforms: struct {
 		viewMatrix: c_int,
 		projectionMatrix: c_int,
-		position: c_int,
+		playerPositionInteger: c_int,
+		playerPositionFraction: c_int,
 	} = undefined;
 
 	var starVao: c_uint = undefined;
@@ -631,6 +632,7 @@ pub const Skybox = struct {
 		viewMatrix: c_int,
 		projectionMatrix: c_int,
 		position: c_int,
+		skyColor: c_int,
 	} = undefined;
 
 	var skyVao: c_uint = undefined;
@@ -732,13 +734,16 @@ pub const Skybox = struct {
 		c.glDeleteBuffers(1, @ptrCast(&starVbo));
 	}
 
-	pub fn render() void {
+	pub fn render(playerPos: Vec3d) void {
 		c.glDisable(c.GL_CULL_FACE);
 		c.glDisable(c.GL_DEPTH_TEST);
 		c.glEnable(c.GL_BLEND);
 
 		const viewMatrix = game.camera.viewMatrix;
 		skyShader.bind();
+
+		const skyboxColor = game.fog.skyColor * @as(Vec3f, @splat(@reduce(.Add, game.fog.skyColor) / 3.0));
+		c.glUniform3fv(skyUniforms.skyColor, 1, @ptrCast(&skyboxColor));
 
 		c.glUniformMatrix4fv(skyUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
 		c.glUniformMatrix4fv(skyUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
@@ -750,6 +755,9 @@ pub const Skybox = struct {
 
 		c.glUniformMatrix4fv(starUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
 		c.glUniformMatrix4fv(starUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
+		
+		c.glUniform3i(starUniforms.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
+		c.glUniform3f(starUniforms.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
 
 		c.glBindVertexArray(starVao);
 		c.glDrawArrays(c.GL_POINTS, 0, NUM_STARS * 3);
