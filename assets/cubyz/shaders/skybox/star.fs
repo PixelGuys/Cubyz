@@ -1,9 +1,24 @@
 #version 430
 
+in vec3 mvVertexPos;
 in float temperature;
 in float magnitude;
+in vec3 direction;
 
-out vec4 color;
+layout (location = 0, index = 0) out vec4 fragColor;
+layout (location = 0, index = 1) out vec4 blendColor;
+
+struct Fog {
+	vec3 color;
+	float density;
+	float fogLower;
+	float fogHigher;
+};
+
+uniform Fog fog;
+
+uniform ivec3 playerPositionInteger;
+uniform vec3 playerPositionFraction;
 
 const float h = 6.62607015e-34;
 const float c = 2.99792458e8;
@@ -130,9 +145,73 @@ vec3 calculateColor() {
 	return mix(1.055 * pow(rgb, vec3(1 / 2.4)) - 0.055, 12.92 * rgb, vec3(lessThanEqual(rgb, vec3(0.0031308))));
 }
 
+float densityIntegral(float dist, float zStart, float zDist, float fogLower, float fogHigher) {
+	// The density is constant until fogLower, then gets smaller linearly until reaching fogHigher, past which there is no fog.
+	if(zDist < 0) {
+		zStart += zDist;
+		zDist = -zDist;
+	}
+	if(zDist == 0) {
+		zDist = 0.1;
+	}
+	zStart /= zDist;
+	fogLower /= zDist;
+	fogHigher /= zDist;
+	zDist = 1;
+	float beginLower = min(fogLower, zStart);
+	float endLower = min(fogLower, zStart + zDist);
+	float beginMid = max(fogLower, min(fogHigher, zStart));
+	float endMid = max(fogLower, min(fogHigher, zStart + zDist));
+	float midIntegral = -0.5*(endMid - fogHigher)*(endMid - fogHigher)/(fogHigher - fogLower) - -0.5*(beginMid - fogHigher)*(beginMid - fogHigher)/(fogHigher - fogLower);
+	if(fogHigher == fogLower) midIntegral = 0;
+
+	return (endLower - beginLower + midIntegral)/zDist*dist;
+}
+
+float calculateFogDistance(float dist, float densityAdjustment, float zStart, float zScale, float fogDensity, float fogLower, float fogHigher) {
+	float distCameraTerrain = densityIntegral(dist*densityAdjustment, zStart, zScale*dist*densityAdjustment, fogLower, fogHigher)*fogDensity;
+	float distFromCamera = abs(densityIntegral(mvVertexPos.y*densityAdjustment, zStart, zScale*mvVertexPos.y*densityAdjustment, fogLower, fogHigher))*fogDensity;
+	float distFromTerrain = distFromCamera - distCameraTerrain;
+	if(distCameraTerrain < 10) { // Resolution range is sufficient.
+		return distFromTerrain;
+	} else {
+		// Here we have a few options to deal with this. We could for example weaken the fog effect to fit the entire range.
+		// I decided to keep the fog strength close to the camera and far away, with a fog-free region in between.
+		// I decided to this because I want far away fog to work (e.g. a distant ocean) as well as close fog(e.g. the top surface of the water when the player is under it)
+		if(distFromTerrain > -5) {
+			return distFromTerrain;
+		} else if(distFromCamera < 5) {
+			return distFromCamera - 10;
+		} else {
+			return -5;
+		}
+	}
+}
+
+void applyFrontfaceFog(float fogDistance, vec3 fogColor) {
+	float fogFactor = exp(fogDistance);
+	fragColor.rgb = fogColor*(1 - fogFactor);
+	fragColor.a = fogFactor;
+}
+
 void main() {
 	float light = pow(10.0, -0.4 * magnitude);
 	float brightness = max(light, 1);
 	float opacity = min(light, 1);
-	color = vec4(calculateColor() * vec3(brightness), opacity);
+	
+	float densityAdjustment = sqrt(dot(mvVertexPos, mvVertexPos))/abs(mvVertexPos.y);
+	float dist = mvVertexPos.z;
+	float playerZ = playerPositionFraction.z + playerPositionInteger.z;
+
+	float airFogDistance = calculateFogDistance(dist, densityAdjustment, playerZ, normalize(direction).z, fog.density, fog.fogLower, fog.fogHigher);
+	
+	blendColor.rgb = vec3(opacity);
+
+	applyFrontfaceFog(airFogDistance, fog.color);
+
+	fragColor.rgb *= blendColor.rgb;
+	fragColor.rgb += calculateColor() * light;
+
+	blendColor.rgb *= fragColor.a;
+	fragColor.a = 1;
 }
