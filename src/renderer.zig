@@ -616,15 +616,25 @@ pub const MenuBackGround = struct {
 };
 
 pub const Skybox = struct {
-	var shader: Shader = undefined;
-	var uniforms: struct {
+	var starShader: Shader = undefined;
+	var starUniforms: struct {
 		viewMatrix: c_int,
 		projectionMatrix: c_int,
 		position: c_int,
 	} = undefined;
 
-	var vao: c_uint = undefined;
-	var vbo: c_uint = undefined;
+	var starVao: c_uint = undefined;
+	var starVbo: c_uint = undefined;
+	
+	var skyShader: Shader = undefined;
+	var skyUniforms: struct {
+		viewMatrix: c_int,
+		projectionMatrix: c_int,
+		position: c_int,
+	} = undefined;
+
+	var skyVao: c_uint = undefined;
+	var skyVbos: [2]c_uint = undefined;
 
 	const NUM_STARS = 100000;
 
@@ -639,10 +649,10 @@ pub const Skybox = struct {
 	}
 
 	fn init() void {
-		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/skybox/vertex.vs", "assets/cubyz/shaders/skybox/fragment.fs", "", &uniforms);
-		shader.bind();
+		starShader = Shader.initAndGetUniforms("assets/cubyz/shaders/skybox/star.vs", "assets/cubyz/shaders/skybox/star.fs", "", &starUniforms);
+		starShader.bind();
 		
-		var rawData: [NUM_STARS * 5]f32 = undefined;
+		var starData: [NUM_STARS * 5]f32 = undefined;
 
 		var starRandom = std.Random.DefaultPrng.init(0);
 
@@ -659,19 +669,19 @@ pub const Skybox = struct {
 
 			const magnitude = -2.5 * @log10(flux) - 26.83;
 
-			rawData[i * 5] = @floatCast(pos[0]);
-			rawData[i * 5 + 1] = @floatCast(pos[1]);
-			rawData[i * 5 + 2] = @floatCast(pos[2]);
+			starData[i * 5] = @floatCast(pos[0]);
+			starData[i * 5 + 1] = @floatCast(pos[1]);
+			starData[i * 5 + 2] = @floatCast(pos[2]);
 			
-			rawData[i * 5 + 3] = @floatCast(temperature * 5772.0);
-			rawData[i * 5 + 4] = @floatCast(magnitude);
+			starData[i * 5 + 3] = @floatCast(temperature * 5772.0);
+			starData[i * 5 + 4] = @floatCast(magnitude);
 		}
 
-		c.glGenVertexArrays(1, &vao);
-		c.glBindVertexArray(vao);
-		c.glGenBuffers(2, @ptrCast(&vbo));
-		c.glBindBuffer(c.GL_ARRAY_BUFFER, vbo);
-		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(rawData.len*@sizeOf(f32)), &rawData, c.GL_STATIC_DRAW);
+		c.glGenVertexArrays(1, &starVao);
+		c.glBindVertexArray(starVao);
+		c.glGenBuffers(2, @ptrCast(&starVbo));
+		c.glBindBuffer(c.GL_ARRAY_BUFFER, starVbo);
+		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(starData.len*@sizeOf(f32)), &starData, c.GL_STATIC_DRAW);
 
 		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, 5*@sizeOf(f32), null);
 		c.glEnableVertexAttribArray(0);
@@ -681,12 +691,45 @@ pub const Skybox = struct {
 		
 		c.glVertexAttribPointer(2, 1, c.GL_FLOAT, c.GL_FALSE, 5*@sizeOf(f32), @ptrFromInt(4*@sizeOf(f32)));
 		c.glEnableVertexAttribArray(2);
+		
+		skyShader = Shader.initAndGetUniforms("assets/cubyz/shaders/skybox/sky.vs", "assets/cubyz/shaders/skybox/sky.fs", "", &skyUniforms);
+		skyShader.bind();
+		
+		const rawData = [_]f32 {
+			-1, -1, -1,
+			1, -1, -1,
+			1, 1, -1,
+			-1, 1, -1,
+			-1, -1, 1,
+			1, -1, 1,
+			1, 1, 1,
+			-1, 1, 1
+		};
+
+		const indices = [_]c_int {
+			0, 3, 1, 1, 3, 2,
+			5, 6, 4, 4, 6, 7,
+			3, 7, 2, 2, 7, 6,
+			1, 5, 0, 0, 5, 4,
+			4, 7, 0, 0, 7, 3,
+			1, 2, 5, 5, 2, 6,
+		};
+
+		c.glGenVertexArrays(1, &skyVao);
+		c.glBindVertexArray(skyVao);
+		c.glGenBuffers(2, &skyVbos);
+		c.glBindBuffer(c.GL_ARRAY_BUFFER, skyVbos[0]);
+		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(rawData.len*@sizeOf(f32)), &rawData, c.GL_STATIC_DRAW);
+		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, 3*@sizeOf(f32), null);
+		c.glEnableVertexAttribArray(0);
+		c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, skyVbos[1]);
+		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.len*@sizeOf(c_int)), &indices, c.GL_STATIC_DRAW);
 	}
 
 	pub fn deinit() void {
-		shader.deinit();
-		c.glDeleteVertexArrays(1, &vao);
-		c.glDeleteBuffers(1, @ptrCast(&vbo));
+		starShader.deinit();
+		c.glDeleteVertexArrays(1, &starVao);
+		c.glDeleteBuffers(1, @ptrCast(&starVbo));
 	}
 
 	pub fn render() void {
@@ -695,12 +738,20 @@ pub const Skybox = struct {
 		c.glEnable(c.GL_BLEND);
 
 		const viewMatrix = game.camera.viewMatrix;
-		shader.bind();
+		skyShader.bind();
 
-		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
-		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
+		c.glUniformMatrix4fv(skyUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
+		c.glUniformMatrix4fv(skyUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
 
-		c.glBindVertexArray(vao);
+		c.glBindVertexArray(skyVao);
+		c.glDrawElements(c.GL_TRIANGLES, 36, c.GL_UNSIGNED_INT, null);
+		
+		starShader.bind();
+
+		c.glUniformMatrix4fv(starUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
+		c.glUniformMatrix4fv(starUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
+
+		c.glBindVertexArray(starVao);
 		c.glDrawArrays(c.GL_POINTS, 0, NUM_STARS * 3);
 
 		c.glEnable(c.GL_CULL_FACE);
