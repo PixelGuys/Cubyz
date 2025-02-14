@@ -6,7 +6,7 @@ in float magnitude;
 in vec3 direction;
 
 layout (location = 0, index = 0) out vec4 fragColor;
-layout (location = 0, index = 1) out vec4 blendColor;
+// layout (location = 0, index = 1) out vec4 blendColor;
 
 struct Fog {
 	vec3 color;
@@ -198,20 +198,22 @@ void main() {
 	float light = pow(10.0, -0.4 * magnitude);
 	float brightness = max(light, 1);
 	float opacity = min(light, 1);
+
+	fragColor = vec4(calculateColor() * light, 1);
 	
-	float densityAdjustment = sqrt(dot(mvVertexPos, mvVertexPos))/abs(mvVertexPos.y);
-	float dist = mvVertexPos.z;
-	float playerZ = playerPositionFraction.z + playerPositionInteger.z;
+	// float densityAdjustment = sqrt(dot(mvVertexPos, mvVertexPos))/abs(mvVertexPos.y);
+	// float dist = mvVertexPos.z;
+	// float playerZ = playerPositionFraction.z + playerPositionInteger.z;
 
-	float airFogDistance = calculateFogDistance(dist, densityAdjustment, playerZ, normalize(direction).z, fog.density, fog.fogLower, fog.fogHigher);
+	// float airFogDistance = calculateFogDistance(dist, densityAdjustment, playerZ, normalize(direction).z, fog.density, fog.fogLower, fog.fogHigher);
 	
-	blendColor.rgb = vec3(opacity);
+	// blendColor.rgb = vec3(1 - opacity);
 
-	applyFrontfaceFog(airFogDistance, fog.color);
+	// applyFrontfaceFog(airFogDistance, fog.color);
 
-	fragColor.rgb *= blendColor.rgb;
-	fragColor.rgb += calculateColor() * light;
+	// fragColor.rgb *= blendColor.rgb;
+	// fragColor.rgb += calculateColor() * brightness;
 
-	blendColor.rgb *= fragColor.a;
-	fragColor.a = 1;
+	// blendColor.rgb *= fragColor.a;
+	// fragColor.a = 1;
 }
