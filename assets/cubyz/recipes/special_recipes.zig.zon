@@ -1,5 +1,13 @@
 .{
 	.{
+		.inputs = .{"cubyz:coal", "cubyz:clay"},
+		.output = "cubyz:terracotta",
+	},
+	.{
+		.inputs = .{"cubyz:terracotta", "cubyz:clay"},
+		.output = "2 cubyz:clay_bricks",
+	},
+	.{
 		.inputs = .{"cubyz:birch_planks", "cubyz:iron_ingot"},
 		.output = "cubyz:chisel",
 	},
