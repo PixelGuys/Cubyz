@@ -625,7 +625,7 @@ pub const Skybox = struct {
 
 	var starVao: c_uint = undefined;
 	var starVbo: c_uint = undefined;
-	
+
 	var skyShader: Shader = undefined;
 	var skyUniforms: struct {
 		viewMatrix: c_int,
@@ -647,11 +647,11 @@ pub const Skybox = struct {
 
 		return vec.normalize(Vec3d {x, y, z}) * @as(Vec3d, @splat(r));
 	}
-	
+
 	const planck: f64 = 6.62607015e-34;
 	const speedOfLight: f64 = 2.99792458e8;
 	const boltzmann: f64 = 1.380649e-23;
-	
+
 	const wavelengths = [_]Vec3d {
 		.{0.000129900000, 0.000003917000, 0.000606100000},
 		.{0.000232100000, 0.000006965000, 0.001086000000},
@@ -773,16 +773,13 @@ pub const Skybox = struct {
 			.{ -0.4986, 0.0415, 1.0570 },
 		};
 
-		var rgb = 
-			conv[0] * @as(Vec3d, @splat(total[0])) +
-			conv[1] * @as(Vec3d, @splat(total[1])) +
-			conv[2] * @as(Vec3d, @splat(total[2]));
+		var rgb = conv[0] * @as(Vec3d, @splat(total[0])) + conv[1] * @as(Vec3d, @splat(total[1])) + conv[2] * @as(Vec3d, @splat(total[2]));
 
 		const threshold = 0.0031308;
 		const a = @as(Vec3d, @splat(1.055));
 		const b = @as(Vec3d, @splat(12.92));
 		const gamma = 1.0 / 2.4;
-		
+
 		const mask = rgb > @as(Vec3d, @splat(threshold));
 		const corrected = a * Vec3d {
 			std.math.pow(f64, rgb[0], gamma),
@@ -806,7 +803,7 @@ pub const Skybox = struct {
 	fn init() void {
 		starShader = Shader.initAndGetUniforms("assets/cubyz/shaders/skybox/star.vs", "assets/cubyz/shaders/skybox/star.fs", "", &starUniforms);
 		starShader.bind();
-		
+
 		var starData: [NUM_STARS * 6]f32 = undefined;
 
 		var starRandom = std.Random.DefaultPrng.init(0);
@@ -815,7 +812,7 @@ pub const Skybox = struct {
 			const pos = getStarPos(starRandom.random());
 
 			const radius: f64 = starRandom.random().floatExp(f64) * 4 + 0.2;
-			
+
 			const temperature: f64 = (@abs(starRandom.random().floatNorm(f64) * 3000.0 + 5000.0) + 1000.0) / 5772.0;
 
 			const luminosity = 4.0 * std.math.pi * radius * radius * temperature * temperature * temperature * temperature;
@@ -829,7 +826,7 @@ pub const Skybox = struct {
 			starData[i * 6] = @floatCast(pos[0]);
 			starData[i * 6 + 1] = @floatCast(pos[1]);
 			starData[i * 6 + 2] = @floatCast(pos[2]);
-			
+
 			starData[i * 6 + 3] = @floatCast(col[0]);
 			starData[i * 6 + 4] = @floatCast(col[1]);
 			starData[i * 6 + 5] = @floatCast(col[2]);
@@ -843,13 +840,13 @@ pub const Skybox = struct {
 
 		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, 6*@sizeOf(f32), null);
 		c.glEnableVertexAttribArray(0);
-		
+
 		c.glVertexAttribPointer(1, 3, c.GL_FLOAT, c.GL_FALSE, 6*@sizeOf(f32), @ptrFromInt(3*@sizeOf(f32)));
 		c.glEnableVertexAttribArray(1);
-		
+
 		skyShader = Shader.initAndGetUniforms("assets/cubyz/shaders/skybox/sky.vs", "assets/cubyz/shaders/skybox/sky.fs", "", &skyUniforms);
 		skyShader.bind();
-		
+
 		const rawData = [_]f32 {
 			-1, -1, -1,
 			1, -1, -1,
@@ -904,7 +901,7 @@ pub const Skybox = struct {
 
 		c.glBindVertexArray(skyVao);
 		c.glDrawElements(c.GL_TRIANGLES, 36, c.GL_UNSIGNED_INT, null);
-		
+
 		c.glBlendFunc(c.GL_ONE, c.GL_ONE);
 		c.glEnable(c.GL_BLEND);
 
@@ -913,13 +910,13 @@ pub const Skybox = struct {
 		c.glUniformMatrix4fv(starUniforms.modelMatrix, 1, c.GL_TRUE, @ptrCast(&modelMatrix));
 		c.glUniformMatrix4fv(starUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
 		c.glUniformMatrix4fv(starUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
-		
+
 		c.glBindVertexArray(starVao);
 		c.glDrawArrays(c.GL_POINTS, 0, NUM_STARS * 3);
 
 		c.glEnable(c.GL_CULL_FACE);
 		c.glEnable(c.GL_DEPTH_TEST);
-		
+
 		c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 	}
 };
