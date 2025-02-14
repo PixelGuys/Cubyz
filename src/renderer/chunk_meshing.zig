@@ -490,9 +490,8 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 				if(parent.pos.voxelSize == 1) {
 					const nextVal = getLightAt(parent, finalPos[0] +% direction.relX(), finalPos[1] +% direction.relY(), finalPos[2] +% direction.relZ());
 					for(0..6) |i| {
-						const contrast = 2;
 						const diff: u8 = @min(8, lightVal[i] -| nextVal[i]);
-						lightVal[i] = lightVal[i] -| diff*contrast;
+						lightVal[i] = lightVal[i] -| diff*5/2;
 					}
 				}
 				for(0..6) |i| {
