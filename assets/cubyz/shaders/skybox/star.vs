@@ -1,23 +1,16 @@
 #version 430
 
 in vec3 vPos;
-in float vTemperature;
-in float vMagnitude;
+in vec3 vColor;
 
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
+uniform mat4 modelMatrix;
 
-out vec3 mvVertexPos;
-out float temperature;
-out float magnitude;
-out vec3 direction;
+out vec3 color;
 
 void main() {
-	vec4 mvPos = viewMatrix*vec4(vPos, 1);
-	gl_Position = projectionMatrix*mvPos;
-	mvVertexPos = mvPos.xyz;
+	gl_Position = projectionMatrix*viewMatrix*modelMatrix*vec4(vPos, 1);
 
-	temperature = vTemperature;
-	magnitude = vMagnitude;
-	direction = vPos;
+	color = vColor;
 }

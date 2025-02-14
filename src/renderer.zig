@@ -185,7 +185,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	const time: u32 = @intCast(std.time.milliTimestamp() & std.math.maxInt(u32));
 
-	Skybox.render(playerPos);
+	Skybox.render();
 
 	gpu_performance_measuring.startQuery(.animation);
 	blocks.meshes.preProcessAnimationData(time);
@@ -620,8 +620,7 @@ pub const Skybox = struct {
 	var starUniforms: struct {
 		viewMatrix: c_int,
 		projectionMatrix: c_int,
-		playerPositionInteger: c_int,
-		playerPositionFraction: c_int,
+		modelMatrix: c_int,
 	} = undefined;
 
 	var starVao: c_uint = undefined;
@@ -631,7 +630,6 @@ pub const Skybox = struct {
 	var skyUniforms: struct {
 		viewMatrix: c_int,
 		projectionMatrix: c_int,
-		position: c_int,
 		skyColor: c_int,
 	} = undefined;
 
@@ -649,12 +647,160 @@ pub const Skybox = struct {
 
 		return vec.normalize(Vec3d {x, y, z}) * @as(Vec3d, @splat(r));
 	}
+	
+	const planck: f64 = 6.62607015e-34;
+	const speedOfLight: f64 = 2.99792458e8;
+	const boltzmann: f64 = 1.380649e-23;
+	
+	const wavelengths = [_]Vec3d {
+		.{0.000129900000, 0.000003917000, 0.000606100000},
+		.{0.000232100000, 0.000006965000, 0.001086000000},
+		.{0.000414900000, 0.000012390000, 0.001946000000},
+		.{0.000741600000, 0.000022020000, 0.003486000000},
+		.{0.001368000000, 0.000039000000, 0.006450001000},
+		.{0.002236000000, 0.000064000000, 0.010549990000},
+		.{0.004243000000, 0.000120000000, 0.020050010000},
+		.{0.007650000000, 0.000217000000, 0.036210000000},
+		.{0.014310000000, 0.000396000000, 0.067850010000},
+		.{0.023190000000, 0.000640000000, 0.110200000000},
+		.{0.043510000000, 0.001210000000, 0.207400000000},
+		.{0.077630000000, 0.002180000000, 0.371300000000},
+		.{0.134380000000, 0.004000000000, 0.645600000000},
+		.{0.214770000000, 0.007300000000, 1.039050100000},
+		.{0.283900000000, 0.011600000000, 1.385600000000},
+		.{0.328500000000, 0.016840000000, 1.622960000000},
+		.{0.348280000000, 0.023000000000, 1.747060000000},
+		.{0.348060000000, 0.029800000000, 1.782600000000},
+		.{0.336200000000, 0.038000000000, 1.772110000000},
+		.{0.318700000000, 0.048000000000, 1.744100000000},
+		.{0.290800000000, 0.060000000000, 1.669200000000},
+		.{0.251100000000, 0.073900000000, 1.528100000000},
+		.{0.195360000000, 0.090980000000, 1.287640000000},
+		.{0.142100000000, 0.112600000000, 1.041900000000},
+		.{0.095640000000, 0.139020000000, 0.812950100000},
+		.{0.057950010000, 0.169300000000, 0.616200000000},
+		.{0.032010000000, 0.208020000000, 0.465180000000},
+		.{0.014700000000, 0.258600000000, 0.353300000000},
+		.{0.004900000000, 0.323000000000, 0.272000000000},
+		.{0.002400000000, 0.407300000000, 0.212300000000},
+		.{0.009300000000, 0.503000000000, 0.158200000000},
+		.{0.029100000000, 0.608200000000, 0.111700000000},
+		.{0.063270000000, 0.710000000000, 0.078249990000},
+		.{0.109600000000, 0.793200000000, 0.057250010000},
+		.{0.165500000000, 0.862000000000, 0.042160000000},
+		.{0.225749900000, 0.914850100000, 0.029840000000},
+		.{0.290400000000, 0.954000000000, 0.020300000000},
+		.{0.359700000000, 0.980300000000, 0.013400000000},
+		.{0.433449900000, 0.994950100000, 0.008749999000},
+		.{0.512050100000, 1.000000000000, 0.005749999000},
+		.{0.594500000000, 0.995000000000, 0.003900000000},
+		.{0.678400000000, 0.978600000000, 0.002749999000},
+		.{0.762100000000, 0.952000000000, 0.002100000000},
+		.{0.842500000000, 0.915400000000, 0.001800000000},
+		.{0.916300000000, 0.870000000000, 0.001650001000},
+		.{0.978600000000, 0.816300000000, 0.001400000000},
+		.{1.026300000000, 0.757000000000, 0.001100000000},
+		.{1.056700000000, 0.694900000000, 0.001000000000},
+		.{1.062200000000, 0.631000000000, 0.000800000000},
+		.{1.045600000000, 0.566800000000, 0.000600000000},
+		.{1.002600000000, 0.503000000000, 0.000340000000},
+		.{0.938400000000, 0.441200000000, 0.000240000000},
+		.{0.854449900000, 0.381000000000, 0.000190000000},
+		.{0.751400000000, 0.321000000000, 0.000100000000},
+		.{0.642400000000, 0.265000000000, 0.000049999990},
+		.{0.541900000000, 0.217000000000, 0.000030000000},
+		.{0.447900000000, 0.175000000000, 0.000020000000},
+		.{0.360800000000, 0.138200000000, 0.000010000000},
+		.{0.283500000000, 0.107000000000, 0.000000000000},
+		.{0.218700000000, 0.081600000000, 0.000000000000},
+		.{0.164900000000, 0.061000000000, 0.000000000000},
+		.{0.121200000000, 0.044580000000, 0.000000000000},
+		.{0.087400000000, 0.032000000000, 0.000000000000},
+		.{0.063600000000, 0.023200000000, 0.000000000000},
+		.{0.046770000000, 0.017000000000, 0.000000000000},
+		.{0.032900000000, 0.011920000000, 0.000000000000},
+		.{0.022700000000, 0.008210000000, 0.000000000000},
+		.{0.015840000000, 0.005723000000, 0.000000000000},
+		.{0.011359160000, 0.004102000000, 0.000000000000},
+		.{0.008110916000, 0.002929000000, 0.000000000000},
+		.{0.005790346000, 0.002091000000, 0.000000000000},
+		.{0.004109457000, 0.001484000000, 0.000000000000},
+		.{0.002899327000, 0.001047000000, 0.000000000000},
+		.{0.002049190000, 0.000740000000, 0.000000000000},
+		.{0.001439971000, 0.000520000000, 0.000000000000},
+		.{0.000999949300, 0.000361100000, 0.000000000000},
+		.{0.000690078600, 0.000249200000, 0.000000000000},
+		.{0.000476021300, 0.000171900000, 0.000000000000},
+		.{0.000332301100, 0.000120000000, 0.000000000000},
+		.{0.000234826100, 0.000084800000, 0.000000000000},
+		.{0.000166150500, 0.000060000000, 0.000000000000},
+		.{0.000117413000, 0.000042400000, 0.000000000000},
+		.{0.000083075270, 0.000030000000, 0.000000000000},
+		.{0.000058706520, 0.000021200000, 0.000000000000},
+		.{0.000041509940, 0.000014990000, 0.000000000000},
+		.{0.000029353260, 0.000010600000, 0.000000000000},
+		.{0.000020673830, 0.000007465700, 0.000000000000},
+		.{0.000014559770, 0.000005257800, 0.000000000000},
+		.{0.000010253980, 0.000003702900, 0.000000000000},
+		.{0.000007221456, 0.000002607800, 0.000000000000},
+		.{0.000005085868, 0.000001836600, 0.000000000000},
+		.{0.000003581652, 0.000001293400, 0.000000000000},
+		.{0.000002522525, 0.000000910930, 0.000000000000},
+		.{0.000001776509, 0.000000641530, 0.000000000000},
+		.{0.000001251141, 0.000000451810, 0.000000000000}
+	};
+
+	fn plankRadiance(temperature: f64, wavelength: f64) f64 {
+		const meters = wavelength * 1e-9;
+		const c2 = speedOfLight * speedOfLight;
+		const meter5 = meters * meters * meters * meters * meters;
+		return (2 * planck * c2) / (meter5 * (@exp(planck * speedOfLight / (meters * boltzmann * temperature)) - 1));
+	}
+
+	fn getStarColor(temperature: f64, magnitude: f64) Vec3d {
+		var total: Vec3d = @splat(0);
+		for (0..wavelengths.len) |i| {
+			const wavelength: f64 = @floatFromInt(i * 5 + 360);
+			const spectrum = plankRadiance(temperature, wavelength);
+			total += @as(Vec3d, @splat(spectrum * 5)) * wavelengths[i];
+		}
+
+		total /= @splat(@reduce(.Max, total));
+
+		const conv = [_]Vec3d{
+			.{ 3.2406, -0.9689, 0.0557 },
+			.{ -1.5372, 1.8758, -0.2040 },
+			.{ -0.4986, 0.0415, 1.0570 },
+		};
+
+		var rgb = 
+			conv[0] * @as(Vec3d, @splat(total[0])) +
+			conv[1] * @as(Vec3d, @splat(total[1])) +
+			conv[2] * @as(Vec3d, @splat(total[2]));
+
+		const threshold = 0.0031308;
+		const a = @as(Vec3d, @splat(1.055));
+		const b = @as(Vec3d, @splat(12.92));
+		const gamma = 1.0 / 2.4;
+		
+		const mask = rgb > @as(Vec3d, @splat(threshold));
+		const corrected = a * Vec3d {
+			std.math.pow(f64, rgb[0], gamma),
+			std.math.pow(f64, rgb[1], gamma),
+			std.math.pow(f64, rgb[2], gamma),
+		} - @as(Vec3d, @splat(0.055));
+		rgb = @select(f64, mask, corrected, rgb * b);
+
+		const light = std.math.pow(f64, 10.0, -0.4 * magnitude);
+
+		return rgb * @as(Vec3d, @splat(light));
+	}
 
 	fn init() void {
 		starShader = Shader.initAndGetUniforms("assets/cubyz/shaders/skybox/star.vs", "assets/cubyz/shaders/skybox/star.fs", "", &starUniforms);
 		starShader.bind();
 		
-		var starData: [NUM_STARS * 5]f32 = undefined;
+		var starData: [NUM_STARS * 6]f32 = undefined;
 
 		var starRandom = std.Random.DefaultPrng.init(0);
 
@@ -663,7 +809,7 @@ pub const Skybox = struct {
 
 			const radius: f64 = starRandom.random().floatExp(f64) * 4 + 0.2;
 			
-			const temperature: f64 = @abs((starRandom.random().floatNorm(f64) * 3000.0 + 6000.0) / 5772.0);
+			const temperature: f64 = (@abs(starRandom.random().floatNorm(f64) * 3000.0 + 6000.0 - 1000.0) + 1000.0) / 5772.0;
 
 			const luminosity = 4.0 * std.math.pi * radius * radius * temperature * temperature * temperature * temperature;
 
@@ -671,12 +817,15 @@ pub const Skybox = struct {
 
 			const magnitude = -2.5 * @log10(flux) - 26.83;
 
-			starData[i * 5] = @floatCast(pos[0]);
-			starData[i * 5 + 1] = @floatCast(pos[1]);
-			starData[i * 5 + 2] = @floatCast(pos[2]);
+			const col = getStarColor(temperature * 5772.0, magnitude);
+
+			starData[i * 6] = @floatCast(pos[0]);
+			starData[i * 6 + 1] = @floatCast(pos[1]);
+			starData[i * 6 + 2] = @floatCast(pos[2]);
 			
-			starData[i * 5 + 3] = @floatCast(temperature * 5772.0);
-			starData[i * 5 + 4] = @floatCast(magnitude);
+			starData[i * 6 + 3] = @floatCast(col[0]);
+			starData[i * 6 + 4] = @floatCast(col[1]);
+			starData[i * 6 + 5] = @floatCast(col[2]);
 		}
 
 		c.glGenVertexArrays(1, &starVao);
@@ -685,14 +834,11 @@ pub const Skybox = struct {
 		c.glBindBuffer(c.GL_ARRAY_BUFFER, starVbo);
 		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(starData.len*@sizeOf(f32)), &starData, c.GL_STATIC_DRAW);
 
-		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, 5*@sizeOf(f32), null);
+		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, 6*@sizeOf(f32), null);
 		c.glEnableVertexAttribArray(0);
 		
-		c.glVertexAttribPointer(1, 1, c.GL_FLOAT, c.GL_FALSE, 5*@sizeOf(f32), @ptrFromInt(3*@sizeOf(f32)));
+		c.glVertexAttribPointer(1, 3, c.GL_FLOAT, c.GL_FALSE, 6*@sizeOf(f32), @ptrFromInt(3*@sizeOf(f32)));
 		c.glEnableVertexAttribArray(1);
-		
-		c.glVertexAttribPointer(2, 1, c.GL_FLOAT, c.GL_FALSE, 5*@sizeOf(f32), @ptrFromInt(4*@sizeOf(f32)));
-		c.glEnableVertexAttribArray(2);
 		
 		skyShader = Shader.initAndGetUniforms("assets/cubyz/shaders/skybox/sky.vs", "assets/cubyz/shaders/skybox/sky.fs", "", &skyUniforms);
 		skyShader.bind();
@@ -734,12 +880,14 @@ pub const Skybox = struct {
 		c.glDeleteBuffers(1, @ptrCast(&starVbo));
 	}
 
-	pub fn render(playerPos: Vec3d) void {
+	pub fn render() void {
 		c.glDisable(c.GL_CULL_FACE);
 		c.glDisable(c.GL_DEPTH_TEST);
 
 		const viewMatrix = game.camera.viewMatrix;
 		skyShader.bind();
+
+		const modelMatrix = Mat4f.rotationX(@as(f32, @floatFromInt(game.world.?.gameTime.load(.monotonic))) / 12000.0);
 
 		const skyboxColor = game.fog.skyColor * @as(Vec3f, @splat(@reduce(.Add, game.fog.skyColor) / 3.0));
 		c.glUniform3fv(skyUniforms.skyColor, 1, @ptrCast(&skyboxColor));
@@ -755,12 +903,10 @@ pub const Skybox = struct {
 
 		starShader.bind();
 
+		c.glUniformMatrix4fv(starUniforms.modelMatrix, 1, c.GL_TRUE, @ptrCast(&modelMatrix));
 		c.glUniformMatrix4fv(starUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
 		c.glUniformMatrix4fv(starUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
 		
-		c.glUniform3i(starUniforms.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
-		c.glUniform3f(starUniforms.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
-
 		c.glBindVertexArray(starVao);
 		c.glDrawArrays(c.GL_POINTS, 0, NUM_STARS * 3);
 
