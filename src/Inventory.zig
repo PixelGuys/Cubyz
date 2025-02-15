@@ -1811,7 +1811,7 @@ fn update(self: Inventory) void {
 					hash.update("none");
 				}
 			}
-			self._items[self._items.len - 1].item = Item{.tool = Tool.initFromCraftingGrid(availableItems, hash.final())};
+			self._items[self._items.len - 1].item = Item{.tool = Tool.initFromCraftingGrid(availableItems, hash.final(), self.type.workbench)};
 			self._items[self._items.len - 1].amount = 1;
 		}
 	}

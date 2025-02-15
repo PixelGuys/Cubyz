@@ -842,13 +842,19 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 
 		const leftPP = evaluatePickaxePower(tool, leftCollisionPointLower, leftCollisionPointUpper);
 		const rightPP = evaluatePickaxePower(tool, rightCollisionPointLower, rightCollisionPointUpper);
-		tool.pickaxePower = @max(leftPP, rightPP); // TODO: Adjust the swing direction.
+		if(tool.type.blockClass == .stone) {
+			tool.power = @max(leftPP, rightPP); // TODO: Adjust the swing direction.
+		}
 
 		const leftAP = evaluateAxePower(tool, leftCollisionPointLower, leftCollisionPointUpper);
 		const rightAP = evaluateAxePower(tool, rightCollisionPointLower, rightCollisionPointUpper);
-		tool.axePower = @max(leftAP, rightAP); // TODO: Adjust the swing direction.
+		if(tool.type.blockClass == .wood) {
+			tool.power = @max(leftAP, rightAP); // TODO: Adjust the swing direction.
+		}
 
-		tool.shovelPower = evaluateShovelPower(tool, frontCollisionPointLower);
+		if(tool.type.blockClass == .sand) {
+			tool.power = evaluateShovelPower(tool, frontCollisionPointLower);
+		}
 
 		// It takes longer to swing a heavy tool.
 		tool.swingTime = (tool.mass + tool.inertiaHandle/8)/256; // TODO: Balancing
@@ -875,15 +881,9 @@ pub const Tool = struct { // MARK: Tool
 	image: graphics.Image,
 	texture: ?graphics.Texture,
 	seed: u32,
+	type: *const ToolType,
 
-	/// Reduction factor to block breaking time.
-	pickaxePower: f32,
-	/// Reduction factor to block breaking time.
-	axePower: f32,
-	/// Reduction factor to block breaking time.
-	shovelPower: f32,
-	/// TODO: damage
-	damage: f32 = 1,
+	power: f32,
 
 	durability: u32,
 	maxDurability: u32,
@@ -929,10 +929,8 @@ pub const Tool = struct { // MARK: Tool
 			.image = graphics.Image.init(main.globalAllocator, self.image.width, self.image.height),
 			.texture = null,
 			.seed = self.seed,
-			.pickaxePower = self.pickaxePower,
-			.axePower = self.axePower,
-			.shovelPower = self.shovelPower,
-			.damage = self.damage,
+			.type = self.type,
+			.power = self.power,
 			.durability = self.durability,
 			.maxDurability = self.maxDurability,
 			.swingTime = self.swingTime,
@@ -947,10 +945,11 @@ pub const Tool = struct { // MARK: Tool
 
 	}
 
-	pub fn initFromCraftingGrid(craftingGrid: [25]?*const BaseItem, seed: u32) *Tool {
+	pub fn initFromCraftingGrid(craftingGrid: [25]?*const BaseItem, seed: u32, typ: *const ToolType) *Tool {
 		const self = init();
 		self.seed = seed;
 		self.craftingGrid = craftingGrid;
+		self.type = typ;
 		// Produce the tool and its textures:
 		// The material grid, which comes from texture generation, is needed on both server and client, to generate the tool properties.
 		TextureGenerator.generate(self);
@@ -959,7 +958,10 @@ pub const Tool = struct { // MARK: Tool
 	}
 
 	pub fn initFromZon(zon: ZonElement) *Tool {
-		const self = initFromCraftingGrid(extractItemsFromZon(zon.getChild("grid")), zon.get(u32, "seed", 0));
+		const self = initFromCraftingGrid(extractItemsFromZon(zon.getChild("grid")), zon.get(u32, "seed", 0), getToolTypeByID(zon.get([]const u8, "type", "cubyz:pickaxe")) orelse blk: {
+			std.log.err("Couldn't find tool with type {s}. Replacing it with cubyz:pickaxe", .{zon.get([]const u8, "type", "cubyz:pickaxe")});
+			break :blk getToolTypeByID("cubyz:pickaxe") orelse @panic("cubyz:pickaxe tool not found. Did you load the game with the correct assets?");
+		});
 		self.durability = zon.get(u32, "durability", self.maxDurability);
 		return self;
 	}
@@ -985,6 +987,7 @@ pub const Tool = struct { // MARK: Tool
 		zonObject.put("grid", zonArray);
 		zonObject.put("durability", self.durability);
 		zonObject.put("seed", self.seed);
+		zonObject.put("type", self.type.id);
 		return zonObject;
 	}
 
@@ -1009,17 +1012,15 @@ pub const Tool = struct { // MARK: Tool
 	fn getTooltip(self: *Tool) []const u8 {
 		self.tooltip.clearRetainingCapacity();
 		self.tooltip.writer().print(
+			\\{s}
 			\\Time to swing: {d:.2} s
-			\\Pickaxe power: {} %
-			\\Axe power: {} %
-			\\Shover power: {} %
+			\\Power: {} %
 			\\Durability: {}/{}
 			,
 			.{
+				self.type.id,
 				self.swingTime,
-				@as(i32, @intFromFloat(100*self.pickaxePower)),
-				@as(i32, @intFromFloat(100*self.axePower)),
-				@as(i32, @intFromFloat(100*self.shovelPower)),
+				@as(i32, @intFromFloat(100*self.power)),
 				self.durability, self.maxDurability,
 			}
 		) catch unreachable;
@@ -1027,15 +1028,8 @@ pub const Tool = struct { // MARK: Tool
 	}
 
 	pub fn getPowerByBlockClass(self: *Tool, blockClass: blocks.BlockClass) f32 {
-		return switch(blockClass) {
-			.fluid => 0,
-			.leaf => 1,
-			.sand => self.shovelPower,
-			.stone => self.pickaxePower,
-			.unbreakable => 0,
-			.wood => self.axePower,
-			.air => 0,
-		};
+		if(blockClass == self.type.blockClass) return self.power;
+		return 0;
 	}
 
 	pub fn onUseReturnBroken(self: *Tool) bool {
