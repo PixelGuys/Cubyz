@@ -950,7 +950,7 @@ pub const Skybox = struct {
 		c.glEnable(c.GL_BLEND);
 
 		starShader.bind();
-		
+
 		const starMatrix = viewMatrix.mul(Mat4f.rotationX(@as(f32, @floatFromInt(game.world.?.gameTime.load(.monotonic))) / 12000.0));
 
 		c.glUniformMatrix4fv(starUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&starMatrix));
