@@ -185,7 +185,9 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	const time: u32 = @intCast(std.time.milliTimestamp() & std.math.maxInt(u32));
 
+	gpu_performance_measuring.startQuery(.skybox);
 	Skybox.render();
+	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.animation);
 	blocks.meshes.preProcessAnimationData(time);
@@ -636,7 +638,7 @@ pub const Skybox = struct {
 	var skyVao: c_uint = undefined;
 	var skyVbos: [2]c_uint = undefined;
 
-	const NUM_STARS = 100000;
+	const numStars = 100000;
 
 	fn getStarPos(starRandom: std.Random) Vec3d {
 		const x = starRandom.floatNorm(f64);
@@ -801,14 +803,58 @@ pub const Skybox = struct {
 	}
 
 	fn init() void {
+		const image = graphics.Image.init(main.stackAllocator, 15000, 1000);
+		defer image.deinit(main.stackAllocator);
+		for (0..15000) |x| {
+			var total: Vec3d = @splat(0);
+			for (0..wavelengths.len) |i| {
+				const wavelength: f64 = @floatFromInt(i * 5 + 360);
+				const spectrum = plankRadiance(@floatFromInt(x), wavelength);
+				total += @as(Vec3d, @splat(spectrum * 5)) * wavelengths[i];
+			}
+
+			total /= @splat(@reduce(.Max, total));
+
+			const conv = [_]Vec3d{
+				.{ 3.2406, -0.9689, 0.0557 },
+				.{ -1.5372, 1.8758, -0.2040 },
+				.{ -0.4986, 0.0415, 1.0570 },
+			};
+
+			var rgb = conv[0] * @as(Vec3d, @splat(total[0])) + conv[1] * @as(Vec3d, @splat(total[1])) + conv[2] * @as(Vec3d, @splat(total[2]));
+
+			const threshold = 0.0031308;
+			const a = @as(Vec3d, @splat(1.055));
+			const b = @as(Vec3d, @splat(12.92));
+			const gamma = 1.0 / 2.4;
+
+			const mask = rgb > @as(Vec3d, @splat(threshold));
+			const corrected = a * Vec3d {
+				std.math.pow(f64, rgb[0], gamma),
+				std.math.pow(f64, rgb[1], gamma),
+				std.math.pow(f64, rgb[2], gamma),
+			} - @as(Vec3d, @splat(0.055));
+			rgb = @select(f64, mask, corrected, rgb * b);
+
+			for (0..1000) |y| {
+				image.setRGB(x, y, .{
+					.r = @intFromFloat(std.math.clamp(rgb[0] * 255, 0, 255)),
+					.g = @intFromFloat(std.math.clamp(rgb[1] * 255, 0, 255)),
+					.b = @intFromFloat(std.math.clamp(rgb[2] * 255, 0, 255)),
+					.a = 255,
+				});
+			}
+		}
+		image.exportToFile("star.png") catch unreachable;
+
 		starShader = Shader.initAndGetUniforms("assets/cubyz/shaders/skybox/star.vs", "assets/cubyz/shaders/skybox/star.fs", "", &starUniforms);
 		starShader.bind();
 
-		var starData: [NUM_STARS * 6]f32 = undefined;
+		var starData: [numStars * 6]f32 = undefined;
 
 		var starRandom = std.Random.DefaultPrng.init(0);
 
-		for (0..NUM_STARS) |i| {
+		for (0..numStars) |i| {
 			const pos = getStarPos(starRandom.random());
 
 			const radius: f64 = starRandom.random().floatExp(f64) * 4 + 0.2;
@@ -891,8 +937,6 @@ pub const Skybox = struct {
 		const viewMatrix = game.camera.viewMatrix;
 		skyShader.bind();
 
-		const modelMatrix = Mat4f.rotationX(@as(f32, @floatFromInt(game.world.?.gameTime.load(.monotonic))) / 12000.0);
-
 		const skyboxColor = game.fog.skyColor * @as(Vec3f, @splat(@reduce(.Add, game.fog.skyColor) / 3.0));
 		c.glUniform3fv(skyUniforms.skyColor, 1, @ptrCast(&skyboxColor));
 
@@ -906,13 +950,14 @@ pub const Skybox = struct {
 		c.glEnable(c.GL_BLEND);
 
 		starShader.bind();
+		
+		const starMatrix = viewMatrix.mul(Mat4f.rotationX(@as(f32, @floatFromInt(game.world.?.gameTime.load(.monotonic))) / 12000.0));
 
-		c.glUniformMatrix4fv(starUniforms.modelMatrix, 1, c.GL_TRUE, @ptrCast(&modelMatrix));
-		c.glUniformMatrix4fv(starUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
+		c.glUniformMatrix4fv(starUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&starMatrix));
 		c.glUniformMatrix4fv(starUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
 
 		c.glBindVertexArray(starVao);
-		c.glDrawArrays(c.GL_POINTS, 0, NUM_STARS * 3);
+		c.glDrawArrays(c.GL_POINTS, 0, numStars * 3);
 
 		c.glEnable(c.GL_CULL_FACE);
 		c.glEnable(c.GL_DEPTH_TEST);
