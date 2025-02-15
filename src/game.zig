@@ -400,6 +400,7 @@ pub const Player = struct { // MARK: Player
 	pub var eyePos: Vec3d = .{0, 0, 0};
 	pub var eyeVel: Vec3d = .{0, 0, 0};
 	pub var eyeCoyote: f64 = 0;
+	pub var jumpCoyote: f64 = 0;
 	pub var eyeStep: @Vector(3, bool) = .{false, false, false};
 	pub var crouching: bool = false;
 	pub var id: u32 = 0;
@@ -416,6 +417,7 @@ pub const Player = struct { // MARK: Player
 	pub var onGround: bool = false;
 	pub var jumpCooldown: f64 = 0;
 	const jumpCooldownConstant = 0.3;
+	const jumpCoyoteTimeConstant = 0.100;
 
 	const standingBoundingBoxExtent: Vec3d = .{0.3, 0.3, 0.9};
 	const crouchingBoundingBoxExtent: Vec3d = .{0.3, 0.3, 0.725};
@@ -474,6 +476,12 @@ pub const Player = struct { // MARK: Player
 		return eyeCoyote;
 	}
 
+	pub fn getJumpBlocking() f64 {
+		mutex.lock();
+		defer mutex.unlock();
+		return jumpCoyote;
+	}
+
 	pub fn setGamemode(newGamemode: Gamemode) void {
 		gamemode.store(newGamemode, .monotonic);
 
@@ -522,6 +530,7 @@ pub const Player = struct { // MARK: Player
 
 		Player.eyeVel = .{0, 0, 0};
 		Player.eyeCoyote = 0;
+		Player.jumpCoyote = -1;
 		Player.eyeStep = .{false, false, false};
 	}
 
@@ -830,9 +839,10 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 						movementSpeed = @max(movementSpeed, 5.5);
 						movementDir[2] += 5.5;
 					}
-				} else if (Player.onGround and Player.jumpCooldown <= 0) {
+				} else if ((Player.onGround or Player.jumpCoyote > 0.0) and Player.jumpCooldown <= 0) {
 					jumping = true;
 					Player.jumpCooldown = Player.jumpCooldownConstant;
+					Player.jumpCoyote = -1;
 				}
 			} else {
 				Player.jumpCooldown = 0;
@@ -1076,6 +1086,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			Player.eyePos[2] -= stepAmount;
 			move[2] = -0.01;
 			Player.onGround = true;
+			Player.jumpCoyote = jumpCoyoteTimeConstant;
 		}
 
 		const wasOnGround = Player.onGround;
@@ -1090,6 +1101,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 				Player.onGround = true;
 				Player.super.pos[2] = box.max[2] - hitBox.min[2];
 				Player.eyeCoyote = 0;
+				Player.jumpCoyote = jumpCoyoteTimeConstant;
 			} else {
 				Player.super.pos[2] = box.min[2] - hitBox.max[2];
 			}
@@ -1122,6 +1134,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	// Clamp the eyePosition and subtract eye coyote time.
 	Player.eyePos = @max(Player.eyeBox.min, @min(Player.eyePos, Player.eyeBox.max));
 	Player.eyeCoyote -= deltaTime;
+	Player.jumpCoyote -= deltaTime;
 
 	const biome = world.?.playerBiome.load(.monotonic);
 
