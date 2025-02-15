@@ -58,6 +58,25 @@ const Material = struct { // MARK: Material
 		hash ^= hash >> 24;
 		return hash;
 	}
+
+	fn getProperty(self: Material, prop: MaterialProperty) f32 {
+		switch(prop) {
+			inline else => |field| return @field(self, @tagName(field)),
+		}
+	}
+};
+
+const MaterialProperty = enum {
+	density,
+	resistance,
+	power,
+
+	fn fromString(string: []const u8) MaterialProperty {
+		return std.meta.stringToEnum(MaterialProperty, string) orelse {
+			std.log.err("Couldn't find material property {s}. Replacing it with power", .{string});
+			return .power;
+		};
+	}
 };
 
 
@@ -828,50 +847,68 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 
 	/// Determines all the basic properties of the tool.
 	pub fn evaluateTool(tool: *Tool) void {
-		const hasGoodHandle = findHandle(tool);
-		calculateDurability(tool);
-		determineInertia(tool);
-		var leftCollisionPointLower = Vec3i{0, 0, 0};
-		var rightCollisionPointLower = Vec3i{0, 0, 0};
-		var frontCollisionPointLower = Vec3i{0, 0, 0};
-		var leftCollisionPointUpper = Vec3i{0, 0, 0};
-		var rightCollisionPointUpper = Vec3i{0, 0, 0};
-		var frontCollisionPointUpper = Vec3i{0, 0, 0};
-		determineCollisionPoints(tool, &leftCollisionPointLower, &rightCollisionPointLower, &frontCollisionPointLower, 16);
-		determineCollisionPoints(tool, &rightCollisionPointUpper, &leftCollisionPointUpper, &frontCollisionPointUpper, -20);
-
-		const leftPP = evaluatePickaxePower(tool, leftCollisionPointLower, leftCollisionPointUpper);
-		const rightPP = evaluatePickaxePower(tool, rightCollisionPointLower, rightCollisionPointUpper);
-		if(tool.type.blockClass == .stone) {
-			tool.power = @max(leftPP, rightPP); // TODO: Adjust the swing direction.
+		inline for(comptime std.meta.fieldNames(ToolProperty)) |name| {
+			@field(tool, name) = 0;
 		}
-
-		const leftAP = evaluateAxePower(tool, leftCollisionPointLower, leftCollisionPointUpper);
-		const rightAP = evaluateAxePower(tool, rightCollisionPointLower, rightCollisionPointUpper);
-		if(tool.type.blockClass == .wood) {
-			tool.power = @max(leftAP, rightAP); // TODO: Adjust the swing direction.
+		for(0..25) |i| {
+			const material = (tool.craftingGrid[i] orelse continue).material orelse continue;
+			for(tool.type.slotInfos[i]) |set| {
+				tool.getProperty(set.destination).* += set.factor*set.functionType.eval(material.getProperty(set.source) + set.additionConstant);
+			}
 		}
+	}
+};
 
-		if(tool.type.blockClass == .sand) {
-			tool.power = evaluateShovelPower(tool, frontCollisionPointLower);
+const ParameterSet = struct {
+	source: MaterialProperty,
+	destination: ToolProperty,
+	factor: f32,
+	additionConstant: f32,
+	functionType: FunctionType,
+};
+
+const FunctionType = enum {
+	linear,
+	square,
+	squareRoot,
+	exp2,
+	log2,
+
+	fn eval(self: FunctionType, val: f32) f32 {
+		switch(self) {
+			.linear => return val,
+			.square => return val*val,
+			.squareRoot => return @sqrt(val),
+			.exp2 => return @exp2(val),
+			.log2 => return @log2(val),
 		}
+	}
 
-		// It takes longer to swing a heavy tool.
-		tool.swingTime = (tool.mass + tool.inertiaHandle/8)/256; // TODO: Balancing
-
-		if(hasGoodHandle) { // Good handles make tools easier to handle.
-			tool.swingTime /= 2.0;
-		}
-
-		// TODO: Swords and throwing weapons.
-
+	fn fromString(string: []const u8) FunctionType {
+		return std.meta.stringToEnum(FunctionType, string) orelse {
+			std.log.err("Couldn't find function type {s}. Replacing it with linear", .{string});
+			return .linear;
+		};
 	}
 };
 
 pub const ToolType = struct { // MARK: ToolType
 	id: []const u8,
 	blockClass: main.blocks.BlockClass,
-	// TODO
+	slotInfos: [25][]ParameterSet,
+};
+
+const ToolProperty = enum {
+	power,
+	maxDurability,
+	swingTime,
+
+	fn fromString(string: []const u8) ToolProperty {
+		return std.meta.stringToEnum(ToolProperty, string) orelse {
+			std.log.err("Couldn't find tool property {s}. Replacing it with power", .{string});
+			return .power;
+		};
+	}
 };
 
 pub const Tool = struct { // MARK: Tool
@@ -886,7 +923,7 @@ pub const Tool = struct { // MARK: Tool
 	power: f32,
 
 	durability: u32,
-	maxDurability: u32,
+	maxDurability: f32,
 
 	/// How long it takes to swing the tool in seconds.
 	swingTime: f32,
@@ -962,7 +999,7 @@ pub const Tool = struct { // MARK: Tool
 			std.log.err("Couldn't find tool with type {s}. Replacing it with cubyz:pickaxe", .{zon.get([]const u8, "type", "cubyz:pickaxe")});
 			break :blk getToolTypeByID("cubyz:pickaxe") orelse @panic("cubyz:pickaxe tool not found. Did you load the game with the correct assets?");
 		});
-		self.durability = zon.get(u32, "durability", self.maxDurability);
+		self.durability = zon.get(u32, "durability", @intFromFloat(self.maxDurability));
 		return self;
 	}
 
@@ -999,6 +1036,12 @@ pub const Tool = struct { // MARK: Tool
 			}
 		}
 		return hash;
+	}
+
+	fn getProperty(self: *Tool, prop: ToolProperty) *f32 {
+		switch(prop) {
+			inline else => |field| return &@field(self, @tagName(field)),
+		}
 	}
 
 	fn getTexture(self: *Tool) graphics.Texture {
@@ -1236,10 +1279,36 @@ pub fn registerTool(_: []const u8, id: []const u8, zon: ZonElement) void {
 	if(toolTypes.contains(id)) {
 		std.log.err("Registered tool type with id {s} twice!", .{id});
 	}
+	var slotTypes = std.StringHashMap([]ParameterSet).init(main.stackAllocator.allocator);
+	defer slotTypes.deinit();
+	slotTypes.put("none", &.{}) catch unreachable;
+	for(zon.getChild("slotTypes").toSlice()) |typ| {
+		const name = typ.get([]const u8, "name", "huh?");
+		var parameterSets = main.List(ParameterSet).init(arena.allocator());
+		for(typ.getChild("parameterSets").toSlice()) |set| {
+			parameterSets.append(.{
+				.source = MaterialProperty.fromString(set.get([]const u8, "source", "not specified")),
+				.destination = ToolProperty.fromString(set.get([]const u8, "destination", "not specified")),
+				.factor = set.get(f32, "factor", 1),
+				.additionConstant = set.get(f32, "additionConstant", 0),
+				.functionType = FunctionType.fromString(set.get([]const u8, "functionType", "not specified")),
+			});
+		}
+		slotTypes.put(name, parameterSets.toOwnedSlice()) catch unreachable;
+	}
+	var slotInfos: [25][]ParameterSet = undefined;
+	for(0..25) |i| {
+		const slotTypeId = zon.getAtIndex([]const u8, i, "none");
+		slotInfos[i] = slotTypes.get(slotTypeId) orelse blk: {
+			std.log.err("Could not find slot type {s}. It must be specified in the same file.", .{slotTypeId});
+			break :blk &.{};
+		};
+	}
 	const idDupe = arena.allocator().dupe(u8, id);
 	toolTypes.put(idDupe, .{
 		.id = idDupe,
 		.blockClass = std.meta.stringToEnum(main.blocks.BlockClass, zon.get([]const u8, "blockClass", "none")) orelse .air,
+		.slotInfos = slotInfos,
 	}) catch unreachable;
 }
 
