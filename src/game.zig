@@ -1080,7 +1080,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			Player.eyePos[2] -= stepAmount;
 			move[2] = -0.01;
 			Player.onGround = true;
-			Player.jumpCoyote = jumpCoyoteTimeConstant;
+			Player.jumpCoyote = Player.jumpCoyoteTimeConstant;
 		}
 
 		const wasOnGround = Player.onGround;
@@ -1095,7 +1095,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 				Player.onGround = true;
 				Player.super.pos[2] = box.max[2] - hitBox.min[2];
 				Player.eyeCoyote = 0;
-				Player.jumpCoyote = jumpCoyoteTimeConstant;
+				Player.jumpCoyote = Player.jumpCoyoteTimeConstant;
 			} else {
 				Player.super.pos[2] = box.min[2] - hitBox.max[2];
 			}
