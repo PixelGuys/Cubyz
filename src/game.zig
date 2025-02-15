@@ -476,12 +476,6 @@ pub const Player = struct { // MARK: Player
 		return eyeCoyote;
 	}
 
-	pub fn getJumpBlocking() f64 {
-		mutex.lock();
-		defer mutex.unlock();
-		return jumpCoyote;
-	}
-
 	pub fn setGamemode(newGamemode: Gamemode) void {
 		gamemode.store(newGamemode, .monotonic);
 
