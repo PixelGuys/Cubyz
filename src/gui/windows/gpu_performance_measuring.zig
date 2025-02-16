@@ -14,6 +14,7 @@ const GuiComponent = gui.GuiComponent;
 pub const Samples = enum(u8) {
 	screenbuffer_clear,
 	clear,
+	skybox,
 	animation,
 	chunk_rendering_preparation,
 	chunk_rendering_previous_visible,
@@ -33,6 +34,7 @@ pub const Samples = enum(u8) {
 const names = [_][]const u8 {
 	"Screenbuffer clear",
 	"Clear",
+	"Skybox",
 	"Pre-processing Block Animations",
 	"Chunk Rendering Preparation",
 	"Chunk Rendering Previous Visible",
