@@ -433,7 +433,7 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 		while(x < 5) : (x += 1) {
 			var y: u8 = 0;
 			while(y < 5) : (y += 1) {
-				var offsetGrid: [25]?*const BaseItem = undefined;
+				var offsetGrid: [25]?*const BaseItem = .{null} ** 25;
 				var dx: i32 = -2;
 				while(dx <= 2) : (dx += 1) {
 					var dy: i32 = -2;
@@ -456,7 +456,7 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 			var y: u8 = 0;
 			while(y < 5) : (y += 1) {
 				var offsetGrid: [25]?*const BaseItem = .{null} ** 25;
-				var offsetNeighborCount: [25]u8 = undefined;
+				var offsetNeighborCount: [25]u8 = .{0} ** 25;
 				var dx: i32 = -2;
 				while(dx <= 2) : (dx += 1) {
 					var dy: i32 = -2;
