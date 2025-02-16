@@ -1547,7 +1547,8 @@ pub const Command = struct { // MARK: Command
 
 			const stack = self.source.ref();
 
-			const costOfChange = if(gamemode != .creative) self.oldBlock.canBeChangedInto(self.newBlock, stack.*) else .yes;
+			var shouldDropSourceBlockOnSuccess: bool = true;
+			const costOfChange = if(gamemode != .creative) self.oldBlock.canBeChangedInto(self.newBlock, stack.*, &shouldDropSourceBlockOnSuccess) else .yes;
 
 			// Check if we can change it:
 			if(!switch(costOfChange) {
@@ -1601,7 +1602,7 @@ pub const Command = struct { // MARK: Command
 				},
 			}
 
-			if(side == .server and gamemode != .creative and self.oldBlock.typ != self.newBlock.typ) {
+			if(side == .server and gamemode != .creative and self.oldBlock.typ != self.newBlock.typ and shouldDropSourceBlockOnSuccess) {
 				for(self.oldBlock.blockDrops()) |drop| {
 					if(drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
 						blockDrop(self.pos, drop);

@@ -63,7 +63,8 @@ pub const RotationMode = struct { // MARK: RotationMode
 		fn onBlockBreaking(_: ?main.items.Item, _: Vec3f, _: Vec3f, currentData: *Block) void {
 			currentData.* = .{.typ = 0, .data = 0};
 		}
-		fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack) CanBeChangedInto {
+		fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) CanBeChangedInto {
+			shouldDropSourceBlockOnSuccess.* = true;
 			if(std.meta.eql(oldBlock, newBlock)) return .no;
 			if(oldBlock.typ == newBlock.typ) return .yes;
 			if(oldBlock.solid()) {
@@ -124,7 +125,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 
 	onBlockBreaking: *const fn(item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void = &DefaultFunctions.onBlockBreaking,
 
-	canBeChangedInto: *const fn(oldBlock: Block, newBlock: Block, item: main.items.ItemStack) CanBeChangedInto = DefaultFunctions.canBeChangedInto,
+	canBeChangedInto: *const fn(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) CanBeChangedInto = DefaultFunctions.canBeChangedInto,
 };
 
 var rotationModes: std.StringHashMap(RotationMode) = undefined;
@@ -610,8 +611,8 @@ pub const RotationModes = struct {
 			return RotationMode.DefaultFunctions.onBlockBreaking(item, relativePlayerPos, playerDir, currentData);
 		}
 
-		pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack) RotationMode.CanBeChangedInto {
-			if(oldBlock.typ != newBlock.typ) return RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item);
+		pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
+			if(oldBlock.typ != newBlock.typ) return RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess);
 			if(oldBlock.data == newBlock.data) return .no;
 			if(item.item != null and item.item.? == .baseItem and std.mem.eql(u8, item.item.?.baseItem.id, "cubyz:chisel")) {
 				return .yes; // TODO: Durability change, after making the chisel a proper tool.
@@ -770,8 +771,8 @@ pub const RotationModes = struct {
 			if(currentData.data == 0) currentData.typ = 0;
 		}
 
-		pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack) RotationMode.CanBeChangedInto {
-			switch(RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item)) {
+		pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
+			switch(RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess)) {
 				.no, .yes_costsDurability, .yes_dropsItems => return .no,
 				.yes, .yes_costsItems => {
 					const torchAmountChange = @as(i32, @popCount(newBlock.data)) - if(oldBlock.typ == newBlock.typ) @as(i32, @popCount(oldBlock.data)) else 0;
@@ -920,8 +921,8 @@ pub const RotationModes = struct {
 			if(currentData.data == 0) currentData.typ = 0;
 		}
 
-		pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack) RotationMode.CanBeChangedInto {
-			return Torch.canBeChangedInto(oldBlock, newBlock, item);
+		pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
+			return Torch.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess);
 		}
 	};
 	pub const Ore = struct { // MARK: Ore
@@ -966,13 +967,20 @@ pub const RotationModes = struct {
 			return true;
 		}
 
-		pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack) RotationMode.CanBeChangedInto {
-			if(RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item) == .no) return .no;
+		pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
+			if(RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess) == .no) return .no;
 			if(oldBlock.transparent() or oldBlock.viewThrough()) return .no;
 			if(!main.models.models.items[main.blocks.meshes.modelIndexStart(oldBlock)].allNeighborsOccluded) return .no;
 			if(oldBlock.data != 0) return .no;
 			if(newBlock.data != oldBlock.typ) return .no;
+			shouldDropSourceBlockOnSuccess.* = false;
 			return .{.yes_costsItems = 1};
+		}
+
+
+		pub fn onBlockBreaking(_: ?main.items.Item, _: Vec3f, _: Vec3f, currentData: *Block) void {
+			currentData.typ = currentData.data;
+			currentData.data = 0;
 		}
 	};
 };
