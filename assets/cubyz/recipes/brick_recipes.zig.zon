@@ -88,6 +88,18 @@
 		.output = "2 cubyz:ferrock_wall",
 	},
 	.{
+		.inputs = .{"cubyz:terracotta"},
+		.output = "cubyz:terracotta_tiles",
+	},
+	.{
+		.inputs = .{"cubyz:terracotta"},
+		.output = "cubyz:terracotta_bricks",
+	},
+	.{
+		.inputs = .{"cubyz:terracotta"},
+		.output = "2 cubyz:terracotta_wall",
+	},
+	.{
 		.inputs = .{"cubyz:void_stone"},
 		.output = "cubyz:void_stone_tile",
 	},
