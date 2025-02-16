@@ -1192,6 +1192,7 @@ pub const Command = struct { // MARK: Command
 				cmd.tryCraftingTo(allocator, self.source, self.dest, side, user);
 				return;
 			}
+			if(self.dest.inv.type == .workbench and self.dest.inv.type.workbench.slotInfos[self.dest.slot].disabled) return;
 			if(self.dest.inv.type == .workbench and self.dest.slot == 25) {
 				if(self.source.ref().item == null and self.dest.ref().item != null) {
 					cmd.executeBaseOperation(allocator, .{.move = .{
@@ -1249,7 +1250,7 @@ pub const Command = struct { // MARK: Command
 			std.debug.assert(self.source.inv.type == .normal);
 			if(self.dest.inv.type == .creative) return;
 			if(self.dest.inv.type == .crafting) return;
-			if(self.dest.inv.type == .workbench and self.dest.slot == 25) return;
+			if(self.dest.inv.type == .workbench and (self.dest.slot == 25 or self.dest.inv.type.workbench.slotInfos[self.dest.slot].disabled)) return;
 			if(self.dest.inv.type == .workbench and !canPutIntoWorkbench(self.source)) return;
 			const itemSource = self.source.ref().item orelse return;
 			if(self.dest.ref().item) |itemDest| {
@@ -1304,6 +1305,7 @@ pub const Command = struct { // MARK: Command
 				cmd.tryCraftingTo(allocator, self.dest, self.source, side, user);
 				return;
 			}
+			if(self.source.inv.type == .workbench and self.source.inv.type.workbench.slotInfos[self.source.slot].disabled) return;
 			if(self.source.inv.type == .workbench and self.source.slot == 25) {
 				if(self.dest.ref().item == null and self.source.ref().item != null) {
 					cmd.executeBaseOperation(allocator, .{.move = .{
@@ -1375,6 +1377,7 @@ pub const Command = struct { // MARK: Command
 				}
 				return;
 			}
+			if(self.source.inv.type == .workbench and self.source.inv.type.workbench.slotInfos[self.source.slot].disabled) return;
 			if(self.source.inv.type == .workbench and self.source.slot == 25) {
 				cmd.removeToolCraftingIngredients(allocator, self.source.inv, side);
 			}
@@ -1411,7 +1414,7 @@ pub const Command = struct { // MARK: Command
 		amount: u16 = 0,
 
 		fn run(self: FillFromCreative, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, mode: Gamemode) error{serverFailure}!void {
-			if(self.dest.inv.type == .workbench and self.dest.slot == 25) return;
+			if(self.dest.inv.type == .workbench and (self.dest.slot == 25 or self.dest.inv.type.workbench.slotInfos[self.dest.slot].disabled)) return;
 			if(side == .server and user != null and mode != .creative) return;
 			if(side == .client and mode != .creative) return;
 
@@ -1793,16 +1796,18 @@ fn update(self: Inventory) void {
 		self._items[self._items.len - 1].deinit();
 		self._items[self._items.len - 1].clear();
 		var availableItems: [25]?*const BaseItem = undefined;
-		var nonEmpty: bool = false;
+		var hasAllMandatory: bool = true;
+
 		for(0..25) |i| {
 			if(self._items[i].item != null and self._items[i].item.? == .baseItem) {
 				availableItems[i] = self._items[i].item.?.baseItem;
-				nonEmpty = true;
 			} else {
+				if(!self.type.workbench.slotInfos[i].optional and !self.type.workbench.slotInfos[i].disabled)
+					hasAllMandatory = false;
 				availableItems[i] = null;
 			}
 		}
-		if(nonEmpty) {
+		if(hasAllMandatory) {
 			var hash = std.hash.Crc32.init();
 			for(availableItems) |item| {
 				if(item != null) {

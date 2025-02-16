@@ -852,12 +852,18 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 		}
 		for(0..25) |i| {
 			const material = (tool.craftingGrid[i] orelse continue).material orelse continue;
-			for(tool.type.slotInfos[i]) |set| {
+			for(tool.type.slotInfos[i].parameters) |set| {
 				tool.getProperty(set.destination).* += set.factor*set.functionType.eval(material.getProperty(set.source) + set.additionConstant);
 			}
 		}
 		tool.durability = @max(1, std.math.lossyCast(u32, tool.maxDurability));
 	}
+};
+
+const SlotInfo = struct {// MARK: SlotInfo
+	parameters: []ParameterSet = &.{},
+	disabled: bool = false,
+	optional: bool = false,
 };
 
 const ParameterSet = struct {
@@ -896,7 +902,7 @@ const FunctionType = enum {
 pub const ToolType = struct { // MARK: ToolType
 	id: []const u8,
 	blockClass: main.blocks.BlockClass,
-	slotInfos: [25][]ParameterSet,
+	slotInfos: [25]SlotInfo,
 };
 
 const ToolProperty = enum {
@@ -1280,9 +1286,9 @@ pub fn registerTool(_: []const u8, id: []const u8, zon: ZonElement) void {
 	if(toolTypes.contains(id)) {
 		std.log.err("Registered tool type with id {s} twice!", .{id});
 	}
-	var slotTypes = std.StringHashMap([]ParameterSet).init(main.stackAllocator.allocator);
+	var slotTypes = std.StringHashMap(SlotInfo).init(main.stackAllocator.allocator);
 	defer slotTypes.deinit();
-	slotTypes.put("none", &.{}) catch unreachable;
+	slotTypes.put("none", .{.disabled = true}) catch unreachable;
 	for(zon.getChild("slotTypes").toSlice()) |typ| {
 		const name = typ.get([]const u8, "name", "huh?");
 		var parameterSets = main.List(ParameterSet).init(arena.allocator());
@@ -1295,15 +1301,18 @@ pub fn registerTool(_: []const u8, id: []const u8, zon: ZonElement) void {
 				.functionType = FunctionType.fromString(set.get([]const u8, "functionType", "linear")),
 			});
 		}
-		slotTypes.put(name, parameterSets.toOwnedSlice()) catch unreachable;
+		slotTypes.put(name, .{
+			.parameters = parameterSets.toOwnedSlice(),
+			.optional = typ.get(bool, "optional", false),
+		}) catch unreachable;
 	}
-	var slotInfos: [25][]ParameterSet = undefined;
+	var slotInfos: [25]SlotInfo = undefined;
 	const slotTypesZon = zon.getChild("slots");
 	for(0..25) |i| {
 		const slotTypeId = slotTypesZon.getAtIndex([]const u8, i, "none");
 		slotInfos[i] = slotTypes.get(slotTypeId) orelse blk: {
 			std.log.err("Could not find slot type {s}. It must be specified in the same file.", .{slotTypeId});
-			break :blk &.{};
+			break :blk .{.disabled = true};
 		};
 	}
 	const idDupe = arena.allocator().dupe(u8, id);
