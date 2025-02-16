@@ -271,7 +271,7 @@ const STUN = struct { // MARK: STUN
 			const ip = splitter.first();
 			const serverAddress = Address {
 				.ip=Socket.resolveIP(ip) catch |err| {
-					std.log.err("Cannot resolve stun server address: {s}, error: {s}", .{ip, @errorName(err)});
+					std.log.warn("Cannot resolve stun server address: {s}, error: {s}", .{ip, @errorName(err)});
 					continue;
 				},
 				.port=std.fmt.parseUnsigned(u16, splitter.rest(), 10) catch 3478,
@@ -298,7 +298,7 @@ const STUN = struct { // MARK: STUN
 					oldAddress = result;
 				}
 			} else {
-				std.log.err("Couldn't reach STUN server: {s}", .{server});
+				std.log.warn("Couldn't reach STUN server: {s}", .{server});
 			}
 		}
 		return Address{.ip=Socket.resolveIP("127.0.0.1") catch unreachable, .port=settings.defaultPort}; // TODO: Return ip address in LAN.
