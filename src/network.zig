@@ -126,7 +126,7 @@ pub fn init() void {
 	}
 }
 
-const Address = struct {
+pub const Address = struct {
 	ip: u32,
 	port: u16,
 	isSymmetricNAT: bool = false,
@@ -368,6 +368,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 	mutex: std.Thread.Mutex = .{},
 	waitingToFinishReceive: std.Thread.Condition = std.Thread.Condition{},
+	newConnectionCallback: Atomic(?*const fn(Address) void) = .init(null),
 
 	receiveBuffer: [Connection.maxPacketSize]u8 = undefined,
 
@@ -533,19 +534,25 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 				}
 			}
 		}
-		defer self.mutex.unlock();
-		// Check if it's part of an active request:
-		for(self.requests.items) |request| {
-			if(request.address.ip == source.ip and request.address.port == source.port) {
-				request.data = main.globalAllocator.dupe(u8, data);
-				request.requestNotifier.signal();
-				return;
+		{
+			defer self.mutex.unlock();
+			// Check if it's part of an active request:
+			for(self.requests.items) |request| {
+				if(request.address.ip == source.ip and request.address.port == source.port) {
+					request.data = main.globalAllocator.dupe(u8, data);
+					request.requestNotifier.signal();
+					return;
+				}
 			}
+			if(self.online.load(.acquire) and source.ip == self.externalAddress.ip and source.port == self.externalAddress.port) return;
 		}
-		if(self.online.load(.acquire) and source.ip == self.externalAddress.ip and source.port == self.externalAddress.port) return;
-		// TODO: Reduce the number of false alarms in the short period after a disconnect.
-		std.log.warn("Unknown connection from address: {}", .{source});
-		std.log.debug("Message: {any}", .{data});
+		if(self.newConnectionCallback.load(.monotonic)) |callback| {
+			callback(source);
+		} else {
+			// TODO: Reduce the number of false alarms in the short period after a disconnect.
+			std.log.warn("Unknown connection from address: {}", .{source});
+			std.log.debug("Message: {any}", .{data});
+		}
 	}
 
 	pub fn run(self: *ConnectionManager) void {

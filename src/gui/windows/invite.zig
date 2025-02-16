@@ -9,6 +9,7 @@ const gui = @import("../gui.zig");
 const GuiComponent = gui.GuiComponent;
 const GuiWindow = gui.GuiWindow;
 const Button = @import("../components/Button.zig");
+const CheckBox = @import("../components/CheckBox.zig");
 const Label = @import("../components/Label.zig");
 const TextInput = @import("../components/TextInput.zig");
 const VerticalList = @import("../components/VerticalList.zig");
@@ -59,8 +60,22 @@ fn copyIp(_: usize) void {
 	main.Window.setClipboardString(ipAddress);
 }
 
+fn inviteFromExternal(address: main.network.Address) void {
+	const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{}", .{address}) catch unreachable;
+	defer main.stackAllocator.free(ip);
+	const user = main.server.User.initAndIncreaseRefCount(main.server.connectionManager, ip) catch |err| {
+		std.log.err("Cannot connect user from external IP {}: {s}", .{address, @errorName(err)});
+		return;
+	};
+	user.decreaseRefCount();
+}
+
+fn makePublic(public: bool) void {
+	main.server.connectionManager.newConnectionCallback.store(if(public) &inviteFromExternal else null, .monotonic);
+}
+
 pub fn onOpen() void {
-	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
+	const list = VerticalList.init(.{padding, 16 + padding}, 260, 16);
 	list.add(Label.init(.{0, 0}, width, "Please send your IP to the player who wants to join and enter their IP below.", .center));
 	//                                           255.255.255.255:?65536 (longest possible ip address)
 	ipAddressLabel = Label.init(.{0, 0}, width, "                      ", .center);
@@ -70,6 +85,7 @@ pub fn onOpen() void {
 	list.add(ipAddressEntry);
 	list.add(Button.initText(.{0, 0}, 100, "Invite", .{.callback = &invite}));
 	list.add(Button.initText(.{0, 0}, 100, "Manage Players", gui.openWindowCallback("manage_players")));
+	list.add(CheckBox.init(.{0, 0}, width, "Allow anyone to join (requires a publicly visible IP address+port which may need some configuration in your router)", main.server.connectionManager.newConnectionCallback.load(.monotonic) != null, &makePublic));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
