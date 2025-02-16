@@ -965,6 +965,15 @@ pub const RotationModes = struct {
 			block.typ = newBlockType;
 			return true;
 		}
+
+		pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack) RotationMode.CanBeChangedInto {
+			if(RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item) == .no) return .no;
+			if(oldBlock.transparent() or oldBlock.viewThrough()) return .no;
+			if(!main.models.models.items[main.blocks.meshes.modelIndexStart(oldBlock)].allNeighborsOccluded) return .no;
+			if(oldBlock.data != 0) return .no;
+			if(newBlock.data != oldBlock.typ) return .no;
+			return .{.yes_costsItems = 1};
+		}
 	};
 };
 
