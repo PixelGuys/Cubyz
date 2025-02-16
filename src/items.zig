@@ -856,6 +856,7 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 				tool.getProperty(set.destination).* += set.factor*set.functionType.eval(material.getProperty(set.source) + set.additionConstant);
 			}
 		}
+		tool.durability = @max(1, std.math.lossyCast(u32, tool.maxDurability));
 	}
 };
 
@@ -999,7 +1000,7 @@ pub const Tool = struct { // MARK: Tool
 			std.log.err("Couldn't find tool with type {s}. Replacing it with cubyz:pickaxe", .{zon.get([]const u8, "type", "cubyz:pickaxe")});
 			break :blk getToolTypeByID("cubyz:pickaxe") orelse @panic("cubyz:pickaxe tool not found. Did you load the game with the correct assets?");
 		});
-		self.durability = zon.get(u32, "durability", @intFromFloat(self.maxDurability));
+		self.durability = zon.get(u32, "durability", std.math.lossyCast(u32, self.maxDurability));
 		return self;
 	}
 
@@ -1064,7 +1065,7 @@ pub const Tool = struct { // MARK: Tool
 				self.type.id,
 				self.swingTime,
 				@as(i32, @intFromFloat(100*self.power)),
-				self.durability, self.maxDurability,
+				self.durability, std.math.lossyCast(u32, self.maxDurability),
 			}
 		) catch unreachable;
 		return self.tooltip.items;
@@ -1291,14 +1292,15 @@ pub fn registerTool(_: []const u8, id: []const u8, zon: ZonElement) void {
 				.destination = ToolProperty.fromString(set.get([]const u8, "destination", "not specified")),
 				.factor = set.get(f32, "factor", 1),
 				.additionConstant = set.get(f32, "additionConstant", 0),
-				.functionType = FunctionType.fromString(set.get([]const u8, "functionType", "not specified")),
+				.functionType = FunctionType.fromString(set.get([]const u8, "functionType", "linear")),
 			});
 		}
 		slotTypes.put(name, parameterSets.toOwnedSlice()) catch unreachable;
 	}
 	var slotInfos: [25][]ParameterSet = undefined;
+	const slotTypesZon = zon.getChild("slots");
 	for(0..25) |i| {
-		const slotTypeId = zon.getAtIndex([]const u8, i, "none");
+		const slotTypeId = slotTypesZon.getAtIndex([]const u8, i, "none");
 		slotInfos[i] = slotTypes.get(slotTypeId) orelse blk: {
 			std.log.err("Could not find slot type {s}. It must be specified in the same file.", .{slotTypeId});
 			break :blk &.{};
