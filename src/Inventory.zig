@@ -1192,7 +1192,7 @@ pub const Command = struct { // MARK: Command
 				cmd.tryCraftingTo(allocator, self.source, self.dest, side, user);
 				return;
 			}
-			if(self.dest.inv.type == .workbench and self.dest.inv.type.workbench.slotInfos[self.dest.slot].disabled) return;
+			if(self.dest.inv.type == .workbench and self.dest.slot != 25 and self.dest.inv.type.workbench.slotInfos[self.dest.slot].disabled) return;
 			if(self.dest.inv.type == .workbench and self.dest.slot == 25) {
 				if(self.source.ref().item == null and self.dest.ref().item != null) {
 					cmd.executeBaseOperation(allocator, .{.move = .{
@@ -1305,7 +1305,7 @@ pub const Command = struct { // MARK: Command
 				cmd.tryCraftingTo(allocator, self.dest, self.source, side, user);
 				return;
 			}
-			if(self.source.inv.type == .workbench and self.source.inv.type.workbench.slotInfos[self.source.slot].disabled) return;
+			if(self.source.inv.type == .workbench and self.source.slot != 25 and self.source.inv.type.workbench.slotInfos[self.source.slot].disabled) return;
 			if(self.source.inv.type == .workbench and self.source.slot == 25) {
 				if(self.dest.ref().item == null and self.source.ref().item != null) {
 					cmd.executeBaseOperation(allocator, .{.move = .{
@@ -1377,7 +1377,7 @@ pub const Command = struct { // MARK: Command
 				}
 				return;
 			}
-			if(self.source.inv.type == .workbench and self.source.inv.type.workbench.slotInfos[self.source.slot].disabled) return;
+			if(self.source.inv.type == .workbench and self.source.slot != 25 and self.source.inv.type.workbench.slotInfos[self.source.slot].disabled) return;
 			if(self.source.inv.type == .workbench and self.source.slot == 25) {
 				cmd.removeToolCraftingIngredients(allocator, self.source.inv, side);
 			}
