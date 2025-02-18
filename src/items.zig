@@ -710,7 +710,7 @@ fn loadPixelSources(assetFolder: []const u8, id: []const u8, layerPostfix: []con
 		};
 	};
 	defer image.deinit(main.stackAllocator);
-	if(image.width != 16 or image.height != 16) {
+	if((image.width != 16 or image.height != 16) and image.imageData.ptr != main.graphics.Image.emptyImage.imageData.ptr) {
 		std.log.err("Truncating image for {s} with incorrect dimensions. Should be 16×16.", .{id});
 	}
 	for(0..16) |x| {
