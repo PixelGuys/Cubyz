@@ -428,92 +428,23 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 
 	pub fn generate(tool: *Tool) void {
 		const img = tool.image;
-		var pixelMaterials: [16][16]PixelData = undefined;
 		for(0..16) |x| {
 			for(0..16) |y| {
-				pixelMaterials[x][y] = PixelData.init(main.stackAllocator);
-			}
-		}
-
-		defer { // TODO: Maybe use an ArenaAllocator?
-			for(0..16) |x| {
-				for(0..16) |y| {
-					pixelMaterials[x][y].deinit();
-				}
+				const source = tool.type.pixelSources[x][y];
+				tool.materialGrid[x][y] = if(source < 25) tool.craftingGrid[source] else null;
 			}
 		}
 
 		var seed: u64 = tool.seed;
 		random.scrambleSeed(&seed);
 
-		// Count all neighbors:
-		var neighborCount: [25]u8 = [_]u8{0} ** 25;
-		var x: u8 = 0;
-		while(x < 5) : (x += 1) {
-			var y: u8 = 0;
-			while(y < 5) : (y += 1) {
-				var offsetGrid: [25]?*const BaseItem = .{null} ** 25;
-				var dx: i32 = -2;
-				while(dx <= 2) : (dx += 1) {
-					var dy: i32 = -2;
-					while(dy <= 2) : (dy += 1) {
-						if(x + dx >= 0 and x + dx < 5 and y + dy >= 0 and y + dy < 5) {
-							const index: usize = @intCast(x + dx + 5*(y + dy));
-							const offsetIndex: usize = @intCast(2 + dx + 5*(2 + dy));
-							offsetGrid[offsetIndex] = tool.craftingGrid[index];
-						}
-					}
-				}
-				const index = x + 5*y;
-				neighborCount[index] = countNeighbors(&offsetGrid);
-			}
-		}
-
-		// Push all items from the regions on a 16×16 image grid.
-		x = 0;
-		while(x < 5) : (x += 1) {
-			var y: u8 = 0;
-			while(y < 5) : (y += 1) {
-				var offsetGrid: [25]?*const BaseItem = .{null} ** 25;
-				var offsetNeighborCount: [25]u8 = .{0} ** 25;
-				var dx: i32 = -2;
-				while(dx <= 2) : (dx += 1) {
-					var dy: i32 = -2;
-					while(dy <= 2) : (dy += 1) {
-						if(x + dx >= 0 and x + dx < 5 and y + dy >= 0 and y + dy < 5) {
-							const index: usize = @intCast(x + dx + 5*(y + dy));
-							const offsetIndex: usize = @intCast(2 + dx + 5*(2 + dy));
-							offsetGrid[offsetIndex] = tool.craftingGrid[index];
-							offsetNeighborCount[offsetIndex] = neighborCount[index];
-						}
-					}
-				}
-				const index = x + 5*y;
-				drawRegion(&offsetGrid, &offsetNeighborCount, GRID_CENTERS_X[index] - 2, GRID_CENTERS_Y[index] - 2, &pixelMaterials);
-			}
-		}
-
-		var itemGrid = &tool.materialGrid;
-		x = 0;
-		while(x < 16) : (x += 1) {
-			var y: u8 = 0;
-			while(y < 16) : (y += 1) {
-				if(pixelMaterials[x][y].items.items.len != 0) {
-					// Choose a random material at conflict zones:
-					itemGrid[x][y] = pixelMaterials[x][y].items.items[random.nextIntBounded(u8, &seed, @as(u8, @intCast(pixelMaterials[x][y].items.items.len)))];
-				} else {
-					itemGrid[x][y] = null;
-				}
-			}
-		}
-
 		// Generate a height map, which will be used for lighting calulations.
-		const heightMap = generateHeightMap(itemGrid, &seed);
-		x = 0;
+		const heightMap = generateHeightMap(&tool.materialGrid, &seed);
+		var x: u8 = 0;
 		while(x < 16) : (x += 1) {
 			var y: u8 = 0;
 			while(y < 16) : (y += 1) {
-				if(itemGrid[x][y]) |item| {
+				if(tool.materialGrid[x][y]) |item| {
 					if(item.material) |material| {
 						// Calculate the lighting based on the nearest free space:
 						const lightTL = heightMap[x][y] - heightMap[x + 1][y + 1];
@@ -903,6 +834,7 @@ pub const ToolType = struct { // MARK: ToolType
 	id: []const u8,
 	blockClass: main.blocks.BlockClass,
 	slotInfos: [25]SlotInfo,
+	pixelSources: [16][16]u8,
 };
 
 const ToolProperty = enum {
@@ -1281,7 +1213,7 @@ pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: 
 	return newItem;
 }
 
-pub fn registerTool(_: []const u8, id: []const u8, zon: ZonElement) void {
+pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
 	std.log.info("Registering tool type {s}", .{id});
 	if(toolTypes.contains(id)) {
 		std.log.err("Registered tool type with id {s} twice!", .{id});
@@ -1315,11 +1247,46 @@ pub fn registerTool(_: []const u8, id: []const u8, zon: ZonElement) void {
 			break :blk .{.disabled = true};
 		};
 	}
+	var pixelSources: [16][16]u8 = undefined;
+	{
+		var split = std.mem.splitScalar(u8, id, ':');
+		const mod = split.first();
+		const tool = split.rest();
+		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/tools/{s}.png", .{assetFolder, mod, tool}) catch unreachable;
+		defer main.stackAllocator.free(path);
+		const image = main.graphics.Image.readFromFile(main.stackAllocator, path) catch |err| blk: {
+			if(err != error.FileNotFound) {
+				std.log.err("Error while reading tool image '{s}': {s}", .{path, @errorName(err)});
+			}
+			const replacementPath = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/tools/{s}.png", .{mod, tool}) catch unreachable;
+			defer main.stackAllocator.free(replacementPath);
+			break :blk main.graphics.Image.readFromFile(main.stackAllocator, replacementPath) catch |err2| {
+				std.log.err("Error while reading tool image. Tried '{s}' and '{s}': {s}", .{path, replacementPath, @errorName(err2)});
+				break :blk main.graphics.Image.emptyImage;
+			};
+		};
+		defer image.deinit(main.stackAllocator);
+		if(image.width != 16 or image.height != 16) {
+			std.log.err("Truncating image for {s} with incorrect dimensions. Should be 16×16.", .{id});
+		}
+		for(0..16) |x| {
+			for(0..16) |y| {
+				const color = if(image.width != 0 and image.height != 0) image.getRGB(@min(image.width - 1, x), image.height - 1 - @min(image.height - 1, y)) else main.graphics.Color{.r = 0, .g = 0, .b = 0, .a = 0};
+				pixelSources[x][y] = blk: {
+					if(color.a == 0) break :blk 255;
+					const xPos = color.r/52;
+					const yPos = color.b/52;
+					break :blk xPos + 5*yPos;
+				};
+			}
+		}
+	}
 	const idDupe = arena.allocator().dupe(u8, id);
 	toolTypes.put(idDupe, .{
 		.id = idDupe,
 		.blockClass = std.meta.stringToEnum(main.blocks.BlockClass, zon.get([]const u8, "blockClass", "none")) orelse .air,
 		.slotInfos = slotInfos,
+		.pixelSources = pixelSources,
 	}) catch unreachable;
 }
 
