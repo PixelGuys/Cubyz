@@ -212,7 +212,14 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 		for(0..16) |x| {
 			for(0..16) |y| {
 				const source = tool.type.pixelSources[x][y];
-				tool.materialGrid[x][y] = if(source < 25) tool.craftingGrid[source] else null;
+				const sourceOverlay = tool.type.pixelSourcesOverlay[x][y];
+				if(sourceOverlay < 25 and tool.craftingGrid[sourceOverlay] != null) {
+					tool.materialGrid[x][y] = tool.craftingGrid[sourceOverlay];
+				} else if(source < 25) {
+					tool.materialGrid[x][y] = tool.craftingGrid[source];
+				} else {
+					tool.materialGrid[x][y] = null;
+				}
 			}
 		}
 
@@ -305,6 +312,7 @@ pub const ToolType = struct { // MARK: ToolType
 	blockClass: main.blocks.BlockClass,
 	slotInfos: [25]SlotInfo,
 	pixelSources: [16][16]u8,
+	pixelSourcesOverlay: [16][16]u8,
 };
 
 const ToolProperty = enum {
@@ -683,6 +691,41 @@ pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: 
 	return newItem;
 }
 
+fn loadPixelSources(assetFolder: []const u8, id: []const u8, layerPostfix: []const u8, pixelSources: *[16][16]u8) void {
+	var split = std.mem.splitScalar(u8, id, ':');
+	const mod = split.first();
+	const tool = split.rest();
+	const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/tools/{s}{s}.png", .{assetFolder, mod, tool, layerPostfix}) catch unreachable;
+	defer main.stackAllocator.free(path);
+	const image = main.graphics.Image.readFromFile(main.stackAllocator, path) catch |err| blk: {
+		if(err != error.FileNotFound) {
+			std.log.err("Error while reading tool image '{s}': {s}", .{path, @errorName(err)});
+		}
+		const replacementPath = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/tools/{s}{s}.png", .{mod, tool, layerPostfix}) catch unreachable;
+		defer main.stackAllocator.free(replacementPath);
+		break :blk main.graphics.Image.readFromFile(main.stackAllocator, replacementPath) catch |err2| {
+			if(layerPostfix.len == 0 or err2 != error.FileNotFound)
+			std.log.err("Error while reading tool image. Tried '{s}' and '{s}': {s}", .{path, replacementPath, @errorName(err2)});
+			break :blk main.graphics.Image.emptyImage;
+		};
+	};
+	defer image.deinit(main.stackAllocator);
+	if(image.width != 16 or image.height != 16) {
+		std.log.err("Truncating image for {s} with incorrect dimensions. Should be 16×16.", .{id});
+	}
+	for(0..16) |x| {
+		for(0..16) |y| {
+			const color = if(image.width != 0 and image.height != 0) image.getRGB(@min(image.width - 1, x), image.height - 1 - @min(image.height - 1, y)) else main.graphics.Color{.r = 0, .g = 0, .b = 0, .a = 0};
+			pixelSources[x][y] = blk: {
+				if(color.a == 0) break :blk 255;
+				const xPos = color.r/52;
+				const yPos = color.b/52;
+				break :blk xPos + 5*yPos;
+			};
+		}
+	}
+}
+
 pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
 	std.log.info("Registering tool type {s}", .{id});
 	if(toolTypes.contains(id)) {
@@ -718,45 +761,16 @@ pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) vo
 		};
 	}
 	var pixelSources: [16][16]u8 = undefined;
-	{
-		var split = std.mem.splitScalar(u8, id, ':');
-		const mod = split.first();
-		const tool = split.rest();
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/tools/{s}.png", .{assetFolder, mod, tool}) catch unreachable;
-		defer main.stackAllocator.free(path);
-		const image = main.graphics.Image.readFromFile(main.stackAllocator, path) catch |err| blk: {
-			if(err != error.FileNotFound) {
-				std.log.err("Error while reading tool image '{s}': {s}", .{path, @errorName(err)});
-			}
-			const replacementPath = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/tools/{s}.png", .{mod, tool}) catch unreachable;
-			defer main.stackAllocator.free(replacementPath);
-			break :blk main.graphics.Image.readFromFile(main.stackAllocator, replacementPath) catch |err2| {
-				std.log.err("Error while reading tool image. Tried '{s}' and '{s}': {s}", .{path, replacementPath, @errorName(err2)});
-				break :blk main.graphics.Image.emptyImage;
-			};
-		};
-		defer image.deinit(main.stackAllocator);
-		if(image.width != 16 or image.height != 16) {
-			std.log.err("Truncating image for {s} with incorrect dimensions. Should be 16×16.", .{id});
-		}
-		for(0..16) |x| {
-			for(0..16) |y| {
-				const color = if(image.width != 0 and image.height != 0) image.getRGB(@min(image.width - 1, x), image.height - 1 - @min(image.height - 1, y)) else main.graphics.Color{.r = 0, .g = 0, .b = 0, .a = 0};
-				pixelSources[x][y] = blk: {
-					if(color.a == 0) break :blk 255;
-					const xPos = color.r/52;
-					const yPos = color.b/52;
-					break :blk xPos + 5*yPos;
-				};
-			}
-		}
-	}
+	loadPixelSources(assetFolder, id, "", &pixelSources);
+	var pixelSourcesOverlay: [16][16]u8 = undefined;
+	loadPixelSources(assetFolder, id, "_overlay", &pixelSourcesOverlay);
 	const idDupe = arena.allocator().dupe(u8, id);
 	toolTypes.put(idDupe, .{
 		.id = idDupe,
 		.blockClass = std.meta.stringToEnum(main.blocks.BlockClass, zon.get([]const u8, "blockClass", "none")) orelse .air,
 		.slotInfos = slotInfos,
 		.pixelSources = pixelSources,
+		.pixelSourcesOverlay = pixelSourcesOverlay,
 	}) catch unreachable;
 }
 
