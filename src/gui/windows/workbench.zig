@@ -63,7 +63,8 @@ fn openInventory() void {
 			const row = HorizontalList.init();
 			for(0..5) |x| {
 				const index = x + y*5;
-				const slot = ItemSlot.init(.{0, 0}, inv, @intCast(index), .default, .normal);
+				const slotInfo = toolTypes.items[currentToolType].slotInfos[index];
+				const slot = ItemSlot.init(.{0, 0}, inv, @intCast(index), if(slotInfo.disabled) .invisible else if(slotInfo.optional) .immutable else .default, if(slotInfo.disabled) .immutable else .normal);
 				itemSlots[index] = slot;
 				row.add(slot);
 			}

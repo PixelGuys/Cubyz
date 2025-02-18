@@ -32,7 +32,7 @@ textSize: Vec2f = .{0, 0},
 hovered: bool = false,
 pressed: bool = false,
 renderFrame: bool = true,
-texture: Texture,
+texture: ?Texture,
 mode: Mode,
 
 var defaultTexture: Texture = undefined;
@@ -42,12 +42,14 @@ const TextureParamType = union(enum) {
 	default: void,
 	immutable: void,
 	craftingResult: void,
+	invisible: void,
 	custom: Texture,
-	fn value(self: TextureParamType) Texture {
+	fn value(self: TextureParamType) ?Texture {
 		return switch(self) {
 			.default => defaultTexture,
 			.immutable => immutableTexture,
 			.craftingResult => craftingResultTexture,
+			.invisible => null,
 			.custom => |t| t,
 		};
 	}
@@ -128,8 +130,8 @@ pub fn mainButtonReleased(self: *ItemSlot, _: Vec2f) void {
 pub fn render(self: *ItemSlot, _: Vec2f) void {
 	self.refreshText();
 	draw.setColor(0xffffffff);
-	if(self.renderFrame) {
-		self.texture.bindTo(0);
+	if(self.renderFrame and self.texture != null) {
+		self.texture.?.bindTo(0);
 		draw.boundImage(self.pos, self.size);
 	}
 	if(self.inventory.getItem(self.itemSlot)) |item| {
