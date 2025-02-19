@@ -86,7 +86,7 @@ void main() {
 	);
 	float densityAdjustment = sqrt(dot(tanXY*(clampedTexCoords*2 - 1), tanXY*(clampedTexCoords*2 - 1)) + 1);
 	float dist = zFromDepth(texture(depthTexture, texCoords).r);
-	float fogDistance = calculateFogDistance(dist, densityAdjustment, playerPositionInteger.z + playerPositionFraction.z, normalize(direction).z, fog.density, fog.fogLower, fog.fogHigher);
+	float fogDistance = calculateFogDistance(dist, densityAdjustment, playerPositionFraction.z, normalize(direction).z, fog.density, fog.fogLower - playerPositionInteger.z, fog.fogHigher - playerPositionInteger.z);
 	fragColor.rgb = applyFrontfaceFog(fogDistance, fog.color, fragColor.rgb);
 	float maxColor = max(1.0, max(fragColor.r, max(fragColor.g, fragColor.b)));
 	fragColor.rgb = fragColor.rgb/maxColor;

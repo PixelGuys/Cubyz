@@ -80,7 +80,7 @@ vec3 fetch(ivec2 pos) {
 	vec4 rgba = texelFetch(color, pos, 0);
 	float densityAdjustment = sqrt(dot(tanXY*(normalizedTexCoords*2 - 1), tanXY*(normalizedTexCoords*2 - 1)) + 1);
 	float dist = zFromDepth(texelFetch(depthTexture, pos, 0).r);
-	float fogDistance = calculateFogDistance(dist, densityAdjustment, playerPositionInteger.z + playerPositionFraction.z, normalize(direction).z, fog.density, fog.fogLower, fog.fogHigher);
+	float fogDistance = calculateFogDistance(dist, densityAdjustment, playerPositionFraction.z, normalize(direction).z, fog.density, fog.fogLower - playerPositionInteger.z, fog.fogHigher - playerPositionInteger.z);
 	vec3 fogColor = fog.color;
 	rgba.rgb = applyFrontfaceFog(fogDistance, fog.color, rgba.rgb);
 	return rgba.rgb/rgba.a;
