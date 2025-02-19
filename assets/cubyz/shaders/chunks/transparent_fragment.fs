@@ -137,9 +137,8 @@ void main() {
 	float normalVariation = lightVariation(normal);
 	float densityAdjustment = sqrt(dot(mvVertexPos, mvVertexPos))/abs(mvVertexPos.y);
 	float dist = zFromDepth(texelFetch(depthTexture, ivec2(gl_FragCoord.xy), 0).r);
-	float playerZ = playerPositionFraction.z + playerPositionInteger.z;
-	float fogDistance = calculateFogDistance(dist, densityAdjustment, playerZ, normalize(direction).z, fogData[int(animatedTextureIndex)].fogDensity, 1e10, 1e10);
-	float airFogDistance = calculateFogDistance(dist, densityAdjustment, playerZ, normalize(direction).z, fog.density, fog.fogLower, fog.fogHigher);
+	float fogDistance = calculateFogDistance(dist, densityAdjustment, playerPositionFraction.z, normalize(direction).z, fogData[int(animatedTextureIndex)].fogDensity, 1e10, 1e10);
+	float airFogDistance = calculateFogDistance(dist, densityAdjustment, playerPositionFraction.z, normalize(direction).z, fog.density, fog.fogLower - playerPositionInteger.z, fog.fogHigher - playerPositionInteger.z);
 	vec3 fogColor = unpackColor(fogData[int(animatedTextureIndex)].fogColor);
 	vec3 pixelLight = max(light*normalVariation, texture(emissionSampler, textureCoords).r*4);
 	vec4 textureColor = texture(texture_sampler, textureCoords)*vec4(pixelLight, 1);
