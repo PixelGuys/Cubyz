@@ -36,11 +36,35 @@
 		.output = "cubyz:lamp",
 	},
 	.{
+		.inputs = .{"4 cubyz:coal"},
+		.output = "cubyz:coal_block",
+	},
+	.{
 		.inputs = .{"4 cubyz:iron_ingot"},
 		.output = "cubyz:iron_block",
 	},
 	.{
+		.inputs = .{"4 cubyz:diamond"},
+		.output = "cubyz:diamond_block",
+	},
+	.{
+		.inputs = .{"cubyz:diamond_block"},
+		.output = "cubyz:cut_diamond_block",
+	},
+	.{
+		.inputs = .{"cubyz:coal_block"},
+		.output = "4 cubyz:coal",
+	},
+	.{
 		.inputs = .{"cubyz:iron_block"},
 		.output = "4 cubyz:iron_ingot",
+	},
+	.{
+		.inputs = .{"cubyz:diamond_block"},
+		.output = "4 cubyz:diamond",
+	},
+	.{
+		.inputs = .{"cubyz:cut_diamond_block"},
+		.output = "4 cubyz:diamond",
 	},
 }
