@@ -7,4 +7,7 @@
 	.rotation = .ore,
 	.model = "cubyz:cube",
 	.texture = "cubyz:pebbles",
+	.item = .{
+		.texture = "pebbles.png",
+	},
 }

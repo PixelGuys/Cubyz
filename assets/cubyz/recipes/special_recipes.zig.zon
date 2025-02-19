@@ -67,4 +67,8 @@
 		.inputs = .{"cubyz:cut_diamond_block"},
 		.output = "4 cubyz:diamond",
 	},
+	.{
+		.inputs = .{"cubyz:gravel"},
+		.output = "4 cubyz:pebbles",
+	},
 }
