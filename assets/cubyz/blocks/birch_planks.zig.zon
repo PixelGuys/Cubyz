@@ -3,11 +3,11 @@
 	.blockHealth = 6,
 	.item = .{
 		.material = .{
-			.density = 0.59,
-			.strength = 0.8,
-			.elasticity = 0.7,
-			.grip = 1.0,
-			.hardness = 2.0,
+			.density = 2.0,
+			.strength = 0.9,
+			.elasticity = 2.75,
+			.grip = 7.75,
+			.hardness = 1.75,
 			.textureRoughness = 0.7,
 			.colors = .{
 				0xff9b7a5b, 0xffbf9872, 0xffdeb287, 0xfff2c89c, 0xffffdfb7,
