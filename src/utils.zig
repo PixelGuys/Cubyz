@@ -649,7 +649,7 @@ pub const ErrorHandlingAllocator = struct { // MARK: ErrorHandlingAllocator
 	}
 };
 
-/// An allocator interface signaling that you can use 
+/// An allocator interface signaling that you can use
 pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 	allocator: Allocator,
 	IAssertThatTheProvidedAllocatorCantFail: void,

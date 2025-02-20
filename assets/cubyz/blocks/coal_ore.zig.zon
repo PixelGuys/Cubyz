@@ -7,9 +7,6 @@
 		.size = 100,
 		.height = 128,
 		.density = 0.5,
-		.sources = .{
-			"cubyz:stone",
-		},
 	},
 	.drops = .{
 		.{.items = .{"cubyz:coal"}},

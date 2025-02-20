@@ -24,7 +24,7 @@ sizeVariation: f32,
 pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) *Boulder {
 	const self = arenaAllocator.create(Boulder);
 	self.* = .{
-		.block = main.blocks.getBlockById(parameters.get([]const u8, "block", "cubyz:stone")),
+		.block = main.blocks.parseBlock(parameters.get([]const u8, "block", "cubyz:stone")),
 		.size = parameters.get(f32, "size", 4),
 		.sizeVariation = parameters.get(f32, "size_variation", 1),
 	};

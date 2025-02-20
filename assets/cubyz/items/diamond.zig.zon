@@ -2,8 +2,8 @@
 	.texture = "diamond.png",
 	.material = .{
 		.density = 1.0,
-		.resistance = 1.0,
-		.power = 1.0,
+		.resistance = -5.0,
+		.power = 20.0,
 		.roughness = 0.1,
 		.colors = .{
 			0xff847bce, 0xff8b9fe0, 0xff94c6ea, 0xffb0eaf6, 0xffffffff,

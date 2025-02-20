@@ -1,8 +1,8 @@
 .{
 	.texture = "iron_ingot.png",
 	.material = .{
-		.density = 1.0,
-		.resistance = 1.0,
+		.density = 1.5,
+		.resistance = 2.5,
 		.power = 5.0,
 		.roughness = 0.1,
 		.colors = .{

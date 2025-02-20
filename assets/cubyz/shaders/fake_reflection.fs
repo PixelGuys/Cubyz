@@ -30,7 +30,7 @@ float snoise(vec3 v) {
 	vec3 i1 = min(g.xyz, l.zxy);
 	vec3 i2 = max(g.xyz, l.zxy);
 
-	// x0 = x0 - 0. + 0.0 * C 
+	// x0 = x0 - 0. + 0.0 * C
 	vec3 x1 = x0 - i1 + 1.0*C.xxx;
 	vec3 x2 = x0 - i2 + 2.0*C.xxx;
 	vec3 x3 = x0 - 1. + 3.0*C.xxx;
@@ -38,13 +38,13 @@ float snoise(vec3 v) {
 	// Get gradients:
 	ivec3 rand = random3to3(ivec3(i));
 	vec3 p0 = vec3(rand);
-	
+
 	rand = random3to3((ivec3(i + i1)));
 	vec3 p1 = vec3(rand);
-	
+
 	rand = random3to3((ivec3(i + i2)));
 	vec3 p2 = vec3(rand);
-	
+
 	rand = random3to3((ivec3(i + 1)));
 	vec3 p3 = vec3(rand);
 

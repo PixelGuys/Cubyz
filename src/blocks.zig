@@ -214,10 +214,19 @@ pub fn getTypeById(id: []const u8) u16 {
 	}
 }
 
-pub fn getBlockById(id: []const u8) Block {
+pub fn parseBlock(data: []const u8) Block {
+	var id: []const u8 = data;
+	var blockData: ?u16 = null;
+	if(std.mem.indexOfScalarPos(u8, data, 1 + (std.mem.indexOfScalar(u8, data, ':') orelse 0), ':')) |pos| {
+		id = data[0..pos];
+		blockData = std.fmt.parseInt(u16, data[pos + 1..], 0) catch |err| blk: {
+			std.log.err("Error while parsing block data of '{s}': {s}", .{data, @errorName(err)});
+			break :blk null;
+		};
+	}
 	if(reverseIndices.get(id)) |resultType| {
 		var result: Block = .{.typ = resultType, .data = 0};
-		result.data = result.mode().naturalStandard;
+		result.data = blockData orelse result.mode().naturalStandard;
 		return result;
 	} else {
 		std.log.err("Couldn't find block {s}. Replacing it with air...", .{id});
@@ -303,20 +312,20 @@ pub const Block = packed struct { // MARK: Block
 	pub inline fn absorption(self: Block) u32 {
 		return _absorption[self.typ];
 	}
-	
+
 	/// GUI that is opened on click.
 	pub inline fn gui(self: Block) []u8 {
 		return _gui[self.typ];
 	}
-	
+
 	pub inline fn mode(self: Block) *RotationMode {
 		return _mode[self.typ];
 	}
-	
+
 	pub inline fn lodReplacement(self: Block) u16 {
 		return _lodReplacement[self.typ];
 	}
-	
+
 	pub inline fn opaqueVariant(self: Block) u16 {
 		return _opaqueVariant[self.typ];
 	}
@@ -329,8 +338,8 @@ pub const Block = packed struct { // MARK: Block
 		return _allowOres[self.typ];
 	}
 
-	pub fn canBeChangedInto(self: Block, newBlock: Block, item: main.items.ItemStack) main.rotation.RotationMode.CanBeChangedInto {
-		return newBlock.mode().canBeChangedInto(self, newBlock, item);
+	pub fn canBeChangedInto(self: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) main.rotation.RotationMode.CanBeChangedInto {
+		return newBlock.mode().canBeChangedInto(self, newBlock, item, shouldDropSourceBlockOnSuccess);
 	}
 };
 
@@ -667,7 +676,7 @@ pub const meshes = struct { // MARK: meshes
 		}
 		animationSSBO = SSBO.initStatic(AnimationData, animation.items);
 		animationSSBO.?.bind(0);
-		
+
 		animatedTextureSSBO = SSBO.initStaticSize(u32, animation.items.len);
 		animatedTextureSSBO.?.bind(1);
 		fogSSBO = SSBO.initStatic(FogData, textureFogData.items);

@@ -5,7 +5,7 @@
 	.maxHeight = 40,
 
 	.validPlayerSpawn = true,
-	
+
 	.ground_structure = .{
 		"cubyz:grass",
 		"2 cubyz:soil",

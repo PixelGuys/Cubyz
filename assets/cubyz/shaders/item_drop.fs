@@ -117,14 +117,14 @@ void mainItemDrop() {
 	if(direction.x == 0) tMax.x = 1.0/0.0;
 	if(direction.y == 0) tMax.y = 1.0/0.0;
 	if(direction.z == 0) tMax.z = 1.0/0.0;
-	
+
 	uvec3 voxelPosition = uvec3(floor(startPosition));
 	int lastNormal = faceNormalIndex;
 	uint block = getVoxel(voxelPosition);
 	float total_tMax = 0;
-	
+
 	uvec3 sizeMask = upper - 1;
-	
+
 	while(block == 0) {
 		if(tMax.x < tMax.y) {
 			if(tMax.x < tMax.z) {
@@ -170,14 +170,14 @@ void mainItemDrop() {
 		block = getVoxel(voxelPosition);
 	}
 	if(block == 0) discard;
-	
+
 	vec3 modifiedCameraSpacePos = cameraSpacePos*(1 + total_tMax*sizeScale*length(direction)/length(cameraSpacePos));
 	vec4 projection = projectionMatrix*vec4(modifiedCameraSpacePos, 1);
 	float depth = projection.z/projection.w;
 	gl_FragDepth = ((gl_DepthRange.diff * depth) + gl_DepthRange.near + gl_DepthRange.far)/2.0;
-	
-	
-	
+
+
+
 	fragColor = decodeColor(block);
 	fragColor.a = 1; // No transparency supported!
 	fragColor = fragColor*vec4(ambientLight*normalVariations[lastNormal], 1);

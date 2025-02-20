@@ -37,13 +37,24 @@ var inv: Inventory = undefined;
 
 var craftingResult: *ItemSlot = undefined;
 
-var seed: u32 = undefined;
-
 var itemSlots: [25]*ItemSlot = undefined;
 
-pub fn onOpen() void {
-	seed = @truncate(@as(u128, @bitCast(std.time.nanoTimestamp())));
-	inv = Inventory.init(main.globalAllocator, 26, .workbench, .other);
+var toolTypes: main.ListUnmanaged(*const main.items.ToolType) = .{};
+var currentToolType: usize = 0;
+
+var toolButton: *Button = undefined;
+
+var needsUpdate: bool = false;
+
+fn toggleTool(_: usize) void {
+	currentToolType += 1;
+	currentToolType %= toolTypes.items.len;
+	toolButton.child.label.updateText(toolTypes.items[currentToolType].id);
+	needsUpdate = true;
+}
+
+fn openInventory() void {
+	inv = Inventory.init(main.globalAllocator, 26, .{.workbench = toolTypes.items[currentToolType]}, .other);
 	const list = HorizontalList.init();
 	{ // crafting grid
 		const grid = VerticalList.init(.{0, 0}, 300, 0);
@@ -52,7 +63,8 @@ pub fn onOpen() void {
 			const row = HorizontalList.init();
 			for(0..5) |x| {
 				const index = x + y*5;
-				const slot = ItemSlot.init(.{0, 0}, inv, @intCast(index), .default, .normal);
+				const slotInfo = toolTypes.items[currentToolType].slotInfos[index];
+				const slot = ItemSlot.init(.{0, 0}, inv, @intCast(index), if(slotInfo.disabled) .invisible else if(slotInfo.optional) .immutable else .default, if(slotInfo.disabled) .immutable else .normal);
 				itemSlots[index] = slot;
 				row.add(slot);
 			}
@@ -61,19 +73,52 @@ pub fn onOpen() void {
 		grid.finish(.center);
 		list.add(grid);
 	}
-	list.add(Icon.init(.{8, 0}, .{32, 32}, inventory_crafting.arrowTexture, false));
-	list.add(ItemSlot.init(.{8, 0}, inv, 25, .craftingResult, .takeOnly));
+	const verticalThing = VerticalList.init(.{0, 0}, 300, padding);
+	toolButton = Button.initText(.{8, 0}, 116, toolTypes.items[currentToolType].id, .{.callback = &toggleTool});
+	verticalThing.add(toolButton);
+	const buttonHeight = verticalThing.size[1];
+	const craftingResultList = HorizontalList.init();
+	craftingResultList.add(Icon.init(.{0, 0}, .{32, 32}, inventory_crafting.arrowTexture, false));
+	craftingResultList.add(ItemSlot.init(.{8, 0}, inv, 25, .craftingResult, .takeOnly));
+	craftingResultList.finish(.{padding, padding}, .center);
+	verticalThing.add(craftingResultList);
+	verticalThing.size[1] += buttonHeight + 2*padding; // Centering the thing
+	verticalThing.finish(.center);
+	list.add(verticalThing);
 	list.finish(.{padding, padding + 16}, .center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
 	gui.updateWindowPositions();
 }
 
-pub fn onClose() void {
+fn closeInventory() void {
 	main.game.Player.inventory.depositOrDrop(inv);
 	inv.deinit(main.globalAllocator);
 	if(window.rootComponent) |*comp| {
 		comp.deinit();
 		window.rootComponent = null;
 	}
+}
+
+pub fn update() void {
+	if(needsUpdate) {
+		needsUpdate = false;
+		closeInventory();
+		openInventory();
+	}
+}
+
+pub fn onOpen() void {
+	currentToolType = 0;
+	var iterator = main.items.toolTypeIterator();
+
+	while(iterator.next()) |toolType| {
+		toolTypes.append(main.globalAllocator, toolType);
+	}
+	openInventory();
+}
+
+pub fn onClose() void {
+	closeInventory();
+	toolTypes.clearAndFree(main.globalAllocator);
 }

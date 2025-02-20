@@ -8,7 +8,7 @@ var failed: bool = false;
 fn printError(msg: []const u8, filePath: []const u8, data: []const u8, charIndex: usize) void {
 	var lineStart: usize = 0;
 	var lineNumber: usize = 1;
-	var lineEnd: usize = 0;
+	var lineEnd: usize = data.len;
 	for(data[0..charIndex], 0..) |c, i| {
 		if(c == '\n') {
 			lineStart = i + 1;
@@ -47,6 +47,9 @@ fn checkFile(dir: std.fs.Dir, filePath: []const u8) !void {
 		switch(c) {
 			'\n' => {
 				lineStart = true;
+				if(i != 0 and (data[i - 1] == ' ' or data[i - 1] == '\t')) {
+					printError("Line contains trailing whitespaces. Please remove them.", filePath, data, i - 1);
+				}
 			},
 			'\r' => {
 				printError("Incorrect line ending \\r. Please configure your editor to use LF instead CRLF.", filePath, data, i);
@@ -61,6 +64,9 @@ fn checkFile(dir: std.fs.Dir, filePath: []const u8) !void {
 				lineStart = false;
 			}
 		}
+	}
+	if(data.len != 0 and data[data.len - 1] != '\n' or (data.len > 2 and data[data.len - 2] == '\n')) {
+		printError("File should end with a single empty line", filePath, data, data.len - 1);
 	}
 }
 

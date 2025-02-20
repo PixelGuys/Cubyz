@@ -1,9 +1,7 @@
 .{
 	.class = .air,
 	.blockHealth = 2,
-	.drops = .{
-		.{.items = .{.auto}},
-	},
+	.drops = .{},
 	.degradable = true,
 	.transparent = true,
 	.hasBackFace = true,

@@ -3,10 +3,9 @@
 	.maxHeight = -640,
 	.minHeight = -48250,
 	.fogDensity = 20,
+	.chance = 0.1,
 	.fogColor = 0x51240c,
-
 	.caves = -0.03,
-
 	.stoneBlock = "cubyz:obsidian",
 	.stripes = .{
 		.{
@@ -40,7 +39,6 @@
 			.size_variation = 6,
 		},
 		.{
-			
 			.id = "cubyz:ground_patch",
 			.block = "cubyz:lava",
 			.chance = 0.064,

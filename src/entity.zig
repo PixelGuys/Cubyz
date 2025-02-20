@@ -23,7 +23,7 @@ pub const ClientEntity = struct {
 
 	width: f64,
 	height: f64,
-	
+
 	pos: Vec3d = undefined,
 	rot: Vec3f = undefined,
 
@@ -94,7 +94,7 @@ pub const ClientEntityManager = struct {
 	pub fn init() void {
 		entities = .init();
 		shader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/entity_vertex.vs", "assets/cubyz/shaders/entity_fragment.fs", "", &uniforms);
-		
+
 		modelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entity/textures/snail_player.png");
 		const modelFile = main.files.read(main.stackAllocator, "assets/cubyz/entity/models/snail_player.obj") catch |err| blk: {
 			std.log.err("Error while reading player model: {s}", .{@errorName(err)});
@@ -150,7 +150,7 @@ pub const ClientEntityManager = struct {
 			if(projectedPos[2] < 0) continue;
 			const xCenter = (1 + projectedPos[0]/projectedPos[3])*@as(f32, @floatFromInt(main.Window.width/2));
 			const yCenter = (1 - projectedPos[1]/projectedPos[3])*@as(f32, @floatFromInt(main.Window.height/2));
-			
+
 			graphics.draw.setColor(0xff000000);
 			var buf = graphics.TextBuffer.init(main.stackAllocator, ent.name, .{.color = 0}, false, .center);
 			defer buf.deinit();

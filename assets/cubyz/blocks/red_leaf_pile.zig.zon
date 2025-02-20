@@ -7,7 +7,7 @@
 	.degradable = true,
 	.collide = false,
 	.alwaysViewThrough = true,
-	.absorbedLight = 0x000000,	
+	.absorbedLight = 0x000000,
 	.model = "cubyz:plane",
 	.rotation = .carpet,
 	.texture = "cubyz:red_leaf_pile",

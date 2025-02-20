@@ -13,15 +13,14 @@ uniform vec2 screen;
 uniform int color;
 
 void main() {
-
 	// Convert to opengl coordinates:
 	vec2 position_percentage = (start + vertex_pos*size)/screen;
 	startCoord.x = start.x;
 	startCoord.y = screen.y - start.y;
-	
+
 	vec2 position = vec2(position_percentage.x, -position_percentage.y)*2+vec2(-1, 1);
-	
+
 	gl_Position = vec4(position, 0, 1);
-	
+
 	fColor = vec4((color & 0xff0000)>>16, (color & 0xff00)>>8, color & 0xff, (color>>24) & 255)/255.0;
 }

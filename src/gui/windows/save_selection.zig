@@ -87,7 +87,7 @@ fn openFolder(namePtr: usize) void {
 
 	const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{name}) catch unreachable;
 	defer main.stackAllocator.free(path);
-	
+
 	main.files.openDirInWindow(path);
 }
 
@@ -152,7 +152,7 @@ pub fn onOpen() void {
 				defer main.stackAllocator.free(decodedName);
 				const name = buttonNameArena.allocator().dupeZ(u8, entry.name); // Null terminate, so we can later recover the string from just the pointer.
 				const buttonName = std.fmt.allocPrint(buttonNameArena.allocator().allocator, "{s}", .{decodedName}) catch unreachable;
-				
+
 				row.add(Button.initText(.{0, 0}, 128, buttonName, .{.callback = &openWorldWrap, .arg = @intFromPtr(name.ptr)}));
 				row.add(Button.initIcon(.{8, 0}, .{16, 16}, fileExplorerIcon, false, .{.callback = &openFolder, .arg = @intFromPtr(name.ptr)}));
 				row.add(Button.initIcon(.{8, 0}, .{16, 16}, deleteIcon, false, .{.callback = &deleteWorld, .arg = @intFromPtr(name.ptr)}));
@@ -161,7 +161,7 @@ pub fn onOpen() void {
 			}
 		}
 	}
-	
+
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));

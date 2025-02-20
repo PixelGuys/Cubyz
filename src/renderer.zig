@@ -185,7 +185,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.startQuery(.animation);
 	blocks.meshes.preProcessAnimationData(time);
 	gpu_performance_measuring.stopQuery();
-	
+
 
 	// Update the uniforms. The uniforms are needed to render the replacement meshes.
 	chunk_meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight, playerPos);
@@ -256,7 +256,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
 
 	const playerBlock = mesh_storage.getBlockFromAnyLod(@intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
-	
+
 	if(settings.bloom) {
 		Bloom.render(lastWidth, lastHeight, playerBlock, playerPos, game.camera.viewMatrix);
 	} else {
@@ -555,7 +555,7 @@ pub const MenuBackGround = struct {
 		updateViewport(size, size, 90.0);
 		main.settings.resolutionScale = oldResolutionScale;
 		defer updateViewport(Window.width, Window.height, settings.fov);
-		
+
 		var buffer: graphics.FrameBuffer = undefined;
 		buffer.init(true, c.GL_NEAREST, c.GL_REPEAT);
 		defer buffer.deinit();
@@ -802,6 +802,12 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 									updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], oldBlock, block);
 									return;
 								}
+							} else {
+								if(rotationMode.modifyBlock(&block, itemBlock)) {
+									if(!canPlaceBlock(selectedPos, block)) return;
+									updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], oldBlock, block);
+									return;
+								}
 							}
 							// Check the block in front of it:
 							const neighborPos = posBeforeBlock;
@@ -854,10 +860,17 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				if(isTool) {
 					power = stack.item.?.tool.getPowerByBlockClass(block.blockClass());
 				}
+				const isChisel = stack.item != null and stack.item.? == .baseItem and std.mem.eql(u8, stack.item.?.baseItem.id, "cubyz:chisel");
+				if(isChisel and block.mode() == main.rotation.getByID("stairs")) { // TODO: Remove once the chisel is a tool.
+					power = 10;
+				}
 				if(power >= block.breakingPower()) {
 					var breakTime: f32 = block.blockHealth();
 					if(isTool) {
 						breakTime = breakTime*stack.item.?.tool.swingTime/power;
+					}
+					if(isChisel and block.mode() == main.rotation.getByID("stairs")) { // TODO: Remove once the chisel is a tool.
+						breakTime = 0.5;
 					}
 					currentBlockProgress += @as(f32, @floatCast(deltaTime))/breakTime;
 					if(currentBlockProgress < 1) {

@@ -5,14 +5,14 @@
 	},
 	.minHeight = 22,
 	.maxHeight = 40,
-	
+
 	.roughness = 10,
 	.hills = 10,
-	
+
 	.music = "cubyz:leaves",
 
 	.validPlayerSpawn = true,
-	
+
 	.ground_structure = .{
 		"cubyz:grass",
 	},
@@ -58,6 +58,15 @@
 			.chance = 0.4,
 			.height = 1,
 			.height_variation = 0,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.block = "cubyz:hibiscus",
+			.chance = 0.007,
+			.width = 8,
+			.variation = 3,
+			.density = 0.1,
+			.priority = 0.1,
 		},
 	},
 }

@@ -75,7 +75,7 @@ const Context = struct {
 		const n = lerp(n0, n1, sx);
 		return n*@sqrt(2.0);
 	}
-	
+
 	// Calculate all grid points that will be needed to prevent double calculating them.
 	fn calculateGridPoints(self: *Context, allocator: NeverFailingAllocator, x: i32, y: i32, _width: u31, _height: u31, scale: u31) void {
 		// Create one gridpoint more, just in case...

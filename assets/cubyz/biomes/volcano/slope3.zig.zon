@@ -7,11 +7,11 @@
 	.maxHeight = 480,
 	.roughness = 50,
 	.mountains = 50,
-	
+
 	.interpolation = .linear,
 
 	.chance = 0,
-	
+
 	.music = "cubyz:out_of_breath",
 
 	.parentBiomes = .{

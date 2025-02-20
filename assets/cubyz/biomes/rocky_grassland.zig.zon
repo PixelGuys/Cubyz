@@ -4,11 +4,11 @@
 	.chance = 0.04,
 	.minHeight = 20,
 	.maxHeight = 40,
-	
+
 	.mountains = 30,
-	
+
 	.music = "cubyz:sunrise",
-	
+
 	.ground_structure = .{
 		"cubyz:grass",
 		"0 to 1 cubyz:soil",

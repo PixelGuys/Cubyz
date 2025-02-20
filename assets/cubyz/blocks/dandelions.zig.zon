@@ -1,0 +1,18 @@
+.{
+	.class = .leaf,
+	.blockHealth = 1,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.degradable = true,
+	.collide = false,
+	.alwaysViewThrough = true,
+	.absorbedLight = 0x121012,
+	.model = "cubyz:plane",
+	.rotation = .carpet,
+	.texture = "cubyz:dandelions",
+	.item= .{
+		.texture = "dandelions.png",
+	},
+	.lodReplacement = "cubyz:air",
+}

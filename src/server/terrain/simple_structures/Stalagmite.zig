@@ -24,7 +24,7 @@ sizeVariation: f32,
 pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) *Stalagmite {
 	const self = arenaAllocator.create(Stalagmite);
 	self.* = .{
-		.block = main.blocks.getBlockById(parameters.get([]const u8, "block", "cubyz:stalagmite")),
+		.block = main.blocks.parseBlock(parameters.get([]const u8, "block", "cubyz:stalagmite")),
 		.size = parameters.get(f32, "size", 12),
 		.sizeVariation = parameters.get(f32, "size_variation", 8),
 	};

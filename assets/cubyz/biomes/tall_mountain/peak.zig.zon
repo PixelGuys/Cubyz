@@ -9,7 +9,7 @@
 	.interpolation = .linear,
 	.mountains = 30,
 	.chance = 0,
-	
+
 	.music = "cubyz:out_of_breath",
 
 	.parentBiomes = .{
