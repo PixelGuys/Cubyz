@@ -5,12 +5,12 @@
 	.radius = 320,
 	.minHeight = 128,
 	.maxHeight = 128,
-	
+
 	.interpolation = .linear,
 	.mountains = 150,
 
 	.chance = 0,
-	
+
 	.music = "cubyz:out_of_breath",
 
 	.parentBiomes = .{

@@ -84,7 +84,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 				for (0..array.items.len) |i| {
 					out.array.append(array.items[i].clone(allocator));
 				}
-				
+
 				break :blk out;
 			},
 			.object => |object| blk: {

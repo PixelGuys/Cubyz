@@ -70,7 +70,7 @@ pub const User = struct { // MARK: User
 
 	pub fn deinit(self: *User) void {
 		std.debug.assert(self.refCount.load(.monotonic) == 0);
-		
+
 		world.?.savePlayer(self) catch |err| {
 			std.log.err("Failed to save player: {s}", .{@errorName(err)});
 			return;

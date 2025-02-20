@@ -1,0 +1,11 @@
+.{
+	.class = .stone,
+	.blockHealth = 20,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.allowOres = true,
+	.rotation = .stairs,
+	.model = "cubyz:cube",
+	.texture = "cubyz:terracotta",
+}

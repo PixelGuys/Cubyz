@@ -4,14 +4,14 @@
 	},
 	.minHeight = 22,
 	.maxHeight = 40,
-	
+
 	.roughness = 10,
 	.hills = 10,
-	
+
 	.music = "cubyz:mana-two-part-2",
 
 	.validPlayerSpawn = false,
-	
+
 	.ground_structure = .{
 	},
 	.structures = .{

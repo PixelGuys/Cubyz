@@ -58,7 +58,7 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 	var seed = random.initSeed2D(worldSeed, .{map.pos.wx, map.pos.wy});
 	random.scrambleSeed(&seed);
 	seed ^= seed >> 16;
-	
+
 	const xOffsetMap = Array2D(f32).init(main.stackAllocator, scaledSize, scaledSize);
 	defer xOffsetMap.deinit(main.stackAllocator);
 	const yOffsetMap = Array2D(f32).init(main.stackAllocator, scaledSize, scaledSize);

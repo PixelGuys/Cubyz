@@ -136,7 +136,7 @@ const LinuxImpl = struct { // MARK: LinuxImpl
 		while(offset < available) {
 			const eventPtr: *const c.inotify_event = @alignCast(@ptrCast(events.ptr[offset..]));
 			defer offset += @sizeOf(c.inotify_event) + eventPtr.len;
-			
+
 			const callback = callbacks.get(eventPtr.wd) orelse continue;
 			if(eventPtr.mask & c.IN_ISDIR != 0) callback.needsUpdate = true;
 			_ = triggeredCallbacks.getOrPut(callback) catch unreachable;
@@ -281,7 +281,7 @@ const WindowsImpl = struct { // MARK: WindowsImpl
 		if(handle == std.os.windows.INVALID_HANDLE_VALUE) {
 			std.log.err("Got error while creating notification handler for path {s}: {}", .{path, std.os.windows.kernel32.GetLastError()});
 		}
-		
+
 		const callbackInfo = main.globalAllocator.create(DirectoryInfo);
 		callbackInfo.* = .{
 			.callback = callback,

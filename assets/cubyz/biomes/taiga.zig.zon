@@ -4,12 +4,12 @@
 	},
 	.minHeight = 22,
 	.maxHeight = 40,
-	
+
 	.roughness = 10,
 	.hills = 10,
 
 	.validPlayerSpawn = true,
-	
+
 	.ground_structure = .{
 		"0 to 1 cubyz:grass",
 		"2 to 3 cubyz:soil",
@@ -25,6 +25,24 @@
 			.height = 8,
 			.height_variation = 5,
 			.branched = false,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.block = "cubyz:vetch",
+			.chance = 0.01,
+			.width = 6,
+			.variation = 3,
+			.density = 0.1,
+			.priority = 0.1,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.block = "cubyz:trumpet_lily",
+			.chance = 0.007,
+			.width = 8,
+			.variation = 3,
+			.density = 0.1,
+			.priority = 0.1,
 		},
 	},
 }

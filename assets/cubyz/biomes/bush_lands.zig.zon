@@ -4,11 +4,11 @@
 	},
 	.minHeight = 24,
 	.maxHeight = 60,
-	
+
 	.roughness = 20,
 	.hills = 10,
 	.rivers = true,
-	
+
 	.music = "cubyz:sunrise",
 
 	.ground_structure = .{

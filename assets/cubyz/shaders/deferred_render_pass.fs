@@ -1,7 +1,7 @@
 #version 430
 out vec4 fragColor;
 in vec2 texCoords;
-in vec3 direction;
+flat in vec3[4] directions;
 
 uniform sampler2D color;
 
@@ -34,13 +34,9 @@ float densityIntegral(float dist, float zStart, float zDist, float fogLower, flo
 		zStart += zDist;
 		zDist = -zDist;
 	}
-	if(zDist == 0) {
-		zDist = 0.1;
+	if(abs(zDist) < 0.001) {
+		zDist = 0.001;
 	}
-	zStart /= zDist;
-	fogLower /= zDist;
-	fogHigher /= zDist;
-	zDist = 1;
 	float beginLower = min(fogLower, zStart);
 	float endLower = min(fogLower, zStart + zDist);
 	float beginMid = max(fogLower, min(fogHigher, zStart));
@@ -82,9 +78,15 @@ vec3 applyFrontfaceFog(float fogDistance, vec3 fogColor, vec3 inColor) {
 void main() {
 	fragColor = texture(color, texCoords);
 	fragColor += texture(bloomColor, texCoords);
-	float densityAdjustment = sqrt(dot(tanXY*(texCoords*2 - 1), tanXY*(texCoords*2 - 1)) + 1);
+	vec2 clampedTexCoords = (floor(texCoords*vec2(textureSize(color, 0))) + 0.5)/vec2(textureSize(color, 0));
+	vec3 direction = clampedTexCoords.x*(
+		clampedTexCoords.y*directions[0] + (1 - clampedTexCoords.y)*directions[1]
+	) + (1 - clampedTexCoords.x)*(
+		clampedTexCoords.y*directions[2] + (1 - clampedTexCoords.y)*directions[3]
+	);
+	float densityAdjustment = sqrt(dot(tanXY*(clampedTexCoords*2 - 1), tanXY*(clampedTexCoords*2 - 1)) + 1);
 	float dist = zFromDepth(texture(depthTexture, texCoords).r);
-	float fogDistance = calculateFogDistance(dist, densityAdjustment, playerPositionInteger.z + playerPositionFraction.z, normalize(direction).z, fog.density, fog.fogLower, fog.fogHigher);
+	float fogDistance = calculateFogDistance(dist, densityAdjustment, playerPositionFraction.z, normalize(direction).z, fog.density, fog.fogLower - playerPositionInteger.z, fog.fogHigher - playerPositionInteger.z);
 	fragColor.rgb = applyFrontfaceFog(fogDistance, fog.color, fragColor.rgb);
 	float maxColor = max(1.0, max(fragColor.r, max(fragColor.g, fragColor.b)));
 	fragColor.rgb = fragColor.rgb/maxColor;

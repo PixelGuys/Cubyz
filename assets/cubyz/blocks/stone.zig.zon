@@ -3,7 +3,7 @@
 	.blockHealth = 25,
 	.breakingPower = 1,
 	.drops = .{
-		.{.items = .{"cubyz:cobblestone"}},
+		.{.items = .{.auto}},
 	},
 	.item = .{
 		.material = .{

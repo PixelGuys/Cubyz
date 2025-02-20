@@ -406,7 +406,7 @@ pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveB
 
 	fn getGridPointFromPrerotated(rotatedPos: Vec3i, map: *u1) Vec3i {
 		var gridPoint = rotatedPos +% @as(Vec3i, @splat(CaveBiomeMapFragment.caveBiomeSize/2)) & @as(Vec3i, @splat(~@as(i32, CaveBiomeMapFragment.caveBiomeMask)));
-		
+
 		const distance = rotatedPos -% gridPoint;
 		const totalDistance = @reduce(.Add, @abs(distance));
 		if(totalDistance > CaveBiomeMapFragment.caveBiomeSize*3/4) {

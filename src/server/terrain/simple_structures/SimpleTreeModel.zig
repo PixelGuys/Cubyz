@@ -99,7 +99,7 @@ pub fn generate(self: *SimpleTreeModel, x: i32, y: i32, z: i32, chunk: *main.chu
 		return;
 
 	if(z > chunk.super.width) return;
-	
+
 	if(chunk.super.pos.voxelSize >= 16) {
 		// Ensures that even at lowest resolution some leaves are rendered for smaller trees.
 		if(chunk.liesInChunk(x, y, z)) {

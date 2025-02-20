@@ -18,13 +18,13 @@ pub fn List(comptime T: type) type {
 		items: []T = &.{},
 		capacity: usize = 0,
 		allocator: NeverFailingAllocator,
-		
+
 		pub fn init(allocator: NeverFailingAllocator) @This() {
 			return .{
 				.allocator = allocator,
 			};
 		}
-		
+
 		pub fn initCapacity(allocator: NeverFailingAllocator, capacity: usize) @This() {
 			return .{
 				.items = allocator.alloc(T, capacity)[0..0],
@@ -231,7 +231,7 @@ pub fn ListUnmanaged(comptime T: type) type {
 	return struct {
 		items: []T = &.{},
 		capacity: usize = 0,
-		
+
 		pub fn initCapacity(allocator: NeverFailingAllocator, capacity: usize) @This() {
 			return .{
 				.items = allocator.alloc(T, capacity)[0..0],
@@ -425,7 +425,7 @@ pub fn ListUnmanaged(comptime T: type) type {
 		pub fn writer(self: *@This()) Writer {
 			return .{ .context = self };
 		}
-		
+
 		fn appendWrite(self: *@This(), m: []const u8) !usize {
 			self.appendSlice(m);
 			return m.len;
@@ -480,7 +480,7 @@ pub fn VirtualList(T: type, maxSize: u32) type {
 		mem: [*]align(pageSize) T,
 		len: u32,
 		committedCapacity: u32,
-		
+
 		pub fn init() @This() {
 			return .{
 				.mem = @ptrCast(reserveMemory(maxSizeBytes)),

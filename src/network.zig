@@ -126,7 +126,7 @@ pub fn init() void {
 	}
 }
 
-const Address = struct {
+pub const Address = struct {
 	ip: u32,
 	port: u16,
 	isSymmetricNAT: bool = false,
@@ -271,7 +271,7 @@ const STUN = struct { // MARK: STUN
 			const ip = splitter.first();
 			const serverAddress = Address {
 				.ip=Socket.resolveIP(ip) catch |err| {
-					std.log.err("Cannot resolve stun server address: {s}, error: {s}", .{ip, @errorName(err)});
+					std.log.warn("Cannot resolve stun server address: {s}, error: {s}", .{ip, @errorName(err)});
 					continue;
 				},
 				.port=std.fmt.parseUnsigned(u16, splitter.rest(), 10) catch 3478,
@@ -298,7 +298,7 @@ const STUN = struct { // MARK: STUN
 					oldAddress = result;
 				}
 			} else {
-				std.log.err("Couldn't reach STUN server: {s}", .{server});
+				std.log.warn("Couldn't reach STUN server: {s}", .{server});
 			}
 		}
 		return Address{.ip=Socket.resolveIP("127.0.0.1") catch unreachable, .port=settings.defaultPort}; // TODO: Return ip address in LAN.
@@ -368,6 +368,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 	mutex: std.Thread.Mutex = .{},
 	waitingToFinishReceive: std.Thread.Condition = std.Thread.Condition{},
+	newConnectionCallback: Atomic(?*const fn(Address) void) = .init(null),
 
 	receiveBuffer: [Connection.maxPacketSize]u8 = undefined,
 
@@ -507,7 +508,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	pub fn removeConnection(self: *ConnectionManager, conn: *Connection) void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
-		
+
 		for(self.connections.items, 0..) |other, i| {
 			if(other == conn) {
 				_ = self.connections.swapRemove(i);
@@ -519,7 +520,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 	fn onReceive(self: *ConnectionManager, data: []const u8, source: Address) void {
 		std.debug.assert(self.threadId == std.Thread.getCurrentId());
 		self.mutex.lock();
-		
+
 		for(self.connections.items) |conn| {
 			if(conn.remoteAddress.ip == source.ip) {
 				if(conn.bruteforcingPort) {
@@ -533,19 +534,25 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 				}
 			}
 		}
-		defer self.mutex.unlock();
-		// Check if it's part of an active request:
-		for(self.requests.items) |request| {
-			if(request.address.ip == source.ip and request.address.port == source.port) {
-				request.data = main.globalAllocator.dupe(u8, data);
-				request.requestNotifier.signal();
-				return;
+		{
+			defer self.mutex.unlock();
+			// Check if it's part of an active request:
+			for(self.requests.items) |request| {
+				if(request.address.ip == source.ip and request.address.port == source.port) {
+					request.data = main.globalAllocator.dupe(u8, data);
+					request.requestNotifier.signal();
+					return;
+				}
 			}
+			if(self.online.load(.acquire) and source.ip == self.externalAddress.ip and source.port == self.externalAddress.port) return;
 		}
-		if(self.online.load(.acquire) and source.ip == self.externalAddress.ip and source.port == self.externalAddress.port) return;
-		// TODO: Reduce the number of false alarms in the short period after a disconnect.
-		std.log.warn("Unknown connection from address: {}", .{source});
-		std.log.debug("Message: {any}", .{data});
+		if(self.newConnectionCallback.load(.monotonic)) |callback| {
+			callback(source);
+		} else {
+			// TODO: Reduce the number of false alarms in the short period after a disconnect.
+			std.log.warn("Unknown connection from address: {}", .{source});
+			std.log.debug("Message: {any}", .{data});
+		}
 	}
 
 	pub fn run(self: *ConnectionManager) void {
@@ -670,7 +677,7 @@ pub const Protocols = struct {
 						zonObject.put("spawn", main.server.world.?.spawn);
 						zonObject.put("blockPalette", main.server.world.?.blockPalette.save(main.stackAllocator));
 						zonObject.put("biomePalette", main.server.world.?.biomePalette.save(main.stackAllocator));
-						
+
 						const outData = zonObject.toStringEfficient(main.stackAllocator, &[1]u8{stepServerData});
 						defer main.stackAllocator.free(outData);
 						conn.sendImportant(id, outData);
@@ -1758,7 +1765,7 @@ const ProtocolTask = struct {
 		.clean = @ptrCast(&clean),
 		.taskType = .misc,
 	};
-	
+
 	pub fn schedule(conn: *Connection, protocol: u8, data: []const u8) void {
 		const task = main.globalAllocator.create(ProtocolTask);
 		task.* = ProtocolTask {

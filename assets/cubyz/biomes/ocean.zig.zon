@@ -5,14 +5,14 @@
 	.radius = 500,
 	.minHeight = -100,
 	.maxHeight = -22,
-	
+
 	.roughness = 15,
 	.hills = 15,
-	
+
 	.rivers = true,
 
 	.music = "cubyz:under_the_water_sky",
-	
+
 	.ground_structure = .{
 		"2 to 3 cubyz:gravel",
 	},

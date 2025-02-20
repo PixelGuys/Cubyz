@@ -164,12 +164,12 @@ pub const Model = struct {
 		return modelIndex;
 	}
 
-	
+
 	fn addVert(vert: Vec3f, vertList: *main.List(Vec3f)) usize {
 		const ind = for (vertList.*.items, 0..) |vertex, index| {
 			if (std.meta.eql(vertex, vert)) break index;
 		} else vertList.*.items.len;
-		
+
 		if (ind == vertList.*.items.len) {
 			vertList.*.append(vert);
 		}
@@ -188,7 +188,7 @@ pub const Model = struct {
 			}
 			minUv = @floor(minUv);
 			quad.textureSlot = @as(u32, @intFromFloat(minUv[1])) * 4 + @as(u32, @intFromFloat(minUv[0]));
-			
+
 			if (minUv[0] < 0 or minUv[0] > 4 or minUv[1] < 0 or minUv[1] > 4) {
 				std.log.err("Uv value for model is outside of 0-1 range", .{});
 			}
@@ -226,15 +226,15 @@ pub const Model = struct {
 		}) |lineUntrimmed| {
 			if (lineUntrimmed.len < 3)
 				continue;
-			
+
 			var line = lineUntrimmed;
 			if (line[line.len - 1] == '\r') {
 				line = line[0..line.len - 1];
 			}
-			
+
 			if (line[0] == '#')
 				continue;
-			
+
 			if (std.mem.eql(u8, line[0..2], "v ")) {
 				var coordsIter = std.mem.splitScalar(u8, line[2..], ' ');
 				var coords: Vec3f = undefined;
@@ -303,7 +303,7 @@ pub const Model = struct {
 
 		for (tris.items) |face| {
 			const normal: Vec3f = normals.items[face.normal];
-			
+
 			const uvA: Vec2f = uvs.items[face.uvs[0]];
 			const uvB: Vec2f = uvs.items[face.uvs[2]];
 			const uvC: Vec2f = uvs.items[face.uvs[1]];
@@ -332,7 +332,7 @@ pub const Model = struct {
 			const cornerB: Vec3f = vertices.items[face.vertex[0]];
 			const cornerC: Vec3f = vertices.items[face.vertex[2]];
 			const cornerD: Vec3f = vertices.items[face.vertex[3]];
-			
+
 			quadInfos.append(.{
 				.normal = normal,
 				.corners = .{cornerA, cornerB, cornerC, cornerD},

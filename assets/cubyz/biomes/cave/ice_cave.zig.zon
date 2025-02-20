@@ -1,0 +1,41 @@
+.{
+	.isCave = true,
+	.maxHeight = -256,
+	.minHeight = -48250,
+	.chance = 0.2,
+	.caves = -0.02,
+	.fogDensity = 20,
+	.fogColor = 0xbabfbf,
+	.stoneBlock = "cubyz:glacite",
+	.ground_structure = .{
+		"cubyz:ice",
+		"7 to 8 cubyz:frost",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:frost",
+			.chance = 0.25,
+			.width = 2,
+			.variation = 5,
+			.depth = 1,
+			.smoothness = 1,
+		},
+		.{
+			.id = "cubyz:stalagmite",
+			.block = "cubyz:ice",
+			.chance = 0.5,
+			.size = 2,
+			.size_variation = 8,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:snow",
+			.chance = 0.1,
+			.width = 5,
+			.variation = 3,
+			.depth = 1,
+			.smoothness = 0.8,
+		},
+	},
+}

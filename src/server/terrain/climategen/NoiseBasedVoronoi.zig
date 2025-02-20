@@ -185,7 +185,7 @@ const Chunk = struct {
 const GenerationStructure = struct {
 
 	chunks: Array2D(*Chunk) = undefined, // Implemented as slices into the original array!
-	
+
 	pub fn init(allocator: NeverFailingAllocator, wx: i32, wy: i32, width: u31, height: u31, tree: *TreeNode, worldSeed: u64) GenerationStructure {
 		const self: GenerationStructure = .{
 			.chunks = Array2D(*Chunk).init(allocator, 4 + @divExact(width, chunkSize), 4 + @divExact(height, chunkSize)),

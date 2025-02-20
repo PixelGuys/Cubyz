@@ -1,0 +1,126 @@
+.{
+	.blockClass = .wood,
+	.slotTypes = .{
+		.{
+			.name = .handle,
+			.parameterSets = .{
+				.{
+					.source = .resistance,
+					.destination = .maxDurability,
+					.factor = 20,
+				},
+				.{
+					.source = .density,
+					.destination = .swingTime,
+					.factor = 0.1,
+				},
+			},
+		},
+		.{
+			.name = .center,
+			.parameterSets = .{
+				.{
+					.source = .resistance,
+					.destination = .maxDurability,
+					.factor = 50,
+				},
+				.{
+					.source = .density,
+					.destination = .swingTime,
+					.factor = 0.02,
+				},
+				.{
+					.source = .density,
+					.destination = .power,
+					.factor = 0.2,
+				},
+				.{
+					.source = .power,
+					.destination = .power,
+					.functionType = .squareRoot,
+					.factor = 0.1,
+				},
+			},
+		},
+		.{
+			.name = .blade,
+			.parameterSets = .{
+				.{
+					.source = .resistance,
+					.destination = .maxDurability,
+					.factor = 20,
+				},
+				.{
+					.source = .density,
+					.destination = .swingTime,
+					.factor = 0.02,
+				},
+				.{
+					.source = .density,
+					.destination = .power,
+					.factor = 0.2,
+				},
+				.{
+					.source = .power,
+					.destination = .power,
+					.factor = 0.7,
+				},
+			},
+		},
+		.{
+			.name = .gemSlot,
+			.optional = true,
+			.parameterSets = .{
+				.{
+					.source = .resistance,
+					.destination = .maxDurability,
+					.factor = 2,
+				},
+				.{
+					.source = .density,
+					.destination = .swingTime,
+					.factor = 0.1,
+				},
+			},
+		},
+		.{
+			.name = .backbone,
+			.optional = true,
+			.parameterSets = .{
+				.{
+					.source = .resistance,
+					.destination = .maxDurability,
+					.factor = 2,
+				},
+				.{
+					.source = .density,
+					.destination = .swingTime,
+					.factor = 0.1,
+				},
+			},
+		},
+		.{
+			.name = .blode,
+			.optional = true,
+			.parameterSets = .{
+				.{
+					.source = .resistance,
+					.destination = .maxDurability,
+					.factor = 20,
+				},
+				.{
+					.source = .density,
+					.destination = .swingTime,
+					.factor = 0.1,
+				},
+			},
+		},
+	},
+	.slots = .{
+		.gemSlot, .backbone, .none,     .none,     .none,
+		.blode,   .handle,   .backbone, .none,     .none,
+		.blade,   .center,   .handle,   .backbone, .none,
+		.none,    .blade,    .blode,    .handle,   .none,
+		.none,    .none,     .none,     .none,     .handle,
+	},
+}
