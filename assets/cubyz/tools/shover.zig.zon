@@ -5,7 +5,7 @@
 			.name = .handle,
 			.parameterSets = .{
 				.{
-					.source = .resistance,
+					.source = .strength,
 					.destination = .maxDurability,
 					.factor = 20,
 				},
@@ -14,13 +14,19 @@
 					.destination = .swingTime,
 					.factor = 0.1,
 				},
+				.{
+					.source = .grip,
+					.destination = .swingTime,
+					.functionType = .inverse,
+					.factor = 0.05,
+				},
 			},
 		},
 		.{
 			.name = .center,
 			.parameterSets = .{
 				.{
-					.source = .resistance,
+					.source = .strength,
 					.destination = .maxDurability,
 					.factor = 60,
 				},
@@ -30,7 +36,7 @@
 					.factor = 0.02,
 				},
 				.{
-					.source = .power,
+					.source = .hardness,
 					.destination = .power,
 					.functionType = .squareRoot,
 					.factor = 0.1,
@@ -41,7 +47,7 @@
 			.name = .blade,
 			.parameterSets = .{
 				.{
-					.source = .resistance,
+					.source = .strength,
 					.destination = .maxDurability,
 					.factor = 20,
 				},
@@ -51,7 +57,7 @@
 					.factor = 0.02,
 				},
 				.{
-					.source = .power,
+					.source = .hardness,
 					.destination = .power,
 					.factor = 0.3,
 				},
@@ -61,7 +67,7 @@
 			.name = .tip,
 			.parameterSets = .{
 				.{
-					.source = .resistance,
+					.source = .strength,
 					.destination = .maxDurability,
 					.factor = 20,
 				},
@@ -71,7 +77,7 @@
 					.factor = 0.02,
 				},
 				.{
-					.source = .power,
+					.source = .hardness,
 					.destination = .power,
 					.factor = 0.6,
 				},
@@ -82,7 +88,7 @@
 			.optional = true,
 			.parameterSets = .{
 				.{
-					.source = .resistance,
+					.source = .strength,
 					.destination = .maxDurability,
 					.factor = 30,
 				},
@@ -92,7 +98,7 @@
 					.factor = 0.1,
 				},
 				.{
-					.source = .power,
+					.source = .hardness,
 					.destination = .power,
 					.factor = 0.7,
 				},
@@ -103,7 +109,7 @@
 			.optional = true,
 			.parameterSets = .{
 				.{
-					.source = .resistance,
+					.source = .strength,
 					.destination = .maxDurability,
 					.factor = 10,
 				},
@@ -119,7 +125,7 @@
 			.optional = true,
 			.parameterSets = .{
 				.{
-					.source = .resistance,
+					.source = .strength,
 					.destination = .maxDurability,
 					.factor = 2,
 				},

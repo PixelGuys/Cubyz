@@ -7,10 +7,12 @@
 	},
 	.item = .{
 		.material = .{
-			.density = 0.9,
-			.resistance = 1.1,
-			.power = 0.35,
-			.roughness = 0.5,
+			.density = 2.6,
+			.strength = 1.1,
+			.elasticity = 2.0,
+			.grip = 0.3,
+			.hardness = 5.5,
+			.textureRoughness = 0.5,
 			.colors = .{
 				0xff72403C, 0xff905B57, 0xffB77966, 0xffC2846A, 0xffC49B77,
 			},

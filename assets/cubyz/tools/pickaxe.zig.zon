@@ -5,7 +5,7 @@
 			.name = .handle,
 			.parameterSets = .{
 				.{
-					.source = .resistance,
+					.source = .strength,
 					.destination = .maxDurability,
 					.factor = 20,
 				},
@@ -14,13 +14,19 @@
 					.destination = .swingTime,
 					.factor = 0.1,
 				},
+				.{
+					.source = .grip,
+					.destination = .swingTime,
+					.functionType = .inverse,
+					.factor = 0.05,
+				},
 			},
 		},
 		.{
 			.name = .center,
 			.parameterSets = .{
 				.{
-					.source = .resistance,
+					.source = .strength,
 					.destination = .maxDurability,
 					.factor = 50,
 				},
@@ -30,12 +36,18 @@
 					.factor = 0.02,
 				},
 				.{
+					.source = .elasticity,
+					.destination = .swingTime,
+					.functionType = .inverseSquare,
+					.factor = 0.1,
+				},
+				.{
 					.source = .density,
 					.destination = .power,
 					.factor = 0.2,
 				},
 				.{
-					.source = .power,
+					.source = .hardness,
 					.destination = .power,
 					.functionType = .squareRoot,
 					.factor = 0.1,
@@ -46,7 +58,7 @@
 			.name = .bridge,
 			.parameterSets = .{
 				.{
-					.source = .resistance,
+					.source = .strength,
 					.destination = .maxDurability,
 					.factor = 10,
 				},
@@ -56,12 +68,18 @@
 					.factor = 0.02,
 				},
 				.{
+					.source = .elasticity,
+					.destination = .swingTime,
+					.functionType = .inverseSquare,
+					.factor = 0.1,
+				},
+				.{
 					.source = .density,
 					.destination = .power,
 					.factor = 0.2,
 				},
 				.{
-					.source = .power,
+					.source = .hardness,
 					.destination = .power,
 					.functionType = .squareRoot,
 					.factor = 0.1,
@@ -72,7 +90,7 @@
 			.name = .tip,
 			.parameterSets = .{
 				.{
-					.source = .resistance,
+					.source = .strength,
 					.destination = .maxDurability,
 					.factor = 20,
 				},
@@ -82,12 +100,18 @@
 					.factor = 0.02,
 				},
 				.{
+					.source = .elasticity,
+					.destination = .swingTime,
+					.functionType = .inverseSquare,
+					.factor = 0.1,
+				},
+				.{
 					.source = .density,
 					.destination = .power,
 					.factor = 0.2,
 				},
 				.{
-					.source = .power,
+					.source = .hardness,
 					.destination = .power,
 					.factor = 0.7,
 				},
@@ -98,7 +122,7 @@
 			.optional = true,
 			.parameterSets = .{
 				.{
-					.source = .resistance,
+					.source = .strength,
 					.destination = .maxDurability,
 					.factor = 2,
 				},
@@ -114,7 +138,7 @@
 			.optional = true,
 			.parameterSets = .{
 				.{
-					.source = .resistance,
+					.source = .strength,
 					.destination = .maxDurability,
 					.factor = 20,
 				},

@@ -18,25 +18,23 @@ const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 pub const Inventory = @import("Inventory.zig");
 
-/// Holds the basic properties of a tool crafting material.
 const Material = struct { // MARK: Material
-	/// how much it weighs
 	density: f32 = undefined,
-	/// how long it takes until the tool breaks
-	resistance: f32 = undefined,
-	/// how useful it is for block breaking
-	power: f32 = undefined,
+	strength: f32 = undefined,
+	elasticity: f32 = undefined,
+	grip: f32 = undefined,
+	hardness: f32 = undefined,
 
-	/// How rough the texture should look.
-	roughness: f32 = undefined,
-	/// The colors that are used to make tool textures.
+	textureRoughness: f32 = undefined,
 	colorPalette: []Color = undefined,
 
 	pub fn init(self: *Material, allocator: NeverFailingAllocator, zon: ZonElement) void {
 		self.density = zon.get(f32, "density", 1.0);
-		self.resistance = zon.get(f32, "resistance", 1.0);
-		self.power = zon.get(f32, "power", 1.0);
-		self.roughness = @max(0, zon.get(f32, "roughness", 1.0));
+		self.strength = zon.get(f32, "strength", 1.0);
+		self.elasticity = zon.get(f32, "elasticity", 1.0);
+		self.grip = zon.get(f32, "grip", 1.0);
+		self.hardness = zon.get(f32, "hardness", 1.0);
+		self.textureRoughness = @max(0, zon.get(f32, "textureRoughness", 1.0));
 		const colors = zon.getChild("colors");
 		self.colorPalette = allocator.alloc(Color, colors.array.items.len);
 		for(colors.array.items, self.colorPalette) |item, *color| {
@@ -52,9 +50,12 @@ const Material = struct { // MARK: Material
 
 	pub fn hashCode(self: Material) u32 {
 		var hash: u32 = @bitCast(self.density);
-		hash = 101*%hash +% @as(u32, @bitCast(self.resistance));
-		hash = 101*%hash +% @as(u32, @bitCast(self.power));
-		hash = 101*%hash +% @as(u32, @bitCast(self.roughness));
+		hash = 101*%hash +% @as(u32, @bitCast(self.density));
+		hash = 101*%hash +% @as(u32, @bitCast(self.strength));
+		hash = 101*%hash +% @as(u32, @bitCast(self.elasticity));
+		hash = 101*%hash +% @as(u32, @bitCast(self.grip));
+		hash = 101*%hash +% @as(u32, @bitCast(self.hardness));
+		hash = 101*%hash +% @as(u32, @bitCast(self.textureRoughness));
 		hash ^= hash >> 24;
 		return hash;
 	}
@@ -68,13 +69,15 @@ const Material = struct { // MARK: Material
 
 const MaterialProperty = enum {
 	density,
-	resistance,
-	power,
+	strength,
+	elasticity,
+	grip,
+	hardness,
 
 	fn fromString(string: []const u8) MaterialProperty {
 		return std.meta.stringToEnum(MaterialProperty, string) orelse {
-			std.log.err("Couldn't find material property {s}. Replacing it with power", .{string});
-			return .power;
+			std.log.err("Couldn't find material property {s}. Replacing it with strength", .{string});
+			return .strength;
 		};
 	}
 };
@@ -178,7 +181,7 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 					while(dy <= 0) : (dy += 1) {
 						if(y + dy < 0 or y + dy >= 16) continue;
 						const otherItem = itemGrid[@intCast(x + dx)][@intCast(y + dy)];
-						heightMap[x][y] = if(otherItem) |item| (if(item.material) |material| 1 + (4*random.nextFloat(seed) - 2)*material.roughness else 0) else 0;
+						heightMap[x][y] = if(otherItem) |item| (if(item.material) |material| 1 + (4*random.nextFloat(seed) - 2)*material.textureRoughness else 0) else 0;
 						if(otherItem != oneItem) {
 							hasDifferentItems = true;
 						}
@@ -284,16 +287,22 @@ const ParameterSet = struct {
 
 const FunctionType = enum {
 	linear,
+	inverse,
 	square,
+	inverseSquare,
 	squareRoot,
+	inverseSquareRoot,
 	exp2,
 	log2,
 
 	fn eval(self: FunctionType, val: f32) f32 {
 		switch(self) {
 			.linear => return val,
+			.inverse => return 1.0/val,
 			.square => return val*val,
+			.inverseSquare => return 1.0/(val*val),
 			.squareRoot => return @sqrt(val),
+			.inverseSquareRoot => return 1.0/@sqrt(val),
 			.exp2 => return @exp2(val),
 			.log2 => return @log2(val),
 		}
