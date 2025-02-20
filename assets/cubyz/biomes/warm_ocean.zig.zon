@@ -6,17 +6,17 @@
 	.radius = 500,
 	.minHeight = -100,
 	.maxHeight = -22,
-	
+
 	.roughness = 10,
 	.hills = 20,
 
 	.music = "cubyz:tides",
-	
+
 	.ground_structure = .{
 		"2 to 4 cubyz:sand",
 	},
 	.stoneBlock = "cubyz:sandstone",
-	
+
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",

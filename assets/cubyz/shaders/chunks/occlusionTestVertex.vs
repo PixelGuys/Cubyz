@@ -75,4 +75,3 @@ void main() {
 	vec3 vertexPosition = modelPosition + (vertexBuffer[vertexID]*chunks[chunkID].maxPos.xyz + (1 - vertexBuffer[vertexID])*chunks[chunkID].minPos.xyz)*chunks[chunkID].voxelSize;
 	gl_Position = projectionMatrix*viewMatrix*vec4(vertexPosition, 1);
 }
-

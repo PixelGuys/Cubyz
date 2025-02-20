@@ -7,7 +7,7 @@
 	.item = .{
 		.material = .{
 			.density = 1.25,
-			.resistance = 0.7,
+			.resistance = 1.4,
 			.power = 0.5,
 			.roughness = 0.5,
 			.colors = .{

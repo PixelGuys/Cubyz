@@ -40,7 +40,7 @@ void main() {
 	int vertexID = gl_VertexID & 3;
 
 	normal = quads[faceID].normal;
-	
+
 	vec3 position = quads[faceID].corners[vertexID];
 
 	vec4 mvPos = viewMatrix*vec4(position, 1);

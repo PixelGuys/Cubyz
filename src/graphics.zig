@@ -287,7 +287,7 @@ pub const draw = struct { // MARK: draw
 		c.glBindVertexArray(lineVAO);
 		c.glDrawArrays(c.GL_LINE_STRIP, 0, 2);
 	}
-	
+
 	// ----------------------------------------------------------------------------
 	// MARK: drawRect()
 	// Draw rect can use the same shader as drawline, because it essentially draws lines.
@@ -333,7 +333,7 @@ pub const draw = struct { // MARK: draw
 		c.glBindVertexArray(lineVAO);
 		c.glDrawArrays(c.GL_LINE_LOOP, 0, 5);
 	}
-	
+
 	// ----------------------------------------------------------------------------
 	// MARK: fillCircle()
 	var circleUniforms: struct {
@@ -386,7 +386,7 @@ pub const draw = struct { // MARK: draw
 		c.glBindVertexArray(circleVAO);
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
-	
+
 	// ----------------------------------------------------------------------------
 	// MARK: drawImage()
 	// Luckily the vao of the regular rect can used.
@@ -1185,7 +1185,7 @@ pub fn deinit() void {
 
 pub const Shader = struct { // MARK: Shader
 	id: c_uint,
-	
+
 	fn addShader(self: *const Shader, filename: []const u8, defines: []const u8, shader_stage: c_uint) !void {
 		const source = main.files.read(main.stackAllocator, filename) catch |err| {
 			std.log.err("Couldn't read shader file: {s}", .{filename});
@@ -1198,10 +1198,10 @@ pub const Shader = struct { // MARK: Shader
 		const versionLineEnd = if(std.mem.indexOfScalar(u8, source, '\n')) |len| len + 1 else 0;
 		const versionLine = source[0..versionLineEnd];
 		const sourceLines = source[versionLineEnd..];
-		
+
 		const sourceLen: [3]c_int = .{@intCast(versionLine.len), @intCast(defines.len), @intCast(sourceLines.len)};
 		c.glShaderSource(shader, 3, &[3][*c]const u8{versionLine.ptr, defines.ptr, sourceLines.ptr}, &sourceLen);
-		
+
 		c.glCompileShader(shader);
 
 		var success: c_int = undefined;
@@ -1232,7 +1232,7 @@ pub const Shader = struct { // MARK: Shader
 			return error.FailedLinking;
 		}
 	}
-	
+
 	pub fn init(vertex: []const u8, fragment: []const u8, defines: []const u8) Shader {
 		const shader = Shader{.id = c.glCreateProgram()};
 		shader.addShader(vertex, defines, c.GL_VERTEX_SHADER) catch return shader;
@@ -1240,7 +1240,7 @@ pub const Shader = struct { // MARK: Shader
 		shader.link() catch return shader;
 		return shader;
 	}
-	
+
 	pub fn initAndGetUniforms(vertex: []const u8, fragment: []const u8, defines: []const u8, ptrToUniformStruct: anytype) Shader {
 		const self = Shader.init(vertex, fragment, defines);
 		inline for(@typeInfo(@TypeOf(ptrToUniformStruct.*)).@"struct".fields) |field| {
@@ -1662,7 +1662,7 @@ pub const TextureArray = struct { // MARK: TextureArray
 		for(lodBuffer, 0..) |*buffer, i| {
 			buffer.* = arena.allocator().alloc(Color, (maxWidth >> @intCast(i))*(maxHeight >> @intCast(i)));
 		}
-		
+
 		for(images, 0..) |image, i| {
 			// Fill the buffer using nearest sampling. Probably not the best solutions for all textures, but that's what happens when someone doesn't use power of 2 textures...
 			for(0..maxWidth) |x| {

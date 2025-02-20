@@ -14,7 +14,7 @@
 			.chance = 0.112,
 			.size = 4,
 			.size_variation = 10,
-		},	
+		},
 		.{
 			.id = "cubyz:ground_patch",
 			.block = "cubyz:water",

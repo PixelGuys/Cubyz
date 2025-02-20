@@ -26,7 +26,7 @@ smoothness: f32,
 pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) *GroundPatch {
 	const self = arenaAllocator.create(GroundPatch);
 	self.* = .{
-		.block = main.blocks.getBlockById(parameters.get([]const u8, "block", "")),
+		.block = main.blocks.parseBlock(parameters.get([]const u8, "block", "")),
 		.width = parameters.get(f32, "width", 5),
 		.variation = parameters.get(f32, "variation", 1),
 		.depth = parameters.get(i32, "depth", 2),

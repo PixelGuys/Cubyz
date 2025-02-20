@@ -1,4 +1,4 @@
-#version 330 
+#version 330
 
 layout (location=0) out vec4 frag_color;
 
@@ -18,7 +18,6 @@ uniform int fontEffects;
 vec2 convert2Proportional(vec2 original, vec2 full){
 	return vec2(original.x/full.x, original.y/full.y);
 }
-
 
 void main() {
 	vec4 texture_rect_percentage = vec4(convert2Proportional(texture_rect.xy, fontSize), convert2Proportional(texture_rect.zw, fontSize));

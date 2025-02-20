@@ -4,9 +4,9 @@
 	},
 	.minHeight = 120,
 	.maxHeight = 256,
-	
+
 	.mountains = 125,
-	
+
 	.music = "cubyz:DarkTimes",
 
 	.ground_structure = .{

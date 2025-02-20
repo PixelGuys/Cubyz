@@ -178,5 +178,5 @@ const SimpleStructure = struct {
 			},
 		}
 		self.model.generate(px, py, relZ, chunk, caveMap, &seed, isCeiling);
-}
+	}
 };

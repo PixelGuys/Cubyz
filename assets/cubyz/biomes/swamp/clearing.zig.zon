@@ -1,0 +1,53 @@
+.{
+	.properties = .{
+		.hot,
+		.wet,
+		.overgrown,
+	},
+	.minHeight = 4,
+	.maxHeight = 4,
+	.minRadius = 32,
+	.maxRadius = 48,
+	.roughness = 3,
+	.hills = 1,
+	.chance = 0,
+	.music = "cubyz:leaves",
+	.validPlayerSpawn = true,
+	.ground_structure = .{
+		"cubyz:lush_grass",
+		"4 to 5 cubyz:mud",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:flower_patch",
+			.block = "cubyz:lush_grass_vegetation",
+			.chance = 0.25,
+			.width = 10,
+			.variation = 6,
+			.density = 0.3,
+			.priority = 0.1,
+		},
+		.{
+			.id = "cubyz:simple_vegetation",
+			.block = "cubyz:fern",
+			.chance = 0.8,
+			.height = 1,
+			.height_variation = 0,
+		},
+		.{
+			.id = "cubyz:flower_patch",
+			.block = "cubyz:daffodil",
+			.chance = 0.5,
+			.width = 1,
+			.variation = 5,
+			.density = 0.3,
+			.priority = 0.1,
+		},
+	},
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:swamp/base",
+			.chance = 2,
+		},
+	},
+}

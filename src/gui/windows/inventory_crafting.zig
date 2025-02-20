@@ -80,9 +80,6 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 			_ = availableItems.swapRemove(i);
 		}
 	}
-	for(inventories.items) |inv| {
-		inv.deinit(main.globalAllocator);
-	}
 	inventories.clearRetainingCapacity();
 	// Find all recipes the player can make:
 	outer: for(items.recipes()) |*recipe| {
@@ -95,7 +92,10 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 			continue :outer; // Ingredient not found.
 		}
 		// All ingredients found: Add it to the list.
-		const inv = Inventory.init(main.globalAllocator, recipe.sourceItems.len + 1, .crafting, .other);
+		if(recipe.cachedInventory == null) {
+			recipe.cachedInventory = Inventory.init(main.globalAllocator, recipe.sourceItems.len + 1, .crafting, .{.recipe = recipe});
+		}
+		const inv = recipe.cachedInventory.?;
 		inventories.append(inv);
 		const rowList = HorizontalList.init();
 		const maxColumns: u32 = 4;
@@ -107,14 +107,12 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 			if(col < remainder) itemsThisColumn += 1;
 			const columnList = VerticalList.init(.{0, 0}, std.math.inf(f32), 0);
 			for(0..itemsThisColumn) |_| {
-				inv.fillAmountFromCreative(i, .{.baseItem = recipe.sourceItems[i]}, recipe.sourceAmounts[i]);
 				columnList.add(ItemSlot.init(.{0, 0}, inv, i, .immutable, .immutable));
 				i += 1;
 			}
 			columnList.finish(.center);
 			rowList.add(columnList);
 		}
-		inv.fillAmountFromCreative(@intCast(recipe.sourceItems.len), recipe.resultItem.item, recipe.resultItem.amount);
 		rowList.add(Icon.init(.{8, 0}, .{32, 32}, arrowTexture, false));
 		const itemSlot = ItemSlot.init(.{8, 0}, inv, @intCast(recipe.sourceItems.len), .craftingResult, .takeOnly);
 		rowList.add(itemSlot);
@@ -125,6 +123,7 @@ fn findAvailableRecipes(list: *VerticalList) bool {
 }
 
 fn refresh() void {
+	const oldScrollState = if(window.rootComponent) |oldList| oldList.verticalList.scrollBar.currentState else 0;
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 8);
 	if(!findAvailableRecipes(list)) {
 		list.deinit();
@@ -134,6 +133,7 @@ fn refresh() void {
 		comp.deinit();
 	}
 	list.finish(.center);
+	list.scrollBar.currentState = oldScrollState;
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));
 	window.contentSize[0] = @max(window.contentSize[0], window.getMinWindowWidth());
@@ -154,9 +154,6 @@ pub fn onClose() void {
 	}
 	availableItems.deinit();
 	itemAmount.deinit();
-	for(inventories.items) |inv| {
-		inv.deinit(main.globalAllocator);
-	}
 	inventories.deinit();
 }
 

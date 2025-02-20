@@ -139,7 +139,7 @@ const ChunkManager = struct { // MARK: ChunkManager
 			.clean = @ptrCast(&clean),
 			.taskType = .chunkgen,
 		};
-		
+
 		pub fn scheduleAndDecreaseRefCount(pos: ChunkPosition, source: Source) void {
 			const task = main.globalAllocator.create(ChunkLoadTask);
 			task.* = ChunkLoadTask {
@@ -199,7 +199,7 @@ const ChunkManager = struct { // MARK: ChunkManager
 			.clean = @ptrCast(&clean),
 			.taskType = .misc,
 		};
-		
+
 		pub fn scheduleAndDecreaseRefCount(pos: terrain.SurfaceMap.MapFragmentPosition, source: ?*User) void {
 			const task = main.globalAllocator.create(LightMapLoadTask);
 			task.* = LightMapLoadTask {
@@ -532,7 +532,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		try files.writeZon(try std.fmt.bufPrint(&buf, "saves/{s}/biome_palette.zig.zon", .{name}), self.biomePalette.save(arenaAllocator));
 
 		var gamerules = files.readToZon(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/gamerules.zig.zon", .{name})) catch ZonElement.initObject(arenaAllocator);
-		
+
 		self.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, gamerules.get([]const u8, "default_gamemode", "creative")) orelse .creative;
 		self.allowCheats = gamerules.get(bool, "cheats", true);
 
@@ -576,7 +576,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			.clean = @ptrCast(&clean),
 			.taskType = .chunkgen,
 		};
-		
+
 		pub fn schedule(pos: ChunkPosition, storeMaps: bool) void {
 			const task = main.globalAllocator.create(RegenerateLODTask);
 			task.* = .{
@@ -806,12 +806,12 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			playerZon.deinit(main.stackAllocator);
 			playerZon = ZonElement.initObject(main.stackAllocator);
 		}
-		
+
 		playerZon.put("name", user.name);
-		
+
 		playerZon.put("entity", user.player.save(main.stackAllocator));
 		playerZon.put("gamemode", @tagName(user.gamemode.load(.monotonic)));
-		
+
 		{
 			main.items.Inventory.Sync.ServerSide.mutex.lock();
 			defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
@@ -835,7 +835,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	pub fn saveAllPlayers(self: *ServerWorld) !void {
 		const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
 		defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
-		
+
 		for (userList) |user| {
 			try savePlayer(self, user);
 		}
@@ -844,7 +844,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	pub fn forceSave(self: *ServerWorld) !void {
 		// TODO: Save chunks and player data
 		try self.wio.saveWorldData();
-	
+
 		try self.saveAllPlayers();
 
 		const itemDropZon = self.itemDropManager.store(main.stackAllocator);

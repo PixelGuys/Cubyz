@@ -92,8 +92,8 @@ const Stripe = struct { // MARK: Stripe
 			dir = main.vec.normalize(dir.?);
 		}
 
-		const block: main.blocks.Block = blocks.getBlockById(parameters.get([]const u8, "block", ""));
-		
+		const block: main.blocks.Block = blocks.parseBlock(parameters.get([]const u8, "block", ""));
+
 		var minDistance: f64 = 0;
 		var maxDistance: f64 = 0;
 		if (parameters.object.get("distance")) |dist| {
@@ -201,7 +201,7 @@ fn u32ToVec3(color: u32) Vec3f {
 	const r = @as(f32, @floatFromInt((color >> 16) & 0xFF)) / 255.0;
 	const g = @as(f32, @floatFromInt((color >> 8) & 0xFF)) / 255.0;
 	const b = @as(f32, @floatFromInt(color & 0xFF)) / 255.0;
-	
+
 	return .{ r, g, b };
 }
 
@@ -296,7 +296,7 @@ pub const Biome = struct { // MARK: Biome
 			.isCave = zon.get(bool, "isCave", false),
 			.radius = (maxRadius + minRadius)/2,
 			.radiusVariation = (maxRadius - minRadius)/2,
-			.stoneBlock = blocks.getBlockById(zon.get([]const u8, "stoneBlock", "cubyz:stone")),
+			.stoneBlock = blocks.parseBlock(zon.get([]const u8, "stoneBlock", "cubyz:stone")),
 			.fogColor = u32ToVec3(zon.get(u32, "fogColor", 0xffccccff)),
 			.fogDensity = zon.get(f32, "fogDensity", 1.0)/15.0/128.0,
 			.fogLower = zon.get(f32, "fogLower", 100.0),
@@ -347,7 +347,7 @@ pub const Biome = struct { // MARK: Biome
 		}
 
 		self.structure = BlockStructure.init(main.globalAllocator, zon.getChild("ground_structure"));
-		
+
 		const structures = zon.getChild("structures");
 		var vegetation = main.ListUnmanaged(SimpleStructureModel){};
 		var totalChance: f32 = 0;
@@ -415,7 +415,7 @@ pub const BlockStructure = struct { // MARK: BlockStructure
 				self.min = 1;
 				self.max = 1;
 			}
-			self.block = blocks.getBlockById(blockId);
+			self.block = blocks.parseBlock(blockId);
 		}
 	};
 	structure: []BlockStack,

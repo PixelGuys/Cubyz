@@ -3,12 +3,12 @@
 	.blockHealth = 25,
 	.breakingPower = 1,
 	.drops = .{
-		.{.items = .{"cubyz:cobblestone"}},
+		.{.items = .{.auto}},
 	},
 	.item = .{
 		.material = .{
 			.density = 1.0,
-			.resistance = 1.0,
+			.resistance = 1.5,
 			.power = 0.4,
 			.roughness = 1.0,
 			.colors = .{

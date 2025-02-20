@@ -44,7 +44,7 @@ const maxCaveDensity = 1.0/32.0;
 
 pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 	if(map.pos.voxelSize > 2) return;
-	
+
 	const biomeMap: InterpolatableCaveBiomeMapView = InterpolatableCaveBiomeMapView.init(main.stackAllocator, map.pos, CaveMapFragment.width*map.pos.voxelSize, CaveMapFragment.width*map.pos.voxelSize + maxCaveHeight*3);
 	defer biomeMap.deinit();
 	// Generate caves from all nearby chunks:

@@ -18,8 +18,8 @@ void main() {
 	float y = -data[(gl_VertexID+offset)%points];
 	// Convert to opengl coordinates:
 	vec2 position_percentage = (start + dimension*vec2(x/points, y))/screen;
-	
+
 	vec2 position = vec2(position_percentage.x, -position_percentage.y)*2 + vec2(-1, 1);
-	
+
 	gl_Position = vec4(position, 0, 1);
 }

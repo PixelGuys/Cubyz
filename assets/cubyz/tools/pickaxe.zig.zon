@@ -1,0 +1,136 @@
+.{
+	.blockClass = .stone,
+	.slotTypes = .{
+		.{
+			.name = .handle,
+			.parameterSets = .{
+				.{
+					.source = .resistance,
+					.destination = .maxDurability,
+					.factor = 20,
+				},
+				.{
+					.source = .density,
+					.destination = .swingTime,
+					.factor = 0.1,
+				},
+			},
+		},
+		.{
+			.name = .center,
+			.parameterSets = .{
+				.{
+					.source = .resistance,
+					.destination = .maxDurability,
+					.factor = 50,
+				},
+				.{
+					.source = .density,
+					.destination = .swingTime,
+					.factor = 0.02,
+				},
+				.{
+					.source = .density,
+					.destination = .power,
+					.factor = 0.2,
+				},
+				.{
+					.source = .power,
+					.destination = .power,
+					.functionType = .squareRoot,
+					.factor = 0.1,
+				},
+			},
+		},
+		.{
+			.name = .bridge,
+			.parameterSets = .{
+				.{
+					.source = .resistance,
+					.destination = .maxDurability,
+					.factor = 10,
+				},
+				.{
+					.source = .density,
+					.destination = .swingTime,
+					.factor = 0.02,
+				},
+				.{
+					.source = .density,
+					.destination = .power,
+					.factor = 0.2,
+				},
+				.{
+					.source = .power,
+					.destination = .power,
+					.functionType = .squareRoot,
+					.factor = 0.1,
+				},
+			},
+		},
+		.{
+			.name = .tip,
+			.parameterSets = .{
+				.{
+					.source = .resistance,
+					.destination = .maxDurability,
+					.factor = 20,
+				},
+				.{
+					.source = .density,
+					.destination = .swingTime,
+					.factor = 0.02,
+				},
+				.{
+					.source = .density,
+					.destination = .power,
+					.factor = 0.2,
+				},
+				.{
+					.source = .power,
+					.destination = .power,
+					.factor = 0.7,
+				},
+			},
+		},
+		.{
+			.name = .gemSlot,
+			.optional = true,
+			.parameterSets = .{
+				.{
+					.source = .resistance,
+					.destination = .maxDurability,
+					.factor = 2,
+				},
+				.{
+					.source = .density,
+					.destination = .swingTime,
+					.factor = 0.1,
+				},
+			},
+		},
+		.{
+			.name = .binding,
+			.optional = true,
+			.parameterSets = .{
+				.{
+					.source = .resistance,
+					.destination = .maxDurability,
+					.factor = 20,
+				},
+				.{
+					.source = .density,
+					.destination = .swingTime,
+					.factor = 0.1,
+				},
+			},
+		},
+	},
+	.slots = .{
+		.gemSlot, .binding, .bridge,  .tip,    .none,
+		.binding, .center,  .binding, .none,   .none,
+		.bridge,  .binding, .handle,  .none,   .none,
+		.tip,     .none,    .none,    .handle, .none,
+		.none,    .none,    .none,    .none,   .handle,
+	},
+}

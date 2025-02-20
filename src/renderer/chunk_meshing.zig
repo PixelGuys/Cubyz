@@ -142,7 +142,7 @@ fn bindCommonUniforms(locations: *UniformStruct, projMatrix: Mat4f, ambient: Vec
 	c.glUniform1i(locations.reflectionMap, 4);
 	c.glUniform1f(locations.reflectionMapSize, renderer.reflectionCubeMapSize);
 
-	c.glUniform1f(locations.contrast, 0.12);
+	c.glUniform1f(locations.contrast, 0);
 
 	c.glUniform1f(locations.lodDistance, main.settings.@"lod0.5Distance");
 
@@ -486,7 +486,14 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 			while(dy <= 1): (dy += 1) {
 				const weight: f32 = 1.0/4.0;
 				const finalPos = startPos +% @as(Vec3i, @intCast(@abs(direction.textureX())))*@as(Vec3i, @splat(dx)) +% @as(Vec3i, @intCast(@abs(direction.textureY()*@as(Vec3i, @splat(dy)))));
-				const lightVal: [6]u8 = getLightAt(parent, finalPos[0], finalPos[1], finalPos[2]);
+				var lightVal: [6]u8 = getLightAt(parent, finalPos[0], finalPos[1], finalPos[2]);
+				if(parent.pos.voxelSize == 1) {
+					const nextVal = getLightAt(parent, finalPos[0] +% direction.relX(), finalPos[1] +% direction.relY(), finalPos[2] +% direction.relZ());
+					for(0..6) |i| {
+						const diff: u8 = @min(8, lightVal[i] -| nextVal[i]);
+						lightVal[i] = lightVal[i] -| diff*5/2;
+					}
+				}
 				for(0..6) |i| {
 					val[i] += @as(f32, @floatFromInt(lightVal[i]))*weight;
 				}

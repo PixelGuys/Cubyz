@@ -1,0 +1,20 @@
+.{
+	.class = .leaf,
+	.blockHealth = 1,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.degradable = true,
+	.viewThrough = true,
+	.absorbedLight = 0x000000,
+	.collide = false,
+	.model = "cubyz:flower/height_10",
+	.rotation = .planar,
+	.texture = "cubyz:trumpet_lily",
+	.texture_top = "cubyz:trumpet_lily_top",
+	.texture_bottom = "cubyz:trumpet_lily_top",
+	.item = .{
+		.texture = "trumpet_lily.png",
+	},
+	.lodReplacement = "cubyz:air",
+}

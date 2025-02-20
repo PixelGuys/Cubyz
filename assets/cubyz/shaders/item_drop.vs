@@ -56,7 +56,7 @@ const int[24] positions = int[24](
 	0x010,
 	0x001,
 	0x011,
-	
+
 	0x001,
 	0x011,
 	0x101,
@@ -105,11 +105,11 @@ void main() {
 		textureIndex = -1;
 	}
 	voxelModel = voxelModelIndex;
-	
-	
+
+
 	vec4 worldSpace = modelMatrix*vec4(pos, 1);
 	direction = (transpose(mat3(modelMatrix))*worldSpace.xyz).xyz;
-	
+
 	vec4 cameraSpace = viewMatrix*worldSpace;
 	gl_Position = projectionMatrix*cameraSpace;
 	cameraSpacePos = cameraSpace.xyz;

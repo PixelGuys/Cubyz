@@ -26,16 +26,16 @@ set /p currVersion=<"compiler\version.txt"
 
 if not "%version%" == "%currVersion%" (
 	echo Your Zig is the wrong version.
-	echo Deleting current Zig installation ...
+	echo Deleting current Zig installation...
 	if exist compiler\zig rmdir /s /q compiler\zig
-	echo Downloading %version% ...
+	echo Downloading %version%...
 	powershell -Command $ProgressPreference = 'SilentlyContinue'; "Invoke-WebRequest -uri https://github.com/PixelGuys/Cubyz-zig-versions/releases/download/%baseVersion%/%version%.zip -OutFile compiler\archive.zip"
 	if errorlevel 1 (
 		echo Failed to download the Zig compiler.
 		exit /b 1
 	)
-	echo Extracting zip file ...
-	powershell $ProgressPreference = 'SilentlyContinue'; Expand-Archive compiler\archive.zip -DestinationPath compiler
+	echo Extracting zip file...
+	tar -xf compiler\archive.zip --directory compiler
 	ren compiler\%version% zig
 	del compiler\archive.zip
 	echo %version%> compiler\version.txt

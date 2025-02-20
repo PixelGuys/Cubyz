@@ -5,12 +5,12 @@
 	.radius = 400,
 	.minHeight = 60,
 	.maxHeight = 256,
-	
+
 	.roughness = 10,
 	.mountains = 100,
-	
+
 	.rivers = true,
-	
+
 	.ground_structure = .{
 		"cubyz:grass",
 		"1 to 2 cubyz:soil",

@@ -1,0 +1,11 @@
+.{
+	.class = .stone,
+	.blockHealth = 35,
+	.breakingPower = 1,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.rotation = .stairs,
+	.model = "cubyz:cube",
+	.texture = "cubyz:coal_block",
+}

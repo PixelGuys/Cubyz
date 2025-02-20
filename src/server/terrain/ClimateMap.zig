@@ -47,7 +47,7 @@ pub const ClimateMapFragment = struct {
 
 	pos: ClimateMapFragmentPosition,
 	map: [mapEntrysSize][mapEntrysSize]BiomeSample = undefined,
-	
+
 	refCount: Atomic(u16) = .init(0),
 
 	pub fn init(self: *ClimateMapFragment, wx: i32, wy: i32) void {

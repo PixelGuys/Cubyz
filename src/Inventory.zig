@@ -262,7 +262,7 @@ pub const Sync = struct { // MARK: Sync
 			for(command.syncOperations.items) |op| {
 				const syncData = op.serialize(main.stackAllocator);
 				defer main.stackAllocator.free(syncData);
-				
+
 				const users = op.getUsers(main.stackAllocator);
 				defer main.stackAllocator.free(users);
 
@@ -302,7 +302,7 @@ pub const Sync = struct { // MARK: Sync
 		fn createInventory(user: *main.server.User, clientId: u32, len: usize, typ: Inventory.Type, source: Source) void {
 			main.utils.assertLocked(&mutex);
 			switch(source) {
-				.sharedTestingInventory => {
+				.sharedTestingInventory, .recipe => {
 					for(inventories.items) |*inv| {
 						if(std.meta.eql(inv.source, source)) {
 							inv.addUser(user, clientId);
@@ -324,13 +324,21 @@ pub const Sync = struct { // MARK: Sync
 
 					const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players/{s}.zig.zon", .{main.server.world.?.name, hashedName}) catch unreachable;
 					defer main.stackAllocator.free(path);
-		
+
 					const playerData = main.files.readToZon(main.stackAllocator, path) catch .null;
 					defer playerData.deinit(main.stackAllocator);
 
 					const inventoryZon = playerData.getChild(@tagName(source));
 
 					inventory.inv.loadFromZon(inventoryZon);
+				},
+				.recipe => |recipe| {
+					for(0..recipe.sourceAmounts.len) |i| {
+						inventory.inv._items[i].amount = recipe.sourceAmounts[i];
+						inventory.inv._items[i].item = .{.baseItem = recipe.sourceItems[i]};
+					}
+					inventory.inv._items[inventory.inv._items.len - 1].amount = recipe.resultAmount;
+					inventory.inv._items[inventory.inv._items.len - 1].item = .{.baseItem = recipe.resultItem};
 				},
 				.other => {},
 				.alreadyFreed => unreachable,
@@ -573,7 +581,7 @@ pub const Command = struct { // MARK: Command
 						return error.Invalid;
 					}
 					create.inv.ref().amount += create.amount;
-					
+
 					create.inv.inv.update();
 				},
 				.delete => |delete| {
@@ -584,7 +592,7 @@ pub const Command = struct { // MARK: Command
 					if (delete.inv.ref().amount == 0) {
 						delete.inv.ref().item = null;
 					}
-					
+
 					delete.inv.inv.update();
 				},
 				.useDurability => |durability| {
@@ -593,7 +601,7 @@ pub const Command = struct { // MARK: Command
 						durability.inv.ref().item = null;
 						durability.inv.ref().amount = 0;
 					}
-					
+
 					durability.inv.inv.update();
 				},
 				.health => |health| {
@@ -1057,17 +1065,30 @@ pub const Command = struct { // MARK: Command
 		fn serialize(self: Open, data: *main.List(u8)) void {
 			std.mem.writeInt(u32, data.addMany(4)[0..4], self.inv.id, .big);
 			std.mem.writeInt(usize, data.addMany(8)[0..8], self.inv._items.len, .big);
-			data.append(@intFromEnum(self.inv.type));
+			data.append(@intFromEnum(std.meta.activeTag(self.inv.type)));
 			data.append(@intFromEnum(self.source));
 			switch (self.source) {
 				.playerInventory, .hand => |val| {
 					std.mem.writeInt(u32, data.addMany(4)[0..4], val, .big);
 				},
-				else => {}
-			}
-			switch(self.source) {
-				.playerInventory, .sharedTestingInventory, .hand, .other => {},
+				.recipe => |val| {
+					std.mem.writeInt(u16, data.addMany(2)[0..2], val.resultAmount, .big);
+					data.appendSlice(val.resultItem.id);
+					data.append(0);
+					for(0..val.sourceItems.len) |i| {
+						std.mem.writeInt(u16, data.addMany(2)[0..2], val.sourceAmounts[i], .big);
+						data.appendSlice(val.sourceItems[i].id);
+						data.append(0);
+					}
+				},
+				.sharedTestingInventory, .other => {},
 				.alreadyFreed => unreachable,
+			}
+			switch(self.inv.type) {
+				.normal, .creative, .crafting => {},
+				.workbench => {
+					data.appendSlice(self.inv.type.workbench.id);
+				},
 			}
 		}
 
@@ -1076,14 +1097,50 @@ pub const Command = struct { // MARK: Command
 			if(side != .server or user == null) return error.Invalid;
 			const id = std.mem.readInt(u32, data[0..4], .big);
 			const len = std.mem.readInt(usize, data[4..12], .big);
-			const typ: Inventory.Type = @enumFromInt(data[12]);
+			const typeEnum: TypeEnum = @enumFromInt(data[12]);
 			const sourceType: SourceType = @enumFromInt(data[13]);
 			const source: Source = switch(sourceType) {
 				.playerInventory => .{.playerInventory = std.mem.readInt(u32, data[14..18], .big)},
 				.sharedTestingInventory => .{.sharedTestingInventory = {}},
 				.hand => .{.hand = std.mem.readInt(u32, data[14..18], .big)},
+				.recipe => .{.recipe = blk: {
+					var itemList = main.List(struct{amount: u16, item: *const main.items.BaseItem}).initCapacity(main.stackAllocator, len);
+					defer itemList.deinit();
+					var index: usize = 14;
+					while(index + 2 < data.len) {
+						const resultAmount = std.mem.readInt(u16, data[index..][0..2], .big);
+						index += 2;
+						const resultItem = if(std.mem.indexOfScalarPos(u8, data, index, 0)) |endIndex| blk2: {
+							const itemId = data[index..endIndex];
+							index = endIndex + 1;
+							break :blk2 main.items.getByID(itemId) orelse return error.Invalid;
+						} else return error.Invalid;
+						itemList.append(.{.amount = resultAmount, .item = resultItem});
+					}
+					if(itemList.items.len != len) return error.Invalid;
+					// Find the recipe in our list:
+					outer: for(main.items.recipes()) |*recipe| {
+						if(recipe.resultAmount == itemList.items[0].amount and recipe.resultItem == itemList.items[0].item and recipe.sourceItems.len == itemList.items.len - 1) {
+							for(itemList.items[1..], 0..) |item, i| {
+								if(item.amount != recipe.sourceAmounts[i] or item.item != recipe.sourceItems[i]) continue :outer;
+							}
+							break :blk recipe;
+						}
+					}
+					return error.Invalid;
+				}},
 				.other => .{.other = {}},
 				.alreadyFreed => unreachable,
+			};
+			const remainingLen: usize = switch(sourceType) {
+				.playerInventory, .hand => 18,
+				.sharedTestingInventory, .other => 14,
+				.recipe => data.len,
+				.alreadyFreed => unreachable,
+			};
+			const typ: Type = switch(typeEnum) {
+				inline .normal, .creative, .crafting => |tag| tag,
+				.workbench => .{.workbench = main.items.getToolTypeByID(data[remainingLen..]) orelse return error.Invalid},
 			};
 			Sync.ServerSide.createInventory(user.?, id, len, typ, source);
 			return .{
@@ -1135,6 +1192,7 @@ pub const Command = struct { // MARK: Command
 				cmd.tryCraftingTo(allocator, self.source, self.dest, side, user);
 				return;
 			}
+			if(self.dest.inv.type == .workbench and self.dest.slot != 25 and self.dest.inv.type.workbench.slotInfos[self.dest.slot].disabled) return;
 			if(self.dest.inv.type == .workbench and self.dest.slot == 25) {
 				if(self.source.ref().item == null and self.dest.ref().item != null) {
 					cmd.executeBaseOperation(allocator, .{.move = .{
@@ -1192,7 +1250,7 @@ pub const Command = struct { // MARK: Command
 			std.debug.assert(self.source.inv.type == .normal);
 			if(self.dest.inv.type == .creative) return;
 			if(self.dest.inv.type == .crafting) return;
-			if(self.dest.inv.type == .workbench and self.dest.slot == 25) return;
+			if(self.dest.inv.type == .workbench and (self.dest.slot == 25 or self.dest.inv.type.workbench.slotInfos[self.dest.slot].disabled)) return;
 			if(self.dest.inv.type == .workbench and !canPutIntoWorkbench(self.source)) return;
 			const itemSource = self.source.ref().item orelse return;
 			if(self.dest.ref().item) |itemDest| {
@@ -1247,6 +1305,7 @@ pub const Command = struct { // MARK: Command
 				cmd.tryCraftingTo(allocator, self.dest, self.source, side, user);
 				return;
 			}
+			if(self.source.inv.type == .workbench and self.source.slot != 25 and self.source.inv.type.workbench.slotInfos[self.source.slot].disabled) return;
 			if(self.source.inv.type == .workbench and self.source.slot == 25) {
 				if(self.dest.ref().item == null and self.source.ref().item != null) {
 					cmd.executeBaseOperation(allocator, .{.move = .{
@@ -1318,6 +1377,7 @@ pub const Command = struct { // MARK: Command
 				}
 				return;
 			}
+			if(self.source.inv.type == .workbench and self.source.slot != 25 and self.source.inv.type.workbench.slotInfos[self.source.slot].disabled) return;
 			if(self.source.inv.type == .workbench and self.source.slot == 25) {
 				cmd.removeToolCraftingIngredients(allocator, self.source.inv, side);
 			}
@@ -1353,8 +1413,10 @@ pub const Command = struct { // MARK: Command
 		item: ?Item,
 		amount: u16 = 0,
 
-		fn run(self: FillFromCreative, allocator: NeverFailingAllocator, cmd: *Command, side: Side, _: ?*main.server.User, _: Gamemode) error{serverFailure}!void {
-			if(self.dest.inv.type == .workbench and self.dest.slot == 25) return;
+		fn run(self: FillFromCreative, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, mode: Gamemode) error{serverFailure}!void {
+			if(self.dest.inv.type == .workbench and (self.dest.slot == 25 or self.dest.inv.type.workbench.slotInfos[self.dest.slot].disabled)) return;
+			if(side == .server and user != null and mode != .creative) return;
+			if(side == .client and mode != .creative) return;
 
 			if(!self.dest.ref().empty()) {
 				cmd.executeBaseOperation(allocator, .{.delete = .{
@@ -1472,7 +1534,7 @@ pub const Command = struct { // MARK: Command
 			if(self.inv.type == .workbench) items = self.inv._items[0..25];
 			for(items, 0..) |stack, slot| {
 				if(stack.item == null) continue;
-				
+
 				cmd.executeBaseOperation(allocator, .{.delete = .{
 					.source = .{.inv = self.inv, .slot = @intCast(slot)},
 					.amount = stack.amount,
@@ -1504,8 +1566,9 @@ pub const Command = struct { // MARK: Command
 
 			const stack = self.source.ref();
 
-			const costOfChange = if(gamemode != .creative) self.oldBlock.canBeChangedInto(self.newBlock, stack.*) else .yes;
-			
+			var shouldDropSourceBlockOnSuccess: bool = true;
+			const costOfChange = if(gamemode != .creative) self.oldBlock.canBeChangedInto(self.newBlock, stack.*, &shouldDropSourceBlockOnSuccess) else .yes;
+
 			// Check if we can change it:
 			if(!switch(costOfChange) {
 				.no => false,
@@ -1558,7 +1621,7 @@ pub const Command = struct { // MARK: Command
 				},
 			}
 
-			if(side == .server and gamemode != .creative and self.oldBlock.typ != self.newBlock.typ) {
+			if(side == .server and gamemode != .creative and self.oldBlock.typ != self.newBlock.typ and shouldDropSourceBlockOnSuccess) {
 				for(self.oldBlock.blockDrops()) |drop| {
 					if(drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
 						blockDrop(self.pos, drop);
@@ -1655,6 +1718,7 @@ const SourceType = enum(u8) {
 	playerInventory = 1,
 	sharedTestingInventory = 2,
 	hand = 3,
+	recipe = 4,
 	other = 0xff, // TODO: List every type separately here.
 };
 const Source = union(SourceType) {
@@ -1662,16 +1726,23 @@ const Source = union(SourceType) {
 	playerInventory: u32,
 	sharedTestingInventory: void,
 	hand: u32,
+	recipe: *const main.items.Recipe,
 	other: void,
 };
 
 const Inventory = @This(); // MARK: Inventory
 
-const Type = enum(u8) {
+const TypeEnum = enum(u8) {
 	normal = 0,
 	creative = 1,
 	crafting = 2,
 	workbench = 3,
+};
+const Type = union(TypeEnum) {
+	normal: void,
+	creative: void,
+	crafting: void,
+	workbench: *const main.items.ToolType,
 };
 type: Type,
 id: u32,
@@ -1725,16 +1796,18 @@ fn update(self: Inventory) void {
 		self._items[self._items.len - 1].deinit();
 		self._items[self._items.len - 1].clear();
 		var availableItems: [25]?*const BaseItem = undefined;
-		var nonEmpty: bool = false;
+		var hasAllMandatory: bool = true;
+
 		for(0..25) |i| {
 			if(self._items[i].item != null and self._items[i].item.? == .baseItem) {
 				availableItems[i] = self._items[i].item.?.baseItem;
-				nonEmpty = true;
 			} else {
+				if(!self.type.workbench.slotInfos[i].optional and !self.type.workbench.slotInfos[i].disabled)
+					hasAllMandatory = false;
 				availableItems[i] = null;
 			}
 		}
-		if(nonEmpty) {
+		if(hasAllMandatory) {
 			var hash = std.hash.Crc32.init();
 			for(availableItems) |item| {
 				if(item != null) {
@@ -1743,7 +1816,7 @@ fn update(self: Inventory) void {
 					hash.update("none");
 				}
 			}
-			self._items[self._items.len - 1].item = Item{.tool = Tool.initFromCraftingGrid(availableItems, hash.final())};
+			self._items[self._items.len - 1].item = Item{.tool = Tool.initFromCraftingGrid(availableItems, hash.final(), self.type.workbench)};
 			self._items[self._items.len - 1].amount = 1;
 		}
 	}

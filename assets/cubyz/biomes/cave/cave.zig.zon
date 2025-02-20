@@ -25,7 +25,7 @@
 			.chance = 0.048,
 			.size = 3,
 			.size_variation = 6,
-		},	
+		},
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.016,

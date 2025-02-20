@@ -71,7 +71,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 	pos: MapFragmentPosition,
 
 	wasStored: Atomic(bool) = .init(false),
-	
+
 	refCount: Atomic(u16) = .init(0),
 
 	pub fn init(self: *MapFragment, wx: i32, wy: i32, voxelSize: u31) void {
@@ -104,7 +104,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 		const yIndex = wy>>self.pos.voxelSizeShift & mapMask;
 		return self.heightMap[@intCast(xIndex)][@intCast(yIndex)];
 	}
-	
+
 	const StorageHeader = struct {
 		const minSupportedVersion: u8 = 0;
 		const activeVersion: u8 = 1;
@@ -189,7 +189,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 		}
 		const compressedData = main.utils.Compression.deflate(main.stackAllocator, rawData, .fast);
 		defer main.stackAllocator.free(compressedData);
-		
+
 		const fullData = main.stackAllocator.alloc(u8, compressedData.len + @sizeOf(StorageHeader));
 		defer main.stackAllocator.free(fullData);
 		const header: StorageHeader = .{
