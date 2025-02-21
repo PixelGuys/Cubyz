@@ -8,7 +8,7 @@
 	.minHeight = 22,
 	.maxHeight = 40,
 	.minRadius = 150,
-	.maxRadius = 200,
+	.maxRadius = 300,
 	.hills = 20,
 	.validPlayerSpawn = false,
 	.music = "cubyz:EasternThought",

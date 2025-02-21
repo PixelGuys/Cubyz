@@ -4,7 +4,7 @@
 	.minHeight = 22,
 	.maxHeight = 40,
 	.minRadius = 150,
-	.maxRadius = 200,
+	.maxRadius = 300,
 	.roughness = 10,
 	.hills = 10,
 	.music = "cubyz:leaves",

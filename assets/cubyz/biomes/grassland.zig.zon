@@ -3,14 +3,12 @@
 	},
 	.minHeight = 22,
 	.maxHeight = 40,
-
+	.minRadius = 150,
+	.maxRadius = 300,
 	.roughness = 1,
 	.hills = 5,
-
 	.music = "cubyz:sunrise",
-
 	.validPlayerSpawn = true,
-
 	.ground_structure = .{
 		"cubyz:grass",
 		"2 to 3 cubyz:soil",

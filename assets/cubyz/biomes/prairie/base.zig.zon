@@ -5,7 +5,7 @@
 	.minHeight = 40,
 	.maxHeight = 44,
 	.minRadius = 150,
-	.maxRadius = 200,
+	.maxRadius = 300,
 	.roughness = 1,
 	.hills = 3,
 	.music = "cubyz:sunrise",
