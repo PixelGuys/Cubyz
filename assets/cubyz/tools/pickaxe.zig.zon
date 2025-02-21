@@ -36,11 +36,6 @@
 			.name = .center,
 			.parameterSets = .{
 				.{
-					.source = .density,
-					.destination = .maxDurability,
-					.factor = 2.5,
-				},
-				.{
 					.source = .strength,
 					.destination = .maxDurability,
 					.factor = 5,
@@ -66,11 +61,6 @@
 		.{
 			.name = .bridge,
 			.parameterSets = .{
-				.{
-					.source = .density,
-					.destination = .maxDurability,
-					.factor = 2.5,
-				},
 				.{
 					.source = .strength,
 					.destination = .maxDurability,
@@ -112,11 +102,6 @@
 		.{
 			.name = .tip,
 			.parameterSets = .{
-				.{
-					.source = .density,
-					.destination = .maxDurability,
-					.factor = 1.25,
-				},
 				.{
 					.source = .strength,
 					.destination = .maxDurability,
@@ -161,14 +146,22 @@
 			.name = .gemSlot,
 			.optional = true,
 			.parameterSets = .{
-
+				.{
+					.source = .density,
+					.destination = .swingTime,
+					.factor = 0.075,
+				},
 			},
 		},
 		.{
 			.name = .binding,
 			.optional = true,
 			.parameterSets = .{
-
+				.{
+					.source = .density,
+					.destination = .swingTime,
+					.factor = 0.1,
+				},
 			},
 		},
 	},
