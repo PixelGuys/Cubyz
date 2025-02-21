@@ -158,6 +158,11 @@
 			.optional = true,
 			.parameterSets = .{
 				.{
+					.source = .strength,
+					.destination = .maxDurability,
+					.factor = 6.5,
+				},
+				.{
 					.source = .density,
 					.destination = .swingTime,
 					.factor = 0.1,
