@@ -417,7 +417,7 @@ pub const Player = struct { // MARK: Player
 	pub var onGround: bool = false;
 	pub var jumpCooldown: f64 = 0;
 	const jumpCooldownConstant = 0.3;
-	const jumpCoyoteTimeConstant = 0.100;
+	const jumpCoyoteTimeConstant = 0.110;
 
 	const standingBoundingBoxExtent: Vec3d = .{0.3, 0.3, 0.9};
 	const crouchingBoundingBoxExtent: Vec3d = .{0.3, 0.3, 0.725};
@@ -837,6 +837,9 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 					jumping = true;
 					Player.jumpCooldown = Player.jumpCooldownConstant;
 					Player.jumpCoyote = -1;
+					if (Player.eyeCoyote > 0.0 and Player.jumpCoyote > 0.0) {
+						Player.eyeCoyote = 0;
+					}
 				}
 			} else {
 				Player.jumpCooldown = 0;
@@ -1080,7 +1083,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			Player.eyePos[2] -= stepAmount;
 			move[2] = -0.01;
 			Player.onGround = true;
-			//Player.jumpCoyote = Player.jumpCoyoteTimeConstant;
+			Player.jumpCoyote = Player.jumpCoyoteTimeConstant;
 		}
 
 		const wasOnGround = Player.onGround;
@@ -1116,6 +1119,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			// This calculates how long the player has to fall until we know they're not walking over a small gap.
 			// We add deltaTime because we subtract deltaTime at the bottom of update
 			Player.eyeCoyote = @sqrt(2 * Player.steppingHeight()[2] / gravity) + deltaTime;
+			Player.jumpCoyote = Player.jumpCoyoteTimeConstant;
 			Player.eyePos[2] -= move[2];
 		} else if (Player.eyeCoyote > 0) {
 			Player.eyePos[2] -= move[2];
