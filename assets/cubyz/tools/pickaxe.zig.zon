@@ -5,11 +5,6 @@
 			.name = .handle,
 			.parameterSets = .{
 				.{
-					.source = .density,
-					.destination = .maxDurability,
-					.factor = 3.33,
-				},
-				.{
 					.source = .strength,
 					.destination = .maxDurability,
 					.factor = 3.33,
@@ -43,7 +38,7 @@
 				.{
 					.source = .density,
 					.destination = .maxDurability,
-					.factor = 5,
+					.factor = 2.5,
 				},
 				.{
 					.source = .strength,
@@ -74,7 +69,7 @@
 				.{
 					.source = .density,
 					.destination = .maxDurability,
-					.factor = 3,
+					.factor = 2.5,
 				},
 				.{
 					.source = .strength,

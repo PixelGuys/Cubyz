@@ -7,7 +7,7 @@
 	},
 	.item = .{
 		.material = .{
-			.density = 1.0,
+			.density = 3.0,
 			.strength = 0.5,
 			.elasticity = 0.5,
 			.grip = 0.5,

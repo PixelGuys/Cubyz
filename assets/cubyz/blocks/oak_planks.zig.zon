@@ -3,7 +3,7 @@
 	.blockHealth = 6,
 	.item = .{
 		.material = .{
-			.density = 2.5,
+			.density = 0.7,
 			.strength = 1.0,
 			.elasticity = 3.0,
 			.grip = 7.5,
