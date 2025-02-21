@@ -836,10 +836,10 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 				} else if ((Player.onGround or Player.jumpCoyote > 0.0) and Player.jumpCooldown <= 0) {
 					jumping = true;
 					Player.jumpCooldown = Player.jumpCooldownConstant;
-					Player.jumpCoyote = -1;
-					if (Player.eyeCoyote > 0.0 and Player.jumpCoyote > 0.0) {
+					if (Player.jumpCoyote > 0.0) {
 						Player.eyeCoyote = 0;
 					}
+					Player.jumpCoyote = -1;
 				}
 			} else {
 				Player.jumpCooldown = 0;
