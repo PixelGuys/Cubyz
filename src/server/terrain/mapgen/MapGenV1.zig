@@ -52,19 +52,20 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 	const scaledSize = MapFragment.mapSize;
 	const mapSize = scaledSize*map.pos.voxelSize;
 	const biomeSize = MapFragment.biomeSize;
-	const offset = 8;
+	const offset = 32;
 	const biomePositions = terrain.ClimateMap.getBiomeMap(main.stackAllocator, map.pos.wx -% offset*biomeSize, map.pos.wy -% offset*biomeSize, mapSize + 2*offset*biomeSize, mapSize + 2*offset*biomeSize);
 	defer biomePositions.deinit(main.stackAllocator);
 	var seed = random.initSeed2D(worldSeed, .{map.pos.wx, map.pos.wy});
 	random.scrambleSeed(&seed);
 	seed ^= seed >> 16;
 
+	const offsetScale = biomeSize*16;
 	const xOffsetMap = Array2D(f32).init(main.stackAllocator, scaledSize, scaledSize);
 	defer xOffsetMap.deinit(main.stackAllocator);
 	const yOffsetMap = Array2D(f32).init(main.stackAllocator, scaledSize, scaledSize);
 	defer yOffsetMap.deinit(main.stackAllocator);
-	FractalNoise.generateSparseFractalTerrain(map.pos.wx, map.pos.wy, biomeSize*4, worldSeed ^ 675396758496549, xOffsetMap, map.pos.voxelSize);
-	FractalNoise.generateSparseFractalTerrain(map.pos.wx, map.pos.wy, biomeSize*4, worldSeed ^ 543864367373859, yOffsetMap, map.pos.voxelSize);
+	FractalNoise.generateSparseFractalTerrain(map.pos.wx, map.pos.wy, offsetScale, worldSeed ^ 675396758496549, xOffsetMap, map.pos.voxelSize);
+	FractalNoise.generateSparseFractalTerrain(map.pos.wx, map.pos.wy, offsetScale, worldSeed ^ 543864367373859, yOffsetMap, map.pos.voxelSize);
 
 	// A ridgid noise map to generate interesting mountains.
 	const mountainMap = Array2D(f32).init(main.stackAllocator, scaledSize, scaledSize);
@@ -91,8 +92,8 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 			var mountains: f32 = 0;
 			const wx: f32 = @floatFromInt(x*map.pos.voxelSize + map.pos.wx);
 			const wy: f32 = @floatFromInt(y*map.pos.voxelSize + map.pos.wy);
-			const offsetX = (xOffsetMap.get(x, y) - 0.5)*biomeSize*4;
-			const offsetY = (yOffsetMap.get(x, y) - 0.5)*biomeSize*4;
+			const offsetX = (xOffsetMap.get(x, y) - 0.5)*offsetScale;
+			const offsetY = (yOffsetMap.get(x, y) - 0.5)*offsetScale;
 			var updatedX = wx + offsetX;
 			var updatedY = wy + offsetY;
 			var xBiome: i32 = @intFromFloat(@floor((updatedX - @as(f32, @floatFromInt(map.pos.wx)))/biomeSize));

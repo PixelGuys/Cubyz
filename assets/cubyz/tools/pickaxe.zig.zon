@@ -7,17 +7,27 @@
 				.{
 					.source = .strength,
 					.destination = .maxDurability,
-					.factor = 20,
+					.factor = 3.33,
+				},
+				.{
+					.source = .elasticity,
+					.destination = .maxDurability,
+					.factor = 9,
+				},
+				.{
+					.source = .grip,
+					.destination = .maxDurability,
+					.factor = 9,
 				},
 				.{
 					.source = .density,
 					.destination = .swingTime,
-					.factor = 0.1,
+					.factor = 0.05,
 				},
 				.{
 					.source = .grip,
 					.destination = .swingTime,
-					.functionType = .inverse,
+					.functionType = .inverseSquare,
 					.factor = 0.05,
 				},
 			},
@@ -28,29 +38,23 @@
 				.{
 					.source = .strength,
 					.destination = .maxDurability,
-					.factor = 50,
+					.factor = 5,
+				},
+				.{
+					.source = .elasticity,
+					.destination = .maxDurability,
+					.factor = 10,
 				},
 				.{
 					.source = .density,
 					.destination = .swingTime,
-					.factor = 0.02,
+					.factor = 0.075,
 				},
 				.{
 					.source = .elasticity,
 					.destination = .swingTime,
-					.functionType = .inverseSquare,
-					.factor = 0.1,
-				},
-				.{
-					.source = .density,
-					.destination = .power,
-					.factor = 0.2,
-				},
-				.{
-					.source = .hardness,
-					.destination = .power,
-					.functionType = .squareRoot,
-					.factor = 0.1,
+					.functionType = .inverse,
+					.factor = 0.075,
 				},
 			},
 		},
@@ -60,7 +64,12 @@
 				.{
 					.source = .strength,
 					.destination = .maxDurability,
-					.factor = 10,
+					.factor = 5,
+				},
+				.{
+					.source = .elasticity,
+					.destination = .maxDurability,
+					.factor = 5,
 				},
 				.{
 					.source = .density,
@@ -70,19 +79,23 @@
 				.{
 					.source = .elasticity,
 					.destination = .swingTime,
-					.functionType = .inverseSquare,
-					.factor = 0.1,
+					.functionType = .inverse,
+					.factor = 0.025,
 				},
 				.{
 					.source = .density,
 					.destination = .power,
-					.factor = 0.2,
+					.factor = .05,
 				},
 				.{
-					.source = .hardness,
+					.source = .strength,
 					.destination = .power,
-					.functionType = .squareRoot,
-					.factor = 0.1,
+					.factor = 0.025,
+				},
+				.{
+					.source = .elasticity,
+					.destination = .power,
+					.factor = 0.05,
 				},
 			},
 		},
@@ -92,28 +105,40 @@
 				.{
 					.source = .strength,
 					.destination = .maxDurability,
-					.factor = 20,
+					.factor = 6.5,
+				},
+				.{
+					.source = .elasticity,
+					.destination = .maxDurability,
+					.factor = 5,
 				},
 				.{
 					.source = .density,
 					.destination = .swingTime,
-					.factor = 0.02,
+					.factor = 0.01,
 				},
 				.{
 					.source = .elasticity,
 					.destination = .swingTime,
-					.functionType = .inverseSquare,
-					.factor = 0.1,
+					.functionType = .inverse,
+					.factor = 0.0125,
 				},
 				.{
 					.source = .density,
 					.destination = .power,
-					.factor = 0.2,
+					.factor = 0.300,
+				},
+				.{
+					.source = .strength,
+					.destination = .power,
+					.functionType = .square,
+					.factor = 0.25,
 				},
 				.{
 					.source = .hardness,
 					.destination = .power,
-					.factor = 0.7,
+					.functionType = .square,
+					.factor = 0.25,
 				},
 			},
 		},
@@ -122,14 +147,9 @@
 			.optional = true,
 			.parameterSets = .{
 				.{
-					.source = .strength,
-					.destination = .maxDurability,
-					.factor = 2,
-				},
-				.{
 					.source = .density,
 					.destination = .swingTime,
-					.factor = 0.1,
+					.factor = 0.075,
 				},
 			},
 		},
@@ -137,11 +157,6 @@
 			.name = .binding,
 			.optional = true,
 			.parameterSets = .{
-				.{
-					.source = .strength,
-					.destination = .maxDurability,
-					.factor = 20,
-				},
 				.{
 					.source = .density,
 					.destination = .swingTime,
@@ -151,7 +166,7 @@
 		},
 	},
 	.slots = .{
-		.gemSlot, .binding, .bridge,  .tip,    .none,
+		.gemSlot, .binding, .bridge,  .bridge, .none,
 		.binding, .center,  .binding, .none,   .none,
 		.bridge,  .binding, .handle,  .none,   .none,
 		.tip,     .none,    .none,    .handle, .none,
