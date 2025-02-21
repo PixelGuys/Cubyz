@@ -1,17 +1,17 @@
 .{
 	.class = .stone,
 	.blockHealth = 30,
-	.breakingPower = 2,
+	.breakingPower = 5,
 	.drops = .{
 		.{.items = .{.auto}},
 	},
 	.item = .{
 		.material = .{
-			.density = 3.5,
-			.strength = 3.0,
-			.elasticity = 7.0,
-			.grip = 0.1,
-			.hardness = 8.5,
+			.density = 6.0,
+			.strength = 4.0,
+			.elasticity = 0.5,
+			.grip = 3.0,
+			.hardness = 6.0,
 			.textureRoughness = 2.0,
 			.colors = .{
 				0xff030308, 0xff0D0C11, 0xff151420, 0xff1C1A2B, 0xff28253D,
