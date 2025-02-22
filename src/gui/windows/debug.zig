@@ -55,9 +55,10 @@ pub fn render() void {
 			player.hyperSpeed.load(.unordered),
 		}, 0, y, 8, .left);
 		y += 8;
-		draw.print("OnGround: {} JumpCooldown: {d:.3}", .{
+		draw.print("OnGround: {} JumpCooldown: {d:.3} JumpCoyote: {d:.3}", .{
 			player.onGround,
 			player.jumpCooldown,
+			@max(0, player.getJumpCoyoteBlocking()),
 		}, 0, y, 8, .left);
 		y += 8;
 		draw.print("Velocity: {d:.1}", .{player.getVelBlocking()}, 0, y, 8, .left);
