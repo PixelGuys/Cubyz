@@ -967,8 +967,8 @@ pub const RotationModes = struct {
 			return true;
 		}
 
-		pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
-			if(RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess) == .no) return .no;
+		pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, _: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
+			if(std.meta.eql(oldBlock, newBlock)) return .no;
 			if(oldBlock.transparent() or oldBlock.viewThrough()) return .no;
 			if(!main.models.models.items[main.blocks.meshes.modelIndexStart(oldBlock)].allNeighborsOccluded) return .no;
 			if(oldBlock.data != 0) return .no;
