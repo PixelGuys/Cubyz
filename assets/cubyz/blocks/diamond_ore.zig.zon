@@ -3,8 +3,8 @@
 	.blockHealth = 50,
 	.breakingPower = 10,
 	.ore = .{
-		.veins = 1,
-		.size = 20,
+		.veins = 3,
+		.size = 6,
 		.height = -100,
 		.density = 0.1,
 	},
