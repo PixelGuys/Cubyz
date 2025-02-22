@@ -415,7 +415,9 @@ pub const Player = struct { // MARK: Player
 
 	pub var onGround: bool = false;
 	pub var jumpCooldown: f64 = 0;
+	pub var jumpCoyote: f64 = 0;
 	const jumpCooldownConstant = 0.3;
+	const jumpCoyoteTimeConstant = 0.100;
 
 	const standingBoundingBoxExtent: Vec3d = .{0.3, 0.3, 0.9};
 	const crouchingBoundingBoxExtent: Vec3d = .{0.3, 0.3, 0.725};
@@ -474,6 +476,12 @@ pub const Player = struct { // MARK: Player
 		return eyeCoyote;
 	}
 
+	pub fn getJumpCoyoteBlocking() f64 {
+		mutex.lock();
+		defer mutex.unlock();
+		return jumpCoyote;
+	}
+
 	pub fn setGamemode(newGamemode: Gamemode) void {
 		gamemode.store(newGamemode, .monotonic);
 
@@ -522,6 +530,7 @@ pub const Player = struct { // MARK: Player
 
 		Player.eyeVel = .{0, 0, 0};
 		Player.eyeCoyote = 0;
+		Player.jumpCoyote = 0;
 		Player.eyeStep = .{false, false, false};
 	}
 
@@ -830,9 +839,13 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 						movementSpeed = @max(movementSpeed, 5.5);
 						movementDir[2] += 5.5;
 					}
-				} else if (Player.onGround and Player.jumpCooldown <= 0) {
+				} else if ((Player.onGround or Player.jumpCoyote > 0.0) and Player.jumpCooldown <= 0) {
 					jumping = true;
 					Player.jumpCooldown = Player.jumpCooldownConstant;
+					if (!Player.onGround) {
+						Player.eyeCoyote = 0;
+					}
+					Player.jumpCoyote = 0;
 				}
 			} else {
 				Player.jumpCooldown = 0;
@@ -1110,6 +1123,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			// This calculates how long the player has to fall until we know they're not walking over a small gap.
 			// We add deltaTime because we subtract deltaTime at the bottom of update
 			Player.eyeCoyote = @sqrt(2 * Player.steppingHeight()[2] / gravity) + deltaTime;
+			Player.jumpCoyote = Player.jumpCoyoteTimeConstant + deltaTime;
 			Player.eyePos[2] -= move[2];
 		} else if (Player.eyeCoyote > 0) {
 			Player.eyePos[2] -= move[2];
@@ -1122,6 +1136,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	// Clamp the eyePosition and subtract eye coyote time.
 	Player.eyePos = @max(Player.eyeBox.min, @min(Player.eyePos, Player.eyeBox.max));
 	Player.eyeCoyote -= deltaTime;
+	Player.jumpCoyote -= deltaTime;
 
 	const biome = world.?.playerBiome.load(.monotonic);
 
