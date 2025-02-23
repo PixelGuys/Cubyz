@@ -35,7 +35,7 @@ if not "%version%" == "%currVersion%" (
 		exit /b 1
 	)
 	echo Extracting zip file...
-	tar -xf compiler\archive.zip --directory compiler
+	C:\Windows\System32\tar.exe -xf compiler\archive.zip --directory compiler
 	ren compiler\%version% zig
 	del compiler\archive.zip
 	echo %version%> compiler\version.txt
