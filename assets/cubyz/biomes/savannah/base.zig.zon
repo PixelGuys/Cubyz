@@ -41,8 +41,10 @@
 			.type = .round,
 			.height = 1,
 			.height_variation = 7,
-			.leafRadius = 2,
+			.leafRadius = 3,
 			.leafRadius_variation = 1,
+			.leafElongation = 0.5,
+			.deltaLeafElongation = 0.2,
 		},
 		.{
 			.id = "cubyz:flower_patch",
