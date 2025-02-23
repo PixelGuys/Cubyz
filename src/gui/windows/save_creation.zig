@@ -68,9 +68,9 @@ fn flawedCreateWorld() !void {
 		const climateWavelengths = main.ZonElement.initObject(main.stackAllocator);
 		climateWavelengths.put("hot_cold", 2400);
 		climateWavelengths.put("land_ocean", 3200);
-		climateWavelengths.put("wet_dry", 2400);
-		climateWavelengths.put("vegetation", 2400);
-		climateWavelengths.put("mountain", 500);
+		climateWavelengths.put("wet_dry", 1800);
+		climateWavelengths.put("vegetation", 1600);
+		climateWavelengths.put("mountain", 512);
 		generatorSettings.put("climateWavelengths", climateWavelengths);
 		try main.files.writeZon(generatorSettingsPath, generatorSettings);
 	}

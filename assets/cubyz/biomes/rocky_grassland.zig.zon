@@ -4,7 +4,8 @@
 	.chance = 0.04,
 	.minHeight = 20,
 	.maxHeight = 40,
-
+	.minRadius = 256,
+	.maxRadius = 320,
 	.mountains = 30,
 
 	.music = "cubyz:sunrise",
