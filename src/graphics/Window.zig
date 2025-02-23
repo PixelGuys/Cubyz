@@ -597,9 +597,20 @@ fn updateCursor() void {
 	}
 }
 
+fn releaseButtonsOnGrabChange(grab: bool) void {
+	const state: Key.Requirement = if(grab) .inMenu else .inGame;
+	for(&main.KeyBoard.keys) |*key| {
+		if(key.notifyRequirement == state and key.pressed) {
+			key.pressed = false;
+			if(key.releaseAction) |rel| rel();
+		}
+	}
+}
+
 pub fn setMouseGrabbed(grab: bool) void {
 	if(grabbed != grab) {
 		grabbed = grab;
+		releaseButtonsOnGrabChange(grab);
 		updateCursor();
 	}
 }
