@@ -7,8 +7,8 @@
 	.maxHeight = 1,
 	.roughness = 2,
 	.hills = 7.5,
-	.minRadius = 150,
-	.maxRadius = 300,
+	.minRadius = 256,
+	.maxRadius = 320,
 	.music = "cubyz:sunrise",
 	.ground_structure = .{
 		"cubyz:lush_grass",
