@@ -528,6 +528,7 @@ pub const Player = struct { // MARK: Player
 
 		Player.super.health = Player.super.maxHealth;
 
+		Player.eyePos = .{0, 0, 0};
 		Player.eyeVel = .{0, 0, 0};
 		Player.eyeCoyote = 0;
 		Player.jumpCoyote = 0;
