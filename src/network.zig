@@ -654,6 +654,10 @@ pub const Protocols = struct {
 						const zon = ZonElement.parseFromString(main.stackAllocator, data[1..]);
 						defer zon.deinit(main.stackAllocator);
 						const name = zon.get([]const u8, "name", "unnamed");
+						if(name.len > 500 or main.graphics.TextBuffer.Parser.countVisibleCharacters(name) > 50) {
+							std.log.err("Player has too long name with {}/{} characters.", .{main.graphics.TextBuffer.Parser.countVisibleCharacters(name), name.len});
+							return error.Invalid;
+						}
 						const version = zon.get([]const u8, "version", "unknown");
 						std.log.info("User {s} joined using version {s}.", .{name, version});
 
@@ -1081,6 +1085,10 @@ pub const Protocols = struct {
 		pub const asynchronous = false;
 		fn receive(conn: *Connection, data: []const u8) !void {
 			if(conn.user) |user| {
+				if(data.len > 10000 or main.graphics.TextBuffer.Parser.countVisibleCharacters(data) > 1000) {
+					std.log.err("Received too long chat message with {}/{} characters.", .{main.graphics.TextBuffer.Parser.countVisibleCharacters(data), data.len});
+					return error.Invalid;
+				}
 				main.server.messageFrom(data, user);
 			} else {
 				main.gui.windowlist.chat.addMessage(data);

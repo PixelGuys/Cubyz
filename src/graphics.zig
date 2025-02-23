@@ -572,7 +572,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		}
 	}
 
-	const Parser = struct {
+	pub const Parser = struct {
 		unicodeIterator: std.unicode.Utf8Iterator,
 		currentFontEffect: FontEffect,
 		parsedText: main.List(u32),
@@ -663,6 +663,49 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 					self.appendGetNext() orelse return;
 				}
 			};
+		}
+
+		pub fn countVisibleCharacters(text: []const u8) usize {
+			var unicodeIterator = std.unicode.Utf8Iterator{.bytes = text, .i = 0};
+			var count: usize = 0;
+			var curChar = unicodeIterator.nextCodepoint() orelse return count;
+			while(true) switch(curChar) {
+				'*' => {
+					curChar = unicodeIterator.nextCodepoint() orelse break;
+				},
+				'_' => {
+					curChar = unicodeIterator.nextCodepoint() orelse break;
+					if(curChar == '_') {
+						curChar = unicodeIterator.nextCodepoint() orelse break;
+					} else {
+						count += 1;
+					}
+				},
+				'~' => {
+					curChar = unicodeIterator.nextCodepoint() orelse break;
+					if(curChar == '~') {
+						curChar = unicodeIterator.nextCodepoint() orelse break;
+					} else {
+						count += 1;
+					}
+				},
+				'\\' => {
+					curChar = unicodeIterator.nextCodepoint() orelse break;
+					curChar = unicodeIterator.nextCodepoint() orelse break;
+					count += 1;
+				},
+				'#' => {
+					for(0..7) |_| curChar = unicodeIterator.nextCodepoint() orelse break;
+				},
+				'§' => {
+					curChar = unicodeIterator.nextCodepoint() orelse break;
+				},
+				else => {
+					count += 1;
+					curChar = unicodeIterator.nextCodepoint() orelse break;
+				}
+			};
+			return count;
 		}
 	};
 

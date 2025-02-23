@@ -139,7 +139,12 @@ pub fn addMessage(msg: []const u8) void {
 
 pub fn sendMessage(_: usize) void {
 	if(input.currentString.items.len != 0) {
-		main.network.Protocols.chat.send(main.game.world.?.conn, input.currentString.items);
-		input.clear();
+		const data = input.currentString.items;
+		if(data.len > 10000 or main.graphics.TextBuffer.Parser.countVisibleCharacters(data) > 1000) {
+			std.log.err("Chat message is too long with {}/{} characters. Limits are 1000/10000", .{main.graphics.TextBuffer.Parser.countVisibleCharacters(data), data.len});
+		} else {
+			main.network.Protocols.chat.send(main.game.world.?.conn, data);
+			input.clear();
+		}
 	}
 }

@@ -20,6 +20,10 @@ var textComponent: *TextInput = undefined;
 const padding: f32 = 8;
 
 fn apply(_: usize) void {
+	if(textComponent.currentString.items.len > 500 or main.graphics.TextBuffer.Parser.countVisibleCharacters(textComponent.currentString.items) > 50) {
+		std.log.err("Name is too long with {}/{} characters. Limits are 50/500", .{main.graphics.TextBuffer.Parser.countVisibleCharacters(textComponent.currentString.items), textComponent.currentString.items.len});
+		return;
+	}
 	const oldName = settings.playerName;
 	main.globalAllocator.free(settings.playerName);
 	settings.playerName = main.globalAllocator.dupe(u8, textComponent.currentString.items);
