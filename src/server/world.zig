@@ -745,11 +745,56 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		if(!self.generated) {
 			var seed: u64 = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp())));
 			std.log.info("Finding position..", .{});
-			for(0..1000) |_| {
-				self.spawn[0] = main.random.nextIntBounded(u31, &seed, 65536);
-				self.spawn[1] = main.random.nextIntBounded(u31, &seed, 65536);
-				std.log.info("Trying ({}, {})", .{self.spawn[0], self.spawn[1]});
-				if(self.isValidSpawnLocation(self.spawn[0], self.spawn[1])) break;
+			foundPosition: {
+				// Explore chunks in a spiral from the center:
+				const radius = 65536;
+				const mapSize = terrain.ClimateMap.ClimateMapFragment.mapSize;
+				const spiralLen = 2*radius/mapSize*2*radius/mapSize;
+				var wx: i32 = 0;
+				var wy: i32 = 0;
+				var dirChanges: usize = 1;
+				var dir: main.chunk.Neighbor = .dirNegX;
+				var stepsRemaining: usize = 1;
+				for(0..spiralLen) |_| {
+					const map = main.server.terrain.ClimateMap.getOrGenerateFragmentAndIncreaseRefCount(wx, wy);
+					defer map.decreaseRefCount();
+					for(0..map.map.len) |_| {
+						const x = main.random.nextIntBounded(u31, &main.seed, map.map.len);
+						const y = main.random.nextIntBounded(u31, &main.seed, map.map.len);
+						const biomeSize = main.server.terrain.SurfaceMap.MapFragment.biomeSize;
+						std.log.info("Trying roughly ({}, {})", .{wx + x*biomeSize, wy + y*biomeSize});
+						const sample = map.map[x][y];
+						if(sample.biome.isValidPlayerSpawn) {
+							for(0..16) |_| {
+								self.spawn[0] = wx + x*biomeSize + main.random.nextIntBounded(u31, &seed, biomeSize*2) - biomeSize;
+								self.spawn[1] = wy + y*biomeSize + main.random.nextIntBounded(u31, &seed, biomeSize*2) - biomeSize;
+								std.log.info("Trying ({}, {})", .{self.spawn[0], self.spawn[1]});
+								if(self.isValidSpawnLocation(self.spawn[0], self.spawn[1])) break :foundPosition;
+							}
+						}
+					}
+					switch (dir) {
+						.dirNegX => wx -%= mapSize,
+						.dirPosX => wx +%= mapSize,
+						.dirNegY => wy -%= mapSize,
+						.dirPosY => wy +%= mapSize,
+						else => unreachable,
+					}
+					stepsRemaining -= 1;
+					if(stepsRemaining == 0) {
+						switch (dir) {
+							.dirNegX => dir = .dirNegY,
+							.dirPosX => dir = .dirPosY,
+							.dirNegY => dir = .dirPosX,
+							.dirPosY => dir = .dirNegX,
+							else => unreachable,
+						}
+						dirChanges += 1;
+						// Every second turn the number of steps needed doubles.
+						stepsRemaining = dirChanges/2;
+					}
+				}
+				std.log.err("Found no valid spawn location", .{});
 			}
 			const map = terrain.SurfaceMap.getOrGenerateFragmentAndIncreaseRefCount(self.spawn[0], self.spawn[1], 1);
 			defer map.decreaseRefCount();
