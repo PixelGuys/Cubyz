@@ -1,0 +1,14 @@
+.{
+	.texture = "gold_ingot.png",
+	.material = .{
+		.density = 7.5,
+		.strength = 6.0,
+		.elasticity = 5.0,
+		.grip = 2.0,
+		.hardness = 5.0,
+		.textureRoughness = 0.1,
+		.colors = .{
+			0xffbc7132, 0xffda972b, 0xfff2cd53, 0xfff2cd53, 0xfffae39e,
+		},
+	},
+}

@@ -1,0 +1,20 @@
+.{
+	.class = .stone,
+	.blockHealth = 40,
+	.breakingPower = 10,
+	.ore = .{
+		.veins = 4,
+		.size = 15,
+		.height = -50,
+		.density = 0.25,
+	},
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.rotation = .ore,
+	.model = "cubyz:cube",
+	.texture = "cubyz:gold_ore",
+	.item = .{
+		.texture = "raw_gold.png",
+	},
+}
