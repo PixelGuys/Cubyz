@@ -201,37 +201,53 @@ pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveB
 	fn rotate312(in: Vec3i) Vec3i {
 		return @shuffle(i32, in, undefined, Vec3i{2, 0, 1});
 	}
-	fn argMaxDistance0(distance: Vec3i) @Vector(3, bool) {
+	fn argMaxDistance0(distance: Vec3i) u2 {
 		const absDistance = @abs(distance);
 		if(absDistance[0] > absDistance[1]) {
 			if(absDistance[0] > absDistance[2]) {
-				return .{true, false, false};
+				return 0;
 			} else {
-				return .{false, false, true};
+				return 2;
 			}
 		} else {
 			if(absDistance[1] > absDistance[2]) {
-				return .{false, true, false};
+				return 1;
 			} else {
-				return .{false, false, true};
+				return 2;
 			}
 		}
 	}
-	fn argMaxDistance1(distance: Vec3i) @Vector(3, bool) {
+	fn argMaxDistance1(distance: Vec3i) u2 {
 		const absDistance = @abs(distance);
 		if(absDistance[0] >= absDistance[1]) {
 			if(absDistance[0] >= absDistance[2]) {
-				return .{true, false, false};
+				return 0;
 			} else {
-				return .{false, false, true};
+				return 2;
 			}
 		} else {
 			if(absDistance[1] >= absDistance[2]) {
-				return .{false, true, false};
+				return 1;
 			} else {
-				return .{false, false, true};
+				return 2;
 			}
 		}
+	}
+	fn vectorElement(val: Vec3i, i: u2) i32 {
+		return switch(i) {
+			0 => val[0],
+			1 => val[1],
+			2 => val[2],
+			else => unreachable,
+		};
+	}
+	fn indexToBool(i: u2) @Vector(3, bool) {
+		return switch(i) {
+			0 => .{true, false, false},
+			1 => .{false, true, false},
+			2 => .{false, false, true},
+			else => unreachable,
+		};
 	}
 
 	/// Return either +1 or -1 depending on the sign of the input number.
@@ -261,92 +277,29 @@ pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveB
 		const worldPos = CaveBiomeMapFragment.rotate(.{wx, wy, wz});
 		const closestGridpoint0 = (worldPos +% @as(Vec3i, @splat(CaveBiomeMapFragment.caveBiomeSize/2))) & @as(Vec3i, @splat(~@as(i32, CaveBiomeMapFragment.caveBiomeMask)));
 		const distance0 = worldPos -% closestGridpoint0;
-		const step0 = @select(i32, argMaxDistance0(distance0), @as(Vec3i, @splat(CaveBiomeMapFragment.caveBiomeSize)), @as(Vec3i, @splat(0)));
+		const coordinate0 = argMaxDistance0(distance0);
+		const step0 = @select(i32, indexToBool(coordinate0), @as(Vec3i, @splat(CaveBiomeMapFragment.caveBiomeSize)), @as(Vec3i, @splat(0)));
 		const secondGridPoint0 = closestGridpoint0 +% step0*nonZeroSign(distance0);
 
 		const closestGridpoint1 = (worldPos & @as(Vec3i, @splat(~@as(i32, CaveBiomeMapFragment.caveBiomeMask)))) +% @as(Vec3i, @splat(CaveBiomeMapFragment.caveBiomeSize/2));
 		const distance1 = worldPos -% closestGridpoint1;
-		const step1 = @select(i32, argMaxDistance1(distance1), @as(Vec3i, @splat(CaveBiomeMapFragment.caveBiomeSize)), @as(Vec3i, @splat(0)));
+		const coordinate1 = argMaxDistance1(distance1);
+		const step1 = @select(i32, indexToBool(coordinate1), @as(Vec3i, @splat(CaveBiomeMapFragment.caveBiomeSize)), @as(Vec3i, @splat(0)));
 		const secondGridPoint1 = closestGridpoint1 +% step1*nonZeroSign(distance1);
 
-		const @"r⃗₄" = closestGridpoint0;
-		const @"r⃗₃" = secondGridPoint0;
-		const @"r⃗₂" = closestGridpoint1;
-		const @"r⃗₁" = secondGridPoint1;
-		// Doing tetrahedral interpolation between the given points.
-		// Barycentric coordinates for tetrahedra:
-		// λ₄ = 1 - λ₁ - λ₂ - λ₃
-		// ┌                       ┐   ┌  ┐   ┌      ┐
-		// | x₁-x₄   x₂-x₄   x₃-x₄ |   |λ₁|   | x-x₄ |
-		// | y₁-y₄   y₂-y₄   y₃-y₄ | · |λ₂| = | y-y₄ | =: d⃗
-		// | z₁-z₄   z₂-z₄   z₃-z₄ |   |λ₃|   | z-z₄ |
-		// └                       ┘   └  ┘   └      ┘
-		//  \_________  __________/
-		//            \/
-		//           =: A
-		const @"d⃗" = distance0;
-		const @"d⃗₁" = @"r⃗₁" -% @"r⃗₄";
-		const @"d⃗₂" = @"r⃗₂" -% @"r⃗₄";
-		const @"d⃗₃" = @"r⃗₃" -% @"r⃗₄";
-		// With some renamings we get:
-		//     ┌            ┐
-		// A = | d⃗₁  d⃗₂  d⃗₃ |
-		//     └            ┘
+		const coordinateFinal = 3 ^ coordinate0 ^ coordinate1;
+		const interpFinal = @abs(0.5 + @as(f32, @floatFromInt(vectorElement(distance0, coordinateFinal))))*2/CaveBiomeMapFragment.caveBiomeSize;
 
-		// The inverse of a 3×3 matrix is given by:
-		//     ┌               ┐
-		//     | a₁₁  a₁₂  a₁₃ |
-		// A = | a₂₁  a₂₂  a₂₃ |
-		//     | a₃₁  a₃₂  a₃₃ |
-		//     └               ┘
-		//           ┌                               ┐
-		//           | |a₂₂ a₂₃| |a₁₃ a₁₂| |a₁₂ a₁₃| |
-		//           | |a₃₂ a₃₃| |a₃₃ a₃₂| |a₂₂ a₂₃| |
-		//        1  |                               |
-		// A⁻¹ = ––– | |a₂₃ a₂₁| |a₁₁ a₁₃| |a₁₃ a₁₁| |
-		//       |A| | |a₃₃ a₃₁| |a₃₁ a₃₃| |a₂₃ a₂₁| |
-		//           |                               |
-		//           | |a₂₁ a₂₂| |a₁₂ a₁₁| |a₁₁ a₁₂| |
-		//           | |a₃₁ a₃₂| |a₃₂ a₃₁| |a₂₁ a₂₂| |
-		//           └                               ┘
-		// Resolving the determinants gives:
-		//           ┌                                                               ┐
-		//           | a₂₂·a₃₃ - a₂₃·a₃₂     a₁₃·a₃₂ - a₁₂·a₃₃     a₁₂·a₂₃ - a₁₃·a₂₂ |
-		//        1  |                                                               |
-		// A⁻¹ = ––– | a₂₃·a₃₁ - a₂₁·a₃₃     a₁₁·a₃₃ - a₁₃·a₃₁     a₁₃·a₂₁ - a₁₁·a₂₃ |
-		//       |A| |                                                               |
-		//           | a₂₁·a₃₂ - a₂₂·a₃₁     a₁₂·a₃₁ - a₁₁·a₃₂     a₁₁·a₂₂ - a₁₂·a₂₁ |
-		//           └                                                               ┘
-		// Notice how each column represents a rotated row of the original matrix.
-		const row1 = Vec3i{@"d⃗₁"[0], @"d⃗₂"[0], @"d⃗₃"[0]};
-		const row2 = Vec3i{@"d⃗₁"[1], @"d⃗₂"[1], @"d⃗₃"[1]};
-		const row3 = Vec3i{@"d⃗₁"[2], @"d⃗₂"[2], @"d⃗₃"[2]};
-		const determinantCol1 = rotate231(row2)*rotate312(row3) - rotate312(row2)*rotate231(row3);
-		const determinantCol2 = rotate312(row1)*rotate231(row3) - rotate231(row1)*rotate312(row3);
-		const determinantCol3 = rotate231(row1)*rotate312(row2) - rotate312(row1)*rotate231(row2);
-		// Notice that the determinant |A| can be expressed as dot(row1, determinantCol1)
-		const determinantA = vec.dot(determinantCol1, row1);
-		const invDeterminantA = 1.0/@as(f32, @floatFromInt(determinantA));
-		// Now we change the memory layout use rows instead of columns to make matrix-vector multiplication easier later.
-		const determinantRow1 = Vec3i{determinantCol1[0], determinantCol2[0], determinantCol3[0]};
-		const determinantRow2 = Vec3i{determinantCol1[1], determinantCol2[1], determinantCol3[1]};
-		const determinantRow3 = Vec3i{determinantCol1[2], determinantCol2[2], determinantCol3[2]};
+		const interp0 = 0.5 + (@abs(@as(f32, @floatFromInt(vectorElement(distance0, coordinate0))))/CaveBiomeMapFragment.caveBiomeSize - 0.5)/(1 - interpFinal);
+		const interp1 = 0.5 + (@abs(@as(f32, @floatFromInt(vectorElement(distance1, coordinate1))))/CaveBiomeMapFragment.caveBiomeSize - 0.5)/interpFinal;
 
-		const @"unscaledλ123" = Vec3i{vec.dot(determinantRow1, @"d⃗"), vec.dot(determinantRow2, @"d⃗"), vec.dot(determinantRow3, @"d⃗")};
-		const @"λ1" = @as(f32, @floatFromInt(@"unscaledλ123"[0]))*invDeterminantA;
-		const @"λ2" = @as(f32, @floatFromInt(@"unscaledλ123"[1]))*invDeterminantA;
-		const @"λ3" = @as(f32, @floatFromInt(@"unscaledλ123"[2]))*invDeterminantA;
-		const @"λ4" = 1 - @"λ1" - @"λ2" - @"λ3";
-		// TODO: I wonder if there are some optimizations possible, given that
-		// per construction |x₁ - x₄| = |x₂ - x₄| = ... = |z₂ - z₄| = ±caveBiomeSize/2
-		// And |r⃗₃ - r⃗₄| = caveBiomeSize, where 2 elements are 0
-
-		// Now after all this math we can finally do what we actually want: Interpolate the damn thing.
-		const biome4 = self._getBiome(closestGridpoint0[0], closestGridpoint0[1], closestGridpoint0[2], 0);
-		const biome3 = self._getBiome(secondGridPoint0[0], secondGridPoint0[1], secondGridPoint0[2], 0);
-		const biome2 = self._getBiome(closestGridpoint1[0], closestGridpoint1[1], closestGridpoint1[2], 1);
-		const biome1 = self._getBiome(secondGridPoint1[0], secondGridPoint1[1], secondGridPoint1[2], 1);
-		return @field(biome1, field)*@"λ1" + @field(biome2, field)*@"λ2" + @field(biome3, field)*@"λ3" + @field(biome4, field)*@"λ4";
+		const biome00 = self._getBiome(closestGridpoint0[0], closestGridpoint0[1], closestGridpoint0[2], 0);
+		const biome01 = self._getBiome(secondGridPoint0[0], secondGridPoint0[1], secondGridPoint0[2], 0);
+		const biome10 = self._getBiome(closestGridpoint1[0], closestGridpoint1[1], closestGridpoint1[2], 1);
+		const biome11 = self._getBiome(secondGridPoint1[0], secondGridPoint1[1], secondGridPoint1[2], 1);
+		const val0 = @field(biome00, field)*(1 - interp0) + @field(biome01, field)*interp0;
+		const val1 = @field(biome10, field)*(1 - interp1) + @field(biome11, field)*interp1;
+		return val0*(1 - interpFinal) + val1*interpFinal;
 	}
 
 	/// On failure returnHeight contains the lower border of the terrain height.
