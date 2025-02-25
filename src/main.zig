@@ -592,6 +592,9 @@ pub fn main() void { // MARK: main()
 	itemdrop.ItemDropRenderer.init();
 	defer itemdrop.ItemDropRenderer.deinit();
 
+	itemdrop.ItemModelStore.init();
+	defer itemdrop.ItemModelStore.deinit();
+
 	assets.init();
 	defer assets.deinit();
 

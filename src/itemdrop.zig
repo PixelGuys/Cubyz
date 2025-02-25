@@ -542,8 +542,70 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		contrast: c_int,
 	} = undefined;
 
-	var itemModelSSBO: graphics.SSBO = undefined;
+	pub fn init() void {
+		itemShader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/item_drop.vs", "assets/cubyz/shaders/item_drop.fs", "", &itemUniforms);
+	}
 
+	pub fn deinit() void {
+		itemShader.deinit();
+	}
+
+	pub fn renderItemDrops(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d, time: u32) void {
+		game.world.?.itemDrops.updateInterpolationData();
+		itemShader.bind();
+		c.glUniform1i(itemUniforms.texture_sampler, 0);
+		c.glUniform1i(itemUniforms.emissionSampler, 1);
+		c.glUniform1i(itemUniforms.reflectivityAndAbsorptionSampler, 2);
+		c.glUniform1i(itemUniforms.reflectionMap, 4);
+		c.glUniform1f(itemUniforms.reflectionMapSize, main.renderer.reflectionCubeMapSize);
+		c.glUniform1i(itemUniforms.time, @as(u31, @truncate(time)));
+		c.glUniformMatrix4fv(itemUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
+		c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&ambientLight));
+		c.glUniformMatrix4fv(itemUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&game.camera.viewMatrix));
+		c.glUniform1f(itemUniforms.contrast, 0.12);
+		const itemDrops = &game.world.?.itemDrops.super;
+		for(itemDrops.indices[0..itemDrops.size]) |i| {
+			if(itemDrops.list.items(.itemStack)[i].item) |item| {
+				var pos = itemDrops.list.items(.pos)[i];
+				const rot = itemDrops.list.items(.rot)[i];
+				const light: u32 = 0xffffffff; // TODO: Get this light value from the mesh_storage.
+				c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&@max(
+					ambientLight*@as(Vec3f, @splat(@as(f32, @floatFromInt(light >> 24))/255)),
+					Vec3f{light >> 16 & 255, light >> 8 & 255, light & 255}/@as(Vec3f, @splat(255))
+				)));
+				pos -= playerPos;
+
+				const model = ItemModelStore.getModel(item);
+				c.glUniform1i(itemUniforms.modelIndex, model.index);
+				var vertices: u31 = 36;
+
+				var scale: f32 = 0.3;
+				if(item == .baseItem and item.baseItem.block != null and item.baseItem.image.imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
+					const blockType = item.baseItem.block.?;
+					c.glUniform1i(itemUniforms.block, blockType);
+					vertices = model.len/2*6;
+				} else {
+					c.glUniform1i(itemUniforms.block, 0);
+					scale = 0.5;
+				}
+
+				var modelMatrix = Mat4f.translation(@floatCast(pos));
+				modelMatrix = modelMatrix.mul(Mat4f.rotationX(-rot[0]));
+				modelMatrix = modelMatrix.mul(Mat4f.rotationY(-rot[1]));
+				modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-rot[2]));
+				modelMatrix = modelMatrix.mul(Mat4f.scale(@splat(scale)));
+				modelMatrix = modelMatrix.mul(Mat4f.translation(@splat(-0.5)));
+				c.glUniformMatrix4fv(itemUniforms.modelMatrix, 1, c.GL_TRUE, @ptrCast(&modelMatrix));
+
+				c.glBindVertexArray(main.renderer.chunk_meshing.vao);
+				c.glDrawElements(c.GL_TRIANGLES, vertices, c.GL_UNSIGNED_INT, null);
+			}
+		}
+	}
+};
+
+pub const ItemModelStore = struct {
+	var itemModelSSBO: graphics.SSBO = undefined;
 	var modelData: main.List(u32) = undefined;
 	var freeSlots: main.List(*ItemVoxelModel) = undefined;
 
@@ -637,7 +699,6 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	};
 
 	pub fn init() void {
-		itemShader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/item_drop.vs", "assets/cubyz/shaders/item_drop.fs", "", &itemUniforms);
 		itemModelSSBO = .init();
 		itemModelSSBO.bufferData(i32, &[3]i32{1, 1, 1});
 		itemModelSSBO.bind(2);
@@ -647,7 +708,6 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	}
 
 	pub fn deinit() void {
-		itemShader.deinit();
 		itemModelSSBO.deinit();
 		modelData.deinit();
 		voxelModels.clear();
@@ -659,61 +719,8 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 
 	var voxelModels: utils.Cache(ItemVoxelModel, 32, 32, ItemVoxelModel.deinit) = .{};
 
-	fn getModel(item: items.Item) *ItemVoxelModel {
+	pub fn getModel(item: items.Item) *ItemVoxelModel {
 		const compareObject = ItemVoxelModel{.item = item};
 		return voxelModels.findOrCreate(compareObject, ItemVoxelModel.init, null);
-	}
-
-	pub fn renderItemDrops(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d, time: u32) void {
-		game.world.?.itemDrops.updateInterpolationData();
-		itemShader.bind();
-		c.glUniform1i(itemUniforms.texture_sampler, 0);
-		c.glUniform1i(itemUniforms.emissionSampler, 1);
-		c.glUniform1i(itemUniforms.reflectivityAndAbsorptionSampler, 2);
-		c.glUniform1i(itemUniforms.reflectionMap, 4);
-		c.glUniform1f(itemUniforms.reflectionMapSize, main.renderer.reflectionCubeMapSize);
-		c.glUniform1i(itemUniforms.time, @as(u31, @truncate(time)));
-		c.glUniformMatrix4fv(itemUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
-		c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&ambientLight));
-		c.glUniformMatrix4fv(itemUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&game.camera.viewMatrix));
-		c.glUniform1f(itemUniforms.contrast, 0.12);
-		const itemDrops = &game.world.?.itemDrops.super;
-		for(itemDrops.indices[0..itemDrops.size]) |i| {
-			if(itemDrops.list.items(.itemStack)[i].item) |item| {
-				var pos = itemDrops.list.items(.pos)[i];
-				const rot = itemDrops.list.items(.rot)[i];
-				const light: u32 = 0xffffffff; // TODO: Get this light value from the mesh_storage.
-				c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&@max(
-					ambientLight*@as(Vec3f, @splat(@as(f32, @floatFromInt(light >> 24))/255)),
-					Vec3f{light >> 16 & 255, light >> 8 & 255, light & 255}/@as(Vec3f, @splat(255))
-				)));
-				pos -= playerPos;
-
-				const model = getModel(item);
-				c.glUniform1i(itemUniforms.modelIndex, model.index);
-				var vertices: u31 = 36;
-
-				var scale: f32 = 0.3;
-				if(item == .baseItem and item.baseItem.block != null and item.baseItem.image.imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
-					const blockType = item.baseItem.block.?;
-					c.glUniform1i(itemUniforms.block, blockType);
-					vertices = model.len/2*6;
-				} else {
-					c.glUniform1i(itemUniforms.block, 0);
-					scale = 0.5;
-				}
-
-				var modelMatrix = Mat4f.translation(@floatCast(pos));
-				modelMatrix = modelMatrix.mul(Mat4f.rotationX(-rot[0]));
-				modelMatrix = modelMatrix.mul(Mat4f.rotationY(-rot[1]));
-				modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-rot[2]));
-				modelMatrix = modelMatrix.mul(Mat4f.scale(@splat(scale)));
-				modelMatrix = modelMatrix.mul(Mat4f.translation(@splat(-0.5)));
-				c.glUniformMatrix4fv(itemUniforms.modelMatrix, 1, c.GL_TRUE, @ptrCast(&modelMatrix));
-
-				c.glBindVertexArray(main.renderer.chunk_meshing.vao);
-				c.glDrawElements(c.GL_TRIANGLES, vertices, c.GL_UNSIGNED_INT, null);
-			}
-		}
 	}
 };
