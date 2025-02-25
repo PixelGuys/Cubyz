@@ -9,6 +9,7 @@ const c = graphics.c;
 const Shader = graphics.Shader;
 const game = @import("game.zig");
 const World = game.World;
+const itemdisplay = @import("itemdisplay.zig");
 const itemdrop = @import("itemdrop.zig");
 const main = @import("main.zig");
 const Window = main.Window;
@@ -223,6 +224,8 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	entity.ClientEntityManager.render(game.projectionMatrix, ambientLight, .{1, 0.5, 0.25}, playerPos);
 
 	itemdrop.ItemDropRenderer.renderItemDrops(game.projectionMatrix, ambientLight, playerPos, time);
+
+	itemdisplay.PlayerItemDisplay.renderDisplayItem(game.projectionMatrix, ambientLight, playerPos, time);
 	gpu_performance_measuring.stopQuery();
 
 	// Render transparent chunk meshes:

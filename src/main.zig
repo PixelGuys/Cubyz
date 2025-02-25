@@ -11,6 +11,7 @@ pub const entity = @import("entity.zig");
 pub const files = @import("files.zig");
 pub const game = @import("game.zig");
 pub const graphics = @import("graphics.zig");
+pub const itemdisplay = @import("itemdisplay.zig");
 pub const itemdrop = @import("itemdrop.zig");
 pub const items = @import("items.zig");
 pub const JsonElement = @import("json.zig").JsonElement;
@@ -591,6 +592,9 @@ pub fn main() void { // MARK: main()
 
 	itemdrop.ItemDropRenderer.init();
 	defer itemdrop.ItemDropRenderer.deinit();
+
+	itemdisplay.PlayerItemDisplay.init();
+	defer itemdisplay.PlayerItemDisplay.deinit();
 
 	itemdrop.ItemModelStore.init();
 	defer itemdrop.ItemModelStore.deinit();
