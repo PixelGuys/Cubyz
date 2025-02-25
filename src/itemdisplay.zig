@@ -5,16 +5,9 @@ const chunk_zig = @import("chunk.zig");
 const ServerChunk = chunk_zig.ServerChunk;
 const game = @import("game.zig");
 const Player = game.Player;
-const World = game.World;
-const ServerWorld = main.server.ServerWorld;
 const graphics = @import("graphics.zig");
 const c = graphics.c;
-const items = @import("items.zig");
-const ItemStack = items.ItemStack;
-const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main.zig");
-const random = @import("random.zig");
-const settings = @import("settings.zig");
 const utils = @import("utils.zig");
 const vec = @import("vec.zig");
 const Mat4f = vec.Mat4f;
@@ -25,7 +18,7 @@ const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 const ItemModelStore = @import("itemdrop.zig").ItemModelStore;
 
 // will be used for rendering currenly held item of a player (starting from basics)
-pub const PlayerItemDisplay = struct { // MARK: ItemDropRenderer
+pub const PlayerItemDisplay = struct { // MARK: PlayerItemDisplay
     // stolen from itemdrop.zig with love!!!
 	var itemShader: graphics.Shader = undefined;
 	var itemUniforms: struct {
@@ -65,37 +58,44 @@ pub const PlayerItemDisplay = struct { // MARK: ItemDropRenderer
 		c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniformMatrix4fv(itemUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&game.camera.viewMatrix));
 		c.glUniform1f(itemUniforms.contrast, 0.12);
-        
+
         const selectedItem = Player.inventory.getItem(Player.selectedSlot); 
         if(selectedItem) |item| {
-            var pos: Vec3d = .{0.5, 0.5, 0};
-            pos += playerPos;
-            const rot: Vec3f = .{0, 0, 0};
+            var pos: Vec3d = Vec3d{0, 0, 0};
+            const rot: Vec3f = Vec3f{game.camera.rotation[0], game.camera.rotation[1], game.camera.rotation[2]};
+
+            _ = playerPos; // going to be used when light value fetching from mesh_storage is implemented.
             const light: u32 = 0xffffffff; // TODO: Get this light value from the mesh_storage.
             c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&@max(
                 ambientLight*@as(Vec3f, @splat(@as(f32, @floatFromInt(light >> 24))/255)),
                 Vec3f{light >> 16 & 255, light >> 8 & 255, light & 255}/@as(Vec3f, @splat(255))
             )));
-            pos -= playerPos;
 
             const model = ItemModelStore.getModel(item);
             c.glUniform1i(itemUniforms.modelIndex, model.index);
             var vertices: u31 = 36;
 
-            var scale: f32 = 0.3;
+            var scale: f32 = 0.25;
+            var isTool: bool = false;
             if(item == .baseItem and item.baseItem.block != null and item.baseItem.image.imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
                 const blockType = item.baseItem.block.?;
                 c.glUniform1i(itemUniforms.block, blockType);
                 vertices = model.len/2*6;
+                pos = Vec3d{0.4, 0.65, -0.25};
             } else {
                 c.glUniform1i(itemUniforms.block, 0);
-                scale = 0.5;
+                isTool = true;
+                scale = 0.6;
+                pos = Vec3d{0.4, 0.65, -0.25};
             }
 
-            var modelMatrix = Mat4f.translation(@floatCast(pos));
-            modelMatrix = modelMatrix.mul(Mat4f.rotationX(-rot[0]));
+            var modelMatrix = Mat4f.rotationZ(-rot[2]);
             modelMatrix = modelMatrix.mul(Mat4f.rotationY(-rot[1]));
-            modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-rot[2]));
+            modelMatrix = modelMatrix.mul(Mat4f.rotationX(-rot[0]));
+            modelMatrix = modelMatrix.mul(Mat4f.translation(@floatCast(pos)));
+            if (isTool) {
+                modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.45));
+            }
             modelMatrix = modelMatrix.mul(Mat4f.scale(@splat(scale)));
             modelMatrix = modelMatrix.mul(Mat4f.translation(@splat(-0.5)));
             c.glUniformMatrix4fv(itemUniforms.modelMatrix, 1, c.GL_TRUE, @ptrCast(&modelMatrix));
