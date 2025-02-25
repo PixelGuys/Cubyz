@@ -565,6 +565,7 @@ pub const Tool = struct { // MARK: Tool
 				modifier.printTooltip(&self.tooltip);
 				self.tooltip.append('\n');
 			}
+			_ = self.tooltip.pop();
 		}
 		return self.tooltip.items;
 	}
