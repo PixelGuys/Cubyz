@@ -695,7 +695,7 @@ pub const inventory = struct { // MARK: inventory
 				const tooltip = item.getTooltip();
 				var textBuffer = graphics.TextBuffer.init(main.stackAllocator, tooltip, .{}, false, .left);
 				defer textBuffer.deinit();
-				var size = textBuffer.calculateLineBreaks(16, 256);
+				var size = textBuffer.calculateLineBreaks(16, 300);
 				size[0] = 0;
 				for(textBuffer.lineBreaks.items) |lineBreak| {
 					size[0] = @max(size[0], lineBreak.width);

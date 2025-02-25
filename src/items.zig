@@ -16,6 +16,8 @@ const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
+const modifierList = @import("tool/modifiers/_list.zig");
+
 pub const Inventory = @import("Inventory.zig");
 
 const Material = struct { // MARK: Material
@@ -27,6 +29,7 @@ const Material = struct { // MARK: Material
 
 	textureRoughness: f32 = undefined,
 	colorPalette: []Color = undefined,
+	modifiers: []Modifier = undefined,
 
 	pub fn init(self: *Material, allocator: NeverFailingAllocator, zon: ZonElement) void {
 		self.density = zon.get(f32, "density", 1.0);
@@ -36,14 +39,27 @@ const Material = struct { // MARK: Material
 		self.hardness = zon.get(f32, "hardness", 1.0);
 		self.textureRoughness = @max(0, zon.get(f32, "textureRoughness", 1.0));
 		const colors = zon.getChild("colors");
-		self.colorPalette = allocator.alloc(Color, colors.array.items.len);
-		for(colors.array.items, self.colorPalette) |item, *color| {
+		self.colorPalette = allocator.alloc(Color, colors.toSlice().len);
+		for(colors.toSlice(), self.colorPalette) |item, *color| {
 			const colorInt: u32 = @intCast(item.as(i64, 0xff000000) & 0xffffffff);
 			color.* = Color {
 				.r = @intCast(colorInt>>16 & 0xff),
 				.g = @intCast(colorInt>>8 & 0xff),
 				.b = @intCast(colorInt>>0 & 0xff),
 				.a = @intCast(colorInt>>24 & 0xff),
+			};
+		}
+		const modifiersZon = zon.getChild("modifiers");
+		self.modifiers = allocator.alloc(Modifier, modifiersZon.toSlice().len);
+		for(modifiersZon.toSlice(), self.modifiers) |item, *modifier| {
+			const id = item.get([]const u8, "id", "not specified");
+			const vTable = modifiers.get(id) orelse blk: {
+				std.log.err("Couldn't find modifier with id {s}. Replacing it with 'Durable'", .{id});
+				break :blk modifiers.get("durable") orelse unreachable;
+			};
+			modifier.* = .{
+				.vTable = vTable,
+				.strength = item.get(f32, "strength", 0),
 			};
 		}
 	}
@@ -64,6 +80,34 @@ const Material = struct { // MARK: Material
 		switch(prop) {
 			inline else => |field| return @field(self, @tagName(field)),
 		}
+	}
+};
+
+const Modifier = struct {
+	strength: f32,
+	vTable: *const VTable,
+
+	pub const VTable = struct {
+		combineModifiers: *const fn(strength1: f32, strength2: f32) f32,
+		changeToolParameters: *const fn(tool: *Tool, stength: f32) void,
+		printTooltip: *const fn(outString: *main.List(u8), stength: f32) void,
+		priority: f32,
+	};
+
+	pub fn combineModifiers(a: Modifier, b: Modifier) Modifier {
+		std.debug.assert(a.vTable == b.vTable);
+		return .{
+			.strength = a.vTable.combineModifiers(a.strength, b.strength),
+			.vTable = a.vTable,
+		};
+	}
+
+	pub fn changeToolParameters(self: Modifier, tool: *Tool) void {
+		self.vTable.changeToolParameters(tool, self.strength);
+	}
+
+	pub fn printTooltip(self: Modifier, outString: *main.List(u8)) void {
+		self.vTable.printTooltip(outString, self.strength);
 	}
 };
 
@@ -261,12 +305,31 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 		inline for(comptime std.meta.fieldNames(ToolProperty)) |name| {
 			@field(tool, name) = 0;
 		}
+		var tempModifiers: main.List(Modifier) = .init(main.stackAllocator);
+		defer tempModifiers.deinit();
 		for(0..25) |i| {
 			const material = (tool.craftingGrid[i] orelse continue).material orelse continue;
 			for(tool.type.slotInfos[i].parameters) |set| {
 				tool.getProperty(set.destination).* += set.factor*set.functionType.eval(material.getProperty(set.source) + set.additionConstant);
 			}
+			outer: for(material.modifiers) |newMod| {
+				for(tempModifiers.items) |*oldMod| {
+					if(oldMod.vTable == newMod.vTable) {
+						oldMod.* = oldMod.combineModifiers(newMod);
+						continue :outer;
+					}
+				}
+				tempModifiers.append(newMod);
+			}
 		}
+		std.sort.insertion(Modifier, tempModifiers.items, {}, struct {fn lessThan(_: void, lhs: Modifier, rhs: Modifier)bool {
+			return lhs.vTable.priority < rhs.vTable.priority;
+		}}.lessThan);
+		tool.modifiers = main.globalAllocator.dupe(Modifier, tempModifiers.items);
+		for(tempModifiers.items) |mod| {
+			mod.changeToolParameters(tool);
+		}
+
 		tool.durability = @max(1, std.math.lossyCast(u32, tool.maxDurability));
 	}
 };
@@ -340,6 +403,7 @@ const ToolProperty = enum {
 pub const Tool = struct { // MARK: Tool
 	craftingGrid: [25]?*const BaseItem,
 	materialGrid: [16][16]?*const BaseItem,
+	modifiers: []Modifier,
 	tooltip: main.List(u8),
 	image: graphics.Image,
 	texture: ?graphics.Texture,
@@ -380,6 +444,7 @@ pub const Tool = struct { // MARK: Tool
 		}
 		self.image.deinit(main.globalAllocator);
 		self.tooltip.deinit();
+		main.globalAllocator.free(self.modifiers);
 		main.globalAllocator.destroy(self);
 	}
 
@@ -388,6 +453,7 @@ pub const Tool = struct { // MARK: Tool
 		result.* = .{
 			.craftingGrid = self.craftingGrid,
 			.materialGrid = self.materialGrid,
+			.modifiers = main.globalAllocator.dupe(Modifier, self.modifiers),
 			.tooltip = .init(main.globalAllocator),
 			.image = graphics.Image.init(main.globalAllocator, self.image.width, self.image.height),
 			.texture = null,
@@ -493,6 +559,13 @@ pub const Tool = struct { // MARK: Tool
 				self.durability, std.math.lossyCast(u32, self.maxDurability),
 			}
 		) catch unreachable;
+		if(self.modifiers.len != 0) {
+			self.tooltip.appendSlice("\nModifiers:\n");
+			for(self.modifiers) |modifier| {
+				modifier.printTooltip(&self.tooltip);
+				self.tooltip.append('\n');
+			}
+		}
 		return self.tooltip.items;
 	}
 
@@ -662,6 +735,7 @@ pub const Recipe = struct { // MARK: Recipe
 var arena: main.utils.NeverFailingArenaAllocator = undefined;
 var toolTypes: std.StringHashMap(ToolType) = undefined;
 var reverseIndices: std.StringHashMap(*BaseItem) = undefined;
+var modifiers: std.StringHashMap(*const Modifier.VTable) = undefined;
 pub var itemList: [65536]BaseItem = undefined;
 pub var itemListSize: u16 = 0;
 
@@ -685,6 +759,16 @@ pub fn globalInit() void {
 	reverseIndices = .init(arena.allocator().allocator);
 	recipeList = .init(arena.allocator());
 	itemListSize = 0;
+	modifiers = .init(main.globalAllocator.allocator);
+	inline for(@typeInfo(modifierList).@"struct".decls) |decl| {
+		const ModifierStruct = @field(modifierList, decl.name);
+		modifiers.put(decl.name, &.{
+			.changeToolParameters = &ModifierStruct.changeToolParameters,
+			.combineModifiers = &ModifierStruct.combineModifiers,
+			.printTooltip = &ModifierStruct.printTooltip,
+			.priority = ModifierStruct.priority,
+		}) catch unreachable;
+	}
 	Inventory.Sync.ClientSide.init();
 }
 
@@ -846,6 +930,7 @@ pub fn deinit() void {
 		}
 	}
 	recipeList.clearAndFree();
+	modifiers.deinit();
 	arena.deinit();
 	Inventory.Sync.ClientSide.deinit();
 }
