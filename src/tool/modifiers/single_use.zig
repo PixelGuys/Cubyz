@@ -3,16 +3,16 @@ const std = @import("std");
 const main = @import("root");
 const Tool = main.items.Tool;
 
-pub const priority = 1;
+pub const priority = 1000;
 
 pub fn combineModifiers(strength1: f32, strength2: f32) f32 {
-	return @max(0, strength1) + @max(0, strength2);
+	return @max(1, @min(strength1, strength2));
 }
 
 pub fn changeToolParameters(tool: *Tool, strength: f32) void {
-	tool.maxDurability *= 1 + @max(0, strength);
+	tool.maxDurability = @max(1, strength);
 }
 
 pub fn printTooltip(outString: *main.List(u8), strength: f32) void {
-	outString.writer().print("#500090**Durable**#808080 *Increases durability by **{d:.0}%", .{@max(0, strength)*100}) catch unreachable;
+	outString.writer().print("#800000**Single-use**#808080 *Sets durability to **{d:.0}", .{@max(1, strength)}) catch unreachable;
 }

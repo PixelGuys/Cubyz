@@ -563,7 +563,7 @@ pub const Tool = struct { // MARK: Tool
 			self.tooltip.appendSlice("\nModifiers:\n");
 			for(self.modifiers) |modifier| {
 				modifier.printTooltip(&self.tooltip);
-				self.tooltip.append('\n');
+				self.tooltip.appendSlice("§\n");
 			}
 			_ = self.tooltip.pop();
 		}
