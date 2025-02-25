@@ -226,7 +226,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	itemdrop.ItemDropRenderer.renderItemDrops(game.projectionMatrix, ambientLight, playerPos, time);
 
-	
 	gpu_performance_measuring.stopQuery();
 
 	// Render transparent chunk meshes:
