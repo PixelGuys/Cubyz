@@ -711,7 +711,6 @@ pub var testWorld: World = undefined; // TODO:
 pub var world: ?*World = null;
 
 pub var projectionMatrix: Mat4f = Mat4f.identity();
-pub var playerProjectionMatrix: Mat4f = Mat4f.identity(); // TODO: rename
 
 pub var fog = Fog{.skyColor=.{0.8, 0.8, 1}, .fogColor=.{0.8, 0.8, 1}, .density=1.0/15.0/128.0, .fogLower = 100, .fogHigher = 1000};
 

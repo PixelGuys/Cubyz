@@ -123,7 +123,7 @@ pub fn updateViewport(width: u31, height: u31, fov: f32) void {
 	lastHeight = @intFromFloat(@as(f32, @floatFromInt(height))*main.settings.resolutionScale);
 	lastFov = fov;
 	game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(fov), @as(f32, @floatFromInt(lastWidth))/@as(f32, @floatFromInt(lastHeight)), zNear, zFar);
-	game.playerProjectionMatrix = Mat4f.perspective(std.math.degreesToRadians(65), @as(f32, @floatFromInt(lastWidth))/@as(f32, @floatFromInt(lastHeight)), zNear, zFar);
+	itemdisplay.itemDisplayProjectionMatrix = Mat4f.perspective(std.math.degreesToRadians(65), @as(f32, @floatFromInt(lastWidth))/@as(f32, @floatFromInt(lastHeight)), zNear, zFar);
 	worldFrameBuffer.updateSize(lastWidth, lastHeight, c.GL_RGB16F);
 	worldFrameBuffer.unbind();
 }
@@ -305,7 +305,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	c.glEnable(c.GL_DEPTH_TEST);
 	c.glEnable(c.GL_CULL_FACE);
-	itemdisplay.PlayerItemDisplay.renderPlayerDisplayItem(game.playerProjectionMatrix, ambientLight, playerPos, time);
+	itemdrop.ItemDropRenderer.renderPlayerDisplayItem(itemdisplay.itemDisplayProjectionMatrix, ambientLight, playerPos, time);
 	gpu_performance_measuring.stopQuery();
 }
 

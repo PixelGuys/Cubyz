@@ -38,10 +38,6 @@ pub fn normalize(self: anytype) @TypeOf(self) {
 	return self/@as(@TypeOf(self), @splat(length(self)));
 }
 
-pub fn lerp(self: anytype, other: @TypeOf(self), t: @typeInfo(@TypeOf(self)).vector.child) @TypeOf(self) {
-	return self * (@as(@TypeOf(self), @splat(1)) - @as(@TypeOf(self), @splat(t))) + (other * @as(@TypeOf(self), @splat(t)));
-}
-
 pub fn cross(self: anytype, other: @TypeOf(self)) @TypeOf(self) {
 	if(@typeInfo(@TypeOf(self)).vector.len != 3) @compileError("Only available for vectors of length 3.");
 	return @TypeOf(self) {

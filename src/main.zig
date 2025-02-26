@@ -601,12 +601,6 @@ pub fn main() void { // MARK: main()
 	itemdrop.ItemDropRenderer.init();
 	defer itemdrop.ItemDropRenderer.deinit();
 
-	itemdisplay.PlayerItemDisplay.init();
-	defer itemdisplay.PlayerItemDisplay.deinit();
-
-	itemdrop.ItemModelStore.init();
-	defer itemdrop.ItemModelStore.deinit();
-
 	assets.init();
 	defer assets.deinit();
 
