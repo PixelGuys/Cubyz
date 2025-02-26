@@ -1,5 +1,5 @@
 .{
-	.class = .fluid,
+	.tags = .{.fluid},
 	.drops = .{},
 	.selectable = false,
 	.solid = false,

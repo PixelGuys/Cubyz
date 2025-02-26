@@ -1,5 +1,5 @@
 .{
-	.class = .leaf,
+	.tags = .{.leaf},
 	.hasItem = false,
 	.absorbedLight = 0x1C1C38,
 	.model = "cubyz:cube",

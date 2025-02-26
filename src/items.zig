@@ -381,7 +381,7 @@ const FunctionType = enum {
 
 pub const ToolType = struct { // MARK: ToolType
 	id: []const u8,
-	blockClass: main.blocks.BlockClass,
+	blockTags: []main.blocks.BlockTag,
 	slotInfos: [25]SlotInfo,
 	pixelSources: [16][16]u8,
 	pixelSourcesOverlay: [16][16]u8,
@@ -570,8 +570,12 @@ pub const Tool = struct { // MARK: Tool
 		return self.tooltip.items;
 	}
 
-	pub fn getPowerByBlockClass(self: *Tool, blockClass: blocks.BlockClass) f32 {
-		if(blockClass == self.type.blockClass) return self.power;
+	pub fn getPowerByBlockTags(self: *Tool, blockTags: []const blocks.BlockTag) f32 {
+		for(blockTags) |blockTag| {
+			for(self.type.blockTags) |toolTag| {
+				if(toolTag == blockTag) return self.power;
+			}
+		}
 		return 0;
 	}
 
@@ -861,7 +865,7 @@ pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) vo
 	const idDupe = arena.allocator().dupe(u8, id);
 	toolTypes.put(idDupe, .{
 		.id = idDupe,
-		.blockClass = std.meta.stringToEnum(main.blocks.BlockClass, zon.get([]const u8, "blockClass", "none")) orelse .air,
+		.blockTags = main.blocks.BlockTag.loadFromZon(arena.allocator(), zon.getChild("blockTags")),
 		.slotInfos = slotInfos,
 		.pixelSources = pixelSources,
 		.pixelSourcesOverlay = pixelSourcesOverlay,

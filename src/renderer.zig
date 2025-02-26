@@ -734,16 +734,17 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 		while(total_tMax < closestDistance) {
 			const block = mesh_storage.getBlock(voxelPos[0], voxelPos[1], voxelPos[2]) orelse break;
-			if(block.typ != 0) {
-				if(block.blockClass() != .fluid and block.blockClass() != .air) { // TODO: Buckets could select fluids
-					const relativePlayerPos: Vec3f = @floatCast(pos - @as(Vec3d, @floatFromInt(voxelPos)));
-					if(block.mode().rayIntersection(block, item, relativePlayerPos, _dir)) |intersection| {
-						if(intersection.distance <= closestDistance) {
-							selectedBlockPos = voxelPos;
-							selectionMin = intersection.min;
-							selectionMax = intersection.max;
-							break;
-						}
+			if(block.typ != 0) blk: {
+				for(block.blockTags()) |tag| {
+					if(tag == .fluid or tag == .air) break :blk; // TODO: Buckets could select fluids
+				}
+				const relativePlayerPos: Vec3f = @floatCast(pos - @as(Vec3d, @floatFromInt(voxelPos)));
+				if(block.mode().rayIntersection(block, item, relativePlayerPos, _dir)) |intersection| {
+					if(intersection.distance <= closestDistance) {
+						selectedBlockPos = voxelPos;
+						selectionMin = intersection.min;
+						selectionMax = intersection.max;
+						break;
 					}
 				}
 			}
@@ -858,7 +859,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				var power: f32 = 0;
 				const isTool = stack.item != null and stack.item.? == .tool;
 				if(isTool) {
-					power = stack.item.?.tool.getPowerByBlockClass(block.blockClass());
+					power = stack.item.?.tool.getPowerByBlockTags(block.blockTags());
 				}
 				const isChisel = stack.item != null and stack.item.? == .baseItem and std.mem.eql(u8, stack.item.?.baseItem.id, "cubyz:chisel");
 				if(isChisel and block.mode() == main.rotation.getByID("stairs")) { // TODO: Remove once the chisel is a tool.

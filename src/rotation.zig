@@ -71,7 +71,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 				var power: f32 = 0;
 				const isTool = item.item != null and item.item.? == .tool;
 				if(isTool) {
-					power = item.item.?.tool.getPowerByBlockClass(oldBlock.blockClass());
+					power = item.item.?.tool.getPowerByBlockTags(oldBlock.blockTags());
 				}
 				if(power >= oldBlock.breakingPower()) {
 					if(isTool) {

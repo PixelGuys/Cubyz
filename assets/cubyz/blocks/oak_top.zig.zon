@@ -1,5 +1,5 @@
 .{
-	.class = .wood,
+	.tags = .{.wood},
 	.blockHealth = 8,
 	.drops = .{
 		.{.items = .{.auto}},
