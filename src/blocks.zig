@@ -33,7 +33,7 @@ pub const BlockTag = enum(u32) {
 		tagIds.clearAndFree();
 	}
 
-	fn find(tag: []const u8) BlockTag {
+	pub fn find(tag: []const u8) BlockTag {
 		if(tagIds.get(tag)) |res| return res;
 		const result: BlockTag = @enumFromInt(tagList.items.len);
 		const dupedTag = allocator.dupe(u8, tag);

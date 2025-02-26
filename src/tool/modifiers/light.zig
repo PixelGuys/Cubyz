@@ -3,16 +3,26 @@ const std = @import("std");
 const main = @import("root");
 const Tool = main.items.Tool;
 
+pub const Data = packed struct(u128) {strength: f32, pad: u96 = undefined};
+
 pub const priority = 1;
 
-pub fn combineModifiers(strength1: f32, strength2: f32) f32 {
-	return 1 - (1 - std.math.clamp(strength1, 0, 1))*(1 - std.math.clamp(strength2, 0, 1));
+pub fn loadData(zon: main.ZonElement) Data {
+	return .{.strength = std.math.clamp(zon.get(f32, "strength", 0), 0, 1)};
 }
 
-pub fn changeToolParameters(tool: *Tool, strength: f32) void {
-	tool.swingTime *= 1 - std.math.clamp(strength, 0, 1);
+pub fn combineModifiers(data1: Data, data2: Data) ?Data {
+	return .{.strength = 1 - (1 - data1.strength)*(1 - data2.strength)};
 }
 
-pub fn printTooltip(outString: *main.List(u8), strength: f32) void {
-	outString.writer().print("#9fffde**Light**#808080 *Decreases swing time by **{d:.0}%", .{std.math.clamp(strength, 0, 1)*100}) catch unreachable;
+pub fn changeToolParameters(tool: *Tool, data: Data) void {
+	tool.swingTime *= 1 - data.strength;
+}
+
+pub fn changeBlockPower(power: f32, _: main.blocks.Block, _: Data) f32 {
+	return power;
+}
+
+pub fn printTooltip(outString: *main.List(u8), data: Data) void {
+	outString.writer().print("#9fffde**Light**#808080 *Decreases swing time by **{d:.0}%", .{data.strength*100}) catch unreachable;
 }
