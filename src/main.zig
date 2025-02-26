@@ -298,7 +298,15 @@ fn takeBackgroundImageFn() void {
 	renderer.MenuBackGround.takeBackgroundImage();
 }
 fn toggleHideGui() void {
-	gui.hideGui = !gui.hideGui;
+	if (itemdisplay.showItem and !gui.hideGui) {
+		gui.hideGui = true;
+	} else if (itemdisplay.showItem and gui.hideGui) {
+		itemdisplay.showItem = false;
+	} else if (!itemdisplay.showItem and gui.hideGui) {
+		gui.hideGui = false;
+	} else {
+		itemdisplay.showItem = true;
+	}
 }
 fn toggleDebugOverlay() void {
 	gui.toggleWindow("debug");

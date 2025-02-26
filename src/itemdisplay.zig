@@ -17,7 +17,31 @@ const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 const ItemModelStore = @import("itemdrop.zig").ItemModelStore;
 
-// will be used for rendering currenly held item of a player (starting from basics)
+pub var showItem: bool = true;
+
+// Going to handle item animations and other things like - bobbing, interpolation
+pub const PlayerItemDisplayManager = struct {
+	pub var cameraFollow: Vec3f = .{0, 0, 0};
+	var lastTime: i16 = 0;
+	var timeDifference: utils.TimeDifference = .{};
+
+	pub fn init() void {
+		cameraFollow = game.camera.rotation;
+	}
+
+	pub fn update() void {
+		
+		var time = @as(i16, @truncate(std.time.milliTimestamp()));
+		time -%= timeDifference.difference.load(.monotonic);
+		const deltaTime = @as(f32, @floatFromInt(time -% lastTime))/1000;
+
+		const blend: f32 = deltaTime * 19;
+		cameraFollow = vec.lerp(cameraFollow, game.camera.rotation, blend);
+		
+		lastTime = time;
+	}
+};
+
 pub const PlayerItemDisplay = struct { // MARK: PlayerItemDisplay
 	// stolen from itemdrop.zig with love!!!
 	var itemShader: graphics.Shader = undefined;
@@ -40,6 +64,7 @@ pub const PlayerItemDisplay = struct { // MARK: PlayerItemDisplay
 
 	pub fn init() void {
 		itemShader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/item_drop.vs", "assets/cubyz/shaders/item_drop.fs", "", &itemUniforms);
+		PlayerItemDisplayManager.init();
 	}
 
 	pub fn deinit() void {
@@ -47,6 +72,12 @@ pub const PlayerItemDisplay = struct { // MARK: PlayerItemDisplay
 	}
 
 	pub fn renderPlayerDisplayItem(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d, time: u32) void {
+		PlayerItemDisplayManager.update();
+		
+		if (!showItem) {
+			return;
+		}
+		
 		itemShader.bind();
 		c.glUniform1i(itemUniforms.texture_sampler, 0);
 		c.glUniform1i(itemUniforms.emissionSampler, 1);
@@ -62,7 +93,7 @@ pub const PlayerItemDisplay = struct { // MARK: PlayerItemDisplay
 		const selectedItem = Player.inventory.getItem(Player.selectedSlot);
 		if(selectedItem) |item| {
 			var pos: Vec3d = Vec3d{0, 0, 0};
-			const rot: Vec3f = Vec3f{game.camera.rotation[0], game.camera.rotation[1], game.camera.rotation[2]};
+			const rot: Vec3f = PlayerItemDisplayManager.cameraFollow;//Vec3f{game.camera.rotation[0], 0, game.camera.rotation[2]};
 
 			_ = playerPos; // going to be used when light value fetching from mesh_storage is implemented.
 			const light: u32 = 0xffffffff; // TODO: Get this light value from the mesh_storage.
@@ -75,16 +106,16 @@ pub const PlayerItemDisplay = struct { // MARK: PlayerItemDisplay
 			c.glUniform1i(itemUniforms.modelIndex, model.index);
 			var vertices: u31 = 36;
 
-			var scale: f32 = 0.25;
-			var isTool: bool = false;
+			var scale: f32 = 0.30;
+			var isNotBlock: bool = false;
 			if(item == .baseItem and item.baseItem.block != null and item.baseItem.image.imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
 				const blockType = item.baseItem.block.?;
 				c.glUniform1i(itemUniforms.block, blockType);
 				vertices = model.len/2*6;
-				pos = Vec3d{0.4, 0.65, -0.25};
+				pos = Vec3d{0.4, 0.55, -0.32};
 			} else {
 				c.glUniform1i(itemUniforms.block, 0);
-				isTool = true;
+				isNotBlock = true;
 				scale = 0.6;
 				pos = Vec3d{0.4, 0.65, -0.25};
 			}
@@ -93,8 +124,15 @@ pub const PlayerItemDisplay = struct { // MARK: PlayerItemDisplay
 			modelMatrix = modelMatrix.mul(Mat4f.rotationY(-rot[1]));
 			modelMatrix = modelMatrix.mul(Mat4f.rotationX(-rot[0]));
 			modelMatrix = modelMatrix.mul(Mat4f.translation(@floatCast(pos)));
-			if (isTool) {
-				modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.45));
+			if (isNotBlock) {
+				if (item == .tool) {
+					modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.46));
+					modelMatrix = modelMatrix.mul(Mat4f.rotationY(std.math.pi*0.23));
+				} else {
+					modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.45));
+				}
+			} else {
+				modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.2));
 			}
 			modelMatrix = modelMatrix.mul(Mat4f.scale(@splat(scale)));
 			modelMatrix = modelMatrix.mul(Mat4f.translation(@splat(-0.5)));
