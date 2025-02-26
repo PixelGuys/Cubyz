@@ -45,6 +45,7 @@ pub const Ore = struct {
 	veins: f32,
 	/// maximum height this ore can be generated
 	maxHeight: i32,
+	minHeight: i32,
 
 	blockType: u16,
 };
@@ -125,6 +126,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 			.veins = oreProperties.get(f32, "veins", 0),
 			.size = oreProperties.get(f32, "size", 0),
 			.maxHeight = oreProperties.get(i32, "height", 0),
+			.minHeight = oreProperties.get(i32, "minHeight", std.math.minInt(i32)),
 			.density = oreProperties.get(f32, "density", 0.5),
 			.blockType = @intCast(size),
 		});
