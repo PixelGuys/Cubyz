@@ -30,14 +30,12 @@ pub const PlayerItemDisplayManager = struct {
 	}
 
 	pub fn update() void {
-		
 		var time = @as(i16, @truncate(std.time.milliTimestamp()));
 		time -%= timeDifference.difference.load(.monotonic);
 		const deltaTime = @as(f32, @floatFromInt(time -% lastTime))/1000;
 
 		const blend: f32 = deltaTime * 19;
 		cameraFollow = vec.lerp(cameraFollow, game.camera.rotation, blend);
-		
 		lastTime = time;
 	}
 };
@@ -73,11 +71,9 @@ pub const PlayerItemDisplay = struct { // MARK: PlayerItemDisplay
 
 	pub fn renderPlayerDisplayItem(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d, time: u32) void {
 		PlayerItemDisplayManager.update();
-		
-		if (!showItem) {
-			return;
-		}
-		
+
+		if (!showItem) return;
+
 		itemShader.bind();
 		c.glUniform1i(itemUniforms.texture_sampler, 0);
 		c.glUniform1i(itemUniforms.emissionSampler, 1);
