@@ -782,9 +782,9 @@ fn touchBlocksFromDirection(entity: main.server.Entity, hitBox: collision.Box, u
 		while (rel[1] != relMax[1]) {
 			rel[1] = @min(rel[1] + 1.0, relMax[1]);
 			var blockPos: Vec3i = undefined;
-			blockPos[swizzle[0]] = @intFromFloat(entity.pos[swizzle[0]] + rel[0]);
-			blockPos[swizzle[1]] = @intFromFloat(entity.pos[swizzle[1]] + rel[1]);
-			blockPos[swizzle[2]] = @intFromFloat(entity.pos[swizzle[2]] + uniformZ);
+			blockPos[swizzle[0]] = @intFromFloat(@floor(entity.pos[swizzle[0]] + rel[0]));
+			blockPos[swizzle[1]] = @intFromFloat(@floor(entity.pos[swizzle[1]] + rel[1]));
+			blockPos[swizzle[2]] = @intFromFloat(@floor(entity.pos[swizzle[2]] + uniformZ));
 			var isUnique: bool = true;
 			for (blockPosList.items) |blockPosElement| {
 				if (std.meta.eql(blockPos, blockPosElement)) {
