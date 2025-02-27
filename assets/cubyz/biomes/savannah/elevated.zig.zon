@@ -14,7 +14,7 @@
 	.ground_structure = .{
 		"cubyz:grass",
 	},
-	.stoneBlock = "cubyz:limestone",
+	.stoneBlock = "cubyz:stone/limestone",
 	.structures = .{
 		.{
 			.id = "cubyz:flower_patch",

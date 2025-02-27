@@ -14,20 +14,20 @@
 	.stripes = .{
 		.{
 			.direction = .{1, 1, 5},
-			.block = "cubyz:ferrock",
+			.block = "cubyz:stone/ferrock",
 			.distance = 12,
 			.offset = 6,
 			.width = 1,
 		},
 		.{
 			.direction = .{1, 1, 5},
-			.block= "cubyz:sandstone",
+			.block= "cubyz:stone/sandstone",
 			.distance = 10,
 			.offset = 6,
 			.width = 1,
 		},
 	},
-	.stoneBlock = "cubyz:limestone",
+	.stoneBlock = "cubyz:stone/limestone",
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:savannah/base",

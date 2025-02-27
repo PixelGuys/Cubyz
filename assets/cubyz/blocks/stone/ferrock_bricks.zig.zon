@@ -1,0 +1,11 @@
+.{
+	.tags = .{.stone},
+	.blockHealth = 23.75,
+	.breakingPower = 1,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.rotation = .stairs,
+	.model = "cubyz:cube",
+	.texture = "cubyz:stone/ferrock_bricks",
+}

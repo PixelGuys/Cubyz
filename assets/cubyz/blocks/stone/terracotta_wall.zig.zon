@@ -1,0 +1,15 @@
+.{
+	.tags = .{.stone},
+	.blockHealth = 20,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.rotation = .fence,
+	.model = "cubyz:wall",
+	.texture = "cubyz:stone/terracotta_wall",
+	.texture_top = "cubyz:stone/terracotta_wall_top",
+	.texture_bottom = "cubyz:stone/terracotta_wall_top",
+	.item = .{
+		.texture = "wall/terracotta.png",
+	},
+}

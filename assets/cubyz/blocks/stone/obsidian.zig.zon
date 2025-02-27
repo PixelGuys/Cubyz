@@ -1,0 +1,24 @@
+.{
+	.tags = .{.stone},
+	.blockHealth = 16,
+	.breakingPower = 2,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.item = .{
+		.material = .{
+			.density = 3.0,
+			.strength = 0.5,
+			.elasticity = 0.5,
+			.grip = 0.5,
+			.hardness = 5.25,
+			.textureRoughness = 0.1,
+			.colors = .{
+				0xff0F0811, 0xff19121C, 0xff312436, 0xff69486B, 0xff462F47,
+			},
+		},
+	},
+	.rotation = .stairs,
+	.model = "cubyz:cube",
+	.texture = "cubyz:stone/obsidian",
+}

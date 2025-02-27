@@ -10,7 +10,7 @@
 	.maxHeight = 36,
 	.roughness = 1,
 	.hills = 10,
-	.stoneBlock = "cubyz:limestone",
+	.stoneBlock = "cubyz:stone/limestone",
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:prairie/base",
@@ -21,7 +21,7 @@
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.5,
-			.block = "cubyz:limestone",
+			.block = "cubyz:stone/limestone",
 			.size = 2,
 			.size_variance = 9,
 		},

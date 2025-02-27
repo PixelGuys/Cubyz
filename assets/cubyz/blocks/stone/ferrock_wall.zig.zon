@@ -1,0 +1,15 @@
+.{
+	.tags = .{.stone},
+	.blockHealth = 23.75,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.rotation = .fence,
+	.model = "cubyz:wall",
+	.texture = "cubyz:stone/ferrock_wall",
+	.texture_top = "cubyz:stone/ferrock_wall_top",
+	.texture_bottom = "cubyz:stone/ferrock_wall_top",
+	.item = .{
+		.texture = "wall/ferrock.png",
+	},
+}

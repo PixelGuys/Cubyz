@@ -1,0 +1,14 @@
+.{
+	.tags = .{.stone},
+	.blockHealth = 7,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.transparent = true,
+	.hasBackFace = true,
+	.absorbedLight = 0xe95825,
+	.model = "cubyz:cube",
+	.texture = "cubyz:stone/ice",
+	.blockEntity = "cubyz.modding.base.MeltableBlockEntity",
+	.friction = 1,
+}

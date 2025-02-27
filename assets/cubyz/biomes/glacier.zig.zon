@@ -14,7 +14,7 @@
 
 	.ground_structure = .{
 		"3 to 5 cubyz:snow",
-		"4 cubyz:frost",
+		"4 cubyz:stone/frost",
 	},
-	.stoneBlock = "cubyz:frost",
+	.stoneBlock = "cubyz:stone/frost",
 }

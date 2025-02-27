@@ -1,0 +1,17 @@
+.{
+	.tags = .{.stone},
+	.blockHealth = 50,
+	.breakingPower = 10,
+	.ore = .{
+		.veins = 3,
+		.size = 6,
+		.height = -100,
+		.density = 0.1,
+	},
+	.drops = .{
+		.{.items = .{"cubyz:diamond"}},
+	},
+	.rotation = .ore,
+	.model = "cubyz:cube",
+	.texture = "cubyz:stone/diamond_ore",
+}

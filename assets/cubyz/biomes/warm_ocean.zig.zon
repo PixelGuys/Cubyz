@@ -15,7 +15,7 @@
 	.ground_structure = .{
 		"2 to 4 cubyz:sand",
 	},
-	.stoneBlock = "cubyz:sandstone",
+	.stoneBlock = "cubyz:stone/sandstone",
 
 	.structures = .{
 		.{

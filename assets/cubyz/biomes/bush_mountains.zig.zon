@@ -13,7 +13,7 @@
 	.ground_structure = .{
 		"0 to 1 cubyz:grass",
 		"0 to 1 cubyz:gravel",
-		"0 to 1 cubyz:cobblestone",
+		"0 to 1 cubyz:stone/cobblestone",
 	},
 	.structures = .{
 		.{

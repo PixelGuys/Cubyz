@@ -21,7 +21,7 @@
 		},
 		.{
 			.id = "cubyz:stalagmite",
-			.block = "cubyz:stone",
+			.block = "cubyz:stone/stone",
 			.chance = 0.048,
 			.size = 3,
 			.size_variation = 6,
@@ -29,14 +29,14 @@
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.016,
-			.block = "cubyz:cobblestone",
+			.block = "cubyz:stone/cobblestone",
 			.size = 4,
 			.size_variance = 3,
 		},
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.016,
-			.block = "cubyz:stone",
+			.block = "cubyz:stone/stone",
 			.size = 4,
 			.size_variance = 4,
 		},

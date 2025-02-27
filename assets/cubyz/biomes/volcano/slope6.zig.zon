@@ -23,7 +23,7 @@
 	.maxSubBiomeCount = 1,
 
 	.ground_structure = .{
-		"10 to 12 cubyz:magma",
+		"10 to 12 cubyz:stone/magma",
 	},
-	.stoneBlock = "cubyz:basalt",
+	.stoneBlock = "cubyz:stone/basalt",
 }

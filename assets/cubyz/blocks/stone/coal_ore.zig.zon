@@ -1,0 +1,17 @@
+.{
+	.tags = .{.stone},
+	.blockHealth = 30,
+	.breakingPower = 1,
+	.ore = .{
+		.veins = 10,
+		.size = 100,
+		.height = 128,
+		.density = 0.5,
+	},
+	.drops = .{
+		.{.items = .{"cubyz:coal"}},
+	},
+	.rotation = .ore,
+	.model = "cubyz:cube",
+	.texture = "cubyz:stone/coal_ore",
+}

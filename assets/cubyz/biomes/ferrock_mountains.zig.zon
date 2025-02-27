@@ -17,20 +17,20 @@
 	.stripes = .{
 		.{
 			.direction = .{1, 1, 5},
-			.block = "cubyz:limestone",
+			.block = "cubyz:stone/limestone",
 			.distance = 12,
 			.offset = 6,
 			.width = 6,
 		},
 		.{
 			.direction = .{1, 1, 5},
-			.block = "cubyz:sandstone",
+			.block = "cubyz:stone/sandstone",
 			.distance = 10,
 			.offset = 6,
 			.width = 2,
 		},
 	},
-	.stoneBlock = "cubyz:ferrock",
+	.stoneBlock = "cubyz:stone/ferrock",
 	.structures = .{
 		.{
 			.id = "cubyz:simple_vegetation",
@@ -42,7 +42,7 @@
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.016,
-			.block = "cubyz:ferrock",
+			.block = "cubyz:stone/ferrock",
 			.size = 2,
 			.size_variance = 7,
 		},

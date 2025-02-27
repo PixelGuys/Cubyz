@@ -1,0 +1,11 @@
+.{
+	.tags = .{.stone},
+	.blockHealth = 8,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.model = "cubyz:cube",
+	.texture = "cubyz:stone/frost",
+	.blockEntity = "cubyz.modding.base.MeltableBlockEntity",
+	.friction = 5,
+}

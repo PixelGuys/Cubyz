@@ -1,0 +1,11 @@
+.{
+	.tags = .{.stone},
+	.blockHealth = 22.5,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.model = "cubyz:cube",
+	.texture = "cubyz:stone/mossy_cobblestone",
+
+	.rotation = .stairs,
+}

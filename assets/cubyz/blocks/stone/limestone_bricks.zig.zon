@@ -1,0 +1,10 @@
+.{
+	.tags = .{.stone},
+	.blockHealth = 27.5,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.rotation= .stairs,
+	.model= "cubyz:cube",
+	.texture= "cubyz:stone/limestone_bricks",
+}

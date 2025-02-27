@@ -24,5 +24,5 @@
 			.height_variation = 3,
 		},
 	},
-	.stoneBlock = "cubyz:sandstone",
+	.stoneBlock = "cubyz:stone/sandstone",
 }

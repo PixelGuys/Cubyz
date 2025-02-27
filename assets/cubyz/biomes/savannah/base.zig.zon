@@ -11,7 +11,7 @@
 	.validPlayerSpawn = true,
 	.music = "cubyz:EasternThought",
 	.ground_structure = .{
-		"7 to 8 cubyz:limestone",
+		"7 to 8 cubyz:stone/limestone",
 	},
 	.structures = .{
 		.{
@@ -63,5 +63,5 @@
 			.height_variation = 3,
 		},
 	},
-	.stoneBlock = "cubyz:sandstone",
+	.stoneBlock = "cubyz:stone/sandstone",
 }

@@ -6,25 +6,25 @@
 	.chance = 0.1,
 	.fogColor = 0x51240c,
 	.caves = -0.03,
-	.stoneBlock = "cubyz:obsidian",
+	.stoneBlock = "cubyz:stone/obsidian",
 	.stripes = .{
 		.{
 			.direction= .{4, 1, 3},
-			.block= "cubyz:magma",
+			.block= "cubyz:stone/magma",
 			.distance= 16,
 			.offset= 5,
 			.width= 2,
 		},
 		.{
 			.direction= .{2, 2.5, 3},
-			.block= "cubyz:magma",
+			.block= "cubyz:stone/magma",
 			.distance= 14,
 			.offset= 6,
 			.width= 1,
 		},
 		.{
 			.direction= .{3, 4, 2},
-			.block= "cubyz:magma",
+			.block= "cubyz:stone/magma",
 			.distance= 14,
 			.offset= 7,
 			.width= 1,
@@ -33,7 +33,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:stalagmite",
-			.block = "cubyz:obsidian",
+			.block = "cubyz:stone/obsidian",
 			.chance = 0.48,
 			.size = 4,
 			.size_variation = 6,

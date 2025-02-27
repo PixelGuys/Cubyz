@@ -7,5 +7,5 @@
 	.caves = -0.1,
 
 	.music = "cubyz:heart-of-the-beast",
-	.stoneBlock = "cubyz:void_stone",
+	.stoneBlock = "cubyz:stone/void_stone",
 }

@@ -15,11 +15,11 @@
 	.ground_structure = .{
 		"3 to 6 cubyz:snow",
 	},
-	.stoneBlock = "cubyz:glacite",
+	.stoneBlock = "cubyz:stone/glacite",
 	.structures = .{
 		.{
 			.id = "cubyz:stalagmite",
-			.block = "cubyz:ice",
+			.block = "cubyz:stone/ice",
 			.chance = 0.08,
 			.size = 3,
 			.size_variation = 5,

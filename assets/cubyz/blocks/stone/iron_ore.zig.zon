@@ -1,0 +1,20 @@
+.{
+	.tags = .{.stone},
+	.blockHealth = 35,
+	.breakingPower = 5,
+	.ore = .{
+		.veins = 4,
+		.size = 20,
+		.height = 20,
+		.density = 0.25,
+	},
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.rotation = .ore,
+	.model = "cubyz:cube",
+	.texture = "cubyz:stone/iron_ore",
+	.item = .{
+		.texture = "raw_iron.png",
+	},
+}

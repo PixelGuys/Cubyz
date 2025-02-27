@@ -1,0 +1,10 @@
+.{
+	.tags = .{.stone},
+	.blockHealth = 15,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.emittedLight = 0x884928,
+	.model = "cubyz:cube",
+	.texture = "cubyz:stone/magma",
+}

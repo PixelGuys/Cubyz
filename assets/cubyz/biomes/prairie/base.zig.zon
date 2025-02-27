@@ -12,7 +12,7 @@
 	.validPlayerSpawn = true,
 	.ground_structure = .{
 		"1 cubyz:dirt",
-		"3 to 4 cubyz:limestone",
+		"3 to 4 cubyz:stone/limestone",
 	},
 	.structures = .{
 		.{
@@ -46,35 +46,35 @@
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.1,
-			.block = "cubyz:limestone",
+			.block = "cubyz:stone/limestone",
 			.size = 1,
 			.size_variance = 9,
 		},
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.05,
-			.block = "cubyz:limestone",
+			.block = "cubyz:stone/limestone",
 			.size = 2,
 			.size_variance = 8,
 		},
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.025,
-			.block = "cubyz:limestone",
+			.block = "cubyz:stone/limestone",
 			.size = 3,
 			.size_variance = 7,
 		},
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.0125,
-			.block = "cubyz:limestone",
+			.block = "cubyz:stone/limestone",
 			.size = 4,
 			.size_variance = 6,
 		},
 		.{
 			.id = "cubyz:boulder",
 			.chance = 0.05,
-			.block = "cubyz:stone",
+			.block = "cubyz:stone/stone",
 			.size = 1,
 			.size_variance = 9,
 		},

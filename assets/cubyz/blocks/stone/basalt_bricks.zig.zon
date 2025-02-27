@@ -1,0 +1,11 @@
+.{
+	.tags = .{.stone},
+	.blockHealth = 20,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.breakingPower = 1,
+	.rotation = .stairs,
+	.model = "cubyz:cube",
+	.texture = "cubyz:stone/basalt_bricks",
+}

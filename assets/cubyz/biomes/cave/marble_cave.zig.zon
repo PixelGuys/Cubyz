@@ -6,11 +6,11 @@
 
 	.fogDensity = 10,
 
-	.stoneBlock = "cubyz:marble",
+	.stoneBlock = "cubyz:stone/marble",
 	.structures = .{
 		.{
 			.id = "cubyz:stalagmite",
-			.block = "cubyz:marble",
+			.block = "cubyz:stone/marble",
 			.chance = 0.112,
 			.size = 4,
 			.size_variation = 10,

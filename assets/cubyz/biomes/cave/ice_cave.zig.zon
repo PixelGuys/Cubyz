@@ -6,15 +6,15 @@
 	.caves = -0.02,
 	.fogDensity = 20,
 	.fogColor = 0xbabfbf,
-	.stoneBlock = "cubyz:glacite",
+	.stoneBlock = "cubyz:stone/glacite",
 	.ground_structure = .{
-		"cubyz:ice",
-		"7 to 8 cubyz:frost",
+		"cubyz:stone/ice",
+		"7 to 8 cubyz:stone/frost",
 	},
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
-			.block = "cubyz:frost",
+			.block = "cubyz:stone/frost",
 			.chance = 0.25,
 			.width = 2,
 			.variation = 5,
@@ -23,7 +23,7 @@
 		},
 		.{
 			.id = "cubyz:stalagmite",
-			.block = "cubyz:ice",
+			.block = "cubyz:stone/ice",
 			.chance = 0.5,
 			.size = 2,
 			.size_variation = 8,
