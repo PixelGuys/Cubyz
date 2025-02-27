@@ -19,9 +19,9 @@
 		.{
 			.id = "cubyz:simple_vegetation",
 			.block = "cubyz:cactus",
-			.chance = 0.16,
-			.height = 2,
-			.height_variation = 3,
+			.chance = 0.02,
+			.height = 3,
+			.height_variation = 2,
 		},
 	},
 	.stoneBlock = "cubyz:sandstone",
