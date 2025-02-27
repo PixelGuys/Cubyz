@@ -1,26 +1,26 @@
 .{
 	.{
-		.inputs = .{"cubyz:birch_planks", "cubyz:iron_ingot"},
+		.inputs = .{"cubyz:wood/birch_planks", "cubyz:iron_ingot"},
 		.output = "cubyz:chisel",
 	},
 	.{
-		.inputs = .{"cubyz:oak_planks", "cubyz:iron_ingot"},
+		.inputs = .{"cubyz:wood/oak_planks", "cubyz:iron_ingot"},
 		.output = "cubyz:chisel",
 	},
 	.{
-		.inputs = .{"cubyz:mahogany_planks", "cubyz:iron_ingot"},
+		.inputs = .{"cubyz:wood/mahogany_planks", "cubyz:iron_ingot"},
 		.output = "cubyz:chisel",
 	},
 	.{
-		.inputs = .{"cubyz:pine_planks", "cubyz:iron_ingot"},
+		.inputs = .{"cubyz:wood/pine_planks", "cubyz:iron_ingot"},
 		.output = "cubyz:chisel",
 	},
 	.{
-		.inputs = .{"cubyz:willow_planks", "cubyz:iron_ingot"},
+		.inputs = .{"cubyz:wood/willow_planks", "cubyz:iron_ingot"},
 		.output = "cubyz:chisel",
 	},
 	.{
-		.inputs = .{"cubyz:baobab_planks", "cubyz:iron_ingot"},
+		.inputs = .{"cubyz:wood/baobab_planks", "cubyz:iron_ingot"},
 		.output = "cubyz:chisel",
 	},
 	.{
