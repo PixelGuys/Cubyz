@@ -20,11 +20,14 @@ const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
 const Vec3d = vec.Vec3d;
 const Mat4f = vec.Mat4f;
+const Vec3i = vec.Vec3i;
 const graphics = @import("graphics.zig");
 const models = main.models;
 const Fog = graphics.Fog;
 const renderer = @import("renderer.zig");
 const settings = @import("settings.zig");
+const List = @import("utils/list.zig").List;
+const Block = @import("blocks.zig").Block;
 
 pub const camera = struct { // MARK: camera
 	pub var rotation: Vec3f = Vec3f{0, 0, 0};
@@ -803,13 +806,13 @@ fn touchBlocksFromDirection(entity: main.server.Entity, hitBox: collision.Box, u
 	blockPosList.deinit();
 }
 
-fn touchBlocks(entity: main.server.Entity, hitBox: collision.Box) {
-	touchBlocksFromDirection(entity, hitBox, hitBox.max[2] + touchOffset, {0, 1, 2}, chunk.Neighbor.dirUp);
-	touchBlocksFromDirection(entity, hitBox, hitBox.min[2] - touchOffset, {0, 1, 2}, chunk.Neighbor.dirDown);
-	touchBlocksFromDirection(entity, hitBox, hitBox.max[0] + touchOffset, {1, 2, 0}, chunk.Neighbor.dirPosX);
-	touchBlocksFromDirection(entity, hitBox, hitBox.min[0] - touchOffset, {1, 2, 0}, chunk.Neighbor.dirNegX);
-	touchBlocksFromDirection(entity, hitBox, hitBox.max[1] + touchOffset, {0, 2, 1}, chunk.Neighbor.dirPosY);
-	touchBlocksFromDirection(entity, hitBox, hitBox.min[1] - touchOffset, {0, 2, 1}, chunk.Neighbor.dirNegY);
+fn touchBlocks(entity: main.server.Entity, hitBox: collision.Box) void {
+	touchBlocksFromDirection(entity, hitBox, hitBox.max[2] + touchOffset, Vec3i {0, 1, 2}, chunk.Neighbor.dirUp);
+	touchBlocksFromDirection(entity, hitBox, hitBox.min[2] - touchOffset, Vec3i {0, 1, 2}, chunk.Neighbor.dirDown);
+	touchBlocksFromDirection(entity, hitBox, hitBox.max[0] + touchOffset, Vec3i {1, 2, 0}, chunk.Neighbor.dirPosX);
+	touchBlocksFromDirection(entity, hitBox, hitBox.min[0] - touchOffset, Vec3i {1, 2, 0}, chunk.Neighbor.dirNegX);
+	touchBlocksFromDirection(entity, hitBox, hitBox.max[1] + touchOffset, Vec3i {0, 2, 1}, chunk.Neighbor.dirPosY);
+	touchBlocksFromDirection(entity, hitBox, hitBox.min[1] - touchOffset, Vec3i {0, 2, 1}, chunk.Neighbor.dirNegY);
 }
 
 pub fn update(deltaTime: f64) void { // MARK: update()

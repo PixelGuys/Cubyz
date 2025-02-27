@@ -13,6 +13,7 @@ const items = @import("items.zig");
 const models = @import("models.zig");
 const rotation = @import("rotation.zig");
 const RotationMode = rotation.RotationMode;
+const Vec3i = @import("vec.zig").Vec3i;
 
 pub const BlockTag = enum(u32) {
 	air = 0,
