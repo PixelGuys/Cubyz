@@ -22,8 +22,8 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:mahogany_leaves",
-			.log = "cubyz:mahogany_log",
-			.top = "cubyz:mahogany_top",
+			.log = "cubyz:wood/mahogany_log",
+			.top = "cubyz:wood/mahogany_top",
 			.chance = 0.36,
 			.type = .round,
 			.height = 6,
@@ -34,8 +34,8 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:mahogany_leaves",
-			.log = "cubyz:mahogany_log",
-			.top = "cubyz:mahogany_top",
+			.log = "cubyz:wood/mahogany_log",
+			.top = "cubyz:wood/mahogany_top",
 			.chance = 0.2,
 			.type = .round,
 			.height = 1,

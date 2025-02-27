@@ -3,14 +3,14 @@
 	.blockHealth = 6,
 	.item = .{
 		.material = .{
-			.density = 0.8,
-			.strength = 1.1,
-			.elasticity = 2.67,
-			.grip = 6.5,
-			.hardness = 2.125,
+			.density = 0.6,
+			.strength = 0.9,
+			.elasticity = 2.75,
+			.grip = 7.75,
+			.hardness = 1.75,
 			.textureRoughness = 0.7,
 			.colors = .{
-				0xff734c2f, 0xff8e5d38, 0xffa26a3f, 0xffbd7e48, 0xffcf9459,
+				0xff9b7a5b, 0xffbf9872, 0xffdeb287, 0xfff2c89c, 0xffffdfb7,
 			},
 		},
 	},
@@ -20,5 +20,5 @@
 	},
 	.model = "cubyz:cube",
 	.rotation = .stairs,
-	.texture = "cubyz:mahogany_planks",
+	.texture = "cubyz:wood/birch_planks",
 }
