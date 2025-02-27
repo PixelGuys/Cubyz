@@ -765,6 +765,53 @@ pub fn hyperSpeedToggle() void {
 	Player.hyperSpeed.store(!Player.hyperSpeed.load(.monotonic), .monotonic);
 }
 
+const touchOffset: f64 = 0.01;
+
+fn touchBlocksFromDirection(entity: main.server.Entity, hitBox: collision.Box, uniformZ: f64, comptime swizzle: Vec3i, comptime neighbor: chunk.Neighbor) void {
+	const relMin = Vec2d {hitBox.min[swizzle[0]] + touchOffset, hitBox.min[swizzle[1]] + touchOffset};
+	const relMax = Vec2d {hitBox.max[swizzle[0]] - touchOffset, hitBox.max[swizzle[1]] - touchOffset};
+	var blockPosList = List(Vec3i).init(main.stackAllocator);
+	var rel: Vec2d = undefined;
+	rel[0] = relMin[0] - 1.0;
+	while (rel[0] != relMax[0]) {
+		rel[0] = @min(rel[0] + 1.0, relMax[0]);
+		rel[1] = relMin[1] - 1.0;
+		while (rel[1] != relMax[1]) {
+			rel[1] = @min(rel[1] + 1.0, relMax[1]);
+			var blockPos: Vec3i = undefined;
+			blockPos[swizzle[0]] = @intFromFloat(entity.pos[swizzle[0]] + rel[0]);
+			blockPos[swizzle[1]] = @intFromFloat(entity.pos[swizzle[1]] + rel[1]);
+			blockPos[swizzle[2]] = @intFromFloat(entity.pos[swizzle[2]] + uniformZ);
+			var isUnique: bool = true;
+			for (blockPosList.items) |blockPosElement| {
+				if (std.meta.eql(blockPos, blockPosElement)) {
+					isUnique = false;
+					break;
+				}
+			}
+			if (isUnique) {
+				blockPosList.append(blockPos);
+			}
+		}
+	}
+	for (blockPosList.items) |blockPosElement| {
+		const block: ?Block = main.server.world.?.getBlock(blockPosElement[0], blockPosElement[1], blockPosElement[2]);
+		if (block != null) {
+			block.?.onTouchedBy(entity, blockPosElement, neighbor);
+		}
+	}
+	blockPosList.deinit();
+}
+
+fn touchBlocks(entity: main.server.Entity, hitBox: collision.Box) {
+	touchBlocksFromDirection(entity, hitBox, hitBox.max[2] + touchOffset, {0, 1, 2}, chunk.Neighbor.dirUp);
+	touchBlocksFromDirection(entity, hitBox, hitBox.min[2] - touchOffset, {0, 1, 2}, chunk.Neighbor.dirDown);
+	touchBlocksFromDirection(entity, hitBox, hitBox.max[0] + touchOffset, {1, 2, 0}, chunk.Neighbor.dirPosX);
+	touchBlocksFromDirection(entity, hitBox, hitBox.min[0] - touchOffset, {1, 2, 0}, chunk.Neighbor.dirNegX);
+	touchBlocksFromDirection(entity, hitBox, hitBox.max[1] + touchOffset, {0, 2, 1}, chunk.Neighbor.dirPosY);
+	touchBlocksFromDirection(entity, hitBox, hitBox.min[1] - touchOffset, {0, 2, 1}, chunk.Neighbor.dirNegY);
+}
+
 pub fn update(deltaTime: f64) void { // MARK: update()
 	const gravity = 30.0;
 	const terminalVelocity = 90.0;
@@ -1129,7 +1176,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		} else if (Player.eyeCoyote > 0) {
 			Player.eyePos[2] -= move[2];
 		}
-
+		touchBlocks(Player.super, hitBox);
 	} else {
 		Player.super.pos += move;
 	}
