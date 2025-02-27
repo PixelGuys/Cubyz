@@ -6,7 +6,7 @@
 	},
 	.rotation = .log,
 	.model = "cubyz:cube",
-	.texture = "cubyz:wood/willow_log",
-	.texture_top = "cubyz:wood/willow_log",
-	.texture_bottom = "cubyz:wood/willow_log_top",
+	.texture = "cubyz:mahogany_log",
+	.texture_top = "cubyz:mahogany_log_top",
+	.texture_bottom = "cubyz:mahogany_log_top",
 }
