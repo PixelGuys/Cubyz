@@ -13,7 +13,7 @@ pub fn loadData(zon: main.ZonElement) Data {
 
 pub fn combineModifiers(data1: Data, data2: Data) ?Data {
 	if(data1.tag != data2.tag) return null;
-	return .{.strength = data1.strength + data2.strength, .tag = data1.tag};
+	return .{.strength = std.math.hypot(data1.strength, data2.strength), .tag = data1.tag};
 }
 
 pub fn changeToolParameters(_: *Tool, _: Data) void {}
