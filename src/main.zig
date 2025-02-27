@@ -5,6 +5,7 @@ pub const server = @import("server");
 
 pub const audio = @import("audio.zig");
 pub const assets = @import("assets.zig");
+pub const migrations = @import("migrations.zig");
 pub const blocks = @import("blocks.zig");
 pub const chunk = @import("chunk.zig");
 pub const entity = @import("entity.zig");

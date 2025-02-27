@@ -210,6 +210,10 @@ pub fn List(comptime T: type) type {
 			}
 		}
 
+		pub fn replace(self: *@This(), i: usize, elem: T) void {
+			self.items[i] = elem;
+		}
+
 		pub const Writer = if (T != u8)
 			@compileError("The Writer interface is only defined for ArrayList(u8) " ++
 				"but the given type is ArrayList(" ++ @typeName(T) ++ ")")
