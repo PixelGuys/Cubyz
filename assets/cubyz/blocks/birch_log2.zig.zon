@@ -7,6 +7,6 @@
     .rotation = .log,
     .model = "cubyz:cube",
     .texture = "cubyz:birch_log2",
-    .texture_top = "cubyz:birch_log2",
+    .texture_top = "cubyz:birch_log_top",
     .texture_bottom = "cubyz:birch_log_top",
 }

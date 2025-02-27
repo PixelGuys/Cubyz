@@ -1,0 +1,6 @@
+.{
+    .typ = "rename",
+    .asset = "item",
+    .old = "cubyz:birch_log",
+    .new = "cubyz:birch_log2",
+}
