@@ -20,5 +20,5 @@
 	},
 	.model = "cubyz:cube",
 	.rotation = .stairs,
-	.texture = "cubyz:wood/mahogany_planks",
+	.texture = "cubyz:mahogany_planks",
 }
