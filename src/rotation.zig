@@ -75,7 +75,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 				}
 				if(power >= oldBlock.breakingPower()) {
 					if(isTool) {
-						return .{.yes_costsDurability = 1};
+						return .{.yes_costsDurability = @intFromFloat(@ceil(oldBlock.blockHealth()/power))};
 					} else return .yes;
 				}
 			} else {
