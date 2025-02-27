@@ -7,10 +7,10 @@
 	.absorbedLight = 0x202830,
 	.rotation = .fence,
 	.model = "cubyz:fence",
-	.texture = "cubyz:baobab_fence",
-	.texture_top = "cubyz:baobab_fence_top",
-	.texture_bottom = "cubyz:baobab_fence_top",
+	.texture = "cubyz:wood/oak_fence",
+	.texture_top = "cubyz:wood/oak_fence_top",
+	.texture_bottom = "cubyz:wood/oak_fence_top",
 	.item = .{
-		.texture = "fence/baobab.png",
+		.texture = "fence/oak.png",
 	},
 }

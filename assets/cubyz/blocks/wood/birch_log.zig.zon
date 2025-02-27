@@ -1,0 +1,12 @@
+.{
+	.class = .wood,
+	.blockHealth = 8,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.rotation = .log,
+	.model = "cubyz:cube",
+	.texture = "cubyz:wood/birch_log",
+	.texture_top = "cubyz:wood/birch_log_top",
+	.texture_bottom = "cubyz:wood/birch_log_top",
+}
