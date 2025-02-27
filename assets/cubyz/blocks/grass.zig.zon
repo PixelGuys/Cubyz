@@ -1,5 +1,5 @@
 .{
-	.class = .sand,
+	.tags = .{.sand},
 	.blockHealth = 7,
 	.drops = .{
 		.{.items = .{"cubyz:soil"}},

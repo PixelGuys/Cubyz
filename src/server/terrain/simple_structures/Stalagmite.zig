@@ -63,7 +63,7 @@ pub fn generate(self: *Stalagmite, x: i32, y: i32, z: i32, chunk: *main.chunk.Se
 					if(dist < size*size) {
 						if(x3 >= 0 and x3 < chunk.super.width and y3 >= 0 and y3 < chunk.super.width and z3 >= 0 and z3 < chunk.super.width) {
 							const block: main.blocks.Block = chunk.getBlock(x3, y3, z3);
-							if(block.typ == 0 or block.degradable() or block.blockClass() == .fluid) {
+							if(block.typ == 0 or block.degradable()) {
 								chunk.updateBlockInGeneration(x3, y3, z3, self.block);
 							}
 						}

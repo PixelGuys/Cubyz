@@ -1,5 +1,5 @@
 .{
-	.class = .air,
+	.tags = .{.air},
 	.breakingPower = 0,
 	.hardness = 4,
 

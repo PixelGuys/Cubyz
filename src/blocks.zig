@@ -14,14 +14,45 @@ const models = @import("models.zig");
 const rotation = @import("rotation.zig");
 const RotationMode = rotation.RotationMode;
 
-pub const BlockClass = enum(u8) {
-	wood,
-	stone,
-	sand,
-	unbreakable,
-	leaf,
-	fluid,
-	air,
+pub const BlockTag = enum(u32) {
+	air = 0,
+	fluid = 1,
+	_,
+
+	var tagList: main.List([]const u8) = .init(allocator);
+	var tagIds: std.StringHashMap(BlockTag) = .init(allocator.allocator);
+
+	fn loadDefaults() void {
+		inline for(comptime std.meta.fieldNames(BlockTag)) |tag| {
+			std.debug.assert(find(tag) == @field(BlockTag, tag));
+		}
+	}
+
+	fn reset() void {
+		tagList.clearAndFree();
+		tagIds.clearAndFree();
+	}
+
+	pub fn find(tag: []const u8) BlockTag {
+		if(tagIds.get(tag)) |res| return res;
+		const result: BlockTag = @enumFromInt(tagList.items.len);
+		const dupedTag = allocator.dupe(u8, tag);
+		tagList.append(dupedTag);
+		tagIds.put(dupedTag, result) catch unreachable;
+		return result;
+	}
+
+	pub fn loadFromZon(_allocator: main.utils.NeverFailingAllocator, zon: ZonElement) []BlockTag {
+		const result = _allocator.alloc(BlockTag, zon.toSlice().len);
+		for(zon.toSlice(), 0..) |tagZon, i| {
+			result[i] = BlockTag.find(tagZon.as([]const u8, "incorrect"));
+		}
+		return result;
+	}
+
+	pub fn getName(tag: BlockTag) []const u8 {
+		return tagList.items[@intFromEnum(tag)];
+	}
 };
 
 var arena = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
@@ -45,6 +76,7 @@ pub const Ore = struct {
 	veins: f32,
 	/// maximum height this ore can be generated
 	maxHeight: i32,
+	minHeight: i32,
 
 	blockType: u16,
 };
@@ -64,7 +96,7 @@ var _degradable: [maxBlockCount]bool = undefined;
 var _viewThrough: [maxBlockCount]bool = undefined;
 var _alwaysViewThrough: [maxBlockCount]bool = undefined;
 var _hasBackFace: [maxBlockCount]bool = undefined;
-var _blockClass: [maxBlockCount]BlockClass = undefined;
+var _blockTags: [maxBlockCount][]BlockTag = undefined;
 var _light: [maxBlockCount]u32 = undefined;
 /// How much light this block absorbs if it is transparent
 var _absorption: [maxBlockCount]u32 = undefined;
@@ -84,9 +116,11 @@ var size: u32 = 0;
 pub var ores: main.List(Ore) = .init(allocator);
 
 pub fn init() void {
+	BlockTag.loadDefaults();
 }
 
 pub fn deinit() void {
+	arena.deinit();
 }
 
 pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
@@ -100,7 +134,8 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_breakingPower[size] = zon.get(f32, "breakingPower", 0);
 	_blockHealth[size] = zon.get(f32, "blockHealth", 1);
 
-	_blockClass[size] = std.meta.stringToEnum(BlockClass, zon.get([]const u8, "class", "stone")) orelse .stone;
+	_blockTags[size] = BlockTag.loadFromZon(allocator, zon.getChild("tags"));
+	if(_blockTags[size].len == 0) std.log.err("Block {s} is missing 'tags' field", .{id});
 	_light[size] = zon.get(u32, "emittedLight", 0);
 	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
 	_degradable[size] = zon.get(bool, "degradable", false);
@@ -125,6 +160,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 			.veins = oreProperties.get(f32, "veins", 0),
 			.size = oreProperties.get(f32, "size", 0),
 			.maxHeight = oreProperties.get(i32, "height", 0),
+			.minHeight = oreProperties.get(i32, "minHeight", std.math.minInt(i32)),
 			.density = oreProperties.get(f32, "density", 0.5),
 			.blockType = @intCast(size),
 		});
@@ -201,8 +237,10 @@ pub fn reset() void {
 	size = 0;
 	ores.clearAndFree();
 	meshes.reset();
+	BlockTag.reset();
 	_ = arena.reset(.free_all);
 	reverseIndices = .init(arena.allocator().allocator);
+	BlockTag.loadDefaults();
 }
 
 pub fn getTypeById(id: []const u8) u16 {
@@ -300,8 +338,8 @@ pub const Block = packed struct { // MARK: Block
 		return _hasBackFace[self.typ];
 	}
 
-	pub inline fn blockClass(self: Block) BlockClass {
-		return _blockClass[self.typ];
+	pub inline fn blockTags(self: Block) []const BlockTag {
+		return _blockTags[self.typ];
 	}
 
 	pub inline fn light(self: Block) u32 {

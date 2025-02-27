@@ -59,7 +59,7 @@ const Material = struct { // MARK: Material
 			};
 			modifier.* = .{
 				.vTable = vTable,
-				.strength = item.get(f32, "strength", 0),
+				.data = vTable.loadData(item),
 			};
 		}
 	}
@@ -84,30 +84,37 @@ const Material = struct { // MARK: Material
 };
 
 const Modifier = struct {
-	strength: f32,
+	data: VTable.Data,
 	vTable: *const VTable,
 
 	pub const VTable = struct {
-		combineModifiers: *const fn(strength1: f32, strength2: f32) f32,
-		changeToolParameters: *const fn(tool: *Tool, stength: f32) void,
-		printTooltip: *const fn(outString: *main.List(u8), stength: f32) void,
+		const Data = packed struct(u128) {pad: u128};
+		combineModifiers: *const fn(data1: Data, data2: Data) ?Data,
+		changeToolParameters: *const fn(tool: *Tool, data: Data) void,
+		changeBlockPower: *const fn(power: f32, block: main.blocks.Block, data: Data) f32,
+		printTooltip: *const fn(outString: *main.List(u8), data: Data) void,
+		loadData: *const fn(zon: ZonElement) Data,
 		priority: f32,
 	};
 
-	pub fn combineModifiers(a: Modifier, b: Modifier) Modifier {
+	pub fn combineModifiers(a: Modifier, b: Modifier) ?Modifier {
 		std.debug.assert(a.vTable == b.vTable);
 		return .{
-			.strength = a.vTable.combineModifiers(a.strength, b.strength),
+			.data = a.vTable.combineModifiers(a.data, b.data) orelse return null,
 			.vTable = a.vTable,
 		};
 	}
 
 	pub fn changeToolParameters(self: Modifier, tool: *Tool) void {
-		self.vTable.changeToolParameters(tool, self.strength);
+		self.vTable.changeToolParameters(tool, self.data);
+	}
+
+	pub fn changeBlockPower(self: Modifier, power: f32, block: main.blocks.Block) f32 {
+		return self.vTable.changeBlockPower(power, block, self.data);
 	}
 
 	pub fn printTooltip(self: Modifier, outString: *main.List(u8)) void {
-		self.vTable.printTooltip(outString, self.strength);
+		self.vTable.printTooltip(outString, self.data);
 	}
 };
 
@@ -315,7 +322,7 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 			outer: for(material.modifiers) |newMod| {
 				for(tempModifiers.items) |*oldMod| {
 					if(oldMod.vTable == newMod.vTable) {
-						oldMod.* = oldMod.combineModifiers(newMod);
+						oldMod.* = oldMod.combineModifiers(newMod) orelse continue;
 						continue :outer;
 					}
 				}
@@ -381,7 +388,7 @@ const FunctionType = enum {
 
 pub const ToolType = struct { // MARK: ToolType
 	id: []const u8,
-	blockClass: main.blocks.BlockClass,
+	blockTags: []main.blocks.BlockTag,
 	slotInfos: [25]SlotInfo,
 	pixelSources: [16][16]u8,
 	pixelSourcesOverlay: [16][16]u8,
@@ -570,8 +577,16 @@ pub const Tool = struct { // MARK: Tool
 		return self.tooltip.items;
 	}
 
-	pub fn getPowerByBlockClass(self: *Tool, blockClass: blocks.BlockClass) f32 {
-		if(blockClass == self.type.blockClass) return self.power;
+	pub fn getBlockPower(self: *Tool, block: main.blocks.Block) f32 {
+		var power = self.power;
+		for(self.modifiers) |modifier| {
+			power = modifier.changeBlockPower(power, block);
+		}
+		for(block.blockTags()) |blockTag| {
+			for(self.type.blockTags) |toolTag| {
+				if(toolTag == blockTag) return power;
+			}
+		}
 		return 0;
 	}
 
@@ -764,9 +779,11 @@ pub fn globalInit() void {
 	inline for(@typeInfo(modifierList).@"struct".decls) |decl| {
 		const ModifierStruct = @field(modifierList, decl.name);
 		modifiers.put(decl.name, &.{
-			.changeToolParameters = &ModifierStruct.changeToolParameters,
-			.combineModifiers = &ModifierStruct.combineModifiers,
-			.printTooltip = &ModifierStruct.printTooltip,
+			.changeToolParameters = @ptrCast(&ModifierStruct.changeToolParameters),
+			.changeBlockPower = @ptrCast(&ModifierStruct.changeBlockPower),
+			.combineModifiers = @ptrCast(&ModifierStruct.combineModifiers),
+			.printTooltip = @ptrCast(&ModifierStruct.printTooltip),
+			.loadData = @ptrCast(&ModifierStruct.loadData),
 			.priority = ModifierStruct.priority,
 		}) catch unreachable;
 	}
@@ -861,7 +878,7 @@ pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) vo
 	const idDupe = arena.allocator().dupe(u8, id);
 	toolTypes.put(idDupe, .{
 		.id = idDupe,
-		.blockClass = std.meta.stringToEnum(main.blocks.BlockClass, zon.get([]const u8, "blockClass", "none")) orelse .air,
+		.blockTags = main.blocks.BlockTag.loadFromZon(arena.allocator(), zon.getChild("blockTags")),
 		.slotInfos = slotInfos,
 		.pixelSources = pixelSources,
 		.pixelSourcesOverlay = pixelSourcesOverlay,

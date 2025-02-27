@@ -1,5 +1,5 @@
 .{
-	.blockClass = .stone,
+	.blockTags = .{.stone},
 	.slotTypes = .{
 		.{
 			.name = .handle,

@@ -51,7 +51,7 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 				const relY: f32 = @floatFromInt(y-cy << main.chunk.chunkShift);
 				const relZ: f32 = @floatFromInt(z-cz << main.chunk.chunkShift);
 				for(ores) |*ore| {
-					if(ore.maxHeight <= z << main.chunk.chunkShift) continue;
+					if(ore.maxHeight <= z << main.chunk.chunkShift or ore.minHeight > z << main.chunk.chunkShift) continue;
 					considerCoordinates(ore, relX, relY, relZ, chunk, seed);
 				}
 			}
