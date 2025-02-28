@@ -22,7 +22,7 @@ const padding: f32 = 8;
 var userList: []*main.server.User = &.{};
 
 fn kick(conn: *main.network.Connection) void {
-	conn.disconnect();
+	conn.disconnect(.kick);
 }
 
 pub fn onOpen() void {
@@ -38,7 +38,11 @@ pub fn onOpen() void {
 			const row = HorizontalList.init();
 			if(connection.user.?.name.len != 0) {
 				row.add(Label.init(.{0, 0}, 200, connection.user.?.name, .left));
-				row.add(Button.initText(.{0, 0}, 100, "Kick", .{.callback = @ptrCast(&kick), .arg = @intFromPtr(connection)}));
+				if (connection.user.?.isLocal) {
+					row.add(Label.init(.{0, 0}, 100, "(You)", .center));
+				} else {
+					row.add(Button.initText(.{0, 0}, 100, "Kick", .{.callback = @ptrCast(&kick), .arg = @intFromPtr(connection)}));
+				}
 			} else {
 				const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{}", .{connection.remoteAddress}) catch unreachable;
 				defer main.stackAllocator.free(ip);
