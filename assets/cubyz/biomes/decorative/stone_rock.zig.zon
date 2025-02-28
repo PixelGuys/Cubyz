@@ -19,6 +19,10 @@
 			.chance = 2,
 		},
 		.{
+			.id = "cubyz:autumn/dead_forest",
+			.chance = 3,
+		},
+		.{
 			.id = "cubyz:grassland",
 			.chance = 3,
 		},
@@ -33,6 +37,14 @@
 		.{
 			.id = "cubyz:forest/base",
 			.chance = 4,
+		},
+		.{
+			.id = "cubyz:tundra/base",
+			.chance = 12,
+		},
+		.{
+			.id = "cubyz:tundra/patchy",
+			.chance = 6,
 		},
 	},
 }
