@@ -113,7 +113,7 @@
 		.output = "8 cubyz:torch",
 	},
 	.{
-		.inputs = .{"cubyz:pine_planks", "cubyz:coal" },
+		.inputs = .{"cubyz:pine_planks", "cubyz:coal"},
 		.output = "8 cubyz:torch",
 	},
 	.{
