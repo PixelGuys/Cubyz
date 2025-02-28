@@ -4,10 +4,10 @@ const main = @import("main.zig");
 const ZonElement = @import("zon.zig").ZonElement;
 const Palette = @import("assets.zig").Palette;
 
-var ARENA_ALLOCATOR = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
-const MIGRATION_ALLOCATOR = ARENA_ALLOCATOR.allocator();
+var arenaAllocator = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
+const migrationAllocator = arenaAllocator.allocator();
 
-var BLOCK_MIGRATIONS: std.StringHashMap([]const u8) = .init(MIGRATION_ALLOCATOR.allocator);
+var blockMigrations: std.StringHashMap([]const u8) = .init(migrationAllocator.allocator);
 
 
 pub fn registerBlockMigrations(migrations: *std.StringHashMap(ZonElement)) void {
@@ -15,7 +15,7 @@ pub fn registerBlockMigrations(migrations: *std.StringHashMap(ZonElement)) void 
 
 	var migrationIterator = migrations.iterator();
 	while (migrationIterator.next()) |migration| {
-		register(&BLOCK_MIGRATIONS, "block", migration.key_ptr.*, migration.value_ptr.*);
+		register(&blockMigrations, "block", migration.key_ptr.*, migration.value_ptr.*);
 	}
 }
 
@@ -31,16 +31,21 @@ fn register(
 
 	var migrationZonIterator = migrationZon.object.iterator();
 	while (migrationZonIterator.next()) |migration| {
-		const old = MIGRATION_ALLOCATOR.dupe(u8, migration.key_ptr.*);
-		const new = MIGRATION_ALLOCATOR.dupe(u8, migration.value_ptr.stringOwned);
-		collection.put(old, new) catch |e| {
-			MIGRATION_ALLOCATOR.free(old);
-			MIGRATION_ALLOCATOR.free(new);
+		if (collection.contains(migration.key_ptr.*)) {
 			std.log.err(
-				"Couldn't register {s} migration from {s}: `{s}` -> `{s}, error: {s}",
-				.{assetType, name, old, new,  @errorName(e)}
+				"Skipping name collision in {s} migration from {s}: `{s}` -> `{s}`",
+				.{assetType, name, migration.key_ptr.*, migration.value_ptr.stringOwned}
 			);
-		};
+			const existingMigration = collection.get(migration.key_ptr.*) orelse unreachable;
+			std.log.err(
+				"Mind existing {s} migration from {s}: `{s}` -> `{s}`",
+				.{assetType, name, migration.key_ptr.*, existingMigration}
+			);
+			continue;
+		}
+		const old = migrationAllocator.dupe(u8, migration.key_ptr.*);
+		const new = migrationAllocator.dupe(u8, migration.value_ptr.stringOwned);
+		collection.put(old, new) catch unreachable;
 
 		std.log.info(
 			"Registered {s} migration from {s}: `{s}` -> `{s}`",
@@ -50,10 +55,10 @@ fn register(
 }
 
 pub fn applyBlockPaletteMigrations(palette: *Palette) void {
-	std.log.info("Applying {} migrations to block palette", .{BLOCK_MIGRATIONS.count()});
+	std.log.info("Applying {} migrations to block palette", .{blockMigrations.count()});
 
 	for (palette.palette.items, 0..) |assetName, i| {
-		const newAssetName = BLOCK_MIGRATIONS.get(assetName) orelse continue;
+		const newAssetName = blockMigrations.get(assetName) orelse continue;
 		palette.replaceEntry(i, newAssetName);
 		std.log.info(
 			"Migrated block {s} -> {s}",
@@ -63,9 +68,10 @@ pub fn applyBlockPaletteMigrations(palette: *Palette) void {
 }
 
 pub fn reset() void {
-	BLOCK_MIGRATIONS.clearAndFree();
+	blockMigrations.clearAndFree();
+	_ = arenaAllocator.reset(.free_all);
 }
 
 pub fn deinit() void {
-	ARENA_ALLOCATOR.deinit();
+	arenaAllocator.deinit();
 }

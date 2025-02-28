@@ -16,7 +16,6 @@ const Vec3i = vec.Vec3i;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const terrain = server.terrain;
-const migrations_zig = main.migrations;
 
 const server = @import("server.zig");
 const User = server.User;
@@ -511,22 +510,17 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		} else { // Read the generator settings:
 			generatorSettings = try files.readToZon(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/generatorSettings.zig.zon", .{name}));
 		}
-
 		self.wio = WorldIO.init(try files.openDir(try std.fmt.bufPrint(&buf, "saves/{s}", .{name})), self);
 		errdefer self.wio.deinit();
-
 		const blockPaletteZon = files.readToZon(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/palette.zig.zon", .{name})) catch .null;
 		self.blockPalette = try main.assets.Palette.init(main.globalAllocator, blockPaletteZon, "cubyz:air");
 		errdefer self.blockPalette.deinit();
 		std.log.info("Loaded save block palette with {} blocks.", .{ self.blockPalette.size() },);
 
-		migrations_zig.applyBlockPaletteMigrations(self.blockPalette);
-
 		const biomePaletteZon = files.readToZon(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/biome_palette.zig.zon", .{name})) catch .null;
 		self.biomePalette = try main.assets.Palette.init(main.globalAllocator, biomePaletteZon, null);
 		errdefer self.biomePalette.deinit();
 		std.log.info("Loaded save biome palette with {} biomes.", .{ self.biomePalette.size() },);
-
 		errdefer main.assets.unloadAssets();
 
 		if(self.wio.hasWorldData()) {

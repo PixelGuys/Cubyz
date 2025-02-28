@@ -45,10 +45,6 @@ pub fn init() void {
 		&commonModels,
 	);
 
-	// Migrations have to be registered before the world is loaded so they can be
-	// applied to the world during load.
-	migrations_zig.registerBlockMigrations(&commonBlocksMigrations);
-
 	std.log.info(
 		"Finished assets init with {} blocks ({} migrations), {} items, {} tools. {} biomes, {} recipes",
 		.{
@@ -94,7 +90,6 @@ fn readDefaultFile(allocator: NeverFailingAllocator, dir: std.fs.Dir) !ZonElemen
 /// Files red are stored in output hashmap with asset ID as key.
 /// Asset ID are constructed as `{addonName}:{relativePathNoSuffix}`.
 /// relativePathNoSuffix is always unix style path with all extensions removed.
-/// `output` and `migrations` must share same `externalAllocator`.
 pub fn readAllZonFilesInAddons(
 	externalAllocator: NeverFailingAllocator,
 	addons: main.List(std.fs.Dir),
@@ -454,9 +449,8 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 	);
 	errdefer unloadAssets();
 
-	// Migrations have to be registered before the world is loaded so they can be
-	// applied to the world during load.
 	migrations_zig.registerBlockMigrations(&commonBlocksMigrations);
+	migrations_zig.applyBlockPaletteMigrations(blockPalette);
 
 	// models:
 	var modelIterator = models.iterator();
@@ -560,18 +554,6 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 }
 
 pub fn unloadAssets() void { // MARK: unloadAssets()
-	std.log.info(
-		"Unloading assets: {} blocks ({} migrations), {} items {} tools. {} biomes, {} recipes",
-		.{
-			commonBlocks.count(),
-			commonBlocksMigrations.count(),
-			commonItems.count(),
-			commonTools.count(),
-			commonBiomes.count(),
-			commonRecipes.count()
-		},
-	);
-
 	if(!loadedAssets) return;
 	loadedAssets = false;
 
