@@ -489,7 +489,7 @@ pub const StackAllocator = struct { // MARK: StackAllocator
 	/// `ret_addr` is optionally provided as the first return address of the
 	/// allocation call stack. If the value is `0` it means no return address
 	/// has been provided.
-	fn alloc(ctx: *anyopaque, len: usize, ptr_align: u8, ret_addr: usize) ?[*]u8 {
+	fn alloc(ctx: *anyopaque, len: usize, ptr_align: std.mem.Alignment, ret_addr: usize) ?[*]u8 {
 		const self: *StackAllocator = @ptrCast(@alignCast(ctx));
 		const start = std.mem.alignForward(usize, self.index, @as(usize, 1) << @intCast(ptr_align));
 		const end = getTrueAllocationEnd(start, len);
@@ -515,7 +515,7 @@ pub const StackAllocator = struct { // MARK: StackAllocator
 	/// `ret_addr` is optionally provided as the first return address of the
 	/// allocation call stack. If the value is `0` it means no return address
 	/// has been provided.
-	fn resize(ctx: *anyopaque, buf: []u8, buf_align: u8, new_len: usize, ret_addr: usize) bool {
+	fn resize(ctx: *anyopaque, buf: []u8, buf_align: std.mem.Alignment, new_len: usize, ret_addr: usize) bool {
 		const self: *StackAllocator = @ptrCast(@alignCast(ctx));
 		if(self.isInsideBuffer(buf)) {
 			const start = self.indexInBuffer(buf);
@@ -547,7 +547,7 @@ pub const StackAllocator = struct { // MARK: StackAllocator
 	/// `ret_addr` is optionally provided as the first return address of the
 	/// allocation call stack. If the value is `0` it means no return address
 	/// has been provided.
-	fn free(ctx: *anyopaque, buf: []u8, buf_align: u8, ret_addr: usize) void {
+	fn free(ctx: *anyopaque, buf: []u8, buf_align: std.mem.Alignment, ret_addr: usize) void {
 		const self: *StackAllocator = @ptrCast(@alignCast(ctx));
 		if(self.isInsideBuffer(buf)) {
 			const start = self.indexInBuffer(buf);
@@ -607,7 +607,7 @@ pub const ErrorHandlingAllocator = struct { // MARK: ErrorHandlingAllocator
 	/// `ret_addr` is optionally provided as the first return address of the
 	/// allocation call stack. If the value is `0` it means no return address
 	/// has been provided.
-	fn alloc(ctx: *anyopaque, len: usize, ptr_align: u8, ret_addr: usize) ?[*]u8 {
+	fn alloc(ctx: *anyopaque, len: usize, ptr_align: std.mem.Alignment, ret_addr: usize) ?[*]u8 {
 		const self: *ErrorHandlingAllocator = @ptrCast(@alignCast(ctx));
 		return self.backingAllocator.rawAlloc(len, ptr_align, ret_addr) orelse handleError();
 	}
@@ -627,7 +627,7 @@ pub const ErrorHandlingAllocator = struct { // MARK: ErrorHandlingAllocator
 	/// `ret_addr` is optionally provided as the first return address of the
 	/// allocation call stack. If the value is `0` it means no return address
 	/// has been provided.
-	fn resize(ctx: *anyopaque, buf: []u8, buf_align: u8, new_len: usize, ret_addr: usize) bool {
+	fn resize(ctx: *anyopaque, buf: []u8, buf_align: std.mem.Alignment, new_len: usize, ret_addr: usize) bool {
 		const self: *ErrorHandlingAllocator = @ptrCast(@alignCast(ctx));
 		return self.backingAllocator.rawResize(buf, buf_align, new_len, ret_addr);
 	}
@@ -643,7 +643,7 @@ pub const ErrorHandlingAllocator = struct { // MARK: ErrorHandlingAllocator
 	/// `ret_addr` is optionally provided as the first return address of the
 	/// allocation call stack. If the value is `0` it means no return address
 	/// has been provided.
-	fn free(ctx: *anyopaque, buf: []u8, buf_align: u8, ret_addr: usize) void {
+	fn free(ctx: *anyopaque, buf: []u8, buf_align: std.mem.Alignment, ret_addr: usize) void {
 		const self: *ErrorHandlingAllocator = @ptrCast(@alignCast(ctx));
 		self.backingAllocator.rawFree(buf, buf_align, ret_addr);
 	}
@@ -656,19 +656,19 @@ pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 
 	/// This function is not intended to be called except from within the
 	/// implementation of an Allocator
-	pub inline fn rawAlloc(self: NeverFailingAllocator, len: usize, ptr_align: u8, ret_addr: usize) ?[*]u8 {
+	pub inline fn rawAlloc(self: NeverFailingAllocator, len: usize, ptr_align: std.mem.Alignment, ret_addr: usize) ?[*]u8 {
 		return self.allocator.vtable.alloc(self.allocator.ptr, len, ptr_align, ret_addr);
 	}
 
 	/// This function is not intended to be called except from within the
 	/// implementation of an Allocator
-	pub inline fn rawResize(self: NeverFailingAllocator, buf: []u8, log2_buf_align: u8, new_len: usize, ret_addr: usize) bool {
+	pub inline fn rawResize(self: NeverFailingAllocator, buf: []u8, log2_buf_align: std.mem.Alignment, new_len: usize, ret_addr: usize) bool {
 		return self.allocator.vtable.resize(self.allocator.ptr, buf, log2_buf_align, new_len, ret_addr);
 	}
 
 	/// This function is not intended to be called except from within the
 	/// implementation of an Allocator
-	pub inline fn rawFree(self: NeverFailingAllocator, buf: []u8, log2_buf_align: u8, ret_addr: usize) void {
+	pub inline fn rawFree(self: NeverFailingAllocator, buf: []u8, log2_buf_align: std.mem.Alignment, ret_addr: usize) void {
 		return self.allocator.vtable.free(self.allocator.ptr, buf, log2_buf_align, ret_addr);
 	}
 
@@ -881,13 +881,13 @@ pub const BufferFallbackAllocator = struct { // MARK: BufferFallbackAllocator
 		};
 	}
 
-	fn alloc(ctx: *anyopaque, len: usize, log2_ptr_align: u8, ra: usize) ?[*]u8 {
+	fn alloc(ctx: *anyopaque, len: usize, log2_ptr_align: std.mem.Alignment, ra: usize) ?[*]u8 {
 		const self: *BufferFallbackAllocator = @ptrCast(@alignCast(ctx));
 		return self.fixedBuffer.allocator().rawAlloc(len, log2_ptr_align, ra) orelse
 			return self.fallbackAllocator.rawAlloc(len, log2_ptr_align, ra);
 	}
 
-	fn resize(ctx: *anyopaque, buf: []u8, log2_buf_align: u8, new_len: usize, ra: usize) bool {
+	fn resize(ctx: *anyopaque, buf: []u8, log2_buf_align: std.mem.Alignment, new_len: usize, ra: usize) bool {
 		const self: *BufferFallbackAllocator = @ptrCast(@alignCast(ctx));
 		if (self.fixedBuffer.ownsPtr(buf.ptr)) {
 			return self.fixedBuffer.allocator().rawResize(buf, log2_buf_align, new_len, ra);
@@ -896,7 +896,7 @@ pub const BufferFallbackAllocator = struct { // MARK: BufferFallbackAllocator
 		}
 	}
 
-	fn free(ctx: *anyopaque, buf: []u8, log2_buf_align: u8, ra: usize) void {
+	fn free(ctx: *anyopaque, buf: []u8, log2_buf_align: std.mem.Alignment, ra: usize) void {
 		const self: *BufferFallbackAllocator = @ptrCast(@alignCast(ctx));
 		if (self.fixedBuffer.ownsPtr(buf.ptr)) {
 			return self.fixedBuffer.allocator().rawFree(buf, log2_buf_align, ra);
