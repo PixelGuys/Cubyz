@@ -45,6 +45,7 @@ fn register(
 		}
 		const old = migrationAllocator.dupe(u8, migration.key_ptr.*);
 		const new = migrationAllocator.dupe(u8, migration.value_ptr.stringOwned);
+
 		collection.put(old, new) catch unreachable;
 
 		std.log.info(
@@ -59,11 +60,8 @@ pub fn applyBlockPaletteMigrations(palette: *Palette) void {
 
 	for (palette.palette.items, 0..) |assetName, i| {
 		const newAssetName = blockMigrations.get(assetName) orelse continue;
+		std.log.info("Migrating block {s} -> {s}", .{assetName, newAssetName});
 		palette.replaceEntry(i, newAssetName);
-		std.log.info(
-			"Migrated block {s} -> {s}",
-			.{assetName, newAssetName}
-		);
 	}
 }
 
