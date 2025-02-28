@@ -342,34 +342,39 @@ pub const RotationModes = struct {
 		}
 
 		fn branchTransform(quad: *main.models.QuadInfo, data: BranchData) void {
-			for(&quad.corners, &quad.cornerUV) |*corner, *cornerUV| {
-				// X
+			for(&quad.corners) |*corner| {
 				if(!data.isConnectedNegX and corner[0] == 0) {
-					corner[0] = 0.25;
-					cornerUV[0] = 0.25;
+					degenerateQuad(quad);
+					break;
 				}
 				if(!data.isConnectedPosX and corner[0] == 1) {
-					corner[0] = 0.25;
-					cornerUV[0] = 0.25;
+					degenerateQuad(quad);
+					break;
 				}
-				// Y
 				if(!data.isConnectedNegY and corner[1] == 0) {
-					corner[1] = 0.25;
-					cornerUV[1] = 0.25;
+					degenerateQuad(quad);
+					break;
 				}
 				if(!data.isConnectedPosY and corner[1] == 1) {
-					corner[1] = 0.25;
-					cornerUV[1] = 0.25;
+					degenerateQuad(quad);
+					break;
 				}
-				// Z
 				if (!data.isConnectedNegZ and corner[2] == 0) {
-					corner[2] = 0.25;
-					cornerUV[1] = 0.25;
+					degenerateQuad(quad);
+					break;
 				}
 				if (!data.isConnectedPosZ and corner[2] == 1) {
-					corner[2] = 0.25;
-					cornerUV[1] = 0.25;
+					degenerateQuad(quad);
+					break;
 				}
+			}
+		}
+
+		fn degenerateQuad(quad: *main.models.QuadInfo) void {
+			for(&quad.corners) |*corner| {
+				corner[0] = 0.5;
+				corner[1] = 0.5;
+				corner[2] = 0.5;
 			}
 		}
 
@@ -395,13 +400,7 @@ pub const RotationModes = struct {
 			const blockBaseModel = blocks.meshes.modelIndexStart(block.*);
 			const neighborBaseModel = blocks.meshes.modelIndexStart(neighborBlock);
 			const neighborModel = blocks.meshes.model(neighborBlock);
-			const targetVal = (
-				neighborBlock.solid()
-				and (
-					(blockBaseModel == neighborBaseModel)
-					or main.models.models.items[neighborModel].isNeighborOccluded[neighbor.reverse().toInt()]
-				)
-			);
+			const targetVal = (neighborBlock.solid() and ((blockBaseModel == neighborBaseModel) or main.models.models.items[neighborModel].isNeighborOccluded[neighbor.reverse().toInt()]));
 			var currentData: BranchData = @bitCast(@as(u6, @truncate(block.data)));
 			switch(neighbor) {
 				.dirNegX => {
