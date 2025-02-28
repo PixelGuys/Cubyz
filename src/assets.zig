@@ -359,18 +359,14 @@ fn registerRecipesFromZon(zon: ZonElement) void {
 	items_zig.registerRecipes(zon);
 }
 
-// Palette maps numerical IDs to string IDs of assets it is used for.
-// Numerical IDs are implied by index in palette.
 pub const Palette = struct { // MARK: Palette
 	palette: main.List([]const u8),
-
 	pub fn init(allocator: NeverFailingAllocator, zon: ZonElement, firstElement: ?[]const u8) !*Palette {
 		const self = allocator.create(Palette);
 		self.* = Palette {
 			.palette = .init(allocator),
 		};
 		errdefer self.deinit();
-
 		if(zon != .object or zon.object.count() == 0) {
 			if(firstElement) |elem| self.palette.append(allocator.dupe(u8, elem));
 		} else {
@@ -379,8 +375,8 @@ pub const Palette = struct { // MARK: Palette
 			for(palette) |*val| {
 				val.* = null;
 			}
-			var objectIterator = zon.object.iterator();
-			while(objectIterator.next()) |entry| {
+			var iterator = zon.object.iterator();
+			while(iterator.next()) |entry| {
 				palette[entry.value_ptr.as(usize, std.math.maxInt(usize))] = entry.key_ptr.*;
 			}
 			if(firstElement) |elem| std.debug.assert(std.mem.eql(u8, palette[0].?, elem));
