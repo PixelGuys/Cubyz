@@ -45,6 +45,10 @@ fn register(
 	name: []const u8,
 	migrationZon: ZonElement,
 ) void {
+	if ((migrationZon != .object or migrationZon.object.count() == 0)){
+		return;
+	}
+
 	var migrationZonIterator = migrationZon.object.iterator();
 	while (migrationZonIterator.next()) |migration| {
 		const old = MIGRATION_ALLOCATOR.dupe(u8, migration.key_ptr.*);
