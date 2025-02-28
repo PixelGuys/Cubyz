@@ -66,7 +66,7 @@ pub fn init() void {
 		"Finished assets init with {} blocks ({} migrations), {} items ({} migrations), {} tools. {} biomes ({} migrations), {} recipes",
 		.{
 			commonBlocks.count(),
-			commonBiomesMigrations.count(),
+			commonBlocksMigrations.count(),
 			commonItems.count(),
 			commonItemsMigrations.count(),
 			commonTools.count(),
@@ -449,8 +449,8 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 
 	var blocks = commonBlocks.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer blocks.clearAndFree();
-	var blockMigrations = commonBlocksMigrations.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
-	defer blockMigrations.clearAndFree();
+	var blocksMigrations = commonBlocksMigrations.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
+	defer blocksMigrations.clearAndFree();
 	var items = commonItems.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer items.clearAndFree();
 	var itemsMigrations = commonItemsMigrations.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
@@ -470,7 +470,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 		arenaAllocator,
 		assetFolder,
 		&blocks,
-		&blockMigrations,
+		&blocksMigrations,
 		&items,
 		&itemsMigrations,
 		&tools,
@@ -579,7 +579,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 		"Finished registering assets with {} blocks ({} migrations), {} items ({} migrations), {} tools. {} biomes ({} migrations), {} recipes",
 		.{
 			blocks.count(),
-			biomesMigrations.count(),
+			blocksMigrations.count(),
 			items.count(),
 			itemsMigrations.count(),
 			tools.count(),
@@ -595,7 +595,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 		"Unloading assets: {} blocks ({} migrations), {} items ({} migrations), {} tools. {} biomes ({} migrations), {} recipes",
 		.{
 			commonBlocks.count(),
-			commonBiomesMigrations.count(),
+			commonBlocksMigrations.count(),
 			commonItems.count(),
 			commonItemsMigrations.count(),
 			commonTools.count(),
