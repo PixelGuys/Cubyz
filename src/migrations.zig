@@ -78,32 +78,6 @@ pub fn applyBlockPaletteMigrations(palette: *Palette) void {
 	}
 }
 
-const MigrationType = enum {
-	rename,
-	noop,
-
-	fn fromString(string: []const u8) MigrationType {
-		return std.meta.stringToEnum(MigrationType, string) orelse {
-			std.log.err("Couldn't migration type {s}. Replacing it with noop", .{string});
-			return .noop;
-		};
-	}
-};
-
-const MigratedAsset = enum {
-	block,
-	item,
-	biome,
-	none,
-
-	fn fromString(string: []const u8) MigratedAsset {
-		return std.meta.stringToEnum(MigratedAsset, string) orelse {
-			std.log.err("Couldn't migrate asset {s}. Replacing it with none", .{string});
-			return .none;
-		};
-	}
-};
-
 pub fn reset() void {
 	BLOCK_MIGRATIONS.clearAndFree();
 	ITEM_MIGRATIONS.clearAndFree();
