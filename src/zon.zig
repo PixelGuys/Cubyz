@@ -662,7 +662,7 @@ const Parser = struct { // MARK: Parser
 		while(i < index and i < chars.len): (i += 1) {
 			if(chars[i] == '\n') {
 				lineNumber += 1;
-				lineStart = i;
+				lineStart = i + 1;
 			}
 		}
 		while(i < chars.len): (i += 1) {
