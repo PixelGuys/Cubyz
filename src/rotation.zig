@@ -396,34 +396,113 @@ pub const RotationModes = struct {
 			return blocks.meshes.modelIndexStart(block) + (block.data & 63);
 		}
 
+
+		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, neighbor: ?Neighbor, currentBlock: *Block, neighborBlock: Block, blockPlacing: bool) bool {
+			if(blockPlacing) {
+				const blockBaseModel = blocks.meshes.modelIndexStart(currentBlock.*);
+				const neighborBaseModel = blocks.meshes.modelIndexStart(neighborBlock);
+				const neighborModel = blocks.meshes.model(neighborBlock);
+				const targetVal = (neighborBlock.solid() and ((blockBaseModel == neighborBaseModel) or main.models.models.items[neighborModel].isNeighborOccluded[neighbor.?.reverse().toInt()]));
+
+				var currentData: BranchData = @bitCast(@as(u6, @truncate(currentBlock.data)));
+
+				// Branch block upon placement should extend towards a block it was placed
+				// on if the block is solid or also uses branch model.
+				// Mind that directions of neighbor and data field are inverted - positive
+				// neighbor direction means negative corresponding direction data field.
+				switch(neighbor.?.reverse()) {
+					.dirNegX => {
+						currentData.isConnectedPosX = targetVal;
+					},
+					.dirPosX => {
+						currentData.isConnectedNegX = targetVal;
+					},
+					.dirNegY => {
+						currentData.isConnectedPosY = targetVal;
+					},
+					.dirPosY => {
+						currentData.isConnectedNegY = targetVal;
+					},
+					.dirDown => {
+						currentData.isConnectedPosZ = targetVal;
+					},
+					.dirUp => {
+						currentData.isConnectedNegZ = targetVal;
+					},
+				}
+				const result: u16 = @as(u6, @bitCast(currentData));
+				if(result == currentBlock.data) return false;
+
+				currentBlock.data = result;
+				return true;
+			}
+			return false;
+		}
+
 		pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool {
 			const blockBaseModel = blocks.meshes.modelIndexStart(block.*);
 			const neighborBaseModel = blocks.meshes.modelIndexStart(neighborBlock);
 			const neighborModel = blocks.meshes.model(neighborBlock);
-			const targetVal = (neighborBlock.solid() and ((blockBaseModel == neighborBaseModel) or main.models.models.items[neighborModel].isNeighborOccluded[neighbor.reverse().toInt()]));
 			var currentData: BranchData = @bitCast(@as(u6, @truncate(block.data)));
-			switch(neighbor) {
-				.dirNegX => {
-					currentData.isConnectedNegX = targetVal;
-				},
-				.dirPosX => {
-					currentData.isConnectedPosX = targetVal;
-				},
-				.dirNegY => {
-					currentData.isConnectedNegY = targetVal;
-				},
-				.dirPosY => {
-					currentData.isConnectedPosY = targetVal;
-				},
-				.dirDown => {
-					currentData.isConnectedNegZ = targetVal;
-				},
-				.dirUp => {
-					currentData.isConnectedPosZ = targetVal;
-				},
+
+			// Handle joining with other branches. While placed, branches extend in a
+			// opposite direction than they were placed from, effectively connecting
+			// to the block they were placed at.
+			// However, if they were placed on another branch, that branch have to be
+			// updated and extended to meed the new branch.
+			if (blockBaseModel == neighborBaseModel) {
+				const neighborData: BranchData = @bitCast(@as(u6, @truncate(neighborBlock.data)));
+				// Mind that neighbor and current block data fields are inverted, so they
+				// extend towards each other.
+				switch(neighbor) {
+					.dirNegX => {
+						currentData.isConnectedNegX = neighborData.isConnectedPosX;
+					},
+					.dirPosX => {
+						currentData.isConnectedPosX = neighborData.isConnectedNegX;
+					},
+					.dirNegY => {
+						currentData.isConnectedNegY = neighborData.isConnectedPosY;
+					},
+					.dirPosY => {
+						currentData.isConnectedPosY = neighborData.isConnectedNegY;
+					},
+					.dirDown => {
+						currentData.isConnectedNegZ = neighborData.isConnectedPosZ;
+					},
+					.dirUp => {
+						currentData.isConnectedPosZ = neighborData.isConnectedNegZ;
+					},
+				}
+			} else {
+				// Handle any other block than one using branch model.
+				const targetVal = neighborBlock.solid() or main.models.models.items[neighborModel].isNeighborOccluded[neighbor.reverse().toInt()];
+
+				switch(neighbor) {
+					.dirNegX => {
+						currentData.isConnectedNegX = targetVal;
+					},
+					.dirPosX => {
+						currentData.isConnectedPosX = targetVal;
+					},
+					.dirNegY => {
+						currentData.isConnectedNegY = targetVal;
+					},
+					.dirPosY => {
+						currentData.isConnectedPosY = targetVal;
+					},
+					.dirDown => {
+						currentData.isConnectedNegZ = targetVal;
+					},
+					.dirUp => {
+						currentData.isConnectedPosZ = targetVal;
+					},
+				}
 			}
+
 			const result: u16 = @as(u6, @bitCast(currentData));
 			if(result == block.data) return false;
+
 			block.data = result;
 			return true;
 		}
