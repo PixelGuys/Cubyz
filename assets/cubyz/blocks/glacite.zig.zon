@@ -7,6 +7,12 @@
 	},
 	.item = .{
 		.material = .{
+		.modifiers = .{
+			.{
+				.id = "fragile",
+				.strength = 0.35,
+			},
+		},
 			.density = 2.5,
 			.strength = 1.5,
 			.elasticity = 0.0,

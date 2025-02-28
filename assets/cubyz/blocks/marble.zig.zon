@@ -6,12 +6,18 @@
 	},
 	.item = .{
 		.material = .{
-			.density = 2.7,
-			.strength = 1.4,
-			.elasticity = 2.8,
-			.grip = 0.5,
+		.modifiers = .{
+			.{
+				.id = "fragile",
+				.strength = 0.20,
+			},
+		},
+			.density = 2.6,
+			.strength = 2.6,
+			.elasticity = 0.0,
+			.grip = 1.0,
 			.hardness = 4.0,
-			.textureRoughness = 0.5,
+			.textureRoughness = 1.0,
 			.colors = .{
 				0xffA89B94, 0xffC9C0BB, 0xffECE9E3, 0xffFBF8F1, 0xffECE9E3,
 			},
