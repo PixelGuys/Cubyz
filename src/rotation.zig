@@ -476,7 +476,7 @@ pub const RotationModes = struct {
 				}
 			} else {
 				// Handle any other block than one using branch model.
-				const targetVal = neighborBlock.solid() or main.models.models.items[neighborModel].isNeighborOccluded[neighbor.reverse().toInt()];
+				const targetVal = neighborBlock.solid() and main.models.models.items[neighborModel].isNeighborOccluded[neighbor.reverse().toInt()];
 
 				switch(neighbor) {
 					.dirNegX => {
