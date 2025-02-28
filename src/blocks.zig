@@ -84,10 +84,10 @@ pub const Ore = struct {
 var _transparent: [maxBlockCount]bool = undefined;
 var _collide: [maxBlockCount]bool = undefined;
 var _id: [maxBlockCount][]u8 = undefined;
-/// Time in seconds to break this block by hand.
+
 var _blockHealth: [maxBlockCount]f32 = undefined;
-/// Minimum pickaxe/axe/shovel power required.
-var _breakingPower: [maxBlockCount]f32 = undefined;
+var _blockResistance: [maxBlockCount]f32 = undefined;
+
 var _solid: [maxBlockCount]bool = undefined;
 var _selectable: [maxBlockCount]bool = undefined;
 var _blockDrops: [maxBlockCount][]BlockDrop = undefined;
@@ -131,8 +131,8 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	reverseIndices.put(_id[size], @intCast(size)) catch unreachable;
 
 	_mode[size] = rotation.getByID(zon.get([]const u8, "rotation", "no_rotation"));
-	_breakingPower[size] = zon.get(f32, "breakingPower", 0);
 	_blockHealth[size] = zon.get(f32, "blockHealth", 1);
+	_blockResistance[size] = zon.get(f32, "blockResistance", 0);
 
 	_blockTags[size] = BlockTag.loadFromZon(allocator, zon.getChild("tags"));
 	if(_blockTags[size].len == 0) std.log.err("Block {s} is missing 'tags' field", .{id});
@@ -298,14 +298,12 @@ pub const Block = packed struct { // MARK: Block
 		return _id[self.typ];
 	}
 
-	/// Time in seconds to break this block by hand.
 	pub inline fn blockHealth(self: Block) f32 {
 		return _blockHealth[self.typ];
 	}
 
-	/// Minimum pickaxe/axe/shovel power required.
-	pub inline fn breakingPower(self: Block) f32 {
-		return _breakingPower[self.typ];
+	pub inline fn blockResistance(self: Block) f32 {
+		return _blockResistance[self.typ];
 	}
 
 	pub inline fn solid(self: Block) bool {

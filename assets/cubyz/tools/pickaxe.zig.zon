@@ -84,17 +84,17 @@
 				},
 				.{
 					.source = .density,
-					.destination = .power,
+					.destination = .damage,
 					.factor = .05,
 				},
 				.{
 					.source = .strength,
-					.destination = .power,
+					.destination = .damage,
 					.factor = 0.025,
 				},
 				.{
 					.source = .elasticity,
-					.destination = .power,
+					.destination = .damage,
 					.factor = 0.05,
 				},
 			},
@@ -125,18 +125,18 @@
 				},
 				.{
 					.source = .density,
-					.destination = .power,
+					.destination = .damage,
 					.factor = 0.300,
 				},
 				.{
 					.source = .strength,
-					.destination = .power,
+					.destination = .damage,
 					.functionType = .square,
 					.factor = 0.25,
 				},
 				.{
 					.source = .hardness,
-					.destination = .power,
+					.destination = .damage,
 					.functionType = .square,
 					.factor = 0.25,
 				},

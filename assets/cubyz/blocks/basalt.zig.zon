@@ -1,6 +1,7 @@
 .{
 	.tags = .{.stone},
 	.blockHealth = 20,
+	.blockResistance = 1,
 	.drops = .{
 		.{.items = .{.auto}},
 	},
@@ -18,7 +19,6 @@
 		},
 	},
 	.allowOres = true,
-	.breakingPower = 1,
 	.rotation = .stairs,
 	.model = "cubyz:cube",
 	.texture = "cubyz:basalt",
