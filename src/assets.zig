@@ -10,13 +10,77 @@ const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 var arena: main.utils.NeverFailingArenaAllocator = undefined;
 var arenaAllocator: NeverFailingAllocator = undefined;
+
 var commonBlocks: std.StringHashMap(ZonElement) = undefined;
+var commonBlocksMigrations: std.StringHashMap(ZonElement) = undefined;
+
 var commonBiomes: std.StringHashMap(ZonElement) = undefined;
+var commonBiomesMigrations: std.StringHashMap(ZonElement) = undefined;
+
 var commonItems: std.StringHashMap(ZonElement) = undefined;
+var commonItemsMigrations: std.StringHashMap(ZonElement) = undefined;
+
 var commonTools: std.StringHashMap(ZonElement) = undefined;
 var commonRecipes: std.StringHashMap(ZonElement) = undefined;
-var commonMigrations: std.StringHashMap(ZonElement) = undefined;
 var commonModels: std.StringHashMap([]const u8) = undefined;
+
+
+pub fn init() void {
+	biomes_zig.init();
+	blocks_zig.init();
+
+	arena = .init(main.globalAllocator);
+	arenaAllocator = arena.allocator();
+
+	commonBlocks = .init(arenaAllocator.allocator);
+	commonBlocksMigrations = .init(arenaAllocator.allocator);
+
+	commonItems = .init(arenaAllocator.allocator);
+	commonItemsMigrations = .init(arenaAllocator.allocator);
+
+	commonTools = .init(arenaAllocator.allocator);
+
+	commonBiomes = .init(arenaAllocator.allocator);
+	commonBiomesMigrations = .init(arenaAllocator.allocator);
+
+	commonRecipes = .init(arenaAllocator.allocator);
+	commonModels = .init(arenaAllocator.allocator);
+
+	readAssets(
+		arenaAllocator,
+		"assets/",
+		&commonBlocks,
+		&commonBlocksMigrations,
+		&commonItems,
+		&commonItemsMigrations,
+		&commonTools,
+		&commonBiomes,
+		&commonBiomesMigrations,
+		&commonRecipes,
+		&commonModels,
+	);
+
+	// Migrations have to be registered before the world is loaded so they can be
+	// applied to the world during load.
+	migrations_zig.registerBlockMigrations(&commonBlocksMigrations);
+	migrations_zig.registerItemMigrations(&commonItemsMigrations);
+	migrations_zig.registerBiomeMigrations(&commonBiomesMigrations);
+
+	std.log.info(
+		"Finished assets init with {} blocks ({} migrations), {} items ({} migrations), {} tools. {} biomes ({} migrations), {} recipes",
+		.{
+			commonBlocks.count(),
+			commonBiomesMigrations.count(),
+			commonItems.count(),
+			commonItemsMigrations.count(),
+			commonTools.count(),
+			commonBiomes.count(),
+			commonBiomesMigrations.count(),
+			commonRecipes.count()
+		},
+	);
+}
+
 
 fn readDefaultFile(allocator: NeverFailingAllocator, dir: std.fs.Dir) !ZonElement {
 	if (dir.openFile("_defaults.zig.zon", .{})) |val| {
@@ -44,106 +108,126 @@ fn readDefaultFile(allocator: NeverFailingAllocator, dir: std.fs.Dir) !ZonElemen
 	return .null;
 }
 
-/// Reads .zig.zon files recursively from all subfolders.
-pub fn readAllZonFilesInAddons(externalAllocator: NeverFailingAllocator, addons: main.List(std.fs.Dir), addonNames: main.List([]const u8), subPath: []const u8, defaults: bool, output: *std.StringHashMap(ZonElement)) void {
+/// Reads all asset `.zig.zon` files recursively from all sub folders.
+///
+/// Files red are stored in output hashmap with asset ID as key.
+/// Asset ID are constructed as `{addonName}:{relativePathNoSuffix}`.
+/// relativePathNoSuffix is always unix style path with all extensions removed.
+/// `output` and `migrations` must share same `externalAllocator`.
+pub fn readAllZonFilesInAddons(
+	externalAllocator: NeverFailingAllocator,
+	addons: main.List(std.fs.Dir),
+	addonNames: main.List([]const u8),
+	assetSubdirectory: []const u8,
+	defaults: bool,
+	output: *std.StringHashMap(ZonElement),
+	migrations: ?*std.StringHashMap(ZonElement),
+) void {
 	for(addons.items, addonNames.items) |addon, addonName| {
-		var dir = addon.openDir(subPath, .{.iterate = true}) catch |err| {
-			if(err != error.FileNotFound) {
-				std.log.err("Could not open addon directory {s}: {s}", .{subPath, @errorName(err)});
+		var addonAssetsSubdirectory = addon.openDir(assetSubdirectory, .{.iterate = true}) catch |e| {
+			if(e != error.FileNotFound) {
+				std.log.err("Could not open addon directory {s}: {s}", .{assetSubdirectory, @errorName(e)});
 			}
 			continue;
 		};
-		defer dir.close();
+		defer addonAssetsSubdirectory.close();
 
 		var defaultsArena: main.utils.NeverFailingArenaAllocator = .init(main.stackAllocator);
 		defer defaultsArena.deinit();
 
-		const defaultsArenaAllocator = defaultsArena.allocator();
+		const defaultsAllocator = defaultsArena.allocator();
+		var defaultMap = std.StringHashMap(ZonElement).init(defaultsAllocator.allocator);
 
-		var defaultMap = std.StringHashMap(ZonElement).init(defaultsArenaAllocator.allocator);
+		var directoryWalker = addonAssetsSubdirectory.walk(main.stackAllocator.allocator) catch unreachable;
+		defer directoryWalker.deinit();
 
-		var walker = dir.walk(main.stackAllocator.allocator) catch unreachable;
-		defer walker.deinit();
-
-		while(walker.next() catch |err| blk: {
-			std.log.err("Got error while iterating addon directory {s}: {s}", .{subPath, @errorName(err)});
-			break :blk null;
-		}) |entry| {
-			if(entry.kind == .file and !std.ascii.startsWithIgnoreCase(entry.basename, "_defaults") and std.ascii.endsWithIgnoreCase(entry.basename, ".zon") and !std.ascii.startsWithIgnoreCase(entry.path, "textures")) {
-				const fileSuffixLen = if(std.ascii.endsWithIgnoreCase(entry.basename, ".zig.zon")) ".zig.zon".len else ".zon".len;
-				const folderName = addonName;
-				const id: []u8 = externalAllocator.alloc(u8, folderName.len + 1 + entry.path.len - fileSuffixLen);
-				errdefer externalAllocator.free(id);
-				@memcpy(id[0..folderName.len], folderName);
-				id[folderName.len] = ':';
-				for(0..entry.path.len - fileSuffixLen) |i| {
-					if(entry.path[i] == '\\') { // Convert windows path seperators
-						id[folderName.len+1+i] = '/';
-					} else {
-						id[folderName.len+1+i] = entry.path[i];
-					}
-				}
-
-				const string = dir.readFileAlloc(main.stackAllocator.allocator, entry.path, std.math.maxInt(usize)) catch |err| {
-					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
-					continue;
-				};
-				defer main.stackAllocator.free(string);
-
-				const zon = ZonElement.parseFromString(externalAllocator, string);
-				if (defaults) {
-					const path = entry.dir.realpathAlloc(main.stackAllocator.allocator, ".") catch unreachable;
-					defer main.stackAllocator.free(path);
-
-					const result = defaultMap.getOrPut(path) catch unreachable;
-
-					if (!result.found_existing) {
-						result.key_ptr.* = defaultsArenaAllocator.dupe(u8, path);
-						const default: ZonElement = readDefaultFile(defaultsArenaAllocator, entry.dir) catch |err| blk: {
-							std.log.err("Failed to read default file: {s}", .{@errorName(err)});
-							break :blk .null;
-						};
-
-						result.value_ptr.* = default;
-					}
-
-					zon.join(result.value_ptr.*);
-				}
-				output.put(id, zon) catch unreachable;
+		while(directoryWalker.next() catch |e| block_break: {
+			std.log.err("Got error while iterating addon directory {s}: {s}", .{assetSubdirectory, @errorName(e)});
+			break :block_break null;
+		}) |directoryEntry| {
+			if(
+				(directoryEntry.kind != .file)
+				or (std.ascii.startsWithIgnoreCase(directoryEntry.basename, "_defaults"))
+				or (!std.ascii.endsWithIgnoreCase(directoryEntry.basename, ".zon"))
+				or (std.ascii.startsWithIgnoreCase(directoryEntry.path, "textures"))
+			){
+				continue;
 			}
+
+			const fileSuffixLen = if(std.ascii.endsWithIgnoreCase(directoryEntry.basename, ".zig.zon")) ".zig.zon".len else ".zon".len;
+			const folderName = addonName;
+			const assetId: []u8 = externalAllocator.alloc(u8, folderName.len + 1 + directoryEntry.path.len - fileSuffixLen);
+			errdefer externalAllocator.free(assetId);
+
+			@memcpy(assetId[0..folderName.len], folderName);
+			assetId[folderName.len] = ':';
+
+			// Copy path relative to asset directory as part of asset ID after addon
+			// namespace. For consistency windows style path separators are converted to
+			// unix style.
+			for(0..directoryEntry.path.len - fileSuffixLen) |i| {
+				if(directoryEntry.path[i] == '\\') {
+					assetId[folderName.len+1+i] = '/';
+				} else {
+					assetId[folderName.len+1+i] = directoryEntry.path[i];
+				}
+			}
+
+			const fileContent = addonAssetsSubdirectory.readFileAlloc(
+				main.stackAllocator.allocator,
+				directoryEntry.path,
+				std.math.maxInt(usize)
+			) catch |e| {
+				std.log.err("Could not open {s}/{s}: {s}", .{assetSubdirectory, directoryEntry.path, @errorName(e)});
+				continue;
+			};
+			defer main.stackAllocator.free(fileContent);
+
+			const zon = ZonElement.parseFromString(externalAllocator, fileContent);
+
+			// If this is migrations file, we interrupt normal asset processing and store it in migrations hashmap.
+			if (std.ascii.eqlIgnoreCase(directoryEntry.basename, "_migrations.zig.zon")) {
+				if (migrations == null) {
+					std.log.err("Migrations not allowed for {s}", .{assetSubdirectory});
+					continue;
+				}
+				(migrations orelse unreachable).put(assetId, zon) catch unreachable;
+				// This means that we skip default file reading and storing file content as normal asset.
+				continue;
+			}
+
+			if (defaults) {
+				const path = directoryEntry.dir.realpathAlloc(main.stackAllocator.allocator, ".") catch unreachable;
+				defer main.stackAllocator.free(path);
+
+				const result = defaultMap.getOrPut(path) catch unreachable;
+
+				if (!result.found_existing) {
+					result.key_ptr.* = defaultsAllocator.dupe(u8, path);
+					const default: ZonElement = readDefaultFile(defaultsAllocator, directoryEntry.dir) catch |err| blk: {
+						std.log.err("Failed to read default file: {s}", .{@errorName(err)});
+						break :blk .null;
+					};
+
+					result.value_ptr.* = default;
+				}
+
+				zon.join(result.value_ptr.*);
+			}
+			output.put(assetId, zon) catch unreachable;
 		}
 	}
 }
-/// Reads text files recursively from all subfolders.
-pub fn readAllFilesInAddons(externalAllocator: NeverFailingAllocator, addons: main.List(std.fs.Dir), subPath: []const u8, output: *main.List([]const u8)) void {
-	for(addons.items) |addon| {
-		var dir = addon.openDir(subPath, .{.iterate = true}) catch |err| {
-			if(err != error.FileNotFound) {
-				std.log.err("Could not open addon directory {s}: {s}", .{subPath, @errorName(err)});
-			}
-			continue;
-		};
-		defer dir.close();
 
-		var walker = dir.walk(main.stackAllocator.allocator) catch unreachable;
-		defer walker.deinit();
 
-		while(walker.next() catch |err| blk: {
-			std.log.err("Got error while iterating addon directory {s}: {s}", .{subPath, @errorName(err)});
-			break :blk null;
-		}) |entry| {
-			if(entry.kind == .file) {
-				const string = dir.readFileAlloc(externalAllocator.allocator, entry.path, std.math.maxInt(usize)) catch |err| {
-					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
-					continue;
-				};
-				output.append(string);
-			}
-		}
-	}
-}
 /// Reads obj files recursively from all subfolders.
-pub fn readAllObjFilesInAddonsHashmap(externalAllocator: NeverFailingAllocator, addons: main.List(std.fs.Dir), addonNames: main.List([]const u8), subPath: []const u8, output: *std.StringHashMap([]const u8)) void {
+pub fn readAllObjFilesInAddonsHashmap(
+	externalAllocator: NeverFailingAllocator,
+	addons: main.List(std.fs.Dir),
+	addonNames: main.List([]const u8),
+	subPath: []const u8,
+	output: *std.StringHashMap([]const u8),
+) void {
 	for(addons.items, addonNames.items) |addon, addonName| {
 		var dir = addon.openDir(subPath, .{.iterate = true}) catch |err| {
 			if(err != error.FileNotFound) {
@@ -188,11 +272,13 @@ pub fn readAssets(
 	externalAllocator: NeverFailingAllocator,
 	assetPath: []const u8,
 	blocks: *std.StringHashMap(ZonElement),
+	blocksMigrations: *std.StringHashMap(ZonElement),
 	items: *std.StringHashMap(ZonElement),
+	itemsMigrations: *std.StringHashMap(ZonElement),
 	tools: *std.StringHashMap(ZonElement),
 	biomes: *std.StringHashMap(ZonElement),
+	biomesMigrations: *std.StringHashMap(ZonElement),
 	recipes: *std.StringHashMap(ZonElement),
-	migrations: *std.StringHashMap(ZonElement),
 	models: *std.StringHashMap([]const u8)
 ) void {
 	var addons = main.List(std.fs.Dir).init(main.stackAllocator);
@@ -225,52 +311,14 @@ pub fn readAssets(
 		main.stackAllocator.free(addonName);
 	};
 
-	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "blocks", true, blocks);
-	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "items", true, items);
-	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "tools", true, tools);
-	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "biomes", true, biomes);
-	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "recipes", false, recipes);
-	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "migrations", false, migrations);
+	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "blocks", true, blocks, blocksMigrations);
+	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "items", true, items, itemsMigrations);
+	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "tools", true, tools, null);
+	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "biomes", true, biomes, biomesMigrations);
+	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "recipes", false, recipes, null);
 	readAllObjFilesInAddonsHashmap(externalAllocator, addons, addonNames, "models", models);
 }
 
-pub fn init() void {
-	biomes_zig.init();
-	blocks_zig.init();
-	arena = .init(main.globalAllocator);
-	arenaAllocator = arena.allocator();
-	commonBlocks = .init(arenaAllocator.allocator);
-	commonItems = .init(arenaAllocator.allocator);
-	commonTools = .init(arenaAllocator.allocator);
-	commonBiomes = .init(arenaAllocator.allocator);
-	commonRecipes = .init(arenaAllocator.allocator);
-	commonMigrations = .init(arenaAllocator.allocator);
-	commonModels = .init(arenaAllocator.allocator);
-
-	readAssets(
-		arenaAllocator,
-		"assets/",
-		&commonBlocks,
-		&commonItems,
-		&commonTools,
-		&commonBiomes,
-		&commonRecipes,
-		&commonMigrations,
-		&commonModels,
-	);
-
-	// Migrations have to be registered before the world is loaded so they can be
-	// applied to the world during load.
-	var migrationIterator = commonMigrations.iterator();
-	while (migrationIterator.next()) |migration| {
-		migrations_zig.register(migration.key_ptr.*, migration.value_ptr.*);
-	}
-
-	std.log.info(
-		"Finished assets init with {} blocks, {} items, {} tools. {} biomes, {} recipes and {} migrations",
-		.{ commonBlocks.count(), commonItems.count(), commonTools.count(), commonBiomes.count(), commonRecipes.count(), commonMigrations.count() },
-	);
-}
 
 fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !*items_zig.BaseItem {
 	var split = std.mem.splitScalar(u8, id, ':');
@@ -304,14 +352,18 @@ fn registerRecipesFromZon(zon: ZonElement) void {
 	items_zig.registerRecipes(zon);
 }
 
+// Palette maps numerical IDs to string IDs of assets it is used for.
+// Numerical IDs are implied by index in palette.
 pub const Palette = struct { // MARK: Palette
 	palette: main.List([]const u8),
+
 	pub fn init(allocator: NeverFailingAllocator, zon: ZonElement, firstElement: ?[]const u8) !*Palette {
 		const self = allocator.create(Palette);
 		self.* = Palette {
 			.palette = .init(allocator),
 		};
 		errdefer self.deinit();
+
 		if(zon != .object or zon.object.count() == 0) {
 			if(firstElement) |elem| self.palette.append(allocator.dupe(u8, elem));
 		} else {
@@ -320,8 +372,8 @@ pub const Palette = struct { // MARK: Palette
 			for(palette) |*val| {
 				val.* = null;
 			}
-			var iterator = zon.object.iterator();
-			while(iterator.next()) |entry| {
+			var objectIterator = zon.object.iterator();
+			while(objectIterator.next()) |entry| {
 				palette[entry.value_ptr.as(usize, std.math.maxInt(usize))] = entry.key_ptr.*;
 			}
 			if(firstElement) |elem| std.debug.assert(std.mem.eql(u8, palette[0].?, elem));
@@ -358,6 +410,11 @@ pub const Palette = struct { // MARK: Palette
 	pub fn size(self: *Palette) usize {
 		return self.palette.items.len;
 	}
+
+	pub fn replaceEntry(self: *Palette, entryIndex: usize, newEntry: []const u8) void {
+		self.palette.allocator.free(self.palette.items[entryIndex]);
+		self.palette.items[entryIndex] = self.palette.allocator.dupe(u8, newEntry);
+	}
 };
 
 var loadedAssets: bool = false;
@@ -369,8 +426,14 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 	var blocks = commonBlocks.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer blocks.clearAndFree();
 
+	var blockMigrations = commonBlocksMigrations.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
+	defer blockMigrations.clearAndFree();
+
 	var items = commonItems.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer items.clearAndFree();
+
+	var itemsMigrations = commonItemsMigrations.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
+	defer itemsMigrations.clearAndFree();
 
 	var tools = commonTools.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer tools.clearAndFree();
@@ -378,11 +441,11 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 	var biomes = commonBiomes.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer biomes.clearAndFree();
 
+	var biomesMigrations = commonBiomesMigrations.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
+	defer biomesMigrations.clearAndFree();
+
 	var recipes = commonRecipes.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer recipes.clearAndFree();
-
-	var migrations = commonMigrations.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
-	defer migrations.clearAndFree();
 
 	var models = commonModels.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer models.clearAndFree();
@@ -391,27 +454,30 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 		arenaAllocator,
 		assetFolder,
 		&blocks,
+		&blockMigrations,
 		&items,
+		&itemsMigrations,
 		&tools,
 		&biomes,
+		&biomesMigrations,
 		&recipes,
-		&migrations,
 		&models,
 	);
 	errdefer unloadAssets();
 
-	// models:
-	var modelIterator = models.iterator();
-	while (modelIterator.next()) |entry| {
-		_ = main.models.registerModel(entry.key_ptr.*,  entry.value_ptr.*);
-	}
+	// Migrations have to be registered before the world is loaded so they can be
+	// applied to the world during load.
+	migrations_zig.registerBlockMigrations(&commonBlocksMigrations);
+	migrations_zig.registerItemMigrations(&commonItemsMigrations);
+	migrations_zig.registerBiomeMigrations(&commonBiomesMigrations);
 
-	// migrations
-	var migrationIterator = migrations.iterator();
-	while (migrationIterator.next()) |migration| {
-		migrations_zig.register(migration.key_ptr.*, migration.value_ptr.*);
+	{
+		// models:
+		var modelIterator = models.iterator();
+		while (modelIterator.next()) |entry| {
+			_ = main.models.registerModel(entry.key_ptr.*,  entry.value_ptr.*);
+		}
 	}
-
 	// blocks:
 	blocks_zig.meshes.registerBlockBreakingAnimation(assetFolder);
 	for(blockPalette.palette.items) |id| {
@@ -425,31 +491,36 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 		}
 		try registerBlock(assetFolder, id, zon);
 	}
-	var iterator = blocks.iterator();
-	while(iterator.next()) |entry| {
-		if(blocks_zig.hasRegistered(entry.key_ptr.*)) continue;
-		try registerBlock(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
-		blockPalette.add(entry.key_ptr.*);
+	{
+		var blocksIterator = blocks.iterator();
+		while(blocksIterator.next()) |entry| {
+			if(blocks_zig.hasRegistered(entry.key_ptr.*)) continue;
+			try registerBlock(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
+			blockPalette.add(entry.key_ptr.*);
+		}
 	}
-
-	// items:
-	iterator = items.iterator();
-	while(iterator.next()) |entry| {
-		_ = try registerItem(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
+	{
+		// items:
+		var itemsIterator = items.iterator();
+		while(itemsIterator.next()) |entry| {
+			_ = try registerItem(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
+		}
 	}
-
-	// tools:
-	iterator = tools.iterator();
-	while(iterator.next()) |entry| {
-		registerTool(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
+	{	// tools:
+		var toolsIterator = tools.iterator();
+		while(toolsIterator.next()) |entry| {
+			registerTool(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
+		}
 	}
 
 	// block drops:
 	blocks_zig.finishBlocks(blocks);
 
-	iterator = recipes.iterator();
-	while(iterator.next()) |entry| {
-		registerRecipesFromZon(entry.value_ptr.*);
+	{
+		var recipesIterator = recipes.iterator();
+		while(recipesIterator.next()) |entry| {
+			registerRecipesFromZon(entry.value_ptr.*);
+		}
 	}
 
 	// Biomes:
@@ -466,13 +537,16 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 		biomes_zig.register(id, i, zon);
 		i += 1;
 	}
-	iterator = biomes.iterator();
-	while(iterator.next()) |entry| {
-		if(biomes_zig.hasRegistered(entry.key_ptr.*)) continue;
-		biomes_zig.register(entry.key_ptr.*, i, entry.value_ptr.*);
-		biomePalette.add(entry.key_ptr.*);
-		i += 1;
+	{
+		var biomesIterator = biomes.iterator();
+		while(biomesIterator.next()) |entry| {
+			if(biomes_zig.hasRegistered(entry.key_ptr.*)) continue;
+			biomes_zig.register(entry.key_ptr.*, i, entry.value_ptr.*);
+			biomePalette.add(entry.key_ptr.*);
+			i += 1;
+		}
 	}
+
 	biomes_zig.finishLoading();
 
 	// Register paths for asset hot reloading:
@@ -495,19 +569,38 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 	}
 
 	std.log.info(
-		"Finished registering assets with {} blocks, {} items, {} tools. {} biomes, {} recipes and {} migrations",
-		.{ commonBlocks.count(), commonItems.count(), commonTools.count(), commonBiomes.count(), commonRecipes.count(), commonMigrations.count() },
+		"Finished registering assets with {} blocks ({} migrations), {} items ({} migrations), {} tools. {} biomes ({} migrations), {} recipes",
+		.{
+			blocks.count(),
+			biomesMigrations.count(),
+			items.count(),
+			itemsMigrations.count(),
+			tools.count(),
+			biomes.count(),
+			biomesMigrations.count(),
+			recipes.count()
+		},
 	);
 }
 
 pub fn unloadAssets() void { // MARK: unloadAssets()
 	std.log.info(
-		"Unlading assets: {} blocks, {} items, {} tools. {} biomes, {} recipes and {} migrations",
-		.{ commonBlocks.count(), commonItems.count(), commonTools.count(), commonBiomes.count(), commonRecipes.count(), commonMigrations.count() },
+		"Unloading assets: {} blocks ({} migrations), {} items ({} migrations), {} tools. {} biomes ({} migrations), {} recipes",
+		.{
+			commonBlocks.count(),
+			commonBiomesMigrations.count(),
+			commonItems.count(),
+			commonItemsMigrations.count(),
+			commonTools.count(),
+			commonBiomes.count(),
+			commonBiomesMigrations.count(),
+			commonRecipes.count()
+		},
 	);
 
 	if(!loadedAssets) return;
 	loadedAssets = false;
+
 	blocks_zig.reset();
 	items_zig.reset();
 	biomes_zig.reset();

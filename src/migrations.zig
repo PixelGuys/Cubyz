@@ -5,76 +5,76 @@ const ZonElement = @import("zon.zig").ZonElement;
 const Palette = @import("assets.zig").Palette;
 
 var ARENA_ALLOCATOR = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
-const ALLOCATOR = ARENA_ALLOCATOR.allocator();
+const MIGRATION_ALLOCATOR = ARENA_ALLOCATOR.allocator();
 
-var BLOCK_MIGRATIONS: main.List(Migration) = .init(ALLOCATOR);
-var ITEM_MIGRATIONS: main.List(Migration) = .init(ALLOCATOR);
-var BIOME_MIGRATIONS: main.List(Migration) = .init(ALLOCATOR);
-var RECIPE_MIGRATIONS: main.List(Migration) = .init(ALLOCATOR);
+var BLOCK_MIGRATIONS: std.StringHashMap([]const u8) = .init(MIGRATION_ALLOCATOR.allocator);
+var ITEM_MIGRATIONS: std.StringHashMap([]const u8) = .init(MIGRATION_ALLOCATOR.allocator);
+var BIOME_MIGRATIONS: std.StringHashMap([]const u8) = .init(MIGRATION_ALLOCATOR.allocator);
 
-// Register a migration from a ZonElement into the migration list based on asset field.
-pub fn register(name: []const u8, zon: ZonElement) void {
-	const asset_type = MigratedAsset.fromString(zon.get([]const u8, "asset", "none"));
-	switch (asset_type) {
-		.block => {
-			registerMigration(&BLOCK_MIGRATIONS, zon, name, "block");
-		},
-		.item => {
-			registerMigration(&ITEM_MIGRATIONS, zon, name, "item");
-		},
-		.biome => {
-			registerMigration(&BIOME_MIGRATIONS, zon, name, "biome");
-		},
-		.recipe => {
-			registerMigration(&RECIPE_MIGRATIONS, zon, name, "recipe");
-		},
-		.none => {
-			std.log.err("Detected noop migration {s} -> {s}. Skipping", .{ zon.get([]const u8, "old", ""), zon.get([]const u8, "new", "") });
-		},
+
+pub fn registerBlockMigrations(migrations: *std.StringHashMap(ZonElement)) void {
+	std.log.info("Registering {} block migrations", .{migrations.count()});
+
+	var migrationIterator = migrations.iterator();
+	while (migrationIterator.next()) |migration| {
+		register(&BLOCK_MIGRATIONS, "block", migration.key_ptr.*, migration.value_ptr.*);
 	}
 }
 
-fn registerMigration(
-	migrations: *main.List(Migration),
-	zon: ZonElement,
-	name: []const u8,
-	description: []const u8,
-) void {
-	const typ = MigrationType.fromString(zon.get([]const u8, "typ", "noop"));
-	const old = zon.get([]const u8, "old", "");
-	const new = zon.get([]const u8, "new", "");
-	migrations.append(Migration{ .name = name, .typ = typ, .old = old, .new = new });
+pub fn registerItemMigrations(migrations: *std.StringHashMap(ZonElement)) void {
+	std.log.info("Registering {} item migrations", .{migrations.count()});
 
-	std.log.info("Registered {s} migration [{s}] {s} -> {s}", .{ description, name, old, new });
+	var migrationIterator = migrations.iterator();
+	while (migrationIterator.next()) |migration| {
+		register(&ITEM_MIGRATIONS, "item", migration.key_ptr.*, migration.value_ptr.*);
+	}
+}
+
+pub fn registerBiomeMigrations(migrations: *std.StringHashMap(ZonElement)) void {
+	std.log.info("Registering {} biome migrations", .{migrations.count()});
+
+	var migrationIterator = migrations.iterator();
+	while (migrationIterator.next()) |migration| {
+		register(&BIOME_MIGRATIONS, "biome", migration.key_ptr.*, migration.value_ptr.*);
+	}
+}
+
+fn register(
+	collection: * std.StringHashMap([]const u8),
+	assetType: []const u8,
+	name: []const u8,
+	migrationZon: ZonElement,
+) void {
+	var migrationZonIterator = migrationZon.object.iterator();
+	while (migrationZonIterator.next()) |migration| {
+		const old = MIGRATION_ALLOCATOR.dupe(u8, migration.key_ptr.*);
+		const new = MIGRATION_ALLOCATOR.dupe(u8, migration.value_ptr.stringOwned);
+		collection.put(old, new) catch |e| {
+			MIGRATION_ALLOCATOR.free(old);
+			MIGRATION_ALLOCATOR.free(new);
+			std.log.err(
+				"Couldn't register {s} migration from {s}: `{s}` -> `{s}, error: {s}",
+				.{assetType, name, old, new,  @errorName(e)}
+			);
+		};
+
+		std.log.info(
+			"Registered {s} migration from {s}: `{s}` -> `{s}`",
+			.{assetType, name, old, new}
+		);
+	}
 }
 
 pub fn applyBlockPaletteMigrations(palette: *Palette) void {
-	std.log.info("Applying {} migrations to block palette", .{BLOCK_MIGRATIONS.items.len});
-	var reversePalette: std.StringHashMap(u16) = .init(ALLOCATOR.allocator);
-	{
-		for (palette.palette.items, 0..) |block, i| {
-			// I don't see a recoverable situation where this would fail.
-			reversePalette.put(block, @intCast(i)) catch continue;
-		}
-	}
+	std.log.info("Applying {} migrations to block palette", .{BLOCK_MIGRATIONS.count()});
 
-	for (BLOCK_MIGRATIONS.items) |migration| {
-		if (migration.typ == .rename) {
-			// Migration is not necessary when block is not present in the palette.
-			const block_id = reversePalette.get(migration.old) orelse continue;
-			// I don't see a recoverable situation where this would fail.
-			reversePalette.put(migration.new, block_id) catch continue;
-			_ = reversePalette.remove(migration.old);
-			// Since palette stores u8 arrays, we have to free content of the u8 array
-			// before we replace our pointer to that u8 array.
-			palette.palette.allocator.free(palette.palette.items[@intCast(block_id)]);
-
-			palette.palette.replace(
-				@intCast(block_id),
-				palette.palette.allocator.dupe(u8, migration.new)
-			);
-			std.log.info("Migrated {s} -> {s} (block ID: {})", .{ migration.old, migration.new, block_id });
-		}
+	for (palette.palette.items, 0..) |assetName, i| {
+		const newAssetName = BLOCK_MIGRATIONS.get(assetName) orelse continue;
+		palette.replaceEntry(i, newAssetName);
+		std.log.info(
+			"Migrated block {s} -> {s}",
+			.{assetName, newAssetName}
+		);
 	}
 }
 
@@ -94,7 +94,6 @@ const MigratedAsset = enum {
 	block,
 	item,
 	biome,
-	recipe,
 	none,
 
 	fn fromString(string: []const u8) MigratedAsset {
@@ -105,18 +104,10 @@ const MigratedAsset = enum {
 	}
 };
 
-const Migration = struct {
-	name: []const u8,
-	typ: MigrationType,
-	old: []const u8,
-	new: []const u8,
-};
-
 pub fn reset() void {
 	BLOCK_MIGRATIONS.clearAndFree();
 	ITEM_MIGRATIONS.clearAndFree();
 	BIOME_MIGRATIONS.clearAndFree();
-	RECIPE_MIGRATIONS.clearAndFree();
 }
 
 pub fn deinit() void {
