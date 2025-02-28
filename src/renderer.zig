@@ -620,8 +620,7 @@ pub const MenuBackGround = struct {
 pub const Skybox = struct {
 	var starShader: Shader = undefined;
 	var starUniforms: struct {
-		viewMatrix: c_int,
-		projectionMatrix: c_int,
+		mvp: c_int,
 		modelMatrix: c_int,
 	} = undefined;
 
@@ -951,10 +950,9 @@ pub const Skybox = struct {
 
 		starShader.bind();
 
-		const starMatrix = viewMatrix.mul(Mat4f.rotationX(@as(f32, @floatFromInt(game.world.?.gameTime.load(.monotonic))) / 12000.0));
+		const starMatrix = game.projectionMatrix.mul(viewMatrix.mul(Mat4f.rotationX(@as(f32, @floatFromInt(game.world.?.gameTime.load(.monotonic))) / 12000.0)));
 
-		c.glUniformMatrix4fv(starUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&starMatrix));
-		c.glUniformMatrix4fv(starUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
+		c.glUniformMatrix4fv(starUniforms.mvp, 1, c.GL_TRUE, @ptrCast(&starMatrix));
 
 		c.glBindVertexArray(starVao);
 		c.glDrawArrays(c.GL_POINTS, 0, numStars * 3);
