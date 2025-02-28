@@ -380,6 +380,23 @@ pub const Block = packed struct { // MARK: Block
 	pub fn canBeChangedInto(self: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) main.rotation.RotationMode.CanBeChangedInto {
 		return newBlock.mode().canBeChangedInto(self, newBlock, item, shouldDropSourceBlockOnSuccess);
 	}
+
+	pub fn onEntityInside(self: Block, entity: main.server.Entity, posX: i32, posY: i32, posZ: i32) void {
+		_ = self;
+		_ = entity;
+		_ = posX;
+		_ = posY;
+		_ = posZ;
+	}
+
+	pub fn onEntityTouching(self: Block, entity: main.server.Entity, posX: i32, posY: i32, posZ: i32, neighbor: Neighbor) void {
+		_ = self;
+		_ = entity;
+		_ = posX;
+		_ = posY;
+		_ = posZ;
+		_ = direction;
+	}
 };
 
 
