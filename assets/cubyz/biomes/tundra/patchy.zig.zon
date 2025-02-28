@@ -16,6 +16,15 @@
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
+			.block = "cubyz:gravel",
+			.chance = 0.25,
+			.width = 5,
+			.variation = 4,
+			.depth = 1,
+			.smoothness = 0.5,
+		},
+		.{
+			.id = "cubyz:ground_patch",
 			.block = "cubyz:dry_grass",
 			.chance = 0.33,
 			.width = 5,
