@@ -11,7 +11,6 @@ pub const entity = @import("entity.zig");
 pub const files = @import("files.zig");
 pub const game = @import("game.zig");
 pub const graphics = @import("graphics.zig");
-pub const itemdisplay = @import("itemdisplay.zig");
 pub const itemdrop = @import("itemdrop.zig");
 pub const items = @import("items.zig");
 pub const JsonElement = @import("json.zig").JsonElement;
@@ -298,14 +297,14 @@ fn takeBackgroundImageFn() void {
 	renderer.MenuBackGround.takeBackgroundImage();
 }
 fn toggleHideGui() void {
-	if (itemdisplay.showItem and !gui.hideGui) {
+	if (itemdrop.showItem and !gui.hideGui) {
 		gui.hideGui = true;
-	} else if (itemdisplay.showItem and gui.hideGui) {
-		itemdisplay.showItem = false;
-	} else if (!itemdisplay.showItem and gui.hideGui) {
+	} else if (itemdrop.showItem and gui.hideGui) {
+		itemdrop.showItem = false;
+	} else if (!itemdrop.showItem and gui.hideGui) {
 		gui.hideGui = false;
 	} else {
-		itemdisplay.showItem = true;
+		itemdrop.showItem = true;
 	}
 }
 fn toggleDebugOverlay() void {
@@ -686,7 +685,7 @@ pub fn main() void { // MARK: main()
 		if(!isHidden) {
 			c.glEnable(c.GL_CULL_FACE);
 			c.glEnable(c.GL_DEPTH_TEST);
-			renderer.render(game.Player.getEyePosBlocking());
+			renderer.render(game.Player.getEyePosBlocking(), deltaTime, false);
 			// Render the GUI
 			gui.windowlist.gpu_performance_measuring.startQuery(.gui);
 			c.glDisable(c.GL_CULL_FACE);

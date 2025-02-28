@@ -9,7 +9,6 @@ const c = graphics.c;
 const Shader = graphics.Shader;
 const game = @import("game.zig");
 const World = game.World;
-const itemdisplay = @import("itemdisplay.zig");
 const itemdrop = @import("itemdrop.zig");
 const main = @import("main.zig");
 const Window = main.Window;
@@ -123,12 +122,12 @@ pub fn updateViewport(width: u31, height: u31, fov: f32) void {
 	lastHeight = @intFromFloat(@as(f32, @floatFromInt(height))*main.settings.resolutionScale);
 	lastFov = fov;
 	game.projectionMatrix = Mat4f.perspective(std.math.degreesToRadians(fov), @as(f32, @floatFromInt(lastWidth))/@as(f32, @floatFromInt(lastHeight)), zNear, zFar);
-	itemdisplay.itemDisplayProjectionMatrix = Mat4f.perspective(std.math.degreesToRadians(65), @as(f32, @floatFromInt(lastWidth))/@as(f32, @floatFromInt(lastHeight)), zNear, zFar);
+	itemdrop.itemDisplayProjectionMatrix = Mat4f.perspective(std.math.degreesToRadians(65), @as(f32, @floatFromInt(lastWidth))/@as(f32, @floatFromInt(lastHeight)), zNear, zFar);
 	worldFrameBuffer.updateSize(lastWidth, lastHeight, c.GL_RGB16F);
 	worldFrameBuffer.unbind();
 }
 
-pub fn render(playerPosition: Vec3d) void {
+pub fn render(playerPosition: Vec3d, deltaTime: f64, isCapturingFrame: bool) void {
 	// TODO: player bobbing
 	if(game.world) |world| {
 		// TODO: Handle colors and sun position in the world.
@@ -139,7 +138,10 @@ pub fn render(playerPosition: Vec3d) void {
 		const skyColor = vec.xyz(world.clearColor);
 		game.fog.skyColor = skyColor;
 
-		renderWorld(world, ambient, skyColor, playerPosition);
+		if (!isCapturingFrame) {
+			itemdrop.ItemDisplayManager.update(deltaTime);
+		}
+		renderWorld(world, ambient, skyColor, playerPosition, isCapturingFrame);
 		const startTime = std.time.milliTimestamp();
 		mesh_storage.updateMeshes(startTime + maximumMeshTime);
 	} else {
@@ -171,7 +173,7 @@ pub fn crosshairDirection(rotationMatrix: Mat4f, fovY: f32, width: u31, height: 
 	return adjusted;
 }
 
-pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPos: Vec3d) void { // MARK: renderWorld()
+pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPos: Vec3d, isCapturingFrame: bool) void { // MARK: renderWorld()
 	worldFrameBuffer.bind();
 	c.glViewport(0, 0, lastWidth, lastHeight);
 	gpu_performance_measuring.startQuery(.clear);
@@ -225,7 +227,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	entity.ClientEntityManager.render(game.projectionMatrix, ambientLight, .{1, 0.5, 0.25}, playerPos);
 
 	itemdrop.ItemDropRenderer.renderItemDrops(game.projectionMatrix, ambientLight, playerPos, time);
-
 	gpu_performance_measuring.stopQuery();
 
 	// Render transparent chunk meshes:
@@ -254,6 +255,13 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glDepthMask(c.GL_TRUE);
 	c.glDepthFunc(c.GL_LESS);
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
+
+	if (!isCapturingFrame) {
+		c.glDepthFunc(c.GL_ALWAYS);
+		itemdrop.ItemDropRenderer.renderDisplayItems(ambientLight, playerPos, time);
+		c.glDepthFunc(c.GL_LESS);
+	}
+
 	chunk_meshing.endRender();
 
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
@@ -302,10 +310,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 
 	entity.ClientEntityManager.renderNames(game.projectionMatrix, playerPos);
-
-	c.glEnable(c.GL_DEPTH_TEST);
-	c.glEnable(c.GL_CULL_FACE);
-	itemdrop.ItemDropRenderer.renderPlayerDisplayItem(itemdisplay.itemDisplayProjectionMatrix, ambientLight, playerPos, time);
 	gpu_performance_measuring.stopQuery();
 }
 
@@ -587,7 +591,7 @@ pub const MenuBackGround = struct {
 			// Draw to frame buffer.
 			buffer.bind();
 			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
-			main.renderer.render(game.Player.getEyePosBlocking());
+			main.renderer.render(game.Player.getEyePosBlocking(), 0, true);
 			// Copy the pixels directly from OpenGL
 			buffer.bind();
 			c.glReadPixels(0, 0, size, size, c.GL_RGBA, c.GL_UNSIGNED_BYTE, pixels.ptr);

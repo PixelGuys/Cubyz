@@ -9,7 +9,6 @@ const ServerWorld = main.server.ServerWorld;
 const graphics = @import("graphics.zig");
 const c = graphics.c;
 const items = @import("items.zig");
-const itemdisplay = @import("itemdisplay.zig");
 const ItemStack = items.ItemStack;
 const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main.zig");
@@ -524,6 +523,29 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 	}
 };
 
+pub var showItem: bool = true;
+pub var itemDisplayProjectionMatrix: Mat4f = Mat4f.identity();
+
+// Going to handle item animations and other things like - bobbing, interpolation, movement reactions
+pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
+	pub var cameraFollow: Vec3f = .{0, 0, 0};
+	var cameraFollowVel: Vec3f = .{0, 0, 0};
+	const damping: Vec3f = @splat(130);
+
+	pub fn update(deltaTime: f64) void {
+		const dt: f32 =  @floatCast(deltaTime);
+
+		var playerVel: Vec3f = .{@floatCast((game.Player.super.vel[2] * 0.009 + game.Player.eyeVel[2] * 0.0075)), 0, 0};
+		playerVel = vec.clampMag(playerVel, 0.55);
+
+		const n1: Vec3f = cameraFollowVel - (cameraFollow - (game.camera.rotation + playerVel)) * damping * damping * @as(Vec3f, @splat(dt));
+		const n2: Vec3f = @as(Vec3f, @splat(1)) + damping * @as(Vec3f, @splat(dt));
+		cameraFollowVel = n1 / (n2 * n2);
+
+		cameraFollow += cameraFollowVel * @as(Vec3f, @splat(dt));
+	}
+};
+
 pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	var itemShader: graphics.Shader = undefined;
 	var itemUniforms: struct {
@@ -664,8 +686,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		return voxelModels.findOrCreate(compareObject, ItemVoxelModel.init, null);
 	}
 
-	pub fn renderItemDrops(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d, time: u32) void {
-		game.world.?.itemDrops.updateInterpolationData();
+	fn bindCommonUniforms(projMatrix: Mat4f, viewMatrix: Mat4f, ambientLight: Vec3f, time: u32) void {
 		itemShader.bind();
 		c.glUniform1i(itemUniforms.texture_sampler, 0);
 		c.glUniform1i(itemUniforms.emissionSampler, 1);
@@ -675,18 +696,39 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		c.glUniform1i(itemUniforms.time, @as(u31, @truncate(time)));
 		c.glUniformMatrix4fv(itemUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 		c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&ambientLight));
-		c.glUniformMatrix4fv(itemUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&game.camera.viewMatrix));
+		c.glUniformMatrix4fv(itemUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
 		c.glUniform1f(itemUniforms.contrast, 0.12);
+	}
+
+	fn bindLightUniform(light: u32, ambientLight: Vec3f) void {
+		c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&@max(
+			ambientLight*@as(Vec3f, @splat(@as(f32, @floatFromInt(light >> 24))/255)),
+			Vec3f{@floatFromInt(light >> 16 & 255), @floatFromInt(light >> 8 & 255), @floatFromInt(light & 255)}/@as(Vec3f, @splat(255))
+		)));
+	}
+
+	fn bindModelUniforms(modelIndex: u31, blockType: u16) void {
+		c.glUniform1i(itemUniforms.modelIndex, modelIndex);
+		c.glUniform1i(itemUniforms.block, blockType);
+	}
+
+	fn drawItem(vertices: u31, modelMatrix: Mat4f) void {
+		c.glUniformMatrix4fv(itemUniforms.modelMatrix, 1, c.GL_TRUE, @ptrCast(&modelMatrix));
+		c.glBindVertexArray(main.renderer.chunk_meshing.vao);
+		c.glDrawElements(c.GL_TRIANGLES, vertices, c.GL_UNSIGNED_INT, null);
+	}
+
+	pub fn renderItemDrops(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d, time: u32) void {
+		game.world.?.itemDrops.updateInterpolationData();
+
+		bindCommonUniforms(projMatrix, game.camera.viewMatrix, ambientLight, time);
 		const itemDrops = &game.world.?.itemDrops.super;
 		for(itemDrops.indices[0..itemDrops.size]) |i| {
 			if(itemDrops.list.items(.itemStack)[i].item) |item| {
 				var pos = itemDrops.list.items(.pos)[i];
 				const rot = itemDrops.list.items(.rot)[i];
 				const light: u32 = 0xffffffff; // TODO: Get this light value from the mesh_storage.
-				c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&@max(
-					ambientLight*@as(Vec3f, @splat(@as(f32, @floatFromInt(light >> 24))/255)),
-					Vec3f{light >> 16 & 255, light >> 8 & 255, light & 255}/@as(Vec3f, @splat(255))
-				)));
+				bindLightUniform(light, ambientLight);
 				pos -= playerPos;
 
 				const model = getModel(item);
@@ -694,14 +736,14 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 				var vertices: u31 = 36;
 
 				var scale: f32 = 0.3;
+				var blockType: u16 = 0;
 				if(item == .baseItem and item.baseItem.block != null and item.baseItem.image.imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
-					const blockType = item.baseItem.block.?;
-					c.glUniform1i(itemUniforms.block, blockType);
+					blockType = item.baseItem.block.?;
 					vertices = model.len/2*6;
 				} else {
-					c.glUniform1i(itemUniforms.block, 0);
 					scale = 0.5;
 				}
+				bindModelUniforms(model.index, blockType);
 
 				var modelMatrix = Mat4f.translation(@floatCast(pos));
 				modelMatrix = modelMatrix.mul(Mat4f.rotationX(-rot[0]));
@@ -709,66 +751,48 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 				modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-rot[2]));
 				modelMatrix = modelMatrix.mul(Mat4f.scale(@splat(scale)));
 				modelMatrix = modelMatrix.mul(Mat4f.translation(@splat(-0.5)));
-				c.glUniformMatrix4fv(itemUniforms.modelMatrix, 1, c.GL_TRUE, @ptrCast(&modelMatrix));
-
-				c.glBindVertexArray(main.renderer.chunk_meshing.vao);
-				c.glDrawElements(c.GL_TRIANGLES, vertices, c.GL_UNSIGNED_INT, null);
+				drawItem(vertices, modelMatrix);
 			}
 		}
 	}
 
-	pub fn renderPlayerDisplayItem(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d, time: u32) void {
-		itemdisplay.PlayerItemDisplayManager.update();
+	pub fn renderDisplayItems(ambientLight: Vec3f, playerPos: Vec3d, time: u32) void {
+		if (!showItem) return;
 
-		if (!itemdisplay.showItem) return;
-
-		itemShader.bind();
-		c.glUniform1i(itemUniforms.texture_sampler, 0);
-		c.glUniform1i(itemUniforms.emissionSampler, 1);
-		c.glUniform1i(itemUniforms.reflectivityAndAbsorptionSampler, 2);
-		c.glUniform1i(itemUniforms.reflectionMap, 4);
-		c.glUniform1f(itemUniforms.reflectionMapSize, main.renderer.reflectionCubeMapSize);
-		c.glUniform1i(itemUniforms.time, @as(u31, @truncate(time)));
-		c.glUniformMatrix4fv(itemUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
-		c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&ambientLight));
-		c.glUniformMatrix4fv(itemUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&game.camera.viewMatrix));
-		c.glUniform1f(itemUniforms.contrast, 0.12);
+		const projMatrix: Mat4f = itemDisplayProjectionMatrix;
+		const viewMatrix = Mat4f.identity();
+		bindCommonUniforms(projMatrix, viewMatrix, ambientLight, time);
 
 		const selectedItem = game.Player.inventory.getItem(game.Player.selectedSlot);
 		if(selectedItem) |item| {
 			var pos: Vec3d = Vec3d{0, 0, 0};
-			const rot: Vec3f = itemdisplay.PlayerItemDisplayManager.cameraFollow;//Vec3f{game.camera.rotation[0], 0, game.camera.rotation[2]};
-
+			const rot: Vec3f = ItemDisplayManager.cameraFollow - game.camera.rotation;
 			_ = playerPos; // going to be used when light value fetching from mesh_storage is implemented.
 			const light: u32 = 0xffffffff; // TODO: Get this light value from the mesh_storage.
-			c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&@max(
-				ambientLight*@as(Vec3f, @splat(@as(f32, @floatFromInt(light >> 24))/255)),
-				Vec3f{light >> 16 & 255, light >> 8 & 255, light & 255}/@as(Vec3f, @splat(255))
-			)));
+			bindLightUniform(light, ambientLight);
 
 			const model = getModel(item);
-			c.glUniform1i(itemUniforms.modelIndex, model.index);
 			var vertices: u31 = 36;
 
-			var scale: f32 = 0.30;
-			var isNotBlock: bool = false;
-			if(item == .baseItem and item.baseItem.block != null and item.baseItem.image.imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
-				const blockType = item.baseItem.block.?;
-				c.glUniform1i(itemUniforms.block, blockType);
+			const isBlock: bool = item == .baseItem and item.baseItem.block != null and item.baseItem.image.imageData.ptr == graphics.Image.defaultImage.imageData.ptr;
+			var scale: f32 = 0;
+			var blockType: u16 = 0;
+			if(isBlock) {
+				blockType = item.baseItem.block.?;
 				vertices = model.len/2*6;
+				scale = 0.3;
 				pos = Vec3d{0.4, 0.55, -0.32};
 			} else {
-				c.glUniform1i(itemUniforms.block, 0);
-				isNotBlock = true;
 				scale = 0.6;
 				pos = Vec3d{0.4, 0.65, -0.25};
 			}
+			bindModelUniforms(model.index, blockType);
 
 			var modelMatrix = Mat4f.rotationZ(-rot[2]);
 			modelMatrix = modelMatrix.mul(Mat4f.rotationY(-rot[1]));
 			modelMatrix = modelMatrix.mul(Mat4f.rotationX(-rot[0]));
 			modelMatrix = modelMatrix.mul(Mat4f.translation(@floatCast(pos)));
-			if (isNotBlock) {
+			if (!isBlock) {
 				if (item == .tool) {
 					modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.46));
 					modelMatrix = modelMatrix.mul(Mat4f.rotationY(std.math.pi*0.23));
@@ -780,10 +804,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			}
 			modelMatrix = modelMatrix.mul(Mat4f.scale(@splat(scale)));
 			modelMatrix = modelMatrix.mul(Mat4f.translation(@splat(-0.5)));
-			c.glUniformMatrix4fv(itemUniforms.modelMatrix, 1, c.GL_TRUE, @ptrCast(&modelMatrix));
-
-			c.glBindVertexArray(main.renderer.chunk_meshing.vao);
-			c.glDrawElements(c.GL_TRIANGLES, vertices, c.GL_UNSIGNED_INT, null);
+			drawItem(vertices, modelMatrix);
 		}
 	}
 };
