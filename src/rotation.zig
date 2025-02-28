@@ -320,6 +320,115 @@ pub const RotationModes = struct {
 			return true;
 		}
 	};
+	pub const Branch = struct { // MARK: Branch
+		pub const id: []const u8 = "branch";
+		pub const dependsOnNeighbors = true;
+		var branchModels: std.StringHashMap(u16) = undefined;
+		const BranchData = packed struct(u6) {
+			isConnectedNegX: bool,
+			isConnectedPosX: bool,
+			isConnectedNegY: bool,
+			isConnectedPosY: bool,
+			isConnectedNegZ: bool,
+			isConnectedPosZ: bool,
+		};
+
+		fn init() void {
+			branchModels = .init(main.globalAllocator.allocator);
+		}
+
+		fn deinit() void {
+			branchModels.deinit();
+		}
+
+		fn branchTransform(quad: *main.models.QuadInfo, data: BranchData) void {
+			for(&quad.corners, &quad.cornerUV) |*corner, *cornerUV| {
+				// X
+				if(!data.isConnectedNegX and corner[0] == 0) {
+					corner[0] = 0.25;
+					cornerUV[0] = 0.25;
+				}
+				if(!data.isConnectedPosX and corner[0] == 1) {
+					corner[0] = 0.25;
+					cornerUV[0] = 0.25;
+				}
+				// Y
+				if(!data.isConnectedNegY and corner[1] == 0) {
+					corner[1] = 0.25;
+					cornerUV[1] = 0.25;
+				}
+				if(!data.isConnectedPosY and corner[1] == 1) {
+					corner[1] = 0.25;
+					cornerUV[1] = 0.25;
+				}
+				// Z
+				if (!data.isConnectedNegZ and corner[2] == 0) {
+					corner[2] = 0.25;
+					cornerUV[1] = 0.25;
+				}
+				if (!data.isConnectedPosZ and corner[2] == 1) {
+					corner[2] = 0.25;
+					cornerUV[1] = 0.25;
+				}
+			}
+		}
+
+		pub fn createBlockModel(modelId: []const u8) u16 {
+			if(branchModels.get(modelId)) |modelIndex| return modelIndex;
+
+			const baseModelIndex = main.models.getModelIndex(modelId);
+			const baseModel = main.models.models.items[baseModelIndex];
+			// Rotate the model:
+			const modelIndex: u16 = baseModel.transformModel(branchTransform, .{@as(BranchData, @bitCast(@as(u6, 0)))});
+			for(1..64) |branchData| {
+				_ = baseModel.transformModel(branchTransform, .{@as(BranchData, @bitCast(@as(u6, @intCast(branchData))))});
+			}
+			branchModels.put(modelId, modelIndex) catch unreachable;
+			return modelIndex;
+		}
+
+		pub fn model(block: Block) u16 {
+			return blocks.meshes.modelIndexStart(block) + (block.data & 63);
+		}
+
+		pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool {
+			const blockBaseModel = blocks.meshes.modelIndexStart(block.*);
+			const neighborBaseModel = blocks.meshes.modelIndexStart(neighborBlock);
+			const neighborModel = blocks.meshes.model(neighborBlock);
+			const targetVal = (
+				neighborBlock.solid()
+				and (
+					(blockBaseModel == neighborBaseModel)
+					or main.models.models.items[neighborModel].isNeighborOccluded[neighbor.reverse().toInt()]
+				)
+			);
+			var currentData: BranchData = @bitCast(@as(u6, @truncate(block.data)));
+			switch(neighbor) {
+				.dirNegX => {
+					currentData.isConnectedNegX = targetVal;
+				},
+				.dirPosX => {
+					currentData.isConnectedPosX = targetVal;
+				},
+				.dirNegY => {
+					currentData.isConnectedNegY = targetVal;
+				},
+				.dirPosY => {
+					currentData.isConnectedPosY = targetVal;
+				},
+				.dirDown => {
+					currentData.isConnectedNegZ = targetVal;
+				},
+				.dirUp => {
+					currentData.isConnectedPosZ = targetVal;
+				},
+			}
+			const result: u16 = @as(u6, @bitCast(currentData));
+			if(result == block.data) return false;
+			block.data = result;
+			return true;
+		}
+	};
 	pub const Stairs = struct { // MARK: Stairs
 		pub const id: []const u8 = "stairs";
 		var modelIndex: u16 = 0;
