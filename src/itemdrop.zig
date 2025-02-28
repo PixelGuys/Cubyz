@@ -12,6 +12,7 @@ const items = @import("items.zig");
 const ItemStack = items.ItemStack;
 const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main.zig");
+const renderer = main.renderer;
 const random = @import("random.zig");
 const settings = @import("settings.zig");
 const utils = @import("utils.zig");
@@ -524,7 +525,6 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 };
 
 pub var showItem: bool = true;
-pub var itemDisplayProjectionMatrix: Mat4f = Mat4f.identity();
 
 // Going to handle item animations and other things like - bobbing, interpolation, movement reactions
 pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
@@ -759,7 +759,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	pub fn renderDisplayItems(ambientLight: Vec3f, playerPos: Vec3d, time: u32) void {
 		if (!showItem) return;
 
-		const projMatrix: Mat4f = itemDisplayProjectionMatrix;
+		const projMatrix: Mat4f = Mat4f.perspective(std.math.degreesToRadians(65), @as(f32, @floatFromInt(renderer.lastWidth))/@as(f32, @floatFromInt(renderer.lastHeight)), 0.05, 100);
 		const viewMatrix = Mat4f.identity();
 		bindCommonUniforms(projMatrix, viewMatrix, ambientLight, time);
 
