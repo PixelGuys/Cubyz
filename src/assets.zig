@@ -10,16 +10,12 @@ const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 var arena: main.utils.NeverFailingArenaAllocator = undefined;
 var arenaAllocator: NeverFailingAllocator = undefined;
-
 var commonBlocks: std.StringHashMap(ZonElement) = undefined;
 var commonBlocksMigrations: std.StringHashMap(ZonElement) = undefined;
-
 var commonBiomes: std.StringHashMap(ZonElement) = undefined;
 var commonBiomesMigrations: std.StringHashMap(ZonElement) = undefined;
-
 var commonItems: std.StringHashMap(ZonElement) = undefined;
 var commonItemsMigrations: std.StringHashMap(ZonElement) = undefined;
-
 var commonTools: std.StringHashMap(ZonElement) = undefined;
 var commonRecipes: std.StringHashMap(ZonElement) = undefined;
 var commonModels: std.StringHashMap([]const u8) = undefined;
@@ -453,28 +449,20 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 
 	var blocks = commonBlocks.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer blocks.clearAndFree();
-
 	var blockMigrations = commonBlocksMigrations.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer blockMigrations.clearAndFree();
-
 	var items = commonItems.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer items.clearAndFree();
-
 	var itemsMigrations = commonItemsMigrations.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer itemsMigrations.clearAndFree();
-
 	var tools = commonTools.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer tools.clearAndFree();
-
 	var biomes = commonBiomes.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer biomes.clearAndFree();
-
 	var biomesMigrations = commonBiomesMigrations.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer biomesMigrations.clearAndFree();
-
 	var recipes = commonRecipes.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer recipes.clearAndFree();
-
 	var models = commonModels.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer models.clearAndFree();
 
@@ -499,13 +487,12 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 	migrations_zig.registerItemMigrations(&commonItemsMigrations);
 	migrations_zig.registerBiomeMigrations(&commonBiomesMigrations);
 
-	{
-		// models:
-		var modelIterator = models.iterator();
-		while (modelIterator.next()) |entry| {
-			_ = main.models.registerModel(entry.key_ptr.*,  entry.value_ptr.*);
-		}
+	// models:
+	var modelIterator = models.iterator();
+	while (modelIterator.next()) |entry| {
+		_ = main.models.registerModel(entry.key_ptr.*,  entry.value_ptr.*);
 	}
+
 	// blocks:
 	blocks_zig.meshes.registerBlockBreakingAnimation(assetFolder);
 	for(blockPalette.palette.items) |id| {
@@ -519,36 +506,31 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 		}
 		try registerBlock(assetFolder, id, zon);
 	}
-	{
-		var blocksIterator = blocks.iterator();
-		while(blocksIterator.next()) |entry| {
-			if(blocks_zig.hasRegistered(entry.key_ptr.*)) continue;
-			try registerBlock(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
-			blockPalette.add(entry.key_ptr.*);
-		}
+	var iterator = blocks.iterator();
+	while(iterator.next()) |entry| {
+		if(blocks_zig.hasRegistered(entry.key_ptr.*)) continue;
+		try registerBlock(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
+		blockPalette.add(entry.key_ptr.*);
 	}
-	{
-		// items:
-		var itemsIterator = items.iterator();
-		while(itemsIterator.next()) |entry| {
-			_ = try registerItem(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
-		}
+
+	// items:
+	iterator = items.iterator();
+	while(iterator.next()) |entry| {
+		_ = try registerItem(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
 	}
-	{	// tools:
-		var toolsIterator = tools.iterator();
-		while(toolsIterator.next()) |entry| {
-			registerTool(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
-		}
+
+	// tools:
+	iterator = tools.iterator();
+	while(iterator.next()) |entry| {
+		registerTool(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
 	}
 
 	// block drops:
 	blocks_zig.finishBlocks(blocks);
 
-	{
-		var recipesIterator = recipes.iterator();
-		while(recipesIterator.next()) |entry| {
-			registerRecipesFromZon(entry.value_ptr.*);
-		}
+	iterator = recipes.iterator();
+	while(iterator.next()) |entry| {
+		registerRecipesFromZon(entry.value_ptr.*);
 	}
 
 	// Biomes:
@@ -565,16 +547,13 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 		biomes_zig.register(id, i, zon);
 		i += 1;
 	}
-	{
-		var biomesIterator = biomes.iterator();
-		while(biomesIterator.next()) |entry| {
-			if(biomes_zig.hasRegistered(entry.key_ptr.*)) continue;
-			biomes_zig.register(entry.key_ptr.*, i, entry.value_ptr.*);
-			biomePalette.add(entry.key_ptr.*);
-			i += 1;
-		}
+	iterator = biomes.iterator();
+	while(iterator.next()) |entry| {
+		if(biomes_zig.hasRegistered(entry.key_ptr.*)) continue;
+		biomes_zig.register(entry.key_ptr.*, i, entry.value_ptr.*);
+		biomePalette.add(entry.key_ptr.*);
+		i += 1;
 	}
-
 	biomes_zig.finishLoading();
 
 	// Register paths for asset hot reloading:
