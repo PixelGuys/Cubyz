@@ -8,8 +8,6 @@ var ARENA_ALLOCATOR = main.utils.NeverFailingArenaAllocator.init(main.globalAllo
 const MIGRATION_ALLOCATOR = ARENA_ALLOCATOR.allocator();
 
 var BLOCK_MIGRATIONS: std.StringHashMap([]const u8) = .init(MIGRATION_ALLOCATOR.allocator);
-var ITEM_MIGRATIONS: std.StringHashMap([]const u8) = .init(MIGRATION_ALLOCATOR.allocator);
-var BIOME_MIGRATIONS: std.StringHashMap([]const u8) = .init(MIGRATION_ALLOCATOR.allocator);
 
 
 pub fn registerBlockMigrations(migrations: *std.StringHashMap(ZonElement)) void {
@@ -18,24 +16,6 @@ pub fn registerBlockMigrations(migrations: *std.StringHashMap(ZonElement)) void 
 	var migrationIterator = migrations.iterator();
 	while (migrationIterator.next()) |migration| {
 		register(&BLOCK_MIGRATIONS, "block", migration.key_ptr.*, migration.value_ptr.*);
-	}
-}
-
-pub fn registerItemMigrations(migrations: *std.StringHashMap(ZonElement)) void {
-	std.log.info("Registering {} item migrations", .{migrations.count()});
-
-	var migrationIterator = migrations.iterator();
-	while (migrationIterator.next()) |migration| {
-		register(&ITEM_MIGRATIONS, "item", migration.key_ptr.*, migration.value_ptr.*);
-	}
-}
-
-pub fn registerBiomeMigrations(migrations: *std.StringHashMap(ZonElement)) void {
-	std.log.info("Registering {} biome migrations", .{migrations.count()});
-
-	var migrationIterator = migrations.iterator();
-	while (migrationIterator.next()) |migration| {
-		register(&BIOME_MIGRATIONS, "biome", migration.key_ptr.*, migration.value_ptr.*);
 	}
 }
 
@@ -84,8 +64,6 @@ pub fn applyBlockPaletteMigrations(palette: *Palette) void {
 
 pub fn reset() void {
 	BLOCK_MIGRATIONS.clearAndFree();
-	ITEM_MIGRATIONS.clearAndFree();
-	BIOME_MIGRATIONS.clearAndFree();
 }
 
 pub fn deinit() void {

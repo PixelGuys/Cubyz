@@ -13,9 +13,7 @@ var arenaAllocator: NeverFailingAllocator = undefined;
 var commonBlocks: std.StringHashMap(ZonElement) = undefined;
 var commonBlocksMigrations: std.StringHashMap(ZonElement) = undefined;
 var commonBiomes: std.StringHashMap(ZonElement) = undefined;
-var commonBiomesMigrations: std.StringHashMap(ZonElement) = undefined;
 var commonItems: std.StringHashMap(ZonElement) = undefined;
-var commonItemsMigrations: std.StringHashMap(ZonElement) = undefined;
 var commonTools: std.StringHashMap(ZonElement) = undefined;
 var commonRecipes: std.StringHashMap(ZonElement) = undefined;
 var commonModels: std.StringHashMap([]const u8) = undefined;
@@ -27,18 +25,11 @@ pub fn init() void {
 
 	arena = .init(main.globalAllocator);
 	arenaAllocator = arena.allocator();
-
 	commonBlocks = .init(arenaAllocator.allocator);
 	commonBlocksMigrations = .init(arenaAllocator.allocator);
-
 	commonItems = .init(arenaAllocator.allocator);
-	commonItemsMigrations = .init(arenaAllocator.allocator);
-
 	commonTools = .init(arenaAllocator.allocator);
-
 	commonBiomes = .init(arenaAllocator.allocator);
-	commonBiomesMigrations = .init(arenaAllocator.allocator);
-
 	commonRecipes = .init(arenaAllocator.allocator);
 	commonModels = .init(arenaAllocator.allocator);
 
@@ -48,10 +39,8 @@ pub fn init() void {
 		&commonBlocks,
 		&commonBlocksMigrations,
 		&commonItems,
-		&commonItemsMigrations,
 		&commonTools,
 		&commonBiomes,
-		&commonBiomesMigrations,
 		&commonRecipes,
 		&commonModels,
 	);
@@ -59,19 +48,15 @@ pub fn init() void {
 	// Migrations have to be registered before the world is loaded so they can be
 	// applied to the world during load.
 	migrations_zig.registerBlockMigrations(&commonBlocksMigrations);
-	migrations_zig.registerItemMigrations(&commonItemsMigrations);
-	migrations_zig.registerBiomeMigrations(&commonBiomesMigrations);
 
 	std.log.info(
-		"Finished assets init with {} blocks ({} migrations), {} items ({} migrations), {} tools. {} biomes ({} migrations), {} recipes",
+		"Finished assets init with {} blocks ({} migrations), {} items, {} tools. {} biomes, {} recipes",
 		.{
 			commonBlocks.count(),
 			commonBlocksMigrations.count(),
 			commonItems.count(),
-			commonItemsMigrations.count(),
 			commonTools.count(),
 			commonBiomes.count(),
-			commonBiomesMigrations.count(),
 			commonRecipes.count()
 		},
 	);
@@ -298,10 +283,8 @@ pub fn readAssets(
 	blocks: *std.StringHashMap(ZonElement),
 	blocksMigrations: *std.StringHashMap(ZonElement),
 	items: *std.StringHashMap(ZonElement),
-	itemsMigrations: *std.StringHashMap(ZonElement),
 	tools: *std.StringHashMap(ZonElement),
 	biomes: *std.StringHashMap(ZonElement),
-	biomesMigrations: *std.StringHashMap(ZonElement),
 	recipes: *std.StringHashMap(ZonElement),
 	models: *std.StringHashMap([]const u8)
 ) void {
@@ -336,9 +319,9 @@ pub fn readAssets(
 	};
 
 	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "blocks", true, blocks, blocksMigrations);
-	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "items", true, items, itemsMigrations);
+	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "items", true, items, null);
 	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "tools", true, tools, null);
-	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "biomes", true, biomes, biomesMigrations);
+	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "biomes", true, biomes, null);
 	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "recipes", false, recipes, null);
 	readAllObjFilesInAddonsHashmap(externalAllocator, addons, addonNames, "models", models);
 }
@@ -453,14 +436,10 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 	defer blocksMigrations.clearAndFree();
 	var items = commonItems.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer items.clearAndFree();
-	var itemsMigrations = commonItemsMigrations.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
-	defer itemsMigrations.clearAndFree();
 	var tools = commonTools.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer tools.clearAndFree();
 	var biomes = commonBiomes.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer biomes.clearAndFree();
-	var biomesMigrations = commonBiomesMigrations.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
-	defer biomesMigrations.clearAndFree();
 	var recipes = commonRecipes.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer recipes.clearAndFree();
 	var models = commonModels.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
@@ -472,10 +451,8 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 		&blocks,
 		&blocksMigrations,
 		&items,
-		&itemsMigrations,
 		&tools,
 		&biomes,
-		&biomesMigrations,
 		&recipes,
 		&models,
 	);
@@ -484,8 +461,6 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 	// Migrations have to be registered before the world is loaded so they can be
 	// applied to the world during load.
 	migrations_zig.registerBlockMigrations(&commonBlocksMigrations);
-	migrations_zig.registerItemMigrations(&commonItemsMigrations);
-	migrations_zig.registerBiomeMigrations(&commonBiomesMigrations);
 
 	// models:
 	var modelIterator = models.iterator();
@@ -576,15 +551,13 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 	}
 
 	std.log.info(
-		"Finished registering assets with {} blocks ({} migrations), {} items ({} migrations), {} tools. {} biomes ({} migrations), {} recipes",
+		"Finished registering assets with {} blocks ({} migrations), {} items {} tools. {} biomes, {} recipes",
 		.{
 			blocks.count(),
 			blocksMigrations.count(),
 			items.count(),
-			itemsMigrations.count(),
 			tools.count(),
 			biomes.count(),
-			biomesMigrations.count(),
 			recipes.count()
 		},
 	);
@@ -592,15 +565,13 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 
 pub fn unloadAssets() void { // MARK: unloadAssets()
 	std.log.info(
-		"Unloading assets: {} blocks ({} migrations), {} items ({} migrations), {} tools. {} biomes ({} migrations), {} recipes",
+		"Unloading assets: {} blocks ({} migrations), {} items {} tools. {} biomes, {} recipes",
 		.{
 			commonBlocks.count(),
 			commonBlocksMigrations.count(),
 			commonItems.count(),
-			commonItemsMigrations.count(),
 			commonTools.count(),
 			commonBiomes.count(),
-			commonBiomesMigrations.count(),
 			commonRecipes.count()
 		},
 	);
