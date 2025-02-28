@@ -453,6 +453,7 @@ pub const StackAllocator = struct { // MARK: StackAllocator
 				.vtable = &.{
 					.alloc = &alloc,
 					.resize = &resize,
+					.remap = &std.mem.Allocator.noRemap,
 					.free = &free,
 				},
 				.ptr = self,
@@ -590,6 +591,7 @@ pub const ErrorHandlingAllocator = struct { // MARK: ErrorHandlingAllocator
 				.vtable = &.{
 					.alloc = &alloc,
 					.resize = &resize,
+					.remap = &std.mem.Allocator.noRemap,
 					.free = &free,
 				},
 				.ptr = self,
@@ -873,6 +875,7 @@ pub const BufferFallbackAllocator = struct { // MARK: BufferFallbackAllocator
 				.vtable = &.{
 					.alloc = &alloc,
 					.resize = &resize,
+					.remap = &std.mem.Allocator.noRemap,
 					.free = &free,
 				},
 				.ptr = self,
