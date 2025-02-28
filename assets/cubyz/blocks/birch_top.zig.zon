@@ -1,12 +1,12 @@
 .{
-    .tags = .{.wood},
-    .blockHealth = 8,
-    .drops = .{
-        .{ .items = .{.auto} },
-    },
-    .rotation = .log,
-    .model = "cubyz:cube",
-    .texture = "cubyz:birch_log2",
-    .texture_top = "cubyz:birch_log2",
-    .texture_bottom = "cubyz:birch_log_top",
+	.tags = .{.wood},
+	.blockHealth = 8,
+	.drops = .{
+		.{ .items = .{.auto} },
+	},
+	.rotation = .log,
+	.model = "cubyz:cube",
+	.texture = "cubyz:birch_log2",
+	.texture_top = "cubyz:birch_log2",
+	.texture_bottom = "cubyz:birch_log_top",
 }
