@@ -640,12 +640,12 @@ pub const Skybox = struct {
 
 	const numStars = 100000;
 
-	fn getStarPos(starRandom: std.Random) Vec3d {
-		const x = starRandom.floatNorm(f64);
-		const y = starRandom.floatNorm(f64);
-		const z = starRandom.floatNorm(f64);
+	fn getStarPos(seed: *u64) Vec3d {
+		const x: f64 = @floatCast(main.random.nextFloatGauss(seed));
+		const y: f64 = @floatCast(main.random.nextFloatGauss(seed));
+		const z: f64 = @floatCast(main.random.nextFloatGauss(seed));
 
-		const r = std.math.cbrt(starRandom.float(f64)) * 5000.0;
+		const r = std.math.cbrt(main.random.nextFloat(seed)) * 5000.0;
 
 		return vec.normalize(Vec3d {x, y, z}) * @as(Vec3d, @splat(r));
 	}
@@ -852,14 +852,14 @@ pub const Skybox = struct {
 
 		var starData: [numStars * 6]f32 = undefined;
 
-		var starRandom = std.Random.DefaultPrng.init(0);
+		var seed: u64 = 0;
 
 		for (0..numStars) |i| {
-			const pos = getStarPos(starRandom.random());
+			const pos = getStarPos(&seed);
 
-			const radius: f64 = starRandom.random().floatExp(f64) * 4 + 0.2;
+			const radius: f64 = @floatCast(main.random.nextFloatExp(&seed) * 4 + 0.2);
 
-			const temperature: f64 = (@abs(starRandom.random().floatNorm(f64) * 3000.0 + 5000.0) + 1000.0) / 5772.0;
+			const temperature: f64 = @floatCast((@abs(main.random.nextFloatGauss(&seed) * 3000.0 + 5000.0) + 1000.0) / 5772.0);
 
 			const luminosity = 4.0 * std.math.pi * radius * radius * temperature * temperature * temperature * temperature;
 
