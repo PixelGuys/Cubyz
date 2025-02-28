@@ -453,7 +453,7 @@ pub const StackAllocator = struct { // MARK: StackAllocator
 				.vtable = &.{
 					.alloc = &alloc,
 					.resize = &resize,
-					.remap = &std.mem.Allocator.noRemap,
+					.remap = &std.mem.Allocator.noRemap, // TODO: implement
 					.free = &free,
 				},
 				.ptr = self,
@@ -492,7 +492,8 @@ pub const StackAllocator = struct { // MARK: StackAllocator
 	/// has been provided.
 	fn alloc(ctx: *anyopaque, len: usize, ptr_align: std.mem.Alignment, ret_addr: usize) ?[*]u8 {
 		const self: *StackAllocator = @ptrCast(@alignCast(ctx));
-		const start = std.mem.alignForward(usize, self.index, @as(usize, 1) << @intCast(ptr_align));
+		// TODO: is this the same as ptr_align.forward(self.index)?
+		const start = std.mem.alignForward(usize, self.index, ptr_align.toByteUnits());
 		const end = getTrueAllocationEnd(start, len);
 		if(end >= self.buffer.len) return self.backingAllocator.rawAlloc(len, ptr_align, ret_addr);
 		const trailer = self.getTrailerBefore(end);
@@ -591,7 +592,7 @@ pub const ErrorHandlingAllocator = struct { // MARK: ErrorHandlingAllocator
 				.vtable = &.{
 					.alloc = &alloc,
 					.resize = &resize,
-					.remap = &std.mem.Allocator.noRemap,
+					.remap = &std.mem.Allocator.noRemap, // TODO: implement
 					.free = &free,
 				},
 				.ptr = self,
@@ -852,7 +853,7 @@ pub const NeverFailingArenaAllocator = struct { // MARK: NeverFailingArena
 		const node = self.arena.state.buffer_list.first orelse return;
 		const allocBuf = @as([*]u8, @ptrCast(node))[0..node.data];
 		const dataSize = std.mem.alignForward(usize, @sizeOf(std.SinglyLinkedList(usize).Node) + self.arena.state.end_index, @alignOf(std.SinglyLinkedList(usize).Node));
-		if(self.arena.child_allocator.rawResize(allocBuf, std.math.log2(@alignOf(std.SinglyLinkedList(usize).Node)), dataSize, @returnAddress())) {
+		if(self.arena.child_allocator.rawResize(allocBuf, .fromByteUnits(@alignOf(std.SinglyLinkedList(usize).Node)), dataSize, @returnAddress())) {
 			node.data = dataSize;
 		}
 	}
@@ -875,7 +876,7 @@ pub const BufferFallbackAllocator = struct { // MARK: BufferFallbackAllocator
 				.vtable = &.{
 					.alloc = &alloc,
 					.resize = &resize,
-					.remap = &std.mem.Allocator.noRemap,
+					.remap = &std.mem.Allocator.noRemap, // TODO: implement
 					.free = &free,
 				},
 				.ptr = self,
