@@ -631,6 +631,7 @@ const Parser = struct { // MARK: Parser
 				return .{.object = map};
 			}
 			if(chars[index.*] == '.') index.* += 1; // Just ignoring the dot in front of identifiers, the file might as well not have for all I care.
+			const keyIndex = index.*;
 			const key: []const u8 = parseIdentifierOrStringOrEnumLiteral(allocator, chars, index);
 			skipWhitespaces(chars, index);
 			while(index.* < chars.len and chars[index.*] != '=') {
@@ -641,7 +642,7 @@ const Parser = struct { // MARK: Parser
 			skipWhitespaces(chars, index);
 			const value: ZonElement = parseElement(allocator, chars, index);
 			if(map.fetchPut(key, value) catch unreachable) |old| {
-				printError(chars, index.*, "Duplicate key.");
+				printError(chars, keyIndex, "Duplicate key.");
 				allocator.free(old.key);
 				old.value.deinit(allocator);
 			}
