@@ -154,24 +154,8 @@ pub fn readAllZonFilesInAddons(
 				continue;
 			}
 
-			const fileSuffixLen = if(std.ascii.endsWithIgnoreCase(directoryEntry.basename, ".zig.zon")) ".zig.zon".len else ".zon".len;
-			const folderName = addonName;
-			const assetId: []u8 = externalAllocator.alloc(u8, folderName.len + 1 + directoryEntry.path.len - fileSuffixLen);
+			const assetId: []u8 = createAssetStringID(externalAllocator, addonName, directoryEntry.basename, directoryEntry.path);
 			errdefer externalAllocator.free(assetId);
-
-			@memcpy(assetId[0..folderName.len], folderName);
-			assetId[folderName.len] = ':';
-
-			// Copy path relative to asset directory as part of asset ID after addon
-			// namespace. For consistency windows style path separators are converted to
-			// unix style.
-			for(0..directoryEntry.path.len - fileSuffixLen) |i| {
-				if(directoryEntry.path[i] == '\\') {
-					assetId[folderName.len+1+i] = '/';
-				} else {
-					assetId[folderName.len+1+i] = directoryEntry.path[i];
-				}
-			}
 
 			const fileContent = addonAssetsSubdirectory.readFileAlloc(
 				main.stackAllocator.allocator,
@@ -217,6 +201,33 @@ pub fn readAllZonFilesInAddons(
 			output.put(assetId, zon) catch unreachable;
 		}
 	}
+}
+
+
+fn createAssetStringID(
+	externalAllocator: NeverFailingAllocator,
+	addonName: []const u8,
+	fileBaseName: []const u8,
+	relativeFilePath: []const u8,
+) []u8 {
+	const fileSuffixLen = if(std.ascii.endsWithIgnoreCase(fileBaseName, ".zig.zon")) ".zig.zon".len else ".zon".len;
+	const assetId: []u8 = externalAllocator.alloc(u8, addonName.len + 1 + relativeFilePath.len - fileSuffixLen);
+
+	@memcpy(assetId[0..addonName.len], addonName);
+	assetId[addonName.len] = ':';
+
+	// Copy path relative to asset directory as part of asset ID after addon
+	// namespace. For consistency windows style path separators are converted to
+	// unix style.
+	for(0..relativeFilePath.len - fileSuffixLen) |i| {
+		if(relativeFilePath[i] == '\\') {
+			assetId[addonName.len+1+i] = '/';
+		} else {
+			assetId[addonName.len+1+i] = relativeFilePath[i];
+		}
+	}
+
+	return assetId;
 }
 
 
