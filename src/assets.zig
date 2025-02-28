@@ -203,7 +203,6 @@ pub fn readAllZonFilesInAddons(
 	}
 }
 
-
 fn createAssetStringID(
 	externalAllocator: NeverFailingAllocator,
 	addonName: []const u8,
@@ -230,6 +229,34 @@ fn createAssetStringID(
 	return assetId;
 }
 
+/// Reads text files recursively from all subfolders.
+pub fn readAllFilesInAddons(externalAllocator: NeverFailingAllocator, addons: main.List(std.fs.Dir), subPath: []const u8, output: *main.List([]const u8)) void {
+	for(addons.items) |addon| {
+		var dir = addon.openDir(subPath, .{.iterate = true}) catch |err| {
+			if(err != error.FileNotFound) {
+				std.log.err("Could not open addon directory {s}: {s}", .{subPath, @errorName(err)});
+			}
+			continue;
+		};
+		defer dir.close();
+
+		var walker = dir.walk(main.stackAllocator.allocator) catch unreachable;
+		defer walker.deinit();
+
+		while(walker.next() catch |err| blk: {
+			std.log.err("Got error while iterating addon directory {s}: {s}", .{subPath, @errorName(err)});
+			break :blk null;
+		}) |entry| {
+			if(entry.kind == .file) {
+				const string = dir.readFileAlloc(externalAllocator.allocator, entry.path, std.math.maxInt(usize)) catch |err| {
+					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
+					continue;
+				};
+				output.append(string);
+			}
+		}
+	}
+}
 
 /// Reads obj files recursively from all subfolders.
 pub fn readAllObjFilesInAddonsHashmap(
