@@ -1,20 +1,26 @@
 .{
 	.tags = .{.stone},
-	.blockHealth = 23.75,
+	.blockHealth = 32.5,
 	.blockResistance = 1,
 	.drops = .{
 		.{.items = .{.auto}},
 	},
 	.item = .{
 		.material = .{
-			.density = 2.6,
-			.strength = 1.1,
-			.elasticity = 2.0,
-			.grip = 0.3,
-			.hardness = 5.5,
-			.textureRoughness = 0.5,
+			.density = 3.25,
+			.strength = 3.0,
+			.elasticity = 0.5,
+			.grip = 0.25,
+			.hardness = 4.75,
+			.textureRoughness = 0.75,
 			.colors = .{
 				0xff72403C, 0xff905B57, 0xffB77966, 0xffC2846A, 0xffC49B77,
+			},
+			.modifiers = .{
+				.{
+					.id = "fragile",
+					.strength = 0.20,
+				},
 			},
 		},
 	},
