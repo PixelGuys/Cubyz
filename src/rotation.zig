@@ -374,9 +374,10 @@ pub const RotationModes = struct {
 
 			const baseModelIndex = main.models.getModelIndex(modelId);
 			const baseModel = main.models.models.items[baseModelIndex];
-			// Rotate the model:
+
 			const modelIndex: u16 = baseModel.transformModel(branchTransform, .{@as(BranchData, @bitCast(@as(u6, 0)))});
 			for(1..64) |branchData| {
+
 				_ = baseModel.transformModel(branchTransform, .{@as(BranchData, @bitCast(@as(u6, @intCast(branchData))))});
 			}
 			branchModels.put(modelId, modelIndex) catch unreachable;
@@ -387,13 +388,23 @@ pub const RotationModes = struct {
 			return blocks.meshes.modelIndexStart(block) + (block.data & 63);
 		}
 
+		pub fn generateData(
+			_: *main.game.World,
+			_: Vec3i,
+			_: Vec3f,
+			_: Vec3f,
+			_: Vec3i,
+			neighbor: ?Neighbor,
+			currentBlock: *Block,
+			neighborBlock: Block,
+			blockPlacing: bool,
+		) bool {
+			const blockBaseModel = blocks.meshes.modelIndexStart(currentBlock.*);
+			const neighborBaseModel = blocks.meshes.modelIndexStart(neighborBlock);
 
-		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, neighbor: ?Neighbor, currentBlock: *Block, neighborBlock: Block, blockPlacing: bool) bool {
-			if(blockPlacing) {
-				const blockBaseModel = blocks.meshes.modelIndexStart(currentBlock.*);
-				const neighborBaseModel = blocks.meshes.modelIndexStart(neighborBlock);
+			if(blockPlacing or (blockBaseModel == neighborBaseModel)) {
 				const neighborModel = blocks.meshes.model(neighborBlock);
-				const targetVal = (neighborBlock.solid() and ((blockBaseModel == neighborBaseModel) or main.models.models.items[neighborModel].isNeighborOccluded[neighbor.?.reverse().toInt()]));
+				const targetVal = (neighborBlock.solid() and  ((blockBaseModel == neighborBaseModel) or main.models.models.items[neighborModel].isNeighborOccluded[neighbor.?.reverse().toInt()]));
 
 				var currentData: BranchData = @bitCast(@as(u6, @truncate(currentBlock.data)));
 
@@ -427,10 +438,6 @@ pub const RotationModes = struct {
 				// Mind that neighbor and current block data fields are inverted, so they
 				// extend towards each other.
 				currentData.setConnection(neighbor, neighborData.isConnected(neighbor.reverse()));
-			} else {
-				if (!neighborBlock.solid()) {
-					currentData.setConnection(neighbor, false);
-				}
 			}
 
 			const result: u16 = @as(u6, @bitCast(currentData));
@@ -438,6 +445,67 @@ pub const RotationModes = struct {
 
 			block.data = result;
 			return true;
+		}
+
+		fn closestRay(
+			comptime typ: enum{bit, intersection},
+			block: Block,
+			_: ?main.items.Item,
+			relativePlayerPos: Vec3f,
+			playerDir: Vec3f
+		) (if(typ == .intersection) ?RayIntersectionResult else u16) {
+			var result: ?RayIntersectionResult = null;
+			var resultBit: u16 = std.math.maxInt(u16);
+			// Check intersection with central part of the branch block.
+			{
+				const modelIndex = blocks.meshes.modelIndexStart(block);
+				if(RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
+					result = intersection;
+					resultBit = 0;
+				}
+			}
+
+			// In case we did not intersect with the central part, check all the side
+			// connections.
+			for([_]Neighbor{
+				Neighbor.dirUp,
+				Neighbor.dirDown,
+				Neighbor.dirPosX,
+				Neighbor.dirNegX,
+				Neighbor.dirPosY,
+				Neighbor.dirNegY,
+			}) |direction| {
+				const bit = Neighbor.bitMask(direction);
+
+				if((block.data & bit) != 0) {
+					const modelIndex = blocks.meshes.modelIndexStart(block) + bit;
+					if(RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
+						if(result == null or @abs(result.?.distance) > @abs(intersection.distance)) {
+							result = intersection;
+							resultBit = @intFromEnum(direction);
+						}
+					}
+				}
+			}
+			if(typ == .bit) return resultBit;
+			return result;
+		}
+
+		pub fn onBlockBreaking(item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void {
+			const bit = closestRay(.bit, currentData.*, item, relativePlayerPos, playerDir);
+
+			if(bit == std.math.maxInt(u16)) {
+				return;
+			}
+			// If player destroys a central part of branch block, branch block is completely
+			// destroyed.
+			if(bit == 0) {
+				currentData.typ = 0;
+				currentData.data = 0;
+				return;
+			}
+
+			currentData.data &= ~Neighbor.bitMask(@enumFromInt(bit));
 		}
 	};
 	pub const Stairs = struct { // MARK: Stairs
