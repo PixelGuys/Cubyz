@@ -807,7 +807,7 @@ pub const Skybox = struct {
 
 			c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 		}
-		
+
 		c.glEnable(c.GL_CULL_FACE);
 		c.glEnable(c.GL_DEPTH_TEST);
 	}
