@@ -650,12 +650,10 @@ pub const Skybox = struct {
 		return vec.normalize(Vec3d {x, y, z}) * @as(Vec3d, @splat(r));
 	}
 
-	fn getStarColor(temperature: f64, magnitude: f64, image: graphics.Image) Vec3d {
+	fn getStarColor(temperature: f64, light: f64, image: graphics.Image) Vec3d {
 		const rgbCol = image.getRGB(@intFromFloat(std.math.clamp(temperature, 1000, 14999)), 0);
 		var rgb: Vec3d = @floatFromInt(Vec3i{rgbCol.r, rgbCol.g, rgbCol.b});
 		rgb /= @splat(255.0);
-
-		const light = std.math.pow(f64, 10.0, -0.4 * magnitude);
 
 		rgb *= @as(Vec3d, @splat(light));
 
@@ -688,13 +686,13 @@ pub const Skybox = struct {
 
 			const temperature: f64 = @floatCast((@abs(main.random.nextFloatGauss(&seed) * 3000.0 + 5000.0) + 1000.0) / 5772.0);
 
-			const luminosity = 4.0 * std.math.pi * radius * radius * temperature * temperature * temperature * temperature;
+			const luminosity = radius * radius * temperature * temperature * temperature * temperature;
 
-			const flux = luminosity / (4.0 * std.math.pi * 1.36e+7 * vec.length(pos) * vec.length(pos));
+			const flux = luminosity / (1.36e+7 * vec.length(pos) * vec.length(pos));
 
-			const magnitude = -2.5 * @log10(flux) - 26.83;
+			const light = flux * std.math.pow(f64, 10, 10.732);
 
-			const col = getStarColor(temperature * 5772.0, magnitude, starColorImage);
+			const col = getStarColor(temperature * 5772.0, light, starColorImage);
 
 			starData[i * 6] = @floatCast(pos[0]);
 			starData[i * 6 + 1] = @floatCast(pos[1]);
