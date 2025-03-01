@@ -426,7 +426,6 @@ pub const RotationModes = struct {
 		pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool {
 			const blockBaseModel = blocks.meshes.modelIndexStart(block.*);
 			const neighborBaseModel = blocks.meshes.modelIndexStart(neighborBlock);
-			const neighborModel = blocks.meshes.model(neighborBlock);
 			var currentData: BranchData = @bitCast(@as(u6, @truncate(block.data)));
 
 			// Handle joining with other branches. While placed, branches extend in a
@@ -456,30 +455,6 @@ pub const RotationModes = struct {
 					},
 					.dirUp => {
 						currentData.isConnectedPosZ = neighborData.isConnectedNegZ;
-					},
-				}
-			} else {
-				// Handle any other block than one using branch model.
-				const targetVal = neighborBlock.solid() and main.models.models.items[neighborModel].isNeighborOccluded[neighbor.reverse().toInt()];
-
-				switch(neighbor) {
-					.dirNegX => {
-						currentData.isConnectedNegX = targetVal;
-					},
-					.dirPosX => {
-						currentData.isConnectedPosX = targetVal;
-					},
-					.dirNegY => {
-						currentData.isConnectedNegY = targetVal;
-					},
-					.dirPosY => {
-						currentData.isConnectedPosY = targetVal;
-					},
-					.dirDown => {
-						currentData.isConnectedNegZ = targetVal;
-					},
-					.dirUp => {
-						currentData.isConnectedPosZ = targetVal;
 					},
 				}
 			}
