@@ -650,10 +650,6 @@ pub const Skybox = struct {
 		return vec.normalize(Vec3d {x, y, z}) * @as(Vec3d, @splat(r));
 	}
 
-	const planck: f64 = 6.62607015e-34;
-	const speedOfLight: f64 = 2.99792458e8;
-	const boltzmann: f64 = 1.380649e-23;
-
 	fn getStarColor(temperature: f64, magnitude: f64, image: graphics.Image) Vec3d {
 		const rgbCol = image.getRGB(@intFromFloat(std.math.clamp(temperature, 1000, 14999)), 0);
 		var rgb: Vec3d = @floatFromInt(Vec3i{rgbCol.r, rgbCol.g, rgbCol.b});
