@@ -860,16 +860,17 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			main.items.Inventory.Sync.ClientSide.mutex.lock();
 			if(!game.Player.isCreative()) {
 				const stack = inventory.getStack(slot);
-				var power: f32 = 1;
+				var damage: f32 = 1;
 				const isTool = stack.item != null and stack.item.? == .tool;
 				if(isTool) {
-					power = stack.item.?.tool.getBlockPower(block);
+					damage = stack.item.?.tool.getBlockDamage(block);
 				}
 				const isChisel = stack.item != null and stack.item.? == .baseItem and std.mem.eql(u8, stack.item.?.baseItem.id, "cubyz:chisel");
 				if(isChisel and block.mode() == main.rotation.getByID("stairs")) { // TODO: Remove once the chisel is a tool.
-					power = block.blockHealth();
+					damage = block.blockHealth();
 				}
-				if(power >= block.breakingPower()) {
+				damage -= block.blockResistance();
+				if(damage > 0) {
 					const swingTime = if(isTool) stack.item.?.tool.swingTime else 0.5;
 					if(currentSwingTime != swingTime) {
 						currentSwingProgress = 0;
@@ -878,7 +879,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 					currentSwingProgress += @floatCast(deltaTime);
 					while(currentSwingProgress > currentSwingTime) {
 						currentSwingProgress -= currentSwingTime;
-						currentBlockProgress += power/block.blockHealth();
+						currentBlockProgress += damage/block.blockHealth();
 						if(currentBlockProgress > 1) break;
 					}
 					if(currentBlockProgress < 1) {

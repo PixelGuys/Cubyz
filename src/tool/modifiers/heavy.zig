@@ -19,8 +19,8 @@ pub fn changeToolParameters(tool: *Tool, data: Data) void {
 	tool.swingTime *= 1 + data.strength;
 }
 
-pub fn changeBlockPower(power: f32, _: main.blocks.Block, _: Data) f32 {
-	return power;
+pub fn changeBlockDamage(damage: f32, _: main.blocks.Block, _: Data) f32 {
+	return damage;
 }
 
 pub fn printTooltip(outString: *main.List(u8), data: Data) void {

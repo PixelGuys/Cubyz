@@ -108,6 +108,10 @@ pub fn deinit() void {
 pub const Dir = struct {
 	dir: std.fs.Dir,
 
+	pub fn init(dir: std.fs.Dir) Dir {
+		return .{.dir = dir};
+	}
+
 	pub fn close(self: *Dir) void {
 		self.dir.close();
 	}
@@ -119,7 +123,9 @@ pub const Dir = struct {
 	pub fn readToZon(self: Dir, allocator: NeverFailingAllocator, path: []const u8) !ZonElement {
 		const string = try self.read(main.stackAllocator, path);
 		defer main.stackAllocator.free(string);
-		return ZonElement.parseFromString(allocator, string);
+		const realPath = try self.dir.realpathAlloc(main.stackAllocator.allocator, path);
+		defer main.stackAllocator.free(realPath);
+		return ZonElement.parseFromString(allocator, realPath, string);
 	}
 
 	pub fn write(self: Dir, path: []const u8, data: []const u8) !void {

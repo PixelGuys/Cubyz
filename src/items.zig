@@ -91,7 +91,7 @@ const Modifier = struct {
 		const Data = packed struct(u128) {pad: u128};
 		combineModifiers: *const fn(data1: Data, data2: Data) ?Data,
 		changeToolParameters: *const fn(tool: *Tool, data: Data) void,
-		changeBlockPower: *const fn(power: f32, block: main.blocks.Block, data: Data) f32,
+		changeBlockDamage: *const fn(damage: f32, block: main.blocks.Block, data: Data) f32,
 		printTooltip: *const fn(outString: *main.List(u8), data: Data) void,
 		loadData: *const fn(zon: ZonElement) Data,
 		priority: f32,
@@ -109,8 +109,8 @@ const Modifier = struct {
 		self.vTable.changeToolParameters(tool, self.data);
 	}
 
-	pub fn changeBlockPower(self: Modifier, power: f32, block: main.blocks.Block) f32 {
-		return self.vTable.changeBlockPower(power, block, self.data);
+	pub fn changeBlockDamage(self: Modifier, damage: f32, block: main.blocks.Block) f32 {
+		return self.vTable.changeBlockDamage(damage, block, self.data);
 	}
 
 	pub fn printTooltip(self: Modifier, outString: *main.List(u8)) void {
@@ -395,14 +395,14 @@ pub const ToolType = struct { // MARK: ToolType
 };
 
 const ToolProperty = enum {
-	power,
+	damage,
 	maxDurability,
 	swingTime,
 
 	fn fromString(string: []const u8) ToolProperty {
 		return std.meta.stringToEnum(ToolProperty, string) orelse {
-			std.log.err("Couldn't find tool property {s}. Replacing it with power", .{string});
-			return .power;
+			std.log.err("Couldn't find tool property {s}. Replacing it with damage", .{string});
+			return .damage;
 		};
 	}
 };
@@ -417,7 +417,7 @@ pub const Tool = struct { // MARK: Tool
 	seed: u32,
 	type: *const ToolType,
 
-	power: f32,
+	damage: f32,
 
 	durability: u32,
 	maxDurability: f32,
@@ -466,7 +466,7 @@ pub const Tool = struct { // MARK: Tool
 			.texture = null,
 			.seed = self.seed,
 			.type = self.type,
-			.power = self.power,
+			.damage = self.damage,
 			.durability = self.durability,
 			.maxDurability = self.maxDurability,
 			.swingTime = self.swingTime,
@@ -556,13 +556,13 @@ pub const Tool = struct { // MARK: Tool
 		self.tooltip.writer().print(
 			\\{s}
 			\\Time to swing: {d:.2} s
-			\\Power: {} %
+			\\Damage: {d:.2}
 			\\Durability: {}/{}
 			,
 			.{
 				self.type.id,
 				self.swingTime,
-				@as(i32, @intFromFloat(100*self.power)),
+				self.damage,
 				self.durability, std.math.lossyCast(u32, self.maxDurability),
 			}
 		) catch unreachable;
@@ -577,14 +577,14 @@ pub const Tool = struct { // MARK: Tool
 		return self.tooltip.items;
 	}
 
-	pub fn getBlockPower(self: *Tool, block: main.blocks.Block) f32 {
-		var power = self.power;
+	pub fn getBlockDamage(self: *Tool, block: main.blocks.Block) f32 {
+		var damage = self.damage;
 		for(self.modifiers) |modifier| {
-			power = modifier.changeBlockPower(power, block);
+			damage = modifier.changeBlockDamage(damage, block);
 		}
 		for(block.blockTags()) |blockTag| {
 			for(self.type.blockTags) |toolTag| {
-				if(toolTag == blockTag) return power;
+				if(toolTag == blockTag) return damage;
 			}
 		}
 		return 0;
@@ -780,7 +780,7 @@ pub fn globalInit() void {
 		const ModifierStruct = @field(modifierList, decl.name);
 		modifiers.put(decl.name, &.{
 			.changeToolParameters = @ptrCast(&ModifierStruct.changeToolParameters),
-			.changeBlockPower = @ptrCast(&ModifierStruct.changeBlockPower),
+			.changeBlockDamage = @ptrCast(&ModifierStruct.changeBlockDamage),
 			.combineModifiers = @ptrCast(&ModifierStruct.combineModifiers),
 			.printTooltip = @ptrCast(&ModifierStruct.printTooltip),
 			.loadData = @ptrCast(&ModifierStruct.loadData),

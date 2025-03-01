@@ -1,7 +1,7 @@
 .{
 	.tags = .{.stone},
-	.blockHealth = 30,
-	.breakingPower = 1,
+	.blockHealth = 60,
+	.blockResistance = 1,
 	.ore = .{
 		.veins = 10,
 		.size = 100,
