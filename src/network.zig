@@ -651,7 +651,7 @@ pub const Protocols = struct {
 				conn.handShakeState.store(data[0], .monotonic);
 				switch(data[0]) {
 					stepUserData => {
-						const zon = ZonElement.parseFromString(main.stackAllocator, data[1..]);
+						const zon = ZonElement.parseFromString(main.stackAllocator, null, data[1..]);
 						defer zon.deinit(main.stackAllocator);
 						const name = zon.get([]const u8, "name", "unnamed");
 						if(name.len > 500 or main.graphics.TextBuffer.Parser.countVisibleCharacters(name) > 50) {
@@ -699,7 +699,7 @@ pub const Protocols = struct {
 						try utils.Compression.unpack(dir, data[1..]);
 					},
 					stepServerData => {
-						const zon = ZonElement.parseFromString(main.stackAllocator, data[1..]);
+						const zon = ZonElement.parseFromString(main.stackAllocator, null, data[1..]);
 						defer zon.deinit(main.stackAllocator);
 						try conn.manager.world.?.finishHandshake(zon);
 						conn.handShakeState.store(stepComplete, .monotonic);
@@ -934,7 +934,7 @@ pub const Protocols = struct {
 		pub const id: u8 = 8;
 		pub const asynchronous = false;
 		fn receive(conn: *Connection, data: []const u8) !void {
-			const zonArray = ZonElement.parseFromString(main.stackAllocator, data);
+			const zonArray = ZonElement.parseFromString(main.stackAllocator, null, data);
 			defer zonArray.deinit(main.stackAllocator);
 			var i: u32 = 0;
 			while(i < zonArray.array.items.len) : (i += 1) {
@@ -1006,7 +1006,7 @@ pub const Protocols = struct {
 				type_reserved6 => {},
 				type_timeAndBiome => {
 					if(conn.manager.world) |world| {
-						const zon = ZonElement.parseFromString(main.stackAllocator, data[1..]);
+						const zon = ZonElement.parseFromString(main.stackAllocator, null, data[1..]);
 						defer zon.deinit(main.stackAllocator);
 						const expectedTime = zon.get(i64, "time", 0);
 						var curTime = world.gameTime.load(.monotonic);

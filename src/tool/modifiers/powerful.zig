@@ -16,13 +16,13 @@ pub fn combineModifiers(data1: Data, data2: Data) ?Data {
 }
 
 pub fn changeToolParameters(tool: *Tool, data: Data) void {
-	tool.power *= 1 + data.strength;
+	tool.damage *= 1 + data.strength;
 }
 
-pub fn changeBlockPower(power: f32, _: main.blocks.Block, _: Data) f32 {
-	return power;
+pub fn changeBlockDamage(damage: f32, _: main.blocks.Block, _: Data) f32 {
+	return damage;
 }
 
 pub fn printTooltip(outString: *main.List(u8), data: Data) void {
-	outString.writer().print("#f84a00**Powerful**#808080 *Increases power by **{d:.0}%", .{data.strength*100}) catch unreachable;
+	outString.writer().print("#f84a00**Powerful**#808080 *Increases damage by **{d:.0}%", .{data.strength*100}) catch unreachable;
 }

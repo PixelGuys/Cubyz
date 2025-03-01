@@ -434,10 +434,10 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		return string.toOwnedSlice();
 	}
 
-	pub fn parseFromString(allocator: NeverFailingAllocator, string: []const u8) ZonElement {
+	pub fn parseFromString(allocator: NeverFailingAllocator, filePath: ?[]const u8, string: []const u8) ZonElement {
 		var index: u32 = 0;
 		Parser.skipWhitespaces(string, &index);
-		return Parser.parseElement(allocator, string, &index);
+		return Parser.parseElement(allocator, filePath, string, &index);
 	}
 };
 
@@ -600,7 +600,7 @@ const Parser = struct { // MARK: Parser
 		return builder.toOwnedSlice();
 	}
 
-	fn parseArray(allocator: NeverFailingAllocator, chars: []const u8, index: *u32) ZonElement {
+	fn parseArray(allocator: NeverFailingAllocator, filePath: ?[]const u8, chars: []const u8, index: *u32) ZonElement {
 		const list = allocator.create(List(ZonElement));
 		list.* = .init(allocator);
 		while(index.* < chars.len) {
@@ -610,17 +610,17 @@ const Parser = struct { // MARK: Parser
 				index.* += 1;
 				return .{.array = list};
 			}
-			list.append(parseElement(allocator, chars, index));
+			list.append(parseElement(allocator, filePath, chars, index));
 			skipWhitespaces(chars, index);
 			if(index.* < chars.len and chars[index.*] == ',') {
 				index.* += 1;
 			}
 		}
-		printError(chars, index.*, "Unexpected end of file in array parsing.");
+		printError(filePath, chars, index.*, "Unexpected end of file in array parsing.");
 		return .{.array=list};
 	}
 
-	fn parseObject(allocator: NeverFailingAllocator, chars: []const u8, index: *u32) ZonElement {
+	fn parseObject(allocator: NeverFailingAllocator, filePath: ?[]const u8, chars: []const u8, index: *u32) ZonElement {
 		const map = allocator.create(std.StringHashMap(ZonElement));
 		map.* = .init(allocator.allocator);
 		while(index.* < chars.len) {
@@ -631,17 +631,18 @@ const Parser = struct { // MARK: Parser
 				return .{.object = map};
 			}
 			if(chars[index.*] == '.') index.* += 1; // Just ignoring the dot in front of identifiers, the file might as well not have for all I care.
+			const keyIndex = index.*;
 			const key: []const u8 = parseIdentifierOrStringOrEnumLiteral(allocator, chars, index);
 			skipWhitespaces(chars, index);
 			while(index.* < chars.len and chars[index.*] != '=') {
-				printError(chars, index.*, "Unexpected character in object parsing, expected '='.");
+				printError(filePath, chars, index.*, "Unexpected character in object parsing, expected '='.");
 				index.* += 1;
 			}
 			index.* += 1;
 			skipWhitespaces(chars, index);
-			const value: ZonElement = parseElement(allocator, chars, index);
+			const value: ZonElement = parseElement(allocator, filePath, chars, index);
 			if(map.fetchPut(key, value) catch unreachable) |old| {
-				printError(chars, index.*, "Duplicate key.");
+				printError(filePath, chars, keyIndex, "Duplicate key.");
 				allocator.free(old.key);
 				old.value.deinit(allocator);
 			}
@@ -650,18 +651,18 @@ const Parser = struct { // MARK: Parser
 				index.* += 1;
 			}
 		}
-		printError(chars, index.*, "Unexpected end of file in object parsing.");
+		printError(filePath, chars, index.*, "Unexpected end of file in object parsing.");
 		return .{.object = map};
 	}
 
-	fn printError(chars: []const u8, index: u32, msg: []const u8) void {
+	fn printError(filePath: ?[]const u8, chars: []const u8, index: u32, msg: []const u8) void {
 		var lineNumber: u32 = 1;
 		var lineStart: u32 = 0;
 		var i: u32 = 0;
 		while(i < index and i < chars.len): (i += 1) {
 			if(chars[i] == '\n') {
 				lineNumber += 1;
-				lineStart = i;
+				lineStart = i + 1;
 			}
 		}
 		while(i < chars.len): (i += 1) {
@@ -670,6 +671,9 @@ const Parser = struct { // MARK: Parser
 			}
 		}
 		const lineEnd: u32 = i;
+		if(filePath) |_filePath| {
+			std.log.err("In file {s}:", .{_filePath});
+		}
 		std.log.err("Error in line {}: {s}", .{lineNumber, msg});
 		std.log.err("{s}", .{chars[lineStart..lineEnd]});
 		// Mark the position:
@@ -697,9 +701,9 @@ const Parser = struct { // MARK: Parser
 	}
 
 	/// Assumes that the region starts with a non-space character.
-	fn parseElement(allocator: NeverFailingAllocator, chars: []const u8, index: *u32) ZonElement {
+	fn parseElement(allocator: NeverFailingAllocator, filePath: ?[]const u8, chars: []const u8, index: *u32) ZonElement {
 		if(index.* >= chars.len) {
-			printError(chars, index.*, "Unexpected end of file.");
+			printError(filePath, chars, index.*, "Unexpected end of file.");
 			return .null;
 		}
 		sw: switch(chars[index.*]) {
@@ -708,27 +712,27 @@ const Parser = struct { // MARK: Parser
 			},
 			't' => { // Value can only be true.
 				if(index.* + 3 >= chars.len) {
-					printError(chars, index.*, "Unexpected end of file.");
+					printError(filePath, chars, index.*, "Unexpected end of file.");
 				} else if(chars[index.*+1] != 'r' or chars[index.*+2] != 'u' or chars[index.*+3] != 'e') {
-					printError(chars, index.*, "Unknown expression, interpreting as true.");
+					printError(filePath, chars, index.*, "Unknown expression, interpreting as true.");
 				}
 				index.* += 4;
 				return .{.bool = true};
 			},
 			'f' => { // Value can only be false.
 				if(index.* + 4 >= chars.len) {
-					printError(chars, index.*, "Unexpected end of file.");
+					printError(filePath, chars, index.*, "Unexpected end of file.");
 				} else if(chars[index.*+1] != 'a' or chars[index.*+2] != 'l' or chars[index.*+3] != 's' or chars[index.*+4] != 'e') {
-					printError(chars, index.*, "Unknown expression, interpreting as false.");
+					printError(filePath, chars, index.*, "Unknown expression, interpreting as false.");
 				}
 				index.* += 5;
 				return .{.bool = false};
 			},
 			'n' => { // Value can only be null.
 				if(index.* + 3 >= chars.len) {
-					printError(chars, index.*, "Unexpected end of file.");
+					printError(filePath, chars, index.*, "Unexpected end of file.");
 				} else if(chars[index.*+1] != 'u' or chars[index.*+2] != 'l' or chars[index.*+3] != 'l') {
-					printError(chars, index.*, "Unknown expression, interpreting as null.");
+					printError(filePath, chars, index.*, "Unknown expression, interpreting as null.");
 				}
 				index.* += 4;
 				return .{.null = {}};
@@ -740,7 +744,7 @@ const Parser = struct { // MARK: Parser
 			'.' => {
 				index.* += 1;
 				if(index.* >= chars.len) {
-					printError(chars, index.*, "Unexpected end of file.");
+					printError(filePath, chars, index.*, "Unexpected end of file.");
 					return .null;
 				}
 				if(chars[index.*] == '{') continue :sw '{';
@@ -771,13 +775,13 @@ const Parser = struct { // MARK: Parser
 					}
 				}
 				if(foundEqualSign) {
-					return parseObject(allocator, chars, index);
+					return parseObject(allocator, filePath, chars, index);
 				} else {
-					return parseArray(allocator, chars, index);
+					return parseArray(allocator, filePath, chars, index);
 				}
 			},
 			else => {
-				printError(chars, index.*, "Unexpected character.");
+				printError(filePath, chars, index.*, "Unexpected character.");
 				index.* += 1;
 				return .null;
 			}
