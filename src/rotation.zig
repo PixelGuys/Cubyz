@@ -439,7 +439,7 @@ pub const RotationModes = struct {
 			if(blockBaseModel == neighborBaseModel) {
 				const neighborData = BranchData.init(neighborBlock.data);
 				currentData.setConnection(neighbor, neighborData.isConnected(neighbor.reverse()));
-			} else if(!neighborBlock.solid()) {
+			} else if(!neighborBlock.solid() or neighborBlock.viewThrough()) {
 				currentData.setConnection(neighbor, false);
 			}
 
