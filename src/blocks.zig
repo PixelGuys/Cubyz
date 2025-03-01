@@ -13,7 +13,6 @@ const items = @import("items.zig");
 const models = @import("models.zig");
 const rotation = @import("rotation.zig");
 const RotationMode = rotation.RotationMode;
-const Vec3i = @import("vec.zig").Vec3i;
 
 pub const BlockTag = enum(u32) {
 	air = 0,
@@ -110,6 +109,10 @@ var _friction: [maxBlockCount]f32 = undefined;
 
 var _allowOres: [maxBlockCount]bool = undefined;
 
+/// Optimization to only run expensive touch checking on blocks that need it (such as damaging blocks)
+var _checkEntityTouching: [maxBlockCount]bool = undefined;
+var _checkEntityInside: [maxBlockCount]bool = undefined;
+
 var reverseIndices = std.StringHashMap(u16).init(allocator.allocator);
 
 var size: u32 = 0;
@@ -150,6 +153,8 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_hasBackFace[size] = zon.get(bool, "hasBackFace", false);
 	_friction[size] = zon.get(f32, "friction", 20);
 	_allowOres[size] = zon.get(bool, "allowOres", false);
+	_checkEntityTouching[size] = zon.get(bool, "checkEntityTouching", false);
+	_checkEntityInside[size] = zon.get(bool, "checkEntityInside", false);
 
 	const oreProperties = zon.getChild("ore");
 	if (oreProperties != .null) blk: {
@@ -375,16 +380,16 @@ pub const Block = packed struct { // MARK: Block
 		return _allowOres[self.typ];
 	}
 
-	pub fn canBeChangedInto(self: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) main.rotation.RotationMode.CanBeChangedInto {
-		return newBlock.mode().canBeChangedInto(self, newBlock, item, shouldDropSourceBlockOnSuccess);
+	pub fn checkEntityTouching(self: Block) bool {
+		return _checkEntityTouching[self.typ];
 	}
 
-	pub fn onEntityInside(self: Block, entity: main.server.Entity, posX: i32, posY: i32, posZ: i32) void {
-		_ = self;
-		_ = entity;
-		_ = posX;
-		_ = posY;
-		_ = posZ;
+	pub fn checkEntityInside(self: Block) bool {
+		return _checkEntityInside[self.typ];
+	}
+
+	pub fn canBeChangedInto(self: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) main.rotation.RotationMode.CanBeChangedInto {
+		return newBlock.mode().canBeChangedInto(self, newBlock, item, shouldDropSourceBlockOnSuccess);
 	}
 
 	pub fn onEntityTouching(self: Block, entity: main.server.Entity, posX: i32, posY: i32, posZ: i32, neighbor: Neighbor) void {
@@ -394,6 +399,14 @@ pub const Block = packed struct { // MARK: Block
 		_ = posY;
 		_ = posZ;
 		_ = neighbor;
+	}
+
+	pub fn onEntityInside(self: Block, entity: main.server.Entity, posX: i32, posY: i32, posZ: i32) void {
+		_ = self;
+		_ = entity;
+		_ = posX;
+		_ = posY;
+		_ = posZ;
 	}
 };
 
