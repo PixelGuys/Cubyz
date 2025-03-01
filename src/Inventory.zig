@@ -654,7 +654,7 @@ pub const Command = struct { // MARK: Command
 					}};
 
 					if (data.len > 10) {
-						const zon = ZonElement.parseFromString(main.stackAllocator, data[10..]);
+						const zon = ZonElement.parseFromString(main.stackAllocator, null, data[10..]);
 						defer zon.deinit(main.stackAllocator);
 						out.create.item = try Item.init(zon);
 					}
@@ -1451,7 +1451,7 @@ pub const Command = struct { // MARK: Command
 			const amount = std.mem.readInt(u16, data[8..10], .big);
 			var item: ?Item = null;
 			if(data.len > 10) {
-				const zon = ZonElement.parseFromString(main.stackAllocator, data[10..]);
+				const zon = ZonElement.parseFromString(main.stackAllocator, null, data[10..]);
 				defer zon.deinit(main.stackAllocator);
 				item = try Item.init(zon);
 			}

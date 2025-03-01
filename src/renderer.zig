@@ -708,6 +708,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	pub var selectedBlockPos: ?Vec3i = null;
 	var lastSelectedBlockPos: Vec3i = undefined;
 	var currentBlockProgress: f32 = 0;
+	var currentSwingProgress: f32 = 0;
+	var currentSwingTime: f32 = 0;
 	var selectionMin: Vec3f = undefined;
 	var selectionMax: Vec3f = undefined;
 	var lastPos: Vec3d = undefined;
@@ -849,6 +851,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
 				lastSelectedBlockPos = selectedPos;
 				currentBlockProgress = 0;
+				currentSwingProgress = 0;
+				currentSwingTime = 0;
 			}
 			const block = mesh_storage.getBlock(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
 			const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
@@ -856,27 +860,33 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			main.items.Inventory.Sync.ClientSide.mutex.lock();
 			if(!game.Player.isCreative()) {
 				const stack = inventory.getStack(slot);
-				var power: f32 = 0;
+				var damage: f32 = 1;
 				const isTool = stack.item != null and stack.item.? == .tool;
 				if(isTool) {
-					power = stack.item.?.tool.getBlockPower(block);
+					damage = stack.item.?.tool.getBlockDamage(block);
 				}
 				const isChisel = stack.item != null and stack.item.? == .baseItem and std.mem.eql(u8, stack.item.?.baseItem.id, "cubyz:chisel");
 				if(isChisel and block.mode() == main.rotation.getByID("stairs")) { // TODO: Remove once the chisel is a tool.
-					power = 10;
+					damage = block.blockHealth();
 				}
-				if(power >= block.breakingPower()) {
-					var breakTime: f32 = block.blockHealth();
-					if(isTool) {
-						breakTime = breakTime*stack.item.?.tool.swingTime/power;
+				damage -= block.blockResistance();
+				if(damage > 0) {
+					const swingTime = if(isTool) stack.item.?.tool.swingTime else 0.5;
+					if(currentSwingTime != swingTime) {
+						currentSwingProgress = 0;
+						currentSwingTime = swingTime;
 					}
-					if(isChisel and block.mode() == main.rotation.getByID("stairs")) { // TODO: Remove once the chisel is a tool.
-						breakTime = 0.5;
+					currentSwingProgress += @floatCast(deltaTime);
+					while(currentSwingProgress > currentSwingTime) {
+						currentSwingProgress -= currentSwingTime;
+						currentBlockProgress += damage/block.blockHealth();
+						if(currentBlockProgress > 1) break;
 					}
-					currentBlockProgress += @as(f32, @floatCast(deltaTime))/breakTime;
 					if(currentBlockProgress < 1) {
 						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
-						mesh_storage.addBreakingAnimation(lastSelectedBlockPos, currentBlockProgress);
+						if(currentBlockProgress != 0) {
+							mesh_storage.addBreakingAnimation(lastSelectedBlockPos, currentBlockProgress);
+						}
 						main.items.Inventory.Sync.ClientSide.mutex.unlock();
 
 						return;

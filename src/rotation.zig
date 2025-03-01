@@ -68,14 +68,15 @@ pub const RotationMode = struct { // MARK: RotationMode
 			if(std.meta.eql(oldBlock, newBlock)) return .no;
 			if(oldBlock.typ == newBlock.typ) return .yes;
 			if(oldBlock.solid()) {
-				var power: f32 = 0;
+				var damage: f32 = 1;
 				const isTool = item.item != null and item.item.? == .tool;
 				if(isTool) {
-					power = item.item.?.tool.getBlockPower(oldBlock);
+					damage = item.item.?.tool.getBlockDamage(oldBlock);
 				}
-				if(power >= oldBlock.breakingPower()) {
+				damage -= oldBlock.blockResistance();
+				if(damage > 0) {
 					if(isTool) {
-						return .{.yes_costsDurability = 1};
+						return .{.yes_costsDurability = @intFromFloat(@ceil(oldBlock.blockHealth()/damage))};
 					} else return .yes;
 				}
 			} else {

@@ -1,9 +1,5 @@
 .{
 	.tags = .{.air},
-	.breakingPower = 0,
-	.hardness = 4,
-
-	.absorbtion = 0,
 
 	.transparent = true,
 	.absorbedLight = 0x000000,
