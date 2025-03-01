@@ -94,103 +94,88 @@ pub fn readAllZonFilesInAddons(
 	externalAllocator: NeverFailingAllocator,
 	addons: main.List(std.fs.Dir),
 	addonNames: main.List([]const u8),
-	assetSubdirectory: []const u8,
+	subPath: []const u8,
 	defaults: bool,
 	output: *std.StringHashMap(ZonElement),
 	migrations: ?*std.StringHashMap(ZonElement),
 ) void {
 	for(addons.items, addonNames.items) |addon, addonName| {
-		var addonAssetsSubdirectory = addon.openDir(assetSubdirectory, .{.iterate = true}) catch |e| {
-			if(e != error.FileNotFound) {
-				std.log.err("Could not open addon directory {s}: {s}", .{assetSubdirectory, @errorName(e)});
+		var dir = addon.openDir(subPath, .{.iterate = true}) catch |err| {
+			if(err != error.FileNotFound) {
+				std.log.err("Could not open addon directory {s}: {s}", .{subPath, @errorName(err)});
 			}
 			continue;
 		};
-		defer addonAssetsSubdirectory.close();
+		defer dir.close();
 
 		var defaultsArena: main.utils.NeverFailingArenaAllocator = .init(main.stackAllocator);
 		defer defaultsArena.deinit();
 
-		const defaultsAllocator = defaultsArena.allocator();
-		var defaultMap = std.StringHashMap(ZonElement).init(defaultsAllocator.allocator);
+		const defaultsArenaAllocator = defaultsArena.allocator();
 
-		var directoryWalker = addonAssetsSubdirectory.walk(main.stackAllocator.allocator) catch unreachable;
-		defer directoryWalker.deinit();
+		var defaultMap = std.StringHashMap(ZonElement).init(defaultsArenaAllocator.allocator);
 
-		while(directoryWalker.next() catch |e| block_break: {
-			std.log.err("Got error while iterating addon directory {s}: {s}", .{assetSubdirectory, @errorName(e)});
-			break :block_break null;
-		}) |directoryEntry| {
-			if(
-				(directoryEntry.kind != .file)
-				or (std.ascii.startsWithIgnoreCase(directoryEntry.basename, "_defaults"))
-				or (!std.ascii.endsWithIgnoreCase(directoryEntry.basename, ".zon"))
-				or (std.ascii.startsWithIgnoreCase(directoryEntry.path, "textures"))
-			){
-				continue;
-			}
+		var walker = dir.walk(main.stackAllocator.allocator) catch unreachable;
+		defer walker.deinit();
 
-			const fileSuffixLen = if(std.ascii.endsWithIgnoreCase(directoryEntry.basename, ".zig.zon")) ".zig.zon".len else ".zon".len;
-			const folderName = addonName;
-			const assetId: []u8 = externalAllocator.alloc(u8, folderName.len + 1 + directoryEntry.path.len - fileSuffixLen);
-			errdefer externalAllocator.free(assetId);
-
-			@memcpy(assetId[0..folderName.len], folderName);
-			assetId[folderName.len] = ':';
-
-			// Copy path relative to asset directory as part of asset ID after addon
-			// namespace. For consistency windows style path separators are converted to
-			// unix style.
-			for(0..directoryEntry.path.len - fileSuffixLen) |i| {
-				if(directoryEntry.path[i] == '\\') {
-					assetId[folderName.len+1+i] = '/';
-				} else {
-					assetId[folderName.len+1+i] = directoryEntry.path[i];
+		while(walker.next() catch |err| blk: {
+			std.log.err("Got error while iterating addon directory {s}: {s}", .{subPath, @errorName(err)});
+			break :blk null;
+		}) |entry| {
+			if(entry.kind == .file and !std.ascii.startsWithIgnoreCase(entry.basename, "_defaults") and std.ascii.endsWithIgnoreCase(entry.basename, ".zon") and !std.ascii.startsWithIgnoreCase(entry.path, "textures")) {
+				const fileSuffixLen = if(std.ascii.endsWithIgnoreCase(entry.basename, ".zig.zon")) ".zig.zon".len else ".zon".len;
+				const folderName = addonName;
+				const id: []u8 = externalAllocator.alloc(u8, folderName.len + 1 + entry.path.len - fileSuffixLen);
+				errdefer externalAllocator.free(id);
+				@memcpy(id[0..folderName.len], folderName);
+				id[folderName.len] = ':';
+				for(0..entry.path.len - fileSuffixLen) |i| {
+					if(entry.path[i] == '\\') { // Convert windows path seperators
+						id[folderName.len+1+i] = '/';
+					} else {
+						id[folderName.len+1+i] = entry.path[i];
+					}
 				}
-			}
 
-			const fileContent = addonAssetsSubdirectory.readFileAlloc(
-				main.stackAllocator.allocator,
-				directoryEntry.path,
-				std.math.maxInt(usize)
-			) catch |e| {
-				std.log.err("Could not open {s}/{s}: {s}", .{assetSubdirectory, directoryEntry.path, @errorName(e)});
-				continue;
-			};
-			defer main.stackAllocator.free(fileContent);
+				const string = dir.readFileAlloc(main.stackAllocator.allocator, entry.path, std.math.maxInt(usize)) catch |err| {
+					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
+					continue;
+				};
+				defer main.stackAllocator.free(string);
 
-			const zon = ZonElement.parseFromString(externalAllocator, fileContent);
+				const zon = ZonElement.parseFromString(externalAllocator, string);
 
-			// If this is migrations file, we interrupt normal asset processing and store it in migrations hashmap.
-			if (std.ascii.eqlIgnoreCase(directoryEntry.basename, "_migrations.zig.zon")) {
-				if (migrations == null) {
-					std.log.err("Migrations not allowed for {s}", .{assetSubdirectory});
+				// If this is migrations file, we interrupt normal asset processing and store it in migrations hashmap.
+				if (std.ascii.eqlIgnoreCase(entry.basename, "_migrations.zig.zon")) {
+					if (migrations == null) {
+						std.log.err("Migrations not allowed for {s}", .{subPath});
+						continue;
+					}
+					(migrations orelse unreachable).put(id, zon) catch unreachable;
+					// This means that we skip default file reading and storing file content as normal asset.
 					continue;
 				}
-				(migrations orelse unreachable).put(assetId, zon) catch unreachable;
-				// This means that we skip default file reading and storing file content as normal asset.
-				continue;
-			}
 
-			if (defaults) {
-				const path = directoryEntry.dir.realpathAlloc(main.stackAllocator.allocator, ".") catch unreachable;
-				defer main.stackAllocator.free(path);
+				if (defaults) {
+					const path = entry.dir.realpathAlloc(main.stackAllocator.allocator, ".") catch unreachable;
+					defer main.stackAllocator.free(path);
 
-				const result = defaultMap.getOrPut(path) catch unreachable;
+					const result = defaultMap.getOrPut(path) catch unreachable;
 
-				if (!result.found_existing) {
-					result.key_ptr.* = defaultsAllocator.dupe(u8, path);
-					const default: ZonElement = readDefaultFile(defaultsAllocator, directoryEntry.dir) catch |err| blk: {
-						std.log.err("Failed to read default file: {s}", .{@errorName(err)});
-						break :blk .null;
-					};
+					if (!result.found_existing) {
+						result.key_ptr.* = defaultsArenaAllocator.dupe(u8, path);
+						const default: ZonElement = readDefaultFile(defaultsArenaAllocator, entry.dir) catch |err| blk: {
+							std.log.err("Failed to read default file: {s}", .{@errorName(err)});
+							break :blk .null;
+						};
 
-					result.value_ptr.* = default;
+						result.value_ptr.* = default;
+					}
+
+					zon.join(result.value_ptr.*);
 				}
-
-				zon.join(result.value_ptr.*);
+				output.put(id, zon) catch unreachable;
 			}
-			output.put(assetId, zon) catch unreachable;
 		}
 	}
 }
