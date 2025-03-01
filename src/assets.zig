@@ -167,7 +167,6 @@ pub fn readAllZonFilesInAddons(
 		}
 	}
 }
-
 /// Reads text files recursively from all subfolders.
 pub fn readAllFilesInAddons(externalAllocator: NeverFailingAllocator, addons: main.List(std.fs.Dir), subPath: []const u8, output: *main.List([]const u8)) void {
 	for(addons.items) |addon| {
