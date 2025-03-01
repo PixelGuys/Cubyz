@@ -652,9 +652,9 @@ pub const World = struct { // MARK: World
 		self.spawn = zon.get(Vec3f, "spawn", .{0, 0, 0});
 
 		try assets.loadWorldAssets("serverAssets", self.blockPalette, self.biomePalette);
-		Player.loadFrom(zon.getChild("player"));
 		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
 		Player.inventory = Inventory.init(main.globalAllocator, 32, .normal, .{.playerInventory = Player.id});
+		Player.loadFrom(zon.getChild("player"));
 	}
 
 	pub fn update(self: *World) void {
