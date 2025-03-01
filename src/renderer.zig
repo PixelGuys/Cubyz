@@ -638,7 +638,7 @@ pub const Skybox = struct {
 	var skyVao: c_uint = undefined;
 	var skyVbos: [2]c_uint = undefined;
 
-	const numStars = 100000;
+	const numStars = 5000;
 
 	fn getStarPos(seed: *u64) Vec3d {
 		const x: f64 = @floatCast(main.random.nextFloatGauss(seed));
@@ -679,18 +679,34 @@ pub const Skybox = struct {
 
 		var seed: u64 = 0;
 
+		const start = std.time.nanoTimestamp();
+
 		for (0..numStars) |i| {
-			const pos = getStarPos(&seed);
+			var pos = getStarPos(&seed);
 
-			const radius: f64 = @floatCast(main.random.nextFloatExp(&seed) * 4 + 0.2);
+			var radius: f64 = @floatCast(main.random.nextFloatExp(&seed) * 4 + 0.2);
 
-			const temperature: f64 = @floatCast((@abs(main.random.nextFloatGauss(&seed) * 3000.0 + 5000.0) + 1000.0) / 5772.0);
+			var temperature: f64 = @floatCast((@abs(main.random.nextFloatGauss(&seed) * 3000.0 + 5000.0) + 1000.0) / 5772.0);
 
-			const luminosity = radius * radius * temperature * temperature * temperature * temperature;
+			var luminosity = radius * radius * temperature * temperature * temperature * temperature;
+			
+			var flux = luminosity / (1.36e+7 * vec.length(pos) * vec.length(pos));
 
-			const flux = luminosity / (1.36e+7 * vec.length(pos) * vec.length(pos));
+			var light = flux * std.math.pow(f64, 10, 10.732);
 
-			const light = flux * std.math.pow(f64, 10, 10.732);
+			while (light < 0.1) {
+				pos = getStarPos(&seed);
+
+				radius = @floatCast(main.random.nextFloatExp(&seed) * 4 + 0.2);
+
+				temperature = @floatCast((@abs(main.random.nextFloatGauss(&seed) * 3000.0 + 5000.0) + 1000.0) / 5772.0);
+
+				luminosity = radius * radius * temperature * temperature * temperature * temperature;
+
+				flux = luminosity / (1.36e+7 * vec.length(pos) * vec.length(pos));
+
+				light = flux * std.math.pow(f64, 10, 10.732);
+			}
 
 			const col = getStarColor(temperature * 5772.0, light, starColorImage);
 
@@ -702,6 +718,8 @@ pub const Skybox = struct {
 			starData[i * 6 + 4] = @floatCast(col[1]);
 			starData[i * 6 + 5] = @floatCast(col[2]);
 		}
+
+		std.debug.print("star gen time: {d}\n", .{@as(f64, @floatFromInt(std.time.nanoTimestamp() - start)) / 1000000000.0});
 
 		c.glGenVertexArrays(1, &starVao);
 		c.glBindVertexArray(starVao);
