@@ -395,7 +395,7 @@ pub const Block = packed struct { // MARK: Block
 		_ = posX;
 		_ = posY;
 		_ = posZ;
-		_ = direction;
+		_ = neighbor;
 	}
 };
 
