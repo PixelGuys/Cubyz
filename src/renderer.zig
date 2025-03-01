@@ -695,11 +695,7 @@ pub const Skybox = struct {
 
 			var temperature: f64 = @floatCast((@abs(main.random.nextFloatGauss(&seed) * 3000.0 + 5000.0) + 1000.0) / 5772.0);
 
-			var luminosity = radius * radius * temperature * temperature * temperature * temperature;
-
-			var flux = luminosity / (1.36e+7 * vec.length(pos) * vec.length(pos));
-
-			var light = flux * std.math.pow(f64, 10, 10.732);
+			var light = (3966.91 * radius * radius * temperature * temperature * temperature * temperature) / (vec.length(pos) * vec.length(pos));
 
 			while (light < 0.1) {
 				pos = getStarPos(&seed);
@@ -708,11 +704,7 @@ pub const Skybox = struct {
 
 				temperature = @floatCast((@abs(main.random.nextFloatGauss(&seed) * 3000.0 + 5000.0) + 1000.0) / 5772.0);
 
-				luminosity = radius * radius * temperature * temperature * temperature * temperature;
-
-				flux = luminosity / (1.36e+7 * vec.length(pos) * vec.length(pos));
-
-				light = flux * std.math.pow(f64, 10, 10.732);
+				light = (3966.91 * radius * radius * temperature * temperature * temperature * temperature) / (vec.length(pos) * vec.length(pos));
 			}
 
 			pos = vec.normalize(pos) * @as(Vec3d, @splat(starDist));
