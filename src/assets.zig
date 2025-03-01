@@ -131,7 +131,6 @@ pub fn readAllZonFilesInAddons(
 					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
 					continue;
 				};
-				defer main.stackAllocator.free(zon);
 
 				// If this is migrations file, we interrupt normal asset processing and store it in migrations hashmap.
 				if (std.ascii.eqlIgnoreCase(entry.basename, "_migrations.zig.zon")) {
