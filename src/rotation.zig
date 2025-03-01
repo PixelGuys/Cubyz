@@ -325,12 +325,19 @@ pub const RotationModes = struct {
 		pub const dependsOnNeighbors = true;
 		var branchModels: std.StringHashMap(u16) = undefined;
 		const BranchData = packed struct(u6) {
-			isConnectedNegX: bool,
-			isConnectedPosX: bool,
-			isConnectedNegY: bool,
-			isConnectedPosY: bool,
-			isConnectedNegZ: bool,
-			isConnectedPosZ: bool,
+			enabledConnections: u6,
+
+			pub fn isConnected(self: @This(), neighbor: Neighbor) bool {
+				return (self.enabledConnections & Neighbor.bitMask(neighbor)) != 0;
+			}
+
+			pub fn setConnection(self: *@This(), neighbor: Neighbor, value: bool) void {
+				if (value) {
+					self.enabledConnections |= Neighbor.bitMask(neighbor);
+				} else {
+					self.enabledConnections &= ~Neighbor.bitMask(neighbor);
+				}
+			}
 		};
 
 		fn init() void {
@@ -344,12 +351,12 @@ pub const RotationModes = struct {
 		fn branchTransform(quad: *main.models.QuadInfo, data: BranchData) void {
 			for(&quad.corners) |*corner| {
 				if(
-					(!data.isConnectedNegX and corner[0] == 0)
-					or (!data.isConnectedPosX and corner[0] == 1)
-					or (!data.isConnectedNegY and corner[1] == 0)
-					or (!data.isConnectedPosY and corner[1] == 1)
-					or  (!data.isConnectedNegZ and corner[2] == 0)
-					or  (!data.isConnectedPosZ and corner[2] == 1)
+					(!data.isConnected(Neighbor.dirNegX) and corner[0] == 0)
+					or (!data.isConnected(Neighbor.dirPosX) and corner[0] == 1)
+					or (!data.isConnected(Neighbor.dirNegY) and corner[1] == 0)
+					or (!data.isConnected(Neighbor.dirPosY) and corner[1] == 1)
+					or (!data.isConnected(Neighbor.dirDown) and corner[2] == 0)
+					or (!data.isConnected(Neighbor.dirUp) and corner[2] == 1)
 				) return degenerateQuad(quad);
 			}
 		}
@@ -394,26 +401,8 @@ pub const RotationModes = struct {
 				// on if the block is solid or also uses branch model.
 				// Mind that directions of neighbor and data field are inverted - positive
 				// neighbor direction means negative corresponding direction data field.
-				switch(neighbor.?.reverse()) {
-					.dirNegX => {
-						currentData.isConnectedPosX = targetVal;
-					},
-					.dirPosX => {
-						currentData.isConnectedNegX = targetVal;
-					},
-					.dirNegY => {
-						currentData.isConnectedPosY = targetVal;
-					},
-					.dirPosY => {
-						currentData.isConnectedNegY = targetVal;
-					},
-					.dirDown => {
-						currentData.isConnectedPosZ = targetVal;
-					},
-					.dirUp => {
-						currentData.isConnectedNegZ = targetVal;
-					},
-				}
+				currentData.setConnection(neighbor.?, targetVal);
+
 				const result: u16 = @as(u6, @bitCast(currentData));
 				if(result == currentBlock.data) return false;
 
@@ -437,25 +426,10 @@ pub const RotationModes = struct {
 				const neighborData: BranchData = @bitCast(@as(u6, @truncate(neighborBlock.data)));
 				// Mind that neighbor and current block data fields are inverted, so they
 				// extend towards each other.
-				switch(neighbor) {
-					.dirNegX => {
-						currentData.isConnectedNegX = neighborData.isConnectedPosX;
-					},
-					.dirPosX => {
-						currentData.isConnectedPosX = neighborData.isConnectedNegX;
-					},
-					.dirNegY => {
-						currentData.isConnectedNegY = neighborData.isConnectedPosY;
-					},
-					.dirPosY => {
-						currentData.isConnectedPosY = neighborData.isConnectedNegY;
-					},
-					.dirDown => {
-						currentData.isConnectedNegZ = neighborData.isConnectedPosZ;
-					},
-					.dirUp => {
-						currentData.isConnectedPosZ = neighborData.isConnectedNegZ;
-					},
+				currentData.setConnection(neighbor, neighborData.isConnected(neighbor.reverse()));
+			} else {
+				if (!neighborBlock.solid()) {
+					currentData.setConnection(neighbor, false);
 				}
 			}
 
