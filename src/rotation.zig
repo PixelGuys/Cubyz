@@ -412,11 +412,8 @@ pub const RotationModes = struct {
 				const targetVal = (neighborBlock.solid() and  ((blockBaseModel == neighborBaseModel) or main.models.models.items[neighborModel].isNeighborOccluded[neighbor.?.reverse().toInt()]));
 
 				var currentData: BranchData = @bitCast(@as(u6, @truncate(currentBlock.data)));
-
 				// Branch block upon placement should extend towards a block it was placed
 				// on if the block is solid or also uses branch model.
-				// Mind that directions of neighbor and data field are inverted - positive
-				// neighbor direction means negative corresponding direction data field.
 				currentData.setConnection(neighbor.?, targetVal);
 
 				const result: u16 = @as(u6, @bitCast(currentData));
@@ -436,14 +433,10 @@ pub const RotationModes = struct {
 			// Handle joining with other branches. While placed, branches extend in a
 			// opposite direction than they were placed from, effectively connecting
 			// to the block they were placed at.
-			// However, if they were placed on another branch, that branch have to be
-			// updated and extended to meed the new branch.
-			if (blockBaseModel == neighborBaseModel) {
+			if(blockBaseModel == neighborBaseModel) {
 				const neighborData: BranchData = @bitCast(@as(u6, @truncate(neighborBlock.data)));
-				// Mind that neighbor and current block data fields are inverted, so they
-				// extend towards each other.
 				currentData.setConnection(neighbor, neighborData.isConnected(neighbor.reverse()));
-			} else if (!neighborBlock.solid()) {
+			} else if(!neighborBlock.solid()) {
 				currentData.setConnection(neighbor, false);
 			}
 
