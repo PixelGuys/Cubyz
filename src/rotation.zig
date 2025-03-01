@@ -403,7 +403,11 @@ pub const RotationModes = struct {
 			const blockBaseModel = blocks.meshes.modelIndexStart(currentBlock.*);
 			const neighborBaseModel = blocks.meshes.modelIndexStart(neighborBlock);
 
-			if(blockPlacing or (blockBaseModel == neighborBaseModel)) {
+			if(
+				blockPlacing
+				or (blockBaseModel == neighborBaseModel)
+				or neighborBlock.solid()
+			) {
 				const neighborModel = blocks.meshes.model(neighborBlock);
 				const targetVal = (neighborBlock.solid() and  ((blockBaseModel == neighborBaseModel) or main.models.models.items[neighborModel].isNeighborOccluded[neighbor.?.reverse().toInt()]));
 
@@ -439,6 +443,8 @@ pub const RotationModes = struct {
 				// Mind that neighbor and current block data fields are inverted, so they
 				// extend towards each other.
 				currentData.setConnection(neighbor, neighborData.isConnected(neighbor.reverse()));
+			} else if (!neighborBlock.solid()) {
+				currentData.setConnection(neighbor, false);
 			}
 
 			const result: u16 = @as(u6, @bitCast(currentData));
