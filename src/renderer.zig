@@ -679,8 +679,6 @@ pub const Skybox = struct {
 
 		var seed: u64 = 0;
 
-		const start = std.time.nanoTimestamp();
-
 		for (0..numStars) |i| {
 			var pos = getStarPos(&seed);
 
@@ -718,8 +716,6 @@ pub const Skybox = struct {
 			starData[i * 6 + 4] = @floatCast(col[1]);
 			starData[i * 6 + 5] = @floatCast(col[2]);
 		}
-
-		std.debug.print("star gen time: {d}\n", .{@as(f64, @floatFromInt(std.time.nanoTimestamp() - start)) / 1000000000.0});
 
 		c.glGenVertexArrays(1, &starVao);
 		c.glBindVertexArray(starVao);
