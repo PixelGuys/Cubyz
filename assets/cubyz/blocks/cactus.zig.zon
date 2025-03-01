@@ -5,5 +5,5 @@
 		.{.items = .{.auto}},
 	},
 	.model = "cubyz:cube",
-	.texture = "cubyz:cactus",
+	.texture = "cubyz:cactus"
 }
