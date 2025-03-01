@@ -622,11 +622,12 @@ pub const Skybox = struct {
 	var starUniforms: struct {
 		mvp: c_int,
 		starOpacity: c_int,
-		starScale: c_int,
 	} = undefined;
 
 	var starVao: c_uint = undefined;
 	var starVbo: c_uint = undefined;
+
+	var starSsbo: graphics.SSBO = undefined;
 
 	var skyShader: Shader = undefined;
 	var skyUniforms: struct {
@@ -638,7 +639,7 @@ pub const Skybox = struct {
 	var skyVao: c_uint = undefined;
 	var skyVbos: [2]c_uint = undefined;
 
-	const numStars = 5000;
+	const numStars = 10000;
 
 	fn getStarPos(seed: *u64) Vec3d {
 		const x: f64 = @floatCast(main.random.nextFloatGauss(seed));
@@ -675,7 +676,15 @@ pub const Skybox = struct {
 		starShader = Shader.initAndGetUniforms("assets/cubyz/shaders/skybox/star.vs", "assets/cubyz/shaders/skybox/star.fs", "", &starUniforms);
 		starShader.bind();
 
-		var starData: [numStars * 6]f32 = undefined;
+		var starData: [numStars * 8]f32 = undefined;
+
+		var starMesh: [numStars * 9]f32 = undefined;
+
+		const starDist = 200.0;
+
+		const triVertA = Vec3f {@sqrt(3.0) / 3.0, starDist, -1.0/3.0};
+		const triVertB = Vec3f {-@sqrt(3.0) / 3.0, starDist, -1.0/3.0};
+		const triVertC = Vec3f {0.0, starDist, 2.0/3.0};
 
 		var seed: u64 = 0;
 
@@ -687,7 +696,7 @@ pub const Skybox = struct {
 			var temperature: f64 = @floatCast((@abs(main.random.nextFloatGauss(&seed) * 3000.0 + 5000.0) + 1000.0) / 5772.0);
 
 			var luminosity = radius * radius * temperature * temperature * temperature * temperature;
-			
+
 			var flux = luminosity / (1.36e+7 * vec.length(pos) * vec.length(pos));
 
 			var light = flux * std.math.pow(f64, 10, 10.732);
@@ -706,28 +715,53 @@ pub const Skybox = struct {
 				light = flux * std.math.pow(f64, 10, 10.732);
 			}
 
+			pos = vec.normalize(pos) * @as(Vec3d, @splat(starDist));
+
+			const normPos = vec.normalize(pos);
+
 			const col = getStarColor(temperature * 5772.0, light, starColorImage);
 
-			starData[i * 6] = @floatCast(pos[0]);
-			starData[i * 6 + 1] = @floatCast(pos[1]);
-			starData[i * 6 + 2] = @floatCast(pos[2]);
+			starData[i * 8] = @floatCast(pos[0]);
+			starData[i * 8 + 1] = @floatCast(pos[1]);
+			starData[i * 8 + 2] = @floatCast(pos[2]);
+			starData[i * 8 + 3] = 0;
 
-			starData[i * 6 + 3] = @floatCast(col[0]);
-			starData[i * 6 + 4] = @floatCast(col[1]);
-			starData[i * 6 + 5] = @floatCast(col[2]);
+			starData[i * 8 + 4] = @floatCast(col[0]);
+			starData[i * 8 + 5] = @floatCast(col[1]);
+			starData[i * 8 + 6] = @floatCast(col[2]);
+			starData[i * 8 + 7] = 0;
+
+			const lat: f32 = @floatCast(std.math.asin(normPos[2]));
+			const lon: f32 = @floatCast(std.math.atan2(-normPos[0], normPos[1]));
+
+			const mat = Mat4f.rotationZ(lon).mul(Mat4f.rotationX(lat));
+
+			const posA = vec.xyz(mat.mulVec(.{triVertA[0], triVertA[1], triVertA[2], 1.0}));
+			const posB = vec.xyz(mat.mulVec(.{triVertB[0], triVertB[1], triVertB[2], 1.0}));
+			const posC = vec.xyz(mat.mulVec(.{triVertC[0], triVertC[1], triVertC[2], 1.0}));
+
+			starMesh[i * 9] = @floatCast(posA[0]);
+			starMesh[i * 9 + 1] = @floatCast(posA[1]);
+			starMesh[i * 9 + 2] = @floatCast(posA[2]);
+
+			starMesh[i * 9 + 3] = @floatCast(posB[0]);
+			starMesh[i * 9 + 4] = @floatCast(posB[1]);
+			starMesh[i * 9 + 5] = @floatCast(posB[2]);
+
+			starMesh[i * 9 + 6] = @floatCast(posC[0]);
+			starMesh[i * 9 + 7] = @floatCast(posC[1]);
+			starMesh[i * 9 + 8] = @floatCast(posC[2]);
 		}
+
+		starSsbo = graphics.SSBO.initStatic(f32, &starData);
 
 		c.glGenVertexArrays(1, &starVao);
 		c.glBindVertexArray(starVao);
-		c.glGenBuffers(2, @ptrCast(&starVbo));
+		c.glGenBuffers(1, @ptrCast(&starVbo));
 		c.glBindBuffer(c.GL_ARRAY_BUFFER, starVbo);
-		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(starData.len*@sizeOf(f32)), &starData, c.GL_STATIC_DRAW);
-
-		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, 6*@sizeOf(f32), null);
+		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(starMesh.len*@sizeOf(f32)), &starMesh, c.GL_STATIC_DRAW);
+		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, 3*@sizeOf(f32), null);
 		c.glEnableVertexAttribArray(0);
-
-		c.glVertexAttribPointer(1, 3, c.GL_FLOAT, c.GL_FALSE, 6*@sizeOf(f32), @ptrFromInt(3*@sizeOf(f32)));
-		c.glEnableVertexAttribArray(1);
 
 		skyShader = Shader.initAndGetUniforms("assets/cubyz/shaders/skybox/sky.vs", "assets/cubyz/shaders/skybox/sky.fs", "", &skyUniforms);
 		skyShader.bind();
@@ -765,8 +799,13 @@ pub const Skybox = struct {
 
 	pub fn deinit() void {
 		starShader.deinit();
+		starSsbo.deinit();
 		c.glDeleteVertexArrays(1, &starVao);
 		c.glDeleteBuffers(1, @ptrCast(&starVbo));
+
+		skyShader.deinit();
+		c.glDeleteVertexArrays(1, &skyVao);
+		c.glDeleteBuffers(2, @ptrCast(&skyVbos));
 	}
 
 	pub fn render() void {
@@ -805,13 +844,15 @@ pub const Skybox = struct {
 
 			const starMatrix = game.projectionMatrix.mul(viewMatrix.mul(Mat4f.rotationX(@as(f32, @floatFromInt(time)) / 12000.0)));
 
-			c.glPointSize(settings.resolutionScale * 2.0);
-			c.glUniform1f(starUniforms.starScale, settings.resolutionScale * 2.0);
+			starSsbo.bind(0);
+
 			c.glUniform1f(starUniforms.starOpacity, starOpacity);
 			c.glUniformMatrix4fv(starUniforms.mvp, 1, c.GL_TRUE, @ptrCast(&starMatrix));
 
 			c.glBindVertexArray(starVao);
-			c.glDrawArrays(c.GL_POINTS, 0, numStars * 3);
+			c.glDrawArrays(c.GL_TRIANGLES, 0, numStars * 9);
+
+			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
 
 			c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 		}
