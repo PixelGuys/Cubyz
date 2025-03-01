@@ -7,12 +7,6 @@
 	},
 	.item = .{
 		.material = .{
-		.modifiers = .{
-			.{
-				.id = "fragile",
-				.strength = 0.35,
-			},
-		},
 			.density = 2.5,
 			.strength = 1.5,
 			.elasticity = 0.0,
@@ -21,6 +15,12 @@
 			.textureRoughness = 2.0,
 			.colors = .{
 				0xff6E757F, 0xff86898E, 0xffA4A7AA, 0xffB9BCBF, 0xffCACCCE,
+			},
+			.modifiers = .{
+				.{
+					.id = "fragile",
+					.strength = 0.35,
+				},
 			},
 		},
 	},
