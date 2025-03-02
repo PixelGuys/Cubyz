@@ -22,10 +22,10 @@ const ItemSlot = GuiComponent.ItemSlot;
 const inventory = @import("inventory.zig");
 const inventory_crafting = @import("inventory_crafting.zig");
 
-pub var window = GuiWindow {
+pub var window = GuiWindow{
 	.relativePosition = .{
-		.{ .attachedToWindow = .{.reference = &inventory.window, .selfAttachmentPoint = .middle, .otherAttachmentPoint = .middle} },
-		.{ .attachedToWindow = .{.reference = &inventory.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .lower} },
+		.{.attachedToWindow = .{.reference = &inventory.window, .selfAttachmentPoint = .middle, .otherAttachmentPoint = .middle}},
+		.{.attachedToWindow = .{.reference = &inventory.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .lower}},
 	},
 	.contentSize = Vec2f{32*7, 32*7},
 	.scale = 0.75,

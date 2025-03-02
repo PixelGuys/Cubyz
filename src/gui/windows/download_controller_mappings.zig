@@ -14,19 +14,19 @@ const Label = @import("../components/Label.zig");
 const VerticalList = @import("../components/VerticalList.zig");
 const HorizontalList = @import("../components/HorizontalList.zig");
 
-pub var window = GuiWindow {
+pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 64},
 	.hasBackground = true,
 	.closeable = false,
 	.relativePosition = .{
-		.{ .attachedToFrame = .{.selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper} },
-		.{ .attachedToFrame = .{.selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper} },
+		.{.attachedToFrame = .{.selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper}},
+		.{.attachedToFrame = .{.selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper}},
 	},
 };
 
 const padding: f32 = 8;
 pub fn update() void {
-	if (main.Window.Gamepad.wereControllerMappingsDownloaded()) {
+	if(main.Window.Gamepad.wereControllerMappingsDownloaded()) {
 		gui.closeWindowFromRef(&window);
 	}
 }

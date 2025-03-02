@@ -295,9 +295,9 @@ pub const ChannelChunk = struct {
 			for(chunk.Neighbor.iterable) |neighbor| {
 				const x3: i32 = if(neighbor.isPositive()) chunk.chunkMask else 0;
 				var x1: i32 = 0;
-				while(x1 < chunk.chunkSize): (x1 += 1) {
+				while(x1 < chunk.chunkSize) : (x1 += 1) {
 					var x2: i32 = 0;
-					while(x2 < chunk.chunkSize): (x2 += 1) {
+					while(x2 < chunk.chunkSize) : (x2 += 1) {
 						var x: i32 = undefined;
 						var y: i32 = undefined;
 						var z: i32 = undefined;
@@ -314,9 +314,9 @@ pub const ChannelChunk = struct {
 							y = x1;
 							z = x3;
 						}
-						const otherX = x+%neighbor.relX() & chunk.chunkMask;
-						const otherY = y+%neighbor.relY() & chunk.chunkMask;
-						const otherZ = z+%neighbor.relZ() & chunk.chunkMask;
+						const otherX = x +% neighbor.relX() & chunk.chunkMask;
+						const otherY = y +% neighbor.relY() & chunk.chunkMask;
+						const otherZ = z +% neighbor.relZ() & chunk.chunkMask;
 						const neighborMesh = mesh_storage.getNeighborAndIncreaseRefCount(self.ch.pos, self.ch.pos.voxelSize, neighbor) orelse continue;
 						defer neighborMesh.decreaseRefCount();
 						const neighborLightChunk = neighborMesh.lightingData[@intFromBool(self.isSun)];
