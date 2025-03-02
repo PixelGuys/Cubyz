@@ -36,7 +36,7 @@ pub fn execute(args: []const u8, source: *User) void {
 	defer argsList.deinit();
 
 	var splitIterator = std.mem.splitSequence(u8, args, " ");
-	while (splitIterator.next()) |a| {
+	while(splitIterator.next()) |a| {
 		argsList.append(main.stackAllocator.dupe(u8, a));
 	}
 
@@ -45,7 +45,7 @@ pub fn execute(args: []const u8, source: *User) void {
 		return;
 	}
 	const subcommand = BlueprintSubCommand.fromString(argsList.items[0]);
-	_ = switch (subcommand) {
+	_ = switch(subcommand) {
 		.save => blueprintSave(argsList, source),
 		.delete => blueprintDelete(argsList, source),
 		.load => blueprintLoad(argsList, source),
@@ -57,7 +57,7 @@ pub fn execute(args: []const u8, source: *User) void {
 		source.sendMessage("#ff0000Error: {s}", .{@errorName(err)});
 	};
 
-	for (argsList.items) |arg| {
+	for(argsList.items) |arg| {
 		main.stackAllocator.free(arg);
 	}
 }
@@ -71,7 +71,7 @@ fn blueprintSave(args: List([]const u8), source: *User) !void {
 		source.sendMessage("#ff0000Too many arguments for //blueprint save. Expected 1 argument, FILENAME.", .{});
 		return;
 	}
-	if (copy.clipboard) |clipboard| {
+	if(copy.clipboard) |clipboard| {
 		const zon = clipboard.toZon(main.stackAllocator);
 		defer zon.deinit(main.stackAllocator);
 

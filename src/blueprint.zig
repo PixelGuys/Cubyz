@@ -32,7 +32,7 @@ pub const Blueprint = struct {
 
 	pub fn init(allocator: NeverFailingAllocator) *Blueprint {
 		const self = allocator.create(Blueprint);
-		self.* = Blueprint {
+		self.* = Blueprint{
 			.palette = .init(allocator.allocator),
 			.blocks = .init(allocator),
 			.sizeX = 0,
@@ -69,18 +69,18 @@ pub const Blueprint = struct {
 		self.sizeY = sizeY;
 		self.sizeZ = sizeZ;
 
-		for (0..sizeX) |offsetX| {
+		for(0..sizeX) |offsetX| {
 			const worldX = startX + @as(i32, @intCast(offsetX));
 
-			for (0..sizeY) |offsetY| {
+			for(0..sizeY) |offsetY| {
 				const worldY = startY + @as(i32, @intCast(offsetY));
 
-				for (0..sizeZ) |offsetZ| {
+				for(0..sizeZ) |offsetZ| {
 					const worldZ = startZ + @as(i32, @intCast(offsetZ));
 
 					const block = main.server.world.?.getBlock(worldX, worldY, worldZ) orelse Block{.typ = 0, .data = 0};
 					const blockId = block.id();
-					if (!self.palette.contains(blockId)) {
+					if(!self.palette.contains(blockId)) {
 						self.palette.put(blockId, @as(u16, @truncate(self.palette.count()))) catch unreachable;
 					}
 
@@ -88,10 +88,7 @@ pub const Blueprint = struct {
 					const blueprintBlock = Block{.typ = blueprintBlockTyp, .data = block.data};
 
 					self.blocks.append(@as(u32, @bitCast(blueprintBlock)));
-					std.log.info(
-						"Block at ({}, {}, {}) {}:{} => {}:{}",
-						.{worldX, worldY, worldZ, block.typ, block.data, blueprintBlock.typ, blueprintBlock.data}
-					);
+					std.log.info("Block at ({}, {}, {}) {}:{} => {}:{}", .{worldX, worldY, worldZ, block.typ, block.data, blueprintBlock.typ, blueprintBlock.data});
 				}
 			}
 		}
@@ -117,13 +114,13 @@ pub const Blueprint = struct {
 			reverseBlockTypMap.put(entry.value_ptr.*, gamePaletteBlock.typ) catch unreachable;
 		}
 
-		for (0..sizeX) |offsetX| {
+		for(0..sizeX) |offsetX| {
 			const worldX = startX + @as(i32, @intCast(offsetX));
 
-			for (0..sizeY) |offsetY| {
+			for(0..sizeY) |offsetY| {
 				const worldY = startY + @as(i32, @intCast(offsetY));
 
-				for (0..sizeZ) |offsetZ| {
+				for(0..sizeZ) |offsetZ| {
 					const worldZ = startZ + @as(i32, @intCast(offsetZ));
 
 					const blueprintBlock = Block.fromInt(self.blocks.items[blockIndex]);
@@ -154,7 +151,7 @@ pub const Blueprint = struct {
 		zon.put("palette", paletteZon);
 
 		var blocksZon = ZonElement.initArray(allocator);
-		for (self.blocks.items) |block| {
+		for(self.blocks.items) |block| {
 			blocksZon.append(block);
 		}
 		zon.put("blocks", blocksZon);

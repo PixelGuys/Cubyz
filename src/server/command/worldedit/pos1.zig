@@ -21,5 +21,4 @@ pub fn execute(args: []const u8, source: *User) void {
 	pos[2] = @intFromFloat(source.player.pos[2]);
 
 	source.sendMessage("Position 1: ({}, {}, {})", .{pos[0], pos[1], pos[2]});
-
 }

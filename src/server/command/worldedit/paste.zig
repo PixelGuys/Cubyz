@@ -20,7 +20,7 @@ pub fn execute(args: []const u8, source: *User) void {
 		source.sendMessage("#ff0000Too many arguments for command //paste. Expected no arguments.", .{});
 		return;
 	}
-	if (copy.clipboard) |clipboard| {
+	if(copy.clipboard) |clipboard| {
 		const pos: Vec3i = .{
 			@intFromFloat(source.player.pos[0]),
 			@intFromFloat(source.player.pos[1]),
