@@ -14,9 +14,10 @@ worldSeed: u64,
 pub fn init(wx: i32, wy: i32, voxelSize: u31, size: u31, worldSeed: u64, scale: u31) CachedFractalNoise {
 	const maxSize = size/voxelSize;
 	const cacheWidth = maxSize + 1;
-	var self = CachedFractalNoise {
+	var self = CachedFractalNoise{
 		.pos = .{
-			.wx = wx, .wy = wy,
+			.wx = wx,
+			.wy = wy,
 			.voxelSize = voxelSize,
 			.voxelSizeShift = @ctz(voxelSize),
 		},
@@ -32,7 +33,7 @@ pub fn init(wx: i32, wy: i32, voxelSize: u31, size: u31, worldSeed: u64, scale: 
 		var y: u31 = 0;
 		while(y <= maxSize) : (y += reducedScale) {
 			self.cache.ptr(x, y).* = (@as(f32, @floatFromInt(reducedScale + 1 + scale))*self.getGridValue(x, y))*@as(f32, @floatFromInt(voxelSize));
-		}//                                                     ↑ sacrifice some resolution to reserve the value 0, for determining if the value was initialized. This prevents an expensive array initialization.
+		} //                                                 ↑ sacrifice some resolution to reserve the value 0, for determining if the value was initialized. This prevents an expensive array initialization.
 	}
 	return self;
 }
@@ -51,8 +52,8 @@ fn getGridValue(self: CachedFractalNoise, relX: u31, relY: u31) f32 {
 }
 
 fn generateRegion(self: CachedFractalNoise, _x: u31, _y: u31, voxelSize: u31) void {
-	const x = _x & ~@as(u31, voxelSize-1);
-	const y = _y & ~@as(u31, voxelSize-1);
+	const x = _x & ~@as(u31, voxelSize - 1);
+	const y = _y & ~@as(u31, voxelSize - 1);
 	// Make sure that all higher points are generated:
 	_ = self._getValue(x | voxelSize, y | voxelSize);
 
@@ -73,10 +74,7 @@ fn generateRegion(self: CachedFractalNoise, _x: u31, _y: u31, voxelSize: u31) vo
 	}
 
 	// Center point:
-	cache.ptr(xMid, yMid).* = (
-		cache.get(xMid, y) + cache.get(xMid, y + voxelSize)
-		+ cache.get(x, yMid) + cache.get(x + voxelSize, yMid)
-	)/4 + randomFactor*self.getGridValue(xMid, yMid);
+	cache.ptr(xMid, yMid).* = (cache.get(xMid, y) + cache.get(xMid, y + voxelSize) + cache.get(x, yMid) + cache.get(x + voxelSize, yMid))/4 + randomFactor*self.getGridValue(xMid, yMid);
 }
 
 fn _getValue(self: CachedFractalNoise, x: u31, y: u31) f32 {

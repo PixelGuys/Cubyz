@@ -45,7 +45,7 @@ pub fn __deinit() void {
 pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, onNewline: gui.Callback) *TextInput {
 	const scrollBar = ScrollBar.init(undefined, scrollBarWidth, maxHeight - 2*border, 0);
 	const self = main.globalAllocator.create(TextInput);
-	self.* = TextInput {
+	self.* = TextInput{
 		.pos = pos,
 		.size = .{maxWidth, maxHeight},
 		.currentString = .init(main.globalAllocator),
@@ -77,9 +77,7 @@ pub fn clear(self: *TextInput) void {
 }
 
 pub fn toComponent(self: *TextInput) GuiComponent {
-	return GuiComponent {
-		.textInput = self
-	};
+	return .{.textInput = self};
 }
 
 pub fn updateHovered(self: *TextInput, mousePosition: Vec2f) void {
@@ -387,7 +385,7 @@ pub fn inputCharacter(self: *TextInput, character: u21) void {
 	if(self.cursor) |*cursor| {
 		self.deleteSelection();
 		var buf: [4]u8 = undefined;
-		const utf8 = buf[0..std.unicode.utf8Encode(character, &buf) catch return];
+		const utf8 = buf[0 .. std.unicode.utf8Encode(character, &buf) catch return];
 		self.currentString.insertSlice(cursor.*, utf8);
 		self.reloadText();
 		cursor.* += @intCast(utf8.len);

@@ -27,9 +27,7 @@ pub fn init(parameters: ZonElement) void {
 	_ = parameters;
 }
 
-pub fn deinit() void {
-
-}
+pub fn deinit() void {}
 
 pub fn generate(map: *StructureMapFragment, worldSeed: u64) void {
 	const size = StructureMapFragment.size*map.pos.voxelSize;
@@ -52,7 +50,7 @@ pub fn generate(map: *StructureMapFragment, worldSeed: u64) void {
 				const biome = biomeMap.getBiome(px, py, relZ);
 				var randomValue = random.nextFloat(&seed);
 				for(biome.vegetationModels) |*model| { // TODO: Could probably use an alias table here.
-					if(randomValue <  model.chance) {
+					if(randomValue < model.chance) {
 						const data = map.allocator.create(SimpleStructure);
 						data.* = .{
 							.wx = wpx,

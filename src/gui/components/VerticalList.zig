@@ -28,7 +28,7 @@ scrollBarEnabled: bool = false,
 pub fn init(pos: Vec2f, maxHeight: f32, padding: f32) *VerticalList {
 	const scrollBar = ScrollBar.init(undefined, scrollBarWidth, maxHeight - 2*border, 0);
 	const self = main.globalAllocator.create(VerticalList);
-	self.* = VerticalList {
+	self.* = VerticalList{
 		.children = .init(main.globalAllocator),
 		.pos = pos,
 		.size = .{0, 0},
@@ -49,9 +49,7 @@ pub fn deinit(self: *const VerticalList) void {
 }
 
 pub fn toComponent(self: *VerticalList) GuiComponent {
-	return GuiComponent {
-		.verticalList = self
-	};
+	return .{.verticalList = self};
 }
 
 pub fn add(self: *VerticalList, _other: anytype) void {

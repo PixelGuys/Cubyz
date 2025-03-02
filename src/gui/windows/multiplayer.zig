@@ -13,7 +13,7 @@ const Label = @import("../components/Label.zig");
 const TextInput = @import("../components/TextInput.zig");
 const VerticalList = @import("../components/VerticalList.zig");
 
-pub var window = GuiWindow {
+pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 256},
 };
 

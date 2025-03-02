@@ -37,7 +37,7 @@ const Vec3d = vec.Vec3d;
 
 pub threadlocal var stackAllocator: utils.NeverFailingAllocator = undefined;
 pub threadlocal var seed: u64 = undefined;
-var global_gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe=true}){};
+var global_gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe = true}){};
 var handled_gpa = utils.ErrorHandlingAllocator.init(global_gpa.allocator());
 pub const globalAllocator: utils.NeverFailingAllocator = handled_gpa.allocator();
 pub var threadPool: *utils.ThreadPool = undefined;
@@ -56,137 +56,139 @@ var openingErrorWindow: bool = false;
 // overwrite the log function:
 pub const std_options: std.Options = .{ // MARK: std_options
 	.log_level = .debug,
-	.logFn = struct {pub fn logFn(
-		comptime level: std.log.Level,
-		comptime _: @Type(.enum_literal),
-		comptime format: []const u8,
-		args: anytype,
-	) void {
-		const color = comptime switch (level) {
-			std.log.Level.err => "\x1b[31m",
-			std.log.Level.info => "",
-			std.log.Level.warn => "\x1b[33m",
-			std.log.Level.debug => "\x1b[37;44m",
-		};
-		const colorReset = "\x1b[0m\n";
-		const filePrefix = "[" ++ comptime level.asText() ++ "]" ++ ": ";
-		const fileSuffix = "\n";
-		comptime var formatString: []const u8 = "";
-		comptime var i: usize = 0;
-		comptime var mode: usize = 0;
-		comptime var sections: usize = 0;
-		comptime var sectionString: []const u8 = "";
-		comptime var sectionResults: []const []const u8 = &.{};
-		comptime var sectionId: []const usize = &.{};
-		inline while(i < format.len) : (i += 1) {
-			if(mode == 0) {
-				if(format[i] == '{') {
-					if(format[i + 1] == '{') {
-						sectionString = sectionString ++ "{{";
-						i += 1;
-						continue;
+	.logFn = struct {
+		pub fn logFn(
+			comptime level: std.log.Level,
+			comptime _: @Type(.enum_literal),
+			comptime format: []const u8,
+			args: anytype,
+		) void {
+			const color = comptime switch(level) {
+				std.log.Level.err => "\x1b[31m",
+				std.log.Level.info => "",
+				std.log.Level.warn => "\x1b[33m",
+				std.log.Level.debug => "\x1b[37;44m",
+			};
+			const colorReset = "\x1b[0m\n";
+			const filePrefix = "[" ++ comptime level.asText() ++ "]" ++ ": ";
+			const fileSuffix = "\n";
+			comptime var formatString: []const u8 = "";
+			comptime var i: usize = 0;
+			comptime var mode: usize = 0;
+			comptime var sections: usize = 0;
+			comptime var sectionString: []const u8 = "";
+			comptime var sectionResults: []const []const u8 = &.{};
+			comptime var sectionId: []const usize = &.{};
+			inline while(i < format.len) : (i += 1) {
+				if(mode == 0) {
+					if(format[i] == '{') {
+						if(format[i + 1] == '{') {
+							sectionString = sectionString ++ "{{";
+							i += 1;
+							continue;
+						} else {
+							mode = 1;
+							formatString = formatString ++ "{s}{";
+							sectionResults = sectionResults ++ &[_][]const u8{sectionString};
+							sectionString = "";
+							sectionId = sectionId ++ &[_]usize{sections};
+							sections += 1;
+							continue;
+						}
 					} else {
-						mode = 1;
-						formatString = formatString ++ "{s}{";
-						sectionResults = sectionResults ++ &[_][]const u8{sectionString};
-						sectionString = "";
-						sectionId = sectionId ++ &[_]usize {sections};
-						sections += 1;
-						continue;
+						sectionString = sectionString ++ format[i .. i + 1];
 					}
 				} else {
-					sectionString = sectionString ++ format[i..i+1];
-				}
-			} else {
-				formatString = formatString ++ format[i..i+1];
-				if(format[i] == '}') {
-					sections += 1;
-					mode = 0;
+					formatString = formatString ++ format[i .. i + 1];
+					if(format[i] == '}') {
+						sections += 1;
+						mode = 0;
+					}
 				}
 			}
-		}
-		formatString = formatString ++ "{s}";
-		sectionResults = sectionResults ++ &[_][]const u8{sectionString};
-		sectionId = sectionId ++ &[_]usize {sections};
-		sections += 1;
-		formatString = comptime cacheString("{s}" ++ formatString ++ "{s}");
+			formatString = formatString ++ "{s}";
+			sectionResults = sectionResults ++ &[_][]const u8{sectionString};
+			sectionId = sectionId ++ &[_]usize{sections};
+			sections += 1;
+			formatString = comptime cacheString("{s}" ++ formatString ++ "{s}");
 
-		comptime var types: []const type = &.{};
-		comptime var i_1: usize = 0;
-		comptime var i_2: usize = 0;
-		inline while(types.len != sections) {
-			if(i_2 < sectionResults.len) {
-				if(types.len == sectionId[i_2]) {
-					types = types ++ &[_]type{[]const u8};
-					i_2 += 1;
-					continue;
+			comptime var types: []const type = &.{};
+			comptime var i_1: usize = 0;
+			comptime var i_2: usize = 0;
+			inline while(types.len != sections) {
+				if(i_2 < sectionResults.len) {
+					if(types.len == sectionId[i_2]) {
+						types = types ++ &[_]type{[]const u8};
+						i_2 += 1;
+						continue;
+					}
 				}
-			}
-			const TI = @typeInfo(@TypeOf(args[i_1]));
-			if(@TypeOf(args[i_1]) == comptime_int) {
-				types = types ++ &[_]type{i64};
-			} else if(@TypeOf(args[i_1]) == comptime_float) {
-				types = types ++ &[_]type{f64};
-			} else if(TI == .pointer and TI.pointer.size == .Slice and TI.pointer.child == u8) {
-				types = types ++ &[_]type{[]const u8};
-			} else if(TI == .int and TI.int.bits <= 64) {
-				if(TI.int.signedness == .signed) {
+				const TI = @typeInfo(@TypeOf(args[i_1]));
+				if(@TypeOf(args[i_1]) == comptime_int) {
 					types = types ++ &[_]type{i64};
+				} else if(@TypeOf(args[i_1]) == comptime_float) {
+					types = types ++ &[_]type{f64};
+				} else if(TI == .pointer and TI.pointer.size == .Slice and TI.pointer.child == u8) {
+					types = types ++ &[_]type{[]const u8};
+				} else if(TI == .int and TI.int.bits <= 64) {
+					if(TI.int.signedness == .signed) {
+						types = types ++ &[_]type{i64};
+					} else {
+						types = types ++ &[_]type{u64};
+					}
 				} else {
-					types = types ++ &[_]type{u64};
+					types = types ++ &[_]type{@TypeOf(args[i_1])};
 				}
-			} else {
-				types = types ++ &[_]type{@TypeOf(args[i_1])};
+				i_1 += 1;
 			}
-			i_1 += 1;
-		}
-		types = &[_]type{[]const u8} ++ types ++ &[_]type{[]const u8};
+			types = &[_]type{[]const u8} ++ types ++ &[_]type{[]const u8};
 
-		const ArgsType = std.meta.Tuple(types);
-		comptime var comptimeTuple: ArgsType = undefined;
-		comptime var len: usize = 0;
-		i_1 = 0;
-		i_2 = 0;
-		inline while(len != sections) : (len += 1) {
-			if(i_2 < sectionResults.len) {
-				if(len == sectionId[i_2]) {
-					comptimeTuple[len+1] = sectionResults[i_2];
-					i_2 += 1;
-					continue;
+			const ArgsType = std.meta.Tuple(types);
+			comptime var comptimeTuple: ArgsType = undefined;
+			comptime var len: usize = 0;
+			i_1 = 0;
+			i_2 = 0;
+			inline while(len != sections) : (len += 1) {
+				if(i_2 < sectionResults.len) {
+					if(len == sectionId[i_2]) {
+						comptimeTuple[len + 1] = sectionResults[i_2];
+						i_2 += 1;
+						continue;
+					}
 				}
+				i_1 += 1;
 			}
-			i_1 += 1;
-		}
-		comptimeTuple[0] = filePrefix;
-		comptimeTuple[comptimeTuple.len - 1] = fileSuffix;
-		var resultArgs: ArgsType = comptimeTuple;
-		len = 0;
-		i_1 = 0;
-		i_2 = 0;
-		inline while(len != sections) : (len += 1) {
-			if(i_2 < sectionResults.len) {
-				if(len == sectionId[i_2]) {
-					i_2 += 1;
-					continue;
+			comptimeTuple[0] = filePrefix;
+			comptimeTuple[comptimeTuple.len - 1] = fileSuffix;
+			var resultArgs: ArgsType = comptimeTuple;
+			len = 0;
+			i_1 = 0;
+			i_2 = 0;
+			inline while(len != sections) : (len += 1) {
+				if(i_2 < sectionResults.len) {
+					if(len == sectionId[i_2]) {
+						i_2 += 1;
+						continue;
+					}
 				}
+				resultArgs[len + 1] = args[i_1];
+				i_1 += 1;
 			}
-			resultArgs[len+1] = args[i_1];
-			i_1 += 1;
-		}
 
-		logToFile(formatString, resultArgs);
+			logToFile(formatString, resultArgs);
 
-		if(supportsANSIColors) {
-			resultArgs[0] = color;
-			resultArgs[resultArgs.len - 1] = colorReset;
+			if(supportsANSIColors) {
+				resultArgs[0] = color;
+				resultArgs[resultArgs.len - 1] = colorReset;
+			}
+			logToStdErr(formatString, resultArgs);
+			if(level == .err and !openingErrorWindow) {
+				openingErrorWindow = true;
+				gui.openWindow("error_prompt");
+				openingErrorWindow = false;
+			}
 		}
-		logToStdErr(formatString, resultArgs);
-		if(level == .err and !openingErrorWindow) {
-			openingErrorWindow = true;
-			gui.openWindow("error_prompt");
-			openingErrorWindow = false;
-		}
-	}}.logFn,
+	}.logFn,
 };
 
 fn initLogging() void {
@@ -214,12 +216,12 @@ fn initLogging() void {
 }
 
 fn deinitLogging() void {
-	if (logFile) |_logFile| {
+	if(logFile) |_logFile| {
 		_logFile.close();
 		logFile = null;
 	}
 
-	if (logFileTs) |_logFileTs| {
+	if(logFileTs) |_logFileTs| {
 		_logFileTs.close();
 		logFileTs = null;
 	}
@@ -331,7 +333,7 @@ fn setHotbarSlot(i: comptime_int) *const fn() void {
 
 pub const KeyBoard = struct { // MARK: KeyBoard
 	const c = Window.c;
-	pub var keys = [_]Window.Key {
+	pub var keys = [_]Window.Key{
 		// Gameplay:
 		.{.name = "forward", .key = c.GLFW_KEY_W, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = false}},
 		.{.name = "left", .key = c.GLFW_KEY_A, .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = false}},
@@ -365,7 +367,7 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "scrollDown", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_Y, .positive = true}},
 		.{.name = "uiUp", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = false}},
 		.{.name = "uiLeft", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = false}},
-		.{.name = "uiDown",  .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = true}},
+		.{.name = "uiDown", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_Y, .positive = true}},
 		.{.name = "uiRight", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_LEFT_X, .positive = true}},
 		// text:
 		.{.name = "textCursorLeft", .key = c.GLFW_KEY_LEFT, .repeatAction = &gui.textCallbacks.left},
@@ -433,7 +435,6 @@ pub fn exitToMenu(_: usize) void {
 	shouldExitToMenu.store(true, .monotonic);
 }
 
-
 fn isValidIdentifierName(str: []const u8) bool { // TODO: Remove after #480
 	if(str.len == 0) return false;
 	if(!std.ascii.isAlphabetic(str[0]) and str[0] != '_') return false;
@@ -448,18 +449,18 @@ fn isHiddenOrParentHiddenPosix(path: []const u8) bool {
 		std.log.err("Cannot iterate on path {s}: {s}!", .{path, @errorName(err)});
 		return false;
 	};
-	while (iter.next()) |component| {
-		if (std.mem.eql(u8, component.name, ".") or std.mem.eql(u8, component.name, "..")) {
+	while(iter.next()) |component| {
+		if(std.mem.eql(u8, component.name, ".") or std.mem.eql(u8, component.name, "..")) {
 			continue;
 		}
-		if (component.name.len > 0 and component.name[0] == '.') {
+		if(component.name.len > 0 and component.name[0] == '.') {
 			return true;
 		}
 	}
 	return false;
 }
 pub fn convertJsonToZon(jsonPath: []const u8) void { // TODO: Remove after #480
-	if (isHiddenOrParentHiddenPosix(jsonPath)) {
+	if(isHiddenOrParentHiddenPosix(jsonPath)) {
 		std.log.info("NOT converting {s}.", .{jsonPath});
 		return;
 	}
@@ -479,7 +480,7 @@ pub fn convertJsonToZon(jsonPath: []const u8) void { // TODO: Remove after #480
 			'\"' => {
 				var j = i + 1;
 				while(j < jsonString.len and jsonString[j] != '"') : (j += 1) {}
-				const string = jsonString[i+1..j];
+				const string = jsonString[i + 1 .. j];
 				if(isValidIdentifierName(string)) {
 					zonString.append('.');
 					zonString.appendSlice(string);
@@ -505,7 +506,7 @@ pub fn convertJsonToZon(jsonPath: []const u8) void { // TODO: Remove after #480
 			},
 		}
 	}
-	const zonPath = std.fmt.allocPrint(stackAllocator.allocator, "{s}.zig.zon", .{jsonPath[0..std.mem.lastIndexOfScalar(u8, jsonPath, '.') orelse unreachable]}) catch unreachable;
+	const zonPath = std.fmt.allocPrint(stackAllocator.allocator, "{s}.zig.zon", .{jsonPath[0 .. std.mem.lastIndexOfScalar(u8, jsonPath, '.') orelse unreachable]}) catch unreachable;
 	defer stackAllocator.free(zonPath);
 	std.log.info("Outputting to {s}:", .{zonPath});
 	std.log.debug("{s}", .{zonString.items});

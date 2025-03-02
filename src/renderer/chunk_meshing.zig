@@ -256,7 +256,7 @@ pub const FaceData = extern struct {
 	},
 
 	pub inline fn init(texture: u16, quadIndex: u16, x: i32, y: i32, z: i32, comptime backFace: bool) FaceData {
-		return FaceData {
+		return FaceData{
 			.position = .{.x = @intCast(x), .y = @intCast(y), .z = @intCast(z), .isBackFace = backFace},
 			.blockAndQuad = .{.texture = texture, .quadIndex = quadIndex},
 		};
@@ -381,7 +381,6 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		self.min = @splat(std.math.floatMax(f32));
 		self.max = @splat(-std.math.floatMax(f32));
 
-
 		parent.lightingData[0].lock.lockRead();
 		parent.lightingData[1].lock.lockRead();
 		for(completeList) |*face| {
@@ -455,12 +454,9 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 				var dz: i32 = 0;
 				while(dz <= 1) : (dz += 1) {
 					var weight: f32 = 0;
-					if(dx == 0) weight = 1 - interp[0]
-					else weight = interp[0];
-					if(dy == 0) weight *= 1 - interp[1]
-					else weight *= interp[1];
-					if(dz == 0) weight *= 1 - interp[2]
-					else weight *= interp[2];
+					if(dx == 0) weight = 1 - interp[0] else weight = interp[0];
+					if(dy == 0) weight *= 1 - interp[1] else weight *= interp[1];
+					if(dz == 0) weight *= 1 - interp[2] else weight *= interp[2];
 					const lightVal: [6]u8 = getLightAt(parent, startPos[0] +% dx, startPos[1] +% dy, startPos[2] +% dz);
 					for(0..6) |i| {
 						val[i] += @as(f32, @floatFromInt(lightVal[i]))*weight;
@@ -481,9 +477,9 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		const startPos: Vec3i = @intFromFloat(@floor(lightPos));
 		var val: [6]f32 = .{0, 0, 0, 0, 0, 0};
 		var dx: i32 = 0;
-		while(dx <= 1): (dx += 1) {
+		while(dx <= 1) : (dx += 1) {
 			var dy: i32 = 0;
-			while(dy <= 1): (dy += 1) {
+			while(dy <= 1) : (dy += 1) {
 				const weight: f32 = 1.0/4.0;
 				const finalPos = startPos +% @as(Vec3i, @intCast(@abs(direction.textureX())))*@as(Vec3i, @splat(dx)) +% @as(Vec3i, @intCast(@abs(direction.textureY()*@as(Vec3i, @splat(dy)))));
 				var lightVal: [6]u8 = getLightAt(parent, finalPos[0], finalPos[1], finalPos[2]);
@@ -509,14 +505,12 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 	fn packLightValues(rawVals: [4][6]u5) [4]u32 {
 		var result: [4]u32 = undefined;
 		for(0..4) |i| {
-			result[i] = (
-				@as(u32, rawVals[i][0]) << 25 |
+			result[i] = (@as(u32, rawVals[i][0]) << 25 |
 				@as(u32, rawVals[i][1]) << 20 |
 				@as(u32, rawVals[i][2]) << 15 |
 				@as(u32, rawVals[i][3]) << 10 |
 				@as(u32, rawVals[i][4]) << 5 |
-				@as(u32, rawVals[i][5]) << 0
-			);
+				@as(u32, rawVals[i][5]) << 0);
 		}
 		return result;
 	}
@@ -538,7 +532,8 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 				const fullPos = blockPos +% @as(Vec3i, @intFromFloat(vertexPos));
 				const fullValues = if(models.extraQuadInfos.items[quadIndex].alignedNormalDirection) |dir|
 					getCornerLightAligned(parent, fullPos, dir)
-				else getCornerLight(parent, fullPos, normal);
+				else
+					getCornerLight(parent, fullPos, normal);
 				for(0..6) |j| {
 					rawVals[i][j] = std.math.lossyCast(u5, fullValues[j]/8);
 				}
@@ -555,7 +550,8 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 					while(dz <= 1) : (dz += 1) {
 						cornerVals[dx][dy][dz] = if(models.extraQuadInfos.items[quadIndex].alignedNormalDirection) |dir|
 							getCornerLightAligned(parent, blockPos +% Vec3i{dx, dy, dz}, dir)
-						else getCornerLight(parent, blockPos +% Vec3i{dx, dy, dz}, normal);
+						else
+							getCornerLight(parent, blockPos +% Vec3i{dx, dy, dz}, normal);
 					}
 				}
 			}
@@ -570,12 +566,9 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 				for(0..2) |dy| {
 					for(0..2) |dz| {
 						var weight: f32 = 0;
-						if(dx == 0) weight = 1 - interp[0]
-						else weight = interp[0];
-						if(dy == 0) weight *= 1 - interp[1]
-						else weight *= interp[1];
-						if(dz == 0) weight *= 1 - interp[2]
-						else weight *= interp[2];
+						if(dx == 0) weight = 1 - interp[0] else weight = interp[0];
+						if(dy == 0) weight *= 1 - interp[1] else weight *= interp[1];
+						if(dz == 0) weight *= 1 - interp[2] else weight *= interp[2];
 						const lightVal: [6]u8 = cornerVals[dx][dy][dz];
 						for(0..6) |j| {
 							val[j] += @as(f32, @floatFromInt(lightVal[j]))*weight;
@@ -828,11 +821,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		const rotatedModel = blocks.meshes.model(block);
 		const model = &models.models.items[rotatedModel];
 		_ = model; // TODO: Check if the neighbor model occludes this one. (maybe not that relevant)
-		return block.typ != 0 and (
-			other.typ == 0
-			or (!std.meta.eql(block, other) and other.viewThrough()) or other.alwaysViewThrough()
-			or !models.models.items[blocks.meshes.model(other)].isNeighborOccluded[neighbor.reverse().toInt()]
-		);
+		return block.typ != 0 and (other.typ == 0 or (!std.meta.eql(block, other) and other.viewThrough()) or other.alwaysViewThrough() or !models.models.items[blocks.meshes.model(other)].isNeighborOccluded[neighbor.reverse().toInt()]);
 	}
 
 	fn initLight(self: *ChunkMesh, lightRefreshList: *main.List(*ChunkMesh)) void {
@@ -840,11 +829,11 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		var lightEmittingBlocks = main.List([3]u8).init(main.stackAllocator);
 		defer lightEmittingBlocks.deinit();
 		var x: u8 = 0;
-		while(x < chunk.chunkSize): (x += 1) {
+		while(x < chunk.chunkSize) : (x += 1) {
 			var y: u8 = 0;
-			while(y < chunk.chunkSize): (y += 1) {
+			while(y < chunk.chunkSize) : (y += 1) {
 				var z: u8 = 0;
-				while(z < chunk.chunkSize): (z += 1) {
+				while(z < chunk.chunkSize) : (z += 1) {
 					const block = self.chunk.data.getValue(chunk.getIndex(x, y, z));
 					if(block.light() != 0) lightEmittingBlocks.append(.{x, y, z});
 				}
@@ -859,13 +848,13 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			const lightStartMap = mesh_storage.getLightMapPieceAndIncreaseRefCount(self.pos.wx, self.pos.wy, self.pos.voxelSize) orelse break :sunLight;
 			defer lightStartMap.decreaseRefCount();
 			x = 0;
-			while(x < chunk.chunkSize): (x += 1) {
+			while(x < chunk.chunkSize) : (x += 1) {
 				var y: u8 = 0;
-				while(y < chunk.chunkSize): (y += 1) {
+				while(y < chunk.chunkSize) : (y += 1) {
 					const startHeight: i32 = lightStartMap.getHeight(self.pos.wx + x*self.pos.voxelSize, self.pos.wy + y*self.pos.voxelSize);
 					const relHeight = startHeight -% self.pos.wz;
 					if(relHeight < chunk.chunkSize*self.pos.voxelSize) {
-						sunStarters[index] = .{x, y, chunk.chunkSize-1};
+						sunStarters[index] = .{x, y, chunk.chunkSize - 1};
 						index += 1;
 					} else {
 						allSun = false;
@@ -897,11 +886,11 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 
 		// Only generate a mesh if the surrounding 27 chunks finished the light generation steps.
 		var dx: i32 = -1;
-		while(dx <= 1): (dx += 1) {
+		while(dx <= 1) : (dx += 1) {
 			var dy: i32 = -1;
-			while(dy <= 1): (dy += 1) {
+			while(dy <= 1) : (dy += 1) {
 				var dz: i32 = -1;
-				while(dz <= 1): (dz += 1) {
+				while(dz <= 1) : (dz += 1) {
 					var pos = self.pos;
 					pos.wx +%= pos.voxelSize*chunk.chunkSize*dx;
 					pos.wy +%= pos.voxelSize*chunk.chunkSize*dy;
@@ -1003,14 +992,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						var mask = a[x][y];
 						mask &= mask << 1;
 						mask &= mask >> 1;
-						if(x == 0) mask = 0
-						else mask &= a[x-1][y];
-						if(x == chunk.chunkSize-1) mask = 0
-						else mask &= a[x+1][y];
-						if(y == 0) mask = 0
-						else mask &= a[x][y-1];
-						if(y == chunk.chunkSize-1) mask = 0
-						else mask &= a[x][y+1];
+						if(x == 0) mask = 0 else mask &= a[x - 1][y];
+						if(x == chunk.chunkSize - 1) mask = 0 else mask &= a[x + 1][y];
+						if(y == 0) mask = 0 else mask &= a[x][y - 1];
+						if(y == chunk.chunkSize - 1) mask = 0 else mask &= a[x][y + 1];
 						b[x][y] = mask;
 					}
 				}
@@ -1029,9 +1014,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 					const paletteId = self.chunk.data.data.getValue(chunk.getIndex(x, y, z));
 					const occlusionInfo = paletteCache[paletteId];
 					const setBit = @as(u32, 1) << z;
-					if(depthFilteredViewThroughMask[x][y] & setBit != 0) {
-
-					} else if(occlusionInfo.canSeeAllNeighbors) {
+					if(depthFilteredViewThroughMask[x][y] & setBit != 0) {} else if(occlusionInfo.canSeeAllNeighbors) {
 						canSeeAllNeighbors[x][y] |= setBit;
 					} else if(occlusionInfo.canSeeNeighbor != 0) {
 						for(chunk.Neighbor.iterable) |neighbor| {
@@ -1084,7 +1067,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 		{
 			const neighbor = chunk.Neighbor.dirPosX;
-			for(0..chunk.chunkSize-1) |x| {
+			for(0..chunk.chunkSize - 1) |x| {
 				for(0..chunk.chunkSize) |y| {
 					var bitMask = hasFaces[x][y] & (canSeeNeighbor[comptime neighbor.reverse().toInt()][x + 1][y] | canSeeAllNeighbors[x + 1][y]);
 					while(bitMask != 0) {
@@ -1139,7 +1122,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		{
 			const neighbor = chunk.Neighbor.dirPosY;
 			for(0..chunk.chunkSize) |x| {
-				for(0..chunk.chunkSize-1) |y| {
+				for(0..chunk.chunkSize - 1) |y| {
 					var bitMask = hasFaces[x][y] & (canSeeNeighbor[comptime neighbor.reverse().toInt()][x][y + 1] | canSeeAllNeighbors[x][y + 1]);
 					while(bitMask != 0) {
 						const z = @ctz(bitMask);
@@ -1398,9 +1381,9 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				neighborMesh.clearNeighbor(neighbor.reverse(), false);
 				const x3: i32 = if(neighbor.isPositive()) chunk.chunkMask else 0;
 				var x1: i32 = 0;
-				while(x1 < chunk.chunkSize): (x1 += 1) {
+				while(x1 < chunk.chunkSize) : (x1 += 1) {
 					var x2: i32 = 0;
-					while(x2 < chunk.chunkSize): (x2 += 1) {
+					while(x2 < chunk.chunkSize) : (x2 += 1) {
 						var x: i32 = undefined;
 						var y: i32 = undefined;
 						var z: i32 = undefined;
@@ -1417,9 +1400,9 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 							y = x1;
 							z = x3;
 						}
-						const otherX = x+%neighbor.relX() & chunk.chunkMask;
-						const otherY = y+%neighbor.relY() & chunk.chunkMask;
-						const otherZ = z+%neighbor.relZ() & chunk.chunkMask;
+						const otherX = x +% neighbor.relX() & chunk.chunkMask;
+						const otherY = y +% neighbor.relY() & chunk.chunkMask;
+						const otherZ = z +% neighbor.relZ() & chunk.chunkMask;
 						var block = self.chunk.data.getValue(chunk.getIndex(x, y, z));
 						if(settings.leavesQuality == 0) block.typ = block.opaqueVariant();
 						var otherBlock = neighborMesh.chunk.data.getValue(chunk.getIndex(otherX, otherY, otherZ));
@@ -1480,9 +1463,9 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			const offsetY = @divExact(self.pos.wy, self.pos.voxelSize) & chunk.chunkSize;
 			const offsetZ = @divExact(self.pos.wz, self.pos.voxelSize) & chunk.chunkSize;
 			var x1: i32 = 0;
-			while(x1 < chunk.chunkSize): (x1 += 1) {
+			while(x1 < chunk.chunkSize) : (x1 += 1) {
 				var x2: i32 = 0;
-				while(x2 < chunk.chunkSize): (x2 += 1) {
+				while(x2 < chunk.chunkSize) : (x2 += 1) {
 					var x: i32 = undefined;
 					var y: i32 = undefined;
 					var z: i32 = undefined;
@@ -1499,9 +1482,9 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						y = x1;
 						z = x3;
 					}
-					const otherX = (x+%neighbor.relX()+%offsetX >> 1) & chunk.chunkMask;
-					const otherY = (y+%neighbor.relY()+%offsetY >> 1) & chunk.chunkMask;
-					const otherZ = (z+%neighbor.relZ()+%offsetZ >> 1) & chunk.chunkMask;
+					const otherX = (x +% neighbor.relX() +% offsetX >> 1) & chunk.chunkMask;
+					const otherY = (y +% neighbor.relY() +% offsetY >> 1) & chunk.chunkMask;
+					const otherZ = (z +% neighbor.relZ() +% offsetZ >> 1) & chunk.chunkMask;
 					var block = self.chunk.data.getValue(chunk.getIndex(x, y, z));
 					if(settings.leavesQuality == 0) block.typ = block.opaqueVariant();
 					var otherBlock = neighborMesh.chunk.data.getValue(chunk.getIndex(otherX, otherY, otherZ));
@@ -1595,10 +1578,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			needsUpdate = true;
 		}
 
-		var relativePos = Vec3d {
+		var relativePos = Vec3d{
 			@as(f64, @floatFromInt(self.pos.wx)) - playerPosition[0],
 			@as(f64, @floatFromInt(self.pos.wy)) - playerPosition[1],
-			@as(f64, @floatFromInt(self.pos.wz)) - playerPosition[2]
+			@as(f64, @floatFromInt(self.pos.wz)) - playerPosition[2],
 		}/@as(Vec3d, @splat(@as(f64, @floatFromInt(self.pos.voxelSize))));
 		relativePos = @min(relativePos, @as(Vec3d, @splat(0)));
 		relativePos = @max(relativePos, @as(Vec3d, @splat(-32)));
@@ -1634,17 +1617,17 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				var i: usize = 0;
 				var culledStart: usize = self.currentSorting.len;
 				while(culledStart > 0) {
-					if(!self.currentSorting[culledStart-1].shouldBeCulled) {
+					if(!self.currentSorting[culledStart - 1].shouldBeCulled) {
 						break;
 					}
 					culledStart -= 1;
 				}
-				while(i < culledStart): (i += 1) {
+				while(i < culledStart) : (i += 1) {
 					if(self.currentSorting[i].shouldBeCulled) {
 						culledStart -= 1;
 						std.mem.swap(SortingData, &self.currentSorting[i], &self.currentSorting[culledStart]);
 						while(culledStart > 0) {
-							if(!self.currentSorting[culledStart-1].shouldBeCulled) {
+							if(!self.currentSorting[culledStart - 1].shouldBeCulled) {
 								break;
 							}
 							culledStart -= 1;

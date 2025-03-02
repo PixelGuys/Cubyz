@@ -151,12 +151,12 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_allowOres[size] = zon.get(bool, "allowOres", false);
 
 	const oreProperties = zon.getChild("ore");
-	if (oreProperties != .null) blk: {
+	if(oreProperties != .null) blk: {
 		if(!std.mem.eql(u8, zon.get([]const u8, "rotation", "no_rotation"), "ore")) {
 			std.log.err("Ore must have rotation mode \"ore\"!", .{});
 			break :blk;
 		}
-		ores.append(Ore {
+		ores.append(Ore{
 			.veins = oreProperties.get(f32, "veins", 0),
 			.size = oreProperties.get(f32, "size", 0),
 			.maxHeight = oreProperties.get(i32, "height", 0),
@@ -257,7 +257,7 @@ pub fn parseBlock(data: []const u8) Block {
 	var blockData: ?u16 = null;
 	if(std.mem.indexOfScalarPos(u8, data, 1 + (std.mem.indexOfScalar(u8, data, ':') orelse 0), ':')) |pos| {
 		id = data[0..pos];
-		blockData = std.fmt.parseInt(u16, data[pos + 1..], 0) catch |err| blk: {
+		blockData = std.fmt.parseInt(u16, data[pos + 1 ..], 0) catch |err| blk: {
 			std.log.err("Error while parsing block data of '{s}': {s}", .{data, @errorName(err)});
 			break :blk null;
 		};
@@ -280,10 +280,10 @@ pub const Block = packed struct { // MARK: Block
 	typ: u16,
 	data: u16,
 	pub fn toInt(self: Block) u32 {
-		return @as(u32, self.typ) | @as(u32, self.data)<<16;
+		return @as(u32, self.typ) | @as(u32, self.data) << 16;
 	}
 	pub fn fromInt(self: u32) Block {
-		return Block{.typ=@truncate(self), .data=@intCast(self>>16)};
+		return Block{.typ = @truncate(self), .data = @intCast(self >> 16)};
 	}
 
 	pub inline fn transparent(self: Block) bool {
@@ -379,7 +379,6 @@ pub const Block = packed struct { // MARK: Block
 	}
 };
 
-
 pub const meshes = struct { // MARK: meshes
 	const AnimationData = extern struct {
 		startFrame: u32,
@@ -440,11 +439,11 @@ pub const meshes = struct { // MARK: meshes
 	pub var emissionTextureArray: TextureArray = undefined;
 	pub var reflectivityAndAbsorptionTextureArray: TextureArray = undefined;
 
-	const black: Color = Color{.r=0, .g=0, .b=0, .a=255};
-	const magenta: Color = Color{.r=255, .g=0, .b=255, .a=255};
-	var undefinedTexture = [_]Color {magenta, black, black, magenta};
+	const black: Color = Color{.r = 0, .g = 0, .b = 0, .a = 255};
+	const magenta: Color = Color{.r = 255, .g = 0, .b = 255, .a = 255};
+	var undefinedTexture = [_]Color{magenta, black, black, magenta};
 	const undefinedImage = Image{.width = 2, .height = 2, .imageData = undefinedTexture[0..]};
-	var emptyTexture = [_]Color {black};
+	var emptyTexture = [_]Color{black};
 	const emptyImage = Image{.width = 1, .height = 1, .imageData = emptyTexture[0..]};
 
 	pub fn init() void {
@@ -546,19 +545,17 @@ pub const meshes = struct { // MARK: meshes
 	fn extractAnimationSlice(image: Image, frame: usize, frames: usize) Image {
 		if(image.height < frames) return image;
 		var startHeight = image.height/frames*frame;
-		if(image.height%frames > frame) startHeight += frame
-		else startHeight += image.height%frames;
+		if(image.height%frames > frame) startHeight += frame else startHeight += image.height%frames;
 		var endHeight = image.height/frames*(frame + 1);
-		if(image.height%frames > frame + 1) endHeight += frame + 1
-		else endHeight += image.height%frames;
+		if(image.height%frames > frame + 1) endHeight += frame + 1 else endHeight += image.height%frames;
 		var result = image;
 		result.height = @intCast(endHeight - startHeight);
-		result.imageData = result.imageData[startHeight*image.width..endHeight*image.width];
+		result.imageData = result.imageData[startHeight*image.width .. endHeight*image.width];
 		return result;
 	}
 
 	fn readTextureData(_path: []const u8) void {
-		const path = _path[0.._path.len - ".png".len];
+		const path = _path[0 .. _path.len - ".png".len];
 		const textureInfoPath = extendedPath(main.stackAllocator, path, ".zig.zon");
 		defer main.stackAllocator.free(textureInfoPath);
 		const textureInfoZon = main.files.readToZon(main.stackAllocator, textureInfoPath) catch .null;

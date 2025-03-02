@@ -48,7 +48,7 @@ pub fn init(pos: Vec2f, width: f32, minValue: f32, maxValue: f32, initialValue: 
 	const label = Label.init(undefined, width - 3*border, initialText, .center);
 	const button = Button.initText(.{0, 0}, undefined, "", .{});
 	const self = main.globalAllocator.create(ContinuousSlider);
-	self.* = ContinuousSlider {
+	self.* = ContinuousSlider{
 		.pos = pos,
 		.size = undefined,
 		.minValue = minValue,
@@ -75,9 +75,7 @@ pub fn deinit(self: *const ContinuousSlider) void {
 }
 
 pub fn toComponent(self: *ContinuousSlider) GuiComponent {
-	return GuiComponent {
-		.continuousSlider = self
-	};
+	return .{.continuousSlider = self};
 }
 
 fn setButtonPosFromValue(self: *ContinuousSlider) void {

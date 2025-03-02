@@ -45,8 +45,7 @@ pub fn build(b: *std.Build) !void {
 		std.log.info("Downloading cubyz_deps libraries {s}.", .{depsName});
 		return;
 	};
-	const headersDeps = if(useLocalDeps) libsDeps else
-		b.lazyDependency("cubyz_deps_headers", .{}) orelse {
+	const headersDeps = if(useLocalDeps) libsDeps else b.lazyDependency("cubyz_deps_headers", .{}) orelse {
 		std.log.info("Downloading cubyz_deps headers {s}.", .{depsName});
 		return;
 	};
@@ -96,7 +95,7 @@ pub fn build(b: *std.Build) !void {
 
 	const run_cmd = b.addRunArtifact(exe);
 	run_cmd.step.dependOn(b.getInstallStep());
-	if (b.args) |args| {
+	if(b.args) |args| {
 		run_cmd.addArgs(args);
 	}
 
@@ -126,7 +125,7 @@ pub fn build(b: *std.Build) !void {
 
 	const formatter_cmd = b.addRunArtifact(formatter);
 	formatter_cmd.step.dependOn(&formatter_install.step);
-	if (b.args) |args| {
+	if(b.args) |args| {
 		formatter_cmd.addArgs(args);
 	}
 

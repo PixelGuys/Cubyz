@@ -217,11 +217,11 @@ pub const RotationModes = struct {
 		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, playerDir: Vec3f, _: Vec3i, _: ?Neighbor, currentData: *Block, _: Block, blockPlacing: bool) bool {
 			if(blockPlacing) {
 				if(@abs(playerDir[0]) > @abs(playerDir[1])) {
-					if(playerDir[0] < 0) currentData.data = Neighbor.dirNegX.toInt() - 2
-					else currentData.data = Neighbor.dirPosX.toInt() - 2;
+					const dir: Neighbor = if(playerDir[0] < 0) .dirNegX else .dirPosX;
+					currentData.data = dir.toInt() - 2;
 				} else {
-					if(playerDir[1] < 0) currentData.data = Neighbor.dirNegY.toInt() - 2
-					else currentData.data = Neighbor.dirPosY.toInt() - 2;
+					const dir: Neighbor = if(playerDir[1] < 0) .dirNegY else .dirPosY;
+					currentData.data = dir.toInt() - 2;
 				}
 				return true;
 			}
@@ -337,8 +337,8 @@ pub const RotationModes = struct {
 		}
 		fn deinit() void {}
 
-		const GreedyFaceInfo = struct{min: Vec2f, max: Vec2f};
-		fn mergeFaces(faceVisible: [2][2] bool, mem: []GreedyFaceInfo) []GreedyFaceInfo {
+		const GreedyFaceInfo = struct {min: Vec2f, max: Vec2f};
+		fn mergeFaces(faceVisible: [2][2]bool, mem: []GreedyFaceInfo) []GreedyFaceInfo {
 			var faces: usize = 0;
 			if(faceVisible[0][0]) {
 				if(faceVisible[0][1]) {
@@ -543,7 +543,7 @@ pub const RotationModes = struct {
 			} else return entry;
 		}
 
-		fn intersectionPos(block: Block, relativePlayerPos: Vec3f, playerDir: Vec3f) ?struct{minT: f32, minPos: @Vector(3, u1)} {
+		fn intersectionPos(block: Block, relativePlayerPos: Vec3f, playerDir: Vec3f) ?struct {minT: f32, minPos: @Vector(3, u1)} {
 			const invDir = @as(Vec3f, @splat(1))/playerDir;
 			const relPos: Vec3f = @floatCast(-relativePlayerPos);
 			const data: u8 = @truncate(block.data);
@@ -655,7 +655,7 @@ pub const RotationModes = struct {
 			var posYModel: u16 = undefined;
 			for(1..32) |i| {
 				const torchData: TorchData = @bitCast(@as(u5, @intCast(i)));
-				if(i & i-1 == 0) {
+				if(i & i - 1 == 0) {
 					if(torchData.center) centerModel = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.identity()});
 					if(torchData.negX) negXModel = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.translation(.{-0.4, 0, 0.2}).mul(Mat4f.rotationY(0.3))});
 					if(torchData.posX) posXModel = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.translation(.{0.4, 0, 0.2}).mul(Mat4f.rotationY(-0.3))});
@@ -739,12 +739,12 @@ pub const RotationModes = struct {
 			}
 			const result: u16 = @as(u5, @bitCast(currentData));
 			if(result == block.data) return false;
-			if(result == 0) block.* = .{.typ = 0, .data = 0}
-			else block.data = result;
+			block.data = result;
+			if(result == 0) block.type = 0;
 			return true;
 		}
 
-		fn closestRay(comptime typ: enum{bit, intersection}, block: Block, _: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) if(typ == .intersection) ?RayIntersectionResult else u16 {
+		fn closestRay(comptime typ: enum {bit, intersection}, block: Block, _: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) if(typ == .intersection) ?RayIntersectionResult else u16 {
 			var result: ?RayIntersectionResult = null;
 			var resultBit: u16 = 0;
 			for([_]u16{1, 2, 4, 8, 16}) |bit| {
@@ -822,7 +822,7 @@ pub const RotationModes = struct {
 			var posZModel: u16 = undefined;
 			for(1..64) |i| {
 				const carpetData: CarpetData = @bitCast(@as(u6, @intCast(i)));
-				if(i & i-1 == 0) {
+				if(i & i - 1 == 0) {
 					if(carpetData.negX) negXModel = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationZ(-std.math.pi/2.0).mul(Mat4f.rotationX(-std.math.pi/2.0))});
 					if(carpetData.posX) posXModel = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationZ(std.math.pi/2.0).mul(Mat4f.rotationX(-std.math.pi/2.0))});
 					if(carpetData.negY) negYModel = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationX(-std.math.pi/2.0)});
@@ -894,7 +894,7 @@ pub const RotationModes = struct {
 			}
 		}
 
-		fn closestRay(comptime typ: enum{bit, intersection}, block: Block, _: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) if(typ == .intersection) ?RayIntersectionResult else u16 {
+		fn closestRay(comptime typ: enum {bit, intersection}, block: Block, _: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) if(typ == .intersection) ?RayIntersectionResult else u16 {
 			var result: ?RayIntersectionResult = null;
 			var resultBit: u16 = 0;
 			for([_]u16{1, 2, 4, 8, 16, 32}) |bit| {
@@ -977,7 +977,6 @@ pub const RotationModes = struct {
 			shouldDropSourceBlockOnSuccess.* = false;
 			return .{.yes_costsItems = 1};
 		}
-
 
 		pub fn onBlockBreaking(_: ?main.items.Item, _: Vec3f, _: Vec3f, currentData: *Block) void {
 			currentData.typ = currentData.data;

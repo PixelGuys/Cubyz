@@ -49,11 +49,12 @@ pub const StructureMapFragment = struct {
 		allocator: NeverFailingAllocator,
 	},
 
-
 	pub fn init(self: *StructureMapFragment, tempAllocator: NeverFailingAllocator, wx: i32, wy: i32, wz: i32, voxelSize: u31) void {
 		self.* = .{
 			.pos = .{
-				.wx = wx, .wy = wy, .wz = wz,
+				.wx = wx,
+				.wy = wy,
+				.wz = wz,
 				.voxelSize = voxelSize,
 			},
 			.voxelShift = @ctz(voxelSize),
@@ -89,7 +90,7 @@ pub const StructureMapFragment = struct {
 
 	fn getIndex(self: *const StructureMapFragment, x: i32, y: i32, z: i32) usize {
 		std.debug.assert(x >= 0 and x < size*self.pos.voxelSize and y >= 0 and y < size*self.pos.voxelSize and z >= 0 and z < size*self.pos.voxelSize); // Coordinates out of range.
-		return @intCast(((x >> main.chunk.chunkShift+self.voxelShift)*chunkedSize + (y >> main.chunk.chunkShift+self.voxelShift))*chunkedSize + (z >> main.chunk.chunkShift+self.voxelShift));
+		return @intCast(((x >> main.chunk.chunkShift + self.voxelShift)*chunkedSize + (y >> main.chunk.chunkShift + self.voxelShift))*chunkedSize + (z >> main.chunk.chunkShift + self.voxelShift));
 	}
 
 	pub fn increaseRefCount(self: *StructureMapFragment) void {
@@ -113,13 +114,13 @@ pub const StructureMapFragment = struct {
 	}
 
 	pub fn addStructure(self: *StructureMapFragment, structure: Structure, min: Vec3i, max: Vec3i) void {
-		var x = min[0] & ~@as(i32, main.chunk.chunkMask << self.voxelShift | self.pos.voxelSize-1);
+		var x = min[0] & ~@as(i32, main.chunk.chunkMask << self.voxelShift | self.pos.voxelSize - 1);
 		while(x < max[0]) : (x += main.chunk.chunkSize << self.voxelShift) {
 			if(x < 0 or x >= size*self.pos.voxelSize) continue;
-			var y = min[1] & ~@as(i32, main.chunk.chunkMask << self.voxelShift | self.pos.voxelSize-1);
+			var y = min[1] & ~@as(i32, main.chunk.chunkMask << self.voxelShift | self.pos.voxelSize - 1);
 			while(y < max[1]) : (y += main.chunk.chunkSize << self.voxelShift) {
 				if(y < 0 or y >= size*self.pos.voxelSize) continue;
-				var z = min[2] & ~@as(i32, main.chunk.chunkMask << self.voxelShift | self.pos.voxelSize-1);
+				var z = min[2] & ~@as(i32, main.chunk.chunkMask << self.voxelShift | self.pos.voxelSize - 1);
 				while(z < max[2]) : (z += main.chunk.chunkSize << self.voxelShift) {
 					if(z < 0 or z >= size*self.pos.voxelSize) continue;
 					self.tempData.lists[self.getIndex(x, y, z)].append(self.tempData.allocator, structure);
@@ -139,11 +140,10 @@ pub const StructureMapGenerator = struct {
 	/// To avoid duplicate seeds in similar generation algorithms, the SurfaceGenerator xors the world-seed with the generator specific seed.
 	generatorSeed: u64,
 
-
 	var generatorRegistry: std.StringHashMapUnmanaged(StructureMapGenerator) = .{};
 
 	pub fn registerGenerator(comptime Generator: type) void {
-		const self = StructureMapGenerator {
+		const self = StructureMapGenerator{
 			.init = &Generator.init,
 			.deinit = &Generator.deinit,
 			.generate = &Generator.generate,
@@ -209,10 +209,10 @@ pub fn deinit() void {
 }
 
 pub fn getOrGenerateFragmentAndIncreaseRefCount(wx: i32, wy: i32, wz: i32, voxelSize: u31) *StructureMapFragment {
-	const compare = ChunkPosition {
-		.wx = wx & ~@as(i32, StructureMapFragment.sizeMask*voxelSize | voxelSize-1),
-		.wy = wy & ~@as(i32, StructureMapFragment.sizeMask*voxelSize | voxelSize-1),
-		.wz = wz & ~@as(i32, StructureMapFragment.sizeMask*voxelSize | voxelSize-1),
+	const compare = ChunkPosition{
+		.wx = wx & ~@as(i32, StructureMapFragment.sizeMask*voxelSize | voxelSize - 1),
+		.wy = wy & ~@as(i32, StructureMapFragment.sizeMask*voxelSize | voxelSize - 1),
+		.wz = wz & ~@as(i32, StructureMapFragment.sizeMask*voxelSize | voxelSize - 1),
 		.voxelSize = voxelSize,
 	};
 	const result = cache.findOrCreate(compare, cacheInit, StructureMapFragment.increaseRefCount);

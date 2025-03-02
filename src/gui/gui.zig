@@ -69,7 +69,7 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 				},
 				.close => {
 					executeCloseWindowCommand(command.window);
-				}
+				},
 			}
 		}
 	}

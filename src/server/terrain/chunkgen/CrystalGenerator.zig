@@ -17,7 +17,7 @@ pub const priority = 65537;
 
 pub const generatorSeed = 0x9b450ffb0d415317;
 
-const crystalColor = [_][]const u8 {
+const crystalColor = [_][]const u8{
 	"red", "orange", "yellow", "lime", "green", "cyan", "aqua", "blue", "pink", "magenta", "violet", // 8 Base colors
 	"crimson", "viridian", "indigo", "purple", "brown", // 5 darker colors
 	"white", "grey", "dark_grey", "black", // 4 grayscale colors
@@ -35,9 +35,7 @@ pub fn init(parameters: ZonElement) void {
 	}
 }
 
-pub fn deinit() void {
-
-}
+pub fn deinit() void {}
 
 pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView) void {
 	if(chunk.super.pos.voxelSize > 2) return;
@@ -148,14 +146,7 @@ fn considerCoordinates(x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, c
 		const relZ = worldZ -% chunk.super.pos.wz;
 		if(caveMap.isSolid(relX, relY, relZ)) { // Only start crystal in solid blocks
 			// Only start crystal when they are close to the surface (±SURFACE_DIST blocks)
-			if(
-				(worldX - x >= surfaceDist and !caveMap.isSolid(relX - surfaceDist, relY, relZ))
-				or (worldX - x < main.chunk.chunkSize - surfaceDist and !caveMap.isSolid(relX + surfaceDist, relY, relZ))
-				or (worldY - y >= surfaceDist and !caveMap.isSolid(relX, relY - surfaceDist, relZ))
-				or (worldY - y < main.chunk.chunkSize - surfaceDist and !caveMap.isSolid(relX, relY + surfaceDist, relZ))
-				or (worldZ - z >= surfaceDist and !caveMap.isSolid(relX, relY, relZ - surfaceDist))
-				or (worldZ - z < main.chunk.chunkSize - surfaceDist and !caveMap.isSolid(relX, relY, relZ + surfaceDist))
-			) {
+			if((worldX - x >= surfaceDist and !caveMap.isSolid(relX - surfaceDist, relY, relZ)) or (worldX - x < main.chunk.chunkSize - surfaceDist and !caveMap.isSolid(relX + surfaceDist, relY, relZ)) or (worldY - y >= surfaceDist and !caveMap.isSolid(relX, relY - surfaceDist, relZ)) or (worldY - y < main.chunk.chunkSize - surfaceDist and !caveMap.isSolid(relX, relY + surfaceDist, relZ)) or (worldZ - z >= surfaceDist and !caveMap.isSolid(relX, relY, relZ - surfaceDist)) or (worldZ - z < main.chunk.chunkSize - surfaceDist and !caveMap.isSolid(relX, relY, relZ + surfaceDist))) {
 				// Generate the crystal:
 				considerCrystal(worldX, worldY, worldZ, chunk, seed, useNeedles, colors);
 			}
