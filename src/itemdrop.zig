@@ -532,16 +532,16 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 	const damping: Vec3f = @splat(130);
 
 	pub fn update(deltaTime: f64) void {
-		const dt: f32 =  @floatCast(deltaTime);
+		const dt: f32 = @floatCast(deltaTime);
 
-		var playerVel: Vec3f = .{@floatCast((game.Player.super.vel[2] * 0.009 + game.Player.eyeVel[2] * 0.0075)), 0, 0};
+		var playerVel: Vec3f = .{@floatCast((game.Player.super.vel[2]*0.009 + game.Player.eyeVel[2]*0.0075)), 0, 0};
 		playerVel = vec.clampMag(playerVel, 0.55);
 
-		const n1: Vec3f = cameraFollowVel - (cameraFollow - (game.camera.rotation + playerVel)) * damping * damping * @as(Vec3f, @splat(dt));
-		const n2: Vec3f = @as(Vec3f, @splat(1)) + damping * @as(Vec3f, @splat(dt));
-		cameraFollowVel = n1 / (n2 * n2);
+		const n1: Vec3f = cameraFollowVel - (cameraFollow - (game.camera.rotation + playerVel))*damping*damping*@as(Vec3f, @splat(dt));
+		const n2: Vec3f = @as(Vec3f, @splat(1)) + damping*@as(Vec3f, @splat(dt));
+		cameraFollowVel = n1/(n2*n2);
 
-		cameraFollow += cameraFollowVel * @as(Vec3f, @splat(dt));
+		cameraFollow += cameraFollowVel*@as(Vec3f, @splat(dt));
 	}
 };
 
@@ -700,10 +700,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	}
 
 	fn bindLightUniform(light: u32, ambientLight: Vec3f) void {
-		c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&@max(
-			ambientLight*@as(Vec3f, @splat(@as(f32, @floatFromInt(light >> 24))/255)),
-			Vec3f{@floatFromInt(light >> 16 & 255), @floatFromInt(light >> 8 & 255), @floatFromInt(light & 255)}/@as(Vec3f, @splat(255))
-		)));
+		c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&@max(ambientLight*@as(Vec3f, @splat(@as(f32, @floatFromInt(light >> 24))/255)), Vec3f{@floatFromInt(light >> 16 & 255), @floatFromInt(light >> 8 & 255), @floatFromInt(light & 255)}/@as(Vec3f, @splat(255)))));
 	}
 
 	fn bindModelUniforms(modelIndex: u31, blockType: u16) void {
@@ -756,7 +753,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	}
 
 	pub fn renderDisplayItems(ambientLight: Vec3f, playerPos: Vec3d, time: u32) void {
-		if (!showItem) return;
+		if(!showItem) return;
 
 		const projMatrix: Mat4f = Mat4f.perspective(std.math.degreesToRadians(65), @as(f32, @floatFromInt(renderer.lastWidth))/@as(f32, @floatFromInt(renderer.lastHeight)), 0.05, 100);
 		const viewMatrix = Mat4f.identity();
@@ -791,8 +788,8 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			modelMatrix = modelMatrix.mul(Mat4f.rotationY(-rot[1]));
 			modelMatrix = modelMatrix.mul(Mat4f.rotationX(-rot[0]));
 			modelMatrix = modelMatrix.mul(Mat4f.translation(@floatCast(pos)));
-			if (!isBlock) {
-				if (item == .tool) {
+			if(!isBlock) {
+				if(item == .tool) {
 					modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.46));
 					modelMatrix = modelMatrix.mul(Mat4f.rotationY(std.math.pi*0.23));
 				} else {

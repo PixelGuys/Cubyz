@@ -299,11 +299,11 @@ fn takeBackgroundImageFn() void {
 	renderer.MenuBackGround.takeBackgroundImage();
 }
 fn toggleHideGui() void {
-	if (itemdrop.showItem and !gui.hideGui) {
+	if(itemdrop.showItem and !gui.hideGui) {
 		gui.hideGui = true;
-	} else if (itemdrop.showItem and gui.hideGui) {
+	} else if(itemdrop.showItem and gui.hideGui) {
 		itemdrop.showItem = false;
-	} else if (!itemdrop.showItem and gui.hideGui) {
+	} else if(!itemdrop.showItem and gui.hideGui) {
 		gui.hideGui = false;
 	} else {
 		itemdrop.showItem = true;

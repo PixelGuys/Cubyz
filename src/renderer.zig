@@ -137,7 +137,7 @@ pub fn render(playerPosition: Vec3d, deltaTime: f64, isCapturingFrame: bool) voi
 		const skyColor = vec.xyz(world.clearColor);
 		game.fog.skyColor = skyColor;
 
-		if (!isCapturingFrame) {
+		if(!isCapturingFrame) {
 			itemdrop.ItemDisplayManager.update(deltaTime);
 		}
 		renderWorld(world, ambient, skyColor, playerPosition, isCapturingFrame);
@@ -254,7 +254,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glDepthFunc(c.GL_LESS);
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 
-	if (!isCapturingFrame) {
+	if(!isCapturingFrame) {
 		c.glDepthFunc(c.GL_ALWAYS);
 		itemdrop.ItemDropRenderer.renderDisplayItems(ambientLight, playerPos, time);
 		c.glDepthFunc(c.GL_LESS);

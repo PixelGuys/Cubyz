@@ -39,8 +39,8 @@ pub fn normalize(self: anytype) @TypeOf(self) {
 }
 
 pub fn clampMag(self: anytype, maxMag: @typeInfo(@TypeOf(self)).vector.child) @TypeOf(self) {
-	if (lengthSquare(self) > maxMag * maxMag) {
-		return normalize(self) * @as(@TypeOf(self), @splat(maxMag));
+	if(lengthSquare(self) > maxMag*maxMag) {
+		return normalize(self)*@as(@TypeOf(self), @splat(maxMag));
 	}
 
 	return self;
