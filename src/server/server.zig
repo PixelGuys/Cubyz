@@ -18,6 +18,17 @@ pub const storage = @import("storage.zig");
 
 const command = @import("command/_command.zig");
 
+pub const UserCommandData = struct {
+	selectionPosition1: Vec3i = .{0, 0, 0},
+	selectionPosition2: Vec3i = .{0, 0, 0},
+	clipboard: ?main.blueprint.Blueprint = null,
+
+	pub fn deinit(self: *UserCommandData) void {
+		if(self.clipboard != null) {
+			self.clipboard.?.deinit();
+		}
+	}
+};
 
 pub const User = struct { // MARK: User
 	const maxSimulationDistance = 8;
@@ -40,6 +51,7 @@ pub const User = struct { // MARK: User
 	lastRenderDistance: u16 = 0,
 	lastPos: Vec3i = @splat(0),
 	gamemode: std.atomic.Value(main.game.Gamemode) = .init(.creative),
+	commandData: UserCommandData = .{},
 
 	inventoryClientToServerIdMap: std.AutoHashMap(u32, u32) = undefined,
 
@@ -75,6 +87,8 @@ pub const User = struct { // MARK: User
 			std.log.err("Failed to save player: {s}", .{@errorName(err)});
 			return;
 		};
+
+		self.commandData.deinit();
 
 		main.items.Inventory.Sync.ServerSide.disconnectUser(self);
 		std.debug.assert(self.inventoryClientToServerIdMap.count() == 0); // leak

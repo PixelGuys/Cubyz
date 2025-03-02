@@ -18,19 +18,17 @@ pub fn execute(args: []const u8, source: *User) void {
 		source.sendMessage("#ff0000Too many arguments for command /paste. Expected no arguments.", .{});
 		return;
 	}
-	if(copy.clipboard) |clipboard| {
+	source.mutex.lock();
+	defer source.mutex.unlock();
+
+	if(source.commandData.clipboard) |clipboard| {
 		const pos: Vec3i = .{
 			@intFromFloat(source.player.pos[0]),
 			@intFromFloat(source.player.pos[1]),
 			@intFromFloat(source.player.pos[2]),
 		};
 		source.sendMessage("Pasting: ({d:.3}, {d:.3}, {d:.3})", .{pos[0], pos[1], pos[2]});
-		const pastePosition: Vec3i = .{
-			pos[0] + copy.playerOffset[0],
-			pos[1] + copy.playerOffset[1],
-			pos[2] + copy.playerOffset[2],
-		};
-		clipboard.paste(pastePosition);
+		clipboard.paste(pos);
 	} else {
 		source.sendMessage("#ff0000Error: No clipboard content to paste.", .{});
 	}

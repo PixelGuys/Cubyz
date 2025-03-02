@@ -596,9 +596,6 @@ pub fn main() void { // MARK: main()
 	assets.init();
 	defer assets.deinit();
 
-	blueprint.init();
-	defer blueprint.deinit();
-
 	blocks.meshes.init();
 	defer blocks.meshes.deinit();
 

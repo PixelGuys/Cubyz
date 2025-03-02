@@ -10,18 +10,6 @@ const Block = main.blocks.Block;
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 const User = main.server.User;
 
-var arena: main.utils.NeverFailingArenaAllocator = undefined;
-pub var arenaAllocator: NeverFailingAllocator = undefined;
-
-pub fn init() void {
-	arena = .init(main.globalAllocator);
-	arenaAllocator = arena.allocator();
-}
-
-pub fn deinit() void {
-	arena.deinit();
-}
-
 pub const Blueprint = struct {
 	palette: std.StringHashMap(u16),
 	blocks: main.List(u32),
@@ -29,28 +17,23 @@ pub const Blueprint = struct {
 	sizeY: usize,
 	sizeZ: usize,
 
-	pub fn init(allocator: NeverFailingAllocator) *Blueprint {
-		const self = allocator.create(Blueprint);
-		self.* = Blueprint{
+	pub fn init(allocator: NeverFailingAllocator) @This() {
+		return Blueprint{
 			.palette = .init(allocator.allocator),
 			.blocks = .init(allocator),
 			.sizeX = 0,
 			.sizeY = 0,
 			.sizeZ = 0,
 		};
-		return self;
 	}
 
 	pub fn deinit(self: *Blueprint) void {
 		self.palette.deinit();
 		self.blocks.deinit();
-
-		const allocator = self.palette.allocator;
-		allocator.destroy(self);
 	}
-	pub fn capture(allocator: NeverFailingAllocator, pos1: Vec3i, pos2: Vec3i) !*Blueprint {
-		var self = Blueprint.init(allocator);
-		errdefer self.deinit();
+	pub fn capture(self: *@This(), pos1: Vec3i, pos2: Vec3i) void {
+		self.palette.clearRetainingCapacity();
+		self.blocks.clearRetainingCapacity();
 
 		const startX = @min(pos1[0], pos2[0]);
 		const startY = @min(pos1[1], pos2[1]);
@@ -78,9 +61,9 @@ pub const Blueprint = struct {
 					const worldZ = startZ + @as(i32, @intCast(offsetZ));
 
 					const block = main.server.world.?.getBlock(worldX, worldY, worldZ) orelse Block{.typ = 0, .data = 0};
-					const blockId = block.id();
+					const blockId: []const u8 = block.id();
 					if(!self.palette.contains(blockId)) {
-						self.palette.put(blockId, @as(u16, @truncate(self.palette.count()))) catch unreachable;
+						self.palette.put(self.palette.allocator.dupe(u8, blockId) catch unreachable, @as(u16, @truncate(self.palette.count()))) catch unreachable;
 					}
 
 					const blueprintBlockTyp = self.palette.get(blockId) orelse unreachable;
@@ -91,7 +74,6 @@ pub const Blueprint = struct {
 				}
 			}
 		}
-		return self;
 	}
 	pub fn paste(self: @This(), pos: Vec3i) void {
 		const startX = pos[0];
@@ -134,7 +116,7 @@ pub const Blueprint = struct {
 			}
 		}
 	}
-	pub fn toZon(self: *@This(), allocator: NeverFailingAllocator) ZonElement {
+	pub fn toZon(self: @This(), allocator: NeverFailingAllocator) ZonElement {
 		var zon = ZonElement.initObject(allocator);
 		errdefer zon.free(allocator);
 

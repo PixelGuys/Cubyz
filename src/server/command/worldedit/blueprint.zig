@@ -5,8 +5,6 @@ const User = main.server.User;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
 
-const copy = @import("copy.zig");
-
 const List = main.List;
 const Block = main.blocks.Block;
 const Blueprint = main.blueprint.Blueprint;
@@ -68,7 +66,10 @@ fn blueprintSave(args: List([]const u8), source: *User) !void {
 		source.sendMessage("#ff0000Too many arguments for /blueprint save. Expected 1 argument, FILENAME.", .{});
 		return;
 	}
-	if(copy.clipboard) |clipboard| {
+	source.mutex.lock();
+	defer source.mutex.unlock();
+
+	if(source.commandData.clipboard) |clipboard| {
 		const zon = clipboard.toZon(main.stackAllocator);
 		defer zon.deinit(main.stackAllocator);
 
@@ -80,15 +81,11 @@ fn blueprintSave(args: List([]const u8), source: *User) !void {
 		}
 		defer main.stackAllocator.free(fileName);
 
-		var savesDir = try std.fs.cwd().openDir("saves", .{});
-		defer savesDir.close();
+		var cwd = std.fs.cwd();
 
-		var thisSaveDir = try savesDir.openDir(main.server.world.?.name, .{});
-		defer thisSaveDir.close();
+		_ = cwd.makeDir("blueprints") catch null;
 
-		_ = thisSaveDir.makeDir("blueprints") catch null;
-
-		var blueprintsDir = main.files.Dir.init(try thisSaveDir.openDir("blueprints", .{}));
+		var blueprintsDir = main.files.Dir.init(try cwd.openDir("blueprints", .{}));
 		defer blueprintsDir.close();
 
 		std.log.info("Saving clipboard to file: {s}", .{fileName});
@@ -107,10 +104,26 @@ fn blueprintDelete(_: List([]const u8), source: *User) void {
 	source.sendMessage("#ff0000/blueprint delete not implemented.", .{});
 }
 
-fn blueprintLoad(_: List([]const u8), source: *User) void {
-	source.sendMessage("#ff0000/blueprint load not implemented.", .{});
+fn blueprintList(_: List([]const u8), source: *User) !void {
+	var cwd = std.fs.cwd();
+
+	_ = cwd.makeDir("blueprints") catch null;
+
+	var blueprintsDir = try cwd.openDir("blueprints", .{.iterate = true});
+	defer blueprintsDir.close();
+
+	var directoryIterator = blueprintsDir.iterate();
+	var index: i32 = 0;
+
+	while(try directoryIterator.next()) |entry| {
+		if(entry.kind != .file) break;
+		if(!std.ascii.endsWithIgnoreCase(entry.name, ".zon") and !std.ascii.endsWithIgnoreCase(entry.name, ".blp")) break;
+
+		source.sendMessage("#00ff00{}#ffffff {s}", .{index, entry.name});
+		index += 1;
+	}
 }
 
-fn blueprintList(_: List([]const u8), source: *User) void {
-	source.sendMessage("#ff0000/blueprint list not implemented.", .{});
+fn blueprintLoad(_: List([]const u8), source: *User) void {
+	source.sendMessage("#ff0000/blueprint load not implemented.", .{});
 }
