@@ -23,11 +23,12 @@ pub const CaveMapFragment = struct { // MARK: CaveMapFragment
 	voxelShift: u5,
 	refCount: Atomic(u16) = .init(0),
 
-
 	pub fn init(self: *CaveMapFragment, wx: i32, wy: i32, wz: i32, voxelSize: u31) void {
 		self.* = .{
 			.pos = .{
-				.wx = wx, .wy = wy, .wz = wz,
+				.wx = wx,
+				.wy = wy,
+				.wz = wz,
 				.voxelSize = voxelSize,
 			},
 			.voxelShift = @ctz(voxelSize),
@@ -44,20 +45,8 @@ pub const CaveMapFragment = struct { // MARK: CaveMapFragment
 	/// start inclusive
 	/// end exclusive
 	fn getMask(start: i32, end: i32) u64 {
-		const maskLower = if(start <= 0) (
-			0
-		) else if(start >= 64) (
-			std.math.maxInt(u64)
-		) else (
-			@as(u64, std.math.maxInt(u64)) >> @intCast(64 - start)
-		);
-		const maskUpper = if(end <= 0) (
-			std.math.maxInt(u64)
-		) else if(end >= 64) (
-			0
-		) else (
-			@as(u64, std.math.maxInt(u64)) << @intCast(end)
-		);
+		const maskLower = if(start <= 0) (0) else if(start >= 64) (std.math.maxInt(u64)) else (@as(u64, std.math.maxInt(u64)) >> @intCast(64 - start));
+		const maskUpper = if(end <= 0) (std.math.maxInt(u64)) else if(end >= 64) (0) else (@as(u64, std.math.maxInt(u64)) << @intCast(end));
 		return maskLower | maskUpper;
 	}
 
@@ -107,11 +96,10 @@ pub const CaveGenerator = struct { // MARK: CaveGenerator
 	/// To avoid duplicate seeds in similar generation algorithms, the SurfaceGenerator xors the world-seed with the generator specific seed.
 	generatorSeed: u64,
 
-
 	var generatorRegistry: std.StringHashMapUnmanaged(CaveGenerator) = .{};
 
 	pub fn registerGenerator(comptime Generator: type) void {
-		const self = CaveGenerator {
+		const self = CaveGenerator{
 			.init = &Generator.init,
 			.deinit = &Generator.deinit,
 			.generate = &Generator.generate,
@@ -147,9 +135,9 @@ pub const CaveMapView = struct { // MARK: CaveMapView
 	pub fn init(chunk: *ServerChunk) CaveMapView {
 		const pos = chunk.super.pos;
 		const width = chunk.super.width;
-		return CaveMapView {
+		return CaveMapView{
 			.reference = chunk,
-			.fragments = [_]*CaveMapFragment {
+			.fragments = [_]*CaveMapFragment{
 				getOrGenerateFragmentAndIncreaseRefCount(pos.wx -% width, pos.wy -% width, pos.wz -% width, pos.voxelSize),
 				getOrGenerateFragmentAndIncreaseRefCount(pos.wx -% width, pos.wy -% width, pos.wz +% width, pos.voxelSize),
 				getOrGenerateFragmentAndIncreaseRefCount(pos.wx -% width, pos.wy +% width, pos.wz -% width, pos.voxelSize),
@@ -186,7 +174,7 @@ pub const CaveMapView = struct { // MARK: CaveMapView
 		const fragmentRelY = wy - self.fragments[index].pos.wy;
 		const fragmentRelZ = @divFloor(wz - self.fragments[index].pos.wz, self.reference.super.pos.voxelSize);
 		const height = self.fragments[index].getColumnData(fragmentRelX, fragmentRelY);
-		return (height & @as(u64, 1)<<@intCast(fragmentRelZ)) != 0;
+		return (height & @as(u64, 1) << @intCast(fragmentRelZ)) != 0;
 	}
 
 	pub fn getHeightData(self: CaveMapView, relX: i32, relY: i32) u32 {
@@ -235,7 +223,7 @@ pub const CaveMapView = struct { // MARK: CaveMapView
 			height = self.fragments[index].getColumnData(fragmentRelX, fragmentRelY) >> @intCast(relativeZ);
 			const startFilled = (height & 1) != 0;
 			if(relativeZ != 0) {
-				height |= self.fragments[index+1].getColumnData(fragmentRelX, fragmentRelY) << @intCast(64 - relativeZ);
+				height |= self.fragments[index + 1].getColumnData(fragmentRelX, fragmentRelY) << @intCast(64 - relativeZ);
 			}
 			if(startFilled) {
 				height = ~height;
@@ -244,7 +232,7 @@ pub const CaveMapView = struct { // MARK: CaveMapView
 			// Check only the upper part:
 			result = @max(CaveMapFragment.height, result);
 			relativeZ -= CaveMapFragment.height;
-			height = self.fragments[index+1].getColumnData(fragmentRelX, fragmentRelY);
+			height = self.fragments[index + 1].getColumnData(fragmentRelX, fragmentRelY);
 			height >>= @intCast(relativeZ);
 			const startFilled = (height & 1) != 0;
 			if(startFilled) {
@@ -274,8 +262,8 @@ pub const CaveMapView = struct { // MARK: CaveMapView
 		if(relativeZ >= CaveMapFragment.height) {
 			relativeZ -= CaveMapFragment.height;
 			// Check the upper part first.
-			height = self.fragments[index+1].getColumnData(fragmentRelX, fragmentRelY) << (63 - @as(u6, @intCast(relativeZ)));
-			const startFilled = height & 1<<63 != 0;
+			height = self.fragments[index + 1].getColumnData(fragmentRelX, fragmentRelY) << (63 - @as(u6, @intCast(relativeZ)));
+			const startFilled = height & 1 << 63 != 0;
 			if(relativeZ != CaveMapFragment.height - 1) {
 				height |= self.fragments[index].getColumnData(fragmentRelX, fragmentRelY) >> @as(u6, @intCast(relativeZ + 1));
 			}
@@ -287,7 +275,7 @@ pub const CaveMapView = struct { // MARK: CaveMapView
 			result = @min(CaveMapFragment.height - 1, result);
 			height = self.fragments[index].getColumnData(fragmentRelX, fragmentRelY);
 			height <<= @intCast(63 - relativeZ);
-			const startFilled = (height & 1<<63) != 0;
+			const startFilled = (height & 1 << 63) != 0;
 			if(startFilled) {
 				height = ~height;
 			}
@@ -334,10 +322,10 @@ pub fn deinit() void {
 }
 
 fn getOrGenerateFragmentAndIncreaseRefCount(wx: i32, wy: i32, wz: i32, voxelSize: u31) *CaveMapFragment {
-	const compare = ChunkPosition {
-		.wx = wx & ~@as(i32, CaveMapFragment.widthMask*voxelSize | voxelSize-1),
-		.wy = wy & ~@as(i32, CaveMapFragment.widthMask*voxelSize | voxelSize-1),
-		.wz = wz & ~@as(i32, CaveMapFragment.heightMask*voxelSize | voxelSize-1),
+	const compare = ChunkPosition{
+		.wx = wx & ~@as(i32, CaveMapFragment.widthMask*voxelSize | voxelSize - 1),
+		.wy = wy & ~@as(i32, CaveMapFragment.widthMask*voxelSize | voxelSize - 1),
+		.wz = wz & ~@as(i32, CaveMapFragment.heightMask*voxelSize | voxelSize - 1),
 		.voxelSize = voxelSize,
 	};
 	const result = cache.findOrCreate(compare, cacheInit, CaveMapFragment.increaseRefCount);

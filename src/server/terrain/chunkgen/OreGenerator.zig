@@ -27,9 +27,7 @@ pub fn init(parameters: ZonElement) void {
 	ores = main.blocks.ores.items;
 }
 
-pub fn deinit() void {
-
-}
+pub fn deinit() void {}
 
 // Works basically similar to cave generation, but considers a lot less chunks and has a few other differences.
 pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView) void {
@@ -47,9 +45,9 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 			var z = cz - 1;
 			while(z < cz + 1) : (z +%= 1) {
 				const seed = random.initSeed3D(worldSeed, .{x, y, z});
-				const relX: f32 = @floatFromInt(x-cx << main.chunk.chunkShift);
-				const relY: f32 = @floatFromInt(y-cy << main.chunk.chunkShift);
-				const relZ: f32 = @floatFromInt(z-cz << main.chunk.chunkShift);
+				const relX: f32 = @floatFromInt(x - cx << main.chunk.chunkShift);
+				const relY: f32 = @floatFromInt(y - cy << main.chunk.chunkShift);
+				const relZ: f32 = @floatFromInt(z - cz << main.chunk.chunkShift);
 				for(ores) |*ore| {
 					if(ore.maxHeight <= z << main.chunk.chunkShift or ore.minHeight > z << main.chunk.chunkShift) continue;
 					considerCoordinates(ore, relX, relY, relZ, chunk, seed);

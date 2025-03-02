@@ -12,11 +12,11 @@ const GuiComponent = gui.GuiComponent;
 
 const chat = @import("chat.zig");
 
-pub var window = GuiWindow {
+pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 64},
 	.relativePosition = .{
-		.{ .attachedToFrame = .{.selfAttachmentPoint = .lower, .otherAttachmentPoint = .lower} },
-		.{ .attachedToWindow = .{.reference = &chat.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .lower} },
+		.{.attachedToFrame = .{.selfAttachmentPoint = .lower, .otherAttachmentPoint = .lower}},
+		.{.attachedToWindow = .{.reference = &chat.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .lower}},
 	},
 	.isHud = false,
 	.showTitleBar = false,
