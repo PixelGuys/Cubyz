@@ -115,7 +115,7 @@ pub fn AliasTable(comptime T: type) type { // MARK: AliasTable
 					.alias = lastOverfullIndex,
 					.chance = @intFromFloat(delta/desiredChance*std.math.maxInt(u16)),
 				};
-				if (currentChances[lastOverfullIndex] < desiredChance) {
+				if(currentChances[lastOverfullIndex] < desiredChance) {
 					lastUnderfullIndex = @min(lastUnderfullIndex, lastOverfullIndex);
 				}
 			}
@@ -258,7 +258,7 @@ pub fn Array2D(comptime T: type) type { // MARK: Array2D
 
 		pub fn getRow(self: Self, x: usize) []T {
 			std.debug.assert(x < self.width);
-			return self.mem[x*self.height..][0..self.height];
+			return self.mem[x*self.height ..][0..self.height];
 		}
 
 		pub fn set(self: Self, x: usize, y: usize, t: T) void {
@@ -322,10 +322,10 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 
 		pub fn init(allocator: NeverFailingAllocator, initialCapacity: usize) Self {
 			comptime std.debug.assert(@sizeOf(Self) <= 64);
-			std.debug.assert(initialCapacity-1 & initialCapacity == 0 and initialCapacity > 0);
+			std.debug.assert(initialCapacity - 1 & initialCapacity == 0 and initialCapacity > 0);
 			return .{
 				.mem = allocator.alloc(T, initialCapacity),
-				.mask = initialCapacity-1,
+				.mask = initialCapacity - 1,
 				.startIndex = 0,
 				.endIndex = 0,
 				.allocator = allocator,
@@ -427,7 +427,7 @@ pub fn ConcurrentQueue(comptime T: type) type { // MARK: ConcurrentQueue
 /// Allows for stack-like allocations in a fast and safe way.
 /// It is safe in the sense that a regular allocator will be used when the buffer is full.
 pub const StackAllocator = struct { // MARK: StackAllocator
-	const AllocationTrailer = packed struct{wasFreed: bool, previousAllocationTrailer: u31};
+	const AllocationTrailer = packed struct {wasFreed: bool, previousAllocationTrailer: u31};
 	backingAllocator: NeverFailingAllocator,
 	buffer: []align(4096) u8,
 	index: usize,
@@ -720,7 +720,7 @@ pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 	}
 
 	fn AllocWithOptionsPayload(comptime Elem: type, comptime alignment: ?u29, comptime sentinel: ?Elem) type {
-		if (sentinel) |s| {
+		if(sentinel) |s| {
 			return [:s]align(alignment orelse @alignOf(Elem)) Elem;
 		} else {
 			return []align(alignment orelse @alignOf(Elem)) Elem;
@@ -889,7 +889,7 @@ pub const BufferFallbackAllocator = struct { // MARK: BufferFallbackAllocator
 
 	fn resize(ctx: *anyopaque, buf: []u8, log2_buf_align: u8, new_len: usize, ra: usize) bool {
 		const self: *BufferFallbackAllocator = @ptrCast(@alignCast(ctx));
-		if (self.fixedBuffer.ownsPtr(buf.ptr)) {
+		if(self.fixedBuffer.ownsPtr(buf.ptr)) {
 			return self.fixedBuffer.allocator().rawResize(buf, log2_buf_align, new_len, ra);
 		} else {
 			return self.fallbackAllocator.rawResize(buf, log2_buf_align, new_len, ra);
@@ -898,7 +898,7 @@ pub const BufferFallbackAllocator = struct { // MARK: BufferFallbackAllocator
 
 	fn free(ctx: *anyopaque, buf: []u8, log2_buf_align: u8, ra: usize) void {
 		const self: *BufferFallbackAllocator = @ptrCast(@alignCast(ctx));
-		if (self.fixedBuffer.ownsPtr(buf.ptr)) {
+		if(self.fixedBuffer.ownsPtr(buf.ptr)) {
 			return self.fixedBuffer.allocator().rawFree(buf, log2_buf_align, ra);
 		} else {
 			return self.fallbackAllocator.rawFree(buf, log2_buf_align, ra);
@@ -1051,7 +1051,6 @@ pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 			}
 		}
 
-
 		fn extractAny(self: *@This()) ?T {
 			self.mutex.lock();
 			defer self.mutex.unlock();
@@ -1144,7 +1143,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 				@panic("ThreadPool Creation Failed.");
 			};
 			var buf: [std.Thread.max_name_len]u8 = undefined;
-			thread.setName(std.fmt.bufPrint(&buf, "Worker {}", .{i+1}) catch "Worker n") catch |err| std.log.err("Couldn't rename thread: {s}", .{@errorName(err)});
+			thread.setName(std.fmt.bufPrint(&buf, "Worker {}", .{i + 1}) catch "Worker n") catch |err| std.log.err("Couldn't rename thread: {s}", .{@errorName(err)});
 		}
 		return self;
 	}
@@ -1226,7 +1225,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 	}
 
 	pub fn addTask(self: *ThreadPool, task: *anyopaque, vtable: *const VTable) void {
-		self.loadList.add(Task {
+		self.loadList.add(Task{
 			.cachedPriority = vtable.getPriority(task),
 			.vtable = vtable,
 			.self = task,
@@ -1299,7 +1298,7 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 			const bitOffset: u5 = @intCast(bitIndex & 7);
 			const bitMask = (@as(u32, 1) << self.bitSize) - 1;
 			const ptr: *align(1) u32 = @ptrCast(&self.data[byteIndex]);
-			return ptr.* >> bitOffset  &  bitMask;
+			return ptr.* >> bitOffset & bitMask;
 		}
 
 		pub fn setValue(self: *Self, i: usize, value: u32) void {
@@ -1324,7 +1323,7 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 			const bitMask = (@as(u32, 1) << self.bitSize) - 1;
 			std.debug.assert(value <= bitMask);
 			const ptr: *align(1) u32 = @ptrCast(&self.data[byteIndex]);
-			const result = ptr.* >> bitOffset  &  bitMask;
+			const result = ptr.* >> bitOffset & bitMask;
 			ptr.* &= ~(bitMask << bitOffset);
 			ptr.* |= value << bitOffset;
 			return result;
@@ -1497,12 +1496,12 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 
 /// Implements a simple set associative cache with LRU replacement strategy.
 pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSize: u32, comptime deinitFunction: fn(*T) void) type { // MARK: Cache
-	const hashMask = numberOfBuckets-1;
+	const hashMask = numberOfBuckets - 1;
 	if(numberOfBuckets & hashMask != 0) @compileError("The number of buckets should be a power of 2!");
 
 	const Bucket = struct {
 		mutex: std.Thread.Mutex = .{},
-		items: [bucketSize]?*T = [_]?*T {null} ** bucketSize,
+		items: [bucketSize]?*T = [_]?*T{null} ** bucketSize,
 
 		fn find(self: *@This(), compare: anytype) ?*T {
 			assertLocked(&self.mutex);
@@ -1522,7 +1521,7 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 		fn add(self: *@This(), item: *T) ?*T {
 			assertLocked(&self.mutex);
 			const previous = self.items[bucketSize - 1];
-			std.mem.copyBackwards(?*T, self.items[1..], self.items[0..bucketSize - 1]);
+			std.mem.copyBackwards(?*T, self.items[1..], self.items[0 .. bucketSize - 1]);
 			self.items[0] = item;
 			return previous;
 		}
@@ -1562,7 +1561,7 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 	};
 
 	return struct {
-		buckets: [numberOfBuckets]Bucket = [_]Bucket {Bucket{}} ** numberOfBuckets,
+		buckets: [numberOfBuckets]Bucket = [_]Bucket{Bucket{}} ** numberOfBuckets,
 		cacheRequests: Atomic(usize) = .init(0),
 		cacheMisses: Atomic(usize) = .init(0),
 
@@ -1657,7 +1656,7 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type { // MARK: Gen
 			const t2 = t*t;
 			const t3 = t2*t;
 			const a = unitIntervalSpline(f64, p0, m0, p1, m1);
-			return [_]f64 {
+			return [_]f64{
 				a[0] + a[1]*t + a[2]*t2 + a[3]*t3, // value
 				(a[1] + 2*a[2]*t + 3*a[3]*t2)/tScale, // first derivative
 			};

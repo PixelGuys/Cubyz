@@ -11,10 +11,10 @@ const gui = @import("../gui.zig");
 const GuiWindow = gui.GuiWindow;
 const GuiComponent = gui.GuiComponent;
 
-pub var window = GuiWindow {
+pub var window = GuiWindow{
 	.relativePosition = .{
-		.{ .attachedToFrame = .{.selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper} },
-		.{ .attachedToFrame = .{.selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper} },
+		.{.attachedToFrame = .{.selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper}},
+		.{.attachedToFrame = .{.selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper}},
 	},
 	.contentSize = Vec2f{192, 128},
 	.isHud = false,
@@ -26,7 +26,7 @@ pub var window = GuiWindow {
 pub fn render() void {
 	draw.setColor(0xffffffff);
 	var y: f32 = 0;
-	if (main.game.world != null) {
+	if(main.game.world != null) {
 		if(main.server.world != null) {
 			const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
 			defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);

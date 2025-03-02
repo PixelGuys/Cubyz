@@ -109,12 +109,12 @@ const Context = struct {
 		var iy: i32 = y;
 		while(iy != y +% width) : (iy +%= scale) {
 			y0 = iy >> resolutionShift;
-			self.xGridPoints.ptr(numX, numY).* = self.generateGradient(x0+1, y0, 0, resolutionShift);
-			self.yGridPoints.ptr(numX, numY).* = self.generateGradient(x0+1, y0, 1, resolutionShift);
+			self.xGridPoints.ptr(numX, numY).* = self.generateGradient(x0 + 1, y0, 0, resolutionShift);
+			self.yGridPoints.ptr(numX, numY).* = self.generateGradient(x0 + 1, y0, 1, resolutionShift);
 			numY += 1;
 		}
-		self.xGridPoints.ptr(numX, numY).* = self.generateGradient(x0+1, y0 + 1, 0, resolutionShift);
-		self.yGridPoints.ptr(numX, numY).* = self.generateGradient(x0+1, y0 + 1, 1, resolutionShift);
+		self.xGridPoints.ptr(numX, numY).* = self.generateGradient(x0 + 1, y0 + 1, 0, resolutionShift);
+		self.yGridPoints.ptr(numX, numY).* = self.generateGradient(x0 + 1, y0 + 1, 1, resolutionShift);
 		numX += 1;
 	}
 
@@ -132,12 +132,12 @@ pub fn generateRidgidNoise(allocator: NeverFailingAllocator, x: i32, y: i32, wid
 	@memset(map.mem, 0);
 	var seed = worldSeed;
 	random.scrambleSeed(&seed);
-	var context = Context {
+	var context = Context{
 		.l1 = random.nextInt(u64, &seed),
 		.l2 = random.nextInt(u64, &seed),
 		.l3 = random.nextInt(u64, &seed),
 	};
-	var fac = 1/((1 - std.math.pow(f32, reductionFactor, @ctz(maxScale/minScale)+1))/(1 - reductionFactor)); // geometric series.
+	var fac = 1/((1 - std.math.pow(f32, reductionFactor, @ctz(maxScale/minScale) + 1))/(1 - reductionFactor)); // geometric series.
 	var scale = maxScale;
 	while(scale >= minScale) : (scale >>= 1) {
 		context.resolution = scale;
@@ -165,12 +165,12 @@ pub fn generateSmoothNoise(allocator: NeverFailingAllocator, x: i32, y: i32, wid
 	@memset(map.mem, 0);
 	var seed = worldSeed;
 	random.scrambleSeed(&seed);
-	var context = Context {
+	var context = Context{
 		.l1 = random.nextInt(u64, &seed),
 		.l2 = random.nextInt(u64, &seed),
 		.l3 = random.nextInt(u64, &seed),
 	};
-	var fac = 1/((1 - std.math.pow(f32, reductionFactor, @as(f32, @floatFromInt(@ctz(maxScale/minScale)+1))))/(1 - reductionFactor)); // geometric series.
+	var fac = 1/((1 - std.math.pow(f32, reductionFactor, @as(f32, @floatFromInt(@ctz(maxScale/minScale) + 1))))/(1 - reductionFactor)); // geometric series.
 	var scale = maxScale;
 	while(scale >= minScale) : (scale >>= 1) {
 		context.resolution = scale;

@@ -52,7 +52,7 @@ pub const ClimateMapFragment = struct {
 
 	pub fn init(self: *ClimateMapFragment, wx: i32, wy: i32) void {
 		self.* = .{
-			.pos = .{.wx = wx, .wy = wy,},
+			.pos = .{.wx = wx, .wy = wy},
 		};
 	}
 
@@ -87,7 +87,7 @@ pub const ClimateMapGenerator = struct {
 	var generatorRegistry: std.StringHashMapUnmanaged(ClimateMapGenerator) = .{};
 
 	pub fn registerGenerator(comptime Generator: type) void {
-		const self = ClimateMapGenerator {
+		const self = ClimateMapGenerator{
 			.init = &Generator.init,
 			.deinit = &Generator.deinit,
 			.generateMapFragment = &Generator.generateMapFragment,
@@ -102,7 +102,6 @@ pub const ClimateMapGenerator = struct {
 		};
 	}
 };
-
 
 const cacheSize = 1 << 5; // Must be a power of 2!
 const cacheMask = cacheSize - 1;
@@ -147,8 +146,8 @@ pub fn getBiomeMap(allocator: NeverFailingAllocator, wx: i32, wy: i32, width: u3
 	const map = Array2D(BiomeSample).init(allocator, width >> MapFragment.biomeShift, height >> MapFragment.biomeShift);
 	const wxStart = wx & ~ClimateMapFragment.mapMask;
 	const wzStart = wy & ~ClimateMapFragment.mapMask;
-	const wxEnd = wx+%width & ~ClimateMapFragment.mapMask;
-	const wzEnd = wy+%height & ~ClimateMapFragment.mapMask;
+	const wxEnd = wx +% width & ~ClimateMapFragment.mapMask;
+	const wzEnd = wy +% height & ~ClimateMapFragment.mapMask;
 	var x = wxStart;
 	while(wxEnd -% x >= 0) : (x +%= ClimateMapFragment.mapSize) {
 		var y = wzStart;

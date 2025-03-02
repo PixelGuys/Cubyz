@@ -164,13 +164,12 @@ pub const Model = struct {
 		return modelIndex;
 	}
 
-
 	fn addVert(vert: Vec3f, vertList: *main.List(Vec3f)) usize {
-		const ind = for (vertList.*.items, 0..) |vertex, index| {
-			if (std.meta.eql(vertex, vert)) break index;
+		const ind = for(vertList.*.items, 0..) |vertex, index| {
+			if(std.meta.eql(vertex, vert)) break index;
 		} else vertList.*.items.len;
 
-		if (ind == vertList.*.items.len) {
+		if(ind == vertList.*.items.len) {
 			vertList.*.append(vert);
 		}
 
@@ -187,9 +186,9 @@ pub const Model = struct {
 				minUv = @min(minUv, quad.cornerUV[i]);
 			}
 			minUv = @floor(minUv);
-			quad.textureSlot = @as(u32, @intFromFloat(minUv[1])) * 4 + @as(u32, @intFromFloat(minUv[0]));
+			quad.textureSlot = @as(u32, @intFromFloat(minUv[1]))*4 + @as(u32, @intFromFloat(minUv[0]));
 
-			if (minUv[0] < 0 or minUv[0] > 4 or minUv[1] < 0 or minUv[1] > 4) {
+			if(minUv[0] < 0 or minUv[0] > 4 or minUv[1] < 0 or minUv[1] > 4) {
 				std.log.err("Uv value for model is outside of 0-1 range", .{});
 			}
 
@@ -220,79 +219,91 @@ pub const Model = struct {
 		var buf_reader = std.io.bufferedReader(fixed_buffer.reader());
 		var in_stream = buf_reader.reader();
 		var buf: [128]u8 = undefined;
-		while (in_stream.readUntilDelimiterOrEof(&buf, '\n') catch |e| blk: {
+		while(in_stream.readUntilDelimiterOrEof(&buf, '\n') catch |e| blk: {
 			std.log.err("Error reading line while loading model: {any}", .{e});
 			break :blk null;
 		}) |lineUntrimmed| {
-			if (lineUntrimmed.len < 3)
+			if(lineUntrimmed.len < 3)
 				continue;
 
 			var line = lineUntrimmed;
-			if (line[line.len - 1] == '\r') {
-				line = line[0..line.len - 1];
+			if(line[line.len - 1] == '\r') {
+				line = line[0 .. line.len - 1];
 			}
 
-			if (line[0] == '#')
+			if(line[0] == '#')
 				continue;
 
-			if (std.mem.eql(u8, line[0..2], "v ")) {
+			if(std.mem.eql(u8, line[0..2], "v ")) {
 				var coordsIter = std.mem.splitScalar(u8, line[2..], ' ');
 				var coords: Vec3f = undefined;
 				var i: usize = 0;
-				while (coordsIter.next()) |coord| : (i += 1) {
-					coords[i] = std.fmt.parseFloat(f32, coord) catch |e| blk: { std.log.err("Failed parsing {s} into float: {any}", .{coord, e}); break :blk 0; };
+				while(coordsIter.next()) |coord| : (i += 1) {
+					coords[i] = std.fmt.parseFloat(f32, coord) catch |e| blk: {
+						std.log.err("Failed parsing {s} into float: {any}", .{coord, e});
+						break :blk 0;
+					};
 				}
 				const coordsCorrect: Vec3f = .{coords[0], coords[1], coords[2]};
 				vertices.append(coordsCorrect);
-			} else if (std.mem.eql(u8, line[0..3], "vn ")) {
+			} else if(std.mem.eql(u8, line[0..3], "vn ")) {
 				var coordsIter = std.mem.splitScalar(u8, line[3..], ' ');
 				var norm: Vec3f = undefined;
 				var i: usize = 0;
-				while (coordsIter.next()) |coord| : (i += 1) {
-					norm[i] = std.fmt.parseFloat(f32, coord) catch |e| blk: { std.log.err("Failed parsing {s} into float: {any}", .{coord, e}); break :blk 0; };
+				while(coordsIter.next()) |coord| : (i += 1) {
+					norm[i] = std.fmt.parseFloat(f32, coord) catch |e| blk: {
+						std.log.err("Failed parsing {s} into float: {any}", .{coord, e});
+						break :blk 0;
+					};
 				}
 				const normCorrect: Vec3f = .{norm[0], norm[1], norm[2]};
 				normals.append(normCorrect);
-			} else if (std.mem.eql(u8, line[0..3], "vt ")) {
+			} else if(std.mem.eql(u8, line[0..3], "vt ")) {
 				var coordsIter = std.mem.splitScalar(u8, line[3..], ' ');
 				var uv: Vec2f = undefined;
 				var i: usize = 0;
-				while (coordsIter.next()) |coord| : (i += 1) {
-					uv[i] = std.fmt.parseFloat(f32, coord) catch |e| blk: { std.log.err("Failed parsing {s} into float: {any}", .{coord, e}); break :blk 0; };
+				while(coordsIter.next()) |coord| : (i += 1) {
+					uv[i] = std.fmt.parseFloat(f32, coord) catch |e| blk: {
+						std.log.err("Failed parsing {s} into float: {any}", .{coord, e});
+						break :blk 0;
+					};
 				}
 				uvs.append(.{uv[0], uv[1]});
-			} else if (std.mem.eql(u8, line[0..2], "f ")) {
+			} else if(std.mem.eql(u8, line[0..2], "f ")) {
 				var coordsIter = std.mem.splitScalar(u8, line[2..], ' ');
 				var faceData: [3][4]usize = undefined;
 				var i: usize = 0;
 				var failed = false;
-				while (coordsIter.next()) |vertex| : (i += 1) {
-					if (i >= 4) {
+				while(coordsIter.next()) |vertex| : (i += 1) {
+					if(i >= 4) {
 						failed = true;
 						std.log.err("More than 4 verticies in a face", .{});
 						break;
 					}
 					var d = std.mem.splitScalar(u8, vertex, '/');
 					var j: usize = 0;
-					if (std.mem.count(u8, vertex, "/") != 2 or std.mem.count(u8, vertex, "//") != 0) {
+					if(std.mem.count(u8, vertex, "/") != 2 or std.mem.count(u8, vertex, "//") != 0) {
 						failed = true;
 						std.log.err("Failed loading face {s}. Each vertex must use vertex/uv/normal", .{line});
 						break;
 					}
-					while (d.next()) |value| : (j += 1) {
-						faceData[j][i] = std.fmt.parseUnsigned(usize, value, 10) catch |e| blk: { std.log.err("Failed parsing {s} into uint: {any}", .{value, e}); break :blk 1; };
+					while(d.next()) |value| : (j += 1) {
+						faceData[j][i] = std.fmt.parseUnsigned(usize, value, 10) catch |e| blk: {
+							std.log.err("Failed parsing {s} into uint: {any}", .{value, e});
+							break :blk 1;
+						};
 						faceData[j][i] -= 1;
 					}
 				}
-				if (!failed) {
-					switch (i) {
+				if(!failed) {
+					switch(i) {
 						3 => {
-							tris.append(.{.vertex=faceData[0][0..3].*, .uvs=faceData[1][0..3].*, .normal=faceData[2][0]});
+							tris.append(.{.vertex = faceData[0][0..3].*, .uvs = faceData[1][0..3].*, .normal = faceData[2][0]});
 						},
 						4 => {
-							quadFaces.append(.{.vertex=faceData[0], .uvs=faceData[1], .normal=faceData[2][0]});
+							quadFaces.append(.{.vertex = faceData[0], .uvs = faceData[1], .normal = faceData[2][0]});
 						},
-						else => std.log.err("Failed loading face {s} with {d} vertices", .{line, i})
+						else => std.log.err("Failed loading face {s} with {d} vertices", .{line, i}),
 					}
 				}
 			}
@@ -301,7 +312,7 @@ pub const Model = struct {
 		var quadInfos = main.List(QuadInfo).initCapacity(allocator, tris.items.len + quads.items.len);
 		defer quadInfos.deinit();
 
-		for (tris.items) |face| {
+		for(tris.items) |face| {
 			const normal: Vec3f = normals.items[face.normal];
 
 			const uvA: Vec2f = uvs.items[face.uvs[0]];
@@ -320,7 +331,7 @@ pub const Model = struct {
 			});
 		}
 
-		for (quadFaces.items) |face| {
+		for(quadFaces.items) |face| {
 			const normal: Vec3f = normals.items[face.normal];
 
 			const uvA: Vec2f = uvs.items[face.uvs[1]];
@@ -424,7 +435,7 @@ fn addQuad(info_: QuadInfo) error{Degenerate}!u16 {
 	// Check if it's degenerate:
 	var cornerEqualities: u32 = 0;
 	for(0..4) |i| {
-		for(i+1..4) |j| {
+		for(i + 1..4) |j| {
 			if(@reduce(.And, info.corners[i] == info.corners[j])) cornerEqualities += 1;
 		}
 	}
@@ -514,7 +525,7 @@ fn box(min: Vec3f, max: Vec3f, uvOffset: Vec2f) [6]QuadInfo {
 	};
 }
 
-fn openBox(min: Vec3f, max: Vec3f, uvOffset: Vec2f, openSide: enum{x, y, z}) [4]QuadInfo {
+fn openBox(min: Vec3f, max: Vec3f, uvOffset: Vec2f, openSide: enum {x, y, z}) [4]QuadInfo {
 	const fullBox = box(min, max, uvOffset);
 	switch(openSide) {
 		.x => return fullBox[2..6].*,

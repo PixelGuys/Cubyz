@@ -16,7 +16,7 @@ const TextInput = @import("../components/TextInput.zig");
 const CheckBox = @import("../components/CheckBox.zig");
 const VerticalList = @import("../components/VerticalList.zig");
 
-pub var window = GuiWindow {
+pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 256},
 };
 
@@ -101,7 +101,7 @@ pub fn onOpen() void {
 
 	var num: usize = 1;
 	var buf: [32]u8 = undefined;
-	while (true) {
+	while(true) {
 		var dir = std.fs.cwd().openDir(std.fmt.bufPrint(&buf, "saves/Save{}", .{num}) catch unreachable, .{}) catch break;
 		dir.close();
 		num += 1;
