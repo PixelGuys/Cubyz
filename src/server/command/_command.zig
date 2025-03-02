@@ -8,7 +8,6 @@ pub const Command = struct {
 	name: []const u8,
 	description: []const u8,
 	usage: []const u8,
-	commandNameOverride: ?[]const u8 = null,
 };
 
 pub var commands: std.StringHashMap(Command) = undefined;
@@ -17,23 +16,13 @@ pub fn init() void {
 	commands = .init(main.globalAllocator.allocator);
 	const commandList = @import("_list.zig");
 	inline for(@typeInfo(commandList).@"struct".decls) |decl| {
-		var commandNameString: []const u8 = decl.name;
-		const commandObject = @field(commandList, decl.name);
-
-		if(@hasDecl(commandObject, "commandNameOverride")){
-			if (commandObject.commandNameOverride) |commandNameOverride| {
-				commandNameString = commandNameOverride;
-			}
-		}
-
-		commands.put(commandNameString, .{
-			.name = commandNameString,
-			.description = commandObject.description,
-			.usage = commandObject.usage,
-			.exec = &commandObject.execute,
+		commands.put(decl.name, .{
+			.name = decl.name,
+			.description = @field(commandList, decl.name).description,
+			.usage = @field(commandList, decl.name).usage,
+			.exec = &@field(commandList, decl.name).execute,
 		}) catch unreachable;
-
-		std.log.info("Registered Command: {s}", .{commandNameString});
+		std.log.info("Registered Command: /{s}", .{decl.name});
 	}
 }
 

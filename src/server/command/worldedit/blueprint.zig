@@ -12,8 +12,7 @@ const Block = main.blocks.Block;
 const Blueprint = main.blueprint.Blueprint;
 
 pub const description = "Operate on blueprints.";
-pub const usage = "//blueprint <save|delete|load|list>";
-pub const commandNameOverride: ?[]const u8 = "/blueprint";
+pub const usage = "/blueprint <save|delete|load|list>";
 
 
 const BlueprintSubCommand = enum {
@@ -41,7 +40,7 @@ pub fn execute(args: []const u8, source: *User) void {
 	}
 
 	if(argsList.items.len < 1) {
-		source.sendMessage("#ff0000Not enough arguments for //blueprint, expected at least 1.", .{});
+		source.sendMessage("#ff0000Not enough arguments for /blueprint, expected at least 1.", .{});
 		return;
 	}
 	const subcommand = BlueprintSubCommand.fromString(argsList.items[0]);
@@ -51,7 +50,7 @@ pub fn execute(args: []const u8, source: *User) void {
 		.load => blueprintLoad(argsList, source),
 		.list => blueprintList(argsList, source),
 		.none => {
-			source.sendMessage("#ff0000Unrecognized subcommand for //blueprint: '{s}'", .{argsList.items[0]});
+			source.sendMessage("#ff0000Unrecognized subcommand for /blueprint: '{s}'", .{argsList.items[0]});
 		},
 	} catch |err| {
 		source.sendMessage("#ff0000Error: {s}", .{@errorName(err)});
@@ -64,11 +63,11 @@ pub fn execute(args: []const u8, source: *User) void {
 
 fn blueprintSave(args: List([]const u8), source: *User) !void {
 	if(args.items.len < 2) {
-		source.sendMessage("#ff0000//blueprint save requires FILENAME argument.", .{});
+		source.sendMessage("#ff0000/blueprint save requires FILENAME argument.", .{});
 		return;
 	}
 	if(args.items.len >= 3) {
-		source.sendMessage("#ff0000Too many arguments for //blueprint save. Expected 1 argument, FILENAME.", .{});
+		source.sendMessage("#ff0000Too many arguments for /blueprint save. Expected 1 argument, FILENAME.", .{});
 		return;
 	}
 	if(copy.clipboard) |clipboard| {
@@ -107,13 +106,13 @@ fn blueprintSave(args: List([]const u8), source: *User) !void {
 }
 
 fn blueprintDelete(_: List([]const u8), source: *User) void {
-	source.sendMessage("#ff0000//blueprint delete not implemented.", .{});
+	source.sendMessage("#ff0000/blueprint delete not implemented.", .{});
 }
 
 fn blueprintLoad(_: List([]const u8), source: *User) void {
-	source.sendMessage("#ff0000//blueprint load not implemented.", .{});
+	source.sendMessage("#ff0000/blueprint load not implemented.", .{});
 }
 
 fn blueprintList(_: List([]const u8), source: *User) void {
-	source.sendMessage("#ff0000//blueprint list not implemented.", .{});
+	source.sendMessage("#ff0000/blueprint list not implemented.", .{});
 }
