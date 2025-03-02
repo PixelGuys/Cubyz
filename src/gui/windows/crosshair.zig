@@ -11,7 +11,7 @@ const GuiWindow = gui.GuiWindow;
 const GuiComponent = gui.GuiComponent;
 
 const size: f32 = 64;
-pub var window = GuiWindow {
+pub var window = GuiWindow{
 	.contentSize = Vec2f{size, size},
 	.showTitleBar = false,
 	.hasBackground = false,

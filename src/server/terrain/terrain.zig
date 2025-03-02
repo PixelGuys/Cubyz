@@ -30,11 +30,10 @@ pub const BlockGenerator = struct {
 	/// To avoid duplicate seeds in similar generation algorithms, the SurfaceGenerator xors the world-seed with the generator specific seed.
 	generatorSeed: u64,
 
-
 	var generatorRegistry: std.StringHashMapUnmanaged(BlockGenerator) = .{};
 
 	pub fn registerGenerator(comptime GeneratorType: type) void {
-		const self = BlockGenerator {
+		const self = BlockGenerator{
 			.init = &GeneratorType.init,
 			.deinit = &GeneratorType.deinit,
 			.generate = &GeneratorType.generate,
@@ -77,7 +76,7 @@ pub const TerrainGenerationProfile = struct {
 	seed: u64,
 
 	pub fn init(settings: ZonElement, seed: u64) !TerrainGenerationProfile {
-		var self = TerrainGenerationProfile {
+		var self = TerrainGenerationProfile{
 			.seed = seed,
 		};
 		var generator = settings.getChild("mapGenerator");

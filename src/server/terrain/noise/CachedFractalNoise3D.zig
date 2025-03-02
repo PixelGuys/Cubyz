@@ -15,9 +15,11 @@ worldSeed: u64,
 pub fn init(wx: i32, wy: i32, wz: i32, voxelSize: u31, size: u31, worldSeed: u64, scale: u31) CachedFractalNoise3D {
 	const maxSize = size/voxelSize;
 	const cacheWidth = maxSize + 1;
-	var self = CachedFractalNoise3D {
+	var self = CachedFractalNoise3D{
 		.pos = .{
-			.wx = wx, .wy = wy, .wz = wz,
+			.wx = wx,
+			.wy = wy,
+			.wz = wz,
 			.voxelSize = voxelSize,
 		},
 		.voxelShift = @ctz(voxelSize),
@@ -35,7 +37,7 @@ pub fn init(wx: i32, wy: i32, wz: i32, voxelSize: u31, size: u31, worldSeed: u64
 			var z: u31 = 0;
 			while(z <= maxSize) : (z += reducedScale) {
 				self.cache.ptr(x, y, z).* = (@as(f32, @floatFromInt(reducedScale + 1 + scale))*self.getGridValue(x, y, z))*@as(f32, @floatFromInt(voxelSize));
-			}//                                                     ↑ sacrifice some resolution to reserve the value 0, for determining if the value was initialized. This prevents an expensive array initialization.
+			} //                                                    ↑ sacrifice some resolution to reserve the value 0, for determining if the value was initialized. This prevents an expensive array initialization.
 		}
 	}
 	return self;
@@ -55,9 +57,9 @@ fn getGridValue(self: CachedFractalNoise3D, relX: u31, relY: u31, relZ: u31) f32
 }
 
 fn generateRegion(self: CachedFractalNoise3D, _x: u31, _y: u31, _z: u31, voxelSize: u31) void {
-	const x = _x & ~@as(u31, voxelSize-1);
-	const y = _y & ~@as(u31, voxelSize-1);
-	const z = _z & ~@as(u31, voxelSize-1);
+	const x = _x & ~@as(u31, voxelSize - 1);
+	const y = _y & ~@as(u31, voxelSize - 1);
+	const z = _z & ~@as(u31, voxelSize - 1);
 	// Make sure that all higher points are generated:
 	_ = self._getValue(x | voxelSize, y | voxelSize, z | voxelSize);
 
@@ -87,28 +89,15 @@ fn generateRegion(self: CachedFractalNoise3D, _x: u31, _y: u31, _z: u31, voxelSi
 	a = 0;
 	while(a <= voxelSize) : (a += voxelSize) { // 1 coordinate on the grid.
 		// x
-		cache.ptr(x + a, yMid, zMid).* = (
-			cache.get(x + a, yMid, z) + cache.get(x + a, yMid, z + voxelSize)
-			+ cache.get(x + a, y, zMid) + cache.get(x + a, y + voxelSize, zMid)
-		)/4 + randomFactor*self.getGridValue(x + a, yMid, zMid);
+		cache.ptr(x + a, yMid, zMid).* = (cache.get(x + a, yMid, z) + cache.get(x + a, yMid, z + voxelSize) + cache.get(x + a, y, zMid) + cache.get(x + a, y + voxelSize, zMid))/4 + randomFactor*self.getGridValue(x + a, yMid, zMid);
 		// y
-		cache.ptr(xMid, y + a, zMid).* = (
-			cache.get(xMid, y + a, z) + cache.get(xMid, y + a, z + voxelSize)
-			+ cache.get(x, y + a, zMid) + cache.get(x + voxelSize, y + a, zMid)
-		)/4 + randomFactor*self.getGridValue(xMid, y + a, zMid);
+		cache.ptr(xMid, y + a, zMid).* = (cache.get(xMid, y + a, z) + cache.get(xMid, y + a, z + voxelSize) + cache.get(x, y + a, zMid) + cache.get(x + voxelSize, y + a, zMid))/4 + randomFactor*self.getGridValue(xMid, y + a, zMid);
 		// z
-		cache.ptr(xMid, yMid, z + a).* = (
-			cache.get(xMid, y, z + a) + cache.get(xMid, y + voxelSize, z + a)
-			+ cache.get(x, yMid, z + a) + cache.get(x + voxelSize, yMid, z + a)
-		)/4 + randomFactor*self.getGridValue(xMid, yMid, z + a);
+		cache.ptr(xMid, yMid, z + a).* = (cache.get(xMid, y, z + a) + cache.get(xMid, y + voxelSize, z + a) + cache.get(x, yMid, z + a) + cache.get(x + voxelSize, yMid, z + a))/4 + randomFactor*self.getGridValue(xMid, yMid, z + a);
 	}
 
 	// Center point:
-	cache.ptr(xMid, yMid, zMid).* = (
-		cache.get(xMid, yMid, z) + cache.get(xMid, yMid, z + voxelSize)
-		+ cache.get(xMid, y, zMid) + cache.get(xMid, y + voxelSize, zMid)
-		+ cache.get(x, yMid, zMid) + cache.get(x + voxelSize, yMid, zMid)
-	)/6 + randomFactor*self.getGridValue(xMid, yMid, zMid);
+	cache.ptr(xMid, yMid, zMid).* = (cache.get(xMid, yMid, z) + cache.get(xMid, yMid, z + voxelSize) + cache.get(xMid, y, zMid) + cache.get(xMid, y + voxelSize, zMid) + cache.get(x, yMid, zMid) + cache.get(x + voxelSize, yMid, zMid))/6 + randomFactor*self.getGridValue(xMid, yMid, zMid);
 }
 
 fn _getValue(self: CachedFractalNoise3D, x: u31, y: u31, z: u31) f32 {

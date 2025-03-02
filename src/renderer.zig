@@ -160,10 +160,10 @@ pub fn crosshairDirection(rotationMatrix: Mat4f, fovY: f32, width: u31, height: 
 	const halfHSide = halfVSide*screenSize[0]/screenSize[1];
 	const sides = Vec2f{halfHSide, halfVSide};
 
-	const scale = (Vec2f{-1, 1} + Vec2f{2, -2} * screenCoord / screenSize) * sides;
+	const scale = (Vec2f{-1, 1} + Vec2f{2, -2}*screenCoord/screenSize)*sides;
 	const forwards = cameraDir;
-	const horizontal = cameraRight * @as(Vec3f, @splat(scale[0]));
-	const vertical = cameraUp * @as(Vec3f, @splat(scale[1])); // adjust for y coordinate
+	const horizontal = cameraRight*@as(Vec3f, @splat(scale[0]));
+	const vertical = cameraUp*@as(Vec3f, @splat(scale[1])); // adjust for y coordinate
 
 	const adjusted = forwards + horizontal + vertical;
 	return adjusted;
@@ -185,7 +185,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.startQuery(.animation);
 	blocks.meshes.preProcessAnimationData(time);
 	gpu_performance_measuring.stopQuery();
-
 
 	// Update the uniforms. The uniforms are needed to render the replacement meshes.
 	chunk_meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight, playerPos);
@@ -446,20 +445,20 @@ pub const MenuBackGround = struct {
 		shader.bind();
 		c.glUniform1i(uniforms.image, 0);
 		// 4 sides of a simple cube with some panorama texture on it.
-		const rawData = [_]f32 {
-			-1, 1, -1, 1, 1,
-			-1, 1, 1, 1, 0,
+		const rawData = [_]f32{
+			-1, 1,  -1, 1,    1,
+			-1, 1,  1,  1,    0,
 			-1, -1, -1, 0.75, 1,
-			-1, -1, 1, 0.75, 0,
-			1, -1, -1, 0.5, 1,
-			1, -1, 1, 0.5, 0,
-			1, 1, -1, 0.25, 1,
-			1, 1, 1, 0.25, 0,
-			-1, 1, -1, 0, 1,
-			-1, 1, 1, 0, 0,
+			-1, -1, 1,  0.75, 0,
+			1,  -1, -1, 0.5,  1,
+			1,  -1, 1,  0.5,  0,
+			1,  1,  -1, 0.25, 1,
+			1,  1,  1,  0.25, 0,
+			-1, 1,  -1, 0,    1,
+			-1, 1,  1,  0,    0,
 		};
 
-		const indices = [_]c_int {
+		const indices = [_]c_int{
 			0, 1, 2,
 			2, 3, 1,
 			2, 3, 4,
@@ -567,7 +566,7 @@ pub const MenuBackGround = struct {
 		const oldRotation = game.camera.rotation;
 		defer game.camera.rotation = oldRotation;
 
-		const angles = [_]f32 {std.math.pi/2.0, std.math.pi, std.math.pi*3/2.0, std.math.pi*2};
+		const angles = [_]f32{std.math.pi/2.0, std.math.pi, std.math.pi*3/2.0, std.math.pi*2};
 
 		// All 4 sides are stored in a single image.
 		const image = graphics.Image.init(main.stackAllocator, 4*size, size);
@@ -623,10 +622,10 @@ pub const Frustum = struct { // MARK: Frustum
 		const halfHSide = halfVSide*@as(f32, @floatFromInt(width))/@as(f32, @floatFromInt(height));
 
 		var self: Frustum = undefined;
-		self.planes[0] = Plane{.pos = cameraPos, .norm=vec.cross(cameraUp, cameraDir + cameraRight*@as(Vec3f, @splat(halfHSide)))}; // right
-		self.planes[1] = Plane{.pos = cameraPos, .norm=vec.cross(cameraDir - cameraRight*@as(Vec3f, @splat(halfHSide)), cameraUp)}; // left
-		self.planes[2] = Plane{.pos = cameraPos, .norm=vec.cross(cameraRight, cameraDir - cameraUp*@as(Vec3f, @splat(halfVSide)))}; // top
-		self.planes[3] = Plane{.pos = cameraPos, .norm=vec.cross(cameraDir + cameraUp*@as(Vec3f, @splat(halfVSide)), cameraRight)}; // bottom
+		self.planes[0] = Plane{.pos = cameraPos, .norm = vec.cross(cameraUp, cameraDir + cameraRight*@as(Vec3f, @splat(halfHSide)))}; // right
+		self.planes[1] = Plane{.pos = cameraPos, .norm = vec.cross(cameraDir - cameraRight*@as(Vec3f, @splat(halfHSide)), cameraUp)}; // left
+		self.planes[2] = Plane{.pos = cameraPos, .norm = vec.cross(cameraRight, cameraDir - cameraUp*@as(Vec3f, @splat(halfVSide)))}; // top
+		self.planes[3] = Plane{.pos = cameraPos, .norm = vec.cross(cameraDir + cameraUp*@as(Vec3f, @splat(halfVSide)), cameraRight)}; // bottom
 		return self;
 	}
 
@@ -658,7 +657,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	pub fn init() void {
 		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/block_selection_vertex.vs", "assets/cubyz/shaders/block_selection_fragment.fs", "", &uniforms);
 
-		const rawData = [_]f32 {
+		const rawData = [_]f32{
 			0, 0, 0,
 			0, 0, 1,
 			0, 1, 0,
@@ -668,7 +667,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			1, 1, 0,
 			1, 1, 1,
 		};
-		const indices = [_]u8 {
+		const indices = [_]u8{
 			0, 1,
 			0, 2,
 			0, 4,
@@ -693,7 +692,6 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		c.glGenBuffers(1, &cubeIBO);
 		c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, cubeIBO);
 		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, indices.len*@sizeOf(u8), &indices, c.GL_STATIC_DRAW);
-
 	}
 
 	pub fn deinit() void {
@@ -839,7 +837,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 					},
 					.tool => |tool| {
 						_ = tool; // TODO: Tools might change existing blocks.
-					}
+					},
 				}
 			}
 		}
@@ -921,7 +919,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projectionMatrix));
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
 
-		c.glUniform3f(uniforms.modelPosition,
+		c.glUniform3f(
+			uniforms.modelPosition,
 			@floatCast(relativePositionToPlayer[0]),
 			@floatCast(relativePositionToPlayer[1]),
 			@floatCast(relativePositionToPlayer[2]),
