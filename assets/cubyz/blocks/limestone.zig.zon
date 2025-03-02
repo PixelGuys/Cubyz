@@ -1,6 +1,6 @@
 .{
 	.tags = .{.stone},
-	.blockHealth = 27.5,
+	.blockHealth = 26.5,
 	.blockResistance = 1,
 	.drops = .{
 		.{.items = .{.auto}},
