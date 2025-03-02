@@ -61,7 +61,7 @@ pub fn nextFloatGauss(seed: *u64) f32 {
 	const a = nextFloat(seed);
 	const b = nextFloat(seed);
 
-	return @sqrt(-2.0 * @log(a)) * @cos(2.0 * std.math.pi * b);
+	return @sqrt(-2.0*@log(a))*@cos(2.0*std.math.pi*b);
 }
 
 pub fn nextFloatVector(len: comptime_int, seed: *u64) @Vector(len, f32) {
