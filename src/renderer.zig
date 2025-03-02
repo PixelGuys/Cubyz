@@ -758,7 +758,16 @@ pub const Skybox = struct {
 		skyShader = Shader.initAndGetUniforms("assets/cubyz/shaders/skybox/sky.vs", "assets/cubyz/shaders/skybox/sky.fs", "", &skyUniforms);
 		skyShader.bind();
 
-		const rawData = [_]f32{-1, -1, -1, 1, -1, -1, 1, 1, -1, -1, 1, -1, -1, -1, 1, 1, -1, 1, 1, 1, 1, -1, 1, 1};
+		const rawData = [_]f32{
+			-1, -1, -1,
+			1, -1, -1,
+			1, 1, -1,
+			-1, 1, -1,
+			-1, -1, 1,
+			1, -1, 1,
+			1, 1, 1,
+			-1, 1, 1,
+		};
 
 		const indices = [_]c_int{
 			0, 3, 1, 1, 3, 2,
