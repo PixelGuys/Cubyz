@@ -1,14 +1,26 @@
 .{
 	.texture = "uranium_ingot.png",
 	.material = .{
-		.density = 18,
-		.strength = 7.0,
+		.density = 19.1,
+		.strength = 7.1,
 		.elasticity = 5.0,
-		.grip = -1,
-		.hardness = 8.0,
-		.textureRoughness = 0.3,
+		.grip = -3.33,
+		.hardness = 6.0,
+		.textureRoughness = 0.2,
 		.colors = .{
 			0xff395533, 0xff466e45, 0xff5d8a5f, 0xff6da367, 0xff74c761,
 		},
-	},
+        	.modifiers = .{
+			.{
+				.id = "good_at",
+				.tag = .organic,
+				.strength = .5,
+			},
+			.{
+				.id = "bad_at",
+				.tag = .stone,
+				.strength = .5,
+			},
+		},
+        },
 }
