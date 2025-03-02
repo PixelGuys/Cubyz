@@ -299,7 +299,15 @@ fn takeBackgroundImageFn() void {
 	renderer.MenuBackGround.takeBackgroundImage();
 }
 fn toggleHideGui() void {
-	gui.hideGui = !gui.hideGui;
+	if(itemdrop.showItem and !gui.hideGui) {
+		gui.hideGui = true;
+	} else if(itemdrop.showItem and gui.hideGui) {
+		itemdrop.showItem = false;
+	} else if(!itemdrop.showItem and gui.hideGui) {
+		gui.hideGui = false;
+	} else {
+		itemdrop.showItem = true;
+	}
 }
 fn toggleDebugOverlay() void {
 	gui.toggleWindow("debug");
@@ -678,7 +686,7 @@ pub fn main() void { // MARK: main()
 		if(!isHidden) {
 			c.glEnable(c.GL_CULL_FACE);
 			c.glEnable(c.GL_DEPTH_TEST);
-			renderer.render(game.Player.getEyePosBlocking());
+			renderer.render(game.Player.getEyePosBlocking(), deltaTime, false);
 			// Render the GUI
 			gui.windowlist.gpu_performance_measuring.startQuery(.gui);
 			c.glDisable(c.GL_CULL_FACE);

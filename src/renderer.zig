@@ -114,8 +114,8 @@ fn initReflectionCubeMap() void {
 
 var worldFrameBuffer: graphics.FrameBuffer = undefined;
 
-var lastWidth: u31 = 0;
-var lastHeight: u31 = 0;
+pub var lastWidth: u31 = 0;
+pub var lastHeight: u31 = 0;
 var lastFov: f32 = 0;
 pub fn updateViewport(width: u31, height: u31, fov: f32) void {
 	lastWidth = @intFromFloat(@as(f32, @floatFromInt(width))*main.settings.resolutionScale);
@@ -126,7 +126,7 @@ pub fn updateViewport(width: u31, height: u31, fov: f32) void {
 	worldFrameBuffer.unbind();
 }
 
-pub fn render(playerPosition: Vec3d) void {
+pub fn render(playerPosition: Vec3d, deltaTime: f64, isCapturingFrame: bool) void {
 	// TODO: player bobbing
 	if(game.world) |world| {
 		// TODO: Handle colors and sun position in the world.
@@ -137,7 +137,10 @@ pub fn render(playerPosition: Vec3d) void {
 		const skyColor = vec.xyz(world.clearColor);
 		game.fog.skyColor = skyColor;
 
-		renderWorld(world, ambient, skyColor, playerPosition);
+		if(!isCapturingFrame) {
+			itemdrop.ItemDisplayManager.update(deltaTime);
+		}
+		renderWorld(world, ambient, skyColor, playerPosition, isCapturingFrame);
 		const startTime = std.time.milliTimestamp();
 		mesh_storage.updateMeshes(startTime + maximumMeshTime);
 	} else {
@@ -169,7 +172,7 @@ pub fn crosshairDirection(rotationMatrix: Mat4f, fovY: f32, width: u31, height: 
 	return adjusted;
 }
 
-pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPos: Vec3d) void { // MARK: renderWorld()
+pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPos: Vec3d, isCapturingFrame: bool) void { // MARK: renderWorld()
 	worldFrameBuffer.bind();
 	c.glViewport(0, 0, lastWidth, lastHeight);
 	gpu_performance_measuring.startQuery(.clear);
@@ -250,6 +253,13 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glDepthMask(c.GL_TRUE);
 	c.glDepthFunc(c.GL_LESS);
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
+
+	if(!isCapturingFrame) {
+		c.glDepthFunc(c.GL_ALWAYS);
+		itemdrop.ItemDropRenderer.renderDisplayItems(ambientLight, playerPos, time);
+		c.glDepthFunc(c.GL_LESS);
+	}
+
 	chunk_meshing.endRender();
 
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
@@ -579,7 +589,7 @@ pub const MenuBackGround = struct {
 			// Draw to frame buffer.
 			buffer.bind();
 			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
-			main.renderer.render(game.Player.getEyePosBlocking());
+			main.renderer.render(game.Player.getEyePosBlocking(), 0, true);
 			// Copy the pixels directly from OpenGL
 			buffer.bind();
 			c.glReadPixels(0, 0, size, size, c.GL_RGBA, c.GL_UNSIGNED_BYTE, pixels.ptr);
