@@ -14,7 +14,6 @@ const Blueprint = main.blueprint.Blueprint;
 pub const description = "Operate on blueprints.";
 pub const usage = "/blueprint <save|delete|load|list>";
 
-
 const BlueprintSubCommand = enum {
 	save,
 	delete,
@@ -28,7 +27,6 @@ const BlueprintSubCommand = enum {
 		};
 	}
 };
-
 
 pub fn execute(args: []const u8, source: *User) void {
 	var argsList = List([]const u8).init(main.stackAllocator);

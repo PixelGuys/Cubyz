@@ -13,7 +13,6 @@ const User = main.server.User;
 var arena: main.utils.NeverFailingArenaAllocator = undefined;
 pub var arenaAllocator: NeverFailingAllocator = undefined;
 
-
 pub fn init() void {
 	arena = .init(main.globalAllocator);
 	arenaAllocator = arena.allocator();
