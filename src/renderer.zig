@@ -646,9 +646,9 @@ pub const Skybox = struct {
 		const y: f64 = @floatCast(main.random.nextFloatGauss(seed));
 		const z: f64 = @floatCast(main.random.nextFloatGauss(seed));
 
-		const r = std.math.cbrt(main.random.nextFloat(seed)) * 5000.0;
+		const r = std.math.cbrt(main.random.nextFloat(seed))*5000.0;
 
-		return vec.normalize(Vec3d {x, y, z}) * @as(Vec3d, @splat(r));
+		return vec.normalize(Vec3d{x, y, z})*@as(Vec3d, @splat(r));
 	}
 
 	fn getStarColor(temperature: f64, light: f64, image: graphics.Image) Vec3d {
@@ -659,7 +659,7 @@ pub const Skybox = struct {
 		rgb *= @as(Vec3d, @splat(light));
 
 		const m = @reduce(.Max, rgb);
-		if (m > 1.0) {
+		if(m > 1.0) {
 			rgb /= @as(Vec3d, @splat(m));
 		}
 
@@ -676,52 +676,52 @@ pub const Skybox = struct {
 		starShader = Shader.initAndGetUniforms("assets/cubyz/shaders/skybox/star.vs", "assets/cubyz/shaders/skybox/star.fs", "", &starUniforms);
 		starShader.bind();
 
-		var starData: [numStars * 8]f32 = undefined;
+		var starData: [numStars*8]f32 = undefined;
 
-		var starMesh: [numStars * 9]f32 = undefined;
+		var starMesh: [numStars*9]f32 = undefined;
 
 		const starDist = 200.0;
 
-		const triVertA = Vec3f {@sqrt(3.0) / 3.0, starDist, -1.0/3.0};
-		const triVertB = Vec3f {-@sqrt(3.0) / 3.0, starDist, -1.0/3.0};
-		const triVertC = Vec3f {0.0, starDist, 2.0/3.0};
+		const triVertA = Vec3f{@sqrt(3.0)/3.0, starDist, -1.0/3.0};
+		const triVertB = Vec3f{-@sqrt(3.0)/3.0, starDist, -1.0/3.0};
+		const triVertC = Vec3f{0.0, starDist, 2.0/3.0};
 
 		var seed: u64 = 0;
 
-		for (0..numStars) |i| {
+		for(0..numStars) |i| {
 			var pos = getStarPos(&seed);
 
-			var radius: f64 = @floatCast(main.random.nextFloatExp(&seed) * 4 + 0.2);
+			var radius: f64 = @floatCast(main.random.nextFloatExp(&seed)*4 + 0.2);
 
-			var temperature: f64 = @floatCast((@abs(main.random.nextFloatGauss(&seed) * 3000.0 + 5000.0) + 1000.0) / 5772.0);
+			var temperature: f64 = @floatCast((@abs(main.random.nextFloatGauss(&seed)*3000.0 + 5000.0) + 1000.0)/5772.0);
 
-			var light = (3966.91 * radius * radius * temperature * temperature * temperature * temperature) / (vec.length(pos) * vec.length(pos));
+			var light = (3966.91*radius*radius*temperature*temperature*temperature*temperature)/(vec.dot(pos, pos));
 
-			while (light < 0.1) {
+			while(light < 0.1) {
 				pos = getStarPos(&seed);
 
-				radius = @floatCast(main.random.nextFloatExp(&seed) * 4 + 0.2);
+				radius = @floatCast(main.random.nextFloatExp(&seed)*4 + 0.2);
 
-				temperature = @floatCast((@abs(main.random.nextFloatGauss(&seed) * 3000.0 + 5000.0) + 1000.0) / 5772.0);
+				temperature = @floatCast((@abs(main.random.nextFloatGauss(&seed)*3000.0 + 5000.0) + 1000.0)/5772.0);
 
-				light = (3966.91 * radius * radius * temperature * temperature * temperature * temperature) / (vec.length(pos) * vec.length(pos));
+				light = (3966.91*radius*radius*temperature*temperature*temperature*temperature)/(vec.dot(pos, pos));
 			}
 
-			pos = vec.normalize(pos) * @as(Vec3d, @splat(starDist));
+			pos = vec.normalize(pos)*@as(Vec3d, @splat(starDist));
 
 			const normPos = vec.normalize(pos);
 
-			const col = getStarColor(temperature * 5772.0, light, starColorImage);
+			const col = getStarColor(temperature*5772.0, light, starColorImage);
 
-			starData[i * 8] = @floatCast(pos[0]);
-			starData[i * 8 + 1] = @floatCast(pos[1]);
-			starData[i * 8 + 2] = @floatCast(pos[2]);
-			starData[i * 8 + 3] = 0;
+			starData[i*8] = @floatCast(pos[0]);
+			starData[i*8 + 1] = @floatCast(pos[1]);
+			starData[i*8 + 2] = @floatCast(pos[2]);
+			starData[i*8 + 3] = 0;
 
-			starData[i * 8 + 4] = @floatCast(col[0]);
-			starData[i * 8 + 5] = @floatCast(col[1]);
-			starData[i * 8 + 6] = @floatCast(col[2]);
-			starData[i * 8 + 7] = 0;
+			starData[i*8 + 4] = @floatCast(col[0]);
+			starData[i*8 + 5] = @floatCast(col[1]);
+			starData[i*8 + 6] = @floatCast(col[2]);
+			starData[i*8 + 7] = 0;
 
 			const lat: f32 = @floatCast(std.math.asin(normPos[2]));
 			const lon: f32 = @floatCast(std.math.atan2(-normPos[0], normPos[1]));
@@ -732,17 +732,17 @@ pub const Skybox = struct {
 			const posB = vec.xyz(mat.mulVec(.{triVertB[0], triVertB[1], triVertB[2], 1.0}));
 			const posC = vec.xyz(mat.mulVec(.{triVertC[0], triVertC[1], triVertC[2], 1.0}));
 
-			starMesh[i * 9] = @floatCast(posA[0]);
-			starMesh[i * 9 + 1] = @floatCast(posA[1]);
-			starMesh[i * 9 + 2] = @floatCast(posA[2]);
+			starMesh[i*9] = @floatCast(posA[0]);
+			starMesh[i*9 + 1] = @floatCast(posA[1]);
+			starMesh[i*9 + 2] = @floatCast(posA[2]);
 
-			starMesh[i * 9 + 3] = @floatCast(posB[0]);
-			starMesh[i * 9 + 4] = @floatCast(posB[1]);
-			starMesh[i * 9 + 5] = @floatCast(posB[2]);
+			starMesh[i*9 + 3] = @floatCast(posB[0]);
+			starMesh[i*9 + 4] = @floatCast(posB[1]);
+			starMesh[i*9 + 5] = @floatCast(posB[2]);
 
-			starMesh[i * 9 + 6] = @floatCast(posC[0]);
-			starMesh[i * 9 + 7] = @floatCast(posC[1]);
-			starMesh[i * 9 + 8] = @floatCast(posC[2]);
+			starMesh[i*9 + 6] = @floatCast(posC[0]);
+			starMesh[i*9 + 7] = @floatCast(posC[1]);
+			starMesh[i*9 + 8] = @floatCast(posC[2]);
 		}
 
 		starSsbo = graphics.SSBO.initStatic(f32, &starData);
@@ -758,18 +758,9 @@ pub const Skybox = struct {
 		skyShader = Shader.initAndGetUniforms("assets/cubyz/shaders/skybox/sky.vs", "assets/cubyz/shaders/skybox/sky.fs", "", &skyUniforms);
 		skyShader.bind();
 
-		const rawData = [_]f32 {
-			-1, -1, -1,
-			1, -1, -1,
-			1, 1, -1,
-			-1, 1, -1,
-			-1, -1, 1,
-			1, -1, 1,
-			1, 1, 1,
-			-1, 1, 1
-		};
+		const rawData = [_]f32{-1, -1, -1, 1, -1, -1, 1, 1, -1, -1, 1, -1, -1, -1, 1, 1, -1, 1, 1, 1, 1, -1, 1, 1};
 
-		const indices = [_]c_int {
+		const indices = [_]c_int{
 			0, 3, 1, 1, 3, 2,
 			5, 6, 4, 4, 6, 7,
 			3, 7, 2, 2, 7, 6,
@@ -819,7 +810,7 @@ pub const Skybox = struct {
 			starOpacity = @as(f32, @floatFromInt(dayTime - (game.World.dayCycle/4 - game.World.dayCycle/16)))/@as(f32, @floatFromInt(game.World.dayCycle/8));
 		}
 
-		const skyboxColor = game.fog.skyColor * @as(Vec3f, @splat(@reduce(.Add, game.fog.skyColor) / 3.0));
+		const skyboxColor = game.fog.skyColor*@as(Vec3f, @splat(@reduce(.Add, game.fog.skyColor)/3.0));
 		c.glUniform3fv(skyUniforms.skyColor, 1, @ptrCast(&skyboxColor));
 
 		c.glUniformMatrix4fv(skyUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
@@ -828,13 +819,13 @@ pub const Skybox = struct {
 		c.glBindVertexArray(skyVao);
 		c.glDrawElements(c.GL_TRIANGLES, 36, c.GL_UNSIGNED_INT, null);
 
-		if (starOpacity != 0) {
+		if(starOpacity != 0) {
 			c.glBlendFunc(c.GL_ONE, c.GL_ONE);
 			c.glEnable(c.GL_BLEND);
 
 			starShader.bind();
 
-			const starMatrix = game.projectionMatrix.mul(viewMatrix.mul(Mat4f.rotationX(@as(f32, @floatFromInt(time)) / 12000.0)));
+			const starMatrix = game.projectionMatrix.mul(viewMatrix.mul(Mat4f.rotationX(@as(f32, @floatFromInt(time))/@as(f32, @floatFromInt(main.game.World.dayCycle)))));
 
 			starSsbo.bind(12);
 
@@ -842,7 +833,7 @@ pub const Skybox = struct {
 			c.glUniformMatrix4fv(starUniforms.mvp, 1, c.GL_TRUE, @ptrCast(&starMatrix));
 
 			c.glBindVertexArray(starVao);
-			c.glDrawArrays(c.GL_TRIANGLES, 0, numStars * 9);
+			c.glDrawArrays(c.GL_TRIANGLES, 0, numStars*9);
 
 			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
 
