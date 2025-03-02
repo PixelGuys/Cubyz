@@ -740,7 +740,7 @@ pub const RotationModes = struct {
 			const result: u16 = @as(u5, @bitCast(currentData));
 			if(result == block.data) return false;
 			block.data = result;
-			if(result == 0) block.type = 0;
+			if(result == 0) block.typ = 0;
 			return true;
 		}
 
