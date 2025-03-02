@@ -21,3 +21,5 @@ jobs:
       - run: zig build
       - run: zig build -Dtarget=x86_64-windows-gnu
       - run: zig build format --summary none
+      - run: zig fmt *.zig src/*.zig src/*/*.zig src/*/*/*.zig src/*/*/*/*.zig src/*/*/*/*/*.zig src/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*/*/*.zig
+      - run: git diff
