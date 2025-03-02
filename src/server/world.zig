@@ -515,12 +515,18 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const blockPaletteZon = files.readToZon(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/palette.zig.zon", .{name})) catch .null;
 		self.blockPalette = try main.assets.Palette.init(main.globalAllocator, blockPaletteZon, "cubyz:air");
 		errdefer self.blockPalette.deinit();
-		std.log.info("Loaded save block palette with {} blocks.", .{ self.blockPalette.size() },);
+		std.log.info(
+			"Loaded save block palette with {} blocks.",
+			.{self.blockPalette.size()},
+		);
 
 		const biomePaletteZon = files.readToZon(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/biome_palette.zig.zon", .{name})) catch .null;
 		self.biomePalette = try main.assets.Palette.init(main.globalAllocator, biomePaletteZon, null);
 		errdefer self.biomePalette.deinit();
-		std.log.info("Loaded save biome palette with {} biomes.", .{ self.biomePalette.size() },);
+		std.log.info(
+			"Loaded save biome palette with {} biomes.",
+			.{self.biomePalette.size()},
+		);
 		errdefer main.assets.unloadAssets();
 
 		if(self.wio.hasWorldData()) {
