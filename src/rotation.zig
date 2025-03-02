@@ -337,7 +337,7 @@ pub const RotationModes = struct {
 			}
 
 			pub fn setConnection(self: *@This(), neighbor: Neighbor, value: bool) void {
-				if (value) {
+				if(value) {
 					self.enabledConnections |= Neighbor.bitMask(neighbor);
 				} else {
 					self.enabledConnections &= ~Neighbor.bitMask(neighbor);
@@ -409,16 +409,13 @@ pub const RotationModes = struct {
 			const blockBaseModel = blocks.meshes.modelIndexStart(currentBlock.*);
 			const neighborBaseModel = blocks.meshes.modelIndexStart(neighborBlock);
 
-			if(blockPlacing or (blockBaseModel == neighborBaseModel) or neighborBlock.solid()) {
+			if(blockPlacing or blockBaseModel == neighborBaseModel or neighborBlock.solid()) {
 				const neighborModel = blocks.meshes.model(neighborBlock);
 
 				var currentData = BranchData.init(currentBlock.data);
 				// Branch block upon placement should extend towards a block it was placed
 				// on if the block is solid or also uses branch model.
-				const targetVal = (
-					(neighborBlock.solid() and !neighborBlock.viewThrough())
-					and ((blockBaseModel == neighborBaseModel) or main.models.models.items[neighborModel].isNeighborOccluded[neighbor.?.reverse().toInt()])
-				);
+				const targetVal = ((neighborBlock.solid() and !neighborBlock.viewThrough()) and (blockBaseModel == neighborBaseModel or main.models.models.items[neighborModel].isNeighborOccluded[neighbor.?.reverse().toInt()]));
 				currentData.setConnection(neighbor.?, targetVal);
 
 				const result: u16 = currentData.enabledConnections;
@@ -452,11 +449,7 @@ pub const RotationModes = struct {
 			return true;
 		}
 
-		fn closestRay(
-			block: Block,
-			relativePlayerPos: Vec3f,
-			playerDir: Vec3f
-		) ?u16 {
+		fn closestRay(block: Block, relativePlayerPos: Vec3f, playerDir: Vec3f) ?u16 {
 			var closestIntersection: ?RayIntersectionResult = null;
 			var resultBitMask: ?u16 = null;
 			{
