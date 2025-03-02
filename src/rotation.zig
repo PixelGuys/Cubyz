@@ -329,7 +329,7 @@ pub const RotationModes = struct {
 			enabledConnections: u6,
 
 			pub fn init(blockData: u16) BranchData {
-				return .{.enabledConnections = @intCast(blockData)};
+				return .{.enabledConnections = @truncate(blockData)};
 			}
 
 			pub fn isConnected(self: @This(), neighbor: Neighbor) bool {
@@ -380,10 +380,9 @@ pub const RotationModes = struct {
 			const baseModelIndex = main.models.getModelIndex(modelId);
 			const baseModel = main.models.models.items[baseModelIndex];
 
-			const modelIndex: u16 = baseModel.transformModel(branchTransform, .{@as(BranchData, @bitCast(@as(u6, 0)))});
+			const modelIndex: u16 = baseModel.transformModel(branchTransform, .{BranchData.init(0)});
 			for(1..64) |branchData| {
-
-				_ = baseModel.transformModel(branchTransform, .{@as(BranchData, @bitCast(@as(u6, @intCast(branchData))))});
+				_ = baseModel.transformModel(branchTransform, .{BranchData.init(@truncate(branchData))});
 			}
 			branchModels.put(modelId, modelIndex) catch unreachable;
 			return modelIndex;
@@ -455,36 +454,25 @@ pub const RotationModes = struct {
 			relativePlayerPos: Vec3f,
 			playerDir: Vec3f
 		) ?u16 {
-			var resultIntersection: ?RayIntersectionResult = null;
+			var closestIntersection: ?RayIntersectionResult = null;
 			var resultBitMask: ?u16 = null;
-			// Check intersection with central part of the branch block.
 			{
 				const modelIndex = blocks.meshes.modelIndexStart(block);
 				if(RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
-					// We can't return here, as any intersection that accidentally passes
-					// through the central part would delete the whole block, even if player
-					// was aiming at the connection.
-					resultIntersection = intersection;
+					closestIntersection = intersection;
 					resultBitMask = 0;
 				}
 			}
-			// In case we did not intersect with the central part, check all the side
-			// connections.
 			for(Neighbor.iterable) |direction| {
 				const directionBitMask = Neighbor.bitMask(direction);
 
 				if((block.data & directionBitMask) != 0) {
 					const modelIndex = blocks.meshes.modelIndexStart(block) + directionBitMask;
 					if(RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
-						// If we did have intersection with center part of the branch we must check
-						// if intersection we have right now is better than the one we had before.
-						// If we were to not do that, even accidental intersection with the connection
-						// would delete the connection even though player was aiming at the center.
-						if(resultIntersection == null or @abs(resultIntersection.?.distance) > @abs(intersection.distance)) {
-							return direction.bitMask();
+						if(closestIntersection == null or @abs(closestIntersection.?.distance) > @abs(intersection.distance)) {
+							closestIntersection = intersection;
+							resultBitMask = direction.bitMask();
 						}
-						// Since branch can have multiple connections, we must continue iteration
-						// in case connection with different intersection yields better results.
 					}
 				}
 			}
@@ -493,14 +481,13 @@ pub const RotationModes = struct {
 
 		pub fn onBlockBreaking(_: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void {
 			if(closestRay(currentData.*, relativePlayerPos, playerDir)) |directionBitMask| {
-				// If player destroys a central part of branch block, branch block is completely
-				// destroyed.
+				// If player destroys a central part of branch block, branch block is completely destroyed.
 				if(directionBitMask == 0) {
 					currentData.typ = 0;
 					currentData.data = 0;
 					return;
 				}
-
+				// Otherwise only the connection player aimed at is destroyed.
 				currentData.data &= ~directionBitMask;
 			}
 		}
