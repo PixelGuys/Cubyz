@@ -34,7 +34,7 @@ fn printError(msg: []const u8, filePath: []const u8, data: []const u8, charIndex
 
 	failed = true;
 
-	std.log.err("Found formatting error in line {} of file {s}: {s}\n{s}\n{s}^", .{lineNumber, filePath, msg, data[lineStart..lineEnd], startLineChars.items});
+	std.log.err("Found formatting error in line {} of file {s}: {s}\n{s}\n{s}^", .{lineNumber, filePath, msg, data[lineStart..lineEnd],  startLineChars.items});
 }
 
 fn checkFile(dir: std.fs.Dir, filePath: []const u8) !void {
