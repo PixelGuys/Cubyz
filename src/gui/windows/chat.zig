@@ -12,10 +12,10 @@ const MutexComponent = GuiComponent.MutexComponent;
 const TextInput = GuiComponent.TextInput;
 const VerticalList = @import("../components/VerticalList.zig");
 
-pub var window: GuiWindow = GuiWindow {
+pub var window: GuiWindow = GuiWindow{
 	.relativePosition = .{
-		.{ .attachedToFrame = .{.selfAttachmentPoint = .lower, .otherAttachmentPoint = .lower} },
-		.{ .attachedToFrame = .{.selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper} },
+		.{.attachedToFrame = .{.selfAttachmentPoint = .lower, .otherAttachmentPoint = .lower}},
+		.{.attachedToFrame = .{.selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper}},
 	},
 	.scale = 0.75,
 	.contentSize = Vec2f{128, 256},
@@ -44,7 +44,7 @@ fn refresh() void {
 		old.deinit();
 	}
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 0);
-	for(history.items[if(hideInput) historyStart else 0 ..]) |msg| {
+	for(history.items[if(hideInput) historyStart else 0..]) |msg| {
 		msg.pos = .{0, 0};
 		list.add(msg);
 	}

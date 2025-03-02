@@ -17,26 +17,16 @@ var commonRecipes: std.StringHashMap(ZonElement) = undefined;
 var commonModels: std.StringHashMap([]const u8) = undefined;
 
 fn readDefaultFile(allocator: NeverFailingAllocator, dir: std.fs.Dir) !ZonElement {
-	if (dir.openFile("_defaults.zig.zon", .{})) |val| {
-		const string = try val.readToEndAlloc(main.stackAllocator.allocator, std.math.maxInt(usize));
-		defer main.stackAllocator.free(string);
-
-		return ZonElement.parseFromString(allocator, string);
+	if(main.files.Dir.init(dir).readToZon(allocator, "_defaults.zig.zon")) |zon| {
+		return zon;
 	} else |err| {
-		if (err != error.FileNotFound) {
-			return err;
-		}
+		if(err != error.FileNotFound) return err;
 	}
 
-	if (dir.openFile("_defaults.zon", .{})) |val| {
-		const string = try val.readToEndAlloc(main.stackAllocator.allocator, std.math.maxInt(usize));
-		defer main.stackAllocator.free(string);
-
-		return ZonElement.parseFromString(allocator, string);
+	if(main.files.Dir.init(dir).readToZon(allocator, "_defaults.zon")) |zon| {
+		return zon;
 	} else |err| {
-		if (err != error.FileNotFound) {
-			return err;
-		}
+		if(err != error.FileNotFound) return err;
 	}
 
 	return .null;
@@ -76,26 +66,23 @@ pub fn readAllZonFilesInAddons(externalAllocator: NeverFailingAllocator, addons:
 				id[folderName.len] = ':';
 				for(0..entry.path.len - fileSuffixLen) |i| {
 					if(entry.path[i] == '\\') { // Convert windows path seperators
-						id[folderName.len+1+i] = '/';
+						id[folderName.len + 1 + i] = '/';
 					} else {
-						id[folderName.len+1+i] = entry.path[i];
+						id[folderName.len + 1 + i] = entry.path[i];
 					}
 				}
 
-				const string = dir.readFileAlloc(main.stackAllocator.allocator, entry.path, std.math.maxInt(usize)) catch |err| {
+				const zon = main.files.Dir.init(dir).readToZon(externalAllocator, entry.path) catch |err| {
 					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
 					continue;
 				};
-				defer main.stackAllocator.free(string);
-
-				const zon = ZonElement.parseFromString(externalAllocator, string);
-				if (defaults) {
+				if(defaults) {
 					const path = entry.dir.realpathAlloc(main.stackAllocator.allocator, ".") catch unreachable;
 					defer main.stackAllocator.free(path);
 
 					const result = defaultMap.getOrPut(path) catch unreachable;
 
-					if (!result.found_existing) {
+					if(!result.found_existing) {
 						result.key_ptr.* = defaultsArenaAllocator.dupe(u8, path);
 						const default: ZonElement = readDefaultFile(defaultsArenaAllocator, entry.dir) catch |err| blk: {
 							std.log.err("Failed to read default file: {s}", .{@errorName(err)});
@@ -164,11 +151,11 @@ pub fn readAllObjFilesInAddonsHashmap(externalAllocator: NeverFailingAllocator, 
 				errdefer externalAllocator.free(id);
 				@memcpy(id[0..folderName.len], folderName);
 				id[folderName.len] = ':';
-				for(0..entry.path.len-4) |i| {
+				for(0..entry.path.len - 4) |i| {
 					if(entry.path[i] == '\\') { // Convert windows path seperators
-						id[folderName.len+1+i] = '/';
+						id[folderName.len + 1 + i] = '/';
 					} else {
-						id[folderName.len+1+i] = entry.path[i];
+						id[folderName.len + 1 + i] = entry.path[i];
 					}
 				}
 
@@ -272,7 +259,7 @@ pub const Palette = struct { // MARK: Palette
 	palette: main.List([]const u8),
 	pub fn init(allocator: NeverFailingAllocator, zon: ZonElement, firstElement: ?[]const u8) !*Palette {
 		const self = allocator.create(Palette);
-		self.* = Palette {
+		self.* = Palette{
 			.palette = .init(allocator),
 		};
 		errdefer self.deinit();
@@ -342,8 +329,8 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 	errdefer unloadAssets();
 
 	var modelIterator = models.iterator();
-	while (modelIterator.next()) |entry| {
-		_ = main.models.registerModel(entry.key_ptr.*,  entry.value_ptr.*);
+	while(modelIterator.next()) |entry| {
+		_ = main.models.registerModel(entry.key_ptr.*, entry.value_ptr.*);
 	}
 
 	// blocks:

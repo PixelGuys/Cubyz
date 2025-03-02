@@ -10,5 +10,11 @@
 		.colors = .{
 			0xff847bce, 0xff8b9fe0, 0xff94c6ea, 0xffb0eaf6, 0xffffffff,
 		},
+		.modifiers = .{
+			.{
+				.id = "fragile",
+				.strength = 0.5,
+			},
+		},
 	},
 }

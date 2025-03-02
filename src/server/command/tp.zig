@@ -40,7 +40,7 @@ pub fn execute(args: []const u8, source: *User) void {
 					return;
 				}
 			}
-			switch (dir) {
+			switch(dir) {
 				.dirNegX => wx -%= mapSize,
 				.dirPosX => wx +%= mapSize,
 				.dirNegY => wy -%= mapSize,
@@ -49,7 +49,7 @@ pub fn execute(args: []const u8, source: *User) void {
 			}
 			stepsRemaining -= 1;
 			if(stepsRemaining == 0) {
-				switch (dir) {
+				switch(dir) {
 					.dirNegX => dir = .dirNegY,
 					.dirPosX => dir = .dirPosY,
 					.dirNegY => dir = .dirPosX,

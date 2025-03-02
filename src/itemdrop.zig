@@ -55,7 +55,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 	emptyMutex: std.Thread.Mutex = .{},
 	isEmpty: std.bit_set.ArrayBitSet(usize, maxCapacity),
 
-	changeQueue: main.utils.ConcurrentQueue(union(enum) {add: struct{u16, ItemDrop}, remove: u16}),
+	changeQueue: main.utils.ConcurrentQueue(union(enum) {add: struct {u16, ItemDrop}, remove: u16}),
 
 	world: ?*ServerWorld,
 	gravity: f64,
@@ -64,7 +64,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 	size: u32 = 0,
 
 	pub fn init(self: *ItemDropManager, allocator: NeverFailingAllocator, world: ?*ServerWorld, gravity: f64) void {
-		self.* = ItemDropManager {
+		self.* = ItemDropManager{
 			.allocator = allocator,
 			.list = std.MultiArrayList(ItemDrop){},
 			.isEmpty = .initFull(),
@@ -107,7 +107,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			random.nextFloatVector(3, &main.seed)*@as(Vec3f, @splat(2*std.math.pi)),
 			items.ItemStack{.item = item, .amount = zon.get(u16, "amount", 1)},
 			zon.get(i32, "despawnTime", 60),
-			0
+			0,
 		};
 		if(zon.get(?u16, "i", null)) |i| {
 			@call(.auto, addWithIndex, .{self, i} ++ properties);
@@ -210,7 +210,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			return;
 		});
 		self.isEmpty.unset(i);
-		const drop = ItemDrop {
+		const drop = ItemDrop{
 			.pos = pos,
 			.vel = vel,
 			.rot = rot,
@@ -236,14 +236,13 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 
 		self.emptyMutex.unlock();
 		self.changeQueue.enqueue(.{.add = .{i, drop}});
-
 	}
 
 	fn addWithIndex(self: *ItemDropManager, i: u16, pos: Vec3d, vel: Vec3d, rot: Vec3f, itemStack: ItemStack, despawnTime: i32, pickupCooldown: i32) void {
 		self.emptyMutex.lock();
 		std.debug.assert(self.isEmpty.isSet(i));
 		self.isEmpty.unset(i);
-		const drop = ItemDrop {
+		const drop = ItemDrop{
 			.pos = pos,
 			.vel = vel,
 			.rot = rot,
@@ -333,9 +332,9 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		}
 		vel.* += Vec3d{0, 0, -self.gravity*deltaTime};
 		inline for(0..3) |i| {
-			const move = vel.*[i]*deltaTime;// + acceleration[i]*deltaTime;
+			const move = vel.*[i]*deltaTime; // + acceleration[i]*deltaTime;
 			if(main.game.collision.collides(.server, @enumFromInt(i), move, pos.*, hitBox)) |box| {
-				if (move < 0) {
+				if(move < 0) {
 					pos.*[i] = box.max[i] + radius;
 				} else {
 					pos.*[i] = box.max[i] - radius;
@@ -439,7 +438,7 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 
 	timeDifference: utils.TimeDifference = .{},
 
-	interpolation: utils.GenericInterpolation(maxf64Capacity)align(64) = undefined,
+	interpolation: utils.GenericInterpolation(maxf64Capacity) align(64) = undefined,
 
 	var instance: ?*ClientItemDropManager = null;
 
@@ -455,7 +454,7 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 		self.super.init(allocator, null, world.gravity);
 		self.interpolation.init(
 			@ptrCast(self.super.list.items(.pos).ptr),
-			@ptrCast(self.super.list.items(.vel).ptr)
+			@ptrCast(self.super.list.items(.vel).ptr),
 		);
 	}
 
@@ -501,10 +500,10 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 		mutex.lock();
 		defer mutex.unlock();
 		for(&instance.?.interpolation.lastVel) |*lastVel| {
-			@as(*align(8)[ItemDropManager.maxCapacity]Vec3d, @ptrCast(lastVel))[i] = Vec3d{0, 0, 0};
+			@as(*align(8) [ItemDropManager.maxCapacity]Vec3d, @ptrCast(lastVel))[i] = Vec3d{0, 0, 0};
 		}
 		for(&instance.?.interpolation.lastPos) |*lastPos| {
-			@as(*align(8)[ItemDropManager.maxCapacity]Vec3d, @ptrCast(lastPos))[i] = drop.pos;
+			@as(*align(8) [ItemDropManager.maxCapacity]Vec3d, @ptrCast(lastPos))[i] = drop.pos;
 		}
 	}
 

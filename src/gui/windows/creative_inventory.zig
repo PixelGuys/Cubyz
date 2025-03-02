@@ -13,10 +13,10 @@ const HorizontalList = GuiComponent.HorizontalList;
 const VerticalList = GuiComponent.VerticalList;
 const ItemSlot = GuiComponent.ItemSlot;
 
-pub var window = GuiWindow {
+pub var window = GuiWindow{
 	.relativePosition = .{
-		.{ .attachedToFrame = .{.selfAttachmentPoint = .lower, .otherAttachmentPoint = .lower} },
-		.{ .attachedToFrame = .{.selfAttachmentPoint = .middle, .otherAttachmentPoint = .middle} },
+		.{.attachedToFrame = .{.selfAttachmentPoint = .lower, .otherAttachmentPoint = .lower}},
+		.{.attachedToFrame = .{.selfAttachmentPoint = .middle, .otherAttachmentPoint = .middle}},
 	},
 	.contentSize = Vec2f{64*8, 64*4},
 	.scale = 0.75,

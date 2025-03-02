@@ -14,14 +14,45 @@ const models = @import("models.zig");
 const rotation = @import("rotation.zig");
 const RotationMode = rotation.RotationMode;
 
-pub const BlockClass = enum(u8) {
-	wood,
-	stone,
-	sand,
-	unbreakable,
-	leaf,
-	fluid,
-	air,
+pub const BlockTag = enum(u32) {
+	air = 0,
+	fluid = 1,
+	_,
+
+	var tagList: main.List([]const u8) = .init(allocator);
+	var tagIds: std.StringHashMap(BlockTag) = .init(allocator.allocator);
+
+	fn loadDefaults() void {
+		inline for(comptime std.meta.fieldNames(BlockTag)) |tag| {
+			std.debug.assert(find(tag) == @field(BlockTag, tag));
+		}
+	}
+
+	fn reset() void {
+		tagList.clearAndFree();
+		tagIds.clearAndFree();
+	}
+
+	pub fn find(tag: []const u8) BlockTag {
+		if(tagIds.get(tag)) |res| return res;
+		const result: BlockTag = @enumFromInt(tagList.items.len);
+		const dupedTag = allocator.dupe(u8, tag);
+		tagList.append(dupedTag);
+		tagIds.put(dupedTag, result) catch unreachable;
+		return result;
+	}
+
+	pub fn loadFromZon(_allocator: main.utils.NeverFailingAllocator, zon: ZonElement) []BlockTag {
+		const result = _allocator.alloc(BlockTag, zon.toSlice().len);
+		for(zon.toSlice(), 0..) |tagZon, i| {
+			result[i] = BlockTag.find(tagZon.as([]const u8, "incorrect"));
+		}
+		return result;
+	}
+
+	pub fn getName(tag: BlockTag) []const u8 {
+		return tagList.items[@intFromEnum(tag)];
+	}
 };
 
 var arena = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
@@ -45,6 +76,7 @@ pub const Ore = struct {
 	veins: f32,
 	/// maximum height this ore can be generated
 	maxHeight: i32,
+	minHeight: i32,
 
 	blockType: u16,
 };
@@ -52,10 +84,10 @@ pub const Ore = struct {
 var _transparent: [maxBlockCount]bool = undefined;
 var _collide: [maxBlockCount]bool = undefined;
 var _id: [maxBlockCount][]u8 = undefined;
-/// Time in seconds to break this block by hand.
+
 var _blockHealth: [maxBlockCount]f32 = undefined;
-/// Minimum pickaxe/axe/shovel power required.
-var _breakingPower: [maxBlockCount]f32 = undefined;
+var _blockResistance: [maxBlockCount]f32 = undefined;
+
 var _solid: [maxBlockCount]bool = undefined;
 var _selectable: [maxBlockCount]bool = undefined;
 var _blockDrops: [maxBlockCount][]BlockDrop = undefined;
@@ -64,7 +96,7 @@ var _degradable: [maxBlockCount]bool = undefined;
 var _viewThrough: [maxBlockCount]bool = undefined;
 var _alwaysViewThrough: [maxBlockCount]bool = undefined;
 var _hasBackFace: [maxBlockCount]bool = undefined;
-var _blockClass: [maxBlockCount]BlockClass = undefined;
+var _blockTags: [maxBlockCount][]BlockTag = undefined;
 var _light: [maxBlockCount]u32 = undefined;
 /// How much light this block absorbs if it is transparent
 var _absorption: [maxBlockCount]u32 = undefined;
@@ -84,9 +116,11 @@ var size: u32 = 0;
 pub var ores: main.List(Ore) = .init(allocator);
 
 pub fn init() void {
+	BlockTag.loadDefaults();
 }
 
 pub fn deinit() void {
+	arena.deinit();
 }
 
 pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
@@ -97,10 +131,11 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	reverseIndices.put(_id[size], @intCast(size)) catch unreachable;
 
 	_mode[size] = rotation.getByID(zon.get([]const u8, "rotation", "no_rotation"));
-	_breakingPower[size] = zon.get(f32, "breakingPower", 0);
 	_blockHealth[size] = zon.get(f32, "blockHealth", 1);
+	_blockResistance[size] = zon.get(f32, "blockResistance", 0);
 
-	_blockClass[size] = std.meta.stringToEnum(BlockClass, zon.get([]const u8, "class", "stone")) orelse .stone;
+	_blockTags[size] = BlockTag.loadFromZon(allocator, zon.getChild("tags"));
+	if(_blockTags[size].len == 0) std.log.err("Block {s} is missing 'tags' field", .{id});
 	_light[size] = zon.get(u32, "emittedLight", 0);
 	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
 	_degradable[size] = zon.get(bool, "degradable", false);
@@ -116,15 +151,16 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_allowOres[size] = zon.get(bool, "allowOres", false);
 
 	const oreProperties = zon.getChild("ore");
-	if (oreProperties != .null) blk: {
+	if(oreProperties != .null) blk: {
 		if(!std.mem.eql(u8, zon.get([]const u8, "rotation", "no_rotation"), "ore")) {
 			std.log.err("Ore must have rotation mode \"ore\"!", .{});
 			break :blk;
 		}
-		ores.append(Ore {
+		ores.append(Ore{
 			.veins = oreProperties.get(f32, "veins", 0),
 			.size = oreProperties.get(f32, "size", 0),
 			.maxHeight = oreProperties.get(i32, "height", 0),
+			.minHeight = oreProperties.get(i32, "minHeight", std.math.minInt(i32)),
 			.density = oreProperties.get(f32, "density", 0.5),
 			.blockType = @intCast(size),
 		});
@@ -201,8 +237,10 @@ pub fn reset() void {
 	size = 0;
 	ores.clearAndFree();
 	meshes.reset();
+	BlockTag.reset();
 	_ = arena.reset(.free_all);
 	reverseIndices = .init(arena.allocator().allocator);
+	BlockTag.loadDefaults();
 }
 
 pub fn getTypeById(id: []const u8) u16 {
@@ -219,7 +257,7 @@ pub fn parseBlock(data: []const u8) Block {
 	var blockData: ?u16 = null;
 	if(std.mem.indexOfScalarPos(u8, data, 1 + (std.mem.indexOfScalar(u8, data, ':') orelse 0), ':')) |pos| {
 		id = data[0..pos];
-		blockData = std.fmt.parseInt(u16, data[pos + 1..], 0) catch |err| blk: {
+		blockData = std.fmt.parseInt(u16, data[pos + 1 ..], 0) catch |err| blk: {
 			std.log.err("Error while parsing block data of '{s}': {s}", .{data, @errorName(err)});
 			break :blk null;
 		};
@@ -242,10 +280,10 @@ pub const Block = packed struct { // MARK: Block
 	typ: u16,
 	data: u16,
 	pub fn toInt(self: Block) u32 {
-		return @as(u32, self.typ) | @as(u32, self.data)<<16;
+		return @as(u32, self.typ) | @as(u32, self.data) << 16;
 	}
 	pub fn fromInt(self: u32) Block {
-		return Block{.typ=@truncate(self), .data=@intCast(self>>16)};
+		return Block{.typ = @truncate(self), .data = @intCast(self >> 16)};
 	}
 
 	pub inline fn transparent(self: Block) bool {
@@ -260,14 +298,12 @@ pub const Block = packed struct { // MARK: Block
 		return _id[self.typ];
 	}
 
-	/// Time in seconds to break this block by hand.
 	pub inline fn blockHealth(self: Block) f32 {
 		return _blockHealth[self.typ];
 	}
 
-	/// Minimum pickaxe/axe/shovel power required.
-	pub inline fn breakingPower(self: Block) f32 {
-		return _breakingPower[self.typ];
+	pub inline fn blockResistance(self: Block) f32 {
+		return _blockResistance[self.typ];
 	}
 
 	pub inline fn solid(self: Block) bool {
@@ -300,8 +336,8 @@ pub const Block = packed struct { // MARK: Block
 		return _hasBackFace[self.typ];
 	}
 
-	pub inline fn blockClass(self: Block) BlockClass {
-		return _blockClass[self.typ];
+	pub inline fn blockTags(self: Block) []const BlockTag {
+		return _blockTags[self.typ];
 	}
 
 	pub inline fn light(self: Block) u32 {
@@ -342,7 +378,6 @@ pub const Block = packed struct { // MARK: Block
 		return newBlock.mode().canBeChangedInto(self, newBlock, item, shouldDropSourceBlockOnSuccess);
 	}
 };
-
 
 pub const meshes = struct { // MARK: meshes
 	const AnimationData = extern struct {
@@ -404,11 +439,11 @@ pub const meshes = struct { // MARK: meshes
 	pub var emissionTextureArray: TextureArray = undefined;
 	pub var reflectivityAndAbsorptionTextureArray: TextureArray = undefined;
 
-	const black: Color = Color{.r=0, .g=0, .b=0, .a=255};
-	const magenta: Color = Color{.r=255, .g=0, .b=255, .a=255};
-	var undefinedTexture = [_]Color {magenta, black, black, magenta};
+	const black: Color = Color{.r = 0, .g = 0, .b = 0, .a = 255};
+	const magenta: Color = Color{.r = 255, .g = 0, .b = 255, .a = 255};
+	var undefinedTexture = [_]Color{magenta, black, black, magenta};
 	const undefinedImage = Image{.width = 2, .height = 2, .imageData = undefinedTexture[0..]};
-	var emptyTexture = [_]Color {black};
+	var emptyTexture = [_]Color{black};
 	const emptyImage = Image{.width = 1, .height = 1, .imageData = emptyTexture[0..]};
 
 	pub fn init() void {
@@ -510,19 +545,17 @@ pub const meshes = struct { // MARK: meshes
 	fn extractAnimationSlice(image: Image, frame: usize, frames: usize) Image {
 		if(image.height < frames) return image;
 		var startHeight = image.height/frames*frame;
-		if(image.height%frames > frame) startHeight += frame
-		else startHeight += image.height%frames;
+		if(image.height%frames > frame) startHeight += frame else startHeight += image.height%frames;
 		var endHeight = image.height/frames*(frame + 1);
-		if(image.height%frames > frame + 1) endHeight += frame + 1
-		else endHeight += image.height%frames;
+		if(image.height%frames > frame + 1) endHeight += frame + 1 else endHeight += image.height%frames;
 		var result = image;
 		result.height = @intCast(endHeight - startHeight);
-		result.imageData = result.imageData[startHeight*image.width..endHeight*image.width];
+		result.imageData = result.imageData[startHeight*image.width .. endHeight*image.width];
 		return result;
 	}
 
 	fn readTextureData(_path: []const u8) void {
-		const path = _path[0.._path.len - ".png".len];
+		const path = _path[0 .. _path.len - ".png".len];
 		const textureInfoPath = extendedPath(main.stackAllocator, path, ".zig.zon");
 		defer main.stackAllocator.free(textureInfoPath);
 		const textureInfoZon = main.files.readToZon(main.stackAllocator, textureInfoPath) catch .null;

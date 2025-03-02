@@ -25,7 +25,7 @@ pub fn openDirInWindow(path: []const u8) void {
 	const newPath = main.stackAllocator.dupe(u8, path);
 	defer main.stackAllocator.free(newPath);
 
-	if (builtin.os.tag == .windows) {
+	if(builtin.os.tag == .windows) {
 		std.mem.replaceScalar(u8, newPath, '/', '\\');
 	}
 
@@ -48,7 +48,7 @@ pub fn openDirInWindow(path: []const u8) void {
 }
 
 pub fn openDir(path: []const u8) !Dir {
-	return Dir {
+	return Dir{
 		.dir = try std.fs.cwd().makeOpenPath(path, .{}),
 	};
 }
@@ -68,7 +68,7 @@ pub fn hasFile(path: []const u8) bool {
 }
 
 fn cwd() Dir {
-	return Dir {
+	return Dir{
 		.dir = std.fs.cwd(),
 	};
 }
@@ -108,6 +108,10 @@ pub fn deinit() void {
 pub const Dir = struct {
 	dir: std.fs.Dir,
 
+	pub fn init(dir: std.fs.Dir) Dir {
+		return .{.dir = dir};
+	}
+
 	pub fn close(self: *Dir) void {
 		self.dir.close();
 	}
@@ -119,7 +123,9 @@ pub const Dir = struct {
 	pub fn readToZon(self: Dir, allocator: NeverFailingAllocator, path: []const u8) !ZonElement {
 		const string = try self.read(main.stackAllocator, path);
 		defer main.stackAllocator.free(string);
-		return ZonElement.parseFromString(allocator, string);
+		const realPath = try self.dir.realpathAlloc(main.stackAllocator.allocator, path);
+		defer main.stackAllocator.free(realPath);
+		return ZonElement.parseFromString(allocator, realPath, string);
 	}
 
 	pub fn write(self: Dir, path: []const u8, data: []const u8) !void {

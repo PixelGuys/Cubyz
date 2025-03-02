@@ -16,7 +16,7 @@ const Label = @import("../components/Label.zig");
 const TextInput = @import("../components/TextInput.zig");
 const VerticalList = @import("../components/VerticalList.zig");
 
-pub var window = GuiWindow {
+pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 256},
 };
 
@@ -110,7 +110,7 @@ fn parseEscapedFolderName(allocator: NeverFailingAllocator, name: []const u8) []
 				}
 			}
 			var buf: [4]u8 = undefined;
-			result.appendSlice(buf[0..std.unicode.utf8Encode(val, &buf) catch 0]); // TODO: Change this to full unicode rather than using this broken utf-16 converter.
+			result.appendSlice(buf[0 .. std.unicode.utf8Encode(val, &buf) catch 0]); // TODO: Change this to full unicode rather than using this broken utf-16 converter.
 		} else {
 			result.append(name[i]);
 		}

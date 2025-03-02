@@ -1,5 +1,5 @@
 .{
-	.blockClass = .sand,
+	.blockTags = .{.sand},
 	.slotTypes = .{
 		.{
 			.name = .handle,
@@ -37,7 +37,7 @@
 				},
 				.{
 					.source = .hardness,
-					.destination = .power,
+					.destination = .damage,
 					.functionType = .squareRoot,
 					.factor = 0.1,
 				},
@@ -58,7 +58,7 @@
 				},
 				.{
 					.source = .hardness,
-					.destination = .power,
+					.destination = .damage,
 					.factor = 0.3,
 				},
 			},
@@ -78,7 +78,7 @@
 				},
 				.{
 					.source = .hardness,
-					.destination = .power,
+					.destination = .damage,
 					.factor = 0.6,
 				},
 			},
@@ -99,7 +99,7 @@
 				},
 				.{
 					.source = .hardness,
-					.destination = .power,
+					.destination = .damage,
 					.factor = 0.7,
 				},
 			},

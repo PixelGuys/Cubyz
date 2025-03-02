@@ -13,13 +13,11 @@ pub const version = "Cubyz α 0.12.0";
 
 pub const highestSupportedLod: u3 = 5;
 
-
 pub var simulationDistance: u16 = 4;
 
 pub var cpuThreads: ?u64 = null;
 
 pub var anisotropicFiltering: u8 = 4.0;
-
 
 pub var fpsCap: ?u32 = null;
 
@@ -50,9 +48,7 @@ pub var leavesQuality: u16 = 2;
 
 pub var @"lod0.5Distance": f32 = 200;
 
-
 pub var storageTime: i64 = 5000;
-
 
 pub var updateRepeatSpeed: u31 = 200;
 

@@ -38,7 +38,7 @@ pub fn generate(self: *Boulder, x: i32, y: i32, z: i32, chunk: *main.chunk.Serve
 	const numberOfPoints = 4;
 	var pointCloud: [numberOfPoints]Vec3f = undefined;
 	for(&pointCloud) |*point| {
-		point.* = Vec3f {
+		point.* = Vec3f{
 			(random.nextFloat(seed) - 0.5)*radius/2,
 			(random.nextFloat(seed) - 0.5)*radius/2,
 			(random.nextFloat(seed) - 0.5)*radius/2,

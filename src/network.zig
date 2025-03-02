@@ -37,11 +37,11 @@ const Socket = struct {
 	}
 
 	fn init(localPort: u16) !Socket {
-		const self = Socket {
+		const self = Socket{
 			.socketID = try posix.socket(posix.AF.INET, posix.SOCK.DGRAM, posix.IPPROTO.UDP),
 		};
 		errdefer self.deinit();
-		const bindingAddr = posix.sockaddr.in {
+		const bindingAddr = posix.sockaddr.in{
 			.port = @byteSwap(localPort),
 			.addr = 0,
 		};
@@ -54,7 +54,7 @@ const Socket = struct {
 	}
 
 	fn send(self: Socket, data: []const u8, destination: Address) void {
-		const addr = posix.sockaddr.in {
+		const addr = posix.sockaddr.in{
 			.port = @byteSwap(destination.port),
 			.addr = destination.ip,
 		};
@@ -66,12 +66,12 @@ const Socket = struct {
 
 	fn receive(self: Socket, buffer: []u8, timeout: i32, resultAddress: *Address) ![]u8 {
 		if(builtin.os.tag == .windows) { // Of course Windows always has it's own special thing.
-			var pfd = [1]posix.pollfd {
+			var pfd = [1]posix.pollfd{
 				.{.fd = self.socketID, .events = std.c.POLL.RDNORM | std.c.POLL.RDBAND, .revents = undefined},
 			};
 			const length = std.os.windows.ws2_32.WSAPoll(&pfd, pfd.len, 0); // The timeout is set to zero. Otherwise sendto operations from other threads will block on this.
-			if (length == std.os.windows.ws2_32.SOCKET_ERROR) {
-				switch (std.os.windows.ws2_32.WSAGetLastError()) {
+			if(length == std.os.windows.ws2_32.SOCKET_ERROR) {
+				switch(std.os.windows.ws2_32.WSAGetLastError()) {
 					.WSANOTINITIALISED => unreachable,
 					.WSAENETDOWN => return error.NetworkSubsystemFailed,
 					.WSAENOBUFS => return error.SystemResources,
@@ -83,7 +83,7 @@ const Socket = struct {
 				return error.Timeout;
 			}
 		} else {
-			var pfd = [1]posix.pollfd {
+			var pfd = [1]posix.pollfd{
 				.{.fd = self.socketID, .events = posix.POLL.IN, .revents = undefined},
 			};
 			const length = try posix.poll(&pfd, timeout);
@@ -91,7 +91,7 @@ const Socket = struct {
 		}
 		var addr: posix.sockaddr.in = undefined;
 		var addrLen: posix.socklen_t = @sizeOf(posix.sockaddr.in);
-		const length = try posix.recvfrom(self.socketID, buffer, 0,  @ptrCast(&addr), &addrLen);
+		const length = try posix.recvfrom(self.socketID, buffer, 0, @ptrCast(&addr), &addrLen);
 		resultAddress.ip = addr.addr;
 		resultAddress.port = @byteSwap(addr.port);
 		return buffer[0..length];
@@ -149,7 +149,7 @@ const Request = struct {
 /// Implements parts of the STUN(Session Traversal Utilities for NAT) protocol to discover public IP+Port
 /// Reference: https://datatracker.ietf.org/doc/html/rfc5389
 const STUN = struct { // MARK: STUN
-	const ipServerList = [_][]const u8 {
+	const ipServerList = [_][]const u8{
 		"stun.12voip.com:3478",
 		"stun.1und1.de:3478",
 		"stun.acrobits.cz:3478",
@@ -249,17 +249,17 @@ const STUN = struct { // MARK: STUN
 	};
 	const MAPPED_ADDRESS: u16 = 0x0001;
 	const XOR_MAPPED_ADDRESS: u16 = 0x0020;
-	const MAGIC_COOKIE = [_]u8 {0x21, 0x12, 0xA4, 0x42};
+	const MAGIC_COOKIE = [_]u8{0x21, 0x12, 0xA4, 0x42};
 
 	fn requestAddress(connection: *ConnectionManager) Address {
 		var oldAddress: ?Address = null;
-		var seed = [_]u8 {0} ** std.Random.DefaultCsprng.secret_seed_length;
+		var seed = [_]u8{0} ** std.Random.DefaultCsprng.secret_seed_length;
 		std.mem.writeInt(i128, seed[0..16], std.time.nanoTimestamp(), builtin.cpu.arch.endian()); // Not the best seed, but it's not that important.
 		var random = std.Random.DefaultCsprng.init(seed);
 		for(0..16) |_| {
 			// Choose a somewhat random server, so we faster notice if any one of them stopped working.
-			const server = ipServerList[random.random().intRangeAtMost(usize, 0, ipServerList.len-1)];
-			var data = [_]u8 {
+			const server = ipServerList[random.random().intRangeAtMost(usize, 0, ipServerList.len - 1)];
+			var data = [_]u8{
 				0x00, 0x01, // message type
 				0x00, 0x00, // message length
 				MAGIC_COOKIE[0], MAGIC_COOKIE[1], MAGIC_COOKIE[2], MAGIC_COOKIE[3], // "Magic cookie"
@@ -269,12 +269,12 @@ const STUN = struct { // MARK: STUN
 
 			var splitter = std.mem.splitScalar(u8, server, ':');
 			const ip = splitter.first();
-			const serverAddress = Address {
-				.ip=Socket.resolveIP(ip) catch |err| {
+			const serverAddress = Address{
+				.ip = Socket.resolveIP(ip) catch |err| {
 					std.log.warn("Cannot resolve stun server address: {s}, error: {s}", .{ip, @errorName(err)});
 					continue;
 				},
-				.port=std.fmt.parseUnsigned(u16, splitter.rest(), 10) catch 3478,
+				.port = std.fmt.parseUnsigned(u16, splitter.rest(), 10) catch 3478,
 			};
 			if(connection.sendRequest(main.globalAllocator, &data, serverAddress, 500*1000000)) |answer| {
 				defer main.globalAllocator.free(answer);
@@ -301,7 +301,7 @@ const STUN = struct { // MARK: STUN
 				std.log.warn("Couldn't reach STUN server: {s}", .{server});
 			}
 		}
-		return Address{.ip=Socket.resolveIP("127.0.0.1") catch unreachable, .port=settings.defaultPort}; // TODO: Return ip address in LAN.
+		return Address{.ip = Socket.resolveIP("127.0.0.1") catch unreachable, .port = settings.defaultPort}; // TODO: Return ip address in LAN.
 	}
 
 	fn findIPPort(_data: []const u8) !Address {
@@ -324,19 +324,19 @@ const STUN = struct { // MARK: STUN
 							addressData[4] ^= MAGIC_COOKIE[2];
 							addressData[5] ^= MAGIC_COOKIE[3];
 						}
-						return Address {
+						return Address{
 							.port = std.mem.readInt(u16, addressData[0..2], .big),
 							.ip = std.mem.readInt(u32, addressData[2..6], builtin.cpu.arch.endian()), // Needs to stay in big endian → native.
 						};
 					} else if(data[1] == 0x02) {
-						data = data[(len + 3) & ~@as(usize, 3)..]; // Pad to 32 Bit.
+						data = data[(len + 3) & ~@as(usize, 3) ..]; // Pad to 32 Bit.
 						continue; // I don't care about IPv6.
 					} else {
 						return error.UnknownAddressFamily;
 					}
 				},
 				else => {
-					data = data[(len + 3) & ~@as(usize, 3)..]; // Pad to 32 Bit.
+					data = data[(len + 3) & ~@as(usize, 3) ..]; // Pad to 32 Bit.
 				},
 			}
 		}
@@ -350,7 +350,7 @@ const STUN = struct { // MARK: STUN
 			if(data[i + 4] != cookie) return error.WrongCookie;
 		}
 		for(transactionID, 0..) |_, i| {
-			if(data[i+8] != transactionID[i]) return error.WrongTransaction;
+			if(data[i + 8] != transactionID[i]) return error.WrongTransaction;
 		}
 	}
 };
@@ -632,7 +632,7 @@ const UnconfirmedPacket = struct {
 pub var bytesReceived: [256]Atomic(usize) = .{Atomic(usize).init(0)} ** 256;
 pub var packetsReceived: [256]Atomic(usize) = .{Atomic(usize).init(0)} ** 256;
 pub const Protocols = struct {
-	pub var list: [256]?*const fn(*Connection, []const u8) anyerror!void = [_]?*const fn(*Connection, []const u8) anyerror!void {null} ** 256;
+	pub var list: [256]?*const fn(*Connection, []const u8) anyerror!void = [_]?*const fn(*Connection, []const u8) anyerror!void{null} ** 256;
 	pub var isAsynchronous: [256]bool = .{false} ** 256;
 
 	pub const keepAlive: u8 = 0;
@@ -651,7 +651,7 @@ pub const Protocols = struct {
 				conn.handShakeState.store(data[0], .monotonic);
 				switch(data[0]) {
 					stepUserData => {
-						const zon = ZonElement.parseFromString(main.stackAllocator, data[1..]);
+						const zon = ZonElement.parseFromString(main.stackAllocator, null, data[1..]);
 						defer zon.deinit(main.stackAllocator);
 						const name = zon.get([]const u8, "name", "unnamed");
 						if(name.len > 500 or main.graphics.TextBuffer.Parser.countVisibleCharacters(name) > 50) {
@@ -699,15 +699,13 @@ pub const Protocols = struct {
 						try utils.Compression.unpack(dir, data[1..]);
 					},
 					stepServerData => {
-						const zon = ZonElement.parseFromString(main.stackAllocator, data[1..]);
+						const zon = ZonElement.parseFromString(main.stackAllocator, null, data[1..]);
 						defer zon.deinit(main.stackAllocator);
 						try conn.manager.world.?.finishHandshake(zon);
 						conn.handShakeState.store(stepComplete, .monotonic);
 						conn.handShakeWaiting.broadcast(); // Notify the waiting client thread.
 					},
-					stepComplete => {
-
-					},
+					stepComplete => {},
 					else => {
 						std.log.err("Unknown state in HandShakeProtocol {}", .{data[0]});
 					},
@@ -726,7 +724,7 @@ pub const Protocols = struct {
 			defer zonObject.deinit(main.stackAllocator);
 			zonObject.putOwnedString("version", settings.version);
 			zonObject.putOwnedString("name", name);
-			const prefix = [1]u8 {stepUserData};
+			const prefix = [1]u8{stepUserData};
 			const data = zonObject.toStringEfficient(main.stackAllocator, &prefix);
 			defer main.stackAllocator.free(data);
 			conn.sendImportant(id, data);
@@ -742,7 +740,7 @@ pub const Protocols = struct {
 		pub const asynchronous = false;
 		fn receive(conn: *Connection, data: []const u8) !void {
 			var remaining = data[0..];
-			const basePosition = Vec3i {
+			const basePosition = Vec3i{
 				std.mem.readInt(i32, remaining[0..4], .big),
 				std.mem.readInt(i32, remaining[4..8], .big),
 				std.mem.readInt(i32, remaining[8..12], .big),
@@ -752,11 +750,11 @@ pub const Protocols = struct {
 			remaining = remaining[14..];
 			while(remaining.len >= 4) {
 				const voxelSizeShift: u5 = @intCast(remaining[3]);
-				const positionMask = ~((@as(i32, 1) << voxelSizeShift+chunk.chunkShift) - 1);
+				const positionMask = ~((@as(i32, 1) << voxelSizeShift + chunk.chunkShift) - 1);
 				const request = chunk.ChunkPosition{
-					.wx = (@as(i32, @as(i8, @bitCast(remaining[0]))) << voxelSizeShift+chunk.chunkShift) +% (basePosition[0] & positionMask),
-					.wy = (@as(i32, @as(i8, @bitCast(remaining[1]))) << voxelSizeShift+chunk.chunkShift) +% (basePosition[1] & positionMask),
-					.wz = (@as(i32, @as(i8, @bitCast(remaining[2]))) << voxelSizeShift+chunk.chunkShift) +% (basePosition[2] & positionMask),
+					.wx = (@as(i32, @as(i8, @bitCast(remaining[0]))) << voxelSizeShift + chunk.chunkShift) +% (basePosition[0] & positionMask),
+					.wy = (@as(i32, @as(i8, @bitCast(remaining[1]))) << voxelSizeShift + chunk.chunkShift) +% (basePosition[1] & positionMask),
+					.wz = (@as(i32, @as(i8, @bitCast(remaining[2]))) << voxelSizeShift + chunk.chunkShift) +% (basePosition[2] & positionMask),
 					.voxelSize = @as(u31, 1) << voxelSizeShift,
 				};
 				if(conn.user) |user| {
@@ -778,10 +776,10 @@ pub const Protocols = struct {
 			remaining = remaining[14..];
 			for(requests) |req| {
 				const voxelSizeShift: u5 = std.math.log2_int(u31, req.voxelSize);
-				const positionMask = ~((@as(i32, 1) << voxelSizeShift+chunk.chunkShift) - 1);
-				remaining[0] = @bitCast(@as(i8, @intCast((req.wx -% (basePosition[0] & positionMask)) >> voxelSizeShift+chunk.chunkShift)));
-				remaining[1] = @bitCast(@as(i8, @intCast((req.wy -% (basePosition[1] & positionMask)) >> voxelSizeShift+chunk.chunkShift)));
-				remaining[2] = @bitCast(@as(i8, @intCast((req.wz -% (basePosition[2] & positionMask)) >> voxelSizeShift+chunk.chunkShift)));
+				const positionMask = ~((@as(i32, 1) << voxelSizeShift + chunk.chunkShift) - 1);
+				remaining[0] = @bitCast(@as(i8, @intCast((req.wx -% (basePosition[0] & positionMask)) >> voxelSizeShift + chunk.chunkShift)));
+				remaining[1] = @bitCast(@as(i8, @intCast((req.wy -% (basePosition[1] & positionMask)) >> voxelSizeShift + chunk.chunkShift)));
+				remaining[2] = @bitCast(@as(i8, @intCast((req.wz -% (basePosition[2] & positionMask)) >> voxelSizeShift + chunk.chunkShift)));
 				remaining[3] = voxelSizeShift;
 				remaining = remaining[4..];
 			}
@@ -843,8 +841,8 @@ pub const Protocols = struct {
 			}
 			lastPositionSent = time;
 			var data: [62]u8 = undefined;
-			std.mem.writeInt(u64, data[0..8],   @as(u64, @bitCast(playerPos[0])), .big);
-			std.mem.writeInt(u64, data[8..16],  @as(u64, @bitCast(playerPos[1])), .big);
+			std.mem.writeInt(u64, data[0..8], @as(u64, @bitCast(playerPos[0])), .big);
+			std.mem.writeInt(u64, data[8..16], @as(u64, @bitCast(playerPos[1])), .big);
 			std.mem.writeInt(u64, data[16..24], @as(u64, @bitCast(playerPos[2])), .big);
 			std.mem.writeInt(u64, data[24..32], @as(u64, @bitCast(playerVel[0])), .big);
 			std.mem.writeInt(u64, data[32..40], @as(u64, @bitCast(playerVel[1])), .big);
@@ -868,7 +866,7 @@ pub const Protocols = struct {
 			}
 		}
 		pub fn disconnect(conn: *Connection) void {
-			const noData = [0]u8 {};
+			const noData = [0]u8{};
 			conn.sendUnimportant(id, &noData);
 		}
 	};
@@ -934,7 +932,7 @@ pub const Protocols = struct {
 		pub const id: u8 = 8;
 		pub const asynchronous = false;
 		fn receive(conn: *Connection, data: []const u8) !void {
-			const zonArray = ZonElement.parseFromString(main.stackAllocator, data);
+			const zonArray = ZonElement.parseFromString(main.stackAllocator, null, data);
 			defer zonArray.deinit(main.stackAllocator);
 			var i: u32 = 0;
 			while(i < zonArray.array.items.len) : (i += 1) {
@@ -1006,7 +1004,7 @@ pub const Protocols = struct {
 				type_reserved6 => {},
 				type_timeAndBiome => {
 					if(conn.manager.world) |world| {
-						const zon = ZonElement.parseFromString(main.stackAllocator, data[1..]);
+						const zon = ZonElement.parseFromString(main.stackAllocator, null, data[1..]);
 						defer zon.deinit(main.stackAllocator);
 						const expectedTime = zon.get(i64, "time", 0);
 						var curTime = world.gameTime.load(.monotonic);
@@ -1055,7 +1053,7 @@ pub const Protocols = struct {
 		}
 
 		pub fn sendTPCoordinates(conn: *Connection, pos: Vec3d) void {
-			var data: [1+24]u8 = undefined;
+			var data: [1 + 24]u8 = undefined;
 			data[0] = type_teleport;
 			std.mem.writeInt(u64, data[1..9], @as(u64, @bitCast(pos[0])), .big);
 			std.mem.writeInt(u64, data[9..17], @as(u64, @bitCast(pos[1])), .big);
@@ -1162,7 +1160,7 @@ pub const Protocols = struct {
 		pub fn sendLightMap(conn: *Connection, map: *main.server.terrain.LightMap.LightMapFragment) void {
 			var uncompressedData: [@sizeOf(@TypeOf(map.startHeight))]u8 = undefined; // TODO: #15280
 			for(&map.startHeight, 0..) |val, i| {
-				std.mem.writeInt(i16, uncompressedData[2*i..][0..2], val, .big);
+				std.mem.writeInt(i16, uncompressedData[2*i ..][0..2], val, .big);
 			}
 			const compressedData = utils.Compression.deflate(main.stackAllocator, &uncompressedData, .default);
 			defer main.stackAllocator.free(compressedData);
@@ -1224,7 +1222,6 @@ pub const Protocols = struct {
 	};
 };
 
-
 pub const Connection = struct { // MARK: Connection
 	const maxPacketSize: u32 = 65507; // max udp packet size
 	const importantHeaderSize: u32 = 5;
@@ -1282,7 +1279,7 @@ pub const Connection = struct { // MARK: Connection
 	pub fn init(manager: *ConnectionManager, ipPort: []const u8, user: ?*main.server.User) !*Connection {
 		const result: *Connection = main.globalAllocator.create(Connection);
 		errdefer main.globalAllocator.destroy(result);
-		result.* = Connection {
+		result.* = Connection{
 			.manager = manager,
 			.user = user,
 			.remoteAddress = undefined,
@@ -1371,7 +1368,7 @@ pub const Connection = struct { // MARK: Connection
 			_ = packetsSent.fetchAdd(1, .monotonic);
 			self.manager.send(data, self.remoteAddress, self.congestionControl_lastSendTime);
 			const packetSize = data.len + headerOverhead;
-			self.congestionControl_lastSendTime +%= @intFromFloat(@as(f32, @floatFromInt(packetSize)) * self.congestionControl_inversebandWidth);
+			self.congestionControl_lastSendTime +%= @intFromFloat(@as(f32, @floatFromInt(packetSize))*self.congestionControl_inversebandWidth);
 			self.congestionControl_bandWidthUsed += packetSize;
 		}
 		return shouldSend;
@@ -1518,8 +1515,8 @@ pub const Connection = struct { // MARK: Connection
 		{ // Cycle the receivedPackets lists:
 			const putBackToFront: main.List(u32) = self.receivedPackets[self.receivedPackets.len - 1];
 			var i: u32 = self.receivedPackets.len - 1;
-			while(i >= 1): (i -= 1) {
-				self.receivedPackets[i] = self.receivedPackets[i-1];
+			while(i >= 1) : (i -= 1) {
+				self.receivedPackets[i] = self.receivedPackets[i - 1];
 			}
 			self.receivedPackets[0] = putBackToFront;
 			self.receivedPackets[0].clearRetainingCapacity();
@@ -1546,8 +1543,8 @@ pub const Connection = struct { // MARK: Connection
 		var dataSentAtMaxBandWidth: usize = minimumBandWidth;
 		var maxDataSent: usize = 0;
 		{
-			var i: usize = self.lastKeepAliveReceived-%1 & congestionControl_historyMask;
-			while(i != self.lastKeepAliveReceived-%1 & congestionControl_historyMask) : (i = i-%1 & congestionControl_historyMask) {
+			var i: usize = self.lastKeepAliveReceived -% 1 & congestionControl_historyMask;
+			while(i != self.lastKeepAliveReceived -% 1 & congestionControl_historyMask) : (i = i -% 1 & congestionControl_historyMask) {
 				const dataSent: usize = self.congestionControl_bandWidthSentHistory[i];
 				const dataReceived: usize = self.congestionControl_bandWidthReceivedHistory[i];
 				if(dataReceived > maxBandWidth) {
@@ -1655,7 +1652,7 @@ pub const Connection = struct { // MARK: Connection
 			// Check if there is enough data available to fill the packets needs:
 			var dataAvailable = receivedPacket.len - newIndex;
 			var idd = id + 1;
-			while(dataAvailable < len): (idd += 1) {
+			while(dataAvailable < len) : (idd += 1) {
 				const otherPacket = self.lastReceivedPackets[idd & 65535] orelse return;
 				dataAvailable += otherPacket.len;
 			}
@@ -1666,7 +1663,7 @@ pub const Connection = struct { // MARK: Connection
 			var remaining = data[0..];
 			while(remaining.len != 0) {
 				dataAvailable = @min(self.lastReceivedPackets[id & 65535].?.len - newIndex, remaining.len);
-				@memcpy(remaining[0..dataAvailable], self.lastReceivedPackets[id & 65535].?[newIndex..newIndex + dataAvailable]);
+				@memcpy(remaining[0..dataAvailable], self.lastReceivedPackets[id & 65535].?[newIndex .. newIndex + dataAvailable]);
 				newIndex += @intCast(dataAvailable);
 				remaining = remaining[dataAvailable..];
 				if(newIndex == self.lastReceivedPackets[id & 65535].?.len) {
@@ -1674,7 +1671,7 @@ pub const Connection = struct { // MARK: Connection
 					newIndex = 0;
 				}
 			}
-			while(self.lastIncompletePacket != id): (self.lastIncompletePacket += 1) {
+			while(self.lastIncompletePacket != id) : (self.lastIncompletePacket += 1) {
 				self.lastReceivedPackets[self.lastIncompletePacket & 65535] = null;
 			}
 			self.lastIndex = newIndex;
@@ -1731,7 +1728,7 @@ pub const Connection = struct { // MARK: Connection
 			if(id < self.lastIncompletePacket or self.lastReceivedPackets[id & 65535] != null) {
 				return; // Already received the package in the past.
 			}
-			const temporaryMemory: []u8 = (&self.packetMemory[id & 65535])[0..data.len-importantHeaderSize];
+			const temporaryMemory: []u8 = (&self.packetMemory[id & 65535])[0 .. data.len - importantHeaderSize];
 			@memcpy(temporaryMemory, data[importantHeaderSize..]);
 			self.lastReceivedPackets[id & 65535] = temporaryMemory;
 			// Check if a message got completed:
@@ -1776,7 +1773,7 @@ const ProtocolTask = struct {
 
 	pub fn schedule(conn: *Connection, protocol: u8, data: []const u8) void {
 		const task = main.globalAllocator.create(ProtocolTask);
-		task.* = ProtocolTask {
+		task.* = ProtocolTask{
 			.conn = conn,
 			.protocol = protocol,
 			.data = main.globalAllocator.dupe(u8, data),

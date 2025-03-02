@@ -40,9 +40,7 @@ pub fn deinit(self: *MutexComponent) void {
 }
 
 pub fn toComponent(self: *MutexComponent) GuiComponent {
-	return GuiComponent {
-		.mutexComponent = self
-	};
+	return .{.mutexComponent = self};
 }
 
 pub fn updateSelected(self: *MutexComponent) void {

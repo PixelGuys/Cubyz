@@ -19,13 +19,11 @@ pub fn init(parameters: ZonElement) void {
 	_ = parameters;
 }
 
-pub fn deinit() void {
-
-}
+pub fn deinit() void {}
 
 /// Assumes the 2 points are at tᵢ = (0, 1)
 fn interpolationWeights(t: f32, interpolation: terrain.biomes.Interpolation) Vec2f {
-	switch (interpolation) {
+	switch(interpolation) {
 		.none => {
 			if(t < 0.5) {
 				return .{1, 0};
@@ -96,12 +94,12 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 			const offsetY = (yOffsetMap.get(x, y) - 0.5)*offsetScale;
 			const updatedX = wx + offsetX;
 			const updatedY = wy + offsetY;
-			var xBiome: i32 = @intFromFloat(@floor((updatedX - @as(f32, @floatFromInt(map.pos.wx)))/biomeSize));
-			var yBiome: i32 = @intFromFloat(@floor((updatedY - @as(f32, @floatFromInt(map.pos.wy)))/biomeSize));
-			const relXBiome = (0.5 + offsetX + @as(f32, @floatFromInt(x*map.pos.voxelSize -% xBiome*biomeSize)))/biomeSize;
-			xBiome += offset;
-			const relYBiome = (0.5 + offsetY + @as(f32, @floatFromInt(y*map.pos.voxelSize -% yBiome*biomeSize)))/biomeSize;
-			yBiome += offset;
+			const rawXBiome = (updatedX - @as(f32, @floatFromInt(map.pos.wx)))/biomeSize;
+			const rawYBiome = (updatedY - @as(f32, @floatFromInt(map.pos.wy)))/biomeSize;
+			const xBiome: i32 = @as(i32, @intFromFloat(@floor(rawXBiome))) + offset;
+			const yBiome: i32 = @as(i32, @intFromFloat(@floor(rawYBiome))) + offset;
+			const relXBiome = rawXBiome - @floor(rawXBiome);
+			const relYBiome = rawYBiome - @floor(rawYBiome);
 			var closestBiome: *const terrain.biomes.Biome = undefined;
 			if(relXBiome < 0.5) {
 				if(relYBiome < 0.5) {
@@ -154,13 +152,10 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 			map.minHeight = @max(map.minHeight, 0);
 			map.maxHeight = @max(map.maxHeight, @as(i32, @intFromFloat(height)));
 
-
 			// Select a biome. Also adding some white noise to make a smoother transition.
-			xBiome = @intFromFloat(@round((updatedX - @as(f32, @floatFromInt(map.pos.wx)))/biomeSize));
-			xBiome += offset;
-			yBiome = @intFromFloat(@round((updatedY - @as(f32, @floatFromInt(map.pos.wy)))/biomeSize));
-			yBiome += offset;
-			const biomePoint = biomePositions.get(@intCast(xBiome), @intCast(yBiome));
+			const roundedXBiome = @as(i32, @intFromFloat(@round(rawXBiome))) + offset;
+			const roundedYBiome = @as(i32, @intFromFloat(@round(rawYBiome))) + offset;
+			const biomePoint = biomePositions.get(@intCast(roundedXBiome), @intCast(roundedYBiome));
 			map.biomeMap[x][y] = biomePoint.biome;
 		}
 	}
