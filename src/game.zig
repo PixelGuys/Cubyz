@@ -20,14 +20,12 @@ const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
 const Vec3d = vec.Vec3d;
 const Mat4f = vec.Mat4f;
-const Vec3i = vec.Vec3i;
 const graphics = @import("graphics.zig");
 const models = main.models;
 const Fog = graphics.Fog;
 const renderer = @import("renderer.zig");
 const settings = @import("settings.zig");
-const List = @import("utils/list.zig").List;
-const Block = @import("blocks.zig").Block;
+const Block = main.blocks.Block;
 
 pub const camera = struct { // MARK: camera
 	pub var rotation: Vec3f = Vec3f{0, 0, 0};
@@ -363,6 +361,63 @@ pub const collision = struct {
 		}
 
 		return resultingMovement;
+	}
+
+	fn isBlockIntersecting(block: Block, posX: i32, posY: i32, posZ: i32, center: Vec3d, extent: Vec3d) bool {
+		const model = &models.models.items[block.mode().model(block)];
+		const position = Vec3d{@floatFromInt(posX), @floatFromInt(posY), @floatFromInt(posZ)};
+		for(model.neighborFacingQuads) |quads| {
+			for(quads) |quadIndex| {
+				const quad = &models.quads.items[quadIndex];
+				if(triangleAABB(.{quad.corners[0] + quad.normal + position, quad.corners[2] + quad.normal + position, quad.corners[1] + quad.normal + position}, center, extent) or
+					triangleAABB(.{quad.corners[1] + quad.normal + position, quad.corners[2] + quad.normal + position, quad.corners[3] + quad.normal + position}, center, extent)) return true;
+			}
+		}
+		for(model.internalQuads) |quadIndex| {
+			const quad = &models.quads.items[quadIndex];
+			if(triangleAABB(.{quad.corners[0] + position, quad.corners[2] + position, quad.corners[1] + position}, center, extent) or
+				triangleAABB(.{quad.corners[1] + position, quad.corners[2] + position, quad.corners[3] + position}, center, extent)) return true;
+		}
+		return false;
+	}
+
+	const touchRetraction = @as(Vec3d, @splat(0.0001));
+
+	pub fn touchBlocks(entity: main.server.Entity, hitBox: Box, side: main.utils.Side) void {
+		const boundingBox: Box = .{.min = entity.pos + hitBox.min + touchRetraction, .max = entity.pos + hitBox.max + touchRetraction};
+
+		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0] - 0.01));
+		const maxX: i32 = @intFromFloat(@floor(boundingBox.max[0] + 0.01));
+		const minY: i32 = @intFromFloat(@floor(boundingBox.min[1] - 0.01));
+		const maxY: i32 = @intFromFloat(@floor(boundingBox.max[1] + 0.01));
+		const minZ: i32 = @intFromFloat(@floor(boundingBox.min[2] - 0.01));
+		const maxZ: i32 = @intFromFloat(@floor(boundingBox.max[2] + 0.01));
+
+		const center: Vec3d = boundingBox.center();
+		const extent: Vec3d = boundingBox.extent();
+
+		const extentX: Vec3d = extent + Vec3d{0.01, -0.01, -0.01};
+		const extentY: Vec3d = extent + Vec3d{-0.01, 0.01, -0.01};
+		const extentZ: Vec3d = extent + Vec3d{-0.01, -0.01, 0.01};
+
+		var posX: i32 = minX;
+		while(posX <= maxX) : (posX += 1) {
+			var posY: i32 = minY;
+			while(posY <= maxY) : (posY += 1) {
+				var posZ: i32 = minZ;
+				while(posZ <= maxZ) : (posZ += 1) {
+					const block: ?Block =
+						if(side == .client) main.renderer.mesh_storage.getBlock(posX, posY, posZ) else main.server.world.?.getBlock(posX, posY, posZ);
+					if(block == null or !block.?.checkEntityTouch())
+						continue;
+					const touchX: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentX);
+					const touchY: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentY);
+					const touchZ: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentZ);
+					if(touchX or touchY or touchZ)
+						block.?.onEntityTouch(entity, posX, posY, posZ, touchX and touchY and touchZ);
+				}
+			}
+		}
 	}
 
 	pub const Box = struct {
@@ -1129,6 +1184,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		} else if(Player.eyeCoyote > 0) {
 			Player.eyePos[2] -= move[2];
 		}
+		collision.touchBlocks(Player.super, hitBox, .client);
 	} else {
 		Player.super.pos += move;
 	}
