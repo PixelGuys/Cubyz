@@ -13,10 +13,10 @@ const MutexComponent = GuiComponent.MutexComponent;
 const TextInput = GuiComponent.TextInput;
 const VerticalList = @import("../components/VerticalList.zig");
 
-pub var window: GuiWindow = GuiWindow {
+pub var window: GuiWindow = GuiWindow{
 	.relativePosition = .{
-		.{ .attachedToFrame = .{.selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper} },
-		.{ .attachedToFrame = .{.selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper} },
+		.{.attachedToFrame = .{.selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper}},
+		.{.attachedToFrame = .{.selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper}},
 	},
 	.scale = 0.5,
 	.contentSize = Vec2f{64, 64},

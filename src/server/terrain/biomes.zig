@@ -37,7 +37,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 			std.log.err("Couldn't find structure model with id {s}", .{id});
 			return null;
 		};
-		return SimpleStructureModel {
+		return SimpleStructureModel{
 			.vtable = vtable,
 			.data = vtable.loadModel(arena.allocator(), parameters),
 			.chance = parameters.get(f32, "chance", 0.1),
@@ -49,7 +49,6 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 	pub fn generate(self: SimpleStructureModel, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64, isCeiling: bool) void {
 		self.vtable.generate(self.data, x, y, z, chunk, caveMap, seed, isCeiling);
 	}
-
 
 	var modelRegistry: std.StringHashMapUnmanaged(VTable) = .{};
 	var arena: main.utils.NeverFailingArenaAllocator = .init(main.globalAllocator);
@@ -96,7 +95,7 @@ const Stripe = struct { // MARK: Stripe
 
 		var minDistance: f64 = 0;
 		var maxDistance: f64 = 0;
-		if (parameters.object.get("distance")) |dist| {
+		if(parameters.object.get("distance")) |dist| {
 			minDistance = dist.as(f64, 0);
 			maxDistance = dist.as(f64, 0);
 		} else {
@@ -106,7 +105,7 @@ const Stripe = struct { // MARK: Stripe
 
 		var minOffset: f64 = 0;
 		var maxOffset: f64 = 0;
-		if (parameters.object.get("offset")) |off| {
+		if(parameters.object.get("offset")) |off| {
 			minOffset = off.as(f64, 0);
 			maxOffset = off.as(f64, 0);
 		} else {
@@ -116,7 +115,7 @@ const Stripe = struct { // MARK: Stripe
 
 		var minWidth: f64 = 0;
 		var maxWidth: f64 = 0;
-		if (parameters.object.get("width")) |width| {
+		if(parameters.object.get("width")) |width| {
 			minWidth = width.as(f64, 0);
 			maxWidth = width.as(f64, 0);
 		} else {
@@ -124,7 +123,7 @@ const Stripe = struct { // MARK: Stripe
 			maxWidth = parameters.get(f64, "maxWidth", 0);
 		}
 
-		return Stripe {
+		return Stripe{
 			.direction = dir,
 			.block = block,
 
@@ -198,11 +197,11 @@ pub const Interpolation = enum(u8) {
 };
 
 fn u32ToVec3(color: u32) Vec3f {
-	const r = @as(f32, @floatFromInt((color >> 16) & 0xFF)) / 255.0;
-	const g = @as(f32, @floatFromInt((color >> 8) & 0xFF)) / 255.0;
-	const b = @as(f32, @floatFromInt(color & 0xFF)) / 255.0;
+	const r = @as(f32, @floatFromInt((color >> 16) & 0xFF))/255.0;
+	const g = @as(f32, @floatFromInt((color >> 8) & 0xFF))/255.0;
+	const b = @as(f32, @floatFromInt(color & 0xFF))/255.0;
 
-	return .{ r, g, b };
+	return .{r, g, b};
 }
 
 /// A climate region with special ground, plants and structures.
@@ -289,7 +288,7 @@ pub const Biome = struct { // MARK: Biome
 	pub fn init(self: *Biome, id: []const u8, paletteId: u32, zon: ZonElement) void {
 		const minRadius = zon.get(f32, "radius", zon.get(f32, "minRadius", 256));
 		const maxRadius = zon.get(f32, "maxRadius", minRadius);
-		self.* = Biome {
+		self.* = Biome{
 			.id = main.globalAllocator.dupe(u8, id),
 			.paletteId = paletteId,
 			.properties = GenerationProperties.fromZon(zon.getChild("properties"), true),
@@ -367,7 +366,7 @@ pub const Biome = struct { // MARK: Biome
 
 		const stripes = zon.getChild("stripes");
 		self.stripes = main.globalAllocator.alloc(Stripe, stripes.toSlice().len);
-		for (stripes.toSlice(), 0..) |elem, i| {
+		for(stripes.toSlice(), 0..) |elem, i| {
 			self.stripes[i] = Stripe.init(elem);
 		}
 	}
@@ -422,7 +421,7 @@ pub const BlockStructure = struct { // MARK: BlockStructure
 
 	pub fn init(allocator: NeverFailingAllocator, zonArray: ZonElement) BlockStructure {
 		const blockStackDescriptions = zonArray.toSlice();
-		const self = BlockStructure {
+		const self = BlockStructure{
 			.structure = allocator.alloc(BlockStack, blockStackDescriptions.len),
 		};
 		for(blockStackDescriptions, self.structure) |zonString, *blockStack| {
@@ -496,13 +495,11 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 		chanceMiddle /= totalChance;
 		chanceUpper /= totalChance;
 
-		self.* = .{
-			.branch = .{
-				.lowerBorder = terrain.noise.ValueNoise.percentile(chanceLower),
-				.upperBorder = terrain.noise.ValueNoise.percentile(chanceLower + chanceMiddle),
-				.children = undefined,
-			}
-		};
+		self.* = .{.branch = .{
+			.lowerBorder = terrain.noise.ValueNoise.percentile(chanceLower),
+			.upperBorder = terrain.noise.ValueNoise.percentile(chanceLower + chanceMiddle),
+			.children = undefined,
+		}};
 
 		// Partition the slice:
 		var lowerIndex: usize = undefined;
@@ -529,9 +526,9 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 			@memcpy(currentSlice[upperIndex..], lists[2].items);
 		}
 
-		self.branch.children[0] = TreeNode.init(allocator, currentSlice[0..lowerIndex], parameterShift+3);
-		self.branch.children[1] = TreeNode.init(allocator, currentSlice[lowerIndex..upperIndex], parameterShift+3);
-		self.branch.children[2] = TreeNode.init(allocator, currentSlice[upperIndex..], parameterShift+3);
+		self.branch.children[0] = TreeNode.init(allocator, currentSlice[0..lowerIndex], parameterShift + 3);
+		self.branch.children[1] = TreeNode.init(allocator, currentSlice[lowerIndex..upperIndex], parameterShift + 3);
+		self.branch.children[2] = TreeNode.init(allocator, currentSlice[upperIndex..], parameterShift + 3);
 
 		return self;
 	}
@@ -545,7 +542,7 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 				for(branch.children) |child| {
 					child.deinit(allocator);
 				}
-			}
+			},
 		}
 		allocator.destroy(self);
 	}
@@ -569,7 +566,7 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 					}
 				}
 				return branch.children[index].getBiome(seed, x, y, depth + 1);
-			}
+			},
 		}
 	}
 };

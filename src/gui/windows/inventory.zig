@@ -16,10 +16,10 @@ const ItemSlot = GuiComponent.ItemSlot;
 
 const hotbar = @import("hotbar.zig");
 
-pub var window = GuiWindow {
+pub var window = GuiWindow{
 	.relativePosition = .{
-		.{ .attachedToWindow = .{.reference = &hotbar.window, .selfAttachmentPoint = .middle, .otherAttachmentPoint = .middle} },
-		.{ .attachedToWindow = .{.reference = &hotbar.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .lower} },
+		.{.attachedToWindow = .{.reference = &hotbar.window, .selfAttachmentPoint = .middle, .otherAttachmentPoint = .middle}},
+		.{.attachedToWindow = .{.reference = &hotbar.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .lower}},
 	},
 	.contentSize = Vec2f{64*10, 64*3},
 	.scale = 0.75,

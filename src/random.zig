@@ -25,8 +25,8 @@ fn next(comptime T: type, seed: *u64) T {
 pub fn nextInt(comptime T: type, seed: *u64) T {
 	if(@bitSizeOf(T) > 32) {
 		var result: T = 0;
-		for(0..(@bitSizeOf(T)+31)/32) |_| {
-			result = result<<5 | next(u32, seed);
+		for(0..(@bitSizeOf(T) + 31)/32) |_| {
+			result = result << 5 | next(u32, seed);
 		}
 		return result;
 	} else {
@@ -72,13 +72,13 @@ pub fn nextFloatVectorSigned(len: comptime_int, seed: *u64) @Vector(len, f32) {
 pub fn nextDouble(seed: *u64) f64 {
 	const lower: u52 = nextInt(u32, seed);
 	const upper: u52 = nextInt(u20, seed);
-	return @as(f64, @floatFromInt(upper<<32 | lower))/(1 << 52);
+	return @as(f64, @floatFromInt(upper << 32 | lower))/(1 << 52);
 }
 
 pub fn nextDoubleSigned(seed: *u64) f64 {
 	const lower: i52 = nextInt(u32, seed);
 	const upper: i52 = nextInt(u20, seed);
-	return @as(f64, @floatFromInt(upper<<32 | lower))/(1 << 51);
+	return @as(f64, @floatFromInt(upper << 32 | lower))/(1 << 51);
 }
 
 pub fn nextDoubleVector(len: comptime_int, seed: *u64) @Vector(len, f64) {
@@ -108,13 +108,13 @@ pub fn nextPointInUnitCircle(seed: *u64) Vec2f {
 }
 
 pub fn initSeed3D(worldSeed: u64, pos: Vec3i) u64 {
-	const fac = Vec3i {11248723, 105436839, 45399083};
-	const seed = @reduce(.Xor, fac *% pos);
+	const fac = Vec3i{11248723, 105436839, 45399083};
+	const seed = @reduce(.Xor, fac*%pos);
 	return @as(u32, @bitCast(seed)) ^ worldSeed;
 }
 
 pub fn initSeed2D(worldSeed: u64, pos: Vec2i) u64 {
-	const fac = Vec2i {11248723, 105436839};
-	const seed = @reduce(.Xor, fac *% pos);
+	const fac = Vec2i{11248723, 105436839};
+	const seed = @reduce(.Xor, fac*%pos);
 	return @as(u32, @bitCast(seed)) ^ worldSeed;
 }

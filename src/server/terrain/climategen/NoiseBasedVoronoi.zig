@@ -23,9 +23,7 @@ pub fn init(parameters: ZonElement) void {
 	_ = parameters;
 }
 
-pub fn deinit() void {
-
-}
+pub fn deinit() void {}
 
 pub fn generateMapFragment(map: *ClimateMapFragment, worldSeed: u64) void {
 	var seed: u64 = worldSeed;
@@ -75,7 +73,6 @@ const maxBiomeRadius = 2048;
 
 const chunkSize = maxBiomeRadius;
 const Chunk = struct {
-
 	wx: i32,
 	wy: i32,
 	biomesSortedByX: []BiomePoint,
@@ -183,7 +180,6 @@ const Chunk = struct {
 };
 
 const GenerationStructure = struct {
-
 	chunks: Array2D(*Chunk) = undefined, // Implemented as slices into the original array!
 
 	pub fn init(allocator: NeverFailingAllocator, wx: i32, wy: i32, width: u31, height: u31, tree: *TreeNode, worldSeed: u64) GenerationStructure {
@@ -337,7 +333,7 @@ const GenerationStructure = struct {
 		for(1..neighborData.len) |i| {
 			for(1..size - 1) |x| {
 				for(1..size - 1) |y| {
-					neighborData[i][x][y] = neighborData[i-1][x][y] | neighborData[i-1][x-1][y] | neighborData[i-1][x+1][y] | neighborData[i-1][x][y-1] | neighborData[i-1][x][y+1];
+					neighborData[i][x][y] = neighborData[i - 1][x][y] | neighborData[i - 1][x - 1][y] | neighborData[i - 1][x + 1][y] | neighborData[i - 1][x][y - 1] | neighborData[i - 1][x][y + 1];
 				}
 			}
 		}
