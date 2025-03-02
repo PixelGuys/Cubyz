@@ -23,6 +23,6 @@ jobs:
       - run: zig build format --summary none
       - run: |
           if ! zig fmt *.zig src/*.zig src/*/*.zig src/*/*/*.zig src/*/*/*/*.zig src/*/*/*/*/*.zig src/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*/*/*.zig ; then
-            git diff;
+            git diff --color=always;
             exit 1;
           fi
