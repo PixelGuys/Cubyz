@@ -18,7 +18,6 @@ pub const storage = @import("storage.zig");
 
 const command = @import("command/_command.zig");
 
-
 pub const User = struct { // MARK: User
 	const maxSimulationDistance = 8;
 	const simulationSize = 2*maxSimulationDistance;
@@ -178,7 +177,7 @@ pub const User = struct { // MARK: User
 		self.lastTime = time;
 
 		const saveTime = std.time.milliTimestamp();
-		if (saveTime -% self.lastSaveTime > 5000) {
+		if(saveTime -% self.lastSaveTime > 5000) {
 			world.?.savePlayer(self) catch |err| {
 				std.log.err("Failed to save player {s}: {s}", .{self.name, @errorName(err)});
 			};
@@ -387,7 +386,6 @@ pub fn start(name: []const u8, port: ?u16) void {
 			lastTime = newTime;
 		}
 		update();
-
 	}
 }
 
@@ -476,7 +474,7 @@ pub fn connectInternal(user: *User) void {
 
 pub fn messageFrom(msg: []const u8, source: *User) void { // MARK: message
 	if(msg[0] == '/') { // Command.
-		if (world.?.allowCheats) {
+		if(world.?.allowCheats) {
 			std.log.info("User \"{s}\" executed command \"{s}\"", .{source.name, msg}); // TODO use color \033[0;32m
 			command.execute(msg[1..], source);
 		} else {

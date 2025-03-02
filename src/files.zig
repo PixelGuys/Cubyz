@@ -25,7 +25,7 @@ pub fn openDirInWindow(path: []const u8) void {
 	const newPath = main.stackAllocator.dupe(u8, path);
 	defer main.stackAllocator.free(newPath);
 
-	if (builtin.os.tag == .windows) {
+	if(builtin.os.tag == .windows) {
 		std.mem.replaceScalar(u8, newPath, '/', '\\');
 	}
 
@@ -48,7 +48,7 @@ pub fn openDirInWindow(path: []const u8) void {
 }
 
 pub fn openDir(path: []const u8) !Dir {
-	return Dir {
+	return Dir{
 		.dir = try std.fs.cwd().makeOpenPath(path, .{}),
 	};
 }
@@ -68,7 +68,7 @@ pub fn hasFile(path: []const u8) bool {
 }
 
 fn cwd() Dir {
-	return Dir {
+	return Dir{
 		.dir = std.fs.cwd(),
 	};
 }

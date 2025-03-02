@@ -5,7 +5,6 @@ const vec = main.vec;
 const Vec2f = vec.Vec2f;
 
 pub const GuiComponent = union(enum) {
-
 	pub const Button = @import("components/Button.zig");
 	pub const CheckBox = @import("components/CheckBox.zig");
 	pub const HorizontalList = @import("components/HorizontalList.zig");
@@ -18,7 +17,6 @@ pub const GuiComponent = union(enum) {
 	pub const DiscreteSlider = @import("components/DiscreteSlider.zig");
 	pub const TextInput = @import("components/TextInput.zig");
 	pub const VerticalList = @import("components/VerticalList.zig");
-
 
 	button: *Button,
 	checkBox: *CheckBox,
@@ -39,7 +37,7 @@ pub const GuiComponent = union(enum) {
 				if(@hasDecl(@TypeOf(impl.*), "deinit")) {
 					impl.deinit();
 				}
-			}
+			},
 		}
 	}
 
@@ -47,7 +45,7 @@ pub const GuiComponent = union(enum) {
 		switch(self) {
 			inline else => |impl| {
 				return &impl.pos;
-			}
+			},
 		}
 	}
 
@@ -55,7 +53,7 @@ pub const GuiComponent = union(enum) {
 		switch(self) {
 			inline else => |impl| {
 				return &impl.size;
-			}
+			},
 		}
 	}
 
@@ -63,7 +61,7 @@ pub const GuiComponent = union(enum) {
 		switch(self) {
 			inline else => |impl| {
 				return impl.pos;
-			}
+			},
 		}
 	}
 
@@ -71,7 +69,7 @@ pub const GuiComponent = union(enum) {
 		switch(self) {
 			inline else => |impl| {
 				return impl.size;
-			}
+			},
 		}
 	}
 
@@ -81,7 +79,7 @@ pub const GuiComponent = union(enum) {
 				if(@hasDecl(@TypeOf(impl.*), "updateSelected")) {
 					impl.updateSelected();
 				}
-			}
+			},
 		}
 	}
 
@@ -91,7 +89,7 @@ pub const GuiComponent = union(enum) {
 				if(@hasDecl(@TypeOf(impl.*), "updateHovered")) {
 					impl.updateHovered(mousePosition);
 				}
-			}
+			},
 		}
 	}
 
@@ -101,7 +99,7 @@ pub const GuiComponent = union(enum) {
 				if(@hasDecl(@TypeOf(impl.*), "render")) {
 					impl.render(mousePosition);
 				}
-			}
+			},
 		}
 	}
 
@@ -111,7 +109,7 @@ pub const GuiComponent = union(enum) {
 				if(@hasDecl(@TypeOf(impl.*), "mainButtonPressed")) {
 					impl.mainButtonPressed(mousePosition);
 				}
-			}
+			},
 		}
 	}
 
@@ -121,7 +119,7 @@ pub const GuiComponent = union(enum) {
 				if(@hasDecl(@TypeOf(impl.*), "mainButtonReleased")) {
 					impl.mainButtonReleased(mousePosition);
 				}
-			}
+			},
 		}
 	}
 

@@ -12,11 +12,11 @@ const GuiComponent = gui.GuiComponent;
 
 const hotbar = @import("hotbar.zig");
 
-pub var window = GuiWindow {
+pub var window = GuiWindow{
 	.scale = 0.5,
 	.relativePosition = .{
-		.{ .attachedToWindow = .{.reference = &hotbar.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper} },
-		.{ .attachedToWindow = .{.reference = &hotbar.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .lower} },
+		.{.attachedToWindow = .{.reference = &hotbar.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper}},
+		.{.attachedToWindow = .{.reference = &hotbar.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .lower}},
 	},
 	.contentSize = Vec2f{160, 20},
 	.isHud = true,

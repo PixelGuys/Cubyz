@@ -42,11 +42,11 @@ const Material = struct { // MARK: Material
 		self.colorPalette = allocator.alloc(Color, colors.toSlice().len);
 		for(colors.toSlice(), self.colorPalette) |item, *color| {
 			const colorInt: u32 = @intCast(item.as(i64, 0xff000000) & 0xffffffff);
-			color.* = Color {
-				.r = @intCast(colorInt>>16 & 0xff),
-				.g = @intCast(colorInt>>8 & 0xff),
-				.b = @intCast(colorInt>>0 & 0xff),
-				.a = @intCast(colorInt>>24 & 0xff),
+			color.* = Color{
+				.r = @intCast(colorInt >> 16 & 0xff),
+				.g = @intCast(colorInt >> 8 & 0xff),
+				.b = @intCast(colorInt >> 0 & 0xff),
+				.a = @intCast(colorInt >> 24 & 0xff),
 			};
 		}
 		const modifiersZon = zon.getChild("modifiers");
@@ -133,7 +133,6 @@ const MaterialProperty = enum {
 	}
 };
 
-
 pub const BaseItem = struct { // MARK: BaseItem
 	image: graphics.Image,
 	texture: ?graphics.Texture, // TODO: Properly deinit
@@ -145,7 +144,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 	block: ?u16,
 	foodValue: f32, // TODO: Effects.
 
-	var unobtainable = BaseItem {
+	var unobtainable = BaseItem{
 		.image = graphics.Image.defaultImage,
 		.texture = null,
 		.id = "unobtainable",
@@ -223,7 +222,7 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 				heightMap[x][y] = 0;
 				// The heighmap basically consists of the amount of neighbors this pixel has.
 				// Also check if there are different neighbors.
-				const oneItem = itemGrid[if(x == 0) x else x-1][if(y == 0) y else y-1];
+				const oneItem = itemGrid[if(x == 0) x else x - 1][if(y == 0) y else y - 1];
 				var hasDifferentItems: bool = false;
 				var dx: i32 = -1;
 				while(dx <= 0) : (dx += 1) {
@@ -291,11 +290,11 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 						// Calculate the lighting based on the nearest free space:
 						const lightTL = heightMap[x][y] - heightMap[x + 1][y + 1];
 						const lightTR = heightMap[x + 1][y] - heightMap[x][y + 1];
-						var light = 2 - @as(i32, @intFromFloat(@round((lightTL * 2 + lightTR) / 6)));
+						var light = 2 - @as(i32, @intFromFloat(@round((lightTL*2 + lightTR)/6)));
 						light = @max(@min(light, 4), 0);
 						img.setRGB(x, 15 - y, material.colorPalette[@intCast(light)]);
 					} else {
-						img.setRGB(x, 15 - y, if((x ^ y) & 1 == 0) Color{.r=255, .g=0, .b=255, .a=255} else Color{.r=0, .g=0, .b=0, .a=255});
+						img.setRGB(x, 15 - y, if((x ^ y) & 1 == 0) Color{.r = 255, .g = 0, .b = 255, .a = 255} else Color{.r = 0, .g = 0, .b = 0, .a = 255});
 					}
 				} else {
 					img.setRGB(x, 15 - y, Color{.r = 0, .g = 0, .b = 0, .a = 0});
@@ -329,9 +328,11 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 				tempModifiers.append(newMod);
 			}
 		}
-		std.sort.insertion(Modifier, tempModifiers.items, {}, struct {fn lessThan(_: void, lhs: Modifier, rhs: Modifier)bool {
-			return lhs.vTable.priority < rhs.vTable.priority;
-		}}.lessThan);
+		std.sort.insertion(Modifier, tempModifiers.items, {}, struct {
+			fn lessThan(_: void, lhs: Modifier, rhs: Modifier) bool {
+				return lhs.vTable.priority < rhs.vTable.priority;
+			}
+		}.lessThan);
 		tool.modifiers = main.globalAllocator.dupe(Modifier, tempModifiers.items);
 		for(tempModifiers.items) |mod| {
 			mod.changeToolParameters(tool);
@@ -341,7 +342,7 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 	}
 };
 
-const SlotInfo = struct {// MARK: SlotInfo
+const SlotInfo = struct { // MARK: SlotInfo
 	parameters: []ParameterSet = &.{},
 	disabled: bool = false,
 	optional: bool = false,
@@ -478,7 +479,6 @@ pub const Tool = struct { // MARK: Tool
 		};
 		@memcpy(result.image.imageData, self.image.imageData);
 		return result;
-
 	}
 
 	pub fn initFromCraftingGrid(craftingGrid: [25]?*const BaseItem, seed: u32, typ: *const ToolType) *Tool {
@@ -515,7 +515,7 @@ pub const Tool = struct { // MARK: Tool
 		const zonArray = ZonElement.initArray(allocator);
 		for(self.craftingGrid) |nullItem| {
 			if(nullItem) |item| {
-				zonArray.array.append(.{.string=item.id});
+				zonArray.array.append(.{.string = item.id});
 			} else {
 				zonArray.array.append(.null);
 			}
@@ -558,14 +558,13 @@ pub const Tool = struct { // MARK: Tool
 			\\Time to swing: {d:.2} s
 			\\Damage: {d:.2}
 			\\Durability: {}/{}
-			,
-			.{
-				self.type.id,
-				self.swingTime,
-				self.damage,
-				self.durability, std.math.lossyCast(u32, self.maxDurability),
-			}
-		) catch unreachable;
+		, .{
+			self.type.id,
+			self.swingTime,
+			self.damage,
+			self.durability,
+			std.math.lossyCast(u32, self.maxDurability),
+		}) catch unreachable;
 		if(self.modifiers.len != 0) {
 			self.tooltip.appendSlice("\nModifiers:\n");
 			for(self.modifiers) |modifier| {
@@ -624,7 +623,7 @@ pub const Item = union(enum) { // MARK: Item
 			.baseItem => return self,
 			.tool => |tool| {
 				return .{.tool = tool.clone()};
-			}
+			},
 		}
 	}
 
@@ -816,7 +815,7 @@ fn loadPixelSources(assetFolder: []const u8, id: []const u8, layerPostfix: []con
 		defer main.stackAllocator.free(replacementPath);
 		break :blk main.graphics.Image.readFromFile(main.stackAllocator, replacementPath) catch |err2| {
 			if(layerPostfix.len == 0 or err2 != error.FileNotFound)
-			std.log.err("Error while reading tool image. Tried '{s}' and '{s}': {s}", .{path, replacementPath, @errorName(err2)});
+				std.log.err("Error while reading tool image. Tried '{s}' and '{s}': {s}", .{path, replacementPath, @errorName(err2)});
 			break :blk main.graphics.Image.emptyImage;
 		};
 	};
@@ -891,7 +890,7 @@ fn parseRecipeItem(zon: ZonElement) !ItemStack {
 	var result: ItemStack = .{.amount = 1};
 	if(std.mem.indexOfScalar(u8, id, ' ')) |index| blk: {
 		result.amount = std.fmt.parseInt(u16, id[0..index], 0) catch break :blk;
-		id = id[index + 1..];
+		id = id[index + 1 ..];
 		id = std.mem.trim(u8, id, &std.ascii.whitespace);
 	}
 	result.item = .{.baseItem = getByID(id) orelse return error.ItemNotFound};
@@ -901,7 +900,7 @@ fn parseRecipeItem(zon: ZonElement) !ItemStack {
 fn parseRecipe(zon: ZonElement) !Recipe {
 	const inputs = zon.getChild("inputs").toSlice();
 	const output = try parseRecipeItem(zon.getChild("output"));
-	const recipe = Recipe {
+	const recipe = Recipe{
 		.sourceItems = arena.allocator().alloc(*BaseItem, inputs.len),
 		.sourceAmounts = arena.allocator().alloc(u16, inputs.len),
 		.resultItem = output.item.?.baseItem,
