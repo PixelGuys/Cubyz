@@ -878,7 +878,8 @@ pub fn hyperSpeedToggle() void {
 	Player.hyperSpeed.store(!Player.hyperSpeed.load(.monotonic), .monotonic);
 }
 
-const touchOffset = 0.01;
+const touchRetraction = @as(Vec3d, @splat(0.0001));
+const touchExpansion = 0.01;
 
 fn isBlockIntersecting(block: ?Block, posX: i32, posY: i32, posZ: i32, center: Vec3d, extent: Vec3d) bool {
 	const model = &models.models.items[block.?.mode().model(block.?)];
@@ -902,16 +903,16 @@ fn isBlockIntersecting(block: ?Block, posX: i32, posY: i32, posZ: i32, center: V
 	return false;
 }
 
-fn touchBlocksFromDirection(entity: main.server.Entity, boundingBox: collision.Box, comptime side: main.utils.Side, comptime swizzle: Vec3i, comptime uniformMin: bool, comptime neighbor: chunk.Neighbor) void {
+fn touchNeighborBlocks(entity: main.server.Entity, boundingBox: collision.Box, comptime side: main.utils.Side, comptime swizzle: Vec3i, comptime uniformMin: bool, comptime neighbor: chunk.Neighbor) void {
 	var skewedBox: collision.Box = boundingBox;
 
-	skewedBox.min[swizzle[0]] += touchOffset;
-	skewedBox.min[swizzle[1]] += touchOffset;
-	skewedBox.min[swizzle[2]] -= touchOffset;
+	skewedBox.min[swizzle[0]] += touchExpansion;
+	skewedBox.min[swizzle[1]] += touchExpansion;
+	skewedBox.min[swizzle[2]] -= touchExpansion;
 
-	skewedBox.max[swizzle[0]] -= touchOffset;
-	skewedBox.max[swizzle[1]] -= touchOffset;
-	skewedBox.max[swizzle[2]] += touchOffset;
+	skewedBox.max[swizzle[0]] -= touchExpansion;
+	skewedBox.max[swizzle[1]] -= touchExpansion;
+	skewedBox.max[swizzle[2]] += touchExpansion;
 
 	const center = skewedBox.center();
 	const extent = skewedBox.extent();
@@ -925,9 +926,9 @@ fn touchBlocksFromDirection(entity: main.server.Entity, boundingBox: collision.B
 		else @intFromFloat(@floor(skewedBox.max[swizzle[2]]));
 
 	var posX: i32 = minX;
-	while (posX <= maxX) {
+	while (posX <= maxX) : (posX += 1) {
 		var posY: i32 = minY;
-		while (posY <= maxY) {
+		while (posY <= maxY) : (posY += 1) {
 			var blockPos: Vec3i = undefined;
 			blockPos[swizzle[0]] = posX;
 			blockPos[swizzle[1]] = posY;
@@ -938,16 +939,27 @@ fn touchBlocksFromDirection(entity: main.server.Entity, boundingBox: collision.B
 			if (block != null and isBlockIntersecting(block, blockPos[0], blockPos[1], blockPos[2], center, extent)) {
 				block.?.onEntityTouching(entity, blockPos[0], blockPos[1], blockPos[2], neighbor);
 			}
-			posY += 1;
 		}
-		posX += 1;
 	}
 }
 
 fn touchBlocks(entity: main.server.Entity, hitBox: collision.Box, comptime side: main.utils.Side) void {
 	const boundingBox: collision.Box = .{
-		.min = entity.pos + hitBox.min + @as(Vec3d, @splat(0.0001)),
-		.max = entity.pos + hitBox.max - @as(Vec3d, @splat(0.0001))
+		.min = entity.pos + hitBox.min + touchRetraction,
+		.max = entity.pos + hitBox.max - touchRetraction
+	};
+	touchNeighborBlocks(entity, boundingBox, side, Vec3i {0, 1, 2}, false, chunk.Neighbor.dirUp);
+	touchNeighborBlocks(entity, boundingBox, side, Vec3i {0, 1, 2}, true, chunk.Neighbor.dirDown);
+	touchNeighborBlocks(entity, boundingBox, side, Vec3i {1, 2, 0}, false, chunk.Neighbor.dirPosX);
+	touchNeighborBlocks(entity, boundingBox, side, Vec3i {1, 2, 0}, true, chunk.Neighbor.dirNegX);
+	touchNeighborBlocks(entity, boundingBox, side, Vec3i {0, 2, 1}, false, chunk.Neighbor.dirPosY);
+	touchNeighborBlocks(entity, boundingBox, side, Vec3i {0, 2, 1}, true, chunk.Neighbor.dirNegY);
+}
+
+fn insideBlocks(entity: main.server.Entity, hitBox: collision.Box, comptime side: main.utils.Side) void {
+	const boundingBox: collision.Box = .{
+		.min = entity.pos + hitBox.min + touchRetraction,
+		.max = entity.pos + hitBox.max - touchRetraction
 	};
 
 	const center = boundingBox.center();
@@ -961,29 +973,20 @@ fn touchBlocks(entity: main.server.Entity, hitBox: collision.Box, comptime side:
 	const maxZ: i32 = @intFromFloat(@floor(boundingBox.max[2]));
 
 	var posX: i32 = minX;
-	while(posX <= maxX) {
+	while (posX <= maxX) : (posX += 1) {
 		var posY: i32 = minY;
-		while(posY <= maxY) {
+		while (posY <= maxY) : (posY += 1) {
 			var posZ: i32 = minZ;
-			while(posZ <= maxZ) {
+			while (posZ <= maxZ) : (posZ += 1) {
 				const block =
 					if (side == .client) main.renderer.mesh_storage.getBlock(posX, posY, posZ)
 					else main.server.world.?.getBlock(posX, posY, posZ);
 				if (block != null and isBlockIntersecting(block, posX, posY, posZ, center, extent)) {
 					block.?.onEntityInside(entity, posX, posY, posZ);
 				}
-				posZ += 1;
 			}
-			posY += 1;
 		}
-		posX += 1;
 	}
-	touchBlocksFromDirection(entity, boundingBox, side, Vec3i {0, 1, 2}, true, chunk.Neighbor.dirUp);
-	touchBlocksFromDirection(entity, boundingBox, side, Vec3i {0, 1, 2}, false, chunk.Neighbor.dirDown);
-	touchBlocksFromDirection(entity, boundingBox, side, Vec3i {1, 2, 0}, true, chunk.Neighbor.dirPosX);
-	touchBlocksFromDirection(entity, boundingBox, side, Vec3i {1, 2, 0}, false, chunk.Neighbor.dirNegX);
-	touchBlocksFromDirection(entity, boundingBox, side, Vec3i {0, 2, 1}, true, chunk.Neighbor.dirPosY);
-	touchBlocksFromDirection(entity, boundingBox, side, Vec3i {0, 2, 1}, false, chunk.Neighbor.dirNegY);
 }
 
 pub fn update(deltaTime: f64) void { // MARK: update()
