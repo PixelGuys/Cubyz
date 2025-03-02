@@ -355,6 +355,8 @@ pub const RotationModes = struct {
 
 		fn branchTransform(quad: *main.models.QuadInfo, data: BranchData) void {
 			for(&quad.corners) |*corner| {
+				// Ain't no way we are making snake out of this one.
+				// zig fmt: off
 				if(
 					(!data.isConnected(Neighbor.dirNegX) and corner[0] == 0)
 					or (!data.isConnected(Neighbor.dirPosX) and corner[0] == 1)
@@ -363,6 +365,7 @@ pub const RotationModes = struct {
 					or (!data.isConnected(Neighbor.dirDown) and corner[2] == 0)
 					or (!data.isConnected(Neighbor.dirUp) and corner[2] == 1)
 				) return degenerateQuad(quad);
+				// zig fmt: on
 			}
 		}
 
