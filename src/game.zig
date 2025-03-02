@@ -1239,11 +1239,8 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		} else if(Player.eyeCoyote > 0) {
 			Player.eyePos[2] -= move[2];
 		}
-<<<<<<< HEAD
 		collision.touchBlocks(Player.super, hitBox, .client);
 		collision.insideBlocks(Player.super, hitBox, .client);
-=======
->>>>>>> 0cfcf801ca5b586bd519d7b3978c9fbed4d1d847
 	} else {
 		Player.super.pos += move;
 	}
