@@ -21,5 +21,8 @@ jobs:
       - run: zig build
       - run: zig build -Dtarget=x86_64-windows-gnu
       - run: zig build format --summary none
-      - run: zig fmt *.zig src/*.zig src/*/*.zig src/*/*/*.zig src/*/*/*/*.zig src/*/*/*/*/*.zig src/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*/*/*.zig ; git diff
-        shell: bash
+      - run: |
+          if ! zig fmt *.zig src/*.zig src/*/*.zig src/*/*/*.zig src/*/*/*/*.zig src/*/*/*/*/*.zig src/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*/*/*.zig ; then
+            git diff;
+            exit 1;
+          fi
