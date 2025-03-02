@@ -19,7 +19,7 @@
 			.modifiers = .{
 				.{
 					.id = "fragile",
-					.strength = 0.20,
+					.strength = 0.33,
 				},
 			},
 		},
