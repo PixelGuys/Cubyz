@@ -836,7 +836,7 @@ pub const Skybox = struct {
 
 			const starMatrix = game.projectionMatrix.mul(viewMatrix.mul(Mat4f.rotationX(@as(f32, @floatFromInt(time)) / 12000.0)));
 
-			starSsbo.bind(0);
+			starSsbo.bind(12);
 
 			c.glUniform1f(starUniforms.starOpacity, starOpacity);
 			c.glUniformMatrix4fv(starUniforms.mvp, 1, c.GL_TRUE, @ptrCast(&starMatrix));

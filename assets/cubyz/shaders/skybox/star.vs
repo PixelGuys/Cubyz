@@ -8,7 +8,7 @@ struct star {
 	vec4 col;
 };
 
-layout (std430, binding = 0) buffer starBuffer {
+layout (std430, binding = 12) buffer _starBuffer {
 	star starData[];
 };
 
