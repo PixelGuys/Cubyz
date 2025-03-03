@@ -129,7 +129,7 @@ pub fn readAllZonFilesInAddons(
 						std.log.err("Migrations not allowed for {s}", .{subPath});
 						continue;
 					}
-					(migrations orelse unreachable).put(id, zon) catch unreachable;
+					migrations.?.put(id, zon) catch unreachable;
 					// This means that we skip default file reading and storing file content as normal asset.
 					continue;
 				}
@@ -492,8 +492,8 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 	}
 
 	std.log.info(
-		"Finished registering assets with {} blocks ({} migrations), {} items {} tools. {} biomes, {} recipes",
-		.{blocks.count(), blocksMigrations.count(), items.count(), tools.count(), biomes.count(), recipes.count()},
+		"Finished registering assets with {} blocks ({} migrations), {} items {} tools. {} biomes, {} recipes and {} models",
+		.{blocks.count(), blocksMigrations.count(), items.count(), tools.count(), biomes.count(), recipes.count(), models.count()},
 	);
 }
 
