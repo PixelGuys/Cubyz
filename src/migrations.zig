@@ -39,8 +39,7 @@ fn register(
 		} else {
 			result.key_ptr.* = migrationAllocator.dupe(u8, migration.key_ptr.*);
 			const new = migrationAllocator.dupe(u8, migration.value_ptr.stringOwned);
-
-			result.value_ptr.* = migrationAllocator.dupe(u8, new);
+			result.value_ptr.* = new;
 			std.log.info("Registered {s} migration from {s}: '{s}' -> '{s}'", .{assetType, name, migration.key_ptr.*, new});
 		}
 	}
