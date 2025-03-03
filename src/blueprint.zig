@@ -12,7 +12,7 @@ const User = main.server.User;
 
 pub const Blueprint = struct {
 	palette: std.StringHashMap(u16),
-	blocks: main.List(u32),
+	blocks: main.List(Block),
 	sizeX: usize,
 	sizeY: usize,
 	sizeZ: usize,
@@ -87,7 +87,7 @@ pub const Blueprint = struct {
 					const blueprintBlockTyp = self.palette.get(blockId) orelse unreachable;
 					const blueprintBlock = Block{.typ = blueprintBlockTyp, .data = block.data};
 
-					self.blocks.append(@as(u32, @bitCast(blueprintBlock)));
+					self.blocks.append(blueprintBlock);
 					std.log.info("Block at ({}, {}, {}) {}:{} => {}:{}", .{worldX, worldY, worldZ, block.typ, block.data, blueprintBlock.typ, blueprintBlock.data});
 				}
 			}
@@ -122,7 +122,7 @@ pub const Blueprint = struct {
 				for(0..sizeZ) |offsetZ| {
 					const worldZ = startZ + @as(i32, @intCast(offsetZ));
 
-					const blueprintBlock = Block.fromInt(self.blocks.items[blockIndex]);
+					const blueprintBlock = self.blocks.items[blockIndex];
 					const gameBlockTyp = reverseBlockTypMap.get(blueprintBlock.typ) orelse unreachable;
 					const gameBlock = Block{.typ = gameBlockTyp, .data = blueprintBlock.data};
 
@@ -151,7 +151,7 @@ pub const Blueprint = struct {
 
 		var blocksZon = ZonElement.initArray(allocator);
 		for(self.blocks.items) |block| {
-			blocksZon.append(block);
+			blocksZon.append(block.toInt());
 		}
 		zon.put("blocks", blocksZon);
 
@@ -176,7 +176,7 @@ pub const Blueprint = struct {
 
 		const blocksZon: ZonElement = zon.getChild("blocks");
 		for(blocksZon.array.items) |block| {
-			self.blocks.append(block.as(u16, 0));
+			self.blocks.append(Block.fromInt(block.as(u32, 0)));
 		}
 	}
 };
