@@ -19,13 +19,11 @@ pub fn init(parameters: ZonElement) void {
 	_ = parameters;
 }
 
-pub fn deinit() void {
-
-}
+pub fn deinit() void {}
 
 /// Assumes the 2 points are at tᵢ = (0, 1)
 fn interpolationWeights(t: f32, interpolation: terrain.biomes.Interpolation) Vec2f {
-	switch (interpolation) {
+	switch(interpolation) {
 		.none => {
 			if(t < 0.5) {
 				return .{1, 0};
@@ -153,7 +151,6 @@ pub fn generateMapFragment(map: *MapFragment, worldSeed: u64) void {
 			map.minHeight = @min(map.minHeight, @as(i32, @intFromFloat(height)));
 			map.minHeight = @max(map.minHeight, 0);
 			map.maxHeight = @max(map.maxHeight, @as(i32, @intFromFloat(height)));
-
 
 			// Select a biome. Also adding some white noise to make a smoother transition.
 			const roundedXBiome = @as(i32, @intFromFloat(@round(rawXBiome))) + offset;

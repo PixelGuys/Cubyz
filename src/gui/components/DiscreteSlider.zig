@@ -55,7 +55,7 @@ pub fn init(pos: Vec2f, width: f32, text: []const u8, comptime fmt: []const u8, 
 	const label = Label.init(undefined, width - 3*border, initialText, .center);
 	const button = Button.initText(.{0, 0}, undefined, "", .{});
 	const self = main.globalAllocator.create(DiscreteSlider);
-	self.* = DiscreteSlider {
+	self.* = DiscreteSlider{
 		.pos = pos,
 		.size = undefined,
 		.callback = callback,
@@ -85,9 +85,7 @@ pub fn deinit(self: *const DiscreteSlider) void {
 }
 
 pub fn toComponent(self: *DiscreteSlider) GuiComponent {
-	return GuiComponent {
-		.discreteSlider = self
-	};
+	return .{.discreteSlider = self};
 }
 
 fn setButtonPosFromValue(self: *DiscreteSlider) void {

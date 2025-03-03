@@ -13,7 +13,7 @@ const ContinuousSlider = @import("../components/ContinuousSlider.zig");
 const DiscreteSlider = @import("../components/DiscreteSlider.zig");
 const VerticalList = @import("../components/VerticalList.zig");
 
-pub var window = GuiWindow {
+pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 256},
 };
 

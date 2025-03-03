@@ -37,7 +37,7 @@ pub const ClientEntity = struct {
 			.height = zon.get(f64, "height", 1),
 			.name = allocator.dupe(u8, zon.get([]const u8, "name", "")),
 		};
-		self._interpolationPos = [_]f64 {
+		self._interpolationPos = [_]f64{
 			self.pos[0],
 			self.pos[1],
 			self.pos[2],
@@ -178,16 +178,15 @@ pub const ClientEntityManager = struct {
 			c.glUniform1i(uniforms.light, @bitCast(@as(u32, 0xffffffff))); // TODO: Lighting
 
 			const pos: Vec3d = ent.getRenderPosition() - playerPos;
-			const modelMatrix = (
-				Mat4f.identity()
+			const modelMatrix = (Mat4f.identity()
 				.mul(Mat4f.translation(Vec3f{
-					@floatCast(pos[0]),
-					@floatCast(pos[1]),
-					@floatCast(pos[2] - 1.0 + 0.09375),
-				}))
+				@floatCast(pos[0]),
+				@floatCast(pos[1]),
+				@floatCast(pos[2] - 1.0 + 0.09375),
+			}))
 				.mul(Mat4f.rotationZ(-ent.rot[2]))
-				//.mul(Mat4f.rotationY(-ent.rot[1]))
-				//.mul(Mat4f.rotationX(-ent.rot[0]))
+			//.mul(Mat4f.rotationY(-ent.rot[1]))
+			//.mul(Mat4f.rotationX(-ent.rot[0]))
 			);
 			const modelViewMatrix = game.camera.viewMatrix.mul(modelMatrix);
 			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));
@@ -227,7 +226,7 @@ pub const ClientEntityManager = struct {
 		while(remaining.len != 0) {
 			const id = std.mem.readInt(u32, remaining[0..4], .big);
 			remaining = remaining[4..];
-			const pos = [_]f64 {
+			const pos = [_]f64{
 				@bitCast(std.mem.readInt(u64, remaining[0..8], .big)),
 				@bitCast(std.mem.readInt(u64, remaining[8..16], .big)),
 				@bitCast(std.mem.readInt(u64, remaining[16..24], .big)),
@@ -236,11 +235,13 @@ pub const ClientEntityManager = struct {
 				@floatCast(@as(f32, @bitCast(std.mem.readInt(u32, remaining[32..36], .big)))),
 			};
 			remaining = remaining[36..];
-			const vel = [_]f64 {
+			const vel = [_]f64{
 				@bitCast(std.mem.readInt(u64, remaining[0..8], .big)),
 				@bitCast(std.mem.readInt(u64, remaining[8..16], .big)),
 				@bitCast(std.mem.readInt(u64, remaining[16..24], .big)),
-				0, 0, 0,
+				0,
+				0,
+				0,
 			};
 			remaining = remaining[24..];
 			for(entities.items()) |*ent| {

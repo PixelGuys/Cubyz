@@ -1,4 +1,3 @@
-
 /// Like FractalNoise, except in 3D and it generates values on demand and caches results, instead of generating everything at once.
 pub const CachedFractalNoise3D = @import("CachedFractalNoise3D.zig");
 

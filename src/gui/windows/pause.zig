@@ -9,7 +9,7 @@ const GuiWindow = gui.GuiWindow;
 const Button = @import("../components/Button.zig");
 const VerticalList = @import("../components/VerticalList.zig");
 
-pub var window = GuiWindow {
+pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 256},
 };
 

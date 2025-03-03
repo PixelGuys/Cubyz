@@ -3,7 +3,7 @@ const std = @import("std");
 const main = @import("root");
 const utils = main.utils;
 
-const c = @cImport ({
+const c = @cImport({
 	@cInclude("portaudio.h");
 	@cDefine("STB_VORBIS_HEADER_ONLY", "");
 	@cInclude("stb/stb_vorbis.h");
@@ -26,7 +26,7 @@ const AudioData = struct {
 			return null;
 		};
 		const addon = id[0..colonIndex];
-		const fileName = id[colonIndex+1..];
+		const fileName = id[colonIndex + 1 ..];
 		const path1 = std.fmt.allocPrintZ(main.stackAllocator.allocator, "assets/{s}/music/{s}.ogg", .{addon, fileName}) catch unreachable;
 		defer main.stackAllocator.free(path1);
 		var err: c_int = 0;
@@ -134,7 +134,7 @@ const MusicLoadTask = struct {
 
 	pub fn schedule(musicId: []const u8) void {
 		const task = main.globalAllocator.create(MusicLoadTask);
-		task.* = MusicLoadTask {
+		task.* = MusicLoadTask{
 			.musicId = main.globalAllocator.dupe(u8, musicId),
 		};
 		main.threadPool.addTask(task, &vtable);
@@ -194,7 +194,7 @@ pub fn init() error{paError}!void {
 		sampleRate,
 		c.paFramesPerBufferUnspecified,
 		&patestCallback,
-		null
+		null,
 	));
 	errdefer handleError(c.Pa_CloseStream(stream)) catch {};
 
@@ -316,7 +316,7 @@ fn patestCallback(
 	framesPerBuffer: c_ulong,
 	timeInfo: ?*const c.PaStreamCallbackTimeInfo,
 	statusFlags: c.PaStreamCallbackFlags,
-	userData: ?*anyopaque
+	userData: ?*anyopaque,
 ) callconv(.C) c_int {
 	// This routine will be called by the PortAudio engine when audio is needed.
 	// It may called at interrupt level on some machines so don't do anything

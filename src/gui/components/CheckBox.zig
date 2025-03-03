@@ -57,7 +57,7 @@ pub fn __deinit() void {
 pub fn init(pos: Vec2f, width: f32, text: []const u8, initialValue: bool, onAction: *const fn(bool) void) *CheckBox {
 	const label = Label.init(undefined, width - 3*border - boxSize, text, .left);
 	const self = main.globalAllocator.create(CheckBox);
-	self.* = CheckBox {
+	self.* = CheckBox{
 		.pos = pos,
 		.size = Vec2f{@max(width, label.size[0] + 3*border + boxSize), label.size[1] + 3*border},
 		.state = initialValue,
@@ -73,9 +73,7 @@ pub fn deinit(self: *const CheckBox) void {
 }
 
 pub fn toComponent(self: *CheckBox) GuiComponent {
-	return GuiComponent {
-		.checkBox = self
-	};
+	return .{.checkBox = self};
 }
 
 pub fn updateHovered(self: *CheckBox, _: Vec2f) void {

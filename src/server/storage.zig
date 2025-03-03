@@ -27,9 +27,9 @@ pub const RegionFile = struct { // MARK: RegionFile
 	}
 
 	pub fn init(pos: chunk.ChunkPosition, saveFolder: []const u8) *RegionFile {
-		std.debug.assert(pos.wx & (1 << chunk.chunkShift+regionShift)-1 == 0);
-		std.debug.assert(pos.wy & (1 << chunk.chunkShift+regionShift)-1 == 0);
-		std.debug.assert(pos.wz & (1 << chunk.chunkShift+regionShift)-1 == 0);
+		std.debug.assert(pos.wx & (1 << chunk.chunkShift + regionShift) - 1 == 0);
+		std.debug.assert(pos.wy & (1 << chunk.chunkShift + regionShift) - 1 == 0);
+		std.debug.assert(pos.wz & (1 << chunk.chunkShift + regionShift) - 1 == 0);
 		const self = main.globalAllocator.create(RegionFile);
 		self.* = .{
 			.pos = pos,
@@ -55,7 +55,7 @@ pub const RegionFile = struct { // MARK: RegionFile
 			std.log.err("Region file {s} has incorrect version {}. Requires version {}.", .{path, fileVersion, version});
 			return self;
 		}
-		var sizes: [regionVolume] u32 = undefined;
+		var sizes: [regionVolume]u32 = undefined;
 		var totalSize: usize = 0;
 		for(0..regionVolume) |j| {
 			const size = std.mem.readInt(u32, data[i..][0..4], .big);
@@ -239,7 +239,7 @@ pub fn deinit() void {
 }
 
 pub fn loadRegionFileAndIncreaseRefCount(wx: i32, wy: i32, wz: i32, voxelSize: u31) *RegionFile {
-	const compare = chunk.ChunkPosition {
+	const compare = chunk.ChunkPosition{
 		.wx = wx & ~@as(i32, RegionFile.regionSize*voxelSize - 1),
 		.wy = wy & ~@as(i32, RegionFile.regionSize*voxelSize - 1),
 		.wz = wz & ~@as(i32, RegionFile.regionSize*voxelSize - 1),
@@ -300,14 +300,14 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 			std.mem.writeInt(i32, data[0..4], @intFromEnum(CompressionAlgo.deflate_with_8bit_palette), .big);
 			data[4] = @intCast(ch.data.paletteLength);
 			for(0..ch.data.paletteLength) |i| {
-				std.mem.writeInt(u32, data[5 + 4*i..][0..4], ch.data.palette[i].toInt(), .big);
+				std.mem.writeInt(u32, data[5 + 4*i ..][0..4], ch.data.palette[i].toInt(), .big);
 			}
-			@memcpy(data[5 + 4*ch.data.paletteLength..], compressedData);
+			@memcpy(data[5 + 4*ch.data.paletteLength ..], compressedData);
 			return data;
 		}
 		var uncompressedData: [chunk.chunkVolume*@sizeOf(u32)]u8 = undefined;
 		for(0..chunk.chunkVolume) |i| {
-			std.mem.writeInt(u32, uncompressedData[4*i..][0..4], ch.data.getValue(i).toInt(), .big);
+			std.mem.writeInt(u32, uncompressedData[4*i ..][0..4], ch.data.getValue(i).toInt(), .big);
 		}
 		const compressedData = main.utils.Compression.deflate(main.stackAllocator, &uncompressedData, .default);
 		defer main.stackAllocator.free(compressedData);

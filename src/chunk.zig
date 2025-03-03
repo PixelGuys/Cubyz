@@ -30,17 +30,17 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 
 	/// Index to relative position
 	pub fn relX(self: Neighbor) i32 {
-		const arr = [_]i32 {0, 0, 1, -1, 0, 0};
+		const arr = [_]i32{0, 0, 1, -1, 0, 0};
 		return arr[@intFromEnum(self)];
 	}
 	/// Index to relative position
 	pub fn relY(self: Neighbor) i32 {
-		const arr = [_]i32 {0, 0, 0, 0, 1, -1};
+		const arr = [_]i32{0, 0, 0, 0, 1, -1};
 		return arr[@intFromEnum(self)];
 	}
 	/// Index to relative position
 	pub fn relZ(self: Neighbor) i32 {
-		const arr = [_]i32 {1, -1, 0, 0, 0, 0};
+		const arr = [_]i32{1, -1, 0, 0, 0, 0};
 		return arr[@intFromEnum(self)];
 	}
 	/// Index to relative position
@@ -52,10 +52,10 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 		return @as(u6, 1) << @intFromEnum(self);
 	}
 	/// To iterate over all neighbors easily
-	pub const iterable = [_]Neighbor {@enumFromInt(0), @enumFromInt(1), @enumFromInt(2), @enumFromInt(3), @enumFromInt(4), @enumFromInt(5)};
+	pub const iterable = [_]Neighbor{@enumFromInt(0), @enumFromInt(1), @enumFromInt(2), @enumFromInt(3), @enumFromInt(4), @enumFromInt(5)};
 	/// Marks the two dimension that are orthogonal
 	pub fn orthogonalComponents(self: Neighbor) Vec3i {
-		const arr = [_]Vec3i {
+		const arr = [_]Vec3i{
 			.{1, 1, 0},
 			.{1, 1, 0},
 			.{0, 1, 1},
@@ -66,7 +66,7 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 		return arr[@intFromEnum(self)];
 	}
 	pub fn textureX(self: Neighbor) Vec3i {
-		const arr = [_]Vec3i {
+		const arr = [_]Vec3i{
 			.{-1, 0, 0},
 			.{1, 0, 0},
 			.{0, 1, 0},
@@ -77,7 +77,7 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 		return arr[@intFromEnum(self)];
 	}
 	pub fn textureY(self: Neighbor) Vec3i {
-		const arr = [_]Vec3i {
+		const arr = [_]Vec3i{
 			.{0, -1, 0},
 			.{0, -1, 0},
 			.{0, 0, 1},
@@ -95,9 +95,9 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 	pub inline fn isPositive(self: Neighbor) bool {
 		return @intFromEnum(self) & 1 == 0;
 	}
-	const VectorComponentEnum = enum(u2){x = 0, y = 1, z = 2};
+	const VectorComponentEnum = enum(u2) {x = 0, y = 1, z = 2};
 	pub fn vectorComponent(self: Neighbor) VectorComponentEnum {
-		const arr = [_]VectorComponentEnum {.z, .z, .x, .x, .y, .y};
+		const arr = [_]VectorComponentEnum{.z, .z, .x, .x, .y, .y};
 		return arr[@intFromEnum(self)];
 	}
 
@@ -105,7 +105,7 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 		switch(self) {
 			inline else => |val| {
 				return in[@intFromEnum(val.vectorComponent())];
-			}
+			},
 		}
 	}
 };
@@ -151,7 +151,7 @@ pub const ChunkPosition = struct { // MARK: ChunkPosition
 
 	pub fn hashCode(self: ChunkPosition) u32 {
 		const shift: u5 = @truncate(@min(@ctz(self.wx), @ctz(self.wy), @ctz(self.wz)));
-		return (((@as(u32, @bitCast(self.wx)) >> shift) *% 31 +% (@as(u32, @bitCast(self.wy)) >> shift)) *% 31 +% (@as(u32, @bitCast(self.wz)) >> shift)) *% 31 +% self.voxelSize; // TODO: Can I use one of zigs standard hash functions?
+		return (((@as(u32, @bitCast(self.wx)) >> shift)*%31 +% (@as(u32, @bitCast(self.wy)) >> shift))*%31 +% (@as(u32, @bitCast(self.wz)) >> shift))*%31 +% self.voxelSize; // TODO: Can I use one of zigs standard hash functions?
 	}
 
 	pub fn equals(self: ChunkPosition, other: anytype) bool {
@@ -232,7 +232,7 @@ pub const Chunk = struct { // MARK: Chunk
 		std.debug.assert((pos.voxelSize - 1 & pos.voxelSize) == 0);
 		std.debug.assert(@mod(pos.wx, pos.voxelSize) == 0 and @mod(pos.wy, pos.voxelSize) == 0 and @mod(pos.wz, pos.voxelSize) == 0);
 		const voxelSizeShift: u5 = @intCast(std.math.log2_int(u31, pos.voxelSize));
-		self.* = Chunk {
+		self.* = Chunk{
 			.pos = pos,
 			.width = pos.voxelSize*chunkSize,
 			.voxelSizeShift = voxelSizeShift,
@@ -288,7 +288,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 		std.debug.assert((pos.voxelSize - 1 & pos.voxelSize) == 0);
 		std.debug.assert(@mod(pos.wx, pos.voxelSize) == 0 and @mod(pos.wy, pos.voxelSize) == 0 and @mod(pos.wz, pos.voxelSize) == 0);
 		const voxelSizeShift: u5 = @intCast(std.math.log2_int(u31, pos.voxelSize));
-		self.* = ServerChunk {
+		self.* = ServerChunk{
 			.super = .{
 				.pos = pos,
 				.width = pos.voxelSize*chunkSize,
@@ -337,9 +337,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 
 	/// Checks if the given relative coordinates lie within the bounds of this chunk.
 	pub fn liesInChunk(self: *const ServerChunk, x: i32, y: i32, z: i32) bool {
-		return x >= 0 and x < self.super.width
-			and y >= 0 and y < self.super.width
-			and z >= 0 and z < self.super.width;
+		return x >= 0 and x < self.super.width and y >= 0 and y < self.super.width and z >= 0 and z < self.super.width;
 	}
 
 	/// This is useful to convert for loops to work for reduced resolution:
@@ -348,7 +346,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 	/// for(int x = chunk.startIndex(start); x < end; x += chunk.getVoxelSize())
 	/// should be used to only activate those voxels that are used in Cubyz's downscaling technique.
 	pub fn startIndex(self: *const ServerChunk, start: i32) i32 {
-		return start+self.super.voxelSizeMask & ~self.super.voxelSizeMask; // Rounds up to the nearest valid voxel coordinate.
+		return start + self.super.voxelSizeMask & ~self.super.voxelSizeMask; // Rounds up to the nearest valid voxel coordinate.
 	}
 
 	/// Gets a block if it is inside this chunk.
@@ -386,7 +384,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 							.wx = self.super.pos.wx +% dx,
 							.wy = self.super.pos.wy +% dy,
 							.wz = self.super.pos.wz +% dz,
-							.voxelSize = 1
+							.voxelSize = 1,
 						});
 						defer ch.decreaseRefCount();
 						ch.mutex.lock();
@@ -449,21 +447,21 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 		main.utils.assertLocked(&other.mutex);
 
 		var x: u31 = 0;
-		while(x < chunkSize/2): (x += 1) {
+		while(x < chunkSize/2) : (x += 1) {
 			var y: u31 = 0;
-			while(y < chunkSize/2): (y += 1) {
+			while(y < chunkSize/2) : (y += 1) {
 				var z: u31 = 0;
-				while(z < chunkSize/2): (z += 1) {
+				while(z < chunkSize/2) : (z += 1) {
 					// Count the neighbors for each subblock. An transparent block counts 5. A chunk border(unknown block) only counts 1.
 					var neighborCount: [8]u31 = undefined;
 					var octantBlocks: [8]Block = undefined;
 					var maxCount: i32 = 0;
 					var dx: u31 = 0;
-					while(dx <= 1): (dx += 1) {
+					while(dx <= 1) : (dx += 1) {
 						var dy: u31 = 0;
-						while(dy <= 1): (dy += 1) {
+						while(dy <= 1) : (dy += 1) {
 							var dz: u31 = 0;
-							while(dz <= 1): (dz += 1) {
+							while(dz <= 1) : (dz += 1) {
 								const index = getIndex(x*2 + dx, y*2 + dy, z*2 + dz);
 								const i = dx*4 + dz*2 + dy;
 								octantBlocks[i] = other.super.data.getValue(index);
