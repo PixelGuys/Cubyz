@@ -381,7 +381,7 @@ const FunctionType = enum {
 
 	fn fromString(string: []const u8) FunctionType {
 		return std.meta.stringToEnum(FunctionType, string) orelse {
-			std.log.err("Couldn't find function type {s}. Replacing it with linear", .{string});
+			std.log.err("Couldn't find function type {s}. Replacing it with linear. Available functions are: {s}", .{string, std.meta.fieldNames(FunctionType)});
 			return .linear;
 		};
 	}

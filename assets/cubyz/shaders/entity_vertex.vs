@@ -9,7 +9,7 @@ uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
 uniform vec3 ambientLight;
 uniform vec3 directionalLight;
-uniform int light;
+uniform uint light;
 
 struct QuadInfo {
 	vec3 normal;
@@ -24,15 +24,18 @@ layout(std430, binding = 11) buffer _quads
 	QuadInfo quads[];
 };
 
-vec3 calcLight(int srgb) {
-	float s = (srgb >> 24) & 255;
-	float r = (srgb >> 16) & 255;
-	float g = (srgb >> 8) & 255;
-	float b = (srgb >> 0) & 255;
-	r = max(s*ambientLight.x, r);
-	g = max(s*ambientLight.y, g);
-	b = max(s*ambientLight.z, b);
-	return vec3(r, g, b)/255;
+vec3 calcLight(uint fullLight) {
+	vec3 sunLight = vec3(
+		fullLight >> 25 & 31u,
+		fullLight >> 20 & 31u,
+		fullLight >> 15 & 31u
+	);
+	vec3 blockLight = vec3(
+		fullLight >> 10 & 31u,
+		fullLight >> 5 & 31u,
+		fullLight >> 0 & 31u
+	);
+	return max(sunLight*ambientLight, blockLight)/31;
 }
 
 void main() {
