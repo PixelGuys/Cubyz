@@ -26,7 +26,7 @@ pub const Blueprint = struct {
 			.sizeZ = 0,
 		};
 	}
-	pub fn deinit(self: *Blueprint) void {
+	pub fn deinit(self: *@This()) void {
 		if (self.palette.count() != 0) {
 			var iterator = self.palette.iterator();
 			while(iterator.next()) |element| {
@@ -36,7 +36,11 @@ pub const Blueprint = struct {
 		self.palette.deinit();
 		self.blocks.deinit();
 	}
-	pub fn clear(self: *Blueprint) void {
+	pub fn clear(self: *@This()) void {
+		self.sizeX = 0;
+		self.sizeY = 0;
+		self.sizeZ = 0;
+
 		if (self.palette.count() != 0) {
 			var iterator = self.palette.iterator();
 			while(iterator.next()) |element| {
@@ -152,5 +156,27 @@ pub const Blueprint = struct {
 		zon.put("blocks", blocksZon);
 
 		return zon;
+	}
+	pub fn fromZon(self: *@This(), zon: ZonElement) void {
+		self.clear();
+
+		self.sizeX = zon.get(usize, "sizeX", 0);
+		self.sizeY = zon.get(usize, "sizeY", 0);
+		self.sizeZ = zon.get(usize, "sizeZ", 0);
+
+		std.debug.assert(self.sizeX > 0);
+		std.debug.assert(self.sizeY > 0);
+		std.debug.assert(self.sizeZ > 0);
+
+		var paletteZon: ZonElement = zon.getChild("palette");
+		var paletteIterator = paletteZon.object.iterator();
+		while(paletteIterator.next()) |entry| {
+			self.palette.put(self.palette.allocator.dupe(u8, entry.key_ptr.*) catch unreachable, entry.value_ptr.as(u16, 0)) catch unreachable;
+		}
+
+		const blocksZon: ZonElement = zon.getChild("blocks");
+		for(blocksZon.array.items) |block| {
+			self.blocks.append(block.as(u16, 0));
+		}
 	}
 };

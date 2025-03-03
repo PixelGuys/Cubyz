@@ -8,23 +8,31 @@ const Vec3i = vec.Vec3i;
 const List = main.List;
 const Block = main.blocks.Block;
 const Blueprint = main.blueprint.Blueprint;
+const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
 pub const description = "Operate on blueprints.";
-pub const usage = "/blueprint <save|delete|load|list>";
+pub const usage = "/blueprint <save FILENAME|delete FILENAME|load FILENAME|list>";
 
 const BlueprintSubCommand = enum {
 	save,
 	delete,
 	load,
 	list,
-	none,
+	other,
+	empty,
 
 	fn fromString(string: []const u8) BlueprintSubCommand {
 		return std.meta.stringToEnum(BlueprintSubCommand, string) orelse {
-			return .none;
+			if (string.len == 0) return .empty;
+			return .other;
 		};
 	}
 };
+
+const red = "#e3273d";
+const blue = "#4287f5";
+const white = "#ffffff";
+const green = "#04c441";
 
 pub fn execute(args: []const u8, source: *User) void {
 	var argsList = List([]const u8).init(main.stackAllocator);
@@ -41,7 +49,7 @@ pub fn execute(args: []const u8, source: *User) void {
 	}
 
 	if(argsList.items.len < 1) {
-		source.sendMessage("#ff0000Not enough arguments for /blueprint, expected at least 1.", .{});
+		source.sendMessage("{s}Not enough arguments for /blueprint, expected at least 1.", .{red});
 		return;
 	}
 	const subcommand = BlueprintSubCommand.fromString(argsList.items[0]);
@@ -50,21 +58,24 @@ pub fn execute(args: []const u8, source: *User) void {
 		.delete => blueprintDelete(argsList, source),
 		.load => blueprintLoad(argsList, source),
 		.list => blueprintList(argsList, source),
-		.none => {
-			source.sendMessage("#ff0000Unrecognized subcommand for /blueprint: '{s}'", .{argsList.items[0]});
+		.other => {
+			source.sendMessage("{s}Unrecognized subcommand for /blueprint: '{s}'", .{red, argsList.items[0]});
 		},
+		.empty => {
+			source.sendMessage("{s}Missing subcommand for **/blueprint**, usage: {s}{s} ", .{red, white, usage});
+		}
 	} catch |err| {
-		source.sendMessage("#ff0000Error: {s}", .{@errorName(err)});
+		source.sendMessage("{s}Error: {s}", .{red, @errorName(err)});
 	};
 }
 
 fn blueprintSave(args: List([]const u8), source: *User) !void {
 	if(args.items.len < 2) {
-		source.sendMessage("#ff0000/blueprint save requires FILENAME argument.", .{});
+		source.sendMessage("{s}**/blueprint save** requires FILENAME argument.", .{red});
 		return;
 	}
 	if(args.items.len >= 3) {
-		source.sendMessage("#ff0000Too many arguments for /blueprint save. Expected 1 argument, FILENAME.", .{});
+		source.sendMessage("{s}Too many arguments for **/blueprint save**. Expected 1 argument, FILENAME.", .{red});
 		return;
 	}
 	source.mutex.lock();
@@ -74,12 +85,7 @@ fn blueprintSave(args: List([]const u8), source: *User) !void {
 		const zon = clipboard.toZon(main.stackAllocator);
 		defer zon.deinit(main.stackAllocator);
 
-		var fileName: []const u8 = args.items[1];
-		if(!std.ascii.endsWithIgnoreCase(fileName, ".zig.zon")) {
-			fileName = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}.zig.zon", .{fileName}) catch unreachable;
-		} else {
-			fileName = main.stackAllocator.dupe(u8, fileName);
-		}
+		const fileName: []const u8 = ensureBlueprintExtension(main.stackAllocator, args.items[1]);
 		defer main.stackAllocator.free(fileName);
 
 		var cwd = std.fs.cwd();
@@ -92,17 +98,22 @@ fn blueprintSave(args: List([]const u8), source: *User) !void {
 		std.log.info("Saving clipboard to file: {s}", .{fileName});
 		source.sendMessage("Saving clipboard to file: {s}", .{fileName});
 
-		blueprintsDir.writeZon(fileName, zon) catch |err| {
-			std.log.err("Error saving clipboard to file: {s}", .{@errorName(err)});
-			source.sendMessage("#ff0000Error saving clipboard to file: {s}", .{@errorName(err)});
-		};
+		try blueprintsDir.writeZon(fileName, zon);
 	} else {
-		source.sendMessage("#ff0000Error: No clipboard content to save.", .{});
+		source.sendMessage("{s}Error: No clipboard content to save.", .{red});
+	}
+}
+
+fn ensureBlueprintExtension(allocator: NeverFailingAllocator, fileName: []const u8) []const u8 {
+	if(!std.ascii.endsWithIgnoreCase(fileName, ".blp")) {
+		return std.fmt.allocPrint(allocator.allocator, "{s}.blp", .{fileName}) catch unreachable;
+	} else {
+		return allocator.dupe(u8, fileName);
 	}
 }
 
 fn blueprintDelete(_: List([]const u8), source: *User) void {
-	source.sendMessage("#ff0000/blueprint delete not implemented.", .{});
+	source.sendMessage("{s}/blueprint delete not implemented.", .{red});
 }
 
 fn blueprintList(_: List([]const u8), source: *User) !void {
@@ -118,13 +129,43 @@ fn blueprintList(_: List([]const u8), source: *User) !void {
 
 	while(try directoryIterator.next()) |entry| {
 		if(entry.kind != .file) break;
-		if(!std.ascii.endsWithIgnoreCase(entry.name, ".zon") and !std.ascii.endsWithIgnoreCase(entry.name, ".blp")) break;
+		if(!std.ascii.endsWithIgnoreCase(entry.name, ".blp")) break;
 
-		source.sendMessage("#00ff00{}#ffffff {s}", .{index, entry.name});
+		source.sendMessage("{s}{}{s} {s}", .{white, index, blue, entry.name});
 		index += 1;
 	}
 }
 
-fn blueprintLoad(_: List([]const u8), source: *User) void {
-	source.sendMessage("#ff0000/blueprint load not implemented.", .{});
+fn blueprintLoad(args: List([]const u8), source: *User) !void {
+	if(args.items.len < 2) {
+		source.sendMessage("{s}**/blueprint load** requires FILENAME argument.", .{red});
+		return;
+	}
+	if(args.items.len >= 3) {
+		source.sendMessage("{s}Too many arguments for **/blueprint load**. Expected 1 argument, FILENAME.", .{red});
+		return;
+	}
+
+	const fileName: []const u8 = ensureBlueprintExtension(main.stackAllocator, args.items[1]);
+	defer main.stackAllocator.free(fileName);
+
+	var cwd = std.fs.cwd();
+
+	var blueprintsDir = main.files.Dir.init(try cwd.openDir("blueprints", .{}));
+	defer blueprintsDir.close();
+
+	source.mutex.lock();
+	defer source.mutex.unlock();
+
+	const zon = try blueprintsDir.readToZon(main.stackAllocator, fileName);
+	defer zon.deinit(main.stackAllocator);
+
+	if (source.commandData.clipboard != null) {
+		source.commandData.clipboard.?.fromZon(zon);
+	} else {
+		source.commandData.clipboard = Blueprint.init(main.globalAllocator);
+		source.commandData.clipboard.?.fromZon(zon);
+	}
+	std.log.info("{s}Loaded blueprint file: {s}", .{green, fileName});
+	source.sendMessage("{s}Loaded blueprint file: {s}", .{green, fileName});
 }
