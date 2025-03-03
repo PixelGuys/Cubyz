@@ -355,14 +355,12 @@ pub const RotationModes = struct {
 
 		fn branchTransform(quad: *main.models.QuadInfo, data: BranchData) void {
 			for(&quad.corners) |*corner| {
-				if(
-					(!data.isConnected(Neighbor.dirNegX) and corner[0] == 0) or
+				if((!data.isConnected(Neighbor.dirNegX) and corner[0] == 0) or
 					(!data.isConnected(Neighbor.dirPosX) and corner[0] == 1) or
 					(!data.isConnected(Neighbor.dirNegY) and corner[1] == 0) or
 					(!data.isConnected(Neighbor.dirPosY) and corner[1] == 1) or
 					(!data.isConnected(Neighbor.dirDown) and corner[2] == 0) or
-					(!data.isConnected(Neighbor.dirUp) and corner[2] == 1)
-				) return degenerateQuad(quad);
+					(!data.isConnected(Neighbor.dirUp) and corner[2] == 1)) return degenerateQuad(quad);
 			}
 		}
 
