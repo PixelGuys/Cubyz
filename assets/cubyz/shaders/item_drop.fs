@@ -81,7 +81,7 @@ void mainBlockDrop() {
 	reflectivity = reflectivity*fixedCubeMapLookup(reflect(direction, faceNormal)).x;
 	reflectivity = reflectivity*(1 - fresnelReflection) + fresnelReflection;
 
-	vec3 pixelLight = max(vec3(normalVariation), texture(emissionSampler, textureCoords).r*4); // TODO: light*normalVariation
+	vec3 pixelLight = ambientLight*max(vec3(normalVariation), texture(emissionSampler, textureCoords).r*4);
 	fragColor = texture(texture_sampler, textureCoords)*vec4(pixelLight, 1);
 	fragColor.rgb += reflectivity*pixelLight;
 
