@@ -355,25 +355,20 @@ pub const RotationModes = struct {
 
 		fn branchTransform(quad: *main.models.QuadInfo, data: BranchData) void {
 			for(&quad.corners) |*corner| {
-				// Ain't no way we are making snake out of this one.
-				// zig fmt: off
 				if(
-					(!data.isConnected(Neighbor.dirNegX) and corner[0] == 0)
-					or (!data.isConnected(Neighbor.dirPosX) and corner[0] == 1)
-					or (!data.isConnected(Neighbor.dirNegY) and corner[1] == 0)
-					or (!data.isConnected(Neighbor.dirPosY) and corner[1] == 1)
-					or (!data.isConnected(Neighbor.dirDown) and corner[2] == 0)
-					or (!data.isConnected(Neighbor.dirUp) and corner[2] == 1)
+					(!data.isConnected(Neighbor.dirNegX) and corner[0] == 0) or
+					(!data.isConnected(Neighbor.dirPosX) and corner[0] == 1) or
+					(!data.isConnected(Neighbor.dirNegY) and corner[1] == 0) or
+					(!data.isConnected(Neighbor.dirPosY) and corner[1] == 1) or
+					(!data.isConnected(Neighbor.dirDown) and corner[2] == 0) or
+					(!data.isConnected(Neighbor.dirUp) and corner[2] == 1)
 				) return degenerateQuad(quad);
-				// zig fmt: on
 			}
 		}
 
 		fn degenerateQuad(quad: *main.models.QuadInfo) void {
 			for(&quad.corners) |*corner| {
-				corner[0] = 0.5;
-				corner[1] = 0.5;
-				corner[2] = 0.5;
+				corner.* = @splat(0.5);
 			}
 		}
 
@@ -450,12 +445,12 @@ pub const RotationModes = struct {
 		}
 
 		fn closestRay(block: Block, relativePlayerPos: Vec3f, playerDir: Vec3f) ?u16 {
-			var closestIntersection: ?RayIntersectionResult = null;
+			var closestIntersectionDistance: f64 = std.math.inf(f64);
 			var resultBitMask: ?u16 = null;
 			{
 				const modelIndex = blocks.meshes.modelIndexStart(block);
 				if(RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
-					closestIntersection = intersection;
+					closestIntersectionDistance = intersection.distance;
 					resultBitMask = 0;
 				}
 			}
@@ -465,8 +460,8 @@ pub const RotationModes = struct {
 				if((block.data & directionBitMask) != 0) {
 					const modelIndex = blocks.meshes.modelIndexStart(block) + directionBitMask;
 					if(RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
-						if(closestIntersection == null or @abs(closestIntersection.?.distance) > @abs(intersection.distance)) {
-							closestIntersection = intersection;
+						if(@abs(closestIntersectionDistance) > @abs(intersection.distance)) {
+							closestIntersectionDistance = intersection.distance;
 							resultBitMask = direction.bitMask();
 						}
 					}
