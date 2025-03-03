@@ -30,7 +30,6 @@ fn register(
 
 	var migrationZonIterator = migrationZon.object.iterator();
 	while(migrationZonIterator.next()) |migration| {
-
 		const old = migrationAllocator.dupe(u8, migration.key_ptr.*);
 		defer migrationAllocator.free(old);
 
@@ -40,7 +39,6 @@ fn register(
 			std.log.err("Skipping name collision in {s} migration from {s}: '{s}' -> '{s}'", .{assetType, name, migration.key_ptr.*, migration.value_ptr.stringOwned});
 			const existingMigration = collection.get(migration.key_ptr.*) orelse unreachable;
 			std.log.err("Already mapped to '{s}'", .{existingMigration});
-
 		} else {
 			result.key_ptr.* = migrationAllocator.dupe(u8, old);
 			const new = migrationAllocator.dupe(u8, migration.value_ptr.stringOwned);
