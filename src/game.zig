@@ -381,10 +381,8 @@ pub const collision = struct {
 		return false;
 	}
 
-	const touchRetraction = @as(Vec3d, @splat(0.0001));
-
 	pub fn touchBlocks(entity: main.server.Entity, hitBox: Box, side: main.utils.Side) void {
-		const boundingBox: Box = .{.min = entity.pos + hitBox.min + touchRetraction, .max = entity.pos + hitBox.max + touchRetraction};
+		const boundingBox: Box = .{.min = entity.pos + hitBox.min, .max = entity.pos + hitBox.max};
 
 		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0] - 0.01));
 		const maxX: i32 = @intFromFloat(@floor(boundingBox.max[0] + 0.01));
