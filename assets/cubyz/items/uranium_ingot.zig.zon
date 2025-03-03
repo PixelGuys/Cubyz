@@ -10,17 +10,5 @@
 		.colors = .{
 			0xff395533, 0xff466e45, 0xff5d8a5f, 0xff6da367, 0xff74c761,
 		},
-        	.modifiers = .{
-			.{
-				.id = "good_at",
-				.tag = .organic,
-				.strength = .5,
-			},
-			.{
-				.id = "bad_at",
-				.tag = .stone,
-				.strength = .5,
-			},
-		},
         },
 }
