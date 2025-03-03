@@ -175,7 +175,16 @@ pub const ClientEntityManager = struct {
 		for(entities.items()) |ent| {
 			if(ent.id == game.Player.id) continue; // don't render local player
 
-			c.glUniform1i(uniforms.light, @bitCast(@as(u32, 0xffffffff))); // TODO: Lighting
+			const blockPos: vec.Vec3i = @intFromFloat(@floor(ent.pos));
+			const lightVals: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse .{0} ** 6;
+			const light = (@as(u32, lightVals[0] >> 3) << 25 |
+				@as(u32, lightVals[1] >> 3) << 20 |
+				@as(u32, lightVals[2] >> 3) << 15 |
+				@as(u32, lightVals[3] >> 3) << 10 |
+				@as(u32, lightVals[4] >> 3) << 5 |
+				@as(u32, lightVals[5] >> 3) << 0);
+
+			c.glUniform1ui(uniforms.light, @bitCast(@as(u32, light)));
 
 			const pos: Vec3d = ent.getRenderPosition() - playerPos;
 			const modelMatrix = (Mat4f.identity()
