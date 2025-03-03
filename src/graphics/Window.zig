@@ -80,9 +80,7 @@ pub const Gamepad = struct {
 						const oldPressed = oldState.buttons[@intCast(key.gamepadButton)] != 0;
 						const newPressed = newState.buttons[@intCast(key.gamepadButton)] != 0;
 						if(oldPressed != newPressed) {
-							key.pressed = newPressed;
-							key.value = if(newPressed) 1.0 else 0.0;
-							key.action(if(key.pressed) .press else .release, isGrabbed, .{});
+							key.setPressed(newPressed, isGrabbed, .{});
 						}
 					}
 				} else {
@@ -99,8 +97,7 @@ pub const Gamepad = struct {
 					const oldPressed = oldAxis > 0.5;
 					const newPressed = newAxis > 0.5;
 					if(oldPressed != newPressed) {
-						key.pressed = newPressed;
-						key.action(if(key.pressed) .press else .release, isGrabbed, .{});
+						key.setPressed(newPressed, isGrabbed, .{});
 					}
 					if(newAxis != oldAxis) {
 						key.value = newAxis;
@@ -410,6 +407,19 @@ pub const Key = struct { // MARK: Key
 		}
 	}
 
+	fn setPressed(self: *Key, newPressed: bool, isGrabbed: bool, mods: Modifiers) void {
+		if(newPressed != self.pressed) {
+			self.pressed = newPressed;
+			self.value = @floatFromInt(@intFromBool(newPressed));
+			if(newPressed) {
+				self.action(.press, isGrabbed, mods);
+				self.action(.repeat, isGrabbed, mods);
+			} else {
+				self.action(.release, isGrabbed, mods);
+			}
+		}
+	}
+
 	fn action(self: *Key, typ: enum {press, release, repeat}, isGrabbed: bool, mods: Modifiers) void {
 		if(typ == .press) self.grabbedOnPress = isGrabbed;
 		if(!self.notifyRequirement.met(self.grabbedOnPress)) return;
@@ -429,29 +439,18 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 		const mods: Key.Modifiers = @bitCast(@as(u6, @intCast(_mods)));
 		if(!mods.control and main.gui.selectedTextInput != null and c.glfwGetKeyName(glfw_key, scancode) != null) return; // Don't send events for keys that are used in writing letters.
 		const isGrabbed = grabbed;
-		if(action == c.GLFW_PRESS) {
+		if(action == c.GLFW_PRESS or action == c.GLFW_RELEASE) {
 			for(&main.KeyBoard.keys) |*key| {
 				if(glfw_key == key.key) {
 					if(glfw_key != c.GLFW_KEY_UNKNOWN or scancode == key.scancode) {
-						key.pressed = true;
-						key.value = 1.0;
-						key.action(.press, isGrabbed, mods);
-						key.action(.repeat, isGrabbed, mods);
+						key.setPressed(action == c.GLFW_PRESS, isGrabbed, mods);
 					}
 				}
 			}
-			if(nextKeypressListener) |listener| {
-				listener(glfw_key, -1, scancode);
-				nextKeypressListener = null;
-			}
-		} else if(action == c.GLFW_RELEASE) {
-			for(&main.KeyBoard.keys) |*key| {
-				if(glfw_key == key.key) {
-					if(glfw_key != c.GLFW_KEY_UNKNOWN or scancode == key.scancode) {
-						key.pressed = false;
-						key.value = 0.0;
-						key.action(.release, isGrabbed, mods);
-					}
+			if(action == c.GLFW_PRESS) {
+				if(nextKeypressListener) |listener| {
+					listener(glfw_key, -1, scancode);
+					nextKeypressListener = null;
 				}
 			}
 		} else if(action == c.GLFW_REPEAT) {
@@ -507,24 +506,16 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 	fn mouseButton(_: ?*c.GLFWwindow, button: c_int, action: c_int, _mods: c_int) callconv(.C) void {
 		const mods: Key.Modifiers = @bitCast(@as(u6, @intCast(_mods)));
 		const isGrabbed = grabbed;
-		if(action == c.GLFW_PRESS) {
+		if(action == c.GLFW_PRESS or action == c.GLFW_RELEASE) {
 			for(&main.KeyBoard.keys) |*key| {
 				if(button == key.mouseButton) {
-					key.pressed = true;
-					key.value = 1.0;
-					key.action(.press, isGrabbed, mods);
+					key.setPressed(action == c.GLFW_PRESS, isGrabbed, mods);
 				}
 			}
-			if(nextKeypressListener) |listener| {
-				listener(c.GLFW_KEY_UNKNOWN, button, 0);
-				nextKeypressListener = null;
-			}
-		} else if(action == c.GLFW_RELEASE) {
-			for(&main.KeyBoard.keys) |*key| {
-				if(button == key.mouseButton) {
-					key.pressed = false;
-					key.value = 0.0;
-					key.action(.release, isGrabbed, mods);
+			if(action == c.GLFW_PRESS) {
+				if(nextKeypressListener) |listener| {
+					listener(c.GLFW_KEY_UNKNOWN, button, 0);
+					nextKeypressListener = null;
 				}
 			}
 		}
