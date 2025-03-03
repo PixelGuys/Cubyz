@@ -26,14 +26,28 @@ pub const Blueprint = struct {
 			.sizeZ = 0,
 		};
 	}
-
 	pub fn deinit(self: *Blueprint) void {
+		if (self.palette.count() != 0) {
+			var iterator = self.palette.iterator();
+			while(iterator.next()) |element| {
+				self.palette.allocator.free(element.key_ptr.*);
+			}
+		}
 		self.palette.deinit();
 		self.blocks.deinit();
 	}
-	pub fn capture(self: *@This(), pos1: Vec3i, pos2: Vec3i) void {
-		self.palette.clearRetainingCapacity();
+	pub fn clear(self: *Blueprint) void {
+		if (self.palette.count() != 0) {
+			var iterator = self.palette.iterator();
+			while(iterator.next()) |element| {
+				self.palette.allocator.free(element.key_ptr.*);
+			}
+			self.palette.clearRetainingCapacity();
+		}
 		self.blocks.clearRetainingCapacity();
+	}
+	pub fn capture(self: *@This(), pos1: Vec3i, pos2: Vec3i) void {
+		self.clear();
 
 		const startX = @min(pos1[0], pos2[0]);
 		const startY = @min(pos1[1], pos2[1]);

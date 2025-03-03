@@ -28,11 +28,16 @@ const BlueprintSubCommand = enum {
 
 pub fn execute(args: []const u8, source: *User) void {
 	var argsList = List([]const u8).init(main.stackAllocator);
-	defer argsList.deinit();
 
 	var splitIterator = std.mem.splitSequence(u8, args, " ");
 	while(splitIterator.next()) |a| {
 		argsList.append(main.stackAllocator.dupe(u8, a));
+	}
+	defer {
+		for(argsList.items) |arg| {
+			main.stackAllocator.free(arg);
+		}
+		argsList.deinit();
 	}
 
 	if(argsList.items.len < 1) {
@@ -51,10 +56,6 @@ pub fn execute(args: []const u8, source: *User) void {
 	} catch |err| {
 		source.sendMessage("#ff0000Error: {s}", .{@errorName(err)});
 	};
-
-	for(argsList.items) |arg| {
-		main.stackAllocator.free(arg);
-	}
 }
 
 fn blueprintSave(args: List([]const u8), source: *User) !void {
