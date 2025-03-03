@@ -82,8 +82,8 @@ fn blueprintSave(args: List([]const u8), source: *User) !void {
 	defer source.mutex.unlock();
 
 	if(source.commandData.clipboard) |clipboard| {
-		const zon = clipboard.toZon(main.stackAllocator);
-		defer zon.deinit(main.stackAllocator);
+		const storedBlueprint = clipboard.store(main.stackAllocator);
+		defer main.stackAllocator.free(storedBlueprint);
 
 		const fileName: []const u8 = ensureBlueprintExtension(main.stackAllocator, args.items[1]);
 		defer main.stackAllocator.free(fileName);
@@ -92,13 +92,17 @@ fn blueprintSave(args: List([]const u8), source: *User) !void {
 
 		_ = cwd.makeDir("blueprints") catch null;
 
-		var blueprintsDir = main.files.Dir.init(try cwd.openDir("blueprints", .{}));
+		var blueprintsDir = try cwd.openDir("blueprints", .{});
 		defer blueprintsDir.close();
 
 		std.log.info("Saving clipboard to file: {s}", .{fileName});
 		source.sendMessage("Saving clipboard to file: {s}", .{fileName});
 
-		try blueprintsDir.writeZon(fileName, zon);
+		try blueprintsDir.writeFile(.{
+			.sub_path = fileName,
+			.data = storedBlueprint,
+			.flags = .{ .lock = .exclusive },
+		});
 	} else {
 		source.sendMessage("{s}Error: No clipboard content to save.", .{red});
 	}
@@ -145,27 +149,4 @@ fn blueprintLoad(args: List([]const u8), source: *User) !void {
 		source.sendMessage("{s}Too many arguments for **/blueprint load**. Expected 1 argument, FILENAME.", .{red});
 		return;
 	}
-
-	const fileName: []const u8 = ensureBlueprintExtension(main.stackAllocator, args.items[1]);
-	defer main.stackAllocator.free(fileName);
-
-	var cwd = std.fs.cwd();
-
-	var blueprintsDir = main.files.Dir.init(try cwd.openDir("blueprints", .{}));
-	defer blueprintsDir.close();
-
-	source.mutex.lock();
-	defer source.mutex.unlock();
-
-	const zon = try blueprintsDir.readToZon(main.stackAllocator, fileName);
-	defer zon.deinit(main.stackAllocator);
-
-	if (source.commandData.clipboard != null) {
-		source.commandData.clipboard.?.fromZon(zon);
-	} else {
-		source.commandData.clipboard = Blueprint.init(main.globalAllocator);
-		source.commandData.clipboard.?.fromZon(zon);
-	}
-	std.log.info("{s}Loaded blueprint file: {s}", .{green, fileName});
-	source.sendMessage("{s}Loaded blueprint file: {s}", .{green, fileName});
 }

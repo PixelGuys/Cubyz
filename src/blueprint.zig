@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const main = @import("main.zig");
+const Compression = main.utils.Compression;
 const ZonElement = @import("zon.zig").ZonElement;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
@@ -10,8 +11,52 @@ const Block = main.blocks.Block;
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 const User = main.server.User;
 
+pub const blueprintVersion = 0;
+pub const GameIdToBlueprintIdMapType = std.AutoHashMap(u16, u16);
+const BlockIdSizeType = u32;
+const BlockStorageType = u32;
+
+pub const BlueprintCompression = enum (u16) {
+	DeflateFast,
+	DeflateDefault,
+	DeflateBest,
+};
+
+pub const FileHeader = packed struct {
+	version: u16,
+	compression: BlueprintCompression,
+	paletteBlockCount: u16,
+	blockArraySizeX: u16,
+	blockArraySizeY: u16,
+	blockArraySizeZ: u16,
+
+	pub fn store(self: @This(), outputBuffer: []u8) usize {
+		var offset: usize = 0;
+		inline for(@typeInfo(@This()).@"struct".fields) |field| {
+			switch (field.type) {
+				u16 => {
+					std.mem.writeInt(u16, outputBuffer[offset..][0..@sizeOf(u16)], @field(self, field.name), .big);
+					offset += @sizeOf(u16);
+				},
+				BlueprintCompression => {
+					std.mem.writeInt(u16, outputBuffer[offset..][0..@sizeOf(u16)], @intFromEnum(@field(self, field.name)), .big);
+					offset += @sizeOf(u16);
+				},
+				else => unreachable,
+			}
+		}
+		return offset;
+	}
+	pub fn getSizeBytes(_: @This()) usize {
+		var size: usize = 0;
+		inline for(@typeInfo(@This()).@"struct".fields) |field| {
+			size += @sizeOf(field.type);
+		}
+		return size;
+	}
+};
+
 pub const Blueprint = struct {
-	palette: std.StringHashMap(u16),
 	blocks: main.List(Block),
 	sizeX: usize,
 	sizeY: usize,
@@ -19,7 +64,6 @@ pub const Blueprint = struct {
 
 	pub fn init(allocator: NeverFailingAllocator) @This() {
 		return Blueprint{
-			.palette = .init(allocator.allocator),
 			.blocks = .init(allocator),
 			.sizeX = 0,
 			.sizeY = 0,
@@ -27,27 +71,12 @@ pub const Blueprint = struct {
 		};
 	}
 	pub fn deinit(self: *@This()) void {
-		if (self.palette.count() != 0) {
-			var iterator = self.palette.iterator();
-			while(iterator.next()) |element| {
-				self.palette.allocator.free(element.key_ptr.*);
-			}
-		}
-		self.palette.deinit();
 		self.blocks.deinit();
 	}
 	pub fn clear(self: *@This()) void {
 		self.sizeX = 0;
 		self.sizeY = 0;
 		self.sizeZ = 0;
-
-		if (self.palette.count() != 0) {
-			var iterator = self.palette.iterator();
-			while(iterator.next()) |element| {
-				self.palette.allocator.free(element.key_ptr.*);
-			}
-			self.palette.clearRetainingCapacity();
-		}
 		self.blocks.clearRetainingCapacity();
 	}
 	pub fn capture(self: *@This(), pos1: Vec3i, pos2: Vec3i) void {
@@ -79,16 +108,7 @@ pub const Blueprint = struct {
 					const worldZ = startZ + @as(i32, @intCast(offsetZ));
 
 					const block = main.server.world.?.getBlock(worldX, worldY, worldZ) orelse Block{.typ = 0, .data = 0};
-					const blockId: []const u8 = block.id();
-					if(!self.palette.contains(blockId)) {
-						self.palette.put(self.palette.allocator.dupe(u8, blockId) catch unreachable, @as(u16, @truncate(self.palette.count()))) catch unreachable;
-					}
-
-					const blueprintBlockTyp = self.palette.get(blockId) orelse unreachable;
-					const blueprintBlock = Block{.typ = blueprintBlockTyp, .data = block.data};
-
-					self.blocks.append(blueprintBlock);
-					std.log.info("Block at ({}, {}, {}) {}:{} => {}:{}", .{worldX, worldY, worldZ, block.typ, block.data, blueprintBlock.typ, blueprintBlock.data});
+					self.blocks.append(block);
 				}
 			}
 		}
@@ -104,15 +124,6 @@ pub const Blueprint = struct {
 
 		var blockIndex: usize = 0;
 
-		var reverseBlockTypMap = std.AutoHashMap(u16, u16).init(main.stackAllocator.allocator);
-		defer reverseBlockTypMap.deinit();
-
-		var paletteIterator = self.palette.iterator();
-		while(paletteIterator.next()) |entry| {
-			const gamePaletteBlock = main.blocks.parseBlock(entry.key_ptr.*);
-			reverseBlockTypMap.put(entry.value_ptr.*, gamePaletteBlock.typ) catch unreachable;
-		}
-
 		for(0..sizeX) |offsetX| {
 			const worldX = startX + @as(i32, @intCast(offsetX));
 
@@ -122,61 +133,139 @@ pub const Blueprint = struct {
 				for(0..sizeZ) |offsetZ| {
 					const worldZ = startZ + @as(i32, @intCast(offsetZ));
 
-					const blueprintBlock = self.blocks.items[blockIndex];
-					const gameBlockTyp = reverseBlockTypMap.get(blueprintBlock.typ) orelse unreachable;
-					const gameBlock = Block{.typ = gameBlockTyp, .data = blueprintBlock.data};
-
-					mesh_storage.updateBlock(worldX, worldY, worldZ, gameBlock);
-					_ = main.server.world.?.updateBlock(worldX, worldY, worldZ, gameBlock);
+					const block = self.blocks.items[blockIndex];
+					mesh_storage.updateBlock(worldX, worldY, worldZ, block);
+					_ = main.server.world.?.updateBlock(worldX, worldY, worldZ, block);
 
 					blockIndex += 1;
 				}
 			}
 		}
 	}
-	pub fn toZon(self: @This(), allocator: NeverFailingAllocator) ZonElement {
-		var zon = ZonElement.initObject(allocator);
-		errdefer zon.free(allocator);
+	pub fn store(self: @This(), externalAllocator: NeverFailingAllocator) []u8 {
+		const allocator = main.stackAllocator;
+		std.debug.assert(self.sizeX != 0);
+		std.debug.assert(self.sizeY != 0);
+		std.debug.assert(self.sizeZ != 0);
 
-		zon.put("sizeX", self.sizeX);
-		zon.put("sizeY", self.sizeY);
-		zon.put("sizeZ", self.sizeZ);
+		var gameIdToBlueprintId = self.makeGameIdToBlueprintIdMap(allocator);
+		defer gameIdToBlueprintId.deinit();
+		std.debug.assert(gameIdToBlueprintId.count() != 0);
 
-		var paletteZon = ZonElement.initObject(allocator);
-		var paletteIterator = self.palette.iterator();
-		while(paletteIterator.next()) |entry| {
-			paletteZon.put(entry.key_ptr.*, entry.value_ptr.*);
+		const blockPalette = self.packBlockPalette(allocator, gameIdToBlueprintId);
+		defer allocator.free(blockPalette);
+		std.debug.assert(gameIdToBlueprintId.count() == blockPalette.len);
+
+		const blockPaletteSizeBytes = self.getBlockPaletteSize(blockPalette);
+		const blockArraySizeBytes: usize = self.getBlockArraySize();
+		const uncompressedDataSizeBytes = blockPaletteSizeBytes + blockArraySizeBytes;
+		std.debug.assert(uncompressedDataSizeBytes != 0);
+
+		var data = allocator.alloc(u8, uncompressedDataSizeBytes);
+		defer allocator.free(data);
+		{
+			var offset: usize = 0;
+			offset += self.storeBlockPalette(data[offset..], blockPalette);
+			std.debug.assert(offset == blockPaletteSizeBytes);
+
+			offset += self.storeBlockArray(data[offset..], gameIdToBlueprintId);
+			std.debug.assert(offset == uncompressedDataSizeBytes);
 		}
-		zon.put("palette", paletteZon);
+		const compression = BlueprintCompression.DeflateDefault;
+		const compressedData: []u8 = self.compressOutputBuffer(allocator, data, compression);
+		defer allocator.free(compressedData);
+		std.debug.assert(compressedData.len != 0);
 
-		var blocksZon = ZonElement.initArray(allocator);
-		for(self.blocks.items) |block| {
-			blocksZon.append(block.toInt());
-		}
-		zon.put("blocks", blocksZon);
+		const header = FileHeader{
+			.version = blueprintVersion,
+			.compression = compression,
+			.paletteBlockCount = @truncate(gameIdToBlueprintId.count()),
+			.blockArraySizeX = @truncate(self.sizeX),
+			.blockArraySizeY = @truncate(self.sizeY),
+			.blockArraySizeZ = @truncate(self.sizeZ),
+		};
 
-		return zon;
+		const headerSizerBytes = header.getSizeBytes();
+		const outputBufferSize = headerSizerBytes + compressedData.len;
+		var outputBuffer = externalAllocator.alloc(u8, outputBufferSize);
+
+		var offset: usize = 0;
+		offset += header.store(outputBuffer);
+		std.debug.assert(offset == headerSizerBytes);
+
+		@memcpy(outputBuffer[offset..][0..compressedData.len], compressedData);
+
+		return outputBuffer;
 	}
-	pub fn fromZon(self: *@This(), zon: ZonElement) void {
-		self.clear();
+	fn makeGameIdToBlueprintIdMap(self: @This(), allocator: NeverFailingAllocator) GameIdToBlueprintIdMapType {
+		var gameIdToBlueprintId: GameIdToBlueprintIdMapType = .init(allocator.allocator);
 
-		self.sizeX = zon.get(usize, "sizeX", 0);
-		self.sizeY = zon.get(usize, "sizeY", 0);
-		self.sizeZ = zon.get(usize, "sizeZ", 0);
-
-		std.debug.assert(self.sizeX > 0);
-		std.debug.assert(self.sizeY > 0);
-		std.debug.assert(self.sizeZ > 0);
-
-		var paletteZon: ZonElement = zon.getChild("palette");
-		var paletteIterator = paletteZon.object.iterator();
-		while(paletteIterator.next()) |entry| {
-			self.palette.put(self.palette.allocator.dupe(u8, entry.key_ptr.*) catch unreachable, entry.value_ptr.as(u16, 0)) catch unreachable;
+		for(self.blocks.items) |block| {
+			const result = gameIdToBlueprintId.getOrPut(block.typ) catch unreachable;
+			if(!result.found_existing) {
+				result.value_ptr.* = @truncate(gameIdToBlueprintId.count() - 1);
+			}
 		}
 
-		const blocksZon: ZonElement = zon.getChild("blocks");
-		for(blocksZon.array.items) |block| {
-			self.blocks.append(Block.fromInt(block.as(u32, 0)));
+		return gameIdToBlueprintId;
+	}
+	fn packBlockPalette(_: @This(), allocator: NeverFailingAllocator, map: GameIdToBlueprintIdMapType) [][]const u8 {
+		var blockPalette = allocator.alloc([]const u8, map.count());
+
+		var iterator = map.iterator();
+		while(iterator.next()) |entry| {
+			const block = Block{.typ = entry.key_ptr.*, .data = 0};
+			const blockId = block.id();
+			blockPalette[entry.value_ptr.*] = blockId;
+		}
+		return blockPalette;
+	}
+	fn getBlockPaletteSize(_: @This(), palette: [][]const u8) usize {
+		var total: usize = 0;
+		for(palette) |blockName| {
+			total += @sizeOf(BlockIdSizeType) + blockName.len;
+		}
+		return total;
+	}
+	fn getBlockArraySize(self: @This()) usize {
+		return self.sizeX * self.sizeY * self.sizeZ * @sizeOf(Block);
+	}
+	fn storeBlockPalette(_: @This(), outputBuffer: []u8, blockPalette: [][]const u8) usize {
+		var offset: usize = 0;
+		std.log.info("Blueprint block palette:", .{});
+
+		for(0..blockPalette.len) |index| {
+			const blockName = blockPalette[index];
+			std.log.info("palette[{d}]: {s}", .{index, blockName});
+
+			std.mem.writeInt(BlockIdSizeType, outputBuffer[offset..][0..@sizeOf(BlockIdSizeType)], @truncate(blockName.len), .big);
+			offset += @sizeOf(BlockIdSizeType);
+
+			@memcpy(outputBuffer[offset..][0..blockName.len], blockName);
+			offset += blockName.len;
+		}
+		return offset;
+	}
+	fn storeBlockArray(self: @This(), outputBuffer: []u8, map: GameIdToBlueprintIdMapType) usize {
+		var offset: usize = 0;
+		for(self.blocks.items) |block| {
+			const blueprintBlock: BlockStorageType = (Block{.typ = map.get(block.typ).?, .data = block.data}).toInt();
+			std.mem.writeInt(BlockStorageType, outputBuffer[offset..][0..@sizeOf(BlockStorageType)], blueprintBlock, .big);
+			offset += @sizeOf(BlockStorageType);
+		}
+		return offset;
+	}
+	fn compressOutputBuffer(_: @This(), allocator: NeverFailingAllocator, uncompressedData: []u8, compressionMode: BlueprintCompression) []u8 {
+		switch(compressionMode) {
+			.DeflateFast => {
+				return Compression.deflate(allocator, uncompressedData, .fast);
+			},
+			.DeflateDefault => {
+				return Compression.deflate(allocator, uncompressedData, .default);
+			},
+			.DeflateBest => {
+				return Compression.deflate(allocator, uncompressedData, .best);
+			},
 		}
 	}
 };
