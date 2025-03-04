@@ -21,26 +21,33 @@ pub fn registerBlockMigrations(migrations: *std.StringHashMap(ZonElement)) void 
 fn register(
 	collection: *std.StringHashMap([]const u8),
 	assetType: []const u8,
-	name: []const u8,
+	addonName: []const u8,
 	migrationZon: ZonElement,
 ) void {
+	const localAllocator = main.stackAllocator;
+
 	if((migrationZon != .object or migrationZon.object.count() == 0)) {
 		return;
 	}
 
 	var migrationZonIterator = migrationZon.object.iterator();
 	while(migrationZonIterator.next()) |migration| {
-		const result = collection.getOrPut(migration.key_ptr.*) catch unreachable;
+		const assetId = std.fmt.allocPrint(localAllocator.allocator, "{s}:{s}", .{addonName, migration.key_ptr.*}) catch unreachable;
+		defer localAllocator.free(assetId);
+
+		const newAssetId = std.fmt.allocPrint(localAllocator.allocator, "{s}:{s}", .{addonName, migration.value_ptr.stringOwned}) catch unreachable;
+		defer localAllocator.free(newAssetId);
+
+		const result = collection.getOrPut(assetId) catch unreachable;
 
 		if(result.found_existing) {
-			std.log.err("Skipping name collision in {s} migration from {s}: '{s}' -> '{s}'", .{assetType, name, migration.key_ptr.*, migration.value_ptr.stringOwned});
-			const existingMigration = collection.get(migration.key_ptr.*) orelse unreachable;
+			std.log.err("Skipping name collision in {s} migration from {s}: '{s}' -> '{s}'", .{assetType, addonName, assetId, newAssetId});
+			const existingMigration = collection.get(assetId) orelse unreachable;
 			std.log.err("Already mapped to '{s}'", .{existingMigration});
 		} else {
-			result.key_ptr.* = migrationAllocator.dupe(u8, migration.key_ptr.*);
-			const new = migrationAllocator.dupe(u8, migration.value_ptr.stringOwned);
-			result.value_ptr.* = new;
-			std.log.info("Registered {s} migration from {s}: '{s}' -> '{s}'", .{assetType, name, migration.key_ptr.*, new});
+			result.key_ptr.* = migrationAllocator.dupe(u8, assetId);
+			result.value_ptr.* = migrationAllocator.dupe(u8, newAssetId);
+			std.log.info("Registered {s} migration from {s}: '{s}' -> '{s}'", .{assetType, addonName, assetId, newAssetId});
 		}
 	}
 }

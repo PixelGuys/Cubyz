@@ -125,11 +125,13 @@ pub fn readAllZonFilesInAddons(
 
 				// If this is migrations file, we interrupt normal asset processing and store it in migrations hashmap.
 				if(std.ascii.eqlIgnoreCase(entry.basename, "_migrations.zig.zon")) {
+					defer externalAllocator.free(id);
+
 					if(migrations == null) {
 						std.log.err("Migrations not allowed for {s}", .{subPath});
 						continue;
 					}
-					migrations.?.put(id, zon) catch unreachable;
+					migrations.?.put(externalAllocator.dupe(u8, addonName), zon) catch unreachable;
 					// This means that we skip default file reading and storing file content as normal asset.
 					continue;
 				}
