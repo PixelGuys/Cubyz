@@ -23,7 +23,7 @@ const BlueprintSubCommand = enum {
 
 	fn fromString(string: []const u8) BlueprintSubCommand {
 		return std.meta.stringToEnum(BlueprintSubCommand, string) orelse {
-			if (string.len == 0) return .empty;
+			if(string.len == 0) return .empty;
 			return .other;
 		};
 	}
@@ -63,7 +63,7 @@ pub fn execute(args: []const u8, source: *User) void {
 		},
 		.empty => {
 			source.sendMessage("{s}Missing subcommand for **/blueprint**, usage: {s}{s} ", .{red, white, usage});
-		}
+		},
 	} catch |err| {
 		source.sendMessage("{s}Error: {s}", .{red, @errorName(err)});
 	};
@@ -95,13 +95,13 @@ fn blueprintSave(args: List([]const u8), source: *User) !void {
 		var blueprintsDir = try cwd.openDir("blueprints", .{});
 		defer blueprintsDir.close();
 
-		std.log.info("Saving clipboard to file: {s}", .{fileName});
-		source.sendMessage("Saving clipboard to file: {s}", .{fileName});
+		std.log.info("{s}Saving clipboard to blueprint file: {s}", .{blue, fileName});
+		source.sendMessage("{s}Saving clipboard to blueprint file: {s}", .{blue, fileName});
 
 		try blueprintsDir.writeFile(.{
 			.sub_path = fileName,
 			.data = storedBlueprint,
-			.flags = .{ .lock = .exclusive },
+			.flags = .{.lock = .exclusive},
 		});
 	} else {
 		source.sendMessage("{s}Error: No clipboard content to save.", .{red});
@@ -148,5 +148,30 @@ fn blueprintLoad(args: List([]const u8), source: *User) !void {
 	if(args.items.len >= 3) {
 		source.sendMessage("{s}Too many arguments for **/blueprint load**. Expected 1 argument, FILENAME.", .{red});
 		return;
+	}
+	source.mutex.lock();
+	defer source.mutex.unlock();
+
+	const fileName: []const u8 = ensureBlueprintExtension(main.stackAllocator, args.items[1]);
+	defer main.stackAllocator.free(fileName);
+
+	var cwd = std.fs.cwd();
+
+	_ = cwd.makeDir("blueprints") catch null;
+
+	var blueprintsDir = try cwd.openDir("blueprints", .{});
+	defer blueprintsDir.close();
+
+	std.log.info("{s}Loading blueprint file: {s}", .{blue, fileName});
+	source.sendMessage("{s}Loading blueprint file: {s}", .{blue, fileName});
+
+	const storedBlueprint = try blueprintsDir.readFileAlloc(main.stackAllocator.allocator, fileName, std.math.maxInt(u32));
+	defer main.stackAllocator.free(storedBlueprint);
+
+	if(source.commandData.clipboard != null) {
+		try source.commandData.clipboard.?.load(storedBlueprint);
+	} else {
+		source.commandData.clipboard = Blueprint.init(main.globalAllocator);
+		try source.commandData.clipboard.?.load(storedBlueprint);
 	}
 }
