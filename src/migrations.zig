@@ -26,28 +26,44 @@ fn register(
 ) void {
 	const localAllocator = main.stackAllocator;
 
-	if((migrationZon != .object or migrationZon.object.count() == 0)) {
+	if((migrationZon != .array or migrationZon.array.items.len == 0)) {
+		std.log.err("Skipping incorrect {s} migration data structure from addon {s}", .{assetType, addonName});
 		return;
 	}
 
-	var migrationZonIterator = migrationZon.object.iterator();
-	while(migrationZonIterator.next()) |migration| {
-		const assetId = std.fmt.allocPrint(localAllocator.allocator, "{s}:{s}", .{addonName, migration.key_ptr.*}) catch unreachable;
-		defer localAllocator.free(assetId);
+	for(migrationZon.array.items) |migration| {
+		const oldZonOpt = migration.get(?[]const u8, "old", null);
+		const newZonOpt = migration.get(?[]const u8, "new", null);
 
-		const newAssetId = std.fmt.allocPrint(localAllocator.allocator, "{s}:{s}", .{addonName, migration.value_ptr.stringOwned}) catch unreachable;
-		defer localAllocator.free(newAssetId);
+		if(oldZonOpt == null or newZonOpt == null) {
+			std.log.err("Skipping incomplete migration in {s} migrations: '{s}:{s}' -> '{s}:{s}'", .{assetType, addonName, oldZonOpt orelse "<null>", addonName, newZonOpt orelse "<null>"});
+			continue;
+		}
 
-		const result = collection.getOrPut(assetId) catch unreachable;
+		const oldZon = oldZonOpt orelse unreachable;
+		const newZon = newZonOpt orelse unreachable;
+
+		if(std.mem.eql(u8, oldZon, newZon)) {
+			std.log.err("Skipping identity migration in {s} migrations: '{s}:{s}' -> '{s}:{s}'", .{assetType, addonName, oldZon, addonName, newZon});
+			continue;
+		}
+
+		const oldAssetId = std.fmt.allocPrint(localAllocator.allocator, "{s}:{s}", .{addonName, oldZon}) catch unreachable;
+		defer localAllocator.free(oldAssetId);
+
+		const result = collection.getOrPut(oldAssetId) catch unreachable;
 
 		if(result.found_existing) {
-			std.log.err("Skipping name collision in {s} migration from {s}: '{s}' -> '{s}'", .{assetType, addonName, assetId, newAssetId});
-			const existingMigration = collection.get(assetId) orelse unreachable;
+			std.log.err("Skipping name collision in {s} migration: '{s}' -> '{s}:{s}'", .{assetType, oldAssetId, addonName, newZon});
+			const existingMigration = collection.get(oldAssetId) orelse unreachable;
 			std.log.err("Already mapped to '{s}'", .{existingMigration});
 		} else {
-			result.key_ptr.* = migrationAllocator.dupe(u8, assetId);
+			const newAssetId = std.fmt.allocPrint(localAllocator.allocator, "{s}:{s}", .{addonName, newZon}) catch unreachable;
+			defer localAllocator.free(newAssetId);
+
+			result.key_ptr.* = migrationAllocator.dupe(u8, oldAssetId);
 			result.value_ptr.* = migrationAllocator.dupe(u8, newAssetId);
-			std.log.info("Registered {s} migration from {s}: '{s}' -> '{s}'", .{assetType, addonName, assetId, newAssetId});
+			std.log.info("Registered {s} migration: '{s}' -> '{s}'", .{assetType, oldAssetId, newAssetId});
 		}
 	}
 }
