@@ -250,6 +250,10 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		}
 	}
 
+	pub fn append(self: *const ZonElement, value: anytype) void {
+		self.array.append(createElementFromRandomType(value, self.array.allocator.allocator));
+	}
+
 	pub fn put(self: *const ZonElement, key: []const u8, value: anytype) void {
 		const result = createElementFromRandomType(value, self.object.allocator);
 
