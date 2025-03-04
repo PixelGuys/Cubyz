@@ -21,7 +21,7 @@ pub fn execute(args: []const u8, source: *User) void {
 	const pos2 = source.commandData.selectionPosition2;
 
 	source.sendMessage("Copying: ({d:.3}, {d:.3}, {d:.3}) ({d:.3}, {d:.3}, {d:.3})", .{pos1[0], pos1[1], pos1[2], pos2[0], pos2[1], pos2[2]});
-	if (source.commandData.clipboard != null) {
+	if(source.commandData.clipboard != null) {
 		source.commandData.clipboard.?.capture(pos1, pos2);
 	} else {
 		source.commandData.clipboard = Blueprint.init(main.globalAllocator);
