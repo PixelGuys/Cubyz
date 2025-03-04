@@ -623,7 +623,7 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	pub fn register(assetFolder: []const u8, _: []const u8, zon: ZonElement) void {
-		_modelIndex[meshes.size] = _mode[meshes.size].createBlockModel(zon.get([]const u8, "model", "cubyz:cube"));
+		_modelIndex[meshes.size] = _mode[meshes.size].createBlockModel(zon.getChild("model"));
 
 		// The actual model is loaded later, in the rendering thread.
 		// But textures can be loaded here:

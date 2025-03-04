@@ -10,6 +10,7 @@ const Vec2f = vec.Vec2f;
 const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
 const Mat4f = vec.Mat4f;
+const ZonElement = main.ZonElement;
 
 const RayIntersectionResult = struct {
 	distance: f64,
@@ -29,8 +30,8 @@ pub const RotationMode = struct { // MARK: RotationMode
 		fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: ?Neighbor, _: *Block, _: Block, blockPlacing: bool) bool {
 			return blockPlacing;
 		}
-		fn createBlockModel(modelId: []const u8) u16 {
-			return main.models.getModelIndex(modelId);
+		fn createBlockModel(zon: ZonElement) u16 {
+			return main.models.getModelIndex(zon.as([]const u8, "cubyz:cube"));
 		}
 		fn updateData(_: *Block, _: Neighbor, _: Block) bool {
 			return false;
@@ -111,7 +112,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 
 	model: *const fn(block: Block) u16 = &DefaultFunctions.model,
 
-	createBlockModel: *const fn(modelId: []const u8) u16 = &DefaultFunctions.createBlockModel,
+	createBlockModel: *const fn(zon: ZonElement) u16 = &DefaultFunctions.createBlockModel,
 
 	/// Updates the block data of a block in the world or places a block in the world.
 	/// return true if the placing was successful, false otherwise.
@@ -156,7 +157,8 @@ pub const RotationModes = struct {
 			rotatedModels.deinit();
 		}
 
-		pub fn createBlockModel(modelId: []const u8) u16 {
+		pub fn createBlockModel(zon: ZonElement) u16 {
+			const modelId = zon.as([]const u8, "cubyz:cube");
 			if(rotatedModels.get(modelId)) |modelIndex| return modelIndex;
 
 			const baseModelIndex = main.models.getModelIndex(modelId);
@@ -196,7 +198,8 @@ pub const RotationModes = struct {
 			rotatedModels.deinit();
 		}
 
-		pub fn createBlockModel(modelId: []const u8) u16 {
+		pub fn createBlockModel(zon: ZonElement) u16 {
+			const modelId = zon.as([]const u8, "cubyz:cube");
 			if(rotatedModels.get(modelId)) |modelIndex| return modelIndex;
 
 			const baseModelIndex = main.models.getModelIndex(modelId);
@@ -276,7 +279,8 @@ pub const RotationModes = struct {
 			}
 		}
 
-		pub fn createBlockModel(modelId: []const u8) u16 {
+		pub fn createBlockModel(zon: ZonElement) u16 {
+			const modelId = zon.as([]const u8, "cubyz:cube");
 			if(fenceModels.get(modelId)) |modelIndex| return modelIndex;
 
 			const baseModelIndex = main.models.getModelIndex(modelId);
@@ -370,7 +374,8 @@ pub const RotationModes = struct {
 			}
 		}
 
-		pub fn createBlockModel(modelId: []const u8) u16 {
+		pub fn createBlockModel(zon: ZonElement) u16 {
+			const modelId = zon.as([]const u8, "cubyz:cube");
 			if(branchModels.get(modelId)) |modelIndex| return modelIndex;
 
 			const baseModelIndex = main.models.getModelIndex(modelId);
@@ -562,7 +567,7 @@ pub const RotationModes = struct {
 			return mem[0..faces];
 		}
 
-		pub fn createBlockModel(_: []const u8) u16 {
+		pub fn createBlockModel(_: ZonElement) u16 {
 			if(modelIndex != 0) {
 				return modelIndex;
 			}
@@ -802,11 +807,18 @@ pub const RotationModes = struct {
 			rotatedModels.deinit();
 		}
 
-		pub fn createBlockModel(modelId: []const u8) u16 {
-			if(rotatedModels.get(modelId)) |modelIndex| return modelIndex;
+		pub fn createBlockModel(zon: ZonElement) u16 {
+			const baseModelId: []const u8 = zon.get([]const u8, "base", "cubyz:cube");
+			const sideModelId: []const u8 = zon.get([]const u8, "side", "cubyz:cube");
+			const key: []const u8 = std.mem.concat(main.stackAllocator.allocator, u8, &.{baseModelId, sideModelId}) catch unreachable;
+			defer main.stackAllocator.free(key);
 
-			const baseModelIndex = main.models.getModelIndex(modelId);
+			if(rotatedModels.get(key)) |modelIndex| return modelIndex;
+
+			const baseModelIndex = main.models.getModelIndex(baseModelId);
 			const baseModel = main.models.models.items[baseModelIndex];
+			const sideModelIndex = main.models.getModelIndex(sideModelId);
+			const sideModel = main.models.models.items[sideModelIndex];
 			// Rotate the model:
 			var centerModel: u16 = undefined;
 			var negXModel: u16 = undefined;
@@ -817,10 +829,10 @@ pub const RotationModes = struct {
 				const torchData: TorchData = @bitCast(@as(u5, @intCast(i)));
 				if(i & i - 1 == 0) {
 					if(torchData.center) centerModel = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.identity()});
-					if(torchData.negX) negXModel = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.translation(.{-0.4, 0, 0.2}).mul(Mat4f.rotationY(0.3))});
-					if(torchData.posX) posXModel = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.translation(.{0.4, 0, 0.2}).mul(Mat4f.rotationY(-0.3))});
-					if(torchData.negY) negYModel = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.translation(.{0, -0.4, 0.2}).mul(Mat4f.rotationX(-0.3))});
-					if(torchData.posY) posYModel = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.translation(.{0, 0.4, 0.2}).mul(Mat4f.rotationX(0.3))});
+					if(torchData.negX) negXModel = sideModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationZ(0)});
+					if(torchData.posX) posXModel = sideModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationZ(std.math.pi)});
+					if(torchData.negY) negYModel = sideModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationZ(std.math.pi/2.0)});
+					if(torchData.posY) posYModel = sideModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationZ(-std.math.pi/2.0)});
 				} else {
 					var models: [5]u16 = undefined;
 					var amount: usize = 0;
@@ -848,7 +860,7 @@ pub const RotationModes = struct {
 				}
 			}
 			const modelIndex = centerModel;
-			rotatedModels.put(modelId, modelIndex) catch unreachable;
+			rotatedModels.put(key, modelIndex) catch unreachable;
 			return modelIndex;
 		}
 
@@ -968,7 +980,8 @@ pub const RotationModes = struct {
 			rotatedModels.deinit();
 		}
 
-		pub fn createBlockModel(modelId: []const u8) u16 {
+		pub fn createBlockModel(zon: ZonElement) u16 {
+			const modelId = zon.as([]const u8, "cubyz:cube");
 			if(rotatedModels.get(modelId)) |modelIndex| return modelIndex;
 
 			const baseModelIndex = main.models.getModelIndex(modelId);
@@ -1093,7 +1106,8 @@ pub const RotationModes = struct {
 		fn init() void {}
 		fn deinit() void {}
 
-		pub fn createBlockModel(modelId: []const u8) u16 {
+		pub fn createBlockModel(zon: ZonElement) u16 {
+			const modelId = zon.as([]const u8, "cubyz:cube");
 			if(!std.mem.eql(u8, modelId, "cubyz:cube")) {
 				std.log.err("Ores can only be use on cube models.", .{modelId});
 			}
