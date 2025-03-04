@@ -24,8 +24,6 @@ fn register(
 	addonName: []const u8,
 	migrationZon: ZonElement,
 ) void {
-	const localAllocator = main.stackAllocator;
-
 	if((migrationZon != .array or migrationZon.array.items.len == 0)) {
 		std.log.err("Skipping incorrect {s} migration data structure from addon {s}", .{assetType, addonName});
 		return;
@@ -48,8 +46,8 @@ fn register(
 			continue;
 		}
 
-		const oldAssetId = std.fmt.allocPrint(localAllocator.allocator, "{s}:{s}", .{addonName, oldZon}) catch unreachable;
-		defer localAllocator.free(oldAssetId);
+		const oldAssetId = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}:{s}", .{addonName, oldZon}) catch unreachable;
+		defer main.stackAllocator.free(oldAssetId);
 
 		const result = collection.getOrPut(oldAssetId) catch unreachable;
 
@@ -58,8 +56,8 @@ fn register(
 			const existingMigration = collection.get(oldAssetId) orelse unreachable;
 			std.log.err("Already mapped to '{s}'", .{existingMigration});
 		} else {
-			const newAssetId = std.fmt.allocPrint(localAllocator.allocator, "{s}:{s}", .{addonName, newZon}) catch unreachable;
-			defer localAllocator.free(newAssetId);
+			const newAssetId = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}:{s}", .{addonName, newZon}) catch unreachable;
+			defer main.stackAllocator.free(newAssetId);
 
 			result.key_ptr.* = migrationAllocator.dupe(u8, oldAssetId);
 			result.value_ptr.* = migrationAllocator.dupe(u8, newAssetId);

@@ -103,7 +103,12 @@ pub fn readAllZonFilesInAddons(
 			std.log.err("Got error while iterating addon directory {s}: {s}", .{subPath, @errorName(err)});
 			break :blk null;
 		}) |entry| {
-			if(entry.kind == .file and !std.ascii.startsWithIgnoreCase(entry.basename, "_defaults") and std.ascii.endsWithIgnoreCase(entry.basename, ".zon") and !std.ascii.startsWithIgnoreCase(entry.path, "textures")) {
+			if(entry.kind == .file and
+				!std.ascii.startsWithIgnoreCase(entry.basename, "_defaults") and
+				std.ascii.endsWithIgnoreCase(entry.basename, ".zon") and
+				!std.ascii.startsWithIgnoreCase(entry.path, "textures") and
+				!std.ascii.eqlIgnoreCase(entry.basename, "_migrations.zig.zon"))
+			{
 				const fileSuffixLen = if(std.ascii.endsWithIgnoreCase(entry.basename, ".zig.zon")) ".zig.zon".len else ".zon".len;
 				const folderName = addonName;
 				const id: []u8 = externalAllocator.alloc(u8, folderName.len + 1 + entry.path.len - fileSuffixLen);
@@ -122,19 +127,6 @@ pub fn readAllZonFilesInAddons(
 					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
 					continue;
 				};
-
-				// If this is migrations file, we interrupt normal asset processing and store it in migrations hashmap.
-				if(std.ascii.eqlIgnoreCase(entry.basename, "_migrations.zig.zon")) {
-					defer externalAllocator.free(id);
-
-					if(migrations == null) {
-						std.log.err("Migrations not allowed for {s}", .{subPath});
-						continue;
-					}
-					migrations.?.put(externalAllocator.dupe(u8, addonName), zon) catch unreachable;
-					// This means that we skip default file reading and storing file content as normal asset.
-					continue;
-				}
 
 				if(defaults) {
 					const path = entry.dir.realpathAlloc(main.stackAllocator.allocator, ".") catch unreachable;
@@ -156,6 +148,13 @@ pub fn readAllZonFilesInAddons(
 				}
 				output.put(id, zon) catch unreachable;
 			}
+		}
+		if(migrations != null) blk: {
+			const zon = main.files.Dir.init(dir).readToZon(externalAllocator, "_migrations.zig.zon") catch |err| {
+				if(err != error.FileNotFound) std.log.err("Missing {s} migration file for addon {s}", .{subPath, addonName});
+				break :blk;
+			};
+			migrations.?.put(externalAllocator.dupe(u8, addonName), zon) catch unreachable;
 		}
 	}
 }
