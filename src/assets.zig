@@ -151,7 +151,7 @@ pub fn readAllZonFilesInAddons(
 		}
 		if(migrations != null) blk: {
 			const zon = main.files.Dir.init(dir).readToZon(externalAllocator, "_migrations.zig.zon") catch |err| {
-				if(err != error.FileNotFound) std.log.err("Missing {s} migration file for addon {s}", .{subPath, addonName});
+				if(err != error.FileNotFound) std.log.err("Cannot read {s} migration file for addon {s}", .{subPath, addonName});
 				break :blk;
 			};
 			migrations.?.put(externalAllocator.dupe(u8, addonName), zon) catch unreachable;

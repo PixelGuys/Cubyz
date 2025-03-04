@@ -24,7 +24,7 @@ fn register(
 	addonName: []const u8,
 	migrationZon: ZonElement,
 ) void {
-	if((migrationZon != .array or migrationZon.array.items.len == 0)) {
+	if((migrationZon.toSlice().len == 0)) {
 		std.log.err("Skipping incorrect {s} migration data structure from addon {s}", .{assetType, addonName});
 		return;
 	}
