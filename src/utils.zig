@@ -1843,3 +1843,77 @@ pub const Side = enum {
 	client,
 	server,
 };
+
+pub const BinaryReader = struct {
+	remaining: []const u8,
+	endian: std.builtin.Endian,
+
+	pub fn init(data: []const u8, endian: std.builtin.Endian) BinaryReader {
+		return .{.remaining = data, .endian = endian};
+	}
+
+	pub fn readInt(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds}!T {
+		if(@mod(@typeInfo(T).int.bits, 8) != 0) {
+			const fullBits = comptime std.mem.alignForward(u16, @typeInfo(T).int.bits, 8);
+			const FullType = std.meta.Int(@typeInfo(T).int.signedness, fullBits);
+			const val = try self.readInt(FullType);
+			return std.math.cast(T, val) orelse return error.IntOutOfBounds;
+		}
+		const bufSize = @divExact(@typeInfo(T).int.bits, 8);
+		if(self.remaining.len < bufSize) return error.OutOfBounds;
+		defer self.remaining = self.remaining[bufSize..];
+		return std.mem.readInt(T, self.remaining[0..bufSize], self.endian);
+	}
+
+	pub fn readEnum(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds, InvalidEnumTag}!T {
+		const int = try self.readInt(@typeInfo(T).@"enum".tag_type);
+		return std.meta.intToEnum(T, int);
+	}
+
+	pub fn readUntilDelimiter(self: *BinaryReader, comptime delimiter: u8) ![:delimiter]const u8 {
+		const len = std.mem.indexOfScalar(u8, self.remaining, delimiter) orelse return error.OutOfBounds;
+		defer self.remaining = self.remaining[len+1..];
+		return self.remaining[0..len:delimiter];
+	}
+};
+
+pub const BinaryWriter = struct {
+	data: main.List(u8),
+	endian: std.builtin.Endian,
+
+	pub fn init(allocator: NeverFailingAllocator, endian: std.builtin.Endian) BinaryWriter {
+		return .{.data = .init(allocator), .endian = endian};
+	}
+
+	pub fn initCapacity(allocator: NeverFailingAllocator, endian: std.builtin.Endian, capacity: usize) BinaryWriter {
+		return .{.data = .initCapacity(allocator, capacity), .endian = endian};
+	}
+
+	pub fn deinit(self: *BinaryWriter) void {
+		self.data.deinit();
+	}
+
+	pub fn writeInt(self: *BinaryWriter, T: type, value: T) void {
+		if(@mod(@typeInfo(T).int.bits, 8) != 0) {
+			const fullBits = comptime std.mem.alignForward(u16, @typeInfo(T).int.bits, 8);
+			const FullType = std.meta.Int(@typeInfo(T).int.signedness, fullBits);
+			return self.writeInt(FullType, value);
+		}
+		const bufSize = @divExact(@typeInfo(T).int.bits, 8);
+		std.mem.writeInt(T, self.data.addMany(bufSize)[0..bufSize], value, self.endian);
+	}
+
+	pub fn writeEnum(self: *BinaryWriter, T: type, value: T) void {
+		self.writeInt(@typeInfo(T).@"enum".tag_type, @intFromEnum(value));
+	}
+
+	pub fn writeSlice(self: *BinaryWriter, slice: []const u8) void {
+		self.data.appendSlice(slice);
+	}
+
+	pub fn writeWithDelimiter(self: *BinaryWriter, slice: []const u8, delimiter: u8) void {
+		std.debug.assert(!std.mem.containsAtLeast(u8, slice, 1, &.{delimiter}));
+		self.writeSlice(slice);
+		self.data.append(delimiter);
+	}
+};
