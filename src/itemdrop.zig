@@ -535,9 +535,10 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 		const dt: f32 = @floatCast(deltaTime);
 
 		var playerVel: Vec3f = .{@floatCast((game.Player.super.vel[2]*0.009 + game.Player.eyeVel[2]*0.0075)), 0, 0};
-		playerVel = vec.clampMag(playerVel, 0.55);
-
-		const n1: Vec3f = cameraFollowVel - (cameraFollow - (game.camera.rotation + playerVel))*damping*damping*@as(Vec3f, @splat(dt));
+		playerVel = vec.clampMag(playerVel, 0.32);
+	
+		// TODO: add *smooth* item sway 
+		const n1: Vec3f = cameraFollowVel - (cameraFollow - playerVel)*damping*damping*@as(Vec3f, @splat(dt));
 		const n2: Vec3f = @as(Vec3f, @splat(1)) + damping*@as(Vec3f, @splat(dt));
 		cameraFollowVel = n1/(n2*n2);
 
@@ -703,7 +704,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&@max(
 			ambientLight*@as(Vec3f, @as(Vec3f, @floatFromInt(Vec3i{light[0], light[1], light[2]}))/@as(Vec3f, @splat(255))),
 			@as(Vec3f, @floatFromInt(Vec3i{light[3], light[4], light[5]}))/@as(Vec3f, @splat(255)),
-		)));	
+		)));
 	}
 
 	fn bindModelUniforms(modelIndex: u31, blockType: u16) void {
@@ -756,6 +757,18 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		}
 	}
 
+	inline fn getPos(x: u8, y: u8, z: u8) u32 {
+		return (z * 4) + (y * 2) + (x);
+	}
+
+	inline fn blendColors(a: [6]f64, b: [6]f64, t: f64) [6]f64 {
+		var result: [6]f64 = .{0, 0, 0, 0, 0, 0};
+		inline for(0..6) |i| {
+			result[i] = std.math.lerp(a[i], b[i], t);
+		}
+		return result;
+	}
+
 	pub fn renderDisplayItems(ambientLight: Vec3f, playerPos: Vec3d, time: u32) void {
 		if(!showItem) return;
 
@@ -766,10 +779,58 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		const selectedItem = game.Player.inventory.getItem(game.Player.selectedSlot);
 		if(selectedItem) |item| {
 			var pos: Vec3d = Vec3d{0, 0, 0};
-			const rot: Vec3f = ItemDisplayManager.cameraFollow - game.camera.rotation;
+			const rot: Vec3f = ItemDisplayManager.cameraFollow;
 			const blockPos: Vec3i = @intFromFloat(@floor(playerPos));
-			const light: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse .{0} ** 6;
-			bindLightUniform(light, ambientLight);
+			var localBlockPos = playerPos - @as(Vec3d, @floatFromInt(blockPos));
+			const quadrant: Vec3i = .{
+				if (localBlockPos[0] - 0.5 < 0) -1 else 1, 
+				if (localBlockPos[1] - 0.5 < 0) -1 else 1,  
+				if (localBlockPos[2] - 0.5 < 0) -1 else 1, 
+			};
+
+			var samples: [8][6]f64 = @splat(@splat(0));
+			inline for(0..2) |z| {
+				inline for(0..2) |y| {
+					inline for(0..2) |x| {
+						const lx = blockPos[0] + @as(i32, @intCast(x))*quadrant[0];
+						const ly = blockPos[1] + @as(i32, @intCast(y))*quadrant[1];
+						const lz = blockPos[2] + @as(i32, @intCast(z))*quadrant[2];
+						const light: [6]u8 = main.renderer.mesh_storage.getLight(lx, ly, lz) orelse @splat(0);
+
+						inline for(0..6) |i| {
+							samples[getPos(x, y, z)][i] = @as(f64, @floatFromInt(light[i]));
+						}
+					}
+				}
+			}
+
+			localBlockPos[0] -= if(quadrant[0] == -1) 0 else 0.5;
+			localBlockPos[1] -= if(quadrant[1] == -1) 0 else 0.5;
+			localBlockPos[2] -= if(quadrant[2] == -1) 0 else 0.5;
+
+			// TODO: fix jagged light, do better interpolation
+			samples[getPos(1, 0, 0)] = blendColors(samples[0], samples[getPos(1, 0, 0)], localBlockPos[0]);
+			samples[getPos(0, 1, 0)] = blendColors(samples[0], samples[getPos(0, 1, 0)], localBlockPos[1]);
+			samples[getPos(0, 0, 1)] = blendColors(samples[0], samples[getPos(0, 0, 1)], localBlockPos[2]);
+
+			samples[getPos(1, 1, 0)] = blendColors(samples[0], samples[getPos(1, 1, 0)], vec.length(Vec3d{localBlockPos[0], localBlockPos[1], 0})*0.7);
+			samples[getPos(0, 1, 1)] = blendColors(samples[0], samples[getPos(0, 1, 1)], vec.length(Vec3d{localBlockPos[1], localBlockPos[2], 0})*0.7);
+			samples[getPos(1, 0, 1)] = blendColors(samples[0], samples[getPos(1, 0, 1)], vec.length(Vec3d{localBlockPos[0], localBlockPos[2], 0})*0.7);
+
+			samples[getPos(1, 1, 1)] = blendColors(samples[0], samples[getPos(1, 1, 1)], vec.length(localBlockPos)*0.5);
+			
+			var result: [6]u8 = @splat(0);
+			inline for(0..6) |i| {
+				var biggest: f64 = 0;
+				inline for(0..samples.len) |j| {
+					if (biggest < samples[j][i]) {
+						biggest = samples[j][i];
+					}
+				}
+				result[i] = @as(u8, @intFromFloat(@floor(biggest)));
+			}
+			
+			bindLightUniform(result, ambientLight);
 
 			const model = getModel(item);
 			var vertices: u31 = 36;
