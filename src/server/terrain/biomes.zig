@@ -157,13 +157,13 @@ fn hashGeneric(input: anytype) u64 {
 		},
 		.optional => if(input) |_input| hashGeneric(_input) else 0,
 		.pointer => switch(@typeInfo(T).pointer.size) {
-			.One => blk: {
+			.one => blk: {
 				if(@typeInfo(@typeInfo(T).pointer.child) == .@"fn") break :blk 0;
 				if(@typeInfo(T).pointer.child == Biome) return hashGeneric(input.id);
 				if(@typeInfo(T).pointer.child == anyopaque) break :blk 0;
 				break :blk hashGeneric(input.*);
 			},
-			.Slice => blk: {
+			.slice => blk: {
 				var result: u64 = 0;
 				for(input) |val| {
 					result = result*%33 +% hashGeneric(val);

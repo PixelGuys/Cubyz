@@ -131,4 +131,22 @@ pub fn build(b: *std.Build) !void {
 
 	const formatter_step = b.step("format", "Check the formatting of the code");
 	formatter_step.dependOn(&formatter_cmd.step);
+
+	const zig_fmt = b.addExecutable(.{
+		.name = "zig_fmt",
+		.root_source_file = b.path("src/formatter/fmt.zig"),
+		.target = target,
+		.optimize = optimize,
+	});
+
+	const zig_fmt_install = b.addInstallArtifact(zig_fmt, .{});
+
+	const zig_fmt_cmd = b.addRunArtifact(zig_fmt);
+	zig_fmt_cmd.step.dependOn(&zig_fmt_install.step);
+	if(b.args) |args| {
+		zig_fmt_cmd.addArgs(args);
+	}
+
+	const zig_fmt_step = b.step("fmt", "Run the (modified) zig fmt on the code");
+	zig_fmt_step.dependOn(&zig_fmt_cmd.step);
 }

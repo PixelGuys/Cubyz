@@ -699,8 +699,11 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		c.glUniform1f(itemUniforms.contrast, 0.12);
 	}
 
-	fn bindLightUniform(light: u32, ambientLight: Vec3f) void {
-		c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&@max(ambientLight*@as(Vec3f, @splat(@as(f32, @floatFromInt(light >> 24))/255)), Vec3f{@floatFromInt(light >> 16 & 255), @floatFromInt(light >> 8 & 255), @floatFromInt(light & 255)}/@as(Vec3f, @splat(255)))));
+	fn bindLightUniform(light: [6]u8, ambientLight: Vec3f) void {
+		c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&@max(
+			ambientLight*@as(Vec3f, @as(Vec3f, @floatFromInt(Vec3i{light[0], light[1], light[2]}))/@as(Vec3f, @splat(255))),
+			@as(Vec3f, @floatFromInt(Vec3i{light[3], light[4], light[5]}))/@as(Vec3f, @splat(255)),
+		)));	
 	}
 
 	fn bindModelUniforms(modelIndex: u31, blockType: u16) void {
@@ -723,7 +726,8 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			if(itemDrops.list.items(.itemStack)[i].item) |item| {
 				var pos = itemDrops.list.items(.pos)[i];
 				const rot = itemDrops.list.items(.rot)[i];
-				const light: u32 = 0xffffffff; // TODO: Get this light value from the mesh_storage.
+				const blockPos: Vec3i = @intFromFloat(@floor(pos));
+				const light: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse .{0} ** 6;
 				bindLightUniform(light, ambientLight);
 				pos -= playerPos;
 
@@ -763,8 +767,8 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		if(selectedItem) |item| {
 			var pos: Vec3d = Vec3d{0, 0, 0};
 			const rot: Vec3f = ItemDisplayManager.cameraFollow - game.camera.rotation;
-			_ = playerPos; // going to be used when light value fetching from mesh_storage is implemented.
-			const light: u32 = 0xffffffff; // TODO: Get this light value from the mesh_storage.
+			const blockPos: Vec3i = @intFromFloat(@floor(playerPos));
+			const light: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse .{0} ** 6;
 			bindLightUniform(light, ambientLight);
 
 			const model = getModel(item);

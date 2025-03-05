@@ -16,8 +16,12 @@ If you are new to Zig it can also be very helpful to ask questions. For example,
 
 # Disable Zig's automatic formatter
 
-This is a common beginners mistake that can lead to a ton of work undoing the magic of the auto formatter.
-In VSCode you can disable this in the Zig extension settings.
+Cubyz uses a slightly modified version of `zig fmt` which uses tabs and behaves slightly different in regards to spacing.
+Because of that, if you use the the default Zig formatter it will reformat all your files.
+
+To fix this you need to disable zig's formatter (In VSCode you can disable this in the Zig extension settings).
+
+To run the formatter locally on a specific file, you can use `./compiler/zig/zig build fmt -- fileName.zig`.
 
 # Select something to work on
 
@@ -61,9 +65,15 @@ Everything you lock needs to be unlocked.
 This needs to be true even for error paths such as introduced by `try`.
 Usually you should be fine by using `defer` and `errdefer`. There is also leak-checking in debug mode, so make sure you test your feature in debug mode to check for leaks.
 
-## Try to follow the style of the existing code
+## Follow the style guide
 
-There is no style guide yet, so this has to be good enough for now. A few important rules (tabs and line endings) are ensured using the CI.
+Most of the syntax is handled by a modified version of zig fmt and checked by the CI (see the formatting section above).
+
+Other than there is not much more to it:
+- Use camelCase for variables, constants and functions, CapitalCamelCase for types
+- There is no line limit (I hate seeing code that gets wrapped over by 1 word, because of an arbitrary line limit), but of course try to be reasonable. If you need 200 characters, then you should probably consider splitting it or adding some well-named helper variables.
+- Don't write comments, unless there is something really non-obvious going on.
+- But in either case it's better to write readable code with descriptive names, instead of writing long comments, since comments will naturally degrade over time as the surrounding code changes.
 
 # Don't put multiple changes into one pull request
 
@@ -79,7 +89,7 @@ If instead you make 3 separate PRs, the first two can be merged on the same day,
 
 # Check the changes after creating your pull request
 
-With a quick check you can ensure that you didn't add any unintended changes, like for example unintended formatting changes from some kind of automatic formatter. Some editors for example introduce tabs on random lines or change line endings.
+With a quick check you can ensure that you didn't add any unintended changes.
 
 With a more thorough review of your changes you can sometimes catch small mistakes, leftover TODOs or random debug code.
 

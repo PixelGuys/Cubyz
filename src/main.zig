@@ -14,6 +14,7 @@ pub const graphics = @import("graphics.zig");
 pub const itemdrop = @import("itemdrop.zig");
 pub const items = @import("items.zig");
 pub const JsonElement = @import("json.zig").JsonElement;
+pub const migrations = @import("migrations.zig");
 pub const models = @import("models.zig");
 pub const network = @import("network.zig");
 pub const random = @import("random.zig");
@@ -128,7 +129,7 @@ pub const std_options: std.Options = .{ // MARK: std_options
 					types = types ++ &[_]type{i64};
 				} else if(@TypeOf(args[i_1]) == comptime_float) {
 					types = types ++ &[_]type{f64};
-				} else if(TI == .pointer and TI.pointer.size == .Slice and TI.pointer.child == u8) {
+				} else if(TI == .pointer and TI.pointer.size == .slice and TI.pointer.child == u8) {
 					types = types ++ &[_]type{[]const u8};
 				} else if(TI == .int and TI.int.bits <= 64) {
 					if(TI.int.signedness == .signed) {
@@ -266,11 +267,6 @@ fn openInventory() void {
 	if(game.world == null) return;
 	gui.toggleGameMenu();
 	gui.openWindow("inventory");
-}
-fn openWorkbench() void {
-	if(game.world == null) return;
-	gui.toggleGameMenu();
-	gui.openWindow("workbench");
 }
 fn openCreativeInventory() void {
 	if(game.world == null) return;

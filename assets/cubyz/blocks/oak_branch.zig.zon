@@ -1,0 +1,11 @@
+.{
+	.tags = .{.wood},
+	.blockHealth = 5,
+	.drops = .{
+		.{ .items = .{.auto} },
+	},
+	.absorbedLight = 0x202830,
+	.rotation = .branch,
+	.model = "cubyz:branch",
+	.texture = "cubyz:oak_branch",
+}

@@ -1,5 +1,6 @@
 .{
-	.name = "Cubyzig",
+	.name = .Cubyzig,
+	.fingerprint = 0x782a2e402c0ee887,
 	.version = "0.0.0",
 	.paths = .{""},
 	.dependencies = .{
