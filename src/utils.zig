@@ -1872,8 +1872,8 @@ pub const BinaryReader = struct {
 
 	pub fn readUntilDelimiter(self: *BinaryReader, comptime delimiter: u8) ![:delimiter]const u8 {
 		const len = std.mem.indexOfScalar(u8, self.remaining, delimiter) orelse return error.OutOfBounds;
-		defer self.remaining = self.remaining[len+1..];
-		return self.remaining[0..len:delimiter];
+		defer self.remaining = self.remaining[len + 1 ..];
+		return self.remaining[0..len :delimiter];
 	}
 };
 
