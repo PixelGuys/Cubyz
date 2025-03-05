@@ -19,9 +19,9 @@ If you are new to Zig it can also be very helpful to ask questions. For example,
 Cubyz uses a slightly modified version of `zig fmt` which uses tabs and behaves slightly different in regards to spacing.
 Because of that, if you use the the default Zig formatter it will reformat all your files.
 
-To fix this you can either disable zig's formatter (In VSCode you can disable this in the Zig extension settings), or make sure it uses the zig executable that comes with the game (in ./compiler/zig) which does contain a fixed version of the formatter.
+To fix this you need to disable zig's formatter (In VSCode you can disable this in the Zig extension settings).
 
-To run the formatter locally on a specific file, you can use `./compiler/zig/zig fmt fileName.zig`.
+To run the formatter locally on a specific file, you can use `./compiler/zig/zig build fmt -- fileName.zig`.
 
 # Select something to work on
 
