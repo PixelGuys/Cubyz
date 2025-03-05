@@ -8,6 +8,7 @@ var arenaAllocator = main.utils.NeverFailingArenaAllocator.init(main.globalAlloc
 const migrationAllocator = arenaAllocator.allocator();
 
 var blockMigrations: std.StringHashMap([]const u8) = .init(migrationAllocator.allocator);
+var biomeMigrations: std.StringHashMap([]const u8) = .init(migrationAllocator.allocator);
 
 pub fn registerBlockMigrations(migrations: *std.StringHashMap(ZonElement)) void {
 	std.log.info("Registering {} block migrations", .{migrations.count()});
@@ -15,6 +16,15 @@ pub fn registerBlockMigrations(migrations: *std.StringHashMap(ZonElement)) void 
 	var migrationIterator = migrations.iterator();
 	while(migrationIterator.next()) |migration| {
 		register(&blockMigrations, "block", migration.key_ptr.*, migration.value_ptr.*);
+	}
+}
+
+pub fn registerBiomeMigrations(migrations: *std.StringHashMap(ZonElement)) void {
+	std.log.info("Registering {} biome migrations", .{migrations.count()});
+
+	var migrationIterator = migrations.iterator();
+	while(migrationIterator.next()) |migration| {
+		register(&biomeMigrations, "biome", migration.key_ptr.*, migration.value_ptr.*);
 	}
 }
 
@@ -75,8 +85,19 @@ pub fn applyBlockPaletteMigrations(palette: *Palette) void {
 	}
 }
 
+pub fn applyBiomePaletteMigrations(palette: *Palette) void {
+	std.log.info("Applying {} migrations to biome palette", .{biomeMigrations.count()});
+
+	for(palette.palette.items, 0..) |assetName, i| {
+		const newAssetName = biomeMigrations.get(assetName) orelse continue;
+		std.log.info("Migrating biome {s} -> {s}", .{assetName, newAssetName});
+		palette.replaceEntry(i, newAssetName);
+	}
+}
+
 pub fn reset() void {
 	blockMigrations.clearAndFree();
+	biomeMigrations.clearAndFree();
 	_ = arenaAllocator.reset(.free_all);
 }
 
