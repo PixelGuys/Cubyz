@@ -5,6 +5,10 @@ const main = @import("root");
 const chunk = main.chunk;
 const server = @import("server.zig");
 
+const utils = main.utils; // @import("../utils.zig"); //
+const BinaryWriter = utils.BinaryWriter;
+const BinaryReader = utils.BinaryReader;
+
 pub const RegionFile = struct { // MARK: RegionFile
 	const version = 0;
 	pub const regionShift = 2;
@@ -42,41 +46,54 @@ pub const RegionFile = struct { // MARK: RegionFile
 			return self;
 		};
 		defer main.stackAllocator.free(data);
-		if(data.len < headerSize) {
-			std.log.err("Region file {s} is too small", .{path});
-			return self;
-		}
-		var i: usize = 0;
-		const fileVersion = std.mem.readInt(u32, data[i..][0..4], .big);
-		i += 4;
-		const fileSize = std.mem.readInt(u32, data[i..][0..4], .big);
-		i += 4;
+		self.load(data) catch |err| switch(err) {
+			error.CorruptedTooShort => {
+				std.log.err("Corrupted region file: {s} (too short)", .{path});
+			},
+			error.CorruptedTooLong => {
+				std.log.err("Corrupted region file: {s} (too long)", .{path});
+			},
+			error.CorruptedSizeMismatch => {
+				std.log.err("Corrupted region file: {s} (size mismatch)", .{path});
+			},
+			error.VersionNotSupported => {
+				std.log.err("Unsupported version of region file: {s}", .{path});
+			},
+		};
+		return self;
+	}
+
+	fn load(self: *RegionFile, data: []const u8) error{CorruptedTooShort, CorruptedTooLong, CorruptedSizeMismatch, VersionNotSupported}!void {
+		var reader = BinaryReader.init(data, .big);
+
+		const fileVersion = reader.readInt(u32) catch return error.CorruptedTooShort;
+		const fileSize = reader.readInt(u32) catch return error.CorruptedTooShort;
+
 		if(fileVersion != version) {
-			std.log.err("Region file {s} has incorrect version {}. Requires version {}.", .{path, fileVersion, version});
-			return self;
+			return error.VersionNotSupported;
 		}
-		var sizes: [regionVolume]u32 = undefined;
+
+		var chunkSizes: [regionVolume]u32 = undefined;
 		var totalSize: usize = 0;
-		for(0..regionVolume) |j| {
-			const size = std.mem.readInt(u32, data[i..][0..4], .big);
-			i += 4;
-			sizes[j] = size;
+		for(0..regionVolume) |i| {
+			const size = reader.readInt(u32) catch return error.CorruptedTooShort;
+			chunkSizes[i] = size;
 			totalSize += size;
 		}
-		std.debug.assert(i == headerSize);
-		if(fileSize != data.len - i or totalSize != fileSize) {
-			std.log.err("Region file {s} is corrupted", .{path});
+
+		if(fileSize != reader.remaining.len or totalSize != fileSize) {
+			return error.CorruptedSizeMismatch;
 		}
+
 		for(0..regionVolume) |j| {
-			const size = sizes[j];
-			if(size != 0) {
-				self.chunks[j] = main.globalAllocator.alloc(u8, size);
-				@memcpy(self.chunks[j], data[i..][0..size]);
-				i += size;
+			const chunkSize = chunkSizes[j];
+			if(chunkSize != 0) {
+				self.chunks[j] = reader.readAlloc(main.globalAllocator, chunkSize) catch return error.CorruptedTooShort;
 			}
 		}
-		std.debug.assert(i == data.len);
-		return self;
+		if(reader.remaining.len != 0) {
+			return error.CorruptedTooLong;
+		}
 	}
 
 	pub fn deinit(self: *RegionFile) void {

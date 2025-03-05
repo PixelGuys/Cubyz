@@ -1875,6 +1875,18 @@ pub const BinaryReader = struct {
 		defer self.remaining = self.remaining[len + 1 ..];
 		return self.remaining[0..len :delimiter];
 	}
+
+	/// Read a slice of bytes into newly allocated memory.
+	/// Caller owns the memory.
+	pub fn readAlloc(self: *BinaryReader, allocator: NeverFailingAllocator, length: usize) error{OutOfBounds, IntOutOfBounds}![]u8 {
+		if(self.remaining.len < length) return error.OutOfBounds;
+		defer self.remaining = self.remaining[length..];
+
+		const outputBuffer = allocator.alloc(u8, length);
+		@memcpy(outputBuffer, self.remaining[0..length]);
+
+		return outputBuffer;
+	}
 };
 
 pub const BinaryWriter = struct {
