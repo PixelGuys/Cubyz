@@ -23,7 +23,7 @@ jobs:
       - run: zig build -Dtarget=x86_64-windows-gnu
       - run: zig build format --summary none
       - run: |
-          if zig fmt *.zig src/*.zig src/*/*.zig src/*/*/*.zig src/*/*/*/*.zig src/*/*/*/*/*.zig src/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*/*/*.zig | grep -q . ; then
+          if zig build fmt -- *.zig src/*.zig src/*/*.zig src/*/*/*.zig src/*/*/*/*.zig src/*/*/*/*/*.zig src/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*/*/*.zig | grep -q . ; then
             git diff --color=always;
             exit 1;
           fi
