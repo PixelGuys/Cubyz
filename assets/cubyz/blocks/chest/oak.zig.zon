@@ -1,11 +1,4 @@
 .{
-	.tags = .{.wood},
-	.blockHealth = 10,
-	.drops = .{
-		.{.items = .{.auto}},
-	},
-	.model = "cubyz:cube",
-	.rotation = .planar,
 	.texture = "cubyz:chest/oak/back",
 	.texture_front = "cubyz:chest/oak/front",
 	.texture_left = "cubyz:chest/oak/side",
