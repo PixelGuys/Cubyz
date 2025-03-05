@@ -189,13 +189,13 @@ pub const ClientEntityManager = struct {
 			const pos: Vec3d = ent.getRenderPosition() - playerPos;
 			const modelMatrix = (Mat4f.identity()
 				.mul(Mat4f.translation(Vec3f{
-				@floatCast(pos[0]),
-				@floatCast(pos[1]),
-				@floatCast(pos[2] - 1.0 + 0.09375),
-			}))
+					@floatCast(pos[0]),
+					@floatCast(pos[1]),
+					@floatCast(pos[2] - 1.0 + 0.09375),
+				}))
 				.mul(Mat4f.rotationZ(-ent.rot[2]))
-			//.mul(Mat4f.rotationY(-ent.rot[1]))
-			//.mul(Mat4f.rotationX(-ent.rot[0]))
+				//.mul(Mat4f.rotationY(-ent.rot[1]))
+				//.mul(Mat4f.rotationX(-ent.rot[0]))
 			);
 			const modelViewMatrix = game.camera.viewMatrix.mul(modelMatrix);
 			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));

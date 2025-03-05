@@ -129,7 +129,7 @@ pub const std_options: std.Options = .{ // MARK: std_options
 					types = types ++ &[_]type{i64};
 				} else if(@TypeOf(args[i_1]) == comptime_float) {
 					types = types ++ &[_]type{f64};
-				} else if(TI == .pointer and TI.pointer.size == .Slice and TI.pointer.child == u8) {
+				} else if(TI == .pointer and TI.pointer.size == .slice and TI.pointer.child == u8) {
 					types = types ++ &[_]type{[]const u8};
 				} else if(TI == .int and TI.int.bits <= 64) {
 					if(TI.int.signedness == .signed) {

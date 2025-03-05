@@ -16,14 +16,14 @@ jobs:
       - uses: actions/checkout@v3
       - uses: mlugg/setup-zig@v1
         with:
-          version: 0.14.0-dev.1550+4fba7336a
+          version: 0.14.0
       - run: sudo apt install libgl-dev libasound2-dev libx11-dev
-      - run: wget -O /opt/hostedtoolcache/zig/0.14.0-dev.1550/x64/lib/std/zig/render.zig https://github.com/PixelGuys/Cubyz-std-lib/releases/download/0.14.0-dev.1550+4fba7336a/render.zig
+      - run: wget -O /opt/hostedtoolcache/zig/0.14.0/x64/lib/std/zig/render.zig https://github.com/PixelGuys/Cubyz-std-lib/releases/download/0.14.0/render.zig
       - run: zig build
       - run: zig build -Dtarget=x86_64-windows-gnu
       - run: zig build format --summary none
       - run: |
-          if zig fmt *.zig src/*.zig src/*/*.zig src/*/*/*.zig src/*/*/*/*.zig src/*/*/*/*/*.zig src/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*/*/*.zig | grep -q . ; then
+          if zig build fmt -- *.zig src/*.zig src/*/*.zig src/*/*/*.zig src/*/*/*/*.zig src/*/*/*/*/*.zig src/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*/*/*.zig | grep -q . ; then
             git diff --color=always;
             exit 1;
           fi
