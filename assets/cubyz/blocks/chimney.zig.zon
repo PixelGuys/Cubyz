@@ -1,0 +1,11 @@
+.{
+	.tags = .{.stone},
+	.blockHealth = 10,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.model = "cubyz:chimney",
+	.texture = "cubyz:furnace/back",
+	.texture_top = "cubyz:furnace/top",
+	.texture_bottom = "cubyz:furnace/top",
+}

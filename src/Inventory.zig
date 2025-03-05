@@ -1088,6 +1088,11 @@ pub const Command = struct { // MARK: Command
 				.workbench => {
 					data.appendSlice(self.inv.type.workbench.id);
 				},
+				.furnace => {
+					std.mem.writeInt(i32, data.addMany(4)[0..4], self.inv.type.furnace.x, .big);
+					std.mem.writeInt(i32, data.addMany(4)[0..4], self.inv.type.furnace.y, .big);
+					std.mem.writeInt(i32, data.addMany(4)[0..4], self.inv.type.furnace.z, .big);
+				},
 			}
 		}
 
@@ -1142,6 +1147,11 @@ pub const Command = struct { // MARK: Command
 			const typ: Type = switch(typeEnum) {
 				inline .normal, .creative, .crafting => |tag| tag,
 				.workbench => .{.workbench = main.items.getToolTypeByID(data[remainingLen..]) orelse return error.Invalid},
+				.furnace => .{.furnace = .{
+					.x = std.mem.readInt(i32, data[remainingLen..][0..4], .big),
+					.y = std.mem.readInt(i32, data[remainingLen + 4 ..][0..4], .big),
+					.z = std.mem.readInt(i32, data[remainingLen + 8 ..][0..4], .big),
+				}},
 			};
 			Sync.ServerSide.createInventory(user.?, id, len, typ, source);
 			return .{
@@ -1733,17 +1743,25 @@ const Source = union(SourceType) {
 
 const Inventory = @This(); // MARK: Inventory
 
+pub const FurnaceData = struct {
+	x: i32,
+	y: i32,
+	z: i32,
+};
+
 const TypeEnum = enum(u8) {
 	normal = 0,
 	creative = 1,
 	crafting = 2,
 	workbench = 3,
+	furnace = 4,
 };
 const Type = union(TypeEnum) {
 	normal: void,
 	creative: void,
 	crafting: void,
 	workbench: *const main.items.ToolType,
+	furnace: FurnaceData,
 };
 type: Type,
 id: u32,

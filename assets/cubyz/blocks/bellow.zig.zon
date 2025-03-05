@@ -1,0 +1,11 @@
+.{
+	.tags = .{.wood},
+	.blockHealth = 10,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.model = "cubyz:bellow",
+	.texture = "cubyz:bellow/side",
+	.texture_top = "cubyz:bellow/top",
+	.texture_bottom = "cubyz:bellow/top",
+}
