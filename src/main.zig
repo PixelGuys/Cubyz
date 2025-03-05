@@ -267,11 +267,6 @@ fn openInventory() void {
 	gui.toggleGameMenu();
 	gui.openWindow("inventory");
 }
-fn openWorkbench() void {
-	if(game.world == null) return;
-	gui.toggleGameMenu();
-	gui.openWindow("workbench");
-}
 fn openCreativeInventory() void {
 	if(game.world == null) return;
 	if(!game.Player.isCreative()) return;
