@@ -34,8 +34,16 @@ fn register(
 	addonName: []const u8,
 	migrationZon: ZonElement,
 ) void {
-	if((migrationZon.toSlice().len == 0)) {
-		std.log.err("Skipping incorrect {s} migration data structure from addon {s}", .{assetType, addonName});
+	if(migrationZon != .array) {
+		if ((migrationZon == .object and migrationZon.object.count() == 0)) {
+			std.log.info("Skipping empty {s} migration data structure from addon {s}", .{assetType, addonName});
+			return;
+		}
+		std.log.info("Skipping incorrect {s} migration data structure from addon {s}", .{assetType, addonName});
+		return;
+	}
+	if (migrationZon.array.items.len == 0) {
+		std.log.info("Skipping empty {s} migration data structure from addon {s}", .{assetType, addonName});
 		return;
 	}
 
