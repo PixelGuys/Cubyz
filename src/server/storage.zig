@@ -5,7 +5,7 @@ const main = @import("root");
 const chunk = main.chunk;
 const server = @import("server.zig");
 
-const utils = main.utils; // @import("../utils.zig"); //
+const utils = main.utils;
 const BinaryWriter = utils.BinaryWriter;
 const BinaryReader = utils.BinaryReader;
 
@@ -138,25 +138,19 @@ pub const RegionFile = struct { // MARK: RegionFile
 			return;
 		}
 
-		const data = main.stackAllocator.alloc(u8, totalSize + headerSize);
-		defer main.stackAllocator.free(data);
-		var i: usize = 0;
-		std.mem.writeInt(u32, data[i..][0..4], version, .big);
-		i += 4;
-		std.mem.writeInt(u32, data[i..][0..4], @intCast(totalSize), .big);
-		i += 4;
-		for(0..regionVolume) |j| {
-			std.mem.writeInt(u32, data[i..][0..4], @intCast(self.chunks[j].len), .big);
-			i += 4;
-		}
-		std.debug.assert(i == headerSize);
+		var writer = BinaryWriter.initCapacity(main.stackAllocator, .big, totalSize + headerSize);
+		defer writer.deinit();
 
-		for(0..regionVolume) |j| {
-			const size = self.chunks[j].len;
-			@memcpy(data[i..][0..size], self.chunks[j]);
-			i += size;
+		writer.writeInt(u32, version);
+		writer.writeInt(u32, @truncate(totalSize));
+
+		for(0..regionVolume) |i| {
+			writer.writeInt(u32, @intCast(self.chunks[i].len));
 		}
-		std.debug.assert(i == data.len);
+		for(0..regionVolume) |i| {
+			writer.writeSlice(self.chunks[i]);
+		}
+		std.debug.assert(writer.data.items.len == totalSize + headerSize);
 
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}/{}/{}.region", .{self.saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy, self.pos.wz}) catch unreachable;
 		defer main.stackAllocator.free(path);
@@ -167,7 +161,7 @@ pub const RegionFile = struct { // MARK: RegionFile
 			std.log.err("Error while writing to file {s}: {s}", .{path, @errorName(err)});
 		};
 
-		main.files.write(path, data) catch |err| {
+		main.files.write(path, writer.data.items) catch |err| {
 			std.log.err("Error while writing to file {s}: {s}", .{path, @errorName(err)});
 		};
 	}
