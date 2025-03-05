@@ -13,7 +13,7 @@ const items = @import("items.zig");
 const models = @import("models.zig");
 const rotation = @import("rotation.zig");
 const RotationMode = rotation.RotationMode;
-const Vec3i = @import("vec.zig").Vec3i;
+const Entity = main.server.Entity;
 
 pub const BlockTag = enum(u32) {
 	air = 0,
@@ -110,7 +110,7 @@ var _friction: [maxBlockCount]f32 = undefined;
 
 var _allowOres: [maxBlockCount]bool = undefined;
 
-var _checkEntityTouch: [maxBlockCount]bool = undefined;
+var _touchFunction: [maxBlockCount]?*const TouchFunction = undefined;
 
 var reverseIndices = std.StringHashMap(u16).init(allocator.allocator);
 
@@ -152,7 +152,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_hasBackFace[size] = zon.get(bool, "hasBackFace", false);
 	_friction[size] = zon.get(f32, "friction", 20);
 	_allowOres[size] = zon.get(bool, "allowOres", false);
-	_checkEntityTouch[size] = zon.get(bool, "checkEntityTouch", false);
+	_touchFunction[size] = TouchFunctions.getFunctionPointer(zon.get([]const u8, "touchFunction", ""));
 
 	const oreProperties = zon.getChild("ore");
 	if(oreProperties != .null) blk: {
@@ -378,16 +378,44 @@ pub const Block = packed struct { // MARK: Block
 		return _allowOres[self.typ];
 	}
 
-	pub inline fn checkEntityTouch(self: Block) bool {
-		return _checkEntityTouch[self.typ];
+	pub inline fn touchFunction(self: Block) ?*const TouchFunction {
+		return _touchFunction[self.typ];
 	}
 
 	pub fn canBeChangedInto(self: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) main.rotation.RotationMode.CanBeChangedInto {
 		return newBlock.mode().canBeChangedInto(self, newBlock, item, shouldDropSourceBlockOnSuccess);
 	}
+};
 
-	pub fn onEntityTouch(self: Block, entity: main.server.Entity, posX: i32, posY: i32, posZ: i32, isEntityInside: bool) void {
-		_ = self;
+pub const TouchFunction = fn(Block, Entity, i32, i32, i32, bool) void;
+
+pub const TouchFunctions = struct {
+	var hashMap: std.StringHashMap(*const TouchFunction) = undefined;
+
+	pub fn init() void {
+		hashMap = .init(main.globalAllocator.allocator);
+		inline for(@typeInfo(TouchFunctions).@"struct".decls) |declaration| {
+			std.debug.print("Declaration\n", .{});
+			if(@TypeOf(@field(TouchFunctions, declaration.name)) == TouchFunction) {
+				std.debug.print("{any}\n", .{declaration.name});
+				hashMap.putNoClobber(declaration.name, &@field(TouchFunctions, declaration.name)) catch unreachable;
+			}
+		}
+	}
+
+	pub fn deinit() void {
+		hashMap.deinit();
+	}
+
+	pub fn getFunctionPointer(id: []const u8) ?*const TouchFunction {
+		const pointer = hashMap.getPtr(id);
+		if(pointer == null)
+			return null;
+		return pointer.?.*;
+	}
+
+	pub fn onTouchExample(block: Block, entity: Entity, posX: i32, posY: i32, posZ: i32, isEntityInside: bool) void {
+		_ = block;
 		_ = entity;
 		_ = posX;
 		_ = posY;
