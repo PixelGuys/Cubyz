@@ -42,7 +42,7 @@ fn register(
 		return;
 	}
 	if(migrationZon.array.items.len == 0) {
-		std.log.info("Skipping empty {s} migration data structure from addon {s}", .{@tagName(typ), addonName});
+		std.log.warn("Skipping empty {s} migration data structure from addon {s}", .{@tagName(typ), addonName});
 		return;
 	}
 
