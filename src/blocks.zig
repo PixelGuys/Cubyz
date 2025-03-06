@@ -407,8 +407,11 @@ pub const TouchFunctions = struct {
 
 	pub fn getFunctionPointer(id: []const u8) ?*const TouchFunction {
 		const pointer = hashMap.getPtr(id);
-		if(pointer == null)
+		if(pointer == null) {
+			if(id.len != 0)
+				std.log.err("Could not find touch function {s}.", .{id});
 			return null;
+		}
 		return pointer.?.*;
 	}
 };
