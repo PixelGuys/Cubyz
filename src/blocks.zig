@@ -387,7 +387,7 @@ pub const Block = packed struct { // MARK: Block
 	}
 };
 
-pub const TouchFunction = fn(Block, Entity, i32, i32, i32, bool) void;
+pub const TouchFunction = fn(block: Block, entity: Entity, posX: i32, posY: i32, posZ: i32, isEntityInside: bool) void;
 
 pub const TouchFunctions = struct {
 	var hashMap: std.StringHashMap(*const TouchFunction) = undefined;
@@ -410,15 +410,6 @@ pub const TouchFunctions = struct {
 		if(pointer == null)
 			return null;
 		return pointer.?.*;
-	}
-
-	pub fn onTouchExample(block: Block, entity: Entity, posX: i32, posY: i32, posZ: i32, isEntityInside: bool) void {
-		_ = block;
-		_ = entity;
-		_ = posX;
-		_ = posY;
-		_ = posZ;
-		_ = isEntityInside;
 	}
 };
 
