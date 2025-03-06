@@ -1929,6 +1929,12 @@ pub const BinaryReader = struct {
 		defer self.remaining = self.remaining[len + 1 ..];
 		return self.remaining[0..len :delimiter];
 	}
+
+	pub fn readSlice(self: *BinaryReader, length: usize) error{OutOfBounds, IntOutOfBounds}![]const u8 {
+		if(self.remaining.len < length) return error.OutOfBounds;
+		defer self.remaining = self.remaining[length..];
+		return self.remaining[0..length];
+	}
 };
 
 pub const BinaryWriter = struct {

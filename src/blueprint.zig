@@ -53,27 +53,18 @@ pub const FileHeader = packed struct {
 			}
 		}
 	}
-	pub fn load(self: *@This(), inputBuffer: []u8) usize {
-		var offset: usize = 0;
-
+	pub fn load(self: *@This(), reader: *BinaryReader) !void {
 		inline for(@typeInfo(@This()).@"struct".fields) |field| {
 			switch(field.type) {
-				u16 => {
-					@field(self, field.name) = std.mem.readInt(u16, inputBuffer[offset..][0..@sizeOf(u16)], .big);
-					offset += @sizeOf(u16);
-				},
-				u32 => {
-					@field(self, field.name) = std.mem.readInt(u32, inputBuffer[offset..][0..@sizeOf(u32)], .big);
-					offset += @sizeOf(u32);
+				u16, u32 => {
+					@field(self, field.name) = try reader.readInt(field.type);
 				},
 				BlueprintCompression => {
-					@field(self, field.name) = @enumFromInt(std.mem.readInt(u16, inputBuffer[offset..][0..@sizeOf(u16)], .big));
-					offset += @sizeOf(u16);
+					@field(self, field.name) = @enumFromInt(try reader.readInt(u16));
 				},
 				else => unreachable,
 			}
 		}
-		return offset;
 	}
 	pub fn getBlockArraySize(self: @This()) usize {
 		return @as(usize, @intCast(self.blockArraySizeX))*@as(usize, @intCast(self.blockArraySizeY))*@as(usize, @intCast(self.blockArraySizeZ));
@@ -185,7 +176,6 @@ pub const Blueprint = struct {
 		std.debug.assert(self.sizeY != 0);
 		std.debug.assert(self.sizeZ != 0);
 
-
 		var gameIdToBlueprintId = self.makeGameIdToBlueprintIdMap(allocator);
 		defer gameIdToBlueprintId.deinit();
 		std.debug.assert(gameIdToBlueprintId.count() != 0);
@@ -281,36 +271,31 @@ pub const Blueprint = struct {
 	}
 	pub fn load(self: *@This(), inputBuffer: []u8) !void {
 		self.clear();
+		errdefer self.clear();
 		const allocator = main.stackAllocator;
 
-		std.debug.assert(inputBuffer.len > 2);
+		var compressedReader = BinaryReader.init(inputBuffer, .big);
 		var header: FileHeader = .{};
-		var rawDataOffset: usize = 0;
-
-		rawDataOffset += header.load(inputBuffer);
-		std.debug.assert(rawDataOffset > 0);
+		try header.load(&compressedReader);
 
 		if(header.version > blueprintVersion) {
 			std.log.err("Blueprint version {d} is not supported. Current version is {d}.", .{header.version, blueprintVersion});
 			return;
 		}
 
-		var decompressedData = try self.decompressInputBuffer(allocator, inputBuffer[rawDataOffset..], header);
+		const decompressedData = try self.decompressInputBuffer(allocator, compressedReader.remaining, header);
 		defer allocator.free(decompressedData);
 		std.debug.assert(decompressedData.len > 0);
+
+		var decompressedReader = BinaryReader.init(decompressedData, .big);
 
 		var palette = allocator.alloc([]const u8, header.paletteBlockCount);
 		defer allocator.free(palette);
 
-		var decompressedDataOffset: usize = 0;
-
 		for(0..@intCast(header.paletteBlockCount)) |index| {
-			const blockNameSize = std.mem.readInt(BlockIdSizeType, decompressedData[decompressedDataOffset..][0..@sizeOf(BlockIdSizeType)], .big);
-			decompressedDataOffset += @sizeOf(BlockIdSizeType);
-
-			const blockName = decompressedData[decompressedDataOffset..][0..blockNameSize];
+			const blockNameSize = try decompressedReader.readInt(BlockIdSizeType);
+			const blockName = try decompressedReader.readSlice(blockNameSize);
 			palette[index] = blockName;
-			decompressedDataOffset += blockNameSize;
 		}
 
 		var blueprintIdToGameIdMap = allocator.alloc(u16, header.paletteBlockCount);
@@ -322,28 +307,20 @@ pub const Blueprint = struct {
 		}
 
 		for(0..header.getBlockArraySize()) |_| {
-			const blueprintBlockRaw = std.mem.readInt(BlockStorageType, decompressedData[decompressedDataOffset..][0..@sizeOf(BlockStorageType)], .big);
-			decompressedDataOffset += @sizeOf(BlockStorageType);
+			const blueprintBlockRaw = try decompressedReader.readInt(BlockStorageType);
 
 			const blueprintBlock = Block.fromInt(blueprintBlockRaw);
 			const gameBlockId = blueprintIdToGameIdMap[blueprintBlock.typ];
 
 			self.blocks.append(.{.typ = gameBlockId, .data = blueprintBlock.data});
 		}
-		std.debug.assert(decompressedDataOffset == decompressedData.len);
 		std.debug.assert(self.blocks.items.len == header.getBlockArraySize());
-		std.debug.assert(self.blocks.items.len != 0);
 
 		self.sizeX = @intCast(header.blockArraySizeX);
-		std.debug.assert(self.sizeX != 0);
-
 		self.sizeY = @intCast(header.blockArraySizeY);
-		std.debug.assert(self.sizeY != 0);
-
 		self.sizeZ = @intCast(header.blockArraySizeZ);
-		std.debug.assert(self.sizeZ != 0);
 	}
-	fn decompressInputBuffer(_: @This(), allocator: NeverFailingAllocator, compressedData: []u8, header: FileHeader) ![]u8 {
+	fn decompressInputBuffer(_: @This(), allocator: NeverFailingAllocator, compressedData: []const u8, header: FileHeader) ![]u8 {
 		const decompressedDataSizeBytes = header.getDecompressedDataSizeBytes();
 		std.debug.assert(decompressedDataSizeBytes != 0);
 
