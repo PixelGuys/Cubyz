@@ -53,7 +53,7 @@ pub const RegionFile = struct { // MARK: RegionFile
 		return self;
 	}
 
-	fn load(self: *RegionFile, path: []const u8,  data: []const u8) !void {
+	fn load(self: *RegionFile, path: []const u8, data: []const u8) !void {
 		var reader = BinaryReader.init(data, .big);
 
 		const fileVersion = try reader.readInt(u32);
