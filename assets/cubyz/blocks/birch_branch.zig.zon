@@ -20,11 +20,11 @@
 				0xffb8aa9e, 0xffd0c2b5, 0xffeedfd0, 0xfffff6ed, 0xffeedfd0,
 			},
 			.modifiers = .{
-					.{
-						.id = "fragile",
-						.strength = 0.10,
-					},
+				.{
+					.id = "fragile",
+					.strength = 0.10,
 				},
+			},
 		},
 		.texture = "branch/birch.png",
 	},

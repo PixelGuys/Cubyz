@@ -20,11 +20,11 @@
 				0xff312a1e, 0xff3c3324, 0xff4a3c28, 0xff614e33, 0xff4a3c28,
 			},
 			.modifiers = .{
-					.{
-						.id = "fragile",
-						.strength = 0.10,
-					},
+				.{
+					.id = "fragile",
+					.strength = 0.10,
 				},
+			},
 		},
 		.texture = "branch/pine.png",
 	},

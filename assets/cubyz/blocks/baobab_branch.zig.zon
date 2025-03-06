@@ -20,11 +20,11 @@
 				0xff514438, 0xff665045, 0xff7a5d4d, 0xff93715c, 0xff7a5d4d,
 			},
 			.modifiers = .{
-					.{
-						.id = "fragile",
-						.strength = 0.10,
-					},
+				.{
+					.id = "fragile",
+					.strength = 0.10,
 				},
+			},
 		},
 		.texture = "branch/baobab.png",
 	},

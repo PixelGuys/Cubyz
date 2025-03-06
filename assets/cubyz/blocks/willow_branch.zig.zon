@@ -20,11 +20,11 @@
 				0xff2a2521, 0xff332d28, 0xff413930, 0xff4f453a, 0xff413930,
 			},
 			.modifiers = .{
-					.{
-						.id = "fragile",
-						.strength = 0.10,
-					},
+				.{
+					.id = "fragile",
+					.strength = 0.10,
 				},
+			},
 		},
 		.texture = "branch/willow.png",
 	},
