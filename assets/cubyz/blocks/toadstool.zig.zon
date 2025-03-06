@@ -1,0 +1,23 @@
+.{
+	.tags = .{.wood},
+	.blockHealth = 0.2,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.solid = false,
+	.viewThrough = true,
+	.absorbedLight = 0x010101,
+	.collide= false,
+	.rotation = .torch,
+	.model = .{
+		.base = "cubyz:toadstool/floor",
+		.side = "cubyz:toadstool/shelf",
+	},
+	.texture = "cubyz:toadstool_side",
+	.texture_top = "cubyz:toadstool_top",
+	.texture_bottom = "cubyz:toadstool_bottom",
+	.item = .{
+		.texture = "toadstool.png",
+	},
+	.lodReplacement = "cubyz:air",
+}
