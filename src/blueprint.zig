@@ -16,8 +16,11 @@ pub const GameIdToBlueprintIdMapType = std.AutoHashMap(u16, u16);
 const BlockIdSizeType = u32;
 const BlockStorageType = u32;
 
+const BinaryWriter = main.utils.BinaryWriter;
+const BinaryReader = main.utils.BinaryReader;
+
 pub const BlueprintCompression = enum(u16) {
-	Deflate,
+	deflate,
 };
 
 /// Blueprint storage file format header structure.
@@ -30,33 +33,25 @@ pub const BlueprintCompression = enum(u16) {
 /// `Blueprint.store` and `Blueprint.load` methods.
 pub const FileHeader = packed struct {
 	version: u16 = 0,
-	compression: BlueprintCompression = .Deflate,
+	compression: BlueprintCompression = .deflate,
 	paletteSizeBytes: u32 = 0,
 	paletteBlockCount: u16 = 0,
 	blockArraySizeX: u16 = 0,
 	blockArraySizeY: u16 = 0,
 	blockArraySizeZ: u16 = 0,
 
-	pub fn store(self: @This(), outputBuffer: []u8) usize {
-		var offset: usize = 0;
+	pub fn store(self: @This(), writer: *BinaryWriter) void {
 		inline for(@typeInfo(@This()).@"struct".fields) |field| {
 			switch(field.type) {
-				u16 => {
-					std.mem.writeInt(u16, outputBuffer[offset..][0..@sizeOf(u16)], @field(self, field.name), .big);
-					offset += @sizeOf(u16);
-				},
-				u32 => {
-					std.mem.writeInt(u32, outputBuffer[offset..][0..@sizeOf(u32)], @field(self, field.name), .big);
-					offset += @sizeOf(u32);
+				u16, u32 => {
+					writer.writeInt(field.type, @field(self, field.name));
 				},
 				BlueprintCompression => {
-					std.mem.writeInt(u16, outputBuffer[offset..][0..@sizeOf(u16)], @intFromEnum(@field(self, field.name)), .big);
-					offset += @sizeOf(u16);
+					writer.writeEnum(BlueprintCompression, @field(self, field.name));
 				},
 				else => unreachable,
 			}
 		}
-		return offset;
 	}
 	pub fn load(self: *@This(), inputBuffer: []u8) usize {
 		var offset: usize = 0;
@@ -190,6 +185,7 @@ pub const Blueprint = struct {
 		std.debug.assert(self.sizeY != 0);
 		std.debug.assert(self.sizeZ != 0);
 
+
 		var gameIdToBlueprintId = self.makeGameIdToBlueprintIdMap(allocator);
 		defer gameIdToBlueprintId.deinit();
 		std.debug.assert(gameIdToBlueprintId.count() != 0);
@@ -201,43 +197,33 @@ pub const Blueprint = struct {
 		const blockPaletteSizeBytes = self.getBlockPaletteSize(blockPalette);
 		const header = FileHeader{
 			.version = blueprintVersion,
-			.compression = .Deflate,
-			.paletteSizeBytes = @truncate(blockPaletteSizeBytes),
-			.paletteBlockCount = @truncate(gameIdToBlueprintId.count()),
-			.blockArraySizeX = @truncate(self.sizeX),
-			.blockArraySizeY = @truncate(self.sizeY),
-			.blockArraySizeZ = @truncate(self.sizeZ),
+			.compression = .deflate,
+			.paletteSizeBytes = @intCast(blockPaletteSizeBytes),
+			.paletteBlockCount = @intCast(gameIdToBlueprintId.count()),
+			.blockArraySizeX = @intCast(self.sizeX),
+			.blockArraySizeY = @intCast(self.sizeY),
+			.blockArraySizeZ = @intCast(self.sizeZ),
 		};
 
 		const blockArraySizeBytes = header.getBlockArraySizeBytes();
 		const decompressedDataSizeBytes = blockPaletteSizeBytes + blockArraySizeBytes;
 		std.debug.assert(decompressedDataSizeBytes != 0);
 
-		var data = allocator.alloc(u8, decompressedDataSizeBytes);
-		defer allocator.free(data);
-		{
-			var offset: usize = 0;
-			offset += self.storeBlockPalette(data[offset..], blockPalette);
-			std.debug.assert(offset == blockPaletteSizeBytes);
+		var decompressedWriter = BinaryWriter.initCapacity(externalAllocator, .big, decompressedDataSizeBytes);
+		defer decompressedWriter.deinit();
 
-			offset += self.storeBlockArray(data[offset..], gameIdToBlueprintId);
-			std.debug.assert(offset == decompressedDataSizeBytes);
-		}
-		const compressedData: []u8 = self.compressOutputBuffer(allocator, data, header.compression);
+		self.storeBlockPalette(&decompressedWriter, blockPalette);
+		self.storeBlockArray(&decompressedWriter, gameIdToBlueprintId);
+
+		const compressedData: []u8 = self.compressOutputBuffer(allocator, decompressedWriter.data.items, header.compression);
 		defer allocator.free(compressedData);
 		std.debug.assert(compressedData.len != 0);
 
-		const headerSizerBytes = header.getHeaderSizeBytes();
-		const outputBufferSize = headerSizerBytes + compressedData.len;
-		var outputBuffer = externalAllocator.alloc(u8, outputBufferSize);
+		var outputWriter = BinaryWriter.initCapacity(externalAllocator, .big, header.getHeaderSizeBytes() + compressedData.len);
+		header.store(&outputWriter);
+		outputWriter.writeSlice(compressedData);
 
-		var offset: usize = 0;
-		offset += header.store(outputBuffer);
-		std.debug.assert(offset == headerSizerBytes);
-
-		@memcpy(outputBuffer[offset..][0..compressedData.len], compressedData);
-
-		return outputBuffer;
+		return outputWriter.data.toOwnedSlice();
 	}
 	fn makeGameIdToBlueprintIdMap(self: @This(), allocator: NeverFailingAllocator) GameIdToBlueprintIdMapType {
 		var gameIdToBlueprintId: GameIdToBlueprintIdMapType = .init(allocator.allocator);
@@ -245,7 +231,7 @@ pub const Blueprint = struct {
 		for(self.blocks.items) |block| {
 			const result = gameIdToBlueprintId.getOrPut(block.typ) catch unreachable;
 			if(!result.found_existing) {
-				result.value_ptr.* = @truncate(gameIdToBlueprintId.count() - 1);
+				result.value_ptr.* = @intCast(gameIdToBlueprintId.count() - 1);
 			}
 		}
 
@@ -269,34 +255,26 @@ pub const Blueprint = struct {
 		}
 		return total;
 	}
-	fn storeBlockPalette(_: @This(), outputBuffer: []u8, blockPalette: [][]const u8) usize {
-		var offset: usize = 0;
+	fn storeBlockPalette(_: @This(), writer: *BinaryWriter, blockPalette: [][]const u8) void {
 		std.log.info("Blueprint block palette:", .{});
 
 		for(0..blockPalette.len) |index| {
 			const blockName = blockPalette[index];
 			std.log.info("palette[{d}]: {s}", .{index, blockName});
 
-			std.mem.writeInt(BlockIdSizeType, outputBuffer[offset..][0..@sizeOf(BlockIdSizeType)], @truncate(blockName.len), .big);
-			offset += @sizeOf(BlockIdSizeType);
-
-			@memcpy(outputBuffer[offset..][0..blockName.len], blockName);
-			offset += blockName.len;
+			writer.writeInt(BlockIdSizeType, @intCast(blockName.len));
+			writer.writeSlice(blockName);
 		}
-		return offset;
 	}
-	fn storeBlockArray(self: @This(), outputBuffer: []u8, map: GameIdToBlueprintIdMapType) usize {
-		var offset: usize = 0;
+	fn storeBlockArray(self: @This(), writer: *BinaryWriter, map: GameIdToBlueprintIdMapType) void {
 		for(self.blocks.items) |block| {
 			const blueprintBlock: BlockStorageType = (Block{.typ = map.get(block.typ).?, .data = block.data}).toInt();
-			std.mem.writeInt(BlockStorageType, outputBuffer[offset..][0..@sizeOf(BlockStorageType)], blueprintBlock, .big);
-			offset += @sizeOf(BlockStorageType);
+			writer.writeInt(BlockStorageType, blueprintBlock);
 		}
-		return offset;
 	}
 	fn compressOutputBuffer(_: @This(), allocator: NeverFailingAllocator, decompressedData: []u8, compressionMode: BlueprintCompression) []u8 {
 		switch(compressionMode) {
-			.Deflate => {
+			.deflate => {
 				return Compression.deflate(allocator, decompressedData, .default);
 			},
 		}
@@ -373,7 +351,7 @@ pub const Blueprint = struct {
 		var sizeAfterDecompression: usize = undefined;
 
 		switch(header.compression) {
-			.Deflate => {
+			.deflate => {
 				sizeAfterDecompression = try Compression.inflateTo(decompressedData, compressedData);
 			},
 		}
