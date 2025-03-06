@@ -287,18 +287,18 @@ pub const IndirectData = extern struct {
 
 const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 	coreFaces: main.ListUnmanaged(FaceData) = .{},
-	neighborFacesSameLod: [6]main.ListUnmanaged(FaceData) = [_]main.ListUnmanaged(FaceData){.{}} ** 6,
-	neighborFacesHigherLod: [6]main.ListUnmanaged(FaceData) = [_]main.ListUnmanaged(FaceData){.{}} ** 6,
+	neighborFacesSameLod: [6]main.ListUnmanaged(FaceData) = @splat(.{}),
+	neighborFacesHigherLod: [6]main.ListUnmanaged(FaceData) = @splat(.{}),
 	optionalFaces: main.ListUnmanaged(FaceData) = .{},
 	completeList: []FaceData = &.{},
 	coreLen: u32 = 0,
-	sameLodLens: [6]u32 = .{0} ** 6,
-	higherLodLens: [6]u32 = .{0} ** 6,
+	sameLodLens: [6]u32 = @splat(0),
+	higherLodLens: [6]u32 = @splat(0),
 	optionalLen: u32 = 0,
 	mutex: std.Thread.Mutex = .{},
 	bufferAllocation: graphics.SubAllocation = .{.start = 0, .len = 0},
 	vertexCount: u31 = 0,
-	byNormalCount: [14]u32 = .{0} ** 14,
+	byNormalCount: [14]u32 = @splat(0),
 	wasChanged: bool = false,
 	min: Vec3f = undefined,
 	max: Vec3f = undefined,
@@ -523,7 +523,7 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 			for(0..6) |i| {
 				rawVals[i] = std.math.lossyCast(u5, fullValues[i]/8);
 			}
-			return packLightValues(.{rawVals} ** 4);
+			return packLightValues(@splat(rawVals));
 		}
 		if(models.extraQuadInfos.items[quadIndex].hasOnlyCornerVertices) { // Fast path for simple quads.
 			var rawVals: [4][6]u5 = undefined;
@@ -689,9 +689,9 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	lightListNeedsUpload: bool = false,
 	lightAllocation: graphics.SubAllocation = .{.start = 0, .len = 0},
 
-	lastNeighborsSameLod: [6]?*const ChunkMesh = [_]?*const ChunkMesh{null} ** 6,
-	lastNeighborsHigherLod: [6]?*const ChunkMesh = [_]?*const ChunkMesh{null} ** 6,
-	isNeighborLod: [6]bool = .{false} ** 6,
+	lastNeighborsSameLod: [6]?*const ChunkMesh = @splat(null),
+	lastNeighborsHigherLod: [6]?*const ChunkMesh = @splat(null),
+	isNeighborLod: [6]bool = @splat(false),
 	currentSorting: []SortingData = &.{},
 	sortingOutputBuffer: []FaceData = &.{},
 	culledSortingCount: u31 = 0,

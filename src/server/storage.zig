@@ -17,7 +17,7 @@ pub const RegionFile = struct { // MARK: RegionFile
 
 	const headerSize = 8 + regionSize*regionSize*regionSize*@sizeOf(u32);
 
-	chunks: [regionVolume][]u8 = .{&.{}} ** regionVolume,
+	chunks: [regionVolume][]u8 = @splat(&.{}),
 	pos: chunk.ChunkPosition,
 	mutex: std.Thread.Mutex = .{},
 	modified: bool = false,

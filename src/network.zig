@@ -255,7 +255,7 @@ const STUN = struct { // MARK: STUN
 
 	fn requestAddress(connection: *ConnectionManager) Address {
 		var oldAddress: ?Address = null;
-		var seed = [_]u8{0} ** std.Random.DefaultCsprng.secret_seed_length;
+		var seed: [std.Random.DefaultCsprng.secret_seed_length]u8 = @splat(0);
 		std.mem.writeInt(i128, seed[0..16], std.time.nanoTimestamp(), builtin.cpu.arch.endian()); // Not the best seed, but it's not that important.
 		var random = std.Random.DefaultCsprng.init(seed);
 		for(0..16) |_| {
@@ -631,11 +631,11 @@ const UnconfirmedPacket = struct {
 };
 
 // MARK: Protocols
-pub var bytesReceived: [256]Atomic(usize) = .{Atomic(usize).init(0)} ** 256;
-pub var packetsReceived: [256]Atomic(usize) = .{Atomic(usize).init(0)} ** 256;
+pub var bytesReceived: [256]Atomic(usize) = @splat(.init(0));
+pub var packetsReceived: [256]Atomic(usize) = @splat(.init(0));
 pub const Protocols = struct {
-	pub var list: [256]?*const fn(*Connection, *utils.BinaryReader) anyerror!void = [_]?*const fn(*Connection, *utils.BinaryReader) anyerror!void{null} ** 256;
-	pub var isAsynchronous: [256]bool = .{false} ** 256;
+	pub var list: [256]?*const fn(*Connection, *utils.BinaryReader) anyerror!void = @splat(null);
+	pub var isAsynchronous: [256]bool = @splat(false);
 
 	pub const keepAlive: u8 = 0;
 	pub const important: u8 = 0xff;
@@ -1257,7 +1257,7 @@ pub const Connection = struct { // MARK: Connection
 	packetQueue: main.utils.CircularBufferQueue(UnconfirmedPacket) = undefined,
 	unconfirmedPackets: main.List(UnconfirmedPacket) = undefined,
 	receivedPackets: [3]main.List(u32) = undefined,
-	__lastReceivedPackets: [65536]?[]const u8 = [_]?[]const u8{null} ** 65536, // TODO: Wait for #12215 fix.
+	__lastReceivedPackets: [65536]?[]const u8 = @splat(null), // TODO: Wait for #12215 fix.
 	lastReceivedPackets: []?[]const u8, // TODO: Wait for #12215 fix.
 	packetMemory: *[65536][maxImportantPacketSize]u8 = undefined,
 	lastIndex: u32 = 0,
@@ -1268,8 +1268,8 @@ pub const Connection = struct { // MARK: Connection
 	lastKeepAliveReceived: u32 = 0,
 	otherKeepAliveReceived: u32 = 0,
 
-	congestionControl_bandWidthSentHistory: [congestionControl_historySize]usize = .{0} ** 16,
-	congestionControl_bandWidthReceivedHistory: [congestionControl_historySize]usize = .{0} ** 16,
+	congestionControl_bandWidthSentHistory: [congestionControl_historySize]usize = @splat(0),
+	congestionControl_bandWidthReceivedHistory: [congestionControl_historySize]usize = @splat(0),
 	congestionControl_bandWidthEstimate: usize = minimumBandWidth,
 	congestionControl_inversebandWidth: f32 = timeUnit/minimumBandWidth,
 	congestionControl_lastSendTime: i64,
