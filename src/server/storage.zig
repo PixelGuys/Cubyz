@@ -46,53 +46,42 @@ pub const RegionFile = struct { // MARK: RegionFile
 			return self;
 		};
 		defer main.stackAllocator.free(data);
-		self.load(data) catch |err| switch(err) {
-			error.CorruptedTooShort => {
-				std.log.err("Corrupted region file: {s} (too short)", .{path});
-			},
-			error.CorruptedTooLong => {
-				std.log.err("Corrupted region file: {s} (too long)", .{path});
-			},
-			error.CorruptedSizeMismatch => {
-				std.log.err("Corrupted region file: {s} (size mismatch)", .{path});
-			},
-			error.VersionNotSupported => {
-				std.log.err("Unsupported version of region file: {s}", .{path});
-			},
+		self.load(data) catch {
+			std.log.err("Corrupted region file: {s}", .{path});
 		};
 		return self;
 	}
 
-	fn load(self: *RegionFile, data: []const u8) error{CorruptedTooShort, CorruptedTooLong, CorruptedSizeMismatch, VersionNotSupported}!void {
+	fn load(self: *RegionFile, data: []const u8) !void {
 		var reader = BinaryReader.init(data, .big);
 
-		const fileVersion = reader.readInt(u32) catch return error.CorruptedTooShort;
-		const fileSize = reader.readInt(u32) catch return error.CorruptedTooShort;
+		const fileVersion = try reader.readInt(u32);
+		const fileSize = try reader.readInt(u32);
 
 		if(fileVersion != version) {
-			return error.VersionNotSupported;
+			return error.corrupted;
 		}
 
 		var chunkSizes: [regionVolume]u32 = undefined;
 		var totalSize: usize = 0;
 		for(0..regionVolume) |i| {
-			const size = reader.readInt(u32) catch return error.CorruptedTooShort;
+			const size = try reader.readInt(u32);
 			chunkSizes[i] = size;
 			totalSize += size;
 		}
 
 		if(fileSize != reader.remaining.len or totalSize != fileSize) {
-			return error.CorruptedSizeMismatch;
+			return error.corrupted;
 		}
 
 		for(0..regionVolume) |j| {
 			const chunkSize = chunkSizes[j];
 			if(chunkSize != 0) {
-				self.chunks[j] = reader.readAlloc(main.globalAllocator, chunkSize) catch return error.CorruptedTooShort;
+				self.chunks[j] = try reader.readAlloc(main.globalAllocator, chunkSize);
 			}
 		}
 		if(reader.remaining.len != 0) {
-			return error.CorruptedTooLong;
+			return error.corrupted;
 		}
 	}
 
