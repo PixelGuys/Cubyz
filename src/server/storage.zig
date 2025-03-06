@@ -5,6 +5,10 @@ const main = @import("root");
 const chunk = main.chunk;
 const server = @import("server.zig");
 
+const utils = main.utils;// @import("../utils.zig"); //
+const BinaryWriter = utils.BinaryWriter;
+const BinaryReader = utils.BinaryReader;
+
 pub const RegionFile = struct { // MARK: RegionFile
 	const version = 0;
 	pub const regionShift = 2;
@@ -259,63 +263,80 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 	};
 	pub fn compressChunk(allocator: main.utils.NeverFailingAllocator, ch: *chunk.Chunk, allowLossy: bool) []const u8 {
 		if(ch.data.paletteLength == 1) {
-			const data = allocator.alloc(u8, 8);
-			std.mem.writeInt(u32, data[0..4], @intFromEnum(CompressionAlgo.uniform), .big);
-			std.mem.writeInt(u32, data[4..8], ch.data.palette[0].toInt(), .big);
-			return data;
+			return @This().compressChunkUniform(allocator, ch);
 		}
 		if(ch.data.paletteLength < 256) {
-			var uncompressedData: [chunk.chunkVolume]u8 = undefined;
-			var solidMask: [chunk.chunkSize*chunk.chunkSize]u32 = undefined;
-			for(0..chunk.chunkVolume) |i| {
-				uncompressedData[i] = @intCast(ch.data.data.getValue(i));
-				if(allowLossy) {
-					if(ch.data.palette[uncompressedData[i]].solid()) {
-						solidMask[i >> 5] |= @as(u32, 1) << @intCast(i & 31);
-					} else {
-						solidMask[i >> 5] &= ~(@as(u32, 1) << @intCast(i & 31));
-					}
-				}
-			}
-			if(allowLossy) {
-				for(0..32) |x| {
-					for(0..32) |y| {
-						if(x == 0 or x == 31 or y == 0 or y == 31) {
-							continue;
-						}
-						const index = x*32 + y;
-						var colMask = solidMask[index] >> 1 & solidMask[index] << 1 & solidMask[index - 1] & solidMask[index + 1] & solidMask[index - 32] & solidMask[index + 32];
-						while(colMask != 0) {
-							const z = @ctz(colMask);
-							colMask &= ~(@as(u32, 1) << @intCast(z));
-							uncompressedData[index*32 + z] = uncompressedData[index*32 + z - 1];
-						}
-					}
-				}
-			}
-			const compressedData = main.utils.Compression.deflate(main.stackAllocator, &uncompressedData, .default);
-			defer main.stackAllocator.free(compressedData);
-
-			const data = allocator.alloc(u8, 4 + 1 + 4*ch.data.paletteLength + compressedData.len);
-			std.mem.writeInt(i32, data[0..4], @intFromEnum(CompressionAlgo.deflate_with_8bit_palette), .big);
-			data[4] = @intCast(ch.data.paletteLength);
-			for(0..ch.data.paletteLength) |i| {
-				std.mem.writeInt(u32, data[5 + 4*i ..][0..4], ch.data.palette[i].toInt(), .big);
-			}
-			@memcpy(data[5 + 4*ch.data.paletteLength ..], compressedData);
-			return data;
+			return @This().compressChunkDeflate8BitPalette(allocator, ch, allowLossy);
 		}
-		var uncompressedData: [chunk.chunkVolume*@sizeOf(u32)]u8 = undefined;
+		return @This().compressChunkDeflate(allocator, ch);
+	}
+	fn compressChunkUniform(allocator: main.utils.NeverFailingAllocator, ch: *chunk.Chunk) []const u8 {
+		var writer = BinaryWriter.initCapacity(allocator, .big, 8);
+
+		writer.writeEnum(CompressionAlgo, .uniform);
+		writer.writeInt(u32, ch.data.palette[0].toInt());
+
+		return writer.data.toOwnedSlice();
+	}
+	fn compressChunkDeflate8BitPalette(allocator: main.utils.NeverFailingAllocator, ch: *chunk.Chunk, allowLossy: bool) []const u8 {
+		var uncompressedData: [chunk.chunkVolume]u8 = undefined;
+		var solidMask: [chunk.chunkSize*chunk.chunkSize]u32 = undefined;
 		for(0..chunk.chunkVolume) |i| {
-			std.mem.writeInt(u32, uncompressedData[4*i ..][0..4], ch.data.getValue(i).toInt(), .big);
+			uncompressedData[i] = @intCast(ch.data.data.getValue(i));
+			if(allowLossy) {
+				if(ch.data.palette[uncompressedData[i]].solid()) {
+					solidMask[i >> 5] |= @as(u32, 1) << @intCast(i & 31);
+				} else {
+					solidMask[i >> 5] &= ~(@as(u32, 1) << @intCast(i & 31));
+				}
+			}
+		}
+		if(allowLossy) {
+			for(0..32) |x| {
+				for(0..32) |y| {
+					if(x == 0 or x == 31 or y == 0 or y == 31) {
+						continue;
+					}
+					const index = x*32 + y;
+					var colMask = solidMask[index] >> 1 & solidMask[index] << 1 & solidMask[index - 1] & solidMask[index + 1] & solidMask[index - 32] & solidMask[index + 32];
+					while(colMask != 0) {
+						const z = @ctz(colMask);
+						colMask &= ~(@as(u32, 1) << @intCast(z));
+						uncompressedData[index*32 + z] = uncompressedData[index*32 + z - 1];
+					}
+				}
+			}
 		}
 		const compressedData = main.utils.Compression.deflate(main.stackAllocator, &uncompressedData, .default);
 		defer main.stackAllocator.free(compressedData);
-		const data = allocator.alloc(u8, 4 + compressedData.len);
 
-		@memcpy(data[4..], compressedData);
-		std.mem.writeInt(i32, data[0..4], @intFromEnum(CompressionAlgo.deflate), .big);
-		return data;
+		var writer = BinaryWriter.initCapacity(allocator, .big, 4 + 1 + 4*ch.data.paletteLength + compressedData.len);
+
+		writer.writeEnum(CompressionAlgo, .deflate_with_8bit_palette);
+		writer.writeInt(u8, @intCast(ch.data.paletteLength));
+
+		for(0..ch.data.paletteLength) |i| {
+			writer.writeInt(u32, ch.data.palette[i].toInt());
+		}
+		writer.writeSlice(compressedData);
+		return writer.data.toOwnedSlice();
+	}
+	fn compressChunkDeflate(allocator: main.utils.NeverFailingAllocator, ch: *chunk.Chunk) []const u8 {
+		var uncompressedWriter = BinaryWriter.initCapacity(allocator, .big, chunk.chunkVolume*@sizeOf(u32));
+
+		for(0..chunk.chunkVolume) |i| {
+			uncompressedWriter.writeInt(u32, ch.data.getValue(i).toInt());
+		}
+		const compressedData = main.utils.Compression.deflate(main.stackAllocator, uncompressedWriter.data.items, .default);
+		defer main.stackAllocator.free(compressedData);
+
+		var compressedWriter = BinaryWriter.initCapacity(allocator, .big, 4 + compressedData.len);
+		defer compressedWriter.deinit();
+
+		compressedWriter.writeEnum(CompressionAlgo,  .deflate);
+		compressedWriter.writeSlice(compressedData);
+
+		return compressedWriter.data.toOwnedSlice();
 	}
 
 	pub fn decompressChunk(ch: *chunk.Chunk, _data: []const u8) error{corrupted}!void {
