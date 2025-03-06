@@ -523,12 +523,12 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 	}
 };
 
-pub var showItem: bool = true;
 
 // Going to handle item animations and other things like - bobbing, interpolation, movement reactions
 pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
-	pub var cameraFollow: Vec3f = .{0, 0, 0};
-	var cameraFollowVel: Vec3f = .{0, 0, 0};
+	pub var showItem: bool = true;
+	pub var cameraFollow: Vec3f = @splat(0);
+	var cameraFollowVel: Vec3f = @splat(0);
 	const damping: Vec3f = @splat(130);
 
 	pub fn update(deltaTime: f64) void {
@@ -762,8 +762,8 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		return (z*4) + (y*2) + (x);
 	}
 
-	inline fn blendColors(a: [6]f64, b: [6]f64, t: f64) [6]f64 {
-		var result: [6]f64 = .{0, 0, 0, 0, 0, 0};
+	inline fn blendColors(a: [6]f32, b: [6]f32, t: f32) [6]f32 {
+		var result: [6]f32 = .{0, 0, 0, 0, 0, 0};
 		inline for(0..6) |i| {
 			result[i] = std.math.lerp(a[i], b[i], t);
 		}
@@ -771,7 +771,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	}
 
 	pub fn renderDisplayItems(ambientLight: Vec3f, playerPos: Vec3d, time: u32) void {
-		if(!showItem) return;
+		if(!ItemDisplayManager.showItem) return;
 
 		const projMatrix: Mat4f = Mat4f.perspective(std.math.degreesToRadians(65), @as(f32, @floatFromInt(renderer.lastWidth))/@as(f32, @floatFromInt(renderer.lastHeight)), 0.05, 100);
 		const viewMatrix = Mat4f.identity();
@@ -781,33 +781,27 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		if(selectedItem) |item| {
 			var pos: Vec3d = Vec3d{0, 0, 0};
 			const rot: Vec3f = ItemDisplayManager.cameraFollow;
-			const blockPos: Vec3i = @intFromFloat(@floor(playerPos));
-			var localBlockPos = playerPos - @as(Vec3d, @floatFromInt(blockPos));
-			const quadrant: Vec3i = .{
-				if(localBlockPos[0] - 0.5 < 0) -1 else 1,
-				if(localBlockPos[1] - 0.5 < 0) -1 else 1,
-				if(localBlockPos[2] - 0.5 < 0) -1 else 1,
-			};
 
-			var samples: [8][6]f64 = @splat(@splat(0));
+			const lightPos = @as(Vec3f, @floatCast(playerPos)) - @as(Vec3f, @splat(0.5));
+			const blockPos: Vec3i = @intFromFloat(@floor(lightPos));
+			const localBlockPos = lightPos - @as(Vec3f, @floatFromInt(blockPos));
+
+			var samples: [8][6]f32 = @splat(@splat(0));
 			inline for(0..2) |z| {
 				inline for(0..2) |y| {
 					inline for(0..2) |x| {
-						const lx = blockPos[0] + @as(i32, @intCast(x))*quadrant[0];
-						const ly = blockPos[1] + @as(i32, @intCast(y))*quadrant[1];
-						const lz = blockPos[2] + @as(i32, @intCast(z))*quadrant[2];
-						const light: [6]u8 = main.renderer.mesh_storage.getLight(lx, ly, lz) orelse @splat(0);
+						const light: [6]u8 = main.renderer.mesh_storage.getLight(
+							blockPos[0] + @as(i32, @intCast(x)),
+							blockPos[1] + @as(i32, @intCast(y)),
+							blockPos[2] + @as(i32, @intCast(z)),
+						) orelse @splat(0);
 
 						inline for(0..6) |i| {
-							samples[getPos(x, y, z)][i] = @as(f64, @floatFromInt(light[i]));
+							samples[getPos(x, y, z)][i] = @as(f32, @floatFromInt(light[i]));
 						}
 					}
 				}
 			}
-
-			localBlockPos[0] -= if(quadrant[0] == -1) 0 else 0.5;
-			localBlockPos[1] -= if(quadrant[1] == -1) 0 else 0.5;
-			localBlockPos[2] -= if(quadrant[2] == -1) 0 else 0.5;
 
 			inline for(0..2) |y| {
 				inline for(0..2) |x| {

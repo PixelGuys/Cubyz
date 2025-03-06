@@ -292,20 +292,20 @@ fn openCommand() void {
 }
 fn takeBackgroundImageFn() void {
 	if(game.world == null) return;
-	const showItem = itemdrop.showItem;
-	itemdrop.showItem = false;
+	const showItem = itemdrop.ItemDisplayManager.showItem;
+	itemdrop.ItemDisplayManager.showItem = false;
 	renderer.MenuBackGround.takeBackgroundImage();
-	itemdrop.showItem = showItem;
+	itemdrop.ItemDisplayManager.showItem = showItem;
 }
 fn toggleHideGui() void {
-	if(itemdrop.showItem and !gui.hideGui) {
+	if(itemdrop.ItemDisplayManager.showItem and !gui.hideGui) {
 		gui.hideGui = true;
-	} else if(itemdrop.showItem and gui.hideGui) {
-		itemdrop.showItem = false;
-	} else if(!itemdrop.showItem and gui.hideGui) {
+	} else if(itemdrop.ItemDisplayManager.showItem and gui.hideGui) {
+		itemdrop.ItemDisplayManager.showItem = false;
+	} else if(!itemdrop.ItemDisplayManager.showItem and gui.hideGui) {
 		gui.hideGui = false;
 	} else {
-		itemdrop.showItem = true;
+		itemdrop.ItemDisplayManager.showItem = true;
 	}
 }
 fn toggleDebugOverlay() void {
