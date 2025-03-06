@@ -64,11 +64,11 @@ pub const RegionFile = struct { // MARK: RegionFile
 			return error.corrupted;
 		}
 
-		var chunkSizes: [regionVolume]u32 = undefined;
+		var chunkDataLengths: [regionVolume]u32 = undefined;
 		var totalSize: usize = 0;
 		for(0..regionVolume) |i| {
 			const size = try reader.readInt(u32);
-			chunkSizes[i] = size;
+			chunkDataLengths[i] = size;
 			totalSize += size;
 		}
 
@@ -77,9 +77,9 @@ pub const RegionFile = struct { // MARK: RegionFile
 		}
 
 		for(0..regionVolume) |j| {
-			const chunkSize = chunkSizes[j];
-			if(chunkSize != 0) {
-				self.chunks[j] = try reader.readAlloc(main.globalAllocator, chunkSize);
+			const chunkDataLength = chunkDataLengths[j];
+			if(chunkDataLength != 0) {
+				self.chunks[j] = try reader.readAlloc(main.globalAllocator, chunkDataLength);
 			}
 		}
 		if(reader.remaining.len != 0) {
