@@ -5,7 +5,7 @@ const main = @import("root");
 const chunk = main.chunk;
 const server = @import("server.zig");
 
-const utils = main.utils; // @import("../utils.zig");
+const utils = main.utils;
 const BinaryWriter = utils.BinaryWriter;
 const BinaryReader = utils.BinaryReader;
 
