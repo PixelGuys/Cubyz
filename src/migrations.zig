@@ -39,7 +39,7 @@ fn register(
 			std.log.info("Skipping empty {s} migration data structure from addon {s}", .{assetType, addonName});
 			return;
 		}
-		std.log.info("Skipping incorrect {s} migration data structure from addon {s}", .{assetType, addonName});
+		std.log.err("Skipping incorrect {s} migration data structure from addon {s}", .{assetType, addonName});
 		return;
 	}
 	if(migrationZon.array.items.len == 0) {
