@@ -324,7 +324,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 
 		var compressedWriter = BinaryWriter.initCapacity(allocator, .big, @sizeOf(CompressionAlgo) + compressedData.len);
 
-		compressedWriter.writeEnum(CompressionAlgo,  .deflate);
+		compressedWriter.writeEnum(CompressionAlgo, .deflate);
 		compressedWriter.writeSlice(compressedData);
 
 		return compressedWriter.data.toOwnedSlice();
