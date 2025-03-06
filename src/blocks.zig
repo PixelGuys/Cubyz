@@ -395,9 +395,7 @@ pub const TouchFunctions = struct {
 	pub fn init() void {
 		hashMap = .init(main.globalAllocator.allocator);
 		inline for(@typeInfo(TouchFunctions).@"struct".decls) |declaration| {
-			std.debug.print("Declaration\n", .{});
 			if(@TypeOf(@field(TouchFunctions, declaration.name)) == TouchFunction) {
-				std.debug.print("{any}\n", .{declaration.name});
 				hashMap.putNoClobber(declaration.name, &@field(TouchFunctions, declaration.name)) catch unreachable;
 			}
 		}
