@@ -532,6 +532,7 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 	const damping: Vec3f = @splat(130);
 
 	pub fn update(deltaTime: f64) void {
+		if(deltaTime == 0) return;
 		const dt: f32 = @floatCast(deltaTime);
 
 		var playerVel: Vec3f = .{@floatCast((game.Player.super.vel[2]*0.009 + game.Player.eyeVel[2]*0.0075)), 0, 0};
@@ -808,26 +809,20 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			localBlockPos[1] -= if(quadrant[1] == -1) 0 else 0.5;
 			localBlockPos[2] -= if(quadrant[2] == -1) 0 else 0.5;
 
-			// TODO: fix jagged light, do better interpolation
-			samples[getPos(1, 0, 0)] = blendColors(samples[0], samples[getPos(1, 0, 0)], localBlockPos[0]);
-			samples[getPos(0, 1, 0)] = blendColors(samples[0], samples[getPos(0, 1, 0)], localBlockPos[1]);
-			samples[getPos(0, 0, 1)] = blendColors(samples[0], samples[getPos(0, 0, 1)], localBlockPos[2]);
-
-			samples[getPos(1, 1, 0)] = blendColors(samples[0], samples[getPos(1, 1, 0)], vec.length(Vec3d{localBlockPos[0], localBlockPos[1], 0})*0.7);
-			samples[getPos(0, 1, 1)] = blendColors(samples[0], samples[getPos(0, 1, 1)], vec.length(Vec3d{localBlockPos[1], localBlockPos[2], 0})*0.7);
-			samples[getPos(1, 0, 1)] = blendColors(samples[0], samples[getPos(1, 0, 1)], vec.length(Vec3d{localBlockPos[0], localBlockPos[2], 0})*0.7);
-
-			samples[getPos(1, 1, 1)] = blendColors(samples[0], samples[getPos(1, 1, 1)], vec.length(localBlockPos)*0.5);
-
-			var result: [6]u8 = @splat(0);
-			inline for(0..6) |i| {
-				var biggest: f64 = 0;
-				inline for(0..samples.len) |j| {
-					if(biggest < samples[j][i]) {
-						biggest = samples[j][i];
-					}
+			inline for(0..2) |y| {
+				inline for(0..2) |x| {
+					samples[getPos(x, y, 0)] = blendColors(samples[getPos(x, y, 0)], samples[getPos(x, y, 1)], localBlockPos[2]);
 				}
-				result[i] = @as(u8, @intFromFloat(@floor(biggest)));
+			}
+
+			inline for(0..2) |x| {
+				samples[getPos(x, 0, 0)] = blendColors(samples[getPos(x, 0, 0)], samples[getPos(x, 1, 0)], localBlockPos[1]);
+			}
+
+			var result: [6]u8 = .{0, 0, 0, 0, 0, 0};
+			inline for(0..6) |i| {
+				const val = std.math.lerp(samples[getPos(0, 0, 0)][i], samples[getPos(1, 0, 0)][i], localBlockPos[0]);
+				result[i] = @as(u8, @intFromFloat(@floor(val)));
 			}
 
 			bindLightUniform(result, ambientLight);

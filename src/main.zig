@@ -292,7 +292,10 @@ fn openCommand() void {
 }
 fn takeBackgroundImageFn() void {
 	if(game.world == null) return;
+	const showItem = itemdrop.showItem;
+	itemdrop.showItem = false;
 	renderer.MenuBackGround.takeBackgroundImage();
+	itemdrop.showItem = showItem;
 }
 fn toggleHideGui() void {
 	if(itemdrop.showItem and !gui.hideGui) {
@@ -682,7 +685,7 @@ pub fn main() void { // MARK: main()
 		if(!isHidden) {
 			c.glEnable(c.GL_CULL_FACE);
 			c.glEnable(c.GL_DEPTH_TEST);
-			renderer.render(game.Player.getEyePosBlocking(), deltaTime, false);
+			renderer.render(game.Player.getEyePosBlocking(), deltaTime);
 			// Render the GUI
 			gui.windowlist.gpu_performance_measuring.startQuery(.gui);
 			c.glDisable(c.GL_CULL_FACE);
