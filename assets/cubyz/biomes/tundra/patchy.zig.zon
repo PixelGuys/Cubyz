@@ -52,7 +52,7 @@
 			.block = "cubyz:stone",
 			.size = 1,
 			.size_variance = 6,
-		},	.structures = .{
+		},
 		.{
 			.id = "cubyz:flower_patch",
 			.block = "cubyz:dry_grass_vegetation",
