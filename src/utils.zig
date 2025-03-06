@@ -453,6 +453,7 @@ pub const StackAllocator = struct { // MARK: StackAllocator
 				.vtable = &.{
 					.alloc = &alloc,
 					.resize = &resize,
+					.remap = &remap,
 					.free = &free,
 				},
 				.ptr = self,
@@ -484,42 +485,22 @@ pub const StackAllocator = struct { // MARK: StackAllocator
 		return @ptrCast(@alignCast(self.buffer[trailerStart..].ptr));
 	}
 
-	/// Attempt to allocate exactly `len` bytes aligned to `1 << ptr_align`.
-	///
-	/// `ret_addr` is optionally provided as the first return address of the
-	/// allocation call stack. If the value is `0` it means no return address
-	/// has been provided.
-	fn alloc(ctx: *anyopaque, len: usize, ptr_align: u8, ret_addr: usize) ?[*]u8 {
+	fn alloc(ctx: *anyopaque, len: usize, alignment: std.mem.Alignment, ret_addr: usize) ?[*]u8 {
 		const self: *StackAllocator = @ptrCast(@alignCast(ctx));
-		const start = std.mem.alignForward(usize, self.index, @as(usize, 1) << @intCast(ptr_align));
+		const start = std.mem.alignForward(usize, self.index, @as(usize, 1) << @intCast(@intFromEnum(alignment)));
 		const end = getTrueAllocationEnd(start, len);
-		if(end >= self.buffer.len) return self.backingAllocator.rawAlloc(len, ptr_align, ret_addr);
+		if(end >= self.buffer.len) return self.backingAllocator.rawAlloc(len, alignment, ret_addr);
 		const trailer = self.getTrailerBefore(end);
 		trailer.* = .{.wasFreed = false, .previousAllocationTrailer = @intCast(self.index)};
 		self.index = end;
 		return self.buffer.ptr + start;
 	}
 
-	/// Attempt to expand or shrink memory in place. `buf.len` must equal the
-	/// length requested from the most recent successful call to `alloc` or
-	/// `resize`. `buf_align` must equal the same value that was passed as the
-	/// `ptr_align` parameter to the original `alloc` call.
-	///
-	/// A result of `true` indicates the resize was successful and the
-	/// allocation now has the same address but a size of `new_len`. `false`
-	/// indicates the resize could not be completed without moving the
-	/// allocation to a different address.
-	///
-	/// `new_len` must be greater than zero.
-	///
-	/// `ret_addr` is optionally provided as the first return address of the
-	/// allocation call stack. If the value is `0` it means no return address
-	/// has been provided.
-	fn resize(ctx: *anyopaque, buf: []u8, buf_align: u8, new_len: usize, ret_addr: usize) bool {
+	fn resize(ctx: *anyopaque, memory: []u8, alignment: std.mem.Alignment, new_len: usize, ret_addr: usize) bool {
 		const self: *StackAllocator = @ptrCast(@alignCast(ctx));
-		if(self.isInsideBuffer(buf)) {
-			const start = self.indexInBuffer(buf);
-			const end = getTrueAllocationEnd(start, buf.len);
+		if(self.isInsideBuffer(memory)) {
+			const start = self.indexInBuffer(memory);
+			const end = getTrueAllocationEnd(start, memory.len);
 			if(end != self.index) return false;
 			const newEnd = getTrueAllocationEnd(start, new_len);
 			if(newEnd >= self.buffer.len) return false;
@@ -532,26 +513,20 @@ pub const StackAllocator = struct { // MARK: StackAllocator
 			self.index = newEnd;
 			return true;
 		} else {
-			return self.backingAllocator.rawResize(buf, buf_align, new_len, ret_addr);
+			return self.backingAllocator.rawResize(memory, alignment, new_len, ret_addr);
 		}
 	}
 
-	/// Free and invalidate a buffer.
-	///
-	/// `buf.len` must equal the most recent length returned by `alloc` or
-	/// given to a successful `resize` call.
-	///
-	/// `buf_align` must equal the same value that was passed as the
-	/// `ptr_align` parameter to the original `alloc` call.
-	///
-	/// `ret_addr` is optionally provided as the first return address of the
-	/// allocation call stack. If the value is `0` it means no return address
-	/// has been provided.
-	fn free(ctx: *anyopaque, buf: []u8, buf_align: u8, ret_addr: usize) void {
+	fn remap(ctx: *anyopaque, memory: []u8, alignment: std.mem.Alignment, new_len: usize, ret_addr: usize) ?[*]u8 {
+		if(resize(ctx, memory, alignment, new_len, ret_addr)) return memory.ptr;
+		return null;
+	}
+
+	fn free(ctx: *anyopaque, memory: []u8, alignment: std.mem.Alignment, ret_addr: usize) void {
 		const self: *StackAllocator = @ptrCast(@alignCast(ctx));
-		if(self.isInsideBuffer(buf)) {
-			const start = self.indexInBuffer(buf);
-			const end = getTrueAllocationEnd(start, buf.len);
+		if(self.isInsideBuffer(memory)) {
+			const start = self.indexInBuffer(memory);
+			const end = getTrueAllocationEnd(start, memory.len);
 			const trailer = self.getTrailerBefore(end);
 			std.debug.assert(!trailer.wasFreed); // Double Free
 
@@ -569,7 +544,7 @@ pub const StackAllocator = struct { // MARK: StackAllocator
 				trailer.wasFreed = true;
 			}
 		} else {
-			self.backingAllocator.rawFree(buf, buf_align, ret_addr);
+			self.backingAllocator.rawFree(memory, alignment, ret_addr);
 		}
 	}
 };
@@ -590,6 +565,7 @@ pub const ErrorHandlingAllocator = struct { // MARK: ErrorHandlingAllocator
 				.vtable = &.{
 					.alloc = &alloc,
 					.resize = &resize,
+					.remap = &remap,
 					.free = &free,
 				},
 				.ptr = self,
@@ -602,20 +578,23 @@ pub const ErrorHandlingAllocator = struct { // MARK: ErrorHandlingAllocator
 		@panic("Out Of Memory. Please download more RAM, reduce the render distance, or close some of your 100 browser tabs.");
 	}
 
-	/// Attempt to allocate exactly `len` bytes aligned to `1 << ptr_align`.
+	/// Return a pointer to `len` bytes with specified `alignment`, or return
+	/// `null` indicating the allocation failed.
 	///
 	/// `ret_addr` is optionally provided as the first return address of the
 	/// allocation call stack. If the value is `0` it means no return address
 	/// has been provided.
-	fn alloc(ctx: *anyopaque, len: usize, ptr_align: u8, ret_addr: usize) ?[*]u8 {
+	fn alloc(ctx: *anyopaque, len: usize, alignment: std.mem.Alignment, ret_addr: usize) ?[*]u8 {
 		const self: *ErrorHandlingAllocator = @ptrCast(@alignCast(ctx));
-		return self.backingAllocator.rawAlloc(len, ptr_align, ret_addr) orelse handleError();
+		return self.backingAllocator.rawAlloc(len, alignment, ret_addr) orelse handleError();
 	}
 
-	/// Attempt to expand or shrink memory in place. `buf.len` must equal the
-	/// length requested from the most recent successful call to `alloc` or
-	/// `resize`. `buf_align` must equal the same value that was passed as the
-	/// `ptr_align` parameter to the original `alloc` call.
+	/// Attempt to expand or shrink memory in place.
+	///
+	/// `memory.len` must equal the length requested from the most recent
+	/// successful call to `alloc`, `resize`, or `remap`. `alignment` must
+	/// equal the same value that was passed as the `alignment` parameter to
+	/// the original `alloc` call.
 	///
 	/// A result of `true` indicates the resize was successful and the
 	/// allocation now has the same address but a size of `new_len`. `false`
@@ -627,25 +606,48 @@ pub const ErrorHandlingAllocator = struct { // MARK: ErrorHandlingAllocator
 	/// `ret_addr` is optionally provided as the first return address of the
 	/// allocation call stack. If the value is `0` it means no return address
 	/// has been provided.
-	fn resize(ctx: *anyopaque, buf: []u8, buf_align: u8, new_len: usize, ret_addr: usize) bool {
+	fn resize(ctx: *anyopaque, memory: []u8, alignment: std.mem.Alignment, new_len: usize, ret_addr: usize) bool {
 		const self: *ErrorHandlingAllocator = @ptrCast(@alignCast(ctx));
-		return self.backingAllocator.rawResize(buf, buf_align, new_len, ret_addr);
+		return self.backingAllocator.rawResize(memory, alignment, new_len, ret_addr);
 	}
 
-	/// Free and invalidate a buffer.
+	/// Attempt to expand or shrink memory, allowing relocation.
 	///
-	/// `buf.len` must equal the most recent length returned by `alloc` or
-	/// given to a successful `resize` call.
+	/// `memory.len` must equal the length requested from the most recent
+	/// successful call to `alloc`, `resize`, or `remap`. `alignment` must
+	/// equal the same value that was passed as the `alignment` parameter to
+	/// the original `alloc` call.
 	///
-	/// `buf_align` must equal the same value that was passed as the
-	/// `ptr_align` parameter to the original `alloc` call.
+	/// A non-`null` return value indicates the resize was successful. The
+	/// allocation may have same address, or may have been relocated. In either
+	/// case, the allocation now has size of `new_len`. A `null` return value
+	/// indicates that the resize would be equivalent to allocating new memory,
+	/// copying the bytes from the old memory, and then freeing the old memory.
+	/// In such case, it is more efficient for the caller to perform the copy.
+	///
+	/// `new_len` must be greater than zero.
 	///
 	/// `ret_addr` is optionally provided as the first return address of the
 	/// allocation call stack. If the value is `0` it means no return address
 	/// has been provided.
-	fn free(ctx: *anyopaque, buf: []u8, buf_align: u8, ret_addr: usize) void {
+	fn remap(ctx: *anyopaque, memory: []u8, alignment: std.mem.Alignment, new_len: usize, ret_addr: usize) ?[*]u8 {
 		const self: *ErrorHandlingAllocator = @ptrCast(@alignCast(ctx));
-		self.backingAllocator.rawFree(buf, buf_align, ret_addr);
+		return self.backingAllocator.rawRemap(memory, alignment, new_len, ret_addr);
+	}
+
+	/// Free and invalidate a region of memory.
+	///
+	/// `memory.len` must equal the length requested from the most recent
+	/// successful call to `alloc`, `resize`, or `remap`. `alignment` must
+	/// equal the same value that was passed as the `alignment` parameter to
+	/// the original `alloc` call.
+	///
+	/// `ret_addr` is optionally provided as the first return address of the
+	/// allocation call stack. If the value is `0` it means no return address
+	/// has been provided.
+	fn free(ctx: *anyopaque, memory: []u8, alignment: std.mem.Alignment, ret_addr: usize) void {
+		const self: *ErrorHandlingAllocator = @ptrCast(@alignCast(ctx));
+		self.backingAllocator.rawFree(memory, alignment, ret_addr);
 	}
 };
 
@@ -654,22 +656,31 @@ pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 	allocator: Allocator,
 	IAssertThatTheProvidedAllocatorCantFail: void,
 
+	const Alignment = std.mem.Alignment;
+	const math = std.math;
+
 	/// This function is not intended to be called except from within the
-	/// implementation of an Allocator
-	pub inline fn rawAlloc(self: NeverFailingAllocator, len: usize, ptr_align: u8, ret_addr: usize) ?[*]u8 {
-		return self.allocator.vtable.alloc(self.allocator.ptr, len, ptr_align, ret_addr);
+	/// implementation of an `Allocator`.
+	pub inline fn rawAlloc(a: NeverFailingAllocator, len: usize, alignment: Alignment, ret_addr: usize) ?[*]u8 {
+		return a.allocator.vtable.alloc(a.allocator.ptr, len, alignment, ret_addr);
 	}
 
 	/// This function is not intended to be called except from within the
-	/// implementation of an Allocator
-	pub inline fn rawResize(self: NeverFailingAllocator, buf: []u8, log2_buf_align: u8, new_len: usize, ret_addr: usize) bool {
-		return self.allocator.vtable.resize(self.allocator.ptr, buf, log2_buf_align, new_len, ret_addr);
+	/// implementation of an `Allocator`.
+	pub inline fn rawResize(a: NeverFailingAllocator, memory: []u8, alignment: Alignment, new_len: usize, ret_addr: usize) bool {
+		return a.allocator.vtable.resize(a.allocator.ptr, memory, alignment, new_len, ret_addr);
 	}
 
 	/// This function is not intended to be called except from within the
-	/// implementation of an Allocator
-	pub inline fn rawFree(self: NeverFailingAllocator, buf: []u8, log2_buf_align: u8, ret_addr: usize) void {
-		return self.allocator.vtable.free(self.allocator.ptr, buf, log2_buf_align, ret_addr);
+	/// implementation of an `Allocator`.
+	pub inline fn rawRemap(a: NeverFailingAllocator, memory: []u8, alignment: Alignment, new_len: usize, ret_addr: usize) ?[*]u8 {
+		return a.allocator.vtable.remap(a.allocator.ptr, memory, alignment, new_len, ret_addr);
+	}
+
+	/// This function is not intended to be called except from within the
+	/// implementation of an `Allocator`.
+	pub inline fn rawFree(a: NeverFailingAllocator, memory: []u8, alignment: Alignment, ret_addr: usize) void {
+		return a.allocator.vtable.free(a.allocator.ptr, memory, alignment, ret_addr);
 	}
 
 	/// Returns a pointer to undefined memory.
@@ -681,7 +692,7 @@ pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 	/// `ptr` should be the return value of `create`, or otherwise
 	/// have the same address and alignment property.
 	pub fn destroy(self: NeverFailingAllocator, ptr: anytype) void {
-		return self.allocator.destroy(ptr);
+		self.allocator.destroy(ptr);
 	}
 
 	/// Allocates an array of `n` items of type `T` and sets all the
@@ -765,16 +776,58 @@ pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 		return self.allocator.allocAdvancedWithRetAddr(T, alignment, n, return_address) catch unreachable;
 	}
 
-	/// Requests to modify the size of an allocation. It is guaranteed to not move
-	/// the pointer, however the allocator implementation may refuse the resize
-	/// request by returning `false`.
-	pub fn resize(self: NeverFailingAllocator, old_mem: anytype, new_n: usize) bool {
-		return self.allocator.resize(old_mem, new_n);
+	fn allocWithSizeAndAlignment(self: NeverFailingAllocator, comptime size: usize, comptime alignment: u29, n: usize, return_address: usize) [*]align(alignment) u8 {
+		return self.allocator.allocWithSizeAndAlignment(alignment, size, alignment, n, return_address) catch unreachable;
+	}
+
+	fn allocBytesWithAlignment(self: NeverFailingAllocator, comptime alignment: u29, byte_count: usize, return_address: usize) [*]align(alignment) u8 {
+		return self.allocator.allocBytesWithAlignment(alignment, byte_count, return_address) catch unreachable;
+	}
+
+	/// Request to modify the size of an allocation.
+	///
+	/// It is guaranteed to not move the pointer, however the allocator
+	/// implementation may refuse the resize request by returning `false`.
+	///
+	/// `allocation` may be an empty slice, in which case a new allocation is made.
+	///
+	/// `new_len` may be zero, in which case the allocation is freed.
+	pub fn resize(self: NeverFailingAllocator, allocation: anytype, new_len: usize) bool {
+		return self.allocator.resize(allocation, new_len);
+	}
+
+	/// Request to modify the size of an allocation, allowing relocation.
+	///
+	/// A non-`null` return value indicates the resize was successful. The
+	/// allocation may have same address, or may have been relocated. In either
+	/// case, the allocation now has size of `new_len`. A `null` return value
+	/// indicates that the resize would be equivalent to allocating new memory,
+	/// copying the bytes from the old memory, and then freeing the old memory.
+	/// In such case, it is more efficient for the caller to perform those
+	/// operations.
+	///
+	/// `allocation` may be an empty slice, in which case a new allocation is made.
+	///
+	/// `new_len` may be zero, in which case the allocation is freed.
+	pub fn remap(self: NeverFailingAllocator, allocation: anytype, new_len: usize) t: {
+		const Slice = @typeInfo(@TypeOf(allocation)).pointer;
+		break :t ?[]align(Slice.alignment) Slice.child;
+	} {
+		return self.allocator.remap(allocation, new_len);
 	}
 
 	/// This function requests a new byte size for an existing allocation, which
 	/// can be larger, smaller, or the same size as the old memory allocation.
+	///
 	/// If `new_n` is 0, this is the same as `free` and it always succeeds.
+	///
+	/// `old_mem` may have length zero, which makes a new allocation.
+	///
+	/// This function only fails on out-of-memory conditions, unlike:
+	/// * `remap` which returns `null` when the `Allocator` implementation cannot
+	///   do the realloc more efficiently than the caller
+	/// * `resize` which returns `false` when the `Allocator` implementation cannot
+	///   change the size without relocating the allocation.
 	pub fn realloc(self: NeverFailingAllocator, old_mem: anytype, new_n: usize) t: {
 		const Slice = @typeInfo(@TypeOf(old_mem)).pointer;
 		break :t []align(Slice.alignment) Slice.child;
@@ -794,8 +847,9 @@ pub const NeverFailingAllocator = struct { // MARK: NeverFailingAllocator
 		return self.allocator.reallocAdvanced(old_mem, new_n, return_address) catch unreachable;
 	}
 
-	/// Free an array allocated with `alloc`. To free a single item,
-	/// see `destroy`.
+	/// Free an array allocated with `alloc`.
+	/// If memory has length 0, free is a no-op.
+	/// To free a single item, see `destroy`.
 	pub fn free(self: NeverFailingAllocator, memory: anytype) void {
 		self.allocator.free(memory);
 	}
@@ -850,7 +904,7 @@ pub const NeverFailingArenaAllocator = struct { // MARK: NeverFailingArena
 		const node = self.arena.state.buffer_list.first orelse return;
 		const allocBuf = @as([*]u8, @ptrCast(node))[0..node.data];
 		const dataSize = std.mem.alignForward(usize, @sizeOf(std.SinglyLinkedList(usize).Node) + self.arena.state.end_index, @alignOf(std.SinglyLinkedList(usize).Node));
-		if(self.arena.child_allocator.rawResize(allocBuf, std.math.log2(@alignOf(std.SinglyLinkedList(usize).Node)), dataSize, @returnAddress())) {
+		if(self.arena.child_allocator.rawResize(allocBuf, @enumFromInt(std.math.log2(@alignOf(std.SinglyLinkedList(usize).Node))), dataSize, @returnAddress())) {
 			node.data = dataSize;
 		}
 	}
@@ -1842,4 +1896,78 @@ pub const ReadWriteLock = struct { // MARK: ReadWriteLock
 pub const Side = enum {
 	client,
 	server,
+};
+
+pub const BinaryReader = struct {
+	remaining: []const u8,
+	endian: std.builtin.Endian,
+
+	pub fn init(data: []const u8, endian: std.builtin.Endian) BinaryReader {
+		return .{.remaining = data, .endian = endian};
+	}
+
+	pub fn readInt(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds}!T {
+		if(@mod(@typeInfo(T).int.bits, 8) != 0) {
+			const fullBits = comptime std.mem.alignForward(u16, @typeInfo(T).int.bits, 8);
+			const FullType = std.meta.Int(@typeInfo(T).int.signedness, fullBits);
+			const val = try self.readInt(FullType);
+			return std.math.cast(T, val) orelse return error.IntOutOfBounds;
+		}
+		const bufSize = @divExact(@typeInfo(T).int.bits, 8);
+		if(self.remaining.len < bufSize) return error.OutOfBounds;
+		defer self.remaining = self.remaining[bufSize..];
+		return std.mem.readInt(T, self.remaining[0..bufSize], self.endian);
+	}
+
+	pub fn readEnum(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds, InvalidEnumTag}!T {
+		const int = try self.readInt(@typeInfo(T).@"enum".tag_type);
+		return std.meta.intToEnum(T, int);
+	}
+
+	pub fn readUntilDelimiter(self: *BinaryReader, comptime delimiter: u8) ![:delimiter]const u8 {
+		const len = std.mem.indexOfScalar(u8, self.remaining, delimiter) orelse return error.OutOfBounds;
+		defer self.remaining = self.remaining[len + 1 ..];
+		return self.remaining[0..len :delimiter];
+	}
+};
+
+pub const BinaryWriter = struct {
+	data: main.List(u8),
+	endian: std.builtin.Endian,
+
+	pub fn init(allocator: NeverFailingAllocator, endian: std.builtin.Endian) BinaryWriter {
+		return .{.data = .init(allocator), .endian = endian};
+	}
+
+	pub fn initCapacity(allocator: NeverFailingAllocator, endian: std.builtin.Endian, capacity: usize) BinaryWriter {
+		return .{.data = .initCapacity(allocator, capacity), .endian = endian};
+	}
+
+	pub fn deinit(self: *BinaryWriter) void {
+		self.data.deinit();
+	}
+
+	pub fn writeInt(self: *BinaryWriter, T: type, value: T) void {
+		if(@mod(@typeInfo(T).int.bits, 8) != 0) {
+			const fullBits = comptime std.mem.alignForward(u16, @typeInfo(T).int.bits, 8);
+			const FullType = std.meta.Int(@typeInfo(T).int.signedness, fullBits);
+			return self.writeInt(FullType, value);
+		}
+		const bufSize = @divExact(@typeInfo(T).int.bits, 8);
+		std.mem.writeInt(T, self.data.addMany(bufSize)[0..bufSize], value, self.endian);
+	}
+
+	pub fn writeEnum(self: *BinaryWriter, T: type, value: T) void {
+		self.writeInt(@typeInfo(T).@"enum".tag_type, @intFromEnum(value));
+	}
+
+	pub fn writeSlice(self: *BinaryWriter, slice: []const u8) void {
+		self.data.appendSlice(slice);
+	}
+
+	pub fn writeWithDelimiter(self: *BinaryWriter, slice: []const u8, delimiter: u8) void {
+		std.debug.assert(!std.mem.containsAtLeast(u8, slice, 1, &.{delimiter}));
+		self.writeSlice(slice);
+		self.data.append(delimiter);
+	}
 };

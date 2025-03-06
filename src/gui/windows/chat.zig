@@ -38,6 +38,24 @@ var fadeOutEnd: u32 = 0;
 pub var input: *TextInput = undefined;
 var hideInput: bool = true;
 
+pub fn init() void {
+	history = .init(main.globalAllocator);
+	expirationTime = .init(main.globalAllocator);
+	messageQueue = .init(main.globalAllocator, 16);
+}
+
+pub fn deinit() void {
+	for(history.items) |label| {
+		label.deinit();
+	}
+	history.deinit();
+	while(messageQueue.dequeue()) |msg| {
+		main.globalAllocator.free(msg);
+	}
+	messageQueue.deinit();
+	expirationTime.deinit();
+}
+
 fn refresh() void {
 	if(window.rootComponent) |old| {
 		old.verticalList.children.clearRetainingCapacity();
@@ -69,25 +87,20 @@ fn refresh() void {
 }
 
 pub fn onOpen() void {
-	history = .init(main.globalAllocator);
-	expirationTime = .init(main.globalAllocator);
-	messageQueue = .init(main.globalAllocator, 16);
-	historyStart = 0;
-	fadeOutEnd = 0;
 	input = TextInput.init(.{0, 0}, 256, 32, "", .{.callback = &sendMessage});
 	refresh();
 }
 
 pub fn onClose() void {
-	for(history.items) |label| {
+	while(history.popOrNull()) |label| {
 		label.deinit();
 	}
-	history.deinit();
 	while(messageQueue.dequeue()) |msg| {
 		main.globalAllocator.free(msg);
 	}
-	messageQueue.deinit();
-	expirationTime.deinit();
+	expirationTime.clearRetainingCapacity();
+	historyStart = 0;
+	fadeOutEnd = 0;
 	input.deinit();
 	window.rootComponent.?.verticalList.children.clearRetainingCapacity();
 	window.rootComponent.?.deinit();

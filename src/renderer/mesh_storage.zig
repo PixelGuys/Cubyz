@@ -175,6 +175,21 @@ pub fn getBlock(x: i32, y: i32, z: i32) ?blocks.Block {
 	return block;
 }
 
+pub fn getLight(wx: i32, wy: i32, wz: i32) ?[6]u8 {
+	const node = getNodePointer(.{.wx = wx, .wy = wy, .wz = wz, .voxelSize = 1});
+	node.mutex.lock();
+	defer node.mutex.unlock();
+	const mesh = node.mesh orelse return null;
+	const x = (wx >> mesh.chunk.voxelSizeShift) & chunk.chunkMask;
+	const y = (wy >> mesh.chunk.voxelSizeShift) & chunk.chunkMask;
+	const z = (wz >> mesh.chunk.voxelSizeShift) & chunk.chunkMask;
+	mesh.lightingData[0].lock.lockRead();
+	defer mesh.lightingData[0].lock.unlockRead();
+	mesh.lightingData[1].lock.lockRead();
+	defer mesh.lightingData[1].lock.unlockRead();
+	return mesh.lightingData[1].getValue(x, y, z) ++ mesh.lightingData[0].getValue(x, y, z);
+}
+
 pub fn getBlockFromAnyLod(x: i32, y: i32, z: i32) blocks.Block {
 	var lod: u5 = 0;
 	while(lod < settings.highestLod) : (lod += 1) {

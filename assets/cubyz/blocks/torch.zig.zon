@@ -10,9 +10,12 @@
 	.absorbedLight = 0x010101,
 	.collide= false,
 	.rotation = .torch,
-	.model = "cubyz:torch",
+	.model = .{
+		.base = "cubyz:torch",
+		.side = "cubyz:torch_side",
+	},
 	.texture = "cubyz:torch",
-	.item= .{
+	.item = .{
 		.texture = "torch.png",
 	},
 	.lodReplacement = "cubyz:air",

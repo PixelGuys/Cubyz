@@ -213,11 +213,11 @@ pub const ZonElement = union(enum) { // MARK: Zon
 				}
 			},
 			.pointer => |ptr| {
-				if(ptr.child == u8 and ptr.size == .Slice) {
+				if(ptr.child == u8 and ptr.size == .slice) {
 					return .{.string = value};
 				} else {
 					const childInfo = @typeInfo(ptr.child);
-					if(ptr.size == .One and childInfo == .array and childInfo.array.child == u8) {
+					if(ptr.size == .one and childInfo == .array and childInfo.array.child == u8) {
 						return .{.string = value};
 					} else {
 						@compileError("Unknown value type.");

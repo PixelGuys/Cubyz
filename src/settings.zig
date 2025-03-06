@@ -80,7 +80,7 @@ pub fn init() void {
 			}
 			@field(@This(), decl.name) = zon.get(declType, decl.name, @field(@This(), decl.name));
 			if(@typeInfo(declType) == .pointer) {
-				if(@typeInfo(declType).pointer.size == .Slice) {
+				if(@typeInfo(declType).pointer.size == .slice) {
 					@field(@This(), decl.name) = main.globalAllocator.dupe(@typeInfo(declType).pointer.child, @field(@This(), decl.name));
 				} else {
 					@compileError("Not implemented yet.");
@@ -111,7 +111,7 @@ pub fn deinit() void {
 				@compileError("Not implemented yet.");
 			}
 			if(@typeInfo(declType) == .pointer) {
-				if(@typeInfo(declType).pointer.size == .Slice) {
+				if(@typeInfo(declType).pointer.size == .slice) {
 					main.globalAllocator.free(@field(@This(), decl.name));
 				} else {
 					@compileError("Not implemented yet.");
