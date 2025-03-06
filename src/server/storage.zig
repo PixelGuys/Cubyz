@@ -79,7 +79,7 @@ pub const RegionFile = struct { // MARK: RegionFile
 		for(0..regionVolume) |j| {
 			const chunkDataLength = chunkDataLengths[j];
 			if(chunkDataLength != 0) {
-				self.chunks[j] = try reader.readAlloc(main.globalAllocator, chunkDataLength);
+				self.chunks[j] = main.globalAllocator.dupe(u8, try reader.readSlice(chunkDataLength));
 			}
 		}
 		if(reader.remaining.len != 0) {
