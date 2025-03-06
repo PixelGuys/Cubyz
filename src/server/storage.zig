@@ -46,20 +46,21 @@ pub const RegionFile = struct { // MARK: RegionFile
 			return self;
 		};
 		defer main.stackAllocator.free(data);
-		self.load(data) catch {
+		self.load(path, data) catch {
 			std.log.err("Corrupted region file: {s}", .{path});
 			if(@errorReturnTrace()) |trace| std.log.info("{}", .{trace});
 		};
 		return self;
 	}
 
-	fn load(self: *RegionFile, data: []const u8) !void {
+	fn load(self: *RegionFile, path: []const u8,  data: []const u8) !void {
 		var reader = BinaryReader.init(data, .big);
 
 		const fileVersion = try reader.readInt(u32);
 		const fileSize = try reader.readInt(u32);
 
 		if(fileVersion != version) {
+			std.log.err("Region file {s} has incorrect version {}. Requires version {}.", .{path, fileVersion, version});
 			return error.corrupted;
 		}
 
