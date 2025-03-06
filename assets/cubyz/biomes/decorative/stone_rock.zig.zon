@@ -1,7 +1,7 @@
 .{
 	.properties = .{
 	},
-	.radius = 10,
+	.radius = 16,
 	.chance = 0
 	.minHeight = 50,
 	.maxHeight = 80,
@@ -28,11 +28,11 @@
 		},
 		.{
 			.id = "cubyz:rocky_grassland",
-			.chance = 32,
+			.chance = 24,
 		},
 		.{
 			.id = "cubyz:taiga",
-			.chance = 3,
+			.chance = 4,
 		},
 		.{
 			.id = "cubyz:forest/base",
