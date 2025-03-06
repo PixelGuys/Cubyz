@@ -390,11 +390,11 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 	);
 	errdefer unloadAssets();
 
-	migrations_zig.registerBlockMigrations(&blockMigrations);
-	migrations_zig.applyBlockPaletteMigrations(blockPalette);
+	migrations_zig.registerAll(.block, &blockMigrations);
+	migrations_zig.apply(.block, blockPalette);
 
-	migrations_zig.registerBiomeMigrations(&biomeMigrations);
-	migrations_zig.applyBiomePaletteMigrations(biomePalette);
+	migrations_zig.registerAll(.biome, &biomeMigrations);
+	migrations_zig.apply(.biome, biomePalette);
 
 	// models:
 	var modelIterator = models.iterator();
