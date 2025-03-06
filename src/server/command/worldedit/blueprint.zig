@@ -65,6 +65,7 @@ pub fn execute(args: []const u8, source: *User) void {
 			source.sendMessage("{s}Missing subcommand for **/blueprint**, usage: {s}{s} ", .{red, white, usage});
 		},
 	} catch |err| {
+		std.log.info("Error: {s}", .{red, @errorName(err)});
 		source.sendMessage("{s}Error: {s}", .{red, @errorName(err)});
 	};
 }
@@ -95,7 +96,7 @@ fn blueprintSave(args: List([]const u8), source: *User) !void {
 		var blueprintsDir = try cwd.openDir("blueprints", .{});
 		defer blueprintsDir.close();
 
-		std.log.info("{s}Saving clipboard to blueprint file: {s}", .{blue, fileName});
+		std.log.info("Saving clipboard to blueprint file: {s}", .{fileName});
 		source.sendMessage("{s}Saving clipboard to blueprint file: {s}", .{blue, fileName});
 
 		try blueprintsDir.writeFile(.{
@@ -116,8 +117,30 @@ fn ensureBlueprintExtension(allocator: NeverFailingAllocator, fileName: []const 
 	}
 }
 
-fn blueprintDelete(_: List([]const u8), source: *User) void {
-	source.sendMessage("{s}/blueprint delete not implemented.", .{red});
+fn blueprintDelete(args: List([]const u8), source: *User) !void {
+	if(args.items.len < 2) {
+		source.sendMessage("{s}**/blueprint delete** requires FILENAME argument.", .{red});
+		return;
+	}
+	if(args.items.len >= 3) {
+		source.sendMessage("{s}Too many arguments for **/blueprint delete**. Expected 1 argument, FILENAME.", .{red});
+		return;
+	}
+
+	const fileName: []const u8 = ensureBlueprintExtension(main.stackAllocator, args.items[1]);
+	defer main.stackAllocator.free(fileName);
+
+	var cwd = std.fs.cwd();
+
+	_ = cwd.makeDir("blueprints") catch null;
+
+	var blueprintsDir = try cwd.openDir("blueprints", .{});
+	defer blueprintsDir.close();
+
+	try blueprintsDir.deleteFile(fileName);
+
+	std.log.info("Deleted blueprint file: {s}", .{fileName});
+	source.sendMessage("{s}Deleted blueprint file: {s}", .{red, fileName});
 }
 
 fn blueprintList(_: List([]const u8), source: *User) !void {
@@ -162,9 +185,6 @@ fn blueprintLoad(args: List([]const u8), source: *User) !void {
 	var blueprintsDir = try cwd.openDir("blueprints", .{});
 	defer blueprintsDir.close();
 
-	std.log.info("{s}Loading blueprint file: {s}", .{blue, fileName});
-	source.sendMessage("{s}Loading blueprint file: {s}", .{blue, fileName});
-
 	const storedBlueprint = try blueprintsDir.readFileAlloc(main.stackAllocator.allocator, fileName, std.math.maxInt(u32));
 	defer main.stackAllocator.free(storedBlueprint);
 
@@ -174,4 +194,7 @@ fn blueprintLoad(args: List([]const u8), source: *User) !void {
 		source.commandData.clipboard = Blueprint.init(main.globalAllocator);
 		try source.commandData.clipboard.?.load(storedBlueprint);
 	}
+
+	std.log.info("Loaded blueprint file: {s}", .{blue, fileName});
+	source.sendMessage("{s}Loaded blueprint file: {s}", .{blue, fileName});
 }
