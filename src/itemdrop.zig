@@ -523,7 +523,6 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 	}
 };
 
-
 // Going to handle item animations and other things like - bobbing, interpolation, movement reactions
 pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 	pub var showItem: bool = true;
