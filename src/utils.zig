@@ -1929,6 +1929,11 @@ pub const BinaryReader = struct {
 		defer self.remaining = self.remaining[len + 1 ..];
 		return self.remaining[0..len :delimiter];
 	}
+
+	pub fn discardNextBytes(self: *BinaryReader, len: usize) error{OutOfBounds}!void {
+		if(self.remaining.len < len) return error.OutOfBounds;
+		self.remaining = self.remaining[len..];
+	}
 };
 
 pub const BinaryWriter = struct {
