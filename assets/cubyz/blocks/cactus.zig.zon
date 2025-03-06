@@ -4,6 +4,6 @@
 	.drops = .{
 		.{.items = .{.auto}},
 	},
-	.model = "cubyz:cube",
+	.model = "cubyz:cactus",
 	.texture = "cubyz:cactus",
 }
