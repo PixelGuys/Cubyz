@@ -17,7 +17,7 @@
 	.texture_top = "cubyz:bolete_top",
 	.texture_bottom = "cubyz:bolete_bottom",
 	.item = .{
-		.texture = "torch.png",
+		.texture = "bolete.png",
 	},
 	.lodReplacement = "cubyz:air",
 }

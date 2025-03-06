@@ -17,7 +17,7 @@
 	.texture_top = "cubyz:toadstool_top",
 	.texture_bottom = "cubyz:toadstool_bottom",
 	.item = .{
-		.texture = "torch.png",
+		.texture = "toadstool.png",
 	},
 	.lodReplacement = "cubyz:air",
 }
