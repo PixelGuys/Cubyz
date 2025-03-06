@@ -133,7 +133,7 @@ pub const RegionFile = struct { // MARK: RegionFile
 		defer writer.deinit();
 
 		writer.writeInt(u32, version);
-		writer.writeInt(u32, @truncate(totalSize));
+		writer.writeInt(u32, @intCast(totalSize));
 
 		for(0..regionVolume) |i| {
 			writer.writeInt(u32, @intCast(self.chunks[i].len));
