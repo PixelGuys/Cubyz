@@ -1,0 +1,25 @@
+.{
+	.tags = .{.wood},
+	.blockHealth = 2.5,
+	.drops = .{
+		.{ .items = .{.auto} },
+	},
+	.absorbedLight = 0x202830,
+	.rotation = .branch,
+	.model = "cubyz:branch",
+	.texture = "cubyz:cactus",
+	.item = .{
+		.material = .{
+			.density = 0.8,
+			.strength = 1.5,
+			.elasticity = 3.0,
+			.grip = -5.0,
+			.hardness = 1.5,
+			.textureRoughness = 0.7,
+			.colors = .{
+				0xff4f6923, 0xff687630, 0xff74842d, 0xff879b2e, 0xff74842d,
+			},
+		},
+		.texture = "cactus_arm.png",
+	},
+}

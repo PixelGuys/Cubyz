@@ -7,17 +7,17 @@
 	.absorbedLight = 0x202830,
 	.rotation = .branch,
 	.model = "cubyz:branch",
-	.texture = "cubyz:oak_log",
+	.texture = "cubyz:baobab_log",
 	.item = .{
 		.material = .{
-			.density = 0.25,
-			.strength = 1.0,
-			.elasticity = 4,
-			.grip = 10,
-			.hardness = 1.5,
+			.density = 0.2,
+			.strength = 0.5,
+			.elasticity = 3.5,
+			.grip = 11,
+			.hardness = 0.5,
 			.textureRoughness = 0.7,
 			.colors = .{
-				0xff463724, 0xff55422b, 0xff6a5030, 0xff836136, 0xff6a5030,
+				0xff514438, 0xff665045, 0xff7a5d4d, 0xff93715c, 0xff7a5d4d,
 			},
 			.modifiers = .{
 				.{
@@ -26,6 +26,6 @@
 				},
 			},
 		},
-		.texture = "branch/oak.png",
+		.texture = "branch/baobab.png",
 	},
 }
