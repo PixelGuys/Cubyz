@@ -11,11 +11,11 @@ const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 var arena: main.utils.NeverFailingArenaAllocator = undefined;
 var arenaAllocator: NeverFailingAllocator = undefined;
 var commonBlocks: std.StringHashMap(ZonElement) = undefined;
-var commonBlocksMigrations: std.StringHashMap(ZonElement) = undefined;
+var commonBlockMigrations: std.StringHashMap(ZonElement) = undefined;
 var commonItems: std.StringHashMap(ZonElement) = undefined;
 var commonTools: std.StringHashMap(ZonElement) = undefined;
 var commonBiomes: std.StringHashMap(ZonElement) = undefined;
-var commonBiomesMigrations: std.StringHashMap(ZonElement) = undefined;
+var commonBiomeMigrations: std.StringHashMap(ZonElement) = undefined;
 var commonRecipes: std.StringHashMap(ZonElement) = undefined;
 var commonModels: std.StringHashMap([]const u8) = undefined;
 
@@ -26,11 +26,11 @@ pub fn init() void {
 	arena = .init(main.globalAllocator);
 	arenaAllocator = arena.allocator();
 	commonBlocks = .init(arenaAllocator.allocator);
-	commonBlocksMigrations = .init(arenaAllocator.allocator);
+	commonBlockMigrations = .init(arenaAllocator.allocator);
 	commonItems = .init(arenaAllocator.allocator);
 	commonTools = .init(arenaAllocator.allocator);
 	commonBiomes = .init(arenaAllocator.allocator);
-	commonBiomesMigrations = .init(arenaAllocator.allocator);
+	commonBiomeMigrations = .init(arenaAllocator.allocator);
 	commonRecipes = .init(arenaAllocator.allocator);
 	commonModels = .init(arenaAllocator.allocator);
 
@@ -38,18 +38,18 @@ pub fn init() void {
 		arenaAllocator,
 		"assets/",
 		&commonBlocks,
-		&commonBlocksMigrations,
+		&commonBlockMigrations,
 		&commonItems,
 		&commonTools,
 		&commonBiomes,
-		&commonBlocksMigrations,
+		&commonBlockMigrations,
 		&commonRecipes,
 		&commonModels,
 	);
 
 	std.log.info(
 		"Finished assets init with {} blocks ({} migrations), {} items, {} tools. {} biomes ({} migrations), {} recipes",
-		.{commonBlocks.count(), commonBlocksMigrations.count(), commonItems.count(), commonTools.count(), commonBiomes.count(), commonBiomesMigrations.count(), commonRecipes.count()},
+		.{commonBlocks.count(), commonBlockMigrations.count(), commonItems.count(), commonTools.count(), commonBiomes.count(), commonBiomeMigrations.count(), commonRecipes.count()},
 	);
 }
 
@@ -214,11 +214,11 @@ pub fn readAssets(
 	externalAllocator: NeverFailingAllocator,
 	assetPath: []const u8,
 	blocks: *std.StringHashMap(ZonElement),
-	blocksMigrations: *std.StringHashMap(ZonElement),
+	blockMigrations: *std.StringHashMap(ZonElement),
 	items: *std.StringHashMap(ZonElement),
 	tools: *std.StringHashMap(ZonElement),
 	biomes: *std.StringHashMap(ZonElement),
-	biomesMigrations: *std.StringHashMap(ZonElement),
+	biomeMigrations: *std.StringHashMap(ZonElement),
 	recipes: *std.StringHashMap(ZonElement),
 	models: *std.StringHashMap([]const u8),
 ) void {
@@ -252,10 +252,10 @@ pub fn readAssets(
 		main.stackAllocator.free(addonName);
 	};
 
-	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "blocks", true, blocks, blocksMigrations);
+	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "blocks", true, blocks, blockMigrations);
 	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "items", true, items, null);
 	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "tools", true, tools, null);
-	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "biomes", true, biomes, biomesMigrations);
+	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "biomes", true, biomes, biomeMigrations);
 	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "recipes", false, recipes, null);
 	readAllObjFilesInAddonsHashmap(externalAllocator, addons, addonNames, "models", models);
 }
@@ -361,16 +361,16 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 
 	var blocks = commonBlocks.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer blocks.clearAndFree();
-	var blocksMigrations = commonBlocksMigrations.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
-	defer blocksMigrations.clearAndFree();
+	var blockMigrations = commonBlockMigrations.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
+	defer blockMigrations.clearAndFree();
 	var items = commonItems.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer items.clearAndFree();
 	var tools = commonTools.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer tools.clearAndFree();
 	var biomes = commonBiomes.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer biomes.clearAndFree();
-	var biomesMigrations = commonBiomesMigrations.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
-	defer biomesMigrations.clearAndFree();
+	var biomeMigrations = commonBiomeMigrations.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
+	defer biomeMigrations.clearAndFree();
 	var recipes = commonRecipes.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer recipes.clearAndFree();
 	var models = commonModels.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
@@ -380,20 +380,20 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 		arenaAllocator,
 		assetFolder,
 		&blocks,
-		&blocksMigrations,
+		&blockMigrations,
 		&items,
 		&tools,
 		&biomes,
-		&biomesMigrations,
+		&biomeMigrations,
 		&recipes,
 		&models,
 	);
 	errdefer unloadAssets();
 
-	migrations_zig.registerBlockMigrations(&blocksMigrations);
+	migrations_zig.registerBlockMigrations(&blockMigrations);
 	migrations_zig.applyBlockPaletteMigrations(blockPalette);
 
-	migrations_zig.registerBiomeMigrations(&biomesMigrations);
+	migrations_zig.registerBiomeMigrations(&biomeMigrations);
 	migrations_zig.applyBiomePaletteMigrations(biomePalette);
 
 	// models:
@@ -486,7 +486,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 
 	std.log.info(
 		"Finished registering assets with {} blocks ({} migrations), {} items {} tools. {} biomes ({} migrations), {} recipes and {} models",
-		.{blocks.count(), blocksMigrations.count(), items.count(), tools.count(), biomes.count(), biomesMigrations.count(), recipes.count(), models.count()},
+		.{blocks.count(), blockMigrations.count(), items.count(), tools.count(), biomes.count(), biomeMigrations.count(), recipes.count(), models.count()},
 	);
 }
 
