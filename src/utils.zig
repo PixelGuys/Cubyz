@@ -1930,9 +1930,10 @@ pub const BinaryReader = struct {
 		return self.remaining[0..len :delimiter];
 	}
 
-	pub fn discardNextBytes(self: *BinaryReader, len: usize) error{OutOfBounds}!void {
-		if(self.remaining.len < len) return error.OutOfBounds;
-		self.remaining = self.remaining[len..];
+	pub fn readSlice(self: *BinaryReader, length: usize) error{OutOfBounds, IntOutOfBounds}![]const u8 {
+		if(self.remaining.len < length) return error.OutOfBounds;
+		defer self.remaining = self.remaining[length..];
+		return self.remaining[0..length];
 	}
 };
 

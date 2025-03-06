@@ -263,66 +263,58 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 	};
 	pub fn compressChunk(allocator: main.utils.NeverFailingAllocator, ch: *chunk.Chunk, allowLossy: bool) []const u8 {
 		if(ch.data.paletteLength == 1) {
-			return @This().compressChunkUniform(allocator, ch);
+			var writer = BinaryWriter.initCapacity(allocator, .big, @sizeOf(CompressionAlgo) + @sizeOf(u32));
+
+			writer.writeEnum(CompressionAlgo, .uniform);
+			writer.writeInt(u32, ch.data.palette[0].toInt());
+
+			return writer.data.toOwnedSlice();
 		}
 		if(ch.data.paletteLength < 256) {
-			return @This().compressChunkDeflate8BitPalette(allocator, ch, allowLossy);
-		}
-		return @This().compressChunkDeflate(allocator, ch);
-	}
-	fn compressChunkUniform(allocator: main.utils.NeverFailingAllocator, ch: *chunk.Chunk) []const u8 {
-		var writer = BinaryWriter.initCapacity(allocator, .big, @sizeOf(CompressionAlgo) + @sizeOf(u32));
-
-		writer.writeEnum(CompressionAlgo, .uniform);
-		writer.writeInt(u32, ch.data.palette[0].toInt());
-
-		return writer.data.toOwnedSlice();
-	}
-	fn compressChunkDeflate8BitPalette(allocator: main.utils.NeverFailingAllocator, ch: *chunk.Chunk, allowLossy: bool) []const u8 {
-		var uncompressedData: [chunk.chunkVolume]u8 = undefined;
-		var solidMask: [chunk.chunkSize*chunk.chunkSize]u32 = undefined;
-		for(0..chunk.chunkVolume) |i| {
-			uncompressedData[i] = @intCast(ch.data.data.getValue(i));
+			var uncompressedData: [chunk.chunkVolume]u8 = undefined;
+			var solidMask: [chunk.chunkSize*chunk.chunkSize]u32 = undefined;
+			for(0..chunk.chunkVolume) |i| {
+				uncompressedData[i] = @intCast(ch.data.data.getValue(i));
+				if(allowLossy) {
+					if(ch.data.palette[uncompressedData[i]].solid()) {
+						solidMask[i >> 5] |= @as(u32, 1) << @intCast(i & 31);
+					} else {
+						solidMask[i >> 5] &= ~(@as(u32, 1) << @intCast(i & 31));
+					}
+				}
+			}
 			if(allowLossy) {
-				if(ch.data.palette[uncompressedData[i]].solid()) {
-					solidMask[i >> 5] |= @as(u32, 1) << @intCast(i & 31);
-				} else {
-					solidMask[i >> 5] &= ~(@as(u32, 1) << @intCast(i & 31));
-				}
-			}
-		}
-		if(allowLossy) {
-			for(0..32) |x| {
-				for(0..32) |y| {
-					if(x == 0 or x == 31 or y == 0 or y == 31) {
-						continue;
-					}
-					const index = x*32 + y;
-					var colMask = solidMask[index] >> 1 & solidMask[index] << 1 & solidMask[index - 1] & solidMask[index + 1] & solidMask[index - 32] & solidMask[index + 32];
-					while(colMask != 0) {
-						const z = @ctz(colMask);
-						colMask &= ~(@as(u32, 1) << @intCast(z));
-						uncompressedData[index*32 + z] = uncompressedData[index*32 + z - 1];
+				for(0..32) |x| {
+					for(0..32) |y| {
+						if(x == 0 or x == 31 or y == 0 or y == 31) {
+							continue;
+						}
+						const index = x*32 + y;
+						var colMask = solidMask[index] >> 1 & solidMask[index] << 1 & solidMask[index - 1] & solidMask[index + 1] & solidMask[index - 32] & solidMask[index + 32];
+						while(colMask != 0) {
+							const z = @ctz(colMask);
+							colMask &= ~(@as(u32, 1) << @intCast(z));
+							uncompressedData[index*32 + z] = uncompressedData[index*32 + z - 1];
+						}
 					}
 				}
 			}
+			const compressedData = main.utils.Compression.deflate(main.stackAllocator, &uncompressedData, .default);
+			defer main.stackAllocator.free(compressedData);
+
+			var writer = BinaryWriter.initCapacity(allocator, .big, @sizeOf(CompressionAlgo) + @sizeOf(u8) + @sizeOf(u32)*ch.data.paletteLength + compressedData.len);
+
+			writer.writeEnum(CompressionAlgo, .deflate_with_8bit_palette);
+			writer.writeInt(u8, @intCast(ch.data.paletteLength));
+
+			for(0..ch.data.paletteLength) |i| {
+				writer.writeInt(u32, ch.data.palette[i].toInt());
+			}
+			writer.writeSlice(compressedData);
+			return writer.data.toOwnedSlice();
 		}
-		const compressedData = main.utils.Compression.deflate(main.stackAllocator, &uncompressedData, .default);
-		defer main.stackAllocator.free(compressedData);
-
-		var writer = BinaryWriter.initCapacity(allocator, .big, @sizeOf(CompressionAlgo) + @sizeOf(u8) + @sizeOf(u32)*ch.data.paletteLength + compressedData.len);
-
-		writer.writeEnum(CompressionAlgo, .deflate_with_8bit_palette);
-		writer.writeInt(u8, @intCast(ch.data.paletteLength));
-
-		for(0..ch.data.paletteLength) |i| {
-			writer.writeInt(u32, ch.data.palette[i].toInt());
-		}
-		writer.writeSlice(compressedData);
-		return writer.data.toOwnedSlice();
-	}
-	fn compressChunkDeflate(allocator: main.utils.NeverFailingAllocator, ch: *chunk.Chunk) []const u8 {
-		var uncompressedWriter = BinaryWriter.initCapacity(allocator, .big, chunk.chunkVolume*@sizeOf(u32));
+		var uncompressedWriter = BinaryWriter.initCapacity(main.stackAllocator, .big, chunk.chunkVolume*@sizeOf(u32));
+		defer uncompressedWriter.deinit();
 
 		for(0..chunk.chunkVolume) |i| {
 			uncompressedWriter.writeInt(u32, ch.data.getValue(i).toInt());
@@ -331,7 +323,6 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 		defer main.stackAllocator.free(compressedData);
 
 		var compressedWriter = BinaryWriter.initCapacity(allocator, .big, @sizeOf(CompressionAlgo) + compressedData.len);
-		defer compressedWriter.deinit();
 
 		compressedWriter.writeEnum(CompressionAlgo,  .deflate);
 		compressedWriter.writeSlice(compressedData);
@@ -339,59 +330,53 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 		return compressedWriter.data.toOwnedSlice();
 	}
 
-	pub fn decompressChunk(ch: *chunk.Chunk, _data: []const u8) error{corrupted}!void {
+	pub fn decompressChunk(ch: *chunk.Chunk, _data: []const u8) !void {
 		std.debug.assert(ch.data.paletteLength == 1);
 
 		var reader = BinaryReader.init(_data, .big);
-		const compressionAlgorithm = reader.readEnum(CompressionAlgo) catch return error.corrupted;
+		const compressionAlgorithm = try reader.readEnum(CompressionAlgo);
 
 		switch(compressionAlgorithm) {
 			.deflate, .deflate_with_position => {
-				if(compressionAlgorithm == .deflate_with_position) reader.discardNextBytes(16) catch return error.corrupted;
-				try @This().decompressChunkDeflate(ch, &reader);
+				if(compressionAlgorithm == .deflate_with_position) _ = try reader.readSlice(16);
+				const decompressedData = main.stackAllocator.alloc(u8, chunk.chunkVolume*@sizeOf(u32));
+				defer main.stackAllocator.free(decompressedData);
+
+				const decompressedLength = try main.utils.Compression.inflateTo(decompressedData, reader.remaining);
+				if(decompressedLength != chunk.chunkVolume*@sizeOf(u32)) return error.corrupted;
+
+				var decompressedReader = BinaryReader.init(decompressedData, .big);
+
+				for(0..chunk.chunkVolume) |i| {
+					ch.data.setValue(i, main.blocks.Block.fromInt(try decompressedReader.readInt(u32)));
+				}
 			},
 			.deflate_with_8bit_palette => {
-				try @This().decompressChunkDeflate8BitPalette(ch, &reader);
+				const paletteLength = try reader.readInt(u8);
+
+				ch.data.deinit();
+				ch.data.initCapacity(paletteLength);
+
+				for(0..paletteLength) |i| {
+					ch.data.palette[i] = main.blocks.Block.fromInt(try reader.readInt(u32));
+				}
+
+				const decompressedData = main.stackAllocator.alloc(u8, chunk.chunkVolume);
+				defer main.stackAllocator.free(decompressedData);
+
+				const decompressedLength = try main.utils.Compression.inflateTo(decompressedData, reader.remaining);
+				if(decompressedLength != chunk.chunkVolume) return error.corrupted;
+
+				for(0..chunk.chunkVolume) |i| {
+					ch.data.setRawValue(i, decompressedData[i]);
+				}
 			},
 			.uniform => {
-				ch.data.palette[0] = main.blocks.Block.fromInt(reader.readInt(u32) catch return error.corrupted);
+				ch.data.palette[0] = main.blocks.Block.fromInt(try reader.readInt(u32));
 			},
 			_ => {
 				return error.corrupted;
 			},
-		}
-	}
-	fn decompressChunkDeflate(ch: *chunk.Chunk, reader: *BinaryReader) error{corrupted}!void {
-		const decompressedData = main.stackAllocator.alloc(u8, chunk.chunkVolume*@sizeOf(u32));
-		defer main.stackAllocator.free(decompressedData);
-
-		const decompressedLength = main.utils.Compression.inflateTo(decompressedData, reader.remaining) catch return error.corrupted;
-		if(decompressedLength != chunk.chunkVolume*@sizeOf(u32)) return error.corrupted;
-
-		var decompressedReader = BinaryReader.init(decompressedData, .big);
-
-		for(0..chunk.chunkVolume) |i| {
-			ch.data.setValue(i, main.blocks.Block.fromInt(decompressedReader.readInt(u32) catch return error.corrupted));
-		}
-	}
-	fn decompressChunkDeflate8BitPalette(ch: *chunk.Chunk, reader: *BinaryReader) error{corrupted}!void {
-		const paletteLength = reader.readInt(u8) catch return error.corrupted;
-
-		ch.data.deinit();
-		ch.data.initCapacity(paletteLength);
-
-		for(0..paletteLength) |i| {
-			ch.data.palette[i] = main.blocks.Block.fromInt(reader.readInt(u32) catch return error.corrupted);
-		}
-
-		const decompressedData = main.stackAllocator.alloc(u8, chunk.chunkVolume);
-		defer main.stackAllocator.free(decompressedData);
-
-		const decompressedLength = main.utils.Compression.inflateTo(decompressedData, reader.remaining) catch return error.corrupted;
-		if(decompressedLength != chunk.chunkVolume) return error.corrupted;
-
-		for(0..chunk.chunkVolume) |i| {
-			ch.data.setRawValue(i, decompressedData[i]);
 		}
 	}
 };
