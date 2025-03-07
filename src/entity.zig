@@ -16,6 +16,8 @@ const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 
+const BinaryReader = main.utils.BinaryReader;
+
 pub const ClientEntity = struct {
 	interpolatedValues: utils.GenericInterpolation(6) = undefined,
 	_interpolationPos: [6]f64 = undefined,
@@ -226,33 +228,29 @@ pub const ClientEntityManager = struct {
 		}
 	}
 
-	pub fn serverUpdate(time: i16, data: []const u8) void {
+	pub fn serverUpdate(time: i16, reader: *BinaryReader) !void {
 		mutex.lock();
 		defer mutex.unlock();
 		timeDifference.addDataPoint(time);
-		std.debug.assert(data.len%(4 + 24 + 12 + 24) == 0);
-		var remaining = data;
-		while(remaining.len != 0) {
-			const id = std.mem.readInt(u32, remaining[0..4], .big);
-			remaining = remaining[4..];
+
+		while(reader.remaining.len != 0) {
+			const id = try reader.readInt(u32);
 			const pos = [_]f64{
-				@bitCast(std.mem.readInt(u64, remaining[0..8], .big)),
-				@bitCast(std.mem.readInt(u64, remaining[8..16], .big)),
-				@bitCast(std.mem.readInt(u64, remaining[16..24], .big)),
-				@floatCast(@as(f32, @bitCast(std.mem.readInt(u32, remaining[24..28], .big)))),
-				@floatCast(@as(f32, @bitCast(std.mem.readInt(u32, remaining[28..32], .big)))),
-				@floatCast(@as(f32, @bitCast(std.mem.readInt(u32, remaining[32..36], .big)))),
+				try reader.readFloat(f64),
+				try reader.readFloat(f64),
+				try reader.readFloat(f64),
+				@floatCast(try reader.readFloat(f32)),
+				@floatCast(try reader.readFloat(f32)),
+				@floatCast(try reader.readFloat(f32)),
 			};
-			remaining = remaining[36..];
 			const vel = [_]f64{
-				@bitCast(std.mem.readInt(u64, remaining[0..8], .big)),
-				@bitCast(std.mem.readInt(u64, remaining[8..16], .big)),
-				@bitCast(std.mem.readInt(u64, remaining[16..24], .big)),
+				try reader.readFloat(f64),
+				try reader.readFloat(f64),
+				try reader.readFloat(f64),
 				0,
 				0,
 				0,
 			};
-			remaining = remaining[24..];
 			for(entities.items()) |*ent| {
 				if(ent.id == id) {
 					ent.updatePosition(&pos, &vel, time);

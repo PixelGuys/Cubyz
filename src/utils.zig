@@ -1919,6 +1919,11 @@ pub const BinaryReader = struct {
 		return std.mem.readInt(T, self.remaining[0..bufSize], self.endian);
 	}
 
+	pub fn readFloat(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds}!T {
+		const IntT = std.meta.Int(.unsigned, @typeInfo(T).float.bits);
+		return @as(T, @bitCast(try self.readInt(IntT)));
+	}
+
 	pub fn readEnum(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds, InvalidEnumTag}!T {
 		const int = try self.readInt(@typeInfo(T).@"enum".tag_type);
 		return std.meta.intToEnum(T, int);
@@ -1961,6 +1966,11 @@ pub const BinaryWriter = struct {
 		}
 		const bufSize = @divExact(@typeInfo(T).int.bits, 8);
 		std.mem.writeInt(T, self.data.addMany(bufSize)[0..bufSize], value, self.endian);
+	}
+
+	pub fn writeFloat(self: *BinaryWriter, T: type, value: T) T {
+		const IntT = std.meta.Int(.unsigned, @typeInfo(T).float.bits);
+		self.writeInt(IntT, @bitCast(value));
 	}
 
 	pub fn writeEnum(self: *BinaryWriter, T: type, value: T) void {
