@@ -62,7 +62,7 @@ pub fn build(b: *std.Build) !void {
 		exe.linkSystemLibrary("ws2_32");
 	} else if(t.os.tag == .linux) {
 		exe.linkSystemLibrary("asound");
-		exe.linkSystemLibrary("x11");
+		exe.linkSystemLibrary("X11");
 		exe.linkSystemLibrary("GL");
 	} else if(t.os.tag == .macos) {
 		exe.linkFramework("AudioUnit");

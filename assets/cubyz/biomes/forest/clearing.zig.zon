@@ -1,7 +1,6 @@
 .{
 	.chance = 0,
-	.properties = .{
-	},
+	.properties = .{},
 	.radius = 32,
 	.minHeight = 22,
 	.maxHeight = 40,

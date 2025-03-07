@@ -109,7 +109,7 @@ pub const Model = struct {
 		var internalAmount: usize = 0;
 		self.min = .{1, 1, 1};
 		self.max = .{0, 0, 0};
-		self.isNeighborOccluded = .{false} ** 6;
+		self.isNeighborOccluded = @splat(false);
 		for(adjustedQuads) |*quad| {
 			for(quad.corners) |corner| {
 				self.min = @min(self.min, corner);
@@ -166,7 +166,7 @@ pub const Model = struct {
 
 	fn addVert(vert: Vec3f, vertList: *main.List(Vec3f)) usize {
 		const ind = for(vertList.*.items, 0..) |vertex, index| {
-			if(std.meta.eql(vertex, vert)) break index;
+			if(vertex == vert) break index;
 		} else vertList.*.items.len;
 
 		if(ind == vertList.*.items.len) {

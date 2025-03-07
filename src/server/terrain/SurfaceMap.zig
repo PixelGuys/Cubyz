@@ -577,8 +577,8 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 			const offSetY: usize = @intCast((cur.pos.wy -% nextPos.wy) >> nextPos.voxelSizeShift);
 			for(0..MapFragment.mapSize/2) |x| {
 				for(0..MapFragment.mapSize/2) |y| {
-					var biomes: [4]?*const Biome = .{null} ** 4;
-					var biomeCounts: [4]u8 = .{0} ** 4;
+					var biomes: [4]?*const Biome = @splat(null);
+					var biomeCounts: [4]u8 = @splat(0);
 					var height: i32 = 0;
 					for(0..2) |dx| {
 						for(0..2) |dy| {

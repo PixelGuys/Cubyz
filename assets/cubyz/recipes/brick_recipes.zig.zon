@@ -111,4 +111,4 @@
 		.inputs = .{"cubyz:void_stone"},
 		.output = "2 cubyz:void_stone_wall",
 	},
-},
+}

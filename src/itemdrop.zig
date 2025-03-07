@@ -576,7 +576,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 
 		fn getSlot(len: u31) u31 {
 			for(freeSlots.items, 0..) |potentialSlot, i| {
-				if(std.meta.eql(len, potentialSlot.len)) {
+				if(len == potentialSlot.len) {
 					_ = freeSlots.swapRemove(i);
 					const result = potentialSlot.index;
 					main.globalAllocator.destroy(potentialSlot);
@@ -728,7 +728,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 				var pos = itemDrops.list.items(.pos)[i];
 				const rot = itemDrops.list.items(.rot)[i];
 				const blockPos: Vec3i = @intFromFloat(@floor(pos));
-				const light: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse .{0} ** 6;
+				const light: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse @splat(0);
 				bindLightUniform(light, ambientLight);
 				pos -= playerPos;
 
