@@ -39,6 +39,10 @@
 			.chance = 4,
 		},
 		.{
+			.id = "cubyz:forest/birch",
+			.chance = 4,
+		},
+		.{
 			.id = "cubyz:tundra/base",
 			.chance = 12,
 		},
