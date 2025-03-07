@@ -682,7 +682,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 				var pos = itemDrops.list.items(.pos)[i];
 				const rot = itemDrops.list.items(.rot)[i];
 				const blockPos: Vec3i = @intFromFloat(@floor(pos));
-				const light: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse .{0} ** 6;
+				const light: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse @splat(0);
 				c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&@max(
 					ambientLight*@as(Vec3f, @as(Vec3f, @floatFromInt(Vec3i{light[0], light[1], light[2]}))/@as(Vec3f, @splat(255))),
 					@as(Vec3f, @floatFromInt(Vec3i{light[3], light[4], light[5]}))/@as(Vec3f, @splat(255)),

@@ -5,6 +5,10 @@ const main = @import("root");
 const chunk = main.chunk;
 const server = @import("server.zig");
 
+const utils = main.utils;
+const BinaryWriter = utils.BinaryWriter;
+const BinaryReader = utils.BinaryReader;
+
 pub const RegionFile = struct { // MARK: RegionFile
 	const version = 0;
 	pub const regionShift = 2;
@@ -13,7 +17,7 @@ pub const RegionFile = struct { // MARK: RegionFile
 
 	const headerSize = 8 + regionSize*regionSize*regionSize*@sizeOf(u32);
 
-	chunks: [regionVolume][]u8 = .{&.{}} ** regionVolume,
+	chunks: [regionVolume][]u8 = @splat(&.{}),
 	pos: chunk.ChunkPosition,
 	mutex: std.Thread.Mutex = .{},
 	modified: bool = false,
@@ -42,41 +46,45 @@ pub const RegionFile = struct { // MARK: RegionFile
 			return self;
 		};
 		defer main.stackAllocator.free(data);
-		if(data.len < headerSize) {
-			std.log.err("Region file {s} is too small", .{path});
-			return self;
-		}
-		var i: usize = 0;
-		const fileVersion = std.mem.readInt(u32, data[i..][0..4], .big);
-		i += 4;
-		const fileSize = std.mem.readInt(u32, data[i..][0..4], .big);
-		i += 4;
+		self.load(path, data) catch {
+			std.log.err("Corrupted region file: {s}", .{path});
+			if(@errorReturnTrace()) |trace| std.log.info("{}", .{trace});
+		};
+		return self;
+	}
+
+	fn load(self: *RegionFile, path: []const u8, data: []const u8) !void {
+		var reader = BinaryReader.init(data, .big);
+
+		const fileVersion = try reader.readInt(u32);
+		const fileSize = try reader.readInt(u32);
+
 		if(fileVersion != version) {
 			std.log.err("Region file {s} has incorrect version {}. Requires version {}.", .{path, fileVersion, version});
-			return self;
+			return error.corrupted;
 		}
-		var sizes: [regionVolume]u32 = undefined;
+
+		var chunkDataLengths: [regionVolume]u32 = undefined;
 		var totalSize: usize = 0;
-		for(0..regionVolume) |j| {
-			const size = std.mem.readInt(u32, data[i..][0..4], .big);
-			i += 4;
-			sizes[j] = size;
+		for(0..regionVolume) |i| {
+			const size = try reader.readInt(u32);
+			chunkDataLengths[i] = size;
 			totalSize += size;
 		}
-		std.debug.assert(i == headerSize);
-		if(fileSize != data.len - i or totalSize != fileSize) {
-			std.log.err("Region file {s} is corrupted", .{path});
+
+		if(fileSize != reader.remaining.len or totalSize != fileSize) {
+			return error.corrupted;
 		}
+
 		for(0..regionVolume) |j| {
-			const size = sizes[j];
-			if(size != 0) {
-				self.chunks[j] = main.globalAllocator.alloc(u8, size);
-				@memcpy(self.chunks[j], data[i..][0..size]);
-				i += size;
+			const chunkDataLength = chunkDataLengths[j];
+			if(chunkDataLength != 0) {
+				self.chunks[j] = main.globalAllocator.dupe(u8, try reader.readSlice(chunkDataLength));
 			}
 		}
-		std.debug.assert(i == data.len);
-		return self;
+		if(reader.remaining.len != 0) {
+			return error.corrupted;
+		}
 	}
 
 	pub fn deinit(self: *RegionFile) void {
@@ -121,25 +129,19 @@ pub const RegionFile = struct { // MARK: RegionFile
 			return;
 		}
 
-		const data = main.stackAllocator.alloc(u8, totalSize + headerSize);
-		defer main.stackAllocator.free(data);
-		var i: usize = 0;
-		std.mem.writeInt(u32, data[i..][0..4], version, .big);
-		i += 4;
-		std.mem.writeInt(u32, data[i..][0..4], @intCast(totalSize), .big);
-		i += 4;
-		for(0..regionVolume) |j| {
-			std.mem.writeInt(u32, data[i..][0..4], @intCast(self.chunks[j].len), .big);
-			i += 4;
-		}
-		std.debug.assert(i == headerSize);
+		var writer = BinaryWriter.initCapacity(main.stackAllocator, .big, totalSize + headerSize);
+		defer writer.deinit();
 
-		for(0..regionVolume) |j| {
-			const size = self.chunks[j].len;
-			@memcpy(data[i..][0..size], self.chunks[j]);
-			i += size;
+		writer.writeInt(u32, version);
+		writer.writeInt(u32, @intCast(totalSize));
+
+		for(0..regionVolume) |i| {
+			writer.writeInt(u32, @intCast(self.chunks[i].len));
 		}
-		std.debug.assert(i == data.len);
+		for(0..regionVolume) |i| {
+			writer.writeSlice(self.chunks[i]);
+		}
+		std.debug.assert(writer.data.items.len == totalSize + headerSize);
 
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}/{}/{}.region", .{self.saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy, self.pos.wz}) catch unreachable;
 		defer main.stackAllocator.free(path);
@@ -150,7 +152,7 @@ pub const RegionFile = struct { // MARK: RegionFile
 			std.log.err("Error while writing to file {s}: {s}", .{path, @errorName(err)});
 		};
 
-		main.files.write(path, data) catch |err| {
+		main.files.write(path, writer.data.items) catch |err| {
 			std.log.err("Error while writing to file {s}: {s}", .{path, @errorName(err)});
 		};
 	}

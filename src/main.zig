@@ -580,6 +580,9 @@ pub fn main() void { // MARK: main()
 	rotation.init();
 	defer rotation.deinit();
 
+	blocks.TouchFunctions.init();
+	defer blocks.TouchFunctions.deinit();
+
 	models.init();
 	defer models.deinit();
 

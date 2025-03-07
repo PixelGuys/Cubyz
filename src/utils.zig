@@ -1555,7 +1555,7 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 
 	const Bucket = struct {
 		mutex: std.Thread.Mutex = .{},
-		items: [bucketSize]?*T = [_]?*T{null} ** bucketSize,
+		items: [bucketSize]?*T = @splat(null),
 
 		fn find(self: *@This(), compare: anytype) ?*T {
 			assertLocked(&self.mutex);
@@ -1615,7 +1615,7 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 	};
 
 	return struct {
-		buckets: [numberOfBuckets]Bucket = [_]Bucket{Bucket{}} ** numberOfBuckets,
+		buckets: [numberOfBuckets]Bucket = @splat(.{}),
 		cacheRequests: Atomic(usize) = .init(0),
 		cacheMisses: Atomic(usize) = .init(0),
 
@@ -1928,6 +1928,12 @@ pub const BinaryReader = struct {
 		const len = std.mem.indexOfScalar(u8, self.remaining, delimiter) orelse return error.OutOfBounds;
 		defer self.remaining = self.remaining[len + 1 ..];
 		return self.remaining[0..len :delimiter];
+	}
+
+	pub fn readSlice(self: *BinaryReader, length: usize) error{OutOfBounds, IntOutOfBounds}![]const u8 {
+		if(self.remaining.len < length) return error.OutOfBounds;
+		defer self.remaining = self.remaining[length..];
+		return self.remaining[0..length];
 	}
 };
 

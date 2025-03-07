@@ -7,17 +7,17 @@
 	.absorbedLight = 0x202830,
 	.rotation = .branch,
 	.model = "cubyz:branch",
-	.texture = "cubyz:oak_log",
+	.texture = "cubyz:mahogany_log",
 	.item = .{
 		.material = .{
-			.density = 0.25,
-			.strength = 1.0,
-			.elasticity = 4,
-			.grip = 10,
-			.hardness = 1.5,
+			.density = 0.5,
+			.strength = 1.1,
+			.elasticity = 3.0,
+			.grip = 8.5,
+			.hardness = 2.0,
 			.textureRoughness = 0.7,
 			.colors = .{
-				0xff463724, 0xff55422b, 0xff6a5030, 0xff836136, 0xff6a5030,
+				0xff4b3324, 0xff5f4029, 0xff724e2e, 0xff885d36, 0xff724e2e,
 			},
 			.modifiers = .{
 				.{
@@ -26,6 +26,6 @@
 				},
 			},
 		},
-		.texture = "branch/oak.png",
+		.texture = "branch/mahogany.png",
 	},
 }
