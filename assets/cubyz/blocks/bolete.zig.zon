@@ -7,7 +7,7 @@
 	.solid = false,
 	.viewThrough = true,
 	.absorbedLight = 0x010101,
-	.collide= false,
+	.collide = false,
 	.rotation = .torch,
 	.model = .{
 		.base = "cubyz:bolete/floor",

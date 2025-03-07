@@ -1,6 +1,5 @@
 .{
-	.properties = .{
-	},
+	.properties = .{},
 	.minHeight = 20,
 	.maxHeight = 48,
 	.minRadius = 200,

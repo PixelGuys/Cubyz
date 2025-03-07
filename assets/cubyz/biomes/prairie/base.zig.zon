@@ -1,7 +1,5 @@
 .{
-	.properties = .{
-		.dry
-	},
+	.properties = .{.dry},
 	.minHeight = 40,
 	.maxHeight = 44,
 	.minRadius = 256,
