@@ -13,7 +13,7 @@
 
 	.music = "cubyz:tides",
 
-    .ground_structure = .{
+	.ground_structure = .{
 		"2 to 4 cubyz:sand",
 	},
 }
