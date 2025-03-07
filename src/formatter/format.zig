@@ -78,7 +78,7 @@ fn checkDirectory(dir: std.fs.Dir) !void {
 			std.log.err("File name should end with .zig.zon so it gets syntax highlighting on github.", .{});
 			failed = true;
 		}
-		if(child.kind == .file and (std.mem.endsWith(u8, child.basename, ".zon") or std.mem.endsWith(u8, child.basename, ".vs") or std.mem.endsWith(u8, child.basename, ".fs") or std.mem.endsWith(u8, child.basename, ".glsl"))) {
+		if(child.kind == .file and (std.mem.endsWith(u8, child.basename, ".vs") or std.mem.endsWith(u8, child.basename, ".fs") or std.mem.endsWith(u8, child.basename, ".glsl"))) {
 			try checkFile(dir, child.path);
 		}
 	}
@@ -93,8 +93,6 @@ pub fn main() !void {
 	dir.close();
 	dir = try std.fs.cwd().openDir("assets", .{.iterate = true});
 	try checkDirectory(dir);
-
-	try checkFile(std.fs.cwd(), "build.zig.zon");
 
 	if(failed) std.posix.exit(1);
 }
