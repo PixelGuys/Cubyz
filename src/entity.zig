@@ -227,19 +227,13 @@ pub const ClientEntityManager = struct {
 			}
 		}
 	}
-	pub fn serverUpdate(time: i16, data: []const u8) void {
-		_serverUpdate(time, data) catch |err| {
-			std.log.err("Corrupted entity update packet ({s})", .{@errorName(err)});
-		};
-	}
 
-	fn _serverUpdate(time: i16, data: []const u8) !void {
+	pub fn serverUpdate(time: i16, reader: *BinaryReader) !void {
 		mutex.lock();
 		defer mutex.unlock();
-		if(data.len%(4 + 24 + 12 + 24) != 0) return error.corrupted;
+		if(reader.remaining.len%(4 + 24 + 12 + 24) != 0) return error.corrupted;
 
 		timeDifference.addDataPoint(time);
-		var reader = BinaryReader.init(data, .big);
 
 		while(reader.remaining.len != 0) {
 			const id = try reader.readInt(u32);

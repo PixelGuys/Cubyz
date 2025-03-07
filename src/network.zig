@@ -881,7 +881,7 @@ pub const Protocols = struct {
 				const typ = try reader.readInt(u8);
 				const time = try reader.readInt(i16);
 				if(typ == type_entity) {
-					main.entity.ClientEntityManager.serverUpdate(time, reader.remaining);
+					try main.entity.ClientEntityManager.serverUpdate(time, reader);
 				} else if(typ == type_item) {
 					world.itemDrops.readPosition(reader.remaining, time);
 				}
