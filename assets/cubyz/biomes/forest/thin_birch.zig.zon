@@ -54,7 +54,7 @@
 			.chance = 0.25,
 			.width = 15,
 			.variation = 8,
-			.density = 0.33,
+			.density = 0.2,
 			.priority = 0.1,
 		},
 		.{
@@ -63,7 +63,7 @@
 			.chance = 0.25,
 			.width = 15,
 			.variation = 8,
-			.density = 0.33,
+			.density = 0.2,
 			.priority = 0.1,
 		},
 	},
