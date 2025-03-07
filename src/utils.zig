@@ -1919,6 +1919,16 @@ pub const BinaryReader = struct {
 		return std.mem.readInt(T, self.remaining[0..bufSize], self.endian);
 	}
 
+	pub fn readFloat(self: *BinaryReader, comptime T: type) error{OutOfBounds, IntOutOfBounds}!T {
+		const bufSize = @divExact(@typeInfo(T).float.bits, 8);
+		if(self.remaining.len < bufSize) return error.OutOfBounds;
+		defer self.remaining = self.remaining[bufSize..];
+
+		const intT = switch(T) { f32 => u32, f64 => u64, else => unreachable };
+		const intValue = std.mem.readInt(intT, self.remaining[0..bufSize], self.endian);
+		return @as(T, @bitCast(intValue));
+	}
+
 	pub fn readEnum(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds, InvalidEnumTag}!T {
 		const int = try self.readInt(@typeInfo(T).@"enum".tag_type);
 		return std.meta.intToEnum(T, int);
