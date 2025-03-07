@@ -45,7 +45,7 @@ pub const ClientEntity = struct {
 			@floatCast(self.rot[1]),
 			@floatCast(self.rot[2]),
 		};
-		self._interpolationVel = [_]f64{0} ** 6;
+		self._interpolationVel = @splat(0);
 		self.interpolatedValues.init(&self._interpolationPos, &self._interpolationVel);
 	}
 
@@ -176,7 +176,7 @@ pub const ClientEntityManager = struct {
 			if(ent.id == game.Player.id) continue; // don't render local player
 
 			const blockPos: vec.Vec3i = @intFromFloat(@floor(ent.pos));
-			const lightVals: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse .{0} ** 6;
+			const lightVals: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse @splat(0);
 			const light = (@as(u32, lightVals[0] >> 3) << 25 |
 				@as(u32, lightVals[1] >> 3) << 20 |
 				@as(u32, lightVals[2] >> 3) << 15 |

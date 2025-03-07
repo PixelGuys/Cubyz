@@ -109,7 +109,7 @@ pub const Model = struct {
 		var internalAmount: usize = 0;
 		self.min = .{1, 1, 1};
 		self.max = .{0, 0, 0};
-		self.isNeighborOccluded = .{false} ** 6;
+		self.isNeighborOccluded = @splat(false);
 		for(adjustedQuads) |*quad| {
 			for(quad.corners) |corner| {
 				self.min = @min(self.min, corner);

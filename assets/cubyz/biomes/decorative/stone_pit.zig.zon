@@ -1,0 +1,48 @@
+.{
+	.properties = .{
+	},
+	.radius = 16,
+	.chance = 0
+	.minHeight = 2,
+	.maxHeight = 10,
+	.roughness = 1,
+	.stoneBlock = "cubyz:stone",
+	.parentBiomes = .{
+		.{
+			.id = "cubyz:grassland",
+			.chance = 4,
+		},
+		.{
+			.id = "cubyz:autumn/dead_forest",
+			.chance = 12,
+		},
+		.{
+			.id = "cubyz:autumn/mixed_forest",
+			.chance = 4,
+		},
+		.{
+			.id = "cubyz:autumn/forest",
+			.chance = 6,
+		},
+		.{
+			.id = "cubyz:rocky_grassland",
+			.chance = 16,
+		},
+		.{
+			.id = "cubyz:taiga",
+			.chance = 6,
+		},
+		.{
+			.id = "cubyz:forest/base",
+			.chance = 6,
+		},
+		.{
+			.id = "cubyz:tundra/base",
+			.chance = 6,
+		},
+		.{
+			.id = "cubyz:tundra/patchy",
+			.chance = 16,
+		},
+	},
+}

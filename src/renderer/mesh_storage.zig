@@ -26,7 +26,7 @@ const ChunkMeshNode = struct {
 	finishedMeshing: bool = false, // Must be synced with mesh.finishedMeshing
 	finishedMeshingHigherResolution: u8 = 0, // Must be synced with finishedMeshing of the 8 higher resolution chunks.
 	pos: chunk.ChunkPosition = undefined,
-	isNeighborLod: [6]bool = .{false} ** 6, // Must be synced with mesh.isNeighborLod
+	isNeighborLod: [6]bool = @splat(false), // Must be synced with mesh.isNeighborLod
 	mutex: std.Thread.Mutex = .{},
 };
 const storageSize = 64;
@@ -371,7 +371,7 @@ fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16) void { 
 						updateHigherLodNodeFinishedMeshing(mesh.pos, false);
 						mesh.decreaseRefCount();
 					}
-					node.isNeighborLod = .{false} ** 6;
+					node.isNeighborLod = @splat(false);
 				}
 			}
 		}
@@ -700,7 +700,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 	}
 	for(nodeList.items) |node| {
 		const pos = node.pos;
-		var isNeighborLod: [6]bool = .{false} ** 6;
+		var isNeighborLod: [6]bool = @splat(false);
 		if(pos.voxelSize != @as(i32, 1) << settings.highestLod) {
 			for(chunk.Neighbor.iterable) |neighbor| {
 				var neighborPos = chunk.ChunkPosition{

@@ -1555,7 +1555,7 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 
 	const Bucket = struct {
 		mutex: std.Thread.Mutex = .{},
-		items: [bucketSize]?*T = [_]?*T{null} ** bucketSize,
+		items: [bucketSize]?*T = @splat(null),
 
 		fn find(self: *@This(), compare: anytype) ?*T {
 			assertLocked(&self.mutex);
@@ -1615,7 +1615,7 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 	};
 
 	return struct {
-		buckets: [numberOfBuckets]Bucket = [_]Bucket{Bucket{}} ** numberOfBuckets,
+		buckets: [numberOfBuckets]Bucket = @splat(.{}),
 		cacheRequests: Atomic(usize) = .init(0),
 		cacheMisses: Atomic(usize) = .init(0),
 

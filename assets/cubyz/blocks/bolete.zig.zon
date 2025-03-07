@@ -1,0 +1,23 @@
+.{
+	.tags = .{.wood},
+	.blockHealth = 0.2,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.solid = false,
+	.viewThrough = true,
+	.absorbedLight = 0x010101,
+	.collide= false,
+	.rotation = .torch,
+	.model = .{
+		.base = "cubyz:bolete/floor",
+		.side = "cubyz:bolete/shelf",
+	},
+	.texture = "cubyz:bolete_side",
+	.texture_top = "cubyz:bolete_top",
+	.texture_bottom = "cubyz:bolete_bottom",
+	.item = .{
+		.texture = "bolete.png",
+	},
+	.lodReplacement = "cubyz:air",
+}
