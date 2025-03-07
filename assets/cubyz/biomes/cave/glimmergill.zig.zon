@@ -1,6 +1,6 @@
 .{
 	.isCave = true,
-	.maxHeight = -128,
+	.maxHeight = -200,
 	.minHeight = -48250,
 	.chance = 0.05,	
 	.fogDensity = 2,
