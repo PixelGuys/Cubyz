@@ -27,3 +27,8 @@ jobs:
             git diff --color=always;
             exit 1;
           fi
+      - run: |
+          if zig build fmt -- --zon *.zon assets/*.zon assets/*/*.zon assets/*/*/*.zon assets/*/*/*/*.zon assets/*/*/*/*/*.zon assets/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*/*/*.zon assets/*/*/*/*/*/*/*/*/*/*.zon | grep -q . ; then
+            git diff --color=always;
+            exit 1;
+          fi
