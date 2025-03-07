@@ -231,8 +231,6 @@ pub const ClientEntityManager = struct {
 	pub fn serverUpdate(time: i16, reader: *BinaryReader) !void {
 		mutex.lock();
 		defer mutex.unlock();
-		if(reader.remaining.len%(4 + 24 + 12 + 24) != 0) return error.corrupted;
-
 		timeDifference.addDataPoint(time);
 
 		while(reader.remaining.len != 0) {
