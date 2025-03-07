@@ -2,7 +2,7 @@
 	.tags = .{.wood},
 	.blockHealth = 2.5,
 	.drops = .{
-		.{ .items = .{.auto} },
+		.{.items = .{.auto}},
 	},
 	.absorbedLight = 0x202830,
 	.rotation = .branch,

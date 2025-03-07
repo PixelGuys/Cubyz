@@ -8,7 +8,7 @@
 	.viewThrough = true,
 	.absorbedLight = 0x010101,
 	.emittedLight = 0x392862,
-	.collide= false,
+	.collide = false,
 	.rotation = .torch,
 	.model = .{
 		.base = "cubyz:glimmergill/floor",

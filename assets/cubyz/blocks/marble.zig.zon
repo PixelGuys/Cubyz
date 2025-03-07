@@ -24,7 +24,7 @@
 		},
 	},
 	.allowOres = true,
-	.rotation= .stairs,
-	.model= "cubyz:cube",
-	.texture= "cubyz:marble",
+	.rotation = .stairs,
+	.model = "cubyz:cube",
+	.texture = "cubyz:marble",
 }
