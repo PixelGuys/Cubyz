@@ -526,7 +526,7 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 // Going to handle item animations and other things like - bobbing, interpolation, movement reactions
 pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 	pub var showItem: bool = true;
-	pub var cameraFollow: Vec3f = @splat(0);
+	var cameraFollow: Vec3f = @splat(0);
 	var cameraFollowVel: Vec3f = @splat(0);
 	const damping: Vec3f = @splat(130);
 
@@ -733,7 +733,6 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 				pos -= playerPos;
 
 				const model = getModel(item);
-				c.glUniform1i(itemUniforms.modelIndex, model.index);
 				var vertices: u31 = 36;
 
 				var scale: f32 = 0.3;
@@ -757,7 +756,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		}
 	}
 
-	inline fn getPos(x: u8, y: u8, z: u8) u32 {
+	inline fn getIndex(x: u8, y: u8, z: u8) u32 {
 		return (z*4) + (y*2) + (x);
 	}
 
@@ -772,7 +771,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	pub fn renderDisplayItems(ambientLight: Vec3f, playerPos: Vec3d, time: u32) void {
 		if(!ItemDisplayManager.showItem) return;
 
-		const projMatrix: Mat4f = Mat4f.perspective(std.math.degreesToRadians(65), @as(f32, @floatFromInt(renderer.lastWidth))/@as(f32, @floatFromInt(renderer.lastHeight)), 0.05, 100);
+		const projMatrix: Mat4f = Mat4f.perspective(std.math.degreesToRadians(65), @as(f32, @floatFromInt(renderer.lastWidth))/@as(f32, @floatFromInt(renderer.lastHeight)), 0.01, 200000000);
 		const viewMatrix = Mat4f.identity();
 		bindCommonUniforms(projMatrix, viewMatrix, ambientLight, time);
 
@@ -790,13 +789,13 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 				inline for(0..2) |y| {
 					inline for(0..2) |x| {
 						const light: [6]u8 = main.renderer.mesh_storage.getLight(
-							blockPos[0] + @as(i32, @intCast(x)),
-							blockPos[1] + @as(i32, @intCast(y)),
-							blockPos[2] + @as(i32, @intCast(z)),
+							blockPos[0] +% @as(i32, @intCast(x)),
+							blockPos[1] +% @as(i32, @intCast(y)),
+							blockPos[2] +% @as(i32, @intCast(z)),
 						) orelse @splat(0);
 
 						inline for(0..6) |i| {
-							samples[getPos(x, y, z)][i] = @as(f32, @floatFromInt(light[i]));
+							samples[getIndex(x, y, z)][i] = @as(f32, @floatFromInt(light[i]));
 						}
 					}
 				}
@@ -804,17 +803,17 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 
 			inline for(0..2) |y| {
 				inline for(0..2) |x| {
-					samples[getPos(x, y, 0)] = blendColors(samples[getPos(x, y, 0)], samples[getPos(x, y, 1)], localBlockPos[2]);
+					samples[getIndex(x, y, 0)] = blendColors(samples[getIndex(x, y, 0)], samples[getIndex(x, y, 1)], localBlockPos[2]);
 				}
 			}
 
 			inline for(0..2) |x| {
-				samples[getPos(x, 0, 0)] = blendColors(samples[getPos(x, 0, 0)], samples[getPos(x, 1, 0)], localBlockPos[1]);
+				samples[getIndex(x, 0, 0)] = blendColors(samples[getIndex(x, 0, 0)], samples[getIndex(x, 1, 0)], localBlockPos[1]);
 			}
 
 			var result: [6]u8 = .{0, 0, 0, 0, 0, 0};
 			inline for(0..6) |i| {
-				const val = std.math.lerp(samples[getPos(0, 0, 0)][i], samples[getPos(1, 0, 0)][i], localBlockPos[0]);
+				const val = std.math.lerp(samples[getIndex(0, 0, 0)][i], samples[getIndex(1, 0, 0)][i], localBlockPos[0]);
 				result[i] = @as(u8, @intFromFloat(@floor(val)));
 			}
 
@@ -832,19 +831,20 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 				scale = 0.3;
 				pos = Vec3d{0.4, 0.55, -0.32};
 			} else {
-				scale = 0.6;
-				pos = Vec3d{0.4, 0.65, -0.25};
+				scale = 0.565;
+				pos = Vec3d{0.4, 0.65, -0.3};
 			}
 			bindModelUniforms(model.index, blockType);
 
-			var modelMatrix = Mat4f.rotationZ(-rot[2]);
+			var modelMatrix = Mat4f.scale(@splat(0.0001));
+			modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-rot[2]));
 			modelMatrix = modelMatrix.mul(Mat4f.rotationY(-rot[1]));
 			modelMatrix = modelMatrix.mul(Mat4f.rotationX(-rot[0]));
 			modelMatrix = modelMatrix.mul(Mat4f.translation(@floatCast(pos)));
 			if(!isBlock) {
 				if(item == .tool) {
-					modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.46));
-					modelMatrix = modelMatrix.mul(Mat4f.rotationY(std.math.pi*0.23));
+					modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.47));
+					modelMatrix = modelMatrix.mul(Mat4f.rotationY(std.math.pi*0.30));
 				} else {
 					modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.45));
 				}
