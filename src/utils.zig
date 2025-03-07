@@ -1924,7 +1924,11 @@ pub const BinaryReader = struct {
 		if(self.remaining.len < bufSize) return error.OutOfBounds;
 		defer self.remaining = self.remaining[bufSize..];
 
-		const intT = switch(T) { f32 => u32, f64 => u64, else => unreachable };
+		const intT = switch(T) {
+			f32 => u32,
+			f64 => u64,
+			else => unreachable,
+		};
 		const intValue = std.mem.readInt(intT, self.remaining[0..bufSize], self.endian);
 		return @as(T, @bitCast(intValue));
 	}
