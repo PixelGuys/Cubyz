@@ -1919,7 +1919,7 @@ pub const BinaryReader = struct {
 		return std.mem.readInt(T, self.remaining[0..bufSize], self.endian);
 	}
 
-	pub fn readFloat(self: *BinaryReader, comptime T: type) error{OutOfBounds, IntOutOfBounds}!T {
+	pub fn readFloat(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds}!T {
 		const IntT = std.meta.Int(.unsigned, @typeInfo(T).float.bits);
 		return @as(T, @bitCast(try self.readInt(IntT)));
 	}
@@ -1968,7 +1968,7 @@ pub const BinaryWriter = struct {
 		std.mem.writeInt(T, self.data.addMany(bufSize)[0..bufSize], value, self.endian);
 	}
 
-	pub fn writeFloat(self: *BinaryWriter, comptime T: type, value: T) T {
+	pub fn writeFloat(self: *BinaryWriter, T: type, value: T) T {
 		const IntT = std.meta.Int(.unsigned, @typeInfo(T).float.bits);
 		self.writeInt(IntT, @bitCast(value));
 	}
