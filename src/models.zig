@@ -166,7 +166,7 @@ pub const Model = struct {
 
 	fn addVert(vert: Vec3f, vertList: *main.List(Vec3f)) usize {
 		const ind = for(vertList.*.items, 0..) |vertex, index| {
-			if(std.meta.eql(vertex, vert)) break index;
+			if(vertex == vert) break index;
 		} else vertList.*.items.len;
 
 		if(ind == vertList.*.items.len) {

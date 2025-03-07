@@ -553,7 +553,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 
 		fn getSlot(len: u31) u31 {
 			for(freeSlots.items, 0..) |potentialSlot, i| {
-				if(std.meta.eql(len, potentialSlot.len)) {
+				if(len == potentialSlot.len) {
 					_ = freeSlots.swapRemove(i);
 					const result = potentialSlot.index;
 					main.globalAllocator.destroy(potentialSlot);
