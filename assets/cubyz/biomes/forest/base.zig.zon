@@ -14,80 +14,411 @@
 	},
 	.structures = .{
 		.{
-			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:oak_leaves",
-			.log = "cubyz:oak_log",
-			.top = "cubyz:oak_top",
-			.chance = 0.4,
-			.type = .round,
-			.height = 6,
-			.height_variation = 3,
-			.leafElongation = 1.0,
-			.deltaLeafElongation = 0.2,
-		},
-		.{
-			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:birch_leaves",
-			.log = "cubyz:birch_log",
-			.top = "cubyz:birch_top",
-			.chance = 0.2,
-			.type = .round,
-			.height = 10,
-			.height_variation = 5,
-			.leafRadius = 2.5,
-			.leafRadius_variation = 1.5,
-			.leafElongation = 1.7,
-			.deltaLeafElongation = 0.2,
-		},
-		.{
-			.id = "cubyz:fallen_tree",
-			.log = "cubyz:oak_log",
-			.top = "cubyz:oak_log",
+			.id = "cubyz:tree",
 			.chance = 0.005,
-			.height = 6,
-			.height_variation = 3,
+			.segments = .{
+				.{
+					.height = 2,
+					.mushroomChance = 0.1,
+					.blocks = .{
+						.wood = "cubyz:oak_log",
+						.mushroom = "cubyz:bolete",
+					},
+				},
+				.{
+					.height = 4,
+					.branchChance = 0.1,
+					.branchSpacing = 1,
+					.branchSpawnMode = .alternating_spaced,
+					.branchMaxCount = 3,
+					.leavesChance = 0.3,
+					.blocks = .{
+						.leaves = "cubyz:oak_leaves",
+						.wood = "cubyz:oak_log",
+						.branch = "cubyz:oak_branch",
+					},
+					.branchSegmentSeriesVariants = .{
+						.{.forward = .{}},
+						.{.left = .{}},
+						.{.right = .{}},
+						.{.forward = .{}, .left = .{}},
+						.{.forward = .{}, .right = .{}},
+						.{.forward = .{}, .right = .{}, .left = .{}},
+					},
+				},
+				.{
+					.height = 6,
+					.branchChance = 0.25,
+					.branchSpacing = 1,
+					.branchSpawnMode = .alternating_spaced,
+					.branchMaxCount = 18,
+					.branchMaxCountPerLevel = 2,
+					.leavesChance = 0.0,
+					.leavesBlobChance = 1.0,
+					.leavesBlobRadius = 2.3,
+					.leavesBlobRadiusDelta = 0.4,
+					.blocks = .{
+						.leaves = "cubyz:oak_leaves",
+						.wood = "cubyz:oak_log",
+						.branch = "cubyz:oak_branch",
+					},
+					.branchSegmentSeriesVariants = .{
+						.{
+							.left = .{
+								.forward = .{
+									.forward = .{
+										.right = .{
+											.left = .{
+												.forward = .{
+													.forward = .{}
+												},
+												.right = .{
+													.forward = .{}
+												}
+											}
+										}
+									}
+								}
+							},
+							.forward = .{
+								.forward = .{
+									.left = .{
+										.right = .{
+											.forward = .{
+												.forward = .{
+													.left = .{
+														.forward = .{}
+													},
+													.forward = .{
+														.right = .{},
+														.forward = .{}
+													}
+												}
+											}
+										}
+									}
+								},
+								.right = .{
+									.left = .{
+										.right = .{
+											.left = .{
+												.forward = .{
+													.forward = .{},
+													.right = .{},
+												}
+											}
+										}
+									},
+									.forward = .{
+										.forward = .{
+											.right = .{
+												.forward = .{
+													.left = .{
+														.forward = .{}
+													},
+												}
+											},
+											.forward = .{
+												.forward = .{}
+											}
+										}
+									}
+								},
+							},
+						}
+					},
+				},
+				.{
+					.height = 5,
+					.branchChance = 0.25,
+					.branchSpacing = 2,
+					.branchSpawnMode = .alternating_spaced,
+					.branchMaxCount = 15,
+					.branchMaxCountPerLevel = 2,
+					.leavesChance = 0.0,
+					.leavesBlobChance = 1.0,
+					.leavesBlobRadius = 2.3,
+					.leavesBlobRadiusDelta = 0.4,
+					.blocks = .{
+						.leaves = "cubyz:oak_leaves",
+						.wood = "cubyz:oak_log",
+						.branch = "cubyz:oak_branch",
+					},
+					.branchSegmentSeriesVariants = .{
+						.{
+							.forward = .{
+								.left = .{
+									.up = .{
+										.forward = .{
+											.forward = .{
+												.up = .{
+													.left = .{
+														.right = .{
+															.forward = .{
+																.forward = .{}
+															}
+														}
+													},
+													.right = .{
+														.forward = .{
+															.forward = .{}
+														}
+													}
+												}
+											}
+										},
+										.right = .{
+											.forward = .{
+												.forward = .{}
+											}
+										}
+									}
+								},
+								.right = .{
+									.up = .{
+										.forward = .{
+											.up = .{
+												.forward = .{
+													.right = .{
+														.left = .{
+															.forward = .{
+																.forward = .{}
+															}
+														}
+													},
+													.left = .{
+														.right = .{
+															.forward = .{}
+														}
+													}
+												}
+											},
+											.left = .{
+												.forward = .{
+													.forward = .{}
+												}
+											}
+										}
+									}
+								},
+							}
+						}
+					},
+				},
+				.{
+					.height = 2,
+					.branchChance = 1.0,
+					.branchSpacing = 1,
+					.branchSpawnMode = .alternating_spaced,
+					.branchMaxCount = 3,
+					.branchMaxCountPerLevel = 2,
+					.leavesChance = 0.0,
+					.leavesBlobChance = 1.0,
+					.leavesBlobRadius = 2.3,
+					.leavesBlobRadiusDelta = 0.4,
+					.blocks = .{
+						.leaves = "cubyz:oak_leaves",
+						.wood = "cubyz:oak_log",
+						.branch = "cubyz:oak_branch",
+					},
+					.branchSegmentSeriesVariants = .{
+						.{
+							.up = .{
+								.forward = .{
+									.up = .{
+										.left = .{
+											.up = .{}
+										}
+									}
+								},
+								.right = .{
+									.up = .{
+										.forward = .{
+											.up = .{}
+										}
+									}
+								}
+							}
+						}
+					},
+				},
+			},
 		},
 		.{
-			.id = "cubyz:fallen_tree",
-			.log = "cubyz:birch_log",
-			.top = "cubyz:birch_log",
-			.chance = 0.002,
-			.height = 6,
-			.height_variation = 3,
-		},
-		.{
-			.id = "cubyz:simple_vegetation",
-			.block = "cubyz:grass_vegetation",
-			.chance = 0.4,
-			.height = 1,
-			.height_variation = 0,
-		},
-		.{
-			.id = "cubyz:flower_patch",
-			.block = "cubyz:daisies",
-			.chance = 0.008,
-			.width = 6,
-			.variation = 3,
-			.density = 0.3,
-			.priority = 0.1,
-		},
-		.{
-			.id = "cubyz:flower_patch",
-			.block = "cubyz:daffodil",
-			.chance = 0.01,
-			.width = 6,
-			.variation = 3,
-			.density = 0.1,
-			.priority = 0.1,
-		},
-		.{
-			.id = "cubyz:flower_patch",
-			.block = "cubyz:castilleja",
-			.chance = 0.006,
-			.width = 8,
-			.variation = 3,
-			.density = 0.1,
-			.priority = 0.1,
+			.id = "cubyz:tree",
+			.chance = 0.005,
+			.segments = .{
+				.{
+					.height = 2,
+					.mushroomChance = 0.1,
+					.blocks = .{
+						.wood = "cubyz:pine_log",
+						.mushroom = "cubyz:bolete",
+					},
+				},
+				.{
+					.height = 3,
+					.branchSpawnMode = .screw_random,
+					.leavesChance = 1.0,
+					.blocks = .{
+						.leaves = "cubyz:pine_needles",
+						.wood = "cubyz:pine_log",
+						.branch = "cubyz:pine_branch",
+					},
+					.branchSegmentSeriesVariants = .{
+						.{
+							.forward = .{
+								.left = .{
+									.forward = .{
+										.forward = .{}
+									}
+								},
+								.right = .{
+									.forward = .{
+										.forward = .{}
+									}
+								},
+								.forward = .{
+									.forward = .{
+										.left = .{
+											.forward = .{}
+										},
+										.right = .{
+											.forward = .{}
+										},
+										.forward = .{
+											.forward = .{}
+										}
+									}
+								}
+							}
+						}
+					},
+				},
+				.{
+					.height = 3,
+					.branchSpawnMode = .screw_random,
+					.leavesChance = 1.0,
+					.blocks = .{
+						.leaves = "cubyz:pine_needles",
+						.wood = "cubyz:pine_log",
+						.branch = "cubyz:pine_branch",
+					},
+					.branchSegmentSeriesVariants = .{
+						.{
+							.left = .{
+								.forward = .{
+									.forward = .{}
+								}
+							},
+							.right = .{
+								.forward = .{
+									.forward = .{}
+								}
+							},
+							.forward = .{
+								.forward = .{
+									.left = .{
+										.forward = .{}
+									},
+									.right = .{
+										.forward = .{}
+									},
+									.forward = .{
+										.forward = .{}
+									}
+								}
+							}
+						}
+					},
+				},
+				.{
+					.height = 3,
+					.branchSpawnMode = .screw_random,
+					.leavesChance = 1.0,
+					.blocks = .{
+						.leaves = "cubyz:pine_needles",
+						.wood = "cubyz:pine_log",
+						.branch = "cubyz:pine_branch",
+					},
+					.branchSegmentSeriesVariants = .{
+						.{
+							.forward = .{
+								.left = .{
+									.forward = .{}
+								},
+								.right = .{
+									.forward = .{}
+								},
+								.forward = .{
+									.forward = .{}
+								}
+							}
+						}
+					},
+				},
+				.{
+					.height = 3,
+					.branchSpawnMode = .screw_random,
+					.leavesChance = 1.0,
+					.blocks = .{
+						.leaves = "cubyz:pine_needles",
+						.wood = "cubyz:pine_log",
+						.branch = "cubyz:pine_branch",
+					},
+					.branchSegmentSeriesVariants = .{
+						.{
+							.left = .{
+								.forward = .{}
+							},
+							.right = .{
+								.forward = .{}
+							},
+							.forward = .{
+								.forward = .{}
+							}
+						}
+					},
+				},
+				.{
+					.height = 3,
+					.branchSpawnMode = .screw_random,
+					.leavesChance = 1.0,
+					.blocks = .{
+						.leaves = "cubyz:pine_needles",
+						.wood = "cubyz:pine_log",
+						.branch = "cubyz:pine_branch",
+					},
+					.branchSegmentSeriesVariants = .{
+						.{
+							.left = .{},
+							.right = .{},
+							.forward = .{}
+						}
+					},
+				},
+				.{
+					.height = 1,
+					.branchPeak = true,
+					.leavesChance = 1.0,
+					.blocks = .{
+						.leaves = "cubyz:pine_needles",
+						.wood = "cubyz:pine_top",
+						.branch = "cubyz:pine_branch",
+					},
+					.branchSegmentSeriesVariants = .{
+						.{
+							.up = .{
+								.up = .{}
+							},
+							.left = .{},
+							.right = .{},
+							.forward = .{},
+							.backward = .{},
+						},
+					},
+				},
+			},
 		},
 	},
 }

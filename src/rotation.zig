@@ -329,7 +329,7 @@ pub const RotationModes = struct {
 		pub const id: []const u8 = "branch";
 		pub const dependsOnNeighbors = true;
 		var branchModels: std.StringHashMap(u16) = undefined;
-		const BranchData = packed struct(u6) {
+		pub const BranchData = packed struct(u6) {
 			enabledConnections: u6,
 
 			pub fn init(blockData: u16) BranchData {
@@ -791,7 +791,7 @@ pub const RotationModes = struct {
 		pub const naturalStandard: u16 = 1;
 		pub const dependsOnNeighbors = true;
 		var rotatedModels: std.StringHashMap(u16) = undefined;
-		const TorchData = packed struct(u5) {
+		pub const TorchData = packed struct(u5) {
 			center: bool,
 			negX: bool,
 			posX: bool,
