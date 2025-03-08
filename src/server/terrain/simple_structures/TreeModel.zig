@@ -49,6 +49,7 @@ const Stem = struct {
 	branchSpawnMode: BranchSpawnMode,
 	branchMaxCount: u32,
 	branchMaxCountPerLevel: u32,
+	branchPeak: bool,
 	branchSegmentSeriesVariants: ZonElement,
 	leavesChance: f32,
 	leavesBlobChance: f32,
@@ -153,6 +154,9 @@ const Stem = struct {
 			state.height += 1;
 			branchCountThisLevel = 0;
 		}
+		if(self.branchPeak) {
+			_ = self.placeBranch(state, &branchGenerator, Neighbor.dirUp, .{state.position[0], state.position[1], state.position[2] - 1});
+		}
 	}
 	fn placeBlock(_: @This(), state: *TreeState, position: Vec3i, block: Block) void {
 		if(!state.chunk.liesInChunk(position[0], position[1], position[2])) return;
@@ -192,7 +196,6 @@ const Stem = struct {
 const Blocks = struct {
 	leaves: Block,
 	wood: Block,
-	top: Block,
 	branch: Block,
 	mushroom: Block,
 };
@@ -215,22 +218,26 @@ const BranchGenerator = struct {
 	leavesBlobRadiusDelta: f32,
 
 	pub fn generate(self: *@This(), direction: Neighbor, position: Vec3i, series: ZonElement) bool {
-		return junction(self, direction, direction, position, series);
+		const horizontalDirection = if(direction == Neighbor.dirUp) Neighbor.dirPosX else direction;
+		return junction(self, horizontalDirection, direction, position, series);
 	}
 	fn junction(self: *@This(), horizontalDirection: Neighbor, direction: Neighbor, position: Vec3i, series: ZonElement) bool {
 		var leftSeries = series.getChild("left");
 		var rightSeries = series.getChild("right");
 		var forwardSeries = series.getChild("forward");
+		var backwardSeries = series.getChild("backward");
 		var upSeries = series.getChild("up");
 
 		var isLeftSuccess = false;
 		var isRightSuccess = false;
 		var isForwardSuccess = false;
 		var isUpSuccess = false;
+		var isBackwardSuccess = false;
 
 		const left: Neighbor = horizontalDirection.left();
 		const right: Neighbor = horizontalDirection.right();
 		const forward: Neighbor = horizontalDirection;
+		const backward = horizontalDirection.reverse();
 		const up = Neighbor.dirUp;
 
 		if(!leftSeries.isNull()) {
@@ -257,6 +264,14 @@ const BranchGenerator = struct {
 			}
 		}
 
+		if(!backwardSeries.isNull()) {
+			isBackwardSuccess = self.junction(backward, backward, position + backward.relPos(), backwardSeries);
+		} else {
+			if(self.leavesChance > 0 and random.nextFloat(self.state.seed) < self.leavesChance) {
+				isBackwardSuccess = self.place(position + backward.relPos(), self.blocks.leaves, 0);
+			}
+		}
+
 		if(!upSeries.isNull()) {
 			isUpSuccess = self.junction(forward, up, position + up.relPos(), upSeries);
 		} else {
@@ -271,6 +286,7 @@ const BranchGenerator = struct {
 		if(isLeftSuccess) blockData |= left.bitMask();
 		if(isRightSuccess) blockData |= right.bitMask();
 		if(isForwardSuccess) blockData |= forward.bitMask();
+		if(isBackwardSuccess) blockData |= backward.bitMask();
 		if(isUpSuccess) blockData |= up.bitMask();
 
 		const isSuccess = self.placeBranch(position, self.blocks.branch, blockData);
@@ -353,11 +369,11 @@ pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) 
 				.leavesBlobChance = segment.get(f32, "leavesBlobChance", 0.0),
 				.leavesBlobRadius = segment.get(f32, "leavesBlobRadius", 0.0),
 				.leavesBlobRadiusDelta = segment.get(f32, "leavesBlobRadiusDelta", 0.0),
+				.branchPeak = segment.get(bool, "branchPeak", false),
 				.mushroomChance = segment.get(f32, "mushroomChance", 0.0),
 				.blocks = .{
 					.leaves = parseBlock(blocks.get([]const u8, "leaves", "cubyz:oak_leaves")),
 					.wood = parseBlock(blocks.get([]const u8, "wood", "cubyz:oak_log")),
-					.top = parseBlock(blocks.get([]const u8, "top", "cubyz:oak_top")),
 					.branch = parseBlock(blocks.get([]const u8, "branch", "cubyz:oak_branch")),
 					.mushroom = parseBlock(blocks.get([]const u8, "mushroom", "cubyz:bolete")),
 				},

@@ -245,5 +245,181 @@
 				},
 			},
 		},
+		.{
+			.id = "cubyz:tree",
+			.chance = 0.005,
+			.segments = .{
+				.{
+					.height = 2,
+					.mushroomChance = 0.1,
+					.blocks = .{
+						.wood = "cubyz:pine_log",
+						.mushroom = "cubyz:bolete",
+					},
+				},
+				.{
+					.height = 3,
+					.branchSpawnMode = .screw_random,
+					.leavesChance = 1.0,
+					.blocks = .{
+						.leaves = "cubyz:pine_needles",
+						.wood = "cubyz:pine_log",
+						.branch = "cubyz:pine_branch",
+					},
+					.branchSegmentSeriesVariants = .{
+						.{
+							.forward = .{
+								.left = .{
+									.forward = .{
+										.forward = .{}
+									}
+								},
+								.right = .{
+									.forward = .{
+										.forward = .{}
+									}
+								},
+								.forward = .{
+									.forward = .{
+										.left = .{
+											.forward = .{}
+										},
+										.right = .{
+											.forward = .{}
+										},
+										.forward = .{
+											.forward = .{}
+										}
+									}
+								}
+							}
+						}
+					},
+				},
+				.{
+					.height = 3,
+					.branchSpawnMode = .screw_random,
+					.leavesChance = 1.0,
+					.blocks = .{
+						.leaves = "cubyz:pine_needles",
+						.wood = "cubyz:pine_log",
+						.branch = "cubyz:pine_branch",
+					},
+					.branchSegmentSeriesVariants = .{
+						.{
+							.left = .{
+								.forward = .{
+									.forward = .{}
+								}
+							},
+							.right = .{
+								.forward = .{
+									.forward = .{}
+								}
+							},
+							.forward = .{
+								.forward = .{
+									.left = .{
+										.forward = .{}
+									},
+									.right = .{
+										.forward = .{}
+									},
+									.forward = .{
+										.forward = .{}
+									}
+								}
+							}
+						}
+					},
+				},
+				.{
+					.height = 3,
+					.branchSpawnMode = .screw_random,
+					.leavesChance = 1.0,
+					.blocks = .{
+						.leaves = "cubyz:pine_needles",
+						.wood = "cubyz:pine_log",
+						.branch = "cubyz:pine_branch",
+					},
+					.branchSegmentSeriesVariants = .{
+						.{
+							.forward = .{
+								.left = .{
+									.forward = .{}
+								},
+								.right = .{
+									.forward = .{}
+								},
+								.forward = .{
+									.forward = .{}
+								}
+							}
+						}
+					},
+				},
+				.{
+					.height = 3,
+					.branchSpawnMode = .screw_random,
+					.leavesChance = 1.0,
+					.blocks = .{
+						.leaves = "cubyz:pine_needles",
+						.wood = "cubyz:pine_log",
+						.branch = "cubyz:pine_branch",
+					},
+					.branchSegmentSeriesVariants = .{
+						.{
+							.left = .{
+								.forward = .{}
+							},
+							.right = .{
+								.forward = .{}
+							},
+							.forward = .{
+								.forward = .{}
+							}
+						}
+					},
+				},
+				.{
+					.height = 3,
+					.branchSpawnMode = .screw_random,
+					.leavesChance = 1.0,
+					.blocks = .{
+						.leaves = "cubyz:pine_needles",
+						.wood = "cubyz:pine_log",
+						.branch = "cubyz:pine_branch",
+					},
+					.branchSegmentSeriesVariants = .{
+						.{
+							.left = .{},
+							.right = .{},
+							.forward = .{}
+						}
+					},
+				},
+				.{
+					.height = 1,
+					.branchPeak = true,
+					.leavesChance = 1.0,
+					.blocks = .{
+						.leaves = "cubyz:pine_needles",
+						.wood = "cubyz:pine_top",
+						.branch = "cubyz:pine_branch",
+					},
+					.branchSegmentSeriesVariants = .{
+						.{
+							.up = .{
+								.up = .{}
+							},
+							.left = .{},
+							.right = .{},
+							.forward = .{},
+							.backward = .{},
+						},
+					},
+				},
+			},
+		}
 	},
 }
