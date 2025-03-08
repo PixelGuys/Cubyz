@@ -3,6 +3,7 @@ const std = @import("std");
 
 const main = @import("../main.zig");
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const hashGeneric = main.server.terrain.biomes.hashGeneric;
 
 fn growCapacity(current: usize, minimum: usize) usize {
 	var new = current;
@@ -37,6 +38,10 @@ pub fn List(comptime T: type) type {
 			if(self.capacity != 0) {
 				self.allocator.free(self.items.ptr[0..self.capacity]);
 			}
+		}
+
+		pub fn getHash(self: @This()) u64 {
+			return hashGeneric(self.items);
 		}
 
 		pub fn clearAndFree(self: *@This()) void {

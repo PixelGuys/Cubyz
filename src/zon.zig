@@ -3,6 +3,7 @@ const std = @import("std");
 const main = @import("main.zig");
 const NeverFailingAllocator = main.utils.NeverFailingAllocator;
 const List = main.List;
+const hashGeneric = main.server.terrain.biomes.hashGeneric;
 
 pub const ZonElement = union(enum) { // MARK: Zon
 	int: i64,
@@ -24,6 +25,27 @@ pub const ZonElement = union(enum) { // MARK: Zon
 		const list = allocator.create(List(ZonElement));
 		list.* = .init(allocator);
 		return .{.array = list};
+	}
+
+	pub fn getHash(self: *const ZonElement) u64 {
+		return switch(self.*) {
+			.int =>hashGeneric(self.int),
+			.float => hashGeneric(self.float),
+			.string => hashGeneric(self.string),
+			.stringOwned => hashGeneric(self.stringOwned),
+			.bool =>  hashGeneric(self.bool),
+			.null => 0,
+			.array => hashGeneric(self.array.items),
+			.object => objectBlk: {
+				var result: u64 = 0;
+				var iterator = self.object.iterator();
+				while(iterator.next()) |entry| {
+					result ^= hashGeneric(entry.key_ptr.*)*%hashGeneric(entry.value_ptr.*);
+					result <<= 3;
+				}
+				break :objectBlk result;
+			},
+		};
 	}
 
 	pub fn getAtIndex(self: *const ZonElement, comptime _type: type, index: usize, replacement: _type) _type {

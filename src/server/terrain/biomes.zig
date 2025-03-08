@@ -139,12 +139,18 @@ const Stripe = struct { // MARK: Stripe
 	}
 };
 
-fn hashGeneric(input: anytype) u64 {
+pub fn hashGeneric(input: anytype) u64 {
 	const T = @TypeOf(input);
 	return switch(@typeInfo(T)) {
 		.bool => @intFromBool(input),
 		.@"enum" => @intFromEnum(input),
 		.int, .float => @as(std.meta.Int(.unsigned, @bitSizeOf(T)), @bitCast(input)),
+		.@"union" => blk: {
+			if(@hasDecl(T, "getHash")) {
+				break :blk input.getHash();
+			}
+			@compileError("Unsupported union type  " ++ @typeName(T));
+		},
 		.@"struct" => blk: {
 			if(@hasDecl(T, "getHash")) {
 				break :blk input.getHash();
@@ -152,6 +158,7 @@ fn hashGeneric(input: anytype) u64 {
 			var result: u64 = 0;
 			inline for(@typeInfo(T).@"struct".fields) |field| {
 				result ^= hashGeneric(@field(input, field.name))*%hashGeneric(@as([]const u8, field.name));
+				result <<= 3;
 			}
 			break :blk result;
 		},
