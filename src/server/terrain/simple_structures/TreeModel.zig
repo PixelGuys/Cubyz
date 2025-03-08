@@ -33,6 +33,7 @@ const BranchSpawnMode = enum {
 	screw_right,
 	screw_left,
 	screw_random,
+	flipped,
 
 	fn fromString(string: []const u8) @This() {
 		return std.meta.stringToEnum(@This(), string) orelse {
@@ -146,6 +147,10 @@ const Stem = struct {
 					} else {
 						state.spawnAxis = state.spawnAxis.left();
 					}
+				},
+				.flipped => {
+					_ = self.placeBranch(state, &branchGenerator, state.spawnAxis, state.position);
+					state.spawnAxis = state.spawnAxis.reverse();
 				},
 				else => {},
 			}
