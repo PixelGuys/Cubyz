@@ -771,7 +771,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	pub fn renderDisplayItems(ambientLight: Vec3f, playerPos: Vec3d, time: u32) void {
 		if(!ItemDisplayManager.showItem) return;
 
-		const projMatrix: Mat4f = Mat4f.perspective(std.math.degreesToRadians(65), @as(f32, @floatFromInt(renderer.lastWidth))/@as(f32, @floatFromInt(renderer.lastHeight)), 0.01, 200000000);
+		const projMatrix: Mat4f = Mat4f.perspective(std.math.degreesToRadians(65), @as(f32, @floatFromInt(renderer.lastWidth))/@as(f32, @floatFromInt(renderer.lastHeight)), 0.01, std.math.floatMax(f32));
 		const viewMatrix = Mat4f.identity();
 		bindCommonUniforms(projMatrix, viewMatrix, ambientLight, time);
 
@@ -831,7 +831,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 				scale = 0.3;
 				pos = Vec3d{0.4, 0.55, -0.32};
 			} else {
-				scale = 0.565;
+				scale = 0.57;
 				pos = Vec3d{0.4, 0.65, -0.3};
 			}
 			bindModelUniforms(model.index, blockType);
@@ -844,7 +844,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			if(!isBlock) {
 				if(item == .tool) {
 					modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.47));
-					modelMatrix = modelMatrix.mul(Mat4f.rotationY(std.math.pi*0.30));
+					modelMatrix = modelMatrix.mul(Mat4f.rotationY(std.math.pi*0.25));
 				} else {
 					modelMatrix = modelMatrix.mul(Mat4f.rotationZ(-std.math.pi*0.45));
 				}

@@ -298,15 +298,10 @@ fn takeBackgroundImageFn() void {
 	itemdrop.ItemDisplayManager.showItem = showItem;
 }
 fn toggleHideGui() void {
-	if(itemdrop.ItemDisplayManager.showItem and !gui.hideGui) {
-		gui.hideGui = true;
-	} else if(itemdrop.ItemDisplayManager.showItem and gui.hideGui) {
-		itemdrop.ItemDisplayManager.showItem = false;
-	} else if(!itemdrop.ItemDisplayManager.showItem and gui.hideGui) {
-		gui.hideGui = false;
-	} else {
-		itemdrop.ItemDisplayManager.showItem = true;
-	}
+	gui.hideGui = !gui.hideGui;
+}
+fn toggleHideDisplayItem() void {
+	itemdrop.ItemDisplayManager.showItem = !itemdrop.ItemDisplayManager.showItem;
 }
 fn toggleDebugOverlay() void {
 	gui.toggleWindow("debug");
@@ -412,6 +407,7 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "cameraDown", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_Y, .positive = true}},
 		// debug:
 		.{.name = "hideMenu", .key = c.GLFW_KEY_F1, .pressAction = &toggleHideGui},
+		.{.name = "hideDisplayItem", .key = c.GLFW_KEY_F2, .pressAction = &toggleHideDisplayItem},
 		.{.name = "debugOverlay", .key = c.GLFW_KEY_F3, .pressAction = &toggleDebugOverlay},
 		.{.name = "performanceOverlay", .key = c.GLFW_KEY_F4, .pressAction = &togglePerformanceOverlay},
 		.{.name = "gpuPerformanceOverlay", .key = c.GLFW_KEY_F5, .pressAction = &toggleGPUPerformanceOverlay},
