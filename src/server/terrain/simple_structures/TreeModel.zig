@@ -32,6 +32,7 @@ const Stem = struct {
 	branchSegmentSeriesVariants: ZonElement,
 	leavesChance: f32,
 	leavesBlobChance: f32,
+	leavesBlobRadius: f32,
 	mushroomChance: f32,
 	blocks: Blocks,
 
@@ -42,7 +43,8 @@ const Stem = struct {
 			.state = state,
 			.blocks = self.blocks,
 			.leavesChance = self.leavesChance,
-			.leavesBlobChance = self.leavesBlobChance};
+			.leavesBlobChance = self.leavesBlobChance,
+			.leavesBlobRadius = self.leavesBlobRadius};
 
 		var branchCount: u32 = 0;
 		var branchCountThisLevel: u32 = 0;
@@ -127,6 +129,7 @@ const BranchGenerator = struct {
 	blocks: Blocks,
 	leavesChance: f32,
 	leavesBlobChance: f32,
+	leavesBlobRadius: f32,
 
 	pub fn generate(self: *@This(), direction: Neighbor, position: Vec3i, series: ZonElement) bool {
 		return junction(self, direction, position, series);
@@ -145,8 +148,6 @@ const BranchGenerator = struct {
 		const right: Neighbor = direction.right();
 		const forward: Neighbor = direction;
 		const up = Neighbor.dirUp;
-		const down = Neighbor.dirDown;
-		const back = direction.reverse();
 
 		if(!leftSeries.isNull()) {
 			isLeftSuccess = self.junction(left, position + left.relPos(), leftSeries);
@@ -171,26 +172,9 @@ const BranchGenerator = struct {
 				isForwardSuccess = self.place(position + forward.relPos(), self.blocks.leaves, 0);
 			}
 		}
-		isTopSuccess = self.place(position + up.relPos(), self.blocks.leaves, 0);
-
-		const isEnd = leftSeries.isNull() and rightSeries.isNull() and forwardSeries.isNull();
-
-		if(isEnd and self.leavesBlobChance > 0 and random.nextFloat(self.state.seed) < self.leavesBlobChance) {
-			_ = self.place(position + forward.relPos() + left.relPos(), self.blocks.leaves, 0);
-			_ = self.place(position + forward.relPos() + right.relPos(), self.blocks.leaves, 0);
-			_ = self.place(position + forward.relPos() + up.relPos(), self.blocks.leaves, 0);
-
-			_ = self.place(position + left.relPos() + down.relPos(), self.blocks.leaves, 0);
-			_ = self.place(position + left.relPos() + up.relPos(), self.blocks.leaves, 0);
-
-			_ = self.place(position + right.relPos() + down.relPos(), self.blocks.leaves, 0);
-			_ = self.place(position + right.relPos() + up.relPos(), self.blocks.leaves, 0);
-
-			_ = self.place(position + back.relPos() + left.relPos(), self.blocks.leaves, 0);
-			_ = self.place(position + back.relPos() + right.relPos(), self.blocks.leaves, 0);
-			_ = self.place(position + back.relPos() + up.relPos(), self.blocks.leaves, 0);
+		if(self.leavesChance > 0){
+			isTopSuccess = self.place(position + up.relPos(), self.blocks.leaves, 0);
 		}
-
 		var blockData: u16 = 0;
 		blockData |= direction.reverse().bitMask();
 
@@ -199,13 +183,59 @@ const BranchGenerator = struct {
 		if(isForwardSuccess) blockData |= forward.bitMask();
 		if(isTopSuccess) blockData |= up.bitMask();
 
-		return self.place(position, self.blocks.branch, blockData);
+		const isSuccess = self.placeBranch(position, self.blocks.branch, blockData);
+
+		if(isSuccess) {
+			if(leftSeries.isNull() and rightSeries.isNull() and forwardSeries.isNull() and self.leavesBlobChance > 0 and random.nextFloat(self.state.seed) < self.leavesBlobChance) {
+				self.placeSphere(position, self.blocks.leaves, self.leavesBlobRadius);
+			}
+		}
+
+		return isSuccess;
 	}
 	fn place(self: *@This(), position: Vec3i, block: Block, data: u16) bool {
 		if(!self.state.chunk.liesInChunk(position[0], position[1], position[2])) return true;
 
 		const blockWithData = Block{.typ = block.typ, .data = data};
 		return self.state.chunk.updateBlockIfAir(position[0], position[1], position[2], blockWithData);
+	}
+	fn placeBranch(self: *@This(), position: Vec3i, block: Block, data: u16) bool {
+		if(!self.state.chunk.liesInChunk(position[0], position[1], position[2])) return true;
+
+		const currentBlock = self.state.chunk.getBlock(position[0], position[1], position[2]);
+		if(currentBlock.typ != 0 and currentBlock.typ != self.blocks.leaves.typ) return false;
+
+		const blockWithData = Block{.typ = block.typ, .data = data};
+		self.state.chunk.updateBlock(position[0], position[1], position[2], blockWithData);
+		return true;
+	}
+	fn placeSphere(self: *@This(), pos: Vec3i, block: Block, radius: f32) void {
+		if(radius <= 0) return;
+
+		const radiusInt: i32 = @intFromFloat(@ceil(radius));
+		const diameterInt: usize = 2 * @as(usize, @intCast(radiusInt));
+
+		for(0..diameterInt) |i| {
+			for(0..diameterInt) |j| {
+				for(0..diameterInt) |k| {
+					{
+						const x = @as(f32, @floatFromInt(i)) - @ceil(radius);
+						const y = @as(f32, @floatFromInt(j)) - @ceil(radius);
+						const z = @as(f32, @floatFromInt(k)) - @ceil(radius);
+						const squareDistance = (x*x + y*y + z*z);
+						const squareMaxDistance = radius*radius;
+						if(squareDistance > squareMaxDistance) continue;
+					}
+					{
+						const x = @as(i32, @intCast(i)) - radiusInt;
+						const y = @as(i32, @intCast(j)) - radiusInt;
+						const z = @as(i32, @intCast(k)) - radiusInt;
+
+						_ = self.place(.{pos[0] + x, pos[1] + y, pos[2] + z}, block, 0);
+					}
+				}
+			}
+		}
 	}
 };
 
@@ -228,6 +258,7 @@ pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) 
 				.branchSegmentSeriesVariants = segment.getChild("branchSegmentSeriesVariants").clone(arenaAllocator),
 				.leavesChance = segment.get(f32, "leavesChance", 0.0),
 				.leavesBlobChance = segment.get(f32, "leavesBlobChance", 0.0),
+				.leavesBlobRadius = segment.get(f32, "leavesBlobRadius", 0.0),
 				.mushroomChance = segment.get(f32, "mushroomChance", 0.0),
 				.blocks = .{
 					.leaves = parseBlock(blocks.get([]const u8, "leaves", "cubyz:oak_leaves")),

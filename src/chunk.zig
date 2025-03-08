@@ -440,6 +440,16 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 		return false;
 	}
 
+	/// Updates a block unconditionally.
+	pub fn updateBlock(self: *ServerChunk, _x: i32, _y: i32, _z: i32, newBlock: Block) void {
+		main.utils.assertLocked(&self.mutex);
+		const x = _x >> self.super.voxelSizeShift;
+		const y = _y >> self.super.voxelSizeShift;
+		const z = _z >> self.super.voxelSizeShift;
+		const index = getIndex(x, y, z);
+		self.super.data.setValue(index, newBlock);
+	}
+
 	/// Updates a block if it is inside this chunk. Should be used in generation to prevent accidently storing these as changes.
 	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
 	pub fn updateBlockInGeneration(self: *ServerChunk, _x: i32, _y: i32, _z: i32, newBlock: Block) void {
