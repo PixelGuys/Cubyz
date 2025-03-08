@@ -16,7 +16,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:tree",
-			.chance = 0.015,
+			.chance = 0.005,
 			.segments = .{
 				.{
 					.height = 2,
@@ -56,83 +56,14 @@
 					.branchMaxCountPerLevel = 2,
 					.branchSegmentSeriesVariants = .{
 						.{
-							.forward = .{
-								.right = .{
-									.forward = .{}
-								},
+							.left = .{
 								.forward = .{
-									.left = .{
-										.forward = .{
-											.forward = .{}
-										}
-									},
-									.forward = .{
-										.right = .{},
-										.forward = .{}
-									}
-								}
-							}
-						},
-						.{
-							.forward = .{
-								.left = .{
 									.forward = .{
 										.right = .{
-											.left = .{},
-											.forward = .{}
-										}
-									}
-								},
-								.right = .{
-									.left = .{
-										.forward = .{
-											.forward = .{},
-											.right = .{
+											.left = .{
 												.forward = .{
 													.forward = .{}
-												}
-											}
-										}
-									}
-								}
-							}
-						},
-						.{
-							.forward = .{
-								.left = .{
-									.forward = .{
-										.right = .{},
-										.forward = .{
-											.left = .{
-												.forward = .{}
-											},
-											.forward = .{}
-										},
-									}
-								},
-								.right = .{
-									.left = .{
-										.forward = .{
-											.right = .{
-												.forward = .{
-													.forward = .{}
-												}
-											},
-											.forward = .{
-												.forward = .{}
-											},
-										}
-									}
-								}
-							}
-						},
-						.{
-							.forward = .{
-								.left = .{
-									.forward = .{
-										.right = .{.forward = .{}},
-										.forward = .{
-											.left = .{
+												},
 												.right = .{
 													.forward = .{}
 												}
@@ -141,48 +72,51 @@
 									}
 								}
 							},
-							.right = .{
-								.forward = .{
-									.forward = .{
-										.left = .{.forward = .{}},
-										.forward = .{
-											.right = .{
-												.forward = .{}
-											}
-										}
-									}
-								}
-							},
-						},
-						.{
 							.forward = .{
-								.right = .{
-									.forward = .{
-										.left = .{
-											.forward = .{
-												.forward = .{}
-											},
-										},
-										.forward = .{
-											.forward = .{}
-										}
-									}
-								}
-							},
-							.left = .{
 								.forward = .{
-									.forward = .{
+									.left = .{
 										.right = .{
 											.forward = .{
-												.left = .{},
 												.forward = .{
-													.forward = .{}
-												},
+													.left = .{
+														.forward = .{}
+													},
+													.forward = .{
+														.right = .{},
+														.forward = .{}
+													}
+												}
 											}
 										}
 									}
-								}
-							}
+								},
+								.right = .{
+									.left = .{
+										.right = .{
+											.left = .{
+												.forward = .{
+													.forward = .{},
+													.right = .{},
+												}
+											}
+										}
+									},
+									.forward = .{
+										.forward = .{
+											.right = .{
+												.forward = .{
+													.left = .{
+														.forward = .{}
+													},
+												}
+											},
+											.forward = .{
+												.forward = .{}
+											}
+										}
+									}
+								},
+							},
 						}
 					},
 					.leavesChance = 0.0,
@@ -197,128 +131,67 @@
 				.{
 					.height = 5,
 					.branchChance = 0.25,
-					.branchSpacing = 1,
+					.branchSpacing = 2,
 					.branchSpawnMode = .alternating_spaced,
 					.branchMaxCount = 15,
 					.branchMaxCountPerLevel = 2,
 					.branchSegmentSeriesVariants = .{
 						.{
 							.forward = .{
-								.right = .{
-									.forward = .{}
-								},
-								.forward = .{
-									.left = .{
-										.forward = .{
-											.forward = .{}
-										}
-									},
-									.forward = .{
-										.right = .{},
-										.forward = .{}
-									}
-								}
-							}
-						},
-						.{
-							.left = .{
-								.forward = .{
-									.right = .{
-										.left = .{},
-										.forward = .{}
-									}
-								}
-							},
-							.right = .{
 								.left = .{
-									.forward = .{
-										.forward = .{},
+									.up = .{
+										.forward = .{
+											.forward = .{
+												.up = .{
+													.left = .{
+														.right = .{
+															.forward = .{
+																.forward = .{}
+															}
+														}
+													},
+													.right = .{
+														.forward = .{
+															.forward = .{}
+														}
+													}
+												}
+											}
+										},
 										.right = .{
 											.forward = .{
 												.forward = .{}
 											}
 										}
 									}
-								}
-							}
-						},
-						.{
-							.forward = .{
-								.left = .{
-									.forward = .{
-										.right = .{},
-										.forward = .{
-											.left = .{},
-											.forward = .{}
-										},
-									}
 								},
 								.right = .{
-									.left = .{
+									.up = .{
 										.forward = .{
-											.right = .{
+											.up = .{
 												.forward = .{
-													.forward = .{}
+													.right = .{
+														.left = .{
+															.forward = .{
+																.forward = .{}
+															}
+														}
+													},
+													.left = .{
+														.right = .{
+															.forward = .{}
+														}
+													}
 												}
 											},
-											.forward = .{},
-										}
-									}
-								}
-							}
-						},
-						.{
-							.forward = .{
-								.left = .{
-									.forward = .{
-										.right = .{},
-										.forward = .{
 											.left = .{
-												.right = .{
+												.forward = .{
 													.forward = .{}
 												}
 											}
 										}
 									}
-								}
-							},
-							.right = .{
-								.forward = .{
-									.forward = .{
-										.left = .{},
-										.forward = .{
-											.right = .{
-												.forward = .{}
-											}
-										}
-									}
-								}
-							},
-						},
-						.{
-							.forward = .{
-								.right = .{
-									.forward = .{
-										.left = .{
-											.forward = .{},
-										},
-										.forward = .{}
-									}
-								}
-							},
-							.left = .{
-								.forward = .{
-									.forward = .{
-										.right = .{
-											.forward = .{
-												.left = .{},
-												.forward = .{
-													.forward = .{}
-												},
-											}
-										}
-									}
-								}
+								},
 							}
 						}
 					},
@@ -339,12 +212,24 @@
 					.branchMaxCount = 3,
 					.branchMaxCountPerLevel = 2,
 					.branchSegmentSeriesVariants = .{
-						.{.forward = .{}},
-						.{.left = .{}},
-						.{.right = .{}},
-						.{.forward = .{}, .left = .{}},
-						.{.forward = .{}, .right = .{}},
-						.{.forward = .{}, .right = .{}, .left = .{}},
+						.{
+							.up = .{
+								.forward = .{
+									.up = .{
+										.left = .{
+											.up = .{}
+										}
+									}
+								},
+								.right = .{
+									.up = .{
+										.forward = .{
+											.up = .{}
+										}
+									}
+								}
+							}
+						}
 					},
 					.leavesChance = 0.0,
 					.leavesBlobChance = 0.0,

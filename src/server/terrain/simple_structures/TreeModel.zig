@@ -159,6 +159,7 @@ const Stem = struct {
 	}
 	fn placeBranch(self: @This(), state: *TreeState, branchGenerator: *BranchGenerator, direction: Neighbor, position: Vec3i) bool {
 		if(self.branchSegmentSeriesVariants.isNull()) return false;
+		if(self.branchSegmentSeriesVariants.array.items.len == 0) return false;
 
 		const branchVariantIndex = random.nextInt(usize, state.seed) % self.branchSegmentSeriesVariants.array.items.len;
 		const branchSeries = self.branchSegmentSeriesVariants.getChildAtIndex(branchVariantIndex);
@@ -212,25 +213,26 @@ const BranchGenerator = struct {
 	leavesBlobRadius: f32,
 
 	pub fn generate(self: *@This(), direction: Neighbor, position: Vec3i, series: ZonElement) bool {
-		return junction(self, direction, position, series);
+		return junction(self, direction, direction, position, series);
 	}
-	fn junction(self: *@This(), direction: Neighbor, position: Vec3i, series: ZonElement) bool {
+	fn junction(self: *@This(), horizontalDirection: Neighbor, direction: Neighbor, position: Vec3i, series: ZonElement) bool {
 		var leftSeries = series.getChild("left");
 		var rightSeries = series.getChild("right");
 		var forwardSeries = series.getChild("forward");
+		var upSeries = series.getChild("up");
 
 		var isLeftSuccess = false;
 		var isRightSuccess = false;
 		var isForwardSuccess = false;
-		var isTopSuccess = false;
+		var isUpSuccess = false;
 
-		const left: Neighbor = direction.left();
-		const right: Neighbor = direction.right();
-		const forward: Neighbor = direction;
+		const left: Neighbor = horizontalDirection.left();
+		const right: Neighbor = horizontalDirection.right();
+		const forward: Neighbor = horizontalDirection;
 		const up = Neighbor.dirUp;
 
 		if(!leftSeries.isNull()) {
-			isLeftSuccess = self.junction(left, position + left.relPos(), leftSeries);
+			isLeftSuccess = self.junction(left, left, position + left.relPos(), leftSeries);
 		} else {
 			if(self.leavesChance > 0 and random.nextFloat(self.state.seed) < self.leavesChance) {
 				isLeftSuccess = self.place(position + left.relPos(), self.blocks.leaves, 0);
@@ -238,7 +240,7 @@ const BranchGenerator = struct {
 		}
 
 		if(!rightSeries.isNull()){
-			isRightSuccess = self.junction(right, position + right.relPos(), rightSeries);
+			isRightSuccess = self.junction(right, right, position + right.relPos(), rightSeries);
 		} else {
 			if(self.leavesChance > 0 and random.nextFloat(self.state.seed) < self.leavesChance) {
 				isRightSuccess = self.place(position + right.relPos(), self.blocks.leaves, 0);
@@ -246,22 +248,28 @@ const BranchGenerator = struct {
 		}
 
 		if(!forwardSeries.isNull()) {
-			isForwardSuccess = self.junction(direction, position + direction.relPos(), forwardSeries);
+			isForwardSuccess = self.junction(forward, forward, position + forward.relPos(), forwardSeries);
 		} else {
 			if(self.leavesChance > 0 and random.nextFloat(self.state.seed) < self.leavesChance) {
 				isForwardSuccess = self.place(position + forward.relPos(), self.blocks.leaves, 0);
 			}
 		}
-		if(self.leavesChance > 0){
-			isTopSuccess = self.place(position + up.relPos(), self.blocks.leaves, 0);
+
+		if(!upSeries.isNull()) {
+			isUpSuccess = self.junction(forward, up, position + up.relPos(), upSeries);
+		} else {
+			if(self.leavesChance > 0 and random.nextFloat(self.state.seed) < self.leavesChance) {
+				isUpSuccess = self.place(position + up.relPos(), self.blocks.leaves, 0);
+			}
 		}
+
 		var blockData: u16 = 0;
 		blockData |= direction.reverse().bitMask();
 
 		if(isLeftSuccess) blockData |= left.bitMask();
 		if(isRightSuccess) blockData |= right.bitMask();
 		if(isForwardSuccess) blockData |= forward.bitMask();
-		if(isTopSuccess) blockData |= up.bitMask();
+		if(isUpSuccess) blockData |= up.bitMask();
 
 		const isSuccess = self.placeBranch(position, self.blocks.branch, blockData);
 
