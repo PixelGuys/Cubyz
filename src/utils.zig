@@ -1316,7 +1316,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 /// The bit size can be changed using the `resize` function.
 pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIntArray
 	return struct {
-		data: []align(64)u32 = &.{},
+		data: []align(64) u32 = &.{},
 		bitSize: u5 = 0,
 
 		const Self = @This();
