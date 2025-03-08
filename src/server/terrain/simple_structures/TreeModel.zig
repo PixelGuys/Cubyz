@@ -53,6 +53,7 @@ const Stem = struct {
 	leavesChance: f32,
 	leavesBlobChance: f32,
 	leavesBlobRadius: f32,
+	leavesBlobRadiusDelta: f32,
 	mushroomChance: f32,
 	blocks: Blocks,
 
@@ -64,7 +65,8 @@ const Stem = struct {
 			.blocks = self.blocks,
 			.leavesChance = self.leavesChance,
 			.leavesBlobChance = self.leavesBlobChance,
-			.leavesBlobRadius = self.leavesBlobRadius};
+			.leavesBlobRadius = self.leavesBlobRadius,
+			.leavesBlobRadiusDelta = self.leavesBlobRadiusDelta};
 
 		var branchCount: u32 = 0;
 		var branchCountThisLevel: u32 = 0;
@@ -83,8 +85,7 @@ const Stem = struct {
 				if(self.mushroomChance <= 0 and self.branchSpawnMode != .random) break;
 
 				if(self.mushroomChance > 0 and random.nextFloat(state.seed) < self.mushroomChance) {
-					const center = (state.height == 0) and (random.nextFloat(state.seed) < 0.5);
-					self.placeMushroom(state, state.position + direction.relPos(), direction, center);
+					self.placeMushroom(state, state.position + direction.relPos(), direction, false);
 					continue;
 				}
 				switch(self.branchSpawnMode) {
@@ -211,6 +212,7 @@ const BranchGenerator = struct {
 	leavesChance: f32,
 	leavesBlobChance: f32,
 	leavesBlobRadius: f32,
+	leavesBlobRadiusDelta: f32,
 
 	pub fn generate(self: *@This(), direction: Neighbor, position: Vec3i, series: ZonElement) bool {
 		return junction(self, direction, direction, position, series);
@@ -275,7 +277,8 @@ const BranchGenerator = struct {
 
 		if(isSuccess) {
 			if(leftSeries.isNull() and rightSeries.isNull() and forwardSeries.isNull() and self.leavesBlobChance > 0 and random.nextFloat(self.state.seed) < self.leavesBlobChance) {
-				self.placeSphere(position, self.blocks.leaves, self.leavesBlobRadius);
+				const radius = self.leavesBlobRadius + (random.nextFloat(self.state.seed) - 0.5) * self.leavesBlobRadiusDelta;
+				self.placeSphere(position, self.blocks.leaves, radius);
 			}
 		}
 
@@ -349,6 +352,7 @@ pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) 
 				.leavesChance = segment.get(f32, "leavesChance", 0.0),
 				.leavesBlobChance = segment.get(f32, "leavesBlobChance", 0.0),
 				.leavesBlobRadius = segment.get(f32, "leavesBlobRadius", 0.0),
+				.leavesBlobRadiusDelta = segment.get(f32, "leavesBlobRadiusDelta", 0.0),
 				.mushroomChance = segment.get(f32, "mushroomChance", 0.0),
 				.blocks = .{
 					.leaves = parseBlock(blocks.get([]const u8, "leaves", "cubyz:oak_leaves")),
