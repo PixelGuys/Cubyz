@@ -3,5 +3,6 @@ pub const FallenTree = @import("FallenTree.zig");
 pub const FlowerPatch = @import("FlowerPatch.zig");
 pub const GroundPatch = @import("GroundPatch.zig");
 pub const SimpleTreeModel = @import("SimpleTreeModel.zig");
+pub const TreeModel = @import("TreeModel.zig");
 pub const SimpleVegetation = @import("SimpleVegetation.zig");
 pub const Stalagmite = @import("Stalagmite.zig");

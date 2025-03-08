@@ -53,6 +53,7 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 	}
 	/// To iterate over all neighbors easily
 	pub const iterable = [_]Neighbor{@enumFromInt(0), @enumFromInt(1), @enumFromInt(2), @enumFromInt(3), @enumFromInt(4), @enumFromInt(5)};
+	pub const horizontal = [_]Neighbor{@enumFromInt(2), @enumFromInt(3), @enumFromInt(4), @enumFromInt(5)};
 	/// Marks the two dimension that are orthogonal
 	pub fn orthogonalComponents(self: Neighbor) Vec3i {
 		const arr = [_]Vec3i{
@@ -107,6 +108,16 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 				return in[@intFromEnum(val.vectorComponent())];
 			},
 		}
+	}
+
+	pub fn left(self: Neighbor) Neighbor {
+		const arr = [_]Neighbor{.dirUp, .dirDown, .dirPosY, .dirNegY, .dirNegX, .dirPosX};
+		return arr[@intFromEnum(self)];
+	}
+
+	pub fn right(self: Neighbor) Neighbor {
+		const arr = [_]Neighbor{.dirUp, .dirDown, .dirNegY, .dirPosY, .dirPosX, .dirNegX};
+		return arr[@intFromEnum(self)];
 	}
 };
 
@@ -411,6 +422,22 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 		if(oldBlock.typ == 0 or oldBlock.degradable()) {
 			self.super.data.setValue(index, newBlock);
 		}
+	}
+
+	/// Updates a block if current value is air.
+	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
+	pub fn updateBlockIfAir(self: *ServerChunk, _x: i32, _y: i32, _z: i32, newBlock: Block) bool {
+		main.utils.assertLocked(&self.mutex);
+		const x = _x >> self.super.voxelSizeShift;
+		const y = _y >> self.super.voxelSizeShift;
+		const z = _z >> self.super.voxelSizeShift;
+		const index = getIndex(x, y, z);
+		const oldBlock = self.super.data.getValue(index);
+		if(oldBlock.typ == 0) {
+			self.super.data.setValue(index, newBlock);
+			return true;
+		}
+		return false;
 	}
 
 	/// Updates a block if it is inside this chunk. Should be used in generation to prevent accidently storing these as changes.
