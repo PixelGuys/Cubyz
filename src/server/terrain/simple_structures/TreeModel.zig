@@ -56,6 +56,7 @@ const Stem = struct {
 	leavesBlobRadius: f32,
 	leavesBlobRadiusDelta: f32,
 	mushroomChance: f32,
+	stemThickness: usize,
 	blocks: Blocks,
 
 	pub fn generate(self: @This(), state: *TreeState) void {
@@ -294,7 +295,12 @@ const BranchGenerator = struct {
 		if(isSuccess) {
 			if(leftSeries.isNull() and rightSeries.isNull() and forwardSeries.isNull() and self.leavesBlobChance > 0 and random.nextFloat(self.state.seed) < self.leavesBlobChance) {
 				const radius = self.leavesBlobRadius + (random.nextFloat(self.state.seed) - 0.5) * self.leavesBlobRadiusDelta;
-				self.placeSphere(position, self.blocks.leaves, radius);
+				const pos: Vec3f = .{
+					@as(f32, @floatFromInt(position[0])) + (random.nextFloat(self.state.seed) - 0.5)*1.5,
+					@as(f32, @floatFromInt(position[1])) + (random.nextFloat(self.state.seed) - 0.5)*1.5,
+					@as(f32, @floatFromInt(position[2])) + (random.nextFloat(self.state.seed) - 0.5)*1.5};
+
+				self.placeSphere(pos, self.blocks.leaves, radius);
 			}
 		}
 
@@ -316,7 +322,7 @@ const BranchGenerator = struct {
 		self.state.chunk.updateBlock(position[0], position[1], position[2], blockWithData);
 		return true;
 	}
-	fn placeSphere(self: *@This(), pos: Vec3i, block: Block, radius: f32) void {
+	fn placeSphere(self: *@This(), pos: Vec3f, block: Block, radius: f32) void {
 		if(radius <= 0) return;
 
 		const radiusInt: i32 = @intFromFloat(@ceil(radius));
@@ -334,11 +340,11 @@ const BranchGenerator = struct {
 						if(squareDistance > squareMaxDistance) continue;
 					}
 					{
-						const x = @as(i32, @intCast(i)) - radiusInt;
-						const y = @as(i32, @intCast(j)) - radiusInt;
-						const z = @as(i32, @intCast(k)) - radiusInt;
+						const x = pos[0] + @as(f32, @floatFromInt(i)) - radius;
+						const y = pos[1] + @as(f32, @floatFromInt(j)) - radius;
+						const z = pos[2] + @as(f32, @floatFromInt(k)) - radius;
 
-						_ = self.place(.{pos[0] + x, pos[1] + y, pos[2] + z}, block, 0);
+						_ = self.place(.{@intFromFloat(x), @intFromFloat(y), @intFromFloat(z)}, block, 0);
 					}
 				}
 			}
@@ -371,6 +377,7 @@ pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) 
 				.leavesBlobRadiusDelta = segment.get(f32, "leavesBlobRadiusDelta", 0.0),
 				.branchPeak = segment.get(bool, "branchPeak", false),
 				.mushroomChance = segment.get(f32, "mushroomChance", 0.0),
+				.stemThickness = segment.get(usize, "stemThickness", 1),
 				.blocks = .{
 					.leaves = parseBlock(blocks.get([]const u8, "leaves", "cubyz:oak_leaves")),
 					.wood = parseBlock(blocks.get([]const u8, "wood", "cubyz:oak_log")),
