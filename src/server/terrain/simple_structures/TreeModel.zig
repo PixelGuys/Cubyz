@@ -24,9 +24,29 @@ const TreeModel = @This();
 
 pub const generationMode = .floor;
 
+
+const BranchSpawnMode = enum {
+	random,
+	alternating,
+	alternating_spaced,
+	alternating_random,
+	screw_right,
+	screw_left,
+	screw_random,
+
+	fn fromString(string: []const u8) @This() {
+		return std.meta.stringToEnum(@This(), string) orelse {
+			std.log.err("Couldn't find branch spawn mode {s}. Replacing it with random", .{string});
+			return .random;
+		};
+	}
+};
+
 const Stem = struct {
 	height: usize,
 	branchChance: f32,
+	branchSpacing: u32,
+	branchSpawnMode: BranchSpawnMode,
 	branchMaxCount: u32,
 	branchMaxCountPerLevel: u32,
 	branchSegmentSeriesVariants: ZonElement,
@@ -51,21 +71,80 @@ const Stem = struct {
 
 		const horizontal = [_]Neighbor{.dirPosX, .dirNegX, .dirPosY, .dirNegY};
 
+		const screwIsRight = switch(self.branchSpawnMode) {
+			.screw_right => true,
+			.screw_left => false,
+			.screw_random => random.nextFloat(state.seed) < 0.5,
+			else => false,
+		};
+
 		for(0..self.height) |_| {
 			for(horizontal) |direction| {
+				if(self.mushroomChance <= 0 and self.branchSpawnMode != .random) break;
+
 				if(self.mushroomChance > 0 and random.nextFloat(state.seed) < self.mushroomChance) {
 					const center = (state.height == 0) and (random.nextFloat(state.seed) < 0.5);
 					self.placeMushroom(state, state.position + direction.relPos(), direction, center);
 					continue;
 				}
-				if(branchCountThisLevel >= self.branchMaxCountPerLevel) continue;
-				if(self.branchChance <= 0) continue;
-				if(branchCount >= self.branchMaxCount) continue;
+				switch(self.branchSpawnMode) {
+					.random => {
+						if(branchCountThisLevel >= self.branchMaxCountPerLevel) continue;
+						if(self.branchChance <= 0) continue;
+						if(branchCount >= self.branchMaxCount) continue;
+						if(random.nextFloat(state.seed) > self.branchChance) continue;
 
-				const isSuccess: u32 = @intFromBool(self.placeBranch(state, &branchGenerator, direction, state.position));
-				branchCount += isSuccess;
-				branchCountThisLevel += isSuccess;
-				continue;
+						const isSuccess: u32 = @intFromBool(self.placeBranch(state, &branchGenerator, direction, state.position));
+						branchCount += isSuccess;
+						branchCountThisLevel += isSuccess;
+						continue;
+					},
+					else => {},
+				}
+			}
+			switch(self.branchSpawnMode){
+				.alternating => {
+					_ = self.placeBranch(state, &branchGenerator, state.spawnAxis, state.position);
+					_ = self.placeBranch(state, &branchGenerator, state.spawnAxis.reverse(), state.position);
+					state.spawnAxis = state.spawnAxis.right();
+				},
+				.alternating_spaced => {
+					if(state.alternateBranchSpacing >= self.branchSpacing) {
+						_ = self.placeBranch(state, &branchGenerator, state.spawnAxis, state.position);
+						_ = self.placeBranch(state, &branchGenerator, state.spawnAxis.reverse(), state.position);
+						state.spawnAxis = state.spawnAxis.right();
+						state.alternateBranchSpacing = 0;
+					} else {
+						state.alternateBranchSpacing += 1;
+					}
+				},
+				.alternating_random => blk: {
+					if(branchCountThisLevel >= self.branchMaxCountPerLevel) break :blk;
+					if(self.branchChance <= 0) break :blk;
+					if(branchCount >= self.branchMaxCount) break :blk;
+
+					if(random.nextFloat(state.seed) < self.branchChance) {
+						const isSuccess = @intFromBool(self.placeBranch(state, &branchGenerator, state.spawnAxis, state.position));
+						branchCount += isSuccess;
+						branchCountThisLevel += isSuccess;
+					}
+					if(random.nextFloat(state.seed) < self.branchChance) {
+						const isSuccess = @intFromBool(self.placeBranch(state, &branchGenerator, state.spawnAxis.reverse(), state.position));
+						branchCount += isSuccess;
+						branchCountThisLevel += isSuccess;
+					}
+
+					state.spawnAxis = state.spawnAxis.right();
+				},
+				.screw_right, .screw_left, .screw_random => {
+					_ = self.placeBranch(state, &branchGenerator, state.spawnAxis, state.position);
+					if(screwIsRight) {
+						state.spawnAxis = state.spawnAxis.right();
+					} else {
+						state.spawnAxis = state.spawnAxis.left();
+					}
+				},
+				else => {},
 			}
 			self.placeBlock(state, state.position, self.blocks.wood);
 
@@ -80,7 +159,6 @@ const Stem = struct {
 	}
 	fn placeBranch(self: @This(), state: *TreeState, branchGenerator: *BranchGenerator, direction: Neighbor, position: Vec3i) bool {
 		if(self.branchSegmentSeriesVariants.isNull()) return false;
-		if(random.nextFloat(state.seed) > self.branchChance) return false;
 
 		const branchVariantIndex = random.nextInt(usize, state.seed) % self.branchSegmentSeriesVariants.array.items.len;
 		const branchSeries = self.branchSegmentSeriesVariants.getChildAtIndex(branchVariantIndex);
@@ -122,6 +200,8 @@ const TreeState = struct {
 	chunk: *ServerChunk,
 	position: Vec3i,
 	height: usize,
+	spawnAxis: Neighbor,
+	alternateBranchSpacing: u32,
 };
 
 const BranchGenerator = struct {
@@ -253,6 +333,8 @@ pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) 
 			.{
 				.height = segment.get(usize, "height", 0),
 				.branchChance = segment.get(f32, "branchChance", 0.0),
+				.branchSpacing = segment.get(u32, "branchSpacing", 0),
+				.branchSpawnMode = BranchSpawnMode.fromString(segment.get([]const u8, "branchSpawnMode", "random")),
 				.branchMaxCount = segment.get(u32, "branchMaxCount", 0),
 				.branchMaxCountPerLevel = segment.get(u32, "branchMaxCountPerLevel", std.math.maxInt(u32)),
 				.branchSegmentSeriesVariants = segment.getChild("branchSegmentSeriesVariants").clone(arenaAllocator),
@@ -293,7 +375,8 @@ pub fn generate(self: *@This(), x: i32, y: i32, z: i32, chunk: *ServerChunk, cav
 	if(chunk.super.pos.voxelSize >= 2) {
 		return;
 	}
-	var state = TreeState{.seed = seed, .chunk = chunk, .position = .{x, y, z}, .height = 0};
+	const spawnAxis =  if(random.nextFloat(seed) < 0.5) Neighbor.dirPosX else Neighbor.dirPosY;
+	var state = TreeState{.seed = seed, .chunk = chunk, .position = .{x, y, z}, .height = 0, .spawnAxis = spawnAxis, .alternateBranchSpacing = 0};
 
 	for(self.segments.items) |segment| {
 		segment.generate(&state);

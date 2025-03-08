@@ -16,7 +16,7 @@
 	.structures = .{
 		.{
 			.id = "cubyz:tree",
-			.chance = 0.01,
+			.chance = 0.015,
 			.segments = .{
 				.{
 					.height = 2,
@@ -29,6 +29,8 @@
 				.{
 					.height = 4,
 					.branchChance = 0.1,
+					.branchSpacing = 1,
+					.branchSpawnMode = .alternating_spaced,
 					.branchMaxCount = 3,
 					.branchSegmentSeriesVariants = .{
 						.{.forward = .{}},
@@ -48,41 +50,47 @@
 				.{
 					.height = 6,
 					.branchChance = 0.25,
+					.branchSpacing = 1,
+					.branchSpawnMode = .alternating_spaced,
 					.branchMaxCount = 18,
 					.branchMaxCountPerLevel = 2,
 					.branchSegmentSeriesVariants = .{
 						.{
-							.right = .{
-								.forward = .{}
-							},
 							.forward = .{
-								.left = .{
-									.forward = .{
-										.forward = .{}
-									}
+								.right = .{
+									.forward = .{}
 								},
 								.forward = .{
-									.right = .{},
-									.forward = .{}
+									.left = .{
+										.forward = .{
+											.forward = .{}
+										}
+									},
+									.forward = .{
+										.right = .{},
+										.forward = .{}
+									}
 								}
 							}
 						},
 						.{
-							.left = .{
-								.forward = .{
-									.right = .{
-										.left = .{},
-										.forward = .{}
-									}
-								}
-							},
-							.right = .{
+							.forward = .{
 								.left = .{
 									.forward = .{
-										.forward = .{},
 										.right = .{
-											.forward = .{
-												.forward = .{}
+											.left = .{},
+											.forward = .{}
+										}
+									}
+								},
+								.right = .{
+									.left = .{
+										.forward = .{
+											.forward = .{},
+											.right = .{
+												.forward = .{
+													.forward = .{}
+												}
 											}
 										}
 									}
@@ -95,7 +103,9 @@
 									.forward = .{
 										.right = .{},
 										.forward = .{
-											.left = .{},
+											.left = .{
+												.forward = .{}
+											},
 											.forward = .{}
 										},
 									}
@@ -108,7 +118,9 @@
 													.forward = .{}
 												}
 											},
-											.forward = .{},
+											.forward = .{
+												.forward = .{}
+											},
 										}
 									}
 								}
@@ -118,7 +130,7 @@
 							.forward = .{
 								.left = .{
 									.forward = .{
-										.right = .{},
+										.right = .{.forward = .{}},
 										.forward = .{
 											.left = .{
 												.right = .{
@@ -132,7 +144,7 @@
 							.right = .{
 								.forward = .{
 									.forward = .{
-										.left = .{},
+										.left = .{.forward = .{}},
 										.forward = .{
 											.right = .{
 												.forward = .{}
@@ -147,9 +159,13 @@
 								.right = .{
 									.forward = .{
 										.left = .{
-											.forward = .{},
+											.forward = .{
+												.forward = .{}
+											},
 										},
-										.forward = .{}
+										.forward = .{
+											.forward = .{}
+										}
 									}
 								}
 							},
@@ -170,7 +186,8 @@
 						}
 					},
 					.leavesChance = 0.0,
-					.leavesBlobChance = 1.0,
+					.leavesBlobChance = 0.0,
+					.leavesBlobRadius = 2.3,
 					.blocks = .{
 						.leaves = "cubyz:oak_leaves",
 						.wood = "cubyz:oak_log",
@@ -180,22 +197,26 @@
 				.{
 					.height = 5,
 					.branchChance = 0.25,
+					.branchSpacing = 1,
+					.branchSpawnMode = .alternating_spaced,
 					.branchMaxCount = 15,
 					.branchMaxCountPerLevel = 2,
 					.branchSegmentSeriesVariants = .{
 						.{
-							.right = .{
-								.forward = .{}
-							},
 							.forward = .{
-								.left = .{
-									.forward = .{
-										.forward = .{}
-									}
+								.right = .{
+									.forward = .{}
 								},
 								.forward = .{
-									.right = .{},
-									.forward = .{}
+									.left = .{
+										.forward = .{
+											.forward = .{}
+										}
+									},
+									.forward = .{
+										.right = .{},
+										.forward = .{}
+									}
 								}
 							}
 						},
@@ -302,7 +323,8 @@
 						}
 					},
 					.leavesChance = 0.0,
-					.leavesBlobChance = 1.0,
+					.leavesBlobChance = 0.0,
+					.leavesBlobRadius = 2.3,
 					.blocks = .{
 						.leaves = "cubyz:oak_leaves",
 						.wood = "cubyz:oak_log",
@@ -312,6 +334,8 @@
 				.{
 					.height = 2,
 					.branchChance = 1.0,
+					.branchSpacing = 1,
+					.branchSpawnMode = .alternating_spaced,
 					.branchMaxCount = 3,
 					.branchMaxCountPerLevel = 2,
 					.branchSegmentSeriesVariants = .{
@@ -322,8 +346,9 @@
 						.{.forward = .{}, .right = .{}},
 						.{.forward = .{}, .right = .{}, .left = .{}},
 					},
-					.leavesChance = 1.0,
-					.leavesBlobChance = 1.0,
+					.leavesChance = 0.0,
+					.leavesBlobChance = 0.0,
+					.leavesBlobRadius = 1.5,
 					.blocks = .{
 						.leaves = "cubyz:oak_leaves",
 						.wood = "cubyz:oak_log",
