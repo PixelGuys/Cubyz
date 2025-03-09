@@ -7,11 +7,10 @@ const chunk = main.chunk;
 const chunk_meshing = @import("chunk_meshing.zig");
 const mesh_storage = @import("mesh_storage.zig");
 
-var memoryPool: std.heap.MemoryPool(ChannelChunk) = undefined;
-var memoryPoolMutex: std.Thread.Mutex = .{};
+var memoryPool: main.heap.MemoryPool(ChannelChunk) = undefined;
 
 pub fn init() void {
-	memoryPool = .init(main.globalAllocator.allocator);
+	memoryPool = .init(main.globalAllocator);
 }
 
 pub fn deinit() void {
@@ -33,9 +32,7 @@ pub const ChannelChunk = struct {
 	isSun: bool,
 
 	pub fn init(ch: *chunk.Chunk, isSun: bool) *ChannelChunk {
-		memoryPoolMutex.lock();
-		const self = memoryPool.create() catch unreachable;
-		memoryPoolMutex.unlock();
+		const self = memoryPool.create();
 		self.lock = .{};
 		self.ch = ch;
 		self.isSun = isSun;
@@ -45,9 +42,7 @@ pub const ChannelChunk = struct {
 
 	pub fn deinit(self: *ChannelChunk) void {
 		self.data.deinit();
-		memoryPoolMutex.lock();
 		memoryPool.destroy(self);
-		memoryPoolMutex.unlock();
 	}
 
 	const Entry = struct {

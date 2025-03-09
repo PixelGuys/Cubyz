@@ -488,3 +488,87 @@ pub const NeverFailingArenaAllocator = struct { // MARK: NeverFailingArena
 		}
 	}
 };
+
+/// basically a copy of std.heap.MemoryPool, except it's thread-safe and has some more diagnostics.
+pub fn MemoryPool(Item: type) type {
+	return struct {
+		const Pool = @This();
+
+		/// Size of the memory pool items. This is not necessarily the same
+		/// as `@sizeOf(Item)` as the pool also uses the items for internal means.
+		pub const item_size = @max(@sizeOf(Node), @sizeOf(Item));
+
+		// This needs to be kept in sync with Node.
+		const node_alignment = @alignOf(*anyopaque);
+
+		/// Alignment of the memory pool items. This is not necessarily the same
+		/// as `@alignOf(Item)` as the pool also uses the items for internal means.
+		pub const item_alignment = @max(node_alignment, @alignOf(Item));
+
+		const Node = struct {
+			next: ?*align(item_alignment) @This(),
+		};
+		const NodePtr = *align(item_alignment) Node;
+		const ItemPtr = *align(item_alignment) Item;
+
+		arena: NeverFailingArenaAllocator,
+		free_list: ?NodePtr = null,
+		freeAllocations: usize = 0,
+		totalAllocations: usize = 0,
+		mutex: std.Thread.Mutex = .{},
+
+		/// Creates a new memory pool.
+		pub fn init(allocator: NeverFailingAllocator) Pool {
+			return .{.arena = NeverFailingArenaAllocator.init(allocator)};
+		}
+
+		/// Destroys the memory pool and frees all allocated memory.
+		pub fn deinit(pool: *Pool) void {
+			if(pool.freeAllocations != pool.totalAllocations) {
+				std.log.err("Memory pool of type {s} leaked {} elements", .{@typeName(Item), pool.totalAllocations - pool.freeAllocations});
+			} else {
+				std.log.info("Memory pool of type {s} contained a total of {} MiB ({} elements)", .{@typeName(Item), pool.totalAllocations*item_size >> 20, pool.totalAllocations});
+			}
+			pool.arena.deinit();
+			pool.* = undefined;
+		}
+
+		/// Creates a new item and adds it to the memory pool.
+		pub fn create(pool: *Pool) ItemPtr {
+			pool.mutex.lock();
+			defer pool.mutex.unlock();
+			const node = if(pool.free_list) |item| blk: {
+				pool.free_list = item.next;
+				break :blk item;
+			} else @as(NodePtr, @ptrCast(pool.allocNew()));
+
+			pool.freeAllocations -= 1;
+			const ptr = @as(ItemPtr, @ptrCast(node));
+			ptr.* = undefined;
+			return ptr;
+		}
+
+		/// Destroys a previously created item.
+		/// Only pass items to `ptr` that were previously created with `create()` of the same memory pool!
+		pub fn destroy(pool: *Pool, ptr: ItemPtr) void {
+			pool.mutex.lock();
+			defer pool.mutex.unlock();
+			ptr.* = undefined;
+
+			const node = @as(NodePtr, @ptrCast(ptr));
+			node.* = Node{
+				.next = pool.free_list,
+			};
+			pool.free_list = node;
+			pool.freeAllocations += 1;
+		}
+
+		fn allocNew(pool: *Pool) *align(item_alignment) [item_size]u8 {
+			main.utils.assertLocked(&pool.mutex);
+			pool.totalAllocations += 1;
+			pool.freeAllocations += 1;
+			const mem = pool.arena.allocator().alignedAlloc(u8, item_alignment, item_size);
+			return mem[0..item_size]; // coerce slice to array pointer
+		}
+	};
+}
