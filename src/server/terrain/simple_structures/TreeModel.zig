@@ -441,28 +441,37 @@ const BranchGenerator = struct {
 
 		if(radius < 1.0) return;
 
-		const radiusInt: i32 = @intFromFloat(@ceil(radius));
-		const diameterInt: usize = 2*@as(usize, @intCast(radiusInt));
+		const radiusInt: usize = @intFromFloat(@ceil(radius));
 
-		const zStart: usize = if(leavesSpawnMode == .half_sphere) @intCast(radiusInt) else 0;
-
-		for(0..diameterInt) |i| {
-			for(0..diameterInt) |j| {
-				for(zStart..diameterInt) |k| {
+		for(0..radiusInt) |i| {
+			for(0..radiusInt) |j| {
+				for(0..radiusInt) |k| {
 					{
-						const x = @as(f32, @floatFromInt(i)) - @ceil(radius);
-						const y = @as(f32, @floatFromInt(j)) - @ceil(radius);
-						const z = @as(f32, @floatFromInt(k)) - @ceil(radius);
+						const x = @as(f32, @floatFromInt(i));
+						const y = @as(f32, @floatFromInt(j));
+						const z = @as(f32, @floatFromInt(k));
 						const squareDistance = (x*x + y*y + z*z);
 						const squareMaxDistance = radius*radius;
 						if(squareDistance > squareMaxDistance) continue;
 					}
-					{
-						const x = pos[0] + @as(f32, @floatFromInt(i)) - radius;
-						const y = pos[1] + @as(f32, @floatFromInt(j)) - radius;
-						const z = pos[2] + @as(f32, @floatFromInt(k)) - radius;
+					for(0..2) |iX| {
+						const fX = @as(f32, @floatFromInt(iX)) - 0.5;
 
-						_ = self.place(.{@intFromFloat(x), @intFromFloat(y), @intFromFloat(z)}, self.blocks.leaves, 0);
+						for(0..2) |iY| {
+							const fY = @as(f32, @floatFromInt(iY)) - 0.5;
+
+							for(0..2) |iZ| {
+								const fZ = @as(f32, @floatFromInt(iZ)) - 0.5;
+								if(leavesSpawnMode == .half_sphere and fZ < 0) continue;
+
+								const x = pos[0] + @as(f32, @floatFromInt(i))*std.math.sign(fX);
+								const y = pos[1] + @as(f32, @floatFromInt(j))*std.math.sign(fY);
+								const z = pos[2] + @as(f32, @floatFromInt(k))*std.math.sign(fZ);
+
+								_ = self.place(.{@intFromFloat(x), @intFromFloat(y), @intFromFloat(z)}, self.blocks.leaves, 0);
+
+							}
+						}
 					}
 				}
 			}
