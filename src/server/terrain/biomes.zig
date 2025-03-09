@@ -149,7 +149,7 @@ pub fn hashGeneric(input: anytype) u64 {
 			if(@hasDecl(T, "getHash")) {
 				break :blk input.getHash();
 			}
-			@compileError("Unsupported union type  " ++ @typeName(T));
+			@compileError("Unsupported type  " ++ @typeName(T));
 		},
 		.@"struct" => blk: {
 			if(@hasDecl(T, "getHash")) {
