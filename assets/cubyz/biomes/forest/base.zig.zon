@@ -67,15 +67,66 @@
 						.branch = "cubyz:oak_branch",
 					},
 					.branchSegmentSeriesVariants = .{.{
-						.left = .{.forward = .{.forward = .{.right = .{.left = .{.forward = .{.forward = .{}}, .right = .{.forward = .{}}}}}}},
+						.left = .{
+							.forward = .{
+								.forward = .{
+									.right = .{
+										.left = .{
+											.forward = .{
+												.forward = .{},
+											},
+											.right = .{
+												.forward = .{},
+											},
+										},
+									},
+								},
+							},
+						},
 						.forward = .{
-							.forward = .{.left = .{.right = .{.forward = .{.forward = .{.left = .{.forward = .{}}, .forward = .{.right = .{}, .forward = .{}}}}}}},
-							.right = .{.left = .{.right = .{.left = .{.forward = .{
-								.forward = .{},
-								.right = .{},
-							}}}}, .forward = .{.forward = .{.right = .{.forward = .{
-								.left = .{.forward = .{}},
-							}}, .forward = .{.forward = .{}}}}},
+							.forward = .{
+								.left = .{
+									.right = .{
+										.forward = .{
+											.forward = .{
+												.left = .{
+													.forward = .{},
+												},
+												.forward = .{
+													.right = .{},
+													.forward = .{},
+												},
+											},
+										},
+									},
+								},
+							},
+							.right = .{
+								.left = .{
+									.right = .{
+										.left = .{
+											.forward = .{
+												.forward = .{},
+												.right = .{},
+											},
+										},
+									},
+								},
+								.forward = .{
+									.forward = .{
+										.right = .{
+											.forward = .{
+												.left = .{
+													.forward = .{},
+												},
+											},
+										},
+										.forward = .{
+											.forward = .{},
+										},
+									},
+								},
+							},
 						},
 					}},
 				},
@@ -97,8 +148,60 @@
 						.branch = "cubyz:oak_branch",
 					},
 					.branchSegmentSeriesVariants = .{.{.forward = .{
-						.left = .{.up = .{.forward = .{.forward = .{.up = .{.left = .{.right = .{.forward = .{.forward = .{}}}}, .right = .{.forward = .{.forward = .{}}}}}}, .right = .{.forward = .{.forward = .{}}}}},
-						.right = .{.up = .{.forward = .{.up = .{.forward = .{.right = .{.left = .{.forward = .{.forward = .{}}}}, .left = .{.right = .{.forward = .{}}}}}, .left = .{.forward = .{.forward = .{}}}}}},
+						.left = .{
+							.up = .{
+								.forward = .{
+									.forward = .{
+										.up = .{
+											.left = .{
+												.right = .{
+													.forward = .{
+														.forward = .{},
+													},
+												},
+											},
+											.right = .{
+												.forward = .{
+													.forward = .{},
+												},
+											},
+										},
+									},
+								},
+								.right = .{
+									.forward = .{
+										.forward = .{},
+									},
+								},
+							},
+						},
+						.right = .{
+							.up = .{
+								.forward = .{
+									.up = .{
+										.forward = .{
+											.right = .{
+												.left = .{
+													.forward = .{
+														.forward = .{},
+													},
+												},
+											},
+											.left = .{
+												.right = .{
+													.forward = .{},
+												},
+											},
+										},
+									},
+									.left = .{
+										.forward = .{
+											.forward = .{},
+										},
+									},
+								},
+							},
+						},
 					}}},
 				},
 				.{
@@ -117,7 +220,26 @@
 						.wood = "cubyz:oak_log",
 						.branch = "cubyz:oak_branch",
 					},
-					.branchSegmentSeriesVariants = .{.{.up = .{.forward = .{.up = .{.left = .{.up = .{}}}}, .right = .{.up = .{.forward = .{.up = .{}}}}}}},
+					.branchSegmentSeriesVariants = .{
+						.{
+							.up = .{
+								.forward = .{
+									.up = .{
+										.left = .{
+											.up = .{},
+										},
+									},
+								},
+								.right = .{
+									.up = .{
+										.forward = .{
+											.up = .{},
+										},
+									},
+								},
+							},
+						},
+					},
 				},
 			},
 		},

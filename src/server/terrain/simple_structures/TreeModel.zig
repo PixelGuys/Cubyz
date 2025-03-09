@@ -192,7 +192,7 @@ const Stem = struct {
 	}
 	fn placeBlock(_: @This(), state: *TreeState, position: Vec3i, block: Block) void {
 		if(!state.chunk.liesInChunk(position[0], position[1], position[2])) return;
-		state.chunk.updateBlock(position[0], position[1], position[2], block);
+		state.chunk.updateBlockInGeneration(position[0], position[1], position[2], block);
 	}
 	fn placeBranch(self: @This(), state: *TreeState, branchGenerator: *BranchGenerator, direction: Neighbor, position: Vec3i) bool {
 		if(self.branchSegmentSeriesVariants.isNull()) return false;
@@ -220,7 +220,7 @@ const Stem = struct {
 		const blockData = self.directionToMushroomData(direction, center);
 		const blockWithData = Block{.typ = self.blocks.mushroom.typ, .data = blockData};
 
-		_ = state.chunk.updateBlock(placePosition[0], placePosition[1], placePosition[2], blockWithData);
+		_ = state.chunk.updateBlockInGeneration(placePosition[0], placePosition[1], placePosition[2], blockWithData);
 	}
 	fn directionToMushroomData(_: @This(), direction: Neighbor, center: bool) u16 {
 		if(center) {
@@ -350,7 +350,7 @@ const BranchGenerator = struct {
 		if(self.state.chunk.getBlock(position[0], position[1], position[2]).typ != 0) return false;
 
 		const blockWithData = Block{.typ = block.typ, .data = data};
-		self.state.chunk.updateBlock(position[0], position[1], position[2], blockWithData);
+		self.state.chunk.updateBlockInGeneration(position[0], position[1], position[2], blockWithData);
 		return true;
 	}
 	fn isAirOrLeaves(self: *@This(), position: Vec3i) bool {
@@ -363,7 +363,7 @@ const BranchGenerator = struct {
 		if(!self.state.chunk.liesInChunk(position[0], position[1], position[2])) return true;
 
 		const blockWithData = Block{.typ = block.typ, .data = data};
-		self.state.chunk.updateBlock(position[0], position[1], position[2], blockWithData);
+		self.state.chunk.updateBlockInGeneration(position[0], position[1], position[2], blockWithData);
 		return true;
 	}
 	fn placeSphere(self: *@This(), pos: Vec3f, block: Block, radius: f32) void {
