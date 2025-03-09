@@ -350,7 +350,8 @@ const BranchGenerator = struct {
 		if(self.state.chunk.getBlock(position[0], position[1], position[2]).typ != 0) return false;
 
 		const blockWithData = Block{.typ = block.typ, .data = data};
-		return self.state.chunk.updateBlock(position[0], position[1], position[2], blockWithData);
+		self.state.chunk.updateBlock(position[0], position[1], position[2], blockWithData);
+		return true;
 	}
 	fn isAirOrLeaves(self: *@This(), position: Vec3i) bool {
 		if(!self.state.chunk.liesInChunk(position[0], position[1], position[2])) return true;
