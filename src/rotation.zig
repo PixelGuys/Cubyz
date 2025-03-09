@@ -338,14 +338,14 @@ pub const RotationModes = struct {
 			return true;
 		}
 	};
-	pub const Pipe = struct { // MARK: Pipe
-		pub const id: []const u8 = "pipe";
+	pub const Branch = struct { // MARK: Branch
+		pub const id: []const u8 = "branch";
 		pub const dependsOnNeighbors = true;
-		var pipeModels: std.AutoHashMap(u32, u16) = undefined;
-		const PipeData = packed struct(u6) {
+		var branchModels: std.AutoHashMap(u32, u16) = undefined;
+		const BranchData = packed struct(u6) {
 			enabledConnections: u6,
 
-			pub fn init(blockData: u16) PipeData {
+			pub fn init(blockData: u16) BranchData {
 				return .{.enabledConnections = @truncate(blockData)};
 			}
 
@@ -363,11 +363,11 @@ pub const RotationModes = struct {
 		};
 
 		fn init() void {
-			pipeModels = .init(main.globalAllocator.allocator);
+			branchModels = .init(main.globalAllocator.allocator);
 		}
 
 		fn deinit() void {
-			pipeModels.deinit();
+			branchModels.deinit();
 		}
 
 		const Direction = enum(u2) {
@@ -500,7 +500,7 @@ pub const RotationModes = struct {
 			}
 		}
 
-		fn getPattern(data: PipeData, side: Neighbor) ?Pattern {
+		fn getPattern(data: BranchData, side: Neighbor) ?Pattern {
 			const posX = Neighbor.fromRelPos(side.textureX()).?;
 			const posNegX = Neighbor.fromRelPos(side.textureX()).?.reverse();
 			const posY = Neighbor.fromRelPos(side.textureY()).?;
@@ -585,7 +585,7 @@ pub const RotationModes = struct {
 
 		pub fn createBlockModel(zon: ZonElement) u16 {
 			const radius = zon.get(u32, "radius", 4);
-			if(pipeModels.get(radius)) |modelIndex| return modelIndex;
+			if(branchModels.get(radius)) |modelIndex| return modelIndex;
 
 			var modelIndex: u16 = undefined;
 			for(0..64) |i| {
@@ -593,7 +593,7 @@ pub const RotationModes = struct {
 				defer quads.deinit();
 
 				for(Neighbor.iterable) |neighbor| {
-					const pattern = getPattern(PipeData.init(@intCast(i)), neighbor);
+					const pattern = getPattern(BranchData.init(@intCast(i)), neighbor);
 
 					if(pattern) |pat| {
 						addQuads(pat, neighbor, radius, &quads);
@@ -606,7 +606,7 @@ pub const RotationModes = struct {
 				}
 			}
 
-			pipeModels.put(radius, modelIndex) catch unreachable;
+			branchModels.put(radius, modelIndex) catch unreachable;
 
 			return modelIndex;
 		}
@@ -632,7 +632,7 @@ pub const RotationModes = struct {
 			if(blockPlacing or blockBaseModel == neighborBaseModel or neighborBlock.solid()) {
 				const neighborModel = blocks.meshes.model(neighborBlock);
 
-				var currentData = PipeData.init(currentBlock.data);
+				var currentData = BranchData.init(currentBlock.data);
 				// Branch block upon placement should extend towards a block it was placed
 				// on if the block is solid or also uses branch model.
 				const targetVal = ((neighborBlock.solid() and !neighborBlock.viewThrough()) and (blockBaseModel == neighborBaseModel or main.models.models.items[neighborModel].isNeighborOccluded[neighbor.?.reverse().toInt()]));
@@ -650,13 +650,13 @@ pub const RotationModes = struct {
 		pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool {
 			const blockBaseModel = blocks.meshes.modelIndexStart(block.*);
 			const neighborBaseModel = blocks.meshes.modelIndexStart(neighborBlock);
-			var currentData = PipeData.init(block.data);
+			var currentData = BranchData.init(block.data);
 
 			// Handle joining with other branches. While placed, branches extend in a
 			// opposite direction than they were placed from, effectively connecting
 			// to the block they were placed at.
 			if(blockBaseModel == neighborBaseModel) {
-				const neighborData = PipeData.init(neighborBlock.data);
+				const neighborData = BranchData.init(neighborBlock.data);
 				currentData.setConnection(neighbor, neighborData.isConnected(neighbor.reverse()));
 			} else if(!neighborBlock.solid()) {
 				currentData.setConnection(neighbor, false);
