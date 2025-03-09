@@ -476,24 +476,27 @@ fn releaseMemory(start: [*]align(page_size_min) u8, len: usize) void {
 /// A list that reserves a continuous region of virtual memory without actually committing its pages.
 /// This allows it to grow without ever invalidating pointers.
 pub fn VirtualList(T: type, maxSize: u32) type {
-	const maxSizeBytes = std.mem.alignForward(usize, @as(usize, maxSize)*@sizeOf(T), page_size_max);
 	std.debug.assert(@sizeOf(T) <= page_size_max);
-	std.debug.assert(maxSize >= page_size_max);
 	return struct {
 		mem: [*]align(page_size_min) T,
 		len: u32,
 		committedCapacity: u32,
 
+		fn maxSizeBytes() usize {
+			return std.mem.alignForward(usize, @as(usize, maxSize)*@sizeOf(T), pageSize());
+		}
+
 		pub fn init() @This() {
+			std.debug.assert(@sizeOf(T) <= pageSize());
 			return .{
-				.mem = @ptrCast(reserveMemory(maxSizeBytes)),
+				.mem = @ptrCast(reserveMemory(maxSizeBytes())),
 				.len = 0,
 				.committedCapacity = 0,
 			};
 		}
 
 		pub fn deinit(self: @This()) void {
-			releaseMemory(@ptrCast(self.mem), maxSizeBytes);
+			releaseMemory(@ptrCast(self.mem), maxSizeBytes());
 		}
 
 		pub fn items(self: *@This()) []T {
