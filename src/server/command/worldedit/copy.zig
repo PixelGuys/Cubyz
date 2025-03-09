@@ -24,7 +24,7 @@ pub fn execute(args: []const u8, source: *User) void {
 	if(source.commandData.clipboard == null) {
 		source.commandData.clipboard = Blueprint.init(main.globalAllocator);
 	}
-	if (source.commandData.clipboard.?.capture(pos1, pos2)) |e| {
+	if(source.commandData.clipboard.?.capture(pos1, pos2)) |e| {
 		source.sendMessage("#ff0000Error while copying block ({d:.3}, {d:.3}, {d:.3}): {s}", .{e.x, e.y, e.z, e.message});
 		std.log.warn("Error while copying block ({d:.3}, {d:.3}, {d:.3}): {s}", .{e.x, e.y, e.z, e.message});
 	}
