@@ -99,7 +99,7 @@ pub const Blueprint = struct {
 		self.sizeZ = 0;
 		self.blocks.clearRetainingCapacity();
 	}
-	pub fn capture(self: *@This(), pos1: Vec3i, pos2: Vec3i) ?struct{x: i32, y: i32, z: i32, message: []const u8} {
+	pub fn capture(self: *@This(), pos1: Vec3i, pos2: Vec3i) ?struct {x: i32, y: i32, z: i32, message: []const u8} {
 		self.clear();
 
 		const startX = @min(pos1[0], pos2[0]);
@@ -118,7 +118,7 @@ pub const Blueprint = struct {
 		self.sizeY = sizeY;
 		self.sizeZ = sizeZ;
 
-		self.blocks.ensureCapacity(self.sizeX * self.sizeY * self.sizeZ);
+		self.blocks.ensureCapacity(self.sizeX*self.sizeY*self.sizeZ);
 
 		for(0..sizeX) |offsetX| {
 			const worldX = startX + @as(i32, @intCast(offsetX));
