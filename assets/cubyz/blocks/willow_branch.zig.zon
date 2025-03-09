@@ -1,0 +1,36 @@
+.{
+	.tags = .{.wood},
+	.blockHealth = 4,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.absorbedLight = 0x202830,
+	.rotation = .pipe,
+	.model = "cubyz:branch",
+	.texture_top = "cubyz:branch/willow/0",
+	.texture_bottom = "cubyz:branch/willow/1",
+	.texture_right = "cubyz:branch/willow/2",
+	.texture_left = "cubyz:branch/willow/3",
+	.texture_front = "cubyz:branch/willow/4",
+	.texture_back = "cubyz:branch/willow/5",
+	.item = .{
+		.material = .{
+			.density = 0.5,
+			.strength = 1.1,
+			.elasticity = 3,
+			.grip = 9.5,
+			.hardness = 2.9,
+			.textureRoughness = 0.7,
+			.colors = .{
+				0xff2a2521, 0xff332d28, 0xff413930, 0xff4f453a, 0xff413930,
+			},
+			.modifiers = .{
+				.{
+					.id = "fragile",
+					.strength = 0.10,
+				},
+			},
+		},
+		.texture = "branch/willow.png",
+	},
+}

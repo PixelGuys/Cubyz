@@ -5,9 +5,14 @@
 		.{.items = .{.auto}},
 	},
 	.absorbedLight = 0x202830,
-	.rotation = .branch,
+	.rotation = .pipe,
 	.model = "cubyz:branch",
-	.texture = "cubyz:cactus",
+	.texture_top = "cubyz:branch/cactus/0",
+	.texture_bottom = "cubyz:branch/cactus/1",
+	.texture_right = "cubyz:branch/cactus/2",
+	.texture_left = "cubyz:branch/cactus/3",
+	.texture_front = "cubyz:branch/cactus/4",
+	.texture_back = "cubyz:branch/cactus/5",
 	.item = .{
 		.material = .{
 			.density = 0.8,
