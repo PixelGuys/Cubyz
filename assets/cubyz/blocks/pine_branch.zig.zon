@@ -1,0 +1,36 @@
+.{
+	.tags = .{.wood},
+	.blockHealth = 4,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.absorbedLight = 0x202830,
+	.rotation = .pipe,
+	.model = "cubyz:branch",
+	.texture_top = "cubyz:branch/pine/0",
+	.texture_bottom = "cubyz:branch/pine/1",
+	.texture_right = "cubyz:branch/pine/2",
+	.texture_left = "cubyz:branch/pine/3",
+	.texture_front = "cubyz:branch/pine/4",
+	.texture_back = "cubyz:branch/pine/5",
+	.item = .{
+		.material = .{
+			.density = 0.25,
+			.strength = 0.75,
+			.elasticity = 2.5,
+			.grip = 10,
+			.hardness = 1.0,
+			.textureRoughness = 0.7,
+			.colors = .{
+				0xff312a1e, 0xff3c3324, 0xff4a3c28, 0xff614e33, 0xff4a3c28,
+			},
+			.modifiers = .{
+				.{
+					.id = "fragile",
+					.strength = 0.10,
+				},
+			},
+		},
+		.texture = "branch/pine.png",
+	},
+}
