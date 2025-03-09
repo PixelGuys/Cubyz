@@ -20,6 +20,7 @@
 			.segments = .{
 				.{
 					.height = 2,
+					.stemThickness = 2,
 					.mushroomChance = 0.1,
 					.blocks = .{
 						.wood = "cubyz:oak_log",
@@ -28,6 +29,7 @@
 				},
 				.{
 					.height = 4,
+					.stemThickness = 2,
 					.branchChance = 0.1,
 					.branchSpacing = 1,
 					.branchSpawnMode = .alternating_spaced,
@@ -49,6 +51,7 @@
 				},
 				.{
 					.height = 6,
+					.stemThickness = 2,
 					.branchChance = 0.25,
 					.branchSpacing = 1,
 					.branchSpawnMode = .alternating_spaced,
@@ -131,6 +134,7 @@
 				},
 				.{
 					.height = 5,
+					.stemThickness = 2,
 					.branchChance = 0.25,
 					.branchSpacing = 2,
 					.branchSpawnMode = .alternating_spaced,

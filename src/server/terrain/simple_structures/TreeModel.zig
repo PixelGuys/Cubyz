@@ -62,6 +62,7 @@ const Stem = struct {
 
 	pub fn generate(self: @This(), state: *TreeState) void {
 		if(self.height == 0) return;
+		if(self.stemThickness == 0) return;
 
 		var branchGenerator = BranchGenerator{
 			.state = state,
@@ -154,7 +155,17 @@ const Stem = struct {
 				},
 				else => {},
 			}
-			self.placeBlock(state, state.position, self.blocks.wood);
+			for(0..self.stemThickness) |x| {
+				for(0..self.stemThickness) |y| {
+					const centerOffset = @as(i32, @intCast(self.stemThickness/2));
+					self.placeBlock(
+						state,
+						.{state.position[0] + @as(i32, @intCast(x)) - centerOffset,
+							state.position[1] + @as(i32, @intCast(y)) - centerOffset,
+							state.position[2]},
+						self.blocks.wood);
+				}
+			}
 
 			state.position[2] += 1;
 			state.height += 1;
@@ -166,7 +177,7 @@ const Stem = struct {
 	}
 	fn placeBlock(_: @This(), state: *TreeState, position: Vec3i, block: Block) void {
 		if(!state.chunk.liesInChunk(position[0], position[1], position[2])) return;
-		state.chunk.updateBlockIfDegradable(position[0], position[1], position[2], block);
+		state.chunk.updateBlock(position[0], position[1], position[2], block);
 	}
 	fn placeBranch(self: @This(), state: *TreeState, branchGenerator: *BranchGenerator, direction: Neighbor, position: Vec3i) bool {
 		if(self.branchSegmentSeriesVariants.isNull()) return false;
