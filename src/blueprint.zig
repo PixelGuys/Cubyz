@@ -23,14 +23,6 @@ pub const BlueprintCompression = enum(u16) {
 	deflate,
 };
 
-/// Blueprint storage file format header structure.
-///
-/// To extend, create a packed struct `<something>HeaderExtension` and add it as last field to this struct.
-/// Bump `blueprintVersion` variable to indicate file format change.
-/// Add serialization logic for `<something>HeaderExtension` to `store` and `load` methods
-/// alongside version check to load that part of header only for files with version that supports it.
-/// If you are adding new data segment, add serialization and deserialization logic to
-/// `Blueprint.store` and `Blueprint.load` methods.
 pub const FileHeader = packed struct {
 	version: u16 = 0,
 	compression: BlueprintCompression = .deflate,
