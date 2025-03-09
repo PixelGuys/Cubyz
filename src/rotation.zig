@@ -597,7 +597,7 @@ pub const RotationModes = struct {
 			const tex: u32 = @intCast(@intFromEnum(pattern));
 
 			var offset: Vec3f = .{0.0, 0.0, 0.0};
-			offset[@intFromEnum(side.vectorComponent())] = if (side.isPositive()) 12.0/16.0 else 4.0/16.0;
+			offset[@intFromEnum(side.vectorComponent())] = if(side.isPositive()) 12.0/16.0 else 4.0/16.0;
 
 			const res: main.models.QuadInfo = .{
 				.corners = .{
