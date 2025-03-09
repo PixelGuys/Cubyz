@@ -9,7 +9,7 @@ const Texture = graphics.Texture;
 const random = main.random;
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const gui = @import("../gui.zig");
 const GuiComponent = gui.GuiComponent;

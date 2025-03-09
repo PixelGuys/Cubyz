@@ -293,7 +293,7 @@ fn deinit() void {
 	command.deinit();
 }
 
-pub fn getUserListAndIncreaseRefCount(allocator: utils.NeverFailingAllocator) []*User {
+pub fn getUserListAndIncreaseRefCount(allocator: main.heap.NeverFailingAllocator) []*User {
 	userMutex.lock();
 	defer userMutex.unlock();
 	const result = allocator.dupe(*User, users.items);
@@ -303,14 +303,14 @@ pub fn getUserListAndIncreaseRefCount(allocator: utils.NeverFailingAllocator) []
 	return result;
 }
 
-pub fn freeUserListAndDecreaseRefCount(allocator: utils.NeverFailingAllocator, list: []*User) void {
+pub fn freeUserListAndDecreaseRefCount(allocator: main.heap.NeverFailingAllocator, list: []*User) void {
 	for(list) |user| {
 		user.decreaseRefCount();
 	}
 	allocator.free(list);
 }
 
-fn getInitialEntityList(allocator: utils.NeverFailingAllocator) []const u8 {
+fn getInitialEntityList(allocator: main.heap.NeverFailingAllocator) []const u8 {
 	// Send the entity updates:
 	var initialList: []const u8 = undefined;
 	const list = main.ZonElement.initArray(main.stackAllocator);
@@ -369,7 +369,7 @@ fn update() void { // MARK: update()
 }
 
 pub fn start(name: []const u8, port: ?u16) void {
-	var sta = utils.StackAllocator.init(main.globalAllocator, 1 << 23);
+	var sta = main.heap.StackAllocator.init(main.globalAllocator, 1 << 23);
 	defer sta.deinit();
 	main.stackAllocator = sta.allocator();
 	std.debug.assert(!running.load(.monotonic)); // There can only be one server.

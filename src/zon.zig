@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const main = @import("main.zig");
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const List = main.List;
 const hashGeneric = main.server.terrain.biomes.hashGeneric;
 
@@ -255,7 +255,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 			},
 			.vector => {
 				const len = @typeInfo(@TypeOf(value)).vector.len;
-				const result = initArray(main.utils.NeverFailingAllocator{.allocator = allocator, .IAssertThatTheProvidedAllocatorCantFail = {}});
+				const result = initArray(main.heap.NeverFailingAllocator{.allocator = allocator, .IAssertThatTheProvidedAllocatorCantFail = {}});
 				result.array.ensureCapacity(len);
 				inline for(0..len) |i| {
 					result.array.appendAssumeCapacity(createElementFromRandomType(value[i], allocator));

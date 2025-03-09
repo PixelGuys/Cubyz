@@ -170,7 +170,7 @@ pub const RegionFile = struct { // MARK: RegionFile
 		}
 	}
 
-	pub fn getChunk(self: *RegionFile, allocator: main.utils.NeverFailingAllocator, relX: usize, relY: usize, relZ: usize) ?[]const u8 {
+	pub fn getChunk(self: *RegionFile, allocator: main.heap.NeverFailingAllocator, relX: usize, relY: usize, relZ: usize) ?[]const u8 {
 		self.mutex.lock();
 		defer self.mutex.unlock();
 		const index = getIndex(relX, relY, relZ);
@@ -259,7 +259,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 		deflate_with_8bit_palette = 3,
 		_,
 	};
-	pub fn compressChunk(allocator: main.utils.NeverFailingAllocator, ch: *chunk.Chunk, allowLossy: bool) []const u8 {
+	pub fn compressChunk(allocator: main.heap.NeverFailingAllocator, ch: *chunk.Chunk, allowLossy: bool) []const u8 {
 		if(ch.data.paletteLength == 1) {
 			var writer = BinaryWriter.initCapacity(allocator, .big, @sizeOf(CompressionAlgo) + @sizeOf(u32));
 

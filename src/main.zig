@@ -27,6 +27,8 @@ pub const ZonElement = @import("zon.zig").ZonElement;
 
 pub const Window = @import("graphics/Window.zig");
 
+pub const heap = @import("utils/heap.zig");
+
 pub const List = @import("utils/list.zig").List;
 pub const ListUnmanaged = @import("utils/list.zig").ListUnmanaged;
 pub const VirtualList = @import("utils/list.zig").VirtualList;
@@ -36,11 +38,11 @@ const file_monitor = utils.file_monitor;
 const Vec2f = vec.Vec2f;
 const Vec3d = vec.Vec3d;
 
-pub threadlocal var stackAllocator: utils.NeverFailingAllocator = undefined;
+pub threadlocal var stackAllocator: heap.NeverFailingAllocator = undefined;
 pub threadlocal var seed: u64 = undefined;
 var global_gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe = true}){};
-var handled_gpa = utils.ErrorHandlingAllocator.init(global_gpa.allocator());
-pub const globalAllocator: utils.NeverFailingAllocator = handled_gpa.allocator();
+var handled_gpa = heap.ErrorHandlingAllocator.init(global_gpa.allocator());
+pub const globalAllocator: heap.NeverFailingAllocator = handled_gpa.allocator();
 pub var threadPool: *utils.ThreadPool = undefined;
 
 fn cacheStringImpl(comptime len: usize, comptime str: [len]u8) []const u8 {
@@ -522,7 +524,7 @@ pub fn main() void { // MARK: main()
 	defer if(global_gpa.deinit() == .leak) {
 		std.log.err("Memory leak", .{});
 	};
-	var sta = utils.StackAllocator.init(globalAllocator, 1 << 23);
+	var sta = heap.StackAllocator.init(globalAllocator, 1 << 23);
 	defer sta.deinit();
 	stackAllocator = sta.allocator();
 
