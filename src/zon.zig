@@ -29,11 +29,11 @@ pub const ZonElement = union(enum) { // MARK: Zon
 
 	pub fn getHash(self: *const ZonElement) u64 {
 		return switch(self.*) {
-			.int =>hashGeneric(self.int),
+			.int => hashGeneric(self.int),
 			.float => hashGeneric(self.float),
 			.string => hashGeneric(self.string),
 			.stringOwned => hashGeneric(self.stringOwned),
-			.bool =>  hashGeneric(self.bool),
+			.bool => hashGeneric(self.bool),
 			.null => 0,
 			.array => hashGeneric(self.array.items),
 			.object => objectBlk: {

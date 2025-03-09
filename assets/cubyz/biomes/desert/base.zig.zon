@@ -15,64 +15,57 @@
 	.ground_structure = .{
 		"3 to 4 cubyz:sand",
 	},
-	.structures = .{
-		.{
-			.id = "cubyz:simple_vegetation",
-			.block = "cubyz:cactus",
-			.chance = 0.01,
-			.height = 2,
-			.height_variation = 3,
-		},
-		.{
-			.id = "cubyz:tree",
-			.chance = 0.01,
-			.segments = .{
-				.{
-					.height = 1,
-					.blocks = .{
-						.wood = "cubyz:cactus",
-					},
-				},
-				.{
-					.height = 1,
-					.branchSpawnMode = .flipped,
-					.blocks = .{
-						.wood = "cubyz:cactus",
-						.branch = "cubyz:cactus_arm",
-					},
-					.branchSegmentSeriesVariants = .{
-						.{
-							.up = .{},
-						}
-					},
-				},
-				.{
-					.height = 1,
-					.branchSpawnMode = .flipped,
-					.blocks = .{
-						.wood = "cubyz:cactus",
-						.branch = "cubyz:cactus_arm",
-					},
-					.branchSegmentSeriesVariants = .{
-						.{
-							.up = .{},
-						}
-					},
-				},
-				.{
-					.height = 1,
-					.blocks = .{
-						.wood = "cubyz:cactus",
-					},
-				},
-				.{
-					.height = 1,
-					.blocks = .{
-						.wood = "cubyz:hibiscus",
-					},
+	.structures = .{.{
+		.id = "cubyz:simple_vegetation",
+		.block = "cubyz:cactus",
+		.chance = 0.01,
+		.height = 2,
+		.height_variation = 3,
+	}, .{
+		.id = "cubyz:tree",
+		.chance = 0.01,
+		.segments = .{
+			.{
+				.height = 1,
+				.blocks = .{
+					.wood = "cubyz:cactus",
 				},
 			},
-		}
-	},
+			.{
+				.height = 1,
+				.branchSpawnMode = .flipped,
+				.blocks = .{
+					.wood = "cubyz:cactus",
+					.branch = "cubyz:cactus_arm",
+				},
+				.branchSegmentSeriesVariants = .{.{
+					.up = .{},
+				}},
+			},
+			.{
+				.height = 1,
+				.branchSpawnMode = .flipped,
+				.blocks = .{
+					.wood = "cubyz:cactus",
+					.branch = "cubyz:cactus_arm",
+				},
+				.branchSegmentSeriesVariants = .{.{
+					.up = .{},
+				}},
+			},
+			.{
+				.height = 1,
+				.blocks = .{
+					.wood = "cubyz:cactus",
+				},
+			},
+			.{
+				.height = 1,
+				.blocks = .{
+					.wood = "cubyz:hibiscus",
+				},
+			},
+		},
+	}},
 	.stoneBlock = "cubyz:sandstone",
 }

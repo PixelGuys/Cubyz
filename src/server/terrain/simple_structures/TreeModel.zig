@@ -1,7 +1,6 @@
 const std = @import("std");
 
 const main = @import("root");
-// const main = @import("../../../main.zig");
 const random = main.random;
 const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
@@ -24,7 +23,6 @@ const TreeModel = @This();
 
 pub const generationMode = .floor;
 
-
 const BranchSpawnMode = enum {
 	random,
 	alternating,
@@ -44,7 +42,9 @@ const BranchSpawnMode = enum {
 };
 
 const Stem = struct {
-	height: usize,
+	height: i32,
+	heightDelta: f32,
+	skipChance: f32,
 	branchChance: f32,
 	branchSpacing: u32,
 	branchSpawnMode: BranchSpawnMode,
@@ -61,16 +61,10 @@ const Stem = struct {
 	blocks: Blocks,
 
 	pub fn generate(self: @This(), state: *TreeState) void {
-		if(self.height == 0) return;
+		if(self.height <= 0) return;
 		if(self.stemThickness == 0) return;
 
-		var branchGenerator = BranchGenerator{
-			.state = state,
-			.blocks = self.blocks,
-			.leavesChance = self.leavesChance,
-			.leavesBlobChance = self.leavesBlobChance,
-			.leavesBlobRadius = self.leavesBlobRadius,
-			.leavesBlobRadiusDelta = self.leavesBlobRadiusDelta};
+		var branchGenerator = BranchGenerator{.state = state, .blocks = self.blocks, .leavesChance = self.leavesChance, .leavesBlobChance = self.leavesBlobChance, .leavesBlobRadius = self.leavesBlobRadius, .leavesBlobRadiusDelta = self.leavesBlobRadiusDelta};
 
 		var branchCount: u32 = 0;
 		var branchCountThisLevel: u32 = 0;
@@ -84,16 +78,13 @@ const Stem = struct {
 			else => false,
 		};
 
-		for(0..self.height) |_| {
-			for(horizontal) |direction| {
-				if(self.mushroomChance <= 0 and self.branchSpawnMode != .random) break;
+		const effectiveHeight = self.height + @as(i32, @intFromFloat((random.nextFloat(state.seed) - 0.5)*self.heightDelta));
+		if(effectiveHeight <= 0) return;
 
-				if(self.mushroomChance > 0 and random.nextFloat(state.seed) < self.mushroomChance) {
-					self.placeMushroom(state, state.position + direction.relPos(), direction, false);
-					continue;
-				}
-				switch(self.branchSpawnMode) {
-					.random => {
+		for(0..@intCast(effectiveHeight)) |_| {
+			switch(self.branchSpawnMode) {
+				.random => {
+					for(horizontal) |direction| {
 						if(branchCountThisLevel >= self.branchMaxCountPerLevel) continue;
 						if(self.branchChance <= 0) continue;
 						if(branchCount >= self.branchMaxCount) continue;
@@ -103,11 +94,8 @@ const Stem = struct {
 						branchCount += isSuccess;
 						branchCountThisLevel += isSuccess;
 						continue;
-					},
-					else => {},
-				}
-			}
-			switch(self.branchSpawnMode){
+					}
+				},
 				.alternating => {
 					_ = self.placeBranch(state, &branchGenerator, state.spawnAxis, state.position);
 					_ = self.placeBranch(state, &branchGenerator, state.spawnAxis.reverse(), state.position);
@@ -153,19 +141,8 @@ const Stem = struct {
 					_ = self.placeBranch(state, &branchGenerator, state.spawnAxis, state.position);
 					state.spawnAxis = state.spawnAxis.reverse();
 				},
-				else => {},
 			}
-			for(0..self.stemThickness) |x| {
-				for(0..self.stemThickness) |y| {
-					const centerOffset = @as(i32, @intCast(self.stemThickness/2));
-					self.placeBlock(
-						state,
-						.{state.position[0] + @as(i32, @intCast(x)) - centerOffset,
-							state.position[1] + @as(i32, @intCast(y)) - centerOffset,
-							state.position[2]},
-						self.blocks.wood);
-				}
-			}
+			self.generateStem(state);
 
 			state.position[2] += 1;
 			state.height += 1;
@@ -173,6 +150,44 @@ const Stem = struct {
 		}
 		if(self.branchPeak) {
 			_ = self.placeBranch(state, &branchGenerator, Neighbor.dirUp, .{state.position[0], state.position[1], state.position[2] - 1});
+		}
+	}
+	fn generateStem(self: @This(), state: *TreeState) void {
+		for(0..self.stemThickness) |x| {
+			for(0..self.stemThickness) |y| {
+				const centerOffset = @as(i32, @intCast(self.stemThickness/2));
+				const currentPosition: Vec3i = .{state.position[0] + @as(i32, @intCast(x)) - centerOffset, state.position[1] + @as(i32, @intCast(y)) - centerOffset, state.position[2]};
+
+				self.placeBlock(state, currentPosition, self.blocks.wood);
+
+				if(self.mushroomChance < 0) continue;
+
+				var xDirection: ?Neighbor = null;
+
+				if(x == (self.stemThickness - 1)) {
+					xDirection = Neighbor.dirPosX;
+				} else if(x == 0) {
+					xDirection = Neighbor.dirNegX;
+				}
+				if(xDirection) |direction| {
+					if(random.nextFloat(state.seed) < self.mushroomChance) {
+						self.placeMushroom(state, currentPosition, direction);
+					}
+				}
+
+				var yDirection: ?Neighbor = null;
+
+				if(y == (self.stemThickness - 1)) {
+					yDirection = Neighbor.dirPosY;
+				} else if(y == 0) {
+					yDirection = Neighbor.dirNegY;
+				}
+				if(yDirection) |direction| {
+					if(random.nextFloat(state.seed) < self.mushroomChance) {
+						self.placeMushroom(state, currentPosition, direction);
+					}
+				}
+			}
 		}
 	}
 	fn placeBlock(_: @This(), state: *TreeState, position: Vec3i, block: Block) void {
@@ -183,18 +198,28 @@ const Stem = struct {
 		if(self.branchSegmentSeriesVariants.isNull()) return false;
 		if(self.branchSegmentSeriesVariants.array.items.len == 0) return false;
 
-		const branchVariantIndex = random.nextInt(usize, state.seed) % self.branchSegmentSeriesVariants.array.items.len;
+		const branchVariantIndex = random.nextInt(usize, state.seed)%self.branchSegmentSeriesVariants.array.items.len;
 		const branchSeries = self.branchSegmentSeriesVariants.getChildAtIndex(branchVariantIndex);
 
 		return branchGenerator.generate(direction, position + direction.relPos(), branchSeries);
 	}
-	fn placeMushroom(self: @This(), state: *TreeState, position: Vec3i, direction: Neighbor, center: bool) void {
-		if(!state.chunk.liesInChunk(position[0], position[1], position[2])) return;
+	fn placeMushroom(self: @This(), state: *TreeState, position: Vec3i, direction: Neighbor) void {
+		const placePosition = position + direction.relPos();
+
+		if(!state.chunk.liesInChunk(placePosition[0], placePosition[1], placePosition[2])) return;
+
+		const under = placePosition + Neighbor.dirDown.relPos();
+		var center = false;
+
+		if(state.chunk.liesInChunk(under[0], under[1], under[2])) {
+			const underBlock = state.chunk.getBlock(under[0], under[1], under[2]);
+			center = (underBlock.typ == self.blocks.grass.typ) and (random.nextFloat(state.seed) < 0.5);
+		}
 
 		const blockData = self.directionToMushroomData(direction, center);
 		const blockWithData = Block{.typ = self.blocks.mushroom.typ, .data = blockData};
 
-		_ = state.chunk.updateBlockIfAir(position[0], position[1], position[2], blockWithData);
+		_ = state.chunk.updateBlockIfAir(placePosition[0], placePosition[1], placePosition[2], blockWithData);
 	}
 	fn directionToMushroomData(_: @This(), direction: Neighbor, center: bool) u16 {
 		if(center) {
@@ -215,6 +240,7 @@ const Blocks = struct {
 	wood: Block,
 	branch: Block,
 	mushroom: Block,
+	grass: Block,
 };
 
 const TreeState = struct {
@@ -239,6 +265,8 @@ const BranchGenerator = struct {
 		return junction(self, horizontalDirection, direction, position, series);
 	}
 	fn junction(self: *@This(), horizontalDirection: Neighbor, direction: Neighbor, position: Vec3i, series: ZonElement) bool {
+		if(!self.isAirOrLeaves(position)) return false;
+
 		var leftSeries = series.getChild("left");
 		var rightSeries = series.getChild("right");
 		var forwardSeries = series.getChild("forward");
@@ -265,7 +293,7 @@ const BranchGenerator = struct {
 			}
 		}
 
-		if(!rightSeries.isNull()){
+		if(!rightSeries.isNull()) {
 			isRightSuccess = self.junction(right, right, position + right.relPos(), rightSeries);
 		} else {
 			if(self.leavesChance > 0 and random.nextFloat(self.state.seed) < self.leavesChance) {
@@ -298,29 +326,23 @@ const BranchGenerator = struct {
 		}
 
 		var blockData: u16 = 0;
-		blockData |= direction.reverse().bitMask();
 
-		if(isLeftSuccess) blockData |= left.bitMask();
-		if(isRightSuccess) blockData |= right.bitMask();
-		if(isForwardSuccess) blockData |= forward.bitMask();
-		if(isBackwardSuccess) blockData |= backward.bitMask();
-		if(isUpSuccess) blockData |= up.bitMask();
+		if(leftSeries.isNull() and rightSeries.isNull() and forwardSeries.isNull() and self.leavesBlobChance > 0 and random.nextFloat(self.state.seed) < self.leavesBlobChance) {
+			const radius = self.leavesBlobRadius + (random.nextFloat(self.state.seed) - 0.5)*self.leavesBlobRadiusDelta;
+			const pos: Vec3f = .{@as(f32, @floatFromInt(position[0])) + (random.nextFloat(self.state.seed) - 0.5)*1.5, @as(f32, @floatFromInt(position[1])) + (random.nextFloat(self.state.seed) - 0.5)*1.5, @as(f32, @floatFromInt(position[2])) + (random.nextFloat(self.state.seed) - 0.5)*1.5};
 
-		const isSuccess = self.placeBranch(position, self.blocks.branch, blockData);
-
-		if(isSuccess) {
-			if(leftSeries.isNull() and rightSeries.isNull() and forwardSeries.isNull() and self.leavesBlobChance > 0 and random.nextFloat(self.state.seed) < self.leavesBlobChance) {
-				const radius = self.leavesBlobRadius + (random.nextFloat(self.state.seed) - 0.5) * self.leavesBlobRadiusDelta;
-				const pos: Vec3f = .{
-					@as(f32, @floatFromInt(position[0])) + (random.nextFloat(self.state.seed) - 0.5)*1.5,
-					@as(f32, @floatFromInt(position[1])) + (random.nextFloat(self.state.seed) - 0.5)*1.5,
-					@as(f32, @floatFromInt(position[2])) + (random.nextFloat(self.state.seed) - 0.5)*1.5};
-
-				self.placeSphere(pos, self.blocks.leaves, radius);
-			}
+			self.placeSphere(pos, self.blocks.leaves, radius);
+			blockData = 0b111111;
+		} else {
+			blockData |= direction.reverse().bitMask();
+			if(isLeftSuccess) blockData |= left.bitMask();
+			if(isRightSuccess) blockData |= right.bitMask();
+			if(isForwardSuccess) blockData |= forward.bitMask();
+			if(isBackwardSuccess) blockData |= backward.bitMask();
+			if(isUpSuccess) blockData |= up.bitMask();
 		}
 
-		return isSuccess;
+		return self.placeBranch(position, self.blocks.branch, blockData);
 	}
 	fn place(self: *@This(), position: Vec3i, block: Block, data: u16) bool {
 		if(!self.state.chunk.liesInChunk(position[0], position[1], position[2])) return true;
@@ -328,11 +350,14 @@ const BranchGenerator = struct {
 		const blockWithData = Block{.typ = block.typ, .data = data};
 		return self.state.chunk.updateBlockIfAir(position[0], position[1], position[2], blockWithData);
 	}
-	fn placeBranch(self: *@This(), position: Vec3i, block: Block, data: u16) bool {
+	fn isAirOrLeaves(self: *@This(), position: Vec3i) bool {
 		if(!self.state.chunk.liesInChunk(position[0], position[1], position[2])) return true;
 
 		const currentBlock = self.state.chunk.getBlock(position[0], position[1], position[2]);
-		if(currentBlock.typ != 0 and currentBlock.typ != self.blocks.leaves.typ) return false;
+		return currentBlock.typ == 0 or currentBlock.typ == self.blocks.leaves.typ;
+	}
+	fn placeBranch(self: *@This(), position: Vec3i, block: Block, data: u16) bool {
+		if(!self.state.chunk.liesInChunk(position[0], position[1], position[2])) return true;
 
 		const blockWithData = Block{.typ = block.typ, .data = data};
 		self.state.chunk.updateBlock(position[0], position[1], position[2], blockWithData);
@@ -342,7 +367,7 @@ const BranchGenerator = struct {
 		if(radius <= 0) return;
 
 		const radiusInt: i32 = @intFromFloat(@ceil(radius));
-		const diameterInt: usize = 2 * @as(usize, @intCast(radiusInt));
+		const diameterInt: usize = 2*@as(usize, @intCast(radiusInt));
 
 		for(0..diameterInt) |i| {
 			for(0..diameterInt) |j| {
@@ -369,46 +394,49 @@ const BranchGenerator = struct {
 };
 
 segments: List(Stem),
+heightOffset: i32,
 
 pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) *@This() {
 	const self = arenaAllocator.create(@This());
 	self.segments = .init(arenaAllocator);
+	self.heightOffset = parameters.get(i32, "heightOffset", 0);
 
 	const segments = parameters.getChild("segments");
 
 	for(segments.array.items) |segment| {
 		const blocks = segment.getChild("blocks");
-		self.segments.append(
-			.{
-				.height = segment.get(usize, "height", 0),
-				.branchChance = segment.get(f32, "branchChance", 0.0),
-				.branchSpacing = segment.get(u32, "branchSpacing", 0),
-				.branchSpawnMode = BranchSpawnMode.fromString(segment.get([]const u8, "branchSpawnMode", "random")),
-				.branchMaxCount = segment.get(u32, "branchMaxCount", 0),
-				.branchMaxCountPerLevel = segment.get(u32, "branchMaxCountPerLevel", std.math.maxInt(u32)),
-				.branchSegmentSeriesVariants = segment.getChild("branchSegmentSeriesVariants").clone(arenaAllocator),
-				.leavesChance = segment.get(f32, "leavesChance", 0.0),
-				.leavesBlobChance = segment.get(f32, "leavesBlobChance", 0.0),
-				.leavesBlobRadius = segment.get(f32, "leavesBlobRadius", 0.0),
-				.leavesBlobRadiusDelta = segment.get(f32, "leavesBlobRadiusDelta", 0.0),
-				.branchPeak = segment.get(bool, "branchPeak", false),
-				.mushroomChance = segment.get(f32, "mushroomChance", 0.0),
-				.stemThickness = segment.get(usize, "stemThickness", 1),
-				.blocks = .{
-					.leaves = parseBlock(blocks.get([]const u8, "leaves", "cubyz:oak_leaves")),
-					.wood = parseBlock(blocks.get([]const u8, "wood", "cubyz:oak_log")),
-					.branch = parseBlock(blocks.get([]const u8, "branch", "cubyz:oak_branch")),
-					.mushroom = parseBlock(blocks.get([]const u8, "mushroom", "cubyz:bolete")),
-				},
-			}
-		);
+		self.segments.append(.{
+			.height = segment.get(i32, "height", 0),
+			.heightDelta = segment.get(f32, "heightDelta", 0),
+			.skipChance = segment.get(f32, "skipChance", 0),
+			.branchChance = segment.get(f32, "branchChance", 0.0),
+			.branchSpacing = segment.get(u32, "branchSpacing", 0),
+			.branchSpawnMode = BranchSpawnMode.fromString(segment.get([]const u8, "branchSpawnMode", "random")),
+			.branchMaxCount = segment.get(u32, "branchMaxCount", 0),
+			.branchMaxCountPerLevel = segment.get(u32, "branchMaxCountPerLevel", std.math.maxInt(u32)),
+			.branchSegmentSeriesVariants = segment.getChild("branchSegmentSeriesVariants").clone(arenaAllocator),
+			.leavesChance = segment.get(f32, "leavesChance", 0.0),
+			.leavesBlobChance = segment.get(f32, "leavesBlobChance", 0.0),
+			.leavesBlobRadius = segment.get(f32, "leavesBlobRadius", 0.0),
+			.leavesBlobRadiusDelta = segment.get(f32, "leavesBlobRadiusDelta", 0.0),
+			.branchPeak = segment.get(bool, "branchPeak", false),
+			.mushroomChance = segment.get(f32, "mushroomChance", 0.0),
+			.stemThickness = segment.get(usize, "stemThickness", 1),
+			.blocks = .{
+				.leaves = parseBlock(blocks.get([]const u8, "leaves", "cubyz:oak_leaves")),
+				.wood = parseBlock(blocks.get([]const u8, "wood", "cubyz:oak_log")),
+				.branch = parseBlock(blocks.get([]const u8, "branch", "cubyz:oak_branch")),
+				.mushroom = parseBlock(blocks.get([]const u8, "mushroom", "cubyz:bolete")),
+				.grass = parseBlock("cubyz:grass"),
+			},
+		});
 	}
 
 	return self;
 }
 
-pub fn getTotalHeight(self: *@This()) usize {
-	var totalHeight: usize = 0;
+pub fn getTotalHeight(self: *@This()) i32 {
+	var totalHeight: i32 = 0;
 	for(self.segments.items) |segment| {
 		totalHeight += segment.height;
 	}
@@ -418,7 +446,7 @@ pub fn getTotalHeight(self: *@This()) usize {
 pub fn generate(self: *@This(), x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64, _: bool) void {
 	const totalHeight = self.getTotalHeight();
 
-	if(z + @as(i32, @intCast(totalHeight)) >= caveMap.findTerrainChangeAbove(x, y, z))
+	if(z + totalHeight >= caveMap.findTerrainChangeAbove(x, y, z))
 		return;
 
 	if(z > chunk.super.width) return;
@@ -426,8 +454,8 @@ pub fn generate(self: *@This(), x: i32, y: i32, z: i32, chunk: *ServerChunk, cav
 	if(chunk.super.pos.voxelSize >= 2) {
 		return;
 	}
-	const spawnAxis =  if(random.nextFloat(seed) < 0.5) Neighbor.dirPosX else Neighbor.dirPosY;
-	var state = TreeState{.seed = seed, .chunk = chunk, .position = .{x, y, z}, .height = 0, .spawnAxis = spawnAxis, .alternateBranchSpacing = 0};
+	const spawnAxis = if(random.nextFloat(seed) < 0.5) Neighbor.dirPosX else Neighbor.dirPosY;
+	var state = TreeState{.seed = seed, .chunk = chunk, .position = .{x, y, z + self.heightOffset}, .height = 0, .spawnAxis = spawnAxis, .alternateBranchSpacing = 0};
 
 	for(self.segments.items) |segment| {
 		segment.generate(&state);

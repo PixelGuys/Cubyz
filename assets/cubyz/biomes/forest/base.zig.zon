@@ -16,18 +16,19 @@
 		.{
 			.id = "cubyz:tree",
 			.chance = 0.005,
+			.heightOffset = -1,
 			.segments = .{
 				.{
-					.height = 2,
+					.height = 3,
 					.stemThickness = 2,
-					.mushroomChance = 0.1,
+					.mushroomChance = 0.05,
 					.blocks = .{
 						.wood = "cubyz:oak_log",
 						.mushroom = "cubyz:bolete",
 					},
 				},
 				.{
-					.height = 4,
+					.height = 3,
 					.stemThickness = 2,
 					.branchChance = 0.1,
 					.branchSpacing = 1,
@@ -65,71 +66,18 @@
 						.wood = "cubyz:oak_log",
 						.branch = "cubyz:oak_branch",
 					},
-					.branchSegmentSeriesVariants = .{
-						.{
-							.left = .{
-								.forward = .{
-									.forward = .{
-										.right = .{
-											.left = .{
-												.forward = .{
-													.forward = .{}
-												},
-												.right = .{
-													.forward = .{}
-												}
-											}
-										}
-									}
-								}
-							},
-							.forward = .{
-								.forward = .{
-									.left = .{
-										.right = .{
-											.forward = .{
-												.forward = .{
-													.left = .{
-														.forward = .{}
-													},
-													.forward = .{
-														.right = .{},
-														.forward = .{}
-													}
-												}
-											}
-										}
-									}
-								},
-								.right = .{
-									.left = .{
-										.right = .{
-											.left = .{
-												.forward = .{
-													.forward = .{},
-													.right = .{},
-												}
-											}
-										}
-									},
-									.forward = .{
-										.forward = .{
-											.right = .{
-												.forward = .{
-													.left = .{
-														.forward = .{}
-													},
-												}
-											},
-											.forward = .{
-												.forward = .{}
-											}
-										}
-									}
-								},
-							},
-						}
-					},
+					.branchSegmentSeriesVariants = .{.{
+						.left = .{.forward = .{.forward = .{.right = .{.left = .{.forward = .{.forward = .{}}, .right = .{.forward = .{}}}}}}},
+						.forward = .{
+							.forward = .{.left = .{.right = .{.forward = .{.forward = .{.left = .{.forward = .{}}, .forward = .{.right = .{}, .forward = .{}}}}}}},
+							.right = .{.left = .{.right = .{.left = .{.forward = .{
+								.forward = .{},
+								.right = .{},
+							}}}}, .forward = .{.forward = .{.right = .{.forward = .{
+								.left = .{.forward = .{}},
+							}}, .forward = .{.forward = .{}}}}},
+						},
+					}},
 				},
 				.{
 					.height = 5,
@@ -148,66 +96,10 @@
 						.wood = "cubyz:oak_log",
 						.branch = "cubyz:oak_branch",
 					},
-					.branchSegmentSeriesVariants = .{
-						.{
-							.forward = .{
-								.left = .{
-									.up = .{
-										.forward = .{
-											.forward = .{
-												.up = .{
-													.left = .{
-														.right = .{
-															.forward = .{
-																.forward = .{}
-															}
-														}
-													},
-													.right = .{
-														.forward = .{
-															.forward = .{}
-														}
-													}
-												}
-											}
-										},
-										.right = .{
-											.forward = .{
-												.forward = .{}
-											}
-										}
-									}
-								},
-								.right = .{
-									.up = .{
-										.forward = .{
-											.up = .{
-												.forward = .{
-													.right = .{
-														.left = .{
-															.forward = .{
-																.forward = .{}
-															}
-														}
-													},
-													.left = .{
-														.right = .{
-															.forward = .{}
-														}
-													}
-												}
-											},
-											.left = .{
-												.forward = .{
-													.forward = .{}
-												}
-											}
-										}
-									}
-								},
-							}
-						}
-					},
+					.branchSegmentSeriesVariants = .{.{.forward = .{
+						.left = .{.up = .{.forward = .{.forward = .{.up = .{.left = .{.right = .{.forward = .{.forward = .{}}}}, .right = .{.forward = .{.forward = .{}}}}}}, .right = .{.forward = .{.forward = .{}}}}},
+						.right = .{.up = .{.forward = .{.up = .{.forward = .{.right = .{.left = .{.forward = .{.forward = .{}}}}, .left = .{.right = .{.forward = .{}}}}}, .left = .{.forward = .{.forward = .{}}}}}},
+					}}},
 				},
 				.{
 					.height = 2,
@@ -225,26 +117,7 @@
 						.wood = "cubyz:oak_log",
 						.branch = "cubyz:oak_branch",
 					},
-					.branchSegmentSeriesVariants = .{
-						.{
-							.up = .{
-								.forward = .{
-									.up = .{
-										.left = .{
-											.up = .{}
-										}
-									}
-								},
-								.right = .{
-									.up = .{
-										.forward = .{
-											.up = .{}
-										}
-									}
-								}
-							}
-						}
-					},
+					.branchSegmentSeriesVariants = .{.{.up = .{.forward = .{.up = .{.left = .{.up = .{}}}}, .right = .{.up = .{.forward = .{.up = .{}}}}}}},
 				},
 			},
 		},
@@ -269,35 +142,7 @@
 						.wood = "cubyz:pine_log",
 						.branch = "cubyz:pine_branch",
 					},
-					.branchSegmentSeriesVariants = .{
-						.{
-							.forward = .{
-								.left = .{
-									.forward = .{
-										.forward = .{}
-									}
-								},
-								.right = .{
-									.forward = .{
-										.forward = .{}
-									}
-								},
-								.forward = .{
-									.forward = .{
-										.left = .{
-											.forward = .{}
-										},
-										.right = .{
-											.forward = .{}
-										},
-										.forward = .{
-											.forward = .{}
-										}
-									}
-								}
-							}
-						}
-					},
+					.branchSegmentSeriesVariants = .{.{.forward = .{.left = .{.forward = .{.forward = .{}}}, .right = .{.forward = .{.forward = .{}}}, .forward = .{.forward = .{.left = .{.forward = .{}}, .right = .{.forward = .{}}, .forward = .{.forward = .{}}}}}}},
 				},
 				.{
 					.height = 3,
@@ -308,33 +153,7 @@
 						.wood = "cubyz:pine_log",
 						.branch = "cubyz:pine_branch",
 					},
-					.branchSegmentSeriesVariants = .{
-						.{
-							.left = .{
-								.forward = .{
-									.forward = .{}
-								}
-							},
-							.right = .{
-								.forward = .{
-									.forward = .{}
-								}
-							},
-							.forward = .{
-								.forward = .{
-									.left = .{
-										.forward = .{}
-									},
-									.right = .{
-										.forward = .{}
-									},
-									.forward = .{
-										.forward = .{}
-									}
-								}
-							}
-						}
-					},
+					.branchSegmentSeriesVariants = .{.{.left = .{.forward = .{.forward = .{}}}, .right = .{.forward = .{.forward = .{}}}, .forward = .{.forward = .{.left = .{.forward = .{}}, .right = .{.forward = .{}}, .forward = .{.forward = .{}}}}}},
 				},
 				.{
 					.height = 3,
@@ -345,21 +164,7 @@
 						.wood = "cubyz:pine_log",
 						.branch = "cubyz:pine_branch",
 					},
-					.branchSegmentSeriesVariants = .{
-						.{
-							.forward = .{
-								.left = .{
-									.forward = .{}
-								},
-								.right = .{
-									.forward = .{}
-								},
-								.forward = .{
-									.forward = .{}
-								}
-							}
-						}
-					},
+					.branchSegmentSeriesVariants = .{.{.forward = .{.left = .{.forward = .{}}, .right = .{.forward = .{}}, .forward = .{.forward = .{}}}}},
 				},
 				.{
 					.height = 3,
@@ -370,19 +175,7 @@
 						.wood = "cubyz:pine_log",
 						.branch = "cubyz:pine_branch",
 					},
-					.branchSegmentSeriesVariants = .{
-						.{
-							.left = .{
-								.forward = .{}
-							},
-							.right = .{
-								.forward = .{}
-							},
-							.forward = .{
-								.forward = .{}
-							}
-						}
-					},
+					.branchSegmentSeriesVariants = .{.{.left = .{.forward = .{}}, .right = .{.forward = .{}}, .forward = .{.forward = .{}}}},
 				},
 				.{
 					.height = 3,
@@ -393,13 +186,7 @@
 						.wood = "cubyz:pine_log",
 						.branch = "cubyz:pine_branch",
 					},
-					.branchSegmentSeriesVariants = .{
-						.{
-							.left = .{},
-							.right = .{},
-							.forward = .{}
-						}
-					},
+					.branchSegmentSeriesVariants = .{.{.left = .{}, .right = .{}, .forward = .{}}},
 				},
 				.{
 					.height = 1,
@@ -412,9 +199,7 @@
 					},
 					.branchSegmentSeriesVariants = .{
 						.{
-							.up = .{
-								.up = .{}
-							},
+							.up = .{.up = .{}},
 							.left = .{},
 							.right = .{},
 							.forward = .{},
