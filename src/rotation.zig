@@ -751,7 +751,7 @@ pub const RotationModes = struct {
 		pub fn createBlockModel(zon: ZonElement) u16 {
 			const radius = zon.get(u32, "radius", 4);
 			if(pipeModels.get(radius)) |modelIndex| return modelIndex;
-			
+
 			var modelIndex: u16 = undefined;
 			for(0..64) |i| {
 				var quads = main.List(main.models.QuadInfo).init(main.stackAllocator);
