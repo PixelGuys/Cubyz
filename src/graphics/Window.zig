@@ -479,7 +479,7 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 	}
 	// Mouse deltas are averaged over multiple frames using a circular buffer:
 	const deltasLen: u2 = 3;
-	var deltas: [deltasLen]Vec2f = [_]Vec2f{Vec2f{0, 0}} ** 3;
+	var deltas: [deltasLen]Vec2f = @splat(.{0, 0});
 	var deltaBufferPosition: u2 = 0;
 	var currentPos: Vec2f = Vec2f{0, 0};
 	var ignoreDataAfterRecentGrab: bool = true;

@@ -1,7 +1,6 @@
 .{
 	.chance = 0.02,
-	.properties = .{
-	},
+	.properties = .{},
 	.minHeight = 22,
 	.maxHeight = 40,
 
@@ -12,14 +11,13 @@
 
 	.validPlayerSpawn = false,
 
-	.ground_structure = .{
-	},
+	.ground_structure = .{},
 	.structures = .{
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:glass/aqua",
-			.log =    "cubyz:chalk/aqua",
-			.top =    "cubyz:chalk/aqua",
+			.log = "cubyz:chalk/aqua",
+			.top = "cubyz:chalk/aqua",
 			.chance = 0.008,
 			.type = .round,
 			.height = 10,
@@ -30,8 +28,8 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:glass/black",
-			.log =    "cubyz:chalk/black",
-			.top =    "cubyz:chalk/black",
+			.log = "cubyz:chalk/black",
+			.top = "cubyz:chalk/black",
 			.chance = 0.008,
 			.type = .round,
 			.height = 10,
@@ -78,8 +76,8 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:glass/cyan",
-			.log =    "cubyz:chalk/cyan",
-			.top =    "cubyz:chalk/cyan",
+			.log = "cubyz:chalk/cyan",
+			.top = "cubyz:chalk/cyan",
 			.chance = 0.008,
 			.type = .round,
 			.height = 10,
@@ -90,8 +88,8 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:glass/dark_grey",
-			.log =    "cubyz:chalk/dark_grey",
-			.top =    "cubyz:chalk/dark_grey",
+			.log = "cubyz:chalk/dark_grey",
+			.top = "cubyz:chalk/dark_grey",
 			.chance = 0.008,
 			.type = .round,
 			.height = 10,
@@ -102,8 +100,8 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:glass/green",
-			.log =    "cubyz:chalk/green",
-			.top =    "cubyz:chalk/green",
+			.log = "cubyz:chalk/green",
+			.top = "cubyz:chalk/green",
 			.chance = 0.008,
 			.type = .round,
 			.height = 10,
@@ -114,8 +112,8 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:glass/grey",
-			.log =    "cubyz:chalk/grey",
-			.top =    "cubyz:chalk/grey",
+			.log = "cubyz:chalk/grey",
+			.top = "cubyz:chalk/grey",
 			.chance = 0.008,
 			.type = .round,
 			.height = 10,
@@ -126,8 +124,8 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:glass/indigo",
-			.log =    "cubyz:chalk/indigo",
-			.top =    "cubyz:chalk/indigo",
+			.log = "cubyz:chalk/indigo",
+			.top = "cubyz:chalk/indigo",
 			.chance = 0.008,
 			.type = .round,
 			.height = 10,
@@ -138,8 +136,8 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:glass/lime",
-			.log =    "cubyz:chalk/lime",
-			.top =    "cubyz:chalk/lime",
+			.log = "cubyz:chalk/lime",
+			.top = "cubyz:chalk/lime",
 			.chance = 0.008,
 			.type = .round,
 			.height = 10,
@@ -150,8 +148,8 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:glass/magenta",
-			.log =    "cubyz:chalk/magenta",
-			.top =    "cubyz:chalk/magenta",
+			.log = "cubyz:chalk/magenta",
+			.top = "cubyz:chalk/magenta",
 			.chance = 0.008,
 			.type = .round,
 			.height = 10,
@@ -162,8 +160,8 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:glass/orange",
-			.log =    "cubyz:chalk/orange",
-			.top =    "cubyz:chalk/orange",
+			.log = "cubyz:chalk/orange",
+			.top = "cubyz:chalk/orange",
 			.chance = 0.008,
 			.type = .round,
 			.height = 10,
@@ -174,8 +172,8 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:glass/pink",
-			.log =    "cubyz:chalk/pink",
-			.top =    "cubyz:chalk/pink",
+			.log = "cubyz:chalk/pink",
+			.top = "cubyz:chalk/pink",
 			.chance = 0.008,
 			.type = .round,
 			.height = 10,
@@ -186,8 +184,8 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:glass/purple",
-			.log =    "cubyz:chalk/purple",
-			.top =    "cubyz:chalk/purple",
+			.log = "cubyz:chalk/purple",
+			.top = "cubyz:chalk/purple",
 			.chance = 0.008,
 			.type = .round,
 			.height = 10,
@@ -198,8 +196,8 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:glass/red",
-			.log =    "cubyz:chalk/red",
-			.top =    "cubyz:chalk/red",
+			.log = "cubyz:chalk/red",
+			.top = "cubyz:chalk/red",
 			.chance = 0.008,
 			.type = .round,
 			.height = 10,
@@ -210,8 +208,8 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:glass/violet",
-			.log =    "cubyz:chalk/violet",
-			.top =    "cubyz:chalk/violet",
+			.log = "cubyz:chalk/violet",
+			.top = "cubyz:chalk/violet",
 			.chance = 0.008,
 			.type = .round,
 			.height = 10,
@@ -222,8 +220,8 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:glass/viridian",
-			.log =    "cubyz:chalk/viridian",
-			.top =    "cubyz:chalk/viridian",
+			.log = "cubyz:chalk/viridian",
+			.top = "cubyz:chalk/viridian",
 			.chance = 0.008,
 			.type = .round,
 			.height = 10,
@@ -234,8 +232,8 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:glass/white",
-			.log =    "cubyz:chalk/white",
-			.top =    "cubyz:chalk/white",
+			.log = "cubyz:chalk/white",
+			.top = "cubyz:chalk/white",
 			.chance = 0.008,
 			.type = .round,
 			.height = 10,
@@ -246,8 +244,8 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:glass/yellow",
-			.log =    "cubyz:chalk/yellow",
-			.top =    "cubyz:chalk/yellow",
+			.log = "cubyz:chalk/yellow",
+			.top = "cubyz:chalk/yellow",
 			.chance = 0.008,
 			.type = .round,
 			.height = 10,

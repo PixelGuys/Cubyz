@@ -1316,14 +1316,15 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 /// The bit size can be changed using the `resize` function.
 pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIntArray
 	return struct {
-		data: []u8 = &.{},
+		data: []align(64) u32 = &.{},
 		bitSize: u5 = 0,
 
 		const Self = @This();
 
 		pub fn initCapacity(allocator: main.utils.NeverFailingAllocator, bitSize: u5) Self {
+			std.debug.assert(bitSize == 0 or bitSize & bitSize - 1 == 0); // Must be a power of 2
 			return .{
-				.data = allocator.alloc(u8, @as(usize, @divFloor(size + 7, 8))*bitSize + @sizeOf(u32)),
+				.data = allocator.alignedAlloc(u32, 64, @as(usize, @divExact(size, @bitSizeOf(u32)))*bitSize),
 				.bitSize = bitSize,
 			};
 		}
@@ -1333,12 +1334,29 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 			self.* = .{};
 		}
 
-		pub fn resize(self: *Self, allocator: main.utils.NeverFailingAllocator, newBitSize: u5) void {
-			if(newBitSize == self.bitSize) return;
+		inline fn bitInterleave(bits: comptime_int, source: u32) u32 {
+			var result = source;
+			if(bits <= 8) result = (result ^ (result << 8)) & 0x00ff00ff;
+			if(bits <= 4) result = (result ^ (result << 4)) & 0x0f0f0f0f;
+			if(bits <= 2) result = (result ^ (result << 2)) & 0x33333333;
+			if(bits <= 1) result = (result ^ (result << 1)) & 0x55555555;
+			return result;
+		}
+
+		pub fn resizeOnce(self: *Self, allocator: main.utils.NeverFailingAllocator) void {
+			const newBitSize = if(self.bitSize != 0) self.bitSize*2 else 1;
 			var newSelf = Self.initCapacity(allocator, newBitSize);
 
-			for(0..size) |i| {
-				newSelf.setValue(i, self.getValue(i));
+			switch(self.bitSize) {
+				0 => @memset(newSelf.data, 0),
+				inline 1, 2, 4, 8 => |bits| {
+					for(0..self.data.len) |i| {
+						const oldVal = self.data[i];
+						newSelf.data[2*i] = bitInterleave(bits, oldVal & 0xffff);
+						newSelf.data[2*i + 1] = bitInterleave(bits, oldVal >> 16);
+					}
+				},
+				else => unreachable,
 			}
 			allocator.free(self.data);
 			self.* = newSelf;
@@ -1348,22 +1366,21 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 			std.debug.assert(i < size);
 			if(self.bitSize == 0) return 0;
 			const bitIndex = i*self.bitSize;
-			const byteIndex = bitIndex >> 3;
-			const bitOffset: u5 = @intCast(bitIndex & 7);
+			const intIndex = bitIndex >> 5;
+			const bitOffset: u5 = @intCast(bitIndex & 31);
 			const bitMask = (@as(u32, 1) << self.bitSize) - 1;
-			const ptr: *align(1) u32 = @ptrCast(&self.data[byteIndex]);
-			return ptr.* >> bitOffset & bitMask;
+			return self.data[intIndex] >> bitOffset & bitMask;
 		}
 
 		pub fn setValue(self: *Self, i: usize, value: u32) void {
 			std.debug.assert(i < size);
 			if(self.bitSize == 0) return;
 			const bitIndex = i*self.bitSize;
-			const byteIndex = bitIndex >> 3;
-			const bitOffset: u5 = @intCast(bitIndex & 7);
+			const intIndex = bitIndex >> 5;
+			const bitOffset: u5 = @intCast(bitIndex & 31);
 			const bitMask = (@as(u32, 1) << self.bitSize) - 1;
 			std.debug.assert(value <= bitMask);
-			const ptr: *align(1) u32 = @ptrCast(&self.data[byteIndex]);
+			const ptr: *u32 = &self.data[intIndex];
 			ptr.* &= ~(bitMask << bitOffset);
 			ptr.* |= value << bitOffset;
 		}
@@ -1372,11 +1389,11 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 			std.debug.assert(i < size);
 			if(self.bitSize == 0) return 0;
 			const bitIndex = i*self.bitSize;
-			const byteIndex = bitIndex >> 3;
-			const bitOffset: u5 = @intCast(bitIndex & 7);
+			const intIndex = bitIndex >> 5;
+			const bitOffset: u5 = @intCast(bitIndex & 31);
 			const bitMask = (@as(u32, 1) << self.bitSize) - 1;
 			std.debug.assert(value <= bitMask);
-			const ptr: *align(1) u32 = @ptrCast(&self.data[byteIndex]);
+			const ptr: *u32 = &self.data[intIndex];
 			const result = ptr.* >> bitOffset & bitMask;
 			ptr.* &= ~(bitMask << bitOffset);
 			ptr.* |= value << bitOffset;
@@ -1407,9 +1424,11 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 		}
 
 		pub fn initCopy(self: *Self, template: *const Self) void {
+			const dataDupe = main.globalAllocator.alignedAlloc(u32, 64, template.data.data.len);
+			@memcpy(dataDupe, template.data.data);
 			self.* = .{
 				.data = .{
-					.data = main.globalAllocator.dupe(u8, template.data.data),
+					.data = dataDupe,
 					.bitSize = template.data.bitSize,
 				},
 				.palette = main.globalAllocator.dupe(T, template.palette),
@@ -1421,7 +1440,7 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 
 		pub fn initCapacity(self: *Self, paletteLength: u32) void {
 			std.debug.assert(paletteLength < 0x80000000 and paletteLength > 0);
-			const bitSize: u5 = @intCast(std.math.log2_int_ceil(u32, paletteLength));
+			const bitSize: u5 = getTargetBitSize(paletteLength);
 			const bufferLength = @as(u32, 1) << bitSize;
 			self.* = .{
 				.data = DynamicPackedIntArray(size).initCapacity(main.globalAllocator, bitSize),
@@ -1440,6 +1459,13 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			main.globalAllocator.free(self.paletteOccupancy);
 		}
 
+		fn getTargetBitSize(paletteLength: u32) u5 {
+			const base: u5 = @intCast(std.math.log2_int_ceil(u32, paletteLength));
+			if(base == 0) return 0;
+			const logLog = std.math.log2_int_ceil(u5, base);
+			return @as(u5, 1) << logLog;
+		}
+
 		pub fn getValue(self: *const Self, i: usize) T {
 			return self.palette[self.data.getValue(i)];
 		}
@@ -1454,7 +1480,7 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			}
 			if(paletteIndex == self.paletteLength) {
 				if(self.paletteLength == self.palette.len) {
-					self.data.resize(main.globalAllocator, self.data.bitSize + 1);
+					self.data.resizeOnce(main.globalAllocator);
 					self.palette = main.globalAllocator.realloc(self.palette, @as(usize, 1) << self.data.bitSize);
 					const oldLen = self.paletteOccupancy.len;
 					self.paletteOccupancy = main.globalAllocator.realloc(self.paletteOccupancy, @as(usize, 1) << self.data.bitSize);
@@ -1513,9 +1539,10 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 		}
 
 		pub fn optimizeLayout(self: *Self) void {
-			if(std.math.log2_int_ceil(usize, self.palette.len) == std.math.log2_int_ceil(usize, self.activePaletteEntries)) return;
+			const newBitSize = getTargetBitSize(@intCast(self.activePaletteEntries));
+			if(self.data.bitSize == newBitSize) return;
 
-			var newData = main.utils.DynamicPackedIntArray(size).initCapacity(main.globalAllocator, @intCast(std.math.log2_int_ceil(u32, self.activePaletteEntries)));
+			var newData = main.utils.DynamicPackedIntArray(size).initCapacity(main.globalAllocator, newBitSize);
 			const paletteMap: []u32 = main.stackAllocator.alloc(u32, self.paletteLength);
 			defer main.stackAllocator.free(paletteMap);
 			{
@@ -1555,7 +1582,7 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 
 	const Bucket = struct {
 		mutex: std.Thread.Mutex = .{},
-		items: [bucketSize]?*T = [_]?*T{null} ** bucketSize,
+		items: [bucketSize]?*T = @splat(null),
 
 		fn find(self: *@This(), compare: anytype) ?*T {
 			assertLocked(&self.mutex);
@@ -1615,7 +1642,7 @@ pub fn Cache(comptime T: type, comptime numberOfBuckets: u32, comptime bucketSiz
 	};
 
 	return struct {
-		buckets: [numberOfBuckets]Bucket = [_]Bucket{Bucket{}} ** numberOfBuckets,
+		buckets: [numberOfBuckets]Bucket = @splat(.{}),
 		cacheRequests: Atomic(usize) = .init(0),
 		cacheMisses: Atomic(usize) = .init(0),
 
@@ -1919,6 +1946,11 @@ pub const BinaryReader = struct {
 		return std.mem.readInt(T, self.remaining[0..bufSize], self.endian);
 	}
 
+	pub fn readFloat(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds}!T {
+		const IntT = std.meta.Int(.unsigned, @typeInfo(T).float.bits);
+		return @as(T, @bitCast(try self.readInt(IntT)));
+	}
+
 	pub fn readEnum(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds, InvalidEnumTag}!T {
 		const int = try self.readInt(@typeInfo(T).@"enum".tag_type);
 		return std.meta.intToEnum(T, int);
@@ -1961,6 +1993,11 @@ pub const BinaryWriter = struct {
 		}
 		const bufSize = @divExact(@typeInfo(T).int.bits, 8);
 		std.mem.writeInt(T, self.data.addMany(bufSize)[0..bufSize], value, self.endian);
+	}
+
+	pub fn writeFloat(self: *BinaryWriter, T: type, value: T) T {
+		const IntT = std.meta.Int(.unsigned, @typeInfo(T).float.bits);
+		self.writeInt(IntT, @bitCast(value));
 	}
 
 	pub fn writeEnum(self: *BinaryWriter, T: type, value: T) void {

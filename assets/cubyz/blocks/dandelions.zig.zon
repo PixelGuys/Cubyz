@@ -11,7 +11,7 @@
 	.model = "cubyz:plane",
 	.rotation = .carpet,
 	.texture = "cubyz:dandelions",
-	.item= .{
+	.item = .{
 		.texture = "dandelions.png",
 	},
 	.lodReplacement = "cubyz:air",

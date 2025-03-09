@@ -5,6 +5,10 @@ const main = @import("root");
 const chunk = main.chunk;
 const server = @import("server.zig");
 
+const utils = main.utils;
+const BinaryWriter = utils.BinaryWriter;
+const BinaryReader = utils.BinaryReader;
+
 pub const RegionFile = struct { // MARK: RegionFile
 	const version = 0;
 	pub const regionShift = 2;
@@ -13,7 +17,7 @@ pub const RegionFile = struct { // MARK: RegionFile
 
 	const headerSize = 8 + regionSize*regionSize*regionSize*@sizeOf(u32);
 
-	chunks: [regionVolume][]u8 = .{&.{}} ** regionVolume,
+	chunks: [regionVolume][]u8 = @splat(&.{}),
 	pos: chunk.ChunkPosition,
 	mutex: std.Thread.Mutex = .{},
 	modified: bool = false,
@@ -42,41 +46,45 @@ pub const RegionFile = struct { // MARK: RegionFile
 			return self;
 		};
 		defer main.stackAllocator.free(data);
-		if(data.len < headerSize) {
-			std.log.err("Region file {s} is too small", .{path});
-			return self;
-		}
-		var i: usize = 0;
-		const fileVersion = std.mem.readInt(u32, data[i..][0..4], .big);
-		i += 4;
-		const fileSize = std.mem.readInt(u32, data[i..][0..4], .big);
-		i += 4;
+		self.load(path, data) catch {
+			std.log.err("Corrupted region file: {s}", .{path});
+			if(@errorReturnTrace()) |trace| std.log.info("{}", .{trace});
+		};
+		return self;
+	}
+
+	fn load(self: *RegionFile, path: []const u8, data: []const u8) !void {
+		var reader = BinaryReader.init(data, .big);
+
+		const fileVersion = try reader.readInt(u32);
+		const fileSize = try reader.readInt(u32);
+
 		if(fileVersion != version) {
 			std.log.err("Region file {s} has incorrect version {}. Requires version {}.", .{path, fileVersion, version});
-			return self;
+			return error.corrupted;
 		}
-		var sizes: [regionVolume]u32 = undefined;
+
+		var chunkDataLengths: [regionVolume]u32 = undefined;
 		var totalSize: usize = 0;
-		for(0..regionVolume) |j| {
-			const size = std.mem.readInt(u32, data[i..][0..4], .big);
-			i += 4;
-			sizes[j] = size;
+		for(0..regionVolume) |i| {
+			const size = try reader.readInt(u32);
+			chunkDataLengths[i] = size;
 			totalSize += size;
 		}
-		std.debug.assert(i == headerSize);
-		if(fileSize != data.len - i or totalSize != fileSize) {
-			std.log.err("Region file {s} is corrupted", .{path});
+
+		if(fileSize != reader.remaining.len or totalSize != fileSize) {
+			return error.corrupted;
 		}
+
 		for(0..regionVolume) |j| {
-			const size = sizes[j];
-			if(size != 0) {
-				self.chunks[j] = main.globalAllocator.alloc(u8, size);
-				@memcpy(self.chunks[j], data[i..][0..size]);
-				i += size;
+			const chunkDataLength = chunkDataLengths[j];
+			if(chunkDataLength != 0) {
+				self.chunks[j] = main.globalAllocator.dupe(u8, try reader.readSlice(chunkDataLength));
 			}
 		}
-		std.debug.assert(i == data.len);
-		return self;
+		if(reader.remaining.len != 0) {
+			return error.corrupted;
+		}
 	}
 
 	pub fn deinit(self: *RegionFile) void {
@@ -121,25 +129,19 @@ pub const RegionFile = struct { // MARK: RegionFile
 			return;
 		}
 
-		const data = main.stackAllocator.alloc(u8, totalSize + headerSize);
-		defer main.stackAllocator.free(data);
-		var i: usize = 0;
-		std.mem.writeInt(u32, data[i..][0..4], version, .big);
-		i += 4;
-		std.mem.writeInt(u32, data[i..][0..4], @intCast(totalSize), .big);
-		i += 4;
-		for(0..regionVolume) |j| {
-			std.mem.writeInt(u32, data[i..][0..4], @intCast(self.chunks[j].len), .big);
-			i += 4;
-		}
-		std.debug.assert(i == headerSize);
+		var writer = BinaryWriter.initCapacity(main.stackAllocator, .big, totalSize + headerSize);
+		defer writer.deinit();
 
-		for(0..regionVolume) |j| {
-			const size = self.chunks[j].len;
-			@memcpy(data[i..][0..size], self.chunks[j]);
-			i += size;
+		writer.writeInt(u32, version);
+		writer.writeInt(u32, @intCast(totalSize));
+
+		for(0..regionVolume) |i| {
+			writer.writeInt(u32, @intCast(self.chunks[i].len));
 		}
-		std.debug.assert(i == data.len);
+		for(0..regionVolume) |i| {
+			writer.writeSlice(self.chunks[i]);
+		}
+		std.debug.assert(writer.data.items.len == totalSize + headerSize);
 
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}/{}/{}.region", .{self.saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy, self.pos.wz}) catch unreachable;
 		defer main.stackAllocator.free(path);
@@ -150,7 +152,7 @@ pub const RegionFile = struct { // MARK: RegionFile
 			std.log.err("Error while writing to file {s}: {s}", .{path, @errorName(err)});
 		};
 
-		main.files.write(path, data) catch |err| {
+		main.files.write(path, writer.data.items) catch |err| {
 			std.log.err("Error while writing to file {s}: {s}", .{path, @errorName(err)});
 		};
 	}
@@ -259,10 +261,12 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 	};
 	pub fn compressChunk(allocator: main.utils.NeverFailingAllocator, ch: *chunk.Chunk, allowLossy: bool) []const u8 {
 		if(ch.data.paletteLength == 1) {
-			const data = allocator.alloc(u8, 8);
-			std.mem.writeInt(u32, data[0..4], @intFromEnum(CompressionAlgo.uniform), .big);
-			std.mem.writeInt(u32, data[4..8], ch.data.palette[0].toInt(), .big);
-			return data;
+			var writer = BinaryWriter.initCapacity(allocator, .big, @sizeOf(CompressionAlgo) + @sizeOf(u32));
+
+			writer.writeEnum(CompressionAlgo, .uniform);
+			writer.writeInt(u32, ch.data.palette[0].toInt());
+
+			return writer.data.toOwnedSlice();
 		}
 		if(ch.data.paletteLength < 256) {
 			var uncompressedData: [chunk.chunkVolume]u8 = undefined;
@@ -296,71 +300,77 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 			const compressedData = main.utils.Compression.deflate(main.stackAllocator, &uncompressedData, .default);
 			defer main.stackAllocator.free(compressedData);
 
-			const data = allocator.alloc(u8, 4 + 1 + 4*ch.data.paletteLength + compressedData.len);
-			std.mem.writeInt(i32, data[0..4], @intFromEnum(CompressionAlgo.deflate_with_8bit_palette), .big);
-			data[4] = @intCast(ch.data.paletteLength);
-			for(0..ch.data.paletteLength) |i| {
-				std.mem.writeInt(u32, data[5 + 4*i ..][0..4], ch.data.palette[i].toInt(), .big);
-			}
-			@memcpy(data[5 + 4*ch.data.paletteLength ..], compressedData);
-			return data;
-		}
-		var uncompressedData: [chunk.chunkVolume*@sizeOf(u32)]u8 = undefined;
-		for(0..chunk.chunkVolume) |i| {
-			std.mem.writeInt(u32, uncompressedData[4*i ..][0..4], ch.data.getValue(i).toInt(), .big);
-		}
-		const compressedData = main.utils.Compression.deflate(main.stackAllocator, &uncompressedData, .default);
-		defer main.stackAllocator.free(compressedData);
-		const data = allocator.alloc(u8, 4 + compressedData.len);
+			var writer = BinaryWriter.initCapacity(allocator, .big, @sizeOf(CompressionAlgo) + @sizeOf(u8) + @sizeOf(u32)*ch.data.paletteLength + compressedData.len);
 
-		@memcpy(data[4..], compressedData);
-		std.mem.writeInt(i32, data[0..4], @intFromEnum(CompressionAlgo.deflate), .big);
-		return data;
+			writer.writeEnum(CompressionAlgo, .deflate_with_8bit_palette);
+			writer.writeInt(u8, @intCast(ch.data.paletteLength));
+
+			for(0..ch.data.paletteLength) |i| {
+				writer.writeInt(u32, ch.data.palette[i].toInt());
+			}
+			writer.writeSlice(compressedData);
+			return writer.data.toOwnedSlice();
+		}
+		var uncompressedWriter = BinaryWriter.initCapacity(main.stackAllocator, .big, chunk.chunkVolume*@sizeOf(u32));
+		defer uncompressedWriter.deinit();
+
+		for(0..chunk.chunkVolume) |i| {
+			uncompressedWriter.writeInt(u32, ch.data.getValue(i).toInt());
+		}
+		const compressedData = main.utils.Compression.deflate(main.stackAllocator, uncompressedWriter.data.items, .default);
+		defer main.stackAllocator.free(compressedData);
+
+		var compressedWriter = BinaryWriter.initCapacity(allocator, .big, @sizeOf(CompressionAlgo) + compressedData.len);
+
+		compressedWriter.writeEnum(CompressionAlgo, .deflate);
+		compressedWriter.writeSlice(compressedData);
+
+		return compressedWriter.data.toOwnedSlice();
 	}
 
-	pub fn decompressChunk(ch: *chunk.Chunk, _data: []const u8) error{corrupted}!void {
+	pub fn decompressChunk(ch: *chunk.Chunk, _data: []const u8) !void {
 		std.debug.assert(ch.data.paletteLength == 1);
-		var data = _data;
-		if(data.len < 4) return error.corrupted;
-		const algo: CompressionAlgo = @enumFromInt(std.mem.readInt(u32, data[0..4], .big));
-		data = data[4..];
-		switch(algo) {
+
+		var reader = BinaryReader.init(_data, .big);
+		const compressionAlgorithm = try reader.readEnum(CompressionAlgo);
+
+		switch(compressionAlgorithm) {
 			.deflate, .deflate_with_position => {
-				if(algo == .deflate_with_position) data = data[16..];
-				const _inflatedData = main.stackAllocator.alloc(u8, chunk.chunkVolume*4);
-				defer main.stackAllocator.free(_inflatedData);
-				const _inflatedLen = main.utils.Compression.inflateTo(_inflatedData, data[0..]) catch return error.corrupted;
-				if(_inflatedLen != chunk.chunkVolume*4) {
-					return error.corrupted;
-				}
-				data = _inflatedData;
+				if(compressionAlgorithm == .deflate_with_position) _ = try reader.readSlice(16);
+				const decompressedData = main.stackAllocator.alloc(u8, chunk.chunkVolume*@sizeOf(u32));
+				defer main.stackAllocator.free(decompressedData);
+
+				const decompressedLength = try main.utils.Compression.inflateTo(decompressedData, reader.remaining);
+				if(decompressedLength != chunk.chunkVolume*@sizeOf(u32)) return error.corrupted;
+
+				var decompressedReader = BinaryReader.init(decompressedData, .big);
+
 				for(0..chunk.chunkVolume) |i| {
-					ch.data.setValue(i, main.blocks.Block.fromInt(std.mem.readInt(u32, data[0..4], .big)));
-					data = data[4..];
+					ch.data.setValue(i, main.blocks.Block.fromInt(try decompressedReader.readInt(u32)));
 				}
 			},
 			.deflate_with_8bit_palette => {
-				const paletteLength = data[0];
-				data = data[1..];
+				const paletteLength = try reader.readInt(u8);
+
 				ch.data.deinit();
 				ch.data.initCapacity(paletteLength);
+
 				for(0..paletteLength) |i| {
-					ch.data.palette[i] = main.blocks.Block.fromInt(std.mem.readInt(u32, data[0..4], .big));
-					data = data[4..];
+					ch.data.palette[i] = main.blocks.Block.fromInt(try reader.readInt(u32));
 				}
-				const _inflatedData = main.stackAllocator.alloc(u8, chunk.chunkVolume);
-				defer main.stackAllocator.free(_inflatedData);
-				const _inflatedLen = main.utils.Compression.inflateTo(_inflatedData, data[0..]) catch return error.corrupted;
-				if(_inflatedLen != chunk.chunkVolume) {
-					return error.corrupted;
-				}
-				data = _inflatedData;
+
+				const decompressedData = main.stackAllocator.alloc(u8, chunk.chunkVolume);
+				defer main.stackAllocator.free(decompressedData);
+
+				const decompressedLength = try main.utils.Compression.inflateTo(decompressedData, reader.remaining);
+				if(decompressedLength != chunk.chunkVolume) return error.corrupted;
+
 				for(0..chunk.chunkVolume) |i| {
-					ch.data.setRawValue(i, data[i]);
+					ch.data.setRawValue(i, decompressedData[i]);
 				}
 			},
 			.uniform => {
-				ch.data.palette[0] = main.blocks.Block.fromInt(std.mem.readInt(u32, data[0..4], .big));
+				ch.data.palette[0] = main.blocks.Block.fromInt(try reader.readInt(u32));
 			},
 			_ => {
 				return error.corrupted;
