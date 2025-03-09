@@ -27,7 +27,7 @@ const Vec3f = vec.Vec3f;
 const main = @import("main.zig");
 const Window = main.Window;
 
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 pub const c = @cImport({
 	@cInclude("glad/glad.h");
@@ -1698,7 +1698,7 @@ pub const TextureArray = struct { // MARK: TextureArray
 		for(0..maxLOD) |i| {
 			c.glTexImage3D(c.GL_TEXTURE_2D_ARRAY, @intCast(i), c.GL_RGBA8, @max(0, maxWidth >> @intCast(i)), @max(0, maxHeight >> @intCast(i)), @intCast(images.len), 0, c.GL_RGBA, c.GL_UNSIGNED_BYTE, null);
 		}
-		var arena = main.utils.NeverFailingArenaAllocator.init(main.stackAllocator);
+		var arena = main.heap.NeverFailingArenaAllocator.init(main.stackAllocator);
 		defer arena.deinit();
 		const lodBuffer: [][]Color = arena.allocator().alloc([]Color, maxLOD);
 		for(lodBuffer, 0..) |*buffer, i| {

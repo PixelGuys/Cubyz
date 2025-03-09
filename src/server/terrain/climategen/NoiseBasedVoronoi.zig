@@ -13,7 +13,7 @@ const vec = main.vec;
 const Vec2i = vec.Vec2i;
 const Vec2f = vec.Vec2f;
 
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 // Generates the climate map using a fluidynamics simulation, with a circular heat distribution.
 

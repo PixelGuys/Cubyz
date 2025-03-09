@@ -4,7 +4,7 @@ const main = @import("root");
 const Array3D = main.utils.Array3D;
 const ChunkPosition = main.chunk.ChunkPosition;
 const random = main.random;
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const FractalNoise3D = @This();
 

@@ -43,7 +43,7 @@ pub const BlockTag = enum(u32) {
 		return result;
 	}
 
-	pub fn loadFromZon(_allocator: main.utils.NeverFailingAllocator, zon: ZonElement) []BlockTag {
+	pub fn loadFromZon(_allocator: main.heap.NeverFailingAllocator, zon: ZonElement) []BlockTag {
 		const result = _allocator.alloc(BlockTag, zon.toSlice().len);
 		for(zon.toSlice(), 0..) |tagZon, i| {
 			result[i] = BlockTag.find(tagZon.as([]const u8, "incorrect"));
@@ -56,7 +56,7 @@ pub const BlockTag = enum(u32) {
 	}
 };
 
-var arena = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
+var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
 const allocator = arena.allocator();
 
 pub const maxBlockCount: usize = 65536; // 16 bit limit
@@ -447,7 +447,7 @@ pub const meshes = struct { // MARK: meshes
 	var textureFogData: main.List(FogData) = undefined;
 	pub var textureOcclusionData: main.List(bool) = undefined;
 
-	var arenaForWorld: main.utils.NeverFailingArenaAllocator = undefined;
+	var arenaForWorld: main.heap.NeverFailingArenaAllocator = undefined;
 
 	pub var blockBreakingTextures: main.List(u16) = undefined;
 
@@ -569,7 +569,7 @@ pub const meshes = struct { // MARK: meshes
 		}
 	}
 
-	fn extendedPath(_allocator: main.utils.NeverFailingAllocator, path: []const u8, ending: []const u8) []const u8 {
+	fn extendedPath(_allocator: main.heap.NeverFailingAllocator, path: []const u8, ending: []const u8) []const u8 {
 		return std.fmt.allocPrint(_allocator.allocator, "{s}{s}", .{path, ending}) catch unreachable;
 	}
 

@@ -9,7 +9,7 @@ const vec = main.vec;
 const Vec2f = vec.Vec2f;
 const List = main.List;
 
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const Button = @import("components/Button.zig");
 const CheckBox = @import("components/CheckBox.zig");

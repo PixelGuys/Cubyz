@@ -2,7 +2,7 @@ const std = @import("std");
 
 const main = @import("root");
 const ZonElement = main.ZonElement;
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 pub const biomes = @import("biomes.zig");
 pub const noise = @import("noise/noise.zig");

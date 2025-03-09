@@ -37,7 +37,7 @@ fn fpsCapRound(newValue: f32) ?u32 {
 	}
 }
 
-fn fpsCapFormatter(allocator: main.utils.NeverFailingAllocator, value: f32) []const u8 {
+fn fpsCapFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
 	const cap = fpsCapRound(value);
 	if(cap == null)
 		return allocator.dupe(u8, "#ffffffFPS: Unlimited");
@@ -70,11 +70,11 @@ fn fovCallback(newValue: f32) void {
 	main.Window.GLFWCallbacks.framebufferSize(undefined, main.Window.width, main.Window.height);
 }
 
-fn fovFormatter(allocator: main.utils.NeverFailingAllocator, value: f32) []const u8 {
+fn fovFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
 	return std.fmt.allocPrint(allocator.allocator, "#ffffffField Of View: {d:.0}°", .{value}) catch unreachable;
 }
 
-fn lodDistanceFormatter(allocator: main.utils.NeverFailingAllocator, value: f32) []const u8 {
+fn lodDistanceFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
 	return std.fmt.allocPrint(allocator.allocator, "#ffffffOpaque leaves distance: {d:.0}", .{@round(value)}) catch unreachable;
 }
 

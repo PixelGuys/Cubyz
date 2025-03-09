@@ -4,7 +4,7 @@ const main = @import("root");
 const ConnectionManager = main.network.ConnectionManager;
 const settings = main.settings;
 const Vec2f = main.vec.Vec2f;
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const Texture = main.graphics.Texture;
 
 const gui = @import("../gui.zig");
@@ -22,7 +22,7 @@ pub var window = GuiWindow{
 
 const padding: f32 = 8;
 const width: f32 = 128;
-var buttonNameArena: main.utils.NeverFailingArenaAllocator = undefined;
+var buttonNameArena: main.heap.NeverFailingArenaAllocator = undefined;
 
 pub var needsUpdate: bool = false;
 
@@ -127,7 +127,7 @@ pub fn update() void {
 }
 
 pub fn onOpen() void {
-	buttonNameArena = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
+	buttonNameArena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 8);
 	list.add(Label.init(.{0, 0}, width, "**Select World**", .center));
 	list.add(Button.initText(.{0, 0}, 128, "Create New World", gui.openWindowCallback("save_creation")));

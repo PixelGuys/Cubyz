@@ -5,7 +5,7 @@ const blocks = main.blocks;
 const ServerChunk = main.chunk.ServerChunk;
 const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const vec = @import("main.vec");
 const Vec3f = main.vec.Vec3f;
 const Vec3d = main.vec.Vec3d;
@@ -51,7 +51,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 	}
 
 	var modelRegistry: std.StringHashMapUnmanaged(VTable) = .{};
-	var arena: main.utils.NeverFailingArenaAllocator = .init(main.globalAllocator);
+	var arena: main.heap.NeverFailingArenaAllocator = .init(main.globalAllocator);
 
 	pub fn reset() void {
 		std.debug.assert(arena.reset(.free_all));
