@@ -29,11 +29,6 @@ const BlueprintSubCommand = enum {
 	}
 };
 
-const red = "#e3273d";
-const blue = "#4287f5";
-const white = "#ffffff";
-const green = "#04c441";
-
 pub fn execute(args: []const u8, source: *User) void {
 	var argsList = List([]const u8).init(main.stackAllocator);
 
@@ -49,7 +44,7 @@ pub fn execute(args: []const u8, source: *User) void {
 	}
 
 	if(argsList.items.len < 1) {
-		source.sendMessage("{s}Not enough arguments for /blueprint, expected at least 1.", .{red});
+		source.sendMessage("#ff0000Not enough arguments for /blueprint, expected at least 1.", .{});
 		return;
 	}
 	const subcommand = BlueprintSubCommand.fromString(argsList.items[0]);
@@ -59,24 +54,24 @@ pub fn execute(args: []const u8, source: *User) void {
 		.load => blueprintLoad(argsList, source),
 		.list => blueprintList(argsList, source),
 		.other => {
-			source.sendMessage("{s}Unrecognized subcommand for /blueprint: '{s}'", .{red, argsList.items[0]});
+			source.sendMessage("#ff0000Unrecognized subcommand for /blueprint: '{s}'", .{argsList.items[0]});
 		},
 		.empty => {
-			source.sendMessage("{s}Missing subcommand for **/blueprint**, usage: {s}{s} ", .{red, white, usage});
+			source.sendMessage("#ff0000Missing subcommand for **/blueprint**, usage: {s} ", .{usage});
 		},
 	} catch |err| {
-		std.log.info("Error: {s}", .{red, @errorName(err)});
-		source.sendMessage("{s}Error: {s}", .{red, @errorName(err)});
+		std.log.info("Error: {s}", .{@errorName(err)});
+		source.sendMessage("#ff0000Error: {s}", .{@errorName(err)});
 	};
 }
 
 fn blueprintSave(args: List([]const u8), source: *User) !void {
 	if(args.items.len < 2) {
-		source.sendMessage("{s}**/blueprint save** requires FILENAME argument.", .{red});
+		source.sendMessage("#ff0000**/blueprint save** requires FILENAME argument.", .{});
 		return;
 	}
 	if(args.items.len >= 3) {
-		source.sendMessage("{s}Too many arguments for **/blueprint save**. Expected 1 argument, FILENAME.", .{red});
+		source.sendMessage("#ff0000Too many arguments for **/blueprint save**. Expected 1 argument, FILENAME.", .{});
 		return;
 	}
 	source.mutex.lock();
@@ -97,7 +92,7 @@ fn blueprintSave(args: List([]const u8), source: *User) !void {
 		defer blueprintsDir.close();
 
 		std.log.info("Saving clipboard to blueprint file: {s}", .{fileName});
-		source.sendMessage("{s}Saving clipboard to blueprint file: {s}", .{blue, fileName});
+		source.sendMessage("#00ff00Saving clipboard to blueprint file: {s}", .{fileName});
 
 		try blueprintsDir.writeFile(.{
 			.sub_path = fileName,
@@ -105,7 +100,7 @@ fn blueprintSave(args: List([]const u8), source: *User) !void {
 			.flags = .{.lock = .exclusive},
 		});
 	} else {
-		source.sendMessage("{s}Error: No clipboard content to save.", .{red});
+		source.sendMessage("#ff0000Error: No clipboard content to save.", .{});
 	}
 }
 
@@ -119,11 +114,11 @@ fn ensureBlueprintExtension(allocator: NeverFailingAllocator, fileName: []const 
 
 fn blueprintDelete(args: List([]const u8), source: *User) !void {
 	if(args.items.len < 2) {
-		source.sendMessage("{s}**/blueprint delete** requires FILENAME argument.", .{red});
+		source.sendMessage("#ff0000**/blueprint delete** requires FILENAME argument.", .{});
 		return;
 	}
 	if(args.items.len >= 3) {
-		source.sendMessage("{s}Too many arguments for **/blueprint delete**. Expected 1 argument, FILENAME.", .{red});
+		source.sendMessage("#ff0000Too many arguments for **/blueprint delete**. Expected 1 argument, FILENAME.", .{});
 		return;
 	}
 
@@ -140,7 +135,7 @@ fn blueprintDelete(args: List([]const u8), source: *User) !void {
 	try blueprintsDir.deleteFile(fileName);
 
 	std.log.info("Deleted blueprint file: {s}", .{fileName});
-	source.sendMessage("{s}Deleted blueprint file: {s}", .{red, fileName});
+	source.sendMessage("#ff0000Deleted blueprint file: {s}", .{fileName});
 }
 
 fn blueprintList(_: List([]const u8), source: *User) !void {
@@ -158,18 +153,18 @@ fn blueprintList(_: List([]const u8), source: *User) !void {
 		if(entry.kind != .file) break;
 		if(!std.ascii.endsWithIgnoreCase(entry.name, ".blp")) break;
 
-		source.sendMessage("{s}{}{s} {s}", .{white, index, blue, entry.name});
+		source.sendMessage("#ffffff{}#00ff00 {s}", .{index, entry.name});
 		index += 1;
 	}
 }
 
 fn blueprintLoad(args: List([]const u8), source: *User) !void {
 	if(args.items.len < 2) {
-		source.sendMessage("{s}**/blueprint load** requires FILENAME argument.", .{red});
+		source.sendMessage("#ff0000**/blueprint load** requires FILENAME argument.", .{});
 		return;
 	}
 	if(args.items.len >= 3) {
-		source.sendMessage("{s}Too many arguments for **/blueprint load**. Expected 1 argument, FILENAME.", .{red});
+		source.sendMessage("#ff0000Too many arguments for **/blueprint load**. Expected 1 argument, FILENAME.", .{});
 		return;
 	}
 	source.mutex.lock();
@@ -195,6 +190,6 @@ fn blueprintLoad(args: List([]const u8), source: *User) !void {
 		try source.commandData.clipboard.?.load(storedBlueprint);
 	}
 
-	std.log.info("Loaded blueprint file: {s}", .{blue, fileName});
-	source.sendMessage("{s}Loaded blueprint file: {s}", .{blue, fileName});
+	std.log.info("Loaded blueprint file: {s}", .{fileName});
+	source.sendMessage("#00ff00Loaded blueprint file: {s}", .{fileName});
 }
