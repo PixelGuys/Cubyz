@@ -1334,13 +1334,29 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 			self.* = .{};
 		}
 
-		pub fn resize(self: *Self, allocator: main.utils.NeverFailingAllocator, newBitSize: u5) void {
-			std.debug.assert(newBitSize == 0 or newBitSize & newBitSize - 1 == 0); // Must be a power of 2
-			if(newBitSize == self.bitSize) return;
+		inline fn bitInterleave(bits: comptime_int, source: u32) u32 {
+			var result = source;
+			if(bits <= 8) result = (result ^ (result << 8)) & 0x00ff00ff;
+			if(bits <= 4) result = (result ^ (result << 4)) & 0x0f0f0f0f;
+			if(bits <= 2) result = (result ^ (result << 2)) & 0x33333333;
+			if(bits <= 1) result = (result ^ (result << 1)) & 0x55555555;
+			return result;
+		}
+
+		pub fn resizeOnce(self: *Self, allocator: main.utils.NeverFailingAllocator) void {
+			const newBitSize = if(self.bitSize != 0) self.bitSize*2 else 1;
 			var newSelf = Self.initCapacity(allocator, newBitSize);
 
-			for(0..size) |i| {
-				newSelf.setValue(i, self.getValue(i));
+			switch(self.bitSize) {
+				0 => @memset(newSelf.data, 0),
+				inline 1, 2, 4, 8 => |bits| {
+					for(0..self.data.len) |i| {
+						const oldVal = self.data[i];
+						newSelf.data[2*i] = bitInterleave(bits, oldVal & 0xffff);
+						newSelf.data[2*i + 1] = bitInterleave(bits, oldVal >> 16);
+					}
+				},
+				else => unreachable,
 			}
 			allocator.free(self.data);
 			self.* = newSelf;
@@ -1464,7 +1480,7 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			}
 			if(paletteIndex == self.paletteLength) {
 				if(self.paletteLength == self.palette.len) {
-					self.data.resize(main.globalAllocator, getTargetBitSize(self.paletteLength + 1));
+					self.data.resizeOnce(main.globalAllocator);
 					self.palette = main.globalAllocator.realloc(self.palette, @as(usize, 1) << self.data.bitSize);
 					const oldLen = self.paletteOccupancy.len;
 					self.paletteOccupancy = main.globalAllocator.realloc(self.paletteOccupancy, @as(usize, 1) << self.data.bitSize);
