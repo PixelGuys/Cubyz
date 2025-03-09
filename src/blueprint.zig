@@ -157,7 +157,6 @@ pub const Blueprint = struct {
 					const worldZ = startZ + @as(i32, @intCast(offsetZ));
 
 					const block = self.blocks.items[blockIndex];
-					mesh_storage.updateBlock(worldX, worldY, worldZ, block);
 					_ = main.server.world.?.updateBlock(worldX, worldY, worldZ, block);
 
 					blockIndex += 1;
