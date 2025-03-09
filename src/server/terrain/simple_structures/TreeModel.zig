@@ -207,6 +207,7 @@ const Stem = struct {
 		const placePosition = position + direction.relPos();
 
 		if(!state.chunk.liesInChunk(placePosition[0], placePosition[1], placePosition[2])) return;
+		if(state.chunk.getBlock(placePosition[0], placePosition[1], placePosition[2]).typ != 0) return;
 
 		const under = placePosition + Neighbor.dirDown.relPos();
 		var center = false;
@@ -219,7 +220,7 @@ const Stem = struct {
 		const blockData = self.directionToMushroomData(direction, center);
 		const blockWithData = Block{.typ = self.blocks.mushroom.typ, .data = blockData};
 
-		_ = state.chunk.updateBlockIfAir(placePosition[0], placePosition[1], placePosition[2], blockWithData);
+		_ = state.chunk.updateBlock(placePosition[0], placePosition[1], placePosition[2], blockWithData);
 	}
 	fn directionToMushroomData(_: @This(), direction: Neighbor, center: bool) u16 {
 		if(center) {
@@ -346,9 +347,10 @@ const BranchGenerator = struct {
 	}
 	fn place(self: *@This(), position: Vec3i, block: Block, data: u16) bool {
 		if(!self.state.chunk.liesInChunk(position[0], position[1], position[2])) return true;
+		if(self.state.chunk.getBlock(position[0], position[1], position[2]).typ != 0) return false;
 
 		const blockWithData = Block{.typ = block.typ, .data = data};
-		return self.state.chunk.updateBlockIfAir(position[0], position[1], position[2], blockWithData);
+		return self.state.chunk.updateBlock(position[0], position[1], position[2], blockWithData);
 	}
 	fn isAirOrLeaves(self: *@This(), position: Vec3i) bool {
 		if(!self.state.chunk.liesInChunk(position[0], position[1], position[2])) return true;
