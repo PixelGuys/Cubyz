@@ -338,179 +338,14 @@ pub const RotationModes = struct {
 			return true;
 		}
 	};
-	pub const Branch = struct { // MARK: Branch
-		pub const id: []const u8 = "branch";
-		pub const dependsOnNeighbors = true;
-		var branchModels: std.StringHashMap(u16) = undefined;
-		const BranchData = packed struct(u6) {
-			enabledConnections: u6,
-
-			pub fn init(blockData: u16) BranchData {
-				return .{.enabledConnections = @truncate(blockData)};
-			}
-
-			pub fn isConnected(self: @This(), neighbor: Neighbor) bool {
-				return (self.enabledConnections & Neighbor.bitMask(neighbor)) != 0;
-			}
-
-			pub fn setConnection(self: *@This(), neighbor: Neighbor, value: bool) void {
-				if(value) {
-					self.enabledConnections |= Neighbor.bitMask(neighbor);
-				} else {
-					self.enabledConnections &= ~Neighbor.bitMask(neighbor);
-				}
-			}
-		};
-
-		fn init() void {
-			branchModels = .init(main.globalAllocator.allocator);
-		}
-
-		fn deinit() void {
-			branchModels.deinit();
-		}
-
-		fn reset() void {
-			branchModels.clearRetainingCapacity();
-		}
-
-		fn branchTransform(quad: *main.models.QuadInfo, data: BranchData) void {
-			for(&quad.corners) |*corner| {
-				if((!data.isConnected(Neighbor.dirNegX) and corner[0] == 0) or
-					(!data.isConnected(Neighbor.dirPosX) and corner[0] == 1) or
-					(!data.isConnected(Neighbor.dirNegY) and corner[1] == 0) or
-					(!data.isConnected(Neighbor.dirPosY) and corner[1] == 1) or
-					(!data.isConnected(Neighbor.dirDown) and corner[2] == 0) or
-					(!data.isConnected(Neighbor.dirUp) and corner[2] == 1)) return degenerateQuad(quad);
-			}
-		}
-
-		fn degenerateQuad(quad: *main.models.QuadInfo) void {
-			for(&quad.corners) |*corner| {
-				corner.* = @splat(0.5);
-			}
-		}
-
-		pub fn createBlockModel(zon: ZonElement) u16 {
-			const modelId = zon.as([]const u8, "cubyz:cube");
-			if(branchModels.get(modelId)) |modelIndex| return modelIndex;
-
-			const baseModelIndex = main.models.getModelIndex(modelId);
-			const baseModel = main.models.models.items[baseModelIndex];
-
-			const modelIndex: u16 = baseModel.transformModel(branchTransform, .{BranchData.init(0)});
-			for(1..64) |branchData| {
-				_ = baseModel.transformModel(branchTransform, .{BranchData.init(@truncate(branchData))});
-			}
-			branchModels.put(modelId, modelIndex) catch unreachable;
-			return modelIndex;
-		}
-
-		pub fn model(block: Block) u16 {
-			return blocks.meshes.modelIndexStart(block) + (block.data & 63);
-		}
-
-		pub fn generateData(
-			_: *main.game.World,
-			_: Vec3i,
-			_: Vec3f,
-			_: Vec3f,
-			_: Vec3i,
-			neighbor: ?Neighbor,
-			currentBlock: *Block,
-			neighborBlock: Block,
-			blockPlacing: bool,
-		) bool {
-			const blockBaseModel = blocks.meshes.modelIndexStart(currentBlock.*);
-			const neighborBaseModel = blocks.meshes.modelIndexStart(neighborBlock);
-
-			if(blockPlacing or blockBaseModel == neighborBaseModel or neighborBlock.solid()) {
-				const neighborModel = blocks.meshes.model(neighborBlock);
-
-				var currentData = BranchData.init(currentBlock.data);
-				// Branch block upon placement should extend towards a block it was placed
-				// on if the block is solid or also uses branch model.
-				const targetVal = ((neighborBlock.solid() and !neighborBlock.viewThrough()) and (blockBaseModel == neighborBaseModel or main.models.models.items[neighborModel].isNeighborOccluded[neighbor.?.reverse().toInt()]));
-				currentData.setConnection(neighbor.?, targetVal);
-
-				const result: u16 = currentData.enabledConnections;
-				if(result == currentBlock.data) return false;
-
-				currentBlock.data = result;
-				return true;
-			}
-			return false;
-		}
-
-		pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool {
-			const blockBaseModel = blocks.meshes.modelIndexStart(block.*);
-			const neighborBaseModel = blocks.meshes.modelIndexStart(neighborBlock);
-			var currentData = BranchData.init(block.data);
-
-			// Handle joining with other branches. While placed, branches extend in a
-			// opposite direction than they were placed from, effectively connecting
-			// to the block they were placed at.
-			if(blockBaseModel == neighborBaseModel) {
-				const neighborData = BranchData.init(neighborBlock.data);
-				currentData.setConnection(neighbor, neighborData.isConnected(neighbor.reverse()));
-			} else if(!neighborBlock.solid()) {
-				currentData.setConnection(neighbor, false);
-			}
-
-			const result: u16 = currentData.enabledConnections;
-			if(result == block.data) return false;
-
-			block.data = result;
-			return true;
-		}
-
-		fn closestRay(block: Block, relativePlayerPos: Vec3f, playerDir: Vec3f) ?u16 {
-			var closestIntersectionDistance: f64 = std.math.inf(f64);
-			var resultBitMask: ?u16 = null;
-			{
-				const modelIndex = blocks.meshes.modelIndexStart(block);
-				if(RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
-					closestIntersectionDistance = intersection.distance;
-					resultBitMask = 0;
-				}
-			}
-			for(Neighbor.iterable) |direction| {
-				const directionBitMask = Neighbor.bitMask(direction);
-
-				if((block.data & directionBitMask) != 0) {
-					const modelIndex = blocks.meshes.modelIndexStart(block) + directionBitMask;
-					if(RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
-						if(@abs(closestIntersectionDistance) > @abs(intersection.distance)) {
-							closestIntersectionDistance = intersection.distance;
-							resultBitMask = direction.bitMask();
-						}
-					}
-				}
-			}
-			return resultBitMask;
-		}
-
-		pub fn onBlockBreaking(_: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void {
-			if(closestRay(currentData.*, relativePlayerPos, playerDir)) |directionBitMask| {
-				// If player destroys a central part of branch block, branch block is completely destroyed.
-				if(directionBitMask == 0) {
-					currentData.typ = 0;
-					currentData.data = 0;
-					return;
-				}
-				// Otherwise only the connection player aimed at is destroyed.
-				currentData.data &= ~directionBitMask;
-			}
-		}
-	};
 	pub const Pipe = struct { // MARK: Pipe
 		pub const id: []const u8 = "pipe";
 		pub const dependsOnNeighbors = true;
 		var pipeModels: std.AutoHashMap(u32, u16) = undefined;
-		const BranchData = packed struct(u6) {
+		const PipeData = packed struct(u6) {
 			enabledConnections: u6,
 
-			pub fn init(blockData: u16) BranchData {
+			pub fn init(blockData: u16) PipeData {
 				return .{.enabledConnections = @truncate(blockData)};
 			}
 
@@ -665,7 +500,7 @@ pub const RotationModes = struct {
 			}
 		}
 
-		fn getPattern(data: BranchData, side: Neighbor) ?Pattern {
+		fn getPattern(data: PipeData, side: Neighbor) ?Pattern {
 			const posX = Neighbor.fromRelPos(side.textureX()).?;
 			const posNegX = Neighbor.fromRelPos(side.textureX()).?.reverse();
 			const posY = Neighbor.fromRelPos(side.textureY()).?;
@@ -758,7 +593,7 @@ pub const RotationModes = struct {
 				defer quads.deinit();
 
 				for(Neighbor.iterable) |neighbor| {
-					const pattern = getPattern(BranchData.init(@intCast(i)), neighbor);
+					const pattern = getPattern(PipeData.init(@intCast(i)), neighbor);
 
 					if(pattern) |pat| {
 						addQuads(pat, neighbor, radius, &quads);
@@ -797,7 +632,7 @@ pub const RotationModes = struct {
 			if(blockPlacing or blockBaseModel == neighborBaseModel or neighborBlock.solid()) {
 				const neighborModel = blocks.meshes.model(neighborBlock);
 
-				var currentData = BranchData.init(currentBlock.data);
+				var currentData = PipeData.init(currentBlock.data);
 				// Branch block upon placement should extend towards a block it was placed
 				// on if the block is solid or also uses branch model.
 				const targetVal = ((neighborBlock.solid() and !neighborBlock.viewThrough()) and (blockBaseModel == neighborBaseModel or main.models.models.items[neighborModel].isNeighborOccluded[neighbor.?.reverse().toInt()]));
@@ -815,13 +650,13 @@ pub const RotationModes = struct {
 		pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool {
 			const blockBaseModel = blocks.meshes.modelIndexStart(block.*);
 			const neighborBaseModel = blocks.meshes.modelIndexStart(neighborBlock);
-			var currentData = BranchData.init(block.data);
+			var currentData = PipeData.init(block.data);
 
 			// Handle joining with other branches. While placed, branches extend in a
 			// opposite direction than they were placed from, effectively connecting
 			// to the block they were placed at.
 			if(blockBaseModel == neighborBaseModel) {
-				const neighborData = BranchData.init(neighborBlock.data);
+				const neighborData = PipeData.init(neighborBlock.data);
 				currentData.setConnection(neighbor, neighborData.isConnected(neighbor.reverse()));
 			} else if(!neighborBlock.solid()) {
 				currentData.setConnection(neighbor, false);
