@@ -821,7 +821,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		const rotatedModel = blocks.meshes.model(block);
 		const model = &models.models.items[rotatedModel];
 		_ = model; // TODO: Check if the neighbor model occludes this one. (maybe not that relevant)
-		return block.typ != 0 and (other.typ == 0 or (!std.meta.eql(block, other) and other.viewThrough()) or other.alwaysViewThrough() or !models.models.items[blocks.meshes.model(other)].isNeighborOccluded[neighbor.reverse().toInt()]);
+		return block.typ != 0 and (other.typ == 0 or (block != other and other.viewThrough()) or other.alwaysViewThrough() or !models.models.items[blocks.meshes.model(other)].isNeighborOccluded[neighbor.reverse().toInt()]);
 	}
 
 	fn initLight(self: *ChunkMesh, lightRefreshList: *main.List(*ChunkMesh)) void {
@@ -1051,7 +1051,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						if(depthFilteredViewThroughMask[x][y] & setBit != 0) block.typ = block.opaqueVariant();
 						if(block.viewThrough() and !block.alwaysViewThrough()) { // Needs to check the neighbor block
 							const neighborBlock = self.chunk.data.getValue(chunk.getIndex(@intCast(x - 1), @intCast(y), z));
-							if(std.meta.eql(block, neighborBlock)) continue;
+							if(block == neighborBlock) continue;
 						}
 						if(block.transparent()) {
 							if(block.hasBackFace()) {
@@ -1078,7 +1078,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						if(depthFilteredViewThroughMask[x][y] & setBit != 0) block.typ = block.opaqueVariant();
 						if(block.viewThrough() and !block.alwaysViewThrough()) { // Needs to check the neighbor block
 							const neighborBlock = self.chunk.data.getValue(chunk.getIndex(@intCast(x + 1), @intCast(y), z));
-							if(std.meta.eql(block, neighborBlock)) continue;
+							if(block == neighborBlock) continue;
 						}
 						if(block.transparent()) {
 							if(block.hasBackFace()) {
@@ -1105,7 +1105,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						if(depthFilteredViewThroughMask[x][y] & setBit != 0) block.typ = block.opaqueVariant();
 						if(block.viewThrough() and !block.alwaysViewThrough()) { // Needs to check the neighbor block
 							const neighborBlock = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y - 1), z));
-							if(std.meta.eql(block, neighborBlock)) continue;
+							if(block == neighborBlock) continue;
 						}
 						if(block.transparent()) {
 							if(block.hasBackFace()) {
@@ -1132,7 +1132,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						if(depthFilteredViewThroughMask[x][y] & setBit != 0) block.typ = block.opaqueVariant();
 						if(block.viewThrough() and !block.alwaysViewThrough()) { // Needs to check the neighbor block
 							const neighborBlock = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y + 1), z));
-							if(std.meta.eql(block, neighborBlock)) continue;
+							if(block == neighborBlock) continue;
 						}
 						if(block.transparent()) {
 							if(block.hasBackFace()) {
@@ -1159,7 +1159,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						if(depthFilteredViewThroughMask[x][y] & setBit != 0) block.typ = block.opaqueVariant();
 						if(block.viewThrough() and !block.alwaysViewThrough()) { // Needs to check the neighbor block
 							const neighborBlock = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z - 1));
-							if(std.meta.eql(block, neighborBlock)) continue;
+							if(block == neighborBlock) continue;
 						}
 						if(block.transparent()) {
 							if(block.hasBackFace()) {
@@ -1186,7 +1186,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 						if(depthFilteredViewThroughMask[x][y] & setBit != 0) block.typ = block.opaqueVariant();
 						if(block.viewThrough() and !block.alwaysViewThrough()) { // Needs to check the neighbor block
 							const neighborBlock = self.chunk.data.getValue(chunk.getIndex(@intCast(x), @intCast(y), z + 1));
-							if(std.meta.eql(block, neighborBlock)) continue;
+							if(block == neighborBlock) continue;
 						}
 						if(block.transparent()) {
 							if(block.hasBackFace()) {
@@ -1223,7 +1223,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		const z: u5 = @intCast(_z & chunk.chunkMask);
 		var newBlock = _newBlock;
 		self.mutex.lock();
-		if(std.meta.eql(self.chunk.data.getValue(chunk.getIndex(x, y, z)), newBlock)) {
+		if(self.chunk.data.getValue(chunk.getIndex(x, y, z)) == newBlock) {
 			self.mutex.unlock();
 			return;
 		}

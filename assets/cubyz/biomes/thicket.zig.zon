@@ -1,5 +1,5 @@
 .{
-	.chance= 0,
+	.chance = 0,
 	.properties = .{
 		.wet,
 	},

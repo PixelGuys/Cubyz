@@ -138,10 +138,10 @@
 		},
 	},
 	.slots = .{
-		.tiptip,  .tip,   .edge,   .none,   .none,
-		.tip,     .blade, .blade,  .edge,   .none,
-		.edge,    .blade, .center, .back,   .none,
-		.none,    .edge,  .back,   .handle, .none,
-		.none,    .none,  .none,   .none,   .handle,
+		.tiptip, .tip,   .edge,   .none,   .none,
+		.tip,    .blade, .blade,  .edge,   .none,
+		.edge,   .blade, .center, .back,   .none,
+		.none,   .edge,  .back,   .handle, .none,
+		.none,   .none,  .none,   .none,   .handle,
 	},
 }
