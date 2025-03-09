@@ -506,7 +506,7 @@ pub const RotationModes = struct {
 	pub const Pipe = struct { // MARK: Pipe
 		pub const id: []const u8 = "pipe";
 		pub const dependsOnNeighbors = true;
-		var modelIndex: u16 = undefined;
+		var pipeModels: std.AutoHashMap(u32, u16) = undefined;
 		const BranchData = packed struct(u6) {
 			enabledConnections: u6,
 
@@ -528,21 +528,14 @@ pub const RotationModes = struct {
 		};
 
 		fn init() void {
-			modelIndex = 0;
+			pipeModels = .init(main.globalAllocator.allocator);
 		}
 
-		fn deinit() void {}
+		fn deinit() void {
+			pipeModels.deinit();
+		}
 
-		const PatternType = enum(u3) {
-			dot = 0,
-			halfLine = 1,
-			line = 2,
-			bend = 3,
-			intersection = 4,
-			cross = 5,
-		};
-
-		const Pattern = union(PatternType) {
+		const Pattern = union(enum) {
 			dot: void,
 			halfLine: struct {
 				dir: u2,
@@ -559,7 +552,7 @@ pub const RotationModes = struct {
 			cross: void,
 		};
 
-		fn rotateQuad(originalCorners: [4]Vec2f, pattern: Pattern, side: Neighbor) main.models.QuadInfo {
+		fn rotateQuad(originalCorners: [4]Vec2f, pattern: Pattern, minF: f32, maxF: f32, side: Neighbor) main.models.QuadInfo {
 			var corners: [4]Vec2f = originalCorners;
 
 			switch(pattern) {
@@ -575,17 +568,10 @@ pub const RotationModes = struct {
 				},
 			}
 
-			const offX: f32 = if(side.textureX()[([6]usize{0, 0, 1, 1, 0, 0})[@intFromEnum(side)]] < 0) 1 else 0;
-			const offY: f32 = if(side.textureY()[([6]usize{1, 1, 2, 2, 2, 2})[@intFromEnum(side)]] < 0) 1 else 0;
+			const offX: f32 = @floatFromInt(@intFromBool(@reduce(.Add, side.textureX()) < 0));
+			const offY: f32 = @floatFromInt(@intFromBool(@reduce(.Add, side.textureY()) < 0));
 
-			const norm: Vec3f = switch(side) {
-				Neighbor.dirUp => .{0.0, 0.0, 1.0},
-				Neighbor.dirDown => .{0.0, 0.0, -1.0},
-				Neighbor.dirPosX => .{1.0, 0.0, 0.0},
-				Neighbor.dirNegX => .{-1.0, 0.0, 0.0},
-				Neighbor.dirPosY => .{0.0, 1.0, 0.0},
-				Neighbor.dirNegY => .{0.0, -1.0, 0.0},
-			};
+			const norm: Vec3f = @floatFromInt(side.relPos());
 
 			const corns = .{
 				@as(Vec3f, @floatFromInt(side.textureX()))*@as(Vec3f, @splat(corners[0][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY()))*@as(Vec3f, @splat(corners[0][1] - offY)),
@@ -594,10 +580,10 @@ pub const RotationModes = struct {
 				@as(Vec3f, @floatFromInt(side.textureX()))*@as(Vec3f, @splat(corners[3][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY()))*@as(Vec3f, @splat(corners[3][1] - offY)),
 			};
 
-			const tex: u32 = @intCast(@intFromEnum(pattern));
+			const tex: u32 = @intFromEnum(pattern);
 
 			var offset: Vec3f = .{0.0, 0.0, 0.0};
-			offset[@intFromEnum(side.vectorComponent())] = if(side.isPositive()) 12.0/16.0 else 4.0/16.0;
+			offset[@intFromEnum(side.vectorComponent())] = if(side.isPositive()) maxF else minF;
 
 			const floatingPointFix: Vec3f = @splat(16.0);
 
@@ -617,47 +603,49 @@ pub const RotationModes = struct {
 			return res;
 		}
 
-		fn addQuads(pattern: Pattern, side: Neighbor, out: *main.List(main.models.QuadInfo)) void {
+		fn addQuads(pattern: Pattern, side: Neighbor, radius: u32, out: *main.List(main.models.QuadInfo)) void {
+			const minF: f32 = @as(f32, @floatFromInt(8 - radius)) / 16.0;
+			const maxF: f32 = @as(f32, @floatFromInt(8 + radius)) / 16.0;
 			switch(pattern) {
 				.dot => {
 					out.append(rotateQuad(.{
-						.{0.25, 0.25},
-						.{0.25, 0.75},
-						.{0.75, 0.25},
-						.{0.75, 0.75},
-					}, pattern, side));
+						.{minF, minF},
+						.{minF, maxF},
+						.{maxF, minF},
+						.{maxF, maxF},
+					}, pattern, minF, maxF, side));
 				},
 				.halfLine => {
 					out.append(rotateQuad(.{
-						.{0.25, 0.0},
-						.{0.25, 0.75},
-						.{0.75, 0.0},
-						.{0.75, 0.75},
-					}, pattern, side));
+						.{minF, 0.0},
+						.{minF, maxF},
+						.{maxF, 0.0},
+						.{maxF, maxF},
+					}, pattern, minF, maxF, side));
 				},
 				.line => {
 					out.append(rotateQuad(.{
-						.{0.25, 0.0},
-						.{0.25, 1.0},
-						.{0.75, 0.0},
-						.{0.75, 1.0},
-					}, pattern, side));
+						.{minF, 0.0},
+						.{minF, 1.0},
+						.{maxF, 0.0},
+						.{maxF, 1.0},
+					}, pattern, minF, maxF, side));
 				},
 				.bend => {
 					out.append(rotateQuad(.{
 						.{0.0, 0.0},
-						.{0.0, 0.75},
-						.{0.75, 0.0},
-						.{0.75, 0.75},
-					}, pattern, side));
+						.{0.0, maxF},
+						.{maxF, 0.0},
+						.{maxF, maxF},
+					}, pattern, minF, maxF, side));
 				},
 				.intersection => {
 					out.append(rotateQuad(.{
 						.{0.0, 0.0},
-						.{0.0, 0.75},
+						.{0.0, maxF},
 						.{1.0, 0.0},
-						.{1.0, 0.75},
-					}, pattern, side));
+						.{1.0, maxF},
+					}, pattern, minF, maxF, side));
 				},
 				.cross => {
 					out.append(rotateQuad(.{
@@ -665,25 +653,23 @@ pub const RotationModes = struct {
 						.{0.0, 1.0},
 						.{1.0, 0.0},
 						.{1.0, 1.0},
-					}, pattern, side));
+					}, pattern, minF, maxF, side));
 				},
 			}
 		}
 
 		fn getPattern(data: BranchData, side: Neighbor) ?Pattern {
-			const a = Neighbor.fromRelPos(side.textureX()).?;
-			const b = Neighbor.fromRelPos(side.textureX()).?.reverse();
-			const c = Neighbor.fromRelPos(side.textureY()).?;
-			const d = Neighbor.fromRelPos(side.textureY()).?.reverse();
+			const posX = Neighbor.fromRelPos(side.textureX()).?;
+			const posNegX = Neighbor.fromRelPos(side.textureX()).?.reverse();
+			const posY = Neighbor.fromRelPos(side.textureY()).?;
+			const posNegY = Neighbor.fromRelPos(side.textureY()).?.reverse();
 
-			const aVal: u6 = if(data.isConnected(a)) 1 else 0;
-			const bVal: u6 = if(data.isConnected(b)) 1 else 0;
-			const cVal: u6 = if(data.isConnected(c)) 1 else 0;
-			const dVal: u6 = if(data.isConnected(d)) 1 else 0;
+			const connectedPosX = data.isConnected(posX);
+			const connectedNegX = data.isConnected(posNegX);
+			const connectedPosY = data.isConnected(posY);
+			const connectedNegY = data.isConnected(posNegY);
 
-			const res: u6 = dVal << 3 | cVal << 2 | bVal << 1 | aVal;
-
-			const count: u6 = aVal + bVal + cVal + dVal;
+			const count: u6 = @as(u6, @intFromBool(connectedPosX)) + @as(u6, @intFromBool(connectedNegX)) + @as(u6, @intFromBool(connectedPosY)) + @as(u6, @intFromBool(connectedNegY));
 
 			return switch(count) {
 				0 => {
@@ -691,23 +677,23 @@ pub const RotationModes = struct {
 						return null;
 					}
 
-					return .{.dot = {}};
+					return .dot;
 				},
 				1 => {
 					var dir: u2 = 3;
-					if(dVal == 1) {
+					if(connectedNegY) {
 						dir = 0;
-					} else if(aVal == 1) {
+					} else if(connectedPosX) {
 						dir = 1;
-					} else if(cVal == 1) {
+					} else if(connectedPosY) {
 						dir = 2;
 					}
 					return .{.halfLine = .{.dir = dir}};
 				},
 				2 => {
-					if(res == 3 or res == 12) {
+					if((connectedPosX and connectedNegX) or (connectedPosY and connectedNegY)) {
 						var dir: u2 = 0;
-						if(res == 3) {
+						if(connectedPosX and connectedNegX) {
 							dir = 1;
 						}
 
@@ -716,23 +702,23 @@ pub const RotationModes = struct {
 
 					var dir: u2 = 3;
 
-					if(dVal == 1) {
+					if(connectedNegY) {
 						dir = 0;
 					}
 
-					if(dVal == 1) {
+					if(connectedNegY) {
 						dir = 0;
-						if(aVal == 1) {
+						if(connectedPosX) {
 							dir = 1;
 						}
-					} else if(aVal == 1) {
+					} else if(connectedPosX) {
 						dir = 1;
-						if(cVal == 1) {
+						if(connectedPosY) {
 							dir = 2;
 						}
-					} else if(cVal == 1) {
+					} else if(connectedPosY) {
 						dir = 2;
-						if(bVal == 1) {
+						if(connectedNegX) {
 							dir = 3;
 						}
 					}
@@ -740,28 +726,26 @@ pub const RotationModes = struct {
 					return .{.bend = .{.dir = dir}};
 				},
 				3 => {
-					const dir: u2 = switch(res) {
-						0b0111 => 2,
-						0b1110 => 3,
-						0b1101 => 1,
-						0b1011 => 0,
-						else => undefined,
-					};
+					var dir: u2 = undefined;
+					if(!connectedPosY) dir = 0;
+					if(!connectedNegX) dir = 1;
+					if(!connectedNegY) dir = 2;
+					if(!connectedPosX) dir = 3;
 
 					return .{.intersection = .{.dir = dir}};
 				},
 				4 => {
-					return .{.cross = {}};
+					return .cross;
 				},
 				else => undefined,
 			};
 		}
 
-		pub fn createBlockModel(_: ZonElement) u16 {
-			if(modelIndex != 0) {
-				return modelIndex;
-			}
-
+		pub fn createBlockModel(zon: ZonElement) u16 {
+			const radius = zon.get(u32, "radius", 4);
+			if (pipeModels.get(radius)) |modelIndex| return modelIndex;
+			
+			var modelIndex: u16 = undefined;
 			for(0..64) |i| {
 				var quads = main.List(main.models.QuadInfo).init(main.stackAllocator);
 				defer quads.deinit();
@@ -770,7 +754,7 @@ pub const RotationModes = struct {
 					const pattern = getPattern(BranchData.init(@intCast(i)), neighbor);
 
 					if(pattern) |pat| {
-						addQuads(pat, neighbor, &quads);
+						addQuads(pat, neighbor, radius, &quads);
 					}
 				}
 
@@ -779,6 +763,8 @@ pub const RotationModes = struct {
 					modelIndex = index;
 				}
 			}
+
+			pipeModels.put(radius, modelIndex) catch unreachable;
 
 			return modelIndex;
 		}
@@ -845,8 +831,8 @@ pub const RotationModes = struct {
 			var closestIntersectionDistance: f64 = std.math.inf(f64);
 			var resultBitMask: ?u16 = null;
 			{
-				const mI = blocks.meshes.modelIndexStart(block);
-				if(RotationMode.DefaultFunctions.rayModelIntersection(mI, relativePlayerPos, playerDir)) |intersection| {
+				const modelIndex = blocks.meshes.modelIndexStart(block);
+				if(RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
 					closestIntersectionDistance = intersection.distance;
 					resultBitMask = 0;
 				}
@@ -855,8 +841,8 @@ pub const RotationModes = struct {
 				const directionBitMask = Neighbor.bitMask(direction);
 
 				if((block.data & directionBitMask) != 0) {
-					const mI = blocks.meshes.modelIndexStart(block) + directionBitMask;
-					if(RotationMode.DefaultFunctions.rayModelIntersection(mI, relativePlayerPos, playerDir)) |intersection| {
+					const modelIndex = blocks.meshes.modelIndexStart(block) + directionBitMask;
+					if(RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
 						if(@abs(closestIntersectionDistance) > @abs(intersection.distance)) {
 							closestIntersectionDistance = intersection.distance;
 							resultBitMask = direction.bitMask();
