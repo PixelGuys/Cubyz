@@ -535,19 +535,26 @@ pub const RotationModes = struct {
 			pipeModels.deinit();
 		}
 
+		const Direction = enum(u2) {
+			negYDir = 0,
+			posXDir = 1,
+			posYDir = 2,
+			negXDir = 3,
+		};
+
 		const Pattern = union(enum) {
 			dot: void,
 			halfLine: struct {
-				dir: u2,
+				dir: Direction,
 			},
 			line: struct {
-				dir: u2,
+				dir: Direction,
 			},
 			bend: struct {
-				dir: u2,
+				dir: Direction,
 			},
 			intersection: struct {
-				dir: u2,
+				dir: Direction,
 			},
 			cross: void,
 		};
@@ -558,7 +565,7 @@ pub const RotationModes = struct {
 			switch(pattern) {
 				.dot, .cross => {},
 				inline else => |typ| {
-					const angle: f32 = @as(f32, @floatFromInt(typ.dir))*std.math.pi/2.0;
+					const angle: f32 = @as(f32, @floatFromInt(@intFromEnum(typ.dir)))*std.math.pi/2.0;
 					corners = .{
 						vec.rotate2d(originalCorners[0], angle, @splat(0.5)),
 						vec.rotate2d(originalCorners[1], angle, @splat(0.5)),
@@ -604,8 +611,8 @@ pub const RotationModes = struct {
 		}
 
 		fn addQuads(pattern: Pattern, side: Neighbor, radius: u32, out: *main.List(main.models.QuadInfo)) void {
-			const minF: f32 = @as(f32, @floatFromInt(8 - radius)) / 16.0;
-			const maxF: f32 = @as(f32, @floatFromInt(8 + radius)) / 16.0;
+			const minF: f32 = @as(f32, @floatFromInt(8 - radius))/16.0;
+			const maxF: f32 = @as(f32, @floatFromInt(8 + radius))/16.0;
 			switch(pattern) {
 				.dot => {
 					out.append(rotateQuad(.{
@@ -680,57 +687,57 @@ pub const RotationModes = struct {
 					return .dot;
 				},
 				1 => {
-					var dir: u2 = 3;
+					var dir: Direction = .negXDir;
 					if(connectedNegY) {
-						dir = 0;
+						dir = .negYDir;
 					} else if(connectedPosX) {
-						dir = 1;
+						dir = .posXDir;
 					} else if(connectedPosY) {
-						dir = 2;
+						dir = .posYDir;
 					}
 					return .{.halfLine = .{.dir = dir}};
 				},
 				2 => {
 					if((connectedPosX and connectedNegX) or (connectedPosY and connectedNegY)) {
-						var dir: u2 = 0;
+						var dir: Direction = .negYDir;
 						if(connectedPosX and connectedNegX) {
-							dir = 1;
+							dir = .posXDir;
 						}
 
 						return .{.line = .{.dir = dir}};
 					}
 
-					var dir: u2 = 3;
+					var dir: Direction = .negXDir;
 
 					if(connectedNegY) {
-						dir = 0;
+						dir = .negYDir;
 					}
 
 					if(connectedNegY) {
-						dir = 0;
+						dir = .negYDir;
 						if(connectedPosX) {
-							dir = 1;
+							dir = .posXDir;
 						}
 					} else if(connectedPosX) {
-						dir = 1;
+						dir = .posXDir;
 						if(connectedPosY) {
-							dir = 2;
+							dir = .posYDir;
 						}
 					} else if(connectedPosY) {
-						dir = 2;
+						dir = .posYDir;
 						if(connectedNegX) {
-							dir = 3;
+							dir = .negXDir;
 						}
 					}
 
 					return .{.bend = .{.dir = dir}};
 				},
 				3 => {
-					var dir: u2 = undefined;
-					if(!connectedPosY) dir = 0;
-					if(!connectedNegX) dir = 1;
-					if(!connectedNegY) dir = 2;
-					if(!connectedPosX) dir = 3;
+					var dir: Direction = undefined;
+					if(!connectedPosY) dir = .negYDir;
+					if(!connectedNegX) dir = .posXDir;
+					if(!connectedNegY) dir = .posYDir;
+					if(!connectedPosX) dir = .negXDir;
 
 					return .{.intersection = .{.dir = dir}};
 				},
@@ -743,7 +750,7 @@ pub const RotationModes = struct {
 
 		pub fn createBlockModel(zon: ZonElement) u16 {
 			const radius = zon.get(u32, "radius", 4);
-			if (pipeModels.get(radius)) |modelIndex| return modelIndex;
+			if(pipeModels.get(radius)) |modelIndex| return modelIndex;
 			
 			var modelIndex: u16 = undefined;
 			for(0..64) |i| {
