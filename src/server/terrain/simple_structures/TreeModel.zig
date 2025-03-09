@@ -41,17 +41,79 @@ const BranchSpawnMode = enum {
 	}
 };
 
-const LeavesSpawnMode = enum {
-	sphere,
-	half_sphere,
-	arc,
-	none,
+pub fn ValueWithDelta(comptime T: type, comptime defaultValue: T, comptime defaultDelta: T) type {
+	return struct {
+		value: T,
+		delta: T,
 
-	fn fromString(string: []const u8) @This() {
-		return std.meta.stringToEnum(@This(), string) orelse {
-			std.log.err("Couldn't find leaves spawn mode {s}. Replacing it with none", .{string});
-			return .none;
+		pub fn initFromZon(element: ZonElement) @This() {
+			if(element == .object) {
+				return .{
+					.value = element.get(T, "value", defaultValue),
+					.delta = element.get(T, "delta", defaultDelta),
+				};
+			}
+			return .{
+				.value = element.as(T, defaultValue),
+				.delta = defaultDelta,
+			};
+		}
+	};
+}
+
+const LeavesOptions = struct {
+	const SpawnMode = enum {
+		sphere,
+		half_sphere,
+		arc,
+		none,
+
+		fn fromString(string: []const u8) @This() {
+			return std.meta.stringToEnum(@This(), string) orelse {
+				std.log.err("Couldn't find leaves spawn mode {s}. Replacing it with none", .{string});
+				return .none;
+			};
+		}
+	};
+
+	spawnMode: ?SpawnMode,
+	spawnChance: ?f32,
+	radius: ?f32,
+	radiusDelta: ?f32,
+	randomOffsetDelta: ?f32,
+	arcWidthOuter: ?f32,
+	arcHeightOuter: ?f32,
+	arcRadiusOuter: ?f32,
+	arcZOffsetOuter: ?f32,
+	arcWidthInner: ?f32,
+	arcHeightInner: ?f32,
+	arcRadiusInner: ?f32,
+	arcZOffsetInner: ?f32,
+	arcZOffset: ?f32,
+
+	pub fn initFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *@This() {
+		const self = allocator.create(@This());
+		self.* = .{
+			.spawnMode = if(zon.get(?[]const u8, "spawnMode", null)) |mode| SpawnMode.fromString(mode) else null,
+			.spawnChance = zon.get(?f32, "spawnChance", null),
+			.radius = zon.get(?f32, "radius", null),
+			.radiusDelta = zon.get(?f32, "radiusDelta", null),
+			.randomOffsetDelta = zon.get(?f32, "randomOffsetDelta", null),
+			.arcWidthOuter = zon.get(?f32, "arcWidthOuter", null),
+			.arcHeightOuter = zon.get(?f32, "arcHeightOuter", null),
+			.arcRadiusOuter = zon.get(?f32, "arcRadiusOuter", null),
+			.arcZOffsetOuter = zon.get(?f32, "arcZOffsetOuter", null),
+			.arcWidthInner = zon.get(?f32, "arcWidthInner", null),
+			.arcHeightInner = zon.get(?f32, "arcHeightInner", null),
+			.arcRadiusInner = zon.get(?f32, "arcRadiusInner", null),
+			.arcZOffsetInner = zon.get(?f32, "arcZOffsetInner", null),
+			.arcZOffset = zon.get(?f32, "arcZOffset", null),
 		};
+		return self;
+	}
+
+	pub fn deinit(self: *@This(), allocator: NeverFailingAllocator) void {
+		allocator.destroy(self);
 	}
 };
 
@@ -67,19 +129,15 @@ const Stem = struct {
 	branchPeak: bool,
 	branchSegmentSeriesVariants: List(*BranchSegment),
 
-	leavesSpawnMode: LeavesSpawnMode,
-	leavesSpawnChance: f32,
-	leavesRadius: f32,
-	leavesRadiusDelta: f32,
-	leavesRandomOffsetDelta: f32,
+	leaves: *LeavesOptions,
 
 	mushroomChance: f32,
 	stemThickness: usize,
 	blocks: Blocks,
 
-	pub fn initFromZon(allocator: NeverFailingAllocator, segment: ZonElement) *@This() {
-		const blocks = segment.getChild("blocks");
-		const branchSegmentsZon = segment.getChild("branchSegmentSeriesVariants").toSlice();
+	pub fn initFromZon(allocator: NeverFailingAllocator, zon: ZonElement) *@This() {
+		const blocks = zon.getChild("blocks");
+		const branchSegmentsZon = zon.getChild("branchSegmentSeriesVariants").toSlice();
 		var branchSegments: List(*BranchSegment) = .initCapacity(allocator, branchSegmentsZon.len);
 
 		for(branchSegmentsZon) |branchSegment| {
@@ -88,30 +146,20 @@ const Stem = struct {
 		const self = allocator.create(@This());
 
 		self.* = .{
-			.height = segment.get(i32, "height", 0),
-			.heightDelta = segment.get(f32, "heightDelta", 0),
-			.skipChance = segment.get(f32, "skipChance", 0),
-			.branchSpawnChance = segment.get(f32, "branchSpawnChance", 0.0),
-			.branchSpacing = segment.get(u32, "branchSpacing", 0),
-			.branchSpawnMode = BranchSpawnMode.fromString(segment.get([]const u8, "branchSpawnMode", "random")),
-			.branchMaxCount = segment.get(u32, "branchMaxCount", std.math.maxInt(u32)),
-			.branchMaxCountPerLevel = segment.get(u32, "branchMaxCountPerLevel", std.math.maxInt(u32)),
+			.height = zon.get(i32, "height", 0),
+			.heightDelta = zon.get(f32, "heightDelta", 0),
+			.skipChance = zon.get(f32, "skipChance", 0),
+			.branchSpawnChance = zon.get(f32, "branchSpawnChance", 0.0),
+			.branchSpacing = zon.get(u32, "branchSpacing", 0),
+			.branchSpawnMode = .fromString(zon.get([]const u8, "branchSpawnMode", "random")),
+			.branchMaxCount = zon.get(u32, "branchMaxCount", std.math.maxInt(u32)),
+			.branchMaxCountPerLevel = zon.get(u32, "branchMaxCountPerLevel", std.math.maxInt(u32)),
 			.branchSegmentSeriesVariants = branchSegments,
-			.leavesSpawnMode = LeavesSpawnMode.fromString(segment.get([]const u8, "leavesSpawnMode", "none")),
-			.leavesSpawnChance = segment.get(f32, "leavesSpawnChance", 0.0),
-			.leavesRadius = segment.get(f32, "leavesRadius", 0.0),
-			.leavesRadiusDelta = segment.get(f32, "leavesRadiusDelta", 0.0),
-			.leavesRandomOffsetDelta = segment.get(f32, "leavesRandomOffsetDelta", 0.0),
-			.branchPeak = segment.get(bool, "branchPeak", false),
-			.mushroomChance = segment.get(f32, "mushroomChance", 0.0),
-			.stemThickness = segment.get(usize, "stemThickness", 1),
-			.blocks = .{
-				.leaves = parseBlock(blocks.get([]const u8, "leaves", "cubyz:air")),
-				.wood = parseBlock(blocks.get([]const u8, "wood", "cubyz:air")),
-				.branch = parseBlock(blocks.get([]const u8, "branch", "cubyz:air")),
-				.mushroom = parseBlock(blocks.get([]const u8, "mushroom", "cubyz:air")),
-				.grass = parseBlock("cubyz:grass"),
-			},
+			.branchPeak = zon.get(bool, "branchPeak", false),
+			.leaves = .initFromZon(allocator, zon.getChild("leaves")),
+			.mushroomChance = zon.get(f32, "mushroomChance", 0.0),
+			.stemThickness = zon.get(usize, "stemThickness", 1),
+			.blocks = .initFromZon(blocks),
 		};
 
 		return self;
@@ -133,11 +181,7 @@ const Stem = struct {
 		var branchGenerator = BranchGenerator{
 			.state = state,
 			.blocks = self.blocks,
-			.leavesSpawnMode = self.leavesSpawnMode,
-			.leavesSpawnChance = self.leavesSpawnChance,
-			.leavesRadius = self.leavesRadius,
-			.leavesRadiusDelta = self.leavesRadiusDelta,
-			.leavesRandomOffsetDelta = self.leavesRandomOffsetDelta,
+			.leaves = self.leaves,
 		};
 
 		var branchCount: u32 = 0;
@@ -315,6 +359,16 @@ const Blocks = struct {
 	branch: Block,
 	mushroom: Block,
 	grass: Block,
+
+	pub fn initFromZon(zon: ZonElement) @This() {
+		return .{
+			.leaves = parseBlock(zon.get([]const u8, "leaves", "cubyz:air")),
+			.wood = parseBlock(zon.get([]const u8, "wood", "cubyz:air")),
+			.branch = parseBlock(zon.get([]const u8, "branch", "cubyz:air")),
+			.mushroom = parseBlock(zon.get([]const u8, "mushroom", "cubyz:air")),
+			.grass = parseBlock("cubyz:grass"),
+		};
+	}
 };
 
 const TreeState = struct {
@@ -329,12 +383,7 @@ const TreeState = struct {
 const BranchGenerator = struct {
 	state: *TreeState,
 	blocks: Blocks,
-
-	leavesSpawnMode: LeavesSpawnMode,
-	leavesSpawnChance: f32,
-	leavesRadius: f32,
-	leavesRadiusDelta: f32,
-	leavesRandomOffsetDelta: f32,
+	leaves: *LeavesOptions,
 
 	pub fn generate(self: *@This(), direction: Neighbor, position: Vec3i, series: *BranchSegment) bool {
 		const horizontalDirection = if(direction == Neighbor.dirUp) Neighbor.dirPosX else direction;
@@ -382,7 +431,7 @@ const BranchGenerator = struct {
 		}
 
 		var blockData: u16 = 0;
-		const leavesSpawnChance = series.leavesSpawnChance orelse self.leavesSpawnChance;
+		const leavesSpawnChance = series.leaves.spawnChance orelse self.leaves.spawnChance orelse 0.0;
 
 		if(leavesSpawnChance > 0 and random.nextFloat(self.state.seed) < leavesSpawnChance) {
 			blockData = self.placeLeaves(position, series);
@@ -420,8 +469,8 @@ const BranchGenerator = struct {
 		return true;
 	}
 	fn placeLeaves(self: *@This(), position: Vec3i, series: *BranchSegment) u16 {
-		const leavesSpawnMode = series.leavesSpawnMode orelse self.leavesSpawnMode;
-		const leavesRandomOffsetDelta = series.leavesRandomOffsetDelta orelse self.leavesRandomOffsetDelta;
+		const leavesSpawnMode = series.leaves.spawnMode orelse self.leaves.spawnMode orelse return 0;
+		const leavesRandomOffsetDelta = series.leaves.randomOffsetDelta orelse self.leaves.randomOffsetDelta orelse 0.0;
 
 		const pos: Vec3f = .{
 			@as(f32, @floatFromInt(position[0])) + (random.nextFloat(self.state.seed) - 0.5)*leavesRandomOffsetDelta,
@@ -431,12 +480,12 @@ const BranchGenerator = struct {
 
 		switch(leavesSpawnMode) {
 			.sphere, .half_sphere => {
-				const sphereRadius = series.leavesRadius orelse self.leavesRadius;
-				const sphereRadiusDelta = series.leavesRadiusDelta orelse self.leavesRadiusDelta;
+				const sphereRadius = series.leaves.radius orelse self.leaves.radius orelse 0.0;
+				const sphereRadiusDelta = series.leaves.radiusDelta orelse self.leaves.radiusDelta orelse 0.0;
 
 				const radius = sphereRadius + (random.nextFloat(self.state.seed) - 0.5)*sphereRadiusDelta;
 
-				if(radius < 1.0) return 0;
+				if(radius < 0.5) return 0;
 
 				const radiusInt: usize = @intFromFloat(@ceil(radius));
 
@@ -476,19 +525,21 @@ const BranchGenerator = struct {
 					Neighbor.dirUp.bitMask());
 			},
 			.arc => {
-				const leavesArcWidthOuter = 1.0;
-				const leavesArcHeightOuter = 0.6;
-				const leavesArcRadiusOuter = 3.0;
-				const leavesArcZOffsetOuter = 0.0;
+				const widthOuter = series.leaves.arcWidthOuter orelse self.leaves.arcWidthOuter orelse return 0.0;
+				const heightOuter = series.leaves.arcHeightOuter orelse self.leaves.arcHeightOuter orelse 0.0;
+				const radiusOuter = series.leaves.arcRadiusOuter orelse self.leaves.arcRadiusOuter orelse 0.0;
+				const zOffsetOuter = series.leaves.arcZOffsetOuter orelse self.leaves.arcZOffsetOuter orelse 0.0;
 
-				const leavesArcWidthInner = 1.0;
-				const leavesArcHeightInner = 1.0;
-				const leavesArcRadiusInner = 2.0;
-				const leavesArcZOffsetInner = 1.5;
+				const widthInner = series.leaves.arcWidthInner orelse self.leaves.arcWidthInner orelse 0.0;
+				const heightInner = series.leaves.arcHeightInner orelse self.leaves.arcHeightInner orelse 0.0;
+				const radiusInner = series.leaves.arcRadiusInner orelse self.leaves.arcRadiusInner orelse 0.0;
+				const zOffsetInner = series.leaves.arcZOffsetInner orelse self.leaves.arcZOffsetInner orelse 0.0;
 
-				const leavesArcZOffset = 0.0;
+				const zOffset = series.leaves.arcZOffset orelse self.leaves.arcZOffset orelse 0.0;
 
-				const radiusInt: usize = @ceil(leavesArcRadiusOuter);
+				if(radiusOuter <= 0.5) return 0;
+
+				const radiusInt: usize = @intFromFloat(@ceil(radiusOuter));
 
 				for(0..radiusInt) |i| {
 					for(0..radiusInt) |j| {
@@ -496,12 +547,12 @@ const BranchGenerator = struct {
 							{
 								const x = @as(f32, @floatFromInt(i));
 								const y = @as(f32, @floatFromInt(j));
-								const z = @as(f32, @floatFromInt(k)) - leavesArcHeightOuter;
+								const z = @as(f32, @floatFromInt(k)) - heightOuter;
 
-								const distanceOuter = hypot3d(x/leavesArcWidthOuter, y/leavesArcWidthOuter, (z + leavesArcZOffsetOuter)/leavesArcHeightOuter);
-								const distanceInner = hypot3d(x/leavesArcWidthInner, y/leavesArcWidthInner, (z + leavesArcZOffsetInner)/leavesArcHeightInner);
-								const insideOuter = distanceOuter < leavesArcRadiusOuter;
-								const outsideInner = distanceInner > leavesArcRadiusInner;
+								const distanceOuter = hypot3d(x/widthOuter, y/widthOuter, (z + zOffsetOuter)/heightOuter);
+								const distanceInner = hypot3d(x/widthInner, y/widthInner, (z + zOffsetInner)/heightInner);
+								const insideOuter = distanceOuter < radiusOuter;
+								const outsideInner = distanceInner > radiusInner;
 								if(!insideOuter or !outsideInner) continue;
 							}
 							for(0..2) |x| {
@@ -512,7 +563,7 @@ const BranchGenerator = struct {
 									const loc: Vec3i = .{
 										@intFromFloat(pos[0] + @as(f32, @floatFromInt(i))*std.math.sign(dx)),
 										@intFromFloat(pos[1] + @as(f32, @floatFromInt(j))*std.math.sign(dy)),
-										@intFromFloat(pos[2] + (@as(f32, @floatFromInt(k)) - leavesArcHeightOuter + leavesArcZOffset)),
+										@intFromFloat(pos[2] + (@as(f32, @floatFromInt(k)) - heightOuter + zOffset)),
 									};
 									_ = self.place(loc, self.blocks.leaves, 0);
 								}
@@ -538,11 +589,7 @@ const BranchSegment = struct {
 	backward: ?*BranchSegment,
 	up: ?*BranchSegment,
 
-	leavesSpawnMode: ?LeavesSpawnMode,
-	leavesSpawnChance: ?f32,
-	leavesRadius: ?f32,
-	leavesRadiusDelta: ?f32,
-	leavesRandomOffsetDelta: ?f32,
+	leaves: *LeavesOptions,
 
 	pub fn initFromZon(allocator: NeverFailingAllocator, series: ZonElement) *@This() {
 		const self = allocator.create(@This());
@@ -559,11 +606,7 @@ const BranchSegment = struct {
 		self.backward = if(backward.isNull()) null else .initFromZon(allocator, backward);
 		self.up = if(up.isNull()) null else .initFromZon(allocator, up);
 
-		self.leavesSpawnMode = if(series.get(?[]const u8, "leavesSpawnMode", null)) |mode| LeavesSpawnMode.fromString(mode) else null;
-		self.leavesSpawnChance = series.get(?f32, "leavesSpawnChance", null);
-		self.leavesRadius = series.get(?f32, "leavesRadius", null);
-		self.leavesRadiusDelta = series.get(?f32, "leavesRadiusDelta", null);
-		self.leavesRandomOffsetDelta = series.get(?f32, "leavesRandomOffsetDelta", null);
+		self.leaves = LeavesOptions.initFromZon(allocator, series.getChild("leaves"));
 
 		return self;
 	}
@@ -574,6 +617,8 @@ const BranchSegment = struct {
 		if(self.forward) |forward| forward.deinit(allocator);
 		if(self.backward) |backward| backward.deinit(allocator);
 		if(self.up) |up| up.deinit(allocator);
+
+		self.leaves.deinit(allocator);
 
 		allocator.free(self.*);
 	}
