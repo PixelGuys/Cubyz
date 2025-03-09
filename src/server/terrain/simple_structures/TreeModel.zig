@@ -9,7 +9,7 @@ const vec = main.vec;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const Block = main.blocks.Block;
 const parseBlock = main.blocks.parseBlock;
 const Neighbor = main.chunk.Neighbor;
@@ -41,6 +41,20 @@ const BranchSpawnMode = enum {
 	}
 };
 
+const LeavesSpawnMode = enum {
+	sphere,
+	half_sphere,
+	arc,
+	none,
+
+	fn fromString(string: []const u8) @This() {
+		return std.meta.stringToEnum(@This(), string) orelse {
+			std.log.err("Couldn't find leaves spawn mode {s}. Replacing it with none", .{string});
+			return .none;
+		};
+	}
+};
+
 const Stem = struct {
 	height: i32,
 	heightDelta: f32,
@@ -51,20 +65,79 @@ const Stem = struct {
 	branchMaxCount: u32,
 	branchMaxCountPerLevel: u32,
 	branchPeak: bool,
-	branchSegmentSeriesVariants: ZonElement,
-	leavesChance: f32,
-	leavesBlobChance: f32,
-	leavesBlobRadius: f32,
-	leavesBlobRadiusDelta: f32,
+	branchSegmentSeriesVariants: List(*BranchSegment),
+
+	leavesSpawnMode: LeavesSpawnMode,
+	leavesSpawnChance: f32,
+	leavesRadius: f32,
+	leavesRadiusDelta: f32,
+	leavesRandomOffsetDelta: f32,
+
 	mushroomChance: f32,
 	stemThickness: usize,
 	blocks: Blocks,
+
+	pub fn initFromZon(allocator: NeverFailingAllocator, segment: ZonElement) *@This() {
+		const blocks = segment.getChild("blocks");
+		const branchSegmentsZon = segment.getChild("branchSegmentSeriesVariants").toSlice();
+		var branchSegments: List(*BranchSegment) = .initCapacity(allocator, branchSegmentsZon.len);
+
+		for(branchSegmentsZon) |branchSegment| {
+			branchSegments.appendAssumeCapacity(BranchSegment.initFromZon(allocator, branchSegment));
+		}
+		const self = allocator.create(@This());
+
+		self.* = .{
+			.height = segment.get(i32, "height", 0),
+			.heightDelta = segment.get(f32, "heightDelta", 0),
+			.skipChance = segment.get(f32, "skipChance", 0),
+			.branchChance = segment.get(f32, "branchChance", 0.0),
+			.branchSpacing = segment.get(u32, "branchSpacing", 0),
+			.branchSpawnMode = BranchSpawnMode.fromString(segment.get([]const u8, "branchSpawnMode", "random")),
+			.branchMaxCount = segment.get(u32, "branchMaxCount", std.math.maxInt(u32)),
+			.branchMaxCountPerLevel = segment.get(u32, "branchMaxCountPerLevel", std.math.maxInt(u32)),
+			.branchSegmentSeriesVariants = branchSegments,
+			.leavesSpawnMode = LeavesSpawnMode.fromString(segment.get([]const u8, "leavesSpawnMode", "none")),
+			.leavesSpawnChance = segment.get(f32, "leavesSpawnChance", 0.0),
+			.leavesRadius = segment.get(f32, "leavesRadius", 0.0),
+			.leavesRadiusDelta = segment.get(f32, "leavesRadiusDelta", 0.0),
+			.leavesRandomOffsetDelta = segment.get(f32, "leavesRandomOffsetDelta", 0.0),
+			.branchPeak = segment.get(bool, "branchPeak", false),
+			.mushroomChance = segment.get(f32, "mushroomChance", 0.0),
+			.stemThickness = segment.get(usize, "stemThickness", 1),
+			.blocks = .{
+				.leaves = parseBlock(blocks.get([]const u8, "leaves", "cubyz:air")),
+				.wood = parseBlock(blocks.get([]const u8, "wood", "cubyz:air")),
+				.branch = parseBlock(blocks.get([]const u8, "branch", "cubyz:air")),
+				.mushroom = parseBlock(blocks.get([]const u8, "mushroom", "cubyz:air")),
+				.grass = parseBlock("cubyz:grass"),
+			},
+		};
+
+		return self;
+	}
+
+	pub fn deinit(self: *@This(), allocator: NeverFailingAllocator) void {
+		for(self.branchSegmentSeriesVariants.items) |branchSegment| {
+			branchSegment.deinit(allocator);
+		}
+		self.branchSegmentSeriesVariants.deinit(allocator);
+		allocator.destroy(self);
+	}
 
 	pub fn generate(self: @This(), state: *TreeState) void {
 		if(self.height <= 0) return;
 		if(self.stemThickness == 0) return;
 
-		var branchGenerator = BranchGenerator{.state = state, .blocks = self.blocks, .leavesChance = self.leavesChance, .leavesBlobChance = self.leavesBlobChance, .leavesBlobRadius = self.leavesBlobRadius, .leavesBlobRadiusDelta = self.leavesBlobRadiusDelta};
+		var branchGenerator = BranchGenerator{
+			.state = state,
+			.blocks = self.blocks,
+			.leavesSpawnMode = self.leavesSpawnMode,
+			.leavesSpawnChance = self.leavesSpawnChance,
+			.leavesRadius = self.leavesRadius,
+			.leavesRadiusDelta = self.leavesRadiusDelta,
+			.leavesRandomOffsetDelta = self.leavesRandomOffsetDelta,
+		};
 
 		var branchCount: u32 = 0;
 		var branchCountThisLevel: u32 = 0;
@@ -195,11 +268,10 @@ const Stem = struct {
 		state.chunk.updateBlockInGeneration(position[0], position[1], position[2], block);
 	}
 	fn placeBranch(self: @This(), state: *TreeState, branchGenerator: *BranchGenerator, direction: Neighbor, position: Vec3i) bool {
-		if(self.branchSegmentSeriesVariants.isNull()) return false;
-		if(self.branchSegmentSeriesVariants.array.items.len == 0) return false;
+		if(self.branchSegmentSeriesVariants.items.len == 0) return false;
 
-		const branchVariantIndex = random.nextInt(usize, state.seed)%self.branchSegmentSeriesVariants.array.items.len;
-		const branchSeries = self.branchSegmentSeriesVariants.getChildAtIndex(branchVariantIndex);
+		const branchVariantIndex = random.nextInt(usize, state.seed)%self.branchSegmentSeriesVariants.items.len;
+		const branchSeries = self.branchSegmentSeriesVariants.items[branchVariantIndex];
 
 		return branchGenerator.generate(direction, position + direction.relPos(), branchSeries);
 	}
@@ -256,23 +328,25 @@ const TreeState = struct {
 const BranchGenerator = struct {
 	state: *TreeState,
 	blocks: Blocks,
-	leavesChance: f32,
-	leavesBlobChance: f32,
-	leavesBlobRadius: f32,
-	leavesBlobRadiusDelta: f32,
 
-	pub fn generate(self: *@This(), direction: Neighbor, position: Vec3i, series: ZonElement) bool {
+	leavesSpawnMode: LeavesSpawnMode,
+	leavesSpawnChance: f32,
+	leavesRadius: f32,
+	leavesRadiusDelta: f32,
+	leavesRandomOffsetDelta: f32,
+
+	pub fn generate(self: *@This(), direction: Neighbor, position: Vec3i, series: *BranchSegment) bool {
 		const horizontalDirection = if(direction == Neighbor.dirUp) Neighbor.dirPosX else direction;
 		return junction(self, horizontalDirection, direction, position, series);
 	}
-	fn junction(self: *@This(), horizontalDirection: Neighbor, direction: Neighbor, position: Vec3i, series: ZonElement) bool {
+	fn junction(self: *@This(), horizontalDirection: Neighbor, direction: Neighbor, position: Vec3i, series: *BranchSegment) bool {
 		if(!self.isAirOrLeaves(position)) return false;
 
-		var leftSeries = series.getChild("left");
-		var rightSeries = series.getChild("right");
-		var forwardSeries = series.getChild("forward");
-		var backwardSeries = series.getChild("backward");
-		var upSeries = series.getChild("up");
+		const leftSeries = series.left;
+		const rightSeries = series.right;
+		const forwardSeries = series.forward;
+		const backwardSeries = series.backward;
+		const upSeries = series.up;
 
 		var isLeftSuccess = false;
 		var isRightSuccess = false;
@@ -286,54 +360,37 @@ const BranchGenerator = struct {
 		const backward = horizontalDirection.reverse();
 		const up = Neighbor.dirUp;
 
-		if(!leftSeries.isNull()) {
-			isLeftSuccess = self.junction(left, left, position + left.relPos(), leftSeries);
-		} else {
-			if(self.leavesChance > 0 and random.nextFloat(self.state.seed) < self.leavesChance) {
-				isLeftSuccess = self.place(position + left.relPos(), self.blocks.leaves, 0);
-			}
+		if(leftSeries) |nextSeries| {
+			isLeftSuccess = self.junction(left, left, position + left.relPos(), nextSeries);
 		}
 
-		if(!rightSeries.isNull()) {
-			isRightSuccess = self.junction(right, right, position + right.relPos(), rightSeries);
-		} else {
-			if(self.leavesChance > 0 and random.nextFloat(self.state.seed) < self.leavesChance) {
-				isRightSuccess = self.place(position + right.relPos(), self.blocks.leaves, 0);
-			}
+		if(rightSeries) |nextSeries| {
+			isRightSuccess = self.junction(right, right, position + right.relPos(), nextSeries);
 		}
 
-		if(!forwardSeries.isNull()) {
-			isForwardSuccess = self.junction(forward, forward, position + forward.relPos(), forwardSeries);
-		} else {
-			if(self.leavesChance > 0 and random.nextFloat(self.state.seed) < self.leavesChance) {
-				isForwardSuccess = self.place(position + forward.relPos(), self.blocks.leaves, 0);
-			}
+		if(forwardSeries) |nextSeries| {
+			isForwardSuccess = self.junction(forward, forward, position + forward.relPos(), nextSeries);
 		}
 
-		if(!backwardSeries.isNull()) {
-			isBackwardSuccess = self.junction(backward, backward, position + backward.relPos(), backwardSeries);
-		} else {
-			if(self.leavesChance > 0 and random.nextFloat(self.state.seed) < self.leavesChance) {
-				isBackwardSuccess = self.place(position + backward.relPos(), self.blocks.leaves, 0);
-			}
+		if(backwardSeries) |nextSeries| {
+			isBackwardSuccess = self.junction(backward, backward, position + backward.relPos(), nextSeries);
 		}
 
-		if(!upSeries.isNull()) {
-			isUpSuccess = self.junction(forward, up, position + up.relPos(), upSeries);
-		} else {
-			if(self.leavesChance > 0 and random.nextFloat(self.state.seed) < self.leavesChance) {
-				isUpSuccess = self.place(position + up.relPos(), self.blocks.leaves, 0);
-			}
+		if(upSeries) |nextSeries| {
+			isUpSuccess = self.junction(forward, up, position + up.relPos(), nextSeries);
 		}
 
 		var blockData: u16 = 0;
+		const leavesSpawnChance = series.leavesSpawnChance orelse self.leavesSpawnChance;
 
-		if(leftSeries.isNull() and rightSeries.isNull() and forwardSeries.isNull() and self.leavesBlobChance > 0 and random.nextFloat(self.state.seed) < self.leavesBlobChance) {
-			const radius = self.leavesBlobRadius + (random.nextFloat(self.state.seed) - 0.5)*self.leavesBlobRadiusDelta;
-			const pos: Vec3f = .{@as(f32, @floatFromInt(position[0])) + (random.nextFloat(self.state.seed) - 0.5)*1.5, @as(f32, @floatFromInt(position[1])) + (random.nextFloat(self.state.seed) - 0.5)*1.5, @as(f32, @floatFromInt(position[2])) + (random.nextFloat(self.state.seed) - 0.5)*1.5};
-
-			self.placeSphere(pos, self.blocks.leaves, radius);
-			blockData = 0b111111;
+		if(leavesSpawnChance > 0 and random.nextFloat(self.state.seed) < leavesSpawnChance) {
+			self.placeLeaves(position, series);
+			blockData = (Neighbor.dirPosX.bitMask() |
+				Neighbor.dirNegX.bitMask() |
+				Neighbor.dirPosY.bitMask() |
+				Neighbor.dirNegY.bitMask() |
+				// Intentionally omitting down - it would look strange with arc leaves.
+				Neighbor.dirUp.bitMask());
 		} else {
 			blockData |= direction.reverse().bitMask();
 			if(isLeftSuccess) blockData |= left.bitMask();
@@ -366,15 +423,32 @@ const BranchGenerator = struct {
 		self.state.chunk.updateBlockInGeneration(position[0], position[1], position[2], blockWithData);
 		return true;
 	}
-	fn placeSphere(self: *@This(), pos: Vec3f, block: Block, radius: f32) void {
-		if(radius <= 0) return;
+	fn placeLeaves(self: *@This(), position: Vec3i, series: *BranchSegment) void {
+		const leavesSpawnMode = series.leavesSpawnMode orelse self.leavesSpawnMode;
+		if(leavesSpawnMode == LeavesSpawnMode.none) return;
+
+		const blobRadius = series.leavesRadius orelse self.leavesRadius;
+		const blobRadiusDelta = series.leavesRadiusDelta orelse self.leavesRadiusDelta;
+
+		const radius = blobRadius + (random.nextFloat(self.state.seed) - 0.5)*blobRadiusDelta;
+		const leavesRandomOffsetDelta = series.leavesRandomOffsetDelta orelse self.leavesRandomOffsetDelta;
+
+		const pos: Vec3f = .{
+			@as(f32, @floatFromInt(position[0])) + (random.nextFloat(self.state.seed) - 0.5)*leavesRandomOffsetDelta,
+			@as(f32, @floatFromInt(position[1])) + (random.nextFloat(self.state.seed) - 0.5)*leavesRandomOffsetDelta,
+			@as(f32, @floatFromInt(position[2])) + (random.nextFloat(self.state.seed) - 0.5)*leavesRandomOffsetDelta,
+		};
+
+		if(radius < 1.0) return;
 
 		const radiusInt: i32 = @intFromFloat(@ceil(radius));
 		const diameterInt: usize = 2*@as(usize, @intCast(radiusInt));
 
+		const zStart: usize = if(leavesSpawnMode == .half_sphere) @intCast(radiusInt) else 0;
+
 		for(0..diameterInt) |i| {
 			for(0..diameterInt) |j| {
-				for(0..diameterInt) |k| {
+				for(zStart..diameterInt) |k| {
 					{
 						const x = @as(f32, @floatFromInt(i)) - @ceil(radius);
 						const y = @as(f32, @floatFromInt(j)) - @ceil(radius);
@@ -388,7 +462,7 @@ const BranchGenerator = struct {
 						const y = pos[1] + @as(f32, @floatFromInt(j)) - radius;
 						const z = pos[2] + @as(f32, @floatFromInt(k)) - radius;
 
-						_ = self.place(.{@intFromFloat(x), @intFromFloat(y), @intFromFloat(z)}, block, 0);
+						_ = self.place(.{@intFromFloat(x), @intFromFloat(y), @intFromFloat(z)}, self.blocks.leaves, 0);
 					}
 				}
 			}
@@ -396,7 +470,55 @@ const BranchGenerator = struct {
 	}
 };
 
-segments: List(Stem),
+const BranchSegment = struct {
+	left: ?*BranchSegment,
+	right: ?*BranchSegment,
+	forward: ?*BranchSegment,
+	backward: ?*BranchSegment,
+	up: ?*BranchSegment,
+
+	leavesSpawnMode: ?LeavesSpawnMode,
+	leavesSpawnChance: ?f32,
+	leavesRadius: ?f32,
+	leavesRadiusDelta: ?f32,
+	leavesRandomOffsetDelta: ?f32,
+
+	pub fn initFromZon(allocator: NeverFailingAllocator, series: ZonElement) *@This() {
+		const self = allocator.create(@This());
+
+		const left = series.getChild("left");
+		const right = series.getChild("right");
+		const forward = series.getChild("forward");
+		const backward = series.getChild("backward");
+		const up = series.getChild("up");
+
+		self.left = if(left.isNull()) null else .initFromZon(allocator, left);
+		self.right = if(right.isNull()) null else .initFromZon(allocator, right);
+		self.forward = if(forward.isNull()) null else .initFromZon(allocator, forward);
+		self.backward = if(backward.isNull()) null else .initFromZon(allocator, backward);
+		self.up = if(up.isNull()) null else .initFromZon(allocator, up);
+
+		self.leavesSpawnMode = if(series.get(?[]const u8, "leavesSpawnMode", null)) |mode| LeavesSpawnMode.fromString(mode) else null;
+		self.leavesSpawnChance = series.get(?f32, "leavesSpawnChance", null);
+		self.leavesRadius = series.get(?f32, "leavesRadius", null);
+		self.leavesRadiusDelta = series.get(?f32, "leavesRadiusDelta", null);
+		self.leavesRandomOffsetDelta = series.get(?f32, "leavesRandomOffsetDelta", null);
+
+		return self;
+	}
+
+	pub fn deinit(self: *@This(), allocator: NeverFailingAllocator) void {
+		if(self.left) |left| left.deinit(allocator);
+		if(self.right) |right| right.deinit(allocator);
+		if(self.forward) |forward| forward.deinit(allocator);
+		if(self.backward) |backward| backward.deinit(allocator);
+		if(self.up) |up| up.deinit(allocator);
+
+		allocator.free(self.*);
+	}
+};
+
+segments: List(*Stem),
 heightOffset: i32,
 
 pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) *@This() {
@@ -407,32 +529,7 @@ pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) 
 	const segments = parameters.getChild("segments");
 
 	for(segments.array.items) |segment| {
-		const blocks = segment.getChild("blocks");
-		self.segments.append(.{
-			.height = segment.get(i32, "height", 0),
-			.heightDelta = segment.get(f32, "heightDelta", 0),
-			.skipChance = segment.get(f32, "skipChance", 0),
-			.branchChance = segment.get(f32, "branchChance", 0.0),
-			.branchSpacing = segment.get(u32, "branchSpacing", 0),
-			.branchSpawnMode = BranchSpawnMode.fromString(segment.get([]const u8, "branchSpawnMode", "random")),
-			.branchMaxCount = segment.get(u32, "branchMaxCount", 0),
-			.branchMaxCountPerLevel = segment.get(u32, "branchMaxCountPerLevel", std.math.maxInt(u32)),
-			.branchSegmentSeriesVariants = segment.getChild("branchSegmentSeriesVariants").clone(arenaAllocator),
-			.leavesChance = segment.get(f32, "leavesChance", 0.0),
-			.leavesBlobChance = segment.get(f32, "leavesBlobChance", 0.0),
-			.leavesBlobRadius = segment.get(f32, "leavesBlobRadius", 0.0),
-			.leavesBlobRadiusDelta = segment.get(f32, "leavesBlobRadiusDelta", 0.0),
-			.branchPeak = segment.get(bool, "branchPeak", false),
-			.mushroomChance = segment.get(f32, "mushroomChance", 0.0),
-			.stemThickness = segment.get(usize, "stemThickness", 1),
-			.blocks = .{
-				.leaves = parseBlock(blocks.get([]const u8, "leaves", "cubyz:oak_leaves")),
-				.wood = parseBlock(blocks.get([]const u8, "wood", "cubyz:oak_log")),
-				.branch = parseBlock(blocks.get([]const u8, "branch", "cubyz:oak_branch")),
-				.mushroom = parseBlock(blocks.get([]const u8, "mushroom", "cubyz:bolete")),
-				.grass = parseBlock("cubyz:grass"),
-			},
-		});
+		self.segments.append(.initFromZon(arenaAllocator, segment));
 	}
 
 	return self;
