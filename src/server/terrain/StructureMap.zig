@@ -6,7 +6,7 @@ const ServerChunk = main.chunk.ServerChunk;
 const ChunkPosition = main.chunk.ChunkPosition;
 const Cache = main.utils.Cache;
 const ZonElement = main.ZonElement;
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
 
@@ -41,8 +41,8 @@ pub const StructureMapFragment = struct {
 	pos: ChunkPosition,
 	voxelShift: u5,
 	refCount: Atomic(u16) = .init(0),
-	arena: main.utils.NeverFailingArenaAllocator,
-	allocator: main.utils.NeverFailingAllocator,
+	arena: main.heap.NeverFailingArenaAllocator,
+	allocator: main.heap.NeverFailingAllocator,
 
 	tempData: struct {
 		lists: *[chunkedSize*chunkedSize*chunkedSize]main.ListUnmanaged(Structure),

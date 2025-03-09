@@ -3,7 +3,7 @@ const std = @import("std");
 const main = @import("root");
 const settings = main.settings;
 const Vec2f = main.vec.Vec2f;
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const gui = @import("../gui.zig");
 const GuiComponent = gui.GuiComponent;
