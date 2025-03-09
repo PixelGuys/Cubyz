@@ -599,12 +599,14 @@ pub const RotationModes = struct {
 			var offset: Vec3f = .{0.0, 0.0, 0.0};
 			offset[@intFromEnum(side.vectorComponent())] = if(side.isPositive()) 12.0/16.0 else 4.0/16.0;
 
+			const floatingPointFix: Vec3f = @splat(16.0);
+
 			const res: main.models.QuadInfo = .{
 				.corners = .{
-					corns[0] + offset,
-					corns[1] + offset,
-					corns[2] + offset,
-					corns[3] + offset,
+					@round((corns[0] + offset) * floatingPointFix) / floatingPointFix,
+					@round((corns[1] + offset) * floatingPointFix) / floatingPointFix,
+					@round((corns[2] + offset) * floatingPointFix) / floatingPointFix,
+					@round((corns[3] + offset) * floatingPointFix) / floatingPointFix,
 				},
 				.cornerUV = originalCorners,
 				.normal = norm,
