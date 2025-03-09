@@ -838,6 +838,45 @@ pub const RotationModes = struct {
 			block.data = result;
 			return true;
 		}
+
+		fn closestRay(block: Block, relativePlayerPos: Vec3f, playerDir: Vec3f) ?u16 {
+			var closestIntersectionDistance: f64 = std.math.inf(f64);
+			var resultBitMask: ?u16 = null;
+			{
+				const mI = blocks.meshes.modelIndexStart(block);
+				if(RotationMode.DefaultFunctions.rayModelIntersection(mI, relativePlayerPos, playerDir)) |intersection| {
+					closestIntersectionDistance = intersection.distance;
+					resultBitMask = 0;
+				}
+			}
+			for(Neighbor.iterable) |direction| {
+				const directionBitMask = Neighbor.bitMask(direction);
+
+				if((block.data & directionBitMask) != 0) {
+					const mI = blocks.meshes.modelIndexStart(block) + directionBitMask;
+					if(RotationMode.DefaultFunctions.rayModelIntersection(mI, relativePlayerPos, playerDir)) |intersection| {
+						if(@abs(closestIntersectionDistance) > @abs(intersection.distance)) {
+							closestIntersectionDistance = intersection.distance;
+							resultBitMask = direction.bitMask();
+						}
+					}
+				}
+			}
+			return resultBitMask;
+		}
+
+		pub fn onBlockBreaking(_: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f, currentData: *Block) void {
+			if(closestRay(currentData.*, relativePlayerPos, playerDir)) |directionBitMask| {
+				// If player destroys a central part of branch block, branch block is completely destroyed.
+				if(directionBitMask == 0) {
+					currentData.typ = 0;
+					currentData.data = 0;
+					return;
+				}
+				// Otherwise only the connection player aimed at is destroyed.
+				currentData.data &= ~directionBitMask;
+			}
+		}
 	};
 	pub const Stairs = struct { // MARK: Stairs
 		pub const id: []const u8 = "stairs";

@@ -49,7 +49,7 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 	}
 
 	pub fn fromRelPos(pos: Vec3i) ?Neighbor {
-		if(@reduce(.And, @abs(pos)) != 1) {
+		if(@reduce(.Add, @abs(pos)) != 1) {
 			return null;
 		}
 		return switch(pos[0]) {
