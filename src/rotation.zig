@@ -572,7 +572,7 @@ pub const RotationModes = struct {
 						vec.rotate2d(originalCorners[2], angle, @splat(0.5)),
 						vec.rotate2d(originalCorners[3], angle, @splat(0.5)),
 					};
-				}
+				},
 			}
 
 			const offX: f32 = if(side.textureX()[([6]usize{0, 0, 1, 1, 0, 0})[@intFromEnum(side)]] < 0) 1 else 0;
