@@ -59,7 +59,7 @@ const Stem = struct {
 	height: i32,
 	heightDelta: f32,
 	skipChance: f32,
-	branchChance: f32,
+	branchSpawnChance: f32,
 	branchSpacing: u32,
 	branchSpawnMode: BranchSpawnMode,
 	branchMaxCount: u32,
@@ -91,7 +91,7 @@ const Stem = struct {
 			.height = segment.get(i32, "height", 0),
 			.heightDelta = segment.get(f32, "heightDelta", 0),
 			.skipChance = segment.get(f32, "skipChance", 0),
-			.branchChance = segment.get(f32, "branchChance", 0.0),
+			.branchSpawnChance = segment.get(f32, "branchSpawnChance", 0.0),
 			.branchSpacing = segment.get(u32, "branchSpacing", 0),
 			.branchSpawnMode = BranchSpawnMode.fromString(segment.get([]const u8, "branchSpawnMode", "random")),
 			.branchMaxCount = segment.get(u32, "branchMaxCount", std.math.maxInt(u32)),
@@ -128,6 +128,7 @@ const Stem = struct {
 	pub fn generate(self: @This(), state: *TreeState) void {
 		if(self.height <= 0) return;
 		if(self.stemThickness == 0) return;
+		if(random.nextFloat(state.seed) < self.skipChance) return;
 
 		var branchGenerator = BranchGenerator{
 			.state = state,
@@ -159,9 +160,9 @@ const Stem = struct {
 				.random => {
 					for(horizontal) |direction| {
 						if(branchCountThisLevel >= self.branchMaxCountPerLevel) continue;
-						if(self.branchChance <= 0) continue;
+						if(self.branchSpawnChance <= 0) continue;
 						if(branchCount >= self.branchMaxCount) continue;
-						if(random.nextFloat(state.seed) > self.branchChance) continue;
+						if(random.nextFloat(state.seed) > self.branchSpawnChance) continue;
 
 						const isSuccess: u32 = @intFromBool(self.placeBranch(state, &branchGenerator, direction, state.position));
 						branchCount += isSuccess;
@@ -186,15 +187,15 @@ const Stem = struct {
 				},
 				.alternating_random => blk: {
 					if(branchCountThisLevel >= self.branchMaxCountPerLevel) break :blk;
-					if(self.branchChance <= 0) break :blk;
+					if(self.branchSpawnChance <= 0) break :blk;
 					if(branchCount >= self.branchMaxCount) break :blk;
 
-					if(random.nextFloat(state.seed) < self.branchChance) {
+					if(random.nextFloat(state.seed) < self.branchSpawnChance) {
 						const isSuccess = @intFromBool(self.placeBranch(state, &branchGenerator, state.spawnAxis, state.position));
 						branchCount += isSuccess;
 						branchCountThisLevel += isSuccess;
 					}
-					if(random.nextFloat(state.seed) < self.branchChance) {
+					if(random.nextFloat(state.seed) < self.branchSpawnChance) {
 						const isSuccess = @intFromBool(self.placeBranch(state, &branchGenerator, state.spawnAxis.reverse(), state.position));
 						branchCount += isSuccess;
 						branchCountThisLevel += isSuccess;
@@ -384,13 +385,8 @@ const BranchGenerator = struct {
 		const leavesSpawnChance = series.leavesSpawnChance orelse self.leavesSpawnChance;
 
 		if(leavesSpawnChance > 0 and random.nextFloat(self.state.seed) < leavesSpawnChance) {
-			self.placeLeaves(position, series);
-			blockData = (Neighbor.dirPosX.bitMask() |
-				Neighbor.dirNegX.bitMask() |
-				Neighbor.dirPosY.bitMask() |
-				Neighbor.dirNegY.bitMask() |
-				// Intentionally omitting down - it would look strange with arc leaves.
-				Neighbor.dirUp.bitMask());
+			blockData = self.placeLeaves(position, series);
+			blockData |= direction.reverse().bitMask();
 		} else {
 			blockData |= direction.reverse().bitMask();
 			if(isLeftSuccess) blockData |= left.bitMask();
@@ -423,14 +419,8 @@ const BranchGenerator = struct {
 		self.state.chunk.updateBlockInGeneration(position[0], position[1], position[2], blockWithData);
 		return true;
 	}
-	fn placeLeaves(self: *@This(), position: Vec3i, series: *BranchSegment) void {
+	fn placeLeaves(self: *@This(), position: Vec3i, series: *BranchSegment) u16 {
 		const leavesSpawnMode = series.leavesSpawnMode orelse self.leavesSpawnMode;
-		if(leavesSpawnMode == LeavesSpawnMode.none) return;
-
-		const blobRadius = series.leavesRadius orelse self.leavesRadius;
-		const blobRadiusDelta = series.leavesRadiusDelta orelse self.leavesRadiusDelta;
-
-		const radius = blobRadius + (random.nextFloat(self.state.seed) - 0.5)*blobRadiusDelta;
 		const leavesRandomOffsetDelta = series.leavesRandomOffsetDelta orelse self.leavesRandomOffsetDelta;
 
 		const pos: Vec3f = .{
@@ -439,45 +429,107 @@ const BranchGenerator = struct {
 			@as(f32, @floatFromInt(position[2])) + (random.nextFloat(self.state.seed) - 0.5)*leavesRandomOffsetDelta,
 		};
 
-		if(radius < 1.0) return;
+		switch(leavesSpawnMode) {
+			.sphere, .half_sphere => {
+				const sphereRadius = series.leavesRadius orelse self.leavesRadius;
+				const sphereRadiusDelta = series.leavesRadiusDelta orelse self.leavesRadiusDelta;
 
-		const radiusInt: usize = @intFromFloat(@ceil(radius));
+				const radius = sphereRadius + (random.nextFloat(self.state.seed) - 0.5)*sphereRadiusDelta;
 
-		for(0..radiusInt) |i| {
-			for(0..radiusInt) |j| {
-				for(0..radiusInt) |k| {
-					{
-						const x = @as(f32, @floatFromInt(i));
-						const y = @as(f32, @floatFromInt(j));
-						const z = @as(f32, @floatFromInt(k));
-						const squareDistance = (x*x + y*y + z*z);
-						const squareMaxDistance = radius*radius;
-						if(squareDistance > squareMaxDistance) continue;
-					}
-					for(0..2) |iX| {
-						const fX = @as(f32, @floatFromInt(iX)) - 0.5;
+				if(radius < 1.0) return 0;
 
-						for(0..2) |iY| {
-							const fY = @as(f32, @floatFromInt(iY)) - 0.5;
+				const radiusInt: usize = @intFromFloat(@ceil(radius));
 
-							for(0..2) |iZ| {
-								const fZ = @as(f32, @floatFromInt(iZ)) - 0.5;
-								if(leavesSpawnMode == .half_sphere and fZ < 0) continue;
+				for(0..radiusInt) |i| {
+					for(0..radiusInt) |j| {
+						for(0..radiusInt) |k| {
+							{
+								const distance = hypot3d(@as(f32, @floatFromInt(i)), @as(f32, @floatFromInt(j)), @as(f32, @floatFromInt(k)));
+								if(distance > radius) continue;
+							}
+							for(0..2) |x| {
+								for(0..2) |y| {
+									for(0..2) |z| {
+										const dx = @as(f32, @floatFromInt(x)) - 0.5;
+										const dy = @as(f32, @floatFromInt(y)) - 0.5;
+										const dz = @as(f32, @floatFromInt(z)) - 0.5;
 
-								const x = pos[0] + @as(f32, @floatFromInt(i))*std.math.sign(fX);
-								const y = pos[1] + @as(f32, @floatFromInt(j))*std.math.sign(fY);
-								const z = pos[2] + @as(f32, @floatFromInt(k))*std.math.sign(fZ);
+										if(leavesSpawnMode == .half_sphere and dz < 0) continue;
 
-								_ = self.place(.{@intFromFloat(x), @intFromFloat(y), @intFromFloat(z)}, self.blocks.leaves, 0);
-
+										const loc: Vec3i = .{
+											@intFromFloat(pos[0] + @as(f32, @floatFromInt(i))*std.math.sign(dx)),
+											@intFromFloat(pos[1] + @as(f32, @floatFromInt(j))*std.math.sign(dy)),
+											@intFromFloat(pos[2] + @as(f32, @floatFromInt(k))*std.math.sign(dz)),
+										};
+										_ = self.place(loc, self.blocks.leaves, 0);
+									}
+								}
 							}
 						}
 					}
 				}
-			}
+				return (Neighbor.dirPosX.bitMask() |
+					Neighbor.dirNegX.bitMask() |
+					Neighbor.dirPosY.bitMask() |
+					Neighbor.dirNegY.bitMask() |
+					// Intentionally omitting down - it would look strange with arc leaves.
+					Neighbor.dirUp.bitMask());
+			},
+			.arc => {
+				const leavesArcWidthOuter = 1.0;
+				const leavesArcHeightOuter = 0.6;
+				const leavesArcRadiusOuter = 3.0;
+				const leavesArcZOffsetOuter = 0.0;
+
+				const leavesArcWidthInner = 1.0;
+				const leavesArcHeightInner = 1.0;
+				const leavesArcRadiusInner = 2.0;
+				const leavesArcZOffsetInner = 1.5;
+
+				const leavesArcZOffset = 0.0;
+
+				const radiusInt: usize = @ceil(leavesArcRadiusOuter);
+
+				for(0..radiusInt) |i| {
+					for(0..radiusInt) |j| {
+						for(0..(radiusInt*2)) |k| {
+							{
+								const x = @as(f32, @floatFromInt(i));
+								const y = @as(f32, @floatFromInt(j));
+								const z = @as(f32, @floatFromInt(k)) - leavesArcHeightOuter;
+
+								const distanceOuter = hypot3d(x/leavesArcWidthOuter, y/leavesArcWidthOuter, (z + leavesArcZOffsetOuter)/leavesArcHeightOuter);
+								const distanceInner = hypot3d(x/leavesArcWidthInner, y/leavesArcWidthInner, (z + leavesArcZOffsetInner)/leavesArcHeightInner);
+								const insideOuter = distanceOuter < leavesArcRadiusOuter;
+								const outsideInner = distanceInner > leavesArcRadiusInner;
+								if(!insideOuter or !outsideInner) continue;
+							}
+							for(0..2) |x| {
+								for(0..2) |y| {
+									const dx = @as(f32, @floatFromInt(x)) - 0.5;
+									const dy = @as(f32, @floatFromInt(y)) - 0.5;
+
+									const loc: Vec3i = .{
+										@intFromFloat(pos[0] + @as(f32, @floatFromInt(i))*std.math.sign(dx)),
+										@intFromFloat(pos[1] + @as(f32, @floatFromInt(j))*std.math.sign(dy)),
+										@intFromFloat(pos[2] + (@as(f32, @floatFromInt(k)) - leavesArcHeightOuter + leavesArcZOffset)),
+									};
+									_ = self.place(loc, self.blocks.leaves, 0);
+								}
+							}
+						}
+					}
+				}
+				return Neighbor.dirUp.bitMask();
+			},
+			.none => return 0,
 		}
 	}
 };
+
+fn hypot3d(x: f32, y: f32, z: f32) f32 {
+	return std.math.sqrt(x*x + y*y + z*z);
+}
 
 const BranchSegment = struct {
 	left: ?*BranchSegment,

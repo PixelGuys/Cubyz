@@ -33,7 +33,6 @@
 					.branchChance = 0.1,
 					.branchSpacing = 1,
 					.branchSpawnMode = .alternating_spaced,
-					.leavesChance = 0.3,
 					.blocks = .{
 						.leaves = "cubyz:oak_leaves",
 						.wood = "cubyz:oak_log",
@@ -447,6 +446,126 @@
 							.right = .{},
 							.forward = .{},
 							.backward = .{},
+						},
+					},
+				},
+			},
+		},
+		.{
+			.id = "cubyz:tree",
+			.chance = 0.005,
+			.segments = .{
+				.{
+					.height = 9,
+					.stemThickness = 3,
+					.blocks = .{
+						.wood = "cubyz:baobab_log",
+					},
+				},
+				.{
+					.height = 1,
+					.stemThickness = 3,
+					.blocks = .{
+						.wood = "cubyz:baobab_top",
+					},
+				},
+				.{
+					.height = 1,
+					.stemThickness = 1,
+					.blocks = .{
+						.wood = "cubyz:baobab_top",
+						.branch = "cubyz:baobab_branch",
+						.leaves = "cubyz:baobab_leaves",
+					},
+					.branchSpawnMode = .alternating,
+					.leavesSpawnMode = .arc,
+					.leavesSpawnChance = 0.0,
+					.branchSegmentSeriesVariants = .{
+						.{
+							.up = .{
+								.up = .{
+									.forward = .{
+										.up = .{
+											.forward = .{
+												.leavesSpawnChance = 1.0,
+											},
+										},
+									},
+								},
+							},
+							.left = .{
+								.forward = .{
+									.forward = .{
+										.right = .{
+											.up = .{
+												.left = .{
+													.forward = .{
+														.forward = .{
+															.leavesSpawnChance = 1.0,
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+							.forward = .{
+								.up = .{
+									.forward = .{
+										.left = .{
+											.right = .{
+												.forward = .{
+													.up = .{
+														.forward = .{
+															.left = .{
+																.forward = .{
+																	.leavesSpawnChance = 1.0,
+																},
+															},
+														},
+													},
+												},
+											},
+										},
+									},
+								},
+								.right = .{
+									.left = .{
+										.up = .{
+											.right = .{
+												.left = .{
+													.forward = .{
+														.right = .{
+															.leavesSpawnChance = 1.0,
+														},
+													},
+												},
+											},
+										},
+									},
+									.forward = .{
+										.up = .{
+											.forward = .{
+												.right = .{
+													.forward = .{
+														.left = .{
+															.forward = .{
+																.leavesSpawnChance = 1.0,
+															},
+														},
+													},
+												},
+												.forward = .{
+													.forward = .{
+														.leavesSpawnChance = 1.0,
+													},
+												},
+											},
+										},
+									},
+								},
+							},
 						},
 					},
 				},
