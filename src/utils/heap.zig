@@ -490,7 +490,7 @@ pub const NeverFailingArenaAllocator = struct { // MARK: NeverFailingArena
 };
 
 /// basically a copy of std.heap.MemoryPool, except it's thread-safe and has some more diagnostics.
-pub fn MemoryPool(Item: type) type {
+pub fn MemoryPool(Item: type) type { // MARK: MemoryPool
 	return struct {
 		const Pool = @This();
 
@@ -526,8 +526,8 @@ pub fn MemoryPool(Item: type) type {
 		pub fn deinit(pool: *Pool) void {
 			if(pool.freeAllocations != pool.totalAllocations) {
 				std.log.err("Memory pool of type {s} leaked {} elements", .{@typeName(Item), pool.totalAllocations - pool.freeAllocations});
-			} else {
-				std.log.info("Memory pool of type {s} contained a total of {} MiB ({} elements)", .{@typeName(Item), pool.totalAllocations*item_size >> 20, pool.totalAllocations});
+			} else if(pool.totalAllocations != 0) {
+				std.log.info("{} MiB ({} elements) in {s} Memory pool", .{pool.totalAllocations*item_size >> 20, pool.totalAllocations, @typeName(Item)});
 			}
 			pool.arena.deinit();
 			pool.* = undefined;
@@ -569,6 +569,130 @@ pub fn MemoryPool(Item: type) type {
 			pool.freeAllocations += 1;
 			const mem = pool.arena.allocator().alignedAlloc(u8, item_alignment, item_size);
 			return mem[0..item_size]; // coerce slice to array pointer
+		}
+	};
+}
+
+pub fn PowerOfTwoPoolAllocator(minSize: comptime_int, maxSize: comptime_int, maxAlignment: comptime_int) type { // MARK: PowerOfTwoPoolAllocator
+	std.debug.assert(std.math.isPowerOfTwo(minSize));
+	std.debug.assert(std.math.isPowerOfTwo(maxSize));
+	std.debug.assert(maxSize > minSize);
+	std.debug.assert(minSize >= maxAlignment);
+	std.debug.assert(minSize >= @sizeOf(usize));
+
+	const alignment = @max(maxAlignment, @sizeOf(usize));
+
+	const baseShift = std.math.log2_int(usize, minSize);
+	const bucketCount = std.math.log2_int(usize, maxSize) - baseShift + 1;
+	return struct {
+		const Self = @This();
+
+		const Node = struct {
+			next: ?*align(alignment) @This(),
+		};
+		const NodePtr = *align(alignment) Node;
+
+		const Bucket = struct {
+			freeLists: ?*align(alignment) Node = null,
+			freeAllocations: usize = 0,
+			totalAllocations: usize = 0,
+
+			pub fn deinit(self: *Bucket, size: usize) void {
+				if(self.freeAllocations != self.totalAllocations) {
+					std.log.err("PowerOfTwoPoolAllocator bucket of size {} leaked {} elements", .{size, self.totalAllocations - self.freeAllocations});
+				} else if(self.totalAllocations != 0) {
+					std.log.info("{} MiB ({} elements) in size {} PowerOfTwoPoolAllocator bucket", .{self.totalAllocations*size >> 20, self.totalAllocations, size});
+				}
+				self.* = undefined;
+			}
+
+			/// Creates a new item and adds it to the memory pool.
+			pub fn create(self: *Bucket, arena: NeverFailingAllocator, size: usize) [*]u8 {
+				const node = if(self.freeLists) |item| blk: {
+					self.freeLists = item.next;
+					break :blk item;
+				} else @as(NodePtr, @ptrCast(self.allocNew(arena, size)));
+
+				self.freeAllocations -= 1;
+				return @ptrCast(node);
+			}
+
+			/// Destroys a previously created item.
+			/// Only pass items to `ptr` that were previously created with `create()` of the same memory pool!
+			pub fn destroy(self: *Bucket, ptr: [*]u8) void {
+				const node = @as(NodePtr, @ptrCast(@alignCast(ptr)));
+				node.* = Node{
+					.next = self.freeLists,
+				};
+				self.freeLists = node;
+				self.freeAllocations += 1;
+			}
+
+			fn allocNew(self: *Bucket, arena: NeverFailingAllocator, size: usize) [*]align(alignment) u8 {
+				self.totalAllocations += 1;
+				self.freeAllocations += 1;
+				return arena.alignedAlloc(u8, alignment, size).ptr;
+			}
+		};
+
+		arena: NeverFailingArenaAllocator,
+		buckets: [bucketCount]Bucket = @splat(.{}),
+		mutex: std.Thread.Mutex = .{},
+
+		pub fn init(backingAllocator: NeverFailingAllocator) Self {
+			return .{.arena = .init(backingAllocator)};
+		}
+
+		pub fn deinit(self: *Self) void {
+			for(&self.buckets, 0..) |*bucket, i| {
+				bucket.deinit(@as(usize, minSize) << @intCast(i));
+			}
+			self.arena.deinit();
+		}
+
+		pub fn allocator(self: *Self) NeverFailingAllocator {
+			return .{
+				.allocator = .{
+					.vtable = &.{
+						.alloc = &alloc,
+						.resize = &resize,
+						.remap = &remap,
+						.free = &free,
+					},
+					.ptr = self,
+				},
+				.IAssertThatTheProvidedAllocatorCantFail = {},
+			};
+		}
+
+		fn alloc(ctx: *anyopaque, len: usize, _alignment: std.mem.Alignment, _: usize) ?[*]u8 {
+			std.debug.assert(@as(usize, 1) << @intFromEnum(_alignment) <= maxAlignment);
+			std.debug.assert(std.math.isPowerOfTwo(len));
+			std.debug.assert(len >= minSize);
+			std.debug.assert(len <= maxSize);
+			const self: *Self = @ptrCast(@alignCast(ctx));
+			const bucket = @ctz(len) - baseShift;
+			self.mutex.lock();
+			defer self.mutex.unlock();
+			return self.buckets[bucket].create(self.arena.allocator(), len);
+		}
+
+		fn resize(_: *anyopaque, _: []u8, _: std.mem.Alignment, _: usize, _: usize) bool {
+			return false;
+		}
+
+		fn remap(_: *anyopaque, _: []u8, _: std.mem.Alignment, _: usize, _: usize) ?[*]u8 {
+			return null;
+		}
+
+		fn free(ctx: *anyopaque, memory: []u8, _alignment: std.mem.Alignment, _: usize) void {
+			std.debug.assert(@as(usize, 1) << @intFromEnum(_alignment) <= maxAlignment);
+			std.debug.assert(std.math.isPowerOfTwo(memory.len));
+			const self: *Self = @ptrCast(@alignCast(ctx));
+			const bucket = @ctz(memory.len) - baseShift;
+			self.mutex.lock();
+			defer self.mutex.unlock();
+			self.buckets[bucket].destroy(memory.ptr);
 		}
 	};
 }

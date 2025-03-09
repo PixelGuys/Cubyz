@@ -777,25 +777,36 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 	}
 };
 
+var dynamicIntArrayAllocator: main.heap.PowerOfTwoPoolAllocator(main.chunk.chunkVolume/@bitSizeOf(u8), main.chunk.chunkVolume*@sizeOf(u16), 64) = undefined;
+
+pub fn initDynamicIntArrayStorage() void {
+	dynamicIntArrayAllocator = .init(main.globalAllocator);
+}
+
+pub fn deinitDynamicIntArrayStorage() void {
+	dynamicIntArrayAllocator.deinit();
+}
+
 /// An packed array of integers with dynamic bit size.
 /// The bit size can be changed using the `resize` function.
 pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIntArray
+	std.debug.assert(std.math.isPowerOfTwo(size));
 	return struct {
 		data: []align(64) u32 = &.{},
 		bitSize: u5 = 0,
 
 		const Self = @This();
 
-		pub fn initCapacity(allocator: main.heap.NeverFailingAllocator, bitSize: u5) Self {
+		pub fn initCapacity(bitSize: u5) Self {
 			std.debug.assert(bitSize == 0 or bitSize & bitSize - 1 == 0); // Must be a power of 2
 			return .{
-				.data = allocator.alignedAlloc(u32, 64, @as(usize, @divExact(size, @bitSizeOf(u32)))*bitSize),
+				.data = dynamicIntArrayAllocator.allocator().alignedAlloc(u32, 64, @as(usize, @divExact(size, @bitSizeOf(u32)))*bitSize),
 				.bitSize = bitSize,
 			};
 		}
 
-		pub fn deinit(self: *Self, allocator: main.heap.NeverFailingAllocator) void {
-			allocator.free(self.data);
+		pub fn deinit(self: *Self) void {
+			dynamicIntArrayAllocator.allocator().free(self.data);
 			self.* = .{};
 		}
 
@@ -808,9 +819,9 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 			return result;
 		}
 
-		pub fn resizeOnce(self: *Self, allocator: main.heap.NeverFailingAllocator) void {
+		pub fn resizeOnce(self: *Self) void {
 			const newBitSize = if(self.bitSize != 0) self.bitSize*2 else 1;
-			var newSelf = Self.initCapacity(allocator, newBitSize);
+			var newSelf = Self.initCapacity(newBitSize);
 
 			switch(self.bitSize) {
 				0 => @memset(newSelf.data, 0),
@@ -823,7 +834,7 @@ pub fn DynamicPackedIntArray(size: comptime_int) type { // MARK: DynamicPackedIn
 				},
 				else => unreachable,
 			}
-			allocator.free(self.data);
+			dynamicIntArrayAllocator.allocator().free(self.data);
 			self.* = newSelf;
 		}
 
@@ -889,13 +900,10 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 		}
 
 		pub fn initCopy(self: *Self, template: *const Self) void {
-			const dataDupe = main.globalAllocator.alignedAlloc(u32, 64, template.data.data.len);
-			@memcpy(dataDupe, template.data.data);
+			const dataDupe = DynamicPackedIntArray(size).initCapacity(template.data.bitSize);
+			@memcpy(dataDupe.data, template.data.data);
 			self.* = .{
-				.data = .{
-					.data = dataDupe,
-					.bitSize = template.data.bitSize,
-				},
+				.data = dataDupe,
 				.palette = main.globalAllocator.dupe(T, template.palette),
 				.paletteOccupancy = main.globalAllocator.dupe(u32, template.paletteOccupancy),
 				.paletteLength = template.paletteLength,
@@ -908,7 +916,7 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			const bitSize: u5 = getTargetBitSize(paletteLength);
 			const bufferLength = @as(u32, 1) << bitSize;
 			self.* = .{
-				.data = DynamicPackedIntArray(size).initCapacity(main.globalAllocator, bitSize),
+				.data = DynamicPackedIntArray(size).initCapacity(bitSize),
 				.palette = main.globalAllocator.alloc(T, bufferLength),
 				.paletteOccupancy = main.globalAllocator.alloc(u32, bufferLength),
 				.paletteLength = paletteLength,
@@ -919,7 +927,7 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 		}
 
 		pub fn deinit(self: *Self) void {
-			self.data.deinit(main.globalAllocator);
+			self.data.deinit();
 			main.globalAllocator.free(self.palette);
 			main.globalAllocator.free(self.paletteOccupancy);
 		}
@@ -945,7 +953,7 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			}
 			if(paletteIndex == self.paletteLength) {
 				if(self.paletteLength == self.palette.len) {
-					self.data.resizeOnce(main.globalAllocator);
+					self.data.resizeOnce();
 					self.palette = main.globalAllocator.realloc(self.palette, @as(usize, 1) << self.data.bitSize);
 					const oldLen = self.paletteOccupancy.len;
 					self.paletteOccupancy = main.globalAllocator.realloc(self.paletteOccupancy, @as(usize, 1) << self.data.bitSize);
@@ -1007,7 +1015,7 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			const newBitSize = getTargetBitSize(@intCast(self.activePaletteEntries));
 			if(self.data.bitSize == newBitSize) return;
 
-			var newData = main.utils.DynamicPackedIntArray(size).initCapacity(main.globalAllocator, newBitSize);
+			var newData = main.utils.DynamicPackedIntArray(size).initCapacity(newBitSize);
 			const paletteMap: []u32 = main.stackAllocator.alloc(u32, self.paletteLength);
 			defer main.stackAllocator.free(paletteMap);
 			{
@@ -1031,7 +1039,7 @@ pub fn PaletteCompressedRegion(T: type, size: comptime_int) type { // MARK: Pale
 			for(0..size) |i| {
 				newData.setValue(i, paletteMap[self.data.getValue(i)]);
 			}
-			self.data.deinit(main.globalAllocator);
+			self.data.deinit();
 			self.data = newData;
 			self.paletteLength = self.activePaletteEntries;
 			self.palette = main.globalAllocator.realloc(self.palette, @as(usize, 1) << self.data.bitSize);

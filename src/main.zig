@@ -576,6 +576,9 @@ pub fn main() void { // MARK: main()
 	audio.init() catch std.log.err("Failed to initialize audio. Continuing the game without sounds.", .{});
 	defer audio.deinit();
 
+	utils.initDynamicIntArrayStorage();
+	defer utils.deinitDynamicIntArrayStorage();
+
 	chunk.init();
 	defer chunk.deinit();
 
