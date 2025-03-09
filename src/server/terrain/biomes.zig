@@ -186,7 +186,7 @@ fn hashGeneric(input: anytype) u64 {
 			else => @compileError("Unsupported type " ++ @typeName(T)),
 		},
 		.array => blk: {
-			var result: u64 = hashInt(input.len) + 1;
+			var result: u64 = 0xbf58476d1ce4e5b9;
 			for(input) |val| {
 				const valueHash = hashGeneric(val);
 				result = hashCombine(result, valueHash);
@@ -194,7 +194,7 @@ fn hashGeneric(input: anytype) u64 {
 			break :blk result;
 		},
 		.vector => blk: {
-			var result: u64 = hashInt(@typeInfo(T).vector.len) + 1;
+			var result: u64 = 0x94d049bb133111eb;
 			inline for(0..@typeInfo(T).vector.len) |i| {
 					const valueHash = hashGeneric(input[i]);
 					result = hashCombine(result, valueHash);
