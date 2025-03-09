@@ -476,7 +476,6 @@ fn releaseMemory(start: [*]align(page_size_min) u8, len: usize) void {
 /// A list that reserves a continuous region of virtual memory without actually committing its pages.
 /// This allows it to grow without ever invalidating pointers.
 pub fn VirtualList(T: type, maxSize: u32) type {
-	// TODO: is there a significant reason to align to page size?
 	const maxSizeBytes = std.mem.alignForward(usize, @as(usize, maxSize)*@sizeOf(T), pageSize());
 	std.debug.assert(@sizeOf(T) <= pageSize());
 	return struct {
