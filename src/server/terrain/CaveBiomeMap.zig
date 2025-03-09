@@ -92,7 +92,7 @@ pub const CaveBiomeMapFragment = struct { // MARK: caveBiomeMapFragment
 		const prevVal = self.refCount.fetchSub(1, .monotonic);
 		std.debug.assert(prevVal != 0);
 		if(prevVal == 1) {
-			main.globalAllocator.destroy(self);
+			memoryPool.destroy(self);
 		}
 	}
 };
@@ -527,6 +527,8 @@ var cache: Cache(CaveBiomeMapFragment, cacheSize, associativity, CaveBiomeMapFra
 
 var profile: TerrainGenerationProfile = undefined;
 
+var memoryPool: main.heap.MemoryPool(CaveBiomeMapFragment) = undefined;
+
 pub fn initGenerators() void {
 	const list = @import("cavebiomegen/_list.zig");
 	inline for(@typeInfo(list).@"struct".decls) |decl| {
@@ -540,14 +542,16 @@ pub fn deinitGenerators() void {
 
 pub fn init(_profile: TerrainGenerationProfile) void {
 	profile = _profile;
+	memoryPool = .init(main.globalAllocator);
 }
 
 pub fn deinit() void {
 	cache.clear();
+	memoryPool.deinit();
 }
 
 fn cacheInit(pos: ChunkPosition) *CaveBiomeMapFragment {
-	const mapFragment = main.globalAllocator.create(CaveBiomeMapFragment);
+	const mapFragment = memoryPool.create();
 	mapFragment.init(pos.wx, pos.wy, pos.wz);
 	for(profile.caveBiomeGenerators) |generator| {
 		generator.generate(mapFragment, profile.seed ^ generator.generatorSeed);

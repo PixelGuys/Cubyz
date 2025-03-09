@@ -70,7 +70,7 @@ pub const StructureMapFragment = struct {
 
 	pub fn deinit(self: *StructureMapFragment) void {
 		self.arena.deinit();
-		main.globalAllocator.destroy(self);
+		memoryPool.destroy(self);
 	}
 
 	fn finishGeneration(self: *StructureMapFragment) void {
@@ -178,8 +178,10 @@ const associativity = 8;
 var cache: Cache(StructureMapFragment, cacheSize, associativity, StructureMapFragment.decreaseRefCount) = .{};
 var profile: TerrainGenerationProfile = undefined;
 
+var memoryPool: main.heap.MemoryPool(StructureMapFragment) = undefined;
+
 fn cacheInit(pos: ChunkPosition) *StructureMapFragment {
-	const mapFragment = main.globalAllocator.create(StructureMapFragment);
+	const mapFragment = memoryPool.create();
 	mapFragment.init(main.stackAllocator, pos.wx, pos.wy, pos.wz, pos.voxelSize);
 	for(profile.structureMapGenerators) |generator| {
 		generator.generate(mapFragment, profile.seed ^ generator.generatorSeed);
@@ -202,10 +204,12 @@ pub fn deinitGenerators() void {
 
 pub fn init(_profile: TerrainGenerationProfile) void {
 	profile = _profile;
+	memoryPool = .init(main.globalAllocator);
 }
 
 pub fn deinit() void {
 	cache.clear();
+	memoryPool.deinit();
 }
 
 pub fn getOrGenerateFragmentAndIncreaseRefCount(wx: i32, wy: i32, wz: i32, voxelSize: u31) *StructureMapFragment {

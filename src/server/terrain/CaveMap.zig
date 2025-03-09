@@ -59,7 +59,7 @@ pub const CaveMapFragment = struct { // MARK: CaveMapFragment
 		const prevVal = self.refCount.fetchSub(1, .monotonic);
 		std.debug.assert(prevVal != 0);
 		if(prevVal == 1) {
-			main.globalAllocator.destroy(self);
+			memoryPool.destroy(self);
 		}
 	}
 
@@ -292,8 +292,10 @@ const associativity = 8; // 512 MiB Cache size
 var cache: Cache(CaveMapFragment, cacheSize, associativity, CaveMapFragment.decreaseRefCount) = .{};
 var profile: TerrainGenerationProfile = undefined;
 
+var memoryPool: main.heap.MemoryPool(CaveMapFragment) = undefined;
+
 fn cacheInit(pos: ChunkPosition) *CaveMapFragment {
-	const mapFragment = main.globalAllocator.create(CaveMapFragment);
+	const mapFragment = memoryPool.create();
 	mapFragment.init(pos.wx, pos.wy, pos.wz, pos.voxelSize);
 	for(profile.caveGenerators) |generator| {
 		generator.generate(mapFragment, profile.seed ^ generator.generatorSeed);
@@ -315,10 +317,12 @@ pub fn deinitGenerators() void {
 
 pub fn init(_profile: TerrainGenerationProfile) void {
 	profile = _profile;
+	memoryPool = .init(main.globalAllocator);
 }
 
 pub fn deinit() void {
 	cache.clear();
+	memoryPool.deinit();
 }
 
 fn getOrGenerateFragmentAndIncreaseRefCount(wx: i32, wy: i32, wz: i32, voxelSize: u31) *CaveMapFragment {

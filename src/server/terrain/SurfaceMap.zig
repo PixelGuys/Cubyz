@@ -89,7 +89,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 		const prevVal = self.refCount.fetchSub(1, .monotonic);
 		std.debug.assert(prevVal != 0);
 		if(prevVal == 1) {
-			main.globalAllocator.destroy(self);
+			memoryPool.destroy(self);
 		}
 	}
 
@@ -248,6 +248,8 @@ const associativity = 8; // ~400MiB MiB Cache size
 var cache: Cache(MapFragment, cacheSize, associativity, MapFragment.decreaseRefCount) = .{};
 var profile: TerrainGenerationProfile = undefined;
 
+var memoryPool: main.heap.MemoryPool(MapFragment) = undefined;
+
 pub fn initGenerators() void {
 	const list = @import("mapgen/_list.zig");
 	inline for(@typeInfo(list).@"struct".decls) |decl| {
@@ -260,7 +262,7 @@ pub fn deinitGenerators() void {
 }
 
 fn cacheInit(pos: MapFragmentPosition) *MapFragment {
-	const mapFragment = main.globalAllocator.create(MapFragment);
+	const mapFragment = memoryPool.create();
 	mapFragment.init(pos.wx, pos.wy, pos.voxelSize);
 	_ = mapFragment.load(main.server.world.?.biomePalette, null) catch {
 		profile.mapFragmentGenerator.generateMapFragment(mapFragment, profile.seed);
@@ -326,7 +328,7 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 			}
 			@field(neighborInfo, name) = isPresent;
 		}
-		const mapFragment = main.globalAllocator.create(MapFragment);
+		const mapFragment = main.stackAllocator.create(MapFragment);
 		defer main.stackAllocator.destroy(mapFragment);
 		mapFragment.init(pos.wx, pos.wy, pos.voxelSize);
 		var xNoise: [MapFragment.mapSize]f32 = undefined;
@@ -466,7 +468,7 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 					return @max(0, @min(0.99999, ((self.a*x + self.b)*x + self.c)*x*x));
 				}
 			};
-			const generatedMap = main.globalAllocator.create(MapFragment);
+			const generatedMap = main.stackAllocator.create(MapFragment);
 			defer main.stackAllocator.destroy(generatedMap);
 			generatedMap.init(pos.wx, pos.wy, pos.voxelSize);
 			profile.mapFragmentGenerator.generateMapFragment(generatedMap, profile.seed);
@@ -623,10 +625,12 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 
 pub fn init(_profile: TerrainGenerationProfile) void {
 	profile = _profile;
+	memoryPool = .init(main.globalAllocator);
 }
 
 pub fn deinit() void {
 	cache.clear();
+	memoryPool.deinit();
 }
 
 /// Call deinit on the result.
