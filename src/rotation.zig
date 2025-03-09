@@ -603,10 +603,10 @@ pub const RotationModes = struct {
 
 			const res: main.models.QuadInfo = .{
 				.corners = .{
-					@round((corns[0] + offset) * floatingPointFix) / floatingPointFix,
-					@round((corns[1] + offset) * floatingPointFix) / floatingPointFix,
-					@round((corns[2] + offset) * floatingPointFix) / floatingPointFix,
-					@round((corns[3] + offset) * floatingPointFix) / floatingPointFix,
+					@round((corns[0] + offset)*floatingPointFix)/floatingPointFix,
+					@round((corns[1] + offset)*floatingPointFix)/floatingPointFix,
+					@round((corns[2] + offset)*floatingPointFix)/floatingPointFix,
+					@round((corns[3] + offset)*floatingPointFix)/floatingPointFix,
 				},
 				.cornerUV = originalCorners,
 				.normal = norm,
