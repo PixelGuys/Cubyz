@@ -87,8 +87,8 @@ pub fn rotate2d(self: anytype, angle: @typeInfo(@TypeOf(self)).vector.child, cen
 	const cos = @cos(angle);
 
 	return @TypeOf(self){
-		cos * (self[0] - center[0]) - sin * (self[1] - center[1]),
-		sin * (self[0] - center[0]) + cos * (self[1] - center[1]),
+		cos*(self[0] - center[0]) - sin*(self[1] - center[1]),
+		sin*(self[0] - center[0]) + cos*(self[1] - center[1]),
 	} + center;
 }
 

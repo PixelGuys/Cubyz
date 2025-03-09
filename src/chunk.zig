@@ -49,17 +49,17 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 	}
 
 	pub fn fromRelPos(pos: Vec3i) ?Neighbor {
-		if (std.meta.eql(pos, .{-1, 0, 0})) {
+		if(std.meta.eql(pos, .{-1, 0, 0})) {
 			return .dirNegX;
-		} else if (std.meta.eql(pos, .{1, 0, 0})) {
+		} else if(std.meta.eql(pos, .{1, 0, 0})) {
 			return .dirPosX;
-		} else if (std.meta.eql(pos, .{0, -1, 0})) {
+		} else if(std.meta.eql(pos, .{0, -1, 0})) {
 			return .dirNegY;
-		} else if (std.meta.eql(pos, .{0, 1, 0})) {
+		} else if(std.meta.eql(pos, .{0, 1, 0})) {
 			return .dirPosY;
-		} else if (std.meta.eql(pos, .{0, 0, -1})) {
+		} else if(std.meta.eql(pos, .{0, 0, -1})) {
 			return .dirDown;
-		} else if (std.meta.eql(pos, .{0, 0, 1})) {
+		} else if(std.meta.eql(pos, .{0, 0, 1})) {
 			return .dirUp;
 		}
 		return null;

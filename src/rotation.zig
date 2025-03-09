@@ -531,8 +531,7 @@ pub const RotationModes = struct {
 			modelIndex = 0;
 		}
 
-		fn deinit() void {
-		}
+		fn deinit() void {}
 
 		const PatternType = enum(u3) {
 			dot = 0,
@@ -563,10 +562,10 @@ pub const RotationModes = struct {
 		fn rotateQuad(originalCorners: [4]Vec2f, pattern: Pattern, side: Neighbor) main.models.QuadInfo {
 			var corners: [4]Vec2f = originalCorners;
 
-			switch (pattern) {
+			switch(pattern) {
 				.dot, .cross => {},
 				inline else => |typ| {
-					const angle: f32 = @as(f32, @floatFromInt(typ.dir)) * std.math.pi / 2.0;
+					const angle: f32 = @as(f32, @floatFromInt(typ.dir))*std.math.pi/2.0;
 					corners = .{
 						vec.rotate2d(originalCorners[0], angle, @splat(0.5)),
 						vec.rotate2d(originalCorners[1], angle, @splat(0.5)),
@@ -576,8 +575,8 @@ pub const RotationModes = struct {
 				}
 			}
 
-			const offX: f32 = if (side.textureX()[([6]usize{0, 0, 1, 1, 0, 0})[@intFromEnum(side)]] < 0) 1 else 0;
-			const offY: f32 = if (side.textureY()[([6]usize{1, 1, 2, 2, 2, 2})[@intFromEnum(side)]] < 0) 1 else 0;
+			const offX: f32 = if(side.textureX()[([6]usize{0, 0, 1, 1, 0, 0})[@intFromEnum(side)]] < 0) 1 else 0;
+			const offY: f32 = if(side.textureY()[([6]usize{1, 1, 2, 2, 2, 2})[@intFromEnum(side)]] < 0) 1 else 0;
 
 			const norm: Vec3f = switch(side) {
 				Neighbor.dirUp => .{0.0, 0.0, 1.0},
@@ -589,16 +588,16 @@ pub const RotationModes = struct {
 			};
 
 			const corns = .{
-				@as(Vec3f, @floatFromInt(side.textureX())) * @as(Vec3f, @splat(corners[0][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY())) * @as(Vec3f, @splat(corners[0][1] - offY)),
-				@as(Vec3f, @floatFromInt(side.textureX())) * @as(Vec3f, @splat(corners[1][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY())) * @as(Vec3f, @splat(corners[1][1] - offY)),
-				@as(Vec3f, @floatFromInt(side.textureX())) * @as(Vec3f, @splat(corners[2][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY())) * @as(Vec3f, @splat(corners[2][1] - offY)),
-				@as(Vec3f, @floatFromInt(side.textureX())) * @as(Vec3f, @splat(corners[3][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY())) * @as(Vec3f, @splat(corners[3][1] - offY)),
+				@as(Vec3f, @floatFromInt(side.textureX()))*@as(Vec3f, @splat(corners[0][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY()))*@as(Vec3f, @splat(corners[0][1] - offY)),
+				@as(Vec3f, @floatFromInt(side.textureX()))*@as(Vec3f, @splat(corners[1][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY()))*@as(Vec3f, @splat(corners[1][1] - offY)),
+				@as(Vec3f, @floatFromInt(side.textureX()))*@as(Vec3f, @splat(corners[2][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY()))*@as(Vec3f, @splat(corners[2][1] - offY)),
+				@as(Vec3f, @floatFromInt(side.textureX()))*@as(Vec3f, @splat(corners[3][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY()))*@as(Vec3f, @splat(corners[3][1] - offY)),
 			};
 
 			const tex: u32 = @intCast(@intFromEnum(pattern));
 
 			var offset: Vec3f = .{0.0, 0.0, 0.0};
-			offset[@intFromEnum(side.vectorComponent())] = if (side.isPositive()) 12.0 / 16.0 else 4.0 / 16.0;
+			offset[@intFromEnum(side.vectorComponent())] = if (side.isPositive()) 12.0/16.0 else 4.0/16.0;
 
 			const res: main.models.QuadInfo = .{
 				.corners = .{
@@ -665,7 +664,7 @@ pub const RotationModes = struct {
 						.{1.0, 0.0},
 						.{1.0, 1.0},
 					}, pattern, side));
-				}
+				},
 			}
 		}
 
@@ -675,10 +674,10 @@ pub const RotationModes = struct {
 			const c = Neighbor.fromRelPos(side.textureY()).?;
 			const d = Neighbor.fromRelPos(side.textureY()).?.reverse();
 
-			const aVal: u6 = if (data.isConnected(a)) 1 else 0;
-			const bVal: u6 = if (data.isConnected(b)) 1 else 0;
-			const cVal: u6 = if (data.isConnected(c)) 1 else 0;
-			const dVal: u6 = if (data.isConnected(d)) 1 else 0;
+			const aVal: u6 = if(data.isConnected(a)) 1 else 0;
+			const bVal: u6 = if(data.isConnected(b)) 1 else 0;
+			const cVal: u6 = if(data.isConnected(c)) 1 else 0;
+			const dVal: u6 = if(data.isConnected(d)) 1 else 0;
 
 			const res: u6 = dVal << 3 | cVal << 2 | bVal << 1 | aVal;
 
@@ -686,7 +685,7 @@ pub const RotationModes = struct {
 
 			return switch(count) {
 				0 => {
-					if (data.isConnected(side)) {
+					if(data.isConnected(side)) {
 						return null;
 					}
 
@@ -694,19 +693,19 @@ pub const RotationModes = struct {
 				},
 				1 => {
 					var dir: u2 = 3;
-					if (dVal == 1) {
+					if(dVal == 1) {
 						dir = 0;
-					} else if (aVal == 1) {
+					} else if(aVal == 1) {
 						dir = 1;
-					} else if (cVal == 1) {
+					} else if(cVal == 1) {
 						dir = 2;
 					}
 					return .{.halfLine = .{.dir = dir}};
 				},
 				2 => {
-					if (res == 3 or res == 12) {
+					if(res == 3 or res == 12) {
 						var dir: u2 = 0;
-						if (res == 3) {
+						if(res == 3) {
 							dir = 1;
 						}
 
@@ -715,23 +714,23 @@ pub const RotationModes = struct {
 
 					var dir: u2 = 3;
 
-					if (dVal == 1) {
+					if(dVal == 1) {
 						dir = 0;
 					}
 
-					if (dVal == 1) {
+					if(dVal == 1) {
 						dir = 0;
-						if (aVal == 1) {
+						if(aVal == 1) {
 							dir = 1;
 						}
-					} else if (aVal == 1) {
+					} else if(aVal == 1) {
 						dir = 1;
-						if (cVal == 1) {
+						if(cVal == 1) {
 							dir = 2;
 						}
-					} else if (cVal == 1) {
+					} else if(cVal == 1) {
 						dir = 2;
-						if (bVal == 1) {
+						if(bVal == 1) {
 							dir = 3;
 						}
 					}
@@ -744,7 +743,7 @@ pub const RotationModes = struct {
 						0b1110 => 3,
 						0b1101 => 1,
 						0b1011 => 0,
-						else => undefined
+						else => undefined,
 					};
 
 					return .{.intersection = .{.dir = dir}};
@@ -752,7 +751,7 @@ pub const RotationModes = struct {
 				4 => {
 					return .{.cross = {}};
 				},
-				else => undefined
+				else => undefined,
 			};
 		}
 
@@ -761,14 +760,14 @@ pub const RotationModes = struct {
 				return modelIndex;
 			}
 
-			for (0..64) |i| {
+			for(0..64) |i| {
 				var quads = main.List(main.models.QuadInfo).init(main.stackAllocator);
 				defer quads.deinit();
 
 				for(Neighbor.iterable) |neighbor| {
 					const pattern = getPattern(BranchData.init(@intCast(i)), neighbor);
 
-					if (pattern) |pat| {
+					if(pattern) |pat| {
 						addQuads(pat, neighbor, &quads);
 					}
 				}
