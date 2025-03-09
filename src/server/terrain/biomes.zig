@@ -196,8 +196,8 @@ fn hashGeneric(input: anytype) u64 {
 		.vector => blk: {
 			var result: u64 = 0x94d049bb133111eb;
 			inline for(0..@typeInfo(T).vector.len) |i| {
-					const valueHash = hashGeneric(input[i]);
-					result = hashCombine(result, valueHash);
+				const valueHash = hashGeneric(input[i]);
+				result = hashCombine(result, valueHash);
 			}
 			break :blk result;
 		},
@@ -213,8 +213,8 @@ fn hashCombine(left: u64, right: u64) u64 {
 // https://stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key
 fn hashInt(input: u64) u64 {
 	var x = input;
-	x = (x ^ (x >> 30)) *% 0xbf58476d1ce4e5b9;
-    x = (x ^ (x >> 27)) *% 0x94d049bb133111eb;
+	x = (x ^ (x >> 30))*%0xbf58476d1ce4e5b9;
+    x = (x ^ (x >> 27))*%0x94d049bb133111eb;
     x = x ^ (x >> 31);
     return x;
 }
