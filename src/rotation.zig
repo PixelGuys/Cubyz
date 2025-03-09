@@ -503,6 +503,343 @@ pub const RotationModes = struct {
 			}
 		}
 	};
+	pub const Pipe = struct { // MARK: Pipe
+		pub const id: []const u8 = "pipe";
+		pub const dependsOnNeighbors = true;
+		var modelIndex: u16 = undefined;
+		const BranchData = packed struct(u6) {
+			enabledConnections: u6,
+
+			pub fn init(blockData: u16) BranchData {
+				return .{.enabledConnections = @truncate(blockData)};
+			}
+
+			pub fn isConnected(self: @This(), neighbor: Neighbor) bool {
+				return (self.enabledConnections & Neighbor.bitMask(neighbor)) != 0;
+			}
+
+			pub fn setConnection(self: *@This(), neighbor: Neighbor, value: bool) void {
+				if(value) {
+					self.enabledConnections |= Neighbor.bitMask(neighbor);
+				} else {
+					self.enabledConnections &= ~Neighbor.bitMask(neighbor);
+				}
+			}
+		};
+
+		fn init() void {
+			modelIndex = 0;
+		}
+
+		fn deinit() void {
+		}
+
+		const PatternType = enum(u3) {
+			dot = 0,
+			halfLine = 1,
+			line = 2,
+			bend = 3,
+			intersection = 4,
+			cross = 5,
+		};
+
+		const Pattern = union(PatternType) {
+			dot: void,
+			halfLine: struct {
+				dir: u2,
+			},
+			line: struct {
+				dir: u2,
+			},
+			bend: struct {
+				dir: u2,
+			},
+			intersection: struct {
+				dir: u2,
+			},
+			cross: void,
+		};
+
+		fn rotateQuad(originalCorners: [4]Vec2f, pattern: Pattern, side: Neighbor) main.models.QuadInfo {
+			var corners: [4]Vec2f = originalCorners;
+
+			switch (pattern) {
+				.dot, .cross => {},
+				inline else => |typ| {
+					const angle: f32 = @as(f32, @floatFromInt(typ.dir)) * std.math.pi / 2.0;
+					corners = .{
+						vec.rotate2d(originalCorners[0], angle, @splat(0.5)),
+						vec.rotate2d(originalCorners[1], angle, @splat(0.5)),
+						vec.rotate2d(originalCorners[2], angle, @splat(0.5)),
+						vec.rotate2d(originalCorners[3], angle, @splat(0.5)),
+					};
+				}
+			}
+
+			const offX: f32 = if (side.textureX()[([6]usize{0, 0, 1, 1, 0, 0})[@intFromEnum(side)]] < 0) 1 else 0;
+			const offY: f32 = if (side.textureY()[([6]usize{1, 1, 2, 2, 2, 2})[@intFromEnum(side)]] < 0) 1 else 0;
+
+			const norm: Vec3f = switch(side) {
+				Neighbor.dirUp => .{0.0, 0.0, 1.0},
+				Neighbor.dirDown => .{0.0, 0.0, -1.0},
+				Neighbor.dirPosX => .{1.0, 0.0, 0.0},
+				Neighbor.dirNegX => .{-1.0, 0.0, 0.0},
+				Neighbor.dirPosY => .{0.0, 1.0, 0.0},
+				Neighbor.dirNegY => .{0.0, -1.0, 0.0},
+			};
+
+			const corns = .{
+				@as(Vec3f, @floatFromInt(side.textureX())) * @as(Vec3f, @splat(corners[0][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY())) * @as(Vec3f, @splat(corners[0][1] - offY)),
+				@as(Vec3f, @floatFromInt(side.textureX())) * @as(Vec3f, @splat(corners[1][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY())) * @as(Vec3f, @splat(corners[1][1] - offY)),
+				@as(Vec3f, @floatFromInt(side.textureX())) * @as(Vec3f, @splat(corners[2][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY())) * @as(Vec3f, @splat(corners[2][1] - offY)),
+				@as(Vec3f, @floatFromInt(side.textureX())) * @as(Vec3f, @splat(corners[3][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY())) * @as(Vec3f, @splat(corners[3][1] - offY)),
+			};
+
+			const tex: u32 = @intCast(@intFromEnum(pattern));
+
+			var offset: Vec3f = .{0.0, 0.0, 0.0};
+			offset[@intFromEnum(side.vectorComponent())] = if (side.isPositive()) 12.0 / 16.0 else 4.0 / 16.0;
+
+			const res: main.models.QuadInfo = .{
+				.corners = .{
+					corns[0] + offset,
+					corns[1] + offset,
+					corns[2] + offset,
+					corns[3] + offset,
+				},
+				.cornerUV = originalCorners,
+				.normal = norm,
+				.opaqueInLod = 1,
+				.textureSlot = tex,
+			};
+
+			return res;
+		}
+
+		fn addQuads(pattern: Pattern, side: Neighbor, out: *main.List(main.models.QuadInfo)) void {
+			switch(pattern) {
+				.dot => {
+					out.append(rotateQuad(.{
+						.{0.25, 0.25},
+						.{0.25, 0.75},
+						.{0.75, 0.25},
+						.{0.75, 0.75},
+					}, pattern, side));
+				},
+				.halfLine => {
+					out.append(rotateQuad(.{
+						.{0.25, 0.0},
+						.{0.25, 0.75},
+						.{0.75, 0.0},
+						.{0.75, 0.75},
+					}, pattern, side));
+				},
+				.line => {
+					out.append(rotateQuad(.{
+						.{0.25, 0.0},
+						.{0.25, 1.0},
+						.{0.75, 0.0},
+						.{0.75, 1.0},
+					}, pattern, side));
+				},
+				.bend => {
+					out.append(rotateQuad(.{
+						.{0.0, 0.0},
+						.{0.0, 0.75},
+						.{0.75, 0.0},
+						.{0.75, 0.75},
+					}, pattern, side));
+				},
+				.intersection => {
+					out.append(rotateQuad(.{
+						.{0.0, 0.0},
+						.{0.0, 0.75},
+						.{1.0, 0.0},
+						.{1.0, 0.75},
+					}, pattern, side));
+				},
+				.cross => {
+					out.append(rotateQuad(.{
+						.{0.0, 0.0},
+						.{0.0, 1.0},
+						.{1.0, 0.0},
+						.{1.0, 1.0},
+					}, pattern, side));
+				}
+			}
+		}
+
+		fn getPattern(data: BranchData, side: Neighbor) ?Pattern {
+			const a = Neighbor.fromRelPos(side.textureX()).?;
+			const b = Neighbor.fromRelPos(side.textureX()).?.reverse();
+			const c = Neighbor.fromRelPos(side.textureY()).?;
+			const d = Neighbor.fromRelPos(side.textureY()).?.reverse();
+
+			const aVal: u6 = if (data.isConnected(a)) 1 else 0;
+			const bVal: u6 = if (data.isConnected(b)) 1 else 0;
+			const cVal: u6 = if (data.isConnected(c)) 1 else 0;
+			const dVal: u6 = if (data.isConnected(d)) 1 else 0;
+
+			const res: u6 = dVal << 3 | cVal << 2 | bVal << 1 | aVal;
+
+			const count: u6 = aVal + bVal + cVal + dVal;
+
+			return switch(count) {
+				0 => {
+					if (data.isConnected(side)) {
+						return null;
+					}
+
+					return .{.dot = {}};
+				},
+				1 => {
+					var dir: u2 = 3;
+					if (dVal == 1) {
+						dir = 0;
+					} else if (aVal == 1) {
+						dir = 1;
+					} else if (cVal == 1) {
+						dir = 2;
+					}
+					return .{.halfLine = .{.dir = dir}};
+				},
+				2 => {
+					if (res == 3 or res == 12) {
+						var dir: u2 = 0;
+						if (res == 3) {
+							dir = 1;
+						}
+
+						return .{.line = .{.dir = dir}};
+					}
+
+					var dir: u2 = 3;
+
+					if (dVal == 1) {
+						dir = 0;
+					}
+
+					if (dVal == 1) {
+						dir = 0;
+						if (aVal == 1) {
+							dir = 1;
+						}
+					} else if (aVal == 1) {
+						dir = 1;
+						if (cVal == 1) {
+							dir = 2;
+						}
+					} else if (cVal == 1) {
+						dir = 2;
+						if (bVal == 1) {
+							dir = 3;
+						}
+					}
+
+					return .{.bend = .{.dir = dir}};
+				},
+				3 => {
+					const dir: u2 = switch(res) {
+						0b0111 => 2,
+						0b1110 => 3,
+						0b1101 => 1,
+						0b1011 => 0,
+						else => undefined
+					};
+
+					return .{.intersection = .{.dir = dir}};
+				},
+				4 => {
+					return .{.cross = {}};
+				},
+				else => undefined
+			};
+		}
+
+		pub fn createBlockModel(_: ZonElement) u16 {
+			if(modelIndex != 0) {
+				return modelIndex;
+			}
+
+			for (0..64) |i| {
+				var quads = main.List(main.models.QuadInfo).init(main.stackAllocator);
+				defer quads.deinit();
+
+				for(Neighbor.iterable) |neighbor| {
+					const pattern = getPattern(BranchData.init(@intCast(i)), neighbor);
+
+					if (pattern) |pat| {
+						addQuads(pat, neighbor, &quads);
+					}
+				}
+
+				const index = main.models.Model.init(quads.items);
+				if(i == 0) {
+					modelIndex = index;
+				}
+			}
+
+			return modelIndex;
+		}
+
+		pub fn model(block: Block) u16 {
+			return blocks.meshes.modelIndexStart(block) + (block.data & 63);
+		}
+
+		pub fn generateData(
+			_: *main.game.World,
+			_: Vec3i,
+			_: Vec3f,
+			_: Vec3f,
+			_: Vec3i,
+			neighbor: ?Neighbor,
+			currentBlock: *Block,
+			neighborBlock: Block,
+			blockPlacing: bool,
+		) bool {
+			const blockBaseModel = blocks.meshes.modelIndexStart(currentBlock.*);
+			const neighborBaseModel = blocks.meshes.modelIndexStart(neighborBlock);
+
+			if(blockPlacing or blockBaseModel == neighborBaseModel or neighborBlock.solid()) {
+				const neighborModel = blocks.meshes.model(neighborBlock);
+
+				var currentData = BranchData.init(currentBlock.data);
+				// Branch block upon placement should extend towards a block it was placed
+				// on if the block is solid or also uses branch model.
+				const targetVal = ((neighborBlock.solid() and !neighborBlock.viewThrough()) and (blockBaseModel == neighborBaseModel or main.models.models.items[neighborModel].isNeighborOccluded[neighbor.?.reverse().toInt()]));
+				currentData.setConnection(neighbor.?, targetVal);
+
+				const result: u16 = currentData.enabledConnections;
+				if(result == currentBlock.data) return false;
+
+				currentBlock.data = result;
+				return true;
+			}
+			return false;
+		}
+
+		pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool {
+			const blockBaseModel = blocks.meshes.modelIndexStart(block.*);
+			const neighborBaseModel = blocks.meshes.modelIndexStart(neighborBlock);
+			var currentData = BranchData.init(block.data);
+
+			// Handle joining with other branches. While placed, branches extend in a
+			// opposite direction than they were placed from, effectively connecting
+			// to the block they were placed at.
+			if(blockBaseModel == neighborBaseModel) {
+				const neighborData = BranchData.init(neighborBlock.data);
+				currentData.setConnection(neighbor, neighborData.isConnected(neighbor.reverse()));
+			} else if(!neighborBlock.solid()) {
+				currentData.setConnection(neighbor, false);
+			}
+
+			const result: u16 = currentData.enabledConnections;
+			if(result == block.data) return false;
+
+			block.data = result;
+			return true;
+		}
+	};
 	pub const Stairs = struct { // MARK: Stairs
 		pub const id: []const u8 = "stairs";
 		var modelIndex: u16 = 0;

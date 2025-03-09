@@ -47,6 +47,24 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 	pub fn relPos(self: Neighbor) Vec3i {
 		return .{self.relX(), self.relY(), self.relZ()};
 	}
+
+	pub fn fromRelPos(pos: Vec3i) ?Neighbor {
+		if (std.meta.eql(pos, .{-1, 0, 0})) {
+			return .dirNegX;
+		} else if (std.meta.eql(pos, .{1, 0, 0})) {
+			return .dirPosX;
+		} else if (std.meta.eql(pos, .{0, -1, 0})) {
+			return .dirNegY;
+		} else if (std.meta.eql(pos, .{0, 1, 0})) {
+			return .dirPosY;
+		} else if (std.meta.eql(pos, .{0, 0, -1})) {
+			return .dirDown;
+		} else if (std.meta.eql(pos, .{0, 0, 1})) {
+			return .dirUp;
+		}
+		return null;
+	}
+
 	/// Index to bitMask for bitmap direction data
 	pub inline fn bitMask(self: Neighbor) u6 {
 		return @as(u6, 1) << @intFromEnum(self);

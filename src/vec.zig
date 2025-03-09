@@ -80,6 +80,18 @@ pub fn rotateZ(self: anytype, angle: @typeInfo(@TypeOf(self)).vector.child) @Typ
 	};
 }
 
+pub fn rotate2d(self: anytype, angle: @typeInfo(@TypeOf(self)).vector.child, center: @TypeOf(self)) @TypeOf(self) {
+	if(@typeInfo(@TypeOf(self)).vector.len != 2) @compileError("Only available for vectors of length 2.");
+
+	const sin = @sin(angle);
+	const cos = @cos(angle);
+
+	return @TypeOf(self){
+		cos * (self[0] - center[0]) - sin * (self[1] - center[1]),
+		sin * (self[0] - center[0]) + cos * (self[1] - center[1]),
+	} + center;
+}
+
 pub const Mat4f = struct { // MARK: Mat4f
 	rows: [4]Vec4f,
 	pub fn identity() Mat4f {
