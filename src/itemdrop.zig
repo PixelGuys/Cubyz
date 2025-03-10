@@ -21,6 +21,7 @@ const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const BinaryReader = main.utils.BinaryReader;
+const BinaryWriter = main.utils.BinaryWriter;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const ItemDrop = struct { // MARK: ItemDrop
@@ -117,19 +118,17 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 	}
 
 	pub fn getPositionAndVelocityData(self: *ItemDropManager, allocator: NeverFailingAllocator) []u8 {
-		const _data = allocator.alloc(u8, self.size*50);
-		var data = _data;
+		var writer = utils.BinaryWriter.initCapacity(allocator, .big, self.size*50);
 		for(self.indices[0..self.size]) |i| {
-			std.mem.writeInt(u16, data[0..2], i, .big);
-			std.mem.writeInt(u64, data[2..10], @bitCast(self.list.items(.pos)[i][0]), .big);
-			std.mem.writeInt(u64, data[10..18], @bitCast(self.list.items(.pos)[i][1]), .big);
-			std.mem.writeInt(u64, data[18..26], @bitCast(self.list.items(.pos)[i][2]), .big);
-			std.mem.writeInt(u64, data[26..34], @bitCast(self.list.items(.vel)[i][0]), .big);
-			std.mem.writeInt(u64, data[34..42], @bitCast(self.list.items(.vel)[i][1]), .big);
-			std.mem.writeInt(u64, data[42..50], @bitCast(self.list.items(.vel)[i][2]), .big);
-			data = data[50..];
+			writer.writeInt(u16, i);
+			writer.writeFloat(f64, self.list.items(.pos)[i][0]);
+			writer.writeFloat(f64, self.list.items(.pos)[i][1]);
+			writer.writeFloat(f64, self.list.items(.pos)[i][2]);
+			writer.writeFloat(f64, self.list.items(.vel)[i][0]);
+			writer.writeFloat(f64, self.list.items(.vel)[i][1]);
+			writer.writeFloat(f64, self.list.items(.vel)[i][2]);
 		}
-		return _data;
+		return writer.data.toOwnedSlice();
 	}
 
 	pub fn getInitialList(self: *ItemDropManager, allocator: NeverFailingAllocator) ZonElement {

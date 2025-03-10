@@ -1468,7 +1468,7 @@ pub const BinaryWriter = struct {
 		std.mem.writeInt(T, self.data.addMany(bufSize)[0..bufSize], value, self.endian);
 	}
 
-	pub fn writeFloat(self: *BinaryWriter, T: type, value: T) T {
+	pub fn writeFloat(self: *BinaryWriter, T: type, value: T) void {
 		const IntT = std.meta.Int(.unsigned, @typeInfo(T).float.bits);
 		self.writeInt(IntT, @bitCast(value));
 	}
