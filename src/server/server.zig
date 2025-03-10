@@ -19,8 +19,8 @@ pub const storage = @import("storage.zig");
 const command = @import("command/_command.zig");
 
 pub const UserCommandData = struct {
-	selectionPosition1: Vec3i = .{0, 0, 0},
-	selectionPosition2: Vec3i = .{0, 0, 0},
+	selectionPosition1: ?Vec3i = null,
+	selectionPosition2: ?Vec3i = null,
 	clipboard: ?main.blueprint.Blueprint = null,
 
 	pub fn deinit(self: *UserCommandData) void {
