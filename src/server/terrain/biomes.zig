@@ -148,12 +148,6 @@ fn hashGeneric(input: anytype) u64 {
 			const value = @as(std.meta.Int(.unsigned, @bitSizeOf(T)), @bitCast(input));
 			break :blk hashInt(@as(u64, value));
 		},
-		.@"union" => blk: {
-			if(@hasDecl(T, "getHash")) {
-				break :blk input.getHash();
-			}
-			@compileError("Unsupported type  " ++ @typeName(T));
-		},
 		.@"struct" => blk: {
 			if(@hasDecl(T, "getHash")) {
 				break :blk input.getHash();
