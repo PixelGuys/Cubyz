@@ -14,10 +14,14 @@ pub fn execute(args: []const u8, source: *User) void {
 	source.mutex.lock();
 	defer source.mutex.unlock();
 
-	source.commandData.selectionPosition1[0] = @intFromFloat(source.player.pos[0]);
-	source.commandData.selectionPosition1[1] = @intFromFloat(source.player.pos[1]);
-	source.commandData.selectionPosition1[2] = @intFromFloat(source.player.pos[2]);
+	source.commandData.selectionPosition1 = .{
+		@intFromFloat(source.player.pos[0]),
+		@intFromFloat(source.player.pos[1]),
+		@intFromFloat(source.player.pos[2]),
+	};
 
-	const pos = source.commandData.selectionPosition1;
+	main.network.Protocols.genericUpdate.sendWorldEditPos(source.conn, .selectedPos1, source.commandData.selectionPosition1.?);
+
+	const pos = source.commandData.selectionPosition1.?;
 	source.sendMessage("Position 1: ({}, {}, {})", .{pos[0], pos[1], pos[2]});
 }

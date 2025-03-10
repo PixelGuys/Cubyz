@@ -16,6 +16,7 @@ const ConnectionManager = network.ConnectionManager;
 const vec = @import("vec.zig");
 const Vec2f = vec.Vec2f;
 const Vec2d = vec.Vec2d;
+const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
 const Vec3d = vec.Vec3d;
@@ -463,6 +464,9 @@ pub const Player = struct { // MARK: Player
 	pub var mutex: std.Thread.Mutex = .{};
 	pub var inventory: Inventory = undefined;
 	pub var selectedSlot: u32 = 0;
+
+	pub var selectionPosition1: ?Vec3i = null;
+	pub var selectionPosition2: ?Vec3i = null;
 
 	pub var currentFriction: f32 = 0;
 
