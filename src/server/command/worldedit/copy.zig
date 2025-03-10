@@ -18,7 +18,7 @@ pub fn execute(args: []const u8, source: *User) void {
 	defer source.mutex.unlock();
 
 	if(source.commandData.selectionPosition1) |pos1| {
-		if (source.commandData.selectionPosition2) |pos2| {
+		if(source.commandData.selectionPosition2) |pos2| {
 			source.sendMessage("Copying: ({d:.3}, {d:.3}, {d:.3}) ({d:.3}, {d:.3}, {d:.3})", .{pos1[0], pos1[1], pos1[2], pos2[0], pos2[1], pos2[2]});
 			if(source.commandData.clipboard == null) {
 				source.commandData.clipboard = Blueprint.init(main.globalAllocator);

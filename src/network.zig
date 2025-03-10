@@ -1012,7 +1012,7 @@ pub const Protocols = struct {
 						@bitCast(try reader.readInt(i32)),
 						@bitCast(try reader.readInt(i32)),
 					};
-					switch (typ) {
+					switch(typ) {
 						.selectedPos1 => game.Player.selectionPosition1 = pos,
 						.selectedPos2 => game.Player.selectionPosition2 = pos,
 					}
