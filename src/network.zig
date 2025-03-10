@@ -984,9 +984,10 @@ pub const Protocols = struct {
 		const type_reserved6: u8 = 7;
 		const type_timeAndBiome: u8 = 8;
 
-		const WorldEditPosition = enum(u1) {
+		const WorldEditPosition = enum(u2) {
 			selectedPos1 = 0,
 			selectedPos2 = 1,
+			clear = 2,
 		};
 
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
@@ -1007,14 +1008,23 @@ pub const Protocols = struct {
 				},
 				type_worldEditPos => {
 					const typ = try reader.readEnum(WorldEditPosition);
-					const pos = Vec3i{
-						@bitCast(try reader.readInt(i32)),
-						@bitCast(try reader.readInt(i32)),
-						@bitCast(try reader.readInt(i32)),
-					};
 					switch(typ) {
-						.selectedPos1 => game.Player.selectionPosition1 = pos,
-						.selectedPos2 => game.Player.selectionPosition2 = pos,
+						.selectedPos1, .selectedPos2 => {
+							const pos = Vec3i{
+								@bitCast(try reader.readInt(i32)),
+								@bitCast(try reader.readInt(i32)),
+								@bitCast(try reader.readInt(i32)),
+							};
+							switch(typ) {
+								.selectedPos1 => game.Player.selectionPosition1 = pos,
+								.selectedPos2 => game.Player.selectionPosition2 = pos,
+								else => unreachable,
+							}
+						},
+						.clear => {
+							game.Player.selectionPosition1 = null;
+							game.Player.selectionPosition2 = null;
+						},
 					}
 				},
 				type_reserved3 => {},
@@ -1088,14 +1098,16 @@ pub const Protocols = struct {
 			conn.sendImportant(id, &data);
 		}
 
-		pub fn sendWorldEditPos(conn: *Connection, posI: WorldEditPosition, pos: Vec3i) void {
+		pub fn sendWorldEditPos(conn: *Connection, posType: WorldEditPosition, maybePos: ?Vec3i) void {
 			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, 25);
 			defer writer.deinit();
 			writer.writeInt(u8, type_worldEditPos);
-			writer.writeEnum(WorldEditPosition, posI);
-			writer.writeInt(i32, pos[0]);
-			writer.writeInt(i32, pos[1]);
-			writer.writeInt(i32, pos[2]);
+			writer.writeEnum(WorldEditPosition, posType);
+			if(maybePos) |pos| {
+				writer.writeInt(i32, pos[0]);
+				writer.writeInt(i32, pos[1]);
+				writer.writeInt(i32, pos[2]);
+			}
 			conn.sendImportant(id, writer.data.items);
 		}
 
