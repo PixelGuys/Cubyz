@@ -6,7 +6,6 @@ const ZonElement = @import("zon.zig").ZonElement;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
 
-const mesh_storage = main.renderer.mesh_storage;
 const Block = main.blocks.Block;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const User = main.server.User;
