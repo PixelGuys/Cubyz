@@ -2,7 +2,7 @@ const builtin = @import("builtin");
 const std = @import("std");
 
 const main = @import("../main.zig");
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 fn growCapacity(current: usize, minimum: usize) usize {
 	var new = current;

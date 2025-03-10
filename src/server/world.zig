@@ -497,7 +497,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.itemDropManager.init(main.globalAllocator, self, self.gravity);
 		errdefer self.itemDropManager.deinit();
 
-		var loadArena = main.utils.NeverFailingArenaAllocator.init(main.stackAllocator);
+		var loadArena = main.heap.NeverFailingArenaAllocator.init(main.stackAllocator);
 		defer loadArena.deinit();
 		const arenaAllocator = loadArena.allocator();
 		var buf: [32768]u8 = undefined;

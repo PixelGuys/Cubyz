@@ -8,7 +8,7 @@ const ChunkPosition = main.chunk.ChunkPosition;
 const ZonElement = main.ZonElement;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const terrain = @import("terrain.zig");
 const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
@@ -92,7 +92,7 @@ pub const CaveBiomeMapFragment = struct { // MARK: caveBiomeMapFragment
 		const prevVal = self.refCount.fetchSub(1, .monotonic);
 		std.debug.assert(prevVal != 0);
 		if(prevVal == 1) {
-			main.globalAllocator.destroy(self);
+			memoryPool.destroy(self);
 		}
 	}
 };
@@ -147,7 +147,7 @@ pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveB
 	width: i32,
 	allocator: NeverFailingAllocator,
 
-	pub fn init(allocator: main.utils.NeverFailingAllocator, pos: ChunkPosition, width: u31, margin: u31) InterpolatableCaveBiomeMapView {
+	pub fn init(allocator: main.heap.NeverFailingAllocator, pos: ChunkPosition, width: u31, margin: u31) InterpolatableCaveBiomeMapView {
 		const center = Vec3i{
 			pos.wx +% width/2,
 			pos.wy +% width/2,
@@ -527,6 +527,8 @@ var cache: Cache(CaveBiomeMapFragment, cacheSize, associativity, CaveBiomeMapFra
 
 var profile: TerrainGenerationProfile = undefined;
 
+var memoryPool: main.heap.MemoryPool(CaveBiomeMapFragment) = undefined;
+
 pub fn initGenerators() void {
 	const list = @import("cavebiomegen/_list.zig");
 	inline for(@typeInfo(list).@"struct".decls) |decl| {
@@ -540,14 +542,16 @@ pub fn deinitGenerators() void {
 
 pub fn init(_profile: TerrainGenerationProfile) void {
 	profile = _profile;
+	memoryPool = .init(main.globalAllocator);
 }
 
 pub fn deinit() void {
 	cache.clear();
+	memoryPool.deinit();
 }
 
 fn cacheInit(pos: ChunkPosition) *CaveBiomeMapFragment {
-	const mapFragment = main.globalAllocator.create(CaveBiomeMapFragment);
+	const mapFragment = memoryPool.create();
 	mapFragment.init(pos.wx, pos.wy, pos.wz);
 	for(profile.caveBiomeGenerators) |generator| {
 		generator.generate(mapFragment, profile.seed ^ generator.generatorSeed);

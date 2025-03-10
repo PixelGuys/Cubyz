@@ -3,7 +3,7 @@ const std = @import("std");
 const main = @import("root");
 const random = main.random;
 const Array2D = main.utils.Array2D;
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const sizeShift = 7; // TODO: Increase back to 10 once this is no longer impacting loading time.
 const size = 1 << sizeShift;

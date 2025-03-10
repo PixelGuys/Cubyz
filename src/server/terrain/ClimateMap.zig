@@ -9,7 +9,7 @@ const terrain = main.server.terrain;
 const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
 const Biome = terrain.biomes.Biome;
 const MapFragment = terrain.SurfaceMap.MapFragment;
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 pub const BiomeSample = struct {
 	biome: *const Biome,
@@ -73,7 +73,7 @@ pub const ClimateMapFragment = struct {
 		const prevVal = self.refCount.fetchSub(1, .monotonic);
 		std.debug.assert(prevVal != 0);
 		if(prevVal == 1) {
-			main.globalAllocator.destroy(self);
+			memoryPool.destroy(self);
 		}
 	}
 };
@@ -109,6 +109,8 @@ const associativity = 8; // ~400 MiB
 var cache: Cache(ClimateMapFragment, cacheSize, associativity, ClimateMapFragment.decreaseRefCount) = .{};
 var profile: TerrainGenerationProfile = undefined;
 
+var memoryPool: main.heap.MemoryPool(ClimateMapFragment) = undefined;
+
 pub fn initGenerators() void {
 	const list = @import("climategen/_list.zig");
 	inline for(@typeInfo(list).@"struct".decls) |decl| {
@@ -121,7 +123,7 @@ pub fn deinitGenerators() void {
 }
 
 fn cacheInit(pos: ClimateMapFragmentPosition) *ClimateMapFragment {
-	const mapFragment = main.globalAllocator.create(ClimateMapFragment);
+	const mapFragment = memoryPool.create();
 	mapFragment.init(pos.wx, pos.wy);
 	profile.climateGenerator.generateMapFragment(mapFragment, profile.seed);
 	_ = @atomicRmw(u16, &mapFragment.refCount.raw, .Add, 1, .monotonic);
@@ -130,10 +132,12 @@ fn cacheInit(pos: ClimateMapFragmentPosition) *ClimateMapFragment {
 
 pub fn init(_profile: TerrainGenerationProfile) void {
 	profile = _profile;
+	memoryPool = .init(main.globalAllocator);
 }
 
 pub fn deinit() void {
 	cache.clear();
+	memoryPool.deinit();
 }
 
 pub fn getOrGenerateFragmentAndIncreaseRefCount(wx: i32, wy: i32) *ClimateMapFragment {

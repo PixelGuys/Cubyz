@@ -6,9 +6,9 @@ const migrations_zig = @import("migrations.zig");
 const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main.zig");
 const biomes_zig = main.server.terrain.biomes;
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
-var arena: main.utils.NeverFailingArenaAllocator = undefined;
+var arena: main.heap.NeverFailingArenaAllocator = undefined;
 var arenaAllocator: NeverFailingAllocator = undefined;
 var commonBlocks: std.StringHashMap(ZonElement) = undefined;
 var commonBlockMigrations: std.StringHashMap(ZonElement) = undefined;
@@ -92,7 +92,7 @@ pub fn readAllZonFilesInAddons(
 		};
 		defer dir.close();
 
-		var defaultsArena: main.utils.NeverFailingArenaAllocator = .init(main.stackAllocator);
+		var defaultsArena: main.heap.NeverFailingArenaAllocator = .init(main.stackAllocator);
 		defer defaultsArena.deinit();
 
 		const defaultsArenaAllocator = defaultsArena.allocator();

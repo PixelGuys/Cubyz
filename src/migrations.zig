@@ -4,7 +4,7 @@ const main = @import("main.zig");
 const ZonElement = @import("zon.zig").ZonElement;
 const Palette = @import("assets.zig").Palette;
 
-var arenaAllocator = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
+var arenaAllocator = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
 const migrationAllocator = arenaAllocator.allocator();
 
 var blockMigrations: std.StringHashMap([]const u8) = .init(migrationAllocator.allocator);
