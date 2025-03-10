@@ -394,7 +394,7 @@ pub const RotationModes = struct {
 			cross: void,
 		};
 
-		fn rotateQuad(originalCorners: [4]Vec2f, pattern: Pattern, minF: f32, maxF: f32, side: Neighbor) main.models.QuadInfo {
+		fn rotateQuad(originalCorners: [4]Vec2f, pattern: Pattern, min: f32, max: f32, side: Neighbor) main.models.QuadInfo {
 			var corners: [4]Vec2f = originalCorners;
 
 			switch(pattern) {
@@ -413,79 +413,75 @@ pub const RotationModes = struct {
 			const offX: f32 = @floatFromInt(@intFromBool(@reduce(.Add, side.textureX()) < 0));
 			const offY: f32 = @floatFromInt(@intFromBool(@reduce(.Add, side.textureY()) < 0));
 
-			const norm: Vec3f = @floatFromInt(side.relPos());
-
-			const corns = .{
+			const corners2d = .{
 				@as(Vec3f, @floatFromInt(side.textureX()))*@as(Vec3f, @splat(corners[0][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY()))*@as(Vec3f, @splat(corners[0][1] - offY)),
 				@as(Vec3f, @floatFromInt(side.textureX()))*@as(Vec3f, @splat(corners[1][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY()))*@as(Vec3f, @splat(corners[1][1] - offY)),
 				@as(Vec3f, @floatFromInt(side.textureX()))*@as(Vec3f, @splat(corners[2][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY()))*@as(Vec3f, @splat(corners[2][1] - offY)),
 				@as(Vec3f, @floatFromInt(side.textureX()))*@as(Vec3f, @splat(corners[3][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY()))*@as(Vec3f, @splat(corners[3][1] - offY)),
 			};
 
-			const tex: u32 = @intFromEnum(pattern);
-
 			var offset: Vec3f = .{0.0, 0.0, 0.0};
-			offset[@intFromEnum(side.vectorComponent())] = if(side.isPositive()) maxF else minF;
+			offset[@intFromEnum(side.vectorComponent())] = if(side.isPositive()) max else min;
 
 			const res: main.models.QuadInfo = .{
 				.corners = .{
-					corns[0] + offset,
-					corns[1] + offset,
-					corns[2] + offset,
-					corns[3] + offset,
+					corners2d[0] + offset,
+					corners2d[1] + offset,
+					corners2d[2] + offset,
+					corners2d[3] + offset,
 				},
 				.cornerUV = originalCorners,
-				.normal = norm,
+				.normal = @floatFromInt(side.relPos()),
 				.opaqueInLod = 1,
-				.textureSlot = tex,
+				.textureSlot = @intFromEnum(pattern),
 			};
 
 			return res;
 		}
 
-		fn addQuads(pattern: Pattern, side: Neighbor, radius: u32, out: *main.List(main.models.QuadInfo)) void {
-			const minF: f32 = @as(f32, @floatFromInt(8 - radius))/16.0;
-			const maxF: f32 = @as(f32, @floatFromInt(8 + radius))/16.0;
+		fn addQuads(pattern: Pattern, side: Neighbor, radius: f32, out: *main.List(main.models.QuadInfo)) void {
+			const min: f32 = (8.0 - radius)/16.0;
+			const max: f32 = (8.0 + radius)/16.0;
 			switch(pattern) {
 				.dot => {
 					out.append(rotateQuad(.{
-						.{minF, minF},
-						.{minF, maxF},
-						.{maxF, minF},
-						.{maxF, maxF},
-					}, pattern, minF, maxF, side));
+						.{min, min},
+						.{min, max},
+						.{max, min},
+						.{max, max},
+					}, pattern, min, max, side));
 				},
 				.halfLine => {
 					out.append(rotateQuad(.{
-						.{minF, 0.0},
-						.{minF, maxF},
-						.{maxF, 0.0},
-						.{maxF, maxF},
-					}, pattern, minF, maxF, side));
+						.{min, 0.0},
+						.{min, max},
+						.{max, 0.0},
+						.{max, max},
+					}, pattern, min, max, side));
 				},
 				.line => {
 					out.append(rotateQuad(.{
-						.{minF, 0.0},
-						.{minF, 1.0},
-						.{maxF, 0.0},
-						.{maxF, 1.0},
-					}, pattern, minF, maxF, side));
+						.{min, 0.0},
+						.{min, 1.0},
+						.{max, 0.0},
+						.{max, 1.0},
+					}, pattern, min, max, side));
 				},
 				.bend => {
 					out.append(rotateQuad(.{
 						.{0.0, 0.0},
-						.{0.0, maxF},
-						.{maxF, 0.0},
-						.{maxF, maxF},
-					}, pattern, minF, maxF, side));
+						.{0.0, max},
+						.{max, 0.0},
+						.{max, max},
+					}, pattern, min, max, side));
 				},
 				.intersection => {
 					out.append(rotateQuad(.{
 						.{0.0, 0.0},
-						.{0.0, maxF},
+						.{0.0, max},
 						.{1.0, 0.0},
-						.{1.0, maxF},
-					}, pattern, minF, maxF, side));
+						.{1.0, max},
+					}, pattern, min, max, side));
 				},
 				.cross => {
 					out.append(rotateQuad(.{
@@ -493,21 +489,21 @@ pub const RotationModes = struct {
 						.{0.0, 1.0},
 						.{1.0, 0.0},
 						.{1.0, 1.0},
-					}, pattern, minF, maxF, side));
+					}, pattern, min, max, side));
 				},
 			}
 		}
 
 		fn getPattern(data: BranchData, side: Neighbor) ?Pattern {
 			const posX = Neighbor.fromRelPos(side.textureX()).?;
-			const posNegX = Neighbor.fromRelPos(side.textureX()).?.reverse();
+			const negX = Neighbor.fromRelPos(side.textureX()).?.reverse();
 			const posY = Neighbor.fromRelPos(side.textureY()).?;
-			const posNegY = Neighbor.fromRelPos(side.textureY()).?.reverse();
+			const negY = Neighbor.fromRelPos(side.textureY()).?.reverse();
 
 			const connectedPosX = data.isConnected(posX);
-			const connectedNegX = data.isConnected(posNegX);
+			const connectedNegX = data.isConnected(negX);
 			const connectedPosY = data.isConnected(posY);
-			const connectedNegY = data.isConnected(posNegY);
+			const connectedNegY = data.isConnected(negY);
 
 			const count: u6 = @as(u6, @intFromBool(connectedPosX)) + @as(u6, @intFromBool(connectedNegX)) + @as(u6, @intFromBool(connectedPosY)) + @as(u6, @intFromBool(connectedNegY));
 
@@ -541,10 +537,6 @@ pub const RotationModes = struct {
 					}
 
 					var dir: Direction = .negXDir;
-
-					if(connectedNegY) {
-						dir = .negYDir;
-					}
 
 					if(connectedNegY) {
 						dir = .negYDir;
@@ -582,8 +574,8 @@ pub const RotationModes = struct {
 		}
 
 		pub fn createBlockModel(zon: ZonElement) u16 {
-			const radius = zon.get(u32, "radius", 4);
-			if(branchModels.get(radius)) |modelIndex| return modelIndex;
+			const radius = zon.get(f32, "radius", 4);
+			if(branchModels.get(@bitCast(radius))) |modelIndex| return modelIndex;
 
 			var modelIndex: u16 = undefined;
 			for(0..64) |i| {
@@ -604,7 +596,7 @@ pub const RotationModes = struct {
 				}
 			}
 
-			branchModels.put(radius, modelIndex) catch unreachable;
+			branchModels.put(@bitCast(radius), modelIndex) catch unreachable;
 
 			return modelIndex;
 		}
