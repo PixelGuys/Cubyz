@@ -8,7 +8,7 @@ const Vec3i = vec.Vec3i;
 const List = main.List;
 const Block = main.blocks.Block;
 const Blueprint = main.blueprint.Blueprint;
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 pub const description = "Operate on blueprints.";
 pub const usage = "/blueprint <save FILENAME|delete FILENAME|load FILENAME|list>";
