@@ -883,7 +883,7 @@ pub const Protocols = struct {
 				if(typ == type_entity) {
 					try main.entity.ClientEntityManager.serverUpdate(time, reader);
 				} else if(typ == type_item) {
-					world.itemDrops.readPosition(reader.remaining, time);
+					try world.itemDrops.readPosition(reader, time);
 				}
 			}
 		}
