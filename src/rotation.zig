@@ -66,7 +66,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 		}
 		fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) CanBeChangedInto {
 			shouldDropSourceBlockOnSuccess.* = true;
-			if(std.meta.eql(oldBlock, newBlock)) return .no;
+			if(oldBlock == newBlock) return .no;
 			if(oldBlock.typ == newBlock.typ) return .yes;
 			if(oldBlock.solid()) {
 				var damage: f32 = 1;
@@ -1143,7 +1143,7 @@ pub const RotationModes = struct {
 		}
 
 		pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, _: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
-			if(std.meta.eql(oldBlock, newBlock)) return .no;
+			if(oldBlock == newBlock) return .no;
 			if(oldBlock.transparent() or oldBlock.viewThrough()) return .no;
 			if(!main.models.models.items[main.blocks.meshes.modelIndexStart(oldBlock)].allNeighborsOccluded) return .no;
 			if(oldBlock.data != 0) return .no;

@@ -10,7 +10,7 @@ const Vec3f = vec.Vec3f;
 const Vec2f = vec.Vec2f;
 const Mat4f = vec.Mat4f;
 const FaceData = main.renderer.chunk_meshing.FaceData;
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 var quadSSBO: graphics.SSBO = undefined;
 
@@ -109,7 +109,7 @@ pub const Model = struct {
 		var internalAmount: usize = 0;
 		self.min = .{1, 1, 1};
 		self.max = .{0, 0, 0};
-		self.isNeighborOccluded = .{false} ** 6;
+		self.isNeighborOccluded = @splat(false);
 		for(adjustedQuads) |*quad| {
 			for(quad.corners) |corner| {
 				self.min = @min(self.min, corner);
@@ -166,7 +166,7 @@ pub const Model = struct {
 
 	fn addVert(vert: Vec3f, vertList: *main.List(Vec3f)) usize {
 		const ind = for(vertList.*.items, 0..) |vertex, index| {
-			if(std.meta.eql(vertex, vert)) break index;
+			if(vertex == vert) break index;
 		} else vertList.*.items.len;
 
 		if(ind == vertList.*.items.len) {
@@ -199,7 +199,7 @@ pub const Model = struct {
 		return Model.init(quadInfos);
 	}
 
-	pub fn loadRawModelDataFromObj(allocator: main.utils.NeverFailingAllocator, data: []const u8) []QuadInfo {
+	pub fn loadRawModelDataFromObj(allocator: main.heap.NeverFailingAllocator, data: []const u8) []QuadInfo {
 		var vertices = main.List(Vec3f).init(main.stackAllocator);
 		defer vertices.deinit();
 

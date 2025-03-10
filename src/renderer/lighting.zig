@@ -7,11 +7,10 @@ const chunk = main.chunk;
 const chunk_meshing = @import("chunk_meshing.zig");
 const mesh_storage = @import("mesh_storage.zig");
 
-var memoryPool: std.heap.MemoryPool(ChannelChunk) = undefined;
-var memoryPoolMutex: std.Thread.Mutex = .{};
+var memoryPool: main.heap.MemoryPool(ChannelChunk) = undefined;
 
 pub fn init() void {
-	memoryPool = .init(main.globalAllocator.allocator);
+	memoryPool = .init(main.globalAllocator);
 }
 
 pub fn deinit() void {
@@ -33,9 +32,7 @@ pub const ChannelChunk = struct {
 	isSun: bool,
 
 	pub fn init(ch: *chunk.Chunk, isSun: bool) *ChannelChunk {
-		memoryPoolMutex.lock();
-		const self = memoryPool.create() catch unreachable;
-		memoryPoolMutex.unlock();
+		const self = memoryPool.create();
 		self.lock = .{};
 		self.ch = ch;
 		self.isSun = isSun;
@@ -45,9 +42,7 @@ pub const ChannelChunk = struct {
 
 	pub fn deinit(self: *ChannelChunk) void {
 		self.data.deinit();
-		memoryPoolMutex.lock();
 		memoryPool.destroy(self);
-		memoryPoolMutex.unlock();
 	}
 
 	const Entry = struct {
@@ -104,7 +99,7 @@ pub const ChannelChunk = struct {
 	}
 
 	fn propagateDirect(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), lightRefreshList: *main.List(*chunk_meshing.ChunkMesh)) void {
-		var neighborLists: [6]main.ListUnmanaged(Entry) = .{.{}} ** 6;
+		var neighborLists: [6]main.ListUnmanaged(Entry) = @splat(.{});
 		defer {
 			for(&neighborLists) |*list| {
 				list.deinit(main.stackAllocator);
@@ -166,7 +161,7 @@ pub const ChannelChunk = struct {
 	}
 
 	fn propagateDestructive(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), constructiveEntries: *main.ListUnmanaged(ChunkEntries), isFirstBlock: bool, lightRefreshList: *main.List(*chunk_meshing.ChunkMesh)) main.ListUnmanaged(PositionEntry) {
-		var neighborLists: [6]main.ListUnmanaged(Entry) = .{.{}} ** 6;
+		var neighborLists: [6]main.ListUnmanaged(Entry) = @splat(.{});
 		var constructiveList: main.ListUnmanaged(PositionEntry) = .{};
 		defer {
 			for(&neighborLists) |*list| {

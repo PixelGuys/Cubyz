@@ -1,0 +1,24 @@
+.{
+	.tags = .{.wood},
+	.blockHealth = 0.2,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.solid = false,
+	.viewThrough = true,
+	.absorbedLight = 0x010101,
+	.emittedLight = 0x392862,
+	.collide = false,
+	.rotation = .torch,
+	.model = .{
+		.base = "cubyz:glimmergill/floor",
+		.side = "cubyz:glimmergill/shelf",
+	},
+	.texture = "cubyz:glimmergill_side",
+	.texture_top = "cubyz:glimmergill_top",
+	.texture_bottom = "cubyz:glimmergill_bottom",
+	.item = .{
+		.texture = "glimmergill.png",
+	},
+	.lodReplacement = "cubyz:air",
+}

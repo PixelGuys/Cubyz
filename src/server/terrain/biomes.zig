@@ -5,7 +5,7 @@ const blocks = main.blocks;
 const ServerChunk = main.chunk.ServerChunk;
 const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const vec = @import("main.vec");
 const Vec3f = main.vec.Vec3f;
 const Vec3d = main.vec.Vec3d;
@@ -51,7 +51,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 	}
 
 	var modelRegistry: std.StringHashMapUnmanaged(VTable) = .{};
-	var arena: main.utils.NeverFailingArenaAllocator = .init(main.globalAllocator);
+	var arena: main.heap.NeverFailingArenaAllocator = .init(main.globalAllocator);
 
 	pub fn reset() void {
 		std.debug.assert(arena.reset(.free_all));
@@ -157,13 +157,13 @@ fn hashGeneric(input: anytype) u64 {
 		},
 		.optional => if(input) |_input| hashGeneric(_input) else 0,
 		.pointer => switch(@typeInfo(T).pointer.size) {
-			.One => blk: {
+			.one => blk: {
 				if(@typeInfo(@typeInfo(T).pointer.child) == .@"fn") break :blk 0;
 				if(@typeInfo(T).pointer.child == Biome) return hashGeneric(input.id);
 				if(@typeInfo(T).pointer.child == anyopaque) break :blk 0;
 				break :blk hashGeneric(input.*);
 			},
-			.Slice => blk: {
+			.slice => blk: {
 				var result: u64 = 0;
 				for(input) |val| {
 					result = result*%33 +% hashGeneric(val);

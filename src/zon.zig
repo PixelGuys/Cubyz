@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const main = @import("main.zig");
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const List = main.List;
 
 pub const ZonElement = union(enum) { // MARK: Zon
@@ -213,11 +213,11 @@ pub const ZonElement = union(enum) { // MARK: Zon
 				}
 			},
 			.pointer => |ptr| {
-				if(ptr.child == u8 and ptr.size == .Slice) {
+				if(ptr.child == u8 and ptr.size == .slice) {
 					return .{.string = value};
 				} else {
 					const childInfo = @typeInfo(ptr.child);
-					if(ptr.size == .One and childInfo == .array and childInfo.array.child == u8) {
+					if(ptr.size == .one and childInfo == .array and childInfo.array.child == u8) {
 						return .{.string = value};
 					} else {
 						@compileError("Unknown value type.");
@@ -233,7 +233,7 @@ pub const ZonElement = union(enum) { // MARK: Zon
 			},
 			.vector => {
 				const len = @typeInfo(@TypeOf(value)).vector.len;
-				const result = initArray(main.utils.NeverFailingAllocator{.allocator = allocator, .IAssertThatTheProvidedAllocatorCantFail = {}});
+				const result = initArray(main.heap.NeverFailingAllocator{.allocator = allocator, .IAssertThatTheProvidedAllocatorCantFail = {}});
 				result.array.ensureCapacity(len);
 				inline for(0..len) |i| {
 					result.array.appendAssumeCapacity(createElementFromRandomType(value[i], allocator));

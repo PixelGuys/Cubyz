@@ -902,7 +902,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			block.mode().onBlockBreaking(inventory.getStack(slot).item, relPos, lastDir, &newBlock);
 			main.items.Inventory.Sync.ClientSide.mutex.unlock();
 
-			if(!std.meta.eql(newBlock, block)) {
+			if(newBlock != block) {
 				updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], block, newBlock);
 			}
 		}

@@ -8,6 +8,5 @@
 	.caves = 1,
 	.music = "cubyz:heart-of-the-beast",
 
-	.structures = .{
-	},
+	.structures = .{},
 }

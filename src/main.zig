@@ -14,6 +14,7 @@ pub const graphics = @import("graphics.zig");
 pub const itemdrop = @import("itemdrop.zig");
 pub const items = @import("items.zig");
 pub const JsonElement = @import("json.zig").JsonElement;
+pub const migrations = @import("migrations.zig");
 pub const models = @import("models.zig");
 pub const network = @import("network.zig");
 pub const random = @import("random.zig");
@@ -26,6 +27,8 @@ pub const ZonElement = @import("zon.zig").ZonElement;
 
 pub const Window = @import("graphics/Window.zig");
 
+pub const heap = @import("utils/heap.zig");
+
 pub const List = @import("utils/list.zig").List;
 pub const ListUnmanaged = @import("utils/list.zig").ListUnmanaged;
 pub const VirtualList = @import("utils/list.zig").VirtualList;
@@ -35,11 +38,11 @@ const file_monitor = utils.file_monitor;
 const Vec2f = vec.Vec2f;
 const Vec3d = vec.Vec3d;
 
-pub threadlocal var stackAllocator: utils.NeverFailingAllocator = undefined;
+pub threadlocal var stackAllocator: heap.NeverFailingAllocator = undefined;
 pub threadlocal var seed: u64 = undefined;
 var global_gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe = true}){};
-var handled_gpa = utils.ErrorHandlingAllocator.init(global_gpa.allocator());
-pub const globalAllocator: utils.NeverFailingAllocator = handled_gpa.allocator();
+var handled_gpa = heap.ErrorHandlingAllocator.init(global_gpa.allocator());
+pub const globalAllocator: heap.NeverFailingAllocator = handled_gpa.allocator();
 pub var threadPool: *utils.ThreadPool = undefined;
 
 fn cacheStringImpl(comptime len: usize, comptime str: [len]u8) []const u8 {
@@ -128,7 +131,7 @@ pub const std_options: std.Options = .{ // MARK: std_options
 					types = types ++ &[_]type{i64};
 				} else if(@TypeOf(args[i_1]) == comptime_float) {
 					types = types ++ &[_]type{f64};
-				} else if(TI == .pointer and TI.pointer.size == .Slice and TI.pointer.child == u8) {
+				} else if(TI == .pointer and TI.pointer.size == .slice and TI.pointer.child == u8) {
 					types = types ++ &[_]type{[]const u8};
 				} else if(TI == .int and TI.int.bits <= 64) {
 					if(TI.int.signedness == .signed) {
@@ -266,11 +269,6 @@ fn openInventory() void {
 	if(game.world == null) return;
 	gui.toggleGameMenu();
 	gui.openWindow("inventory");
-}
-fn openWorkbench() void {
-	if(game.world == null) return;
-	gui.toggleGameMenu();
-	gui.openWindow("workbench");
 }
 fn openCreativeInventory() void {
 	if(game.world == null) return;
@@ -526,7 +524,7 @@ pub fn main() void { // MARK: main()
 	defer if(global_gpa.deinit() == .leak) {
 		std.log.err("Memory leak", .{});
 	};
-	var sta = utils.StackAllocator.init(globalAllocator, 1 << 23);
+	var sta = heap.StackAllocator.init(globalAllocator, 1 << 23);
 	defer sta.deinit();
 	stackAllocator = sta.allocator();
 
@@ -578,11 +576,17 @@ pub fn main() void { // MARK: main()
 	audio.init() catch std.log.err("Failed to initialize audio. Continuing the game without sounds.", .{});
 	defer audio.deinit();
 
+	utils.initDynamicIntArrayStorage();
+	defer utils.deinitDynamicIntArrayStorage();
+
 	chunk.init();
 	defer chunk.deinit();
 
 	rotation.init();
 	defer rotation.deinit();
+
+	blocks.TouchFunctions.init();
+	defer blocks.TouchFunctions.deinit();
 
 	models.init();
 	defer models.deinit();

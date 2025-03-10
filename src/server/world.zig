@@ -497,11 +497,12 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.itemDropManager.init(main.globalAllocator, self, self.gravity);
 		errdefer self.itemDropManager.deinit();
 
-		var loadArena = main.utils.NeverFailingArenaAllocator.init(main.stackAllocator);
+		var loadArena = main.heap.NeverFailingArenaAllocator.init(main.stackAllocator);
 		defer loadArena.deinit();
 		const arenaAllocator = loadArena.allocator();
 		var buf: [32768]u8 = undefined;
 		var generatorSettings: ZonElement = undefined;
+
 		if(nullGeneratorSettings) |_generatorSettings| {
 			generatorSettings = _generatorSettings;
 			// Store generator settings:
@@ -514,10 +515,20 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const blockPaletteZon = files.readToZon(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/palette.zig.zon", .{name})) catch .null;
 		self.blockPalette = try main.assets.Palette.init(main.globalAllocator, blockPaletteZon, "cubyz:air");
 		errdefer self.blockPalette.deinit();
+		std.log.info(
+			"Loaded save block palette with {} blocks.",
+			.{self.blockPalette.size()},
+		);
+
 		const biomePaletteZon = files.readToZon(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/biome_palette.zig.zon", .{name})) catch .null;
 		self.biomePalette = try main.assets.Palette.init(main.globalAllocator, biomePaletteZon, null);
 		errdefer self.biomePalette.deinit();
+		std.log.info(
+			"Loaded save biome palette with {} biomes.",
+			.{self.biomePalette.size()},
+		);
 		errdefer main.assets.unloadAssets();
+
 		if(self.wio.hasWorldData()) {
 			self.seed = try self.wio.loadWorldSeed();
 			self.generated = true;
@@ -1019,7 +1030,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		baseChunk.mutex.lock();
 		const currentBlock = baseChunk.getBlock(x, y, z);
 		if(oldBlock != null) {
-			if(!std.meta.eql(oldBlock.?, currentBlock)) {
+			if(oldBlock.? != currentBlock) {
 				baseChunk.mutex.unlock();
 				return currentBlock;
 			}

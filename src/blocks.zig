@@ -13,6 +13,7 @@ const items = @import("items.zig");
 const models = @import("models.zig");
 const rotation = @import("rotation.zig");
 const RotationMode = rotation.RotationMode;
+const Entity = main.server.Entity;
 
 pub const BlockTag = enum(u32) {
 	air = 0,
@@ -42,7 +43,7 @@ pub const BlockTag = enum(u32) {
 		return result;
 	}
 
-	pub fn loadFromZon(_allocator: main.utils.NeverFailingAllocator, zon: ZonElement) []BlockTag {
+	pub fn loadFromZon(_allocator: main.heap.NeverFailingAllocator, zon: ZonElement) []BlockTag {
 		const result = _allocator.alloc(BlockTag, zon.toSlice().len);
 		for(zon.toSlice(), 0..) |tagZon, i| {
 			result[i] = BlockTag.find(tagZon.as([]const u8, "incorrect"));
@@ -55,7 +56,7 @@ pub const BlockTag = enum(u32) {
 	}
 };
 
-var arena = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
+var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
 const allocator = arena.allocator();
 
 pub const maxBlockCount: usize = 65536; // 16 bit limit
@@ -109,6 +110,8 @@ var _friction: [maxBlockCount]f32 = undefined;
 
 var _allowOres: [maxBlockCount]bool = undefined;
 
+var _touchFunction: [maxBlockCount]?*const TouchFunction = undefined;
+
 var reverseIndices = std.StringHashMap(u16).init(allocator.allocator);
 
 var size: u32 = 0;
@@ -149,6 +152,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_hasBackFace[size] = zon.get(bool, "hasBackFace", false);
 	_friction[size] = zon.get(f32, "friction", 20);
 	_allowOres[size] = zon.get(bool, "allowOres", false);
+	_touchFunction[size] = TouchFunctions.getFunctionPointer(zon.get([]const u8, "touchFunction", ""));
 
 	const oreProperties = zon.getChild("ore");
 	if(oreProperties != .null) blk: {
@@ -374,8 +378,41 @@ pub const Block = packed struct { // MARK: Block
 		return _allowOres[self.typ];
 	}
 
+	pub inline fn touchFunction(self: Block) ?*const TouchFunction {
+		return _touchFunction[self.typ];
+	}
+
 	pub fn canBeChangedInto(self: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) main.rotation.RotationMode.CanBeChangedInto {
 		return newBlock.mode().canBeChangedInto(self, newBlock, item, shouldDropSourceBlockOnSuccess);
+	}
+};
+
+pub const TouchFunction = fn(block: Block, entity: Entity, posX: i32, posY: i32, posZ: i32, isEntityInside: bool) void;
+
+pub const TouchFunctions = struct {
+	var hashMap: std.StringHashMap(*const TouchFunction) = undefined;
+
+	pub fn init() void {
+		hashMap = .init(main.globalAllocator.allocator);
+		inline for(@typeInfo(TouchFunctions).@"struct".decls) |declaration| {
+			if(@TypeOf(@field(TouchFunctions, declaration.name)) == TouchFunction) {
+				hashMap.putNoClobber(declaration.name, &@field(TouchFunctions, declaration.name)) catch unreachable;
+			}
+		}
+	}
+
+	pub fn deinit() void {
+		hashMap.deinit();
+	}
+
+	pub fn getFunctionPointer(id: []const u8) ?*const TouchFunction {
+		const pointer = hashMap.getPtr(id);
+		if(pointer == null) {
+			if(id.len != 0)
+				std.log.err("Could not find touch function {s}.", .{id});
+			return null;
+		}
+		return pointer.?.*;
 	}
 };
 
@@ -410,7 +447,7 @@ pub const meshes = struct { // MARK: meshes
 	var textureFogData: main.List(FogData) = undefined;
 	pub var textureOcclusionData: main.List(bool) = undefined;
 
-	var arenaForWorld: main.utils.NeverFailingArenaAllocator = undefined;
+	var arenaForWorld: main.heap.NeverFailingArenaAllocator = undefined;
 
 	pub var blockBreakingTextures: main.List(u16) = undefined;
 
@@ -532,7 +569,7 @@ pub const meshes = struct { // MARK: meshes
 		}
 	}
 
-	fn extendedPath(_allocator: main.utils.NeverFailingAllocator, path: []const u8, ending: []const u8) []const u8 {
+	fn extendedPath(_allocator: main.heap.NeverFailingAllocator, path: []const u8, ending: []const u8) []const u8 {
 		return std.fmt.allocPrint(_allocator.allocator, "{s}{s}", .{path, ending}) catch unreachable;
 	}
 

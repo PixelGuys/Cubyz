@@ -7,8 +7,6 @@
 
 	.music = "cubyz:heart-of-the-beast",
 
-
-
 	.structures = .{
 		.{
 			.id = "cubyz:ground_patch",
