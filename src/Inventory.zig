@@ -311,7 +311,7 @@ pub const Sync = struct { // MARK: Sync
 		fn createInventory(user: *main.server.User, clientId: u32, len: usize, typ: Inventory.Type, source: Source) void {
 			main.utils.assertLocked(&mutex);
 			switch(source) {
-				.sharedTestingInventory, .recipe => {
+				.sharedTestingInventory, .recipe, .blockInventory => {
 					for(inventories.items) |*inv| {
 						if(std.meta.eql(inv.source, source)) {
 							inv.addUser(user, clientId);
@@ -348,6 +348,9 @@ pub const Sync = struct { // MARK: Sync
 					}
 					inventory.inv._items[inventory.inv._items.len - 1].amount = recipe.resultAmount;
 					inventory.inv._items[inventory.inv._items.len - 1].item = .{.baseItem = recipe.resultItem};
+				},
+				.blockInventory => |pos| {
+					_ = pos;
 				},
 				.other => {},
 				.alreadyFreed => unreachable,
@@ -1064,6 +1067,11 @@ pub const Command = struct { // MARK: Command
 						writer.writeWithDelimiter(val.sourceItems[i].id, 0);
 					}
 				},
+				.blockInventory => |val| {
+					writer.writeInt(i32, val[0]);
+					writer.writeInt(i32, val[1]);
+					writer.writeInt(i32, val[2]);
+				},
 				.sharedTestingInventory, .other => {},
 				.alreadyFreed => unreachable,
 			}
@@ -1072,6 +1080,11 @@ pub const Command = struct { // MARK: Command
 				.workbench => {
 					writer.writeSlice(self.inv.type.workbench.id);
 				},
+				.blockInventory => |val| {
+					writer.writeInt(i32, val[0]);
+					writer.writeInt(i32, val[1]);
+					writer.writeInt(i32, val[2]);
+				}
 			}
 		}
 
@@ -1108,12 +1121,24 @@ pub const Command = struct { // MARK: Command
 						return error.Invalid;
 					},
 				},
+				.blockInventory => .{.blockInventory = .{
+						try reader.readInt(i32),
+						try reader.readInt(i32),
+						try reader.readInt(i32),
+					}
+				},
 				.other => .{.other = {}},
 				.alreadyFreed => unreachable,
 			};
 			const typ: Type = switch(typeEnum) {
 				inline .normal, .creative, .crafting => |tag| tag,
 				.workbench => .{.workbench = main.items.getToolTypeByID(reader.remaining) orelse return error.Invalid},
+				.blockInventory => .{.blockInventory = .{
+						try reader.readInt(i32),
+						try reader.readInt(i32),
+						try reader.readInt(i32),
+					}
+				},
 			};
 			Sync.ServerSide.createInventory(user.?, id, len, typ, source);
 			return .{
@@ -1682,6 +1707,7 @@ const SourceType = enum(u8) {
 	sharedTestingInventory = 2,
 	hand = 3,
 	recipe = 4,
+	blockInventory = 5,
 	other = 0xff, // TODO: List every type separately here.
 };
 const Source = union(SourceType) {
@@ -1690,6 +1716,7 @@ const Source = union(SourceType) {
 	sharedTestingInventory: void,
 	hand: u32,
 	recipe: *const main.items.Recipe,
+	blockInventory: Vec3i,
 	other: void,
 };
 
@@ -1700,12 +1727,14 @@ const TypeEnum = enum(u8) {
 	creative = 1,
 	crafting = 2,
 	workbench = 3,
+	blockInventory = 4,
 };
 const Type = union(TypeEnum) {
 	normal: void,
 	creative: void,
 	crafting: void,
 	workbench: *const main.items.ToolType,
+	blockInventory: Vec3i,
 };
 type: Type,
 id: u32,

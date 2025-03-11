@@ -1243,6 +1243,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				if(neighborBlock.mode().dependsOnNeighbors) {
 					if(neighborBlock.mode().updateData(&neighborBlock, neighbor.reverse(), newBlock)) {
 						neighborChunkMesh.chunk.data.setValue(index, neighborBlock);
+						neighborChunkMesh.chunk.updateInventoryIndex(index, neighborBlock);
 						neighborChunkMesh.opaqueMesh.coreFaces.clearRetainingCapacity();
 						neighborChunkMesh.transparentMesh.coreFaces.clearRetainingCapacity();
 						neighborChunkMesh.opaqueMesh.optionalFaces.clearRetainingCapacity();
@@ -1262,6 +1263,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				if(neighborBlock.mode().dependsOnNeighbors) {
 					if(neighborBlock.mode().updateData(&neighborBlock, neighbor.reverse(), newBlock)) {
 						self.chunk.data.setValue(index, neighborBlock);
+						self.chunk.updateInventoryIndex(index, neighborBlock);
 						self.updateBlockLight(@intCast(nx & chunk.chunkMask), @intCast(ny & chunk.chunkMask), @intCast(nz & chunk.chunkMask), neighborBlock, &lightRefreshList);
 					}
 				}
@@ -1276,6 +1278,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 		self.mutex.lock();
 		self.chunk.data.setValue(chunk.getIndex(x, y, z), newBlock);
+		self.chunk.updateInventoryIndex(chunk.getIndex(x, y, z), newBlock);
 		self.mutex.unlock();
 		self.updateBlockLight(x, y, z, newBlock, &lightRefreshList);
 		self.mutex.lock();

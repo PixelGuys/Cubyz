@@ -5,6 +5,7 @@ const Block = blocks.Block;
 const main = @import("main.zig");
 const settings = @import("settings.zig");
 const vec = @import("vec.zig");
+const Inventory = main.items.Inventory;
 const Vec3i = vec.Vec3i;
 const Vec3d = vec.Vec3d;
 
@@ -218,6 +219,8 @@ pub const Chunk = struct { // MARK: Chunk
 	pos: ChunkPosition,
 	data: main.utils.PaletteCompressedRegion(Block, chunkVolume) = undefined,
 
+	inventories: std.AutoHashMap(Vec3i, Inventory) = undefined,
+
 	width: u31,
 	voxelSizeShift: u5,
 	voxelSizeMask: i32,
@@ -235,23 +238,48 @@ pub const Chunk = struct { // MARK: Chunk
 			.voxelSizeMask = pos.voxelSize - 1,
 			.widthShift = voxelSizeShift + chunkShift,
 		};
+		self.inventories = .init(main.globalAllocator.allocator);
 		self.data.init();
 		return self;
 	}
 
 	pub fn deinit(self: *Chunk) void {
 		self.data.deinit();
+
+		var iter = self.inventories.valueIterator();
+		while (iter.next()) |inv| {
+			inv.deinit(main.globalAllocator);
+		}
+		self.inventories.deinit();
 		memoryPool.destroy(@alignCast(self));
 	}
 
-	/// Updates a block if it is inside this chunk.
-	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
-	pub fn updateBlock(self: *Chunk, _x: i32, _y: i32, _z: i32, newBlock: Block) void {
-		const x = _x >> self.voxelSizeShift;
-		const y = _y >> self.voxelSizeShift;
-		const z = _z >> self.voxelSizeShift;
-		const index = getIndex(x, y, z);
-		self.data.setValue(index, newBlock);
+	pub fn updateInventoryIndex(self: *Chunk, i: usize, newBlock: Block) void {
+		const x = extractXFromIndex(i);
+		const y = extractYFromIndex(i);
+		const z = extractZFromIndex(i);
+
+		const _x = x << self.voxelSizeShift;
+		const _y = y << self.voxelSizeShift;
+		const _z = z << self.voxelSizeShift;
+
+		const pos: Vec3i = .{_x, _y, _z};
+
+		if (self.inventories.getPtr(pos)) |inv| {
+			inv.deinit(main.globalAllocator);
+			_ = self.inventories.remove(pos);
+		}
+
+		if (newBlock.inventorySize()) |size| {
+			const worldPos: Vec3i = pos + Vec3i{self.pos.wx * chunkSize, self.pos.wx * chunkSize, self.pos.wx * chunkSize};
+			std.debug.print("{any}, {any}\n", .{pos, worldPos});
+			self.inventories.put(pos, Inventory.init(main.globalAllocator, size, .{.blockInventory = worldPos}, .{.blockInventory = worldPos})) catch unreachable;
+		}
+	}
+
+	pub fn getInventory(self: *Chunk, _x: i32, _y: i32, _z: i32) ?Inventory {
+		std.debug.print("{any}\n", .{Vec3i{_x, _y, _z}});
+		return self.inventories.get(.{_x, _y, _z});
 	}
 
 	/// Gets a block if it is inside this chunk.
