@@ -538,7 +538,7 @@ pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 				self.size += 1;
 			}
 
-			self.waitingThreads.signal();
+			self.waitingThreads.broadcast();
 		}
 
 		fn removeIndex(self: *@This(), i: usize) void {
@@ -758,6 +758,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		for(self.loadList.array[0..self.loadList.size]) |task| {
 			task.vtable.clean(task.self);
 		}
+		_ = self.trueQueueSize.fetchSub(self.loadList.size, .monotonic);
 		self.loadList.size = 0;
 		self.loadList.mutex.unlock();
 		// Wait for the in-progress tasks to finish:

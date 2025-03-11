@@ -553,6 +553,9 @@ pub fn init() void {
 }
 
 pub fn reset() void {
+	for(models.items) |model| {
+		model.deinit();
+	}
 	models.clearRetainingCapacity();
 	quads.clearRetainingCapacity();
 	extraQuadInfos.clearRetainingCapacity();
