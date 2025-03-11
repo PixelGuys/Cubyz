@@ -413,7 +413,7 @@ pub const RotationModes = struct {
 			const offX: f32 = @floatFromInt(@intFromBool(@reduce(.Add, side.textureX()) < 0));
 			const offY: f32 = @floatFromInt(@intFromBool(@reduce(.Add, side.textureY()) < 0));
 
-			const corners2d = .{
+			const corners3d = .{
 				@as(Vec3f, @floatFromInt(side.textureX()))*@as(Vec3f, @splat(corners[0][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY()))*@as(Vec3f, @splat(corners[0][1] - offY)),
 				@as(Vec3f, @floatFromInt(side.textureX()))*@as(Vec3f, @splat(corners[1][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY()))*@as(Vec3f, @splat(corners[1][1] - offY)),
 				@as(Vec3f, @floatFromInt(side.textureX()))*@as(Vec3f, @splat(corners[2][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY()))*@as(Vec3f, @splat(corners[2][1] - offY)),
@@ -425,14 +425,13 @@ pub const RotationModes = struct {
 
 			const res: main.models.QuadInfo = .{
 				.corners = .{
-					corners2d[0] + offset,
-					corners2d[1] + offset,
-					corners2d[2] + offset,
-					corners2d[3] + offset,
+					corners3d[0] + offset,
+					corners3d[1] + offset,
+					corners3d[2] + offset,
+					corners3d[3] + offset,
 				},
 				.cornerUV = originalCorners,
 				.normal = @floatFromInt(side.relPos()),
-				.opaqueInLod = 1,
 				.textureSlot = @intFromEnum(pattern),
 			};
 
