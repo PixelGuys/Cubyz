@@ -118,7 +118,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 	}
 
 	pub fn getPositionAndVelocityData(self: *ItemDropManager, allocator: NeverFailingAllocator) []u8 {
-		var writer = utils.BinaryWriter.initCapacity(allocator, .big, self.size*50);
+		var writer = utils.BinaryWriter.initCapacity(allocator, main.network.networkEndian, self.size*50);
 		for(self.indices[0..self.size]) |i| {
 			writer.writeInt(u16, i);
 			writer.writeFloat(f64, self.list.items(.pos)[i][0]);
