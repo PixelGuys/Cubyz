@@ -19,7 +19,7 @@ const padding: f32 = 8;
 var deleteWorldName: []const u8 = "";
 
 pub fn init() void {
-	deleteWorldName = main.globalAllocator.dupe(u8, "");
+	deleteWorldName = "";
 }
 
 pub fn deinit() void {
