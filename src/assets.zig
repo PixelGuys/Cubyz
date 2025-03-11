@@ -261,6 +261,8 @@ pub fn readAssets(
 }
 
 fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !*items_zig.BaseItem {
+	if(items_zig.hasRegistered(id)) return items_zig.getByID(id) orelse unreachable;
+
 	var split = std.mem.splitScalar(u8, id, ':');
 	const mod = split.first();
 	var texturePath: []const u8 = &[0]u8{};
@@ -278,13 +280,14 @@ fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
 	items_zig.registerTool(assetFolder, id, zon);
 }
 
-fn registerBlock(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void {
+fn registerBlock(assetFolder: []const u8, id: []const u8, zon: ZonElement, itemPalette: *Palette) !void {
 	const block = blocks_zig.register(assetFolder, id, zon);
 	blocks_zig.meshes.register(assetFolder, id, zon);
 
 	if(zon.get(bool, "hasItem", true)) {
 		const item = try registerItem(assetFolder, id, zon.getChild("item"));
 		item.block = block;
+		itemPalette.add(id);
 	}
 }
 
@@ -294,29 +297,65 @@ fn registerRecipesFromZon(zon: ZonElement) void {
 
 pub const Palette = struct { // MARK: Palette
 	palette: main.List([]const u8),
-	pub fn init(allocator: NeverFailingAllocator, zon: ZonElement, firstElement: ?[]const u8) !*Palette {
+
+	pub fn init(allocator: NeverFailingAllocator, zon: ZonElement, firstElement: ?[]const u8) !*@This() {
+		const self = switch(zon) {
+			.null => try initEmpty(allocator, firstElement),
+			.object => try loadFromZonLegacy(allocator, zon),
+			.array => try loadFromZon(allocator, zon),
+			else => return error.InvalidPaletteFormat,
+		};
+		std.debug.assert(firstElement == null or std.mem.eql(u8, self.palette.items[0], firstElement.?));
+		return self;
+	}
+	fn initEmpty(allocator: NeverFailingAllocator, firstElement: ?[]const u8) !*@This() {
 		const self = allocator.create(Palette);
 		self.* = Palette{
-			.palette = .init(allocator),
+			.palette = .initCapacity(allocator, 128),
+		};
+		if(firstElement) |elem| self.palette.append(allocator.dupe(u8, elem));
+		return self;
+	}
+	fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) !*@This() {
+		const self = allocator.create(Palette);
+		self.* = Palette{
+			.palette = .initCapacity(allocator, zon.array.items.len),
 		};
 		errdefer self.deinit();
-		if(zon != .object or zon.object.count() == 0) {
-			if(firstElement) |elem| self.palette.append(allocator.dupe(u8, elem));
-		} else {
-			const palette = main.stackAllocator.alloc(?[]const u8, zon.object.count());
-			defer main.stackAllocator.free(palette);
-			for(palette) |*val| {
-				val.* = null;
+
+		for(zon.array.items) |name| {
+			const stringId = name.as(?[]const u8, null) orelse return error.InvalidPaletteFormat;
+			self.palette.appendAssumeCapacity(allocator.dupe(u8, stringId));
+		}
+		return self;
+	}
+	fn loadFromZonLegacy(allocator: NeverFailingAllocator, zon: ZonElement) !*@This() {
+		// Using zon.object.count() here has the implication that array can not be sparse.
+		const paletteLength = zon.object.count();
+		const translationPalette = main.stackAllocator.alloc([]const u8, paletteLength);
+		defer main.stackAllocator.free(translationPalette);
+
+		var iterator = zon.object.iterator();
+		while(iterator.next()) |entry| {
+			const numericId = entry.value_ptr.as(?usize, null) orelse return error.InvalidPaletteFormat;
+			const name = entry.key_ptr.*;
+
+			if(numericId >= translationPalette.len) {
+				std.log.err("ID {} ('{s}') out of range. This can be caused by palette having missing block IDs.", .{numericId, name});
+				return error.SparsePaletteNotAllowed;
 			}
-			var iterator = zon.object.iterator();
-			while(iterator.next()) |entry| {
-				palette[entry.value_ptr.as(usize, std.math.maxInt(usize))] = entry.key_ptr.*;
-			}
-			if(firstElement) |elem| std.debug.assert(std.mem.eql(u8, palette[0].?, elem));
-			for(palette) |val| {
-				std.log.info("palette[{}]: {s}", .{self.palette.items.len, val.?});
-				self.palette.append(allocator.dupe(u8, val orelse return error.MissingKeyInPalette));
-			}
+			translationPalette[numericId] = name;
+		}
+
+		const self = allocator.create(Palette);
+		self.* = Palette{
+			.palette = .initCapacity(allocator, paletteLength),
+		};
+		errdefer self.deinit();
+
+		for(translationPalette) |val| {
+			std.log.info("palette[{}]: {s}", .{self.palette.items.len, val});
+			self.palette.appendAssumeCapacity(allocator.dupe(u8, val));
 		}
 		return self;
 	}
@@ -334,11 +373,14 @@ pub const Palette = struct { // MARK: Palette
 		self.palette.append(self.palette.allocator.dupe(u8, id));
 	}
 
-	pub fn save(self: *Palette, allocator: NeverFailingAllocator) ZonElement {
-		const zon = ZonElement.initObject(allocator);
+	pub fn storeToZon(self: *Palette, allocator: NeverFailingAllocator) ZonElement {
+		const zon = ZonElement.initArray(allocator);
 		errdefer zon.free(allocator);
-		for(self.palette.items, 0..) |item, i| {
-			zon.put(item, i);
+
+		zon.array.ensureCapacity(self.palette.items.len);
+
+		for(self.palette.items) |item| {
+			zon.append(item);
 		}
 		return zon;
 	}
@@ -355,7 +397,7 @@ pub const Palette = struct { // MARK: Palette
 
 var loadedAssets: bool = false;
 
-pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePalette: *Palette) !void { // MARK: loadWorldAssets()
+pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, biomePalette: *Palette) !void { // MARK: loadWorldAssets()
 	if(loadedAssets) return; // The assets already got loaded by the server.
 	loadedAssets = true;
 
@@ -402,6 +444,19 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 		_ = main.models.registerModel(entry.key_ptr.*, entry.value_ptr.*);
 	}
 
+	// Items from palette:
+	for(itemPalette.palette.items) |id| {
+		const nullValue = items.get(id);
+		var zon: ZonElement = undefined;
+		if(nullValue) |value| {
+			zon = value;
+		} else {
+			std.log.err("Missing item: {s}. Replacing it with default item.", .{id});
+			zon = .null;
+		}
+		_ = try registerItem(assetFolder, id, zon);
+	}
+
 	// blocks:
 	blocks_zig.meshes.registerBlockBreakingAnimation(assetFolder);
 	for(blockPalette.palette.items) |id| {
@@ -413,19 +468,21 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 			std.log.err("Missing block: {s}. Replacing it with default block.", .{id});
 			zon = .null;
 		}
-		try registerBlock(assetFolder, id, zon);
+		try registerBlock(assetFolder, id, zon, itemPalette);
 	}
 	var iterator = blocks.iterator();
 	while(iterator.next()) |entry| {
 		if(blocks_zig.hasRegistered(entry.key_ptr.*)) continue;
-		try registerBlock(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
+		try registerBlock(assetFolder, entry.key_ptr.*, entry.value_ptr.*, itemPalette);
 		blockPalette.add(entry.key_ptr.*);
 	}
 
-	// items:
+	// Items from outside palette:
 	iterator = items.iterator();
 	while(iterator.next()) |entry| {
+		if(items_zig.hasRegistered(entry.key_ptr.*)) continue;
 		_ = try registerItem(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
+		itemPalette.add(entry.key_ptr.*);
 	}
 
 	// tools:
