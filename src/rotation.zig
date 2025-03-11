@@ -144,6 +144,7 @@ pub const RotationModes = struct {
 		pub const id: []const u8 = "no_rotation";
 		fn init() void {}
 		fn deinit() void {}
+		fn reset() void {}
 	};
 	pub const Log = struct { // MARK: Log
 		pub const id: []const u8 = "log";
@@ -155,6 +156,10 @@ pub const RotationModes = struct {
 
 		fn deinit() void {
 			rotatedModels.deinit();
+		}
+
+		fn reset() void {
+			rotatedModels.clearRetainingCapacity();
 		}
 
 		pub fn createBlockModel(zon: ZonElement) u16 {
@@ -196,6 +201,10 @@ pub const RotationModes = struct {
 
 		fn deinit() void {
 			rotatedModels.deinit();
+		}
+
+		fn reset() void {
+			rotatedModels.clearRetainingCapacity();
 		}
 
 		pub fn createBlockModel(zon: ZonElement) u16 {
@@ -248,6 +257,10 @@ pub const RotationModes = struct {
 
 		fn deinit() void {
 			fenceModels.deinit();
+		}
+
+		fn reset() void {
+			fenceModels.clearRetainingCapacity();
 		}
 
 		fn fenceTransform(quad: *main.models.QuadInfo, data: FenceData) void {
@@ -355,6 +368,10 @@ pub const RotationModes = struct {
 
 		fn deinit() void {
 			branchModels.deinit();
+		}
+
+		fn reset() void {
+			branchModels.clearRetainingCapacity();
 		}
 
 		fn branchTransform(quad: *main.models.QuadInfo, data: BranchData) void {
@@ -497,10 +514,11 @@ pub const RotationModes = struct {
 			return stairData & subBlockMask(x, y, z) == 0;
 		}
 
-		fn init() void {
+		fn init() void {}
+		fn deinit() void {}
+		fn reset() void {
 			modelIndex = 0;
 		}
-		fn deinit() void {}
 
 		const GreedyFaceInfo = struct {min: Vec2f, max: Vec2f};
 		fn mergeFaces(faceVisible: [2][2]bool, mem: []GreedyFaceInfo) []GreedyFaceInfo {
@@ -807,6 +825,10 @@ pub const RotationModes = struct {
 			rotatedModels.deinit();
 		}
 
+		fn reset() void {
+			rotatedModels.clearRetainingCapacity();
+		}
+
 		pub fn createBlockModel(zon: ZonElement) u16 {
 			const baseModelId: []const u8 = zon.get([]const u8, "base", "cubyz:cube");
 			const sideModelId: []const u8 = zon.get([]const u8, "side", "cubyz:cube");
@@ -980,6 +1002,10 @@ pub const RotationModes = struct {
 			rotatedModels.deinit();
 		}
 
+		fn reset() void {
+			rotatedModels.clearRetainingCapacity();
+		}
+
 		pub fn createBlockModel(zon: ZonElement) u16 {
 			const modelId = zon.as([]const u8, "cubyz:cube");
 			if(rotatedModels.get(modelId)) |modelIndex| return modelIndex;
@@ -1105,6 +1131,9 @@ pub const RotationModes = struct {
 
 		fn init() void {}
 		fn deinit() void {}
+		fn reset() void {
+			modelCache = null;
+		}
 
 		pub fn createBlockModel(zon: ZonElement) u16 {
 			const modelId = zon.as([]const u8, "cubyz:cube");
@@ -1165,6 +1194,12 @@ pub fn init() void {
 	rotationModes = .init(main.globalAllocator.allocator);
 	inline for(@typeInfo(RotationModes).@"struct".decls) |declaration| {
 		register(@field(RotationModes, declaration.name));
+	}
+}
+
+pub fn reset() void {
+	inline for(@typeInfo(RotationModes).@"struct".decls) |declaration| {
+		@field(RotationModes, declaration.name).reset();
 	}
 }
 

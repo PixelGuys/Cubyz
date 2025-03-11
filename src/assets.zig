@@ -498,6 +498,8 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	items_zig.reset();
 	biomes_zig.reset();
 	migrations_zig.reset();
+	main.models.reset();
+	main.rotation.reset();
 
 	// Remove paths from asset hot reloading:
 	var dir = std.fs.cwd().openDir("assets", .{.iterate = true}) catch |err| {

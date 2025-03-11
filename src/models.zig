@@ -552,9 +552,13 @@ pub fn init() void {
 	nameToIndex.put("none", Model.init(&.{})) catch unreachable;
 }
 
-pub fn uploadModels() void {
-	quadSSBO = graphics.SSBO.initStatic(QuadInfo, quads.items);
-	quadSSBO.bind(4);
+pub fn reset() void {
+	models.clearRetainingCapacity();
+	quads.clearRetainingCapacity();
+	extraQuadInfos.clearRetainingCapacity();
+	quadDeduplication.clearRetainingCapacity();
+	nameToIndex.clearRetainingCapacity();
+	nameToIndex.put("none", Model.init(&.{})) catch unreachable;
 }
 
 pub fn deinit() void {
@@ -567,4 +571,9 @@ pub fn deinit() void {
 	quads.deinit();
 	extraQuadInfos.deinit();
 	quadDeduplication.deinit();
+}
+
+pub fn uploadModels() void {
+	quadSSBO = graphics.SSBO.initStatic(QuadInfo, quads.items);
+	quadSSBO.bind(4);
 }
