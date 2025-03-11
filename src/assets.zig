@@ -260,8 +260,8 @@ pub fn readAssets(
 	readAllObjFilesInAddonsHashmap(externalAllocator, addons, addonNames, "models", models);
 }
 
-fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !*items_zig.BaseItem {
-	if(items_zig.hasRegistered(id)) return items_zig.getByID(id) orelse unreachable;
+fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void {
+	if(items_zig.hasRegistered(id)) return;
 
 	var split = std.mem.splitScalar(u8, id, ':');
 	const mod = split.first();
@@ -273,22 +273,35 @@ fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !*item
 		texturePath = try std.fmt.bufPrint(&buf1, "{s}/{s}/items/textures/{s}", .{assetFolder, mod, texture});
 		replacementTexturePath = try std.fmt.bufPrint(&buf2, "assets/{s}/items/textures/{s}", .{mod, texture});
 	}
-	return items_zig.register(assetFolder, texturePath, replacementTexturePath, id, zon);
+	_ = items_zig.register(assetFolder, texturePath, replacementTexturePath, id, zon);
 }
 
 fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
 	items_zig.registerTool(assetFolder, id, zon);
 }
 
-fn registerBlock(assetFolder: []const u8, id: []const u8, zon: ZonElement, itemPalette: *Palette) !void {
-	const block = blocks_zig.register(assetFolder, id, zon);
-	blocks_zig.meshes.register(assetFolder, id, zon);
+fn registerBlock(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void {
+	if(zon == .null) std.log.err("Missing block: {s}. Replacing it with default block.", .{id});
 
-	if(zon.get(bool, "hasItem", true)) {
-		const item = try registerItem(assetFolder, id, zon.getChild("item"));
-		item.block = block;
-		itemPalette.add(id);
+	_ = blocks_zig.register(assetFolder, id, zon);
+	blocks_zig.meshes.register(assetFolder, id, zon);
+}
+
+fn assignBlockItem(assetFolder: []const u8, stringId: []const u8, zon: ZonElement, itemPalette: *Palette) !void {
+	if(!zon.get(bool, "hasItem", true)) return;
+
+	if(!items_zig.hasRegistered(stringId)) {
+		try registerItem(assetFolder, stringId, zon.getChild("item"));
+		itemPalette.add(stringId);
 	}
+	const block = blocks_zig.getTypeById(stringId);
+	const item = items_zig.getByID(stringId) orelse unreachable;
+	item.block = block;
+}
+
+fn registerBiome(numericId: u32, stringId: []const u8, zon: ZonElement) void {
+	if(zon == .null) std.log.err("Missing biomes: {s}. Replacing it with default biome.", .{stringId});
+	biomes_zig.register(stringId, numericId, zon);
 }
 
 fn registerRecipesFromZon(zon: ZonElement) void {
@@ -444,44 +457,45 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		_ = main.models.registerModel(entry.key_ptr.*, entry.value_ptr.*);
 	}
 
-	// Items from palette:
+	// items #1
 	for(itemPalette.palette.items) |id| {
-		const nullValue = items.get(id);
-		var zon: ZonElement = undefined;
-		if(nullValue) |value| {
-			zon = value;
-		} else {
-			std.log.err("Missing item: {s}. Replacing it with default item.", .{id});
-			zon = .null;
+		// Normal items should appear in items hash map.
+		if(items.get(id)) |zon| {
+			try registerItem(assetFolder, id, zon);
+			continue;
 		}
-		_ = try registerItem(assetFolder, id, zon);
+		// But there are also items created automatically from blocks.
+		if(blocks.get(id)) |zon| {
+			if(!zon.get(bool, "hasItem", true)) continue;
+			try registerItem(assetFolder, id, zon.getChild("item"));
+			continue;
+		}
+		std.log.err("Missing item: {s}. Replacing it with default item.", .{id});
+		try registerItem(assetFolder, id, .null);
 	}
 
 	// blocks:
 	blocks_zig.meshes.registerBlockBreakingAnimation(assetFolder);
 	for(blockPalette.palette.items) |id| {
-		const nullValue = blocks.get(id);
-		var zon: ZonElement = undefined;
-		if(nullValue) |value| {
-			zon = value;
-		} else {
-			std.log.err("Missing block: {s}. Replacing it with default block.", .{id});
-			zon = .null;
-		}
-		try registerBlock(assetFolder, id, zon, itemPalette);
+		try registerBlock(assetFolder, id, blocks.get(id) orelse .null);
 	}
+
 	var iterator = blocks.iterator();
 	while(iterator.next()) |entry| {
 		if(blocks_zig.hasRegistered(entry.key_ptr.*)) continue;
-		try registerBlock(assetFolder, entry.key_ptr.*, entry.value_ptr.*, itemPalette);
+		try registerBlock(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
 		blockPalette.add(entry.key_ptr.*);
 	}
 
-	// Items from outside palette:
+	for(blockPalette.palette.items) |id| {
+		try assignBlockItem(assetFolder, id, blocks.get(id) orelse .null, itemPalette);
+	}
+
+	// items #2
 	iterator = items.iterator();
 	while(iterator.next()) |entry| {
 		if(items_zig.hasRegistered(entry.key_ptr.*)) continue;
-		_ = try registerItem(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
+		try registerItem(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
 		itemPalette.add(entry.key_ptr.*);
 	}
 
@@ -500,25 +514,17 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	}
 
 	// Biomes:
-	var i: u32 = 0;
+	var nextBiomeNumericId: u32 = 0;
 	for(biomePalette.palette.items) |id| {
-		const nullValue = biomes.get(id);
-		var zon: ZonElement = undefined;
-		if(nullValue) |value| {
-			zon = value;
-		} else {
-			std.log.err("Missing biomes: {s}. Replacing it with default biomes.", .{id});
-			zon = .null;
-		}
-		biomes_zig.register(id, i, zon);
-		i += 1;
+		registerBiome(nextBiomeNumericId, id, biomes.get(id) orelse .null);
+		nextBiomeNumericId += 1;
 	}
 	iterator = biomes.iterator();
 	while(iterator.next()) |entry| {
 		if(biomes_zig.hasRegistered(entry.key_ptr.*)) continue;
-		biomes_zig.register(entry.key_ptr.*, i, entry.value_ptr.*);
+		registerBiome(nextBiomeNumericId, entry.key_ptr.*, entry.value_ptr.*);
 		biomePalette.add(entry.key_ptr.*);
-		i += 1;
+		nextBiomeNumericId += 1;
 	}
 	biomes_zig.finishLoading();
 
