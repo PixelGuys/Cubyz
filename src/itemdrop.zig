@@ -20,6 +20,8 @@ const Mat4f = vec.Mat4f;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
+const BinaryReader = main.utils.BinaryReader;
+const BinaryWriter = main.utils.BinaryWriter;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const ItemDrop = struct { // MARK: ItemDrop
@@ -116,19 +118,17 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 	}
 
 	pub fn getPositionAndVelocityData(self: *ItemDropManager, allocator: NeverFailingAllocator) []u8 {
-		const _data = allocator.alloc(u8, self.size*50);
-		var data = _data;
+		var writer = utils.BinaryWriter.initCapacity(allocator, main.network.networkEndian, self.size*50);
 		for(self.indices[0..self.size]) |i| {
-			std.mem.writeInt(u16, data[0..2], i, .big);
-			std.mem.writeInt(u64, data[2..10], @bitCast(self.list.items(.pos)[i][0]), .big);
-			std.mem.writeInt(u64, data[10..18], @bitCast(self.list.items(.pos)[i][1]), .big);
-			std.mem.writeInt(u64, data[18..26], @bitCast(self.list.items(.pos)[i][2]), .big);
-			std.mem.writeInt(u64, data[26..34], @bitCast(self.list.items(.vel)[i][0]), .big);
-			std.mem.writeInt(u64, data[34..42], @bitCast(self.list.items(.vel)[i][1]), .big);
-			std.mem.writeInt(u64, data[42..50], @bitCast(self.list.items(.vel)[i][2]), .big);
-			data = data[50..];
+			writer.writeInt(u16, i);
+			writer.writeFloat(f64, self.list.items(.pos)[i][0]);
+			writer.writeFloat(f64, self.list.items(.pos)[i][1]);
+			writer.writeFloat(f64, self.list.items(.pos)[i][2]);
+			writer.writeFloat(f64, self.list.items(.vel)[i][0]);
+			writer.writeFloat(f64, self.list.items(.vel)[i][1]);
+			writer.writeFloat(f64, self.list.items(.vel)[i][2]);
 		}
-		return _data;
+		return writer.data.toOwnedSlice();
 	}
 
 	pub fn getInitialList(self: *ItemDropManager, allocator: NeverFailingAllocator) ZonElement {
@@ -463,20 +463,18 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 		self.super.deinit();
 	}
 
-	pub fn readPosition(self: *ClientItemDropManager, _data: []const u8, time: i16) void {
-		var data = _data;
+	pub fn readPosition(self: *ClientItemDropManager, reader: *BinaryReader, time: i16) !void {
 		self.timeDifference.addDataPoint(time);
 		var pos: [ItemDropManager.maxCapacity]Vec3d = undefined;
 		var vel: [ItemDropManager.maxCapacity]Vec3d = undefined;
-		while(data.len != 0) {
-			const i = std.mem.readInt(u16, data[0..2], .big);
-			pos[i][0] = @bitCast(std.mem.readInt(u64, data[2..10], .big));
-			pos[i][1] = @bitCast(std.mem.readInt(u64, data[10..18], .big));
-			pos[i][2] = @bitCast(std.mem.readInt(u64, data[18..26], .big));
-			vel[i][0] = @bitCast(std.mem.readInt(u64, data[26..34], .big));
-			vel[i][1] = @bitCast(std.mem.readInt(u64, data[34..42], .big));
-			vel[i][2] = @bitCast(std.mem.readInt(u64, data[42..50], .big));
-			data = data[50..];
+		while(reader.remaining.len != 0) {
+			const i = try reader.readInt(u16);
+			pos[i][0] = try reader.readFloat(f64);
+			pos[i][1] = try reader.readFloat(f64);
+			pos[i][2] = try reader.readFloat(f64);
+			vel[i][0] = try reader.readFloat(f64);
+			vel[i][1] = try reader.readFloat(f64);
+			vel[i][2] = try reader.readFloat(f64);
 		}
 		mutex.lock();
 		defer mutex.unlock();
