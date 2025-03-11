@@ -10,7 +10,7 @@ const Vec3f = vec.Vec3f;
 const Vec2f = vec.Vec2f;
 const Mat4f = vec.Mat4f;
 const FaceData = main.renderer.chunk_meshing.FaceData;
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 var quadSSBO: graphics.SSBO = undefined;
 
@@ -199,7 +199,7 @@ pub const Model = struct {
 		return Model.init(quadInfos);
 	}
 
-	pub fn loadRawModelDataFromObj(allocator: main.utils.NeverFailingAllocator, data: []const u8) []QuadInfo {
+	pub fn loadRawModelDataFromObj(allocator: main.heap.NeverFailingAllocator, data: []const u8) []QuadInfo {
 		var vertices = main.List(Vec3f).init(main.stackAllocator);
 		defer vertices.deinit();
 

@@ -51,13 +51,12 @@ const BlockUpdate = struct {
 };
 var blockUpdateList: main.utils.ConcurrentQueue(BlockUpdate) = undefined;
 
-var meshMemoryPool: std.heap.MemoryPoolAligned(chunk_meshing.ChunkMesh, @alignOf(chunk_meshing.ChunkMesh)) = undefined;
-var meshMemoryPoolMutex: std.Thread.Mutex = .{};
+var meshMemoryPool: main.heap.MemoryPool(chunk_meshing.ChunkMesh) = undefined;
 
 pub fn init() void { // MARK: init()
 	lastRD = 0;
 	blockUpdateList = .init(main.globalAllocator, 16);
-	meshMemoryPool = .init(main.globalAllocator.allocator);
+	meshMemoryPool = .init(main.globalAllocator);
 	for(&storageLists) |*storageList| {
 		storageList.* = main.globalAllocator.create([storageSize*storageSize*storageSize]ChunkMeshNode);
 		for(storageList.*) |*val| {
@@ -759,9 +758,7 @@ pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()
 	defer mutex.unlock();
 	for(clearList.items) |mesh| {
 		mesh.deinit();
-		meshMemoryPoolMutex.lock();
 		meshMemoryPool.destroy(mesh);
-		meshMemoryPoolMutex.unlock();
 	}
 	clearList.clearRetainingCapacity();
 	while(priorityMeshUpdateList.dequeue()) |mesh| {
@@ -928,9 +925,7 @@ pub const MeshGenerationTask = struct { // MARK: MeshGenerationTask
 	pub fn run(self: *MeshGenerationTask) void {
 		defer main.globalAllocator.destroy(self);
 		const pos = self.mesh.pos;
-		meshMemoryPoolMutex.lock();
-		const mesh = meshMemoryPool.create() catch unreachable;
-		meshMemoryPoolMutex.unlock();
+		const mesh = meshMemoryPool.create();
 		mesh.init(pos, self.mesh);
 		defer mesh.decreaseRefCount();
 		mesh.generateLightingData() catch return;

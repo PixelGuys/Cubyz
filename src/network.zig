@@ -19,7 +19,7 @@ const vec = @import("vec.zig");
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 pub const networkEndian: std.builtin.Endian = .big;
 
@@ -559,7 +559,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 	pub fn run(self: *ConnectionManager) void {
 		self.threadId = std.Thread.getCurrentId();
-		var sta = utils.StackAllocator.init(main.globalAllocator, 1 << 23);
+		var sta = main.heap.StackAllocator.init(main.globalAllocator, 1 << 23);
 		defer sta.deinit();
 		main.stackAllocator = sta.allocator();
 
