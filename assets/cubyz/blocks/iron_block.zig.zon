@@ -6,6 +6,8 @@
 		.{.items = .{.auto}},
 	},
 	.rotation = .stairs,
+	.inventorySize = 10,
+	.gui = .chest,
 	.model = "cubyz:cube",
 	.texture = "cubyz:iron_block",
 }

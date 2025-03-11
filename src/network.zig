@@ -818,6 +818,14 @@ pub const Protocols = struct {
 			const chunkCopy = chunk.Chunk.init(ch.super.pos);
 			chunkCopy.data.deinit();
 			chunkCopy.data.initCopy(&ch.super.data);
+
+			var iter = ch.super.inventories.keyIterator();
+			while(iter.next()) |key_ptr| {
+				const key = key_ptr.*;
+				const index = chunk.getIndex(key[0], key[1], key[2]);
+				chunkCopy.updateInventoryIndex(index, chunkCopy.data.getValue(index));
+			}
+
 			renderer.mesh_storage.updateChunkMesh(chunkCopy);
 		}
 		pub fn sendChunk(conn: *Connection, ch: *chunk.ServerChunk) void {

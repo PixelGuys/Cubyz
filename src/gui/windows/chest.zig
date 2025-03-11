@@ -43,7 +43,7 @@ pub var openInventory: ?main.items.Inventory = null;
 pub fn onOpen() void {
 	const blockPos = main.renderer.MeshSelection.selectedBlockPos.?;
 	openInventory = main.renderer.mesh_storage.getInventory(blockPos[0], blockPos[1], blockPos[2]);
-
+	
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 0);
 	// Some miscellanious slots and buttons:
 	// TODO: armor slots, backpack slot + stack-based backpack inventory, other items maybe?

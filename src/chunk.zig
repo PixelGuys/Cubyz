@@ -218,7 +218,7 @@ pub const ChunkPosition = struct { // MARK: ChunkPosition
 pub const Chunk = struct { // MARK: Chunk
 	pos: ChunkPosition,
 	data: main.utils.PaletteCompressedRegion(Block, chunkVolume) = undefined,
-
+	
 	inventories: std.AutoHashMap(Vec3i, Inventory) = undefined,
 
 	width: u31,
@@ -251,17 +251,14 @@ pub const Chunk = struct { // MARK: Chunk
 			inv.deinit(main.globalAllocator);
 		}
 		self.inventories.deinit();
+
 		memoryPool.destroy(@alignCast(self));
 	}
 
 	pub fn updateInventoryIndex(self: *Chunk, i: usize, newBlock: Block) void {
-		const x = extractXFromIndex(i);
-		const y = extractYFromIndex(i);
-		const z = extractZFromIndex(i);
-
-		const _x = x << self.voxelSizeShift;
-		const _y = y << self.voxelSizeShift;
-		const _z = z << self.voxelSizeShift;
+		const _x = extractXFromIndex(i);
+		const _y = extractYFromIndex(i);
+		const _z = extractZFromIndex(i);
 
 		const pos: Vec3i = .{_x, _y, _z};
 
@@ -271,14 +268,12 @@ pub const Chunk = struct { // MARK: Chunk
 		}
 
 		if (newBlock.inventorySize()) |size| {
-			const worldPos: Vec3i = pos + Vec3i{self.pos.wx * chunkSize, self.pos.wx * chunkSize, self.pos.wx * chunkSize};
-			std.debug.print("{any}, {any}\n", .{pos, worldPos});
+			const worldPos: Vec3i = pos + Vec3i{self.pos.wx, self.pos.wy, self.pos.wz};
 			self.inventories.put(pos, Inventory.init(main.globalAllocator, size, .{.blockInventory = worldPos}, .{.blockInventory = worldPos})) catch unreachable;
 		}
 	}
 
 	pub fn getInventory(self: *Chunk, _x: i32, _y: i32, _z: i32) ?Inventory {
-		std.debug.print("{any}\n", .{Vec3i{_x, _y, _z}});
 		return self.inventories.get(.{_x, _y, _z});
 	}
 
@@ -318,6 +313,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 			},
 			.refCount = .init(1),
 		};
+		self.super.inventories = .init(main.globalAllocator.allocator);
 		self.super.data.init();
 		return self;
 	}
@@ -327,6 +323,9 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 		if(self.wasChanged) {
 			self.save(main.server.world.?);
 		}
+
+		self.super.inventories.deinit();
+
 		self.super.data.deinit();
 		serverPool.destroy(@alignCast(self));
 	}
@@ -387,6 +386,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 		const z = _z >> self.super.voxelSizeShift;
 		const index = getIndex(x, y, z);
 		self.super.data.setValue(index, newBlock);
+		self.super.updateInventoryIndex(index, newBlock);
 		if(!self.wasChanged and self.super.pos.voxelSize == 1) {
 			self.mutex.unlock();
 			defer self.mutex.lock();
@@ -428,6 +428,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 		const oldBlock = self.super.data.getValue(index);
 		if(oldBlock.typ == 0 or oldBlock.degradable()) {
 			self.super.data.setValue(index, newBlock);
+			self.super.updateInventoryIndex(index, newBlock);
 		}
 	}
 
@@ -440,6 +441,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 		const z = _z >> self.super.voxelSizeShift;
 		const index = getIndex(x, y, z);
 		self.super.data.setValue(index, newBlock);
+		self.super.updateInventoryIndex(index, newBlock);
 	}
 
 	/// Updates a block if it is inside this chunk. Should be used in generation to prevent accidently storing these as changes.
@@ -454,6 +456,9 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 		const indexStart = getIndex(x, y, zStartInclusive);
 		const indexEnd = getIndex(x, y, zEndInclusive) + 1;
 		self.super.data.setValueInColumn(indexStart, indexEnd, newBlock);
+		for(indexStart..indexEnd) |index| {
+			self.super.updateInventoryIndex(index, newBlock);
+		}
 	}
 
 	pub fn updateFromLowerResolution(self: *ServerChunk, other: *ServerChunk) void {
@@ -520,6 +525,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 					// Update the block:
 					const thisIndex = getIndex(x + xOffset, y + yOffset, z + zOffset);
 					self.super.data.setValue(thisIndex, block);
+					self.super.updateInventoryIndex(thisIndex, block);
 				}
 			}
 		}

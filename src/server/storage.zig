@@ -369,10 +369,15 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 
 				for(0..chunk.chunkVolume) |i| {
 					ch.data.setRawValue(i, decompressedData[i]);
+					ch.updateInventoryIndex(i, ch.data.palette[decompressedData[i]]);
 				}
 			},
 			.uniform => {
-				ch.data.palette[0] = main.blocks.Block.fromInt(try reader.readInt(u32));
+				const newBlock = main.blocks.Block.fromInt(try reader.readInt(u32));
+				ch.data.palette[0] = newBlock;
+				for(0..chunk.chunkVolume) |i| {
+					ch.updateInventoryIndex(i, newBlock);
+				}
 			},
 			_ => {
 				return error.corrupted;
