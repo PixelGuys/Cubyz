@@ -6,8 +6,15 @@
 	},
 	.absorbedLight = 0x202830,
 	.rotation = .branch,
-	.model = "cubyz:branch",
-	.texture = "cubyz:cactus",
+	.model = .{
+		.radius = 4,
+	},
+	.texture_top = "cubyz:branch/cactus/dot",
+	.texture_bottom = "cubyz:branch/cactus/half_line",
+	.texture_right = "cubyz:branch/cactus/line",
+	.texture_left = "cubyz:branch/cactus/bend",
+	.texture_front = "cubyz:branch/cactus/intersection",
+	.texture_back = "cubyz:branch/cactus/cross",
 	.item = .{
 		.material = .{
 			.density = 0.8,
