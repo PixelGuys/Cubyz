@@ -170,7 +170,7 @@ pub const Sync = struct { // MARK: Sync
 	};
 
 	pub const ServerSide = struct { // MARK: ServerSide
-		const ServerInventory = struct {
+		pub const ServerInventory = struct {
 			inv: Inventory,
 			users: main.ListUnmanaged(*main.server.User),
 			source: Source,
@@ -184,7 +184,7 @@ pub const Sync = struct { // MARK: Sync
 				};
 			}
 
-			fn deinit(self: *ServerInventory) void {
+			pub fn deinit(self: *ServerInventory) void {
 				main.utils.assertLocked(&mutex);
 				std.debug.assert(self.users.items.len == 0);
 				self.users.deinit(main.globalAllocator);
@@ -203,7 +203,7 @@ pub const Sync = struct { // MARK: Sync
 				main.utils.assertLocked(&mutex);
 				_ = self.users.swapRemove(std.mem.indexOfScalar(*main.server.User, self.users.items, user).?);
 				std.debug.assert(user.inventoryClientToServerIdMap.fetchRemove(clientId).?.value == self.inv.id);
-				if(self.users.items.len == 0) {
+				if(self.source != .blockInventory and self.users.items.len == 0) {
 					self.deinit();
 				}
 			}
@@ -324,6 +324,9 @@ pub const Sync = struct { // MARK: Sync
 			}
 			const inventory = ServerInventory.init(len, typ, source);
 
+			inventories.items[inventory.inv.id] = inventory;
+			inventories.items[inventory.inv.id].addUser(user, clientId);
+
 			switch(source) {
 				.sharedTestingInventory => {},
 				.playerInventory, .hand => {
@@ -350,14 +353,21 @@ pub const Sync = struct { // MARK: Sync
 					inventory.inv._items[inventory.inv._items.len - 1].item = .{.baseItem = recipe.resultItem};
 				},
 				.blockInventory => |pos| {
-					_ = pos;
+					if (main.server.world.?.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2])) |entityChunk| {
+						defer entityChunk.decreaseRefCount();
+
+						if (entityChunk.getChunk()) |chunk| {
+							chunk.inventories.put(.{
+								pos[0] & @as(i32, main.chunk.chunkMask),
+								pos[1] & @as(i32, main.chunk.chunkMask),
+								pos[2] & @as(i32, main.chunk.chunkMask),
+							}, &inventories.items[inventory.inv.id]) catch unreachable;
+						}
+					}
 				},
 				.other => {},
 				.alreadyFreed => unreachable,
 			}
-
-			inventories.items[inventory.inv.id] = inventory;
-			inventories.items[inventory.inv.id].addUser(user, clientId);
 		}
 
 		fn closeInventory(user: *main.server.User, clientId: u32) !void {

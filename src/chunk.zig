@@ -259,6 +259,8 @@ pub const Chunk = struct { // MARK: Chunk
 pub const ServerChunk = struct { // MARK: ServerChunk
 	super: Chunk,
 
+	inventories: std.AutoHashMap(Vec3i, *Inventory.Sync.ServerSide.ServerInventory) = undefined,
+
 	wasChanged: bool = false,
 	generated: bool = false,
 	wasStored: bool = false,
@@ -281,6 +283,8 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 			},
 			.refCount = .init(1),
 		};
+		self.inventories = .init(main.globalAllocator.allocator);
+		
 		self.super.data.init();
 		return self;
 	}
@@ -290,6 +294,14 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 		if(self.wasChanged) {
 			self.save(main.server.world.?);
 		}
+
+		var iter = self.inventories.valueIterator();
+		while (iter.next()) |val| {
+			Inventory.Sync.ServerSide.mutex.lock();
+			defer Inventory.Sync.ServerSide.mutex.unlock();
+			val.*.deinit();
+		}
+		self.inventories.deinit();
 
 		self.super.data.deinit();
 		serverPool.destroy(@alignCast(self));
