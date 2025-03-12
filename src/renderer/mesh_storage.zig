@@ -174,15 +174,6 @@ pub fn getBlock(x: i32, y: i32, z: i32) ?blocks.Block {
 	return block;
 }
 
-pub fn getInventory(x: i32, y: i32, z: i32) ?main.items.Inventory {
-	const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize = 1});
-	node.mutex.lock();
-	defer node.mutex.unlock();
-	const mesh = node.mesh orelse return null;
-	const inv = mesh.chunk.getInventory(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask);
-	return inv;
-}
-
 pub fn getLight(wx: i32, wy: i32, wz: i32) ?[6]u8 {
 	const node = getNodePointer(.{.wx = wx, .wy = wy, .wz = wz, .voxelSize = 1});
 	node.mutex.lock();

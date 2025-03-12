@@ -38,11 +38,13 @@ pub fn deinit() void {
 	itemSlots.deinit();
 }
 
-pub var openInventory: ?main.items.Inventory = null;
+pub var openInventory: main.items.Inventory = undefined;
 
 pub fn onOpen() void {
 	const blockPos = main.renderer.MeshSelection.selectedBlockPos.?;
-	openInventory = main.renderer.mesh_storage.getInventory(blockPos[0], blockPos[1], blockPos[2]);
+	const block = main.renderer.mesh_storage.getBlock(blockPos[0], blockPos[1], blockPos[2]).?;
+	openInventory = main.items.Inventory.init(main.globalAllocator, block.inventorySize().?, .{.blockInventory = blockPos}, .{.blockInventory = blockPos});
+	// openInventory = main.renderer.mesh_storage.getInventory(blockPos[0], blockPos[1], blockPos[2]);
 	
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 0);
 	// Some miscellanious slots and buttons:
@@ -51,7 +53,7 @@ pub fn onOpen() void {
 		const row = HorizontalList.init();
 		for(0..10) |x| {
 			const index: usize = y*10 + x;
-			const slot = ItemSlot.init(.{0, 0}, openInventory.?, @intCast(index), .default, .normal);
+			const slot = ItemSlot.init(.{0, 0}, openInventory, @intCast(index), .default, .normal);
 			itemSlots.append(slot);
 			row.add(slot);
 		}
@@ -64,6 +66,7 @@ pub fn onOpen() void {
 }
 
 pub fn onClose() void {
+	openInventory.deinit(main.globalAllocator);
 	itemSlots.clearRetainingCapacity();
 	if(window.rootComponent) |*comp| {
 		comp.deinit();

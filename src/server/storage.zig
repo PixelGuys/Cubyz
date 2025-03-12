@@ -348,7 +348,6 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 				for(0..chunk.chunkVolume) |i| {
 					const newBlock = main.blocks.Block.fromInt(try decompressedReader.readInt(u32));
 					ch.data.setValue(i, newBlock);
-					ch.updateInventoryIndex(i, newBlock);
 				}
 			},
 			.deflate_with_8bit_palette => {
@@ -369,15 +368,10 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 
 				for(0..chunk.chunkVolume) |i| {
 					ch.data.setRawValue(i, decompressedData[i]);
-					ch.updateInventoryIndex(i, ch.data.palette[decompressedData[i]]);
 				}
 			},
 			.uniform => {
-				const newBlock = main.blocks.Block.fromInt(try reader.readInt(u32));
-				ch.data.palette[0] = newBlock;
-				for(0..chunk.chunkVolume) |i| {
-					ch.updateInventoryIndex(i, newBlock);
-				}
+				ch.data.palette[0] = main.blocks.Block.fromInt(try reader.readInt(u32));
 			},
 			_ => {
 				return error.corrupted;
