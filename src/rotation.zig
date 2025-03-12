@@ -257,6 +257,11 @@ pub const RotationModes = struct {
 			return blocks.meshes.modelIndexStart(block) + @min(block.data, 3);
 		}
 
+		fn rotateZ(data: u16) u16 {
+			var neighbor: Neighbor = @enumFromInt(data + 2);
+			return neighbor.rotateZ().toInt() - 2;
+		}
+
 		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, playerDir: Vec3f, _: Vec3i, _: ?Neighbor, currentData: *Block, _: Block, blockPlacing: bool) bool {
 			if(blockPlacing) {
 				if(@abs(playerDir[0]) > @abs(playerDir[1])) {
