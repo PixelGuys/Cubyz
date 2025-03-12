@@ -599,80 +599,84 @@ pub const RotationModes = struct {
 		}
 
 		fn rotateX(data: u16) u16 {
-			comptime var rotateTable: [8][3]u1 = undefined;
-			comptime  for(0..2) |i| for(0..2) |j| for(0..2) |k| {
-				const sin: f32 = @sin(std.math.pi / 2.0);
-				const cos: f32 = @cos(std.math.pi / 2.0);
-				const x: f32 = (@as(f32, @floatFromInt(i)) - 0.5) * 2.0;
-				const y: f32 = (@as(f32, @floatFromInt(j)) - 0.5) * 2.0;
-				const z: f32 = (@as(f32, @floatFromInt(k)) - 0.5) * 2.0;
-				rotateTable[i*4 + j*2 + k] = .{
-					@intFromBool(x > 0),
-					@intFromBool(y*cos - z*sin > 0),
-					@intFromBool(y*sin + z*cos > 0),
+			comptime var rotateTable: [256]u8 = undefined;
+			@setEvalBranchQuota(10_000);
+			comptime for(0..256) |old| {
+				var new: u8 = 0;
+
+				for(0..2) |i| for(0..2) |j| for(0..2) |k| {
+					const sin: f32 = @sin(std.math.pi/2.0);
+					const cos: f32 = @cos(std.math.pi/2.0);
+
+					const x: f32 = (@as(f32, @floatFromInt(i)) - 0.5)*2.0;
+					const y: f32 = (@as(f32, @floatFromInt(j)) - 0.5)*2.0;
+					const z: f32 = (@as(f32, @floatFromInt(k)) - 0.5)*2.0;
+
+					const rX = @intFromBool(x > 0);
+					const rY = @intFromBool(y*cos - z*sin > 0);
+					const rZ = @intFromBool(y*sin + z*cos > 0);
+
+					if(hasSubBlock(@intCast(old), @intCast(i), @intCast(j), @intCast(k))) {
+						new |= subBlockMask(rX, rY, rZ);
+					}
 				};
+				rotateTable[old] = new;
 			};
-			var new: u8 = 0;
-			for(0..2) |i| for(0..2) |j| for(0..2) |k| {
-				const x: u1 = @truncate(i);
-				const y: u1 = @truncate(j);
-				const z: u1 = @truncate(k);
-				const xyz = rotateTable[i*4 + j*2 + k];
-				if(hasSubBlock(@truncate(data), x, y, z)) {
-					new |= subBlockMask(xyz[0], xyz[1], xyz[2]);
-				}
-			};
-			return new;
+			return rotateTable[data];
 		}
 
 		fn rotateY(data: u16) u16 {
-			comptime var rotateTable: [8][3]u1 = undefined;
-			comptime  for(0..2) |i| for(0..2) |j| for(0..2) |k| {
-				const sin: f32 = @sin(std.math.pi / 2.0);
-				const cos: f32 = @cos(std.math.pi / 2.0);
-				const x: f32 = (@as(f32, @floatFromInt(i)) - 0.5) * 2.0;
-				const y: f32 = (@as(f32, @floatFromInt(j)) - 0.5) * 2.0;
-				const z: f32 = (@as(f32, @floatFromInt(k)) - 0.5) * 2.0;
-				rotateTable[i*4 + j*2 + k] = .{
-					@intFromBool(x*cos + z*sin > 0),
-					@intFromBool(y > 0),
-					@intFromBool(z*cos - x*sin > 0),
+			comptime var rotateTable: [256]u8 = undefined;
+			@setEvalBranchQuota(10_000);
+			comptime for(0..256) |old| {
+				var new: u8 = 0;
+
+				for(0..2) |i| for(0..2) |j| for(0..2) |k| {
+					const sin: f32 = @sin(std.math.pi/2.0);
+					const cos: f32 = @cos(std.math.pi/2.0);
+
+					const x: f32 = (@as(f32, @floatFromInt(i)) - 0.5)*2.0;
+					const y: f32 = (@as(f32, @floatFromInt(j)) - 0.5)*2.0;
+					const z: f32 = (@as(f32, @floatFromInt(k)) - 0.5)*2.0;
+
+					const rX = @intFromBool(x*cos + z*sin > 0);
+					const rY = @intFromBool(y > 0);
+					const rZ = @intFromBool(z*cos - x*sin > 0);
+
+					if(hasSubBlock(@intCast(old), @intCast(i), @intCast(j), @intCast(k))) {
+						new |= subBlockMask(rX, rY, rZ);
+					}
 				};
+				rotateTable[old] = new;
 			};
-			var new: u8 = 0;
-			for(0..2) |i| for(0..2) |j| for(0..2) |k| {
-				const x: u1 = @truncate(i);
-				const y: u1 = @truncate(j);
-				const z: u1 = @truncate(k);
-				const xyz = rotateTable[i*4 + j*2 + k];
-				new |= subBlockMask(xyz[0], xyz[1], xyz[2]) * @intFromBool(hasSubBlock(@truncate(data), x, y, z));
-			};
-			return new;
+			return rotateTable[data];
 		}
 
 		fn rotateZ(data: u16) u16 {
-			comptime var rotateTable: [8][3]u1 = undefined;
-			comptime  for(0..2) |i| for(0..2) |j| for(0..2) |k| {
-				const sin: f32 = @sin(std.math.pi / 2.0);
-				const cos: f32 = @cos(std.math.pi / 2.0);
-				const x: f32 = (@as(f32, @floatFromInt(i)) - 0.5) * 2.0;
-				const y: f32 = (@as(f32, @floatFromInt(j)) - 0.5) * 2.0;
-				const z: f32 = (@as(f32, @floatFromInt(k)) - 0.5) * 2.0;
-				rotateTable[i*4 + j*2 + k] = .{
-					@intFromBool(x*cos - y*sin > 0),
-					@intFromBool(x*sin + y*cos > 0),
-					@intFromBool(z > 0),
+			comptime var rotateTable: [256]u8 = undefined;
+			@setEvalBranchQuota(10_000);
+			comptime for(0..256) |old| {
+				var new: u8 = 0;
+
+				for(0..2) |i| for(0..2) |j| for(0..2) |k| {
+					const sin: f32 = @sin(std.math.pi/2.0);
+					const cos: f32 = @cos(std.math.pi/2.0);
+
+					const x: f32 = (@as(f32, @floatFromInt(i)) - 0.5)*2.0;
+					const y: f32 = (@as(f32, @floatFromInt(j)) - 0.5)*2.0;
+					const z: f32 = (@as(f32, @floatFromInt(k)) - 0.5)*2.0;
+
+					const rX = @intFromBool(x*cos - y*sin > 0);
+					const rY = @intFromBool(x*sin + y*cos > 0);
+					const rZ = @intFromBool(z > 0);
+
+					if(hasSubBlock(@intCast(old), @intCast(i), @intCast(j), @intCast(k))) {
+						new |= subBlockMask(rX, rY, rZ);
+					}
 				};
+				rotateTable[old] = new;
 			};
-			var new: u8 = 0;
-			for(0..2) |i| for(0..2) |j| for(0..2) |k| {
-				const x: u1 = @truncate(i);
-				const y: u1 = @truncate(j);
-				const z: u1 = @truncate(k);
-				const xyz = rotateTable[i*4 + j*2 + k];
-				new |= subBlockMask(xyz[0], xyz[1], xyz[2]) * @intFromBool(hasSubBlock(@truncate(data), x, y, z));
-			};
-			return new;
+			return rotateTable[data];
 		}
 
 		fn init() void {}
@@ -1196,12 +1200,12 @@ pub const RotationModes = struct {
 		fn rotateZ(data: u16) u16 {
 			const old: CarpetData = @bitCast(@as(u6, @intCast(data)));
 			const new: CarpetData = .{
-			.posZ = old.posZ,
-			.negZ = old.negZ,
-			.posY = old.posX,
-			.negY = old.negX,
-			.negX = old.posY,
-			.posX = old.negY,
+				.posZ = old.posZ,
+				.negZ = old.negZ,
+				.posY = old.posX,
+				.negY = old.negX,
+				.negX = old.posY,
+				.posX = old.negY,
 			};
 			return @as(u6, @bitCast(new));
 		}
