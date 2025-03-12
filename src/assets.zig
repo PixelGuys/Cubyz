@@ -311,7 +311,7 @@ fn registerRecipesFromZon(zon: ZonElement) void {
 pub const Palette = struct { // MARK: Palette
 	palette: main.List([]const u8),
 
-	pub fn init(allocator: NeverFailingAllocator, zon: ZonElement, firstElement: ?[]const u8) !*@This() {
+	pub fn init(allocator: NeverFailingAllocator, zon: ZonElement, firstElement: ?[]const u8) !*Palette {
 		const self = switch(zon) {
 			.object => try loadFromZonLegacy(allocator, zon),
 			.array, .null => try loadFromZon(allocator, zon),
@@ -326,7 +326,7 @@ pub const Palette = struct { // MARK: Palette
 		}
 		return self;
 	}
-	fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) !*@This() {
+	fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) !*Palette {
 		const items = zon.toSlice();
 
 		const self = allocator.create(Palette);
@@ -341,7 +341,7 @@ pub const Palette = struct { // MARK: Palette
 		}
 		return self;
 	}
-	fn loadFromZonLegacy(allocator: NeverFailingAllocator, zon: ZonElement) !*@This() {
+	fn loadFromZonLegacy(allocator: NeverFailingAllocator, zon: ZonElement) !*Palette {
 		// Using zon.object.count() here has the implication that array can not be sparse.
 		const paletteLength = zon.object.count();
 		const translationPalette = main.stackAllocator.alloc([]const u8, paletteLength);
