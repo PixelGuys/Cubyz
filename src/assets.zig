@@ -313,30 +313,29 @@ pub const Palette = struct { // MARK: Palette
 
 	pub fn init(allocator: NeverFailingAllocator, zon: ZonElement, firstElement: ?[]const u8) !*@This() {
 		const self = switch(zon) {
-			.null => try initEmpty(allocator, firstElement),
 			.object => try loadFromZonLegacy(allocator, zon),
-			.array => try loadFromZon(allocator, zon),
+			.array, .null => try loadFromZon(allocator, zon),
 			else => return error.InvalidPaletteFormat,
 		};
-		std.debug.assert(firstElement == null or std.mem.eql(u8, self.palette.items[0], firstElement.?));
-		return self;
-	}
-	fn initEmpty(allocator: NeverFailingAllocator, firstElement: ?[]const u8) !*@This() {
-		const self = allocator.create(Palette);
-		self.* = Palette{
-			.palette = .initCapacity(allocator, 128),
-		};
-		if(firstElement) |elem| self.palette.append(allocator.dupe(u8, elem));
+
+		if(firstElement) |elem| {
+			if(self.palette.items.len == 0) {
+				self.palette.append(allocator.dupe(u8, elem));
+			}
+			std.debug.assert(std.mem.eql(u8, self.palette.items[0], elem));
+		}
 		return self;
 	}
 	fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) !*@This() {
+		const items = zon.toSlice();
+
 		const self = allocator.create(Palette);
 		self.* = Palette{
-			.palette = .initCapacity(allocator, zon.array.items.len),
+			.palette = .initCapacity(allocator, @max(items.len, 128)),
 		};
 		errdefer self.deinit();
 
-		for(zon.array.items) |name| {
+		for(items) |name| {
 			const stringId = name.as(?[]const u8, null) orelse return error.InvalidPaletteFormat;
 			self.palette.appendAssumeCapacity(allocator.dupe(u8, stringId));
 		}
