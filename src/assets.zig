@@ -300,7 +300,7 @@ fn assignBlockItem(assetFolder: []const u8, stringId: []const u8, zon: ZonElemen
 }
 
 fn registerBiome(numericId: u32, stringId: []const u8, zon: ZonElement) void {
-	if(zon == .null) std.log.err("Missing biomes: {s}. Replacing it with default biome.", .{stringId});
+	if(zon == .null) std.log.err("Missing biome: {s}. Replacing it with default biome.", .{stringId});
 	biomes_zig.register(stringId, numericId, zon);
 }
 
