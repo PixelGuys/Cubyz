@@ -363,15 +363,15 @@ pub const Block = packed struct { // MARK: Block
 	}
 
 	pub inline fn rotateX(self: Block) Block {
-		return .{ .typ = self.typ, .data = self.mode().rotateX(self.data)};
+		return .{.typ = self.typ, .data = self.mode().rotateX(self.data)};
 	}
 
 	pub inline fn rotateY(self: Block) Block {
-		return .{ .typ = self.typ, .data = self.mode().rotateY(self.data)};
+		return .{.typ = self.typ, .data = self.mode().rotateY(self.data)};
 	}
 
 	pub inline fn rotateZ(self: Block) Block {
-		return .{ .typ = self.typ, .data = self.mode().rotateZ(self.data)};
+		return .{.typ = self.typ, .data = self.mode().rotateZ(self.data)};
 	}
 
 	pub inline fn lodReplacement(self: Block) u16 {
