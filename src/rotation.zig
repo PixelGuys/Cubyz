@@ -618,7 +618,9 @@ pub const RotationModes = struct {
 				const y: u1 = @truncate(j);
 				const z: u1 = @truncate(k);
 				const xyz = rotateTable[i*4 + j*2 + k];
-				new |= subBlockMask(xyz[0], xyz[1], xyz[2]) * @intFromBool(hasSubBlock(@truncate(data), x, y, z));
+				if(hasSubBlock(@truncate(data), x, y, z)) {
+					new |= subBlockMask(xyz[0], xyz[1], xyz[2]);
+				}
 			};
 			return new;
 		}
