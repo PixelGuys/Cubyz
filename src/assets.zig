@@ -261,8 +261,6 @@ pub fn readAssets(
 }
 
 fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void {
-	if(items_zig.hasRegistered(id)) return;
-
 	var split = std.mem.splitScalar(u8, id, ':');
 	const mod = split.first();
 	var texturePath: []const u8 = &[0]u8{};
@@ -287,13 +285,7 @@ fn registerBlock(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void
 	blocks_zig.meshes.register(assetFolder, id, zon);
 }
 
-fn assignBlockItem(assetFolder: []const u8, stringId: []const u8, zon: ZonElement, itemPalette: *Palette) !void {
-	if(!zon.get(bool, "hasItem", true)) return;
-
-	if(!items_zig.hasRegistered(stringId)) {
-		try registerItem(assetFolder, stringId, zon.getChild("item"));
-		itemPalette.add(stringId);
-	}
+fn assignBlockItem(stringId: []const u8) !void {
 	const block = blocks_zig.getTypeById(stringId);
 	const item = items_zig.getByID(stringId) orelse unreachable;
 	item.block = block;
@@ -457,46 +449,79 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		_ = main.models.registerModel(entry.key_ptr.*, entry.value_ptr.*);
 	}
 
-	// items #1
-	for(itemPalette.palette.items) |id| {
+	blocks_zig.meshes.registerBlockBreakingAnimation(assetFolder);
+
+	// Blocks:
+	// First blocks from the palette to enforce ID values.
+	for(blockPalette.palette.items) |stringId| {
+		try registerBlock(assetFolder, stringId, blocks.get(stringId) orelse .null);
+	}
+
+	// Then all the blocks that were missing in palette but are present in the game.
+	var iterator = blocks.iterator();
+	while(iterator.next()) |entry| {
+		const stringId = entry.key_ptr.*;
+		const zon = entry.value_ptr.*;
+
+		if(blocks_zig.hasRegistered(stringId)) continue;
+
+		try registerBlock(assetFolder, stringId, zon);
+		blockPalette.add(stringId);
+	}
+
+	// Items:
+	// First from the palette to enforce ID values.
+	for(itemPalette.palette.items) |stringId| {
+		std.debug.assert(!items_zig.hasRegistered(stringId));
+
 		// Normal items should appear in items hash map.
-		if(items.get(id)) |zon| {
-			try registerItem(assetFolder, id, zon);
+		if(items.get(stringId)) |zon| {
+			try registerItem(assetFolder, stringId, zon);
 			continue;
 		}
 		// But there are also items created automatically from blocks.
-		if(blocks.get(id)) |zon| {
+		if(blocks.get(stringId)) |zon| {
 			if(!zon.get(bool, "hasItem", true)) continue;
-			try registerItem(assetFolder, id, zon.getChild("item"));
+			try registerItem(assetFolder, stringId, zon.getChild("item"));
 			continue;
 		}
-		std.log.err("Missing item: {s}. Replacing it with default item.", .{id});
-		try registerItem(assetFolder, id, .null);
+		std.log.err("Missing item: {s}. Replacing it with default item.", .{stringId});
+		try registerItem(assetFolder, stringId, .null);
 	}
 
-	// blocks:
-	blocks_zig.meshes.registerBlockBreakingAnimation(assetFolder);
-	for(blockPalette.palette.items) |id| {
-		try registerBlock(assetFolder, id, blocks.get(id) orelse .null);
+	// Then missing block-items to keep backwards compatibility of ID order.
+	for(blockPalette.palette.items) |stringId| {
+		const zon = blocks.get(stringId) orelse .null;
+
+		if(!zon.get(bool, "hasItem", true)) continue;
+		if(items_zig.hasRegistered(stringId)) continue;
+
+		try registerItem(assetFolder, stringId, zon.getChild("item"));
+		itemPalette.add(stringId);
 	}
 
-	var iterator = blocks.iterator();
-	while(iterator.next()) |entry| {
-		if(blocks_zig.hasRegistered(entry.key_ptr.*)) continue;
-		try registerBlock(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
-		blockPalette.add(entry.key_ptr.*);
-	}
-
-	for(blockPalette.palette.items) |id| {
-		try assignBlockItem(assetFolder, id, blocks.get(id) orelse .null, itemPalette);
-	}
-
-	// items #2
+	// And finally normal items.
 	iterator = items.iterator();
 	while(iterator.next()) |entry| {
-		if(items_zig.hasRegistered(entry.key_ptr.*)) continue;
-		try registerItem(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
-		itemPalette.add(entry.key_ptr.*);
+		const stringId = entry.key_ptr.*;
+		const zon = entry.value_ptr.*;
+
+		if(items_zig.hasRegistered(stringId)) continue;
+		std.debug.assert(zon != .null);
+
+		try registerItem(assetFolder, stringId, zon);
+		itemPalette.add(stringId);
+	}
+
+	// After we have registered all items and all blocks, we can assign block references to those that come from blocks.
+	for(blockPalette.palette.items) |stringId| {
+		const zon = blocks.get(stringId) orelse .null;
+
+		if(!zon.get(bool, "hasItem", true)) continue;
+		std.debug.assert(items_zig.hasRegistered(stringId));
+		std.debug.assert(zon != .null);
+
+		try assignBlockItem(stringId);
 	}
 
 	// tools:
