@@ -108,6 +108,24 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 			},
 		}
 	}
+
+	// Returns the neighbor that is rotated by 90 degrees counterclockwise around the x axis.
+	pub inline fn rotateX(self: Neighbor) Neighbor {
+		const arr = [_]Neighbor{.dirPosY, .dirNegY, .dirPosX, .dirNegX, .dirDown, .dirUp};
+		return arr[@intFromEnum(self)];
+	}
+
+	// Returns the neighbor that is rotated by 90 degrees counterclockwise around the y axis.
+	pub inline fn rotateY(self: Neighbor) Neighbor {
+		const arr = [_]Neighbor{.dirPosX, .dirNegX, .dirDown, .dirUp, .dirPosY, .dirNegY};
+		return arr[@intFromEnum(self)];
+	}
+
+	// Returns the neighbor that is rotated by 90 degrees counterclockwise around the z axis.
+	pub inline fn rotateZ(self: Neighbor) Neighbor {
+		const arr = [_]Neighbor{.dirUp, .dirDown, .dirPosY, .dirNegY, .dirNegX, .dirPosX};
+		return arr[@intFromEnum(self)];
+	}
 };
 
 /// Gets the index of a given position inside this chunk.
