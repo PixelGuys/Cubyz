@@ -389,7 +389,6 @@ pub const Palette = struct { // MARK: Palette
 
 	pub fn storeToZon(self: *Palette, allocator: NeverFailingAllocator) ZonElement {
 		const zon = ZonElement.initArray(allocator);
-		errdefer zon.free(allocator);
 
 		zon.array.ensureCapacity(self.palette.items.len);
 
