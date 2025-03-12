@@ -370,6 +370,10 @@ pub const RotationModes = struct {
 			branchModels.deinit();
 		}
 
+		fn reset() void {
+			branchModels.clearRetainingCapacity();
+		}
+
 		const Direction = enum(u2) {
 			negYDir = 0,
 			posXDir = 1,
