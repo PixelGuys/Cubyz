@@ -344,8 +344,10 @@ pub const Palette = struct { // MARK: Palette
 	fn loadFromZonLegacy(allocator: NeverFailingAllocator, zon: ZonElement) !*Palette {
 		// Using zon.object.count() here has the implication that array can not be sparse.
 		const paletteLength = zon.object.count();
-		const translationPalette = main.stackAllocator.alloc([]const u8, paletteLength);
+		const translationPalette = main.stackAllocator.alloc(?[]const u8, paletteLength);
 		defer main.stackAllocator.free(translationPalette);
+
+		for(translationPalette) |*elem| elem.* = null;
 
 		var iterator = zon.object.iterator();
 		while(iterator.next()) |entry| {
@@ -366,8 +368,8 @@ pub const Palette = struct { // MARK: Palette
 		errdefer self.deinit();
 
 		for(translationPalette) |val| {
-			std.log.info("palette[{}]: {s}", .{self.palette.items.len, val});
-			self.palette.appendAssumeCapacity(allocator.dupe(u8, val));
+			self.palette.appendAssumeCapacity(allocator.dupe(u8, val orelse return error.MissingKeyInPalette));
+			std.log.info("palette[{}]: {s}", .{self.palette.items.len, val.?});
 		}
 		return self;
 	}
