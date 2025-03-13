@@ -1597,7 +1597,7 @@ pub const Command = struct { // MARK: Command
 
 			if(main.server.world.?.getSimulationChunkAndIncreaseRefCount(self.pos[0], self.pos[1], self.pos[2])) |entityChunk| {
 				defer entityChunk.decreaseRefCount();
-				
+
 				if(entityChunk.getChunk()) |chunk| {
 					const relPos = self.pos & @as(Vec3i, @splat(main.chunk.chunkMask));
 
@@ -1615,7 +1615,7 @@ pub const Command = struct { // MARK: Command
 
 							blockDrop(self.pos, .{.items = &.{item}, .chance = 1.0});
 						}
-						
+
 						Sync.ServerSide.mutex.lock();
 						defer Sync.ServerSide.mutex.unlock();
 						inv.deinit();
