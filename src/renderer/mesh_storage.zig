@@ -980,7 +980,9 @@ fn addBreakingAnimationFace(pos: Vec3i, quadIndex: u16, texture: u16, neighbor: 
 	defer mesh.mutex.unlock();
 	const lightIndex = blk: {
 		const meshData = if(isTransparent) &mesh.transparentMesh else &mesh.opaqueMesh;
-		for(meshData.completeList) |face| {
+		meshData.lock.lockRead();
+		defer meshData.lock.unlockRead();
+		for(meshData.completeList.getEverything()) |face| {
 			if(face.position.x == relPos[0] and face.position.y == relPos[1] and face.position.z == relPos[2] and face.blockAndQuad.quadIndex == quadIndex) {
 				break :blk face.position.lightIndex;
 			}
