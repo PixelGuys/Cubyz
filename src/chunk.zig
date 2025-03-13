@@ -8,6 +8,7 @@ const vec = @import("vec.zig");
 const Inventory = main.items.Inventory;
 const Vec3i = vec.Vec3i;
 const Vec3d = vec.Vec3d;
+const ZonElement = main.ZonElement;
 
 pub const chunkShift: u5 = 5;
 pub const chunkShift2: u5 = chunkShift*2;
@@ -501,6 +502,22 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 		}
 
 		self.setChanged();
+	}
+
+	pub fn saveInventoriesToZon(self: *ServerChunk, allocator: main.heap.NeverFailingAllocator) ZonElement {
+		var res = ZonElement.initObject(allocator);
+
+		var iter = self.inventories.iterator();
+		while (iter.next()) |entry| {
+			const pos = entry.key_ptr.*;
+			const val = entry.value_ptr.*;
+
+			const key = std.fmt.allocPrint(main.stackAllocator.allocator, "{d},{d},{d}", .{pos[0], pos[1], pos[2]}) catch unreachable;
+			defer main.stackAllocator.free(key);
+			res.put(key, Inventory.save(val.inv, allocator));
+		}
+
+		return res;
 	}
 
 	pub fn save(self: *ServerChunk, world: *main.server.ServerWorld) void {

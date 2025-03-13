@@ -308,6 +308,20 @@ pub const Sync = struct { // MARK: Sync
 			executeCommand(payload, source);
 		}
 
+		pub fn createBlockInventory(pos: Vec3i, id: usize) void {
+			if(main.server.world.?.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2])) |entityChunk| {
+				defer entityChunk.decreaseRefCount();
+
+				if(entityChunk.getChunk()) |chunk| {
+					chunk.inventories.put(.{
+						pos[0] & @as(i32, main.chunk.chunkMask),
+						pos[1] & @as(i32, main.chunk.chunkMask),
+						pos[2] & @as(i32, main.chunk.chunkMask),
+					}, &inventories.items[id]) catch unreachable;
+				}
+			}
+		}
+
 		fn createInventory(user: *main.server.User, clientId: u32, len: usize, typ: Inventory.Type, source: Source) void {
 			main.utils.assertLocked(&mutex);
 			switch(source) {
@@ -353,17 +367,7 @@ pub const Sync = struct { // MARK: Sync
 					inventory.inv._items[inventory.inv._items.len - 1].item = .{.baseItem = recipe.resultItem};
 				},
 				.blockInventory => |pos| {
-					if(main.server.world.?.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2])) |entityChunk| {
-						defer entityChunk.decreaseRefCount();
-
-						if(entityChunk.getChunk()) |chunk| {
-							chunk.inventories.put(.{
-								pos[0] & @as(i32, main.chunk.chunkMask),
-								pos[1] & @as(i32, main.chunk.chunkMask),
-								pos[2] & @as(i32, main.chunk.chunkMask),
-							}, &inventories.items[inventory.inv.id]) catch unreachable;
-						}
-					}
+					createBlockInventory(pos, inventory.inv.id);
 				},
 				.other => {},
 				.alreadyFreed => unreachable,
@@ -1588,6 +1592,36 @@ pub const Command = struct { // MARK: Command
 					// Inform the client of the actual block:
 					main.network.Protocols.blockUpdate.send(user.?.conn, self.pos[0], self.pos[1], self.pos[2], actualBlock);
 					return error.serverFailure;
+				}
+			}
+
+			if(main.server.world.?.getSimulationChunkAndIncreaseRefCount(self.pos[0], self.pos[1], self.pos[2])) |entityChunk| {
+				defer entityChunk.decreaseRefCount();
+				
+				if(entityChunk.getChunk()) |chunk| {
+					const relPos = self.pos & @as(Vec3i, @splat(main.chunk.chunkMask));
+
+					if(!chunk.inventories.contains(relPos) and self.oldBlock.inventorySize()) {
+						const inventory = Sync.ServerSide.ServerInventory.init(self.oldBlock.inventorySize(), .{.blockInventory = self.pos}, .{.blockInventory = self.pos});
+						Sync.ServerSide.inventories[inventory.inv.id] = inventory;
+						Sync.ServerSide.createBlockInventory(self.pos, inventory.inv.id);
+					}
+
+					if(chunk.inventories.get(relPos)) |inv| {
+						for(inv.inv._items) |item| {
+							if(item.amount == 0 or item.item == null) {
+								continue;
+							}
+
+							blockDrop(self.pos, .{.items = &.{item}, .chance = 1.0});
+						}
+						
+						Sync.ServerSide.mutex.lock();
+						defer Sync.ServerSide.mutex.unlock();
+						inv.deinit();
+
+						_ = chunk.inventories.remove(relPos);
+					}
 				}
 			}
 
