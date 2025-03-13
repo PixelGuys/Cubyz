@@ -296,7 +296,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 		}
 
 		var iter = self.inventories.valueIterator();
-		while (iter.next()) |val| {
+		while(iter.next()) |val| {
 			Inventory.Sync.ServerSide.mutex.lock();
 			defer Inventory.Sync.ServerSide.mutex.unlock();
 			val.*.deinit();

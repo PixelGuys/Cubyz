@@ -353,10 +353,10 @@ pub const Sync = struct { // MARK: Sync
 					inventory.inv._items[inventory.inv._items.len - 1].item = .{.baseItem = recipe.resultItem};
 				},
 				.blockInventory => |pos| {
-					if (main.server.world.?.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2])) |entityChunk| {
+					if(main.server.world.?.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2])) |entityChunk| {
 						defer entityChunk.decreaseRefCount();
 
-						if (entityChunk.getChunk()) |chunk| {
+						if(entityChunk.getChunk()) |chunk| {
 							chunk.inventories.put(.{
 								pos[0] & @as(i32, main.chunk.chunkMask),
 								pos[1] & @as(i32, main.chunk.chunkMask),
@@ -1094,7 +1094,7 @@ pub const Command = struct { // MARK: Command
 					writer.writeInt(i32, val[0]);
 					writer.writeInt(i32, val[1]);
 					writer.writeInt(i32, val[2]);
-				}
+				},
 			}
 		}
 
@@ -1132,11 +1132,10 @@ pub const Command = struct { // MARK: Command
 					},
 				},
 				.blockInventory => .{.blockInventory = .{
-						try reader.readInt(i32),
-						try reader.readInt(i32),
-						try reader.readInt(i32),
-					}
-				},
+					try reader.readInt(i32),
+					try reader.readInt(i32),
+					try reader.readInt(i32),
+				}},
 				.other => .{.other = {}},
 				.alreadyFreed => unreachable,
 			};
@@ -1144,11 +1143,10 @@ pub const Command = struct { // MARK: Command
 				inline .normal, .creative, .crafting => |tag| tag,
 				.workbench => .{.workbench = main.items.getToolTypeByID(reader.remaining) orelse return error.Invalid},
 				.blockInventory => .{.blockInventory = .{
-						try reader.readInt(i32),
-						try reader.readInt(i32),
-						try reader.readInt(i32),
-					}
-				},
+					try reader.readInt(i32),
+					try reader.readInt(i32),
+					try reader.readInt(i32),
+				}},
 			};
 			Sync.ServerSide.createInventory(user.?, id, len, typ, source);
 			return .{
