@@ -519,7 +519,6 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 
 		if(!zon.get(bool, "hasItem", true)) continue;
 		std.debug.assert(items_zig.hasRegistered(stringId));
-		std.debug.assert(zon != .null);
 
 		try assignBlockItem(stringId);
 	}
