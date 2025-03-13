@@ -6,4 +6,6 @@
 	},
 	.model = "cubyz:cube",
 	.rotation = .planar,
+	.inventorySize = 10,
+	.gui = .chest,
 }
