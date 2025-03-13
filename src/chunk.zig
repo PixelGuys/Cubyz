@@ -284,7 +284,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 			.refCount = .init(1),
 		};
 		self.inventories = .init(main.globalAllocator.allocator);
-		
+
 		self.super.data.init();
 		return self;
 	}
