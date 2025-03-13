@@ -1601,9 +1601,9 @@ pub const Command = struct { // MARK: Command
 				if(entityChunk.getChunk()) |chunk| {
 					const relPos = self.pos & @as(Vec3i, @splat(main.chunk.chunkMask));
 
-					if(!chunk.inventories.contains(relPos) and self.oldBlock.inventorySize()) {
-						const inventory = Sync.ServerSide.ServerInventory.init(self.oldBlock.inventorySize(), .{.blockInventory = self.pos}, .{.blockInventory = self.pos});
-						Sync.ServerSide.inventories[inventory.inv.id] = inventory;
+					if(!chunk.inventories.contains(relPos) and self.oldBlock.inventorySize() != null) {
+						const inventory = Sync.ServerSide.ServerInventory.init(self.oldBlock.inventorySize().?, .{.blockInventory = self.pos}, .{.blockInventory = self.pos});
+						Sync.ServerSide.inventories.items[inventory.inv.id] = inventory;
 						Sync.ServerSide.createBlockInventory(self.pos, inventory.inv.id);
 					}
 
