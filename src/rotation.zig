@@ -115,7 +115,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 
 	model: *const fn(block: Block) u16 = &DefaultFunctions.model,
 
-	// Rotates block data 90 degrees counterclockwise round X axis.
+	// Rotates block data 90 degrees counterclockwise round Z axis.
 	rotateZ: *const fn(data: u16) u16 = DefaultFunctions.rotateZ,
 
 	createBlockModel: *const fn(zon: ZonElement) u16 = &DefaultFunctions.createBlockModel,
@@ -438,7 +438,7 @@ pub const RotationModes = struct {
 		}
 
 		fn rotateZ(data: u16) u16 {
-			var old: BranchData = .init(data);
+			const old: BranchData = .init(data);
 			var new: BranchData = .init(0);
 
 			new.setConnection(Neighbor.dirUp.rotateZ(), old.isConnected(Neighbor.dirUp));
@@ -548,10 +548,10 @@ pub const RotationModes = struct {
 		pub const id: []const u8 = "stairs";
 		var modelIndex: u16 = 0;
 
-		inline fn subBlockMask(x: u1, y: u1, z: u1) u8 {
+		fn subBlockMask(x: u1, y: u1, z: u1) u8 {
 			return @as(u8, 1) << ((@as(u3, x)*2 + @as(u3, y))*2 + z);
 		}
-		inline fn hasSubBlock(stairData: u8, x: u1, y: u1, z: u1) bool {
+		fn hasSubBlock(stairData: u8, x: u1, y: u1, z: u1) bool {
 			return stairData & subBlockMask(x, y, z) == 0;
 		}
 
