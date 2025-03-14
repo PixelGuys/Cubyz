@@ -25,7 +25,7 @@ pub const UserCommandData = struct {
 
 	pub fn deinit(self: *UserCommandData) void {
 		if(self.clipboard != null) {
-			self.clipboard.?.deinit();
+			self.clipboard.?.deinit(main.globalAllocator);
 		}
 	}
 };

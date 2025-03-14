@@ -89,7 +89,7 @@ pub const Blueprint = struct {
 			.sizeZ = 0,
 		};
 	}
-	pub fn deinit(self: *@This()) void {
+	pub fn deinit(self: *@This(), _: NeverFailingAllocator) void {
 		self.blocks.deinit();
 	}
 	pub fn clear(self: *@This()) void {
@@ -97,6 +97,17 @@ pub const Blueprint = struct {
 		self.sizeY = 0;
 		self.sizeZ = 0;
 		self.blocks.clearRetainingCapacity();
+	}
+	pub fn clone(self: *@This(), allocator: NeverFailingAllocator) @This() {
+		var new = Blueprint.init(allocator);
+		new.sizeX = self.sizeX;
+		new.sizeY = self.sizeY;
+		new.sizeZ = self.sizeZ;
+		new.blocks = .initCapacity(allocator, self.blocks.items.len);
+		for(self.blocks.items) |block| {
+			new.blocks.appendAssumeCapacity(block);
+		}
+		return new;
 	}
 	pub fn capture(self: *@This(), pos1: Vec3i, pos2: Vec3i) ?struct {x: i32, y: i32, z: i32, message: []const u8} {
 		self.clear();
