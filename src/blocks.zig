@@ -108,6 +108,8 @@ var _lodReplacement: [maxBlockCount]u16 = undefined;
 var _opaqueVariant: [maxBlockCount]u16 = undefined;
 var _friction: [maxBlockCount]f32 = undefined;
 
+var _inventorySize: [maxBlockCount]?u32 = undefined;
+
 var _allowOres: [maxBlockCount]bool = undefined;
 
 var _touchFunction: [maxBlockCount]?*const TouchFunction = undefined;
@@ -151,6 +153,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_viewThrough[size] = zon.get(bool, "viewThrough", false) or _transparent[size] or _alwaysViewThrough[size];
 	_hasBackFace[size] = zon.get(bool, "hasBackFace", false);
 	_friction[size] = zon.get(f32, "friction", 20);
+	_inventorySize[size] = zon.get(?u32, "inventorySize", null);
 	_allowOres[size] = zon.get(bool, "allowOres", false);
 	_touchFunction[size] = TouchFunctions.getFunctionPointer(zon.get([]const u8, "touchFunction", ""));
 
@@ -372,6 +375,10 @@ pub const Block = packed struct { // MARK: Block
 
 	pub inline fn friction(self: Block) f32 {
 		return _friction[self.typ];
+	}
+
+	pub inline fn inventorySize(self: Block) ?u32 {
+		return _inventorySize[self.typ];
 	}
 
 	pub inline fn allowOres(self: Block) bool {

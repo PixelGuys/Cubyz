@@ -170,7 +170,7 @@ pub const Sync = struct { // MARK: Sync
 	};
 
 	pub const ServerSide = struct { // MARK: ServerSide
-		const ServerInventory = struct {
+		pub const ServerInventory = struct {
 			inv: Inventory,
 			users: main.ListUnmanaged(*main.server.User),
 			source: Source,
@@ -184,7 +184,7 @@ pub const Sync = struct { // MARK: Sync
 				};
 			}
 
-			fn deinit(self: *ServerInventory) void {
+			pub fn deinit(self: *ServerInventory) void {
 				main.utils.assertLocked(&mutex);
 				std.debug.assert(self.users.items.len == 0);
 				self.users.deinit(main.globalAllocator);
@@ -203,7 +203,7 @@ pub const Sync = struct { // MARK: Sync
 				main.utils.assertLocked(&mutex);
 				_ = self.users.swapRemove(std.mem.indexOfScalar(*main.server.User, self.users.items, user).?);
 				std.debug.assert(user.inventoryClientToServerIdMap.fetchRemove(clientId).?.value == self.inv.id);
-				if(self.users.items.len == 0) {
+				if(self.source != .blockInventory and self.users.items.len == 0) {
 					self.deinit();
 				}
 			}
@@ -308,10 +308,24 @@ pub const Sync = struct { // MARK: Sync
 			executeCommand(payload, source);
 		}
 
+		pub fn createBlockInventory(pos: Vec3i, id: usize) void {
+			if(main.server.world.?.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2])) |entityChunk| {
+				defer entityChunk.decreaseRefCount();
+
+				if(entityChunk.getChunk()) |chunk| {
+					chunk.inventories.put(.{
+						pos[0] & @as(i32, main.chunk.chunkMask),
+						pos[1] & @as(i32, main.chunk.chunkMask),
+						pos[2] & @as(i32, main.chunk.chunkMask),
+					}, &inventories.items[id]) catch unreachable;
+				}
+			}
+		}
+
 		fn createInventory(user: *main.server.User, clientId: u32, len: usize, typ: Inventory.Type, source: Source) void {
 			main.utils.assertLocked(&mutex);
 			switch(source) {
-				.sharedTestingInventory, .recipe => {
+				.sharedTestingInventory, .recipe, .blockInventory => {
 					for(inventories.items) |*inv| {
 						if(std.meta.eql(inv.source, source)) {
 							inv.addUser(user, clientId);
@@ -323,6 +337,9 @@ pub const Sync = struct { // MARK: Sync
 				.alreadyFreed => unreachable,
 			}
 			const inventory = ServerInventory.init(len, typ, source);
+
+			inventories.items[inventory.inv.id] = inventory;
+			inventories.items[inventory.inv.id].addUser(user, clientId);
 
 			switch(source) {
 				.sharedTestingInventory => {},
@@ -349,12 +366,12 @@ pub const Sync = struct { // MARK: Sync
 					inventory.inv._items[inventory.inv._items.len - 1].amount = recipe.resultAmount;
 					inventory.inv._items[inventory.inv._items.len - 1].item = .{.baseItem = recipe.resultItem};
 				},
+				.blockInventory => |pos| {
+					createBlockInventory(pos, inventory.inv.id);
+				},
 				.other => {},
 				.alreadyFreed => unreachable,
 			}
-
-			inventories.items[inventory.inv.id] = inventory;
-			inventories.items[inventory.inv.id].addUser(user, clientId);
 		}
 
 		fn closeInventory(user: *main.server.User, clientId: u32) !void {
@@ -739,10 +756,42 @@ pub const Command = struct { // MARK: Command
 
 	fn do(self: *Command, allocator: NeverFailingAllocator, side: Side, user: ?*main.server.User, gamemode: main.game.Gamemode) error{serverFailure}!void { // MARK: do()
 		std.debug.assert(self.baseOperations.items.len == 0); // do called twice without cleaning up
+		
+		var invs: main.List(Inventory) = .init(main.stackAllocator);
+		defer invs.deinit();
+
+		switch(self.payload) {
+			.addHealth => {},
+			inline .open, .close, .clear => |val| {
+				invs.append(val.inv);
+			},
+			inline .drop, .updateBlock => |val| {
+				invs.append(val.source.inv);
+			},
+			.fillFromCreative => |val| {
+				invs.append(val.dest.inv);
+			},
+			.depositOrDrop => |val| {
+				invs.append(val.source);
+				invs.append(val.dest);
+			},
+			inline else => |val| {
+				invs.append(val.source.inv);
+				invs.append(val.dest.inv);
+			},
+		}
+
 		switch(self.payload) {
 			inline else => |payload| {
 				try payload.run(allocator, self, side, user, gamemode);
 			},
+		}
+		
+
+		for(invs.items) |inv| {
+			if (inv.type == .blockInventory) {
+				
+			}
 		}
 	}
 
@@ -1064,6 +1113,11 @@ pub const Command = struct { // MARK: Command
 						writer.writeWithDelimiter(val.sourceItems[i].id, 0);
 					}
 				},
+				.blockInventory => |val| {
+					writer.writeInt(i32, val[0]);
+					writer.writeInt(i32, val[1]);
+					writer.writeInt(i32, val[2]);
+				},
 				.sharedTestingInventory, .other => {},
 				.alreadyFreed => unreachable,
 			}
@@ -1071,6 +1125,11 @@ pub const Command = struct { // MARK: Command
 				.normal, .creative, .crafting => {},
 				.workbench => {
 					writer.writeSlice(self.inv.type.workbench.id);
+				},
+				.blockInventory => |val| {
+					writer.writeInt(i32, val[0]);
+					writer.writeInt(i32, val[1]);
+					writer.writeInt(i32, val[2]);
 				},
 			}
 		}
@@ -1108,12 +1167,22 @@ pub const Command = struct { // MARK: Command
 						return error.Invalid;
 					},
 				},
+				.blockInventory => .{.blockInventory = .{
+					try reader.readInt(i32),
+					try reader.readInt(i32),
+					try reader.readInt(i32),
+				}},
 				.other => .{.other = {}},
 				.alreadyFreed => unreachable,
 			};
 			const typ: Type = switch(typeEnum) {
 				inline .normal, .creative, .crafting => |tag| tag,
 				.workbench => .{.workbench = main.items.getToolTypeByID(reader.remaining) orelse return error.Invalid},
+				.blockInventory => .{.blockInventory = .{
+					try reader.readInt(i32),
+					try reader.readInt(i32),
+					try reader.readInt(i32),
+				}},
 			};
 			Sync.ServerSide.createInventory(user.?, id, len, typ, source);
 			return .{
@@ -1558,6 +1627,36 @@ pub const Command = struct { // MARK: Command
 				}
 			}
 
+			if(main.server.world.?.getSimulationChunkAndIncreaseRefCount(self.pos[0], self.pos[1], self.pos[2])) |entityChunk| {
+				defer entityChunk.decreaseRefCount();
+
+				if(entityChunk.getChunk()) |chunk| {
+					const relPos = self.pos & @as(Vec3i, @splat(main.chunk.chunkMask));
+
+					if(!chunk.inventories.contains(relPos) and self.oldBlock.inventorySize() != null) {
+						const inventory = Sync.ServerSide.ServerInventory.init(self.oldBlock.inventorySize().?, .{.blockInventory = self.pos}, .{.blockInventory = self.pos});
+						Sync.ServerSide.inventories.items[inventory.inv.id] = inventory;
+						Sync.ServerSide.createBlockInventory(self.pos, inventory.inv.id);
+					}
+
+					if(chunk.inventories.get(relPos)) |inv| {
+						for(inv.inv._items) |item| {
+							if(item.amount == 0 or item.item == null) {
+								continue;
+							}
+
+							blockDrop(self.pos, .{.items = &.{item}, .chance = 1.0});
+						}
+
+						Sync.ServerSide.mutex.lock();
+						defer Sync.ServerSide.mutex.unlock();
+						inv.deinit();
+
+						_ = chunk.inventories.remove(relPos);
+					}
+				}
+			}
+
 			// Apply inventory changes:
 			switch(costOfChange) {
 				.no => unreachable,
@@ -1682,6 +1781,7 @@ const SourceType = enum(u8) {
 	sharedTestingInventory = 2,
 	hand = 3,
 	recipe = 4,
+	blockInventory = 5,
 	other = 0xff, // TODO: List every type separately here.
 };
 const Source = union(SourceType) {
@@ -1690,6 +1790,7 @@ const Source = union(SourceType) {
 	sharedTestingInventory: void,
 	hand: u32,
 	recipe: *const main.items.Recipe,
+	blockInventory: Vec3i,
 	other: void,
 };
 
@@ -1700,12 +1801,14 @@ const TypeEnum = enum(u8) {
 	creative = 1,
 	crafting = 2,
 	workbench = 3,
+	blockInventory = 4,
 };
 const Type = union(TypeEnum) {
 	normal: void,
 	creative: void,
 	crafting: void,
 	workbench: *const main.items.ToolType,
+	blockInventory: Vec3i,
 };
 type: Type,
 id: u32,
@@ -1876,5 +1979,19 @@ pub fn loadFromZon(self: Inventory, zon: ZonElement) void {
 			};
 			stack.amount = stackZon.get(u16, "amount", 0);
 		}
+	}
+}
+
+pub fn saveToBin(self: Inventory, writer: *utils.BinaryWriter) void {
+	writer.writeInt(u16, @intCast(self._items.len));
+	for(self._items) |stack| {
+		stack.writeToBin(writer);
+	}
+}
+
+pub fn loadFromBin(self: Inventory, reader: *utils.BinaryReader) !void {
+	_ = try reader.readInt(u16);
+	for (self._items) |*stack| {
+		stack.* = ItemStack.loadFromBin(reader);
 	}
 }

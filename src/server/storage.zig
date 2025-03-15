@@ -346,7 +346,8 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 				var decompressedReader = BinaryReader.init(decompressedData, .big);
 
 				for(0..chunk.chunkVolume) |i| {
-					ch.data.setValue(i, main.blocks.Block.fromInt(try decompressedReader.readInt(u32)));
+					const newBlock = main.blocks.Block.fromInt(try decompressedReader.readInt(u32));
+					ch.data.setValue(i, newBlock);
 				}
 			},
 			.deflate_with_8bit_palette => {
