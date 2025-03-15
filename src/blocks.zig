@@ -13,6 +13,7 @@ const items = @import("items.zig");
 const models = @import("models.zig");
 const rotation = @import("rotation.zig");
 const RotationMode = rotation.RotationMode;
+const Degrees = rotation.Degrees;
 const Entity = main.server.Entity;
 
 pub const BlockTag = enum(u32) {
@@ -362,8 +363,8 @@ pub const Block = packed struct { // MARK: Block
 		return _mode[self.typ];
 	}
 
-	pub inline fn rotateZ(self: Block) Block {
-		return .{.typ = self.typ, .data = self.mode().rotateZ(self.data)};
+	pub inline fn rotateZ(self: Block, angle: Degrees) Block {
+		return .{.typ = self.typ, .data = self.mode().rotateZ(self.data, angle)};
 	}
 
 	pub inline fn lodReplacement(self: Block) u16 {

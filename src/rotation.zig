@@ -18,6 +18,13 @@ const RayIntersectionResult = struct {
 	max: Vec3f,
 };
 
+pub const Degrees = enum(u2) {
+	@"90" = 0,
+	@"180" = 1,
+	@"270" = 2,
+	@"0" = 3,
+};
+
 // TODO: Why not just use a tagged union?
 /// Each block gets 16 bit of additional storage(apart from the reference to the block type).
 /// These 16 bits are accessed and interpreted by the `RotationMode`.
@@ -27,7 +34,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 		fn model(block: Block) u16 {
 			return blocks.meshes.modelIndexStart(block);
 		}
-		fn rotateZ(data: u16) u16 {
+		fn rotateZ(data: u16, _: Degrees) u16 {
 			return data;
 		}
 		fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: ?Neighbor, _: *Block, _: Block, blockPlacing: bool) bool {
@@ -116,7 +123,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 	model: *const fn(block: Block) u16 = &DefaultFunctions.model,
 
 	// Rotates block data 90 degrees counterclockwise round Z axis.
-	rotateZ: *const fn(data: u16) u16 = DefaultFunctions.rotateZ,
+	rotateZ: *const fn(data: u16, angle: Degrees) u16 = DefaultFunctions.rotateZ,
 
 	createBlockModel: *const fn(zon: ZonElement) u16 = &DefaultFunctions.createBlockModel,
 
@@ -189,9 +196,18 @@ pub const RotationModes = struct {
 			return blocks.meshes.modelIndexStart(block) + @min(block.data, 5);
 		}
 
-		fn rotateZ(data: u16) u16 {
-			var neighbor: Neighbor = @enumFromInt(data);
-			return @intFromEnum(neighbor.rotateZ());
+		fn rotateZ(data: u16, angle: Degrees) u16 {
+			comptime var rotationTable: [24]u8 = undefined;
+			comptime for(0..6) |i| {
+				rotationTable[i] = i;
+			};
+			comptime for(1..4) |a| {
+				for(0..6) |i| {
+					const neighbor: Neighbor = @enumFromInt(rotationTable[i + 6*(a - 1)]);
+					rotationTable[i + 6*a] = neighbor.rotateZ().toInt();
+				}
+			};
+			return rotationTable[data + @as(u16, @intCast(@intFromEnum(angle)))*6];
 		}
 
 		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, neighbor: ?Neighbor, currentData: *Block, _: Block, blockPlacing: bool) bool {
@@ -237,9 +253,18 @@ pub const RotationModes = struct {
 			return blocks.meshes.modelIndexStart(block) + @min(block.data, 3);
 		}
 
-		fn rotateZ(data: u16) u16 {
-			var neighbor: Neighbor = @enumFromInt(data + 2);
-			return neighbor.rotateZ().toInt() - 2;
+		fn rotateZ(data: u16, angle: Degrees) u16 {
+			comptime var rotationTable: [16]u8 = undefined;
+			comptime for(0..4) |i| {
+				rotationTable[i] = i + 2;
+			};
+			comptime for(1..4) |a| {
+				for(0..4) |i| {
+					const neighbor: Neighbor = @enumFromInt(rotationTable[i + 4*(a - 1)]);
+					rotationTable[i + 4*a] = neighbor.rotateZ().toInt();
+				}
+			};
+			return rotationTable[data + @as(u16, @intCast(@intFromEnum(angle)))*4] - 2;
 		}
 
 		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, playerDir: Vec3f, _: Vec3i, _: ?Neighbor, currentData: *Block, _: Block, blockPlacing: bool) bool {
@@ -279,15 +304,24 @@ pub const RotationModes = struct {
 			fenceModels.clearRetainingCapacity();
 		}
 
-		fn rotateZ(data: u16) u16 {
-			var currentData: FenceData = @bitCast(@as(u4, @truncate(data)));
-			currentData = .{
-				.isConnectedNegY = currentData.isConnectedNegX,
-				.isConnectedPosY = currentData.isConnectedPosX,
-				.isConnectedPosX = currentData.isConnectedNegY,
-				.isConnectedNegX = currentData.isConnectedPosY,
+		fn rotateZ(data: u16, angle: Degrees) u16 {
+			comptime var rotateTable: [64]u8 = undefined;
+			comptime for(0..16) |i| {
+				rotateTable[i] = @intCast(i);
 			};
-			return @as(u4, @bitCast(currentData));
+			comptime for(1..4) |a| {
+				for(0..16) |i| {
+					const old: FenceData = @bitCast(@as(u4, @intCast(rotateTable[i + 16*(a - 1)])));
+					const new: FenceData = .{
+						.isConnectedNegY = old.isConnectedNegX,
+						.isConnectedPosY = old.isConnectedPosX,
+						.isConnectedPosX = old.isConnectedNegY,
+						.isConnectedNegX = old.isConnectedPosY,
+					};
+					rotateTable[i + 16*a] = @as(u4, @bitCast(new));
+				}
+			};
+			return rotateTable[data + @as(u16, @intCast(@intFromEnum(angle)))*16];
 		}
 
 		fn fenceTransform(quad: *main.models.QuadInfo, data: FenceData) void {
@@ -437,18 +471,30 @@ pub const RotationModes = struct {
 			return blocks.meshes.modelIndexStart(block) + (block.data & 63);
 		}
 
-		fn rotateZ(data: u16) u16 {
-			const old: BranchData = .init(data);
-			var new: BranchData = .init(0);
+		fn rotateZ(data: u16, angle: Degrees) u16 {
+			@setEvalBranchQuota(65_536);
 
-			new.setConnection(Neighbor.dirUp.rotateZ(), old.isConnected(Neighbor.dirUp));
-			new.setConnection(Neighbor.dirDown.rotateZ(), old.isConnected(Neighbor.dirDown));
-			new.setConnection(Neighbor.dirPosX.rotateZ(), old.isConnected(Neighbor.dirPosX));
-			new.setConnection(Neighbor.dirNegX.rotateZ(), old.isConnected(Neighbor.dirNegX));
-			new.setConnection(Neighbor.dirPosY.rotateZ(), old.isConnected(Neighbor.dirPosY));
-			new.setConnection(Neighbor.dirNegY.rotateZ(), old.isConnected(Neighbor.dirNegY));
+			comptime var rotationTable: [64]u8 = undefined;
+			comptime for(0..16) |i| {
+				rotationTable[i] = @intCast(i << 2);
+			};
+			comptime for(1..4) |a| {
+				for(0..16) |i| {
+					const old: BranchData = .init(rotationTable[i + 16*(a - 1)]);
+					var new: BranchData = .init(0);
 
-			return new.enabledConnections;
+					new.setConnection(Neighbor.dirPosX.rotateZ(), old.isConnected(Neighbor.dirPosX));
+					new.setConnection(Neighbor.dirNegX.rotateZ(), old.isConnected(Neighbor.dirNegX));
+					new.setConnection(Neighbor.dirPosY.rotateZ(), old.isConnected(Neighbor.dirPosY));
+					new.setConnection(Neighbor.dirNegY.rotateZ(), old.isConnected(Neighbor.dirNegY));
+
+					rotationTable[i + 16*a] = new.enabledConnections;
+				}
+			};
+
+			const rotationIndex = ((data & 0b111100) >> 2) + @as(u16, @intCast(@intFromEnum(angle)))*16;
+			const upDownFlags = data & 0b000011;
+			return rotationTable[rotationIndex] | upDownFlags;
 		}
 
 		pub fn generateData(
@@ -555,29 +601,32 @@ pub const RotationModes = struct {
 			return stairData & subBlockMask(x, y, z) == 0;
 		}
 
-		fn rotateZ(data: u16) u16 {
-			comptime var rotateTable: [256]u8 = undefined;
-			@setEvalBranchQuota(10_000);
-			comptime for(0..256) |old| {
-				var new: u8 = 0;
+		fn rotateZ(data: u16, angle: Degrees) u16 {
+			@setEvalBranchQuota(65_536);
 
-				for(0..2) |i| for(0..2) |j| for(0..2) |k| {
-					const sin: f32 = @sin(std.math.pi/2.0);
-					const cos: f32 = @cos(std.math.pi/2.0);
+			comptime var rotateTable: [1024]u8 = undefined;
+			comptime for(0..4) |a| {
+				for(0..256) |old| {
+					var new: u8 = 0;
 
-					const x: f32 = (@as(f32, @floatFromInt(i)) - 0.5)*2.0;
-					const y: f32 = (@as(f32, @floatFromInt(j)) - 0.5)*2.0;
+					for(0..2) |i| for(0..2) |j| for(0..2) |k| {
+						const sin: f32 = @sin((std.math.pi/2.0)*@as(f32, @floatFromInt(a)));
+						const cos: f32 = @cos((std.math.pi/2.0)*@as(f32, @floatFromInt(a)));
 
-					const rX = @intFromBool(x*cos - y*sin > 0);
-					const rY = @intFromBool(x*sin + y*cos > 0);
+						const x: f32 = (@as(f32, @floatFromInt(i)) - 0.5)*2.0;
+						const y: f32 = (@as(f32, @floatFromInt(j)) - 0.5)*2.0;
 
-					if(hasSubBlock(@intCast(old), @intCast(i), @intCast(j), @intCast(k))) {
-						new |= subBlockMask(rX, rY, @intCast(k));
-					}
-				};
-				rotateTable[old] = new;
+						const rX = @intFromBool(x*cos - y*sin > 0);
+						const rY = @intFromBool(x*sin + y*cos > 0);
+
+						if(hasSubBlock(@intCast(old), @intCast(i), @intCast(j), @intCast(k))) {
+							new |= subBlockMask(rX, rY, @intCast(k));
+						}
+					};
+					rotateTable[old + a*256] = new;
+				}
 			};
-			return rotateTable[data];
+			return rotateTable[data + @as(u16, @intCast(@intFromEnum(angle)))*256];
 		}
 
 		fn init() void {}
@@ -956,16 +1005,26 @@ pub const RotationModes = struct {
 			return blocks.meshes.modelIndexStart(block) + (@as(u5, @truncate(block.data)) -| 1);
 		}
 
-		fn rotateZ(data: u16) u16 {
-			var currentData: TorchData = @bitCast(@as(u5, @truncate(data)));
-			currentData = .{
-				.center = currentData.center,
-				.negY = currentData.negX,
-				.posY = currentData.posX,
-				.posX = currentData.negY,
-				.negX = currentData.posY,
+		fn rotateZ(data: u16, angle: Degrees) u16 {
+			comptime var rotateTable: [128]u8 = undefined;
+			comptime for(0..32) |i| {
+				rotateTable[i] = @intCast(i);
 			};
-			return @as(u5, @bitCast(currentData));
+			comptime for(1..4) |a| {
+				for(0..32) |i| {
+					const old: TorchData = @bitCast(@as(u5, @intCast(rotateTable[i + 32*(a - 1)])));
+					const new: TorchData = .{
+						.center = old.center,
+						.negY = old.negX,
+						.posY = old.posX,
+						.posX = old.negY,
+						.negX = old.posY,
+					};
+					rotateTable[i + 32*a] = @as(u5, @bitCast(new));
+				}
+			};
+
+			return rotateTable[data + @as(u16, @intCast(@intFromEnum(angle)))*32];
 		}
 
 		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, relativeDir: Vec3i, neighbor: ?Neighbor, currentData: *Block, neighborBlock: Block, _: bool) bool {
@@ -1072,17 +1131,27 @@ pub const RotationModes = struct {
 			posZ: bool,
 		};
 
-		fn rotateZ(data: u16) u16 {
-			const old: CarpetData = @bitCast(@as(u6, @intCast(data)));
-			const new: CarpetData = .{
-				.posZ = old.posZ,
-				.negZ = old.negZ,
-				.posY = old.posX,
-				.negY = old.negX,
-				.negX = old.posY,
-				.posX = old.negY,
+		fn rotateZ(data: u16, angle: Degrees) u16 {
+			comptime var rotateTable: [256]u8 = undefined;
+			comptime for(0..64) |i| {
+				rotateTable[i] = @intCast(i);
 			};
-			return @as(u6, @bitCast(new));
+			comptime for(1..4) |a| {
+				for(0..64) |i| {
+					const old: CarpetData = @bitCast(@as(u6, @intCast(rotateTable[i + 64*(a - 1)])));
+					const new: CarpetData = .{
+						.posZ = old.posZ,
+						.negZ = old.negZ,
+						.posY = old.posX,
+						.negY = old.negX,
+						.negX = old.posY,
+						.posX = old.negY,
+					};
+					rotateTable[i + 64*a] = @as(u6, @bitCast(new));
+				}
+			};
+
+			return rotateTable[data + @as(u16, @intCast(@intFromEnum(angle)))*64];
 		}
 
 		fn init() void {
