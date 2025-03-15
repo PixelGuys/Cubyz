@@ -567,14 +567,12 @@ pub const RotationModes = struct {
 
 					const x: f32 = (@as(f32, @floatFromInt(i)) - 0.5)*2.0;
 					const y: f32 = (@as(f32, @floatFromInt(j)) - 0.5)*2.0;
-					const z: f32 = (@as(f32, @floatFromInt(k)) - 0.5)*2.0;
 
 					const rX = @intFromBool(x*cos - y*sin > 0);
 					const rY = @intFromBool(x*sin + y*cos > 0);
-					const rZ = @intFromBool(z > 0);
 
 					if(hasSubBlock(@intCast(old), @intCast(i), @intCast(j), @intCast(k))) {
-						new |= subBlockMask(rX, rY, rZ);
+						new |= subBlockMask(rX, rY, @intCast(k));
 					}
 				};
 				rotateTable[old] = new;
