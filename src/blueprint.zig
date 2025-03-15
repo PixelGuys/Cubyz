@@ -6,6 +6,7 @@ const ZonElement = @import("zon.zig").ZonElement;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
 
+const Array3D = main.utils.Array3D;
 const Block = main.blocks.Block;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const User = main.server.User;
@@ -23,41 +24,26 @@ pub const BlueprintCompression = enum(u16) {
 };
 
 pub const Blueprint = struct {
-	blocks: main.List(Block),
-	sizeX: usize,
-	sizeY: usize,
-	sizeZ: usize,
+	blocks: Array3D(Block),
 
 	pub fn init(allocator: NeverFailingAllocator) @This() {
-		return Blueprint{
-			.blocks = .init(allocator),
-			.sizeX = 0,
-			.sizeY = 0,
-			.sizeZ = 0,
-		};
+		return Blueprint{.blocks = .init(allocator, 0, 0, 0)};
 	}
-	pub fn deinit(self: *@This(), _: NeverFailingAllocator) void {
-		self.blocks.deinit();
-	}
-	pub fn clear(self: *@This()) void {
-		self.sizeX = 0;
-		self.sizeY = 0;
-		self.sizeZ = 0;
-		self.blocks.clearRetainingCapacity();
+	pub fn deinit(self: *@This(), allocator: NeverFailingAllocator) void {
+		self.blocks.deinit(allocator);
 	}
 	pub fn clone(self: *@This(), allocator: NeverFailingAllocator) @This() {
 		var new = Blueprint.init(allocator);
-		new.sizeX = self.sizeX;
-		new.sizeY = self.sizeY;
-		new.sizeZ = self.sizeZ;
-		new.blocks = .initCapacity(allocator, self.blocks.items.len);
-		for(self.blocks.items) |block| {
-			new.blocks.appendAssumeCapacity(block);
-		}
+		new.blocks = self.blocks.clone(allocator);
 		return new;
 	}
-	pub fn capture(self: *@This(), pos1: Vec3i, pos2: Vec3i) ?struct {x: i32, y: i32, z: i32, message: []const u8} {
-		self.clear();
+	const CaptureResult = union(enum) {
+		success: Blueprint,
+		failure: struct {x: i32, y: i32, z: i32, message: []const u8},
+	};
+
+	pub fn capture(allocator: NeverFailingAllocator, pos1: Vec3i, pos2: Vec3i) CaptureResult {
+		var self = Blueprint{.blocks = undefined};
 
 		const startX = @min(pos1[0], pos2[0]);
 		const startY = @min(pos1[1], pos2[1]);
@@ -67,65 +53,53 @@ pub const Blueprint = struct {
 		const endY = @max(pos1[1], pos2[1]);
 		const endZ = @max(pos1[2], pos2[2]);
 
-		const sizeX: usize = @intCast(endX - startX + 1);
-		const sizeY: usize = @intCast(endY - startY + 1);
-		const sizeZ: usize = @intCast(endZ - startZ + 1);
+		const sizeX: u32 = @intCast(endX - startX + 1);
+		const sizeY: u32 = @intCast(endY - startY + 1);
+		const sizeZ: u32 = @intCast(endZ - startZ + 1);
 
-		self.sizeX = sizeX;
-		self.sizeY = sizeY;
-		self.sizeZ = sizeZ;
+		self.blocks = .init(allocator, sizeX, sizeY, sizeZ);
 
-		self.blocks.ensureCapacity(self.sizeX*self.sizeY*self.sizeZ);
+		for(0..sizeX) |x| {
+			const worldX = startX + @as(i32, @intCast(x));
 
-		for(0..sizeX) |offsetX| {
-			const worldX = startX + @as(i32, @intCast(offsetX));
+			for(0..sizeY) |y| {
+				const worldY = startY + @as(i32, @intCast(y));
 
-			for(0..sizeY) |offsetY| {
-				const worldY = startY + @as(i32, @intCast(offsetY));
-
-				for(0..sizeZ) |offsetZ| {
-					const worldZ = startZ + @as(i32, @intCast(offsetZ));
+				for(0..sizeZ) |z| {
+					const worldZ = startZ + @as(i32, @intCast(z));
 
 					const maybeBlock = main.server.world.?.getBlock(worldX, worldY, worldZ);
 					if(maybeBlock) |block| {
-						self.blocks.appendAssumeCapacity(block);
+						self.blocks.set(x, y, z, block);
 					} else {
-						return .{.x = worldX, .y = worldY, .z = worldZ, .message = "Chunk containing block not loaded."};
+						return .{.failure = .{.x = worldX, .y = worldY, .z = worldZ, .message = "Chunk containing block not loaded."}};
 					}
 				}
 			}
 		}
-		return null;
+		return .{.success = self};
 	}
 	pub fn paste(self: @This(), pos: Vec3i) void {
 		const startX = pos[0];
 		const startY = pos[1];
 		const startZ = pos[2];
 
-		var blockIndex: usize = 0;
+		for(0..self.blocks.width) |x| {
+			const worldX = startX + @as(i32, @intCast(x));
 
-		for(0..self.sizeX) |offsetX| {
-			const worldX = startX + @as(i32, @intCast(offsetX));
+			for(0..self.blocks.depth) |y| {
+				const worldY = startY + @as(i32, @intCast(y));
 
-			for(0..self.sizeY) |offsetY| {
-				const worldY = startY + @as(i32, @intCast(offsetY));
+				for(0..self.blocks.height) |z| {
+					const worldZ = startZ + @as(i32, @intCast(z));
 
-				for(0..self.sizeZ) |offsetZ| {
-					const worldZ = startZ + @as(i32, @intCast(offsetZ));
-
-					const block = self.blocks.items[blockIndex];
+					const block = self.blocks.get(x, y, z);
 					_ = main.server.world.?.updateBlock(worldX, worldY, worldZ, block);
-
-					blockIndex += 1;
 				}
 			}
 		}
 	}
 	pub fn store(self: @This(), allocator: NeverFailingAllocator) []u8 {
-		std.debug.assert(self.sizeX != 0);
-		std.debug.assert(self.sizeY != 0);
-		std.debug.assert(self.sizeZ != 0);
-
 		var gameIdToBlueprintId = self.makeGameIdToBlueprintIdMap(main.stackAllocator);
 		defer gameIdToBlueprintId.deinit();
 		std.debug.assert(gameIdToBlueprintId.count() != 0);
@@ -134,15 +108,12 @@ pub const Blueprint = struct {
 		defer main.stackAllocator.free(blockPalette);
 		std.debug.assert(gameIdToBlueprintId.count() == blockPalette.len);
 
-		const blockPaletteSizeBytes = getBlockPaletteSize(blockPalette);
-		const blockArraySizeBytes = self.getBlockArraySizeBytes();
-		const uncompressedDataSizeBytes = blockPaletteSizeBytes + blockArraySizeBytes;
-		std.debug.assert(uncompressedDataSizeBytes != 0);
-
-		var uncompressedWriter = BinaryWriter.initCapacity(main.stackAllocator, .big, uncompressedDataSizeBytes);
+		var uncompressedWriter = BinaryWriter.init(main.stackAllocator, .big);
 		defer uncompressedWriter.deinit();
 
 		self.storeBlockPalette(&uncompressedWriter, blockPalette);
+		const blockPaletteSizeBytes = uncompressedWriter.data.items.len;
+
 		self.storeBlockArray(&uncompressedWriter, gameIdToBlueprintId);
 
 		const compressed = self.compressOutputBuffer(main.stackAllocator, uncompressedWriter.data.items);
@@ -154,21 +125,18 @@ pub const Blueprint = struct {
 		outputWriter.writeEnum(BlueprintCompression, compressed.mode);
 		outputWriter.writeInt(u32, @intCast(blockPaletteSizeBytes));
 		outputWriter.writeInt(u16, @intCast(gameIdToBlueprintId.count()));
-		outputWriter.writeInt(u16, @intCast(self.sizeX));
-		outputWriter.writeInt(u16, @intCast(self.sizeY));
-		outputWriter.writeInt(u16, @intCast(self.sizeZ));
+		outputWriter.writeInt(u16, @intCast(self.blocks.width));
+		outputWriter.writeInt(u16, @intCast(self.blocks.depth));
+		outputWriter.writeInt(u16, @intCast(self.blocks.height));
 
 		outputWriter.writeSlice(compressed.data);
 
 		return outputWriter.data.toOwnedSlice();
 	}
-	fn getBlockArraySizeBytes(self: @This()) usize {
-		return self.sizeX*self.sizeY*self.sizeZ*@sizeOf(BlockStorageType);
-	}
 	fn makeGameIdToBlueprintIdMap(self: @This(), allocator: NeverFailingAllocator) GameIdToBlueprintIdMapType {
 		var gameIdToBlueprintId: GameIdToBlueprintIdMapType = .init(allocator.allocator);
 
-		for(self.blocks.items) |block| {
+		for(self.blocks.mem) |block| {
 			const result = gameIdToBlueprintId.getOrPut(block.typ) catch unreachable;
 			if(!result.found_existing) {
 				result.value_ptr.* = @intCast(gameIdToBlueprintId.count() - 1);
@@ -188,13 +156,6 @@ pub const Blueprint = struct {
 		}
 		return blockPalette;
 	}
-	fn getBlockPaletteSize(palette: [][]const u8) usize {
-		var total: usize = 0;
-		for(palette) |blockName| {
-			total += @sizeOf(BlockIdSizeType) + blockName.len;
-		}
-		return total;
-	}
 	fn storeBlockPalette(_: @This(), writer: *BinaryWriter, blockPalette: [][]const u8) void {
 		std.log.info("Blueprint block palette:", .{});
 
@@ -207,7 +168,7 @@ pub const Blueprint = struct {
 		}
 	}
 	fn storeBlockArray(self: @This(), writer: *BinaryWriter, map: GameIdToBlueprintIdMapType) void {
-		for(self.blocks.items) |block| {
+		for(self.blocks.mem) |block| {
 			const blueprintBlock: BlockStorageType = (Block{.typ = map.get(block.typ).?, .data = block.data}).toInt();
 			writer.writeInt(BlockStorageType, blueprintBlock);
 		}
@@ -220,23 +181,24 @@ pub const Blueprint = struct {
 			},
 		}
 	}
-	pub fn load(self: *@This(), inputBuffer: []u8) !void {
-		self.clear();
-		errdefer self.clear();
+	pub fn load(allocator: NeverFailingAllocator, inputBuffer: []u8) !@This() {
+		var self = Blueprint{.blocks = undefined};
 
 		var compressedReader = BinaryReader.init(inputBuffer, .big);
 		const version = try compressedReader.readInt(u16);
 
 		if(version > blueprintVersion) {
 			std.log.err("Blueprint version {d} is not supported. Current version is {d}.", .{version, blueprintVersion});
-			return;
+			return error.UnsupportedVersion;
 		}
 		const compression = try compressedReader.readEnum(BlueprintCompression);
 		const blockPaletteSizeBytes = try compressedReader.readInt(u32);
 		const paletteBlockCount = try compressedReader.readInt(u16);
-		self.sizeX = @intCast(try compressedReader.readInt(u16));
-		self.sizeY = @intCast(try compressedReader.readInt(u16));
-		self.sizeZ = @intCast(try compressedReader.readInt(u16));
+		const width: u32 = @intCast(try compressedReader.readInt(u16));
+		const depth: u32 = @intCast(try compressedReader.readInt(u16));
+		const height: u32 = @intCast(try compressedReader.readInt(u16));
+
+		self.blocks = .init(allocator, width, depth, height);
 
 		const decompressedData = try self.decompressBuffer(compressedReader.remaining, blockPaletteSizeBytes, compression);
 		defer main.stackAllocator.free(decompressedData);
@@ -248,17 +210,22 @@ pub const Blueprint = struct {
 		const blueprintIdToGameIdMap = makeBlueprintIdToGameIdMap(main.stackAllocator, palette);
 		defer main.stackAllocator.free(blueprintIdToGameIdMap);
 
-		for(0..self.sizeX*self.sizeY*self.sizeZ) |_| {
-			const blueprintBlockRaw = try decompressedReader.readInt(BlockStorageType);
+		for(0..self.blocks.width) |x| {
+			for(0..self.blocks.depth) |y| {
+				for(0..self.blocks.height) |z| {
+					const blueprintBlockRaw = try decompressedReader.readInt(BlockStorageType);
 
-			const blueprintBlock = Block.fromInt(blueprintBlockRaw);
-			const gameBlockId = blueprintIdToGameIdMap[blueprintBlock.typ];
+					const blueprintBlock = Block.fromInt(blueprintBlockRaw);
+					const gameBlockId = blueprintIdToGameIdMap[blueprintBlock.typ];
 
-			self.blocks.append(.{.typ = gameBlockId, .data = blueprintBlock.data});
+					self.blocks.set(x, y, z, .{.typ = gameBlockId, .data = blueprintBlock.data});
+				}
+			}
 		}
+		return self;
 	}
 	fn decompressBuffer(self: *@This(), data: []const u8, blockPaletteSizeBytes: usize, compression: BlueprintCompression) ![]u8 {
-		const blockArraySizeBytes = self.getBlockArraySizeBytes();
+		const blockArraySizeBytes = self.blocks.width*self.blocks.depth*self.blocks.height*@sizeOf(BlockStorageType);
 		const decompressedDataSizeBytes = blockPaletteSizeBytes + blockArraySizeBytes;
 
 		const decompressedData = main.stackAllocator.alloc(u8, decompressedDataSizeBytes);

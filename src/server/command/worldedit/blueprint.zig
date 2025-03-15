@@ -184,11 +184,9 @@ fn blueprintLoad(args: List([]const u8), source: *User) !void {
 	defer main.stackAllocator.free(storedBlueprint);
 
 	if(source.commandData.clipboard != null) {
-		try source.commandData.clipboard.?.load(storedBlueprint);
-	} else {
-		source.commandData.clipboard = Blueprint.init(main.globalAllocator);
-		try source.commandData.clipboard.?.load(storedBlueprint);
+		source.commandData.clipboard.?.deinit(main.globalAllocator);
 	}
+	source.commandData.clipboard = try Blueprint.load(main.globalAllocator, storedBlueprint);
 
 	std.log.info("Loaded blueprint file: {s}", .{fileName});
 	source.sendMessage("#00ff00Loaded blueprint file: {s}", .{fileName});

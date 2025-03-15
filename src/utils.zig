@@ -309,6 +309,12 @@ pub fn Array3D(comptime T: type) type { // MARK: Array3D
 			std.debug.assert(x < self.width and y < self.depth and z < self.height);
 			return &self.mem[(x*self.depth + y)*self.height + z];
 		}
+
+		pub fn clone(self: Self, allocator: NeverFailingAllocator) Self {
+			const new = Self.init(allocator, self.width, self.depth, self.height);
+			@memcpy(new.mem, self.mem);
+			return new;
+		}
 	};
 }
 
