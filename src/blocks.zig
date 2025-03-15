@@ -362,6 +362,10 @@ pub const Block = packed struct { // MARK: Block
 		return _mode[self.typ];
 	}
 
+	pub inline fn rotateZ(self: Block) Block {
+		return .{.typ = self.typ, .data = self.mode().rotateZ(self.data)};
+	}
+
 	pub inline fn lodReplacement(self: Block) u16 {
 		return _lodReplacement[self.typ];
 	}
