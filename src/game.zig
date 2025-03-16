@@ -632,11 +632,12 @@ pub const Player = struct { // MARK: Player
 		}
 	}
 
-	pub fn useHunger(amount: f32) void {
+	pub fn useHunger(amount: f32) bool{
 		if(super.hunger >= amount) {
 			super.hunger -= amount;
+			return true;
 		} else {
-			kill();
+			return false;
 		}
 	}
 
