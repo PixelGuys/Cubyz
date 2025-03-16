@@ -32,7 +32,7 @@ const BlueprintSubCommand = enum {
 pub fn execute(args: []const u8, source: *User) void {
 	var argsList = List([]const u8).init(main.stackAllocator);
 
-	var splitIterator = std.mem.splitSequence(u8, args, " ");
+	var splitIterator = std.mem.splitScalar(u8, args, ' ');
 	while(splitIterator.next()) |a| {
 		argsList.append(main.stackAllocator.dupe(u8, a));
 	}
