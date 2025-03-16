@@ -19,10 +19,10 @@ const RayIntersectionResult = struct {
 };
 
 pub const Degrees = enum(u2) {
-	@"90" = 0,
-	@"180" = 1,
-	@"270" = 2,
-	@"0" = 3,
+	@"0" = 0,
+	@"90" = 1,
+	@"180" = 2,
+	@"270" = 3,
 };
 
 // TODO: Why not just use a tagged union?
