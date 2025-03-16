@@ -580,6 +580,7 @@ pub const Player = struct { // MARK: Player
 		Player.super.vel = .{0, 0, 0};
 
 		Player.super.health = Player.super.maxHealth;
+		Player.super.hunger = Player.super.maxHunger;
 
 		Player.eyePos = .{0, 0, 0};
 		Player.eyeVel = .{0, 0, 0};
@@ -628,6 +629,23 @@ pub const Player = struct { // MARK: Player
 				inventory.fillFromCreative(@intCast(targetSlot), item);
 				selectedSlot = @intCast(targetSlot);
 			}
+		}
+	}
+
+	pub fn useHunger(amount: f32) void {
+		if(super.hunger >= amount) {
+			super.hunger -= amount;
+		} else {
+			kill();
+		}
+	}
+
+	pub fn healHunger(amount: f32) void {
+		const added = super.hunger + amount;
+		if(added > super.maxHunger) {
+			super.hunger = super.maxHunger;
+		} else {
+			super.hunger = added;
 		}
 	}
 };
