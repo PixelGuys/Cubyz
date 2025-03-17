@@ -641,13 +641,17 @@ pub const Player = struct { // MARK: Player
 		}
 	}
 
-	pub fn healHunger(amount: f32) void {
+	pub fn healHunger(amount: f32) bool {
 		const added = super.hunger + amount;
+		if (super.hunger == super.maxHunger) {
+			return false;
+		}
 		if(added > super.maxHunger) {
 			super.hunger = super.maxHunger;
 		} else {
 			super.hunger = added;
 		}
+		return true;
 	}
 };
 
