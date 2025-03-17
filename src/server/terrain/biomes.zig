@@ -284,6 +284,7 @@ pub const Biome = struct { // MARK: Biome
 	roughness: f32,
 	hills: f32,
 	mountains: f32,
+	keepOriginalTerrain: f32,
 	caves: f32,
 	caveRadiusFactor: f32,
 	crystals: u32,
@@ -326,6 +327,7 @@ pub const Biome = struct { // MARK: Biome
 			.roughness = zon.get(f32, "roughness", 0),
 			.hills = zon.get(f32, "hills", 0),
 			.mountains = zon.get(f32, "mountains", 0),
+			.keepOriginalTerrain = zon.get(f32, "keepOriginalTerrain", 0),
 			.interpolation = std.meta.stringToEnum(Interpolation, zon.get([]const u8, "interpolation", "square")) orelse .square,
 			.interpolationWeight = @max(zon.get(f32, "interpolationWeight", 1), std.math.floatMin(f32)),
 			.caves = zon.get(f32, "caves", -0.375),
@@ -357,7 +359,6 @@ pub const Biome = struct { // MARK: Biome
 					.chance = src.get(f32, "chance", 1),
 					.propertyMask = GenerationProperties.fromZon(src.getChild("properties"), false),
 					.width = src.get(u8, "width", 2),
-					.keepOriginalTerrain = src.get(f32, "keepOriginalTerrain", 0),
 				};
 				// Fill all unspecified property groups:
 				var properties: u15 = @bitCast(dst.propertyMask);
@@ -615,14 +616,12 @@ const UnfinishedTransitionBiomeData = struct {
 	chance: f32,
 	propertyMask: Biome.GenerationProperties,
 	width: u8,
-	keepOriginalTerrain: f32,
 };
 const TransitionBiome = struct {
 	biome: *const Biome,
 	chance: f32,
 	propertyMask: Biome.GenerationProperties,
 	width: u8,
-	keepOriginalTerrain: f32,
 };
 var unfinishedTransitionBiomes: std.StringHashMapUnmanaged([]UnfinishedTransitionBiomeData) = .{};
 
@@ -725,14 +724,12 @@ pub fn finishLoading() void {
 						.chance = 0,
 						.propertyMask = .{},
 						.width = 0,
-						.keepOriginalTerrain = 0,
 					};
 					continue;
 				},
 				.chance = src.chance,
 				.propertyMask = src.propertyMask,
 				.width = src.width,
-				.keepOriginalTerrain = src.keepOriginalTerrain,
 			};
 		}
 		main.globalAllocator.free(transitionBiomes);

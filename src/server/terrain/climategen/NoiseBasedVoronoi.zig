@@ -290,14 +290,16 @@ const GenerationStructure = struct {
 			while(y < max[1]) : (y += 1) {
 				const distSquare = vec.lengthSquare(Vec2f{x, y} - relPos);
 				if(distSquare < relRadius*relRadius) {
-					var seed = map.map[@intFromFloat(x)][@intFromFloat(y)].seed;
-					map.map[@intFromFloat(x)][@intFromFloat(y)] = .{
+					const entry = &map.map[@intFromFloat(x)][@intFromFloat(y)];
+					var seed = entry.seed;
+					const newHeight = @as(f32, @floatFromInt(biome.minHeight)) + @as(f32, @floatFromInt(biome.maxHeight - biome.minHeight))*random.nextFloat(&seed);
+					entry.* = .{
 						.biome = biome,
-						.roughness = biome.roughness,
-						.hills = biome.hills,
-						.mountains = biome.mountains,
-						.height = @as(f32, @floatFromInt(biome.minHeight)) + @as(f32, @floatFromInt(biome.maxHeight - biome.minHeight))*random.nextFloat(&seed),
-						.seed = map.map[@intFromFloat(x)][@intFromFloat(y)].seed,
+						.roughness = std.math.lerp(biome.roughness, entry.roughness, biome.keepOriginalTerrain),
+						.hills = std.math.lerp(biome.hills, entry.hills, biome.keepOriginalTerrain),
+						.mountains = std.math.lerp(biome.mountains, entry.mountains, biome.keepOriginalTerrain),
+						.height = std.math.lerp(newHeight, entry.height, biome.keepOriginalTerrain),
+						.seed = entry.seed,
 					};
 				}
 			}
@@ -379,10 +381,10 @@ const GenerationStructure = struct {
 							const newHeight = @as(f32, @floatFromInt(transitionBiome.biome.minHeight)) + @as(f32, @floatFromInt(transitionBiome.biome.maxHeight - transitionBiome.biome.minHeight))*random.nextFloat(&seed);
 							map[x][y] = .{
 								.biome = transitionBiome.biome,
-								.roughness = std.math.lerp(transitionBiome.biome.roughness, map[x][y].roughness, transitionBiome.keepOriginalTerrain),
-								.hills = std.math.lerp(transitionBiome.biome.hills, map[x][y].hills, transitionBiome.keepOriginalTerrain),
-								.mountains = std.math.lerp(transitionBiome.biome.mountains, map[x][y].mountains, transitionBiome.keepOriginalTerrain),
-								.height = std.math.lerp(newHeight, map[x][y].height, transitionBiome.keepOriginalTerrain),
+								.roughness = std.math.lerp(transitionBiome.biome.roughness, map[x][y].roughness, transitionBiome.biome.keepOriginalTerrain),
+								.hills = std.math.lerp(transitionBiome.biome.hills, map[x][y].hills, transitionBiome.biome.keepOriginalTerrain),
+								.mountains = std.math.lerp(transitionBiome.biome.mountains, map[x][y].mountains, transitionBiome.biome.keepOriginalTerrain),
+								.height = std.math.lerp(newHeight, map[x][y].height, transitionBiome.biome.keepOriginalTerrain),
 								.seed = map[x][y].seed,
 							};
 							break;
