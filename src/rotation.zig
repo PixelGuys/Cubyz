@@ -122,7 +122,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 
 	model: *const fn(block: Block) u16 = &DefaultFunctions.model,
 
-	// Rotates block data 90 degrees counterclockwise round Z axis.
+	// Rotates block data counterclockwise around the Z axis.
 	rotateZ: *const fn(data: u16, angle: Degrees) u16 = DefaultFunctions.rotateZ,
 
 	createBlockModel: *const fn(zon: ZonElement) u16 = &DefaultFunctions.createBlockModel,
