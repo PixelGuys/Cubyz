@@ -314,7 +314,9 @@ pub const Palette = struct { // MARK: Palette
 			if(self.palette.items.len == 0) {
 				self.palette.append(allocator.dupe(u8, elem));
 			}
-			std.debug.assert(std.mem.eql(u8, self.palette.items[0], elem));
+			if(!std.mem.eql(u8, self.palette.items[0], elem)) {
+				return error.FistItemMismatch;
+			}
 		}
 		return self;
 	}
@@ -323,7 +325,7 @@ pub const Palette = struct { // MARK: Palette
 
 		const self = allocator.create(Palette);
 		self.* = Palette{
-			.palette = .initCapacity(allocator, @max(items.len, 128)),
+			.palette = .initCapacity(allocator, items.len),
 		};
 		errdefer self.deinit();
 
@@ -339,7 +341,7 @@ pub const Palette = struct { // MARK: Palette
 		const translationPalette = main.stackAllocator.alloc(?[]const u8, paletteLength);
 		defer main.stackAllocator.free(translationPalette);
 
-		for(translationPalette) |*elem| elem.* = null;
+		@memset(translationPalette, null);
 
 		var iterator = zon.object.iterator();
 		while(iterator.next()) |entry| {
@@ -474,15 +476,15 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	for(itemPalette.palette.items) |stringId| {
 		std.debug.assert(!items_zig.hasRegistered(stringId));
 
-		// Normal items should appear in items hash map.
-		if(items.get(stringId)) |zon| {
-			try registerItem(assetFolder, stringId, zon);
-			continue;
-		}
-		// But there are also items created automatically from blocks.
+		// Some items are created automatically from blocks.
 		if(blocks.get(stringId)) |zon| {
 			if(!zon.get(bool, "hasItem", true)) continue;
 			try registerItem(assetFolder, stringId, zon.getChild("item"));
+			continue;
+		}
+		// Items not related to blocks should appear in items hash map.
+		if(items.get(stringId)) |zon| {
+			try registerItem(assetFolder, stringId, zon);
 			continue;
 		}
 		std.log.err("Missing item: {s}. Replacing it with default item.", .{stringId});

@@ -1,0 +1,3 @@
+.{
+	.{.old = "oak_log2", .new = "oak_log"},
+}
