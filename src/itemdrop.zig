@@ -43,7 +43,8 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 
 	pub const pickupRange: f64 = 1.0;
 
-	const maxSpeed = 10;
+	const terminalVelocity = 40.0;
+	const gravity = 9.81;
 
 	const maxCapacity = 65536;
 
@@ -59,20 +60,18 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 	changeQueue: main.utils.ConcurrentQueue(union(enum) {add: struct {u16, ItemDrop}, remove: u16}),
 
 	world: ?*ServerWorld,
-	gravity: f64,
 	airDragFactor: f64,
 
 	size: u32 = 0,
 
-	pub fn init(self: *ItemDropManager, allocator: NeverFailingAllocator, world: ?*ServerWorld, gravity: f64) void {
+	pub fn init(self: *ItemDropManager, allocator: NeverFailingAllocator, world: ?*ServerWorld) void {
 		self.* = ItemDropManager{
 			.allocator = allocator,
 			.list = std.MultiArrayList(ItemDrop){},
 			.isEmpty = .initFull(),
 			.changeQueue = .init(allocator, 16),
 			.world = world,
-			.gravity = gravity,
-			.airDragFactor = gravity/maxSpeed,
+			.airDragFactor = gravity/terminalVelocity,
 		};
 		self.list.resize(self.allocator.allocator, maxCapacity) catch unreachable;
 	}
@@ -329,7 +328,7 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 			self.fixStuckInBlock(chunk, pos, vel, deltaTime);
 			return;
 		}
-		vel.* += Vec3d{0, 0, -self.gravity*deltaTime};
+		vel.* += Vec3d{0, 0, -gravity*deltaTime};
 		inline for(0..3) |i| {
 			const move = vel.*[i]*deltaTime; // + acceleration[i]*deltaTime;
 			if(main.game.collision.collides(.server, @enumFromInt(i), move, pos.*, hitBox)) |box| {
@@ -443,14 +442,14 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 
 	var mutex: std.Thread.Mutex = .{};
 
-	pub fn init(self: *ClientItemDropManager, allocator: NeverFailingAllocator, world: *World) void {
+	pub fn init(self: *ClientItemDropManager, allocator: NeverFailingAllocator) void {
 		std.debug.assert(instance == null); // Only one instance allowed.
 		instance = self;
 		self.* = .{
 			.super = undefined,
 			.lastTime = @as(i16, @truncate(std.time.milliTimestamp())) -% settings.entityLookback,
 		};
-		self.super.init(allocator, null, world.gravity);
+		self.super.init(allocator, null);
 		self.interpolation.init(
 			@ptrCast(self.super.list.items(.pos).ptr),
 			@ptrCast(self.super.list.items(.vel).ptr),
