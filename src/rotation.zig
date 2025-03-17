@@ -257,16 +257,16 @@ pub const RotationModes = struct {
 		fn rotateZ(data: u16, angle: Degrees) u16 {
 			comptime var rotationTable: [4][4]u8 = undefined;
 			comptime for(0..4) |i| {
-				rotationTable[0][i] = i + 2;
+				rotationTable[0][i] = i;
 			};
 			comptime for(1..4) |a| {
 				for(0..4) |i| {
-					const neighbor: Neighbor = @enumFromInt(rotationTable[a - 1][i]);
-					rotationTable[a][i] = neighbor.rotateZ().toInt();
+					const neighbor: Neighbor = @enumFromInt(rotationTable[a - 1][i] + 2);
+					rotationTable[a][i] = neighbor.rotateZ().toInt() - 2;
 				}
 			};
 			if(data >= 4) return 0;
-			return rotationTable[@intFromEnum(angle)][data] - 2;
+			return rotationTable[@intFromEnum(angle)][data];
 		}
 
 		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, playerDir: Vec3f, _: Vec3i, _: ?Neighbor, currentData: *Block, _: Block, blockPlacing: bool) bool {
@@ -1154,7 +1154,7 @@ pub const RotationModes = struct {
 					rotationTable[a][i] = @as(u6, @bitCast(new));
 				}
 			};
-
+			if(data >= 64) return 0;
 			return rotationTable[@intFromEnum(angle)][data];
 		}
 
