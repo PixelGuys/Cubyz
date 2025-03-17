@@ -12,9 +12,10 @@ pub fn execute(args: []const u8, source: *User) void {
 		return;
 	}
 	source.mutex.lock();
-	defer source.mutex.unlock();
+	const nullablePos = source.commandData.selectionPosition1;
+	source.mutex.unlock();
 
-	if(source.commandData.selectionPosition1) |pos| {
+	if(nullablePos) |pos| {
 		source.sendMessage("Position 1: ({}, {}, {})", .{pos[0], pos[1], pos[2]});
 	} else {
 		source.sendMessage("#ff0000Position 1 isn't set", .{});

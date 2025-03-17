@@ -14,19 +14,22 @@ pub fn execute(args: []const u8, source: *User) void {
 		source.sendMessage("#ff0000Too many arguments for command /copy. Expected no arguments.", .{});
 		return;
 	}
-	source.mutex.lock();
-	defer source.mutex.unlock();
 
 	if(source.commandData.selectionPosition1) |pos1| {
 		if(source.commandData.selectionPosition2) |pos2| {
 			source.sendMessage("Copying: ({d:.3}, {d:.3}, {d:.3}) ({d:.3}, {d:.3}, {d:.3})", .{pos1[0], pos1[1], pos1[2], pos2[0], pos2[1], pos2[2]});
-			if(source.commandData.clipboard != null) {
-				source.commandData.clipboard.?.deinit(main.globalAllocator);
-			}
+
 			const result = Blueprint.capture(main.globalAllocator, pos1, pos2);
 			switch(result) {
 				.success => {
+					source.mutex.lock();
+
+					if(source.commandData.clipboard != null) {
+						source.commandData.clipboard.?.deinit(main.globalAllocator);
+					}
 					source.commandData.clipboard = result.success;
+					source.mutex.unlock();
+
 					source.sendMessage("Copied selection to clipboard.", .{});
 				},
 				.failure => {

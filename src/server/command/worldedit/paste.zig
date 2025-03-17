@@ -19,9 +19,10 @@ pub fn execute(args: []const u8, source: *User) void {
 		return;
 	}
 	source.mutex.lock();
-	defer source.mutex.unlock();
+	const nullableClipboard = source.commandData.clipboard;
+	source.mutex.unlock();
 
-	if(source.commandData.clipboard) |clipboard| {
+	if(nullableClipboard) |clipboard| {
 		const pos: Vec3i = .{
 			@intFromFloat(source.player.pos[0]),
 			@intFromFloat(source.player.pos[1]),

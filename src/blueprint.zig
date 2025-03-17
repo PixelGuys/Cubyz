@@ -11,13 +11,14 @@ const Block = main.blocks.Block;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const User = main.server.User;
 
-pub const blueprintVersion = 0;
 pub const GameIdToBlueprintIdMapType = std.AutoHashMap(u16, u16);
 const BlockIdSizeType = u32;
 const BlockStorageType = u32;
 
 const BinaryWriter = main.utils.BinaryWriter;
 const BinaryReader = main.utils.BinaryReader;
+
+pub const blueprintVersion = 0;
 
 pub const BlueprintCompression = enum(u16) {
 	deflate,
@@ -26,13 +27,13 @@ pub const BlueprintCompression = enum(u16) {
 pub const Blueprint = struct {
 	blocks: Array3D(Block),
 
-	pub fn init(allocator: NeverFailingAllocator) @This() {
-		return Blueprint{.blocks = .init(allocator, 0, 0, 0)};
+	pub fn init(allocator: NeverFailingAllocator) Blueprint {
+		return .{.blocks = .init(allocator, 0, 0, 0)};
 	}
-	pub fn deinit(self: *@This(), allocator: NeverFailingAllocator) void {
+	pub fn deinit(self: *Blueprint, allocator: NeverFailingAllocator) void {
 		self.blocks.deinit(allocator);
 	}
-	pub fn clone(self: *@This(), allocator: NeverFailingAllocator) @This() {
+	pub fn clone(self: *Blueprint, allocator: NeverFailingAllocator) Blueprint {
 		var new = Blueprint.init(allocator);
 		new.blocks = self.blocks.clone(allocator);
 		return new;
@@ -60,13 +61,13 @@ pub const Blueprint = struct {
 		self.blocks = .init(allocator, sizeX, sizeY, sizeZ);
 
 		for(0..sizeX) |x| {
-			const worldX = startX + @as(i32, @intCast(x));
+			const worldX = startX +% @as(i32, @intCast(x));
 
 			for(0..sizeY) |y| {
-				const worldY = startY + @as(i32, @intCast(y));
+				const worldY = startY +% @as(i32, @intCast(y));
 
 				for(0..sizeZ) |z| {
-					const worldZ = startZ + @as(i32, @intCast(z));
+					const worldZ = startZ +% @as(i32, @intCast(z));
 
 					const maybeBlock = main.server.world.?.getBlock(worldX, worldY, worldZ);
 					if(maybeBlock) |block| {
@@ -79,19 +80,19 @@ pub const Blueprint = struct {
 		}
 		return .{.success = self};
 	}
-	pub fn paste(self: @This(), pos: Vec3i) void {
+	pub fn paste(self: Blueprint, pos: Vec3i) void {
 		const startX = pos[0];
 		const startY = pos[1];
 		const startZ = pos[2];
 
 		for(0..self.blocks.width) |x| {
-			const worldX = startX + @as(i32, @intCast(x));
+			const worldX = startX +% @as(i32, @intCast(x));
 
 			for(0..self.blocks.depth) |y| {
-				const worldY = startY + @as(i32, @intCast(y));
+				const worldY = startY +% @as(i32, @intCast(y));
 
 				for(0..self.blocks.height) |z| {
-					const worldZ = startZ + @as(i32, @intCast(z));
+					const worldZ = startZ +% @as(i32, @intCast(z));
 
 					const block = self.blocks.get(x, y, z);
 					_ = main.server.world.?.updateBlock(worldX, worldY, worldZ, block);
@@ -99,7 +100,7 @@ pub const Blueprint = struct {
 			}
 		}
 	}
-	pub fn store(self: @This(), allocator: NeverFailingAllocator) []u8 {
+	pub fn store(self: Blueprint, allocator: NeverFailingAllocator) []u8 {
 		var gameIdToBlueprintId = self.makeGameIdToBlueprintIdMap(main.stackAllocator);
 		defer gameIdToBlueprintId.deinit();
 		std.debug.assert(gameIdToBlueprintId.count() != 0);
@@ -133,7 +134,7 @@ pub const Blueprint = struct {
 
 		return outputWriter.data.toOwnedSlice();
 	}
-	fn makeGameIdToBlueprintIdMap(self: @This(), allocator: NeverFailingAllocator) GameIdToBlueprintIdMapType {
+	fn makeGameIdToBlueprintIdMap(self: Blueprint, allocator: NeverFailingAllocator) GameIdToBlueprintIdMapType {
 		var gameIdToBlueprintId: GameIdToBlueprintIdMapType = .init(allocator.allocator);
 
 		for(self.blocks.mem) |block| {
@@ -156,7 +157,7 @@ pub const Blueprint = struct {
 		}
 		return blockPalette;
 	}
-	fn storeBlockPalette(_: @This(), writer: *BinaryWriter, blockPalette: [][]const u8) void {
+	fn storeBlockPalette(_: Blueprint, writer: *BinaryWriter, blockPalette: [][]const u8) void {
 		std.log.info("Blueprint block palette:", .{});
 
 		for(0..blockPalette.len) |index| {
@@ -167,13 +168,13 @@ pub const Blueprint = struct {
 			writer.writeSlice(blockName);
 		}
 	}
-	fn storeBlockArray(self: @This(), writer: *BinaryWriter, map: GameIdToBlueprintIdMapType) void {
+	fn storeBlockArray(self: Blueprint, writer: *BinaryWriter, map: GameIdToBlueprintIdMapType) void {
 		for(self.blocks.mem) |block| {
 			const blueprintBlock: BlockStorageType = (Block{.typ = map.get(block.typ).?, .data = block.data}).toInt();
 			writer.writeInt(BlockStorageType, blueprintBlock);
 		}
 	}
-	fn compressOutputBuffer(_: @This(), allocator: NeverFailingAllocator, decompressedData: []u8) struct {mode: BlueprintCompression, data: []u8} {
+	fn compressOutputBuffer(_: Blueprint, allocator: NeverFailingAllocator, decompressedData: []u8) struct {mode: BlueprintCompression, data: []u8} {
 		const compressionMode: BlueprintCompression = .deflate;
 		switch(compressionMode) {
 			.deflate => {
@@ -181,7 +182,7 @@ pub const Blueprint = struct {
 			},
 		}
 	}
-	pub fn load(allocator: NeverFailingAllocator, inputBuffer: []u8) !@This() {
+	pub fn load(allocator: NeverFailingAllocator, inputBuffer: []u8) !Blueprint {
 		var self = Blueprint{.blocks = undefined};
 
 		var compressedReader = BinaryReader.init(inputBuffer, .big);
@@ -224,7 +225,7 @@ pub const Blueprint = struct {
 		}
 		return self;
 	}
-	fn decompressBuffer(self: *@This(), data: []const u8, blockPaletteSizeBytes: usize, compression: BlueprintCompression) ![]u8 {
+	fn decompressBuffer(self: *Blueprint, data: []const u8, blockPaletteSizeBytes: usize, compression: BlueprintCompression) ![]u8 {
 		const blockArraySizeBytes = self.blocks.width*self.blocks.depth*self.blocks.height*@sizeOf(BlockStorageType);
 		const decompressedDataSizeBytes = blockPaletteSizeBytes + blockArraySizeBytes;
 

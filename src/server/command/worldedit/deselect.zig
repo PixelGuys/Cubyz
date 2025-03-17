@@ -11,11 +11,12 @@ pub fn execute(args: []const u8, source: *User) void {
 		source.sendMessage("#ff0000Too many arguments for command /deselect. Expected no arguments.", .{});
 		return;
 	}
+
 	source.mutex.lock();
-	defer source.mutex.unlock();
-
+	source.commandData.selectionPosition1 = null;
 	source.commandData.selectionPosition2 = null;
-	main.network.Protocols.genericUpdate.sendWorldEditPos(source.conn, .clear, null);
+	source.mutex.unlock();
 
+	main.network.Protocols.genericUpdate.sendWorldEditPos(source.conn, .clear, null);
 	source.sendMessage("Cleared selection.", .{});
 }
