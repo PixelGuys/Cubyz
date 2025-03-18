@@ -682,7 +682,7 @@ pub const Skybox = struct {
 
 		const starDist = 200.0;
 
-		const off: f32 = @sqrt(3.0) / 6.0;
+		const off: f32 = @sqrt(3.0)/6.0;
 
 		const triVertA = Vec3f{@sqrt(3.0)/3.0, starDist, -off};
 		const triVertB = Vec3f{-@sqrt(3.0)/3.0, starDist, -off};
