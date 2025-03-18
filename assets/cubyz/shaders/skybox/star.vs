@@ -1,11 +1,12 @@
 #version 430
 
 in vec3 vPos;
-in vec3 vColor;
 
 struct star {
-	vec4 pos;
-	vec4 col;
+	vec3 pos;
+	float pad1;
+	vec3 col;
+	float pad2;
 };
 
 layout (std430, binding = 12) buffer _starBuffer {
@@ -13,6 +14,7 @@ layout (std430, binding = 12) buffer _starBuffer {
 };
 
 uniform mat4 mvp;
+uniform float starOpacity;
 
 out vec3 pos;
 out vec3 starPos;
@@ -23,5 +25,5 @@ void main() {
 
 	pos = vPos;
 	starPos = starData[gl_VertexID/3].pos.xyz;
-	color = starData[gl_VertexID/3].col.xyz;
+	color = starData[gl_VertexID/3].col.xyz * starOpacity;
 }
