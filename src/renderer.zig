@@ -682,9 +682,11 @@ pub const Skybox = struct {
 
 		const starDist = 200.0;
 
-		const triVertA = Vec3f{@sqrt(3.0)/3.0, starDist, -1.0/3.0};
-		const triVertB = Vec3f{-@sqrt(3.0)/3.0, starDist, -1.0/3.0};
-		const triVertC = Vec3f{0.0, starDist, 2.0/3.0};
+		const off: f32 = @sqrt(3.0) / 6.0;
+
+		const triVertA = Vec3f{@sqrt(3.0)/3.0, starDist, -off};
+		const triVertB = Vec3f{-@sqrt(3.0)/3.0, starDist, -off};
+		const triVertC = Vec3f{0.0, starDist, 1.0 - off};
 
 		var seed: u64 = 0;
 
