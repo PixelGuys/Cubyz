@@ -12,10 +12,8 @@ pub fn execute(args: []const u8, source: *User) void {
 		return;
 	}
 
-	source.mutex.lock();
 	source.commandData.selectionPosition1 = null;
 	source.commandData.selectionPosition2 = null;
-	source.mutex.unlock();
 
 	main.network.Protocols.genericUpdate.sendWorldEditPos(source.conn, .clear, null);
 	source.sendMessage("Cleared selection.", .{});

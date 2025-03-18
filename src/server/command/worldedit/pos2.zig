@@ -19,10 +19,7 @@ pub fn execute(args: []const u8, source: *User) void {
 		@intFromFloat(source.player.pos[2]),
 	};
 
-	source.mutex.lock();
 	source.commandData.selectionPosition2 = pos;
-	source.mutex.unlock();
-
 	main.network.Protocols.genericUpdate.sendWorldEditPos(source.conn, .selectedPos2, pos);
 
 	source.sendMessage("Position 2: ({}, {}, {})", .{pos[0], pos[1], pos[2]});

@@ -75,8 +75,6 @@ fn blueprintSave(args: []const []const u8, source: *User) !void {
 		source.sendMessage("#ff0000Too many arguments for **/blueprint save**. Expected 1 argument, FILENAME.", .{});
 		return;
 	}
-	source.mutex.lock();
-	defer source.mutex.unlock();
 
 	if(source.commandData.clipboard) |clipboard| {
 		const storedBlueprint = clipboard.store(main.stackAllocator);
@@ -156,19 +154,16 @@ fn blueprintLoad(args: []const []const u8, source: *User) !void {
 	const fileName: []const u8 = ensureBlueprintExtension(main.stackAllocator, args[1]);
 	defer main.stackAllocator.free(fileName);
 
-	std.fs.cwd().makeDir("blueprints") catch {};
 	var blueprintsDir = try openDir("blueprints");
 	defer blueprintsDir.close();
 
 	const storedBlueprint = try blueprintsDir.read(main.stackAllocator, fileName);
 	defer main.stackAllocator.free(storedBlueprint);
 
-	source.mutex.lock();
 	if(source.commandData.clipboard != null) {
 		source.commandData.clipboard.?.deinit(main.globalAllocator);
 	}
 	source.commandData.clipboard = try Blueprint.load(main.globalAllocator, storedBlueprint);
-	source.mutex.unlock();
 
 	std.log.info("Loaded blueprint file: {s}", .{fileName});
 	source.sendMessage("#00ff00Loaded blueprint file: {s}", .{fileName});

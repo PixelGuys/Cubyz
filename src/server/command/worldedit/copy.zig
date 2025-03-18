@@ -22,13 +22,10 @@ pub fn execute(args: []const u8, source: *User) void {
 			const result = Blueprint.capture(main.globalAllocator, pos1, pos2);
 			switch(result) {
 				.success => {
-					source.mutex.lock();
-
 					if(source.commandData.clipboard != null) {
 						source.commandData.clipboard.?.deinit(main.globalAllocator);
 					}
 					source.commandData.clipboard = result.success;
-					source.mutex.unlock();
 
 					source.sendMessage("Copied selection to clipboard.", .{});
 				},

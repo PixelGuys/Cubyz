@@ -11,11 +11,7 @@ pub fn execute(args: []const u8, source: *User) void {
 		source.sendMessage("#ff0000Too many arguments for command /showpos1. Expected no arguments.", .{});
 		return;
 	}
-	source.mutex.lock();
-	const nullablePos = source.commandData.selectionPosition1;
-	source.mutex.unlock();
-
-	if(nullablePos) |pos| {
+	if(source.commandData.selectionPosition1) |pos| {
 		source.sendMessage("Position 1: ({}, {}, {})", .{pos[0], pos[1], pos[2]});
 	} else {
 		source.sendMessage("#ff0000Position 1 isn't set", .{});
