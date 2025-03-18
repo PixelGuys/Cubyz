@@ -26,38 +26,38 @@ pub var window = GuiWindow{
 	.closeable = false,
 };
 
-var heartTexture: Texture = undefined;
-var halfHeartTexture: Texture = undefined;
-var deadHeartTexture: Texture = undefined;
+var energyTexture: Texture = undefined;
+var halfEnergyTexture: Texture = undefined;
+var noEnergyTexture: Texture = undefined;
 
 pub fn init() void {
-	heartTexture = Texture.initFromFile("assets/cubyz/ui/hud/food.png");
-	halfHeartTexture = Texture.initFromFile("assets/cubyz/ui/hud/half_food.png");
-	deadHeartTexture = Texture.initFromFile("assets/cubyz/ui/hud/dead_food.png");
+	energyTexture = Texture.initFromFile("assets/cubyz/ui/hud/energy.png");
+	halfEnergyTexture = Texture.initFromFile("assets/cubyz/ui/hud/half_energy.png");
+	noEnergyTexture = Texture.initFromFile("assets/cubyz/ui/hud/no_energy.png");
 }
 
 pub fn deinit() void {
-	heartTexture.deinit();
-	halfHeartTexture.deinit();
-	deadHeartTexture.deinit();
+	energyTexture.deinit();
+	halfEnergyTexture.deinit();
+	noEnergyTexture.deinit();
 }
 
 pub fn render() void {
 	draw.setColor(0xffffffff);
 	var y: f32 = 0;
 	var x: f32 = 0;
-	var hunger: f32 = 0;
-	while(hunger < main.game.Player.super.maxHunger) : (hunger += 1) {
+	var energy: f32 = 0;
+	while(energy < main.game.Player.super.maxEnergy) : (energy += 1) {
 		if(x >= window.contentSize[0]) {
 			x = 0;
 			y += 20;
 		}
-		if(hunger + 1 <= main.game.Player.super.hunger) {
-			heartTexture.bindTo(0);
-		} else if(hunger + 0.5 <= main.game.Player.super.hunger) {
-			halfHeartTexture.bindTo(0);
+		if(energy + 1 <= main.game.Player.super.energy) {
+			energyTexture.bindTo(0);
+		} else if(energy + 0.5 <= main.game.Player.super.energy) {
+			halfEnergyTexture.bindTo(0);
 		} else {
-			deadHeartTexture.bindTo(0);
+			noEnergyTexture.bindTo(0);
 		}
 		draw.boundImage(Vec2f{x, window.contentSize[1] - y - 20}, .{20, 20});
 		x += 20;

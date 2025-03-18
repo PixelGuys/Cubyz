@@ -580,7 +580,7 @@ pub const Player = struct { // MARK: Player
 		Player.super.vel = .{0, 0, 0};
 
 		Player.super.health = Player.super.maxHealth;
-		Player.super.hunger = Player.super.maxHunger;
+		Player.super.energy = Player.super.maxEnergy;
 
 		Player.eyePos = .{0, 0, 0};
 		Player.eyeVel = .{0, 0, 0};
@@ -632,24 +632,24 @@ pub const Player = struct { // MARK: Player
 		}
 	}
 
-	pub fn useHunger(amount: f32) bool {
-		if(super.hunger >= amount) {
-			super.hunger -= amount;
+	pub fn useEnergy(amount: f32) bool {
+		if(super.energy >= amount) {
+			super.energy -= amount;
 			return true;
 		} else {
 			return false;
 		}
 	}
 
-	pub fn healHunger(amount: f32) bool {
-		const added = super.hunger + amount;
-		if(super.hunger == super.maxHunger) {
+	pub fn gainEnergy(amount: f32) bool {
+		if(super.energy == super.maxHunger) {
 			return false;
 		}
-		if(added > super.maxHunger) {
-			super.hunger = super.maxHunger;
+		const added = super.energy + amount;
+		if(added > super.maxEnergy) {
+			super.energy = super.maxEnergy;
 		} else {
-			super.hunger = added;
+			super.energy = added;
 		}
 		return true;
 	}
