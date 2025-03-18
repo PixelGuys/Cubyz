@@ -480,7 +480,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		if(blocks.get(stringId)) |zon| {
 			if(!zon.get(bool, "hasItem", true)) continue;
 			try registerItem(assetFolder, stringId, zon.getChild("item"));
-			if(items.get(stringId)) |_| {
+			if(items.get(stringId) != null) {
 				std.log.err("Item {s} appears as standalone item and as block item.", .{stringId});
 			}
 			continue;
