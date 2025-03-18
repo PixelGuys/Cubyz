@@ -181,7 +181,7 @@ const SimpleStructure = struct {
 			},
 			.water_surface => {
 				if(biomeMap.getSurfaceHeight(self.wx, self.wy) >= 0) return;
-			}
+			},
 		}
 		self.model.generate(px, py, relZ, chunk, caveMap, biomeMap, &seed, isCeiling);
 	}
