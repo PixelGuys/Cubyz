@@ -756,6 +756,10 @@ pub var itemListSize: u16 = 0;
 
 var recipeList: main.List(Recipe) = undefined;
 
+pub fn hasRegistered(id: []const u8) bool {
+	return reverseIndices.contains(id);
+}
+
 pub fn toolTypeIterator() std.StringHashMap(ToolType).ValueIterator {
 	return toolTypes.valueIterator();
 }
