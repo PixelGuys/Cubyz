@@ -24,6 +24,6 @@ void main() {
 	gl_Position = mvp*vec4(vPos, 1);
 
 	pos = vPos;
-	starPos = starData[gl_VertexID/3].pos.xyz;
-	color = starData[gl_VertexID/3].col.xyz * starOpacity;
+	starPos = starData[gl_VertexID/3].pos;
+	color = starData[gl_VertexID/3].col * starOpacity;
 }
