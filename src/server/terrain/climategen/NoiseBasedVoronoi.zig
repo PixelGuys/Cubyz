@@ -265,32 +265,48 @@ const GenerationStructure = struct {
 		};
 	}
 
-	fn drawCircleOnTheMap(map: *ClimateMapFragment, biome: *const Biome, biomeRadius: f32, wx: i32, wy: i32, width: u31, height: u31, pos: Vec2i) void {
+	fn drawCircleOnTheMap(map: *ClimateMapFragment, biome: *const Biome, biomeRadius: f32, wx: i32, wy: i32, width: u31, height: u31, pos: Vec2i, comptime skipMismatched: bool, parentBiome: *const Biome) !void {
 		const relPos = @as(Vec2f, @floatFromInt(pos -% Vec2i{wx, wy}))/@as(Vec2f, @splat(terrain.SurfaceMap.MapFragment.biomeSize));
 		const relRadius = biomeRadius/terrain.SurfaceMap.MapFragment.biomeSize;
 		const min = @floor(@max(Vec2f{0, 0}, relPos - @as(Vec2f, @splat(relRadius))));
 		const max = @ceil(@min(@as(Vec2f, @floatFromInt(Vec2i{width, height}))/@as(Vec2f, @splat(terrain.SurfaceMap.MapFragment.biomeSize)), relPos + @as(Vec2f, @splat(relRadius))));
+		if(skipMismatched) {
+			var x: f32 = min[0];
+			while(x < max[0]) : (x += 1) {
+				var y: f32 = min[1];
+				while(y < max[1]) : (y += 1) {
+					const distSquare = vec.lengthSquare(Vec2f{x, y} - relPos);
+					if(distSquare < relRadius*relRadius) {
+						if(map.map[@intFromFloat(x)][@intFromFloat(y)].biome != parentBiome) {
+							return error.biomeMismatch;
+						}
+					}
+				}
+			}
+		}
 		var x: f32 = min[0];
 		while(x < max[0]) : (x += 1) {
 			var y: f32 = min[1];
 			while(y < max[1]) : (y += 1) {
 				const distSquare = vec.lengthSquare(Vec2f{x, y} - relPos);
 				if(distSquare < relRadius*relRadius) {
-					var seed = map.map[@intFromFloat(x)][@intFromFloat(y)].seed;
-					map.map[@intFromFloat(x)][@intFromFloat(y)] = .{
+					const entry = &map.map[@intFromFloat(x)][@intFromFloat(y)];
+					var seed = entry.seed;
+					const newHeight = @as(f32, @floatFromInt(biome.minHeight)) + @as(f32, @floatFromInt(biome.maxHeight - biome.minHeight))*random.nextFloat(&seed);
+					entry.* = .{
 						.biome = biome,
-						.roughness = biome.roughness,
-						.hills = biome.hills,
-						.mountains = biome.mountains,
-						.height = @as(f32, @floatFromInt(biome.minHeight)) + @as(f32, @floatFromInt(biome.maxHeight - biome.minHeight))*random.nextFloat(&seed),
-						.seed = map.map[@intFromFloat(x)][@intFromFloat(y)].seed,
+						.roughness = std.math.lerp(biome.roughness, entry.roughness, biome.keepOriginalTerrain),
+						.hills = std.math.lerp(biome.hills, entry.hills, biome.keepOriginalTerrain),
+						.mountains = std.math.lerp(biome.mountains, entry.mountains, biome.keepOriginalTerrain),
+						.height = std.math.lerp(newHeight, entry.height, biome.keepOriginalTerrain),
+						.seed = entry.seed,
 					};
 				}
 			}
 		}
 	}
 
-	fn addSubBiomesOf(biome: BiomePoint, map: *ClimateMapFragment, extraBiomes: *main.List(BiomePoint), wx: i32, wy: i32, width: u31, height: u31, worldSeed: u64) void {
+	fn addSubBiomesOf(biome: BiomePoint, map: *ClimateMapFragment, extraBiomes: *main.List(BiomePoint), wx: i32, wy: i32, width: u31, height: u31, worldSeed: u64, comptime radius: enum {known, unknown}) void {
 		var seed = random.initSeed2D(worldSeed, @bitCast(biome.pos));
 		var biomeCount: f32 = undefined;
 		if(biome.biome.subBiomeTotalChance > biome.biome.maxSubBiomeCount) {
@@ -302,22 +318,31 @@ const GenerationStructure = struct {
 		}
 		biomeCount = @min(biomeCount, biome.biome.maxSubBiomeCount);
 		var i: f32 = 0;
+		var fails: usize = 0;
 		while(i < biomeCount) : (i += 1) {
 			if(biomeCount - i < random.nextFloat(&seed)) break;
 			const subBiome = biome.biome.subBiomes.sample(&seed).*;
-			const radius = subBiome.radius + subBiome.radiusVariation*random.nextFloatSigned(&seed);
-			var maxCenterOffset: f32 = biome.radius - radius - 32;
+			const subRadius = subBiome.radius + subBiome.radiusVariation*random.nextFloatSigned(&seed);
+			var maxCenterOffset: f32 = biome.radius - subRadius;
+			if(radius == .unknown) {
+				maxCenterOffset += biome.radius/2;
+			}
 			if(maxCenterOffset < 0) {
 				maxCenterOffset = 0;
 			}
 			const point = biome.pos +% @as(Vec2i, @intFromFloat(random.nextPointInUnitCircle(&seed)*@as(Vec2f, @splat(maxCenterOffset))));
-			drawCircleOnTheMap(map, subBiome, radius, wx, wy, width, height, point);
+			drawCircleOnTheMap(map, subBiome, subRadius, wx, wy, width, height, point, radius == .unknown, biome.biome) catch if(radius == .unknown) {
+				fails += 1;
+				if(fails < @as(usize, @intFromFloat(biomeCount))) {
+					i -= 1;
+				}
+			};
 			extraBiomes.append(.{
 				.biome = subBiome,
 				.pos = point,
 				.height = random.nextFloat(&seed)*@as(f32, @floatFromInt(subBiome.maxHeight - subBiome.minHeight)) + @as(f32, @floatFromInt(subBiome.minHeight)),
-				.weight = 1.0/(std.math.pi*radius*radius),
-				.radius = radius,
+				.weight = 1.0/(std.math.pi*subRadius*subRadius),
+				.radius = subRadius,
 			});
 		}
 	}
@@ -356,10 +381,10 @@ const GenerationStructure = struct {
 							const newHeight = @as(f32, @floatFromInt(transitionBiome.biome.minHeight)) + @as(f32, @floatFromInt(transitionBiome.biome.maxHeight - transitionBiome.biome.minHeight))*random.nextFloat(&seed);
 							map[x][y] = .{
 								.biome = transitionBiome.biome,
-								.roughness = std.math.lerp(transitionBiome.biome.roughness, map[x][y].roughness, transitionBiome.keepOriginalTerrain),
-								.hills = std.math.lerp(transitionBiome.biome.hills, map[x][y].hills, transitionBiome.keepOriginalTerrain),
-								.mountains = std.math.lerp(transitionBiome.biome.mountains, map[x][y].mountains, transitionBiome.keepOriginalTerrain),
-								.height = std.math.lerp(newHeight, map[x][y].height, transitionBiome.keepOriginalTerrain),
+								.roughness = std.math.lerp(transitionBiome.biome.roughness, map[x][y].roughness, transitionBiome.biome.keepOriginalTerrain),
+								.hills = std.math.lerp(transitionBiome.biome.hills, map[x][y].hills, transitionBiome.biome.keepOriginalTerrain),
+								.mountains = std.math.lerp(transitionBiome.biome.mountains, map[x][y].mountains, transitionBiome.biome.keepOriginalTerrain),
+								.height = std.math.lerp(newHeight, map[x][y].height, transitionBiome.biome.keepOriginalTerrain),
 								.seed = map[x][y].seed,
 							};
 							break;
@@ -390,12 +415,12 @@ const GenerationStructure = struct {
 		defer extraBiomes.deinit();
 		for(self.chunks.mem) |chunk| {
 			for(chunk.biomesSortedByX) |biome| {
-				addSubBiomesOf(biome, map, &extraBiomes, map.pos.wx, map.pos.wy, width, height, worldSeed);
+				addSubBiomesOf(biome, map, &extraBiomes, map.pos.wx, map.pos.wy, width, height, worldSeed, .unknown);
 			}
 		}
 		// Add some sub-sub(-sub)*-biomes
 		while(extraBiomes.popOrNull()) |biomePoint| {
-			addSubBiomesOf(biomePoint, map, &extraBiomes, map.pos.wx, map.pos.wy, width, height, worldSeed);
+			addSubBiomesOf(biomePoint, map, &extraBiomes, map.pos.wx, map.pos.wy, width, height, worldSeed, .known);
 		}
 	}
 };

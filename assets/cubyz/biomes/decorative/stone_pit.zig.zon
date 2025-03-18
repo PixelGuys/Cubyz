@@ -2,8 +2,9 @@
 	.properties = .{},
 	.radius = 16,
 	.chance = 0,
-	.minHeight = 2,
-	.maxHeight = 10,
+	.minHeight = -2000,
+	.maxHeight = -1000,
+	.keepOriginalTerrain = 0.99,
 	.roughness = 1,
 	.stoneBlock = "cubyz:stone",
 	.parentBiomes = .{
