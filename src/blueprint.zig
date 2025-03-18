@@ -100,88 +100,6 @@ pub const Blueprint = struct {
 			}
 		}
 	}
-	pub fn store(self: Blueprint, allocator: NeverFailingAllocator) []u8 {
-		var gameIdToBlueprintId = self.makeGameIdToBlueprintIdMap(main.stackAllocator);
-		defer gameIdToBlueprintId.deinit();
-		std.debug.assert(gameIdToBlueprintId.count() != 0);
-
-		const blockPalette = packBlockPalette(main.stackAllocator, gameIdToBlueprintId);
-		defer main.stackAllocator.free(blockPalette);
-		std.debug.assert(gameIdToBlueprintId.count() == blockPalette.len);
-
-		var uncompressedWriter = BinaryWriter.init(main.stackAllocator, .big);
-		defer uncompressedWriter.deinit();
-
-		self.storeBlockPalette(&uncompressedWriter, blockPalette);
-		const blockPaletteSizeBytes = uncompressedWriter.data.items.len;
-
-		self.storeBlockArray(&uncompressedWriter, gameIdToBlueprintId);
-
-		const compressed = self.compressOutputBuffer(main.stackAllocator, uncompressedWriter.data.items);
-		defer main.stackAllocator.free(compressed.data);
-
-		var outputWriter = BinaryWriter.initCapacity(allocator, .big, @sizeOf(i16) + @sizeOf(BlueprintCompression) + @sizeOf(u32) + @sizeOf(u16)*4 + compressed.data.len);
-
-		outputWriter.writeInt(u16, blueprintVersion);
-		outputWriter.writeEnum(BlueprintCompression, compressed.mode);
-		outputWriter.writeInt(u32, @intCast(blockPaletteSizeBytes));
-		outputWriter.writeInt(u16, @intCast(gameIdToBlueprintId.count()));
-		outputWriter.writeInt(u16, @intCast(self.blocks.width));
-		outputWriter.writeInt(u16, @intCast(self.blocks.depth));
-		outputWriter.writeInt(u16, @intCast(self.blocks.height));
-
-		outputWriter.writeSlice(compressed.data);
-
-		return outputWriter.data.toOwnedSlice();
-	}
-	fn makeGameIdToBlueprintIdMap(self: Blueprint, allocator: NeverFailingAllocator) GameIdToBlueprintIdMapType {
-		var gameIdToBlueprintId: GameIdToBlueprintIdMapType = .init(allocator.allocator);
-
-		for(self.blocks.mem) |block| {
-			const result = gameIdToBlueprintId.getOrPut(block.typ) catch unreachable;
-			if(!result.found_existing) {
-				result.value_ptr.* = @intCast(gameIdToBlueprintId.count() - 1);
-			}
-		}
-
-		return gameIdToBlueprintId;
-	}
-	fn packBlockPalette(allocator: NeverFailingAllocator, map: GameIdToBlueprintIdMapType) [][]const u8 {
-		var blockPalette = allocator.alloc([]const u8, map.count());
-
-		var iterator = map.iterator();
-		while(iterator.next()) |entry| {
-			const block = Block{.typ = entry.key_ptr.*, .data = 0};
-			const blockId = block.id();
-			blockPalette[entry.value_ptr.*] = blockId;
-		}
-		return blockPalette;
-	}
-	fn storeBlockPalette(_: Blueprint, writer: *BinaryWriter, blockPalette: [][]const u8) void {
-		std.log.info("Blueprint block palette:", .{});
-
-		for(0..blockPalette.len) |index| {
-			const blockName = blockPalette[index];
-			std.log.info("palette[{d}]: {s}", .{index, blockName});
-
-			writer.writeInt(BlockIdSizeType, @intCast(blockName.len));
-			writer.writeSlice(blockName);
-		}
-	}
-	fn storeBlockArray(self: Blueprint, writer: *BinaryWriter, map: GameIdToBlueprintIdMapType) void {
-		for(self.blocks.mem) |block| {
-			const blueprintBlock: BlockStorageType = (Block{.typ = map.get(block.typ).?, .data = block.data}).toInt();
-			writer.writeInt(BlockStorageType, blueprintBlock);
-		}
-	}
-	fn compressOutputBuffer(_: Blueprint, allocator: NeverFailingAllocator, decompressedData: []u8) struct {mode: BlueprintCompression, data: []u8} {
-		const compressionMode: BlueprintCompression = .deflate;
-		switch(compressionMode) {
-			.deflate => {
-				return .{.mode = .deflate, .data = Compression.deflate(allocator, decompressedData, .default)};
-			},
-		}
-	}
 	pub fn load(allocator: NeverFailingAllocator, inputBuffer: []u8) !Blueprint {
 		var self = Blueprint{.blocks = undefined};
 
@@ -205,7 +123,7 @@ pub const Blueprint = struct {
 		defer main.stackAllocator.free(decompressedData);
 		var decompressedReader = BinaryReader.init(decompressedData, .big);
 
-		const palette = try unpackBlockPalette(main.stackAllocator, paletteBlockCount, &decompressedReader);
+		const palette = try loadBlockPalette(main.stackAllocator, paletteBlockCount, &decompressedReader);
 		defer main.stackAllocator.free(palette);
 
 		const blueprintIdToGameIdMap = makeBlueprintIdToGameIdMap(main.stackAllocator, palette);
@@ -225,6 +143,92 @@ pub const Blueprint = struct {
 		}
 		return self;
 	}
+	pub fn store(self: Blueprint, allocator: NeverFailingAllocator) []u8 {
+		var gameIdToBlueprintId = self.makeGameIdToBlueprintIdMap(main.stackAllocator);
+		defer gameIdToBlueprintId.deinit();
+		std.debug.assert(gameIdToBlueprintId.count() != 0);
+
+		var uncompressedWriter = BinaryWriter.init(main.stackAllocator, .big);
+		defer uncompressedWriter.deinit();
+
+		const blockPaletteSizeBytes = storeBlockPalette(main.stackAllocator, gameIdToBlueprintId, uncompressedWriter);
+
+		for(self.blocks.mem) |block| {
+			const blueprintBlock: BlockStorageType = (Block{.typ = gameIdToBlueprintId.get(block.typ).?, .data = block.data}).toInt();
+			uncompressedWriter.writeInt(BlockStorageType, blueprintBlock);
+		}
+
+		const compressed = self.compressOutputBuffer(main.stackAllocator, uncompressedWriter.data.items);
+		defer main.stackAllocator.free(compressed.data);
+
+		var outputWriter = BinaryWriter.initCapacity(allocator, .big, @sizeOf(i16) + @sizeOf(BlueprintCompression) + @sizeOf(u32) + @sizeOf(u16)*4 + compressed.data.len);
+
+		outputWriter.writeInt(u16, blueprintVersion);
+		outputWriter.writeEnum(BlueprintCompression, compressed.mode);
+		outputWriter.writeInt(u32, @intCast(blockPaletteSizeBytes));
+		outputWriter.writeInt(u16, @intCast(gameIdToBlueprintId.count()));
+		outputWriter.writeInt(u16, @intCast(self.blocks.width));
+		outputWriter.writeInt(u16, @intCast(self.blocks.depth));
+		outputWriter.writeInt(u16, @intCast(self.blocks.height));
+
+		outputWriter.writeSlice(compressed.data);
+
+		return outputWriter.data.toOwnedSlice();
+	}
+	fn makeBlueprintIdToGameIdMap(allocator: NeverFailingAllocator, palette: [][]const u8) []u16 {
+		var blueprintIdToGameIdMap = allocator.alloc(u16, palette.len);
+
+		for(palette, 0..) |blockName, blueprintBlockId| {
+			const gameBlockId = main.blocks.parseBlock(blockName).typ;
+			blueprintIdToGameIdMap[blueprintBlockId] = gameBlockId;
+		}
+		return blueprintIdToGameIdMap;
+	}
+	fn makeGameIdToBlueprintIdMap(self: Blueprint, allocator: NeverFailingAllocator) GameIdToBlueprintIdMapType {
+		var gameIdToBlueprintId: GameIdToBlueprintIdMapType = .init(allocator.allocator);
+
+		for(self.blocks.mem) |block| {
+			const result = gameIdToBlueprintId.getOrPut(block.typ) catch unreachable;
+			if(!result.found_existing) {
+				result.value_ptr.* = @intCast(gameIdToBlueprintId.count() - 1);
+			}
+		}
+
+		return gameIdToBlueprintId;
+	}
+	fn loadBlockPalette(allocator: NeverFailingAllocator, paletteBlockCount: usize, reader: *BinaryReader) ![][]const u8 {
+		var palette = allocator.alloc([]const u8, paletteBlockCount);
+
+		for(0..@intCast(paletteBlockCount)) |index| {
+			const blockNameSize = try reader.readInt(BlockIdSizeType);
+			const blockName = try reader.readSlice(blockNameSize);
+			palette[index] = blockName;
+		}
+		return palette;
+	}
+	fn storeBlockPalette(allocator: NeverFailingAllocator, map: GameIdToBlueprintIdMapType, writer: *BinaryWriter) usize {
+		var blockPalette = allocator.alloc([]const u8, map.count());
+		defer allocator.free(blockPalette);
+
+		var iterator = map.iterator();
+		while(iterator.next()) |entry| {
+			const block = Block{.typ = entry.key_ptr.*, .data = 0};
+			const blockId = block.id();
+			blockPalette[entry.value_ptr.*] = blockId;
+		}
+
+		std.log.info("Blueprint block palette:", .{});
+
+		for(0..blockPalette.len) |index| {
+			const blockName = blockPalette[index];
+			std.log.info("palette[{d}]: {s}", .{index, blockName});
+
+			writer.writeInt(BlockIdSizeType, @intCast(blockName.len));
+			writer.writeSlice(blockName);
+		}
+
+		return blockPalette.len;
+	}
 	fn decompressBuffer(self: *Blueprint, data: []const u8, blockPaletteSizeBytes: usize, compression: BlueprintCompression) ![]u8 {
 		const blockArraySizeBytes = self.blocks.width*self.blocks.depth*self.blocks.height*@sizeOf(BlockStorageType);
 		const decompressedDataSizeBytes = blockPaletteSizeBytes + blockArraySizeBytes;
@@ -239,23 +243,12 @@ pub const Blueprint = struct {
 		}
 		return decompressedData;
 	}
-	fn unpackBlockPalette(allocator: NeverFailingAllocator, paletteBlockCount: usize, reader: *BinaryReader) ![][]const u8 {
-		var palette = allocator.alloc([]const u8, paletteBlockCount);
-
-		for(0..@intCast(paletteBlockCount)) |index| {
-			const blockNameSize = try reader.readInt(BlockIdSizeType);
-			const blockName = try reader.readSlice(blockNameSize);
-			palette[index] = blockName;
+	fn compressOutputBuffer(_: Blueprint, allocator: NeverFailingAllocator, decompressedData: []u8) struct {mode: BlueprintCompression, data: []u8} {
+		const compressionMode: BlueprintCompression = .deflate;
+		switch(compressionMode) {
+			.deflate => {
+				return .{.mode = .deflate, .data = Compression.deflate(allocator, decompressedData, .default)};
+			},
 		}
-		return palette;
-	}
-	fn makeBlueprintIdToGameIdMap(allocator: NeverFailingAllocator, palette: [][]const u8) []u16 {
-		var blueprintIdToGameIdMap = allocator.alloc(u16, palette.len);
-
-		for(palette, 0..) |blockName, blueprintBlockId| {
-			const gameBlockId = main.blocks.parseBlock(blockName).typ;
-			blueprintIdToGameIdMap[blueprintBlockId] = gameBlockId;
-		}
-		return blueprintIdToGameIdMap;
 	}
 };
