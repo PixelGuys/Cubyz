@@ -643,7 +643,6 @@ pub const World = struct { // MARK: World
 	manager: *ConnectionManager,
 	ambientLight: f32 = 0,
 	clearColor: Vec4f = Vec4f{0, 0, 0, 1},
-	gravity: f64 = 9.81*1.5, // TODO: Balance
 	name: []const u8,
 	milliTime: i64,
 	gameTime: Atomic(i64) = .init(0),
@@ -662,7 +661,7 @@ pub const World = struct { // MARK: World
 			.milliTime = std.time.milliTimestamp(),
 		};
 
-		self.itemDrops.init(main.globalAllocator, self);
+		self.itemDrops.init(main.globalAllocator);
 		network.Protocols.handShake.clientSide(self.conn, settings.playerName);
 
 		main.Window.setMouseGrabbed(true);

@@ -6,8 +6,15 @@
 	},
 	.absorbedLight = 0x202830,
 	.rotation = .branch,
-	.model = "cubyz:branch",
-	.texture = "cubyz:willow_log",
+	.model = .{
+		.radius = 4,
+	},
+	.texture_top = "cubyz:branch/willow/dot",
+	.texture_bottom = "cubyz:branch/willow/half_line",
+	.texture_right = "cubyz:branch/willow/line",
+	.texture_left = "cubyz:branch/willow/bend",
+	.texture_front = "cubyz:branch/willow/intersection",
+	.texture_back = "cubyz:branch/willow/cross",
 	.item = .{
 		.material = .{
 			.density = 0.5,

@@ -433,6 +433,85 @@ pub fn ListUnmanaged(comptime T: type) type {
 	};
 }
 
+/// Holds multiple arrays sequentially in memory.
+/// Allows addressing and remove each subarray individually, as well as iterating through all of them at once.
+pub fn MultiArray(T: type, Range: type) type {
+	const size = @typeInfo(Range).@"enum".fields.len;
+	std.debug.assert(@typeInfo(Range).@"enum".is_exhaustive);
+	for(@typeInfo(Range).@"enum".fields) |field| {
+		std.debug.assert(field.value < size);
+	}
+	return struct {
+		offsets: [size + 1]usize = @splat(0),
+		items: [*]T = undefined,
+		capacity: usize = 0,
+
+		pub fn initCapacity(allocator: NeverFailingAllocator, capacity: usize) @This() {
+			return .{
+				.items = allocator.alloc(T, capacity)[0..0],
+				.capacity = capacity,
+			};
+		}
+
+		pub fn deinit(self: @This(), allocator: NeverFailingAllocator) void {
+			if(self.capacity != 0) {
+				allocator.free(self.items[0..self.capacity]);
+			}
+		}
+
+		pub fn clearAndFree(self: *@This(), allocator: NeverFailingAllocator) void {
+			self.deinit(allocator);
+			self.* = .{};
+		}
+
+		pub fn clearRetainingCapacity(self: *@This()) void {
+			self.offsets = @splat(0);
+		}
+
+		pub fn ensureCapacity(self: *@This(), allocator: NeverFailingAllocator, newCapacity: usize) void {
+			if(newCapacity <= self.capacity) return;
+			const newAllocation = allocator.realloc(self.items[0..self.capacity], newCapacity);
+			self.items = newAllocation.ptr;
+			self.capacity = newAllocation.len;
+		}
+
+		pub fn addMany(self: *@This(), allocator: NeverFailingAllocator, n: usize) []T {
+			self.ensureFreeCapacity(allocator, n);
+			return self.addManyAssumeCapacity(n);
+		}
+
+		pub fn replaceRange(self: *@This(), allocator: NeverFailingAllocator, range: Range, elems: []const T) void {
+			const i: usize = @intFromEnum(range);
+			const oldLen = self.offsets[i + 1] - self.offsets[i];
+			self.ensureCapacity(allocator, self.offsets[size] - oldLen + elems.len);
+			const startIndex = self.offsets[i + 1];
+			const newStartIndex = self.offsets[i + 1] - oldLen + elems.len;
+			const endIndex = self.offsets[size];
+			const newEndIndex = self.offsets[size] - oldLen + elems.len;
+			if(newStartIndex > startIndex) {
+				std.mem.copyBackwards(T, self.items[newStartIndex..newEndIndex], self.items[startIndex..endIndex]);
+			} else {
+				std.mem.copyForwards(T, self.items[newStartIndex..newEndIndex], self.items[startIndex..endIndex]);
+			}
+			@memcpy(self.items[self.offsets[i]..][0..elems.len], elems);
+			for(self.offsets[i + 1 ..]) |*offset| {
+				offset.* = offset.* - oldLen + elems.len;
+			}
+		}
+
+		pub fn getRange(self: *@This(), range: Range) []T {
+			const i: usize = @intFromEnum(range);
+			const startIndex = self.offsets[i];
+			const endIndex = self.offsets[i + 1];
+			return self.items[startIndex..endIndex];
+		}
+
+		pub fn getEverything(self: *@This()) []T {
+			return self.items[0..self.offsets[size]];
+		}
+	};
+}
+
 const page_size_min = std.heap.page_size_min;
 const page_size_max = std.heap.page_size_max;
 const pageSize = std.heap.pageSize;

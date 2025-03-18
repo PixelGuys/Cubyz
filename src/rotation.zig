@@ -18,6 +18,13 @@ const RayIntersectionResult = struct {
 	max: Vec3f,
 };
 
+pub const Degrees = enum(u2) {
+	@"0" = 0,
+	@"90" = 1,
+	@"180" = 2,
+	@"270" = 3,
+};
+
 // TODO: Why not just use a tagged union?
 /// Each block gets 16 bit of additional storage(apart from the reference to the block type).
 /// These 16 bits are accessed and interpreted by the `RotationMode`.
@@ -26,6 +33,9 @@ pub const RotationMode = struct { // MARK: RotationMode
 	const DefaultFunctions = struct {
 		fn model(block: Block) u16 {
 			return blocks.meshes.modelIndexStart(block);
+		}
+		fn rotateZ(data: u16, _: Degrees) u16 {
+			return data;
 		}
 		fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: ?Neighbor, _: *Block, _: Block, blockPlacing: bool) bool {
 			return blockPlacing;
@@ -112,6 +122,9 @@ pub const RotationMode = struct { // MARK: RotationMode
 
 	model: *const fn(block: Block) u16 = &DefaultFunctions.model,
 
+	// Rotates block data counterclockwise around the Z axis.
+	rotateZ: *const fn(data: u16, angle: Degrees) u16 = DefaultFunctions.rotateZ,
+
 	createBlockModel: *const fn(zon: ZonElement) u16 = &DefaultFunctions.createBlockModel,
 
 	/// Updates the block data of a block in the world or places a block in the world.
@@ -144,6 +157,7 @@ pub const RotationModes = struct {
 		pub const id: []const u8 = "no_rotation";
 		fn init() void {}
 		fn deinit() void {}
+		fn reset() void {}
 	};
 	pub const Log = struct { // MARK: Log
 		pub const id: []const u8 = "log";
@@ -155,6 +169,10 @@ pub const RotationModes = struct {
 
 		fn deinit() void {
 			rotatedModels.deinit();
+		}
+
+		fn reset() void {
+			rotatedModels.clearRetainingCapacity();
 		}
 
 		pub fn createBlockModel(zon: ZonElement) u16 {
@@ -178,6 +196,21 @@ pub const RotationModes = struct {
 			return blocks.meshes.modelIndexStart(block) + @min(block.data, 5);
 		}
 
+		fn rotateZ(data: u16, angle: Degrees) u16 {
+			comptime var rotationTable: [4][6]u8 = undefined;
+			comptime for(0..6) |i| {
+				rotationTable[0][i] = i;
+			};
+			comptime for(1..4) |a| {
+				for(0..6) |i| {
+					const neighbor: Neighbor = @enumFromInt(rotationTable[a - 1][i]);
+					rotationTable[a][i] = neighbor.rotateZ().toInt();
+				}
+			};
+			if(data >= 6) return 0;
+			return rotationTable[@intFromEnum(angle)][data];
+		}
+
 		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, neighbor: ?Neighbor, currentData: *Block, _: Block, blockPlacing: bool) bool {
 			if(blockPlacing) {
 				currentData.data = neighbor.?.reverse().toInt();
@@ -198,6 +231,10 @@ pub const RotationModes = struct {
 			rotatedModels.deinit();
 		}
 
+		fn reset() void {
+			rotatedModels.clearRetainingCapacity();
+		}
+
 		pub fn createBlockModel(zon: ZonElement) u16 {
 			const modelId = zon.as([]const u8, "cubyz:cube");
 			if(rotatedModels.get(modelId)) |modelIndex| return modelIndex;
@@ -215,6 +252,21 @@ pub const RotationModes = struct {
 
 		pub fn model(block: Block) u16 {
 			return blocks.meshes.modelIndexStart(block) + @min(block.data, 3);
+		}
+
+		fn rotateZ(data: u16, angle: Degrees) u16 {
+			comptime var rotationTable: [4][4]u8 = undefined;
+			comptime for(0..4) |i| {
+				rotationTable[0][i] = i;
+			};
+			comptime for(1..4) |a| {
+				for(0..4) |i| {
+					const neighbor: Neighbor = @enumFromInt(rotationTable[a - 1][i] + 2);
+					rotationTable[a][i] = neighbor.rotateZ().toInt() - 2;
+				}
+			};
+			if(data >= 4) return 0;
+			return rotationTable[@intFromEnum(angle)][data];
 		}
 
 		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, playerDir: Vec3f, _: Vec3i, _: ?Neighbor, currentData: *Block, _: Block, blockPlacing: bool) bool {
@@ -248,6 +300,31 @@ pub const RotationModes = struct {
 
 		fn deinit() void {
 			fenceModels.deinit();
+		}
+
+		fn reset() void {
+			fenceModels.clearRetainingCapacity();
+		}
+
+		fn rotateZ(data: u16, angle: Degrees) u16 {
+			comptime var rotationTable: [4][16]u8 = undefined;
+			comptime for(0..16) |i| {
+				rotationTable[0][i] = @intCast(i);
+			};
+			comptime for(1..4) |a| {
+				for(0..16) |i| {
+					const old: FenceData = @bitCast(@as(u4, @intCast(rotationTable[a - 1][i])));
+					const new: FenceData = .{
+						.isConnectedNegY = old.isConnectedNegX,
+						.isConnectedPosY = old.isConnectedPosX,
+						.isConnectedPosX = old.isConnectedNegY,
+						.isConnectedNegX = old.isConnectedPosY,
+					};
+					rotationTable[a][i] = @as(u4, @bitCast(new));
+				}
+			};
+			if(data >= 16) return 0;
+			return rotationTable[@intFromEnum(angle)][data];
 		}
 
 		fn fenceTransform(quad: *main.models.QuadInfo, data: FenceData) void {
@@ -328,19 +405,19 @@ pub const RotationModes = struct {
 	pub const Branch = struct { // MARK: Branch
 		pub const id: []const u8 = "branch";
 		pub const dependsOnNeighbors = true;
-		var branchModels: std.StringHashMap(u16) = undefined;
+		var branchModels: std.AutoHashMap(u32, u16) = undefined;
 		const BranchData = packed struct(u6) {
 			enabledConnections: u6,
 
-			pub fn init(blockData: u16) BranchData {
+			pub inline fn init(blockData: u16) BranchData {
 				return .{.enabledConnections = @truncate(blockData)};
 			}
 
-			pub fn isConnected(self: @This(), neighbor: Neighbor) bool {
+			pub inline fn isConnected(self: @This(), neighbor: Neighbor) bool {
 				return (self.enabledConnections & Neighbor.bitMask(neighbor)) != 0;
 			}
 
-			pub fn setConnection(self: *@This(), neighbor: Neighbor, value: bool) void {
+			pub inline fn setConnection(self: *@This(), neighbor: Neighbor, value: bool) void {
 				if(value) {
 					self.enabledConnections |= Neighbor.bitMask(neighbor);
 				} else {
@@ -357,40 +434,268 @@ pub const RotationModes = struct {
 			branchModels.deinit();
 		}
 
-		fn branchTransform(quad: *main.models.QuadInfo, data: BranchData) void {
-			for(&quad.corners) |*corner| {
-				if((!data.isConnected(Neighbor.dirNegX) and corner[0] == 0) or
-					(!data.isConnected(Neighbor.dirPosX) and corner[0] == 1) or
-					(!data.isConnected(Neighbor.dirNegY) and corner[1] == 0) or
-					(!data.isConnected(Neighbor.dirPosY) and corner[1] == 1) or
-					(!data.isConnected(Neighbor.dirDown) and corner[2] == 0) or
-					(!data.isConnected(Neighbor.dirUp) and corner[2] == 1)) return degenerateQuad(quad);
+		fn reset() void {
+			branchModels.clearRetainingCapacity();
+		}
+
+		const Direction = enum(u2) {
+			negYDir = 0,
+			posXDir = 1,
+			posYDir = 2,
+			negXDir = 3,
+		};
+
+		const Pattern = union(enum) {
+			dot: void,
+			halfLine: struct {
+				dir: Direction,
+			},
+			line: struct {
+				dir: Direction,
+			},
+			bend: struct {
+				dir: Direction,
+			},
+			intersection: struct {
+				dir: Direction,
+			},
+			cross: void,
+		};
+
+		fn rotateQuad(originalCorners: [4]Vec2f, pattern: Pattern, min: f32, max: f32, side: Neighbor) main.models.QuadInfo {
+			var corners: [4]Vec2f = originalCorners;
+
+			switch(pattern) {
+				.dot, .cross => {},
+				inline else => |typ| {
+					const angle: f32 = @as(f32, @floatFromInt(@intFromEnum(typ.dir)))*std.math.pi/2.0;
+					corners = .{
+						vec.rotate2d(originalCorners[0], angle, @splat(0.5)),
+						vec.rotate2d(originalCorners[1], angle, @splat(0.5)),
+						vec.rotate2d(originalCorners[2], angle, @splat(0.5)),
+						vec.rotate2d(originalCorners[3], angle, @splat(0.5)),
+					};
+				},
+			}
+
+			const offX: f32 = @floatFromInt(@intFromBool(@reduce(.Add, side.textureX()) < 0));
+			const offY: f32 = @floatFromInt(@intFromBool(@reduce(.Add, side.textureY()) < 0));
+
+			const corners3d = .{
+				@as(Vec3f, @floatFromInt(side.textureX()))*@as(Vec3f, @splat(corners[0][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY()))*@as(Vec3f, @splat(corners[0][1] - offY)),
+				@as(Vec3f, @floatFromInt(side.textureX()))*@as(Vec3f, @splat(corners[1][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY()))*@as(Vec3f, @splat(corners[1][1] - offY)),
+				@as(Vec3f, @floatFromInt(side.textureX()))*@as(Vec3f, @splat(corners[2][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY()))*@as(Vec3f, @splat(corners[2][1] - offY)),
+				@as(Vec3f, @floatFromInt(side.textureX()))*@as(Vec3f, @splat(corners[3][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY()))*@as(Vec3f, @splat(corners[3][1] - offY)),
+			};
+
+			var offset: Vec3f = .{0.0, 0.0, 0.0};
+			offset[@intFromEnum(side.vectorComponent())] = if(side.isPositive()) max else min;
+
+			const res: main.models.QuadInfo = .{
+				.corners = .{
+					corners3d[0] + offset,
+					corners3d[1] + offset,
+					corners3d[2] + offset,
+					corners3d[3] + offset,
+				},
+				.cornerUV = originalCorners,
+				.normal = @floatFromInt(side.relPos()),
+				.textureSlot = @intFromEnum(pattern),
+			};
+
+			return res;
+		}
+
+		fn addQuads(pattern: Pattern, side: Neighbor, radius: f32, out: *main.List(main.models.QuadInfo)) void {
+			const min: f32 = (8.0 - radius)/16.0;
+			const max: f32 = (8.0 + radius)/16.0;
+			switch(pattern) {
+				.dot => {
+					out.append(rotateQuad(.{
+						.{min, min},
+						.{min, max},
+						.{max, min},
+						.{max, max},
+					}, pattern, min, max, side));
+				},
+				.halfLine => {
+					out.append(rotateQuad(.{
+						.{min, 0.0},
+						.{min, max},
+						.{max, 0.0},
+						.{max, max},
+					}, pattern, min, max, side));
+				},
+				.line => {
+					out.append(rotateQuad(.{
+						.{min, 0.0},
+						.{min, 1.0},
+						.{max, 0.0},
+						.{max, 1.0},
+					}, pattern, min, max, side));
+				},
+				.bend => {
+					out.append(rotateQuad(.{
+						.{0.0, 0.0},
+						.{0.0, max},
+						.{max, 0.0},
+						.{max, max},
+					}, pattern, min, max, side));
+				},
+				.intersection => {
+					out.append(rotateQuad(.{
+						.{0.0, 0.0},
+						.{0.0, max},
+						.{1.0, 0.0},
+						.{1.0, max},
+					}, pattern, min, max, side));
+				},
+				.cross => {
+					out.append(rotateQuad(.{
+						.{0.0, 0.0},
+						.{0.0, 1.0},
+						.{1.0, 0.0},
+						.{1.0, 1.0},
+					}, pattern, min, max, side));
+				},
 			}
 		}
 
-		fn degenerateQuad(quad: *main.models.QuadInfo) void {
-			for(&quad.corners) |*corner| {
-				corner.* = @splat(0.5);
-			}
+		fn getPattern(data: BranchData, side: Neighbor) ?Pattern {
+			const posX = Neighbor.fromRelPos(side.textureX()).?;
+			const negX = Neighbor.fromRelPos(side.textureX()).?.reverse();
+			const posY = Neighbor.fromRelPos(side.textureY()).?;
+			const negY = Neighbor.fromRelPos(side.textureY()).?.reverse();
+
+			const connectedPosX = data.isConnected(posX);
+			const connectedNegX = data.isConnected(negX);
+			const connectedPosY = data.isConnected(posY);
+			const connectedNegY = data.isConnected(negY);
+
+			const count: u6 = @as(u6, @intFromBool(connectedPosX)) + @as(u6, @intFromBool(connectedNegX)) + @as(u6, @intFromBool(connectedPosY)) + @as(u6, @intFromBool(connectedNegY));
+
+			return switch(count) {
+				0 => {
+					if(data.isConnected(side)) {
+						return null;
+					}
+
+					return .dot;
+				},
+				1 => {
+					var dir: Direction = .negXDir;
+					if(connectedNegY) {
+						dir = .negYDir;
+					} else if(connectedPosX) {
+						dir = .posXDir;
+					} else if(connectedPosY) {
+						dir = .posYDir;
+					}
+					return .{.halfLine = .{.dir = dir}};
+				},
+				2 => {
+					if((connectedPosX and connectedNegX) or (connectedPosY and connectedNegY)) {
+						var dir: Direction = .negYDir;
+						if(connectedPosX and connectedNegX) {
+							dir = .posXDir;
+						}
+
+						return .{.line = .{.dir = dir}};
+					}
+
+					var dir: Direction = .negXDir;
+
+					if(connectedNegY) {
+						dir = .negYDir;
+						if(connectedPosX) {
+							dir = .posXDir;
+						}
+					} else if(connectedPosX) {
+						dir = .posXDir;
+						if(connectedPosY) {
+							dir = .posYDir;
+						}
+					} else if(connectedPosY) {
+						dir = .posYDir;
+						if(connectedNegX) {
+							dir = .negXDir;
+						}
+					}
+
+					return .{.bend = .{.dir = dir}};
+				},
+				3 => {
+					var dir: Direction = undefined;
+					if(!connectedPosY) dir = .negYDir;
+					if(!connectedNegX) dir = .posXDir;
+					if(!connectedNegY) dir = .posYDir;
+					if(!connectedPosX) dir = .negXDir;
+
+					return .{.intersection = .{.dir = dir}};
+				},
+				4 => {
+					return .cross;
+				},
+				else => undefined,
+			};
 		}
 
 		pub fn createBlockModel(zon: ZonElement) u16 {
-			const modelId = zon.as([]const u8, "cubyz:cube");
-			if(branchModels.get(modelId)) |modelIndex| return modelIndex;
+			const radius = zon.get(f32, "radius", 4);
+			if(branchModels.get(@bitCast(radius))) |modelIndex| return modelIndex;
 
-			const baseModelIndex = main.models.getModelIndex(modelId);
-			const baseModel = main.models.models.items[baseModelIndex];
+			var modelIndex: u16 = undefined;
+			for(0..64) |i| {
+				var quads = main.List(main.models.QuadInfo).init(main.stackAllocator);
+				defer quads.deinit();
 
-			const modelIndex: u16 = baseModel.transformModel(branchTransform, .{BranchData.init(0)});
-			for(1..64) |branchData| {
-				_ = baseModel.transformModel(branchTransform, .{BranchData.init(@truncate(branchData))});
+				for(Neighbor.iterable) |neighbor| {
+					const pattern = getPattern(BranchData.init(@intCast(i)), neighbor);
+
+					if(pattern) |pat| {
+						addQuads(pat, neighbor, radius, &quads);
+					}
+				}
+
+				const index = main.models.Model.init(quads.items);
+				if(i == 0) {
+					modelIndex = index;
+				}
 			}
-			branchModels.put(modelId, modelIndex) catch unreachable;
+
+			branchModels.put(@bitCast(radius), modelIndex) catch unreachable;
+
 			return modelIndex;
 		}
 
 		pub fn model(block: Block) u16 {
 			return blocks.meshes.modelIndexStart(block) + (block.data & 63);
+		}
+
+		fn rotateZ(data: u16, angle: Degrees) u16 {
+			@setEvalBranchQuota(65_536);
+
+			comptime var rotationTable: [4][16]u8 = undefined;
+			comptime for(0..16) |i| {
+				rotationTable[0][i] = @intCast(i << 2);
+			};
+			comptime for(1..4) |a| {
+				for(0..16) |i| {
+					const old: BranchData = .init(rotationTable[a - 1][i]);
+					var new: BranchData = .init(0);
+
+					new.setConnection(Neighbor.dirPosX.rotateZ(), old.isConnected(Neighbor.dirPosX));
+					new.setConnection(Neighbor.dirNegX.rotateZ(), old.isConnected(Neighbor.dirNegX));
+					new.setConnection(Neighbor.dirPosY.rotateZ(), old.isConnected(Neighbor.dirPosY));
+					new.setConnection(Neighbor.dirNegY.rotateZ(), old.isConnected(Neighbor.dirNegY));
+
+					rotationTable[a][i] = new.enabledConnections;
+				}
+			};
+			if(data >= 0b111111) return 0;
+			const rotationIndex = (data & 0b111100) >> 2;
+			const upDownFlags = data & 0b000011;
+			return rotationTable[@intFromEnum(angle)][rotationIndex] | upDownFlags;
 		}
 
 		pub fn generateData(
@@ -497,10 +802,40 @@ pub const RotationModes = struct {
 			return stairData & subBlockMask(x, y, z) == 0;
 		}
 
-		fn init() void {
+		fn rotateZ(data: u16, angle: Degrees) u16 {
+			@setEvalBranchQuota(65_536);
+
+			comptime var rotationTable: [4][256]u8 = undefined;
+			comptime for(0..4) |a| {
+				for(0..256) |old| {
+					var new: u8 = 0;
+
+					for(0..2) |i| for(0..2) |j| for(0..2) |k| {
+						const sin: f32 = @sin((std.math.pi/2.0)*@as(f32, @floatFromInt(a)));
+						const cos: f32 = @cos((std.math.pi/2.0)*@as(f32, @floatFromInt(a)));
+
+						const x: f32 = (@as(f32, @floatFromInt(i)) - 0.5)*2.0;
+						const y: f32 = (@as(f32, @floatFromInt(j)) - 0.5)*2.0;
+
+						const rX = @intFromBool(x*cos - y*sin > 0);
+						const rY = @intFromBool(x*sin + y*cos > 0);
+
+						if(hasSubBlock(@intCast(old), @intCast(i), @intCast(j), @intCast(k))) {
+							new |= subBlockMask(rX, rY, @intCast(k));
+						}
+					};
+					rotationTable[a][old] = new;
+				}
+			};
+			if(data >= 256) return 0;
+			return rotationTable[@intFromEnum(angle)][data];
+		}
+
+		fn init() void {}
+		fn deinit() void {}
+		fn reset() void {
 			modelIndex = 0;
 		}
-		fn deinit() void {}
 
 		const GreedyFaceInfo = struct {min: Vec2f, max: Vec2f};
 		fn mergeFaces(faceVisible: [2][2]bool, mem: []GreedyFaceInfo) []GreedyFaceInfo {
@@ -807,6 +1142,10 @@ pub const RotationModes = struct {
 			rotatedModels.deinit();
 		}
 
+		fn reset() void {
+			rotatedModels.clearRetainingCapacity();
+		}
+
 		pub fn createBlockModel(zon: ZonElement) u16 {
 			const baseModelId: []const u8 = zon.get([]const u8, "base", "cubyz:cube");
 			const sideModelId: []const u8 = zon.get([]const u8, "side", "cubyz:cube");
@@ -866,6 +1205,28 @@ pub const RotationModes = struct {
 
 		pub fn model(block: Block) u16 {
 			return blocks.meshes.modelIndexStart(block) + (@as(u5, @truncate(block.data)) -| 1);
+		}
+
+		fn rotateZ(data: u16, angle: Degrees) u16 {
+			comptime var rotationTable: [4][32]u8 = undefined;
+			comptime for(0..32) |i| {
+				rotationTable[0][i] = @intCast(i);
+			};
+			comptime for(1..4) |a| {
+				for(0..32) |i| {
+					const old: TorchData = @bitCast(@as(u5, @intCast(rotationTable[a - 1][i])));
+					const new: TorchData = .{
+						.center = old.center,
+						.negY = old.negX,
+						.posY = old.posX,
+						.posX = old.negY,
+						.negX = old.posY,
+					};
+					rotationTable[a][i] = @as(u5, @bitCast(new));
+				}
+			};
+			if(data >= 32) return 0;
+			return rotationTable[@intFromEnum(angle)][data];
 		}
 
 		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, relativeDir: Vec3i, neighbor: ?Neighbor, currentData: *Block, neighborBlock: Block, _: bool) bool {
@@ -972,12 +1333,39 @@ pub const RotationModes = struct {
 			posZ: bool,
 		};
 
+		fn rotateZ(data: u16, angle: Degrees) u16 {
+			comptime var rotationTable: [4][64]u8 = undefined;
+			comptime for(0..64) |i| {
+				rotationTable[0][i] = @intCast(i);
+			};
+			comptime for(1..4) |a| {
+				for(0..64) |i| {
+					const old: CarpetData = @bitCast(@as(u6, @intCast(rotationTable[a - 1][i])));
+					const new: CarpetData = .{
+						.posZ = old.posZ,
+						.negZ = old.negZ,
+						.posY = old.posX,
+						.negY = old.negX,
+						.negX = old.posY,
+						.posX = old.negY,
+					};
+					rotationTable[a][i] = @as(u6, @bitCast(new));
+				}
+			};
+			if(data >= 64) return 0;
+			return rotationTable[@intFromEnum(angle)][data];
+		}
+
 		fn init() void {
 			rotatedModels = .init(main.globalAllocator.allocator);
 		}
 
 		fn deinit() void {
 			rotatedModels.deinit();
+		}
+
+		fn reset() void {
+			rotatedModels.clearRetainingCapacity();
 		}
 
 		pub fn createBlockModel(zon: ZonElement) u16 {
@@ -1105,6 +1493,9 @@ pub const RotationModes = struct {
 
 		fn init() void {}
 		fn deinit() void {}
+		fn reset() void {
+			modelCache = null;
+		}
 
 		pub fn createBlockModel(zon: ZonElement) u16 {
 			const modelId = zon.as([]const u8, "cubyz:cube");
@@ -1165,6 +1556,12 @@ pub fn init() void {
 	rotationModes = .init(main.globalAllocator.allocator);
 	inline for(@typeInfo(RotationModes).@"struct".decls) |declaration| {
 		register(@field(RotationModes, declaration.name));
+	}
+}
+
+pub fn reset() void {
+	inline for(@typeInfo(RotationModes).@"struct".decls) |declaration| {
+		@field(RotationModes, declaration.name).reset();
 	}
 }
 

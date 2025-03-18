@@ -47,6 +47,26 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 	pub fn relPos(self: Neighbor) Vec3i {
 		return .{self.relX(), self.relY(), self.relZ()};
 	}
+
+	pub fn fromRelPos(pos: Vec3i) ?Neighbor {
+		if(@reduce(.Add, @abs(pos)) != 1) {
+			return null;
+		}
+		return switch(pos[0]) {
+			1 => return .dirPosX,
+			-1 => return .dirNegX,
+			else => switch(pos[1]) {
+				1 => return .dirPosY,
+				-1 => return .dirNegY,
+				else => switch(pos[2]) {
+					1 => return .dirUp,
+					-1 => return .dirDown,
+					else => return null,
+				},
+			},
+		};
+	}
+
 	/// Index to bitMask for bitmap direction data
 	pub inline fn bitMask(self: Neighbor) u6 {
 		return @as(u6, 1) << @intFromEnum(self);
@@ -107,6 +127,12 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 				return in[@intFromEnum(val.vectorComponent())];
 			},
 		}
+	}
+
+	// Returns the neighbor that is rotated by 90 degrees counterclockwise around the z axis.
+	pub inline fn rotateZ(self: Neighbor) Neighbor {
+		const arr = [_]Neighbor{.dirUp, .dirDown, .dirPosY, .dirNegY, .dirNegX, .dirPosX};
+		return arr[@intFromEnum(self)];
 	}
 };
 

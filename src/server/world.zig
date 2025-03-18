@@ -412,7 +412,6 @@ const WorldIO = struct { // MARK: WorldIO
 
 pub const ServerWorld = struct { // MARK: ServerWorld
 	pub const dayCycle: u31 = 12000; // Length of one in-game day in units of 100ms. Midnight is at DAY_CYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
-	pub const earthGravity: f32 = 9.81;
 
 	itemDropManager: ItemDropManager = undefined,
 	blockPalette: *main.assets.Palette = undefined,
@@ -426,7 +425,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	lastUpdateTime: i64,
 	lastUnimportantDataSent: i64,
 	doGameTimeCycle: bool = true,
-	gravity: f32 = earthGravity,
 
 	defaultGamemode: main.game.Gamemode = undefined,
 	allowCheats: bool = undefined,
@@ -494,7 +492,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			.chunkUpdateQueue = .init(main.globalAllocator, 256),
 			.regionUpdateQueue = .init(main.globalAllocator, 256),
 		};
-		self.itemDropManager.init(main.globalAllocator, self, self.gravity);
+		self.itemDropManager.init(main.globalAllocator, self);
 		errdefer self.itemDropManager.deinit();
 
 		var loadArena = main.heap.NeverFailingArenaAllocator.init(main.stackAllocator);
