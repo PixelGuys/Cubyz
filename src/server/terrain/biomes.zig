@@ -11,16 +11,17 @@ const Vec3f = main.vec.Vec3f;
 const Vec3d = main.vec.Vec3d;
 
 pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
-	const GenerationMode = enum {
+	pub const GenerationMode = enum {
 		floor,
 		ceiling,
 		floor_and_ceiling,
 		air,
 		underground,
+		water_surface,
 	};
 	const VTable = struct {
 		loadModel: *const fn(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) *anyopaque,
-		generate: *const fn(self: *anyopaque, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64, isCeiling: bool) void,
+		generate: *const fn(self: *anyopaque, generationMode: GenerationMode, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView, seed: *u64, isCeiling: bool) void,
 		hashFunction: *const fn(self: *anyopaque) u64,
 		generationMode: GenerationMode,
 	};
@@ -46,8 +47,8 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 		};
 	}
 
-	pub fn generate(self: SimpleStructureModel, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64, isCeiling: bool) void {
-		self.vtable.generate(self.data, x, y, z, chunk, caveMap, seed, isCeiling);
+	pub fn generate(self: SimpleStructureModel, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView, seed: *u64, isCeiling: bool) void {
+		self.vtable.generate(self.data, self.generationMode, x, y, z, chunk, caveMap, biomeMap, seed, isCeiling);
 	}
 
 	var modelRegistry: std.StringHashMapUnmanaged(VTable) = .{};

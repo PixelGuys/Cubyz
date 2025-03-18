@@ -4,7 +4,9 @@ const main = @import("root");
 const random = main.random;
 const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
-const CaveMap = terrain.CaveMap;
+const CaveBiomeMapView = terrain.CaveBiomeMap.CaveBiomeMapView;
+const CaveMapView = terrain.CaveMap.CaveMapView;
+const GenerationMode = terrain.biomes.SimpleStructureModel.GenerationMode;
 const vec = main.vec;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
@@ -88,7 +90,7 @@ pub fn generateBranch(self: *SimpleTreeModel, x: i32, y: i32, z: i32, d: u32, ch
 	}
 }
 
-pub fn generate(self: *SimpleTreeModel, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64, _: bool) void {
+pub fn generate(self: *SimpleTreeModel, _: GenerationMode, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, caveMap: CaveMapView, _: CaveBiomeMapView, seed: *u64, _: bool) void {
 	const factor = random.nextFloat(seed);
 	var height = self.height0 + @as(i32, @intFromFloat(factor*@as(f32, @floatFromInt(self.deltaHeight))));
 	const leafRadius = self.leafRadius + factor*self.deltaLeafRadius;

@@ -4,7 +4,9 @@ const main = @import("root");
 const random = main.random;
 const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
-const CaveMap = terrain.CaveMap;
+const CaveBiomeMapView = terrain.CaveBiomeMap.CaveBiomeMapView;
+const CaveMapView = terrain.CaveMap.CaveMapView;
+const GenerationMode = terrain.biomes.SimpleStructureModel.GenerationMode;
 const vec = main.vec;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
@@ -31,7 +33,7 @@ pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) 
 	return self;
 }
 
-pub fn generate(self: *Stalagmite, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, _: terrain.CaveMap.CaveMapView, seed: *u64, isCeiling: bool) void {
+pub fn generate(self: *Stalagmite, _: GenerationMode, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, _: CaveMapView, _: CaveBiomeMapView, seed: *u64, isCeiling: bool) void {
 	const relX: f32 = @as(f32, @floatFromInt(x)) + main.random.nextFloat(seed);
 	const relY: f32 = @as(f32, @floatFromInt(y)) + main.random.nextFloat(seed);
 	var relZ: f32 = @as(f32, @floatFromInt(z)) + main.random.nextFloat(seed);

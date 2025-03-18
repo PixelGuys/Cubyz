@@ -25,8 +25,8 @@ pub fn init(parameters: ZonElement) void {
 
 pub fn deinit() void {}
 
-pub fn generate(_: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap.CaveMapView, _: CaveBiomeMap.CaveBiomeMapView) void {
+pub fn generate(_: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView) void {
 	const structureMap = terrain.StructureMap.getOrGenerateFragmentAndIncreaseRefCount(chunk.super.pos.wx, chunk.super.pos.wy, chunk.super.pos.wz, chunk.super.pos.voxelSize);
 	defer structureMap.decreaseRefCount();
-	structureMap.generateStructuresInChunk(chunk, caveMap);
+	structureMap.generateStructuresInChunk(chunk, caveMap, biomeMap);
 }
