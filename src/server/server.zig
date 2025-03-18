@@ -18,12 +18,12 @@ pub const storage = @import("storage.zig");
 
 const command = @import("command/_command.zig");
 
-pub const UserCommandData = struct {
+pub const WorldEditData = struct {
 	selectionPosition1: ?Vec3i = null,
 	selectionPosition2: ?Vec3i = null,
 	clipboard: ?main.blueprint.Blueprint = null,
 
-	pub fn deinit(self: *UserCommandData) void {
+	pub fn deinit(self: *WorldEditData) void {
 		if(self.clipboard != null) {
 			self.clipboard.?.deinit(main.globalAllocator);
 		}
@@ -51,7 +51,7 @@ pub const User = struct { // MARK: User
 	lastRenderDistance: u16 = 0,
 	lastPos: Vec3i = @splat(0),
 	gamemode: std.atomic.Value(main.game.Gamemode) = .init(.creative),
-	commandData: UserCommandData = .{},
+	commandData: WorldEditData = .{},
 
 	inventoryClientToServerIdMap: std.AutoHashMap(u32, u32) = undefined,
 
