@@ -91,6 +91,7 @@ var _blockResistance: [maxBlockCount]f32 = undefined;
 
 var _solid: [maxBlockCount]bool = undefined;
 var _selectable: [maxBlockCount]bool = undefined;
+var _climbable: [maxBlockCount]bool = undefined;
 var _blockDrops: [maxBlockCount][]BlockDrop = undefined;
 /// Meaning undegradable parts of trees or other structures can grow through this block.
 var _degradable: [maxBlockCount]bool = undefined;
@@ -143,6 +144,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
 	_degradable[size] = zon.get(bool, "degradable", false);
 	_selectable[size] = zon.get(bool, "selectable", true);
+	_climbable[size] = zon.get(bool, "climbable", false);
 	_solid[size] = zon.get(bool, "solid", true);
 	_gui[size] = allocator.dupe(u8, zon.get([]const u8, "gui", ""));
 	_transparent[size] = zon.get(bool, "transparent", false);
@@ -316,6 +318,10 @@ pub const Block = packed struct { // MARK: Block
 
 	pub inline fn selectable(self: Block) bool {
 		return _selectable[self.typ];
+	}
+
+	pub inline fn climbable(self: Block) bool {
+		return _climbable[self.typ];
 	}
 
 	pub inline fn blockDrops(self: Block) []BlockDrop {
