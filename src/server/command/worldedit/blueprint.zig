@@ -1,7 +1,6 @@
 const std = @import("std");
 
 const main = @import("root");
-//const main = @import("../../../main.zig");
 const User = main.server.User;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
@@ -86,7 +85,6 @@ fn blueprintSave(args: []const []const u8, source: *User) !void {
 		const fileName: []const u8 = ensureBlueprintExtension(main.stackAllocator, args[1]);
 		defer main.stackAllocator.free(fileName);
 
-		std.fs.cwd().makeDir("blueprints") catch {};
 		var blueprintsDir = try openDir("blueprints");
 		defer blueprintsDir.close();
 
@@ -120,7 +118,6 @@ fn blueprintDelete(args: []const []const u8, source: *User) !void {
 	const fileName: []const u8 = ensureBlueprintExtension(main.stackAllocator, args[1]);
 	defer main.stackAllocator.free(fileName);
 
-	std.fs.cwd().makeDir("blueprints") catch {};
 	var blueprintsDir = try openDir("blueprints");
 	defer blueprintsDir.close();
 
@@ -131,11 +128,10 @@ fn blueprintDelete(args: []const []const u8, source: *User) !void {
 }
 
 fn blueprintList(source: *User) !void {
-	std.fs.cwd().makeDir("blueprints") catch {};
-	var blueprintsDir = try openDir("blueprints");
+	var blueprintsDir = try std.fs.cwd().makeOpenPath("blueprints", .{.iterate = true});
 	defer blueprintsDir.close();
 
-	var directoryIterator = blueprintsDir.dir.iterate();
+	var directoryIterator = blueprintsDir.iterate();
 	var index: i32 = 0;
 
 	while(try directoryIterator.next()) |entry| {

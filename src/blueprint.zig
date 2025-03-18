@@ -151,7 +151,7 @@ pub const Blueprint = struct {
 		var uncompressedWriter = BinaryWriter.init(main.stackAllocator, .big);
 		defer uncompressedWriter.deinit();
 
-		const blockPaletteSizeBytes = storeBlockPalette(main.stackAllocator, gameIdToBlueprintId, uncompressedWriter);
+		const blockPaletteSizeBytes = storeBlockPalette(main.stackAllocator, gameIdToBlueprintId, &uncompressedWriter);
 
 		for(self.blocks.mem) |block| {
 			const blueprintBlock: BlockStorageType = (Block{.typ = gameIdToBlueprintId.get(block.typ).?, .data = block.data}).toInt();
@@ -227,7 +227,7 @@ pub const Blueprint = struct {
 			writer.writeSlice(blockName);
 		}
 
-		return blockPalette.len;
+		return writer.data.items.len;
 	}
 	fn decompressBuffer(self: *Blueprint, data: []const u8, blockPaletteSizeBytes: usize, compression: BlueprintCompression) ![]u8 {
 		const blockArraySizeBytes = self.blocks.width*self.blocks.depth*self.blocks.height*@sizeOf(BlockStorageType);
