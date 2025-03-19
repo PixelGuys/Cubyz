@@ -1,0 +1,20 @@
+.{
+	.tags = .{.leaf},
+	.blockHealth = 0.2,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.degradable = true,
+	.collide = false,
+	.alwaysViewThrough = true,
+	.absorbedLight = 0x121012,
+	.model = "cubyz:cactus_flower",
+	.rotation = .log,
+	.texture = "cubyz:cactus_flower",
+	.texture_top = "cubyz:cactus_flower_top",
+	.texture_bottom = "cubyz:cactus_flower_top",
+	.item = .{
+		.texture = "cactus_flower.png",
+	},
+	.lodReplacement = "cubyz:air",
+}
