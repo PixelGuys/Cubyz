@@ -787,11 +787,8 @@ pub const Command = struct { // MARK: Command
 			},
 		}
 		
-
 		for(invs.items) |inv| {
-			if (inv.type == .blockInventory) {
-				
-			}
+			if (inv.type == .blockInventory) {}
 		}
 	}
 

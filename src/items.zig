@@ -512,7 +512,7 @@ pub const Tool = struct { // MARK: Tool
 
 	pub fn loadFromBin(reader: *main.utils.BinaryReader) !*Tool {
 		var items: [25]?*const BaseItem = undefined;
-		for (&items) |*item| {
+		for(&items) |*item| {
 			item.* = reverseIndices.get(try reader.readUntilDelimiter(0));
 		}
 		const durability = try reader.readInt(u32);
@@ -700,7 +700,7 @@ pub const Item = union(ItemType) { // MARK: Item
 
 	pub fn writeToBin(self: Item, writer: *main.utils.BinaryWriter) void {
 		writer.writeEnum(ItemType, self);
-		switch (self) {
+		switch(self) {
 			inline else => |val| {
 				val.writeToBin(writer);
 			},
@@ -762,7 +762,7 @@ pub const ItemStack = struct { // MARK: ItemStack
 
 	pub fn loadFromBin(reader: *main.utils.BinaryReader) !ItemStack {
 		const num = try reader.readInt(u16);
-		if (num == 0) {
+		if(num == 0) {
 			return .{
 				.item = null,
 				.amount = num,
@@ -806,9 +806,9 @@ pub const ItemStack = struct { // MARK: ItemStack
 	}
 
 	pub fn writeToBin(self: *const ItemStack, writer: *main.utils.BinaryWriter) void {
-		if (self.item) |item| {
+		if(self.item) |item| {
 			writer.writeInt(u16, @intCast(self.amount));
-			if (self.amount != 0) {
+			if(self.amount != 0) {
 				item.writeToBin(writer);
 			}
 		} else {
