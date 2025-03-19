@@ -30,22 +30,18 @@ pub const Blueprint = struct {
 	pub fn init(allocator: NeverFailingAllocator) Blueprint {
 		return .{.blocks = .init(allocator, 0, 0, 0)};
 	}
-	pub fn deinit(self: *Blueprint, allocator: NeverFailingAllocator) void {
+	pub fn deinit(self: Blueprint, allocator: NeverFailingAllocator) void {
 		self.blocks.deinit(allocator);
 	}
 	pub fn clone(self: *Blueprint, allocator: NeverFailingAllocator) Blueprint {
-		var new = Blueprint.init(allocator);
-		new.blocks = self.blocks.clone(allocator);
-		return new;
+		return .{.blocks = self.blocks.clone(allocator)};
 	}
 	const CaptureResult = union(enum) {
 		success: Blueprint,
-		failure: struct {x: i32, y: i32, z: i32, message: []const u8},
+		failure: struct {pos: Vec3i, message: []const u8},
 	};
 
 	pub fn capture(allocator: NeverFailingAllocator, pos1: Vec3i, pos2: Vec3i) CaptureResult {
-		var self = Blueprint{.blocks = undefined};
-
 		const startX = @min(pos1[0], pos2[0]);
 		const startY = @min(pos1[1], pos2[1]);
 		const startZ = @min(pos1[2], pos2[2]);
@@ -58,7 +54,7 @@ pub const Blueprint = struct {
 		const sizeY: u32 = @intCast(endY - startY + 1);
 		const sizeZ: u32 = @intCast(endZ - startZ + 1);
 
-		self.blocks = .init(allocator, sizeX, sizeY, sizeZ);
+		const self = Blueprint{.blocks = .init(allocator, sizeX, sizeY, sizeZ)};
 
 		for(0..sizeX) |x| {
 			const worldX = startX +% @as(i32, @intCast(x));
@@ -73,7 +69,7 @@ pub const Blueprint = struct {
 					if(maybeBlock) |block| {
 						self.blocks.set(x, y, z, block);
 					} else {
-						return .{.failure = .{.x = worldX, .y = worldY, .z = worldZ, .message = "Chunk containing block not loaded."}};
+						return .{.failure = .{.pos = .{worldX, worldY, worldZ}, .message = "Chunk containing block not loaded."}};
 					}
 				}
 			}
@@ -101,8 +97,6 @@ pub const Blueprint = struct {
 		}
 	}
 	pub fn load(allocator: NeverFailingAllocator, inputBuffer: []u8) !Blueprint {
-		var self = Blueprint{.blocks = undefined};
-
 		var compressedReader = BinaryReader.init(inputBuffer, .big);
 		const version = try compressedReader.readInt(u16);
 
@@ -113,11 +107,11 @@ pub const Blueprint = struct {
 		const compression = try compressedReader.readEnum(BlueprintCompression);
 		const blockPaletteSizeBytes = try compressedReader.readInt(u32);
 		const paletteBlockCount = try compressedReader.readInt(u16);
-		const width: u32 = @intCast(try compressedReader.readInt(u16));
-		const depth: u32 = @intCast(try compressedReader.readInt(u16));
-		const height: u32 = @intCast(try compressedReader.readInt(u16));
+		const width: u32 = try compressedReader.readInt(u16);
+		const depth: u32 = try compressedReader.readInt(u16);
+		const height: u32 = try compressedReader.readInt(u16);
 
-		self.blocks = .init(allocator, width, depth, height);
+		const self = Blueprint{.blocks = .init(allocator, width, depth, height)};
 
 		const decompressedData = try self.decompressBuffer(compressedReader.remaining, blockPaletteSizeBytes, compression);
 		defer main.stackAllocator.free(decompressedData);
@@ -229,7 +223,7 @@ pub const Blueprint = struct {
 
 		return writer.data.items.len;
 	}
-	fn decompressBuffer(self: *Blueprint, data: []const u8, blockPaletteSizeBytes: usize, compression: BlueprintCompression) ![]u8 {
+	fn decompressBuffer(self: Blueprint, data: []const u8, blockPaletteSizeBytes: usize, compression: BlueprintCompression) ![]u8 {
 		const blockArraySizeBytes = self.blocks.width*self.blocks.depth*self.blocks.height*@sizeOf(BlockStorageType);
 		const decompressedDataSizeBytes = blockPaletteSizeBytes + blockArraySizeBytes;
 

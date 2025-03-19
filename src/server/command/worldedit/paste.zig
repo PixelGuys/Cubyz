@@ -19,13 +19,9 @@ pub fn execute(args: []const u8, source: *User) void {
 		return;
 	}
 
-	if(source.commandData.clipboard) |clipboard| {
-		const pos: Vec3i = .{
-			@intFromFloat(source.player.pos[0]),
-			@intFromFloat(source.player.pos[1]),
-			@intFromFloat(source.player.pos[2]),
-		};
-		source.sendMessage("Pasting: ({d:.3}, {d:.3}, {d:.3})", .{pos[0], pos[1], pos[2]});
+	if(source.worldEditData.clipboard) |clipboard| {
+		const pos: Vec3i = @intFromFloat(source.player.pos);
+		source.sendMessage("Pasting: {}", .{pos});
 		clipboard.paste(pos);
 	} else {
 		source.sendMessage("#ff0000Error: No clipboard content to paste.", .{});

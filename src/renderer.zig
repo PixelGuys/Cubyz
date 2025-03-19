@@ -943,16 +943,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		}
 		if(game.Player.selectionPosition1) |pos1| {
 			if(game.Player.selectionPosition2) |pos2| {
-				const bottomLeft: Vec3i = .{
-					@min(pos1[0], pos2[0]),
-					@min(pos1[1], pos2[1]),
-					@min(pos1[2], pos2[2]),
-				};
-				const topRight: Vec3i = .{
-					@max(pos1[0], pos2[0]),
-					@max(pos1[1], pos2[1]),
-					@max(pos1[2], pos2[2]),
-				};
+				const bottomLeft: Vec3i = @min(pos1, pos2);
+				const topRight: Vec3i = @max(pos1, pos2);
 
 				c.glEnable(c.GL_POLYGON_OFFSET_LINE);
 				defer c.glDisable(c.GL_POLYGON_OFFSET_LINE);

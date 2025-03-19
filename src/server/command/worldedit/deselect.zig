@@ -12,8 +12,8 @@ pub fn execute(args: []const u8, source: *User) void {
 		return;
 	}
 
-	source.commandData.selectionPosition1 = null;
-	source.commandData.selectionPosition2 = null;
+	source.worldEditData.selectionPosition1 = null;
+	source.worldEditData.selectionPosition2 = null;
 
 	main.network.Protocols.genericUpdate.sendWorldEditPos(source.conn, .clear, null);
 	source.sendMessage("Cleared selection.", .{});

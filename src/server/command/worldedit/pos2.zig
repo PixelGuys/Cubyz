@@ -13,14 +13,10 @@ pub fn execute(args: []const u8, source: *User) void {
 		return;
 	}
 
-	const pos: Vec3i = .{
-		@intFromFloat(source.player.pos[0]),
-		@intFromFloat(source.player.pos[1]),
-		@intFromFloat(source.player.pos[2]),
-	};
+	const pos: Vec3i = @intFromFloat(source.player.pos);
 
-	source.commandData.selectionPosition2 = pos;
+	source.worldEditData.selectionPosition2 = pos;
 	main.network.Protocols.genericUpdate.sendWorldEditPos(source.conn, .selectedPos2, pos);
 
-	source.sendMessage("Position 2: ({}, {}, {})", .{pos[0], pos[1], pos[2]});
+	source.sendMessage("Position 1: {}", .{pos});
 }

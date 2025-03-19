@@ -51,7 +51,7 @@ pub const User = struct { // MARK: User
 	lastRenderDistance: u16 = 0,
 	lastPos: Vec3i = @splat(0),
 	gamemode: std.atomic.Value(main.game.Gamemode) = .init(.creative),
-	commandData: WorldEditData = .{},
+	worldEditData: WorldEditData = .{},
 
 	inventoryClientToServerIdMap: std.AutoHashMap(u32, u32) = undefined,
 
@@ -88,7 +88,7 @@ pub const User = struct { // MARK: User
 			return;
 		};
 
-		self.commandData.deinit();
+		self.worldEditData.deinit();
 
 		main.items.Inventory.Sync.ServerSide.disconnectUser(self);
 		std.debug.assert(self.inventoryClientToServerIdMap.count() == 0); // leak

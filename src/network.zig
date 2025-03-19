@@ -1011,9 +1011,9 @@ pub const Protocols = struct {
 					switch(typ) {
 						.selectedPos1, .selectedPos2 => {
 							const pos = Vec3i{
-								@bitCast(try reader.readInt(i32)),
-								@bitCast(try reader.readInt(i32)),
-								@bitCast(try reader.readInt(i32)),
+								try reader.readInt(i32),
+								try reader.readInt(i32),
+								try reader.readInt(i32),
 							};
 							switch(typ) {
 								.selectedPos1 => game.Player.selectionPosition1 = pos,

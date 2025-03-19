@@ -15,24 +15,24 @@ pub fn execute(args: []const u8, source: *User) void {
 		return;
 	}
 
-	if(source.commandData.selectionPosition1) |pos1| {
-		if(source.commandData.selectionPosition2) |pos2| {
-			source.sendMessage("Copying: ({d:.3}, {d:.3}, {d:.3}) ({d:.3}, {d:.3}, {d:.3})", .{pos1[0], pos1[1], pos1[2], pos2[0], pos2[1], pos2[2]});
+	if(source.worldEditData.selectionPosition1) |pos1| {
+		if(source.worldEditData.selectionPosition2) |pos2| {
+			source.sendMessage("Copying: {} {}", .{pos1, pos2});
 
 			const result = Blueprint.capture(main.globalAllocator, pos1, pos2);
 			switch(result) {
 				.success => {
-					if(source.commandData.clipboard != null) {
-						source.commandData.clipboard.?.deinit(main.globalAllocator);
+					if(source.worldEditData.clipboard != null) {
+						source.worldEditData.clipboard.?.deinit(main.globalAllocator);
 					}
-					source.commandData.clipboard = result.success;
+					source.worldEditData.clipboard = result.success;
 
 					source.sendMessage("Copied selection to clipboard.", .{});
 				},
 				.failure => {
 					const e = result.failure;
-					source.sendMessage("#ff0000Error while copying block ({d:.3}, {d:.3}, {d:.3}): {s}", .{e.x, e.y, e.z, e.message});
-					std.log.warn("Error while copying block ({d:.3}, {d:.3}, {d:.3}): {s}", .{e.x, e.y, e.z, e.message});
+					source.sendMessage("#ff0000Error while copying block {}: {s}", .{e.pos, e.message});
+					std.log.warn("Error while copying block {}: {s}", .{e.pos, e.message});
 				},
 			}
 		} else {
