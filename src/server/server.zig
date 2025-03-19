@@ -190,26 +190,26 @@ pub const User = struct { // MARK: User
 		self.loadUnloadChunks();
 	}
 
-	pub fn receiveData(self: *User, data: []const u8) void {
+	pub fn receiveData(self: *User, reader: *BinaryReader) !void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
 		const position: [3]f64 = .{
-			@bitCast(std.mem.readInt(u64, data[0..8], .big)),
-			@bitCast(std.mem.readInt(u64, data[8..16], .big)),
-			@bitCast(std.mem.readInt(u64, data[16..24], .big)),
+			try reader.readFloat(f64),
+			try reader.readFloat(f64),
+			try reader.readFloat(f64),
 		};
 		const velocity: [3]f64 = .{
-			@bitCast(std.mem.readInt(u64, data[24..32], .big)),
-			@bitCast(std.mem.readInt(u64, data[32..40], .big)),
-			@bitCast(std.mem.readInt(u64, data[40..48], .big)),
+			try reader.readFloat(f64),
+			try reader.readFloat(f64),
+			try reader.readFloat(f64),
 		};
 		const rotation: [3]f32 = .{
-			@bitCast(std.mem.readInt(u32, data[48..52], .big)),
-			@bitCast(std.mem.readInt(u32, data[52..56], .big)),
-			@bitCast(std.mem.readInt(u32, data[56..60], .big)),
+			try reader.readFloat(f32),
+			try reader.readFloat(f32),
+			try reader.readFloat(f32),
 		};
 		self.player.rot = rotation;
-		const time = std.mem.readInt(i16, data[60..62], .big);
+		const time = try reader.readInt(i16);
 		self.timeDifference.addDataPoint(time);
 		self.interpolation.updatePosition(&position, &velocity, time);
 	}
