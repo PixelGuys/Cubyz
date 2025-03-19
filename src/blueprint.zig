@@ -148,7 +148,7 @@ pub const Blueprint = struct {
 		const blockPaletteSizeBytes = storeBlockPalette(main.stackAllocator, gameIdToBlueprintId, &uncompressedWriter);
 
 		for(self.blocks.mem) |block| {
-			const blueprintBlock: BlockStorageType = (Block{.typ = gameIdToBlueprintId.get(block.typ).?, .data = block.data}).toInt();
+			const blueprintBlock: BlockStorageType = Block.toInt(.{.typ = gameIdToBlueprintId.get(block.typ).?, .data = block.data});
 			uncompressedWriter.writeInt(BlockStorageType, blueprintBlock);
 		}
 
