@@ -18,16 +18,13 @@ pub fn execute(args: []const u8, source: *User) void {
 		source.sendMessage("#ff0000Too many arguments for command /rotate. Expected no arguments.", .{});
 		return;
 	}
-	source.mutex.lock();
-	defer source.mutex.unlock();
-
-	if(source.commandData.clipboard == null) {
+	if(source.worldEditData.clipboard == null) {
 		source.sendMessage("#ff0000Error: No clipboard content to rotate.", .{});
 	}
-	var current = source.commandData.clipboard.?;
-	source.commandData.clipboard = null;
+	var current = source.worldEditData.clipboard.?;
+	source.worldEditData.clipboard = null;
 	defer current.deinit(main.globalAllocator);
 
 	const rotated = current.rotateZ(main.globalAllocator, .@"90");
-	source.commandData.clipboard = rotated;
+	source.worldEditData.clipboard = rotated;
 }
