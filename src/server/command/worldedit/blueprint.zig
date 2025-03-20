@@ -101,7 +101,7 @@ fn sendWarningAndLog(comptime fmt: []const u8, args: anytype, user: *User) void 
 }
 
 fn sendInfoAndLog(comptime fmt: []const u8, args: anytype, user: *User) void {
-	std.log.warn(fmt, args);
+	std.log.info(fmt, args);
 	user.sendMessage("#00ff00" ++ fmt, args);
 }
 
