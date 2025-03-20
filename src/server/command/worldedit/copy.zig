@@ -29,8 +29,7 @@ pub fn execute(args: []const u8, source: *User) void {
 
 					source.sendMessage("Copied selection to clipboard.", .{});
 				},
-				.failure => {
-					const e = result.failure;
+				.failure => |e| {
 					source.sendMessage("#ff0000Error while copying block {}: {s}", .{e.pos, e.message});
 					std.log.warn("Error while copying block {}: {s}", .{e.pos, e.message});
 				},

@@ -11,7 +11,7 @@ const Block = main.blocks.Block;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const User = main.server.User;
 
-pub const GameIdToBlueprintIdMapType = std.AutoHashMap(u16, u16);
+const GameIdToBlueprintIdMapType = std.AutoHashMap(u16, u16);
 const BlockIdSizeType = u32;
 const BlockStorageType = u32;
 
@@ -107,9 +107,9 @@ pub const Blueprint = struct {
 		const compression = try compressedReader.readEnum(BlueprintCompression);
 		const blockPaletteSizeBytes = try compressedReader.readInt(u32);
 		const paletteBlockCount = try compressedReader.readInt(u16);
-		const width: u32 = try compressedReader.readInt(u16);
-		const depth: u32 = try compressedReader.readInt(u16);
-		const height: u32 = try compressedReader.readInt(u16);
+		const width = try compressedReader.readInt(u16);
+		const depth = try compressedReader.readInt(u16);
+		const height = try compressedReader.readInt(u16);
 
 		const self = Blueprint{.blocks = .init(allocator, width, depth, height)};
 
