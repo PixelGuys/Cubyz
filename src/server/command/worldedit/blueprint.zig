@@ -6,6 +6,7 @@ const vec = main.vec;
 const Vec3i = vec.Vec3i;
 
 const openDir = main.files.openDir;
+const Dir = main.files.Dir;
 const List = main.List;
 const Block = main.blocks.Block;
 const Blueprint = main.blueprint.Blueprint;
@@ -74,31 +75,82 @@ fn blueprintSave(args: []const []const u8, source: *User) void {
 	}
 
 	if(source.worldEditData.clipboard) |clipboard| {
-		const storedBlueprint = clipboard.store(main.stackAllocator);
-		defer main.stackAllocator.free(storedBlueprint);
-
-		const fileName: []const u8 = ensureBlueprintExtension(main.stackAllocator, args[1]);
-		defer main.stackAllocator.free(fileName);
-
-		var blueprintsDir = openDir("blueprints") catch |err| {
-			std.log.warn("Failed to open 'blueprints' directory ({s})", .{@errorName(err)});
-			source.sendMessage("#ff0000Failed to open 'blueprints' directory ({s})", .{@errorName(err)});
-			return;
-		};
-		defer blueprintsDir.close();
-
-		blueprintsDir.write(fileName, storedBlueprint) catch |err| {
-			std.log.warn("Failed to write blueprint file '{s}' ({s})", .{fileName, @errorName(err)});
-			source.sendMessage("#ff0000Failed to write blueprint file '{s}' ({s})", .{fileName, @errorName(err)});
-			return;
-		};
-
-		std.log.info("Saved clipboard to blueprint file: {s}", .{fileName});
-		source.sendMessage("#00ff00Saved clipboard to blueprint file: {s}", .{fileName});
+		var file = BlueprintFile.init(main.stackAllocator, args[1], source) catch return;
+		defer file.deinit(main.stackAllocator);
+		file.write(clipboard) catch return;
 	} else {
 		source.sendMessage("#ff0000Error: No clipboard content to save.", .{});
 	}
 }
+
+const BlueprintFile = struct {
+	fileName: []const u8,
+	blueprintsDir: Dir,
+	source: *User,
+
+	pub fn init(allocator: NeverFailingAllocator, fileName: []const u8, source: *User) !BlueprintFile {
+		const blueprintsDir = openDir("blueprints") catch |err| {
+			std.log.warn("Failed to open 'blueprints' directory ({s})", .{@errorName(err)});
+			source.sendMessage("#ff0000Failed to open 'blueprints' directory ({s})", .{@errorName(err)});
+			return error.Failed;
+		};
+		return BlueprintFile{
+			.fileName = ensureBlueprintExtension(allocator, fileName),
+			.blueprintsDir = blueprintsDir,
+			.source = source,
+		};
+	}
+
+	pub fn deinit(self: *BlueprintFile, allocator: NeverFailingAllocator) void {
+		self.blueprintsDir.close();
+		allocator.free(self.fileName);
+	}
+
+	pub fn write(self: BlueprintFile, bp: Blueprint) !void {
+		const storedBlueprint = bp.store(main.stackAllocator);
+		defer main.stackAllocator.free(storedBlueprint);
+
+		self.blueprintsDir.write(self.fileName, storedBlueprint) catch |err| {
+			std.log.warn("Failed to write blueprint file '{s}' ({s})", .{self.fileName, @errorName(err)});
+			self.source.sendMessage("#ff0000Failed to write blueprint file '{s}' ({s})", .{self.fileName, @errorName(err)});
+			return error.Failed;
+		};
+
+		std.log.info("Saved clipboard to blueprint file: {s}", .{self.fileName});
+		self.source.sendMessage("#00ff00Saved clipboard to blueprint file: {s}", .{self.fileName});
+	}
+
+	pub fn delete(self: BlueprintFile) !void {
+		self.blueprintsDir.dir.deleteFile(self.fileName) catch |err| {
+			std.log.warn("Failed to delete blueprint file '{s}' ({s})", .{self.fileName, @errorName(err)});
+			self.source.sendMessage("#ff0000Failed to delete blueprint file '{s}' ({s})", .{self.fileName, @errorName(err)});
+			return error.Failed;
+		};
+
+		std.log.info("Deleted blueprint file: {s}", .{self.fileName});
+		self.source.sendMessage("#ff0000Deleted blueprint file: {s}", .{self.fileName});
+	}
+
+	pub fn load(self: BlueprintFile, allocator: NeverFailingAllocator) ?Blueprint {
+		const storedBlueprint = self.blueprintsDir.read(main.stackAllocator, self.fileName) catch |err| {
+			std.log.warn("Failed to read blueprint file '{s}' ({s})", .{self.fileName, @errorName(err)});
+			self.source.sendMessage("#ff0000Failed to read blueprint file '{s}' ({s})", .{self.fileName, @errorName(err)});
+			return null;
+		};
+		defer main.stackAllocator.free(storedBlueprint);
+
+		const bp = Blueprint.load(allocator, storedBlueprint) catch |err| blk: {
+			std.log.warn("Failed to load blueprint file '{s}' ({s})", .{self.fileName, @errorName(err)});
+			self.source.sendMessage("#ff0000Failed to load blueprint file '{s}' ({s})", .{self.fileName, @errorName(err)});
+			break :blk null;
+		};
+
+		std.log.info("Loaded blueprint file: {s}", .{self.fileName});
+		self.source.sendMessage("#00ff00Loaded blueprint file: {s}", .{self.fileName});
+
+		return bp;
+	}
+};
 
 fn ensureBlueprintExtension(allocator: NeverFailingAllocator, fileName: []const u8) []const u8 {
 	if(!std.ascii.endsWithIgnoreCase(fileName, ".blp")) {
@@ -118,24 +170,9 @@ fn blueprintDelete(args: []const []const u8, source: *User) void {
 		return;
 	}
 
-	const fileName: []const u8 = ensureBlueprintExtension(main.stackAllocator, args[1]);
-	defer main.stackAllocator.free(fileName);
-
-	var blueprintsDir = openDir("blueprints") catch |err| {
-		std.log.warn("Failed to open 'blueprints' directory ({s})", .{@errorName(err)});
-		source.sendMessage("#ff0000Failed to open 'blueprints' directory ({s})", .{@errorName(err)});
-		return;
-	};
-	defer blueprintsDir.close();
-
-	blueprintsDir.dir.deleteFile(fileName) catch |err| {
-		std.log.warn("Failed to delete blueprint file '{s}' ({s})", .{fileName, @errorName(err)});
-		source.sendMessage("#ff0000Failed to delete blueprint file '{s}' ({s})", .{fileName, @errorName(err)});
-		return;
-	};
-
-	std.log.info("Deleted blueprint file: {s}", .{fileName});
-	source.sendMessage("#ff0000Deleted blueprint file: {s}", .{fileName});
+	var file = BlueprintFile.init(main.stackAllocator, args[1], source) catch return;
+	defer file.deinit(main.stackAllocator);
+	file.delete() catch return;
 }
 
 fn blueprintList(source: *User) void {
@@ -170,32 +207,12 @@ fn blueprintLoad(args: []const []const u8, source: *User) void {
 		return;
 	}
 
-	const fileName: []const u8 = ensureBlueprintExtension(main.stackAllocator, args[1]);
-	defer main.stackAllocator.free(fileName);
-
-	var blueprintsDir = openDir("blueprints") catch |err| {
-		std.log.warn("Failed to open 'blueprints' directory ({s})", .{@errorName(err)});
-		source.sendMessage("#ff0000Failed to open 'blueprints' directory ({s})", .{@errorName(err)});
-		return;
-	};
-	defer blueprintsDir.close();
-
-	const storedBlueprint = blueprintsDir.read(main.stackAllocator, fileName) catch |err| {
-		std.log.warn("Failed to read blueprint file '{s}' ({s})", .{fileName, @errorName(err)});
-		source.sendMessage("#ff0000Failed to read blueprint file '{s}' ({s})", .{fileName, @errorName(err)});
-		return;
-	};
-	defer main.stackAllocator.free(storedBlueprint);
+	var file = BlueprintFile.init(main.stackAllocator, args[1], source) catch return;
+	defer file.deinit(main.stackAllocator);
+	const loadedBlueprint = file.load(main.globalAllocator) orelse return;
 
 	if(source.worldEditData.clipboard) |oldClipboard| {
 		oldClipboard.deinit(main.globalAllocator);
 	}
-	source.worldEditData.clipboard = Blueprint.load(main.globalAllocator, storedBlueprint) catch |err| {
-		std.log.warn("Failed to load blueprint file '{s}' ({s})", .{fileName, @errorName(err)});
-		source.sendMessage("#ff0000Failed to load blueprint file '{s}' ({s})", .{fileName, @errorName(err)});
-		return;
-	};
-
-	std.log.info("Loaded blueprint file: {s}", .{fileName});
-	source.sendMessage("#00ff00Loaded blueprint file: {s}", .{fileName});
+	source.worldEditData.clipboard = loadedBlueprint;
 }
