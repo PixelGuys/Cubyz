@@ -1565,7 +1565,7 @@ pub const RotationModes = struct {
 		}
 
 		fn transform(quad: *main.models.QuadInfo, data: u16) void {
-			quad.textureSlot = data % 4;
+			quad.textureSlot = data%4;
 		}
 
 		pub fn createBlockModel(zon: ZonElement) u16 {
