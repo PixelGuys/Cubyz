@@ -1,0 +1,21 @@
+.{
+	.tags = .{.leaf},
+	.blockHealth = 0.2,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.degradable = true,
+	.collide = false,
+	.alwaysViewThrough = true,
+	.absorbedLight = 0x000000,
+	.model = "cubyz:plane",
+	.rotation = .pile,
+	.texture_top = "cubyz:duckweed/0",
+	.texture_bottom = "cubyz:duckweed/1",
+	.texture_right = "cubyz:duckweed/2",
+	.texture_left = "cubyz:duckweed/3",
+	.item = .{
+		.texture = "duckweed.png",
+	},
+	.lodReplacement = "cubyz:air",
+}

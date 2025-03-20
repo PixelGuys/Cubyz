@@ -1548,6 +1548,72 @@ pub const RotationModes = struct {
 			currentData.data = 0;
 		}
 	};
+	pub const Pile = struct {
+		pub const id: []const u8 = "pile";
+		var modelCache: std.StringHashMap(u16) = undefined;
+
+		fn init() void {
+			modelCache = .init(main.globalAllocator.allocator);
+		}
+
+		fn deinit() void {
+			modelCache.deinit();
+		}
+
+		fn reset() void {
+			modelCache.clearRetainingCapacity();
+		}
+
+		fn transform(quad: *main.models.QuadInfo, data: u16) void {
+			quad.textureSlot = data % 4;
+		}
+
+		pub fn createBlockModel(zon: ZonElement) u16 {
+			const modelId = zon.as([]const u8, "cubyz:cube");
+			if(modelCache.get(modelId)) |modelIndex| return modelIndex;
+
+			const baseModelIndex = main.models.getModelIndex(modelId);
+			const baseModel = main.models.models.items[baseModelIndex];
+
+			const modelIndex: u16 = baseModel.transformModel(transform, .{@as(u16, @intCast(0))});
+			for(1..4) |data| {
+				_ = baseModel.transformModel(transform, .{@as(u16, @intCast(data))});
+			}
+			modelCache.put(modelId, modelIndex) catch unreachable;
+			return modelIndex;
+		}
+
+		pub fn model(block: Block) u16 {
+			return blocks.meshes.modelIndexStart(block) + (block.data & 0b11);
+		}
+
+		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: ?Neighbor, currentData: *Block, _: Block, blockPlacing: bool) bool {
+			if(blockPlacing) {
+				currentData.data = 0;
+				return true;
+			}
+			if(currentData.data >= 3) {
+				return false;
+			}
+			currentData.data = currentData.data + 1;
+			return true;
+		}
+
+		pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
+			switch(RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess)) {
+				.no, .yes_costsDurability, .yes_dropsItems => return .no,
+				.yes, .yes_costsItems => {
+					const amountChange = @as(i32, newBlock.data) - if(oldBlock.typ == newBlock.typ) @as(i32, oldBlock.data) else 0;
+					if(amountChange <= 0) {
+						return .{.yes_dropsItems = @intCast(-amountChange)};
+					} else {
+						if(item.item == null or item.item.? != .baseItem or !std.meta.eql(item.item.?.baseItem.block, newBlock.typ)) return .no;
+						return .{.yes_costsItems = @intCast(amountChange)};
+					}
+				},
+			}
+		}
+	};
 };
 
 // MARK: init/register
