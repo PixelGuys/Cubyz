@@ -123,17 +123,13 @@ pub const Blueprint = struct {
 		const blueprintIdToGameIdMap = makeBlueprintIdToGameIdMap(main.stackAllocator, palette);
 		defer main.stackAllocator.free(blueprintIdToGameIdMap);
 
-		for(0..self.blocks.width) |x| {
-			for(0..self.blocks.depth) |y| {
-				for(0..self.blocks.height) |z| {
-					const blueprintBlockRaw = try decompressedReader.readInt(BlockStorageType);
+		for(self.blocks.mem) |*block| {
+			const blueprintBlockRaw = try decompressedReader.readInt(BlockStorageType);
 
-					const blueprintBlock = Block.fromInt(blueprintBlockRaw);
-					const gameBlockId = blueprintIdToGameIdMap[blueprintBlock.typ];
+			const blueprintBlock = Block.fromInt(blueprintBlockRaw);
+			const gameBlockId = blueprintIdToGameIdMap[blueprintBlock.typ];
 
-					self.blocks.set(x, y, z, .{.typ = gameBlockId, .data = blueprintBlock.data});
-				}
-			}
+			block.* = .{.typ = gameBlockId, .data = blueprintBlock.data};
 		}
 		return self;
 	}
@@ -145,7 +141,7 @@ pub const Blueprint = struct {
 		var uncompressedWriter = BinaryWriter.init(main.stackAllocator, .big);
 		defer uncompressedWriter.deinit();
 
-		const blockPaletteSizeBytes = storeBlockPalette(main.stackAllocator, gameIdToBlueprintId, &uncompressedWriter);
+		const blockPaletteSizeBytes = storeBlockPalette(gameIdToBlueprintId, &uncompressedWriter);
 
 		for(self.blocks.mem) |block| {
 			const blueprintBlock: BlockStorageType = Block.toInt(.{.typ = gameIdToBlueprintId.get(block.typ).?, .data = block.data});
@@ -200,9 +196,9 @@ pub const Blueprint = struct {
 		}
 		return palette;
 	}
-	fn storeBlockPalette(allocator: NeverFailingAllocator, map: GameIdToBlueprintIdMapType, writer: *BinaryWriter) usize {
-		var blockPalette = allocator.alloc([]const u8, map.count());
-		defer allocator.free(blockPalette);
+	fn storeBlockPalette(map: GameIdToBlueprintIdMapType, writer: *BinaryWriter) usize {
+		var blockPalette = main.stackAllocator.alloc([]const u8, map.count());
+		defer main.stackAllocator.free(blockPalette);
 
 		var iterator = map.iterator();
 		while(iterator.next()) |entry| {
