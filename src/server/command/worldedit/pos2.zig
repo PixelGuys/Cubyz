@@ -18,5 +18,5 @@ pub fn execute(args: []const u8, source: *User) void {
 	source.worldEditData.selectionPosition2 = pos;
 	main.network.Protocols.genericUpdate.sendWorldEditPos(source.conn, .selectedPos2, pos);
 
-	source.sendMessage("Position 1: {}", .{pos});
+	source.sendMessage("Position 2: {}", .{pos});
 }
