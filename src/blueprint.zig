@@ -42,10 +42,11 @@ pub const Blueprint = struct {
 		return .{.blocks = self.blocks.clone(allocator)};
 	}
 	pub fn rotateZ(self: Blueprint, allocator: NeverFailingAllocator, angle: Degrees) Blueprint {
-		var new = Blueprint.init(allocator);
-		new.blocks = switch(angle) {
-			.@"0", .@"180" => .init(allocator, self.blocks.width, self.blocks.depth, self.blocks.height),
-			.@"90", .@"270" => .init(allocator, self.blocks.depth, self.blocks.width, self.blocks.height),
+		var new = Blueprint{
+			.blocks = switch(angle) {
+				.@"0", .@"180" => .init(allocator, self.blocks.width, self.blocks.depth, self.blocks.height),
+				.@"90", .@"270" => .init(allocator, self.blocks.depth, self.blocks.width, self.blocks.height),
+			},
 		};
 
 		const a: f32 = (std.math.pi/2.0)*@as(f32, @floatFromInt(@intFromEnum(angle)));

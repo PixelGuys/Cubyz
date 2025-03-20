@@ -1,7 +1,9 @@
 const std = @import("std");
 
 const main = @import("root");
+const GenerationMode = main.server.terrain.biomes.SimpleStructureModel.GenerationMode;
 const CaveMapView = main.server.terrain.CaveMap.CaveMapView;
+const CaveBiomeMapView = main.server.terrain.CaveBiomeMap.CaveBiomeMapView;
 const structure_building_blocks = main.structure_building_blocks;
 const Blueprint = main.blueprint.Blueprint;
 const SubstitutionMap = main.blueprint.SubstitutionMap;
@@ -79,7 +81,7 @@ fn loadSubstitutions(allocator: NeverFailingAllocator, zon: ZonElement) ?Substit
 	return substitutions;
 }
 
-pub fn generate(self: *SBBGen, x: i32, y: i32, z: i32, chunk: *ServerChunk, _: CaveMapView, seed: *u64, _: bool) void {
+pub fn generate(self: *SBBGen, _: GenerationMode, x: i32, y: i32, z: i32, chunk: *ServerChunk, _: CaveMapView, _: CaveBiomeMapView, seed: *u64, _: bool) void {
 	placeSbb(self, self.structure, x, y, z - 1, Neighbor.dirUp, chunk, seed);
 }
 
