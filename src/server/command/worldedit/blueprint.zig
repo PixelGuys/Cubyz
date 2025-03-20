@@ -66,12 +66,10 @@ pub fn execute(args: []const u8, source: *User) void {
 
 fn blueprintSave(args: []const []const u8, source: *User) void {
 	if(args.len < 2) {
-		source.sendMessage("#ff0000/blueprint save requires file-name argument.", .{});
-		return;
+		return source.sendMessage("#ff0000/blueprint save requires file-name argument.", .{});
 	}
 	if(args.len >= 3) {
-		source.sendMessage("#ff0000Too many arguments for /blueprint save. Expected 1 argument, file-name.", .{});
-		return;
+		return source.sendMessage("#ff0000Too many arguments for /blueprint save. Expected 1 argument, file-name.", .{});
 	}
 
 	if(source.worldEditData.clipboard) |clipboard| {
@@ -85,8 +83,7 @@ fn blueprintSave(args: []const []const u8, source: *User) void {
 		defer blueprintsDir.close();
 
 		blueprintsDir.write(fileName, storedBlueprint) catch |err| {
-			sendWarningAndLog("Failed to write blueprint file '{s}' ({s})", .{fileName, @errorName(err)}, source);
-			return;
+			return sendWarningAndLog("Failed to write blueprint file '{s}' ({s})", .{fileName, @errorName(err)}, source);
 		};
 
 		sendInfoAndLog("Saved clipboard to blueprint file: {s}", .{fileName}, source);
@@ -122,12 +119,10 @@ fn ensureBlueprintExtension(allocator: NeverFailingAllocator, fileName: []const 
 
 fn blueprintDelete(args: []const []const u8, source: *User) void {
 	if(args.len < 2) {
-		source.sendMessage("#ff0000/blueprint delete requires file-name argument.", .{});
-		return;
+		return source.sendMessage("#ff0000/blueprint delete requires file-name argument.", .{});
 	}
 	if(args.len >= 3) {
-		source.sendMessage("#ff0000Too many arguments for /blueprint delete. Expected 1 argument, file-name.", .{});
-		return;
+		return source.sendMessage("#ff0000Too many arguments for /blueprint delete. Expected 1 argument, file-name.", .{});
 	}
 
 	const fileName: []const u8 = ensureBlueprintExtension(main.stackAllocator, args[1]);
@@ -137,8 +132,7 @@ fn blueprintDelete(args: []const []const u8, source: *User) void {
 	defer blueprintsDir.close();
 
 	blueprintsDir.dir.deleteFile(fileName) catch |err| {
-		sendWarningAndLog("Failed to delete blueprint file '{s}' ({s})", .{fileName, @errorName(err)}, source);
-		return;
+		return sendWarningAndLog("Failed to delete blueprint file '{s}' ({s})", .{fileName, @errorName(err)}, source);
 	};
 
 	sendWarningAndLog("Deleted blueprint file: {s}", .{fileName}, source);
@@ -146,16 +140,14 @@ fn blueprintDelete(args: []const []const u8, source: *User) void {
 
 fn blueprintList(source: *User) void {
 	var blueprintsDir = std.fs.cwd().makeOpenPath("blueprints", .{.iterate = true}) catch |err| {
-		sendWarningAndLog("Failed to open 'blueprints' directory ({s})", .{@errorName(err)}, source);
-		return;
+		return sendWarningAndLog("Failed to open 'blueprints' directory ({s})", .{@errorName(err)}, source);
 	};
 	defer blueprintsDir.close();
 
 	var directoryIterator = blueprintsDir.iterate();
 
 	while(directoryIterator.next() catch |err| {
-		sendWarningAndLog("Failed to read blueprint directory ({s})", .{@errorName(err)}, source);
-		return;
+		return sendWarningAndLog("Failed to read blueprint directory ({s})", .{@errorName(err)}, source);
 	}) |entry| {
 		if(entry.kind != .file) break;
 		if(!std.ascii.endsWithIgnoreCase(entry.name, ".blp")) break;
@@ -166,12 +158,10 @@ fn blueprintList(source: *User) void {
 
 fn blueprintLoad(args: []const []const u8, source: *User) void {
 	if(args.len < 2) {
-		source.sendMessage("#ff0000/blueprint load requires file-name argument.", .{});
-		return;
+		return source.sendMessage("#ff0000/blueprint load requires file-name argument.", .{});
 	}
 	if(args.len >= 3) {
-		source.sendMessage("#ff0000Too many arguments for /blueprint load. Expected 1 argument, file-name.", .{});
-		return;
+		return source.sendMessage("#ff0000Too many arguments for /blueprint load. Expected 1 argument, file-name.", .{});
 	}
 
 	const fileName: []const u8 = ensureBlueprintExtension(main.stackAllocator, args[1]);
@@ -190,8 +180,7 @@ fn blueprintLoad(args: []const []const u8, source: *User) void {
 		oldClipboard.deinit(main.globalAllocator);
 	}
 	source.worldEditData.clipboard = Blueprint.load(main.globalAllocator, storedBlueprint) catch |err| {
-		sendWarningAndLog("Failed to load blueprint file '{s}' ({s})", .{fileName, @errorName(err)}, source);
-		return;
+		return sendWarningAndLog("Failed to load blueprint file '{s}' ({s})", .{fileName, @errorName(err)}, source);
 	};
 
 	sendInfoAndLog("Loaded blueprint file: {s}", .{fileName}, source);
