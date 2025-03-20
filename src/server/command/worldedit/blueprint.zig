@@ -85,22 +85,29 @@ fn blueprintSave(args: []const []const u8, source: *User) void {
 		defer blueprintsDir.close();
 
 		blueprintsDir.write(fileName, storedBlueprint) catch |err| {
-			std.log.warn("Failed to write blueprint file '{s}' ({s})", .{fileName, @errorName(err)});
-			source.sendMessage("#ff0000Failed to write blueprint file '{s}' ({s})", .{fileName, @errorName(err)});
+			sendWarningAndLog("Failed to write blueprint file '{s}' ({s})", .{fileName, @errorName(err)}, source);
 			return;
 		};
 
-		std.log.info("Saved clipboard to blueprint file: {s}", .{fileName});
-		source.sendMessage("#00ff00Saved clipboard to blueprint file: {s}", .{fileName});
+		sendInfoAndLog("Saved clipboard to blueprint file: {s}", .{fileName}, source);
 	} else {
 		source.sendMessage("#ff0000Error: No clipboard content to save.", .{});
 	}
 }
 
+fn sendWarningAndLog(comptime fmt: []const u8, args: anytype, user: *User) void {
+	std.log.warn(fmt, args);
+	user.sendMessage("#ff0000" ++ fmt, args);
+}
+
+fn sendInfoAndLog(comptime fmt: []const u8, args: anytype, user: *User) void {
+	std.log.warn(fmt, args);
+	user.sendMessage("#00ff00" ++ fmt, args);
+}
+
 fn openBlueprintsDir(source: *User) ?Dir {
 	return openDir("blueprints") catch |err| blk: {
-		std.log.warn("Failed to open 'blueprints' directory ({s})", .{@errorName(err)});
-		source.sendMessage("#ff0000Failed to open 'blueprints' directory ({s})", .{@errorName(err)});
+		sendWarningAndLog("Failed to open 'blueprints' directory ({s})", .{@errorName(err)}, source);
 		break :blk null;
 	};
 }
@@ -130,19 +137,16 @@ fn blueprintDelete(args: []const []const u8, source: *User) void {
 	defer blueprintsDir.close();
 
 	blueprintsDir.dir.deleteFile(fileName) catch |err| {
-		std.log.warn("Failed to delete blueprint file '{s}' ({s})", .{fileName, @errorName(err)});
-		source.sendMessage("#ff0000Failed to delete blueprint file '{s}' ({s})", .{fileName, @errorName(err)});
+		sendWarningAndLog("Failed to delete blueprint file '{s}' ({s})", .{fileName, @errorName(err)}, source);
 		return;
 	};
 
-	std.log.info("Deleted blueprint file: {s}", .{fileName});
-	source.sendMessage("#ff0000Deleted blueprint file: {s}", .{fileName});
+	sendWarningAndLog("Deleted blueprint file: {s}", .{fileName}, source);
 }
 
 fn blueprintList(source: *User) void {
 	var blueprintsDir = std.fs.cwd().makeOpenPath("blueprints", .{.iterate = true}) catch |err| {
-		std.log.warn("Failed to open 'blueprints' directory ({s})", .{@errorName(err)});
-		source.sendMessage("#ff0000Failed to open 'blueprints' directory ({s})", .{@errorName(err)});
+		sendWarningAndLog("Failed to open 'blueprints' directory ({s})", .{@errorName(err)}, source);
 		return;
 	};
 	defer blueprintsDir.close();
@@ -150,8 +154,7 @@ fn blueprintList(source: *User) void {
 	var directoryIterator = blueprintsDir.iterate();
 
 	while(directoryIterator.next() catch |err| {
-		std.log.warn("Failed to read blueprint directory ({s})", .{@errorName(err)});
-		source.sendMessage("#ff0000Failed to read blueprint directory ({s})", .{@errorName(err)});
+		sendWarningAndLog("Failed to read blueprint directory ({s})", .{@errorName(err)}, source);
 		return;
 	}) |entry| {
 		if(entry.kind != .file) break;
@@ -178,8 +181,7 @@ fn blueprintLoad(args: []const []const u8, source: *User) void {
 	defer blueprintsDir.close();
 
 	const storedBlueprint = blueprintsDir.read(main.stackAllocator, fileName) catch |err| {
-		std.log.warn("Failed to read blueprint file '{s}' ({s})", .{fileName, @errorName(err)});
-		source.sendMessage("#ff0000Failed to read blueprint file '{s}' ({s})", .{fileName, @errorName(err)});
+		sendWarningAndLog("Failed to read blueprint file '{s}' ({s})", .{fileName, @errorName(err)}, source);
 		return;
 	};
 	defer main.stackAllocator.free(storedBlueprint);
@@ -188,11 +190,9 @@ fn blueprintLoad(args: []const []const u8, source: *User) void {
 		oldClipboard.deinit(main.globalAllocator);
 	}
 	source.worldEditData.clipboard = Blueprint.load(main.globalAllocator, storedBlueprint) catch |err| {
-		std.log.warn("Failed to load blueprint file '{s}' ({s})", .{fileName, @errorName(err)});
-		source.sendMessage("#ff0000Failed to load blueprint file '{s}' ({s})", .{fileName, @errorName(err)});
+		sendWarningAndLog("Failed to load blueprint file '{s}' ({s})", .{fileName, @errorName(err)}, source);
 		return;
 	};
 
-	std.log.info("Loaded blueprint file: {s}", .{fileName});
-	source.sendMessage("#00ff00Loaded blueprint file: {s}", .{fileName});
+	sendInfoAndLog("Loaded blueprint file: {s}", .{fileName}, source);
 }
