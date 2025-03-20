@@ -4,7 +4,7 @@ const main = @import("root");
 const User = main.server.User;
 const Vec3i = main.vec.Vec3i;
 
-pub const description = "Select the player's position as position 2.";
+pub const description = "Select the player position as position 2.";
 pub const usage = "/pos2";
 
 pub fn execute(args: []const u8, source: *User) void {
