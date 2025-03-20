@@ -147,7 +147,6 @@ fn blueprintList(source: *User) void {
 	defer blueprintsDir.close();
 
 	var directoryIterator = blueprintsDir.iterate();
-	var index: i32 = 0;
 
 	while(directoryIterator.next() catch |err| {
 		std.log.warn("Failed to read blueprint directory ({s})", .{@errorName(err)});
@@ -157,8 +156,7 @@ fn blueprintList(source: *User) void {
 		if(entry.kind != .file) break;
 		if(!std.ascii.endsWithIgnoreCase(entry.name, ".blp")) break;
 
-		source.sendMessage("#ffffff{}#00ff00 {s}", .{index, entry.name});
-		index += 1;
+		source.sendMessage("#ffffff-#00ff00 {s}", .{entry.name});
 	}
 }
 
