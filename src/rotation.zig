@@ -808,7 +808,7 @@ pub const RotationModes = struct {
 			comptime var rotationTable: [4][256]u8 = undefined;
 			comptime for(0..4) |a| {
 				for(0..256) |old| {
-					var new: u8 = 0;
+					var new: u8 = 0b11_11_11_11;
 
 					for(0..2) |i| for(0..2) |j| for(0..2) |k| {
 						const sin: f32 = @sin((std.math.pi/2.0)*@as(f32, @floatFromInt(a)));
@@ -821,13 +821,16 @@ pub const RotationModes = struct {
 						const rY = @intFromBool(x*sin + y*cos > 0);
 
 						if(hasSubBlock(@intCast(old), @intCast(i), @intCast(j), @intCast(k))) {
-							new |= subBlockMask(rX, rY, @intCast(k));
+							new &= ~subBlockMask(rX, rY, @intCast(k));
 						}
 					};
 					rotationTable[a][old] = new;
 				}
 			};
-			if(data >= 256) return 0;
+			if(data > 0b11111111) {
+				std.log.err("Invalid stair data: {}", .{data});
+				return 0;
+			}
 			return rotationTable[@intFromEnum(angle)][data];
 		}
 

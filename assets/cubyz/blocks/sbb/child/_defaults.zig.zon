@@ -1,0 +1,7 @@
+.{
+	.tags = .{.stone},
+	.blockHealth = 1e9,
+	.drops = .{},
+	.model = "cubyz:cube",
+	.rotation = .log,
+}

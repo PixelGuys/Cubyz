@@ -3,6 +3,9 @@ const std = @import("std");
 const blocks_zig = @import("blocks.zig");
 const items_zig = @import("items.zig");
 const migrations_zig = @import("migrations.zig");
+const structure_building_blocks = @import("structure_building_blocks.zig");
+const blueprints_zig = @import("blueprint.zig");
+const Blueprint = blueprints_zig.Blueprint;
 const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main.zig");
 const biomes_zig = main.server.terrain.biomes;
@@ -18,6 +21,8 @@ var commonBiomes: std.StringHashMap(ZonElement) = undefined;
 var commonBiomeMigrations: std.StringHashMap(ZonElement) = undefined;
 var commonRecipes: std.StringHashMap(ZonElement) = undefined;
 var commonModels: std.StringHashMap([]const u8) = undefined;
+var commonStructureBuildingBlocks: std.StringHashMap(ZonElement) = undefined;
+var commonBlueprints: std.StringHashMap([]u8) = undefined;
 
 pub fn init() void {
 	biomes_zig.init();
@@ -33,6 +38,8 @@ pub fn init() void {
 	commonBiomeMigrations = .init(arenaAllocator.allocator);
 	commonRecipes = .init(arenaAllocator.allocator);
 	commonModels = .init(arenaAllocator.allocator);
+	commonStructureBuildingBlocks = .init(arenaAllocator.allocator);
+	commonBlueprints = .init(arenaAllocator.allocator);
 
 	readAssets(
 		arenaAllocator,
@@ -45,11 +52,13 @@ pub fn init() void {
 		&commonBlockMigrations,
 		&commonRecipes,
 		&commonModels,
+		&commonStructureBuildingBlocks,
+		&commonBlueprints,
 	);
 
 	std.log.info(
-		"Finished assets init with {} blocks ({} migrations), {} items, {} tools. {} biomes ({} migrations), {} recipes",
-		.{commonBlocks.count(), commonBlockMigrations.count(), commonItems.count(), commonTools.count(), commonBiomes.count(), commonBiomeMigrations.count(), commonRecipes.count()},
+		"Finished assets init with {} blocks ({} migrations), {} items, {} tools, {} biomes ({} migrations), {} recipes, {} structure building blocks and {} blueprints",
+		.{commonBlocks.count(), commonBlockMigrations.count(), commonItems.count(), commonTools.count(), commonBiomes.count(), commonBiomeMigrations.count(), commonRecipes.count(), commonStructureBuildingBlocks.count(), commonBlueprints.count()},
 	);
 }
 
@@ -162,6 +171,68 @@ pub fn readAllZonFilesInAddons(
 	}
 }
 
+pub fn readAllBlueprintFilesInAddons(
+	externalAllocator: NeverFailingAllocator,
+	addons: main.List(std.fs.Dir),
+	addonNames: main.List([]const u8),
+	subPath: []const u8,
+	output: *std.StringHashMap([]u8),
+) void {
+	for(addons.items, addonNames.items) |addon, addonName| {
+		var dir = addon.openDir(subPath, .{.iterate = true}) catch |err| {
+			if(err != error.FileNotFound) {
+				std.log.err("Could not open addon directory {s}: {s}", .{subPath, @errorName(err)});
+			}
+			continue;
+		};
+		defer dir.close();
+
+		var walker = dir.walk(main.stackAllocator.allocator) catch unreachable;
+		defer walker.deinit();
+
+		while(walker.next() catch |err| blk: {
+			std.log.err("Got error while iterating addon directory {s}: {s}", .{subPath, @errorName(err)});
+			break :blk null;
+		}) |entry| {
+			if(entry.kind != .file) continue;
+			if(std.ascii.startsWithIgnoreCase(entry.basename, "_defaults")) continue;
+			if(!std.ascii.endsWithIgnoreCase(entry.basename, ".blp")) continue;
+			if(std.ascii.startsWithIgnoreCase(entry.basename, "_migrations")) continue;
+
+			const stringId: []u8 = createAssetStringID(externalAllocator, addonName, entry.basename, entry.path);
+			const data = main.files.Dir.init(dir).read(externalAllocator, entry.path) catch |err| {
+				std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
+				continue;
+			};
+			output.put(stringId, data) catch unreachable;
+		}
+	}
+}
+
+fn createAssetStringID(
+	externalAllocator: NeverFailingAllocator,
+	addonName: []const u8,
+	fileBaseName: []const u8,
+	relativeFilePath: []const u8,
+) []u8 {
+	const fileSuffixLen = if(std.ascii.endsWithIgnoreCase(fileBaseName, ".zig.zon")) ".zig.zon".len else ".zon".len;
+	const assetId: []u8 = externalAllocator.alloc(u8, addonName.len + 1 + relativeFilePath.len - fileSuffixLen);
+
+	@memcpy(assetId[0..addonName.len], addonName);
+	assetId[addonName.len] = ':';
+
+	// Convert from windows to unix style separators.
+	for(0..relativeFilePath.len - fileSuffixLen) |i| {
+		if(relativeFilePath[i] == '\\') {
+			assetId[addonName.len + 1 + i] = '/';
+		} else {
+			assetId[addonName.len + 1 + i] = relativeFilePath[i];
+		}
+	}
+
+	return assetId;
+}
+
 /// Reads obj files recursively from all subfolders.
 pub fn readAllObjFilesInAddonsHashmap(
 	externalAllocator: NeverFailingAllocator,
@@ -221,6 +292,8 @@ pub fn readAssets(
 	biomeMigrations: *std.StringHashMap(ZonElement),
 	recipes: *std.StringHashMap(ZonElement),
 	models: *std.StringHashMap([]const u8),
+	structureBuildingBlocks: *std.StringHashMap(ZonElement),
+	blueprints: *std.StringHashMap([]u8),
 ) void {
 	var addons = main.List(std.fs.Dir).init(main.stackAllocator);
 	defer addons.deinit();
@@ -258,6 +331,8 @@ pub fn readAssets(
 	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "biomes", true, biomes, biomeMigrations);
 	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "recipes", false, recipes, null);
 	readAllObjFilesInAddonsHashmap(externalAllocator, addons, addonNames, "models", models);
+	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "sbb", true, structureBuildingBlocks, null);
+	readAllBlueprintFilesInAddons(externalAllocator, addons, addonNames, "blueprints", blueprints);
 }
 
 fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void {
@@ -424,6 +499,10 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	defer recipes.clearAndFree();
 	var models = commonModels.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer models.clearAndFree();
+	var structureBuildingBlocks = commonStructureBuildingBlocks.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
+	defer structureBuildingBlocks.clearAndFree();
+	var blueprints = commonBlueprints.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
+	defer blueprints.clearAndFree();
 
 	readAssets(
 		arenaAllocator,
@@ -436,6 +515,8 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		&biomeMigrations,
 		&recipes,
 		&models,
+		&structureBuildingBlocks,
+		&blueprints,
 	);
 	errdefer unloadAssets();
 
@@ -542,6 +623,9 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		registerRecipesFromZon(entry.value_ptr.*);
 	}
 
+	try structure_building_blocks.registerBlueprints(&blueprints);
+	try structure_building_blocks.registerSBB(&structureBuildingBlocks);
+
 	// Biomes:
 	var nextBiomeNumericId: u32 = 0;
 	for(biomePalette.palette.items) |id| {
@@ -577,7 +661,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	}
 
 	std.log.info(
-		"Finished registering assets with {} blocks ({} migrations), {} items {} tools. {} biomes ({} migrations), {} recipes and {} models",
+		"Finished registering assets with {} blocks ({} migrations), {} items {} tools, {} biomes ({} migrations), {} recipes and {} models",
 		.{blocks.count(), blockMigrations.count(), items.count(), tools.count(), biomes.count(), biomeMigrations.count(), recipes.count(), models.count()},
 	);
 }
@@ -586,6 +670,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	if(!loadedAssets) return;
 	loadedAssets = false;
 
+	structure_building_blocks.reset();
 	blocks_zig.reset();
 	items_zig.reset();
 	biomes_zig.reset();

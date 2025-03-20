@@ -12,3 +12,4 @@ pub const deselect = @import("worldedit/deselect.zig");
 pub const copy = @import("worldedit/copy.zig");
 pub const paste = @import("worldedit/paste.zig");
 pub const blueprint = @import("worldedit/blueprint.zig");
+pub const rotate = @import("worldedit/rotate.zig");

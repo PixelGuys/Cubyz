@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const main = @import("main.zig");
+const structure_building_blocks = main.structure_building_blocks;
 const Compression = main.utils.Compression;
 const ZonElement = @import("zon.zig").ZonElement;
 const vec = main.vec;
@@ -10,6 +11,8 @@ const Array3D = main.utils.Array3D;
 const Block = main.blocks.Block;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const User = main.server.User;
+const ServerChunk = main.chunk.ServerChunk;
+const Degrees = main.rotation.Degrees;
 
 const GameIdToBlueprintIdMapType = std.AutoHashMap(u16, u16);
 const BlockIdSizeType = u32;
@@ -17,6 +20,8 @@ const BlockStorageType = u32;
 
 const BinaryWriter = main.utils.BinaryWriter;
 const BinaryReader = main.utils.BinaryReader;
+
+pub const SubstitutionMap = std.AutoHashMapUnmanaged(u16, u16);
 
 pub const blueprintVersion = 0;
 
@@ -36,6 +41,43 @@ pub const Blueprint = struct {
 	pub fn clone(self: *Blueprint, allocator: NeverFailingAllocator) Blueprint {
 		return .{.blocks = self.blocks.clone(allocator)};
 	}
+	pub fn rotateZ(self: Blueprint, allocator: NeverFailingAllocator, angle: Degrees) Blueprint {
+		var new = Blueprint.init(allocator);
+		new.blocks = switch(angle) {
+			.@"0", .@"180" => .init(allocator, self.blocks.width, self.blocks.depth, self.blocks.height),
+			.@"90", .@"270" => .init(allocator, self.blocks.depth, self.blocks.width, self.blocks.height),
+		};
+
+		const a: f32 = (std.math.pi/2.0)*@as(f32, @floatFromInt(@intFromEnum(angle)));
+		const sin: f32 = @sin(a);
+		const cos: f32 = @cos(a);
+
+		for(0..self.blocks.width) |i| {
+			for(0..self.blocks.depth) |j| {
+				for(0..self.blocks.height) |z| {
+					const block = self.blocks.get(i, j, z);
+
+					const x: f32 = @floatFromInt(i);
+					const y: f32 = @floatFromInt(j);
+
+					var newX: i64 = @intFromFloat(@round((x + 1)*cos - (y + 1)*sin));
+					var newY: i64 = @intFromFloat(@round((x + 1)*sin + (y + 1)*cos));
+
+					newX = if(newX < 0) @as(i64, @intCast(new.blocks.width)) + newX else newX - 1;
+					newY = if(newY < 0) @as(i64, @intCast(new.blocks.depth)) + newY else newY - 1;
+
+					std.debug.assert(newX >= 0);
+					std.debug.assert(newX < @as(i64, @intCast(new.blocks.width)));
+					std.debug.assert(newY >= 0);
+					std.debug.assert(newY < @as(i64, @intCast(new.blocks.depth)));
+
+					new.blocks.set(@intCast(newX), @intCast(newY), z, block.rotateZ(angle));
+				}
+			}
+		}
+		return new;
+	}
+
 	const CaptureResult = union(enum) {
 		success: Blueprint,
 		failure: struct {pos: Vec3i, message: []const u8},
@@ -75,6 +117,41 @@ pub const Blueprint = struct {
 			}
 		}
 		return .{.success = self};
+	}
+	pub const PasteMode = enum {all, noAir, replaceAir};
+
+	pub fn pasteInGeneration(self: Blueprint, pos: Vec3i, chunk: *ServerChunk, mode: PasteMode, substitutions: ?SubstitutionMap) void {
+		const startX = pos[0];
+		const startY = pos[1];
+		const startZ = pos[2];
+
+		for(0..self.blocks.width) |x| {
+			const worldX = startX + @as(i32, @intCast(x));
+
+			for(0..self.blocks.depth) |y| {
+				const worldY = startY + @as(i32, @intCast(y));
+
+				for(0..self.blocks.height) |z| {
+					const worldZ = startZ + @as(i32, @intCast(z));
+					if(!chunk.liesInChunk(worldX, worldY, worldZ)) continue;
+
+					var block = self.blocks.get(x, y, z);
+					if(structure_building_blocks.isOriginBlock(block) or structure_building_blocks.isChildBlock(block)) continue;
+
+					if(substitutions) |map| {
+						if(map.get(block.typ)) |entry| {
+							block.typ = entry;
+						}
+					}
+
+					sw: switch(mode) {
+						.all => chunk.updateBlockInGeneration(worldX, worldY, worldZ, block),
+						.noAir => if(block.typ != 0) continue :sw .all,
+						.replaceAir => if(block.typ != 0 and chunk.getBlock(worldX, worldY, worldZ).typ == 0) continue :sw .all,
+					}
+				}
+			}
+		}
 	}
 	pub fn paste(self: Blueprint, pos: Vec3i) void {
 		const startX = pos[0];
