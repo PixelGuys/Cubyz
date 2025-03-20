@@ -156,7 +156,7 @@ fn blueprintList(source: *User) void {
 		if(entry.kind != .file) break;
 		if(!std.ascii.endsWithIgnoreCase(entry.name, ".blp")) break;
 
-		source.sendMessage("#ffffff-#00ff00 {s}", .{entry.name});
+		source.sendMessage("#ffffff- {s}", .{entry.name});
 	}
 }
 
