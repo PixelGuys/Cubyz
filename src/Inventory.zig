@@ -435,7 +435,7 @@ pub const Sync = struct { // MARK: Sync
 		}
 	}
 	pub fn addEnergy(energy: f32, side: Side, id: u32) void {
-		if (side == .client) {
+		if(side == .client) {
 			Sync.ClientSide.executeCommand(.{.addEnergy = .{.target = id, .energy = energy}});
 		} else {
 			Sync.ServerSide.executeCommand(.{.addEnergy = .{.target = id, .energy = energy}}, null);
@@ -520,44 +520,36 @@ pub const Command = struct { // MARK: Command
 		}
 	};
 
-	const BaseOperation = union(BaseOperationType) {
-		move: struct {
-			dest: InventoryAndSlot,
-			source: InventoryAndSlot,
-			amount: u16,
-		},
-		swap: struct {
-			dest: InventoryAndSlot,
-			source: InventoryAndSlot,
-		},
-		delete: struct {
-			source: InventoryAndSlot,
-			item: ?Item = undefined,
-			amount: u16,
-		},
-		create: struct {
-			dest: InventoryAndSlot,
-			item: ?Item,
-			amount: u16,
-		},
-		useDurability: struct {
-			source: InventoryAndSlot,
-			item: main.items.Item = undefined,
-			durability: u31,
-			previousDurability: u32 = undefined,
-		},
-		addHealth: struct {
-			target: ?*main.server.User,
-			health: f32,
-			cause: main.game.DamageType,
-			previous: f32,
-		},
-		addEnergy: struct {
-			target: ?*main.server.User,
-			energy: f32,
-			previous: f32,
-		}
-	};
+	const BaseOperation = union(BaseOperationType) {move: struct {
+		dest: InventoryAndSlot,
+		source: InventoryAndSlot,
+		amount: u16,
+	}, swap: struct {
+		dest: InventoryAndSlot,
+		source: InventoryAndSlot,
+	}, delete: struct {
+		source: InventoryAndSlot,
+		item: ?Item = undefined,
+		amount: u16,
+	}, create: struct {
+		dest: InventoryAndSlot,
+		item: ?Item,
+		amount: u16,
+	}, useDurability: struct {
+		source: InventoryAndSlot,
+		item: main.items.Item = undefined,
+		durability: u31,
+		previousDurability: u32 = undefined,
+	}, addHealth: struct {
+		target: ?*main.server.User,
+		health: f32,
+		cause: main.game.DamageType,
+		previous: f32,
+	}, addEnergy: struct {
+		target: ?*main.server.User,
+		energy: f32,
+		previous: f32,
+	}};
 
 	const SyncOperationType = enum(u8) {
 		create = 0,
@@ -639,7 +631,7 @@ pub const Command = struct { // MARK: Command
 				},
 				.energy => |energy| {
 					main.game.Player.super.energy = std.math.clamp(main.game.Player.super.energy + energy.energy, 0, main.game.Player.super.maxEnergy);
-				}
+				},
 			}
 		}
 
@@ -981,7 +973,7 @@ pub const Command = struct { // MARK: Command
 					info.previous = info.target.?.player.energy;
 
 					info.target.?.player.energy = std.math.clamp(info.target.?.player.energy + info.energy, 0, info.target.?.player.maxEnergy);
-					self.syncOperations.append(allocator, .{.energy  = .{
+					self.syncOperations.append(allocator, .{.energy = .{
 						.target = info.target.?,
 						.energy = info.energy,
 					}});
@@ -1675,7 +1667,7 @@ pub const Command = struct { // MARK: Command
 			};
 		}
 	};
-	
+
 	const AddHealth = struct { // MARK: AddHealth
 		target: u32,
 		health: f32,
