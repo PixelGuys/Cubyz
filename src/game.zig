@@ -631,28 +631,6 @@ pub const Player = struct { // MARK: Player
 			}
 		}
 	}
-
-	pub fn useEnergy(amount: f32) bool {
-		if(super.energy >= amount) {
-			super.energy -= amount;
-			return true;
-		} else {
-			return false;
-		}
-	}
-
-	pub fn gainEnergy(amount: f32) bool {
-		if(super.energy == super.maxHunger) {
-			return false;
-		}
-		const added = super.energy + amount;
-		if(added > super.maxEnergy) {
-			super.energy = super.maxEnergy;
-		} else {
-			super.energy = added;
-		}
-		return true;
-	}
 };
 
 pub const World = struct { // MARK: World

@@ -434,6 +434,13 @@ pub const Sync = struct { // MARK: Sync
 			Sync.ServerSide.executeCommand(.{.addHealth = .{.target = id, .health = health, .cause = cause}}, null);
 		}
 	}
+	pub fn addEnergy(energy: f32, side: Side, id: u32) void {
+		if (side == .client) {
+			Sync.ClientSide.executeCommand(.{.addEnergy = .{.target = id, .energy = energy}});
+		} else {
+			Sync.ServerSide.executeCommand(.{.addEnergy = .{.target = id, .energy = energy}}, null);
+		}
+	}
 
 	pub fn getInventory(id: u32, side: Side, user: ?*main.server.User) ?Inventory {
 		return switch(side) {
@@ -464,6 +471,7 @@ pub const Command = struct { // MARK: Command
 		clear = 8,
 		updateBlock = 9,
 		addHealth = 10,
+		addEnergy = 11,
 	};
 	pub const Payload = union(PayloadType) {
 		open: Open,
@@ -477,6 +485,7 @@ pub const Command = struct { // MARK: Command
 		clear: Clear,
 		updateBlock: UpdateBlock,
 		addHealth: AddHealth,
+		addEnergy: AddEnergy,
 	};
 
 	const BaseOperationType = enum(u8) {
@@ -486,6 +495,7 @@ pub const Command = struct { // MARK: Command
 		create = 3,
 		useDurability = 4,
 		addHealth = 5,
+		addEnergy = 6,
 	};
 
 	const InventoryAndSlot = struct {
@@ -542,6 +552,11 @@ pub const Command = struct { // MARK: Command
 			cause: main.game.DamageType,
 			previous: f32,
 		},
+		addEnergy: struct {
+			target: ?*main.server.User,
+			energy: f32,
+			previous: f32,
+		}
 	};
 
 	const SyncOperationType = enum(u8) {
@@ -550,6 +565,7 @@ pub const Command = struct { // MARK: Command
 		useDurability = 2,
 		health = 3,
 		kill = 4,
+		energy = 5,
 	};
 
 	const SyncOperation = union(SyncOperationType) { // MARK: SyncOperation
@@ -573,6 +589,10 @@ pub const Command = struct { // MARK: Command
 		},
 		kill: struct {
 			target: ?*main.server.User,
+		},
+		energy: struct {
+			target: ?*main.server.User,
+			energy: f32,
 		},
 
 		pub fn executeFromData(reader: *utils.BinaryReader) !void {
@@ -617,6 +637,9 @@ pub const Command = struct { // MARK: Command
 				.kill => {
 					main.game.Player.kill();
 				},
+				.energy => |energy| {
+					main.game.Player.super.energy = std.math.clamp(main.game.Player.super.energy + energy.energy, 0, main.game.Player.super.maxEnergy);
+				}
 			}
 		}
 
@@ -625,7 +648,7 @@ pub const Command = struct { // MARK: Command
 				inline .create, .delete, .useDurability => |data| {
 					return allocator.dupe(*main.server.User, Sync.ServerSide.inventories.items[data.inv.inv.id].users.items);
 				},
-				inline .health, .kill => |data| {
+				inline .health, .kill, .energy => |data| {
 					const out = allocator.alloc(*main.server.User, 1);
 					out[0] = data.target.?;
 					return out;
@@ -635,7 +658,7 @@ pub const Command = struct { // MARK: Command
 
 		pub fn ignoreSource(self: SyncOperation) bool {
 			return switch(self) {
-				.create, .delete, .useDurability, .health => true,
+				.create, .delete, .useDurability, .health, .energy => true,
 				.kill => false,
 			};
 		}
@@ -686,6 +709,12 @@ pub const Command = struct { // MARK: Command
 						.target = null,
 					}};
 				},
+				.energy => {
+					return .{.energy = .{
+						.target = null,
+						.energy = @bitCast(try reader.readInt(u32)),
+					}};
+				},
 			}
 		}
 
@@ -717,6 +746,9 @@ pub const Command = struct { // MARK: Command
 					writer.writeInt(u32, @bitCast(health.health));
 				},
 				.kill => {},
+				.energy => |energy| {
+					writer.writeInt(u32, @bitCast(energy.energy));
+				},
 			}
 			return writer.data.toOwnedSlice();
 		}
@@ -793,6 +825,9 @@ pub const Command = struct { // MARK: Command
 				.addHealth => |info| {
 					main.game.Player.super.health = info.previous;
 				},
+				.addEnergy => |info| {
+					main.game.Player.super.energy = info.previous;
+				},
 			}
 		}
 	}
@@ -800,7 +835,7 @@ pub const Command = struct { // MARK: Command
 	fn finalize(self: Command, allocator: NeverFailingAllocator, side: Side, reader: *utils.BinaryReader) !void {
 		for(self.baseOperations.items) |step| {
 			switch(step) {
-				.move, .swap, .create, .addHealth => {},
+				.move, .swap, .create, .addHealth, .addEnergy => {},
 				.delete => |info| {
 					info.item.?.deinit();
 				},
@@ -939,6 +974,20 @@ pub const Command = struct { // MARK: Command
 				} else {
 					info.previous = main.game.Player.super.health;
 					main.game.Player.super.health = std.math.clamp(main.game.Player.super.health + info.health, 0, main.game.Player.super.maxHealth);
+				}
+			},
+			.addEnergy => |*info| {
+				if(side == .server) {
+					info.previous = info.target.?.player.energy;
+
+					info.target.?.player.energy = std.math.clamp(info.target.?.player.energy + info.energy, 0, info.target.?.player.maxEnergy);
+					self.syncOperations.append(allocator, .{.energy  = .{
+						.target = info.target.?,
+						.energy = info.energy,
+					}});
+				} else {
+					info.previous = main.game.Player.super.energy;
+					main.game.Player.super.energy = std.math.clamp(main.game.Player.super.energy + info.energy, 0, main.game.Player.super.maxEnergy);
 				}
 			},
 		}
@@ -1626,7 +1675,7 @@ pub const Command = struct { // MARK: Command
 			};
 		}
 	};
-
+	
 	const AddHealth = struct { // MARK: AddHealth
 		target: u32,
 		health: f32,
@@ -1671,6 +1720,50 @@ pub const Command = struct { // MARK: Command
 				.target = try reader.readInt(u32),
 				.health = @bitCast(try reader.readInt(u32)),
 				.cause = try reader.readEnum(main.game.DamageType),
+			};
+		}
+	};
+
+	const AddEnergy = struct { // MARK: AddEnergy
+		target: u32,
+		energy: f32,
+
+		pub fn run(self: AddEnergy, allocator: NeverFailingAllocator, cmd: *Command, side: Side, _: ?*main.server.User, _: Gamemode) error{serverFailure}!void {
+			var target: ?*main.server.User = null;
+
+			if(side == .server) {
+				const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
+				defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+				for(userList) |user| {
+					if(user.id == self.target) {
+						target = user;
+						break;
+					}
+				}
+
+				if(target == null) return error.serverFailure;
+
+				if(target.?.gamemode.raw == .creative) return;
+			} else {
+				if(main.game.Player.gamemode.raw == .creative) return;
+			}
+
+			cmd.executeBaseOperation(allocator, .{.addEnergy = .{
+				.target = target,
+				.energy = self.energy,
+				.previous = if(side == .server) target.?.player.energy else main.game.Player.super.energy,
+			}}, side);
+		}
+
+		fn serialize(self: AddEnergy, writer: *utils.BinaryWriter) void {
+			writer.writeInt(u32, self.target);
+			writer.writeInt(u32, @bitCast(self.energy));
+		}
+
+		fn deserialize(reader: *utils.BinaryReader, _: Side, _: ?*main.server.User) !AddEnergy {
+			return .{
+				.target = try reader.readInt(u32),
+				.energy = @bitCast(try reader.readInt(u32)),
 			};
 		}
 	};
