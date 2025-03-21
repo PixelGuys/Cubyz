@@ -173,6 +173,10 @@ pub const ChunkPosition = struct { // MARK: ChunkPosition
 	wz: i32,
 	voxelSize: u31,
 
+	pub fn initFromWorld(pos: Vec3i, voxelSize: u31) ChunkPosition {
+		return .{.wx = pos[0] & ~@as(i32, chunkMask), .wy = pos[1] & ~@as(i32, chunkMask), .wz = pos[2] & ~@as(i32, chunkMask), .voxelSize = voxelSize};
+	}
+
 	pub fn hashCode(self: ChunkPosition) u32 {
 		const shift: u5 = @truncate(@min(@ctz(self.wx), @ctz(self.wy), @ctz(self.wz)));
 		return (((@as(u32, @bitCast(self.wx)) >> shift)*%31 +% (@as(u32, @bitCast(self.wy)) >> shift))*%31 +% (@as(u32, @bitCast(self.wz)) >> shift))*%31 +% self.voxelSize; // TODO: Can I use one of zigs standard hash functions?
@@ -249,6 +253,8 @@ pub const Chunk = struct { // MARK: Chunk
 	voxelSizeMask: i32,
 	widthShift: u5,
 
+	blockPosToEntityDataMap: std.AutoHashMapUnmanaged(u32, u32) = .{},
+
 	pub fn init(pos: ChunkPosition) *Chunk {
 		const self = memoryPool.create();
 		std.debug.assert((pos.voxelSize - 1 & pos.voxelSize) == 0);
@@ -266,6 +272,7 @@ pub const Chunk = struct { // MARK: Chunk
 	}
 
 	pub fn deinit(self: *Chunk) void {
+		self.blockPosToEntityDataMap.deinit(main.globalAllocator.allocator);
 		self.data.deinit();
 		memoryPool.destroy(@alignCast(self));
 	}
@@ -288,6 +295,10 @@ pub const Chunk = struct { // MARK: Chunk
 		const z = _z >> self.voxelSizeShift;
 		const index = getIndex(x, y, z);
 		return self.data.getValue(index);
+	}
+
+	pub fn getLocalBlockIndex(self: *const Chunk, absPos: Vec3i) Vec3i {
+		return getIndex(absPos[0] - self.pos.wx, absPos[1] - self.pos.wy, absPos[2] - self.pos.wz);
 	}
 };
 
