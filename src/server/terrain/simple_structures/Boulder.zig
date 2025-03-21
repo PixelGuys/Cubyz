@@ -4,7 +4,9 @@ const main = @import("root");
 const random = main.random;
 const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
-const CaveMap = terrain.CaveMap;
+const CaveBiomeMapView = terrain.CaveBiomeMap.CaveBiomeMapView;
+const CaveMapView = terrain.CaveMap.CaveMapView;
+const GenerationMode = terrain.biomes.SimpleStructureModel.GenerationMode;
 const vec = main.vec;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
@@ -31,7 +33,7 @@ pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) 
 	return self;
 }
 
-pub fn generate(self: *Boulder, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64, _: bool) void {
+pub fn generate(self: *Boulder, _: GenerationMode, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, caveMap: CaveMapView, _: CaveBiomeMapView, seed: *u64, _: bool) void {
 	_ = caveMap;
 	const radius = self.size + self.sizeVariation*(random.nextFloat(seed)*2 - 1);
 	// My basic idea is to use a point cloud and a potential function to achieve somewhat smooth boulders without being a sphere.

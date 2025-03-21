@@ -260,7 +260,7 @@ pub fn readAssets(
 	readAllObjFilesInAddonsHashmap(externalAllocator, addons, addonNames, "models", models);
 }
 
-fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !*items_zig.BaseItem {
+fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void {
 	var split = std.mem.splitScalar(u8, id, ':');
 	const mod = split.first();
 	var texturePath: []const u8 = &[0]u8{};
@@ -271,7 +271,7 @@ fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !*item
 		texturePath = try std.fmt.bufPrint(&buf1, "{s}/{s}/items/textures/{s}", .{assetFolder, mod, texture});
 		replacementTexturePath = try std.fmt.bufPrint(&buf2, "assets/{s}/items/textures/{s}", .{mod, texture});
 	}
-	return items_zig.register(assetFolder, texturePath, replacementTexturePath, id, zon);
+	_ = items_zig.register(assetFolder, texturePath, replacementTexturePath, id, zon);
 }
 
 fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
@@ -279,13 +279,21 @@ fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
 }
 
 fn registerBlock(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void {
-	const block = blocks_zig.register(assetFolder, id, zon);
-	blocks_zig.meshes.register(assetFolder, id, zon);
+	if(zon == .null) std.log.err("Missing block: {s}. Replacing it with default block.", .{id});
 
-	if(zon.get(bool, "hasItem", true)) {
-		const item = try registerItem(assetFolder, id, zon.getChild("item"));
-		item.block = block;
-	}
+	_ = blocks_zig.register(assetFolder, id, zon);
+	blocks_zig.meshes.register(assetFolder, id, zon);
+}
+
+fn assignBlockItem(stringId: []const u8) !void {
+	const block = blocks_zig.getTypeById(stringId);
+	const item = items_zig.getByID(stringId) orelse unreachable;
+	item.block = block;
+}
+
+fn registerBiome(numericId: u32, stringId: []const u8, zon: ZonElement) void {
+	if(zon == .null) std.log.err("Missing biome: {s}. Replacing it with default biome.", .{stringId});
+	biomes_zig.register(stringId, numericId, zon);
 }
 
 fn registerRecipesFromZon(zon: ZonElement) void {
@@ -294,29 +302,68 @@ fn registerRecipesFromZon(zon: ZonElement) void {
 
 pub const Palette = struct { // MARK: Palette
 	palette: main.List([]const u8),
+
 	pub fn init(allocator: NeverFailingAllocator, zon: ZonElement, firstElement: ?[]const u8) !*Palette {
+		const self = switch(zon) {
+			.object => try loadFromZonLegacy(allocator, zon),
+			.array, .null => try loadFromZon(allocator, zon),
+			else => return error.InvalidPaletteFormat,
+		};
+
+		if(firstElement) |elem| {
+			if(self.palette.items.len == 0) {
+				self.palette.append(allocator.dupe(u8, elem));
+			}
+			if(!std.mem.eql(u8, self.palette.items[0], elem)) {
+				return error.FistItemMismatch;
+			}
+		}
+		return self;
+	}
+	fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) !*Palette {
+		const items = zon.toSlice();
+
 		const self = allocator.create(Palette);
 		self.* = Palette{
-			.palette = .init(allocator),
+			.palette = .initCapacity(allocator, items.len),
 		};
 		errdefer self.deinit();
-		if(zon != .object or zon.object.count() == 0) {
-			if(firstElement) |elem| self.palette.append(allocator.dupe(u8, elem));
-		} else {
-			const palette = main.stackAllocator.alloc(?[]const u8, zon.object.count());
-			defer main.stackAllocator.free(palette);
-			for(palette) |*val| {
-				val.* = null;
+
+		for(items) |name| {
+			const stringId = name.as(?[]const u8, null) orelse return error.InvalidPaletteFormat;
+			self.palette.appendAssumeCapacity(allocator.dupe(u8, stringId));
+		}
+		return self;
+	}
+	fn loadFromZonLegacy(allocator: NeverFailingAllocator, zon: ZonElement) !*Palette {
+		// Using zon.object.count() here has the implication that array can not be sparse.
+		const paletteLength = zon.object.count();
+		const translationPalette = main.stackAllocator.alloc(?[]const u8, paletteLength);
+		defer main.stackAllocator.free(translationPalette);
+
+		@memset(translationPalette, null);
+
+		var iterator = zon.object.iterator();
+		while(iterator.next()) |entry| {
+			const numericId = entry.value_ptr.as(?usize, null) orelse return error.InvalidPaletteFormat;
+			const name = entry.key_ptr.*;
+
+			if(numericId >= translationPalette.len) {
+				std.log.err("ID {} ('{s}') out of range. This can be caused by palette having missing block IDs.", .{numericId, name});
+				return error.SparsePaletteNotAllowed;
 			}
-			var iterator = zon.object.iterator();
-			while(iterator.next()) |entry| {
-				palette[entry.value_ptr.as(usize, std.math.maxInt(usize))] = entry.key_ptr.*;
-			}
-			if(firstElement) |elem| std.debug.assert(std.mem.eql(u8, palette[0].?, elem));
-			for(palette) |val| {
-				std.log.info("palette[{}]: {s}", .{self.palette.items.len, val.?});
-				self.palette.append(allocator.dupe(u8, val orelse return error.MissingKeyInPalette));
-			}
+			translationPalette[numericId] = name;
+		}
+
+		const self = allocator.create(Palette);
+		self.* = Palette{
+			.palette = .initCapacity(allocator, paletteLength),
+		};
+		errdefer self.deinit();
+
+		for(translationPalette) |val| {
+			self.palette.appendAssumeCapacity(allocator.dupe(u8, val orelse return error.MissingKeyInPalette));
+			std.log.info("palette[{}]: {s}", .{self.palette.items.len, val.?});
 		}
 		return self;
 	}
@@ -334,11 +381,13 @@ pub const Palette = struct { // MARK: Palette
 		self.palette.append(self.palette.allocator.dupe(u8, id));
 	}
 
-	pub fn save(self: *Palette, allocator: NeverFailingAllocator) ZonElement {
-		const zon = ZonElement.initObject(allocator);
-		errdefer zon.free(allocator);
-		for(self.palette.items, 0..) |item, i| {
-			zon.put(item, i);
+	pub fn storeToZon(self: *Palette, allocator: NeverFailingAllocator) ZonElement {
+		const zon = ZonElement.initArray(allocator);
+
+		zon.array.ensureCapacity(self.palette.items.len);
+
+		for(self.palette.items) |item| {
+			zon.append(item);
 		}
 		return zon;
 	}
@@ -355,7 +404,7 @@ pub const Palette = struct { // MARK: Palette
 
 var loadedAssets: bool = false;
 
-pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePalette: *Palette) !void { // MARK: loadWorldAssets()
+pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, biomePalette: *Palette) !void { // MARK: loadWorldAssets()
 	if(loadedAssets) return; // The assets already got loaded by the server.
 	loadedAssets = true;
 
@@ -402,30 +451,81 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 		_ = main.models.registerModel(entry.key_ptr.*, entry.value_ptr.*);
 	}
 
-	// blocks:
 	blocks_zig.meshes.registerBlockBreakingAnimation(assetFolder);
-	for(blockPalette.palette.items) |id| {
-		const nullValue = blocks.get(id);
-		var zon: ZonElement = undefined;
-		if(nullValue) |value| {
-			zon = value;
-		} else {
-			std.log.err("Missing block: {s}. Replacing it with default block.", .{id});
-			zon = .null;
-		}
-		try registerBlock(assetFolder, id, zon);
-	}
-	var iterator = blocks.iterator();
-	while(iterator.next()) |entry| {
-		if(blocks_zig.hasRegistered(entry.key_ptr.*)) continue;
-		try registerBlock(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
-		blockPalette.add(entry.key_ptr.*);
+
+	// Blocks:
+	// First blocks from the palette to enforce ID values.
+	for(blockPalette.palette.items) |stringId| {
+		try registerBlock(assetFolder, stringId, blocks.get(stringId) orelse .null);
 	}
 
-	// items:
+	// Then all the blocks that were missing in palette but are present in the game.
+	var iterator = blocks.iterator();
+	while(iterator.next()) |entry| {
+		const stringId = entry.key_ptr.*;
+		const zon = entry.value_ptr.*;
+
+		if(blocks_zig.hasRegistered(stringId)) continue;
+
+		try registerBlock(assetFolder, stringId, zon);
+		blockPalette.add(stringId);
+	}
+
+	// Items:
+	// First from the palette to enforce ID values.
+	for(itemPalette.palette.items) |stringId| {
+		std.debug.assert(!items_zig.hasRegistered(stringId));
+
+		// Some items are created automatically from blocks.
+		if(blocks.get(stringId)) |zon| {
+			if(!zon.get(bool, "hasItem", true)) continue;
+			try registerItem(assetFolder, stringId, zon.getChild("item"));
+			if(items.get(stringId) != null) {
+				std.log.err("Item {s} appears as standalone item and as block item.", .{stringId});
+			}
+			continue;
+		}
+		// Items not related to blocks should appear in items hash map.
+		if(items.get(stringId)) |zon| {
+			try registerItem(assetFolder, stringId, zon);
+			continue;
+		}
+		std.log.err("Missing item: {s}. Replacing it with default item.", .{stringId});
+		try registerItem(assetFolder, stringId, .null);
+	}
+
+	// Then missing block-items to keep backwards compatibility of ID order.
+	for(blockPalette.palette.items) |stringId| {
+		const zon = blocks.get(stringId) orelse .null;
+
+		if(!zon.get(bool, "hasItem", true)) continue;
+		if(items_zig.hasRegistered(stringId)) continue;
+
+		try registerItem(assetFolder, stringId, zon.getChild("item"));
+		itemPalette.add(stringId);
+	}
+
+	// And finally normal items.
 	iterator = items.iterator();
 	while(iterator.next()) |entry| {
-		_ = try registerItem(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
+		const stringId = entry.key_ptr.*;
+		const zon = entry.value_ptr.*;
+
+		if(items_zig.hasRegistered(stringId)) continue;
+		std.debug.assert(zon != .null);
+
+		try registerItem(assetFolder, stringId, zon);
+		itemPalette.add(stringId);
+	}
+
+	// After we have registered all items and all blocks, we can assign block references to those that come from blocks.
+	for(blockPalette.palette.items) |stringId| {
+		const zon = blocks.get(stringId) orelse .null;
+
+		if(!zon.get(bool, "hasItem", true)) continue;
+		std.debug.assert(items_zig.hasRegistered(stringId));
+
+		try assignBlockItem(stringId);
 	}
 
 	// tools:
@@ -443,25 +543,17 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, biomePal
 	}
 
 	// Biomes:
-	var i: u32 = 0;
+	var nextBiomeNumericId: u32 = 0;
 	for(biomePalette.palette.items) |id| {
-		const nullValue = biomes.get(id);
-		var zon: ZonElement = undefined;
-		if(nullValue) |value| {
-			zon = value;
-		} else {
-			std.log.err("Missing biomes: {s}. Replacing it with default biomes.", .{id});
-			zon = .null;
-		}
-		biomes_zig.register(id, i, zon);
-		i += 1;
+		registerBiome(nextBiomeNumericId, id, biomes.get(id) orelse .null);
+		nextBiomeNumericId += 1;
 	}
 	iterator = biomes.iterator();
 	while(iterator.next()) |entry| {
 		if(biomes_zig.hasRegistered(entry.key_ptr.*)) continue;
-		biomes_zig.register(entry.key_ptr.*, i, entry.value_ptr.*);
+		registerBiome(nextBiomeNumericId, entry.key_ptr.*, entry.value_ptr.*);
 		biomePalette.add(entry.key_ptr.*);
-		i += 1;
+		nextBiomeNumericId += 1;
 	}
 	biomes_zig.finishLoading();
 

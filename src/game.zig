@@ -16,6 +16,7 @@ const ConnectionManager = network.ConnectionManager;
 const vec = @import("vec.zig");
 const Vec2f = vec.Vec2f;
 const Vec2d = vec.Vec2d;
+const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
 const Vec3d = vec.Vec3d;
@@ -464,6 +465,9 @@ pub const Player = struct { // MARK: Player
 	pub var inventory: Inventory = undefined;
 	pub var selectedSlot: u32 = 0;
 
+	pub var selectionPosition1: ?Vec3i = null;
+	pub var selectionPosition2: ?Vec3i = null;
+
 	pub var currentFriction: f32 = 0;
 
 	pub var onGround: bool = false;
@@ -646,6 +650,7 @@ pub const World = struct { // MARK: World
 	spawn: Vec3f = undefined,
 	connected: bool = true,
 	blockPalette: *assets.Palette = undefined,
+	itemPalette: *assets.Palette = undefined,
 	biomePalette: *assets.Palette = undefined,
 	itemDrops: ClientItemDropManager = undefined,
 	playerBiome: Atomic(*const main.server.terrain.biomes.Biome) = undefined,
@@ -683,6 +688,7 @@ pub const World = struct { // MARK: World
 		main.threadPool.clear();
 		self.itemDrops.deinit();
 		self.blockPalette.deinit();
+		self.itemPalette.deinit();
 		self.biomePalette.deinit();
 		self.manager.deinit();
 		main.server.stop();
@@ -702,9 +708,11 @@ pub const World = struct { // MARK: World
 		errdefer self.blockPalette.deinit();
 		self.biomePalette = try assets.Palette.init(main.globalAllocator, zon.getChild("biomePalette"), null);
 		errdefer self.biomePalette.deinit();
+		self.itemPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("itemPalette"), null);
+		errdefer self.itemPalette.deinit();
 		self.spawn = zon.get(Vec3f, "spawn", .{0, 0, 0});
 
-		try assets.loadWorldAssets("serverAssets", self.blockPalette, self.biomePalette);
+		try assets.loadWorldAssets("serverAssets", self.blockPalette, self.itemPalette, self.biomePalette);
 		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
 		Player.inventory = Inventory.init(main.globalAllocator, 32, .normal, .{.playerInventory = Player.id});
 		Player.loadFrom(zon.getChild("player"));

@@ -128,6 +128,12 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 			},
 		}
 	}
+
+	// Returns the neighbor that is rotated by 90 degrees counterclockwise around the z axis.
+	pub inline fn rotateZ(self: Neighbor) Neighbor {
+		const arr = [_]Neighbor{.dirUp, .dirDown, .dirPosY, .dirNegY, .dirNegX, .dirPosX};
+		return arr[@intFromEnum(self)];
+	}
 };
 
 /// Gets the index of a given position inside this chunk.

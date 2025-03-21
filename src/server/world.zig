@@ -20,6 +20,7 @@ const terrain = server.terrain;
 const server = @import("server.zig");
 const User = server.User;
 const Entity = server.Entity;
+const Palette = main.assets.Palette;
 
 const storage = @import("storage.zig");
 
@@ -415,6 +416,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	itemDropManager: ItemDropManager = undefined,
 	blockPalette: *main.assets.Palette = undefined,
+	itemPalette: *main.assets.Palette = undefined,
 	biomePalette: *main.assets.Palette = undefined,
 	chunkManager: ChunkManager = undefined,
 
@@ -510,35 +512,37 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 		self.wio = WorldIO.init(try files.openDir(try std.fmt.bufPrint(&buf, "saves/{s}", .{name})), self);
 		errdefer self.wio.deinit();
+
 		const blockPaletteZon = files.readToZon(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/palette.zig.zon", .{name})) catch .null;
 		self.blockPalette = try main.assets.Palette.init(main.globalAllocator, blockPaletteZon, "cubyz:air");
 		errdefer self.blockPalette.deinit();
-		std.log.info(
-			"Loaded save block palette with {} blocks.",
-			.{self.blockPalette.size()},
-		);
+		std.log.info("Loaded save block palette with {} blocks.", .{self.blockPalette.size()});
+
+		const itemPaletteZon = files.readToZon(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/item_palette.zig.zon", .{name})) catch .null;
+		self.itemPalette = try main.assets.Palette.init(main.globalAllocator, itemPaletteZon, null);
+		errdefer self.itemPalette.deinit();
+		std.log.info("Loaded save item palette with {} items.", .{self.itemPalette.size()});
 
 		const biomePaletteZon = files.readToZon(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/biome_palette.zig.zon", .{name})) catch .null;
 		self.biomePalette = try main.assets.Palette.init(main.globalAllocator, biomePaletteZon, null);
 		errdefer self.biomePalette.deinit();
-		std.log.info(
-			"Loaded save biome palette with {} biomes.",
-			.{self.biomePalette.size()},
-		);
+		std.log.info("Loaded save biome palette with {} biomes.", .{self.biomePalette.size()});
+
 		errdefer main.assets.unloadAssets();
 
 		if(self.wio.hasWorldData()) {
 			self.seed = try self.wio.loadWorldSeed();
 			self.generated = true;
-			try main.assets.loadWorldAssets(try std.fmt.bufPrint(&buf, "saves/{s}/assets/", .{name}), self.blockPalette, self.biomePalette);
+			try main.assets.loadWorldAssets(try std.fmt.bufPrint(&buf, "saves/{s}/assets/", .{name}), self.blockPalette, self.itemPalette, self.biomePalette);
 		} else {
 			self.seed = main.random.nextInt(u48, &main.seed);
-			try main.assets.loadWorldAssets(try std.fmt.bufPrint(&buf, "saves/{s}/assets/", .{name}), self.blockPalette, self.biomePalette);
+			try main.assets.loadWorldAssets(try std.fmt.bufPrint(&buf, "saves/{s}/assets/", .{name}), self.blockPalette, self.itemPalette, self.biomePalette);
 			try self.wio.saveWorldData();
 		}
 		// Store the block palette now that everything is loaded.
-		try files.writeZon(try std.fmt.bufPrint(&buf, "saves/{s}/palette.zig.zon", .{name}), self.blockPalette.save(arenaAllocator));
-		try files.writeZon(try std.fmt.bufPrint(&buf, "saves/{s}/biome_palette.zig.zon", .{name}), self.biomePalette.save(arenaAllocator));
+		try files.writeZon(try std.fmt.bufPrint(&buf, "saves/{s}/palette.zig.zon", .{name}), self.blockPalette.storeToZon(arenaAllocator));
+		try files.writeZon(try std.fmt.bufPrint(&buf, "saves/{s}/biome_palette.zig.zon", .{name}), self.biomePalette.storeToZon(arenaAllocator));
+		try files.writeZon(try std.fmt.bufPrint(&buf, "saves/{s}/item_palette.zig.zon", .{name}), self.itemPalette.storeToZon(arenaAllocator));
 
 		var gamerules = files.readToZon(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/gamerules.zig.zon", .{name})) catch ZonElement.initObject(arenaAllocator);
 
@@ -567,6 +571,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.chunkManager.deinit();
 		self.itemDropManager.deinit();
 		self.blockPalette.deinit();
+		self.itemPalette.deinit();
 		self.biomePalette.deinit();
 		self.wio.deinit();
 		main.globalAllocator.free(self.name);
