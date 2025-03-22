@@ -92,13 +92,13 @@ pub fn generate(self: *SBBGen, _: GenerationMode, x: i32, y: i32, z: i32, chunk:
 }
 
 fn placeSbb(self: *SBBGen, structure: *sbb.StructureBuildingBlock, x: i32, y: i32, z: i32, placementDirection: Neighbor, chunk: *ServerChunk, seed: *u64) void {
-	const origin = structure.blueprint[0].info.originBlock;
+	const origin = structure.blueprint[0].originBlock;
 	const rotationCount = alignDirections(origin.direction(), placementDirection) catch |err| {
 		std.log.err("Could not align directions {s} and {s} error: {s}", .{@tagName(origin.direction()), @tagName(placementDirection), @errorName(err)});
 		return;
 	};
 	const rotated = structure.blueprint[rotationCount];
-	const rotatedOrigin = rotated.info.originBlock;
+	const rotatedOrigin = rotated.originBlock;
 
 	const pasteX: i32 = x - rotatedOrigin.x - placementDirection.relX();
 	const pasteY: i32 = y - rotatedOrigin.y - placementDirection.relY();
@@ -106,7 +106,7 @@ fn placeSbb(self: *SBBGen, structure: *sbb.StructureBuildingBlock, x: i32, y: i3
 
 	rotated.blueprint.pasteInGeneration(.{pasteX, pasteY, pasteZ}, chunk, self.placeMode, self.substitutions);
 
-	for(rotated.info.childrenBlocks.items) |childBlock| {
+	for(rotated.childBlocks) |childBlock| {
 		const child = structure.pickChild(childBlock, seed);
 		placeSbb(self, child.structure, pasteX + childBlock.x, pasteY + childBlock.y, pasteZ + childBlock.z, childBlock.direction(), chunk, seed);
 	}
