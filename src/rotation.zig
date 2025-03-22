@@ -1540,8 +1540,8 @@ pub const RotationModes = struct {
 			currentData.data = 0;
 		}
 	};
-	pub const Pile = struct {
-		pub const id: []const u8 = "pile";
+	pub const TexturePile = struct {
+		pub const id: []const u8 = "texturePile";
 		var rotatedModels: std.StringHashMap(ModelIndex) = undefined;
 		var blockToStateCountMap: std.AutoHashMapUnmanaged(u16, u16) = undefined;
 
