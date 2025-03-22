@@ -8,6 +8,7 @@ const Chunk = main.chunk.Chunk;
 const ChunkPosition = main.chunk.ChunkPosition;
 const getIndex = main.chunk.getIndex;
 const server = main.server;
+const User = server.User;
 
 pub const EntityDataClass = struct {
 	id: []const u8,
@@ -15,11 +16,13 @@ pub const EntityDataClass = struct {
 	mutex: std.Thread.Mutex,
 
 	const VTable = struct {
-		deinit: *const fn() void,
-		reset: *const fn() void,
-		add: *const fn(pos: Vec3i, value: *anyopaque, chunk: *Chunk) void,
-		remove: *const fn(pos: Vec3i, chunk: *Chunk) void,
-		get: *const fn(pos: Vec3i, chunk: *Chunk) *anyopaque,
+		onLoad: *const fn(pos: Vec3i, chunk: *Chunk) void,
+		onUnload: *const fn(pos: Vec3i, chunk: *Chunk) void,
+		onPlace: *const fn(pos: Vec3i, chunk: *Chunk) void,
+		onBreak: *const fn(pos: Vec3i, chunk: *Chunk) void,
+		// Block interaction invoked by right click.
+		// Return value indicates if event was handled (true) and should not be further processed.
+		onInteract: *const fn(pos: Vec3i, chunk: *Chunk) bool,
 	};
 	pub fn init(comptime EntityDataClassT: type) EntityDataClass {
 		EntityDataClassT.init();
@@ -37,32 +40,41 @@ pub const EntityDataClass = struct {
 		}
 		return class;
 	}
-	pub inline fn deinit(self: *EntityDataClass) void {
-		self.vtable.deinit();
+	pub inline fn onLoad(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) void {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+		return self.vtable.onLoad(pos, chunk);
 	}
-	pub inline fn reset(self: *EntityDataClass) void {
-		self.vtable.reset();
+	pub inline fn onUnload(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) void {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+		return self.vtable.onUnload(pos, chunk);
 	}
-	pub inline fn add(self: *EntityDataClass, pos: Vec3i, value: *anyopaque, chunk: *Chunk) void {
-		return self.vtable.add(pos, value, chunk);
+	pub inline fn onPlace(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) void {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+		return self.vtable.onPlace(pos, chunk);
 	}
-	pub inline fn remove(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) void {
-		return self.vtable.remove(pos, chunk);
+	pub inline fn onBreak(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) void {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+		return self.vtable.onBreak(pos, chunk);
 	}
-	pub inline fn get(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) *anyopaque {
-		return self.vtable.get(pos, chunk);
+	pub inline fn onInteract(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) bool {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+		return self.vtable.onInteract(pos, chunk);
 	}
 };
 
-fn BlockEntityData(comptime entityId: []const u8, T: type) type {
+fn BlockEntityData(T: type) type {
 	return struct {
-		pub const id = entityId;
 		pub const DataT = T;
 		pub const EntryT = struct {
 			absoluteBlockPosition: Vec3i,
 			data: DataT,
 		};
-		var storage: List(EntryT) = undefined;
+		pub var storage: List(EntryT) = undefined;
 
 		fn init() void {
 			storage = .init(main.globalAllocator);
@@ -73,21 +85,23 @@ fn BlockEntityData(comptime entityId: []const u8, T: type) type {
 		fn reset() void {
 			storage.clearRetainingCapacity();
 		}
-		fn add(pos: Vec3i, value: *DataT, chunk: *Chunk) void {
-			const dataIndex = storage.len;
-			storage.append(pos, EntryT{.absoluteBlockPosition = pos, .data = value.*});
+		fn add(pos: Vec3i, value: DataT, chunk: *Chunk) void {
+			const dataIndex = storage.items.len;
+			storage.append(.{.absoluteBlockPosition = pos, .data = value});
 
 			const blockIndex = chunk.getLocalBlockIndex(pos);
-			chunk.blockPosToEntityDataMap.put(main.globalAllocator.allocator, blockIndex, dataIndex);
+			chunk.blockPosToEntityDataMap.put(main.globalAllocator.allocator, blockIndex, @intCast(dataIndex)) catch unreachable;
 		}
 		fn remove(pos: Vec3i, chunk: *Chunk) void {
 			const blockIndex = chunk.getLocalBlockIndex(pos);
-			const dataIndex = chunk.blockPosToEntityDataMap.fetchRemove(blockIndex) orelse {
+			const entry = chunk.blockPosToEntityDataMap.fetchRemove(blockIndex) orelse {
 				std.log.err("Couldn't remove entity data of block at position {}", .{pos});
 				return;
 			};
+			const dataIndex = entry.value;
+
 			_ = storage.swapRemove(dataIndex);
-			if(dataIndex == storage.items.len) return null;
+			if(dataIndex == storage.items.len) return;
 
 			const movedEntry = storage.items[dataIndex];
 
@@ -104,19 +118,43 @@ fn BlockEntityData(comptime entityId: []const u8, T: type) type {
 		}
 		fn get(pos: Vec3i, chunk: *Chunk) *DataT {
 			const blockIndex = chunk.getLocalBlockIndex(pos);
-			const dataIndex = chunk.blockPosToEntityDataMap.get(blockIndex) orelse return null;
+			const dataIndex = chunk.blockPosToEntityDataMap.get(blockIndex) orelse unreachable;
 			return &storage.items[dataIndex].data;
 		}
 	};
 }
 
 pub const EntityDataClasses = struct {
-	pub const Chest = BlockEntityData(struct {
-		contents: u64,
-	});
-	pub const Door = BlockEntityData(struct {
-		open: bool,
-	});
+	pub const Chest = struct {
+		const Super = BlockEntityData(
+			struct {
+				contents: u64,
+			},
+		);
+
+		pub const id = "chest";
+		const init = Super.init;
+		const reset = Super.reset;
+		const deinit = Super.deinit;
+
+		pub fn onLoad(pos: Vec3i, chunk: *Chunk) void {
+			Super.add(pos, .{.contents = 0}, chunk);
+		}
+		pub fn onUnload(pos: Vec3i, chunk: *Chunk) void {
+			Super.remove(pos, chunk);
+		}
+		pub fn onPlace(pos: Vec3i, chunk: *Chunk) void {
+			Super.add(pos, .{.contents = 0}, chunk);
+		}
+		pub fn onBreak(pos: Vec3i, chunk: *Chunk) void {
+			Super.remove(pos, chunk);
+		}
+		pub fn onInteract(pos: Vec3i, chunk: *Chunk) bool {
+			const data = Super.get(pos, chunk);
+			std.debug.print("Chest contents: {}", .{data.contents});
+			return true;
+		}
+	};
 };
 
 var entityDataClasses: std.StringHashMapUnmanaged(EntityDataClass) = .{};
@@ -125,22 +163,20 @@ pub fn init() void {
 	inline for(@typeInfo(EntityDataClasses).@"struct".decls) |declaration| {
 		const class = EntityDataClass.init(@field(EntityDataClasses, declaration.name));
 		entityDataClasses.putNoClobber(main.globalAllocator.allocator, class.id, class) catch unreachable;
+		std.log.debug("Registered EntityDataClass '{s}'", .{class.id});
 	}
 }
 
 pub fn reset() void {
-	var iterator = entityDataClasses.iterator();
-	while(iterator.next()) |entry| {
-		entry.value_ptr.reset();
+	inline for(@typeInfo(EntityDataClasses).@"struct".decls) |declaration| {
+		@field(EntityDataClasses, declaration.name).reset();
 	}
 }
 
 pub fn deinit() void {
-	var iterator = entityDataClasses.iterator();
-	while(iterator.next()) |entry| {
-		entry.value_ptr.deinit();
+	inline for(@typeInfo(EntityDataClasses).@"struct".decls) |declaration| {
+		@field(EntityDataClasses, declaration.name).deinit();
 	}
-	entityDataClasses.deinit(main.globalAllocator.allocator);
 }
 
 pub fn getByID(id: []const u8) ?*EntityDataClass {

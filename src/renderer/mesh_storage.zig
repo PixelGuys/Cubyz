@@ -174,6 +174,19 @@ pub fn getBlock(x: i32, y: i32, z: i32) ?blocks.Block {
 	return block;
 }
 
+pub fn interactWithBlock(x: i32, y: i32, z: i32) bool {
+	const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize = 1});
+	node.mutex.lock();
+	defer node.mutex.unlock();
+	const mesh = node.mesh orelse return false;
+	const block = mesh.chunk.getBlock(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask);
+	if(block.entityDataClass()) |class| {
+		return class.onInteract(.{x, y, z}, mesh.chunk);
+	}
+	// Event was not handled.
+	return false;
+}
+
 pub fn getLight(wx: i32, wy: i32, wz: i32) ?[6]u8 {
 	const node = getNodePointer(.{.wx = wx, .wy = wy, .wz = wz, .voxelSize = 1});
 	node.mutex.lock();

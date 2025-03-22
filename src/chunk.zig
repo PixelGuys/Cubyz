@@ -297,7 +297,7 @@ pub const Chunk = struct { // MARK: Chunk
 		return self.data.getValue(index);
 	}
 
-	pub fn getLocalBlockIndex(self: *const Chunk, absPos: Vec3i) Vec3i {
+	pub fn getLocalBlockIndex(self: *const Chunk, absPos: Vec3i) u32 {
 		return getIndex(absPos[0] - self.pos.wx, absPos[1] - self.pos.wy, absPos[2] - self.pos.wz);
 	}
 };
