@@ -2,7 +2,6 @@ const std = @import("std");
 const Atomic = std.atomic.Value;
 
 const main = @import("root");
-//const main = @import("../main.zig");
 const chunk = main.chunk;
 const network = main.network;
 const Connection = network.Connection;
@@ -341,7 +340,7 @@ fn update() void { // MARK: update()
 	}
 
 	// Send the entity data:
-	var writer = BinaryWriter.initCapacity(main.stackAllocator, .big, (4 + 24 + 12 + 24)*userList.len);
+	var writer = BinaryWriter.initCapacity(main.stackAllocator, network.networkEndian, (4 + 24 + 12 + 24)*userList.len);
 	defer writer.deinit();
 
 	const itemData = world.?.itemDropManager.getPositionAndVelocityData(main.stackAllocator);
