@@ -1494,3 +1494,32 @@ pub const BinaryWriter = struct {
 		self.data.append(delimiter);
 	}
 };
+
+// MARK: functionPtrCast()
+fn CastFunctionSelfToAnyopaqueType(Fn: type) type {
+	var typeInfo = @typeInfo(Fn);
+	var params = typeInfo.@"fn".params[0..typeInfo.@"fn".params.len].*;
+	if(@sizeOf(params[0].type.?) != @sizeOf(*anyopaque) or @alignOf(params[0].type.?) != @alignOf(*anyopaque)) {
+		@compileError(std.fmt.comptimePrint("Cannot convert {} to *anyopaque", .{params[0].type.?}));
+	}
+	params[0].type = *anyopaque;
+	typeInfo.@"fn".params = params[0..];
+	return @Type(typeInfo);
+}
+/// Turns the first parameter into a anyopaque*
+pub fn castFunctionSelfToAnyopaque(function: anytype) *const CastFunctionSelfToAnyopaqueType(@TypeOf(function)) {
+	return @ptrCast(&function);
+}
+
+fn CastFunctionReturnToAnyopaqueType(Fn: type) type {
+	var typeInfo = @typeInfo(Fn);
+	if(@sizeOf(typeInfo.@"fn".return_type.?) != @sizeOf(*anyopaque) or @alignOf(typeInfo.@"fn".return_type.?) != @alignOf(*anyopaque)) {
+		@compileError(std.fmt.comptimePrint("Cannot convert {} to *anyopaque", .{typeInfo.@"fn".return_type.?}));
+	}
+	typeInfo.@"fn".return_type = *anyopaque;
+	return @Type(typeInfo);
+}
+/// Turns the return parameter into a anyopaque*
+pub fn castFunctionReturnToAnyopaque(function: anytype) *const CastFunctionReturnToAnyopaqueType(@TypeOf(function)) {
+	return @ptrCast(&function);
+}
