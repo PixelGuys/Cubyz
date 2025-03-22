@@ -833,7 +833,7 @@ pub const Protocols = struct {
 		pub const id: u8 = 4;
 		pub const asynchronous = false;
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			conn.user.?.receiveData(reader.remaining);
+			try conn.user.?.receiveData(reader);
 		}
 		var lastPositionSent: u16 = 0;
 		pub fn send(conn: *Connection, playerPos: Vec3d, playerVel: Vec3d, time: u16) void {

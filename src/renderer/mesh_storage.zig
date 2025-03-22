@@ -958,8 +958,7 @@ pub fn addBreakingAnimation(pos: Vec3i, breakingProgress: f32) void {
 	const texture = main.blocks.meshes.blockBreakingTextures.items[animationFrame];
 
 	const block = getBlock(pos[0], pos[1], pos[2]) orelse return;
-	const modelIndex = main.blocks.meshes.model(block);
-	const model = &main.models.models.items[modelIndex];
+	const model = main.blocks.meshes.model(block).model();
 
 	for(model.internalQuads) |quadIndex| {
 		addBreakingAnimationFace(pos, quadIndex, texture, null, block.transparent());
@@ -971,7 +970,7 @@ pub fn addBreakingAnimation(pos: Vec3i, breakingProgress: f32) void {
 	}
 }
 
-fn addBreakingAnimationFace(pos: Vec3i, quadIndex: u16, texture: u16, neighbor: ?chunk.Neighbor, isTransparent: bool) void {
+fn addBreakingAnimationFace(pos: Vec3i, quadIndex: main.models.QuadIndex, texture: u16, neighbor: ?chunk.Neighbor, isTransparent: bool) void {
 	const worldPos = pos +% if(neighbor) |n| n.relPos() else Vec3i{0, 0, 0};
 	const relPos = worldPos & @as(Vec3i, @splat(main.chunk.chunkMask));
 	const mesh = getMeshAndIncreaseRefCount(.{.wx = worldPos[0], .wy = worldPos[1], .wz = worldPos[2], .voxelSize = 1}) orelse return;
@@ -1006,7 +1005,7 @@ fn addBreakingAnimationFace(pos: Vec3i, quadIndex: u16, texture: u16, neighbor: 
 	});
 }
 
-fn removeBreakingAnimationFace(pos: Vec3i, quadIndex: u16, neighbor: ?chunk.Neighbor) void {
+fn removeBreakingAnimationFace(pos: Vec3i, quadIndex: main.models.QuadIndex, neighbor: ?chunk.Neighbor) void {
 	const worldPos = pos +% if(neighbor) |n| n.relPos() else Vec3i{0, 0, 0};
 	const relPos = worldPos & @as(Vec3i, @splat(main.chunk.chunkMask));
 	const mesh = getMeshAndIncreaseRefCount(.{.wx = worldPos[0], .wy = worldPos[1], .wz = worldPos[2], .voxelSize = 1}) orelse return;
@@ -1022,8 +1021,7 @@ fn removeBreakingAnimationFace(pos: Vec3i, quadIndex: u16, neighbor: ?chunk.Neig
 
 pub fn removeBreakingAnimation(pos: Vec3i) void {
 	const block = getBlock(pos[0], pos[1], pos[2]) orelse return;
-	const modelIndex = main.blocks.meshes.model(block);
-	const model = &main.models.models.items[modelIndex];
+	const model = main.blocks.meshes.model(block).model();
 
 	for(model.internalQuads) |quadIndex| {
 		removeBreakingAnimationFace(pos, quadIndex, null);

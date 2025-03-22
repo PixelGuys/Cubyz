@@ -9,12 +9,12 @@
 	.model = .{
 		.radius = 4,
 	},
-	.texture_top = "cubyz:branch/willow/dot",
-	.texture_bottom = "cubyz:branch/willow/half_line",
-	.texture_right = "cubyz:branch/willow/line",
-	.texture_left = "cubyz:branch/willow/bend",
-	.texture_front = "cubyz:branch/willow/intersection",
-	.texture_back = "cubyz:branch/willow/cross",
+	.texture0 = "cubyz:branch/willow/dot",
+	.texture1 = "cubyz:branch/willow/half_line",
+	.texture2 = "cubyz:branch/willow/line",
+	.texture3 = "cubyz:branch/willow/bend",
+	.texture4 = "cubyz:branch/willow/intersection",
+	.texture5 = "cubyz:branch/willow/cross",
 	.item = .{
 		.material = .{
 			.density = 0.5,
