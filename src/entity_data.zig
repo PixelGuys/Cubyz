@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main.zig");
 const List = main.List;
 const Vec3i = main.vec.Vec3i;
 const Block = main.blocks.Block;
@@ -12,20 +12,21 @@ const server = main.server;
 pub const EntityDataClass = struct {
 	id: []const u8,
 	vtable: VTable,
-	self: *anyopaque,
+	mutex: std.Thread.Mutex,
 
 	const VTable = struct {
-		deinit: *const fn(self: *anyopaque) void,
-		reset: *const fn(self: *anyopaque) void,
-		add: *const fn(self: *anyopaque, pos: Vec3i, value: *anyopaque, chunk: *Chunk) void,
-		remove: *const fn(self: *anyopaque, pos: Vec3i, chunk: *Chunk) void,
-		get: *const fn(self: *anyopaque, pos: Vec3i, chunk: *Chunk) *anyopaque,
+		deinit: *const fn() void,
+		reset: *const fn() void,
+		add: *const fn(pos: Vec3i, value: *anyopaque, chunk: *Chunk) void,
+		remove: *const fn(pos: Vec3i, chunk: *Chunk) void,
+		get: *const fn(pos: Vec3i, chunk: *Chunk) *anyopaque,
 	};
 	pub fn init(comptime EntityDataClassT: type) EntityDataClass {
+		EntityDataClassT.init();
 		var class = EntityDataClass{
 			.id = EntityDataClassT.id,
 			.vtable = undefined,
-			.self = EntityDataClassT.init(),
+			.mutex = .{},
 		};
 
 		inline for(@typeInfo(EntityDataClass.VTable).@"struct".fields) |field| {
@@ -37,19 +38,19 @@ pub const EntityDataClass = struct {
 		return class;
 	}
 	pub inline fn deinit(self: *EntityDataClass) void {
-		self.vtable.deinit(self.self);
+		self.vtable.deinit();
 	}
 	pub inline fn reset(self: *EntityDataClass) void {
-		self.vtable.reset(self.self);
+		self.vtable.reset();
 	}
 	pub inline fn add(self: *EntityDataClass, pos: Vec3i, value: *anyopaque, chunk: *Chunk) void {
-		return self.vtable.add(self.self, pos, value, chunk);
+		return self.vtable.add(pos, value, chunk);
 	}
 	pub inline fn remove(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) void {
-		return self.vtable.remove(self.self, pos, chunk);
+		return self.vtable.remove(pos, chunk);
 	}
 	pub inline fn get(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) *anyopaque {
-		return self.vtable.get(self.self, pos, chunk);
+		return self.vtable.get(pos, chunk);
 	}
 };
 
@@ -61,36 +62,34 @@ fn BlockEntityData(comptime entityId: []const u8, T: type) type {
 			absoluteBlockPosition: Vec3i,
 			data: DataT,
 		};
-		storage: List(EntryT) = undefined,
+		var storage: List(EntryT) = undefined;
 
-		fn init() *BlockEntityData(T) {
-			const self = main.globalAllocator.create(BlockEntityData(T));
-			self.* = .{.storage = .init(main.globalAllocator)};
-			return self;
+		fn init() void {
+			storage = .init(main.globalAllocator);
 		}
-		fn deinit(self: BlockEntityData(T)) void {
-			self.storage.deinit();
+		fn deinit() void {
+			storage.deinit();
 		}
-		fn reset(self: *BlockEntityData(T)) void {
-			self.storage.clearRetainingCapacity();
+		fn reset() void {
+			storage.clearRetainingCapacity();
 		}
-		fn add(self: *BlockEntityData(T), pos: Vec3i, value: *DataT, chunk: *Chunk) void {
-			const dataIndex = self.storage.len;
-			self.storage.append(pos, EntryT{.absoluteBlockPosition = pos, .data = value.*});
+		fn add(pos: Vec3i, value: *DataT, chunk: *Chunk) void {
+			const dataIndex = storage.len;
+			storage.append(pos, EntryT{.absoluteBlockPosition = pos, .data = value.*});
 
 			const blockIndex = chunk.getLocalBlockIndex(pos);
 			chunk.blockPosToEntityDataMap.put(main.globalAllocator.allocator, blockIndex, dataIndex);
 		}
-		fn remove(self: *BlockEntityData(T), pos: Vec3i, chunk: *Chunk) void {
+		fn remove(pos: Vec3i, chunk: *Chunk) void {
 			const blockIndex = chunk.getLocalBlockIndex(pos);
 			const dataIndex = chunk.blockPosToEntityDataMap.fetchRemove(blockIndex) orelse {
 				std.log.err("Couldn't remove entity data of block at position {}", .{pos});
 				return;
 			};
-			_ = self.storage.swapRemove(dataIndex);
-			if(dataIndex == self.storage.items.len) return null;
+			_ = storage.swapRemove(dataIndex);
+			if(dataIndex == storage.items.len) return null;
 
-			const movedEntry = self.storage.items[dataIndex];
+			const movedEntry = storage.items[dataIndex];
 
 			const otherChunk = server.world.?.getOrGenerateChunkAndIncreaseRefCount(ChunkPosition.initFromWorld(pos, 1));
 			defer otherChunk.decreaseRefCount();
@@ -103,10 +102,10 @@ fn BlockEntityData(comptime entityId: []const u8, T: type) type {
 
 			valuePtr.* = dataIndex;
 		}
-		fn get(self: *BlockEntityData(T), pos: Vec3i, chunk: *Chunk) *DataT {
+		fn get(pos: Vec3i, chunk: *Chunk) *DataT {
 			const blockIndex = chunk.getLocalBlockIndex(pos);
 			const dataIndex = chunk.blockPosToEntityDataMap.get(blockIndex) orelse return null;
-			return &self.storage.items[dataIndex].data;
+			return &storage.items[dataIndex].data;
 		}
 	};
 }
