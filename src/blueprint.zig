@@ -20,7 +20,6 @@ const BlockStorageType = u32;
 const BinaryWriter = main.utils.BinaryWriter;
 const BinaryReader = main.utils.BinaryReader;
 
-
 pub const blueprintVersion = 0;
 
 pub const BlueprintCompression = enum(u16) {
