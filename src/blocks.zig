@@ -15,7 +15,7 @@ const rotation = @import("rotation.zig");
 const RotationMode = rotation.RotationMode;
 const Degrees = rotation.Degrees;
 const Entity = main.server.Entity;
-const sbb = main.structure_building_blocks;
+const sbb = main.server.terrain.structure_building_blocks;
 
 pub const BlockTag = enum(u32) {
 	air = 0,

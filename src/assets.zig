@@ -3,12 +3,12 @@ const std = @import("std");
 const blocks_zig = @import("blocks.zig");
 const items_zig = @import("items.zig");
 const migrations_zig = @import("migrations.zig");
-const structure_building_blocks = @import("structure_building_blocks.zig");
 const blueprints_zig = @import("blueprint.zig");
 const Blueprint = blueprints_zig.Blueprint;
 const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main.zig");
 const biomes_zig = main.server.terrain.biomes;
+const sbb = main.server.terrain.structure_building_blocks;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 var arena: main.heap.NeverFailingArenaAllocator = undefined;
@@ -623,8 +623,8 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		registerRecipesFromZon(entry.value_ptr.*);
 	}
 
-	try structure_building_blocks.registerBlueprints(&blueprints);
-	try structure_building_blocks.registerSBB(&structureBuildingBlocks);
+	try sbb.registerBlueprints(&blueprints);
+	try sbb.registerSBB(&structureBuildingBlocks);
 
 	// Biomes:
 	var nextBiomeNumericId: u32 = 0;
@@ -670,7 +670,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	if(!loadedAssets) return;
 	loadedAssets = false;
 
-	structure_building_blocks.reset();
+	sbb.reset();
 	blocks_zig.reset();
 	items_zig.reset();
 	biomes_zig.reset();

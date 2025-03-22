@@ -1,10 +1,12 @@
 const std = @import("std");
 
 const main = @import("root");
-const GenerationMode = main.server.terrain.biomes.SimpleStructureModel.GenerationMode;
-const CaveMapView = main.server.terrain.CaveMap.CaveMapView;
-const CaveBiomeMapView = main.server.terrain.CaveBiomeMap.CaveBiomeMapView;
-const sbb = main.structure_building_blocks;
+const terrain = main.server.terrain;
+const GenerationMode = terrain.biomes.SimpleStructureModel.GenerationMode;
+const CaveMapView = terrain.CaveMap.CaveMapView;
+const CaveBiomeMapView = terrain.CaveBiomeMap.CaveBiomeMapView;
+const sbb = terrain.structure_building_blocks;
+const StructureInfo = sbb.StructureInfo;
 const Blueprint = main.blueprint.Blueprint;
 const SubstitutionMap = main.blueprint.SubstitutionMap;
 const ZonElement = main.ZonElement;
@@ -14,7 +16,6 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const parseBlock = main.blocks.parseBlock;
 const hashInt = main.utils.hashInt;
 const hashCombine = main.utils.hashCombine;
-const StructureInfo = main.structure_building_blocks.StructureInfo;
 
 pub var structures: ?std.StringHashMap(ZonElement) = null;
 

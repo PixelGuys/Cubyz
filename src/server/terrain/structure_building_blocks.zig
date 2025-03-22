@@ -1,7 +1,6 @@
 const std = @import("std");
 
-const main = @import("main.zig");
-const terrain = main.server.terrain;
+const main = @import("root");
 const ZonElement = main.ZonElement;
 const Blueprint = main.blueprint.Blueprint;
 const List = main.List;
@@ -208,7 +207,7 @@ pub fn registerSBB(structures: *std.StringHashMap(ZonElement)) !void {
 	}
 	{
 		for(childrenToResolve.items) |entry| {
-			const parent =  structureCache.?.getPtr(entry.parentId) orelse {
+			const parent = structureCache.?.getPtr(entry.parentId) orelse {
 				std.log.err("Could not find parent structure '{s}' for child resolution.", .{entry.structureId});
 				continue;
 			};
@@ -220,7 +219,6 @@ pub fn registerSBB(structures: *std.StringHashMap(ZonElement)) !void {
 			std.log.debug("Resolving child structure '{s}'->'{s}'->'{d}' to '{s}'", .{entry.parentId, entry.colorName, entry.childIndex, entry.structureId});
 			parent.children[entry.colorIndex].items[entry.childIndex].structure = child;
 			continue;
-
 		}
 		childrenToResolve.deinit();
 	}

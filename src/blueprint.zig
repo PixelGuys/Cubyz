@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const main = @import("main.zig");
-const structure_building_blocks = main.structure_building_blocks;
+const sbb = main.server.terrain.structure_building_blocks;
 const Compression = main.utils.Compression;
 const ZonElement = @import("zon.zig").ZonElement;
 const vec = main.vec;
@@ -137,7 +137,7 @@ pub const Blueprint = struct {
 					if(!chunk.liesInChunk(worldX, worldY, worldZ)) continue;
 
 					var block = self.blocks.get(x, y, z);
-					if(structure_building_blocks.isOriginBlock(block) or structure_building_blocks.isChildBlock(block)) continue;
+					if(sbb.isOriginBlock(block) or sbb.isChildBlock(block)) continue;
 
 					if(substitutions) |map| {
 						if(map.get(block.typ)) |entry| {
