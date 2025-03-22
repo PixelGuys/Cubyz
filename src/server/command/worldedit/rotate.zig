@@ -2,13 +2,6 @@ const std = @import("std");
 
 const main = @import("root");
 const User = main.server.User;
-const vec = main.vec;
-const Vec3i = vec.Vec3i;
-
-const copy = @import("copy.zig");
-
-const Block = main.blocks.Block;
-const Blueprint = main.blueprint.Blueprint;
 
 pub const description = "rotate clipboard content around Z axis counterclockwise.";
 pub const usage = "/rotate";
@@ -21,10 +14,7 @@ pub fn execute(args: []const u8, source: *User) void {
 	if(source.worldEditData.clipboard == null) {
 		source.sendMessage("#ff0000Error: No clipboard content to rotate.", .{});
 	}
-	var current = source.worldEditData.clipboard.?;
-	source.worldEditData.clipboard = null;
+	const current = source.worldEditData.clipboard.?;
 	defer current.deinit(main.globalAllocator);
-
-	const rotated = current.rotateZ(main.globalAllocator, .@"90");
-	source.worldEditData.clipboard = rotated;
+	source.worldEditData.clipboard = current.rotateZ(main.globalAllocator, .@"90");
 }
