@@ -1,0 +1,15 @@
+.{
+	.blueprint = "cubyz:tree/oak/stem0",
+	.children = .{
+		.red = .{
+			.{.structure = "cubyz:tree/oak/branch0", .chance = 0.5},
+			.{.structure = "cubyz:tree/oak/branch1", .chance = 1.0},
+		},
+		.blue = .{
+			.{.structure = "cubyz:tree/oak/branch2", .chance = 1.0},
+		},
+		.green = .{
+			.{.structure = "cubyz:tree/oak/leaves_top0", .chance = 1.0},
+		},
+	},
+}

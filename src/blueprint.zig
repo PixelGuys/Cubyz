@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const main = @import("main.zig");
+const sbb = main.server.terrain.structure_building_blocks;
 const Compression = main.utils.Compression;
 const ZonElement = @import("zon.zig").ZonElement;
 const vec = main.vec;
@@ -19,6 +20,8 @@ const BlockStorageType = u32;
 
 const BinaryWriter = main.utils.BinaryWriter;
 const BinaryReader = main.utils.BinaryReader;
+
+pub const SubstitutionMap = std.AutoHashMapUnmanaged(u16, u16);
 
 pub const blueprintVersion = 0;
 
@@ -103,6 +106,41 @@ pub const Blueprint = struct {
 			}
 		}
 		return .{.success = self};
+	}
+	pub const PasteMode = enum {all, noAir, replaceAir};
+
+	pub fn pasteInGeneration(self: Blueprint, pos: Vec3i, chunk: *ServerChunk, mode: PasteMode, substitutions: ?SubstitutionMap) void {
+		const startX = pos[0];
+		const startY = pos[1];
+		const startZ = pos[2];
+
+		for(0..self.blocks.width) |x| {
+			const worldX = startX + @as(i32, @intCast(x));
+
+			for(0..self.blocks.depth) |y| {
+				const worldY = startY + @as(i32, @intCast(y));
+
+				for(0..self.blocks.height) |z| {
+					const worldZ = startZ + @as(i32, @intCast(z));
+					if(!chunk.liesInChunk(worldX, worldY, worldZ)) continue;
+
+					var block = self.blocks.get(x, y, z);
+					if(sbb.isOriginBlock(block) or sbb.isChildBlock(block)) continue;
+
+					if(substitutions) |map| {
+						if(map.get(block.typ)) |entry| {
+							block.typ = entry;
+						}
+					}
+
+					sw: switch(mode) {
+						.all => chunk.updateBlockInGeneration(worldX, worldY, worldZ, block),
+						.noAir => if(block.typ != 0) continue :sw .all,
+						.replaceAir => if(block.typ != 0 and chunk.getBlock(worldX, worldY, worldZ).typ == 0) continue :sw .all,
+					}
+				}
+			}
+		}
 	}
 	pub fn paste(self: Blueprint, pos: Vec3i) void {
 		const startX = pos[0];
