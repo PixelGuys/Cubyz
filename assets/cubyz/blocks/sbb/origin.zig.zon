@@ -1,6 +1,4 @@
 .{
-	.tags = .{.sbbOrigin},
-	.drops = .{},
 	.model = "cubyz:cube",
 	.rotation = .log,
 	.texture = "cubyz:sbb/origin_side",
