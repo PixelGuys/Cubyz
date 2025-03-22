@@ -1542,41 +1542,40 @@ pub const RotationModes = struct {
 	};
 	pub const Pile = struct {
 		pub const id: []const u8 = "pile";
-		var modelCache: std.StringHashMap(u16) = undefined;
+		var rotatedModels: std.StringHashMap(ModelIndex) = undefined;
 
 		fn init() void {
-			modelCache = .init(main.globalAllocator.allocator);
+			rotatedModels = .init(main.globalAllocator.allocator);
 		}
 
 		fn deinit() void {
-			modelCache.deinit();
+			rotatedModels.deinit();
 		}
 
 		fn reset() void {
-			modelCache.clearRetainingCapacity();
+			rotatedModels.clearRetainingCapacity();
 		}
 
 		fn transform(quad: *main.models.QuadInfo, data: u16) void {
 			quad.textureSlot = data%4;
 		}
 
-		pub fn createBlockModel(zon: ZonElement) u16 {
+		pub fn createBlockModel(zon: ZonElement) ModelIndex {
 			const modelId = zon.as([]const u8, "cubyz:cube");
-			if(modelCache.get(modelId)) |modelIndex| return modelIndex;
+			if(rotatedModels.get(modelId)) |modelIndex| return modelIndex;
 
-			const baseModelIndex = main.models.getModelIndex(modelId);
-			const baseModel = main.models.models.items[baseModelIndex];
+			const baseModel = main.models.getModelIndex(modelId).model();
 
-			const modelIndex: u16 = baseModel.transformModel(transform, .{@as(u16, @intCast(0))});
+			const modelIndex = baseModel.transformModel(transform, .{@as(u16, @intCast(0))});
 			for(1..4) |data| {
 				_ = baseModel.transformModel(transform, .{@as(u16, @intCast(data))});
 			}
-			modelCache.put(modelId, modelIndex) catch unreachable;
+			rotatedModels.put(modelId, modelIndex) catch unreachable;
 			return modelIndex;
 		}
 
-		pub fn model(block: Block) u16 {
-			return blocks.meshes.modelIndexStart(block) + (block.data & 0b11);
+		pub fn model(block: Block) ModelIndex {
+			return .{.index = blocks.meshes.modelIndexStart(block).index + @min(block.data, 3)};
 		}
 
 		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: ?Neighbor, currentData: *Block, _: Block, blockPlacing: bool) bool {
