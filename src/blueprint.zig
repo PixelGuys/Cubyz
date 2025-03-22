@@ -10,6 +10,8 @@ const Array3D = main.utils.Array3D;
 const Block = main.blocks.Block;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const User = main.server.User;
+const ServerChunk = main.chunk.ServerChunk;
+const Degrees = main.rotation.Degrees;
 
 const GameIdToBlueprintIdMapType = std.AutoHashMap(u16, u16);
 const BlockIdSizeType = u32;
@@ -36,6 +38,32 @@ pub const Blueprint = struct {
 	pub fn clone(self: *Blueprint, allocator: NeverFailingAllocator) Blueprint {
 		return .{.blocks = self.blocks.clone(allocator)};
 	}
+	pub fn rotateZ(self: Blueprint, allocator: NeverFailingAllocator, angle: Degrees) Blueprint {
+		var new = Blueprint{
+			.blocks = switch(angle) {
+				.@"0", .@"180" => .init(allocator, self.blocks.width, self.blocks.depth, self.blocks.height),
+				.@"90", .@"270" => .init(allocator, self.blocks.depth, self.blocks.width, self.blocks.height),
+			},
+		};
+
+		for(0..self.blocks.width) |xOld| {
+			for(0..self.blocks.depth) |yOld| {
+				const xNew, const yNew = switch(angle) {
+					.@"0" => .{xOld, yOld},
+					.@"90" => .{new.blocks.width - yOld - 1, xOld},
+					.@"180" => .{new.blocks.width - xOld - 1, new.blocks.depth - yOld - 1},
+					.@"270" => .{yOld, new.blocks.depth - xOld - 1},
+				};
+
+				for(0..self.blocks.height) |z| {
+					const block = self.blocks.get(xOld, yOld, z);
+					new.blocks.set(xNew, yNew, z, block.rotateZ(angle));
+				}
+			}
+		}
+		return new;
+	}
+
 	const CaptureResult = union(enum) {
 		success: Blueprint,
 		failure: struct {pos: Vec3i, message: []const u8},
