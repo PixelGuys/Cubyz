@@ -15,10 +15,12 @@ const rotation = @import("rotation.zig");
 const RotationMode = rotation.RotationMode;
 const Degrees = rotation.Degrees;
 const Entity = main.server.Entity;
+const sbb = main.structure_building_blocks;
 
 pub const BlockTag = enum(u32) {
 	air = 0,
 	fluid = 1,
+	sbbChild = 2,
 	_,
 
 	var tagList: main.List([]const u8) = .init(allocator);
@@ -140,6 +142,12 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 
 	_blockTags[size] = BlockTag.loadFromZon(allocator, zon.getChild("tags"));
 	if(_blockTags[size].len == 0) std.log.err("Block {s} is missing 'tags' field", .{id});
+	for(_blockTags[size]) |tag| {
+		if(tag == BlockTag.sbbChild) {
+			sbb.registerChildBlock(@intCast(size), _id[size]);
+			break;
+		}
+	}
 	_light[size] = zon.get(u32, "emittedLight", 0);
 	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
 	_degradable[size] = zon.get(bool, "degradable", false);

@@ -37,6 +37,7 @@ const BlueprintEntry = struct {
 			x: i32,
 			y: i32,
 			z: i32,
+			index: u32,
 			block: Block,
 
 			pub inline fn direction(self: StructureBlock) Neighbor {
@@ -72,6 +73,7 @@ const BlueprintEntry = struct {
 									.x = @intCast(x),
 									.y = @intCast(y),
 									.z = @intCast(z),
+									.index = std.math.maxInt(u32),
 									.block = block,
 								};
 								hasOrigin = true;
@@ -81,6 +83,7 @@ const BlueprintEntry = struct {
 								.x = @intCast(x),
 								.y = @intCast(y),
 								.z = @intCast(z),
+								.index = childBlockNumericIdMap.get(block.typ) orelse return error.ChildBlockNotRecognized,
 								.block = block,
 							});
 						}
@@ -97,10 +100,7 @@ const BlueprintEntry = struct {
 };
 
 pub fn isChildBlock(block: Block) bool {
-	for(childrenBlockNumericId) |numericId| {
-		if(block.typ == numericId) return true;
-	}
-	return false;
+	return childBlockNumericIdMap.contains(block.typ);
 }
 
 pub fn isOriginBlock(block: Block) bool {
@@ -110,52 +110,9 @@ pub fn isOriginBlock(block: Block) bool {
 const originBlockStringId = "cubyz:sbb/origin";
 var originBlockNumericId: u16 = 0;
 
-const maxRotationCacheSize: usize = 1024;
-
-const childrenBlockStringId = [_][]const u8{
-	"cubyz:sbb/child/aqua",
-	"cubyz:sbb/child/black",
-	"cubyz:sbb/child/blue",
-	"cubyz:sbb/child/brown",
-	"cubyz:sbb/child/crimson",
-	"cubyz:sbb/child/cyan",
-	"cubyz:sbb/child/dark_grey",
-	"cubyz:sbb/child/green",
-	"cubyz:sbb/child/grey",
-	"cubyz:sbb/child/indigo",
-	"cubyz:sbb/child/lime",
-	"cubyz:sbb/child/magenta",
-	"cubyz:sbb/child/orange",
-	"cubyz:sbb/child/pink",
-	"cubyz:sbb/child/purple",
-	"cubyz:sbb/child/red",
-	"cubyz:sbb/child/violet",
-	"cubyz:sbb/child/viridian",
-	"cubyz:sbb/child/white",
-	"cubyz:sbb/child/yellow",
-};
-var childrenBlockNumericId = [_]u16{
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-	0,
-};
+// Maps global child block numeric ID to index used to locally represent that child block.
+var childBlockNumericIdMap: std.AutoHashMapUnmanaged(u16, u16) = .{};
+var childBlockStringId: [20][]const u8 = undefined;
 
 pub const StructureBuildingBlock = struct {
 	children: Children,
@@ -188,64 +145,40 @@ pub const StructureBuildingBlock = struct {
 };
 
 const Children = struct {
-	colors: std.AutoHashMapUnmanaged(u16, ?AliasTable(Child)),
+	colors: [20]AliasTable(Child),
 
 	fn initFromZon(stringId: []const u8, zon: ZonElement) Children {
-		var self: @This() = .{.colors = .{}};
-
-		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[0], initChildTableFromZon("aqua", stringId, zon.getChild("aqua"))) catch unreachable;
-		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[1], initChildTableFromZon("black", stringId, zon.getChild("black"))) catch unreachable;
-		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[2], initChildTableFromZon("blue", stringId, zon.getChild("blue"))) catch unreachable;
-		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[3], initChildTableFromZon("brown", stringId, zon.getChild("brown"))) catch unreachable;
-		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[4], initChildTableFromZon("crimson", stringId, zon.getChild("crimson"))) catch unreachable;
-		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[5], initChildTableFromZon("cyan", stringId, zon.getChild("cyan"))) catch unreachable;
-		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[6], initChildTableFromZon("dark_grey", stringId, zon.getChild("dark_grey"))) catch unreachable;
-		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[7], initChildTableFromZon("green", stringId, zon.getChild("green"))) catch unreachable;
-		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[8], initChildTableFromZon("grey", stringId, zon.getChild("grey"))) catch unreachable;
-		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[9], initChildTableFromZon("indigo", stringId, zon.getChild("indigo"))) catch unreachable;
-		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[10], initChildTableFromZon("lime", stringId, zon.getChild("lime"))) catch unreachable;
-		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[11], initChildTableFromZon("magenta", stringId, zon.getChild("magenta"))) catch unreachable;
-		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[12], initChildTableFromZon("orange", stringId, zon.getChild("orange"))) catch unreachable;
-		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[13], initChildTableFromZon("pink", stringId, zon.getChild("pink"))) catch unreachable;
-		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[14], initChildTableFromZon("purple", stringId, zon.getChild("purple"))) catch unreachable;
-		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[15], initChildTableFromZon("red", stringId, zon.getChild("red"))) catch unreachable;
-		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[16], initChildTableFromZon("violet", stringId, zon.getChild("violet"))) catch unreachable;
-		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[17], initChildTableFromZon("viridian", stringId, zon.getChild("viridian"))) catch unreachable;
-		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[18], initChildTableFromZon("white", stringId, zon.getChild("white"))) catch unreachable;
-		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[19], initChildTableFromZon("yellow", stringId, zon.getChild("yellow"))) catch unreachable;
-
+		var self: @This() = .{.colors = undefined};
+		for(childBlockStringId, 0..) |colorName, i| {
+			self.colors[i] = initChildTableFromZon(colorName, stringId, zon.getChild(colorName));
+		}
 		return self;
 	}
 	fn finalize(self: *Children) !void {
-		var iterator = self.colors.iterator();
-		while(iterator.next()) |entry| {
-			if(entry.value_ptr.*) |table| {
-				for(table.items) |*c| try c.finalize();
-			}
+		for(self.colors) |color| {
+			for(color.items) |*c| try c.finalize();
 		}
 	}
-	pub fn pickChild(self: Children, block: Block, seed: *u64) ?Child {
-		if(self.colors.get(block.typ)) |c| if(c) |collection|
-			return collection.sample(seed).*;
-		return null;
+	pub fn pickChild(self: Children, block: BlueprintEntry.Info.StructureBlock, seed: *u64) Child {
+		return self.colors[block.index].sample(seed).*;
 	}
 };
 
-fn initChildTableFromZon(comptime childName: []const u8, stringId: []const u8, zon: ZonElement) ?AliasTable(Child) {
-	if(zon == .null) return null;
+fn initChildTableFromZon(childName: []const u8, stringId: []const u8, zon: ZonElement) AliasTable(Child) {
+	if(zon == .null) return .init(arena_allocator, &[0]Child{});
 	if(zon != .array) {
 		std.log.err("[{s}->{s}] Incorrect child data structure, array expected.", .{stringId, childName});
-		return null;
+		return .init(arena_allocator, &[0]Child{});
 	}
 	if(zon.array.items.len == 0) {
 		std.log.warn("[{s}->{s}] Empty children list.", .{stringId, childName});
-		return null;
+		return .init(arena_allocator, &[0]Child{});
 	}
 	var list = arena_allocator.alloc(Child, zon.array.items.len);
 	for(zon.array.items, 0..) |entry, i| {
 		list[i] = Child.initFromZon(childName, stringId, i, entry);
 	}
-	return AliasTable(Child).init(arena_allocator, list);
+	return .init(arena_allocator, list);
 }
 
 const Child = struct {
@@ -253,7 +186,7 @@ const Child = struct {
 	structure: *StructureBuildingBlock,
 	chance: f32,
 
-	fn initFromZon(comptime childName: []const u8, stringId: []const u8, i: usize, zon: ZonElement) Child {
+	fn initFromZon(childName: []const u8, stringId: []const u8, i: usize, zon: ZonElement) Child {
 		const self = Child{
 			.structureId = arena_allocator.dupe(u8, zon.get([]const u8, "structure", "")),
 			.structure = undefined,
@@ -273,11 +206,11 @@ const Child = struct {
 };
 
 pub fn registerSBB(structures: *std.StringHashMap(ZonElement)) !void {
-	std.log.debug("Registering {} structure building blocks", .{structures.count()});
 	if(structureCache != null) {
 		std.log.err("Attempting to register new SBBs without resetting cache.", .{});
 		return error.AlreadyRegistered;
 	}
+	std.log.debug("Registering {} structure building blocks", .{structures.count()});
 	structureCache = .{};
 	structureCache.?.ensureTotalCapacity(arena_allocator.allocator, structures.count()) catch unreachable;
 	{
@@ -313,6 +246,16 @@ pub fn registerSBB(structures: *std.StringHashMap(ZonElement)) !void {
 	std.log.debug("Registered {} structure building blocks", .{structureCache.?.count()});
 }
 
+pub fn registerChildBlock(numericId: u16, stringId: []const u8) void {
+	const index: u16 = @intCast(childBlockNumericIdMap.count());
+	childBlockNumericIdMap.put(arena_allocator.allocator, numericId, index) catch unreachable;
+	// Take only color name from the ID.
+	var iterator = std.mem.splitBackwardsScalar(u8, stringId, '/');
+	const colorName = iterator.next().?;
+	childBlockStringId[index] = arena_allocator.dupe(u8, colorName);
+	std.log.debug("Child block '{s}' {} ('{s}' {}) ", .{colorName, index, stringId, numericId});
+}
+
 pub fn registerBlueprints(blueprints: *std.StringHashMap([]u8)) !void {
 	if(blueprintCache != null) {
 		std.log.err("Attempting to register new blueprints without resetting cache.", .{});
@@ -321,12 +264,7 @@ pub fn registerBlueprints(blueprints: *std.StringHashMap([]u8)) !void {
 
 	originBlockNumericId = parseBlock(originBlockStringId).typ;
 	std.log.debug("Origin block numeric id: {}", .{originBlockNumericId});
-	for(0..childrenBlockNumericId.len) |i| {
-		childrenBlockNumericId[i] = parseBlock(childrenBlockStringId[i]).typ;
-		std.log.debug("Child block '{s}'' numeric id: {}", .{childrenBlockStringId[i], childrenBlockNumericId[i]});
-	}
-
-	std.log.info("Registering {} blueprints", .{blueprints.count()});
+	std.log.debug("Registering {} blueprints", .{blueprints.count()});
 
 	blueprintCache = .{};
 	blueprintCache.?.ensureTotalCapacity(arena_allocator.allocator, blueprints.count()) catch unreachable;
@@ -352,7 +290,7 @@ pub fn registerBlueprints(blueprints: *std.StringHashMap([]u8)) !void {
 				BlueprintEntry.init(blueprint270, stringId) catch continue,
 			},
 		) catch unreachable;
-		std.log.info("Registered blueprint: {s}", .{stringId});
+		std.log.debug("Registered blueprint: {s}", .{stringId});
 	}
 	std.log.debug("Registered {} blueprints", .{blueprintCache.?.count()});
 }
@@ -364,6 +302,8 @@ pub fn getByStringId(stringId: []const u8) ?*StructureBuildingBlock {
 pub fn reset() void {
 	_ = arena.reset(.free_all);
 
+	childBlockNumericIdMap.deinit(arena_allocator.allocator);
+	childBlockNumericIdMap = .{};
 	structureCache = null;
 	blueprintCache = null;
 }
