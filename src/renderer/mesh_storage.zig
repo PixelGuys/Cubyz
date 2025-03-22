@@ -896,10 +896,10 @@ pub const MeshGenerationTask = struct { // MARK: MeshGenerationTask
 	mesh: *chunk.Chunk,
 
 	pub const vtable = utils.ThreadPool.VTable{
-		.getPriority = @ptrCast(&getPriority),
-		.isStillNeeded = @ptrCast(&isStillNeeded),
-		.run = @ptrCast(&run),
-		.clean = @ptrCast(&clean),
+		.getPriority = main.utils.castFunctionSelfToAnyopaque(getPriority),
+		.isStillNeeded = main.utils.castFunctionSelfToAnyopaque(isStillNeeded),
+		.run = main.utils.castFunctionSelfToAnyopaque(run),
+		.clean = main.utils.castFunctionSelfToAnyopaque(clean),
 		.taskType = .meshgenAndLighting,
 	};
 
