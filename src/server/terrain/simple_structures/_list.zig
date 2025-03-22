@@ -5,4 +5,3 @@ pub const GroundPatch = @import("GroundPatch.zig");
 pub const SimpleTreeModel = @import("SimpleTreeModel.zig");
 pub const SimpleVegetation = @import("SimpleVegetation.zig");
 pub const Stalagmite = @import("Stalagmite.zig");
-pub const SBBGen = @import("SBBGen.zig");
