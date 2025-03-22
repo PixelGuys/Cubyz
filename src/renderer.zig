@@ -941,5 +941,16 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			c.glPolygonOffset(-2, 0);
 			drawCube(projectionMatrix, viewMatrix, @as(Vec3d, @floatFromInt(_selectedBlockPos)) - playerPos, selectionMin, selectionMax);
 		}
+		if(game.Player.selectionPosition1) |pos1| {
+			if(game.Player.selectionPosition2) |pos2| {
+				const bottomLeft: Vec3i = @min(pos1, pos2);
+				const topRight: Vec3i = @max(pos1, pos2);
+
+				c.glEnable(c.GL_POLYGON_OFFSET_LINE);
+				defer c.glDisable(c.GL_POLYGON_OFFSET_LINE);
+				c.glPolygonOffset(-2, 0);
+				drawCube(projectionMatrix, viewMatrix, @as(Vec3d, @floatFromInt(bottomLeft)) - playerPos, .{0, 0, 0}, @floatFromInt(topRight - bottomLeft + Vec3i{1, 1, 1}));
+			}
+		}
 	}
 };

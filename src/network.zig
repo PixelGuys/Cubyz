@@ -978,12 +978,19 @@ pub const Protocols = struct {
 		const type_gamemode: u8 = 0;
 		const type_teleport: u8 = 1;
 		const type_cure: u8 = 2;
-		const type_reserved2: u8 = 3;
+		const type_worldEditPos: u8 = 3;
 		const type_reserved3: u8 = 4;
 		const type_reserved4: u8 = 5;
 		const type_reserved5: u8 = 6;
 		const type_reserved6: u8 = 7;
 		const type_timeAndBiome: u8 = 8;
+
+		const WorldEditPosition = enum(u2) {
+			selectedPos1 = 0,
+			selectedPos2 = 1,
+			clear = 2,
+		};
+
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
 			switch(try reader.readInt(u8)) {
 				type_gamemode => {
@@ -1000,7 +1007,27 @@ pub const Protocols = struct {
 				type_cure => {
 					// TODO: health and hunger
 				},
-				type_reserved2 => {},
+				type_worldEditPos => {
+					const typ = try reader.readEnum(WorldEditPosition);
+					switch(typ) {
+						.selectedPos1, .selectedPos2 => {
+							const pos = Vec3i{
+								try reader.readInt(i32),
+								try reader.readInt(i32),
+								try reader.readInt(i32),
+							};
+							switch(typ) {
+								.selectedPos1 => game.Player.selectionPosition1 = pos,
+								.selectedPos2 => game.Player.selectionPosition2 = pos,
+								else => unreachable,
+							}
+						},
+						.clear => {
+							game.Player.selectionPosition1 = null;
+							game.Player.selectionPosition2 = null;
+						},
+					}
+				},
 				type_reserved3 => {},
 				type_reserved4 => {},
 				type_reserved5 => {},
@@ -1070,6 +1097,19 @@ pub const Protocols = struct {
 			var data: [1]u8 = undefined;
 			data[0] = type_cure;
 			conn.sendImportant(id, &data);
+		}
+
+		pub fn sendWorldEditPos(conn: *Connection, posType: WorldEditPosition, maybePos: ?Vec3i) void {
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, 25);
+			defer writer.deinit();
+			writer.writeInt(u8, type_worldEditPos);
+			writer.writeEnum(WorldEditPosition, posType);
+			if(maybePos) |pos| {
+				writer.writeInt(i32, pos[0]);
+				writer.writeInt(i32, pos[1]);
+				writer.writeInt(i32, pos[2]);
+			}
+			conn.sendImportant(id, writer.data.items);
 		}
 
 		pub fn sendTimeAndBiome(conn: *Connection, world: *const main.server.ServerWorld) void {
