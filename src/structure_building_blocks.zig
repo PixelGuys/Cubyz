@@ -17,63 +17,95 @@ var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
 const arena_allocator = arena.allocator();
 
 var structureCache: ?std.StringHashMapUnmanaged(StructureBuildingBlock) = null;
-var blueprintCache: ?std.StringHashMapUnmanaged(Blueprint) = null;
+var blueprintCache: ?std.StringHashMapUnmanaged([4]*BlueprintEntry) = null;
 
-const BpRotKey = struct {
-	id: []const u8,
-	rotation: Degrees,
-
-	const HashContext = struct {
-		pub fn hash(_: HashContext, a: BpRotKey) u64 {
-			return std.hash.Wyhash.hash(hashInt(@intFromEnum(a.rotation)), a.id);
-		}
-		pub fn eql(_: HashContext, a: BpRotKey, b: BpRotKey) bool {
-			return std.meta.eql(a, b) and a.rotation == b.rotation;
-		}
-	};
-};
-pub const BpRotVal = struct {
-	allocator: NeverFailingAllocator,
+const BlueprintEntry = struct {
 	blueprint: Blueprint,
-	info: StructureInfo,
-	refCount: i64,
-	mutex: std.Thread.Mutex,
+	info: Info,
 
-	pub fn init(allocator: NeverFailingAllocator, blueprint: Blueprint, info: StructureInfo) *BpRotVal {
-		const self = allocator.create(BpRotVal);
+	fn init(blueprint: Blueprint, stringId: []const u8) !*BlueprintEntry {
+		const self = arena_allocator.create(BlueprintEntry);
 		self.* = .{
-			.allocator = allocator,
 			.blueprint = blueprint,
-			.info = info,
-			.refCount = 1,
-			.mutex = .{},
+			.info = try Info.initFromBlueprint(arena_allocator, blueprint, stringId),
 		};
 		return self;
 	}
-	pub fn incRef(self: *BpRotVal) void {
-		self.mutex.lock();
-		defer self.mutex.unlock();
 
-		std.debug.assert(self.refCount > 0);
-		self.refCount += 1;
-	}
-	pub fn decRef(self: *BpRotVal) void {
-		self.mutex.lock();
-		defer self.mutex.unlock();
+	const Info = struct {
+		const StructureBlock = struct {
+			x: i32,
+			y: i32,
+			z: i32,
+			block: Block,
 
-		std.debug.assert(self.refCount > 0);
-		self.refCount -= 1;
-		if(self.refCount <= 0) {
-			self.deinit();
+			pub inline fn direction(self: StructureBlock) Neighbor {
+				return @enumFromInt(self.block.data);
+			}
+		};
+
+		originBlock: StructureBlock,
+		childrenBlocks: List(StructureBlock),
+
+		fn deinit(self: Info) void {
+			self.childrenBlocks.deinit();
 		}
-	}
-	pub fn deinit(self: BpRotVal) void {
-		self.blueprint.deinit(self.allocator);
-		self.info.deinit();
-	}
+		fn initFromBlueprint(allocator: NeverFailingAllocator, blueprint: Blueprint, stringId: ?[]const u8) !Info {
+			var info: Info = .{
+				.originBlock = undefined,
+				.childrenBlocks = List(StructureBlock).init(allocator),
+			};
+			errdefer info.deinit();
+
+			var hasOrigin = false;
+
+			for(0..blueprint.blocks.width) |x| {
+				for(0..blueprint.blocks.depth) |y| {
+					for(0..blueprint.blocks.height) |z| {
+						const block = blueprint.blocks.get(x, y, z);
+						if(isOriginBlock(block)) {
+							if(hasOrigin) {
+								std.log.err("[{s}] Multiple origin blocks found.", .{stringId orelse ""});
+								return error.MultipleOriginBlocks;
+							} else {
+								info.originBlock = StructureBlock{
+									.x = @intCast(x),
+									.y = @intCast(y),
+									.z = @intCast(z),
+									.block = block,
+								};
+								hasOrigin = true;
+							}
+						} else if(isChildBlock(block)) {
+							info.childrenBlocks.append(StructureBlock{
+								.x = @intCast(x),
+								.y = @intCast(y),
+								.z = @intCast(z),
+								.block = block,
+							});
+						}
+					}
+				}
+			}
+			if(!hasOrigin) {
+				std.log.err("[{s}] No origin block found.", .{stringId orelse ""});
+				return error.NoOriginBlock;
+			}
+			return info;
+		}
+	};
 };
-var rotatedBlueprintCache: ?std.HashMapUnmanaged(BpRotKey, *BpRotVal, BpRotKey.HashContext, 80) = null;
-var rotatedBlueprintCacheMutex: std.Thread.Mutex = .{};
+
+pub fn isChildBlock(block: Block) bool {
+	for(childrenBlockNumericId) |numericId| {
+		if(block.typ == numericId) return true;
+	}
+	return false;
+}
+
+pub fn isOriginBlock(block: Block) bool {
+	return block.typ == originBlockNumericId;
+}
 
 const originBlockStringId = "cubyz:sbb/origin";
 var originBlockNumericId: u16 = 0;
@@ -125,24 +157,9 @@ var childrenBlockNumericId = [_]u16{
 	0,
 };
 
-const StructureBlock = struct {
-	x: i32,
-	y: i32,
-	z: i32,
-	block: Block,
-
-	pub inline fn direction(self: StructureBlock) Neighbor {
-		return @enumFromInt(self.block.data);
-	}
-};
-
-const StructureBuildingBlock = struct {
-	stringId: []const u8,
-	blueprintId: []const u8,
+pub const StructureBuildingBlock = struct {
 	children: Children,
-
-	blueprint: Blueprint,
-	info: StructureInfo,
+	blueprint: [4]*BlueprintEntry,
 
 	fn initFromZon(stringId: []const u8, zon: ZonElement) !StructureBuildingBlock {
 		const blueprintId = zon.get(?[]const u8, "blueprint", null);
@@ -151,148 +168,61 @@ const StructureBuildingBlock = struct {
 			return error.MissingBlueprintIdField;
 		}
 
-		const blueprintRef = blueprintCache.?.getEntry(blueprintId.?);
+		const blueprintRef = blueprintCache.?.get(blueprintId.?);
 		if(blueprintRef == null) {
 			std.log.err("[{s}] Could not find blueprint '{s}'.", .{stringId, blueprintId.?});
 			return error.MissingBlueprint;
 		}
 
-		const blueprint = blueprintRef.?.value_ptr.*;
-		const info = try StructureInfo.initFromBlueprint(arena_allocator, blueprint, stringId);
-
 		return StructureBuildingBlock{
-			.stringId = arena_allocator.dupe(u8, stringId),
-			.blueprintId = arena_allocator.dupe(u8, blueprintId.?),
 			.children = Children.initFromZon(stringId, zon.getChild("children")),
-			.blueprint = blueprint,
-			.info = info,
+			.blueprint = blueprintRef.?,
 		};
 	}
-
-	pub fn getRotatedBlueprint(self: StructureBuildingBlock, rotation: Degrees) *BpRotVal {
-		std.debug.assert(blueprintCache != null);
-		std.debug.assert(rotatedBlueprintCache != null);
-
-		const key = BpRotKey{.id = self.blueprintId, .rotation = rotation};
-
-		rotatedBlueprintCacheMutex.lock();
-		defer rotatedBlueprintCacheMutex.unlock();
-
-		const entry = rotatedBlueprintCache.?.getOrPut(main.globalAllocator.allocator, key) catch unreachable;
-
-		if(!entry.found_existing) {
-			const rotated = self.blueprint.rotateZ(main.globalAllocator, rotation);
-			const info = StructureInfo.initFromBlueprint(main.globalAllocator, rotated, self.blueprintId) catch unreachable;
-			entry.value_ptr.* = BpRotVal.init(main.globalAllocator, rotated, info);
-			entry.value_ptr.*.incRef();
-
-			if(rotatedBlueprintCache.?.count() > maxRotationCacheSize) {
-				var iter = rotatedBlueprintCache.?.iterator();
-				const oldEntryNullable = iter.next();
-				if(oldEntryNullable) |oldEntry| {
-					oldEntry.value_ptr.*.decRef();
-					const result = rotatedBlueprintCache.?.remove(oldEntry.key_ptr.*);
-					std.debug.assert(result);
-				}
-			}
-		} else {
-			entry.value_ptr.*.incRef();
-		}
-		return entry.value_ptr.*;
+	fn finalize(self: *StructureBuildingBlock) !void {
+		try self.children.finalize();
+	}
+	pub fn getBlueprint(self: StructureBuildingBlock, rotation: Degrees) *BlueprintEntry {
+		return self.blueprint[@intFromEnum(rotation)];
 	}
 };
-
-pub const StructureInfo = struct {
-	originBlock: StructureBlock,
-	childrenBlocks: List(StructureBlock),
-
-	pub fn deinit(self: StructureInfo) void {
-		self.childrenBlocks.deinit();
-	}
-	pub fn initFromBlueprint(allocator: NeverFailingAllocator, blueprint: Blueprint, stringId: ?[]const u8) !StructureInfo {
-		var info: StructureInfo = .{
-			.originBlock = undefined,
-			.childrenBlocks = List(StructureBlock).init(allocator),
-		};
-		errdefer info.deinit();
-
-		var hasOrigin = false;
-
-		for(0..blueprint.blocks.width) |x| {
-			for(0..blueprint.blocks.depth) |y| {
-				for(0..blueprint.blocks.height) |z| {
-					const block = blueprint.blocks.get(x, y, z);
-					if(isOriginBlock(block)) {
-						if(hasOrigin) {
-							std.log.err("[{s}] Multiple origin blocks found.", .{stringId orelse ""});
-							return error.MultipleOriginBlocks;
-						} else {
-							info.originBlock = StructureBlock{
-								.x = @intCast(x),
-								.y = @intCast(y),
-								.z = @intCast(z),
-								.block = block,
-							};
-							hasOrigin = true;
-						}
-					} else if(isChildBlock(block)) {
-						info.childrenBlocks.append(StructureBlock{
-							.x = @intCast(x),
-							.y = @intCast(y),
-							.z = @intCast(z),
-							.block = block,
-						});
-					}
-				}
-			}
-		}
-		if(!hasOrigin) {
-			std.log.err("[{s}] No origin block found.", .{stringId orelse ""});
-			return error.NoOriginBlock;
-		}
-		return info;
-	}
-};
-
-pub fn isChildBlock(block: Block) bool {
-	for(childrenBlockNumericId) |numericId| {
-		if(block.typ == numericId) return true;
-	}
-	return false;
-}
-
-pub fn isOriginBlock(block: Block) bool {
-	return block.typ == originBlockNumericId;
-}
 
 const Children = struct {
-	colors: std.AutoHashMap(u16, ?AliasTable(Child)),
+	colors: std.AutoHashMapUnmanaged(u16, ?AliasTable(Child)),
 
 	fn initFromZon(stringId: []const u8, zon: ZonElement) Children {
-		var self: @This() = .{.colors = .init(arena_allocator.allocator)};
+		var self: @This() = .{.colors = .{}};
 
-		self.colors.put(childrenBlockNumericId[0], initChildTableFromZon("aqua", stringId, zon.getChild("aqua"))) catch unreachable;
-		self.colors.put(childrenBlockNumericId[1], initChildTableFromZon("black", stringId, zon.getChild("black"))) catch unreachable;
-		self.colors.put(childrenBlockNumericId[2], initChildTableFromZon("blue", stringId, zon.getChild("blue"))) catch unreachable;
-		self.colors.put(childrenBlockNumericId[3], initChildTableFromZon("brown", stringId, zon.getChild("brown"))) catch unreachable;
-		self.colors.put(childrenBlockNumericId[4], initChildTableFromZon("crimson", stringId, zon.getChild("crimson"))) catch unreachable;
-		self.colors.put(childrenBlockNumericId[5], initChildTableFromZon("cyan", stringId, zon.getChild("cyan"))) catch unreachable;
-		self.colors.put(childrenBlockNumericId[6], initChildTableFromZon("dark_grey", stringId, zon.getChild("dark_grey"))) catch unreachable;
-		self.colors.put(childrenBlockNumericId[7], initChildTableFromZon("green", stringId, zon.getChild("green"))) catch unreachable;
-		self.colors.put(childrenBlockNumericId[8], initChildTableFromZon("grey", stringId, zon.getChild("grey"))) catch unreachable;
-		self.colors.put(childrenBlockNumericId[9], initChildTableFromZon("indigo", stringId, zon.getChild("indigo"))) catch unreachable;
-		self.colors.put(childrenBlockNumericId[10], initChildTableFromZon("lime", stringId, zon.getChild("lime"))) catch unreachable;
-		self.colors.put(childrenBlockNumericId[11], initChildTableFromZon("magenta", stringId, zon.getChild("magenta"))) catch unreachable;
-		self.colors.put(childrenBlockNumericId[12], initChildTableFromZon("orange", stringId, zon.getChild("orange"))) catch unreachable;
-		self.colors.put(childrenBlockNumericId[13], initChildTableFromZon("pink", stringId, zon.getChild("pink"))) catch unreachable;
-		self.colors.put(childrenBlockNumericId[14], initChildTableFromZon("purple", stringId, zon.getChild("purple"))) catch unreachable;
-		self.colors.put(childrenBlockNumericId[15], initChildTableFromZon("red", stringId, zon.getChild("red"))) catch unreachable;
-		self.colors.put(childrenBlockNumericId[16], initChildTableFromZon("violet", stringId, zon.getChild("violet"))) catch unreachable;
-		self.colors.put(childrenBlockNumericId[17], initChildTableFromZon("viridian", stringId, zon.getChild("viridian"))) catch unreachable;
-		self.colors.put(childrenBlockNumericId[18], initChildTableFromZon("white", stringId, zon.getChild("white"))) catch unreachable;
-		self.colors.put(childrenBlockNumericId[19], initChildTableFromZon("yellow", stringId, zon.getChild("yellow"))) catch unreachable;
+		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[0], initChildTableFromZon("aqua", stringId, zon.getChild("aqua"))) catch unreachable;
+		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[1], initChildTableFromZon("black", stringId, zon.getChild("black"))) catch unreachable;
+		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[2], initChildTableFromZon("blue", stringId, zon.getChild("blue"))) catch unreachable;
+		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[3], initChildTableFromZon("brown", stringId, zon.getChild("brown"))) catch unreachable;
+		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[4], initChildTableFromZon("crimson", stringId, zon.getChild("crimson"))) catch unreachable;
+		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[5], initChildTableFromZon("cyan", stringId, zon.getChild("cyan"))) catch unreachable;
+		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[6], initChildTableFromZon("dark_grey", stringId, zon.getChild("dark_grey"))) catch unreachable;
+		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[7], initChildTableFromZon("green", stringId, zon.getChild("green"))) catch unreachable;
+		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[8], initChildTableFromZon("grey", stringId, zon.getChild("grey"))) catch unreachable;
+		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[9], initChildTableFromZon("indigo", stringId, zon.getChild("indigo"))) catch unreachable;
+		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[10], initChildTableFromZon("lime", stringId, zon.getChild("lime"))) catch unreachable;
+		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[11], initChildTableFromZon("magenta", stringId, zon.getChild("magenta"))) catch unreachable;
+		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[12], initChildTableFromZon("orange", stringId, zon.getChild("orange"))) catch unreachable;
+		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[13], initChildTableFromZon("pink", stringId, zon.getChild("pink"))) catch unreachable;
+		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[14], initChildTableFromZon("purple", stringId, zon.getChild("purple"))) catch unreachable;
+		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[15], initChildTableFromZon("red", stringId, zon.getChild("red"))) catch unreachable;
+		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[16], initChildTableFromZon("violet", stringId, zon.getChild("violet"))) catch unreachable;
+		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[17], initChildTableFromZon("viridian", stringId, zon.getChild("viridian"))) catch unreachable;
+		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[18], initChildTableFromZon("white", stringId, zon.getChild("white"))) catch unreachable;
+		self.colors.put(arena_allocator.allocator, childrenBlockNumericId[19], initChildTableFromZon("yellow", stringId, zon.getChild("yellow"))) catch unreachable;
 
 		return self;
+	}
+	fn finalize(self: *Children) !void {
+		var iterator = self.colors.iterator();
+		while(iterator.next()) |entry| {
+			if(entry.value_ptr.*) |table| {
+				for(table.items) |*c| try c.finalize();
+			}
+		}
 	}
 	pub fn pickChild(self: Children, block: Block, seed: *u64) ?Child {
 		if(self.colors.get(block.typ)) |c| if(c) |collection|
@@ -319,14 +249,14 @@ fn initChildTableFromZon(comptime childName: []const u8, stringId: []const u8, z
 }
 
 const Child = struct {
-	childBlockStringId: []const u8,
-	structure: []const u8,
+	structureId: []const u8,
+	structure: *StructureBuildingBlock,
 	chance: f32,
 
 	fn initFromZon(comptime childName: []const u8, stringId: []const u8, i: usize, zon: ZonElement) Child {
 		const self = Child{
-			.childBlockStringId = std.fmt.allocPrint(arena_allocator.allocator, "cubyz:sbb/child/{s}", .{childName}) catch unreachable,
-			.structure = arena_allocator.dupe(u8, zon.get([]const u8, "structure", "")),
+			.structureId = arena_allocator.dupe(u8, zon.get([]const u8, "structure", "")),
+			.structure = undefined,
 			.chance = zon.get(f32, "chance", 0.0),
 		};
 		if(self.chance == 0) {
@@ -335,49 +265,74 @@ const Child = struct {
 		if(self.chance < 0.0 or self.chance > 1.0) {
 			std.log.warn("[{s}->{s}->{}] Child node has spawn chance outside of [0, 1] range ({}).", .{stringId, childName, i, self.chance});
 		}
-		if(self.structure.len == 0) {
+		if(self.structureId.len == 0) {
 			std.log.warn("[{s}->{s}->{}] Child node has empty structure field.", .{stringId, childName, i});
 		}
 		return self;
 	}
+	fn finalize(self: *Child) !void {
+		self.structure = structureCache.?.getPtr(self.structureId) orelse {
+			std.log.err("Could not find structure building block with id '{s}'.", .{self.structureId});
+			return error.MissingStructure;
+		};
+	}
 };
 
 pub fn registerSBB(structures: *std.StringHashMap(ZonElement)) !void {
-	std.log.info("Registering {} structure building blocks", .{structures.count()});
+	std.log.debug("Registering {} structure building blocks", .{structures.count()});
 	if(structureCache != null) {
 		std.log.err("Attempting to register new SBBs without resetting cache.", .{});
 		return error.AlreadyRegistered;
 	}
-
-	originBlockNumericId = parseBlock(originBlockStringId).typ;
-	std.log.info("Origin block numeric id: {}", .{originBlockNumericId});
-	for(0..childrenBlockNumericId.len) |i| {
-		childrenBlockNumericId[i] = parseBlock(childrenBlockStringId[i]).typ;
-		std.log.info("Child block '{s}'' numeric id: {}", .{childrenBlockStringId[i], childrenBlockNumericId[i]});
-	}
-
 	structureCache = .{};
 	structureCache.?.ensureTotalCapacity(arena_allocator.allocator, structures.count()) catch unreachable;
+	{
+		var iterator = structures.iterator();
+		while(iterator.next()) |entry| {
+			const value = StructureBuildingBlock.initFromZon(entry.key_ptr.*, entry.value_ptr.*) catch continue;
+			const key = arena_allocator.dupe(u8, entry.key_ptr.*);
+			const result = structureCache.?.getOrPut(arena_allocator.allocator, key) catch unreachable;
 
-	var iterator = structures.iterator();
-	while(iterator.next()) |entry| {
-		const value = StructureBuildingBlock.initFromZon(entry.key_ptr.*, entry.value_ptr.*) catch continue;
-		const key = arena_allocator.dupe(u8, entry.key_ptr.*);
-
-		structureCache.?.put(arena_allocator.allocator, key, value) catch unreachable;
-		std.log.info("Registered structure building block: {s}", .{entry.key_ptr.*});
+			if(result.found_existing) {
+				std.log.err("Ignoring duplicated structure building block: '{s}'", .{entry.key_ptr.*});
+				continue;
+			}
+			result.value_ptr.* = value;
+			std.log.debug("Registered structure building block: '{s}'", .{entry.key_ptr.*});
+		}
 	}
+	{
+		var failedSBBs = List([]const u8).init(main.stackAllocator);
+		var iterator = structureCache.?.iterator();
+		while(iterator.next()) |entry| {
+			entry.value_ptr.*.finalize() catch |err| {
+				std.log.err("Could not finalize structure building block {s}: {s}", .{entry.key_ptr.*, @errorName(err)});
+				failedSBBs.append(entry.key_ptr.*);
+			};
+		}
+		// Blueprints which couldn't be finalized should always be an mistake in configuration, hence should not appear in release builds.
+		// Therefore those blueprints are not explicitly freed here. They will be freed with the arena, so they will not accumulate.
+		for(failedSBBs.items) |sbbId| {
+			_ = structureCache.?.remove(sbbId);
+		}
+	}
+	std.log.debug("Registered {} structure building blocks", .{structureCache.?.count()});
 }
 
 pub fn registerBlueprints(blueprints: *std.StringHashMap([]u8)) !void {
-	rotatedBlueprintCacheMutex.lock();
-	defer rotatedBlueprintCacheMutex.unlock();
-
-	std.log.info("Registering {} blueprints", .{blueprints.count()});
 	if(blueprintCache != null) {
 		std.log.err("Attempting to register new blueprints without resetting cache.", .{});
 		return error.AlreadyRegistered;
 	}
+
+	originBlockNumericId = parseBlock(originBlockStringId).typ;
+	std.log.debug("Origin block numeric id: {}", .{originBlockNumericId});
+	for(0..childrenBlockNumericId.len) |i| {
+		childrenBlockNumericId[i] = parseBlock(childrenBlockStringId[i]).typ;
+		std.log.debug("Child block '{s}'' numeric id: {}", .{childrenBlockStringId[i], childrenBlockNumericId[i]});
+	}
+
+	std.log.info("Registering {} blueprints", .{blueprints.count()});
 
 	blueprintCache = .{};
 	blueprintCache.?.ensureTotalCapacity(arena_allocator.allocator, blueprints.count()) catch unreachable;
@@ -385,36 +340,34 @@ pub fn registerBlueprints(blueprints: *std.StringHashMap([]u8)) !void {
 	var iterator = blueprints.iterator();
 	while(iterator.next()) |entry| {
 		const stringId = entry.key_ptr.*;
-		const blueprint = Blueprint.load(arena_allocator, entry.value_ptr.*) catch |err| {
+		const blueprint0 = Blueprint.load(arena_allocator, entry.value_ptr.*) catch |err| {
 			std.log.err("Could not load blueprint {s}: {s}", .{stringId, @errorName(err)});
 			continue;
 		};
+		const blueprint90 = blueprint0.rotateZ(arena_allocator, .@"90");
+		const blueprint180 = blueprint0.rotateZ(arena_allocator, .@"180");
+		const blueprint270 = blueprint0.rotateZ(arena_allocator, .@"270");
 
-		blueprintCache.?.put(arena_allocator.allocator, arena_allocator.dupe(u8, stringId), blueprint) catch unreachable;
+		blueprintCache.?.put(
+			arena_allocator.allocator,
+			arena_allocator.dupe(u8, stringId),
+			.{
+				BlueprintEntry.init(blueprint0, stringId) catch continue,
+				BlueprintEntry.init(blueprint90, stringId) catch continue,
+				BlueprintEntry.init(blueprint180, stringId) catch continue,
+				BlueprintEntry.init(blueprint270, stringId) catch continue,
+			},
+		) catch unreachable;
 		std.log.info("Registered blueprint: {s}", .{stringId});
 	}
-
-	rotatedBlueprintCache = .{};
-	try rotatedBlueprintCache.?.ensureTotalCapacity(main.globalAllocator.allocator, maxRotationCacheSize);
+	std.log.debug("Registered {} blueprints", .{blueprintCache.?.count()});
 }
 
-pub fn getByStringId(stringId: []const u8) ?StructureBuildingBlock {
-	return structureCache.?.get(stringId);
+pub fn getByStringId(stringId: []const u8) ?*StructureBuildingBlock {
+	return structureCache.?.getPtr(stringId);
 }
 
 pub fn reset() void {
-	rotatedBlueprintCacheMutex.lock();
-	defer rotatedBlueprintCacheMutex.unlock();
-
-	if(rotatedBlueprintCache != null) {
-		var iterator = rotatedBlueprintCache.?.iterator();
-		while(iterator.next()) |entry| {
-			entry.value_ptr.*.decRef();
-		}
-		rotatedBlueprintCache.?.deinit(main.globalAllocator.allocator);
-	}
-	rotatedBlueprintCache = null;
-
 	_ = arena.reset(.free_all);
 
 	structureCache = null;

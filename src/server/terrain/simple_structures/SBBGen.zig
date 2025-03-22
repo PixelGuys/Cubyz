@@ -4,7 +4,7 @@ const main = @import("root");
 const GenerationMode = main.server.terrain.biomes.SimpleStructureModel.GenerationMode;
 const CaveMapView = main.server.terrain.CaveMap.CaveMapView;
 const CaveBiomeMapView = main.server.terrain.CaveBiomeMap.CaveBiomeMapView;
-const structure_building_blocks = main.structure_building_blocks;
+const sbb = main.structure_building_blocks;
 const Blueprint = main.blueprint.Blueprint;
 const SubstitutionMap = main.blueprint.SubstitutionMap;
 const ZonElement = main.ZonElement;
@@ -82,23 +82,21 @@ fn loadSubstitutions(allocator: NeverFailingAllocator, zon: ZonElement) ?Substit
 }
 
 pub fn generate(self: *SBBGen, _: GenerationMode, x: i32, y: i32, z: i32, chunk: *ServerChunk, _: CaveMapView, _: CaveBiomeMapView, seed: *u64, _: bool) void {
-	placeSbb(self, self.structure, x, y, z - 1, Neighbor.dirUp, chunk, seed);
-}
-
-fn placeSbb(self: *SBBGen, structureId: []const u8, x: i32, y: i32, z: i32, placementDirection: Neighbor, chunk: *ServerChunk, seed: *u64) void {
-	const structureNullable = structure_building_blocks.getByStringId(structureId);
-	if(structureNullable == null) {
-		std.log.err("Could not find structure building block with id '{s}'", .{structureId});
+	if(sbb.getByStringId(self.structure)) |structure| {
+		placeSbb(self, structure, x, y, z - 1, Neighbor.dirUp, chunk, seed);
+	} else {
+		std.log.err("Could not find structure building block with id '{s}'", .{self.structure});
 		return;
 	}
-	const structure = structureNullable.?;
-	const origin = structure.info.originBlock;
+}
+
+fn placeSbb(self: *SBBGen, structure: *sbb.StructureBuildingBlock, x: i32, y: i32, z: i32, placementDirection: Neighbor, chunk: *ServerChunk, seed: *u64) void {
+	const origin = structure.blueprint[0].info.originBlock;
 	const rotationCount = alignDirections(origin.direction(), placementDirection) catch |err| {
 		std.log.err("Could not align directions {s} and {s} error: {s}", .{@tagName(origin.direction()), @tagName(placementDirection), @errorName(err)});
 		return;
 	};
-	const rotated = structure.getRotatedBlueprint(@enumFromInt(rotationCount));
-	defer rotated.decRef();
+	const rotated = structure.blueprint[rotationCount];
 	const rotatedOrigin = rotated.info.originBlock;
 
 	const pasteX: i32 = x - rotatedOrigin.x - placementDirection.relX();
