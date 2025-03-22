@@ -9,6 +9,7 @@ pub const debug_network_advanced = @import("debug_network_advanced.zig");
 pub const debug = @import("debug.zig");
 pub const delete_world_confirmation = @import("delete_world_confirmation.zig");
 pub const download_controller_mappings = @import("download_controller_mappings.zig");
+pub const energybar = @import("energybar.zig");
 pub const error_prompt = @import("error_prompt.zig");
 pub const gpu_performance_measuring = @import("gpu_performance_measuring.zig");
 pub const graphics = @import("graphics.zig");
