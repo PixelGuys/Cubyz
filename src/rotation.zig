@@ -1599,6 +1599,14 @@ pub const RotationModes = struct {
 			return true;
 		}
 
+		pub fn onBlockBreaking(_: ?main.items.Item, _: Vec3f, _: Vec3f, currentData: *Block) void {
+			if(currentData.data <= 1) {
+				currentData.* = .{.typ = 0, .data = 0};
+			} else {
+				currentData.data = currentData.data - 1;
+			}
+		}
+
 		pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
 			switch(RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess)) {
 				.no, .yes_costsDurability, .yes_dropsItems => return .no,
