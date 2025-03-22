@@ -827,10 +827,7 @@ pub const RotationModes = struct {
 					rotationTable[a][old] = new;
 				}
 			};
-			if(data > 0b11111111) {
-				std.log.err("Invalid stair data: {}", .{data});
-				return 0;
-			}
+			if(data >= 256) return 0;
 			return rotationTable[@intFromEnum(angle)][data];
 		}
 
