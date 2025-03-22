@@ -788,7 +788,7 @@ pub const Command = struct { // MARK: Command
 		}
 		
 		for(invs.items) |inv| {
-			if (inv.type == .blockInventory) {}
+			if(inv.type == .blockInventory) {}
 		}
 	}
 
@@ -1988,7 +1988,7 @@ pub fn saveToBin(self: Inventory, writer: *utils.BinaryWriter) void {
 
 pub fn loadFromBin(self: Inventory, reader: *utils.BinaryReader) !void {
 	_ = try reader.readInt(u16);
-	for (self._items) |*stack| {
+	for(self._items) |*stack| {
 		stack.* = ItemStack.loadFromBin(reader);
 	}
 }
