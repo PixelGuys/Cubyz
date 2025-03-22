@@ -257,14 +257,8 @@ const Child = struct {
 		const self = Child{
 			.structureId = arena_allocator.dupe(u8, zon.get([]const u8, "structure", "")),
 			.structure = undefined,
-			.chance = zon.get(f32, "chance", 0.0),
+			.chance = zon.get(f32, "chance", 1.0),
 		};
-		if(self.chance == 0) {
-			std.log.warn("[{s}->{s}->{}] Child node has has 0.0 spawn chance.", .{stringId, childName, i});
-		}
-		if(self.chance < 0.0 or self.chance > 1.0) {
-			std.log.warn("[{s}->{s}->{}] Child node has spawn chance outside of [0, 1] range ({}).", .{stringId, childName, i, self.chance});
-		}
 		if(self.structureId.len == 0) {
 			std.log.warn("[{s}->{s}->{}] Child node has empty structure field.", .{stringId, childName, i});
 		}
