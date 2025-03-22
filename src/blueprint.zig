@@ -47,33 +47,18 @@ pub const Blueprint = struct {
 			},
 		};
 
-		for(0..self.blocks.width) |i| {
-			for(0..self.blocks.depth) |j| {
-				var x: usize = undefined;
-				var y: usize = undefined;
-
-				switch(angle) {
-					.@"0" => {
-						x = i;
-						y = j;
-					},
-					.@"90" => {
-						x = new.blocks.width - j - 1;
-						y = i;
-					},
-					.@"180" => {
-						x = new.blocks.width - i - 1;
-						y = new.blocks.depth - j - 1;
-					},
-					.@"270" => {
-						x = j;
-						y = new.blocks.depth - i - 1;
-					},
-				}
+		for(0..self.blocks.width) |xOld| {
+			for(0..self.blocks.depth) |yOld| {
+				const xNew, const yNew = switch(angle) {
+					.@"0" => .{xOld, yOld},
+					.@"90" => .{new.blocks.width - yOld - 1, xOld},
+					.@"180" => .{new.blocks.width - xOld - 1, new.blocks.depth - yOld - 1},
+					.@"270" => .{yOld, new.blocks.depth - xOld - 1},
+				};
 
 				for(0..self.blocks.height) |z| {
-					const block = self.blocks.get(i, j, z);
-					new.blocks.set(x, y, z, block.rotateZ(angle));
+					const block = self.blocks.get(xOld, yOld, z);
+					new.blocks.set(xNew, yNew, z, block.rotateZ(angle));
 				}
 			}
 		}
