@@ -17,8 +17,8 @@ uniform mat4 mvp;
 uniform float starOpacity;
 
 out vec3 pos;
-out vec3 starPos;
-out vec3 color;
+out flat vec3 starPos;
+out flat vec3 color;
 
 void main() {
 	gl_Position = mvp*vec4(vPos, 1);

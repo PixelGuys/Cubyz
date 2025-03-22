@@ -641,26 +641,26 @@ pub const Skybox = struct {
 
 	const numStars = 10000;
 
-	fn getStarPos(seed: *u64) Vec3d {
-		const x: f64 = @floatCast(main.random.nextFloatGauss(seed));
-		const y: f64 = @floatCast(main.random.nextFloatGauss(seed));
-		const z: f64 = @floatCast(main.random.nextFloatGauss(seed));
+	fn getStarPos(seed: *u64) Vec3f {
+		const x: f32 = @floatCast(main.random.nextFloatGauss(seed));
+		const y: f32 = @floatCast(main.random.nextFloatGauss(seed));
+		const z: f32 = @floatCast(main.random.nextFloatGauss(seed));
 
 		const r = std.math.cbrt(main.random.nextFloat(seed))*5000.0;
 
-		return vec.normalize(Vec3d{x, y, z})*@as(Vec3d, @splat(r));
+		return vec.normalize(Vec3f{x, y, z})*@as(Vec3f, @splat(r));
 	}
 
-	fn getStarColor(temperature: f64, light: f64, image: graphics.Image) Vec3d {
+	fn getStarColor(temperature: f32, light: f32, image: graphics.Image) Vec3f {
 		const rgbCol = image.getRGB(@intFromFloat(std.math.clamp(temperature, 1000, 14999)), 0);
-		var rgb: Vec3d = @floatFromInt(Vec3i{rgbCol.r, rgbCol.g, rgbCol.b});
+		var rgb: Vec3f = @floatFromInt(Vec3i{rgbCol.r, rgbCol.g, rgbCol.b});
 		rgb /= @splat(255.0);
 
-		rgb *= @as(Vec3d, @splat(light));
+		rgb *= @as(Vec3f, @splat(light));
 
 		const m = @reduce(.Max, rgb);
 		if(m > 1.0) {
-			rgb /= @as(Vec3d, @splat(m));
+			rgb /= @as(Vec3f, @splat(m));
 		}
 
 		return rgb;
@@ -684,20 +684,20 @@ pub const Skybox = struct {
 
 		const off: f32 = @sqrt(3.0)/6.0;
 
-		const triVertA = Vec3f{@sqrt(3.0)/3.0, starDist, -off};
-		const triVertB = Vec3f{-@sqrt(3.0)/3.0, starDist, -off};
-		const triVertC = Vec3f{0.0, starDist, 1.0 - off};
+		const triVertA = Vec3f{0.5, starDist, -off};
+		const triVertB = Vec3f{-0.5, starDist, -off};
+		const triVertC = Vec3f{0.0, starDist, @sqrt(3.0)/2.0 - off};
 
 		var seed: u64 = 0;
 
 		for(0..numStars) |i| {
-			var pos = getStarPos(&seed);
+			var pos: Vec3f = undefined;
 
-			var radius: f64 = @floatCast(main.random.nextFloatExp(&seed)*4 + 0.2);
+			var radius: f32 = undefined;
 
-			var temperature: f64 = @floatCast((@abs(main.random.nextFloatGauss(&seed)*3000.0 + 5000.0) + 1000.0)/5772.0);
+			var temperature: f32 = undefined;
 
-			var light = (3966.91*radius*radius*temperature*temperature*temperature*temperature)/(vec.dot(pos, pos));
+			var light: f32 = 0;
 
 			while(light < 0.1) {
 				pos = getStarPos(&seed);
@@ -709,21 +709,14 @@ pub const Skybox = struct {
 				light = (3966.91*radius*radius*temperature*temperature*temperature*temperature)/(vec.dot(pos, pos));
 			}
 
-			pos = vec.normalize(pos)*@as(Vec3d, @splat(starDist));
+			pos = vec.normalize(pos)*@as(Vec3f, @splat(starDist));
 
 			const normPos = vec.normalize(pos);
 
 			const col = getStarColor(temperature*5772.0, light, starColorImage);
 
-			starData[i*8] = @floatCast(pos[0]);
-			starData[i*8 + 1] = @floatCast(pos[1]);
-			starData[i*8 + 2] = @floatCast(pos[2]);
-			starData[i*8 + 3] = 0;
-
-			starData[i*8 + 4] = @floatCast(col[0]);
-			starData[i*8 + 5] = @floatCast(col[1]);
-			starData[i*8 + 6] = @floatCast(col[2]);
-			starData[i*8 + 7] = 0;
+			starData[i*8..][0..3].* = pos;
+			starData[i*8+4..][0..3].* = col;
 
 			const lat: f32 = @floatCast(std.math.asin(normPos[2]));
 			const lon: f32 = @floatCast(std.math.atan2(-normPos[0], normPos[1]));
@@ -734,17 +727,9 @@ pub const Skybox = struct {
 			const posB = vec.xyz(mat.mulVec(.{triVertB[0], triVertB[1], triVertB[2], 1.0}));
 			const posC = vec.xyz(mat.mulVec(.{triVertC[0], triVertC[1], triVertC[2], 1.0}));
 
-			starMesh[i*9] = @floatCast(posA[0]);
-			starMesh[i*9 + 1] = @floatCast(posA[1]);
-			starMesh[i*9 + 2] = @floatCast(posA[2]);
-
-			starMesh[i*9 + 3] = @floatCast(posB[0]);
-			starMesh[i*9 + 4] = @floatCast(posB[1]);
-			starMesh[i*9 + 5] = @floatCast(posB[2]);
-
-			starMesh[i*9 + 6] = @floatCast(posC[0]);
-			starMesh[i*9 + 7] = @floatCast(posC[1]);
-			starMesh[i*9 + 8] = @floatCast(posC[2]);
+			starMesh[i*9..][0..3].* = posA;
+			starMesh[i*9+3..][0..3].* = posB;
+			starMesh[i*9+6..][0..3].* = posC;
 		}
 
 		starSsbo = graphics.SSBO.initStatic(f32, &starData);
