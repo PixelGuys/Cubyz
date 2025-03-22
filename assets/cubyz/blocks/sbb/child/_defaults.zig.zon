@@ -1,5 +1,0 @@
-.{
-	.tags = .{.sbbChild},
-	.model = "cubyz:cube",
-	.rotation = .log,
-}
