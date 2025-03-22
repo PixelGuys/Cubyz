@@ -49,30 +49,18 @@ pub const Blueprint = struct {
 			},
 		};
 
-		const a: f32 = (std.math.pi/2.0)*@as(f32, @floatFromInt(@intFromEnum(angle)));
-		const sin: f32 = @sin(a);
-		const cos: f32 = @cos(a);
+		for(0..self.blocks.width) |xOld| {
+			for(0..self.blocks.depth) |yOld| {
+				const xNew, const yNew = switch(angle) {
+					.@"0" => .{xOld, yOld},
+					.@"90" => .{new.blocks.width - yOld - 1, xOld},
+					.@"180" => .{new.blocks.width - xOld - 1, new.blocks.depth - yOld - 1},
+					.@"270" => .{yOld, new.blocks.depth - xOld - 1},
+				};
 
-		for(0..self.blocks.width) |i| {
-			for(0..self.blocks.depth) |j| {
 				for(0..self.blocks.height) |z| {
-					const block = self.blocks.get(i, j, z);
-
-					const x: f32 = @floatFromInt(i);
-					const y: f32 = @floatFromInt(j);
-
-					var newX: i64 = @intFromFloat(@round((x + 1)*cos - (y + 1)*sin));
-					var newY: i64 = @intFromFloat(@round((x + 1)*sin + (y + 1)*cos));
-
-					newX = if(newX < 0) @as(i64, @intCast(new.blocks.width)) + newX else newX - 1;
-					newY = if(newY < 0) @as(i64, @intCast(new.blocks.depth)) + newY else newY - 1;
-
-					std.debug.assert(newX >= 0);
-					std.debug.assert(newX < @as(i64, @intCast(new.blocks.width)));
-					std.debug.assert(newY >= 0);
-					std.debug.assert(newY < @as(i64, @intCast(new.blocks.depth)));
-
-					new.blocks.set(@intCast(newX), @intCast(newY), z, block.rotateZ(angle));
+					const block = self.blocks.get(xOld, yOld, z);
+					new.blocks.set(xNew, yNew, z, block.rotateZ(angle));
 				}
 			}
 		}

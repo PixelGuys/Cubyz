@@ -9,12 +9,12 @@
 	.model = .{
 		.radius = 4,
 	},
-	.texture_top = "cubyz:branch/oak/dot",
-	.texture_bottom = "cubyz:branch/oak/half_line",
-	.texture_right = "cubyz:branch/oak/line",
-	.texture_left = "cubyz:branch/oak/bend",
-	.texture_front = "cubyz:branch/oak/intersection",
-	.texture_back = "cubyz:branch/oak/cross",
+	.texture0 = "cubyz:branch/oak/dot",
+	.texture1 = "cubyz:branch/oak/half_line",
+	.texture2 = "cubyz:branch/oak/line",
+	.texture3 = "cubyz:branch/oak/bend",
+	.texture4 = "cubyz:branch/oak/intersection",
+	.texture5 = "cubyz:branch/oak/cross",
 	.item = .{
 		.material = .{
 			.density = 0.25,

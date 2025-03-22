@@ -5,6 +5,7 @@ const Block = blocks.Block;
 const chunk = @import("chunk.zig");
 const Neighbor = chunk.Neighbor;
 const main = @import("main.zig");
+const ModelIndex = main.models.ModelIndex;
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
 const Vec3i = vec.Vec3i;
@@ -31,7 +32,7 @@ pub const Degrees = enum(u2) {
 /// With the `RotationMode` interface there is almost no limit to what can be done with those 16 bit.
 pub const RotationMode = struct { // MARK: RotationMode
 	const DefaultFunctions = struct {
-		fn model(block: Block) u16 {
+		fn model(block: Block) ModelIndex {
 			return blocks.meshes.modelIndexStart(block);
 		}
 		fn rotateZ(data: u16, _: Degrees) u16 {
@@ -40,7 +41,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 		fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: ?Neighbor, _: *Block, _: Block, blockPlacing: bool) bool {
 			return blockPlacing;
 		}
-		fn createBlockModel(zon: ZonElement) u16 {
+		fn createBlockModel(zon: ZonElement) ModelIndex {
 			return main.models.getModelIndex(zon.as([]const u8, "cubyz:cube"));
 		}
 		fn updateData(_: *Block, _: Neighbor, _: Block) bool {
@@ -52,10 +53,10 @@ pub const RotationMode = struct { // MARK: RotationMode
 		fn rayIntersection(block: Block, _: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
 			return rayModelIntersection(blocks.meshes.model(block), relativePlayerPos, playerDir);
 		}
-		fn rayModelIntersection(modelIndex: u32, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
+		fn rayModelIntersection(modelIndex: ModelIndex, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
 			// Check the true bounding box (using this algorithm here: https://tavianator.com/2011/ray_box.html):
 			const invDir = @as(Vec3f, @splat(1))/playerDir;
-			const modelData = &main.models.models.items[modelIndex];
+			const modelData = modelIndex.model();
 			const min: Vec3f = modelData.min;
 			const max: Vec3f = modelData.max;
 			const t1 = (min - relativePlayerPos)*invDir;
@@ -120,12 +121,12 @@ pub const RotationMode = struct { // MARK: RotationMode
 	/// The default rotation data intended for generation algorithms
 	naturalStandard: u16 = 0,
 
-	model: *const fn(block: Block) u16 = &DefaultFunctions.model,
+	model: *const fn(block: Block) ModelIndex = &DefaultFunctions.model,
 
 	// Rotates block data counterclockwise around the Z axis.
 	rotateZ: *const fn(data: u16, angle: Degrees) u16 = DefaultFunctions.rotateZ,
 
-	createBlockModel: *const fn(zon: ZonElement) u16 = &DefaultFunctions.createBlockModel,
+	createBlockModel: *const fn(zon: ZonElement) ModelIndex = &DefaultFunctions.createBlockModel,
 
 	/// Updates the block data of a block in the world or places a block in the world.
 	/// return true if the placing was successful, false otherwise.
@@ -161,7 +162,7 @@ pub const RotationModes = struct {
 	};
 	pub const Log = struct { // MARK: Log
 		pub const id: []const u8 = "log";
-		var rotatedModels: std.StringHashMap(u16) = undefined;
+		var rotatedModels: std.StringHashMap(ModelIndex) = undefined;
 
 		fn init() void {
 			rotatedModels = .init(main.globalAllocator.allocator);
@@ -175,14 +176,13 @@ pub const RotationModes = struct {
 			rotatedModels.clearRetainingCapacity();
 		}
 
-		pub fn createBlockModel(zon: ZonElement) u16 {
+		pub fn createBlockModel(zon: ZonElement) ModelIndex {
 			const modelId = zon.as([]const u8, "cubyz:cube");
 			if(rotatedModels.get(modelId)) |modelIndex| return modelIndex;
 
-			const baseModelIndex = main.models.getModelIndex(modelId);
-			const baseModel = main.models.models.items[baseModelIndex];
+			const baseModel = main.models.getModelIndex(modelId).model();
 			// Rotate the model:
-			const modelIndex: u16 = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.identity()});
+			const modelIndex = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.identity()});
 			_ = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationY(std.math.pi)});
 			_ = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationZ(-std.math.pi/2.0).mul(Mat4f.rotationX(-std.math.pi/2.0))});
 			_ = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationZ(std.math.pi/2.0).mul(Mat4f.rotationX(-std.math.pi/2.0))});
@@ -192,8 +192,8 @@ pub const RotationModes = struct {
 			return modelIndex;
 		}
 
-		pub fn model(block: Block) u16 {
-			return blocks.meshes.modelIndexStart(block) + @min(block.data, 5);
+		pub fn model(block: Block) ModelIndex {
+			return .{.index = blocks.meshes.modelIndexStart(block).index + @min(block.data, 5)};
 		}
 
 		fn rotateZ(data: u16, angle: Degrees) u16 {
@@ -221,7 +221,7 @@ pub const RotationModes = struct {
 	};
 	pub const Planar = struct { // MARK: Planar
 		pub const id: []const u8 = "planar";
-		var rotatedModels: std.StringHashMap(u16) = undefined;
+		var rotatedModels: std.StringHashMap(ModelIndex) = undefined;
 
 		fn init() void {
 			rotatedModels = .init(main.globalAllocator.allocator);
@@ -235,14 +235,13 @@ pub const RotationModes = struct {
 			rotatedModels.clearRetainingCapacity();
 		}
 
-		pub fn createBlockModel(zon: ZonElement) u16 {
+		pub fn createBlockModel(zon: ZonElement) ModelIndex {
 			const modelId = zon.as([]const u8, "cubyz:cube");
 			if(rotatedModels.get(modelId)) |modelIndex| return modelIndex;
 
-			const baseModelIndex = main.models.getModelIndex(modelId);
-			const baseModel = main.models.models.items[baseModelIndex];
+			const baseModel = main.models.getModelIndex(modelId).model();
 			// Rotate the model:
-			const modelIndex: u16 = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationZ(std.math.pi/2.0)});
+			const modelIndex: ModelIndex = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationZ(std.math.pi/2.0)});
 			_ = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationZ(-std.math.pi/2.0)});
 			_ = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationZ(std.math.pi)});
 			_ = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.identity()});
@@ -250,8 +249,8 @@ pub const RotationModes = struct {
 			return modelIndex;
 		}
 
-		pub fn model(block: Block) u16 {
-			return blocks.meshes.modelIndexStart(block) + @min(block.data, 3);
+		pub fn model(block: Block) ModelIndex {
+			return .{.index = blocks.meshes.modelIndexStart(block).index + @min(block.data, 3)};
 		}
 
 		fn rotateZ(data: u16, angle: Degrees) u16 {
@@ -286,7 +285,7 @@ pub const RotationModes = struct {
 	pub const Fence = struct { // MARK: Fence
 		pub const id: []const u8 = "fence";
 		pub const dependsOnNeighbors = true;
-		var fenceModels: std.StringHashMap(u16) = undefined;
+		var fenceModels: std.StringHashMap(ModelIndex) = undefined;
 		const FenceData = packed struct(u4) {
 			isConnectedNegX: bool,
 			isConnectedPosX: bool,
@@ -356,14 +355,13 @@ pub const RotationModes = struct {
 			}
 		}
 
-		pub fn createBlockModel(zon: ZonElement) u16 {
+		pub fn createBlockModel(zon: ZonElement) ModelIndex {
 			const modelId = zon.as([]const u8, "cubyz:cube");
 			if(fenceModels.get(modelId)) |modelIndex| return modelIndex;
 
-			const baseModelIndex = main.models.getModelIndex(modelId);
-			const baseModel = main.models.models.items[baseModelIndex];
+			const baseModel = main.models.getModelIndex(modelId).model();
 			// Rotate the model:
-			const modelIndex: u16 = baseModel.transformModel(fenceTransform, .{@as(FenceData, @bitCast(@as(u4, 0)))});
+			const modelIndex: ModelIndex = baseModel.transformModel(fenceTransform, .{@as(FenceData, @bitCast(@as(u4, 0)))});
 			for(1..16) |fenceData| {
 				_ = baseModel.transformModel(fenceTransform, .{@as(FenceData, @bitCast(@as(u4, @intCast(fenceData))))});
 			}
@@ -371,15 +369,15 @@ pub const RotationModes = struct {
 			return modelIndex;
 		}
 
-		pub fn model(block: Block) u16 {
-			return blocks.meshes.modelIndexStart(block) + (block.data & 15);
+		pub fn model(block: Block) ModelIndex {
+			return .{.index = blocks.meshes.modelIndexStart(block).index + (block.data & 15)};
 		}
 
 		pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool {
-			const blockBaseModel = blocks.meshes.modelIndexStart(block.*);
-			const neighborBaseModel = blocks.meshes.modelIndexStart(neighborBlock);
-			const neighborModel = blocks.meshes.model(neighborBlock);
-			const targetVal = neighborBlock.solid() and (blockBaseModel == neighborBaseModel or main.models.models.items[neighborModel].isNeighborOccluded[neighbor.reverse().toInt()]);
+			const blockBaseModelIndex = blocks.meshes.modelIndexStart(block.*);
+			const neighborBaseModelIndex = blocks.meshes.modelIndexStart(neighborBlock);
+			const neighborModel = blocks.meshes.model(neighborBlock).model();
+			const targetVal = neighborBlock.solid() and (blockBaseModelIndex == neighborBaseModelIndex or neighborModel.isNeighborOccluded[neighbor.reverse().toInt()]);
 			var currentData: FenceData = @bitCast(@as(u4, @truncate(block.data)));
 			switch(neighbor) {
 				.dirNegX => {
@@ -405,7 +403,7 @@ pub const RotationModes = struct {
 	pub const Branch = struct { // MARK: Branch
 		pub const id: []const u8 = "branch";
 		pub const dependsOnNeighbors = true;
-		var branchModels: std.AutoHashMap(u32, u16) = undefined;
+		var branchModels: std.AutoHashMap(u32, ModelIndex) = undefined;
 		const BranchData = packed struct(u6) {
 			enabledConnections: u6,
 
@@ -640,11 +638,11 @@ pub const RotationModes = struct {
 			};
 		}
 
-		pub fn createBlockModel(zon: ZonElement) u16 {
+		pub fn createBlockModel(zon: ZonElement) ModelIndex {
 			const radius = zon.get(f32, "radius", 4);
 			if(branchModels.get(@bitCast(radius))) |modelIndex| return modelIndex;
 
-			var modelIndex: u16 = undefined;
+			var modelIndex: ModelIndex = undefined;
 			for(0..64) |i| {
 				var quads = main.List(main.models.QuadInfo).init(main.stackAllocator);
 				defer quads.deinit();
@@ -668,8 +666,8 @@ pub const RotationModes = struct {
 			return modelIndex;
 		}
 
-		pub fn model(block: Block) u16 {
-			return blocks.meshes.modelIndexStart(block) + (block.data & 63);
+		pub fn model(block: Block) ModelIndex {
+			return .{.index = blocks.meshes.modelIndexStart(block).index + (block.data & 63)};
 		}
 
 		fn rotateZ(data: u16, angle: Degrees) u16 {
@@ -709,16 +707,16 @@ pub const RotationModes = struct {
 			neighborBlock: Block,
 			blockPlacing: bool,
 		) bool {
-			const blockBaseModel = blocks.meshes.modelIndexStart(currentBlock.*);
-			const neighborBaseModel = blocks.meshes.modelIndexStart(neighborBlock);
+			const blockBaseModelIndex = blocks.meshes.modelIndexStart(currentBlock.*);
+			const neighborBaseModelIndex = blocks.meshes.modelIndexStart(neighborBlock);
 
-			if(blockPlacing or blockBaseModel == neighborBaseModel or neighborBlock.solid()) {
-				const neighborModel = blocks.meshes.model(neighborBlock);
+			if(blockPlacing or blockBaseModelIndex == neighborBaseModelIndex or neighborBlock.solid()) {
+				const neighborModel = blocks.meshes.model(neighborBlock).model();
 
 				var currentData = BranchData.init(currentBlock.data);
 				// Branch block upon placement should extend towards a block it was placed
 				// on if the block is solid or also uses branch model.
-				const targetVal = ((neighborBlock.solid() and !neighborBlock.viewThrough()) and (blockBaseModel == neighborBaseModel or main.models.models.items[neighborModel].isNeighborOccluded[neighbor.?.reverse().toInt()]));
+				const targetVal = ((neighborBlock.solid() and !neighborBlock.viewThrough()) and (blockBaseModelIndex == neighborBaseModelIndex or neighborModel.isNeighborOccluded[neighbor.?.reverse().toInt()]));
 				currentData.setConnection(neighbor.?, targetVal);
 
 				const result: u16 = currentData.enabledConnections;
@@ -766,7 +764,7 @@ pub const RotationModes = struct {
 				const directionBitMask = Neighbor.bitMask(direction);
 
 				if((block.data & directionBitMask) != 0) {
-					const modelIndex = blocks.meshes.modelIndexStart(block) + directionBitMask;
+					const modelIndex = ModelIndex{.index = blocks.meshes.modelIndexStart(block).index + directionBitMask};
 					if(RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
 						if(@abs(closestIntersectionDistance) > @abs(intersection.distance)) {
 							closestIntersectionDistance = intersection.distance;
@@ -793,7 +791,7 @@ pub const RotationModes = struct {
 	};
 	pub const Stairs = struct { // MARK: Stairs
 		pub const id: []const u8 = "stairs";
-		var modelIndex: u16 = 0;
+		var modelIndex: ?ModelIndex = null;
 
 		fn subBlockMask(x: u1, y: u1, z: u1) u8 {
 			return @as(u8, 1) << ((@as(u3, x)*2 + @as(u3, y))*2 + z);
@@ -837,7 +835,7 @@ pub const RotationModes = struct {
 		fn init() void {}
 		fn deinit() void {}
 		fn reset() void {
-			modelIndex = 0;
+			modelIndex = null;
 		}
 
 		const GreedyFaceInfo = struct {min: Vec2f, max: Vec2f};
@@ -905,10 +903,8 @@ pub const RotationModes = struct {
 			return mem[0..faces];
 		}
 
-		pub fn createBlockModel(_: ZonElement) u16 {
-			if(modelIndex != 0) {
-				return modelIndex;
-			}
+		pub fn createBlockModel(_: ZonElement) ModelIndex {
+			if(modelIndex) |idx| return idx;
 			for(0..256) |i| {
 				var quads = main.List(main.models.QuadInfo).init(main.stackAllocator);
 				defer quads.deinit();
@@ -1021,11 +1017,11 @@ pub const RotationModes = struct {
 					modelIndex = index;
 				}
 			}
-			return modelIndex;
+			return modelIndex.?;
 		}
 
-		pub fn model(block: Block) u16 {
-			return blocks.meshes.modelIndexStart(block) + (block.data & 255);
+		pub fn model(block: Block) ModelIndex {
+			return .{.index = blocks.meshes.modelIndexStart(block).index + (block.data & 255)};
 		}
 
 		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: ?Neighbor, currentData: *Block, _: Block, blockPlacing: bool) bool {
@@ -1128,7 +1124,7 @@ pub const RotationModes = struct {
 		pub const id: []const u8 = "torch";
 		pub const naturalStandard: u16 = 1;
 		pub const dependsOnNeighbors = true;
-		var rotatedModels: std.StringHashMap(u16) = undefined;
+		var rotatedModels: std.StringHashMap(ModelIndex) = undefined;
 		const TorchData = packed struct(u5) {
 			center: bool,
 			negX: bool,
@@ -1149,7 +1145,7 @@ pub const RotationModes = struct {
 			rotatedModels.clearRetainingCapacity();
 		}
 
-		pub fn createBlockModel(zon: ZonElement) u16 {
+		pub fn createBlockModel(zon: ZonElement) ModelIndex {
 			const baseModelId: []const u8 = zon.get([]const u8, "base", "cubyz:cube");
 			const sideModelId: []const u8 = zon.get([]const u8, "side", "cubyz:cube");
 			const key: []const u8 = std.mem.concat(main.stackAllocator.allocator, u8, &.{baseModelId, sideModelId}) catch unreachable;
@@ -1157,16 +1153,14 @@ pub const RotationModes = struct {
 
 			if(rotatedModels.get(key)) |modelIndex| return modelIndex;
 
-			const baseModelIndex = main.models.getModelIndex(baseModelId);
-			const baseModel = main.models.models.items[baseModelIndex];
-			const sideModelIndex = main.models.getModelIndex(sideModelId);
-			const sideModel = main.models.models.items[sideModelIndex];
+			const baseModel = main.models.getModelIndex(baseModelId).model();
+			const sideModel = main.models.getModelIndex(sideModelId).model();
 			// Rotate the model:
-			var centerModel: u16 = undefined;
-			var negXModel: u16 = undefined;
-			var posXModel: u16 = undefined;
-			var negYModel: u16 = undefined;
-			var posYModel: u16 = undefined;
+			var centerModel: ModelIndex = undefined;
+			var negXModel: ModelIndex = undefined;
+			var posXModel: ModelIndex = undefined;
+			var negYModel: ModelIndex = undefined;
+			var posYModel: ModelIndex = undefined;
 			for(1..32) |i| {
 				const torchData: TorchData = @bitCast(@as(u5, @intCast(i)));
 				if(i & i - 1 == 0) {
@@ -1176,7 +1170,7 @@ pub const RotationModes = struct {
 					if(torchData.negY) negYModel = sideModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationZ(std.math.pi/2.0)});
 					if(torchData.posY) posYModel = sideModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationZ(-std.math.pi/2.0)});
 				} else {
-					var models: [5]u16 = undefined;
+					var models: [5]ModelIndex = undefined;
 					var amount: usize = 0;
 					if(torchData.center) {
 						models[amount] = centerModel;
@@ -1206,8 +1200,8 @@ pub const RotationModes = struct {
 			return modelIndex;
 		}
 
-		pub fn model(block: Block) u16 {
-			return blocks.meshes.modelIndexStart(block) + (@as(u5, @truncate(block.data)) -| 1);
+		pub fn model(block: Block) ModelIndex {
+			return .{.index = blocks.meshes.modelIndexStart(block).index + (@as(u5, @truncate(block.data)) -| 1)};
 		}
 
 		fn rotateZ(data: u16, angle: Degrees) u16 {
@@ -1234,8 +1228,8 @@ pub const RotationModes = struct {
 
 		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, relativeDir: Vec3i, neighbor: ?Neighbor, currentData: *Block, neighborBlock: Block, _: bool) bool {
 			if(neighbor == null) return false;
-			const neighborModel = blocks.meshes.model(neighborBlock);
-			const neighborSupport = neighborBlock.solid() and main.models.models.items[neighborModel].neighborFacingQuads[neighbor.?.reverse().toInt()].len != 0;
+			const neighborModel = blocks.meshes.model(neighborBlock).model();
+			const neighborSupport = neighborBlock.solid() and neighborModel.neighborFacingQuads[neighbor.?.reverse().toInt()].len != 0;
 			if(!neighborSupport) return false;
 			var data: TorchData = @bitCast(@as(u5, @truncate(currentData.data)));
 			if(relativeDir[0] == 1) data.posX = true;
@@ -1252,8 +1246,8 @@ pub const RotationModes = struct {
 		}
 
 		pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool {
-			const neighborModel = blocks.meshes.model(neighborBlock);
-			const neighborSupport = neighborBlock.solid() and main.models.models.items[neighborModel].neighborFacingQuads[neighbor.reverse().toInt()].len != 0;
+			const neighborModel = blocks.meshes.model(neighborBlock).model();
+			const neighborSupport = neighborBlock.solid() and neighborModel.neighborFacingQuads[neighbor.reverse().toInt()].len != 0;
 			var currentData: TorchData = @bitCast(@as(u5, @truncate(block.data)));
 			switch(neighbor) {
 				.dirNegX => {
@@ -1285,7 +1279,7 @@ pub const RotationModes = struct {
 			var resultBit: u16 = 0;
 			for([_]u16{1, 2, 4, 8, 16}) |bit| {
 				if(block.data & bit != 0) {
-					const modelIndex = blocks.meshes.modelIndexStart(block) + bit - 1;
+					const modelIndex = ModelIndex{.index = blocks.meshes.modelIndexStart(block).index + bit - 1};
 					if(RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
 						if(result == null or result.?.distance > intersection.distance) {
 							result = intersection;
@@ -1326,7 +1320,7 @@ pub const RotationModes = struct {
 	pub const Carpet = struct { // MARK: Carpet
 		pub const id: []const u8 = "carpet";
 		pub const naturalStandard: u16 = 0b10000;
-		var rotatedModels: std.StringHashMap(u16) = undefined;
+		var rotatedModels: std.StringHashMap(ModelIndex) = undefined;
 		const CarpetData = packed struct(u6) {
 			negX: bool,
 			posX: bool,
@@ -1371,19 +1365,18 @@ pub const RotationModes = struct {
 			rotatedModels.clearRetainingCapacity();
 		}
 
-		pub fn createBlockModel(zon: ZonElement) u16 {
+		pub fn createBlockModel(zon: ZonElement) ModelIndex {
 			const modelId = zon.as([]const u8, "cubyz:cube");
 			if(rotatedModels.get(modelId)) |modelIndex| return modelIndex;
 
-			const baseModelIndex = main.models.getModelIndex(modelId);
-			const baseModel = main.models.models.items[baseModelIndex];
+			const baseModel = main.models.getModelIndex(modelId).model();
 			// Rotate the model:
-			var negXModel: u16 = undefined;
-			var posXModel: u16 = undefined;
-			var negYModel: u16 = undefined;
-			var posYModel: u16 = undefined;
-			var negZModel: u16 = undefined;
-			var posZModel: u16 = undefined;
+			var negXModel: ModelIndex = undefined;
+			var posXModel: ModelIndex = undefined;
+			var negYModel: ModelIndex = undefined;
+			var posYModel: ModelIndex = undefined;
+			var negZModel: ModelIndex = undefined;
+			var posZModel: ModelIndex = undefined;
 			for(1..64) |i| {
 				const carpetData: CarpetData = @bitCast(@as(u6, @intCast(i)));
 				if(i & i - 1 == 0) {
@@ -1394,7 +1387,7 @@ pub const RotationModes = struct {
 					if(carpetData.negZ) negZModel = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.identity()});
 					if(carpetData.posZ) posZModel = baseModel.transformModel(rotationMatrixTransform, .{Mat4f.rotationY(std.math.pi)});
 				} else {
-					var models: [6]u16 = undefined;
+					var models: [6]ModelIndex = undefined;
 					var amount: usize = 0;
 					if(carpetData.negX) {
 						models[amount] = negXModel;
@@ -1428,8 +1421,8 @@ pub const RotationModes = struct {
 			return modelIndex;
 		}
 
-		pub fn model(block: Block) u16 {
-			return blocks.meshes.modelIndexStart(block) + (@as(u6, @truncate(block.data)) -| 1);
+		pub fn model(block: Block) ModelIndex {
+			return .{.index = blocks.meshes.modelIndexStart(block).index + (@as(u6, @truncate(block.data)) -| 1)};
 		}
 
 		pub fn generateData(_: *main.game.World, _: Vec3i, relativePlayerPos: Vec3f, playerDir: Vec3f, relativeDir: Vec3i, _: ?Neighbor, currentData: *Block, neighbor: Block, _: bool) bool {
@@ -1463,7 +1456,7 @@ pub const RotationModes = struct {
 			var resultBit: u16 = 0;
 			for([_]u16{1, 2, 4, 8, 16, 32}) |bit| {
 				if(block.data & bit != 0) {
-					const modelIndex = blocks.meshes.modelIndexStart(block) + bit - 1;
+					const modelIndex = ModelIndex{.index = blocks.meshes.modelIndexStart(block).index + bit - 1};
 					if(RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
 						if(result == null or result.?.distance > intersection.distance) {
 							result = intersection;
@@ -1492,7 +1485,7 @@ pub const RotationModes = struct {
 	};
 	pub const Ore = struct { // MARK: Ore
 		pub const id: []const u8 = "ore";
-		var modelCache: ?u16 = null;
+		var modelCache: ?ModelIndex = null;
 
 		fn init() void {}
 		fn deinit() void {}
@@ -1500,15 +1493,14 @@ pub const RotationModes = struct {
 			modelCache = null;
 		}
 
-		pub fn createBlockModel(zon: ZonElement) u16 {
+		pub fn createBlockModel(zon: ZonElement) ModelIndex {
 			const modelId = zon.as([]const u8, "cubyz:cube");
 			if(!std.mem.eql(u8, modelId, "cubyz:cube")) {
 				std.log.err("Ores can only be use on cube models.", .{modelId});
 			}
 			if(modelCache) |modelIndex| return modelIndex;
 
-			const baseModelIndex = main.models.getModelIndex("cubyz:cube");
-			const baseModel = main.models.models.items[baseModelIndex];
+			const baseModel = main.models.getModelIndex("cubyz:cube").model();
 			var quadList = main.List(main.models.QuadInfo).init(main.stackAllocator);
 			defer quadList.deinit();
 			baseModel.getRawFaces(&quadList);
@@ -1529,7 +1521,7 @@ pub const RotationModes = struct {
 
 		pub fn modifyBlock(block: *Block, newBlockType: u16) bool {
 			if(block.transparent() or block.viewThrough()) return false;
-			if(!main.models.models.items[main.blocks.meshes.modelIndexStart(block.*)].allNeighborsOccluded) return false;
+			if(!main.blocks.meshes.modelIndexStart(block.*).model().allNeighborsOccluded) return false;
 			if(block.data != 0) return false;
 			block.data = block.typ;
 			block.typ = newBlockType;
@@ -1539,7 +1531,7 @@ pub const RotationModes = struct {
 		pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, _: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
 			if(oldBlock == newBlock) return .no;
 			if(oldBlock.transparent() or oldBlock.viewThrough()) return .no;
-			if(!main.models.models.items[main.blocks.meshes.modelIndexStart(oldBlock)].allNeighborsOccluded) return .no;
+			if(!main.blocks.meshes.modelIndexStart(oldBlock).model().allNeighborsOccluded) return .no;
 			if(oldBlock.data != 0) return .no;
 			if(newBlock.data != oldBlock.typ) return .no;
 			shouldDropSourceBlockOnSuccess.* = false;
