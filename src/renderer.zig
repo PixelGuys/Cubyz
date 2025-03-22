@@ -652,7 +652,7 @@ pub const Skybox = struct {
 	}
 
 	fn getStarColor(temperature: f32, light: f32, image: graphics.Image) Vec3f {
-		const rgbCol = image.getRGB(@intFromFloat(std.math.clamp(temperature, 1000, 14999)), 0);
+		const rgbCol = image.getRGB(@intFromFloat(std.math.clamp(temperature / 15000.0 * @as(f32, @floatFromInt(image.width)), 0, image.width - 1)), 0);
 		var rgb: Vec3f = @floatFromInt(Vec3i{rgbCol.r, rgbCol.g, rgbCol.b});
 		rgb /= @splat(255.0);
 
