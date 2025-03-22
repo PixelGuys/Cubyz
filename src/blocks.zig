@@ -429,16 +429,13 @@ pub const meshes = struct { // MARK: meshes
 		time: u32,
 	};
 
-	const TextureData = extern struct {
-		textureIndices: [6]u16,
-	};
 	const FogData = extern struct {
 		fogDensity: f32,
 		fogColor: u32,
 	};
 	var size: u32 = 0;
 	var _modelIndex: [maxBlockCount]ModelIndex = undefined;
-	var textureData: [maxBlockCount]TextureData = undefined;
+	var textureIndices: [maxBlockCount][16]u16 = undefined;
 	/// Stores the number of textures after each block was added. Used to clean additional textures when the world is switched.
 	var maxTextureCount: [maxBlockCount]u32 = undefined;
 	/// Number of loaded meshes. Used to determine if an update is needed.
@@ -556,11 +553,11 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	pub inline fn fogDensity(block: Block) f32 {
-		return textureFogData.items[animation.items[textureData[block.typ].textureIndices[0]].startFrame].fogDensity;
+		return textureFogData.items[animation.items[textureIndices[block.typ][0]].startFrame].fogDensity;
 	}
 
 	pub inline fn fogColor(block: Block) u32 {
-		return textureFogData.items[animation.items[textureData[block.typ].textureIndices[0]].startFrame].fogColor;
+		return textureFogData.items[animation.items[textureIndices[block.typ][0]].startFrame].fogColor;
 	}
 
 	pub inline fn hasFog(block: Block) bool {
@@ -569,9 +566,9 @@ pub const meshes = struct { // MARK: meshes
 
 	pub inline fn textureIndex(block: Block, orientation: usize) u16 {
 		if(orientation < 16) {
-			return textureData[block.typ].textureIndices[orientation];
+			return textureIndices[block.typ][orientation];
 		} else {
-			return textureData[block.data].textureIndices[orientation - 16];
+			return textureIndices[block.data][orientation - 16];
 		}
 	}
 
@@ -657,10 +654,13 @@ pub const meshes = struct { // MARK: meshes
 		return result;
 	}
 
-	pub fn getTextureIndices(zon: ZonElement, assetFolder: []const u8, textureIndicesRef: []u16) void {
+	pub fn getTextureIndices(zon: ZonElement, assetFolder: []const u8, textureIndicesRef: *[16]u16) void {
 		const defaultIndex = readTexture(zon.get(?[]const u8, "texture", null), assetFolder) catch 0;
-		for(textureIndicesRef, sideNames) |*ref, name| {
-			const textureId = zon.get(?[]const u8, name, null);
+		inline for(textureIndicesRef, 0..) |*ref, i| {
+			var textureId = zon.get(?[]const u8, std.fmt.comptimePrint("texture{}", .{i}), null);
+			if(i < sideNames.len) {
+				textureId = zon.get(?[]const u8, sideNames[i], textureId);
+			}
 			ref.* = readTexture(textureId, assetFolder) catch defaultIndex;
 		}
 	}
@@ -671,7 +671,7 @@ pub const meshes = struct { // MARK: meshes
 		// The actual model is loaded later, in the rendering thread.
 		// But textures can be loaded here:
 
-		getTextureIndices(zon, assetFolder, &textureData[meshes.size].textureIndices);
+		getTextureIndices(zon, assetFolder, &textureIndices[meshes.size]);
 
 		maxTextureCount[meshes.size] = @intCast(textureIDs.items.len);
 
