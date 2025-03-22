@@ -11,6 +11,7 @@ const Color = graphics.Color;
 const TextureArray = graphics.TextureArray;
 const items = @import("items.zig");
 const models = @import("models.zig");
+const ModelIndex = models.ModelIndex;
 const rotation = @import("rotation.zig");
 const RotationMode = rotation.RotationMode;
 const Degrees = rotation.Degrees;
@@ -436,7 +437,7 @@ pub const meshes = struct { // MARK: meshes
 		fogColor: u32,
 	};
 	var size: u32 = 0;
-	var _modelIndex: [maxBlockCount]u16 = undefined;
+	var _modelIndex: [maxBlockCount]ModelIndex = undefined;
 	var textureData: [maxBlockCount]TextureData = undefined;
 	/// Stores the number of textures after each block was added. Used to clean additional textures when the world is switched.
 	var maxTextureCount: [maxBlockCount]u32 = undefined;
@@ -546,11 +547,11 @@ pub const meshes = struct { // MARK: meshes
 		_ = arenaForWorld.reset(.free_all);
 	}
 
-	pub inline fn model(block: Block) u16 {
+	pub inline fn model(block: Block) ModelIndex {
 		return block.mode().model(block);
 	}
 
-	pub inline fn modelIndexStart(block: Block) u16 {
+	pub inline fn modelIndexStart(block: Block) ModelIndex {
 		return _modelIndex[block.typ];
 	}
 

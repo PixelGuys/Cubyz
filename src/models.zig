@@ -49,11 +49,31 @@ const Quad = struct {
 	uvs: [4]usize,
 };
 
+pub const ModelIndex = packed struct {
+	index: u32,
+
+	pub fn model(self: ModelIndex) *const Model {
+		return &models.items()[self.index];
+	}
+};
+
+pub const QuadIndex = packed struct {
+	index: u16,
+
+	pub fn quadInfo(self: QuadIndex) *const QuadInfo {
+		return &quads.items[self.index];
+	}
+
+	pub fn extraQuadInfo(self: QuadIndex) *const ExtraQuadInfo {
+		return &extraQuadInfos.items[self.index];
+	}
+};
+
 pub const Model = struct {
 	min: Vec3f,
 	max: Vec3f,
-	internalQuads: []u16,
-	neighborFacingQuads: [6][]u16,
+	internalQuads: []QuadIndex,
+	neighborFacingQuads: [6][]QuadIndex,
 	isNeighborOccluded: [6]bool,
 	allNeighborsOccluded: bool,
 	noNeighborsOccluded: bool,
@@ -88,7 +108,7 @@ pub const Model = struct {
 		return @popCount(@as(u3, @bitCast(hasTwoOnes))) == 2 and @popCount(@as(u3, @bitCast(hasTwoZeroes))) == 2;
 	}
 
-	pub fn init(quadInfos: []const QuadInfo) u16 {
+	pub fn init(quadInfos: []const QuadInfo) ModelIndex {
 		const adjustedQuads = main.stackAllocator.alloc(QuadInfo, quadInfos.len);
 		defer main.stackAllocator.free(adjustedQuads);
 		for(adjustedQuads, quadInfos) |*dest, *src| {
@@ -103,7 +123,7 @@ pub const Model = struct {
 			// Snap the normals as well:
 			dest.normal = snapToGrid(dest.normal);
 		}
-		const modelIndex: u16 = @intCast(models.items.len);
+		const modelIndex: ModelIndex = .{.index = models.len};
 		const self = models.addOne();
 		var amounts: [6]usize = .{0, 0, 0, 0, 0, 0};
 		var internalAmount: usize = 0;
@@ -123,9 +143,9 @@ pub const Model = struct {
 		}
 
 		for(0..6) |i| {
-			self.neighborFacingQuads[i] = main.globalAllocator.alloc(u16, amounts[i]);
+			self.neighborFacingQuads[i] = main.globalAllocator.alloc(QuadIndex, amounts[i]);
 		}
-		self.internalQuads = main.globalAllocator.alloc(u16, internalAmount);
+		self.internalQuads = main.globalAllocator.alloc(QuadIndex, internalAmount);
 
 		var indices: [6]usize = .{0, 0, 0, 0, 0, 0};
 		var internalIndex: usize = 0;
@@ -153,7 +173,7 @@ pub const Model = struct {
 		self.noNeighborsOccluded = true;
 		for(0..6) |neighbor| {
 			for(self.neighborFacingQuads[neighbor]) |quad| {
-				if(fullyOccludesNeighbor(&quads.items[quad])) {
+				if(fullyOccludesNeighbor(quad.quadInfo())) {
 					self.isNeighborOccluded[neighbor] = true;
 				}
 			}
@@ -176,7 +196,7 @@ pub const Model = struct {
 		return ind;
 	}
 
-	pub fn loadModel(data: []const u8) u16 {
+	pub fn loadModel(data: []const u8) ModelIndex {
 		const quadInfos = loadRawModelDataFromObj(main.stackAllocator, data);
 		defer main.stackAllocator.free(quadInfos);
 		for(quadInfos) |*quad| {
@@ -364,11 +384,11 @@ pub const Model = struct {
 
 	pub fn getRawFaces(model: Model, quadList: *main.List(QuadInfo)) void {
 		for(model.internalQuads) |quadIndex| {
-			quadList.append(quads.items[quadIndex]);
+			quadList.append(quadIndex.quadInfo().*);
 		}
 		for(0..6) |neighbor| {
 			for(model.neighborFacingQuads[neighbor]) |quadIndex| {
-				var quad = quads.items[quadIndex];
+				var quad = quadIndex.quadInfo().*;
 				for(&quad.corners) |*corner| {
 					corner.* += quad.normal;
 				}
@@ -377,16 +397,16 @@ pub const Model = struct {
 		}
 	}
 
-	pub fn mergeModels(modelList: []u16) u16 {
+	pub fn mergeModels(modelList: []ModelIndex) ModelIndex {
 		var quadList = main.List(QuadInfo).init(main.stackAllocator);
 		defer quadList.deinit();
 		for(modelList) |model| {
-			models.items[model].getRawFaces(&quadList);
+			model.model().getRawFaces(&quadList);
 		}
 		return Model.init(quadList.items);
 	}
 
-	pub fn transformModel(model: Model, transformFunction: anytype, transformFunctionParameters: anytype) u16 {
+	pub fn transformModel(model: Model, transformFunction: anytype, transformFunctionParameters: anytype) ModelIndex {
 		var quadList = main.List(QuadInfo).init(main.stackAllocator);
 		defer quadList.deinit();
 		model.getRawFaces(&quadList);
@@ -396,9 +416,9 @@ pub const Model = struct {
 		return Model.init(quadList.items);
 	}
 
-	fn appendQuadsToList(quadList: []const u16, list: *main.ListUnmanaged(FaceData), allocator: NeverFailingAllocator, block: main.blocks.Block, x: i32, y: i32, z: i32, comptime backFace: bool) void {
+	fn appendQuadsToList(quadList: []const QuadIndex, list: *main.ListUnmanaged(FaceData), allocator: NeverFailingAllocator, block: main.blocks.Block, x: i32, y: i32, z: i32, comptime backFace: bool) void {
 		for(quadList) |quadIndex| {
-			const texture = main.blocks.meshes.textureIndex(block, quads.items[quadIndex].textureSlot);
+			const texture = main.blocks.meshes.textureIndex(block, quadIndex.quadInfo().textureSlot);
 			list.append(allocator, FaceData.init(texture, quadIndex, x, y, z, backFace));
 		}
 	}
@@ -412,22 +432,22 @@ pub const Model = struct {
 	}
 };
 
-var nameToIndex: std.StringHashMap(u16) = undefined;
+var nameToIndex: std.StringHashMap(ModelIndex) = undefined;
 
-pub fn getModelIndex(string: []const u8) u16 {
+pub fn getModelIndex(string: []const u8) ModelIndex {
 	return nameToIndex.get(string) orelse {
 		std.log.err("Couldn't find voxelModel with name: {s}.", .{string});
-		return 0;
+		return .{.index = 0};
 	};
 }
 
-pub var quads: main.List(QuadInfo) = undefined;
-pub var extraQuadInfos: main.List(ExtraQuadInfo) = undefined;
-pub var models: main.List(Model) = undefined;
+var quads: main.List(QuadInfo) = undefined;
+var extraQuadInfos: main.List(ExtraQuadInfo) = undefined;
+var models: main.VirtualList(Model, 1 << 20) = undefined;
 
-var quadDeduplication: std.AutoHashMap([@sizeOf(QuadInfo)]u8, u16) = undefined;
+var quadDeduplication: std.AutoHashMap([@sizeOf(QuadInfo)]u8, QuadIndex) = undefined;
 
-fn addQuad(info_: QuadInfo) error{Degenerate}!u16 {
+fn addQuad(info_: QuadInfo) error{Degenerate}!QuadIndex {
 	var info = info_;
 	if(quadDeduplication.get(std.mem.toBytes(info))) |id| {
 		return id;
@@ -440,7 +460,7 @@ fn addQuad(info_: QuadInfo) error{Degenerate}!u16 {
 		}
 	}
 	if(cornerEqualities >= 2) return error.Degenerate; // One corner equality is fine, since then the quad degenerates to a triangle, which has a non-zero area.
-	const index: u16 = @intCast(quads.items.len);
+	const index: QuadIndex = .{.index = @intCast(quads.items.len)};
 	if(info.opaqueInLod == 2) {
 		info.opaqueInLod = 0;
 	} else {
@@ -534,7 +554,7 @@ fn openBox(min: Vec3f, max: Vec3f, uvOffset: Vec2f, openSide: enum {x, y, z}) [4
 	}
 }
 
-pub fn registerModel(id: []const u8, data: []const u8) u16 {
+pub fn registerModel(id: []const u8, data: []const u8) ModelIndex {
 	const model = Model.loadModel(data);
 	nameToIndex.put(id, model) catch unreachable;
 	return model;
@@ -542,7 +562,7 @@ pub fn registerModel(id: []const u8, data: []const u8) u16 {
 
 // TODO: Entity models.
 pub fn init() void {
-	models = .init(main.globalAllocator);
+	models = .init();
 	quads = .init(main.globalAllocator);
 	extraQuadInfos = .init(main.globalAllocator);
 	quadDeduplication = .init(main.globalAllocator.allocator);
@@ -553,7 +573,7 @@ pub fn init() void {
 }
 
 pub fn reset() void {
-	for(models.items) |model| {
+	for(models.items()) |model| {
 		model.deinit();
 	}
 	models.clearRetainingCapacity();
@@ -567,7 +587,7 @@ pub fn reset() void {
 pub fn deinit() void {
 	quadSSBO.deinit();
 	nameToIndex.deinit();
-	for(models.items) |model| {
+	for(models.items()) |model| {
 		model.deinit();
 	}
 	models.deinit();

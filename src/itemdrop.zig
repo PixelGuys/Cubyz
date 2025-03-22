@@ -571,19 +571,18 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 				// Find sizes and free index:
 				var block = blocks.Block{.typ = self.item.baseItem.block.?, .data = 0};
 				block.data = block.mode().naturalStandard;
-				const modelIndex = blocks.meshes.model(block);
-				const model = &main.models.models.items[modelIndex];
+				const model = blocks.meshes.model(block).model();
 				var data = main.List(u32).init(main.stackAllocator);
 				defer data.deinit();
 				for(model.internalQuads) |quad| {
-					const textureIndex = blocks.meshes.textureIndex(block, main.models.quads.items[quad].textureSlot);
-					data.append(@as(u32, quad) << 16 | textureIndex); // modelAndTexture
+					const textureIndex = blocks.meshes.textureIndex(block, quad.quadInfo().textureSlot);
+					data.append(@as(u32, quad.index) << 16 | textureIndex); // modelAndTexture
 					data.append(0); // offsetByNormal
 				}
 				for(model.neighborFacingQuads) |list| {
 					for(list) |quad| {
-						const textureIndex = blocks.meshes.textureIndex(block, main.models.quads.items[quad].textureSlot);
-						data.append(@as(u32, quad) << 16 | textureIndex); // modelAndTexture
+						const textureIndex = blocks.meshes.textureIndex(block, quad.quadInfo().textureSlot);
+						data.append(@as(u32, quad.index) << 16 | textureIndex); // modelAndTexture
 						data.append(1); // offsetByNormal
 					}
 				}
