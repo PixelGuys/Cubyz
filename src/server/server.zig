@@ -10,6 +10,8 @@ const utils = main.utils;
 const vec = main.vec;
 const Vec3d = vec.Vec3d;
 const Vec3i = vec.Vec3i;
+const BinaryReader = main.utils.BinaryReader;
+const BinaryWriter = main.utils.BinaryWriter;
 
 pub const ServerWorld = @import("world.zig").ServerWorld;
 pub const terrain = @import("terrain/terrain.zig");
@@ -202,26 +204,26 @@ pub const User = struct { // MARK: User
 		self.loadUnloadChunks();
 	}
 
-	pub fn receiveData(self: *User, data: []const u8) void {
+	pub fn receiveData(self: *User, reader: *BinaryReader) !void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
 		const position: [3]f64 = .{
-			@bitCast(std.mem.readInt(u64, data[0..8], .big)),
-			@bitCast(std.mem.readInt(u64, data[8..16], .big)),
-			@bitCast(std.mem.readInt(u64, data[16..24], .big)),
+			try reader.readFloat(f64),
+			try reader.readFloat(f64),
+			try reader.readFloat(f64),
 		};
 		const velocity: [3]f64 = .{
-			@bitCast(std.mem.readInt(u64, data[24..32], .big)),
-			@bitCast(std.mem.readInt(u64, data[32..40], .big)),
-			@bitCast(std.mem.readInt(u64, data[40..48], .big)),
+			try reader.readFloat(f64),
+			try reader.readFloat(f64),
+			try reader.readFloat(f64),
 		};
 		const rotation: [3]f32 = .{
-			@bitCast(std.mem.readInt(u32, data[48..52], .big)),
-			@bitCast(std.mem.readInt(u32, data[52..56], .big)),
-			@bitCast(std.mem.readInt(u32, data[56..60], .big)),
+			try reader.readFloat(f32),
+			try reader.readFloat(f32),
+			try reader.readFloat(f32),
 		};
 		self.player.rot = rotation;
-		const time = std.mem.readInt(i16, data[60..62], .big);
+		const time = try reader.readInt(i16);
 		self.timeDifference.addDataPoint(time);
 		self.interpolation.updatePosition(&position, &velocity, time);
 	}
@@ -353,29 +355,27 @@ fn update() void { // MARK: update()
 	}
 
 	// Send the entity data:
-	const data = main.stackAllocator.alloc(u8, (4 + 24 + 12 + 24)*userList.len);
-	defer main.stackAllocator.free(data);
+	var writer = BinaryWriter.initCapacity(main.stackAllocator, network.networkEndian, (4 + 24 + 12 + 24)*userList.len);
+	defer writer.deinit();
+
 	const itemData = world.?.itemDropManager.getPositionAndVelocityData(main.stackAllocator);
 	defer main.stackAllocator.free(itemData);
-	var remaining = data;
+
 	for(userList) |user| {
 		const id = user.id; // TODO
-		std.mem.writeInt(u32, remaining[0..4], id, .big);
-		remaining = remaining[4..];
-		std.mem.writeInt(u64, remaining[0..8], @bitCast(user.player.pos[0]), .big);
-		std.mem.writeInt(u64, remaining[8..16], @bitCast(user.player.pos[1]), .big);
-		std.mem.writeInt(u64, remaining[16..24], @bitCast(user.player.pos[2]), .big);
-		std.mem.writeInt(u32, remaining[24..28], @bitCast(user.player.rot[0]), .big);
-		std.mem.writeInt(u32, remaining[28..32], @bitCast(user.player.rot[1]), .big);
-		std.mem.writeInt(u32, remaining[32..36], @bitCast(user.player.rot[2]), .big);
-		remaining = remaining[36..];
-		std.mem.writeInt(u64, remaining[0..8], @bitCast(user.player.vel[0]), .big);
-		std.mem.writeInt(u64, remaining[8..16], @bitCast(user.player.vel[1]), .big);
-		std.mem.writeInt(u64, remaining[16..24], @bitCast(user.player.vel[2]), .big);
-		remaining = remaining[24..];
+		writer.writeInt(u32, id);
+		writer.writeFloat(f64, user.player.pos[0]);
+		writer.writeFloat(f64, user.player.pos[1]);
+		writer.writeFloat(f64, user.player.pos[2]);
+		writer.writeFloat(f32, user.player.rot[0]);
+		writer.writeFloat(f32, user.player.rot[1]);
+		writer.writeFloat(f32, user.player.rot[2]);
+		writer.writeFloat(f64, user.player.vel[0]);
+		writer.writeFloat(f64, user.player.vel[1]);
+		writer.writeFloat(f64, user.player.vel[2]);
 	}
 	for(userList) |user| {
-		main.network.Protocols.entityPosition.send(user.conn, data, itemData);
+		main.network.Protocols.entityPosition.send(user.conn, writer.data.items, itemData);
 	}
 
 	while(userDeinitList.dequeue()) |user| {
