@@ -1540,6 +1540,79 @@ pub const RotationModes = struct {
 			currentData.data = 0;
 		}
 	};
+	pub const Pile = struct {
+		pub const id: []const u8 = "pile";
+		var rotatedModels: std.StringHashMap(ModelIndex) = undefined;
+
+		fn init() void {
+			rotatedModels = .init(main.globalAllocator.allocator);
+		}
+
+		fn deinit() void {
+			rotatedModels.deinit();
+		}
+
+		fn reset() void {
+			rotatedModels.clearRetainingCapacity();
+		}
+
+		fn transform(quad: *main.models.QuadInfo, data: u16) void {
+			quad.textureSlot = data%4;
+		}
+
+		pub fn createBlockModel(zon: ZonElement) ModelIndex {
+			const modelId = zon.as([]const u8, "cubyz:cube");
+			if(rotatedModels.get(modelId)) |modelIndex| return modelIndex;
+
+			const baseModel = main.models.getModelIndex(modelId).model();
+
+			const modelIndex = baseModel.transformModel(transform, .{@as(u16, @intCast(0))});
+			for(1..4) |data| {
+				_ = baseModel.transformModel(transform, .{@as(u16, @intCast(data))});
+			}
+			rotatedModels.put(modelId, modelIndex) catch unreachable;
+			return modelIndex;
+		}
+
+		pub fn model(block: Block) ModelIndex {
+			return .{.index = blocks.meshes.modelIndexStart(block).index + @min(block.data, 3)};
+		}
+
+		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: ?Neighbor, currentData: *Block, _: Block, blockPlacing: bool) bool {
+			if(blockPlacing) {
+				currentData.data = 0;
+				return true;
+			}
+			if(currentData.data >= 3) {
+				return false;
+			}
+			currentData.data = currentData.data + 1;
+			return true;
+		}
+
+		pub fn onBlockBreaking(_: ?main.items.Item, _: Vec3f, _: Vec3f, currentData: *Block) void {
+			if(currentData.data <= 1) {
+				currentData.* = .{.typ = 0, .data = 0};
+			} else {
+				currentData.data = currentData.data - 1;
+			}
+		}
+
+		pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
+			switch(RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess)) {
+				.no, .yes_costsDurability, .yes_dropsItems => return .no,
+				.yes, .yes_costsItems => {
+					const amountChange = @as(i32, newBlock.data) - if(oldBlock.typ == newBlock.typ) @as(i32, oldBlock.data) else 0;
+					if(amountChange <= 0) {
+						return .{.yes_dropsItems = @intCast(-amountChange)};
+					} else {
+						if(item.item == null or item.item.? != .baseItem or !std.meta.eql(item.item.?.baseItem.block, newBlock.typ)) return .no;
+						return .{.yes_costsItems = @intCast(amountChange)};
+					}
+				},
+			}
+		}
+	};
 };
 
 // MARK: init/register
