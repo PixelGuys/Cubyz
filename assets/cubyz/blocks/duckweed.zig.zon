@@ -8,7 +8,10 @@
 	.collide = false,
 	.alwaysViewThrough = true,
 	.absorbedLight = 0x000000,
-	.model = "cubyz:plane",
+	.model = .{
+		.model = "cubyz:plane",
+		.states = 4,
+	},
 	.rotation = .pile,
 	.texture0 = "cubyz:duckweed/0",
 	.texture1 = "cubyz:duckweed/1",
