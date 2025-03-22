@@ -756,7 +756,7 @@ pub const Command = struct { // MARK: Command
 
 	fn do(self: *Command, allocator: NeverFailingAllocator, side: Side, user: ?*main.server.User, gamemode: main.game.Gamemode) error{serverFailure}!void { // MARK: do()
 		std.debug.assert(self.baseOperations.items.len == 0); // do called twice without cleaning up
-		
+
 		var invs: main.List(Inventory) = .init(main.stackAllocator);
 		defer invs.deinit();
 
@@ -786,7 +786,7 @@ pub const Command = struct { // MARK: Command
 				try payload.run(allocator, self, side, user, gamemode);
 			},
 		}
-		
+
 		for(invs.items) |inv| {
 			if(inv.type == .blockInventory) {}
 		}
