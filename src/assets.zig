@@ -197,18 +197,7 @@ pub fn readAllObjFilesInAddonsHashmap(
 			break :blk null;
 		}) |entry| {
 			if(entry.kind == .file and std.ascii.endsWithIgnoreCase(entry.basename, ".obj")) {
-				const folderName = addonName;
-				const id: []u8 = externalAllocator.alloc(u8, folderName.len + 1 + entry.path.len - 4);
-				errdefer externalAllocator.free(id);
-				@memcpy(id[0..folderName.len], folderName);
-				id[folderName.len] = ':';
-				for(0..entry.path.len - 4) |i| {
-					if(entry.path[i] == '\\') { // Convert windows path seperators
-						id[folderName.len + 1 + i] = '/';
-					} else {
-						id[folderName.len + 1 + i] = entry.path[i];
-					}
-				}
+				const id: []u8 = createAssetStringID(externalAllocator, addonName, entry.basename, entry.path);
 
 				const string = dir.readFileAlloc(externalAllocator.allocator, entry.path, std.math.maxInt(usize)) catch |err| {
 					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
