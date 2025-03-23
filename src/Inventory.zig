@@ -434,13 +434,7 @@ pub const Sync = struct { // MARK: Sync
 			Sync.ServerSide.executeCommand(.{.addHealth = .{.target = id, .health = health, .cause = cause}}, null);
 		}
 	}
-	pub fn addEnergy(energy: f32, side: Side, id: u32) void {
-		if(side == .client) {
-			Sync.ClientSide.executeCommand(.{.addEnergy = .{.target = id, .energy = energy}});
-		} else {
-			Sync.ServerSide.executeCommand(.{.addEnergy = .{.target = id, .energy = energy}}, null);
-		}
-	}
+
 
 	pub fn getInventory(id: u32, side: Side, user: ?*main.server.User) ?Inventory {
 		return switch(side) {
@@ -471,7 +465,6 @@ pub const Command = struct { // MARK: Command
 		clear = 8,
 		updateBlock = 9,
 		addHealth = 10,
-		addEnergy = 11,
 	};
 	pub const Payload = union(PayloadType) {
 		open: Open,
@@ -485,7 +478,6 @@ pub const Command = struct { // MARK: Command
 		clear: Clear,
 		updateBlock: UpdateBlock,
 		addHealth: AddHealth,
-		addEnergy: AddEnergy,
 	};
 
 	const BaseOperationType = enum(u8) {
@@ -1720,50 +1712,6 @@ pub const Command = struct { // MARK: Command
 				.target = try reader.readInt(u32),
 				.health = @bitCast(try reader.readInt(u32)),
 				.cause = try reader.readEnum(main.game.DamageType),
-			};
-		}
-	};
-
-	const AddEnergy = struct { // MARK: AddEnergy
-		target: u32,
-		energy: f32,
-
-		pub fn run(self: AddEnergy, allocator: NeverFailingAllocator, cmd: *Command, side: Side, _: ?*main.server.User, _: Gamemode) error{serverFailure}!void {
-			var target: ?*main.server.User = null;
-
-			if(side == .server) {
-				const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
-				defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
-				for(userList) |user| {
-					if(user.id == self.target) {
-						target = user;
-						break;
-					}
-				}
-
-				if(target == null) return error.serverFailure;
-
-				if(target.?.gamemode.raw == .creative) return;
-			} else {
-				if(main.game.Player.gamemode.raw == .creative) return;
-			}
-
-			cmd.executeBaseOperation(allocator, .{.addEnergy = .{
-				.target = target,
-				.energy = self.energy,
-				.previous = if(side == .server) target.?.player.energy else main.game.Player.super.energy,
-			}}, side);
-		}
-
-		fn serialize(self: AddEnergy, writer: *utils.BinaryWriter) void {
-			writer.writeInt(u32, self.target);
-			writer.writeInt(u32, @bitCast(self.energy));
-		}
-
-		fn deserialize(reader: *utils.BinaryReader, _: Side, _: ?*main.server.User) !AddEnergy {
-			return .{
-				.target = try reader.readInt(u32),
-				.energy = @bitCast(try reader.readInt(u32)),
 			};
 		}
 	};
