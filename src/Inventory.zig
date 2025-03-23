@@ -520,36 +520,44 @@ pub const Command = struct { // MARK: Command
 		}
 	};
 
-	const BaseOperation = union(BaseOperationType) {move: struct {
-		dest: InventoryAndSlot,
-		source: InventoryAndSlot,
-		amount: u16,
-	}, swap: struct {
-		dest: InventoryAndSlot,
-		source: InventoryAndSlot,
-	}, delete: struct {
-		source: InventoryAndSlot,
-		item: ?Item = undefined,
-		amount: u16,
-	}, create: struct {
-		dest: InventoryAndSlot,
-		item: ?Item,
-		amount: u16,
-	}, useDurability: struct {
-		source: InventoryAndSlot,
-		item: main.items.Item = undefined,
-		durability: u31,
-		previousDurability: u32 = undefined,
-	}, addHealth: struct {
-		target: ?*main.server.User,
-		health: f32,
-		cause: main.game.DamageType,
-		previous: f32,
-	}, addEnergy: struct {
-		target: ?*main.server.User,
-		energy: f32,
-		previous: f32,
-	}};
+	const BaseOperation = union(BaseOperationType) {
+		move: struct {
+			dest: InventoryAndSlot,
+			source: InventoryAndSlot,
+			amount: u16,
+		},
+		swap: struct {
+			dest: InventoryAndSlot,
+			source: InventoryAndSlot,
+		},
+		delete: struct {
+			source: InventoryAndSlot,
+			item: ?Item = undefined,
+			amount: u16,
+		},
+		create: struct {
+			dest: InventoryAndSlot,
+			item: ?Item,
+			amount: u16,
+		},
+		useDurability: struct {
+			source: InventoryAndSlot,
+			item: main.items.Item = undefined,
+			durability: u31,
+			previousDurability: u32 = undefined,
+		},
+		addHealth: struct {
+			target: ?*main.server.User,
+			health: f32,
+			cause: main.game.DamageType,
+			previous: f32,
+		},
+		addEnergy: struct {
+			target: ?*main.server.User,
+			energy: f32,
+			previous: f32,
+		},
+	};
 
 	const SyncOperationType = enum(u8) {
 		create = 0,
