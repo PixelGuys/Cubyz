@@ -106,52 +106,41 @@ pub fn readAllZonFilesInAddons(
 			std.log.err("Got error while iterating addon directory {s}: {s}", .{subPath, @errorName(err)});
 			break :blk null;
 		}) |entry| {
-			if(entry.kind == .file and
-				!std.ascii.startsWithIgnoreCase(entry.basename, "_defaults") and
-				std.ascii.endsWithIgnoreCase(entry.basename, ".zon") and
-				!std.ascii.startsWithIgnoreCase(entry.path, "textures") and
-				!std.ascii.eqlIgnoreCase(entry.basename, "_migrations.zig.zon"))
-			{
-				const fileSuffixLen = if(std.ascii.endsWithIgnoreCase(entry.basename, ".zig.zon")) ".zig.zon".len else ".zon".len;
-				const folderName = addonName;
-				const id: []u8 = externalAllocator.alloc(u8, folderName.len + 1 + entry.path.len - fileSuffixLen);
-				errdefer externalAllocator.free(id);
-				@memcpy(id[0..folderName.len], folderName);
-				id[folderName.len] = ':';
-				for(0..entry.path.len - fileSuffixLen) |i| {
-					if(entry.path[i] == '\\') { // Convert windows path seperators
-						id[folderName.len + 1 + i] = '/';
-					} else {
-						id[folderName.len + 1 + i] = entry.path[i];
-					}
+			if(entry.kind != .file) continue;
+			if(std.ascii.startsWithIgnoreCase(entry.basename, "_defaults")) continue;
+			if(!std.ascii.endsWithIgnoreCase(entry.basename, ".zon")) continue;
+			if(std.ascii.startsWithIgnoreCase(entry.path, "textures")) continue;
+			if(std.ascii.eqlIgnoreCase(entry.basename, "_migrations.zig.zon")) continue;
+
+			const id: []u8 = createAssetStringID(externalAllocator, addonName, entry.basename, entry.path);
+			errdefer externalAllocator.free(id);
+
+			const zon = main.files.Dir.init(dir).readToZon(externalAllocator, entry.path) catch |err| {
+				std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
+				continue;
+			};
+
+			if(defaults) {
+				const path = entry.dir.realpathAlloc(main.stackAllocator.allocator, ".") catch unreachable;
+				defer main.stackAllocator.free(path);
+
+				const result = defaultMap.getOrPut(path) catch unreachable;
+
+				if(!result.found_existing) {
+					result.key_ptr.* = defaultsArenaAllocator.dupe(u8, path);
+					const default: ZonElement = readDefaultFile(defaultsArenaAllocator, entry.dir) catch |err| blk: {
+						std.log.err("Failed to read default file: {s}", .{@errorName(err)});
+						break :blk .null;
+					};
+
+					result.value_ptr.* = default;
 				}
 
-				const zon = main.files.Dir.init(dir).readToZon(externalAllocator, entry.path) catch |err| {
-					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
-					continue;
-				};
-
-				if(defaults) {
-					const path = entry.dir.realpathAlloc(main.stackAllocator.allocator, ".") catch unreachable;
-					defer main.stackAllocator.free(path);
-
-					const result = defaultMap.getOrPut(path) catch unreachable;
-
-					if(!result.found_existing) {
-						result.key_ptr.* = defaultsArenaAllocator.dupe(u8, path);
-						const default: ZonElement = readDefaultFile(defaultsArenaAllocator, entry.dir) catch |err| blk: {
-							std.log.err("Failed to read default file: {s}", .{@errorName(err)});
-							break :blk .null;
-						};
-
-						result.value_ptr.* = default;
-					}
-
-					zon.join(result.value_ptr.*);
-				}
-				output.put(id, zon) catch unreachable;
+				zon.join(result.value_ptr.*);
 			}
+			output.put(id, zon) catch unreachable;
 		}
+
 		if(migrations != null) blk: {
 			const zon = main.files.Dir.init(dir).readToZon(externalAllocator, "_migrations.zig.zon") catch |err| {
 				if(err != error.FileNotFound) std.log.err("Cannot read {s} migration file for addon {s}", .{subPath, addonName});
@@ -161,7 +150,29 @@ pub fn readAllZonFilesInAddons(
 		}
 	}
 }
+fn createAssetStringID(
+	externalAllocator: NeverFailingAllocator,
+	addonName: []const u8,
+	fileBaseName: []const u8,
+	relativeFilePath: []const u8,
+) []u8 {
+	const fileSuffixLen = if(std.ascii.endsWithIgnoreCase(fileBaseName, ".zig.zon")) ".zig.zon".len else ".zon".len;
+	const assetId: []u8 = externalAllocator.alloc(u8, addonName.len + 1 + relativeFilePath.len - fileSuffixLen);
 
+	@memcpy(assetId[0..addonName.len], addonName);
+	assetId[addonName.len] = ':';
+
+	// Convert from windows to unix style separators.
+	for(0..relativeFilePath.len - fileSuffixLen) |i| {
+		if(relativeFilePath[i] == '\\') {
+			assetId[addonName.len + 1 + i] = '/';
+		} else {
+			assetId[addonName.len + 1 + i] = relativeFilePath[i];
+		}
+	}
+
+	return assetId;
+}
 /// Reads obj files recursively from all subfolders.
 pub fn readAllObjFilesInAddonsHashmap(
 	externalAllocator: NeverFailingAllocator,
