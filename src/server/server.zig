@@ -2,6 +2,7 @@ const std = @import("std");
 const Atomic = std.atomic.Value;
 
 const main = @import("root");
+// const main = @import("../main.zig");
 const chunk = main.chunk;
 const network = main.network;
 const Connection = network.Connection;
@@ -12,6 +13,8 @@ const Vec3d = vec.Vec3d;
 const Vec3i = vec.Vec3i;
 const BinaryReader = main.utils.BinaryReader;
 const BinaryWriter = main.utils.BinaryWriter;
+const Blueprint = main.blueprint.Blueprint;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 pub const ServerWorld = @import("world.zig").ServerWorld;
 pub const terrain = @import("terrain/terrain.zig");
@@ -23,12 +26,64 @@ const command = @import("command/_command.zig");
 pub const WorldEditData = struct {
 	selectionPosition1: ?Vec3i = null,
 	selectionPosition2: ?Vec3i = null,
-	clipboard: ?main.blueprint.Blueprint = null,
+	clipboard: ?Blueprint = null,
+	undoHistory: History = .{},
+	redoHistory: History = .{},
+
+	const History = struct {
+		const DLList = std.DoublyLinkedList(Value);
+		changes: DLList = .{},
+		maxCapacity: u32 = 16,
+
+		const Value = struct {
+			blueprint: Blueprint,
+			position: Vec3i,
+			message: []const u8,
+
+			pub fn init(blueprint: Blueprint, position: Vec3i, message: []const u8) Value {
+				return .{.blueprint = blueprint, .position = position, .message = main.globalAllocator.dupe(u8, message)};
+			}
+			pub fn deinit(self: Value) void {
+				main.globalAllocator.free(self.message);
+				self.blueprint.deinit(main.globalAllocator);
+			}
+		};
+		pub fn deinit(self: *History) void {
+			self.clear();
+		}
+		pub fn clear(self: *History) void {
+			while(self.changes.pop()) |node| {
+				node.data.deinit();
+				main.globalAllocator.destroy(node);
+			}
+		}
+		pub fn push(self: *History, value: Value) void {
+			const node = main.globalAllocator.create(DLList.Node);
+			node.data = value;
+			self.changes.prepend(node);
+
+			if(self.changes.len > self.maxCapacity) {
+				if(self.changes.pop()) |oldNode| {
+					oldNode.data.deinit();
+					main.globalAllocator.destroy(oldNode);
+				}
+			}
+		}
+		pub fn pop(self: *History) ?Value {
+			if(self.changes.popFirst()) |node| {
+				defer main.globalAllocator.destroy(node);
+				return node.data;
+			}
+			return null;
+		}
+	};
 
 	pub fn deinit(self: *WorldEditData) void {
 		if(self.clipboard != null) {
 			self.clipboard.?.deinit(main.globalAllocator);
 		}
+		self.undoHistory.deinit();
+		self.redoHistory.deinit();
 	}
 };
 

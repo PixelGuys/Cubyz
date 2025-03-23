@@ -6,6 +6,8 @@ pub const kill = @import("kill.zig");
 pub const time = @import("time.zig");
 pub const tp = @import("tp.zig");
 
+pub const undo = @import("worldedit/undo.zig");
+pub const redo = @import("worldedit/redo.zig");
 pub const pos1 = @import("worldedit/pos1.zig");
 pub const pos2 = @import("worldedit/pos2.zig");
 pub const deselect = @import("worldedit/deselect.zig");
