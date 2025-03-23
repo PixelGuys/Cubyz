@@ -41,7 +41,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 		fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: ?Neighbor, _: *Block, _: Block, blockPlacing: bool) bool {
 			return blockPlacing;
 		}
-		fn createBlockModel(zon: ZonElement) ModelIndex {
+		fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 			return main.models.getModelIndex(zon.as([]const u8, "cubyz:cube"));
 		}
 		fn updateData(_: *Block, _: Neighbor, _: Block) bool {
@@ -126,7 +126,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 	// Rotates block data counterclockwise around the Z axis.
 	rotateZ: *const fn(data: u16, angle: Degrees) u16 = DefaultFunctions.rotateZ,
 
-	createBlockModel: *const fn(zon: ZonElement) ModelIndex = &DefaultFunctions.createBlockModel,
+	createBlockModel: *const fn(block: Block, modeData: *u16, zon: ZonElement) ModelIndex = &DefaultFunctions.createBlockModel,
 
 	/// Updates the block data of a block in the world or places a block in the world.
 	/// return true if the placing was successful, false otherwise.
@@ -176,7 +176,7 @@ pub const RotationModes = struct {
 			rotatedModels.clearRetainingCapacity();
 		}
 
-		pub fn createBlockModel(zon: ZonElement) ModelIndex {
+		pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 			const modelId = zon.as([]const u8, "cubyz:cube");
 			if(rotatedModels.get(modelId)) |modelIndex| return modelIndex;
 
@@ -235,7 +235,7 @@ pub const RotationModes = struct {
 			rotatedModels.clearRetainingCapacity();
 		}
 
-		pub fn createBlockModel(zon: ZonElement) ModelIndex {
+		pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 			const modelId = zon.as([]const u8, "cubyz:cube");
 			if(rotatedModels.get(modelId)) |modelIndex| return modelIndex;
 
@@ -355,7 +355,7 @@ pub const RotationModes = struct {
 			}
 		}
 
-		pub fn createBlockModel(zon: ZonElement) ModelIndex {
+		pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 			const modelId = zon.as([]const u8, "cubyz:cube");
 			if(fenceModels.get(modelId)) |modelIndex| return modelIndex;
 
@@ -638,7 +638,7 @@ pub const RotationModes = struct {
 			};
 		}
 
-		pub fn createBlockModel(zon: ZonElement) ModelIndex {
+		pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 			const radius = zon.get(f32, "radius", 4);
 			if(branchModels.get(@bitCast(radius))) |modelIndex| return modelIndex;
 
@@ -900,7 +900,7 @@ pub const RotationModes = struct {
 			return mem[0..faces];
 		}
 
-		pub fn createBlockModel(_: ZonElement) ModelIndex {
+		pub fn createBlockModel(_: Block, _: *u16, _: ZonElement) ModelIndex {
 			if(modelIndex) |idx| return idx;
 			for(0..256) |i| {
 				var quads = main.List(main.models.QuadInfo).init(main.stackAllocator);
@@ -1142,7 +1142,7 @@ pub const RotationModes = struct {
 			rotatedModels.clearRetainingCapacity();
 		}
 
-		pub fn createBlockModel(zon: ZonElement) ModelIndex {
+		pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 			const baseModelId: []const u8 = zon.get([]const u8, "base", "cubyz:cube");
 			const sideModelId: []const u8 = zon.get([]const u8, "side", "cubyz:cube");
 			const key: []const u8 = std.mem.concat(main.stackAllocator.allocator, u8, &.{baseModelId, sideModelId}) catch unreachable;
@@ -1362,7 +1362,7 @@ pub const RotationModes = struct {
 			rotatedModels.clearRetainingCapacity();
 		}
 
-		pub fn createBlockModel(zon: ZonElement) ModelIndex {
+		pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 			const modelId = zon.as([]const u8, "cubyz:cube");
 			if(rotatedModels.get(modelId)) |modelIndex| return modelIndex;
 
@@ -1490,7 +1490,7 @@ pub const RotationModes = struct {
 			modelCache = null;
 		}
 
-		pub fn createBlockModel(zon: ZonElement) ModelIndex {
+		pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 			const modelId = zon.as([]const u8, "cubyz:cube");
 			if(!std.mem.eql(u8, modelId, "cubyz:cube")) {
 				std.log.err("Ores can only be use on cube models.", .{modelId});
@@ -1538,6 +1538,88 @@ pub const RotationModes = struct {
 		pub fn onBlockBreaking(_: ?main.items.Item, _: Vec3f, _: Vec3f, currentData: *Block) void {
 			currentData.typ = currentData.data;
 			currentData.data = 0;
+		}
+	};
+	pub const TexturePile = struct {
+		pub const id: []const u8 = "texturePile";
+		var rotatedModels: std.StringHashMap(ModelIndex) = undefined;
+
+		fn init() void {
+			rotatedModels = .init(main.globalAllocator.allocator);
+		}
+
+		fn deinit() void {
+			rotatedModels.deinit();
+		}
+
+		fn reset() void {
+			rotatedModels.clearRetainingCapacity();
+		}
+
+		fn transform(quad: *main.models.QuadInfo, data: u16) void {
+			quad.textureSlot = data%16;
+		}
+
+		pub fn createBlockModel(block: Block, modeData: *u16, zon: ZonElement) ModelIndex {
+			const modelId = zon.get([]const u8, "model", "cubyz:cube");
+			const stateCount = zon.get(u16, "states", 2);
+			const blockId = block.id();
+			if(stateCount <= 1) {
+				std.log.err("Block '{s}' uses texture pile with {} states. 'texturePile' should have at least 2 states, use 'no_rotation' instead", .{blockId, stateCount});
+			} else if(stateCount > 16) {
+				std.log.err("Block '{s}' uses texture pile with {} states. 'texturePile' can have at most 16 states.", .{blockId, stateCount});
+			}
+			modeData.* = stateCount;
+
+			if(rotatedModels.get(modelId)) |modelIndex| return modelIndex;
+
+			const baseModel = main.models.getModelIndex(modelId).model();
+
+			const modelIndex = baseModel.transformModel(transform, .{@as(u16, @intCast(0))});
+			for(1..16) |data| {
+				_ = baseModel.transformModel(transform, .{@as(u16, @intCast(data))});
+			}
+			rotatedModels.put(modelId, modelIndex) catch unreachable;
+			return modelIndex;
+		}
+
+		pub fn model(block: Block) ModelIndex {
+			return .{.index = blocks.meshes.modelIndexStart(block).index + @min(block.data, block.modeData() - 1)};
+		}
+
+		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: ?Neighbor, currentData: *Block, _: Block, blockPlacing: bool) bool {
+			if(blockPlacing) {
+				currentData.data = 0;
+				return true;
+			}
+			if(currentData.data >= currentData.modeData() - 1) {
+				return false;
+			}
+			currentData.data = currentData.data + 1;
+			return true;
+		}
+
+		pub fn onBlockBreaking(_: ?main.items.Item, _: Vec3f, _: Vec3f, currentData: *Block) void {
+			if(currentData.data == 0) {
+				currentData.* = .{.typ = 0, .data = 0};
+			} else {
+				currentData.data = currentData.data - 1;
+			}
+		}
+
+		pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
+			switch(RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess)) {
+				.no, .yes_costsDurability, .yes_dropsItems => return .no,
+				.yes, .yes_costsItems => {
+					const amountChange = @as(i32, newBlock.data) - if(oldBlock.typ == newBlock.typ) @as(i32, oldBlock.data) else 0;
+					if(amountChange <= 0) {
+						return .{.yes_dropsItems = @intCast(-amountChange)};
+					} else {
+						if(item.item == null or item.item.? != .baseItem or item.item.?.baseItem.block != newBlock.typ) return .no;
+						return .{.yes_costsItems = @intCast(amountChange)};
+					}
+				},
+			}
 		}
 	};
 };
