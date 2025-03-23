@@ -106,41 +106,40 @@ pub fn readAllZonFilesInAddons(
 			std.log.err("Got error while iterating addon directory {s}: {s}", .{subPath, @errorName(err)});
 			break :blk null;
 		}) |entry| {
-			if(entry.kind != .file) continue;
-			if(std.ascii.startsWithIgnoreCase(entry.basename, "_defaults")) continue;
-			if(!std.ascii.endsWithIgnoreCase(entry.basename, ".zon")) continue;
-			if(std.ascii.startsWithIgnoreCase(entry.path, "textures")) continue;
-			if(std.ascii.eqlIgnoreCase(entry.basename, "_migrations.zig.zon")) continue;
+			if(entry.kind == .file and
+				!std.ascii.startsWithIgnoreCase(entry.basename, "_defaults") and
+				std.ascii.endsWithIgnoreCase(entry.basename, ".zon") and
+				!std.ascii.startsWithIgnoreCase(entry.path, "textures") and
+				!std.ascii.eqlIgnoreCase(entry.basename, "_migrations.zig.zon"))
+			{
+				const id = createAssetStringID(externalAllocator, addonName, entry.basename, entry.path);
 
-			const id: []u8 = createAssetStringID(externalAllocator, addonName, entry.basename, entry.path);
-			errdefer externalAllocator.free(id);
+				const zon = main.files.Dir.init(dir).readToZon(externalAllocator, entry.path) catch |err| {
+					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
+					continue;
+				};
 
-			const zon = main.files.Dir.init(dir).readToZon(externalAllocator, entry.path) catch |err| {
-				std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
-				continue;
-			};
+				if(defaults) {
+					const path = entry.dir.realpathAlloc(main.stackAllocator.allocator, ".") catch unreachable;
+					defer main.stackAllocator.free(path);
 
-			if(defaults) {
-				const path = entry.dir.realpathAlloc(main.stackAllocator.allocator, ".") catch unreachable;
-				defer main.stackAllocator.free(path);
+					const result = defaultMap.getOrPut(path) catch unreachable;
 
-				const result = defaultMap.getOrPut(path) catch unreachable;
+					if(!result.found_existing) {
+						result.key_ptr.* = defaultsArenaAllocator.dupe(u8, path);
+						const default: ZonElement = readDefaultFile(defaultsArenaAllocator, entry.dir) catch |err| blk: {
+							std.log.err("Failed to read default file: {s}", .{@errorName(err)});
+							break :blk .null;
+						};
 
-				if(!result.found_existing) {
-					result.key_ptr.* = defaultsArenaAllocator.dupe(u8, path);
-					const default: ZonElement = readDefaultFile(defaultsArenaAllocator, entry.dir) catch |err| blk: {
-						std.log.err("Failed to read default file: {s}", .{@errorName(err)});
-						break :blk .null;
-					};
+						result.value_ptr.* = default;
+					}
 
-					result.value_ptr.* = default;
+					zon.join(result.value_ptr.*);
 				}
-
-				zon.join(result.value_ptr.*);
+				output.put(id, zon) catch unreachable;
 			}
-			output.put(id, zon) catch unreachable;
 		}
-
 		if(migrations != null) blk: {
 			const zon = main.files.Dir.init(dir).readToZon(externalAllocator, "_migrations.zig.zon") catch |err| {
 				if(err != error.FileNotFound) std.log.err("Cannot read {s} migration file for addon {s}", .{subPath, addonName});
