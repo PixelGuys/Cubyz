@@ -435,7 +435,6 @@ pub const Sync = struct { // MARK: Sync
 		}
 	}
 
-
 	pub fn getInventory(id: u32, side: Side, user: ?*main.server.User) ?Inventory {
 		return switch(side) {
 			.client => ClientSide.getInventory(id),
