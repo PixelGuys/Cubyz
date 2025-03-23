@@ -403,7 +403,23 @@ pub const RotationModes = struct {
 	pub const Branch = struct { // MARK: Branch
 		pub const id: []const u8 = "branch";
 		pub const dependsOnNeighbors = true;
-		var branchModels: std.AutoHashMap(u32, ModelIndex) = undefined;
+		var branchModels: std.HashMap(HashMapKey, ModelIndex, HashMapKey, std.hash_map.default_max_load_percentage) = undefined;
+		const HashMapKey = struct {
+			radius: u16,
+			shellModelId: []const u8,
+			textureSlotOffset: u32,
+
+			pub fn hash(_: HashMapKey, val: HashMapKey) u64 {
+				var hasher = std.hash.Wyhash.init(0);
+				std.hash.autoHashStrat(&hasher, val, .DeepRecursive);
+				return hasher.final();
+			}
+			pub fn eql(_: HashMapKey, val1: HashMapKey, val2: HashMapKey) bool {
+				if(val1.radius != val2.radius) return false;
+				if(val1.textureSlotOffset != val2.textureSlotOffset) return false;
+				return std.mem.eql(u8, val1.shellModelId, val2.shellModelId);
+			}
+		};
 		const BranchData = packed struct(u6) {
 			enabledConnections: u6,
 
@@ -425,7 +441,7 @@ pub const RotationModes = struct {
 		};
 
 		fn init() void {
-			branchModels = .init(main.globalAllocator.allocator);
+			branchModels = .initContext(main.globalAllocator.allocator, undefined);
 		}
 
 		fn deinit() void {
@@ -460,7 +476,7 @@ pub const RotationModes = struct {
 			cross: void,
 		};
 
-		fn rotateQuad(originalCorners: [4]Vec2f, pattern: Pattern, min: f32, max: f32, side: Neighbor) main.models.QuadInfo {
+		fn rotateQuad(originalCorners: [4]Vec2f, pattern: Pattern, min: f32, max: f32, side: Neighbor, textureSlotOffset: u32) main.models.QuadInfo {
 			var corners: [4]Vec2f = originalCorners;
 
 			switch(pattern) {
@@ -498,13 +514,13 @@ pub const RotationModes = struct {
 				},
 				.cornerUV = originalCorners,
 				.normal = @floatFromInt(side.relPos()),
-				.textureSlot = @intFromEnum(pattern),
+				.textureSlot = textureSlotOffset + @intFromEnum(pattern),
 			};
 
 			return res;
 		}
 
-		fn addQuads(pattern: Pattern, side: Neighbor, radius: f32, out: *main.List(main.models.QuadInfo)) void {
+		fn addQuads(pattern: Pattern, side: Neighbor, radius: f32, out: *main.List(main.models.QuadInfo), textureSlotOffset: u32) void {
 			const min: f32 = (8.0 - radius)/16.0;
 			const max: f32 = (8.0 + radius)/16.0;
 			switch(pattern) {
@@ -514,7 +530,7 @@ pub const RotationModes = struct {
 						.{min, max},
 						.{max, min},
 						.{max, max},
-					}, pattern, min, max, side));
+					}, pattern, min, max, side, textureSlotOffset));
 				},
 				.halfLine => {
 					out.append(rotateQuad(.{
@@ -522,7 +538,7 @@ pub const RotationModes = struct {
 						.{min, max},
 						.{max, 0.0},
 						.{max, max},
-					}, pattern, min, max, side));
+					}, pattern, min, max, side, textureSlotOffset));
 				},
 				.line => {
 					out.append(rotateQuad(.{
@@ -530,7 +546,7 @@ pub const RotationModes = struct {
 						.{min, 1.0},
 						.{max, 0.0},
 						.{max, 1.0},
-					}, pattern, min, max, side));
+					}, pattern, min, max, side, textureSlotOffset));
 				},
 				.bend => {
 					out.append(rotateQuad(.{
@@ -538,7 +554,7 @@ pub const RotationModes = struct {
 						.{0.0, max},
 						.{max, 0.0},
 						.{max, max},
-					}, pattern, min, max, side));
+					}, pattern, min, max, side, textureSlotOffset));
 				},
 				.intersection => {
 					out.append(rotateQuad(.{
@@ -546,7 +562,7 @@ pub const RotationModes = struct {
 						.{0.0, max},
 						.{1.0, 0.0},
 						.{1.0, max},
-					}, pattern, min, max, side));
+					}, pattern, min, max, side, textureSlotOffset));
 				},
 				.cross => {
 					out.append(rotateQuad(.{
@@ -554,7 +570,7 @@ pub const RotationModes = struct {
 						.{0.0, 1.0},
 						.{1.0, 0.0},
 						.{1.0, 1.0},
-					}, pattern, min, max, side));
+					}, pattern, min, max, side, textureSlotOffset));
 				},
 			}
 		}
@@ -638,20 +654,33 @@ pub const RotationModes = struct {
 			};
 		}
 
-		pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
-			const radius = zon.get(f32, "radius", 4);
-			if(branchModels.get(@bitCast(radius))) |modelIndex| return modelIndex;
+		pub fn createBlockModel(_: Block, modeData: *u16, zon: ZonElement) ModelIndex {
+			var radius = zon.get(f32, "radius", 4);
+			const radiusForComparisons = std.math.lossyCast(u16, @round(radius*65536.0/16.0));
+			radius = @as(f32, @floatFromInt(radiusForComparisons))*16.0/65536.0;
+			modeData.* = radiusForComparisons;
+			const shellModelId = zon.get([]const u8, "shellModel", "");
+			const textureSlotOffset = zon.get(u32, "textureSlotOffset", 0);
+			if(branchModels.get(.{.radius = radiusForComparisons, .shellModelId = shellModelId, .textureSlotOffset = textureSlotOffset})) |modelIndex| return modelIndex;
+
+			var shellQuads = main.List(main.models.QuadInfo).init(main.stackAllocator);
+			defer shellQuads.deinit();
+			if(shellModelId.len != 0) {
+				const shellModel = main.models.getModelIndex(shellModelId).model();
+				shellModel.getRawFaces(&shellQuads);
+			}
 
 			var modelIndex: ModelIndex = undefined;
 			for(0..64) |i| {
 				var quads = main.List(main.models.QuadInfo).init(main.stackAllocator);
 				defer quads.deinit();
+				quads.appendSlice(shellQuads.items);
 
 				for(Neighbor.iterable) |neighbor| {
 					const pattern = getPattern(BranchData.init(@intCast(i)), neighbor);
 
 					if(pattern) |pat| {
-						addQuads(pat, neighbor, radius, &quads);
+						addQuads(pat, neighbor, radius, &quads, textureSlotOffset);
 					}
 				}
 
@@ -661,7 +690,7 @@ pub const RotationModes = struct {
 				}
 			}
 
-			branchModels.put(@bitCast(radius), modelIndex) catch unreachable;
+			branchModels.put(.{.radius = radiusForComparisons, .shellModelId = shellModelId, .textureSlotOffset = textureSlotOffset}, modelIndex) catch unreachable;
 
 			return modelIndex;
 		}
@@ -707,16 +736,15 @@ pub const RotationModes = struct {
 			neighborBlock: Block,
 			blockPlacing: bool,
 		) bool {
-			const blockBaseModelIndex = blocks.meshes.modelIndexStart(currentBlock.*);
-			const neighborBaseModelIndex = blocks.meshes.modelIndexStart(neighborBlock);
+			const canConnectToNeighbor = currentBlock.mode() == neighborBlock.mode() and currentBlock.modeData() == neighborBlock.modeData();
 
-			if(blockPlacing or blockBaseModelIndex == neighborBaseModelIndex or neighborBlock.solid()) {
+			if(blockPlacing or canConnectToNeighbor or neighborBlock.solid()) {
 				const neighborModel = blocks.meshes.model(neighborBlock).model();
 
 				var currentData = BranchData.init(currentBlock.data);
 				// Branch block upon placement should extend towards a block it was placed
 				// on if the block is solid or also uses branch model.
-				const targetVal = ((neighborBlock.solid() and !neighborBlock.viewThrough()) and (blockBaseModelIndex == neighborBaseModelIndex or neighborModel.isNeighborOccluded[neighbor.?.reverse().toInt()]));
+				const targetVal = ((neighborBlock.solid() and (!neighborBlock.viewThrough() or canConnectToNeighbor)) and (canConnectToNeighbor or neighborModel.isNeighborOccluded[neighbor.?.reverse().toInt()]));
 				currentData.setConnection(neighbor.?, targetVal);
 
 				const result: u16 = currentData.enabledConnections;
@@ -729,14 +757,13 @@ pub const RotationModes = struct {
 		}
 
 		pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool {
-			const blockBaseModel = blocks.meshes.modelIndexStart(block.*);
-			const neighborBaseModel = blocks.meshes.modelIndexStart(neighborBlock);
+			const canConnectToNeighbor = block.mode() == neighborBlock.mode() and block.modeData() == neighborBlock.modeData();
 			var currentData = BranchData.init(block.data);
 
 			// Handle joining with other branches. While placed, branches extend in a
 			// opposite direction than they were placed from, effectively connecting
 			// to the block they were placed at.
-			if(blockBaseModel == neighborBaseModel) {
+			if(canConnectToNeighbor) {
 				const neighborData = BranchData.init(neighborBlock.data);
 				currentData.setConnection(neighbor, neighborData.isConnected(neighbor.reverse()));
 			} else if(!neighborBlock.solid()) {
