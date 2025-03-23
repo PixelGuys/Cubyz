@@ -39,7 +39,7 @@ To have more success it would help to split things up into smaller PRs, maybe st
 
 This saves time on your end spent reworking your large pull request 10 times. And reviewing your large pull request 10 times is also not fun.
 
-# Write correct and readable code
+# Write correct, readable and maintainable code
 
 ## Explicitly handle all errors (except from those that can't happen)
 
@@ -65,15 +65,29 @@ Everything you lock needs to be unlocked.
 This needs to be true even for error paths such as introduced by `try`.
 Usually you should be fine by using `defer` and `errdefer`. There is also leak-checking in debug mode, so make sure you test your feature in debug mode to check for leaks.
 
+## Keep it simple
+
+Often the simplest code is easier to read, easier to maintain and more efficient too.
+- Don't add generic interfaces for things that don't need them (now). (unless you are certain that you will need them of course)
+- Use syntax sugar of the language where applicable (like `catch`, `orelse`, `for`, `.{}`, `&.{}`, `inline` case, decl literals)
+- If you use the same segment of code multiple times, then it's time to make a helper function
+- If a thing already exists in the code base or the standard library, then use it. Noteworthy namespaces are `std.mem`, `std.meta`, `std.math`, `main.utils`.
+
 ## Follow the style guide
 
 Most of the syntax is handled by a modified version of zig fmt and checked by the CI (see the formatting section above).
 
-Other than there is not much more to it:
-- Use camelCase for variables, constants and functions, CapitalCamelCase for types
-- There is no line limit (I hate seeing code that gets wrapped over by 1 word, because of an arbitrary line limit), but of course try to be reasonable. If you need 200 characters, then you should probably consider splitting it or adding some well-named helper variables.
-- Don't write comments, unless there is something really non-obvious going on.
-- But in either case it's better to write readable code with descriptive names, instead of writing long comments, since comments will naturally degrade over time as the surrounding code changes.
+There are a few more things not covered by the formatter:
+- **Naming conventions:** camelCase for variables, constants and functions; CapitalCamelCase for types
+- **Line limit:** There is no line limit (I hate seeing code that gets wrapped over by 1 word, because of an arbitrary line limit), but of course try to be reasonable. If you need 200 characters, then you should probably consider splitting it or adding some well-named helper variables.
+- **Comments:** Don't write comments, unless there is something non-obvious going on that needs to be explained.<br>
+  But in either case it's better to write readable code with descriptive names, instead of writing long comments, since comments will naturally degrade over time as the surrounding code changes.
+- **Imports:** Import aliasing is nice (if only ZLS would support it). But please don't import/alias functions. If I see a function then knowing where it's from adds some more context. And if there are no aliases then I can assume that a bare function name is defined locally.
+- **Files as Structs:** Don't use files as struct unless you have a good reason for it. I've tried it a few times, but generally I don't think it really adds much and in larger files it can be rather confusing.
+- **File/Directory organization:** Generally try to split things off that are unrelated, and keep things together that are directly interacting with each other. In my opinion the sweet spot for file size is (very roughly) 1000 lines.<br>
+  Instances of a generic interfaces (e.g. GuiWindow, *Generator, Command) should be put into separate files in one directory, since they usually don't have anything in common other than their interface.
+- **Order of Declarations:** Generally I prefer seeing things (helper functions and variables) declared before they are used, as is required in languages like C and C++. However I don't really have a strong opinion on this.
+  What matters most in my opinion is that related things are close together (e.g. init next to deinit, serialize next to deserialize, helper functions next to where they are used).
 
 # Don't put multiple changes into one pull request
 
