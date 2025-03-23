@@ -155,20 +155,23 @@ fn createAssetStringID(
 	fileBaseName: []const u8,
 	relativeFilePath: []const u8,
 ) []u8 {
-	const fileSuffixLen = if(std.ascii.endsWithIgnoreCase(fileBaseName, ".zig.zon")) ".zig.zon".len else ".zon".len;
-	const assetId: []u8 = externalAllocator.alloc(u8, addonName.len + 1 + relativeFilePath.len - fileSuffixLen);
+	var fileNameSplit = std.mem.splitScalar(u8, fileBaseName, '.');
+	const blockName = fileNameSplit.first();
+	const folderPath = relativeFilePath[0..relativeFilePath.len - fileBaseName.len];
+	const assetId: []u8 = externalAllocator.alloc(u8, addonName.len + 1 + folderPath.len + blockName.len);
 
 	@memcpy(assetId[0..addonName.len], addonName);
 	assetId[addonName.len] = ':';
 
 	// Convert from windows to unix style separators.
-	for(0..relativeFilePath.len - fileSuffixLen) |i| {
-		if(relativeFilePath[i] == '\\') {
+	for(0..folderPath.len) |i| {
+		if(folderPath[i] == '\\') {
 			assetId[addonName.len + 1 + i] = '/';
 		} else {
-			assetId[addonName.len + 1 + i] = relativeFilePath[i];
+			assetId[addonName.len + 1 + i] = folderPath[i];
 		}
 	}
+	@memcpy(assetId[assetId.len - blockName.len..], blockName);
 
 	return assetId;
 }
