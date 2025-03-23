@@ -157,7 +157,7 @@ fn createAssetStringID(
 ) []u8 {
 	var fileNameSplit = std.mem.splitScalar(u8, fileBaseName, '.');
 	const blockName = fileNameSplit.first();
-	const folderPath = relativeFilePath[0..relativeFilePath.len - fileBaseName.len];
+	const folderPath = relativeFilePath[0 .. relativeFilePath.len - fileBaseName.len];
 	const assetId: []u8 = externalAllocator.alloc(u8, addonName.len + 1 + folderPath.len + blockName.len);
 
 	@memcpy(assetId[0..addonName.len], addonName);
@@ -171,7 +171,7 @@ fn createAssetStringID(
 			assetId[addonName.len + 1 + i] = folderPath[i];
 		}
 	}
-	@memcpy(assetId[assetId.len - blockName.len..], blockName);
+	@memcpy(assetId[assetId.len - blockName.len ..], blockName);
 
 	return assetId;
 }
