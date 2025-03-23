@@ -41,7 +41,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 		fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: ?Neighbor, _: *Block, _: Block, blockPlacing: bool) bool {
 			return blockPlacing;
 		}
-		fn createBlockModel(_: []const u8, zon: ZonElement) ModelIndex {
+		fn createBlockModel(_: Block, zon: ZonElement) ModelIndex {
 			return main.models.getModelIndex(zon.as([]const u8, "cubyz:cube"));
 		}
 		fn updateData(_: *Block, _: Neighbor, _: Block) bool {
@@ -126,7 +126,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 	// Rotates block data counterclockwise around the Z axis.
 	rotateZ: *const fn(data: u16, angle: Degrees) u16 = DefaultFunctions.rotateZ,
 
-	createBlockModel: *const fn(blockId: []const u8, zon: ZonElement) ModelIndex = &DefaultFunctions.createBlockModel,
+	createBlockModel: *const fn(block: Block, zon: ZonElement) ModelIndex = &DefaultFunctions.createBlockModel,
 
 	/// Updates the block data of a block in the world or places a block in the world.
 	/// return true if the placing was successful, false otherwise.
@@ -176,7 +176,7 @@ pub const RotationModes = struct {
 			rotatedModels.clearRetainingCapacity();
 		}
 
-		pub fn createBlockModel(_: []const u8, zon: ZonElement) ModelIndex {
+		pub fn createBlockModel(_: Block, zon: ZonElement) ModelIndex {
 			const modelId = zon.as([]const u8, "cubyz:cube");
 			if(rotatedModels.get(modelId)) |modelIndex| return modelIndex;
 
@@ -235,7 +235,7 @@ pub const RotationModes = struct {
 			rotatedModels.clearRetainingCapacity();
 		}
 
-		pub fn createBlockModel(_: []const u8, zon: ZonElement) ModelIndex {
+		pub fn createBlockModel(_: Block, zon: ZonElement) ModelIndex {
 			const modelId = zon.as([]const u8, "cubyz:cube");
 			if(rotatedModels.get(modelId)) |modelIndex| return modelIndex;
 
@@ -355,7 +355,7 @@ pub const RotationModes = struct {
 			}
 		}
 
-		pub fn createBlockModel(_: []const u8, zon: ZonElement) ModelIndex {
+		pub fn createBlockModel(_: Block, zon: ZonElement) ModelIndex {
 			const modelId = zon.as([]const u8, "cubyz:cube");
 			if(fenceModels.get(modelId)) |modelIndex| return modelIndex;
 
@@ -638,7 +638,7 @@ pub const RotationModes = struct {
 			};
 		}
 
-		pub fn createBlockModel(_: []const u8, zon: ZonElement) ModelIndex {
+		pub fn createBlockModel(_: Block, zon: ZonElement) ModelIndex {
 			const radius = zon.get(f32, "radius", 4);
 			if(branchModels.get(@bitCast(radius))) |modelIndex| return modelIndex;
 
@@ -900,7 +900,7 @@ pub const RotationModes = struct {
 			return mem[0..faces];
 		}
 
-		pub fn createBlockModel(_: []const u8, _: ZonElement) ModelIndex {
+		pub fn createBlockModel(_: Block, _: ZonElement) ModelIndex {
 			if(modelIndex) |idx| return idx;
 			for(0..256) |i| {
 				var quads = main.List(main.models.QuadInfo).init(main.stackAllocator);
@@ -1142,7 +1142,7 @@ pub const RotationModes = struct {
 			rotatedModels.clearRetainingCapacity();
 		}
 
-		pub fn createBlockModel(_: []const u8, zon: ZonElement) ModelIndex {
+		pub fn createBlockModel(_: Block, zon: ZonElement) ModelIndex {
 			const baseModelId: []const u8 = zon.get([]const u8, "base", "cubyz:cube");
 			const sideModelId: []const u8 = zon.get([]const u8, "side", "cubyz:cube");
 			const key: []const u8 = std.mem.concat(main.stackAllocator.allocator, u8, &.{baseModelId, sideModelId}) catch unreachable;
@@ -1362,7 +1362,7 @@ pub const RotationModes = struct {
 			rotatedModels.clearRetainingCapacity();
 		}
 
-		pub fn createBlockModel(_: []const u8, zon: ZonElement) ModelIndex {
+		pub fn createBlockModel(_: Block, zon: ZonElement) ModelIndex {
 			const modelId = zon.as([]const u8, "cubyz:cube");
 			if(rotatedModels.get(modelId)) |modelIndex| return modelIndex;
 
@@ -1490,7 +1490,7 @@ pub const RotationModes = struct {
 			modelCache = null;
 		}
 
-		pub fn createBlockModel(_: []const u8, zon: ZonElement) ModelIndex {
+		pub fn createBlockModel(_: Block, zon: ZonElement) ModelIndex {
 			const modelId = zon.as([]const u8, "cubyz:cube");
 			if(!std.mem.eql(u8, modelId, "cubyz:cube")) {
 				std.log.err("Ores can only be use on cube models.", .{modelId});
@@ -1543,34 +1543,33 @@ pub const RotationModes = struct {
 	pub const TexturePile = struct {
 		pub const id: []const u8 = "texturePile";
 		var rotatedModels: std.StringHashMap(ModelIndex) = undefined;
-		var blockToStateCountMap: std.AutoHashMapUnmanaged(u16, u16) = undefined;
 
 		fn init() void {
 			rotatedModels = .init(main.globalAllocator.allocator);
-			blockToStateCountMap = .{};
 		}
 
 		fn deinit() void {
 			rotatedModels.deinit();
-			blockToStateCountMap.deinit(main.globalAllocator.allocator);
 		}
 
 		fn reset() void {
 			rotatedModels.clearRetainingCapacity();
-			blockToStateCountMap.clearRetainingCapacity();
 		}
 
 		fn transform(quad: *main.models.QuadInfo, data: u16) void {
 			quad.textureSlot = data%16;
 		}
 
-		pub fn createBlockModel(blockId: []const u8, zon: ZonElement) ModelIndex {
+		pub fn createBlockModel(block: Block, zon: ZonElement) ModelIndex {
 			const modelId = zon.get([]const u8, "model", "cubyz:cube");
 			const stateCount = zon.get(u16, "states", 2);
-			std.debug.assert(stateCount > 1); // There is not enough information to send meaningful log.
-
-			const blockType = blocks.getTypeById(blockId);
-			blockToStateCountMap.putNoClobber(main.globalAllocator.allocator, blockType, stateCount) catch unreachable;
+			const blockId = block.id();
+			if(stateCount <= 1) {
+				std.log.err("Block '{s}' uses texture pile with {} states. 'texturePile' should have at least 2 states, use 'no_rotation' instead", .{blockId, stateCount});
+			} else if(stateCount > 16) {
+				std.log.err("Block '{s}' uses texture pile with {} states. 'texturePile' can have at most 16 states.", .{blockId, stateCount});
+			}
+			block.modeData().* = stateCount;
 
 			if(rotatedModels.get(modelId)) |modelIndex| return modelIndex;
 
@@ -1585,8 +1584,7 @@ pub const RotationModes = struct {
 		}
 
 		pub fn model(block: Block) ModelIndex {
-			const maxStateCount = blockToStateCountMap.get(block.typ).?;
-			return .{.index = blocks.meshes.modelIndexStart(block).index + @min(block.data, maxStateCount - 1)};
+			return .{.index = blocks.meshes.modelIndexStart(block).index + @min(block.data, block.modeData().* - 1)};
 		}
 
 		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: ?Neighbor, currentData: *Block, _: Block, blockPlacing: bool) bool {
