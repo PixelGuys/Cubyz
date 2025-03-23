@@ -2,7 +2,6 @@ const std = @import("std");
 const Atomic = std.atomic.Value;
 
 const main = @import("root");
-// const main = @import("../main.zig");
 const chunk = main.chunk;
 const network = main.network;
 const Connection = network.Connection;
