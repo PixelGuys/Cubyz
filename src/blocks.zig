@@ -365,8 +365,8 @@ pub const Block = packed struct { // MARK: Block
 		return _mode[self.typ];
 	}
 
-	pub inline fn modeData(self: Block) *u16 {
-		return &_modeData[self.typ];
+	pub inline fn modeData(self: Block) u16 {
+		return _modeData[self.typ];
 	}
 
 	pub inline fn rotateZ(self: Block, angle: Degrees) Block {
@@ -671,7 +671,7 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	pub fn register(assetFolder: []const u8, _: []const u8, zon: ZonElement) void {
-		_modelIndex[meshes.size] = _mode[meshes.size].createBlockModel(.{.typ = @intCast(meshes.size), .data = 0}, zon.getChild("model"));
+		_modelIndex[meshes.size] = _mode[meshes.size].createBlockModel(.{.typ = @intCast(meshes.size), .data = 0}, &_modeData[meshes.size], zon.getChild("model"));
 
 		// The actual model is loaded later, in the rendering thread.
 		// But textures can be loaded here:

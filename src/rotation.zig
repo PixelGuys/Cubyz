@@ -41,7 +41,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 		fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: ?Neighbor, _: *Block, _: Block, blockPlacing: bool) bool {
 			return blockPlacing;
 		}
-		fn createBlockModel(_: Block, zon: ZonElement) ModelIndex {
+		fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 			return main.models.getModelIndex(zon.as([]const u8, "cubyz:cube"));
 		}
 		fn updateData(_: *Block, _: Neighbor, _: Block) bool {
@@ -126,7 +126,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 	// Rotates block data counterclockwise around the Z axis.
 	rotateZ: *const fn(data: u16, angle: Degrees) u16 = DefaultFunctions.rotateZ,
 
-	createBlockModel: *const fn(block: Block, zon: ZonElement) ModelIndex = &DefaultFunctions.createBlockModel,
+	createBlockModel: *const fn(block: Block, modeData: *u16, zon: ZonElement) ModelIndex = &DefaultFunctions.createBlockModel,
 
 	/// Updates the block data of a block in the world or places a block in the world.
 	/// return true if the placing was successful, false otherwise.
@@ -176,7 +176,7 @@ pub const RotationModes = struct {
 			rotatedModels.clearRetainingCapacity();
 		}
 
-		pub fn createBlockModel(_: Block, zon: ZonElement) ModelIndex {
+		pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 			const modelId = zon.as([]const u8, "cubyz:cube");
 			if(rotatedModels.get(modelId)) |modelIndex| return modelIndex;
 
@@ -235,7 +235,7 @@ pub const RotationModes = struct {
 			rotatedModels.clearRetainingCapacity();
 		}
 
-		pub fn createBlockModel(_: Block, zon: ZonElement) ModelIndex {
+		pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 			const modelId = zon.as([]const u8, "cubyz:cube");
 			if(rotatedModels.get(modelId)) |modelIndex| return modelIndex;
 
@@ -355,7 +355,7 @@ pub const RotationModes = struct {
 			}
 		}
 
-		pub fn createBlockModel(_: Block, zon: ZonElement) ModelIndex {
+		pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 			const modelId = zon.as([]const u8, "cubyz:cube");
 			if(fenceModels.get(modelId)) |modelIndex| return modelIndex;
 
@@ -638,7 +638,7 @@ pub const RotationModes = struct {
 			};
 		}
 
-		pub fn createBlockModel(_: Block, zon: ZonElement) ModelIndex {
+		pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 			const radius = zon.get(f32, "radius", 4);
 			if(branchModels.get(@bitCast(radius))) |modelIndex| return modelIndex;
 
@@ -900,7 +900,7 @@ pub const RotationModes = struct {
 			return mem[0..faces];
 		}
 
-		pub fn createBlockModel(_: Block, _: ZonElement) ModelIndex {
+		pub fn createBlockModel(_: Block, _: *u16, _: ZonElement) ModelIndex {
 			if(modelIndex) |idx| return idx;
 			for(0..256) |i| {
 				var quads = main.List(main.models.QuadInfo).init(main.stackAllocator);
@@ -1142,7 +1142,7 @@ pub const RotationModes = struct {
 			rotatedModels.clearRetainingCapacity();
 		}
 
-		pub fn createBlockModel(_: Block, zon: ZonElement) ModelIndex {
+		pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 			const baseModelId: []const u8 = zon.get([]const u8, "base", "cubyz:cube");
 			const sideModelId: []const u8 = zon.get([]const u8, "side", "cubyz:cube");
 			const key: []const u8 = std.mem.concat(main.stackAllocator.allocator, u8, &.{baseModelId, sideModelId}) catch unreachable;
@@ -1362,7 +1362,7 @@ pub const RotationModes = struct {
 			rotatedModels.clearRetainingCapacity();
 		}
 
-		pub fn createBlockModel(_: Block, zon: ZonElement) ModelIndex {
+		pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 			const modelId = zon.as([]const u8, "cubyz:cube");
 			if(rotatedModels.get(modelId)) |modelIndex| return modelIndex;
 
@@ -1490,7 +1490,7 @@ pub const RotationModes = struct {
 			modelCache = null;
 		}
 
-		pub fn createBlockModel(_: Block, zon: ZonElement) ModelIndex {
+		pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 			const modelId = zon.as([]const u8, "cubyz:cube");
 			if(!std.mem.eql(u8, modelId, "cubyz:cube")) {
 				std.log.err("Ores can only be use on cube models.", .{modelId});
@@ -1560,7 +1560,7 @@ pub const RotationModes = struct {
 			quad.textureSlot = data%16;
 		}
 
-		pub fn createBlockModel(block: Block, zon: ZonElement) ModelIndex {
+		pub fn createBlockModel(block: Block, modeData: *u16, zon: ZonElement) ModelIndex {
 			const modelId = zon.get([]const u8, "model", "cubyz:cube");
 			const stateCount = zon.get(u16, "states", 2);
 			const blockId = block.id();
@@ -1569,7 +1569,7 @@ pub const RotationModes = struct {
 			} else if(stateCount > 16) {
 				std.log.err("Block '{s}' uses texture pile with {} states. 'texturePile' can have at most 16 states.", .{blockId, stateCount});
 			}
-			block.modeData().* = stateCount;
+			modeData.* = stateCount;
 
 			if(rotatedModels.get(modelId)) |modelIndex| return modelIndex;
 
@@ -1584,7 +1584,7 @@ pub const RotationModes = struct {
 		}
 
 		pub fn model(block: Block) ModelIndex {
-			return .{.index = blocks.meshes.modelIndexStart(block).index + @min(block.data, block.modeData().* - 1)};
+			return .{.index = blocks.meshes.modelIndexStart(block).index + @min(block.data, block.modeData() - 1)};
 		}
 
 		pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: ?Neighbor, currentData: *Block, _: Block, blockPlacing: bool) bool {
@@ -1592,7 +1592,7 @@ pub const RotationModes = struct {
 				currentData.data = 0;
 				return true;
 			}
-			if(currentData.data >= 3) {
+			if(currentData.data >= currentData.modeData() - 1) {
 				return false;
 			}
 			currentData.data = currentData.data + 1;
@@ -1600,7 +1600,7 @@ pub const RotationModes = struct {
 		}
 
 		pub fn onBlockBreaking(_: ?main.items.Item, _: Vec3f, _: Vec3f, currentData: *Block) void {
-			if(currentData.data <= 1) {
+			if(currentData.data == 0) {
 				currentData.* = .{.typ = 0, .data = 0};
 			} else {
 				currentData.data = currentData.data - 1;
@@ -1615,7 +1615,7 @@ pub const RotationModes = struct {
 					if(amountChange <= 0) {
 						return .{.yes_dropsItems = @intCast(-amountChange)};
 					} else {
-						if(item.item == null or item.item.? != .baseItem or !std.meta.eql(item.item.?.baseItem.block, newBlock.typ)) return .no;
+						if(item.item == null or item.item.? != .baseItem or item.item.?.baseItem.block != newBlock.typ) return .no;
 						return .{.yes_costsItems = @intCast(amountChange)};
 					}
 				},
