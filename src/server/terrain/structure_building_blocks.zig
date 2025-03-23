@@ -1,7 +1,6 @@
 const std = @import("std");
 
-// const main = @import("root");
-const main = @import("../../main.zig");
+const main = @import("root");
 const ZonElement = main.ZonElement;
 const Blueprint = main.blueprint.Blueprint;
 const List = main.List;
@@ -16,7 +15,7 @@ var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
 const arenaAllocator = arena.allocator();
 
 var structureCache: std.StringHashMapUnmanaged(StructureBuildingBlock) = .{};
-var blueprintCache: std.StringHashMapUnmanaged([4]BlueprintEntry) = .{};
+var blueprintCache: std.StringHashMapUnmanaged(*[4]BlueprintEntry) = .{};
 var childrenToResolve: List(struct {parentId: []const u8, colorName: []const u8, colorIndex: usize, childIndex: usize, structureId: []const u8}) = undefined;
 
 const originBlockStringId = "cubyz:sbb/origin";
@@ -89,8 +88,7 @@ const BlueprintEntry = struct {
 			std.log.err("[{s}] No origin block found.", .{stringId});
 			return error.NoOriginBlock;
 		}
-		self.childBlocks = arenaAllocator.alloc(StructureBlock, childBlocks.items.len);
-		@memcpy(self.childBlocks, childBlocks.items);
+		self.childBlocks = arenaAllocator.dupe(StructureBlock, childBlocks.items);
 
 		return self;
 	}
@@ -106,7 +104,7 @@ pub fn isOriginBlock(block: Block) bool {
 
 pub const StructureBuildingBlock = struct {
 	children: []AliasTable(Child),
-	blueprints: [4]BlueprintEntry,
+	blueprints: *[4]BlueprintEntry,
 
 	fn initFromZon(stringId: []const u8, zon: ZonElement) !StructureBuildingBlock {
 		const blueprintId = zon.get(?[]const u8, "blueprint", null) orelse {
@@ -128,9 +126,9 @@ pub const StructureBuildingBlock = struct {
 		return self;
 	}
 	pub fn getBlueprint(self: StructureBuildingBlock, rotation: Degrees) *BlueprintEntry {
-		return self.blueprints[@intFromEnum(rotation)];
+		return &self.blueprints[@intFromEnum(rotation)];
 	}
-	pub fn pickChild(self: StructureBuildingBlock, block: BlueprintEntry.StructureBlock, seed: *u64) *StructureBuildingBlock {
+	pub fn pickChild(self: StructureBuildingBlock, block: BlueprintEntry.StructureBlock, seed: *u64) *const StructureBuildingBlock {
 		return self.children[block.index].sample(seed).structure;
 	}
 };
@@ -171,7 +169,7 @@ const Child = struct {
 };
 
 pub fn registerSBB(structures: *std.StringHashMap(ZonElement)) !void {
-	std.debug.assert(structureCache.capacity() != 0);
+	std.debug.assert(structureCache.capacity() == 0);
 	structureCache.ensureTotalCapacity(arenaAllocator.allocator, structures.count()) catch unreachable;
 	childrenToResolve = .init(main.stackAllocator);
 	{
@@ -209,7 +207,7 @@ pub fn registerChildBlock(numericId: u16, stringId: []const u8) void {
 }
 
 pub fn registerBlueprints(blueprints: *std.StringHashMap([]u8)) !void {
-	std.debug.assert(blueprintCache.capacity() != 0);
+	std.debug.assert(blueprintCache.capacity() == 0);
 
 	originBlockNumericId = main.blocks.parseBlock(originBlockStringId).typ;
 	std.log.debug("Origin block numeric id: {}", .{originBlockNumericId});
@@ -224,7 +222,7 @@ pub fn registerBlueprints(blueprints: *std.StringHashMap([]u8)) !void {
 			continue;
 		};
 
-		const rotatedBlueprints = arenaAllocator.alloc(BlueprintEntry, 4);
+		const rotatedBlueprints = arenaAllocator.create([4]BlueprintEntry);
 		rotatedBlueprints.* = .{
 			BlueprintEntry.init(blueprint0, stringId) catch continue,
 			BlueprintEntry.init(blueprint0.rotateZ(arenaAllocator, .@"90"), stringId) catch continue,
