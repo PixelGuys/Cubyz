@@ -209,30 +209,6 @@ pub fn readAllBlueprintFilesInAddons(
 	}
 }
 
-fn createAssetStringID(
-	externalAllocator: NeverFailingAllocator,
-	addonName: []const u8,
-	fileBaseName: []const u8,
-	relativeFilePath: []const u8,
-) []u8 {
-	const fileSuffixLen = if(std.ascii.endsWithIgnoreCase(fileBaseName, ".zig.zon")) ".zig.zon".len else ".zon".len;
-	const assetId: []u8 = externalAllocator.alloc(u8, addonName.len + 1 + relativeFilePath.len - fileSuffixLen);
-
-	@memcpy(assetId[0..addonName.len], addonName);
-	assetId[addonName.len] = ':';
-
-	// Convert from windows to unix style separators.
-	for(0..relativeFilePath.len - fileSuffixLen) |i| {
-		if(relativeFilePath[i] == '\\') {
-			assetId[addonName.len + 1 + i] = '/';
-		} else {
-			assetId[addonName.len + 1 + i] = relativeFilePath[i];
-		}
-	}
-
-	return assetId;
-}
-
 /// Reads obj files recursively from all subfolders.
 pub fn readAllObjFilesInAddonsHashmap(
 	externalAllocator: NeverFailingAllocator,
