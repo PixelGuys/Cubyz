@@ -7,11 +7,8 @@
 	},
 	.minHeight = 120,
 	.maxHeight = 256,
-
 	.mountains = 125,
-
 	.music = "cubyz:DarkTimes",
-
 	.ground_structure = .{
 		"3 to 6 cubyz:snow",
 	},
@@ -23,6 +20,15 @@
 			.chance = 0.08,
 			.size = 3,
 			.size_variation = 5,
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:ice",
+			.chance = 0.5,
+			.width = 24,
+			.depth = 1,
+			.smoothness = 1.0,
+			.generationMode = .water_surface
 		},
 	},
 }

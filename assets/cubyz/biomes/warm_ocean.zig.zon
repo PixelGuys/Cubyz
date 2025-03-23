@@ -36,6 +36,12 @@
 			.properties = .{.land, .inland},
 		},
 		.{
+			.id = "cubyz:glacier/floor",
+			.chance = 1,
+			.width = 2,
+			.properties = .{.cold, .wet, .barren, .ocean},
+		},
+		.{
 			.id = "cubyz:ocean_shelf",
 			.chance = 1,
 			.width = 2,

@@ -1,0 +1,63 @@
+.{
+	.properties = .{
+		.ocean,
+		.cold,
+		.wet,
+	},
+	.radius = 500,
+	.minHeight = -64,
+	.maxHeight = 0,
+	.chance = 0,
+	.interpolation = .linear,
+	.hills = 10,
+	.music = "cubyz:tides",
+	.ground_structure = .{
+		"3 to 4 cubyz:frost",
+	},
+	.structures = .{
+		.{
+			.id = "cubyz:stalagmite",
+			.block = "cubyz:snow",
+			.chance = 0.0025,
+			.size = 4,
+			.size_variation = 4,
+			.generationMode = .water_surface
+		},
+		.{
+			.id = "cubyz:stalagmite",
+			.block = "cubyz:frost",
+			.chance = 0.005,
+			.size = 2,
+			.size_variation = 3,
+			.generationMode = .water_surface
+		},
+		.{
+			.id = "cubyz:stalagmite",
+			.block = "cubyz:ice",
+			.chance = 0.0125,
+			.size = 1,
+			.size_variation = 2,
+			.generationMode = .water_surface
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:ice",
+			.chance = 0.05,
+			.width = 3,
+			.variation = 16,
+			.depth = 2,
+			.smoothness = 0.66,
+			.generationMode = .water_surface
+		},
+		.{
+			.id = "cubyz:ground_patch",
+			.block = "cubyz:ice",
+			.chance = 0.3,
+			.width = 1,
+			.variation = 6,
+			.depth = 1,
+			.smoothness = 0.66,
+			.generationMode = .water_surface
+		},
+	},
+}
