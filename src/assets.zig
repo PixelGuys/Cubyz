@@ -199,25 +199,12 @@ pub fn readAllBlueprintFilesInAddons(
 			if(!std.ascii.endsWithIgnoreCase(entry.basename, ".blp")) continue;
 			if(std.ascii.startsWithIgnoreCase(entry.basename, "_migrations")) continue;
 
-			const fileSuffixLen = if(std.ascii.endsWithIgnoreCase(entry.basename, ".zig.zon")) ".zig.zon".len else ".zon".len;
-			const folderName = addonName;
-			const id: []u8 = externalAllocator.alloc(u8, folderName.len + 1 + entry.path.len - fileSuffixLen);
-			errdefer externalAllocator.free(id);
-			@memcpy(id[0..folderName.len], folderName);
-			id[folderName.len] = ':';
-			for(0..entry.path.len - fileSuffixLen) |i| {
-				if(entry.path[i] == '\\') { // Convert windows path seperators
-					id[folderName.len + 1 + i] = '/';
-				} else {
-					id[folderName.len + 1 + i] = entry.path[i];
-				}
-			}
-
+			const stringId: []u8 = createAssetStringID(externalAllocator, addonName, entry.basename, entry.path);
 			const data = main.files.Dir.init(dir).read(externalAllocator, entry.path) catch |err| {
 				std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
 				continue;
 			};
-			output.put(id, data) catch unreachable;
+			output.put(stringId, data) catch unreachable;
 		}
 	}
 }
