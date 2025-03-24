@@ -14,6 +14,7 @@ const BinaryReader = main.utils.BinaryReader;
 const BinaryWriter = main.utils.BinaryWriter;
 const Blueprint = main.blueprint.Blueprint;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const CircularBufferQueue = main.utils.CircularBufferQueue;
 
 pub const ServerWorld = @import("world.zig").ServerWorld;
 pub const terrain = @import("terrain/terrain.zig");
@@ -22,16 +23,17 @@ pub const storage = @import("storage.zig");
 
 const command = @import("command/_command.zig");
 
+
 pub const WorldEditData = struct {
+	const maxWorldEditHistoryCapacity: u32 = 1024;
+
 	selectionPosition1: ?Vec3i = null,
 	selectionPosition2: ?Vec3i = null,
 	clipboard: ?Blueprint = null,
-	undoHistory: History = .{},
+	undoHistory: History,
 
 	const History = struct {
-		const DLList = std.DoublyLinkedList(Value);
-		changes: DLList = .{},
-		maxCapacity: u32 = 16,
+		changes: CircularBufferQueue(Value),
 
 		const Value = struct {
 			blueprint: Blueprint,
@@ -46,36 +48,31 @@ pub const WorldEditData = struct {
 				self.blueprint.deinit(main.globalAllocator);
 			}
 		};
+		pub fn init() History {
+			return .{.changes = .init(main.globalAllocator, maxWorldEditHistoryCapacity)};
+		}
 		pub fn deinit(self: *History) void {
 			self.clear();
+			self.changes.deinit();
 		}
 		pub fn clear(self: *History) void {
-			while(self.changes.pop()) |node| {
-				node.data.deinit();
-				main.globalAllocator.destroy(node);
-			}
+			while(self.changes.dequeue()) |item| item.deinit();
+			self.changes.clearRetainingCapacity();
 		}
 		pub fn push(self: *History, value: Value) void {
-			const node = main.globalAllocator.create(DLList.Node);
-			node.data = value;
-			self.changes.prepend(node);
+			self.changes.enqueue(value);
 
-			if(self.changes.len > self.maxCapacity) {
-				if(self.changes.pop()) |oldNode| {
-					oldNode.data.deinit();
-					main.globalAllocator.destroy(oldNode);
-				}
+			if(self.changes.full()) {
+				if(self.changes.dequeue()) |oldValue| oldValue.deinit();
 			}
 		}
 		pub fn pop(self: *History) ?Value {
-			if(self.changes.popFirst()) |node| {
-				defer main.globalAllocator.destroy(node);
-				return node.data;
-			}
-			return null;
+			return self.changes.dequeue_front();
 		}
 	};
-
+	pub fn init() WorldEditData {
+		return .{.undoHistory = History.init()};
+	}
 	pub fn deinit(self: *WorldEditData) void {
 		if(self.clipboard != null) {
 			self.clipboard.?.deinit(main.globalAllocator);
@@ -105,7 +102,7 @@ pub const User = struct { // MARK: User
 	lastRenderDistance: u16 = 0,
 	lastPos: Vec3i = @splat(0),
 	gamemode: std.atomic.Value(main.game.Gamemode) = .init(.creative),
-	worldEditData: WorldEditData = .{},
+	worldEditData: WorldEditData = undefined,
 
 	inventoryClientToServerIdMap: std.AutoHashMap(u32, u32) = undefined,
 
@@ -123,6 +120,7 @@ pub const User = struct { // MARK: User
 		self.interpolation.init(@ptrCast(&self.player.pos), @ptrCast(&self.player.vel));
 		self.conn = try Connection.init(manager, ipPort, self);
 		self.increaseRefCount();
+		self.worldEditData = .init();
 		network.Protocols.handShake.serverSide(self.conn);
 		return self;
 	}
