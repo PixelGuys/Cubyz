@@ -62,7 +62,7 @@
 			.variation = 4,
 			.density = 0.66,
 			.priority = 0.2,
-			.generationMode = .water_surface
+			.generationMode = .water_surface,
 		},
 		.{
 			.id = "cubyz:flower_patch",
@@ -72,7 +72,7 @@
 			.variation = 3,
 			.density = 0.66,
 			.priority = 0.3,
-			.generationMode = .water_surface
+			.generationMode = .water_surface,
 		},
 		.{
 			.id = "cubyz:flower_patch",
@@ -82,7 +82,7 @@
 			.variation = 2,
 			.density = 0.66,
 			.priority = 0.4,
-			.generationMode = .water_surface
+			.generationMode = .water_surface,
 		},
 		.{
 			.id = "cubyz:flower_patch",
@@ -92,7 +92,7 @@
 			.variation = 2,
 			.density = 0.66,
 			.priority = 0.5,
-			.generationMode = .water_surface
+			.generationMode = .water_surface,
 		},
 		.{
 			.id = "cubyz:flower_patch",

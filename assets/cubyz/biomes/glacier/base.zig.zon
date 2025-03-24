@@ -24,7 +24,7 @@
 			.chance = 0.0075,
 			.size = 7,
 			.size_variation = 6,
-			.generationMode = .water_surface
+			.generationMode = .water_surface,
 		},
 		.{
 			.id = "cubyz:stalagmite",
@@ -32,7 +32,7 @@
 			.chance = 0.025,
 			.size = 4,
 			.size_variation = 5,
-			.generationMode = .water_surface
+			.generationMode = .water_surface,
 		},
 		.{
 			.id = "cubyz:stalagmite",
@@ -40,7 +40,7 @@
 			.chance = 0.04,
 			.size = 1,
 			.size_variation = 4,
-			.generationMode = .water_surface
+			.generationMode = .water_surface,
 		},
 		.{
 			.id = "cubyz:ground_patch",
@@ -50,7 +50,7 @@
 			.variation = 18,
 			.depth = 3,
 			.smoothness = 0.5,
-			.generationMode = .water_surface
+			.generationMode = .water_surface,
 		},
 		.{
 			.id = "cubyz:ground_patch",
@@ -60,7 +60,7 @@
 			.variation = 18,
 			.depth = 2,
 			.smoothness = 0.66,
-			.generationMode = .water_surface
+			.generationMode = .water_surface,
 		},
 		.{
 			.id = "cubyz:ground_patch",
@@ -70,7 +70,7 @@
 			.variation = 10,
 			.depth = 1,
 			.smoothness = 0.66,
-			.generationMode = .water_surface
+			.generationMode = .water_surface,
 		},
 	},
 	.transitionBiomes = .{

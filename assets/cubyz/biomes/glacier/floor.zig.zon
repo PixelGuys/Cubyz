@@ -14,7 +14,6 @@
 	.ground_structure = .{
 		"3 to 4 cubyz:frost",
 	},
-	.stoneBlock = "cubyz:glacite",
 	.structures = .{
 		.{
 			.id = "cubyz:stalagmite",
@@ -22,7 +21,7 @@
 			.chance = 0.0025,
 			.size = 4,
 			.size_variation = 4,
-			.generationMode = .water_surface
+			.generationMode = .water_surface,
 		},
 		.{
 			.id = "cubyz:stalagmite",
@@ -30,7 +29,7 @@
 			.chance = 0.005,
 			.size = 2,
 			.size_variation = 3,
-			.generationMode = .water_surface
+			.generationMode = .water_surface,
 		},
 		.{
 			.id = "cubyz:stalagmite",
@@ -38,7 +37,7 @@
 			.chance = 0.0125,
 			.size = 1,
 			.size_variation = 2,
-			.generationMode = .water_surface
+			.generationMode = .water_surface,
 		},
 		.{
 			.id = "cubyz:ground_patch",
@@ -48,7 +47,7 @@
 			.variation = 16,
 			.depth = 2,
 			.smoothness = 0.66,
-			.generationMode = .water_surface
+			.generationMode = .water_surface,
 		},
 		.{
 			.id = "cubyz:ground_patch",
@@ -58,7 +57,7 @@
 			.variation = 6,
 			.depth = 1,
 			.smoothness = 0.66,
-			.generationMode = .water_surface
+			.generationMode = .water_surface,
 		},
 	},
 }
