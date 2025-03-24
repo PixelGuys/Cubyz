@@ -34,25 +34,23 @@ pub fn initFromString(allocator: NeverFailingAllocator, source: []const u8) !@Th
 				const block = main.blocks.parseBlock(blockId);
 				const blockWeight = try std.fmt.parseInt(usize, weight, 10);
 				totalWeight += blockWeight;
-				weightedEntries.append(main.stackAllocator, .{ .block = block, .weight = blockWeight });
+				weightedEntries.append(main.stackAllocator, .{.block = block, .weight = blockWeight});
 				continue;
-
 			} else return error.PatternSyntaxError;
 		}
 		if(first) |blockId| {
 			const block = main.blocks.parseBlock(blockId);
 			totalWeight += 1;
-			weightedEntries.append(main.stackAllocator, .{ .block = block, .weight = 1 });
-
+			weightedEntries.append(main.stackAllocator, .{.block = block, .weight = 1});
 		} else return error.PatternSyntaxError;
 	}
 
 	const entries = allocator.alloc(Entry, weightedEntries.items.len);
 	for(weightedEntries.items, 0..) |entry, i| {
-		entries[i] = .{ .block = entry.block, .chance = @as(f32, @floatFromInt(entry.weight)) / @as(f32, @floatFromInt(totalWeight)) };
+		entries[i] = .{.block = entry.block, .chance = @as(f32, @floatFromInt(entry.weight))/@as(f32, @floatFromInt(totalWeight))};
 	}
 
-	return .{ .blocks = .init(allocator, entries) };
+	return .{.blocks = .init(allocator, entries)};
 }
 
 pub fn deinit(self: @This(), allocator: NeverFailingAllocator) void {
