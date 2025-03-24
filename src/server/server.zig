@@ -59,11 +59,11 @@ pub const WorldEditData = struct {
 			self.changes.clearRetainingCapacity();
 		}
 		pub fn push(self: *History, value: Value) void {
-			self.changes.enqueue(value);
-
 			if(self.changes.full()) {
 				if(self.changes.dequeue()) |oldValue| oldValue.deinit();
 			}
+
+			self.changes.enqueue(value);
 		}
 		pub fn pop(self: *History) ?Value {
 			return self.changes.dequeue_front();
