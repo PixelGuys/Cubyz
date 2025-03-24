@@ -112,7 +112,7 @@ pub fn readAllZonFilesInAddons(
 				!std.ascii.startsWithIgnoreCase(entry.path, "textures") and
 				!std.ascii.eqlIgnoreCase(entry.basename, "_migrations.zig.zon"))
 			{
-				const id = createAssetStringID(externalAllocator, addonName, entry.basename, entry.path);
+				const id = createAssetStringID(externalAllocator, addonName, entry.path);
 
 				const zon = main.files.Dir.init(dir).readToZon(externalAllocator, entry.path) catch |err| {
 					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
@@ -152,32 +152,24 @@ pub fn readAllZonFilesInAddons(
 fn createAssetStringID(
 	externalAllocator: NeverFailingAllocator,
 	addonName: []const u8,
-	fileBaseName: []const u8,
 	relativeFilePath: []const u8,
 ) []u8 {
-	var blockName: []const u8 = undefined;
-	if(std.ascii.endsWithIgnoreCase(fileBaseName, ".zig.zon")) {
-		blockName = fileBaseName[0 .. fileBaseName.len - ".zig.zon".len];
-	} else {
-		var fileNameSplit = std.mem.splitBackwardsScalar(u8, fileBaseName, '.');
-		const suffix = fileNameSplit.first();
-		blockName = fileBaseName[0 .. fileBaseName.len - suffix.len - 1]; // -1 to account for the dot.
-	}
-	const folderPath = relativeFilePath[0 .. relativeFilePath.len - fileBaseName.len];
-	const assetId: []u8 = externalAllocator.alloc(u8, addonName.len + 1 + folderPath.len + blockName.len);
+	const baseNameEndIndex = if(std.ascii.endsWithIgnoreCase(relativeFilePath, ".zig.zon")) relativeFilePath.len - ".zig.zon".len else std.mem.lastIndexOfScalar(u8, relativeFilePath, '.') orelse relativeFilePath.len;
+	const pathNoExtension: []const u8 = relativeFilePath[0..baseNameEndIndex];
+
+	const assetId: []u8 = externalAllocator.alloc(u8, addonName.len + 1 + pathNoExtension.len);
 
 	@memcpy(assetId[0..addonName.len], addonName);
 	assetId[addonName.len] = ':';
 
 	// Convert from windows to unix style separators.
-	for(0..folderPath.len) |i| {
-		if(folderPath[i] == '\\') {
+	for(0..pathNoExtension.len) |i| {
+		if(pathNoExtension[i] == '\\') {
 			assetId[addonName.len + 1 + i] = '/';
 		} else {
-			assetId[addonName.len + 1 + i] = folderPath[i];
+			assetId[addonName.len + 1 + i] = pathNoExtension[i];
 		}
 	}
-	@memcpy(assetId[assetId.len - blockName.len ..], blockName);
 
 	return assetId;
 }
@@ -206,7 +198,7 @@ pub fn readAllObjFilesInAddonsHashmap(
 			break :blk null;
 		}) |entry| {
 			if(entry.kind == .file and std.ascii.endsWithIgnoreCase(entry.basename, ".obj")) {
-				const id: []u8 = createAssetStringID(externalAllocator, addonName, entry.basename, entry.path);
+				const id: []u8 = createAssetStringID(externalAllocator, addonName, entry.path);
 
 				const string = dir.readFileAlloc(externalAllocator.allocator, entry.path, std.math.maxInt(usize)) catch |err| {
 					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
