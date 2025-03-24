@@ -124,38 +124,7 @@ fn BlockEntityData(T: type) type {
 	};
 }
 
-pub const EntityDataClasses = struct {
-	pub const Chest = struct {
-		const Super = BlockEntityData(
-			struct {
-				contents: u64,
-			},
-		);
-
-		pub const id = "chest";
-		const init = Super.init;
-		const reset = Super.reset;
-		const deinit = Super.deinit;
-
-		pub fn onLoad(pos: Vec3i, chunk: *Chunk) void {
-			Super.add(pos, .{.contents = 0}, chunk);
-		}
-		pub fn onUnload(pos: Vec3i, chunk: *Chunk) void {
-			Super.remove(pos, chunk);
-		}
-		pub fn onPlace(pos: Vec3i, chunk: *Chunk) void {
-			Super.add(pos, .{.contents = 0}, chunk);
-		}
-		pub fn onBreak(pos: Vec3i, chunk: *Chunk) void {
-			Super.remove(pos, chunk);
-		}
-		pub fn onInteract(pos: Vec3i, chunk: *Chunk) bool {
-			const data = Super.get(pos, chunk);
-			std.debug.print("Chest contents: {}", .{data.contents});
-			return true;
-		}
-	};
-};
+pub const EntityDataClasses = struct {};
 
 var entityDataClasses: std.StringHashMapUnmanaged(EntityDataClass) = .{};
 
