@@ -391,6 +391,10 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 		pub fn empty(self: *Self) bool {
 			return self.startIndex == self.endIndex;
 		}
+
+		pub fn reachedCapacity(self: *Self) bool {
+			return self.startIndex == (self.endIndex + 1) & self.mask;
+		}
 	};
 }
 
