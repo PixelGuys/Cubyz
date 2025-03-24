@@ -121,19 +121,7 @@ pub fn readAllZonFilesInAddons(
 				!std.ascii.startsWithIgnoreCase(entry.path, "textures") and
 				!std.ascii.eqlIgnoreCase(entry.basename, "_migrations.zig.zon"))
 			{
-				const fileSuffixLen = if(std.ascii.endsWithIgnoreCase(entry.basename, ".zig.zon")) ".zig.zon".len else ".zon".len;
-				const folderName = addonName;
-				const id: []u8 = externalAllocator.alloc(u8, folderName.len + 1 + entry.path.len - fileSuffixLen);
-				errdefer externalAllocator.free(id);
-				@memcpy(id[0..folderName.len], folderName);
-				id[folderName.len] = ':';
-				for(0..entry.path.len - fileSuffixLen) |i| {
-					if(entry.path[i] == '\\') { // Convert windows path seperators
-						id[folderName.len + 1 + i] = '/';
-					} else {
-						id[folderName.len + 1 + i] = entry.path[i];
-					}
-				}
+				const id = createAssetStringID(externalAllocator, addonName, entry.path);
 
 				const zon = main.files.Dir.init(dir).readToZon(externalAllocator, entry.path) catch |err| {
 					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
@@ -171,6 +159,31 @@ pub fn readAllZonFilesInAddons(
 	}
 }
 
+fn createAssetStringID(
+	externalAllocator: NeverFailingAllocator,
+	addonName: []const u8,
+	relativeFilePath: []const u8,
+) []u8 {
+	const baseNameEndIndex = if(std.ascii.endsWithIgnoreCase(relativeFilePath, ".zig.zon")) relativeFilePath.len - ".zig.zon".len else std.mem.lastIndexOfScalar(u8, relativeFilePath, '.') orelse relativeFilePath.len;
+	const pathNoExtension: []const u8 = relativeFilePath[0..baseNameEndIndex];
+
+	const assetId: []u8 = externalAllocator.alloc(u8, addonName.len + 1 + pathNoExtension.len);
+
+	@memcpy(assetId[0..addonName.len], addonName);
+	assetId[addonName.len] = ':';
+
+	// Convert from windows to unix style separators.
+	for(0..pathNoExtension.len) |i| {
+		if(pathNoExtension[i] == '\\') {
+			assetId[addonName.len + 1 + i] = '/';
+		} else {
+			assetId[addonName.len + 1 + i] = pathNoExtension[i];
+		}
+	}
+
+	return assetId;
+}
+
 pub fn readAllBlueprintFilesInAddons(
 	externalAllocator: NeverFailingAllocator,
 	addons: main.List(std.fs.Dir),
@@ -199,7 +212,7 @@ pub fn readAllBlueprintFilesInAddons(
 			if(!std.ascii.endsWithIgnoreCase(entry.basename, ".blp")) continue;
 			if(std.ascii.startsWithIgnoreCase(entry.basename, "_migrations")) continue;
 
-			const stringId: []u8 = createAssetStringID(externalAllocator, addonName, entry.basename, entry.path);
+			const stringId: []u8 = createAssetStringID(externalAllocator, addonName, entry.path);
 			const data = main.files.Dir.init(dir).read(externalAllocator, entry.path) catch |err| {
 				std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
 				continue;
@@ -234,18 +247,7 @@ pub fn readAllObjFilesInAddonsHashmap(
 			break :blk null;
 		}) |entry| {
 			if(entry.kind == .file and std.ascii.endsWithIgnoreCase(entry.basename, ".obj")) {
-				const folderName = addonName;
-				const id: []u8 = externalAllocator.alloc(u8, folderName.len + 1 + entry.path.len - 4);
-				errdefer externalAllocator.free(id);
-				@memcpy(id[0..folderName.len], folderName);
-				id[folderName.len] = ':';
-				for(0..entry.path.len - 4) |i| {
-					if(entry.path[i] == '\\') { // Convert windows path seperators
-						id[folderName.len + 1 + i] = '/';
-					} else {
-						id[folderName.len + 1 + i] = entry.path[i];
-					}
-				}
+				const id: []u8 = createAssetStringID(externalAllocator, addonName, entry.path);
 
 				const string = dir.readFileAlloc(externalAllocator.allocator, entry.path, std.math.maxInt(usize)) catch |err| {
 					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});

@@ -39,13 +39,19 @@ To have more success it would help to split things up into smaller PRs, maybe st
 
 This saves time on your end spent reworking your large pull request 10 times. And reviewing your large pull request 10 times is also not fun.
 
-# Write correct and readable code
+# Write correct, readable and maintainable code
 
-## Explicitly handle all errors (except from those that can't happen)
+## Explicitly handle all errors
 
 Error handling usually means logging the error and continuing with a sensible default. For example if you can't read a file, then the best solution would be to write a message to `std.log.err` that states the file path and the error string. It is also fine to bubble up the error with `try` a few levels before handling it.
 
 Not all errors can happen. Specifically in Cubyz the `error.OutOfMemory` cannot happen with the standard allocators (`main.globalAllocator` and `main.stackAllocator`). In this case `catch unreachable` is the right way to handle the error.
+
+### Use (implicit) assertions for programming errors, and std.log.err for user errors
+
+- An addon creator should get a nice error message in the console when they use incorrect parameters and similar.
+- The player should get a nice error message in the console when something unexpected (but possible) happens, but the game should try to keep running.
+- The programmer (that's you ;) ) should get a stacktrace when they made a mistake. This can be done with `std.debug.assert` or `.?` or `[]` or `unreachable` or `@panic`.
 
 ## Choose the right allocator for the job
 
@@ -53,7 +59,7 @@ Cubyz has two main allocators.
 - The `main.stackAllocator` is a thread-local allocator that is optimized for local allocations. Use for anything that you free at the end of the scope. An example use-case would be a local `List`.
 - The `main.globalAllocator` is intended to be used for general purpose use cases that don't need to or can't be particularly optimized.
 
-Sometimes it might also make sense to use an arena allocator `utils.NeverFailingArenaAllocator`, or a `MemoryPool`. But generally these should only be used where it makes sense.
+Sometimes it might also make sense to use an arena allocator `utils.NeverFailingArenaAllocator` (when you have many small allocations that share the same lifetime, e.g. assets), or a `MemoryPool` (if you have many items of the same type that get freed and allocated many times throughout the game).
 
 Also it is important to note that Cubyz uses a different allocator interface `utils.NeverFailingAllocator` which cannot return `error.OutOfMemory`. Along with it come some data structures like `main.List` and more in `utils` which should be preferred over the standard library data structures because they simplify the code.
 
@@ -63,19 +69,48 @@ Everything you allocate, needs to be freed.
 Everything you init needs to be deinited.
 Everything you lock needs to be unlocked.
 This needs to be true even for error paths such as introduced by `try`.
-Usually you should be fine by using `defer` and `errdefer`. There is also leak-checking in debug mode, so make sure you test your feature in debug mode to check for leaks.
+Usually you should be fine by using `defer` and `errdefer` (always put them directly after the creation of the thing they are trying to clean to prevent mistakes). There is also leak-checking in debug mode, so make sure you test your feature in debug mode to check for leaks.
+
+## Keep it simple
+
+Often the simplest code is easier to read, easier to maintain and more efficient too.
+- Don't generalize things that only have one variant (for now). (unless you are certain that a general interface is needed of course)<br>
+  "Premature generalization is the root of all evil" (Knuth almost got it right)
+- Use syntax sugar of the language where applicable (like `catch`, `orelse`, `for`, `.{}`, `&.{}`, `inline` case, decl literals)
+- If you use the same segment of code multiple times, then it's time to make a helper function
+- If a thing already exists in the code base or the standard library, then use it. Noteworthy namespaces are `std.mem`, `std.meta`, `std.math`, `main.utils`.
+- Use the simplest data structure for the job: e.g. use a slice instead of List if you know the size upfront
+- Don't make things public if they don't need to be
 
 ## Follow the style guide
 
 Most of the syntax is handled by a modified version of zig fmt and checked by the CI (see the formatting section above).
 
-Other than there is not much more to it:
-- Use camelCase for variables, constants and functions, CapitalCamelCase for types
-- There is no line limit (I hate seeing code that gets wrapped over by 1 word, because of an arbitrary line limit), but of course try to be reasonable. If you need 200 characters, then you should probably consider splitting it or adding some well-named helper variables.
-- Don't write comments, unless there is something really non-obvious going on.
-- But in either case it's better to write readable code with descriptive names, instead of writing long comments, since comments will naturally degrade over time as the surrounding code changes.
+There are a few more things not covered by the formatter:
+- **Naming conventions:** camelCase for variables, constants (no all-caps constants please!) and functions; CapitalCamelCase for types; snake_case for files and namespaces
+- **Line limit:** There is no line limit (I hate seeing code that gets wrapped over by 1 word, because of an arbitrary line limit), but of course try to be reasonable. If you need 200 characters, then you should probably consider splitting it or adding some well-named helper variables.
+- **Comments:** Don't write comments, unless there is something non-obvious going on that needs to be explained.<br>
+  But in either case it's better to write readable code with descriptive names, instead of writing long comments, since comments will naturally degrade over time as the surrounding code changes.<br>
+  If you do want to write comments, make them explain the why, not the what and not the how.
+- **Imports:** Import aliasing is nice (if only ZLS would support it). But please don't import/alias functions. If I see a function then knowing where it's from adds some more context. And if there are no aliases then I can assume that a bare function name is defined locally.<br>
+  Imports/aliases should be at the top of the file before any other declarations. Also aliases should always use the same name as the original to avoid confusion (e.g. don't alias `main.stackAllocator` to `allocator`).
+- **Files as Structs:** Don't use files as struct unless you have a good reason for it. I've tried it a few times, but generally I don't think it really adds much and in larger files it can be rather confusing.
+- **File/Directory organization:** Generally try to split things off that are unrelated, and keep things together that are directly interacting with each other. In my opinion the sweet spot for file size is (very roughly) 1000 lines.<br>
+  Instances of a generic interfaces (e.g. GuiWindow, *Generator, Command) should be put into separate files in one directory, since they usually don't have anything in common other than their interface.
+- **Order of Declarations:** Generally I prefer seeing things (helper functions and variables) declared before they are used, as is required in languages like C and C++. However I don't really have a strong opinion on this.
+  What matters most in my opinion is that related things are close together (e.g. init next to deinit, serialize next to deserialize, helper functions next to where they are used).
+- **Magic constants:** All non-trivial constants should have a name to make it clear where they came from (especially important for physical or mathematical constants).
+- **Const correctness:** While mostly enforced by the language, please try to make things `const` whenever possible, especially important for pointers. Your first instinct should be to write `const` and only use `var` as the second option.
+- **Unused variables:** If you see `_ = ` anywhere then it's most likely a mistake, either in the API or the code itself. Unused function parameters are fine of course, but prefer `_: ` unless you have a good reason to keep the name
+- **Parenthesis and operator precedence:** You should know the basics of operator precedence:<br>
+  assignment ops < bool ops < compare ops < bitwise ops < shift ops < add/sub < mul/div < unary ops<br>
+  Only add parenthesis if you need them. Precedence on the right side of the spectrum (unary and mul/div/mod) is also shown visually (enforced by the formatter) through spacing: `x = -a + b*c` instead of `x = - a + b * c`
 
 # Don't put multiple changes into one pull request
+
+This includes introduction of non-trivial helper functions, refactoring existing code.
+
+**A good PR should be no more than 200 lines!** I may refuse to review larger PRs.
 
 It may seem tempting to bundle up somewhat related features into one pull request. But this often causes unnecessary delays.
 

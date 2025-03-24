@@ -22,6 +22,21 @@ pub fn execute(args: []const u8, source: *User) void {
 	if(source.worldEditData.clipboard) |clipboard| {
 		const pos: Vec3i = @intFromFloat(source.player.pos);
 		source.sendMessage("Pasting: {}", .{pos});
+
+		const undo = Blueprint.capture(main.globalAllocator, pos, .{
+			pos[0] + @as(i32, @intCast(clipboard.blocks.width)) - 1,
+			pos[1] + @as(i32, @intCast(clipboard.blocks.depth)) - 1,
+			pos[2] + @as(i32, @intCast(clipboard.blocks.height)) - 1,
+		});
+		switch(undo) {
+			.success => |blueprint| {
+				source.worldEditData.undoHistory.push(.init(blueprint, pos, "paste"));
+			},
+			.failure => {
+				source.sendMessage("#ff0000Error: Could not capture undo history.", .{});
+			},
+		}
+
 		clipboard.paste(pos);
 	} else {
 		source.sendMessage("#ff0000Error: No clipboard content to paste.", .{});

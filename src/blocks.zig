@@ -108,6 +108,7 @@ var _absorption: [maxBlockCount]u32 = undefined;
 /// GUI that is opened on click.
 var _gui: [maxBlockCount][]u8 = undefined;
 var _mode: [maxBlockCount]*RotationMode = undefined;
+var _modeData: [maxBlockCount]u16 = undefined;
 var _lodReplacement: [maxBlockCount]u16 = undefined;
 var _opaqueVariant: [maxBlockCount]u16 = undefined;
 var _friction: [maxBlockCount]f32 = undefined;
@@ -370,6 +371,10 @@ pub const Block = packed struct { // MARK: Block
 
 	pub inline fn mode(self: Block) *RotationMode {
 		return _mode[self.typ];
+	}
+
+	pub inline fn modeData(self: Block) u16 {
+		return _modeData[self.typ];
 	}
 
 	pub inline fn rotateZ(self: Block, angle: Degrees) Block {
@@ -674,7 +679,7 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	pub fn register(assetFolder: []const u8, _: []const u8, zon: ZonElement) void {
-		_modelIndex[meshes.size] = _mode[meshes.size].createBlockModel(zon.getChild("model"));
+		_modelIndex[meshes.size] = _mode[meshes.size].createBlockModel(.{.typ = @intCast(meshes.size), .data = 0}, &_modeData[meshes.size], zon.getChild("model"));
 
 		// The actual model is loaded later, in the rendering thread.
 		// But textures can be loaded here:

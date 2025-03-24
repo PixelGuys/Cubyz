@@ -321,6 +321,7 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 	max: Vec3f = undefined,
 
 	fn deinit(self: *PrimitiveMesh) void {
+		faceBuffer.free(self.bufferAllocation);
 		self.completeList.deinit(main.globalAllocator);
 	}
 

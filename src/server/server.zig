@@ -12,6 +12,9 @@ const Vec3d = vec.Vec3d;
 const Vec3i = vec.Vec3i;
 const BinaryReader = main.utils.BinaryReader;
 const BinaryWriter = main.utils.BinaryWriter;
+const Blueprint = main.blueprint.Blueprint;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const CircularBufferQueue = main.utils.CircularBufferQueue;
 
 pub const ServerWorld = @import("world.zig").ServerWorld;
 pub const terrain = @import("terrain/terrain.zig");
@@ -21,14 +24,58 @@ pub const storage = @import("storage.zig");
 const command = @import("command/_command.zig");
 
 pub const WorldEditData = struct {
+	const maxWorldEditHistoryCapacity: u32 = 1024;
+
 	selectionPosition1: ?Vec3i = null,
 	selectionPosition2: ?Vec3i = null,
-	clipboard: ?main.blueprint.Blueprint = null,
+	clipboard: ?Blueprint = null,
+	undoHistory: History,
 
+	const History = struct {
+		changes: CircularBufferQueue(Value),
+
+		const Value = struct {
+			blueprint: Blueprint,
+			position: Vec3i,
+			message: []const u8,
+
+			pub fn init(blueprint: Blueprint, position: Vec3i, message: []const u8) Value {
+				return .{.blueprint = blueprint, .position = position, .message = main.globalAllocator.dupe(u8, message)};
+			}
+			pub fn deinit(self: Value) void {
+				main.globalAllocator.free(self.message);
+				self.blueprint.deinit(main.globalAllocator);
+			}
+		};
+		pub fn init() History {
+			return .{.changes = .init(main.globalAllocator, maxWorldEditHistoryCapacity)};
+		}
+		pub fn deinit(self: *History) void {
+			self.clear();
+			self.changes.deinit();
+		}
+		pub fn clear(self: *History) void {
+			while(self.changes.dequeue()) |item| item.deinit();
+		}
+		pub fn push(self: *History, value: Value) void {
+			if(self.changes.reachedCapacity()) {
+				if(self.changes.dequeue()) |oldValue| oldValue.deinit();
+			}
+
+			self.changes.enqueue(value);
+		}
+		pub fn pop(self: *History) ?Value {
+			return self.changes.dequeue_front();
+		}
+	};
+	pub fn init() WorldEditData {
+		return .{.undoHistory = History.init()};
+	}
 	pub fn deinit(self: *WorldEditData) void {
 		if(self.clipboard != null) {
 			self.clipboard.?.deinit(main.globalAllocator);
 		}
+		self.undoHistory.deinit();
 	}
 };
 
@@ -53,7 +100,7 @@ pub const User = struct { // MARK: User
 	lastRenderDistance: u16 = 0,
 	lastPos: Vec3i = @splat(0),
 	gamemode: std.atomic.Value(main.game.Gamemode) = .init(.creative),
-	worldEditData: WorldEditData = .{},
+	worldEditData: WorldEditData = undefined,
 
 	inventoryClientToServerIdMap: std.AutoHashMap(u32, u32) = undefined,
 
@@ -71,6 +118,7 @@ pub const User = struct { // MARK: User
 		self.interpolation.init(@ptrCast(&self.player.pos), @ptrCast(&self.player.vel));
 		self.conn = try Connection.init(manager, ipPort, self);
 		self.increaseRefCount();
+		self.worldEditData = .init();
 		network.Protocols.handShake.serverSide(self.conn);
 		return self;
 	}
