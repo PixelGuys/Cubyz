@@ -15,34 +15,28 @@ const Entry = struct {
 
 pub fn initFromString(allocator: NeverFailingAllocator, source: []const u8) !@This() {
 	var specifiers = std.mem.splitScalar(u8, source, ',');
-	var totalWeight: usize = 0;
+	var totalWeight: f64 = 0;
 
-	var weightedEntries: ListUnmanaged(struct {block: Block, weight: usize}) = .{};
+	var weightedEntries: ListUnmanaged(struct {block: Block, weight: f64}) = .{};
 	defer weightedEntries.deinit(main.stackAllocator);
 
 	while(specifiers.next()) |specifier| {
 		var iterator = std.mem.splitScalar(u8, specifier, '%');
 
-		const first = iterator.next();
-		const second = iterator.next();
+		// This code first assumes that specifier has form `weight%addon:block` and only if parsing of weight fails it tries to parse it as `addon:block`.
+		var weight: f64 = undefined;
+		var block = main.blocks.parseBlock(iterator.rest());
 
-		if(iterator.peek() != null) {
-			return error.PatternSyntaxError;
-		}
-		if(second) |blockId| {
-			if(first) |weight| {
-				const block = main.blocks.parseBlock(blockId);
-				const blockWeight = try std.fmt.parseInt(usize, weight, 10);
-				totalWeight += blockWeight;
-				weightedEntries.append(main.stackAllocator, .{.block = block, .weight = blockWeight});
-				continue;
-			} else return error.PatternSyntaxError;
-		}
-		if(first) |blockId| {
-			const block = main.blocks.parseBlock(blockId);
-			totalWeight += 1;
-			weightedEntries.append(main.stackAllocator, .{.block = block, .weight = 1});
-		} else return error.PatternSyntaxError;
+		const first = iterator.first();
+
+		weight = std.fmt.parseFloat(f64, first) catch blk: {
+			// To distinguish somehow between mistyped numeric values and actual block IDs we check for addon name separator.
+			if(!std.mem.containsAtLeastScalar(u8, first, 1, ":")) return error.PatternSyntaxError;
+			block = main.blocks.parseBlock(first);
+			break :blk 1.0;
+		};
+		totalWeight += weight;
+		weightedEntries.append(main.stackAllocator, .{.block = block, .weight = weight});
 	}
 
 	const entries = allocator.alloc(Entry, weightedEntries.items.len);
@@ -55,4 +49,5 @@ pub fn initFromString(allocator: NeverFailingAllocator, source: []const u8) !@Th
 
 pub fn deinit(self: @This(), allocator: NeverFailingAllocator) void {
 	self.blocks.deinit(allocator);
+	allocator.free(self.blocks.items);
 }
