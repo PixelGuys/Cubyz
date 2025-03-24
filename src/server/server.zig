@@ -23,7 +23,6 @@ pub const storage = @import("storage.zig");
 
 const command = @import("command/_command.zig");
 
-
 pub const WorldEditData = struct {
 	const maxWorldEditHistoryCapacity: u32 = 1024;
 
