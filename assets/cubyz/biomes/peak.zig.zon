@@ -28,7 +28,7 @@
 			.width = 24,
 			.depth = 1,
 			.smoothness = 1.0,
-			.generationMode = .water_surface
+			.generationMode = .water_surface,
 		},
 	},
 }
