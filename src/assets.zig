@@ -21,7 +21,6 @@ var commonBiomes: std.StringHashMap(ZonElement) = undefined;
 var commonBiomeMigrations: std.StringHashMap(ZonElement) = undefined;
 var commonRecipes: std.StringHashMap(ZonElement) = undefined;
 var commonModels: std.StringHashMap([]const u8) = undefined;
-var commonStructureBuildingBlocks: std.StringHashMap(ZonElement) = undefined;
 var commonBlueprints: std.StringHashMap([]u8) = undefined;
 
 pub fn init() void {
@@ -38,7 +37,6 @@ pub fn init() void {
 	commonBiomeMigrations = .init(arenaAllocator.allocator);
 	commonRecipes = .init(arenaAllocator.allocator);
 	commonModels = .init(arenaAllocator.allocator);
-	commonStructureBuildingBlocks = .init(arenaAllocator.allocator);
 	commonBlueprints = .init(arenaAllocator.allocator);
 
 	readAssets(
@@ -52,13 +50,12 @@ pub fn init() void {
 		&commonBlockMigrations,
 		&commonRecipes,
 		&commonModels,
-		&commonStructureBuildingBlocks,
 		&commonBlueprints,
 	);
 
 	std.log.info(
-		"Finished assets init with {} blocks ({} migrations), {} items, {} tools, {} biomes ({} migrations), {} recipes, {} structure building blocks and {} blueprints",
-		.{commonBlocks.count(), commonBlockMigrations.count(), commonItems.count(), commonTools.count(), commonBiomes.count(), commonBiomeMigrations.count(), commonRecipes.count(), commonStructureBuildingBlocks.count(), commonBlueprints.count()},
+		"Finished assets init with {} blocks ({} migrations), {} items, {} tools, {} biomes ({} migrations), {} recipes, and {} blueprints",
+		.{commonBlocks.count(), commonBlockMigrations.count(), commonItems.count(), commonTools.count(), commonBiomes.count(), commonBiomeMigrations.count(), commonRecipes.count(), commonBlueprints.count()},
 	);
 }
 
@@ -270,7 +267,6 @@ pub fn readAssets(
 	biomeMigrations: *std.StringHashMap(ZonElement),
 	recipes: *std.StringHashMap(ZonElement),
 	models: *std.StringHashMap([]const u8),
-	structureBuildingBlocks: *std.StringHashMap(ZonElement),
 	blueprints: *std.StringHashMap([]u8),
 ) void {
 	var addons = main.List(std.fs.Dir).init(main.stackAllocator);
@@ -309,7 +305,6 @@ pub fn readAssets(
 	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "biomes", true, biomes, biomeMigrations);
 	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "recipes", false, recipes, null);
 	readAllObjFilesInAddonsHashmap(externalAllocator, addons, addonNames, "models", models);
-	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "sbb", true, structureBuildingBlocks, null);
 	readAllBlueprintFilesInAddons(externalAllocator, addons, addonNames, "blueprints", blueprints);
 }
 
@@ -477,8 +472,6 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	defer recipes.clearAndFree();
 	var models = commonModels.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer models.clearAndFree();
-	var structureBuildingBlocks = commonStructureBuildingBlocks.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
-	defer structureBuildingBlocks.clearAndFree();
 	var blueprints = commonBlueprints.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer blueprints.clearAndFree();
 
@@ -493,7 +486,6 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		&biomeMigrations,
 		&recipes,
 		&models,
-		&structureBuildingBlocks,
 		&blueprints,
 	);
 	errdefer unloadAssets();
@@ -602,7 +594,6 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	}
 
 	try sbb.registerBlueprints(&blueprints);
-	try sbb.registerSBB(&structureBuildingBlocks);
 
 	// Biomes:
 	var nextBiomeNumericId: u32 = 0;
