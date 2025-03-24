@@ -27,6 +27,7 @@ pub const WorldEditData = struct {
 	selectionPosition2: ?Vec3i = null,
 	clipboard: ?Blueprint = null,
 	undoHistory: History = .{},
+	redoHistory: History = .{},
 
 	const History = struct {
 		const DLList = std.DoublyLinkedList(Value);
@@ -81,6 +82,7 @@ pub const WorldEditData = struct {
 			self.clipboard.?.deinit(main.globalAllocator);
 		}
 		self.undoHistory.deinit();
+		self.redoHistory.deinit();
 	}
 };
 
