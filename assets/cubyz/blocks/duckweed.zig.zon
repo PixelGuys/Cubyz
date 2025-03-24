@@ -1,6 +1,6 @@
 .{
 	.tags = .{.leaf},
-	.blockHealth = 0.2,
+	.blockHealth = 0.1,
 	.drops = .{
 		.{.items = .{.auto}},
 	},
