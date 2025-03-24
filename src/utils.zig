@@ -354,11 +354,6 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 			self.mask = self.mem.len - 1;
 		}
 
-		pub fn clearRetainingCapacity(self: *Self) void {
-			self.startIndex = 0;
-			self.endIndex = 0;
-		}
-
 		pub fn enqueue(self: *Self, elem: T) void {
 			self.mem[self.endIndex] = elem;
 			self.endIndex = (self.endIndex + 1) & self.mask;
@@ -397,7 +392,7 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 			return self.startIndex == self.endIndex;
 		}
 
-		pub fn full(self: *Self) bool {
+		pub fn reachedCapacity(self: *Self) bool {
 			return self.startIndex == (self.endIndex + 1) & self.mask;
 		}
 	};

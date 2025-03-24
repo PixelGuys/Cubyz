@@ -56,10 +56,9 @@ pub const WorldEditData = struct {
 		}
 		pub fn clear(self: *History) void {
 			while(self.changes.dequeue()) |item| item.deinit();
-			self.changes.clearRetainingCapacity();
 		}
 		pub fn push(self: *History, value: Value) void {
-			if(self.changes.full()) {
+			if(self.changes.reachedCapacity()) {
 				if(self.changes.dequeue()) |oldValue| oldValue.deinit();
 			}
 
