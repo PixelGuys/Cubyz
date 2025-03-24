@@ -155,8 +155,14 @@ fn createAssetStringID(
 	fileBaseName: []const u8,
 	relativeFilePath: []const u8,
 ) []u8 {
-	var fileNameSplit = std.mem.splitScalar(u8, fileBaseName, '.');
-	const blockName = fileNameSplit.first();
+	var blockName: []const u8 = undefined;
+	if(std.ascii.endsWithIgnoreCase(fileBaseName, ".zig.zon")) {
+		blockName = fileBaseName[0 .. fileBaseName.len - ".zig.zon".len];
+	} else {
+		var fileNameSplit = std.mem.splitBackwardsScalar(u8, fileBaseName, '.');
+		const suffix = fileNameSplit.first();
+		blockName = fileBaseName[0 .. fileBaseName.len - suffix.len - 1]; // -1 to account for the dot.
+	}
 	const folderPath = relativeFilePath[0 .. relativeFilePath.len - fileBaseName.len];
 	const assetId: []u8 = externalAllocator.alloc(u8, addonName.len + 1 + folderPath.len + blockName.len);
 
