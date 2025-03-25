@@ -1037,7 +1037,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				baseChunk.mutex.unlock();
 				return currentBlock;
 			}
+			if(currentBlock != _newBlock) {
+				if(currentBlock.entityDataClass()) |class| class.onBreakServer(.{wx, wy, wz}, &baseChunk.super);
+			}
 			baseChunk.updateBlockAndSetChanged(x, y, z, _newBlock);
+			if(currentBlock != _newBlock) {
+				if(_newBlock.entityDataClass()) |class| class.onPlaceServer(.{wx, wy, wz}, &baseChunk.super);
+			}
 		}
 		baseChunk.mutex.unlock();
 		var newBlock = _newBlock;

@@ -174,7 +174,7 @@ pub fn getBlock(x: i32, y: i32, z: i32) ?blocks.Block {
 	return block;
 }
 
-pub fn interactWithBlock(x: i32, y: i32, z: i32) bool {
+pub fn triggerOnInteract(x: i32, y: i32, z: i32) bool {
 	const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize = 1});
 	node.mutex.lock();
 	defer node.mutex.unlock();
@@ -185,6 +185,19 @@ pub fn interactWithBlock(x: i32, y: i32, z: i32) bool {
 	}
 	// Event was not handled.
 	return false;
+}
+
+pub fn triggerOnUpdate(comptime changeTyp: enum { @"break", @"place" }, x: i32, y: i32, z: i32, block: blocks.Block) void {
+	const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize = 1});
+	node.mutex.lock();
+	defer node.mutex.unlock();
+	const mesh = node.mesh orelse return;
+	if(block.entityDataClass()) |class| {
+	switch(changeTyp) {
+			.@"break" => class.onBreakClient(.{x, y, z}, mesh.chunk),
+			.@"place" => class.onPlaceClient(.{x, y, z}, mesh.chunk),
+		}
+	}
 }
 
 pub fn getLight(wx: i32, wy: i32, wz: i32) ?[6]u8 {
@@ -764,6 +777,7 @@ pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()
 		if(getMeshAndIncreaseRefCount(pos)) |mesh| {
 			defer mesh.decreaseRefCount();
 			mesh.updateBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock);
+			triggerOnUpdate(.@"place", blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock);
 		} // TODO: It seems like we simply ignore the block update if we don't have the mesh yet.
 	}
 

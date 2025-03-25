@@ -16,10 +16,14 @@ pub const EntityDataClass = struct {
 	mutex: std.Thread.Mutex,
 
 	const VTable = struct {
-		onLoad: *const fn(pos: Vec3i, chunk: *Chunk) void,
-		onUnload: *const fn(pos: Vec3i, chunk: *Chunk) void,
-		onPlace: *const fn(pos: Vec3i, chunk: *Chunk) void,
-		onBreak: *const fn(pos: Vec3i, chunk: *Chunk) void,
+		onLoadClient: *const fn(pos: Vec3i, chunk: *Chunk) void,
+		onUnloadClient: *const fn(pos: Vec3i, chunk: *Chunk) void,
+		onLoadServer: *const fn(pos: Vec3i, chunk: *Chunk) void,
+		onUnloadServer: *const fn(pos: Vec3i, chunk: *Chunk) void,
+		onPlaceClient: *const fn(pos: Vec3i, chunk: *Chunk) void,
+		onBreakClient: *const fn(pos: Vec3i, chunk: *Chunk) void,
+		onPlaceServer: *const fn(pos: Vec3i, chunk: *Chunk) void,
+		onBreakServer: *const fn(pos: Vec3i, chunk: *Chunk) void,
 		// Block interaction invoked by right click.
 		// Return value indicates if event was handled (true) and should not be further processed.
 		onInteract: *const fn(pos: Vec3i, chunk: *Chunk) bool,
@@ -40,25 +44,45 @@ pub const EntityDataClass = struct {
 		}
 		return class;
 	}
-	pub inline fn onLoad(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) void {
+	pub inline fn onLoadClient(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
-		return self.vtable.onLoad(pos, chunk);
+		return self.vtable.onLoadClient(pos, chunk);
 	}
-	pub inline fn onUnload(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) void {
+	pub inline fn onUnloadClient(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
-		return self.vtable.onUnload(pos, chunk);
+		return self.vtable.onUnloadClient(pos, chunk);
 	}
-	pub inline fn onPlace(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) void {
+	pub inline fn onLoadServer(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
-		return self.vtable.onPlace(pos, chunk);
+		return self.vtable.onLoadServer(pos, chunk);
 	}
-	pub inline fn onBreak(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) void {
+	pub inline fn onUnloadServer(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
-		return self.vtable.onBreak(pos, chunk);
+		return self.vtable.onUnloadServer(pos, chunk);
+	}
+	pub inline fn onPlaceClient(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) void {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+		return self.vtable.onPlaceClient(pos, chunk);
+	}
+	pub inline fn onBreakClient(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) void {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+		return self.vtable.onBreakClient(pos, chunk);
+	}
+	pub inline fn onPlaceServer(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) void {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+		return self.vtable.onPlaceServer(pos, chunk);
+	}
+	pub inline fn onBreakServer(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) void {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+		return self.vtable.onBreakServer(pos, chunk);
 	}
 	pub inline fn onInteract(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) bool {
 		self.mutex.lock();
@@ -95,7 +119,7 @@ fn BlockEntityData(T: type) type {
 		fn remove(pos: Vec3i, chunk: *Chunk) void {
 			const blockIndex = chunk.getLocalBlockIndex(pos);
 			const entry = chunk.blockPosToEntityDataMap.fetchRemove(blockIndex) orelse {
-				std.log.err("Couldn't remove entity data of block at position {}", .{pos});
+				std.log.warn("Couldn't remove entity data of block at position {}", .{pos});
 				return;
 			};
 			const dataIndex = entry.value;
@@ -116,9 +140,12 @@ fn BlockEntityData(T: type) type {
 
 			valuePtr.* = dataIndex;
 		}
-		fn get(pos: Vec3i, chunk: *Chunk) *DataT {
+		fn get(pos: Vec3i, chunk: *Chunk) ?*DataT {
 			const blockIndex = chunk.getLocalBlockIndex(pos);
-			const dataIndex = chunk.blockPosToEntityDataMap.get(blockIndex) orelse unreachable;
+			const dataIndex = chunk.blockPosToEntityDataMap.get(blockIndex) orelse {
+				std.log.warn("Couldn't get entity data of block at position {}", .{pos});
+				return null;
+			};
 			return &storage.items[dataIndex].data;
 		}
 	};
@@ -137,21 +164,39 @@ pub const EntityDataClasses = struct {
 		const reset = Super.reset;
 		const deinit = Super.deinit;
 
-		pub fn onLoad(pos: Vec3i, chunk: *Chunk) void {
+		pub fn onLoadClient(_: Vec3i, _: *Chunk) void {
+			std.log.debug("Chest.onLoadClient", .{});
+		}
+		pub fn onUnloadClient(_: Vec3i, _: *Chunk) void {
+			std.log.debug("Chest.onUnloadClient", .{});
+		}
+		pub fn onLoadServer(_: Vec3i, _: *Chunk) void {
+			std.log.debug("Chest.onLoadServer", .{});
+		}
+		pub fn onUnloadServer(_: Vec3i, _: *Chunk) void {
+			std.log.debug("Chest.onUnloadServer", .{});
+		}
+		pub fn onPlaceClient(pos: Vec3i, chunk: *Chunk) void {
+			std.log.debug("Chest.onPlaceClient", .{});
 			Super.add(pos, .{.contents = 0}, chunk);
 		}
-		pub fn onUnload(pos: Vec3i, chunk: *Chunk) void {
+		pub fn onBreakClient(pos: Vec3i, chunk: *Chunk) void {
+			std.log.debug("Chest.onBreakClient", .{});
 			Super.remove(pos, chunk);
 		}
-		pub fn onPlace(pos: Vec3i, chunk: *Chunk) void {
+		pub fn onPlaceServer(pos: Vec3i, chunk: *Chunk) void {
+			std.log.debug("Chest.onPlaceServer", .{});
 			Super.add(pos, .{.contents = 0}, chunk);
 		}
-		pub fn onBreak(pos: Vec3i, chunk: *Chunk) void {
+		pub fn onBreakServer(pos: Vec3i, chunk: *Chunk) void {
+			std.log.debug("Chest.onBreakServer", .{});
 			Super.remove(pos, chunk);
 		}
 		pub fn onInteract(pos: Vec3i, chunk: *Chunk) bool {
 			const data = Super.get(pos, chunk);
-			std.debug.print("Chest contents: {}", .{data.contents});
+			if(data == null) std.log.debug("Chest.onInteract: null", .{})
+			else std.log.debug("Chest.onInteract: {}", .{data.?.contents});
+
 			return true;
 		}
 	};

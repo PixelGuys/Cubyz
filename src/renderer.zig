@@ -909,6 +909,9 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	}
 
 	fn updateBlockAndSendUpdate(source: main.items.Inventory, slot: u32, x: i32, y: i32, z: i32, oldBlock: blocks.Block, newBlock: blocks.Block) void {
+		if(newBlock.typ != oldBlock.typ) {
+			mesh_storage.triggerOnUpdate(.@"break", x, y, z, oldBlock);
+		}
 		main.items.Inventory.Sync.ClientSide.executeCommand(.{.updateBlock = .{.source = .{.inv = source, .slot = slot}, .pos = .{x, y, z}, .oldBlock = oldBlock, .newBlock = newBlock}});
 		mesh_storage.updateBlock(x, y, z, newBlock);
 	}

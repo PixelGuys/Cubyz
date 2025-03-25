@@ -253,7 +253,7 @@ pub const Chunk = struct { // MARK: Chunk
 	voxelSizeMask: i32,
 	widthShift: u5,
 
-	blockPosToEntityDataMap: std.AutoHashMapUnmanaged(u32, u32) = .{},
+	blockPosToEntityDataMap: std.AutoHashMapUnmanaged(u32, u32),
 
 	pub fn init(pos: ChunkPosition) *Chunk {
 		const self = memoryPool.create();
@@ -266,6 +266,7 @@ pub const Chunk = struct { // MARK: Chunk
 			.voxelSizeShift = voxelSizeShift,
 			.voxelSizeMask = pos.voxelSize - 1,
 			.widthShift = voxelSizeShift + chunkShift,
+			.blockPosToEntityDataMap = .{},
 		};
 		self.data.init();
 		return self;
@@ -324,6 +325,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 				.voxelSizeShift = voxelSizeShift,
 				.voxelSizeMask = pos.voxelSize - 1,
 				.widthShift = voxelSizeShift + chunkShift,
+				.blockPosToEntityDataMap = .{},
 			},
 			.refCount = .init(1),
 		};
