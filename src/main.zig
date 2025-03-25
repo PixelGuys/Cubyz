@@ -272,7 +272,8 @@ fn openInventory() void {
 	gui.toggleGameMenu();
 	gui.openWindow("inventory");
 }
-fn openCreativeInventory() void {
+fn openCreativeInventory(mods: Window.Key.Modifiers) void {
+	if(mods.control) return;
 	if(game.world == null) return;
 	if(!game.Player.isCreative()) return;
 	gui.toggleGameMenu();
@@ -357,7 +358,7 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		// Gui:
 		.{.name = "escape", .key = c.GLFW_KEY_ESCAPE, .pressAction = &escape, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_B},
 		.{.name = "openInventory", .key = c.GLFW_KEY_E, .pressAction = &openInventory, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_X},
-		.{.name = "openCreativeInventory(aka cheat inventory)", .key = c.GLFW_KEY_C, .pressAction = &openCreativeInventory, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_Y},
+		.{.name = "openCreativeInventory(aka cheat inventory)", .key = c.GLFW_KEY_C, .repeatAction = &openCreativeInventory, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_Y},
 		.{.name = "openChat", .key = c.GLFW_KEY_T, .releaseAction = &openChat},
 		.{.name = "openCommand", .key = c.GLFW_KEY_SLASH, .releaseAction = &openCommand},
 		.{.name = "mainGuiButton", .mouseButton = c.GLFW_MOUSE_BUTTON_LEFT, .pressAction = &gui.mainButtonPressed, .releaseAction = &gui.mainButtonReleased, .gamepadButton = c.GLFW_GAMEPAD_BUTTON_A, .notifyRequirement = .inMenu},
