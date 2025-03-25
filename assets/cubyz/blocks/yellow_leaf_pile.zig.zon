@@ -12,7 +12,7 @@
 		.model = "cubyz:plane",
 		.states = 4,
 	},
-	.rotation = .texturePile,
+	.rotation = .texture_pile,
 	.texture0 = "cubyz:yellow_leaf_pile/0",
 	.texture1 = "cubyz:yellow_leaf_pile/1",
 	.texture2 = "cubyz:yellow_leaf_pile/2",
