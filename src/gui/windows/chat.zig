@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const main = @import("root");
+// const main = @import("../../main.zig");
 const Vec2f = main.vec.Vec2f;
 
 const gui = @import("../gui.zig");
@@ -11,6 +12,7 @@ const Label = GuiComponent.Label;
 const MutexComponent = GuiComponent.MutexComponent;
 const TextInput = GuiComponent.TextInput;
 const VerticalList = @import("../components/VerticalList.zig");
+const CircularBufferQueue = main.utils.CircularBufferQueue;
 
 pub var window: GuiWindow = GuiWindow{
 	.relativePosition = .{
@@ -29,6 +31,7 @@ pub var window: GuiWindow = GuiWindow{
 const padding: f32 = 8;
 const messageTimeout: i32 = 10000;
 const messageFade = 1000;
+const reusableHistoryMaxSize = 128;
 
 var history: main.List(*Label) = undefined;
 var messageQueue: main.utils.ConcurrentQueue([]const u8) = undefined;
@@ -37,9 +40,13 @@ var historyStart: u32 = 0;
 var fadeOutEnd: u32 = 0;
 pub var input: *TextInput = undefined;
 var hideInput: bool = true;
+var upHistory: CircularBufferQueue([]const u8) = undefined;
+var downHistory: CircularBufferQueue([]const u8) = undefined;
 
 pub fn init() void {
 	history = .init(main.globalAllocator);
+	upHistory = .init(main.globalAllocator, reusableHistoryMaxSize);
+	downHistory = .init(main.globalAllocator, reusableHistoryMaxSize);
 	expirationTime = .init(main.globalAllocator);
 	messageQueue = .init(main.globalAllocator, 16);
 }
@@ -52,6 +59,14 @@ pub fn deinit() void {
 	while(messageQueue.dequeue()) |msg| {
 		main.globalAllocator.free(msg);
 	}
+	while(upHistory.dequeue()) |msg| {
+		main.globalAllocator.free(msg);
+	}
+	upHistory.deinit();
+	while(downHistory.dequeue()) |msg| {
+		main.globalAllocator.free(msg);
+	}
+	downHistory.deinit();
 	messageQueue.deinit();
 	expirationTime.deinit();
 }
@@ -87,8 +102,42 @@ fn refresh() void {
 }
 
 pub fn onOpen() void {
-	input = TextInput.init(.{0, 0}, 256, 32, "", .{.callback = &sendMessage});
+	input = TextInput.init(.{0, 0}, 256, 32, "", .{.callback = &sendMessage}, .{.callback = loadNextHistoryEntry}, .{.callback = loadPreviousHistoryEntry});
 	refresh();
+}
+
+pub fn loadNextHistoryEntry(_: usize) void {
+	transferBetweenQueues(input.currentString.items, &upHistory, &downHistory);
+}
+fn transferBetweenQueues(current: []const u8, inQueue: *CircularBufferQueue([]const u8), outQueue: *CircularBufferQueue([]const u8)) void {
+	if(inQueue.empty()) {
+		return;
+	}
+
+	if(current.len > 0 and (outQueue.empty() or !std.mem.eql(u8, outQueue.peek_front().?, current))) {
+		if(outQueue.reachedCapacity()) {
+			main.globalAllocator.free(outQueue.dequeue().?);
+		}
+		outQueue.enqueue(main.globalAllocator.dupe(u8, current));
+	}
+
+	var msg = inQueue.dequeue_front().?;
+	if(std.mem.eql(u8, msg, current)) {
+		main.globalAllocator.free(msg);
+		if(inQueue.dequeue_front()) |m| { msg = m; }
+		else return;
+	}
+
+	input.clear();
+	for(msg) |c| input.inputCharacter(c);
+
+	if(outQueue.reachedCapacity()) {
+		main.globalAllocator.free(outQueue.dequeue().?);
+	}
+	outQueue.enqueue(msg);
+}
+pub fn loadPreviousHistoryEntry(_: usize) void {
+	transferBetweenQueues(input.currentString.items, &downHistory, &upHistory);
 }
 
 pub fn onClose() void {
@@ -96,6 +145,12 @@ pub fn onClose() void {
 		label.deinit();
 	}
 	while(messageQueue.dequeue()) |msg| {
+		main.globalAllocator.free(msg);
+	}
+	while(upHistory.dequeue()) |msg| {
+		main.globalAllocator.free(msg);
+	}
+	while(downHistory.dequeue()) |msg| {
 		main.globalAllocator.free(msg);
 	}
 	expirationTime.clearRetainingCapacity();
@@ -156,6 +211,18 @@ pub fn sendMessage(_: usize) void {
 		if(data.len > 10000 or main.graphics.TextBuffer.Parser.countVisibleCharacters(data) > 1000) {
 			std.log.err("Chat message is too long with {}/{} characters. Limits are 1000/10000", .{main.graphics.TextBuffer.Parser.countVisibleCharacters(data), data.len});
 		} else {
+			while(downHistory.dequeue_front()) |msg| {
+				if(upHistory.reachedCapacity()) {
+					main.globalAllocator.free(upHistory.dequeue().?);
+				}
+				upHistory.enqueue(msg);
+			}
+
+			if(upHistory.reachedCapacity()) {
+				main.globalAllocator.free(upHistory.dequeue().?);
+			}
+			upHistory.enqueue(main.globalAllocator.dupe(u8, data));
+
 			main.network.Protocols.chat.send(main.game.world.?.conn, data);
 			input.clear();
 		}

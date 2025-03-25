@@ -388,6 +388,11 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 			return self.mem[self.startIndex];
 		}
 
+		pub fn peek_front(self: *Self) ?T {
+			if(self.empty()) return null;
+			return self.mem[(self.endIndex - 1) & self.mask];
+		}
+
 		pub fn empty(self: *Self) bool {
 			return self.startIndex == self.endIndex;
 		}
