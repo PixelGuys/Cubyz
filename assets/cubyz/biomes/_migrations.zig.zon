@@ -1,3 +1,3 @@
 .{
-    .{.old = "glacier", .new = "glacier/base"},
+	.{.old = "glacier", .new = "glacier/base"},
 }
