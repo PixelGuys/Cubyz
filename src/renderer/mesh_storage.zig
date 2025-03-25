@@ -187,15 +187,15 @@ pub fn triggerOnInteract(x: i32, y: i32, z: i32) bool {
 	return false;
 }
 
-pub fn triggerOnUpdate(comptime changeTyp: enum { @"break", @"place" }, x: i32, y: i32, z: i32, block: blocks.Block) void {
+pub fn triggerOnUpdate(comptime changeTyp: enum {@"break", place}, x: i32, y: i32, z: i32, block: blocks.Block) void {
 	const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize = 1});
 	node.mutex.lock();
 	defer node.mutex.unlock();
 	const mesh = node.mesh orelse return;
 	if(block.entityDataClass()) |class| {
-	switch(changeTyp) {
+		switch(changeTyp) {
 			.@"break" => class.onBreakClient(.{x, y, z}, mesh.chunk),
-			.@"place" => class.onPlaceClient(.{x, y, z}, mesh.chunk),
+			.place => class.onPlaceClient(.{x, y, z}, mesh.chunk),
 		}
 	}
 }
@@ -777,7 +777,7 @@ pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()
 		if(getMeshAndIncreaseRefCount(pos)) |mesh| {
 			defer mesh.decreaseRefCount();
 			mesh.updateBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock);
-			triggerOnUpdate(.@"place", blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock);
+			triggerOnUpdate(.place, blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock);
 		} // TODO: It seems like we simply ignore the block update if we don't have the mesh yet.
 	}
 

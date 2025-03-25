@@ -194,8 +194,7 @@ pub const EntityDataClasses = struct {
 		}
 		pub fn onInteract(pos: Vec3i, chunk: *Chunk) bool {
 			const data = Super.get(pos, chunk);
-			if(data == null) std.log.debug("Chest.onInteract: null", .{})
-			else std.log.debug("Chest.onInteract: {}", .{data.?.contents});
+			if(data == null) std.log.debug("Chest.onInteract: null", .{}) else std.log.debug("Chest.onInteract: {}", .{data.?.contents});
 
 			return true;
 		}
