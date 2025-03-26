@@ -118,8 +118,9 @@ fn transferBetweenQueues(current: []const u8, inQueue: *CircularBufferQueue([]co
 	var msg = inQueue.dequeue_front().?;
 	if(std.mem.eql(u8, msg, current)) {
 		main.globalAllocator.free(msg);
-		if(inQueue.dequeue_front()) |m| { msg = m; }
-		else return;
+		if(inQueue.dequeue_front()) |m| {
+			msg = m;
+		} else return;
 	}
 
 	input.clear();
