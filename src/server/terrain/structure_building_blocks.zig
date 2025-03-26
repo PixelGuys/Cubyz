@@ -31,14 +31,14 @@ const BlueprintEntry = struct {
 	childBlocks: []StructureBlock,
 
 	const StructureBlock = struct {
-		x: i32,
-		y: i32,
-		z: i32,
-		index: u32,
-		block: Block,
+		x: u16,
+		y: u16,
+		z: u16,
+		index: u16,
+		data: u16,
 
 		pub inline fn direction(self: StructureBlock) Neighbor {
-			return @enumFromInt(self.block.data);
+			return @enumFromInt(self.data);
 		}
 	};
 
@@ -66,8 +66,8 @@ const BlueprintEntry = struct {
 								.x = @intCast(x),
 								.y = @intCast(y),
 								.z = @intCast(z),
-								.index = std.math.maxInt(u32),
-								.block = block,
+								.index = std.math.maxInt(u16),
+								.data = block.data,
 							};
 							hasOrigin = true;
 						}
@@ -78,7 +78,7 @@ const BlueprintEntry = struct {
 							.y = @intCast(y),
 							.z = @intCast(z),
 							.index = childBlockLocalId,
-							.block = block,
+							.data = block.data,
 						});
 					}
 				}

@@ -49,7 +49,7 @@ pub fn init() void {
 		&commonItems,
 		&commonTools,
 		&commonBiomes,
-		&commonBlockMigrations,
+		&commonBiomeMigrations,
 		&commonRecipes,
 		&commonModels,
 		&commonStructureBuildingBlocks,
