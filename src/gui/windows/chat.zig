@@ -123,7 +123,7 @@ fn transferBetweenQueues(current: []const u8, inQueue: *CircularBufferQueue([]co
 	}
 
 	input.clear();
-	for(msg) |c| input.inputCharacter(c);
+	input.inputString(msg);
 
 	if(outQueue.reachedCapacity()) {
 		main.globalAllocator.free(outQueue.dequeue().?);
