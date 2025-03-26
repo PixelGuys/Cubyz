@@ -1,7 +1,7 @@
 const std = @import("std");
 
-pub const gui = @import("gui");
-pub const server = @import("server");
+pub const gui = @import("gui/gui.zig");
+pub const server = @import("server/server.zig");
 
 pub const audio = @import("audio.zig");
 pub const assets = @import("assets.zig");
