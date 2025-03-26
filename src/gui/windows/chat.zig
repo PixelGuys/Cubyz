@@ -113,13 +113,7 @@ fn transferBetweenQueues(current: []const u8, inQueue: *CircularBufferQueue([]co
 	if(inQueue.empty()) {
 		return;
 	}
-
-	if(current.len > 0 and (outQueue.empty() or !std.mem.eql(u8, outQueue.peek_front().?, current))) {
-		if(outQueue.reachedCapacity()) {
-			main.globalAllocator.free(outQueue.dequeue().?);
-		}
-		outQueue.enqueue(main.globalAllocator.dupe(u8, current));
-	}
+	addToHistory(current, outQueue);
 
 	var msg = inQueue.dequeue_front().?;
 	if(std.mem.eql(u8, msg, current)) {
@@ -135,6 +129,14 @@ fn transferBetweenQueues(current: []const u8, inQueue: *CircularBufferQueue([]co
 		main.globalAllocator.free(outQueue.dequeue().?);
 	}
 	outQueue.enqueue(msg);
+}
+fn addToHistory(current: []const u8, queue: *CircularBufferQueue([]const u8)) void {
+	if(current.len > 0 and (queue.empty() or !std.mem.eql(u8, queue.peek_front().?, current))) {
+		if(queue.reachedCapacity()) {
+			main.globalAllocator.free(queue.dequeue().?);
+		}
+		queue.enqueue(main.globalAllocator.dupe(u8, current));
+	}
 }
 pub fn loadPreviousHistoryEntry(_: usize) void {
 	transferBetweenQueues(input.currentString.items, &downHistory, &upHistory);
@@ -217,11 +219,7 @@ pub fn sendMessage(_: usize) void {
 				}
 				upHistory.enqueue(msg);
 			}
-
-			if(upHistory.reachedCapacity()) {
-				main.globalAllocator.free(upHistory.dequeue().?);
-			}
-			upHistory.enqueue(main.globalAllocator.dupe(u8, data));
+			addToHistory(data, &upHistory);
 
 			main.network.Protocols.chat.send(main.game.world.?.conn, data);
 			input.clear();
