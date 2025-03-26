@@ -16,6 +16,7 @@ const Vec3f = vec.Vec3f;
 const Vec3d = vec.Vec3d;
 const Vec4f = vec.Vec4f;
 const Mat4f = vec.Mat4f;
+const EventStatus = main.entity_data.EventStatus;
 
 const chunk_meshing = @import("chunk_meshing.zig");
 
@@ -174,20 +175,20 @@ pub fn getBlock(x: i32, y: i32, z: i32) ?blocks.Block {
 	return block;
 }
 
-pub fn triggerOnInteract(x: i32, y: i32, z: i32) bool {
+pub fn triggerOnInteractBlock(x: i32, y: i32, z: i32) EventStatus {
 	const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize = 1});
 	node.mutex.lock();
 	defer node.mutex.unlock();
-	const mesh = node.mesh orelse return false;
+	const mesh = node.mesh orelse return .ignored;
 	const block = mesh.chunk.getBlock(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask);
 	if(block.entityDataClass()) |class| {
 		return class.onInteract(.{x, y, z}, mesh.chunk);
 	}
 	// Event was not handled.
-	return false;
+	return .ignored;
 }
 
-pub fn triggerOnUpdate(comptime changeTyp: enum {@"break", place}, x: i32, y: i32, z: i32, block: blocks.Block) void {
+pub fn triggerOnUpdateBlock(comptime changeTyp: enum {@"break", place}, x: i32, y: i32, z: i32, block: blocks.Block) void {
 	const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize = 1});
 	node.mutex.lock();
 	defer node.mutex.unlock();
@@ -777,7 +778,7 @@ pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()
 		if(getMeshAndIncreaseRefCount(pos)) |mesh| {
 			defer mesh.decreaseRefCount();
 			mesh.updateBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock);
-			triggerOnUpdate(.place, blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock);
+			triggerOnUpdateBlock(.place, blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock);
 		} // TODO: It seems like we simply ignore the block update if we don't have the mesh yet.
 	}
 

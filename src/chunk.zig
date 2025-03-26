@@ -173,7 +173,7 @@ pub const ChunkPosition = struct { // MARK: ChunkPosition
 	wz: i32,
 	voxelSize: u31,
 
-	pub fn initFromWorld(pos: Vec3i, voxelSize: u31) ChunkPosition {
+	pub fn initFromWorldPos(pos: Vec3i, voxelSize: u31) ChunkPosition {
 		return .{.wx = pos[0] & ~@as(i32, chunkMask), .wy = pos[1] & ~@as(i32, chunkMask), .wz = pos[2] & ~@as(i32, chunkMask), .voxelSize = voxelSize};
 	}
 
@@ -254,6 +254,7 @@ pub const Chunk = struct { // MARK: Chunk
 	widthShift: u5,
 
 	blockPosToEntityDataMap: std.AutoHashMapUnmanaged(u32, u32),
+	blockPosToEntityDataMapMutex: std.Thread.Mutex,
 
 	pub fn init(pos: ChunkPosition) *Chunk {
 		const self = memoryPool.create();
@@ -267,6 +268,7 @@ pub const Chunk = struct { // MARK: Chunk
 			.voxelSizeMask = pos.voxelSize - 1,
 			.widthShift = voxelSizeShift + chunkShift,
 			.blockPosToEntityDataMap = .{},
+			.blockPosToEntityDataMapMutex = .{},
 		};
 		self.data.init();
 		return self;
@@ -298,8 +300,8 @@ pub const Chunk = struct { // MARK: Chunk
 		return self.data.getValue(index);
 	}
 
-	pub fn getLocalBlockIndex(self: *const Chunk, absPos: Vec3i) u32 {
-		return getIndex(absPos[0] - self.pos.wx, absPos[1] - self.pos.wy, absPos[2] - self.pos.wz);
+	pub fn getLocalBlockIndex(self: *const Chunk, worldPos: Vec3i) u32 {
+		return getIndex(worldPos[0] - self.pos.wx, worldPos[1] - self.pos.wy, worldPos[2] - self.pos.wz);
 	}
 };
 
@@ -326,6 +328,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 				.voxelSizeMask = pos.voxelSize - 1,
 				.widthShift = voxelSizeShift + chunkShift,
 				.blockPosToEntityDataMap = .{},
+				.blockPosToEntityDataMapMutex = .{},
 			},
 			.refCount = .init(1),
 		};
