@@ -140,8 +140,8 @@ fn initChildTableFromZon(parentId: []const u8, colorName: []const u8, colorIndex
 		return .init(arenaAllocator, &.{});
 	}
 	if(zon.array.items.len == 0) {
-		std.log.warn("['{s}'->'{s}'] Empty children list.", .{parentId, colorName});
-		return .init(arenaAllocator, &.{});
+		std.log.err("['{s}'->'{s}'] Empty children list.", .{parentId, colorName});
+		return error.EmptyChildrenList;
 	}
 	const list = arenaAllocator.alloc(Child, zon.array.items.len);
 	for(zon.array.items, 0..) |entry, childIndex| {
@@ -175,7 +175,10 @@ pub fn registerSBB(structures: *std.StringHashMap(ZonElement)) !void {
 	{
 		var iterator = structures.iterator();
 		while(iterator.next()) |entry| {
-			const value = StructureBuildingBlock.initFromZon(entry.key_ptr.*, entry.value_ptr.*) catch continue;
+			const value = StructureBuildingBlock.initFromZon(entry.key_ptr.*, entry.value_ptr.*) catch |err| {
+				std.log.err("Could not register structure building block '{s}' ({s})", .{entry.key_ptr.*, @errorName(err)});
+				continue;
+			};
 			const key = arenaAllocator.dupe(u8, entry.key_ptr.*);
 			structureCache.put(arenaAllocator.allocator, key, value) catch unreachable;
 			std.log.debug("Registered structure building block: '{s}'", .{entry.key_ptr.*});
@@ -218,7 +221,7 @@ pub fn registerBlueprints(blueprints: *std.StringHashMap([]u8)) !void {
 	while(iterator.next()) |entry| {
 		const stringId = entry.key_ptr.*;
 		const blueprint0 = Blueprint.load(arenaAllocator, entry.value_ptr.*) catch |err| {
-			std.log.err("Could not load blueprint {s}: {s}", .{stringId, @errorName(err)});
+			std.log.err("Could not load blueprint '{s}' ({s})", .{stringId, @errorName(err)});
 			continue;
 		};
 
