@@ -13,7 +13,8 @@ rot: Vec3f = .{0, 0, 0},
 
 health: f32 = 8,
 maxHealth: f32 = 8,
-// TODO: Hunger
+energy: f32 = 8,
+maxEnergy: f32 = 8,
 // TODO: Name
 
 pub fn loadFrom(self: *@This(), zon: ZonElement) void {
@@ -21,6 +22,7 @@ pub fn loadFrom(self: *@This(), zon: ZonElement) void {
 	self.vel = zon.get(Vec3d, "velocity", .{0, 0, 0});
 	self.rot = zon.get(Vec3f, "rotation", .{0, 0, 0});
 	self.health = zon.get(f32, "health", self.maxHealth);
+	self.energy = zon.get(f32, "energy", self.maxEnergy);
 }
 
 pub fn save(self: *@This(), allocator: NeverFailingAllocator) ZonElement {
@@ -29,5 +31,6 @@ pub fn save(self: *@This(), allocator: NeverFailingAllocator) ZonElement {
 	zon.put("velocity", self.vel);
 	zon.put("rotation", self.rot);
 	zon.put("health", self.health);
+	zon.put("energy", self.energy);
 	return zon;
 }

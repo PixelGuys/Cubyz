@@ -134,10 +134,10 @@ const ChunkManager = struct { // MARK: ChunkManager
 		source: Source,
 
 		const vtable = utils.ThreadPool.VTable{
-			.getPriority = @ptrCast(&getPriority),
-			.isStillNeeded = @ptrCast(&isStillNeeded),
-			.run = @ptrCast(&run),
-			.clean = @ptrCast(&clean),
+			.getPriority = main.utils.castFunctionSelfToAnyopaque(getPriority),
+			.isStillNeeded = main.utils.castFunctionSelfToAnyopaque(isStillNeeded),
+			.run = main.utils.castFunctionSelfToAnyopaque(run),
+			.clean = main.utils.castFunctionSelfToAnyopaque(clean),
 			.taskType = .chunkgen,
 		};
 
@@ -194,10 +194,10 @@ const ChunkManager = struct { // MARK: ChunkManager
 		source: ?*User,
 
 		const vtable = utils.ThreadPool.VTable{
-			.getPriority = @ptrCast(&getPriority),
-			.isStillNeeded = @ptrCast(&isStillNeeded),
-			.run = @ptrCast(&run),
-			.clean = @ptrCast(&clean),
+			.getPriority = main.utils.castFunctionSelfToAnyopaque(getPriority),
+			.isStillNeeded = main.utils.castFunctionSelfToAnyopaque(isStillNeeded),
+			.run = main.utils.castFunctionSelfToAnyopaque(run),
+			.clean = main.utils.castFunctionSelfToAnyopaque(clean),
 			.taskType = .misc,
 		};
 
@@ -583,10 +583,10 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		storeMaps: bool,
 
 		const vtable = utils.ThreadPool.VTable{
-			.getPriority = @ptrCast(&getPriority),
-			.isStillNeeded = @ptrCast(&isStillNeeded),
-			.run = @ptrCast(&run),
-			.clean = @ptrCast(&clean),
+			.getPriority = main.utils.castFunctionSelfToAnyopaque(getPriority),
+			.isStillNeeded = main.utils.castFunctionSelfToAnyopaque(isStillNeeded),
+			.run = main.utils.castFunctionSelfToAnyopaque(run),
+			.clean = main.utils.castFunctionSelfToAnyopaque(clean),
 			.taskType = .chunkgen,
 		};
 

@@ -9,12 +9,12 @@
 	.model = .{
 		.radius = 4,
 	},
-	.texture_top = "cubyz:branch/baobab/dot",
-	.texture_bottom = "cubyz:branch/baobab/half_line",
-	.texture_right = "cubyz:branch/baobab/line",
-	.texture_left = "cubyz:branch/baobab/bend",
-	.texture_front = "cubyz:branch/baobab/intersection",
-	.texture_back = "cubyz:branch/baobab/cross",
+	.texture0 = "cubyz:branch/baobab/dot",
+	.texture1 = "cubyz:branch/baobab/half_line",
+	.texture2 = "cubyz:branch/baobab/line",
+	.texture3 = "cubyz:branch/baobab/bend",
+	.texture4 = "cubyz:branch/baobab/intersection",
+	.texture5 = "cubyz:branch/baobab/cross",
 	.item = .{
 		.material = .{
 			.density = 0.2,

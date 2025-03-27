@@ -73,7 +73,7 @@ pub const ChannelChunk = struct {
 
 	fn calculateIncomingOcclusion(result: *[3]u8, block: blocks.Block, voxelSize: u31, neighbor: chunk.Neighbor) void {
 		if(block.typ == 0) return;
-		if(main.models.models.items[blocks.meshes.model(block)].isNeighborOccluded[neighbor.toInt()]) {
+		if(blocks.meshes.model(block).model().isNeighborOccluded[neighbor.toInt()]) {
 			var absorption: [3]u8 = extractColor(block.absorption());
 			absorption[0] *|= @intCast(voxelSize);
 			absorption[1] *|= @intCast(voxelSize);
@@ -86,7 +86,7 @@ pub const ChannelChunk = struct {
 
 	fn calculateOutgoingOcclusion(result: *[3]u8, block: blocks.Block, voxelSize: u31, neighbor: chunk.Neighbor) void {
 		if(block.typ == 0) return;
-		const model = &main.models.models.items[blocks.meshes.model(block)];
+		const model = blocks.meshes.model(block).model();
 		if(model.isNeighborOccluded[neighbor.toInt()] and !model.isNeighborOccluded[neighbor.reverse().toInt()]) { // Avoid calculating the absorption twice.
 			var absorption: [3]u8 = extractColor(block.absorption());
 			absorption[0] *|= @intCast(voxelSize);

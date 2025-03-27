@@ -7,6 +7,7 @@ const Block = blocks.Block;
 const chunk = main.chunk;
 const game = main.game;
 const models = main.models;
+const QuadIndex = models.QuadIndex;
 const renderer = main.renderer;
 const graphics = main.graphics;
 const c = graphics.c;
@@ -252,10 +253,10 @@ pub const FaceData = extern struct {
 	},
 	blockAndQuad: packed struct(u32) {
 		texture: u16,
-		quadIndex: u16,
+		quadIndex: QuadIndex,
 	},
 
-	pub inline fn init(texture: u16, quadIndex: u16, x: i32, y: i32, z: i32, comptime backFace: bool) FaceData {
+	pub inline fn init(texture: u16, quadIndex: QuadIndex, x: i32, y: i32, z: i32, comptime backFace: bool) FaceData {
 		return FaceData{
 			.position = .{.x = @intCast(x), .y = @intCast(y), .z = @intCast(z), .isBackFace = backFace},
 			.blockAndQuad = .{.texture = texture, .quadIndex = quadIndex},
@@ -320,6 +321,7 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 	max: Vec3f = undefined,
 
 	fn deinit(self: *PrimitiveMesh) void {
+		faceBuffer.free(self.bufferAllocation);
 		self.completeList.deinit(main.globalAllocator);
 	}
 
@@ -349,7 +351,7 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 				@floatFromInt(face.position.y),
 				@floatFromInt(face.position.z),
 			};
-			for(main.models.quads.items[face.blockAndQuad.quadIndex].corners) |cornerPos| {
+			for(face.blockAndQuad.quadIndex.quadInfo().corners) |cornerPos| {
 				self.min = @min(self.min, basePos + cornerPos);
 				self.max = @max(self.max, basePos + cornerPos);
 			}
@@ -455,8 +457,10 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		return result;
 	}
 
-	fn getLight(parent: *ChunkMesh, blockPos: Vec3i, textureIndex: u16, quadIndex: u16) [4]u32 {
-		const normal = models.quads.items[quadIndex].normal;
+	fn getLight(parent: *ChunkMesh, blockPos: Vec3i, textureIndex: u16, quadIndex: QuadIndex) [4]u32 {
+		const quadInfo = quadIndex.quadInfo();
+		const extraQuadInfo = quadIndex.extraQuadInfo();
+		const normal = quadInfo.normal;
 		if(!blocks.meshes.textureOcclusionData.items[textureIndex]) { // No ambient occlusion (→ no smooth lighting)
 			const fullValues = getLightAt(parent, blockPos[0], blockPos[1], blockPos[2]);
 			var rawVals: [6]u5 = undefined;
@@ -465,12 +469,12 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 			}
 			return packLightValues(@splat(rawVals));
 		}
-		if(models.extraQuadInfos.items[quadIndex].hasOnlyCornerVertices) { // Fast path for simple quads.
+		if(extraQuadInfo.hasOnlyCornerVertices) { // Fast path for simple quads.
 			var rawVals: [4][6]u5 = undefined;
 			for(0..4) |i| {
-				const vertexPos = models.quads.items[quadIndex].corners[i];
+				const vertexPos = quadInfo.corners[i];
 				const fullPos = blockPos +% @as(Vec3i, @intFromFloat(vertexPos));
-				const fullValues = if(models.extraQuadInfos.items[quadIndex].alignedNormalDirection) |dir|
+				const fullValues = if(extraQuadInfo.alignedNormalDirection) |dir|
 					getCornerLightAligned(parent, fullPos, dir)
 				else
 					getCornerLight(parent, fullPos, normal);
@@ -488,7 +492,7 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 				while(dy <= 1) : (dy += 1) {
 					var dz: u31 = 0;
 					while(dz <= 1) : (dz += 1) {
-						cornerVals[dx][dy][dz] = if(models.extraQuadInfos.items[quadIndex].alignedNormalDirection) |dir|
+						cornerVals[dx][dy][dz] = if(extraQuadInfo.alignedNormalDirection) |dir|
 							getCornerLightAligned(parent, blockPos +% Vec3i{dx, dy, dz}, dir)
 						else
 							getCornerLight(parent, blockPos +% Vec3i{dx, dy, dz}, normal);
@@ -498,7 +502,7 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		}
 		var rawVals: [4][6]u5 = undefined;
 		for(0..4) |i| {
-			const vertexPos = models.quads.items[quadIndex].corners[i];
+			const vertexPos = quadInfo.corners[i];
 			const lightPos = vertexPos + @as(Vec3f, @floatFromInt(blockPos));
 			const interp = lightPos - @as(Vec3f, @floatFromInt(blockPos));
 			var val: [6]f32 = .{0, 0, 0, 0, 0, 0};
@@ -548,7 +552,7 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		var iStart = i;
 		for(0..7) |normal| {
 			for(coreList) |face| {
-				if(main.models.extraQuadInfos.items[face.blockAndQuad.quadIndex].alignedNormalDirection) |normalDir| {
+				if(face.blockAndQuad.quadIndex.extraQuadInfo().alignedNormalDirection) |normalDir| {
 					if(normalDir.toInt() == normal) {
 						fullBuffer[i] = face;
 						i += 1;
@@ -568,7 +572,7 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		}
 		for(0..7) |normal| {
 			for(optionalList) |face| {
-				if(main.models.extraQuadInfos.items[face.blockAndQuad.quadIndex].alignedNormalDirection) |normalDir| {
+				if(face.blockAndQuad.quadIndex.extraQuadInfo().alignedNormalDirection) |normalDir| {
 					if(normalDir.toInt() == normal) {
 						fullBuffer[i] = face;
 						i += 1;
@@ -603,7 +607,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			const dz = z + chunkDz;
 			self.isBackFace = self.face.position.isBackFace;
 			const quadIndex = self.face.blockAndQuad.quadIndex;
-			const normalVector = models.quads.items[quadIndex].normal;
+			const normalVector = quadIndex.quadInfo().normal;
 			self.shouldBeCulled = vec.dot(normalVector, @floatFromInt(Vec3i{dx, dy, dz})) > 0; // TODO: Adjust for arbitrary voxel models.
 			const fullDx = dx - @as(i32, @intFromFloat(normalVector[0])); // TODO: This calculation should only be done for border faces.
 			const fullDy = dy - @as(i32, @intFromFloat(normalVector[1]));
@@ -704,10 +708,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		mesh: *ChunkMesh,
 
 		pub const vtable = main.utils.ThreadPool.VTable{
-			.getPriority = @ptrCast(&getPriority),
-			.isStillNeeded = @ptrCast(&isStillNeeded),
-			.run = @ptrCast(&run),
-			.clean = @ptrCast(&clean),
+			.getPriority = main.utils.castFunctionSelfToAnyopaque(getPriority),
+			.isStillNeeded = main.utils.castFunctionSelfToAnyopaque(isStillNeeded),
+			.run = main.utils.castFunctionSelfToAnyopaque(run),
+			.clean = main.utils.castFunctionSelfToAnyopaque(clean),
 			.taskType = .misc,
 		};
 
@@ -750,10 +754,9 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	}
 
 	fn canBeSeenThroughOtherBlock(block: Block, other: Block, neighbor: chunk.Neighbor) bool {
-		const rotatedModel = blocks.meshes.model(block);
-		const model = &models.models.items[rotatedModel];
-		_ = model; // TODO: Check if the neighbor model occludes this one. (maybe not that relevant)
-		return block.typ != 0 and (other.typ == 0 or (block != other and other.viewThrough()) or other.alwaysViewThrough() or !models.models.items[blocks.meshes.model(other)].isNeighborOccluded[neighbor.reverse().toInt()]);
+		const rotatedModel = blocks.meshes.model(block).model();
+		_ = rotatedModel; // TODO: Check if the neighbor model occludes this one. (maybe not that relevant)
+		return block.typ != 0 and (other.typ == 0 or (block != other and other.viewThrough()) or other.alwaysViewThrough() or !blocks.meshes.model(other).model().isNeighborOccluded[neighbor.reverse().toInt()]);
 	}
 
 	fn initLight(self: *ChunkMesh, lightRefreshList: *main.List(*ChunkMesh)) void {
@@ -851,13 +854,13 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	}
 
 	fn appendInternalQuads(block: Block, x: i32, y: i32, z: i32, comptime backFace: bool, list: *main.ListUnmanaged(FaceData), allocator: main.heap.NeverFailingAllocator) void {
-		const model = blocks.meshes.model(block);
-		models.models.items[model].appendInternalQuadsToList(list, allocator, block, x, y, z, backFace);
+		const model = blocks.meshes.model(block).model();
+		model.appendInternalQuadsToList(list, allocator, block, x, y, z, backFace);
 	}
 
 	fn appendNeighborFacingQuads(block: Block, neighbor: chunk.Neighbor, x: i32, y: i32, z: i32, comptime backFace: bool, list: *main.ListUnmanaged(FaceData), allocator: main.heap.NeverFailingAllocator) void {
-		const model = blocks.meshes.model(block);
-		models.models.items[model].appendNeighborFacingQuadsToList(list, allocator, block, neighbor, x, y, z, backFace);
+		const model = blocks.meshes.model(block).model();
+		model.appendNeighborFacingQuadsToList(list, allocator, block, neighbor, x, y, z, backFace);
 	}
 
 	pub fn generateMesh(self: *ChunkMesh, lightRefreshList: *main.List(*ChunkMesh)) void {
@@ -892,7 +895,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		defer main.stackAllocator.free(paletteCache);
 		for(0..self.chunk.data.paletteLength) |i| {
 			const block = self.chunk.data.palette[i];
-			const model = &models.models.items[blocks.meshes.model(block)];
+			const model = blocks.meshes.model(block).model();
 			var result: OcclusionInfo = .{};
 			if(model.noNeighborsOccluded or block.viewThrough()) {
 				result.canSeeAllNeighbors = true;

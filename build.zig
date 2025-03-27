@@ -80,17 +80,6 @@ pub fn build(b: *std.Build) !void {
 		std.log.err("Unsupported target: {}\n", .{t.os.tag});
 	}
 
-	exe.root_module.addAnonymousImport("gui", .{
-		.target = target,
-		.optimize = optimize,
-		.root_source_file = b.path("src/gui/gui.zig"),
-	});
-	exe.root_module.addAnonymousImport("server", .{
-		.target = target,
-		.optimize = optimize,
-		.root_source_file = b.path("src/server/server.zig"),
-	});
-
 	b.installArtifact(exe);
 
 	const run_cmd = b.addRunArtifact(exe);
