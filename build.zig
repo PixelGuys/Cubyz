@@ -18,6 +18,7 @@ pub fn build(b: *std.Build) !void {
 		.optimize = optimize,
 		//.sanitize_thread = true,
 	});
+	exe.root_module.addImport("main", exe.root_module);
 	exe.linkLibC();
 	exe.linkLibCpp();
 
@@ -96,6 +97,7 @@ pub fn build(b: *std.Build) !void {
 		.target = target,
 		.optimize = optimize,
 	});
+	exe_tests.root_module.addImport("main", exe_tests.root_module);
 	const run_exe_tests = b.addRunArtifact(exe_tests);
 
 	const test_step = b.step("test", "Run unit tests");
@@ -108,6 +110,12 @@ pub fn build(b: *std.Build) !void {
 		.root_source_file = b.path("src/formatter/format.zig"),
 		.target = target,
 		.optimize = optimize,
+	});
+	// ZLS is stupid and cannot detect which executable is the main one, so we add the import everywhere...
+	formatter.root_module.addAnonymousImport("main", .{
+		.target = target,
+		.optimize = optimize,
+		.root_source_file = b.path("src/main.zig"),
 	});
 
 	const formatter_install = b.addInstallArtifact(formatter, .{});
@@ -126,6 +134,12 @@ pub fn build(b: *std.Build) !void {
 		.root_source_file = b.path("src/formatter/fmt.zig"),
 		.target = target,
 		.optimize = optimize,
+	});
+	// ZLS is stupid and cannot detect which executable is the main one, so we add the import everywhere...
+	zig_fmt.root_module.addAnonymousImport("main", .{
+		.target = target,
+		.optimize = optimize,
+		.root_source_file = b.path("src/main.zig"),
 	});
 
 	const zig_fmt_install = b.addInstallArtifact(zig_fmt, .{});
