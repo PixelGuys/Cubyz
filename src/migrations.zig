@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("main.zig");
+const main = @import("main");
 const ZonElement = @import("zon.zig").ZonElement;
 const Palette = @import("assets.zig").Palette;
 

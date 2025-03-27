@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const graphics = main.graphics;
 const draw = graphics.draw;
 const ZonElement = main.ZonElement;
