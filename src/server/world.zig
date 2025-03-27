@@ -1007,6 +1007,10 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		return ChunkManager.getOrGenerateChunkAndIncreaseRefCount(pos);
 	}
 
+	pub fn getChunkFromCacheAndIncreaseRefCount(_: *ServerWorld, pos: chunk.ChunkPosition) ?*ServerChunk {
+		return ChunkManager.getChunkFromCacheAndIncreaseRefCount(pos);
+	}
+
 	pub fn getBiome(_: *const ServerWorld, wx: i32, wy: i32, wz: i32) *const terrain.biomes.Biome {
 		const map = terrain.CaveBiomeMap.InterpolatableCaveBiomeMapView.init(main.stackAllocator, .{.wx = wx, .wy = wy, .wz = wz, .voxelSize = 1}, 1, 0);
 		defer map.deinit();

@@ -9,6 +9,7 @@ const ChunkPosition = main.chunk.ChunkPosition;
 const getIndex = main.chunk.getIndex;
 const server = main.server;
 const User = server.User;
+const mesh_storage = main.renderer.mesh_storage;
 
 pub const EntityDataClass = struct {
 	id: []const u8,
@@ -74,7 +75,7 @@ pub const EventStatus = enum {
 	ignored,
 };
 
-fn BlockEntityData(T: type) type {
+fn BlockEntityDataStorage(comptime side: enum {client, server}, T: type) type {
 	return struct {
 		pub const DataT = T;
 		pub const EntryT = struct {
@@ -94,13 +95,22 @@ fn BlockEntityData(T: type) type {
 			storage.clearRetainingCapacity();
 		}
 		pub fn add(pos: Vec3i, value: DataT, chunk: *Chunk) void {
+			mutex.lock();
+			defer mutex.unlock();
+
 			const dataIndex = storage.items.len;
 			storage.append(.{.absoluteBlockPosition = pos, .data = value});
 
 			const blockIndex = chunk.getLocalBlockIndex(pos);
+
+			chunk.blockPosToEntityDataMapMutex.lock();
 			chunk.blockPosToEntityDataMap.put(main.globalAllocator.allocator, blockIndex, @intCast(dataIndex)) catch unreachable;
+			chunk.blockPosToEntityDataMapMutex.unlock();
 		}
 		pub fn remove(pos: Vec3i, chunk: *Chunk) void {
+			mutex.lock();
+			defer mutex.unlock();
+
 			const blockIndex = chunk.getLocalBlockIndex(pos);
 
 			chunk.blockPosToEntityDataMapMutex.lock();
@@ -113,22 +123,41 @@ fn BlockEntityData(T: type) type {
 			};
 
 			const dataIndex = entry.value;
-
 			_ = storage.swapRemove(dataIndex);
-			if(dataIndex == storage.items.len) return;
+			if(dataIndex == storage.items.len) {
+				return;
+			}
 
 			const movedEntry = storage.items[dataIndex];
-
-			const otherChunk = server.world.?.getOrGenerateChunkAndIncreaseRefCount(ChunkPosition.initFromWorldPos(pos, 1));
-			defer otherChunk.decreaseRefCount();
-
-			const otherBlockIndex = chunk.getLocalBlockIndex(pos);
-			const valuePtr = otherChunk.super.blockPosToEntityDataMap.getPtr(otherBlockIndex) orelse {
-				std.log.err("Couldn't update entity data of block at position {}", .{movedEntry.absoluteBlockPosition});
+			switch(side) {
+				.server => propagateRemoveServer(movedEntry.absoluteBlockPosition, dataIndex),
+				.client => propagateRemoveClient(movedEntry.absoluteBlockPosition, dataIndex),
+			}
+		}
+		fn propagateRemoveServer(pos: Vec3i, index: u32) void {
+			const severChunk = server.world.?.getChunkFromCacheAndIncreaseRefCount(ChunkPosition.initFromWorldPos(pos, 1)) orelse {
+				std.log.warn("Couldn't update entity data of block at position {} (chunk missing)", .{pos});
 				return;
 			};
+			defer severChunk.decreaseRefCount();
 
-			valuePtr.* = dataIndex;
+			severChunk.super.blockPosToEntityDataMapMutex.lock();
+			defer severChunk.super.blockPosToEntityDataMapMutex.unlock();
+
+			const otherDataIndex = severChunk.super.getLocalBlockIndex(pos);
+			severChunk.super.blockPosToEntityDataMap.put(main.globalAllocator.allocator, otherDataIndex, index) catch undefined;
+		}
+		fn propagateRemoveClient(pos: Vec3i, index: u32) void {
+			const mesh = mesh_storage.getMeshAndIncreaseRefCount(ChunkPosition.initFromWorldPos(pos, 1)) orelse {
+				std.log.warn("Couldn't update entity data of block at position {} (mesh missing)", .{pos});
+				return;
+			};
+			defer mesh.decreaseRefCount();
+			mesh.chunk.blockPosToEntityDataMapMutex.lock();
+			defer mesh.chunk.blockPosToEntityDataMapMutex.unlock();
+
+			const otherDataIndex = mesh.chunk.getLocalBlockIndex(pos);
+			mesh.chunk.blockPosToEntityDataMap.put(main.globalAllocator.allocator, otherDataIndex, index) catch undefined;
 		}
 		pub fn get(pos: Vec3i, chunk: *Chunk) ?*DataT {
 			main.utils.assertLocked(&mutex);
@@ -136,12 +165,12 @@ fn BlockEntityData(T: type) type {
 			const blockIndex = chunk.getLocalBlockIndex(pos);
 
 			chunk.blockPosToEntityDataMapMutex.lock();
+			defer chunk.blockPosToEntityDataMapMutex.unlock();
+
 			const dataIndex = chunk.blockPosToEntityDataMap.get(blockIndex) orelse {
 				std.log.warn("Couldn't get entity data of block at position {}", .{pos});
-				chunk.blockPosToEntityDataMapMutex.unlock();
 				return null;
 			};
-			chunk.blockPosToEntityDataMapMutex.unlock();
 			return &storage.items[dataIndex].data;
 		}
 	};
@@ -149,16 +178,32 @@ fn BlockEntityData(T: type) type {
 
 pub const EntityDataClasses = struct {
 	pub const Chest = struct {
-		const Super = BlockEntityData(
+		const StorageServer = BlockEntityDataStorage(
+			.server,
+			struct {
+				contents: u64,
+			},
+		);
+		const StorageClient = BlockEntityDataStorage(
+			.client,
 			struct {
 				contents: u64,
 			},
 		);
 
 		pub const id = "chest";
-		const init = Super.init;
-		const reset = Super.reset;
-		const deinit = Super.deinit;
+		pub fn init() void {
+			StorageServer.init();
+			StorageClient.init();
+		}
+		pub fn deinit() void {
+			StorageServer.deinit();
+			StorageClient.deinit();
+		}
+		pub fn reset() void {
+			StorageServer.reset();
+			StorageClient.reset();
+		}
 
 		pub fn onLoadClient(_: Vec3i, _: *Chunk) void {
 			std.log.debug("Chest.onLoadClient", .{});
@@ -174,32 +219,26 @@ pub const EntityDataClasses = struct {
 		}
 		pub fn onPlaceClient(pos: Vec3i, chunk: *Chunk) void {
 			std.log.debug("Chest.onPlaceClient", .{});
-			Super.mutex.lock();
-			defer Super.mutex.unlock();
-			Super.add(pos, .{.contents = 0}, chunk);
+			StorageClient.add(pos, .{.contents = 0}, chunk);
 		}
 		pub fn onBreakClient(pos: Vec3i, chunk: *Chunk) void {
 			std.log.debug("Chest.onBreakClient", .{});
-			Super.mutex.lock();
-			defer Super.mutex.unlock();
-			Super.remove(pos, chunk);
+			StorageClient.remove(pos, chunk);
 		}
 		pub fn onPlaceServer(pos: Vec3i, chunk: *Chunk) void {
 			std.log.debug("Chest.onPlaceServer", .{});
-			Super.add(pos, .{.contents = 0}, chunk);
+			StorageServer.add(pos, .{.contents = 0}, chunk);
 		}
 		pub fn onBreakServer(pos: Vec3i, chunk: *Chunk) void {
 			std.log.debug("Chest.onBreakServer", .{});
-			Super.mutex.lock();
-			defer Super.mutex.unlock();
-			Super.remove(pos, chunk);
+			StorageServer.remove(pos, chunk);
 		}
 		pub fn onInteract(pos: Vec3i, chunk: *Chunk) EventStatus {
-			Super.mutex.lock();
-			const data = Super.get(pos, chunk);
+			StorageClient.mutex.lock();
+			defer StorageClient.mutex.unlock();
+			const data = StorageClient.get(pos, chunk);
 			if(data == null) std.log.debug("Chest.onInteract: null", .{}) else std.log.debug("Chest.onInteract: {}", .{data.?.contents});
 
-			Super.mutex.unlock();
 			return .handled;
 		}
 	};

@@ -764,17 +764,7 @@ pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()
 		const pos = chunk.ChunkPosition{.wx = blockUpdate.x, .wy = blockUpdate.y, .wz = blockUpdate.z, .voxelSize = 1};
 		if(getMeshAndIncreaseRefCount(pos)) |mesh| {
 			defer mesh.decreaseRefCount();
-
-			const oldBlock = mesh.chunk.getBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z);
-			if(oldBlock.entityDataClass()) |class| {
-				class.onBreakClient(.{blockUpdate.x, blockUpdate.y, blockUpdate.z}, mesh.chunk);
-			}
-
 			mesh.updateBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock);
-
-			if(oldBlock.entityDataClass()) |class| {
-				class.onPlaceClient(.{blockUpdate.x, blockUpdate.y, blockUpdate.z}, mesh.chunk);
-			}
 		} // TODO: It seems like we simply ignore the block update if we don't have the mesh yet.
 	}
 
