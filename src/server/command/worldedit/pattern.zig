@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const AliasTable = main.utils.AliasTable;
 const Block = main.blocks.Block;
 const ListUnmanaged = main.ListUnmanaged;
