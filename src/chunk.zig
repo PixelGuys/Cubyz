@@ -275,6 +275,8 @@ pub const Chunk = struct { // MARK: Chunk
 	}
 
 	pub fn deinit(self: *Chunk) void {
+		// TODO: We should either unload this data here or make sure it was unloaded before.
+		std.debug.assert(self.blockPosToEntityDataMap.count() == 0);
 		self.blockPosToEntityDataMap.deinit(main.globalAllocator.allocator);
 		self.data.deinit();
 		memoryPool.destroy(@alignCast(self));
