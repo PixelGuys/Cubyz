@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const files = main.files;
 const settings = main.settings;
 const Vec2f = main.vec.Vec2f;

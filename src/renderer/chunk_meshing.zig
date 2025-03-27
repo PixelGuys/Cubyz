@@ -1,7 +1,7 @@
 const std = @import("std");
 const Atomic = std.atomic.Value;
 
-const main = @import("root");
+const main = @import("main");
 const blocks = main.blocks;
 const Block = blocks.Block;
 const chunk = main.chunk;
@@ -321,6 +321,7 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 	max: Vec3f = undefined,
 
 	fn deinit(self: *PrimitiveMesh) void {
+		faceBuffer.free(self.bufferAllocation);
 		self.completeList.deinit(main.globalAllocator);
 	}
 

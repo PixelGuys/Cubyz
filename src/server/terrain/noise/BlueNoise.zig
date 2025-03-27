@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const random = main.random;
 const Array2D = main.utils.Array2D;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
