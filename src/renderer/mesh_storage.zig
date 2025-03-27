@@ -188,19 +188,6 @@ pub fn triggerOnInteractBlock(x: i32, y: i32, z: i32) EventStatus {
 	return .ignored;
 }
 
-pub fn triggerOnUpdateBlock(comptime changeTyp: enum {@"break", place}, x: i32, y: i32, z: i32, block: blocks.Block) void {
-	const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize = 1});
-	node.mutex.lock();
-	defer node.mutex.unlock();
-	const mesh = node.mesh orelse return;
-	if(block.entityDataClass()) |class| {
-		switch(changeTyp) {
-			.@"break" => class.onBreakClient(.{x, y, z}, mesh.chunk),
-			.place => class.onPlaceClient(.{x, y, z}, mesh.chunk),
-		}
-	}
-}
-
 pub fn getLight(wx: i32, wy: i32, wz: i32) ?[6]u8 {
 	const node = getNodePointer(.{.wx = wx, .wy = wy, .wz = wz, .voxelSize = 1});
 	node.mutex.lock();
@@ -777,8 +764,17 @@ pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()
 		const pos = chunk.ChunkPosition{.wx = blockUpdate.x, .wy = blockUpdate.y, .wz = blockUpdate.z, .voxelSize = 1};
 		if(getMeshAndIncreaseRefCount(pos)) |mesh| {
 			defer mesh.decreaseRefCount();
+
+			const oldBlock = mesh.chunk.getBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z);
+			if(oldBlock.entityDataClass()) |class| {
+				class.onBreakClient(.{blockUpdate.x, blockUpdate.y, blockUpdate.z}, mesh.chunk);
+			}
+
 			mesh.updateBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock);
-			triggerOnUpdateBlock(.place, blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock);
+
+			if(oldBlock.entityDataClass()) |class| {
+				class.onPlaceClient(.{blockUpdate.x, blockUpdate.y, blockUpdate.z}, mesh.chunk);
+			}
 		} // TODO: It seems like we simply ignore the block update if we don't have the mesh yet.
 	}
 

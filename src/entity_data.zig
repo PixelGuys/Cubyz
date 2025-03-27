@@ -131,6 +131,8 @@ fn BlockEntityData(T: type) type {
 			valuePtr.* = dataIndex;
 		}
 		pub fn get(pos: Vec3i, chunk: *Chunk) ?*DataT {
+			main.utils.assertLocked(&mutex);
+
 			const blockIndex = chunk.getLocalBlockIndex(pos);
 
 			chunk.blockPosToEntityDataMapMutex.lock();
