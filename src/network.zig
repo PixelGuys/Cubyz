@@ -10,7 +10,7 @@ const items = @import("items.zig");
 const Inventory = items.Inventory;
 const ItemStack = items.ItemStack;
 const ZonElement = @import("zon.zig").ZonElement;
-const main = @import("main.zig");
+const main = @import("main");
 const game = @import("game.zig");
 const settings = @import("settings.zig");
 const renderer = @import("renderer.zig");
@@ -559,9 +559,8 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 	pub fn run(self: *ConnectionManager) void {
 		self.threadId = std.Thread.getCurrentId();
-		var sta = main.heap.StackAllocator.init(main.globalAllocator, 1 << 23);
-		defer sta.deinit();
-		main.stackAllocator = sta.allocator();
+		main.initThreadLocals();
+		defer main.deinitThreadLocals();
 
 		var lastTime: i64 = @truncate(std.time.nanoTimestamp());
 		while(self.running.load(.monotonic)) {

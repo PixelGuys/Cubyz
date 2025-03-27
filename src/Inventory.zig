@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("main.zig");
+const main = @import("main");
 const BaseItem = main.items.BaseItem;
 const Block = main.blocks.Block;
 const Item = main.items.Item;

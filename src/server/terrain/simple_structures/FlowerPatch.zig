@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const random = main.random;
 const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
