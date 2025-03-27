@@ -42,10 +42,21 @@ const Vec3d = vec.Vec3d;
 
 pub threadlocal var stackAllocator: heap.NeverFailingAllocator = undefined;
 pub threadlocal var seed: u64 = undefined;
+threadlocal var stackAllocatorBase: heap.StackAllocator = undefined;
 var global_gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe = true}){};
 var handled_gpa = heap.ErrorHandlingAllocator.init(global_gpa.allocator());
 pub const globalAllocator: heap.NeverFailingAllocator = handled_gpa.allocator();
 pub var threadPool: *utils.ThreadPool = undefined;
+
+pub fn initThreadLocals() void {
+	seed = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp())));
+	stackAllocatorBase = heap.StackAllocator.init(globalAllocator, 1 << 23);
+	stackAllocator = stackAllocatorBase.allocator();
+}
+
+pub fn deinitThreadLocals() void {
+	stackAllocatorBase.deinit();
+}
 
 fn cacheStringImpl(comptime len: usize, comptime str: [len]u8) []const u8 {
 	return str[0..len];
@@ -522,13 +533,11 @@ pub fn convertJsonToZon(jsonPath: []const u8) void { // TODO: Remove after #480
 }
 
 pub fn main() void { // MARK: main()
-	seed = @bitCast(std.time.milliTimestamp());
 	defer if(global_gpa.deinit() == .leak) {
 		std.log.err("Memory leak", .{});
 	};
-	var sta = heap.StackAllocator.init(globalAllocator, 1 << 23);
-	defer sta.deinit();
-	stackAllocator = sta.allocator();
+	initThreadLocals();
+	defer deinitThreadLocals();
 
 	initLogging();
 	defer deinitLogging();

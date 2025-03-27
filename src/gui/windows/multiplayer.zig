@@ -39,9 +39,8 @@ fn discoverIpAddress() void {
 }
 
 fn discoverIpAddressFromNewThread() void {
-	var sta = main.heap.StackAllocator.init(main.globalAllocator, 1 << 23);
-	defer sta.deinit();
-	main.stackAllocator = sta.allocator();
+	main.initThreadLocals();
+	defer main.deinitThreadLocals();
 
 	discoverIpAddress();
 }
