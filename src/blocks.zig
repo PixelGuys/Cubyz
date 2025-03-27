@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const ZonElement = @import("zon.zig").ZonElement;
 const Neighbor = @import("chunk.zig").Neighbor;
 const graphics = @import("graphics.zig");

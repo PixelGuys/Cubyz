@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const User = main.server.User;
 const Vec3i = main.vec.Vec3i;
 

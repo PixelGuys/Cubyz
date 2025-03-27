@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const Block = main.blocks.Block;
 const Cache = main.utils.Cache;
 const chunk = main.chunk;
