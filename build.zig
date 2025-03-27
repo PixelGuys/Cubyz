@@ -97,6 +97,8 @@ pub fn build(b: *std.Build) !void {
 		.target = target,
 		.optimize = optimize,
 	});
+	exe_tests.addIncludePath(headersDeps.path("include"));
+	exe_tests.linkLibC();
 	exe_tests.root_module.addImport("main", exe_tests.root_module);
 	const run_exe_tests = b.addRunArtifact(exe_tests);
 

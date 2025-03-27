@@ -982,12 +982,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 	}
 
-	pub fn queueChunks(self: *ServerWorld, positions: []ChunkPosition, source: ?*User) void {
-		for(positions) |pos| {
-			self.queueChunk(pos, source);
-		}
-	}
-
 	pub fn queueChunkAndDecreaseRefCount(self: *ServerWorld, pos: ChunkPosition, source: *User) void {
 		self.chunkManager.queueChunkAndDecreaseRefCount(pos, source);
 	}

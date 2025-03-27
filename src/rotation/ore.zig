@@ -26,7 +26,7 @@ pub fn reset() void {
 pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 	const modelId = zon.as([]const u8, "cubyz:cube");
 	if(!std.mem.eql(u8, modelId, "cubyz:cube")) {
-		std.log.err("Ores can only be use on cube models.", .{modelId});
+		std.log.err("Ores can only be use on cube models, found '{s}'", .{modelId});
 	}
 	if(modelCache) |modelIndex| return modelIndex;
 
