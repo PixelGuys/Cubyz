@@ -13,6 +13,7 @@ const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
+const Neighbor = main.chunk.Neighbor;
 
 const Gamemode = main.game.Gamemode;
 
@@ -1636,11 +1637,48 @@ pub const Command = struct { // MARK: Command
 			}
 		}
 
-		fn blockDrop(pos: Vec3i, drop: main.blocks.BlockDrop) void {
+		fn blockDrop(_pos: Vec3i, drop: main.blocks.BlockDrop) void {
 			for(drop.items) |itemStack| {
-				const dropPos = @as(Vec3d, @floatFromInt(pos)) + @as(Vec3d, @splat(0.5)) + main.random.nextDoubleVectorSigned(3, &main.seed)*@as(Vec3d, @splat(0.5 - main.itemdrop.ItemDropManager.radius));
-				const dir = vec.normalize(main.random.nextFloatVectorSigned(3, &main.seed));
-				main.server.world.?.drop(itemStack.clone(), dropPos, dir, main.random.nextFloat(&main.seed)*1.5);
+				const pos = @as(Vec3d, @floatFromInt(_pos));
+				const blockCenterOffset =  @as(Vec3d, @splat(0.5));
+				var dropPos: Vec3d = pos + blockCenterOffset + main.random.nextDoubleVectorSigned(3, &main.seed)*@as(Vec3d, @splat(0.5 - main.itemdrop.ItemDropManager.radius));
+				var dropDir: Vec3d = main.random.nextFloatVectorSigned(3, &main.seed) + Vec3f{0, 1, 0};
+				const randomVelocity = 1 + main.random.nextFloat(&main.seed)*0.5;
+				var dropVelocity = randomVelocity;
+
+				const currentBlock = main.server.world.?.getBlock(_pos[0], _pos[1], _pos[2]) orelse Block{.typ = 0, .data = 0};
+
+				if(currentBlock.typ != 0) {
+					for(Neighbor.iterable) |neighbor| {
+						const neighborPos = _pos + neighbor.relPos();
+						const neighborBlock = main.server.world.?.getBlock(neighborPos[0], neighborPos[1], neighborPos[2]) orelse continue;
+
+						if(neighborBlock.typ == 0) {
+							const neighborDirection = @as(Vec3d, @floatFromInt(neighbor.relPos()));
+							dropPos = pos + blockCenterOffset + neighborDirection*@as(Vec3d, @splat(0.5 + main.itemdrop.ItemDropManager.radius));
+
+							const random = main.random.nextFloatVectorSigned(3, &main.seed);
+							const neighborOrt = @as(Vec3d, @floatFromInt(neighbor.orthogonalComponents()));
+							// Make sure direction vector points away from block and that axis perpendicular to block side is dominating.
+							dropDir = neighborDirection*@as(Vec3d, @splat(2))  + random*neighborOrt;
+
+							if(neighbor == Neighbor.dirDown) {
+								// When dropping from bottom of the block, gravity already accelerates the item, so having additional Z velocity
+								// makes items fall unnaturally fast compared to dropping from sides, therefore we remove Z component of direction.
+								dropDir = dropDir*neighborOrt;
+							} else if (neighbor == Neighbor.dirUp) {
+								// When dropping from top of the block gravity damps velocity so hard that item doesn't visibly jump from the ground
+								// instead it just slides to the side, which is counterintuitive and significantly different than when dropped from side.
+								// Therefore we significantly increase velocity in Z axis so most of the time item is in the air at least for a fraction of a second.
+								dropVelocity = randomVelocity*3;
+								dropDir = dropDir*neighborOrt*@as(Vec3d, @splat(1/3)) + dropDir*@abs(neighborDirection);
+							}
+							break;
+						}
+					}
+				}
+
+				main.server.world.?.drop(itemStack.clone(), dropPos, @floatCast(vec.normalize(dropDir)), dropVelocity);
 			}
 		}
 
