@@ -722,12 +722,12 @@ pub fn main() void { // MARK: main()
 /// std.testing.refAllDeclsRecursive, but ignores C imports (by name)
 pub fn refAllDeclsRecursiveExceptCImports(comptime T: type) void {
 	if(!@import("builtin").is_test) return;
-	inline for (comptime std.meta.declarations(T)) |decl| blk: {
+	inline for(comptime std.meta.declarations(T)) |decl| blk: {
 		if(comptime std.mem.eql(u8, decl.name, "c")) continue;
 		if(comptime std.mem.eql(u8, decl.name, "hbft")) break :blk;
 		if(comptime std.mem.eql(u8, decl.name, "stb_image")) break :blk;
 		if(@TypeOf(@field(T, decl.name)) == type) {
-			switch (@typeInfo(@field(T, decl.name))) {
+			switch(@typeInfo(@field(T, decl.name))) {
 				.@"struct", .@"enum", .@"union", .@"opaque" => refAllDeclsRecursiveExceptCImports(@field(T, decl.name)),
 				else => {},
 			}
