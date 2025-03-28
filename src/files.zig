@@ -1,7 +1,7 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-const main = @import("root");
+const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const ZonElement = main.ZonElement;
 

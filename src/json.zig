@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("main.zig");
+const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const List = main.List;
 
@@ -703,7 +703,7 @@ test "number parsing" {
 }
 
 test "element parsing" {
-	var wrap = main.utils.ErrorHandlingAllocator.init(std.testing.allocator);
+	var wrap = main.heap.ErrorHandlingAllocator.init(std.testing.allocator);
 	const allocator = wrap.allocator();
 	// Integers:
 	var index: u32 = 0;
