@@ -1640,7 +1640,7 @@ pub const Command = struct { // MARK: Command
 		fn blockDrop(_pos: Vec3i, drop: main.blocks.BlockDrop) void {
 			for(drop.items) |itemStack| {
 				const pos = @as(Vec3d, @floatFromInt(_pos));
-				const blockCenterOffset =  @as(Vec3d, @splat(0.5));
+				const blockCenterOffset = @as(Vec3d, @splat(0.5));
 				var dropPos: Vec3d = pos + blockCenterOffset + main.random.nextDoubleVectorSigned(3, &main.seed)*@as(Vec3d, @splat(0.5 - main.itemdrop.ItemDropManager.radius));
 				var dropDir: Vec3d = main.random.nextFloatVectorSigned(3, &main.seed) + Vec3f{0, 1, 0};
 				const randomVelocity: f64 = 2 + main.random.nextFloat(&main.seed)*0.5;
@@ -1660,21 +1660,21 @@ pub const Command = struct { // MARK: Command
 							const random = main.random.nextFloatVectorSigned(3, &main.seed);
 							const neighborOrt = @as(Vec3d, @floatFromInt(neighbor.orthogonalComponents()));
 							// Make sure direction vector points away from block and that axis perpendicular to block side is dominating.
-							dropDir = neighborDirection*@as(Vec3d, @splat(2))  + random*neighborOrt;
+							dropDir = neighborDirection*@as(Vec3d, @splat(2)) + random*neighborOrt;
 
 							const bouncinessFactor = 2.0;
 							if(neighbor == Neighbor.dirDown) {
 								// When dropping from bottom of the block, gravity already accelerates the item, so having additional Z velocity
 								// makes items fall unnaturally fast compared to dropping from sides, therefore we remove Z component of direction.
 								dropDir = dropDir*neighborOrt;
-							} else if (neighbor == Neighbor.dirUp) {
+							} else if(neighbor == Neighbor.dirUp) {
 								// When dropping from top of the block gravity damps velocity so hard that item doesn't visibly jump from the ground
 								// instead it just slides to the side, which is counterintuitive and significantly different than when dropped from side.
 								// Therefore we significantly increase velocity in Z axis so most of the time item is in the air at least for a fraction of a second.
 								dropVelocity = randomVelocity*bouncinessFactor;
 								dropDir = .{dropDir[0]/bouncinessFactor, dropDir[1]/bouncinessFactor, dropDir[2]};
 							} else {
-								dropDir = .{dropDir[0], dropDir[1], bouncinessFactor + @abs(dropDir[2]) * bouncinessFactor};
+								dropDir = .{dropDir[0], dropDir[1], bouncinessFactor + @abs(dropDir[2])*bouncinessFactor};
 							}
 							break;
 						}
