@@ -157,7 +157,7 @@ fn BlockEntityDataStorage(comptime side: enum {client, server}, T: type) type {
 			defer mesh.chunk.blockPosToEntityDataMapMutex.unlock();
 
 			const otherDataIndex = mesh.chunk.getLocalBlockIndex(pos);
-			mesh.chunk.blockPosToEntityDataMap.put(main.globalAllocator.allocator, otherDataIndex, index) catch undefined;
+			mesh.chunk.blockPosToEntityDataMap.put(main.globalAllocator.allocator, otherDataIndex, index) catch unreachable;
 		}
 		pub fn get(pos: Vec3i, chunk: *Chunk) ?*DataT {
 			main.utils.assertLocked(&mutex);
