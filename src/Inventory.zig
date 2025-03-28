@@ -62,16 +62,6 @@ pub const Sync = struct { // MARK: Sync
 			commands.enqueue(cmd);
 		}
 
-		pub fn undo() void {
-			mutex.lock();
-			defer mutex.unlock();
-			if(commands.dequeue_front()) |_cmd| {
-				var cmd = _cmd;
-				cmd.undo();
-				cmd.undoSteps.deinit(main.globalAllocator); // TODO: This should be put on some kind of redo queue once the testing phase is over.
-			}
-		}
-
 		fn nextId() u32 {
 			mutex.lock();
 			defer mutex.unlock();
