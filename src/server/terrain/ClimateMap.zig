@@ -56,10 +56,6 @@ pub const ClimateMapFragment = struct {
 		};
 	}
 
-	pub fn hashCodeSelf(self: *ClimateMapFragment) u32 {
-		return hashCode(self.wx, self.wy);
-	}
-
 	pub fn hashCode(wx: i32, wy: i32) u32 {
 		return @bitCast((wx >> mapShift)*%33 + (wy >> mapShift));
 	}
