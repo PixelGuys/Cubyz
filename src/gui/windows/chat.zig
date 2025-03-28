@@ -30,7 +30,7 @@ pub var window: GuiWindow = GuiWindow{
 const padding: f32 = 8;
 const messageTimeout: i32 = 10000;
 const messageFade = 1000;
-const reusableHistoryMaxSize = 128;
+const reusableHistoryMaxSize = 8192;
 
 var history: main.List(*Label) = undefined;
 var messageQueue: main.utils.ConcurrentQueue([]const u8) = undefined;
@@ -39,13 +39,108 @@ var historyStart: u32 = 0;
 var fadeOutEnd: u32 = 0;
 pub var input: *TextInput = undefined;
 var hideInput: bool = true;
-var upHistory: CircularBufferQueue([]const u8) = undefined;
-var downHistory: CircularBufferQueue([]const u8) = undefined;
+var messageHistory: History = undefined;
+
+pub const History = struct {
+	up: CircularBufferQueue([]const u8),
+	current: ?[]const u8,
+	down: CircularBufferQueue([]const u8),
+
+	fn init(maxSize: u32) History {
+		return .{
+			.up = .init(main.globalAllocator, maxSize),
+			.current = null,
+			.down = .init(main.globalAllocator, maxSize),
+		};
+	}
+	fn deinit(self: *History) void {
+		self.clear();
+		self.up.deinit();
+		self.down.deinit();
+	}
+	fn clear(self: *History) void {
+		while(self.up.dequeue()) |msg| {
+			main.globalAllocator.free(msg);
+		}
+		if(self.current) |msg| {
+			main.globalAllocator.free(msg);
+			self.current = null;
+		}
+		while(self.down.dequeue()) |msg| {
+			main.globalAllocator.free(msg);
+		}
+	}
+	fn canMoveUp(self: *History) bool {
+		return self.up.empty() == false;
+	}
+	fn moveUp(self: *History) void {
+		std.debug.assert(self.canMoveUp());
+		// This can not overflow because we are moving items between two queues of same size.
+		if(self.current) |current| {
+			self.down.enqueue_front(current);
+		}
+		self.current = self.up.dequeue_front();
+		std.debug.assert(self.current != null);
+	}
+	fn canMoveDown(self: *History) bool {
+		return self.down.empty() == false;
+	}
+	fn moveDown(self: *History) void {
+		std.debug.assert(self.canMoveDown());
+		// This can not overflow because we are moving items between two queues of same size.
+		if(self.current) |current| {
+			self.up.enqueue_front(current);
+		}
+		self.current = self.down.dequeue_front();
+		std.debug.assert(self.current != null);
+	}
+	fn flush(self: *History) void {
+		if(self.current) |msg| {
+			self.up.enqueue_front(msg);
+			self.current = null;
+		}
+		while(self.down.dequeue_front()) |msg| {
+			self.up.enqueue_front(msg);
+		}
+	}
+	fn insertIfUnique(self: *History, new: []const u8) bool {
+		if(new.len == 0) return false;
+		if(self.current) |current| {
+			if(std.mem.eql(u8, current, new)) return false;
+		}
+		if(self.down.peek_front()) |msg| {
+			if(std.mem.eql(u8, msg, new)) return false;
+		}
+		if(self.up.peek_front()) |msg| {
+			if(std.mem.eql(u8, msg, new)) return false;
+		}
+		if(self.down.reachedCapacity()) {
+			main.globalAllocator.free(self.down.dequeue_back().?);
+		}
+		self.down.enqueue_front(main.globalAllocator.dupe(u8, new));
+		return true;
+	}
+	fn pushIfUnique(self: *History, new: []const u8) void {
+		if(new.len == 0) return;
+		if(self.current) |current| {
+			if(std.mem.eql(u8, current, new)) return;
+		}
+		if(self.down.peek_front()) |msg| {
+			if(std.mem.eql(u8, msg, new)) return;
+		}
+		if(self.up.peek_front()) |msg| {
+			if(std.mem.eql(u8, msg, new)) return;
+		}
+		if(self.up.reachedCapacity()) {
+			main.globalAllocator.free(self.up.dequeue_back().?);
+		}
+		self.up.enqueue_front(main.globalAllocator.dupe(u8, new));
+	}
+};
 
 pub fn init() void {
 	history = .init(main.globalAllocator);
-	upHistory = .init(main.globalAllocator, reusableHistoryMaxSize);
-	downHistory = .init(main.globalAllocator, reusableHistoryMaxSize);
+	messageHistory = .init(reusableHistoryMaxSize);
 	expirationTime = .init(main.globalAllocator);
 	messageQueue = .init(main.globalAllocator, 16);
 }
@@ -58,14 +153,7 @@ pub fn deinit() void {
 	while(messageQueue.dequeue()) |msg| {
 		main.globalAllocator.free(msg);
 	}
-	while(upHistory.dequeue()) |msg| {
-		main.globalAllocator.free(msg);
-	}
-	upHistory.deinit();
-	while(downHistory.dequeue()) |msg| {
-		main.globalAllocator.free(msg);
-	}
-	downHistory.deinit();
+	messageHistory.deinit();
 	messageQueue.deinit();
 	expirationTime.deinit();
 }
@@ -106,40 +194,29 @@ pub fn onOpen() void {
 }
 
 pub fn loadNextHistoryEntry(_: usize) void {
-	transferBetweenQueues(input.currentString.items, &upHistory, &downHistory);
-}
-fn transferBetweenQueues(current: []const u8, inQueue: *CircularBufferQueue([]const u8), outQueue: *CircularBufferQueue([]const u8)) void {
-	if(inQueue.empty()) {
-		return;
-	}
-	addToHistory(current, outQueue);
+	if(!messageHistory.canMoveUp()) return;
 
-	var msg = inQueue.dequeue_front().?;
-	if(std.mem.eql(u8, msg, current)) {
-		main.globalAllocator.free(msg);
-		if(inQueue.dequeue_front()) |m| {
-			msg = m;
-		} else return;
-	}
+	_ = messageHistory.insertIfUnique(input.currentString.items);
+	messageHistory.moveUp();
 
-	input.clear();
-	input.inputString(msg);
-
-	if(outQueue.reachedCapacity()) {
-		main.globalAllocator.free(outQueue.dequeue().?);
-	}
-	outQueue.enqueue(msg);
-}
-fn addToHistory(current: []const u8, queue: *CircularBufferQueue([]const u8)) void {
-	if(current.len > 0 and (queue.empty() or !std.mem.eql(u8, queue.peek_front().?, current))) {
-		if(queue.reachedCapacity()) {
-			main.globalAllocator.free(queue.dequeue().?);
-		}
-		queue.enqueue(main.globalAllocator.dupe(u8, current));
+	if(messageHistory.current) |msg| {
+		input.clear();
+		input.inputString(msg);
 	}
 }
+
 pub fn loadPreviousHistoryEntry(_: usize) void {
-	transferBetweenQueues(input.currentString.items, &downHistory, &upHistory);
+	if(!messageHistory.canMoveDown()) return;
+
+	if(messageHistory.insertIfUnique(input.currentString.items)) {
+		messageHistory.moveDown();
+	}
+	messageHistory.moveDown();
+
+	if(messageHistory.current) |msg| {
+		input.clear();
+		input.inputString(msg);
+	}
 }
 
 pub fn onClose() void {
@@ -149,12 +226,7 @@ pub fn onClose() void {
 	while(messageQueue.dequeue()) |msg| {
 		main.globalAllocator.free(msg);
 	}
-	while(upHistory.dequeue()) |msg| {
-		main.globalAllocator.free(msg);
-	}
-	while(downHistory.dequeue()) |msg| {
-		main.globalAllocator.free(msg);
-	}
+	messageHistory.clear();
 	expirationTime.clearRetainingCapacity();
 	historyStart = 0;
 	fadeOutEnd = 0;
@@ -213,13 +285,8 @@ pub fn sendMessage(_: usize) void {
 		if(data.len > 10000 or main.graphics.TextBuffer.Parser.countVisibleCharacters(data) > 1000) {
 			std.log.err("Chat message is too long with {}/{} characters. Limits are 1000/10000", .{main.graphics.TextBuffer.Parser.countVisibleCharacters(data), data.len});
 		} else {
-			while(downHistory.dequeue_front()) |msg| {
-				if(upHistory.reachedCapacity()) {
-					main.globalAllocator.free(upHistory.dequeue().?);
-				}
-				upHistory.enqueue(msg);
-			}
-			addToHistory(data, &upHistory);
+			messageHistory.flush();
+			messageHistory.pushIfUnique(data);
 
 			main.network.Protocols.chat.send(main.game.world.?.conn, data);
 			input.clear();
