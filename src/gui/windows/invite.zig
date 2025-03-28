@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const ConnectionManager = main.network.ConnectionManager;
 const settings = main.settings;
 const Vec2f = main.vec.Vec2f;
@@ -35,9 +35,8 @@ fn discoverIpAddress() void {
 }
 
 fn discoverIpAddressFromNewThread() void {
-	var sta = main.heap.StackAllocator.init(main.globalAllocator, 1 << 23);
-	defer sta.deinit();
-	main.stackAllocator = sta.allocator();
+	main.initThreadLocals();
+	defer main.deinitThreadLocals();
 
 	discoverIpAddress();
 }

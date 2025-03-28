@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const ZonElement = @import("zon.zig").ZonElement;
 const Neighbor = @import("chunk.zig").Neighbor;
 const graphics = @import("graphics.zig");
@@ -16,10 +16,12 @@ const rotation = @import("rotation.zig");
 const RotationMode = rotation.RotationMode;
 const Degrees = rotation.Degrees;
 const Entity = main.server.Entity;
+const sbb = main.server.terrain.structure_building_blocks;
 
 pub const BlockTag = enum(u32) {
 	air = 0,
 	fluid = 1,
+	sbbChild = 2,
 	_,
 
 	var tagList: main.List([]const u8) = .init(allocator);
@@ -106,6 +108,7 @@ var _absorption: [maxBlockCount]u32 = undefined;
 /// GUI that is opened on click.
 var _gui: [maxBlockCount][]u8 = undefined;
 var _mode: [maxBlockCount]*RotationMode = undefined;
+var _modeData: [maxBlockCount]u16 = undefined;
 var _lodReplacement: [maxBlockCount]u16 = undefined;
 var _opaqueVariant: [maxBlockCount]u16 = undefined;
 var _friction: [maxBlockCount]f32 = undefined;
@@ -141,6 +144,12 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 
 	_blockTags[size] = BlockTag.loadFromZon(allocator, zon.getChild("tags"));
 	if(_blockTags[size].len == 0) std.log.err("Block {s} is missing 'tags' field", .{id});
+	for(_blockTags[size]) |tag| {
+		if(tag == BlockTag.sbbChild) {
+			sbb.registerChildBlock(@intCast(size), _id[size]);
+			break;
+		}
+	}
 	_light[size] = zon.get(u32, "emittedLight", 0);
 	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
 	_degradable[size] = zon.get(bool, "degradable", false);
@@ -362,6 +371,10 @@ pub const Block = packed struct { // MARK: Block
 
 	pub inline fn mode(self: Block) *RotationMode {
 		return _mode[self.typ];
+	}
+
+	pub inline fn modeData(self: Block) u16 {
+		return _modeData[self.typ];
 	}
 
 	pub inline fn rotateZ(self: Block, angle: Degrees) Block {
@@ -666,7 +679,7 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	pub fn register(assetFolder: []const u8, _: []const u8, zon: ZonElement) void {
-		_modelIndex[meshes.size] = _mode[meshes.size].createBlockModel(zon.getChild("model"));
+		_modelIndex[meshes.size] = _mode[meshes.size].createBlockModel(.{.typ = @intCast(meshes.size), .data = 0}, &_modeData[meshes.size], zon.getChild("model"));
 
 		// The actual model is loaded later, in the rendering thread.
 		// But textures can be loaded here:

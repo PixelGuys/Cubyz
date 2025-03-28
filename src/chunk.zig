@@ -2,7 +2,7 @@ const std = @import("std");
 
 const blocks = @import("blocks.zig");
 const Block = blocks.Block;
-const main = @import("main.zig");
+const main = @import("main");
 const settings = @import("settings.zig");
 const vec = @import("vec.zig");
 const Vec3i = vec.Vec3i;

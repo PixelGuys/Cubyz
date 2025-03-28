@@ -3,7 +3,7 @@ const Allocator = std.mem.Allocator;
 const Atomic = std.atomic.Value;
 const builtin = @import("builtin");
 
-const main = @import("main.zig");
+const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 pub const file_monitor = @import("utils/file_monitor.zig");
@@ -391,6 +391,10 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 		pub fn empty(self: *Self) bool {
 			return self.startIndex == self.endIndex;
 		}
+
+		pub fn reachedCapacity(self: *Self) bool {
+			return self.startIndex == (self.endIndex + 1) & self.mask;
+		}
 	};
 }
 
@@ -712,10 +716,8 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 	}
 
 	fn run(self: *ThreadPool, id: usize) void {
-		// In case any of the tasks wants to allocate memory:
-		var sta = main.heap.StackAllocator.init(main.globalAllocator, 1 << 23);
-		defer sta.deinit();
-		main.stackAllocator = sta.allocator();
+		main.initThreadLocals();
+		defer main.deinitThreadLocals();
 
 		var lastUpdate = std.time.milliTimestamp();
 		while(true) {

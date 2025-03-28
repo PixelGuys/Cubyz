@@ -8,7 +8,7 @@ const ClientItemDropManager = itemdrop.ClientItemDropManager;
 const items = @import("items.zig");
 const Inventory = items.Inventory;
 const ZonElement = @import("zon.zig").ZonElement;
-const main = @import("main.zig");
+const main = @import("main");
 const KeyBoard = main.KeyBoard;
 const network = @import("network.zig");
 const Connection = network.Connection;
@@ -584,6 +584,7 @@ pub const Player = struct { // MARK: Player
 		Player.super.vel = .{0, 0, 0};
 
 		Player.super.health = Player.super.maxHealth;
+		Player.super.energy = Player.super.maxEnergy;
 
 		Player.eyePos = .{0, 0, 0};
 		Player.eyeVel = .{0, 0, 0};

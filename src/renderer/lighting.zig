@@ -1,7 +1,7 @@
 const std = @import("std");
 const Atomic = std.atomic.Value;
 
-const main = @import("root");
+const main = @import("main");
 const blocks = main.blocks;
 const chunk = main.chunk;
 const chunk_meshing = @import("chunk_meshing.zig");

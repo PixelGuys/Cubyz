@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("main.zig");
+const main = @import("main");
 const BaseItem = main.items.BaseItem;
 const Block = main.blocks.Block;
 const Item = main.items.Item;
@@ -60,16 +60,6 @@ pub const Sync = struct { // MARK: Sync
 			defer main.stackAllocator.free(data);
 			main.network.Protocols.inventory.sendCommand(main.game.world.?.conn, cmd.payload, data);
 			commands.enqueue(cmd);
-		}
-
-		pub fn undo() void {
-			mutex.lock();
-			defer mutex.unlock();
-			if(commands.dequeue_front()) |_cmd| {
-				var cmd = _cmd;
-				cmd.undo();
-				cmd.undoSteps.deinit(main.globalAllocator); // TODO: This should be put on some kind of redo queue once the testing phase is over.
-			}
 		}
 
 		fn nextId() u32 {
@@ -486,6 +476,7 @@ pub const Command = struct { // MARK: Command
 		create = 3,
 		useDurability = 4,
 		addHealth = 5,
+		addEnergy = 6,
 	};
 
 	const InventoryAndSlot = struct {
@@ -542,6 +533,11 @@ pub const Command = struct { // MARK: Command
 			cause: main.game.DamageType,
 			previous: f32,
 		},
+		addEnergy: struct {
+			target: ?*main.server.User,
+			energy: f32,
+			previous: f32,
+		},
 	};
 
 	const SyncOperationType = enum(u8) {
@@ -550,6 +546,7 @@ pub const Command = struct { // MARK: Command
 		useDurability = 2,
 		health = 3,
 		kill = 4,
+		energy = 5,
 	};
 
 	const SyncOperation = union(SyncOperationType) { // MARK: SyncOperation
@@ -573,6 +570,10 @@ pub const Command = struct { // MARK: Command
 		},
 		kill: struct {
 			target: ?*main.server.User,
+		},
+		energy: struct {
+			target: ?*main.server.User,
+			energy: f32,
 		},
 
 		pub fn executeFromData(reader: *utils.BinaryReader) !void {
@@ -617,6 +618,9 @@ pub const Command = struct { // MARK: Command
 				.kill => {
 					main.game.Player.kill();
 				},
+				.energy => |energy| {
+					main.game.Player.super.energy = std.math.clamp(main.game.Player.super.energy + energy.energy, 0, main.game.Player.super.maxEnergy);
+				},
 			}
 		}
 
@@ -625,7 +629,7 @@ pub const Command = struct { // MARK: Command
 				inline .create, .delete, .useDurability => |data| {
 					return allocator.dupe(*main.server.User, Sync.ServerSide.inventories.items[data.inv.inv.id].users.items);
 				},
-				inline .health, .kill => |data| {
+				inline .health, .kill, .energy => |data| {
 					const out = allocator.alloc(*main.server.User, 1);
 					out[0] = data.target.?;
 					return out;
@@ -635,7 +639,7 @@ pub const Command = struct { // MARK: Command
 
 		pub fn ignoreSource(self: SyncOperation) bool {
 			return switch(self) {
-				.create, .delete, .useDurability, .health => true,
+				.create, .delete, .useDurability, .health, .energy => true,
 				.kill => false,
 			};
 		}
@@ -686,6 +690,12 @@ pub const Command = struct { // MARK: Command
 						.target = null,
 					}};
 				},
+				.energy => {
+					return .{.energy = .{
+						.target = null,
+						.energy = @bitCast(try reader.readInt(u32)),
+					}};
+				},
 			}
 		}
 
@@ -717,6 +727,9 @@ pub const Command = struct { // MARK: Command
 					writer.writeInt(u32, @bitCast(health.health));
 				},
 				.kill => {},
+				.energy => |energy| {
+					writer.writeInt(u32, @bitCast(energy.energy));
+				},
 			}
 			return writer.data.toOwnedSlice();
 		}
@@ -793,6 +806,9 @@ pub const Command = struct { // MARK: Command
 				.addHealth => |info| {
 					main.game.Player.super.health = info.previous;
 				},
+				.addEnergy => |info| {
+					main.game.Player.super.energy = info.previous;
+				},
 			}
 		}
 	}
@@ -800,7 +816,7 @@ pub const Command = struct { // MARK: Command
 	fn finalize(self: Command, allocator: NeverFailingAllocator, side: Side, reader: *utils.BinaryReader) !void {
 		for(self.baseOperations.items) |step| {
 			switch(step) {
-				.move, .swap, .create, .addHealth => {},
+				.move, .swap, .create, .addHealth, .addEnergy => {},
 				.delete => |info| {
 					info.item.?.deinit();
 				},
@@ -939,6 +955,20 @@ pub const Command = struct { // MARK: Command
 				} else {
 					info.previous = main.game.Player.super.health;
 					main.game.Player.super.health = std.math.clamp(main.game.Player.super.health + info.health, 0, main.game.Player.super.maxHealth);
+				}
+			},
+			.addEnergy => |*info| {
+				if(side == .server) {
+					info.previous = info.target.?.player.energy;
+
+					info.target.?.player.energy = std.math.clamp(info.target.?.player.energy + info.energy, 0, info.target.?.player.maxEnergy);
+					self.syncOperations.append(allocator, .{.energy = .{
+						.target = info.target.?,
+						.energy = info.energy,
+					}});
+				} else {
+					info.previous = main.game.Player.super.energy;
+					main.game.Player.super.energy = std.math.clamp(main.game.Player.super.energy + info.energy, 0, main.game.Player.super.maxEnergy);
 				}
 			},
 		}

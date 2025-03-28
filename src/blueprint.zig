@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("main.zig");
+const main = @import("main");
 const sbb = main.server.terrain.structure_building_blocks;
 const Compression = main.utils.Compression;
 const ZonElement = @import("zon.zig").ZonElement;

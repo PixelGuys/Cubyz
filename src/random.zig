@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const Vec2f = main.vec.Vec2f;
 const Vec2i = main.vec.Vec2i;
 const Vec3i = main.vec.Vec3i;
