@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const Block = main.blocks.Block;
 const Cache = main.utils.Cache;
 const chunk = main.chunk;
@@ -979,12 +979,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			updateRequest.region.store();
 			updateRequest.region.decreaseRefCount();
 			if(updateRequest.milliTimeStamp -% insertionTime <= 0) break;
-		}
-	}
-
-	pub fn queueChunks(self: *ServerWorld, positions: []ChunkPosition, source: ?*User) void {
-		for(positions) |pos| {
-			self.queueChunk(pos, source);
 		}
 	}
 

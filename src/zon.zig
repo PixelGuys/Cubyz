@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("main.zig");
+const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const List = main.List;
 
@@ -852,53 +852,53 @@ test "number parsing" {
 }
 
 test "element parsing" {
-	var wrap = main.utils.ErrorHandlingAllocator.init(std.testing.allocator);
+	var wrap = main.heap.ErrorHandlingAllocator.init(std.testing.allocator);
 	const allocator = wrap.allocator();
 	// Integers:
 	var index: u32 = 0;
-	try std.testing.expectEqual(Parser.parseElement(allocator, "0", &index), ZonElement{.int = 0});
+	try std.testing.expectEqual(Parser.parseElement(allocator, null, "0", &index), ZonElement{.int = 0});
 	index = 0;
-	try std.testing.expectEqual(Parser.parseElement(allocator, "0xff34786056.0, true", &index), ZonElement{.int = 0xff34786056});
+	try std.testing.expectEqual(Parser.parseElement(allocator, null, "0xff34786056.0, true", &index), ZonElement{.int = 0xff34786056});
 	// Floats:
 	index = 10;
-	try std.testing.expectEqual(Parser.parseElement(allocator, ".{.abcd = 0.0,}", &index), ZonElement{.float = 0.0});
+	try std.testing.expectEqual(Parser.parseElement(allocator, null, ".{.abcd = 0.0,}", &index), ZonElement{.float = 0.0});
 	index = 0;
-	try std.testing.expectApproxEqAbs((Parser.parseElement(allocator, "1543.234589e10", &index)).float, 1543.234589e10, 1.0);
+	try std.testing.expectApproxEqAbs((Parser.parseElement(allocator, null, "1543.234589e10", &index)).float, 1543.234589e10, 1.0);
 	index = 5;
-	try std.testing.expectApproxEqAbs((Parser.parseElement(allocator, "_____0.0000000000675849301354e10abcdfe", &index)).float, 0.675849301354, 1e-10);
+	try std.testing.expectApproxEqAbs((Parser.parseElement(allocator, null, "_____0.0000000000675849301354e10abcdfe", &index)).float, 0.675849301354, 1e-10);
 	// Null:
 	index = 0;
-	try std.testing.expectEqual(Parser.parseElement(allocator, "null", &index), ZonElement{.null = {}});
+	try std.testing.expectEqual(Parser.parseElement(allocator, null, "null", &index), ZonElement{.null = {}});
 	// true:
 	index = 0;
-	try std.testing.expectEqual(Parser.parseElement(allocator, "true", &index), ZonElement{.bool = true});
+	try std.testing.expectEqual(Parser.parseElement(allocator, null, "true", &index), ZonElement{.bool = true});
 	// false:
 	index = 0;
-	try std.testing.expectEqual(Parser.parseElement(allocator, "false", &index), ZonElement{.bool = false});
+	try std.testing.expectEqual(Parser.parseElement(allocator, null, "false", &index), ZonElement{.bool = false});
 
 	// String:
 	index = 0;
-	var result: ZonElement = Parser.parseElement(allocator, "\"abcd\\\"\\\\ħσ→ ↑Φ∫€ ⌬ ε→Π\"", &index);
+	var result: ZonElement = Parser.parseElement(allocator, null, "\"abcd\\\"\\\\ħσ→ ↑Φ∫€ ⌬ ε→Π\"", &index);
 	try std.testing.expectEqualStrings("abcd\"\\ħσ→ ↑Φ∫€ ⌬ ε→Π", result.as([]const u8, ""));
 	result.deinit(allocator);
 	index = 0;
-	result = Parser.parseElement(allocator, "\"12345", &index);
+	result = Parser.parseElement(allocator, null, "\"12345", &index);
 	try std.testing.expectEqualStrings("12345", result.as([]const u8, ""));
 	result.deinit(allocator);
 
 	// Object:
 	index = 0;
-	result = Parser.parseElement(allocator, ".{.name = 1}", &index);
+	result = Parser.parseElement(allocator, null, ".{.name = 1}", &index);
 	try std.testing.expectEqual(.object, std.meta.activeTag(result));
 	try std.testing.expectEqual(result.object.get("name"), ZonElement{.int = 1});
 	result.deinit(allocator);
 	index = 0;
-	result = Parser.parseElement(allocator, ".{@\"object\"=.{},}", &index);
+	result = Parser.parseElement(allocator, null, ".{@\"object\"=.{},}", &index);
 	try std.testing.expectEqual(.object, std.meta.activeTag(result));
 	try std.testing.expectEqual(.array, std.meta.activeTag(result.object.get("object") orelse .null));
 	result.deinit(allocator);
 	index = 0;
-	result = Parser.parseElement(allocator, ".{   .object1   =   \"\"  \n, .object2  =\t.{\n},.object3   =1.0e4\t,@\"\nobject1\"=.{},@\"\tobject1θ\"=.{},}", &index);
+	result = Parser.parseElement(allocator, null, ".{   .object1   =   \"\"  \n, .object2  =\t.{\n},.object3   =1.0e4\t,@\"\nobject1\"=.{},@\"\tobject1θ\"=.{},}", &index);
 	try std.testing.expectEqual(.object, std.meta.activeTag(result));
 	try std.testing.expectEqual(.float, std.meta.activeTag(result.object.get("object3") orelse .null));
 	try std.testing.expectEqual(.stringOwned, std.meta.activeTag(result.object.get("object1") orelse .null));
@@ -908,13 +908,13 @@ test "element parsing" {
 
 	//Array:
 	index = 0;
-	result = Parser.parseElement(allocator, ".{.name,1}", &index);
+	result = Parser.parseElement(allocator, null, ".{.name,1}", &index);
 	try std.testing.expectEqual(.array, std.meta.activeTag(result));
 	try std.testing.expectEqual(.stringOwned, std.meta.activeTag(result.array.items[0]));
 	try std.testing.expectEqual(ZonElement{.int = 1}, result.array.items[1]);
 	result.deinit(allocator);
 	index = 0;
-	result = Parser.parseElement(allocator, ".{   \"name\"\t1\n,    17.1}", &index);
+	result = Parser.parseElement(allocator, null, ".{   \"name\"\t1\n,    17.1}", &index);
 	try std.testing.expectEqual(.array, std.meta.activeTag(result));
 	try std.testing.expectEqual(.stringOwned, std.meta.activeTag(result.array.items[0]));
 	try std.testing.expectEqual(ZonElement{.int = 1}, result.array.items[1]);

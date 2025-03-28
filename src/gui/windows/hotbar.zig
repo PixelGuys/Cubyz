@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const ItemStack = main.items.ItemStack;
 const Player = main.game.Player;
 const Vec2f = main.vec.Vec2f;

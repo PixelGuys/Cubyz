@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const random = main.random;
 
 fn getSeedX(x: f32, worldSeed: u64) u64 {

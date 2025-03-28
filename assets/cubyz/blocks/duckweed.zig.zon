@@ -1,6 +1,6 @@
 .{
 	.tags = .{.leaf},
-	.blockHealth = 0.2,
+	.blockHealth = 0.1,
 	.drops = .{
 		.{.items = .{.auto}},
 	},
@@ -12,7 +12,7 @@
 		.model = "cubyz:plane",
 		.states = 4,
 	},
-	.rotation = .texturePile,
+	.rotation = .texture_pile,
 	.texture0 = "cubyz:duckweed/0",
 	.texture1 = "cubyz:duckweed/1",
 	.texture2 = "cubyz:duckweed/2",

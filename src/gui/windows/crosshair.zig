@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const graphics = main.graphics;
 const Shader = graphics.Shader;
 const Texture = graphics.Texture;
