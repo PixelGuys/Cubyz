@@ -1,24 +1,10 @@
 const std = @import("std");
 
-pub fn build(b: *std.Build) !void {
-	// Standard target options allows the person running `zig build` to choose
-	// what target to build for. Here we do not override the defaults, which
-	// means any target is allowed, and the default is native. Other options
-	// for restricting supported target set are available.
-	const target = b.standardTargetOptions(.{});
+fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool) void {
+	const target = exe.root_module.resolved_target.?;
 	const t = target.result;
+	const optimize = exe.root_module.optimize.?;
 
-	// Standard release options allow the person running `zig build` to select
-	// between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
-	const optimize = b.standardOptimizeOption(.{});
-	const exe = b.addExecutable(.{
-		.name = "Cubyzig",
-		.root_source_file = b.path("src/main.zig"),
-		.target = target,
-		.optimize = optimize,
-		//.sanitize_thread = true,
-	});
-	exe.root_module.addImport("main", exe.root_module);
 	exe.linkLibC();
 	exe.linkLibCpp();
 
@@ -34,7 +20,6 @@ pub fn build(b: *std.Build) !void {
 	};
 
 	var depsName: []const u8 = b.fmt("cubyz_deps_{s}_{s}", .{@tagName(t.cpu.arch), @tagName(t.os.tag)});
-	const useLocalDeps = b.option(bool, "local", "Use local cubyz_deps") orelse false;
 	if(useLocalDeps) depsName = "local";
 
 	const libsDeps = b.lazyDependency(depsName, .{
@@ -80,6 +65,32 @@ pub fn build(b: *std.Build) !void {
 	} else {
 		std.log.err("Unsupported target: {}\n", .{t.os.tag});
 	}
+}
+
+pub fn build(b: *std.Build) !void {
+	// Standard target options allows the person running `zig build` to choose
+	// what target to build for. Here we do not override the defaults, which
+	// means any target is allowed, and the default is native. Other options
+	// for restricting supported target set are available.
+	const target = b.standardTargetOptions(.{});
+
+	// Standard release options allow the person running `zig build` to select
+	// between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
+	const optimize = b.standardOptimizeOption(.{});
+
+	const useLocalDeps = b.option(bool, "local", "Use local cubyz_deps") orelse false;
+
+	const exe = b.addExecutable(.{
+		.name = "Cubyzig",
+		.root_source_file = b.path("src/main.zig"),
+		.target = target,
+		.optimize = optimize,
+		//.sanitize_thread = true,
+		//.use_llvm = false,
+	});
+	exe.root_module.addImport("main", exe.root_module);
+
+	linkLibraries(b, exe, useLocalDeps);
 
 	b.installArtifact(exe);
 
@@ -97,8 +108,7 @@ pub fn build(b: *std.Build) !void {
 		.target = target,
 		.optimize = optimize,
 	});
-	exe_tests.addIncludePath(headersDeps.path("include"));
-	exe_tests.linkLibC();
+	linkLibraries(b, exe_tests, useLocalDeps);
 	exe_tests.root_module.addImport("main", exe_tests.root_module);
 	const run_exe_tests = b.addRunArtifact(exe_tests);
 
