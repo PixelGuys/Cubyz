@@ -23,7 +23,6 @@ pub fn initFromString(allocator: NeverFailingAllocator, source: []const u8) !@Th
 	while(specifiers.next()) |specifier| {
 		var iterator = std.mem.splitScalar(u8, specifier, '%');
 
-		// This code first assumes that specifier has form `weight%addon:block` and only if parsing of weight fails it tries to parse it as `addon:block`.
 		var weight: f32 = undefined;
 		var block = main.blocks.parseBlock(iterator.rest());
 
