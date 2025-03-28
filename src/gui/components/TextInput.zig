@@ -271,10 +271,6 @@ pub fn down(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 			}
 		}
 		self.ensureCursorVisibility();
-	} else {
-		if(!mods.shift) {
-			if(self.onDown) |cb| cb.run();
-		}
 	}
 }
 
@@ -299,10 +295,6 @@ pub fn up(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 			}
 		}
 		self.ensureCursorVisibility();
-	} else {
-		if(!mods.shift) {
-			if(self.onUp) |cb| cb.run();
-		}
 	}
 }
 
@@ -412,7 +404,7 @@ pub fn inputCharacter(self: *TextInput, character: u21) void {
 	}
 }
 
-pub fn inputString(self: *TextInput, utf8EncodedString: []const u8) void {
+pub fn setString(self: *TextInput, utf8EncodedString: []const u8) void {
 	if(self.cursor) |*cursor| {
 		self.deleteSelection();
 		self.currentString.insertSlice(cursor.*, utf8EncodedString);

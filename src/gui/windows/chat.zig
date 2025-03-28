@@ -201,7 +201,7 @@ pub fn loadNextHistoryEntry(_: usize) void {
 
 	if(messageHistory.current) |msg| {
 		input.clear();
-		input.inputString(msg);
+		input.setString(msg);
 	}
 }
 
@@ -215,7 +215,7 @@ pub fn loadPreviousHistoryEntry(_: usize) void {
 
 	if(messageHistory.current) |msg| {
 		input.clear();
-		input.inputString(msg);
+		input.setString(msg);
 	}
 }
 
