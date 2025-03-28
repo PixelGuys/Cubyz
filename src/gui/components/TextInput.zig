@@ -406,7 +406,7 @@ pub fn inputCharacter(self: *TextInput, character: u21) void {
 
 pub fn setString(self: *TextInput, utf8EncodedString: []const u8) void {
 	if(self.cursor) |*cursor| {
-		self.deleteSelection();
+		self.clear();
 		self.currentString.insertSlice(cursor.*, utf8EncodedString);
 		self.reloadText();
 		cursor.* += @intCast(utf8EncodedString.len);
