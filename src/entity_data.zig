@@ -145,7 +145,7 @@ fn BlockEntityDataStorage(comptime side: enum {client, server}, T: type) type {
 			defer severChunk.super.blockPosToEntityDataMapMutex.unlock();
 
 			const otherDataIndex = severChunk.super.getLocalBlockIndex(pos);
-			severChunk.super.blockPosToEntityDataMap.put(main.globalAllocator.allocator, otherDataIndex, index) catch undefined;
+			severChunk.super.blockPosToEntityDataMap.put(main.globalAllocator.allocator, otherDataIndex, index) catch unreachable;
 		}
 		fn propagateRemoveClient(pos: Vec3i, index: u32) void {
 			const mesh = mesh_storage.getMeshAndIncreaseRefCount(ChunkPosition.initFromWorldPos(pos, 1)) orelse {
