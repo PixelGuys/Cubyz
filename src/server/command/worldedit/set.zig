@@ -1,8 +1,8 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const User = main.server.User;
-const Pattern = @import("pattern.zig");
+const Pattern = @import("Pattern.zig");
 
 const Block = main.blocks.Block;
 const Blueprint = main.blueprint.Blueprint;
