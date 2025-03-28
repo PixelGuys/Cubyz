@@ -37,7 +37,7 @@ pub const EntityDataClass = struct {
 			if(!@hasDecl(EntityDataClassT, field.name)) {
 				@compileError("EntityDataClass missing field");
 			}
-			@field(class.vtable, field.name) = @ptrCast(&@field(EntityDataClassT, field.name));
+			@field(class.vtable, field.name) = &@field(EntityDataClassT, field.name);
 		}
 		return class;
 	}
@@ -135,10 +135,7 @@ fn BlockEntityDataStorage(comptime side: enum {client, server}, T: type) type {
 			}
 		}
 		fn propagateRemoveServer(pos: Vec3i, index: u32) void {
-			const severChunk = server.world.?.getChunkFromCacheAndIncreaseRefCount(ChunkPosition.initFromWorldPos(pos, 1)) orelse {
-				std.log.warn("Couldn't update entity data of block at position {} (chunk missing)", .{pos});
-				return;
-			};
+			const severChunk = server.world.?.getChunkFromCacheAndIncreaseRefCount(ChunkPosition.initFromWorldPos(pos, 1)).?;
 			defer severChunk.decreaseRefCount();
 
 			severChunk.super.blockPosToEntityDataMapMutex.lock();
@@ -148,11 +145,9 @@ fn BlockEntityDataStorage(comptime side: enum {client, server}, T: type) type {
 			severChunk.super.blockPosToEntityDataMap.put(main.globalAllocator.allocator, otherDataIndex, index) catch unreachable;
 		}
 		fn propagateRemoveClient(pos: Vec3i, index: u32) void {
-			const mesh = mesh_storage.getMeshAndIncreaseRefCount(ChunkPosition.initFromWorldPos(pos, 1)) orelse {
-				std.log.warn("Couldn't update entity data of block at position {} (mesh missing)", .{pos});
-				return;
-			};
+			const mesh = mesh_storage.getMeshAndIncreaseRefCount(ChunkPosition.initFromWorldPos(pos, 1)).?;
 			defer mesh.decreaseRefCount();
+
 			mesh.chunk.blockPosToEntityDataMapMutex.lock();
 			defer mesh.chunk.blockPosToEntityDataMapMutex.unlock();
 
@@ -267,8 +262,8 @@ pub fn deinit() void {
 	entityDataClasses.deinit(main.globalAllocator.allocator);
 }
 
-pub fn getByID(id: []const u8) ?*EntityDataClass {
-	if(std.mem.eql(u8, id, "")) return null;
+pub fn getByID(_id: ?[]const u8) ?*EntityDataClass {
+	const id = _id orelse return null;
 	if(entityDataClasses.getPtr(id)) |cls| return cls;
 	std.log.err("EntityDataClass with id '{s}' not found", .{id});
 	return null;

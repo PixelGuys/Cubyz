@@ -165,7 +165,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_friction[size] = zon.get(f32, "friction", 20);
 	_allowOres[size] = zon.get(bool, "allowOres", false);
 	_touchFunction[size] = TouchFunctions.getFunctionPointer(zon.get([]const u8, "touchFunction", ""));
-	_entityDataClass[size] = entity_data.getByID(zon.get([]const u8, "entityDataClass", ""));
+	_entityDataClass[size] = entity_data.getByID(zon.get(?[]const u8, "entityDataClass", null));
 
 	const oreProperties = zon.getChild("ore");
 	if(oreProperties != .null) blk: {
