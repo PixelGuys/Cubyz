@@ -174,7 +174,8 @@ pub const ChunkPosition = struct { // MARK: ChunkPosition
 	voxelSize: u31,
 
 	pub fn initFromWorldPos(pos: Vec3i, voxelSize: u31) ChunkPosition {
-		return .{.wx = pos[0] & ~@as(i32, chunkMask), .wy = pos[1] & ~@as(i32, chunkMask), .wz = pos[2] & ~@as(i32, chunkMask), .voxelSize = voxelSize};
+		const mask = ~@as(i32, voxelSize*chunkSize - 1);
+		return .{.wx = pos[0] & mask, .wy = pos[1] & mask, .wz = pos[2] & mask, .voxelSize = voxelSize};
 	}
 
 	pub fn hashCode(self: ChunkPosition) u32 {
@@ -303,7 +304,11 @@ pub const Chunk = struct { // MARK: Chunk
 	}
 
 	pub fn getLocalBlockIndex(self: *const Chunk, worldPos: Vec3i) u32 {
-		return getIndex(worldPos[0] - self.pos.wx, worldPos[1] - self.pos.wy, worldPos[2] - self.pos.wz);
+		return getIndex(
+			(worldPos[0] - self.pos.wx) >> self.voxelSizeShift,
+			(worldPos[1] - self.pos.wy) >> self.voxelSizeShift,
+			(worldPos[2] - self.pos.wz) >> self.voxelSizeShift,
+		);
 	}
 };
 
