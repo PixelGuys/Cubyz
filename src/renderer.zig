@@ -252,11 +252,9 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glDepthFunc(c.GL_LESS);
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 
-	// c.glDepthFunc(c.GL_ALWAYS);
-	c.glDepthRange(0, 0);
+	c.glDepthRange(0, 0.001);
 	itemdrop.ItemDropRenderer.renderDisplayItems(ambientLight, playerPos, time);
-	c.glDepthRange(0, 1);
-	// c.glDepthFunc(c.GL_LESS);
+	c.glDepthRange(0.001, 1);
 
 	chunk_meshing.endRender();
 
