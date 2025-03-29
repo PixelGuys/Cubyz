@@ -11,8 +11,7 @@ const c = graphics.c;
 const items = @import("items.zig");
 const ItemStack = items.ItemStack;
 const ZonElement = @import("zon.zig").ZonElement;
-const main = @import("main.zig");
-const renderer = main.renderer;
+const main = @import("main");
 const random = @import("random.zig");
 const settings = @import("settings.zig");
 const utils = @import("utils.zig");
@@ -767,7 +766,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	pub fn renderDisplayItems(ambientLight: Vec3f, playerPos: Vec3d, time: u32) void {
 		if(!ItemDisplayManager.showItem) return;
 
-		const projMatrix: Mat4f = Mat4f.perspective(std.math.degreesToRadians(65), @as(f32, @floatFromInt(renderer.lastWidth))/@as(f32, @floatFromInt(renderer.lastHeight)), 0.01, 3);
+		const projMatrix: Mat4f = Mat4f.perspective(std.math.degreesToRadians(65), @as(f32, @floatFromInt(main.renderer.lastWidth))/@as(f32, @floatFromInt(main.renderer.lastHeight)), 0.01, 3);
 		const viewMatrix = Mat4f.identity();
 		bindCommonUniforms(projMatrix, viewMatrix, ambientLight, time);
 
