@@ -23,6 +23,7 @@ const SubstitutionMap = std.AutoHashMapUnmanaged(u16, u16);
 const SBBGen = @This();
 
 structure: []const u8,
+structureRef: *const sbb.StructureBuildingBlock,
 placeMode: Blueprint.PasteMode,
 substitutions: ?SubstitutionMap = null,
 
@@ -38,9 +39,15 @@ pub fn getHash(self: SBBGen) u64 {
 }
 
 pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) *SBBGen {
+	const structureId = parameters.get(?[]const u8, "structure", null) orelse unreachable;
+	const structureRef = sbb.getByStringId(structureId) orelse  {
+		std.log.err("Could not find structure building block with id '{s}'", .{structureId});
+		unreachable;
+	};
 	const self = arenaAllocator.create(SBBGen);
 	self.* = .{
-		.structure = parameters.get(?[]const u8, "structure", null) orelse unreachable,
+		.structure = structureId,
+		.structureRef = structureRef,
 		.placeMode = std.meta.stringToEnum(Blueprint.PasteMode, parameters.get([]const u8, "placeMode", "replaceAir")) orelse Blueprint.PasteMode.replaceAir,
 		.substitutions = loadSubstitutions(arenaAllocator, parameters.getChild("substitutions")),
 	};
@@ -81,12 +88,7 @@ fn loadSubstitutions(allocator: NeverFailingAllocator, zon: ZonElement) ?Substit
 }
 
 pub fn generate(self: *SBBGen, _: GenerationMode, x: i32, y: i32, z: i32, chunk: *ServerChunk, _: CaveMapView, _: CaveBiomeMapView, seed: *u64, _: bool) void {
-	if(sbb.getByStringId(self.structure)) |structure| {
-		placeSbb(self, structure, x, y, z - 1, Neighbor.dirUp, chunk, seed);
-	} else {
-		std.log.err("Could not find structure building block with id '{s}'", .{self.structure});
-		return;
-	}
+	placeSbb(self, self.structureRef, x, y, z - 1, Neighbor.dirUp, chunk, seed);
 }
 
 fn placeSbb(self: *SBBGen, structure: *const sbb.StructureBuildingBlock, x: i32, y: i32, z: i32, placementDirection: Neighbor, chunk: *ServerChunk, seed: *u64) void {
