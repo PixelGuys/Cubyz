@@ -6,7 +6,6 @@ const GenerationMode = terrain.biomes.SimpleStructureModel.GenerationMode;
 const CaveMapView = terrain.CaveMap.CaveMapView;
 const CaveBiomeMapView = terrain.CaveBiomeMap.CaveBiomeMapView;
 const sbb = terrain.structure_building_blocks;
-const StructureInfo = sbb.StructureInfo;
 const Blueprint = main.blueprint.Blueprint;
 const SubstitutionMap = main.blueprint.SubstitutionMap;
 const ZonElement = main.ZonElement;
@@ -16,8 +15,6 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const parseBlock = main.blocks.parseBlock;
 const hashInt = main.utils.hashInt;
 const hashCombine = main.utils.hashCombine;
-
-pub var structures: ?std.StringHashMap(ZonElement) = null;
 
 pub const id = "cubyz:sbb";
 pub const generationMode = .floor;
