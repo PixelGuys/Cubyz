@@ -771,7 +771,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	pub fn renderDisplayItems(ambientLight: Vec3f, playerPos: Vec3d, time: u32) void {
 		if(!ItemDisplayManager.showItem) return;
 
-		const projMatrix: Mat4f = Mat4f.perspective(std.math.degreesToRadians(65), @as(f32, @floatFromInt(renderer.lastWidth))/@as(f32, @floatFromInt(renderer.lastHeight)), 0.01, std.math.floatMax(f32));
+		const projMatrix: Mat4f = Mat4f.perspective(std.math.degreesToRadians(65), @as(f32, @floatFromInt(renderer.lastWidth))/@as(f32, @floatFromInt(renderer.lastHeight)), 0.11, std.math.floatMax(f32));
 		const viewMatrix = Mat4f.identity();
 		bindCommonUniforms(projMatrix, viewMatrix, ambientLight, time);
 
