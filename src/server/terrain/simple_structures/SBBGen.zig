@@ -40,7 +40,7 @@ pub fn getHash(self: SBBGen) u64 {
 
 pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) *SBBGen {
 	const structureId = parameters.get(?[]const u8, "structure", null) orelse unreachable;
-	const structureRef = sbb.getByStringId(structureId) orelse  {
+	const structureRef = sbb.getByStringId(structureId) orelse {
 		std.log.err("Could not find structure building block with id '{s}'", .{structureId});
 		unreachable;
 	};
