@@ -7,7 +7,6 @@ const CaveMapView = terrain.CaveMap.CaveMapView;
 const CaveBiomeMapView = terrain.CaveBiomeMap.CaveBiomeMapView;
 const sbb = terrain.structure_building_blocks;
 const Blueprint = main.blueprint.Blueprint;
-const SubstitutionMap = main.blueprint.SubstitutionMap;
 const ZonElement = main.ZonElement;
 const Neighbor = main.chunk.Neighbor;
 const ServerChunk = main.chunk.ServerChunk;
@@ -18,6 +17,8 @@ const hashCombine = main.utils.hashCombine;
 
 pub const id = "cubyz:sbb";
 pub const generationMode = .floor;
+
+const SubstitutionMap = std.AutoHashMapUnmanaged(u16, u16);
 
 const SBBGen = @This();
 

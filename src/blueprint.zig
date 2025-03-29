@@ -1,7 +1,6 @@
 const std = @import("std");
 
 const main = @import("main");
-const sbb = main.server.terrain.structure_building_blocks;
 const Compression = main.utils.Compression;
 const ZonElement = @import("zon.zig").ZonElement;
 const vec = main.vec;
@@ -21,7 +20,7 @@ const BlockStorageType = u32;
 const BinaryWriter = main.utils.BinaryWriter;
 const BinaryReader = main.utils.BinaryReader;
 
-pub const SubstitutionMap = std.AutoHashMapUnmanaged(u16, u16);
+const SubstitutionMap = std.AutoHashMapUnmanaged(u16, u16);
 
 pub const blueprintVersion = 0;
 
@@ -308,3 +307,5 @@ pub const Blueprint = struct {
 		}
 	}
 };
+
+const sbb = main.server.terrain.structure_building_blocks;
