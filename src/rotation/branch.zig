@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const blocks = main.blocks;
 const Block = blocks.Block;
 const Neighbor = main.chunk.Neighbor;
@@ -312,7 +312,7 @@ pub fn model(block: Block) ModelIndex {
 	return .{.index = blocks.meshes.modelIndexStart(block).index + (block.data & 63)};
 }
 
-fn rotateZ(data: u16, angle: Degrees) u16 {
+pub fn rotateZ(data: u16, angle: Degrees) u16 {
 	@setEvalBranchQuota(65_536);
 
 	comptime var rotationTable: [4][16]u8 = undefined;

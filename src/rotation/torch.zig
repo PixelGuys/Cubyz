@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const blocks = main.blocks;
 const Block = blocks.Block;
 const Neighbor = main.chunk.Neighbor;
@@ -97,7 +97,7 @@ pub fn model(block: Block) ModelIndex {
 	return .{.index = blocks.meshes.modelIndexStart(block).index + (@as(u5, @truncate(block.data)) -| 1)};
 }
 
-fn rotateZ(data: u16, angle: Degrees) u16 {
+pub fn rotateZ(data: u16, angle: Degrees) u16 {
 	comptime var rotationTable: [4][32]u8 = undefined;
 	comptime for(0..32) |i| {
 		rotationTable[0][i] = @intCast(i);

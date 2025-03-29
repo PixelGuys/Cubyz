@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const Array2D = main.utils.Array2D;
 const random = main.random;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
@@ -125,39 +125,6 @@ const Context = struct {
 		self.xGridPoints = undefined;
 	}
 };
-
-/// Returns a ridgid map of floats with values between 0 and 1.
-pub fn generateRidgidNoise(allocator: NeverFailingAllocator, x: i32, y: i32, width: u31, height: u31, maxScale: u31, minScale: u31, worldSeed: u64, voxelSize: u31, reductionFactor: f32) Array2D(f32) {
-	const map = Array2D(f32).init(allocator, width/voxelSize, height/voxelSize);
-	@memset(map.mem, 0);
-	var seed = worldSeed;
-	random.scrambleSeed(&seed);
-	var context = Context{
-		.l1 = random.nextInt(u64, &seed),
-		.l2 = random.nextInt(u64, &seed),
-		.l3 = random.nextInt(u64, &seed),
-	};
-	var fac = 1/((1 - std.math.pow(f32, reductionFactor, @ctz(maxScale/minScale) + 1))/(1 - reductionFactor)); // geometric series.
-	var scale = maxScale;
-	while(scale >= minScale) : (scale >>= 1) {
-		context.resolution = scale;
-		context.resolutionMask = scale - 1;
-		const x0 = x & ~context.resolutionMask;
-		const y0 = y & ~context.resolutionMask;
-		context.calculateGridPoints(main.globalAllocator, x, y, width, height, scale);
-		defer context.freeGridPoints(main.globalAllocator);
-
-		var x1 = x;
-		while(x1 -% width -% x < 0) : (x1 +%= voxelSize) {
-			var y1 = y;
-			while(y1 -% y -% height < 0) : (y1 +%= voxelSize) {
-				map.ptr(@as(u32, @intCast(x1 -% x))/voxelSize, @as(u32, @intCast(y1 -% y))/voxelSize).* += (1 - @abs(context.perlin(x1 -% x0, y1 -% y0)))*fac;
-			}
-		}
-		fac *= reductionFactor;
-	}
-	return map;
-}
 
 /// Returns a smooth map of floats with values between 0 and 1.
 pub fn generateSmoothNoise(allocator: NeverFailingAllocator, x: i32, y: i32, width: u31, height: u31, maxScale: u31, minScale: u31, worldSeed: u64, voxelSize: u31, reductionFactor: f32) Array2D(f32) {
