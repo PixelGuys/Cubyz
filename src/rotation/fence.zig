@@ -34,7 +34,7 @@ pub fn reset() void {
 	fenceModels.clearRetainingCapacity();
 }
 
-fn rotateZ(data: u16, angle: Degrees) u16 {
+pub fn rotateZ(data: u16, angle: Degrees) u16 {
 	comptime var rotationTable: [4][16]u8 = undefined;
 	comptime for(0..16) |i| {
 		rotationTable[0][i] = @intCast(i);
