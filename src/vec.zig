@@ -38,6 +38,14 @@ pub fn normalize(self: anytype) @TypeOf(self) {
 	return self/@as(@TypeOf(self), @splat(length(self)));
 }
 
+pub fn clampMag(self: anytype, maxMag: @typeInfo(@TypeOf(self)).vector.child) @TypeOf(self) {
+	if(lengthSquare(self) > maxMag*maxMag) {
+		return normalize(self)*@as(@TypeOf(self), @splat(maxMag));
+	}
+
+	return self;
+}
+
 pub fn cross(self: anytype, other: @TypeOf(self)) @TypeOf(self) {
 	if(@typeInfo(@TypeOf(self)).vector.len != 3) @compileError("Only available for vectors of length 3.");
 	return @TypeOf(self){
