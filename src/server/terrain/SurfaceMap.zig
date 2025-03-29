@@ -66,10 +66,6 @@ pub const MapFragment = struct { // MARK: MapFragment
 	pub const mapSize = 1 << mapShift;
 	pub const mapMask = mapSize - 1;
 
-	const biomeDataSize = mapSize*mapSize*@sizeOf(u32);
-	const heightDataSize = mapSize*mapSize*@sizeOf(i32);
-	const originalHeightDataSize = mapSize*mapSize*@sizeOf(i32);
-
 	heightMap: [mapSize][mapSize]i32 = undefined,
 	biomeMap: [mapSize][mapSize]*const Biome = undefined,
 	minHeight: i32 = std.math.maxInt(i32),
@@ -161,6 +157,10 @@ pub const MapFragment = struct { // MARK: MapFragment
 				}
 			},
 			1 => {
+				const biomeDataSize = mapSize*mapSize*@sizeOf(u32);
+				const heightDataSize = mapSize*mapSize*@sizeOf(i32);
+				const originalHeightDataSize = mapSize*mapSize*@sizeOf(i32);
+
 				const rawData: []u8 = main.stackAllocator.alloc(u8, biomeDataSize + heightDataSize + originalHeightDataSize);
 				defer main.stackAllocator.free(rawData);
 				if(try main.utils.Compression.inflateTo(rawData, fullReader.remaining) != rawData.len) return error.CorruptedFile;
@@ -171,10 +171,10 @@ pub const MapFragment = struct { // MARK: MapFragment
 					self.biomeMap[x][y] = main.server.terrain.biomes.getById(biomePalette.palette.items[try reader.readInt(u32)]);
 				};
 				for(0..mapSize) |x| for(0..mapSize) |y| {
-					self.heightMap[x][y] = @bitCast(try reader.readInt(u32));
+					self.heightMap[x][y] = try reader.readInt(i32);
 				};
 				if(originalHeightMap) |map| for(0..mapSize) |x| for(0..mapSize) |y| {
-					map[x][y] = @bitCast(try reader.readInt(u32));
+					map[x][y] = try reader.readInt(i32);
 				};
 			},
 			else => return error.OutdatedFileVersion,
@@ -184,12 +184,16 @@ pub const MapFragment = struct { // MARK: MapFragment
 	}
 
 	pub fn save(self: *MapFragment, originalData: ?*[mapSize][mapSize]i32, neighborInfo: NeighborInfo) void {
+		const biomeDataSize = mapSize*mapSize*@sizeOf(u32);
+		const heightDataSize = mapSize*mapSize*@sizeOf(i32);
+		const originalHeightDataSize = mapSize*mapSize*@sizeOf(i32);
+
 		var writer = BinaryWriter.initCapacity(main.stackAllocator, .big, biomeDataSize + heightDataSize + originalHeightDataSize);
 		defer writer.deinit();
 
 		for(0..mapSize) |x| for(0..mapSize) |y| writer.writeInt(u32, self.biomeMap[x][y].paletteId);
-		for(0..mapSize) |x| for(0..mapSize) |y| writer.writeInt(u32, @bitCast(self.heightMap[x][y]));
-		for(0..mapSize) |x| for(0..mapSize) |y| writer.writeInt(u32, @bitCast((if(originalData) |map| map else &self.heightMap)[x][y]));
+		for(0..mapSize) |x| for(0..mapSize) |y| writer.writeInt(i32, self.heightMap[x][y]);
+		for(0..mapSize) |x| for(0..mapSize) |y| writer.writeInt(i32, (if(originalData) |map| map else &self.heightMap)[x][y]);
 
 		const compressedData = main.utils.Compression.deflate(main.stackAllocator, writer.data.items, .fast);
 		defer main.stackAllocator.free(compressedData);
