@@ -7,6 +7,8 @@ const ChunkPosition = main.chunk.ChunkPosition;
 const Cache = main.utils.Cache;
 const ZonElement = main.ZonElement;
 const Vec3d = main.vec.Vec3d;
+const BinaryWriter = main.utils.BinaryWriter;
+const BinaryReader = main.utils.BinaryReader;
 
 const terrain = @import("terrain.zig");
 const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
@@ -132,16 +134,17 @@ pub const MapFragment = struct { // MARK: MapFragment
 		const fullData = try main.files.read(main.stackAllocator, path);
 		defer main.stackAllocator.free(fullData);
 
+		var fullReader = BinaryReader.init(fullData, .big);
+
 		const header: StorageHeader = .{
-			.version = fullData[0],
-			.neighborInfo = @bitCast(fullData[1]),
+			.version = try fullReader.readInt(u8),
+			.neighborInfo = @bitCast(try fullReader.readInt(u8)),
 		};
-		const compressedData = fullData[@sizeOf(StorageHeader)..];
 		switch(header.version) {
 			0 => { // TODO: Remove after next breaking change
 				const rawData: []u8 = main.stackAllocator.alloc(u8, mapSize*mapSize*(@sizeOf(u32) + 2*@sizeOf(f32)));
 				defer main.stackAllocator.free(rawData);
-				if(try main.utils.Compression.inflateTo(rawData, compressedData) != rawData.len) return error.CorruptedFile;
+				if(try main.utils.Compression.inflateTo(rawData, fullReader.remaining) != rawData.len) return error.CorruptedFile;
 				const biomeData = rawData[0 .. mapSize*mapSize*@sizeOf(u32)];
 				const heightData = rawData[mapSize*mapSize*@sizeOf(u32) ..][0 .. mapSize*mapSize*@sizeOf(f32)];
 				const originalHeightData = rawData[mapSize*mapSize*(@sizeOf(u32) + @sizeOf(f32)) ..][0 .. mapSize*mapSize*@sizeOf(f32)];
@@ -154,17 +157,24 @@ pub const MapFragment = struct { // MARK: MapFragment
 				}
 			},
 			1 => {
-				const rawData: []u8 = main.stackAllocator.alloc(u8, mapSize*mapSize*(@sizeOf(u32) + 2*@sizeOf(i32)));
+				const biomeDataSize = mapSize*mapSize*@sizeOf(u32);
+				const heightDataSize = mapSize*mapSize*@sizeOf(i32);
+				const originalHeightDataSize = mapSize*mapSize*@sizeOf(i32);
+
+				const rawData: []u8 = main.stackAllocator.alloc(u8, biomeDataSize + heightDataSize + originalHeightDataSize);
 				defer main.stackAllocator.free(rawData);
-				if(try main.utils.Compression.inflateTo(rawData, compressedData) != rawData.len) return error.CorruptedFile;
-				const biomeData = rawData[0 .. mapSize*mapSize*@sizeOf(u32)];
-				const heightData = rawData[mapSize*mapSize*@sizeOf(u32) ..][0 .. mapSize*mapSize*@sizeOf(i32)];
-				const originalHeightData = rawData[mapSize*mapSize*(@sizeOf(u32) + @sizeOf(i32)) ..][0 .. mapSize*mapSize*@sizeOf(i32)];
+				if(try main.utils.Compression.inflateTo(rawData, fullReader.remaining) != rawData.len) return error.CorruptedFile;
+				var rawReader = BinaryReader.init(rawData, .big);
+
+				var biomeReader = BinaryReader.init(try rawReader.readSlice(biomeDataSize), .big);
+				var heightReader = BinaryReader.init(try rawReader.readSlice(heightDataSize), .big);
+				var originalHeightReader = BinaryReader.init(try rawReader.readSlice(originalHeightDataSize), .big);
+
 				for(0..mapSize) |x| {
 					for(0..mapSize) |y| {
-						self.biomeMap[x][y] = main.server.terrain.biomes.getById(biomePalette.palette.items[std.mem.readInt(u32, biomeData[4*(x*mapSize + y) ..][0..4], .big)]);
-						self.heightMap[x][y] = @bitCast(std.mem.readInt(u32, heightData[4*(x*mapSize + y) ..][0..4], .big));
-						if(originalHeightMap) |map| map[x][y] = @bitCast(std.mem.readInt(u32, originalHeightData[4*(x*mapSize + y) ..][0..4], .big));
+						self.biomeMap[x][y] = main.server.terrain.biomes.getById(biomePalette.palette.items[try biomeReader.readInt(u32)]);
+						self.heightMap[x][y] = @bitCast(try heightReader.readInt(u32));
+						if(originalHeightMap) |map| map[x][y] = @bitCast(try originalHeightReader.readInt(u32));
 					}
 				}
 			},
