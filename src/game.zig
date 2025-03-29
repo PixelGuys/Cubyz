@@ -16,6 +16,7 @@ const ConnectionManager = network.ConnectionManager;
 const vec = @import("vec.zig");
 const Vec2f = vec.Vec2f;
 const Vec2d = vec.Vec2d;
+const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
 const Vec3d = vec.Vec3d;
@@ -153,13 +154,13 @@ pub const collision = struct {
 		var resultBox: ?Box = null;
 		var minDistance: f64 = std.math.floatMax(f64);
 		if(block.collide()) {
-			const model = &models.models.items[block.mode().model(block)];
+			const model = block.mode().model(block).model();
 
 			const pos = Vec3d{@floatFromInt(x), @floatFromInt(y), @floatFromInt(z)};
 
 			for(model.neighborFacingQuads) |quads| {
 				for(quads) |quadIndex| {
-					const quad = &models.quads.items[quadIndex];
+					const quad = quadIndex.quadInfo();
 					if(triangleAABB(.{quad.corners[0] + quad.normal + pos, quad.corners[2] + quad.normal + pos, quad.corners[1] + quad.normal + pos}, entityPosition, entityBoundingBoxExtent)) {
 						const min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + quad.normal + pos;
 						const max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + quad.normal + pos;
@@ -188,7 +189,7 @@ pub const collision = struct {
 			}
 
 			for(model.internalQuads) |quadIndex| {
-				const quad = &models.quads.items[quadIndex];
+				const quad = quadIndex.quadInfo();
 				if(triangleAABB(.{quad.corners[0] + pos, quad.corners[2] + pos, quad.corners[1] + pos}, entityPosition, entityBoundingBoxExtent)) {
 					const min = @min(@min(quad.corners[0], quad.corners[1]), @min(quad.corners[2], quad.corners[3])) + pos;
 					const max = @max(@max(quad.corners[0], quad.corners[1]), @max(quad.corners[2], quad.corners[3])) + pos;
@@ -302,8 +303,8 @@ pub const collision = struct {
 					const blockPos: Vec3d = .{@floatFromInt(x), @floatFromInt(y), @floatFromInt(z)};
 
 					const blockBox: Box = .{
-						.min = blockPos + @as(Vec3d, @floatCast(main.models.models.items[block.mode().model(block)].min)),
-						.max = blockPos + @as(Vec3d, @floatCast(main.models.models.items[block.mode().model(block)].max)),
+						.min = blockPos + @as(Vec3d, @floatCast(block.mode().model(block).model().min)),
+						.max = blockPos + @as(Vec3d, @floatCast(block.mode().model(block).model().max)),
 					};
 
 					if(boundingBox.min[2] > blockBox.max[2] or boundingBox.max[2] < blockBox.min[2]) {
@@ -364,17 +365,17 @@ pub const collision = struct {
 	}
 
 	fn isBlockIntersecting(block: Block, posX: i32, posY: i32, posZ: i32, center: Vec3d, extent: Vec3d) bool {
-		const model = &models.models.items[block.mode().model(block)];
+		const model = block.mode().model(block).model();
 		const position = Vec3d{@floatFromInt(posX), @floatFromInt(posY), @floatFromInt(posZ)};
 		for(model.neighborFacingQuads) |quads| {
 			for(quads) |quadIndex| {
-				const quad = &models.quads.items[quadIndex];
+				const quad = quadIndex.quadInfo();
 				if(triangleAABB(.{quad.corners[0] + quad.normal + position, quad.corners[2] + quad.normal + position, quad.corners[1] + quad.normal + position}, center, extent) or
 					triangleAABB(.{quad.corners[1] + quad.normal + position, quad.corners[2] + quad.normal + position, quad.corners[3] + quad.normal + position}, center, extent)) return true;
 			}
 		}
 		for(model.internalQuads) |quadIndex| {
-			const quad = &models.quads.items[quadIndex];
+			const quad = quadIndex.quadInfo();
 			if(triangleAABB(.{quad.corners[0] + position, quad.corners[2] + position, quad.corners[1] + position}, center, extent) or
 				triangleAABB(.{quad.corners[1] + position, quad.corners[2] + position, quad.corners[3] + position}, center, extent)) return true;
 		}
@@ -463,6 +464,9 @@ pub const Player = struct { // MARK: Player
 	pub var mutex: std.Thread.Mutex = .{};
 	pub var inventory: Inventory = undefined;
 	pub var selectedSlot: u32 = 0;
+
+	pub var selectionPosition1: ?Vec3i = null;
+	pub var selectionPosition2: ?Vec3i = null;
 
 	pub var currentFriction: f32 = 0;
 
@@ -580,6 +584,7 @@ pub const Player = struct { // MARK: Player
 		Player.super.vel = .{0, 0, 0};
 
 		Player.super.health = Player.super.maxHealth;
+		Player.super.energy = Player.super.maxEnergy;
 
 		Player.eyePos = .{0, 0, 0};
 		Player.eyeVel = .{0, 0, 0};
@@ -639,13 +644,13 @@ pub const World = struct { // MARK: World
 	manager: *ConnectionManager,
 	ambientLight: f32 = 0,
 	clearColor: Vec4f = Vec4f{0, 0, 0, 1},
-	gravity: f64 = 9.81*1.5, // TODO: Balance
 	name: []const u8,
 	milliTime: i64,
 	gameTime: Atomic(i64) = .init(0),
 	spawn: Vec3f = undefined,
 	connected: bool = true,
 	blockPalette: *assets.Palette = undefined,
+	itemPalette: *assets.Palette = undefined,
 	biomePalette: *assets.Palette = undefined,
 	itemDrops: ClientItemDropManager = undefined,
 	playerBiome: Atomic(*const main.server.terrain.biomes.Biome) = undefined,
@@ -658,7 +663,7 @@ pub const World = struct { // MARK: World
 			.milliTime = std.time.milliTimestamp(),
 		};
 
-		self.itemDrops.init(main.globalAllocator, self);
+		self.itemDrops.init(main.globalAllocator);
 		network.Protocols.handShake.clientSide(self.conn, settings.playerName);
 
 		main.Window.setMouseGrabbed(true);
@@ -683,6 +688,7 @@ pub const World = struct { // MARK: World
 		main.threadPool.clear();
 		self.itemDrops.deinit();
 		self.blockPalette.deinit();
+		self.itemPalette.deinit();
 		self.biomePalette.deinit();
 		self.manager.deinit();
 		main.server.stop();
@@ -702,9 +708,11 @@ pub const World = struct { // MARK: World
 		errdefer self.blockPalette.deinit();
 		self.biomePalette = try assets.Palette.init(main.globalAllocator, zon.getChild("biomePalette"), null);
 		errdefer self.biomePalette.deinit();
+		self.itemPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("itemPalette"), null);
+		errdefer self.itemPalette.deinit();
 		self.spawn = zon.get(Vec3f, "spawn", .{0, 0, 0});
 
-		try assets.loadWorldAssets("serverAssets", self.blockPalette, self.biomePalette);
+		try assets.loadWorldAssets("serverAssets", self.blockPalette, self.itemPalette, self.biomePalette);
 		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
 		Player.inventory = Inventory.init(main.globalAllocator, 32, .normal, .{.playerInventory = Player.id});
 		Player.loadFrom(zon.getChild("player"));

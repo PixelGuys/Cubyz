@@ -14,7 +14,7 @@ const Vec2f = vec.Vec2f;
 const Vec2i = vec.Vec2i;
 const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const modifierList = @import("tool/modifiers/_list.zig");
 
@@ -747,7 +747,7 @@ pub const Recipe = struct { // MARK: Recipe
 	cachedInventory: ?Inventory = null,
 };
 
-var arena: main.utils.NeverFailingArenaAllocator = undefined;
+var arena: main.heap.NeverFailingArenaAllocator = undefined;
 var toolTypes: std.StringHashMap(ToolType) = undefined;
 var reverseIndices: std.StringHashMap(*BaseItem) = undefined;
 var modifiers: std.StringHashMap(*const Modifier.VTable) = undefined;
@@ -755,6 +755,10 @@ pub var itemList: [65536]BaseItem = undefined;
 pub var itemListSize: u16 = 0;
 
 var recipeList: main.List(Recipe) = undefined;
+
+pub fn hasRegistered(id: []const u8) bool {
+	return reverseIndices.contains(id);
+}
 
 pub fn toolTypeIterator() std.StringHashMap(ToolType).ValueIterator {
 	return toolTypes.valueIterator();

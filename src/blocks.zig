@@ -11,8 +11,10 @@ const Color = graphics.Color;
 const TextureArray = graphics.TextureArray;
 const items = @import("items.zig");
 const models = @import("models.zig");
+const ModelIndex = models.ModelIndex;
 const rotation = @import("rotation.zig");
 const RotationMode = rotation.RotationMode;
+const Degrees = rotation.Degrees;
 const Entity = main.server.Entity;
 
 pub const BlockTag = enum(u32) {
@@ -43,7 +45,7 @@ pub const BlockTag = enum(u32) {
 		return result;
 	}
 
-	pub fn loadFromZon(_allocator: main.utils.NeverFailingAllocator, zon: ZonElement) []BlockTag {
+	pub fn loadFromZon(_allocator: main.heap.NeverFailingAllocator, zon: ZonElement) []BlockTag {
 		const result = _allocator.alloc(BlockTag, zon.toSlice().len);
 		for(zon.toSlice(), 0..) |tagZon, i| {
 			result[i] = BlockTag.find(tagZon.as([]const u8, "incorrect"));
@@ -56,7 +58,7 @@ pub const BlockTag = enum(u32) {
 	}
 };
 
-var arena = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
+var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
 const allocator = arena.allocator();
 
 pub const maxBlockCount: usize = 65536; // 16 bit limit
@@ -104,6 +106,7 @@ var _absorption: [maxBlockCount]u32 = undefined;
 /// GUI that is opened on click.
 var _gui: [maxBlockCount][]u8 = undefined;
 var _mode: [maxBlockCount]*RotationMode = undefined;
+var _modeData: [maxBlockCount]u16 = undefined;
 var _lodReplacement: [maxBlockCount]u16 = undefined;
 var _opaqueVariant: [maxBlockCount]u16 = undefined;
 var _friction: [maxBlockCount]f32 = undefined;
@@ -362,6 +365,14 @@ pub const Block = packed struct { // MARK: Block
 		return _mode[self.typ];
 	}
 
+	pub inline fn modeData(self: Block) u16 {
+		return _modeData[self.typ];
+	}
+
+	pub inline fn rotateZ(self: Block, angle: Degrees) Block {
+		return .{.typ = self.typ, .data = self.mode().rotateZ(self.data, angle)};
+	}
+
 	pub inline fn lodReplacement(self: Block) u16 {
 		return _lodReplacement[self.typ];
 	}
@@ -423,16 +434,13 @@ pub const meshes = struct { // MARK: meshes
 		time: u32,
 	};
 
-	const TextureData = extern struct {
-		textureIndices: [6]u16,
-	};
 	const FogData = extern struct {
 		fogDensity: f32,
 		fogColor: u32,
 	};
 	var size: u32 = 0;
-	var _modelIndex: [maxBlockCount]u16 = undefined;
-	var textureData: [maxBlockCount]TextureData = undefined;
+	var _modelIndex: [maxBlockCount]ModelIndex = undefined;
+	var textureIndices: [maxBlockCount][16]u16 = undefined;
 	/// Stores the number of textures after each block was added. Used to clean additional textures when the world is switched.
 	var maxTextureCount: [maxBlockCount]u32 = undefined;
 	/// Number of loaded meshes. Used to determine if an update is needed.
@@ -447,7 +455,7 @@ pub const meshes = struct { // MARK: meshes
 	var textureFogData: main.List(FogData) = undefined;
 	pub var textureOcclusionData: main.List(bool) = undefined;
 
-	var arenaForWorld: main.utils.NeverFailingArenaAllocator = undefined;
+	var arenaForWorld: main.heap.NeverFailingArenaAllocator = undefined;
 
 	pub var blockBreakingTextures: main.List(u16) = undefined;
 
@@ -541,20 +549,20 @@ pub const meshes = struct { // MARK: meshes
 		_ = arenaForWorld.reset(.free_all);
 	}
 
-	pub inline fn model(block: Block) u16 {
+	pub inline fn model(block: Block) ModelIndex {
 		return block.mode().model(block);
 	}
 
-	pub inline fn modelIndexStart(block: Block) u16 {
+	pub inline fn modelIndexStart(block: Block) ModelIndex {
 		return _modelIndex[block.typ];
 	}
 
 	pub inline fn fogDensity(block: Block) f32 {
-		return textureFogData.items[animation.items[textureData[block.typ].textureIndices[0]].startFrame].fogDensity;
+		return textureFogData.items[animation.items[textureIndices[block.typ][0]].startFrame].fogDensity;
 	}
 
 	pub inline fn fogColor(block: Block) u32 {
-		return textureFogData.items[animation.items[textureData[block.typ].textureIndices[0]].startFrame].fogColor;
+		return textureFogData.items[animation.items[textureIndices[block.typ][0]].startFrame].fogColor;
 	}
 
 	pub inline fn hasFog(block: Block) bool {
@@ -563,13 +571,13 @@ pub const meshes = struct { // MARK: meshes
 
 	pub inline fn textureIndex(block: Block, orientation: usize) u16 {
 		if(orientation < 16) {
-			return textureData[block.typ].textureIndices[orientation];
+			return textureIndices[block.typ][orientation];
 		} else {
-			return textureData[block.data].textureIndices[orientation - 16];
+			return textureIndices[block.data][orientation - 16];
 		}
 	}
 
-	fn extendedPath(_allocator: main.utils.NeverFailingAllocator, path: []const u8, ending: []const u8) []const u8 {
+	fn extendedPath(_allocator: main.heap.NeverFailingAllocator, path: []const u8, ending: []const u8) []const u8 {
 		return std.fmt.allocPrint(_allocator.allocator, "{s}{s}", .{path, ending}) catch unreachable;
 	}
 
@@ -651,21 +659,24 @@ pub const meshes = struct { // MARK: meshes
 		return result;
 	}
 
-	pub fn getTextureIndices(zon: ZonElement, assetFolder: []const u8, textureIndicesRef: []u16) void {
+	pub fn getTextureIndices(zon: ZonElement, assetFolder: []const u8, textureIndicesRef: *[16]u16) void {
 		const defaultIndex = readTexture(zon.get(?[]const u8, "texture", null), assetFolder) catch 0;
-		for(textureIndicesRef, sideNames) |*ref, name| {
-			const textureId = zon.get(?[]const u8, name, null);
+		inline for(textureIndicesRef, 0..) |*ref, i| {
+			var textureId = zon.get(?[]const u8, std.fmt.comptimePrint("texture{}", .{i}), null);
+			if(i < sideNames.len) {
+				textureId = zon.get(?[]const u8, sideNames[i], textureId);
+			}
 			ref.* = readTexture(textureId, assetFolder) catch defaultIndex;
 		}
 	}
 
 	pub fn register(assetFolder: []const u8, _: []const u8, zon: ZonElement) void {
-		_modelIndex[meshes.size] = _mode[meshes.size].createBlockModel(zon.getChild("model"));
+		_modelIndex[meshes.size] = _mode[meshes.size].createBlockModel(.{.typ = @intCast(meshes.size), .data = 0}, &_modeData[meshes.size], zon.getChild("model"));
 
 		// The actual model is loaded later, in the rendering thread.
 		// But textures can be loaded here:
 
-		getTextureIndices(zon, assetFolder, &textureData[meshes.size].textureIndices);
+		getTextureIndices(zon, assetFolder, &textureIndices[meshes.size]);
 
 		maxTextureCount[meshes.size] = @intCast(textureIDs.items.len);
 

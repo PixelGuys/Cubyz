@@ -6,8 +6,15 @@
 	},
 	.absorbedLight = 0x202830,
 	.rotation = .branch,
-	.model = "cubyz:branch",
-	.texture = "cubyz:oak_log",
+	.model = .{
+		.radius = 4,
+	},
+	.texture0 = "cubyz:branch/oak/dot",
+	.texture1 = "cubyz:branch/oak/half_line",
+	.texture2 = "cubyz:branch/oak/line",
+	.texture3 = "cubyz:branch/oak/bend",
+	.texture4 = "cubyz:branch/oak/intersection",
+	.texture5 = "cubyz:branch/oak/cross",
 	.item = .{
 		.material = .{
 			.density = 0.25,

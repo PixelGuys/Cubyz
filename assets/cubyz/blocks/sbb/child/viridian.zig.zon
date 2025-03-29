@@ -1,0 +1,5 @@
+.{
+	.texture = "cubyz:sbb/child/side/viridian",
+	.texture_top = "cubyz:sbb/child/top/viridian",
+	.texture_bottom = "cubyz:sbb/child/bottom/viridian",
+}

@@ -9,7 +9,7 @@ const vec = main.vec;
 const Vec2f = vec.Vec2f;
 const List = main.List;
 
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const Button = @import("components/Button.zig");
 const CheckBox = @import("components/CheckBox.zig");
@@ -505,16 +505,18 @@ pub fn secondaryButtonReleased() void {
 }
 
 pub fn updateWindowPositions() void {
-	var wasChanged: bool = false;
-	for(windowList.items) |window| {
-		const oldPos = window.pos;
-		window.updateWindowPosition();
-		const newPos = window.pos;
-		if(vec.lengthSquare(oldPos - newPos) >= 1e-3) {
-			wasChanged = true;
+	var wasChanged: bool = true;
+	while(wasChanged) {
+		wasChanged = false;
+		for(windowList.items) |window| {
+			const oldPos = window.pos;
+			window.updateWindowPosition();
+			const newPos = window.pos;
+			if(vec.lengthSquare(oldPos - newPos) >= 1e-3) {
+				wasChanged = true;
+			}
 		}
 	}
-	if(wasChanged) @call(.always_tail, updateWindowPositions, .{}); // Very efficient O(n²) algorithm :P
 }
 
 pub fn updateAndRenderGui() void {

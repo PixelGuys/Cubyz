@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const main = @import("main.zig");
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const List = main.List;
 
 const JsonType = enum(u8) {
@@ -180,7 +180,7 @@ pub const JsonElement = union(JsonType) { // MARK: JsonElement
 			},
 			.vector => {
 				const len = @typeInfo(@TypeOf(value)).vector.len;
-				const result = initArray(main.utils.NeverFailingAllocator{.allocator = allocator, .IAssertThatTheProvidedAllocatorCantFail = {}});
+				const result = initArray(main.heap.NeverFailingAllocator{.allocator = allocator, .IAssertThatTheProvidedAllocatorCantFail = {}});
 				result.JsonArray.ensureCapacity(len);
 				inline for(0..len) |i| {
 					result.JsonArray.appendAssumeCapacity(createElementFromRandomType(value[i], allocator));
@@ -703,7 +703,7 @@ test "number parsing" {
 }
 
 test "element parsing" {
-	var wrap = main.utils.ErrorHandlingAllocator.init(std.testing.allocator);
+	var wrap = main.heap.ErrorHandlingAllocator.init(std.testing.allocator);
 	const allocator = wrap.allocator();
 	// Integers:
 	var index: u32 = 0;

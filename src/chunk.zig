@@ -47,6 +47,26 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 	pub fn relPos(self: Neighbor) Vec3i {
 		return .{self.relX(), self.relY(), self.relZ()};
 	}
+
+	pub fn fromRelPos(pos: Vec3i) ?Neighbor {
+		if(@reduce(.Add, @abs(pos)) != 1) {
+			return null;
+		}
+		return switch(pos[0]) {
+			1 => return .dirPosX,
+			-1 => return .dirNegX,
+			else => switch(pos[1]) {
+				1 => return .dirPosY,
+				-1 => return .dirNegY,
+				else => switch(pos[2]) {
+					1 => return .dirUp,
+					-1 => return .dirDown,
+					else => return null,
+				},
+			},
+		};
+	}
+
 	/// Index to bitMask for bitmap direction data
 	pub inline fn bitMask(self: Neighbor) u6 {
 		return @as(u6, 1) << @intFromEnum(self);
@@ -108,6 +128,12 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 			},
 		}
 	}
+
+	// Returns the neighbor that is rotated by 90 degrees counterclockwise around the z axis.
+	pub inline fn rotateZ(self: Neighbor) Neighbor {
+		const arr = [_]Neighbor{.dirUp, .dirDown, .dirPosY, .dirNegY, .dirNegX, .dirPosX};
+		return arr[@intFromEnum(self)];
+	}
 };
 
 /// Gets the index of a given position inside this chunk.
@@ -128,14 +154,12 @@ fn extractZFromIndex(index: usize) i32 {
 	return @intCast(index & chunkMask);
 }
 
-var memoryPool: std.heap.MemoryPoolAligned(Chunk, @alignOf(Chunk)) = undefined;
-var memoryPoolMutex: std.Thread.Mutex = .{};
-var serverPool: std.heap.MemoryPoolAligned(ServerChunk, @alignOf(ServerChunk)) = undefined;
-var serverPoolMutex: std.Thread.Mutex = .{};
+var memoryPool: main.heap.MemoryPool(Chunk) = undefined;
+var serverPool: main.heap.MemoryPool(ServerChunk) = undefined;
 
 pub fn init() void {
-	memoryPool = .init(main.globalAllocator.allocator);
-	serverPool = .init(main.globalAllocator.allocator);
+	memoryPool = .init(main.globalAllocator);
+	serverPool = .init(main.globalAllocator);
 }
 
 pub fn deinit() void {
@@ -226,9 +250,7 @@ pub const Chunk = struct { // MARK: Chunk
 	widthShift: u5,
 
 	pub fn init(pos: ChunkPosition) *Chunk {
-		memoryPoolMutex.lock();
-		const self = memoryPool.create() catch unreachable;
-		memoryPoolMutex.unlock();
+		const self = memoryPool.create();
 		std.debug.assert((pos.voxelSize - 1 & pos.voxelSize) == 0);
 		std.debug.assert(@mod(pos.wx, pos.voxelSize) == 0 and @mod(pos.wy, pos.voxelSize) == 0 and @mod(pos.wz, pos.voxelSize) == 0);
 		const voxelSizeShift: u5 = @intCast(std.math.log2_int(u31, pos.voxelSize));
@@ -245,9 +267,7 @@ pub const Chunk = struct { // MARK: Chunk
 
 	pub fn deinit(self: *Chunk) void {
 		self.data.deinit();
-		memoryPoolMutex.lock();
 		memoryPool.destroy(@alignCast(self));
-		memoryPoolMutex.unlock();
 	}
 
 	/// Updates a block if it is inside this chunk.
@@ -282,9 +302,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 	refCount: std.atomic.Value(u16),
 
 	pub fn initAndIncreaseRefCount(pos: ChunkPosition) *ServerChunk {
-		serverPoolMutex.lock();
-		const self = serverPool.create() catch unreachable;
-		serverPoolMutex.unlock();
+		const self = serverPool.create();
 		std.debug.assert((pos.voxelSize - 1 & pos.voxelSize) == 0);
 		std.debug.assert(@mod(pos.wx, pos.voxelSize) == 0 and @mod(pos.wy, pos.voxelSize) == 0 and @mod(pos.wz, pos.voxelSize) == 0);
 		const voxelSizeShift: u5 = @intCast(std.math.log2_int(u31, pos.voxelSize));
@@ -308,9 +326,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 			self.save(main.server.world.?);
 		}
 		self.super.data.deinit();
-		serverPoolMutex.lock();
 		serverPool.destroy(@alignCast(self));
-		serverPoolMutex.unlock();
 	}
 
 	pub fn setChanged(self: *ServerChunk) void {

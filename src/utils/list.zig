@@ -2,7 +2,7 @@ const builtin = @import("builtin");
 const std = @import("std");
 
 const main = @import("../main.zig");
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 fn growCapacity(current: usize, minimum: usize) usize {
 	var new = current;
@@ -433,9 +433,90 @@ pub fn ListUnmanaged(comptime T: type) type {
 	};
 }
 
-const pageSize = 4096;
+/// Holds multiple arrays sequentially in memory.
+/// Allows addressing and remove each subarray individually, as well as iterating through all of them at once.
+pub fn MultiArray(T: type, Range: type) type {
+	const size = @typeInfo(Range).@"enum".fields.len;
+	std.debug.assert(@typeInfo(Range).@"enum".is_exhaustive);
+	for(@typeInfo(Range).@"enum".fields) |field| {
+		std.debug.assert(field.value < size);
+	}
+	return struct {
+		offsets: [size + 1]usize = @splat(0),
+		items: [*]T = undefined,
+		capacity: usize = 0,
 
-fn reserveMemory(len: usize) [*]align(pageSize) u8 {
+		pub fn initCapacity(allocator: NeverFailingAllocator, capacity: usize) @This() {
+			return .{
+				.items = allocator.alloc(T, capacity)[0..0],
+				.capacity = capacity,
+			};
+		}
+
+		pub fn deinit(self: @This(), allocator: NeverFailingAllocator) void {
+			if(self.capacity != 0) {
+				allocator.free(self.items[0..self.capacity]);
+			}
+		}
+
+		pub fn clearAndFree(self: *@This(), allocator: NeverFailingAllocator) void {
+			self.deinit(allocator);
+			self.* = .{};
+		}
+
+		pub fn clearRetainingCapacity(self: *@This()) void {
+			self.offsets = @splat(0);
+		}
+
+		pub fn ensureCapacity(self: *@This(), allocator: NeverFailingAllocator, newCapacity: usize) void {
+			if(newCapacity <= self.capacity) return;
+			const newAllocation = allocator.realloc(self.items[0..self.capacity], newCapacity);
+			self.items = newAllocation.ptr;
+			self.capacity = newAllocation.len;
+		}
+
+		pub fn addMany(self: *@This(), allocator: NeverFailingAllocator, n: usize) []T {
+			self.ensureFreeCapacity(allocator, n);
+			return self.addManyAssumeCapacity(n);
+		}
+
+		pub fn replaceRange(self: *@This(), allocator: NeverFailingAllocator, range: Range, elems: []const T) void {
+			const i: usize = @intFromEnum(range);
+			const oldLen = self.offsets[i + 1] - self.offsets[i];
+			self.ensureCapacity(allocator, self.offsets[size] - oldLen + elems.len);
+			const startIndex = self.offsets[i + 1];
+			const newStartIndex = self.offsets[i + 1] - oldLen + elems.len;
+			const endIndex = self.offsets[size];
+			const newEndIndex = self.offsets[size] - oldLen + elems.len;
+			if(newStartIndex > startIndex) {
+				std.mem.copyBackwards(T, self.items[newStartIndex..newEndIndex], self.items[startIndex..endIndex]);
+			} else {
+				std.mem.copyForwards(T, self.items[newStartIndex..newEndIndex], self.items[startIndex..endIndex]);
+			}
+			@memcpy(self.items[self.offsets[i]..][0..elems.len], elems);
+			for(self.offsets[i + 1 ..]) |*offset| {
+				offset.* = offset.* - oldLen + elems.len;
+			}
+		}
+
+		pub fn getRange(self: *@This(), range: Range) []T {
+			const i: usize = @intFromEnum(range);
+			const startIndex = self.offsets[i];
+			const endIndex = self.offsets[i + 1];
+			return self.items[startIndex..endIndex];
+		}
+
+		pub fn getEverything(self: *@This()) []T {
+			return self.items[0..self.offsets[size]];
+		}
+	};
+}
+
+const page_size_min = std.heap.page_size_min;
+const page_size_max = std.heap.page_size_max;
+const pageSize = std.heap.pageSize;
+
+fn reserveMemory(len: usize) [*]align(page_size_min) u8 {
 	if(builtin.os.tag == .windows) {
 		return @ptrCast(@alignCast(std.os.windows.VirtualAlloc(null, len, std.os.windows.MEM_RESERVE, std.os.windows.PAGE_READWRITE) catch |err| {
 			std.log.err("Got error while reserving virtual memory of size {}: {s}", .{len, @errorName(err)});
@@ -449,7 +530,7 @@ fn reserveMemory(len: usize) [*]align(pageSize) u8 {
 	}
 }
 
-fn commitMemory(start: [*]align(pageSize) u8, len: usize) void {
+fn commitMemory(start: [*]align(page_size_min) u8, len: usize) void {
 	if(builtin.os.tag == .windows) {
 		_ = std.os.windows.VirtualAlloc(start, len, std.os.windows.MEM_COMMIT, std.os.windows.PAGE_READWRITE) catch |err| {
 			std.log.err("Got error while committing virtual memory of size {}: {s}.", .{len, @errorName(err)});
@@ -463,7 +544,7 @@ fn commitMemory(start: [*]align(pageSize) u8, len: usize) void {
 	}
 }
 
-fn releaseMemory(start: [*]align(pageSize) u8, len: usize) void {
+fn releaseMemory(start: [*]align(page_size_min) u8, len: usize) void {
 	if(builtin.os.tag == .windows) {
 		std.os.windows.VirtualFree(start, 0, std.os.windows.MEM_RELEASE);
 	} else {
@@ -474,23 +555,25 @@ fn releaseMemory(start: [*]align(pageSize) u8, len: usize) void {
 /// A list that reserves a continuous region of virtual memory without actually committing its pages.
 /// This allows it to grow without ever invalidating pointers.
 pub fn VirtualList(T: type, maxSize: u32) type {
-	const maxSizeBytes = std.mem.alignForward(usize, @as(usize, maxSize)*@sizeOf(T), pageSize);
-	std.debug.assert(@sizeOf(T) <= pageSize);
 	return struct {
-		mem: [*]align(pageSize) T,
+		mem: [*]align(page_size_min) T,
 		len: u32,
 		committedCapacity: u32,
 
+		fn maxSizeBytes() usize {
+			return std.mem.alignForward(usize, @as(usize, maxSize)*@sizeOf(T), pageSize());
+		}
+
 		pub fn init() @This() {
 			return .{
-				.mem = @ptrCast(reserveMemory(maxSizeBytes)),
+				.mem = @ptrCast(reserveMemory(maxSizeBytes())),
 				.len = 0,
 				.committedCapacity = 0,
 			};
 		}
 
 		pub fn deinit(self: @This()) void {
-			releaseMemory(@ptrCast(self.mem), maxSizeBytes);
+			releaseMemory(@ptrCast(self.mem), maxSizeBytes());
 		}
 
 		pub fn items(self: *@This()) []T {
@@ -503,10 +586,10 @@ pub fn VirtualList(T: type, maxSize: u32) type {
 
 		pub fn ensureCapacity(self: *@This(), newCapacity: usize) void {
 			if(newCapacity > self.committedCapacity) {
-				const alignedCapacity = std.mem.alignForward(usize, self.committedCapacity*@sizeOf(T), pageSize);
-				const newAlignedCapacity = std.mem.alignForward(usize, newCapacity*@sizeOf(T), pageSize);
+				const alignedCapacity = std.mem.alignForward(usize, self.committedCapacity*@sizeOf(T), pageSize());
+				const newAlignedCapacity = std.mem.alignForward(usize, newCapacity*@sizeOf(T), pageSize());
 
-				commitMemory(@alignCast(@as([*]align(pageSize) u8, @ptrCast(self.mem))[alignedCapacity..]), newAlignedCapacity - alignedCapacity);
+				commitMemory(@alignCast(@as([*]align(page_size_min) u8, @ptrCast(self.mem))[alignedCapacity..]), newAlignedCapacity - alignedCapacity);
 				self.committedCapacity = @intCast(newAlignedCapacity/@sizeOf(T));
 			}
 		}

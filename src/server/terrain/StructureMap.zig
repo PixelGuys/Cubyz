@@ -6,7 +6,7 @@ const ServerChunk = main.chunk.ServerChunk;
 const ChunkPosition = main.chunk.ChunkPosition;
 const Cache = main.utils.Cache;
 const ZonElement = main.ZonElement;
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
 
@@ -14,11 +14,11 @@ const terrain = @import("terrain.zig");
 const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
 
 const StructureInternal = struct {
-	generateFn: *const fn(self: *const anyopaque, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView) void,
+	generateFn: *const fn(self: *const anyopaque, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView) void,
 	data: *const anyopaque,
 
-	pub fn generate(self: StructureInternal, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView) void {
-		self.generateFn(self.data, chunk, caveMap);
+	pub fn generate(self: StructureInternal, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView) void {
+		self.generateFn(self.data, chunk, caveMap, biomeMap);
 	}
 };
 
@@ -41,8 +41,8 @@ pub const StructureMapFragment = struct {
 	pos: ChunkPosition,
 	voxelShift: u5,
 	refCount: Atomic(u16) = .init(0),
-	arena: main.utils.NeverFailingArenaAllocator,
-	allocator: main.utils.NeverFailingAllocator,
+	arena: main.heap.NeverFailingArenaAllocator,
+	allocator: main.heap.NeverFailingAllocator,
 
 	tempData: struct {
 		lists: *[chunkedSize*chunkedSize*chunkedSize]main.ListUnmanaged(Structure),
@@ -70,7 +70,7 @@ pub const StructureMapFragment = struct {
 
 	pub fn deinit(self: *StructureMapFragment) void {
 		self.arena.deinit();
-		main.globalAllocator.destroy(self);
+		memoryPool.destroy(self);
 	}
 
 	fn finishGeneration(self: *StructureMapFragment) void {
@@ -106,10 +106,10 @@ pub const StructureMapFragment = struct {
 		}
 	}
 
-	pub fn generateStructuresInChunk(self: *const StructureMapFragment, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView) void {
+	pub fn generateStructuresInChunk(self: *const StructureMapFragment, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView) void {
 		const index = self.getIndex(chunk.super.pos.wx - self.pos.wx, chunk.super.pos.wy - self.pos.wy, chunk.super.pos.wz - self.pos.wz);
 		for(self.data[index]) |structure| {
-			structure.generate(chunk, caveMap);
+			structure.generate(chunk, caveMap, biomeMap);
 		}
 	}
 
@@ -178,8 +178,10 @@ const associativity = 8;
 var cache: Cache(StructureMapFragment, cacheSize, associativity, StructureMapFragment.decreaseRefCount) = .{};
 var profile: TerrainGenerationProfile = undefined;
 
+var memoryPool: main.heap.MemoryPool(StructureMapFragment) = undefined;
+
 fn cacheInit(pos: ChunkPosition) *StructureMapFragment {
-	const mapFragment = main.globalAllocator.create(StructureMapFragment);
+	const mapFragment = memoryPool.create();
 	mapFragment.init(main.stackAllocator, pos.wx, pos.wy, pos.wz, pos.voxelSize);
 	for(profile.structureMapGenerators) |generator| {
 		generator.generate(mapFragment, profile.seed ^ generator.generatorSeed);
@@ -202,10 +204,12 @@ pub fn deinitGenerators() void {
 
 pub fn init(_profile: TerrainGenerationProfile) void {
 	profile = _profile;
+	memoryPool = .init(main.globalAllocator);
 }
 
 pub fn deinit() void {
 	cache.clear();
+	memoryPool.deinit();
 }
 
 pub fn getOrGenerateFragmentAndIncreaseRefCount(wx: i32, wy: i32, wz: i32, voxelSize: u31) *StructureMapFragment {

@@ -2,7 +2,7 @@ const std = @import("std");
 const builtin = @import("builtin");
 
 const main = @import("root");
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const ZonElement = main.ZonElement;
 
 pub fn read(allocator: NeverFailingAllocator, path: []const u8) ![]u8 {

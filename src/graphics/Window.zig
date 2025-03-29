@@ -130,10 +130,10 @@ pub const Gamepad = struct {
 		curTimestamp: i128,
 		var running = std.atomic.Value(bool).init(false);
 		const vtable = main.utils.ThreadPool.VTable{
-			.getPriority = @ptrCast(&getPriority),
-			.isStillNeeded = @ptrCast(&isStillNeeded),
-			.run = @ptrCast(&run),
-			.clean = @ptrCast(&clean),
+			.getPriority = main.utils.castFunctionSelfToAnyopaque(getPriority),
+			.isStillNeeded = main.utils.castFunctionSelfToAnyopaque(isStillNeeded),
+			.run = main.utils.castFunctionSelfToAnyopaque(run),
+			.clean = main.utils.castFunctionSelfToAnyopaque(clean),
 		};
 
 		pub fn schedule(curTimestamp: i128) void {
