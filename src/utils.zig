@@ -1419,7 +1419,7 @@ pub const BinaryReader = struct {
 		switch(@typeInfo(T)) {
 			.vector => |typeInfo| {
 				var result: T = undefined;
-				for(0..typeInfo.len) |i| {
+				inline for(0..typeInfo.len) |i| {
 					switch(@typeInfo(typeInfo.child)) {
 						.int => {
 							result[i] = try self.readInt(typeInfo.child);
@@ -1491,7 +1491,7 @@ pub const BinaryWriter = struct {
 	pub fn writeVec(self: *BinaryWriter, T: type, value: T) void {
 		return switch(@typeInfo(T)) {
 			.vector => |typeInfo| {
-				for(0..typeInfo.len) |i| {
+				inline for(0..typeInfo.len) |i| {
 					switch(@typeInfo(typeInfo.child)) {
 						.int => {
 							self.writeInt(typeInfo.child, value[i]);

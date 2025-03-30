@@ -980,11 +980,7 @@ pub const Protocols = struct {
 			teleport = 1,
 			cure = 2,
 			worldEditPos = 3,
-			reserved3 = 4,
-			reserved4 = 5,
-			reserved5 = 6,
-			reserved6 = 7,
-			timeAndBiome = 8,
+			timeAndBiome = 4,
 		};
 
 		const WorldEditPosition = enum(u2) {
@@ -994,12 +990,7 @@ pub const Protocols = struct {
 		};
 
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			const updateType = reader.readEnum(UpdateType) catch |err| {
-				std.log.err("Error {s} in generic protocol message: '{s}'", .{@errorName(err), reader.remaining});
-				return error.Invalid;
-			};
-
-			switch(updateType) {
+			switch(try reader.readEnum(UpdateType)) {
 				.gamemode => {
 					if(conn.user != null) return error.InvalidPacket;
 					main.items.Inventory.Sync.setGamemode(null, try reader.readEnum(main.game.Gamemode));
@@ -1027,15 +1018,10 @@ pub const Protocols = struct {
 						},
 					}
 				},
-				.reserved3 => {},
-				.reserved4 => {},
-				.reserved5 => {},
-				.reserved6 => {},
 				.timeAndBiome => {
 					if(conn.manager.world) |world| {
 						const expectedTime = try reader.readInt(i64);
-						const biomeIdLen = try reader.readInt(usize);
-						const biomeId = try reader.readSlice(biomeIdLen);
+						const biomeId = try reader.readInt(u32);
 
 						var curTime = world.gameTime.load(.monotonic);
 						if(@abs(curTime -% expectedTime) >= 10) {
@@ -1050,7 +1036,7 @@ pub const Protocols = struct {
 							}
 						}
 
-						const newBiome = main.server.terrain.biomes.getById(biomeId);
+						const newBiome = try main.server.terrain.biomes.getByNumericId(biomeId, null);
 						const oldBiome = world.playerBiome.swap(newBiome, .monotonic);
 						if(oldBiome != newBiome) {
 							main.audio.setMusic(newBiome.preferredMusic);
@@ -1104,9 +1090,8 @@ pub const Protocols = struct {
 			writer.writeInt(i64, world.gameTime);
 
 			const pos = @as(Vec3i, @intFromFloat(conn.user.?.player.pos));
-			const biomeId = world.getBiome(pos[0], pos[1], pos[2]).id;
-			writer.writeInt(usize, biomeId.len);
-			writer.writeSlice(biomeId);
+			const biomeId = world.getBiome(pos[0], pos[1], pos[2]).paletteId;
+			writer.writeInt(u32, biomeId);
 
 			conn.sendImportant(id, writer.data.items);
 		}
