@@ -1415,6 +1415,27 @@ pub const BinaryReader = struct {
 		return .{.remaining = data, .endian = endian};
 	}
 
+	pub fn readVec(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds}!T {
+		switch(@typeInfo(T)) {
+			.vector => |typeInfo| {
+				var result: T = undefined;
+				for(0..typeInfo.len) |i| {
+					switch(@typeInfo(typeInfo.child)) {
+						.int => {
+							result[i] = try self.readInt(typeInfo.child);
+						},
+						.float => {
+							result[i] = try self.readFloat(typeInfo.child);
+						},
+						else => unreachable,
+					}
+				}
+				return result;
+			},
+			else => unreachable,
+		}
+	}
+
 	pub fn readInt(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds}!T {
 		if(@mod(@typeInfo(T).int.bits, 8) != 0) {
 			const fullBits = comptime std.mem.alignForward(u16, @typeInfo(T).int.bits, 8);
@@ -1465,6 +1486,25 @@ pub const BinaryWriter = struct {
 
 	pub fn deinit(self: *BinaryWriter) void {
 		self.data.deinit();
+	}
+
+	pub fn writeVec(self: *BinaryWriter, T: type, value: T) void {
+		return switch(@typeInfo(T)) {
+			.vector => |typeInfo| {
+				for(0..typeInfo.len) |i| {
+					switch(@typeInfo(typeInfo.child)) {
+						.int => {
+							self.writeInt(typeInfo.child, value[i]);
+						},
+						.float => {
+							self.writeFloat(typeInfo.child, value[i]);
+						},
+						else => unreachable,
+					}
+				}
+			},
+			else => unreachable,
+		};
 	}
 
 	pub fn writeInt(self: *BinaryWriter, T: type, value: T) void {
