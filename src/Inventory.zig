@@ -1555,6 +1555,7 @@ pub const Command = struct { // MARK: Command
 	const UpdateBlock = struct { // MARK: UpdateBlock
 		source: InventoryAndSlot,
 		pos: Vec3i,
+		dropDirection: Vec3d = Vec3d{0, 0, 1},
 		oldBlock: Block,
 		newBlock: Block,
 
@@ -1610,7 +1611,7 @@ pub const Command = struct { // MARK: Command
 						for(0..amount) |_| {
 							for(self.newBlock.blockDrops()) |drop| {
 								if(drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
-									blockDrop(self.pos, drop);
+									blockDrop(self.pos, self.dropDirection, drop);
 								}
 							}
 						}
@@ -1621,57 +1622,56 @@ pub const Command = struct { // MARK: Command
 			if(side == .server and gamemode != .creative and self.oldBlock.typ != self.newBlock.typ and shouldDropSourceBlockOnSuccess) {
 				for(self.oldBlock.blockDrops()) |drop| {
 					if(drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
-						blockDrop(self.pos, drop);
+						blockDrop(self.pos, self.dropDirection, drop);
 					}
 				}
 			}
 		}
 
-		fn blockDrop(_pos: Vec3i, drop: main.blocks.BlockDrop) void {
-			for(drop.items) |itemStack| {
-				const pos = @as(Vec3d, @floatFromInt(_pos));
-				const blockCenterOffset = @as(Vec3d, @splat(0.5));
-				var dropPos: Vec3d = pos + blockCenterOffset + main.random.nextDoubleVectorSigned(3, &main.seed)*@as(Vec3d, @splat(0.5 - main.itemdrop.ItemDropManager.radius));
-				var dropDir: Vec3d = main.random.nextFloatVectorSigned(3, &main.seed) + Vec3f{0, 1, 0};
-				const randomVelocity: f64 = 2 + main.random.nextFloat(&main.seed)*0.5;
-				var dropVelocity = randomVelocity;
+		fn blockDrop(_pos: Vec3i, _dir_hint: Vec3d, drop: main.blocks.BlockDrop) void {
+			const currentBlock: Block = main.server.world.?.getBlock(_pos[0], _pos[1], _pos[2]) orelse Block{.typ = 0, .data = 0};
+			var dropVelocity = 4.0 + main.random.nextFloatSigned(&main.seed)*0.5;
 
-				const currentBlock = main.server.world.?.getBlock(_pos[0], _pos[1], _pos[2]) orelse Block{.typ = 0, .data = 0};
+			if(!currentBlock.solid() or !currentBlock.collide()) {
+				const dropDir = vec.normalize(Vec3d{
+					main.random.nextDoubleSigned(&main.seed),
+					main.random.nextDoubleSigned(&main.seed),
+					2.0,
+				});
 
-				if(currentBlock.typ != 0) {
-					for(Neighbor.iterable) |neighbor| {
-						const neighborPos = _pos + neighbor.relPos();
-						const neighborBlock = main.server.world.?.getBlock(neighborPos[0], neighborPos[1], neighborPos[2]) orelse continue;
+				const sign = std.math.sign(dropDir);
+				const centerOffset = Vec3d{0.5, 0.5, 0.0};
+				const itemOffset = sign*@as(Vec3d, @splat(main.itemdrop.ItemDropManager.radius));
+				const dropPos = @as(Vec3d, @floatFromInt(_pos)) + centerOffset + itemOffset*@as(Vec3d, @splat(2));
 
-						if(neighborBlock.typ == 0) {
-							const neighborDirection = @as(Vec3d, @floatFromInt(neighbor.relPos()));
-							dropPos = pos + blockCenterOffset + neighborDirection*@as(Vec3d, @splat(0.5 + main.itemdrop.ItemDropManager.radius));
+				for(drop.items) |itemStack| {
+					main.server.world.?.drop(itemStack.clone(), dropPos, @floatCast(dropDir), dropVelocity);
+				}
+			} else {
+				const sign = std.math.sign(_dir_hint);
+				const factors = Vec3d{
+					@sin(@abs(std.math.atan(_dir_hint[0]))),
+					@sin(@abs(std.math.atan(_dir_hint[1]))),
+					@sin(@abs(std.math.atan(_dir_hint[2]))),
+				};
+				const edgeOffset = _dir_hint + factors*@as(Vec3d, @splat(std.math.sqrt(2) - 1));
+				const centerOffset = @as(Vec3d, @splat(0.5));
+				const itemOffset = sign*@as(Vec3d, @splat(main.itemdrop.ItemDropManager.radius));
+				const dropPos = @as(Vec3d, @floatFromInt(_pos)) + centerOffset + edgeOffset*@as(Vec3d, @splat(0.5)) + itemOffset*@as(Vec3d, @splat(2));
 
-							const random = main.random.nextFloatVectorSigned(3, &main.seed);
-							const neighborOrt = @as(Vec3d, @floatFromInt(neighbor.orthogonalComponents()));
-							// Make sure direction vector points away from block and that axis perpendicular to block side is dominating.
-							dropDir = neighborDirection*@as(Vec3d, @splat(2)) + random*neighborOrt;
+				const dropDir = vec.normalize(Vec3d{
+					_dir_hint[0] + main.random.nextDoubleSigned(&main.seed)*0.25,
+					_dir_hint[1] + main.random.nextDoubleSigned(&main.seed)*0.25,
+					if(_dir_hint[2] < 0) _dir_hint[2] else _dir_hint[2] + 2.0,
+				});
 
-							const bouncinessFactor = 2.0;
-							if(neighbor == Neighbor.dirDown) {
-								// When dropping from bottom of the block, gravity already accelerates the item, so having additional Z velocity
-								// makes items fall unnaturally fast compared to dropping from sides, therefore we remove Z component of direction.
-								dropDir = dropDir*neighborOrt;
-							} else if(neighbor == Neighbor.dirUp) {
-								// When dropping from top of the block gravity damps velocity so hard that item doesn't visibly jump from the ground
-								// instead it just slides to the side, which is counterintuitive and significantly different than when dropped from side.
-								// Therefore we significantly increase velocity in Z axis so most of the time item is in the air at least for a fraction of a second.
-								dropVelocity = randomVelocity*bouncinessFactor;
-								dropDir = .{dropDir[0]/bouncinessFactor, dropDir[1]/bouncinessFactor, dropDir[2]};
-							} else {
-								dropDir = .{dropDir[0], dropDir[1], bouncinessFactor + @abs(dropDir[2])*bouncinessFactor};
-							}
-							break;
-						}
-					}
+				if(dropDir[2] <= 0) {
+					dropVelocity *= @floatCast(1.0 + dropDir[2]);
 				}
 
-				main.server.world.?.drop(itemStack.clone(), dropPos, @floatCast(vec.normalize(dropDir)), @floatCast(dropVelocity));
+				for(drop.items) |itemStack| {
+					main.server.world.?.drop(itemStack.clone(), dropPos, @floatCast(dropDir), dropVelocity);
+				}
 			}
 		}
 
@@ -1680,6 +1680,9 @@ pub const Command = struct { // MARK: Command
 			writer.writeInt(i32, self.pos[0]);
 			writer.writeInt(i32, self.pos[1]);
 			writer.writeInt(i32, self.pos[2]);
+			writer.writeFloat(f64, self.dropDirection[0]);
+			writer.writeFloat(f64, self.dropDirection[1]);
+			writer.writeFloat(f64, self.dropDirection[2]);
 			writer.writeInt(u32, @as(u32, @bitCast(self.oldBlock)));
 			writer.writeInt(u32, @as(u32, @bitCast(self.newBlock)));
 		}
@@ -1691,6 +1694,11 @@ pub const Command = struct { // MARK: Command
 					try reader.readInt(i32),
 					try reader.readInt(i32),
 					try reader.readInt(i32),
+				},
+				.dropDirection = .{
+					try reader.readFloat(f64),
+					try reader.readFloat(f64),
+					try reader.readFloat(f64),
 				},
 				.oldBlock = @bitCast(try reader.readInt(u32)),
 				.newBlock = @bitCast(try reader.readInt(u32)),
