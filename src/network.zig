@@ -1061,13 +1061,7 @@ pub const Protocols = struct {
 		}
 
 		pub fn sendGamemode(conn: *Connection, gamemode: main.game.Gamemode) void {
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, 2);
-			defer writer.deinit();
-
-			writer.writeEnum(UpdateType, .gamemode);
-			writer.writeEnum(main.game.Gamemode, gamemode);
-
-			conn.sendImportant(id, writer.data.items);
+			conn.sendImportant(id, &.{@intFromEnum(UpdateType.gamemode), @intFromEnum(gamemode)});
 		}
 
 		pub fn sendTPCoordinates(conn: *Connection, pos: Vec3d) void {
