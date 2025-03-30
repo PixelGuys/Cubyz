@@ -21,13 +21,11 @@ pub fn execute(args: []const u8, source: *User) void {
 	const pos2 = source.worldEditData.selectionPosition2 orelse {
 		return source.sendMessage("#ff0000Position 2 isn't set", .{});
 	};
-
-	var seed: u64 = @as(u64, @intCast(pos1[0])) ^ (@as(u64, @intCast(pos1[1])) << 15) ^ (@as(u64, @intCast(pos1[2])) << 31);
-	const pattern = Pattern.initFromString(main.globalAllocator, args) catch |err| {
+	const pattern = Pattern.initFromString(main.stackAllocator, args) catch |err| {
 		source.sendMessage("#ff0000Error parsing pattern: {}", .{err});
 		return;
 	};
-	defer pattern.deinit(main.globalAllocator);
+	defer pattern.deinit(main.stackAllocator);
 
 	const startX = @min(pos1[0], pos2[0]);
 	const startY = @min(pos1[1], pos2[1]);
@@ -46,7 +44,7 @@ pub fn execute(args: []const u8, source: *User) void {
 			for(0..height) |z| {
 				const worldZ = startZ +% @as(i32, @intCast(z));
 
-				_ = main.server.world.?.updateBlock(worldX, worldY, worldZ, pattern.blocks.sample(&seed).block);
+				_ = main.server.world.?.updateBlock(worldX, worldY, worldZ, pattern.blocks.sample(&main.seed).block);
 			}
 		}
 	}
