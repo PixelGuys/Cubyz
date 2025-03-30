@@ -106,7 +106,7 @@ pub const Blueprint = struct {
 		}
 		return .{.success = self};
 	}
-	pub const PasteMode = enum {all, noAir, replaceAir};
+	pub const PasteMode = enum {all, degradable, noAir, replaceAir};
 
 	pub fn pasteInGeneration(self: Blueprint, pos: Vec3i, chunk: *ServerChunk, mode: PasteMode, substitutions: ?SubstitutionMap) void {
 		const startX = pos[0];
@@ -134,6 +134,7 @@ pub const Blueprint = struct {
 
 					sw: switch(mode) {
 						.all => chunk.updateBlockInGeneration(worldX, worldY, worldZ, block),
+						.degradable => chunk.updateBlockIfDegradable(worldX, worldY, worldZ, block),
 						.noAir => if(block.typ != 0) continue :sw .all,
 						.replaceAir => if(block.typ != 0 and chunk.getBlock(worldX, worldY, worldZ).typ == 0) continue :sw .all,
 					}
