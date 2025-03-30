@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const blocks = main.blocks;
 const Block = blocks.Block;
 const Neighbor = main.chunk.Neighbor;
@@ -25,7 +25,7 @@ fn hasSubBlock(stairData: u8, x: u1, y: u1, z: u1) bool {
 	return stairData & subBlockMask(x, y, z) == 0;
 }
 
-fn rotateZ(data: u16, angle: Degrees) u16 {
+pub fn rotateZ(data: u16, angle: Degrees) u16 {
 	@setEvalBranchQuota(65_536);
 
 	comptime var rotationTable: [4][256]u8 = undefined;

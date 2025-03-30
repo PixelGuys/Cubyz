@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const blocks = main.blocks;
 const Block = blocks.Block;
 const Neighbor = main.chunk.Neighbor;
@@ -34,7 +34,7 @@ pub fn reset() void {
 	fenceModels.clearRetainingCapacity();
 }
 
-fn rotateZ(data: u16, angle: Degrees) u16 {
+pub fn rotateZ(data: u16, angle: Degrees) u16 {
 	comptime var rotationTable: [4][16]u8 = undefined;
 	comptime for(0..16) |i| {
 		rotationTable[0][i] = @intCast(i);

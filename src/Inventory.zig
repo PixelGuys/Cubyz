@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("main.zig");
+const main = @import("main");
 const BaseItem = main.items.BaseItem;
 const Block = main.blocks.Block;
 const Item = main.items.Item;
@@ -61,16 +61,6 @@ pub const Sync = struct { // MARK: Sync
 			defer main.stackAllocator.free(data);
 			main.network.Protocols.inventory.sendCommand(main.game.world.?.conn, cmd.payload, data);
 			commands.enqueue(cmd);
-		}
-
-		pub fn undo() void {
-			mutex.lock();
-			defer mutex.unlock();
-			if(commands.dequeue_front()) |_cmd| {
-				var cmd = _cmd;
-				cmd.undo();
-				cmd.undoSteps.deinit(main.globalAllocator); // TODO: This should be put on some kind of redo queue once the testing phase is over.
-			}
 		}
 
 		fn nextId() u32 {

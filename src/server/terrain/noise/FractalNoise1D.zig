@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 
 fn setSeed(x: i32, offsetX: i32, seed: *u64, worldSeed: u64, scale: u31) void {
 	seed.* = main.random.initSeed2D(worldSeed, .{offsetX +% x, scale});

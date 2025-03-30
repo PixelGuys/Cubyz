@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const ZonElement = main.ZonElement;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
@@ -19,6 +19,8 @@ pub const CaveBiomeMap = @import("CaveBiomeMap.zig");
 pub const CaveMap = @import("CaveMap.zig");
 
 pub const StructureMap = @import("StructureMap.zig");
+
+pub const structure_building_blocks = @import("structure_building_blocks.zig");
 
 /// A generator for setting the actual Blocks in each Chunk.
 pub const BlockGenerator = struct {

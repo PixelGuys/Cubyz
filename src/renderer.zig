@@ -10,7 +10,7 @@ const Shader = graphics.Shader;
 const game = @import("game.zig");
 const World = game.World;
 const itemdrop = @import("itemdrop.zig");
-const main = @import("main.zig");
+const main = @import("main");
 const Window = main.Window;
 const models = @import("models.zig");
 const network = @import("network.zig");
@@ -114,8 +114,8 @@ fn initReflectionCubeMap() void {
 
 var worldFrameBuffer: graphics.FrameBuffer = undefined;
 
-var lastWidth: u31 = 0;
-var lastHeight: u31 = 0;
+pub var lastWidth: u31 = 0;
+pub var lastHeight: u31 = 0;
 var lastFov: f32 = 0;
 pub fn updateViewport(width: u31, height: u31, fov: f32) void {
 	lastWidth = @intFromFloat(@as(f32, @floatFromInt(width))*main.settings.resolutionScale);
@@ -126,7 +126,7 @@ pub fn updateViewport(width: u31, height: u31, fov: f32) void {
 	worldFrameBuffer.unbind();
 }
 
-pub fn render(playerPosition: Vec3d) void {
+pub fn render(playerPosition: Vec3d, deltaTime: f64) void {
 	// TODO: player bobbing
 	if(game.world) |world| {
 		// TODO: Handle colors and sun position in the world.
@@ -137,6 +137,7 @@ pub fn render(playerPosition: Vec3d) void {
 		const skyColor = vec.xyz(world.clearColor);
 		game.fog.skyColor = skyColor;
 
+		itemdrop.ItemDisplayManager.update(deltaTime);
 		renderWorld(world, ambient, skyColor, playerPosition);
 		const startTime = std.time.milliTimestamp();
 		mesh_storage.updateMeshes(startTime + maximumMeshTime);
@@ -221,7 +222,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.startQuery(.entity_rendering);
 	entity.ClientEntityManager.render(game.projectionMatrix, ambientLight, .{1, 0.5, 0.25}, playerPos);
 
-	itemdrop.ItemDropRenderer.renderItemDrops(game.projectionMatrix, ambientLight, playerPos, time);
+	itemdrop.ItemDropRenderer.renderItemDrops(game.projectionMatrix, ambientLight, playerPos);
 	gpu_performance_measuring.stopQuery();
 
 	// Render transparent chunk meshes:
@@ -250,6 +251,11 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glDepthMask(c.GL_TRUE);
 	c.glDepthFunc(c.GL_LESS);
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
+
+	c.glDepthRange(0, 0.001);
+	itemdrop.ItemDropRenderer.renderDisplayItems(ambientLight, playerPos);
+	c.glDepthRange(0.001, 1);
+
 	chunk_meshing.endRender();
 
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
@@ -579,7 +585,7 @@ pub const MenuBackGround = struct {
 			// Draw to frame buffer.
 			buffer.bind();
 			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
-			main.renderer.render(game.Player.getEyePosBlocking());
+			main.renderer.render(game.Player.getEyePosBlocking(), 0);
 			// Copy the pixels directly from OpenGL
 			buffer.bind();
 			c.glReadPixels(0, 0, size, size, c.GL_RGBA, c.GL_UNSIGNED_BYTE, pixels.ptr);
