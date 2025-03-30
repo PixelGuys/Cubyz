@@ -552,7 +552,6 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		ambientLight: c_int,
 		modelIndex: c_int,
 		block: c_int,
-		time: c_int,
 		texture_sampler: c_int,
 		emissionSampler: c_int,
 		reflectivityAndAbsorptionSampler: c_int,
@@ -681,14 +680,13 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		return voxelModels.findOrCreate(compareObject, ItemVoxelModel.init, null);
 	}
 
-	fn bindCommonUniforms(projMatrix: Mat4f, viewMatrix: Mat4f, ambientLight: Vec3f, time: u32) void {
+	fn bindCommonUniforms(projMatrix: Mat4f, viewMatrix: Mat4f, ambientLight: Vec3f) void {
 		itemShader.bind();
 		c.glUniform1i(itemUniforms.texture_sampler, 0);
 		c.glUniform1i(itemUniforms.emissionSampler, 1);
 		c.glUniform1i(itemUniforms.reflectivityAndAbsorptionSampler, 2);
 		c.glUniform1i(itemUniforms.reflectionMap, 4);
 		c.glUniform1f(itemUniforms.reflectionMapSize, main.renderer.reflectionCubeMapSize);
-		c.glUniform1i(itemUniforms.time, @as(u31, @truncate(time)));
 		c.glUniformMatrix4fv(itemUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 		c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniformMatrix4fv(itemUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
@@ -713,10 +711,10 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		c.glDrawElements(c.GL_TRIANGLES, vertices, c.GL_UNSIGNED_INT, null);
 	}
 
-	pub fn renderItemDrops(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d, time: u32) void {
+	pub fn renderItemDrops(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
 		game.world.?.itemDrops.updateInterpolationData();
 
-		bindCommonUniforms(projMatrix, game.camera.viewMatrix, ambientLight, time);
+		bindCommonUniforms(projMatrix, game.camera.viewMatrix, ambientLight);
 		const itemDrops = &game.world.?.itemDrops.super;
 		for(itemDrops.indices[0..itemDrops.size]) |i| {
 			if(itemDrops.list.items(.itemStack)[i].item) |item| {
@@ -763,12 +761,12 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		return result;
 	}
 
-	pub fn renderDisplayItems(ambientLight: Vec3f, playerPos: Vec3d, time: u32) void {
+	pub fn renderDisplayItems(ambientLight: Vec3f, playerPos: Vec3d) void {
 		if(!ItemDisplayManager.showItem) return;
 
 		const projMatrix: Mat4f = Mat4f.perspective(std.math.degreesToRadians(65), @as(f32, @floatFromInt(main.renderer.lastWidth))/@as(f32, @floatFromInt(main.renderer.lastHeight)), 0.01, 3);
 		const viewMatrix = Mat4f.identity();
-		bindCommonUniforms(projMatrix, viewMatrix, ambientLight, time);
+		bindCommonUniforms(projMatrix, viewMatrix, ambientLight);
 
 		const selectedItem = game.Player.inventory.getItem(game.Player.selectedSlot);
 		if(selectedItem) |item| {
