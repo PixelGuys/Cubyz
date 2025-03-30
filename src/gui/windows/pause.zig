@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const Vec2f = main.vec.Vec2f;
 
 const gui = @import("../gui.zig");
@@ -9,7 +9,7 @@ const GuiWindow = gui.GuiWindow;
 const Button = @import("../components/Button.zig");
 const VerticalList = @import("../components/VerticalList.zig");
 
-pub var window = GuiWindow {
+pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 256},
 };
 

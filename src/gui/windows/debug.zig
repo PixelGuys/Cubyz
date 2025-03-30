@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const graphics = main.graphics;
 const draw = graphics.draw;
 const Texture = graphics.Texture;
@@ -11,15 +11,14 @@ const gui = @import("../gui.zig");
 const GuiWindow = gui.GuiWindow;
 const GuiComponent = gui.GuiComponent;
 
-
 pub fn onOpen() void {
 	main.threadPool.performance.clear();
 }
 
-pub var window = GuiWindow {
+pub var window = GuiWindow{
 	.relativePosition = .{
-		.{ .attachedToFrame = .{.selfAttachmentPoint = .lower, .otherAttachmentPoint = .lower} },
-		.{ .attachedToFrame = .{.selfAttachmentPoint = .lower, .otherAttachmentPoint = .lower} },
+		.{.attachedToFrame = .{.selfAttachmentPoint = .lower, .otherAttachmentPoint = .lower}},
+		.{.attachedToFrame = .{.selfAttachmentPoint = .lower, .otherAttachmentPoint = .lower}},
 	},
 	.contentSize = Vec2f{128, 16},
 	.isHud = false,
@@ -44,7 +43,7 @@ pub fn render() void {
 	y += 8;
 	draw.print("window size: {}×{}", .{main.Window.width, main.Window.height}, 0, y, 8, .left);
 	y += 8;
-	if (main.game.world != null) {
+	if(main.game.world != null) {
 		const player = main.game.Player;
 		draw.print("Pos: {d:.1}", .{player.getPosBlocking()}, 0, y, 8, .left);
 		y += 8;
@@ -78,7 +77,7 @@ pub fn render() void {
 			const name = @tagName(t);
 			const i = @intFromEnum(t);
 			const taskTime = @divFloor(perf.utime[i], @max(1, perf.tasks[i]));
-			const relativeTime = 100.0 * @as(f32, @floatFromInt(perf.utime[i])) / @as(f32, @floatFromInt(totalUtime));
+			const relativeTime = 100.0*@as(f32, @floatFromInt(perf.utime[i]))/@as(f32, @floatFromInt(totalUtime));
 			draw.print("    {s}: {} µs/task ({d:.1}%)", .{name, taskTime, relativeTime}, 0, y, 8, .left);
 			y += 8;
 		}

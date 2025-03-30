@@ -1,17 +1,16 @@
 const std = @import("std");
 const Atomic = std.atomic.Value;
 
-const main = @import("root");
+const main = @import("main");
 const blocks = main.blocks;
 const chunk = main.chunk;
 const chunk_meshing = @import("chunk_meshing.zig");
 const mesh_storage = @import("mesh_storage.zig");
 
-var memoryPool: std.heap.MemoryPool(ChannelChunk) = undefined;
-var memoryPoolMutex: std.Thread.Mutex = .{};
+var memoryPool: main.heap.MemoryPool(ChannelChunk) = undefined;
 
 pub fn init() void {
-	memoryPool = .init(main.globalAllocator.allocator);
+	memoryPool = .init(main.globalAllocator);
 }
 
 pub fn deinit() void {
@@ -33,9 +32,7 @@ pub const ChannelChunk = struct {
 	isSun: bool,
 
 	pub fn init(ch: *chunk.Chunk, isSun: bool) *ChannelChunk {
-		memoryPoolMutex.lock();
-		const self = memoryPool.create() catch unreachable;
-		memoryPoolMutex.unlock();
+		const self = memoryPool.create();
 		self.lock = .{};
 		self.ch = ch;
 		self.isSun = isSun;
@@ -45,9 +42,7 @@ pub const ChannelChunk = struct {
 
 	pub fn deinit(self: *ChannelChunk) void {
 		self.data.deinit();
-		memoryPoolMutex.lock();
 		memoryPool.destroy(self);
-		memoryPoolMutex.unlock();
 	}
 
 	const Entry = struct {
@@ -78,7 +73,7 @@ pub const ChannelChunk = struct {
 
 	fn calculateIncomingOcclusion(result: *[3]u8, block: blocks.Block, voxelSize: u31, neighbor: chunk.Neighbor) void {
 		if(block.typ == 0) return;
-		if(main.models.models.items[blocks.meshes.model(block)].isNeighborOccluded[neighbor.toInt()]) {
+		if(blocks.meshes.model(block).model().isNeighborOccluded[neighbor.toInt()]) {
 			var absorption: [3]u8 = extractColor(block.absorption());
 			absorption[0] *|= @intCast(voxelSize);
 			absorption[1] *|= @intCast(voxelSize);
@@ -91,7 +86,7 @@ pub const ChannelChunk = struct {
 
 	fn calculateOutgoingOcclusion(result: *[3]u8, block: blocks.Block, voxelSize: u31, neighbor: chunk.Neighbor) void {
 		if(block.typ == 0) return;
-		const model = &main.models.models.items[blocks.meshes.model(block)];
+		const model = blocks.meshes.model(block).model();
 		if(model.isNeighborOccluded[neighbor.toInt()] and !model.isNeighborOccluded[neighbor.reverse().toInt()]) { // Avoid calculating the absorption twice.
 			var absorption: [3]u8 = extractColor(block.absorption());
 			absorption[0] *|= @intCast(voxelSize);
@@ -104,7 +99,7 @@ pub const ChannelChunk = struct {
 	}
 
 	fn propagateDirect(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), lightRefreshList: *main.List(*chunk_meshing.ChunkMesh)) void {
-		var neighborLists: [6]main.ListUnmanaged(Entry) = .{.{}} ** 6;
+		var neighborLists: [6]main.ListUnmanaged(Entry) = @splat(.{});
 		defer {
 			for(&neighborLists) |*list| {
 				list.deinit(main.stackAllocator);
@@ -166,7 +161,7 @@ pub const ChannelChunk = struct {
 	}
 
 	fn propagateDestructive(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), constructiveEntries: *main.ListUnmanaged(ChunkEntries), isFirstBlock: bool, lightRefreshList: *main.List(*chunk_meshing.ChunkMesh)) main.ListUnmanaged(PositionEntry) {
-		var neighborLists: [6]main.ListUnmanaged(Entry) = .{.{}} ** 6;
+		var neighborLists: [6]main.ListUnmanaged(Entry) = @splat(.{});
 		var constructiveList: main.ListUnmanaged(PositionEntry) = .{};
 		defer {
 			for(&neighborLists) |*list| {
@@ -295,9 +290,9 @@ pub const ChannelChunk = struct {
 			for(chunk.Neighbor.iterable) |neighbor| {
 				const x3: i32 = if(neighbor.isPositive()) chunk.chunkMask else 0;
 				var x1: i32 = 0;
-				while(x1 < chunk.chunkSize): (x1 += 1) {
+				while(x1 < chunk.chunkSize) : (x1 += 1) {
 					var x2: i32 = 0;
-					while(x2 < chunk.chunkSize): (x2 += 1) {
+					while(x2 < chunk.chunkSize) : (x2 += 1) {
 						var x: i32 = undefined;
 						var y: i32 = undefined;
 						var z: i32 = undefined;
@@ -314,9 +309,9 @@ pub const ChannelChunk = struct {
 							y = x1;
 							z = x3;
 						}
-						const otherX = x+%neighbor.relX() & chunk.chunkMask;
-						const otherY = y+%neighbor.relY() & chunk.chunkMask;
-						const otherZ = z+%neighbor.relZ() & chunk.chunkMask;
+						const otherX = x +% neighbor.relX() & chunk.chunkMask;
+						const otherY = y +% neighbor.relY() & chunk.chunkMask;
+						const otherZ = z +% neighbor.relZ() & chunk.chunkMask;
 						const neighborMesh = mesh_storage.getNeighborAndIncreaseRefCount(self.ch.pos, self.ch.pos.voxelSize, neighbor) orelse continue;
 						defer neighborMesh.decreaseRefCount();
 						const neighborLightChunk = neighborMesh.lightingData[@intFromBool(self.isSun)];

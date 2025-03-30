@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const Vec2f = main.vec.Vec2f;
 
 const gui = @import("../gui.zig");
@@ -12,10 +12,10 @@ const MutexComponent = GuiComponent.MutexComponent;
 const TextInput = GuiComponent.TextInput;
 const VerticalList = @import("../components/VerticalList.zig");
 
-pub var window: GuiWindow = GuiWindow {
+pub var window: GuiWindow = GuiWindow{
 	.relativePosition = .{
-		.{ .attachedToFrame = .{.selfAttachmentPoint = .lower, .otherAttachmentPoint = .lower} },
-		.{ .attachedToFrame = .{.selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper} },
+		.{.attachedToFrame = .{.selfAttachmentPoint = .lower, .otherAttachmentPoint = .lower}},
+		.{.attachedToFrame = .{.selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper}},
 	},
 	.scale = 0.75,
 	.contentSize = Vec2f{128, 256},
@@ -38,13 +38,31 @@ var fadeOutEnd: u32 = 0;
 pub var input: *TextInput = undefined;
 var hideInput: bool = true;
 
+pub fn init() void {
+	history = .init(main.globalAllocator);
+	expirationTime = .init(main.globalAllocator);
+	messageQueue = .init(main.globalAllocator, 16);
+}
+
+pub fn deinit() void {
+	for(history.items) |label| {
+		label.deinit();
+	}
+	history.deinit();
+	while(messageQueue.dequeue()) |msg| {
+		main.globalAllocator.free(msg);
+	}
+	messageQueue.deinit();
+	expirationTime.deinit();
+}
+
 fn refresh() void {
 	if(window.rootComponent) |old| {
 		old.verticalList.children.clearRetainingCapacity();
 		old.deinit();
 	}
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 0);
-	for(history.items[if(hideInput) historyStart else 0 ..]) |msg| {
+	for(history.items[if(hideInput) historyStart else 0..]) |msg| {
 		msg.pos = .{0, 0};
 		list.add(msg);
 	}
@@ -69,25 +87,20 @@ fn refresh() void {
 }
 
 pub fn onOpen() void {
-	history = .init(main.globalAllocator);
-	expirationTime = .init(main.globalAllocator);
-	messageQueue = .init(main.globalAllocator, 16);
-	historyStart = 0;
-	fadeOutEnd = 0;
 	input = TextInput.init(.{0, 0}, 256, 32, "", .{.callback = &sendMessage});
 	refresh();
 }
 
 pub fn onClose() void {
-	for(history.items) |label| {
+	while(history.popOrNull()) |label| {
 		label.deinit();
 	}
-	history.deinit();
 	while(messageQueue.dequeue()) |msg| {
 		main.globalAllocator.free(msg);
 	}
-	messageQueue.deinit();
-	expirationTime.deinit();
+	expirationTime.clearRetainingCapacity();
+	historyStart = 0;
+	fadeOutEnd = 0;
 	input.deinit();
 	window.rootComponent.?.verticalList.children.clearRetainingCapacity();
 	window.rootComponent.?.deinit();

@@ -1,15 +1,17 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const random = main.random;
 const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
-const CaveMap = terrain.CaveMap;
+const CaveBiomeMapView = terrain.CaveBiomeMap.CaveBiomeMapView;
+const CaveMapView = terrain.CaveMap.CaveMapView;
+const GenerationMode = terrain.biomes.SimpleStructureModel.GenerationMode;
 const vec = main.vec;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 pub const id = "cubyz:boulder";
 
@@ -31,14 +33,14 @@ pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) 
 	return self;
 }
 
-pub fn generate(self: *Boulder, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64, _: bool) void {
+pub fn generate(self: *Boulder, _: GenerationMode, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, caveMap: CaveMapView, _: CaveBiomeMapView, seed: *u64, _: bool) void {
 	_ = caveMap;
 	const radius = self.size + self.sizeVariation*(random.nextFloat(seed)*2 - 1);
 	// My basic idea is to use a point cloud and a potential function to achieve somewhat smooth boulders without being a sphere.
 	const numberOfPoints = 4;
 	var pointCloud: [numberOfPoints]Vec3f = undefined;
 	for(&pointCloud) |*point| {
-		point.* = Vec3f {
+		point.* = Vec3f{
 			(random.nextFloat(seed) - 0.5)*radius/2,
 			(random.nextFloat(seed) - 0.5)*radius/2,
 			(random.nextFloat(seed) - 0.5)*radius/2,

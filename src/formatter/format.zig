@@ -1,6 +1,6 @@
 const std = @import("std");
 
-var global_gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe=true}){};
+var global_gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe = true}){};
 pub const globalAllocator = global_gpa.allocator();
 
 var failed: bool = false;
@@ -62,7 +62,7 @@ fn checkFile(dir: std.fs.Dir, filePath: []const u8) !void {
 			'\t' => {},
 			else => {
 				lineStart = false;
-			}
+			},
 		}
 	}
 	if(data.len != 0 and data[data.len - 1] != '\n' or (data.len > 2 and data[data.len - 2] == '\n')) {
@@ -78,13 +78,7 @@ fn checkDirectory(dir: std.fs.Dir) !void {
 			std.log.err("File name should end with .zig.zon so it gets syntax highlighting on github.", .{});
 			failed = true;
 		}
-		if(child.kind == .file and (
-			std.mem.endsWith(u8, child.basename, ".zig")
-			or std.mem.endsWith(u8, child.basename, ".zon")
-			or std.mem.endsWith(u8, child.basename, ".vs")
-			or std.mem.endsWith(u8, child.basename, ".fs")
-			or std.mem.endsWith(u8, child.basename, ".glsl")
-		)) {
+		if(child.kind == .file and (std.mem.endsWith(u8, child.basename, ".vs") or std.mem.endsWith(u8, child.basename, ".fs") or std.mem.endsWith(u8, child.basename, ".glsl"))) {
 			try checkFile(dir, child.path);
 		}
 	}
@@ -99,9 +93,6 @@ pub fn main() !void {
 	dir.close();
 	dir = try std.fs.cwd().openDir("assets", .{.iterate = true});
 	try checkDirectory(dir);
-
-	try checkFile(std.fs.cwd(), "build.zig");
-	try checkFile(std.fs.cwd(), "build.zig.zon");
 
 	if(failed) std.posix.exit(1);
 }

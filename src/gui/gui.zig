@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const graphics = main.graphics;
 const draw = graphics.draw;
 const ZonElement = main.ZonElement;
@@ -9,7 +9,7 @@ const vec = main.vec;
 const Vec2f = vec.Vec2f;
 const List = main.List;
 
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const Button = @import("components/Button.zig");
 const CheckBox = @import("components/CheckBox.zig");
@@ -69,7 +69,7 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 				},
 				.close => {
 					executeCloseWindowCommand(command.window);
-				}
+				},
 			}
 		}
 	}
@@ -505,16 +505,18 @@ pub fn secondaryButtonReleased() void {
 }
 
 pub fn updateWindowPositions() void {
-	var wasChanged: bool = false;
-	for(windowList.items) |window| {
-		const oldPos = window.pos;
-		window.updateWindowPosition();
-		const newPos = window.pos;
-		if(vec.lengthSquare(oldPos - newPos) >= 1e-3) {
-			wasChanged = true;
+	var wasChanged: bool = true;
+	while(wasChanged) {
+		wasChanged = false;
+		for(windowList.items) |window| {
+			const oldPos = window.pos;
+			window.updateWindowPosition();
+			const newPos = window.pos;
+			if(vec.lengthSquare(oldPos - newPos) >= 1e-3) {
+				wasChanged = true;
+			}
 		}
 	}
-	if(wasChanged) @call(.always_tail, updateWindowPositions, .{}); // Very efficient O(n²) algorithm :P
 }
 
 pub fn updateAndRenderGui() void {
@@ -587,6 +589,11 @@ pub const inventory = struct { // MARK: inventory
 	var leftClickSlots: List(*ItemSlot) = undefined;
 	var rightClickSlots: List(*ItemSlot) = undefined;
 	var initialized: bool = false;
+	const minCraftingCooldown = 20;
+	const maxCraftingCooldown = 400;
+	var nextCraftingAction: i64 = undefined;
+	var craftingCooldown: u63 = undefined;
+	var startedCrafting: bool = false;
 
 	pub fn init() void {
 		carried = Inventory.init(main.globalAllocator, 1, .normal, .{.hand = main.game.Player.id});
@@ -595,6 +602,7 @@ pub const inventory = struct { // MARK: inventory
 		carriedItemSlot = ItemSlot.init(.{0, 0}, carried, 0, .default, .normal);
 		carriedItemSlot.renderFrame = false;
 		initialized = true;
+		startedCrafting = false;
 	}
 
 	pub fn deinit() void {
@@ -630,6 +638,22 @@ pub const inventory = struct { // MARK: inventory
 	fn update() void {
 		if(!initialized) return;
 		if(hoveredItemSlot) |itemSlot| {
+			if(itemSlot.inventory.type == .crafting and itemSlot.mode == .takeOnly) {
+				if(main.KeyBoard.key("mainGuiButton").pressed) {
+					const time = std.time.milliTimestamp();
+					if(!startedCrafting) {
+						startedCrafting = true;
+						craftingCooldown = maxCraftingCooldown;
+						nextCraftingAction = time;
+					}
+					while(time -% nextCraftingAction >= 0) {
+						nextCraftingAction +%= craftingCooldown;
+						craftingCooldown -= (craftingCooldown - minCraftingCooldown)*craftingCooldown/1000;
+						itemSlot.inventory.depositOrSwap(itemSlot.itemSlot, carried);
+					}
+					return;
+				}
+			}
 			if(itemSlot.mode != .normal) return;
 
 			if(carried.getAmount(0) == 0) return;
@@ -658,6 +682,10 @@ pub const inventory = struct { // MARK: inventory
 		if(!initialized) return;
 		if(main.game.world == null) return;
 		if(leftClick) {
+			if(startedCrafting) {
+				startedCrafting = false;
+				return;
+			}
 			if(leftClickSlots.items.len != 0) {
 				const targetInventories = main.stackAllocator.alloc(Inventory, leftClickSlots.items.len);
 				defer main.stackAllocator.free(targetInventories);

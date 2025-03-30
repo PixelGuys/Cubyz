@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const random = main.random;
 const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
@@ -22,9 +22,7 @@ pub fn init(parameters: ZonElement) void {
 	caveBiomes = terrain.biomes.getCaveBiomes();
 }
 
-pub fn deinit() void {
-
-}
+pub fn deinit() void {}
 
 pub fn generate(map: *CaveBiomeMapFragment, worldSeed: u64) void {
 	// Select all the biomes that are within the given height range.

@@ -1,12 +1,12 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const settings = main.settings;
 const files = main.files;
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
 
-pub const c = @cImport ({
+pub const c = @cImport({
 	@cInclude("glad/glad.h");
 	@cInclude("GLFW/glfw3.h");
 });
@@ -26,47 +26,47 @@ pub const Gamepad = struct {
 	fn applyDeadzone(value: f32) f32 {
 		const minValue = settings.controllerAxisDeadzone;
 		const maxRange = 1.0 - minValue;
-		return (value * maxRange) + minValue;
+		return (value*maxRange) + minValue;
 	}
 	pub fn update(delta: f64) void {
-		if (!controllerConnectedPreviously and isControllerConnected()) {
+		if(!controllerConnectedPreviously and isControllerConnected()) {
 			controllerConnectedPreviously = true;
 			downloadControllerMappings();
 		}
 		var jid: c_int = 0;
-		while (jid < c.GLFW_JOYSTICK_LAST) : (jid += 1) {
+		while(jid < c.GLFW_JOYSTICK_LAST) : (jid += 1) {
 			// Can't initialize with the state, or it will become a reference.
 			var oldState: c.GLFWgamepadstate = std.mem.zeroes(c.GLFWgamepadstate);
-			if (gamepadState.get(jid)) |v| {
+			if(gamepadState.get(jid)) |v| {
 				oldState = v.*;
 			}
 			const joystickFound = c.glfwJoystickPresent(jid) != 0 and c.glfwJoystickIsGamepad(jid) != 0;
-			if (joystickFound) {
-				if (!gamepadState.contains(jid)) {
+			if(joystickFound) {
+				if(!gamepadState.contains(jid)) {
 					gamepadState.put(jid, main.globalAllocator.create(c.GLFWgamepadstate)) catch unreachable;
 				}
 				_ = c.glfwGetGamepadState(jid, gamepadState.get(jid).?);
 			} else {
-				if (gamepadState.contains(jid)) {
+				if(gamepadState.contains(jid)) {
 					main.globalAllocator.destroy(gamepadState.get(jid).?);
 					_ = gamepadState.remove(jid);
 				}
 			}
-			const newState: c.GLFWgamepadstate = if (gamepadState.get(jid)) |v| v.* else std.mem.zeroes(c.GLFWgamepadstate);
-			if (nextGamepadListener != null) {
-				for (0..c.GLFW_GAMEPAD_BUTTON_LAST) |btn| {
-					if ((newState.buttons[btn] == 0) and (oldState.buttons[btn] != 0)) {
+			const newState: c.GLFWgamepadstate = if(gamepadState.get(jid)) |v| v.* else std.mem.zeroes(c.GLFWgamepadstate);
+			if(nextGamepadListener != null) {
+				for(0..c.GLFW_GAMEPAD_BUTTON_LAST) |btn| {
+					if((newState.buttons[btn] == 0) and (oldState.buttons[btn] != 0)) {
 						nextGamepadListener.?(null, @intCast(btn));
 						nextGamepadListener = null;
 						break;
 					}
 				}
 			}
-			if (nextGamepadListener != null) {
-				for (0..c.GLFW_GAMEPAD_AXIS_LAST) |axis| {
+			if(nextGamepadListener != null) {
+				for(0..c.GLFW_GAMEPAD_AXIS_LAST) |axis| {
 					const newAxis = applyDeadzone(newState.axes[axis]);
 					const oldAxis = applyDeadzone(oldState.axes[axis]);
-					if (newAxis != 0 and oldAxis == 0) {
+					if(newAxis != 0 and oldAxis == 0) {
 						nextGamepadListener.?(.{.axis = @intCast(axis), .positive = newState.axes[axis] > 0}, -1);
 						nextGamepadListener = null;
 						break;
@@ -80,9 +80,7 @@ pub const Gamepad = struct {
 						const oldPressed = oldState.buttons[@intCast(key.gamepadButton)] != 0;
 						const newPressed = newState.buttons[@intCast(key.gamepadButton)] != 0;
 						if(oldPressed != newPressed) {
-							key.pressed = newPressed;
-							key.value = if(newPressed) 1.0 else 0.0;
-							key.action(if(key.pressed) .press else .release, isGrabbed, .{});
+							key.setPressed(newPressed, isGrabbed, .{});
 						}
 					}
 				} else {
@@ -98,29 +96,28 @@ pub const Gamepad = struct {
 					oldAxis = @max(oldAxis, 0.0);
 					const oldPressed = oldAxis > 0.5;
 					const newPressed = newAxis > 0.5;
-					if (oldPressed != newPressed) {
-						key.pressed = newPressed;
-						key.action(if(key.pressed) .press else .release, isGrabbed, .{});
+					if(oldPressed != newPressed) {
+						key.setPressed(newPressed, isGrabbed, .{});
 					}
-					if (newAxis != oldAxis) {
+					if(newAxis != oldAxis) {
 						key.value = newAxis;
 					}
 				}
 			}
 		}
-		if (!grabbed) {
+		if(!grabbed) {
 			const x = main.KeyBoard.key("uiRight").value - main.KeyBoard.key("uiLeft").value;
 			const y = main.KeyBoard.key("uiDown").value - main.KeyBoard.key("uiUp").value;
-			if (x != 0 or y != 0) {
+			if(x != 0 or y != 0) {
 				lastUsedMouse = false;
-				GLFWCallbacks.currentPos[0] += @floatCast(x * delta * 256);
-				GLFWCallbacks.currentPos[1] += @floatCast(y * delta * 256);
+				GLFWCallbacks.currentPos[0] += @floatCast(x*delta*256);
+				GLFWCallbacks.currentPos[1] += @floatCast(y*delta*256);
 				const winSize = getWindowSize();
 				GLFWCallbacks.currentPos[0] = std.math.clamp(GLFWCallbacks.currentPos[0], 0, winSize[0]);
 				GLFWCallbacks.currentPos[1] = std.math.clamp(GLFWCallbacks.currentPos[1], 0, winSize[1]);
 			}
 		}
-		scrollOffset += @floatCast((main.KeyBoard.key("scrollUp").value - main.KeyBoard.key("scrollDown").value) * delta * 4);
+		scrollOffset += @floatCast((main.KeyBoard.key("scrollUp").value - main.KeyBoard.key("scrollDown").value)*delta*4);
 		setCursorVisible(!grabbed and lastUsedMouse);
 	}
 	pub fn isControllerConnected() bool {
@@ -133,21 +130,20 @@ pub const Gamepad = struct {
 		curTimestamp: i128,
 		var running = std.atomic.Value(bool).init(false);
 		const vtable = main.utils.ThreadPool.VTable{
-			.getPriority = @ptrCast(&getPriority),
-			.isStillNeeded = @ptrCast(&isStillNeeded),
-			.run = @ptrCast(&run),
-			.clean = @ptrCast(&clean),
+			.getPriority = main.utils.castFunctionSelfToAnyopaque(getPriority),
+			.isStillNeeded = main.utils.castFunctionSelfToAnyopaque(isStillNeeded),
+			.run = main.utils.castFunctionSelfToAnyopaque(run),
+			.clean = main.utils.castFunctionSelfToAnyopaque(clean),
 		};
 
 		pub fn schedule(curTimestamp: i128) void {
-
-			if (running.swap(true, .monotonic)) {
+			if(running.swap(true, .monotonic)) {
 				std.log.warn("Attempt to schedule a duplicate controller mapping download task!", .{});
 				return; // Controller mappings are already downloading.
 			}
 			controllerMappingsDownloaded.store(false, .monotonic);
 			const task = main.globalAllocator.create(ControllerMappingDownloadTask);
-			task.* = ControllerMappingDownloadTask {
+			task.* = ControllerMappingDownloadTask{
 				.curTimestamp = curTimestamp,
 			};
 			main.threadPool.addTask(task, &vtable);
@@ -174,12 +170,12 @@ pub const Gamepad = struct {
 			const fetchResult = client.fetch(.{
 				.method = .GET,
 				.location = .{.url = "https://raw.githubusercontent.com/mdqinc/SDL_GameControllerDB/master/gamecontrollerdb.txt"},
-				.response_storage = .{ .dynamic = &list }
+				.response_storage = .{.dynamic = &list},
 			}) catch |err| {
 				std.log.err("Failed to download controller mappings: {s}", .{@errorName(err)});
 				return;
 			};
-			if (fetchResult.status != .ok) {
+			if(fetchResult.status != .ok) {
 				std.log.err("Failed to download controller mappings: HTTP error {d}", .{@intFromEnum(fetchResult.status)});
 				return;
 			}
@@ -210,17 +206,17 @@ pub const Gamepad = struct {
 			defer main.stackAllocator.free(stamp);
 			break :blk std.fmt.parseInt(i128, stamp, 16) catch 0;
 		};
-		const delta = curTimestamp-%timestamp;
+		const delta = curTimestamp -% timestamp;
 		needsDownload = delta >= 7*std.time.ns_per_day;
 
-		for (0..c.GLFW_JOYSTICK_LAST) |jsid| {
-			if ((c.glfwJoystickPresent(@intCast(jsid)) != 0) and (c.glfwJoystickIsGamepad(@intCast(jsid)) == 0)) {
+		for(0..c.GLFW_JOYSTICK_LAST) |jsid| {
+			if((c.glfwJoystickPresent(@intCast(jsid)) != 0) and (c.glfwJoystickIsGamepad(@intCast(jsid)) == 0)) {
 				needsDownload = true;
 				break;
 			}
 		}
-		std.log.info("Game controller mappings {s}need downloading.", .{if (needsDownload) "" else "do not "});
-		if (needsDownload) {
+		std.log.info("Game controller mappings {s}need downloading.", .{if(needsDownload) "" else "do not "});
+		if(needsDownload) {
 			ControllerMappingDownloadTask.schedule(curTimestamp);
 		} else {
 			controllerMappingsDownloaded.store(true, .monotonic);
@@ -230,15 +226,15 @@ pub const Gamepad = struct {
 	pub fn updateControllerMappings() void {
 		std.log.info("Updating controller mappings in-memory...", .{});
 		var _envMap = std.process.getEnvMap(main.stackAllocator.allocator) catch null;
-		if (_envMap) |*envMap| {
+		if(_envMap) |*envMap| {
 			defer envMap.deinit();
-			if (envMap.get("SDL_GAMECONTROLLERCONFIG")) |controller_config_env| {
+			if(envMap.get("SDL_GAMECONTROLLERCONFIG")) |controller_config_env| {
 				_ = c.glfwUpdateGamepadMappings(@ptrCast(controller_config_env));
 				return;
 			}
 		}
 		const data = main.files.read(main.stackAllocator, "./gamecontrollerdb.txt") catch |err| {
-			if (@TypeOf(err) == std.fs.File.OpenError and err == std.fs.File.OpenError.FileNotFound) {
+			if(@TypeOf(err) == std.fs.File.OpenError and err == std.fs.File.OpenError.FileNotFound) {
 				return; // Ignore not finding mappings.
 			}
 			std.log.err("Error opening gamepad mappings file: {s}", .{@errorName(err)});
@@ -256,7 +252,7 @@ pub const Gamepad = struct {
 	}
 	pub fn deinit() void {
 		var iter = gamepadState.valueIterator();
-		while (iter.next()) |value| {
+		while(iter.next()) |value| {
 			main.globalAllocator.destroy(value.*);
 		}
 		gamepadState.deinit();
@@ -264,7 +260,7 @@ pub const Gamepad = struct {
 };
 pub const GamepadAxis = struct {
 	axis: c_int,
-	positive: bool = true
+	positive: bool = true,
 };
 pub const Key = struct { // MARK: Key
 	name: []const u8,
@@ -312,7 +308,7 @@ pub const Key = struct { // MARK: Key
 				c.GLFW_GAMEPAD_AXIS_RIGHT_Y => if(positive) "Right stick down" else "Right stick up",
 				c.GLFW_GAMEPAD_AXIS_LEFT_TRIGGER => if(positive) "Left trigger" else "Left trigger (Negative)",
 				c.GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER => if(positive) "Right trigger" else "Right trigger (Negative)",
-				else => "(Invalid axis)"
+				else => "(Invalid axis)",
 			};
 		} else {
 			return switch(self.gamepadButton) {
@@ -332,7 +328,7 @@ pub const Key = struct { // MARK: Key
 				c.GLFW_GAMEPAD_BUTTON_RIGHT_THUMB => "Right stick press",
 				c.GLFW_GAMEPAD_BUTTON_START => "Start",
 				-1 => "(Unbound)",
-				else => "(Unrecognized button)"
+				else => "(Unrecognized button)",
 			};
 		}
 	}
@@ -411,7 +407,20 @@ pub const Key = struct { // MARK: Key
 		}
 	}
 
-	fn action(self: *Key, typ: enum{press, release, repeat}, isGrabbed: bool, mods: Modifiers) void {
+	fn setPressed(self: *Key, newPressed: bool, isGrabbed: bool, mods: Modifiers) void {
+		if(newPressed != self.pressed) {
+			self.pressed = newPressed;
+			self.value = @floatFromInt(@intFromBool(newPressed));
+			if(newPressed) {
+				self.action(.press, isGrabbed, mods);
+				self.action(.repeat, isGrabbed, mods);
+			} else {
+				self.action(.release, isGrabbed, mods);
+			}
+		}
+	}
+
+	fn action(self: *Key, typ: enum {press, release, repeat}, isGrabbed: bool, mods: Modifiers) void {
 		if(typ == .press) self.grabbedOnPress = isGrabbed;
 		if(!self.notifyRequirement.met(self.grabbedOnPress)) return;
 		switch(typ) {
@@ -430,29 +439,18 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 		const mods: Key.Modifiers = @bitCast(@as(u6, @intCast(_mods)));
 		if(!mods.control and main.gui.selectedTextInput != null and c.glfwGetKeyName(glfw_key, scancode) != null) return; // Don't send events for keys that are used in writing letters.
 		const isGrabbed = grabbed;
-		if(action == c.GLFW_PRESS) {
+		if(action == c.GLFW_PRESS or action == c.GLFW_RELEASE) {
 			for(&main.KeyBoard.keys) |*key| {
 				if(glfw_key == key.key) {
 					if(glfw_key != c.GLFW_KEY_UNKNOWN or scancode == key.scancode) {
-						key.pressed = true;
-						key.value = 1.0;
-						key.action(.press, isGrabbed, mods);
-						key.action(.repeat, isGrabbed, mods);
+						key.setPressed(action == c.GLFW_PRESS, isGrabbed, mods);
 					}
 				}
 			}
-			if(nextKeypressListener) |listener| {
-				listener(glfw_key, -1, scancode);
-				nextKeypressListener = null;
-			}
-		} else if(action == c.GLFW_RELEASE) {
-			for(&main.KeyBoard.keys) |*key| {
-				if(glfw_key == key.key) {
-					if(glfw_key != c.GLFW_KEY_UNKNOWN or scancode == key.scancode) {
-						key.pressed = false;
-						key.value = 0.0;
-						key.action(.release, isGrabbed, mods);
-					}
+			if(action == c.GLFW_PRESS) {
+				if(nextKeypressListener) |listener| {
+					listener(glfw_key, -1, scancode);
+					nextKeypressListener = null;
 				}
 			}
 		} else if(action == c.GLFW_REPEAT) {
@@ -481,12 +479,12 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 	}
 	// Mouse deltas are averaged over multiple frames using a circular buffer:
 	const deltasLen: u2 = 3;
-	var deltas: [deltasLen]Vec2f = [_]Vec2f{Vec2f{0, 0}} ** 3;
+	var deltas: [deltasLen]Vec2f = @splat(.{0, 0});
 	var deltaBufferPosition: u2 = 0;
 	var currentPos: Vec2f = Vec2f{0, 0};
 	var ignoreDataAfterRecentGrab: bool = true;
 	fn cursorPosition(_: ?*c.GLFWwindow, x: f64, y: f64) callconv(.C) void {
-		const newPos = Vec2f {
+		const newPos = Vec2f{
 			@floatCast(x),
 			@floatCast(y),
 		};
@@ -508,34 +506,26 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 	fn mouseButton(_: ?*c.GLFWwindow, button: c_int, action: c_int, _mods: c_int) callconv(.C) void {
 		const mods: Key.Modifiers = @bitCast(@as(u6, @intCast(_mods)));
 		const isGrabbed = grabbed;
-		if(action == c.GLFW_PRESS) {
+		if(action == c.GLFW_PRESS or action == c.GLFW_RELEASE) {
 			for(&main.KeyBoard.keys) |*key| {
 				if(button == key.mouseButton) {
-					key.pressed = true;
-					key.value = 1.0;
-					key.action(.press, isGrabbed, mods);
+					key.setPressed(action == c.GLFW_PRESS, isGrabbed, mods);
 				}
 			}
-			if(nextKeypressListener) |listener| {
-				listener(c.GLFW_KEY_UNKNOWN, button, 0);
-				nextKeypressListener = null;
-			}
-		} else if(action == c.GLFW_RELEASE) {
-			for(&main.KeyBoard.keys) |*key| {
-				if(button == key.mouseButton) {
-					key.pressed = false;
-					key.value = 0.0;
-					key.action(.release, isGrabbed, mods);
+			if(action == c.GLFW_PRESS) {
+				if(nextKeypressListener) |listener| {
+					listener(c.GLFW_KEY_UNKNOWN, button, 0);
+					nextKeypressListener = null;
 				}
 			}
 		}
 	}
-	fn scroll(_ : ?*c.GLFWwindow, xOffset: f64, yOffset: f64) callconv(.C) void {
+	fn scroll(_: ?*c.GLFWwindow, xOffset: f64, yOffset: f64) callconv(.C) void {
 		_ = xOffset;
 		scrollOffset += @floatCast(yOffset);
 	}
 	fn glDebugOutput(source: c_uint, typ: c_uint, _: c_uint, severity: c_uint, length: c_int, message: [*c]const u8, _: ?*const anyopaque) callconv(.C) void {
-		const sourceString: []const u8 = switch (source) {
+		const sourceString: []const u8 = switch(source) {
 			c.GL_DEBUG_SOURCE_API => "API",
 			c.GL_DEBUG_SOURCE_APPLICATION => "Application",
 			c.GL_DEBUG_SOURCE_OTHER => "Other",
@@ -544,7 +534,7 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 			c.GL_DEBUG_SOURCE_WINDOW_SYSTEM => "Window System",
 			else => "Unknown",
 		};
-		const typeString: []const u8 = switch (typ) {
+		const typeString: []const u8 = switch(typ) {
 			c.GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR => "deprecated behavior",
 			c.GL_DEBUG_TYPE_ERROR => "error",
 			c.GL_DEBUG_TYPE_MARKER => "marker",
@@ -556,7 +546,7 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 			c.GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR => "undefined behavior",
 			else => "unknown",
 		};
-		switch (severity) {
+		switch(severity) {
 			c.GL_DEBUG_SEVERITY_HIGH => {
 				std.log.err("OpenGL {s} {s}: {s}", .{sourceString, typeString, message[0..@intCast(length)]});
 			},
@@ -574,7 +564,7 @@ pub fn setNextKeypressListener(listener: ?*const fn(c_int, c_int, c_int) void) !
 }
 var nextGamepadListener: ?*const fn(?GamepadAxis, c_int) void = null;
 pub fn setNextGamepadListener(listener: ?*const fn(?GamepadAxis, c_int) void) !void {
-	if (nextGamepadListener != null) return error.AlreadyUsed;
+	if(nextGamepadListener != null) return error.AlreadyUsed;
 	nextGamepadListener = listener;
 }
 
@@ -584,12 +574,12 @@ fn updateCursor() void {
 		// Behavior seems much more intended without this line on MacOS.
 		// Perhaps this is an inconsistency in GLFW due to its fresh XQuartz support?
 		if(@import("builtin").target.os.tag != .macos) {
-			if (c.glfwRawMouseMotionSupported() != 0)
+			if(c.glfwRawMouseMotionSupported() != 0)
 				c.glfwSetInputMode(window, c.GLFW_RAW_MOUSE_MOTION, c.GLFW_TRUE);
 		}
 		GLFWCallbacks.ignoreDataAfterRecentGrab = true;
 	} else {
-		if (cursorVisible) {
+		if(cursorVisible) {
 			c.glfwSetInputMode(window, c.GLFW_CURSOR, c.GLFW_CURSOR_NORMAL);
 		} else {
 			c.glfwSetInputMode(window, c.GLFW_CURSOR, c.GLFW_CURSOR_HIDDEN);
@@ -691,7 +681,7 @@ pub fn deinit() void {
 }
 var cursorVisible: bool = true;
 fn setCursorVisible(visible: bool) void {
-	if (cursorVisible != visible) {
+	if(cursorVisible != visible) {
 		cursorVisible = visible;
 		updateCursor();
 	}
@@ -709,7 +699,7 @@ var oldWidth: c_int = 0;
 var oldHeight: c_int = 0;
 pub fn toggleFullscreen() void {
 	isFullscreen = !isFullscreen;
-	if (isFullscreen) {
+	if(isFullscreen) {
 		c.glfwGetWindowPos(window, &oldX, &oldY);
 		c.glfwGetWindowSize(window, &oldWidth, &oldHeight);
 		const monitor = c.glfwGetPrimaryMonitor();

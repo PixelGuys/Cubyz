@@ -2,7 +2,7 @@ const std = @import("std");
 const builtin = @import("builtin");
 
 const ZonElement = @import("zon.zig").ZonElement;
-const main = @import("main.zig");
+const main = @import("main");
 
 pub const defaultPort: u16 = 47649;
 pub const connectionTimeout = 60_000_000_000;
@@ -13,13 +13,11 @@ pub const version = "Cubyz α 0.12.0";
 
 pub const highestSupportedLod: u3 = 5;
 
-
 pub var simulationDistance: u16 = 4;
 
 pub var cpuThreads: ?u64 = null;
 
 pub var anisotropicFiltering: u8 = 4.0;
-
 
 pub var fpsCap: ?u32 = null;
 
@@ -50,9 +48,7 @@ pub var leavesQuality: u16 = 2;
 
 pub var @"lod0.5Distance": f32 = 200;
 
-
 pub var storageTime: i64 = 5000;
-
 
 pub var updateRepeatSpeed: u31 = 200;
 
@@ -84,7 +80,7 @@ pub fn init() void {
 			}
 			@field(@This(), decl.name) = zon.get(declType, decl.name, @field(@This(), decl.name));
 			if(@typeInfo(declType) == .pointer) {
-				if(@typeInfo(declType).pointer.size == .Slice) {
+				if(@typeInfo(declType).pointer.size == .slice) {
 					@field(@This(), decl.name) = main.globalAllocator.dupe(@typeInfo(declType).pointer.child, @field(@This(), decl.name));
 				} else {
 					@compileError("Not implemented yet.");
@@ -115,7 +111,7 @@ pub fn deinit() void {
 				@compileError("Not implemented yet.");
 			}
 			if(@typeInfo(declType) == .pointer) {
-				if(@typeInfo(declType).pointer.size == .Slice) {
+				if(@typeInfo(declType).pointer.size == .slice) {
 					main.globalAllocator.free(@field(@This(), decl.name));
 				} else {
 					@compileError("Not implemented yet.");

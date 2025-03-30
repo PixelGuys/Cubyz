@@ -1,0 +1,38 @@
+.{
+	.tags = .{.wood},
+	.blockHealth = 4,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.absorbedLight = 0x202830,
+	.rotation = .branch,
+	.model = .{
+		.radius = 4,
+	},
+	.texture0 = "cubyz:branch/oak/dot",
+	.texture1 = "cubyz:branch/oak/half_line",
+	.texture2 = "cubyz:branch/oak/line",
+	.texture3 = "cubyz:branch/oak/bend",
+	.texture4 = "cubyz:branch/oak/intersection",
+	.texture5 = "cubyz:branch/oak/cross",
+	.item = .{
+		.material = .{
+			.density = 0.25,
+			.strength = 1.0,
+			.elasticity = 4,
+			.grip = 10,
+			.hardness = 1.5,
+			.textureRoughness = 0.7,
+			.colors = .{
+				0xff463724, 0xff55422b, 0xff6a5030, 0xff836136, 0xff6a5030,
+			},
+			.modifiers = .{
+				.{
+					.id = "fragile",
+					.strength = 0.10,
+				},
+			},
+		},
+		.texture = "branch/oak.png",
+	},
+}

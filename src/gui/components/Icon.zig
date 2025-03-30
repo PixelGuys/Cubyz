@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const graphics = main.graphics;
 const draw = graphics.draw;
 const Texture = graphics.Texture;
@@ -21,7 +21,7 @@ hasShadow: bool,
 
 pub fn init(pos: Vec2f, size: Vec2f, texture: Texture, hasShadow: bool) *Icon {
 	const self = main.globalAllocator.create(Icon);
-	self.* = Icon {
+	self.* = Icon{
 		.texture = texture,
 		.pos = pos,
 		.size = size,
@@ -35,9 +35,7 @@ pub fn deinit(self: *const Icon) void {
 }
 
 pub fn toComponent(self: *Icon) GuiComponent {
-	return GuiComponent {
-		.icon = self
-	};
+	return .{.icon = self};
 }
 
 pub fn updateTexture(self: *Icon, newTexture: Texture) !void {

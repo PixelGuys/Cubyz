@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const graphics = main.graphics;
 const Shader = graphics.Shader;
 const Texture = graphics.Texture;
@@ -11,7 +11,7 @@ const GuiWindow = gui.GuiWindow;
 const GuiComponent = gui.GuiComponent;
 
 const size: f32 = 64;
-pub var window = GuiWindow {
+pub var window = GuiWindow{
 	.contentSize = Vec2f{size, size},
 	.showTitleBar = false,
 	.hasBackground = false,

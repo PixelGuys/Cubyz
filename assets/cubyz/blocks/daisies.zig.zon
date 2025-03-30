@@ -1,5 +1,5 @@
 .{
-	.class = .leaf,
+	.tags = .{.leaf},
 	.blockHealth = 0.2,
 	.drops = .{
 		.{.items = .{.auto}},
@@ -11,7 +11,7 @@
 	.model = "cubyz:plane",
 	.rotation = .carpet,
 	.texture = "cubyz:daisies",
-	.item= .{
+	.item = .{
 		.texture = "daisies.png",
 	},
 	.lodReplacement = "cubyz:air",

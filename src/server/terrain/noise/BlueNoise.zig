@@ -1,9 +1,9 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const random = main.random;
 const Array2D = main.utils.Array2D;
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const sizeShift = 7; // TODO: Increase back to 10 once this is no longer impacting loading time.
 const size = 1 << sizeShift;
@@ -30,8 +30,7 @@ pub fn load() void { // TODO: Do this at compile time once the caching is good e
 		for(0..pattern.len) |i| {
 			const x: i32 = @intCast(i >> sizeShift);
 			const y: i32 = @intCast(i & sizeMask);
-			outer:
-			for(0..iterations) |_| {
+			outer: for(0..iterations) |_| {
 				const point = random.nextInt(u6, &seed);
 				const xOffset = point >> 3 & 7;
 				const yOffset = point & 7;
@@ -41,7 +40,7 @@ pub fn load() void { // TODO: Do this at compile time once the caching is good e
 					var dy: i32 = -2;
 					while(dy <= 2) : (dy += 1) {
 						if(dx == 0 and dy == 0) continue; // Don't compare with itself!
-						const neighbor = (x+dx & sizeMask) << sizeShift | (y+dy & sizeMask);
+						const neighbor = (x + dx & sizeMask) << sizeShift | (y + dy & sizeMask);
 						const neighborPos = pattern[@intCast(neighbor)];
 						const nx = (neighborPos >> 3) + (dx << featureShift);
 						const ny = (neighborPos & 7) + (dy << featureShift);
@@ -65,8 +64,8 @@ fn sample(x: i32, y: i32) u8 {
 pub fn getRegionData(allocator: NeverFailingAllocator, x: i32, y: i32, width: u31, height: u31) []u32 {
 	const xMin = ((x & ~@as(i32, featureMask)) -% featureSize);
 	const yMin = ((y & ~@as(i32, featureMask)) -% featureSize);
-	const xMax = ((x+%width & ~@as(i32, featureMask)));
-	const yMax = ((y+%height & ~@as(i32, featureMask)));
+	const xMax = ((x +% width & ~@as(i32, featureMask)));
+	const yMax = ((y +% height & ~@as(i32, featureMask)));
 	var result = main.ListUnmanaged(u32).initCapacity(allocator, @intCast((((xMax -% xMin) >> featureShift) + 1)*(((yMax -% yMin) >> featureShift) + 1)));
 	var xMap: i32 = xMin;
 	while(xMap -% xMax <= 0) : (xMap +%= featureSize) {

@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const Inventory = main.items.Inventory;
 const graphics = main.graphics;
 const draw = graphics.draw;
@@ -71,7 +71,7 @@ pub fn init(pos: Vec2f, inventory: Inventory, itemSlot: u32, texture: TexturePar
 	const self = main.globalAllocator.create(ItemSlot);
 	const amount = inventory.getAmount(itemSlot);
 	var buf: [16]u8 = undefined;
-	self.* = ItemSlot {
+	self.* = ItemSlot{
 		.inventory = inventory,
 		.itemSlot = itemSlot,
 		.pos = pos,
@@ -101,15 +101,13 @@ fn refreshText(self: *ItemSlot) void {
 		std.fmt.bufPrint(&buf, "{}", .{amount}) catch "∞",
 		.{.color = if(amount == 0) 0xff0000 else 0xffffff},
 		false,
-		.right
+		.right,
 	);
 	self.textSize = self.text.calculateLineBreaks(8, self.size[0] - 2*border);
 }
 
 pub fn toComponent(self: *ItemSlot) GuiComponent {
-	return GuiComponent{
-		.itemSlot = self
-	};
+	return .{.itemSlot = self};
 }
 
 pub fn updateHovered(self: *ItemSlot, _: Vec2f) void {

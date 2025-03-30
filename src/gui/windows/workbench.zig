@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const items = main.items;
 const BaseItem = items.BaseItem;
 const Inventory = items.Inventory;
@@ -22,10 +22,10 @@ const ItemSlot = GuiComponent.ItemSlot;
 const inventory = @import("inventory.zig");
 const inventory_crafting = @import("inventory_crafting.zig");
 
-pub var window = GuiWindow {
+pub var window = GuiWindow{
 	.relativePosition = .{
-		.{ .attachedToWindow = .{.reference = &inventory.window, .selfAttachmentPoint = .middle, .otherAttachmentPoint = .middle} },
-		.{ .attachedToWindow = .{.reference = &inventory.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .lower} },
+		.{.attachedToWindow = .{.reference = &inventory.window, .selfAttachmentPoint = .middle, .otherAttachmentPoint = .middle}},
+		.{.attachedToWindow = .{.reference = &inventory.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .lower}},
 	},
 	.contentSize = Vec2f{64*8, 64*4},
 	.closeIfMouseIsGrabbed = true,

@@ -1,12 +1,14 @@
 const std = @import("std");
 const Atomic = std.atomic.Value;
 
-const main = @import("root");
+const main = @import("main");
 const Chunk = main.chunk.Chunk;
 const ChunkPosition = main.chunk.ChunkPosition;
 const Cache = main.utils.Cache;
 const ZonElement = main.ZonElement;
 const Vec3d = main.vec.Vec3d;
+const BinaryWriter = main.utils.BinaryWriter;
+const BinaryReader = main.utils.BinaryReader;
 
 const terrain = @import("terrain.zig");
 const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
@@ -19,9 +21,9 @@ pub const MapFragmentPosition = struct {
 	voxelSizeShift: u5,
 
 	pub fn init(wx: i32, wy: i32, voxelSize: u31) MapFragmentPosition {
-		std.debug.assert(voxelSize-1 & voxelSize == 0); // voxelSize must be a power of 2.
-		std.debug.assert(wx & voxelSize-1 == 0 and wy & voxelSize-1 == 0); // The coordinates are misaligned. They need to be aligned to the voxelSize grid.
-		return MapFragmentPosition {
+		std.debug.assert(voxelSize - 1 & voxelSize == 0); // voxelSize must be a power of 2.
+		std.debug.assert(wx & voxelSize - 1 == 0 and wy & voxelSize - 1 == 0); // The coordinates are misaligned. They need to be aligned to the voxelSize grid.
+		return MapFragmentPosition{
 			.wx = wx,
 			.wy = wy,
 			.voxelSize = voxelSize,
@@ -89,19 +91,19 @@ pub const MapFragment = struct { // MARK: MapFragment
 		const prevVal = self.refCount.fetchSub(1, .monotonic);
 		std.debug.assert(prevVal != 0);
 		if(prevVal == 1) {
-			main.globalAllocator.destroy(self);
+			memoryPool.destroy(self);
 		}
 	}
 
 	pub fn getBiome(self: *MapFragment, wx: i32, wy: i32) *const Biome {
-		const xIndex = wx>>self.pos.voxelSizeShift & mapMask;
-		const yIndex = wy>>self.pos.voxelSizeShift & mapMask;
+		const xIndex = wx >> self.pos.voxelSizeShift & mapMask;
+		const yIndex = wy >> self.pos.voxelSizeShift & mapMask;
 		return self.biomeMap[@intCast(xIndex)][@intCast(yIndex)];
 	}
 
 	pub fn getHeight(self: *MapFragment, wx: i32, wy: i32) i32 {
-		const xIndex = wx>>self.pos.voxelSizeShift & mapMask;
-		const yIndex = wy>>self.pos.voxelSizeShift & mapMask;
+		const xIndex = wx >> self.pos.voxelSizeShift & mapMask;
+		const yIndex = wy >> self.pos.voxelSizeShift & mapMask;
 		return self.heightMap[@intCast(xIndex)][@intCast(yIndex)];
 	}
 
@@ -132,41 +134,48 @@ pub const MapFragment = struct { // MARK: MapFragment
 		const fullData = try main.files.read(main.stackAllocator, path);
 		defer main.stackAllocator.free(fullData);
 
+		var fullReader = BinaryReader.init(fullData, .big);
+
 		const header: StorageHeader = .{
-			.version = fullData[0],
-			.neighborInfo = @bitCast(fullData[1]),
+			.version = try fullReader.readInt(u8),
+			.neighborInfo = @bitCast(try fullReader.readInt(u8)),
 		};
-		const compressedData = fullData[@sizeOf(StorageHeader)..];
 		switch(header.version) {
 			0 => { // TODO: Remove after next breaking change
 				const rawData: []u8 = main.stackAllocator.alloc(u8, mapSize*mapSize*(@sizeOf(u32) + 2*@sizeOf(f32)));
 				defer main.stackAllocator.free(rawData);
-				if(try main.utils.Compression.inflateTo(rawData, compressedData) != rawData.len) return error.CorruptedFile;
-				const biomeData = rawData[0..mapSize*mapSize*@sizeOf(u32)];
-				const heightData = rawData[mapSize*mapSize*@sizeOf(u32)..][0..mapSize*mapSize*@sizeOf(f32)];
-				const originalHeightData = rawData[mapSize*mapSize*(@sizeOf(u32) + @sizeOf(f32))..][0..mapSize*mapSize*@sizeOf(f32)];
+				if(try main.utils.Compression.inflateTo(rawData, fullReader.remaining) != rawData.len) return error.CorruptedFile;
+				const biomeData = rawData[0 .. mapSize*mapSize*@sizeOf(u32)];
+				const heightData = rawData[mapSize*mapSize*@sizeOf(u32) ..][0 .. mapSize*mapSize*@sizeOf(f32)];
+				const originalHeightData = rawData[mapSize*mapSize*(@sizeOf(u32) + @sizeOf(f32)) ..][0 .. mapSize*mapSize*@sizeOf(f32)];
 				for(0..mapSize) |x| {
 					for(0..mapSize) |y| {
-						self.biomeMap[x][y] = main.server.terrain.biomes.getById(biomePalette.palette.items[std.mem.readInt(u32, biomeData[4*(x*mapSize + y)..][0..4], .big)]);
-						self.heightMap[x][y] = @intFromFloat(@as(f32, @bitCast(std.mem.readInt(u32, heightData[4*(x*mapSize + y)..][0..4], .big))));
-						if(originalHeightMap) |map| map[x][y] = @intFromFloat(@as(f32, @bitCast(std.mem.readInt(u32, originalHeightData[4*(x*mapSize + y)..][0..4], .big))));
+						self.biomeMap[x][y] = main.server.terrain.biomes.getById(biomePalette.palette.items[std.mem.readInt(u32, biomeData[4*(x*mapSize + y) ..][0..4], .big)]);
+						self.heightMap[x][y] = @intFromFloat(@as(f32, @bitCast(std.mem.readInt(u32, heightData[4*(x*mapSize + y) ..][0..4], .big))));
+						if(originalHeightMap) |map| map[x][y] = @intFromFloat(@as(f32, @bitCast(std.mem.readInt(u32, originalHeightData[4*(x*mapSize + y) ..][0..4], .big))));
 					}
 				}
 			},
 			1 => {
-				const rawData: []u8 = main.stackAllocator.alloc(u8, mapSize*mapSize*(@sizeOf(u32) + 2*@sizeOf(i32)));
+				const biomeDataSize = mapSize*mapSize*@sizeOf(u32);
+				const heightDataSize = mapSize*mapSize*@sizeOf(i32);
+				const originalHeightDataSize = mapSize*mapSize*@sizeOf(i32);
+
+				const rawData: []u8 = main.stackAllocator.alloc(u8, biomeDataSize + heightDataSize + originalHeightDataSize);
 				defer main.stackAllocator.free(rawData);
-				if(try main.utils.Compression.inflateTo(rawData, compressedData) != rawData.len) return error.CorruptedFile;
-				const biomeData = rawData[0..mapSize*mapSize*@sizeOf(u32)];
-				const heightData = rawData[mapSize*mapSize*@sizeOf(u32)..][0..mapSize*mapSize*@sizeOf(i32)];
-				const originalHeightData = rawData[mapSize*mapSize*(@sizeOf(u32) + @sizeOf(i32))..][0..mapSize*mapSize*@sizeOf(i32)];
-				for(0..mapSize) |x| {
-					for(0..mapSize) |y| {
-						self.biomeMap[x][y] = main.server.terrain.biomes.getById(biomePalette.palette.items[std.mem.readInt(u32, biomeData[4*(x*mapSize + y)..][0..4], .big)]);
-						self.heightMap[x][y] = @bitCast(std.mem.readInt(u32, heightData[4*(x*mapSize + y)..][0..4], .big));
-						if(originalHeightMap) |map| map[x][y] = @bitCast(std.mem.readInt(u32, originalHeightData[4*(x*mapSize + y)..][0..4], .big));
-					}
-				}
+				if(try main.utils.Compression.inflateTo(rawData, fullReader.remaining) != rawData.len) return error.CorruptedFile;
+
+				var reader = BinaryReader.init(rawData, .big);
+
+				for(0..mapSize) |x| for(0..mapSize) |y| {
+					self.biomeMap[x][y] = main.server.terrain.biomes.getById(biomePalette.palette.items[try reader.readInt(u32)]);
+				};
+				for(0..mapSize) |x| for(0..mapSize) |y| {
+					self.heightMap[x][y] = try reader.readInt(i32);
+				};
+				if(originalHeightMap) |map| for(0..mapSize) |x| for(0..mapSize) |y| {
+					map[x][y] = try reader.readInt(i32);
+				};
 			},
 			else => return error.OutdatedFileVersion,
 		}
@@ -175,29 +184,29 @@ pub const MapFragment = struct { // MARK: MapFragment
 	}
 
 	pub fn save(self: *MapFragment, originalData: ?*[mapSize][mapSize]i32, neighborInfo: NeighborInfo) void {
-		const rawData: []u8 = main.stackAllocator.alloc(u8, mapSize*mapSize*(@sizeOf(u32) + 2*@sizeOf(f32)));
-		defer main.stackAllocator.free(rawData);
-		const biomeData = rawData[0..mapSize*mapSize*@sizeOf(u32)];
-		const heightData = rawData[mapSize*mapSize*@sizeOf(u32)..][0..mapSize*mapSize*@sizeOf(f32)];
-		const originalHeightData = rawData[mapSize*mapSize*(@sizeOf(u32) + @sizeOf(f32))..][0..mapSize*mapSize*@sizeOf(f32)];
-		for(0..mapSize) |x| {
-			for(0..mapSize) |y| {
-				std.mem.writeInt(u32, biomeData[4*(x*mapSize + y)..][0..4], self.biomeMap[x][y].paletteId, .big);
-				std.mem.writeInt(u32, heightData[4*(x*mapSize + y)..][0..4], @bitCast(self.heightMap[x][y]), .big);
-				std.mem.writeInt(u32, originalHeightData[4*(x*mapSize + y)..][0..4], @bitCast((if(originalData) |map| map else &self.heightMap)[x][y]), .big);
-			}
-		}
-		const compressedData = main.utils.Compression.deflate(main.stackAllocator, rawData, .fast);
+		const biomeDataSize = mapSize*mapSize*@sizeOf(u32);
+		const heightDataSize = mapSize*mapSize*@sizeOf(i32);
+		const originalHeightDataSize = mapSize*mapSize*@sizeOf(i32);
+
+		var writer = BinaryWriter.initCapacity(main.stackAllocator, .big, biomeDataSize + heightDataSize + originalHeightDataSize);
+		defer writer.deinit();
+
+		for(0..mapSize) |x| for(0..mapSize) |y| writer.writeInt(u32, self.biomeMap[x][y].paletteId);
+		for(0..mapSize) |x| for(0..mapSize) |y| writer.writeInt(i32, self.heightMap[x][y]);
+		for(0..mapSize) |x| for(0..mapSize) |y| writer.writeInt(i32, (if(originalData) |map| map else &self.heightMap)[x][y]);
+
+		const compressedData = main.utils.Compression.deflate(main.stackAllocator, writer.data.items, .fast);
 		defer main.stackAllocator.free(compressedData);
 
-		const fullData = main.stackAllocator.alloc(u8, compressedData.len + @sizeOf(StorageHeader));
-		defer main.stackAllocator.free(fullData);
+		var outputWriter = BinaryWriter.initCapacity(main.stackAllocator, .big, @sizeOf(StorageHeader) + compressedData.len);
+		defer outputWriter.deinit();
+
 		const header: StorageHeader = .{
 			.neighborInfo = neighborInfo,
 		};
-		fullData[0] = header.version;
-		fullData[1] = @bitCast(header.neighborInfo);
-		@memcpy(fullData[@sizeOf(StorageHeader)..], compressedData);
+		outputWriter.writeInt(u8, header.version);
+		outputWriter.writeInt(u8, @bitCast(header.neighborInfo));
+		outputWriter.writeSlice(compressedData);
 
 		const saveFolder: []const u8 = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{main.server.world.?.name}) catch unreachable;
 		defer main.stackAllocator.free(saveFolder);
@@ -211,7 +220,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 			std.log.err("Error while writing to file {s}: {s}", .{path, @errorName(err)});
 		};
 
-		main.files.write(path, fullData) catch |err| {
+		main.files.write(path, outputWriter.data.items) catch |err| {
 			std.log.err("Error while writing to file {s}: {s}", .{path, @errorName(err)});
 		};
 	}
@@ -226,7 +235,7 @@ pub const MapGenerator = struct {
 	var generatorRegistry: std.StringHashMapUnmanaged(MapGenerator) = .{};
 
 	fn registerGenerator(comptime Generator: type) void {
-		const self = MapGenerator {
+		const self = MapGenerator{
 			.init = &Generator.init,
 			.deinit = &Generator.deinit,
 			.generateMapFragment = &Generator.generateMapFragment,
@@ -242,12 +251,13 @@ pub const MapGenerator = struct {
 	}
 };
 
-
 const cacheSize = 1 << 6; // Must be a power of 2!
 const cacheMask = cacheSize - 1;
 const associativity = 8; // ~400MiB MiB Cache size
 var cache: Cache(MapFragment, cacheSize, associativity, MapFragment.decreaseRefCount) = .{};
 var profile: TerrainGenerationProfile = undefined;
+
+var memoryPool: main.heap.MemoryPool(MapFragment) = undefined;
 
 pub fn initGenerators() void {
 	const list = @import("mapgen/_list.zig");
@@ -261,7 +271,7 @@ pub fn deinitGenerators() void {
 }
 
 fn cacheInit(pos: MapFragmentPosition) *MapFragment {
-	const mapFragment = main.globalAllocator.create(MapFragment);
+	const mapFragment = memoryPool.create();
 	mapFragment.init(pos.wx, pos.wy, pos.voxelSize);
 	_ = mapFragment.load(main.server.world.?.biomePalette, null) catch {
 		profile.mapFragmentGenerator.generateMapFragment(mapFragment, profile.seed);
@@ -273,7 +283,7 @@ fn cacheInit(pos: MapFragmentPosition) *MapFragment {
 pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 	std.log.info("Regenerating map LODs...", .{});
 	// Delete old LODs:
-	for(1..main.settings.highestSupportedLod+1) |i| {
+	for(1..main.settings.highestSupportedLod + 1) |i| {
 		const lod = @as(u32, 1) << @intCast(i);
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{worldName}) catch unreachable;
 		defer main.stackAllocator.free(path);
@@ -302,7 +312,7 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 			var iterY = dirY.iterate();
 			while(try iterY.next()) |entryY| {
 				if(entryY.kind != .file) continue;
-				const nameY = entryY.name[0..std.mem.indexOfScalar(u8, entryY.name, '.') orelse entryY.name.len];
+				const nameY = entryY.name[0 .. std.mem.indexOfScalar(u8, entryY.name, '.') orelse entryY.name.len];
 				const wy = std.fmt.parseInt(i32, nameY, 0) catch continue;
 				mapPositions.append(.{.wx = wx, .wy = wy, .voxelSize = 1, .voxelSizeShift = 0});
 			}
@@ -327,7 +337,7 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 			}
 			@field(neighborInfo, name) = isPresent;
 		}
-		const mapFragment = main.globalAllocator.create(MapFragment);
+		const mapFragment = main.stackAllocator.create(MapFragment);
 		defer main.stackAllocator.destroy(mapFragment);
 		mapFragment.init(pos.wx, pos.wy, pos.voxelSize);
 		var xNoise: [MapFragment.mapSize]f32 = undefined;
@@ -373,17 +383,19 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 			{
 				for(0..interpolationDistance) |a| { // corners:
 					for(0..interpolationDistance) |b| {
-						const weirdSquareInterpolation = struct{fn interp(x: f32, y: f32) f32 {
-							// Basically we want to interpolate the values such that two sides of the square have value zero, while the opposing two sides have value 1.
-							// Change coordinate system:
-							if(x == y) return 0.5;
-							const sqrt2 = @sqrt(0.5);
-							const k = sqrt2*x + sqrt2*y - sqrt2;
-							const l = -sqrt2*x + sqrt2*y;
-							const maxMagnitude = sqrt2 - @abs(k);
-							return l/maxMagnitude*0.5 + 0.5;
-							// if x = y:
-						}}.interp;
+						const weirdSquareInterpolation = struct {
+							fn interp(x: f32, y: f32) f32 {
+								// Basically we want to interpolate the values such that two sides of the square have value zero, while the opposing two sides have value 1.
+								// Change coordinate system:
+								if(x == y) return 0.5;
+								const sqrt2 = @sqrt(0.5);
+								const k = sqrt2*x + sqrt2*y - sqrt2;
+								const l = -sqrt2*x + sqrt2*y;
+								const maxMagnitude = sqrt2 - @abs(k);
+								return l/maxMagnitude*0.5 + 0.5;
+								// if x = y:
+							}
+						}.interp;
 						var factorA = @as(f32, @floatFromInt(a))/interpolationDistance;
 						factorA = (3 - 2*factorA)*factorA*factorA;
 						var factorB = @as(f32, @floatFromInt(b))/interpolationDistance;
@@ -397,7 +409,6 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 							const x = MapFragment.mapSize - 1 - a;
 							const y = MapFragment.mapSize - 1 - b;
 							originalHeightMap[x][y] = @intFromFloat(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(originalHeightMap[x][y]))*(1 - factor));
-
 						}
 						if(neighborInfo.@"+o" or neighborInfo.@"o-") {
 							var factor: f32 = 1;
@@ -408,7 +419,6 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 							const x = MapFragment.mapSize - 1 - a;
 							const y = b;
 							originalHeightMap[x][y] = @intFromFloat(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(originalHeightMap[x][y]))*(1 - factor));
-
 						}
 						if(neighborInfo.@"-o" or neighborInfo.@"o+") {
 							var factor: f32 = 1;
@@ -419,7 +429,6 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 							const x = a;
 							const y = MapFragment.mapSize - 1 - b;
 							originalHeightMap[x][y] = @intFromFloat(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(originalHeightMap[x][y]))*(1 - factor));
-
 						}
 						if(neighborInfo.@"-o" or neighborInfo.@"o-") {
 							var factor: f32 = 1;
@@ -430,7 +439,6 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 							const x = a;
 							const y = b;
 							originalHeightMap[x][y] = @intFromFloat(0.5 + @as(f32, @floatFromInt(mapFragment.heightMap[x][y]))*factor + @as(f32, @floatFromInt(originalHeightMap[x][y]))*(1 - factor));
-
 						}
 					}
 				}
@@ -469,7 +477,7 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 					return @max(0, @min(0.99999, ((self.a*x + self.b)*x + self.c)*x*x));
 				}
 			};
-			const generatedMap = main.globalAllocator.create(MapFragment);
+			const generatedMap = main.stackAllocator.create(MapFragment);
 			defer main.stackAllocator.destroy(generatedMap);
 			generatedMap.init(pos.wx, pos.wy, pos.voxelSize);
 			profile.mapFragmentGenerator.generateMapFragment(generatedMap, profile.seed);
@@ -580,8 +588,8 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 			const offSetY: usize = @intCast((cur.pos.wy -% nextPos.wy) >> nextPos.voxelSizeShift);
 			for(0..MapFragment.mapSize/2) |x| {
 				for(0..MapFragment.mapSize/2) |y| {
-					var biomes: [4]?*const Biome = .{null} ** 4;
-					var biomeCounts: [4]u8 = .{0} ** 4;
+					var biomes: [4]?*const Biome = @splat(null);
+					var biomeCounts: [4]u8 = @splat(0);
 					var height: i32 = 0;
 					for(0..2) |dx| {
 						for(0..2) |dy| {
@@ -626,18 +634,20 @@ pub fn regenerateLOD(worldName: []const u8) !void { // MARK: regenerateLOD()
 
 pub fn init(_profile: TerrainGenerationProfile) void {
 	profile = _profile;
+	memoryPool = .init(main.globalAllocator);
 }
 
 pub fn deinit() void {
 	cache.clear();
+	memoryPool.deinit();
 }
 
 /// Call deinit on the result.
 pub fn getOrGenerateFragmentAndIncreaseRefCount(wx: i32, wy: i32, voxelSize: u31) *MapFragment {
 	const compare = MapFragmentPosition.init(
-		wx & ~@as(i32, MapFragment.mapMask*voxelSize | voxelSize-1),
-		wy & ~@as(i32, MapFragment.mapMask*voxelSize | voxelSize-1),
-		voxelSize
+		wx & ~@as(i32, MapFragment.mapMask*voxelSize | voxelSize - 1),
+		wy & ~@as(i32, MapFragment.mapMask*voxelSize | voxelSize - 1),
+		voxelSize,
 	);
 	const result = cache.findOrCreate(compare, cacheInit, MapFragment.increaseRefCount);
 	return result;

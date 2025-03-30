@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const graphics = main.graphics;
 const draw = graphics.draw;
 const TextBuffer = graphics.TextBuffer;
@@ -40,9 +40,7 @@ pub fn deinit(self: *MutexComponent) void {
 }
 
 pub fn toComponent(self: *MutexComponent) GuiComponent {
-	return GuiComponent {
-		.mutexComponent = self
-	};
+	return .{.mutexComponent = self};
 }
 
 pub fn updateSelected(self: *MutexComponent) void {

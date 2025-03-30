@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const graphics = main.graphics;
 const draw = graphics.draw;
 const Shader = graphics.Shader;
@@ -38,7 +38,7 @@ pub fn __deinit() void {
 pub fn init(pos: Vec2f, width: f32, height: f32, initialState: f32) *ScrollBar {
 	const button = Button.initText(.{0, 0}, undefined, "", .{});
 	const self = main.globalAllocator.create(ScrollBar);
-	self.* = ScrollBar {
+	self.* = ScrollBar{
 		.pos = pos,
 		.size = Vec2f{width, height},
 		.currentState = initialState,
@@ -55,9 +55,7 @@ pub fn deinit(self: *const ScrollBar) void {
 }
 
 pub fn toComponent(self: *ScrollBar) GuiComponent {
-	return GuiComponent{
-		.scrollBar = self
-	};
+	return .{.scrollBar = self};
 }
 
 fn setButtonPosFromValue(self: *ScrollBar) void {

@@ -1,0 +1,38 @@
+.{
+	.tags = .{.wood},
+	.blockHealth = 4,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.absorbedLight = 0x202830,
+	.rotation = .branch,
+	.model = .{
+		.radius = 4,
+	},
+	.texture0 = "cubyz:branch/birch/dot",
+	.texture1 = "cubyz:branch/birch/half_line",
+	.texture2 = "cubyz:branch/birch/line",
+	.texture3 = "cubyz:branch/birch/bend",
+	.texture4 = "cubyz:branch/birch/intersection",
+	.texture5 = "cubyz:branch/birch/cross",
+	.item = .{
+		.material = .{
+			.density = 0.3,
+			.strength = 0.9,
+			.elasticity = 3.5,
+			.grip = 10,
+			.hardness = 1.25,
+			.textureRoughness = 0.7,
+			.colors = .{
+				0xffb8aa9e, 0xffd0c2b5, 0xffeedfd0, 0xfffff6ed, 0xffeedfd0,
+			},
+			.modifiers = .{
+				.{
+					.id = "fragile",
+					.strength = 0.10,
+				},
+			},
+		},
+		.texture = "branch/birch.png",
+	},
+}

@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const ConnectionManager = main.network.ConnectionManager;
 const settings = main.settings;
 const Vec2f = main.vec.Vec2f;
@@ -14,7 +14,7 @@ const Label = @import("../components/Label.zig");
 const TextInput = @import("../components/TextInput.zig");
 const VerticalList = @import("../components/VerticalList.zig");
 
-pub var window = GuiWindow {
+pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 256},
 };
 
@@ -35,9 +35,8 @@ fn discoverIpAddress() void {
 }
 
 fn discoverIpAddressFromNewThread() void {
-	var sta = main.utils.StackAllocator.init(main.globalAllocator, 1 << 23);
-	defer sta.deinit();
-	main.stackAllocator = sta.allocator();
+	main.initThreadLocals();
+	defer main.deinitThreadLocals();
 
 	discoverIpAddress();
 }

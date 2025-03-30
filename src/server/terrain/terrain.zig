@@ -1,8 +1,8 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const ZonElement = main.ZonElement;
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 pub const biomes = @import("biomes.zig");
 pub const noise = @import("noise/noise.zig");
@@ -20,6 +20,8 @@ pub const CaveMap = @import("CaveMap.zig");
 
 pub const StructureMap = @import("StructureMap.zig");
 
+pub const structure_building_blocks = @import("structure_building_blocks.zig");
+
 /// A generator for setting the actual Blocks in each Chunk.
 pub const BlockGenerator = struct {
 	init: *const fn(parameters: ZonElement) void,
@@ -30,11 +32,10 @@ pub const BlockGenerator = struct {
 	/// To avoid duplicate seeds in similar generation algorithms, the SurfaceGenerator xors the world-seed with the generator specific seed.
 	generatorSeed: u64,
 
-
 	var generatorRegistry: std.StringHashMapUnmanaged(BlockGenerator) = .{};
 
 	pub fn registerGenerator(comptime GeneratorType: type) void {
-		const self = BlockGenerator {
+		const self = BlockGenerator{
 			.init = &GeneratorType.init,
 			.deinit = &GeneratorType.deinit,
 			.generate = &GeneratorType.generate,
@@ -77,7 +78,7 @@ pub const TerrainGenerationProfile = struct {
 	seed: u64,
 
 	pub fn init(settings: ZonElement, seed: u64) !TerrainGenerationProfile {
-		var self = TerrainGenerationProfile {
+		var self = TerrainGenerationProfile{
 			.seed = seed,
 		};
 		var generator = settings.getChild("mapGenerator");

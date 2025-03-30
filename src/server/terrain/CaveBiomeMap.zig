@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const Array3D = main.utils.Array3D;
 const Cache = main.utils.Cache;
 const ServerChunk = main.chunk.ServerChunk;
@@ -8,7 +8,7 @@ const ChunkPosition = main.chunk.ChunkPosition;
 const ZonElement = main.ZonElement;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const terrain = @import("terrain.zig");
 const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
@@ -31,9 +31,11 @@ pub const CaveBiomeMapFragment = struct { // MARK: caveBiomeMapFragment
 
 	pub fn init(self: *CaveBiomeMapFragment, wx: i32, wy: i32, wz: i32) void {
 		self.* = .{
-			.pos = main.chunk.ChunkPosition {
-				.wx = wx, .wy = wy, .wz = wz,
-				.voxelSize = caveBiomeSize
+			.pos = main.chunk.ChunkPosition{
+				.wx = wx,
+				.wy = wy,
+				.wz = wz,
+				.voxelSize = caveBiomeSize,
 			},
 		};
 	}
@@ -41,15 +43,15 @@ pub const CaveBiomeMapFragment = struct { // MARK: caveBiomeMapFragment
 	const rotationMatrixShift = 30;
 	const fac: comptime_int = @intFromFloat(@as(comptime_float, 1 << rotationMatrixShift)/25.0);
 	const rotationMatrix = .{
-		@Vector(3, i64){ 20*fac,  0*fac,  15*fac},
-		@Vector(3, i64){  9*fac, 20*fac, -12*fac},
-		@Vector(3, i64){-12*fac, 15*fac,  16*fac},
+		@Vector(3, i64){20*fac, 0*fac, 15*fac},
+		@Vector(3, i64){9*fac, 20*fac, -12*fac},
+		@Vector(3, i64){-12*fac, 15*fac, 16*fac},
 	}; // divide result by shift to do a proper rotation
 
 	const transposeRotationMatrix = .{
-		@Vector(3, i64){20*fac,   9*fac, -12*fac},
-		@Vector(3, i64){ 0*fac,  20*fac,  15*fac},
-		@Vector(3, i64){15*fac, -12*fac,  16*fac},
+		@Vector(3, i64){20*fac, 9*fac, -12*fac},
+		@Vector(3, i64){0*fac, 20*fac, 15*fac},
+		@Vector(3, i64){15*fac, -12*fac, 16*fac},
 	}; // divide result by shift to do a proper rotation
 
 	pub fn rotate(in: Vec3i) Vec3i {
@@ -78,7 +80,7 @@ pub const CaveBiomeMapFragment = struct { // MARK: caveBiomeMapFragment
 		relX >>= caveBiomeShift;
 		relY >>= caveBiomeShift;
 		relZ >>= caveBiomeShift;
-		return relX << 2*(caveBiomeMapShift - caveBiomeShift) | relY << caveBiomeMapShift-caveBiomeShift | relZ;
+		return relX << 2*(caveBiomeMapShift - caveBiomeShift) | relY << caveBiomeMapShift - caveBiomeShift | relZ;
 	}
 
 	pub fn increaseRefCount(self: *CaveBiomeMapFragment) void {
@@ -90,7 +92,7 @@ pub const CaveBiomeMapFragment = struct { // MARK: caveBiomeMapFragment
 		const prevVal = self.refCount.fetchSub(1, .monotonic);
 		std.debug.assert(prevVal != 0);
 		if(prevVal == 1) {
-			main.globalAllocator.destroy(self);
+			memoryPool.destroy(self);
 		}
 	}
 };
@@ -105,11 +107,10 @@ pub const CaveBiomeGenerator = struct { // MARK: CaveBiomeGenerator
 	/// To avoid duplicate seeds in similar generation algorithms, the SurfaceGenerator xors the world-seed with the generator specific seed.
 	generatorSeed: u64,
 
-
 	var generatorRegistry: std.StringHashMapUnmanaged(CaveBiomeGenerator) = .{};
 
 	pub fn registerGenerator(comptime Generator: type) void {
-		const self = CaveBiomeGenerator {
+		const self = CaveBiomeGenerator{
 			.init = &Generator.init,
 			.deinit = &Generator.deinit,
 			.generate = &Generator.generate,
@@ -146,7 +147,7 @@ pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveB
 	width: i32,
 	allocator: NeverFailingAllocator,
 
-	pub fn init(allocator: main.utils.NeverFailingAllocator, pos: ChunkPosition, width: u31, margin: u31) InterpolatableCaveBiomeMapView {
+	pub fn init(allocator: main.heap.NeverFailingAllocator, pos: ChunkPosition, width: u31, margin: u31) InterpolatableCaveBiomeMapView {
 		const center = Vec3i{
 			pos.wx +% width/2,
 			pos.wy +% width/2,
@@ -156,9 +157,9 @@ pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveB
 		const marginDiv = 1024;
 		const marginMul: comptime_int = @reduce(.Max, @abs(comptime CaveBiomeMapFragment.rotate(.{marginDiv, marginDiv, marginDiv})));
 		const caveBiomeFragmentWidth = 1 + (width + margin + CaveBiomeMapFragment.caveBiomeMapSize)*marginMul/marginDiv/CaveBiomeMapFragment.caveBiomeMapSize;
-		var result = InterpolatableCaveBiomeMapView {
+		var result = InterpolatableCaveBiomeMapView{
 			.fragments = Array3D(*CaveBiomeMapFragment).init(allocator, caveBiomeFragmentWidth, caveBiomeFragmentWidth, caveBiomeFragmentWidth),
-			.surfaceFragments = [_]*MapFragment {
+			.surfaceFragments = [_]*MapFragment{
 				SurfaceMap.getOrGenerateFragmentAndIncreaseRefCount(center[0] -% SurfaceMap.MapFragment.mapSize/2*pos.voxelSize, center[1] -% SurfaceMap.MapFragment.mapSize/2*pos.voxelSize, pos.voxelSize),
 				SurfaceMap.getOrGenerateFragmentAndIncreaseRefCount(center[0] -% SurfaceMap.MapFragment.mapSize/2*pos.voxelSize, center[1] +% SurfaceMap.MapFragment.mapSize/2*pos.voxelSize, pos.voxelSize),
 				SurfaceMap.getOrGenerateFragmentAndIncreaseRefCount(center[0] +% SurfaceMap.MapFragment.mapSize/2*pos.voxelSize, center[1] -% SurfaceMap.MapFragment.mapSize/2*pos.voxelSize, pos.voxelSize),
@@ -177,7 +178,7 @@ pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveB
 					result.fragments.set(x, y, z, getOrGenerateFragmentAndIncreaseRefCount(
 						startX +% CaveBiomeMapFragment.caveBiomeMapSize*@as(i32, @intCast(x)),
 						startY +% CaveBiomeMapFragment.caveBiomeMapSize*@as(i32, @intCast(y)),
-						startZ +% CaveBiomeMapFragment.caveBiomeMapSize*@as(i32, @intCast(z))
+						startZ +% CaveBiomeMapFragment.caveBiomeMapSize*@as(i32, @intCast(z)),
 					));
 				}
 			}
@@ -255,18 +256,18 @@ pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveB
 		return @select(i32, in >= Vec3i{0, 0, 0}, Vec3i{1, 1, 1}, Vec3i{-1, -1, -1});
 	}
 
-	pub fn bulkInterpolateValue(self: InterpolatableCaveBiomeMapView, comptime field: []const u8, wx: i32, wy: i32, wz: i32, voxelSize: u31, map: Array3D(f32), comptime mode: enum{addToMap}, comptime scale: f32) void {
+	pub fn bulkInterpolateValue(self: InterpolatableCaveBiomeMapView, comptime field: []const u8, wx: i32, wy: i32, wz: i32, voxelSize: u31, map: Array3D(f32), comptime mode: enum {addToMap}, comptime scale: f32) void {
 		var x: u31 = 0;
 		while(x < map.width) : (x += 1) {
 			var y: u31 = 0;
 			while(y < map.height) : (y += 1) {
 				var z: u31 = 0;
 				while(z < map.depth) : (z += 1) {
-					switch (mode) {
+					switch(mode) {
 						.addToMap => {
 							// TODO: Do a tetrahedron voxelization here, so parts of the tetrahedral barycentric coordinates can be precomputed.
 							map.ptr(x, y, z).* += scale*interpolateValue(self, wx +% x*voxelSize, wy +% y*voxelSize, wz +% z*voxelSize, field);
-						}
+						},
 					}
 				}
 			}
@@ -387,14 +388,14 @@ pub const InterpolatableCaveBiomeMapView = struct { // MARK: InterpolatableCaveB
 		const gridPoint = getGridPointFromPrerotated(@truncate(preRotatedPos >> @splat(CaveBiomeMapFragment.rotationMatrixShift)), &startMap);
 
 		var start: i32 = 0;
-		var end = @min(returnHeight.*, @as(comptime_int, @intFromFloat(@ceil(CaveBiomeMapFragment.caveBiomeSize*@sqrt(5.0)/2.0)))) & ~@as(i32, voxelSize-1);
+		var end = @min(returnHeight.*, @as(comptime_int, @intFromFloat(@ceil(CaveBiomeMapFragment.caveBiomeSize*@sqrt(5.0)/2.0)))) & ~@as(i32, voxelSize - 1);
 		{
 			var otherMap: u1 = undefined;
 			const nextGridPoint = getGridPointFromPrerotated(@truncate(preRotatedPos +% CaveBiomeMapFragment.transposeRotationMatrix[2]*@as(Vec3i, @splat(end)) >> @splat(CaveBiomeMapFragment.rotationMatrixShift)), &otherMap);
 			if(@reduce(.And, nextGridPoint == gridPoint) and otherMap == startMap) start = end;
 		}
 		while(start + voxelSize < end) {
-			const mid = start +% @divTrunc(end -% start, 2) & ~@as(i32, voxelSize-1);
+			const mid = start +% @divTrunc(end -% start, 2) & ~@as(i32, voxelSize - 1);
 			var otherMap: u1 = undefined;
 			const nextGridPoint = getGridPointFromPrerotated(@truncate(preRotatedPos +% CaveBiomeMapFragment.transposeRotationMatrix[2]*@as(Vec3i, @splat(mid)) >> @splat(CaveBiomeMapFragment.rotationMatrixShift)), &otherMap);
 			if(@reduce(.Or, nextGridPoint != gridPoint) or otherMap != startMap) {
@@ -452,7 +453,7 @@ pub const CaveBiomeMapView = struct { // MARK: CaveBiomeMapView
 	noise: ?CachedFractalNoise = null,
 
 	pub fn init(allocator: NeverFailingAllocator, pos: ChunkPosition, width: u31, margin: u31) CaveBiomeMapView {
-		var self = CaveBiomeMapView {
+		var self = CaveBiomeMapView{
 			.super = InterpolatableCaveBiomeMapView.init(allocator, pos, width, margin),
 		};
 		if(pos.voxelSize < 8) {
@@ -526,6 +527,8 @@ var cache: Cache(CaveBiomeMapFragment, cacheSize, associativity, CaveBiomeMapFra
 
 var profile: TerrainGenerationProfile = undefined;
 
+var memoryPool: main.heap.MemoryPool(CaveBiomeMapFragment) = undefined;
+
 pub fn initGenerators() void {
 	const list = @import("cavebiomegen/_list.zig");
 	inline for(@typeInfo(list).@"struct".decls) |decl| {
@@ -539,19 +542,21 @@ pub fn deinitGenerators() void {
 
 pub fn init(_profile: TerrainGenerationProfile) void {
 	profile = _profile;
+	memoryPool = .init(main.globalAllocator);
 }
 
 pub fn deinit() void {
 	cache.clear();
+	memoryPool.deinit();
 }
 
 fn cacheInit(pos: ChunkPosition) *CaveBiomeMapFragment {
-	const mapFragment = main.globalAllocator.create(CaveBiomeMapFragment);
+	const mapFragment = memoryPool.create();
 	mapFragment.init(pos.wx, pos.wy, pos.wz);
 	for(profile.caveBiomeGenerators) |generator| {
 		generator.generate(mapFragment, profile.seed ^ generator.generatorSeed);
 	}
-	_= @atomicRmw(u16, &mapFragment.refCount.raw, .Add, 1, .monotonic);
+	_ = @atomicRmw(u16, &mapFragment.refCount.raw, .Add, 1, .monotonic);
 	return mapFragment;
 }
 
@@ -559,8 +564,10 @@ fn getOrGenerateFragmentAndIncreaseRefCount(_wx: i32, _wy: i32, _wz: i32) *CaveB
 	const wx = _wx & ~@as(i32, CaveBiomeMapFragment.caveBiomeMapMask);
 	const wy = _wy & ~@as(i32, CaveBiomeMapFragment.caveBiomeMapMask);
 	const wz = _wz & ~@as(i32, CaveBiomeMapFragment.caveBiomeMapMask);
-	const compare = ChunkPosition {
-		.wx = wx, .wy = wy, .wz = wz,
+	const compare = ChunkPosition{
+		.wx = wx,
+		.wy = wy,
+		.wz = wz,
 		.voxelSize = CaveBiomeMapFragment.caveBiomeSize,
 	};
 	const result = cache.findOrCreate(compare, cacheInit, CaveBiomeMapFragment.increaseRefCount);

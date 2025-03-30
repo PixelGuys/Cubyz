@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const graphics = main.graphics;
 const draw = graphics.draw;
 const Shader = graphics.Shader;
@@ -64,17 +64,17 @@ closeable: bool = true,
 isHud: bool = false,
 
 /// Called every frame.
-renderFn: *const fn()void = &defaultFunction,
+renderFn: *const fn() void = &defaultFunction,
 /// Called every frame before rendering.
-updateFn: *const fn()void = &defaultFunction,
+updateFn: *const fn() void = &defaultFunction,
 /// Called every frame for the currently selected window.
-updateSelectedFn: *const fn()void = &defaultFunction,
+updateSelectedFn: *const fn() void = &defaultFunction,
 /// Called every frame for the currently hovered window.
-updateHoveredFn: *const fn()void = &defaultFunction,
+updateHoveredFn: *const fn() void = &defaultFunction,
 
-onOpenFn: *const fn()void = &defaultFunction,
+onOpenFn: *const fn() void = &defaultFunction,
 
-onCloseFn: *const fn()void = &defaultFunction,
+onCloseFn: *const fn() void = &defaultFunction,
 
 var grabbedWindow: *const GuiWindow = undefined;
 var windowMoving: bool = false;
@@ -228,8 +228,8 @@ fn snapToOtherWindow(self: *GuiWindow) void {
 		var otherAttachment: AttachmentPoint = undefined;
 		for(gui.openWindows.items) |other| {
 			// Check if they touch:
-			const start = @max(self.pos[i^1], other.pos[i^1]);
-			const end = @min(self.pos[i^1] + self.size[i^1], other.pos[i^1] + other.size[i^1]);
+			const start = @max(self.pos[i ^ 1], other.pos[i ^ 1]);
+			const end = @min(self.pos[i ^ 1] + self.size[i ^ 1], other.pos[i ^ 1] + other.size[i ^ 1]);
 			if(start >= end) continue;
 			if(detectCycles(self, other)) continue;
 
@@ -307,7 +307,7 @@ fn positionRelativeToConnectedWindow(self: *GuiWindow, other: *GuiWindow, i: usi
 			.selfAttachmentPoint = .lower,
 			.otherAttachmentPoint = .middle,
 		}};
-	// Snap to the edges:
+		// Snap to the edges:
 	} else if(@abs(self.pos[i] - other.pos[i]) <= snapDistance) {
 		relPos.* = .{.attachedToWindow = .{
 			.reference = other,
@@ -323,7 +323,7 @@ fn positionRelativeToConnectedWindow(self: *GuiWindow, other: *GuiWindow, i: usi
 	} else {
 		relPos.* = .{.relativeToWindow = .{
 			.reference = other,
-			.ratio = (self.pos[i] + self.size[i]/2 - other.pos[i])/otherSize[i]
+			.ratio = (self.pos[i] + self.size[i]/2 - other.pos[i])/otherSize[i],
 		}};
 	}
 }
@@ -366,7 +366,7 @@ pub fn updateHovered(self: *GuiWindow, mousePosition: Vec2f) void {
 	}
 }
 pub fn getMinWindowWidth(self: *GuiWindow) f32 {
-	return iconWidth * @as(f32, (if (self.closeable) 4 else 3));
+	return iconWidth*@as(f32, (if(self.closeable) 4 else 3));
 }
 pub fn updateWindowPosition(self: *GuiWindow) void {
 	const minSize = self.getMinWindowWidth();
@@ -437,9 +437,9 @@ fn drawOrientationLines(self: *const GuiWindow) void {
 					.upper => windowSize[i],
 				};
 				if(i == 0) {
-					draw.line(.{pos, 0}, .{pos, windowSize[i^1]});
+					draw.line(.{pos, 0}, .{pos, windowSize[i ^ 1]});
 				} else {
-					draw.line(.{0, pos}, .{windowSize[i^1], pos});
+					draw.line(.{0, pos}, .{windowSize[i ^ 1], pos});
 				}
 			},
 			.attachedToWindow => |attachedToWindow| {
@@ -450,8 +450,8 @@ fn drawOrientationLines(self: *const GuiWindow) void {
 					.middle => other.pos[i] + 0.5*otherSize[i],
 					.upper => other.pos[i] + otherSize[i],
 				};
-				const start = @min(self.pos[i^1], other.pos[i^1]);
-				const end = @max(self.pos[i^1] + self.size[i^1], other.pos[i^1] + otherSize[i^1]);
+				const start = @min(self.pos[i ^ 1], other.pos[i ^ 1]);
+				const end = @max(self.pos[i ^ 1] + self.size[i ^ 1], other.pos[i ^ 1] + otherSize[i ^ 1]);
 				if(i == 0) {
 					draw.line(.{pos, start}, .{pos, end});
 				} else {

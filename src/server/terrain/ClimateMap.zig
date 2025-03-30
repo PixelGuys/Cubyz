@@ -1,7 +1,7 @@
 const std = @import("std");
 const Atomic = std.atomic.Value;
 
-const main = @import("root");
+const main = @import("main");
 const Array2D = main.utils.Array2D;
 const Cache = main.utils.Cache;
 const ZonElement = main.ZonElement;
@@ -9,7 +9,7 @@ const terrain = main.server.terrain;
 const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
 const Biome = terrain.biomes.Biome;
 const MapFragment = terrain.SurfaceMap.MapFragment;
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 pub const BiomeSample = struct {
 	biome: *const Biome,
@@ -52,12 +52,8 @@ pub const ClimateMapFragment = struct {
 
 	pub fn init(self: *ClimateMapFragment, wx: i32, wy: i32) void {
 		self.* = .{
-			.pos = .{.wx = wx, .wy = wy,},
+			.pos = .{.wx = wx, .wy = wy},
 		};
-	}
-
-	pub fn hashCodeSelf(self: *ClimateMapFragment) u32 {
-		return hashCode(self.wx, self.wy);
 	}
 
 	pub fn hashCode(wx: i32, wy: i32) u32 {
@@ -73,7 +69,7 @@ pub const ClimateMapFragment = struct {
 		const prevVal = self.refCount.fetchSub(1, .monotonic);
 		std.debug.assert(prevVal != 0);
 		if(prevVal == 1) {
-			main.globalAllocator.destroy(self);
+			memoryPool.destroy(self);
 		}
 	}
 };
@@ -87,7 +83,7 @@ pub const ClimateMapGenerator = struct {
 	var generatorRegistry: std.StringHashMapUnmanaged(ClimateMapGenerator) = .{};
 
 	pub fn registerGenerator(comptime Generator: type) void {
-		const self = ClimateMapGenerator {
+		const self = ClimateMapGenerator{
 			.init = &Generator.init,
 			.deinit = &Generator.deinit,
 			.generateMapFragment = &Generator.generateMapFragment,
@@ -103,12 +99,13 @@ pub const ClimateMapGenerator = struct {
 	}
 };
 
-
 const cacheSize = 1 << 5; // Must be a power of 2!
 const cacheMask = cacheSize - 1;
 const associativity = 8; // ~400 MiB
 var cache: Cache(ClimateMapFragment, cacheSize, associativity, ClimateMapFragment.decreaseRefCount) = .{};
 var profile: TerrainGenerationProfile = undefined;
+
+var memoryPool: main.heap.MemoryPool(ClimateMapFragment) = undefined;
 
 pub fn initGenerators() void {
 	const list = @import("climategen/_list.zig");
@@ -122,7 +119,7 @@ pub fn deinitGenerators() void {
 }
 
 fn cacheInit(pos: ClimateMapFragmentPosition) *ClimateMapFragment {
-	const mapFragment = main.globalAllocator.create(ClimateMapFragment);
+	const mapFragment = memoryPool.create();
 	mapFragment.init(pos.wx, pos.wy);
 	profile.climateGenerator.generateMapFragment(mapFragment, profile.seed);
 	_ = @atomicRmw(u16, &mapFragment.refCount.raw, .Add, 1, .monotonic);
@@ -131,10 +128,12 @@ fn cacheInit(pos: ClimateMapFragmentPosition) *ClimateMapFragment {
 
 pub fn init(_profile: TerrainGenerationProfile) void {
 	profile = _profile;
+	memoryPool = .init(main.globalAllocator);
 }
 
 pub fn deinit() void {
 	cache.clear();
+	memoryPool.deinit();
 }
 
 pub fn getOrGenerateFragmentAndIncreaseRefCount(wx: i32, wy: i32) *ClimateMapFragment {
@@ -147,8 +146,8 @@ pub fn getBiomeMap(allocator: NeverFailingAllocator, wx: i32, wy: i32, width: u3
 	const map = Array2D(BiomeSample).init(allocator, width >> MapFragment.biomeShift, height >> MapFragment.biomeShift);
 	const wxStart = wx & ~ClimateMapFragment.mapMask;
 	const wzStart = wy & ~ClimateMapFragment.mapMask;
-	const wxEnd = wx+%width & ~ClimateMapFragment.mapMask;
-	const wzEnd = wy+%height & ~ClimateMapFragment.mapMask;
+	const wxEnd = wx +% width & ~ClimateMapFragment.mapMask;
+	const wzEnd = wy +% height & ~ClimateMapFragment.mapMask;
 	var x = wxStart;
 	while(wxEnd -% x >= 0) : (x +%= ClimateMapFragment.mapSize) {
 		var y = wzStart;

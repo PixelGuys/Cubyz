@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const settings = main.settings;
 const Vec2f = main.vec.Vec2f;
 
@@ -13,7 +13,7 @@ const ContinuousSlider = @import("../components/ContinuousSlider.zig");
 const DiscreteSlider = @import("../components/DiscreteSlider.zig");
 const VerticalList = @import("../components/VerticalList.zig");
 
-pub var window = GuiWindow {
+pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 256},
 };
 
@@ -30,14 +30,14 @@ const leavesQualities = [_]u8{0, 1, 2, 3, 4};
 fn fpsCapRound(newValue: f32) ?u32 {
 	if(newValue < 144.0) {
 		return @as(u32, @intFromFloat(newValue/5.0))*5;
-	} else if (newValue < 149.0) {
+	} else if(newValue < 149.0) {
 		return 144;
 	} else {
 		return null;
 	}
 }
 
-fn fpsCapFormatter(allocator: main.utils.NeverFailingAllocator, value: f32) []const u8 {
+fn fpsCapFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
 	const cap = fpsCapRound(value);
 	if(cap == null)
 		return allocator.dupe(u8, "#ffffffFPS: Unlimited");
@@ -70,11 +70,11 @@ fn fovCallback(newValue: f32) void {
 	main.Window.GLFWCallbacks.framebufferSize(undefined, main.Window.width, main.Window.height);
 }
 
-fn fovFormatter(allocator: main.utils.NeverFailingAllocator, value: f32) []const u8 {
+fn fovFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
 	return std.fmt.allocPrint(allocator.allocator, "#ffffffField Of View: {d:.0}°", .{value}) catch unreachable;
 }
 
-fn lodDistanceFormatter(allocator: main.utils.NeverFailingAllocator, value: f32) []const u8 {
+fn lodDistanceFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
 	return std.fmt.allocPrint(allocator.allocator, "#ffffffOpaque leaves distance: {d:.0}", .{@round(value)}) catch unreachable;
 }
 
@@ -120,7 +120,14 @@ pub fn onOpen() void {
 	list.add(ContinuousSlider.init(.{0, 0}, 128, 40.0, 120.0, settings.fov, &fovCallback, &fovFormatter));
 	list.add(CheckBox.init(.{0, 0}, 128, "Bloom", settings.bloom, &bloomCallback));
 	list.add(CheckBox.init(.{0, 0}, 128, "Vertical Synchronization", settings.vsync, &vsyncCallback));
-	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffAnisotropic Filtering: ", "{}x", &anisotropy, switch(settings.anisotropicFiltering) {1 => 0, 2 => 1, 4 => 2, 8 => 3, 16 => 4, else => 2}, &anisotropicFilteringCallback));
+	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffAnisotropic Filtering: ", "{}x", &anisotropy, switch(settings.anisotropicFiltering) {
+		1 => 0,
+		2 => 1,
+		4 => 2,
+		8 => 3,
+		16 => 4,
+		else => 2,
+	}, &anisotropicFilteringCallback));
 	list.add(DiscreteSlider.init(.{0, 0}, 128, "#ffffffResolution Scale: ", "{}%", &resolutions, @as(u16, @intFromFloat(@log2(settings.resolutionScale) + 2.0)), &resolutionScaleCallback));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();

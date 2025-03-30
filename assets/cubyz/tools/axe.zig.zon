@@ -1,5 +1,5 @@
 .{
-	.blockClass = .wood,
+	.blockTags = .{.wood},
 	.slotTypes = .{
 		.{
 			.name = .handle,
@@ -37,12 +37,12 @@
 				},
 				.{
 					.source = .density,
-					.destination = .power,
+					.destination = .damage,
 					.factor = 0.2,
 				},
 				.{
 					.source = .hardness,
-					.destination = .power,
+					.destination = .damage,
 					.functionType = .squareRoot,
 					.factor = 0.1,
 				},
@@ -63,12 +63,12 @@
 				},
 				.{
 					.source = .density,
-					.destination = .power,
+					.destination = .damage,
 					.factor = 0.2,
 				},
 				.{
 					.source = .hardness,
-					.destination = .power,
+					.destination = .damage,
 					.factor = 0.7,
 				},
 			},

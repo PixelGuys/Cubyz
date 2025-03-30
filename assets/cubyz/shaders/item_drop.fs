@@ -16,7 +16,6 @@ layout(location = 0) out vec4 fragColor;
 uniform vec3 ambientLight;
 uniform mat4 projectionMatrix;
 uniform float sizeScale;
-uniform int time;
 
 uniform sampler2DArray texture_sampler;
 uniform sampler2DArray emissionSampler;
@@ -81,7 +80,7 @@ void mainBlockDrop() {
 	reflectivity = reflectivity*fixedCubeMapLookup(reflect(direction, faceNormal)).x;
 	reflectivity = reflectivity*(1 - fresnelReflection) + fresnelReflection;
 
-	vec3 pixelLight = max(vec3(normalVariation), texture(emissionSampler, textureCoords).r*4); // TODO: light*normalVariation
+	vec3 pixelLight = ambientLight*max(vec3(normalVariation), texture(emissionSampler, textureCoords).r*4);
 	fragColor = texture(texture_sampler, textureCoords)*vec4(pixelLight, 1);
 	fragColor.rgb += reflectivity*pixelLight;
 

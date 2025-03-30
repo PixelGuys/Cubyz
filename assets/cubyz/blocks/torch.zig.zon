@@ -1,5 +1,5 @@
 .{
-	.class = .wood,
+	.tags = .{.wood},
 	.blockHealth = 0.5,
 	.drops = .{
 		.{.items = .{.auto}},
@@ -8,11 +8,14 @@
 	.emittedLight = 0xa58d73,
 	.viewThrough = true,
 	.absorbedLight = 0x010101,
-	.collide= false,
+	.collide = false,
 	.rotation = .torch,
-	.model = "cubyz:torch",
+	.model = .{
+		.base = "cubyz:torch",
+		.side = "cubyz:torch_side",
+	},
 	.texture = "cubyz:torch",
-	.item= .{
+	.item = .{
 		.texture = "torch.png",
 	},
 	.lodReplacement = "cubyz:air",

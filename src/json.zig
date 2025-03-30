@@ -1,7 +1,7 @@
 const std = @import("std");
 
-const main = @import("main.zig");
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const main = @import("main");
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const List = main.List;
 
 const JsonType = enum(u8) {
@@ -12,8 +12,9 @@ const JsonType = enum(u8) {
 	JsonBool,
 	JsonNull,
 	JsonArray,
-	JsonObject
+	JsonObject,
 };
+
 pub const JsonElement = union(JsonType) { // MARK: JsonElement
 	JsonInt: i64,
 	JsonFloat: f64,
@@ -27,13 +28,13 @@ pub const JsonElement = union(JsonType) { // MARK: JsonElement
 	pub fn initObject(allocator: NeverFailingAllocator) JsonElement {
 		const map = allocator.create(std.StringHashMap(JsonElement));
 		map.* = .init(allocator.allocator);
-		return JsonElement{.JsonObject=map};
+		return JsonElement{.JsonObject = map};
 	}
 
 	pub fn initArray(allocator: NeverFailingAllocator) JsonElement {
 		const list = allocator.create(List(JsonElement));
 		list.* = .init(allocator);
-		return JsonElement{.JsonArray=list};
+		return JsonElement{.JsonArray = list};
 	}
 
 	pub fn getAtIndex(self: *const JsonElement, comptime _type: type, index: usize, replacement: _type) _type {
@@ -50,12 +51,12 @@ pub const JsonElement = union(JsonType) { // MARK: JsonElement
 
 	pub fn getChildAtIndex(self: *const JsonElement, index: usize) JsonElement {
 		if(self.* != .JsonArray) {
-			return JsonElement{.JsonNull={}};
+			return JsonElement{.JsonNull = {}};
 		} else {
 			if(index < self.JsonArray.items.len) {
 				return self.JsonArray.items[index];
 			} else {
-				return JsonElement{.JsonNull={}};
+				return JsonElement{.JsonNull = {}};
 			}
 		}
 	}
@@ -74,18 +75,18 @@ pub const JsonElement = union(JsonType) { // MARK: JsonElement
 
 	pub fn getChild(self: *const JsonElement, key: []const u8) JsonElement {
 		if(self.* != .JsonObject) {
-			return JsonElement{.JsonNull={}};
+			return JsonElement{.JsonNull = {}};
 		} else {
 			if(self.JsonObject.get(key)) |elem| {
 				return elem;
 			} else {
-				return JsonElement{.JsonNull={}};
+				return JsonElement{.JsonNull = {}};
 			}
 		}
 	}
 
 	pub fn as(self: *const JsonElement, comptime T: type, replacement: T) T {
-		comptime var typeInfo : std.builtin.Type = @typeInfo(T);
+		comptime var typeInfo: std.builtin.Type = @typeInfo(T);
 		comptime var innerType = T;
 		inline while(typeInfo == .optional) {
 			innerType = typeInfo.optional.child;
@@ -138,7 +139,7 @@ pub const JsonElement = union(JsonType) { // MARK: JsonElement
 					},
 					else => {
 						@compileError("Unsupported type '" ++ @typeName(T) ++ "'.");
-					}
+					},
 				}
 			},
 		}
@@ -146,11 +147,11 @@ pub const JsonElement = union(JsonType) { // MARK: JsonElement
 
 	fn createElementFromRandomType(value: anytype, allocator: std.mem.Allocator) JsonElement {
 		switch(@typeInfo(@TypeOf(value))) {
-			.void => return JsonElement{.JsonNull={}},
-			.null => return JsonElement{.JsonNull={}},
-			.bool => return JsonElement{.JsonBool=value},
-			.int, .comptime_int => return JsonElement{.JsonInt=@intCast(value)},
-			.float, .comptime_float => return JsonElement{.JsonFloat=@floatCast(value)},
+			.void => return JsonElement{.JsonNull = {}},
+			.null => return JsonElement{.JsonNull = {}},
+			.bool => return JsonElement{.JsonBool = value},
+			.int, .comptime_int => return JsonElement{.JsonInt = @intCast(value)},
+			.float, .comptime_float => return JsonElement{.JsonFloat = @floatCast(value)},
 			.@"union" => {
 				if(@TypeOf(value) == JsonElement) {
 					return value;
@@ -160,11 +161,11 @@ pub const JsonElement = union(JsonType) { // MARK: JsonElement
 			},
 			.pointer => |ptr| {
 				if(ptr.child == u8 and ptr.size == .Slice) {
-					return JsonElement{.JsonString=value};
+					return JsonElement{.JsonString = value};
 				} else {
 					const childInfo = @typeInfo(ptr.child);
 					if(ptr.size == .One and childInfo == .array and childInfo.array.child == u8) {
-						return JsonElement{.JsonString=value};
+						return JsonElement{.JsonString = value};
 					} else {
 						@compileError("Unknown value type.");
 					}
@@ -174,12 +175,12 @@ pub const JsonElement = union(JsonType) { // MARK: JsonElement
 				if(value) |val| {
 					return createElementFromRandomType(val, allocator);
 				} else {
-					return JsonElement{.JsonNull={}};
+					return JsonElement{.JsonNull = {}};
 				}
 			},
 			.vector => {
 				const len = @typeInfo(@TypeOf(value)).vector.len;
-				const result = initArray(main.utils.NeverFailingAllocator{.allocator = allocator, .IAssertThatTheProvidedAllocatorCantFail = {}});
+				const result = initArray(main.heap.NeverFailingAllocator{.allocator = allocator, .IAssertThatTheProvidedAllocatorCantFail = {}});
 				result.JsonArray.ensureCapacity(len);
 				inline for(0..len) |i| {
 					result.JsonArray.appendAssumeCapacity(createElementFromRandomType(value[i], allocator));
@@ -349,13 +350,11 @@ pub const JsonElement = union(JsonType) { // MARK: JsonElement
 
 const Parser = struct { // MARK: Parser
 	/// All whitespaces from unicode 14.
-	const whitespaces = [_][]const u8 {"\u{0009}", "\u{000A}", "\u{000B}", "\u{000C}", "\u{000D}", "\u{0020}", "\u{0085}", "\u{00A0}", "\u{1680}", "\u{2000}", "\u{2001}", "\u{2002}", "\u{2003}", "\u{2004}", "\u{2005}", "\u{2006}", "\u{2007}", "\u{2008}", "\u{2009}", "\u{200A}", "\u{2028}", "\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}"};
+	const whitespaces = [_][]const u8{"\u{0009}", "\u{000A}", "\u{000B}", "\u{000C}", "\u{000D}", "\u{0020}", "\u{0085}", "\u{00A0}", "\u{1680}", "\u{2000}", "\u{2001}", "\u{2002}", "\u{2003}", "\u{2004}", "\u{2005}", "\u{2006}", "\u{2007}", "\u{2008}", "\u{2009}", "\u{200A}", "\u{2028}", "\u{2029}", "\u{202F}", "\u{205F}", "\u{3000}"};
 
 	fn skipWhitespaces(chars: []const u8, index: *u32) void {
-		outerLoop:
-		while(index.* < chars.len) {
-			whitespaceLoop:
-			for(whitespaces) |whitespace| {
+		outerLoop: while(index.* < chars.len) {
+			whitespaceLoop: for(whitespaces) |whitespace| {
 				for(whitespace, 0..) |char, i| {
 					if(char != chars[index.* + i]) {
 						continue :whitespaceLoop;
@@ -379,10 +378,10 @@ const Parser = struct { // MARK: Parser
 			index.* += 1;
 		}
 		var intPart: i64 = 0;
-		if(index.*+1 < chars.len and chars[index.*] == '0' and chars[index.*+1] == 'x') {
+		if(index.* + 1 < chars.len and chars[index.*] == '0' and chars[index.* + 1] == 'x') {
 			// Parse hex int
 			index.* += 2;
-			while(index.* < chars.len): (index.* += 1) {
+			while(index.* < chars.len) : (index.* += 1) {
 				switch(chars[index.*]) {
 					'0', '1', '2', '3', '4', '5', '6', '7', '8', '9' => {
 						intPart = (chars[index.*] - '0') +% intPart*%16;
@@ -395,19 +394,19 @@ const Parser = struct { // MARK: Parser
 					},
 					else => {
 						break;
-					}
+					},
 				}
 			}
 			return JsonElement{.JsonInt = sign*intPart};
 		}
-		while(index.* < chars.len): (index.* += 1) {
+		while(index.* < chars.len) : (index.* += 1) {
 			switch(chars[index.*]) {
 				'0', '1', '2', '3', '4', '5', '6', '7', '8', '9' => {
 					intPart = (chars[index.*] - '0') +% intPart*%10;
 				},
 				else => {
 					break;
-				}
+				},
 			}
 		}
 		if(index.* >= chars.len or (chars[index.*] != '.' and chars[index.*] != 'e' and chars[index.*] != 'E')) { // This is an int
@@ -419,7 +418,7 @@ const Parser = struct { // MARK: Parser
 		var currentFactor: f64 = 0.1;
 		if(chars[index.*] == '.') {
 			index.* += 1;
-			while(index.* < chars.len): (index.* += 1) {
+			while(index.* < chars.len) : (index.* += 1) {
 				switch(chars[index.*]) {
 					'0', '1', '2', '3', '4', '5', '6', '7', '8', '9' => {
 						floatPart += @as(f64, @floatFromInt(chars[index.*] - '0'))*currentFactor;
@@ -427,7 +426,7 @@ const Parser = struct { // MARK: Parser
 					},
 					else => {
 						break;
-					}
+					},
 				}
 			}
 		}
@@ -441,14 +440,14 @@ const Parser = struct { // MARK: Parser
 			} else if(index.* < chars.len and chars[index.*] == '+') {
 				index.* += 1;
 			}
-			while(index.* < chars.len): (index.* += 1) {
+			while(index.* < chars.len) : (index.* += 1) {
 				switch(chars[index.*]) {
 					'0', '1', '2', '3', '4', '5', '6', '7', '8', '9' => {
 						exponent = (chars[index.*] - '0') +% exponent*%10;
 					},
 					else => {
 						break;
-					}
+					},
 				}
 			}
 		}
@@ -457,7 +456,7 @@ const Parser = struct { // MARK: Parser
 
 	fn parseString(allocator: NeverFailingAllocator, chars: []const u8, index: *u32) []const u8 {
 		var builder = List(u8).init(allocator);
-		while(index.* < chars.len): (index.* += 1) {
+		while(index.* < chars.len) : (index.* += 1) {
 			if(chars[index.*] == '\"') {
 				index.* += 1;
 				break;
@@ -477,7 +476,7 @@ const Parser = struct { // MARK: Parser
 					},
 					else => {
 						builder.append(chars[index.*]);
-					}
+					},
 				}
 			} else {
 				builder.append(chars[index.*]);
@@ -494,7 +493,7 @@ const Parser = struct { // MARK: Parser
 			if(index.* >= chars.len) break;
 			if(chars[index.*] == ']') {
 				index.* += 1;
-				return JsonElement{.JsonArray=list};
+				return JsonElement{.JsonArray = list};
 			}
 			list.append(parseElement(allocator, chars, index));
 			skipWhitespaces(chars, index);
@@ -503,7 +502,7 @@ const Parser = struct { // MARK: Parser
 			}
 		}
 		printError(chars, index.*, "Unexpected end of file in array parsing.");
-		return JsonElement{.JsonArray=list};
+		return JsonElement{.JsonArray = list};
 	}
 
 	fn parseObject(allocator: NeverFailingAllocator, chars: []const u8, index: *u32) JsonElement {
@@ -514,7 +513,7 @@ const Parser = struct { // MARK: Parser
 			if(index.* >= chars.len) break;
 			if(chars[index.*] == '}') {
 				index.* += 1;
-				return JsonElement{.JsonObject=map};
+				return JsonElement{.JsonObject = map};
 			} else if(chars[index.*] != '\"') {
 				printError(chars, index.*, "Unexpected character in object parsing.");
 				index.* += 1;
@@ -541,20 +540,20 @@ const Parser = struct { // MARK: Parser
 			}
 		}
 		printError(chars, index.*, "Unexpected end of file in object parsing.");
-		return JsonElement{.JsonObject=map};
+		return JsonElement{.JsonObject = map};
 	}
 
 	fn printError(chars: []const u8, index: u32, msg: []const u8) void {
 		var lineNumber: u32 = 1;
 		var lineStart: u32 = 0;
 		var i: u32 = 0;
-		while(i < index and i < chars.len): (i += 1) {
+		while(i < index and i < chars.len) : (i += 1) {
 			if(chars[i] == '\n') {
 				lineNumber += 1;
 				lineStart = i;
 			}
 		}
-		while(i < chars.len): (i += 1) {
+		while(i < chars.len) : (i += 1) {
 			if(chars[i] == '\n') {
 				break;
 			}
@@ -566,7 +565,7 @@ const Parser = struct { // MARK: Parser
 		var message: [512]u8 = undefined;
 		i = lineStart;
 		var outputI: u32 = 0;
-		while(i < index and i < chars.len): (i += 1) {
+		while(i < index and i < chars.len) : (i += 1) {
 			if((chars[i] & 128) != 0 and (chars[i] & 64) == 0) {
 				// Not the start of a utf8 character
 				continue;
@@ -590,7 +589,7 @@ const Parser = struct { // MARK: Parser
 	fn parseElement(allocator: NeverFailingAllocator, chars: []const u8, index: *u32) JsonElement {
 		if(index.* >= chars.len) {
 			printError(chars, index.*, "Unexpected end of file.");
-			return JsonElement{.JsonNull={}};
+			return JsonElement{.JsonNull = {}};
 		}
 		switch(chars[index.*]) {
 			'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '-', '.' => {
@@ -599,29 +598,29 @@ const Parser = struct { // MARK: Parser
 			't' => { // Value can only be true.
 				if(index.* + 3 >= chars.len) {
 					printError(chars, index.*, "Unexpected end of file.");
-				} else if(chars[index.*+1] != 'r' or chars[index.*+2] != 'u' or chars[index.*+3] != 'e') {
+				} else if(chars[index.* + 1] != 'r' or chars[index.* + 2] != 'u' or chars[index.* + 3] != 'e') {
 					printError(chars, index.*, "Unknown expression, interpreting as true.");
 				}
 				index.* += 4;
-				return JsonElement{.JsonBool=true};
+				return JsonElement{.JsonBool = true};
 			},
 			'f' => { // Value can only be false.
 				if(index.* + 4 >= chars.len) {
 					printError(chars, index.*, "Unexpected end of file.");
-				} else if(chars[index.*+1] != 'a' or chars[index.*+2] != 'l' or chars[index.*+3] != 's' or chars[index.*+4] != 'e') {
+				} else if(chars[index.* + 1] != 'a' or chars[index.* + 2] != 'l' or chars[index.* + 3] != 's' or chars[index.* + 4] != 'e') {
 					printError(chars, index.*, "Unknown expression, interpreting as false.");
 				}
 				index.* += 5;
-				return JsonElement{.JsonBool=false};
+				return JsonElement{.JsonBool = false};
 			},
 			'n' => { // Value can only be null.
 				if(index.* + 3 >= chars.len) {
 					printError(chars, index.*, "Unexpected end of file.");
-				} else if(chars[index.*+1] != 'u' or chars[index.*+2] != 'l' or chars[index.*+3] != 'l') {
+				} else if(chars[index.* + 1] != 'u' or chars[index.* + 2] != 'l' or chars[index.* + 3] != 'l') {
 					printError(chars, index.*, "Unknown expression, interpreting as null.");
 				}
 				index.* += 4;
-				return JsonElement{.JsonNull={}};
+				return JsonElement{.JsonNull = {}};
 			},
 			'\"' => {
 				index.* += 1;
@@ -637,13 +636,11 @@ const Parser = struct { // MARK: Parser
 			},
 			else => {
 				printError(chars, index.*, "Unexpected character.");
-				return JsonElement{.JsonNull={}};
-			}
+				return JsonElement{.JsonNull = {}};
+			},
 		}
 	}
 };
-
-
 
 // ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––
 // MARK: Testing
@@ -706,7 +703,7 @@ test "number parsing" {
 }
 
 test "element parsing" {
-	var wrap = main.utils.ErrorHandlingAllocator.init(std.testing.allocator);
+	var wrap = main.heap.ErrorHandlingAllocator.init(std.testing.allocator);
 	const allocator = wrap.allocator();
 	// Integers:
 	var index: u32 = 0;
@@ -722,13 +719,13 @@ test "element parsing" {
 	try std.testing.expectApproxEqAbs((Parser.parseElement(allocator, "_____0.0000000000675849301354e10abcdfe", &index)).JsonFloat, 0.675849301354, 1e-10);
 	// Null:
 	index = 0;
-	try std.testing.expectEqual(Parser.parseElement(allocator, "null", &index), JsonElement{.JsonNull={}});
+	try std.testing.expectEqual(Parser.parseElement(allocator, "null", &index), JsonElement{.JsonNull = {}});
 	// true:
 	index = 0;
-	try std.testing.expectEqual(Parser.parseElement(allocator, "true", &index), JsonElement{.JsonBool=true});
+	try std.testing.expectEqual(Parser.parseElement(allocator, "true", &index), JsonElement{.JsonBool = true});
 	// false:
 	index = 0;
-	try std.testing.expectEqual(Parser.parseElement(allocator, "false", &index), JsonElement{.JsonBool=false});
+	try std.testing.expectEqual(Parser.parseElement(allocator, "false", &index), JsonElement{.JsonBool = false});
 
 	// String:
 	index = 0;
@@ -765,13 +762,13 @@ test "element parsing" {
 	result = Parser.parseElement(allocator, "[\"name\",1]", &index);
 	try std.testing.expectEqual(JsonType.JsonArray, std.meta.activeTag(result));
 	try std.testing.expectEqual(JsonType.JsonStringOwned, std.meta.activeTag(result.JsonArray.items[0]));
-	try std.testing.expectEqual(JsonElement{.JsonInt=1}, result.JsonArray.items[1]);
+	try std.testing.expectEqual(JsonElement{.JsonInt = 1}, result.JsonArray.items[1]);
 	result.free(allocator);
 	index = 0;
 	result = Parser.parseElement(allocator, "[   \"name\"\t1\n,    17.1]", &index);
 	try std.testing.expectEqual(JsonType.JsonArray, std.meta.activeTag(result));
 	try std.testing.expectEqual(JsonType.JsonStringOwned, std.meta.activeTag(result.JsonArray.items[0]));
-	try std.testing.expectEqual(JsonElement{.JsonInt=1}, result.JsonArray.items[1]);
-	try std.testing.expectEqual(JsonElement{.JsonFloat=17.1}, result.JsonArray.items[2]);
+	try std.testing.expectEqual(JsonElement{.JsonInt = 1}, result.JsonArray.items[1]);
+	try std.testing.expectEqual(JsonElement{.JsonFloat = 17.1}, result.JsonArray.items[2]);
 	result.free(allocator);
 }

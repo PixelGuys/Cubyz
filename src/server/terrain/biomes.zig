@@ -1,26 +1,27 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const blocks = main.blocks;
 const ServerChunk = main.chunk.ServerChunk;
 const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const vec = @import("main.vec");
 const Vec3f = main.vec.Vec3f;
 const Vec3d = main.vec.Vec3d;
 
 pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
-	const GenerationMode = enum {
+	pub const GenerationMode = enum {
 		floor,
 		ceiling,
 		floor_and_ceiling,
 		air,
 		underground,
+		water_surface,
 	};
 	const VTable = struct {
 		loadModel: *const fn(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) *anyopaque,
-		generate: *const fn(self: *anyopaque, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64, isCeiling: bool) void,
+		generate: *const fn(self: *anyopaque, generationMode: GenerationMode, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView, seed: *u64, isCeiling: bool) void,
 		hashFunction: *const fn(self: *anyopaque) u64,
 		generationMode: GenerationMode,
 	};
@@ -37,7 +38,7 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 			std.log.err("Couldn't find structure model with id {s}", .{id});
 			return null;
 		};
-		return SimpleStructureModel {
+		return SimpleStructureModel{
 			.vtable = vtable,
 			.data = vtable.loadModel(arena.allocator(), parameters),
 			.chance = parameters.get(f32, "chance", 0.1),
@@ -46,13 +47,12 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 		};
 	}
 
-	pub fn generate(self: SimpleStructureModel, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64, isCeiling: bool) void {
-		self.vtable.generate(self.data, x, y, z, chunk, caveMap, seed, isCeiling);
+	pub fn generate(self: SimpleStructureModel, x: i32, y: i32, z: i32, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView, seed: *u64, isCeiling: bool) void {
+		self.vtable.generate(self.data, self.generationMode, x, y, z, chunk, caveMap, biomeMap, seed, isCeiling);
 	}
 
-
 	var modelRegistry: std.StringHashMapUnmanaged(VTable) = .{};
-	var arena: main.utils.NeverFailingArenaAllocator = .init(main.globalAllocator);
+	var arena: main.heap.NeverFailingArenaAllocator = .init(main.globalAllocator);
 
 	pub fn reset() void {
 		std.debug.assert(arena.reset(.free_all));
@@ -60,9 +60,9 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 
 	pub fn registerGenerator(comptime Generator: type) void {
 		var self: VTable = undefined;
-		self.loadModel = @ptrCast(&Generator.loadModel);
-		self.generate = @ptrCast(&Generator.generate);
-		self.hashFunction = @ptrCast(&struct {
+		self.loadModel = main.utils.castFunctionReturnToAnyopaque(Generator.loadModel);
+		self.generate = main.utils.castFunctionSelfToAnyopaque(Generator.generate);
+		self.hashFunction = main.utils.castFunctionSelfToAnyopaque(struct {
 			fn hash(ptr: *Generator) u64 {
 				return hashGeneric(ptr.*);
 			}
@@ -96,7 +96,7 @@ const Stripe = struct { // MARK: Stripe
 
 		var minDistance: f64 = 0;
 		var maxDistance: f64 = 0;
-		if (parameters.object.get("distance")) |dist| {
+		if(parameters.object.get("distance")) |dist| {
 			minDistance = dist.as(f64, 0);
 			maxDistance = dist.as(f64, 0);
 		} else {
@@ -106,7 +106,7 @@ const Stripe = struct { // MARK: Stripe
 
 		var minOffset: f64 = 0;
 		var maxOffset: f64 = 0;
-		if (parameters.object.get("offset")) |off| {
+		if(parameters.object.get("offset")) |off| {
 			minOffset = off.as(f64, 0);
 			maxOffset = off.as(f64, 0);
 		} else {
@@ -116,7 +116,7 @@ const Stripe = struct { // MARK: Stripe
 
 		var minWidth: f64 = 0;
 		var maxWidth: f64 = 0;
-		if (parameters.object.get("width")) |width| {
+		if(parameters.object.get("width")) |width| {
 			minWidth = width.as(f64, 0);
 			maxWidth = width.as(f64, 0);
 		} else {
@@ -124,7 +124,7 @@ const Stripe = struct { // MARK: Stripe
 			maxWidth = parameters.get(f64, "maxWidth", 0);
 		}
 
-		return Stripe {
+		return Stripe{
 			.direction = dir,
 			.block = block,
 
@@ -143,52 +143,75 @@ const Stripe = struct { // MARK: Stripe
 fn hashGeneric(input: anytype) u64 {
 	const T = @TypeOf(input);
 	return switch(@typeInfo(T)) {
-		.bool => @intFromBool(input),
-		.@"enum" => @intFromEnum(input),
-		.int, .float => @as(std.meta.Int(.unsigned, @bitSizeOf(T)), @bitCast(input)),
+		.bool => hashCombine(hashInt(@intFromBool(input)), 0xbf58476d1ce4e5b9),
+		.@"enum" => hashCombine(hashInt(@as(u64, @intFromEnum(input))), 0x94d049bb133111eb),
+		.int, .float => blk: {
+			const value = @as(std.meta.Int(.unsigned, @bitSizeOf(T)), @bitCast(input));
+			break :blk hashInt(@as(u64, value));
+		},
 		.@"struct" => blk: {
 			if(@hasDecl(T, "getHash")) {
 				break :blk input.getHash();
 			}
-			var result: u64 = 0;
+			var result: u64 = hashGeneric(@typeName(T));
 			inline for(@typeInfo(T).@"struct".fields) |field| {
-				result ^= hashGeneric(@field(input, field.name))*%hashGeneric(@as([]const u8, field.name));
+				const keyHash = hashGeneric(@as([]const u8, field.name));
+				const valueHash = hashGeneric(@field(input, field.name));
+				const keyValueHash = hashCombine(keyHash, valueHash);
+				result = hashCombine(result, keyValueHash);
 			}
 			break :blk result;
 		},
 		.optional => if(input) |_input| hashGeneric(_input) else 0,
 		.pointer => switch(@typeInfo(T).pointer.size) {
-			.One => blk: {
+			.one => blk: {
 				if(@typeInfo(@typeInfo(T).pointer.child) == .@"fn") break :blk 0;
 				if(@typeInfo(T).pointer.child == Biome) return hashGeneric(input.id);
 				if(@typeInfo(T).pointer.child == anyopaque) break :blk 0;
 				break :blk hashGeneric(input.*);
 			},
-			.Slice => blk: {
-				var result: u64 = 0;
+			.slice => blk: {
+				var result: u64 = hashInt(input.len);
 				for(input) |val| {
-					result = result*%33 +% hashGeneric(val);
+					const valueHash = hashGeneric(val);
+					result = hashCombine(result, valueHash);
 				}
 				break :blk result;
 			},
 			else => @compileError("Unsupported type " ++ @typeName(T)),
 		},
 		.array => blk: {
-			var result: u64 = 0;
+			var result: u64 = 0xbf58476d1ce4e5b9;
 			for(input) |val| {
-				result = result*%33 +% hashGeneric(val);
+				const valueHash = hashGeneric(val);
+				result = hashCombine(result, valueHash);
 			}
 			break :blk result;
 		},
 		.vector => blk: {
-			var result: u64 = 0;
+			var result: u64 = 0x94d049bb133111eb;
 			inline for(0..@typeInfo(T).vector.len) |i| {
-				result = result*%33 +% hashGeneric(input[i]);
+				const valueHash = hashGeneric(input[i]);
+				result = hashCombine(result, valueHash);
 			}
 			break :blk result;
 		},
 		else => @compileError("Unsupported type " ++ @typeName(T)),
 	};
+}
+
+// https://stackoverflow.com/questions/5889238/why-is-xor-the-default-way-to-combine-hashes
+fn hashCombine(left: u64, right: u64) u64 {
+	return left ^ (right +% 0x517cc1b727220a95 +% (left << 6) +% (left >> 2));
+}
+
+// https://stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key
+fn hashInt(input: u64) u64 {
+	var x = input;
+	x = (x ^ (x >> 30))*%0xbf58476d1ce4e5b9;
+	x = (x ^ (x >> 27))*%0x94d049bb133111eb;
+	x = x ^ (x >> 31);
+	return x;
 }
 
 pub const Interpolation = enum(u8) {
@@ -198,11 +221,11 @@ pub const Interpolation = enum(u8) {
 };
 
 fn u32ToVec3(color: u32) Vec3f {
-	const r = @as(f32, @floatFromInt((color >> 16) & 0xFF)) / 255.0;
-	const g = @as(f32, @floatFromInt((color >> 8) & 0xFF)) / 255.0;
-	const b = @as(f32, @floatFromInt(color & 0xFF)) / 255.0;
+	const r = @as(f32, @floatFromInt((color >> 16) & 0xFF))/255.0;
+	const g = @as(f32, @floatFromInt((color >> 8) & 0xFF))/255.0;
+	const b = @as(f32, @floatFromInt(color & 0xFF))/255.0;
 
-	return .{ r, g, b };
+	return .{r, g, b};
 }
 
 /// A climate region with special ground, plants and structures.
@@ -262,6 +285,7 @@ pub const Biome = struct { // MARK: Biome
 	roughness: f32,
 	hills: f32,
 	mountains: f32,
+	keepOriginalTerrain: f32,
 	caves: f32,
 	caveRadiusFactor: f32,
 	crystals: u32,
@@ -289,7 +313,7 @@ pub const Biome = struct { // MARK: Biome
 	pub fn init(self: *Biome, id: []const u8, paletteId: u32, zon: ZonElement) void {
 		const minRadius = zon.get(f32, "radius", zon.get(f32, "minRadius", 256));
 		const maxRadius = zon.get(f32, "maxRadius", minRadius);
-		self.* = Biome {
+		self.* = Biome{
 			.id = main.globalAllocator.dupe(u8, id),
 			.paletteId = paletteId,
 			.properties = GenerationProperties.fromZon(zon.getChild("properties"), true),
@@ -304,6 +328,7 @@ pub const Biome = struct { // MARK: Biome
 			.roughness = zon.get(f32, "roughness", 0),
 			.hills = zon.get(f32, "hills", 0),
 			.mountains = zon.get(f32, "mountains", 0),
+			.keepOriginalTerrain = zon.get(f32, "keepOriginalTerrain", 0),
 			.interpolation = std.meta.stringToEnum(Interpolation, zon.get([]const u8, "interpolation", "square")) orelse .square,
 			.interpolationWeight = @max(zon.get(f32, "interpolationWeight", 1), std.math.floatMin(f32)),
 			.caves = zon.get(f32, "caves", -0.375),
@@ -335,7 +360,6 @@ pub const Biome = struct { // MARK: Biome
 					.chance = src.get(f32, "chance", 1),
 					.propertyMask = GenerationProperties.fromZon(src.getChild("properties"), false),
 					.width = src.get(u8, "width", 2),
-					.keepOriginalTerrain = src.get(f32, "keepOriginalTerrain", 0),
 				};
 				// Fill all unspecified property groups:
 				var properties: u15 = @bitCast(dst.propertyMask);
@@ -367,7 +391,7 @@ pub const Biome = struct { // MARK: Biome
 
 		const stripes = zon.getChild("stripes");
 		self.stripes = main.globalAllocator.alloc(Stripe, stripes.toSlice().len);
-		for (stripes.toSlice(), 0..) |elem, i| {
+		for(stripes.toSlice(), 0..) |elem, i| {
 			self.stripes[i] = Stripe.init(elem);
 		}
 	}
@@ -422,7 +446,7 @@ pub const BlockStructure = struct { // MARK: BlockStructure
 
 	pub fn init(allocator: NeverFailingAllocator, zonArray: ZonElement) BlockStructure {
 		const blockStackDescriptions = zonArray.toSlice();
-		const self = BlockStructure {
+		const self = BlockStructure{
 			.structure = allocator.alloc(BlockStack, blockStackDescriptions.len),
 		};
 		for(blockStackDescriptions, self.structure) |zonString, *blockStack| {
@@ -496,13 +520,11 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 		chanceMiddle /= totalChance;
 		chanceUpper /= totalChance;
 
-		self.* = .{
-			.branch = .{
-				.lowerBorder = terrain.noise.ValueNoise.percentile(chanceLower),
-				.upperBorder = terrain.noise.ValueNoise.percentile(chanceLower + chanceMiddle),
-				.children = undefined,
-			}
-		};
+		self.* = .{.branch = .{
+			.lowerBorder = terrain.noise.ValueNoise.percentile(chanceLower),
+			.upperBorder = terrain.noise.ValueNoise.percentile(chanceLower + chanceMiddle),
+			.children = undefined,
+		}};
 
 		// Partition the slice:
 		var lowerIndex: usize = undefined;
@@ -529,9 +551,9 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 			@memcpy(currentSlice[upperIndex..], lists[2].items);
 		}
 
-		self.branch.children[0] = TreeNode.init(allocator, currentSlice[0..lowerIndex], parameterShift+3);
-		self.branch.children[1] = TreeNode.init(allocator, currentSlice[lowerIndex..upperIndex], parameterShift+3);
-		self.branch.children[2] = TreeNode.init(allocator, currentSlice[upperIndex..], parameterShift+3);
+		self.branch.children[0] = TreeNode.init(allocator, currentSlice[0..lowerIndex], parameterShift + 3);
+		self.branch.children[1] = TreeNode.init(allocator, currentSlice[lowerIndex..upperIndex], parameterShift + 3);
+		self.branch.children[2] = TreeNode.init(allocator, currentSlice[upperIndex..], parameterShift + 3);
 
 		return self;
 	}
@@ -545,7 +567,7 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 				for(branch.children) |child| {
 					child.deinit(allocator);
 				}
-			}
+			},
 		}
 		allocator.destroy(self);
 	}
@@ -569,7 +591,7 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 					}
 				}
 				return branch.children[index].getBiome(seed, x, y, depth + 1);
-			}
+			},
 		}
 	}
 };
@@ -595,14 +617,12 @@ const UnfinishedTransitionBiomeData = struct {
 	chance: f32,
 	propertyMask: Biome.GenerationProperties,
 	width: u8,
-	keepOriginalTerrain: f32,
 };
 const TransitionBiome = struct {
 	biome: *const Biome,
 	chance: f32,
 	propertyMask: Biome.GenerationProperties,
 	width: u8,
-	keepOriginalTerrain: f32,
 };
 var unfinishedTransitionBiomes: std.StringHashMapUnmanaged([]UnfinishedTransitionBiomeData) = .{};
 
@@ -705,14 +725,12 @@ pub fn finishLoading() void {
 						.chance = 0,
 						.propertyMask = .{},
 						.width = 0,
-						.keepOriginalTerrain = 0,
 					};
 					continue;
 				},
 				.chance = src.chance,
 				.propertyMask = src.propertyMask,
 				.width = src.width,
-				.keepOriginalTerrain = src.keepOriginalTerrain,
 			};
 		}
 		main.globalAllocator.free(transitionBiomes);

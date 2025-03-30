@@ -10,7 +10,7 @@ const Shader = graphics.Shader;
 const game = @import("game.zig");
 const World = game.World;
 const itemdrop = @import("itemdrop.zig");
-const main = @import("main.zig");
+const main = @import("main");
 const Window = main.Window;
 const models = @import("models.zig");
 const network = @import("network.zig");
@@ -114,8 +114,8 @@ fn initReflectionCubeMap() void {
 
 var worldFrameBuffer: graphics.FrameBuffer = undefined;
 
-var lastWidth: u31 = 0;
-var lastHeight: u31 = 0;
+pub var lastWidth: u31 = 0;
+pub var lastHeight: u31 = 0;
 var lastFov: f32 = 0;
 pub fn updateViewport(width: u31, height: u31, fov: f32) void {
 	lastWidth = @intFromFloat(@as(f32, @floatFromInt(width))*main.settings.resolutionScale);
@@ -126,7 +126,7 @@ pub fn updateViewport(width: u31, height: u31, fov: f32) void {
 	worldFrameBuffer.unbind();
 }
 
-pub fn render(playerPosition: Vec3d) void {
+pub fn render(playerPosition: Vec3d, deltaTime: f64) void {
 	// TODO: player bobbing
 	if(game.world) |world| {
 		// TODO: Handle colors and sun position in the world.
@@ -137,6 +137,7 @@ pub fn render(playerPosition: Vec3d) void {
 		const skyColor = vec.xyz(world.clearColor);
 		game.fog.skyColor = skyColor;
 
+		itemdrop.ItemDisplayManager.update(deltaTime);
 		renderWorld(world, ambient, skyColor, playerPosition);
 		const startTime = std.time.milliTimestamp();
 		mesh_storage.updateMeshes(startTime + maximumMeshTime);
@@ -160,10 +161,10 @@ pub fn crosshairDirection(rotationMatrix: Mat4f, fovY: f32, width: u31, height: 
 	const halfHSide = halfVSide*screenSize[0]/screenSize[1];
 	const sides = Vec2f{halfHSide, halfVSide};
 
-	const scale = (Vec2f{-1, 1} + Vec2f{2, -2} * screenCoord / screenSize) * sides;
+	const scale = (Vec2f{-1, 1} + Vec2f{2, -2}*screenCoord/screenSize)*sides;
 	const forwards = cameraDir;
-	const horizontal = cameraRight * @as(Vec3f, @splat(scale[0]));
-	const vertical = cameraUp * @as(Vec3f, @splat(scale[1])); // adjust for y coordinate
+	const horizontal = cameraRight*@as(Vec3f, @splat(scale[0]));
+	const vertical = cameraUp*@as(Vec3f, @splat(scale[1])); // adjust for y coordinate
 
 	const adjusted = forwards + horizontal + vertical;
 	return adjusted;
@@ -185,7 +186,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.startQuery(.animation);
 	blocks.meshes.preProcessAnimationData(time);
 	gpu_performance_measuring.stopQuery();
-
 
 	// Update the uniforms. The uniforms are needed to render the replacement meshes.
 	chunk_meshing.bindShaderAndUniforms(game.projectionMatrix, ambientLight, playerPos);
@@ -222,7 +222,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.startQuery(.entity_rendering);
 	entity.ClientEntityManager.render(game.projectionMatrix, ambientLight, .{1, 0.5, 0.25}, playerPos);
 
-	itemdrop.ItemDropRenderer.renderItemDrops(game.projectionMatrix, ambientLight, playerPos, time);
+	itemdrop.ItemDropRenderer.renderItemDrops(game.projectionMatrix, ambientLight, playerPos);
 	gpu_performance_measuring.stopQuery();
 
 	// Render transparent chunk meshes:
@@ -251,6 +251,11 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glDepthMask(c.GL_TRUE);
 	c.glDepthFunc(c.GL_LESS);
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
+
+	c.glDepthRange(0, 0.001);
+	itemdrop.ItemDropRenderer.renderDisplayItems(ambientLight, playerPos);
+	c.glDepthRange(0.001, 1);
+
 	chunk_meshing.endRender();
 
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
@@ -446,20 +451,20 @@ pub const MenuBackGround = struct {
 		shader.bind();
 		c.glUniform1i(uniforms.image, 0);
 		// 4 sides of a simple cube with some panorama texture on it.
-		const rawData = [_]f32 {
-			-1, 1, -1, 1, 1,
-			-1, 1, 1, 1, 0,
+		const rawData = [_]f32{
+			-1, 1,  -1, 1,    1,
+			-1, 1,  1,  1,    0,
 			-1, -1, -1, 0.75, 1,
-			-1, -1, 1, 0.75, 0,
-			1, -1, -1, 0.5, 1,
-			1, -1, 1, 0.5, 0,
-			1, 1, -1, 0.25, 1,
-			1, 1, 1, 0.25, 0,
-			-1, 1, -1, 0, 1,
-			-1, 1, 1, 0, 0,
+			-1, -1, 1,  0.75, 0,
+			1,  -1, -1, 0.5,  1,
+			1,  -1, 1,  0.5,  0,
+			1,  1,  -1, 0.25, 1,
+			1,  1,  1,  0.25, 0,
+			-1, 1,  -1, 0,    1,
+			-1, 1,  1,  0,    0,
 		};
 
-		const indices = [_]c_int {
+		const indices = [_]c_int{
 			0, 1, 2,
 			2, 3, 1,
 			2, 3, 4,
@@ -567,7 +572,7 @@ pub const MenuBackGround = struct {
 		const oldRotation = game.camera.rotation;
 		defer game.camera.rotation = oldRotation;
 
-		const angles = [_]f32 {std.math.pi/2.0, std.math.pi, std.math.pi*3/2.0, std.math.pi*2};
+		const angles = [_]f32{std.math.pi/2.0, std.math.pi, std.math.pi*3/2.0, std.math.pi*2};
 
 		// All 4 sides are stored in a single image.
 		const image = graphics.Image.init(main.stackAllocator, 4*size, size);
@@ -580,7 +585,7 @@ pub const MenuBackGround = struct {
 			// Draw to frame buffer.
 			buffer.bind();
 			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
-			main.renderer.render(game.Player.getEyePosBlocking());
+			main.renderer.render(game.Player.getEyePosBlocking(), 0);
 			// Copy the pixels directly from OpenGL
 			buffer.bind();
 			c.glReadPixels(0, 0, size, size, c.GL_RGBA, c.GL_UNSIGNED_BYTE, pixels.ptr);
@@ -623,10 +628,10 @@ pub const Frustum = struct { // MARK: Frustum
 		const halfHSide = halfVSide*@as(f32, @floatFromInt(width))/@as(f32, @floatFromInt(height));
 
 		var self: Frustum = undefined;
-		self.planes[0] = Plane{.pos = cameraPos, .norm=vec.cross(cameraUp, cameraDir + cameraRight*@as(Vec3f, @splat(halfHSide)))}; // right
-		self.planes[1] = Plane{.pos = cameraPos, .norm=vec.cross(cameraDir - cameraRight*@as(Vec3f, @splat(halfHSide)), cameraUp)}; // left
-		self.planes[2] = Plane{.pos = cameraPos, .norm=vec.cross(cameraRight, cameraDir - cameraUp*@as(Vec3f, @splat(halfVSide)))}; // top
-		self.planes[3] = Plane{.pos = cameraPos, .norm=vec.cross(cameraDir + cameraUp*@as(Vec3f, @splat(halfVSide)), cameraRight)}; // bottom
+		self.planes[0] = Plane{.pos = cameraPos, .norm = vec.cross(cameraUp, cameraDir + cameraRight*@as(Vec3f, @splat(halfHSide)))}; // right
+		self.planes[1] = Plane{.pos = cameraPos, .norm = vec.cross(cameraDir - cameraRight*@as(Vec3f, @splat(halfHSide)), cameraUp)}; // left
+		self.planes[2] = Plane{.pos = cameraPos, .norm = vec.cross(cameraRight, cameraDir - cameraUp*@as(Vec3f, @splat(halfVSide)))}; // top
+		self.planes[3] = Plane{.pos = cameraPos, .norm = vec.cross(cameraDir + cameraUp*@as(Vec3f, @splat(halfVSide)), cameraRight)}; // bottom
 		return self;
 	}
 
@@ -658,7 +663,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	pub fn init() void {
 		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/block_selection_vertex.vs", "assets/cubyz/shaders/block_selection_fragment.fs", "", &uniforms);
 
-		const rawData = [_]f32 {
+		const rawData = [_]f32{
 			0, 0, 0,
 			0, 0, 1,
 			0, 1, 0,
@@ -668,7 +673,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			1, 1, 0,
 			1, 1, 1,
 		};
-		const indices = [_]u8 {
+		const indices = [_]u8{
 			0, 1,
 			0, 2,
 			0, 4,
@@ -693,7 +698,6 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		c.glGenBuffers(1, &cubeIBO);
 		c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, cubeIBO);
 		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, indices.len*@sizeOf(u8), &indices, c.GL_STATIC_DRAW);
-
 	}
 
 	pub fn deinit() void {
@@ -708,6 +712,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	pub var selectedBlockPos: ?Vec3i = null;
 	var lastSelectedBlockPos: Vec3i = undefined;
 	var currentBlockProgress: f32 = 0;
+	var currentSwingProgress: f32 = 0;
+	var currentSwingTime: f32 = 0;
 	var selectionMin: Vec3f = undefined;
 	var selectionMax: Vec3f = undefined;
 	var lastPos: Vec3d = undefined;
@@ -734,16 +740,17 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 		while(total_tMax < closestDistance) {
 			const block = mesh_storage.getBlock(voxelPos[0], voxelPos[1], voxelPos[2]) orelse break;
-			if(block.typ != 0) {
-				if(block.blockClass() != .fluid and block.blockClass() != .air) { // TODO: Buckets could select fluids
-					const relativePlayerPos: Vec3f = @floatCast(pos - @as(Vec3d, @floatFromInt(voxelPos)));
-					if(block.mode().rayIntersection(block, item, relativePlayerPos, _dir)) |intersection| {
-						if(intersection.distance <= closestDistance) {
-							selectedBlockPos = voxelPos;
-							selectionMin = intersection.min;
-							selectionMax = intersection.max;
-							break;
-						}
+			if(block.typ != 0) blk: {
+				for(block.blockTags()) |tag| {
+					if(tag == .fluid or tag == .air) break :blk; // TODO: Buckets could select fluids
+				}
+				const relativePlayerPos: Vec3f = @floatCast(pos - @as(Vec3d, @floatFromInt(voxelPos)));
+				if(block.mode().rayIntersection(block, item, relativePlayerPos, _dir)) |intersection| {
+					if(intersection.distance <= closestDistance) {
+						selectedBlockPos = voxelPos;
+						selectionMin = intersection.min;
+						selectionMax = intersection.max;
+						break;
 					}
 				}
 			}
@@ -836,7 +843,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 					},
 					.tool => |tool| {
 						_ = tool; // TODO: Tools might change existing blocks.
-					}
+					},
 				}
 			}
 		}
@@ -848,6 +855,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
 				lastSelectedBlockPos = selectedPos;
 				currentBlockProgress = 0;
+				currentSwingProgress = 0;
+				currentSwingTime = 0;
 			}
 			const block = mesh_storage.getBlock(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
 			const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
@@ -855,27 +864,33 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			main.items.Inventory.Sync.ClientSide.mutex.lock();
 			if(!game.Player.isCreative()) {
 				const stack = inventory.getStack(slot);
-				var power: f32 = 0;
+				var damage: f32 = 1;
 				const isTool = stack.item != null and stack.item.? == .tool;
 				if(isTool) {
-					power = stack.item.?.tool.getPowerByBlockClass(block.blockClass());
+					damage = stack.item.?.tool.getBlockDamage(block);
 				}
 				const isChisel = stack.item != null and stack.item.? == .baseItem and std.mem.eql(u8, stack.item.?.baseItem.id, "cubyz:chisel");
 				if(isChisel and block.mode() == main.rotation.getByID("stairs")) { // TODO: Remove once the chisel is a tool.
-					power = 10;
+					damage = block.blockHealth();
 				}
-				if(power >= block.breakingPower()) {
-					var breakTime: f32 = block.blockHealth();
-					if(isTool) {
-						breakTime = breakTime*stack.item.?.tool.swingTime/power;
+				damage -= block.blockResistance();
+				if(damage > 0) {
+					const swingTime = if(isTool) stack.item.?.tool.swingTime else 0.5;
+					if(currentSwingTime != swingTime) {
+						currentSwingProgress = 0;
+						currentSwingTime = swingTime;
 					}
-					if(isChisel and block.mode() == main.rotation.getByID("stairs")) { // TODO: Remove once the chisel is a tool.
-						breakTime = 0.5;
+					currentSwingProgress += @floatCast(deltaTime);
+					while(currentSwingProgress > currentSwingTime) {
+						currentSwingProgress -= currentSwingTime;
+						currentBlockProgress += damage/block.blockHealth();
+						if(currentBlockProgress > 1) break;
 					}
-					currentBlockProgress += @as(f32, @floatCast(deltaTime))/breakTime;
 					if(currentBlockProgress < 1) {
 						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
-						mesh_storage.addBreakingAnimation(lastSelectedBlockPos, currentBlockProgress);
+						if(currentBlockProgress != 0) {
+							mesh_storage.addBreakingAnimation(lastSelectedBlockPos, currentBlockProgress);
+						}
 						main.items.Inventory.Sync.ClientSide.mutex.unlock();
 
 						return;
@@ -893,7 +908,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			block.mode().onBlockBreaking(inventory.getStack(slot).item, relPos, lastDir, &newBlock);
 			main.items.Inventory.Sync.ClientSide.mutex.unlock();
 
-			if(!std.meta.eql(newBlock, block)) {
+			if(newBlock != block) {
 				updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], block, newBlock);
 			}
 		}
@@ -910,7 +925,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projectionMatrix));
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
 
-		c.glUniform3f(uniforms.modelPosition,
+		c.glUniform3f(
+			uniforms.modelPosition,
 			@floatCast(relativePositionToPlayer[0]),
 			@floatCast(relativePositionToPlayer[1]),
 			@floatCast(relativePositionToPlayer[2]),
@@ -930,6 +946,17 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			defer c.glDisable(c.GL_POLYGON_OFFSET_LINE);
 			c.glPolygonOffset(-2, 0);
 			drawCube(projectionMatrix, viewMatrix, @as(Vec3d, @floatFromInt(_selectedBlockPos)) - playerPos, selectionMin, selectionMax);
+		}
+		if(game.Player.selectionPosition1) |pos1| {
+			if(game.Player.selectionPosition2) |pos2| {
+				const bottomLeft: Vec3i = @min(pos1, pos2);
+				const topRight: Vec3i = @max(pos1, pos2);
+
+				c.glEnable(c.GL_POLYGON_OFFSET_LINE);
+				defer c.glDisable(c.GL_POLYGON_OFFSET_LINE);
+				c.glPolygonOffset(-2, 0);
+				drawCube(projectionMatrix, viewMatrix, @as(Vec3d, @floatFromInt(bottomLeft)) - playerPos, .{0, 0, 0}, @floatFromInt(topRight - bottomLeft + Vec3i{1, 1, 1}));
+			}
 		}
 	}
 };

@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const random = main.random;
 const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
@@ -29,9 +29,7 @@ pub fn init(parameters: ZonElement) void {
 	water = main.blocks.parseBlock("cubyz:water");
 }
 
-pub fn deinit() void {
-
-}
+pub fn deinit() void {}
 
 pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap.CaveMapView, biomeMap: CaveBiomeMap.CaveBiomeMapView) void {
 	if(chunk.super.pos.voxelSize >= 8) {
@@ -91,14 +89,14 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 								while(z >= zMin) : (z -= chunk.super.pos.voxelSize) {
 									var block = biome.stoneBlock;
 									var seed = baseSeed;
-									for (biome.stripes) |stripe| {
+									for(biome.stripes) |stripe| {
 										const pos: Vec3d = .{
 											@as(f64, @floatFromInt(x + chunk.super.pos.wx)),
 											@as(f64, @floatFromInt(y + chunk.super.pos.wy)),
-											@as(f64, @floatFromInt(z + chunk.super.pos.wz))
+											@as(f64, @floatFromInt(z + chunk.super.pos.wz)),
 										};
 										var d: f64 = 0;
-										if (stripe.direction) |direction| {
+										if(stripe.direction) |direction| {
 											d = vec.dot(direction, pos);
 										} else {
 											const dx = main.random.nextDoubleSigned(&seed);
@@ -108,13 +106,13 @@ pub fn generate(worldSeed: u64, chunk: *main.chunk.ServerChunk, caveMap: CaveMap
 											d = vec.dot(vec.normalize(dir), pos);
 										}
 
-										const distance = (stripe.maxDistance - stripe.minDistance) * main.random.nextDouble(&seed) + stripe.minDistance;
+										const distance = (stripe.maxDistance - stripe.minDistance)*main.random.nextDouble(&seed) + stripe.minDistance;
 
-										const offset = (stripe.maxOffset - stripe.minOffset) * main.random.nextDouble(&seed) + stripe.minOffset;
+										const offset = (stripe.maxOffset - stripe.minOffset)*main.random.nextDouble(&seed) + stripe.minOffset;
 
-										const width = (stripe.maxWidth - stripe.minWidth) * main.random.nextDouble(&seed) + stripe.minWidth;
+										const width = (stripe.maxWidth - stripe.minWidth)*main.random.nextDouble(&seed) + stripe.minWidth;
 
-										if (@mod(d + offset, distance) < width) {
+										if(@mod(d + offset, distance) < width) {
 											block = stripe.block;
 											break;
 										}

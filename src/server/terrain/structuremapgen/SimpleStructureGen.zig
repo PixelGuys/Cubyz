@@ -1,7 +1,7 @@
 const std = @import("std");
 const sign = std.math.sign;
 
-const main = @import("root");
+const main = @import("main");
 const random = main.random;
 const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
@@ -27,9 +27,7 @@ pub fn init(parameters: ZonElement) void {
 	_ = parameters;
 }
 
-pub fn deinit() void {
-
-}
+pub fn deinit() void {}
 
 pub fn generate(map: *StructureMapFragment, worldSeed: u64) void {
 	const size = StructureMapFragment.size*map.pos.voxelSize;
@@ -52,7 +50,7 @@ pub fn generate(map: *StructureMapFragment, worldSeed: u64) void {
 				const biome = biomeMap.getBiome(px, py, relZ);
 				var randomValue = random.nextFloat(&seed);
 				for(biome.vegetationModels) |*model| { // TODO: Could probably use an alias table here.
-					if(randomValue <  model.chance) {
+					if(randomValue < model.chance) {
 						const data = map.allocator.create(SimpleStructure);
 						data.* = .{
 							.wx = wpx,
@@ -61,13 +59,17 @@ pub fn generate(map: *StructureMapFragment, worldSeed: u64) void {
 							.seed = seed,
 							.model = model,
 						};
+						if(model.generationMode == .water_surface) {
+							if(wpz != 0) break;
+							data.wz = 0;
+						}
 						map.addStructure(.{
 							.internal = .{
 								.data = @ptrCast(data),
 								.generateFn = &SimpleStructure.generate,
 							},
 							.priority = model.priority,
-						}, .{px -% margin, py -% margin, relZ -% margin -% 15}, .{px +% margin, py +% margin, relZ +% margin +% 15});
+						}, .{px -% margin, py -% margin, data.wz -% map.pos.wz -% margin -% 15}, .{px +% margin, py +% margin, data.wz -% map.pos.wz +% margin +% 15});
 						break;
 					} else {
 						randomValue -= model.chance;
@@ -102,13 +104,14 @@ pub fn generate(map: *StructureMapFragment, worldSeed: u64) void {
 							.seed = seed,
 							.model = model,
 						};
+						if(model.generationMode == .water_surface) data.wz = 0;
 						map.addStructure(.{
 							.internal = .{
 								.data = @ptrCast(data),
 								.generateFn = &SimpleStructure.generate,
 							},
 							.priority = model.priority,
-						}, .{px -% margin, py -% margin, relZ -% margin -% 15}, .{px +% margin, py +% margin, relZ +% margin +% 15});
+						}, .{px -% margin, py -% margin, data.wz -% map.pos.wz -% margin -% 15}, .{px +% margin, py +% margin, data.wz -% map.pos.wz +% margin +% 15});
 						break;
 					} else {
 						randomValue -= adaptedChance;
@@ -126,7 +129,7 @@ const SimpleStructure = struct {
 	wy: i32,
 	wz: i32,
 
-	pub fn generate(_self: *const anyopaque, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView) void {
+	pub fn generate(_self: *const anyopaque, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView) void {
 		const self: *const SimpleStructure = @ptrCast(@alignCast(_self));
 		var seed = self.seed;
 		const px = self.wx - chunk.super.pos.wx;
@@ -176,7 +179,10 @@ const SimpleStructure = struct {
 				relZ += -16 + random.nextIntBounded(i32, &seed, 32);
 				if(!caveMap.isSolid(px, py, relZ)) return;
 			},
+			.water_surface => {
+				if(biomeMap.getSurfaceHeight(self.wx, self.wy) >= 0) return;
+			},
 		}
-		self.model.generate(px, py, relZ, chunk, caveMap, &seed, isCeiling);
+		self.model.generate(px, py, relZ, chunk, caveMap, biomeMap, &seed, isCeiling);
 	}
 };

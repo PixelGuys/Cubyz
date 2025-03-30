@@ -1,0 +1,38 @@
+.{
+	.tags = .{.wood},
+	.blockHealth = 4,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.absorbedLight = 0x202830,
+	.rotation = .branch,
+	.model = .{
+		.radius = 4,
+	},
+	.texture0 = "cubyz:branch/mahogany/dot",
+	.texture1 = "cubyz:branch/mahogany/half_line",
+	.texture2 = "cubyz:branch/mahogany/line",
+	.texture3 = "cubyz:branch/mahogany/bend",
+	.texture4 = "cubyz:branch/mahogany/intersection",
+	.texture5 = "cubyz:branch/mahogany/cross",
+	.item = .{
+		.material = .{
+			.density = 0.5,
+			.strength = 1.1,
+			.elasticity = 3.0,
+			.grip = 8.5,
+			.hardness = 2.0,
+			.textureRoughness = 0.7,
+			.colors = .{
+				0xff4b3324, 0xff5f4029, 0xff724e2e, 0xff885d36, 0xff724e2e,
+			},
+			.modifiers = .{
+				.{
+					.id = "fragile",
+					.strength = 0.10,
+				},
+			},
+		},
+		.texture = "branch/mahogany.png",
+	},
+}

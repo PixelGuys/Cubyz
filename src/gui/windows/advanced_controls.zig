@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const settings = main.settings;
 const Vec2f = main.vec.Vec2f;
 
@@ -13,7 +13,7 @@ const ContinuousSlider = @import("../components/ContinuousSlider.zig");
 const DiscreteSlider = @import("../components/DiscreteSlider.zig");
 const VerticalList = @import("../components/VerticalList.zig");
 
-pub var window = GuiWindow {
+pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 256},
 };
 
@@ -24,7 +24,7 @@ fn delayCallback(newValue: f32) void {
 	settings.save();
 }
 
-fn delayFormatter(allocator: main.utils.NeverFailingAllocator, value: f32) []const u8 {
+fn delayFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
 	return std.fmt.allocPrint(allocator.allocator, "#ffffffPlace/Break Delay: {d:.0} ms", .{value}) catch unreachable;
 }
 
@@ -33,7 +33,7 @@ fn speedCallback(newValue: f32) void {
 	settings.save();
 }
 
-fn speedFormatter(allocator: main.utils.NeverFailingAllocator, value: f32) []const u8 {
+fn speedFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
 	return std.fmt.allocPrint(allocator.allocator, "#ffffffPlace/Break Speed: {d:.0} ms", .{value}) catch unreachable;
 }
 

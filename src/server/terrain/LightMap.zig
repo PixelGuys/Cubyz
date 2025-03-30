@@ -1,7 +1,7 @@
 const std = @import("std");
 const Atomic = std.atomic.Value;
 
-const main = @import("root");
+const main = @import("main");
 const Chunk = main.chunk.Chunk;
 const ChunkPosition = main.chunk.ChunkPosition;
 const Cache = main.utils.Cache;
@@ -42,12 +42,11 @@ pub const LightMapFragment = struct {
 	}
 
 	pub fn getHeight(self: *LightMapFragment, wx: i32, wy: i32) i32 {
-		const xIndex = wx>>self.pos.voxelSizeShift & mapMask;
-		const yIndex = wy>>self.pos.voxelSizeShift & mapMask;
+		const xIndex = wx >> self.pos.voxelSizeShift & mapMask;
+		const yIndex = wy >> self.pos.voxelSizeShift & mapMask;
 		return self.startHeight[@as(usize, @intCast(xIndex)) << mapShift | @as(usize, @intCast(yIndex))];
 	}
 };
-
 
 const cacheSize = 1 << 6; // Must be a power of 2!
 const cacheMask = cacheSize - 1;
@@ -76,9 +75,9 @@ pub fn deinit() void {
 
 pub fn getOrGenerateFragmentAndIncreaseRefCount(wx: i32, wy: i32, voxelSize: u31) *LightMapFragment {
 	const compare = MapFragmentPosition.init(
-		wx & ~@as(i32, LightMapFragment.mapMask*voxelSize | voxelSize-1),
-		wy & ~@as(i32, LightMapFragment.mapMask*voxelSize | voxelSize-1),
-		voxelSize
+		wx & ~@as(i32, LightMapFragment.mapMask*voxelSize | voxelSize - 1),
+		wy & ~@as(i32, LightMapFragment.mapMask*voxelSize | voxelSize - 1),
+		voxelSize,
 	);
 	const result = cache.findOrCreate(compare, cacheInit, LightMapFragment.increaseRefCount);
 	return result;

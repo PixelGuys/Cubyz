@@ -1,5 +1,5 @@
 .{
-	.blockClass = .sand,
+	.blockTags = .{.sand},
 	.slotTypes = .{
 		.{
 			.name = .handle,
@@ -37,7 +37,7 @@
 				},
 				.{
 					.source = .hardness,
-					.destination = .power,
+					.destination = .damage,
 					.functionType = .squareRoot,
 					.factor = 0.1,
 				},
@@ -58,7 +58,7 @@
 				},
 				.{
 					.source = .hardness,
-					.destination = .power,
+					.destination = .damage,
 					.factor = 0.3,
 				},
 			},
@@ -78,7 +78,7 @@
 				},
 				.{
 					.source = .hardness,
-					.destination = .power,
+					.destination = .damage,
 					.factor = 0.6,
 				},
 			},
@@ -99,7 +99,7 @@
 				},
 				.{
 					.source = .hardness,
-					.destination = .power,
+					.destination = .damage,
 					.factor = 0.7,
 				},
 			},
@@ -138,10 +138,10 @@
 		},
 	},
 	.slots = .{
-		.tiptip,  .tip,   .edge,   .none,   .none,
-		.tip,     .blade, .blade,  .edge,   .none,
-		.edge,    .blade, .center, .back,   .none,
-		.none,    .edge,  .back,   .handle, .none,
-		.none,    .none,  .none,   .none,   .handle,
+		.tiptip, .tip,   .edge,   .none,   .none,
+		.tip,    .blade, .blade,  .edge,   .none,
+		.edge,   .blade, .center, .back,   .none,
+		.none,   .edge,  .back,   .handle, .none,
+		.none,   .none,  .none,   .none,   .handle,
 	},
 }

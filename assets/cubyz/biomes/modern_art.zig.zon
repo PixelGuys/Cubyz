@@ -1,7 +1,6 @@
 .{
 	.chance = 0.02,
-	.properties = .{
-	},
+	.properties = .{},
 	.minHeight = 22,
 	.maxHeight = 40,
 
@@ -12,8 +11,7 @@
 
 	.validPlayerSpawn = false,
 
-	.ground_structure = .{
-	},
+	.ground_structure = .{},
 	.stoneBlock = "cubyz:chalk/white",
 	.structures = .{
 		.{

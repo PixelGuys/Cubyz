@@ -1,0 +1,17 @@
+.{
+	.tags = .{.leaf},
+	.blockHealth = 0.2,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.degradable = true,
+	.alwaysViewThrough = true,
+	.absorbedLight = 0x121012,
+	.model = "cubyz:plane",
+	.rotation = .planar,
+	.texture = "cubyz:lily_pad",
+	.item = .{
+		.texture = "lily_pad.png",
+	},
+	.lodReplacement = "cubyz:air",
+}

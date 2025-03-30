@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const files = main.files;
 const settings = main.settings;
 const Vec2f = main.vec.Vec2f;
@@ -14,13 +14,13 @@ const Button = @import("../components/Button.zig");
 
 var fileExplorerIcon: Texture = undefined;
 
-pub var window = GuiWindow {
+pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 64},
 	.hasBackground = true,
 	.hideIfMouseIsGrabbed = false,
 	.relativePosition = .{
-		.{ .attachedToFrame = .{.selfAttachmentPoint = .lower, .otherAttachmentPoint = .lower} },
-		.{ .attachedToFrame = .{.selfAttachmentPoint = .lower, .otherAttachmentPoint = .lower} },
+		.{.attachedToFrame = .{.selfAttachmentPoint = .lower, .otherAttachmentPoint = .lower}},
+		.{.attachedToFrame = .{.selfAttachmentPoint = .lower, .otherAttachmentPoint = .lower}},
 	},
 };
 
@@ -38,7 +38,7 @@ fn openLog(_: usize) void {
 
 const padding: f32 = 8;
 pub fn update() void {
-	if (main.Window.Gamepad.wereControllerMappingsDownloaded()) {
+	if(main.Window.Gamepad.wereControllerMappingsDownloaded()) {
 		gui.closeWindowFromRef(&window);
 	}
 }

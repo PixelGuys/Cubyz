@@ -1,7 +1,7 @@
 const std = @import("std");
 const Atomic = std.atomic.Value;
 
-const main = @import("root");
+const main = @import("main");
 const blocks = main.blocks;
 const chunk = main.chunk;
 const game = main.game;
@@ -19,8 +19,6 @@ const Mat4f = vec.Mat4f;
 
 const chunk_meshing = @import("chunk_meshing.zig");
 
-
-
 const ChunkMeshNode = struct {
 	mesh: ?*chunk_meshing.ChunkMesh = null,
 	active: bool = false,
@@ -28,7 +26,7 @@ const ChunkMeshNode = struct {
 	finishedMeshing: bool = false, // Must be synced with mesh.finishedMeshing
 	finishedMeshingHigherResolution: u8 = 0, // Must be synced with finishedMeshing of the 8 higher resolution chunks.
 	pos: chunk.ChunkPosition = undefined,
-	isNeighborLod: [6]bool = .{false} ** 6, // Must be synced with mesh.isNeighborLod
+	isNeighborLod: [6]bool = @splat(false), // Must be synced with mesh.isNeighborLod
 	mutex: std.Thread.Mutex = .{},
 };
 const storageSize = 64;
@@ -53,13 +51,12 @@ const BlockUpdate = struct {
 };
 var blockUpdateList: main.utils.ConcurrentQueue(BlockUpdate) = undefined;
 
-var meshMemoryPool: std.heap.MemoryPoolAligned(chunk_meshing.ChunkMesh, @alignOf(chunk_meshing.ChunkMesh)) = undefined;
-var meshMemoryPoolMutex: std.Thread.Mutex = .{};
+var meshMemoryPool: main.heap.MemoryPool(chunk_meshing.ChunkMesh) = undefined;
 
 pub fn init() void { // MARK: init()
 	lastRD = 0;
 	blockUpdateList = .init(main.globalAllocator, 16);
-	meshMemoryPool = .init(main.globalAllocator.allocator);
+	meshMemoryPool = .init(main.globalAllocator);
 	for(&storageLists) |*storageList| {
 		storageList.* = main.globalAllocator.create([storageSize*storageSize*storageSize]ChunkMeshNode);
 		for(storageList.*) |*val| {
@@ -117,9 +114,9 @@ pub fn deinit() void {
 
 fn getNodePointer(pos: chunk.ChunkPosition) *ChunkMeshNode {
 	const lod = std.math.log2_int(u31, pos.voxelSize);
-	var xIndex = pos.wx >> lod+chunk.chunkShift;
-	var yIndex = pos.wy >> lod+chunk.chunkShift;
-	var zIndex = pos.wz >> lod+chunk.chunkShift;
+	var xIndex = pos.wx >> lod + chunk.chunkShift;
+	var yIndex = pos.wy >> lod + chunk.chunkShift;
+	var zIndex = pos.wz >> lod + chunk.chunkShift;
 	xIndex &= storageMask;
 	yIndex &= storageMask;
 	zIndex &= storageMask;
@@ -150,8 +147,8 @@ fn updateHigherLodNodeFinishedMeshing(pos_: chunk.ChunkPosition, finishedMeshing
 
 fn getMapPiecePointer(x: i32, y: i32, voxelSize: u31) *?*LightMap.LightMapFragment {
 	const lod = std.math.log2_int(u31, voxelSize);
-	var xIndex = x >> lod+LightMap.LightMapFragment.mapShift;
-	var yIndex = y >> lod+LightMap.LightMapFragment.mapShift;
+	var xIndex = x >> lod + LightMap.LightMapFragment.mapShift;
+	var yIndex = y >> lod + LightMap.LightMapFragment.mapShift;
 	xIndex &= storageMask;
 	yIndex &= storageMask;
 	const index = xIndex*storageSize + yIndex;
@@ -169,7 +166,7 @@ pub fn getLightMapPieceAndIncreaseRefCount(x: i32, y: i32, voxelSize: u31) ?*Lig
 }
 
 pub fn getBlock(x: i32, y: i32, z: i32) ?blocks.Block {
-	const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize=1});
+	const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize = 1});
 	node.mutex.lock();
 	defer node.mutex.unlock();
 	const mesh = node.mesh orelse return null;
@@ -177,14 +174,29 @@ pub fn getBlock(x: i32, y: i32, z: i32) ?blocks.Block {
 	return block;
 }
 
+pub fn getLight(wx: i32, wy: i32, wz: i32) ?[6]u8 {
+	const node = getNodePointer(.{.wx = wx, .wy = wy, .wz = wz, .voxelSize = 1});
+	node.mutex.lock();
+	defer node.mutex.unlock();
+	const mesh = node.mesh orelse return null;
+	const x = (wx >> mesh.chunk.voxelSizeShift) & chunk.chunkMask;
+	const y = (wy >> mesh.chunk.voxelSizeShift) & chunk.chunkMask;
+	const z = (wz >> mesh.chunk.voxelSizeShift) & chunk.chunkMask;
+	mesh.lightingData[0].lock.lockRead();
+	defer mesh.lightingData[0].lock.unlockRead();
+	mesh.lightingData[1].lock.lockRead();
+	defer mesh.lightingData[1].lock.unlockRead();
+	return mesh.lightingData[1].getValue(x, y, z) ++ mesh.lightingData[0].getValue(x, y, z);
+}
+
 pub fn getBlockFromAnyLod(x: i32, y: i32, z: i32) blocks.Block {
 	var lod: u5 = 0;
 	while(lod < settings.highestLod) : (lod += 1) {
-		const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize=@as(u31, 1) << lod});
+		const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize = @as(u31, 1) << lod});
 		node.mutex.lock();
 		defer node.mutex.unlock();
 		const mesh = node.mesh orelse continue;
-		const block = mesh.chunk.getBlock(x & chunk.chunkMask<<lod, y & chunk.chunkMask<<lod, z & chunk.chunkMask<<lod);
+		const block = mesh.chunk.getBlock(x & chunk.chunkMask << lod, y & chunk.chunkMask << lod, z & chunk.chunkMask << lod);
 		return block;
 	}
 	return blocks.Block{.typ = 0, .data = 0};
@@ -192,7 +204,7 @@ pub fn getBlockFromAnyLod(x: i32, y: i32, z: i32) blocks.Block {
 
 pub fn getMeshAndIncreaseRefCount(pos: chunk.ChunkPosition) ?*chunk_meshing.ChunkMesh {
 	const lod = std.math.log2_int(u31, pos.voxelSize);
-	const mask = ~((@as(i32, 1) << lod+chunk.chunkShift) - 1);
+	const mask = ~((@as(i32, 1) << lod + chunk.chunkShift) - 1);
 	const node = getNodePointer(pos);
 	node.mutex.lock();
 	const mesh = node.mesh orelse {
@@ -211,7 +223,7 @@ pub fn getMeshAndIncreaseRefCount(pos: chunk.ChunkPosition) ?*chunk_meshing.Chun
 pub fn getMeshFromAnyLodAndIncreaseRefCount(wx: i32, wy: i32, wz: i32, voxelSize: u31) ?*chunk_meshing.ChunkMesh {
 	var lod: u5 = @ctz(voxelSize);
 	while(lod < settings.highestLod) : (lod += 1) {
-		const mesh = getMeshAndIncreaseRefCount(.{.wx = wx & ~chunk.chunkMask<<lod, .wy = wy & ~chunk.chunkMask<<lod, .wz = wz & ~chunk.chunkMask<<lod, .voxelSize=@as(u31, 1) << lod});
+		const mesh = getMeshAndIncreaseRefCount(.{.wx = wx & ~chunk.chunkMask << lod, .wy = wy & ~chunk.chunkMask << lod, .wz = wz & ~chunk.chunkMask << lod, .voxelSize = @as(u31, 1) << lod});
 		return mesh orelse continue;
 	}
 	return null;
@@ -232,22 +244,22 @@ fn reduceRenderDistance(fullRenderDistance: i64, reduction: i64) i32 {
 	return reducedRenderDistance;
 }
 
-fn isInRenderDistance(pos: chunk.ChunkPosition) bool {  // MARK: isInRenderDistance()
+fn isInRenderDistance(pos: chunk.ChunkPosition) bool { // MARK: isInRenderDistance()
 	const maxRenderDistance = lastRD*chunk.chunkSize*pos.voxelSize;
 	const size: u31 = chunk.chunkSize*pos.voxelSize;
 	const mask: i32 = size - 1;
 	const invMask: i32 = ~mask;
 
-	const minX = lastPx-%maxRenderDistance & invMask;
-	const maxX = lastPx+%maxRenderDistance+%size & invMask;
+	const minX = lastPx -% maxRenderDistance & invMask;
+	const maxX = lastPx +% maxRenderDistance +% size & invMask;
 	if(pos.wx -% minX < 0) return false;
 	if(pos.wx -% maxX >= 0) return false;
 	var deltaX: i64 = @abs(pos.wx +% size/2 -% lastPx);
 	deltaX = @max(0, deltaX - size/2);
 
 	const maxYRenderDistance: i32 = reduceRenderDistance(maxRenderDistance, deltaX);
-	const minY = lastPy-%maxYRenderDistance & invMask;
-	const maxY = lastPy+%maxYRenderDistance+%size & invMask;
+	const minY = lastPy -% maxYRenderDistance & invMask;
+	const maxY = lastPy +% maxYRenderDistance +% size & invMask;
 	if(pos.wy -% minY < 0) return false;
 	if(pos.wy -% maxY >= 0) return false;
 	var deltaY: i64 = @abs(pos.wy +% size/2 -% lastPy);
@@ -255,8 +267,8 @@ fn isInRenderDistance(pos: chunk.ChunkPosition) bool {  // MARK: isInRenderDista
 
 	const maxZRenderDistance: i32 = reduceRenderDistance(maxYRenderDistance, deltaY);
 	if(maxZRenderDistance == 0) return false;
-	const minZ = lastPz-%maxZRenderDistance & invMask;
-	const maxZ = lastPz+%maxZRenderDistance+%size & invMask;
+	const minZ = lastPz -% maxZRenderDistance & invMask;
+	const maxZ = lastPz +% maxZRenderDistance +% size & invMask;
 	if(pos.wz -% minZ < 0) return false;
 	if(pos.wz -% maxZ >= 0) return false;
 	return true;
@@ -268,8 +280,8 @@ fn isMapInRenderDistance(pos: LightMap.MapFragmentPosition) bool {
 	const mask: i32 = size - 1;
 	const invMask: i32 = ~mask;
 
-	const minX = lastPx-%maxRenderDistance & invMask;
-	const maxX = lastPx+%maxRenderDistance+%size & invMask;
+	const minX = lastPx -% maxRenderDistance & invMask;
+	const maxX = lastPx +% maxRenderDistance +% size & invMask;
 	if(pos.wx -% minX < 0) return false;
 	if(pos.wx -% maxX >= 0) return false;
 	var deltaX: i64 = @abs(pos.wx +% size/2 -% lastPx);
@@ -277,8 +289,8 @@ fn isMapInRenderDistance(pos: LightMap.MapFragmentPosition) bool {
 
 	const maxYRenderDistance: i32 = reduceRenderDistance(maxRenderDistance, deltaX);
 	if(maxYRenderDistance == 0) return false;
-	const minY = lastPy-%maxYRenderDistance & invMask;
-	const maxY = lastPy+%maxYRenderDistance+%size & invMask;
+	const minY = lastPy -% maxYRenderDistance & invMask;
+	const maxY = lastPy +% maxYRenderDistance +% size & invMask;
 	if(pos.wy -% minY < 0) return false;
 	if(pos.wy -% maxY >= 0) return false;
 	return true;
@@ -293,12 +305,12 @@ fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16) void { 
 		const mask: i32 = size - 1;
 		const invMask: i32 = ~mask;
 
-		std.debug.assert(@divFloor(2*maxRenderDistanceNew + size-1, size) + 2 <= storageSize);
+		std.debug.assert(@divFloor(2*maxRenderDistanceNew + size - 1, size) + 2 <= storageSize);
 
-		const minX = olderPx-%maxRenderDistanceOld & invMask;
-		const maxX = olderPx+%maxRenderDistanceOld+%size & invMask;
+		const minX = olderPx -% maxRenderDistanceOld & invMask;
+		const maxX = olderPx +% maxRenderDistanceOld +% size & invMask;
 		var x = minX;
-		while(x != maxX): (x +%= size) {
+		while(x != maxX) : (x +%= size) {
 			const xIndex = @divExact(x, size) & storageMask;
 			var deltaXNew: i64 = @abs(x +% size/2 -% lastPx);
 			deltaXNew = @max(0, deltaXNew - size/2);
@@ -307,10 +319,10 @@ fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16) void { 
 			const maxYRenderDistanceNew: i32 = reduceRenderDistance(maxRenderDistanceNew, deltaXNew);
 			const maxYRenderDistanceOld: i32 = reduceRenderDistance(maxRenderDistanceOld, deltaXOld);
 
-			const minY = olderPy-%maxYRenderDistanceOld & invMask;
-			const maxY = olderPy+%maxYRenderDistanceOld+%size & invMask;
+			const minY = olderPy -% maxYRenderDistanceOld & invMask;
+			const maxY = olderPy +% maxYRenderDistanceOld +% size & invMask;
 			var y = minY;
-			while(y != maxY): (y +%= size) {
+			while(y != maxY) : (y +%= size) {
 				const yIndex = @divExact(y, size) & storageMask;
 				var deltaYOld: i64 = @abs(y +% size/2 -% olderPy);
 				deltaYOld = @max(0, deltaYOld - size/2);
@@ -321,23 +333,23 @@ fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16) void { 
 				var maxZRenderDistanceNew: i32 = reduceRenderDistance(maxYRenderDistanceNew, deltaYNew);
 				if(maxZRenderDistanceNew == 0) maxZRenderDistanceNew -= size/2;
 
-				const minZOld = olderPz-%maxZRenderDistanceOld & invMask;
-				const maxZOld = olderPz+%maxZRenderDistanceOld+%size & invMask;
-				const minZNew = lastPz-%maxZRenderDistanceNew & invMask;
-				const maxZNew = lastPz+%maxZRenderDistanceNew+%size & invMask;
+				const minZOld = olderPz -% maxZRenderDistanceOld & invMask;
+				const maxZOld = olderPz +% maxZRenderDistanceOld +% size & invMask;
+				const minZNew = lastPz -% maxZRenderDistanceNew & invMask;
+				const maxZNew = lastPz +% maxZRenderDistanceNew +% size & invMask;
 
 				var zValues: [storageSize]i32 = undefined;
 				var zValuesLen: usize = 0;
 				if(minZNew -% minZOld > 0) {
 					var z = minZOld;
-					while(z != minZNew and z != maxZOld): (z +%= size) {
+					while(z != minZNew and z != maxZOld) : (z +%= size) {
 						zValues[zValuesLen] = z;
 						zValuesLen += 1;
 					}
 				}
 				if(maxZOld -% maxZNew > 0) {
 					var z = minZOld +% @max(0, maxZNew -% minZOld);
-					while(z != maxZOld): (z +%= size) {
+					while(z != maxZOld) : (z +%= size) {
 						zValues[zValuesLen] = z;
 						zValuesLen += 1;
 					}
@@ -358,7 +370,7 @@ fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16) void { 
 						updateHigherLodNodeFinishedMeshing(mesh.pos, false);
 						mesh.decreaseRefCount();
 					}
-					node.isNeighborLod = .{false} ** 6;
+					node.isNeighborLod = @splat(false);
 				}
 			}
 		}
@@ -371,12 +383,12 @@ fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16) void { 
 		const mask: i32 = size - 1;
 		const invMask: i32 = ~mask;
 
-		std.debug.assert(@divFloor(2*maxRenderDistanceNew + size-1, size) + 2 <= storageSize);
+		std.debug.assert(@divFloor(2*maxRenderDistanceNew + size - 1, size) + 2 <= storageSize);
 
-		const minX = olderPx-%maxRenderDistanceOld & invMask;
-		const maxX = olderPx+%maxRenderDistanceOld+%size & invMask;
+		const minX = olderPx -% maxRenderDistanceOld & invMask;
+		const maxX = olderPx +% maxRenderDistanceOld +% size & invMask;
 		var x = minX;
-		while(x != maxX): (x +%= size) {
+		while(x != maxX) : (x +%= size) {
 			const xIndex = @divExact(x, size) & storageMask;
 			var deltaXNew: i64 = @abs(x +% size/2 -% lastPx);
 			deltaXNew = @max(0, deltaXNew - size/2);
@@ -387,23 +399,23 @@ fn freeOldMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16) void { 
 			var maxYRenderDistanceOld: i32 = reduceRenderDistance(maxRenderDistanceOld, deltaXOld);
 			if(maxYRenderDistanceOld == 0) maxYRenderDistanceOld -= size/2;
 
-			const minYOld = olderPy-%maxYRenderDistanceOld & invMask;
-			const maxYOld = olderPy+%maxYRenderDistanceOld+%size & invMask;
-			const minYNew = lastPy-%maxYRenderDistanceNew & invMask;
-			const maxYNew = lastPy+%maxYRenderDistanceNew+%size & invMask;
+			const minYOld = olderPy -% maxYRenderDistanceOld & invMask;
+			const maxYOld = olderPy +% maxYRenderDistanceOld +% size & invMask;
+			const minYNew = lastPy -% maxYRenderDistanceNew & invMask;
+			const maxYNew = lastPy +% maxYRenderDistanceNew +% size & invMask;
 
 			var yValues: [storageSize]i32 = undefined;
 			var yValuesLen: usize = 0;
 			if(minYNew -% minYOld > 0) {
 				var y = minYOld;
-				while(y != minYNew and y != maxYOld): (y +%= size) {
+				while(y != minYNew and y != maxYOld) : (y +%= size) {
 					yValues[yValuesLen] = y;
 					yValuesLen += 1;
 				}
 			}
 			if(maxYOld -% maxYNew > 0) {
 				var y = minYOld +% @max(0, maxYNew -% minYOld);
-				while(y != maxYOld): (y +%= size) {
+				while(y != maxYOld) : (y +%= size) {
 					yValues[yValuesLen] = y;
 					yValuesLen += 1;
 				}
@@ -435,12 +447,12 @@ fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16, meshR
 		const mask: i32 = size - 1;
 		const invMask: i32 = ~mask;
 
-		std.debug.assert(@divFloor(2*maxRenderDistanceNew + size-1, size) + 2 <= storageSize);
+		std.debug.assert(@divFloor(2*maxRenderDistanceNew + size - 1, size) + 2 <= storageSize);
 
-		const minX = lastPx-%maxRenderDistanceNew & invMask;
-		const maxX = lastPx+%maxRenderDistanceNew+%size & invMask;
+		const minX = lastPx -% maxRenderDistanceNew & invMask;
+		const maxX = lastPx +% maxRenderDistanceNew +% size & invMask;
 		var x = minX;
-		while(x != maxX): (x +%= size) {
+		while(x != maxX) : (x +%= size) {
 			const xIndex = @divExact(x, size) & storageMask;
 			var deltaXNew: i64 = @abs(x +% size/2 -% lastPx);
 			deltaXNew = @max(0, deltaXNew - size/2);
@@ -449,10 +461,10 @@ fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16, meshR
 			const maxYRenderDistanceNew: i32 = reduceRenderDistance(maxRenderDistanceNew, deltaXNew);
 			const maxYRenderDistanceOld: i32 = reduceRenderDistance(maxRenderDistanceOld, deltaXOld);
 
-			const minY = lastPy-%maxYRenderDistanceNew & invMask;
-			const maxY = lastPy+%maxYRenderDistanceNew+%size & invMask;
+			const minY = lastPy -% maxYRenderDistanceNew & invMask;
+			const maxY = lastPy +% maxYRenderDistanceNew +% size & invMask;
 			var y = minY;
-			while(y != maxY): (y +%= size) {
+			while(y != maxY) : (y +%= size) {
 				const yIndex = @divExact(y, size) & storageMask;
 				var deltaYOld: i64 = @abs(y +% size/2 -% olderPy);
 				deltaYOld = @max(0, deltaYOld - size/2);
@@ -463,23 +475,23 @@ fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16, meshR
 				var maxZRenderDistanceOld: i32 = reduceRenderDistance(maxYRenderDistanceOld, deltaYOld);
 				if(maxZRenderDistanceOld == 0) maxZRenderDistanceOld -= size/2;
 
-				const minZOld = olderPz-%maxZRenderDistanceOld & invMask;
-				const maxZOld = olderPz+%maxZRenderDistanceOld+%size & invMask;
-				const minZNew = lastPz-%maxZRenderDistanceNew & invMask;
-				const maxZNew = lastPz+%maxZRenderDistanceNew+%size & invMask;
+				const minZOld = olderPz -% maxZRenderDistanceOld & invMask;
+				const maxZOld = olderPz +% maxZRenderDistanceOld +% size & invMask;
+				const minZNew = lastPz -% maxZRenderDistanceNew & invMask;
+				const maxZNew = lastPz +% maxZRenderDistanceNew +% size & invMask;
 
 				var zValues: [storageSize]i32 = undefined;
 				var zValuesLen: usize = 0;
 				if(minZOld -% minZNew > 0) {
 					var z = minZNew;
-					while(z != minZOld and z != maxZNew): (z +%= size) {
+					while(z != minZOld and z != maxZNew) : (z +%= size) {
 						zValues[zValuesLen] = z;
 						zValuesLen += 1;
 					}
 				}
 				if(maxZNew -% maxZOld > 0) {
 					var z = minZNew +% @max(0, maxZOld -% minZNew);
-					while(z != maxZNew): (z +%= size) {
+					while(z != maxZNew) : (z +%= size) {
 						zValues[zValuesLen] = z;
 						zValuesLen += 1;
 					}
@@ -488,7 +500,7 @@ fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16, meshR
 				for(zValues[0..zValuesLen]) |z| {
 					const zIndex = @divExact(z, size) & storageMask;
 					const index = (xIndex*storageSize + yIndex)*storageSize + zIndex;
-					const pos = chunk.ChunkPosition{.wx=x, .wy=y, .wz=z, .voxelSize=@as(u31, 1)<<lod};
+					const pos = chunk.ChunkPosition{.wx = x, .wy = y, .wz = z, .voxelSize = @as(u31, 1) << lod};
 
 					const node = &storageLists[_lod][@intCast(index)];
 					node.mutex.lock();
@@ -511,12 +523,12 @@ fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16, meshR
 		const mask: i32 = size - 1;
 		const invMask: i32 = ~mask;
 
-		std.debug.assert(@divFloor(2*maxRenderDistanceNew + size-1, size) + 2 <= storageSize);
+		std.debug.assert(@divFloor(2*maxRenderDistanceNew + size - 1, size) + 2 <= storageSize);
 
-		const minX = lastPx-%maxRenderDistanceNew & invMask;
-		const maxX = lastPx+%maxRenderDistanceNew+%size & invMask;
+		const minX = lastPx -% maxRenderDistanceNew & invMask;
+		const maxX = lastPx +% maxRenderDistanceNew +% size & invMask;
 		var x = minX;
-		while(x != maxX): (x +%= size) {
+		while(x != maxX) : (x +%= size) {
 			const xIndex = @divExact(x, size) & storageMask;
 			var deltaXNew: i64 = @abs(x +% size/2 -% lastPx);
 			deltaXNew = @max(0, deltaXNew - size/2);
@@ -527,23 +539,23 @@ fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16, meshR
 			var maxYRenderDistanceOld: i32 = reduceRenderDistance(maxRenderDistanceOld, deltaXOld);
 			if(maxYRenderDistanceOld == 0) maxYRenderDistanceOld -= size/2;
 
-			const minYOld = olderPy-%maxYRenderDistanceOld & invMask;
-			const maxYOld = olderPy+%maxYRenderDistanceOld+%size & invMask;
-			const minYNew = lastPy-%maxYRenderDistanceNew & invMask;
-			const maxYNew = lastPy+%maxYRenderDistanceNew+%size & invMask;
+			const minYOld = olderPy -% maxYRenderDistanceOld & invMask;
+			const maxYOld = olderPy +% maxYRenderDistanceOld +% size & invMask;
+			const minYNew = lastPy -% maxYRenderDistanceNew & invMask;
+			const maxYNew = lastPy +% maxYRenderDistanceNew +% size & invMask;
 
 			var yValues: [storageSize]i32 = undefined;
 			var yValuesLen: usize = 0;
 			if(minYOld -% minYNew > 0) {
 				var y = minYNew;
-				while(y != minYOld and y != maxYNew): (y +%= size) {
+				while(y != minYOld and y != maxYNew) : (y +%= size) {
 					yValues[yValuesLen] = y;
 					yValuesLen += 1;
 				}
 			}
 			if(maxYNew -% maxYOld > 0) {
 				var y = minYNew +% @max(0, maxYOld -% minYNew);
-				while(y != maxYNew): (y +%= size) {
+				while(y != maxYNew) : (y +%= size) {
 					yValues[yValuesLen] = y;
 					yValuesLen += 1;
 				}
@@ -552,7 +564,7 @@ fn createNewMeshes(olderPx: i32, olderPy: i32, olderPz: i32, olderRD: u16, meshR
 			for(yValues[0..yValuesLen]) |y| {
 				const yIndex = @divExact(y, size) & storageMask;
 				const index = xIndex*storageSize + yIndex;
-				const pos = LightMap.MapFragmentPosition{.wx=x, .wy=y, .voxelSize=@as(u31, 1)<<lod, .voxelSizeShift = lod};
+				const pos = LightMap.MapFragmentPosition{.wx = x, .wy = y, .voxelSize = @as(u31, 1) << lod, .voxelSizeShift = lod};
 
 				const node = &mapStorageLists[_lod][@intCast(index)];
 				mutex.lock();
@@ -607,9 +619,9 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 			.voxelSize = 1,
 		};
 		const lod: u3 = settings.highestLod;
-		firstPos.wx &= ~@as(i32, chunk.chunkMask << lod | (@as(i32, 1) << lod)-1);
-		firstPos.wy &= ~@as(i32, chunk.chunkMask << lod | (@as(i32, 1) << lod)-1);
-		firstPos.wz &= ~@as(i32, chunk.chunkMask << lod | (@as(i32, 1) << lod)-1);
+		firstPos.wx &= ~@as(i32, chunk.chunkMask << lod | (@as(i32, 1) << lod) - 1);
+		firstPos.wy &= ~@as(i32, chunk.chunkMask << lod | (@as(i32, 1) << lod) - 1);
+		firstPos.wz &= ~@as(i32, chunk.chunkMask << lod | (@as(i32, 1) << lod) - 1);
 		firstPos.voxelSize <<= lod;
 		const node = getNodePointer(firstPos);
 		const hasMesh = node.finishedMeshing;
@@ -687,7 +699,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 	}
 	for(nodeList.items) |node| {
 		const pos = node.pos;
-		var isNeighborLod: [6]bool = .{false} ** 6;
+		var isNeighborLod: [6]bool = @splat(false);
 		if(pos.voxelSize != @as(i32, 1) << settings.highestLod) {
 			for(chunk.Neighbor.iterable) |neighbor| {
 				var neighborPos = chunk.ChunkPosition{
@@ -735,7 +747,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()
 	// First of all process all the block updates:
 	while(blockUpdateList.dequeue()) |blockUpdate| {
-		const pos = chunk.ChunkPosition{.wx=blockUpdate.x, .wy=blockUpdate.y, .wz=blockUpdate.z, .voxelSize=1};
+		const pos = chunk.ChunkPosition{.wx = blockUpdate.x, .wy = blockUpdate.y, .wz = blockUpdate.z, .voxelSize = 1};
 		if(getMeshAndIncreaseRefCount(pos)) |mesh| {
 			defer mesh.decreaseRefCount();
 			mesh.updateBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock);
@@ -746,9 +758,7 @@ pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()
 	defer mutex.unlock();
 	for(clearList.items) |mesh| {
 		mesh.deinit();
-		meshMemoryPoolMutex.lock();
 		meshMemoryPool.destroy(mesh);
-		meshMemoryPoolMutex.unlock();
 	}
 	clearList.clearRetainingCapacity();
 	while(priorityMeshUpdateList.dequeue()) |mesh| {
@@ -886,16 +896,16 @@ pub const MeshGenerationTask = struct { // MARK: MeshGenerationTask
 	mesh: *chunk.Chunk,
 
 	pub const vtable = utils.ThreadPool.VTable{
-		.getPriority = @ptrCast(&getPriority),
-		.isStillNeeded = @ptrCast(&isStillNeeded),
-		.run = @ptrCast(&run),
-		.clean = @ptrCast(&clean),
+		.getPriority = main.utils.castFunctionSelfToAnyopaque(getPriority),
+		.isStillNeeded = main.utils.castFunctionSelfToAnyopaque(isStillNeeded),
+		.run = main.utils.castFunctionSelfToAnyopaque(run),
+		.clean = main.utils.castFunctionSelfToAnyopaque(clean),
 		.taskType = .meshgenAndLighting,
 	};
 
 	pub fn schedule(mesh: *chunk.Chunk) void {
 		const task = main.globalAllocator.create(MeshGenerationTask);
-		task.* = MeshGenerationTask {
+		task.* = MeshGenerationTask{
 			.mesh = mesh,
 		};
 		main.threadPool.addTask(task, &vtable);
@@ -915,9 +925,7 @@ pub const MeshGenerationTask = struct { // MARK: MeshGenerationTask
 	pub fn run(self: *MeshGenerationTask) void {
 		defer main.globalAllocator.destroy(self);
 		const pos = self.mesh.pos;
-		meshMemoryPoolMutex.lock();
-		const mesh = meshMemoryPool.create() catch unreachable;
-		meshMemoryPoolMutex.unlock();
+		const mesh = meshMemoryPool.create();
 		mesh.init(pos, self.mesh);
 		defer mesh.decreaseRefCount();
 		mesh.generateLightingData() catch return;
@@ -932,7 +940,7 @@ pub const MeshGenerationTask = struct { // MARK: MeshGenerationTask
 // MARK: updaters
 
 pub fn updateBlock(x: i32, y: i32, z: i32, newBlock: blocks.Block) void {
-	blockUpdateList.enqueue(.{.x=x, .y=y, .z=z, .newBlock=newBlock});
+	blockUpdateList.enqueue(.{.x = x, .y = y, .z = z, .newBlock = newBlock});
 }
 
 pub fn updateChunkMesh(mesh: *chunk.Chunk) void {
@@ -950,8 +958,7 @@ pub fn addBreakingAnimation(pos: Vec3i, breakingProgress: f32) void {
 	const texture = main.blocks.meshes.blockBreakingTextures.items[animationFrame];
 
 	const block = getBlock(pos[0], pos[1], pos[2]) orelse return;
-	const modelIndex = main.blocks.meshes.model(block);
-	const model = &main.models.models.items[modelIndex];
+	const model = main.blocks.meshes.model(block).model();
 
 	for(model.internalQuads) |quadIndex| {
 		addBreakingAnimationFace(pos, quadIndex, texture, null, block.transparent());
@@ -963,7 +970,7 @@ pub fn addBreakingAnimation(pos: Vec3i, breakingProgress: f32) void {
 	}
 }
 
-fn addBreakingAnimationFace(pos: Vec3i, quadIndex: u16, texture: u16, neighbor: ?chunk.Neighbor, isTransparent: bool) void {
+fn addBreakingAnimationFace(pos: Vec3i, quadIndex: main.models.QuadIndex, texture: u16, neighbor: ?chunk.Neighbor, isTransparent: bool) void {
 	const worldPos = pos +% if(neighbor) |n| n.relPos() else Vec3i{0, 0, 0};
 	const relPos = worldPos & @as(Vec3i, @splat(main.chunk.chunkMask));
 	const mesh = getMeshAndIncreaseRefCount(.{.wx = worldPos[0], .wy = worldPos[1], .wz = worldPos[2], .voxelSize = 1}) orelse return;
@@ -972,7 +979,9 @@ fn addBreakingAnimationFace(pos: Vec3i, quadIndex: u16, texture: u16, neighbor: 
 	defer mesh.mutex.unlock();
 	const lightIndex = blk: {
 		const meshData = if(isTransparent) &mesh.transparentMesh else &mesh.opaqueMesh;
-		for(meshData.completeList) |face| {
+		meshData.lock.lockRead();
+		defer meshData.lock.unlockRead();
+		for(meshData.completeList.getEverything()) |face| {
 			if(face.position.x == relPos[0] and face.position.y == relPos[1] and face.position.z == relPos[2] and face.blockAndQuad.quadIndex == quadIndex) {
 				break :blk face.position.lightIndex;
 			}
@@ -996,7 +1005,7 @@ fn addBreakingAnimationFace(pos: Vec3i, quadIndex: u16, texture: u16, neighbor: 
 	});
 }
 
-fn removeBreakingAnimationFace(pos: Vec3i, quadIndex: u16, neighbor: ?chunk.Neighbor) void {
+fn removeBreakingAnimationFace(pos: Vec3i, quadIndex: main.models.QuadIndex, neighbor: ?chunk.Neighbor) void {
 	const worldPos = pos +% if(neighbor) |n| n.relPos() else Vec3i{0, 0, 0};
 	const relPos = worldPos & @as(Vec3i, @splat(main.chunk.chunkMask));
 	const mesh = getMeshAndIncreaseRefCount(.{.wx = worldPos[0], .wy = worldPos[1], .wz = worldPos[2], .voxelSize = 1}) orelse return;
@@ -1012,8 +1021,7 @@ fn removeBreakingAnimationFace(pos: Vec3i, quadIndex: u16, neighbor: ?chunk.Neig
 
 pub fn removeBreakingAnimation(pos: Vec3i) void {
 	const block = getBlock(pos[0], pos[1], pos[2]) orelse return;
-	const modelIndex = main.blocks.meshes.model(block);
-	const model = &main.models.models.items[modelIndex];
+	const model = main.blocks.meshes.model(block).model();
 
 	for(model.internalQuads) |quadIndex| {
 		removeBreakingAnimationFace(pos, quadIndex, null);

@@ -5,7 +5,7 @@ const game = @import("game.zig");
 const graphics = @import("graphics.zig");
 const c = graphics.c;
 const ZonElement = @import("zon.zig").ZonElement;
-const main = @import("main.zig");
+const main = @import("main");
 const renderer = @import("renderer.zig");
 const settings = @import("settings.zig");
 const utils = @import("utils.zig");
@@ -14,7 +14,9 @@ const Mat4f = vec.Mat4f;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+
+const BinaryReader = main.utils.BinaryReader;
 
 pub const ClientEntity = struct {
 	interpolatedValues: utils.GenericInterpolation(6) = undefined,
@@ -37,7 +39,7 @@ pub const ClientEntity = struct {
 			.height = zon.get(f64, "height", 1),
 			.name = allocator.dupe(u8, zon.get([]const u8, "name", "")),
 		};
-		self._interpolationPos = [_]f64 {
+		self._interpolationPos = [_]f64{
 			self.pos[0],
 			self.pos[1],
 			self.pos[2],
@@ -45,7 +47,7 @@ pub const ClientEntity = struct {
 			@floatCast(self.rot[1]),
 			@floatCast(self.rot[2]),
 		};
-		self._interpolationVel = [_]f64{0} ** 6;
+		self._interpolationVel = @splat(0);
 		self.interpolatedValues.init(&self._interpolationPos, &self._interpolationVel);
 	}
 
@@ -175,11 +177,19 @@ pub const ClientEntityManager = struct {
 		for(entities.items()) |ent| {
 			if(ent.id == game.Player.id) continue; // don't render local player
 
-			c.glUniform1i(uniforms.light, @bitCast(@as(u32, 0xffffffff))); // TODO: Lighting
+			const blockPos: vec.Vec3i = @intFromFloat(@floor(ent.pos));
+			const lightVals: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse @splat(0);
+			const light = (@as(u32, lightVals[0] >> 3) << 25 |
+				@as(u32, lightVals[1] >> 3) << 20 |
+				@as(u32, lightVals[2] >> 3) << 15 |
+				@as(u32, lightVals[3] >> 3) << 10 |
+				@as(u32, lightVals[4] >> 3) << 5 |
+				@as(u32, lightVals[5] >> 3) << 0);
+
+			c.glUniform1ui(uniforms.light, @bitCast(@as(u32, light)));
 
 			const pos: Vec3d = ent.getRenderPosition() - playerPos;
-			const modelMatrix = (
-				Mat4f.identity()
+			const modelMatrix = (Mat4f.identity()
 				.mul(Mat4f.translation(Vec3f{
 					@floatCast(pos[0]),
 					@floatCast(pos[1]),
@@ -218,31 +228,29 @@ pub const ClientEntityManager = struct {
 		}
 	}
 
-	pub fn serverUpdate(time: i16, data: []const u8) void {
+	pub fn serverUpdate(time: i16, reader: *BinaryReader) !void {
 		mutex.lock();
 		defer mutex.unlock();
 		timeDifference.addDataPoint(time);
-		std.debug.assert(data.len%(4 + 24 + 12 + 24) == 0);
-		var remaining = data;
-		while(remaining.len != 0) {
-			const id = std.mem.readInt(u32, remaining[0..4], .big);
-			remaining = remaining[4..];
-			const pos = [_]f64 {
-				@bitCast(std.mem.readInt(u64, remaining[0..8], .big)),
-				@bitCast(std.mem.readInt(u64, remaining[8..16], .big)),
-				@bitCast(std.mem.readInt(u64, remaining[16..24], .big)),
-				@floatCast(@as(f32, @bitCast(std.mem.readInt(u32, remaining[24..28], .big)))),
-				@floatCast(@as(f32, @bitCast(std.mem.readInt(u32, remaining[28..32], .big)))),
-				@floatCast(@as(f32, @bitCast(std.mem.readInt(u32, remaining[32..36], .big)))),
+
+		while(reader.remaining.len != 0) {
+			const id = try reader.readInt(u32);
+			const pos = [_]f64{
+				try reader.readFloat(f64),
+				try reader.readFloat(f64),
+				try reader.readFloat(f64),
+				@floatCast(try reader.readFloat(f32)),
+				@floatCast(try reader.readFloat(f32)),
+				@floatCast(try reader.readFloat(f32)),
 			};
-			remaining = remaining[36..];
-			const vel = [_]f64 {
-				@bitCast(std.mem.readInt(u64, remaining[0..8], .big)),
-				@bitCast(std.mem.readInt(u64, remaining[8..16], .big)),
-				@bitCast(std.mem.readInt(u64, remaining[16..24], .big)),
-				0, 0, 0,
+			const vel = [_]f64{
+				try reader.readFloat(f64),
+				try reader.readFloat(f64),
+				try reader.readFloat(f64),
+				0,
+				0,
+				0,
 			};
-			remaining = remaining[24..];
 			for(entities.items()) |*ent| {
 				if(ent.id == id) {
 					ent.updatePosition(&pos, &vel, time);

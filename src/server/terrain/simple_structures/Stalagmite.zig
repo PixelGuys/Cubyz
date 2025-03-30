@@ -1,15 +1,17 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const random = main.random;
 const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
-const CaveMap = terrain.CaveMap;
+const CaveBiomeMapView = terrain.CaveBiomeMap.CaveBiomeMapView;
+const CaveMapView = terrain.CaveMap.CaveMapView;
+const GenerationMode = terrain.biomes.SimpleStructureModel.GenerationMode;
 const vec = main.vec;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 pub const id = "cubyz:stalagmite";
 
@@ -31,7 +33,7 @@ pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) 
 	return self;
 }
 
-pub fn generate(self: *Stalagmite, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, _: terrain.CaveMap.CaveMapView, seed: *u64, isCeiling: bool) void {
+pub fn generate(self: *Stalagmite, _: GenerationMode, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, _: CaveMapView, _: CaveBiomeMapView, seed: *u64, isCeiling: bool) void {
 	const relX: f32 = @as(f32, @floatFromInt(x)) + main.random.nextFloat(seed);
 	const relY: f32 = @as(f32, @floatFromInt(y)) + main.random.nextFloat(seed);
 	var relZ: f32 = @as(f32, @floatFromInt(z)) + main.random.nextFloat(seed);
@@ -63,7 +65,7 @@ pub fn generate(self: *Stalagmite, x: i32, y: i32, z: i32, chunk: *main.chunk.Se
 					if(dist < size*size) {
 						if(x3 >= 0 and x3 < chunk.super.width and y3 >= 0 and y3 < chunk.super.width and z3 >= 0 and z3 < chunk.super.width) {
 							const block: main.blocks.Block = chunk.getBlock(x3, y3, z3);
-							if(block.typ == 0 or block.degradable() or block.blockClass() == .fluid) {
+							if(block.typ == 0 or block.degradable()) {
 								chunk.updateBlockInGeneration(x3, y3, z3, self.block);
 							}
 						}

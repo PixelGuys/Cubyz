@@ -1,15 +1,17 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const random = main.random;
 const ZonElement = main.ZonElement;
 const terrain = main.server.terrain;
-const CaveMap = terrain.CaveMap;
+const CaveBiomeMapView = terrain.CaveBiomeMap.CaveBiomeMapView;
+const CaveMapView = terrain.CaveMap.CaveMapView;
+const GenerationMode = terrain.biomes.SimpleStructureModel.GenerationMode;
 const vec = main.vec;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 pub const id = "cubyz:simple_tree";
 
@@ -60,12 +62,11 @@ pub fn generateStem(self: *SimpleTreeModel, x: i32, y: i32, z: i32, height: i32,
 		var pz: i32 = chunk.startIndex(z);
 		while(pz < z + height) : (pz += chunk.super.pos.voxelSize) {
 			if(chunk.liesInChunk(x, y, pz)) {
-				chunk.updateBlockIfDegradable(x, y, pz, if(pz == z + height-1) self.topWoodBlock else self.woodBlock);
+				chunk.updateBlockIfDegradable(x, y, pz, if(pz == z + height - 1) self.topWoodBlock else self.woodBlock);
 
-				if (self.branched)
-				{
-					const chance = @sqrt(@as(f32, @floatFromInt(pz - z)) / @as(f32, @floatFromInt(height * 2)));
-					if (main.random.nextFloat(seed) < chance) {
+				if(self.branched) {
+					const chance = @sqrt(@as(f32, @floatFromInt(pz - z))/@as(f32, @floatFromInt(height*2)));
+					if(main.random.nextFloat(seed) < chance) {
 						const d = main.random.nextIntBounded(u32, seed, 4);
 						generateBranch(self, x, y, pz, d, chunk, seed);
 					}
@@ -78,18 +79,18 @@ pub fn generateStem(self: *SimpleTreeModel, x: i32, y: i32, z: i32, height: i32,
 pub fn generateBranch(self: *SimpleTreeModel, x: i32, y: i32, z: i32, d: u32, chunk: *main.chunk.ServerChunk, seed: *u64) void {
 	_ = seed;
 
-	if (d == 0 and chunk.liesInChunk(x + 1, y, z)) {
+	if(d == 0 and chunk.liesInChunk(x + 1, y, z)) {
 		chunk.updateBlockIfDegradable(x + 1, y, z, .{.typ = self.topWoodBlock.typ, .data = 2});
-	} else if (d == 1 and chunk.liesInChunk(x - 1, y, z)) {
+	} else if(d == 1 and chunk.liesInChunk(x - 1, y, z)) {
 		chunk.updateBlockIfDegradable(x - 1, y, z, .{.typ = self.topWoodBlock.typ, .data = 3});
-	} else if (d == 2 and chunk.liesInChunk(x, y + 1, z)) {
+	} else if(d == 2 and chunk.liesInChunk(x, y + 1, z)) {
 		chunk.updateBlockIfDegradable(x, y + 1, z, .{.typ = self.topWoodBlock.typ, .data = 4});
-	} else if (d == 3 and chunk.liesInChunk(x, y - 1, z)) {
+	} else if(d == 3 and chunk.liesInChunk(x, y - 1, z)) {
 		chunk.updateBlockIfDegradable(x, y - 1, z, .{.typ = self.topWoodBlock.typ, .data = 5});
 	}
 }
 
-pub fn generate(self: *SimpleTreeModel, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, caveMap: terrain.CaveMap.CaveMapView, seed: *u64, _: bool) void {
+pub fn generate(self: *SimpleTreeModel, _: GenerationMode, x: i32, y: i32, z: i32, chunk: *main.chunk.ServerChunk, caveMap: CaveMapView, _: CaveBiomeMapView, seed: *u64, _: bool) void {
 	const factor = random.nextFloat(seed);
 	var height = self.height0 + @as(i32, @intFromFloat(factor*@as(f32, @floatFromInt(self.deltaHeight))));
 	const leafRadius = self.leafRadius + factor*self.deltaLeafRadius;

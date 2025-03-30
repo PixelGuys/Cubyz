@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const graphics = main.graphics;
 const draw = graphics.draw;
 const Shader = graphics.Shader;
@@ -83,7 +83,7 @@ fn defaultOnAction(_: usize) void {}
 pub fn initText(pos: Vec2f, width: f32, text: []const u8, onAction: gui.Callback) *Button {
 	const label = Label.init(undefined, width - 3*border, text, .center);
 	const self = main.globalAllocator.create(Button);
-	self.* = Button {
+	self.* = Button{
 		.pos = pos,
 		.size = Vec2f{width, label.size[1] + 3*border},
 		.onAction = onAction,
@@ -95,7 +95,7 @@ pub fn initText(pos: Vec2f, width: f32, text: []const u8, onAction: gui.Callback
 pub fn initIcon(pos: Vec2f, iconSize: Vec2f, iconTexture: Texture, hasShadow: bool, onAction: gui.Callback) *Button {
 	const icon = Icon.init(undefined, iconSize, iconTexture, hasShadow);
 	const self = main.globalAllocator.create(Button);
-	self.* = Button {
+	self.* = Button{
 		.pos = pos,
 		.size = icon.size + @as(Vec2f, @splat(3*border)),
 		.onAction = onAction,
@@ -110,9 +110,7 @@ pub fn deinit(self: *const Button) void {
 }
 
 pub fn toComponent(self: *Button) GuiComponent {
-	return GuiComponent {
-		.button = self
-	};
+	return .{.button = self};
 }
 
 pub fn updateHovered(self: *Button, _: Vec2f) void {
@@ -137,7 +135,8 @@ pub fn render(self: *Button, mousePosition: Vec2f) void {
 		pressedTextures
 	else if(GuiComponent.contains(self.pos, self.size, mousePosition) and self.hovered)
 		hoveredTextures
-	else normalTextures;
+	else
+		normalTextures;
 	draw.setColor(0xff000000);
 	textures.texture.bindTo(0);
 	shader.bind();

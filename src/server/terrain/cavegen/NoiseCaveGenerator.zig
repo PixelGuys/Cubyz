@@ -1,7 +1,7 @@
 const std = @import("std");
 const sign = std.math.sign;
 
-const main = @import("root");
+const main = @import("main");
 const Array3D = main.utils.Array3D;
 const random = main.random;
 const ZonElement = main.ZonElement;
@@ -24,9 +24,7 @@ pub fn init(parameters: ZonElement) void {
 	_ = parameters;
 }
 
-pub fn deinit() void {
-
-}
+pub fn deinit() void {}
 
 const scale = 64;
 const interpolatedPart = 4;
@@ -83,18 +81,8 @@ pub fn generate(map: *CaveMapFragment, worldSeed: u64) void {
 						while(dy < outerSize) : (dy += map.pos.voxelSize) {
 							const ix = @as(f32, @floatFromInt(dx))/outerSizeFloat;
 							const iy = @as(f32, @floatFromInt(dy))/outerSizeFloat;
-							const lowerVal = (
-								(1 - ix)*(1 - iy)*val000
-								+ (1 - ix)*iy*val010
-								+ ix*(1 - iy)*val100
-								+ ix*iy*val110
-							);
-							const upperVal = (
-								(1 - ix)*(1 - iy)*val001
-								+ (1 - ix)*iy*val011
-								+ ix*(1 - iy)*val101
-								+ ix*iy*val111
-							);
+							const lowerVal = ((1 - ix)*(1 - iy)*val000 + (1 - ix)*iy*val010 + ix*(1 - iy)*val100 + ix*iy*val110);
+							const upperVal = ((1 - ix)*(1 - iy)*val001 + (1 - ix)*iy*val011 + ix*(1 - iy)*val101 + ix*iy*val111);
 							// TODO: Determine the range that needs to be removed, and remove it in one go.
 							if(upperVal*lowerVal > 0) { // All z values have the same sign → the entire column is the same.
 								if(upperVal > 0) {

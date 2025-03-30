@@ -1,10 +1,10 @@
 .{
-	.class= .stone,
+	.tags = .{.stone},
 	.blockHealth = 28,
 	.drops = .{
 		.{.items = .{.auto}},
 	},
-	.rotation= .stairs,
-	.model= "cubyz:cube",
-	.texture= "cubyz:marble_bricks",
+	.rotation = .stairs,
+	.model = "cubyz:cube",
+	.texture = "cubyz:marble_bricks",
 }

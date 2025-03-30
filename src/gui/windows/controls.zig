@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const Vec2f = main.vec.Vec2f;
 const c = main.Window.c;
 const gui = @import("../gui.zig");
@@ -12,7 +12,7 @@ const Label = @import("../components/Label.zig");
 const VerticalList = @import("../components/VerticalList.zig");
 const ContinuousSlider = @import("../components/ContinuousSlider.zig");
 
-pub var window = GuiWindow {
+pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 192},
 };
 
@@ -47,7 +47,7 @@ fn gamepadListener(axis: ?main.Window.GamepadAxis, btn: c_int) void {
 	main.settings.save();
 }
 fn updateSensitivity(sensitivity: f32) void {
-	if (editingKeyboard) {
+	if(editingKeyboard) {
 		main.settings.mouseSensitivity = sensitivity;
 	} else {
 		main.settings.controllerSensitivity = sensitivity;
@@ -59,12 +59,12 @@ fn updateDeadzone(deadzone: f32) void {
 	main.settings.controllerAxisDeadzone = deadzone;
 }
 
-fn deadzoneFormatter(allocator: main.utils.NeverFailingAllocator, value: f32) []const u8 {
+fn deadzoneFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
 	return std.fmt.allocPrint(allocator.allocator, "Deadzone: {d:.0}%", .{value*100}) catch unreachable;
 }
 
-fn sensitivityFormatter(allocator: main.utils.NeverFailingAllocator, value: f32) []const u8 {
-	return std.fmt.allocPrint(allocator.allocator, "{s} Sensitivity: {d:.0}%", .{if (editingKeyboard) "Mouse" else "Controller", value*100}) catch unreachable;
+fn sensitivityFormatter(allocator: main.heap.NeverFailingAllocator, value: f32) []const u8 {
+	return std.fmt.allocPrint(allocator.allocator, "{s} Sensitivity: {d:.0}%", .{if(editingKeyboard) "Mouse" else "Controller", value*100}) catch unreachable;
 }
 
 fn toggleKeyboard(_: usize) void {
@@ -73,7 +73,7 @@ fn toggleKeyboard(_: usize) void {
 }
 fn unbindKey(keyPtr: usize) void {
 	var key: ?*main.Window.Key = @ptrFromInt(keyPtr);
-	if (editingKeyboard) {
+	if(editingKeyboard) {
 		key.?.key = c.GLFW_KEY_UNKNOWN;
 		key.?.mouseButton = -1;
 		key.?.scancode = 0;
@@ -86,18 +86,14 @@ fn unbindKey(keyPtr: usize) void {
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 364, 8);
-	list.add(Button.initText(.{0, 0}, 128, if (editingKeyboard) "Gamepad" else "Keyboard", .{.callback = &toggleKeyboard}));
-	list.add(ContinuousSlider.init(.{0, 0}, 256, 0, 5, if (editingKeyboard) main.settings.mouseSensitivity else main.settings.controllerSensitivity, &updateSensitivity, &sensitivityFormatter));
-	if (!editingKeyboard) {
+	list.add(Button.initText(.{0, 0}, 128, if(editingKeyboard) "Gamepad" else "Keyboard", .{.callback = &toggleKeyboard}));
+	list.add(ContinuousSlider.init(.{0, 0}, 256, 0, 5, if(editingKeyboard) main.settings.mouseSensitivity else main.settings.controllerSensitivity, &updateSensitivity, &sensitivityFormatter));
+	if(!editingKeyboard) {
 		list.add(ContinuousSlider.init(.{0, 0}, 256, 0, 5, main.settings.controllerAxisDeadzone, &updateDeadzone, &deadzoneFormatter));
 	}
 	for(&main.KeyBoard.keys) |*key| {
 		const label = Label.init(.{0, 0}, 128, key.name, .left);
-		const button = if(key == selectedKey) (
-			Button.initText(.{16, 0}, 128, "...", .{})
-		) else (
-			Button.initText(.{16, 0}, 128, if (editingKeyboard) key.getName() else key.getGamepadName(), .{.callback = if (editingKeyboard) &keyFunction else &gamepadFunction, .arg = @intFromPtr(key)})
-		);
+		const button = if(key == selectedKey) (Button.initText(.{16, 0}, 128, "...", .{})) else (Button.initText(.{16, 0}, 128, if(editingKeyboard) key.getName() else key.getGamepadName(), .{.callback = if(editingKeyboard) &keyFunction else &gamepadFunction, .arg = @intFromPtr(key)}));
 		const unbindBtn = Button.initText(.{16, 0}, 64, "Unbind", .{.callback = &unbindKey, .arg = @intFromPtr(key)});
 		const row = HorizontalList.init();
 		row.add(label);

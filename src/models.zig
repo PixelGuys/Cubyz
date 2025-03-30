@@ -3,14 +3,14 @@ const std = @import("std");
 const chunk = @import("chunk.zig");
 const Neighbor = chunk.Neighbor;
 const graphics = @import("graphics.zig");
-const main = @import("main.zig");
+const main = @import("main");
 const vec = @import("vec.zig");
 const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
 const Vec2f = vec.Vec2f;
 const Mat4f = vec.Mat4f;
 const FaceData = main.renderer.chunk_meshing.FaceData;
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 var quadSSBO: graphics.SSBO = undefined;
 
@@ -49,11 +49,31 @@ const Quad = struct {
 	uvs: [4]usize,
 };
 
+pub const ModelIndex = packed struct {
+	index: u32,
+
+	pub fn model(self: ModelIndex) *const Model {
+		return &models.items()[self.index];
+	}
+};
+
+pub const QuadIndex = packed struct {
+	index: u16,
+
+	pub fn quadInfo(self: QuadIndex) *const QuadInfo {
+		return &quads.items[self.index];
+	}
+
+	pub fn extraQuadInfo(self: QuadIndex) *const ExtraQuadInfo {
+		return &extraQuadInfos.items[self.index];
+	}
+};
+
 pub const Model = struct {
 	min: Vec3f,
 	max: Vec3f,
-	internalQuads: []u16,
-	neighborFacingQuads: [6][]u16,
+	internalQuads: []QuadIndex,
+	neighborFacingQuads: [6][]QuadIndex,
 	isNeighborOccluded: [6]bool,
 	allNeighborsOccluded: bool,
 	noNeighborsOccluded: bool,
@@ -88,7 +108,7 @@ pub const Model = struct {
 		return @popCount(@as(u3, @bitCast(hasTwoOnes))) == 2 and @popCount(@as(u3, @bitCast(hasTwoZeroes))) == 2;
 	}
 
-	pub fn init(quadInfos: []const QuadInfo) u16 {
+	pub fn init(quadInfos: []const QuadInfo) ModelIndex {
 		const adjustedQuads = main.stackAllocator.alloc(QuadInfo, quadInfos.len);
 		defer main.stackAllocator.free(adjustedQuads);
 		for(adjustedQuads, quadInfos) |*dest, *src| {
@@ -103,13 +123,13 @@ pub const Model = struct {
 			// Snap the normals as well:
 			dest.normal = snapToGrid(dest.normal);
 		}
-		const modelIndex: u16 = @intCast(models.items.len);
+		const modelIndex: ModelIndex = .{.index = models.len};
 		const self = models.addOne();
 		var amounts: [6]usize = .{0, 0, 0, 0, 0, 0};
 		var internalAmount: usize = 0;
 		self.min = .{1, 1, 1};
 		self.max = .{0, 0, 0};
-		self.isNeighborOccluded = .{false} ** 6;
+		self.isNeighborOccluded = @splat(false);
 		for(adjustedQuads) |*quad| {
 			for(quad.corners) |corner| {
 				self.min = @min(self.min, corner);
@@ -123,9 +143,9 @@ pub const Model = struct {
 		}
 
 		for(0..6) |i| {
-			self.neighborFacingQuads[i] = main.globalAllocator.alloc(u16, amounts[i]);
+			self.neighborFacingQuads[i] = main.globalAllocator.alloc(QuadIndex, amounts[i]);
 		}
-		self.internalQuads = main.globalAllocator.alloc(u16, internalAmount);
+		self.internalQuads = main.globalAllocator.alloc(QuadIndex, internalAmount);
 
 		var indices: [6]usize = .{0, 0, 0, 0, 0, 0};
 		var internalIndex: usize = 0;
@@ -153,7 +173,7 @@ pub const Model = struct {
 		self.noNeighborsOccluded = true;
 		for(0..6) |neighbor| {
 			for(self.neighborFacingQuads[neighbor]) |quad| {
-				if(fullyOccludesNeighbor(&quads.items[quad])) {
+				if(fullyOccludesNeighbor(quad.quadInfo())) {
 					self.isNeighborOccluded[neighbor] = true;
 				}
 			}
@@ -164,20 +184,19 @@ pub const Model = struct {
 		return modelIndex;
 	}
 
-
 	fn addVert(vert: Vec3f, vertList: *main.List(Vec3f)) usize {
-		const ind = for (vertList.*.items, 0..) |vertex, index| {
-			if (std.meta.eql(vertex, vert)) break index;
+		const ind = for(vertList.*.items, 0..) |vertex, index| {
+			if(vertex == vert) break index;
 		} else vertList.*.items.len;
 
-		if (ind == vertList.*.items.len) {
+		if(ind == vertList.*.items.len) {
 			vertList.*.append(vert);
 		}
 
 		return ind;
 	}
 
-	pub fn loadModel(data: []const u8) u16 {
+	pub fn loadModel(data: []const u8) ModelIndex {
 		const quadInfos = loadRawModelDataFromObj(main.stackAllocator, data);
 		defer main.stackAllocator.free(quadInfos);
 		for(quadInfos) |*quad| {
@@ -187,9 +206,9 @@ pub const Model = struct {
 				minUv = @min(minUv, quad.cornerUV[i]);
 			}
 			minUv = @floor(minUv);
-			quad.textureSlot = @as(u32, @intFromFloat(minUv[1])) * 4 + @as(u32, @intFromFloat(minUv[0]));
+			quad.textureSlot = @as(u32, @intFromFloat(minUv[1]))*4 + @as(u32, @intFromFloat(minUv[0]));
 
-			if (minUv[0] < 0 or minUv[0] > 4 or minUv[1] < 0 or minUv[1] > 4) {
+			if(minUv[0] < 0 or minUv[0] > 4 or minUv[1] < 0 or minUv[1] > 4) {
 				std.log.err("Uv value for model is outside of 0-1 range", .{});
 			}
 
@@ -200,7 +219,7 @@ pub const Model = struct {
 		return Model.init(quadInfos);
 	}
 
-	pub fn loadRawModelDataFromObj(allocator: main.utils.NeverFailingAllocator, data: []const u8) []QuadInfo {
+	pub fn loadRawModelDataFromObj(allocator: main.heap.NeverFailingAllocator, data: []const u8) []QuadInfo {
 		var vertices = main.List(Vec3f).init(main.stackAllocator);
 		defer vertices.deinit();
 
@@ -220,79 +239,91 @@ pub const Model = struct {
 		var buf_reader = std.io.bufferedReader(fixed_buffer.reader());
 		var in_stream = buf_reader.reader();
 		var buf: [128]u8 = undefined;
-		while (in_stream.readUntilDelimiterOrEof(&buf, '\n') catch |e| blk: {
+		while(in_stream.readUntilDelimiterOrEof(&buf, '\n') catch |e| blk: {
 			std.log.err("Error reading line while loading model: {any}", .{e});
 			break :blk null;
 		}) |lineUntrimmed| {
-			if (lineUntrimmed.len < 3)
+			if(lineUntrimmed.len < 3)
 				continue;
 
 			var line = lineUntrimmed;
-			if (line[line.len - 1] == '\r') {
-				line = line[0..line.len - 1];
+			if(line[line.len - 1] == '\r') {
+				line = line[0 .. line.len - 1];
 			}
 
-			if (line[0] == '#')
+			if(line[0] == '#')
 				continue;
 
-			if (std.mem.eql(u8, line[0..2], "v ")) {
+			if(std.mem.eql(u8, line[0..2], "v ")) {
 				var coordsIter = std.mem.splitScalar(u8, line[2..], ' ');
 				var coords: Vec3f = undefined;
 				var i: usize = 0;
-				while (coordsIter.next()) |coord| : (i += 1) {
-					coords[i] = std.fmt.parseFloat(f32, coord) catch |e| blk: { std.log.err("Failed parsing {s} into float: {any}", .{coord, e}); break :blk 0; };
+				while(coordsIter.next()) |coord| : (i += 1) {
+					coords[i] = std.fmt.parseFloat(f32, coord) catch |e| blk: {
+						std.log.err("Failed parsing {s} into float: {any}", .{coord, e});
+						break :blk 0;
+					};
 				}
 				const coordsCorrect: Vec3f = .{coords[0], coords[1], coords[2]};
 				vertices.append(coordsCorrect);
-			} else if (std.mem.eql(u8, line[0..3], "vn ")) {
+			} else if(std.mem.eql(u8, line[0..3], "vn ")) {
 				var coordsIter = std.mem.splitScalar(u8, line[3..], ' ');
 				var norm: Vec3f = undefined;
 				var i: usize = 0;
-				while (coordsIter.next()) |coord| : (i += 1) {
-					norm[i] = std.fmt.parseFloat(f32, coord) catch |e| blk: { std.log.err("Failed parsing {s} into float: {any}", .{coord, e}); break :blk 0; };
+				while(coordsIter.next()) |coord| : (i += 1) {
+					norm[i] = std.fmt.parseFloat(f32, coord) catch |e| blk: {
+						std.log.err("Failed parsing {s} into float: {any}", .{coord, e});
+						break :blk 0;
+					};
 				}
 				const normCorrect: Vec3f = .{norm[0], norm[1], norm[2]};
 				normals.append(normCorrect);
-			} else if (std.mem.eql(u8, line[0..3], "vt ")) {
+			} else if(std.mem.eql(u8, line[0..3], "vt ")) {
 				var coordsIter = std.mem.splitScalar(u8, line[3..], ' ');
 				var uv: Vec2f = undefined;
 				var i: usize = 0;
-				while (coordsIter.next()) |coord| : (i += 1) {
-					uv[i] = std.fmt.parseFloat(f32, coord) catch |e| blk: { std.log.err("Failed parsing {s} into float: {any}", .{coord, e}); break :blk 0; };
+				while(coordsIter.next()) |coord| : (i += 1) {
+					uv[i] = std.fmt.parseFloat(f32, coord) catch |e| blk: {
+						std.log.err("Failed parsing {s} into float: {any}", .{coord, e});
+						break :blk 0;
+					};
 				}
 				uvs.append(.{uv[0], uv[1]});
-			} else if (std.mem.eql(u8, line[0..2], "f ")) {
+			} else if(std.mem.eql(u8, line[0..2], "f ")) {
 				var coordsIter = std.mem.splitScalar(u8, line[2..], ' ');
 				var faceData: [3][4]usize = undefined;
 				var i: usize = 0;
 				var failed = false;
-				while (coordsIter.next()) |vertex| : (i += 1) {
-					if (i >= 4) {
+				while(coordsIter.next()) |vertex| : (i += 1) {
+					if(i >= 4) {
 						failed = true;
 						std.log.err("More than 4 verticies in a face", .{});
 						break;
 					}
 					var d = std.mem.splitScalar(u8, vertex, '/');
 					var j: usize = 0;
-					if (std.mem.count(u8, vertex, "/") != 2 or std.mem.count(u8, vertex, "//") != 0) {
+					if(std.mem.count(u8, vertex, "/") != 2 or std.mem.count(u8, vertex, "//") != 0) {
 						failed = true;
 						std.log.err("Failed loading face {s}. Each vertex must use vertex/uv/normal", .{line});
 						break;
 					}
-					while (d.next()) |value| : (j += 1) {
-						faceData[j][i] = std.fmt.parseUnsigned(usize, value, 10) catch |e| blk: { std.log.err("Failed parsing {s} into uint: {any}", .{value, e}); break :blk 1; };
+					while(d.next()) |value| : (j += 1) {
+						faceData[j][i] = std.fmt.parseUnsigned(usize, value, 10) catch |e| blk: {
+							std.log.err("Failed parsing {s} into uint: {any}", .{value, e});
+							break :blk 1;
+						};
 						faceData[j][i] -= 1;
 					}
 				}
-				if (!failed) {
-					switch (i) {
+				if(!failed) {
+					switch(i) {
 						3 => {
-							tris.append(.{.vertex=faceData[0][0..3].*, .uvs=faceData[1][0..3].*, .normal=faceData[2][0]});
+							tris.append(.{.vertex = faceData[0][0..3].*, .uvs = faceData[1][0..3].*, .normal = faceData[2][0]});
 						},
 						4 => {
-							quadFaces.append(.{.vertex=faceData[0], .uvs=faceData[1], .normal=faceData[2][0]});
+							quadFaces.append(.{.vertex = faceData[0], .uvs = faceData[1], .normal = faceData[2][0]});
 						},
-						else => std.log.err("Failed loading face {s} with {d} vertices", .{line, i})
+						else => std.log.err("Failed loading face {s} with {d} vertices", .{line, i}),
 					}
 				}
 			}
@@ -301,7 +332,7 @@ pub const Model = struct {
 		var quadInfos = main.List(QuadInfo).initCapacity(allocator, tris.items.len + quads.items.len);
 		defer quadInfos.deinit();
 
-		for (tris.items) |face| {
+		for(tris.items) |face| {
 			const normal: Vec3f = normals.items[face.normal];
 
 			const uvA: Vec2f = uvs.items[face.uvs[0]];
@@ -320,7 +351,7 @@ pub const Model = struct {
 			});
 		}
 
-		for (quadFaces.items) |face| {
+		for(quadFaces.items) |face| {
 			const normal: Vec3f = normals.items[face.normal];
 
 			const uvA: Vec2f = uvs.items[face.uvs[1]];
@@ -353,11 +384,11 @@ pub const Model = struct {
 
 	pub fn getRawFaces(model: Model, quadList: *main.List(QuadInfo)) void {
 		for(model.internalQuads) |quadIndex| {
-			quadList.append(quads.items[quadIndex]);
+			quadList.append(quadIndex.quadInfo().*);
 		}
 		for(0..6) |neighbor| {
 			for(model.neighborFacingQuads[neighbor]) |quadIndex| {
-				var quad = quads.items[quadIndex];
+				var quad = quadIndex.quadInfo().*;
 				for(&quad.corners) |*corner| {
 					corner.* += quad.normal;
 				}
@@ -366,16 +397,16 @@ pub const Model = struct {
 		}
 	}
 
-	pub fn mergeModels(modelList: []u16) u16 {
+	pub fn mergeModels(modelList: []ModelIndex) ModelIndex {
 		var quadList = main.List(QuadInfo).init(main.stackAllocator);
 		defer quadList.deinit();
 		for(modelList) |model| {
-			models.items[model].getRawFaces(&quadList);
+			model.model().getRawFaces(&quadList);
 		}
 		return Model.init(quadList.items);
 	}
 
-	pub fn transformModel(model: Model, transformFunction: anytype, transformFunctionParameters: anytype) u16 {
+	pub fn transformModel(model: Model, transformFunction: anytype, transformFunctionParameters: anytype) ModelIndex {
 		var quadList = main.List(QuadInfo).init(main.stackAllocator);
 		defer quadList.deinit();
 		model.getRawFaces(&quadList);
@@ -385,9 +416,9 @@ pub const Model = struct {
 		return Model.init(quadList.items);
 	}
 
-	fn appendQuadsToList(quadList: []const u16, list: *main.ListUnmanaged(FaceData), allocator: NeverFailingAllocator, block: main.blocks.Block, x: i32, y: i32, z: i32, comptime backFace: bool) void {
+	fn appendQuadsToList(quadList: []const QuadIndex, list: *main.ListUnmanaged(FaceData), allocator: NeverFailingAllocator, block: main.blocks.Block, x: i32, y: i32, z: i32, comptime backFace: bool) void {
 		for(quadList) |quadIndex| {
-			const texture = main.blocks.meshes.textureIndex(block, quads.items[quadIndex].textureSlot);
+			const texture = main.blocks.meshes.textureIndex(block, quadIndex.quadInfo().textureSlot);
 			list.append(allocator, FaceData.init(texture, quadIndex, x, y, z, backFace));
 		}
 	}
@@ -401,22 +432,22 @@ pub const Model = struct {
 	}
 };
 
-var nameToIndex: std.StringHashMap(u16) = undefined;
+var nameToIndex: std.StringHashMap(ModelIndex) = undefined;
 
-pub fn getModelIndex(string: []const u8) u16 {
+pub fn getModelIndex(string: []const u8) ModelIndex {
 	return nameToIndex.get(string) orelse {
 		std.log.err("Couldn't find voxelModel with name: {s}.", .{string});
-		return 0;
+		return .{.index = 0};
 	};
 }
 
-pub var quads: main.List(QuadInfo) = undefined;
-pub var extraQuadInfos: main.List(ExtraQuadInfo) = undefined;
-pub var models: main.List(Model) = undefined;
+var quads: main.List(QuadInfo) = undefined;
+var extraQuadInfos: main.List(ExtraQuadInfo) = undefined;
+var models: main.VirtualList(Model, 1 << 20) = undefined;
 
-var quadDeduplication: std.AutoHashMap([@sizeOf(QuadInfo)]u8, u16) = undefined;
+var quadDeduplication: std.AutoHashMap([@sizeOf(QuadInfo)]u8, QuadIndex) = undefined;
 
-fn addQuad(info_: QuadInfo) error{Degenerate}!u16 {
+fn addQuad(info_: QuadInfo) error{Degenerate}!QuadIndex {
 	var info = info_;
 	if(quadDeduplication.get(std.mem.toBytes(info))) |id| {
 		return id;
@@ -424,12 +455,12 @@ fn addQuad(info_: QuadInfo) error{Degenerate}!u16 {
 	// Check if it's degenerate:
 	var cornerEqualities: u32 = 0;
 	for(0..4) |i| {
-		for(i+1..4) |j| {
+		for(i + 1..4) |j| {
 			if(@reduce(.And, info.corners[i] == info.corners[j])) cornerEqualities += 1;
 		}
 	}
 	if(cornerEqualities >= 2) return error.Degenerate; // One corner equality is fine, since then the quad degenerates to a triangle, which has a non-zero area.
-	const index: u16 = @intCast(quads.items.len);
+	const index: QuadIndex = .{.index = @intCast(quads.items.len)};
 	if(info.opaqueInLod == 2) {
 		info.opaqueInLod = 0;
 	} else {
@@ -514,7 +545,7 @@ fn box(min: Vec3f, max: Vec3f, uvOffset: Vec2f) [6]QuadInfo {
 	};
 }
 
-fn openBox(min: Vec3f, max: Vec3f, uvOffset: Vec2f, openSide: enum{x, y, z}) [4]QuadInfo {
+fn openBox(min: Vec3f, max: Vec3f, uvOffset: Vec2f, openSide: enum {x, y, z}) [4]QuadInfo {
 	const fullBox = box(min, max, uvOffset);
 	switch(openSide) {
 		.x => return fullBox[2..6].*,
@@ -523,7 +554,7 @@ fn openBox(min: Vec3f, max: Vec3f, uvOffset: Vec2f, openSide: enum{x, y, z}) [4]
 	}
 }
 
-pub fn registerModel(id: []const u8, data: []const u8) u16 {
+pub fn registerModel(id: []const u8, data: []const u8) ModelIndex {
 	const model = Model.loadModel(data);
 	nameToIndex.put(id, model) catch unreachable;
 	return model;
@@ -531,7 +562,7 @@ pub fn registerModel(id: []const u8, data: []const u8) u16 {
 
 // TODO: Entity models.
 pub fn init() void {
-	models = .init(main.globalAllocator);
+	models = .init();
 	quads = .init(main.globalAllocator);
 	extraQuadInfos = .init(main.globalAllocator);
 	quadDeduplication = .init(main.globalAllocator.allocator);
@@ -541,19 +572,31 @@ pub fn init() void {
 	nameToIndex.put("none", Model.init(&.{})) catch unreachable;
 }
 
-pub fn uploadModels() void {
-	quadSSBO = graphics.SSBO.initStatic(QuadInfo, quads.items);
-	quadSSBO.bind(4);
+pub fn reset() void {
+	for(models.items()) |model| {
+		model.deinit();
+	}
+	models.clearRetainingCapacity();
+	quads.clearRetainingCapacity();
+	extraQuadInfos.clearRetainingCapacity();
+	quadDeduplication.clearRetainingCapacity();
+	nameToIndex.clearRetainingCapacity();
+	nameToIndex.put("none", Model.init(&.{})) catch unreachable;
 }
 
 pub fn deinit() void {
 	quadSSBO.deinit();
 	nameToIndex.deinit();
-	for(models.items) |model| {
+	for(models.items()) |model| {
 		model.deinit();
 	}
 	models.deinit();
 	quads.deinit();
 	extraQuadInfos.deinit();
 	quadDeduplication.deinit();
+}
+
+pub fn uploadModels() void {
+	quadSSBO = graphics.SSBO.initStatic(QuadInfo, quads.items);
+	quadSSBO.bind(4);
 }

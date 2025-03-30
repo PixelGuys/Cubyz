@@ -1,10 +1,10 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const ConnectionManager = main.network.ConnectionManager;
 const settings = main.settings;
 const Vec2f = main.vec.Vec2f;
-const NeverFailingAllocator = main.utils.NeverFailingAllocator;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const Texture = main.graphics.Texture;
 
 const gui = @import("../gui.zig");
@@ -16,13 +16,13 @@ const Label = @import("../components/Label.zig");
 const TextInput = @import("../components/TextInput.zig");
 const VerticalList = @import("../components/VerticalList.zig");
 
-pub var window = GuiWindow {
+pub var window = GuiWindow{
 	.contentSize = Vec2f{128, 256},
 };
 
 const padding: f32 = 8;
 const width: f32 = 128;
-var buttonNameArena: main.utils.NeverFailingArenaAllocator = undefined;
+var buttonNameArena: main.heap.NeverFailingArenaAllocator = undefined;
 
 pub var needsUpdate: bool = false;
 
@@ -110,7 +110,7 @@ fn parseEscapedFolderName(allocator: NeverFailingAllocator, name: []const u8) []
 				}
 			}
 			var buf: [4]u8 = undefined;
-			result.appendSlice(buf[0..std.unicode.utf8Encode(val, &buf) catch 0]); // TODO: Change this to full unicode rather than using this broken utf-16 converter.
+			result.appendSlice(buf[0 .. std.unicode.utf8Encode(val, &buf) catch 0]); // TODO: Change this to full unicode rather than using this broken utf-16 converter.
 		} else {
 			result.append(name[i]);
 		}
@@ -127,7 +127,7 @@ pub fn update() void {
 }
 
 pub fn onOpen() void {
-	buttonNameArena = main.utils.NeverFailingArenaAllocator.init(main.globalAllocator);
+	buttonNameArena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 8);
 	list.add(Label.init(.{0, 0}, width, "**Select World**", .center));
 	list.add(Button.initText(.{0, 0}, 128, "Create New World", gui.openWindowCallback("save_creation")));

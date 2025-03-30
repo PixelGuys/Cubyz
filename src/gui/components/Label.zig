@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const graphics = main.graphics;
 const draw = graphics.draw;
 const TextBuffer = graphics.TextBuffer;
@@ -21,7 +21,7 @@ alpha: f32 = 1,
 
 pub fn init(pos: Vec2f, maxWidth: f32, text: []const u8, alignment: TextBuffer.Alignment) *Label {
 	const self = main.globalAllocator.create(Label);
-	self.* = Label {
+	self.* = Label{
 		.text = TextBuffer.init(main.globalAllocator, text, .{}, false, alignment),
 		.pos = pos,
 		.size = undefined,
@@ -36,9 +36,7 @@ pub fn deinit(self: *const Label) void {
 }
 
 pub fn toComponent(self: *Label) GuiComponent {
-	return GuiComponent{
-		.label = self
-	};
+	return .{.label = self};
 }
 
 pub fn updateText(self: *Label, newText: []const u8) void {

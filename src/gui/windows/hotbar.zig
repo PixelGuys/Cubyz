@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const ItemStack = main.items.ItemStack;
 const Player = main.game.Player;
 const Vec2f = main.vec.Vec2f;
@@ -13,10 +13,10 @@ const HorizontalList = GuiComponent.HorizontalList;
 const ItemSlot = GuiComponent.ItemSlot;
 const Icon = GuiComponent.Icon;
 
-pub var window = GuiWindow {
+pub var window = GuiWindow{
 	.relativePosition = .{
-		.{ .attachedToFrame = .{.selfAttachmentPoint = .middle, .otherAttachmentPoint = .middle} },
-		.{ .attachedToFrame = .{.selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper} },
+		.{.attachedToFrame = .{.selfAttachmentPoint = .middle, .otherAttachmentPoint = .middle}},
+		.{.attachedToFrame = .{.selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper}},
 	},
 	.contentSize = Vec2f{64*12, 64},
 	.isHud = true,

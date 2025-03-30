@@ -1,15 +1,16 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-const main = @import("root");
+const main = @import("main");
 
 const CallbackFunction = *const fn(usize) void;
 
 const Impl = if(builtin.os.tag == .windows)
-		WindowsImpl
-	else if(builtin.os.tag == .linux)
-		LinuxImpl
-	else NoImpl;
+	WindowsImpl
+else if(builtin.os.tag == .linux)
+	LinuxImpl
+else
+	NoImpl;
 
 pub fn init() void {
 	Impl.init();

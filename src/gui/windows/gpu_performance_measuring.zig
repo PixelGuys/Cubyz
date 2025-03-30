@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const c = main.Window.c;
 const graphics = main.graphics;
 const draw = graphics.draw;
@@ -30,7 +30,7 @@ pub const Samples = enum(u8) {
 	gui,
 };
 
-const names = [_][]const u8 {
+const names = [_][]const u8{
 	"Screenbuffer clear",
 	"Clear",
 	"Pre-processing Block Animations",
@@ -81,10 +81,10 @@ pub fn stopQuery() void {
 	c.glEndQuery(c.GL_TIME_ELAPSED);
 }
 
-pub var window = GuiWindow {
+pub var window = GuiWindow{
 	.relativePosition = .{
-		.{ .attachedToFrame = .{.selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper} },
-		.{ .attachedToFrame = .{.selfAttachmentPoint = .lower, .otherAttachmentPoint = .lower} },
+		.{.attachedToFrame = .{.selfAttachmentPoint = .upper, .otherAttachmentPoint = .upper}},
+		.{.attachedToFrame = .{.selfAttachmentPoint = .lower, .otherAttachmentPoint = .lower}},
 	},
 	.contentSize = Vec2f{256, 16},
 	.isHud = false,
