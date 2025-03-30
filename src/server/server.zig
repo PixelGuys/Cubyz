@@ -30,6 +30,7 @@ pub const WorldEditData = struct {
 	selectionPosition2: ?Vec3i = null,
 	clipboard: ?Blueprint = null,
 	undoHistory: History,
+	redoHistory: History,
 
 	const History = struct {
 		changes: CircularBufferQueue(Value),
@@ -69,13 +70,14 @@ pub const WorldEditData = struct {
 		}
 	};
 	pub fn init() WorldEditData {
-		return .{.undoHistory = History.init()};
+		return .{.undoHistory = History.init(), .redoHistory = History.init()};
 	}
 	pub fn deinit(self: *WorldEditData) void {
 		if(self.clipboard != null) {
 			self.clipboard.?.deinit(main.globalAllocator);
 		}
 		self.undoHistory.deinit();
+		self.redoHistory.deinit();
 	}
 };
 
