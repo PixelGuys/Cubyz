@@ -978,9 +978,8 @@ pub const Protocols = struct {
 		const UpdateType = enum(u8) {
 			gamemode = 0,
 			teleport = 1,
-			cure = 2,
-			worldEditPos = 3,
-			timeAndBiome = 4,
+			worldEditPos = 2,
+			timeAndBiome = 3,
 		};
 
 		const WorldEditPosition = enum(u2) {
@@ -997,9 +996,6 @@ pub const Protocols = struct {
 				},
 				.teleport => {
 					game.Player.setPosBlocking(try reader.readVec(Vec3d));
-				},
-				.cure => {
-					// TODO: health and hunger
 				},
 				.worldEditPos => {
 					const typ = try reader.readEnum(WorldEditPosition);
@@ -1056,15 +1052,6 @@ pub const Protocols = struct {
 
 			writer.writeEnum(UpdateType, .teleport);
 			writer.writeVec(Vec3d, pos);
-
-			conn.sendImportant(id, writer.data.items);
-		}
-
-		pub fn sendCure(conn: *Connection) void {
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, 1);
-			defer writer.deinit();
-
-			writer.writeEnum(UpdateType, .cure);
 
 			conn.sendImportant(id, writer.data.items);
 		}
