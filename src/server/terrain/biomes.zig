@@ -601,7 +601,7 @@ var finishedLoading: bool = false;
 var biomes: main.List(Biome) = undefined;
 var caveBiomes: main.List(Biome) = undefined;
 var biomesById: std.StringHashMap(*Biome) = undefined;
-var biomesByNumericId: std.AutoHashMapUnmanaged(u32, *Biome) = .{};
+var biomesByIndex: std.AutoHashMapUnmanaged(u32, *Biome) = .{};
 pub var byTypeBiomes: *TreeNode = undefined;
 
 const UnfinishedSubBiomeData = struct {
@@ -649,7 +649,7 @@ pub fn reset() void {
 	biomes.clearRetainingCapacity();
 	caveBiomes.clearRetainingCapacity();
 	biomesById.clearRetainingCapacity();
-	biomesByNumericId.clearRetainingCapacity();
+	biomesByIndex.clearRetainingCapacity();
 	byTypeBiomes.deinit(main.globalAllocator);
 }
 
@@ -660,7 +660,7 @@ pub fn deinit() void {
 	biomes.deinit();
 	caveBiomes.deinit();
 	biomesById.deinit();
-	biomesByNumericId.deinit(main.globalAllocator.allocator);
+	biomesByIndex.deinit(main.globalAllocator.allocator);
 	SimpleStructureModel.modelRegistry.clearAndFree(main.globalAllocator.allocator);
 }
 
@@ -694,11 +694,11 @@ pub fn finishLoading() void {
 	byTypeBiomes = TreeNode.init(main.globalAllocator, biomes.items[0..nonZeroBiomes], 0);
 	for(biomes.items) |*biome| {
 		biomesById.put(biome.id, biome) catch unreachable;
-		biomesByNumericId.put(main.globalAllocator.allocator, biome.paletteId, biome) catch unreachable;
+		biomesByIndex.put(main.globalAllocator.allocator, biome.paletteId, biome) catch unreachable;
 	}
 	for(caveBiomes.items) |*biome| {
 		biomesById.put(biome.id, biome) catch unreachable;
-		biomesByNumericId.put(main.globalAllocator.allocator, biome.paletteId, biome) catch unreachable;
+		biomesByIndex.put(main.globalAllocator.allocator, biome.paletteId, biome) catch unreachable;
 	}
 	var subBiomeIterator = unfinishedSubBiomes.iterator();
 	while(subBiomeIterator.next()) |subBiomeData| {
@@ -764,17 +764,17 @@ pub fn getById(id: []const u8) *const Biome {
 	};
 }
 
-pub fn getByNumericId(id: u32, defaultId: ?u32) !*const Biome {
+pub fn getByNumericId(index: u32, defaultIndex: ?u32) !*const Biome {
 	std.debug.assert(finishedLoading);
 
-	return biomesByNumericId.get(id) orelse {
-		std.log.err("Couldn't find biome with id {}.", .{id});
-		if(defaultId) |default| {
-			const defaultBiome = biomesByNumericId.get(default) orelse {
+	return biomesByIndex.get(index) orelse {
+		std.log.err("Couldn't find biome with id {}.", .{index});
+		if(defaultIndex) |default| {
+			const defaultBiome = biomesByIndex.get(default) orelse {
 				std.log.err("Default biome {} not found.", .{default});
 				return error.BiomeNotFound;
 			};
-			std.log.err("Replaced missing {} with {s}.", .{id, defaultBiome.id});
+			std.log.err("Replaced missing {} with {s}.", .{index, defaultBiome.id});
 		}
 		return error.BiomeNotFound;
 	};
