@@ -9,6 +9,7 @@ pub const blocks = @import("blocks.zig");
 pub const blueprint = @import("blueprint.zig");
 pub const chunk = @import("chunk.zig");
 pub const entity = @import("entity.zig");
+pub const entity_data = @import("entity_data.zig");
 pub const files = @import("files.zig");
 pub const game = @import("game.zig");
 pub const graphics = @import("graphics.zig");
@@ -601,6 +602,9 @@ pub fn main() void { // MARK: main()
 
 	rotation.init();
 	defer rotation.deinit();
+
+	entity_data.init();
+	defer entity_data.deinit();
 
 	blocks.TouchFunctions.init();
 	defer blocks.TouchFunctions.deinit();
