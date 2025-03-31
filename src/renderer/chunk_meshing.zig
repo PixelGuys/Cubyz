@@ -1507,6 +1507,9 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 	}
 
 	pub fn prepareTransparentRendering(self: *ChunkMesh, playerPosition: Vec3d, chunkList: *main.List(u32)) void {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+
 		if(self.transparentMesh.vertexCount == 0 and self.blockBreakingFaces.items.len == 0) return;
 
 		var needsUpdate: bool = false;

@@ -980,7 +980,7 @@ pub const Protocols = struct {
 			teleport = 1,
 			cure = 2,
 			worldEditPos = 3,
-			reserved3 = 4,
+			damageBlock = 4,
 			reserved4 = 5,
 			reserved5 = 6,
 			reserved6 = 7,
@@ -991,6 +991,11 @@ pub const Protocols = struct {
 			selectedPos1 = 0,
 			selectedPos2 = 1,
 			clear = 2,
+		};
+
+		const BlockDamage = enum(u8) {
+			sync = 0,
+			update = 1,
 		};
 
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
@@ -1027,7 +1032,45 @@ pub const Protocols = struct {
 						},
 					}
 				},
-				.reserved3 => {},
+				.damageBlock => {
+					const typ = try reader.readEnum(BlockDamage);
+					switch(typ) {
+						.sync => {
+							const count = try reader.readInt(u32);
+							renderer.mesh_storage.clearBreakingAnimations();
+
+							for(0..count) |_| {
+								const pos = try reader.readVec(Vec3i);
+								const remainingHealth = try reader.readFloat(f32);
+
+								const block = main.renderer.mesh_storage.getBlock(pos[0], pos[1], pos[2]) orelse Block{.typ = 0, .data = 0};
+								const maxBlockHealth = block.blockHealth();
+								if(maxBlockHealth == 0) continue;
+
+								if(0 < remainingHealth and remainingHealth < maxBlockHealth) {
+									// Do I have to clam this value? Can rounding errors mess this up?
+									const progress = 1.0 - (remainingHealth/maxBlockHealth);
+									renderer.mesh_storage.addBreakingAnimation(pos, progress);
+								}
+							}
+						},
+						.update => {
+							const pos = try reader.readVec(Vec3i);
+							const remainingHealth = try reader.readFloat(f32);
+
+							const block = main.renderer.mesh_storage.getBlock(pos[0], pos[1], pos[2]) orelse Block{.typ = 0, .data = 0};
+							const maxBlockHealth = block.blockHealth();
+							if(maxBlockHealth == 0) renderer.mesh_storage.removeBreakingAnimation(pos);
+
+							if(0 < remainingHealth and remainingHealth < maxBlockHealth) {
+								const progress = 1.0 - (remainingHealth/maxBlockHealth);
+								renderer.mesh_storage.addBreakingAnimation(pos, progress);
+							} else {
+								renderer.mesh_storage.removeBreakingAnimation(pos);
+							}
+						},
+					}
+				},
 				.reserved4 => {},
 				.reserved5 => {},
 				.reserved6 => {},
@@ -1107,6 +1150,32 @@ pub const Protocols = struct {
 			const biomeId = world.getBiome(pos[0], pos[1], pos[2]).id;
 			writer.writeInt(usize, biomeId.len);
 			writer.writeSlice(biomeId);
+
+			conn.sendImportant(id, writer.data.items);
+		}
+
+		pub fn sendDamageBlock(conn: *Connection, typ: BlockDamage, _pos: ?Vec3i, remainingHealth: ?f32) void {
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, 25);
+			defer writer.deinit();
+
+			writer.writeEnum(UpdateType, .damageBlock);
+			writer.writeEnum(BlockDamage, typ);
+
+			switch(typ) {
+				.sync => {
+					writer.writeInt(u32, main.server.world.?.blockDamage.count());
+
+					var iterator = main.server.world.?.blockDamage.iterator();
+					while(iterator.next()) |entry| {
+						writer.writeVec(Vec3i, entry.key_ptr.*);
+						writer.writeFloat(f32, entry.value_ptr.*);
+					}
+				},
+				.update => {
+					writer.writeVec(Vec3i, _pos.?);
+					writer.writeFloat(f32, remainingHealth.?);
+				},
+			}
 
 			conn.sendImportant(id, writer.data.items);
 		}

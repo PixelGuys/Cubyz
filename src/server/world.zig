@@ -442,6 +442,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	chunkUpdateQueue: main.utils.CircularBufferQueue(ChunkUpdateRequest),
 	regionUpdateQueue: main.utils.CircularBufferQueue(RegionUpdateRequest),
 
+	blockDamage: std.AutoHashMapUnmanaged(Vec3i, f32) = .{},
+	blockDamageMutex: std.Thread.Mutex = .{},
+
 	biomeChecksum: i64 = 0,
 
 	const ChunkUpdateRequest = struct {
@@ -574,6 +577,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.itemPalette.deinit();
 		self.biomePalette.deinit();
 		self.wio.deinit();
+		self.blockDamage.deinit(main.globalAllocator.allocator);
 		main.globalAllocator.free(self.name);
 		main.globalAllocator.destroy(self);
 	}
@@ -980,6 +984,33 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			updateRequest.region.decreaseRefCount();
 			if(updateRequest.milliTimeStamp -% insertionTime <= 0) break;
 		}
+
+		{
+			var keysToRemove: main.ListUnmanaged(Vec3i) = .{};
+			defer keysToRemove.deinit(main.stackAllocator);
+
+			self.blockDamageMutex.lock();
+			defer self.blockDamageMutex.unlock();
+
+			var iterator = self.blockDamage.iterator();
+			while(iterator.next()) |entry| {
+				const pos = entry.key_ptr.*;
+				const block = self.getBlock(pos[0], pos[1], pos[2]) orelse {
+					keysToRemove.append(main.stackAllocator, pos);
+					continue;
+				};
+				const blockHealth = block.blockHealth();
+				entry.value_ptr.* += deltaTime*blockHealth*0.05;
+				if(entry.value_ptr.* >= blockHealth) {
+					keysToRemove.append(main.stackAllocator, pos);
+					continue;
+				}
+			}
+
+			for(keysToRemove.items) |pos| {
+				_ = self.blockDamage.remove(pos);
+			}
+		}
 	}
 
 	pub fn queueChunkAndDecreaseRefCount(self: *ServerWorld, pos: ChunkPosition, source: *User) void {
@@ -1069,6 +1100,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
 		defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 		for(userList) |user| {
+			main.network.Protocols.genericUpdate.sendDamageBlock(user.conn, .update, .{wx, wy, wz}, 0.0);
 			main.network.Protocols.blockUpdate.send(user.conn, wx, wy, wz, _newBlock);
 		}
 		return null;

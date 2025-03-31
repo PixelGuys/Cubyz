@@ -453,7 +453,8 @@ pub const Command = struct { // MARK: Command
 		depositOrDrop = 7,
 		clear = 8,
 		updateBlock = 9,
-		addHealth = 10,
+		damageBlock = 10,
+		addHealth = 11,
 	};
 	pub const Payload = union(PayloadType) {
 		open: Open,
@@ -466,6 +467,7 @@ pub const Command = struct { // MARK: Command
 		depositOrDrop: DepositOrDrop,
 		clear: Clear,
 		updateBlock: UpdateBlock,
+		damageBlock: DamageBlock,
 		addHealth: AddHealth,
 	};
 
@@ -1701,6 +1703,140 @@ pub const Command = struct { // MARK: Command
 				.target = try reader.readInt(u32),
 				.health = @bitCast(try reader.readInt(u32)),
 				.cause = try reader.readEnum(main.game.DamageType),
+			};
+		}
+	};
+
+	const DamageBlock = struct {
+		source: InventoryAndSlot,
+		pos: Vec3i,
+		oldBlock: Block,
+		newBlock: Block,
+
+		fn run(self: DamageBlock, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, gamemode: Gamemode) error{serverFailure}!void {
+			if(self.source.inv.type != .normal) return;
+			if(gamemode == .creative) return;
+
+			const stack = self.source.ref();
+			if(stack.item == null or stack.item.? != .tool) return;
+
+			const tool = stack.item.?.tool;
+
+			var shouldDropSourceBlockOnSuccess: bool = true;
+			const costOfChange = self.oldBlock.canBeChangedInto(self.newBlock, stack.*, &shouldDropSourceBlockOnSuccess);
+
+			// Check if we can change it:
+			if(!switch(costOfChange) {
+				.no => false,
+				.yes => false,
+				.yes_costsDurability => true,
+				.yes_costsItems => false,
+				.yes_dropsItems => false,
+			}) {
+				if(side == .server) {
+					// Inform the client of the actual block:
+					main.network.Protocols.blockUpdate.send(user.?.conn, self.pos[0], self.pos[1], self.pos[2], main.server.world.?.getBlock(self.pos[0], self.pos[1], self.pos[2]) orelse return);
+				}
+				return;
+			}
+
+			const damageDelta: f32 = tool.getBlockDamage(self.oldBlock) - self.oldBlock.blockResistance();
+			if(damageDelta <= 0) return;
+
+			const maxBlockHealth: f32 = self.oldBlock.blockHealth();
+			std.debug.assert(tool.durability > 0);
+			var durabilityCost: u31 = 1;
+			var remainingHealth: f32 = 0.0;
+
+			if(side == .server) {
+				main.server.world.?.blockDamageMutex.lock();
+
+				const getOrPut = main.server.world.?.blockDamage.getOrPut(main.globalAllocator.allocator, self.pos) catch unreachable;
+				if(getOrPut.found_existing) {
+					if(getOrPut.value_ptr.* > 0) {
+						remainingHealth = @max(0.0, getOrPut.value_ptr.* - damageDelta);
+					} else {
+						durabilityCost = 0;
+						remainingHealth = 0.0;
+					}
+				} else {
+					remainingHealth = @max(0.0, maxBlockHealth - damageDelta);
+				}
+
+				if(0 < remainingHealth and remainingHealth < maxBlockHealth) {
+					getOrPut.value_ptr.* = remainingHealth;
+				} else {
+					if(!main.server.world.?.blockDamage.remove(self.pos)) {
+						unreachable;
+					}
+				}
+			}
+			if(side == .client) {
+				if(main.renderer.mesh_storage.getBreakingAnimation(self.pos)) |progress| {
+					if(progress == 1) {
+						durabilityCost = 0;
+					} else {
+						remainingHealth = @max(0.0, progress*maxBlockHealth);
+					}
+				} else {
+					remainingHealth = maxBlockHealth;
+				}
+			}
+
+			if(durabilityCost > 0) {
+				cmd.executeBaseOperation(allocator, .{.useDurability = .{
+					.source = self.source,
+					.durability = durabilityCost,
+				}}, side);
+			}
+
+			if(side == .server) {
+				if(remainingHealth <= 0) {
+					if(main.server.world.?.cmpxchgBlock(self.pos[0], self.pos[1], self.pos[2], self.oldBlock, self.newBlock)) |actualBlock| {
+						// Inform the client of the actual block:
+						main.network.Protocols.blockUpdate.send(user.?.conn, self.pos[0], self.pos[1], self.pos[2], actualBlock);
+						return error.serverFailure;
+					}
+
+					if(self.oldBlock.typ != self.newBlock.typ and shouldDropSourceBlockOnSuccess) {
+						for(self.oldBlock.blockDrops()) |drop| {
+							if(drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
+								blockDrop(self.pos, drop);
+							}
+						}
+					}
+				}
+				main.server.world.?.blockDamageMutex.unlock();
+			}
+		}
+
+		fn blockDrop(pos: Vec3i, drop: main.blocks.BlockDrop) void {
+			for(drop.items) |itemStack| {
+				const dropPos = @as(Vec3d, @floatFromInt(pos)) + @as(Vec3d, @splat(0.5)) + main.random.nextDoubleVectorSigned(3, &main.seed)*@as(Vec3d, @splat(0.5 - main.itemdrop.ItemDropManager.radius));
+				const dir = vec.normalize(main.random.nextFloatVectorSigned(3, &main.seed));
+				main.server.world.?.drop(itemStack.clone(), dropPos, dir, main.random.nextFloat(&main.seed)*1.5);
+			}
+		}
+
+		fn serialize(self: DamageBlock, writer: *utils.BinaryWriter) void {
+			self.source.write(writer);
+			writer.writeInt(i32, self.pos[0]);
+			writer.writeInt(i32, self.pos[1]);
+			writer.writeInt(i32, self.pos[2]);
+			writer.writeInt(u32, @as(u32, @bitCast(self.oldBlock)));
+			writer.writeInt(u32, @as(u32, @bitCast(self.newBlock)));
+		}
+
+		fn deserialize(reader: *utils.BinaryReader, side: Side, user: ?*main.server.User) !DamageBlock {
+			return .{
+				.source = try InventoryAndSlot.read(reader, side, user),
+				.pos = .{
+					try reader.readInt(i32),
+					try reader.readInt(i32),
+					try reader.readInt(i32),
+				},
+				.oldBlock = @bitCast(try reader.readInt(u32)),
+				.newBlock = @bitCast(try reader.readInt(u32)),
 			};
 		}
 	};
