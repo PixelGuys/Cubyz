@@ -1,0 +1,11 @@
+.{
+	.tags = .{.stone},
+	.blockHealth = 40,
+	.blockResistance = 1,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.rotation = .stairs,
+	.model = "cubyz:cube",
+	.texture = "cubyz:meteorite_block",
+}
