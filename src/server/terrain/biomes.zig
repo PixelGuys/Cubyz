@@ -661,6 +661,7 @@ pub fn deinit() void {
 	caveBiomes.deinit();
 	biomesById.deinit();
 	biomesByIndex.deinit(main.globalAllocator.allocator);
+	// TODO? byTypeBiomes.deinit(main.globalAllocator);
 	SimpleStructureModel.modelRegistry.clearAndFree(main.globalAllocator.allocator);
 }
 
