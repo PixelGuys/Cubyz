@@ -1077,8 +1077,7 @@ pub const Protocols = struct {
 			writer.writeInt(i64, world.gameTime);
 
 			const pos = @as(Vec3i, @intFromFloat(conn.user.?.player.pos));
-			const biomeId = world.getBiome(pos[0], pos[1], pos[2]).paletteId;
-			writer.writeInt(u32, biomeId);
+			writer.writeInt(u32, world.getBiome(pos[0], pos[1], pos[2]).paletteId);
 
 			conn.sendImportant(id, writer.data.items);
 		}
