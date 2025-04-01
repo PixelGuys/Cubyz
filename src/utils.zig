@@ -1416,24 +1416,20 @@ pub const BinaryReader = struct {
 	}
 
 	pub fn readVec(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds}!T {
-		switch(@typeInfo(T)) {
-			.vector => |typeInfo| {
-				var result: T = undefined;
-				inline for(0..typeInfo.len) |i| {
-					switch(@typeInfo(typeInfo.child)) {
-						.int => {
-							result[i] = try self.readInt(typeInfo.child);
-						},
-						.float => {
-							result[i] = try self.readFloat(typeInfo.child);
-						},
-						else => unreachable,
-					}
-				}
-				return result;
-			},
-			else => unreachable,
+		const typeInfo = @typeInfo(T).vector;
+		var result: T = undefined;
+		inline for(0..typeInfo.len) |i| {
+			switch(@typeInfo(typeInfo.child)) {
+				.int => {
+					result[i] = try self.readInt(typeInfo.child);
+				},
+				.float => {
+					result[i] = try self.readFloat(typeInfo.child);
+				},
+				else => unreachable,
+			}
 		}
+		return result;
 	}
 
 	pub fn readInt(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds}!T {
@@ -1489,22 +1485,18 @@ pub const BinaryWriter = struct {
 	}
 
 	pub fn writeVec(self: *BinaryWriter, T: type, value: T) void {
-		return switch(@typeInfo(T)) {
-			.vector => |typeInfo| {
-				inline for(0..typeInfo.len) |i| {
-					switch(@typeInfo(typeInfo.child)) {
-						.int => {
-							self.writeInt(typeInfo.child, value[i]);
-						},
-						.float => {
-							self.writeFloat(typeInfo.child, value[i]);
-						},
-						else => unreachable,
-					}
-				}
-			},
-			else => unreachable,
-		};
+		const typeInfo = @typeInfo(T).vector;
+		inline for(0..typeInfo.len) |i| {
+			switch(@typeInfo(typeInfo.child)) {
+				.int => {
+					self.writeInt(typeInfo.child, value[i]);
+				},
+				.float => {
+					self.writeFloat(typeInfo.child, value[i]);
+				},
+				else => unreachable,
+			}
+		}
 	}
 
 	pub fn writeInt(self: *BinaryWriter, T: type, value: T) void {
