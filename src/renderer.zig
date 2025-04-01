@@ -917,8 +917,12 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	}
 
 	fn updateBlockAndSendUpdate(source: main.items.Inventory, slot: u32, x: i32, y: i32, z: i32, oldBlock: blocks.Block, newBlock: blocks.Block) void {
+		const pos = Vec3i{x, y, z};
+		const dropDir = if(newBlock.typ == 0) Vec3f{0, 0, 1} else @as(Vec3f, @floatFromInt(selectionFace.relPos()));
+		const dropPosOffset = if(newBlock.typ == 0) Vec3d{0.5, 0.5, 0.0} else @as(Vec3d, @splat(0.5)) + dropDir*@as(Vec3d, @splat(0.5));
+		const dropPos = @as(Vec3d, @floatFromInt(pos)) + dropPosOffset;
 		main.items.Inventory.Sync.ClientSide.executeCommand(.{
-			.updateBlock = .{.source = .{.inv = source, .slot = slot}, .pos = .{x, y, z}, .dropDirection = @floatFromInt(selectionFace.relPos()), .oldBlock = oldBlock, .newBlock = newBlock},
+			.updateBlock = .{.source = .{.inv = source, .slot = slot}, .pos = pos, .dropDir = dropDir, .dropPos = dropPos, .oldBlock = oldBlock, .newBlock = newBlock},
 		});
 		mesh_storage.updateBlock(x, y, z, newBlock);
 	}

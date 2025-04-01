@@ -1555,7 +1555,8 @@ pub const Command = struct { // MARK: Command
 	const UpdateBlock = struct { // MARK: UpdateBlock
 		source: InventoryAndSlot,
 		pos: Vec3i,
-		dropDirection: Vec3d = Vec3d{0, 0, 1},
+		dropPos: Vec3d,
+		dropDir: Vec3f,
 		oldBlock: Block,
 		newBlock: Block,
 
@@ -1611,7 +1612,7 @@ pub const Command = struct { // MARK: Command
 						for(0..amount) |_| {
 							for(self.newBlock.blockDrops()) |drop| {
 								if(drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
-									blockDrop(self.pos, self.dropDirection, drop);
+									blockDrop(self.dropPos, self.dropDir, drop);
 								}
 							}
 						}
@@ -1622,56 +1623,33 @@ pub const Command = struct { // MARK: Command
 			if(side == .server and gamemode != .creative and self.oldBlock.typ != self.newBlock.typ and shouldDropSourceBlockOnSuccess) {
 				for(self.oldBlock.blockDrops()) |drop| {
 					if(drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
-						blockDrop(self.pos, self.dropDirection, drop);
+						blockDrop(self.dropPos, self.dropDir, drop);
 					}
 				}
 			}
 		}
 
-		fn blockDrop(_pos: Vec3i, _dir_hint: Vec3d, drop: main.blocks.BlockDrop) void {
-			const currentBlock: Block = main.server.world.?.getBlock(_pos[0], _pos[1], _pos[2]) orelse Block{.typ = 0, .data = 0};
-			var dropVelocity = 4.0 + main.random.nextFloatSigned(&main.seed)*0.5;
+		fn blockDrop(dropPosHint: Vec3d, dirHint: Vec3f, drop: main.blocks.BlockDrop) void {
+			// Without accounting for the item radius items spawned would immediately collide with the block (if they are dropped from ore)
+			// as a result they would lose all velocity and would slowly "slide" from inside of the block.
+			const sign: Vec3d = @floatCast(std.math.sign(dirHint));
+			const itemOffset = sign*@as(Vec3d, @splat(main.itemdrop.ItemDropManager.radius));
+			const dropPos = dropPosHint + itemOffset;
 
-			if(!currentBlock.solid() or !currentBlock.collide()) {
-				const dropDir = vec.normalize(Vec3d{
-					main.random.nextDoubleSigned(&main.seed),
-					main.random.nextDoubleSigned(&main.seed),
-					2.0,
-				});
+			var dropVelocity: f32 = 4.0 + main.random.nextFloatSigned(&main.seed)*0.5;
 
-				const sign = std.math.sign(dropDir);
-				const centerOffset = Vec3d{0.5, 0.5, 0.0};
-				const itemOffset = sign*@as(Vec3d, @splat(main.itemdrop.ItemDropManager.radius));
-				const dropPos = @as(Vec3d, @floatFromInt(_pos)) + centerOffset + itemOffset*@as(Vec3d, @splat(2));
+			const dropDir = vec.normalize(Vec3f{
+				dirHint[0] + main.random.nextFloatSigned(&main.seed)*0.25,
+				dirHint[1] + main.random.nextFloatSigned(&main.seed)*0.25,
+				if(dirHint[2] < 0) dirHint[2] else dirHint[2] + 2.0,
+			});
 
-				for(drop.items) |itemStack| {
-					main.server.world.?.drop(itemStack.clone(), dropPos, @floatCast(dropDir), dropVelocity);
-				}
-			} else {
-				const sign = std.math.sign(_dir_hint);
-				const factors = Vec3d{
-					@sin(@abs(std.math.atan(_dir_hint[0]))),
-					@sin(@abs(std.math.atan(_dir_hint[1]))),
-					@sin(@abs(std.math.atan(_dir_hint[2]))),
-				};
-				const edgeOffset = _dir_hint + factors*@as(Vec3d, @splat(std.math.sqrt(2) - 1));
-				const centerOffset = @as(Vec3d, @splat(0.5));
-				const itemOffset = sign*@as(Vec3d, @splat(main.itemdrop.ItemDropManager.radius));
-				const dropPos = @as(Vec3d, @floatFromInt(_pos)) + centerOffset + edgeOffset*@as(Vec3d, @splat(0.5)) + itemOffset*@as(Vec3d, @splat(2));
+			if(dropDir[2] <= 0) {
+				dropVelocity *= 1.0 + dropDir[2];
+			}
 
-				const dropDir = vec.normalize(Vec3d{
-					_dir_hint[0] + main.random.nextDoubleSigned(&main.seed)*0.25,
-					_dir_hint[1] + main.random.nextDoubleSigned(&main.seed)*0.25,
-					if(_dir_hint[2] < 0) _dir_hint[2] else _dir_hint[2] + 2.0,
-				});
-
-				if(dropDir[2] <= 0) {
-					dropVelocity *= @floatCast(1.0 + dropDir[2]);
-				}
-
-				for(drop.items) |itemStack| {
-					main.server.world.?.drop(itemStack.clone(), dropPos, @floatCast(dropDir), dropVelocity);
-				}
+			for(drop.items) |itemStack| {
+				main.server.world.?.drop(itemStack.clone(), dropPos, dropDir, dropVelocity);
 			}
 		}
 
@@ -1680,9 +1658,12 @@ pub const Command = struct { // MARK: Command
 			writer.writeInt(i32, self.pos[0]);
 			writer.writeInt(i32, self.pos[1]);
 			writer.writeInt(i32, self.pos[2]);
-			writer.writeFloat(f64, self.dropDirection[0]);
-			writer.writeFloat(f64, self.dropDirection[1]);
-			writer.writeFloat(f64, self.dropDirection[2]);
+			writer.writeFloat(f64, self.dropPos[0]);
+			writer.writeFloat(f64, self.dropPos[1]);
+			writer.writeFloat(f64, self.dropPos[2]);
+			writer.writeFloat(f32, self.dropDir[0]);
+			writer.writeFloat(f32, self.dropDir[1]);
+			writer.writeFloat(f32, self.dropDir[2]);
 			writer.writeInt(u32, @as(u32, @bitCast(self.oldBlock)));
 			writer.writeInt(u32, @as(u32, @bitCast(self.newBlock)));
 		}
@@ -1695,10 +1676,15 @@ pub const Command = struct { // MARK: Command
 					try reader.readInt(i32),
 					try reader.readInt(i32),
 				},
-				.dropDirection = .{
+				.dropPos = .{
 					try reader.readFloat(f64),
 					try reader.readFloat(f64),
 					try reader.readFloat(f64),
+				},
+				.dropDir = .{
+					try reader.readFloat(f32),
+					try reader.readFloat(f32),
+					try reader.readFloat(f32),
 				},
 				.oldBlock = @bitCast(try reader.readInt(u32)),
 				.newBlock = @bitCast(try reader.readInt(u32)),
