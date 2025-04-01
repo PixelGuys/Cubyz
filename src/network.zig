@@ -1032,7 +1032,7 @@ pub const Protocols = struct {
 							}
 						}
 
-						const newBiome = try main.server.terrain.biomes.getByNumericId(biomeId, null);
+						const newBiome = main.server.terrain.biomes.getByIndex(biomeId) orelse return error.MissingBiome;
 						const oldBiome = world.playerBiome.swap(newBiome, .monotonic);
 						if(oldBiome != newBiome) {
 							main.audio.setMusic(newBiome.preferredMusic);

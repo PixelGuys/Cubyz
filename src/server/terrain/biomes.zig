@@ -765,20 +765,9 @@ pub fn getById(id: []const u8) *const Biome {
 	};
 }
 
-pub fn getByIndex(index: u32, defaultIndex: ?u32) !*const Biome {
+pub fn getByIndex(index: u32) ?*const Biome {
 	std.debug.assert(finishedLoading);
-
-	return biomesByIndex.get(index) orelse {
-		std.log.err("Couldn't find biome with id {}.", .{index});
-		if(defaultIndex) |default| {
-			const defaultBiome = biomesByIndex.get(default) orelse {
-				std.log.err("Default biome {} not found.", .{default});
-				return error.BiomeNotFound;
-			};
-			std.log.err("Replaced missing {} with {s}.", .{index, defaultBiome.id});
-		}
-		return error.BiomeNotFound;
-	};
+	return biomesByIndex.get(index);
 }
 
 pub fn getPlaceholderBiome() *const Biome {
