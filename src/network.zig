@@ -1070,7 +1070,7 @@ pub const Protocols = struct {
 		}
 
 		pub fn sendTimeAndBiome(conn: *Connection, world: *const main.server.ServerWorld) void {
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, 25);
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, 13);
 			defer writer.deinit();
 
 			writer.writeEnum(UpdateType, .timeAndBiome);
