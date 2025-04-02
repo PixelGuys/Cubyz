@@ -877,7 +877,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		var directionalFrictionCoefficients: Vec3f = @splat(0);
 		const speedMultiplier: f32 = if(Player.hyperSpeed.load(.monotonic)) 4.0 else 1.0;
 
-		if(!Player.onGround and !Player.isFlying.load(.monotonic)) {
+		if(!Player.onGround and !Player.climbing and !Player.isFlying.load(.monotonic)) {
 			baseFrictionCoefficient = airFrictionCoefficient;
 		}
 
