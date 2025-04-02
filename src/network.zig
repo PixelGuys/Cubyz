@@ -1036,38 +1036,14 @@ pub const Protocols = struct {
 					const typ = try reader.readEnum(BlockDamage);
 					switch(typ) {
 						.sync => {
-							const count = try reader.readInt(u32);
-							renderer.mesh_storage.clearBreakingAnimations();
-
-							for(0..count) |_| {
-								const pos = try reader.readVec(Vec3i);
-								const remainingHealth = try reader.readFloat(f32);
-
-								const block = main.renderer.mesh_storage.getBlock(pos[0], pos[1], pos[2]) orelse Block{.typ = 0, .data = 0};
-								const maxBlockHealth = block.blockHealth();
-								if(maxBlockHealth == 0) continue;
-
-								if(0 < remainingHealth and remainingHealth < maxBlockHealth) {
-									// Do I have to clam this value? Can rounding errors mess this up?
-									const progress = 1.0 - (remainingHealth/maxBlockHealth);
-									renderer.mesh_storage.addBreakingAnimation(pos, progress);
-								}
-							}
+							try renderer.mesh_storage.blockDamage.loadSerialized(reader);
 						},
 						.update => {
 							const pos = try reader.readVec(Vec3i);
 							const remainingHealth = try reader.readFloat(f32);
-
-							const block = main.renderer.mesh_storage.getBlock(pos[0], pos[1], pos[2]) orelse Block{.typ = 0, .data = 0};
-							const maxBlockHealth = block.blockHealth();
-							if(maxBlockHealth == 0) renderer.mesh_storage.removeBreakingAnimation(pos);
-
-							if(0 < remainingHealth and remainingHealth < maxBlockHealth) {
-								const progress = 1.0 - (remainingHealth/maxBlockHealth);
-								renderer.mesh_storage.addBreakingAnimation(pos, progress);
-							} else {
-								renderer.mesh_storage.removeBreakingAnimation(pos);
-							}
+							renderer.mesh_storage.blockDamage.mutex.lock();
+							renderer.mesh_storage.blockDamage.set(pos, remainingHealth);
+							renderer.mesh_storage.blockDamage.mutex.unlock();
 						},
 					}
 				},
@@ -1155,7 +1131,7 @@ pub const Protocols = struct {
 		}
 
 		pub fn sendDamageBlock(conn: *Connection, typ: BlockDamage, _pos: ?Vec3i, remainingHealth: ?f32) void {
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, 25);
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, 18);
 			defer writer.deinit();
 
 			writer.writeEnum(UpdateType, .damageBlock);
@@ -1163,13 +1139,7 @@ pub const Protocols = struct {
 
 			switch(typ) {
 				.sync => {
-					writer.writeInt(u32, main.server.world.?.blockDamage.count());
-
-					var iterator = main.server.world.?.blockDamage.iterator();
-					while(iterator.next()) |entry| {
-						writer.writeVec(Vec3i, entry.key_ptr.*);
-						writer.writeFloat(f32, entry.value_ptr.*);
-					}
+					main.server.world.?.blockDamage.serialize(&writer);
 				},
 				.update => {
 					writer.writeVec(Vec3i, _pos.?);

@@ -411,6 +411,120 @@ const WorldIO = struct { // MARK: WorldIO
 	}
 };
 
+pub const BlockDamage = struct { // MARK: BlockDamage
+	damage: std.AutoHashMapUnmanaged(Vec3i, f32),
+	mutex: std.Thread.Mutex,
+	secondsSinceLastUpdate: f64,
+
+	const updateIntervalSeconds: f64 = 1.0;
+
+	fn init() BlockDamage {
+		return .{
+			.damage = .{},
+			.mutex = .{},
+			.secondsSinceLastUpdate = 0,
+		};
+	}
+	fn deinit(self: *BlockDamage) void {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+		self.damage.deinit(main.globalAllocator.allocator);
+	}
+	pub fn get(self: *BlockDamage, pos: Vec3i) ?f32 {
+		main.utils.assertLocked(&self.mutex);
+		return self.damage.get(pos);
+	}
+	pub fn set(self: *BlockDamage, pos: Vec3i, remainingHealth: f32) void {
+		main.utils.assertLocked(&self.mutex);
+
+		const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
+		defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+
+		if(remainingHealth <= 0) {
+			if(self.damage.remove(pos)) {
+				for(userList) |user| {
+					main.network.Protocols.genericUpdate.sendDamageBlock(user.conn, .update, pos, remainingHealth);
+				}
+			}
+			return;
+		}
+
+		const block = server.world.?.getBlock(pos[0], pos[1], pos[2]) orelse Block.Air;
+		const maxBlockHealth = block.blockHealth();
+
+		if(remainingHealth >= maxBlockHealth) {
+			if(self.damage.remove(pos)) {
+				for(userList) |user| {
+					main.network.Protocols.genericUpdate.sendDamageBlock(user.conn, .update, pos, remainingHealth);
+				}
+			}
+			return;
+		}
+
+		self.damage.put(main.globalAllocator.allocator, pos, remainingHealth) catch unreachable;
+		for(userList) |user| {
+			main.network.Protocols.genericUpdate.sendDamageBlock(user.conn, .update, pos, remainingHealth);
+		}
+		return;
+	}
+	/// This function implements per-tick block self-healing.
+	/// Changes in block damage are not sent to the client, they are expected to simulate the healing on their own.
+	pub fn update(self: *BlockDamage, deltaTime: f64) void {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+
+		self.secondsSinceLastUpdate += deltaTime;
+		while(self.secondsSinceLastUpdate > updateIntervalSeconds) {
+			self._update(updateIntervalSeconds);
+			self.secondsSinceLastUpdate -= updateIntervalSeconds;
+		}
+	}
+	fn _update(self: *BlockDamage, deltaTime: f64) void {
+		var keysToRemove: main.ListUnmanaged(Vec3i) = .{};
+		defer keysToRemove.deinit(main.stackAllocator);
+
+		const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
+		defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+
+		var iterator = self.damage.iterator();
+		while(iterator.next()) |entry| {
+			const pos = entry.key_ptr.*;
+			const remainingHealth = entry.value_ptr.*;
+
+			const block = server.world.?.getBlock(pos[0], pos[1], pos[2]) orelse Block.Air;
+			const maxBlockHealth = block.blockHealth();
+
+			if(maxBlockHealth == 0) {
+				keysToRemove.append(main.stackAllocator, pos);
+				continue;
+			}
+
+			const newRemainingHealth: f32 = @floatCast(remainingHealth + deltaTime*maxBlockHealth*block.healingRatio());
+			// TODO: If we allow some blocks to not heal we need to avoid re-sending the value.
+			std.debug.assert(newRemainingHealth != remainingHealth);
+
+			if(newRemainingHealth >= maxBlockHealth) {
+				keysToRemove.append(main.stackAllocator, pos);
+			} else {
+				entry.value_ptr.* = newRemainingHealth;
+			}
+		}
+
+		for(keysToRemove.items) |pos| {
+			_ = self.damage.remove(pos);
+		}
+	}
+	pub fn serialize(self: *BlockDamage, writer: *main.utils.BinaryWriter) void {
+		writer.writeInt(u32, self.damage.count());
+
+		var iterator = self.damage.iterator();
+		while(iterator.next()) |entry| {
+			writer.writeVec(Vec3i, entry.key_ptr.*);
+			writer.writeFloat(f32, entry.value_ptr.*);
+		}
+	}
+};
+
 pub const ServerWorld = struct { // MARK: ServerWorld
 	pub const dayCycle: u31 = 12000; // Length of one in-game day in units of 100ms. Midnight is at DAY_CYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
 
@@ -442,9 +556,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	chunkUpdateQueue: main.utils.CircularBufferQueue(ChunkUpdateRequest),
 	regionUpdateQueue: main.utils.CircularBufferQueue(RegionUpdateRequest),
 
-	blockDamage: std.AutoHashMapUnmanaged(Vec3i, f32) = .{},
-	blockDamageMutex: std.Thread.Mutex = .{},
-
+	blockDamage: BlockDamage,
 	biomeChecksum: i64 = 0,
 
 	const ChunkUpdateRequest = struct {
@@ -496,6 +608,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			.name = main.globalAllocator.dupe(u8, name),
 			.chunkUpdateQueue = .init(main.globalAllocator, 256),
 			.regionUpdateQueue = .init(main.globalAllocator, 256),
+			.blockDamage = .init(),
 		};
 		self.itemDropManager.init(main.globalAllocator, self);
 		errdefer self.itemDropManager.deinit();
@@ -577,7 +690,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.itemPalette.deinit();
 		self.biomePalette.deinit();
 		self.wio.deinit();
-		self.blockDamage.deinit(main.globalAllocator.allocator);
+		self.blockDamage.deinit();
 		main.globalAllocator.free(self.name);
 		main.globalAllocator.destroy(self);
 	}
@@ -985,32 +1098,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			if(updateRequest.milliTimeStamp -% insertionTime <= 0) break;
 		}
 
-		{
-			var keysToRemove: main.ListUnmanaged(Vec3i) = .{};
-			defer keysToRemove.deinit(main.stackAllocator);
-
-			self.blockDamageMutex.lock();
-			defer self.blockDamageMutex.unlock();
-
-			var iterator = self.blockDamage.iterator();
-			while(iterator.next()) |entry| {
-				const pos = entry.key_ptr.*;
-				const block = self.getBlock(pos[0], pos[1], pos[2]) orelse {
-					keysToRemove.append(main.stackAllocator, pos);
-					continue;
-				};
-				const blockHealth = block.blockHealth();
-				entry.value_ptr.* += deltaTime*blockHealth*0.05;
-				if(entry.value_ptr.* >= blockHealth) {
-					keysToRemove.append(main.stackAllocator, pos);
-					continue;
-				}
-			}
-
-			for(keysToRemove.items) |pos| {
-				_ = self.blockDamage.remove(pos);
-			}
-		}
+		self.blockDamage.update(deltaTime);
 	}
 
 	pub fn queueChunkAndDecreaseRefCount(self: *ServerWorld, pos: ChunkPosition, source: *User) void {

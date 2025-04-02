@@ -50,16 +50,9 @@ const BlockUpdate = struct {
 	newBlock: blocks.Block,
 };
 var blockUpdateList: main.utils.ConcurrentQueue(BlockUpdate) = undefined;
+pub var blockDamage: BlockDamage = undefined;
 
 var meshMemoryPool: main.heap.MemoryPool(chunk_meshing.ChunkMesh) = undefined;
-
-const BreakingUpdate = union(enum) {
-	add: struct {pos: Vec3i, progress: f32},
-	remove: struct {pos: Vec3i},
-};
-var breakingUpdateQueue: main.utils.ConcurrentQueue(BreakingUpdate) = undefined;
-var breakingAnimations: std.AutoHashMapUnmanaged(Vec3i, f32) = .{};
-var breakingAnimationsMutex: std.Thread.Mutex = .{};
 
 pub fn init() void { // MARK: init()
 	lastRD = 0;
@@ -77,7 +70,7 @@ pub fn init() void { // MARK: init()
 	}
 	priorityMeshUpdateList = .init(main.globalAllocator, 16);
 	mapUpdatableList = .init(main.globalAllocator, 16);
-	breakingUpdateQueue = .init(main.globalAllocator, 16);
+	blockDamage = .init();
 }
 
 pub fn deinit() void {
@@ -117,9 +110,7 @@ pub fn deinit() void {
 	}
 	clearList.clearAndFree();
 	meshMemoryPool.deinit();
-
-	breakingUpdateQueue.deinit();
-	breakingAnimations.clearAndFree(main.globalAllocator.allocator);
+	blockDamage.deinit();
 }
 
 // MARK: getters
@@ -757,12 +748,7 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 }
 
 pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()
-	while(breakingUpdateQueue.dequeue()) |breakingUpdate| {
-		switch(breakingUpdate) {
-			.add => |update| addBreakingAnimationFaces(update.pos, update.progress),
-			.remove => |update| removeBreakingAnimationFaces(update.pos),
-		}
-	}
+	blockDamage.updateAnimations();
 
 	while(blockUpdateList.dequeue()) |blockUpdate| {
 		const pos = chunk.ChunkPosition{.wx = blockUpdate.x, .wy = blockUpdate.y, .wz = blockUpdate.z, .voxelSize = 1};
@@ -971,45 +957,151 @@ pub fn updateLightMap(map: *LightMap.LightMapFragment) void {
 
 // MARK: Block breaking animation
 
-pub fn addBreakingAnimation(pos: Vec3i, breakingProgress: f32) void {
-	breakingAnimationsMutex.lock();
-	defer breakingAnimationsMutex.unlock();
+const BlockDamage = struct {
+	updateQueue: main.utils.ConcurrentQueue(Update),
+	damage: std.AutoHashMapUnmanaged(Vec3i, f32),
+	mutex: std.Thread.Mutex,
+	secondsSinceLastUpdate: f64,
 
-	const result = breakingAnimations.getOrPut(main.globalAllocator.allocator, pos) catch unreachable;
-	if(result.found_existing) {
-		breakingUpdateQueue.enqueue(BreakingUpdate{.remove = .{.pos = pos}});
-	} else {
-		result.value_ptr.* = breakingProgress;
+	const updateIntervalSeconds: f64 = 1.0;
+
+	const Update = union(enum) {
+		add: struct {pos: Vec3i, progress: f32},
+		remove: struct {pos: Vec3i},
+	};
+
+	fn init() BlockDamage {
+		return .{
+			.updateQueue = .init(main.globalAllocator, 16),
+			.damage = .{},
+			.mutex = .{},
+			.secondsSinceLastUpdate = 0,
+		};
 	}
-	breakingUpdateQueue.enqueue(BreakingUpdate{.add = .{.pos = result.key_ptr.*, .progress = breakingProgress}});
-}
+	fn deinit(self: *BlockDamage) void {
+		self.mutex.lock();
+		defer self.mutex.unlock();
 
-pub fn getBreakingAnimation(pos: Vec3i) ?f32 {
-	breakingAnimationsMutex.lock();
-	defer breakingAnimationsMutex.unlock();
-
-	return breakingAnimations.get(pos);
-}
-
-pub fn clearBreakingAnimations() void {
-	breakingAnimationsMutex.lock();
-	defer breakingAnimationsMutex.unlock();
-
-	var iterator = breakingAnimations.iterator();
-	while(iterator.next()) |entry| {
-		breakingUpdateQueue.enqueue(BreakingUpdate{.remove = .{.pos = entry.key_ptr.*}});
+		self.updateQueue.deinit();
+		self.damage.deinit(main.globalAllocator.allocator);
 	}
-	breakingAnimations.clearRetainingCapacity();
-}
+	fn clear(self: *BlockDamage) void {
+		main.utils.assertLocked(&self.mutex);
 
-pub fn removeBreakingAnimation(pos: Vec3i) void {
-	breakingAnimationsMutex.lock();
-	defer breakingAnimationsMutex.unlock();
-
-	if(breakingAnimations.remove(pos)) {
-		breakingUpdateQueue.enqueue(BreakingUpdate{.remove = .{.pos = pos}});
+		var iterator = self.damage.iterator();
+		while(iterator.next()) |entry| {
+			const pos = entry.key_ptr.*;
+			self.removeAnimation(pos);
+		}
+		self.damage.clearRetainingCapacity();
 	}
-}
+	pub fn set(self: *BlockDamage, pos: Vec3i, remainingHealth: f32) void {
+		main.utils.assertLocked(&self.mutex);
+
+		if(remainingHealth <= 0) {
+			if(self.damage.remove(pos)) {
+				self.removeAnimation(pos);
+			}
+			return;
+		}
+
+		const block = getBlock(pos[0], pos[1], pos[2]) orelse blocks.Block.Air;
+		const maxBlockHealth = block.blockHealth();
+
+		if(remainingHealth >= maxBlockHealth) {
+			if(self.damage.remove(pos)) {
+				self.removeAnimation(pos);
+			}
+			return;
+		}
+
+		const result = self.damage.getOrPut(main.globalAllocator.allocator, pos) catch unreachable;
+		if(result.found_existing) {
+			if(result.value_ptr.* == remainingHealth) return;
+			self.removeAnimation(pos);
+		}
+		result.value_ptr.* = remainingHealth;
+		const progress = @min(1.0, @max(0.0, 1.0 - (remainingHealth/maxBlockHealth)));
+		self.addAnimation(pos, progress);
+	}
+	fn removeAnimation(self: *BlockDamage, pos: Vec3i) void {
+		self.updateQueue.enqueue(.{.remove = .{.pos = pos}});
+	}
+	fn addAnimation(self: *BlockDamage, pos: Vec3i, progress: f32) void {
+		self.updateQueue.enqueue(.{.add = .{.pos = pos, .progress = progress}});
+	}
+	pub fn get(self: *BlockDamage, pos: Vec3i) ?f32 {
+		main.utils.assertLocked(&self.mutex);
+		return self.damage.get(pos);
+	}
+	pub fn update(self: *BlockDamage, deltaTime: f64) void {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+
+		self.secondsSinceLastUpdate += deltaTime;
+		while(self.secondsSinceLastUpdate > updateIntervalSeconds) {
+			self._update(updateIntervalSeconds);
+			self.secondsSinceLastUpdate -= updateIntervalSeconds;
+		}
+	}
+	fn _update(self: *BlockDamage, deltaTime: f64) void {
+		var keysToRemove: main.ListUnmanaged(Vec3i) = .{};
+		defer keysToRemove.deinit(main.stackAllocator);
+
+		var iterator = self.damage.iterator();
+		while(iterator.next()) |entry| {
+			const pos = entry.key_ptr.*;
+			const remainingHealth = entry.value_ptr.*;
+
+			const block = getBlock(pos[0], pos[1], pos[2]) orelse blocks.Block.Air;
+			const maxBlockHealth = block.blockHealth();
+
+			if(maxBlockHealth == 0) {
+				keysToRemove.append(main.stackAllocator, pos);
+				self.removeAnimation(pos);
+				continue;
+			}
+
+			const newRemainingHealth: f32 = @floatCast(remainingHealth + deltaTime*maxBlockHealth*block.healingRatio());
+			// TODO: If we allow some blocks to not heal we need to avoid re-adding the animation.
+			std.debug.assert(newRemainingHealth != remainingHealth);
+
+			self.removeAnimation(pos);
+
+			if(newRemainingHealth >= maxBlockHealth) {
+				keysToRemove.append(main.stackAllocator, pos);
+			} else {
+				entry.value_ptr.* = newRemainingHealth;
+				const progress = @min(1.0, @max(0.0, 1.0 - (remainingHealth/maxBlockHealth)));
+				self.addAnimation(pos, progress);
+			}
+		}
+		for(keysToRemove.items) |pos| {
+			_ = self.damage.remove(pos);
+		}
+	}
+	fn updateAnimations(self: *BlockDamage) void {
+		while(self.updateQueue.dequeue()) |breakingUpdate| {
+			switch(breakingUpdate) {
+				.add => |u| addBreakingAnimationFaces(u.pos, u.progress),
+				.remove => |u| removeBreakingAnimationFaces(u.pos),
+			}
+		}
+	}
+	pub fn loadSerialized(self: *BlockDamage, reader: *main.utils.BinaryReader) !void {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+
+		const count = try reader.readInt(u32);
+		self.clear();
+
+		for(0..count) |_| {
+			const pos = try reader.readVec(Vec3i);
+			const remainingHealth = try reader.readFloat(f32);
+			self.set(pos, remainingHealth);
+		}
+	}
+};
 
 fn addBreakingAnimationFaces(pos: Vec3i, breakingProgress: f32) void {
 	const animationFrame: usize = @intFromFloat(breakingProgress*@as(f32, @floatFromInt(main.blocks.meshes.blockBreakingTextures.items.len)));

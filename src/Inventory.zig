@@ -1745,50 +1745,33 @@ pub const Command = struct { // MARK: Command
 
 			const maxBlockHealth: f32 = self.oldBlock.blockHealth();
 			std.debug.assert(tool.durability > 0);
-			var durabilityCost: u31 = 1;
+
 			var remainingHealth: f32 = 0.0;
 
 			if(side == .server) {
-				main.server.world.?.blockDamageMutex.lock();
+				main.server.world.?.blockDamage.mutex.lock();
+				const currentRemainingHealth = main.server.world.?.blockDamage.get(self.pos) orelse maxBlockHealth;
+				std.debug.assert(currentRemainingHealth > 0.0);
+				std.debug.assert(currentRemainingHealth <= maxBlockHealth);
 
-				const getOrPut = main.server.world.?.blockDamage.getOrPut(main.globalAllocator.allocator, self.pos) catch unreachable;
-				if(getOrPut.found_existing) {
-					if(getOrPut.value_ptr.* > 0) {
-						remainingHealth = @max(0.0, getOrPut.value_ptr.* - damageDelta);
-					} else {
-						durabilityCost = 0;
-						remainingHealth = 0.0;
-					}
-				} else {
-					remainingHealth = @max(0.0, maxBlockHealth - damageDelta);
-				}
+				remainingHealth = @min(maxBlockHealth, @max(0.0, currentRemainingHealth - damageDelta));
 
-				if(0 < remainingHealth and remainingHealth < maxBlockHealth) {
-					getOrPut.value_ptr.* = remainingHealth;
-				} else {
-					if(!main.server.world.?.blockDamage.remove(self.pos)) {
-						unreachable;
-					}
-				}
-			}
-			if(side == .client) {
-				if(main.renderer.mesh_storage.getBreakingAnimation(self.pos)) |progress| {
-					if(progress == 1) {
-						durabilityCost = 0;
-					} else {
-						remainingHealth = @max(0.0, progress*maxBlockHealth);
-					}
-				} else {
-					remainingHealth = maxBlockHealth;
-				}
+				main.server.world.?.blockDamage.set(self.pos, remainingHealth);
+			} else if(side == .client) {
+				main.renderer.mesh_storage.blockDamage.mutex.lock();
+				const currentRemainingHealth = main.renderer.mesh_storage.blockDamage.get(self.pos) orelse maxBlockHealth;
+				std.debug.assert(currentRemainingHealth > 0.0);
+				std.debug.assert(currentRemainingHealth <= maxBlockHealth);
+
+				remainingHealth = @min(maxBlockHealth, @max(0.0, currentRemainingHealth - damageDelta));
+
+				main.renderer.mesh_storage.blockDamage.set(self.pos, remainingHealth);
 			}
 
-			if(durabilityCost > 0) {
-				cmd.executeBaseOperation(allocator, .{.useDurability = .{
-					.source = self.source,
-					.durability = durabilityCost,
-				}}, side);
-			}
+			cmd.executeBaseOperation(allocator, .{.useDurability = .{
+				.source = self.source,
+				.durability = 1,
+			}}, side);
 
 			if(side == .server) {
 				if(remainingHealth <= 0) {
@@ -1806,7 +1789,9 @@ pub const Command = struct { // MARK: Command
 						}
 					}
 				}
-				main.server.world.?.blockDamageMutex.unlock();
+				main.server.world.?.blockDamage.mutex.unlock();
+			} else {
+				main.renderer.mesh_storage.blockDamage.mutex.unlock();
 			}
 		}
 

@@ -425,13 +425,6 @@ fn update() void { // MARK: update()
 	for(userList) |user| {
 		main.network.Protocols.entityPosition.send(user.conn, writer.data.items, itemData);
 	}
-
-	world.?.blockDamageMutex.lock();
-	for(userList) |user| {
-		main.network.Protocols.genericUpdate.sendDamageBlock(user.conn, .sync, null, null);
-	}
-	world.?.blockDamageMutex.unlock();
-
 	while(userDeinitList.dequeue()) |user| {
 		user.decreaseRefCount();
 	}
@@ -538,6 +531,8 @@ pub fn connectInternal(user: *User) void {
 	users.append(user);
 	userMutex.unlock();
 	user.conn.handShakeState.store(main.network.Protocols.handShake.stepComplete, .monotonic);
+
+	// main.network.Protocols.genericUpdate.sendDamageBlock(user.conn, .sync, null, null);
 }
 
 pub fn messageFrom(msg: []const u8, source: *User) void { // MARK: message
