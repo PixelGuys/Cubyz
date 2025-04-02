@@ -886,13 +886,15 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		// At equillibrium we want to have dv/dt = a - λv = 0 → a = λ*v
 		const fricMul = speedMultiplier*baseFrictionCoefficient;
 
+		const up = Vec3d{0, 0, 1};
 		const forward = vec.rotateZ(Vec3d{0, 1, 0}, -camera.rotation[2]);
 		const right = Vec3d{-forward[1], forward[0], 0};
 		var movementDir: Vec3d = .{0, 0, 0};
 		var movementSpeed: f64 = 0;
 
 		if(main.Window.grabbed) {
-			const walkingSpeed: f64 = if(Player.crouching) 2 else 4;
+			const walkingSpeed: f64 = if(Player.crouching or Player.climbing) 2 else 4;
+			const climbSpeed: f64 = 6;
 			if(KeyBoard.key("forward").value > 0.0) {
 				if(KeyBoard.key("sprint").pressed and !Player.crouching) {
 					if(Player.isGhost.load(.monotonic)) {
@@ -905,6 +907,10 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 						movementSpeed = @max(movementSpeed, 8)*KeyBoard.key("forward").value;
 						movementDir += forward*@as(Vec3d, @splat(8*KeyBoard.key("forward").value));
 					}
+				} else if (Player.climbing) {
+						movementSpeed = @max(movementSpeed, climbSpeed)*KeyBoard.key("forward").value;
+						movementDir += forward*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("forward").value));
+						movementDir += up*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("forward").value));
 				} else {
 					movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("forward").value;
 					movementDir += forward*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("forward").value));
@@ -936,6 +942,9 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 						movementSpeed = @max(movementSpeed, 5.5);
 						movementDir[2] += 5.5;
 					}
+				} else if (Player.climbing) {
+					movementSpeed = @max(movementSpeed, climbSpeed*0.7);
+					movementDir += up*@as(Vec3d, @splat(walkingSpeed));
 				} else if((Player.onGround or Player.jumpCoyote > 0.0) and Player.jumpCooldown <= 0) {
 					jumping = true;
 					Player.jumpCooldown = Player.jumpCooldownConstant;
