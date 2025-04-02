@@ -846,7 +846,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		const z: i32 = @intFromFloat(@floor(Player.super.pos[2]));
 
 		for(moveDirections, climbCollisionAmount) |direction, amount| {
-			if(collision.collides(.client, direction, amount, Player.super.pos, .{.min = -Player.outerBoundingBoxExtent, .max = Player.outerBoundingBoxExtent*Vec3d{1, 1, 0}}) != null) {
+			if(collision.collides(.client, direction, amount, Player.super.pos, .{.min = -Player.outerBoundingBoxExtent, .max = Player.outerBoundingBoxExtent*Vec3d{1, 1, -0.1}}) != null) {
 				const blockOffset: Vec2d = switch(direction) {
 					.x => Vec2d{std.math.sign(amount), 0},
 					.y => Vec2d{0, std.math.sign(amount)},
@@ -993,7 +993,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		}) == null) {
 			Player.crouching = KeyBoard.key("crouch").pressed and !Player.isFlying.load(.monotonic);
 
-			if(Player.onGround) {
+			if(Player.onGround or Player.climbing) {
 				if(Player.crouching) {
 					Player.crouchPerc += @floatCast(deltaTime*10);
 				} else {
@@ -1049,6 +1049,10 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			const c_1 = v_0 - a/frictionCoefficient;
 			Player.super.vel[i] = a/frictionCoefficient + c_1*@exp(-frictionCoefficient*deltaTime);
 			move[i] = a/frictionCoefficient*deltaTime - c_1/frictionCoefficient*@exp(-frictionCoefficient*deltaTime) + c_1/frictionCoefficient;
+		}
+
+		if(Player.climbing and Player.crouching and move[2] < 0) {
+			move[2] = 0;
 		}
 
 		acc = @splat(0);
