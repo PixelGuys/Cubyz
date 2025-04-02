@@ -67,7 +67,7 @@ pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 	var negYModel: ModelIndex = undefined;
 	var posYModel: ModelIndex = undefined;
 
-    const piHalf = std.math.pi/2.0;
+	const piHalf = std.math.pi/2.0;
 	for(1..16) |i| {
 		const ladderData: LadderData = @bitCast(@as(u4, @intCast(i)));
 		if(i & i - 1 == 0) {
@@ -77,22 +77,22 @@ pub fn createBlockModel(_: Block, _: *u16, zon: ZonElement) ModelIndex {
 			if(ladderData.posY) posYModel = baseModel.transformModel(rotation.rotationMatrixTransform, .{Mat4f.rotationX(piHalf)});
 		} else {
 			var models: [4]ModelIndex = undefined;
-            var amount: usize = 0;
+			var amount: usize = 0;
 			if(ladderData.negX) {
 				models[amount] = negXModel;
-                amount += 1;
+				amount += 1;
 			}
 			if(ladderData.posX) {
 				models[amount] = posXModel;
-                amount += 1;
+				amount += 1;
 			}
 			if(ladderData.negY) {
 				models[amount] = negYModel;
-                amount += 1;
+				amount += 1;
 			}
 			if(ladderData.posY) {
 				models[amount] = posYModel;
-                amount += 1;
+				amount += 1;
 			}
 			_ = main.models.Model.mergeModels(models[0..amount]);
 		}
@@ -125,7 +125,7 @@ pub fn generateData(_: *main.game.World, _: Vec3i, relativePlayerPos: Vec3f, pla
 	if(@as(u4, @bitCast(data)) != currentData.data) {
 		currentData.data = @as(u4, @bitCast(data));
 		return true;
-	} 
+	}
 
 	return false;
 }
