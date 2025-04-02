@@ -907,10 +907,10 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 						movementSpeed = @max(movementSpeed, 8)*KeyBoard.key("forward").value;
 						movementDir += forward*@as(Vec3d, @splat(8*KeyBoard.key("forward").value));
 					}
-				} else if (Player.climbing) {
-						movementSpeed = @max(movementSpeed, climbSpeed)*KeyBoard.key("forward").value;
-						movementDir += forward*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("forward").value));
-						movementDir += up*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("forward").value));
+				} else if(Player.climbing) {
+					movementSpeed = @max(movementSpeed, climbSpeed)*KeyBoard.key("forward").value;
+					movementDir += forward*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("forward").value));
+					movementDir += up*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("forward").value));
 				} else {
 					movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("forward").value;
 					movementDir += forward*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("forward").value));
@@ -942,7 +942,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 						movementSpeed = @max(movementSpeed, 5.5);
 						movementDir[2] += 5.5;
 					}
-				} else if (Player.climbing) {
+				} else if(Player.climbing) {
 					movementSpeed = @max(movementSpeed, climbSpeed*0.7);
 					movementDir += up*@as(Vec3d, @splat(walkingSpeed));
 				} else if((Player.onGround or Player.jumpCoyote > 0.0) and Player.jumpCooldown <= 0) {
