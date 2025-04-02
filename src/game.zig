@@ -836,10 +836,9 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	const airFrictionCoefficient = gravity/terminalVelocity; // λ = a/v in equillibrium
 	var move: Vec3d = .{0, 0, 0};
 
-	Player.climbing = blk: {
-		const forward = std.math.sign(vec.rotateZ(Vec3d{0, 1, 0}, -camera.rotation[2]));
-		const moveDirections = [2]collision.Direction{.x, .y};
-		const climbCollisionAmount = [2]f64{forward[0]*0.5, forward[1]*0.5};
+	Player.climbing = isClimbing: {
+		const moveDirections: [4]collision.Direction = .{.x, .y} ** 2;
+		const climbCollisionAmount = [4]f64{0.5, 0.5, -0.5, -0.5};
 
 		const x: i32 = @intFromFloat(@floor(Player.super.pos[0]));
 		const y: i32 = @intFromFloat(@floor(Player.super.pos[1]));
@@ -856,14 +855,16 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 				const blockOffsetX: i32 = @intFromFloat(blockOffset[0]);
 				const blockOffsetY: i32 = @intFromFloat(blockOffset[1]);
 
-				const currentBlock = main.renderer.mesh_storage.getBlock(x, y, z);
-				const frontBlock = main.renderer.mesh_storage.getBlock(x + blockOffsetX, y + blockOffsetY, z);
+				if(main.renderer.mesh_storage.getBlock(x, y, z).?.climbable()) break :isClimbing true;
+				if(main.renderer.mesh_storage.getBlock(x + blockOffsetX, y + blockOffsetY, z).?.climbable()) break :isClimbing true;
+
+				// Check blocks below to get over the edge
 				const downBlock = main.renderer.mesh_storage.getBlock(x, y, z - 1);
 				const diagonalDownBlock = main.renderer.mesh_storage.getBlock(x + blockOffsetX, y + blockOffsetY, z - 1);
 
-				break :blk Player.climbing and (downBlock.?.climbable() or diagonalDownBlock.?.climbable()) or currentBlock.?.climbable() or frontBlock.?.climbable();
+				break :isClimbing Player.climbing and (downBlock.?.climbable() or diagonalDownBlock.?.climbable());
 			}
-		} else break :blk false;
+		} else break :isClimbing false;
 	};
 
 	if(main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(Player.super.pos[0])), @intFromFloat(@floor(Player.super.pos[1])), @intFromFloat(@floor(Player.super.pos[2]))) != null) {
