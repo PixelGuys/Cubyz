@@ -974,15 +974,13 @@ pub const Protocols = struct {
 	pub const genericUpdate = struct {
 		pub const id: u8 = 9;
 		pub const asynchronous = false;
-		const type_gamemode: u8 = 0;
-		const type_teleport: u8 = 1;
-		const type_cure: u8 = 2;
-		const type_worldEditPos: u8 = 3;
-		const type_reserved3: u8 = 4;
-		const type_reserved4: u8 = 5;
-		const type_reserved5: u8 = 6;
-		const type_reserved6: u8 = 7;
-		const type_timeAndBiome: u8 = 8;
+
+		const UpdateType = enum(u8) {
+			gamemode = 0,
+			teleport = 1,
+			worldEditPos = 2,
+			timeAndBiome = 3,
+		};
 
 		const WorldEditPosition = enum(u2) {
 			selectedPos1 = 0,
@@ -991,30 +989,19 @@ pub const Protocols = struct {
 		};
 
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			switch(try reader.readInt(u8)) {
-				type_gamemode => {
+			switch(try reader.readEnum(UpdateType)) {
+				.gamemode => {
 					if(conn.user != null) return error.InvalidPacket;
 					main.items.Inventory.Sync.setGamemode(null, try reader.readEnum(main.game.Gamemode));
 				},
-				type_teleport => {
-					game.Player.setPosBlocking(Vec3d{
-						@bitCast(try reader.readInt(u64)),
-						@bitCast(try reader.readInt(u64)),
-						@bitCast(try reader.readInt(u64)),
-					});
+				.teleport => {
+					game.Player.setPosBlocking(try reader.readVec(Vec3d));
 				},
-				type_cure => {
-					// TODO: health and hunger
-				},
-				type_worldEditPos => {
+				.worldEditPos => {
 					const typ = try reader.readEnum(WorldEditPosition);
 					switch(typ) {
 						.selectedPos1, .selectedPos2 => {
-							const pos = Vec3i{
-								try reader.readInt(i32),
-								try reader.readInt(i32),
-								try reader.readInt(i32),
-							};
+							const pos = try reader.readVec(Vec3i);
 							switch(typ) {
 								.selectedPos1 => game.Player.selectionPosition1 = pos,
 								.selectedPos2 => game.Player.selectionPosition2 = pos,
@@ -1027,15 +1014,11 @@ pub const Protocols = struct {
 						},
 					}
 				},
-				type_reserved3 => {},
-				type_reserved4 => {},
-				type_reserved5 => {},
-				type_reserved6 => {},
-				type_timeAndBiome => {
+				.timeAndBiome => {
 					if(conn.manager.world) |world| {
-						const zon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
-						defer zon.deinit(main.stackAllocator);
-						const expectedTime = zon.get(i64, "time", 0);
+						const expectedTime = try reader.readInt(i64);
+						const biomeId = try reader.readInt(u32);
+
 						var curTime = world.gameTime.load(.monotonic);
 						if(@abs(curTime -% expectedTime) >= 10) {
 							world.gameTime.store(expectedTime, .monotonic);
@@ -1048,78 +1031,55 @@ pub const Protocols = struct {
 								curTime = actualTime;
 							}
 						}
-						const newBiome = main.server.terrain.biomes.getById(zon.get([]const u8, "biome", ""));
+
+						const newBiome = main.server.terrain.biomes.getByIndex(biomeId) orelse return error.MissingBiome;
 						const oldBiome = world.playerBiome.swap(newBiome, .monotonic);
 						if(oldBiome != newBiome) {
 							main.audio.setMusic(newBiome.preferredMusic);
 						}
 					}
 				},
-				else => |unrecognizedType| {
-					std.log.err("Unrecognized type for genericUpdateProtocol: {}. Data: {any}", .{unrecognizedType, reader.remaining});
-					return error.Invalid;
-				},
 			}
 		}
 
-		fn addHeaderAndSendImportant(conn: *Connection, header: u8, data: []const u8) void {
-			const headeredData = main.stackAllocator.alloc(u8, data.len + 1);
-			defer main.stackAllocator.free(headeredData);
-			headeredData[0] = header;
-			@memcpy(headeredData[1..], data);
-			conn.sendImportant(id, headeredData);
-		}
-
-		fn addHeaderAndSendUnimportant(conn: *Connection, header: u8, data: []const u8) void {
-			const headeredData = main.stackAllocator.alloc(u8, data.len + 1);
-			defer main.stackAllocator.free(headeredData);
-			headeredData[0] = header;
-			@memcpy(headeredData[1..], data);
-			conn.sendUnimportant(id, headeredData);
-		}
-
 		pub fn sendGamemode(conn: *Connection, gamemode: main.game.Gamemode) void {
-			conn.sendImportant(id, &.{type_gamemode, @intFromEnum(gamemode)});
+			conn.sendImportant(id, &.{@intFromEnum(UpdateType.gamemode), @intFromEnum(gamemode)});
 		}
 
 		pub fn sendTPCoordinates(conn: *Connection, pos: Vec3d) void {
 			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, 25);
 			defer writer.deinit();
-			writer.writeInt(u8, type_teleport);
-			writer.writeInt(u64, @bitCast(pos[0]));
-			writer.writeInt(u64, @bitCast(pos[1]));
-			writer.writeInt(u64, @bitCast(pos[2]));
-			conn.sendImportant(id, writer.data.items);
-		}
 
-		pub fn sendCure(conn: *Connection) void {
-			var data: [1]u8 = undefined;
-			data[0] = type_cure;
-			conn.sendImportant(id, &data);
+			writer.writeEnum(UpdateType, .teleport);
+			writer.writeVec(Vec3d, pos);
+
+			conn.sendImportant(id, writer.data.items);
 		}
 
 		pub fn sendWorldEditPos(conn: *Connection, posType: WorldEditPosition, maybePos: ?Vec3i) void {
 			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, 25);
 			defer writer.deinit();
-			writer.writeInt(u8, type_worldEditPos);
+
+			writer.writeEnum(UpdateType, .worldEditPos);
 			writer.writeEnum(WorldEditPosition, posType);
 			if(maybePos) |pos| {
-				writer.writeInt(i32, pos[0]);
-				writer.writeInt(i32, pos[1]);
-				writer.writeInt(i32, pos[2]);
+				writer.writeVec(Vec3i, pos);
 			}
+
 			conn.sendImportant(id, writer.data.items);
 		}
 
 		pub fn sendTimeAndBiome(conn: *Connection, world: *const main.server.ServerWorld) void {
-			const zon = ZonElement.initObject(main.stackAllocator);
-			defer zon.deinit(main.stackAllocator);
-			zon.put("time", world.gameTime);
-			const pos = conn.user.?.player.pos;
-			zon.put("biome", (world.getBiome(@intFromFloat(pos[0]), @intFromFloat(pos[1]), @intFromFloat(pos[2]))).id);
-			const string = zon.toString(main.stackAllocator);
-			defer main.stackAllocator.free(string);
-			addHeaderAndSendUnimportant(conn, type_timeAndBiome, string);
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, 13);
+			defer writer.deinit();
+
+			writer.writeEnum(UpdateType, .timeAndBiome);
+			writer.writeInt(i64, world.gameTime);
+
+			const pos = @as(Vec3i, @intFromFloat(conn.user.?.player.pos));
+			writer.writeInt(u32, world.getBiome(pos[0], pos[1], pos[2]).paletteId);
+
+			conn.sendImportant(id, writer.data.items);
 		}
 	};
 	pub const chat = struct {
