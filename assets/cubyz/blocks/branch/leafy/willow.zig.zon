@@ -1,0 +1,14 @@
+.{
+	.drops = .{
+		.{.items = .{"cubyz:willow_leaves", "cubyz:willow_branch"}},
+	},
+	.texture = "cubyz:willow_leaves",
+	.texture6 = "cubyz:branch/willow/dot",
+	.texture7 = "cubyz:branch/willow/half_line",
+	.texture8 = "cubyz:branch/willow/line",
+	.texture9 = "cubyz:branch/willow/bend",
+	.texture10 = "cubyz:branch/willow/intersection",
+	.texture11 = "cubyz:branch/willow/cross",
+	.lodReplacement = "cubyz:willow_leaves_opaque",
+	.opaqueVariant = "cubyz:willow_leaves_opaque",
+}

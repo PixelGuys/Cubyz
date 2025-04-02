@@ -6,8 +6,15 @@
 	},
 	.absorbedLight = 0x202830,
 	.rotation = .branch,
-	.model = "cubyz:branch",
-	.texture = "cubyz:pine_log",
+	.model = .{
+		.radius = 4,
+	},
+	.texture0 = "cubyz:branch/pine/dot",
+	.texture1 = "cubyz:branch/pine/half_line",
+	.texture2 = "cubyz:branch/pine/line",
+	.texture3 = "cubyz:branch/pine/bend",
+	.texture4 = "cubyz:branch/pine/intersection",
+	.texture5 = "cubyz:branch/pine/cross",
 	.item = .{
 		.material = .{
 			.density = 0.25,

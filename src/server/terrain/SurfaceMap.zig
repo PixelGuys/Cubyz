@@ -1,12 +1,14 @@
 const std = @import("std");
 const Atomic = std.atomic.Value;
 
-const main = @import("root");
+const main = @import("main");
 const Chunk = main.chunk.Chunk;
 const ChunkPosition = main.chunk.ChunkPosition;
 const Cache = main.utils.Cache;
 const ZonElement = main.ZonElement;
 const Vec3d = main.vec.Vec3d;
+const BinaryWriter = main.utils.BinaryWriter;
+const BinaryReader = main.utils.BinaryReader;
 
 const terrain = @import("terrain.zig");
 const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
@@ -132,16 +134,17 @@ pub const MapFragment = struct { // MARK: MapFragment
 		const fullData = try main.files.read(main.stackAllocator, path);
 		defer main.stackAllocator.free(fullData);
 
+		var fullReader = BinaryReader.init(fullData, .big);
+
 		const header: StorageHeader = .{
-			.version = fullData[0],
-			.neighborInfo = @bitCast(fullData[1]),
+			.version = try fullReader.readInt(u8),
+			.neighborInfo = @bitCast(try fullReader.readInt(u8)),
 		};
-		const compressedData = fullData[@sizeOf(StorageHeader)..];
 		switch(header.version) {
 			0 => { // TODO: Remove after next breaking change
 				const rawData: []u8 = main.stackAllocator.alloc(u8, mapSize*mapSize*(@sizeOf(u32) + 2*@sizeOf(f32)));
 				defer main.stackAllocator.free(rawData);
-				if(try main.utils.Compression.inflateTo(rawData, compressedData) != rawData.len) return error.CorruptedFile;
+				if(try main.utils.Compression.inflateTo(rawData, fullReader.remaining) != rawData.len) return error.CorruptedFile;
 				const biomeData = rawData[0 .. mapSize*mapSize*@sizeOf(u32)];
 				const heightData = rawData[mapSize*mapSize*@sizeOf(u32) ..][0 .. mapSize*mapSize*@sizeOf(f32)];
 				const originalHeightData = rawData[mapSize*mapSize*(@sizeOf(u32) + @sizeOf(f32)) ..][0 .. mapSize*mapSize*@sizeOf(f32)];
@@ -154,19 +157,25 @@ pub const MapFragment = struct { // MARK: MapFragment
 				}
 			},
 			1 => {
-				const rawData: []u8 = main.stackAllocator.alloc(u8, mapSize*mapSize*(@sizeOf(u32) + 2*@sizeOf(i32)));
+				const biomeDataSize = mapSize*mapSize*@sizeOf(u32);
+				const heightDataSize = mapSize*mapSize*@sizeOf(i32);
+				const originalHeightDataSize = mapSize*mapSize*@sizeOf(i32);
+
+				const rawData: []u8 = main.stackAllocator.alloc(u8, biomeDataSize + heightDataSize + originalHeightDataSize);
 				defer main.stackAllocator.free(rawData);
-				if(try main.utils.Compression.inflateTo(rawData, compressedData) != rawData.len) return error.CorruptedFile;
-				const biomeData = rawData[0 .. mapSize*mapSize*@sizeOf(u32)];
-				const heightData = rawData[mapSize*mapSize*@sizeOf(u32) ..][0 .. mapSize*mapSize*@sizeOf(i32)];
-				const originalHeightData = rawData[mapSize*mapSize*(@sizeOf(u32) + @sizeOf(i32)) ..][0 .. mapSize*mapSize*@sizeOf(i32)];
-				for(0..mapSize) |x| {
-					for(0..mapSize) |y| {
-						self.biomeMap[x][y] = main.server.terrain.biomes.getById(biomePalette.palette.items[std.mem.readInt(u32, biomeData[4*(x*mapSize + y) ..][0..4], .big)]);
-						self.heightMap[x][y] = @bitCast(std.mem.readInt(u32, heightData[4*(x*mapSize + y) ..][0..4], .big));
-						if(originalHeightMap) |map| map[x][y] = @bitCast(std.mem.readInt(u32, originalHeightData[4*(x*mapSize + y) ..][0..4], .big));
-					}
-				}
+				if(try main.utils.Compression.inflateTo(rawData, fullReader.remaining) != rawData.len) return error.CorruptedFile;
+
+				var reader = BinaryReader.init(rawData, .big);
+
+				for(0..mapSize) |x| for(0..mapSize) |y| {
+					self.biomeMap[x][y] = main.server.terrain.biomes.getById(biomePalette.palette.items[try reader.readInt(u32)]);
+				};
+				for(0..mapSize) |x| for(0..mapSize) |y| {
+					self.heightMap[x][y] = try reader.readInt(i32);
+				};
+				if(originalHeightMap) |map| for(0..mapSize) |x| for(0..mapSize) |y| {
+					map[x][y] = try reader.readInt(i32);
+				};
 			},
 			else => return error.OutdatedFileVersion,
 		}
@@ -175,29 +184,29 @@ pub const MapFragment = struct { // MARK: MapFragment
 	}
 
 	pub fn save(self: *MapFragment, originalData: ?*[mapSize][mapSize]i32, neighborInfo: NeighborInfo) void {
-		const rawData: []u8 = main.stackAllocator.alloc(u8, mapSize*mapSize*(@sizeOf(u32) + 2*@sizeOf(f32)));
-		defer main.stackAllocator.free(rawData);
-		const biomeData = rawData[0 .. mapSize*mapSize*@sizeOf(u32)];
-		const heightData = rawData[mapSize*mapSize*@sizeOf(u32) ..][0 .. mapSize*mapSize*@sizeOf(f32)];
-		const originalHeightData = rawData[mapSize*mapSize*(@sizeOf(u32) + @sizeOf(f32)) ..][0 .. mapSize*mapSize*@sizeOf(f32)];
-		for(0..mapSize) |x| {
-			for(0..mapSize) |y| {
-				std.mem.writeInt(u32, biomeData[4*(x*mapSize + y) ..][0..4], self.biomeMap[x][y].paletteId, .big);
-				std.mem.writeInt(u32, heightData[4*(x*mapSize + y) ..][0..4], @bitCast(self.heightMap[x][y]), .big);
-				std.mem.writeInt(u32, originalHeightData[4*(x*mapSize + y) ..][0..4], @bitCast((if(originalData) |map| map else &self.heightMap)[x][y]), .big);
-			}
-		}
-		const compressedData = main.utils.Compression.deflate(main.stackAllocator, rawData, .fast);
+		const biomeDataSize = mapSize*mapSize*@sizeOf(u32);
+		const heightDataSize = mapSize*mapSize*@sizeOf(i32);
+		const originalHeightDataSize = mapSize*mapSize*@sizeOf(i32);
+
+		var writer = BinaryWriter.initCapacity(main.stackAllocator, .big, biomeDataSize + heightDataSize + originalHeightDataSize);
+		defer writer.deinit();
+
+		for(0..mapSize) |x| for(0..mapSize) |y| writer.writeInt(u32, self.biomeMap[x][y].paletteId);
+		for(0..mapSize) |x| for(0..mapSize) |y| writer.writeInt(i32, self.heightMap[x][y]);
+		for(0..mapSize) |x| for(0..mapSize) |y| writer.writeInt(i32, (if(originalData) |map| map else &self.heightMap)[x][y]);
+
+		const compressedData = main.utils.Compression.deflate(main.stackAllocator, writer.data.items, .fast);
 		defer main.stackAllocator.free(compressedData);
 
-		const fullData = main.stackAllocator.alloc(u8, compressedData.len + @sizeOf(StorageHeader));
-		defer main.stackAllocator.free(fullData);
+		var outputWriter = BinaryWriter.initCapacity(main.stackAllocator, .big, @sizeOf(StorageHeader) + compressedData.len);
+		defer outputWriter.deinit();
+
 		const header: StorageHeader = .{
 			.neighborInfo = neighborInfo,
 		};
-		fullData[0] = header.version;
-		fullData[1] = @bitCast(header.neighborInfo);
-		@memcpy(fullData[@sizeOf(StorageHeader)..], compressedData);
+		outputWriter.writeInt(u8, header.version);
+		outputWriter.writeInt(u8, @bitCast(header.neighborInfo));
+		outputWriter.writeSlice(compressedData);
 
 		const saveFolder: []const u8 = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{main.server.world.?.name}) catch unreachable;
 		defer main.stackAllocator.free(saveFolder);
@@ -211,7 +220,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 			std.log.err("Error while writing to file {s}: {s}", .{path, @errorName(err)});
 		};
 
-		main.files.write(path, fullData) catch |err| {
+		main.files.write(path, outputWriter.data.items) catch |err| {
 			std.log.err("Error while writing to file {s}: {s}", .{path, @errorName(err)});
 		};
 	}

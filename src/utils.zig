@@ -3,10 +3,11 @@ const Allocator = std.mem.Allocator;
 const Atomic = std.atomic.Value;
 const builtin = @import("builtin");
 
-const main = @import("main.zig");
+const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 pub const file_monitor = @import("utils/file_monitor.zig");
+pub const VirtualList = @import("utils/virtual_mem.zig").VirtualList;
 
 pub const Compression = struct { // MARK: Compression
 	pub fn deflate(allocator: NeverFailingAllocator, data: []const u8, level: std.compress.flate.deflate.Level) []u8 {
@@ -309,6 +310,12 @@ pub fn Array3D(comptime T: type) type { // MARK: Array3D
 			std.debug.assert(x < self.width and y < self.depth and z < self.height);
 			return &self.mem[(x*self.depth + y)*self.height + z];
 		}
+
+		pub fn clone(self: Self, allocator: NeverFailingAllocator) Self {
+			const new = Self.init(allocator, self.width, self.depth, self.height);
+			@memcpy(new.mem, self.mem);
+			return new;
+		}
 	};
 }
 
@@ -384,6 +391,10 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 
 		pub fn empty(self: *Self) bool {
 			return self.startIndex == self.endIndex;
+		}
+
+		pub fn reachedCapacity(self: *Self) bool {
+			return self.startIndex == (self.endIndex + 1) & self.mask;
 		}
 	};
 }
@@ -538,7 +549,7 @@ pub fn BlockingMaxHeap(comptime T: type) type { // MARK: BlockingMaxHeap
 				self.size += 1;
 			}
 
-			self.waitingThreads.signal();
+			self.waitingThreads.broadcast();
 		}
 
 		fn removeIndex(self: *@This(), i: usize) void {
@@ -706,10 +717,8 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 	}
 
 	fn run(self: *ThreadPool, id: usize) void {
-		// In case any of the tasks wants to allocate memory:
-		var sta = main.heap.StackAllocator.init(main.globalAllocator, 1 << 23);
-		defer sta.deinit();
-		main.stackAllocator = sta.allocator();
+		main.initThreadLocals();
+		defer main.deinitThreadLocals();
 
 		var lastUpdate = std.time.milliTimestamp();
 		while(true) {
@@ -758,6 +767,7 @@ pub const ThreadPool = struct { // MARK: ThreadPool
 		for(self.loadList.array[0..self.loadList.size]) |task| {
 			task.vtable.clean(task.self);
 		}
+		_ = self.trueQueueSize.fetchSub(self.loadList.size, .monotonic);
 		self.loadList.size = 0;
 		self.loadList.mutex.unlock();
 		// Wait for the in-progress tasks to finish:
@@ -1468,7 +1478,7 @@ pub const BinaryWriter = struct {
 		std.mem.writeInt(T, self.data.addMany(bufSize)[0..bufSize], value, self.endian);
 	}
 
-	pub fn writeFloat(self: *BinaryWriter, T: type, value: T) T {
+	pub fn writeFloat(self: *BinaryWriter, T: type, value: T) void {
 		const IntT = std.meta.Int(.unsigned, @typeInfo(T).float.bits);
 		self.writeInt(IntT, @bitCast(value));
 	}
@@ -1487,3 +1497,32 @@ pub const BinaryWriter = struct {
 		self.data.append(delimiter);
 	}
 };
+
+// MARK: functionPtrCast()
+fn CastFunctionSelfToAnyopaqueType(Fn: type) type {
+	var typeInfo = @typeInfo(Fn);
+	var params = typeInfo.@"fn".params[0..typeInfo.@"fn".params.len].*;
+	if(@sizeOf(params[0].type.?) != @sizeOf(*anyopaque) or @alignOf(params[0].type.?) != @alignOf(*anyopaque)) {
+		@compileError(std.fmt.comptimePrint("Cannot convert {} to *anyopaque", .{params[0].type.?}));
+	}
+	params[0].type = *anyopaque;
+	typeInfo.@"fn".params = params[0..];
+	return @Type(typeInfo);
+}
+/// Turns the first parameter into a anyopaque*
+pub fn castFunctionSelfToAnyopaque(function: anytype) *const CastFunctionSelfToAnyopaqueType(@TypeOf(function)) {
+	return @ptrCast(&function);
+}
+
+fn CastFunctionReturnToAnyopaqueType(Fn: type) type {
+	var typeInfo = @typeInfo(Fn);
+	if(@sizeOf(typeInfo.@"fn".return_type.?) != @sizeOf(*anyopaque) or @alignOf(typeInfo.@"fn".return_type.?) != @alignOf(*anyopaque)) {
+		@compileError(std.fmt.comptimePrint("Cannot convert {} to *anyopaque", .{typeInfo.@"fn".return_type.?}));
+	}
+	typeInfo.@"fn".return_type = *anyopaque;
+	return @Type(typeInfo);
+}
+/// Turns the return parameter into a anyopaque*
+pub fn castFunctionReturnToAnyopaque(function: anytype) *const CastFunctionReturnToAnyopaqueType(@TypeOf(function)) {
+	return @ptrCast(&function);
+}

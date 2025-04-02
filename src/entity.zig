@@ -5,7 +5,7 @@ const game = @import("game.zig");
 const graphics = @import("graphics.zig");
 const c = graphics.c;
 const ZonElement = @import("zon.zig").ZonElement;
-const main = @import("main.zig");
+const main = @import("main");
 const renderer = @import("renderer.zig");
 const settings = @import("settings.zig");
 const utils = @import("utils.zig");
@@ -90,7 +90,7 @@ pub const ClientEntityManager = struct {
 	var modelSize: c_int = 0;
 	var modelTexture: main.graphics.Texture = undefined;
 	var shader: graphics.Shader = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
-	pub var entities: main.VirtualList(ClientEntity, 1 << 20) = undefined;
+	pub var entities: main.utils.VirtualList(ClientEntity, 1 << 20) = undefined;
 	pub var mutex: std.Thread.Mutex = .{};
 
 	pub fn init() void {

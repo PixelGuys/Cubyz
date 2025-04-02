@@ -1,0 +1,5 @@
+.{
+	.texture = "cubyz:sbb/child/side/brown",
+	.texture_top = "cubyz:sbb/child/top/brown",
+	.texture_bottom = "cubyz:sbb/child/bottom/brown",
+}

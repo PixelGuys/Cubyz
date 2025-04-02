@@ -2,7 +2,7 @@ const std = @import("std");
 const builtin = @import("builtin");
 
 const ZonElement = @import("zon.zig").ZonElement;
-const main = @import("main.zig");
+const main = @import("main");
 
 pub const defaultPort: u16 = 47649;
 pub const connectionTimeout = 60_000_000_000;

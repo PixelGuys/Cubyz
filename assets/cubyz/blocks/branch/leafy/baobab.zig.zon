@@ -1,0 +1,14 @@
+.{
+	.drops = .{
+		.{.items = .{"cubyz:baobab_leaves", "cubyz:baobab_branch"}},
+	},
+	.texture = "cubyz:baobab_leaves",
+	.texture6 = "cubyz:branch/baobab/dot",
+	.texture7 = "cubyz:branch/baobab/half_line",
+	.texture8 = "cubyz:branch/baobab/line",
+	.texture9 = "cubyz:branch/baobab/bend",
+	.texture10 = "cubyz:branch/baobab/intersection",
+	.texture11 = "cubyz:branch/baobab/cross",
+	.lodReplacement = "cubyz:baobab_leaves_opaque",
+	.opaqueVariant = "cubyz:baobab_leaves_opaque",
+}

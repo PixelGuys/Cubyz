@@ -5,7 +5,7 @@ const Block = blocks.Block;
 const graphics = @import("graphics.zig");
 const Color = graphics.Color;
 const ZonElement = @import("zon.zig").ZonElement;
-const main = @import("main.zig");
+const main = @import("main");
 const chunk = main.chunk;
 const random = @import("random.zig");
 const vec = @import("vec.zig");
@@ -755,6 +755,10 @@ pub var itemList: [65536]BaseItem = undefined;
 pub var itemListSize: u16 = 0;
 
 var recipeList: main.List(Recipe) = undefined;
+
+pub fn hasRegistered(id: []const u8) bool {
+	return reverseIndices.contains(id);
+}
 
 pub fn toolTypeIterator() std.StringHashMap(ToolType).ValueIterator {
 	return toolTypes.valueIterator();
