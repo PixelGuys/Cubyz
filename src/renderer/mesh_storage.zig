@@ -16,6 +16,7 @@ const Vec3f = vec.Vec3f;
 const Vec3d = vec.Vec3d;
 const Vec4f = vec.Vec4f;
 const Mat4f = vec.Mat4f;
+const EventStatus = main.entity_data.EventStatus;
 
 const chunk_meshing = @import("chunk_meshing.zig");
 
@@ -175,6 +176,19 @@ pub fn getBlock(x: i32, y: i32, z: i32) ?blocks.Block {
 	const mesh = node.mesh orelse return null;
 	const block = mesh.chunk.getBlock(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask);
 	return block;
+}
+
+pub fn triggerOnInteractBlock(x: i32, y: i32, z: i32) EventStatus {
+	const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize = 1});
+	node.mutex.lock();
+	defer node.mutex.unlock();
+	const mesh = node.mesh orelse return .ignored;
+	const block = mesh.chunk.getBlock(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask);
+	if(block.entityDataClass()) |class| {
+		return class.onInteract(.{x, y, z}, mesh.chunk);
+	}
+	// Event was not handled.
+	return .ignored;
 }
 
 pub fn getLight(wx: i32, wy: i32, wz: i32) ?[6]u8 {

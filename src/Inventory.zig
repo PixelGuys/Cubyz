@@ -1002,6 +1002,7 @@ pub const Command = struct { // MARK: Command
 		std.debug.assert(dest.inv.type == .normal);
 		if(source.slot != source.inv._items.len - 1) return;
 		if(dest.ref().item != null and !std.meta.eql(dest.ref().item, source.ref().item)) return;
+		if(source.ref().item == null) return; // Can happen if the we didn't receive the inventory information from the server yet.
 		if(dest.ref().amount + source.ref().amount > source.ref().item.?.stackSize()) return;
 
 		const playerInventory: Inventory = switch(side) {

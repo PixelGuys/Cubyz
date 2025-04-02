@@ -1120,6 +1120,10 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		return ChunkManager.getOrGenerateChunkAndIncreaseRefCount(pos);
 	}
 
+	pub fn getChunkFromCacheAndIncreaseRefCount(_: *ServerWorld, pos: chunk.ChunkPosition) ?*ServerChunk {
+		return ChunkManager.getChunkFromCacheAndIncreaseRefCount(pos);
+	}
+
 	pub fn getBiome(_: *const ServerWorld, wx: i32, wy: i32, wz: i32) *const terrain.biomes.Biome {
 		const map = terrain.CaveBiomeMap.InterpolatableCaveBiomeMapView.init(main.stackAllocator, .{.wx = wx, .wy = wy, .wz = wz, .voxelSize = 1}, 1, 0);
 		defer map.deinit();
@@ -1150,7 +1154,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				baseChunk.mutex.unlock();
 				return currentBlock;
 			}
+			if(currentBlock != _newBlock) {
+				if(currentBlock.entityDataClass()) |class| class.onBreakServer(.{wx, wy, wz}, &baseChunk.super);
+			}
 			baseChunk.updateBlockAndSetChanged(x, y, z, _newBlock);
+			if(currentBlock != _newBlock) {
+				if(_newBlock.entityDataClass()) |class| class.onPlaceServer(.{wx, wy, wz}, &baseChunk.super);
+			}
 		}
 		baseChunk.mutex.unlock();
 		var newBlock = _newBlock;

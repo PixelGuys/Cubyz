@@ -978,13 +978,9 @@ pub const Protocols = struct {
 		const UpdateType = enum(u8) {
 			gamemode = 0,
 			teleport = 1,
-			cure = 2,
-			worldEditPos = 3,
-			damageBlock = 4,
-			reserved4 = 5,
-			reserved5 = 6,
-			reserved6 = 7,
-			timeAndBiome = 8,
+			worldEditPos = 2,
+			timeAndBiome = 3,
+			BlockDamage = 4,
 		};
 
 		const WorldEditPosition = enum(u2) {
@@ -999,21 +995,13 @@ pub const Protocols = struct {
 		};
 
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			const updateType = reader.readEnum(UpdateType) catch |err| {
-				std.log.err("Error {s} in generic protocol message: '{s}'", .{@errorName(err), reader.remaining});
-				return error.Invalid;
-			};
-
-			switch(updateType) {
+			switch(try reader.readEnum(UpdateType)) {
 				.gamemode => {
 					if(conn.user != null) return error.InvalidPacket;
 					main.items.Inventory.Sync.setGamemode(null, try reader.readEnum(main.game.Gamemode));
 				},
 				.teleport => {
 					game.Player.setPosBlocking(try reader.readVec(Vec3d));
-				},
-				.cure => {
-					// TODO: health and hunger
 				},
 				.worldEditPos => {
 					const typ = try reader.readEnum(WorldEditPosition);
@@ -1047,14 +1035,10 @@ pub const Protocols = struct {
 						},
 					}
 				},
-				.reserved4 => {},
-				.reserved5 => {},
-				.reserved6 => {},
 				.timeAndBiome => {
 					if(conn.manager.world) |world| {
 						const expectedTime = try reader.readInt(i64);
-						const biomeIdLen = try reader.readInt(usize);
-						const biomeId = try reader.readSlice(biomeIdLen);
+						const biomeId = try reader.readInt(u32);
 
 						var curTime = world.gameTime.load(.monotonic);
 						if(@abs(curTime -% expectedTime) >= 10) {
@@ -1069,7 +1053,7 @@ pub const Protocols = struct {
 							}
 						}
 
-						const newBiome = main.server.terrain.biomes.getById(biomeId);
+						const newBiome = main.server.terrain.biomes.getByIndex(biomeId) orelse return error.MissingBiome;
 						const oldBiome = world.playerBiome.swap(newBiome, .monotonic);
 						if(oldBiome != newBiome) {
 							main.audio.setMusic(newBiome.preferredMusic);
@@ -1093,15 +1077,6 @@ pub const Protocols = struct {
 			conn.sendImportant(id, writer.data.items);
 		}
 
-		pub fn sendCure(conn: *Connection) void {
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, 1);
-			defer writer.deinit();
-
-			writer.writeEnum(UpdateType, .cure);
-
-			conn.sendImportant(id, writer.data.items);
-		}
-
 		pub fn sendWorldEditPos(conn: *Connection, posType: WorldEditPosition, maybePos: ?Vec3i) void {
 			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, 25);
 			defer writer.deinit();
@@ -1116,16 +1091,14 @@ pub const Protocols = struct {
 		}
 
 		pub fn sendTimeAndBiome(conn: *Connection, world: *const main.server.ServerWorld) void {
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, 25);
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, 13);
 			defer writer.deinit();
 
 			writer.writeEnum(UpdateType, .timeAndBiome);
 			writer.writeInt(i64, world.gameTime);
 
 			const pos = @as(Vec3i, @intFromFloat(conn.user.?.player.pos));
-			const biomeId = world.getBiome(pos[0], pos[1], pos[2]).id;
-			writer.writeInt(usize, biomeId.len);
-			writer.writeSlice(biomeId);
+			writer.writeInt(u32, world.getBiome(pos[0], pos[1], pos[2]).paletteId);
 
 			conn.sendImportant(id, writer.data.items);
 		}

@@ -1180,11 +1180,18 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		const z: u5 = @intCast(_z & chunk.chunkMask);
 		var newBlock = _newBlock;
 		self.mutex.lock();
-		if(self.chunk.data.getValue(chunk.getIndex(x, y, z)) == newBlock) {
+		const oldBlock = self.chunk.data.getValue(chunk.getIndex(x, y, z));
+
+		if(oldBlock == newBlock) {
 			self.mutex.unlock();
 			return;
 		}
 		self.mutex.unlock();
+
+		if(oldBlock.entityDataClass()) |class| {
+			class.onBreakClient(.{_x, _y, _z}, self.chunk);
+		}
+
 		var neighborBlocks: [6]Block = undefined;
 		@memset(&neighborBlocks, .{.typ = 0, .data = 0});
 		for(chunk.Neighbor.iterable) |neighbor| {
@@ -1230,6 +1237,11 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		self.mutex.lock();
 		self.chunk.data.setValue(chunk.getIndex(x, y, z), newBlock);
 		self.mutex.unlock();
+
+		if(newBlock.entityDataClass()) |class| {
+			class.onPlaceClient(.{_x, _y, _z}, self.chunk);
+		}
+
 		self.updateBlockLight(x, y, z, newBlock, &lightRefreshList);
 		self.mutex.lock();
 		defer self.mutex.unlock();
