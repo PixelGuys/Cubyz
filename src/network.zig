@@ -980,7 +980,7 @@ pub const Protocols = struct {
 			teleport = 1,
 			worldEditPos = 2,
 			timeAndBiome = 3,
-			BlockDamage = 4,
+			damageBlock = 4,
 		};
 
 		const WorldEditPosition = enum(u2) {
