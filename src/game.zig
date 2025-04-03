@@ -874,7 +874,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 	const footHitbox: collision.Box = .{.min = -Player.outerBoundingBoxExtent, .max = Player.outerBoundingBoxExtent*Vec3d{1, 1, -0.1}};
 	var climbAmount: f32 = 0.4;
-	if (Player.onGround and !KeyBoard.key("jump").pressed){
+	if(Player.onGround and !KeyBoard.key("jump").pressed) {
 		climbAmount = 0.01;
 	}
 	Player.climbing = collision.isIntersectingClimable(Player.super, footHitbox, .client, climbAmount);
