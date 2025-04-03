@@ -1545,7 +1545,7 @@ const ReadWriteTest = struct {
 		defer writer.deinit();
 		writer.writeInt(intT, expected);
 
-		const expectedWidth = (@bitSizeOf(intT) + 7)/8;
+		const expectedWidth = std.math.divCeil(comptime_int, @bitSizeOf(intT), 8);
 		try std.testing.expectEqual(expectedWidth, writer.data.items.len);
 
 		var reader = getReader(writer.data.items);
