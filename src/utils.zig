@@ -1530,6 +1530,167 @@ pub const BinaryWriter = struct {
 	}
 };
 
+const ReadWriteTest = struct {
+	fn init() void {
+		main.initThreadLocals();
+	}
+	fn deinit() void {
+		main.deinitThreadLocals();
+	}
+	fn getWriter() BinaryWriter {
+		return .init(main.stackAllocator, .big);
+	}
+	fn getReader(data: []const u8) BinaryReader {
+		return .init(data, .big);
+	}
+	fn testInt(comptime intT: type, expected: intT) !void {
+		var writer = getWriter();
+		defer writer.deinit();
+		writer.writeInt(intT, expected);
+
+		var reader = getReader(writer.data.items);
+		const actual = try reader.readInt(intT);
+
+		try std.testing.expectEqual(expected, actual);
+	}
+	fn testFloat(comptime floatT: type, expected: floatT) !void {
+		var writer = getWriter();
+		defer writer.deinit();
+		writer.writeFloat(floatT, expected);
+
+		var reader = getReader(writer.data.items);
+		const actual = try reader.readFloat(floatT);
+
+		try std.testing.expectEqual(expected, actual);
+	}
+	fn testEnum(comptime enumT: type, expected: enumT) !void {
+		var writer = getWriter();
+		defer writer.deinit();
+		writer.writeEnum(enumT, expected);
+
+		var reader = getReader(writer.data.items);
+		const actual = try reader.readEnum(enumT);
+
+		try std.testing.expectEqual(expected, actual);
+	}
+	fn TestEnum(comptime intT: type) type {
+		return enum(intT) {
+			first = std.math.minInt(intT),
+			center = (std.math.maxInt(intT) + std.math.minInt(intT))/2,
+			last = std.math.maxInt(intT),
+		};
+	}
+	fn testVec(comptime vecT: type, expected: vecT) !void {
+		var writer = getWriter();
+		defer writer.deinit();
+		writer.writeVec(vecT, expected);
+
+		var reader = getReader(writer.data.items);
+		const actual = try reader.readVec(vecT);
+
+		try std.testing.expectEqual(expected, actual);
+	}
+};
+
+test "read/write unsigned int" {
+	ReadWriteTest.init();
+	defer ReadWriteTest.deinit();
+
+	inline for([_]type{u1, u2, u4, u5, u8, u16, u31, u32, u64, u128}) |intT| {
+		try ReadWriteTest.testInt(intT, std.math.minInt(intT));
+		try ReadWriteTest.testInt(intT, (std.math.maxInt(intT) + std.math.minInt(intT))/2);
+		try ReadWriteTest.testInt(intT, std.math.maxInt(intT));
+	}
+}
+
+test "read/write signed int" {
+	ReadWriteTest.init();
+	defer ReadWriteTest.deinit();
+
+	inline for([_]type{i4, i5, i8, i16, i31, i32, i64, i128}) |intT| {
+		try ReadWriteTest.testInt(intT, std.math.minInt(intT));
+		try ReadWriteTest.testInt(intT, std.math.minInt(intT)/2);
+		try ReadWriteTest.testInt(intT, 0);
+		try ReadWriteTest.testInt(intT, std.math.maxInt(intT)/2);
+		try ReadWriteTest.testInt(intT, std.math.maxInt(intT));
+	}
+}
+
+test "read/write float" {
+	ReadWriteTest.init();
+	defer ReadWriteTest.deinit();
+
+	inline for([_]type{f16, f32, f64, f80, f128}) |floatT| {
+		try ReadWriteTest.testFloat(floatT, std.math.floatMax(floatT));
+		try ReadWriteTest.testFloat(floatT, 0.0012443);
+		try ReadWriteTest.testFloat(floatT, 0.0);
+		try ReadWriteTest.testFloat(floatT, 6457.0);
+		try ReadWriteTest.testFloat(floatT, std.math.floatMin(floatT));
+	}
+}
+
+test "read/write enum" {
+	ReadWriteTest.init();
+	defer ReadWriteTest.deinit();
+
+	inline for([_]type{
+		ReadWriteTest.TestEnum(u2),
+		ReadWriteTest.TestEnum(u4),
+		ReadWriteTest.TestEnum(u5),
+		ReadWriteTest.TestEnum(u8),
+		ReadWriteTest.TestEnum(u16),
+		ReadWriteTest.TestEnum(u32),
+		ReadWriteTest.TestEnum(i2),
+		ReadWriteTest.TestEnum(i4),
+		ReadWriteTest.TestEnum(i5),
+		ReadWriteTest.TestEnum(i8),
+		ReadWriteTest.TestEnum(i16),
+		ReadWriteTest.TestEnum(i32),
+	}) |enumT| {
+		try ReadWriteTest.testEnum(enumT, .first);
+		try ReadWriteTest.testEnum(enumT, .center);
+		try ReadWriteTest.testEnum(enumT, .last);
+	}
+}
+
+test "read/write Vec3i" {
+	ReadWriteTest.init();
+	defer ReadWriteTest.deinit();
+
+	try ReadWriteTest.testVec(main.vec.Vec3i, .{0, 0, 0});
+	try ReadWriteTest.testVec(main.vec.Vec3i, .{
+		std.math.maxInt(@typeInfo(main.vec.Vec3i).vector.child),
+		std.math.minInt(@typeInfo(main.vec.Vec3i).vector.child),
+		std.math.minInt(@typeInfo(main.vec.Vec3i).vector.child),
+	});
+	try ReadWriteTest.testVec(main.vec.Vec3i, .{
+		std.math.minInt(@typeInfo(main.vec.Vec3i).vector.child),
+		std.math.maxInt(@typeInfo(main.vec.Vec3i).vector.child),
+		std.math.maxInt(@typeInfo(main.vec.Vec3i).vector.child),
+	});
+}
+
+test "read/write Vec3f/Vec3d" {
+	ReadWriteTest.init();
+	defer ReadWriteTest.deinit();
+
+	inline for([_]type{main.vec.Vec3f, main.vec.Vec3d}) |vecT| {
+		try ReadWriteTest.testVec(vecT, .{0, 0, 0});
+		try ReadWriteTest.testVec(vecT, .{0.0043, 0.01123, 0.05043});
+		try ReadWriteTest.testVec(vecT, .{5345.0, 42.0, 7854.0});
+		try ReadWriteTest.testVec(vecT, .{
+			std.math.floatMax(@typeInfo(vecT).vector.child),
+			std.math.floatMin(@typeInfo(vecT).vector.child),
+			std.math.floatMin(@typeInfo(vecT).vector.child),
+		});
+		try ReadWriteTest.testVec(vecT, .{
+			std.math.floatMin(@typeInfo(vecT).vector.child),
+			std.math.floatMax(@typeInfo(vecT).vector.child),
+			std.math.floatMax(@typeInfo(vecT).vector.child),
+		});
+	}
+}
+
 // MARK: functionPtrCast()
 fn CastFunctionSelfToAnyopaqueType(Fn: type) type {
 	var typeInfo = @typeInfo(Fn);
