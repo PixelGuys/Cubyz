@@ -2,8 +2,8 @@
 	.texture = "meteorite_ingot.png",
 	.material = .{
 		.density = 12.0,
-		.strength = 3.0,
-		.elasticity = 15.0,
+		.strength = 5.0,
+		.elasticity = 13.0,
 		.grip = 2.0,
 		.hardness = 6.0,
 		.textureRoughness = 0.2,
