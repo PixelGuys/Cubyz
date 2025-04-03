@@ -1596,7 +1596,10 @@ test "read/write unsigned int" {
 	ReadWriteTest.init();
 	defer ReadWriteTest.deinit();
 
-	inline for([_]type{u1, u2, u4, u5, u8, u16, u31, u32, u64, u128}) |intT| {
+	try ReadWriteTest.testInt(u1, 0);
+	try ReadWriteTest.testInt(u1, 1);
+
+	inline for([_]type{u2, u4, u5, u8, u16, u31, u32, u64, u128}) |intT| {
 		const max = std.math.maxInt(intT);
 		std.debug.assert(max != 0);
 
@@ -1612,6 +1615,10 @@ test "read/write unsigned int" {
 test "read/write signed int" {
 	ReadWriteTest.init();
 	defer ReadWriteTest.deinit();
+
+	try ReadWriteTest.testInt(i2, 0);
+	try ReadWriteTest.testInt(i2, 1);
+	try ReadWriteTest.testInt(i2, -1);
 
 	inline for([_]type{i4, i5, i8, i16, i31, i32, i64, i128}) |intT| {
 		const min = std.math.minInt(intT);
@@ -1707,6 +1714,11 @@ test "read/write Vec3f/Vec3d" {
 			std.math.floatMax(@typeInfo(vecT).vector.child),
 		});
 	}
+}
+
+test "read/write mixed" {
+	ReadWriteTest.init();
+	defer ReadWriteTest.deinit();
 }
 
 // MARK: functionPtrCast()
