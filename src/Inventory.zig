@@ -1556,10 +1556,39 @@ pub const Command = struct { // MARK: Command
 	const UpdateBlock = struct { // MARK: UpdateBlock
 		source: InventoryAndSlot,
 		pos: Vec3i,
-		dropPos: Vec3d,
-		dropDir: Vec3f,
+		drop: BlockDrop,
 		oldBlock: Block,
 		newBlock: Block,
+
+		const BlockDrop = struct {
+			offset: Vec3f,
+			dir: Vec3f,
+
+			fn drop(self: BlockDrop, _pos: Vec3i, _drop: main.blocks.BlockDrop) void {
+				const sign: Vec3d = @floatCast(std.math.sign(self.dir));
+				const itemRadius: Vec3d = @splat(main.itemdrop.ItemDropManager.radius);
+				const itemOffset: Vec3d = sign*itemRadius;
+				const pos: Vec3d = @floatFromInt(_pos);
+
+				const dropPos: Vec3d = pos + self.offset + itemOffset;
+				var dropVelocity: f32 = undefined;
+
+				const dropDir = vec.normalize(Vec3f{
+					self.dir[0] + main.random.nextFloatSigned(&main.seed)*0.25,
+					self.dir[1] + main.random.nextFloatSigned(&main.seed)*0.25,
+					if(self.dir[2] < 0) self.dir[2] else self.dir[2] + 2.0,
+				});
+
+				if(dropDir[2] <= 0) {
+					dropVelocity *= 1.0 + dropDir[2];
+				}
+				dropVelocity = 3.5 + main.random.nextFloatSigned(&main.seed)*0.5;
+
+				for(_drop.items) |itemStack| {
+					main.server.world.?.drop(itemStack.clone(), dropPos, dropDir, dropVelocity);
+				}
+			}
+		};
 
 		fn run(self: UpdateBlock, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, gamemode: Gamemode) error{serverFailure}!void {
 			if(self.source.inv.type != .normal) return;
@@ -1613,7 +1642,7 @@ pub const Command = struct { // MARK: Command
 						for(0..amount) |_| {
 							for(self.newBlock.blockDrops()) |drop| {
 								if(drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
-									blockDrop(self.dropPos, self.dropDir, drop);
+									self.drop.drop(self.pos, drop);
 								}
 							}
 						}
@@ -1624,47 +1653,17 @@ pub const Command = struct { // MARK: Command
 			if(side == .server and gamemode != .creative and self.oldBlock.typ != self.newBlock.typ and shouldDropSourceBlockOnSuccess) {
 				for(self.oldBlock.blockDrops()) |drop| {
 					if(drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
-						blockDrop(self.dropPos, self.dropDir, drop);
+						self.drop.drop(self.pos, drop);
 					}
 				}
 			}
 		}
 
-		fn blockDrop(dropPosHint: Vec3d, dirHint: Vec3f, drop: main.blocks.BlockDrop) void {
-			// Without accounting for the item radius items spawned would immediately collide with the block (if they are dropped from ore)
-			// as a result they would lose all velocity and would slowly "slide" from inside of the block.
-			const sign: Vec3d = @floatCast(std.math.sign(dirHint));
-			const itemOffset = sign*@as(Vec3d, @splat(main.itemdrop.ItemDropManager.radius));
-			const dropPos = dropPosHint + itemOffset;
-
-			var dropVelocity: f32 = 4.0 + main.random.nextFloatSigned(&main.seed)*0.5;
-
-			const dropDir = vec.normalize(Vec3f{
-				dirHint[0] + main.random.nextFloatSigned(&main.seed)*0.25,
-				dirHint[1] + main.random.nextFloatSigned(&main.seed)*0.25,
-				if(dirHint[2] < 0) dirHint[2] else dirHint[2] + 2.0,
-			});
-
-			if(dropDir[2] <= 0) {
-				dropVelocity *= 1.0 + dropDir[2];
-			}
-
-			for(drop.items) |itemStack| {
-				main.server.world.?.drop(itemStack.clone(), dropPos, dropDir, dropVelocity);
-			}
-		}
-
 		fn serialize(self: UpdateBlock, writer: *utils.BinaryWriter) void {
 			self.source.write(writer);
-			writer.writeInt(i32, self.pos[0]);
-			writer.writeInt(i32, self.pos[1]);
-			writer.writeInt(i32, self.pos[2]);
-			writer.writeFloat(f64, self.dropPos[0]);
-			writer.writeFloat(f64, self.dropPos[1]);
-			writer.writeFloat(f64, self.dropPos[2]);
-			writer.writeFloat(f32, self.dropDir[0]);
-			writer.writeFloat(f32, self.dropDir[1]);
-			writer.writeFloat(f32, self.dropDir[2]);
+			writer.writeVec(Vec3i, self.pos);
+			writer.writeVec(Vec3f, self.drop.offset);
+			writer.writeVec(Vec3f, self.drop.dir);
 			writer.writeInt(u32, @as(u32, @bitCast(self.oldBlock)));
 			writer.writeInt(u32, @as(u32, @bitCast(self.newBlock)));
 		}
@@ -1672,20 +1671,10 @@ pub const Command = struct { // MARK: Command
 		fn deserialize(reader: *utils.BinaryReader, side: Side, user: ?*main.server.User) !UpdateBlock {
 			return .{
 				.source = try InventoryAndSlot.read(reader, side, user),
-				.pos = .{
-					try reader.readInt(i32),
-					try reader.readInt(i32),
-					try reader.readInt(i32),
-				},
-				.dropPos = .{
-					try reader.readFloat(f64),
-					try reader.readFloat(f64),
-					try reader.readFloat(f64),
-				},
-				.dropDir = .{
-					try reader.readFloat(f32),
-					try reader.readFloat(f32),
-					try reader.readFloat(f32),
+				.pos = try reader.readVec(Vec3i),
+				.drop = .{
+					.offset = try reader.readVec(Vec3f),
+					.dir = try reader.readVec(Vec3f),
 				},
 				.oldBlock = @bitCast(try reader.readInt(u32)),
 				.newBlock = @bitCast(try reader.readInt(u32)),

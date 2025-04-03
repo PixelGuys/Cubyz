@@ -66,7 +66,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 			const boxTMin = @reduce(.Max, @min(t1, t2));
 			const boxTMax = @reduce(.Min, @max(t1, t2));
 			if(boxTMin <= boxTMax and boxTMax > 0) {
-				var face = Neighbor.dirUp;
+				var face: Neighbor = undefined;
 				if(boxTMin == t1[0]) {
 					face = Neighbor.dirNegX;
 				} else if(boxTMin == t1[1]) {

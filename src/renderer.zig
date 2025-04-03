@@ -917,12 +917,27 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	}
 
 	fn updateBlockAndSendUpdate(source: main.items.Inventory, slot: u32, x: i32, y: i32, z: i32, oldBlock: blocks.Block, newBlock: blocks.Block) void {
-		const pos = Vec3i{x, y, z};
-		const dropDir = if(newBlock.typ == 0) Vec3f{0, 0, 1} else @as(Vec3f, @floatFromInt(selectionFace.relPos()));
-		const dropPosOffset = if(newBlock.typ == 0) Vec3d{0.5, 0.5, 0.0} else @as(Vec3d, @splat(0.5)) + dropDir*@as(Vec3d, @splat(0.5));
-		const dropPos = @as(Vec3d, @floatFromInt(pos)) + dropPosOffset;
+		const dropDir: Vec3f = @floatFromInt(selectionFace.relPos());
+		const dropOffset: Vec3f = if(newBlock.solid() and newBlock.collide()) blk: {
+			break :blk @as(Vec3f, @splat(0.5)) + dropDir*@as(Vec3f, @splat(0.5));
+		} else blk: {
+			const factors = main.random.nextFloatVector(3, &main.seed);
+			const itemMargin: Vec3f = @splat(@floatCast(main.itemdrop.ItemDropManager.radius*2));
+			const max = @max(itemMargin, selectionMax - itemMargin);
+			const min = @min(max, selectionMin + itemMargin);
+			break :blk min*factors + max*(@as(Vec3f, @splat(1.0)) - factors);
+		};
 		main.items.Inventory.Sync.ClientSide.executeCommand(.{
-			.updateBlock = .{.source = .{.inv = source, .slot = slot}, .pos = pos, .dropDir = dropDir, .dropPos = dropPos, .oldBlock = oldBlock, .newBlock = newBlock},
+			.updateBlock = .{
+				.source = .{.inv = source, .slot = slot},
+				.pos = .{x, y, z},
+				.drop = .{
+					.offset = dropOffset,
+					.dir = dropDir,
+				},
+				.oldBlock = oldBlock,
+				.newBlock = newBlock,
+			},
 		});
 		mesh_storage.updateBlock(x, y, z, newBlock);
 	}
