@@ -32,6 +32,10 @@
 		.output = "cubyz:gold_ingot",
 	},
 	.{
+		.inputs = .{"cubyz:coal", "cubyz:meteorite_ore"},
+		.output = "cubyz:meteorite_ingot",
+	},
+	.{
 		.inputs = .{"cubyz:coal", "cubyz:uranium_ore"},
 		.output = "cubyz:uranium_ingot",
 	},
@@ -54,6 +58,10 @@
 	.{
 		.inputs = .{"4 cubyz:gold_ingot"},
 		.output = "cubyz:gold_block",
+	},
+	.{
+		.inputs = .{"4 cubyz:meteorite_ingot"},
+		.output = "cubyz:meteorite_block",
 	},
 	.{
 		.inputs = .{"4 cubyz:uranium_ingot"},
