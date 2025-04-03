@@ -9,6 +9,7 @@ pub const blocks = @import("blocks.zig");
 pub const blueprint = @import("blueprint.zig");
 pub const chunk = @import("chunk.zig");
 pub const entity = @import("entity.zig");
+pub const entity_data = @import("entity_data.zig");
 pub const files = @import("files.zig");
 pub const game = @import("game.zig");
 pub const graphics = @import("graphics.zig");
@@ -33,7 +34,6 @@ pub const heap = @import("utils/heap.zig");
 pub const List = @import("utils/list.zig").List;
 pub const ListUnmanaged = @import("utils/list.zig").ListUnmanaged;
 pub const MultiArray = @import("utils/list.zig").MultiArray;
-pub const VirtualList = @import("utils/list.zig").VirtualList;
 
 const file_monitor = utils.file_monitor;
 
@@ -602,6 +602,9 @@ pub fn main() void { // MARK: main()
 
 	rotation.init();
 	defer rotation.deinit();
+
+	entity_data.init();
+	defer entity_data.deinit();
 
 	blocks.TouchFunctions.init();
 	defer blocks.TouchFunctions.deinit();

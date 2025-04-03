@@ -37,7 +37,7 @@ pub const Sync = struct { // MARK: Sync
 		pub fn deinit() void {
 			mutex.lock();
 			while(commands.dequeue()) |cmd| {
-				var reader = utils.BinaryReader.init(&.{}, main.network.networkEndian);
+				var reader = utils.BinaryReader.init(&.{});
 				cmd.finalize(main.globalAllocator, .client, &reader) catch |err| {
 					std.log.err("Got error while cleaning remaining inventory commands: {s}", .{@errorName(err)});
 				};
@@ -111,7 +111,7 @@ pub const Sync = struct { // MARK: Sync
 			}
 			if(tempData.popOrNull()) |_cmd| {
 				var cmd = _cmd;
-				var reader = utils.BinaryReader.init(&.{}, main.network.networkEndian);
+				var reader = utils.BinaryReader.init(&.{});
 				cmd.finalize(main.globalAllocator, .client, &reader) catch |err| {
 					std.log.err("Got error while cleaning rejected inventory command: {s}", .{@errorName(err)});
 				};
@@ -282,7 +282,7 @@ pub const Sync = struct { // MARK: Sync
 					}
 				}
 			}
-			var reader = utils.BinaryReader.init(&.{}, main.network.networkEndian);
+			var reader = utils.BinaryReader.init(&.{});
 			command.finalize(main.globalAllocator, .server, &reader) catch |err| {
 				std.log.err("Got error while finalizing command on the server side: {s}", .{@errorName(err)});
 			};
@@ -701,7 +701,7 @@ pub const Command = struct { // MARK: Command
 		}
 
 		pub fn serialize(self: SyncOperation, allocator: NeverFailingAllocator) []const u8 {
-			var writer = utils.BinaryWriter.initCapacity(allocator, main.network.networkEndian, 13);
+			var writer = utils.BinaryWriter.initCapacity(allocator, 13);
 			writer.writeEnum(SyncOperationType, self);
 			switch(self) {
 				.create => |create| {
@@ -741,7 +741,7 @@ pub const Command = struct { // MARK: Command
 	syncOperations: main.ListUnmanaged(SyncOperation) = .{},
 
 	fn serializePayload(self: *Command, allocator: NeverFailingAllocator) []const u8 {
-		var writer = utils.BinaryWriter.init(allocator, main.network.networkEndian);
+		var writer = utils.BinaryWriter.init(allocator);
 		defer writer.deinit();
 		switch(self.payload) {
 			inline else => |payload| {
@@ -1001,6 +1001,7 @@ pub const Command = struct { // MARK: Command
 		std.debug.assert(dest.inv.type == .normal);
 		if(source.slot != source.inv._items.len - 1) return;
 		if(dest.ref().item != null and !std.meta.eql(dest.ref().item, source.ref().item)) return;
+		if(source.ref().item == null) return; // Can happen if the we didn't receive the inventory information from the server yet.
 		if(dest.ref().amount + source.ref().amount > source.ref().item.?.stackSize()) return;
 
 		const playerInventory: Inventory = switch(side) {
@@ -1073,7 +1074,7 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn confirmationData(self: Open, allocator: NeverFailingAllocator) []const u8 {
-			var writer = utils.BinaryWriter.initCapacity(allocator, main.network.networkEndian, 4);
+			var writer = utils.BinaryWriter.initCapacity(allocator, 4);
 			writer.writeInt(u32, self.inv.id);
 			return writer.data.toOwnedSlice();
 		}
