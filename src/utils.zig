@@ -1535,10 +1535,10 @@ const ReadWriteTest = struct {
 	pub var allocator = testingAllocator.allocator();
 
 	fn getWriter() BinaryWriter {
-		return .init(ReadWriteTest.allocator, .big);
+		return .init(ReadWriteTest.allocator);
 	}
 	fn getReader(data: []const u8) BinaryReader {
-		return .init(data, .big);
+		return .init(data);
 	}
 	fn testInt(comptime intT: type, expected: intT) !void {
 		var writer = getWriter();
