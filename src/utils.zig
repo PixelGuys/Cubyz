@@ -1531,14 +1531,11 @@ pub const BinaryWriter = struct {
 };
 
 const ReadWriteTest = struct {
-	fn init() void {
-		main.initThreadLocals();
-	}
-	fn deinit() void {
-		main.deinitThreadLocals();
-	}
+	pub var testingAllocator = main.heap.ErrorHandlingAllocator.init(std.testing.allocator);
+	pub var allocator = testingAllocator.allocator();
+
 	fn getWriter() BinaryWriter {
-		return .init(main.stackAllocator, .big);
+		return .init(ReadWriteTest.allocator, .big);
 	}
 	fn getReader(data: []const u8) BinaryReader {
 		return .init(data, .big);
@@ -1547,6 +1544,9 @@ const ReadWriteTest = struct {
 		var writer = getWriter();
 		defer writer.deinit();
 		writer.writeInt(intT, expected);
+
+		const expectedWidth = (@bitSizeOf(intT) + 7)/8;
+		try std.testing.expectEqual(expectedWidth, writer.data.items.len);
 
 		var reader = getReader(writer.data.items);
 		const actual = try reader.readInt(intT);
@@ -1593,45 +1593,23 @@ const ReadWriteTest = struct {
 };
 
 test "read/write unsigned int" {
-	ReadWriteTest.init();
-	defer ReadWriteTest.deinit();
-
-	try ReadWriteTest.testInt(u1, 0);
-	try ReadWriteTest.testInt(u1, 1);
-
-	inline for([_]type{u2, u4, u5, u8, u16, u31, u32, u64, u128}) |intT| {
+	inline for([_]type{u8, u1, u2, u4, u5, u8, u16, u31, u32, u64, u128}) |intT| {
+		const min = std.math.minInt(intT);
 		const max = std.math.maxInt(intT);
-		std.debug.assert(max != 0);
+		const mid = (max + min)/2;
 
-		const mid = (std.math.maxInt(intT) + std.math.minInt(intT))/2;
-		std.debug.assert(mid != 0);
-
-		try ReadWriteTest.testInt(intT, std.math.minInt(intT));
+		try ReadWriteTest.testInt(intT, min);
 		try ReadWriteTest.testInt(intT, mid);
 		try ReadWriteTest.testInt(intT, max);
 	}
 }
 
 test "read/write signed int" {
-	ReadWriteTest.init();
-	defer ReadWriteTest.deinit();
-
-	try ReadWriteTest.testInt(i2, 0);
-	try ReadWriteTest.testInt(i2, 1);
-	try ReadWriteTest.testInt(i2, -1);
-
-	inline for([_]type{i4, i5, i8, i16, i31, i32, i64, i128}) |intT| {
+	inline for([_]type{i1, i2, i4, i5, i8, i16, i31, i32, i64, i128}) |intT| {
 		const min = std.math.minInt(intT);
-		std.debug.assert(min != 0);
-
 		const lowerMid = std.math.minInt(intT)/2;
-		std.debug.assert(lowerMid != 0);
-
 		const upperMid = std.math.maxInt(intT)/2;
-		std.debug.assert(upperMid != 0);
-
 		const max = std.math.maxInt(intT);
-		std.debug.assert(max != 0);
 
 		try ReadWriteTest.testInt(intT, min);
 		try ReadWriteTest.testInt(intT, lowerMid);
@@ -1642,22 +1620,18 @@ test "read/write signed int" {
 }
 
 test "read/write float" {
-	ReadWriteTest.init();
-	defer ReadWriteTest.deinit();
-
 	inline for([_]type{f16, f32, f64, f80, f128}) |floatT| {
 		try ReadWriteTest.testFloat(floatT, std.math.floatMax(floatT));
 		try ReadWriteTest.testFloat(floatT, 0.0012443);
 		try ReadWriteTest.testFloat(floatT, 0.0);
 		try ReadWriteTest.testFloat(floatT, 6457.0);
+		try ReadWriteTest.testFloat(floatT, std.math.inf(floatT));
+		try ReadWriteTest.testFloat(floatT, -std.math.inf(floatT));
 		try ReadWriteTest.testFloat(floatT, std.math.floatMin(floatT));
 	}
 }
 
 test "read/write enum" {
-	ReadWriteTest.init();
-	defer ReadWriteTest.deinit();
-
 	inline for([_]type{
 		ReadWriteTest.TestEnum(u2),
 		ReadWriteTest.TestEnum(u4),
@@ -1679,9 +1653,6 @@ test "read/write enum" {
 }
 
 test "read/write Vec3i" {
-	ReadWriteTest.init();
-	defer ReadWriteTest.deinit();
-
 	try ReadWriteTest.testVec(main.vec.Vec3i, .{0, 0, 0});
 	try ReadWriteTest.testVec(main.vec.Vec3i, .{
 		std.math.maxInt(@typeInfo(main.vec.Vec3i).vector.child),
@@ -1696,9 +1667,6 @@ test "read/write Vec3i" {
 }
 
 test "read/write Vec3f/Vec3d" {
-	ReadWriteTest.init();
-	defer ReadWriteTest.deinit();
-
 	inline for([_]type{main.vec.Vec3f, main.vec.Vec3d}) |vecT| {
 		try ReadWriteTest.testVec(vecT, .{0, 0, 0});
 		try ReadWriteTest.testVec(vecT, .{0.0043, 0.01123, 0.05043});
@@ -1717,39 +1685,38 @@ test "read/write Vec3f/Vec3d" {
 }
 
 test "read/write mixed" {
-	ReadWriteTest.init();
-	defer ReadWriteTest.deinit();
+	const type0 = u4;
+	const expected0 = 5;
 
-	const type_first = u4;
-	const expected_first = 5;
+	const type1 = main.vec.Vec3i;
+	const expected1 = type1{3, -10, 44};
 
-	const type_second = main.vec.Vec3i;
-	const expected_second = type_second{3, -10, 44};
+	const type2 = enum(u3) {first, second, third};
+	const expected2 = .second;
 
-	const type_third = enum(u3) {first, second, third};
-	const expected_third = .second;
+	const type3 = f32;
+	const expected3 = 0.1234;
 
-	const type_fourth = f32;
-	const expected_fourth = 0.1234;
-
-	const expected_fifth = "Hello World!";
+	const expected4 = "Hello World!";
 
 	var writer = ReadWriteTest.getWriter();
 	defer writer.deinit();
 
-	writer.writeInt(type_first, expected_first);
-	writer.writeVec(type_second, expected_second);
-	writer.writeEnum(type_third, expected_third);
-	writer.writeFloat(type_fourth, expected_fourth);
-	writer.writeSlice(expected_fifth);
+	writer.writeInt(type0, expected0);
+	writer.writeVec(type1, expected1);
+	writer.writeEnum(type2, expected2);
+	writer.writeFloat(type3, expected3);
+	writer.writeSlice(expected4);
 
 	var reader = ReadWriteTest.getReader(writer.data.items);
 
-	try std.testing.expectEqual(expected_first, try reader.readInt(type_first));
-	try std.testing.expectEqual(expected_second, try reader.readVec(type_second));
-	try std.testing.expectEqual(expected_third, try reader.readEnum(type_third));
-	try std.testing.expectEqual(expected_fourth, try reader.readFloat(type_fourth));
-	try std.testing.expectEqualStrings(expected_fifth, try reader.readSlice(expected_fifth.len));
+	try std.testing.expectEqual(expected0, try reader.readInt(type0));
+	try std.testing.expectEqual(expected1, try reader.readVec(type1));
+	try std.testing.expectEqual(expected2, try reader.readEnum(type2));
+	try std.testing.expectEqual(expected3, try reader.readFloat(type3));
+	try std.testing.expectEqualStrings(expected4, try reader.readSlice(expected4.len));
+
+	try std.testing.expect(reader.remaining.len == 0);
 }
 
 // MARK: functionPtrCast()
