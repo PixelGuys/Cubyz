@@ -405,7 +405,7 @@ fn update() void { // MARK: update()
 	}
 
 	// Send the entity data:
-	var writer = BinaryWriter.initCapacity(main.stackAllocator, network.networkEndian, (4 + 24 + 12 + 24)*userList.len);
+	var writer = BinaryWriter.initCapacity(main.stackAllocator, (4 + 24 + 12 + 24)*userList.len);
 	defer writer.deinit();
 
 	const itemData = world.?.itemDropManager.getPositionAndVelocityData(main.stackAllocator);
