@@ -1408,7 +1408,7 @@ pub const Side = enum {
 	server,
 };
 
-pub const endian: std.builtin.Endian = .big;
+const endian: std.builtin.Endian = .big;
 
 pub const BinaryReader = struct {
 	remaining: []const u8,

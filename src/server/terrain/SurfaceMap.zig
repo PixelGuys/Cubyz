@@ -150,9 +150,9 @@ pub const MapFragment = struct { // MARK: MapFragment
 				const originalHeightData = rawData[mapSize*mapSize*(@sizeOf(u32) + @sizeOf(f32)) ..][0 .. mapSize*mapSize*@sizeOf(f32)];
 				for(0..mapSize) |x| {
 					for(0..mapSize) |y| {
-						self.biomeMap[x][y] = main.server.terrain.biomes.getById(biomePalette.palette.items[std.mem.readInt(u32, biomeData[4*(x*mapSize + y) ..][0..4], main.utils.endian)]);
-						self.heightMap[x][y] = @intFromFloat(@as(f32, @bitCast(std.mem.readInt(u32, heightData[4*(x*mapSize + y) ..][0..4], main.utils.endian))));
-						if(originalHeightMap) |map| map[x][y] = @intFromFloat(@as(f32, @bitCast(std.mem.readInt(u32, originalHeightData[4*(x*mapSize + y) ..][0..4], main.utils.endian))));
+						self.biomeMap[x][y] = main.server.terrain.biomes.getById(biomePalette.palette.items[std.mem.readInt(u32, biomeData[4*(x*mapSize + y) ..][0..4], .big)]);
+						self.heightMap[x][y] = @intFromFloat(@as(f32, @bitCast(std.mem.readInt(u32, heightData[4*(x*mapSize + y) ..][0..4], .big))));
+						if(originalHeightMap) |map| map[x][y] = @intFromFloat(@as(f32, @bitCast(std.mem.readInt(u32, originalHeightData[4*(x*mapSize + y) ..][0..4], .big))));
 					}
 				}
 			},

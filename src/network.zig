@@ -307,8 +307,8 @@ const STUN = struct { // MARK: STUN
 	fn findIPPort(_data: []const u8) !Address {
 		var data = _data[20..]; // Skip the header.
 		while(data.len > 0) {
-			const typ = std.mem.readInt(u16, data[0..2], utils.endian);
-			const len = std.mem.readInt(u16, data[2..4], utils.endian);
+			const typ = std.mem.readInt(u16, data[0..2], .big);
+			const len = std.mem.readInt(u16, data[2..4], .big);
 			data = data[4..];
 			switch(typ) {
 				XOR_MAPPED_ADDRESS, MAPPED_ADDRESS => {
@@ -325,7 +325,7 @@ const STUN = struct { // MARK: STUN
 							addressData[5] ^= MAGIC_COOKIE[3];
 						}
 						return Address{
-							.port = std.mem.readInt(u16, addressData[0..2], utils.endian),
+							.port = std.mem.readInt(u16, addressData[0..2], .big),
 							.ip = std.mem.readInt(u32, addressData[2..6], builtin.cpu.arch.endian()), // Needs to stay in big endian → native.
 						};
 					} else if(data[1] == 0x02) {
@@ -1387,7 +1387,7 @@ pub const Connection = struct { // MARK: Connection
 		self.streamBuffer[0] = Protocols.important;
 		const id = self.messageID;
 		self.messageID += 1;
-		std.mem.writeInt(u32, self.streamBuffer[1..5], id, main.utils.endian); // TODO: Use little endian for better hardware support. Currently the aim is interoperability with the java version which uses big endian.
+		std.mem.writeInt(u32, self.streamBuffer[1..5], id, .big);
 
 		const packet = UnconfirmedPacket{
 			.data = main.globalAllocator.dupe(u8, self.streamBuffer[0..self.streamPosition]),
@@ -1717,7 +1717,7 @@ pub const Connection = struct { // MARK: Connection
 		_ = bytesReceived[protocol].fetchAdd(data.len + 20 + 8, .monotonic); // Including IP header and udp header;
 		_ = packetsReceived[protocol].fetchAdd(1, .monotonic);
 		if(protocol == Protocols.important) {
-			const id = std.mem.readInt(u32, data[1..5], utils.endian);
+			const id = std.mem.readInt(u32, data[1..5], .big);
 			if(self.handShakeState.load(.monotonic) == Protocols.handShake.stepComplete and id == 0) { // Got a new "first" packet from client. So the client tries to reconnect, but we still think it's connected.
 				if(self.user) |user| {
 					user.reinitialize();
