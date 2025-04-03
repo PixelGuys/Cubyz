@@ -419,6 +419,42 @@ pub const collision = struct {
 		}
 	}
 
+	pub fn isIntersectingClimable(entity: main.server.Entity, hitBox: Box, side: main.utils.Side, amount: f32) bool {
+		const boundingBox: Box = .{.min = entity.pos + hitBox.min, .max = entity.pos + hitBox.max};
+
+		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0] - amount));
+		const maxX: i32 = @intFromFloat(@floor(boundingBox.max[0] + amount));
+		const minY: i32 = @intFromFloat(@floor(boundingBox.min[1] - amount));
+		const maxY: i32 = @intFromFloat(@floor(boundingBox.max[1] + amount));
+		const minZ: i32 = @intFromFloat(@floor(boundingBox.min[2]));
+		const maxZ: i32 = @intFromFloat(@floor(boundingBox.max[2]));
+
+		const center: Vec3d = boundingBox.center();
+		const extent: Vec3d = boundingBox.extent();
+
+		const extentX: Vec3d = extent + Vec3d{amount, -0.01, -0.01};
+		const extentY: Vec3d = extent + Vec3d{-0.01, amount, -0.01};
+
+		var posX: i32 = minX;
+		while(posX <= maxX) : (posX += 1) {
+			var posY: i32 = minY;
+			while(posY <= maxY) : (posY += 1) {
+				var posZ: i32 = minZ;
+				while(posZ <= maxZ) : (posZ += 1) {
+					const block: ?Block =
+						if(side == .client) main.renderer.mesh_storage.getBlock(posX, posY, posZ) else main.server.world.?.getBlock(posX, posY, posZ);
+					if(block == null or !block.?.climbable())
+						continue;
+					const touchX: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentX);
+					const touchY: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentY);
+					if(touchX or touchY)
+						return true;
+				}
+			}
+		}
+		return false;
+	}
+
 	pub const Box = struct {
 		min: Vec3d,
 		max: Vec3d,
@@ -836,36 +872,12 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	const airFrictionCoefficient = gravity/terminalVelocity; // λ = a/v in equillibrium
 	var move: Vec3d = .{0, 0, 0};
 
-	Player.climbing = isClimbing: {
-		const moveDirections: [4]collision.Direction = .{.x, .y} ** 2;
-		const climbCollisionAmount = [4]f64{0.5, 0.5, -0.5, -0.5};
-
-		const x: i32 = @intFromFloat(@floor(Player.super.pos[0]));
-		const y: i32 = @intFromFloat(@floor(Player.super.pos[1]));
-		const z: i32 = @intFromFloat(@floor(Player.super.pos[2]));
-
-		for(moveDirections, climbCollisionAmount) |direction, amount| {
-			if(collision.collides(.client, direction, amount, Player.super.pos, .{.min = -Player.outerBoundingBoxExtent, .max = Player.outerBoundingBoxExtent*Vec3d{1, 1, -0.1}}) != null) {
-				const blockOffset: Vec2d = switch(direction) {
-					.x => Vec2d{std.math.sign(amount), 0},
-					.y => Vec2d{0, std.math.sign(amount)},
-					else => unreachable,
-				};
-
-				const blockOffsetX: i32 = @intFromFloat(blockOffset[0]);
-				const blockOffsetY: i32 = @intFromFloat(blockOffset[1]);
-
-				if(main.renderer.mesh_storage.getBlock(x, y, z).?.climbable()) break :isClimbing true;
-				if(main.renderer.mesh_storage.getBlock(x + blockOffsetX, y + blockOffsetY, z).?.climbable()) break :isClimbing true;
-
-				// Check blocks below to get over the edge
-				const downBlock = main.renderer.mesh_storage.getBlock(x, y, z - 1);
-				const diagonalDownBlock = main.renderer.mesh_storage.getBlock(x + blockOffsetX, y + blockOffsetY, z - 1);
-
-				break :isClimbing Player.climbing and (downBlock.?.climbable() or diagonalDownBlock.?.climbable());
-			}
-		} else break :isClimbing false;
-	};
+	const footHitbox: collision.Box = .{.min = -Player.outerBoundingBoxExtent, .max = Player.outerBoundingBoxExtent*Vec3d{1, 1, -0.1}};
+	var climbAmount: f32 = 0.4;
+	if (Player.onGround and !KeyBoard.key("jump").pressed){
+		climbAmount = 0.01;
+	}
+	Player.climbing = collision.isIntersectingClimable(Player.super, footHitbox, .client, climbAmount);
 
 	if(main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(Player.super.pos[0])), @intFromFloat(@floor(Player.super.pos[1])), @intFromFloat(@floor(Player.super.pos[2]))) != null) {
 		var acc = Vec3d{0, 0, 0};
