@@ -1597,9 +1597,15 @@ test "read/write unsigned int" {
 	defer ReadWriteTest.deinit();
 
 	inline for([_]type{u1, u2, u4, u5, u8, u16, u31, u32, u64, u128}) |intT| {
+		const max = std.math.maxInt(intT);
+		std.debug.assert(max != 0);
+
+		const mid = (std.math.maxInt(intT) + std.math.minInt(intT))/2;
+		std.debug.assert(mid != 0);
+
 		try ReadWriteTest.testInt(intT, std.math.minInt(intT));
-		try ReadWriteTest.testInt(intT, (std.math.maxInt(intT) + std.math.minInt(intT))/2);
-		try ReadWriteTest.testInt(intT, std.math.maxInt(intT));
+		try ReadWriteTest.testInt(intT, mid);
+		try ReadWriteTest.testInt(intT, max);
 	}
 }
 
@@ -1608,11 +1614,23 @@ test "read/write signed int" {
 	defer ReadWriteTest.deinit();
 
 	inline for([_]type{i4, i5, i8, i16, i31, i32, i64, i128}) |intT| {
-		try ReadWriteTest.testInt(intT, std.math.minInt(intT));
-		try ReadWriteTest.testInt(intT, std.math.minInt(intT)/2);
+		const min = std.math.minInt(intT);
+		std.debug.assert(min != 0);
+
+		const lowerMid = std.math.minInt(intT)/2;
+		std.debug.assert(lowerMid != 0);
+
+		const upperMid = std.math.maxInt(intT)/2;
+		std.debug.assert(upperMid != 0);
+
+		const max = std.math.maxInt(intT);
+		std.debug.assert(max != 0);
+
+		try ReadWriteTest.testInt(intT, min);
+		try ReadWriteTest.testInt(intT, lowerMid);
 		try ReadWriteTest.testInt(intT, 0);
-		try ReadWriteTest.testInt(intT, std.math.maxInt(intT)/2);
-		try ReadWriteTest.testInt(intT, std.math.maxInt(intT));
+		try ReadWriteTest.testInt(intT, upperMid);
+		try ReadWriteTest.testInt(intT, max);
 	}
 }
 
