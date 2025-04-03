@@ -1719,6 +1719,37 @@ test "read/write Vec3f/Vec3d" {
 test "read/write mixed" {
 	ReadWriteTest.init();
 	defer ReadWriteTest.deinit();
+
+	const type_first = u4;
+	const expected_first = 5;
+
+	const type_second = main.vec.Vec3i;
+	const expected_second = type_second{3, -10, 44};
+
+	const type_third = enum(u3) {first, second, third};
+	const expected_third = .second;
+
+	const type_fourth = f32;
+	const expected_fourth = 0.1234;
+
+	const expected_fifth = "Hello World!";
+
+	var writer = ReadWriteTest.getWriter();
+	defer writer.deinit();
+
+	writer.writeInt(type_first, expected_first);
+	writer.writeVec(type_second, expected_second);
+	writer.writeEnum(type_third, expected_third);
+	writer.writeFloat(type_fourth, expected_fourth);
+	writer.writeSlice(expected_fifth);
+
+	var reader = ReadWriteTest.getReader(writer.data.items);
+
+	try std.testing.expectEqual(expected_first, try reader.readInt(type_first));
+	try std.testing.expectEqual(expected_second, try reader.readVec(type_second));
+	try std.testing.expectEqual(expected_third, try reader.readEnum(type_third));
+	try std.testing.expectEqual(expected_fourth, try reader.readFloat(type_fourth));
+	try std.testing.expectEqualStrings(expected_fifth, try reader.readSlice(expected_fifth.len));
 }
 
 // MARK: functionPtrCast()
