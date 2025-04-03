@@ -43,14 +43,14 @@ pub const Compression = struct { // MARK: Compression
 					main.stackAllocator.free(relPath);
 				};
 				var len: [4]u8 = undefined;
-				std.mem.writeInt(u32, &len, @as(u32, @intCast(relPath.len)), .big);
+				std.mem.writeInt(u32, &len, @as(u32, @intCast(relPath.len)), endian);
 				_ = try comp.write(&len);
 				_ = try comp.write(relPath);
 
 				const fileData = try sourceDir.readFileAlloc(main.stackAllocator.allocator, relPath, std.math.maxInt(usize));
 				defer main.stackAllocator.free(fileData);
 
-				std.mem.writeInt(u32, &len, @as(u32, @intCast(fileData.len)), .big);
+				std.mem.writeInt(u32, &len, @as(u32, @intCast(fileData.len)), endian);
 				_ = try comp.write(&len);
 				_ = try comp.write(fileData);
 			}
@@ -66,11 +66,11 @@ pub const Compression = struct { // MARK: Compression
 		defer main.stackAllocator.free(_data);
 		var data = _data;
 		while(data.len != 0) {
-			var len = std.mem.readInt(u32, data[0..4], .big);
+			var len = std.mem.readInt(u32, data[0..4], endian);
 			data = data[4..];
 			const path = data[0..len];
 			data = data[len..];
-			len = std.mem.readInt(u32, data[0..4], .big);
+			len = std.mem.readInt(u32, data[0..4], endian);
 			data = data[4..];
 			const fileData = data[0..len];
 			data = data[len..];
@@ -1408,12 +1408,13 @@ pub const Side = enum {
 	server,
 };
 
+pub const endian: std.builtin.Endian = .big;
+
 pub const BinaryReader = struct {
 	remaining: []const u8,
-	endian: std.builtin.Endian,
 
-	pub fn init(data: []const u8, endian: std.builtin.Endian) BinaryReader {
-		return .{.remaining = data, .endian = endian};
+	pub fn init(data: []const u8) BinaryReader {
+		return .{.remaining = data};
 	}
 
 	pub fn readVec(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds}!T {
@@ -1443,7 +1444,7 @@ pub const BinaryReader = struct {
 		const bufSize = @divExact(@typeInfo(T).int.bits, 8);
 		if(self.remaining.len < bufSize) return error.OutOfBounds;
 		defer self.remaining = self.remaining[bufSize..];
-		return std.mem.readInt(T, self.remaining[0..bufSize], self.endian);
+		return std.mem.readInt(T, self.remaining[0..bufSize], endian);
 	}
 
 	pub fn readFloat(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds}!T {
@@ -1471,14 +1472,13 @@ pub const BinaryReader = struct {
 
 pub const BinaryWriter = struct {
 	data: main.List(u8),
-	endian: std.builtin.Endian,
 
-	pub fn init(allocator: NeverFailingAllocator, endian: std.builtin.Endian) BinaryWriter {
-		return .{.data = .init(allocator), .endian = endian};
+	pub fn init(allocator: NeverFailingAllocator) BinaryWriter {
+		return .{.data = .init(allocator)};
 	}
 
-	pub fn initCapacity(allocator: NeverFailingAllocator, endian: std.builtin.Endian, capacity: usize) BinaryWriter {
-		return .{.data = .initCapacity(allocator, capacity), .endian = endian};
+	pub fn initCapacity(allocator: NeverFailingAllocator, capacity: usize) BinaryWriter {
+		return .{.data = .initCapacity(allocator, capacity)};
 	}
 
 	pub fn deinit(self: *BinaryWriter) void {
@@ -1507,7 +1507,7 @@ pub const BinaryWriter = struct {
 			return self.writeInt(FullType, value);
 		}
 		const bufSize = @divExact(@typeInfo(T).int.bits, 8);
-		std.mem.writeInt(T, self.data.addMany(bufSize)[0..bufSize], value, self.endian);
+		std.mem.writeInt(T, self.data.addMany(bufSize)[0..bufSize], value, endian);
 	}
 
 	pub fn writeFloat(self: *BinaryWriter, T: type, value: T) void {
