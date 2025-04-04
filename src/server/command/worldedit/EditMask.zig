@@ -3,6 +3,7 @@ const std = @import("std");
 const main = @import("main");
 const AliasTable = main.utils.AliasTable;
 const Block = main.blocks.Block;
+const BlockTag = main.blocks.BlockTag;
 const ListUnmanaged = main.ListUnmanaged;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
@@ -19,17 +20,17 @@ const Entry = struct {
 
 	const Inner = union(enum) {
 		block: struct {typ: u16, data: ?u16},
-		blockTag: []const u8,
+		blockTag: BlockTag,
 		property: Property,
 
 		const Property = enum {transparent, collide, solid, selectable, degradable, viewThrough, allowOres, isEntity};
 
-		fn initFromString(allocator: NeverFailingAllocator, specifier: []const u8) !Inner {
+		fn initFromString(specifier: []const u8) !Inner {
 			switch(specifier[0]) {
 				tag => {
 					const blockTag = specifier[1..];
 					if(blockTag.len == 0) return error.MaskSyntaxError;
-					return .{.blockTag = allocator.dupe(u8, blockTag)};
+					return .{.blockTag = BlockTag.find(blockTag)};
 				},
 				property => {
 					const propertyName = specifier[1..];
@@ -43,41 +44,40 @@ const Entry = struct {
 			}
 		}
 
-		fn deinit(self: Inner, allocator: NeverFailingAllocator) void {
-			switch(self) {
-				.blockTag => |t| allocator.free(t),
-				else => {},
-			}
-		}
-
 		fn match(self: Inner, block: Block) bool {
-			switch(self) {
-				.block => return block.typ == self.block.typ and (self.block.data == null or block.data == self.block.data),
-				.blockTag => |desired| for(block.blockTags()) |current| {
-					if(current == desired) return true;
+			return switch(self) {
+				.block => block.typ == self.block.typ and (self.block.data == null or block.data == self.block.data),
+				.blockTag => |desired| {
+					for(block.blockTags()) |current| {
+						if(desired == current) return true;
+					}
+					return false;
 				},
 				.property => |prop| return switch(prop) {
 					.transparent => block.transparent(),
+					.collide => block.collide(),
+					.solid => block.solid(),
+					.selectable => block.selectable(),
+					.degradable => block.degradable(),
+					.viewThrough => block.viewThrough(),
+					.allowOres => block.allowOres(),
+					.isEntity => block.entityDataClass() != null,
 				},
-			}
+			};
 		}
 	};
 
-	fn initFromString(allocator: NeverFailingAllocator, specifier: []const u8) !Entry {
+	fn initFromString(specifier: []const u8) !Entry {
 		switch(specifier[0]) {
 			inverse => {
-				const entry = try Inner.initFromString(allocator, specifier[1..]);
+				const entry = try Inner.initFromString(specifier[1..]);
 				return .{.inner = entry, .isInverse = true};
 			},
 			else => {
-				const entry = try Inner.initFromString(allocator, specifier);
-				return .{.inner = entry, .isInverse = true};
+				const entry = try Inner.initFromString(specifier);
+				return .{.inner = entry, .isInverse = false};
 			},
 		}
-	}
-
-	fn deinit(self: Entry, allocator: NeverFailingAllocator) void {
-		self.inner.deinit(allocator);
 	}
 
 	pub fn match(self: Entry, block: Block) bool {
@@ -97,7 +97,7 @@ pub fn initFromString(allocator: NeverFailingAllocator, source: []const u8) !@Th
 
 	while(specifiers.next()) |specifier| {
 		if(specifier.len == 0) continue;
-		const entry = try Entry.initFromString(allocator, specifier);
+		const entry = try Entry.initFromString(specifier);
 		entries.append(allocator, entry);
 	}
 
@@ -105,8 +105,12 @@ pub fn initFromString(allocator: NeverFailingAllocator, source: []const u8) !@Th
 }
 
 pub fn deinit(self: @This(), allocator: NeverFailingAllocator) void {
-	for(self.entries.items) |e| {
-		e.deinit(allocator);
-	}
 	self.entries.deinit(allocator);
+}
+
+pub fn match(self: @This(), block: Block) bool {
+	for(self.entries.items) |e| {
+		if(e.match(block)) return true;
+	}
+	return false;
 }

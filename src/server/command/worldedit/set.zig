@@ -27,6 +27,8 @@ pub fn execute(args: []const u8, source: *User) void {
 	};
 	defer pattern.deinit(main.stackAllocator);
 
+	const maskNullable = source.worldEditData.mask;
+
 	const startX = @min(pos1[0], pos2[0]);
 	const startY = @min(pos1[1], pos2[1]);
 	const startZ = @min(pos1[2], pos2[2]);
@@ -43,6 +45,11 @@ pub fn execute(args: []const u8, source: *User) void {
 
 			for(0..height) |z| {
 				const worldZ = startZ +% @as(i32, @intCast(z));
+
+				if(maskNullable) |mask| {
+					const block = main.server.world.?.getBlock(worldX, worldY, worldZ) orelse continue;
+					if(mask.match(block)) continue;
+				}
 
 				_ = main.server.world.?.updateBlock(worldX, worldY, worldZ, pattern.blocks.sample(&main.seed).block);
 			}
