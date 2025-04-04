@@ -1,0 +1,8 @@
+.{
+	.blueprint = "cubyz:building/house0",
+	.children = .{
+		.blue = .{
+			.{.structure = "cubyz:building/house1", .chance = 1.0},
+		},
+	},
+}
