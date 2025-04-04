@@ -1531,8 +1531,8 @@ pub const BinaryWriter = struct {
 };
 
 const ReadWriteTest = struct {
-	pub var testingAllocator = main.heap.ErrorHandlingAllocator.init(std.testing.allocator);
-	pub var allocator = testingAllocator.allocator();
+	var testingAllocator = main.heap.ErrorHandlingAllocator.init(std.testing.allocator);
+	var allocator = testingAllocator.allocator();
 
 	fn getWriter() BinaryWriter {
 		return .init(ReadWriteTest.allocator);
@@ -1540,53 +1540,53 @@ const ReadWriteTest = struct {
 	fn getReader(data: []const u8) BinaryReader {
 		return .init(data);
 	}
-	fn testInt(comptime intT: type, expected: intT) !void {
+	fn testInt(comptime IntT: type, expected: IntT) !void {
 		var writer = getWriter();
 		defer writer.deinit();
-		writer.writeInt(intT, expected);
+		writer.writeInt(IntT, expected);
 
-		const expectedWidth = std.math.divCeil(comptime_int, @bitSizeOf(intT), 8);
+		const expectedWidth = std.math.divCeil(comptime_int, @bitSizeOf(IntT), 8);
 		try std.testing.expectEqual(expectedWidth, writer.data.items.len);
 
 		var reader = getReader(writer.data.items);
-		const actual = try reader.readInt(intT);
+		const actual = try reader.readInt(IntT);
 
 		try std.testing.expectEqual(expected, actual);
 	}
-	fn testFloat(comptime floatT: type, expected: floatT) !void {
+	fn testFloat(comptime FloatT: type, expected: FloatT) !void {
 		var writer = getWriter();
 		defer writer.deinit();
-		writer.writeFloat(floatT, expected);
+		writer.writeFloat(FloatT, expected);
 
 		var reader = getReader(writer.data.items);
-		const actual = try reader.readFloat(floatT);
+		const actual = try reader.readFloat(FloatT);
 
 		try std.testing.expectEqual(expected, actual);
 	}
-	fn testEnum(comptime enumT: type, expected: enumT) !void {
+	fn testEnum(comptime EnumT: type, expected: EnumT) !void {
 		var writer = getWriter();
 		defer writer.deinit();
-		writer.writeEnum(enumT, expected);
+		writer.writeEnum(EnumT, expected);
 
 		var reader = getReader(writer.data.items);
-		const actual = try reader.readEnum(enumT);
+		const actual = try reader.readEnum(EnumT);
 
 		try std.testing.expectEqual(expected, actual);
 	}
-	fn TestEnum(comptime intT: type) type {
-		return enum(intT) {
-			first = std.math.minInt(intT),
-			center = (std.math.maxInt(intT) + std.math.minInt(intT))/2,
-			last = std.math.maxInt(intT),
+	fn TestEnum(comptime IntT: type) type {
+		return enum(IntT) {
+			first = std.math.minInt(IntT),
+			center = (std.math.maxInt(IntT) + std.math.minInt(IntT))/2,
+			last = std.math.maxInt(IntT),
 		};
 	}
-	fn testVec(comptime vecT: type, expected: vecT) !void {
+	fn testVec(comptime VecT: type, expected: VecT) !void {
 		var writer = getWriter();
 		defer writer.deinit();
-		writer.writeVec(vecT, expected);
+		writer.writeVec(VecT, expected);
 
 		var reader = getReader(writer.data.items);
-		const actual = try reader.readVec(vecT);
+		const actual = try reader.readVec(VecT);
 
 		try std.testing.expectEqual(expected, actual);
 	}
