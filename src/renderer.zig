@@ -72,6 +72,7 @@ pub fn init() void {
 	MenuBackGround.init() catch |err| {
 		std.log.err("Failed to initialize the Menu Background: {s}", .{@errorName(err)});
 	};
+	Skybox.init();
 	chunk_meshing.init();
 	mesh_storage.init();
 	reflectionCubeMap = .init();
@@ -86,6 +87,7 @@ pub fn deinit() void {
 	Bloom.deinit();
 	MeshSelection.deinit();
 	MenuBackGround.deinit();
+	Skybox.deinit();
 	mesh_storage.deinit();
 	chunk_meshing.deinit();
 	reflectionCubeMap.deinit();
@@ -182,6 +184,10 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	const frustum = Frustum.init(Vec3f{0, 0, 0}, game.camera.viewMatrix, lastFov, lastWidth, lastHeight);
 
 	const time: u32 = @intCast(std.time.milliTimestamp() & std.math.maxInt(u32));
+
+	gpu_performance_measuring.startQuery(.skybox);
+	Skybox.render();
+	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.animation);
 	blocks.meshes.preProcessAnimationData(time);
@@ -608,6 +614,230 @@ pub const MenuBackGround = struct {
 			std.log.err("Cannot write file {s} due to {s}", .{fileName, @errorName(err)});
 		};
 		// TODO: Performance is terrible even with -O3. Consider using qoi instead.
+	}
+};
+
+pub const Skybox = struct {
+	var starShader: Shader = undefined;
+	var starUniforms: struct {
+		mvp: c_int,
+		starOpacity: c_int,
+	} = undefined;
+
+	var starVao: c_uint = undefined;
+	var starVbo: c_uint = undefined;
+
+	var starSsbo: graphics.SSBO = undefined;
+
+	var skyShader: Shader = undefined;
+	var skyUniforms: struct {
+		viewMatrix: c_int,
+		projectionMatrix: c_int,
+		skyColor: c_int,
+	} = undefined;
+
+	var skyVao: c_uint = undefined;
+	var skyVbos: [2]c_uint = undefined;
+
+	const numStars = 10000;
+
+	fn getStarPos(seed: *u64) Vec3f {
+		const x: f32 = @floatCast(main.random.nextFloatGauss(seed));
+		const y: f32 = @floatCast(main.random.nextFloatGauss(seed));
+		const z: f32 = @floatCast(main.random.nextFloatGauss(seed));
+
+		const r = std.math.cbrt(main.random.nextFloat(seed))*5000.0;
+
+		return vec.normalize(Vec3f{x, y, z})*@as(Vec3f, @splat(r));
+	}
+
+	fn getStarColor(temperature: f32, light: f32, image: graphics.Image) Vec3f {
+		const rgbCol = image.getRGB(@intFromFloat(std.math.clamp(temperature / 15000.0 * @as(f32, @floatFromInt(image.width)), 0.0, @as(f32, @floatFromInt(image.width - 1)))), 0);
+		var rgb: Vec3f = @floatFromInt(Vec3i{rgbCol.r, rgbCol.g, rgbCol.b});
+		rgb /= @splat(255.0);
+
+		rgb *= @as(Vec3f, @splat(light));
+
+		const m = @reduce(.Max, rgb);
+		if(m > 1.0) {
+			rgb /= @as(Vec3f, @splat(m));
+		}
+
+		return rgb;
+	}
+
+	fn init() void {
+		const starColorImage = graphics.Image.readFromFile(main.stackAllocator, "assets/cubyz/star.png") catch |err| {
+			std.log.err("Failed to load star image: {s}", .{@errorName(err)});
+			return;
+		};
+		defer starColorImage.deinit(main.stackAllocator);
+
+		starShader = Shader.initAndGetUniforms("assets/cubyz/shaders/skybox/star.vs", "assets/cubyz/shaders/skybox/star.fs", "", &starUniforms);
+		starShader.bind();
+
+		var starData: [numStars*8]f32 = undefined;
+
+		var starMesh: [numStars*9]f32 = undefined;
+
+		const starDist = 200.0;
+
+		const off: f32 = @sqrt(3.0)/6.0;
+
+		const triVertA = Vec3f{0.5, starDist, -off};
+		const triVertB = Vec3f{-0.5, starDist, -off};
+		const triVertC = Vec3f{0.0, starDist, @sqrt(3.0)/2.0 - off};
+
+		var seed: u64 = 0;
+
+		for(0..numStars) |i| {
+			var pos: Vec3f = undefined;
+
+			var radius: f32 = undefined;
+
+			var temperature: f32 = undefined;
+
+			var light: f32 = 0;
+
+			while(light < 0.1) {
+				pos = getStarPos(&seed);
+
+				radius = @floatCast(main.random.nextFloatExp(&seed)*4 + 0.2);
+
+				temperature = @floatCast((@abs(main.random.nextFloatGauss(&seed)*3000.0 + 5000.0) + 1000.0)/5772.0);
+
+				light = (3966.91*radius*radius*temperature*temperature*temperature*temperature)/(vec.dot(pos, pos));
+			}
+
+			pos = vec.normalize(pos)*@as(Vec3f, @splat(starDist));
+
+			const normPos = vec.normalize(pos);
+
+			const col = getStarColor(temperature*5772.0, light, starColorImage);
+
+			starData[i*8..][0..3].* = pos;
+			starData[i*8+4..][0..3].* = col;
+
+			const lat: f32 = @floatCast(std.math.asin(normPos[2]));
+			const lon: f32 = @floatCast(std.math.atan2(-normPos[0], normPos[1]));
+
+			const mat = Mat4f.rotationZ(lon).mul(Mat4f.rotationX(lat));
+
+			const posA = vec.xyz(mat.mulVec(.{triVertA[0], triVertA[1], triVertA[2], 1.0}));
+			const posB = vec.xyz(mat.mulVec(.{triVertB[0], triVertB[1], triVertB[2], 1.0}));
+			const posC = vec.xyz(mat.mulVec(.{triVertC[0], triVertC[1], triVertC[2], 1.0}));
+
+			starMesh[i*9..][0..3].* = posA;
+			starMesh[i*9+3..][0..3].* = posB;
+			starMesh[i*9+6..][0..3].* = posC;
+		}
+
+		starSsbo = graphics.SSBO.initStatic(f32, &starData);
+
+		c.glGenVertexArrays(1, &starVao);
+		c.glBindVertexArray(starVao);
+		c.glGenBuffers(1, @ptrCast(&starVbo));
+		c.glBindBuffer(c.GL_ARRAY_BUFFER, starVbo);
+		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(starMesh.len*@sizeOf(f32)), &starMesh, c.GL_STATIC_DRAW);
+		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, 3*@sizeOf(f32), null);
+		c.glEnableVertexAttribArray(0);
+
+		skyShader = Shader.initAndGetUniforms("assets/cubyz/shaders/skybox/sky.vs", "assets/cubyz/shaders/skybox/sky.fs", "", &skyUniforms);
+		skyShader.bind();
+
+		const rawData = [_]f32{
+			-1, -1, -1,
+			1,  -1, -1,
+			1,  1,  -1,
+			-1, 1,  -1,
+			-1, -1, 1,
+			1,  -1, 1,
+			1,  1,  1,
+			-1, 1,  1,
+		};
+
+		const indices = [_]c_int{
+			0, 3, 1, 1, 3, 2,
+			5, 6, 4, 4, 6, 7,
+			3, 7, 2, 2, 7, 6,
+			1, 5, 0, 0, 5, 4,
+			4, 7, 0, 0, 7, 3,
+			1, 2, 5, 5, 2, 6,
+		};
+
+		c.glGenVertexArrays(1, &skyVao);
+		c.glBindVertexArray(skyVao);
+		c.glGenBuffers(2, &skyVbos);
+		c.glBindBuffer(c.GL_ARRAY_BUFFER, skyVbos[0]);
+		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(rawData.len*@sizeOf(f32)), &rawData, c.GL_STATIC_DRAW);
+		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, 3*@sizeOf(f32), null);
+		c.glEnableVertexAttribArray(0);
+		c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, skyVbos[1]);
+		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.len*@sizeOf(c_int)), &indices, c.GL_STATIC_DRAW);
+	}
+
+	pub fn deinit() void {
+		starShader.deinit();
+		starSsbo.deinit();
+		c.glDeleteVertexArrays(1, &starVao);
+		c.glDeleteBuffers(1, @ptrCast(&starVbo));
+
+		skyShader.deinit();
+		c.glDeleteVertexArrays(1, &skyVao);
+		c.glDeleteBuffers(2, @ptrCast(&skyVbos));
+	}
+
+	pub fn render() void {
+		c.glDisable(c.GL_CULL_FACE);
+		c.glDisable(c.GL_DEPTH_TEST);
+
+		const viewMatrix = game.camera.viewMatrix;
+		skyShader.bind();
+
+		const time = game.world.?.gameTime.load(.monotonic);
+
+		var starOpacity: f32 = 0;
+		const dayTime = @abs(@mod(time, game.World.dayCycle) -% game.World.dayCycle/2);
+		if(dayTime < game.World.dayCycle/4 - game.World.dayCycle/16) {
+			starOpacity = 1;
+		} else if(dayTime > game.World.dayCycle/4 + game.World.dayCycle/16) {
+			starOpacity = 0;
+		} else {
+			starOpacity = @as(f32, @floatFromInt(dayTime - (game.World.dayCycle/4 - game.World.dayCycle/16)))/@as(f32, @floatFromInt(game.World.dayCycle/8));
+		}
+
+		const skyboxColor = game.fog.skyColor*@as(Vec3f, @splat(@reduce(.Add, game.fog.skyColor)/3.0));
+		c.glUniform3fv(skyUniforms.skyColor, 1, @ptrCast(&skyboxColor));
+
+		c.glUniformMatrix4fv(skyUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
+		c.glUniformMatrix4fv(skyUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
+
+		c.glBindVertexArray(skyVao);
+		c.glDrawElements(c.GL_TRIANGLES, 36, c.GL_UNSIGNED_INT, null);
+
+		if(starOpacity != 0) {
+			c.glBlendFunc(c.GL_ONE, c.GL_ONE);
+			c.glEnable(c.GL_BLEND);
+
+			starShader.bind();
+
+			const starMatrix = game.projectionMatrix.mul(viewMatrix.mul(Mat4f.rotationX(@as(f32, @floatFromInt(time))/@as(f32, @floatFromInt(main.game.World.dayCycle)))));
+
+			starSsbo.bind(12);
+
+			c.glUniform1f(starUniforms.starOpacity, starOpacity);
+			c.glUniformMatrix4fv(starUniforms.mvp, 1, c.GL_TRUE, @ptrCast(&starMatrix));
+
+			c.glBindVertexArray(starVao);
+			c.glDrawArrays(c.GL_TRIANGLES, 0, numStars*9);
+
+			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
+
+			c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
+		}
+
+		c.glEnable(c.GL_CULL_FACE);
+		c.glEnable(c.GL_DEPTH_TEST);
 	}
 };
 
