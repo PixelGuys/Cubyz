@@ -9,7 +9,7 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const separator = ',';
 const inverse = '!';
-const tag = '#';
+const tag = '$';
 const property = '@';
 
 entries: ListUnmanaged(Entry),
