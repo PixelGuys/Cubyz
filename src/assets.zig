@@ -271,7 +271,7 @@ pub const ID = struct {
 	}
 
 	pub fn addonName(self: ID) ![]const u8 {
-		const index = std.mem.indexOfScalar(u8, self.string, ':') orelse error.InvalidAddonName;
+		const index = std.mem.indexOfScalar(u8, self.string, ':') orelse return error.InvalidAddonName;
 		return self.string[0..index];
 	}
 
