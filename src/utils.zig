@@ -1593,7 +1593,7 @@ const ReadWriteTest = struct {
 };
 
 test "read/write unsigned int" {
-	inline for([_]type{u8, u1, u2, u4, u5, u8, u16, u31, u32, u64, u128}) |intT| {
+	inline for([_]type{u0, u1, u2, u4, u5, u8, u16, u31, u32, u64, u128}) |intT| {
 		const min = std.math.minInt(intT);
 		const max = std.math.maxInt(intT);
 		const mid = (max + min)/2;
