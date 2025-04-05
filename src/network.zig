@@ -978,12 +978,18 @@ pub const Protocols = struct {
 			teleport = 1,
 			worldEditPos = 2,
 			timeAndBiome = 3,
+			damageBlock = 4,
 		};
 
 		const WorldEditPosition = enum(u2) {
 			selectedPos1 = 0,
 			selectedPos2 = 1,
 			clear = 2,
+		};
+
+		const BlockDamage = enum(u8) {
+			sync = 0,
+			update = 1,
 		};
 
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
@@ -1009,6 +1015,21 @@ pub const Protocols = struct {
 						.clear => {
 							game.Player.selectionPosition1 = null;
 							game.Player.selectionPosition2 = null;
+						},
+					}
+				},
+				.damageBlock => {
+					const typ = try reader.readEnum(BlockDamage);
+					switch(typ) {
+						.sync => {
+							try renderer.mesh_storage.blockDamage.loadSerialized(reader);
+						},
+						.update => {
+							const pos = try reader.readVec(Vec3i);
+							const remainingHealth = try reader.readFloat(f32);
+							renderer.mesh_storage.blockDamage.mutex.lock();
+							renderer.mesh_storage.blockDamage.set(pos, remainingHealth);
+							renderer.mesh_storage.blockDamage.mutex.unlock();
 						},
 					}
 				},
@@ -1076,6 +1097,26 @@ pub const Protocols = struct {
 
 			const pos = @as(Vec3i, @intFromFloat(conn.user.?.player.pos));
 			writer.writeInt(u32, world.getBiome(pos[0], pos[1], pos[2]).paletteId);
+
+			conn.sendImportant(id, writer.data.items);
+		}
+
+		pub fn sendDamageBlock(conn: *Connection, typ: BlockDamage, _pos: ?Vec3i, remainingHealth: ?f32) void {
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, 18);
+			defer writer.deinit();
+
+			writer.writeEnum(UpdateType, .damageBlock);
+			writer.writeEnum(BlockDamage, typ);
+
+			switch(typ) {
+				.sync => {
+					main.server.world.?.blockDamage.serialize(&writer);
+				},
+				.update => {
+					writer.writeVec(Vec3i, _pos.?);
+					writer.writeFloat(f32, remainingHealth.?);
+				},
+			}
 
 			conn.sendImportant(id, writer.data.items);
 		}
