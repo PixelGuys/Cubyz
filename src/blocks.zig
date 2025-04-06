@@ -238,7 +238,7 @@ fn registerOpaqueVariant(typ: u16, zon: ZonElement) void {
 	}
 }
 
-pub fn finishBlocks(zonElements: std.StringHashMap(ZonElement)) void {
+pub fn finishBlocks(zonElements: std.StringHashMapUnmanaged(ZonElement)) void {
 	var i: u16 = 0;
 	while(i < size) : (i += 1) {
 		registerBlockDrop(i, zonElements.get(_id[i]) orelse continue);

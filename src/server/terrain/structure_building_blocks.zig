@@ -168,7 +168,7 @@ const Child = struct {
 	}
 };
 
-pub fn registerSBB(structures: *std.StringHashMap(ZonElement)) !void {
+pub fn registerSBB(structures: *std.StringHashMapUnmanaged(ZonElement)) !void {
 	std.debug.assert(structureCache.capacity() == 0);
 	structureCache.ensureTotalCapacity(arenaAllocator.allocator, structures.count()) catch unreachable;
 	childrenToResolve = .init(main.stackAllocator);
@@ -209,7 +209,7 @@ pub fn registerChildBlock(numericId: u16, stringId: []const u8) void {
 	std.log.debug("Structure child block '{s}' {} ('{s}' {}) ", .{colorName, index, stringId, numericId});
 }
 
-pub fn registerBlueprints(blueprints: *std.StringHashMap([]u8)) !void {
+pub fn registerBlueprints(blueprints: *std.StringHashMapUnmanaged([]u8)) !void {
 	std.debug.assert(blueprintCache.capacity() == 0);
 
 	originBlockNumericId = main.blocks.parseBlock(originBlockStringId).typ;
