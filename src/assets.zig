@@ -314,6 +314,149 @@ pub fn init() void {
 	common.log(.common);
 }
 
+pub const ID = struct {
+	string: []const u8,
+
+	const HashContext = struct {
+		pub fn hash(_: HashContext, a: ID) u64 {
+			var h = std.hash.Wyhash.init(0);
+			h.update(a.string);
+			return h.final();
+		}
+		pub fn eql(_: HashContext, a: ID, b: ID) bool {
+			return std.meta.eql(a.string, b.string);
+		}
+	};
+
+	fn initFromPath(
+		allocator: NeverFailingAllocator,
+		addon: []const u8,
+		relativeFilePath: []const u8,
+	) !ID {
+		std.debug.assert(relativeFilePath.len != 0);
+
+		const posixPath = allocator.dupe(u8, relativeFilePath);
+		std.mem.replaceScalar(u8, posixPath, '\\', '/');
+		std.debug.assert(posixPath.len != 0);
+
+		var pathSplit = std.mem.splitBackwardsScalar(u8, posixPath, '/');
+		const fileName = pathSplit.first();
+		std.debug.assert(fileName.len != 0);
+
+		const dirPath = pathSplit.rest();
+
+		const fileNameExtensionIndex = std.mem.indexOfScalar(u8, fileName, '.') orelse fileName.len;
+		const baseName = fileName[0..fileNameExtensionIndex];
+		std.debug.assert(baseName.len != 0);
+
+		return try initFromComponents(allocator, addon, dirPath, baseName, "");
+	}
+
+	fn initFromString(allocator: NeverFailingAllocator, string: []const u8) !ID {
+		const split = std.mem.splitScalar(u8, string, ':');
+		const addon = split.first();
+		if(addon.len == 0) return error.EmptyAddonName;
+
+		const pathAndName = split.next() orelse return error.MissingAssetId;
+		if(pathAndName.len == 0) return error.EmptyAssetId;
+
+		const pathSplit = std.mem.splitBackwardsScalar(u8, pathAndName, '/');
+		const baseName = pathSplit.first();
+		if(baseName.len == 0) return error.EmptyAssetName;
+		const path = pathSplit.rest();
+
+		const params = split.rest();
+
+		return try initFromComponents(allocator, addon, path, baseName, params);
+	}
+
+	fn initFromComponents(allocator: NeverFailingAllocator, addon: []const u8, path: []const u8, name: []const u8, params: []const u8) !ID {
+		var writer = main.utils.BinaryWriter.initCapacity(allocator, addon.len + 1 + path.len + 1 + name.len + 1 + params.len);
+		errdefer writer.deinit();
+
+		for(addon) |c| {
+			const char: u8 = c;
+			if(!isValidIdChar(char)) {
+				std.log.err("Character '{s}' in addon name '{s}' is not allowed in asset ID.", .{[_]u8{char}, addon});
+				return error.InvalidAddonName;
+			}
+			if(std.ascii.isUpper(char)) {
+				writer.writeInt(u8, std.ascii.toLower(char));
+				std.log.warn("Detected upper case character '{s}' in addon name '{s}'. Asset IDs are case insensitive, it will be case folded.", .{[_]u8{char}, addon});
+				continue;
+			}
+			writer.writeInt(u8, char);
+		}
+		writer.writeInt(u8, ':');
+		if(path.len != 0) {
+			for(path) |c| {
+				const char: u8 = c;
+				if(char != '/' and !isValidIdChar(char)) {
+					std.log.err("Character '{s}' present in asset path '{s}' is not allowed in asset ID.", .{[_]u8{char}, path});
+					return error.InvalidAssetPath;
+				}
+				if(std.ascii.isUpper(char)) {
+					writer.writeInt(u8, std.ascii.toLower(char));
+					std.log.warn("Detected upper case character '{s}' in asset path '{s}'. Asset IDs are case insensitive, it will be case folded.", .{[_]u8{char}, path});
+					continue;
+				}
+				writer.writeInt(u8, char);
+			}
+			writer.writeInt(u8, '/');
+		}
+		for(name) |c| {
+			const char: u8 = c;
+			if(!isValidIdChar(char)) {
+				std.log.err("Character '{s}' in asset name '{s}' is not allowed in asset ID.", .{[_]u8{char}, addon});
+				return error.InvalidAssetName;
+			}
+			if(std.ascii.isUpper(char)) {
+				writer.writeInt(u8, std.ascii.toLower(char));
+				std.log.warn("Detected upper case character '{s}' in asset name '{s}'. Asset IDs are case insensitive, it will be case folded.", .{[_]u8{char}, name});
+				continue;
+			}
+			writer.writeInt(u8, char);
+		}
+		if(params.len != 0) {
+			writer.writeInt(u8, ':');
+			writer.writeSlice(params);
+		}
+
+		return .{.string = writer.data.items};
+	}
+
+	fn isValidIdChar(c: u8) bool {
+		return std.ascii.isAlphanumeric(c) or c == '_';
+	}
+
+	fn deinit(self: ID, allocator: NeverFailingAllocator) void {
+		allocator.free(self.string);
+	}
+
+	pub fn addonName(self: ID) ![]const u8 {
+		const index = std.mem.indexOfScalar(u8, self.string, ':') orelse return error.InvalidAddonName;
+		return self.string[0..index];
+	}
+
+	pub fn assetId(self: ID) ![]const u8 {
+		const first = try self.addonName();
+		const offset = first.len + 1;
+		const rest = self.string[offset..];
+		if(rest.len == 0) return error.InvalidAssetId;
+
+		const index = std.mem.indexOfScalar(u8, rest, ':') orelse rest.len;
+		return self.string[0 .. offset + index];
+	}
+
+	pub fn paramsString(self: ID) ![]const u8 {
+		const first = try self.assetId();
+		const offset = first.len + 1;
+		// Handles the case when there is no `:` for params and case where there is `:` but no params after it.
+		if(offset >= self.string.len) return "";
+		return self.string[offset..];
+	}
+};
+
 fn createAssetStringID(
 	externalAllocator: NeverFailingAllocator,
 	addonName: []const u8,
