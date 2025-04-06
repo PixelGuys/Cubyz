@@ -165,6 +165,17 @@ pub fn readAllZonFilesInAddons(
 pub const ID = struct {
 	string: []const u8,
 
+	const HashContext = struct {
+		pub fn hash(_: HashContext, a: ID) u64 {
+			var h = std.hash.Wyhash.init(0);
+			h.update(a.string);
+			return h.final();
+		}
+		pub fn eql(_: HashContext, a: ID, b: ID) bool {
+			return std.meta.eql(a.string, b.string);
+		}
+	};
+
 	fn initFromPath(
 		allocator: NeverFailingAllocator,
 		addon: []const u8,
