@@ -208,7 +208,7 @@ pub const ID = struct {
 		return try initFromComponents(allocator, addon, dirPath, baseName, "");
 	}
 
-	fn initFromString(allocator: NeverFailingAllocator, string: []const u8) !ID {
+	pub fn initFromString(allocator: NeverFailingAllocator, string: []const u8) !ID {
 		const split = std.mem.splitScalar(u8, string, ':');
 		const addon = split.first();
 		if(addon.len == 0) return error.EmptyAddonName;
@@ -226,7 +226,7 @@ pub const ID = struct {
 		return try initFromComponents(allocator, addon, path, baseName, params);
 	}
 
-	fn initFromComponents(allocator: NeverFailingAllocator, addon: []const u8, path: []const u8, name: []const u8, params: []const u8) !ID {
+	pub fn initFromComponents(allocator: NeverFailingAllocator, addon: []const u8, path: []const u8, name: []const u8, params: []const u8) !ID {
 		var writer = main.utils.BinaryWriter.initCapacity(allocator, addon.len + 1 + path.len + 1 + name.len + 1 + params.len);
 		errdefer writer.deinit();
 
@@ -281,11 +281,11 @@ pub const ID = struct {
 		return .{.string = writer.data.items};
 	}
 
-	fn isValidIdChar(c: u8) bool {
+	pub fn isValidIdChar(c: u8) bool {
 		return std.ascii.isAlphanumeric(c) or c == '_';
 	}
 
-	fn deinit(self: ID, allocator: NeverFailingAllocator) void {
+	pub fn deinit(self: ID, allocator: NeverFailingAllocator) void {
 		allocator.free(self.string);
 	}
 
