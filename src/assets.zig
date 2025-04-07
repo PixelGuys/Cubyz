@@ -313,7 +313,7 @@ pub fn init() void {
 pub const ID = struct {
 	string: []const u8,
 
-	const HashContext = struct {
+	pub const HashContext = struct {
 		pub fn hash(_: HashContext, a: ID) u64 {
 			var h = std.hash.Wyhash.init(0);
 			h.update(a.string);
@@ -323,6 +323,14 @@ pub const ID = struct {
 			return std.meta.eql(a.string, b.string);
 		}
 	};
+
+	pub const IdToIdMap = std.HashMapUnmanaged(ID, ID, ID.HashContext, 80);
+	pub fn IdToIndexMap(comptime IndexT: type) type {
+		return std.HashMapUnmanaged(ID, IndexT, ID.HashContext, 80);
+	}
+	pub fn IndexToIdMap(comptime IndexT: type) type {
+		return std.HashMapUnmanaged(IndexT, ID, std.hash_map.AutoContext(IndexT), 80);
+	}
 
 	fn initFromPath(
 		allocator: NeverFailingAllocator,
