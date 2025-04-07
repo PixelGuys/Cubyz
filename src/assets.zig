@@ -21,6 +21,7 @@ var common: Assets = undefined;
 pub const Assets = struct {
 	pub const ZonHashMap = std.StringHashMapUnmanaged(ZonElement);
 	pub const RawHashMap = std.StringHashMapUnmanaged([]const u8);
+	pub const AddonNameToZonMap = std.StringHashMapUnmanaged(ZonElement);
 
 	blocks: ZonHashMap,
 	blockMigrations: ZonHashMap,
@@ -183,7 +184,6 @@ pub const Assets = struct {
 		const ZonAssets = enum {
 			blocks,
 			items,
-			itemMigrations,
 			tools,
 			biomes,
 			recipes,

@@ -16,7 +16,7 @@ const MigrationType = enum {
 	biome,
 };
 
-pub fn registerAll(comptime typ: MigrationType, migrations: *Assets.ZonHashMap) void {
+pub fn registerAll(comptime typ: MigrationType, migrations: *Assets.AddonNameToZonMap) void {
 	std.log.info("Registering {} {s} migrations", .{migrations.count(), @tagName(typ)});
 	const collection = switch(typ) {
 		.block => &blockMigrations,
