@@ -199,13 +199,10 @@ pub const ID = struct {
 		const fileName = pathSplit.first();
 		std.debug.assert(fileName.len != 0);
 
-		const dirPath = pathSplit.rest();
-
 		const fileNameExtensionIndex = std.mem.indexOfScalar(u8, fileName, '.') orelse fileName.len;
-		const baseName = fileName[0..fileNameExtensionIndex];
-		std.debug.assert(baseName.len != 0);
+		const extension = fileName[fileNameExtensionIndex..];
 
-		return try initFromComponents(allocator, addon, dirPath, baseName, "");
+		return try initFromComponents(allocator, addon, posixPath[0 .. posixPath.len - extension.len], "");
 	}
 
 	pub fn initFromString(allocator: NeverFailingAllocator, string: []const u8) !ID {
@@ -213,21 +210,16 @@ pub const ID = struct {
 		const addon = split.first();
 		if(addon.len == 0) return error.EmptyAddonName;
 
-		const pathAndName = split.next() orelse return error.MissingAssetId;
-		if(pathAndName.len == 0) return error.EmptyAssetId;
-
-		const pathSplit = std.mem.splitBackwardsScalar(u8, pathAndName, '/');
-		const baseName = pathSplit.first();
-		if(baseName.len == 0) return error.EmptyAssetName;
-		const path = pathSplit.rest();
+		const path = split.next() orelse return error.MissingAssetId;
+		if(path.len == 0) return error.EmptyAssetId;
 
 		const params = split.rest();
 
-		return try initFromComponents(allocator, addon, path, baseName, params);
+		return try initFromComponents(allocator, addon, path, params);
 	}
 
-	pub fn initFromComponents(allocator: NeverFailingAllocator, addon: []const u8, path: []const u8, name: []const u8, params: []const u8) !ID {
-		var writer = main.utils.BinaryWriter.initCapacity(allocator, addon.len + 1 + path.len + 1 + name.len + 1 + params.len);
+	pub fn initFromComponents(allocator: NeverFailingAllocator, addon: []const u8, path: []const u8, params: []const u8) !ID {
+		var writer = main.utils.BinaryWriter.initCapacity(allocator, addon.len + 1 + path.len + 1 + params.len);
 		errdefer writer.deinit();
 
 		for(addon) |c| {
@@ -244,8 +236,17 @@ pub const ID = struct {
 			writer.writeInt(u8, char);
 		}
 		writer.writeInt(u8, ':');
-		if(path.len != 0) {
-			for(path) |c| {
+
+		var pathSplit = std.mem.splitBackwardsScalar(u8, path, '/');
+		const name = pathSplit.first();
+		if(name.len == 0) {
+			std.log.err("Empty asset name is not allowed. ('{s}' in '{s}')", .{path, addon});
+			return error.EmptyAssetName;
+		}
+		const directory = pathSplit.rest();
+
+		if(directory.len != 0) {
+			for(directory) |c| {
 				const char: u8 = c;
 				if(char != '/' and !isValidIdChar(char)) {
 					std.log.err("Character '{s}' present in asset path '{s}' is not allowed in asset ID.", .{[_]u8{char}, path});
@@ -288,12 +289,12 @@ pub const ID = struct {
 	pub fn deinit(self: ID, allocator: NeverFailingAllocator) void {
 		allocator.free(self.string);
 	}
-
+	// Name of the addon without asset ID and params.
 	pub fn addonName(self: ID) ![]const u8 {
 		const index = std.mem.indexOfScalar(u8, self.string, ':') orelse return error.InvalidAddonName;
 		return self.string[0..index];
 	}
-
+	// Asset ID without addon name and without params.
 	pub fn assetId(self: ID) ![]const u8 {
 		const first = try self.addonName();
 		const offset = first.len + 1;
@@ -303,7 +304,7 @@ pub const ID = struct {
 		const index = std.mem.indexOfScalar(u8, rest, ':') orelse rest.len;
 		return self.string[0 .. offset + index];
 	}
-
+	// Parameters string without addon name and asset ID.
 	pub fn paramsString(self: ID) ![]const u8 {
 		const first = try self.assetId();
 		const offset = first.len + 1;
