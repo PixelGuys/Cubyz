@@ -183,7 +183,6 @@ pub const Assets = struct {
 		const ZonAssets = enum {
 			blocks,
 			items,
-			itemMigrations,
 			tools,
 			biomes,
 			recipes,
