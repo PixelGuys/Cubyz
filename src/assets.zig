@@ -206,7 +206,7 @@ pub const ID = struct {
 	}
 	/// Initialize ID from insanitary string. String will be checked against ID rules.
 	pub fn initFromString(allocator: NeverFailingAllocator, string: []const u8) !ID {
-		const split = std.mem.splitScalar(u8, string, ':');
+		var split = std.mem.splitScalar(u8, string, ':');
 		const addon = split.first();
 		if(addon.len == 0) return error.EmptyAddonName;
 
