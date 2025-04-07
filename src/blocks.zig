@@ -19,6 +19,7 @@ const Entity = main.server.Entity;
 const entity_data = @import("entity_data.zig");
 const EntityDataClass = entity_data.EntityDataClass;
 const sbb = main.server.terrain.structure_building_blocks;
+const Assets = main.assets.Assets;
 
 pub const BlockTag = enum(u32) {
 	air = 0,
@@ -238,7 +239,7 @@ fn registerOpaqueVariant(typ: u16, zon: ZonElement) void {
 	}
 }
 
-pub fn finishBlocks(zonElements: std.StringHashMapUnmanaged(ZonElement)) void {
+pub fn finishBlocks(zonElements: Assets.ZonHashMap) void {
 	var i: u16 = 0;
 	while(i < size) : (i += 1) {
 		registerBlockDrop(i, zonElements.get(_id[i]) orelse continue);
