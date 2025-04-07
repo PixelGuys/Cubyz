@@ -223,7 +223,7 @@ pub const ID = struct {
 	}
 	/// Initialize ID from ID components. Components will be checked against corresponding ID rules.
 	pub fn initFromComponents(allocator: NeverFailingAllocator, addon: []const u8, path: []const u8, params: []const u8) !ID {
-		var writer = main.utils.BinaryWriter.initCapacity(allocator, addon.len + 1 + path.len + 1 + params.len);
+		var writer = main.utils.BinaryWriter.initCapacity(allocator, addon.len + 1 + path.len + 1*params.len + params.len);
 		errdefer writer.deinit();
 
 		for(addon) |c| {
@@ -287,7 +287,7 @@ pub const ID = struct {
 	}
 	/// Initialize ID from ID components. Components **won't** be checked against corresponding ID rules.
 	pub fn initFromSanitizedComponents(allocator: NeverFailingAllocator, addon: []const u8, path: []const u8, params: []const u8) ID {
-		var writer = main.utils.BinaryWriter.initCapacity(allocator, addon.len + 1 + path.len + 1 + params.len);
+		var writer = main.utils.BinaryWriter.initCapacity(allocator, addon.len + 1 + path.len + 1*params.len + params.len);
 
 		writer.writeSlice(addon);
 		writer.writeInt(u8, ':');
