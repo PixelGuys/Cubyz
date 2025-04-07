@@ -191,7 +191,9 @@ pub const ID = struct {
 	) !ID {
 		std.debug.assert(relativeFilePath.len != 0);
 
-		const posixPath = allocator.dupe(u8, relativeFilePath);
+		const posixPath = main.stackAllocator.dupe(u8, relativeFilePath);
+		defer main.stackAllocator.free(posixPath);
+
 		std.mem.replaceScalar(u8, posixPath, '\\', '/');
 		std.debug.assert(posixPath.len != 0);
 
@@ -223,13 +225,14 @@ pub const ID = struct {
 	}
 	/// Initialize ID from ID components. Components will be checked against corresponding ID rules.
 	pub fn initFromComponents(allocator: NeverFailingAllocator, addon: []const u8, path: []const u8, params: []const u8) !ID {
-		var writer = main.utils.BinaryWriter.initCapacity(allocator, addon.len + 1 + path.len + 1*params.len + params.len);
+		const sizeGuess = addon.len + 1 + path.len + if(params.len > 0) 1 + params.len else 0;
+		var writer = main.utils.BinaryWriter.initCapacity(allocator, sizeGuess);
 		errdefer writer.deinit();
 
 		for(addon) |c| {
 			const char: u8 = c;
 			if(!isValidIdChar(char)) {
-				std.log.err("Character '{s}' in addon name '{s}' is not allowed in asset ID.", .{[_]u8{char}, addon});
+				std.log.warn("Character '{s}' in addon name '{s}' is not allowed in asset ID.", .{[_]u8{char}, addon});
 				return error.InvalidAddonName;
 			}
 			if(std.ascii.isUpper(char)) {
@@ -244,7 +247,7 @@ pub const ID = struct {
 		var pathSplit = std.mem.splitBackwardsScalar(u8, path, '/');
 		const name = pathSplit.first();
 		if(name.len == 0) {
-			std.log.err("Empty asset name is not allowed. ('{s}' in '{s}')", .{path, addon});
+			std.log.warn("Empty asset name is not allowed. ('{s}' in '{s}')", .{path, addon});
 			return error.EmptyAssetName;
 		}
 		const directory = pathSplit.rest();
@@ -253,7 +256,7 @@ pub const ID = struct {
 			for(directory) |c| {
 				const char: u8 = c;
 				if(char != '/' and !isValidIdChar(char)) {
-					std.log.err("Character '{s}' present in asset path '{s}' is not allowed in asset ID.", .{[_]u8{char}, path});
+					std.log.warn("Character '{s}' present in asset path '{s}' is not allowed in asset ID.", .{[_]u8{char}, path});
 					return error.InvalidAssetPath;
 				}
 				if(std.ascii.isUpper(char)) {
@@ -268,7 +271,7 @@ pub const ID = struct {
 		for(name) |c| {
 			const char: u8 = c;
 			if(!isValidIdChar(char)) {
-				std.log.err("Character '{s}' in asset name '{s}' is not allowed in asset ID.", .{[_]u8{char}, addon});
+				std.log.warn("Character '{s}' in asset name '{s}' is not allowed in asset ID.", .{[_]u8{char}, addon});
 				return error.InvalidAssetName;
 			}
 			if(std.ascii.isUpper(char)) {
@@ -287,7 +290,8 @@ pub const ID = struct {
 	}
 	/// Initialize ID from ID components. Components **won't** be checked against corresponding ID rules.
 	pub fn initFromSanitizedComponents(allocator: NeverFailingAllocator, addon: []const u8, path: []const u8, params: []const u8) ID {
-		var writer = main.utils.BinaryWriter.initCapacity(allocator, addon.len + 1 + path.len + 1*params.len + params.len);
+		const sizeGuess = addon.len + 1 + path.len + if(params.len > 0) 1 + params.len else 0;
+		var writer = main.utils.BinaryWriter.initCapacity(allocator, sizeGuess);
 
 		writer.writeSlice(addon);
 		writer.writeInt(u8, ':');
@@ -312,7 +316,7 @@ pub const ID = struct {
 		const index = std.mem.indexOfScalar(u8, self.string, ':') orelse return error.InvalidAddonName;
 		return self.string[0..index];
 	}
-	// Asset ID without addon name and without params.
+	// Asset ID with addon name and without params.
 	pub fn assetId(self: ID) ![]const u8 {
 		const first = try self.addonName();
 		const offset = first.len + 1;
@@ -321,6 +325,16 @@ pub const ID = struct {
 
 		const index = std.mem.indexOfScalar(u8, rest, ':') orelse rest.len;
 		return self.string[0 .. offset + index];
+	}
+	// Asset name without addon name and without params.
+	pub fn assetName(self: ID) ![]const u8 {
+		const first = try self.addonName();
+		const offset = first.len + 1;
+		const rest = self.string[offset..];
+		if(rest.len == 0) return error.InvalidAssetName;
+
+		const index = std.mem.indexOfScalar(u8, rest, ':') orelse rest.len;
+		return self.string[offset .. offset + index];
 	}
 	// Parameters string without addon name and asset ID.
 	pub fn paramsString(self: ID) ![]const u8 {
@@ -331,6 +345,276 @@ pub const ID = struct {
 		return self.string[offset..];
 	}
 };
+
+const IDTest = struct {
+	var testingAllocator = main.heap.ErrorHandlingAllocator.init(std.testing.allocator);
+	var allocator = testingAllocator.allocator();
+	var _stackAllocator: NeverFailingAllocator = undefined;
+
+	pub fn init() void {
+		_stackAllocator = main.stackAllocator;
+		main.stackAllocator = allocator;
+	}
+	pub fn deinit() void {
+		main.stackAllocator = _stackAllocator;
+		_stackAllocator = undefined;
+		std.debug.print("Success\n", .{});
+	}
+};
+
+test "ID.initFromPath directory+directory+file+extension" {
+	IDTest.init();
+	defer IDTest.deinit();
+
+	const id = try ID.initFromPath(IDTest.allocator, "cubyz", "mountain/tall_mountain/slope6.zig.zon");
+	defer id.deinit(IDTest.allocator);
+
+	try std.testing.expectEqualStrings("cubyz:mountain/tall_mountain/slope6", id.string);
+	try std.testing.expectEqualStrings("cubyz", try id.addonName());
+	try std.testing.expectEqualStrings("mountain/tall_mountain/slope6", try id.assetName());
+	try std.testing.expectEqualStrings("cubyz:mountain/tall_mountain/slope6", try id.assetId());
+	try std.testing.expectEqualStrings("", try id.paramsString());
+}
+
+test "ID.initFromPath directory+file+extension" {
+	IDTest.init();
+	defer IDTest.deinit();
+
+	const id = try ID.initFromPath(IDTest.allocator, "cubyz", "tall_mountain/slope6.zig.zon");
+	defer id.deinit(IDTest.allocator);
+
+	try std.testing.expectEqualStrings("cubyz:tall_mountain/slope6", id.string);
+	try std.testing.expectEqualStrings("cubyz", try id.addonName());
+	try std.testing.expectEqualStrings("tall_mountain/slope6", try id.assetName());
+	try std.testing.expectEqualStrings("cubyz:tall_mountain/slope6", try id.assetId());
+	try std.testing.expectEqualStrings("", try id.paramsString());
+}
+
+test "ID.initFromPath file+extension" {
+	IDTest.init();
+	defer IDTest.deinit();
+
+	const id = try ID.initFromPath(IDTest.allocator, "cubyz", "slope6.zig.zon");
+	defer id.deinit(IDTest.allocator);
+
+	try std.testing.expectEqualStrings("cubyz:slope6", id.string);
+	try std.testing.expectEqualStrings("cubyz", try id.addonName());
+	try std.testing.expectEqualStrings("slope6", try id.assetName());
+	try std.testing.expectEqualStrings("cubyz:slope6", try id.assetId());
+	try std.testing.expectEqualStrings("", try id.paramsString());
+}
+
+test "ID.initFromPath file" {
+	IDTest.init();
+	defer IDTest.deinit();
+
+	const id = try ID.initFromPath(IDTest.allocator, "cubyz", "tall_mountain/slope6");
+	defer id.deinit(IDTest.allocator);
+
+	try std.testing.expectEqualStrings("cubyz:tall_mountain/slope6", id.string);
+	try std.testing.expectEqualStrings("cubyz", try id.addonName());
+	try std.testing.expectEqualStrings("tall_mountain/slope6", try id.assetName());
+	try std.testing.expectEqualStrings("cubyz:tall_mountain/slope6", try id.assetId());
+	try std.testing.expectEqualStrings("", try id.paramsString());
+}
+
+test "ID.initFromString directory+directory+file" {
+	IDTest.init();
+	defer IDTest.deinit();
+
+	const string = "cubyz:mountain/tall_mountain/slope6";
+	const id = try ID.initFromString(IDTest.allocator, string);
+	defer id.deinit(IDTest.allocator);
+
+	try std.testing.expectEqualStrings(string, id.string);
+	try std.testing.expect(&string[0] != &id.string[0]);
+	try std.testing.expectEqualStrings("cubyz", try id.addonName());
+	try std.testing.expectEqualStrings("mountain/tall_mountain/slope6", try id.assetName());
+	try std.testing.expectEqualStrings("cubyz:mountain/tall_mountain/slope6", try id.assetId());
+	try std.testing.expectEqualStrings("", try id.paramsString());
+}
+
+test "ID.initFromString directory+file" {
+	IDTest.init();
+	defer IDTest.deinit();
+
+	const string = "cubyz:tall_mountain/slope6";
+	const id = try ID.initFromString(IDTest.allocator, string);
+	defer id.deinit(IDTest.allocator);
+
+	try std.testing.expectEqualStrings(string, id.string);
+	try std.testing.expect(&string[0] != &id.string[0]);
+	try std.testing.expectEqualStrings("cubyz", try id.addonName());
+	try std.testing.expectEqualStrings("tall_mountain/slope6", try id.assetName());
+	try std.testing.expectEqualStrings("cubyz:tall_mountain/slope6", try id.assetId());
+	try std.testing.expectEqualStrings("", try id.paramsString());
+}
+
+test "ID.initFromString file" {
+	IDTest.init();
+	defer IDTest.deinit();
+
+	const string = "cubyz:slope6";
+	const id = try ID.initFromString(IDTest.allocator, string);
+	defer id.deinit(IDTest.allocator);
+
+	try std.testing.expectEqualStrings(string, id.string);
+	try std.testing.expect(&string[0] != &id.string[0]);
+	try std.testing.expectEqualStrings("cubyz", try id.addonName());
+	try std.testing.expectEqualStrings("slope6", try id.assetName());
+	try std.testing.expectEqualStrings("cubyz:slope6", try id.assetId());
+	try std.testing.expectEqualStrings("", try id.paramsString());
+}
+
+test "ID.initFromString with params" {
+	IDTest.init();
+	defer IDTest.deinit();
+
+	const string = "cubyz:cloth/cyan:0b111111";
+	const id = try ID.initFromString(IDTest.allocator, string);
+	defer id.deinit(IDTest.allocator);
+
+	try std.testing.expectEqualStrings(string, id.string);
+	try std.testing.expect(&string[0] != &id.string[0]);
+	try std.testing.expectEqualStrings("cubyz", try id.addonName());
+	try std.testing.expectEqualStrings("cloth/cyan", try id.assetName());
+	try std.testing.expectEqualStrings("cubyz:cloth/cyan", try id.assetId());
+	try std.testing.expectEqualStrings("0b111111", try id.paramsString());
+}
+
+test "ID.initFromString almost with params" {
+	IDTest.init();
+	defer IDTest.deinit();
+
+	const id = try ID.initFromString(IDTest.allocator, "cubyz:cloth/cyan:");
+	defer id.deinit(IDTest.allocator);
+
+	try std.testing.expectEqualStrings("cubyz:cloth/cyan", id.string);
+	try std.testing.expectEqualStrings("cubyz", try id.addonName());
+	try std.testing.expectEqualStrings("cloth/cyan", try id.assetName());
+	try std.testing.expectEqualStrings("cubyz:cloth/cyan", try id.assetId());
+	try std.testing.expectEqualStrings("", try id.paramsString());
+}
+
+test "ID.initFromString violation: empty" {
+	IDTest.init();
+	defer IDTest.deinit();
+	try std.testing.expectError(error.EmptyAddonName, ID.initFromString(IDTest.allocator, ""));
+}
+
+test "ID.initFromString violation: empty id" {
+	IDTest.init();
+	defer IDTest.deinit();
+	try std.testing.expectError(error.EmptyAssetId, ID.initFromString(IDTest.allocator, "cubyz:"));
+}
+
+test "ID.initFromString violation: empty asset name" {
+	IDTest.init();
+	defer IDTest.deinit();
+	try std.testing.expectError(error.EmptyAssetName, ID.initFromString(IDTest.allocator, "cubyz:foo/"));
+}
+
+test "ID.initFromString violation: char not allowed in addon name" {
+	IDTest.init();
+	defer IDTest.deinit();
+	try std.testing.expectError(error.InvalidAddonName, ID.initFromString(IDTest.allocator, "cubyz!:bar"));
+}
+
+test "ID.initFromString violation: char not allowed in asset path" {
+	IDTest.init();
+	defer IDTest.deinit();
+	try std.testing.expectError(error.InvalidAssetPath, ID.initFromString(IDTest.allocator, "cubyz:foo!/bar"));
+}
+
+test "ID.initFromString violation: char not allowed in asset name" {
+	IDTest.init();
+	defer IDTest.deinit();
+	try std.testing.expectError(error.InvalidAssetName, ID.initFromString(IDTest.allocator, "cubyz:foo/bar!"));
+}
+
+test "ID.initFromSanitizedComponents directory+directory+file" {
+	IDTest.init();
+	defer IDTest.deinit();
+
+	const id = ID.initFromSanitizedComponents(IDTest.allocator, "cubyz", "mountain/tall_mountain/slope6", "");
+	defer id.deinit(IDTest.allocator);
+
+	try std.testing.expectEqualStrings("cubyz:mountain/tall_mountain/slope6", id.string);
+	try std.testing.expectEqualStrings("cubyz", try id.addonName());
+	try std.testing.expectEqualStrings("mountain/tall_mountain/slope6", try id.assetName());
+	try std.testing.expectEqualStrings("cubyz:mountain/tall_mountain/slope6", try id.assetId());
+	try std.testing.expectEqualStrings("", try id.paramsString());
+}
+
+test "ID.initFromSanitizedComponents directory+directory+file+params" {
+	IDTest.init();
+	defer IDTest.deinit();
+
+	const id = ID.initFromSanitizedComponents(IDTest.allocator, "cubyz", "mountain/tall_mountain/slope6", "foo");
+	defer id.deinit(IDTest.allocator);
+
+	try std.testing.expectEqualStrings("cubyz:mountain/tall_mountain/slope6:foo", id.string);
+	try std.testing.expectEqualStrings("cubyz", try id.addonName());
+	try std.testing.expectEqualStrings("mountain/tall_mountain/slope6", try id.assetName());
+	try std.testing.expectEqualStrings("cubyz:mountain/tall_mountain/slope6", try id.assetId());
+	try std.testing.expectEqualStrings("foo", try id.paramsString());
+}
+
+test "ID.initFromSanitizedComponents directory+file" {
+	IDTest.init();
+	defer IDTest.deinit();
+
+	const id = ID.initFromSanitizedComponents(IDTest.allocator, "cubyz", "tall_mountain/slope6", "");
+	defer id.deinit(IDTest.allocator);
+
+	try std.testing.expectEqualStrings("cubyz:tall_mountain/slope6", id.string);
+	try std.testing.expectEqualStrings("cubyz", try id.addonName());
+	try std.testing.expectEqualStrings("tall_mountain/slope6", try id.assetName());
+	try std.testing.expectEqualStrings("cubyz:tall_mountain/slope6", try id.assetId());
+	try std.testing.expectEqualStrings("", try id.paramsString());
+}
+
+test "ID.initFromSanitizedComponents file" {
+	IDTest.init();
+	defer IDTest.deinit();
+
+	const id = ID.initFromSanitizedComponents(IDTest.allocator, "cubyz", "slope6", "");
+	defer id.deinit(IDTest.allocator);
+
+	try std.testing.expectEqualStrings("cubyz:slope6", id.string);
+	try std.testing.expectEqualStrings("cubyz", try id.addonName());
+	try std.testing.expectEqualStrings("slope6", try id.assetName());
+	try std.testing.expectEqualStrings("cubyz:slope6", try id.assetId());
+	try std.testing.expectEqualStrings("", try id.paramsString());
+}
+
+test "ID.initFromSanitizedString file" {
+	IDTest.init();
+	defer IDTest.deinit();
+
+	const id = ID.initFromSanitizedString(IDTest.allocator, "cubyz:slope6");
+	defer id.deinit(IDTest.allocator);
+
+	try std.testing.expectEqualStrings("cubyz:slope6", id.string);
+	try std.testing.expectEqualStrings("cubyz", try id.addonName());
+	try std.testing.expectEqualStrings("slope6", try id.assetName());
+	try std.testing.expectEqualStrings("cubyz:slope6", try id.assetId());
+	try std.testing.expectEqualStrings("", try id.paramsString());
+}
+
+test "ID.initFromSanitizedString file with params" {
+	IDTest.init();
+	defer IDTest.deinit();
+
+	const id = ID.initFromSanitizedString(IDTest.allocator, "cubyz:slope6:foo");
+	defer id.deinit(IDTest.allocator);
+
+	try std.testing.expectEqualStrings("cubyz:slope6:foo", id.string);
+	try std.testing.expectEqualStrings("cubyz", try id.addonName());
+	try std.testing.expectEqualStrings("slope6", try id.assetName());
+	try std.testing.expectEqualStrings("cubyz:slope6", try id.assetId());
+	try std.testing.expectEqualStrings("foo", try id.paramsString());
+}
 
 fn createAssetStringID(
 	externalAllocator: NeverFailingAllocator,
