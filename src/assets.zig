@@ -616,6 +616,26 @@ test "ID.initFromSanitizedString file with params" {
 	try std.testing.expectEqualStrings("foo", try id.paramsString());
 }
 
+test "ID.HashContext" {
+	IDTest.init();
+	defer IDTest.deinit();
+
+	const id0 = ID.initFromSanitizedString(IDTest.allocator, "cubyz:stone");
+	defer id0.deinit(IDTest.allocator);
+
+	const id1 = ID.initFromSanitizedString(IDTest.allocator, "cubyz:grass");
+	defer id1.deinit(IDTest.allocator);
+
+	var map: ID.IdToIdMap = .{};
+	defer map.deinit(IDTest.allocator.allocator);
+
+	try map.put(IDTest.allocator.allocator, id0, id1);
+	try map.put(IDTest.allocator.allocator, id1, id0);
+
+	try std.testing.expectEqualStrings(map.get(id0).?.string, id1.string);
+	try std.testing.expectEqualStrings(map.get(id1).?.string, id0.string);
+}
+
 fn createAssetStringID(
 	externalAllocator: NeverFailingAllocator,
 	addonName: []const u8,
