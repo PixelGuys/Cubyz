@@ -16,21 +16,24 @@ const files = main.files;
 
 var commonAssetArena: NeverFailingArenaAllocator = undefined;
 var commonAssetAllocator: NeverFailingAllocator = undefined;
-var common: CommonAssets = undefined;
+var common: Assets = undefined;
 
-const CommonAssets = struct {
-	blocks: std.StringHashMapUnmanaged(ZonElement),
-	blockMigrations: std.StringHashMapUnmanaged(ZonElement),
-	items: std.StringHashMapUnmanaged(ZonElement),
-	tools: std.StringHashMapUnmanaged(ZonElement),
-	biomes: std.StringHashMapUnmanaged(ZonElement),
-	biomeMigrations: std.StringHashMapUnmanaged(ZonElement),
-	recipes: std.StringHashMapUnmanaged(ZonElement),
-	models: std.StringHashMapUnmanaged([]const u8),
-	structureBuildingBlocks: std.StringHashMapUnmanaged(ZonElement),
-	blueprints: std.StringHashMapUnmanaged([]u8),
+pub const Assets = struct {
+	pub const ZonHashMap = std.StringHashMapUnmanaged(ZonElement);
+	pub const RawHashMap = std.StringHashMapUnmanaged([]const u8);
 
-	fn init() CommonAssets {
+	blocks: ZonHashMap,
+	blockMigrations: ZonHashMap,
+	items: ZonHashMap,
+	tools: ZonHashMap,
+	biomes: ZonHashMap,
+	biomeMigrations: ZonHashMap,
+	recipes: ZonHashMap,
+	models: RawHashMap,
+	structureBuildingBlocks: ZonHashMap,
+	blueprints: RawHashMap,
+
+	fn init() Assets {
 		return .{
 			.blocks = .{},
 			.blockMigrations = .{},
@@ -44,7 +47,7 @@ const CommonAssets = struct {
 			.blueprints = .{},
 		};
 	}
-	fn deinit(self: *CommonAssets, allocator: NeverFailingAllocator) void {
+	fn deinit(self: *Assets, allocator: NeverFailingAllocator) void {
 		self.blocks.deinit(allocator.allocator);
 		self.blockMigrations.deinit(allocator.allocator);
 		self.items.deinit(allocator.allocator);
@@ -56,7 +59,7 @@ const CommonAssets = struct {
 		self.structureBuildingBlocks.deinit(allocator.allocator);
 		self.blueprints.deinit(allocator.allocator);
 	}
-	fn clone(self: CommonAssets, allocator: NeverFailingAllocator) CommonAssets {
+	fn clone(self: Assets, allocator: NeverFailingAllocator) Assets {
 		return .{
 			.blocks = self.blocks.clone(allocator.allocator) catch unreachable,
 			.blockMigrations = self.blockMigrations.clone(allocator.allocator) catch unreachable,
@@ -70,7 +73,7 @@ const CommonAssets = struct {
 			.blueprints = self.blueprints.clone(allocator.allocator) catch unreachable,
 		};
 	}
-	fn read(self: *CommonAssets, allocator: NeverFailingAllocator, assetPath: []const u8) void {
+	fn read(self: *Assets, allocator: NeverFailingAllocator, assetPath: []const u8) void {
 		const addons = Addon.discoverAll(main.stackAllocator, assetPath);
 		defer addons.deinit(main.stackAllocator);
 		defer for(addons.items) |*addon| addon.deinit(main.stackAllocator);
@@ -86,7 +89,7 @@ const CommonAssets = struct {
 			addon.readAllModels(allocator, &self.models);
 		}
 	}
-	fn log(self: *CommonAssets, typ: enum {common, world}) void {
+	fn log(self: *Assets, typ: enum {common, world}) void {
 		std.log.info(
 			"Finished {s} assets reading with {} blocks ({} migrations), {} items, {} tools, {} biomes ({} migrations), {} recipes, {} structure building blocks and {} blueprints",
 			.{@tagName(typ), self.blocks.count(), self.blockMigrations.count(), self.items.count(), self.tools.count(), self.biomes.count(), self.biomeMigrations.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count()},
@@ -187,14 +190,7 @@ const CommonAssets = struct {
 			sbb,
 		};
 
-		pub fn readAllZon(
-			addon: Addon,
-			allocator: NeverFailingAllocator,
-			assetType: ZonAssets,
-			hasDefaults: bool,
-			output: *std.StringHashMapUnmanaged(ZonElement),
-			migrations: ?*std.StringHashMapUnmanaged(ZonElement),
-		) void {
+		pub fn readAllZon(addon: Addon, allocator: NeverFailingAllocator, assetType: ZonAssets, hasDefaults: bool, output: *ZonHashMap, migrations: ?*ZonHashMap) void {
 			const subPath = @tagName(assetType);
 			var assetsDirectory = addon.dir.openDir(subPath, .{.iterate = true}) catch |err| {
 				if(err != error.FileNotFound) {
@@ -241,7 +237,7 @@ const CommonAssets = struct {
 			}
 		}
 
-		pub fn readAllBlueprints(addon: Addon, allocator: NeverFailingAllocator, output: *std.StringHashMapUnmanaged([]u8)) void {
+		pub fn readAllBlueprints(addon: Addon, allocator: NeverFailingAllocator, output: *RawHashMap) void {
 			const subPath = "blueprints";
 			var assetsDirectory = addon.dir.openDir(subPath, .{.iterate = true}) catch |err| {
 				if(err != error.FileNotFound) {
@@ -272,7 +268,7 @@ const CommonAssets = struct {
 			}
 		}
 
-		pub fn readAllModels(addon: Addon, allocator: NeverFailingAllocator, output: *std.StringHashMapUnmanaged([]const u8)) void {
+		pub fn readAllModels(addon: Addon, allocator: NeverFailingAllocator, output: *RawHashMap) void {
 			const subPath = "models";
 			var assetsDirectory = addon.dir.openDir(subPath, .{.iterate = true}) catch |err| {
 				if(err != error.FileNotFound) {
