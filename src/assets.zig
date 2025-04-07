@@ -284,15 +284,16 @@ pub const Assets = struct {
 				std.log.err("Got error while iterating addon directory {s}: {s}", .{subPath, @errorName(err)});
 				break :blk null;
 			}) |entry| {
-				if(entry.kind == .file and std.ascii.endsWithIgnoreCase(entry.basename, ".obj")) {
-					const id: []u8 = createAssetStringID(allocator, addon.name, entry.path);
+				if(entry.kind != .file) continue;
+				if(!std.ascii.endsWithIgnoreCase(entry.basename, ".obj")) continue;
 
-					const string = assetsDirectory.readFileAlloc(allocator.allocator, entry.path, std.math.maxInt(usize)) catch |err| {
-						std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
-						continue;
-					};
-					output.put(allocator.allocator, id, string) catch unreachable;
-				}
+				const id: []u8 = createAssetStringID(allocator, addon.name, entry.path);
+
+				const string = assetsDirectory.readFileAlloc(allocator.allocator, entry.path, std.math.maxInt(usize)) catch |err| {
+					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
+					continue;
+				};
+				output.put(allocator.allocator, id, string) catch unreachable;
 			}
 		}
 	};
