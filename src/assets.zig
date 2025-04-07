@@ -218,7 +218,7 @@ pub const ID = struct {
 		return try initFromComponents(allocator, addon, path, params);
 	}
 	/// Initialize ID from sanitized string. String **won't** be checked against ID rules.
-	pub fn initFromIdString(allocator: NeverFailingAllocator, id: []const u8) ID {
+	pub fn initFromSanitizedString(allocator: NeverFailingAllocator, id: []const u8) ID {
 		return .{.string = allocator.dupe(u8, id)};
 	}
 	/// Initialize ID from ID components. Components will be checked against corresponding ID rules.
@@ -278,6 +278,21 @@ pub const ID = struct {
 			}
 			writer.writeInt(u8, char);
 		}
+		if(params.len != 0) {
+			writer.writeInt(u8, ':');
+			writer.writeSlice(params);
+		}
+
+		return .{.string = writer.data.items};
+	}
+	/// Initialize ID from ID components. Components **won't** be checked against corresponding ID rules.
+	pub fn initFromSanitizedComponents(allocator: NeverFailingAllocator, addon: []const u8, path: []const u8, params: []const u8) ID {
+		var writer = main.utils.BinaryWriter.initCapacity(allocator, addon.len + 1 + path.len + 1 + params.len);
+		errdefer writer.deinit();
+
+		writer.writeSlice(addon);
+		writer.writeInt(u8, ':');
+		writer.writeSlice(path);
 		if(params.len != 0) {
 			writer.writeInt(u8, ':');
 			writer.writeSlice(params);
