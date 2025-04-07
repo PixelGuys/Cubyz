@@ -331,7 +331,7 @@ pub const ID = struct {
 	pub fn IndexToIdMap(comptime IndexT: type) type {
 		return std.HashMapUnmanaged(IndexT, ID, std.hash_map.AutoContext(IndexT), 80);
 	}
-
+	/// Initialize ID from addon name and path to the asset. String will be checked against ID rules.
 	fn initFromPath(
 		allocator: NeverFailingAllocator,
 		addon: []const u8,
@@ -352,7 +352,7 @@ pub const ID = struct {
 
 		return try initFromComponents(allocator, addon, posixPath[0 .. posixPath.len - extension.len], "");
 	}
-
+	/// Initialize ID from insanitary string. String will be checked against ID rules.
 	pub fn initFromString(allocator: NeverFailingAllocator, string: []const u8) !ID {
 		const split = std.mem.splitScalar(u8, string, ':');
 		const addon = split.first();
@@ -365,7 +365,11 @@ pub const ID = struct {
 
 		return try initFromComponents(allocator, addon, path, params);
 	}
-
+	/// Initialize ID from sanitized string. String **won't** be checked against ID rules.
+	pub fn initFromIdString(allocator: NeverFailingAllocator, id: []const u8) ID {
+		return .{.string = allocator.dupe(u8, id)};
+	}
+	/// Initialize ID from ID components. Components will be checked against corresponding ID rules.
 	pub fn initFromComponents(allocator: NeverFailingAllocator, addon: []const u8, path: []const u8, params: []const u8) !ID {
 		var writer = main.utils.BinaryWriter.initCapacity(allocator, addon.len + 1 + path.len + 1 + params.len);
 		errdefer writer.deinit();
