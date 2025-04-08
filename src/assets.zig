@@ -331,7 +331,7 @@ pub const ID = struct {
 			return h.final();
 		}
 		pub fn eql(_: HashContext, a: ID, b: ID) bool {
-			return std.meta.eql(a.string, b.string);
+			return std.mem.eql(u8, a.string, b.string);
 		}
 	};
 
@@ -517,7 +517,6 @@ const IDTest = struct {
 	pub fn deinit() void {
 		main.stackAllocator = _stackAllocator;
 		_stackAllocator = undefined;
-		std.debug.print("Success\n", .{});
 	}
 };
 
@@ -775,7 +774,25 @@ test "ID.initFromSanitizedString file with params" {
 	try std.testing.expectEqualStrings("foo", try id.paramsString());
 }
 
-test "ID.HashContext" {
+test "ID.HashContext hash+eql" {
+	IDTest.init();
+	defer IDTest.deinit();
+
+	const id0 = ID.initFromSanitizedString(IDTest.allocator, "cubyz:stone");
+	defer id0.deinit(IDTest.allocator);
+
+	const id1 = ID.initFromSanitizedString(IDTest.allocator, "cubyz:stone");
+	defer id1.deinit(IDTest.allocator);
+
+	const ctx: ID.HashContext = .{};
+	const hash0 = ctx.hash(id0);
+	const hash1 = ctx.hash(id1);
+
+	try std.testing.expectEqual(hash0, hash1);
+	try std.testing.expect(ctx.eql(id0, id1));
+}
+
+test "ID.HashContext use hash map" {
 	IDTest.init();
 	defer IDTest.deinit();
 
@@ -793,6 +810,26 @@ test "ID.HashContext" {
 
 	try std.testing.expectEqualStrings(map.get(id0).?.string, id1.string);
 	try std.testing.expectEqualStrings(map.get(id1).?.string, id0.string);
+}
+
+test "ID.HashContext put twice" {
+	IDTest.init();
+	defer IDTest.deinit();
+
+	const id0 = ID.initFromSanitizedString(IDTest.allocator, "cubyz:stone");
+	defer id0.deinit(IDTest.allocator);
+
+	const id1 = ID.initFromSanitizedString(IDTest.allocator, "cubyz:stone");
+	defer id1.deinit(IDTest.allocator);
+
+	var map: ID.IdToIdMap = .{};
+	defer map.deinit(IDTest.allocator.allocator);
+
+	try map.put(IDTest.allocator.allocator, id0, id1);
+	try map.put(IDTest.allocator.allocator, id1, id0);
+
+	try std.testing.expectEqualStrings(map.get(id0).?.string, id1.string);
+	try std.testing.expectEqual(map.count(), 1);
 }
 
 fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void {
