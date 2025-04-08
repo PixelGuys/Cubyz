@@ -219,7 +219,7 @@ pub const Assets = struct {
 				if(std.ascii.eqlIgnoreCase(entry.basename, "_migrations.zig.zon")) continue;
 
 				const id = ID.initFromPath(allocator, addon.name, entry.path) catch |err| {
-					std.log.err("Could not create ID for asset '{s}' from addon '{s}' due to error '{s}'. Asset will not be loaded.", .{entry.path, addon.name, @errorName(err)});
+					std.log.err("Could not create ID for asset '{s}/{s}' from addon '{s}' due to error '{s}'. Asset will not be loaded.", .{@tagName(assetType), entry.path, addon.name, @errorName(err)});
 					continue;
 				};
 
@@ -264,7 +264,7 @@ pub const Assets = struct {
 				if(std.ascii.startsWithIgnoreCase(entry.basename, "_migrations")) continue;
 
 				const id = ID.initFromPath(allocator, addon.name, entry.path) catch |err| {
-					std.log.err("Could not create ID for asset '{s}' from addon '{s}' due to error '{s}'. Asset will not be loaded.", .{entry.path, addon.name, @errorName(err)});
+					std.log.err("Could not create ID for blueprint '{s}' from addon '{s}' due to error '{s}'. Asset will not be loaded.", .{entry.path, addon.name, @errorName(err)});
 					continue;
 				};
 
@@ -296,7 +296,7 @@ pub const Assets = struct {
 				if(!std.ascii.endsWithIgnoreCase(entry.basename, ".obj")) continue;
 
 				const id = ID.initFromPath(allocator, addon.name, entry.path) catch |err| {
-					std.log.err("Could not create ID for asset '{s}' from addon '{s}' due to error '{s}'. Asset will not be loaded.", .{entry.path, addon.name, @errorName(err)});
+					std.log.err("Could not create ID for model '{s}' from addon '{s}' due to error '{s}'. Asset will not be loaded.", .{entry.path, addon.name, @errorName(err)});
 					continue;
 				};
 
@@ -800,31 +800,6 @@ test "ID.HashContext" {
 
 	try std.testing.expectEqualStrings(map.get(id0).?.string, id1.string);
 	try std.testing.expectEqualStrings(map.get(id1).?.string, id0.string);
-}
-
-fn createAssetStringID(
-	externalAllocator: NeverFailingAllocator,
-	addonName: []const u8,
-	relativeFilePath: []const u8,
-) []u8 {
-	const baseNameEndIndex = if(std.ascii.endsWithIgnoreCase(relativeFilePath, ".zig.zon")) relativeFilePath.len - ".zig.zon".len else std.mem.lastIndexOfScalar(u8, relativeFilePath, '.') orelse relativeFilePath.len;
-	const pathNoExtension: []const u8 = relativeFilePath[0..baseNameEndIndex];
-
-	const assetId: []u8 = externalAllocator.alloc(u8, addonName.len + 1 + pathNoExtension.len);
-
-	@memcpy(assetId[0..addonName.len], addonName);
-	assetId[addonName.len] = ':';
-
-	// Convert from windows to unix style separators.
-	for(0..pathNoExtension.len) |i| {
-		if(pathNoExtension[i] == '\\') {
-			assetId[addonName.len + 1 + i] = '/';
-		} else {
-			assetId[addonName.len + 1 + i] = pathNoExtension[i];
-		}
-	}
-
-	return assetId;
 }
 
 fn registerItem(assetFolder: []const u8, id: ID, zon: ZonElement) !void {
