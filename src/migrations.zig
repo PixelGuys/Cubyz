@@ -10,7 +10,7 @@ var arenaAllocator = main.heap.NeverFailingArenaAllocator.init(main.globalAlloca
 const migrationAllocator = arenaAllocator.allocator();
 
 var blockMigrations: ID.IdToIdMap = .{};
-var biomeMigrations:  ID.IdToIdMap = .{};
+var biomeMigrations: ID.IdToIdMap = .{};
 
 const MigrationType = enum {
 	block,
@@ -31,7 +31,7 @@ pub fn registerAll(comptime typ: MigrationType, migrations: *Assets.AddonNameToZ
 
 fn register(
 	comptime typ: MigrationType,
-	collection: * ID.IdToIdMap,
+	collection: *ID.IdToIdMap,
 	addonName: []const u8,
 	migrationZon: ZonElement,
 ) void {
@@ -75,7 +75,7 @@ fn register(
 
 			oldId.deinit(migrationAllocator);
 		} else {
-			const newId = ID.initFromComponents(migrationAllocator, addonName, newZon, "")  catch |err| {
+			const newId = ID.initFromComponents(migrationAllocator, addonName, newZon, "") catch |err| {
 				std.log.err("Skipping {s} migration: '{s}' -> '{s}:{s}' as new ID does not conform to ID rules. ({s})", .{@tagName(typ), oldId.string, addonName, newZon, @errorName(err)});
 				continue;
 			};
