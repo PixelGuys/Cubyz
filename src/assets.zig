@@ -19,16 +19,17 @@ var commonAssetAllocator: NeverFailingAllocator = undefined;
 var common: Assets = undefined;
 
 pub const Assets = struct {
-	pub const ZonHashMap = std.StringHashMapUnmanaged(ZonElement);
-	pub const RawHashMap = std.StringHashMapUnmanaged([]const u8);
+	const maxLoadFactor = 80;
+	pub const ZonHashMap = std.HashMapUnmanaged(ID, ZonElement, ID.HashContext, maxLoadFactor);
+	pub const RawHashMap = std.HashMapUnmanaged(ID, []const u8, ID.HashContext, maxLoadFactor);
 	pub const AddonNameToZonMap = std.StringHashMapUnmanaged(ZonElement);
 
 	blocks: ZonHashMap,
-	blockMigrations: ZonHashMap,
+	blockMigrations: AddonNameToZonMap,
 	items: ZonHashMap,
 	tools: ZonHashMap,
 	biomes: ZonHashMap,
-	biomeMigrations: ZonHashMap,
+	biomeMigrations: AddonNameToZonMap,
 	recipes: ZonHashMap,
 	models: RawHashMap,
 	structureBuildingBlocks: ZonHashMap,
@@ -190,7 +191,7 @@ pub const Assets = struct {
 			sbb,
 		};
 
-		pub fn readAllZon(addon: Addon, allocator: NeverFailingAllocator, assetType: ZonAssets, hasDefaults: bool, output: *ZonHashMap, migrations: ?*ZonHashMap) void {
+		pub fn readAllZon(addon: Addon, allocator: NeverFailingAllocator, assetType: ZonAssets, hasDefaults: bool, output: *ZonHashMap, migrations: ?*AddonNameToZonMap) void {
 			const subPath = @tagName(assetType);
 			var assetsDirectory = addon.dir.openDir(subPath, .{.iterate = true}) catch |err| {
 				if(err != error.FileNotFound) {
@@ -217,7 +218,10 @@ pub const Assets = struct {
 				if(std.ascii.startsWithIgnoreCase(entry.path, "textures")) continue;
 				if(std.ascii.eqlIgnoreCase(entry.basename, "_migrations.zig.zon")) continue;
 
-				const id = createAssetStringID(allocator, addon.name, entry.path);
+				const id = ID.initFromPath(allocator, addon.name, entry.path) catch |err| {
+					std.log.err("Could not create ID for asset '{s}' from addon '{s}' due to error '{s}'. Asset will not be loaded.", .{entry.path, addon.name, @errorName(err)});
+					continue;
+				};
 
 				const zon = files.Dir.init(assetsDirectory).readToZon(allocator, entry.path) catch |err| {
 					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
@@ -259,12 +263,16 @@ pub const Assets = struct {
 				if(!std.ascii.endsWithIgnoreCase(entry.basename, ".blp")) continue;
 				if(std.ascii.startsWithIgnoreCase(entry.basename, "_migrations")) continue;
 
-				const stringId: []u8 = createAssetStringID(allocator, addon.name, entry.path);
+				const id = ID.initFromPath(allocator, addon.name, entry.path) catch |err| {
+					std.log.err("Could not create ID for asset '{s}' from addon '{s}' due to error '{s}'. Asset will not be loaded.", .{entry.path, addon.name, @errorName(err)});
+					continue;
+				};
+
 				const data = files.Dir.init(assetsDirectory).read(allocator, entry.path) catch |err| {
 					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
 					continue;
 				};
-				output.put(allocator.allocator, stringId, data) catch unreachable;
+				output.put(allocator.allocator, id, data) catch unreachable;
 			}
 		}
 
@@ -287,7 +295,10 @@ pub const Assets = struct {
 				if(entry.kind != .file) continue;
 				if(!std.ascii.endsWithIgnoreCase(entry.basename, ".obj")) continue;
 
-				const id: []u8 = createAssetStringID(allocator, addon.name, entry.path);
+				const id = ID.initFromPath(allocator, addon.name, entry.path) catch |err| {
+					std.log.err("Could not create ID for asset '{s}' from addon '{s}' due to error '{s}'. Asset will not be loaded.", .{entry.path, addon.name, @errorName(err)});
+					continue;
+				};
 
 				const string = assetsDirectory.readFileAlloc(allocator.allocator, entry.path, std.math.maxInt(usize)) catch |err| {
 					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
@@ -313,6 +324,8 @@ pub fn init() void {
 
 pub const ID = struct {
 	string: []const u8,
+
+	pub const Air = @This(){.string = "cubyz:air"};
 
 	pub const HashContext = struct {
 		pub fn hash(_: HashContext, a: ID) u64 {
@@ -420,7 +433,7 @@ pub const ID = struct {
 		for(name) |c| {
 			const char: u8 = c;
 			if(!isValidIdChar(char)) {
-				std.log.warn("Character '{s}' in asset name '{s}' is not allowed in asset ID.", .{[_]u8{char}, addon});
+				std.log.err("Character '{s}' in asset name '{s}' is not allowed in asset ID.", .{[_]u8{char}, name});
 				return error.InvalidAssetName;
 			}
 			if(std.ascii.isUpper(char)) {
@@ -455,6 +468,10 @@ pub const ID = struct {
 
 	pub fn isValidIdChar(c: u8) bool {
 		return std.ascii.isAlphanumeric(c) or c == '_';
+	}
+
+	pub fn clone(self: ID, allocator: NeverFailingAllocator) ID {
+		return .{.string = allocator.dupe(u8, self.string)};
 	}
 
 	pub fn deinit(self: ID, allocator: NeverFailingAllocator) void {
@@ -810,9 +827,8 @@ fn createAssetStringID(
 	return assetId;
 }
 
-fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void {
-	var split = std.mem.splitScalar(u8, id, ':');
-	const mod = split.first();
+fn registerItem(assetFolder: []const u8, id: ID, zon: ZonElement) !void {
+	const mod = id.addonName() catch unreachable;
 	var texturePath: []const u8 = &[0]u8{};
 	var replacementTexturePath: []const u8 = &[0]u8{};
 	var buf1: [4096]u8 = undefined;
@@ -824,26 +840,26 @@ fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void 
 	_ = items_zig.register(assetFolder, texturePath, replacementTexturePath, id, zon);
 }
 
-fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
+fn registerTool(assetFolder: []const u8, id: ID, zon: ZonElement) void {
 	items_zig.registerTool(assetFolder, id, zon);
 }
 
-fn registerBlock(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void {
-	if(zon == .null) std.log.err("Missing block: {s}. Replacing it with default block.", .{id});
+fn registerBlock(assetFolder: []const u8, id: ID, zon: ZonElement) !void {
+	if(zon == .null) std.log.err("Missing block: {s}. Replacing it with default block.", .{id.string});
 
 	_ = blocks_zig.register(assetFolder, id, zon);
 	blocks_zig.meshes.register(assetFolder, id, zon);
 }
 
-fn assignBlockItem(stringId: []const u8) !void {
-	const block = blocks_zig.getTypeById(stringId);
-	const item = items_zig.getByID(stringId) orelse unreachable;
+fn assignBlockItem(id: ID) !void {
+	const block = blocks_zig.getTypeById(id.string);
+	const item = items_zig.getByID(id.string) orelse unreachable;
 	item.block = block;
 }
 
-fn registerBiome(numericId: u32, stringId: []const u8, zon: ZonElement) void {
-	if(zon == .null) std.log.err("Missing biome: {s}. Replacing it with default biome.", .{stringId});
-	biomes_zig.register(stringId, numericId, zon);
+fn registerBiome(index: u32, id: ID, zon: ZonElement) void {
+	if(zon == .null) std.log.err("Missing biome: {s}. Replacing it with default biome.", .{id.string});
+	biomes_zig.register(id, index, zon);
 }
 
 fn registerRecipesFromZon(zon: ZonElement) void {
@@ -851,20 +867,20 @@ fn registerRecipesFromZon(zon: ZonElement) void {
 }
 
 pub const Palette = struct { // MARK: Palette
-	palette: main.List([]const u8),
+	palette: main.List(ID),
 
-	pub fn init(allocator: NeverFailingAllocator, zon: ZonElement, firstElement: ?[]const u8) !*Palette {
-		const self = switch(zon) {
+	pub fn init(allocator: NeverFailingAllocator, zon: ZonElement, firstElement: ?ID) !*Palette {
+		const self: *Palette = switch(zon) {
 			.object => try loadFromZonLegacy(allocator, zon),
 			.array, .null => try loadFromZon(allocator, zon),
 			else => return error.InvalidPaletteFormat,
 		};
 
-		if(firstElement) |elem| {
+		if(firstElement) |first| {
 			if(self.palette.items.len == 0) {
-				self.palette.append(allocator.dupe(u8, elem));
+				self.palette.append(first.clone(allocator));
 			}
-			if(!std.mem.eql(u8, self.palette.items[0], elem)) {
+			if(!std.mem.eql(u8, self.palette.items[0].string, first.string)) {
 				return error.FistItemMismatch;
 			}
 		}
@@ -880,29 +896,31 @@ pub const Palette = struct { // MARK: Palette
 		errdefer self.deinit();
 
 		for(items) |name| {
-			const stringId = name.as(?[]const u8, null) orelse return error.InvalidPaletteFormat;
-			self.palette.appendAssumeCapacity(allocator.dupe(u8, stringId));
+			const id = name.as(?[]const u8, null) orelse return error.InvalidPaletteFormat;
+			// We can't use initFromString here because we have to support legacy palettes which might contain IDs not conforming to the ID rules.
+			self.palette.appendAssumeCapacity(ID.initFromSanitizedString(allocator, id));
 		}
 		return self;
 	}
 	fn loadFromZonLegacy(allocator: NeverFailingAllocator, zon: ZonElement) !*Palette {
 		// Using zon.object.count() here has the implication that array can not be sparse.
 		const paletteLength = zon.object.count();
-		const translationPalette = main.stackAllocator.alloc(?[]const u8, paletteLength);
+		const translationPalette = main.stackAllocator.alloc(?ID, paletteLength);
 		defer main.stackAllocator.free(translationPalette);
 
 		@memset(translationPalette, null);
 
 		var iterator = zon.object.iterator();
 		while(iterator.next()) |entry| {
-			const numericId = entry.value_ptr.as(?usize, null) orelse return error.InvalidPaletteFormat;
-			const name = entry.key_ptr.*;
+			const index = entry.value_ptr.as(?usize, null) orelse return error.InvalidPaletteFormat;
+			// We can't use initFromString here because we have to support legacy palettes which might contain IDs not conforming to the ID rules.
+			const id = ID.initFromSanitizedString(main.stackAllocator, entry.key_ptr.*);
 
-			if(numericId >= translationPalette.len) {
-				std.log.err("ID {} ('{s}') out of range. This can be caused by palette having missing block IDs.", .{numericId, name});
+			if(index >= translationPalette.len) {
+				std.log.err("ID {} ('{s}') out of range. This can be caused by palette having missing block IDs.", .{index, id.string});
 				return error.SparsePaletteNotAllowed;
 			}
-			translationPalette[numericId] = name;
+			translationPalette[index] = id;
 		}
 
 		const self = allocator.create(Palette);
@@ -911,24 +929,23 @@ pub const Palette = struct { // MARK: Palette
 		};
 		errdefer self.deinit();
 
-		for(translationPalette) |val| {
-			self.palette.appendAssumeCapacity(allocator.dupe(u8, val orelse return error.MissingKeyInPalette));
-			std.log.info("palette[{}]: {s}", .{self.palette.items.len, val.?});
+		for(translationPalette) |id| {
+			self.palette.appendAssumeCapacity((id orelse return error.MissingKeyInPalette).clone(allocator));
+			std.log.info("palette[{}]: {s}", .{self.palette.items.len, id.?.string});
 		}
 		return self;
 	}
 
 	pub fn deinit(self: *Palette) void {
 		for(self.palette.items) |item| {
-			self.palette.allocator.free(item);
+			item.deinit(self.palette.allocator);
 		}
-		const allocator = self.palette.allocator;
 		self.palette.deinit();
-		allocator.destroy(self);
+		self.palette.allocator.destroy(self);
 	}
 
-	pub fn add(self: *Palette, id: []const u8) void {
-		self.palette.append(self.palette.allocator.dupe(u8, id));
+	pub fn add(self: *Palette, id: ID) void {
+		self.palette.append(id.clone(self.palette.allocator));
 	}
 
 	pub fn storeToZon(self: *Palette, allocator: NeverFailingAllocator) ZonElement {
@@ -937,7 +954,7 @@ pub const Palette = struct { // MARK: Palette
 		zon.array.ensureCapacity(self.palette.items.len);
 
 		for(self.palette.items) |item| {
-			zon.append(item);
+			zon.append(item.string);
 		}
 		return zon;
 	}
@@ -946,9 +963,9 @@ pub const Palette = struct { // MARK: Palette
 		return self.palette.items.len;
 	}
 
-	pub fn replaceEntry(self: *Palette, entryIndex: usize, newEntry: []const u8) void {
-		self.palette.allocator.free(self.palette.items[entryIndex]);
-		self.palette.items[entryIndex] = self.palette.allocator.dupe(u8, newEntry);
+	pub fn replaceEntry(self: *Palette, entryIndex: usize, newId: ID) void {
+		self.palette.items[entryIndex].deinit(self.palette.allocator);
+		self.palette.items[entryIndex] = newId.clone(self.palette.allocator);
 	}
 };
 
@@ -983,77 +1000,77 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 
 	// Blocks:
 	// First blocks from the palette to enforce ID values.
-	for(blockPalette.palette.items) |stringId| {
-		try registerBlock(assetFolder, stringId, worldAssets.blocks.get(stringId) orelse .null);
+	for(blockPalette.palette.items) |id| {
+		try registerBlock(assetFolder, id, worldAssets.blocks.get(id) orelse .null);
 	}
 
 	// Then all the blocks that were missing in palette but are present in the game.
 	var iterator = worldAssets.blocks.iterator();
 	while(iterator.next()) |entry| {
-		const stringId = entry.key_ptr.*;
+		const id = entry.key_ptr.*;
 		const zon = entry.value_ptr.*;
 
-		if(blocks_zig.hasRegistered(stringId)) continue;
+		if(blocks_zig.hasRegistered(id)) continue;
 
-		try registerBlock(assetFolder, stringId, zon);
-		blockPalette.add(stringId);
+		try registerBlock(assetFolder, id, zon);
+		blockPalette.add(id);
 	}
 
 	// Items:
 	// First from the palette to enforce ID values.
-	for(itemPalette.palette.items) |stringId| {
-		std.debug.assert(!items_zig.hasRegistered(stringId));
+	for(itemPalette.palette.items) |id| {
+		std.debug.assert(!items_zig.hasRegistered(id));
 
 		// Some items are created automatically from blocks.
-		if(worldAssets.blocks.get(stringId)) |zon| {
+		if(worldAssets.blocks.get(id)) |zon| {
 			if(!zon.get(bool, "hasItem", true)) continue;
-			try registerItem(assetFolder, stringId, zon.getChild("item"));
-			if(worldAssets.items.get(stringId) != null) {
-				std.log.err("Item {s} appears as standalone item and as block item.", .{stringId});
+			try registerItem(assetFolder, id, zon.getChild("item"));
+			if(worldAssets.items.get(id) != null) {
+				std.log.err("Item {s} appears as standalone item and as block item.", .{id.string});
 			}
 			continue;
 		}
 		// Items not related to blocks should appear in items hash map.
-		if(worldAssets.items.get(stringId)) |zon| {
-			try registerItem(assetFolder, stringId, zon);
+		if(worldAssets.items.get(id)) |zon| {
+			try registerItem(assetFolder, id, zon);
 			continue;
 		}
-		std.log.err("Missing item: {s}. Replacing it with default item.", .{stringId});
-		try registerItem(assetFolder, stringId, .null);
+		std.log.err("Missing item: {s}. Replacing it with default item.", .{id.string});
+		try registerItem(assetFolder, id, .null);
 	}
 
 	// Then missing block-items to keep backwards compatibility of ID order.
-	for(blockPalette.palette.items) |stringId| {
-		const zon = worldAssets.blocks.get(stringId) orelse .null;
+	for(blockPalette.palette.items) |id| {
+		const zon = worldAssets.blocks.get(id) orelse .null;
 
 		if(!zon.get(bool, "hasItem", true)) continue;
-		if(items_zig.hasRegistered(stringId)) continue;
+		if(items_zig.hasRegistered(id)) continue;
 
-		try registerItem(assetFolder, stringId, zon.getChild("item"));
-		itemPalette.add(stringId);
+		try registerItem(assetFolder, id, zon.getChild("item"));
+		itemPalette.add(id);
 	}
 
 	// And finally normal items.
 	iterator = worldAssets.items.iterator();
 	while(iterator.next()) |entry| {
-		const stringId = entry.key_ptr.*;
+		const id = entry.key_ptr.*;
 		const zon = entry.value_ptr.*;
 
-		if(items_zig.hasRegistered(stringId)) continue;
+		if(items_zig.hasRegistered(id)) continue;
 		std.debug.assert(zon != .null);
 
-		try registerItem(assetFolder, stringId, zon);
-		itemPalette.add(stringId);
+		try registerItem(assetFolder, id, zon);
+		itemPalette.add(id);
 	}
 
 	// After we have registered all items and all blocks, we can assign block references to those that come from blocks.
-	for(blockPalette.palette.items) |stringId| {
-		const zon = worldAssets.blocks.get(stringId) orelse .null;
+	for(blockPalette.palette.items) |id| {
+		const zon = worldAssets.blocks.get(id) orelse .null;
 
 		if(!zon.get(bool, "hasItem", true)) continue;
-		std.debug.assert(items_zig.hasRegistered(stringId));
+		std.debug.assert(items_zig.hasRegistered(id));
 
-		try assignBlockItem(stringId);
+		try assignBlockItem(id);
 	}
 
 	// tools:

@@ -27,6 +27,7 @@ const Fog = graphics.Fog;
 const renderer = @import("renderer.zig");
 const settings = @import("settings.zig");
 const Block = main.blocks.Block;
+const ID = main.assets.ID;
 
 pub const camera = struct { // MARK: camera
 	pub var rotation: Vec3f = Vec3f{0, 0, 0};
@@ -707,7 +708,7 @@ pub const World = struct { // MARK: World
 
 	pub fn finishHandshake(self: *World, zon: ZonElement) !void {
 		// TODO: Consider using a per-world allocator.
-		self.blockPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("blockPalette"), "cubyz:air");
+		self.blockPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("blockPalette"), ID.Air);
 		errdefer self.blockPalette.deinit();
 		self.biomePalette = try assets.Palette.init(main.globalAllocator, zon.getChild("biomePalette"), null);
 		errdefer self.biomePalette.deinit();

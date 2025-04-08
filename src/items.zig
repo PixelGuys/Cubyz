@@ -15,6 +15,7 @@ const Vec2i = vec.Vec2i;
 const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const ID = main.assets.ID;
 
 const modifierList = @import("tool/modifiers/_list.zig");
 
@@ -756,8 +757,8 @@ pub var itemListSize: u16 = 0;
 
 var recipeList: main.List(Recipe) = undefined;
 
-pub fn hasRegistered(id: []const u8) bool {
-	return reverseIndices.contains(id);
+pub fn hasRegistered(id: ID) bool {
+	return reverseIndices.contains(id.string);
 }
 
 pub fn toolTypeIterator() std.StringHashMap(ToolType).ValueIterator {
@@ -793,15 +794,16 @@ pub fn globalInit() void {
 	Inventory.Sync.ClientSide.init();
 }
 
-pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, zon: ZonElement) *BaseItem {
-	std.log.info("{s}", .{id});
-	if(reverseIndices.contains(id)) {
-		std.log.err("Registered item with id {s} twice!", .{id});
+pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: []const u8, id: ID, zon: ZonElement) *BaseItem {
+	if(reverseIndices.contains(id.string)) {
+		std.log.err("Registered item with id {s} twice!", .{id.string});
 	}
 	const newItem = &itemList[itemListSize];
-	newItem.init(arena.allocator(), texturePath, replacementTexturePath, id, zon);
+	newItem.init(arena.allocator(), texturePath, replacementTexturePath, id.string, zon);
 	reverseIndices.put(newItem.id, newItem) catch unreachable;
 	itemListSize += 1;
+
+	std.log.info("Registered item: {s}", .{id.string});
 	return newItem;
 }
 
@@ -840,10 +842,9 @@ fn loadPixelSources(assetFolder: []const u8, id: []const u8, layerPostfix: []con
 	}
 }
 
-pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
-	std.log.info("Registering tool type {s}", .{id});
-	if(toolTypes.contains(id)) {
-		std.log.err("Registered tool type with id {s} twice!", .{id});
+pub fn registerTool(assetFolder: []const u8, id: ID, zon: ZonElement) void {
+	if(toolTypes.contains(id.string)) {
+		std.log.err("Registered tool type with id {s} twice!", .{id.string});
 	}
 	var slotTypes = std.StringHashMap(SlotInfo).init(main.stackAllocator.allocator);
 	defer slotTypes.deinit();
@@ -875,10 +876,10 @@ pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) vo
 		};
 	}
 	var pixelSources: [16][16]u8 = undefined;
-	loadPixelSources(assetFolder, id, "", &pixelSources);
+	loadPixelSources(assetFolder, id.string, "", &pixelSources);
 	var pixelSourcesOverlay: [16][16]u8 = undefined;
-	loadPixelSources(assetFolder, id, "_overlay", &pixelSourcesOverlay);
-	const idDupe = arena.allocator().dupe(u8, id);
+	loadPixelSources(assetFolder, id.string, "_overlay", &pixelSourcesOverlay);
+	const idDupe = arena.allocator().dupe(u8, id.string);
 	toolTypes.put(idDupe, .{
 		.id = idDupe,
 		.blockTags = main.blocks.BlockTag.loadFromZon(arena.allocator(), zon.getChild("blockTags")),
@@ -886,6 +887,8 @@ pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) vo
 		.pixelSources = pixelSources,
 		.pixelSourcesOverlay = pixelSourcesOverlay,
 	}) catch unreachable;
+
+	std.log.info("Registered tool: {s}", .{id.string});
 }
 
 fn parseRecipeItem(zon: ZonElement) !ItemStack {

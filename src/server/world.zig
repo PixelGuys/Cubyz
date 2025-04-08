@@ -16,6 +16,7 @@ const Vec3i = vec.Vec3i;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const terrain = server.terrain;
+const ID = main.assets.ID;
 
 const server = @import("server.zig");
 const User = server.User;
@@ -514,7 +515,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		errdefer self.wio.deinit();
 
 		const blockPaletteZon = files.readToZon(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/palette.zig.zon", .{name})) catch .null;
-		self.blockPalette = try main.assets.Palette.init(main.globalAllocator, blockPaletteZon, "cubyz:air");
+		self.blockPalette = try main.assets.Palette.init(main.globalAllocator, blockPaletteZon, ID.Air);
 		errdefer self.blockPalette.deinit();
 		std.log.info("Loaded save block palette with {} blocks.", .{self.blockPalette.size()});
 

@@ -9,6 +9,7 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const vec = @import("main.vec");
 const Vec3f = main.vec.Vec3f;
 const Vec3d = main.vec.Vec3d;
+const ID = main.assets.ID;
 
 pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 	pub const GenerationMode = enum {
@@ -665,11 +666,11 @@ pub fn deinit() void {
 	SimpleStructureModel.modelRegistry.clearAndFree(main.globalAllocator.allocator);
 }
 
-pub fn register(id: []const u8, paletteId: u32, zon: ZonElement) void {
-	std.log.debug("Registered biome: {s}", .{id});
+pub fn register(id: ID, index: u32, zon: ZonElement) void {
+	std.log.debug("Registered biome: {s}", .{id.string});
 	std.debug.assert(!finishedLoading);
 	var biome: Biome = undefined;
-	biome.init(id, paletteId, zon);
+	biome.init(id.string, index, zon);
 	if(biome.isCave) {
 		caveBiomes.append(biome);
 	} else {
@@ -745,14 +746,14 @@ pub fn finishLoading() void {
 	unfinishedTransitionBiomes.clearAndFree(main.globalAllocator.allocator);
 }
 
-pub fn hasRegistered(id: []const u8) bool {
+pub fn hasRegistered(id: ID) bool {
 	for(biomes.items) |*biome| {
-		if(std.mem.eql(u8, biome.id, id)) {
+		if(std.mem.eql(u8, biome.id, id.string)) {
 			return true;
 		}
 	}
 	for(caveBiomes.items) |*biome| {
-		if(std.mem.eql(u8, biome.id, id)) {
+		if(std.mem.eql(u8, biome.id, id.string)) {
 			return true;
 		}
 	}

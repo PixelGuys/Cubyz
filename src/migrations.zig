@@ -4,12 +4,13 @@ const main = @import("main");
 const ZonElement = @import("zon.zig").ZonElement;
 const Palette = @import("assets.zig").Palette;
 const Assets = main.assets.Assets;
+const ID = main.assets.ID;
 
 var arenaAllocator = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
 const migrationAllocator = arenaAllocator.allocator();
 
-var blockMigrations: std.StringHashMap([]const u8) = .init(migrationAllocator.allocator);
-var biomeMigrations: std.StringHashMap([]const u8) = .init(migrationAllocator.allocator);
+var blockMigrations: ID.IdToIdMap = .{};
+var biomeMigrations:  ID.IdToIdMap = .{};
 
 const MigrationType = enum {
 	block,
@@ -30,7 +31,7 @@ pub fn registerAll(comptime typ: MigrationType, migrations: *Assets.AddonNameToZ
 
 fn register(
 	comptime typ: MigrationType,
-	collection: *std.StringHashMap([]const u8),
+	collection: * ID.IdToIdMap,
 	addonName: []const u8,
 	migrationZon: ZonElement,
 ) void {
@@ -63,22 +64,25 @@ fn register(
 			std.log.err("Skipping identity migration in {s} migrations: '{s}:{s}' -> '{s}:{s}'", .{@tagName(typ), addonName, oldZon, addonName, newZon});
 			continue;
 		}
-
-		const oldAssetId = std.fmt.allocPrint(migrationAllocator.allocator, "{s}:{s}", .{addonName, oldZon}) catch unreachable;
-		const result = collection.getOrPut(oldAssetId) catch unreachable;
+		// We must allow for migrating IDs that do not conform to the ID rules to ones that do.
+		const oldId = ID.initFromSanitizedComponents(migrationAllocator, addonName, oldZon, "");
+		const result = collection.getOrPut(migrationAllocator.allocator, oldId) catch unreachable;
 
 		if(result.found_existing) {
-			std.log.err("Skipping name collision in {s} migration: '{s}' -> '{s}:{s}'", .{@tagName(typ), oldAssetId, addonName, newZon});
-			const existingMigration = collection.get(oldAssetId) orelse unreachable;
-			std.log.err("Already mapped to '{s}'", .{existingMigration});
+			std.log.err("Skipping name collision in {s} migration: '{s}' -> '{s}:{s}'", .{@tagName(typ), oldId.string, addonName, newZon});
+			const existingMigration = collection.get(oldId) orelse unreachable;
+			std.log.err("Already mapped to '{s}'", .{existingMigration.string});
 
-			migrationAllocator.free(oldAssetId);
+			oldId.deinit(migrationAllocator);
 		} else {
-			const newAssetId = std.fmt.allocPrint(migrationAllocator.allocator, "{s}:{s}", .{addonName, newZon}) catch unreachable;
+			const newId = ID.initFromComponents(migrationAllocator, addonName, newZon, "")  catch |err| {
+				std.log.err("Skipping {s} migration: '{s}' -> '{s}:{s}' as new ID does not conform to ID rules. ({s})", .{@tagName(typ), oldId.string, addonName, newZon, @errorName(err)});
+				continue;
+			};
 
-			result.key_ptr.* = oldAssetId;
-			result.value_ptr.* = newAssetId;
-			std.log.info("Registered {s} migration: '{s}' -> '{s}'", .{@tagName(typ), oldAssetId, newAssetId});
+			result.key_ptr.* = oldId;
+			result.value_ptr.* = newId;
+			std.log.info("Registered {s} migration: '{s}' -> '{s}'", .{@tagName(typ), oldId.string, newId.string});
 		}
 	}
 }
@@ -90,16 +94,16 @@ pub fn apply(comptime typ: MigrationType, palette: *Palette) void {
 	};
 	std.log.info("Applying {} migrations to {s} palette", .{migrations.count(), @tagName(typ)});
 
-	for(palette.palette.items, 0..) |assetName, i| {
-		const newAssetName = migrations.get(assetName) orelse continue;
-		std.log.info("Migrating {s} {s} -> {s}", .{@tagName(typ), assetName, newAssetName});
-		palette.replaceEntry(i, newAssetName);
+	for(palette.palette.items, 0..) |oldId, i| {
+		const newId = migrations.get(oldId) orelse continue;
+		std.log.info("Migrating {s} {s} -> {s}", .{@tagName(typ), oldId.string, newId.string});
+		palette.replaceEntry(i, newId);
 	}
 }
 
 pub fn reset() void {
-	blockMigrations.clearAndFree();
-	biomeMigrations.clearAndFree();
+	blockMigrations.clearAndFree(migrationAllocator.allocator);
+	biomeMigrations.clearAndFree(migrationAllocator.allocator);
 	_ = arenaAllocator.reset(.free_all);
 }
 
