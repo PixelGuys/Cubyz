@@ -801,9 +801,10 @@ pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: 
 	const newItem = &itemList[itemListSize];
 	newItem.init(arena.allocator(), texturePath, replacementTexturePath, id.string, zon);
 	reverseIndices.put(newItem.id, newItem) catch unreachable;
-	itemListSize += 1;
 
-	std.log.info("Registered item: {s}", .{id.string});
+	std.log.debug("Registered item: {d: >5} '{s}'", .{itemListSize, id.string});
+
+	itemListSize += 1;
 	return newItem;
 }
 
@@ -888,7 +889,7 @@ pub fn registerTool(assetFolder: []const u8, id: ID, zon: ZonElement) void {
 		.pixelSourcesOverlay = pixelSourcesOverlay,
 	}) catch unreachable;
 
-	std.log.info("Registered tool: {s}", .{id.string});
+	std.log.debug("Registered tool: '{s}'", .{id.string});
 }
 
 fn parseRecipeItem(zon: ZonElement) !ItemStack {

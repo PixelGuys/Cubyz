@@ -185,9 +185,9 @@ pub fn register(_: []const u8, id: ID, zon: ZonElement) u16 {
 		});
 	}
 
-	size += 1;
+	std.log.debug("Registered block: {d: >5} '{s}'", .{size, id.string});
 
-	std.log.info("Registered block: {s}", .{id.string});
+	size += 1;
 	return @intCast(size - 1);
 }
 

@@ -667,14 +667,17 @@ pub fn deinit() void {
 }
 
 pub fn register(id: ID, index: u32, zon: ZonElement) void {
-	std.log.debug("Registered biome: {s}", .{id.string});
 	std.debug.assert(!finishedLoading);
+
 	var biome: Biome = undefined;
 	biome.init(id.string, index, zon);
+
 	if(biome.isCave) {
 		caveBiomes.append(biome);
+		std.log.debug("Registered cave biome: {d: >5} '{s}'", .{index, id.string});
 	} else {
 		biomes.append(biome);
+		std.log.debug("Registered surface biome: {d: >5} '{s}'", .{index, id.string});
 	}
 }
 
