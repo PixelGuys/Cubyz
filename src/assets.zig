@@ -24,11 +24,11 @@ pub const Assets = struct {
 	pub const AddonNameToZonMap = std.StringHashMapUnmanaged(ZonElement);
 
 	blocks: ZonHashMap,
-	blockMigrations: ZonHashMap,
+	blockMigrations: AddonNameToZonMap,
 	items: ZonHashMap,
 	tools: ZonHashMap,
 	biomes: ZonHashMap,
-	biomeMigrations: ZonHashMap,
+	biomeMigrations: AddonNameToZonMap,
 	recipes: ZonHashMap,
 	models: RawHashMap,
 	structureBuildingBlocks: ZonHashMap,
@@ -190,7 +190,7 @@ pub const Assets = struct {
 			sbb,
 		};
 
-		pub fn readAllZon(addon: Addon, allocator: NeverFailingAllocator, assetType: ZonAssets, hasDefaults: bool, output: *ZonHashMap, migrations: ?*ZonHashMap) void {
+		pub fn readAllZon(addon: Addon, allocator: NeverFailingAllocator, assetType: ZonAssets, hasDefaults: bool, output: *ZonHashMap, migrations: ?*AddonNameToZonMap) void {
 			const subPath = @tagName(assetType);
 			var assetsDirectory = addon.dir.openDir(subPath, .{.iterate = true}) catch |err| {
 				if(err != error.FileNotFound) {
