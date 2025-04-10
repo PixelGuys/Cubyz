@@ -721,12 +721,12 @@ pub const Skybox = struct {
 			const posB = vec.xyz(mat.mulVec(.{triVertB[0], triVertB[1], triVertB[2], 1.0}));
 			const posC = vec.xyz(mat.mulVec(.{triVertC[0], triVertC[1], triVertC[2], 1.0}));
 
-			starData[i*20..][0..3].* = posA;
-			starData[i*20 + 4..][0..3].* = posB;
-			starData[i*20 + 8..][0..3].* = posC;
+			starData[i*20 ..][0..3].* = posA;
+			starData[i*20 + 4 ..][0..3].* = posB;
+			starData[i*20 + 8 ..][0..3].* = posC;
 
-			starData[i*20 + 12..][0..3].* = pos;
-			starData[i*20 + 16..][0..3].* = col;
+			starData[i*20 + 12 ..][0..3].* = pos;
+			starData[i*20 + 16 ..][0..3].* = col;
 		}
 
 		starSsbo = graphics.SSBO.initStatic(f32, &starData);
