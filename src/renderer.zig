@@ -651,7 +651,7 @@ pub const Skybox = struct {
 	}
 
 	fn getStarColor(temperature: f32, light: f32, image: graphics.Image) Vec3f {
-		const rgbCol = image.getRGB(@intFromFloat(std.math.clamp(temperature / 15000.0 * @as(f32, @floatFromInt(image.width)), 0.0, @as(f32, @floatFromInt(image.width - 1)))), 0);
+		const rgbCol = image.getRGB(@intFromFloat(std.math.clamp(temperature/15000.0*@as(f32, @floatFromInt(image.width)), 0.0, @as(f32, @floatFromInt(image.width - 1)))), 0);
 		var rgb: Vec3f = @floatFromInt(Vec3i{rgbCol.r, rgbCol.g, rgbCol.b});
 		rgb /= @splat(255.0);
 
@@ -722,11 +722,11 @@ pub const Skybox = struct {
 			const posC = vec.xyz(mat.mulVec(.{triVertC[0], triVertC[1], triVertC[2], 1.0}));
 
 			starData[i*20..][0..3].* = posA;
-			starData[i*20+4..][0..3].* = posB;
-			starData[i*20+8..][0..3].* = posC;
+			starData[i*20 + 4..][0..3].* = posB;
+			starData[i*20 + 8..][0..3].* = posC;
 
-			starData[i*20+12..][0..3].* = pos;
-			starData[i*20+16..][0..3].* = col;
+			starData[i*20 + 12..][0..3].* = pos;
+			starData[i*20 + 16..][0..3].* = col;
 		}
 
 		starSsbo = graphics.SSBO.initStatic(f32, &starData);
