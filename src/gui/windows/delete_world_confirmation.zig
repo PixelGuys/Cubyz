@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const Vec2f = main.vec.Vec2f;
 
 const gui = @import("../gui.zig");
@@ -17,6 +17,10 @@ pub var window = GuiWindow{
 const padding: f32 = 8;
 
 var deleteWorldName: []const u8 = "";
+
+pub fn init() void {
+	deleteWorldName = "";
+}
 
 pub fn deinit() void {
 	main.globalAllocator.free(deleteWorldName);

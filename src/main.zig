@@ -1,13 +1,15 @@
 const std = @import("std");
 
-pub const gui = @import("gui");
-pub const server = @import("server");
+pub const gui = @import("gui/gui.zig");
+pub const server = @import("server/server.zig");
 
 pub const audio = @import("audio.zig");
 pub const assets = @import("assets.zig");
 pub const blocks = @import("blocks.zig");
+pub const blueprint = @import("blueprint.zig");
 pub const chunk = @import("chunk.zig");
 pub const entity = @import("entity.zig");
+pub const entity_data = @import("entity_data.zig");
 pub const files = @import("files.zig");
 pub const game = @import("game.zig");
 pub const graphics = @import("graphics.zig");
@@ -31,7 +33,7 @@ pub const heap = @import("utils/heap.zig");
 
 pub const List = @import("utils/list.zig").List;
 pub const ListUnmanaged = @import("utils/list.zig").ListUnmanaged;
-pub const VirtualList = @import("utils/list.zig").VirtualList;
+pub const MultiArray = @import("utils/list.zig").MultiArray;
 
 const file_monitor = utils.file_monitor;
 
@@ -40,10 +42,21 @@ const Vec3d = vec.Vec3d;
 
 pub threadlocal var stackAllocator: heap.NeverFailingAllocator = undefined;
 pub threadlocal var seed: u64 = undefined;
+threadlocal var stackAllocatorBase: heap.StackAllocator = undefined;
 var global_gpa = std.heap.GeneralPurposeAllocator(.{.thread_safe = true}){};
 var handled_gpa = heap.ErrorHandlingAllocator.init(global_gpa.allocator());
 pub const globalAllocator: heap.NeverFailingAllocator = handled_gpa.allocator();
 pub var threadPool: *utils.ThreadPool = undefined;
+
+pub fn initThreadLocals() void {
+	seed = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp())));
+	stackAllocatorBase = heap.StackAllocator.init(globalAllocator, 1 << 23);
+	stackAllocator = stackAllocatorBase.allocator();
+}
+
+pub fn deinitThreadLocals() void {
+	stackAllocatorBase.deinit();
+}
 
 fn cacheStringImpl(comptime len: usize, comptime str: [len]u8) []const u8 {
 	return str[0..len];
@@ -294,10 +307,16 @@ fn openCommand() void {
 }
 fn takeBackgroundImageFn() void {
 	if(game.world == null) return;
+	const showItem = itemdrop.ItemDisplayManager.showItem;
+	itemdrop.ItemDisplayManager.showItem = false;
 	renderer.MenuBackGround.takeBackgroundImage();
+	itemdrop.ItemDisplayManager.showItem = showItem;
 }
 fn toggleHideGui() void {
 	gui.hideGui = !gui.hideGui;
+}
+fn toggleHideDisplayItem() void {
+	itemdrop.ItemDisplayManager.showItem = !itemdrop.ItemDisplayManager.showItem;
 }
 fn toggleDebugOverlay() void {
 	gui.toggleWindow("debug");
@@ -403,6 +422,7 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "cameraDown", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_Y, .positive = true}},
 		// debug:
 		.{.name = "hideMenu", .key = c.GLFW_KEY_F1, .pressAction = &toggleHideGui},
+		.{.name = "hideDisplayItem", .key = c.GLFW_KEY_F2, .pressAction = &toggleHideDisplayItem},
 		.{.name = "debugOverlay", .key = c.GLFW_KEY_F3, .pressAction = &toggleDebugOverlay},
 		.{.name = "performanceOverlay", .key = c.GLFW_KEY_F4, .pressAction = &togglePerformanceOverlay},
 		.{.name = "gpuPerformanceOverlay", .key = c.GLFW_KEY_F5, .pressAction = &toggleGPUPerformanceOverlay},
@@ -520,13 +540,11 @@ pub fn convertJsonToZon(jsonPath: []const u8) void { // TODO: Remove after #480
 }
 
 pub fn main() void { // MARK: main()
-	seed = @bitCast(std.time.milliTimestamp());
 	defer if(global_gpa.deinit() == .leak) {
 		std.log.err("Memory leak", .{});
 	};
-	var sta = heap.StackAllocator.init(globalAllocator, 1 << 23);
-	defer sta.deinit();
-	stackAllocator = sta.allocator();
+	initThreadLocals();
+	defer deinitThreadLocals();
 
 	initLogging();
 	defer deinitLogging();
@@ -584,6 +602,9 @@ pub fn main() void { // MARK: main()
 
 	rotation.init();
 	defer rotation.deinit();
+
+	entity_data.init();
+	defer entity_data.deinit();
 
 	blocks.TouchFunctions.init();
 	defer blocks.TouchFunctions.deinit();
@@ -682,7 +703,7 @@ pub fn main() void { // MARK: main()
 		if(!isHidden) {
 			c.glEnable(c.GL_CULL_FACE);
 			c.glEnable(c.GL_DEPTH_TEST);
-			renderer.render(game.Player.getEyePosBlocking());
+			renderer.render(game.Player.getEyePosBlocking(), deltaTime);
 			// Render the GUI
 			gui.windowlist.gpu_performance_measuring.startQuery(.gui);
 			c.glDisable(c.GL_CULL_FACE);
@@ -708,7 +729,26 @@ pub fn main() void { // MARK: main()
 	}
 }
 
+/// std.testing.refAllDeclsRecursive, but ignores C imports (by name)
+pub fn refAllDeclsRecursiveExceptCImports(comptime T: type) void {
+	if(!@import("builtin").is_test) return;
+	inline for(comptime std.meta.declarations(T)) |decl| blk: {
+		if(comptime std.mem.eql(u8, decl.name, "c")) continue;
+		if(comptime std.mem.eql(u8, decl.name, "hbft")) break :blk;
+		if(comptime std.mem.eql(u8, decl.name, "stb_image")) break :blk;
+		if(@TypeOf(@field(T, decl.name)) == type) {
+			switch(@typeInfo(@field(T, decl.name))) {
+				.@"struct", .@"enum", .@"union", .@"opaque" => refAllDeclsRecursiveExceptCImports(@field(T, decl.name)),
+				else => {},
+			}
+		}
+		_ = &@field(T, decl.name);
+	}
+}
+
 test "abc" {
+	@setEvalBranchQuota(1000000);
+	refAllDeclsRecursiveExceptCImports(@This());
 	_ = @import("json.zig");
 	_ = @import("zon.zig");
 }

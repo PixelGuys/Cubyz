@@ -1,7 +1,7 @@
 const std = @import("std");
 const Atomic = std.atomic.Value;
 
-const main = @import("root");
+const main = @import("main");
 const ServerChunk = main.chunk.ServerChunk;
 const ChunkPosition = main.chunk.ChunkPosition;
 const Cache = main.utils.Cache;
@@ -14,11 +14,11 @@ const terrain = @import("terrain.zig");
 const TerrainGenerationProfile = terrain.TerrainGenerationProfile;
 
 const StructureInternal = struct {
-	generateFn: *const fn(self: *const anyopaque, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView) void,
+	generateFn: *const fn(self: *const anyopaque, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView) void,
 	data: *const anyopaque,
 
-	pub fn generate(self: StructureInternal, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView) void {
-		self.generateFn(self.data, chunk, caveMap);
+	pub fn generate(self: StructureInternal, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView) void {
+		self.generateFn(self.data, chunk, caveMap, biomeMap);
 	}
 };
 
@@ -106,10 +106,10 @@ pub const StructureMapFragment = struct {
 		}
 	}
 
-	pub fn generateStructuresInChunk(self: *const StructureMapFragment, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView) void {
+	pub fn generateStructuresInChunk(self: *const StructureMapFragment, chunk: *ServerChunk, caveMap: terrain.CaveMap.CaveMapView, biomeMap: terrain.CaveBiomeMap.CaveBiomeMapView) void {
 		const index = self.getIndex(chunk.super.pos.wx - self.pos.wx, chunk.super.pos.wy - self.pos.wy, chunk.super.pos.wz - self.pos.wz);
 		for(self.data[index]) |structure| {
-			structure.generate(chunk, caveMap);
+			structure.generate(chunk, caveMap, biomeMap);
 		}
 	}
 

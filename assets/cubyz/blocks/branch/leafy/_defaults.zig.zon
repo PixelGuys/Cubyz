@@ -1,0 +1,12 @@
+.{
+	.tags = .{.leaf},
+	.blockHealth = 0.5,
+	.absorbedLight = 0x202830,
+	.alwaysViewThrough = true,
+	.rotation = .branch,
+	.model = .{
+		.radius = 4,
+		.shellModel = "cubyz:cube",
+		.textureSlotOffset = 6,
+	},
+}

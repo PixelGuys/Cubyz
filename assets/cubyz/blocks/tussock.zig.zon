@@ -1,0 +1,17 @@
+.{
+	.tags = .{.leaf},
+	.blockHealth = 0.2,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.degradable = true,
+	.viewThrough = true,
+	.absorbedLight = 0x000000,
+	.collide = false,
+	.model = "cubyz:cross",
+	.texture = "cubyz:tussock",
+	.item = .{
+		.texture = "tussock.png",
+	},
+	.lodReplacement = "cubyz:air",
+}

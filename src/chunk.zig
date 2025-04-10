@@ -2,7 +2,7 @@ const std = @import("std");
 
 const blocks = @import("blocks.zig");
 const Block = blocks.Block;
-const main = @import("main.zig");
+const main = @import("main");
 const settings = @import("settings.zig");
 const vec = @import("vec.zig");
 const Inventory = main.items.Inventory;
@@ -49,6 +49,26 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 	pub fn relPos(self: Neighbor) Vec3i {
 		return .{self.relX(), self.relY(), self.relZ()};
 	}
+
+	pub fn fromRelPos(pos: Vec3i) ?Neighbor {
+		if(@reduce(.Add, @abs(pos)) != 1) {
+			return null;
+		}
+		return switch(pos[0]) {
+			1 => return .dirPosX,
+			-1 => return .dirNegX,
+			else => switch(pos[1]) {
+				1 => return .dirPosY,
+				-1 => return .dirNegY,
+				else => switch(pos[2]) {
+					1 => return .dirUp,
+					-1 => return .dirDown,
+					else => return null,
+				},
+			},
+		};
+	}
+
 	/// Index to bitMask for bitmap direction data
 	pub inline fn bitMask(self: Neighbor) u6 {
 		return @as(u6, 1) << @intFromEnum(self);
@@ -110,6 +130,12 @@ pub const Neighbor = enum(u3) { // MARK: Neighbor
 			},
 		}
 	}
+
+	// Returns the neighbor that is rotated by 90 degrees counterclockwise around the z axis.
+	pub inline fn rotateZ(self: Neighbor) Neighbor {
+		const arr = [_]Neighbor{.dirUp, .dirDown, .dirPosY, .dirNegY, .dirNegX, .dirPosX};
+		return arr[@intFromEnum(self)];
+	}
 };
 
 /// Gets the index of a given position inside this chunk.
@@ -148,6 +174,11 @@ pub const ChunkPosition = struct { // MARK: ChunkPosition
 	wy: i32,
 	wz: i32,
 	voxelSize: u31,
+
+	pub fn initFromWorldPos(pos: Vec3i, voxelSize: u31) ChunkPosition {
+		const mask = ~@as(i32, voxelSize*chunkSize - 1);
+		return .{.wx = pos[0] & mask, .wy = pos[1] & mask, .wz = pos[2] & mask, .voxelSize = voxelSize};
+	}
 
 	pub fn hashCode(self: ChunkPosition) u32 {
 		const shift: u5 = @truncate(@min(@ctz(self.wx), @ctz(self.wy), @ctz(self.wz)));
@@ -225,6 +256,9 @@ pub const Chunk = struct { // MARK: Chunk
 	voxelSizeMask: i32,
 	widthShift: u5,
 
+	blockPosToEntityDataMap: std.AutoHashMapUnmanaged(u32, u32),
+	blockPosToEntityDataMapMutex: std.Thread.Mutex,
+
 	pub fn init(pos: ChunkPosition) *Chunk {
 		const self = memoryPool.create();
 		std.debug.assert((pos.voxelSize - 1 & pos.voxelSize) == 0);
@@ -236,12 +270,17 @@ pub const Chunk = struct { // MARK: Chunk
 			.voxelSizeShift = voxelSizeShift,
 			.voxelSizeMask = pos.voxelSize - 1,
 			.widthShift = voxelSizeShift + chunkShift,
+			.blockPosToEntityDataMap = .{},
+			.blockPosToEntityDataMapMutex = .{},
 		};
 		self.data.init();
 		return self;
 	}
 
 	pub fn deinit(self: *Chunk) void {
+		// TODO: We should either unload this data here or make sure it was unloaded before.
+		std.debug.assert(self.blockPosToEntityDataMap.count() == 0);
+		self.blockPosToEntityDataMap.deinit(main.globalAllocator.allocator);
 		self.data.deinit();
 		memoryPool.destroy(@alignCast(self));
 	}
@@ -254,6 +293,14 @@ pub const Chunk = struct { // MARK: Chunk
 		const z = _z >> self.voxelSizeShift;
 		const index = getIndex(x, y, z);
 		return self.data.getValue(index);
+	}
+
+	pub fn getLocalBlockIndex(self: *const Chunk, worldPos: Vec3i) u32 {
+		return getIndex(
+			(worldPos[0] - self.pos.wx) >> self.voxelSizeShift,
+			(worldPos[1] - self.pos.wy) >> self.voxelSizeShift,
+			(worldPos[2] - self.pos.wz) >> self.voxelSizeShift,
+		);
 	}
 };
 
@@ -281,6 +328,8 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 				.voxelSizeShift = voxelSizeShift,
 				.voxelSizeMask = pos.voxelSize - 1,
 				.widthShift = voxelSizeShift + chunkShift,
+				.blockPosToEntityDataMap = .{},
+				.blockPosToEntityDataMapMutex = .{},
 			},
 			.refCount = .init(1),
 		};

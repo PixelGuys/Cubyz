@@ -6,8 +6,15 @@
 	},
 	.absorbedLight = 0x202830,
 	.rotation = .branch,
-	.model = "cubyz:branch",
-	.texture = "cubyz:mahogany_log",
+	.model = .{
+		.radius = 4,
+	},
+	.texture0 = "cubyz:branch/mahogany/dot",
+	.texture1 = "cubyz:branch/mahogany/half_line",
+	.texture2 = "cubyz:branch/mahogany/line",
+	.texture3 = "cubyz:branch/mahogany/bend",
+	.texture4 = "cubyz:branch/mahogany/intersection",
+	.texture5 = "cubyz:branch/mahogany/cross",
 	.item = .{
 		.material = .{
 			.density = 0.5,
