@@ -770,38 +770,10 @@ pub const Command = struct { // MARK: Command
 	fn do(self: *Command, allocator: NeverFailingAllocator, side: Side, user: ?*main.server.User, gamemode: main.game.Gamemode) error{serverFailure}!void { // MARK: do()
 		std.debug.assert(self.baseOperations.items.len == 0); // do called twice without cleaning up
 
-		var invs: main.List(Inventory) = .init(main.stackAllocator);
-		defer invs.deinit();
-
-		switch(self.payload) {
-			.addHealth => {},
-			inline .open, .close, .clear => |val| {
-				invs.append(val.inv);
-			},
-			inline .drop, .updateBlock => |val| {
-				invs.append(val.source.inv);
-			},
-			.fillFromCreative => |val| {
-				invs.append(val.dest.inv);
-			},
-			.depositOrDrop => |val| {
-				invs.append(val.source);
-				invs.append(val.dest);
-			},
-			inline else => |val| {
-				invs.append(val.source.inv);
-				invs.append(val.dest.inv);
-			},
-		}
-
 		switch(self.payload) {
 			inline else => |payload| {
 				try payload.run(allocator, self, side, user, gamemode);
 			},
-		}
-
-		for(invs.items) |inv| {
-			if(inv.type == .blockInventory) {}
 		}
 	}
 

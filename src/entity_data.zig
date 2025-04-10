@@ -176,13 +176,13 @@ pub const EntityDataClasses = struct {
 		const StorageServer = BlockEntityDataStorage(
 			.server,
 			struct {
-				contents: u64,
+				inventoryId: u64,
 			},
 		);
 		const StorageClient = BlockEntityDataStorage(
 			.client,
 			struct {
-				contents: u64,
+				inventoryId: u64,
 			},
 		);
 
@@ -233,6 +233,8 @@ pub const EntityDataClasses = struct {
 			defer StorageClient.mutex.unlock();
 			const data = StorageClient.get(pos, chunk);
 			if(data == null) std.log.debug("Chest.onInteract: null", .{}) else std.log.debug("Chest.onInteract: {}", .{data.?.contents});
+			
+			main.gui.openWindow("chest");
 
 			return .handled;
 		}

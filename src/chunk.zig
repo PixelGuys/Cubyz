@@ -307,8 +307,6 @@ pub const Chunk = struct { // MARK: Chunk
 pub const ServerChunk = struct { // MARK: ServerChunk
 	super: Chunk,
 
-	inventories: std.AutoHashMap(Vec3i, *Inventory.Sync.ServerSide.ServerInventory) = undefined,
-
 	wasChanged: bool = false,
 	generated: bool = false,
 	wasStored: bool = false,
