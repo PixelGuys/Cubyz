@@ -46,8 +46,6 @@ pub fn onOpen() void {
 	openInventory = main.items.Inventory.init(main.globalAllocator, block.inventorySize().?, .{.blockInventory = blockPos}, .{.blockInventory = blockPos});
 
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 0);
-	// Some miscellanious slots and buttons:
-	// TODO: armor slots, backpack slot + stack-based backpack inventory, other items maybe?
 	for(0..1) |y| {
 		const row = HorizontalList.init();
 		for(0..10) |x| {

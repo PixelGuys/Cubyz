@@ -234,9 +234,7 @@ pub const EntityDataClasses = struct {
 			const data = StorageClient.get(pos, chunk);
 			if(data == null) std.log.debug("Chest.onInteract: null", .{}) else std.log.debug("Chest.onInteract: {}", .{data.?.contents});
 			
-			main.gui.openWindow("chest");
-
-			return .handled;
+			return .ignored;
 		}
 	};
 };
