@@ -47,6 +47,7 @@ fn renderConnectionData(conn: *main.network.Connection, y: *f32) void {
 }
 
 pub fn render() void {
+	if(true) return; // TODO: Add network info for the new protocol
 	draw.setColor(0xffffffff);
 	var y: f32 = 0;
 	if(main.game.world != null) {

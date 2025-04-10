@@ -319,6 +319,80 @@ pub fn Array3D(comptime T: type) type { // MARK: Array3D
 	};
 }
 
+pub fn FixedSizeCircularBuffer(T: type, size: comptime_int) type { // MARK: FixedSizeCircularBuffer
+	std.debug.assert(size - 1 & size == 0 and size > 0);
+	const mask = size - 1;
+	return struct {
+		const Self = @This();
+		mem: *[size]T = undefined,
+		startIndex: usize = 0,
+		len: usize = 0,
+
+		pub fn init(allocator: NeverFailingAllocator) Self {
+			return .{
+				.mem = allocator.create([size]T),
+			};
+		}
+
+		pub fn deinit(self: Self, allocator: NeverFailingAllocator) void {
+			allocator.destroy(self.mem);
+		}
+
+		pub fn enqueue(self: *Self, elem: T) !void {
+			if(self.len >= size) return error.OutOfMemory;
+			self.mem[self.startIndex + self.len & mask] = elem;
+			self.len += 1;
+		}
+
+		pub fn enqueueSlice(self: *Self, elems: []const T) !void {
+			if(elems.len + self.len > size) {
+				return error.OutOfMemory;
+			}
+			for(elems) |elem| {
+				self.mem[self.startIndex + self.len & mask] = elem;
+				self.len += 1;
+			}
+		}
+
+		pub fn insertSliceAtOffset(self: *Self, elems: []const T, offset: usize) !void {
+			if(offset + elems.len > size) {
+				return error.OutOfMemory;
+			}
+			self.len = offset + elems.len;
+			for(elems, 0..) |elem, i| {
+				self.mem[self.startIndex + offset + i & mask] = elem;
+			}
+		}
+
+		pub fn dequeue(self: *Self) ?T {
+			if(self.len == 0) return null;
+			const result = self.mem[self.startIndex];
+			self.startIndex = (self.startIndex + 1) & mask;
+			self.len -= 1;
+			return result;
+		}
+
+		pub fn dequeueSlice(self: *Self, out: []T) !void {
+			if(out.len > self.len) return error.OutOfBounds;
+			self.len -= out.len;
+			for(out) |*result| {
+				result.* = self.mem[self.startIndex];
+				self.startIndex = (self.startIndex + 1) & mask;
+			}
+		}
+
+		pub fn discardElements(self: *Self, n: usize) void {
+			self.len -= n;
+			self.startIndex = (self.startIndex + n) & mask;
+		}
+
+		pub fn getAtOffset(self: Self, i: usize) ?T {
+			if(i >= self.len) return null;
+			return self.mem[(self.startIndex + i) & mask];
+		}
+	};
+}
+
 pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 	return struct {
 		const Self = @This();
@@ -344,6 +418,10 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 			self.allocator.free(self.mem);
 		}
 
+		pub fn reset(self: *Self) void {
+			self.startIndex = self.endIndex;
+		}
+
 		fn increaseCapacity(self: *Self) void {
 			const newMem = self.allocator.alloc(T, self.mem.len*2);
 			@memcpy(newMem[0..(self.mem.len - self.startIndex)], self.mem[self.startIndex..]);
@@ -360,6 +438,12 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 			self.endIndex = (self.endIndex + 1) & self.mask;
 			if(self.endIndex == self.startIndex) {
 				self.increaseCapacity();
+			}
+		}
+
+		pub fn enqueueSlice(self: *Self, elems: []const T) void {
+			for(elems) |elem| {
+				self.enqueue(elem);
 			}
 		}
 
@@ -384,9 +468,21 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 			return self.mem[self.endIndex];
 		}
 
+		pub fn discard(self: *Self, amount: usize) !void {
+			if(amount > (self.endIndex -% self.startIndex) & self.mask) return error.OutOfBounds;
+			self.startIndex = (self.startIndex + amount) & self.mask;
+		}
+
 		pub fn peek(self: *Self) ?T {
 			if(self.empty()) return null;
 			return self.mem[self.startIndex];
+		}
+
+		pub fn getSliceAtOffset(self: Self, offset: usize, result: []T) !void {
+			if(offset + result.len > (self.endIndex -% self.startIndex) & self.mask) return error.OutOfBounds;
+			for(result, offset .. offset + result.len) |*out, i| {
+				out.* = self.mem[(self.startIndex + i) & self.mask];
+			}
 		}
 
 		pub fn empty(self: *Self) bool {
