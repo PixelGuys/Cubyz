@@ -1,8 +1,8 @@
 #version 430
 
-in vec3 vPos;
-
 struct star {
+	vec4 poses[3];
+
 	vec3 pos;
 	float pad1;
 	vec3 col;
@@ -21,9 +21,9 @@ out flat vec3 starPos;
 out flat vec3 color;
 
 void main() {
-	gl_Position = mvp*vec4(vPos, 1);
+	gl_Position = mvp*vec4(starData[gl_VertexID/3].poses[gl_VertexID%3].xyz, 1);
 
-	pos = vPos;
+	pos = starData[gl_VertexID/3].poses[gl_VertexID%3].xyz;
 	starPos = starData[gl_VertexID/3].pos;
 	color = starData[gl_VertexID/3].col * starOpacity;
 }

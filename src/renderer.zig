@@ -625,7 +625,6 @@ pub const Skybox = struct {
 	} = undefined;
 
 	var starVao: c_uint = undefined;
-	var starVbo: c_uint = undefined;
 
 	var starSsbo: graphics.SSBO = undefined;
 
@@ -676,9 +675,7 @@ pub const Skybox = struct {
 		starShader = Shader.initAndGetUniforms("assets/cubyz/shaders/skybox/star.vs", "assets/cubyz/shaders/skybox/star.fs", "", &starUniforms);
 		starShader.bind();
 
-		var starData: [numStars*8]f32 = undefined;
-
-		var starMesh: [numStars*9]f32 = undefined;
+		var starData: [numStars*20]f32 = undefined;
 
 		const starDist = 200.0;
 
@@ -715,9 +712,6 @@ pub const Skybox = struct {
 
 			const col = getStarColor(temperature*5772.0, light, starColorImage);
 
-			starData[i*8..][0..3].* = pos;
-			starData[i*8+4..][0..3].* = col;
-
 			const lat: f32 = @floatCast(std.math.asin(normPos[2]));
 			const lon: f32 = @floatCast(std.math.atan2(-normPos[0], normPos[1]));
 
@@ -727,19 +721,18 @@ pub const Skybox = struct {
 			const posB = vec.xyz(mat.mulVec(.{triVertB[0], triVertB[1], triVertB[2], 1.0}));
 			const posC = vec.xyz(mat.mulVec(.{triVertC[0], triVertC[1], triVertC[2], 1.0}));
 
-			starMesh[i*9..][0..3].* = posA;
-			starMesh[i*9+3..][0..3].* = posB;
-			starMesh[i*9+6..][0..3].* = posC;
+			starData[i*20..][0..3].* = posA;
+			starData[i*20+4..][0..3].* = posB;
+			starData[i*20+8..][0..3].* = posC;
+
+			starData[i*20+12..][0..3].* = pos;
+			starData[i*20+16..][0..3].* = col;
 		}
 
 		starSsbo = graphics.SSBO.initStatic(f32, &starData);
 
 		c.glGenVertexArrays(1, &starVao);
 		c.glBindVertexArray(starVao);
-		c.glGenBuffers(1, @ptrCast(&starVbo));
-		c.glBindBuffer(c.GL_ARRAY_BUFFER, starVbo);
-		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(starMesh.len*@sizeOf(f32)), &starMesh, c.GL_STATIC_DRAW);
-		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, 3*@sizeOf(f32), null);
 		c.glEnableVertexAttribArray(0);
 
 		skyShader = Shader.initAndGetUniforms("assets/cubyz/shaders/skybox/sky.vs", "assets/cubyz/shaders/skybox/sky.fs", "", &skyUniforms);
@@ -780,7 +773,6 @@ pub const Skybox = struct {
 		starShader.deinit();
 		starSsbo.deinit();
 		c.glDeleteVertexArrays(1, &starVao);
-		c.glDeleteBuffers(1, @ptrCast(&starVbo));
 
 		skyShader.deinit();
 		c.glDeleteVertexArrays(1, &skyVao);
