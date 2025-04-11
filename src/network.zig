@@ -1326,15 +1326,15 @@ pub const Connection = struct { // MARK: Connection
 				const protocolReceive = Protocols.list[protocolIndex] orelse return error.Invalid;
 
 				if(Protocols.isAsynchronous[protocolIndex]) {
-					ProtocolTask.schedule(conn, protocolIndex, self.protocolBuffer.toOwnedSlice(main.globalAllocator));
+					ProtocolTask.schedule(conn, protocolIndex, self.protocolBuffer.items);
 				} else {
 					var reader = utils.BinaryReader.init(self.protocolBuffer.items);
 					try protocolReceive(conn, &reader);
+				}
 
-					self.protocolBuffer.clearRetainingCapacity();
-					if(self.protocolBuffer.items.len > 1 << 24) {
-						self.protocolBuffer.shrinkAndFree(main.globalAllocator, 1 << 24);
-					}
+				self.protocolBuffer.clearRetainingCapacity();
+				if(self.protocolBuffer.items.len > 1 << 24) {
+					self.protocolBuffer.shrinkAndFree(main.globalAllocator, 1 << 24);
 				}
 			}
 		}
