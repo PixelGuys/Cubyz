@@ -976,8 +976,9 @@ pub const Protocols = struct {
 		const UpdateType = enum(u8) {
 			gamemode = 0,
 			teleport = 1,
-			worldEditPos = 2,
-			timeAndBiome = 3,
+			worldEditPosToClient = 2,
+			worldEditPosToServer = 3,
+			timeAndBiome = 4,
 		};
 
 		const WorldEditPosition = enum(u2) {
@@ -995,7 +996,7 @@ pub const Protocols = struct {
 				.teleport => {
 					game.Player.setPosBlocking(try reader.readVec(Vec3d));
 				},
-				.worldEditPos => {
+				.worldEditPosToClient => {
 					const typ = try reader.readEnum(WorldEditPosition);
 					switch(typ) {
 						.selectedPos1, .selectedPos2 => {
@@ -1009,6 +1010,23 @@ pub const Protocols = struct {
 						.clear => {
 							game.Player.selectionPosition1 = null;
 							game.Player.selectionPosition2 = null;
+						},
+					}
+				},
+				.worldEditPosToServer => {
+					const typ = try reader.readEnum(WorldEditPosition);
+					switch(typ) {
+						.selectedPos1, .selectedPos2 => {
+							const pos = try reader.readVec(Vec3i);
+							switch(typ) {
+								.selectedPos1 => conn.user.?.worldEditData.selectionPosition1 = pos,
+								.selectedPos2 => conn.user.?.worldEditData.selectionPosition2 = pos,
+								else => unreachable,
+							}
+						},
+						.clear => {
+							conn.user.?.worldEditData.selectionPosition1 = null;
+							conn.user.?.worldEditData.selectionPosition2 = null;
 						},
 					}
 				},
@@ -1054,17 +1072,25 @@ pub const Protocols = struct {
 			conn.sendImportant(id, writer.data.items);
 		}
 
-		pub fn sendWorldEditPos(conn: *Connection, posType: WorldEditPosition, maybePos: ?Vec3i) void {
+		pub fn sendWorldEditPosToClient(conn: *Connection, posType: WorldEditPosition, maybePos: ?Vec3i) void {
+			sendWorldEditPos(conn, posType, maybePos, .worldEditPosToClient);
+		}
+
+		fn sendWorldEditPos(conn: *Connection, posType: WorldEditPosition, maybePos: ?Vec3i, typ: UpdateType) void {
 			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 25);
 			defer writer.deinit();
 
-			writer.writeEnum(UpdateType, .worldEditPos);
+			writer.writeEnum(UpdateType, typ);
 			writer.writeEnum(WorldEditPosition, posType);
 			if(maybePos) |pos| {
 				writer.writeVec(Vec3i, pos);
 			}
 
 			conn.sendImportant(id, writer.data.items);
+		}
+
+		pub fn sendWorldEditPosToServer(conn: *Connection, posType: WorldEditPosition, maybePos: ?Vec3i) void {
+			sendWorldEditPos(conn, posType, maybePos, .worldEditPosToServer);
 		}
 
 		pub fn sendTimeAndBiome(conn: *Connection, world: *const main.server.ServerWorld) void {
