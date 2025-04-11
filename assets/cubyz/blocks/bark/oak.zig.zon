@@ -1,0 +1,10 @@
+.{
+	.tags = .{.wood},
+	.blockHealth = 8,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.rotation = .stairs,
+	.model = "cubyz:cube",
+	.texture = "cubyz:oak_log",
+}
