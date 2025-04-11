@@ -1366,6 +1366,7 @@ pub const Connection = struct { // MARK: Connection
 			len: SequenceIndex,
 			timestamp: i64,
 			wasResent: bool = false,
+			considerForCongestionControl: bool,
 		};
 		unconfirmedRanges: main.ListUnmanaged(Range) = .{},
 		buffer: main.utils.CircularBufferQueue(u8),
@@ -1413,11 +1414,21 @@ pub const Connection = struct { // MARK: Connection
 			self.nextIndex +%= @intCast(data.len);
 		}
 
-		pub fn receiveConfirmationAndGetTimestamp(self: *SendBuffer, start: SequenceIndex) ?i64 {
-			var result: ?i64 = null;
+		const ReceiveConfirmationResult = struct {
+			timestamp: i64,
+			packetLen: SequenceIndex,
+			considerForCongestionControl: bool,
+		};
+
+		pub fn receiveConfirmationAndGetTimestamp(self: *SendBuffer, start: SequenceIndex) ?ReceiveConfirmationResult {
+			var result: ?ReceiveConfirmationResult = null;
 			for(self.unconfirmedRanges.items, 0..) |range, i| {
 				if(range.start == start) {
-					result = range.timestamp;
+					result = .{
+						.timestamp = range.timestamp,
+						.considerForCongestionControl = range.considerForCongestionControl,
+						.packetLen = range.len,
+					};
 					_ = self.unconfirmedRanges.swapRemove(i);
 					break;
 				}
@@ -1433,7 +1444,7 @@ pub const Connection = struct { // MARK: Connection
 			return result;
 		}
 
-		pub fn getNextPacketToSend(self: *SendBuffer, byteIndex: *SequenceIndex, buf: []u8, time: i64, retransmissionTimeout: i64, allowedDelay: i64) ?usize {
+		pub fn getNextPacketToSend(self: *SendBuffer, byteIndex: *SequenceIndex, buf: []u8, time: i64, considerForCongestionControl: bool, retransmissionTimeout: i64, allowedDelay: i64) ?usize {
 			self.unconfirmedRanges.ensureFreeCapacity(main.globalAllocator, 1);
 			// Resend old packet:
 			for(self.unconfirmedRanges.items) |*range| {
@@ -1443,6 +1454,7 @@ pub const Connection = struct { // MARK: Connection
 							.start = range.start +% @as(SequenceIndex, @intCast(buf.len)),
 							.len = range.len - @as(SequenceIndex, @intCast(buf.len)),
 							.timestamp = range.timestamp,
+							.considerForCongestionControl = false,
 						});
 						range.len = @intCast(buf.len);
 					}
@@ -1466,6 +1478,7 @@ pub const Connection = struct { // MARK: Connection
 				.start = self.highestSentIndex,
 				.len = len,
 				.timestamp = time,
+				.considerForCongestionControl = considerForCongestionControl,
 			});
 			self.highestSentIndex +%= len;
 			return @intCast(len);
@@ -1511,11 +1524,11 @@ pub const Connection = struct { // MARK: Connection
 			return self.sendBuffer.insertMessage(protocolIndex, data, time);
 		}
 
-		pub fn receiveConfirmationAndGetTimestamp(self: *Channel, start: SequenceIndex) ?i64 {
+		pub fn receiveConfirmationAndGetTimestamp(self: *Channel, start: SequenceIndex) ?SendBuffer.ReceiveConfirmationResult {
 			return self.sendBuffer.receiveConfirmationAndGetTimestamp(start);
 		}
 
-		pub fn sendNextPacketAndGetSize(self: *Channel, conn: *Connection, time: i64) ?usize {
+		pub fn sendNextPacketAndGetSize(self: *Channel, conn: *Connection, time: i64, considerForCongestionControl: bool) ?usize {
 			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, conn.mtuEstimate);
 			defer writer.deinit();
 
@@ -1523,7 +1536,7 @@ pub const Connection = struct { // MARK: Connection
 
 			var byteIndex: SequenceIndex = undefined;
 			const retransmissionTimeout: i64 = @intFromFloat(conn.rttEstimate + 3*conn.rttUncertainty + @as(f32, @floatFromInt(self.allowedDelay)) + 10_000);
-			const packetLen = self.sendBuffer.getNextPacketToSend(&byteIndex, writer.data.items.ptr[5..writer.data.capacity], time, retransmissionTimeout, self.allowedDelay) orelse return null;
+			const packetLen = self.sendBuffer.getNextPacketToSend(&byteIndex, writer.data.items.ptr[5..writer.data.capacity], time, considerForCongestionControl, retransmissionTimeout, self.allowedDelay) orelse return null;
 			writer.writeInt(SequenceIndex, byteIndex);
 			writer.data.items.len += packetLen;
 
@@ -1568,15 +1581,21 @@ pub const Connection = struct { // MARK: Connection
 	fastChannel: Channel,
 	slowChannel: Channel,
 
-	hasRttEstimate: bool = false,
 	rttEstimate: f32 = 1000_000.0,
 	rttUncertainty: f32 = 0.0,
 	lastRttSampleTime: i64,
-	bytesPerRtt: f32 = minMtu,
 	nextPacketTimestamp: i64,
 	nextConfirmationTimestamp: i64,
 	queuedConfirmations: main.utils.CircularBufferQueue(ConfirmationData),
 	mtuEstimate: u16 = minMtu,
+
+	bandwidthEstimateInBytesPerRtt: f32 = minMtu,
+	slowStart: bool = true,
+	relativeSendTime: i64 = 0,
+	relativeIdleTime: i64 = 0,
+
+	lastLossTime: i64,
+	lastLossReactionTime: i64,
 
 	connectionState: Atomic(ConnectionState),
 	handShakeState: Atomic(u8) = .init(Protocols.handShake.stepStart),
@@ -1602,6 +1621,8 @@ pub const Connection = struct { // MARK: Connection
 			.nextPacketTimestamp = std.time.microTimestamp(),
 			.nextConfirmationTimestamp = std.time.microTimestamp(),
 			.lastRttSampleTime = std.time.microTimestamp() -% 10_000_000,
+			.lastLossTime = std.time.microTimestamp() -% 10_000_000,
+			.lastLossReactionTime = std.time.microTimestamp() -% 10_000_000,
 			.queuedConfirmations = .init(main.globalAllocator, 1024),
 			.lossyChannel = .init(main.random.nextInt(SequenceIndex, &main.seed), 1_000, .lossy),
 			.fastChannel = .init(main.random.nextInt(SequenceIndex, &main.seed), 10_000, .fast),
@@ -1641,15 +1662,18 @@ pub const Connection = struct { // MARK: Connection
 		self.fastChannel.reset();
 		self.slowChannel.reset();
 
-		self.hasRttEstimate = false;
 		self.rttEstimate = 1000_000.0;
 		self.rttUncertainty = 0.0;
 		self.lastRttSampleTime = std.time.microTimestamp() -% 10_000_000;
-		self.bytesPerRtt = minMtu;
 		self.nextPacketTimestamp = std.time.microTimestamp();
 		self.nextConfirmationTimestamp = std.time.microTimestamp();
 		self.queuedConfirmations.reset();
 		self.mtuEstimate = minMtu;
+
+		self.bandwidthEstimateInBytesPerRtt = minMtu;
+		self.slowStart = true;
+		self.relativeSendTime = 0;
+		self.relativeIdleTime = 0;
 
 		self.connectionState = .init(if(self.user != null) .awaitingClientConnection else .awaitingServerResponse);
 		self.handShakeState = .init(Protocols.handShake.stepStart);
@@ -1693,7 +1717,32 @@ pub const Connection = struct { // MARK: Connection
 		return self.connectionState.load(.unordered) == .connected;
 	}
 
+	fn handlePacketLoss(self: *Connection, timestamp: i64) void {
+		const rtt: i64 = @intFromFloat(self.rttEstimate);
+		self.slowStart = false;
+		if(timestamp -% rtt -% self.lastLossTime > 0) {
+			if(timestamp -% rtt -% self.lastLossReactionTime) {
+				self.rttEstimate *= 1.5;
+				self.bandwidthEstimateInBytesPerRtt /= 2;
+				self.lastLossReactionTime = timestamp;
+			}
+		}
+		self.lastLossTime = timestamp;
+	}
+
+	fn increaseCongestionBandwidth(self: *Connection, packetLen: SequenceIndex) void {
+		const fullPacketLen: f32 = @floatFromInt(packetLen + headerOverhead);
+		if(self.slowStart) {
+			self.bandwidthEstimateInBytesPerRtt += fullPacketLen;
+		} else {
+			self.bandwidthEstimateInBytesPerRtt += fullPacketLen/self.bandwidthEstimateInBytesPerRtt*@as(f32, @floatFromInt(self.mtuEstimate));
+		}
+	}
+
 	fn receiveConfirmationPacket(self: *Connection, reader: *utils.BinaryReader, timestamp: i64) !void {
+		self.mutex.lock();
+		defer self.mutex.unlock();
+
 		var minRtt: f32 = std.math.floatMax(f32);
 		var maxRtt: f32 = 1000;
 		var sumRtt: f32 = 0;
@@ -1702,17 +1751,20 @@ pub const Connection = struct { // MARK: Connection
 			const channel = try reader.readEnum(ChannelId);
 			const timeOffset = 2*@as(i64, try reader.readInt(u16));
 			const start = try reader.readInt(SequenceIndex);
-			const previousTimestamp = switch(channel) {
+			const confirmationResult = switch(channel) {
 				.lossy => self.lossyChannel.receiveConfirmationAndGetTimestamp(start) orelse continue,
 				.fast => self.fastChannel.receiveConfirmationAndGetTimestamp(start) orelse continue,
 				.slow => self.slowChannel.receiveConfirmationAndGetTimestamp(start) orelse continue,
 				else => return error.Invalid,
 			};
-			const rtt: f32 = @floatFromInt(timestamp -% previousTimestamp -% timeOffset);
+			const rtt: f32 = @floatFromInt(timestamp -% confirmationResult.timestamp -% timeOffset);
 			numRtt += 1;
 			sumRtt += rtt;
 			minRtt = @min(minRtt, rtt);
 			maxRtt = @max(maxRtt, rtt);
+			if(confirmationResult.considerForCongestionControl) {
+				self.increaseCongestionBandwidth(confirmationResult.packetLen);
+			}
 		}
 		if(numRtt > 0) {
 			// Taken mostly from RFC 6298 with some minor changes
@@ -1889,22 +1941,36 @@ pub const Connection = struct { // MARK: Connection
 		}
 
 		// We don't want to send too many packets at once if there was a period of no traffic.
-		if(timestamp -% 10_000 -% self.nextPacketTimestamp > 0) self.nextPacketTimestamp = timestamp -% 10_000;
+		if(timestamp -% 10_000 -% self.nextPacketTimestamp > 0) {
+			self.relativeIdleTime += timestamp -% 10_000 -% self.nextPacketTimestamp;
+			self.nextPacketTimestamp = timestamp -% 10_000;
+		}
+
+		if(self.relativeIdleTime + self.relativeSendTime > @as(i64, @intFromFloat(self.rttEstimate))) {
+			self.relativeIdleTime >>= 1;
+			self.relativeSendTime >>= 1;
+		}
 
 		while(timestamp -% self.nextPacketTimestamp > 0) {
+			// Only attempt to increase the congestion bandwidth if we actual use the bandwidth, to prevent unbounded growth
+			const considerForCongestionControl = @divFloor(self.relativeSendTime, 2) > self.relativeIdleTime;
 			const dataLen = blk: {
 				if(timestamp -% self.nextConfirmationTimestamp > 0 and !self.queuedConfirmations.empty()) {
 					break :blk self.sendConfirmationPacket(timestamp);
 				}
 
-				if(self.lossyChannel.sendNextPacketAndGetSize(self, timestamp)) |dataLen| break :blk dataLen;
-				if(self.fastChannel.sendNextPacketAndGetSize(self, timestamp)) |dataLen| break :blk dataLen;
-				if(self.slowChannel.sendNextPacketAndGetSize(self, timestamp)) |dataLen| break :blk dataLen;
+				self.mutex.lock();
+				defer self.mutex.unlock();
+				if(self.lossyChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl)) |dataLen| break :blk dataLen;
+				if(self.fastChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl)) |dataLen| break :blk dataLen;
+				if(self.slowChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl)) |dataLen| break :blk dataLen;
 
 				break;
 			};
 			const networkLen: f32 = @floatFromInt(dataLen + headerOverhead);
-			self.nextPacketTimestamp +%= @intFromFloat(networkLen/self.bytesPerRtt*self.rttEstimate);
+			const packetTime: i64 = @intFromFloat(@max(1, networkLen/self.bandwidthEstimateInBytesPerRtt*self.rttEstimate));
+			self.nextPacketTimestamp +%= packetTime;
+			self.relativeSendTime += packetTime;
 		}
 	}
 
