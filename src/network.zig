@@ -1346,15 +1346,15 @@ pub const Connection = struct { // MARK: Connection
 
 		pub fn receive(self: *ReceiveBuffer, conn: *Connection, start: SequenceIndex, data: []const u8) !ReceiveStatus {
 			const len: SequenceIndex = @intCast(data.len);
-			if(start == self.currentReadPosition) {
-				self.buffer.insertSliceAtOffset(data, 0) catch return .rejected;
+			const offset: usize = @intCast(start -% self.currentReadPosition);
+			if(start == self.availablePosition) {
+				self.buffer.insertSliceAtOffset(data, offset) catch return .rejected;
 				self.ranges.append(main.globalAllocator, .{.start = start, .len = len});
 				try self.collectRangesAndExecuteProtocols(conn);
 				return .accepted;
 			}
 			if(start +% len -% self.currentReadPosition < 0) return .accepted; // We accepted it in the past.
-			const offset = start -% self.currentReadPosition;
-			self.buffer.insertSliceAtOffset(data, @intCast(offset)) catch return .rejected;
+			self.buffer.insertSliceAtOffset(data, offset) catch return .rejected;
 			self.ranges.append(main.globalAllocator, .{.start = start, .len = len});
 			return .accepted;
 		}
