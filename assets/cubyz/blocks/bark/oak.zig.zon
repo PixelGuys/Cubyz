@@ -2,7 +2,7 @@
 	.tags = .{.wood},
 	.blockHealth = 8,
 	.drops = .{
-		.{.items = .{.auto}},
+		.{.items = .{"cubyz:oak_log"}},
 	},
 	.rotation = .stairs,
 	.model = "cubyz:cube",
