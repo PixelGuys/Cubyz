@@ -24,7 +24,7 @@ const Vec2f = vec.Vec2f;
 const Vec2i = vec.Vec2i;
 const Vec3f = vec.Vec3f;
 
-const main = @import("main.zig");
+const main = @import("main");
 const Window = main.Window;
 
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
@@ -2081,7 +2081,7 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 
 	var faceData: main.ListUnmanaged(main.renderer.chunk_meshing.FaceData) = .{};
 	defer faceData.deinit(main.stackAllocator);
-	const model = &main.models.models.items[main.blocks.meshes.model(block)];
+	const model = main.blocks.meshes.model(block).model();
 	if(block.hasBackFace()) {
 		model.appendInternalQuadsToList(&faceData, main.stackAllocator, block, 1, 1, 1, true);
 		for(main.chunk.Neighbor.iterable) |neighbor| {

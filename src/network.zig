@@ -10,7 +10,7 @@ const items = @import("items.zig");
 const Inventory = items.Inventory;
 const ItemStack = items.ItemStack;
 const ZonElement = @import("zon.zig").ZonElement;
-const main = @import("main.zig");
+const main = @import("main");
 const game = @import("game.zig");
 const settings = @import("settings.zig");
 const renderer = @import("renderer.zig");
@@ -20,8 +20,6 @@ const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-
-pub const networkEndian: std.builtin.Endian = .big;
 
 //TODO: Might want to use SSL or something similar to encode the message
 
@@ -559,9 +557,8 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 	pub fn run(self: *ConnectionManager) void {
 		self.threadId = std.Thread.getCurrentId();
-		var sta = main.heap.StackAllocator.init(main.globalAllocator, 1 << 23);
-		defer sta.deinit();
-		main.stackAllocator = sta.allocator();
+		main.initThreadLocals();
+		defer main.deinitThreadLocals();
 
 		var lastTime: i64 = @truncate(std.time.nanoTimestamp());
 		while(self.running.load(.monotonic)) {
@@ -770,7 +767,7 @@ pub const Protocols = struct {
 		}
 		pub fn sendRequest(conn: *Connection, requests: []chunk.ChunkPosition, basePosition: Vec3i, renderDistance: u16) void {
 			if(requests.len == 0) return;
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, 14 + 4*requests.len);
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 14 + 4*requests.len);
 			defer writer.deinit();
 			writer.writeInt(i32, basePosition[0]);
 			writer.writeInt(i32, basePosition[1]);
@@ -806,7 +803,7 @@ pub const Protocols = struct {
 			const chunkData = main.server.storage.ChunkCompression.compressChunk(main.stackAllocator, &ch.super, ch.super.pos.voxelSize != 1);
 			ch.mutex.unlock();
 			defer main.stackAllocator.free(chunkData);
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, chunkData.len + 16);
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, chunkData.len + 16);
 			defer writer.deinit();
 			writer.writeInt(i32, ch.super.pos.wx);
 			writer.writeInt(i32, ch.super.pos.wy);
@@ -833,7 +830,7 @@ pub const Protocols = struct {
 		pub const id: u8 = 4;
 		pub const asynchronous = false;
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			conn.user.?.receiveData(reader.remaining);
+			try conn.user.?.receiveData(reader);
 		}
 		var lastPositionSent: u16 = 0;
 		pub fn send(conn: *Connection, playerPos: Vec3d, playerVel: Vec3d, time: u16) void {
@@ -841,7 +838,7 @@ pub const Protocols = struct {
 				return; // Only send at most once every 50 ms.
 			}
 			lastPositionSent = time;
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, 62);
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 62);
 			defer writer.deinit();
 			writer.writeInt(u64, @bitCast(playerPos[0]));
 			writer.writeInt(u64, @bitCast(playerPos[1]));
@@ -890,7 +887,7 @@ pub const Protocols = struct {
 		}
 		pub fn send(conn: *Connection, entityData: []const u8, itemData: []const u8) void {
 			if(entityData.len != 0) {
-				var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, entityData.len + 3);
+				var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, entityData.len + 3);
 				defer writer.deinit();
 				writer.writeInt(u8, type_entity);
 				writer.writeInt(i16, @truncate(std.time.milliTimestamp()));
@@ -899,7 +896,7 @@ pub const Protocols = struct {
 			}
 
 			if(itemData.len != 0) {
-				var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, itemData.len + 3);
+				var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, itemData.len + 3);
 				defer writer.deinit();
 				writer.writeInt(u8, type_item);
 				writer.writeInt(i16, @truncate(std.time.milliTimestamp()));
@@ -923,7 +920,7 @@ pub const Protocols = struct {
 			}
 		}
 		pub fn send(conn: *Connection, x: i32, y: i32, z: i32, newBlock: Block) void {
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, 16);
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 16);
 			defer writer.deinit();
 			writer.writeInt(i32, x);
 			writer.writeInt(i32, y);
@@ -975,41 +972,51 @@ pub const Protocols = struct {
 	pub const genericUpdate = struct {
 		pub const id: u8 = 9;
 		pub const asynchronous = false;
-		const type_gamemode: u8 = 0;
-		const type_teleport: u8 = 1;
-		const type_cure: u8 = 2;
-		const type_reserved2: u8 = 3;
-		const type_reserved3: u8 = 4;
-		const type_reserved4: u8 = 5;
-		const type_reserved5: u8 = 6;
-		const type_reserved6: u8 = 7;
-		const type_timeAndBiome: u8 = 8;
+
+		const UpdateType = enum(u8) {
+			gamemode = 0,
+			teleport = 1,
+			worldEditPos = 2,
+			timeAndBiome = 3,
+		};
+
+		const WorldEditPosition = enum(u2) {
+			selectedPos1 = 0,
+			selectedPos2 = 1,
+			clear = 2,
+		};
+
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			switch(try reader.readInt(u8)) {
-				type_gamemode => {
+			switch(try reader.readEnum(UpdateType)) {
+				.gamemode => {
 					if(conn.user != null) return error.InvalidPacket;
 					main.items.Inventory.Sync.setGamemode(null, try reader.readEnum(main.game.Gamemode));
 				},
-				type_teleport => {
-					game.Player.setPosBlocking(Vec3d{
-						@bitCast(try reader.readInt(u64)),
-						@bitCast(try reader.readInt(u64)),
-						@bitCast(try reader.readInt(u64)),
-					});
+				.teleport => {
+					game.Player.setPosBlocking(try reader.readVec(Vec3d));
 				},
-				type_cure => {
-					// TODO: health and hunger
+				.worldEditPos => {
+					const typ = try reader.readEnum(WorldEditPosition);
+					switch(typ) {
+						.selectedPos1, .selectedPos2 => {
+							const pos = try reader.readVec(Vec3i);
+							switch(typ) {
+								.selectedPos1 => game.Player.selectionPosition1 = pos,
+								.selectedPos2 => game.Player.selectionPosition2 = pos,
+								else => unreachable,
+							}
+						},
+						.clear => {
+							game.Player.selectionPosition1 = null;
+							game.Player.selectionPosition2 = null;
+						},
+					}
 				},
-				type_reserved2 => {},
-				type_reserved3 => {},
-				type_reserved4 => {},
-				type_reserved5 => {},
-				type_reserved6 => {},
-				type_timeAndBiome => {
+				.timeAndBiome => {
 					if(conn.manager.world) |world| {
-						const zon = ZonElement.parseFromString(main.stackAllocator, null, reader.remaining);
-						defer zon.deinit(main.stackAllocator);
-						const expectedTime = zon.get(i64, "time", 0);
+						const expectedTime = try reader.readInt(i64);
+						const biomeId = try reader.readInt(u32);
+
 						var curTime = world.gameTime.load(.monotonic);
 						if(@abs(curTime -% expectedTime) >= 10) {
 							world.gameTime.store(expectedTime, .monotonic);
@@ -1022,65 +1029,55 @@ pub const Protocols = struct {
 								curTime = actualTime;
 							}
 						}
-						const newBiome = main.server.terrain.biomes.getById(zon.get([]const u8, "biome", ""));
+
+						const newBiome = main.server.terrain.biomes.getByIndex(biomeId) orelse return error.MissingBiome;
 						const oldBiome = world.playerBiome.swap(newBiome, .monotonic);
 						if(oldBiome != newBiome) {
 							main.audio.setMusic(newBiome.preferredMusic);
 						}
 					}
 				},
-				else => |unrecognizedType| {
-					std.log.err("Unrecognized type for genericUpdateProtocol: {}. Data: {any}", .{unrecognizedType, reader.remaining});
-					return error.Invalid;
-				},
 			}
 		}
 
-		fn addHeaderAndSendImportant(conn: *Connection, header: u8, data: []const u8) void {
-			const headeredData = main.stackAllocator.alloc(u8, data.len + 1);
-			defer main.stackAllocator.free(headeredData);
-			headeredData[0] = header;
-			@memcpy(headeredData[1..], data);
-			conn.sendImportant(id, headeredData);
-		}
-
-		fn addHeaderAndSendUnimportant(conn: *Connection, header: u8, data: []const u8) void {
-			const headeredData = main.stackAllocator.alloc(u8, data.len + 1);
-			defer main.stackAllocator.free(headeredData);
-			headeredData[0] = header;
-			@memcpy(headeredData[1..], data);
-			conn.sendUnimportant(id, headeredData);
-		}
-
 		pub fn sendGamemode(conn: *Connection, gamemode: main.game.Gamemode) void {
-			conn.sendImportant(id, &.{type_gamemode, @intFromEnum(gamemode)});
+			conn.sendImportant(id, &.{@intFromEnum(UpdateType.gamemode), @intFromEnum(gamemode)});
 		}
 
 		pub fn sendTPCoordinates(conn: *Connection, pos: Vec3d) void {
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, 25);
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 25);
 			defer writer.deinit();
-			writer.writeInt(u8, type_teleport);
-			writer.writeInt(u64, @bitCast(pos[0]));
-			writer.writeInt(u64, @bitCast(pos[1]));
-			writer.writeInt(u64, @bitCast(pos[2]));
+
+			writer.writeEnum(UpdateType, .teleport);
+			writer.writeVec(Vec3d, pos);
+
 			conn.sendImportant(id, writer.data.items);
 		}
 
-		pub fn sendCure(conn: *Connection) void {
-			var data: [1]u8 = undefined;
-			data[0] = type_cure;
-			conn.sendImportant(id, &data);
+		pub fn sendWorldEditPos(conn: *Connection, posType: WorldEditPosition, maybePos: ?Vec3i) void {
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 25);
+			defer writer.deinit();
+
+			writer.writeEnum(UpdateType, .worldEditPos);
+			writer.writeEnum(WorldEditPosition, posType);
+			if(maybePos) |pos| {
+				writer.writeVec(Vec3i, pos);
+			}
+
+			conn.sendImportant(id, writer.data.items);
 		}
 
 		pub fn sendTimeAndBiome(conn: *Connection, world: *const main.server.ServerWorld) void {
-			const zon = ZonElement.initObject(main.stackAllocator);
-			defer zon.deinit(main.stackAllocator);
-			zon.put("time", world.gameTime);
-			const pos = conn.user.?.player.pos;
-			zon.put("biome", (world.getBiome(@intFromFloat(pos[0]), @intFromFloat(pos[1]), @intFromFloat(pos[2]))).id);
-			const string = zon.toString(main.stackAllocator);
-			defer main.stackAllocator.free(string);
-			addHeaderAndSendUnimportant(conn, type_timeAndBiome, string);
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 13);
+			defer writer.deinit();
+
+			writer.writeEnum(UpdateType, .timeAndBiome);
+			writer.writeInt(i64, world.gameTime);
+
+			const pos = @as(Vec3i, @intFromFloat(conn.user.?.player.pos));
+			writer.writeInt(u32, world.getBiome(pos[0], pos[1], pos[2]).paletteId);
+
+			conn.sendImportant(id, writer.data.items);
 		}
 	};
 	pub const chat = struct {
@@ -1125,7 +1122,7 @@ pub const Protocols = struct {
 		}
 		pub fn sendRequest(conn: *Connection, requests: []main.server.terrain.SurfaceMap.MapFragmentPosition) void {
 			if(requests.len == 0) return;
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, 9*requests.len);
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 9*requests.len);
 			defer writer.deinit();
 			for(requests) |req| {
 				writer.writeInt(i32, req.wx);
@@ -1155,7 +1152,7 @@ pub const Protocols = struct {
 				std.log.err("Transmission of light map has invalid size: {}. Input data: {any}, After inflate: {any}", .{_inflatedLen, reader.remaining, _inflatedData[0.._inflatedLen]});
 				return error.Invalid;
 			}
-			var ligthMapReader = utils.BinaryReader.init(_inflatedData, networkEndian);
+			var ligthMapReader = utils.BinaryReader.init(_inflatedData);
 			const map = main.globalAllocator.create(main.server.terrain.LightMap.LightMapFragment);
 			map.init(pos.wx, pos.wy, pos.voxelSize);
 			_ = map.refCount.fetchAdd(1, .monotonic);
@@ -1165,14 +1162,14 @@ pub const Protocols = struct {
 			renderer.mesh_storage.updateLightMap(map);
 		}
 		pub fn sendLightMap(conn: *Connection, map: *main.server.terrain.LightMap.LightMapFragment) void {
-			var ligthMapWriter = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, @sizeOf(@TypeOf(map.startHeight)));
+			var ligthMapWriter = utils.BinaryWriter.initCapacity(main.stackAllocator, @sizeOf(@TypeOf(map.startHeight)));
 			defer ligthMapWriter.deinit();
 			for(&map.startHeight) |val| {
 				ligthMapWriter.writeInt(i16, val);
 			}
 			const compressedData = utils.Compression.deflate(main.stackAllocator, ligthMapWriter.data.items, .default);
 			defer main.stackAllocator.free(compressedData);
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, 9 + compressedData.len);
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 9 + compressedData.len);
 			defer writer.deinit();
 			writer.writeInt(i32, map.pos.wx);
 			writer.writeInt(i32, map.pos.wy);
@@ -1201,7 +1198,7 @@ pub const Protocols = struct {
 		}
 		pub fn sendCommand(conn: *Connection, payloadType: items.Inventory.Command.PayloadType, _data: []const u8) void {
 			std.debug.assert(conn.user == null);
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, _data.len + 1);
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, _data.len + 1);
 			defer writer.deinit();
 			writer.writeEnum(items.Inventory.Command.PayloadType, payloadType);
 			std.debug.assert(writer.data.items[0] != 0xff);
@@ -1210,7 +1207,7 @@ pub const Protocols = struct {
 		}
 		pub fn sendConfirmation(conn: *Connection, _data: []const u8) void {
 			std.debug.assert(conn.user != null);
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, _data.len + 1);
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, _data.len + 1);
 			defer writer.deinit();
 			writer.writeInt(u8, 0xff);
 			writer.writeSlice(_data);
@@ -1222,7 +1219,7 @@ pub const Protocols = struct {
 		}
 		pub fn sendSyncOperation(conn: *Connection, _data: []const u8) void {
 			std.debug.assert(conn.user != null);
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, _data.len + 1);
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, _data.len + 1);
 			defer writer.deinit();
 			writer.writeInt(u8, 0);
 			writer.writeSlice(_data);
@@ -1390,7 +1387,7 @@ pub const Connection = struct { // MARK: Connection
 		self.streamBuffer[0] = Protocols.important;
 		const id = self.messageID;
 		self.messageID += 1;
-		std.mem.writeInt(u32, self.streamBuffer[1..5], id, .big); // TODO: Use little endian for better hardware support. Currently the aim is interoperability with the java version which uses big endian.
+		std.mem.writeInt(u32, self.streamBuffer[1..5], id, .big);
 
 		const packet = UnconfirmedPacket{
 			.data = main.globalAllocator.dupe(u8, self.streamBuffer[0..self.streamPosition]),
@@ -1451,19 +1448,21 @@ pub const Connection = struct { // MARK: Connection
 		self.manager.send(fullData, self.remoteAddress, null);
 	}
 
-	fn receiveKeepAlive(self: *Connection, data: []const u8) void {
+	fn receiveKeepAlive(self: *Connection, data: []const u8) !void {
 		std.debug.assert(self.manager.threadId == std.Thread.getCurrentId());
 		if(data.len == 0) return; // This is sent when brute forcing the port.
 		self.mutex.lock();
 		defer self.mutex.unlock();
 
-		self.otherKeepAliveReceived = std.mem.readInt(u32, data[0..4], .big);
-		self.lastKeepAliveReceived = std.mem.readInt(u32, data[4..8], .big);
-		var remaining: []const u8 = data[8..];
-		while(remaining.len >= 8) {
-			const start = std.mem.readInt(u32, remaining[0..4], .big);
-			const len = std.mem.readInt(u32, remaining[4..8], .big);
-			remaining = remaining[8..];
+		var reader = utils.BinaryReader.init(data);
+
+		self.otherKeepAliveReceived = try reader.readInt(u32);
+		self.lastKeepAliveReceived = try reader.readInt(u32);
+
+		while(reader.remaining.len > 0) {
+			const start = try reader.readInt(u32);
+			const len = try reader.readInt(u32);
+
 			var j: usize = 0;
 			while(j < self.unconfirmedPackets.items.len) {
 				const diff = self.unconfirmedPackets.items[j].id -% start;
@@ -1530,18 +1529,18 @@ pub const Connection = struct { // MARK: Connection
 			self.receivedPackets[0] = putBackToFront;
 			self.receivedPackets[0].clearRetainingCapacity();
 		}
-		const output = main.stackAllocator.alloc(u8, runLengthEncodingStarts.items.len*8 + 9);
-		defer main.stackAllocator.free(output);
-		output[0] = Protocols.keepAlive;
-		std.mem.writeInt(u32, output[1..5], self.lastKeepAliveSent, .big);
-		std.mem.writeInt(u32, output[5..9], self.otherKeepAliveReceived, .big);
-		var remaining: []u8 = output[9..];
+		var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, runLengthEncodingStarts.items.len*8 + 9);
+		defer writer.deinit();
+
+		writer.writeInt(u8, Protocols.keepAlive);
+		writer.writeInt(u32, self.lastKeepAliveSent);
+		writer.writeInt(u32, self.otherKeepAliveReceived);
+
 		for(runLengthEncodingStarts.items, 0..) |_, i| {
-			std.mem.writeInt(u32, remaining[0..4], runLengthEncodingStarts.items[i], .big);
-			std.mem.writeInt(u32, remaining[4..8], runLengthEncodingLengths.items[i], .big);
-			remaining = remaining[8..];
+			writer.writeInt(u32, runLengthEncodingStarts.items[i]);
+			writer.writeInt(u32, runLengthEncodingLengths.items[i]);
 		}
-		self.manager.send(output, self.remoteAddress, null);
+		self.manager.send(writer.data.items, self.remoteAddress, null);
 
 		// Congestion control:
 		self.congestionControl_bandWidthSentHistory[self.lastKeepAliveSent & congestionControl_historyMask] = self.congestionControl_bandWidthUsed;
@@ -1689,7 +1688,7 @@ pub const Connection = struct { // MARK: Connection
 				if(Protocols.isAsynchronous[protocol]) {
 					ProtocolTask.schedule(self, protocol, data);
 				} else {
-					var reader = utils.BinaryReader.init(data, networkEndian);
+					var reader = utils.BinaryReader.init(data);
 					try prot(self, &reader);
 				}
 			} else {
@@ -1744,10 +1743,10 @@ pub const Connection = struct { // MARK: Connection
 			// Check if a message got completed:
 			try self.collectPackets();
 		} else if(protocol == Protocols.keepAlive) {
-			self.receiveKeepAlive(data[1..]);
+			try self.receiveKeepAlive(data[1..]);
 		} else {
 			if(Protocols.list[protocol]) |prot| {
-				var reader = utils.BinaryReader.init(data[1..], networkEndian);
+				var reader = utils.BinaryReader.init(data[1..]);
 				try prot(self, &reader);
 			} else {
 				std.log.err("Received unknown protocol with id {}", .{protocol});
@@ -1776,10 +1775,10 @@ const ProtocolTask = struct {
 	data: []const u8,
 
 	const vtable = utils.ThreadPool.VTable{
-		.getPriority = @ptrCast(&getPriority),
-		.isStillNeeded = @ptrCast(&isStillNeeded),
-		.run = @ptrCast(&run),
-		.clean = @ptrCast(&clean),
+		.getPriority = main.utils.castFunctionSelfToAnyopaque(getPriority),
+		.isStillNeeded = main.utils.castFunctionSelfToAnyopaque(isStillNeeded),
+		.run = main.utils.castFunctionSelfToAnyopaque(run),
+		.clean = main.utils.castFunctionSelfToAnyopaque(clean),
 		.taskType = .misc,
 	};
 
@@ -1803,7 +1802,7 @@ const ProtocolTask = struct {
 
 	pub fn run(self: *ProtocolTask) void {
 		defer self.clean();
-		var reader = utils.BinaryReader.init(self.data, networkEndian);
+		var reader = utils.BinaryReader.init(self.data);
 		Protocols.list[self.protocol].?(self.conn, &reader) catch |err| {
 			std.log.err("Got error {s} while executing protocol {} with data {any}", .{@errorName(err), self.protocol, self.data}); // TODO: Maybe disconnect on error
 		};

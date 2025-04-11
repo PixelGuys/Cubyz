@@ -1,7 +1,7 @@
 const std = @import("std");
 const Atomic = std.atomic.Value;
 
-const main = @import("root");
+const main = @import("main");
 const blocks = main.blocks;
 const chunk = main.chunk;
 const game = main.game;
@@ -16,6 +16,7 @@ const Vec3f = vec.Vec3f;
 const Vec3d = vec.Vec3d;
 const Vec4f = vec.Vec4f;
 const Mat4f = vec.Mat4f;
+const EventStatus = main.entity_data.EventStatus;
 
 const chunk_meshing = @import("chunk_meshing.zig");
 
@@ -172,6 +173,19 @@ pub fn getBlock(x: i32, y: i32, z: i32) ?blocks.Block {
 	const mesh = node.mesh orelse return null;
 	const block = mesh.chunk.getBlock(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask);
 	return block;
+}
+
+pub fn triggerOnInteractBlock(x: i32, y: i32, z: i32) EventStatus {
+	const node = getNodePointer(.{.wx = x, .wy = y, .wz = z, .voxelSize = 1});
+	node.mutex.lock();
+	defer node.mutex.unlock();
+	const mesh = node.mesh orelse return .ignored;
+	const block = mesh.chunk.getBlock(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask);
+	if(block.entityDataClass()) |class| {
+		return class.onInteract(.{x, y, z}, mesh.chunk);
+	}
+	// Event was not handled.
+	return .ignored;
 }
 
 pub fn getLight(wx: i32, wy: i32, wz: i32) ?[6]u8 {
@@ -896,10 +910,10 @@ pub const MeshGenerationTask = struct { // MARK: MeshGenerationTask
 	mesh: *chunk.Chunk,
 
 	pub const vtable = utils.ThreadPool.VTable{
-		.getPriority = @ptrCast(&getPriority),
-		.isStillNeeded = @ptrCast(&isStillNeeded),
-		.run = @ptrCast(&run),
-		.clean = @ptrCast(&clean),
+		.getPriority = main.utils.castFunctionSelfToAnyopaque(getPriority),
+		.isStillNeeded = main.utils.castFunctionSelfToAnyopaque(isStillNeeded),
+		.run = main.utils.castFunctionSelfToAnyopaque(run),
+		.clean = main.utils.castFunctionSelfToAnyopaque(clean),
 		.taskType = .meshgenAndLighting,
 	};
 
@@ -958,8 +972,7 @@ pub fn addBreakingAnimation(pos: Vec3i, breakingProgress: f32) void {
 	const texture = main.blocks.meshes.blockBreakingTextures.items[animationFrame];
 
 	const block = getBlock(pos[0], pos[1], pos[2]) orelse return;
-	const modelIndex = main.blocks.meshes.model(block);
-	const model = &main.models.models.items[modelIndex];
+	const model = main.blocks.meshes.model(block).model();
 
 	for(model.internalQuads) |quadIndex| {
 		addBreakingAnimationFace(pos, quadIndex, texture, null, block.transparent());
@@ -971,7 +984,7 @@ pub fn addBreakingAnimation(pos: Vec3i, breakingProgress: f32) void {
 	}
 }
 
-fn addBreakingAnimationFace(pos: Vec3i, quadIndex: u16, texture: u16, neighbor: ?chunk.Neighbor, isTransparent: bool) void {
+fn addBreakingAnimationFace(pos: Vec3i, quadIndex: main.models.QuadIndex, texture: u16, neighbor: ?chunk.Neighbor, isTransparent: bool) void {
 	const worldPos = pos +% if(neighbor) |n| n.relPos() else Vec3i{0, 0, 0};
 	const relPos = worldPos & @as(Vec3i, @splat(main.chunk.chunkMask));
 	const mesh = getMeshAndIncreaseRefCount(.{.wx = worldPos[0], .wy = worldPos[1], .wz = worldPos[2], .voxelSize = 1}) orelse return;
@@ -1006,7 +1019,7 @@ fn addBreakingAnimationFace(pos: Vec3i, quadIndex: u16, texture: u16, neighbor: 
 	});
 }
 
-fn removeBreakingAnimationFace(pos: Vec3i, quadIndex: u16, neighbor: ?chunk.Neighbor) void {
+fn removeBreakingAnimationFace(pos: Vec3i, quadIndex: main.models.QuadIndex, neighbor: ?chunk.Neighbor) void {
 	const worldPos = pos +% if(neighbor) |n| n.relPos() else Vec3i{0, 0, 0};
 	const relPos = worldPos & @as(Vec3i, @splat(main.chunk.chunkMask));
 	const mesh = getMeshAndIncreaseRefCount(.{.wx = worldPos[0], .wy = worldPos[1], .wz = worldPos[2], .voxelSize = 1}) orelse return;
@@ -1022,8 +1035,7 @@ fn removeBreakingAnimationFace(pos: Vec3i, quadIndex: u16, neighbor: ?chunk.Neig
 
 pub fn removeBreakingAnimation(pos: Vec3i) void {
 	const block = getBlock(pos[0], pos[1], pos[2]) orelse return;
-	const modelIndex = main.blocks.meshes.model(block);
-	const model = &main.models.models.items[modelIndex];
+	const model = main.blocks.meshes.model(block).model();
 
 	for(model.internalQuads) |quadIndex| {
 		removeBreakingAnimationFace(pos, quadIndex, null);

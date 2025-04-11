@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const User = main.server.User;
 
 pub const description = "Clears your inventory";

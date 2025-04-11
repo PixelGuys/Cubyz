@@ -2,7 +2,7 @@ const std = @import("std");
 
 const blocks = @import("blocks.zig");
 const Block = blocks.Block;
-const main = @import("main.zig");
+const main = @import("main");
 const settings = @import("settings.zig");
 const vec = @import("vec.zig");
 const Vec3i = vec.Vec3i;
@@ -173,6 +173,11 @@ pub const ChunkPosition = struct { // MARK: ChunkPosition
 	wz: i32,
 	voxelSize: u31,
 
+	pub fn initFromWorldPos(pos: Vec3i, voxelSize: u31) ChunkPosition {
+		const mask = ~@as(i32, voxelSize*chunkSize - 1);
+		return .{.wx = pos[0] & mask, .wy = pos[1] & mask, .wz = pos[2] & mask, .voxelSize = voxelSize};
+	}
+
 	pub fn hashCode(self: ChunkPosition) u32 {
 		const shift: u5 = @truncate(@min(@ctz(self.wx), @ctz(self.wy), @ctz(self.wz)));
 		return (((@as(u32, @bitCast(self.wx)) >> shift)*%31 +% (@as(u32, @bitCast(self.wy)) >> shift))*%31 +% (@as(u32, @bitCast(self.wz)) >> shift))*%31 +% self.voxelSize; // TODO: Can I use one of zigs standard hash functions?
@@ -249,6 +254,9 @@ pub const Chunk = struct { // MARK: Chunk
 	voxelSizeMask: i32,
 	widthShift: u5,
 
+	blockPosToEntityDataMap: std.AutoHashMapUnmanaged(u32, u32),
+	blockPosToEntityDataMapMutex: std.Thread.Mutex,
+
 	pub fn init(pos: ChunkPosition) *Chunk {
 		const self = memoryPool.create();
 		std.debug.assert((pos.voxelSize - 1 & pos.voxelSize) == 0);
@@ -260,12 +268,17 @@ pub const Chunk = struct { // MARK: Chunk
 			.voxelSizeShift = voxelSizeShift,
 			.voxelSizeMask = pos.voxelSize - 1,
 			.widthShift = voxelSizeShift + chunkShift,
+			.blockPosToEntityDataMap = .{},
+			.blockPosToEntityDataMapMutex = .{},
 		};
 		self.data.init();
 		return self;
 	}
 
 	pub fn deinit(self: *Chunk) void {
+		// TODO: We should either unload this data here or make sure it was unloaded before.
+		std.debug.assert(self.blockPosToEntityDataMap.count() == 0);
+		self.blockPosToEntityDataMap.deinit(main.globalAllocator.allocator);
 		self.data.deinit();
 		memoryPool.destroy(@alignCast(self));
 	}
@@ -288,6 +301,14 @@ pub const Chunk = struct { // MARK: Chunk
 		const z = _z >> self.voxelSizeShift;
 		const index = getIndex(x, y, z);
 		return self.data.getValue(index);
+	}
+
+	pub fn getLocalBlockIndex(self: *const Chunk, worldPos: Vec3i) u32 {
+		return getIndex(
+			(worldPos[0] - self.pos.wx) >> self.voxelSizeShift,
+			(worldPos[1] - self.pos.wy) >> self.voxelSizeShift,
+			(worldPos[2] - self.pos.wz) >> self.voxelSizeShift,
+		);
 	}
 };
 
@@ -313,6 +334,8 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 				.voxelSizeShift = voxelSizeShift,
 				.voxelSizeMask = pos.voxelSize - 1,
 				.widthShift = voxelSizeShift + chunkShift,
+				.blockPosToEntityDataMap = .{},
+				.blockPosToEntityDataMapMutex = .{},
 			},
 			.refCount = .init(1),
 		};

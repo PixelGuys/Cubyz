@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const blocks = main.blocks;
 const ServerChunk = main.chunk.ServerChunk;
 const ZonElement = main.ZonElement;
@@ -60,9 +60,9 @@ pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 
 	pub fn registerGenerator(comptime Generator: type) void {
 		var self: VTable = undefined;
-		self.loadModel = @ptrCast(&Generator.loadModel);
-		self.generate = @ptrCast(&Generator.generate);
-		self.hashFunction = @ptrCast(&struct {
+		self.loadModel = main.utils.castFunctionReturnToAnyopaque(Generator.loadModel);
+		self.generate = main.utils.castFunctionSelfToAnyopaque(Generator.generate);
+		self.hashFunction = main.utils.castFunctionSelfToAnyopaque(struct {
 			fn hash(ptr: *Generator) u64 {
 				return hashGeneric(ptr.*);
 			}
@@ -601,6 +601,7 @@ var finishedLoading: bool = false;
 var biomes: main.List(Biome) = undefined;
 var caveBiomes: main.List(Biome) = undefined;
 var biomesById: std.StringHashMap(*Biome) = undefined;
+var biomesByIndex: main.ListUnmanaged(*Biome) = .{};
 pub var byTypeBiomes: *TreeNode = undefined;
 
 const UnfinishedSubBiomeData = struct {
@@ -648,6 +649,7 @@ pub fn reset() void {
 	biomes.clearRetainingCapacity();
 	caveBiomes.clearRetainingCapacity();
 	biomesById.clearRetainingCapacity();
+	biomesByIndex.clearRetainingCapacity();
 	byTypeBiomes.deinit(main.globalAllocator);
 }
 
@@ -658,6 +660,7 @@ pub fn deinit() void {
 	biomes.deinit();
 	caveBiomes.deinit();
 	biomesById.deinit();
+	biomesByIndex.deinit(main.globalAllocator);
 	// TODO? byTypeBiomes.deinit(main.globalAllocator);
 	SimpleStructureModel.modelRegistry.clearAndFree(main.globalAllocator.allocator);
 }
@@ -690,11 +693,15 @@ pub fn finishLoading() void {
 		}
 	}
 	byTypeBiomes = TreeNode.init(main.globalAllocator, biomes.items[0..nonZeroBiomes], 0);
+	biomesByIndex.resize(main.globalAllocator, biomes.items.len + caveBiomes.items.len);
+
 	for(biomes.items) |*biome| {
 		biomesById.put(biome.id, biome) catch unreachable;
+		biomesByIndex.items[biome.paletteId] = biome;
 	}
 	for(caveBiomes.items) |*biome| {
 		biomesById.put(biome.id, biome) catch unreachable;
+		biomesByIndex.items[biome.paletteId] = biome;
 	}
 	var subBiomeIterator = unfinishedSubBiomes.iterator();
 	while(subBiomeIterator.next()) |subBiomeData| {
@@ -758,6 +765,11 @@ pub fn getById(id: []const u8) *const Biome {
 		std.log.err("Couldn't find biome with id {s}. Replacing it with some other biome.", .{id});
 		return &biomes.items[0];
 	};
+}
+
+pub fn getByIndex(index: u32) ?*const Biome {
+	std.debug.assert(finishedLoading);
+	return biomesByIndex.items[index];
 }
 
 pub fn getPlaceholderBiome() *const Biome {
