@@ -1606,7 +1606,6 @@ pub const Connection = struct { // MARK: Connection
 	connectionIdentifier: i64,
 	remoteConnectionIdentifier: i64,
 
-
 	mutex: std.Thread.Mutex = .{},
 
 	pub fn init(manager: *ConnectionManager, ipPort: []const u8, user: ?*main.server.User) !*Connection {

@@ -480,7 +480,7 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 
 		pub fn getSliceAtOffset(self: Self, offset: usize, result: []T) !void {
 			if(offset + result.len > (self.endIndex -% self.startIndex) & self.mask) return error.OutOfBounds;
-			for(result, offset .. offset + result.len) |*out, i| {
+			for(result, offset..offset + result.len) |*out, i| {
 				out.* = self.mem[(self.startIndex + i) & self.mask];
 			}
 		}
