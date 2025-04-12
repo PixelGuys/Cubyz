@@ -1450,7 +1450,7 @@ pub const Connection = struct { // MARK: Connection
 			return result;
 		}
 
-		pub fn getNextPacketToSend(self: *SendBuffer, byteIndex: *SequenceIndex, buf: []u8, time: i64, considerForCongestionControl: bool, retransmissionTimeout: i64, allowedDelay: i64) ?usize {
+		pub fn getNextPacketToSend(self: *SendBuffer, conn: *Connection, byteIndex: *SequenceIndex, buf: []u8, time: i64, considerForCongestionControl: bool, retransmissionTimeout: i64, allowedDelay: i64) ?usize {
 			self.unconfirmedRanges.ensureFreeCapacity(main.globalAllocator, 1);
 			// Resend old packet:
 			for(self.unconfirmedRanges.items) |*range| {
@@ -1471,6 +1471,7 @@ pub const Connection = struct { // MARK: Connection
 					range.considerForCongestionControl = false;
 					byteIndex.* = range.start;
 					_ = packetsResent.fetchAdd(1, .monotonic);
+					conn.handlePacketLoss(time);
 					return @intCast(range.len);
 				}
 			}
@@ -1544,7 +1545,7 @@ pub const Connection = struct { // MARK: Connection
 
 			var byteIndex: SequenceIndex = undefined;
 			const retransmissionTimeout: i64 = @intFromFloat(conn.rttEstimate + 3*conn.rttUncertainty + @as(f32, @floatFromInt(self.allowedDelay)) + 10_000);
-			const packetLen = self.sendBuffer.getNextPacketToSend(&byteIndex, writer.data.items.ptr[5..writer.data.capacity], time, considerForCongestionControl, retransmissionTimeout, self.allowedDelay) orelse return null;
+			const packetLen = self.sendBuffer.getNextPacketToSend(conn, &byteIndex, writer.data.items.ptr[5..writer.data.capacity], time, considerForCongestionControl, retransmissionTimeout, self.allowedDelay) orelse return null;
 			writer.writeInt(SequenceIndex, byteIndex);
 			_ = internalHeaderOverhead.fetchAdd(5, .monotonic);
 			_ = externalHeaderOverhead.fetchAdd(headerOverhead, .monotonic);
@@ -1739,7 +1740,7 @@ pub const Connection = struct { // MARK: Connection
 		const rtt: i64 = @intFromFloat(self.rttEstimate);
 		self.slowStart = false;
 		if(timestamp -% rtt -% self.lastLossTime > 0) {
-			if(timestamp -% rtt -% self.lastLossReactionTime) {
+			if(timestamp -% rtt -% self.lastLossReactionTime > 0) {
 				self.rttEstimate *= 1.5;
 				self.bandwidthEstimateInBytesPerRtt /= 2;
 				self.bandwidthEstimateInBytesPerRtt = @max(self.bandwidthEstimateInBytesPerRtt, minMtu);
