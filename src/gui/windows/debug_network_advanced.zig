@@ -23,49 +23,38 @@ pub var window = GuiWindow{
 	.hideIfMouseIsGrabbed = false,
 };
 
-fn renderConnectionData(conn: *main.network.Connection, y: *f32) void {
+fn renderConnectionData(conn: *main.network.Connection, name: []const u8, y: *f32) void {
 	conn.mutex.lock();
 	defer conn.mutex.unlock();
-	var unconfirmed: usize = 0;
-	for(conn.unconfirmedPackets.items) |packet| {
-		unconfirmed += packet.data.len;
-	}
-	var waiting: usize = 0;
-	{
-		var i = conn.packetQueue.startIndex;
-		while(i != conn.packetQueue.endIndex) : (i = (i + 1) & conn.packetQueue.mask) {
-			const packet = conn.packetQueue.mem[i];
-			waiting += packet.data.len;
-		}
-	}
-	draw.print("Bandwidth: {d:.0} kiB/s", .{1.0e9/conn.congestionControl_inversebandWidth/1024.0}, 0, y.*, 8, .left);
+	var unconfirmed: [3]usize = @splat(0);
+	var queued: [3]usize = @splat(0);
+	conn.lossyChannel.getStatistics(&unconfirmed[0], &queued[0]);
+	conn.fastChannel.getStatistics(&unconfirmed[1], &queued[1]);
+	conn.slowChannel.getStatistics(&unconfirmed[2], &queued[2]);
+	draw.print("{s} | RTT = {d:.1} ms | {d:.0} kiB/RTT", .{name, conn.rttEstimate/1000.0, conn.bandwidthEstimateInBytesPerRtt}, 0, y.*, 8, .left);
 	y.* += 8;
-	draw.print("Waiting in queue: {} kiB", .{waiting >> 10}, 0, y.*, 8, .left);
+	draw.print("Waiting in queue:      {: >6} kiB |{: >6} kiB |{: >6} kiB", .{queued[0] >> 10, queued[1] >> 10, queued[2] >> 10}, 0, y.*, 8, .left);
 	y.* += 8;
-	draw.print("Sent but not confirmed: {} kiB", .{unconfirmed >> 10}, 0, y.*, 8, .left);
+	draw.print("Sent but not confirmed:{: >6} kiB |{: >6} kiB |{: >6} kiB", .{unconfirmed[0] >> 10, unconfirmed[1] >> 10, unconfirmed[2] >> 10}, 0, y.*, 8, .left);
 	y.* += 8;
 }
 
 pub fn render() void {
-	if(true) return; // TODO: Add network info for the new protocol
 	draw.setColor(0xffffffff);
 	var y: f32 = 0;
 	if(main.game.world != null) {
-		draw.print("Client", .{}, 0, y, 8, .left);
-		y += 8;
-		renderConnectionData(main.game.world.?.conn, &y);
+		renderConnectionData(main.game.world.?.conn, "Client", &y);
 	}
+	y += 8;
 	if(main.server.world != null) {
 		const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
 		defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 		for(userList) |user| {
-			draw.print("{s}", .{user.name}, 0, y, 8, .left);
-			y += 8;
-			renderConnectionData(user.conn, &y);
+			renderConnectionData(user.conn, user.name, &y);
 		}
 	}
-	if(window.size[1] != y) {
-		window.size[1] = y;
+	if(window.contentSize[1] != y) {
+		window.contentSize[1] = y;
 		window.updateWindowPosition();
 	}
 }

@@ -1553,6 +1553,13 @@ pub const Connection = struct { // MARK: Connection
 			conn.manager.send(writer.data.items, conn.remoteAddress, null);
 			return writer.data.items.len;
 		}
+
+		pub fn getStatistics(self: *Channel, unconfirmed: *usize, queued: *usize) void {
+			for(self.sendBuffer.unconfirmedRanges.items) |range| {
+				unconfirmed.* += @intCast(range.len);
+			}
+			queued.* = @intCast(self.sendBuffer.nextIndex -% self.sendBuffer.highestSentIndex);
+		}
 	};
 
 	const ChannelId = enum(u8) { // MARK: ChannelId
