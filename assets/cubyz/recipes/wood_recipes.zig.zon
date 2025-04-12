@@ -147,6 +147,18 @@
 		.inputs = .{"cubyz:cactus"},
 		.output = "2 cubyz:cactus_arm",
 	},
+	.{
+		.inputs = .{"cubyz:bolete_stem"},
+		.output = "2 cubyz:bolete_branch",
+	},
+	.{
+		.inputs = .{"cubyz:toadstool_stem"},
+		.output = "2 cubyz:toadstool_branch",
+	},
+	.{
+		.inputs = .{"cubyz:glimmergill_stem"},
+		.output = "2 cubyz:glimmergill_branch",
+	},
 
 	.{
 		.inputs = .{"cubyz:birch_planks", "cubyz:coal"},
