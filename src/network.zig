@@ -628,11 +628,11 @@ const UnconfirmedPacket = struct {
 };
 
 // MARK: Protocols
-pub var bytesReceived: [256]Atomic(usize) = @splat(.init(0));
-pub var packetsReceived: [256]Atomic(usize) = @splat(.init(0));
 pub const Protocols = struct {
 	pub var list: [256]?*const fn(*Connection, *utils.BinaryReader) anyerror!void = @splat(null);
 	pub var isAsynchronous: [256]bool = @splat(false);
+	pub var bytesReceived: [256]Atomic(usize) = @splat(.init(0));
+	pub var bytesSent: [256]Atomic(usize) = @splat(.init(0));
 
 	pub const keepAlive: u8 = 0;
 	pub const important: u8 = 0xff;
@@ -1238,6 +1238,9 @@ pub const Connection = struct { // MARK: Connection
 	// Statistics:
 	pub var packetsSent: Atomic(u32) = .init(0);
 	pub var packetsResent: Atomic(u32) = .init(0);
+	pub var internalMessageOverhead: Atomic(usize) = .init(0);
+	pub var internalHeaderOverhead: Atomic(usize) = .init(0);
+	pub var externalHeaderOverhead: Atomic(usize) = .init(0);
 
 	const SequenceIndex = i32;
 
@@ -1332,6 +1335,7 @@ pub const Connection = struct { // MARK: Connection
 					try protocolReceive(conn, &reader);
 				}
 
+				_ = Protocols.bytesReceived[protocolIndex].fetchAdd(self.protocolBuffer.items.len, .monotonic);
 				self.protocolBuffer.clearRetainingCapacity();
 				if(self.protocolBuffer.items.len > 1 << 24) {
 					self.protocolBuffer.shrinkAndFree(main.globalAllocator, 1 << 24);
@@ -1402,6 +1406,7 @@ pub const Connection = struct { // MARK: Connection
 			if(data.len > std.math.maxInt(SequenceIndex)) return error.OutOfMemory;
 			self.buffer.enqueue(protocolIndex);
 			self.nextIndex +%= 1;
+			_ = internalHeaderOverhead.fetchAdd(1, .monotonic);
 			const bits = 1 + if(data.len == 0) 0 else std.math.log2_int(usize, data.len);
 			const bytes = std.math.divCeil(usize, bits, 7) catch unreachable;
 			for(0..bytes) |i| {
@@ -1409,6 +1414,7 @@ pub const Connection = struct { // MARK: Connection
 				const byte = (data.len >> @intCast(shift) & 0x7f) | if(i == bytes - 1) @as(u8, 0) else 0x80;
 				self.buffer.enqueue(@intCast(byte));
 				self.nextIndex +%= 1;
+				_ = internalHeaderOverhead.fetchAdd(1, .monotonic);
 			}
 			self.buffer.enqueueSlice(data);
 			self.nextIndex +%= @intCast(data.len);
@@ -1463,6 +1469,7 @@ pub const Connection = struct { // MARK: Connection
 					range.timestamp = time;
 					range.wasResent = true;
 					byteIndex.* = range.start;
+					_ = packetsResent.fetchAdd(1, .monotonic);
 					return @intCast(range.len);
 				}
 			}
@@ -1538,8 +1545,11 @@ pub const Connection = struct { // MARK: Connection
 			const retransmissionTimeout: i64 = @intFromFloat(conn.rttEstimate + 3*conn.rttUncertainty + @as(f32, @floatFromInt(self.allowedDelay)) + 10_000);
 			const packetLen = self.sendBuffer.getNextPacketToSend(&byteIndex, writer.data.items.ptr[5..writer.data.capacity], time, considerForCongestionControl, retransmissionTimeout, self.allowedDelay) orelse return null;
 			writer.writeInt(SequenceIndex, byteIndex);
+			_ = internalHeaderOverhead.fetchAdd(5, .monotonic);
+			_ = externalHeaderOverhead.fetchAdd(headerOverhead, .monotonic);
 			writer.data.items.len += packetLen;
 
+			_ = packetsSent.fetchAdd(1, .monotonic);
 			conn.manager.send(writer.data.items, conn.remoteAddress, null);
 			return writer.data.items.len;
 		}
@@ -1695,6 +1705,7 @@ pub const Connection = struct { // MARK: Connection
 	}
 
 	pub fn send(self: *Connection, comptime channel: ChannelId, protocolIndex: u8, data: []const u8) void {
+		_ = Protocols.bytesSent[protocolIndex].fetchAdd(data.len, .monotonic);
 		self.mutex.lock();
 		defer self.mutex.unlock();
 
@@ -1792,6 +1803,7 @@ pub const Connection = struct { // MARK: Connection
 			if(writer.data.capacity - writer.data.items.len < @sizeOf(ChannelId) + @sizeOf(u16) + @sizeOf(SequenceIndex)) break;
 		}
 
+		_ = internalMessageOverhead.fetchAdd(writer.data.items.len + headerOverhead, .monotonic);
 		self.manager.send(writer.data.items, self.remoteAddress, null);
 		return writer.data.items.len;
 	}
@@ -1867,6 +1879,7 @@ pub const Connection = struct { // MARK: Connection
 				writer.writeEnum(ChannelId, .init);
 				writer.writeInt(i64, self.connectionIdentifier);
 
+				_ = internalMessageOverhead.fetchAdd(writer.data.items.len + headerOverhead, .monotonic);
 				self.manager.send(writer.data.items, self.remoteAddress, null);
 			}
 			return;
@@ -1931,7 +1944,7 @@ pub const Connection = struct { // MARK: Connection
 				writer.writeInt(SequenceIndex, self.lossyChannel.sendBuffer.fullyConfirmedIndex);
 				writer.writeInt(SequenceIndex, self.fastChannel.sendBuffer.fullyConfirmedIndex);
 				writer.writeInt(SequenceIndex, self.slowChannel.sendBuffer.fullyConfirmedIndex);
-
+				_ = internalMessageOverhead.fetchAdd(writer.data.items.len + headerOverhead, .monotonic);
 				self.manager.send(writer.data.items, self.remoteAddress, null);
 				return;
 			},

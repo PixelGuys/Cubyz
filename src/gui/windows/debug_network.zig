@@ -38,10 +38,16 @@ pub fn render() void {
 		const loss = @as(f64, @floatFromInt(resent))/@as(f64, @floatFromInt(sent))*100;
 		draw.print("Packet loss: {d:.1}% ({}/{})", .{loss, resent, sent}, 0, y, 8, .left);
 		y += 8;
+		draw.print("Internal message overhead: {}kiB", .{network.Connection.internalMessageOverhead.load(.monotonic) >> 10}, 0, y, 8, .left);
+		y += 8;
+		draw.print("Internal header overhead: {}kiB", .{network.Connection.internalHeaderOverhead.load(.monotonic) >> 10}, 0, y, 8, .left);
+		y += 8;
+		draw.print("External header overhead: {}kiB", .{network.Connection.externalHeaderOverhead.load(.monotonic) >> 10}, 0, y, 8, .left);
+		y += 8;
 		inline for(@typeInfo(network.Protocols).@"struct".decls) |decl| {
 			if(@TypeOf(@field(network.Protocols, decl.name)) == type) {
 				const id = @field(network.Protocols, decl.name).id;
-				draw.print("{s}: {}kiB in {} packets", .{decl.name, network.bytesReceived[id].load(.monotonic) >> 10, network.packetsReceived[id].load(.monotonic)}, 0, y, 8, .left);
+				draw.print("{s}: received {}kiB sent {}kiB", .{decl.name, network.Protocols.bytesReceived[id].load(.monotonic) >> 10, network.Protocols.bytesSent[id].load(.monotonic) >> 10}, 0, y, 8, .left);
 				y += 8;
 			}
 		}
