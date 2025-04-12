@@ -1293,6 +1293,7 @@ pub const Connection = struct { // MARK: Connection
 		}
 
 		fn getHeaderInformation(self: *ReceiveBuffer) !?Header {
+			if(self.currentReadPosition == self.availablePosition) return null;
 			var header: Header = .{
 				.protocolIndex = self.buffer.getAtOffset(0) orelse return null,
 				.size = 0,
