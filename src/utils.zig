@@ -358,7 +358,7 @@ pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: 
 			if(offset + elems.len > capacity) {
 				return error.OutOfMemory;
 			}
-			self.len = offset + elems.len;
+			self.len = @max(self.len, offset + elems.len);
 			for(elems, 0..) |elem, i| {
 				self.mem[self.startIndex + offset + i & mask] = elem;
 			}

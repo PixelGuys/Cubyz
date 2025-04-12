@@ -1350,6 +1350,7 @@ pub const Connection = struct { // MARK: Connection
 
 		pub fn receive(self: *ReceiveBuffer, conn: *Connection, start: SequenceIndex, data: []const u8) !ReceiveStatus {
 			const len: SequenceIndex = @intCast(data.len);
+			if(start -% self.currentReadPosition < 0) return .accepted; // We accepted it in the past.
 			const offset: usize = @intCast(start -% self.currentReadPosition);
 			if(start == self.availablePosition) {
 				self.buffer.insertSliceAtOffset(data, offset) catch return .rejected;
@@ -1357,7 +1358,6 @@ pub const Connection = struct { // MARK: Connection
 				try self.collectRangesAndExecuteProtocols(conn);
 				return .accepted;
 			}
-			if(start +% len -% self.currentReadPosition < 0) return .accepted; // We accepted it in the past.
 			self.buffer.insertSliceAtOffset(data, offset) catch return .rejected;
 			self.ranges.append(main.globalAllocator, .{.start = start, .len = len});
 			return .accepted;
@@ -1454,7 +1454,7 @@ pub const Connection = struct { // MARK: Connection
 			self.unconfirmedRanges.ensureFreeCapacity(main.globalAllocator, 1);
 			// Resend old packet:
 			for(self.unconfirmedRanges.items) |*range| {
-				if(range.timestamp -% (time +% retransmissionTimeout) > 0) {
+				if(range.timestamp +% retransmissionTimeout -% time < 0) {
 					if(range.len > buf.len) { // MTU changed → split the data
 						self.unconfirmedRanges.appendAssumeCapacity(.{
 							.start = range.start +% @as(SequenceIndex, @intCast(buf.len)),
@@ -1468,6 +1468,7 @@ pub const Connection = struct { // MARK: Connection
 					self.buffer.getSliceAtOffset(@intCast(range.start -% self.fullyConfirmedIndex), buf[0..@intCast(range.len)]) catch unreachable;
 					range.timestamp = time;
 					range.wasResent = true;
+					range.considerForCongestionControl = false;
 					byteIndex.* = range.start;
 					_ = packetsResent.fetchAdd(1, .monotonic);
 					return @intCast(range.len);
@@ -1741,6 +1742,7 @@ pub const Connection = struct { // MARK: Connection
 			if(timestamp -% rtt -% self.lastLossReactionTime) {
 				self.rttEstimate *= 1.5;
 				self.bandwidthEstimateInBytesPerRtt /= 2;
+				self.bandwidthEstimateInBytesPerRtt = @max(self.bandwidthEstimateInBytesPerRtt, minMtu);
 				self.lastLossReactionTime = timestamp;
 			}
 		}
