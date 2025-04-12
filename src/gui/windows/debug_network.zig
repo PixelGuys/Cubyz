@@ -52,8 +52,8 @@ pub fn render() void {
 			}
 		}
 	}
-	if(window.size[1] != y) {
-		window.size[1] = y;
+	if(window.contentSize[1] != y) {
+		window.contentSize[1] = y;
 		window.updateWindowPosition();
 	}
 }
