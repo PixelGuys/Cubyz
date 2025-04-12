@@ -1600,6 +1600,7 @@ pub const Connection = struct { // MARK: Connection
 	fastChannel: Channel,
 	slowChannel: Channel,
 
+	hasRttEstimate: bool = false,
 	rttEstimate: f32 = 1000_000.0,
 	rttUncertainty: f32 = 0.0,
 	lastRttSampleTime: i64,
@@ -1681,6 +1682,7 @@ pub const Connection = struct { // MARK: Connection
 		self.slowChannel.reset();
 
 		self.rttEstimate = 1000_000.0;
+		self.hasRttEstimate = false;
 		self.rttUncertainty = 0.0;
 		self.lastRttSampleTime = std.time.microTimestamp() -% 10_000_000;
 		self.nextPacketTimestamp = std.time.microTimestamp();
@@ -1777,7 +1779,7 @@ pub const Connection = struct { // MARK: Connection
 				.slow => self.slowChannel.receiveConfirmationAndGetTimestamp(start) orelse continue,
 				else => return error.Invalid,
 			};
-			const rtt: f32 = @floatFromInt(timestamp -% confirmationResult.timestamp -% timeOffset);
+			const rtt: f32 = @floatFromInt(@max(1, timestamp -% confirmationResult.timestamp -% timeOffset));
 			numRtt += 1;
 			sumRtt += rtt;
 			minRtt = @min(minRtt, rtt);
@@ -1796,6 +1798,10 @@ pub const Connection = struct { // MARK: Connection
 			self.rttEstimate = (1 - alpha)*self.rttEstimate + alpha*averageRtt;
 			self.rttUncertainty = (1 - beta)*self.rttUncertainty + beta*largestDifference;
 			self.lastRttSampleTime = timestamp;
+			if(!self.hasRttEstimate) { // Kill the 1 second delay caused by the first packet
+				self.nextPacketTimestamp = timestamp;
+				self.hasRttEstimate = true;
+			}
 		}
 	}
 
