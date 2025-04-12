@@ -319,18 +319,18 @@ pub fn Array3D(comptime T: type) type { // MARK: Array3D
 	};
 }
 
-pub fn FixedSizeCircularBuffer(T: type, size: comptime_int) type { // MARK: FixedSizeCircularBuffer
-	std.debug.assert(size - 1 & size == 0 and size > 0);
-	const mask = size - 1;
+pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: FixedSizeCircularBuffer
+	std.debug.assert(capacity - 1 & capacity == 0 and capacity > 0);
+	const mask = capacity - 1;
 	return struct {
 		const Self = @This();
-		mem: *[size]T = undefined,
+		mem: *[capacity]T = undefined,
 		startIndex: usize = 0,
 		len: usize = 0,
 
 		pub fn init(allocator: NeverFailingAllocator) Self {
 			return .{
-				.mem = allocator.create([size]T),
+				.mem = allocator.create([capacity]T),
 			};
 		}
 
@@ -339,13 +339,13 @@ pub fn FixedSizeCircularBuffer(T: type, size: comptime_int) type { // MARK: Fixe
 		}
 
 		pub fn enqueue(self: *Self, elem: T) !void {
-			if(self.len >= size) return error.OutOfMemory;
+			if(self.len >= capacity) return error.OutOfMemory;
 			self.mem[self.startIndex + self.len & mask] = elem;
 			self.len += 1;
 		}
 
 		pub fn enqueueSlice(self: *Self, elems: []const T) !void {
-			if(elems.len + self.len > size) {
+			if(elems.len + self.len > capacity) {
 				return error.OutOfMemory;
 			}
 			for(elems) |elem| {
@@ -355,7 +355,7 @@ pub fn FixedSizeCircularBuffer(T: type, size: comptime_int) type { // MARK: Fixe
 		}
 
 		pub fn insertSliceAtOffset(self: *Self, elems: []const T, offset: usize) !void {
-			if(offset + elems.len > size) {
+			if(offset + elems.len > capacity) {
 				return error.OutOfMemory;
 			}
 			self.len = offset + elems.len;
