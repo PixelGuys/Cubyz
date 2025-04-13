@@ -1380,6 +1380,7 @@ pub const Connection = struct { // MARK: Connection
 			}
 		};
 		unconfirmedRanges: std.PriorityQueue(Range, void, Range.compareTime),
+		lostRanges: main.utils.CircularBufferQueue(Range),
 		buffer: main.utils.CircularBufferQueue(u8),
 		fullyConfirmedIndex: SequenceIndex,
 		highestSentIndex: SequenceIndex,
@@ -1389,6 +1390,7 @@ pub const Connection = struct { // MARK: Connection
 		pub fn init(index: SequenceIndex) SendBuffer {
 			return .{
 				.unconfirmedRanges = .init(main.globalAllocator.allocator, {}),
+				.lostRanges = .init(main.globalAllocator, 1 << 10),
 				.buffer = .init(main.globalAllocator, 1 << 20),
 				.fullyConfirmedIndex = index,
 				.highestSentIndex = index,
@@ -1399,11 +1401,13 @@ pub const Connection = struct { // MARK: Connection
 
 		pub fn reset(self: *SendBuffer) void {
 			self.unconfirmedRanges.clearRetainingCapacity();
+			self.lostRanges.reset();
 			self.buffer.reset();
 		}
 
 		pub fn deinit(self: SendBuffer) void {
 			self.unconfirmedRanges.deinit();
+			self.lostRanges.deinit();
 			self.buffer.deinit();
 		}
 
@@ -1453,37 +1457,51 @@ pub const Connection = struct { // MARK: Connection
 					smallestUnconfirmed = range.start;
 				}
 			}
+			var i: usize = self.lostRanges.startIndex;
+			while(i != self.lostRanges.endIndex) : (i = (i + 1) & self.lostRanges.mask) {
+				const range = self.lostRanges.mem[i];
+				if(smallestUnconfirmed -% range.start > 0) {
+					smallestUnconfirmed = range.start;
+				}
+			}
 			self.buffer.discard(@intCast(smallestUnconfirmed -% self.fullyConfirmedIndex)) catch unreachable;
 			self.fullyConfirmedIndex = smallestUnconfirmed;
 			return result;
 		}
 
-		pub fn getNextPacketToSend(self: *SendBuffer, conn: *Connection, byteIndex: *SequenceIndex, buf: []u8, time: i64, considerForCongestionControl: bool, retransmissionTimeout: i64, allowedDelay: i64) ?usize {
+		pub fn checkForLosses(self: *SendBuffer, time: i64, retransmissionTimeout: i64) usize {
+			var lostPackets: usize = 0;
+			while(true) {
+				var range = self.unconfirmedRanges.peek() orelse break;
+				if(range.timestamp +% retransmissionTimeout -% time >= 0) break;
+				_ = self.unconfirmedRanges.remove();
+				range.wasResent = true;
+				self.lostRanges.enqueue(range);
+				lostPackets += 1;
+			}
+			return lostPackets;
+		}
+
+		pub fn getNextPacketToSend(self: *SendBuffer, byteIndex: *SequenceIndex, buf: []u8, time: i64, considerForCongestionControl: bool, allowedDelay: i64) ?usize {
 			self.unconfirmedRanges.ensureUnusedCapacity(1) catch unreachable;
 			// Resend old packet:
-			if(self.unconfirmedRanges.peek()) |_range| {
-				if(_range.timestamp +% retransmissionTimeout -% time < 0) {
-					var range = self.unconfirmedRanges.remove();
-					if(range.len > buf.len) { // MTU changed → split the data
-						self.unconfirmedRanges.add(.{
-							.start = range.start +% @as(SequenceIndex, @intCast(buf.len)),
-							.len = range.len - @as(SequenceIndex, @intCast(buf.len)),
-							.timestamp = range.timestamp,
-							.considerForCongestionControl = false,
-						}) catch unreachable;
-						range.len = @intCast(buf.len);
-					}
-
-					self.buffer.getSliceAtOffset(@intCast(range.start -% self.fullyConfirmedIndex), buf[0..@intCast(range.len)]) catch unreachable;
-					range.timestamp = time;
-					range.wasResent = true;
-					range.considerForCongestionControl = false;
-					byteIndex.* = range.start;
-					_ = packetsResent.fetchAdd(1, .monotonic);
-					conn.handlePacketLoss(time);
-					self.unconfirmedRanges.add(range) catch unreachable;
-					return @intCast(range.len);
+			if(self.lostRanges.dequeue()) |_range| {
+				var range = _range;
+				if(range.len > buf.len) { // MTU changed → split the data
+					self.lostRanges.enqueue_back(.{
+						.start = range.start +% @as(SequenceIndex, @intCast(buf.len)),
+						.len = range.len - @as(SequenceIndex, @intCast(buf.len)),
+						.timestamp = range.timestamp,
+						.considerForCongestionControl = range.considerForCongestionControl,
+					});
+					range.len = @intCast(buf.len);
 				}
+
+				self.buffer.getSliceAtOffset(@intCast(range.start -% self.fullyConfirmedIndex), buf[0..@intCast(range.len)]) catch unreachable;
+				range.timestamp = time;
+				byteIndex.* = range.start;
+				self.unconfirmedRanges.add(range) catch unreachable;
+				return @intCast(range.len);
 			}
 
 			if(self.highestSentIndex == self.nextIndex) return null;
@@ -1547,6 +1565,11 @@ pub const Connection = struct { // MARK: Connection
 			return self.sendBuffer.receiveConfirmationAndGetTimestamp(start);
 		}
 
+		pub fn checkForLosses(self: *Channel, conn: *Connection, time: i64) usize {
+			const retransmissionTimeout: i64 = @intFromFloat(conn.rttEstimate + 3*conn.rttUncertainty + @as(f32, @floatFromInt(self.allowedDelay)) + 10_000);
+			return self.sendBuffer.checkForLosses(time, retransmissionTimeout);
+		}
+
 		pub fn sendNextPacketAndGetSize(self: *Channel, conn: *Connection, time: i64, considerForCongestionControl: bool) ?usize {
 			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, conn.mtuEstimate);
 			defer writer.deinit();
@@ -1554,8 +1577,7 @@ pub const Connection = struct { // MARK: Connection
 			writer.writeEnum(ChannelId, self.channelId);
 
 			var byteIndex: SequenceIndex = undefined;
-			const retransmissionTimeout: i64 = @intFromFloat(conn.rttEstimate + 3*conn.rttUncertainty + @as(f32, @floatFromInt(self.allowedDelay)) + 10_000);
-			const packetLen = self.sendBuffer.getNextPacketToSend(conn, &byteIndex, writer.data.items.ptr[5..writer.data.capacity], time, considerForCongestionControl, retransmissionTimeout, self.allowedDelay) orelse return null;
+			const packetLen = self.sendBuffer.getNextPacketToSend(&byteIndex, writer.data.items.ptr[5..writer.data.capacity], time, considerForCongestionControl, self.allowedDelay) orelse return null;
 			writer.writeInt(SequenceIndex, byteIndex);
 			_ = internalHeaderOverhead.fetchAdd(5, .monotonic);
 			_ = externalHeaderOverhead.fetchAdd(headerOverhead, .monotonic);
@@ -1748,11 +1770,13 @@ pub const Connection = struct { // MARK: Connection
 		return self.connectionState.load(.unordered) == .connected;
 	}
 
-	fn handlePacketLoss(self: *Connection, timestamp: i64) void {
+	fn handlePacketLoss(self: *Connection, losses: usize, timestamp: i64) void {
+		if(losses == 0) return;
+		_ = packetsResent.fetchAdd(@intCast(losses), .monotonic);
 		const rtt: i64 = @intFromFloat(self.rttEstimate);
 		self.slowStart = false;
-		if(timestamp -% rtt -% self.lastLossTime > 0) {
-			if(timestamp -% rtt -% self.lastLossReactionTime > 0) {
+		if(timestamp -% rtt -% self.lastLossTime > 0 or losses > 1) {
+			if(timestamp -% 2*rtt -% self.lastLossReactionTime > 0) {
 				self.rttEstimate *= 1.5;
 				self.bandwidthEstimateInBytesPerRtt /= 2;
 				self.bandwidthEstimateInBytesPerRtt = @max(self.bandwidthEstimateInBytesPerRtt, minMtu);
@@ -1815,7 +1839,7 @@ pub const Connection = struct { // MARK: Connection
 		}
 	}
 
-	fn sendConfirmationPacket(self: *Connection, timestamp: i64) usize {
+	fn sendConfirmationPacket(self: *Connection, timestamp: i64) void {
 		std.debug.assert(self.manager.threadId == std.Thread.getCurrentId());
 		var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, self.mtuEstimate);
 		defer writer.deinit();
@@ -1831,7 +1855,6 @@ pub const Connection = struct { // MARK: Connection
 
 		_ = internalMessageOverhead.fetchAdd(writer.data.items.len + headerOverhead, .monotonic);
 		self.manager.send(writer.data.items, self.remoteAddress, null);
-		return writer.data.items.len;
 	}
 
 	pub fn receive(self: *Connection, data: []const u8) void {
@@ -1978,6 +2001,11 @@ pub const Connection = struct { // MARK: Connection
 			.disconnectDesired => return,
 		}
 
+		var losses = self.lossyChannel.checkForLosses(self, timestamp);
+		losses += self.fastChannel.checkForLosses(self, timestamp);
+		losses += self.slowChannel.checkForLosses(self, timestamp);
+		self.handlePacketLoss(losses, timestamp);
+
 		// We don't want to send too many packets at once if there was a period of no traffic.
 		if(timestamp -% 10_000 -% self.nextPacketTimestamp > 0) {
 			self.relativeIdleTime += timestamp -% 10_000 -% self.nextPacketTimestamp;
@@ -1989,14 +2017,14 @@ pub const Connection = struct { // MARK: Connection
 			self.relativeSendTime >>= 1;
 		}
 
+		while(timestamp -% self.nextConfirmationTimestamp > 0 and !self.queuedConfirmations.empty()) {
+			self.sendConfirmationPacket(timestamp);
+		}
+
 		while(timestamp -% self.nextPacketTimestamp > 0) {
 			// Only attempt to increase the congestion bandwidth if we actual use the bandwidth, to prevent unbounded growth
 			const considerForCongestionControl = @divFloor(self.relativeSendTime, 2) > self.relativeIdleTime;
 			const dataLen = blk: {
-				if(timestamp -% self.nextConfirmationTimestamp > 0 and !self.queuedConfirmations.empty()) {
-					break :blk self.sendConfirmationPacket(timestamp);
-				}
-
 				self.mutex.lock();
 				defer self.mutex.unlock();
 				if(self.lossyChannel.sendNextPacketAndGetSize(self, timestamp, considerForCongestionControl)) |dataLen| break :blk dataLen;
