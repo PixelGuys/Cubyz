@@ -434,7 +434,6 @@ pub const collision = struct {
 		}
 	}
 
-
 	pub const Box = struct {
 		min: Vec3d,
 		max: Vec3d,
