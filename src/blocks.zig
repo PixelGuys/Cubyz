@@ -444,26 +444,26 @@ fn Callback(comptime Child: type, comptime Function: type) type {
 				if(@TypeOf(@field(Child, declaration.name)) == Function) {
 					std.log.debug("Registered Callback '{s}'", .{declaration.name});
 					self.hashMap.putNoClobber(declaration.name, &@field(Child, declaration.name)) catch unreachable;
+				}
 			}
-		}
 
 			return self;
-	}
+		}
 
 		pub fn deinit(self: *Super) void {
 			self.hashMap.deinit();
-	}
+		}
 
 		pub fn getFunctionPointer(self: *Super, id: []const u8) CallbackError!*const Function {
 			const pointer = self.hashMap.getPtr(id);
-		if(pointer == null) {
-			if(id.len != 0)
+			if(pointer == null) {
+				if(id.len != 0)
 					return CallbackError.NotFound;
 				return CallbackError.EmptyName;
+			}
+			return pointer.?.*;
 		}
-		return pointer.?.*;
-	}
-};
+	};
 }
 
 //MARK: Tick
