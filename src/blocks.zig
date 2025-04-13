@@ -887,3 +887,37 @@ pub const meshes = struct { // MARK: meshes
 		fogSSBO.?.bind(7);
 	}
 };
+
+const expect = std.testing.expect;
+const expectError = std.testing.expectError;
+
+test "Callback registers testFunction and expects errors" {
+	const TestFunction = fn(_: i32) void;
+
+	const TestFunctions = struct {
+		const Self = @This();
+		var super: Callback(Self, TestFunction) = undefined;
+
+		pub fn init() void {
+			super = .init(std.testing.allocator);
+		}
+
+		pub fn deinit() void {
+			super.deinit();
+		}
+
+		// Callback should register this
+		pub fn testFunction(_: i32) void {}
+	};
+
+	TestFunctions.init();
+	defer TestFunctions.deinit();
+
+	try expect(TestFunctions.super.hashMap.count() == 1);
+
+	const fnPtr = TestFunctions.super.getFunctionPointer("testFunction") catch unreachable;
+	try expect(@TypeOf(fnPtr) == *const TestFunction);
+
+	try expectError(CallbackError.EmptyName, TestFunctions.super.getFunctionPointer(""));
+	try expectError(CallbackError.NotFound, TestFunctions.super.getFunctionPointer("functionTest"));
+}
