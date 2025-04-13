@@ -1,0 +1,32 @@
+.{
+	.tags = .{.wood},
+	.blockHealth = 2,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.absorbedLight = 0x202830,
+	.rotation = .branch,
+	.model = .{
+		.radius = 4,
+	},
+	.texture0 = "cubyz:branch/glimmergill/dot",
+	.texture1 = "cubyz:branch/glimmergill/half_line",
+	.texture2 = "cubyz:branch/glimmergill/line",
+	.texture3 = "cubyz:branch/glimmergill/bend",
+	.texture4 = "cubyz:branch/glimmergill/intersection",
+	.texture5 = "cubyz:branch/glimmergill/cross",
+	.item = .{
+		.material = .{
+			.density = 0.8,
+			.strength = 2.0,
+			.elasticity = 4.5,
+			.grip = 8.0,
+			.hardness = 2.5,
+			.textureRoughness = 0.5,
+			.colors = .{
+				0xff4a3570, 0xff564085, 0xff684a97, 0xff7555b2, 0xff7555b2,
+			},
+		},
+		.texture = "branch/glimmergill.png",
+	},
+}
