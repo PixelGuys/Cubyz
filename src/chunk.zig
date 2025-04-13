@@ -257,6 +257,9 @@ pub const Chunk = struct { // MARK: Chunk
 	blockPosToEntityDataMap: std.AutoHashMapUnmanaged(u32, u32),
 	blockPosToEntityDataMapMutex: std.Thread.Mutex,
 
+	blockPosToTickableBlockMap: std.AutoHashMapUnmanaged(u32, u32),
+	blockPosToTickableBlockMutex: std.Thread.Mutex,
+
 	pub fn init(pos: ChunkPosition) *Chunk {
 		const self = memoryPool.create();
 		std.debug.assert((pos.voxelSize - 1 & pos.voxelSize) == 0);
@@ -270,6 +273,8 @@ pub const Chunk = struct { // MARK: Chunk
 			.widthShift = voxelSizeShift + chunkShift,
 			.blockPosToEntityDataMap = .{},
 			.blockPosToEntityDataMapMutex = .{},
+			.blockPosToTickableBlockMap = .{},
+			.blockPosToTickableBlockMutex = .{},
 		};
 		self.data.init();
 		return self;
@@ -279,6 +284,7 @@ pub const Chunk = struct { // MARK: Chunk
 		// TODO: We should either unload this data here or make sure it was unloaded before.
 		std.debug.assert(self.blockPosToEntityDataMap.count() == 0);
 		self.blockPosToEntityDataMap.deinit(main.globalAllocator.allocator);
+		self.blockPosToTickableBlockMap.deinit(main.globalAllocator.allocator);
 		self.data.deinit();
 		memoryPool.destroy(@alignCast(self));
 	}
@@ -310,6 +316,22 @@ pub const Chunk = struct { // MARK: Chunk
 			(worldPos[2] - self.pos.wz) >> self.voxelSizeShift,
 		);
 	}
+
+	pub fn tickBlocks(self: *Chunk) void {
+		self.blockPosToTickableBlockMutex.lock();
+		defer self.blockPosToTickableBlockMutex.unlock();
+
+		var it = self.blockPosToTickableBlockMap.iterator();
+		while(it.next()) |posBlockEntry| {
+			// TODO Fix this mess
+			// const pos = posBlockEntry.key_ptr;
+			const block = blocks.Block.fromInt(posBlockEntry.value_ptr.*);
+
+			for(block.tickEvents()) |event| {
+				event.tryRandomTick(self, 0, 0, 0);
+			}
+		}
+	}
 };
 
 pub const ServerChunk = struct { // MARK: ServerChunk
@@ -336,6 +358,8 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 				.widthShift = voxelSizeShift + chunkShift,
 				.blockPosToEntityDataMap = .{},
 				.blockPosToEntityDataMapMutex = .{},
+				.blockPosToTickableBlockMap = .{},
+				.blockPosToTickableBlockMutex = .{},
 			},
 			.refCount = .init(1),
 		};
