@@ -606,6 +606,9 @@ pub fn main() void { // MARK: main()
 	entity_data.init();
 	defer entity_data.deinit();
 
+	blocks.TickFunctions.init();
+	defer blocks.TickFunctions.deinit();
+
 	blocks.TouchFunctions.init();
 	defer blocks.TouchFunctions.deinit();
 
