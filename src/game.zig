@@ -382,13 +382,13 @@ pub const collision = struct {
 		return false;
 	}
 
-	pub fn touchBlocks(entity: main.server.Entity, hitBox: Box, side: main.utils.Side) void {
+	pub fn touchBlocks(entity: *main.server.Entity, hitBox: Box, side: main.utils.Side, amount: f32) void {
 		const boundingBox: Box = .{.min = entity.pos + hitBox.min, .max = entity.pos + hitBox.max};
 
-		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0] - 0.01));
-		const maxX: i32 = @intFromFloat(@floor(boundingBox.max[0] + 0.01));
-		const minY: i32 = @intFromFloat(@floor(boundingBox.min[1] - 0.01));
-		const maxY: i32 = @intFromFloat(@floor(boundingBox.max[1] + 0.01));
+		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0] - amount));
+		const maxX: i32 = @intFromFloat(@floor(boundingBox.max[0] + amount));
+		const minY: i32 = @intFromFloat(@floor(boundingBox.min[1] - amount));
+		const maxY: i32 = @intFromFloat(@floor(boundingBox.max[1] + amount));
 		const minZ: i32 = @intFromFloat(@floor(boundingBox.min[2] - 0.01));
 		const maxZ: i32 = @intFromFloat(@floor(boundingBox.max[2] + 0.01));
 
@@ -399,6 +399,10 @@ pub const collision = struct {
 		const extentY: Vec3d = extent + Vec3d{-0.01, 0.01, -0.01};
 		const extentZ: Vec3d = extent + Vec3d{-0.01, -0.01, 0.01};
 
+		const extendClimableX: Vec3d = extent + Vec3d{amount, -0.01, -0.01};
+		const extendClimableY: Vec3d = extent + Vec3d{-0.01, amount, -0.01};
+
+		entity.climbing = false;
 		var posX: i32 = minX;
 		while(posX <= maxX) : (posX += 1) {
 			var posY: i32 = minY;
@@ -407,53 +411,29 @@ pub const collision = struct {
 				while(posZ <= maxZ) : (posZ += 1) {
 					const block: ?Block =
 						if(side == .client) main.renderer.mesh_storage.getBlock(posX, posY, posZ) else main.server.world.?.getBlock(posX, posY, posZ);
-					if(block == null or block.?.touchFunction() == null)
+					if(block == null)
 						continue;
+
+					// TODO Find a way to prevent the entity to skip gaps
+					if(block.?.climbable() and !entity.climbing) {
+						const touchX: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extendClimableX);
+						const touchY: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extendClimableY);
+						entity.climbing = touchX or touchY;
+					}
+
+					if(block.?.touchFunction() == null)
+						continue;
+
 					const touchX: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentX);
 					const touchY: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentY);
 					const touchZ: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentZ);
 					if(touchX or touchY or touchZ)
-						block.?.touchFunction().?(block.?, entity, posX, posY, posZ, touchX and touchY and touchZ);
+						block.?.touchFunction().?(block.?, entity.*, posX, posY, posZ, touchX and touchY and touchZ);
 				}
 			}
 		}
 	}
 
-	pub fn isIntersectingClimable(entity: main.server.Entity, hitBox: Box, side: main.utils.Side, amount: f32) bool {
-		const boundingBox: Box = .{.min = entity.pos + hitBox.min, .max = entity.pos + hitBox.max};
-
-		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0] - amount));
-		const maxX: i32 = @intFromFloat(@floor(boundingBox.max[0] + amount));
-		const minY: i32 = @intFromFloat(@floor(boundingBox.min[1] - amount));
-		const maxY: i32 = @intFromFloat(@floor(boundingBox.max[1] + amount));
-		const minZ: i32 = @intFromFloat(@floor(boundingBox.min[2]));
-		const maxZ: i32 = @intFromFloat(@floor(boundingBox.max[2]));
-
-		const center: Vec3d = boundingBox.center();
-		const extent: Vec3d = boundingBox.extent();
-
-		const extentX: Vec3d = extent + Vec3d{amount, -0.01, -0.01};
-		const extentY: Vec3d = extent + Vec3d{-0.01, amount, -0.01};
-
-		var posX: i32 = minX;
-		while(posX <= maxX) : (posX += 1) {
-			var posY: i32 = minY;
-			while(posY <= maxY) : (posY += 1) {
-				var posZ: i32 = minZ;
-				while(posZ <= maxZ) : (posZ += 1) {
-					const block: ?Block =
-						if(side == .client) main.renderer.mesh_storage.getBlock(posX, posY, posZ) else main.server.world.?.getBlock(posX, posY, posZ);
-					if(block == null or !block.?.climbable())
-						continue;
-					const touchX: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentX);
-					const touchY: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentY);
-					if(touchX or touchY)
-						return true;
-				}
-			}
-		}
-		return false;
-	}
 
 	pub const Box = struct {
 		min: Vec3d,
@@ -492,7 +472,6 @@ pub const Player = struct { // MARK: Player
 	pub var eyeCoyote: f64 = 0;
 	pub var eyeStep: @Vector(3, bool) = .{false, false, false};
 	pub var crouching: bool = false;
-	pub var climbing: bool = false;
 	pub var id: u32 = 0;
 	pub var gamemode: Atomic(Gamemode) = .init(.creative);
 	pub var isFlying: Atomic(bool) = .init(false);
@@ -872,13 +851,6 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	const airFrictionCoefficient = gravity/terminalVelocity; // λ = a/v in equillibrium
 	var move: Vec3d = .{0, 0, 0};
 
-	const footHitbox: collision.Box = .{.min = -Player.outerBoundingBoxExtent, .max = Player.outerBoundingBoxExtent*Vec3d{1, 1, -0.1}};
-	var climbAmount: f32 = 0.4;
-	if(Player.onGround and !KeyBoard.key("jump").pressed) {
-		climbAmount = 0.01;
-	}
-	Player.climbing = collision.isIntersectingClimable(Player.super, footHitbox, .client, climbAmount);
-
 	if(main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(Player.super.pos[0])), @intFromFloat(@floor(Player.super.pos[1])), @intFromFloat(@floor(Player.super.pos[2]))) != null) {
 		var acc = Vec3d{0, 0, 0};
 		if(!Player.isFlying.load(.monotonic)) {
@@ -890,7 +862,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		var directionalFrictionCoefficients: Vec3f = @splat(0);
 		const speedMultiplier: f32 = if(Player.hyperSpeed.load(.monotonic)) 4.0 else 1.0;
 
-		if(!Player.onGround and !Player.climbing and !Player.isFlying.load(.monotonic)) {
+		if(!Player.onGround and !Player.super.climbing and !Player.isFlying.load(.monotonic)) {
 			baseFrictionCoefficient = airFrictionCoefficient;
 		}
 
@@ -906,7 +878,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		var movementSpeed: f64 = 0;
 
 		if(main.Window.grabbed) {
-			const walkingSpeed: f64 = if(Player.crouching or Player.climbing) 2 else 4;
+			const walkingSpeed: f64 = if(Player.crouching or Player.super.climbing) 2 else 4;
 			const climbSpeed: f64 = 6;
 			if(KeyBoard.key("forward").value > 0.0) {
 				if(KeyBoard.key("sprint").pressed and !Player.crouching) {
@@ -920,7 +892,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 						movementSpeed = @max(movementSpeed, 8)*KeyBoard.key("forward").value;
 						movementDir += forward*@as(Vec3d, @splat(8*KeyBoard.key("forward").value));
 					}
-				} else if(Player.climbing) {
+				} else if(Player.super.climbing) {
 					movementSpeed = @max(movementSpeed, climbSpeed)*KeyBoard.key("forward").value;
 					movementDir += forward*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("forward").value));
 					movementDir += up*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("forward").value));
@@ -955,7 +927,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 						movementSpeed = @max(movementSpeed, 5.5);
 						movementDir[2] += 5.5;
 					}
-				} else if(Player.climbing) {
+				} else if(Player.super.climbing) {
 					movementSpeed = @max(movementSpeed, climbSpeed*0.7);
 					movementDir += up*@as(Vec3d, @splat(walkingSpeed));
 				} else if((Player.onGround or Player.jumpCoyote > 0.0) and Player.jumpCooldown <= 0) {
@@ -1006,7 +978,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		}) == null) {
 			Player.crouching = KeyBoard.key("crouch").pressed and !Player.isFlying.load(.monotonic);
 
-			if(Player.onGround or Player.climbing) {
+			if(Player.onGround or Player.super.climbing) {
 				if(Player.crouching) {
 					Player.crouchPerc += @floatCast(deltaTime*10);
 				} else {
@@ -1064,7 +1036,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			move[i] = a/frictionCoefficient*deltaTime - c_1/frictionCoefficient*@exp(-frictionCoefficient*deltaTime) + c_1/frictionCoefficient;
 		}
 
-		if(Player.climbing and Player.crouching and move[2] < 0) {
+		if(Player.super.climbing and Player.crouching and move[2] < 0) {
 			move[2] = 0;
 		}
 
@@ -1251,7 +1223,12 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		} else if(Player.eyeCoyote > 0) {
 			Player.eyePos[2] -= move[2];
 		}
-		collision.touchBlocks(Player.super, hitBox, .client);
+
+		var amount: f32 = 0.01;
+		if(!Player.onGround or KeyBoard.key("jump").pressed) {
+			amount = 0.4;
+		}
+		collision.touchBlocks(&Player.super, hitBox, .client, amount);
 	} else {
 		Player.super.pos += move;
 	}
