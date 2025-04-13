@@ -1,0 +1,32 @@
+.{
+	.tags = .{.wood},
+	.blockHealth = 2,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.absorbedLight = 0x202830,
+	.rotation = .branch,
+	.model = .{
+		.radius = 4,
+	},
+	.texture0 = "cubyz:branch/bolete/dot",
+	.texture1 = "cubyz:branch/bolete/half_line",
+	.texture2 = "cubyz:branch/bolete/line",
+	.texture3 = "cubyz:branch/bolete/bend",
+	.texture4 = "cubyz:branch/bolete/intersection",
+	.texture5 = "cubyz:branch/bolete/cross",
+	.item = .{
+		.material = .{
+			.density = 0.6,
+			.strength = 1.5,
+			.elasticity = 4.0,
+			.grip = 8.0,
+			.hardness = 1.7,
+			.textureRoughness = 0.5,
+			.colors = .{
+				0xff9f7853, 0xffb38e65, 0xffcba275, 0xffe5b885, 0xffe5b885,
+			},
+		},
+		.texture = "branch/bolete.png",
+	},
+}

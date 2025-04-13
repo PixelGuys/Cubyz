@@ -1,0 +1,10 @@
+.{
+	.tags = .{.wood},
+	.blockHealth = 10,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.model = "cubyz:cube",
+	.rotation = .planar,
+	.entityDataClass = .chest,
+}
