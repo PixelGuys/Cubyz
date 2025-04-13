@@ -1372,8 +1372,14 @@ pub const Connection = struct { // MARK: Connection
 			timestamp: i64,
 			wasResent: bool = false,
 			considerForCongestionControl: bool,
+
+			fn compareTime(_: void, a: Range, b: Range) std.math.Order {
+				if(a.timestamp == b.timestamp) return .eq;
+				if(a.timestamp -% b.timestamp > 0) return .gt;
+				return .lt;
+			}
 		};
-		unconfirmedRanges: main.ListUnmanaged(Range) = .{},
+		unconfirmedRanges: std.PriorityQueue(Range, void, Range.compareTime),
 		buffer: main.utils.CircularBufferQueue(u8),
 		fullyConfirmedIndex: SequenceIndex,
 		highestSentIndex: SequenceIndex,
@@ -1382,6 +1388,7 @@ pub const Connection = struct { // MARK: Connection
 
 		pub fn init(index: SequenceIndex) SendBuffer {
 			return .{
+				.unconfirmedRanges = .init(main.globalAllocator.allocator, {}),
 				.buffer = .init(main.globalAllocator, 1 << 20),
 				.fullyConfirmedIndex = index,
 				.highestSentIndex = index,
@@ -1396,7 +1403,7 @@ pub const Connection = struct { // MARK: Connection
 		}
 
 		pub fn deinit(self: SendBuffer) void {
-			self.unconfirmedRanges.deinit(main.globalAllocator);
+			self.unconfirmedRanges.deinit();
 			self.buffer.deinit();
 		}
 
@@ -1436,7 +1443,7 @@ pub const Connection = struct { // MARK: Connection
 						.considerForCongestionControl = range.considerForCongestionControl,
 						.packetLen = range.len,
 					};
-					_ = self.unconfirmedRanges.swapRemove(i);
+					_ = self.unconfirmedRanges.removeIndex(i);
 					break;
 				}
 			}
@@ -1452,17 +1459,18 @@ pub const Connection = struct { // MARK: Connection
 		}
 
 		pub fn getNextPacketToSend(self: *SendBuffer, conn: *Connection, byteIndex: *SequenceIndex, buf: []u8, time: i64, considerForCongestionControl: bool, retransmissionTimeout: i64, allowedDelay: i64) ?usize {
-			self.unconfirmedRanges.ensureFreeCapacity(main.globalAllocator, 1);
+			self.unconfirmedRanges.ensureUnusedCapacity(1) catch unreachable;
 			// Resend old packet:
-			for(self.unconfirmedRanges.items) |*range| {
-				if(range.timestamp +% retransmissionTimeout -% time < 0) {
+			if(self.unconfirmedRanges.peek()) |_range| {
+				if(_range.timestamp +% retransmissionTimeout -% time < 0) {
+					var range = self.unconfirmedRanges.remove();
 					if(range.len > buf.len) { // MTU changed → split the data
-						self.unconfirmedRanges.appendAssumeCapacity(.{
+						self.unconfirmedRanges.add(.{
 							.start = range.start +% @as(SequenceIndex, @intCast(buf.len)),
 							.len = range.len - @as(SequenceIndex, @intCast(buf.len)),
 							.timestamp = range.timestamp,
 							.considerForCongestionControl = false,
-						});
+						}) catch unreachable;
 						range.len = @intCast(buf.len);
 					}
 
@@ -1473,6 +1481,7 @@ pub const Connection = struct { // MARK: Connection
 					byteIndex.* = range.start;
 					_ = packetsResent.fetchAdd(1, .monotonic);
 					conn.handlePacketLoss(time);
+					self.unconfirmedRanges.add(range) catch unreachable;
 					return @intCast(range.len);
 				}
 			}
@@ -1484,12 +1493,12 @@ pub const Connection = struct { // MARK: Connection
 
 			self.buffer.getSliceAtOffset(@intCast(self.highestSentIndex -% self.fullyConfirmedIndex), buf[0..@intCast(len)]) catch unreachable;
 			byteIndex.* = self.highestSentIndex;
-			self.unconfirmedRanges.appendAssumeCapacity(.{
+			self.unconfirmedRanges.add(.{
 				.start = self.highestSentIndex,
 				.len = len,
 				.timestamp = time,
 				.considerForCongestionControl = considerForCongestionControl,
-			});
+			}) catch unreachable;
 			self.highestSentIndex +%= len;
 			return @intCast(len);
 		}
