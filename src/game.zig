@@ -414,8 +414,9 @@ pub const collision = struct {
 					if(block == null)
 						continue;
 
-					// TODO Find a way to prevent the entity to skip gaps
-					if(block.?.climbable() and !entity.climbing) {
+					// Prevent the entity from skipping gaps
+					const isBelowTop = posZ < maxZ;
+					if(block.?.climbable() and !entity.climbing and isBelowTop) {
 						const touchX: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extendClimableX);
 						const touchY: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extendClimableY);
 						entity.climbing = touchX or touchY;
