@@ -441,9 +441,16 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 		}
 
 		pub fn enqueueSlice(self: *Self, elems: []const T) void {
-			for(elems) |elem| {
-				self.enqueue(elem);
+			const start = self.startIndex + self.len & self.mask;
+			const end = start + elems.len;
+			if(end < self.mem.len) {
+				@memcpy(self.mem[start..end], elems);
+			} else {
+				const mid = self.mem.len - start;
+				@memcpy(self.mem[start..], elems[0..mid]);
+				@memcpy(self.mem[0..end & self.mask], elems[mid..]);
 			}
+			self.len += elems.len;
 		}
 
 		pub fn enqueue_back(self: *Self, elem: T) void {
