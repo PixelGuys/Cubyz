@@ -1457,9 +1457,8 @@ pub const Connection = struct { // MARK: Connection
 					smallestUnconfirmed = range.start;
 				}
 			}
-			var i: usize = self.lostRanges.startIndex;
-			while(i != self.lostRanges.endIndex) : (i = (i + 1) & self.lostRanges.mask) {
-				const range = self.lostRanges.mem[i];
+			for(0..self.lostRanges.len) |i| {
+				const range = self.lostRanges.getAtOffset(i) catch unreachable;
 				if(smallestUnconfirmed -% range.start > 0) {
 					smallestUnconfirmed = range.start;
 				}

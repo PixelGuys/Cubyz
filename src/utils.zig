@@ -399,7 +399,7 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 		mem: []T,
 		mask: usize,
 		startIndex: usize,
-		endIndex: usize,
+		len: usize,
 		allocator: NeverFailingAllocator,
 
 		pub fn init(allocator: NeverFailingAllocator, initialCapacity: usize) Self {
@@ -409,7 +409,7 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 				.mem = allocator.alloc(T, initialCapacity),
 				.mask = initialCapacity - 1,
 				.startIndex = 0,
-				.endIndex = 0,
+				.len = 0,
 				.allocator = allocator,
 			};
 		}
@@ -419,26 +419,25 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 		}
 
 		pub fn reset(self: *Self) void {
-			self.startIndex = self.endIndex;
+			self.len = 0;
 		}
 
 		fn increaseCapacity(self: *Self) void {
 			const newMem = self.allocator.alloc(T, self.mem.len*2);
 			@memcpy(newMem[0..(self.mem.len - self.startIndex)], self.mem[self.startIndex..]);
-			@memcpy(newMem[(self.mem.len - self.startIndex)..][0..self.endIndex], self.mem[0..self.endIndex]);
+			@memcpy(newMem[(self.mem.len - self.startIndex)..][0..self.startIndex], self.mem[0..self.startIndex]);
 			self.startIndex = 0;
-			self.endIndex = self.mem.len;
 			self.allocator.free(self.mem);
 			self.mem = newMem;
 			self.mask = self.mem.len - 1;
 		}
 
 		pub fn enqueue(self: *Self, elem: T) void {
-			self.mem[self.endIndex] = elem;
-			self.endIndex = (self.endIndex + 1) & self.mask;
-			if(self.endIndex == self.startIndex) {
+			if(self.len == self.mem.len) {
 				self.increaseCapacity();
 			}
+			self.mem[self.startIndex + self.len & self.mask] = elem;
+			self.len += 1;
 		}
 
 		pub fn enqueueSlice(self: *Self, elems: []const T) void {
@@ -448,29 +447,32 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 		}
 
 		pub fn enqueue_back(self: *Self, elem: T) void {
-			self.startIndex = (self.startIndex -% 1) & self.mask;
-			self.mem[self.startIndex] = elem;
-			if(self.endIndex == self.startIndex) {
+			if(self.len == self.mem.len) {
 				self.increaseCapacity();
 			}
+			self.startIndex = (self.startIndex -% 1) & self.mask;
+			self.mem[self.startIndex] = elem;
+			self.len += 1;
 		}
 
 		pub fn dequeue(self: *Self) ?T {
 			if(self.empty()) return null;
 			const result = self.mem[self.startIndex];
 			self.startIndex = (self.startIndex + 1) & self.mask;
+			self.len -= 1;
 			return result;
 		}
 
 		pub fn dequeue_front(self: *Self) ?T {
 			if(self.empty()) return null;
-			self.endIndex = (self.endIndex -% 1) & self.mask;
-			return self.mem[self.endIndex];
+			self.len -= 1;
+			return self.mem[self.startIndex + self.len & self.mask];
 		}
 
 		pub fn discard(self: *Self, amount: usize) !void {
-			if(amount > (self.endIndex -% self.startIndex) & self.mask) return error.OutOfBounds;
+			if(amount > self.len) return error.OutOfBounds;
 			self.startIndex = (self.startIndex + amount) & self.mask;
+			self.len -= amount;
 		}
 
 		pub fn peek(self: *Self) ?T {
@@ -479,18 +481,23 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 		}
 
 		pub fn getSliceAtOffset(self: Self, offset: usize, result: []T) !void {
-			if(offset + result.len > (self.endIndex -% self.startIndex) & self.mask) return error.OutOfBounds;
+			if(offset + result.len > self.len) return error.OutOfBounds;
 			for(result, offset..offset + result.len) |*out, i| {
 				out.* = self.mem[(self.startIndex + i) & self.mask];
 			}
 		}
 
+		pub fn getAtOffset(self: Self, offset: usize) !T {
+			if(offset >= self.len) return error.OutOfBounds;
+			return self.mem[(self.startIndex + offset) & self.mask];
+		}
+
 		pub fn empty(self: *Self) bool {
-			return self.startIndex == self.endIndex;
+			return self.len == 0;
 		}
 
 		pub fn reachedCapacity(self: *Self) bool {
-			return self.startIndex == (self.endIndex + 1) & self.mask;
+			return self.len == self.mem.len;
 		}
 	};
 }
