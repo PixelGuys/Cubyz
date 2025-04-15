@@ -441,6 +441,9 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 		}
 
 		pub fn enqueueSlice(self: *Self, elems: []const T) void {
+			while(elems.len + self.len > self.mem.len) {
+				self.increaseCapacity();
+			}
 			const start = self.startIndex + self.len & self.mask;
 			const end = start + elems.len;
 			if(end < self.mem.len) {
