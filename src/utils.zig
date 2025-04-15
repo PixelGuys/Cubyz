@@ -448,7 +448,7 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 			} else {
 				const mid = self.mem.len - start;
 				@memcpy(self.mem[start..], elems[0..mid]);
-				@memcpy(self.mem[0..end & self.mask], elems[mid..]);
+				@memcpy(self.mem[0 .. end & self.mask], elems[mid..]);
 			}
 			self.len += elems.len;
 		}
