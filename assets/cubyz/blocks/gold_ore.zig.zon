@@ -4,7 +4,7 @@
 	.blockResistance = 10,
 	.ore = .{
 		.veins = 3,
-		.size = 15,
+		.size = 12,
 		.height = -600,
 		.density = 0.25,
 	},

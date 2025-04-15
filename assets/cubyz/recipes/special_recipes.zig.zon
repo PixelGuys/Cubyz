@@ -32,6 +32,10 @@
 		.output = "cubyz:iron_ingot",
 	},
 	.{
+		.inputs = .{"cubyz:coal", "cubyz:silver_ore"},
+		.output = "cubyz:silver_ingot",
+	},
+	.{
 		.inputs = .{"cubyz:coal", "cubyz:gold_ore"},
 		.output = "cubyz:gold_ingot",
 	},
@@ -62,6 +66,10 @@
 	.{
 		.inputs = .{"4 cubyz:iron_ingot"},
 		.output = "cubyz:iron_block",
+	},
+	.{
+		.inputs = .{"4 cubyz:silver_ingot"},
+		.output = "cubyz:silver_block",
 	},
 	.{
 		.inputs = .{"4 cubyz:gold_ingot"},
@@ -98,6 +106,10 @@
 	.{
 		.inputs = .{"cubyz:iron_block"},
 		.output = "4 cubyz:iron_ingot",
+	},
+	.{
+		.inputs = .{"cubyz:silver_block"},
+		.output = "4 cubyz:silver_ingot",
 	},
 	.{
 		.inputs = .{"cubyz:gold_block"},
