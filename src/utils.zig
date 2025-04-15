@@ -348,10 +348,16 @@ pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: 
 			if(elems.len + self.len > capacity) {
 				return error.OutOfMemory;
 			}
-			for(elems) |elem| {
-				self.mem[self.startIndex + self.len & mask] = elem;
-				self.len += 1;
+			const start = self.startIndex + self.len & mask;
+			const end = start + elems.len;
+			if(end < self.mem.len) {
+				@memcpy(self.mem[start..end], elems);
+			} else {
+				const mid = self.mem.len - start;
+				@memcpy(self.mem[start..], elems[0..mid]);
+				@memcpy(self.mem[0 .. end & mask], elems[mid..]);
 			}
+			self.len += elems.len;
 		}
 
 		pub fn insertSliceAtOffset(self: *Self, elems: []const T, offset: usize) !void {
@@ -359,8 +365,14 @@ pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: 
 				return error.OutOfMemory;
 			}
 			self.len = @max(self.len, offset + elems.len);
-			for(elems, 0..) |elem, i| {
-				self.mem[self.startIndex + offset + i & mask] = elem;
+			const start = self.startIndex + offset & mask;
+			const end = start + elems.len;
+			if(end < self.mem.len) {
+				@memcpy(self.mem[start..end], elems);
+			} else {
+				const mid = self.mem.len - start;
+				@memcpy(self.mem[start..], elems[0..mid]);
+				@memcpy(self.mem[0 .. end & mask], elems[mid..]);
 			}
 		}
 
@@ -374,11 +386,17 @@ pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: 
 
 		pub fn dequeueSlice(self: *Self, out: []T) !void {
 			if(out.len > self.len) return error.OutOfBounds;
-			self.len -= out.len;
-			for(out) |*result| {
-				result.* = self.mem[self.startIndex];
-				self.startIndex = (self.startIndex + 1) & mask;
+			const start = self.startIndex;
+			const end = start + out.len;
+			if(end < self.mem.len) {
+				@memcpy(out, self.mem[start..end]);
+			} else {
+				const mid = self.mem.len - start;
+				@memcpy(out[0..mid], self.mem[start..]);
+				@memcpy(out[mid..], self.mem[0 .. end & mask]);
 			}
+			self.startIndex = self.startIndex + out.len & mask;
+			self.len -= out.len;
 		}
 
 		pub fn discardElements(self: *Self, n: usize) void {
@@ -492,8 +510,14 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 
 		pub fn getSliceAtOffset(self: Self, offset: usize, result: []T) !void {
 			if(offset + result.len > self.len) return error.OutOfBounds;
-			for(result, offset..offset + result.len) |*out, i| {
-				out.* = self.mem[(self.startIndex + i) & self.mask];
+			const start = self.startIndex + offset & self.mask;
+			const end = start + result.len;
+			if(end < self.mem.len) {
+				@memcpy(result, self.mem[start..end]);
+			} else {
+				const mid = self.mem.len - start;
+				@memcpy(result[0..mid], self.mem[start..]);
+				@memcpy(result[mid..], self.mem[0 .. end & self.mask]);
 			}
 		}
 
