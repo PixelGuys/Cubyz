@@ -1233,7 +1233,7 @@ pub const Connection = struct { // MARK: Connection
 	const congestionControl_historyMask = congestionControl_historySize - 1;
 	const minimumBandWidth = 10_000;
 
-	const bufferSize = 8 << 20;
+	const receiveBufferSize = 8 << 20;
 
 	// Statistics:
 	pub var packetsSent: Atomic(u32) = .init(0);
@@ -1256,7 +1256,7 @@ pub const Connection = struct { // MARK: Connection
 		ranges: main.ListUnmanaged(Range) = .{},
 		availablePosition: SequenceIndex = undefined,
 		currentReadPosition: SequenceIndex = undefined,
-		buffer: main.utils.FixedSizeCircularBuffer(u8, bufferSize),
+		buffer: main.utils.FixedSizeCircularBuffer(u8, receiveBufferSize),
 		header: ?Header = null,
 		protocolBuffer: main.ListUnmanaged(u8) = .{},
 
@@ -1504,6 +1504,7 @@ pub const Connection = struct { // MARK: Connection
 			}
 
 			if(self.highestSentIndex == self.nextIndex) return null;
+			if(self.highestSentIndex +% @as(i32, @intCast(buf.len)) -% self.fullyConfirmedIndex > receiveBufferSize) return null;
 			// Send new packet:
 			const len: SequenceIndex = @min(self.nextIndex -% self.highestSentIndex, @as(i32, @intCast(buf.len)));
 			if(len < buf.len and time -% self.lastUnsentTime < allowedDelay) return null;
