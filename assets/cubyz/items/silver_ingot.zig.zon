@@ -1,0 +1,14 @@
+.{
+	.texture = "silver_ingot.png",
+	.material = .{
+		.density = 10.5,
+		.strength = 7.0,
+		.elasticity = 1.5,
+		.grip = 0.75,
+		.hardness = 2.5,
+		.textureRoughness = 0.05,
+		.colors = .{
+			0xff67727f, 0xff89919e, 0xffbdc2c6, 0xffe4e6e6, 0xfffcfcfc,
+		},
+	},
+}
