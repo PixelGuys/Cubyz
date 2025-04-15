@@ -1244,6 +1244,84 @@ pub const Connection = struct { // MARK: Connection
 
 	const SequenceIndex = i32;
 
+	const RangeBuffer = struct { // MARK: RangeBuffer
+		const Range = struct {
+			startInclusive: SequenceIndex,
+			endExclusive: SequenceIndex,
+		};
+		ranges: main.List(Range),
+
+		pub fn init(allocator: NeverFailingAllocator) RangeBuffer {
+			return .{
+				.ranges = .init(allocator),
+			};
+		}
+
+		pub fn clear(self: *RangeBuffer) void {
+			self.ranges.clearRetainingCapacity();
+		}
+
+		pub fn deinit(self: RangeBuffer) void {
+			self.ranges.deinit();
+		}
+
+		pub fn addRange(self: *RangeBuffer, range: Range) void {
+			if(self.hasRange(range)) return;
+			var startRange: ?Range = null;
+			var endRange: ?Range = null;
+			var i: usize = 0;
+			while(i < self.ranges.items.len) {
+				const other = self.ranges.items[i];
+				if(range.startInclusive -% other.startInclusive <= 0 and range.endExclusive -% other.endExclusive >= 0) {
+					_ = self.ranges.swapRemove(i);
+					continue;
+				}
+				if(range.startInclusive -% other.endExclusive <= 0 and range.startInclusive -% other.startInclusive >= 0) {
+					_ = self.ranges.swapRemove(i);
+					startRange = other;
+					continue;
+				}
+				if(range.endExclusive -% other.startInclusive >= 0 and range.endExclusive -% other.endExclusive <= 0) {
+					_ = self.ranges.swapRemove(i);
+					endRange = other;
+					continue;
+				}
+				i += 1;
+			}
+			var mergedRange = range;
+			if(startRange) |start| {
+				mergedRange.startInclusive = start.startInclusive;
+			}
+			if(endRange) |end| {
+				mergedRange.endExclusive = end.endExclusive;
+			}
+			self.ranges.append(mergedRange);
+		}
+
+		pub fn hasRange(self: *RangeBuffer, range: Range) bool {
+			for(self.ranges.items) |other| {
+				if(range.startInclusive -% other.startInclusive >= 0 and range.endExclusive -% other.endExclusive <= 0) {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		pub fn extractFirstRange(self: *RangeBuffer) ?Range {
+			if(self.ranges.items.len == 0) return null;
+			var firstRange = self.ranges.items[0];
+			var index: usize = 0;
+			for(self.ranges.items[1..], 1..) |range, i| {
+				if(range.startInclusive -% firstRange.startInclusive < 0) {
+					firstRange = range;
+					index = i;
+				}
+			}
+			_ = self.ranges.swapRemove(index);
+			return firstRange;
+		}
+	};
+
 	const ReceiveBuffer = struct { // MARK: ReceiveBuffer
 		const Range = struct {
 			start: SequenceIndex,
@@ -1253,7 +1331,7 @@ pub const Connection = struct { // MARK: Connection
 			protocolIndex: u8,
 			size: u32,
 		};
-		ranges: main.ListUnmanaged(Range) = .{},
+		ranges: RangeBuffer,
 		availablePosition: SequenceIndex = undefined,
 		currentReadPosition: SequenceIndex = undefined,
 		buffer: main.utils.FixedSizeCircularBuffer(u8, receiveBufferSize),
@@ -1262,34 +1340,28 @@ pub const Connection = struct { // MARK: Connection
 
 		pub fn init() ReceiveBuffer {
 			return .{
+				.ranges = .init(main.globalAllocator),
 				.buffer = .init(main.globalAllocator),
 			};
 		}
 
 		pub fn reset(self: *ReceiveBuffer) void {
-			self.ranges.clearRetainingCapacity();
+			self.ranges.clear();
 			self.protocolBuffer.clearRetainingCapacity();
 			self.header = null;
 			self.protocolBuffer.clearRetainingCapacity();
 		}
 
 		pub fn deinit(self: ReceiveBuffer) void {
-			self.ranges.deinit(main.globalAllocator);
+			self.ranges.deinit();
 			self.protocolBuffer.deinit(main.globalAllocator);
 			self.buffer.deinit(main.globalAllocator);
 		}
 
 		fn applyRanges(self: *ReceiveBuffer) void {
-			outer: while(true) {
-				for(self.ranges.items, 0..) |range, i| {
-					if(range.start == self.availablePosition) {
-						self.availablePosition +%= range.len;
-						_ = self.ranges.swapRemove(i);
-						continue :outer;
-					}
-				}
-				break;
-			}
+			const range = self.ranges.extractFirstRange() orelse unreachable;
+			std.debug.assert(range.startInclusive == self.availablePosition);
+			self.availablePosition = range.endExclusive;
 		}
 
 		fn getHeaderInformation(self: *ReceiveBuffer) !?Header {
@@ -1355,12 +1427,12 @@ pub const Connection = struct { // MARK: Connection
 			const offset: usize = @intCast(start -% self.currentReadPosition);
 			if(start == self.availablePosition) {
 				self.buffer.insertSliceAtOffset(data, offset) catch return .rejected;
-				self.ranges.append(main.globalAllocator, .{.start = start, .len = len});
+				self.ranges.addRange(.{.startInclusive = start, .endExclusive = start +% len});
 				try self.collectRangesAndExecuteProtocols(conn);
 				return .accepted;
 			}
 			self.buffer.insertSliceAtOffset(data, offset) catch return .rejected;
-			self.ranges.append(main.globalAllocator, .{.start = start, .len = len});
+			self.ranges.addRange(.{.startInclusive = start, .endExclusive = start +% len});
 			return .accepted;
 		}
 	};
