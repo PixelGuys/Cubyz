@@ -1295,13 +1295,13 @@ pub const Connection = struct { // MARK: Connection
 		fn getHeaderInformation(self: *ReceiveBuffer) !?Header {
 			if(self.currentReadPosition == self.availablePosition) return null;
 			var header: Header = .{
-				.protocolIndex = self.buffer.getAtOffset(0) orelse return null,
+				.protocolIndex = self.buffer.getAtOffset(0) orelse unreachable,
 				.size = 0,
 			};
 			var i: u8 = 1;
 			while(true) : (i += 1) {
 				if(self.currentReadPosition +% i == self.availablePosition) return null;
-				const nextByte = self.buffer.getAtOffset(i) orelse return null;
+				const nextByte = self.buffer.getAtOffset(i) orelse unreachable;
 				header.size = header.size << 7 | (nextByte & 0x7f);
 				if(nextByte & 0x80 == 0) break;
 				if(header.size > std.math.maxInt(@TypeOf(header.size)) >> 7) return error.Invalid;
@@ -1319,7 +1319,7 @@ pub const Connection = struct { // MARK: Connection
 					self.protocolBuffer.ensureCapacity(main.globalAllocator, self.header.?.size);
 				}
 				const amount = @min(@as(usize, @intCast(self.availablePosition -% self.currentReadPosition)), self.header.?.size - self.protocolBuffer.items.len);
-				if(amount == 0) return;
+				if(self.availablePosition -% self.currentReadPosition == 0) return;
 
 				self.buffer.dequeueSlice(self.protocolBuffer.addManyAssumeCapacity(amount)) catch unreachable;
 				self.currentReadPosition +%= @intCast(amount);
