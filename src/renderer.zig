@@ -801,7 +801,9 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						if(baseItem.block) |itemBlock| {
 							const heldBlock = blocks.Block{.typ = itemBlock, .data = 0};
 							if(heldBlock.hasTag("canIgnite") and oldBlock.hasTag("canBeIgnited")) {
-								explode(selectedPos, 80, 3.7);
+								if(oldBlock.hasTag("explosionSmall")) explode(selectedPos, 80, 5.5);
+								if(oldBlock.hasTag("explosionMedium")) explode(selectedPos, 240, 11.5);
+								if(oldBlock.hasTag("explosionLarge")) explode(selectedPos, 480, 16.5);
 								return;
 							}
 
@@ -861,11 +863,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		std.debug.assert(strength > 0.0);
 
 		const diameter: u32 = @intFromFloat(std.math.ceil(radius)*2);
-
 		const goldenAngle = std.math.pi*(3.0 - @sqrt(5.0));
-
-		const numSamplesDist: usize = @intFromFloat(std.math.ceil(radius));
-
+		const radiusInt: usize = @intFromFloat(std.math.ceil(radius));
 		const numSamples: usize = @intFromFloat(std.math.ceil(4*std.math.pi*radius*radius)*2);
 
 		const exploded = main.utils.Array3D(bool).init(main.stackAllocator, diameter, diameter, diameter);
@@ -883,13 +882,13 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 			var damage = strength;
 
-			for(0..numSamplesDist) |j| {
-				const d = @as(f32, @floatFromInt(j))/@as(f32, @floatFromInt(numSamplesDist));
-				const dist = radius*d;
+			for(0..radiusInt) |j| {
+				const distanceFactor = @as(f32, @floatFromInt(j))/@as(f32, @floatFromInt(radiusInt));
+				const distance = radius*distanceFactor;
 
-				const xOffset: i32 = @intFromFloat(x*dist);
-				const yOffset: i32 = @intFromFloat(y*dist);
-				const zOffset: i32 = @intFromFloat(z*dist);
+				const xOffset: i32 = @intFromFloat(x*distance);
+				const yOffset: i32 = @intFromFloat(y*distance);
+				const zOffset: i32 = @intFromFloat(z*distance);
 
 				const p = pos + Vec3i{xOffset, yOffset, zOffset};
 
@@ -897,11 +896,9 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				if(oldBlock.typ == 0) continue;
 				if(oldBlock.hasTag("fluid")) continue;
 
-				damage -= oldBlock.blockResistance();
 
-				if(oldBlock.blockHealth() > damage) {
-					break;
-				}
+				if(damage < oldBlock.blockResistance()) break;
+				damage -= oldBlock.blockHealth();
 
 				const xCentered: usize = @intCast(xOffset + @as(i32, @intCast(diameter/2)));
 				const yCentered: usize = @intCast(yOffset + @as(i32, @intCast(diameter/2)));
@@ -909,7 +906,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 				exploded.set(xCentered, yCentered, zCentered, true);
 
-				damage -= strength*1.0/@as(f32, @floatFromInt(numSamplesDist));
+				damage -= strength/@as(f32, @floatFromInt(radiusInt));
 			}
 		}
 
