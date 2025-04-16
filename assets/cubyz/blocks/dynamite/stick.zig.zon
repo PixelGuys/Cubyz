@@ -12,7 +12,7 @@
 		.base = "cubyz:dynamite/top",
 		.side = "cubyz:dynamite/side",
 	},
-	.texture = "cubyz:dynamite",
+	.texture = "cubyz:dynamite/stick",
 	.item = .{
 		.texture = "dynamite.png",
 	},

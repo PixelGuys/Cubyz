@@ -1,0 +1,13 @@
+.{
+	.tags = .{.canBeIgnited},
+	.blockHealth = 4,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.viewThrough = true,
+	.rotation = .log,
+	.model = "cubyz:dynamite/block",
+	.texture = "cubyz:dynamite/side",
+	.texture_top = "cubyz:dynamite/top",
+	.texture_bottom = "cubyz:dynamite/top",
+}

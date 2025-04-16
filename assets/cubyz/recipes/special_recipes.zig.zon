@@ -133,6 +133,10 @@
 	},
 	.{
 		.inputs = .{"2 cubyz:sulfur_ore", "2 cubyz:coal"},
-		.output = "cubyz:dynamite",
+		.output = "cubyz:dynamite/stick",
+	},
+	.{
+		.inputs = .{"16 cubyz:dynamite/stick"},
+		.output = "cubyz:dynamite/block",
 	},
 }
