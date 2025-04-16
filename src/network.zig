@@ -849,22 +849,6 @@ pub const Protocols = struct {
 			conn.send(.lossy, id, writer.data.items);
 		}
 	};
-	pub const disconnect = struct {
-		pub const id: u8 = 5;
-		pub const asynchronous = false;
-		fn receive(conn: *Connection, _: *utils.BinaryReader) !void {
-			conn.disconnect();
-			if(conn.user) |user| {
-				main.server.disconnect(user);
-			} else {
-				main.exitToMenu(undefined);
-			}
-		}
-		pub fn disconnect(conn: *Connection) void {
-			const noData = [0]u8{};
-			conn.send(.lossy, id, &noData);
-		}
-	};
 	pub const entityPosition = struct {
 		pub const id: u8 = 6;
 		pub const asynchronous = false;
@@ -1675,6 +1659,7 @@ pub const Connection = struct { // MARK: Connection
 		confirmation = 3,
 		init = 4,
 		keepalive = 5,
+		disconnect = 6,
 	};
 
 	const ConfirmationData = struct {
@@ -2042,6 +2027,9 @@ pub const Connection = struct { // MARK: Connection
 			},
 			.init => unreachable,
 			.keepalive => {},
+			.disconnect => {
+				self.disconnect();
+			},
 		}
 		self.lastConnection = std.time.microTimestamp();
 
@@ -2117,15 +2105,14 @@ pub const Connection = struct { // MARK: Connection
 	}
 
 	pub fn disconnect(self: *Connection) void {
-		// Send 3 disconnect packages to the other side, just to be sure.
-		// If all of them don't get through then there is probably a network issue anyways which would lead to a timeout.
-		Protocols.disconnect.disconnect(self);
-		std.time.sleep(10000000);
-		Protocols.disconnect.disconnect(self);
-		std.time.sleep(10000000);
-		Protocols.disconnect.disconnect(self);
+		self.manager.send(&.{@intFromEnum(ChannelId.disconnect)}, self.remoteAddress, null);
 		self.connectionState.store(.disconnectDesired, .unordered);
 		self.manager.removeConnection(self);
+		if(self.user) |user| {
+			main.server.disconnect(user);
+		} else {
+			main.exitToMenu(undefined);
+		}
 		std.log.info("Disconnected", .{});
 	}
 };
