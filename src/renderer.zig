@@ -801,7 +801,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						if(baseItem.block) |itemBlock| {
 							const heldBlock = blocks.Block{.typ = itemBlock, .data = 0};
 							if(heldBlock.hasTag("canIgnite") and oldBlock.hasTag("canBeIgnited")) {
-								explode(selectedPos, 40, 3.7);
+								explode(selectedPos, 80, 3.7);
 								return;
 							}
 
@@ -855,54 +855,74 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		}
 	}
 
-	fn explode(pos: Vec3i, strength: f32, _radius: f32) void {
-		std.debug.assert(_radius > 0.0);
-		std.debug.assert(_radius < 256.0);
+	fn explode(pos: Vec3i, strength: f32, radius: f32) void {
+		std.debug.assert(radius > 0.0);
+		std.debug.assert(radius < 256.0);
 		std.debug.assert(strength > 0.0);
 
-		const radius: u32 = @intFromFloat(@ceil(_radius));
+		const diameter: u32 = @intFromFloat(std.math.ceil(radius) * 2);
 
-		var seed = main.random.initSeed3D(main.seed, pos);
+		const goldenAngle = std.math.pi * (3.0 - @sqrt(5.0));
 
-		for(0..radius) |_rx| {
-			const rx: i32 = @intCast(_rx);
+		const numSamplesDist: usize = @intFromFloat(std.math.ceil(radius));
 
-			for(0..radius) |_ry| {
-				const ry: i32 = @intCast(_ry);
+		const numSamples: usize = @intFromFloat(std.math.ceil(4 * std.math.pi * radius * radius) * 2);
 
-				for(0..radius) |_rz| {
-					const rz: i32 = @intCast(_rz);
+		const exploded = main.utils.Array3D(bool).init(main.stackAllocator, diameter, diameter, diameter);
+		defer exploded.deinit(main.stackAllocator);
+		for (exploded.mem) |*e| {
+			e.* = false;
+		}
+		
+		for (0..numSamples) |i| {
+			const z = 1 - 2 * @as(f32, @floatFromInt(i))/@as(f32, @floatFromInt(numSamples));
+			const radiusAtZ = @sqrt(1 - z * z);
+			const theta = goldenAngle * @as(f32, @floatFromInt(i));
+			const x = radiusAtZ * @cos(theta);
+			const y = radiusAtZ * @sin(theta);
 
-					const radiusSquared = _radius*_radius;
-					const distanceSquared: f32 = @floatFromInt(rx*rx + ry*ry + rz*rz);
+			var damage = strength;
 
-					for(0..2) |_fx| {
-						const fx: i32 = @intFromFloat(std.math.sign(@as(f32, @floatFromInt(_fx)) - 0.5));
+			for (0..numSamplesDist) |j| {
+				const d = @as(f32, @floatFromInt(j))/@as(f32, @floatFromInt(numSamplesDist));
+				const dist = radius * d;
 
-						for(0..2) |_fy| {
-							const fy: i32 = @intFromFloat(std.math.sign(@as(f32, @floatFromInt(_fy)) - 0.5));
+				const xOffset: i32 = @intFromFloat(x * dist);
+				const yOffset: i32 = @intFromFloat(y * dist);
+				const zOffset: i32 = @intFromFloat(z * dist);
 
-							for(0..2) |_fz| {
-								const fz: i32 = @intFromFloat(std.math.sign(@as(f32, @floatFromInt(_fz)) - 0.5));
+				const p = pos + Vec3i{xOffset, yOffset, zOffset};
 
-								const distanceDelta = main.random.nextFloat(&seed) - 0.5;
-								const distanceSquaredWithDelta = @max(0.0, @min(radiusSquared, distanceSquared + distanceDelta));
-								if(distanceSquaredWithDelta >= radiusSquared) continue;
+				var oldBlock = mesh_storage.getBlock(p[0], p[1], p[2]) orelse return;
+				if(oldBlock.typ == 0) continue;
+				if(oldBlock.hasTag("fluid")) continue;
 
-								const x = pos[0] +% fx*rx;
-								const y = pos[1] +% fy*ry;
-								const z = pos[2] +% fz*rz;
+				damage -= oldBlock.blockResistance();
 
-								var oldBlock = mesh_storage.getBlock(x, y, z) orelse return;
-								if(oldBlock.typ == 0) continue;
-								if(oldBlock.hasTag("fluid")) continue;
+				if (oldBlock.blockHealth() > damage) {
+					break;
+				}
 
-								const damage = (1.0 - (distanceSquaredWithDelta/radiusSquared))*strength - oldBlock.blockResistance();
-								if(oldBlock.blockHealth() > damage) continue;
+				const xCentered: usize = @intCast(xOffset + @as(i32, @intCast(diameter/2)));
+				const yCentered: usize = @intCast(yOffset + @as(i32, @intCast(diameter/2)));
+				const zCentered: usize = @intCast(zOffset + @as(i32, @intCast(diameter/2)));
 
-								main.network.Protocols.blockUpdate.send(main.game.world.?.conn, x, y, z, .{.typ = 0, .data = 0});
-							}
-						}
+				exploded.set(xCentered, yCentered, zCentered, true);
+
+				damage -= strength * 1.0/@as(f32, @floatFromInt(numSamplesDist));
+			}
+		}
+
+		for(0..diameter) |_rx| {
+			const rx = @as(i32, @intCast(_rx)) + pos[0] - @as(i32, @intCast(diameter/2));
+
+			for(0..diameter) |_ry| {
+				const ry = @as(i32, @intCast(_ry)) + pos[1] - @as(i32, @intCast(diameter/2));
+
+				for(0..diameter) |_rz| {
+					const rz = @as(i32, @intCast(_rz)) + pos[2] - @as(i32, @intCast(diameter/2));
+					if (exploded.get(_rx, _ry, _rz)) {
+						main.network.Protocols.blockUpdate.send(main.game.world.?.conn, rx, ry, rz, .{.typ = 0, .data = 0});
 					}
 				}
 			}
