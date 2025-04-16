@@ -4,8 +4,8 @@
 	.blockResistance = 10,
 	.ore = .{
 		.veins = 3,
-		.size = 12,
-		.height = -600,
+		.size = 15,
+		.height = -500,
 		.density = 0.25,
 	},
 	.drops = .{
@@ -13,8 +13,8 @@
 	},
 	.rotation = .ore,
 	.model = "cubyz:cube",
-	.texture = "cubyz:gold_ore",
+	.texture = "cubyz:silver_ore",
 	.item = .{
-		.texture = "raw_gold.png",
+		.texture = "raw_silver.png",
 	},
 }
