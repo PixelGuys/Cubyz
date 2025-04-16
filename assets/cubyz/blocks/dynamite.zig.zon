@@ -1,5 +1,5 @@
 .{
-	.tags = .{.explosive},
+	.tags = .{.canBeIgnited},
 	.blockHealth = 0.5,
 	.drops = .{
 		.{.items = .{.auto}},

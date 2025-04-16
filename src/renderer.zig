@@ -799,7 +799,13 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				switch(item) {
 					.baseItem => |baseItem| {
 						if(baseItem.block) |itemBlock| {
-							const rotationMode = blocks.Block.mode(.{.typ = itemBlock, .data = 0});
+							const heldBlock = blocks.Block{.typ = itemBlock, .data = 0};
+							if(heldBlock.hasTag("canIgnite") and oldBlock.hasTag("canBeIgnited")) {
+								explode(selectedPos, 40, 3.7);
+								return;
+							}
+
+							const rotationMode = heldBlock.mode();
 							var neighborDir = Vec3i{0, 0, 0};
 							// Check if stuff can be added to the block itself:
 							if(itemBlock == block.typ) {
@@ -844,6 +850,60 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 					.tool => |tool| {
 						_ = tool; // TODO: Tools might change existing blocks.
 					},
+				}
+			}
+		}
+	}
+
+	fn explode(pos: Vec3i, strength: f32, _radius: f32) void {
+		std.debug.assert(_radius > 0.0);
+		std.debug.assert(_radius < 256.0);
+		std.debug.assert(strength > 0.0);
+
+		const radius: u32 = @intFromFloat(@ceil(_radius));
+
+		var seed = main.random.initSeed3D(main.seed, pos);
+
+		for(0..radius) |_rx| {
+			const rx: i32 = @intCast(_rx);
+
+			for(0..radius) |_ry| {
+				const ry: i32 = @intCast(_ry);
+
+				for(0..radius) |_rz| {
+					const rz: i32 = @intCast(_rz);
+
+					const radiusSquared = _radius*_radius;
+					const distanceSquared: f32 = @floatFromInt(rx*rx + ry*ry + rz*rz);
+
+					for(0..2) |_fx| {
+						const fx: i32 = @intFromFloat(std.math.sign(@as(f32, @floatFromInt(_fx)) - 0.5));
+
+						for(0..2) |_fy| {
+							const fy: i32 = @intFromFloat(std.math.sign(@as(f32, @floatFromInt(_fy)) - 0.5));
+
+							for(0..2) |_fz| {
+								const fz: i32 = @intFromFloat(std.math.sign(@as(f32, @floatFromInt(_fz)) - 0.5));
+
+								const distanceDelta = main.random.nextFloat(&seed) - 0.5;
+								const distanceSquaredWithDelta = @max(0.0, @min(radiusSquared, distanceSquared + distanceDelta));
+								if(distanceSquaredWithDelta >= radiusSquared) continue;
+
+								const x = pos[0] +% fx*rx;
+								const y = pos[1] +% fy*ry;
+								const z = pos[2] +% fz*rz;
+
+								var oldBlock = mesh_storage.getBlock(x, y, z) orelse return;
+								if(oldBlock.typ == 0) continue;
+								if(oldBlock.hasTag("fluid")) continue;
+
+								const damage = (1.0 - (distanceSquaredWithDelta/radiusSquared))*strength - oldBlock.blockResistance();
+								if(oldBlock.blockHealth() > damage) continue;
+
+								main.network.Protocols.blockUpdate.send(main.game.world.?.conn, x, y, z, .{.typ = 0, .data = 0});
+							}
+						}
+					}
 				}
 			}
 		}

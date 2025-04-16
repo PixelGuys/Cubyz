@@ -914,7 +914,7 @@ pub const Protocols = struct {
 			const z = try reader.readInt(i32);
 			const newBlock = Block.fromInt(try reader.readInt(u32));
 			if(conn.user != null) {
-				return error.InvalidPacket;
+				main.server.world.?.updateBlock(x, y, z, newBlock);
 			} else {
 				renderer.mesh_storage.updateBlock(x, y, z, newBlock);
 			}
