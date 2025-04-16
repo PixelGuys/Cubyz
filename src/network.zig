@@ -595,21 +595,10 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 				defer self.mutex.unlock();
 				while(i < self.connections.items.len) {
 					var conn = self.connections.items[i];
-					if(lastTime -% conn.lastConnection > settings.connectionTimeout and conn.isConnected()) {
-						std.log.info("timeout", .{});
-						// Timeout a connection if it was connect at some point. New connections are not timed out because that could annoy players(having to restart the connection several times).
-						self.mutex.unlock();
-						conn.disconnect();
-						if(conn.user) |user| {
-							main.server.disconnect(user);
-						}
-						self.mutex.lock();
-					} else {
-						self.mutex.unlock();
-						conn.processNextPackets();
-						self.mutex.lock();
-						i += 1;
-					}
+					self.mutex.unlock();
+					conn.processNextPackets();
+					self.mutex.lock();
+					i += 1;
 				}
 				if(self.connections.items.len == 0 and self.online.load(.acquire)) {
 					// Send a message to external ip, to keep the port open:
@@ -2061,7 +2050,13 @@ pub const Connection = struct { // MARK: Connection
 				self.manager.send(writer.data.items, self.remoteAddress, null);
 				return;
 			},
-			.connected => {},
+			.connected => {
+				if(timestamp -% self.lastConnection -% settings.connectionTimeout > 0) {
+					std.log.info("timeout", .{});
+					self.disconnect();
+					return;
+				}
+			},
 			.disconnectDesired => return,
 		}
 
