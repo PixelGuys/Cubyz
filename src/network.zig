@@ -1468,7 +1468,7 @@ pub const Connection = struct { // MARK: Connection
 			if(self.highestSentIndex == self.fullyConfirmedIndex) {
 				self.lastUnsentTime = time;
 			}
-			if(data.len > std.math.maxInt(SequenceIndex)) return error.OutOfMemory;
+			if(data.len + self.buffer.len > std.math.maxInt(SequenceIndex)) return error.OutOfMemory;
 			self.buffer.enqueue(protocolIndex);
 			self.nextIndex +%= 1;
 			_ = internalHeaderOverhead.fetchAdd(1, .monotonic);
