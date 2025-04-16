@@ -2052,7 +2052,11 @@ pub const Connection = struct { // MARK: Connection
 		const timestamp = std.time.microTimestamp();
 
 		switch(self.connectionState.load(.monotonic)) {
-			.awaitingClientConnection => return,
+			.awaitingClientConnection => {
+				if(timestamp -% self.nextPacketTimestamp < 0) return;
+				self.nextPacketTimestamp = timestamp +% 100_000;
+				self.manager.send(&.{@intFromEnum(ChannelId.keepalive)}, self.remoteAddress, null);
+			},
 			.awaitingServerResponse, .awaitingClientAcknowledgement => {
 				// Send the initial packet once every 100 ms.
 				if(timestamp -% self.nextPacketTimestamp < 0) return;
