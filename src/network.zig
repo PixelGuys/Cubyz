@@ -368,7 +368,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 	mutex: std.Thread.Mutex = .{},
 	waitingToFinishReceive: std.Thread.Condition = std.Thread.Condition{},
-	newConnectionCallback: Atomic(?*const fn(Address) void) = .init(null),
+	allowNewConnections: Atomic(bool) = .init(false),
 
 	receiveBuffer: [Connection.maxMtu]u8 = undefined,
 
@@ -546,8 +546,16 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 			}
 			if(self.online.load(.acquire) and source.ip == self.externalAddress.ip and source.port == self.externalAddress.port) return;
 		}
-		if(self.newConnectionCallback.load(.monotonic)) |callback| {
-			callback(source);
+		if(self.allowNewConnections.load(.monotonic)) {
+			if(data.len != 0 and data[0] == @intFromEnum(Connection.ChannelId.init)) {
+				const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{}", .{source}) catch unreachable;
+				defer main.stackAllocator.free(ip);
+				const user = main.server.User.initAndIncreaseRefCount(main.server.connectionManager, ip) catch |err| {
+					std.log.err("Cannot connect user from external IP {}: {s}", .{source, @errorName(err)});
+					return;
+				};
+				user.decreaseRefCount();
+			}
 		} else {
 			// TODO: Reduce the number of false alarms in the short period after a disconnect.
 			std.log.warn("Unknown connection from address: {}", .{source});
