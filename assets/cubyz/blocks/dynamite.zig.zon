@@ -1,0 +1,20 @@
+.{
+	.tags = .{.explosive},
+	.blockHealth = 0.5,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.solid = false,
+	.viewThrough = true,
+	.collide = false,
+	.rotation = .torch,
+	.model = .{
+		.base = "cubyz:dynamite/top",
+		.side = "cubyz:dynamite/side",
+	},
+	.texture = "cubyz:dynamite",
+	.item = .{
+		.texture = "dynamite.png",
+	},
+	.lodReplacement = "cubyz:air",
+}

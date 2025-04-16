@@ -131,4 +131,8 @@
 		.inputs = .{"cubyz:gravel"},
 		.output = "4 cubyz:pebbles",
 	},
+	.{
+		.inputs = .{"2 cubyz:sulfur_ore", "2 cubyz:coal"},
+		.output = "cubyz:dynamite",
+	}
 }
