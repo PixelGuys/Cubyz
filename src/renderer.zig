@@ -860,36 +860,36 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		std.debug.assert(radius < 256.0);
 		std.debug.assert(strength > 0.0);
 
-		const diameter: u32 = @intFromFloat(std.math.ceil(radius) * 2);
+		const diameter: u32 = @intFromFloat(std.math.ceil(radius)*2);
 
-		const goldenAngle = std.math.pi * (3.0 - @sqrt(5.0));
+		const goldenAngle = std.math.pi*(3.0 - @sqrt(5.0));
 
 		const numSamplesDist: usize = @intFromFloat(std.math.ceil(radius));
 
-		const numSamples: usize = @intFromFloat(std.math.ceil(4 * std.math.pi * radius * radius) * 2);
+		const numSamples: usize = @intFromFloat(std.math.ceil(4*std.math.pi*radius*radius)*2);
 
 		const exploded = main.utils.Array3D(bool).init(main.stackAllocator, diameter, diameter, diameter);
 		defer exploded.deinit(main.stackAllocator);
-		for (exploded.mem) |*e| {
+		for(exploded.mem) |*e| {
 			e.* = false;
 		}
-		
-		for (0..numSamples) |i| {
-			const z = 1 - 2 * @as(f32, @floatFromInt(i))/@as(f32, @floatFromInt(numSamples));
-			const radiusAtZ = @sqrt(1 - z * z);
-			const theta = goldenAngle * @as(f32, @floatFromInt(i));
-			const x = radiusAtZ * @cos(theta);
-			const y = radiusAtZ * @sin(theta);
+
+		for(0..numSamples) |i| {
+			const z = 1 - 2*@as(f32, @floatFromInt(i))/@as(f32, @floatFromInt(numSamples));
+			const radiusAtZ = @sqrt(1 - z*z);
+			const theta = goldenAngle*@as(f32, @floatFromInt(i));
+			const x = radiusAtZ*@cos(theta);
+			const y = radiusAtZ*@sin(theta);
 
 			var damage = strength;
 
-			for (0..numSamplesDist) |j| {
+			for(0..numSamplesDist) |j| {
 				const d = @as(f32, @floatFromInt(j))/@as(f32, @floatFromInt(numSamplesDist));
-				const dist = radius * d;
+				const dist = radius*d;
 
-				const xOffset: i32 = @intFromFloat(x * dist);
-				const yOffset: i32 = @intFromFloat(y * dist);
-				const zOffset: i32 = @intFromFloat(z * dist);
+				const xOffset: i32 = @intFromFloat(x*dist);
+				const yOffset: i32 = @intFromFloat(y*dist);
+				const zOffset: i32 = @intFromFloat(z*dist);
 
 				const p = pos + Vec3i{xOffset, yOffset, zOffset};
 
@@ -899,7 +899,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 				damage -= oldBlock.blockResistance();
 
-				if (oldBlock.blockHealth() > damage) {
+				if(oldBlock.blockHealth() > damage) {
 					break;
 				}
 
@@ -909,7 +909,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 				exploded.set(xCentered, yCentered, zCentered, true);
 
-				damage -= strength * 1.0/@as(f32, @floatFromInt(numSamplesDist));
+				damage -= strength*1.0/@as(f32, @floatFromInt(numSamplesDist));
 			}
 		}
 
@@ -921,7 +921,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 				for(0..diameter) |_rz| {
 					const rz = @as(i32, @intCast(_rz)) + pos[2] - @as(i32, @intCast(diameter/2));
-					if (exploded.get(_rx, _ry, _rz)) {
+					if(exploded.get(_rx, _ry, _rz)) {
 						main.network.Protocols.blockUpdate.send(main.game.world.?.conn, rx, ry, rz, .{.typ = 0, .data = 0});
 					}
 				}
