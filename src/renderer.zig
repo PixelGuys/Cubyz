@@ -896,7 +896,6 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				if(oldBlock.typ == 0) continue;
 				if(oldBlock.hasTag("fluid")) continue;
 
-
 				if(damage < oldBlock.blockResistance()) break;
 				damage -= oldBlock.blockHealth();
 
