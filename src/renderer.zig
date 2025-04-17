@@ -801,9 +801,9 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						if(baseItem.block) |itemBlock| {
 							const heldBlock = blocks.Block{.typ = itemBlock, .data = 0};
 							if(heldBlock.hasTag("canIgnite") and oldBlock.hasTag("canBeIgnited")) {
-								if(oldBlock.hasTag("explosionSmall")) explode(selectedPos, 80, 5.5);
+								if(oldBlock.hasTag("explosionSmall")) explode(selectedPos, 40, 3.7);
 								if(oldBlock.hasTag("explosionMedium")) explode(selectedPos, 240, 11.5);
-								if(oldBlock.hasTag("explosionLarge")) explode(selectedPos, 480, 16.5);
+								if(oldBlock.hasTag("explosionLarge")) explode(selectedPos, 480, 18.5);
 								return;
 							}
 
