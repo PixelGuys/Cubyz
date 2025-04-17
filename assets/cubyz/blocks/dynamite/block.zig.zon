@@ -6,8 +6,8 @@
 	},
 	.viewThrough = true,
 	.rotation = .log,
-	.model = "cubyz:dynamite/block",
+	.model = "cubyz:cube",
 	.texture = "cubyz:dynamite/side",
 	.texture_top = "cubyz:dynamite/top",
-	.texture_bottom = "cubyz:dynamite/top",
+	.texture_bottom = "cubyz:dynamite/bottom",
 }
