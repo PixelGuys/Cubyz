@@ -1326,13 +1326,6 @@ pub const Connection = struct { // MARK: Connection
 			};
 		}
 
-		pub fn reset(self: *ReceiveBuffer) void {
-			self.ranges.clear();
-			self.protocolBuffer.clearRetainingCapacity();
-			self.header = null;
-			self.protocolBuffer.clearRetainingCapacity();
-		}
-
 		pub fn deinit(self: ReceiveBuffer) void {
 			self.ranges.deinit();
 			self.protocolBuffer.deinit(main.globalAllocator);
@@ -1450,12 +1443,6 @@ pub const Connection = struct { // MARK: Connection
 				.nextIndex = index,
 				.lastUnsentTime = std.time.microTimestamp(),
 			};
-		}
-
-		pub fn reset(self: *SendBuffer) void {
-			self.unconfirmedRanges.clearRetainingCapacity();
-			self.lostRanges.reset();
-			self.buffer.reset();
 		}
 
 		pub fn deinit(self: SendBuffer) void {
@@ -1588,11 +1575,6 @@ pub const Connection = struct { // MARK: Connection
 				.allowedDelay = delay,
 				.channelId = id,
 			};
-		}
-
-		pub fn reset(self: *Channel) void {
-			self.receiveBuffer.reset();
-			self.sendBuffer.reset();
 		}
 
 		pub fn deinit(self: *Channel) void {
@@ -1759,36 +1741,6 @@ pub const Connection = struct { // MARK: Connection
 
 		try result.manager.addConnection(result);
 		return result;
-	}
-
-	fn reinitialize(self: *Connection) void { // TODO!
-		main.utils.assertLocked(&self.mutex);
-		self.lossyChannel.reset();
-		self.fastChannel.reset();
-		self.slowChannel.reset();
-
-		self.rttEstimate = 1000_000.0;
-		self.hasRttEstimate = false;
-		self.rttUncertainty = 0.0;
-		self.lastRttSampleTime = std.time.microTimestamp() -% 10_000_000;
-		self.nextPacketTimestamp = std.time.microTimestamp();
-		self.nextConfirmationTimestamp = std.time.microTimestamp();
-		self.queuedConfirmations.reset();
-		self.mtuEstimate = minMtu;
-
-		self.bandwidthEstimateInBytesPerRtt = minMtu;
-		self.slowStart = true;
-		self.relativeSendTime = 0;
-		self.relativeIdleTime = 0;
-
-		self.connectionState = .init(if(self.user != null) .awaitingClientConnection else .awaitingServerResponse);
-		self.handShakeState = .init(Protocols.handShake.stepStart);
-
-		self.connectionIdentifier = std.time.microTimestamp();
-		if(self.connectionIdentifier == 0) self.connectionIdentifier = 1;
-		self.remoteConnectionIdentifier = 0;
-
-		self.lastConnection = std.time.microTimestamp();
 	}
 
 	pub fn deinit(self: *Connection) void {
@@ -1961,15 +1913,13 @@ pub const Connection = struct { // MARK: Connection
 				.connected => {
 					if(self.remoteConnectionIdentifier != remoteConnectionIdentifier) { // Reconnection attempt
 						if(self.user) |user| {
-							user.reinitialize();
-							self.mutex.lock();
-							defer self.mutex.unlock();
-							self.reinitialize();
+							self.manager.removeConnection(self);
+							main.server.disconnect(user);
 						} else {
 							std.log.err("Server reconnected?", .{});
 							self.disconnect();
 						}
-						return self.flawedReceive(data);
+						return;
 					}
 				},
 				.disconnectDesired => {},
