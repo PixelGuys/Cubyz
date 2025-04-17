@@ -404,7 +404,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 				break :blk socket;
 			} else return err;
 		};
-		errdefer Socket.deinit(result.socket);
+		errdefer result.socket.deinit();
 		if(localPort == 0) result.localPort = try result.socket.getPort();
 
 		result.thread = try std.Thread.spawn(.{}, run, .{result});
@@ -422,7 +422,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 
 		self.running.store(false, .monotonic);
 		self.thread.join();
-		Socket.deinit(self.socket);
+		self.socket.deinit();
 		self.connections.deinit();
 		for(self.requests.items) |request| {
 			request.requestNotifier.signal();
