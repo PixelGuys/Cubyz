@@ -19,6 +19,7 @@ const Mat4f = vec.Mat4f;
 const EventStatus = main.entity_data.EventStatus;
 
 const chunk_meshing = @import("chunk_meshing.zig");
+const ChunkMesh = chunk_meshing.ChunkMesh;
 
 const ChunkMeshNode = struct {
 	mesh: ?*chunk_meshing.ChunkMesh = null,
@@ -758,15 +759,8 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 	return meshList.items;
 }
 
-pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()
-	// First of all process all the block updates:
-	while(blockUpdateList.dequeue()) |blockUpdate| {
-		const pos = chunk.ChunkPosition{.wx = blockUpdate.x, .wy = blockUpdate.y, .wz = blockUpdate.z, .voxelSize = 1};
-		if(getMeshAndIncreaseRefCount(pos)) |mesh| {
-			defer mesh.decreaseRefCount();
-			mesh.updateBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock);
-		} // TODO: It seems like we simply ignore the block update if we don't have the mesh yet.
-	}
+pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()=
+	if(!blockUpdateList.empty()) batchUpdateBlocks();
 
 	mutex.lock();
 	defer mutex.unlock();
@@ -856,6 +850,61 @@ pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()
 			mesh.decreaseRefCount();
 		}
 		if(std.time.milliTimestamp() >= targetTime) break; // Update at least one mesh.
+	}
+}
+
+fn batchUpdateBlocks() void {
+	var lightRefreshList = main.List(*ChunkMesh).init(main.stackAllocator);
+	defer lightRefreshList.deinit();
+
+	var regenerateMesh = std.HashMapUnmanaged(chunk.ChunkPosition, *ChunkMesh, chunk.ChunkPosition.HashContext, 80){};
+	defer regenerateMesh.deinit(main.stackAllocator.allocator);
+
+	// First of all process all the block updates:
+	while(blockUpdateList.dequeue()) |blockUpdate| {
+		const pos = chunk.ChunkPosition{.wx = blockUpdate.x, .wy = blockUpdate.y, .wz = blockUpdate.z, .voxelSize = 1};
+		if(getMeshAndIncreaseRefCount(pos)) |mesh| {
+			const result = mesh.updateBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock, &lightRefreshList);
+			switch(result) {
+				.noChange => {
+					mesh.decreaseRefCount();
+					continue;
+				},
+				.regenerateMesh => {
+					const entry = regenerateMesh.getOrPut(main.stackAllocator.allocator, mesh.pos) catch unreachable;
+					if(entry.found_existing) {
+						mesh.decreaseRefCount();
+					} else {
+						entry.value_ptr.* = mesh;
+					}
+				},
+			}
+		} // TODO: It seems like we simply ignore the block update if we don't have the mesh yet.
+	}
+	{
+		var regenerateMeshIterator = regenerateMesh.iterator();
+		while(regenerateMeshIterator.next()) |entry| {
+			const mesh = entry.value_ptr.*;
+			mesh.generateMesh(&lightRefreshList);
+		}
+	}
+	{
+		// TODO: Don't reschedule light refresh for duplicate meshes.
+		for(lightRefreshList.items) |mesh| {
+			if(mesh.needsLightRefresh.load(.unordered)) {
+				mesh.scheduleLightRefreshAndDecreaseRefCount1();
+			} else {
+				mesh.decreaseRefCount();
+			}
+		}
+	}
+	{
+		var regenerateMeshIterator = regenerateMesh.iterator();
+		while(regenerateMeshIterator.next()) |entry| {
+			const mesh = entry.value_ptr.*;
+			mesh.uploadData();
+			mesh.decreaseRefCount();
+		}
 	}
 }
 
