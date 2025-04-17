@@ -82,6 +82,7 @@ fn flawedCreateWorld() !void {
 
 		gamerules.put("default_gamemode", @tagName(gamemode));
 		gamerules.put("cheats", allowCheats);
+		gamerules.put("allow_explosives", true);
 
 		try main.files.writeZon(gamerulePath, gamerules);
 	}

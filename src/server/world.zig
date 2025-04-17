@@ -430,6 +430,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	defaultGamemode: main.game.Gamemode = undefined,
 	allowCheats: bool = undefined,
+	allowExplosives: bool = undefined,
 
 	seed: u64,
 	name: []const u8,
@@ -548,6 +549,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		self.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, gamerules.get([]const u8, "default_gamemode", "creative")) orelse .creative;
 		self.allowCheats = gamerules.get(bool, "cheats", true);
+		self.allowExplosives = gamerules.get(bool, "allow_explosives", true);
 
 		self.chunkManager = try ChunkManager.init(self, generatorSettings);
 		errdefer self.chunkManager.deinit();

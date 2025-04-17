@@ -1226,6 +1226,97 @@ pub const Protocols = struct {
 			conn.sendImportant(id, writer.data.items);
 		}
 	};
+	pub const explode = struct {
+		pub const id: u8 = 14;
+		pub const asynchronous = false;
+		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
+			const pos = try reader.readVec(Vec3i);
+			const strength = try reader.readFloat(f32);
+			const radius = try reader.readFloat(f32);
+
+			if(conn.user != null) {
+				if(!main.server.world.?.allowExplosives) return;
+				doExplode(pos, strength, radius);
+			} else {
+				return error.InvalidPacket;
+			}
+		}
+		fn doExplode(pos: Vec3i, strength: f32, radius: f32) void {
+			std.debug.assert(radius > 0.0);
+			std.debug.assert(radius < 256.0);
+			std.debug.assert(strength > 0.0);
+
+			const diameter: u32 = @intFromFloat(std.math.ceil(radius)*2);
+			const goldenAngle = std.math.pi*(3.0 - @sqrt(5.0));
+			const radiusInt: usize = @intFromFloat(std.math.ceil(radius));
+			const numSamples: usize = @intFromFloat(std.math.ceil(4*std.math.pi*radius*radius)*2);
+
+			const exploded = main.utils.Array3D(bool).init(main.stackAllocator, diameter, diameter, diameter);
+			defer exploded.deinit(main.stackAllocator);
+			for(exploded.mem) |*e| {
+				e.* = false;
+			}
+
+			for(0..numSamples) |i| {
+				const z = 1 - 2*@as(f32, @floatFromInt(i))/@as(f32, @floatFromInt(numSamples));
+				const radiusAtZ = @sqrt(1 - z*z);
+				const theta = goldenAngle*@as(f32, @floatFromInt(i));
+				const x = radiusAtZ*@cos(theta);
+				const y = radiusAtZ*@sin(theta);
+
+				var damage = strength;
+
+				for(0..radiusInt) |j| {
+					const distanceFactor = @as(f32, @floatFromInt(j))/@as(f32, @floatFromInt(radiusInt));
+					const distance = radius*distanceFactor;
+
+					const xOffset: i32 = @intFromFloat(x*distance);
+					const yOffset: i32 = @intFromFloat(y*distance);
+					const zOffset: i32 = @intFromFloat(z*distance);
+
+					const p = pos + Vec3i{xOffset, yOffset, zOffset};
+
+					var oldBlock = main.server.world.?.getBlock(p[0], p[1], p[2]) orelse continue;
+					if(oldBlock.typ == 0) continue;
+					if(oldBlock.hasTag("fluid")) continue;
+
+					if(damage < oldBlock.blockResistance()) break;
+					damage -= oldBlock.blockHealth();
+
+					const xCentered: usize = @intCast(xOffset + @as(i32, @intCast(diameter/2)));
+					const yCentered: usize = @intCast(yOffset + @as(i32, @intCast(diameter/2)));
+					const zCentered: usize = @intCast(zOffset + @as(i32, @intCast(diameter/2)));
+
+					exploded.set(xCentered, yCentered, zCentered, true);
+
+					damage -= strength/@as(f32, @floatFromInt(radiusInt));
+				}
+			}
+
+			for(0..diameter) |_x| {
+				const x = @as(i32, @intCast(_x)) + pos[0] - @as(i32, @intCast(diameter/2));
+
+				for(0..diameter) |_y| {
+					const y = @as(i32, @intCast(_y)) + pos[1] - @as(i32, @intCast(diameter/2));
+
+					for(0..diameter) |_z| {
+						const z = @as(i32, @intCast(_z)) + pos[2] - @as(i32, @intCast(diameter/2));
+						if(exploded.get(_x, _y, _z)) {
+							_ = main.server.world.?.cmpxchgBlock(x, y, z, null, .{.typ = 0, .data = 0});
+						}
+					}
+				}
+			}
+		}
+		pub fn send(conn: *Connection, pos: Vec3i, strength: f32, radius: f32) void {
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 20);
+			defer writer.deinit();
+			writer.writeVec(Vec3i, pos);
+			writer.writeFloat(f32, strength);
+			writer.writeFloat(f32, radius);
+			conn.sendImportant(id, writer.data.items);
+		}
+	};
 };
 
 pub const Connection = struct { // MARK: Connection
