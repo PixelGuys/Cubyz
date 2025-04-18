@@ -1872,7 +1872,7 @@ pub const Connection = struct { // MARK: Connection
 	}
 
 	pub fn receive(self: *Connection, data: []const u8) void {
-		self.flawedReceive(data) catch |err| {
+		self.tryReceive(data) catch |err| {
 			std.log.err("Got error while processing received network data: {s}", .{@errorName(err)});
 			if(@errorReturnTrace()) |trace| {
 				std.log.info("{}", .{trace});
@@ -1881,7 +1881,7 @@ pub const Connection = struct { // MARK: Connection
 		};
 	}
 
-	fn flawedReceive(self: *Connection, data: []const u8) !void {
+	fn tryReceive(self: *Connection, data: []const u8) !void {
 		std.debug.assert(self.manager.threadId == std.Thread.getCurrentId());
 		var reader = utils.BinaryReader.init(data);
 		const channel = try reader.readEnum(ChannelId);
