@@ -4,7 +4,6 @@
 	.drops = .{
 		.{.items = .{.auto}},
 	},
-	.viewThrough = true,
 	.rotation = .log,
 	.model = "cubyz:cube",
 	.texture = "cubyz:dynamite/side",
