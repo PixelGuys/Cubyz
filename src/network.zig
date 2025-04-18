@@ -1225,6 +1225,12 @@ pub const Connection = struct { // MARK: Connection
 
 	const SequenceIndex = i32;
 
+	const LossStatus = enum {
+		noLoss,
+		singleLoss,
+		doubleLoss,
+	};
+
 	const RangeBuffer = struct { // MARK: RangeBuffer
 		const Range = struct {
 			startInclusive: SequenceIndex,
@@ -1417,6 +1423,7 @@ pub const Connection = struct { // MARK: Connection
 			len: SequenceIndex,
 			timestamp: i64,
 			wasResent: bool = false,
+			wasResentAsFirstPacket: bool = false,
 			considerForCongestionControl: bool,
 
 			fn compareTime(_: void, a: Range, b: Range) std.math.Order {
@@ -1508,17 +1515,27 @@ pub const Connection = struct { // MARK: Connection
 			return result;
 		}
 
-		pub fn checkForLosses(self: *SendBuffer, time: i64, retransmissionTimeout: i64) usize {
-			var lostPackets: usize = 0;
+		pub fn checkForLosses(self: *SendBuffer, time: i64, retransmissionTimeout: i64) LossStatus {
+			var hadLoss: bool = false;
+			var hadDoubleLoss: bool = false;
 			while(true) {
 				var range = self.unconfirmedRanges.peek() orelse break;
 				if(range.timestamp +% retransmissionTimeout -% time >= 0) break;
 				_ = self.unconfirmedRanges.remove();
+				if(self.fullyConfirmedIndex == range.start) {
+					// In TCP effectively only the second loss of the lowest unconfirmed packet is counted for congestion control
+					// This decreases the chance of triggering congestion control from random packet loss
+					if(range.wasResentAsFirstPacket) hadDoubleLoss = true;
+					hadLoss = true;
+					range.wasResentAsFirstPacket = true;
+				}
 				range.wasResent = true;
 				self.lostRanges.enqueue(range);
-				lostPackets += 1;
+				_ = packetsResent.fetchAdd(1, .monotonic);
 			}
-			return lostPackets;
+			if(hadDoubleLoss) return .doubleLoss;
+			if(hadLoss) return .singleLoss;
+			return .noLoss;
 		}
 
 		pub fn getNextPacketToSend(self: *SendBuffer, byteIndex: *SequenceIndex, buf: []u8, time: i64, considerForCongestionControl: bool, allowedDelay: i64) ?usize {
@@ -1600,7 +1617,7 @@ pub const Connection = struct { // MARK: Connection
 			return self.sendBuffer.receiveConfirmationAndGetTimestamp(start);
 		}
 
-		pub fn checkForLosses(self: *Channel, conn: *Connection, time: i64) usize {
+		pub fn checkForLosses(self: *Channel, conn: *Connection, time: i64) LossStatus {
 			const retransmissionTimeout: i64 = @intFromFloat(conn.rttEstimate + 3*conn.rttUncertainty + @as(f32, @floatFromInt(self.allowedDelay)) + 10_000);
 			return self.sendBuffer.checkForLosses(time, retransmissionTimeout);
 		}
@@ -1682,9 +1699,6 @@ pub const Connection = struct { // MARK: Connection
 	relativeSendTime: i64 = 0,
 	relativeIdleTime: i64 = 0,
 
-	lastLossTime: i64,
-	lastLossReactionTime: i64,
-
 	connectionState: Atomic(ConnectionState),
 	handShakeState: Atomic(u8) = .init(Protocols.handShake.stepStart),
 	handShakeWaiting: std.Thread.Condition = std.Thread.Condition{},
@@ -1708,8 +1722,6 @@ pub const Connection = struct { // MARK: Connection
 			.nextPacketTimestamp = std.time.microTimestamp(),
 			.nextConfirmationTimestamp = std.time.microTimestamp(),
 			.lastRttSampleTime = std.time.microTimestamp() -% 10_000_000,
-			.lastLossTime = std.time.microTimestamp() -% 10_000_000,
-			.lastLossReactionTime = std.time.microTimestamp() -% 10_000_000,
 			.queuedConfirmations = .init(main.globalAllocator, 1024),
 			.lossyChannel = .init(main.random.nextInt(SequenceIndex, &main.seed), 1_000, .lossy),
 			.fastChannel = .init(main.random.nextInt(SequenceIndex, &main.seed), 10_000, .fast),
@@ -1776,20 +1788,14 @@ pub const Connection = struct { // MARK: Connection
 		return self.connectionState.load(.unordered) == .connected;
 	}
 
-	fn handlePacketLoss(self: *Connection, losses: usize, timestamp: i64) void {
-		if(losses == 0) return;
-		_ = packetsResent.fetchAdd(@intCast(losses), .monotonic);
-		const rtt: i64 = @intFromFloat(self.rttEstimate);
+	fn handlePacketLoss(self: *Connection, loss: LossStatus) void {
+		if(loss == .noLoss) return;
 		self.slowStart = false;
-		if(timestamp -% rtt -% self.lastLossTime > 0 or losses > 1) {
-			if(timestamp -% 2*rtt -% self.lastLossReactionTime > 0) {
-				self.rttEstimate *= 1.5;
-				self.bandwidthEstimateInBytesPerRtt /= 2;
-				self.bandwidthEstimateInBytesPerRtt = @max(self.bandwidthEstimateInBytesPerRtt, minMtu);
-				self.lastLossReactionTime = timestamp;
-			}
+		if(loss == .doubleLoss) {
+			self.rttEstimate *= 1.5;
+			self.bandwidthEstimateInBytesPerRtt /= 2;
+			self.bandwidthEstimateInBytesPerRtt = @max(self.bandwidthEstimateInBytesPerRtt, minMtu);
 		}
-		self.lastLossTime = timestamp;
 	}
 
 	fn increaseCongestionBandwidth(self: *Connection, packetLen: SequenceIndex) void {
@@ -2018,10 +2024,9 @@ pub const Connection = struct { // MARK: Connection
 			.disconnectDesired => return,
 		}
 
-		var losses = self.lossyChannel.checkForLosses(self, timestamp);
-		losses += self.fastChannel.checkForLosses(self, timestamp);
-		losses += self.slowChannel.checkForLosses(self, timestamp);
-		self.handlePacketLoss(losses, timestamp);
+		self.handlePacketLoss(self.lossyChannel.checkForLosses(self, timestamp));
+		self.handlePacketLoss(self.fastChannel.checkForLosses(self, timestamp));
+		self.handlePacketLoss(self.slowChannel.checkForLosses(self, timestamp));
 
 		// We don't want to send too many packets at once if there was a period of no traffic.
 		if(timestamp -% 10_000 -% self.nextPacketTimestamp > 0) {
