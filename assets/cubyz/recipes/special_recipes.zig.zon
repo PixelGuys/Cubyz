@@ -136,7 +136,7 @@
 		.output = "cubyz:dynamite/stick",
 	},
 	.{
-		.inputs = .{"16 cubyz:dynamite/stick"},
+		.inputs = .{"8 cubyz:dynamite/stick"},
 		.output = "cubyz:dynamite/block",
 	},
 }
