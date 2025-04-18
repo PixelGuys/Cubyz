@@ -1233,8 +1233,12 @@ pub const Connection = struct { // MARK: Connection
 
 	const RangeBuffer = struct { // MARK: RangeBuffer
 		const Range = struct {
-			startInclusive: SequenceIndex,
-			endExclusive: SequenceIndex,
+			start: SequenceIndex,
+			len: SequenceIndex,
+
+			fn end(self: Range) SequenceIndex {
+				return self.start +% self.len;
+			}
 		};
 		ranges: main.List(Range),
 
@@ -1259,16 +1263,16 @@ pub const Connection = struct { // MARK: Connection
 			var i: usize = 0;
 			while(i < self.ranges.items.len) {
 				const other = self.ranges.items[i];
-				if(range.startInclusive -% other.startInclusive <= 0 and range.endExclusive -% other.endExclusive >= 0) {
+				if(range.start -% other.start <= 0 and range.end() -% other.end() >= 0) {
 					_ = self.ranges.swapRemove(i);
 					continue;
 				}
-				if(range.startInclusive -% other.endExclusive <= 0 and range.startInclusive -% other.startInclusive >= 0) {
+				if(range.start -% other.end() <= 0 and range.start -% other.start >= 0) {
 					_ = self.ranges.swapRemove(i);
 					startRange = other;
 					continue;
 				}
-				if(range.endExclusive -% other.startInclusive >= 0 and range.endExclusive -% other.endExclusive <= 0) {
+				if(range.end() -% other.start >= 0 and range.end() -% other.end() <= 0) {
 					_ = self.ranges.swapRemove(i);
 					endRange = other;
 					continue;
@@ -1277,17 +1281,18 @@ pub const Connection = struct { // MARK: Connection
 			}
 			var mergedRange = range;
 			if(startRange) |start| {
-				mergedRange.startInclusive = start.startInclusive;
+				mergedRange.start = start.start;
+				mergedRange.len = range.end() -% mergedRange.start;
 			}
 			if(endRange) |end| {
-				mergedRange.endExclusive = end.endExclusive;
+				mergedRange.len = end.end() -% mergedRange.start;
 			}
 			self.ranges.append(mergedRange);
 		}
 
 		pub fn hasRange(self: *RangeBuffer, range: Range) bool {
 			for(self.ranges.items) |other| {
-				if(range.startInclusive -% other.startInclusive >= 0 and range.endExclusive -% other.endExclusive <= 0) {
+				if(range.start -% other.start >= 0 and range.end() -% other.end() <= 0) {
 					return true;
 				}
 			}
@@ -1299,7 +1304,7 @@ pub const Connection = struct { // MARK: Connection
 			var firstRange = self.ranges.items[0];
 			var index: usize = 0;
 			for(self.ranges.items[1..], 1..) |range, i| {
-				if(range.startInclusive -% firstRange.startInclusive < 0) {
+				if(range.start -% firstRange.start < 0) {
 					firstRange = range;
 					index = i;
 				}
@@ -1340,8 +1345,8 @@ pub const Connection = struct { // MARK: Connection
 
 		fn applyRanges(self: *ReceiveBuffer) void {
 			const range = self.ranges.extractFirstRange() orelse unreachable;
-			std.debug.assert(range.startInclusive == self.availablePosition);
-			self.availablePosition = range.endExclusive;
+			std.debug.assert(range.start == self.availablePosition);
+			self.availablePosition = range.end();
 		}
 
 		fn getHeaderInformation(self: *ReceiveBuffer) !?Header {
@@ -1407,12 +1412,12 @@ pub const Connection = struct { // MARK: Connection
 			const offset: usize = @intCast(start -% self.currentReadPosition);
 			if(start == self.availablePosition) {
 				self.buffer.insertSliceAtOffset(data, offset) catch return .rejected;
-				self.ranges.addRange(.{.startInclusive = start, .endExclusive = start +% len});
+				self.ranges.addRange(.{.start = start, .len = len});
 				try self.collectRangesAndExecuteProtocols(conn);
 				return .accepted;
 			}
 			self.buffer.insertSliceAtOffset(data, offset) catch return .rejected;
-			self.ranges.addRange(.{.startInclusive = start, .endExclusive = start +% len});
+			self.ranges.addRange(.{.start = start, .len = len});
 			return .accepted;
 		}
 	};
