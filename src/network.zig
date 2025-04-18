@@ -1240,11 +1240,11 @@ pub const Connection = struct { // MARK: Connection
 				return self.start +% self.len;
 			}
 		};
-		ranges: main.List(Range),
+		ranges: main.ListUnmanaged(Range),
 
-		pub fn init(allocator: NeverFailingAllocator) RangeBuffer {
+		pub fn init() RangeBuffer {
 			return .{
-				.ranges = .init(allocator),
+				.ranges = .{},
 			};
 		}
 
@@ -1252,11 +1252,11 @@ pub const Connection = struct { // MARK: Connection
 			self.ranges.clearRetainingCapacity();
 		}
 
-		pub fn deinit(self: RangeBuffer) void {
-			self.ranges.deinit();
+		pub fn deinit(self: RangeBuffer, allocator: NeverFailingAllocator) void {
+			self.ranges.deinit(allocator);
 		}
 
-		pub fn addRange(self: *RangeBuffer, range: Range) void {
+		pub fn addRange(self: *RangeBuffer, allocator: NeverFailingAllocator, range: Range) void {
 			if(self.hasRange(range)) return;
 			var startRange: ?Range = null;
 			var endRange: ?Range = null;
@@ -1287,7 +1287,7 @@ pub const Connection = struct { // MARK: Connection
 			if(endRange) |end| {
 				mergedRange.len = end.end() -% mergedRange.start;
 			}
-			self.ranges.append(mergedRange);
+			self.ranges.append(allocator, mergedRange);
 		}
 
 		pub fn hasRange(self: *RangeBuffer, range: Range) bool {
@@ -1332,13 +1332,13 @@ pub const Connection = struct { // MARK: Connection
 
 		pub fn init() ReceiveBuffer {
 			return .{
-				.ranges = .init(main.globalAllocator),
+				.ranges = .init(),
 				.buffer = .init(main.globalAllocator),
 			};
 		}
 
 		pub fn deinit(self: ReceiveBuffer) void {
-			self.ranges.deinit();
+			self.ranges.deinit(main.globalAllocator);
 			self.protocolBuffer.deinit(main.globalAllocator);
 			self.buffer.deinit(main.globalAllocator);
 		}
@@ -1410,14 +1410,11 @@ pub const Connection = struct { // MARK: Connection
 			const len: SequenceIndex = @intCast(data.len);
 			if(start -% self.availablePosition < 0) return .accepted; // We accepted it in the past.
 			const offset: usize = @intCast(start -% self.currentReadPosition);
-			if(start == self.availablePosition) {
-				self.buffer.insertSliceAtOffset(data, offset) catch return .rejected;
-				self.ranges.addRange(.{.start = start, .len = len});
-				try self.collectRangesAndExecuteProtocols(conn);
-				return .accepted;
-			}
 			self.buffer.insertSliceAtOffset(data, offset) catch return .rejected;
-			self.ranges.addRange(.{.start = start, .len = len});
+			self.ranges.addRange(main.globalAllocator, .{.start = start, .len = len});
+			if(start == self.availablePosition) {
+				try self.collectRangesAndExecuteProtocols(conn);
+			}
 			return .accepted;
 		}
 	};
