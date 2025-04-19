@@ -23,6 +23,11 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 //TODO: Might want to use SSL or something similar to encode the message
 
+const ms = 1_000;
+inline fn networkTimestamp() i64 {
+	return std.time.microTimestamp();
+}
+
 const Socket = struct {
 	const posix = std.posix;
 	socketID: posix.socket_t,
@@ -568,7 +573,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 		main.initThreadLocals();
 		defer main.deinitThreadLocals();
 
-		var lastTime: i64 = std.time.microTimestamp();
+		var lastTime: i64 = networkTimestamp();
 		while(self.running.load(.monotonic)) {
 			self.waitingToFinishReceive.broadcast();
 			var source: Address = undefined;
@@ -584,7 +589,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 					@panic("Network failed.");
 				}
 			}
-			const curTime: i64 = std.time.microTimestamp();
+			const curTime: i64 = networkTimestamp();
 			{
 				self.mutex.lock();
 				defer self.mutex.unlock();
@@ -596,7 +601,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 			}
 
 			// Send packets roughly every 1 ms:
-			if(curTime -% lastTime > 1000) {
+			if(curTime -% lastTime > 1*ms) {
 				lastTime = curTime;
 				var i: u32 = 0;
 				self.mutex.lock();
@@ -1450,7 +1455,7 @@ pub const Connection = struct { // MARK: Connection
 				.fullyConfirmedIndex = index,
 				.highestSentIndex = index,
 				.nextIndex = index,
-				.lastUnsentTime = std.time.microTimestamp(),
+				.lastUnsentTime = networkTimestamp(),
 			};
 		}
 
@@ -1620,7 +1625,7 @@ pub const Connection = struct { // MARK: Connection
 		}
 
 		pub fn checkForLosses(self: *Channel, conn: *Connection, time: i64) LossStatus {
-			const retransmissionTimeout: i64 = @intFromFloat(conn.rttEstimate + 3*conn.rttUncertainty + @as(f32, @floatFromInt(self.allowedDelay)) + 10_000);
+			const retransmissionTimeout: i64 = @intFromFloat(conn.rttEstimate + 3*conn.rttUncertainty + @as(f32, @floatFromInt(self.allowedDelay)));
 			return self.sendBuffer.checkForLosses(time, retransmissionTimeout);
 		}
 
@@ -1688,7 +1693,7 @@ pub const Connection = struct { // MARK: Connection
 	slowChannel: Channel,
 
 	hasRttEstimate: bool = false,
-	rttEstimate: f32 = 1000_000.0,
+	rttEstimate: f32 = 1000*ms,
 	rttUncertainty: f32 = 0.0,
 	lastRttSampleTime: i64,
 	nextPacketTimestamp: i64,
@@ -1720,15 +1725,15 @@ pub const Connection = struct { // MARK: Connection
 			.user = user,
 			.remoteAddress = undefined,
 			.connectionState = .init(if(user != null) .awaitingClientConnection else .awaitingServerResponse),
-			.lastConnection = std.time.microTimestamp(),
-			.nextPacketTimestamp = std.time.microTimestamp(),
-			.nextConfirmationTimestamp = std.time.microTimestamp(),
-			.lastRttSampleTime = std.time.microTimestamp() -% 10_000_000,
+			.lastConnection = networkTimestamp(),
+			.nextPacketTimestamp = networkTimestamp(),
+			.nextConfirmationTimestamp = networkTimestamp(),
+			.lastRttSampleTime = networkTimestamp() -% 10_000*ms,
 			.queuedConfirmations = .init(main.globalAllocator, 1024),
-			.lossyChannel = .init(main.random.nextInt(SequenceIndex, &main.seed), 1_000, .lossy),
-			.fastChannel = .init(main.random.nextInt(SequenceIndex, &main.seed), 10_000, .fast),
-			.slowChannel = .init(main.random.nextInt(SequenceIndex, &main.seed), 100_000, .slow),
-			.connectionIdentifier = std.time.microTimestamp(),
+			.lossyChannel = .init(main.random.nextInt(SequenceIndex, &main.seed), 1*ms, .lossy),
+			.fastChannel = .init(main.random.nextInt(SequenceIndex, &main.seed), 10*ms, .fast),
+			.slowChannel = .init(main.random.nextInt(SequenceIndex, &main.seed), 100*ms, .slow),
+			.connectionIdentifier = networkTimestamp(),
 			.remoteConnectionIdentifier = 0,
 		};
 		errdefer {
@@ -1773,9 +1778,9 @@ pub const Connection = struct { // MARK: Connection
 		defer self.mutex.unlock();
 
 		_ = switch(channel) {
-			.lossy => self.lossyChannel.send(protocolIndex, data, std.time.microTimestamp()),
-			.fast => self.fastChannel.send(protocolIndex, data, std.time.microTimestamp()),
-			.slow => self.slowChannel.send(protocolIndex, data, std.time.microTimestamp()),
+			.lossy => self.lossyChannel.send(protocolIndex, data, networkTimestamp()),
+			.fast => self.fastChannel.send(protocolIndex, data, networkTimestamp()),
+			.slow => self.slowChannel.send(protocolIndex, data, networkTimestamp()),
 			else => comptime unreachable,
 		} catch {
 			std.log.err("Cannot send any more packets. Disconnecting", .{});
@@ -1953,7 +1958,7 @@ pub const Connection = struct { // MARK: Connection
 					self.queuedConfirmations.enqueue(.{
 						.channel = channel,
 						.start = start,
-						.receiveTimeStamp = std.time.microTimestamp(),
+						.receiveTimeStamp = networkTimestamp(),
 					});
 				}
 			},
@@ -1963,7 +1968,7 @@ pub const Connection = struct { // MARK: Connection
 					self.queuedConfirmations.enqueue(.{
 						.channel = channel,
 						.start = start,
-						.receiveTimeStamp = std.time.microTimestamp(),
+						.receiveTimeStamp = networkTimestamp(),
 					});
 				}
 			},
@@ -1973,12 +1978,12 @@ pub const Connection = struct { // MARK: Connection
 					self.queuedConfirmations.enqueue(.{
 						.channel = channel,
 						.start = start,
-						.receiveTimeStamp = std.time.microTimestamp(),
+						.receiveTimeStamp = networkTimestamp(),
 					});
 				}
 			},
 			.confirmation => {
-				try self.receiveConfirmationPacket(&reader, std.time.microTimestamp());
+				try self.receiveConfirmationPacket(&reader, networkTimestamp());
 			},
 			.init => unreachable,
 			.keepalive => {},
@@ -1986,24 +1991,24 @@ pub const Connection = struct { // MARK: Connection
 				self.disconnect();
 			},
 		}
-		self.lastConnection = std.time.microTimestamp();
+		self.lastConnection = networkTimestamp();
 
 		// TODO: Packet statistics
 	}
 
 	pub fn processNextPackets(self: *Connection) void {
-		const timestamp = std.time.microTimestamp();
+		const timestamp = networkTimestamp();
 
 		switch(self.connectionState.load(.monotonic)) {
 			.awaitingClientConnection => {
 				if(timestamp -% self.nextPacketTimestamp < 0) return;
-				self.nextPacketTimestamp = timestamp +% 100_000;
+				self.nextPacketTimestamp = timestamp +% 100*ms;
 				self.manager.send(&.{@intFromEnum(ChannelId.keepalive)}, self.remoteAddress, null);
 			},
 			.awaitingServerResponse, .awaitingClientAcknowledgement => {
 				// Send the initial packet once every 100 ms.
 				if(timestamp -% self.nextPacketTimestamp < 0) return;
-				self.nextPacketTimestamp = timestamp +% 100_000;
+				self.nextPacketTimestamp = timestamp +% 100*ms;
 				var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 1 + @sizeOf(i64) + 3*@sizeOf(SequenceIndex));
 				defer writer.deinit();
 
@@ -2031,9 +2036,9 @@ pub const Connection = struct { // MARK: Connection
 		self.handlePacketLoss(self.slowChannel.checkForLosses(self, timestamp));
 
 		// We don't want to send too many packets at once if there was a period of no traffic.
-		if(timestamp -% 10_000 -% self.nextPacketTimestamp > 0) {
-			self.relativeIdleTime += timestamp -% 10_000 -% self.nextPacketTimestamp;
-			self.nextPacketTimestamp = timestamp -% 10_000;
+		if(timestamp -% 10*ms -% self.nextPacketTimestamp > 0) {
+			self.relativeIdleTime += timestamp -% 10*ms -% self.nextPacketTimestamp;
+			self.nextPacketTimestamp = timestamp -% 10*ms;
 		}
 
 		if(self.relativeIdleTime + self.relativeSendTime > @as(i64, @intFromFloat(self.rttEstimate))) {
