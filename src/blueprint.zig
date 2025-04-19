@@ -108,7 +108,7 @@ pub const Blueprint = struct {
 	}
 	pub const PasteMode = enum {all, degradable, noAir, replaceAir};
 
-	pub fn pasteInGeneration(self: Blueprint, pos: Vec3i, chunk: *ServerChunk, mode: PasteMode, substitutions: ?SubstitutionMap) void {
+	pub fn pasteInGeneration(self: Blueprint, pos: Vec3i, chunk: *ServerChunk, mode: PasteMode) void {
 		const startX = pos[0];
 		const startY = pos[1];
 		const startZ = pos[2];
@@ -123,14 +123,8 @@ pub const Blueprint = struct {
 					const worldZ = startZ + @as(i32, @intCast(z));
 					if(!chunk.liesInChunk(worldX, worldY, worldZ)) continue;
 
-					var block = self.blocks.get(x, y, z);
+					const block = self.blocks.get(x, y, z);
 					if(sbb.isOriginBlock(block) or sbb.isChildBlock(block)) continue;
-
-					if(substitutions) |map| {
-						if(map.get(block.typ)) |entry| {
-							block.typ = entry;
-						}
-					}
 
 					sw: switch(mode) {
 						.all => chunk.updateBlockInGeneration(worldX, worldY, worldZ, block),
