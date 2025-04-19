@@ -9,6 +9,7 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const vec = @import("main.vec");
 const Vec3f = main.vec.Vec3f;
 const Vec3d = main.vec.Vec3d;
+const utils = main.utils;
 
 pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 	pub const GenerationMode = enum {
@@ -143,11 +144,11 @@ const Stripe = struct { // MARK: Stripe
 fn hashGeneric(input: anytype) u64 {
 	const T = @TypeOf(input);
 	return switch(@typeInfo(T)) {
-		.bool => hashCombine(hashInt(@intFromBool(input)), 0xbf58476d1ce4e5b9),
-		.@"enum" => hashCombine(hashInt(@as(u64, @intFromEnum(input))), 0x94d049bb133111eb),
+		.bool => utils.hashCombine(utils.hashInt(@intFromBool(input)), 0xbf58476d1ce4e5b9),
+		.@"enum" => utils.hashCombine(utils.hashInt(@as(u64, @intFromEnum(input))), 0x94d049bb133111eb),
 		.int, .float => blk: {
 			const value = @as(std.meta.Int(.unsigned, @bitSizeOf(T)), @bitCast(input));
-			break :blk hashInt(@as(u64, value));
+			break :blk utils.hashInt(@as(u64, value));
 		},
 		.@"struct" => blk: {
 			if(@hasDecl(T, "getHash")) {
@@ -157,8 +158,8 @@ fn hashGeneric(input: anytype) u64 {
 			inline for(@typeInfo(T).@"struct".fields) |field| {
 				const keyHash = hashGeneric(@as([]const u8, field.name));
 				const valueHash = hashGeneric(@field(input, field.name));
-				const keyValueHash = hashCombine(keyHash, valueHash);
-				result = hashCombine(result, keyValueHash);
+				const keyValueHash = utils.hashCombine(keyHash, valueHash);
+				result = utils.hashCombine(result, keyValueHash);
 			}
 			break :blk result;
 		},
@@ -171,10 +172,10 @@ fn hashGeneric(input: anytype) u64 {
 				break :blk hashGeneric(input.*);
 			},
 			.slice => blk: {
-				var result: u64 = hashInt(input.len);
+				var result: u64 = utils.hashInt(input.len);
 				for(input) |val| {
 					const valueHash = hashGeneric(val);
-					result = hashCombine(result, valueHash);
+					result = utils.hashCombine(result, valueHash);
 				}
 				break :blk result;
 			},
@@ -184,7 +185,7 @@ fn hashGeneric(input: anytype) u64 {
 			var result: u64 = 0xbf58476d1ce4e5b9;
 			for(input) |val| {
 				const valueHash = hashGeneric(val);
-				result = hashCombine(result, valueHash);
+				result = utils.hashCombine(result, valueHash);
 			}
 			break :blk result;
 		},
@@ -192,26 +193,12 @@ fn hashGeneric(input: anytype) u64 {
 			var result: u64 = 0x94d049bb133111eb;
 			inline for(0..@typeInfo(T).vector.len) |i| {
 				const valueHash = hashGeneric(input[i]);
-				result = hashCombine(result, valueHash);
+				result = utils.hashCombine(result, valueHash);
 			}
 			break :blk result;
 		},
 		else => @compileError("Unsupported type " ++ @typeName(T)),
 	};
-}
-
-// https://stackoverflow.com/questions/5889238/why-is-xor-the-default-way-to-combine-hashes
-fn hashCombine(left: u64, right: u64) u64 {
-	return left ^ (right +% 0x517cc1b727220a95 +% (left << 6) +% (left >> 2));
-}
-
-// https://stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key
-fn hashInt(input: u64) u64 {
-	var x = input;
-	x = (x ^ (x >> 30))*%0xbf58476d1ce4e5b9;
-	x = (x ^ (x >> 27))*%0x94d049bb133111eb;
-	x = x ^ (x >> 31);
-	return x;
 }
 
 pub const Interpolation = enum(u8) {
