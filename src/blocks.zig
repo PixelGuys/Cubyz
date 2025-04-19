@@ -269,9 +269,25 @@ pub fn getTypeById(id: []const u8) u16 {
 	}
 }
 
-pub fn parseBlock(data: []const u8) Block {
+pub fn parseBlock(id: []const u8) Block {
+	if(parseBlock2(id)) |parsedBlock| {
+		var block: Block = .{.typ = parsedBlock.typ, .data = 0};
+		if(parsedBlock.data) |blockData| {
+			block.data = blockData;
+		} else {
+			block.data = block.mode().naturalStandard;
+		}
+		return block;
+	} else {
+		std.log.err("Couldn't find block {s}. Replacing it with air...", .{id});
+		return .{.typ = 0, .data = 0};
+	}
+}
+
+pub fn parseBlock2(data: []const u8) ?struct {typ: u16, data: ?u16} {
 	var id: []const u8 = data;
 	var blockData: ?u16 = null;
+
 	if(std.mem.indexOfScalarPos(u8, data, 1 + (std.mem.indexOfScalar(u8, data, ':') orelse 0), ':')) |pos| {
 		id = data[0..pos];
 		blockData = std.fmt.parseInt(u16, data[pos + 1 ..], 0) catch |err| blk: {
@@ -280,13 +296,9 @@ pub fn parseBlock(data: []const u8) Block {
 		};
 	}
 	if(reverseIndices.get(id)) |resultType| {
-		var result: Block = .{.typ = resultType, .data = 0};
-		result.data = blockData orelse result.mode().naturalStandard;
-		return result;
-	} else {
-		std.log.err("Couldn't find block {s}. Replacing it with air...", .{id});
-		return .{.typ = 0, .data = 0};
+		return .{.typ = resultType, .data = blockData};
 	}
+	return null;
 }
 
 pub fn hasRegistered(id: []const u8) bool {
