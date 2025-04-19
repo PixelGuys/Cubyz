@@ -71,7 +71,7 @@ pub const History = struct {
 		}
 	}
 	fn canMoveUp(self: *History) bool {
-		return self.up.empty() == false;
+		return !self.up.empty();
 	}
 	fn moveUp(self: *History) void {
 		std.debug.assert(self.canMoveUp());
@@ -83,7 +83,7 @@ pub const History = struct {
 		std.debug.assert(self.current != null);
 	}
 	fn canMoveDown(self: *History) bool {
-		return self.down.empty() == false;
+		return !self.down.empty();
 	}
 	fn moveDown(self: *History) void {
 		std.debug.assert(self.canMoveDown());
