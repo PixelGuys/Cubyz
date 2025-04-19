@@ -15,6 +15,7 @@ health: f32 = 8,
 maxHealth: f32 = 8,
 energy: f32 = 8,
 maxEnergy: f32 = 8,
+climbing: bool = false,
 // TODO: Name
 
 pub fn loadFrom(self: *@This(), zon: ZonElement) void {
