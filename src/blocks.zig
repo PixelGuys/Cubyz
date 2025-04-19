@@ -19,6 +19,8 @@ const Entity = main.server.Entity;
 const entity_data = @import("entity_data.zig");
 const EntityDataClass = entity_data.EntityDataClass;
 const sbb = main.server.terrain.structure_building_blocks;
+const Assets = main.assets.Assets;
+const ID = main.assets.ID;
 
 pub const BlockTag = enum(u32) {
 	air = 0,
@@ -132,11 +134,11 @@ pub fn deinit() void {
 	arena.deinit();
 }
 
-pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
-	if(reverseIndices.contains(id)) {
-		std.log.err("Registered block with id {s} twice!", .{id});
+pub fn register(_: []const u8, id: ID, zon: ZonElement) u16 {
+	if(reverseIndices.contains(id.string)) {
+		std.log.err("Registered block with id {s} twice!", .{id.string});
 	}
-	_id[size] = allocator.dupe(u8, id);
+	_id[size] = allocator.dupe(u8, id.string);
 	reverseIndices.put(_id[size], @intCast(size)) catch unreachable;
 
 	_mode[size] = rotation.getByID(zon.get([]const u8, "rotation", "no_rotation"));
@@ -144,7 +146,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_blockResistance[size] = zon.get(f32, "blockResistance", 0);
 
 	_blockTags[size] = BlockTag.loadFromZon(allocator, zon.getChild("tags"));
-	if(_blockTags[size].len == 0) std.log.err("Block {s} is missing 'tags' field", .{id});
+	if(_blockTags[size].len == 0) std.log.err("Block {s} is missing 'tags' field", .{id.string});
 	for(_blockTags[size]) |tag| {
 		if(tag == BlockTag.sbbChild) {
 			sbb.registerChildBlock(@intCast(size), _id[size]);
@@ -182,6 +184,8 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 			.blockType = @intCast(size),
 		});
 	}
+
+	std.log.debug("Registered block: {d: >5} '{s}'", .{size, id.string});
 
 	size += 1;
 	return @intCast(size - 1);
@@ -238,15 +242,15 @@ fn registerOpaqueVariant(typ: u16, zon: ZonElement) void {
 	}
 }
 
-pub fn finishBlocks(zonElements: std.StringHashMap(ZonElement)) void {
+pub fn finishBlocks(zonElements: Assets.ZonHashMap) void {
 	var i: u16 = 0;
 	while(i < size) : (i += 1) {
-		registerBlockDrop(i, zonElements.get(_id[i]) orelse continue);
+		registerBlockDrop(i, zonElements.get(ID{.string = _id[i]}) orelse continue);
 	}
 	i = 0;
 	while(i < size) : (i += 1) {
-		registerLodReplacement(i, zonElements.get(_id[i]) orelse continue);
-		registerOpaqueVariant(i, zonElements.get(_id[i]) orelse continue);
+		registerLodReplacement(i, zonElements.get(ID{.string = _id[i]}) orelse continue);
+		registerOpaqueVariant(i, zonElements.get(ID{.string = _id[i]}) orelse continue);
 	}
 }
 
@@ -289,8 +293,8 @@ pub fn parseBlock(data: []const u8) Block {
 	}
 }
 
-pub fn hasRegistered(id: []const u8) bool {
-	return reverseIndices.contains(id);
+pub fn hasRegistered(id: ID) bool {
+	return reverseIndices.contains(id.string);
 }
 
 pub const Block = packed struct { // MARK: Block
@@ -684,7 +688,7 @@ pub const meshes = struct { // MARK: meshes
 		}
 	}
 
-	pub fn register(assetFolder: []const u8, _: []const u8, zon: ZonElement) void {
+	pub fn register(assetFolder: []const u8, _: ID, zon: ZonElement) void {
 		_modelIndex[meshes.size] = _mode[meshes.size].createBlockModel(.{.typ = @intCast(meshes.size), .data = 0}, &_modeData[meshes.size], zon.getChild("model"));
 
 		// The actual model is loaded later, in the rendering thread.

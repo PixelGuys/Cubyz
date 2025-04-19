@@ -124,7 +124,7 @@ pub const Blueprint = struct {
 			}
 		}
 	}
-	pub fn load(allocator: NeverFailingAllocator, inputBuffer: []u8) !Blueprint {
+	pub fn load(allocator: NeverFailingAllocator, inputBuffer: []const u8) !Blueprint {
 		var compressedReader = BinaryReader.init(inputBuffer);
 		const version = try compressedReader.readInt(u16);
 

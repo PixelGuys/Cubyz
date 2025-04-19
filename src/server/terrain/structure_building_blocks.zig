@@ -10,6 +10,7 @@ const Neighbor = main.chunk.Neighbor;
 const Block = main.blocks.Block;
 const Degrees = main.rotation.Degrees;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const Assets = main.assets.Assets;
 
 var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
 const arenaAllocator = arena.allocator();
@@ -42,7 +43,7 @@ const BlueprintEntry = struct {
 		}
 	};
 
-	fn init(blueprint: Blueprint, stringId: []const u8) !BlueprintEntry {
+	fn init(blueprint: Blueprint, id: []const u8) !BlueprintEntry {
 		var self: BlueprintEntry = .{
 			.blueprint = blueprint,
 			.originBlock = undefined,
@@ -59,7 +60,7 @@ const BlueprintEntry = struct {
 					const block = blueprint.blocks.get(x, y, z);
 					if(isOriginBlock(block)) {
 						if(hasOrigin) {
-							std.log.err("[{s}] Multiple origin blocks found.", .{stringId});
+							std.log.err("[{s}] Multiple origin blocks found.", .{id});
 							return error.MultipleOriginBlocks;
 						} else {
 							self.originBlock = StructureBlock{
@@ -85,7 +86,7 @@ const BlueprintEntry = struct {
 			}
 		}
 		if(!hasOrigin) {
-			std.log.err("[{s}] No origin block found.", .{stringId});
+			std.log.err("[{s}] No origin block found.", .{id});
 			return error.NoOriginBlock;
 		}
 		self.childBlocks = arenaAllocator.dupe(StructureBlock, childBlocks.items);
@@ -168,20 +169,20 @@ const Child = struct {
 	}
 };
 
-pub fn registerSBB(structures: *std.StringHashMap(ZonElement)) !void {
+pub fn registerSBB(structures: *Assets.ZonHashMap) !void {
 	std.debug.assert(structureCache.capacity() == 0);
 	structureCache.ensureTotalCapacity(arenaAllocator.allocator, structures.count()) catch unreachable;
 	childrenToResolve = .init(main.stackAllocator);
 	{
 		var iterator = structures.iterator();
 		while(iterator.next()) |entry| {
-			const value = StructureBuildingBlock.initFromZon(entry.key_ptr.*, entry.value_ptr.*) catch |err| {
-				std.log.err("Could not register structure building block '{s}' ({s})", .{entry.key_ptr.*, @errorName(err)});
+			const value = StructureBuildingBlock.initFromZon(entry.key_ptr.string, entry.value_ptr.*) catch |err| {
+				std.log.err("Could not register structure building block '{s}' ({s})", .{entry.key_ptr.string, @errorName(err)});
 				continue;
 			};
-			const key = arenaAllocator.dupe(u8, entry.key_ptr.*);
-			structureCache.put(arenaAllocator.allocator, key, value) catch unreachable;
-			std.log.debug("Registered structure building block: '{s}'", .{entry.key_ptr.*});
+			const id = arenaAllocator.dupe(u8, entry.key_ptr.string);
+			structureCache.put(arenaAllocator.allocator, id, value) catch unreachable;
+			std.log.debug("Registered structure building block: '{s}'", .{id});
 		}
 	}
 	{
@@ -209,7 +210,7 @@ pub fn registerChildBlock(numericId: u16, stringId: []const u8) void {
 	std.log.debug("Structure child block '{s}' {} ('{s}' {}) ", .{colorName, index, stringId, numericId});
 }
 
-pub fn registerBlueprints(blueprints: *std.StringHashMap([]u8)) !void {
+pub fn registerBlueprints(blueprints: *Assets.RawHashMap) !void {
 	std.debug.assert(blueprintCache.capacity() == 0);
 
 	originBlockNumericId = main.blocks.parseBlock(originBlockStringId).typ;
@@ -219,22 +220,22 @@ pub fn registerBlueprints(blueprints: *std.StringHashMap([]u8)) !void {
 
 	var iterator = blueprints.iterator();
 	while(iterator.next()) |entry| {
-		const stringId = entry.key_ptr.*;
+		const id = entry.key_ptr.string;
 		const blueprint0 = Blueprint.load(arenaAllocator, entry.value_ptr.*) catch |err| {
-			std.log.err("Could not load blueprint '{s}' ({s})", .{stringId, @errorName(err)});
+			std.log.err("Could not load blueprint '{s}' ({s})", .{id, @errorName(err)});
 			continue;
 		};
 
 		const rotatedBlueprints = arenaAllocator.create([4]BlueprintEntry);
 		rotatedBlueprints.* = .{
-			BlueprintEntry.init(blueprint0, stringId) catch continue,
-			BlueprintEntry.init(blueprint0.rotateZ(arenaAllocator, .@"90"), stringId) catch continue,
-			BlueprintEntry.init(blueprint0.rotateZ(arenaAllocator, .@"180"), stringId) catch continue,
-			BlueprintEntry.init(blueprint0.rotateZ(arenaAllocator, .@"270"), stringId) catch continue,
+			BlueprintEntry.init(blueprint0, id) catch continue,
+			BlueprintEntry.init(blueprint0.rotateZ(arenaAllocator, .@"90"), id) catch continue,
+			BlueprintEntry.init(blueprint0.rotateZ(arenaAllocator, .@"180"), id) catch continue,
+			BlueprintEntry.init(blueprint0.rotateZ(arenaAllocator, .@"270"), id) catch continue,
 		};
 
-		blueprintCache.put(arenaAllocator.allocator, arenaAllocator.dupe(u8, stringId), rotatedBlueprints) catch unreachable;
-		std.log.debug("Registered blueprint: {s}", .{stringId});
+		blueprintCache.put(arenaAllocator.allocator, arenaAllocator.dupe(u8, id), rotatedBlueprints) catch unreachable;
+		std.log.debug("Registered blueprint: {s}", .{id});
 	}
 }
 

@@ -11,6 +11,7 @@ const Vec2f = vec.Vec2f;
 const Mat4f = vec.Mat4f;
 const FaceData = main.renderer.chunk_meshing.FaceData;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const ID = main.assets.ID;
 
 var quadSSBO: graphics.SSBO = undefined;
 
@@ -554,9 +555,9 @@ fn openBox(min: Vec3f, max: Vec3f, uvOffset: Vec2f, openSide: enum {x, y, z}) [4
 	}
 }
 
-pub fn registerModel(id: []const u8, data: []const u8) ModelIndex {
+pub fn registerModel(id: ID, data: []const u8) ModelIndex {
 	const model = Model.loadModel(data);
-	nameToIndex.put(id, model) catch unreachable;
+	nameToIndex.put(id.string, model) catch unreachable;
 	return model;
 }
 

@@ -150,7 +150,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 				const originalHeightData = rawData[mapSize*mapSize*(@sizeOf(u32) + @sizeOf(f32)) ..][0 .. mapSize*mapSize*@sizeOf(f32)];
 				for(0..mapSize) |x| {
 					for(0..mapSize) |y| {
-						self.biomeMap[x][y] = main.server.terrain.biomes.getById(biomePalette.palette.items[std.mem.readInt(u32, biomeData[4*(x*mapSize + y) ..][0..4], .big)]);
+						self.biomeMap[x][y] = main.server.terrain.biomes.getById(biomePalette.palette.items[std.mem.readInt(u32, biomeData[4*(x*mapSize + y) ..][0..4], .big)].string);
 						self.heightMap[x][y] = @intFromFloat(@as(f32, @bitCast(std.mem.readInt(u32, heightData[4*(x*mapSize + y) ..][0..4], .big))));
 						if(originalHeightMap) |map| map[x][y] = @intFromFloat(@as(f32, @bitCast(std.mem.readInt(u32, originalHeightData[4*(x*mapSize + y) ..][0..4], .big))));
 					}
@@ -168,7 +168,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 				var reader = BinaryReader.init(rawData);
 
 				for(0..mapSize) |x| for(0..mapSize) |y| {
-					self.biomeMap[x][y] = main.server.terrain.biomes.getById(biomePalette.palette.items[try reader.readInt(u32)]);
+					self.biomeMap[x][y] = main.server.terrain.biomes.getById(biomePalette.palette.items[try reader.readInt(u32)].string);
 				};
 				for(0..mapSize) |x| for(0..mapSize) |y| {
 					self.heightMap[x][y] = try reader.readInt(i32);
