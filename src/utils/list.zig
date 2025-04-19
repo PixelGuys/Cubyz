@@ -272,7 +272,7 @@ pub fn ListUnmanaged(comptime T: type) type {
 			self.capacity = newAllocation.len;
 		}
 
-		fn ensureFreeCapacity(self: *@This(), allocator: NeverFailingAllocator, freeCapacity: usize) void {
+		pub fn ensureFreeCapacity(self: *@This(), allocator: NeverFailingAllocator, freeCapacity: usize) void {
 			if(freeCapacity + self.items.len <= self.capacity) return;
 			self.ensureCapacity(allocator, growCapacity(self.capacity, freeCapacity + self.items.len));
 		}
