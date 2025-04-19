@@ -1,0 +1,4 @@
+.{
+	.texture = "selection_wand.png",
+	.stackSize = 1,
+}
