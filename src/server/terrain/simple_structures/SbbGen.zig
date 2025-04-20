@@ -41,7 +41,7 @@ pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) 
 	self.* = .{
 		.structure = structureId,
 		.structureRef = structureRef,
-		.placeMode = std.meta.stringToEnum(Blueprint.PasteMode, parameters.get([]const u8, "placeMode", "replaceAir")) orelse Blueprint.PasteMode.replaceAir,
+		.placeMode = std.meta.stringToEnum(Blueprint.PasteMode, parameters.get([]const u8, "placeMode", "degradable")) orelse Blueprint.PasteMode.degradable,
 	};
 	return self;
 }

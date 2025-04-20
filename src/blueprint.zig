@@ -107,7 +107,7 @@ pub const Blueprint = struct {
 		}
 		return .{.success = self};
 	}
-	pub const PasteMode = enum {all, degradable, noAir, replaceAir};
+	pub const PasteMode = enum {all, degradable};
 
 	pub fn pasteInGeneration(self: Blueprint, pos: Vec3i, chunk: *ServerChunk, mode: PasteMode) void {
 		const startX = pos[0];
@@ -125,13 +125,11 @@ pub const Blueprint = struct {
 					if(!chunk.liesInChunk(worldX, worldY, worldZ)) continue;
 
 					const block = self.blocks.get(x, y, z);
-					if(sbb.isOriginBlock(block) or sbb.isChildBlock(block)) continue;
+					if(sbb.isOriginBlock(block) or sbb.isChildBlock(block) or block.typ == 0) continue;
 
-					sw: switch(mode) {
+					switch(mode) {
 						.all => chunk.updateBlockInGeneration(worldX, worldY, worldZ, block),
 						.degradable => chunk.updateBlockIfDegradable(worldX, worldY, worldZ, block),
-						.noAir => if(block.typ != 0) continue :sw .all,
-						.replaceAir => if(block.typ != 0 and chunk.getBlock(worldX, worldY, worldZ).typ == 0) continue :sw .all,
 					}
 				}
 			}
