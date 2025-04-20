@@ -1,4 +1,5 @@
 .{
+	.tags = .{.metal},
 	.texture = "iron_ingot.png",
 	.material = .{
 		.density = 7.5,

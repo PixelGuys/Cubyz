@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
@@ -125,6 +126,10 @@ pub const ZonElement = union(enum) { // MARK: Zon
 
 	pub fn join(self: *const ZonElement, other: ZonElement) void {
 		if(other == .null) {
+			return;
+		}
+		if(self.* != .object or other != .object) {
+			if(!builtin.is_test) std.log.err("Trying to join zon that isn't an object.", .{}); // TODO: #1275
 			return;
 		}
 
@@ -920,4 +925,30 @@ test "element parsing" {
 	try std.testing.expectEqual(ZonElement{.int = 1}, result.array.items[1]);
 	try std.testing.expectEqual(ZonElement{.float = 17.1}, result.array.items[2]);
 	result.deinit(allocator);
+}
+
+test "merging" {
+	var wrap = main.heap.ErrorHandlingAllocator.init(std.testing.allocator);
+	const allocator = wrap.allocator();
+
+	const zon1 = ZonElement.parseFromString(allocator, null, ".{   .object1   =   \"\"  \n, .object2  =\t.{\n},.object3   =1.0e4\t,@\"\nobject1\"=.{},@\"\tobject1θ\"=.{},}");
+	defer zon1.deinit(allocator);
+
+	const zon2 = ZonElement.parseFromString(allocator, null, ".{   .object5   =   1  \n,}");
+	zon2.join(zon1);
+	try std.testing.expectEqual(.object, std.meta.activeTag(zon2));
+	try std.testing.expectEqual(.float, std.meta.activeTag(zon2.object.get("object3") orelse .null));
+	try std.testing.expectEqual(.stringOwned, std.meta.activeTag(zon2.object.get("object1") orelse .null));
+	try std.testing.expectEqual(.array, std.meta.activeTag(zon2.object.get("\nobject1") orelse .null));
+	try std.testing.expectEqual(.array, std.meta.activeTag(zon2.object.get("\tobject1θ") orelse .null));
+	try std.testing.expectEqual(.int, std.meta.activeTag(zon2.object.get("object5") orelse .null));
+	zon2.deinit(allocator);
+
+	const zon3 = ZonElement.parseFromString(allocator, null, "1");
+	zon3.join(zon1);
+	zon3.deinit(allocator);
+
+	const zon4 = ZonElement.parseFromString(allocator, null, "true");
+	zon1.join(zon4);
+	zon4.deinit(allocator);
 }

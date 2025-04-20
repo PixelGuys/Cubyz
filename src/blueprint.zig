@@ -158,7 +158,7 @@ pub const Blueprint = struct {
 		}
 	}
 	pub fn load(allocator: NeverFailingAllocator, inputBuffer: []u8) !Blueprint {
-		var compressedReader = BinaryReader.init(inputBuffer, .big);
+		var compressedReader = BinaryReader.init(inputBuffer);
 		const version = try compressedReader.readInt(u16);
 
 		if(version > blueprintVersion) {
@@ -176,7 +176,7 @@ pub const Blueprint = struct {
 
 		const decompressedData = try self.decompressBuffer(compressedReader.remaining, blockPaletteSizeBytes, compression);
 		defer main.stackAllocator.free(decompressedData);
-		var decompressedReader = BinaryReader.init(decompressedData, .big);
+		var decompressedReader = BinaryReader.init(decompressedData);
 
 		const palette = try loadBlockPalette(main.stackAllocator, paletteBlockCount, &decompressedReader);
 		defer main.stackAllocator.free(palette);
@@ -199,7 +199,7 @@ pub const Blueprint = struct {
 		defer gameIdToBlueprintId.deinit();
 		std.debug.assert(gameIdToBlueprintId.count() != 0);
 
-		var uncompressedWriter = BinaryWriter.init(main.stackAllocator, .big);
+		var uncompressedWriter = BinaryWriter.init(main.stackAllocator);
 		defer uncompressedWriter.deinit();
 
 		const blockPaletteSizeBytes = storeBlockPalette(gameIdToBlueprintId, &uncompressedWriter);
@@ -212,7 +212,7 @@ pub const Blueprint = struct {
 		const compressed = self.compressOutputBuffer(main.stackAllocator, uncompressedWriter.data.items);
 		defer main.stackAllocator.free(compressed.data);
 
-		var outputWriter = BinaryWriter.initCapacity(allocator, .big, @sizeOf(i16) + @sizeOf(BlueprintCompression) + @sizeOf(u32) + @sizeOf(u16)*4 + compressed.data.len);
+		var outputWriter = BinaryWriter.initCapacity(allocator, @sizeOf(i16) + @sizeOf(BlueprintCompression) + @sizeOf(u32) + @sizeOf(u16)*4 + compressed.data.len);
 
 		outputWriter.writeInt(u16, blueprintVersion);
 		outputWriter.writeEnum(BlueprintCompression, compressed.mode);

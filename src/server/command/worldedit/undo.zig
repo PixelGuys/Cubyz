@@ -15,7 +15,21 @@ pub fn execute(args: []const u8, source: *User) void {
 		return;
 	}
 	if(source.worldEditData.undoHistory.pop()) |action| {
+		const redo = Blueprint.capture(main.globalAllocator, action.position, .{
+			action.position[0] + @as(i32, @intCast(action.blueprint.blocks.width)) - 1,
+			action.position[1] + @as(i32, @intCast(action.blueprint.blocks.depth)) - 1,
+			action.position[2] + @as(i32, @intCast(action.blueprint.blocks.height)) - 1,
+		});
 		action.blueprint.paste(action.position);
+
+		switch(redo) {
+			.success => |blueprint| {
+				source.worldEditData.redoHistory.push(.init(blueprint, action.position, action.message));
+			},
+			.failure => {
+				source.sendMessage("#ff0000Error: Could not capture redo history.", .{});
+			},
+		}
 		source.sendMessage("#00ff00Un-done last {s}.", .{action.message});
 	} else {
 		source.sendMessage("#ccccccNothing to undo.", .{});

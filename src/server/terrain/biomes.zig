@@ -589,6 +589,7 @@ var finishedLoading: bool = false;
 var biomes: main.List(Biome) = undefined;
 var caveBiomes: main.List(Biome) = undefined;
 var biomesById: std.StringHashMap(*Biome) = undefined;
+var biomesByIndex: main.ListUnmanaged(*Biome) = .{};
 pub var byTypeBiomes: *TreeNode = undefined;
 
 const UnfinishedSubBiomeData = struct {
@@ -636,6 +637,7 @@ pub fn reset() void {
 	biomes.clearRetainingCapacity();
 	caveBiomes.clearRetainingCapacity();
 	biomesById.clearRetainingCapacity();
+	biomesByIndex.clearRetainingCapacity();
 	byTypeBiomes.deinit(main.globalAllocator);
 }
 
@@ -646,6 +648,7 @@ pub fn deinit() void {
 	biomes.deinit();
 	caveBiomes.deinit();
 	biomesById.deinit();
+	biomesByIndex.deinit(main.globalAllocator);
 	// TODO? byTypeBiomes.deinit(main.globalAllocator);
 	SimpleStructureModel.modelRegistry.clearAndFree(main.globalAllocator.allocator);
 }
@@ -678,11 +681,15 @@ pub fn finishLoading() void {
 		}
 	}
 	byTypeBiomes = TreeNode.init(main.globalAllocator, biomes.items[0..nonZeroBiomes], 0);
+	biomesByIndex.resize(main.globalAllocator, biomes.items.len + caveBiomes.items.len);
+
 	for(biomes.items) |*biome| {
 		biomesById.put(biome.id, biome) catch unreachable;
+		biomesByIndex.items[biome.paletteId] = biome;
 	}
 	for(caveBiomes.items) |*biome| {
 		biomesById.put(biome.id, biome) catch unreachable;
+		biomesByIndex.items[biome.paletteId] = biome;
 	}
 	var subBiomeIterator = unfinishedSubBiomes.iterator();
 	while(subBiomeIterator.next()) |subBiomeData| {
@@ -746,6 +753,11 @@ pub fn getById(id: []const u8) *const Biome {
 		std.log.err("Couldn't find biome with id {s}. Replacing it with some other biome.", .{id});
 		return &biomes.items[0];
 	};
+}
+
+pub fn getByIndex(index: u32) ?*const Biome {
+	std.debug.assert(finishedLoading);
+	return biomesByIndex.items[index];
 }
 
 pub fn getPlaceholderBiome() *const Biome {

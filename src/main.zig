@@ -9,6 +9,7 @@ pub const blocks = @import("blocks.zig");
 pub const blueprint = @import("blueprint.zig");
 pub const chunk = @import("chunk.zig");
 pub const entity = @import("entity.zig");
+pub const entity_data = @import("entity_data.zig");
 pub const files = @import("files.zig");
 pub const game = @import("game.zig");
 pub const graphics = @import("graphics.zig");
@@ -22,6 +23,8 @@ pub const random = @import("random.zig");
 pub const renderer = @import("renderer.zig");
 pub const rotation = @import("rotation.zig");
 pub const settings = @import("settings.zig");
+const tag = @import("tag.zig");
+pub const Tag = tag.Tag;
 pub const utils = @import("utils.zig");
 pub const vec = @import("vec.zig");
 pub const ZonElement = @import("zon.zig").ZonElement;
@@ -33,7 +36,6 @@ pub const heap = @import("utils/heap.zig");
 pub const List = @import("utils/list.zig").List;
 pub const ListUnmanaged = @import("utils/list.zig").ListUnmanaged;
 pub const MultiArray = @import("utils/list.zig").MultiArray;
-pub const VirtualList = @import("utils/list.zig").VirtualList;
 
 const file_monitor = utils.file_monitor;
 
@@ -307,10 +309,16 @@ fn openCommand() void {
 }
 fn takeBackgroundImageFn() void {
 	if(game.world == null) return;
+	const showItem = itemdrop.ItemDisplayManager.showItem;
+	itemdrop.ItemDisplayManager.showItem = false;
 	renderer.MenuBackGround.takeBackgroundImage();
+	itemdrop.ItemDisplayManager.showItem = showItem;
 }
 fn toggleHideGui() void {
 	gui.hideGui = !gui.hideGui;
+}
+fn toggleHideDisplayItem() void {
+	itemdrop.ItemDisplayManager.showItem = !itemdrop.ItemDisplayManager.showItem;
 }
 fn toggleDebugOverlay() void {
 	gui.toggleWindow("debug");
@@ -416,6 +424,7 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "cameraDown", .gamepadAxis = .{.axis = c.GLFW_GAMEPAD_AXIS_RIGHT_Y, .positive = true}},
 		// debug:
 		.{.name = "hideMenu", .key = c.GLFW_KEY_F1, .pressAction = &toggleHideGui},
+		.{.name = "hideDisplayItem", .key = c.GLFW_KEY_F2, .pressAction = &toggleHideDisplayItem},
 		.{.name = "debugOverlay", .key = c.GLFW_KEY_F3, .pressAction = &toggleDebugOverlay},
 		.{.name = "performanceOverlay", .key = c.GLFW_KEY_F4, .pressAction = &togglePerformanceOverlay},
 		.{.name = "gpuPerformanceOverlay", .key = c.GLFW_KEY_F5, .pressAction = &toggleGPUPerformanceOverlay},
@@ -596,6 +605,9 @@ pub fn main() void { // MARK: main()
 	rotation.init();
 	defer rotation.deinit();
 
+	entity_data.init();
+	defer entity_data.deinit();
+
 	blocks.TouchFunctions.init();
 	defer blocks.TouchFunctions.deinit();
 
@@ -607,6 +619,9 @@ pub fn main() void { // MARK: main()
 
 	itemdrop.ItemDropRenderer.init();
 	defer itemdrop.ItemDropRenderer.deinit();
+
+	tag.init();
+	defer tag.deinit();
 
 	assets.init();
 	defer assets.deinit();
@@ -693,7 +708,7 @@ pub fn main() void { // MARK: main()
 		if(!isHidden) {
 			c.glEnable(c.GL_CULL_FACE);
 			c.glEnable(c.GL_DEPTH_TEST);
-			renderer.render(game.Player.getEyePosBlocking());
+			renderer.render(game.Player.getEyePosBlocking(), deltaTime);
 			// Render the GUI
 			gui.windowlist.gpu_performance_measuring.startQuery(.gui);
 			c.glDisable(c.GL_CULL_FACE);

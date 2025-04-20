@@ -1,0 +1,32 @@
+.{
+	.tags = .{.wood},
+	.blockHealth = 2,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.absorbedLight = 0x202830,
+	.rotation = .branch,
+	.model = .{
+		.radius = 4,
+	},
+	.texture0 = "cubyz:branch/toadstool/dot",
+	.texture1 = "cubyz:branch/toadstool/half_line",
+	.texture2 = "cubyz:branch/toadstool/line",
+	.texture3 = "cubyz:branch/toadstool/bend",
+	.texture4 = "cubyz:branch/toadstool/intersection",
+	.texture5 = "cubyz:branch/toadstool/cross",
+	.item = .{
+		.material = .{
+			.density = 0.7,
+			.strength = 1.7,
+			.elasticity = 4.0,
+			.grip = 7.5,
+			.hardness = 1.8,
+			.textureRoughness = 0.5,
+			.colors = .{
+				0xffa0876d, 0xffb99f82, 0xffd2b79b, 0xffeed4b4, 0xffeed4b4,
+			},
+		},
+		.texture = "branch/toadstool.png",
+	},
+}

@@ -30,6 +30,7 @@ pub const WorldEditData = struct {
 	selectionPosition2: ?Vec3i = null,
 	clipboard: ?Blueprint = null,
 	undoHistory: History,
+	redoHistory: History,
 
 	const History = struct {
 		changes: CircularBufferQueue(Value),
@@ -69,13 +70,14 @@ pub const WorldEditData = struct {
 		}
 	};
 	pub fn init() WorldEditData {
-		return .{.undoHistory = History.init()};
+		return .{.undoHistory = History.init(), .redoHistory = History.init()};
 	}
 	pub fn deinit(self: *WorldEditData) void {
 		if(self.clipboard != null) {
 			self.clipboard.?.deinit(main.globalAllocator);
 		}
 		self.undoHistory.deinit();
+		self.redoHistory.deinit();
 	}
 };
 
@@ -121,13 +123,6 @@ pub const User = struct { // MARK: User
 		self.worldEditData = .init();
 		network.Protocols.handShake.serverSide(self.conn);
 		return self;
-	}
-
-	pub fn reinitialize(self: *User) void {
-		removePlayer(self);
-		self.timeDifference = .{};
-		main.globalAllocator.free(self.name);
-		self.name = "";
 	}
 
 	pub fn deinit(self: *User) void {
@@ -403,7 +398,7 @@ fn update() void { // MARK: update()
 	}
 
 	// Send the entity data:
-	var writer = BinaryWriter.initCapacity(main.stackAllocator, network.networkEndian, (4 + 24 + 12 + 24)*userList.len);
+	var writer = BinaryWriter.initCapacity(main.stackAllocator, (4 + 24 + 12 + 24)*userList.len);
 	defer writer.deinit();
 
 	const itemData = world.?.itemDropManager.getPositionAndVelocityData(main.stackAllocator);
