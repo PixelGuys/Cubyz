@@ -16,7 +16,7 @@
 		.{
 			.id = "cubyz:sbb",
 			.structure = "cubyz:tree/oak/stem0",
-			.placeMode = .replaceAir,
+			.placeMode = .degradable,
 			.chance = 0.0128,
 		},
 		.{
