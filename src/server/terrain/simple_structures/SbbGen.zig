@@ -47,7 +47,7 @@ pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) 
 }
 
 pub fn generate(self: *SbbGen, _: GenerationMode, x: i32, y: i32, z: i32, chunk: *ServerChunk, _: CaveMapView, _: CaveBiomeMapView, seed: *u64, _: bool) void {
-	placeSbb(self, self.structureRef, Vec3i{x, y, z - 1}, Neighbor.dirUp, chunk, seed);
+	placeSbb(self, self.structureRef, Vec3i{x, y, z}, Neighbor.dirUp, chunk, seed);
 }
 
 fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placementPosition: Vec3i, placementDirection: Neighbor, chunk: *ServerChunk, seed: *u64) void {
