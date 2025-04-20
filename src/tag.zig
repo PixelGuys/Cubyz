@@ -2,7 +2,6 @@ const std = @import("std");
 
 const main = @import("main");
 
-
 var arena: main.heap.NeverFailingArenaAllocator = .init(main.globalAllocator);
 const allocator = arena.allocator();
 var tagList: main.List([]const u8) = .init(allocator);
