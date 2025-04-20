@@ -5,6 +5,7 @@ const Compression = main.utils.Compression;
 const ZonElement = @import("zon.zig").ZonElement;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
+const sbb = main.server.terrain.structure_building_blocks;
 
 const Array3D = main.utils.Array3D;
 const Block = main.blocks.Block;
@@ -302,5 +303,3 @@ pub const Blueprint = struct {
 		}
 	}
 };
-
-const sbb = main.server.terrain.structure_building_blocks;

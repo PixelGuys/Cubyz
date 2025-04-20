@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const main = @import("main");
+const Vec3i = main.vec.Vec3i;
 const ZonElement = main.ZonElement;
 const Blueprint = main.blueprint.Blueprint;
 const List = main.List;
@@ -39,6 +40,10 @@ const BlueprintEntry = struct {
 
 		pub inline fn direction(self: StructureBlock) Neighbor {
 			return @enumFromInt(self.data);
+		}
+
+		pub inline fn pos(self: StructureBlock) Vec3i {
+			return Vec3i{self.x, self.y, self.z};
 		}
 	};
 
