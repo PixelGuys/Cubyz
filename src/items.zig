@@ -4,6 +4,7 @@ const blocks = @import("blocks.zig");
 const Block = blocks.Block;
 const graphics = @import("graphics.zig");
 const Color = graphics.Color;
+const Tag = main.Tag;
 const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main");
 const chunk = main.chunk;
@@ -168,6 +169,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 	texture: ?graphics.Texture, // TODO: Properly deinit
 	id: []const u8,
 	name: []const u8,
+	tags: []const Tag,
 
 	stackSize: u16,
 	material: ?Material,
@@ -196,6 +198,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 			};
 		}
 		self.name = allocator.dupe(u8, zon.get([]const u8, "name", id));
+		self.tags = Tag.loadTagsFromZon(allocator, zon.getChild("tags"));
 		self.stackSize = zon.get(u16, "stackSize", 120);
 		const material = zon.getChild("material");
 		if(material == .object) {
@@ -238,6 +241,13 @@ pub const BaseItem = struct { // MARK: BaseItem
 
 	fn getTooltip(self: BaseItem) []const u8 {
 		return self.name;
+	}
+
+	pub fn hasTag(self: *const BaseItem, tag: Tag) bool {
+		for(self.tags) |other| {
+			if(other == tag) return true;
+		}
+		return false;
 	}
 };
 
@@ -420,7 +430,7 @@ const FunctionType = enum {
 
 pub const ToolType = struct { // MARK: ToolType
 	id: []const u8,
-	blockTags: []main.blocks.BlockTag,
+	blockTags: []main.Tag,
 	slotInfos: [25]SlotInfo,
 	pixelSources: [16][16]u8,
 	pixelSourcesOverlay: [16][16]u8,
@@ -927,7 +937,7 @@ pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) vo
 	const idDupe = arena.allocator().dupe(u8, id);
 	toolTypes.put(idDupe, .{
 		.id = idDupe,
-		.blockTags = main.blocks.BlockTag.loadFromZon(arena.allocator(), zon.getChild("blockTags")),
+		.blockTags = Tag.loadTagsFromZon(arena.allocator(), zon.getChild("blockTags")),
 		.slotInfos = slotInfos,
 		.pixelSources = pixelSources,
 		.pixelSourcesOverlay = pixelSourcesOverlay,

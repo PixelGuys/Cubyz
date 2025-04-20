@@ -17,20 +17,19 @@
 				.restriction = .{
 					.id = .not,
 					.child = .{
-						.id = "or",
-						.children = .{
-							.{
-								.id = .encased,
-								.item = "cubyz:gold_ingot",
-								.amount = 5,
-							},
-							.{
-								.id = .encased,
-								.item = "cubyz:silver_ingot",
-								.amount = 5,
-							},
-						},
+						.id = .encased,
+						.tag = .precious,
+						.amount = 6,
 					},
+				},
+			},
+			.{
+				.id = "powerful",
+				.strength = 0.5,
+				.restriction = .{
+					.id = .encased,
+					.tag = .precious,
+					.amount = 6,
 				},
 			},
 		},
