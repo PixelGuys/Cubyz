@@ -69,10 +69,29 @@ fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placeme
 }
 
 fn alignDirections(input: Neighbor, desired: Neighbor) !usize {
-	var current = input;
-	for(0..4) |i| {
-		if(current == desired) return i;
-		current = current.rotateZ();
+	const Rotation = enum(u3) {
+		@"0" = 0,
+		@"90" = 1,
+		@"180" = 2,
+		@"270" = 3,
+		NotPossibleToAlign = 4,
+	};
+	comptime var alignTable: [6][6]Rotation = undefined;
+	comptime for(Neighbor.iterable) |in| {
+		for(Neighbor.iterable) |out| blk: {
+			var current = in;
+			for(0..4) |i| {
+				if(current == out) {
+					alignTable[in.toInt()][out.toInt()] = @enumFromInt(i);
+					break :blk;
+				}
+				current = current.rotateZ();
+			}
+			alignTable[in.toInt()][out.toInt()] = Rotation.NotPossibleToAlign;
+		}
+	};
+	switch(alignTable[input.toInt()][desired.toInt()]) {
+		.NotPossibleToAlign => return error.NotPossibleToAlign,
+		else => |v| return @intFromEnum(v),
 	}
-	return error.NotPossibleToAlign;
 }
