@@ -17,6 +17,7 @@ const Vec3f = vec.Vec3f;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const modifierList = @import("tool/modifiers/_list.zig");
+const modifierRestrictionList = @import("tool/modifiers/restrictions/_list.zig");
 
 pub const Inventory = @import("Inventory.zig");
 
@@ -54,12 +55,13 @@ const Material = struct { // MARK: Material
 		for(modifiersZon.toSlice(), self.modifiers) |item, *modifier| {
 			const id = item.get([]const u8, "id", "not specified");
 			const vTable = modifiers.get(id) orelse blk: {
-				std.log.err("Couldn't find modifier with id {s}. Replacing it with 'Durable'", .{id});
+				std.log.err("Couldn't find modifier with id '{s}'. Replacing it with 'durable'", .{id});
 				break :blk modifiers.get("durable") orelse unreachable;
 			};
 			modifier.* = .{
 				.vTable = vTable,
 				.data = vTable.loadData(item),
+				.restriction = ModifierRestriction.loadFromZon(allocator, item.getChild("restriction")),
 			};
 		}
 	}
@@ -83,8 +85,35 @@ const Material = struct { // MARK: Material
 	}
 };
 
+pub const ModifierRestriction = struct {
+	vTable: *const VTable,
+	data: *anyopaque,
+
+	pub const VTable = struct {
+		satisfied: *const fn(data: *anyopaque, tool: *const Tool, x: i32, y: i32) bool,
+		loadFromZon: *const fn(allocator: NeverFailingAllocator, zon: ZonElement) *anyopaque,
+	};
+
+	pub fn satisfied(self: ModifierRestriction, tool: *const Tool, x: i32, y: i32) bool {
+		return self.vTable.satisfied(self.data, tool, x, y);
+	}
+
+	pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) ModifierRestriction {
+		const id = zon.get([]const u8, "id", "always");
+		const vTable = modifierRestrictions.get(id) orelse blk: {
+			std.log.err("Couldn't find modifier restriction with id '{s}'. Replacing it with 'always'", .{id});
+			break :blk modifierRestrictions.get("always") orelse unreachable;
+		};
+		return .{
+			.vTable = vTable,
+			.data = vTable.loadFromZon(allocator, zon),
+		};
+	}
+};
+
 const Modifier = struct {
 	data: VTable.Data,
+	restriction: ModifierRestriction,
 	vTable: *const VTable,
 
 	pub const VTable = struct {
@@ -102,6 +131,7 @@ const Modifier = struct {
 		return .{
 			.data = a.vTable.combineModifiers(a.data, b.data) orelse return null,
 			.vTable = a.vTable,
+			.restriction = undefined,
 		};
 	}
 
@@ -319,6 +349,7 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 				tool.getProperty(set.destination).* += set.factor*set.functionType.eval(material.getProperty(set.source) + set.additionConstant);
 			}
 			outer: for(material.modifiers) |newMod| {
+				if(!newMod.restriction.satisfied(tool, @intCast(i%5), @intCast(i/5))) continue;
 				for(tempModifiers.items) |*oldMod| {
 					if(oldMod.vTable == newMod.vTable) {
 						oldMod.* = oldMod.combineModifiers(newMod) orelse continue;
@@ -537,6 +568,12 @@ pub const Tool = struct { // MARK: Tool
 		return hash;
 	}
 
+	pub fn getItemAt(self: *const Tool, x: i32, y: i32) ?*const BaseItem {
+		if(x < 0 or x >= 5) return null;
+		if(y < 0 or y >= 5) return null;
+		return self.craftingGrid[@intCast(x + y*5)];
+	}
+
 	fn getProperty(self: *Tool, prop: ToolProperty) *f32 {
 		switch(prop) {
 			inline else => |field| return &@field(self, @tagName(field)),
@@ -751,6 +788,7 @@ var arena: main.heap.NeverFailingArenaAllocator = undefined;
 var toolTypes: std.StringHashMap(ToolType) = undefined;
 var reverseIndices: std.StringHashMap(*BaseItem) = undefined;
 var modifiers: std.StringHashMap(*const Modifier.VTable) = undefined;
+var modifierRestrictions: std.StringHashMap(*const ModifierRestriction.VTable) = undefined;
 pub var itemList: [65536]BaseItem = undefined;
 pub var itemListSize: u16 = 0;
 
@@ -788,6 +826,14 @@ pub fn globalInit() void {
 			.printTooltip = @ptrCast(&ModifierStruct.printTooltip),
 			.loadData = @ptrCast(&ModifierStruct.loadData),
 			.priority = ModifierStruct.priority,
+		}) catch unreachable;
+	}
+	modifierRestrictions = .init(main.globalAllocator.allocator);
+	inline for(@typeInfo(modifierRestrictionList).@"struct".decls) |decl| {
+		const ModifierRestrictionStruct = @field(modifierRestrictionList, decl.name);
+		modifierRestrictions.put(decl.name, &.{
+			.satisfied = comptime main.utils.castFunctionSelfToAnyopaque(ModifierRestrictionStruct.satisfied),
+			.loadFromZon = comptime main.utils.castFunctionReturnToAnyopaque(ModifierRestrictionStruct.loadFromZon),
 		}) catch unreachable;
 	}
 	Inventory.Sync.ClientSide.init();
@@ -952,6 +998,7 @@ pub fn deinit() void {
 	}
 	recipeList.clearAndFree();
 	modifiers.deinit();
+	modifierRestrictions.deinit();
 	arena.deinit();
 	Inventory.Sync.ClientSide.deinit();
 }
