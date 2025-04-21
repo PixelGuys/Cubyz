@@ -1560,6 +1560,8 @@ pub const Command = struct { // MARK: Command
 		oldBlock: Block,
 		newBlock: Block,
 
+		const half = @as(Vec3d, @splat(0.5));
+
 		const BlockDropLocation = struct {
 			dir: Neighbor,
 			min: Vec3f,
@@ -1585,11 +1587,10 @@ pub const Command = struct { // MARK: Command
 				const itemMargin = itemHitBoxMargin();
 				const max: Vec3d = @min(@as(Vec3d, @splat(1.0)) - itemMargin, @max(itemMargin, self.max - itemMargin));
 				const min: Vec3d = @min(max, @max(itemMargin, self.min + itemMargin));
-				const center: Vec3d = (max + min)/@as(Vec3d, @splat(2));
-				const width: Vec3d = (max - min)/@as(Vec3d, @splat(2));
-				const factors = main.random.nextDoubleVectorSigned(3, &main.seed)*@as(Vec3d, @splat(0.5));
+				const center: Vec3d = (max + min)*half;
+				const width: Vec3d = (max - min)*half;
+				const factors = main.random.nextDoubleVectorSigned(3, &main.seed)*half;
 				const offset = center + width*factors;
-				std.log.debug("min {d:.2} max {d:.2} offset {d:.2}", .{min, max, offset});
 				return offset;
 			}
 			fn dropOutside(self: BlockDropLocation, pos: Vec3i, _drop: main.blocks.BlockDrop) void {
@@ -1602,7 +1603,6 @@ pub const Command = struct { // MARK: Command
 				return pos + self.randomOffset()*self.minor() + self.directionOffset()*self.major() + self.direction()*itemHitBoxMargin();
 			}
 			fn directionOffset(self: BlockDropLocation) Vec3d {
-				const half = @as(Vec3d, @splat(0.5));
 				return half + self.direction()*half;
 			}
 			inline fn direction(self: BlockDropLocation) Vec3d {
@@ -1615,7 +1615,7 @@ pub const Command = struct { // MARK: Command
 				return @floatFromInt(self.dir.orthogonalComponents());
 			}
 			fn itemHitBoxMargin() Vec3d {
-				return @as(Vec3d, @splat(main.itemdrop.ItemDropManager.radius*2));
+				return @splat(main.itemdrop.ItemDropManager.radius*2);
 			}
 			fn dropDir(self: BlockDropLocation) Vec3f {
 				return @floatCast(vec.normalize(Vec3d{
