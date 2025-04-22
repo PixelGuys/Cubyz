@@ -405,13 +405,11 @@ pub fn inputCharacter(self: *TextInput, character: u21) void {
 }
 
 pub fn setString(self: *TextInput, utf8EncodedString: []const u8) void {
-	if(self.cursor) |*cursor| {
-		self.clear();
-		self.currentString.insertSlice(0, utf8EncodedString);
-		self.reloadText();
-		if(self.cursor != null) self.cursor = @intCast(utf8EncodedString.len);
-		self.ensureCursorVisibility();
-	}
+	self.clear();
+	self.currentString.insertSlice(0, utf8EncodedString);
+	self.reloadText();
+	if(self.cursor != null) self.cursor = @intCast(utf8EncodedString.len);
+	self.ensureCursorVisibility();
 }
 
 pub fn selectAll(self: *TextInput, mods: main.Window.Key.Modifiers) void {
