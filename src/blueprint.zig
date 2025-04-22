@@ -112,6 +112,13 @@ pub const Blueprint = struct {
 	pub const PasteMode = enum {all, degradable};
 
 	pub fn pasteInGeneration(self: Blueprint, pos: Vec3i, chunk: *ServerChunk, mode: PasteMode) void {
+		switch(mode) {
+			.all => _pasteInGeneration(self, pos, chunk, .all),
+			.degradable => _pasteInGeneration(self, pos, chunk, .degradable),
+		}
+	}
+
+	fn _pasteInGeneration(self: Blueprint, pos: Vec3i, chunk: *ServerChunk, comptime mode: PasteMode) void {
 		const startX = pos[0];
 		const startY = pos[1];
 		const startZ = pos[2];
