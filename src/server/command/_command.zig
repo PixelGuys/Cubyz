@@ -22,7 +22,7 @@ pub fn init() void {
 			.usage = @field(commandList, decl.name).usage,
 			.exec = &@field(commandList, decl.name).execute,
 		}) catch unreachable;
-		std.log.info("Registered command: '/{s}'", .{decl.name});
+		std.log.debug("Registered command: '/{s}'", .{decl.name});
 	}
 }
 
