@@ -37,7 +37,7 @@
 				1.0, 0x0, 0x0, 0.0, 0x0,
 				0x0, 0x0, 0x0, 0x0, 0.0,
 			},
-			.factor = 0.2,
+			.factor = 0.6,
 		},
 		.{
 			.source = .hardness,
@@ -55,13 +55,13 @@
 			.source = .hardness,
 			.destination = .damage,
 			.matrix = .{
-				0.0, 0.0, 0.0, 1.0, 0x0,
+				0.0, 0.0, 0.0, 0.0, 0x0,
 				0.0, 0.0, 0.0, 0x0, 0x0,
 				0.0, 0.0, 0.0, 0x0, 0x0,
 				1.0, 0x0, 0x0, 0.0, 0x0,
 				0x0, 0x0, 0x0, 0x0, 0.0,
 			},
-			.factor = 0.5,
+			.factor = 0.6,
 		},
 		.{
 			.source = .elasticity,
