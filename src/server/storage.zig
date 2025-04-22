@@ -54,7 +54,7 @@ pub const RegionFile = struct { // MARK: RegionFile
 	}
 
 	fn load(self: *RegionFile, path: []const u8, data: []const u8) !void {
-		var reader = BinaryReader.init(data, .big);
+		var reader = BinaryReader.init(data);
 
 		const fileVersion = try reader.readInt(u32);
 		const fileSize = try reader.readInt(u32);
@@ -129,7 +129,7 @@ pub const RegionFile = struct { // MARK: RegionFile
 			return;
 		}
 
-		var writer = BinaryWriter.initCapacity(main.stackAllocator, .big, totalSize + headerSize);
+		var writer = BinaryWriter.initCapacity(main.stackAllocator, totalSize + headerSize);
 		defer writer.deinit();
 
 		writer.writeInt(u32, version);
@@ -261,7 +261,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 	};
 	pub fn compressChunk(allocator: main.heap.NeverFailingAllocator, ch: *chunk.Chunk, allowLossy: bool) []const u8 {
 		if(ch.data.paletteLength == 1) {
-			var writer = BinaryWriter.initCapacity(allocator, .big, @sizeOf(CompressionAlgo) + @sizeOf(u32));
+			var writer = BinaryWriter.initCapacity(allocator, @sizeOf(CompressionAlgo) + @sizeOf(u32));
 
 			writer.writeEnum(CompressionAlgo, .uniform);
 			writer.writeInt(u32, ch.data.palette[0].toInt());
@@ -300,7 +300,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 			const compressedData = main.utils.Compression.deflate(main.stackAllocator, &uncompressedData, .default);
 			defer main.stackAllocator.free(compressedData);
 
-			var writer = BinaryWriter.initCapacity(allocator, .big, @sizeOf(CompressionAlgo) + @sizeOf(u8) + @sizeOf(u32)*ch.data.paletteLength + compressedData.len);
+			var writer = BinaryWriter.initCapacity(allocator, @sizeOf(CompressionAlgo) + @sizeOf(u8) + @sizeOf(u32)*ch.data.paletteLength + compressedData.len);
 
 			writer.writeEnum(CompressionAlgo, .deflate_with_8bit_palette);
 			writer.writeInt(u8, @intCast(ch.data.paletteLength));
@@ -311,7 +311,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 			writer.writeSlice(compressedData);
 			return writer.data.toOwnedSlice();
 		}
-		var uncompressedWriter = BinaryWriter.initCapacity(main.stackAllocator, .big, chunk.chunkVolume*@sizeOf(u32));
+		var uncompressedWriter = BinaryWriter.initCapacity(main.stackAllocator, chunk.chunkVolume*@sizeOf(u32));
 		defer uncompressedWriter.deinit();
 
 		for(0..chunk.chunkVolume) |i| {
@@ -320,7 +320,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 		const compressedData = main.utils.Compression.deflate(main.stackAllocator, uncompressedWriter.data.items, .default);
 		defer main.stackAllocator.free(compressedData);
 
-		var compressedWriter = BinaryWriter.initCapacity(allocator, .big, @sizeOf(CompressionAlgo) + compressedData.len);
+		var compressedWriter = BinaryWriter.initCapacity(allocator, @sizeOf(CompressionAlgo) + compressedData.len);
 
 		compressedWriter.writeEnum(CompressionAlgo, .deflate);
 		compressedWriter.writeSlice(compressedData);
@@ -331,7 +331,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 	pub fn decompressChunk(ch: *chunk.Chunk, _data: []const u8) !void {
 		std.debug.assert(ch.data.paletteLength == 1);
 
-		var reader = BinaryReader.init(_data, .big);
+		var reader = BinaryReader.init(_data);
 		const compressionAlgorithm = try reader.readEnum(CompressionAlgo);
 
 		switch(compressionAlgorithm) {
@@ -343,7 +343,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 				const decompressedLength = try main.utils.Compression.inflateTo(decompressedData, reader.remaining);
 				if(decompressedLength != chunk.chunkVolume*@sizeOf(u32)) return error.corrupted;
 
-				var decompressedReader = BinaryReader.init(decompressedData, .big);
+				var decompressedReader = BinaryReader.init(decompressedData);
 
 				for(0..chunk.chunkVolume) |i| {
 					ch.data.setValue(i, main.blocks.Block.fromInt(try decompressedReader.readInt(u32)));

@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const main = @import("main");
+const Tag = main.Tag;
 const ZonElement = @import("zon.zig").ZonElement;
 const Neighbor = @import("chunk.zig").Neighbor;
 const graphics = @import("graphics.zig");
@@ -16,49 +17,9 @@ const rotation = @import("rotation.zig");
 const RotationMode = rotation.RotationMode;
 const Degrees = rotation.Degrees;
 const Entity = main.server.Entity;
+const entity_data = @import("entity_data.zig");
+const EntityDataClass = entity_data.EntityDataClass;
 const sbb = main.server.terrain.structure_building_blocks;
-
-pub const BlockTag = enum(u32) {
-	air = 0,
-	fluid = 1,
-	sbbChild = 2,
-	_,
-
-	var tagList: main.List([]const u8) = .init(allocator);
-	var tagIds: std.StringHashMap(BlockTag) = .init(allocator.allocator);
-
-	fn loadDefaults() void {
-		inline for(comptime std.meta.fieldNames(BlockTag)) |tag| {
-			std.debug.assert(find(tag) == @field(BlockTag, tag));
-		}
-	}
-
-	fn reset() void {
-		tagList.clearAndFree();
-		tagIds.clearAndFree();
-	}
-
-	pub fn find(tag: []const u8) BlockTag {
-		if(tagIds.get(tag)) |res| return res;
-		const result: BlockTag = @enumFromInt(tagList.items.len);
-		const dupedTag = allocator.dupe(u8, tag);
-		tagList.append(dupedTag);
-		tagIds.put(dupedTag, result) catch unreachable;
-		return result;
-	}
-
-	pub fn loadFromZon(_allocator: main.heap.NeverFailingAllocator, zon: ZonElement) []BlockTag {
-		const result = _allocator.alloc(BlockTag, zon.toSlice().len);
-		for(zon.toSlice(), 0..) |tagZon, i| {
-			result[i] = BlockTag.find(tagZon.as([]const u8, "incorrect"));
-		}
-		return result;
-	}
-
-	pub fn getName(tag: BlockTag) []const u8 {
-		return tagList.items[@intFromEnum(tag)];
-	}
-};
 
 var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
 const allocator = arena.allocator();
@@ -101,7 +62,7 @@ var _degradable: [maxBlockCount]bool = undefined;
 var _viewThrough: [maxBlockCount]bool = undefined;
 var _alwaysViewThrough: [maxBlockCount]bool = undefined;
 var _hasBackFace: [maxBlockCount]bool = undefined;
-var _blockTags: [maxBlockCount][]BlockTag = undefined;
+var _blockTags: [maxBlockCount][]Tag = undefined;
 var _light: [maxBlockCount]u32 = undefined;
 /// How much light this block absorbs if it is transparent
 var _absorption: [maxBlockCount]u32 = undefined;
@@ -112,10 +73,9 @@ var _modeData: [maxBlockCount]u16 = undefined;
 var _lodReplacement: [maxBlockCount]u16 = undefined;
 var _opaqueVariant: [maxBlockCount]u16 = undefined;
 var _friction: [maxBlockCount]f32 = undefined;
-
 var _allowOres: [maxBlockCount]bool = undefined;
-
 var _touchFunction: [maxBlockCount]?*const TouchFunction = undefined;
+var _entityDataClass: [maxBlockCount]?*EntityDataClass = undefined;
 
 var reverseIndices = std.StringHashMap(u16).init(allocator.allocator);
 
@@ -123,9 +83,7 @@ var size: u32 = 0;
 
 pub var ores: main.List(Ore) = .init(allocator);
 
-pub fn init() void {
-	BlockTag.loadDefaults();
-}
+pub fn init() void {}
 
 pub fn deinit() void {
 	arena.deinit();
@@ -142,10 +100,10 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_blockHealth[size] = zon.get(f32, "blockHealth", 1);
 	_blockResistance[size] = zon.get(f32, "blockResistance", 0);
 
-	_blockTags[size] = BlockTag.loadFromZon(allocator, zon.getChild("tags"));
+	_blockTags[size] = Tag.loadTagsFromZon(allocator, zon.getChild("tags"));
 	if(_blockTags[size].len == 0) std.log.err("Block {s} is missing 'tags' field", .{id});
 	for(_blockTags[size]) |tag| {
-		if(tag == BlockTag.sbbChild) {
+		if(tag == Tag.sbbChild) {
 			sbb.registerChildBlock(@intCast(size), _id[size]);
 			break;
 		}
@@ -164,6 +122,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_friction[size] = zon.get(f32, "friction", 20);
 	_allowOres[size] = zon.get(bool, "allowOres", false);
 	_touchFunction[size] = TouchFunctions.getFunctionPointer(zon.get([]const u8, "touchFunction", ""));
+	_entityDataClass[size] = entity_data.getByID(zon.get(?[]const u8, "entityDataClass", null));
 
 	const oreProperties = zon.getChild("ore");
 	if(oreProperties != .null) blk: {
@@ -252,10 +211,8 @@ pub fn reset() void {
 	size = 0;
 	ores.clearAndFree();
 	meshes.reset();
-	BlockTag.reset();
 	_ = arena.reset(.free_all);
 	reverseIndices = .init(arena.allocator().allocator);
-	BlockTag.loadDefaults();
 }
 
 pub fn getTypeById(id: []const u8) u16 {
@@ -351,7 +308,7 @@ pub const Block = packed struct { // MARK: Block
 		return _hasBackFace[self.typ];
 	}
 
-	pub inline fn blockTags(self: Block) []const BlockTag {
+	pub inline fn blockTags(self: Block) []const Tag {
 		return _blockTags[self.typ];
 	}
 
@@ -399,6 +356,10 @@ pub const Block = packed struct { // MARK: Block
 
 	pub inline fn touchFunction(self: Block) ?*const TouchFunction {
 		return _touchFunction[self.typ];
+	}
+
+	pub fn entityDataClass(self: Block) ?*EntityDataClass {
+		return _entityDataClass[self.typ];
 	}
 
 	pub fn canBeChangedInto(self: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) main.rotation.RotationMode.CanBeChangedInto {

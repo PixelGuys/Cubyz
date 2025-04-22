@@ -16,7 +16,6 @@ layout(location = 0) out vec4 fragColor;
 uniform vec3 ambientLight;
 uniform mat4 projectionMatrix;
 uniform float sizeScale;
-uniform int time;
 
 uniform sampler2DArray texture_sampler;
 uniform sampler2DArray emissionSampler;

@@ -7,6 +7,7 @@ const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 pub const file_monitor = @import("utils/file_monitor.zig");
+pub const VirtualList = @import("utils/virtual_mem.zig").VirtualList;
 
 pub const Compression = struct { // MARK: Compression
 	pub fn deflate(allocator: NeverFailingAllocator, data: []const u8, level: std.compress.flate.deflate.Level) []u8 {
@@ -42,14 +43,14 @@ pub const Compression = struct { // MARK: Compression
 					main.stackAllocator.free(relPath);
 				};
 				var len: [4]u8 = undefined;
-				std.mem.writeInt(u32, &len, @as(u32, @intCast(relPath.len)), .big);
+				std.mem.writeInt(u32, &len, @as(u32, @intCast(relPath.len)), endian);
 				_ = try comp.write(&len);
 				_ = try comp.write(relPath);
 
 				const fileData = try sourceDir.readFileAlloc(main.stackAllocator.allocator, relPath, std.math.maxInt(usize));
 				defer main.stackAllocator.free(fileData);
 
-				std.mem.writeInt(u32, &len, @as(u32, @intCast(fileData.len)), .big);
+				std.mem.writeInt(u32, &len, @as(u32, @intCast(fileData.len)), endian);
 				_ = try comp.write(&len);
 				_ = try comp.write(fileData);
 			}
@@ -65,11 +66,11 @@ pub const Compression = struct { // MARK: Compression
 		defer main.stackAllocator.free(_data);
 		var data = _data;
 		while(data.len != 0) {
-			var len = std.mem.readInt(u32, data[0..4], .big);
+			var len = std.mem.readInt(u32, data[0..4], endian);
 			data = data[4..];
 			const path = data[0..len];
 			data = data[len..];
-			len = std.mem.readInt(u32, data[0..4], .big);
+			len = std.mem.readInt(u32, data[0..4], endian);
 			data = data[4..];
 			const fileData = data[0..len];
 			data = data[len..];
@@ -318,13 +319,105 @@ pub fn Array3D(comptime T: type) type { // MARK: Array3D
 	};
 }
 
+pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: FixedSizeCircularBuffer
+	std.debug.assert(capacity - 1 & capacity == 0 and capacity > 0);
+	const mask = capacity - 1;
+	return struct {
+		const Self = @This();
+		mem: *[capacity]T = undefined,
+		startIndex: usize = 0,
+		len: usize = 0,
+
+		pub fn init(allocator: NeverFailingAllocator) Self {
+			return .{
+				.mem = allocator.create([capacity]T),
+			};
+		}
+
+		pub fn deinit(self: Self, allocator: NeverFailingAllocator) void {
+			allocator.destroy(self.mem);
+		}
+
+		pub fn enqueue(self: *Self, elem: T) !void {
+			if(self.len >= capacity) return error.OutOfMemory;
+			self.mem[self.startIndex + self.len & mask] = elem;
+			self.len += 1;
+		}
+
+		pub fn enqueueSlice(self: *Self, elems: []const T) !void {
+			if(elems.len + self.len > capacity) {
+				return error.OutOfMemory;
+			}
+			const start = self.startIndex + self.len & mask;
+			const end = start + elems.len;
+			if(end < self.mem.len) {
+				@memcpy(self.mem[start..end], elems);
+			} else {
+				const mid = self.mem.len - start;
+				@memcpy(self.mem[start..], elems[0..mid]);
+				@memcpy(self.mem[0 .. end & mask], elems[mid..]);
+			}
+			self.len += elems.len;
+		}
+
+		pub fn insertSliceAtOffset(self: *Self, elems: []const T, offset: usize) !void {
+			if(offset + elems.len > capacity) {
+				return error.OutOfMemory;
+			}
+			self.len = @max(self.len, offset + elems.len);
+			const start = self.startIndex + offset & mask;
+			const end = start + elems.len;
+			if(end < self.mem.len) {
+				@memcpy(self.mem[start..end], elems);
+			} else {
+				const mid = self.mem.len - start;
+				@memcpy(self.mem[start..], elems[0..mid]);
+				@memcpy(self.mem[0 .. end & mask], elems[mid..]);
+			}
+		}
+
+		pub fn dequeue(self: *Self) ?T {
+			if(self.len == 0) return null;
+			const result = self.mem[self.startIndex];
+			self.startIndex = (self.startIndex + 1) & mask;
+			self.len -= 1;
+			return result;
+		}
+
+		pub fn dequeueSlice(self: *Self, out: []T) !void {
+			if(out.len > self.len) return error.OutOfBounds;
+			const start = self.startIndex;
+			const end = start + out.len;
+			if(end < self.mem.len) {
+				@memcpy(out, self.mem[start..end]);
+			} else {
+				const mid = self.mem.len - start;
+				@memcpy(out[0..mid], self.mem[start..]);
+				@memcpy(out[mid..], self.mem[0 .. end & mask]);
+			}
+			self.startIndex = self.startIndex + out.len & mask;
+			self.len -= out.len;
+		}
+
+		pub fn discardElements(self: *Self, n: usize) void {
+			self.len -= n;
+			self.startIndex = (self.startIndex + n) & mask;
+		}
+
+		pub fn getAtOffset(self: Self, i: usize) ?T {
+			if(i >= self.len) return null;
+			return self.mem[(self.startIndex + i) & mask];
+		}
+	};
+}
+
 pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 	return struct {
 		const Self = @This();
 		mem: []T,
 		mask: usize,
 		startIndex: usize,
-		endIndex: usize,
+		len: usize,
 		allocator: NeverFailingAllocator,
 
 		pub fn init(allocator: NeverFailingAllocator, initialCapacity: usize) Self {
@@ -334,7 +427,7 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 				.mem = allocator.alloc(T, initialCapacity),
 				.mask = initialCapacity - 1,
 				.startIndex = 0,
-				.endIndex = 0,
+				.len = 0,
 				.allocator = allocator,
 			};
 		}
@@ -343,23 +436,42 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 			self.allocator.free(self.mem);
 		}
 
+		pub fn reset(self: *Self) void {
+			self.len = 0;
+		}
+
 		fn increaseCapacity(self: *Self) void {
 			const newMem = self.allocator.alloc(T, self.mem.len*2);
 			@memcpy(newMem[0..(self.mem.len - self.startIndex)], self.mem[self.startIndex..]);
-			@memcpy(newMem[(self.mem.len - self.startIndex)..][0..self.endIndex], self.mem[0..self.endIndex]);
+			@memcpy(newMem[(self.mem.len - self.startIndex)..][0..self.startIndex], self.mem[0..self.startIndex]);
 			self.startIndex = 0;
-			self.endIndex = self.mem.len;
 			self.allocator.free(self.mem);
 			self.mem = newMem;
 			self.mask = self.mem.len - 1;
 		}
 
 		pub fn enqueue(self: *Self, elem: T) void {
-			self.mem[self.endIndex] = elem;
-			self.endIndex = (self.endIndex + 1) & self.mask;
-			if(self.endIndex == self.startIndex) {
+			if(self.len == self.mem.len) {
 				self.increaseCapacity();
 			}
+			self.mem[self.startIndex + self.len & self.mask] = elem;
+			self.len += 1;
+		}
+
+		pub fn enqueueSlice(self: *Self, elems: []const T) void {
+			while(elems.len + self.len > self.mem.len) {
+				self.increaseCapacity();
+			}
+			const start = self.startIndex + self.len & self.mask;
+			const end = start + elems.len;
+			if(end < self.mem.len) {
+				@memcpy(self.mem[start..end], elems);
+			} else {
+				const mid = self.mem.len - start;
+				@memcpy(self.mem[start..], elems[0..mid]);
+				@memcpy(self.mem[0 .. end & self.mask], elems[mid..]);
+			}
+			self.len += elems.len;
 		}
 
 		pub inline fn enqueue_front(self: *Self, elem: T) void {
@@ -367,17 +479,19 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 		}
 
 		pub fn enqueue_back(self: *Self, elem: T) void {
-			self.startIndex = (self.startIndex -% 1) & self.mask;
-			self.mem[self.startIndex] = elem;
-			if(self.endIndex == self.startIndex) {
+			if(self.len == self.mem.len) {
 				self.increaseCapacity();
 			}
+			self.startIndex = (self.startIndex -% 1) & self.mask;
+			self.mem[self.startIndex] = elem;
+			self.len += 1;
 		}
 
 		pub fn dequeue(self: *Self) ?T {
 			if(self.empty()) return null;
 			const result = self.mem[self.startIndex];
 			self.startIndex = (self.startIndex + 1) & self.mask;
+			self.len -= 1;
 			return result;
 		}
 
@@ -387,8 +501,14 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 
 		pub fn dequeue_front(self: *Self) ?T {
 			if(self.empty()) return null;
-			self.endIndex = (self.endIndex -% 1) & self.mask;
-			return self.mem[self.endIndex];
+			self.len -= 1;
+			return self.mem[self.startIndex + self.len & self.mask];
+		}
+
+		pub fn discard(self: *Self, amount: usize) !void {
+			if(amount > self.len) return error.OutOfBounds;
+			self.startIndex = (self.startIndex + amount) & self.mask;
+			self.len -= amount;
 		}
 
 		pub fn peek(self: *Self) ?T {
@@ -401,12 +521,30 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 			return self.mem[(self.endIndex - 1) & self.mask];
 		}
 
+		pub fn getSliceAtOffset(self: Self, offset: usize, result: []T) !void {
+			if(offset + result.len > self.len) return error.OutOfBounds;
+			const start = self.startIndex + offset & self.mask;
+			const end = start + result.len;
+			if(end < self.mem.len) {
+				@memcpy(result, self.mem[start..end]);
+			} else {
+				const mid = self.mem.len - start;
+				@memcpy(result[0..mid], self.mem[start..]);
+				@memcpy(result[mid..], self.mem[0 .. end & self.mask]);
+			}
+		}
+
+		pub fn getAtOffset(self: Self, offset: usize) !T {
+			if(offset >= self.len) return error.OutOfBounds;
+			return self.mem[(self.startIndex + offset) & self.mask];
+		}
+
 		pub fn empty(self: *Self) bool {
-			return self.startIndex == self.endIndex;
+			return self.len == 0;
 		}
 
 		pub fn reachedCapacity(self: *Self) bool {
-			return self.startIndex == (self.endIndex + 1) & self.mask;
+			return self.len == self.mem.len;
 		}
 	};
 }
@@ -1420,12 +1558,30 @@ pub const Side = enum {
 	server,
 };
 
+const endian: std.builtin.Endian = .big;
+
 pub const BinaryReader = struct {
 	remaining: []const u8,
-	endian: std.builtin.Endian,
 
-	pub fn init(data: []const u8, endian: std.builtin.Endian) BinaryReader {
-		return .{.remaining = data, .endian = endian};
+	pub fn init(data: []const u8) BinaryReader {
+		return .{.remaining = data};
+	}
+
+	pub fn readVec(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds}!T {
+		const typeInfo = @typeInfo(T).vector;
+		var result: T = undefined;
+		inline for(0..typeInfo.len) |i| {
+			switch(@typeInfo(typeInfo.child)) {
+				.int => {
+					result[i] = try self.readInt(typeInfo.child);
+				},
+				.float => {
+					result[i] = try self.readFloat(typeInfo.child);
+				},
+				else => unreachable,
+			}
+		}
+		return result;
 	}
 
 	pub fn readInt(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds}!T {
@@ -1438,7 +1594,7 @@ pub const BinaryReader = struct {
 		const bufSize = @divExact(@typeInfo(T).int.bits, 8);
 		if(self.remaining.len < bufSize) return error.OutOfBounds;
 		defer self.remaining = self.remaining[bufSize..];
-		return std.mem.readInt(T, self.remaining[0..bufSize], self.endian);
+		return std.mem.readInt(T, self.remaining[0..bufSize], endian);
 	}
 
 	pub fn readFloat(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds}!T {
@@ -1466,18 +1622,32 @@ pub const BinaryReader = struct {
 
 pub const BinaryWriter = struct {
 	data: main.List(u8),
-	endian: std.builtin.Endian,
 
-	pub fn init(allocator: NeverFailingAllocator, endian: std.builtin.Endian) BinaryWriter {
-		return .{.data = .init(allocator), .endian = endian};
+	pub fn init(allocator: NeverFailingAllocator) BinaryWriter {
+		return .{.data = .init(allocator)};
 	}
 
-	pub fn initCapacity(allocator: NeverFailingAllocator, endian: std.builtin.Endian, capacity: usize) BinaryWriter {
-		return .{.data = .initCapacity(allocator, capacity), .endian = endian};
+	pub fn initCapacity(allocator: NeverFailingAllocator, capacity: usize) BinaryWriter {
+		return .{.data = .initCapacity(allocator, capacity)};
 	}
 
 	pub fn deinit(self: *BinaryWriter) void {
 		self.data.deinit();
+	}
+
+	pub fn writeVec(self: *BinaryWriter, T: type, value: T) void {
+		const typeInfo = @typeInfo(T).vector;
+		inline for(0..typeInfo.len) |i| {
+			switch(@typeInfo(typeInfo.child)) {
+				.int => {
+					self.writeInt(typeInfo.child, value[i]);
+				},
+				.float => {
+					self.writeFloat(typeInfo.child, value[i]);
+				},
+				else => unreachable,
+			}
+		}
 	}
 
 	pub fn writeInt(self: *BinaryWriter, T: type, value: T) void {
@@ -1487,7 +1657,7 @@ pub const BinaryWriter = struct {
 			return self.writeInt(FullType, value);
 		}
 		const bufSize = @divExact(@typeInfo(T).int.bits, 8);
-		std.mem.writeInt(T, self.data.addMany(bufSize)[0..bufSize], value, self.endian);
+		std.mem.writeInt(T, self.data.addMany(bufSize)[0..bufSize], value, endian);
 	}
 
 	pub fn writeFloat(self: *BinaryWriter, T: type, value: T) void {
@@ -1509,6 +1679,195 @@ pub const BinaryWriter = struct {
 		self.data.append(delimiter);
 	}
 };
+
+const ReadWriteTest = struct {
+	var testingAllocator = main.heap.ErrorHandlingAllocator.init(std.testing.allocator);
+	var allocator = testingAllocator.allocator();
+
+	fn getWriter() BinaryWriter {
+		return .init(ReadWriteTest.allocator);
+	}
+	fn getReader(data: []const u8) BinaryReader {
+		return .init(data);
+	}
+	fn testInt(comptime IntT: type, expected: IntT) !void {
+		var writer = getWriter();
+		defer writer.deinit();
+		writer.writeInt(IntT, expected);
+
+		const expectedWidth = std.math.divCeil(comptime_int, @bitSizeOf(IntT), 8);
+		try std.testing.expectEqual(expectedWidth, writer.data.items.len);
+
+		var reader = getReader(writer.data.items);
+		const actual = try reader.readInt(IntT);
+
+		try std.testing.expectEqual(expected, actual);
+	}
+	fn testFloat(comptime FloatT: type, expected: FloatT) !void {
+		var writer = getWriter();
+		defer writer.deinit();
+		writer.writeFloat(FloatT, expected);
+
+		var reader = getReader(writer.data.items);
+		const actual = try reader.readFloat(FloatT);
+
+		try std.testing.expectEqual(expected, actual);
+	}
+	fn testEnum(comptime EnumT: type, expected: EnumT) !void {
+		var writer = getWriter();
+		defer writer.deinit();
+		writer.writeEnum(EnumT, expected);
+
+		var reader = getReader(writer.data.items);
+		const actual = try reader.readEnum(EnumT);
+
+		try std.testing.expectEqual(expected, actual);
+	}
+	fn TestEnum(comptime IntT: type) type {
+		return enum(IntT) {
+			first = std.math.minInt(IntT),
+			center = (std.math.maxInt(IntT) + std.math.minInt(IntT))/2,
+			last = std.math.maxInt(IntT),
+		};
+	}
+	fn testVec(comptime VecT: type, expected: VecT) !void {
+		var writer = getWriter();
+		defer writer.deinit();
+		writer.writeVec(VecT, expected);
+
+		var reader = getReader(writer.data.items);
+		const actual = try reader.readVec(VecT);
+
+		try std.testing.expectEqual(expected, actual);
+	}
+};
+
+test "read/write unsigned int" {
+	inline for([_]type{u0, u1, u2, u4, u5, u8, u16, u31, u32, u64, u128}) |intT| {
+		const min = std.math.minInt(intT);
+		const max = std.math.maxInt(intT);
+		const mid = (max + min)/2;
+
+		try ReadWriteTest.testInt(intT, min);
+		try ReadWriteTest.testInt(intT, mid);
+		try ReadWriteTest.testInt(intT, max);
+	}
+}
+
+test "read/write signed int" {
+	inline for([_]type{i1, i2, i4, i5, i8, i16, i31, i32, i64, i128}) |intT| {
+		const min = std.math.minInt(intT);
+		const lowerMid = std.math.minInt(intT)/2;
+		const upperMid = std.math.maxInt(intT)/2;
+		const max = std.math.maxInt(intT);
+
+		try ReadWriteTest.testInt(intT, min);
+		try ReadWriteTest.testInt(intT, lowerMid);
+		try ReadWriteTest.testInt(intT, 0);
+		try ReadWriteTest.testInt(intT, upperMid);
+		try ReadWriteTest.testInt(intT, max);
+	}
+}
+
+test "read/write float" {
+	inline for([_]type{f16, f32, f64, f80, f128}) |floatT| {
+		try ReadWriteTest.testFloat(floatT, std.math.floatMax(floatT));
+		try ReadWriteTest.testFloat(floatT, 0.0012443);
+		try ReadWriteTest.testFloat(floatT, 0.0);
+		try ReadWriteTest.testFloat(floatT, 6457.0);
+		try ReadWriteTest.testFloat(floatT, std.math.inf(floatT));
+		try ReadWriteTest.testFloat(floatT, -std.math.inf(floatT));
+		try ReadWriteTest.testFloat(floatT, std.math.floatMin(floatT));
+	}
+}
+
+test "read/write enum" {
+	inline for([_]type{
+		ReadWriteTest.TestEnum(u2),
+		ReadWriteTest.TestEnum(u4),
+		ReadWriteTest.TestEnum(u5),
+		ReadWriteTest.TestEnum(u8),
+		ReadWriteTest.TestEnum(u16),
+		ReadWriteTest.TestEnum(u32),
+		ReadWriteTest.TestEnum(i2),
+		ReadWriteTest.TestEnum(i4),
+		ReadWriteTest.TestEnum(i5),
+		ReadWriteTest.TestEnum(i8),
+		ReadWriteTest.TestEnum(i16),
+		ReadWriteTest.TestEnum(i32),
+	}) |enumT| {
+		try ReadWriteTest.testEnum(enumT, .first);
+		try ReadWriteTest.testEnum(enumT, .center);
+		try ReadWriteTest.testEnum(enumT, .last);
+	}
+}
+
+test "read/write Vec3i" {
+	try ReadWriteTest.testVec(main.vec.Vec3i, .{0, 0, 0});
+	try ReadWriteTest.testVec(main.vec.Vec3i, .{
+		std.math.maxInt(@typeInfo(main.vec.Vec3i).vector.child),
+		std.math.minInt(@typeInfo(main.vec.Vec3i).vector.child),
+		std.math.minInt(@typeInfo(main.vec.Vec3i).vector.child),
+	});
+	try ReadWriteTest.testVec(main.vec.Vec3i, .{
+		std.math.minInt(@typeInfo(main.vec.Vec3i).vector.child),
+		std.math.maxInt(@typeInfo(main.vec.Vec3i).vector.child),
+		std.math.maxInt(@typeInfo(main.vec.Vec3i).vector.child),
+	});
+}
+
+test "read/write Vec3f/Vec3d" {
+	inline for([_]type{main.vec.Vec3f, main.vec.Vec3d}) |vecT| {
+		try ReadWriteTest.testVec(vecT, .{0, 0, 0});
+		try ReadWriteTest.testVec(vecT, .{0.0043, 0.01123, 0.05043});
+		try ReadWriteTest.testVec(vecT, .{5345.0, 42.0, 7854.0});
+		try ReadWriteTest.testVec(vecT, .{
+			std.math.floatMax(@typeInfo(vecT).vector.child),
+			std.math.floatMin(@typeInfo(vecT).vector.child),
+			std.math.floatMin(@typeInfo(vecT).vector.child),
+		});
+		try ReadWriteTest.testVec(vecT, .{
+			std.math.floatMin(@typeInfo(vecT).vector.child),
+			std.math.floatMax(@typeInfo(vecT).vector.child),
+			std.math.floatMax(@typeInfo(vecT).vector.child),
+		});
+	}
+}
+
+test "read/write mixed" {
+	const type0 = u4;
+	const expected0 = 5;
+
+	const type1 = main.vec.Vec3i;
+	const expected1 = type1{3, -10, 44};
+
+	const type2 = enum(u3) {first, second, third};
+	const expected2 = .second;
+
+	const type3 = f32;
+	const expected3 = 0.1234;
+
+	const expected4 = "Hello World!";
+
+	var writer = ReadWriteTest.getWriter();
+	defer writer.deinit();
+
+	writer.writeInt(type0, expected0);
+	writer.writeVec(type1, expected1);
+	writer.writeEnum(type2, expected2);
+	writer.writeFloat(type3, expected3);
+	writer.writeSlice(expected4);
+
+	var reader = ReadWriteTest.getReader(writer.data.items);
+
+	try std.testing.expectEqual(expected0, try reader.readInt(type0));
+	try std.testing.expectEqual(expected1, try reader.readVec(type1));
+	try std.testing.expectEqual(expected2, try reader.readEnum(type2));
+	try std.testing.expectEqual(expected3, try reader.readFloat(type3));
+	try std.testing.expectEqualStrings(expected4, try reader.readSlice(expected4.len));
+
+	try std.testing.expect(reader.remaining.len == 0);
+}
 
 // MARK: functionPtrCast()
 fn CastFunctionSelfToAnyopaqueType(Fn: type) type {

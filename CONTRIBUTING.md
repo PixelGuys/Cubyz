@@ -61,6 +61,8 @@ Cubyz has two main allocators.
 
 Sometimes it might also make sense to use an arena allocator `utils.NeverFailingArenaAllocator` (when you have many small allocations that share the same lifetime, e.g. assets), or a `MemoryPool` (if you have many items of the same type that get freed and allocated many times throughout the game).
 
+Sometimes it may be useful to use stack buffers when the maximum size is known (e.g. bufPrint), however the stack allocator is usually fast enough, so this should only be done when there is a clear performance benefit. Otherwise it may just cause future problems when the underlying sizes change.
+
 Also it is important to note that Cubyz uses a different allocator interface `utils.NeverFailingAllocator` which cannot return `error.OutOfMemory`. Along with it come some data structures like `main.List` and more in `utils` which should be preferred over the standard library data structures because they simplify the code.
 
 ## Free all resources
@@ -82,12 +84,28 @@ Often the simplest code is easier to read, easier to maintain and more efficient
 - Use the simplest data structure for the job: e.g. use a slice instead of List if you know the size upfront
 - Don't make things public if they don't need to be
 
+## A note on performance optimizations
+
+I like to follow Casey Muratori's optimization philosophy as outlined here: https://www.youtube.com/watch?v=pgoetgxecw8
+
+The most important optimization technique he mentions is non-pessimization, not needlessly making things worse.
+This mostly overlaps with the points from above. Some example for this are:
+- use the right data structure (don't force the square block through the circular hole), this may seem trivial, but often as code grows you may find yourself in a situation where the original data structure doesn't really fit anymore
+- use the simplest data structure for the job, e.g. Use an array list or circular buffer instead of a linked list or queue
+- keep data/object dependencies at a minimum, if you can put things flat into memory or on the stack without a pointer on the heap, then that's simpler and faster.
+- use f32 if you don't need the precision of f64
+- don't store things as zon if they don't need to be human readable, just use binary
+- always lock mutexes in the tightest possible scope
+
+The next important thing is to avoid fake optimizations, if you optimize something you must measure it in a realistic setting (and be mindful about measuring errors: https://www.youtube.com/watch?v=r-TLSBdHe1A ).
+Otherwise you may just end up with a more complicated and slower thing.
+
 ## Follow the style guide
 
 Most of the syntax is handled by a modified version of zig fmt and checked by the CI (see the formatting section above).
 
 There are a few more things not covered by the formatter:
-- **Naming conventions:** camelCase for variables, constants (no all-caps constants please!) and functions; CapitalCamelCase for types; snake_case for files and namespaces
+- **Naming conventions:** camelCase for variables, constants (no all-caps constants please!) and functions; CapitalCamelCase for types; snake_case for files and namespaces. Abbreviations are treated as one word, e.g. zon/ZonElement instead of ZON/ZONElement. 
 - **Line limit:** There is no line limit (I hate seeing code that gets wrapped over by 1 word, because of an arbitrary line limit), but of course try to be reasonable. If you need 200 characters, then you should probably consider splitting it or adding some well-named helper variables.
 - **Comments:** Don't write comments, unless there is something non-obvious going on that needs to be explained.<br>
   But in either case it's better to write readable code with descriptive names, instead of writing long comments, since comments will naturally degrade over time as the surrounding code changes.<br>
@@ -128,5 +146,5 @@ With a quick check you can ensure that you didn't add any unintended changes.
 
 With a more thorough review of your changes you can sometimes catch small mistakes, leftover TODOs or random debug code.
 
-And of course make sure to check the CI results, you should also get an e-mail notification if the CI fails.
+And of course make sure to check the CI results, you should also get an e-mail notification if the CI fails. **I will not review a PR if the CI failed!**
 

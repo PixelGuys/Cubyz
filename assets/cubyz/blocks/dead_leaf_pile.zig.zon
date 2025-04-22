@@ -1,6 +1,6 @@
 .{
 	.tags = .{.leaf},
-	.blockHealth = 0.2,
+	.blockHealth = 0.1,
 	.drops = .{
 		.{.items = .{.auto}},
 	},
@@ -8,9 +8,15 @@
 	.collide = false,
 	.alwaysViewThrough = true,
 	.absorbedLight = 0x000000,
-	.model = "cubyz:plane",
-	.rotation = .carpet,
-	.texture = "cubyz:dead_leaf_pile",
+	.model = .{
+		.model = "cubyz:plane",
+		.states = 4,
+	},
+	.rotation = .texture_pile,
+	.texture0 = "cubyz:dead_leaf_pile/0",
+	.texture1 = "cubyz:dead_leaf_pile/1",
+	.texture2 = "cubyz:dead_leaf_pile/2",
+	.texture3 = "cubyz:dead_leaf_pile/3",
 	.item = .{
 		.texture = "dead_leaf_pile.png",
 	},

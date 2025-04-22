@@ -982,12 +982,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 	}
 
-	pub fn queueChunks(self: *ServerWorld, positions: []ChunkPosition, source: ?*User) void {
-		for(positions) |pos| {
-			self.queueChunk(pos, source);
-		}
-	}
-
 	pub fn queueChunkAndDecreaseRefCount(self: *ServerWorld, pos: ChunkPosition, source: *User) void {
 		self.chunkManager.queueChunkAndDecreaseRefCount(pos, source);
 	}
@@ -1005,6 +999,10 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	pub fn getOrGenerateChunkAndIncreaseRefCount(_: *ServerWorld, pos: chunk.ChunkPosition) *ServerChunk {
 		return ChunkManager.getOrGenerateChunkAndIncreaseRefCount(pos);
+	}
+
+	pub fn getChunkFromCacheAndIncreaseRefCount(_: *ServerWorld, pos: chunk.ChunkPosition) ?*ServerChunk {
+		return ChunkManager.getChunkFromCacheAndIncreaseRefCount(pos);
 	}
 
 	pub fn getBiome(_: *const ServerWorld, wx: i32, wy: i32, wz: i32) *const terrain.biomes.Biome {
@@ -1037,7 +1035,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				baseChunk.mutex.unlock();
 				return currentBlock;
 			}
+			if(currentBlock != _newBlock) {
+				if(currentBlock.entityDataClass()) |class| class.onBreakServer(.{wx, wy, wz}, &baseChunk.super);
+			}
 			baseChunk.updateBlockAndSetChanged(x, y, z, _newBlock);
+			if(currentBlock != _newBlock) {
+				if(_newBlock.entityDataClass()) |class| class.onPlaceServer(.{wx, wy, wz}, &baseChunk.super);
+			}
 		}
 		baseChunk.mutex.unlock();
 		var newBlock = _newBlock;

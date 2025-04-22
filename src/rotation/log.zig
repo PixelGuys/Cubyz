@@ -47,7 +47,7 @@ pub fn model(block: Block) ModelIndex {
 	return .{.index = blocks.meshes.modelIndexStart(block).index + @min(block.data, 5)};
 }
 
-fn rotateZ(data: u16, angle: Degrees) u16 {
+pub fn rotateZ(data: u16, angle: Degrees) u16 {
 	comptime var rotationTable: [4][6]u8 = undefined;
 	comptime for(0..6) |i| {
 		rotationTable[0][i] = i;
