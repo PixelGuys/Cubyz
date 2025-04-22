@@ -1618,15 +1618,19 @@ pub const Command = struct { // MARK: Command
 				return @splat(main.itemdrop.ItemDropManager.radius*2);
 			}
 			fn dropDir(self: BlockDropLocation) Vec3f {
+				const randomnessVec = main.random.nextDoubleVectorSigned(3, &main.seed)*@as(Vec3d, @splat(0.25));
+				const directionVec = self.direction() + randomnessVec;
+				const z = directionVec[2];
 				return @floatCast(vec.normalize(Vec3d{
-					self.direction()[0] + main.random.nextDoubleSigned(&main.seed)*0.25,
-					self.direction()[1] + main.random.nextDoubleSigned(&main.seed)*0.25,
-					if(self.direction()[2] < 0) self.direction()[2] else self.direction()[2] + 2.0,
+					directionVec[0],
+					directionVec[1],
+					if(z < -0.5) 0 else if(z < 0.0) (z + 0.5)*4.0 else z + 2.0,
 				}));
 			}
 			fn dropVelocity(self: BlockDropLocation) f32 {
-				if(self.direction()[2] < -0.5) return 0.0;
-				return 3.5 + main.random.nextFloatSigned(&main.seed)*0.5;
+				const velocity = 3.5 + main.random.nextFloatSigned(&main.seed)*0.5;
+				if(self.direction()[2] < -0.5) return velocity*0.333;
+				return velocity;
 			}
 		};
 
