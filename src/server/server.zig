@@ -9,6 +9,7 @@ const ConnectionManager = network.ConnectionManager;
 const utils = main.utils;
 const vec = main.vec;
 const Vec3d = vec.Vec3d;
+const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const BinaryReader = main.utils.BinaryReader;
 const BinaryWriter = main.utils.BinaryWriter;
@@ -250,21 +251,9 @@ pub const User = struct { // MARK: User
 	pub fn receiveData(self: *User, reader: *BinaryReader) !void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
-		const position: [3]f64 = .{
-			try reader.readFloat(f64),
-			try reader.readFloat(f64),
-			try reader.readFloat(f64),
-		};
-		const velocity: [3]f64 = .{
-			try reader.readFloat(f64),
-			try reader.readFloat(f64),
-			try reader.readFloat(f64),
-		};
-		const rotation: [3]f32 = .{
-			try reader.readFloat(f32),
-			try reader.readFloat(f32),
-			try reader.readFloat(f32),
-		};
+		const position: [3]f64 = try reader.readVec(Vec3d);
+		const velocity: [3]f64 = try reader.readVec(Vec3d);
+		const rotation: [3]f32 = try reader.readVec(Vec3f);
 		self.player.rot = rotation;
 		const time = try reader.readInt(i16);
 		self.timeDifference.addDataPoint(time);
@@ -407,15 +396,9 @@ fn update() void { // MARK: update()
 	for(userList) |user| {
 		const id = user.id; // TODO
 		writer.writeInt(u32, id);
-		writer.writeFloat(f64, user.player.pos[0]);
-		writer.writeFloat(f64, user.player.pos[1]);
-		writer.writeFloat(f64, user.player.pos[2]);
-		writer.writeFloat(f32, user.player.rot[0]);
-		writer.writeFloat(f32, user.player.rot[1]);
-		writer.writeFloat(f32, user.player.rot[2]);
-		writer.writeFloat(f64, user.player.vel[0]);
-		writer.writeFloat(f64, user.player.vel[1]);
-		writer.writeFloat(f64, user.player.vel[2]);
+		writer.writeVec(Vec3d, user.player.pos);
+		writer.writeVec(Vec3f, user.player.rot);
+		writer.writeVec(Vec3d, user.player.vel);
 	}
 	for(userList) |user| {
 		main.network.Protocols.entityPosition.send(user.conn, writer.data.items, itemData);
