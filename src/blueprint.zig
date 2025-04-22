@@ -21,6 +21,7 @@ const BinaryWriter = main.utils.BinaryWriter;
 const BinaryReader = main.utils.BinaryReader;
 
 pub const blueprintVersion = 0;
+var voidTyp: ?u16 = null;
 
 pub const BlueprintCompression = enum(u16) {
 	deflate,
@@ -104,7 +105,10 @@ pub const Blueprint = struct {
 		}
 		return .{.success = self};
 	}
-	pub fn paste(self: Blueprint, pos: Vec3i) void {
+	pub const PasteFlags = struct {
+		preserveVoid: bool = false,
+	};
+	pub fn paste(self: Blueprint, pos: Vec3i, flags: PasteFlags) void {
 		const startX = pos[0];
 		const startY = pos[1];
 		const startZ = pos[2];
@@ -119,7 +123,8 @@ pub const Blueprint = struct {
 					const worldZ = startZ +% @as(i32, @intCast(z));
 
 					const block = self.blocks.get(x, y, z);
-					_ = main.server.world.?.updateBlock(worldX, worldY, worldZ, block);
+					if(flags.preserveVoid or block.typ != voidTyp)
+						_ = main.server.world.?.updateBlock(worldX, worldY, worldZ, block);
 				}
 			}
 		}
@@ -270,3 +275,8 @@ pub const Blueprint = struct {
 		}
 	}
 };
+
+pub fn registerVoidBlock(block: Block) void {
+	voidTyp = block.typ;
+	std.debug.assert(voidTyp != 0);
+}

@@ -11,12 +11,18 @@ const Block = main.blocks.Block;
 const Blueprint = main.blueprint.Blueprint;
 
 pub const description = "Paste clipboard content to current player position.";
-pub const usage = "/paste";
+pub const usage = "/paste [-v]";
 
 pub fn execute(args: []const u8, source: *User) void {
+	var flags = Blueprint.PasteFlags{};
+
 	if(args.len != 0) {
-		source.sendMessage("#ff0000Too many arguments for command /paste. Expected no arguments.", .{});
-		return;
+		if(std.mem.eql(u8, args, "-v")) {
+			flags.preserveVoid = true;
+		} else {
+			source.sendMessage("#ff0000Argument(s) '{s}' not recognized.", .{args});
+			return;
+		}
 	}
 
 	if(source.worldEditData.clipboard) |clipboard| {
@@ -38,7 +44,7 @@ pub fn execute(args: []const u8, source: *User) void {
 			},
 		}
 
-		clipboard.paste(pos);
+		clipboard.paste(pos, flags);
 	} else {
 		source.sendMessage("#ff0000Error: No clipboard content to paste.", .{});
 	}
