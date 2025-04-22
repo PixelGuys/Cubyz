@@ -9,8 +9,6 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const vec = @import("main.vec");
 const Vec3f = main.vec.Vec3f;
 const Vec3d = main.vec.Vec3d;
-const hashInt = main.utils.hashInt;
-const hashCombine = main.utils.hashCombine;
 
 pub const SimpleStructureModel = struct { // MARK: SimpleStructureModel
 	pub const GenerationMode = enum {
@@ -200,6 +198,20 @@ fn hashGeneric(input: anytype) u64 {
 		},
 		else => @compileError("Unsupported type " ++ @typeName(T)),
 	};
+}
+
+// https://stackoverflow.com/questions/5889238/why-is-xor-the-default-way-to-combine-hashes
+fn hashCombine(left: u64, right: u64) u64 {
+	return left ^ (right +% 0x517cc1b727220a95 +% (left << 6) +% (left >> 2));
+}
+
+// https://stackoverflow.com/questions/664014/what-integer-hash-function-are-good-that-accepts-an-integer-hash-key
+fn hashInt(input: u64) u64 {
+	var x = input;
+	x = (x ^ (x >> 30))*%0xbf58476d1ce4e5b9;
+	x = (x ^ (x >> 27))*%0x94d049bb133111eb;
+	x = x ^ (x >> 31);
+	return x;
 }
 
 pub const Interpolation = enum(u8) {

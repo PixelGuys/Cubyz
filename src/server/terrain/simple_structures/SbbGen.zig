@@ -13,8 +13,6 @@ const Neighbor = main.chunk.Neighbor;
 const ServerChunk = main.chunk.ServerChunk;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const parseBlock = main.blocks.parseBlock;
-const hashInt = main.utils.hashInt;
-const hashCombine = main.utils.hashCombine;
 
 pub const id = "cubyz:sbb";
 pub const generationMode = .floor;
