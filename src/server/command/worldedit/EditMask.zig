@@ -3,7 +3,7 @@ const std = @import("std");
 const main = @import("main");
 const AliasTable = main.utils.AliasTable;
 const Block = main.blocks.Block;
-const BlockTag = main.blocks.BlockTag;
+const Tag = main.Tag;
 const ListUnmanaged = main.ListUnmanaged;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
@@ -20,7 +20,7 @@ const Entry = struct {
 
 	const Inner = union(enum) {
 		block: struct {typ: u16, data: ?u16},
-		blockTag: BlockTag,
+		blockTag: Tag,
 		property: Property,
 
 		const Property = enum {transparent, collide, solid, selectable, degradable, viewThrough, allowOres, isEntity};
@@ -30,7 +30,7 @@ const Entry = struct {
 				tag => {
 					const blockTag = specifier[1..];
 					if(blockTag.len == 0) return error.MaskSyntaxError;
-					return .{.blockTag = BlockTag.find(blockTag)};
+					return .{.blockTag = Tag.find(blockTag)};
 				},
 				property => {
 					const propertyName = specifier[1..];
