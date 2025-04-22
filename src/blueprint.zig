@@ -24,6 +24,7 @@ const BinaryReader = main.utils.BinaryReader;
 const SubstitutionMap = std.AutoHashMapUnmanaged(u16, u16);
 
 pub const blueprintVersion = 0;
+var voidTyp: ?u16 = null;
 
 pub const BlueprintCompression = enum(u16) {
 	deflate,
@@ -107,6 +108,7 @@ pub const Blueprint = struct {
 		}
 		return .{.success = self};
 	}
+
 	pub const PasteMode = enum {all, degradable};
 
 	pub fn pasteInGeneration(self: Blueprint, pos: Vec3i, chunk: *ServerChunk, mode: PasteMode) void {
@@ -125,7 +127,7 @@ pub const Blueprint = struct {
 					if(!chunk.liesInChunk(worldX, worldY, worldZ)) continue;
 
 					const block = self.blocks.get(x, y, z);
-					if(sbb.isOriginBlock(block) or sbb.isChildBlock(block) or block.typ == 0) continue;
+					if(sbb.isOriginBlock(block) or sbb.isChildBlock(block) or block.typ == voidTyp) continue;
 
 					switch(mode) {
 						.all => chunk.updateBlockInGeneration(worldX, worldY, worldZ, block),
@@ -135,7 +137,12 @@ pub const Blueprint = struct {
 			}
 		}
 	}
-	pub fn paste(self: Blueprint, pos: Vec3i) void {
+
+	pub const PasteFlags = struct {
+		preserveVoid: bool = false,
+	};
+
+	pub fn paste(self: Blueprint, pos: Vec3i, flags: PasteFlags) void {
 		const startX = pos[0];
 		const startY = pos[1];
 		const startZ = pos[2];
@@ -150,7 +157,8 @@ pub const Blueprint = struct {
 					const worldZ = startZ +% @as(i32, @intCast(z));
 
 					const block = self.blocks.get(x, y, z);
-					_ = main.server.world.?.updateBlock(worldX, worldY, worldZ, block);
+					if(flags.preserveVoid or block.typ != voidTyp)
+						_ = main.server.world.?.updateBlock(worldX, worldY, worldZ, block);
 				}
 			}
 		}
@@ -301,3 +309,8 @@ pub const Blueprint = struct {
 		}
 	}
 };
+
+pub fn registerVoidBlock(block: Block) void {
+	voidTyp = block.typ;
+	std.debug.assert(voidTyp != 0);
+}
