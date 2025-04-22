@@ -15,7 +15,6 @@ const BinaryWriter = main.utils.BinaryWriter;
 const Blueprint = main.blueprint.Blueprint;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const CircularBufferQueue = main.utils.CircularBufferQueue;
-const EditMask = @import("command/worldedit/EditMask.zig");
 
 pub const ServerWorld = @import("world.zig").ServerWorld;
 pub const terrain = @import("terrain/terrain.zig");
@@ -32,7 +31,6 @@ pub const WorldEditData = struct {
 	clipboard: ?Blueprint = null,
 	undoHistory: History,
 	redoHistory: History,
-	mask: ?EditMask = null,
 
 	const History = struct {
 		changes: CircularBufferQueue(Value),
@@ -80,9 +78,6 @@ pub const WorldEditData = struct {
 		}
 		self.undoHistory.deinit();
 		self.redoHistory.deinit();
-		if(self.mask) |mask| {
-			mask.deinit(main.globalAllocator);
-		}
 	}
 };
 
