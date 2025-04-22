@@ -738,11 +738,7 @@ pub const Protocols = struct {
 		pub const id: u8 = 2;
 		pub const asynchronous = false;
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			const basePosition = Vec3i{
-				try reader.readInt(i32),
-				try reader.readInt(i32),
-				try reader.readInt(i32),
-			};
+			const basePosition = try reader.readVec(Vec3i);
 			conn.user.?.clientUpdatePos = basePosition;
 			conn.user.?.renderDistance = try reader.readInt(u16);
 			while(reader.remaining.len >= 4) {
