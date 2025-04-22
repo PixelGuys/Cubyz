@@ -6,7 +6,7 @@
 		.veins = 5,
 		.size = 15,
 		.height = 20,
-		.minHeight = -100,
+		.minHeight = -400,
 		.density = 0.25,
 	},
 	.drops = .{

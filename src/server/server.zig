@@ -130,13 +130,6 @@ pub const User = struct { // MARK: User
 		return self;
 	}
 
-	pub fn reinitialize(self: *User) void {
-		removePlayer(self);
-		self.timeDifference = .{};
-		main.globalAllocator.free(self.name);
-		self.name = "";
-	}
-
 	pub fn deinit(self: *User) void {
 		std.debug.assert(self.refCount.load(.monotonic) == 0);
 
