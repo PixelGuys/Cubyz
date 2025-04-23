@@ -134,7 +134,7 @@ pub const Blueprint = struct {
 					if(!chunk.liesInChunk(worldX, worldY, worldZ)) continue;
 
 					const block = self.blocks.get(x, y, z);
-					if(sbb.isOriginBlock(block) or sbb.isChildBlock(block) or block.typ == voidTyp) continue;
+					if(sbb.isOriginBlock(block) or sbb.isChildBlock(block) or block.typ == voidType) continue;
 
 					switch(mode) {
 						.all => chunk.updateBlockInGeneration(worldX, worldY, worldZ, block),
@@ -149,9 +149,6 @@ pub const Blueprint = struct {
 		preserveVoid: bool = false,
 	};
 
-	pub const PasteFlags = struct {
-		preserveVoid: bool = false,
-	};
 	pub fn paste(self: Blueprint, pos: Vec3i, flags: PasteFlags) void {
 		const startX = pos[0];
 		const startY = pos[1];
