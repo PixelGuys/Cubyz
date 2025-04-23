@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const main = @import("main");
+const utils = main.utils;
 const ZonElement = @import("zon.zig").ZonElement;
 const chunk = @import("chunk.zig");
 const Neighbor = chunk.Neighbor;
@@ -172,7 +173,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	const touchFunctionName = zon.get([]const u8, "touchFunction", "");
 	_touchFunction[size] = TouchFunctions.getFunctionPointer(touchFunctionName) catch |err| blk: {
 		switch(err) {
-			CallbackError.NotFound => std.log.err("Could not find TouchFunction {s}.", .{touchFunctionName}),
+			utils.CallbackError.NotFound => std.log.err("Could not find TouchFunction {s}.", .{touchFunctionName}),
 			else => {},
 		}
 		break :blk null;
@@ -535,7 +536,7 @@ pub const TouchFunction = fn(block: Block, entity: Entity, posX: i32, posY: i32,
 pub const TouchFunctions = struct {
 	const Self = @This();
 
-	var super: Callback(Self, TickFunction) = undefined;
+	var super: utils.NamedCallbacks(Self, TouchFunction) = undefined;
 
 	pub fn init() void {
 		super = .init(main.globalAllocator.allocator);
@@ -545,7 +546,7 @@ pub const TouchFunctions = struct {
 		super.deinit();
 	}
 
-	pub fn getFunctionPointer(id: []const u8) CallbackError!*const TouchFunction {
+	pub fn getFunctionPointer(id: []const u8) utils.CallbackError!*const TouchFunction {
 		return super.getFunctionPointer(id);
 	}
 };
@@ -887,37 +888,3 @@ pub const meshes = struct { // MARK: meshes
 		fogSSBO.?.bind(7);
 	}
 };
-
-const expect = std.testing.expect;
-const expectError = std.testing.expectError;
-
-test "Callback registers testFunction and expects errors" {
-	const TestFunction = fn(_: i32) void;
-
-	const TestFunctions = struct {
-		const Self = @This();
-		var super: Callback(Self, TestFunction) = undefined;
-
-		pub fn init() void {
-			super = .init(std.testing.allocator);
-		}
-
-		pub fn deinit() void {
-			super.deinit();
-		}
-
-		// Callback should register this
-		pub fn testFunction(_: i32) void {}
-	};
-
-	TestFunctions.init();
-	defer TestFunctions.deinit();
-
-	try expect(TestFunctions.super.hashMap.count() == 1);
-
-	const fnPtr = TestFunctions.super.getFunctionPointer("testFunction") catch unreachable;
-	try expect(@TypeOf(fnPtr) == *const TestFunction);
-
-	try expectError(CallbackError.EmptyName, TestFunctions.super.getFunctionPointer(""));
-	try expectError(CallbackError.NotFound, TestFunctions.super.getFunctionPointer("functionTest"));
-}

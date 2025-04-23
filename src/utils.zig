@@ -1747,3 +1747,70 @@ fn CastFunctionReturnToAnyopaqueType(Fn: type) type {
 pub fn castFunctionReturnToAnyopaque(function: anytype) *const CastFunctionReturnToAnyopaqueType(@TypeOf(function)) {
 	return @ptrCast(&function);
 }
+
+// MARK: Callback
+pub const CallbackError = error{NotFound, EmptyName};
+
+pub fn NamedCallbacks(comptime Child: type, comptime Function: type) type {
+	return struct {
+		const Super = @This();
+
+		hashMap: std.StringHashMap(*const Function) = undefined,
+
+		pub fn init(_allocator: std.mem.Allocator) Super {
+			var self = Super{.hashMap = .init(_allocator)};
+			inline for(@typeInfo(Child).@"struct".decls) |declaration| {
+				if(@TypeOf(@field(Child, declaration.name)) == Function) {
+					std.log.debug("Registered Callback '{s}'", .{declaration.name});
+					self.hashMap.putNoClobber(declaration.name, &@field(Child, declaration.name)) catch unreachable;
+				}
+			}
+			return self;
+		}
+
+		pub fn deinit(self: *Super) void {
+			self.hashMap.deinit();
+		}
+
+		pub fn getFunctionPointer(self: *Super, id: []const u8) CallbackError!*const Function {
+			const pointer = self.hashMap.getPtr(id);
+			if(pointer == null) {
+				if(id.len != 0)
+					return CallbackError.NotFound;
+				return CallbackError.EmptyName;
+			}
+			return pointer.?.*;
+		}
+	};
+}
+
+test "Callback registers testFunction and expects errors" {
+	const TestFunction = fn(_: i32) void;
+
+	const TestFunctions = struct {
+		const Self = @This();
+		var super: NamedCallbacks(Self, TestFunction) = undefined;
+
+		pub fn init() void {
+			super = .init(std.testing.allocator);
+		}
+
+		pub fn deinit() void {
+			super.deinit();
+		}
+
+		// Callback should register this
+		pub fn testFunction(_: i32) void {}
+	};
+
+	TestFunctions.init();
+	defer TestFunctions.deinit();
+
+	try std.testing.expect(TestFunctions.super.hashMap.count() == 1);
+
+	const fnPtr = TestFunctions.super.getFunctionPointer("testFunction") catch unreachable;
+	try std.testing.expect(@TypeOf(fnPtr) == *const TestFunction);
+
+	try std.testing.expectError(CallbackError.EmptyName, TestFunctions.super.getFunctionPointer(""));
+	try std.testing.expectError(CallbackError.NotFound, TestFunctions.super.getFunctionPointer("functionTest"));
+}
