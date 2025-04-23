@@ -93,6 +93,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	if(reverseIndices.contains(id)) {
 		std.log.err("Registered block with id {s} twice!", .{id});
 	}
+
 	_id[size] = allocator.dupe(u8, id);
 	reverseIndices.put(_id[size], @intCast(size)) catch unreachable;
 
@@ -140,8 +141,9 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 		});
 	}
 
-	size += 1;
-	return @intCast(size - 1);
+	defer size += 1;
+	std.log.debug("Registered block: {d: >5} '{s}'", .{size, id});
+	return @intCast(size);
 }
 
 fn registerBlockDrop(typ: u16, zon: ZonElement) void {
