@@ -9,7 +9,6 @@ const ZonElement = main.ZonElement;
 const Vec3i = main.vec.Vec3i;
 
 pub const BlockTick = struct {
-
 	pub fn add(wldPos: Vec3i, _chunk: *chunk.Chunk, block: blocks.Block) void {
 		const blockIndex = _chunk.getLocalBlockIndex(wldPos);
 		const blockData = block.toInt();

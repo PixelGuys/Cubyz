@@ -956,8 +956,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	fn tick(self: *ServerWorld) void {
 		// tick blocks
 		var iter = ChunkManager.entityChunkHashMap.keyIterator();
-		while (iter.next()) |pos| {
-			if (ChunkManager.getEntityChunkAndIncreaseRefCount(pos.*)) |entityChunk| {
+		while(iter.next()) |pos| {
+			if(ChunkManager.getEntityChunkAndIncreaseRefCount(pos.*)) |entityChunk| {
 				self.tickBlocksInChunk(entityChunk.getChunk());
 				entityChunk.decreaseRefCount();
 			}
@@ -987,9 +987,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				main.network.Protocols.genericUpdate.sendTimeAndBiome(user.conn, self);
 			}
 		}
-		if (self.lastTickTime + 50 < newTime) { // Tick very 50ms
+		if(self.lastTickTime + 50 < newTime) { // Tick very 50ms
 			self.lastTickTime = newTime;
-			if (!self.tickFreeze) self.tick();
+			if(!self.tickFreeze) self.tick();
 		}
 		// TODO: Entities
 
