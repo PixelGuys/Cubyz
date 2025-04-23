@@ -23,6 +23,8 @@ pub const random = @import("random.zig");
 pub const renderer = @import("renderer.zig");
 pub const rotation = @import("rotation.zig");
 pub const settings = @import("settings.zig");
+const tag = @import("tag.zig");
+pub const Tag = tag.Tag;
 pub const events = @import("events.zig");
 pub const utils = @import("utils.zig");
 pub const vec = @import("vec.zig");
@@ -621,6 +623,9 @@ pub fn main() void { // MARK: main()
 
 	itemdrop.ItemDropRenderer.init();
 	defer itemdrop.ItemDropRenderer.deinit();
+
+	tag.init();
+	defer tag.deinit();
 
 	assets.init();
 	defer assets.deinit();
