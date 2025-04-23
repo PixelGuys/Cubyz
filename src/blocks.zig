@@ -20,6 +20,7 @@ const Entity = main.server.Entity;
 const entity_data = @import("entity_data.zig");
 const EntityDataClass = entity_data.EntityDataClass;
 const sbb = main.server.terrain.structure_building_blocks;
+const blueprint = main.blueprint;
 
 var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
 const allocator = arena.allocator();
@@ -207,6 +208,7 @@ pub fn finishBlocks(zonElements: std.StringHashMap(ZonElement)) void {
 		registerLodReplacement(i, zonElements.get(_id[i]) orelse continue);
 		registerOpaqueVariant(i, zonElements.get(_id[i]) orelse continue);
 	}
+	blueprint.registerVoidBlock(parseBlock("cubyz:void"));
 }
 
 pub fn reset() void {
