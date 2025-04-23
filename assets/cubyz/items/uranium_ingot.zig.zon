@@ -3,9 +3,7 @@
 	.texture = "uranium_ingot.png",
 	.material = .{
 		.density = 18,
-		.strength = 7.0,
 		.elasticity = 5.0,
-		.grip = -1,
 		.hardness = 8.0,
 		.textureRoughness = 0.3,
 		.colors = .{
