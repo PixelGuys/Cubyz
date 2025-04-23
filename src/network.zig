@@ -884,24 +884,49 @@ pub const Protocols = struct {
 	pub const blockUpdate = struct {
 		pub const id: u8 = 7;
 		pub const asynchronous = false;
+
+		pub const BlockUpdate = struct {
+			x: i32,
+			y: i32,
+			z: i32,
+			block: Block,
+
+			pub fn init(pos: Vec3i, block: Block) BlockUpdate {
+				return BlockUpdate{
+					.x = pos[0],
+					.y = pos[1],
+					.z = pos[2],
+					.block = block,
+				};
+			}
+		};
+
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			const x = try reader.readInt(i32);
-			const y = try reader.readInt(i32);
-			const z = try reader.readInt(i32);
-			const newBlock = Block.fromInt(try reader.readInt(u32));
-			if(conn.user != null) {
-				return error.InvalidPacket;
-			} else {
-				renderer.mesh_storage.updateBlock(x, y, z, newBlock);
+			const count = try reader.readInt(u32);
+			for(0..count) |_| {
+				const x = try reader.readInt(i32);
+				const y = try reader.readInt(i32);
+				const z = try reader.readInt(i32);
+				const block = Block.fromInt(try reader.readInt(u32));
+				if(conn.user != null) {
+					return error.InvalidPacket;
+				} else {
+					renderer.mesh_storage.updateBlock(x, y, z, block);
+				}
 			}
 		}
-		pub fn send(conn: *Connection, x: i32, y: i32, z: i32, newBlock: Block) void {
+		pub fn send(conn: *Connection, updates: []const BlockUpdate) void {
 			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 16);
 			defer writer.deinit();
-			writer.writeInt(i32, x);
-			writer.writeInt(i32, y);
-			writer.writeInt(i32, z);
-			writer.writeInt(u32, newBlock.toInt());
+
+			writer.writeInt(u32, @intCast(updates.len));
+
+			for(updates) |update| {
+				writer.writeInt(i32, update.x);
+				writer.writeInt(i32, update.y);
+				writer.writeInt(i32, update.z);
+				writer.writeInt(u32, update.block.toInt());
+			}
 			conn.send(.fast, id, writer.data.items);
 		}
 	};

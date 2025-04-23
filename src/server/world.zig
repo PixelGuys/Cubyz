@@ -1048,6 +1048,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
 		defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 
+		var blockUpdates: main.ListUnmanaged(main.network.Protocols.blockUpdate.BlockUpdate) = .initCapacity(main.stackAllocator, 7);
+		defer blockUpdates.deinit(main.stackAllocator);
+
 		var newBlock = _newBlock;
 		for(chunk.Neighbor.iterable) |neighbor| {
 			const nx = x + neighbor.relX();
@@ -1076,9 +1079,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 					const wnx = wx + neighbor.relX();
 					const wny = wy + neighbor.relY();
 					const wnz = wz + neighbor.relZ();
-					for(userList) |user| {
-						main.network.Protocols.blockUpdate.send(user.conn, wnx, wny, wnz, neighborBlock);
-					}
+					blockUpdates.appendAssumeCapacity(.{.x = wnx, .y = wny, .z = wnz, .block = neighborBlock});
 				}
 			}
 			if(newBlock.mode().dependsOnNeighbors) {
@@ -1089,8 +1090,10 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		defer baseChunk.mutex.unlock();
 
 		baseChunk.updateBlockAndSetChanged(x, y, z, newBlock);
+		blockUpdates.appendAssumeCapacity(.{.x = wx, .y = wy, .z = wz, .block = newBlock});
+
 		for(userList) |user| {
-			main.network.Protocols.blockUpdate.send(user.conn, wx, wy, wz, _newBlock);
+			main.network.Protocols.blockUpdate.send(user.conn, blockUpdates.items);
 		}
 		return null;
 	}

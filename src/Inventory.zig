@@ -1576,7 +1576,8 @@ pub const Command = struct { // MARK: Command
 			}) {
 				if(side == .server) {
 					// Inform the client of the actual block:
-					main.network.Protocols.blockUpdate.send(user.?.conn, self.pos[0], self.pos[1], self.pos[2], main.server.world.?.getBlock(self.pos[0], self.pos[1], self.pos[2]) orelse return);
+					const actualBlock = main.server.world.?.getBlock(self.pos[0], self.pos[1], self.pos[2]) orelse return;
+					main.network.Protocols.blockUpdate.send(user.?.conn, &.{.init(self.pos, actualBlock)});
 				}
 				return;
 			}
@@ -1584,7 +1585,7 @@ pub const Command = struct { // MARK: Command
 			if(side == .server) {
 				if(main.server.world.?.cmpxchgBlock(self.pos[0], self.pos[1], self.pos[2], self.oldBlock, self.newBlock)) |actualBlock| {
 					// Inform the client of the actual block:
-					main.network.Protocols.blockUpdate.send(user.?.conn, self.pos[0], self.pos[1], self.pos[2], actualBlock);
+					main.network.Protocols.blockUpdate.send(user.?.conn, &.{.init(self.pos, actualBlock)});
 					return error.serverFailure;
 				}
 			}
