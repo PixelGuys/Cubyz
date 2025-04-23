@@ -7,6 +7,7 @@ const chunk = main.chunk;
 const ChunkPosition = chunk.ChunkPosition;
 const ServerChunk = chunk.ServerChunk;
 const files = main.files;
+const events = main.events;
 const utils = main.utils;
 const ItemDropManager = main.itemdrop.ItemDropManager;
 const ItemStack = main.items.ItemStack;
@@ -1079,10 +1080,12 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			}
 			if(currentBlock != _newBlock) {
 				if(currentBlock.entityDataClass()) |class| class.onBreakServer(.{wx, wy, wz}, &baseChunk.super);
+				if(currentBlock.tickEvents().len > 0) events.BlockTick.remove(.{wx, wy, wz}, &baseChunk.super);
 			}
 			baseChunk.updateBlockAndSetChanged(x, y, z, _newBlock);
 			if(currentBlock != _newBlock) {
 				if(_newBlock.entityDataClass()) |class| class.onPlaceServer(.{wx, wy, wz}, &baseChunk.super);
+				if(_newBlock.tickEvents().len > 0) events.BlockTick.add(.{wx, wy, wz}, &baseChunk.super, _newBlock);
 			}
 		}
 		baseChunk.mutex.unlock();
