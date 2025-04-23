@@ -1077,7 +1077,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 					const wny = wy + neighbor.relY();
 					const wnz = wz + neighbor.relZ();
 					for(userList) |user| {
-						std.log.debug("Neighbor update ({d:.2} {d:.2} {d:.2}) {s}:{d}", .{wnx, wny, wnz, neighborBlock.id(), neighborBlock.data});
 						main.network.Protocols.blockUpdate.send(user.conn, wnx, wny, wnz, neighborBlock);
 					}
 				}

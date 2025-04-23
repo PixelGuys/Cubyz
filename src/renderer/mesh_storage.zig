@@ -857,8 +857,8 @@ fn batchUpdateBlocks() void {
 	var lightRefreshList = main.List(*ChunkMesh).init(main.stackAllocator);
 	defer lightRefreshList.deinit();
 
-	var regenerateMesh = std.HashMapUnmanaged(chunk.ChunkPosition, *ChunkMesh, chunk.ChunkPosition.HashContext, 80){};
-	defer regenerateMesh.deinit(main.stackAllocator.allocator);
+	var regenerateMesh: main.ListUnmanaged(*ChunkMesh) = .{};
+	defer regenerateMesh.deinit(main.stackAllocator);
 
 	// First of all process all the block updates:
 	while(blockUpdateList.dequeue()) |blockUpdate| {
@@ -871,25 +871,23 @@ fn batchUpdateBlocks() void {
 					continue;
 				},
 				.regenerateMesh => {
-					const entry = regenerateMesh.getOrPut(main.stackAllocator.allocator, mesh.pos) catch unreachable;
-					if(entry.found_existing) {
-						mesh.decreaseRefCount();
-					} else {
-						entry.value_ptr.* = mesh;
+					var found = false;
+					for(regenerateMesh.items) |other| {
+						if(other.pos.equals(mesh)) {
+							mesh.decreaseRefCount();
+							found = true;
+							break;
+						}
 					}
+					if(!found) regenerateMesh.append(main.stackAllocator, mesh);
 				},
 			}
 		} // TODO: It seems like we simply ignore the block update if we don't have the mesh yet.
 	}
-	{
-		var regenerateMeshIterator = regenerateMesh.iterator();
-		while(regenerateMeshIterator.next()) |entry| {
-			const mesh = entry.value_ptr.*;
-			mesh.generateMesh(&lightRefreshList);
-		}
+	for(regenerateMesh.items) |mesh| {
+		mesh.generateMesh(&lightRefreshList);
 	}
 	{
-		// TODO: Don't reschedule light refresh for duplicate meshes.
 		for(lightRefreshList.items) |mesh| {
 			if(mesh.needsLightRefresh.load(.unordered)) {
 				mesh.scheduleLightRefreshAndDecreaseRefCount1();
@@ -898,13 +896,9 @@ fn batchUpdateBlocks() void {
 			}
 		}
 	}
-	{
-		var regenerateMeshIterator = regenerateMesh.iterator();
-		while(regenerateMeshIterator.next()) |entry| {
-			const mesh = entry.value_ptr.*;
-			mesh.uploadData();
-			mesh.decreaseRefCount();
-		}
+	for(regenerateMesh.items) |mesh| {
+		mesh.uploadData();
+		mesh.decreaseRefCount();
 	}
 }
 

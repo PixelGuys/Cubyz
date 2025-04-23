@@ -173,20 +173,6 @@ pub const ChunkPosition = struct { // MARK: ChunkPosition
 	wz: i32,
 	voxelSize: u31,
 
-	pub const HashContext = struct {
-		pub fn hash(_: HashContext, a: ChunkPosition) u64 {
-			var h = std.hash.Wyhash.init(0);
-			h.update(std.mem.asBytes(&a.wx));
-			h.update(std.mem.asBytes(&a.wy));
-			h.update(std.mem.asBytes(&a.wz));
-			h.update(std.mem.asBytes(&a.voxelSize));
-			return h.final();
-		}
-		pub fn eql(_: HashContext, a: ChunkPosition, b: ChunkPosition) bool {
-			return a.wx == b.wx and a.wy == b.wy and a.wz == b.wz and a.voxelSize == b.voxelSize;
-		}
-	};
-
 	pub fn initFromWorldPos(pos: Vec3i, voxelSize: u31) ChunkPosition {
 		const mask = ~@as(i32, voxelSize*chunkSize - 1);
 		return .{.wx = pos[0] & mask, .wy = pos[1] & mask, .wz = pos[2] & mask, .voxelSize = voxelSize};
