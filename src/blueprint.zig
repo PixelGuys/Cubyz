@@ -21,7 +21,7 @@ const BinaryWriter = main.utils.BinaryWriter;
 const BinaryReader = main.utils.BinaryReader;
 
 pub const blueprintVersion = 0;
-var voidTyp: ?u16 = null;
+var voidType: ?u16 = null;
 
 pub const BlueprintCompression = enum(u16) {
 	deflate,
