@@ -148,10 +148,10 @@ const MaterialProperty = enum {
 	elasticity,
 	hardness,
 
-	fn fromString(string: []const u8) MaterialProperty {
+	fn fromString(string: []const u8) ?MaterialProperty {
 		return std.meta.stringToEnum(MaterialProperty, string) orelse {
-			std.log.err("Couldn't find material property {s}. Replacing it with density", .{string});
-			return .density;
+			std.log.err("Couldn't find material property {s}.", .{string});
+			return null;
 		};
 	}
 };
@@ -350,13 +350,13 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 			var weight: f32 = 0;
 			for(0..25) |i| {
 				const material = (tool.craftingGrid[i] orelse continue).material orelse continue;
-				sum += property.weigths[i]*material.getProperty(property.source);
+				sum += property.weigths[i]*material.getProperty(property.source orelse break);
 				weight += property.weigths[i];
 			}
 			if(weight == 0) continue;
 			sum /= weight;
 			sum *= property.resultScale;
-			tool.getProperty(property.destination).* += sum;
+			tool.getProperty(property.destination orelse continue).* += sum;
 		}
 		if(tool.maxDurability < 1) tool.maxDurability = 1;
 		if(tool.damage < 1) tool.damage = 1/(2 - tool.damage);
@@ -394,8 +394,8 @@ const SlotInfo = packed struct { // MARK: SlotInfo
 };
 
 const PropertyMatrix = struct { // MARK: PropertyMatrix
-	source: MaterialProperty,
-	destination: ToolProperty,
+	source: ?MaterialProperty,
+	destination: ?ToolProperty,
 	weigths: [25]f32,
 	resultScale: f32,
 };
@@ -445,10 +445,10 @@ const ToolProperty = enum {
 	maxDurability,
 	swingTime,
 
-	fn fromString(string: []const u8) ToolProperty {
+	fn fromString(string: []const u8) ?ToolProperty {
 		return std.meta.stringToEnum(ToolProperty, string) orelse {
-			std.log.err("Couldn't find tool property {s}. Replacing it with damage", .{string});
-			return .damage;
+			std.log.err("Couldn't find tool property {s}.", .{string});
+			return null;
 		};
 	}
 };
