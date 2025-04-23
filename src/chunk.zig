@@ -356,6 +356,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 		if(self.wasChanged) {
 			self.save(main.server.world.?);
 		}
+		self.super.blockPosToTickableBlockMap.deinit(main.globalAllocator.allocator);
 		self.super.data.deinit();
 		serverPool.destroy(@alignCast(self));
 	}
