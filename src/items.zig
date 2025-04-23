@@ -4,6 +4,7 @@ const blocks = @import("blocks.zig");
 const Block = blocks.Block;
 const graphics = @import("graphics.zig");
 const Color = graphics.Color;
+const Tag = main.Tag;
 const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main");
 const chunk = main.chunk;
@@ -17,6 +18,7 @@ const Vec3f = vec.Vec3f;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const modifierList = @import("tool/modifiers/_list.zig");
+const modifierRestrictionList = @import("tool/modifiers/restrictions/_list.zig");
 
 pub const Inventory = @import("Inventory.zig");
 
@@ -54,12 +56,13 @@ const Material = struct { // MARK: Material
 		for(modifiersZon.toSlice(), self.modifiers) |item, *modifier| {
 			const id = item.get([]const u8, "id", "not specified");
 			const vTable = modifiers.get(id) orelse blk: {
-				std.log.err("Couldn't find modifier with id {s}. Replacing it with 'Durable'", .{id});
+				std.log.err("Couldn't find modifier with id '{s}'. Replacing it with 'durable'", .{id});
 				break :blk modifiers.get("durable") orelse unreachable;
 			};
 			modifier.* = .{
 				.vTable = vTable,
 				.data = vTable.loadData(item),
+				.restriction = ModifierRestriction.loadFromZon(allocator, item.getChild("restriction")),
 			};
 		}
 	}
@@ -83,8 +86,35 @@ const Material = struct { // MARK: Material
 	}
 };
 
+pub const ModifierRestriction = struct {
+	vTable: *const VTable,
+	data: *anyopaque,
+
+	pub const VTable = struct {
+		satisfied: *const fn(data: *anyopaque, tool: *const Tool, x: i32, y: i32) bool,
+		loadFromZon: *const fn(allocator: NeverFailingAllocator, zon: ZonElement) *anyopaque,
+	};
+
+	pub fn satisfied(self: ModifierRestriction, tool: *const Tool, x: i32, y: i32) bool {
+		return self.vTable.satisfied(self.data, tool, x, y);
+	}
+
+	pub fn loadFromZon(allocator: NeverFailingAllocator, zon: ZonElement) ModifierRestriction {
+		const id = zon.get([]const u8, "id", "always");
+		const vTable = modifierRestrictions.get(id) orelse blk: {
+			std.log.err("Couldn't find modifier restriction with id '{s}'. Replacing it with 'always'", .{id});
+			break :blk modifierRestrictions.get("always") orelse unreachable;
+		};
+		return .{
+			.vTable = vTable,
+			.data = vTable.loadFromZon(allocator, zon),
+		};
+	}
+};
+
 const Modifier = struct {
 	data: VTable.Data,
+	restriction: ModifierRestriction,
 	vTable: *const VTable,
 
 	pub const VTable = struct {
@@ -102,6 +132,7 @@ const Modifier = struct {
 		return .{
 			.data = a.vTable.combineModifiers(a.data, b.data) orelse return null,
 			.vTable = a.vTable,
+			.restriction = undefined,
 		};
 	}
 
@@ -138,6 +169,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 	texture: ?graphics.Texture, // TODO: Properly deinit
 	id: []const u8,
 	name: []const u8,
+	tags: []const Tag,
 
 	stackSize: u16,
 	material: ?Material,
@@ -166,6 +198,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 			};
 		}
 		self.name = allocator.dupe(u8, zon.get([]const u8, "name", id));
+		self.tags = Tag.loadTagsFromZon(allocator, zon.getChild("tags"));
 		self.stackSize = zon.get(u16, "stackSize", 120);
 		const material = zon.getChild("material");
 		if(material == .object) {
@@ -208,6 +241,13 @@ pub const BaseItem = struct { // MARK: BaseItem
 
 	fn getTooltip(self: BaseItem) []const u8 {
 		return self.name;
+	}
+
+	pub fn hasTag(self: *const BaseItem, tag: Tag) bool {
+		for(self.tags) |other| {
+			if(other == tag) return true;
+		}
+		return false;
 	}
 };
 
@@ -319,6 +359,7 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 				tool.getProperty(set.destination).* += set.factor*set.functionType.eval(material.getProperty(set.source) + set.additionConstant);
 			}
 			outer: for(material.modifiers) |newMod| {
+				if(!newMod.restriction.satisfied(tool, @intCast(i%5), @intCast(i/5))) continue;
 				for(tempModifiers.items) |*oldMod| {
 					if(oldMod.vTable == newMod.vTable) {
 						oldMod.* = oldMod.combineModifiers(newMod) orelse continue;
@@ -389,7 +430,7 @@ const FunctionType = enum {
 
 pub const ToolType = struct { // MARK: ToolType
 	id: []const u8,
-	blockTags: []main.blocks.BlockTag,
+	blockTags: []main.Tag,
 	slotInfos: [25]SlotInfo,
 	pixelSources: [16][16]u8,
 	pixelSourcesOverlay: [16][16]u8,
@@ -535,6 +576,12 @@ pub const Tool = struct { // MARK: Tool
 			}
 		}
 		return hash;
+	}
+
+	pub fn getItemAt(self: *const Tool, x: i32, y: i32) ?*const BaseItem {
+		if(x < 0 or x >= 5) return null;
+		if(y < 0 or y >= 5) return null;
+		return self.craftingGrid[@intCast(x + y*5)];
 	}
 
 	fn getProperty(self: *Tool, prop: ToolProperty) *f32 {
@@ -751,6 +798,7 @@ var arena: main.heap.NeverFailingArenaAllocator = undefined;
 var toolTypes: std.StringHashMap(ToolType) = undefined;
 var reverseIndices: std.StringHashMap(*BaseItem) = undefined;
 var modifiers: std.StringHashMap(*const Modifier.VTable) = undefined;
+var modifierRestrictions: std.StringHashMap(*const ModifierRestriction.VTable) = undefined;
 pub var itemList: [65536]BaseItem = undefined;
 pub var itemListSize: u16 = 0;
 
@@ -790,18 +838,28 @@ pub fn globalInit() void {
 			.priority = ModifierStruct.priority,
 		}) catch unreachable;
 	}
+	modifierRestrictions = .init(main.globalAllocator.allocator);
+	inline for(@typeInfo(modifierRestrictionList).@"struct".decls) |decl| {
+		const ModifierRestrictionStruct = @field(modifierRestrictionList, decl.name);
+		modifierRestrictions.put(decl.name, &.{
+			.satisfied = comptime main.utils.castFunctionSelfToAnyopaque(ModifierRestrictionStruct.satisfied),
+			.loadFromZon = comptime main.utils.castFunctionReturnToAnyopaque(ModifierRestrictionStruct.loadFromZon),
+		}) catch unreachable;
+	}
 	Inventory.Sync.ClientSide.init();
 }
 
 pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, zon: ZonElement) *BaseItem {
-	std.log.info("{s}", .{id});
 	if(reverseIndices.contains(id)) {
-		std.log.err("Registered item with id {s} twice!", .{id});
+		std.log.err("Registered item with id '{s}' twice!", .{id});
 	}
 	const newItem = &itemList[itemListSize];
+	defer itemListSize += 1;
+
 	newItem.init(arena.allocator(), texturePath, replacementTexturePath, id, zon);
 	reverseIndices.put(newItem.id, newItem) catch unreachable;
-	itemListSize += 1;
+
+	std.log.debug("Registered item: {d: >5} '{s}'", .{itemListSize, id});
 	return newItem;
 }
 
@@ -841,7 +899,6 @@ fn loadPixelSources(assetFolder: []const u8, id: []const u8, layerPostfix: []con
 }
 
 pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
-	std.log.info("Registering tool type {s}", .{id});
 	if(toolTypes.contains(id)) {
 		std.log.err("Registered tool type with id {s} twice!", .{id});
 	}
@@ -881,11 +938,13 @@ pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) vo
 	const idDupe = arena.allocator().dupe(u8, id);
 	toolTypes.put(idDupe, .{
 		.id = idDupe,
-		.blockTags = main.blocks.BlockTag.loadFromZon(arena.allocator(), zon.getChild("blockTags")),
+		.blockTags = Tag.loadTagsFromZon(arena.allocator(), zon.getChild("blockTags")),
 		.slotInfos = slotInfos,
 		.pixelSources = pixelSources,
 		.pixelSourcesOverlay = pixelSourcesOverlay,
 	}) catch unreachable;
+
+	std.log.debug("Registered tool: '{s}'", .{id});
 }
 
 fn parseRecipeItem(zon: ZonElement) !ItemStack {
@@ -952,6 +1011,7 @@ pub fn deinit() void {
 	}
 	recipeList.clearAndFree();
 	modifiers.deinit();
+	modifierRestrictions.deinit();
 	arena.deinit();
 	Inventory.Sync.ClientSide.deinit();
 }
