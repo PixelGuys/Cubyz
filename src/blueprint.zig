@@ -123,7 +123,7 @@ pub const Blueprint = struct {
 					const worldZ = startZ +% @as(i32, @intCast(z));
 
 					const block = self.blocks.get(x, y, z);
-					if(flags.preserveVoid or block.typ != voidTyp)
+					if(block.typ != voidType or flags.preserveVoid)
 						_ = main.server.world.?.updateBlock(worldX, worldY, worldZ, block);
 				}
 			}
@@ -277,6 +277,6 @@ pub const Blueprint = struct {
 };
 
 pub fn registerVoidBlock(block: Block) void {
-	voidTyp = block.typ;
-	std.debug.assert(voidTyp != 0);
+	voidType = block.typ;
+	std.debug.assert(voidType != 0);
 }
