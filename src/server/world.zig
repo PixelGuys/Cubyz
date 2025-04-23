@@ -428,6 +428,10 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	lastUnimportantDataSent: i64,
 	doGameTimeCycle: bool = true,
 
+	tickCount: i64 = 0,
+	lastTickTime: i64,
+	tickFreeze: bool = false,
+
 	defaultGamemode: main.game.Gamemode = undefined,
 	allowCheats: bool = undefined,
 
@@ -489,6 +493,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			.lastUpdateTime = std.time.milliTimestamp(),
 			.milliTime = std.time.milliTimestamp(),
 			.lastUnimportantDataSent = std.time.milliTimestamp(),
+			.lastTickTime = std.time.milliTimestamp(),
 			.seed = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp()))),
 			.name = main.globalAllocator.dupe(u8, name),
 			.chunkUpdateQueue = .init(main.globalAllocator, 256),
@@ -927,6 +932,39 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.dropWithCooldown(stack, pos, dir, velocity, 0);
 	}
 
+	fn tickBlocksInChunk(self: *ServerWorld, _chunk: ?*chunk.ServerChunk) void {
+		if(_chunk) |ch| {
+			var iter = ch.super.blockPosToTickableBlockMap.iterator();
+
+			while(iter.next()) |entry| {
+				const block = Block.fromInt(entry.value_ptr.*);
+				const index = entry.key_ptr.*;
+
+				const x: i32 = @intCast(index >> chunk.chunkShift2 & chunk.chunkMask);
+				const y: i32 = @intCast(index >> chunk.chunkShift & chunk.chunkMask);
+				const z: i32 = @intCast(index & chunk.chunkMask);
+
+				for(block.tickEvents()) |event| {
+					if(event.shouldTick(self.tickCount))
+						event.tryRandomTick(block, ch, x, y, z);
+				}
+			}
+		}
+	}
+
+	fn tick(self: *ServerWorld) void {
+		// tick blocks
+		var iter = ChunkManager.entityChunkHashMap.keyIterator();
+		while (iter.next()) |pos| {
+			if (ChunkManager.getEntityChunkAndIncreaseRefCount(pos.*)) |entityChunk| {
+				self.tickBlocksInChunk(entityChunk.getChunk());
+				entityChunk.decreaseRefCount();
+			}
+		}
+
+		self.tickCount +%= 1;
+	}
+
 	pub fn update(self: *ServerWorld) void { // MARK: update()
 		const newTime = std.time.milliTimestamp();
 		var deltaTime = @as(f32, @floatFromInt(newTime - self.lastUpdateTime))/1000.0;
@@ -947,6 +985,10 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			for(userList) |user| {
 				main.network.Protocols.genericUpdate.sendTimeAndBiome(user.conn, self);
 			}
+		}
+		if (self.lastTickTime + 50 < newTime) { // Tick very 50ms
+			self.lastTickTime = newTime;
+			if (!self.tickFreeze) self.tick();
 		}
 		// TODO: Entities
 

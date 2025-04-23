@@ -316,22 +316,6 @@ pub const Chunk = struct { // MARK: Chunk
 			(worldPos[2] - self.pos.wz) >> self.voxelSizeShift,
 		);
 	}
-
-	pub fn tickBlocks(self: *Chunk) void {
-		self.blockPosToTickableBlockMutex.lock();
-		defer self.blockPosToTickableBlockMutex.unlock();
-
-		var it = self.blockPosToTickableBlockMap.iterator();
-		while(it.next()) |posBlockEntry| {
-			// TODO Fix this mess
-			// const pos = posBlockEntry.key_ptr;
-			const block = blocks.Block.fromInt(posBlockEntry.value_ptr.*);
-
-			for(block.tickEvents()) |event| {
-				event.tryRandomTick(self, 0, 0, 0);
-			}
-		}
-	}
 };
 
 pub const ServerChunk = struct { // MARK: ServerChunk
