@@ -120,12 +120,8 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		var writer = utils.BinaryWriter.initCapacity(allocator, self.size*50);
 		for(self.indices[0..self.size]) |i| {
 			writer.writeInt(u16, i);
-			writer.writeFloat(f64, self.list.items(.pos)[i][0]);
-			writer.writeFloat(f64, self.list.items(.pos)[i][1]);
-			writer.writeFloat(f64, self.list.items(.pos)[i][2]);
-			writer.writeFloat(f64, self.list.items(.vel)[i][0]);
-			writer.writeFloat(f64, self.list.items(.vel)[i][1]);
-			writer.writeFloat(f64, self.list.items(.vel)[i][2]);
+			writer.writeVec(Vec3d, self.list.items(.pos)[i]);
+			writer.writeVec(Vec3d, self.list.items(.vel)[i]);
 		}
 		return writer.data.toOwnedSlice();
 	}
@@ -468,12 +464,8 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 		var vel: [ItemDropManager.maxCapacity]Vec3d = undefined;
 		while(reader.remaining.len != 0) {
 			const i = try reader.readInt(u16);
-			pos[i][0] = try reader.readFloat(f64);
-			pos[i][1] = try reader.readFloat(f64);
-			pos[i][2] = try reader.readFloat(f64);
-			vel[i][0] = try reader.readFloat(f64);
-			vel[i][1] = try reader.readFloat(f64);
-			vel[i][2] = try reader.readFloat(f64);
+			pos[i] = try reader.readVec(Vec3d);
+			vel[i] = try reader.readVec(Vec3d);
 		}
 		mutex.lock();
 		defer mutex.unlock();

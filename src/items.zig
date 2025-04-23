@@ -850,14 +850,16 @@ pub fn globalInit() void {
 }
 
 pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: []const u8, id: []const u8, zon: ZonElement) *BaseItem {
-	std.log.info("{s}", .{id});
 	if(reverseIndices.contains(id)) {
-		std.log.err("Registered item with id {s} twice!", .{id});
+		std.log.err("Registered item with id '{s}' twice!", .{id});
 	}
 	const newItem = &itemList[itemListSize];
+	defer itemListSize += 1;
+
 	newItem.init(arena.allocator(), texturePath, replacementTexturePath, id, zon);
 	reverseIndices.put(newItem.id, newItem) catch unreachable;
-	itemListSize += 1;
+
+	std.log.debug("Registered item: {d: >5} '{s}'", .{itemListSize, id});
 	return newItem;
 }
 
@@ -897,7 +899,6 @@ fn loadPixelSources(assetFolder: []const u8, id: []const u8, layerPostfix: []con
 }
 
 pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
-	std.log.info("Registering tool type {s}", .{id});
 	if(toolTypes.contains(id)) {
 		std.log.err("Registered tool type with id {s} twice!", .{id});
 	}
@@ -942,6 +943,8 @@ pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) vo
 		.pixelSources = pixelSources,
 		.pixelSourcesOverlay = pixelSourcesOverlay,
 	}) catch unreachable;
+
+	std.log.debug("Registered tool: '{s}'", .{id});
 }
 
 fn parseRecipeItem(zon: ZonElement) !ItemStack {

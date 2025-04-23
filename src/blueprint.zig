@@ -24,7 +24,7 @@ const BinaryReader = main.utils.BinaryReader;
 const SubstitutionMap = std.AutoHashMapUnmanaged(u16, u16);
 
 pub const blueprintVersion = 0;
-var voidTyp: ?u16 = null;
+var voidType: ?u16 = null;
 
 pub const BlueprintCompression = enum(u16) {
 	deflate,
@@ -149,6 +149,9 @@ pub const Blueprint = struct {
 		preserveVoid: bool = false,
 	};
 
+	pub const PasteFlags = struct {
+		preserveVoid: bool = false,
+	};
 	pub fn paste(self: Blueprint, pos: Vec3i, flags: PasteFlags) void {
 		const startX = pos[0];
 		const startY = pos[1];
@@ -164,7 +167,7 @@ pub const Blueprint = struct {
 					const worldZ = startZ +% @as(i32, @intCast(z));
 
 					const block = self.blocks.get(x, y, z);
-					if(flags.preserveVoid or block.typ != voidTyp)
+					if(block.typ != voidType or flags.preserveVoid)
 						_ = main.server.world.?.updateBlock(worldX, worldY, worldZ, block);
 				}
 			}
@@ -318,6 +321,6 @@ pub const Blueprint = struct {
 };
 
 pub fn registerVoidBlock(block: Block) void {
-	voidTyp = block.typ;
-	std.debug.assert(voidTyp != 0);
+	voidType = block.typ;
+	std.debug.assert(voidType != 0);
 }

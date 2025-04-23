@@ -10,7 +10,11 @@ const copy = @import("copy.zig");
 const Block = main.blocks.Block;
 const Blueprint = main.blueprint.Blueprint;
 
-pub const description = "Paste clipboard content to current player position.";
+
+pub const description =
+	\\Paste clipboard content to current player position.
+	\\'-v' - Enable preserving void blocks. By default, void blocks are not preserved.
+;
 pub const usage = "/paste [-v]";
 
 pub fn execute(args: []const u8, source: *User) void {
