@@ -977,7 +977,7 @@ pub const Protocols = struct {
 						.selectedPos1, .selectedPos2 => try reader.readVec(Vec3i),
 						.clear => null,
 					};
-					if(isServerSide(conn)) {
+					if(conn.isServerSide()) {
 						switch(typ) {
 							.selectedPos1 => conn.user.?.worldEditData.selectionPosition1 = pos.?,
 							.selectedPos2 => conn.user.?.worldEditData.selectionPosition2 = pos.?,
@@ -1798,6 +1798,10 @@ pub const Connection = struct { // MARK: Connection
 		return self.connectionState.load(.unordered) == .connected;
 	}
 
+	fn isServerSide(conn: *Connection) bool {
+		return conn.user != null;
+	}
+
 	fn handlePacketLoss(self: *Connection, loss: LossStatus) void {
 		if(loss == .noLoss) return;
 		self.slowStart = false;
@@ -2129,7 +2133,3 @@ const ProtocolTask = struct {
 		main.globalAllocator.destroy(self);
 	}
 };
-
-fn isServerSide(conn: *Connection) bool {
-	return conn.user != null;
-}
