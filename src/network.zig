@@ -886,6 +886,9 @@ pub const Protocols = struct {
 		pub const id: u8 = 7;
 		pub const asynchronous = false;
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
+			if(conn.user != null) {
+				return error.InvalidPacket;
+			}
 			while(true) {
 				const update: BlockUpdate = .{
 					.x = reader.readInt(i32) catch break,
@@ -893,11 +896,7 @@ pub const Protocols = struct {
 					.z = try reader.readInt(i32),
 					.newBlock = Block.fromInt(try reader.readInt(u32)),
 				};
-				if(conn.user != null) {
-					return error.InvalidPacket;
-				} else {
-					renderer.mesh_storage.updateBlock(update);
-				}
+				renderer.mesh_storage.updateBlock(update);
 			}
 		}
 		pub fn send(conn: *Connection, updates: []const BlockUpdate) void {
