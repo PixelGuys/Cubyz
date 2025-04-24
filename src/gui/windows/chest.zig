@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const main = @import("root");
+const main = @import("main");
 const Player = main.game.Player;
 const ItemStack = main.items.ItemStack;
 const Vec2f = main.vec.Vec2f;
@@ -27,8 +27,8 @@ pub var window = GuiWindow{
 };
 
 const padding: f32 = 8;
-
 var itemSlots: main.List(*ItemSlot) = undefined;
+var blockPos: main.vec.Vec3i = undefined;
 
 pub fn init() void {
 	itemSlots = .init(main.globalAllocator);
@@ -40,13 +40,17 @@ pub fn deinit() void {
 
 pub var openInventory: main.items.Inventory = undefined;
 
-pub fn onOpen() void {
-	const blockPos = main.renderer.MeshSelection.selectedBlockPos.?;
-	const block = main.renderer.mesh_storage.getBlock(blockPos[0], blockPos[1], blockPos[2]).?;
-	openInventory = main.items.Inventory.init(main.globalAllocator, block.inventorySize().?, .{.blockInventory = blockPos}, .{.blockInventory = blockPos});
+pub const ChestParams = struct {
+	pos: main.vec.Vec3i,
+	inventoryId: u32,
+};
+
+pub fn onOpenParams(_params: *anyopaque) void {
+	const params: *ChestParams = @ptrCast(_params);
+	openInventory = main.items.Inventory.Sync.getInventory(params.inventoryId, .client, null);
 
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 0);
-	// Some miscellanious slots and buttons:
+	// Some miscellaneous slots and buttons:
 	// TODO: armor slots, backpack slot + stack-based backpack inventory, other items maybe?
 	for(0..1) |y| {
 		const row = HorizontalList.init();
@@ -65,7 +69,10 @@ pub fn onOpen() void {
 }
 
 pub fn onClose() void {
-	openInventory.deinit(main.globalAllocator);
+	const block = main.renderer.mesh_storage.getBlock(blockPos[0], blockPos[1], blockPos[2]).?;
+	const mesh = main.renderer.mesh_storage.getMeshAndIncreaseRefCount(.initFromWorldPos(blockPos, 1)).?;
+	block.entityDataClass().?.onUnloadClient(blockPos, mesh.chunk);
+
 	itemSlots.clearRetainingCapacity();
 	if(window.rootComponent) |*comp| {
 		comp.deinit();
