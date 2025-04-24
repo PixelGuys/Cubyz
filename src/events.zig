@@ -26,7 +26,7 @@ pub const BlockTick = struct {
 		_chunk.blockPosToTickableBlockMutex.unlock();
 
 		_ = blockData orelse {
-			std.log.err("Could not remove TickEvent at position {}", wldPos);
+			std.log.err("Could not remove TickEvent at position {}", .{wldPos});
 		};
 	}
 };
