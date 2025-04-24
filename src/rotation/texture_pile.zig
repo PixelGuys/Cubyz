@@ -94,7 +94,7 @@ pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemS
 					return .{.yes_dropsItems = @intCast(oldBlock.data - newBlock.data)};
 				}
 			} else if(oldBlock.typ == 0) {
-				return .{.yes_costsItems = 1};
+				return .{.yes_costsItems = newBlock.data};
 			} else {
 				return .no;
 			}
