@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const main = @import("main");
+const Tag = main.Tag;
 const ZonElement = @import("zon.zig").ZonElement;
 const Neighbor = @import("chunk.zig").Neighbor;
 const graphics = @import("graphics.zig");
@@ -19,48 +20,7 @@ const Entity = main.server.Entity;
 const entity_data = @import("entity_data.zig");
 const EntityDataClass = entity_data.EntityDataClass;
 const sbb = main.server.terrain.structure_building_blocks;
-
-pub const BlockTag = enum(u32) {
-	air = 0,
-	fluid = 1,
-	sbbChild = 2,
-	_,
-
-	var tagList: main.List([]const u8) = .init(allocator);
-	var tagIds: std.StringHashMap(BlockTag) = .init(allocator.allocator);
-
-	fn loadDefaults() void {
-		inline for(comptime std.meta.fieldNames(BlockTag)) |tag| {
-			std.debug.assert(find(tag) == @field(BlockTag, tag));
-		}
-	}
-
-	fn reset() void {
-		tagList.clearAndFree();
-		tagIds.clearAndFree();
-	}
-
-	pub fn find(tag: []const u8) BlockTag {
-		if(tagIds.get(tag)) |res| return res;
-		const result: BlockTag = @enumFromInt(tagList.items.len);
-		const dupedTag = allocator.dupe(u8, tag);
-		tagList.append(dupedTag);
-		tagIds.put(dupedTag, result) catch unreachable;
-		return result;
-	}
-
-	pub fn loadFromZon(_allocator: main.heap.NeverFailingAllocator, zon: ZonElement) []BlockTag {
-		const result = _allocator.alloc(BlockTag, zon.toSlice().len);
-		for(zon.toSlice(), 0..) |tagZon, i| {
-			result[i] = BlockTag.find(tagZon.as([]const u8, "incorrect"));
-		}
-		return result;
-	}
-
-	pub fn getName(tag: BlockTag) []const u8 {
-		return tagList.items[@intFromEnum(tag)];
-	}
-};
+const blueprint = main.blueprint;
 
 var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
 const allocator = arena.allocator();
@@ -103,7 +63,7 @@ var _degradable: [maxBlockCount]bool = undefined;
 var _viewThrough: [maxBlockCount]bool = undefined;
 var _alwaysViewThrough: [maxBlockCount]bool = undefined;
 var _hasBackFace: [maxBlockCount]bool = undefined;
-var _blockTags: [maxBlockCount][]BlockTag = undefined;
+var _blockTags: [maxBlockCount][]Tag = undefined;
 var _light: [maxBlockCount]u32 = undefined;
 /// How much light this block absorbs if it is transparent
 var _absorption: [maxBlockCount]u32 = undefined;
@@ -124,9 +84,7 @@ var size: u32 = 0;
 
 pub var ores: main.List(Ore) = .init(allocator);
 
-pub fn init() void {
-	BlockTag.loadDefaults();
-}
+pub fn init() void {}
 
 pub fn deinit() void {
 	arena.deinit();
@@ -136,6 +94,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	if(reverseIndices.contains(id)) {
 		std.log.err("Registered block with id {s} twice!", .{id});
 	}
+
 	_id[size] = allocator.dupe(u8, id);
 	reverseIndices.put(_id[size], @intCast(size)) catch unreachable;
 
@@ -143,10 +102,10 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_blockHealth[size] = zon.get(f32, "blockHealth", 1);
 	_blockResistance[size] = zon.get(f32, "blockResistance", 0);
 
-	_blockTags[size] = BlockTag.loadFromZon(allocator, zon.getChild("tags"));
+	_blockTags[size] = Tag.loadTagsFromZon(allocator, zon.getChild("tags"));
 	if(_blockTags[size].len == 0) std.log.err("Block {s} is missing 'tags' field", .{id});
 	for(_blockTags[size]) |tag| {
-		if(tag == BlockTag.sbbChild) {
+		if(tag == Tag.sbbChild) {
 			sbb.registerChildBlock(@intCast(size), _id[size]);
 			break;
 		}
@@ -183,8 +142,9 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 		});
 	}
 
-	size += 1;
-	return @intCast(size - 1);
+	defer size += 1;
+	std.log.debug("Registered block: {d: >5} '{s}'", .{size, id});
+	return @intCast(size);
 }
 
 fn registerBlockDrop(typ: u16, zon: ZonElement) void {
@@ -248,16 +208,15 @@ pub fn finishBlocks(zonElements: std.StringHashMap(ZonElement)) void {
 		registerLodReplacement(i, zonElements.get(_id[i]) orelse continue);
 		registerOpaqueVariant(i, zonElements.get(_id[i]) orelse continue);
 	}
+	blueprint.registerVoidBlock(parseBlock("cubyz:void"));
 }
 
 pub fn reset() void {
 	size = 0;
 	ores.clearAndFree();
 	meshes.reset();
-	BlockTag.reset();
 	_ = arena.reset(.free_all);
 	reverseIndices = .init(arena.allocator().allocator);
-	BlockTag.loadDefaults();
 }
 
 pub fn getTypeById(id: []const u8) u16 {
@@ -353,7 +312,7 @@ pub const Block = packed struct { // MARK: Block
 		return _hasBackFace[self.typ];
 	}
 
-	pub inline fn blockTags(self: Block) []const BlockTag {
+	pub inline fn blockTags(self: Block) []const Tag {
 		return _blockTags[self.typ];
 	}
 
