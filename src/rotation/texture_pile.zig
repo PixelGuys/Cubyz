@@ -82,21 +82,22 @@ fn isThisItem(block: Block, item: main.items.ItemStack) bool {
 }
 
 pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
-	switch(RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess)) {
+	const result = RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess);
+	switch(result) {
 		.no, .yes_costsDurability, .yes_dropsItems => return .no,
 		.yes, .yes_costsItems => {
 			if(oldBlock.typ == newBlock.typ) {
 				if(oldBlock.data == newBlock.data) return .no;
 				if(oldBlock.data < newBlock.data) {
 					if(!isThisItem(newBlock, item)) return .no;
-					return .{.yes_costsItems = @intCast(newBlock.data - oldBlock.data)};
+					return .{.yes_costsItems = newBlock.data - oldBlock.data};
 				} else {
-					return .{.yes_dropsItems = @intCast(oldBlock.data - newBlock.data)};
+					return .{.yes_dropsItems = oldBlock.data - newBlock.data};
 				}
 			} else if(oldBlock.typ == 0) {
 				return .{.yes_costsItems = newBlock.data};
 			} else {
-				return .no;
+				return result;
 			}
 		},
 	}
