@@ -50,8 +50,10 @@ pub fn onOpenParams(_params: *anyopaque) void {
 	openInventory = main.items.Inventory.Sync.getInventory(params.inventoryId, .client, null);
 
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 0);
+  
 	// Some miscellaneous slots and buttons:
 	// TODO: armor slots, backpack slot + stack-based backpack inventory, other items maybe?
+  
 	for(0..1) |y| {
 		const row = HorizontalList.init();
 		for(0..10) |x| {
