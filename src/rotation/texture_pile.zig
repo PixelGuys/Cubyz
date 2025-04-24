@@ -73,7 +73,7 @@ pub fn onBlockBreaking(_: ?main.items.Item, _: Vec3f, _: Vec3f, currentData: *Bl
 	if(currentData.data == 0) {
 		currentData.* = .{.typ = 0, .data = 0};
 	} else {
-		currentData.data = currentData.data - 1;
+		currentData.data = @min(currentData.data, currentData.modeData() - 1) - 1;
 	}
 }
 
@@ -82,22 +82,17 @@ fn isThisItem(block: Block, item: main.items.ItemStack) bool {
 }
 
 pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) RotationMode.CanBeChangedInto {
-	const result = RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess);
-	switch(result) {
+	switch(RotationMode.DefaultFunctions.canBeChangedInto(oldBlock, newBlock, item, shouldDropSourceBlockOnSuccess)) {
 		.no, .yes_costsDurability, .yes_dropsItems => return .no,
-		.yes, .yes_costsItems => {
-			if(oldBlock.typ == newBlock.typ) {
-				if(oldBlock.data == newBlock.data) return .no;
-				if(oldBlock.data < newBlock.data) {
-					if(!isThisItem(newBlock, item)) return .no;
-					return .{.yes_costsItems = newBlock.data - oldBlock.data};
-				} else {
-					return .{.yes_dropsItems = oldBlock.data - newBlock.data};
-				}
-			} else if(oldBlock.typ == 0) {
-				return .{.yes_costsItems = newBlock.data};
+		.yes_costsItems => |r| return .{.yes_costsItems = r},
+		.yes => {
+			const oldData = @min(oldBlock.data, oldBlock.modeData() - 1);
+			if(oldData == newBlock.data) return .no;
+			if(oldData < newBlock.data) {
+				if(!isThisItem(newBlock, item)) return .no;
+				return .{.yes_costsItems = newBlock.data - oldData};
 			} else {
-				return result;
+				return .{.yes_dropsItems = oldData - newBlock.data};
 			}
 		},
 	}
