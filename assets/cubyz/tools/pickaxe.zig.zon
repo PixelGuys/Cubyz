@@ -25,7 +25,7 @@
 				1.0, 0x0, 0x0, 1.0, 0x0,
 				0x0, 0x0, 0x0, 0x0, 1.0,
 			},
-			.factor = 0.05,
+			.factor = 0.25,
 		},
 		.{
 			.source = .density,
@@ -37,7 +37,7 @@
 				1.0, 0x0, 0x0, 0.0, 0x0,
 				0x0, 0x0, 0x0, 0x0, 0.0,
 			},
-			.factor = 0.7,
+			.factor = 0.8,
 		},
 		.{
 			.source = .hardness,
@@ -61,7 +61,7 @@
 				1.0, 0x0, 0x0, 0.0, 0x0,
 				0x0, 0x0, 0x0, 0x0, 0.0,
 			},
-			.factor = 0.6,
+			.factor = 0.7,
 		},
 		.{
 			.source = .elasticity,

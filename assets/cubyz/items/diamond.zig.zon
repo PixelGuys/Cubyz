@@ -17,7 +17,7 @@
 					.child = .{
 						.id = .encased,
 						.tag = .precious,
-						.amount = 6,
+						.amount = 4,
 					},
 				},
 			},
@@ -27,7 +27,7 @@
 				.restriction = .{
 					.id = .encased,
 					.tag = .precious,
-					.amount = 6,
+					.amount = 4,
 				},
 			},
 		},
