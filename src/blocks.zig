@@ -409,16 +409,17 @@ pub const TickFunctions = struct {
 };
 
 pub const TickEvent = struct {
-	function: ?*const TickFunction,
+	function: *const TickFunction,
 	chance: f32,
 	tryEvery: u16,
 
 	pub fn loadFromZon(_allocator: main.heap.NeverFailingAllocator, zon: ZonElement) []TickEvent {
-		const tickEvents = _allocator.alloc(TickEvent, zon.toSlice().len);
+		var tickEvents = _allocator.alloc(TickEvent, zon.toSlice().len);
 
-		for(zon.toSlice(), 0..) |tickEventZon, i| {
+		var n: usize = 0;
+		for(zon.toSlice()) |tickEventZon| {
 			const name = tickEventZon.get([]const u8, "name", "");
-			const function = TickFunctions.getFunctionPointer(name) catch |err| blk: {
+			const _function = TickFunctions.getFunctionPointer(name) catch |err| blk: {
 				switch(err) {
 					utils.CallbackError.NotFound => std.log.err("Could not find TickFunction {s}.", .{name}),
 					utils.CallbackError.EmptyName => std.log.err("TickEvent needs a function name", .{}),
@@ -426,12 +427,23 @@ pub const TickEvent = struct {
 				break :blk null;
 			};
 
-			tickEvents[i] = TickEvent{
-				.function = function,
-				.chance = tickEventZon.get(f32, "chance", 1),
-				.tryEvery = tickEventZon.get(u16, "tryEvery", 1),
-			};
+			if(_function) |function| {
+				tickEvents[n] = TickEvent{
+					.function = function,
+					.chance = tickEventZon.get(f32, "chance", 1),
+					.tryEvery = tickEventZon.get(u16, "tryEvery", 1),
+				};
+				n += 1;
+			}
 		}
+
+		if(n != tickEvents.len) {
+			if(_allocator.resize(tickEvents, n)) {
+				std.log.debug("Removing empty space from TickEvent slice", .{});
+				tickEvents.len = n;
+			} else std.log.err("Could not resize TickEvent slice", .{});
+		}
+
 		return tickEvents;
 	}
 
@@ -441,7 +453,7 @@ pub const TickEvent = struct {
 
 	pub fn tryRandomTick(self: *const TickEvent, block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void {
 		if(self.chance >= 1.0 or main.random.nextFloat(&main.seed) < self.chance) {
-			self.function.?(block, _chunk, x, y, z);
+			self.function(block, _chunk, x, y, z);
 		}
 	}
 };
