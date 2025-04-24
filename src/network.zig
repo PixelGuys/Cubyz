@@ -889,9 +889,9 @@ pub const Protocols = struct {
 			if(conn.user != null) {
 				return error.InvalidPacket;
 			}
-			while(true) {
+			while(reader.remaining.len != 0) {
 				const update: BlockUpdate = .{
-					.x = reader.readInt(i32) catch break,
+					.x = try reader.readInt(i32),
 					.y = try reader.readInt(i32),
 					.z = try reader.readInt(i32),
 					.newBlock = Block.fromInt(try reader.readInt(u32)),

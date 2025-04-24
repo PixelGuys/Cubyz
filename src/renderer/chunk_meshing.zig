@@ -1211,7 +1211,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 					neighborChunkMesh.mutex.unlock();
 
 					neighborChunkMesh.updateBlockLight(nnx, nny, nnz, neighborBlock, lightRefreshList);
-					appendIfNotContainsOrDecreaseRefCount(regenerateMeshList, neighborChunkMesh);
+					appendIfNotContainedOrDecreaseRefCount(regenerateMeshList, neighborChunkMesh);
 				} else {
 					neighborChunkMesh.mutex.unlock();
 					neighborChunkMesh.decreaseRefCount();
@@ -1274,10 +1274,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 		self.mutex.unlock();
 
-		appendIfNotContainsOrDecreaseRefCount(regenerateMeshList, self);
+		appendIfNotContainedOrDecreaseRefCount(regenerateMeshList, self);
 	}
 
-	fn appendIfNotContainsOrDecreaseRefCount(list: *main.List(*ChunkMesh), mesh: *ChunkMesh) void {
+	fn appendIfNotContainedOrDecreaseRefCount(list: *main.List(*ChunkMesh), mesh: *ChunkMesh) void {
 		for(list.items) |other| {
 			if(other == mesh) {
 				mesh.decreaseRefCount();
