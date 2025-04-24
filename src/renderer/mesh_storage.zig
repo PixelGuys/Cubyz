@@ -863,32 +863,17 @@ fn batchUpdateBlocks() void {
 	var lightRefreshList = main.List(*ChunkMesh).init(main.stackAllocator);
 	defer lightRefreshList.deinit();
 
-	var regenerateMesh: main.ListUnmanaged(*ChunkMesh) = .{};
-	defer regenerateMesh.deinit(main.stackAllocator);
+	var regenerateMeshList = main.List(*ChunkMesh).init(main.stackAllocator);
+	defer regenerateMeshList.deinit();
 
 	// First of all process all the block updates:
 	while(blockUpdateList.dequeue()) |blockUpdate| {
 		const pos = chunk.ChunkPosition{.wx = blockUpdate.x, .wy = blockUpdate.y, .wz = blockUpdate.z, .voxelSize = 1};
 		if(getMeshAndIncreaseRefCount(pos)) |mesh| {
-			const result = mesh.updateBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock, &lightRefreshList);
-			switch(result) {
-				.noChange => {
-					mesh.decreaseRefCount();
-					continue;
-				},
-				.regenerateMesh => blk: {
-					for(regenerateMesh.items) |other| {
-						if(other.pos.equals(mesh)) {
-							mesh.decreaseRefCount();
-							break :blk;
-						}
-					}
-					regenerateMesh.append(main.stackAllocator, mesh);
-				},
-			}
+			mesh.updateBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock, &lightRefreshList, &regenerateMeshList);
 		} // TODO: It seems like we simply ignore the block update if we don't have the mesh yet.
 	}
-	for(regenerateMesh.items) |mesh| {
+	for(regenerateMeshList.items) |mesh| {
 		mesh.generateMesh(&lightRefreshList);
 	}
 	{
@@ -900,7 +885,7 @@ fn batchUpdateBlocks() void {
 			}
 		}
 	}
-	for(regenerateMesh.items) |mesh| {
+	for(regenerateMeshList.items) |mesh| {
 		mesh.uploadData();
 		mesh.decreaseRefCount();
 	}

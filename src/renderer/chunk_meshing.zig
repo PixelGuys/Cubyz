@@ -1172,7 +1172,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 	}
 
-	pub fn updateBlock(self: *ChunkMesh, _x: i32, _y: i32, _z: i32, _newBlock: Block, lightRefreshList: *main.List(*ChunkMesh)) enum {regenerateMesh, noChange} {
+	pub fn updateBlock(self: *ChunkMesh, _x: i32, _y: i32, _z: i32, _newBlock: Block, lightRefreshList: *main.List(*ChunkMesh), regenerateMeshList: *main.List(*ChunkMesh)) void {
 		const x: u5 = @intCast(_x & chunk.chunkMask);
 		const y: u5 = @intCast(_y & chunk.chunkMask);
 		const z: u5 = @intCast(_z & chunk.chunkMask);
@@ -1181,10 +1181,59 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		const oldBlock = self.chunk.data.getValue(chunk.getIndex(x, y, z));
 
 		if(oldBlock == newBlock) {
+			self.decreaseRefCount();
 			self.mutex.unlock();
-			return .noChange;
+			return;
 		}
 		self.mutex.unlock();
+
+		var neighborBlocks: [6]Block = undefined;
+		@memset(&neighborBlocks, .{.typ = 0, .data = 0});
+
+		for(chunk.Neighbor.iterable) |neighbor| {
+			const nx = x + neighbor.relX();
+			const ny = y + neighbor.relY();
+			const nz = z + neighbor.relZ();
+
+			if(!chunk.contains(nx, ny, nz)) {
+				const nnx: u5 = @intCast(nx & chunk.chunkMask);
+				const nny: u5 = @intCast(ny & chunk.chunkMask);
+				const nnz: u5 = @intCast(nz & chunk.chunkMask);
+
+				const neighborChunkMesh = mesh_storage.getNeighborAndIncreaseRefCount(self.pos, self.pos.voxelSize, neighbor) orelse continue;
+				const index = chunk.getIndex(nnx, nny, nnz);
+
+				neighborChunkMesh.mutex.lock();
+				var neighborBlock = neighborChunkMesh.chunk.data.getValue(index);
+
+				if(neighborBlock.mode().dependsOnNeighbors and neighborBlock.mode().updateData(&neighborBlock, neighbor.reverse(), newBlock)) {
+					neighborChunkMesh.chunk.data.setValue(index, neighborBlock);
+					neighborChunkMesh.mutex.unlock();
+
+					neighborChunkMesh.updateBlockLight(nnx, nny, nnz, neighborBlock, lightRefreshList);
+					appendIfNotContainsOrDecreaseRefCount(regenerateMeshList, neighborChunkMesh);
+				} else {
+					neighborChunkMesh.mutex.unlock();
+					neighborChunkMesh.decreaseRefCount();
+				}
+				neighborBlocks[neighbor.toInt()] = neighborBlock;
+			} else {
+				const index = chunk.getIndex(nx, ny, nz);
+				self.mutex.lock();
+				var neighborBlock = self.chunk.data.getValue(index);
+				if(neighborBlock.mode().dependsOnNeighbors and neighborBlock.mode().updateData(&neighborBlock, neighbor.reverse(), newBlock)) {
+					self.chunk.data.setValue(index, neighborBlock);
+					self.updateBlockLight(@intCast(nx), @intCast(ny), @intCast(nz), neighborBlock, lightRefreshList);
+				}
+				self.mutex.unlock();
+				neighborBlocks[neighbor.toInt()] = neighborBlock;
+			}
+		}
+		if(newBlock.mode().dependsOnNeighbors) {
+			for(chunk.Neighbor.iterable) |neighbor| {
+				_ = newBlock.mode().updateData(&newBlock, neighbor, neighborBlocks[neighbor.toInt()]);
+			}
+		}
 
 		if(oldBlock.entityDataClass()) |class| {
 			class.onBreakClient(.{_x, _y, _z}, self.chunk);
@@ -1199,6 +1248,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 
 		self.updateBlockLight(x, y, z, newBlock, lightRefreshList);
+
 		self.mutex.lock();
 		// Update neighbor chunks:
 		if(x == 0) {
@@ -1223,7 +1273,18 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			self.lastNeighborsSameLod[chunk.Neighbor.dirUp.toInt()] = null;
 		}
 		self.mutex.unlock();
-		return .regenerateMesh;
+
+		appendIfNotContainsOrDecreaseRefCount(regenerateMeshList, self);
+	}
+
+	fn appendIfNotContainsOrDecreaseRefCount(list: *main.List(*ChunkMesh), mesh: *ChunkMesh) void {
+		for(list.items) |other| {
+			if(other == mesh) {
+				mesh.decreaseRefCount();
+				return;
+			}
+		}
+		list.append(mesh);
 	}
 
 	fn clearNeighborA(self: *ChunkMesh, neighbor: chunk.Neighbor, comptime isLod: bool) void {

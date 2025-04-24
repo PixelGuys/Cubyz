@@ -316,6 +316,10 @@ pub fn Array3D(comptime T: type) type { // MARK: Array3D
 			@memcpy(new.mem, self.mem);
 			return new;
 		}
+
+		pub fn count(self: Self) usize {
+			return @as(usize, @intCast(self.width))*@as(usize, @intCast(self.depth))*@as(usize, @intCast(self.height));
+		}
 	};
 }
 

@@ -141,6 +141,11 @@ pub fn getIndex(x: i32, y: i32, z: i32) u32 {
 	std.debug.assert((x & chunkMask) == x and (y & chunkMask) == y and (z & chunkMask) == z);
 	return (@as(u32, @intCast(x)) << chunkShift2) | (@as(u32, @intCast(y)) << chunkShift) | @as(u32, @intCast(z));
 }
+
+pub fn contains(x: i32, y: i32, z: i32) bool {
+	return (x & chunkMask) == x and (y & chunkMask) == y and (z & chunkMask) == z;
+}
+
 /// Gets the x coordinate from a given index inside this chunk.
 fn extractXFromIndex(index: usize) i32 {
 	return @intCast(index >> chunkShift2 & chunkMask);

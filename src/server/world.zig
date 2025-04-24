@@ -1045,19 +1045,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 		baseChunk.mutex.unlock();
 
-		const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
-		defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
-
-		var blockUpdates: main.ListUnmanaged(main.renderer.mesh_storage.BlockUpdate) = .initCapacity(main.stackAllocator, 7);
-		defer blockUpdates.deinit(main.stackAllocator);
-
 		var newBlock = _newBlock;
 		for(chunk.Neighbor.iterable) |neighbor| {
 			const nx = x + neighbor.relX();
 			const ny = y + neighbor.relY();
 			const nz = z + neighbor.relZ();
 			var ch = baseChunk;
-			if(nx & chunk.chunkMask != nx or ny & chunk.chunkMask != ny or nz & chunk.chunkMask != nz) {
+			if(!chunk.contains(nx, ny, nz)) {
 				ch = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(.{
 					.wx = baseChunk.super.pos.wx + nx & ~@as(i32, chunk.chunkMask),
 					.wy = baseChunk.super.pos.wy + ny & ~@as(i32, chunk.chunkMask),
@@ -1073,14 +1067,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			defer ch.mutex.unlock();
 
 			var neighborBlock = ch.getBlock(nx & chunk.chunkMask, ny & chunk.chunkMask, nz & chunk.chunkMask);
-			if(neighborBlock.mode().dependsOnNeighbors) {
-				if(neighborBlock.mode().updateData(&neighborBlock, neighbor.reverse(), newBlock)) {
-					ch.updateBlockAndSetChanged(nx & chunk.chunkMask, ny & chunk.chunkMask, nz & chunk.chunkMask, neighborBlock);
-					const wnx = wx + neighbor.relX();
-					const wny = wy + neighbor.relY();
-					const wnz = wz + neighbor.relZ();
-					blockUpdates.appendAssumeCapacity(.{.x = wnx, .y = wny, .z = wnz, .newBlock = neighborBlock});
-				}
+			if(neighborBlock.mode().dependsOnNeighbors and neighborBlock.mode().updateData(&neighborBlock, neighbor.reverse(), newBlock)) {
+				ch.updateBlockAndSetChanged(nx & chunk.chunkMask, ny & chunk.chunkMask, nz & chunk.chunkMask, neighborBlock);
 			}
 			if(newBlock.mode().dependsOnNeighbors) {
 				_ = newBlock.mode().updateData(&newBlock, neighbor, neighborBlock);
@@ -1090,10 +1078,12 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		defer baseChunk.mutex.unlock();
 
 		baseChunk.updateBlockAndSetChanged(x, y, z, newBlock);
-		blockUpdates.appendAssumeCapacity(.{.x = wx, .y = wy, .z = wz, .newBlock = newBlock});
+
+		const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
+		defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 
 		for(userList) |user| {
-			main.network.Protocols.blockUpdate.send(user.conn, blockUpdates.items);
+			main.network.Protocols.blockUpdate.send(user.conn, &.{.{.x = wx, .y = wy, .z = wz, .newBlock = newBlock}});
 		}
 		return null;
 	}
