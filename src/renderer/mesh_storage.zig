@@ -45,12 +45,18 @@ var lastPy: i32 = 0;
 var lastPz: i32 = 0;
 var lastRD: u16 = 0;
 var mutex: std.Thread.Mutex = .{};
-const BlockUpdate = struct {
+
+pub const BlockUpdate = struct {
 	x: i32,
 	y: i32,
 	z: i32,
 	newBlock: blocks.Block,
+
+	pub fn init(pos: Vec3i, block: blocks.Block) BlockUpdate {
+		return .{.x = pos[0], .y = pos[1], .z = pos[2], .newBlock = block};
+	}
 };
+
 var blockUpdateList: main.utils.ConcurrentQueue(BlockUpdate) = undefined;
 
 var meshMemoryPool: main.heap.MemoryPool(chunk_meshing.ChunkMesh) = undefined;
@@ -996,8 +1002,8 @@ pub const MeshGenerationTask = struct { // MARK: MeshGenerationTask
 
 // MARK: updaters
 
-pub fn updateBlock(x: i32, y: i32, z: i32, newBlock: blocks.Block) void {
-	blockUpdateList.enqueue(.{.x = x, .y = y, .z = z, .newBlock = newBlock});
+pub fn updateBlock(update: BlockUpdate) void {
+	blockUpdateList.enqueue(update);
 }
 
 pub fn updateChunkMesh(mesh: *chunk.Chunk) void {

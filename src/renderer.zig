@@ -916,7 +916,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 	fn updateBlockAndSendUpdate(source: main.items.Inventory, slot: u32, x: i32, y: i32, z: i32, oldBlock: blocks.Block, newBlock: blocks.Block) void {
 		main.items.Inventory.Sync.ClientSide.executeCommand(.{.updateBlock = .{.source = .{.inv = source, .slot = slot}, .pos = .{x, y, z}, .oldBlock = oldBlock, .newBlock = newBlock}});
-		mesh_storage.updateBlock(x, y, z, newBlock);
+		mesh_storage.updateBlock(.{.x = x, .y = y, .z = z, .newBlock = newBlock});
 	}
 
 	pub fn drawCube(projectionMatrix: Mat4f, viewMatrix: Mat4f, relativePositionToPlayer: Vec3d, min: Vec3f, max: Vec3f) void {
