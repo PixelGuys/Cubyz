@@ -841,9 +841,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 							}
 						}
 						if(std.mem.eql(u8, baseItem.id, "cubyz:selection_wand")) {
-							std.log.debug("Position 2: {}", .{selectedPos});
 							game.Player.selectionPosition2 = selectedPos;
-							main.network.Protocols.genericUpdate.sendWorldEditPosToServer(main.game.world.?.conn, .selectedPos2, selectedPos);
+							main.network.Protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos2, selectedPos);
 							return;
 						}
 					},
@@ -860,9 +859,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			const stack = inventory.getStack(slot);
 			const isSelectionWand = stack.item != null and stack.item.? == .baseItem and std.mem.eql(u8, stack.item.?.baseItem.id, "cubyz:selection_wand");
 			if(isSelectionWand) {
-				std.log.debug("Position 1: {}", .{selectedPos});
 				game.Player.selectionPosition1 = selectedPos;
-				main.network.Protocols.genericUpdate.sendWorldEditPosToServer(main.game.world.?.conn, .selectedPos1, selectedPos);
+				main.network.Protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos1, selectedPos);
 				return;
 			}
 
