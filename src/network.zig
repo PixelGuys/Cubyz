@@ -972,33 +972,24 @@ pub const Protocols = struct {
 					game.Player.setPosBlocking(try reader.readVec(Vec3d));
 				},
 				.worldEditPos => {
+					const typ = try reader.readEnum(WorldEditPosition);
+					const pos: ?Vec3i = switch(typ) {
+						.selectedPos1, .selectedPos2 => try reader.readVec(Vec3i),
+						.clear => null,
+					};
 					if(isServerSide(conn)) {
-						const typ = try reader.readEnum(WorldEditPosition);
 						switch(typ) {
-							.selectedPos1, .selectedPos2 => {
-								const pos = try reader.readVec(Vec3i);
-								switch(typ) {
-									.selectedPos1 => conn.user.?.worldEditData.selectionPosition1 = pos,
-									.selectedPos2 => conn.user.?.worldEditData.selectionPosition2 = pos,
-									else => unreachable,
-								}
-							},
+							.selectedPos1 => conn.user.?.worldEditData.selectionPosition1 = pos.?,
+							.selectedPos2 => conn.user.?.worldEditData.selectionPosition2 = pos.?,
 							.clear => {
 								conn.user.?.worldEditData.selectionPosition1 = null;
 								conn.user.?.worldEditData.selectionPosition2 = null;
 							},
 						}
 					} else {
-						const typ = try reader.readEnum(WorldEditPosition);
 						switch(typ) {
-							.selectedPos1, .selectedPos2 => {
-								const pos = try reader.readVec(Vec3i);
-								switch(typ) {
-									.selectedPos1 => game.Player.selectionPosition1 = pos,
-									.selectedPos2 => game.Player.selectionPosition2 = pos,
-									else => unreachable,
-								}
-							},
+							.selectedPos1 => game.Player.selectionPosition1 = pos,
+							.selectedPos2 => game.Player.selectionPosition2 = pos,
 							.clear => {
 								game.Player.selectionPosition1 = null;
 								game.Player.selectionPosition2 = null;
