@@ -876,16 +876,14 @@ fn batchUpdateBlocks() void {
 					mesh.decreaseRefCount();
 					continue;
 				},
-				.regenerateMesh => {
-					var found = false;
+				.regenerateMesh => blk: {
 					for(regenerateMesh.items) |other| {
 						if(other.pos.equals(mesh)) {
 							mesh.decreaseRefCount();
-							found = true;
-							break;
+							break :blk;
 						}
 					}
-					if(!found) regenerateMesh.append(main.stackAllocator, mesh);
+					regenerateMesh.append(main.stackAllocator, mesh);
 				},
 			}
 		} // TODO: It seems like we simply ignore the block update if we don't have the mesh yet.
