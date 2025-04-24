@@ -400,37 +400,6 @@ const PropertyMatrix = struct { // MARK: PropertyMatrix
 	resultScale: f32,
 };
 
-const FunctionType = enum {
-	linear,
-	inverse,
-	square,
-	inverseSquare,
-	squareRoot,
-	inverseSquareRoot,
-	exp2,
-	log2,
-
-	fn eval(self: FunctionType, val: f32) f32 {
-		switch(self) {
-			.linear => return val,
-			.inverse => return 1.0/val,
-			.square => return val*val,
-			.inverseSquare => return 1.0/(val*val),
-			.squareRoot => return @sqrt(val),
-			.inverseSquareRoot => return 1.0/@sqrt(val),
-			.exp2 => return @exp2(val),
-			.log2 => return @log2(val),
-		}
-	}
-
-	fn fromString(string: []const u8) FunctionType {
-		return std.meta.stringToEnum(FunctionType, string) orelse {
-			std.log.err("Couldn't find function type {s}. Replacing it with linear. Available functions are: {s}", .{string, std.meta.fieldNames(FunctionType)});
-			return .linear;
-		};
-	}
-};
-
 pub const ToolType = struct { // MARK: ToolType
 	id: []const u8,
 	blockTags: []main.Tag,
