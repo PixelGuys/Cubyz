@@ -142,10 +142,6 @@ pub fn getIndex(x: i32, y: i32, z: i32) u32 {
 	return (@as(u32, @intCast(x)) << chunkShift2) | (@as(u32, @intCast(y)) << chunkShift) | @as(u32, @intCast(z));
 }
 
-pub fn contains(x: i32, y: i32, z: i32) bool {
-	return (x & chunkMask) == x and (y & chunkMask) == y and (z & chunkMask) == z;
-}
-
 /// Gets the x coordinate from a given index inside this chunk.
 fn extractXFromIndex(index: usize) i32 {
 	return @intCast(index >> chunkShift2 & chunkMask);
@@ -306,6 +302,11 @@ pub const Chunk = struct { // MARK: Chunk
 		const z = _z >> self.voxelSizeShift;
 		const index = getIndex(x, y, z);
 		return self.data.getValue(index);
+	}
+
+	/// Checks if the given relative coordinates lie within the bounds of this chunk.
+	pub fn liesInChunk(self: *const Chunk, x: i32, y: i32, z: i32) bool {
+		return x >= 0 and x < self.width and y >= 0 and y < self.width and z >= 0 and z < self.width;
 	}
 
 	pub fn getLocalBlockIndex(self: *const Chunk, worldPos: Vec3i) u32 {

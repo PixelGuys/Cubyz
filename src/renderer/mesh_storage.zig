@@ -871,6 +871,7 @@ fn batchUpdateBlocks() void {
 		const pos = chunk.ChunkPosition{.wx = blockUpdate.x, .wy = blockUpdate.y, .wz = blockUpdate.z, .voxelSize = 1};
 		if(getMeshAndIncreaseRefCount(pos)) |mesh| {
 			mesh.updateBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock, &lightRefreshList, &regenerateMeshList);
+			mesh.decreaseRefCount();
 		} // TODO: It seems like we simply ignore the block update if we don't have the mesh yet.
 	}
 	for(regenerateMeshList.items) |mesh| {

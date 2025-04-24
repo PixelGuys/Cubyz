@@ -1181,7 +1181,6 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		const oldBlock = self.chunk.data.getValue(chunk.getIndex(x, y, z));
 
 		if(oldBlock == newBlock) {
-			self.decreaseRefCount();
 			self.mutex.unlock();
 			return;
 		}
@@ -1195,7 +1194,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			const ny = y + neighbor.relY();
 			const nz = z + neighbor.relZ();
 
-			if(!chunk.contains(nx, ny, nz)) {
+			if(!self.chunk.liesInChunk(nx, ny, nz)) {
 				const nnx: u5 = @intCast(nx & chunk.chunkMask);
 				const nny: u5 = @intCast(ny & chunk.chunkMask);
 				const nnz: u5 = @intCast(nz & chunk.chunkMask);
@@ -1211,11 +1210,12 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 					neighborChunkMesh.mutex.unlock();
 
 					neighborChunkMesh.updateBlockLight(nnx, nny, nnz, neighborBlock, lightRefreshList);
-					appendIfNotContainedOrDecreaseRefCount(regenerateMeshList, neighborChunkMesh);
-				} else {
-					neighborChunkMesh.mutex.unlock();
-					neighborChunkMesh.decreaseRefCount();
+					appendIfNotContainedAndIncreaseRefCount(regenerateMeshList, neighborChunkMesh);
+
+					neighborChunkMesh.mutex.lock();
 				}
+				neighborChunkMesh.mutex.unlock();
+				neighborChunkMesh.decreaseRefCount();
 				neighborBlocks[neighbor.toInt()] = neighborBlock;
 			} else {
 				const index = chunk.getIndex(nx, ny, nz);
@@ -1274,16 +1274,16 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 		self.mutex.unlock();
 
-		appendIfNotContainedOrDecreaseRefCount(regenerateMeshList, self);
+		appendIfNotContainedAndIncreaseRefCount(regenerateMeshList, self);
 	}
 
-	fn appendIfNotContainedOrDecreaseRefCount(list: *main.List(*ChunkMesh), mesh: *ChunkMesh) void {
+	fn appendIfNotContainedAndIncreaseRefCount(list: *main.List(*ChunkMesh), mesh: *ChunkMesh) void {
 		for(list.items) |other| {
 			if(other == mesh) {
-				mesh.decreaseRefCount();
 				return;
 			}
 		}
+		mesh.increaseRefCount();
 		list.append(mesh);
 	}
 

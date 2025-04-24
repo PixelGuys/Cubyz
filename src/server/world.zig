@@ -1051,7 +1051,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			const ny = y + neighbor.relY();
 			const nz = z + neighbor.relZ();
 			var ch = baseChunk;
-			if(!chunk.contains(nx, ny, nz)) {
+			if(!ch.liesInChunk(nx, ny, nz)) {
 				ch = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(.{
 					.wx = baseChunk.super.pos.wx + nx & ~@as(i32, chunk.chunkMask),
 					.wy = baseChunk.super.pos.wy + ny & ~@as(i32, chunk.chunkMask),
