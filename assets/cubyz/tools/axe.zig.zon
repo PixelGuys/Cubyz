@@ -1,12 +1,5 @@
 .{
 	.blockTags = .{.wood},
-	.slots = .{
-		.gemSlot, .backbone, .none,     .none,     .none,
-		.blode,   .handle,   .backbone, .none,     .none,
-		.blade,   .center,   .handle,   .backbone, .none,
-		.none,    .blade,    .blode,    .handle,   .none,
-		.none,    .none,     .none,     .none,     .handle,
-	},
 	.disabled = .{
 		0, 0, 1, 1, 1,
 		0, 0, 0, 1, 1,
