@@ -902,9 +902,8 @@ pub const Protocols = struct {
 		};
 
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			const count = try reader.readInt(u32);
-			for(0..count) |_| {
-				const x = try reader.readInt(i32);
+			while(true) {
+				const x = reader.readInt(i32) catch break;
 				const y = try reader.readInt(i32);
 				const z = try reader.readInt(i32);
 				const block = Block.fromInt(try reader.readInt(u32));
@@ -918,8 +917,6 @@ pub const Protocols = struct {
 		pub fn send(conn: *Connection, updates: []const BlockUpdate) void {
 			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 16);
 			defer writer.deinit();
-
-			writer.writeInt(u32, @intCast(updates.len));
 
 			for(updates) |update| {
 				writer.writeInt(i32, update.x);
