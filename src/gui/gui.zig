@@ -37,6 +37,8 @@ pub var scale: f32 = undefined;
 
 pub var hoveredItemSlot: ?*ItemSlot = null;
 
+pub const windowEnum = getWindowEnum();
+
 const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 	const Action = enum {
 		open,
@@ -103,6 +105,27 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 		}
 	}
 };
+
+fn getWindowEnum() type {
+	const info = @typeInfo(windowlist);
+
+	var res: [info.@"struct".decls.len]std.builtin.Type.EnumField = undefined;
+
+	for (info.@"struct".decls, 0..) |declaration, i| {
+		const name = declaration.name;
+		res[i] = .{
+			.name = name,
+			.value = i,
+		};
+	}
+
+	return @Type(.{.@"enum" = .{
+		.tag_type = u32,
+		.fields = &res,
+		.decls = &.{},
+		.is_exhaustive = true,
+	}});
+}
 
 pub const Callback = struct {
 	callback: ?*const fn(usize) void = null,
@@ -303,14 +326,12 @@ fn addWindow(window: *GuiWindow) void {
 
 pub fn openWindow(id: []const u8) void {
 	defer updateWindowPositions();
-
 	for(windowList.items) |window| {
 		if(std.mem.eql(u8, window.id, id)) {
 			openWindowFromRef(window);
 			return;
 		}
 	}
-	
 	std.log.err("Could not find window with id {s}.", .{id});
 }
 

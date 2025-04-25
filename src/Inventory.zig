@@ -160,7 +160,7 @@ pub const Sync = struct { // MARK: Sync
 	};
 
 	pub const ServerSide = struct { // MARK: ServerSide
-		pub const ServerInventory = struct {
+		const ServerInventory = struct {
 			inv: Inventory,
 			users: main.ListUnmanaged(*main.server.User),
 			source: Source,
@@ -174,7 +174,7 @@ pub const Sync = struct { // MARK: Sync
 				};
 			}
 
-			pub fn deinit(self: *ServerInventory) void {
+			fn deinit(self: *ServerInventory) void {
 				main.utils.assertLocked(&mutex);
 				std.debug.assert(self.users.items.len == 0);
 
@@ -782,7 +782,6 @@ pub const Command = struct { // MARK: Command
 
 	fn do(self: *Command, allocator: NeverFailingAllocator, side: Side, user: ?*main.server.User, gamemode: main.game.Gamemode) error{serverFailure}!void { // MARK: do()
 		std.debug.assert(self.baseOperations.items.len == 0); // do called twice without cleaning up
-
 		switch(self.payload) {
 			inline else => |payload| {
 				try payload.run(allocator, self, side, user, gamemode);
@@ -1127,9 +1126,7 @@ pub const Command = struct { // MARK: Command
 					}
 				},
 				.blockInventory => |val| {
-					writer.writeInt(i32, val[0]);
-					writer.writeInt(i32, val[1]);
-					writer.writeInt(i32, val[2]);
+					writer.writeVec(Vec3i, val);
 				},
 				.sharedTestingInventory, .other => {},
 				.alreadyFreed => unreachable,

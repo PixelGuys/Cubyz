@@ -7,7 +7,6 @@ const settings = @import("settings.zig");
 const vec = @import("vec.zig");
 const Vec3i = vec.Vec3i;
 const Vec3d = vec.Vec3d;
-const ZonElement = main.ZonElement;
 
 pub const chunkShift: u5 = 5;
 pub const chunkShift2: u5 = chunkShift*2;
@@ -284,6 +283,16 @@ pub const Chunk = struct { // MARK: Chunk
 		memoryPool.destroy(@alignCast(self));
 	}
 
+	/// Updates a block if it is inside this chunk.
+	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
+	pub fn updateBlock(self: *Chunk, _x: i32, _y: i32, _z: i32, newBlock: Block) void {
+		const x = _x >> self.voxelSizeShift;
+		const y = _y >> self.voxelSizeShift;
+		const z = _z >> self.voxelSizeShift;
+		const index = getIndex(x, y, z);
+		self.data.setValue(index, newBlock);
+	}
+
 	/// Gets a block if it is inside this chunk.
 	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
 	pub fn getBlock(self: *const Chunk, _x: i32, _y: i32, _z: i32) Block {
@@ -330,7 +339,6 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 			},
 			.refCount = .init(1),
 		};
-
 		self.super.data.init();
 		return self;
 	}
@@ -340,7 +348,6 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 		if(self.wasChanged) {
 			self.save(main.server.world.?);
 		}
-
 		self.super.data.deinit();
 		serverPool.destroy(@alignCast(self));
 	}

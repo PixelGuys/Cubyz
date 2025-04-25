@@ -595,12 +595,7 @@ pub const Tool = struct { // MARK: Tool
 	}
 };
 
-pub const ItemType = enum(u1) {
-	baseItem = 0,
-	tool = 1,
-};
-
-pub const Item = union(ItemType) { // MARK: Item
+pub const Item = union(enum) { // MARK: Item
 	baseItem: *BaseItem,
 	tool: *Tool,
 

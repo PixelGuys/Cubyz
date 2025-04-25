@@ -245,13 +245,24 @@ pub const EntityDataClasses = struct {
 
 			const block = chunk.getBlock(pos[0] & main.chunk.chunkMask, pos[1] & main.chunk.chunkMask, pos[2] & main.chunk.chunkMask);
 			const inventory = main.items.Inventory.init(main.globalAllocator, block.inventorySize().?, .blockInventory, .{.blockInventory = pos});
-			// TODO: Populate from server side storage?
-			
-			StorageClient.add(pos, .{.inventory = inventory}, chunk);
+			const guiId = block.gui();
 
-			// TODO: likely we would want to allow specifying the GUI based on block.gui() but with some error checking.
-			main.gui.windowlist.chest.setInventory(pos, inventory);
-			main.gui.openWindow("chest");
+			StorageClient.add(pos, .{.inventory = inventory}, chunk);
+			
+			const guiEnum = std.meta.stringToEnum(main.gui.windowEnum, guiId) orelse {
+				std.log.err("Could not find window with id {s}.", .{guiId});
+				return .ignored;
+			};
+
+			switch (guiEnum) {
+				inline else => |val| {
+					if (@hasField(@TypeOf(@field(main.gui.windowEnum, @tagName(val))), "setInventory")) {
+						@field(main.gui.windowlist, @tagName(val)).setInventory(pos, inventory);
+					}
+				}
+			}
+
+			main.gui.openWindow();
 			main.Window.setMouseGrabbed(false);
 
 			return .handled;
