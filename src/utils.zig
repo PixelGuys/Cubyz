@@ -338,10 +338,51 @@ pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: 
 			allocator.destroy(self.mem);
 		}
 
+		pub fn peekFront(self: Self) ?T {
+			if(self.isEmpty()) return null;
+			return self.mem[self.startIndex];
+		}
+
+		pub fn peekBack(self: Self) ?T {
+			if(self.isEmpty()) return null;
+			return self.mem[self.startIndex + self.len - 1 & mask];
+		}
+
+		pub fn enqueueFront(self: *Self, elem: T) !void {
+			if(self.isFull()) return error.OutOfMemory;
+			self.enqueueFrontAssumeCapacity(elem);
+		}
+
+		pub fn forceEnqueueFront(self: *Self, elem: T) ?T {
+			const result = if(self.isFull()) self.dequeueBack() else null;
+			self.enqueueFrontAssumeCapacity(elem);
+			return result;
+		}
+
+		pub fn enqueueFrontAssumeCapacity(self: *Self, elem: T) void {
+			self.startIndex = (self.startIndex -% 1) & mask;
+			self.mem[self.startIndex] = elem;
+			self.len += 1;
+		}
+
 		pub fn enqueue(self: *Self, elem: T) !void {
-			if(self.len >= capacity) return error.OutOfMemory;
+			return self.enqueueBack(elem);
+		}
+
+		pub fn enqueueBack(self: *Self, elem: T) !void {
+			if(self.isFull()) return error.OutOfMemory;
+			self.enqueueBackAssumeCapacity(elem);
+		}
+
+		pub fn enqueueBackAssumeCapacity(self: *Self, elem: T) void {
 			self.mem[self.startIndex + self.len & mask] = elem;
 			self.len += 1;
+		}
+
+		pub fn forceEnqueueBack(self: *Self, elem: T) ?T {
+			const result = if(self.isFull()) self.dequeueFront() else null;
+			self.enqueueBackAssumeCapacity(elem);
+			return result;
 		}
 
 		pub fn enqueueSlice(self: *Self, elems: []const T) !void {
@@ -376,12 +417,22 @@ pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: 
 			}
 		}
 
+		pub fn dequeueFront(self: *Self) ?T {
+			return self.dequeue();
+		}
+
 		pub fn dequeue(self: *Self) ?T {
-			if(self.len == 0) return null;
+			if(self.isEmpty()) return null;
 			const result = self.mem[self.startIndex];
 			self.startIndex = (self.startIndex + 1) & mask;
 			self.len -= 1;
 			return result;
+		}
+
+		pub fn dequeueBack(self: *Self) ?T {
+			if(self.isEmpty()) return null;
+			self.len -= 1;
+			return self.mem[self.startIndex + self.len & mask];
 		}
 
 		pub fn dequeueSlice(self: *Self, out: []T) !void {
@@ -407,6 +458,14 @@ pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: 
 		pub fn getAtOffset(self: Self, i: usize) ?T {
 			if(i >= self.len) return null;
 			return self.mem[(self.startIndex + i) & mask];
+		}
+
+		pub fn isEmpty(self: Self) bool {
+			return self.len == 0;
+		}
+
+		pub fn isFull(self: Self) bool {
+			return self.len >= capacity;
 		}
 	};
 }
@@ -514,11 +573,6 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 		pub fn peek(self: *Self) ?T {
 			if(self.empty()) return null;
 			return self.mem[self.startIndex];
-		}
-
-		pub fn peek_front(self: *Self) ?T {
-			if(self.empty()) return null;
-			return self.mem[(self.endIndex - 1) & self.mask];
 		}
 
 		pub fn getSliceAtOffset(self: Self, offset: usize, result: []T) !void {

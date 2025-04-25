@@ -11,7 +11,7 @@ const Label = GuiComponent.Label;
 const MutexComponent = GuiComponent.MutexComponent;
 const TextInput = GuiComponent.TextInput;
 const VerticalList = @import("../components/VerticalList.zig");
-const CircularBufferQueue = main.utils.CircularBufferQueue;
+const FixedSizeCircularBuffer = main.utils.FixedSizeCircularBuffer;
 
 pub var window: GuiWindow = GuiWindow{
 	.relativePosition = .{
@@ -30,7 +30,7 @@ pub var window: GuiWindow = GuiWindow{
 const padding: f32 = 8;
 const messageTimeout: i32 = 10000;
 const messageFade = 1000;
-const reusableHistoryMaxSize = 8192;
+const reusableHistoryMaxSize = 4;
 
 var history: main.List(*Label) = undefined;
 var messageQueue: main.utils.ConcurrentQueue([]const u8) = undefined;
@@ -42,21 +42,21 @@ var hideInput: bool = true;
 var messageHistory: History = undefined;
 
 pub const History = struct {
-	up: CircularBufferQueue([]const u8),
+	up: FixedSizeCircularBuffer([]const u8, reusableHistoryMaxSize),
 	current: ?[]const u8,
-	down: CircularBufferQueue([]const u8),
+	down: FixedSizeCircularBuffer([]const u8, reusableHistoryMaxSize),
 
-	fn init(maxSize: u32) History {
+	fn init() History {
 		return .{
-			.up = .init(main.globalAllocator, maxSize),
+			.up = .init(main.globalAllocator),
 			.current = null,
-			.down = .init(main.globalAllocator, maxSize),
+			.down = .init(main.globalAllocator),
 		};
 	}
 	fn deinit(self: *History) void {
 		self.clear();
-		self.up.deinit();
-		self.down.deinit();
+		self.up.deinit(main.globalAllocator);
+		self.down.deinit(main.globalAllocator);
 	}
 	fn clear(self: *History) void {
 		while(self.up.dequeue()) |msg| {
@@ -71,76 +71,82 @@ pub const History = struct {
 		}
 	}
 	fn canMoveUp(self: *History) bool {
-		return !self.up.empty();
+		return !self.up.isEmpty();
 	}
 	fn moveUp(self: *History) void {
 		std.debug.assert(self.canMoveUp());
-		// This can not overflow because we are moving items between two queues of same size.
-		if(self.current) |current| {
-			self.down.enqueue_front(current);
+
+		if(self.current) |msg| {
+			if(self.down.forceEnqueueFront(msg)) |old| {
+				main.globalAllocator.free(old);
+			}
 		}
-		self.current = self.up.dequeue_front();
+		self.current = self.up.dequeueFront();
 		std.debug.assert(self.current != null);
 	}
 	fn canMoveDown(self: *History) bool {
-		return !self.down.empty();
+		return !self.down.isEmpty();
 	}
 	fn moveDown(self: *History) void {
 		std.debug.assert(self.canMoveDown());
-		// This can not overflow because we are moving items between two queues of same size.
-		if(self.current) |current| {
-			self.up.enqueue_front(current);
+
+		if(self.current) |msg| {
+			if(self.up.forceEnqueueFront(msg)) |old| {
+				main.globalAllocator.free(old);
+			}
 		}
-		self.current = self.down.dequeue_front();
+		self.current = self.down.dequeueFront();
 		std.debug.assert(self.current != null);
 	}
 	fn flush(self: *History) void {
 		if(self.current) |msg| {
-			self.up.enqueue_front(msg);
+			if(self.up.forceEnqueueFront(msg)) |old| {
+				main.globalAllocator.free(old);
+			}
 			self.current = null;
 		}
-		while(self.down.dequeue_front()) |msg| {
-			self.up.enqueue_front(msg);
+		while(self.down.dequeueFront()) |msg| {
+			if(self.up.forceEnqueueFront(msg)) |old| {
+				main.globalAllocator.free(old);
+			}
 		}
 	}
 	fn insertIfUnique(self: *History, new: []const u8) bool {
-		if(new.len == 0) return false;
-		if(self.current) |current| {
-			if(std.mem.eql(u8, current, new)) return false;
-		}
-		if(self.down.peek_front()) |msg| {
+		if(new.len == 0) return self.down.isEmpty();
+		if(self.current) |msg| {
 			if(std.mem.eql(u8, msg, new)) return false;
 		}
-		if(self.up.peek_front()) |msg| {
+		if(self.down.peekFront()) |msg| {
 			if(std.mem.eql(u8, msg, new)) return false;
 		}
-		if(self.down.reachedCapacity()) {
-			main.globalAllocator.free(self.down.dequeue_back().?);
+		if(self.up.peekFront()) |msg| {
+			if(std.mem.eql(u8, msg, new)) return false;
 		}
-		self.down.enqueue_front(main.globalAllocator.dupe(u8, new));
+		if(self.down.forceEnqueueFront(main.globalAllocator.dupe(u8, new))) |old| {
+			main.globalAllocator.free(old);
+		}
 		return true;
 	}
 	fn pushIfUnique(self: *History, new: []const u8) void {
 		if(new.len == 0) return;
-		if(self.current) |current| {
-			if(std.mem.eql(u8, current, new)) return;
-		}
-		if(self.down.peek_front()) |msg| {
+		if(self.current) |msg| {
 			if(std.mem.eql(u8, msg, new)) return;
 		}
-		if(self.up.peek_front()) |msg| {
+		if(self.down.peekFront()) |msg| {
 			if(std.mem.eql(u8, msg, new)) return;
 		}
-		if(self.up.reachedCapacity()) {
-			main.globalAllocator.free(self.up.dequeue_back().?);
+		if(self.up.peekFront()) |msg| {
+			if(std.mem.eql(u8, msg, new)) return;
 		}
-		self.up.enqueue_front(main.globalAllocator.dupe(u8, new));
+		if(self.up.forceEnqueueFront(main.globalAllocator.dupe(u8, new))) |old| {
+			main.globalAllocator.free(old);
+		}
 	}
 };
 
 pub fn init() void {
 	history = .init(main.globalAllocator);
-	messageHistory = .init(reusableHistoryMaxSize);
+	messageHistory = .init();
 	expirationTime = .init(main.globalAllocator);
 	messageQueue = .init(main.globalAllocator, 16);
 }
