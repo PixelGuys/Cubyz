@@ -77,7 +77,7 @@ pub fn onBlockBreaking(_: ?main.items.Item, _: Vec3f, _: Vec3f, currentData: *Bl
 	}
 }
 
-fn isThisItem(block: Block, item: main.items.ItemStack) bool {
+fn isItemBlock(block: Block, item: main.items.ItemStack) bool {
 	return item.item != null and item.item.? == .baseItem and item.item.?.baseItem.block == block.typ;
 }
 
@@ -87,12 +87,12 @@ pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemS
 		.yes_costsItems => |r| return .{.yes_costsItems = r},
 		.yes => {
 			const oldAmount = if(oldBlock.typ == newBlock.typ) @min(oldBlock.data, oldBlock.modeData() - 1) else 0;
-			if(oldData == newBlock.data) return .no;
-			if(oldData < newBlock.data) {
-				if(!isThisItem(newBlock, item)) return .no;
-				return .{.yes_costsItems = newBlock.data - oldData};
+			if(oldAmount == newBlock.data) return .no;
+			if(oldAmount < newBlock.data) {
+				if(!isItemBlock(newBlock, item)) return .no;
+				return .{.yes_costsItems = newBlock.data - oldAmount};
 			} else {
-				return .{.yes_dropsItems = oldData - newBlock.data};
+				return .{.yes_dropsItems = oldAmount - newBlock.data};
 			}
 		},
 	}
