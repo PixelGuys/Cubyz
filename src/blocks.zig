@@ -432,9 +432,8 @@ pub const TickEvent = struct {
 	chance: f32,
 
 	pub fn loadFromZon(_allocator: main.heap.NeverFailingAllocator, zon: ZonElement) []TickEvent {
-		var tickEvents = _allocator.alloc(TickEvent, zon.toSlice().len);
+		var tickEvents: main.List(TickEvent) = .initCapacity(_allocator, zon.toSlice().len);
 
-		var n: usize = 0;
 		for(zon.toSlice()) |tickEventZon| {
 			const name = tickEventZon.get([]const u8, "name", "");
 			const _function = TickFunctions.getFunctionPointer(name) catch |err| blk: {
@@ -446,22 +445,11 @@ pub const TickEvent = struct {
 			};
 
 			if(_function) |function| {
-				tickEvents[n] = TickEvent{
-					.function = function,
-					.chance = tickEventZon.get(f32, "chance", 1),
-				};
-				n += 1;
+				tickEvents.append(.{.function = function, .chance = tickEventZon.get(f32, "chance", 1)});
 			}
 		}
 
-		if(n != tickEvents.len) {
-			if(_allocator.resize(tickEvents, n)) {
-				std.log.debug("Removing empty space from TickEvent slice", .{});
-				tickEvents.len = n;
-			} else std.log.err("Could not resize TickEvent slice", .{});
-		}
-
-		return tickEvents;
+		return tickEvents.toOwnedSlice();
 	}
 
 	pub fn tryRandomTick(self: *const TickEvent, block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void {
