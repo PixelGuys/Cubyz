@@ -973,19 +973,28 @@ pub const Protocols = struct {
 				},
 				.worldEditPos => {
 					const typ = try reader.readEnum(WorldEditPosition);
-					switch(typ) {
-						.selectedPos1, .selectedPos2 => {
-							const pos = try reader.readVec(Vec3i);
-							switch(typ) {
-								.selectedPos1 => game.Player.selectionPosition1 = pos,
-								.selectedPos2 => game.Player.selectionPosition2 = pos,
-								else => unreachable,
-							}
-						},
-						.clear => {
-							game.Player.selectionPosition1 = null;
-							game.Player.selectionPosition2 = null;
-						},
+					const pos: ?Vec3i = switch(typ) {
+						.selectedPos1, .selectedPos2 => try reader.readVec(Vec3i),
+						.clear => null,
+					};
+					if(conn.isServerSide()) {
+						switch(typ) {
+							.selectedPos1 => conn.user.?.worldEditData.selectionPosition1 = pos.?,
+							.selectedPos2 => conn.user.?.worldEditData.selectionPosition2 = pos.?,
+							.clear => {
+								conn.user.?.worldEditData.selectionPosition1 = null;
+								conn.user.?.worldEditData.selectionPosition2 = null;
+							},
+						}
+					} else {
+						switch(typ) {
+							.selectedPos1 => game.Player.selectionPosition1 = pos,
+							.selectedPos2 => game.Player.selectionPosition2 = pos,
+							.clear => {
+								game.Player.selectionPosition1 = null;
+								game.Player.selectionPosition2 = null;
+							},
+						}
 					}
 				},
 				.timeAndBiome => {
@@ -1787,6 +1796,10 @@ pub const Connection = struct { // MARK: Connection
 		defer self.mutex.unlock();
 
 		return self.connectionState.load(.unordered) == .connected;
+	}
+
+	fn isServerSide(conn: *Connection) bool {
+		return conn.user != null;
 	}
 
 	fn handlePacketLoss(self: *Connection, loss: LossStatus) void {
