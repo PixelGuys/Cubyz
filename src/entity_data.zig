@@ -234,7 +234,7 @@ pub const EntityDataClasses = struct {
 			const guiId = block.gui();
 
 			StorageClient.add(pos, .{.inventory = inventory}, chunk);
-			
+
 			if(main.gui.getWindow(guiId)) |window| {
 				if(window.setInventoryFn) |setInventory| {
 					setInventory(pos, inventory);
