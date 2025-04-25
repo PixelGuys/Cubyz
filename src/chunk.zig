@@ -257,9 +257,6 @@ pub const Chunk = struct { // MARK: Chunk
 	blockPosToEntityDataMap: std.AutoHashMapUnmanaged(u32, u32),
 	blockPosToEntityDataMapMutex: std.Thread.Mutex,
 
-	blockPosToTickableBlockMap: std.AutoHashMapUnmanaged(u32, u32),
-	blockPosToTickableBlockMutex: std.Thread.Mutex,
-
 	pub fn init(pos: ChunkPosition) *Chunk {
 		const self = memoryPool.create();
 		std.debug.assert((pos.voxelSize - 1 & pos.voxelSize) == 0);
@@ -273,8 +270,6 @@ pub const Chunk = struct { // MARK: Chunk
 			.widthShift = voxelSizeShift + chunkShift,
 			.blockPosToEntityDataMap = .{},
 			.blockPosToEntityDataMapMutex = .{},
-			.blockPosToTickableBlockMap = .{},
-			.blockPosToTickableBlockMutex = .{},
 		};
 		self.data.init();
 		return self;
@@ -284,7 +279,6 @@ pub const Chunk = struct { // MARK: Chunk
 		// TODO: We should either unload this data here or make sure it was unloaded before.
 		std.debug.assert(self.blockPosToEntityDataMap.count() == 0);
 		self.blockPosToEntityDataMap.deinit(main.globalAllocator.allocator);
-		self.blockPosToTickableBlockMap.deinit(main.globalAllocator.allocator);
 		self.data.deinit();
 		memoryPool.destroy(@alignCast(self));
 	}
@@ -342,8 +336,6 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 				.widthShift = voxelSizeShift + chunkShift,
 				.blockPosToEntityDataMap = .{},
 				.blockPosToEntityDataMapMutex = .{},
-				.blockPosToTickableBlockMap = .{},
-				.blockPosToTickableBlockMutex = .{},
 			},
 			.refCount = .init(1),
 		};
@@ -356,7 +348,6 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 		if(self.wasChanged) {
 			self.save(main.server.world.?);
 		}
-		self.super.blockPosToTickableBlockMap.deinit(main.globalAllocator.allocator);
 		self.super.data.deinit();
 		serverPool.destroy(@alignCast(self));
 	}
