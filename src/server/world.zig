@@ -396,7 +396,6 @@ const WorldIO = struct { // MARK: WorldIO
 		self.world.spawn = worldData.get(Vec3i, "spawn", .{0, 0, 0});
 		self.world.biomeChecksum = worldData.get(i64, "biomeChecksum", 0);
 		self.world.tickCount = worldData.get(i64, "tickCount", 0);
-		self.world.tickDistance = worldData.get(u16, "tickDistance", 5);
 		self.world.doTick = worldData.get(bool, "doTick", true);
 		self.world.tickSpeed = worldData.get(u32, "tickSpeed", 4);
 	}
@@ -411,7 +410,6 @@ const WorldIO = struct { // MARK: WorldIO
 		worldData.put("spawn", self.world.spawn);
 		worldData.put("biomeChecksum", self.world.biomeChecksum);
 		worldData.put("tickCount", self.world.tickCount);
-		worldData.put("tickDistance", self.world.tickDistance);
 		worldData.put("doTick", self.world.doTick);
 		worldData.put("tickSpeed", self.world.tickSpeed);
 		// TODO: Save entities
@@ -438,7 +436,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	tickCount: i64 = 0,
 	tickSpeed: u32 = 4,
-	tickDistance: u16 = 5,
 	lastTickTime: i64,
 	doTick: bool = true,
 
@@ -965,22 +962,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	fn tick(self: *ServerWorld) void {
-		const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
-		defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
-
 		// tick blocks
 		var iter = ChunkManager.entityChunkHashMap.keyIterator();
 		while(iter.next()) |pos| {
-			for(userList) |user| {
-				const minTickDistance: u16 = @min(user.renderDistance, self.tickDistance);
-				const playerChunkPos = ChunkPosition.initFromWorldPos(user.lastPos, 1);
-				const chunkDistanceX: u32 = @divFloor(@abs(pos.*.wx - playerChunkPos.wx), chunk.chunkSize);
-				const chunkDistanceY: u32 = @divFloor(@abs(pos.*.wy - playerChunkPos.wy), chunk.chunkSize);
-				const chunkDistanceZ: u32 = @divFloor(@abs(pos.*.wz - playerChunkPos.wz), chunk.chunkSize);
-
-				if(chunkDistanceX <= minTickDistance and chunkDistanceY <= minTickDistance and chunkDistanceZ <= minTickDistance) break;
-			} else continue;
-
 			if(ChunkManager.getEntityChunkAndIncreaseRefCount(pos.*)) |entityChunk| {
 				self.tickBlocksInChunk(entityChunk.getChunk());
 				entityChunk.decreaseRefCount();
