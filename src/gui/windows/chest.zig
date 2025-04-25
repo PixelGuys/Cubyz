@@ -48,9 +48,6 @@ pub fn setInventory(pos: main.vec.Vec3i, inventory: main.items.Inventory) void {
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 0);
 
-	// Some miscellaneous slots and buttons:
-	// TODO: armor slots, backpack slot + stack-based backpack inventory, other items maybe?
-
 	for(0..1) |y| {
 		const row = HorizontalList.init();
 		for(0..10) |x| {
