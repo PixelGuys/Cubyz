@@ -30,7 +30,7 @@ pub var window: GuiWindow = GuiWindow{
 const padding: f32 = 8;
 const messageTimeout: i32 = 10000;
 const messageFade = 1000;
-const reusableHistoryMaxSize = 4;
+const reusableHistoryMaxSize = 8192;
 
 var history: main.List(*Label) = undefined;
 var messageQueue: main.utils.ConcurrentQueue([]const u8) = undefined;
