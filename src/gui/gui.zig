@@ -37,8 +37,6 @@ pub var scale: f32 = undefined;
 
 pub var hoveredItemSlot: ?*ItemSlot = null;
 
-pub const windowEnum = getWindowEnum();
-
 const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 	const Action = enum {
 		open,
@@ -106,27 +104,6 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 	}
 };
 
-fn getWindowEnum() type {
-	const info = @typeInfo(windowlist);
-
-	var res: [info.@"struct".decls.len]std.builtin.Type.EnumField = undefined;
-
-	for (info.@"struct".decls, 0..) |declaration, i| {
-		const name = declaration.name;
-		res[i] = .{
-			.name = name,
-			.value = i,
-		};
-	}
-
-	return @Type(.{.@"enum" = .{
-		.tag_type = u32,
-		.fields = &res,
-		.decls = &.{},
-		.is_exhaustive = true,
-	}});
-}
-
 pub const Callback = struct {
 	callback: ?*const fn(usize) void = null,
 	arg: usize = 0,
@@ -147,7 +124,7 @@ pub fn initWindowList() void {
 		const windowStruct = @field(windowlist, decl.name);
 		windowStruct.window.id = decl.name;
 		addWindow(&windowStruct.window);
-		const functionNames = [_][]const u8{"render", "update", "updateSelected", "updateHovered", "onOpen", "onClose"};
+		const functionNames = [_][]const u8{"render", "update", "updateSelected", "updateHovered", "onOpen", "onClose", "setInventory"};
 		inline for(functionNames) |function| {
 			if(@hasDecl(windowStruct, function)) {
 				@field(windowStruct.window, function ++ "Fn") = &@field(windowStruct, function);
@@ -326,13 +303,22 @@ fn addWindow(window: *GuiWindow) void {
 
 pub fn openWindow(id: []const u8) void {
 	defer updateWindowPositions();
+	
+	const window = getWindow(id) orelse {
+		std.log.err("Could not find window with id {s}.", .{id});
+		return;
+	};
+
+	openWindowFromRef(window);
+}
+
+pub fn getWindow(id: []const u8) ?*GuiWindow {
 	for(windowList.items) |window| {
 		if(std.mem.eql(u8, window.id, id)) {
-			openWindowFromRef(window);
-			return;
+			return window;
 		}
 	}
-	std.log.err("Could not find window with id {s}.", .{id});
+	return null;
 }
 
 pub fn openWindowFromRef(window: *GuiWindow) void {

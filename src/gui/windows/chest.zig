@@ -28,7 +28,6 @@ pub var window = GuiWindow{
 
 const padding: f32 = 8;
 var itemSlots: main.List(*ItemSlot) = undefined;
-var blockPos: main.vec.Vec3i = undefined;
 
 pub fn init() void {
 	itemSlots = .init(main.globalAllocator);
@@ -39,6 +38,7 @@ pub fn deinit() void {
 }
 
 pub var openInventory: main.items.Inventory = undefined;
+var blockPos: main.vec.Vec3i = undefined;
 
 pub fn setInventory(pos: main.vec.Vec3i, inventory: main.items.Inventory) void {
 	openInventory = inventory;
@@ -47,10 +47,10 @@ pub fn setInventory(pos: main.vec.Vec3i, inventory: main.items.Inventory) void {
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 0);
-  
+
 	// Some miscellaneous slots and buttons:
 	// TODO: armor slots, backpack slot + stack-based backpack inventory, other items maybe?
-  
+
 	for(0..1) |y| {
 		const row = HorizontalList.init();
 		for(0..10) |x| {
@@ -69,7 +69,7 @@ pub fn onOpen() void {
 
 pub fn onClose() void {
 	const block = main.renderer.mesh_storage.getBlock(blockPos[0], blockPos[1], blockPos[2]).?;
-	
+
 	const mesh = main.renderer.mesh_storage.getMeshAndIncreaseRefCount(.initFromWorldPos(blockPos, 1)).?;
 	defer mesh.decreaseRefCount();
 

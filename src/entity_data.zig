@@ -201,11 +201,9 @@ pub const EntityDataClasses = struct {
 		}
 
 		pub fn onLoadClient(_: Vec3i, _: *Chunk) void {
-			std.log.debug("Chest.onLoadClient", .{});
+
 		}
 		pub fn onUnloadClient(pos: Vec3i, chunk: *Chunk) void {
-			std.log.debug("Chest.onUnloadClient", .{});
-
 			StorageClient.mutex.lock();
 			const data = StorageClient.get(pos, chunk);
 			StorageClient.mutex.unlock();
@@ -217,23 +215,21 @@ pub const EntityDataClasses = struct {
 			StorageClient.remove(pos, chunk);
 		}
 		pub fn onLoadServer(_: Vec3i, _: *Chunk) void {
-			std.log.debug("Chest.onLoadServer", .{});
+
 		}
 		pub fn onUnloadServer(_: Vec3i, _: *Chunk) void {
-			std.log.debug("Chest.onUnloadServer", .{});
+
 		}
 		pub fn onPlaceClient(_: Vec3i, _: *Chunk) void {
-			std.log.debug("Chest.onPlaceClient", .{});
+			
 		}
 		pub fn onBreakClient(pos: Vec3i, chunk: *Chunk) void {
-			std.log.debug("Chest.onBreakClient", .{});
 			StorageClient.remove(pos, chunk);
 		}
 		pub fn onPlaceServer(_: Vec3i, _: *Chunk) void {
-			std.log.debug("Chest.onPlaceServer", .{});
+			
 		}
 		pub fn onBreakServer(pos: Vec3i, chunk: *Chunk) void {
-			std.log.debug("Chest.onBreakServer", .{});
 			StorageServer.remove(pos, chunk);
 		}
 		pub fn onInteract(pos: Vec3i, chunk: *Chunk) EventStatus {
@@ -249,20 +245,13 @@ pub const EntityDataClasses = struct {
 
 			StorageClient.add(pos, .{.inventory = inventory}, chunk);
 			
-			const guiEnum = std.meta.stringToEnum(main.gui.windowEnum, guiId) orelse {
-				std.log.err("Could not find window with id {s}.", .{guiId});
-				return .ignored;
-			};
-
-			switch (guiEnum) {
-				inline else => |val| {
-					if (@hasField(@TypeOf(@field(main.gui.windowEnum, @tagName(val))), "setInventory")) {
-						@field(main.gui.windowlist, @tagName(val)).setInventory(pos, inventory);
-					}
+			if (main.gui.getWindow(guiId)) |window| {
+				if (window.setInventoryFn) |setInventory| {
+					setInventory(pos, inventory);
 				}
 			}
 
-			main.gui.openWindow();
+			main.gui.openWindow(guiId);
 			main.Window.setMouseGrabbed(false);
 
 			return .handled;
