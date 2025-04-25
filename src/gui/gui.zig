@@ -303,7 +303,7 @@ fn addWindow(window: *GuiWindow) void {
 
 pub fn openWindow(id: []const u8) void {
 	defer updateWindowPositions();
-	
+
 	const window = getWindow(id) orelse {
 		std.log.err("Could not find window with id {s}.", .{id});
 		return;

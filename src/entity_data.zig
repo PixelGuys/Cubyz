@@ -200,35 +200,25 @@ pub const EntityDataClasses = struct {
 			StorageClient.reset();
 		}
 
-		pub fn onLoadClient(_: Vec3i, _: *Chunk) void {
-
-		}
+		pub fn onLoadClient(_: Vec3i, _: *Chunk) void {}
 		pub fn onUnloadClient(pos: Vec3i, chunk: *Chunk) void {
 			StorageClient.mutex.lock();
 			const data = StorageClient.get(pos, chunk);
 			StorageClient.mutex.unlock();
 
-			if (data.?.inventory) |inv| {
+			if(data.?.inventory) |inv| {
 				inv.deinit(main.globalAllocator);
 			}
 
 			StorageClient.remove(pos, chunk);
 		}
-		pub fn onLoadServer(_: Vec3i, _: *Chunk) void {
-
-		}
-		pub fn onUnloadServer(_: Vec3i, _: *Chunk) void {
-
-		}
-		pub fn onPlaceClient(_: Vec3i, _: *Chunk) void {
-			
-		}
+		pub fn onLoadServer(_: Vec3i, _: *Chunk) void {}
+		pub fn onUnloadServer(_: Vec3i, _: *Chunk) void {}
+		pub fn onPlaceClient(_: Vec3i, _: *Chunk) void {}
 		pub fn onBreakClient(pos: Vec3i, chunk: *Chunk) void {
 			StorageClient.remove(pos, chunk);
 		}
-		pub fn onPlaceServer(_: Vec3i, _: *Chunk) void {
-			
-		}
+		pub fn onPlaceServer(_: Vec3i, _: *Chunk) void {}
 		pub fn onBreakServer(pos: Vec3i, chunk: *Chunk) void {
 			StorageServer.remove(pos, chunk);
 		}
@@ -245,8 +235,8 @@ pub const EntityDataClasses = struct {
 
 			StorageClient.add(pos, .{.inventory = inventory}, chunk);
 			
-			if (main.gui.getWindow(guiId)) |window| {
-				if (window.setInventoryFn) |setInventory| {
+			if(main.gui.getWindow(guiId)) |window| {
+				if(window.setInventoryFn) |setInventory| {
 					setInventory(pos, inventory);
 				}
 			}

@@ -178,7 +178,7 @@ pub const Sync = struct { // MARK: Sync
 				main.utils.assertLocked(&mutex);
 				std.debug.assert(self.users.items.len == 0);
 
-				if (self.source == .blockInventory) {
+				if(self.source == .blockInventory) {
 					const pos = self.source.blockInventory;
 					const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/inventories/{d}_{d}_{d}.zig.zon", .{main.server.world.?.name, pos[0], pos[1], pos[2]}) catch unreachable;
 					defer main.stackAllocator.free(path);
