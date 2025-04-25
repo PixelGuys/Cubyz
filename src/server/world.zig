@@ -7,7 +7,6 @@ const chunk = main.chunk;
 const ChunkPosition = chunk.ChunkPosition;
 const ServerChunk = chunk.ServerChunk;
 const files = main.files;
-const events = main.events;
 const utils = main.utils;
 const ItemDropManager = main.itemdrop.ItemDropManager;
 const ItemStack = main.items.ItemStack;

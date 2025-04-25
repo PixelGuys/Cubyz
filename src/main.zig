@@ -25,7 +25,6 @@ pub const rotation = @import("rotation.zig");
 pub const settings = @import("settings.zig");
 const tag = @import("tag.zig");
 pub const Tag = tag.Tag;
-pub const events = @import("events.zig");
 pub const utils = @import("utils.zig");
 pub const vec = @import("vec.zig");
 pub const ZonElement = @import("zon.zig").ZonElement;
