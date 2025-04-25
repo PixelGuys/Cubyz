@@ -950,7 +950,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 				var block = ch.super.getBlock(x, y, z);
 				for(block.tickEvents()) |event| {
-					event.function(block, ch, x, y, z);
+					event.tryRandomTick(block, ch, x, y, z);
 				}
 			}
 		}
