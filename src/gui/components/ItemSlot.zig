@@ -145,7 +145,7 @@ pub fn render(self: *ItemSlot, _: Vec2f) void {
 		if (item == .tool) {
 			const tool = item.tool;
 			const durabilityPercentage = @as(f32, @floatFromInt(tool.durability))/tool.maxDurability;
-			
+
 			const width = durabilityPercentage*(self.size[0] - 2*border);
 			draw.setColor(0xff000000);
 			draw.rect(self.pos + Vec2f{border, 15*(self.size[1] - border)/16.0}, .{self.size[0] - 2*border, (self.size[1] - 2*border)/16.0});
