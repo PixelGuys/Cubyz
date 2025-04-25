@@ -45,7 +45,6 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 	const Command = struct {
 		window: *GuiWindow,
 		action: Action,
-		params: ?*anyopaque,
 	};
 
 	var commands: main.utils.ConcurrentQueue(Command) = undefined;
@@ -66,17 +65,16 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 		while(commands.dequeue()) |command| {
 			switch(command.action) {
 				.open => {
-					executeOpenWindowCommand(command.window, command.params);
+					executeOpenWindowCommand(command.window);
 				},
 				.close => {
-					std.debug.assert(command.params == null);
 					executeCloseWindowCommand(command.window);
 				},
 			}
 		}
 	}
 
-	fn executeOpenWindowCommand(window: *GuiWindow, _params: ?*anyopaque) void {
+	fn executeOpenWindowCommand(window: *GuiWindow) void {
 		defer updateWindowPositions();
 		for(openWindows.items, 0..) |_openWindow, i| {
 			if(_openWindow == window) {
@@ -87,11 +85,7 @@ const GuiCommandQueue = struct { // MARK: GuiCommandQueue
 			}
 		}
 		openWindows.append(window);
-		if(_params) |params| {
-			window.onOpenParamsFn(params);
-		} else {
-			window.onOpenFn();
-		}
+		window.onOpenFn();
 		selectedWindow = null;
 	}
 
@@ -314,7 +308,7 @@ pub fn openWindow(id: []const u8) void {
 		std.log.err("Could not find window with id {s}.", .{id});
 		return;
 	};
-	openWindowFromRef(window, null);
+	openWindowFromRef(window);
 }
 
 pub fn getWindow(id: []const u8) ?*GuiWindow {
@@ -326,18 +320,8 @@ pub fn getWindow(id: []const u8) ?*GuiWindow {
 	return null;
 }
 
-pub fn openWindowParams(id: []const u8, params: *anyopaque) void {
-	defer updateWindowPositions();
-
-	const window = getWindow(id) orelse {
-		std.log.err("Could not find window with id {s}.", .{id});
-		return;
-	};
-	openWindowFromRef(window, params);
-}
-
-pub fn openWindowFromRef(window: *GuiWindow, params: ?*anyopaque) void {
-	GuiCommandQueue.scheduleCommand(.{.action = .open, .window = window, .params = params});
+pub fn openWindowFromRef(window: *GuiWindow) void {
+	GuiCommandQueue.scheduleCommand(.{.action = .open, .window = window});
 }
 
 pub fn toggleWindow(id: []const u8) void {
@@ -372,7 +356,7 @@ pub fn openHud() void {
 }
 
 fn openWindowCallbackFunction(windowPtr: usize) void {
-	openWindowFromRef(@ptrFromInt(windowPtr), null);
+	openWindowFromRef(@ptrFromInt(windowPtr));
 }
 pub fn openWindowCallback(comptime id: []const u8) Callback {
 	return .{
@@ -382,7 +366,7 @@ pub fn openWindowCallback(comptime id: []const u8) Callback {
 }
 
 pub fn closeWindowFromRef(window: *GuiWindow) void {
-	GuiCommandQueue.scheduleCommand(.{.action = .close, .window = window, .params = null});
+	GuiCommandQueue.scheduleCommand(.{.action = .close, .window = window});
 }
 
 pub fn closeWindow(id: []const u8) void {

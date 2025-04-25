@@ -73,7 +73,6 @@ updateSelectedFn: *const fn() void = &defaultFunction,
 updateHoveredFn: *const fn() void = &defaultFunction,
 
 onOpenFn: *const fn() void = &defaultFunction,
-onOpenParamsFn: *const fn(*anyopaque) void = &defaultFunctionParams,
 
 onCloseFn: *const fn() void = &defaultFunction,
 
@@ -129,8 +128,6 @@ pub fn __deinit() void {
 }
 
 pub fn defaultFunction() void {}
-
-pub fn defaultFunctionParams(_: *anyopaque) void {}
 
 pub fn mainButtonPressed(self: *const GuiWindow, mousePosition: Vec2f) void {
 	const scaledMousePos = (mousePosition - self.pos)/@as(Vec2f, @splat(self.scale));

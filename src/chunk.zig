@@ -311,6 +311,8 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 	generated: bool = false,
 	wasStored: bool = false,
 
+	inventories: std.AutoHashMap(Vec3i, *main.items.Inventory.Sync.ServerSide.ServerInventory) = undefined,
+
 	mutex: std.Thread.Mutex = .{},
 	refCount: std.atomic.Value(u16),
 

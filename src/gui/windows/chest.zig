@@ -40,14 +40,16 @@ pub fn deinit() void {
 
 pub var openInventory: main.items.Inventory = undefined;
 
-pub const ChestParams = struct {
-	pos: main.vec.Vec3i,
-	inventoryId: u32,
-};
+pub fn setInventory(pos: main.vec.Vec3i, inventory: main.items.Inventory) void {
+	openInventory = inventory;
+	blockPos = pos;
+}
 
-pub fn onOpenParams(_params: *anyopaque) void {
-	const params: *ChestParams = @ptrCast(_params);
-	openInventory = main.items.Inventory.Sync.getInventory(params.inventoryId, .client, null);
+pub fn onOpen() void {
+	// main.items.Inventory.Sync.ClientSide.mutex.lock();
+	// defer main.items.Inventory.Sync.ClientSide.mutex.unlock();
+	
+	// openInventory = main.items.Inventory.Sync.getInventory(openId, .client, null).?;
 
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 0);
   
@@ -74,6 +76,8 @@ pub fn onClose() void {
 	const block = main.renderer.mesh_storage.getBlock(blockPos[0], blockPos[1], blockPos[2]).?;
 	const mesh = main.renderer.mesh_storage.getMeshAndIncreaseRefCount(.initFromWorldPos(blockPos, 1)).?;
 	block.entityDataClass().?.onUnloadClient(blockPos, mesh.chunk);
+
+	openInventory.deinit(main.globalAllocator);
 
 	itemSlots.clearRetainingCapacity();
 	if(window.rootComponent) |*comp| {

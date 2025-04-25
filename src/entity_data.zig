@@ -10,7 +10,6 @@ const getIndex = main.chunk.getIndex;
 const server = main.server;
 const User = server.User;
 const mesh_storage = main.renderer.mesh_storage;
-const ChestParams = main.gui.windowlist.chest.ChestParams;
 
 pub const EntityDataClass = struct {
 	id: []const u8,
@@ -177,13 +176,13 @@ pub const EntityDataClasses = struct {
 		pub const StorageServer = BlockEntityDataStorage(
 			.server,
 			struct {
-				inventoryId: ?u32,
+				inventory: ?main.items.Inventory,
 			},
 		);
 		pub const StorageClient = BlockEntityDataStorage(
 			.client,
 			struct {
-				inventoryId: ?u32,
+				inventory: ?main.items.Inventory,
 			},
 		);
 
@@ -208,10 +207,20 @@ pub const EntityDataClasses = struct {
 			std.log.debug("Chest.onUnloadClient", .{});
 
 			StorageClient.mutex.lock();
-			defer StorageClient.mutex.unlock();
-
 			const data = StorageClient.get(pos, chunk);
-			main.items.Inventory.Sync.getInventory(data.?.inventoryId, .client, null).?.deinit(main.globalAllocator);
+			StorageClient.mutex.unlock();
+
+			if (data.?.inventory) |inv| {
+				inv.deinit(main.globalAllocator);
+			}
+			
+			// if (data.?.inventoryId) |i| {
+			// main.items.Inventory.Sync.ClientSide.mutex.lock();
+			// const inv = main.items.Inventory.Sync.getInventory(i, .client, null).?;
+			// main.items.Inventory.Sync.ClientSide.mutex.unlock();
+
+			// inv.deinit(main.globalAllocator);
+			// }
 
 			StorageClient.remove(pos, chunk);
 		}
@@ -221,17 +230,15 @@ pub const EntityDataClasses = struct {
 		pub fn onUnloadServer(_: Vec3i, _: *Chunk) void {
 			std.log.debug("Chest.onUnloadServer", .{});
 		}
-		pub fn onPlaceClient(pos: Vec3i, chunk: *Chunk) void {
+		pub fn onPlaceClient(_: Vec3i, _: *Chunk) void {
 			std.log.debug("Chest.onPlaceClient", .{});
-			StorageClient.add(pos, .{.contents = 0}, chunk);
 		}
 		pub fn onBreakClient(pos: Vec3i, chunk: *Chunk) void {
 			std.log.debug("Chest.onBreakClient", .{});
 			StorageClient.remove(pos, chunk);
 		}
-		pub fn onPlaceServer(pos: Vec3i, chunk: *Chunk) void {
+		pub fn onPlaceServer(_: Vec3i, _: *Chunk) void {
 			std.log.debug("Chest.onPlaceServer", .{});
-			StorageServer.add(pos, .{.contents = 0}, chunk);
 		}
 		pub fn onBreakServer(pos: Vec3i, chunk: *Chunk) void {
 			std.log.debug("Chest.onBreakServer", .{});
@@ -239,28 +246,20 @@ pub const EntityDataClasses = struct {
 		}
 		pub fn onInteract(pos: Vec3i, chunk: *Chunk) EventStatus {
 			if(main.KeyBoard.key("shift").pressed) return .ignored;
+
 			StorageClient.mutex.lock();
-			defer StorageClient.mutex.unlock();
-
 			std.debug.assert(StorageClient.get(pos, chunk) == null);
+			StorageClient.mutex.unlock();
 
-			const block = main.renderer.mesh_storage.getBlock(pos[0], pos[1], pos[2]).?;
-			// TODO: pass inventory size as a parameter!
+			const block = chunk.getBlock(pos[0] & main.chunk.chunkMask, pos[1] & main.chunk.chunkMask, pos[2] & main.chunk.chunkMask);//main.renderer.mesh_storage.getBlock(pos[0], pos[1], pos[2]).?;
 			const inventory = main.items.Inventory.init(main.globalAllocator, block.inventorySize().?, .{.blockInventory = pos}, .{.blockInventory = pos});
 			// TODO: Populate from server side storage?
-			StorageClient.mutex.lock();
-			defer StorageClient.mutex.unlock();
-
-			StorageClient.add(pos, .{.inventoryId = inventory.id}, chunk);
-
-			const data = StorageClient.get(pos, chunk) orelse unreachable;
-			const params = ChestParams{
-				.pos = pos,
-				.inventoryId = data.inventoryId,
-			};
+			
+			StorageClient.add(pos, .{.inventory = inventory}, chunk);
 
 			// TODO: likely we would want to allow specifying the GUI based on block.gui() but with some error checking.
-			main.gui.openWindowParams("chest", &params);
+			main.gui.windowlist.chest.setInventory(pos, inventory);
+			main.gui.openWindow("chest");
 			main.Window.setMouseGrabbed(false);
 
 			return .handled;
