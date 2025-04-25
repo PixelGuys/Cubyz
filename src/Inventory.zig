@@ -177,6 +177,27 @@ pub const Sync = struct { // MARK: Sync
 			pub fn deinit(self: *ServerInventory) void {
 				main.utils.assertLocked(&mutex);
 				std.debug.assert(self.users.items.len == 0);
+
+				if (self.source == .blockInventory) {
+					const pos = self.source.blockInventory;
+					const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/inventories/{d}_{d}_{d}.zig.zon", .{main.server.world.?.name, pos[0], pos[1], pos[2]}) catch unreachable;
+					defer main.stackAllocator.free(path);
+					
+					const folder = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/inventories", .{main.server.world.?.name}) catch unreachable;
+					defer main.stackAllocator.free(folder);
+
+					const zon = self.inv.save(main.stackAllocator);
+					defer zon.deinit(main.stackAllocator);
+
+					main.files.makeDir(folder) catch |err| {
+						std.log.err("Error while writing to file {s}: {s}", .{path, @errorName(err)});
+					};
+
+					main.files.writeZon(path, zon) catch |err| {
+						std.log.err("Failed to save inventory at {d}, {d}, {d}: {s}", .{pos[0], pos[1], pos[2], @errorName(err)});
+					};
+				}
+
 				self.users.deinit(main.globalAllocator);
 				self.inv._deinit(main.globalAllocator, .server);
 				self.inv._items.len = 0;
@@ -193,7 +214,7 @@ pub const Sync = struct { // MARK: Sync
 				main.utils.assertLocked(&mutex);
 				_ = self.users.swapRemove(std.mem.indexOfScalar(*main.server.User, self.users.items, user).?);
 				std.debug.assert(user.inventoryClientToServerIdMap.fetchRemove(clientId).?.value == self.inv.id);
-				if(self.source != .blockInventory and self.users.items.len == 0) {
+				if(self.users.items.len == 0) {
 					self.deinit();
 				}
 			}
@@ -298,20 +319,6 @@ pub const Sync = struct { // MARK: Sync
 			executeCommand(payload, source);
 		}
 
-		pub fn createBlockInventory(pos: Vec3i, id: usize) void {
-			if(main.server.world.?.getSimulationChunkAndIncreaseRefCount(pos[0], pos[1], pos[2])) |entityChunk| {
-				defer entityChunk.decreaseRefCount();
-
-				if(entityChunk.getChunk()) |chunk| {
-					chunk.inventories.put(.{
-						pos[0] & @as(i32, main.chunk.chunkMask),
-						pos[1] & @as(i32, main.chunk.chunkMask),
-						pos[2] & @as(i32, main.chunk.chunkMask),
-					}, &inventories.items[id]) catch unreachable;
-				}
-			}
-		}
-
 		fn createInventory(user: *main.server.User, clientId: u32, len: usize, typ: Inventory.Type, source: Source) void {
 			main.utils.assertLocked(&mutex);
 			switch(source) {
@@ -357,7 +364,13 @@ pub const Sync = struct { // MARK: Sync
 					inventory.inv._items[inventory.inv._items.len - 1].item = .{.baseItem = recipe.resultItem};
 				},
 				.blockInventory => |pos| {
-					createBlockInventory(pos, inventory.inv.id);
+					const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/inventories/{d}_{d}_{d}.zig.zon", .{main.server.world.?.name, pos[0], pos[1], pos[2]}) catch unreachable;
+					defer main.stackAllocator.free(path);
+
+					const blockInv = main.files.readToZon(main.stackAllocator, path) catch return;
+					defer blockInv.deinit(main.stackAllocator);
+
+					inventory.inv.loadFromZon(blockInv);
 				},
 				.other => {},
 				.alreadyFreed => unreachable,
@@ -1122,14 +1135,9 @@ pub const Command = struct { // MARK: Command
 				.alreadyFreed => unreachable,
 			}
 			switch(self.inv.type) {
-				.normal, .creative, .crafting => {},
+				.normal, .creative, .crafting, .blockInventory => {},
 				.workbench => {
 					writer.writeSlice(self.inv.type.workbench.id);
-				},
-				.blockInventory => |val| {
-					writer.writeInt(i32, val[0]);
-					writer.writeInt(i32, val[1]);
-					writer.writeInt(i32, val[2]);
 				},
 			}
 		}
@@ -1176,13 +1184,8 @@ pub const Command = struct { // MARK: Command
 				.alreadyFreed => unreachable,
 			};
 			const typ: Type = switch(typeEnum) {
-				inline .normal, .creative, .crafting => |tag| tag,
+				inline .normal, .creative, .crafting, .blockInventory => |tag| tag,
 				.workbench => .{.workbench = main.items.getToolTypeByID(reader.remaining) orelse return error.Invalid},
-				.blockInventory => .{.blockInventory = .{
-					try reader.readInt(i32),
-					try reader.readInt(i32),
-					try reader.readInt(i32),
-				}},
 			};
 			Sync.ServerSide.createInventory(user.?, id, len, typ, source);
 			return .{
@@ -1627,36 +1630,6 @@ pub const Command = struct { // MARK: Command
 				}
 			}
 
-			if(main.server.world.?.getSimulationChunkAndIncreaseRefCount(self.pos[0], self.pos[1], self.pos[2])) |entityChunk| {
-				defer entityChunk.decreaseRefCount();
-
-				if(entityChunk.getChunk()) |chunk| {
-					const relPos = self.pos & @as(Vec3i, @splat(main.chunk.chunkMask));
-
-					if(!chunk.inventories.contains(relPos) and self.oldBlock.inventorySize() != null) {
-						const inventory = Sync.ServerSide.ServerInventory.init(self.oldBlock.inventorySize().?, .{.blockInventory = self.pos}, .{.blockInventory = self.pos});
-						Sync.ServerSide.inventories.items[inventory.inv.id] = inventory;
-						Sync.ServerSide.createBlockInventory(self.pos, inventory.inv.id);
-					}
-
-					if(chunk.inventories.get(relPos)) |inv| {
-						for(inv.inv._items) |item| {
-							if(item.amount == 0 or item.item == null) {
-								continue;
-							}
-
-							blockDrop(self.pos, .{.items = &.{item}, .chance = 1.0});
-						}
-
-						Sync.ServerSide.mutex.lock();
-						defer Sync.ServerSide.mutex.unlock();
-						inv.deinit();
-
-						_ = chunk.inventories.remove(relPos);
-					}
-				}
-			}
-
 			// Apply inventory changes:
 			switch(costOfChange) {
 				.no => unreachable,
@@ -1808,7 +1781,7 @@ const Type = union(TypeEnum) {
 	creative: void,
 	crafting: void,
 	workbench: *const main.items.ToolType,
-	blockInventory: Vec3i,
+	blockInventory: void,
 };
 type: Type,
 id: u32,

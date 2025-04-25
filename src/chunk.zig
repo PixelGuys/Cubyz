@@ -5,7 +5,6 @@ const Block = blocks.Block;
 const main = @import("main");
 const settings = @import("settings.zig");
 const vec = @import("vec.zig");
-const Inventory = main.items.Inventory;
 const Vec3i = vec.Vec3i;
 const Vec3d = vec.Vec3d;
 const ZonElement = main.ZonElement;
@@ -311,8 +310,6 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 	generated: bool = false,
 	wasStored: bool = false,
 
-	inventories: std.AutoHashMap(Vec3i, *main.items.Inventory.Sync.ServerSide.ServerInventory) = undefined,
-
 	mutex: std.Thread.Mutex = .{},
 	refCount: std.atomic.Value(u16),
 
@@ -333,7 +330,6 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 			},
 			.refCount = .init(1),
 		};
-		self.inventories = .init(main.globalAllocator.allocator);
 
 		self.super.data.init();
 		return self;
@@ -344,14 +340,6 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 		if(self.wasChanged) {
 			self.save(main.server.world.?);
 		}
-
-		var iter = self.inventories.valueIterator();
-		while(iter.next()) |val| {
-			Inventory.Sync.ServerSide.mutex.lock();
-			defer Inventory.Sync.ServerSide.mutex.unlock();
-			val.*.deinit();
-		}
-		self.inventories.deinit();
 
 		self.super.data.deinit();
 		serverPool.destroy(@alignCast(self));

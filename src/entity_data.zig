@@ -213,14 +213,6 @@ pub const EntityDataClasses = struct {
 			if (data.?.inventory) |inv| {
 				inv.deinit(main.globalAllocator);
 			}
-			
-			// if (data.?.inventoryId) |i| {
-			// main.items.Inventory.Sync.ClientSide.mutex.lock();
-			// const inv = main.items.Inventory.Sync.getInventory(i, .client, null).?;
-			// main.items.Inventory.Sync.ClientSide.mutex.unlock();
-
-			// inv.deinit(main.globalAllocator);
-			// }
 
 			StorageClient.remove(pos, chunk);
 		}
@@ -252,7 +244,7 @@ pub const EntityDataClasses = struct {
 			StorageClient.mutex.unlock();
 
 			const block = chunk.getBlock(pos[0] & main.chunk.chunkMask, pos[1] & main.chunk.chunkMask, pos[2] & main.chunk.chunkMask);//main.renderer.mesh_storage.getBlock(pos[0], pos[1], pos[2]).?;
-			const inventory = main.items.Inventory.init(main.globalAllocator, block.inventorySize().?, .{.blockInventory = pos}, .{.blockInventory = pos});
+			const inventory = main.items.Inventory.init(main.globalAllocator, block.inventorySize().?, .blockInventory, .{.blockInventory = pos});
 			// TODO: Populate from server side storage?
 			
 			StorageClient.add(pos, .{.inventory = inventory}, chunk);

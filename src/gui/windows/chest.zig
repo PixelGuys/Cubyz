@@ -77,8 +77,6 @@ pub fn onClose() void {
 	const mesh = main.renderer.mesh_storage.getMeshAndIncreaseRefCount(.initFromWorldPos(blockPos, 1)).?;
 	block.entityDataClass().?.onUnloadClient(blockPos, mesh.chunk);
 
-	openInventory.deinit(main.globalAllocator);
-
 	itemSlots.clearRetainingCapacity();
 	if(window.rootComponent) |*comp| {
 		comp.deinit();
