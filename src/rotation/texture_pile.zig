@@ -86,7 +86,7 @@ pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemS
 		.no, .yes_costsDurability, .yes_dropsItems => return .no,
 		.yes_costsItems => |r| return .{.yes_costsItems = r},
 		.yes => {
-			const oldData = @min(oldBlock.data, oldBlock.modeData() - 1);
+			const oldAmount = if(oldBlock.typ == newBlock.typ) @min(oldBlock.data, oldBlock.modeData() - 1) else 0;
 			if(oldData == newBlock.data) return .no;
 			if(oldData < newBlock.data) {
 				if(!isThisItem(newBlock, item)) return .no;
