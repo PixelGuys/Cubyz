@@ -1172,11 +1172,7 @@ pub const Command = struct { // MARK: Command
 						return error.Invalid;
 					},
 				},
-				.blockInventory => .{.blockInventory = .{
-					try reader.readInt(i32),
-					try reader.readInt(i32),
-					try reader.readInt(i32),
-				}},
+				.blockInventory => .{.blockInventory = try reader.readVec(Vec3i)},
 				.other => .{.other = {}},
 				.alreadyFreed => unreachable,
 			};
