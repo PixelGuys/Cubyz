@@ -406,6 +406,25 @@ pub const TickFunctions = struct {
 	pub fn getFunctionPointer(id: []const u8) utils.CallbackError!*const TickFunction {
 		return super.getFunctionPointer(id);
 	}
+
+	pub fn replaceWithCobble(_: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void {
+		std.log.debug("Replace with cobblestone at ({d},{d},{d})", .{x, y, z});
+		const cobblestone = parseBlock("cubyz:cobblestone");
+
+		_chunk.mutex.lock();
+		_chunk.updateBlockAndSetChanged(x, y, z, cobblestone);
+		_chunk.mutex.unlock();
+
+		const wx = _chunk.super.pos.wx + x;
+		const wy = _chunk.super.pos.wy + y;
+		const wz = _chunk.super.pos.wz + z;
+
+		const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
+		defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+		for(userList) |user| {
+			main.network.Protocols.blockUpdate.send(user.conn, wx, wy, wz, cobblestone);
+		}
+	}
 };
 
 pub const TickEvent = struct {
