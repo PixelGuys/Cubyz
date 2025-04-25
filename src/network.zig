@@ -889,7 +889,7 @@ pub const Protocols = struct {
 			const y = try reader.readInt(i32);
 			const z = try reader.readInt(i32);
 			const newBlock = Block.fromInt(try reader.readInt(u32));
-			if(conn.user != null) {
+			if(conn.isServerSide()) {
 				return error.InvalidPacket;
 			} else {
 				renderer.mesh_storage.updateBlock(x, y, z, newBlock);
@@ -965,7 +965,7 @@ pub const Protocols = struct {
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
 			switch(try reader.readEnum(UpdateType)) {
 				.gamemode => {
-					if(conn.user != null) return error.InvalidPacket;
+					if(conn.isServerSide()) return error.InvalidPacket;
 					main.items.Inventory.Sync.setGamemode(null, try reader.readEnum(main.game.Gamemode));
 				},
 				.teleport => {
@@ -1191,7 +1191,7 @@ pub const Protocols = struct {
 			conn.send(.fast, id, writer.data.items);
 		}
 		pub fn sendConfirmation(conn: *Connection, _data: []const u8) void {
-			std.debug.assert(conn.user != null);
+			std.debug.assert(conn.isServerSide());
 			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, _data.len + 1);
 			defer writer.deinit();
 			writer.writeInt(u8, 0xff);
@@ -1199,11 +1199,11 @@ pub const Protocols = struct {
 			conn.send(.fast, id, writer.data.items);
 		}
 		pub fn sendFailure(conn: *Connection) void {
-			std.debug.assert(conn.user != null);
+			std.debug.assert(conn.isServerSide());
 			conn.send(.fast, id, &.{0xfe});
 		}
 		pub fn sendSyncOperation(conn: *Connection, _data: []const u8) void {
-			std.debug.assert(conn.user != null);
+			std.debug.assert(conn.isServerSide());
 			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, _data.len + 1);
 			defer writer.deinit();
 			writer.writeInt(u8, 0);
