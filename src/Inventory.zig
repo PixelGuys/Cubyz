@@ -1954,17 +1954,3 @@ pub fn loadFromZon(self: Inventory, zon: ZonElement) void {
 		}
 	}
 }
-
-pub fn saveToBin(self: Inventory, writer: *utils.BinaryWriter) void {
-	writer.writeInt(u16, @intCast(self._items.len));
-	for(self._items) |stack| {
-		stack.writeToBin(writer);
-	}
-}
-
-pub fn loadFromBin(self: Inventory, reader: *utils.BinaryReader) !void {
-	_ = try reader.readInt(u16);
-	for(self._items) |*stack| {
-		stack.* = ItemStack.loadFromBin(reader);
-	}
-}

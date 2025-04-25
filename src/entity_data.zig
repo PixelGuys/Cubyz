@@ -243,7 +243,7 @@ pub const EntityDataClasses = struct {
 			std.debug.assert(StorageClient.get(pos, chunk) == null);
 			StorageClient.mutex.unlock();
 
-			const block = chunk.getBlock(pos[0] & main.chunk.chunkMask, pos[1] & main.chunk.chunkMask, pos[2] & main.chunk.chunkMask);//main.renderer.mesh_storage.getBlock(pos[0], pos[1], pos[2]).?;
+			const block = chunk.getBlock(pos[0] & main.chunk.chunkMask, pos[1] & main.chunk.chunkMask, pos[2] & main.chunk.chunkMask);
 			const inventory = main.items.Inventory.init(main.globalAllocator, block.inventorySize().?, .blockInventory, .{.blockInventory = pos});
 			// TODO: Populate from server side storage?
 			

@@ -46,11 +46,6 @@ pub fn setInventory(pos: main.vec.Vec3i, inventory: main.items.Inventory) void {
 }
 
 pub fn onOpen() void {
-	// main.items.Inventory.Sync.ClientSide.mutex.lock();
-	// defer main.items.Inventory.Sync.ClientSide.mutex.unlock();
-	
-	// openInventory = main.items.Inventory.Sync.getInventory(openId, .client, null).?;
-
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 0);
   
 	// Some miscellaneous slots and buttons:
@@ -74,7 +69,10 @@ pub fn onOpen() void {
 
 pub fn onClose() void {
 	const block = main.renderer.mesh_storage.getBlock(blockPos[0], blockPos[1], blockPos[2]).?;
+	
 	const mesh = main.renderer.mesh_storage.getMeshAndIncreaseRefCount(.initFromWorldPos(blockPos, 1)).?;
+	defer mesh.decreaseRefCount();
+
 	block.entityDataClass().?.onUnloadClient(blockPos, mesh.chunk);
 
 	itemSlots.clearRetainingCapacity();

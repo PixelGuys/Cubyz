@@ -181,14 +181,6 @@ pub const BaseItem = struct { // MARK: BaseItem
 		self.foodValue = zon.get(f32, "food", 0);
 	}
 
-	pub fn loadFromBin(reader: *main.utils.BinaryReader) !BaseItem {
-		return reverseIndices.get(try reader.readUntilDelimiter(0)) orelse error.ItemNotFound;
-	}
-
-	pub fn writeToBin(self: BaseItem, writer: *main.utils.BinaryWriter) void {
-		writer.writeWithDelimiter(self.id, 0);
-	}
-
 	fn hashCode(self: BaseItem) u32 {
 		var hash: u32 = 0;
 		for(self.id) |char| {
@@ -510,22 +502,6 @@ pub const Tool = struct { // MARK: Tool
 		return self;
 	}
 
-	pub fn loadFromBin(reader: *main.utils.BinaryReader) !*Tool {
-		var items: [25]?*const BaseItem = undefined;
-		for(&items) |*item| {
-			item.* = reverseIndices.get(try reader.readUntilDelimiter(0));
-		}
-		const durability = try reader.readInt(u32);
-		const seed = try reader.readInt(u32);
-		const typ = try reader.readUntilDelimiter(0);
-		const self = initFromCraftingGrid(items, seed, getToolTypeByID(typ) orelse blk: {
-			std.log.err("Couldn't find tool with type {s}. Replacing it with cubyz:pickaxe", .{typ});
-			break :blk getToolTypeByID("cubyz:pickaxe") orelse @panic("cubyz:pickaxe tool not found. Did you load the game with the correct assets?");
-		});
-		self.durability = durability;
-		return self;
-	}
-
 	fn extractItemsFromZon(zonArray: ZonElement) [25]?*const BaseItem {
 		var items: [25]?*const BaseItem = undefined;
 		for(&items, 0..) |*item, i| {
@@ -549,18 +525,6 @@ pub const Tool = struct { // MARK: Tool
 		zonObject.put("seed", self.seed);
 		zonObject.put("type", self.type.id);
 		return zonObject;
-	}
-
-	pub fn writeToBin(self: Tool, writer: *main.utils.BinaryWriter) void {
-		for(self.craftingGrid) |nullItem| {
-			writer.writeInt(u1, @intFromBool(nullItem != null));
-			if(nullItem) |item| {
-				item.writeToBin(writer);
-			}
-		}
-		writer.writeInt(u32, self.durability);
-		writer.writeInt(u32, self.seed);
-		writer.writeWithDelimiter(self.type.id, 0);
 	}
 
 	pub fn hashCode(self: Tool) u32 {
@@ -650,14 +614,6 @@ pub const Item = union(ItemType) { // MARK: Item
 		}
 	}
 
-	pub fn loadFromBin(reader: *main.utils.BinaryReader) !Item {
-		const typ = try reader.readEnum(ItemType);
-		return switch(typ) {
-			.baseItem => .{.baseItem = try BaseItem.loadFromBin(reader)},
-			.tool => .{.tool = try Tool.loadFromBin(reader)},
-		};
-	}
-
 	pub fn deinit(self: Item) void {
 		switch(self) {
 			.baseItem => {},
@@ -694,15 +650,6 @@ pub const Item = union(ItemType) { // MARK: Item
 			},
 			.tool => |_tool| {
 				zonObject.put("tool", _tool.save(allocator));
-			},
-		}
-	}
-
-	pub fn writeToBin(self: Item, writer: *main.utils.BinaryWriter) void {
-		writer.writeEnum(ItemType, self);
-		switch(self) {
-			inline else => |val| {
-				val.writeToBin(writer);
 			},
 		}
 	}
@@ -760,21 +707,6 @@ pub const ItemStack = struct { // MARK: ItemStack
 		};
 	}
 
-	pub fn loadFromBin(reader: *main.utils.BinaryReader) !ItemStack {
-		const num = try reader.readInt(u16);
-		if(num == 0) {
-			return .{
-				.item = null,
-				.amount = num,
-			};
-		} else {
-			return .{
-				.item = try Item.loadFromBin(reader),
-				.amount = num,
-			};
-		}
-	}
-
 	pub fn deinit(self: *ItemStack) void {
 		if(self.item) |item| {
 			item.deinit();
@@ -802,17 +734,6 @@ pub const ItemStack = struct { // MARK: ItemStack
 		if(self.item) |item| {
 			item.insertIntoZon(allocator, zonObject);
 			zonObject.put("amount", self.amount);
-		}
-	}
-
-	pub fn writeToBin(self: *const ItemStack, writer: *main.utils.BinaryWriter) void {
-		if(self.item) |item| {
-			writer.writeInt(u16, @intCast(self.amount));
-			if(self.amount != 0) {
-				item.writeToBin(writer);
-			}
-		} else {
-			writer.writeInt(u16, 0);
 		}
 	}
 
