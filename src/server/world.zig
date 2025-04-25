@@ -397,7 +397,7 @@ const WorldIO = struct { // MARK: WorldIO
 		self.world.biomeChecksum = worldData.get(i64, "biomeChecksum", 0);
 		self.world.tickCount = worldData.get(i64, "tickCount", 0);
 		self.world.doTick = worldData.get(bool, "doTick", true);
-		self.world.tickSpeed = worldData.get(u32, "tickSpeed", 4);
+		self.world.tickSpeed = worldData.get(u32, "tickSpeed", 12);
 	}
 
 	pub fn saveWorldData(self: WorldIO) !void {
@@ -435,7 +435,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	doGameTimeCycle: bool = true,
 
 	tickCount: i64 = 0,
-	tickSpeed: u32 = 4,
+	tickSpeed: u32 = 12,
 	lastTickTime: i64,
 	doTick: bool = true,
 
@@ -942,20 +942,15 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	fn tickBlocksInChunk(self: *ServerWorld, _chunk: ?*chunk.ServerChunk) void {
 		if(_chunk) |ch| {
 			for(0..self.tickSpeed) |_| {
-				// get 3 indices from a single random u32
-				const index1: u32 = main.random.nextInt(u32, &main.seed);
-				const index2 = index1 >> 3*chunk.chunkShift;
-				const index3 = index1 ^ index2;
+				const blockIndex: u32 = main.random.nextInt(u32, &main.seed);
 
-				for([3]u32{index1, index2, index3}) |index| {
-					const x: i32 = @intCast(index >> chunk.chunkShift2 & chunk.chunkMask);
-					const y: i32 = @intCast(index >> chunk.chunkShift & chunk.chunkMask);
-					const z: i32 = @intCast(index & chunk.chunkMask);
+				const x: i32 = @intCast(blockIndex >> chunk.chunkShift2 & chunk.chunkMask);
+				const y: i32 = @intCast(blockIndex >> chunk.chunkShift & chunk.chunkMask);
+				const z: i32 = @intCast(blockIndex & chunk.chunkMask);
 
-					var block = ch.super.getBlock(x, y, z);
-					for(block.tickEvents()) |event| {
-						event.function(block, ch, x, y, z);
-					}
+				var block = ch.super.getBlock(x, y, z);
+				for(block.tickEvents()) |event| {
+					event.function(block, ch, x, y, z);
 				}
 			}
 		}
