@@ -177,27 +177,6 @@ pub const Sync = struct { // MARK: Sync
 			fn deinit(self: *ServerInventory) void {
 				main.utils.assertLocked(&mutex);
 				std.debug.assert(self.users.items.len == 0);
-
-				if(self.source == .blockInventory) {
-					const pos = self.source.blockInventory;
-					const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/inventories/{d}_{d}_{d}.zig.zon", .{main.server.world.?.name, pos[0], pos[1], pos[2]}) catch unreachable;
-					defer main.stackAllocator.free(path);
-
-					const folder = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/inventories", .{main.server.world.?.name}) catch unreachable;
-					defer main.stackAllocator.free(folder);
-
-					const zon = self.inv.save(main.stackAllocator);
-					defer zon.deinit(main.stackAllocator);
-
-					main.files.makeDir(folder) catch |err| {
-						std.log.err("Error while writing to file {s}: {s}", .{path, @errorName(err)});
-					};
-
-					main.files.writeZon(path, zon) catch |err| {
-						std.log.err("Failed to save inventory at {d}, {d}, {d}: {s}", .{pos[0], pos[1], pos[2], @errorName(err)});
-					};
-				}
-
 				self.users.deinit(main.globalAllocator);
 				self.inv._deinit(main.globalAllocator, .server);
 				self.inv._items.len = 0;
@@ -363,16 +342,7 @@ pub const Sync = struct { // MARK: Sync
 					inventory.inv._items[inventory.inv._items.len - 1].amount = recipe.resultAmount;
 					inventory.inv._items[inventory.inv._items.len - 1].item = .{.baseItem = recipe.resultItem};
 				},
-				.blockInventory => |pos| {
-					const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/inventories/{d}_{d}_{d}.zig.zon", .{main.server.world.?.name, pos[0], pos[1], pos[2]}) catch unreachable;
-					defer main.stackAllocator.free(path);
-
-					const blockInv = main.files.readToZon(main.stackAllocator, path) catch return;
-					defer blockInv.deinit(main.stackAllocator);
-
-					inventory.inv.loadFromZon(blockInv);
-				},
-				.other => {},
+				.blockInventory, .other => {},
 				.alreadyFreed => unreachable,
 			}
 		}
