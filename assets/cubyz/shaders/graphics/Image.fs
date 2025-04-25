@@ -7,5 +7,9 @@ flat in vec4 fColor;
 in vec2 uv;
 
 void main() {
-	frag_color = texture(image, uv) * fColor;
+	vec4 color = texture(image, uv) * fColor;
+	if (color.a < 0.001) {
+		discard;
+	}
+	frag_color = color;
 }
