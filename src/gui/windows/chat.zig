@@ -100,19 +100,23 @@ pub const History = struct {
 	}
 	fn flush(self: *History) void {
 		if(self.current) |msg| {
-			if(self.up.forceEnqueueFront(msg)) |old| {
-				main.globalAllocator.free(old);
+			if(msg.len != 0) {
+				if(self.up.forceEnqueueFront(msg)) |old| {
+					main.globalAllocator.free(old);
+				}
 			}
 			self.current = null;
 		}
 		while(self.down.dequeueFront()) |msg| {
-			if(self.up.forceEnqueueFront(msg)) |old| {
-				main.globalAllocator.free(old);
+			if(msg.len != 0) {
+				if(self.up.forceEnqueueFront(msg)) |old| {
+					main.globalAllocator.free(old);
+				}
 			}
 		}
 	}
 	fn insertIfUnique(self: *History, new: []const u8) bool {
-		if(new.len == 0) return self.down.isEmpty();
+		if(new.len == 0 and !self.down.isEmpty()) return false;
 		if(self.current) |msg| {
 			if(std.mem.eql(u8, msg, new)) return false;
 		}
@@ -128,7 +132,7 @@ pub const History = struct {
 		return true;
 	}
 	fn pushIfUnique(self: *History, new: []const u8) void {
-		if(new.len == 0) return;
+		if(new.len == 0 and !self.down.isEmpty()) return;
 		if(self.current) |msg| {
 			if(std.mem.eql(u8, msg, new)) return;
 		}
