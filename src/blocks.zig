@@ -411,7 +411,6 @@ pub const TickFunctions = struct {
 pub const TickEvent = struct {
 	function: *const TickFunction,
 	chance: f32,
-	tryEvery: u16,
 
 	pub fn loadFromZon(_allocator: main.heap.NeverFailingAllocator, zon: ZonElement) []TickEvent {
 		var tickEvents = _allocator.alloc(TickEvent, zon.toSlice().len);
@@ -431,7 +430,6 @@ pub const TickEvent = struct {
 				tickEvents[n] = TickEvent{
 					.function = function,
 					.chance = tickEventZon.get(f32, "chance", 1),
-					.tryEvery = tickEventZon.get(u16, "tryEvery", 1),
 				};
 				n += 1;
 			}
@@ -445,10 +443,6 @@ pub const TickEvent = struct {
 		}
 
 		return tickEvents;
-	}
-
-	pub fn shouldTick(self: *const TickEvent, tickCount: i64) bool {
-		return self.tryEvery <= 1 or @mod(tickCount, @as(i64, @intCast(self.tryEvery))) == 0;
 	}
 
 	pub fn tryRandomTick(self: *const TickEvent, block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void {
