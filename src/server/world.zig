@@ -430,8 +430,10 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	doGameTimeCycle: bool = true,
 
 	tickCount: i64 = 0,
+	tickSpeed: u32 = 4,
+	tickDistance: u16 = 5,
 	lastTickTime: i64,
-	tickFreeze: bool = false,
+	doTick: bool = true,
 
 	defaultGamemode: main.game.Gamemode = undefined,
 	allowCheats: bool = undefined,
@@ -955,9 +957,22 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	fn tick(self: *ServerWorld) void {
+		const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
+		defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+
 		// tick blocks
 		var iter = ChunkManager.entityChunkHashMap.keyIterator();
 		while(iter.next()) |pos| {
+			for(userList) |user| {
+				const minTickDistance: u16 = @min(user.renderDistance, self.tickDistance);
+				const playerChunkPos = ChunkPosition.initFromWorldPos(user.lastPos, 1);
+				const chunkDistanceX: u32 = @divFloor(@abs(pos.*.wx - playerChunkPos.wx), chunk.chunkSize);
+				const chunkDistanceY: u32 = @divFloor(@abs(pos.*.wy - playerChunkPos.wy), chunk.chunkSize);
+				const chunkDistanceZ: u32 = @divFloor(@abs(pos.*.wz - playerChunkPos.wz), chunk.chunkSize);
+
+				if(chunkDistanceX <= minTickDistance and chunkDistanceY <= minTickDistance and chunkDistanceZ <= minTickDistance) break;
+			} else continue;
+
 			if(ChunkManager.getEntityChunkAndIncreaseRefCount(pos.*)) |entityChunk| {
 				self.tickBlocksInChunk(entityChunk.getChunk());
 				entityChunk.decreaseRefCount();
@@ -990,7 +1005,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 		if(self.lastTickTime + 50 < newTime) { // Tick very 50ms
 			self.lastTickTime = newTime;
-			if(!self.tickFreeze) self.tick();
+			if(self.doTick) self.tick();
 		}
 		// TODO: Entities
 
