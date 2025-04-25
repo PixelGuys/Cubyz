@@ -840,6 +840,11 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 								}
 							}
 						}
+						if(std.mem.eql(u8, baseItem.id, "cubyz:selection_wand")) {
+							game.Player.selectionPosition2 = selectedPos;
+							main.network.Protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos2, selectedPos);
+							return;
+						}
 					},
 					.tool => |tool| {
 						_ = tool; // TODO: Tools might change existing blocks.
@@ -851,6 +856,14 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 	pub fn breakBlock(inventory: main.items.Inventory, slot: u32, deltaTime: f64) void {
 		if(selectedBlockPos) |selectedPos| {
+			const stack = inventory.getStack(slot);
+			const isSelectionWand = stack.item != null and stack.item.? == .baseItem and std.mem.eql(u8, stack.item.?.baseItem.id, "cubyz:selection_wand");
+			if(isSelectionWand) {
+				game.Player.selectionPosition1 = selectedPos;
+				main.network.Protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos1, selectedPos);
+				return;
+			}
+
 			if(@reduce(.Or, lastSelectedBlockPos != selectedPos)) {
 				mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
 				lastSelectedBlockPos = selectedPos;
@@ -863,7 +876,6 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 			main.items.Inventory.Sync.ClientSide.mutex.lock();
 			if(!game.Player.isCreative()) {
-				const stack = inventory.getStack(slot);
 				var damage: f32 = 1;
 				const isTool = stack.item != null and stack.item.? == .tool;
 				if(isTool) {
