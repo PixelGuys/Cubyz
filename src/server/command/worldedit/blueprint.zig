@@ -14,10 +14,10 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 pub const description = "Input-output operations on blueprints.";
 pub const usage =
-	\\/blueprint save <file-name>
-	\\/blueprint delete <file-name>
-	\\/blueprint load <file-name>
-	\\/blueprint list
+	\\/blueprint save <id> [--scope/-s <remote|local|game|world>]
+	\\/blueprint delete <id> [--scope/-s <remote|local|game|world>]
+	\\/blueprint load <id> [--scope/-s <remote|local|game|world>]
+	\\/blueprint list [--scope/-s <remote|local|game|world>]
 ;
 
 const BlueprintSubCommand = enum {
@@ -25,163 +25,257 @@ const BlueprintSubCommand = enum {
 	delete,
 	load,
 	list,
-	unknown,
-	empty,
+};
 
-	fn fromString(string: []const u8) BlueprintSubCommand {
-		return std.meta.stringToEnum(BlueprintSubCommand, string) orelse {
-			if(string.len == 0) return .empty;
-			return .unknown;
-		};
+const StorageScope = enum {
+	remote,
+	local,
+	game,
+	world,
+};
+
+pub const ParsedId = struct {
+	addon: []const u8,
+	asset: []const u8,
+	params: []const u8,
+
+	pub fn parse(id: []const u8) !ParsedId {
+		var self: ParsedId = undefined;
+		var split = std.mem.splitScalar(u8, id, ':');
+
+		self.addon = split.next() orelse "";
+		for(0..self.addon.len) |i| {
+			if(!std.ascii.isAlphanumeric(self.addon[i])) return error.InvalidAddonName;
+		}
+		self.asset = split.next() orelse "";
+		for(0..self.asset.len) |i| {
+			const c = self.asset[i];
+			if(!std.ascii.isAlphanumeric(c) and c != '/') return error.InvalidAssetName;
+		}
+		self.params = split.next() orelse "";
+
+		return self;
+	}
+};
+
+const CommandParams = struct {
+	command: ?BlueprintSubCommand = null,
+	id: ?[]const u8 = null,
+	scope: StorageScope = .remote,
+
+	pub fn getPath(self: CommandParams, allocator: main.heap.NeverFailingAllocator) ![]const u8 {
+		const parsed = try ParsedId.parse(self.id.?);
+
+		switch(self.scope) {
+			.remote => return std.fmt.allocPrint(allocator.allocator, "./blueprints/{s}/{s}.blp", .{parsed.addon, parsed.asset}),
+			.local => return std.fmt.allocPrint(allocator.allocator, "./blueprints/{s}/{s}.blp", .{parsed.addon, parsed.asset}),
+			.game => return std.fmt.allocPrint(allocator.allocator, "./assets/{s}/blueprints/{s}.blp", .{parsed.addon, parsed.asset}),
+			.world => return std.fmt.allocPrint(allocator.allocator, "./saves/{s}/assets/{s}/blueprints/{s}.blp", .{main.server.world.?.name, parsed.addon, parsed.asset}),
+		}
 	}
 };
 
 pub fn execute(args: []const u8, source: *User) void {
-	var argsList = List([]const u8).init(main.stackAllocator);
-	defer argsList.deinit();
+	var params = CommandParams{};
 
 	var splitIterator = std.mem.splitScalar(u8, args, ' ');
-	while(splitIterator.next()) |a| {
-		argsList.append(a);
+	const command = splitIterator.next() orelse {
+		return source.sendMessage("#ff0000Missing subcommand for '/blueprint', usage: {s}", .{usage});
+	};
+	params.command = std.meta.stringToEnum(BlueprintSubCommand, command) orelse {
+		return source.sendMessage("#ff0000Invalid subcommand for '/blueprint': '{s}', usage: {s}", .{command, usage});
+	};
+	while(splitIterator.next()) |next| {
+		if(std.mem.eql(u8, next, "--scope") or std.mem.eql(u8, next, "-s")) {
+			const scope = splitIterator.next() orelse {
+				return source.sendMessage("#ff0000Missing argument for '--scope' option, usage: {s}", .{usage});
+			};
+			params.scope = std.meta.stringToEnum(StorageScope, scope) orelse {
+				return source.sendMessage("#ff0000Invalid scope '{s}', usage: {s}", .{@tagName(params.scope), usage});
+			};
+			continue;
+		}
+		if(params.id == null) {
+			params.id = next;
+			continue;
+		}
+		return source.sendMessage("#ff0000Too many arguments for /blueprint command, usage: {s}", .{usage});
 	}
 
-	if(argsList.items.len < 1) {
-		source.sendMessage("#ff0000Not enough arguments for /blueprint, expected at least 1.", .{});
-		return;
-	}
-	const subcommand = BlueprintSubCommand.fromString(argsList.items[0]);
-	switch(subcommand) {
-		.save => blueprintSave(argsList.items, source),
-		.delete => blueprintDelete(argsList.items, source),
-		.load => blueprintLoad(argsList.items, source),
-		.list => blueprintList(source),
-		.unknown => {
-			source.sendMessage("#ff0000Unrecognized subcommand for /blueprint: '{s}'", .{argsList.items[0]});
-		},
-		.empty => {
-			source.sendMessage("#ff0000Missing subcommand for /blueprint, usage: {s} ", .{usage});
-		},
+	switch(params.command.?) {
+		.save => blueprintSave(params, source),
+		.delete => blueprintDelete(params, source),
+		.load => blueprintLoad(params, source),
+		.list => blueprintList(params, source),
 	}
 }
 
-fn blueprintSave(args: []const []const u8, source: *User) void {
-	if(args.len < 2) {
-		return source.sendMessage("#ff0000/blueprint save requires file-name argument.", .{});
+fn blueprintSave(params: CommandParams, source: *User) void {
+	if(params.id == null) {
+		return source.sendMessage("#ff0000'/blueprint save' requires blueprint id argument.", .{});
 	}
-	if(args.len >= 3) {
-		return source.sendMessage("#ff0000Too many arguments for /blueprint save. Expected 1 argument, file-name.", .{});
-	}
-
 	if(source.worldEditData.clipboard) |clipboard| {
-		const storedBlueprint = clipboard.store(main.stackAllocator);
-		defer main.stackAllocator.free(storedBlueprint);
-
-		const fileName: []const u8 = ensureBlueprintExtension(main.stackAllocator, args[1]);
-		defer main.stackAllocator.free(fileName);
-
-		var blueprintsDir = openBlueprintsDir(source) orelse return;
-		defer blueprintsDir.close();
-
-		blueprintsDir.write(fileName, storedBlueprint) catch |err| {
-			return sendWarningAndLog("Failed to write blueprint file '{s}' ({s})", .{fileName, @errorName(err)}, source);
+		const filePath: []const u8 = params.getPath(main.stackAllocator) catch |err| {
+			return source.sendWarningAndLog("Failed to determine path for blueprint file '{s}' ({s})", .{params.id.?, @errorName(err)});
 		};
+		defer main.stackAllocator.free(filePath);
 
-		sendInfoAndLog("Saved clipboard to blueprint file: {s}", .{fileName}, source);
+		switch(params.scope) {
+			.local => main.network.Protocols.genericUpdate.sendBlueprintSave(source.conn, filePath, clipboard),
+			.remote, .game, .world => {
+				const storedBlueprint = clipboard.store(main.stackAllocator);
+				defer main.stackAllocator.free(storedBlueprint);
+
+				var split = std.mem.splitBackwardsScalar(u8, filePath, '/');
+				const fileName = split.first();
+				const fileDir = split.rest();
+
+				var dir = main.files.openDir(fileDir) catch |err| {
+					return source.sendWarningAndLog("Failed to open directory '{s}' ({s})", .{fileDir, @errorName(err)});
+				};
+				defer dir.close();
+
+				dir.write(fileName, storedBlueprint) catch |err| {
+					return source.sendWarningAndLog("Failed to write blueprint file '{s}' ({s})", .{filePath, @errorName(err)});
+				};
+			},
+		}
+		source.sendInfoAndLog("Saved clipboard to blueprint to file: '{s}'", .{filePath});
 	} else {
 		source.sendMessage("#ff0000Error: No clipboard content to save.", .{});
 	}
 }
 
-fn sendWarningAndLog(comptime fmt: []const u8, args: anytype, user: *User) void {
-	std.log.warn(fmt, args);
-	user.sendMessage("#ff0000" ++ fmt, args);
-}
-
-fn sendInfoAndLog(comptime fmt: []const u8, args: anytype, user: *User) void {
-	std.log.info(fmt, args);
-	user.sendMessage("#00ff00" ++ fmt, args);
-}
-
-fn openBlueprintsDir(source: *User) ?Dir {
-	return openDir("blueprints") catch |err| blk: {
-		sendWarningAndLog("Failed to open 'blueprints' directory ({s})", .{@errorName(err)}, source);
-		break :blk null;
+fn blueprintDelete(params: CommandParams, source: *User) void {
+	if(params.id == null) {
+		return source.sendMessage("#ff0000'/blueprint delete' requires blueprint id argument.", .{});
+	}
+	const filePath: []const u8 = params.getPath(main.stackAllocator) catch |err| {
+		return source.sendWarningAndLog("Failed to determine path for blueprint file '{s}' ({s})", .{params.id.?, @errorName(err)});
 	};
-}
+	defer main.stackAllocator.free(filePath);
 
-fn ensureBlueprintExtension(allocator: NeverFailingAllocator, fileName: []const u8) []const u8 {
-	if(!std.ascii.endsWithIgnoreCase(fileName, ".blp")) {
-		return std.fmt.allocPrint(allocator.allocator, "{s}.blp", .{fileName}) catch unreachable;
-	} else {
-		return allocator.dupe(u8, fileName);
+	switch(params.scope) {
+		.local => main.network.Protocols.genericUpdate.sendBlueprintDelete(source.conn, filePath),
+		.remote, .game, .world => {
+			std.fs.cwd().deleteFile(filePath) catch |err| {
+				return source.sendWarningAndLog("Failed to delete blueprint file '{s}' ({s})", .{filePath, @errorName(err)});
+			};
+			source.sendInfoAndLog("Deleted blueprint file: '{s}'", .{filePath});
+		},
 	}
 }
 
-fn blueprintDelete(args: []const []const u8, source: *User) void {
-	if(args.len < 2) {
-		return source.sendMessage("#ff0000/blueprint delete requires file-name argument.", .{});
+fn blueprintList(params: CommandParams, source: *User) void {
+	switch(params.scope) {
+		.local => main.network.Protocols.genericUpdate.sendBlueprintListRequest(source.conn),
+		.remote => {
+			var blueprintsDir = std.fs.cwd().openDir("blueprints", .{.iterate = true}) catch return;
+			defer blueprintsDir.close();
+
+			var isEmpty = true;
+
+			var iterator = blueprintsDir.iterate();
+			while(iterator.next() catch return) |addon| {
+				if(addon.kind != .directory) continue;
+
+				var addonDir = blueprintsDir.openDir(addon.name, .{.iterate = true}) catch continue;
+				defer addonDir.close();
+
+				var walker = addonDir.walk(main.stackAllocator.allocator) catch continue;
+				defer walker.deinit();
+
+				while(walker.next() catch continue) |entry| {
+					if(entry.kind != .file) continue;
+
+					var split = std.mem.splitBackwardsScalar(u8, entry.path, '.');
+					_ = split.first();
+					source.sendMessage("#ffffff{s}:{s}", .{addon.name, split.rest()});
+
+					isEmpty = false;
+				}
+			}
+			if(isEmpty) {
+				source.sendInfoAndLog("No blueprints found.", .{});
+			}
+		},
+		.world, .game => {
+			const assetsPath = switch(params.scope) {
+				.game => main.stackAllocator.allocator.dupe(u8, "assets") catch unreachable,
+				.world => std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets", .{main.server.world.?.name}) catch unreachable,
+				else => unreachable,
+			};
+			defer main.stackAllocator.free(assetsPath);
+
+			var assetsDir = std.fs.cwd().openDir(assetsPath, .{.iterate = true}) catch return;
+			defer assetsDir.close();
+
+			var isEmpty = true;
+
+			var iterator = assetsDir.iterate();
+			while(iterator.next() catch return) |addon| {
+				if(addon.kind != .directory) continue;
+
+				var addonDir = assetsDir.openDir(addon.name, .{.iterate = true}) catch continue;
+				defer addonDir.close();
+
+				var blueprintsDir = addonDir.openDir("blueprints", .{.iterate = true}) catch continue;
+				defer blueprintsDir.close();
+
+
+				var walker = blueprintsDir.walk(main.stackAllocator.allocator) catch continue;
+				defer walker.deinit();
+
+				while(walker.next() catch continue) |entry| {
+					if(entry.kind != .file) continue;
+
+					var split = std.mem.splitBackwardsScalar(u8, entry.path, '.');
+					_ = split.first();
+					source.sendMessage("#ffffff{s}:{s}", .{addon.name, split.rest()});
+
+					isEmpty = false;
+				}
+			}
+			if(isEmpty) {
+				source.sendInfoAndLog("No blueprints found.", .{});
+			}
+		},
 	}
-	if(args.len >= 3) {
-		return source.sendMessage("#ff0000Too many arguments for /blueprint delete. Expected 1 argument, file-name.", .{});
-	}
-
-	const fileName: []const u8 = ensureBlueprintExtension(main.stackAllocator, args[1]);
-	defer main.stackAllocator.free(fileName);
-
-	var blueprintsDir = openBlueprintsDir(source) orelse return;
-	defer blueprintsDir.close();
-
-	blueprintsDir.dir.deleteFile(fileName) catch |err| {
-		return sendWarningAndLog("Failed to delete blueprint file '{s}' ({s})", .{fileName, @errorName(err)}, source);
-	};
-
-	sendWarningAndLog("Deleted blueprint file: {s}", .{fileName}, source);
 }
 
-fn blueprintList(source: *User) void {
-	var blueprintsDir = std.fs.cwd().makeOpenPath("blueprints", .{.iterate = true}) catch |err| {
-		return sendWarningAndLog("Failed to open 'blueprints' directory ({s})", .{@errorName(err)}, source);
+fn blueprintLoad(params: CommandParams, source: *User) void {
+	if(params.id == null) {
+		return source.sendMessage("#ff0000'/blueprint load' requires blueprint id argument.", .{});
+	}
+	const filePath: []const u8 = params.getPath(main.stackAllocator) catch |err| {
+		return source.sendWarningAndLog("Failed to determine path for blueprint file '{s}' ({s})", .{params.id.?, @errorName(err)});
 	};
-	defer blueprintsDir.close();
+	defer main.stackAllocator.free(filePath);
 
-	var directoryIterator = blueprintsDir.iterate();
+	switch(params.scope) {
+		.local => main.network.Protocols.genericUpdate.sendBlueprintLoadRequest(source.conn, filePath),
+		.remote, .game, .world => {
+			var blueprintFile = std.fs.cwd().openFile(filePath, .{.mode = .read_only}) catch |err| {
+				return source.sendWarningAndLog("Failed to open blueprint file '{s}' ({s})", .{filePath, @errorName(err)});
+			};
+			defer blueprintFile.close();
 
-	while(directoryIterator.next() catch |err| {
-		return sendWarningAndLog("Failed to read blueprint directory ({s})", .{@errorName(err)}, source);
-	}) |entry| {
-		if(entry.kind != .file) break;
-		if(!std.ascii.endsWithIgnoreCase(entry.name, ".blp")) break;
+			const raw = blueprintFile.readToEndAlloc(main.stackAllocator.allocator, std.math.maxInt(usize)) catch |err| {
+				return source.sendWarningAndLog("Failed to write blueprint to file '{s}' ({s})", .{filePath, @errorName(err)});
+			};
+			defer main.stackAllocator.free(raw);
 
-		source.sendMessage("#ffffff- {s}", .{entry.name});
+			const blueprint = Blueprint.load(main.globalAllocator, raw) catch |err| {
+				return source.sendWarningAndLog("Failed to load blueprint from file '{s}' ({s})", .{filePath, @errorName(err)});
+			};
+
+			const oldClipboard = source.worldEditData.clipboard;
+			source.worldEditData.clipboard = blueprint;
+
+			if(oldClipboard) |_oldClipboard| {
+				_oldClipboard.deinit(main.globalAllocator);
+			}
+		},
 	}
-}
-
-fn blueprintLoad(args: []const []const u8, source: *User) void {
-	if(args.len < 2) {
-		return source.sendMessage("#ff0000/blueprint load requires file-name argument.", .{});
-	}
-	if(args.len >= 3) {
-		return source.sendMessage("#ff0000Too many arguments for /blueprint load. Expected 1 argument, file-name.", .{});
-	}
-
-	const fileName: []const u8 = ensureBlueprintExtension(main.stackAllocator, args[1]);
-	defer main.stackAllocator.free(fileName);
-
-	var blueprintsDir = openBlueprintsDir(source) orelse return;
-	defer blueprintsDir.close();
-
-	const storedBlueprint = blueprintsDir.read(main.stackAllocator, fileName) catch |err| {
-		sendWarningAndLog("Failed to read blueprint file '{s}' ({s})", .{fileName, @errorName(err)}, source);
-		return;
-	};
-	defer main.stackAllocator.free(storedBlueprint);
-
-	if(source.worldEditData.clipboard) |oldClipboard| {
-		oldClipboard.deinit(main.globalAllocator);
-	}
-	source.worldEditData.clipboard = Blueprint.load(main.globalAllocator, storedBlueprint) catch |err| {
-		return sendWarningAndLog("Failed to load blueprint file '{s}' ({s})", .{fileName, @errorName(err)}, source);
-	};
-
-	sendInfoAndLog("Loaded blueprint file: {s}", .{fileName}, source);
+	source.sendInfoAndLog("Saved clipboard to blueprint to file: '{s}'", .{filePath});
 }
