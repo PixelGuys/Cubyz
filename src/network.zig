@@ -2079,6 +2079,9 @@ pub const Connection = struct { // MARK: Connection
 	pub fn disconnect(self: *Connection) void {
 		self.manager.send(&.{@intFromEnum(ChannelId.disconnect)}, self.remoteAddress, null);
 		self.connectionState.store(.disconnectDesired, .unordered);
+		if(builtin.os.tag == .windows and !self.isServerSide() and main.server.world != null) {
+			std.time.sleep(10000000); // Windows is too eager to close the socket, without waiting here we get a ConnectionResetByPeer on the other side.
+		}
 		self.manager.removeConnection(self);
 		if(self.user) |user| {
 			main.server.disconnect(user);
