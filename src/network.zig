@@ -886,7 +886,7 @@ pub const Protocols = struct {
 		pub const id: u8 = 7;
 		pub const asynchronous = false;
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			if(conn.user != null) {
+			if(conn.isServerSide()) {
 				return error.InvalidPacket;
 			}
 			while(reader.remaining.len != 0) {
@@ -972,7 +972,7 @@ pub const Protocols = struct {
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
 			switch(try reader.readEnum(UpdateType)) {
 				.gamemode => {
-					if(conn.user != null) return error.InvalidPacket;
+					if(conn.isServerSide()) return error.InvalidPacket;
 					main.items.Inventory.Sync.setGamemode(null, try reader.readEnum(main.game.Gamemode));
 				},
 				.teleport => {
@@ -980,19 +980,28 @@ pub const Protocols = struct {
 				},
 				.worldEditPos => {
 					const typ = try reader.readEnum(WorldEditPosition);
-					switch(typ) {
-						.selectedPos1, .selectedPos2 => {
-							const pos = try reader.readVec(Vec3i);
-							switch(typ) {
-								.selectedPos1 => game.Player.selectionPosition1 = pos,
-								.selectedPos2 => game.Player.selectionPosition2 = pos,
-								else => unreachable,
-							}
-						},
-						.clear => {
-							game.Player.selectionPosition1 = null;
-							game.Player.selectionPosition2 = null;
-						},
+					const pos: ?Vec3i = switch(typ) {
+						.selectedPos1, .selectedPos2 => try reader.readVec(Vec3i),
+						.clear => null,
+					};
+					if(conn.isServerSide()) {
+						switch(typ) {
+							.selectedPos1 => conn.user.?.worldEditData.selectionPosition1 = pos.?,
+							.selectedPos2 => conn.user.?.worldEditData.selectionPosition2 = pos.?,
+							.clear => {
+								conn.user.?.worldEditData.selectionPosition1 = null;
+								conn.user.?.worldEditData.selectionPosition2 = null;
+							},
+						}
+					} else {
+						switch(typ) {
+							.selectedPos1 => game.Player.selectionPosition1 = pos,
+							.selectedPos2 => game.Player.selectionPosition2 = pos,
+							.clear => {
+								game.Player.selectionPosition1 = null;
+								game.Player.selectionPosition2 = null;
+							},
+						}
 					}
 				},
 				.timeAndBiome => {
@@ -1189,7 +1198,7 @@ pub const Protocols = struct {
 			conn.send(.fast, id, writer.data.items);
 		}
 		pub fn sendConfirmation(conn: *Connection, _data: []const u8) void {
-			std.debug.assert(conn.user != null);
+			std.debug.assert(conn.isServerSide());
 			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, _data.len + 1);
 			defer writer.deinit();
 			writer.writeInt(u8, 0xff);
@@ -1197,11 +1206,11 @@ pub const Protocols = struct {
 			conn.send(.fast, id, writer.data.items);
 		}
 		pub fn sendFailure(conn: *Connection) void {
-			std.debug.assert(conn.user != null);
+			std.debug.assert(conn.isServerSide());
 			conn.send(.fast, id, &.{0xfe});
 		}
 		pub fn sendSyncOperation(conn: *Connection, _data: []const u8) void {
-			std.debug.assert(conn.user != null);
+			std.debug.assert(conn.isServerSide());
 			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, _data.len + 1);
 			defer writer.deinit();
 			writer.writeInt(u8, 0);
@@ -1796,6 +1805,10 @@ pub const Connection = struct { // MARK: Connection
 		return self.connectionState.load(.unordered) == .connected;
 	}
 
+	fn isServerSide(conn: *Connection) bool {
+		return conn.user != null;
+	}
+
 	fn handlePacketLoss(self: *Connection, loss: LossStatus) void {
 		if(loss == .noLoss) return;
 		self.slowStart = false;
@@ -2073,6 +2086,9 @@ pub const Connection = struct { // MARK: Connection
 	pub fn disconnect(self: *Connection) void {
 		self.manager.send(&.{@intFromEnum(ChannelId.disconnect)}, self.remoteAddress, null);
 		self.connectionState.store(.disconnectDesired, .unordered);
+		if(builtin.os.tag == .windows and !self.isServerSide() and main.server.world != null) {
+			std.time.sleep(10000000); // Windows is too eager to close the socket, without waiting here we get a ConnectionResetByPeer on the other side.
+		}
 		self.manager.removeConnection(self);
 		if(self.user) |user| {
 			main.server.disconnect(user);
