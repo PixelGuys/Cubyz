@@ -108,6 +108,7 @@ pub fn isOriginBlock(block: Block) bool {
 }
 
 pub const StructureBuildingBlock = struct {
+	id: []const u8,
 	children: []AliasTable(Child),
 	blueprints: *[4]BlueprintEntry,
 
@@ -121,6 +122,7 @@ pub const StructureBuildingBlock = struct {
 			return error.MissingBlueprint;
 		};
 		const self = StructureBuildingBlock{
+			.id = stringId,
 			.children = arenaAllocator.alloc(AliasTable(Child), childBlockStringId.items.len),
 			.blueprints = blueprints,
 		};
@@ -177,6 +179,7 @@ pub fn registerSBB(structures: *std.StringHashMap(ZonElement)) !void {
 	std.debug.assert(structureCache.capacity() == 0);
 	structureCache.ensureTotalCapacity(arenaAllocator.allocator, structures.count()) catch unreachable;
 	childrenToResolve = .init(main.stackAllocator);
+	defer childrenToResolve.deinit();
 	{
 		var iterator = structures.iterator();
 		while(iterator.next()) |entry| {
@@ -200,7 +203,6 @@ pub fn registerSBB(structures: *std.StringHashMap(ZonElement)) !void {
 			std.log.debug("Resolved child structure '{s}'->'{s}'->'{d}' to '{s}'", .{entry.parentId, entry.colorName, entry.childIndex, entry.structureId});
 			parent.children[entry.colorIndex].items[entry.childIndex].structure = child;
 		}
-		childrenToResolve.deinit();
 	}
 }
 

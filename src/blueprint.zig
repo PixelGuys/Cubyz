@@ -21,8 +21,6 @@ const BlockStorageType = u32;
 const BinaryWriter = main.utils.BinaryWriter;
 const BinaryReader = main.utils.BinaryReader;
 
-const SubstitutionMap = std.AutoHashMapUnmanaged(u16, u16);
-
 pub const blueprintVersion = 0;
 var voidType: ?u16 = null;
 
@@ -113,8 +111,7 @@ pub const Blueprint = struct {
 
 	pub fn pasteInGeneration(self: Blueprint, pos: Vec3i, chunk: *ServerChunk, mode: PasteMode) void {
 		switch(mode) {
-			.all => _pasteInGeneration(self, pos, chunk, .all),
-			.degradable => _pasteInGeneration(self, pos, chunk, .degradable),
+			inline else => |comptimeMode| _pasteInGeneration(self, pos, chunk, comptimeMode),
 		}
 	}
 
@@ -124,21 +121,21 @@ pub const Blueprint = struct {
 		const startZ = pos[2];
 
 		for(0..self.blocks.width) |x| {
-			const worldX = startX + @as(i32, @intCast(x));
+			const localX = startX + @as(i32, @intCast(x));
 
 			for(0..self.blocks.depth) |y| {
-				const worldY = startY + @as(i32, @intCast(y));
+				const localY = startY + @as(i32, @intCast(y));
 
 				for(0..self.blocks.height) |z| {
-					const worldZ = startZ + @as(i32, @intCast(z));
-					if(!chunk.liesInChunk(worldX, worldY, worldZ)) continue;
+					const localZ = startZ + @as(i32, @intCast(z));
+					if(!chunk.liesInChunk(localX, localY, localZ)) continue;
 
 					const block = self.blocks.get(x, y, z);
 					if(sbb.isOriginBlock(block) or sbb.isChildBlock(block) or block.typ == voidType) continue;
 
 					switch(mode) {
-						.all => chunk.updateBlockInGeneration(worldX, worldY, worldZ, block),
-						.degradable => chunk.updateBlockIfDegradable(worldX, worldY, worldZ, block),
+						.all => chunk.updateBlockInGeneration(localX, localY, localZ, block),
+						.degradable => chunk.updateBlockIfDegradable(localX, localY, localZ, block),
 					}
 				}
 			}

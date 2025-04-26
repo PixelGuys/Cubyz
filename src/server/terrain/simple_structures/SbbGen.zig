@@ -17,8 +17,6 @@ const parseBlock = main.blocks.parseBlock;
 pub const id = "cubyz:sbb";
 pub const generationMode = .floor;
 
-const SubstitutionMap = std.AutoHashMapUnmanaged(u16, u16);
-
 const SbbGen = @This();
 
 structure: []const u8,
@@ -51,7 +49,7 @@ pub fn generate(self: *SbbGen, _: GenerationMode, x: i32, y: i32, z: i32, chunk:
 fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placementPosition: Vec3i, placementDirection: Neighbor, chunk: *ServerChunk, seed: *u64) void {
 	const origin = structure.blueprints[0].originBlock;
 	const rotationCount = alignDirections(origin.direction(), placementDirection) catch |err| {
-		std.log.err("Could not align directions {s} and {s} error: {s}", .{@tagName(origin.direction()), @tagName(placementDirection), @errorName(err)});
+		std.log.err("Could not align directions for structure '{s}' for directions '{s}'' and '{s}', error: {s}", .{structure.id, @tagName(origin.direction()), @tagName(placementDirection), @errorName(err)});
 		return;
 	};
 	const rotated = &structure.blueprints[rotationCount];
