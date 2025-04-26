@@ -1568,7 +1568,7 @@ pub const Command = struct { // MARK: Command
 			max: Vec3f,
 
 			pub fn drop(self: BlockDropLocation, pos: Vec3i, newBlock: Block, _drop: main.blocks.BlockDrop) void {
-				if(newBlock.solid() and newBlock.collide()) {
+				if(newBlock.solid() or newBlock.collide()) {
 					self.dropOutside(pos, _drop);
 				} else {
 					self.dropInside(pos, _drop);
