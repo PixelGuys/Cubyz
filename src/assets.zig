@@ -4,6 +4,7 @@ const blocks_zig = @import("blocks.zig");
 const items_zig = @import("items.zig");
 const migrations_zig = @import("migrations.zig");
 const blueprints_zig = @import("blueprint.zig");
+const particles_zig = @import("particles.zig");
 const Blueprint = blueprints_zig.Blueprint;
 const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main");
@@ -23,6 +24,7 @@ var commonRecipes: std.StringHashMap(ZonElement) = undefined;
 var commonModels: std.StringHashMap([]const u8) = undefined;
 var commonStructureBuildingBlocks: std.StringHashMap(ZonElement) = undefined;
 var commonBlueprints: std.StringHashMap([]u8) = undefined;
+var commonParticles: std.StringHashMap(ZonElement) = undefined;
 
 pub fn init() void {
 	biomes_zig.init();
@@ -40,6 +42,7 @@ pub fn init() void {
 	commonModels = .init(arenaAllocator.allocator);
 	commonStructureBuildingBlocks = .init(arenaAllocator.allocator);
 	commonBlueprints = .init(arenaAllocator.allocator);
+	commonParticles = .init(arenaAllocator.allocator);
 
 	readAssets(
 		arenaAllocator,
@@ -54,6 +57,7 @@ pub fn init() void {
 		&commonModels,
 		&commonStructureBuildingBlocks,
 		&commonBlueprints,
+		&commonParticles,
 	);
 
 	std.log.info(
@@ -272,6 +276,7 @@ pub fn readAssets(
 	models: *std.StringHashMap([]const u8),
 	structureBuildingBlocks: *std.StringHashMap(ZonElement),
 	blueprints: *std.StringHashMap([]u8),
+	particles: *std.StringHashMap(ZonElement),
 ) void {
 	var addons = main.List(std.fs.Dir).init(main.stackAllocator);
 	defer addons.deinit();
@@ -311,6 +316,7 @@ pub fn readAssets(
 	readAllObjFilesInAddonsHashmap(externalAllocator, addons, addonNames, "models", models);
 	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "sbb", true, structureBuildingBlocks, null);
 	readAllBlueprintFilesInAddons(externalAllocator, addons, addonNames, "blueprints", blueprints);
+	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "particles", false, particles, null);
 }
 
 fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void {
@@ -329,6 +335,10 @@ fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void 
 
 fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
 	items_zig.registerTool(assetFolder, id, zon);
+}
+
+fn registerParticle(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
+	_ = particles_zig.ParticleManager.register(assetFolder, id, zon);
 }
 
 fn registerBlock(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void {
@@ -481,6 +491,8 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	defer structureBuildingBlocks.clearAndFree();
 	var blueprints = commonBlueprints.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer blueprints.clearAndFree();
+	var particles = commonParticles.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
+	defer particles.clearAndFree();
 
 	readAssets(
 		arenaAllocator,
@@ -495,6 +507,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		&models,
 		&structureBuildingBlocks,
 		&blueprints,
+		&particles,
 	);
 	errdefer unloadAssets();
 
@@ -603,6 +616,11 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 
 	try sbb.registerBlueprints(&blueprints);
 	try sbb.registerSBB(&structureBuildingBlocks);
+
+	iterator = particles.iterator();
+	while (iterator.next()) |entry| {
+		registerParticle(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
+	}
 
 	// Biomes:
 	var nextBiomeNumericId: u32 = 0;

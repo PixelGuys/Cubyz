@@ -5,6 +5,7 @@ const blocks = @import("blocks.zig");
 const chunk = @import("chunk.zig");
 const entity = @import("entity.zig");
 const graphics = @import("graphics.zig");
+const particles = @import("particles.zig");
 const c = graphics.c;
 const Shader = graphics.Shader;
 const game = @import("game.zig");
@@ -257,6 +258,8 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glDepthRange(0.001, 1);
 
 	chunk_meshing.endRender();
+
+	particles.ParticleManager.render();
 
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
 
