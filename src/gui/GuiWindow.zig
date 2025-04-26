@@ -76,8 +76,6 @@ onOpenFn: *const fn() void = &defaultFunction,
 
 onCloseFn: *const fn() void = &defaultFunction,
 
-setInventoryFn: ?*const fn(pos: main.vec.Vec3i, inventory: main.items.Inventory) void = null,
-
 var grabbedWindow: *const GuiWindow = undefined;
 var windowMoving: bool = false;
 var grabPosition: ?Vec2f = null;

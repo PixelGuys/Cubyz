@@ -7,6 +7,4 @@
 	.model = "cubyz:cube",
 	.rotation = .planar,
 	.entityDataClass = .chest,
-	.inventorySize = 10,
-	.gui = .chest,
 }

@@ -38,17 +38,15 @@ pub fn deinit() void {
 }
 
 pub var openInventory: main.items.Inventory = undefined;
-var blockPos: main.vec.Vec3i = undefined;
 
-pub fn setInventory(pos: main.vec.Vec3i, inventory: main.items.Inventory) void {
+pub fn setInventory(inventory: main.items.Inventory) void {
 	openInventory = inventory;
-	blockPos = pos;
 }
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, padding + 16}, 300, 0);
 
-	for(0..1) |y| {
+	for(0..2) |y| {
 		const row = HorizontalList.init();
 		for(0..10) |x| {
 			const index: usize = y*10 + x;

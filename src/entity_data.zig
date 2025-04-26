@@ -201,20 +201,13 @@ pub const EntityDataClasses = struct {
 		pub fn onBreakServer(pos: Vec3i, chunk: *Chunk) void {
 			StorageServer.remove(pos, chunk);
 		}
-		pub fn onInteract(pos: Vec3i, chunk: *Chunk) EventStatus {
+		pub fn onInteract(pos: Vec3i, _: *Chunk) EventStatus {
 			if(main.KeyBoard.key("shift").pressed) return .ignored;
 
-			const block = chunk.getBlock(pos[0] & main.chunk.chunkMask, pos[1] & main.chunk.chunkMask, pos[2] & main.chunk.chunkMask);
-			const inventory = main.items.Inventory.init(main.globalAllocator, block.inventorySize().?, .blockInventory, .{.blockInventory = pos});
-			const guiId = block.gui();
-
-			if(main.gui.getWindow(guiId)) |window| {
-				if(window.setInventoryFn) |setInventory| {
-					setInventory(pos, inventory);
-				}
-			}
-
-			main.gui.openWindow(guiId);
+			const inventory = main.items.Inventory.init(main.globalAllocator, 20, .blockInventory, .{.blockInventory = pos});
+			
+			main.gui.windowlist.chest.setInventory(inventory);
+			main.gui.openWindow("chest");
 			main.Window.setMouseGrabbed(false);
 
 			return .handled;
