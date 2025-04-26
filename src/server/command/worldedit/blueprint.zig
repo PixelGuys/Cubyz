@@ -222,7 +222,6 @@ fn blueprintList(params: CommandParams, source: *User) void {
 				var blueprintsDir = addonDir.openDir("blueprints", .{.iterate = true}) catch continue;
 				defer blueprintsDir.close();
 
-
 				var walker = blueprintsDir.walk(main.stackAllocator.allocator) catch continue;
 				defer walker.deinit();
 
