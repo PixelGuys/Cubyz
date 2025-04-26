@@ -5,7 +5,6 @@ const Compression = main.utils.Compression;
 const ZonElement = @import("zon.zig").ZonElement;
 const vec = main.vec;
 const Vec3i = vec.Vec3i;
-const sbb = main.server.terrain.structure_building_blocks;
 
 const Array3D = main.utils.Array3D;
 const Block = main.blocks.Block;
@@ -131,7 +130,7 @@ pub const Blueprint = struct {
 					if(!chunk.liesInChunk(localX, localY, localZ)) continue;
 
 					const block = self.blocks.get(x, y, z);
-					if(sbb.isOriginBlock(block) or sbb.isChildBlock(block) or block.typ == voidType) continue;
+					if(block.typ == voidType) continue;
 
 					switch(mode) {
 						.all => chunk.updateBlockInGeneration(localX, localY, localZ, block),
@@ -317,4 +316,9 @@ pub const Blueprint = struct {
 pub fn registerVoidBlock(block: Block) void {
 	voidType = block.typ;
 	std.debug.assert(voidType != 0);
+}
+
+pub fn getVoidBlock() Block {
+	std.debug.assert(voidType != null);
+	return Block{.typ = voidType.?, .data = 0};
 }

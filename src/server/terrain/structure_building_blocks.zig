@@ -75,6 +75,7 @@ const BlueprintEntry = struct {
 								.data = block.data,
 							};
 							hasOrigin = true;
+							self.blueprint.blocks.set(x, y, z, main.blueprint.getVoidBlock());
 						}
 					} else if(isChildBlock(block)) {
 						const childBlockLocalId = childBlockNumericIdMap.get(block.typ) orelse return error.ChildBlockNotRecognized;
@@ -85,6 +86,7 @@ const BlueprintEntry = struct {
 							.index = childBlockLocalId,
 							.data = block.data,
 						});
+						self.blueprint.blocks.set(x, y, z, main.blueprint.getVoidBlock());
 					}
 				}
 			}
@@ -228,17 +230,22 @@ pub fn registerBlueprints(blueprints: *std.StringHashMap([]u8)) !void {
 	var iterator = blueprints.iterator();
 	while(iterator.next()) |entry| {
 		const stringId = entry.key_ptr.*;
+		// Rotated copies need to be made before initializing BlueprintEntry as it removes origin and child blocks.
 		const blueprint0 = Blueprint.load(arenaAllocator, entry.value_ptr.*) catch |err| {
 			std.log.err("Could not load blueprint '{s}' ({s})", .{stringId, @errorName(err)});
 			continue;
 		};
+		const blueprint90 = blueprint0.rotateZ(arenaAllocator, .@"90");
+		const blueprint180 = blueprint0.rotateZ(arenaAllocator, .@"180");
+		const blueprint270 = blueprint0.rotateZ(arenaAllocator, .@"270");
 
 		const rotatedBlueprints = arenaAllocator.create([4]BlueprintEntry);
+
 		rotatedBlueprints.* = .{
 			BlueprintEntry.init(blueprint0, stringId) catch continue,
-			BlueprintEntry.init(blueprint0.rotateZ(arenaAllocator, .@"90"), stringId) catch continue,
-			BlueprintEntry.init(blueprint0.rotateZ(arenaAllocator, .@"180"), stringId) catch continue,
-			BlueprintEntry.init(blueprint0.rotateZ(arenaAllocator, .@"270"), stringId) catch continue,
+			BlueprintEntry.init(blueprint90, stringId) catch continue,
+			BlueprintEntry.init(blueprint180, stringId) catch continue,
+			BlueprintEntry.init(blueprint270, stringId) catch continue,
 		};
 
 		blueprintCache.put(arenaAllocator.allocator, arenaAllocator.dupe(u8, stringId), rotatedBlueprints) catch unreachable;
