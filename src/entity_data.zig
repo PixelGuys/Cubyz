@@ -205,7 +205,7 @@ pub const EntityDataClasses = struct {
 			if(main.KeyBoard.key("shift").pressed) return .ignored;
 
 			const inventory = main.items.Inventory.init(main.globalAllocator, 20, .blockInventory, .{.blockInventory = pos});
-			
+
 			main.gui.windowlist.chest.setInventory(inventory);
 			main.gui.openWindow("chest");
 			main.Window.setMouseGrabbed(false);

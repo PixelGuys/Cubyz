@@ -310,7 +310,7 @@ pub fn openWindow(id: []const u8) void {
 			return;
 		}
 	}
-	
+
 	std.log.err("Could not find window with id {s}.", .{id});
 }
 
