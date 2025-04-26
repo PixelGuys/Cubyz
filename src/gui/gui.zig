@@ -304,21 +304,14 @@ fn addWindow(window: *GuiWindow) void {
 pub fn openWindow(id: []const u8) void {
 	defer updateWindowPositions();
 
-	const window = getWindow(id) orelse {
-		std.log.err("Could not find window with id {s}.", .{id});
-		return;
-	};
-
-	openWindowFromRef(window);
-}
-
-pub fn getWindow(id: []const u8) ?*GuiWindow {
 	for(windowList.items) |window| {
 		if(std.mem.eql(u8, window.id, id)) {
-			return window;
+			openWindowFromRef(window);
+			return;
 		}
 	}
-	return null;
+	
+	std.log.err("Could not find window with id {s}.", .{id});
 }
 
 pub fn openWindowFromRef(window: *GuiWindow) void {
