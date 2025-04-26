@@ -176,7 +176,7 @@ pub const EntityDataClasses = struct {
 		pub const StorageServer = BlockEntityDataStorage(
 			.server,
 			struct {
-				inventory: ?main.items.Inventory,
+				id: ?u32,
 			},
 		);
 
