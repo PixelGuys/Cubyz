@@ -32,7 +32,7 @@
 		.veins = 4.5,
 		.size = 3,
 		.height = -5000,
-		.depth = -15000,
+		.minHeight = -15000,
 		.density = 0.05,
 	},
 	.drops = .{
