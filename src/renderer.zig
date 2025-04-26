@@ -136,11 +136,10 @@ pub fn render(playerPosition: Vec3d, deltaTime: f64) void {
 		ambient[0] = @max(0.1, world.ambientLight);
 		ambient[1] = @max(0.1, world.ambientLight);
 		ambient[2] = @max(0.1, world.ambientLight);
-		const skyColor = vec.xyz(world.clearColor);
-		game.fog.skyColor = skyColor;
+		game.fog.skyColor = vec.xyz(world.clearColor);
 
 		itemdrop.ItemDisplayManager.update(deltaTime);
-		renderWorld(world, ambient, skyColor, playerPosition);
+		renderWorld(world, ambient, Skybox.getSkyColor(), playerPosition);
 		const startTime = std.time.milliTimestamp();
 		mesh_storage.updateMeshes(startTime + maximumMeshTime);
 	} else {
@@ -628,16 +627,6 @@ pub const Skybox = struct {
 
 	var starSsbo: graphics.SSBO = undefined;
 
-	var skyShader: Shader = undefined;
-	var skyUniforms: struct {
-		viewMatrix: c_int,
-		projectionMatrix: c_int,
-		skyColor: c_int,
-	} = undefined;
-
-	var skyVao: c_uint = undefined;
-	var skyVbos: [2]c_uint = undefined;
-
 	const numStars = 10000;
 
 	fn getStarPos(seed: *u64) Vec3f {
@@ -701,9 +690,11 @@ pub const Skybox = struct {
 
 				radius = @floatCast(main.random.nextFloatExp(&seed)*4 + 0.2);
 
+				// 5772 is the temperature of the sun, so I divide by it to get the temperature in solar temperature
 				temperature = @floatCast((@abs(main.random.nextFloatGauss(&seed)*3000.0 + 5000.0) + 1000.0)/5772.0);
 
-				light = (3966.91*radius*radius*temperature*temperature*temperature*temperature)/(vec.dot(pos, pos));
+				// 4000 controls how bright the stars
+				light = (4000*radius*radius*temperature*temperature*temperature*temperature)/(vec.dot(pos, pos));
 			}
 
 			pos = vec.normalize(pos)*@as(Vec3f, @splat(starDist));
@@ -734,49 +725,16 @@ pub const Skybox = struct {
 		c.glGenVertexArrays(1, &starVao);
 		c.glBindVertexArray(starVao);
 		c.glEnableVertexAttribArray(0);
-
-		skyShader = Shader.initAndGetUniforms("assets/cubyz/shaders/skybox/sky.vs", "assets/cubyz/shaders/skybox/sky.fs", "", &skyUniforms);
-		skyShader.bind();
-
-		const rawData = [_]f32{
-			-1, -1, -1,
-			1,  -1, -1,
-			1,  1,  -1,
-			-1, 1,  -1,
-			-1, -1, 1,
-			1,  -1, 1,
-			1,  1,  1,
-			-1, 1,  1,
-		};
-
-		const indices = [_]c_int{
-			0, 3, 1, 1, 3, 2,
-			5, 6, 4, 4, 6, 7,
-			3, 7, 2, 2, 7, 6,
-			1, 5, 0, 0, 5, 4,
-			4, 7, 0, 0, 7, 3,
-			1, 2, 5, 5, 2, 6,
-		};
-
-		c.glGenVertexArrays(1, &skyVao);
-		c.glBindVertexArray(skyVao);
-		c.glGenBuffers(2, &skyVbos);
-		c.glBindBuffer(c.GL_ARRAY_BUFFER, skyVbos[0]);
-		c.glBufferData(c.GL_ARRAY_BUFFER, @intCast(rawData.len*@sizeOf(f32)), &rawData, c.GL_STATIC_DRAW);
-		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, 3*@sizeOf(f32), null);
-		c.glEnableVertexAttribArray(0);
-		c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, skyVbos[1]);
-		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, @intCast(indices.len*@sizeOf(c_int)), &indices, c.GL_STATIC_DRAW);
 	}
 
 	pub fn deinit() void {
 		starShader.deinit();
 		starSsbo.deinit();
 		c.glDeleteVertexArrays(1, &starVao);
+	}
 
-		skyShader.deinit();
-		c.glDeleteVertexArrays(1, &skyVao);
-		c.glDeleteBuffers(2, @ptrCast(&skyVbos));
+	pub fn getSkyColor() Vec3f {
+		return game.fog.skyColor*@as(Vec3f, @splat(@reduce(.Add, game.fog.skyColor)/3.0));
 	}
 
 	pub fn render() void {
@@ -784,7 +742,6 @@ pub const Skybox = struct {
 		c.glDisable(c.GL_DEPTH_TEST);
 
 		const viewMatrix = game.camera.viewMatrix;
-		skyShader.bind();
 
 		const time = game.world.?.gameTime.load(.monotonic);
 
@@ -795,17 +752,8 @@ pub const Skybox = struct {
 		} else if(dayTime > game.World.dayCycle/4 + game.World.dayCycle/16) {
 			starOpacity = 0;
 		} else {
-			starOpacity = @as(f32, @floatFromInt(dayTime - (game.World.dayCycle/4 - game.World.dayCycle/16)))/@as(f32, @floatFromInt(game.World.dayCycle/8));
+			starOpacity = 1 - @as(f32, @floatFromInt(dayTime - (game.World.dayCycle/4 - game.World.dayCycle/16)))/@as(f32, @floatFromInt(game.World.dayCycle/8));
 		}
-
-		const skyboxColor = game.fog.skyColor*@as(Vec3f, @splat(@reduce(.Add, game.fog.skyColor)/3.0));
-		c.glUniform3fv(skyUniforms.skyColor, 1, @ptrCast(&skyboxColor));
-
-		c.glUniformMatrix4fv(skyUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
-		c.glUniformMatrix4fv(skyUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
-
-		c.glBindVertexArray(skyVao);
-		c.glDrawElements(c.GL_TRIANGLES, 36, c.GL_UNSIGNED_INT, null);
 
 		if(starOpacity != 0) {
 			c.glBlendFunc(c.GL_ONE, c.GL_ONE);
