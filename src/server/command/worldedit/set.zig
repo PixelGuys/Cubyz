@@ -43,8 +43,8 @@ pub fn execute(args: []const u8, source: *User) void {
 
 			modifiedBlueprint.paste(posStart, .{.preserveVoid = true});
 		},
-		.failure => {
-			source.sendMessage("#ff0000Error: Could not capture undo history.", .{});
+		.failure => |err| {
+			source.sendMessage("#ff0000Error: Could not capture selection. (at {}, {s})", .{err.pos, err.message});
 		},
 	}
 }
