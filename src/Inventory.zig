@@ -342,7 +342,9 @@ pub const Sync = struct { // MARK: Sync
 					inventory.inv._items[inventory.inv._items.len - 1].amount = recipe.resultAmount;
 					inventory.inv._items[inventory.inv._items.len - 1].item = .{.baseItem = recipe.resultItem};
 				},
-				.blockInventory, .other => {},
+				// TODO: Load block inventory data from save
+				.blockInventory => {},
+				.other => {},
 				.alreadyFreed => unreachable,
 			}
 		}
