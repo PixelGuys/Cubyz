@@ -700,13 +700,12 @@ pub const Skybox = struct {
 
 			const normPos = vec.normalize(pos);
 
-			const col = getStarColor(temperature, light, starColorImage);
-			std.debug.print("{d}\n", .{col});
+			const color = getStarColor(temperature, light, starColorImage);
 
-			const lat: f32 = @floatCast(std.math.asin(normPos[2]));
-			const lon: f32 = @floatCast(std.math.atan2(-normPos[0], normPos[1]));
+			const latitude: f32 = @floatCast(std.math.asin(normPos[2]));
+			const longitude: f32 = @floatCast(std.math.atan2(-normPos[0], normPos[1]));
 
-			const mat = Mat4f.rotationZ(lon).mul(Mat4f.rotationX(lat));
+			const mat = Mat4f.rotationZ(longitude).mul(Mat4f.rotationX(latitude));
 
 			const posA = vec.xyz(mat.mulVec(.{triVertA[0], triVertA[1], triVertA[2], 1.0}));
 			const posB = vec.xyz(mat.mulVec(.{triVertB[0], triVertB[1], triVertB[2], 1.0}));
@@ -717,7 +716,7 @@ pub const Skybox = struct {
 			starData[i*20 + 8 ..][0..3].* = posC;
 
 			starData[i*20 + 12 ..][0..3].* = pos;
-			starData[i*20 + 16 ..][0..3].* = col;
+			starData[i*20 + 16 ..][0..3].* = color;
 		}
 
 		starSsbo = graphics.SSBO.initStatic(f32, &starData);
