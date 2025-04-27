@@ -198,7 +198,13 @@ const ParticleSystem = struct {
 			particle.vel *= @as(Vec3f, @splat(std.math.pow(f32, self.properties.drag, deltaTime)));
 			particle.pos += particle.vel * vdt;
 
+			var dir: Vec3d = @splat(0);
 			const intPos: Vec3i = @intFromFloat(@floor(particle.pos));
+			dir[0] = game.collision.collides(.client, .x, 0, particle.pos, .{@splat(0), @splat(1)});
+			dir[1] = game.collision.collides(.client, .y, 0, particle.pos, .{@splat(0), @splat(1)});
+			dir[2] = game.collision.collides(.client, .z, 0, particle.pos, .{@splat(0), @splat(1)});
+			particle.pos += dir;
+
 			const light: [6]u8 = main.renderer.mesh_storage.getLight(intPos[0], intPos[1], intPos[2]) orelse @splat(0);
 			var rawVals: [6]u5 = undefined;
 			inline for(0..6) |j| {
