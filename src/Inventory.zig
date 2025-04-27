@@ -1104,7 +1104,7 @@ pub const Command = struct { // MARK: Command
 				.alreadyFreed => unreachable,
 			}
 			switch(self.inv.type) {
-				.normal, .creative, .crafting, .blockInventory => {},
+				.normal, .creative, .crafting => {},
 				.workbench => {
 					writer.writeSlice(self.inv.type.workbench.id);
 				},
@@ -1149,7 +1149,7 @@ pub const Command = struct { // MARK: Command
 				.alreadyFreed => unreachable,
 			};
 			const typ: Type = switch(typeEnum) {
-				inline .normal, .creative, .crafting, .blockInventory => |tag| tag,
+				inline .normal, .creative, .crafting => |tag| tag,
 				.workbench => .{.workbench = main.items.getToolTypeByID(reader.remaining) orelse return error.Invalid},
 			};
 			Sync.ServerSide.createInventory(user.?, id, len, typ, source);
@@ -1739,14 +1739,12 @@ const TypeEnum = enum(u8) {
 	creative = 1,
 	crafting = 2,
 	workbench = 3,
-	blockInventory = 4,
 };
 const Type = union(TypeEnum) {
 	normal: void,
 	creative: void,
 	crafting: void,
 	workbench: *const main.items.ToolType,
-	blockInventory: void,
 };
 type: Type,
 id: u32,

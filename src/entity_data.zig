@@ -173,7 +173,7 @@ fn BlockEntityDataStorage(comptime side: enum {client, server}, T: type) type {
 
 pub const EntityDataClasses = struct {
 	pub const Chest = struct {
-		pub const StorageServer = BlockEntityDataStorage(
+		const StorageServer = BlockEntityDataStorage(
 			.server,
 			struct {
 				id: ?u32,
@@ -204,7 +204,7 @@ pub const EntityDataClasses = struct {
 		pub fn onInteract(pos: Vec3i, _: *Chunk) EventStatus {
 			if(main.KeyBoard.key("shift").pressed) return .ignored;
 
-			const inventory = main.items.Inventory.init(main.globalAllocator, 20, .blockInventory, .{.blockInventory = pos});
+			const inventory = main.items.Inventory.init(main.globalAllocator, 20, .normal, .{.blockInventory = pos});
 
 			main.gui.windowlist.chest.setInventory(inventory);
 			main.gui.openWindow("chest");

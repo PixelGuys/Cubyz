@@ -14,12 +14,12 @@ const HorizontalList = GuiComponent.HorizontalList;
 const VerticalList = GuiComponent.VerticalList;
 const ItemSlot = GuiComponent.ItemSlot;
 
-const hotbar = @import("hotbar.zig");
+const inventory = @import("inventory.zig");
 
 pub var window = GuiWindow{
 	.relativePosition = .{
-		.{.attachedToWindow = .{.reference = &hotbar.window, .selfAttachmentPoint = .middle, .otherAttachmentPoint = .middle}},
-		.{.attachedToWindow = .{.reference = &hotbar.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .lower}},
+		.{.attachedToWindow = .{.reference = &inventory.window, .selfAttachmentPoint = .middle, .otherAttachmentPoint = .middle}},
+		.{.attachedToWindow = .{.reference = &inventory.window, .selfAttachmentPoint = .upper, .otherAttachmentPoint = .lower}},
 	},
 	.contentSize = Vec2f{64*10, 64*3},
 	.scale = 0.75,
@@ -39,8 +39,8 @@ pub fn deinit() void {
 
 pub var openInventory: main.items.Inventory = undefined;
 
-pub fn setInventory(inventory: main.items.Inventory) void {
-	openInventory = inventory;
+pub fn setInventory(selectedInventory: main.items.Inventory) void {
+	openInventory = selectedInventory;
 }
 
 pub fn onOpen() void {
