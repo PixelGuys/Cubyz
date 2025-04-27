@@ -12,11 +12,11 @@ const User = server.User;
 const mesh_storage = main.renderer.mesh_storage;
 
 pub const EntityDataClass = struct {
-	pub const SerializationError = error {
+	pub const SerializationError = error{
 		noData,
 	};
 	
-	pub const DeserializationError = error {
+	pub const DeserializationError = error{
 		invalidData,
 	};
 	
