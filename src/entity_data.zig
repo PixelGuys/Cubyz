@@ -12,12 +12,20 @@ const User = server.User;
 const mesh_storage = main.renderer.mesh_storage;
 
 pub const EntityDataClass = struct {
+	pub const SerializationError = error {
+		noData,
+	};
+	
+	pub const DeserializationError = error {
+		invalidData,
+	};
+	
 	id: []const u8,
 	vtable: VTable,
 
 	const VTable = struct {
-		serialize: *const fn(pos: Vec3i, chunk: *Chunk, writer: *main.utils.BinaryWriter) void,
-		deserialize: *const fn(pos: Vec3i, chunk: *Chunk, reader: *main.utils.BinaryReader) void,
+		serialize: *const fn(pos: Vec3i, chunk: *Chunk, writer: *main.utils.BinaryWriter) SerializationError!void,
+		deserialize: *const fn(pos: Vec3i, chunk: *Chunk, reader: *main.utils.BinaryReader) DeserializationError!void,
 		onLoadClient: *const fn(pos: Vec3i, chunk: *Chunk) void,
 		onUnloadClient: *const fn(pos: Vec3i, chunk: *Chunk) void,
 		onLoadServer: *const fn(pos: Vec3i, chunk: *Chunk) void,
@@ -42,6 +50,12 @@ pub const EntityDataClass = struct {
 			@field(class.vtable, field.name) = &@field(EntityDataClassT, field.name);
 		}
 		return class;
+	}
+	pub inline fn serialize(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk, writer: *main.utils.BinaryWriter) SerializationError!void {
+		return self.vtable.serialize(pos, chunk, writer);
+	}
+	pub inline fn deserialize(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk, reader: *main.utils.BinaryReader) DeserializationError!void {
+		return self.vtable.deserialize(pos, chunk, reader);
 	}
 	pub inline fn onLoadClient(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) void {
 		return self.vtable.onLoadClient(pos, chunk);
@@ -202,21 +216,25 @@ pub const EntityDataClasses = struct {
 			StorageClient.reset();
 		}
 		
-		pub fn serialize(pos: Vec3i, chunk: *Chunk, writer: *main.utils.BinaryWriter) void {
+		pub fn serialize(pos: Vec3i, chunk: *Chunk, writer: *main.utils.BinaryWriter) EntityDataClass.SerialzationError!void {
 			StorageServer.mutex.lock();
 			defer StorageServer.mutex.unlock();
 			const data = StorageServer.get(pos, chunk) orelse {
 				std.log.err("No data for block at {}, cannot serialize it.", .{pos});
-				return;
+				return .noData;
 			};
 
 			writer.writeSlice(Chest.id);
 			writer.writeInt(u64, data.contents);
 		}
 
-		pub fn deserialize(pos: Vec3i, chunk: *Chunk, reader: *main.utils.BinaryReader) void {
+		pub fn deserialize(pos: Vec3i, chunk: *Chunk, reader: *main.utils.BinaryReader) EntityDataClass.DeserialzationError!void {
+			const contents = reader.readInt(u64) catch {
+				std.log.err("Invalid data for block at {}, cannot deserialize it.", .{pos});
+				return .invalidData;
+			};
 			StorageServer.add(pos, .{
-				.contents = reader.readInt(u64),
+				.contents = contents,
 			}, chunk);
 		}
 
