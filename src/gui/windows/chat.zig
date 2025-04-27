@@ -199,7 +199,11 @@ pub fn onOpen() void {
 }
 
 pub fn loadNextHistoryEntry(_: usize) void {
-	if(!messageHistory.canMoveUp()) return;
+	if(!messageHistory.canMoveUp()) {
+		loadPreviousHistoryEntry(0);
+		if(messageHistory.canMoveUp()) loadNextHistoryEntry(0);
+		return;
+	}
 
 	_ = messageHistory.insertIfUnique(input.currentString.items);
 	messageHistory.moveUp();
