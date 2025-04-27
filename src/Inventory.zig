@@ -1591,8 +1591,7 @@ pub const Command = struct { // MARK: Command
 				const center: Vec3f = (max + min)*half;
 				const width: Vec3f = (max - min)*half;
 				const factors: Vec3f = main.random.nextFloatVectorSigned(3, &main.seed)*half;
-				const offset: Vec3f = center + width*factors;
-				return offset;
+				return center + width*factors;
 			}
 			fn dropOutside(self: BlockDropLocation, pos: Vec3i, _drop: main.blocks.BlockDrop) void {
 				for(_drop.items) |itemStack| {
