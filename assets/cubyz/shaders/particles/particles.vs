@@ -61,23 +61,19 @@ void main() {
 	int vertexID = gl_VertexID % 6;
     ParticleData particle = particleData[particleID];
 	ParticleTypeData particleType = particleTypeData[particle.typ];
-	// vec3 sunLight = vec3(
-	// 	fullLight >> 25 & 31u,
-	// 	fullLight >> 20 & 31u,
-	// 	fullLight >> 15 & 31u
-	// );
-	// vec3 blockLight = vec3(
-	// 	fullLight >> 10 & 31u,
-	// 	fullLight >> 5 & 31u,
-	// 	fullLight >> 0 & 31u
-	// );
-	light = vec3(1.0, 1.0, 1.0); // max(sunLight*ambientLight, blockLight)/31;
-	// isBackFace = encodedPositionAndLightIndex>>15 & 1;
-	// ditherSeed = encodedPositionAndLightIndex & 15;
 
-	// textureIndex = textureAndQuad & 65535;
-	// int quadIndex = textureAndQuad >> 16;
-	
+	uint fullLight = particle.light;
+	vec3 sunLight = vec3(
+		fullLight >> 25 & 31u,
+		fullLight >> 20 & 31u,
+		fullLight >> 15 & 31u
+	);
+	vec3 blockLight = vec3(
+		fullLight >> 10 & 31u,
+		fullLight >> 5 & 31u,
+		fullLight >> 0 & 31u
+	);
+	light = max(sunLight*ambientLight, blockLight)/31;
 
 	textureIndex = floor(float(particleType.startFrame) + (particle.lifeLeft / particle.lifeTime) * float(particleType.animationFrames));
 

@@ -13,9 +13,9 @@ void main() {
     //fragColor =  //vec4(1.0, 1.0, 1.0, 1.0);
 
     vec3 textureCoords = vec3(uv, textureIndex);
-
+    //texture(texture_sampler, outTexCoord)*vec4(outLight*lightVariation(normal), 1);
     // vec3 pixelLight = max(light, texture(particleEmissionSampler, textureCoords).r*4);
-	fragColor = texture(particleTextureSampler, textureCoords);//*vec4(pixelLight, 1);
+	fragColor = texture(particleTextureSampler, textureCoords)*vec4(light, 1);
     if(fragColor.a != 1) {
         discard;
     }

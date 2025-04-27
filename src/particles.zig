@@ -40,9 +40,9 @@ pub const ParticleManager = struct {
 		emissionTextureArray = .init();
 		system.init(EmmiterProperties{
 			.gravity = .{0, 0, 10},
-			.drag = 0.97,
+			.drag = 0.1,
 			.sizeStart = 0.4,
-			.sizeEnd = 0.1,
+			.sizeEnd = 0.02,
 			.lifeTime = 10,
 		});
 	}
@@ -136,8 +136,8 @@ pub const ParticleManager = struct {
 		system.update(dt);
 	}
 
-	pub fn render() void {
-		system.render();
+	pub fn render(playerPosition: Vec3d, ambientLight: Vec3f) void {
+		system.render(playerPosition, ambientLight);
 	}
 };
 
@@ -182,6 +182,8 @@ const ParticleSystem = struct {
 	}
 
 	pub fn update(self: *ParticleSystem, deltaTime: f32) void {
+		const vdt: Vec3f = @as(Vec3f, @splat(deltaTime));
+
 		var i: u32 = 0;
 		while(i < self.particles.items.len) {
 			var particle = self.particles.items[i];
@@ -192,10 +194,23 @@ const ParticleSystem = struct {
 				continue;
 			}
 
-			particle.vel += self.properties.gravity * @as(Vec3f, @splat(deltaTime));
-			particle.vel *= @as(Vec3f, @splat(self.properties.drag));
-			particle.pos += particle.vel * @as(Vec3f, @splat(deltaTime));
-			
+			particle.vel += self.properties.gravity * vdt;
+			particle.vel *= @as(Vec3f, @splat(std.math.pow(f32, self.properties.drag, deltaTime)));
+			particle.pos += particle.vel * vdt;
+
+			const intPos: Vec3i = @intFromFloat(@floor(particle.pos));
+			const light: [6]u8 = main.renderer.mesh_storage.getLight(intPos[0], intPos[1], intPos[2]) orelse @splat(0);
+			var rawVals: [6]u5 = undefined;
+			inline for(0..6) |j| {
+				rawVals[j] = @intCast(light[j]>>3);
+			}
+			particle.light = (@as(u32, rawVals[0]) << 25 |
+				@as(u32, rawVals[1]) << 20 |
+				@as(u32, rawVals[2]) << 15 |
+				@as(u32, rawVals[3]) << 10 |
+				@as(u32, rawVals[4]) << 5 |
+				@as(u32, rawVals[5]) << 0);
+
 			self.particles.items[i] = particle;
 			i += 1; // makes things simplier
 		}
@@ -212,7 +227,7 @@ const ParticleSystem = struct {
 		});
 	}
 
-	pub fn render(self: *ParticleSystem) void {
+	pub fn render(self: *ParticleSystem, playerPosition: Vec3d, ambientLight: Vec3f) void {
 		particlesSSBO.?.bufferData(Particle, self.particles.items);
 
 		shader.bind();
@@ -223,10 +238,10 @@ const ParticleSystem = struct {
 		ParticleManager.emissionTextureArray.bind();
 		
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
-		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&game.world.?.ambientLight));
+		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&game.camera.viewMatrix));
 
-		const playerPos = game.Player.super.pos;
+		const playerPos = playerPosition;
 		c.glUniform3i(uniforms.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
 		c.glUniform3f(uniforms.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
 
@@ -234,6 +249,7 @@ const ParticleSystem = struct {
 			.mul(Mat4f.rotationY(game.camera.rotation[0]-std.math.pi*0.5));
 		c.glUniformMatrix4fv(uniforms.billboardMatrix, 1, c.GL_TRUE, @ptrCast(&billboardMatrix));
 
+		std.log.debug("count: {d}", .{self.particles.items.len});
 		c.glDrawArrays(c.GL_TRIANGLES, 0, @intCast(self.particles.items.len*6));
 	}
 };
