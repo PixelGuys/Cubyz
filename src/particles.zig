@@ -39,8 +39,8 @@ pub const ParticleManager = struct {
 		textureArray = .init();
 		emissionTextureArray = .init();
 		system.init(EmmiterProperties{
-			.gravity = .{0, 0, 10},
-			.drag = 0.1,
+			.gravity = .{0, 0, 20},
+			.drag = 0.2,
 			.sizeStart = 0.4,
 			.sizeEnd = 0.02,
 			.lifeTime = 10,
@@ -210,6 +210,8 @@ const ParticleSystem = struct {
 				@as(u32, rawVals[3]) << 10 |
 				@as(u32, rawVals[4]) << 5 |
 				@as(u32, rawVals[5]) << 0);
+			
+			// std.log.debug("x: {d} y: {d} z: {d}", .{particle.pos[0], particle.pos[1], particle.pos[2]});
 
 			self.particles.items[i] = particle;
 			i += 1; // makes things simplier
@@ -217,9 +219,12 @@ const ParticleSystem = struct {
 	}
 
 	pub fn addParticle(self: *ParticleSystem, pos: Vec3f) void {
+		// if (self.particles.items.len > 0) {
+		// return;
+		// }
 		self.particles.append(Particle{
 			.pos = pos,
-			.vel = random.nextFloatVectorSigned(3, &main.seed)*@as(Vec3f, @splat(10)),
+			.vel = random.nextFloatVectorSigned(3, &main.seed)*@as(Vec3f, @splat(20)),
 			.lifeTime = self.properties.lifeTime,
 			.lifeLeft = self.properties.lifeTime,
 			.typ = 0,

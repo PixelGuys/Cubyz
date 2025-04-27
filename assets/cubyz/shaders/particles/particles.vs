@@ -77,9 +77,7 @@ void main() {
 
 	textureIndex = floor(float(particleType.startFrame) + (particle.lifeLeft / particle.lifeTime) * float(particleType.animationFrames));
 
-	vec3 position = particle.pos;
-
-	position += (billboardMatrix*vec4(facePositions[indices[vertexID]], 1.0)).xyz;
+	vec3 position = (billboardMatrix*vec4(facePositions[indices[vertexID]], 1.0)).xyz;
 	position += vec3(particle.pos - playerPositionInteger);
 	position -= playerPositionFraction;
 
