@@ -216,22 +216,22 @@ pub const EntityDataClasses = struct {
 			StorageClient.reset();
 		}
 		
-		pub fn serialize(pos: Vec3i, chunk: *Chunk, writer: *main.utils.BinaryWriter) EntityDataClass.SerialzationError!void {
+		pub fn serialize(pos: Vec3i, chunk: *Chunk, writer: *main.utils.BinaryWriter) EntityDataClass.SerializationError!void {
 			StorageServer.mutex.lock();
 			defer StorageServer.mutex.unlock();
 			const data = StorageServer.get(pos, chunk) orelse {
 				std.log.err("No data for block at {}, cannot serialize it.", .{pos});
-				return .noData;
+				return EntityDataClass.SerializationError.noData;
 			};
 
 			writer.writeSlice(Chest.id);
 			writer.writeInt(u64, data.contents);
 		}
 
-		pub fn deserialize(pos: Vec3i, chunk: *Chunk, reader: *main.utils.BinaryReader) EntityDataClass.DeserialzationError!void {
+		pub fn deserialize(pos: Vec3i, chunk: *Chunk, reader: *main.utils.BinaryReader) EntityDataClass.DeserializationError!void {
 			const contents = reader.readInt(u64) catch {
 				std.log.err("Invalid data for block at {}, cannot deserialize it.", .{pos});
-				return .invalidData;
+				return EntityDataClass.DeserializationError.invalidData;
 			};
 			StorageServer.add(pos, .{
 				.contents = contents,
