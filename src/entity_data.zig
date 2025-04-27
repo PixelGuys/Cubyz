@@ -216,7 +216,7 @@ pub const EntityDataClasses = struct {
 
 		pub fn deserialize(pos: Vec3i, chunk: *Chunk, reader: *main.utils.BinaryReader) void {
 			StorageServer.add(pos, .{
-				.contents = reader.readInt(u8),
+				.contents = reader.readInt(u64),
 			}, chunk);
 		}
 
