@@ -1210,7 +1210,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	const t = 1 - @as(f32, @floatCast(@exp(-2*deltaTime)));
 
 	inline for (0..1) |_| {
-		particles.ParticleManager.system.addParticle(.{0, 0, 20});//@floatCast(Player.eyePos + @as(Vec3d, .{1, 0, 0})));
+		particles.ParticleManager.system.addParticle(.{0, 0, 0});//@floatCast(Player.eyePos + @as(Vec3d, .{1, 0, 0})));
 	}
 
 	fog.fogColor = (biome.fogColor - fog.fogColor)*@as(Vec3f, @splat(t)) + fog.fogColor;

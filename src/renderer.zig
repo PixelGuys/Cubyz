@@ -184,6 +184,10 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	const time: u32 = @intCast(std.time.milliTimestamp() & std.math.maxInt(u32));
 
+	gpu_performance_measuring.startQuery(.particle_rendering);
+	particles.ParticleManager.render();
+	gpu_performance_measuring.stopQuery();
+
 	gpu_performance_measuring.startQuery(.animation);
 	blocks.meshes.preProcessAnimationData(time);
 	gpu_performance_measuring.stopQuery();
@@ -258,8 +262,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glDepthRange(0.001, 1);
 
 	chunk_meshing.endRender();
-
-	particles.ParticleManager.render();
 
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
 

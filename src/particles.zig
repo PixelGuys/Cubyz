@@ -39,11 +39,11 @@ pub const ParticleManager = struct {
 		textureArray = .init();
 		emissionTextureArray = .init();
 		system.init(EmmiterProperties{
-			.gravity = .{0, 0, 3},
+			.gravity = .{0, 0, 10},
 			.drag = 0.97,
 			.sizeStart = 0.4,
 			.sizeEnd = 0.1,
-			.lifeTime = 5,
+			.lifeTime = 10,
 		});
 	}
 
@@ -129,7 +129,6 @@ pub const ParticleManager = struct {
 
 		particleTypesSSBO = SSBO.initStatic(ParticleType, ParticleManager.types.items);
 		particleTypesSSBO.?.bind(13);
-		std.log.debug("ssboid: {d}", .{particleTypesSSBO.?.bufferID});
 	}
 
 	pub fn update(deltaTime: f64) void {
@@ -205,7 +204,7 @@ const ParticleSystem = struct {
 	pub fn addParticle(self: *ParticleSystem, pos: Vec3f) void {
 		self.particles.append(Particle{
 			.pos = pos,
-			.vel = random.nextFloatVectorSigned(3, &main.seed)*@as(Vec3f, @splat(4)),
+			.vel = random.nextFloatVectorSigned(3, &main.seed)*@as(Vec3f, @splat(10)),
 			.lifeTime = self.properties.lifeTime,
 			.lifeLeft = self.properties.lifeTime,
 			.typ = 0,
@@ -235,9 +234,7 @@ const ParticleSystem = struct {
 			.mul(Mat4f.rotationY(game.camera.rotation[0]-std.math.pi*0.5));
 		c.glUniformMatrix4fv(uniforms.billboardMatrix, 1, c.GL_TRUE, @ptrCast(&billboardMatrix));
 
-		// c.glEnable(c.GL_BLEND);
 		c.glDrawArrays(c.GL_TRIANGLES, 0, @intCast(self.particles.items.len*6));
-		// c.glDisable(c.GL_BLEND);
 	}
 };
 

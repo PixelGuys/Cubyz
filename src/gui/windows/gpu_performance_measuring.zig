@@ -28,6 +28,7 @@ pub const Samples = enum(u8) {
 	bloom_second_pass,
 	final_copy,
 	gui,
+	particle_rendering,
 };
 
 const names = [_][]const u8{
@@ -47,6 +48,7 @@ const names = [_][]const u8{
 	"Bloom - Second Pass",
 	"Copy to screen",
 	"GUI Rendering",
+	"Particle Rendering"
 };
 
 const buffers = 4;

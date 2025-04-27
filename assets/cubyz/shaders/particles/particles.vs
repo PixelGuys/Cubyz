@@ -54,7 +54,7 @@ const vec3 facePositions[4] = vec3[4]
 	vec3(-0.5f, -0.5f, 0.0f)
 );
 
-int indices[6] = {0, 1, 2, 1, 0, 3};
+const int indices[6] = int[6](0, 1, 2, 1, 0, 3);
 
 void main() {
     int particleID = gl_VertexID / 6;
