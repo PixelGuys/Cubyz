@@ -1562,7 +1562,7 @@ pub const Command = struct { // MARK: Command
 
 		const half = @as(Vec3f, @splat(0.5));
 		const itemHitBoxMargin: f32 = @floatCast(main.itemdrop.ItemDropManager.radius);
-		const itemHitBoxMarginVec = @as(Vec3f, @splat(itemHitBoxMargin));
+		const itemHitBoxMarginVec: Vec3f = @splat(itemHitBoxMargin);
 
 		const BlockDropLocation = struct {
 			dir: Neighbor,
