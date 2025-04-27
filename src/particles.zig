@@ -142,7 +142,6 @@ pub const ParticleManager = struct {
 };
 
 const ParticleSystem = struct {
-	// const maxCapacity = 131072;
 	particles: main.List(Particle),
 	properties: EmmiterProperties = undefined,
 
@@ -155,13 +154,7 @@ const ParticleSystem = struct {
 		billboardMatrix: c_int,
 		playerPositionInteger: c_int,
 		playerPositionFraction: c_int,
-		// screenSize: c_int,
 		ambientLight: c_int,
-		// contrast: c_int,
-		// texture_sampler: c_int,
-		// emissionSampler: c_int,
-		// zNear: c_int,
-		// zFar: c_int,
 	};
 	var uniforms: UniformStruct = undefined;
 
@@ -196,15 +189,38 @@ const ParticleSystem = struct {
 
 			particle.vel += self.properties.gravity * vdt;
 			particle.vel *= @as(Vec3f, @splat(std.math.pow(f32, self.properties.drag, deltaTime)));
-			particle.pos += particle.vel * vdt;
+			const vel = particle.vel * vdt;
 
-			var dir: Vec3d = @splat(0);
+			// TODO: OPTIMIZE THE HELL OUT OF THIS
+			if (particle.collides) {
+				const hitBox: game.collision.Box = .{.min = @splat(-0.5), .max = @splat(0.5)};
+				particle.pos[0] += vel[0];
+				if (game.collision.collides(.client, .x, -vel[0], particle.pos, hitBox)) |box| {
+					if (vel[0] < 0) {
+						particle.pos[0] = @floatCast(box.max[0] - hitBox.min[0]);
+					} else {
+						particle.pos[0] = @floatCast(box.min[0] - hitBox.max[0]);
+					}
+				}
+				particle.pos[1] += vel[1];
+				if (game.collision.collides(.client, .y, -vel[1], particle.pos, hitBox)) |box| {
+					if (vel[1] < 0) {
+						particle.pos[1] = @floatCast(box.max[1] - hitBox.min[1]);
+					} else {
+						particle.pos[1] = @floatCast(box.min[1] - hitBox.max[1]);
+					}
+				}
+				particle.pos[2] += vel[2];
+				if (game.collision.collides(.client, .z, -vel[2], particle.pos, hitBox)) |box| {
+					if (vel[2] < 0) {
+						particle.pos[2] = @floatCast(box.max[2] - hitBox.min[2]);
+					} else {
+						particle.pos[2] = @floatCast(box.min[2] - hitBox.max[2]);
+					}
+				}
+			}
+
 			const intPos: Vec3i = @intFromFloat(@floor(particle.pos));
-			dir[0] = game.collision.collides(.client, .x, 0, particle.pos, .{@splat(0), @splat(1)});
-			dir[1] = game.collision.collides(.client, .y, 0, particle.pos, .{@splat(0), @splat(1)});
-			dir[2] = game.collision.collides(.client, .z, 0, particle.pos, .{@splat(0), @splat(1)});
-			particle.pos += dir;
-
 			const light: [6]u8 = main.renderer.mesh_storage.getLight(intPos[0], intPos[1], intPos[2]) orelse @splat(0);
 			var rawVals: [6]u5 = undefined;
 			inline for(0..6) |j| {
@@ -234,7 +250,7 @@ const ParticleSystem = struct {
 			.lifeTime = self.properties.lifeTime,
 			.lifeLeft = self.properties.lifeTime,
 			.typ = 0,
-			.collides = false,
+			.collides = true,
 		});
 	}
 
