@@ -23,6 +23,8 @@ pub const random = @import("random.zig");
 pub const renderer = @import("renderer.zig");
 pub const rotation = @import("rotation.zig");
 pub const settings = @import("settings.zig");
+const tag = @import("tag.zig");
+pub const Tag = tag.Tag;
 pub const utils = @import("utils.zig");
 pub const vec = @import("vec.zig");
 pub const ZonElement = @import("zon.zig").ZonElement;
@@ -618,6 +620,9 @@ pub fn main() void { // MARK: main()
 	itemdrop.ItemDropRenderer.init();
 	defer itemdrop.ItemDropRenderer.deinit();
 
+	tag.init();
+	defer tag.deinit();
+
 	assets.init();
 	defer assets.deinit();
 
@@ -729,53 +734,23 @@ pub fn main() void { // MARK: main()
 	}
 }
 
-const maxRecursionDepth = 128;
-const typeIdSentinel = std.math.maxInt(usize);
-
 /// std.testing.refAllDeclsRecursive, but ignores C imports (by name)
 pub fn refAllDeclsRecursiveExceptCImports(comptime T: type) void {
-	var visited: [maxRecursionDepth]usize = undefined;
-	@memset(&visited, typeIdSentinel);
-	_refAllDeclsRecursiveExceptCImports(T, &visited, 0);
-}
-
-fn _refAllDeclsRecursiveExceptCImports(comptime T: type, visited: *[maxRecursionDepth]usize, index: usize) void {
 	if(!@import("builtin").is_test) return;
-	if(index >= maxRecursionDepth) {
-		std.debug.print("Reached recursion limit of {d} while visiting type {s}\n", .{maxRecursionDepth, @typeName(T)});
-		return;
-	}
-	const typeId = utils.typeId(T);
-
-	for(visited) |id| {
-		if(id == typeId) {
-			std.debug.print("Detected cycle at type {s} ({d})\n", .{@typeName(T), typeId});
-			return;
-		}
-		if(id == typeIdSentinel) {
-			break;
-		}
-	}
-
-	std.debug.print("Visiting type {s} ({d}) (depth: {d})\n", .{@typeName(T), typeId, index});
-	visited[index] = typeId;
-
 	inline for(comptime std.meta.declarations(T)) |decl| blk: {
 		if(comptime std.mem.eql(u8, decl.name, "c")) continue;
 		if(comptime std.mem.eql(u8, decl.name, "hbft")) break :blk;
 		if(comptime std.mem.eql(u8, decl.name, "stb_image")) break :blk;
+		if(comptime std.mem.eql(u8, decl.name, "Managed")) return;
 		if(@TypeOf(@field(T, decl.name)) == type) {
 			switch(@typeInfo(@field(T, decl.name))) {
-				.@"struct", .@"enum", .@"union", .@"opaque" => _refAllDeclsRecursiveExceptCImports(@field(T, decl.name), visited, index + 1),
+				.@"struct", .@"enum", .@"union", .@"opaque" => refAllDeclsRecursiveExceptCImports(@field(T, decl.name)),
 				else => {},
 			}
 		}
 		_ = &@field(T, decl.name);
 	}
-
-	visited[index] = typeIdSentinel;
 }
-
 test "abc" {
 	@setEvalBranchQuota(1000000);
 	refAllDeclsRecursiveExceptCImports(@This());
