@@ -1586,10 +1586,10 @@ pub const Command = struct { // MARK: Command
 				return pos + self.randomOffset();
 			}
 			fn randomOffset(self: BlockDropLocation) Vec3f {
-				const max: Vec3f = @min(@as(Vec3f, @splat(1.0)) - itemHitBoxMarginVec, @max(itemHitBoxMarginVec, self.max - itemHitBoxMarginVec));
-				const min: Vec3f = @min(max, @max(itemHitBoxMarginVec, self.min + itemHitBoxMarginVec));
-				const center: Vec3f = (max + min)*half;
-				const width: Vec3f = (max - min)*half;
+				const max = @min(@as(Vec3f, @splat(1.0)) - itemHitBoxMarginVec, @max(itemHitBoxMarginVec, self.max - itemHitBoxMarginVec));
+				const min = @min(max, @max(itemHitBoxMarginVec, self.min + itemHitBoxMarginVec));
+				const center = (max + min)*half;
+				const width = (max - min)*half;
 				return center + width*main.random.nextFloatVectorSigned(3, &main.seed)*half;
 			}
 			fn dropOutside(self: BlockDropLocation, pos: Vec3i, _drop: main.blocks.BlockDrop) void {
