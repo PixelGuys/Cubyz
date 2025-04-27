@@ -15,11 +15,11 @@ pub const EntityDataClass = struct {
 	pub const SerializationError = error{
 		noData,
 	};
-	
+
 	pub const DeserializationError = error{
 		invalidData,
 	};
-	
+
 	id: []const u8,
 	vtable: VTable,
 
