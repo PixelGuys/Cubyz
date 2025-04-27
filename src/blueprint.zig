@@ -115,36 +115,42 @@ pub const Blueprint = struct {
 	}
 
 	fn _pasteInGeneration(self: Blueprint, pos: Vec3i, chunk: *ServerChunk, comptime mode: PasteMode) void {
-		var blueprintX: u32 = 0;
-		var chunkX = chunk.startIndex(pos[0]);
-		const chunkEndX = chunkX + @as(i32, @intCast(self.blocks.width));
+		const chunkWidth: i32 = @intCast(chunk.super.width);
 
-		while(chunkX < chunkEndX) : ({
+		const blueprintWidth: i32 = @intCast(self.blocks.width);
+		const blueprintDepth: i32 = @intCast(self.blocks.depth);
+		const blueprintHeight: i32 = @intCast(self.blocks.height);
+
+		var blueprintX: u32 = @max(0, -pos[0]);
+		const blueprintEndX = @min(blueprintWidth, chunkWidth - pos[0]);
+
+		var chunkX = @max(0, pos[0]);
+		const chunkEndX = @min(chunkWidth, blueprintWidth + pos[0]);
+
+		while(chunkX < chunkEndX and blueprintX < blueprintEndX) : ({
 			chunkX += chunk.super.pos.voxelSize;
 			blueprintX += chunk.super.pos.voxelSize;
 		}) {
-			if(!chunk.liesInChunk(chunkX, 0, 0)) continue;
+			var blueprintY: u32 = @max(0, -pos[1]);
+			const blueprintEndY = @min(blueprintDepth, chunkWidth - pos[1]);
 
-			var blueprintY: u32 = 0;
-			var chunkY = chunk.startIndex(pos[1]);
-			const chunkEndY = chunkY + @as(i32, @intCast(self.blocks.depth));
+			var chunkY = @max(0, pos[1]);
+			const chunkEndY = @min(chunkWidth, blueprintDepth + pos[1]);
 
-			while(chunkY < chunkEndY) : ({
+			while(chunkY < chunkEndY and blueprintY < blueprintEndY) : ({
 				chunkY += chunk.super.pos.voxelSize;
 				blueprintY += chunk.super.pos.voxelSize;
 			}) {
-				if(!chunk.liesInChunk(chunkX, chunkY, 0)) continue;
+				var blueprintZ: u32 = @max(0, -pos[2]);
+				const blueprintEndZ = @min(blueprintHeight, chunkWidth - pos[2]);
 
-				var blueprintZ: u32 = 0;
-				var chunkZ = chunk.startIndex(pos[2]);
-				const chunkEndZ = chunkZ + @as(i32, @intCast(self.blocks.height));
+				var chunkZ = @max(0, pos[2]);
+				const chunkEndZ = @min(chunkWidth, blueprintHeight + pos[2]);
 
-				while(chunkZ < chunkEndZ) : ({
+				while(chunkZ < chunkEndZ and blueprintZ < blueprintEndZ) : ({
 					chunkZ += chunk.super.pos.voxelSize;
 					blueprintZ += chunk.super.pos.voxelSize;
 				}) {
-					if(!chunk.liesInChunk(chunkX, chunkY, chunkZ)) continue;
-
 					const block = self.blocks.get(blueprintX, blueprintY, blueprintZ);
 					if(block.typ == voidType) continue;
 
