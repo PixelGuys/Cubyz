@@ -158,7 +158,6 @@ fn closestRay(comptime typ: enum {bit, intersection}, block: Block, _: ?main.ite
 			if(RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
 				if(result == null or result.?.distance > intersection.distance) {
 					result = intersection;
-					result.?.face = intersection.face.reverse();
 					resultBit = bit;
 				}
 			}
