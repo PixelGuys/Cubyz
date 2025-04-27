@@ -716,6 +716,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	var currentSwingTime: f32 = 0;
 	var selectionMin: Vec3f = undefined;
 	var selectionMax: Vec3f = undefined;
+	var selectionFace: chunk.Neighbor = undefined;
 	var lastPos: Vec3d = undefined;
 	var lastDir: Vec3f = undefined;
 	pub fn select(pos: Vec3d, _dir: Vec3f, item: ?main.items.Item) void {
@@ -750,6 +751,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						selectedBlockPos = voxelPos;
 						selectionMin = intersection.min;
 						selectionMax = intersection.max;
+						selectionFace = intersection.face;
 						break;
 					}
 				}
@@ -840,6 +842,11 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 								}
 							}
 						}
+						if(std.mem.eql(u8, baseItem.id, "cubyz:selection_wand")) {
+							game.Player.selectionPosition2 = selectedPos;
+							main.network.Protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos2, selectedPos);
+							return;
+						}
 					},
 					.tool => |tool| {
 						_ = tool; // TODO: Tools might change existing blocks.
@@ -859,6 +866,14 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	pub fn breakBlock(inventory: main.items.Inventory, slot: u32, deltaTime: f64) void {
 		const selectedPos = selectedBlockPos orelse return;
 
+		const stack = inventory.getStack(slot);
+		const isSelectionWand = stack.item != null and stack.item.? == .baseItem and std.mem.eql(u8, stack.item.?.baseItem.id, "cubyz:selection_wand");
+		if(isSelectionWand) {
+			game.Player.selectionPosition1 = selectedPos;
+			main.network.Protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos1, selectedPos);
+			return;
+		}
+
 		if(@reduce(.Or, lastSelectedBlockPos != selectedPos)) {
 			resetBlockBreaking();
 		}
@@ -869,7 +884,6 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		main.items.Inventory.Sync.ClientSide.mutex.lock();
 
 		if(!game.Player.isCreative()) {
-			const stack = inventory.getStack(slot);
 			var damage: f32 = 1;
 
 			const isTool = stack.item != null and stack.item.? == .tool;
@@ -919,7 +933,19 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	}
 
 	fn updateBlockAndSendUpdate(source: main.items.Inventory, slot: u32, x: i32, y: i32, z: i32, oldBlock: blocks.Block, newBlock: blocks.Block) void {
-		main.items.Inventory.Sync.ClientSide.executeCommand(.{.updateBlock = .{.source = .{.inv = source, .slot = slot}, .pos = .{x, y, z}, .oldBlock = oldBlock, .newBlock = newBlock}});
+		main.items.Inventory.Sync.ClientSide.executeCommand(.{
+			.updateBlock = .{
+				.source = .{.inv = source, .slot = slot},
+				.pos = .{x, y, z},
+				.dropLocation = .{
+					.dir = selectionFace,
+					.min = selectionMin,
+					.max = selectionMax,
+				},
+				.oldBlock = oldBlock,
+				.newBlock = newBlock,
+			},
+		});
 		mesh_storage.updateBlock(x, y, z, newBlock);
 	}
 

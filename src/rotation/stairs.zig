@@ -296,15 +296,12 @@ pub fn rayIntersection(block: Block, item: ?main.items.Item, relativePlayerPos: 
 	if(item) |_item| {
 		switch(_item) {
 			.baseItem => |baseItem| {
-				if(std.mem.eql(u8, baseItem.id, "cubyz:chisel")) { // Select only one eigth of a block
+				if(std.mem.eql(u8, baseItem.id, "cubyz:chisel")) { // Select only one eighth of a block
 					if(intersectionPos(block, relativePlayerPos, playerDir)) |intersection| {
 						const offset: Vec3f = @floatFromInt(intersection.minPos);
 						const half: Vec3f = @splat(0.5);
-						return .{
-							.distance = intersection.minT,
-							.min = half*offset,
-							.max = half + half*offset,
-						};
+						const fullIntersection = RotationMode.DefaultFunctions.rayIntersection(block, item, relativePlayerPos, playerDir) orelse unreachable;
+						return .{.distance = intersection.minT, .min = half*offset, .max = half + half*offset, .face = fullIntersection.face};
 					}
 					return null;
 				}

@@ -7,9 +7,7 @@
 	.item = .{
 		.material = .{
 			.density = 2.6,
-			.strength = 2.6,
 			.elasticity = 0.0,
-			.grip = 1.0,
 			.hardness = 4.0,
 			.textureRoughness = 1.0,
 			.colors = .{

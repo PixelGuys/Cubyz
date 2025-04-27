@@ -254,7 +254,7 @@ pub const ChannelChunk = struct {
 	}
 
 	fn propagateFromNeighbor(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), lights: []const Entry, lightRefreshList: *main.List(*chunk_meshing.ChunkMesh)) void {
-		std.debug.assert(lightQueue.startIndex == lightQueue.endIndex);
+		std.debug.assert(lightQueue.empty());
 		for(lights) |entry| {
 			const index = chunk.getIndex(entry.x, entry.y, entry.z);
 			var result = entry;
@@ -265,7 +265,7 @@ pub const ChannelChunk = struct {
 	}
 
 	fn propagateDestructiveFromNeighbor(self: *ChannelChunk, lightQueue: *main.utils.CircularBufferQueue(Entry), lights: []const Entry, constructiveEntries: *main.ListUnmanaged(ChunkEntries), lightRefreshList: *main.List(*chunk_meshing.ChunkMesh)) main.ListUnmanaged(PositionEntry) {
-		std.debug.assert(lightQueue.startIndex == lightQueue.endIndex);
+		std.debug.assert(lightQueue.empty());
 		for(lights) |entry| {
 			const index = chunk.getIndex(entry.x, entry.y, entry.z);
 			var result = entry;
