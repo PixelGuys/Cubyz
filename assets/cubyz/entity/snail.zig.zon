@@ -1,0 +1,4 @@
+.{
+    .model = "cubyz:snail_snail",
+    .texture = "cubyz:snail_snail"
+}

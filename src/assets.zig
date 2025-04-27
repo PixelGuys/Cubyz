@@ -4,6 +4,7 @@ const blocks_zig = @import("blocks.zig");
 const items_zig = @import("items.zig");
 const migrations_zig = @import("migrations.zig");
 const blueprints_zig = @import("blueprint.zig");
+const entity_zig = @import("entity.zig");
 const Blueprint = blueprints_zig.Blueprint;
 const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main");
@@ -23,6 +24,7 @@ var commonRecipes: std.StringHashMap(ZonElement) = undefined;
 var commonModels: std.StringHashMap([]const u8) = undefined;
 var commonStructureBuildingBlocks: std.StringHashMap(ZonElement) = undefined;
 var commonBlueprints: std.StringHashMap([]u8) = undefined;
+var commonEntities: std.StringHashMap(ZonElement) = undefined;
 
 pub fn init() void {
 	biomes_zig.init();
@@ -40,6 +42,7 @@ pub fn init() void {
 	commonModels = .init(arenaAllocator.allocator);
 	commonStructureBuildingBlocks = .init(arenaAllocator.allocator);
 	commonBlueprints = .init(arenaAllocator.allocator);
+	commonEntities = .init(arenaAllocator.allocator);
 
 	readAssets(
 		arenaAllocator,
@@ -54,11 +57,12 @@ pub fn init() void {
 		&commonModels,
 		&commonStructureBuildingBlocks,
 		&commonBlueprints,
+		&commonEntities,
 	);
 
 	std.log.info(
-		"Finished assets init with {} blocks ({} migrations), {} items, {} tools, {} biomes ({} migrations), {} recipes, {} structure building blocks and {} blueprints",
-		.{commonBlocks.count(), commonBlockMigrations.count(), commonItems.count(), commonTools.count(), commonBiomes.count(), commonBiomeMigrations.count(), commonRecipes.count(), commonStructureBuildingBlocks.count(), commonBlueprints.count()},
+		"Finished assets init with {} blocks ({} migrations), {} items, {} tools, {} biomes ({} migrations), {} recipes, {} structure building blocks, {} blueprints, and {} entities",
+		.{commonBlocks.count(), commonBlockMigrations.count(), commonItems.count(), commonTools.count(), commonBiomes.count(), commonBiomeMigrations.count(), commonRecipes.count(), commonStructureBuildingBlocks.count(), commonBlueprints.count(), commonEntities.count()},
 	);
 }
 
@@ -272,6 +276,7 @@ pub fn readAssets(
 	models: *std.StringHashMap([]const u8),
 	structureBuildingBlocks: *std.StringHashMap(ZonElement),
 	blueprints: *std.StringHashMap([]u8),
+	entities: *std.StringHashMap([]const u8),
 ) void {
 	var addons = main.List(std.fs.Dir).init(main.stackAllocator);
 	defer addons.deinit();
@@ -311,6 +316,7 @@ pub fn readAssets(
 	readAllObjFilesInAddonsHashmap(externalAllocator, addons, addonNames, "models", models);
 	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "sbb", true, structureBuildingBlocks, null);
 	readAllBlueprintFilesInAddons(externalAllocator, addons, addonNames, "blueprints", blueprints);
+	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "entities", false, entities, null);
 }
 
 fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void {
@@ -351,6 +357,10 @@ fn registerBiome(numericId: u32, stringId: []const u8, zon: ZonElement) void {
 
 fn registerRecipesFromZon(zon: ZonElement) void {
 	items_zig.registerRecipes(zon);
+}
+
+fn registerEntity(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void {
+	_ = entity_zig.register(assetFolder, id, zon);
 }
 
 pub const Palette = struct { // MARK: Palette
@@ -481,6 +491,8 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	defer structureBuildingBlocks.clearAndFree();
 	var blueprints = commonBlueprints.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer blueprints.clearAndFree();
+	var entities = commonEntities.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
+	defer entities.clearAndFree();
 
 	readAssets(
 		arenaAllocator,
@@ -495,6 +507,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		&models,
 		&structureBuildingBlocks,
 		&blueprints,
+		&entities,
 	);
 	errdefer unloadAssets();
 
@@ -574,6 +587,15 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		std.debug.assert(zon != .null);
 
 		try registerItem(assetFolder, stringId, zon);
+		itemPalette.add(stringId);
+	}
+
+	iterator = entities.iterator();
+	while(iterator.next()) |entry| {
+		const stringId = entry.key_ptr.*;
+		const zon = entry.value_ptr.*;
+		
+		try registerEntity(assetFolder, stringId, zon);
 		itemPalette.add(stringId);
 	}
 

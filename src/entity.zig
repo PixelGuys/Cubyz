@@ -266,3 +266,18 @@ pub const ClientEntityManager = struct {
 		}
 	}
 };
+
+pub const
+
+var size: u16 = 0;
+var reverseIndices: std.StringHashMap(u16);
+
+pub fn register(_: []const u8, id: []const u8, zon: ZonElement) !u16 {
+	try reverseIndices.put(id, size);
+
+
+
+	defer size += 1;
+	std.log.debug("Registered block: {d: >5} '{s}'", .{size, id});
+	return @intCast(size);
+}

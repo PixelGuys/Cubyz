@@ -1,0 +1,4 @@
+.{
+    .model = "cubyz:snail_player",
+    .texture = "cubyz:snail_player"
+}
