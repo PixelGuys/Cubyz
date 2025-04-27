@@ -921,7 +921,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			.updateBlock = .{
 				.source = .{.inv = source, .slot = slot},
 				.pos = .{x, y, z},
-				.drop = .{
+				.dropLocation = .{
 					.dir = selectionFace,
 					.min = selectionMin,
 					.max = selectionMax,

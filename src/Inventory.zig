@@ -1556,11 +1556,13 @@ pub const Command = struct { // MARK: Command
 	const UpdateBlock = struct { // MARK: UpdateBlock
 		source: InventoryAndSlot,
 		pos: Vec3i,
-		drop: BlockDropLocation,
+		dropLocation: BlockDropLocation,
 		oldBlock: Block,
 		newBlock: Block,
 
-		const half = @as(Vec3d, @splat(0.5));
+		const half = @as(Vec3f, @splat(0.5));
+		const itemHitBoxMargin: f32 = @floatCast(main.itemdrop.ItemDropManager.radius);
+		const itemHitBoxMarginVec = @as(Vec3f, @splat(itemHitBoxMargin));
 
 		const BlockDropLocation = struct {
 			dir: Neighbor,
@@ -1568,7 +1570,7 @@ pub const Command = struct { // MARK: Command
 			max: Vec3f,
 
 			pub fn drop(self: BlockDropLocation, pos: Vec3i, newBlock: Block, _drop: main.blocks.BlockDrop) void {
-				if(newBlock.solid() or newBlock.collide()) {
+				if(newBlock.collide()) {
 					self.dropOutside(pos, _drop);
 				} else {
 					self.dropInside(pos, _drop);
@@ -1583,14 +1585,13 @@ pub const Command = struct { // MARK: Command
 				const pos: Vec3d = @floatFromInt(_pos);
 				return pos + self.randomOffset();
 			}
-			fn randomOffset(self: BlockDropLocation) Vec3d {
-				const itemMargin = itemHitBoxMargin();
-				const max: Vec3d = @min(@as(Vec3d, @splat(1.0)) - itemMargin, @max(itemMargin, self.max - itemMargin));
-				const min: Vec3d = @min(max, @max(itemMargin, self.min + itemMargin));
-				const center: Vec3d = (max + min)*half;
-				const width: Vec3d = (max - min)*half;
-				const factors = main.random.nextDoubleVectorSigned(3, &main.seed)*half;
-				const offset = center + width*factors;
+			fn randomOffset(self: BlockDropLocation) Vec3f {
+				const max: Vec3f = @min(@as(Vec3f, @splat(1.0)) - itemHitBoxMarginVec, @max(itemHitBoxMarginVec, self.max - itemHitBoxMarginVec));
+				const min: Vec3f = @min(max, @max(itemHitBoxMarginVec, self.min + itemHitBoxMarginVec));
+				const center: Vec3f = (max + min)*half;
+				const width: Vec3f = (max - min)*half;
+				const factors: Vec3f = main.random.nextFloatVectorSigned(3, &main.seed)*half;
+				const offset: Vec3f = center + width*factors;
 				return offset;
 			}
 			fn dropOutside(self: BlockDropLocation, pos: Vec3i, _drop: main.blocks.BlockDrop) void {
@@ -1600,7 +1601,7 @@ pub const Command = struct { // MARK: Command
 			}
 			fn outsidePos(self: BlockDropLocation, _pos: Vec3i) Vec3d {
 				const pos: Vec3d = @floatFromInt(_pos);
-				return pos + self.randomOffset()*self.minor() + self.directionOffset()*self.major() + self.direction()*itemHitBoxMargin();
+				return pos + self.randomOffset()*self.minor() + self.directionOffset()*self.major() + self.direction()*itemHitBoxMarginVec;
 			}
 			fn directionOffset(self: BlockDropLocation) Vec3d {
 				return half + self.direction()*half;
@@ -1614,18 +1615,15 @@ pub const Command = struct { // MARK: Command
 			inline fn minor(self: BlockDropLocation) Vec3d {
 				return @floatFromInt(self.dir.orthogonalComponents());
 			}
-			fn itemHitBoxMargin() Vec3d {
-				return @splat(main.itemdrop.ItemDropManager.radius*2);
-			}
 			fn dropDir(self: BlockDropLocation) Vec3f {
-				const randomnessVec = main.random.nextDoubleVectorSigned(3, &main.seed)*@as(Vec3d, @splat(0.25));
-				const directionVec = self.direction() + randomnessVec;
-				const z = directionVec[2];
-				return @floatCast(vec.normalize(Vec3d{
+				const randomnessVec: Vec3f = main.random.nextFloatVectorSigned(3, &main.seed)*@as(Vec3f, @splat(0.25));
+				const directionVec: Vec3f = @as(Vec3f, @floatCast(self.direction())) + randomnessVec;
+				const z: f32 = directionVec[2];
+				return vec.normalize(Vec3f{
 					directionVec[0],
 					directionVec[1],
 					if(z < -0.5) 0 else if(z < 0.0) (z + 0.5)*4.0 else z + 2.0,
-				}));
+				});
 			}
 			fn dropVelocity(self: BlockDropLocation) f32 {
 				const velocity = 3.5 + main.random.nextFloatSigned(&main.seed)*0.5;
@@ -1686,7 +1684,7 @@ pub const Command = struct { // MARK: Command
 						for(0..amount) |_| {
 							for(self.newBlock.blockDrops()) |drop| {
 								if(drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
-									self.drop.drop(self.pos, self.newBlock, drop);
+									self.dropLocation.drop(self.pos, self.newBlock, drop);
 								}
 							}
 						}
@@ -1697,7 +1695,7 @@ pub const Command = struct { // MARK: Command
 			if(side == .server and gamemode != .creative and self.oldBlock.typ != self.newBlock.typ and shouldDropSourceBlockOnSuccess) {
 				for(self.oldBlock.blockDrops()) |drop| {
 					if(drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
-						self.drop.drop(self.pos, self.newBlock, drop);
+						self.dropLocation.drop(self.pos, self.newBlock, drop);
 					}
 				}
 			}
@@ -1706,9 +1704,9 @@ pub const Command = struct { // MARK: Command
 		fn serialize(self: UpdateBlock, writer: *utils.BinaryWriter) void {
 			self.source.write(writer);
 			writer.writeVec(Vec3i, self.pos);
-			writer.writeEnum(Neighbor, self.drop.dir);
-			writer.writeVec(Vec3f, self.drop.min);
-			writer.writeVec(Vec3f, self.drop.max);
+			writer.writeEnum(Neighbor, self.dropLocation.dir);
+			writer.writeVec(Vec3f, self.dropLocation.min);
+			writer.writeVec(Vec3f, self.dropLocation.max);
 			writer.writeInt(u32, @as(u32, @bitCast(self.oldBlock)));
 			writer.writeInt(u32, @as(u32, @bitCast(self.newBlock)));
 		}
@@ -1717,7 +1715,7 @@ pub const Command = struct { // MARK: Command
 			return .{
 				.source = try InventoryAndSlot.read(reader, side, user),
 				.pos = try reader.readVec(Vec3i),
-				.drop = .{
+				.dropLocation = .{
 					.dir = try reader.readEnum(Neighbor),
 					.min = try reader.readVec(Vec3f),
 					.max = try reader.readVec(Vec3f),
