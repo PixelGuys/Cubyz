@@ -115,26 +115,42 @@ pub const Blueprint = struct {
 	}
 
 	fn _pasteInGeneration(self: Blueprint, pos: Vec3i, chunk: *ServerChunk, comptime mode: PasteMode) void {
-		const startX = pos[0];
-		const startY = pos[1];
-		const startZ = pos[2];
+		var blueprintX: u32 = 0;
+		var chunkX = chunk.startIndex(pos[0]);
+		const chunkEndX = chunkX + @as(i32, @intCast(self.blocks.width));
 
-		for(0..self.blocks.width) |x| {
-			const localX = startX + @as(i32, @intCast(x));
+		while(chunkX < chunkEndX) : ({
+			chunkX += chunk.super.pos.voxelSize;
+			blueprintX += chunk.super.pos.voxelSize;
+		}) {
+			if(!chunk.liesInChunk(chunkX, 0, 0)) continue;
 
-			for(0..self.blocks.depth) |y| {
-				const localY = startY + @as(i32, @intCast(y));
+			var blueprintY: u32 = 0;
+			var chunkY = chunk.startIndex(pos[1]);
+			const chunkEndY = chunkY + @as(i32, @intCast(self.blocks.depth));
 
-				for(0..self.blocks.height) |z| {
-					const localZ = startZ + @as(i32, @intCast(z));
-					if(!chunk.liesInChunk(localX, localY, localZ)) continue;
+			while(chunkY < chunkEndY) : ({
+				chunkY += chunk.super.pos.voxelSize;
+				blueprintY += chunk.super.pos.voxelSize;
+			}) {
+				if(!chunk.liesInChunk(chunkX, chunkY, 0)) continue;
 
-					const block = self.blocks.get(x, y, z);
+				var blueprintZ: u32 = 0;
+				var chunkZ = chunk.startIndex(pos[2]);
+				const chunkEndZ = chunkZ + @as(i32, @intCast(self.blocks.height));
+
+				while(chunkZ < chunkEndZ) : ({
+					chunkZ += chunk.super.pos.voxelSize;
+					blueprintZ += chunk.super.pos.voxelSize;
+				}) {
+					if(!chunk.liesInChunk(chunkX, chunkY, chunkZ)) continue;
+
+					const block = self.blocks.get(blueprintX, blueprintY, blueprintZ);
 					if(block.typ == voidType) continue;
 
 					switch(mode) {
-						.all => chunk.updateBlockInGeneration(localX, localY, localZ, block),
-						.degradable => chunk.updateBlockIfDegradable(localX, localY, localZ, block),
+						.all => chunk.updateBlockInGeneration(chunkX, chunkY, chunkZ, block),
+						.degradable => chunk.updateBlockIfDegradable(chunkX, chunkY, chunkZ, block),
 					}
 				}
 			}
@@ -319,6 +335,5 @@ pub fn registerVoidBlock(block: Block) void {
 }
 
 pub fn getVoidBlock() Block {
-	std.debug.assert(voidType != null);
 	return Block{.typ = voidType.?, .data = 0};
 }

@@ -12,19 +12,17 @@ const ZonElement = main.ZonElement;
 const Neighbor = main.chunk.Neighbor;
 const ServerChunk = main.chunk.ServerChunk;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const parseBlock = main.blocks.parseBlock;
 
 pub const id = "cubyz:sbb";
 pub const generationMode = .floor;
 
 const SbbGen = @This();
 
-structure: []const u8,
 structureRef: *const sbb.StructureBuildingBlock,
 placeMode: Blueprint.PasteMode,
 
 pub fn getHash(self: SbbGen) u64 {
-	return std.hash.Wyhash.hash(@intFromEnum(self.placeMode), self.structure);
+	return std.hash.Wyhash.hash(@intFromEnum(self.placeMode), self.structureRef.id);
 }
 
 pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) *SbbGen {
@@ -35,7 +33,6 @@ pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) 
 	};
 	const self = arenaAllocator.create(SbbGen);
 	self.* = .{
-		.structure = structureId,
 		.structureRef = structureRef,
 		.placeMode = std.meta.stringToEnum(Blueprint.PasteMode, parameters.get([]const u8, "placeMode", "degradable")) orelse Blueprint.PasteMode.degradable,
 	};
