@@ -217,7 +217,10 @@ pub const Assets = struct {
 				if(std.ascii.startsWithIgnoreCase(entry.path, "textures")) continue;
 				if(std.ascii.eqlIgnoreCase(entry.basename, "_migrations.zig.zon")) continue;
 
-				const id = ID.initFromPath(allocator, addon.name, entry.path);
+				const id = ID.initFromPath(allocator, addon.name, entry.path) catch |err| {
+					std.log.err("Could not create ID for asset '{s}/{s}' from addon '{s}' due to error '{s}'. Asset will not be loaded.", .{@tagName(assetType), entry.path, addon.name, @errorName(err)});
+					continue;
+				};
 
 				const zon = files.Dir.init(assetsDirectory).readToZon(allocator, entry.path) catch |err| {
 					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
@@ -226,7 +229,7 @@ pub const Assets = struct {
 				if(hasDefaults) {
 					zon.join(defaultsStorage.get(entry.dir));
 				}
-				output.put(allocator.allocator, id, zon) catch unreachable;
+				output.put(allocator.allocator, id.string, zon) catch unreachable;
 			}
 			if(migrations != null) blk: {
 				const zon = files.Dir.init(assetsDirectory).readToZon(allocator, "_migrations.zig.zon") catch |err| {
@@ -259,7 +262,11 @@ pub const Assets = struct {
 				if(!std.ascii.endsWithIgnoreCase(entry.basename, ".blp")) continue;
 				if(std.ascii.startsWithIgnoreCase(entry.basename, "_migrations")) continue;
 
-				const id = ID.initFromPath(allocator, addon.name, entry.path);
+				const id = ID.initFromPath(allocator, addon.name, entry.path) catch |err| {
+					std.log.err("Could not create ID for blueprint '{s}' from addon '{s}' due to error '{s}'. Asset will not be loaded.", .{entry.path, addon.name, @errorName(err)});
+					continue;
+				};
+
 				const data = files.Dir.init(assetsDirectory).read(allocator, entry.path) catch |err| {
 					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
 					continue;
@@ -287,7 +294,10 @@ pub const Assets = struct {
 				if(entry.kind != .file) continue;
 				if(!std.ascii.endsWithIgnoreCase(entry.basename, ".obj")) continue;
 
-				const id = ID.initFromPath(allocator, addon.name, entry.path);
+				const id = ID.initFromPath(allocator, addon.name, entry.path) catch |err| {
+					std.log.err("Could not create ID for model '{s}' from addon '{s}' due to error '{s}'. Asset will not be loaded.", .{entry.path, addon.name, @errorName(err)});
+					continue;
+				};
 
 				const string = assetsDirectory.readFileAlloc(allocator.allocator, entry.path, std.math.maxInt(usize)) catch |err| {
 					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
