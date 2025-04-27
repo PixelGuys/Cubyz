@@ -465,7 +465,8 @@ pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: 
 		}
 
 		pub fn isFull(self: Self) bool {
-			return self.len >= capacity;
+			std.debug.assert(self.len <= capacity);
+			return self.len == capacity;
 		}
 	};
 }
