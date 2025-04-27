@@ -604,8 +604,8 @@ pub const meshes = struct { // MARK: meshes
 		var splitter = std.mem.splitScalar(u8, textureId, ':');
 		const mod = splitter.first();
 		const id = splitter.rest();
-		var buffer: [1024]u8 = undefined;
-		var path = try std.fmt.bufPrint(&buffer, "{s}/{s}/blocks/textures/{s}.png", .{assetFolder, mod, id});
+		var path = try std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/blocks/textures/{s}.png", .{assetFolder, mod, id});
+		defer main.stackAllocator.free(path);
 		// Test if it's already in the list:
 		for(textureIDs.items, 0..) |other, j| {
 			if(std.mem.eql(u8, other, path)) {
@@ -617,7 +617,8 @@ pub const meshes = struct { // MARK: meshes
 			if(err != error.FileNotFound) {
 				std.log.err("Could not open file {s}: {s}", .{path, @errorName(err)});
 			}
-			path = try std.fmt.bufPrint(&buffer, "assets/{s}/blocks/textures/{s}.png", .{mod, id}); // Default to global assets.
+			main.stackAllocator.free(path);
+			path = try std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/blocks/textures/{s}.png", .{mod, id}); // Default to global assets.
 			break :blk std.fs.cwd().openFile(path, .{}) catch |err2| {
 				std.log.err("File not found. Searched in \"{s}\" and also in the assetFolder \"{s}\"", .{path, assetFolder});
 				return err2;
