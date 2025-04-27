@@ -673,6 +673,7 @@ pub const World = struct { // MARK: World
 		main.Window.setMouseGrabbed(true);
 
 		main.blocks.meshes.generateTextureArray();
+		main.particles.ParticleManager.generateTextureArray();
 		main.models.uploadModels();
 		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());
 		main.audio.setMusic(self.playerBiome.raw.preferredMusic);

@@ -2,6 +2,7 @@ const std = @import("std");
 const main = @import("main");
 const graphics = @import("graphics.zig");
 const SSBO = graphics.SSBO;
+const TextureArray = graphics.TextureArray;
 const Shader = graphics.Shader;
 const Image = graphics.Image;
 const game = @import("game.zig");
@@ -17,30 +18,32 @@ const Vec3i = vec.Vec3i;
 
 pub const ParticleManager = struct {
 	// so i will probably have to store all of the particles in a single texture array and just index in it??
+	pub var particleTypesSSBO: ?SSBO = null; 
 	pub var system: ParticleSystem = undefined;
-	var types: main.List(ParticleType) = undefined;
+	pub var types: main.List(ParticleType) = undefined;
 	var textureIDs: main.List([]const u8) = undefined;
 	var textures: main.List(Image) = undefined;
 	var emissionTextures: main.List(Image) = undefined;
 	var arenaForWorld: main.heap.NeverFailingArenaAllocator = undefined;
 
-	// pub var blockTextureArray: TextureArray = undefined;
-	// pub var emissionTextureArray: TextureArray = undefined;
+	pub var textureArray: TextureArray = undefined;
+	pub var emissionTextureArray: TextureArray = undefined;
 	
-	// have a hashmap for particle types to create them
-
+	// have a hashmap for particle types to create them easily
 	pub fn init() void {
 		types = .init(main.globalAllocator);
 		textureIDs = .init(main.globalAllocator);
 		textures = .init(main.globalAllocator);
 		emissionTextures = .init(main.globalAllocator);
 		arenaForWorld = .init(main.globalAllocator);
+		textureArray = .init();
+		emissionTextureArray = .init();
 		system.init(EmmiterProperties{
 			.gravity = .{0, 0, 3},
 			.drag = 0.97,
 			.sizeStart = 0.4,
 			.sizeEnd = 0.1,
-			.lifeTime = 10,
+			.lifeTime = 5,
 		});
 	}
 
@@ -50,10 +53,12 @@ pub const ParticleManager = struct {
 		textures.deinit();
 		emissionTextures.deinit();
 		arenaForWorld.deinit();
+		textureArray.deinit();
+		emissionTextureArray.deinit();
 		system.deinit();
 	}
 
-	pub fn register(assetFolder: []const u8, id: []const u8, zon: ZonElement) u16 {
+	pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 		std.log.debug("Registered particle: {s}", .{id});
 		var particleType: ParticleType = undefined;
 
@@ -68,9 +73,10 @@ pub const ParticleManager = struct {
 		particleType.texture = @intCast(types.items.len);
 
 		var buffer: [1024]u8 = undefined;
-		const path = std.fmt.bufPrint(&buffer, "{s}/{s}/particles/textures/{s}.png", .{assetFolder, mod, _id}) catch unreachable;
+		// this is so confusing i just hardcoded that thing
+		const path = std.fmt.bufPrint(&buffer, "assets/{s}/particles/textures/{s}.png", .{mod, _id}) catch unreachable;
 		textureIDs.append(arenaForWorld.allocator().dupe(u8, path));
-		readTextureData(path, particleType.animationFrames);
+		readTextureData(path, &particleType);
 		
 		types.append(particleType);
 		return @intCast(types.items.len-1);
@@ -80,8 +86,10 @@ pub const ParticleManager = struct {
 		
 	}
 
-	fn readTextureData(_path: []const u8, animationFrames: u32) void {
+	fn readTextureData(_path: []const u8, typ: *ParticleType) void {
+		const animationFrames = typ.animationFrames;
 		const path = _path[0 .. _path.len - ".png".len];
+		typ.startFrame = @intCast(textures.items.len);
 		const base = readTextureFile(path, ".png", Image.defaultImage);
 		const emission = readTextureFile(path, "_emission.png", Image.emptyImage);
 		for(0..animationFrames) |i| {
@@ -110,6 +118,18 @@ pub const ParticleManager = struct {
 		result.height = @intCast(endHeight - startHeight);
 		result.imageData = result.imageData[startHeight*image.width .. endHeight*image.width];
 		return result;
+	}
+
+	pub fn generateTextureArray() void {
+		std.log.debug("Particle texture sizes: {d} {d}", .{textures.items.len, emissionTextures.items.len});
+		textureArray.generate(textures.items, true, true);
+		c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
+		emissionTextureArray.generate(emissionTextures.items, true, false);
+		c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
+
+		particleTypesSSBO = SSBO.initStatic(ParticleType, ParticleManager.types.items);
+		particleTypesSSBO.?.bind(13);
+		std.log.debug("ssboid: {d}", .{particleTypesSSBO.?.bufferID});
 	}
 
 	pub fn update(deltaTime: f64) void {
@@ -146,13 +166,10 @@ const ParticleSystem = struct {
 	};
 	var uniforms: UniformStruct = undefined;
 
-	
-
 	pub fn init(self: *ParticleSystem, props: EmmiterProperties) void {
-		std.debug.print("Particle alignment: {d} size: {d}\n", .{@alignOf(Particle), @sizeOf(Particle)});
+		std.log.debug("Particle alignment: {d} size: {d}\n", .{@alignOf(Particle), @sizeOf(Particle)});
 		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/particles/particles.vs", "assets/cubyz/shaders/particles/particles.fs", "", &uniforms);
 		
-		// self.isDead = .initFull();
 		self.properties = props;
 		self.particles = .init(main.globalAllocator);
 		particlesSSBO = SSBO.init();
@@ -161,6 +178,7 @@ const ParticleSystem = struct {
 
 	pub fn deinit(self: *ParticleSystem) void {
 		shader.deinit();
+		particlesSSBO.?.deinit();
 		self.particles.deinit();
 	}
 
@@ -170,7 +188,6 @@ const ParticleSystem = struct {
 			var particle = self.particles.items[i];
 			particle.lifeLeft -= deltaTime;
 			if(particle.lifeLeft < 0) {
-				// self.isDead.set(self.particleCount-1); 
 				self.particles.items[i] = self.particles.items[self.particles.items.len - 1];
 				self.particles.items.len -= 1;
 				continue;
@@ -183,14 +200,13 @@ const ParticleSystem = struct {
 			self.particles.items[i] = particle;
 			i += 1; // makes things simplier
 		}
-		// self.particles.shrinkAndFree(self.particleCount);
 	}
 
-	// probably a good idea to add an AddQueue so that it doesnt resize the particle array constantly
 	pub fn addParticle(self: *ParticleSystem, pos: Vec3f) void {
 		self.particles.append(Particle{
 			.pos = pos,
 			.vel = random.nextFloatVectorSigned(3, &main.seed)*@as(Vec3f, @splat(4)),
+			.lifeTime = self.properties.lifeTime,
 			.lifeLeft = self.properties.lifeTime,
 			.typ = 0,
 			.collides = false,
@@ -201,6 +217,12 @@ const ParticleSystem = struct {
 		particlesSSBO.?.bufferData(Particle, self.particles.items);
 
 		shader.bind();
+
+		c.glActiveTexture(c.GL_TEXTURE0);
+		ParticleManager.textureArray.bind();
+		c.glActiveTexture(c.GL_TEXTURE1);
+		ParticleManager.emissionTextureArray.bind();
+		
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&game.world.?.ambientLight));
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&game.camera.viewMatrix));
@@ -213,7 +235,9 @@ const ParticleSystem = struct {
 			.mul(Mat4f.rotationY(game.camera.rotation[0]-std.math.pi*0.5));
 		c.glUniformMatrix4fv(uniforms.billboardMatrix, 1, c.GL_TRUE, @ptrCast(&billboardMatrix));
 
+		// c.glEnable(c.GL_BLEND);
 		c.glDrawArrays(c.GL_TRIANGLES, 0, @intCast(self.particles.items.len*6));
+		// c.glDisable(c.GL_BLEND);
 	}
 };
 
@@ -236,9 +260,10 @@ pub const EmmiterProperties = struct {
 
 // so ig we need to create a particle type for each block type
 pub const ParticleType = struct {
-	isBlockTexture: bool,
 	texture: u32,
 	animationFrames: u32,
+	startFrame: u32,
+	isBlockTexture: bool,
 };
 
 // needs more thinking about the data needed here, im not sure how to use block textures for when you are breaking blocks
@@ -246,11 +271,12 @@ pub const ParticleType = struct {
 pub const Particle = struct {
 	pos: Vec3f,
 	vel: Vec3f,
+	lifeTime: f32,
 	lifeLeft: f32,
 	// used for identifying the particle animation things
-	typ: i32, 
+	typ: u32, 
 	light: u32 = 0,
 	collides: bool,
-	uv: u16 = 0,
-	// 1 byte left for use due to alignment
+	// uv: u16 = 0,
+	// 15 bytes left for use due to alignment
 };
