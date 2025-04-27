@@ -246,11 +246,13 @@ pub fn right(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	}
 }
 
-fn moveCursorVertically(self: *TextInput, relativeLines: f32) bool {
+fn moveCursorVertically(self: *TextInput, relativeLines: f32) enum {changed, same} {
 	const newCursor = self.textBuffer.mousePosToIndex(self.textBuffer.indexToCursorPos(self.cursor.?) + Vec2f{0, 16*relativeLines}, self.currentString.items.len);
-	const changed = self.cursor != newCursor;
 	self.cursor = newCursor;
-	return changed;
+	if(self.cursor != newCursor) {
+		return .changed;
+	}
+	return .same;
 }
 
 pub fn down(self: *TextInput, mods: main.Window.Key.Modifiers) void {
@@ -268,7 +270,7 @@ pub fn down(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 				cursor.* = @max(cursor.*, selectionStart);
 				self.selectionStart = null;
 			} else {
-				if(!self.moveCursorVertically(1)) {
+				if(self.moveCursorVertically(1) == .same) {
 					if(self.optional.onDown) |cb| cb.run();
 				}
 			}
@@ -292,7 +294,7 @@ pub fn up(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 				cursor.* = @min(cursor.*, selectionStart);
 				self.selectionStart = null;
 			} else {
-				if(!self.moveCursorVertically(-1)) {
+				if(self.moveCursorVertically(-1) == .same) {
 					if(self.optional.onUp) |cb| cb.run();
 				}
 			}

@@ -115,33 +115,28 @@ pub const History = struct {
 			}
 		}
 	}
-	fn insertIfUnique(self: *History, new: []const u8) bool {
-		if(new.len == 0 and !self.down.isEmpty()) return false;
+	fn isDuplicate(self: *History, new: []const u8) bool {
+		if(new.len == 0 and !self.down.isEmpty()) return true;
 		if(self.current) |msg| {
-			if(std.mem.eql(u8, msg, new)) return false;
+			if(std.mem.eql(u8, msg, new)) return true;
 		}
 		if(self.down.peekFront()) |msg| {
-			if(std.mem.eql(u8, msg, new)) return false;
+			if(std.mem.eql(u8, msg, new)) return true;
 		}
 		if(self.up.peekFront()) |msg| {
-			if(std.mem.eql(u8, msg, new)) return false;
+			if(std.mem.eql(u8, msg, new)) return true;
 		}
+		return false;
+	}
+	fn insertIfUnique(self: *History, new: []const u8) bool {
+		if(isDuplicate(self, new)) return false;
 		if(self.down.forceEnqueueFront(main.globalAllocator.dupe(u8, new))) |old| {
 			main.globalAllocator.free(old);
 		}
 		return true;
 	}
 	fn pushIfUnique(self: *History, new: []const u8) void {
-		if(new.len == 0 and !self.down.isEmpty()) return;
-		if(self.current) |msg| {
-			if(std.mem.eql(u8, msg, new)) return;
-		}
-		if(self.down.peekFront()) |msg| {
-			if(std.mem.eql(u8, msg, new)) return;
-		}
-		if(self.up.peekFront()) |msg| {
-			if(std.mem.eql(u8, msg, new)) return;
-		}
+		if(isDuplicate(self, new)) return;
 		if(self.up.forceEnqueueFront(main.globalAllocator.dupe(u8, new))) |old| {
 			main.globalAllocator.free(old);
 		}
