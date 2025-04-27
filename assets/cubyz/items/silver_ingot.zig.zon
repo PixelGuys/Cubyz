@@ -1,0 +1,13 @@
+.{
+	.tags = .{.metal, .precious},
+	.texture = "silver_ingot.png",
+	.material = .{
+		.density = 10.5,
+		.elasticity = 1.5,
+		.hardness = 2.5,
+		.textureRoughness = 0.05,
+		.colors = .{
+			0xff67727f, 0xff89919e, 0xffbdc2c6, 0xffe4e6e6, 0xfffcfcfc,
+		},
+	},
+}

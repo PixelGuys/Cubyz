@@ -1,10 +1,9 @@
 .{
+	.tags = .{.metal},
 	.texture = "copper_ingot.png",
 	.material = .{
 		.density = 5.0,
-		.strength = 3.5,
 		.elasticity = 7.0,
-		.grip = 4.0,
 		.hardness = 3.0,
 		.textureRoughness = 0.1,
 		.colors = .{

@@ -1,132 +1,91 @@
 .{
 	.blockTags = .{.wood},
-	.slotTypes = .{
-		.{
-			.name = .handle,
-			.parameterSets = .{
-				.{
-					.source = .strength,
-					.destination = .maxDurability,
-					.factor = 20,
-				},
-				.{
-					.source = .density,
-					.destination = .swingTime,
-					.factor = 0.1,
-				},
-				.{
-					.source = .grip,
-					.destination = .swingTime,
-					.functionType = .inverse,
-					.factor = 0.05,
-				},
-			},
-		},
-		.{
-			.name = .center,
-			.parameterSets = .{
-				.{
-					.source = .strength,
-					.destination = .maxDurability,
-					.factor = 50,
-				},
-				.{
-					.source = .density,
-					.destination = .swingTime,
-					.factor = 0.02,
-				},
-				.{
-					.source = .density,
-					.destination = .damage,
-					.factor = 0.2,
-				},
-				.{
-					.source = .hardness,
-					.destination = .damage,
-					.functionType = .squareRoot,
-					.factor = 0.1,
-				},
-			},
-		},
-		.{
-			.name = .blade,
-			.parameterSets = .{
-				.{
-					.source = .strength,
-					.destination = .maxDurability,
-					.factor = 20,
-				},
-				.{
-					.source = .density,
-					.destination = .swingTime,
-					.factor = 0.02,
-				},
-				.{
-					.source = .density,
-					.destination = .damage,
-					.factor = 0.2,
-				},
-				.{
-					.source = .hardness,
-					.destination = .damage,
-					.factor = 0.7,
-				},
-			},
-		},
-		.{
-			.name = .gemSlot,
-			.optional = true,
-			.parameterSets = .{
-				.{
-					.source = .strength,
-					.destination = .maxDurability,
-					.factor = 2,
-				},
-				.{
-					.source = .density,
-					.destination = .swingTime,
-					.factor = 0.1,
-				},
-			},
-		},
-		.{
-			.name = .backbone,
-			.optional = true,
-			.parameterSets = .{
-				.{
-					.source = .strength,
-					.destination = .maxDurability,
-					.factor = 2,
-				},
-				.{
-					.source = .density,
-					.destination = .swingTime,
-					.factor = 0.1,
-				},
-			},
-		},
-		.{
-			.name = .blode,
-			.optional = true,
-			.parameterSets = .{
-				.{
-					.source = .strength,
-					.destination = .maxDurability,
-					.factor = 20,
-				},
-				.{
-					.source = .density,
-					.destination = .swingTime,
-					.factor = 0.1,
-				},
-			},
-		},
+	.disabled = .{
+		0, 0, 1, 1, 1,
+		0, 0, 0, 1, 1,
+		0, 0, 0, 0, 1,
+		1, 0, 0, 0, 1,
+		1, 1, 1, 1, 0,
 	},
-	.slots = .{
-		.gemSlot, .backbone, .none,     .none,     .none,
-		.blode,   .handle,   .backbone, .none,     .none,
-		.blade,   .center,   .handle,   .backbone, .none,
-		.none,    .blade,    .blode,    .handle,   .none,
-		.none,    .none,     .none,     .none,     .handle,
+	.optional = .{
+		1, 1, 0, 0, 0,
+		1, 0, 1, 0, 0,
+		0, 0, 0, 1, 0,
+		0, 0, 1, 0, 0,
+		0, 0, 0, 0, 0,
+	},
+	.parameters = .{
+		.{
+			.source = .density,
+			.destination = .swingTime,
+			.matrix = .{
+				2.5, 2.0, 0x0, 0x0, 0x0,
+				2.0, 2.0, 1.5, 0x0, 0x0,
+				2.0, 1.5, 1.5, 1.0, 0x0,
+				0x0, 1.5, 1.0, 1.0, 0x0,
+				0x0, 0x0, 0x0, 0x0, 1.0,
+			},
+			.factor = 0.25,
+		},
+		.{
+			.source = .density,
+			.destination = .damage,
+			.matrix = .{
+				1.5, 2.0, 0x0, 0x0, 0x0,
+				2.0, 2.0, 1.5, 0x0, 0x0,
+				2.0, 1.5, 1.0, 0.5, 0x0,
+				0x0, 1.0, 0.5, 0.0, 0x0,
+				0x0, 0x0, 0x0, 0x0, 0.0,
+			},
+			.factor = 0.4,
+		},
+		.{
+			.source = .hardness,
+			.destination = .maxDurability,
+			.matrix = .{
+				0.0, 0.5, 0x0, 0x0, 0x0,
+				1.0, 1.5, 0.5, 0x0, 0x0,
+				2.0, 2.0, 2.5, 0.5, 0x0,
+				0x0, 2.0, 1.5, 1.0, 0x0,
+				0x0, 0x0, 0x0, 0x0, 1.0,
+			},
+			.factor = 120,
+		},
+		.{
+			.source = .hardness,
+			.destination = .damage,
+			.matrix = .{
+				0.0, 0.0, 0x0, 0x0, 0x0,
+				0.0, 0.0, 0.0, 0x0, 0x0,
+				1.0, 0.0, 0.0, 0.0, 0x0,
+				0x0, 1.0, 0.0, 0.0, 0x0,
+				0x0, 0x0, 0x0, 0x0, 0.0,
+			},
+			.factor = 0.3,
+		},
+		.{
+			.source = .elasticity,
+			.destination = .maxDurability,
+			.matrix = .{
+				0.0, 0.0, 0x0, 0x0, 0x0,
+				0.5, 2.0, 0.5, 0x0, 0x0,
+				1.0, 1.5, 2.0, 1.0, 0x0,
+				0x0, 1.0, 0.5, 2.0, 0x0,
+				0x0, 0x0, 0x0, 0x0, 1.5,
+			},
+			.factor = 120,
+		},
+		.{
+			.source = .elasticity,
+			.destination = .swingTime,
+			.matrix = .{
+				0.0, 0.5, 0x0, 0x0, 0x0,
+				0.5, 1.0, 0.5, 0x0, 0x0,
+				2.0, 2.5, 1.5, 0.5, 0x0,
+				0x0, 2.0, 0.5, 0.5, 0x0,
+				0x0, 0x0, 0x0, 0x0, 0.5,
+			},
+			.factor = -1.0,
+		},
 	},
 }
