@@ -690,18 +690,18 @@ pub const Skybox = struct {
 
 				radius = @floatCast(main.random.nextFloatExp(&seed)*4 + 0.2);
 
-				// 5772 is the temperature of the sun, so I divide by it to get the temperature in solar temperature
-				temperature = @floatCast((@abs(main.random.nextFloatGauss(&seed)*3000.0 + 5000.0) + 1000.0)/5772.0);
+				temperature = @floatCast(@abs(main.random.nextFloatGauss(&seed)*3000.0 + 5000.0) + 1000.0);
 
-				// 4000 controls how bright the stars
-				light = (4000*radius*radius*temperature*temperature*temperature*temperature)/(vec.dot(pos, pos));
+				// 3.6e-12 can be modified to change the brightness of the stars
+				light = (3.6e-12*radius*radius*temperature*temperature*temperature*temperature)/(vec.dot(pos, pos));
 			}
-
+			
 			pos = vec.normalize(pos)*@as(Vec3f, @splat(starDist));
 
 			const normPos = vec.normalize(pos);
 
-			const col = getStarColor(temperature*5772.0, light, starColorImage);
+			const col = getStarColor(temperature, light, starColorImage);
+			std.debug.print("{d}\n", .{col});
 
 			const lat: f32 = @floatCast(std.math.asin(normPos[2]));
 			const lon: f32 = @floatCast(std.math.atan2(-normPos[0], normPos[1]));
@@ -738,9 +738,6 @@ pub const Skybox = struct {
 	}
 
 	pub fn render() void {
-		c.glDisable(c.GL_CULL_FACE);
-		c.glDisable(c.GL_DEPTH_TEST);
-
 		const viewMatrix = game.camera.viewMatrix;
 
 		const time = game.world.?.gameTime.load(.monotonic);
@@ -756,6 +753,9 @@ pub const Skybox = struct {
 		}
 
 		if(starOpacity != 0) {
+			c.glDisable(c.GL_CULL_FACE);
+			c.glDisable(c.GL_DEPTH_TEST);
+
 			c.glBlendFunc(c.GL_ONE, c.GL_ONE);
 			c.glEnable(c.GL_BLEND);
 
@@ -769,15 +769,15 @@ pub const Skybox = struct {
 			c.glUniformMatrix4fv(starUniforms.mvp, 1, c.GL_TRUE, @ptrCast(&starMatrix));
 
 			c.glBindVertexArray(starVao);
-			c.glDrawArrays(c.GL_TRIANGLES, 0, numStars*9);
+			c.glDrawArrays(c.GL_TRIANGLES, 0, numStars*3);
 
 			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
 
 			c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
-		}
 
-		c.glEnable(c.GL_CULL_FACE);
-		c.glEnable(c.GL_DEPTH_TEST);
+			c.glEnable(c.GL_CULL_FACE);
+			c.glEnable(c.GL_DEPTH_TEST);
+		}
 	}
 };
 
