@@ -16,6 +16,8 @@ pub const EntityDataClass = struct {
 	vtable: VTable,
 
 	const VTable = struct {
+		serialize: *const fn(pos: Vec3i, chunk: *Chunk, writer: *main.utils.BinaryWriter) void,
+		deserialize: *const fn(pos: Vec3i, chunk: *Chunk, reader: *main.utils.BinaryReader) void,
 		onLoadClient: *const fn(pos: Vec3i, chunk: *Chunk) void,
 		onUnloadClient: *const fn(pos: Vec3i, chunk: *Chunk) void,
 		onLoadServer: *const fn(pos: Vec3i, chunk: *Chunk) void,
@@ -198,6 +200,24 @@ pub const EntityDataClasses = struct {
 		pub fn reset() void {
 			StorageServer.reset();
 			StorageClient.reset();
+		}
+		
+		pub fn serialize(pos: Vec3i, chunk: *Chunk, writer: *main.utils.BinaryWriter) void {
+			StorageServer.mutex.lock();
+			defer StorageServer.mutex.unlock();
+			const data = StorageServer.get(pos, chunk) orelse {
+				std.log.err("No data for block at {}, cannot serialize it.", .{pos});
+				return;
+			};
+
+			writer.writeSlice(Chest.id);
+			writer.writeInt(u64, data.contents);
+		}
+
+		pub fn deserialize(pos: Vec3i, chunk: *Chunk, reader: *main.utils.BinaryReader) void {
+			StorageServer.add(pos, .{
+				.contents = reader.readInt(u8),
+			}, chunk);
 		}
 
 		pub fn onLoadClient(_: Vec3i, _: *Chunk) void {
