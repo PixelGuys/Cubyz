@@ -695,7 +695,7 @@ pub const Skybox = struct {
 				// 3.6e-12 can be modified to change the brightness of the stars
 				light = (3.6e-12*radius*radius*temperature*temperature*temperature*temperature)/(vec.dot(pos, pos));
 			}
-			
+
 			pos = vec.normalize(pos)*@as(Vec3f, @splat(starDist));
 
 			const normPos = vec.normalize(pos);
