@@ -92,7 +92,7 @@ pub fn onOpen() void {
 	ipAddressLabel = Label.init(.{0, 0}, width, "                      ", .center);
 	list.add(ipAddressLabel);
 	list.add(Button.initText(.{0, 0}, 100, "Copy IP", .{.callback = &copyIp}));
-	ipAddressEntry = TextInput.init(.{0, 0}, width, 32, settings.lastUsedIPAddress, .{.callback = &join}, null, null);
+	ipAddressEntry = TextInput.init(.{0, 0}, width, 32, settings.lastUsedIPAddress, .{.callback = &join}, .{});
 	list.add(ipAddressEntry);
 	list.add(Button.initText(.{0, 0}, 100, "Join", .{.callback = &join}));
 	list.finish(.center);

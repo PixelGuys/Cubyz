@@ -33,8 +33,7 @@ maxHeight: f32,
 textSize: Vec2f = undefined,
 scrollBar: *ScrollBar,
 onNewline: gui.Callback,
-onUp: ?gui.Callback,
-onDown: ?gui.Callback,
+optional: OptionalCallbacks,
 
 pub fn __init() void {
 	texture = Texture.initFromFile("assets/cubyz/ui/text_input.png");
@@ -44,7 +43,12 @@ pub fn __deinit() void {
 	texture.deinit();
 }
 
-pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, onNewline: gui.Callback, onUp: ?gui.Callback, onDown: ?gui.Callback) *TextInput {
+const OptionalCallbacks = struct {
+	onUp: ?gui.Callback = null,
+	onDown: ?gui.Callback = null,
+};
+
+pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, onNewline: gui.Callback, optional: OptionalCallbacks) *TextInput {
 	const scrollBar = ScrollBar.init(undefined, scrollBarWidth, maxHeight - 2*border, 0);
 	const self = main.globalAllocator.create(TextInput);
 	self.* = TextInput{
@@ -56,8 +60,7 @@ pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, onNewli
 		.maxHeight = maxHeight,
 		.scrollBar = scrollBar,
 		.onNewline = onNewline,
-		.onUp = onUp,
-		.onDown = onDown,
+		.optional = optional,
 	};
 	self.currentString.appendSlice(text);
 	self.textSize = self.textBuffer.calculateLineBreaks(fontSize, maxWidth - 2*border - scrollBarWidth);
@@ -266,7 +269,7 @@ pub fn down(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 				self.selectionStart = null;
 			} else {
 				if(!self.moveCursorVertically(1)) {
-					if(self.onDown) |cb| cb.run();
+					if(self.optional.onDown) |cb| cb.run();
 				}
 			}
 		}
@@ -290,7 +293,7 @@ pub fn up(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 				self.selectionStart = null;
 			} else {
 				if(!self.moveCursorVertically(-1)) {
-					if(self.onUp) |cb| cb.run();
+					if(self.optional.onUp) |cb| cb.run();
 				}
 			}
 		}

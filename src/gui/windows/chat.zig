@@ -199,7 +199,7 @@ fn refresh() void {
 }
 
 pub fn onOpen() void {
-	input = TextInput.init(.{0, 0}, 256, 32, "", .{.callback = &sendMessage}, .{.callback = loadNextHistoryEntry}, .{.callback = loadPreviousHistoryEntry});
+	input = TextInput.init(.{0, 0}, 256, 32, "", .{.callback = &sendMessage}, .{.onUp = .{.callback = loadNextHistoryEntry}, .onDown = .{.callback = loadPreviousHistoryEntry}});
 	refresh();
 }
 
