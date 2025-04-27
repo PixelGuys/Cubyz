@@ -1145,7 +1145,7 @@ pub const Protocols = struct {
 		}
 
 		pub fn sendDamageBlock(conn: *Connection, typ: BlockDamage, _pos: ?Vec3i, remainingHealth: ?f32) void {
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, networkEndian, 18);
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 18);
 			defer writer.deinit();
 
 			writer.writeEnum(UpdateType, .damageBlock);
@@ -1161,7 +1161,7 @@ pub const Protocols = struct {
 				},
 			}
 
-			conn.sendImportant(id, writer.data.items);
+			conn.send(.fast, id, writer.data.items);
 		}
 	};
 	pub const chat = struct {
