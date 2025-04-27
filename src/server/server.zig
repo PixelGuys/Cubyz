@@ -387,21 +387,23 @@ fn update() void { // MARK: update()
 	}
 
 	// Send the entity data:
-	var writer = BinaryWriter.initCapacity(main.stackAllocator, (4 + 24 + 12 + 24)*userList.len);
-	defer writer.deinit();
-
 	const itemData = world.?.itemDropManager.getPositionAndVelocityData(main.stackAllocator);
 	defer main.stackAllocator.free(itemData);
 
+	var entityData: main.List(main.entity.EntityNetworkData) = .init(main.stackAllocator);
+	defer entityData.deinit();
+
 	for(userList) |user| {
 		const id = user.id; // TODO
-		writer.writeInt(u32, id);
-		writer.writeVec(Vec3d, user.player.pos);
-		writer.writeVec(Vec3f, user.player.rot);
-		writer.writeVec(Vec3d, user.player.vel);
+		entityData.append(.{
+			.id = id,
+			.pos = user.player.pos,
+			.vel = user.player.vel,
+			.rot = user.player.rot,
+		});
 	}
 	for(userList) |user| {
-		main.network.Protocols.entityPosition.send(user.conn, writer.data.items, itemData);
+		main.network.Protocols.entityPosition.send(user.conn, user.player.pos, entityData.items, itemData);
 	}
 
 	while(userDeinitList.dequeue()) |user| {

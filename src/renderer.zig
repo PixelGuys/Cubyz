@@ -716,6 +716,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	var currentSwingTime: f32 = 0;
 	var selectionMin: Vec3f = undefined;
 	var selectionMax: Vec3f = undefined;
+	var selectionFace: chunk.Neighbor = undefined;
 	var lastPos: Vec3d = undefined;
 	var lastDir: Vec3f = undefined;
 	pub fn select(pos: Vec3d, _dir: Vec3f, item: ?main.items.Item) void {
@@ -750,6 +751,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						selectedBlockPos = voxelPos;
 						selectionMin = intersection.min;
 						selectionMax = intersection.max;
+						selectionFace = intersection.face;
 						break;
 					}
 				}
@@ -927,7 +929,19 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	}
 
 	fn updateBlockAndSendUpdate(source: main.items.Inventory, slot: u32, x: i32, y: i32, z: i32, oldBlock: blocks.Block, newBlock: blocks.Block) void {
-		main.items.Inventory.Sync.ClientSide.executeCommand(.{.updateBlock = .{.source = .{.inv = source, .slot = slot}, .pos = .{x, y, z}, .oldBlock = oldBlock, .newBlock = newBlock}});
+		main.items.Inventory.Sync.ClientSide.executeCommand(.{
+			.updateBlock = .{
+				.source = .{.inv = source, .slot = slot},
+				.pos = .{x, y, z},
+				.dropLocation = .{
+					.dir = selectionFace,
+					.min = selectionMin,
+					.max = selectionMax,
+				},
+				.oldBlock = oldBlock,
+				.newBlock = newBlock,
+			},
+		});
 		mesh_storage.updateBlock(.{.x = x, .y = y, .z = z, .newBlock = newBlock});
 	}
 
