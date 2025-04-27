@@ -16,10 +16,12 @@ const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 
+var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
+const allocator = arena.allocator();
+
 pub const ParticleManager = struct {
 	// so i will probably have to store all of the particles in a single texture array and just index in it??
 	pub var particleTypesSSBO: ?SSBO = null; 
-	pub var system: ParticleSystem = undefined;
 	pub var types: main.List(ParticleType) = undefined;
 	var textureIDs: main.List([]const u8) = undefined;
 	var textures: main.List(Image) = undefined;
@@ -28,6 +30,8 @@ pub const ParticleManager = struct {
 
 	pub var textureArray: TextureArray = undefined;
 	pub var emissionTextureArray: TextureArray = undefined;
+
+	pub var particleTypeHashmap = std.StringHashMap(u16).init(allocator.allocator);
 	
 	// have a hashmap for particle types to create them easily
 	pub fn init() void {
@@ -38,7 +42,7 @@ pub const ParticleManager = struct {
 		arenaForWorld = .init(main.globalAllocator);
 		textureArray = .init();
 		emissionTextureArray = .init();
-		system.init(EmmiterProperties{
+		ParticleSystem.init(EmmiterProperties{
 			.gravity = .{0, 0, 20},
 			.drag = 0.2,
 			.sizeStart = 0.4,
@@ -55,7 +59,7 @@ pub const ParticleManager = struct {
 		arenaForWorld.deinit();
 		textureArray.deinit();
 		emissionTextureArray.deinit();
-		system.deinit();
+		ParticleSystem.deinit();
 	}
 
 	pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
@@ -70,7 +74,6 @@ pub const ParticleManager = struct {
 		var splitter = std.mem.splitScalar(u8, textureId, ':');
 		const mod = splitter.first();
 		const _id = splitter.rest();
-		particleType.texture = @intCast(types.items.len);
 
 		var buffer: [1024]u8 = undefined;
 		// this is so confusing i just hardcoded that thing
@@ -78,6 +81,7 @@ pub const ParticleManager = struct {
 		textureIDs.append(arenaForWorld.allocator().dupe(u8, path));
 		readTextureData(path, &particleType);
 		
+		particleTypeHashmap.put(id, @intCast(types.items.len)) catch unreachable;
 		types.append(particleType);
 		return @intCast(types.items.len-1);
 	}
@@ -133,19 +137,20 @@ pub const ParticleManager = struct {
 
 	pub fn update(deltaTime: f64) void {
 		const dt: f32 = @floatCast(deltaTime);
-		system.update(dt);
+		ParticleSystem.update(dt);
 	}
 
 	pub fn render(playerPosition: Vec3d, ambientLight: Vec3f) void {
-		system.render(playerPosition, ambientLight);
+		ParticleSystem.render(playerPosition, ambientLight);
 	}
 };
 
-const ParticleSystem = struct {
-	particles: main.List(Particle),
-	properties: EmmiterProperties = undefined,
+pub const ParticleSystem = struct {
+	const maxCapacity: u32 = 65536;
+	var particles: []Particle = undefined;
+	var properties: EmmiterProperties = undefined;
 
-	var particlesSSBO: ?SSBO = null;
+	var particlesSSBO: SSBO = undefined;
 
 	var shader: Shader = undefined;
 	const UniformStruct = struct {
@@ -158,37 +163,39 @@ const ParticleSystem = struct {
 	};
 	var uniforms: UniformStruct = undefined;
 
-	pub fn init(self: *ParticleSystem, props: EmmiterProperties) void {
+	pub fn init(props: EmmiterProperties) void {
 		std.log.debug("Particle alignment: {d} size: {d}\n", .{@alignOf(Particle), @sizeOf(Particle)});
 		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/particles/particles.vs", "assets/cubyz/shaders/particles/particles.fs", "", &uniforms);
 		
-		self.properties = props;
-		self.particles = .init(main.globalAllocator);
+		properties = props;
+		particles = main.globalAllocator.alloc(Particle, maxCapacity);
 		particlesSSBO = SSBO.init();
-		particlesSSBO.?.bind(12);
+		particlesSSBO.createDynamicBuffer(maxCapacity*@sizeOf(Particle));
+		particlesSSBO.bind(12);
 	}
 
-	pub fn deinit(self: *ParticleSystem) void {
+	pub fn deinit() void {
 		shader.deinit();
-		particlesSSBO.?.deinit();
-		self.particles.deinit();
+		particlesSSBO.deinit();
+		particles.len = maxCapacity;
+		main.globalAllocator.free(particles);
 	}
 
-	pub fn update(self: *ParticleSystem, deltaTime: f32) void {
+	pub fn update(deltaTime: f32) void {
 		const vdt: Vec3f = @as(Vec3f, @splat(deltaTime));
 
 		var i: u32 = 0;
-		while(i < self.particles.items.len) {
-			var particle = self.particles.items[i];
+		while(i < particles.len) {
+			var particle = particles[i];
 			particle.lifeLeft -= deltaTime;
 			if(particle.lifeLeft < 0) {
-				self.particles.items[i] = self.particles.items[self.particles.items.len - 1];
-				self.particles.items.len -= 1;
+				particles[i] = particles[particles.len - 1];
+				particles.len -= 1;
 				continue;
 			}
 
-			particle.vel += self.properties.gravity * vdt;
-			particle.vel *= @as(Vec3f, @splat(std.math.pow(f32, self.properties.drag, deltaTime)));
+			particle.vel += properties.gravity * vdt;
+			particle.vel *= @as(Vec3f, @splat(std.math.pow(f32, properties.drag, deltaTime)));
 			const vel = particle.vel * vdt;
 
 			// TODO: OPTIMIZE THE HELL OUT OF THIS
@@ -235,27 +242,29 @@ const ParticleSystem = struct {
 			
 			// std.log.debug("x: {d} y: {d} z: {d}", .{particle.pos[0], particle.pos[1], particle.pos[2]});
 
-			self.particles.items[i] = particle;
+			particles[i] = particle;
 			i += 1; // makes things simplier
 		}
 	}
 
-	pub fn addParticle(self: *ParticleSystem, pos: Vec3f) void {
-		// if (self.particles.items.len > 0) {
-		// return;
-		// }
-		self.particles.append(Particle{
+	pub fn addParticle(id: []const u8, pos: Vec3f) void {
+		if (particles.len >= maxCapacity) {
+			return;
+		}
+		const typ = ParticleManager.particleTypeHashmap.get(id) orelse 0;
+		particles.len += 1;
+		particles[particles.len-1] = Particle{
 			.pos = pos,
 			.vel = random.nextFloatVectorSigned(3, &main.seed)*@as(Vec3f, @splat(20)),
-			.lifeTime = self.properties.lifeTime,
-			.lifeLeft = self.properties.lifeTime,
-			.typ = 0,
+			.lifeTime = properties.lifeTime,
+			.lifeLeft = properties.lifeTime,
+			.typ = typ,
 			.collides = true,
-		});
+		};
 	}
 
-	pub fn render(self: *ParticleSystem, playerPosition: Vec3d, ambientLight: Vec3f) void {
-		particlesSSBO.?.bufferData(Particle, self.particles.items);
+	pub fn render(playerPosition: Vec3d, ambientLight: Vec3f) void {
+		particlesSSBO.bufferDataDynamic(Particle, particles);
 
 		shader.bind();
 
@@ -276,8 +285,8 @@ const ParticleSystem = struct {
 			.mul(Mat4f.rotationY(game.camera.rotation[0]-std.math.pi*0.5));
 		c.glUniformMatrix4fv(uniforms.billboardMatrix, 1, c.GL_TRUE, @ptrCast(&billboardMatrix));
 
-		std.log.debug("count: {d}", .{self.particles.items.len});
-		c.glDrawArrays(c.GL_TRIANGLES, 0, @intCast(self.particles.items.len*6));
+		// std.log.debug("count: {d}", .{particles.len});
+		c.glDrawArrays(c.GL_TRIANGLES, 0, @intCast(particles.len*6));
 	}
 };
 
@@ -315,6 +324,7 @@ pub const Particle = struct {
 	lifeLeft: f32,
 	// used for identifying the particle animation things
 	typ: u32, 
+	// anotherTyp: u16 = 0,
 	light: u32 = 0,
 	collides: bool,
 	// uv: u16 = 0,
