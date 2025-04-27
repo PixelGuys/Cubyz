@@ -1590,8 +1590,7 @@ pub const Command = struct { // MARK: Command
 				const min: Vec3f = @min(max, @max(itemHitBoxMarginVec, self.min + itemHitBoxMarginVec));
 				const center: Vec3f = (max + min)*half;
 				const width: Vec3f = (max - min)*half;
-				const factors: Vec3f = main.random.nextFloatVectorSigned(3, &main.seed)*half;
-				return center + width*factors;
+				return center + width*main.random.nextFloatVectorSigned(3, &main.seed)*half;
 			}
 			fn dropOutside(self: BlockDropLocation, pos: Vec3i, _drop: main.blocks.BlockDrop) void {
 				for(_drop.items) |itemStack| {
