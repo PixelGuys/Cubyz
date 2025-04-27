@@ -215,7 +215,7 @@ pub const EntityDataClasses = struct {
 			StorageServer.reset();
 			StorageClient.reset();
 		}
-		
+
 		pub fn serialize(pos: Vec3i, chunk: *Chunk, writer: *main.utils.BinaryWriter) EntityDataClass.SerializationError!void {
 			StorageServer.mutex.lock();
 			defer StorageServer.mutex.unlock();
