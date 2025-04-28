@@ -1200,6 +1200,8 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				const nnz: u5 = @intCast(nz & chunk.chunkMask);
 
 				const neighborChunkMesh = mesh_storage.getNeighborAndIncreaseRefCount(self.pos, self.pos.voxelSize, neighbor) orelse continue;
+				defer neighborChunkMesh.decreaseRefCount();
+
 				const index = chunk.getIndex(nnx, nny, nnz);
 
 				neighborChunkMesh.mutex.lock();
@@ -1208,14 +1210,11 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				if(neighborBlock.mode().dependsOnNeighbors and neighborBlock.mode().updateData(&neighborBlock, neighbor.reverse(), newBlock)) {
 					neighborChunkMesh.chunk.data.setValue(index, neighborBlock);
 					neighborChunkMesh.mutex.unlock();
-
 					neighborChunkMesh.updateBlockLight(nnx, nny, nnz, neighborBlock, lightRefreshList);
 					appendIfNotContainedAndIncreaseRefCount(regenerateMeshList, neighborChunkMesh);
-
 					neighborChunkMesh.mutex.lock();
 				}
 				neighborChunkMesh.mutex.unlock();
-				neighborChunkMesh.decreaseRefCount();
 				neighborBlocks[neighbor.toInt()] = neighborBlock;
 			} else {
 				const index = chunk.getIndex(nx, ny, nz);
