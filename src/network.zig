@@ -948,13 +948,12 @@ pub const Protocols = struct {
 				return error.InvalidPacket;
 			}
 			while(reader.remaining.len != 0) {
-				const update: BlockUpdate = .{
+				renderer.mesh_storage.updateBlock( .{
 					.x = try reader.readInt(i32),
 					.y = try reader.readInt(i32),
 					.z = try reader.readInt(i32),
 					.newBlock = Block.fromInt(try reader.readInt(u32)),
-				};
-				renderer.mesh_storage.updateBlock(update);
+				});
 			}
 		}
 		pub fn send(conn: *Connection, updates: []const BlockUpdate) void {
