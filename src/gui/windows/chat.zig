@@ -43,13 +43,11 @@ var messageHistory: History = undefined;
 
 pub const History = struct {
 	up: FixedSizeCircularBuffer([]const u8, reusableHistoryMaxSize),
-	current: ?[]const u8,
 	down: FixedSizeCircularBuffer([]const u8, reusableHistoryMaxSize),
 
 	fn init() History {
 		return .{
 			.up = .init(main.globalAllocator),
-			.current = null,
 			.down = .init(main.globalAllocator),
 		};
 	}
@@ -62,64 +60,38 @@ pub const History = struct {
 		while(self.up.dequeue()) |msg| {
 			main.globalAllocator.free(msg);
 		}
-		if(self.current) |msg| {
-			main.globalAllocator.free(msg);
-			self.current = null;
-		}
 		while(self.down.dequeue()) |msg| {
 			main.globalAllocator.free(msg);
 		}
 	}
-	fn canMoveUp(self: *History) bool {
-		return !self.up.isEmpty();
-	}
 	fn moveUp(self: *History) void {
-		std.debug.assert(self.canMoveUp());
-
-		if(self.current) |msg| {
+		if(self.up.dequeueFront()) |msg| {
 			if(self.down.forceEnqueueFront(msg)) |old| {
 				main.globalAllocator.free(old);
 			}
 		}
-		self.current = self.up.dequeueFront();
-		std.debug.assert(self.current != null);
-	}
-	fn canMoveDown(self: *History) bool {
-		return !self.down.isEmpty();
 	}
 	fn moveDown(self: *History) void {
-		std.debug.assert(self.canMoveDown());
-
-		if(self.current) |msg| {
+		if(self.down.dequeueFront()) |msg| {
 			if(self.up.forceEnqueueFront(msg)) |old| {
 				main.globalAllocator.free(old);
 			}
 		}
-		self.current = self.down.dequeueFront();
-		std.debug.assert(self.current != null);
 	}
 	fn flush(self: *History) void {
-		if(self.current) |msg| {
-			if(msg.len != 0) {
-				if(self.up.forceEnqueueFront(msg)) |old| {
-					main.globalAllocator.free(old);
-				}
-			}
-			self.current = null;
-		}
 		while(self.down.dequeueFront()) |msg| {
-			if(msg.len != 0) {
-				if(self.up.forceEnqueueFront(msg)) |old| {
-					main.globalAllocator.free(old);
-				}
+			if(msg.len == 0) {
+				main.globalAllocator.free(msg);
+				continue;
+			}
+
+			if(self.up.forceEnqueueFront(msg)) |old| {
+				main.globalAllocator.free(old);
 			}
 		}
 	}
-	fn isDuplicate(self: *History, new: []const u8) bool {
-		if(new.len == 0 and !self.down.isEmpty()) return true;
-		if(self.current) |msg| {
-			if(std.mem.eql(u8, msg, new)) return true;
-		}
+	pub fn isDuplicate(self: *History, new: []const u8) bool {
+		if(new.len == 0) return true;
 		if(self.down.peekFront()) |msg| {
 			if(std.mem.eql(u8, msg, new)) return true;
 		}
@@ -128,16 +100,13 @@ pub const History = struct {
 		}
 		return false;
 	}
-	fn insertIfUnique(self: *History, new: []const u8) bool {
-		if(isDuplicate(self, new)) return false;
-		if(self.down.forceEnqueueFront(main.globalAllocator.dupe(u8, new))) |old| {
+	pub fn pushDown(self: *History, new: []const u8) void {
+		if(self.down.forceEnqueueFront(new)) |old| {
 			main.globalAllocator.free(old);
 		}
-		return true;
 	}
-	fn pushIfUnique(self: *History, new: []const u8) void {
-		if(isDuplicate(self, new)) return;
-		if(self.up.forceEnqueueFront(main.globalAllocator.dupe(u8, new))) |old| {
+	fn pushUp(self: *History, new: []const u8) void {
+		if(self.up.forceEnqueueFront(new)) |old| {
 			main.globalAllocator.free(old);
 		}
 	}
@@ -199,29 +168,36 @@ pub fn onOpen() void {
 }
 
 pub fn loadNextHistoryEntry(_: usize) void {
-	if(!messageHistory.canMoveUp()) {
-		loadPreviousHistoryEntry(0);
-		if(messageHistory.canMoveUp()) loadNextHistoryEntry(0);
-		return;
+	if(messageHistory.isDuplicate(input.currentString.items)) {
+		if(messageHistory.up.dequeueFront()) |msg| {
+			messageHistory.pushDown(msg);
+		}
+	} else {
+		if(messageHistory.down.dequeueFront()) |msg| {
+			messageHistory.pushUp(msg);
+		}
+		messageHistory.pushDown(main.globalAllocator.dupe(u8, input.currentString.items));
+		if(messageHistory.up.dequeueFront()) |msg| {
+			messageHistory.pushDown(msg);
+		}
 	}
-
-	_ = messageHistory.insertIfUnique(input.currentString.items);
-	messageHistory.moveUp();
-
-	if(messageHistory.current) |msg| {
+	if(messageHistory.down.peekFront()) |msg| {
 		input.setString(msg);
 	}
 }
 
 pub fn loadPreviousHistoryEntry(_: usize) void {
-	if(!messageHistory.canMoveDown()) return;
-
-	if(messageHistory.insertIfUnique(input.currentString.items)) {
-		messageHistory.moveDown();
+	if(messageHistory.isDuplicate(input.currentString.items)) {
+		if(messageHistory.down.dequeueFront()) |msg| {
+			messageHistory.pushUp(msg);
+		}
+	} else {
+		if(messageHistory.down.dequeueFront()) |msg| {
+			messageHistory.pushUp(msg);
+		}
+		messageHistory.pushUp(main.globalAllocator.dupe(u8, input.currentString.items));
 	}
-	messageHistory.moveDown();
-
-	if(messageHistory.current) |msg| {
+	if(messageHistory.down.peekFront()) |msg| {
 		input.setString(msg);
 	}
 }
@@ -292,8 +268,11 @@ pub fn sendMessage(_: usize) void {
 		if(data.len > 10000 or main.graphics.TextBuffer.Parser.countVisibleCharacters(data) > 1000) {
 			std.log.err("Chat message is too long with {}/{} characters. Limits are 1000/10000", .{main.graphics.TextBuffer.Parser.countVisibleCharacters(data), data.len});
 		} else {
+			const isDuplicate = messageHistory.isDuplicate(data);
 			messageHistory.flush();
-			messageHistory.pushIfUnique(data);
+			if(!isDuplicate and !messageHistory.isDuplicate(data)) {
+				messageHistory.pushUp(main.globalAllocator.dupe(u8, data));
+			}
 
 			main.network.Protocols.chat.send(main.game.world.?.conn, data);
 			input.clear();
