@@ -955,6 +955,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	fn tick(self: *ServerWorld) void {
 		// tick blocks
+		ChunkManager.mutex.lock();
 		var iter = ChunkManager.entityChunkHashMap.keyIterator();
 		while(iter.next()) |pos| {
 			if(ChunkManager.getEntityChunkAndIncreaseRefCount(pos.*)) |entityChunk| {
@@ -962,6 +963,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				entityChunk.decreaseRefCount();
 			}
 		}
+		ChunkManager.mutex.unlock();
 
 		self.tickCount +%= 1;
 	}
