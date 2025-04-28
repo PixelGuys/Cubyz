@@ -738,11 +738,7 @@ pub const Protocols = struct {
 		pub const id: u8 = 2;
 		pub const asynchronous = false;
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			const basePosition = Vec3i{
-				try reader.readInt(i32),
-				try reader.readInt(i32),
-				try reader.readInt(i32),
-			};
+			const basePosition = try reader.readVec(Vec3i);
 			conn.user.?.clientUpdatePos = basePosition;
 			conn.user.?.renderDistance = try reader.readInt(u16);
 			while(reader.remaining.len >= 4) {
@@ -767,9 +763,7 @@ pub const Protocols = struct {
 			if(requests.len == 0) return;
 			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 14 + 4*requests.len);
 			defer writer.deinit();
-			writer.writeInt(i32, basePosition[0]);
-			writer.writeInt(i32, basePosition[1]);
-			writer.writeInt(i32, basePosition[2]);
+			writer.writeVec(Vec3i, basePosition);
 			writer.writeInt(u16, renderDistance);
 			for(requests) |req| {
 				const voxelSizeShift: u5 = std.math.log2_int(u31, req.voxelSize);
@@ -856,35 +850,93 @@ pub const Protocols = struct {
 		pub const asynchronous = false;
 		const type_entity: u8 = 0;
 		const type_item: u8 = 1;
+		const Type = enum(u8) {
+			noVelocityEntity = 0,
+			f16VelocityEntity = 1,
+			f32VelocityEntity = 2,
+			noVelocityItem = 3,
+			f16VelocityItem = 4,
+			f32VelocityItem = 5,
+		};
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
+			if(conn.isServerSide()) return error.InvalidSide;
 			if(conn.manager.world) |world| {
-				const typ = try reader.readInt(u8);
 				const time = try reader.readInt(i16);
-				if(typ == type_entity) {
-					try main.entity.ClientEntityManager.serverUpdate(time, reader);
-				} else if(typ == type_item) {
-					try world.itemDrops.readPosition(reader, time);
+				const playerPos = try reader.readVec(Vec3d);
+				var entityData: main.List(main.entity.EntityNetworkData) = .init(main.stackAllocator);
+				defer entityData.deinit();
+				var itemData: main.List(main.itemdrop.ItemDropNetworkData) = .init(main.stackAllocator);
+				defer itemData.deinit();
+				while(reader.remaining.len != 0) {
+					const typ = try reader.readEnum(Type);
+					switch(typ) {
+						.noVelocityEntity, .f16VelocityEntity, .f32VelocityEntity => {
+							entityData.append(.{
+								.vel = switch(typ) {
+									.noVelocityEntity => @splat(0),
+									.f16VelocityEntity => @floatCast(try reader.readVec(@Vector(3, f16))),
+									.f32VelocityEntity => @floatCast(try reader.readVec(@Vector(3, f32))),
+									else => unreachable,
+								},
+								.id = try reader.readInt(u32),
+								.pos = playerPos + try reader.readVec(Vec3f),
+								.rot = try reader.readVec(Vec3f),
+							});
+						},
+						.noVelocityItem, .f16VelocityItem, .f32VelocityItem => {
+							itemData.append(.{
+								.vel = switch(typ) {
+									.noVelocityItem => @splat(0),
+									.f16VelocityItem => @floatCast(try reader.readVec(@Vector(3, f16))),
+									.f32VelocityItem => @floatCast(try reader.readVec(Vec3f)),
+									else => unreachable,
+								},
+								.index = try reader.readInt(u16),
+								.pos = playerPos + try reader.readVec(Vec3f),
+							});
+						},
+					}
 				}
+				main.entity.ClientEntityManager.serverUpdate(time, entityData.items);
+				world.itemDrops.readPosition(time, itemData.items);
 			}
 		}
-		pub fn send(conn: *Connection, entityData: []const u8, itemData: []const u8) void {
-			if(entityData.len != 0) {
-				var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, entityData.len + 3);
-				defer writer.deinit();
-				writer.writeInt(u8, type_entity);
-				writer.writeInt(i16, @truncate(std.time.milliTimestamp()));
-				writer.writeSlice(entityData);
-				conn.send(.lossy, id, writer.data.items);
-			}
+		pub fn send(conn: *Connection, playerPos: Vec3d, entityData: []main.entity.EntityNetworkData, itemData: []main.itemdrop.ItemDropNetworkData) void {
+			var writer = utils.BinaryWriter.init(main.stackAllocator);
+			defer writer.deinit();
 
-			if(itemData.len != 0) {
-				var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, itemData.len + 3);
-				defer writer.deinit();
-				writer.writeInt(u8, type_item);
-				writer.writeInt(i16, @truncate(std.time.milliTimestamp()));
-				writer.writeSlice(itemData);
-				conn.send(.lossy, id, writer.data.items);
+			writer.writeInt(i16, @truncate(std.time.milliTimestamp()));
+			writer.writeVec(Vec3d, playerPos);
+			for(entityData) |data| {
+				const velocityMagnitudeSqr = vec.lengthSquare(data.vel);
+				if(velocityMagnitudeSqr < 1e-6*1e-6) {
+					writer.writeEnum(Type, .noVelocityEntity);
+				} else if(velocityMagnitudeSqr > 1000*1000) {
+					writer.writeEnum(Type, .f32VelocityEntity);
+					writer.writeVec(Vec3f, @floatCast(data.vel));
+				} else {
+					writer.writeEnum(Type, .f16VelocityEntity);
+					writer.writeVec(@Vector(3, f16), @floatCast(data.vel));
+				}
+				writer.writeInt(u32, data.id);
+				writer.writeVec(Vec3f, @floatCast(data.pos - playerPos));
+				writer.writeVec(Vec3f, data.rot);
 			}
+			for(itemData) |data| {
+				const velocityMagnitudeSqr = vec.lengthSquare(data.vel);
+				if(velocityMagnitudeSqr < 1e-6*1e-6) {
+					writer.writeEnum(Type, .noVelocityItem);
+				} else if(velocityMagnitudeSqr > 1000*1000) {
+					writer.writeEnum(Type, .f32VelocityItem);
+					writer.writeVec(Vec3f, @floatCast(data.vel));
+				} else {
+					writer.writeEnum(Type, .f16VelocityItem);
+					writer.writeVec(@Vector(3, f16), @floatCast(data.vel));
+				}
+				writer.writeInt(u16, data.index);
+				writer.writeVec(Vec3f, @floatCast(data.pos - playerPos));
+			}
+			conn.send(.lossy, id, writer.data.items);
 		}
 	};
 	pub const blockUpdate = struct {
@@ -895,7 +947,7 @@ pub const Protocols = struct {
 			const y = try reader.readInt(i32);
 			const z = try reader.readInt(i32);
 			const newBlock = Block.fromInt(try reader.readInt(u32));
-			if(conn.user != null) {
+			if(conn.isServerSide()) {
 				return error.InvalidPacket;
 			} else {
 				renderer.mesh_storage.updateBlock(x, y, z, newBlock);
@@ -971,7 +1023,7 @@ pub const Protocols = struct {
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
 			switch(try reader.readEnum(UpdateType)) {
 				.gamemode => {
-					if(conn.user != null) return error.InvalidPacket;
+					if(conn.isServerSide()) return error.InvalidPacket;
 					main.items.Inventory.Sync.setGamemode(null, try reader.readEnum(main.game.Gamemode));
 				},
 				.teleport => {
@@ -979,19 +1031,28 @@ pub const Protocols = struct {
 				},
 				.worldEditPos => {
 					const typ = try reader.readEnum(WorldEditPosition);
-					switch(typ) {
-						.selectedPos1, .selectedPos2 => {
-							const pos = try reader.readVec(Vec3i);
-							switch(typ) {
-								.selectedPos1 => game.Player.selectionPosition1 = pos,
-								.selectedPos2 => game.Player.selectionPosition2 = pos,
-								else => unreachable,
-							}
-						},
-						.clear => {
-							game.Player.selectionPosition1 = null;
-							game.Player.selectionPosition2 = null;
-						},
+					const pos: ?Vec3i = switch(typ) {
+						.selectedPos1, .selectedPos2 => try reader.readVec(Vec3i),
+						.clear => null,
+					};
+					if(conn.isServerSide()) {
+						switch(typ) {
+							.selectedPos1 => conn.user.?.worldEditData.selectionPosition1 = pos.?,
+							.selectedPos2 => conn.user.?.worldEditData.selectionPosition2 = pos.?,
+							.clear => {
+								conn.user.?.worldEditData.selectionPosition1 = null;
+								conn.user.?.worldEditData.selectionPosition2 = null;
+							},
+						}
+					} else {
+						switch(typ) {
+							.selectedPos1 => game.Player.selectionPosition1 = pos,
+							.selectedPos2 => game.Player.selectionPosition2 = pos,
+							.clear => {
+								game.Player.selectionPosition1 = null;
+								game.Player.selectionPosition2 = null;
+							},
+						}
 					}
 				},
 				.timeAndBiome => {
@@ -1188,7 +1249,7 @@ pub const Protocols = struct {
 			conn.send(.fast, id, writer.data.items);
 		}
 		pub fn sendConfirmation(conn: *Connection, _data: []const u8) void {
-			std.debug.assert(conn.user != null);
+			std.debug.assert(conn.isServerSide());
 			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, _data.len + 1);
 			defer writer.deinit();
 			writer.writeInt(u8, 0xff);
@@ -1196,11 +1257,11 @@ pub const Protocols = struct {
 			conn.send(.fast, id, writer.data.items);
 		}
 		pub fn sendFailure(conn: *Connection) void {
-			std.debug.assert(conn.user != null);
+			std.debug.assert(conn.isServerSide());
 			conn.send(.fast, id, &.{0xfe});
 		}
 		pub fn sendSyncOperation(conn: *Connection, _data: []const u8) void {
-			std.debug.assert(conn.user != null);
+			std.debug.assert(conn.isServerSide());
 			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, _data.len + 1);
 			defer writer.deinit();
 			writer.writeInt(u8, 0);
@@ -1795,6 +1856,10 @@ pub const Connection = struct { // MARK: Connection
 		return self.connectionState.load(.unordered) == .connected;
 	}
 
+	fn isServerSide(conn: *Connection) bool {
+		return conn.user != null;
+	}
+
 	fn handlePacketLoss(self: *Connection, loss: LossStatus) void {
 		if(loss == .noLoss) return;
 		self.slowStart = false;
@@ -2072,6 +2137,9 @@ pub const Connection = struct { // MARK: Connection
 	pub fn disconnect(self: *Connection) void {
 		self.manager.send(&.{@intFromEnum(ChannelId.disconnect)}, self.remoteAddress, null);
 		self.connectionState.store(.disconnectDesired, .unordered);
+		if(builtin.os.tag == .windows and !self.isServerSide() and main.server.world != null) {
+			std.time.sleep(10000000); // Windows is too eager to close the socket, without waiting here we get a ConnectionResetByPeer on the other side.
+		}
 		self.manager.removeConnection(self);
 		if(self.user) |user| {
 			main.server.disconnect(user);
