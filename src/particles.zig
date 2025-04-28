@@ -44,10 +44,13 @@ pub const ParticleManager = struct {
 		emissionTextureArray = .init();
 		ParticleSystem.init(EmmiterProperties{
 			.gravity = .{0, 0, 20},
-			.drag = 0.2,
+			.drag = 2,
 			.sizeStart = 0.4,
 			.sizeEnd = 0.02,
-			.lifeTime = 10,
+			.lifeTimeMin = 1,
+			.lifeTimeMax = 10,
+			.velMin = 20,
+			.velMax = 40,
 		});
 	}
 
@@ -146,9 +149,10 @@ pub const ParticleManager = struct {
 };
 
 pub const ParticleSystem = struct {
-	const maxCapacity: u32 = 65536;
+	pub const maxCapacity: u32 = 65536;
 	var particles: []Particle = undefined;
 	var properties: EmmiterProperties = undefined;
+	var seed: u64 = undefined;
 
 	var particlesSSBO: SSBO = undefined;
 
@@ -164,7 +168,7 @@ pub const ParticleSystem = struct {
 	var uniforms: UniformStruct = undefined;
 
 	pub fn init(props: EmmiterProperties) void {
-		std.log.debug("Particle alignment: {d} size: {d}\n", .{@alignOf(Particle), @sizeOf(Particle)});
+		std.log.info("Particle alignment: {d} size: {d}\n", .{@alignOf(Particle), @sizeOf(Particle)});
 		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/particles/particles.vs", "assets/cubyz/shaders/particles/particles.fs", "", &uniforms);
 		
 		properties = props;
@@ -172,6 +176,8 @@ pub const ParticleSystem = struct {
 		particlesSSBO = SSBO.init();
 		particlesSSBO.createDynamicBuffer(maxCapacity*@sizeOf(Particle));
 		particlesSSBO.bind(12);
+
+		seed = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp())));
 	}
 
 	pub fn deinit() void {
@@ -195,7 +201,7 @@ pub const ParticleSystem = struct {
 			}
 
 			particle.vel += properties.gravity * vdt;
-			particle.vel *= @as(Vec3f, @splat(std.math.pow(f32, properties.drag, deltaTime)));
+			particle.vel *= @splat(@max(0, 1 - properties.drag*deltaTime));
 			const vel = particle.vel * vdt;
 
 			// TODO: OPTIMIZE THE HELL OUT OF THIS
@@ -230,7 +236,7 @@ pub const ParticleSystem = struct {
 			// TODO: optimize 
 			const intPos: Vec3i = @intFromFloat(@floor(particle.pos));
 			const light: [6]u8 = main.renderer.mesh_storage.getLight(intPos[0], intPos[1], intPos[2]) orelse @splat(0);
-			particle.light = (@as(u32, @as(u5, @intCast(light[0]>>3))) << 25 |
+			particle.light = (@as(u32, @intCast(light[0]>>3)) << 25 |
 				@as(u32, @intCast(light[1]>>3)) << 20 |
 				@as(u32, @intCast(light[2]>>3)) << 15 |
 				@as(u32, @intCast(light[3]>>3)) << 10 |
@@ -238,7 +244,7 @@ pub const ParticleSystem = struct {
 				@as(u32, @intCast(light[5]>>3)));
 
 			particles[i] = particle;
-			i += 1; // makes things simplier
+			i += 1; // makes things simplier when put here
 		}
 	}
 
@@ -246,13 +252,17 @@ pub const ParticleSystem = struct {
 		if (particles.len >= maxCapacity) {
 			return;
 		}
+
 		const typ = ParticleManager.particleTypeHashmap.get(id) orelse 0;
+		const lifeTime: f32 = properties.lifeTimeMin + random.nextFloat(&seed) * properties.lifeTimeMax;
+		const vel: Vec3f =  @splat(properties.velMin + random.nextFloat(&seed) * properties.velMax);
+
 		particles.len += 1;
 		particles[particles.len-1] = Particle{
 			.pos = pos,
-			.vel = random.nextFloatVectorSigned(3, &main.seed)*@as(Vec3f, @splat(20)),
-			.lifeTime = properties.lifeTime,
-			.lifeLeft = properties.lifeTime,
+			.vel = random.nextFloatVectorSigned(3, &seed)*vel,
+			.lifeTime = lifeTime,
+			.lifeLeft = lifeTime,
 			.typ = typ,
 			.collides = true,
 		};
@@ -280,7 +290,6 @@ pub const ParticleSystem = struct {
 			.mul(Mat4f.rotationY(game.camera.rotation[0]-std.math.pi*0.5));
 		c.glUniformMatrix4fv(uniforms.billboardMatrix, 1, c.GL_TRUE, @ptrCast(&billboardMatrix));
 
-		// std.log.debug("count: {d}", .{particles.len});
 		c.glDrawArrays(c.GL_TRIANGLES, 0, @intCast(particles.len*6));
 	}
 
@@ -299,11 +308,23 @@ pub const EmmiterProperties = struct {
 	velMin: f32 = 0,
 	velMax: f32 = 0,
 	
-	lifeTime: f32 = 0,
+	lifeTimeMin: f32 = 0,
+	lifeTimeMax: f32 = 0,
 	sizeStart: f32 = 0,
 	sizeEnd: f32 = 0,
+};
 
-	texture: graphics.TextureArray = undefined,
+pub const EmmiterShapeEnum = enum(u8) {
+	point,
+	sphere,
+	plane,
+	cube,
+};
+
+pub const EmmiterShape = union(EmmiterShapeEnum) {
+	point: struct {
+		
+	},
 };
 
 // so ig we need to create a particle type for each block type
@@ -314,7 +335,6 @@ pub const ParticleType = struct {
 	isBlockTexture: bool,
 };
 
-// needs more thinking about the data needed here, im not sure how to use block textures for when you are breaking blocks
 // TODO?: separate the data which is sent to the gpu into another struct
 pub const Particle = struct {
 	pos: Vec3f,
