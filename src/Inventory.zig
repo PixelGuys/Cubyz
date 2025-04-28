@@ -302,7 +302,7 @@ pub const Sync = struct { // MARK: Sync
 		fn createInventory(user: *main.server.User, clientId: u32, len: usize, typ: Inventory.Type, source: Source) void {
 			main.utils.assertLocked(&mutex);
 			switch(source) {
-				.sharedTestingInventory, .recipe => {
+				.sharedTestingInventory, .recipe, .blockInventory => {
 					for(inventories.items) |*inv| {
 						if(std.meta.eql(inv.source, source)) {
 							inv.addUser(user, clientId);
@@ -314,6 +314,9 @@ pub const Sync = struct { // MARK: Sync
 				.alreadyFreed => unreachable,
 			}
 			const inventory = ServerInventory.init(len, typ, source);
+
+			inventories.items[inventory.inv.id] = inventory;
+			inventories.items[inventory.inv.id].addUser(user, clientId);
 
 			switch(source) {
 				.sharedTestingInventory => {},
@@ -340,12 +343,11 @@ pub const Sync = struct { // MARK: Sync
 					inventory.inv._items[inventory.inv._items.len - 1].amount = recipe.resultAmount;
 					inventory.inv._items[inventory.inv._items.len - 1].item = .{.baseItem = recipe.resultItem};
 				},
+				// TODO: Load block inventory data from save
+				.blockInventory => {},
 				.other => {},
 				.alreadyFreed => unreachable,
 			}
-
-			inventories.items[inventory.inv.id] = inventory;
-			inventories.items[inventory.inv.id].addUser(user, clientId);
 		}
 
 		fn closeInventory(user: *main.server.User, clientId: u32) !void {
@@ -1096,6 +1098,9 @@ pub const Command = struct { // MARK: Command
 						writer.writeWithDelimiter(val.sourceItems[i].id, 0);
 					}
 				},
+				.blockInventory => |val| {
+					writer.writeVec(Vec3i, val);
+				},
 				.sharedTestingInventory, .other => {},
 				.alreadyFreed => unreachable,
 			}
@@ -1140,6 +1145,7 @@ pub const Command = struct { // MARK: Command
 						return error.Invalid;
 					},
 				},
+				.blockInventory => .{.blockInventory = try reader.readVec(Vec3i)},
 				.other => .{.other = {}},
 				.alreadyFreed => unreachable,
 			};
@@ -1779,6 +1785,7 @@ const SourceType = enum(u8) {
 	sharedTestingInventory = 2,
 	hand = 3,
 	recipe = 4,
+	blockInventory = 5,
 	other = 0xff, // TODO: List every type separately here.
 };
 const Source = union(SourceType) {
@@ -1787,6 +1794,7 @@ const Source = union(SourceType) {
 	sharedTestingInventory: void,
 	hand: u32,
 	recipe: *const main.items.Recipe,
+	blockInventory: Vec3i,
 	other: void,
 };
 

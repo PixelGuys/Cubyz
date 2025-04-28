@@ -74,6 +74,7 @@ var _modeData: [maxBlockCount]u16 = undefined;
 var _lodReplacement: [maxBlockCount]u16 = undefined;
 var _opaqueVariant: [maxBlockCount]u16 = undefined;
 var _friction: [maxBlockCount]f32 = undefined;
+
 var _allowOres: [maxBlockCount]bool = undefined;
 var _touchFunction: [maxBlockCount]?*const TouchFunction = undefined;
 var _entityDataClass: [maxBlockCount]?*EntityDataClass = undefined;

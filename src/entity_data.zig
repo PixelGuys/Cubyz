@@ -176,63 +176,39 @@ pub const EntityDataClasses = struct {
 		const StorageServer = BlockEntityDataStorage(
 			.server,
 			struct {
-				contents: u64,
-			},
-		);
-		const StorageClient = BlockEntityDataStorage(
-			.client,
-			struct {
-				contents: u64,
+				id: ?u32,
 			},
 		);
 
 		pub const id = "chest";
 		pub fn init() void {
 			StorageServer.init();
-			StorageClient.init();
 		}
 		pub fn deinit() void {
 			StorageServer.deinit();
-			StorageClient.deinit();
 		}
 		pub fn reset() void {
 			StorageServer.reset();
-			StorageClient.reset();
 		}
 
-		pub fn onLoadClient(_: Vec3i, _: *Chunk) void {
-			std.log.debug("Chest.onLoadClient", .{});
-		}
-		pub fn onUnloadClient(_: Vec3i, _: *Chunk) void {
-			std.log.debug("Chest.onUnloadClient", .{});
-		}
-		pub fn onLoadServer(_: Vec3i, _: *Chunk) void {
-			std.log.debug("Chest.onLoadServer", .{});
-		}
-		pub fn onUnloadServer(_: Vec3i, _: *Chunk) void {
-			std.log.debug("Chest.onUnloadServer", .{});
-		}
-		pub fn onPlaceClient(pos: Vec3i, chunk: *Chunk) void {
-			std.log.debug("Chest.onPlaceClient", .{});
-			StorageClient.add(pos, .{.contents = 0}, chunk);
-		}
-		pub fn onBreakClient(pos: Vec3i, chunk: *Chunk) void {
-			std.log.debug("Chest.onBreakClient", .{});
-			StorageClient.remove(pos, chunk);
-		}
-		pub fn onPlaceServer(pos: Vec3i, chunk: *Chunk) void {
-			std.log.debug("Chest.onPlaceServer", .{});
-			StorageServer.add(pos, .{.contents = 0}, chunk);
-		}
+		pub fn onLoadClient(_: Vec3i, _: *Chunk) void {}
+		pub fn onUnloadClient(_: Vec3i, _: *Chunk) void {}
+		pub fn onLoadServer(_: Vec3i, _: *Chunk) void {}
+		pub fn onUnloadServer(_: Vec3i, _: *Chunk) void {}
+		pub fn onPlaceClient(_: Vec3i, _: *Chunk) void {}
+		pub fn onBreakClient(_: Vec3i, _: *Chunk) void {}
+		pub fn onPlaceServer(_: Vec3i, _: *Chunk) void {}
 		pub fn onBreakServer(pos: Vec3i, chunk: *Chunk) void {
-			std.log.debug("Chest.onBreakServer", .{});
 			StorageServer.remove(pos, chunk);
 		}
-		pub fn onInteract(pos: Vec3i, chunk: *Chunk) EventStatus {
-			StorageClient.mutex.lock();
-			defer StorageClient.mutex.unlock();
-			const data = StorageClient.get(pos, chunk);
-			if(data == null) std.log.debug("Chest.onInteract: null", .{}) else std.log.debug("Chest.onInteract: {}", .{data.?.contents});
+		pub fn onInteract(pos: Vec3i, _: *Chunk) EventStatus {
+			if(main.KeyBoard.key("shift").pressed) return .ignored;
+
+			const inventory = main.items.Inventory.init(main.globalAllocator, 20, .normal, .{.blockInventory = pos});
+
+			main.gui.windowlist.chest.setInventory(inventory);
+			main.gui.openWindow("chest");
+			main.Window.setMouseGrabbed(false);
 
 			return .handled;
 		}
