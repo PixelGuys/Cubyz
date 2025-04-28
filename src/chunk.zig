@@ -382,7 +382,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 
 	/// Checks if the given relative coordinates lie within the bounds of this chunk.
 	pub fn liesInChunk(self: *const ServerChunk, x: i32, y: i32, z: i32) bool {
-		return x >= 0 and x < self.super.width and y >= 0 and y < self.super.width and z >= 0 and z < self.super.width;
+		return self.super.liesInChunk(x, y, z);
 	}
 
 	/// This is useful to convert for loops to work for reduced resolution:
