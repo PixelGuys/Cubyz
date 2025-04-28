@@ -14,12 +14,26 @@ pub inline fn combine(pos: Vec3f, w: f32) Vec4f {
 	return .{pos[0], pos[1], pos[2], w};
 }
 
+pub const Area = enum(u2) {
+	xy,
+	xz,
+	yz,
+};
+
 pub fn xyz(self: anytype) @Vector(3, @typeInfo(@TypeOf(self)).vector.child) {
 	return @Vector(3, @typeInfo(@TypeOf(self)).vector.child){self[0], self[1], self[2]};
 }
 
 pub fn xy(self: anytype) @Vector(2, @typeInfo(@TypeOf(self)).vector.child) {
 	return @Vector(2, @typeInfo(@TypeOf(self)).vector.child){self[0], self[1]};
+}
+
+pub fn xz(self: anytype) @Vector(2, @typeInfo(@TypeOf(self)).vector.child) {
+	return @Vector(2, @typeInfo(@TypeOf(self)).vector.child){self[0], self[2]};
+}
+
+pub fn yz(self: anytype) @Vector(2, @typeInfo(@TypeOf(self)).vector.child) {
+	return @Vector(2, @typeInfo(@TypeOf(self)).vector.child){self[1], self[2]};
 }
 
 pub fn dot(self: anytype, other: @TypeOf(self)) @typeInfo(@TypeOf(self)).vector.child {
