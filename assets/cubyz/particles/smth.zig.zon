@@ -1,0 +1,4 @@
+.{
+    .texture = "cubyz:smth",
+    .animationFrames = 3,
+}

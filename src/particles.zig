@@ -59,6 +59,7 @@ pub const ParticleManager = struct {
 		arenaForWorld.deinit();
 		textureArray.deinit();
 		emissionTextureArray.deinit();
+		particleTypeHashmap.deinit();
 		ParticleSystem.deinit();
 	}
 
@@ -70,7 +71,6 @@ pub const ParticleManager = struct {
 		particleType.animationFrames = zon.get(u32, "animationFrames", 1);
 
 		const textureId = zon.get([]const u8, "texture", "cubyz:spark");
-		// std.log.debug("name: {s} id: {s}", .{textureName, id});
 		var splitter = std.mem.splitScalar(u8, textureId, ':');
 		const mod = splitter.first();
 		const _id = splitter.rest();
@@ -226,21 +226,16 @@ pub const ParticleSystem = struct {
 					}
 				}
 			}
-
+			
+			// TODO: optimize 
 			const intPos: Vec3i = @intFromFloat(@floor(particle.pos));
 			const light: [6]u8 = main.renderer.mesh_storage.getLight(intPos[0], intPos[1], intPos[2]) orelse @splat(0);
-			var rawVals: [6]u5 = undefined;
-			inline for(0..6) |j| {
-				rawVals[j] = @intCast(light[j]>>3);
-			}
-			particle.light = (@as(u32, rawVals[0]) << 25 |
-				@as(u32, rawVals[1]) << 20 |
-				@as(u32, rawVals[2]) << 15 |
-				@as(u32, rawVals[3]) << 10 |
-				@as(u32, rawVals[4]) << 5 |
-				@as(u32, rawVals[5]) << 0);
-			
-			// std.log.debug("x: {d} y: {d} z: {d}", .{particle.pos[0], particle.pos[1], particle.pos[2]});
+			particle.light = (@as(u32, @as(u5, @intCast(light[0]>>3))) << 25 |
+				@as(u32, @intCast(light[1]>>3)) << 20 |
+				@as(u32, @intCast(light[2]>>3)) << 15 |
+				@as(u32, @intCast(light[3]>>3)) << 10 |
+				@as(u32, @intCast(light[4]>>3)) << 5 |
+				@as(u32, @intCast(light[5]>>3)));
 
 			particles[i] = particle;
 			i += 1; // makes things simplier

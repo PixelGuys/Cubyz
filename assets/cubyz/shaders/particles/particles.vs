@@ -40,10 +40,10 @@ layout(std430, binding = 13) buffer _particleTypeData
 
 const vec2 uvPositions[4] = vec2[4]
 (
-    vec2(0f, 1f),
-	vec2(1f, 0f),
+    vec2(0f, 0f),
 	vec2(1f, 1f),
-	vec2(0f, 0f)
+	vec2(0f, 1f),
+	vec2(1f, 0f)
 );
 
 const vec3 facePositions[4] = vec3[4]
