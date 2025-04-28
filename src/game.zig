@@ -331,6 +331,82 @@ pub const collision = struct {
 		return @floatCast(friction/totalArea);
 	}
 
+	fn calculateIntersectingArea(block: Block, blockPos: Vec3d, boundingBox: Box, area: vec.Area) f64 {
+		const blockBox: Box = .{
+			.min = blockPos + @as(Vec3d, @floatCast(block.mode().model(block).model().min)),
+			.max = blockPos + @as(Vec3d, @floatCast(block.mode().model(block).model().max)),
+		};
+
+		var min: Vec2d = undefined;
+		var max: Vec2d = undefined;
+		switch(area) {
+			.xy => {
+				max = std.math.clamp(vec.xy(blockBox.max), vec.xy(boundingBox.min), vec.xy(boundingBox.max));
+				min = std.math.clamp(vec.xy(blockBox.min), vec.xy(boundingBox.min), vec.xy(boundingBox.max));
+			},
+			.xz => {
+				max = std.math.clamp(vec.xz(blockBox.max), vec.xz(boundingBox.min), vec.xz(boundingBox.max));
+				min = std.math.clamp(vec.xz(blockBox.min), vec.xz(boundingBox.min), vec.xz(boundingBox.max));
+			},
+			.yz => {
+				max = std.math.clamp(vec.yz(blockBox.max), vec.yz(boundingBox.min), vec.yz(boundingBox.max));
+				min = std.math.clamp(vec.yz(blockBox.min), vec.yz(boundingBox.min), vec.yz(boundingBox.max));
+			},
+		}
+
+		return (max[0] - min[0])*(max[1] - min[1]);
+	}
+
+	pub fn calculateClimbSpeed(comptime side: main.utils.Side, pos: Vec3d, hitBox: Box, cameraRotation: f32, amount: f32, defaultSpeed: f32) f32 {
+		const forwardOffset = vec.rotateZ(Vec3d{0, 1, 0}, cameraRotation)*Vec3d{amount, amount, 0};
+
+		const boundingBox: Box = .{
+			.min = pos + hitBox.min + forwardOffset,
+			.max = pos + hitBox.max + forwardOffset,
+		};
+
+		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0] + 0.0001));
+		const maxX: i32 = @intFromFloat(@floor(boundingBox.max[0] - 0.0001));
+		const minY: i32 = @intFromFloat(@floor(boundingBox.min[1] + 0.0001));
+		const maxY: i32 = @intFromFloat(@floor(boundingBox.max[1] - 0.0001));
+		const minZ: i32 = @intFromFloat(@floor(boundingBox.min[2]));
+		const maxZ: i32 = @intFromFloat(@floor(boundingBox.max[2]));
+
+		var climbSpeed: f64 = 0;
+		var totalArea: f64 = 0;
+
+		var x = minX;
+		while(x <= maxX) : (x += 1) {
+			var y = minY;
+			while(y <= maxY) : (y += 1) {
+				var z = minZ;
+				while(z <= maxZ) : (z += 1) {
+					const _block = if(side == .client) main.renderer.mesh_storage.getBlock(x, y, z) else main.server.world.?.getBlock(x, y, z);
+
+					if(_block) |block| {
+						const blockPos: Vec3d = .{@floatFromInt(x), @floatFromInt(y), @floatFromInt(z)};
+
+						const areaXZ = calculateIntersectingArea(block, blockPos, boundingBox, .xz);
+						const areaYZ = calculateIntersectingArea(block, blockPos, boundingBox, .yz);
+
+						const area = areaXZ + areaYZ;
+
+						if(block.collide()) {
+							totalArea += area;
+							climbSpeed += area*@as(f64, @floatCast(block.climbSpeed()));
+						}
+					}
+				}
+			}
+		}
+
+		if(totalArea == 0) {
+			return defaultSpeed;
+		}
+
+		return @floatCast(climbSpeed/totalArea);
+	}
+
 	pub fn collideOrStep(comptime side: main.utils.Side, comptime dir: Direction, amount: f64, pos: Vec3d, hitBox: Box, steppingHeight: f64) Vec3d {
 		const index = @intFromEnum(dir);
 
@@ -485,6 +561,7 @@ pub const Player = struct { // MARK: Player
 	pub var selectionPosition2: ?Vec3i = null;
 
 	pub var currentFriction: f32 = 0;
+	pub var currentClimbSpeed: f32 = 0;
 
 	pub var onGround: bool = false;
 	pub var jumpCooldown: f64 = 0;
@@ -879,7 +956,6 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 		if(main.Window.grabbed) {
 			const walkingSpeed: f64 = if(Player.crouching or Player.super.climbing) 2 else 4;
-			const climbSpeed: f64 = 6;
 			if(KeyBoard.key("forward").value > 0.0) {
 				if(KeyBoard.key("sprint").pressed and !Player.crouching) {
 					if(Player.isGhost.load(.monotonic)) {
@@ -893,7 +969,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 						movementDir += forward*@as(Vec3d, @splat(8*KeyBoard.key("forward").value));
 					}
 				} else if(Player.super.climbing) {
-					movementSpeed = @max(movementSpeed, climbSpeed)*KeyBoard.key("forward").value;
+					movementSpeed = @max(movementSpeed, Player.currentClimbSpeed)*KeyBoard.key("forward").value;
 					movementDir += forward*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("forward").value));
 					movementDir += up*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("forward").value));
 				} else {
@@ -928,7 +1004,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 						movementDir[2] += 5.5;
 					}
 				} else if(Player.super.climbing) {
-					movementSpeed = @max(movementSpeed, climbSpeed*0.7);
+					movementSpeed = @max(movementSpeed, Player.currentClimbSpeed*0.7);
 					movementDir += up*@as(Vec3d, @splat(walkingSpeed));
 				} else if((Player.onGround or Player.jumpCoyote > 0.0) and Player.jumpCooldown <= 0) {
 					jumping = true;
@@ -1224,11 +1300,12 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			Player.eyePos[2] -= move[2];
 		}
 
-		var amount: f32 = 0.01;
+		var climbAmount: f32 = 0.01;
 		if(!Player.onGround or KeyBoard.key("jump").pressed) {
-			amount = 0.4;
+			climbAmount = 0.4;
 		}
-		collision.touchBlocks(&Player.super, hitBox, .client, amount);
+		Player.currentClimbSpeed = collision.calculateClimbSpeed(.client, Player.super.pos, Player.outerBoundingBox, -camera.rotation[2], climbAmount, 3);
+		collision.touchBlocks(&Player.super, hitBox, .client, climbAmount);
 	} else {
 		Player.super.pos += move;
 	}
