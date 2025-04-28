@@ -395,7 +395,6 @@ const WorldIO = struct { // MARK: WorldIO
 		self.world.gameTime = worldData.get(i64, "gameTime", 0);
 		self.world.spawn = worldData.get(Vec3i, "spawn", .{0, 0, 0});
 		self.world.biomeChecksum = worldData.get(i64, "biomeChecksum", 0);
-		self.world.tickCount = worldData.get(i64, "tickCount", 0);
 		self.world.doTick = worldData.get(bool, "doTick", true);
 		self.world.tickSpeed = worldData.get(u32, "tickSpeed", 12);
 	}
@@ -409,7 +408,6 @@ const WorldIO = struct { // MARK: WorldIO
 		worldData.put("gameTime", self.world.gameTime);
 		worldData.put("spawn", self.world.spawn);
 		worldData.put("biomeChecksum", self.world.biomeChecksum);
-		worldData.put("tickCount", self.world.tickCount);
 		worldData.put("doTick", self.world.doTick);
 		worldData.put("tickSpeed", self.world.tickSpeed);
 		// TODO: Save entities
@@ -434,7 +432,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	lastUnimportantDataSent: i64,
 	doGameTimeCycle: bool = true,
 
-	tickCount: i64 = 0,
 	tickSpeed: u32 = 12,
 	lastTickTime: i64,
 	doTick: bool = true,
