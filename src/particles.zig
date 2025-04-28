@@ -288,6 +288,10 @@ pub const ParticleSystem = struct {
 		// std.log.debug("count: {d}", .{particles.len});
 		c.glDrawArrays(c.GL_TRIANGLES, 0, @intCast(particles.len*6));
 	}
+
+	pub fn getParticleCount() u32 {
+		return @intCast(particles.len);
+	}
 };
 
 pub const EmmiterProperties = struct {
