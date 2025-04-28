@@ -101,13 +101,15 @@ pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 8);
 
 	var num: usize = 1;
-	var buf: [32]u8 = undefined;
 	while(true) {
-		var dir = std.fs.cwd().openDir(std.fmt.bufPrint(&buf, "saves/Save{}", .{num}) catch unreachable, .{}) catch break;
+		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/Save{}", .{num}) catch unreachable;
+		defer main.stackAllocator.free(path);
+		var dir = std.fs.cwd().openDir(path, .{}) catch break;
 		dir.close();
 		num += 1;
 	}
-	const name = std.fmt.bufPrint(&buf, "Save{}", .{num}) catch unreachable;
+	const name = std.fmt.allocPrint(main.stackAllocator.allocator, "Save{}", .{num}) catch unreachable;
+	defer main.stackAllocator.free(name);
 	textInput = TextInput.init(.{0, 0}, 128, 22, name, .{.callback = &createWorld});
 	list.add(textInput);
 
