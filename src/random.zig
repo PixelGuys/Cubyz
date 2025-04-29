@@ -53,6 +53,17 @@ pub fn nextFloatSigned(seed: *u64) f32 {
 	return @as(f32, @floatFromInt(@as(i24, @bitCast(nextInt(u24, seed)))))/(1 << 23);
 }
 
+pub fn nextFloatExp(seed: *u64) f32 {
+	return -@log(nextFloat(seed));
+}
+
+pub fn nextFloatGauss(seed: *u64) f32 {
+	const a = nextFloat(seed);
+	const b = nextFloat(seed);
+
+	return @sqrt(-2.0*@log(a))*@cos(2.0*std.math.pi*b);
+}
+
 pub fn nextFloatVector(len: comptime_int, seed: *u64) @Vector(len, f32) {
 	var result: @Vector(len, f32) = undefined;
 	inline for(0..len) |i| {
