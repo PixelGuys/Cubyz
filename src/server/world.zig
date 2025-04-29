@@ -507,30 +507,29 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		var loadArena = main.heap.NeverFailingArenaAllocator.init(main.stackAllocator);
 		defer loadArena.deinit();
 		const arenaAllocator = loadArena.allocator();
-		var buf: [32768]u8 = undefined;
 		var generatorSettings: ZonElement = undefined;
 
 		if(nullGeneratorSettings) |_generatorSettings| {
 			generatorSettings = _generatorSettings;
 			// Store generator settings:
-			try files.writeZon(try std.fmt.bufPrint(&buf, "saves/{s}/generatorSettings.zig.zon", .{name}), generatorSettings);
+			try files.writeZon(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/generatorSettings.zig.zon", .{name}), generatorSettings);
 		} else { // Read the generator settings:
-			generatorSettings = try files.readToZon(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/generatorSettings.zig.zon", .{name}));
+			generatorSettings = try files.readToZon(arenaAllocator, try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/generatorSettings.zig.zon", .{name}));
 		}
-		self.wio = WorldIO.init(try files.openDir(try std.fmt.bufPrint(&buf, "saves/{s}", .{name})), self);
+		self.wio = WorldIO.init(try files.openDir(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}", .{name})), self);
 		errdefer self.wio.deinit();
 
-		const blockPaletteZon = files.readToZon(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/palette.zig.zon", .{name})) catch .null;
+		const blockPaletteZon = files.readToZon(arenaAllocator, try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/palette.zig.zon", .{name})) catch .null;
 		self.blockPalette = try main.assets.Palette.init(main.globalAllocator, blockPaletteZon, "cubyz:air");
 		errdefer self.blockPalette.deinit();
 		std.log.info("Loaded save block palette with {} blocks.", .{self.blockPalette.size()});
 
-		const itemPaletteZon = files.readToZon(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/item_palette.zig.zon", .{name})) catch .null;
+		const itemPaletteZon = files.readToZon(arenaAllocator, try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/item_palette.zig.zon", .{name})) catch .null;
 		self.itemPalette = try main.assets.Palette.init(main.globalAllocator, itemPaletteZon, null);
 		errdefer self.itemPalette.deinit();
 		std.log.info("Loaded save item palette with {} items.", .{self.itemPalette.size()});
 
-		const biomePaletteZon = files.readToZon(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/biome_palette.zig.zon", .{name})) catch .null;
+		const biomePaletteZon = files.readToZon(arenaAllocator, try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/biome_palette.zig.zon", .{name})) catch .null;
 		self.biomePalette = try main.assets.Palette.init(main.globalAllocator, biomePaletteZon, null);
 		errdefer self.biomePalette.deinit();
 		std.log.info("Loaded save biome palette with {} biomes.", .{self.biomePalette.size()});
@@ -540,18 +539,18 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		if(self.wio.hasWorldData()) {
 			self.seed = try self.wio.loadWorldSeed();
 			self.generated = true;
-			try main.assets.loadWorldAssets(try std.fmt.bufPrint(&buf, "saves/{s}/assets/", .{name}), self.blockPalette, self.itemPalette, self.biomePalette);
+			try main.assets.loadWorldAssets(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/assets/", .{name}), self.blockPalette, self.itemPalette, self.biomePalette);
 		} else {
 			self.seed = main.random.nextInt(u48, &main.seed);
-			try main.assets.loadWorldAssets(try std.fmt.bufPrint(&buf, "saves/{s}/assets/", .{name}), self.blockPalette, self.itemPalette, self.biomePalette);
+			try main.assets.loadWorldAssets(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/assets/", .{name}), self.blockPalette, self.itemPalette, self.biomePalette);
 			try self.wio.saveWorldData();
 		}
 		// Store the block palette now that everything is loaded.
-		try files.writeZon(try std.fmt.bufPrint(&buf, "saves/{s}/palette.zig.zon", .{name}), self.blockPalette.storeToZon(arenaAllocator));
-		try files.writeZon(try std.fmt.bufPrint(&buf, "saves/{s}/biome_palette.zig.zon", .{name}), self.biomePalette.storeToZon(arenaAllocator));
-		try files.writeZon(try std.fmt.bufPrint(&buf, "saves/{s}/item_palette.zig.zon", .{name}), self.itemPalette.storeToZon(arenaAllocator));
+		try files.writeZon(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/palette.zig.zon", .{name}), self.blockPalette.storeToZon(arenaAllocator));
+		try files.writeZon(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/biome_palette.zig.zon", .{name}), self.biomePalette.storeToZon(arenaAllocator));
+		try files.writeZon(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/item_palette.zig.zon", .{name}), self.itemPalette.storeToZon(arenaAllocator));
 
-		var gamerules = files.readToZon(arenaAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/gamerules.zig.zon", .{name})) catch ZonElement.initObject(arenaAllocator);
+		var gamerules = files.readToZon(arenaAllocator, try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/gamerules.zig.zon", .{name})) catch ZonElement.initObject(arenaAllocator);
 
 		self.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, gamerules.get([]const u8, "default_gamemode", "creative")) orelse .creative;
 		self.allowCheats = gamerules.get(bool, "cheats", true);
@@ -828,8 +827,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			};
 		}
 		try self.wio.saveWorldData();
-		var buf: [32768]u8 = undefined;
-		const zon = files.readToZon(main.stackAllocator, try std.fmt.bufPrint(&buf, "saves/{s}/items.zig.zon", .{self.name})) catch .null;
+		const itemsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/items.zig.zon", .{self.name}) catch unreachable;
+		defer main.stackAllocator.free(itemsPath);
+		const zon = files.readToZon(main.stackAllocator, itemsPath) catch .null;
 		defer zon.deinit(main.stackAllocator);
 		self.itemDropManager.loadFrom(zon);
 	}
@@ -914,8 +914,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		const itemDropZon = self.itemDropManager.store(main.stackAllocator);
 		defer itemDropZon.deinit(main.stackAllocator);
-		var buf: [32768]u8 = undefined;
-		try files.writeZon(try std.fmt.bufPrint(&buf, "saves/{s}/items.zig.zon", .{self.name}), itemDropZon);
+		const itemsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/items.zig.zon", .{self.name}) catch unreachable;
+		defer main.stackAllocator.free(itemsPath);
+		try files.writeZon(itemsPath, itemDropZon);
 	}
 
 	fn isValidSpawnLocation(_: *ServerWorld, wx: i32, wy: i32) bool {

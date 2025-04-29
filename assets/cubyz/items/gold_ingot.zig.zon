@@ -3,9 +3,7 @@
 	.texture = "gold_ingot.png",
 	.material = .{
 		.density = 19.5,
-		.strength = 7.5,
 		.elasticity = 1.0,
-		.grip = 0.75,
 		.hardness = 2.5,
 		.textureRoughness = 0.05,
 		.colors = .{
