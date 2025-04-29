@@ -433,7 +433,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	doGameTimeCycle: bool = true,
 
 	tickSpeed: u32 = 12,
-	lastTickTime: i64,
 	doTick: bool = true,
 
 	defaultGamemode: main.game.Gamemode = undefined,
@@ -497,7 +496,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			.lastUpdateTime = std.time.milliTimestamp(),
 			.milliTime = std.time.milliTimestamp(),
 			.lastUnimportantDataSent = std.time.milliTimestamp(),
-			.lastTickTime = std.time.milliTimestamp(),
 			.seed = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp()))),
 			.name = main.globalAllocator.dupe(u8, name),
 			.chunkUpdateQueue = .init(main.globalAllocator, 256),
@@ -989,10 +987,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				main.network.Protocols.genericUpdate.sendTimeAndBiome(user.conn, self);
 			}
 		}
-		if(self.lastTickTime + 50 < newTime) { // Tick very 50ms
-			self.lastTickTime = newTime;
-			if(self.doTick) self.tick();
-		}
+		if(self.doTick) self.tick();
 		// TODO: Entities
 
 		// Item Entities
