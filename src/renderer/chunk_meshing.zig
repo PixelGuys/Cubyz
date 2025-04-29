@@ -1237,7 +1237,6 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				_ = newBlock.mode().updateData(&newBlock, neighbor, neighborBlocks[neighbor.toInt()]);
 			}
 		}
-
 		self.mutex.lock();
 		self.chunk.data.setValue(chunk.getIndex(x, y, z), newBlock);
 		self.mutex.unlock();
