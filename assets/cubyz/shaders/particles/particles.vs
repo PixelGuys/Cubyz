@@ -23,7 +23,7 @@ struct ParticleData {
 	float size;
     bool collides; // unused
 };
-layout(std430, binding = 12) buffer _particleData
+layout(std430, binding = 13) buffer _particleData
 {
 	ParticleData particleData[];
 };
@@ -33,7 +33,7 @@ struct ParticleTypeData {
 	uint startFrame;
 	bool isBlockTexture;
 };
-layout(std430, binding = 13) buffer _particleTypeData
+layout(std430, binding = 14) buffer _particleTypeData
 {
 	ParticleTypeData particleTypeData[];
 };

@@ -120,7 +120,7 @@ pub const ParticleManager = struct {
 		c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
 
 		particleTypesSSBO = SSBO.initStatic(ParticleType, ParticleManager.types.items);
-		particleTypesSSBO.?.bind(13);
+		particleTypesSSBO.?.bind(14);
 	}
 
 	pub fn update(deltaTime: f64) void {
@@ -169,7 +169,7 @@ pub const ParticleSystem = struct {
 		particles = main.globalAllocator.alloc(Particle, maxCapacity);
 		particlesSSBO = SSBO.init();
 		particlesSSBO.createDynamicBuffer(maxCapacity*@sizeOf(Particle));
-		particlesSSBO.bind(12);
+		particlesSSBO.bind(13);
 
 		seed = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp())));
 	}
