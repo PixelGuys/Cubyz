@@ -81,7 +81,6 @@ pub const History = struct {
 	fn flush(self: *History) void {
 		while(self.down.dequeueFront()) |msg| {
 			if(msg.len == 0) {
-				main.globalAllocator.free(msg);
 				continue;
 			}
 
