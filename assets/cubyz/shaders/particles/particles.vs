@@ -76,7 +76,7 @@ void main() {
 	light = max(sunLight*ambientLight, blockLight)/31;
 
 	textureIndex = particleType.animationFrames != 1 ?
-		floor(float(particleType.startFrame) + (particle.lifeLeft / particle.lifeTime) * float(particleType.animationFrames)) :
+		floor(float(particleType.startFrame) + (particle.lifeLeft/particle.lifeTime)*float(particleType.animationFrames)) :
 		particleType.startFrame;
 
 	vec3 position = (billboardMatrix*vec4(particle.size*facePositions[indices[vertexID]], 1.0)).xyz;

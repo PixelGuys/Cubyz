@@ -255,7 +255,7 @@ pub const ParticleSystem = struct {
 			switch (shape.shapeType) {
 				.point => {
 					particlePos = pos;
-					const speed: Vec3f = @splat(properties.velMin + random.nextFloat(&seed) * properties.velMax);
+					const speed: Vec3f = @splat(properties.velMin + random.nextFloat(&seed)*properties.velMax);
 					const dir: Vec3f = switch (shape.directionMode) {
 						.direction => shape.dir,
 						.scatter => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
@@ -379,7 +379,7 @@ pub const Particle = struct {
 	vel: Vec3f,
 	lifeTime: f32,
 	lifeLeft: f32,
-	typ: u32, 
+	typ: u32,
 	light: u32 = 0,
 	size: f32,
 	collides: bool,
