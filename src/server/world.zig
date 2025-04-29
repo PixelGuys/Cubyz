@@ -944,7 +944,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				const z: i32 = blockIndex & chunk.chunkMask;
 
 				const block = ch.super.getBlock(x, y, z);
-				for(block.tickEvents()) |event| {
+				if(block.tickEvent()) |event| {
 					event.tryRandomTick(block, ch, x, y, z);
 				}
 			}

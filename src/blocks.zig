@@ -77,7 +77,7 @@ var _lodReplacement: [maxBlockCount]u16 = undefined;
 var _opaqueVariant: [maxBlockCount]u16 = undefined;
 var _friction: [maxBlockCount]f32 = undefined;
 var _allowOres: [maxBlockCount]bool = undefined;
-var _tickEvents: [maxBlockCount][]TickEvent = undefined;
+var _tickEvent: [maxBlockCount]?TickEvent = undefined;
 var _touchFunction: [maxBlockCount]?*const TouchFunction = undefined;
 var _entityDataClass: [maxBlockCount]?*EntityDataClass = undefined;
 
@@ -126,7 +126,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_hasBackFace[size] = zon.get(bool, "hasBackFace", false);
 	_friction[size] = zon.get(f32, "friction", 20);
 	_allowOres[size] = zon.get(bool, "allowOres", false);
-	_tickEvents[size] = TickEvent.loadFromZon(allocator, zon.getChild("tickEvents"));
+	_tickEvent[size] = TickEvent.loadFromZon(zon.getChild("tickEvent"));
 
 	const touchFunctionName = zon.get([]const u8, "touchFunction", "");
 	_touchFunction[size] = TouchFunctions.getFunctionPointer(touchFunctionName) catch |err| blk: {
@@ -370,8 +370,8 @@ pub const Block = packed struct { // MARK: Block
 		return _allowOres[self.typ];
 	}
 
-	pub inline fn tickEvents(self: Block) []const TickEvent {
-		return _tickEvents[self.typ];
+	pub inline fn tickEvent(self: Block) ?TickEvent {
+		return _tickEvent[self.typ];
 	}
 
 	pub inline fn touchFunction(self: Block) ?*const TouchFunction {
@@ -431,25 +431,24 @@ pub const TickEvent = struct {
 	function: *const TickFunction,
 	chance: f32,
 
-	pub fn loadFromZon(_allocator: main.heap.NeverFailingAllocator, zon: ZonElement) []TickEvent {
-		var tickEvents: main.List(TickEvent) = .initCapacity(_allocator, zon.toSlice().len);
-
-		for(zon.toSlice()) |tickEventZon| {
-			const name = tickEventZon.get([]const u8, "name", "");
-			const _function = TickFunctions.getFunctionPointer(name) catch |err| blk: {
-				switch(err) {
-					utils.CallbackError.NotFound => std.log.err("Could not find TickFunction {s}.", .{name}),
-					utils.CallbackError.EmptyName => std.log.err("TickEvent needs a function name", .{}),
-				}
-				break :blk null;
-			};
-
-			if(_function) |function| {
-				tickEvents.append(.{.function = function, .chance = tickEventZon.get(f32, "chance", 1)});
+	pub fn loadFromZon(zon: ZonElement) ?TickEvent {
+		const name = zon.get([]const u8, "name", "");
+		const _function = TickFunctions.getFunctionPointer(name) catch |err| blk: {
+			switch(err) {
+				utils.CallbackError.NotFound => std.log.err("Could not find TickFunction {s}.", .{name}),
+				else => {},
 			}
+			break :blk null;
+		};
+
+		if (_function) |function| {
+			return TickEvent{
+				.function = function,
+				.chance = zon.get(f32, "chance", 1)
+			};
 		}
 
-		return tickEvents.toOwnedSlice();
+		return null;
 	}
 
 	pub fn tryRandomTick(self: *const TickEvent, block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void {
