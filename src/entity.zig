@@ -3,12 +3,20 @@ const std = @import("std");
 const chunk = @import("chunk.zig");
 const game = @import("game.zig");
 const graphics = @import("graphics.zig");
+const Shader = graphics.Shader;
+const Image = graphics.Image;
+const Color = graphics.Color;
+const TextureArray = graphics.TextureArray;
 const c = graphics.c;
 const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main");
 const renderer = @import("renderer.zig");
 const settings = @import("settings.zig");
 const utils = @import("utils.zig");
+const models = @import("models.zig");
+const ModelIndex = models.ModelIndex;
+const rotation = @import("rotation.zig");
+const RotationMode = rotation.RotationMode;
 const vec = @import("vec.zig");
 const Mat4f = vec.Mat4f;
 const Vec3d = vec.Vec3d;
@@ -17,6 +25,11 @@ const Vec4f = vec.Vec4f;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const BinaryReader = main.utils.BinaryReader;
+
+pub const maxEntityCount: usize = 65536; // 16 bit limit
+
+var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
+const arenaAllocator = arena.allocator();
 
 pub const EntityNetworkData = struct {
 	id: u32,
@@ -36,6 +49,8 @@ pub const ClientEntity = struct {
 	pos: Vec3d = undefined,
 	rot: Vec3f = undefined,
 
+	entityType: u16 = undefined,
+
 	id: u32,
 	name: []const u8,
 
@@ -45,6 +60,7 @@ pub const ClientEntity = struct {
 			.width = zon.get(f64, "width", 1),
 			.height = zon.get(f64, "height", 1),
 			.name = allocator.dupe(u8, zon.get([]const u8, "name", "")),
+			.entityType = zon.get(u16, "entityType", 0),
 		};
 		self._interpolationPos = [_]f64{
 			self.pos[0],
@@ -267,17 +283,178 @@ pub const ClientEntityManager = struct {
 	}
 };
 
-pub const
+var _id: [maxEntityCount][]u8 = undefined;
 
-var size: u16 = 0;
-var reverseIndices: std.StringHashMap(u16);
+var num: u16 = 0;
+var reverseIndices: std.StringHashMap(u16) = .init(arenaAllocator.allocator);
 
-pub fn register(_: []const u8, id: []const u8, zon: ZonElement) !u16 {
-	try reverseIndices.put(id, size);
+pub fn init() void {}
 
-
-
-	defer size += 1;
-	std.log.debug("Registered block: {d: >5} '{s}'", .{size, id});
-	return @intCast(size);
+pub fn deinit() void {
+	arena.deinit();
 }
+
+pub fn getTypeById(id: []const u8) u16 {
+	if(reverseIndices.get(id)) |result| {
+		return result;
+	} else {
+		std.log.err("Couldn't find entity {s}. Replacing it with default...", .{id});
+		return 0;
+	}
+}
+
+pub fn register(_: []const u8, id: []const u8, _: ZonElement) u16 {
+	if(reverseIndices.contains(id)) {
+		std.log.err("Registered entity with id {s} twice!", .{id});
+	}
+
+	_id[num] = arenaAllocator.dupe(u8, id);
+	reverseIndices.put(_id[num], @intCast(num)) catch unreachable;
+
+	defer num += 1;
+	std.log.debug("Registered entity: {d: >5} '{s}'", .{num, id});
+	return @intCast(num);
+}
+
+pub const Entity = packed struct { // MARK: Block
+	typ: u16,
+};
+
+pub const meshes = struct { // MARK: meshes
+	var size: u32 = 0;
+	var _modelIndex: [maxEntityCount]ModelIndex = undefined;
+	var textureIndices: [maxEntityCount]u16 = undefined;
+	/// Stores the number of textures after each block was added. Used to clean additional textures when the world is switched.
+	var maxTextureCount: [maxEntityCount]u32 = undefined;
+	/// Number of loaded meshes. Used to determine if an update is needed.
+	var loadedMeshes: u32 = 0;
+
+	var textureIDs: main.List([]const u8) = undefined;
+	var blockTextures: main.List(Image) = undefined;
+
+	var arenaForWorld: main.heap.NeverFailingArenaAllocator = undefined;
+
+	pub var blockTextureArray: TextureArray = undefined;
+
+	const black: Color = Color{.r = 0, .g = 0, .b = 0, .a = 255};
+	const magenta: Color = Color{.r = 255, .g = 0, .b = 255, .a = 255};
+	var undefinedTexture = [_]Color{magenta, black, black, magenta};
+	const undefinedImage = Image{.width = 2, .height = 2, .imageData = undefinedTexture[0..]};
+	var emptyTexture = [_]Color{black};
+	const emptyImage = Image{.width = 1, .height = 1, .imageData = emptyTexture[0..]};
+
+	pub fn init() void {
+		blockTextureArray = .init();
+		textureIDs = .init(main.globalAllocator);
+		blockTextures = .init(main.globalAllocator);
+		arenaForWorld = .init(main.globalAllocator);
+	}
+
+	pub fn deinit() void {
+		blockTextureArray.deinit();
+		textureIDs.deinit();
+		blockTextures.deinit();
+		arenaForWorld.deinit();
+	}
+
+	pub fn reset() void {
+		meshes.size = 0;
+		loadedMeshes = 0;
+		textureIDs.clearRetainingCapacity();
+		blockTextures.clearRetainingCapacity();
+		_ = arenaForWorld.reset(.free_all);
+	}
+
+	pub inline fn model(entity: Entity) ModelIndex {
+		return _modelIndex[entity.typ];
+	}
+
+	pub inline fn textureIndex(entity: Entity, orientation: usize) u16 {
+		if(orientation < 16) {
+			return textureIndices[entity.typ][orientation];
+		} else {
+			return textureIndices[entity.data][orientation - 16];
+		}
+	}
+
+	fn extendedPath(_allocator: main.heap.NeverFailingAllocator, path: []const u8, ending: []const u8) []const u8 {
+		return std.fmt.allocPrint(_allocator.allocator, "{s}{s}", .{path, ending}) catch unreachable;
+	}
+
+	fn readTextureFile(_path: []const u8, ending: []const u8, default: Image) Image {
+		const path = extendedPath(main.stackAllocator, _path, ending);
+		defer main.stackAllocator.free(path);
+		return Image.readFromFile(arenaForWorld.allocator(), path) catch default;
+	}
+
+	fn readTextureData(_path: []const u8) void {
+		const path = _path[0 .. _path.len - ".png".len];
+		const textureInfoPath = extendedPath(main.stackAllocator, path, ".zig.zon");
+		defer main.stackAllocator.free(textureInfoPath);
+		const textureInfoZon = main.files.readToZon(main.stackAllocator, textureInfoPath) catch .null;
+		defer textureInfoZon.deinit(main.stackAllocator);
+		const base = readTextureFile(path, ".png", Image.defaultImage);
+		blockTextures.append(base);
+	}
+
+	pub fn readTexture(_textureId: ?[]const u8, assetFolder: []const u8) !u16 {
+		const textureId = _textureId orelse return error.NotFound;
+		var result: u16 = undefined;
+		var splitter = std.mem.splitScalar(u8, textureId, ':');
+		const mod = splitter.first();
+		const id = splitter.rest();
+		var path = try std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/entity/textures/{s}.png", .{assetFolder, mod, id});
+		defer main.stackAllocator.free(path);
+		// Test if it's already in the list:
+		for(textureIDs.items, 0..) |other, j| {
+			if(std.mem.eql(u8, other, path)) {
+				result = @intCast(j);
+				return result;
+			}
+		}
+		const file = std.fs.cwd().openFile(path, .{}) catch |err| blk: {
+			if(err != error.FileNotFound) {
+				std.log.err("Could not open file {s}: {s}", .{path, @errorName(err)});
+			}
+			main.stackAllocator.free(path);
+			path = try std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/entity/textures/{s}.png", .{mod, id}); // Default to global assets.
+			break :blk std.fs.cwd().openFile(path, .{}) catch |err2| {
+				std.log.err("File not found. Searched in \"{s}\" and also in the assetFolder \"{s}\"", .{path, assetFolder});
+				return err2;
+			};
+		};
+		file.close(); // It was only openend to check if it exists.
+		// Otherwise read it into the list:
+		result = @intCast(textureIDs.items.len);
+
+		textureIDs.append(arenaForWorld.allocator().dupe(u8, path));
+		readTextureData(path);
+		return result;
+	}
+
+	pub fn register(assetFolder: []const u8, _: []const u8, zon: ZonElement) void {
+		_modelIndex[meshes.size] = models.getEntityModelIndex(zon.get([]const u8, "model", "none"));
+
+		// The actual model is loaded later, in the rendering thread.
+		// But textures can be loaded here:
+
+		textureIndices[meshes.size] = readTexture(zon.get(?[]const u8, "texture", null), assetFolder) catch 0;
+
+		maxTextureCount[meshes.size] = @intCast(textureIDs.items.len);
+
+		meshes.size += 1;
+	}
+
+	pub fn reloadTextures(_: usize) void {
+		blockTextures.clearRetainingCapacity();
+		for(textureIDs.items) |path| {
+			readTextureData(path);
+		}
+		generateTextureArray();
+	}
+
+	pub fn generateTextureArray() void {
+		blockTextureArray.generate(blockTextures.items, true, true);
+		c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
+	}
+};

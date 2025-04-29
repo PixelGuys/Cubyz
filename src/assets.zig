@@ -25,10 +25,12 @@ var commonModels: std.StringHashMap([]const u8) = undefined;
 var commonStructureBuildingBlocks: std.StringHashMap(ZonElement) = undefined;
 var commonBlueprints: std.StringHashMap([]u8) = undefined;
 var commonEntities: std.StringHashMap(ZonElement) = undefined;
+var commonEntityModels: std.StringHashMap([]const u8) = undefined;
 
 pub fn init() void {
 	biomes_zig.init();
 	blocks_zig.init();
+	entity_zig.init();
 
 	arena = .init(main.globalAllocator);
 	arenaAllocator = arena.allocator();
@@ -43,6 +45,7 @@ pub fn init() void {
 	commonStructureBuildingBlocks = .init(arenaAllocator.allocator);
 	commonBlueprints = .init(arenaAllocator.allocator);
 	commonEntities = .init(arenaAllocator.allocator);
+	commonEntityModels = .init(arenaAllocator.allocator);
 
 	readAssets(
 		arenaAllocator,
@@ -58,6 +61,7 @@ pub fn init() void {
 		&commonStructureBuildingBlocks,
 		&commonBlueprints,
 		&commonEntities,
+		&commonEntityModels,
 	);
 
 	std.log.info(
@@ -276,7 +280,8 @@ pub fn readAssets(
 	models: *std.StringHashMap([]const u8),
 	structureBuildingBlocks: *std.StringHashMap(ZonElement),
 	blueprints: *std.StringHashMap([]u8),
-	entities: *std.StringHashMap([]const u8),
+	entities: *std.StringHashMap(ZonElement),
+	entityModels: *std.StringHashMap([]const u8),
 ) void {
 	var addons = main.List(std.fs.Dir).init(main.stackAllocator);
 	defer addons.deinit();
@@ -316,7 +321,8 @@ pub fn readAssets(
 	readAllObjFilesInAddonsHashmap(externalAllocator, addons, addonNames, "models", models);
 	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "sbb", true, structureBuildingBlocks, null);
 	readAllBlueprintFilesInAddons(externalAllocator, addons, addonNames, "blueprints", blueprints);
-	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "entities", false, entities, null);
+	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "entity", false, entities, null);
+	readAllObjFilesInAddonsHashmap(externalAllocator, addons, addonNames, "entity/models", entityModels);
 }
 
 fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void {
@@ -360,7 +366,10 @@ fn registerRecipesFromZon(zon: ZonElement) void {
 }
 
 fn registerEntity(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void {
+	if(zon == .null) std.log.err("Missing entity: {s}. Replacing it with default entity.", .{id});
+
 	_ = entity_zig.register(assetFolder, id, zon);
+	entity_zig.meshes.register(assetFolder, id, zon);
 }
 
 pub const Palette = struct { // MARK: Palette
@@ -493,6 +502,8 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	defer blueprints.clearAndFree();
 	var entities = commonEntities.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer entities.clearAndFree();
+	var entityModels = commonEntityModels.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
+	defer entityModels.clearAndFree();
 
 	readAssets(
 		arenaAllocator,
@@ -508,6 +519,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		&structureBuildingBlocks,
 		&blueprints,
 		&entities,
+		&entityModels,
 	);
 	errdefer unloadAssets();
 
@@ -588,6 +600,12 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 
 		try registerItem(assetFolder, stringId, zon);
 		itemPalette.add(stringId);
+	}
+	
+	// models:
+	modelIterator = entityModels.iterator();
+	while(modelIterator.next()) |entry| {
+		_ = main.models.registerEntityModel(entry.key_ptr.*, entry.value_ptr.*);
 	}
 
 	iterator = entities.iterator();
@@ -703,5 +721,6 @@ pub fn deinit() void {
 	arena.deinit();
 	biomes_zig.deinit();
 	blocks_zig.deinit();
+	entity_zig.deinit();
 	migrations_zig.deinit();
 }

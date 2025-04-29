@@ -411,6 +411,8 @@ const WorldIO = struct { // MARK: WorldIO
 	}
 };
 
+pub const entityCap = 1024;
+
 pub const ServerWorld = struct { // MARK: ServerWorld
 	pub const dayCycle: u31 = 12000; // Length of one in-game day in units of 100ms. Midnight is at DAY_CYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
 
@@ -419,6 +421,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	itemPalette: *main.assets.Palette = undefined,
 	biomePalette: *main.assets.Palette = undefined,
 	chunkManager: ChunkManager = undefined,
+
+	entities: utils.VirtualList(Entity, entityCap) = undefined,
 
 	generated: bool = false,
 
@@ -529,6 +533,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		errdefer main.assets.unloadAssets();
 
+		self.entities = .init();
+
 		if(self.wio.hasWorldData()) {
 			self.seed = try self.wio.loadWorldSeed();
 			self.generated = true;
@@ -573,6 +579,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.itemPalette.deinit();
 		self.biomePalette.deinit();
 		self.wio.deinit();
+		self.entities.deinit();
 		main.globalAllocator.free(self.name);
 		main.globalAllocator.destroy(self);
 	}
@@ -825,6 +832,10 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		const zon = files.readToZon(main.stackAllocator, itemsPath) catch .null;
 		defer zon.deinit(main.stackAllocator);
 		self.itemDropManager.loadFrom(zon);
+	}
+
+	pub fn addEntity(self: *ServerWorld, entity: Entity) void {
+		self.entities.append(entity);
 	}
 
 	pub fn findPlayer(self: *ServerWorld, user: *User) void {

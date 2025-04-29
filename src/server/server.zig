@@ -117,6 +117,7 @@ pub const User = struct { // MARK: User
 		const self = main.globalAllocator.create(User);
 		errdefer main.globalAllocator.destroy(self);
 		self.* = .{};
+		self.player.entityType = main.entity.getTypeById("cubyz:player");
 		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
 		self.interpolation.init(@ptrCast(&self.player.pos), @ptrCast(&self.player.vel));
 		self.conn = try Connection.init(manager, ipPort, self);
@@ -165,6 +166,12 @@ pub const User = struct { // MARK: User
 
 		self.name = main.globalAllocator.dupe(u8, name);
 		world.?.findPlayer(self);
+	}
+
+	pub fn increaseId() u32 {
+		const id = freeId;
+		freeId += 1;
+		return id;
 	}
 
 	fn simArrIndex(x: i32) usize {
@@ -402,6 +409,18 @@ fn update() void { // MARK: update()
 			.rot = user.player.rot,
 		});
 	}
+	for(world.?.entities.items()) |entity| {
+		if (entity.entityType == main.entity.getTypeById("cubyz:player")) {
+			continue;
+		}
+		entityData.append(.{
+			.id = entity.id,
+			.pos = entity.pos,
+			.vel = entity.vel,
+			.rot = entity.rot,
+		});
+		std.debug.print("Test\n", .{});
+	}
 	for(userList) |user| {
 		main.network.Protocols.entityPosition.send(user.conn, user.player.pos, entityData.items, itemData);
 	}
@@ -474,6 +493,7 @@ pub fn connect(user: *User) void {
 
 pub fn connectInternal(user: *User) void {
 	// TODO: addEntity(player);
+	world.?.addEntity(user.player);
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 	// Let the other clients know about this new one.

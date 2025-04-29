@@ -629,6 +629,9 @@ pub fn main() void { // MARK: main()
 	blocks.meshes.init();
 	defer blocks.meshes.deinit();
 
+	entity.meshes.init();
+	defer entity.meshes.deinit();
+
 	renderer.init();
 	defer renderer.deinit();
 

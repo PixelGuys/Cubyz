@@ -433,10 +433,18 @@ pub const Model = struct {
 };
 
 var nameToIndex: std.StringHashMap(ModelIndex) = undefined;
+var nameToIndexEntities: std.StringHashMap(ModelIndex) = undefined;
 
 pub fn getModelIndex(string: []const u8) ModelIndex {
 	return nameToIndex.get(string) orelse {
 		std.log.err("Couldn't find voxelModel with name: {s}.", .{string});
+		return .{.index = 0};
+	};
+}
+
+pub fn getEntityModelIndex(string: []const u8) ModelIndex {
+	return nameToIndexEntities.get(string) orelse {
+		std.log.err("Couldn't find entity model with name: {s}.", .{string});
 		return .{.index = 0};
 	};
 }
@@ -560,6 +568,12 @@ pub fn registerModel(id: []const u8, data: []const u8) ModelIndex {
 	return model;
 }
 
+pub fn registerEntityModel(id: []const u8, data: []const u8) ModelIndex {
+	const model = Model.loadModel(data);
+	nameToIndexEntities.put(id, model) catch unreachable;
+	return model;
+}
+
 // TODO: Entity models.
 pub fn init() void {
 	models = .init();
@@ -570,6 +584,10 @@ pub fn init() void {
 	nameToIndex = .init(main.globalAllocator.allocator);
 
 	nameToIndex.put("none", Model.init(&.{})) catch unreachable;
+	
+	nameToIndexEntities = .init(main.globalAllocator.allocator);
+
+	nameToIndexEntities.put("none", Model.init(&.{})) catch unreachable;
 }
 
 pub fn reset() void {
@@ -582,11 +600,14 @@ pub fn reset() void {
 	quadDeduplication.clearRetainingCapacity();
 	nameToIndex.clearRetainingCapacity();
 	nameToIndex.put("none", Model.init(&.{})) catch unreachable;
+	nameToIndexEntities.clearRetainingCapacity();
+	nameToIndexEntities.put("none", Model.init(&.{})) catch unreachable;
 }
 
 pub fn deinit() void {
 	quadSSBO.deinit();
 	nameToIndex.deinit();
+	nameToIndexEntities.deinit();
 	for(models.items()) |model| {
 		model.deinit();
 	}
