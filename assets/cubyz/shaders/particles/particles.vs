@@ -19,9 +19,9 @@ struct ParticleData {
 	float lifeTime;
 	float lifeLeft;
 	uint typ;
-    uint light;
+	uint light;
 	float size;
-    bool collides; // unused
+	bool collides; // unused
 };
 layout(std430, binding = 13) buffer _particleData
 {
@@ -40,7 +40,7 @@ layout(std430, binding = 14) buffer _particleTypeData
 
 const vec2 uvPositions[4] = vec2[4]
 (
-    vec2(0f, 0f),
+	vec2(0f, 0f),
 	vec2(1f, 1f),
 	vec2(0f, 1f),
 	vec2(1f, 0f)
@@ -48,7 +48,7 @@ const vec2 uvPositions[4] = vec2[4]
 
 const vec3 facePositions[4] = vec3[4]
 (
-    vec3(-0.5f, 0.5f, 0.0f),
+	vec3(-0.5f, 0.5f, 0.0f),
 	vec3(0.5f, -0.5f, 0.0f),
 	vec3(0.5f, 0.5f, 0.0f),
 	vec3(-0.5f, -0.5f, 0.0f)
@@ -57,9 +57,9 @@ const vec3 facePositions[4] = vec3[4]
 const int indices[6] = int[6](0, 1, 2, 1, 0, 3);
 
 void main() {
-    int particleID = gl_VertexID / 6;
-	int vertexID = gl_VertexID % 6;
-    ParticleData particle = particleData[particleID];
+	int particleID = gl_VertexID/6;
+	int vertexID = gl_VertexID%6;
+	ParticleData particle = particleData[particleID];
 	ParticleTypeData particleType = particleTypeData[particle.typ];
 
 	uint fullLight = particle.light;
