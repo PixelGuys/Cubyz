@@ -67,9 +67,9 @@ pub const ParticleManager = struct {
 		const mod = splitter.first();
 		const _id = splitter.rest();
 
-		var buffer: [1024]u8 = undefined;
 		// this is so confusing i just hardcoded that thing
-		const path = std.fmt.bufPrint(&buffer, "assets/{s}/particles/textures/{s}.png", .{mod, _id}) catch unreachable;
+		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/particles/textures/{s}.png", .{mod, _id}) catch unreachable;
+		defer main.stackAllocator.free(path);
 		textureIDs.append(arenaForWorld.allocator().dupe(u8, path));
 		readTextureData(path, &particleType);
 		
