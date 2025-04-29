@@ -6,9 +6,7 @@
 		.texture = "sulfur.png",
 		.material = .{
 			.density = 2.0,
-			.strength = 2.0,
 			.elasticity = 0.25,
-			.grip = 0.25,
 			.hardness = 2.0,
 			.textureRoughness = 0.1,
 			.colors = .{

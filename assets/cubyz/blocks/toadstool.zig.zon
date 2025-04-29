@@ -5,6 +5,7 @@
 		.{.items = .{.auto}},
 	},
 	.solid = false,
+	.degradable = true,
 	.viewThrough = true,
 	.absorbedLight = 0x010101,
 	.collide = false,

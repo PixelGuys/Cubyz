@@ -73,6 +73,7 @@ pub fn init() void {
 	MenuBackGround.init() catch |err| {
 		std.log.err("Failed to initialize the Menu Background: {s}", .{@errorName(err)});
 	};
+	Skybox.init();
 	chunk_meshing.init();
 	mesh_storage.init();
 	reflectionCubeMap = .init();
@@ -87,6 +88,7 @@ pub fn deinit() void {
 	Bloom.deinit();
 	MeshSelection.deinit();
 	MenuBackGround.deinit();
+	Skybox.deinit();
 	mesh_storage.deinit();
 	chunk_meshing.deinit();
 	reflectionCubeMap.deinit();
@@ -135,11 +137,10 @@ pub fn render(playerPosition: Vec3d, deltaTime: f64) void {
 		ambient[0] = @max(0.1, world.ambientLight);
 		ambient[1] = @max(0.1, world.ambientLight);
 		ambient[2] = @max(0.1, world.ambientLight);
-		const skyColor = vec.xyz(world.clearColor);
-		game.fog.skyColor = skyColor;
+		game.fog.skyColor = vec.xyz(world.clearColor);
 
 		itemdrop.ItemDisplayManager.update(deltaTime);
-		renderWorld(world, ambient, skyColor, playerPosition);
+		renderWorld(world, ambient, Skybox.getSkyColor(), playerPosition);
 		const startTime = std.time.milliTimestamp();
 		mesh_storage.updateMeshes(startTime + maximumMeshTime);
 	} else {
@@ -184,6 +185,10 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	const time: u32 = @intCast(std.time.milliTimestamp() & std.math.maxInt(u32));
 
+	gpu_performance_measuring.startQuery(.skybox);
+	Skybox.render();
+	gpu_performance_measuring.stopQuery();
+	
 	gpu_performance_measuring.startQuery(.particle_rendering);
 	particles.ParticleManager.render(playerPos, ambientLight);
 	gpu_performance_measuring.stopQuery();
@@ -616,6 +621,170 @@ pub const MenuBackGround = struct {
 	}
 };
 
+pub const Skybox = struct {
+	var starShader: Shader = undefined;
+	var starUniforms: struct {
+		mvp: c_int,
+		starOpacity: c_int,
+	} = undefined;
+
+	var starVao: c_uint = undefined;
+
+	var starSsbo: graphics.SSBO = undefined;
+
+	const numStars = 10000;
+
+	fn getStarPos(seed: *u64) Vec3f {
+		const x: f32 = @floatCast(main.random.nextFloatGauss(seed));
+		const y: f32 = @floatCast(main.random.nextFloatGauss(seed));
+		const z: f32 = @floatCast(main.random.nextFloatGauss(seed));
+
+		const r = std.math.cbrt(main.random.nextFloat(seed))*5000.0;
+
+		return vec.normalize(Vec3f{x, y, z})*@as(Vec3f, @splat(r));
+	}
+
+	fn getStarColor(temperature: f32, light: f32, image: graphics.Image) Vec3f {
+		const rgbCol = image.getRGB(@intFromFloat(std.math.clamp(temperature/15000.0*@as(f32, @floatFromInt(image.width)), 0.0, @as(f32, @floatFromInt(image.width - 1)))), 0);
+		var rgb: Vec3f = @floatFromInt(Vec3i{rgbCol.r, rgbCol.g, rgbCol.b});
+		rgb /= @splat(255.0);
+
+		rgb *= @as(Vec3f, @splat(light));
+
+		const m = @reduce(.Max, rgb);
+		if(m > 1.0) {
+			rgb /= @as(Vec3f, @splat(m));
+		}
+
+		return rgb;
+	}
+
+	fn init() void {
+		const starColorImage = graphics.Image.readFromFile(main.stackAllocator, "assets/cubyz/star.png") catch |err| {
+			std.log.err("Failed to load star image: {s}", .{@errorName(err)});
+			return;
+		};
+		defer starColorImage.deinit(main.stackAllocator);
+
+		starShader = Shader.initAndGetUniforms("assets/cubyz/shaders/skybox/star.vs", "assets/cubyz/shaders/skybox/star.fs", "", &starUniforms);
+		starShader.bind();
+
+		var starData: [numStars*20]f32 = undefined;
+
+		const starDist = 200.0;
+
+		const off: f32 = @sqrt(3.0)/6.0;
+
+		const triVertA = Vec3f{0.5, starDist, -off};
+		const triVertB = Vec3f{-0.5, starDist, -off};
+		const triVertC = Vec3f{0.0, starDist, @sqrt(3.0)/2.0 - off};
+
+		var seed: u64 = 0;
+
+		for(0..numStars) |i| {
+			var pos: Vec3f = undefined;
+
+			var radius: f32 = undefined;
+
+			var temperature: f32 = undefined;
+
+			var light: f32 = 0;
+
+			while(light < 0.1) {
+				pos = getStarPos(&seed);
+
+				radius = @floatCast(main.random.nextFloatExp(&seed)*4 + 0.2);
+
+				temperature = @floatCast(@abs(main.random.nextFloatGauss(&seed)*3000.0 + 5000.0) + 1000.0);
+
+				// 3.6e-12 can be modified to change the brightness of the stars
+				light = (3.6e-12*radius*radius*temperature*temperature*temperature*temperature)/(vec.dot(pos, pos));
+			}
+
+			pos = vec.normalize(pos)*@as(Vec3f, @splat(starDist));
+
+			const normPos = vec.normalize(pos);
+
+			const color = getStarColor(temperature, light, starColorImage);
+
+			const latitude: f32 = @floatCast(std.math.asin(normPos[2]));
+			const longitude: f32 = @floatCast(std.math.atan2(-normPos[0], normPos[1]));
+
+			const mat = Mat4f.rotationZ(longitude).mul(Mat4f.rotationX(latitude));
+
+			const posA = vec.xyz(mat.mulVec(.{triVertA[0], triVertA[1], triVertA[2], 1.0}));
+			const posB = vec.xyz(mat.mulVec(.{triVertB[0], triVertB[1], triVertB[2], 1.0}));
+			const posC = vec.xyz(mat.mulVec(.{triVertC[0], triVertC[1], triVertC[2], 1.0}));
+
+			starData[i*20 ..][0..3].* = posA;
+			starData[i*20 + 4 ..][0..3].* = posB;
+			starData[i*20 + 8 ..][0..3].* = posC;
+
+			starData[i*20 + 12 ..][0..3].* = pos;
+			starData[i*20 + 16 ..][0..3].* = color;
+		}
+
+		starSsbo = graphics.SSBO.initStatic(f32, &starData);
+
+		c.glGenVertexArrays(1, &starVao);
+		c.glBindVertexArray(starVao);
+		c.glEnableVertexAttribArray(0);
+	}
+
+	pub fn deinit() void {
+		starShader.deinit();
+		starSsbo.deinit();
+		c.glDeleteVertexArrays(1, &starVao);
+	}
+
+	pub fn getSkyColor() Vec3f {
+		return game.fog.skyColor*@as(Vec3f, @splat(@reduce(.Add, game.fog.skyColor)/3.0));
+	}
+
+	pub fn render() void {
+		const viewMatrix = game.camera.viewMatrix;
+
+		const time = game.world.?.gameTime.load(.monotonic);
+
+		var starOpacity: f32 = 0;
+		const dayTime = @abs(@mod(time, game.World.dayCycle) -% game.World.dayCycle/2);
+		if(dayTime < game.World.dayCycle/4 - game.World.dayCycle/16) {
+			starOpacity = 1;
+		} else if(dayTime > game.World.dayCycle/4 + game.World.dayCycle/16) {
+			starOpacity = 0;
+		} else {
+			starOpacity = 1 - @as(f32, @floatFromInt(dayTime - (game.World.dayCycle/4 - game.World.dayCycle/16)))/@as(f32, @floatFromInt(game.World.dayCycle/8));
+		}
+
+		if(starOpacity != 0) {
+			c.glDisable(c.GL_CULL_FACE);
+			c.glDisable(c.GL_DEPTH_TEST);
+
+			c.glBlendFunc(c.GL_ONE, c.GL_ONE);
+			c.glEnable(c.GL_BLEND);
+
+			starShader.bind();
+
+			const starMatrix = game.projectionMatrix.mul(viewMatrix.mul(Mat4f.rotationX(@as(f32, @floatFromInt(time))/@as(f32, @floatFromInt(main.game.World.dayCycle)))));
+
+			starSsbo.bind(12);
+
+			c.glUniform1f(starUniforms.starOpacity, starOpacity);
+			c.glUniformMatrix4fv(starUniforms.mvp, 1, c.GL_TRUE, @ptrCast(&starMatrix));
+
+			c.glBindVertexArray(starVao);
+			c.glDrawArrays(c.GL_TRIANGLES, 0, numStars*3);
+
+			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
+
+			c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
+
+			c.glEnable(c.GL_CULL_FACE);
+			c.glEnable(c.GL_DEPTH_TEST);
+		}
+	}
+};
+
 pub const Frustum = struct { // MARK: Frustum
 	const Plane = struct {
 		pos: Vec3f,
@@ -721,6 +890,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	var currentSwingTime: f32 = 0;
 	var selectionMin: Vec3f = undefined;
 	var selectionMax: Vec3f = undefined;
+	var selectionFace: chunk.Neighbor = undefined;
 	var lastPos: Vec3d = undefined;
 	var lastDir: Vec3f = undefined;
 	pub fn select(pos: Vec3d, _dir: Vec3f, item: ?main.items.Item) void {
@@ -755,6 +925,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						selectedBlockPos = voxelPos;
 						selectionMin = intersection.min;
 						selectionMax = intersection.max;
+						selectionFace = intersection.face;
 						break;
 					}
 				}
@@ -845,6 +1016,11 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 								}
 							}
 						}
+						if(std.mem.eql(u8, baseItem.id, "cubyz:selection_wand")) {
+							game.Player.selectionPosition2 = selectedPos;
+							main.network.Protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos2, selectedPos);
+							return;
+						}
 					},
 					.tool => |tool| {
 						_ = tool; // TODO: Tools might change existing blocks.
@@ -856,6 +1032,14 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 	pub fn breakBlock(inventory: main.items.Inventory, slot: u32, deltaTime: f64) void {
 		if(selectedBlockPos) |selectedPos| {
+			const stack = inventory.getStack(slot);
+			const isSelectionWand = stack.item != null and stack.item.? == .baseItem and std.mem.eql(u8, stack.item.?.baseItem.id, "cubyz:selection_wand");
+			if(isSelectionWand) {
+				game.Player.selectionPosition1 = selectedPos;
+				main.network.Protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos1, selectedPos);
+				return;
+			}
+
 			if(@reduce(.Or, lastSelectedBlockPos != selectedPos)) {
 				mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
 				lastSelectedBlockPos = selectedPos;
@@ -868,7 +1052,6 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 			main.items.Inventory.Sync.ClientSide.mutex.lock();
 			if(!game.Player.isCreative()) {
-				const stack = inventory.getStack(slot);
 				var damage: f32 = 1;
 				const isTool = stack.item != null and stack.item.? == .tool;
 				if(isTool) {
@@ -920,7 +1103,19 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	}
 
 	fn updateBlockAndSendUpdate(source: main.items.Inventory, slot: u32, x: i32, y: i32, z: i32, oldBlock: blocks.Block, newBlock: blocks.Block) void {
-		main.items.Inventory.Sync.ClientSide.executeCommand(.{.updateBlock = .{.source = .{.inv = source, .slot = slot}, .pos = .{x, y, z}, .oldBlock = oldBlock, .newBlock = newBlock}});
+		main.items.Inventory.Sync.ClientSide.executeCommand(.{
+			.updateBlock = .{
+				.source = .{.inv = source, .slot = slot},
+				.pos = .{x, y, z},
+				.dropLocation = .{
+					.dir = selectionFace,
+					.min = selectionMin,
+					.max = selectionMax,
+				},
+				.oldBlock = oldBlock,
+				.newBlock = newBlock,
+			},
+		});
 		mesh_storage.updateBlock(x, y, z, newBlock);
 	}
 
