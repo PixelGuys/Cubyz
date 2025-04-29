@@ -188,7 +188,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.startQuery(.skybox);
 	Skybox.render();
 	gpu_performance_measuring.stopQuery();
-	
+
 	gpu_performance_measuring.startQuery(.particle_rendering);
 	particles.ParticleManager.render(playerPos, ambientLight);
 	gpu_performance_measuring.stopQuery();

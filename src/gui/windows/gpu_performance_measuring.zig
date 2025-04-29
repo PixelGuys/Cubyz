@@ -50,7 +50,7 @@ const names = [_][]const u8{
 	"Bloom - Second Pass",
 	"Copy to screen",
 	"GUI Rendering",
-	"Particle Rendering"
+	"Particle Rendering",
 };
 
 const buffers = 4;

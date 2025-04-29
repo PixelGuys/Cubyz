@@ -20,7 +20,7 @@ var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
 const allocator = arena.allocator();
 
 pub const ParticleManager = struct {
-	pub var particleTypesSSBO: ?SSBO = null; 
+	pub var particleTypesSSBO: ?SSBO = null;
 	pub var types: main.List(ParticleType) = undefined;
 	var textureIDs: main.List([]const u8) = undefined;
 	var textures: main.List(Image) = undefined;
@@ -31,7 +31,7 @@ pub const ParticleManager = struct {
 	pub var emissionTextureArray: TextureArray = undefined;
 
 	pub var particleTypeHashmap = std.StringHashMap(u16).init(allocator.allocator);
-	
+
 	pub fn init() void {
 		types = .init(main.globalAllocator);
 		textureIDs = .init(main.globalAllocator);
@@ -72,10 +72,10 @@ pub const ParticleManager = struct {
 		defer main.stackAllocator.free(path);
 		textureIDs.append(arenaForWorld.allocator().dupe(u8, path));
 		readTextureData(path, &particleType);
-		
+
 		particleTypeHashmap.put(id, @intCast(types.items.len)) catch unreachable;
 		types.append(particleType);
-		return @intCast(types.items.len-1);
+		return @intCast(types.items.len - 1);
 	}
 
 	fn readTextureData(_path: []const u8, typ: *ParticleType) void {
@@ -157,7 +157,7 @@ pub const ParticleSystem = struct {
 	pub fn init() void {
 		std.log.debug("Particle alignment: {d} size: {d}\n", .{@alignOf(Particle), @sizeOf(Particle)});
 		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/particles/particles.vs", "assets/cubyz/shaders/particles/particles.fs", "", &uniforms);
-		
+
 		properties = EmmiterProperties{
 			.gravity = .{0, 0, 4},
 			.drag = 2,
@@ -194,32 +194,32 @@ pub const ParticleSystem = struct {
 				continue;
 			}
 
-			particle.vel += properties.gravity * vdt;
+			particle.vel += properties.gravity*vdt;
 			particle.vel *= @splat(@max(0, 1 - properties.drag*deltaTime));
-			const vel = particle.vel * vdt;
+			const vel = particle.vel*vdt;
 
 			// TODO: OPTIMIZE THE HELL OUT OF THIS
-			if (particle.collides) {
+			if(particle.collides) {
 				const hitBox: game.collision.Box = .{.min = @splat(particle.size*-0.5), .max = @splat(particle.size*0.5)};
 				particle.pos[0] += vel[0];
-				if (game.collision.collides(.client, .x, -vel[0], particle.pos, hitBox)) |box| {
-					if (vel[0] < 0) {
+				if(game.collision.collides(.client, .x, -vel[0], particle.pos, hitBox)) |box| {
+					if(vel[0] < 0) {
 						particle.pos[0] = @floatCast(box.max[0] - hitBox.min[0]);
 					} else {
 						particle.pos[0] = @floatCast(box.min[0] - hitBox.max[0]);
 					}
 				}
 				particle.pos[1] += vel[1];
-				if (game.collision.collides(.client, .y, -vel[1], particle.pos, hitBox)) |box| {
-					if (vel[1] < 0) {
+				if(game.collision.collides(.client, .y, -vel[1], particle.pos, hitBox)) |box| {
+					if(vel[1] < 0) {
 						particle.pos[1] = @floatCast(box.max[1] - hitBox.min[1]);
 					} else {
 						particle.pos[1] = @floatCast(box.min[1] - hitBox.max[1]);
 					}
 				}
 				particle.pos[2] += vel[2];
-				if (game.collision.collides(.client, .z, -vel[2], particle.pos, hitBox)) |box| {
-					if (vel[2] < 0) {
+				if(game.collision.collides(.client, .z, -vel[2], particle.pos, hitBox)) |box| {
+					if(vel[2] < 0) {
 						particle.pos[2] = @floatCast(box.max[2] - hitBox.min[2]);
 					} else {
 						particle.pos[2] = @floatCast(box.min[2] - hitBox.max[2]);
@@ -229,15 +229,15 @@ pub const ParticleSystem = struct {
 				particle.pos += vel;
 			}
 			
-			// TODO: optimize 
+			// TODO: optimize
 			const intPos: Vec3i = @intFromFloat(@floor(particle.pos));
 			const light: [6]u8 = main.renderer.mesh_storage.getLight(intPos[0], intPos[1], intPos[2]) orelse @splat(0);
-			particle.light = (@as(u32, light[0]>>3) << 25 |
-				@as(u32, light[1]>>3) << 20 |
-				@as(u32, light[2]>>3) << 15 |
-				@as(u32, light[3]>>3) << 10 |
-				@as(u32, light[4]>>3) << 5 |
-				@as(u32, light[5]>>3));
+			particle.light = (@as(u32, light[0] >> 3) << 25 |
+				@as(u32, light[1] >> 3) << 20 |
+				@as(u32, light[2] >> 3) << 15 |
+				@as(u32, light[3] >> 3) << 10 |
+				@as(u32, light[4] >> 3) << 5 |
+				@as(u32, light[5] >> 3));
 
 			particles[i] = particle;
 			i += 1;
@@ -248,15 +248,15 @@ pub const ParticleSystem = struct {
 		const typ = ParticleManager.particleTypeHashmap.get(id) orelse 0;
 
 		const to: u32 = @intCast(@min(particles.len + count, maxCapacity));
-		for (particles.len..to) |_| {
+		for(particles.len..to) |_| {
 			var vel: Vec3f = @splat(0);
 			var particlePos: Vec3f = @splat(0);
 
-			switch (shape.shapeType) {
+			switch(shape.shapeType) {
 				.point => {
 					particlePos = pos;
 					const speed: Vec3f = @splat(properties.velMin + random.nextFloat(&seed)*properties.velMax);
-					const dir: Vec3f = switch (shape.directionMode) {
+					const dir: Vec3f = switch(shape.directionMode) {
 						.direction => shape.dir,
 						.scatter => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
 						.spread => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
@@ -265,11 +265,11 @@ pub const ParticleSystem = struct {
 				},
 				.sphere => {
 					// this has a non uniform way of distribution, not sure how to fix that
-					const spawnPos: Vec3f = @splat(random.nextFloat(&seed)*shape.size); 
+					const spawnPos: Vec3f = @splat(random.nextFloat(&seed)*shape.size);
 					const offsetPos: Vec3f = vec.normalize(random.nextFloatVectorSigned(3, &seed));
 					particlePos = pos + offsetPos*spawnPos;
 					const speed: Vec3f = @splat(properties.velMin + random.nextFloat(&seed) * properties.velMax);
-					const dir: Vec3f = switch (shape.directionMode) {
+					const dir: Vec3f = switch(shape.directionMode) {
 						.direction => shape.dir,
 						.scatter => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
 						.spread => offsetPos,
@@ -277,11 +277,11 @@ pub const ParticleSystem = struct {
 					vel = dir*speed;
 				},
 				.cube => {
-					const spawnPos: Vec3f = @splat(random.nextFloat(&seed)*shape.size); 
+					const spawnPos: Vec3f = @splat(random.nextFloat(&seed)*shape.size);
 					const offsetPos: Vec3f = random.nextFloatVectorSigned(3, &seed);
 					particlePos = pos + offsetPos*spawnPos;
 					const speed: Vec3f = @splat(properties.velMin + random.nextFloat(&seed)*properties.velMax);
-					const dir: Vec3f = switch (shape.directionMode) {
+					const dir: Vec3f = switch(shape.directionMode) {
 						.direction => shape.dir,
 						.scatter => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
 						.spread => vec.normalize(offsetPos),
@@ -293,7 +293,7 @@ pub const ParticleSystem = struct {
 			const lifeTime = properties.lifeTimeMin + random.nextFloat(&seed)*properties.lifeTimeMax;
 
 			particles.len += 1;
-			particles[particles.len-1] = Particle{
+			particles[particles.len - 1] = Particle{
 				.pos = particlePos,
 				.vel = vel,
 				.lifeTime = lifeTime,
@@ -322,7 +322,7 @@ pub const ParticleSystem = struct {
 		c.glUniform3f(uniforms.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
 
 		const billboardMatrix = Mat4f.rotationZ(-game.camera.rotation[2] + std.math.pi*0.5)
-			.mul(Mat4f.rotationY(game.camera.rotation[0]-std.math.pi*0.5));
+			.mul(Mat4f.rotationY(game.camera.rotation[0] - std.math.pi*0.5));
 		c.glUniformMatrix4fv(uniforms.billboardMatrix, 1, c.GL_TRUE, @ptrCast(&billboardMatrix));
 
 		c.glActiveTexture(c.GL_TEXTURE0);
@@ -364,7 +364,6 @@ pub const EmmiterShape = struct {
 	size: f32 = 0,
 	dir: Vec3f = @splat(0),
 };
-
 
 pub const ParticleType = struct {
 	texture: u32,

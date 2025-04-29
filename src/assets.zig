@@ -618,7 +618,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	try sbb.registerSBB(&structureBuildingBlocks);
 
 	iterator = particles.iterator();
-	while (iterator.next()) |entry| {
+	while(iterator.next()) |entry| {
 		registerParticle(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
 	}
 
