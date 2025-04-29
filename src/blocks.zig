@@ -410,9 +410,9 @@ pub const TickFunctions = struct {
 	pub fn replaceWithCobble(_: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void {
 		std.log.debug("Replace with cobblestone at ({d},{d},{d})", .{x, y, z});
 		const cobblestone = parseBlock("cubyz:cobblestone");
-
 		_chunk.mutex.lock();
-		_chunk.updateBlockAndSetChanged(x, y, z, cobblestone);
+		_chunk.super.updateBlock(x, y, z, cobblestone);
+		_chunk.setChanged();
 		_chunk.mutex.unlock();
 
 		const wx = _chunk.super.pos.wx + x;

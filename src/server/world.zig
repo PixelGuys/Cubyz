@@ -956,14 +956,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		ChunkManager.mutex.lock();
 		var iter = ChunkManager.entityChunkHashMap.keyIterator();
 		while(iter.next()) |pos| {
-			if(ChunkManager.getEntityChunkAndIncreaseRefCount(pos.*)) |entityChunk| {
+			if(ChunkManager.entityChunkHashMap.get(pos.*)) |entityChunk| {
+				entityChunk.increaseRefCount();
 				self.tickBlocksInChunk(entityChunk.getChunk());
 				entityChunk.decreaseRefCount();
 			}
 		}
 		ChunkManager.mutex.unlock();
-
-		self.tickCount +%= 1;
 	}
 
 	pub fn update(self: *ServerWorld) void { // MARK: update()
