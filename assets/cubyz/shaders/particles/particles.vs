@@ -1,8 +1,8 @@
 #version 460
 
 out vec3 light;
-out float textureIndex;
 out vec2 uv;
+out float textureIndex;
 
 uniform vec3 ambientLight;
 uniform mat4 projectionMatrix;
@@ -13,15 +13,15 @@ uniform vec3 playerPositionFraction;
 
 struct ParticleData {
 	vec3 pos;
-	float align1; // DO NOT REMOVE THAT
-	vec3 vel; // unused, but thats fine
+	float align1;
+	vec3 vel; // unused
 	float align2;
 	float lifeTime;
 	float lifeLeft;
 	uint typ;
     uint light;
-    bool collides; // also unused
-    // uint uv;
+	float size;
+    bool collides; // unused
 };
 layout(std430, binding = 12) buffer _particleData
 {
@@ -75,9 +75,11 @@ void main() {
 	);
 	light = max(sunLight*ambientLight, blockLight)/31;
 
-	textureIndex = floor(float(particleType.startFrame) + (particle.lifeLeft / particle.lifeTime) * float(particleType.animationFrames));
+	textureIndex = particleType.animationFrames != 1 ?
+		floor(float(particleType.startFrame) + (particle.lifeLeft / particle.lifeTime) * float(particleType.animationFrames)) :
+		particleType.startFrame;
 
-	vec3 position = (billboardMatrix*vec4(facePositions[indices[vertexID]], 1.0)).xyz;
+	vec3 position = (billboardMatrix*vec4(particle.size*facePositions[indices[vertexID]], 1.0)).xyz;
 	position += vec3(particle.pos - playerPositionInteger);
 	position -= playerPositionFraction;
 
@@ -85,9 +87,4 @@ void main() {
 	gl_Position = projectionMatrix*mvPos;
 
 	uv = uvPositions[indices[vertexID]];
-
-	// mvVertexPos = mvPos.xyz;
-	// distanceForLodCheck = length(mvPos.xyz) + voxelSize;
-	// uv = quads[quadIndex].cornerUV[vertexID]*voxelSize;
-	// opaqueInLod = quads[quadIndex].opaqueInLod;
 }

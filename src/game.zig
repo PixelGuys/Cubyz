@@ -831,6 +831,7 @@ pub fn hyperSpeedToggle() void {
 	Player.hyperSpeed.store(!Player.hyperSpeed.load(.monotonic), .monotonic);
 }
 
+var timer: f64 = 0; // remove
 pub fn update(deltaTime: f64) void { // MARK: update()
 	const gravity = 30.0;
 	const terminalVelocity = 90.0;
@@ -1208,12 +1209,16 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	const biome = world.?.playerBiome.load(.monotonic);
 
 	const t = 1 - @as(f32, @floatCast(@exp(-2*deltaTime)));
-
-	inline for (0..10) |_| {
-		particles.ParticleSystem.addParticle("cubyz:spark", .{0, 0, 0});//@floatCast(Player.eyePos + @as(Vec3d, .{1, 0, 0})));
-		// particles.ParticleSystem.addParticle("cubyz:blood", .{0, 0, 0});
-		// particles.ParticleSystem.addParticle("cubyz:leaf", .{0, 0, 0});
-		// particles.ParticleSystem.addParticle("cubyz:smth", .{0, 0, 0});
+	
+	timer += deltaTime;
+	if (timer > 5) {
+		particles.ParticleSystem.spawn("cubyz:spark", 1000, .{0, 0, 0}, 0.4, true, .{
+			.shapeType = .sphere,
+			.size = 3,
+			.directionMode = .spread,
+			.dir = .{1, 0, 0},
+		});
+		timer = 0;
 	}
 
 	fog.fogColor = (biome.fogColor - fog.fogColor)*@as(Vec3f, @splat(t)) + fog.fogColor;

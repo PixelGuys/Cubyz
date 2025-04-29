@@ -20,7 +20,6 @@ var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
 const allocator = arena.allocator();
 
 pub const ParticleManager = struct {
-	// so i will probably have to store all of the particles in a single texture array and just index in it??
 	pub var particleTypesSSBO: ?SSBO = null; 
 	pub var types: main.List(ParticleType) = undefined;
 	var textureIDs: main.List([]const u8) = undefined;
@@ -33,7 +32,6 @@ pub const ParticleManager = struct {
 
 	pub var particleTypeHashmap = std.StringHashMap(u16).init(allocator.allocator);
 	
-	// have a hashmap for particle types to create them easily
 	pub fn init() void {
 		types = .init(main.globalAllocator);
 		textureIDs = .init(main.globalAllocator);
@@ -42,16 +40,7 @@ pub const ParticleManager = struct {
 		arenaForWorld = .init(main.globalAllocator);
 		textureArray = .init();
 		emissionTextureArray = .init();
-		ParticleSystem.init(EmmiterProperties{
-			.gravity = .{0, 0, 20},
-			.drag = 2,
-			.sizeStart = 0.4,
-			.sizeEnd = 0.02,
-			.lifeTimeMin = 1,
-			.lifeTimeMax = 10,
-			.velMin = 20,
-			.velMax = 40,
-		});
+		ParticleSystem.init();
 	}
 
 	pub fn deinit() void {
@@ -87,10 +76,6 @@ pub const ParticleManager = struct {
 		particleTypeHashmap.put(id, @intCast(types.items.len)) catch unreachable;
 		types.append(particleType);
 		return @intCast(types.items.len-1);
-	}
-
-	fn generateBlockParticleTypes() void {
-		
 	}
 
 	fn readTextureData(_path: []const u8, typ: *ParticleType) void {
@@ -164,14 +149,23 @@ pub const ParticleSystem = struct {
 		playerPositionInteger: c_int,
 		playerPositionFraction: c_int,
 		ambientLight: c_int,
+		textureSampler: c_int,
+		emissionTextureSampler: c_int,
 	};
 	var uniforms: UniformStruct = undefined;
 
-	pub fn init(props: EmmiterProperties) void {
-		std.log.info("Particle alignment: {d} size: {d}\n", .{@alignOf(Particle), @sizeOf(Particle)});
+	pub fn init() void {
+		std.log.debug("Particle alignment: {d} size: {d}\n", .{@alignOf(Particle), @sizeOf(Particle)});
 		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/particles/particles.vs", "assets/cubyz/shaders/particles/particles.fs", "", &uniforms);
 		
-		properties = props;
+		properties = EmmiterProperties{
+			.gravity = .{0, 0, 4},
+			.drag = 2,
+			.lifeTimeMin = 5,
+			.lifeTimeMax = 5,
+			.velMin = 5,
+			.velMax = 10,
+		};
 		particles = main.globalAllocator.alloc(Particle, maxCapacity);
 		particlesSSBO = SSBO.init();
 		particlesSSBO.createDynamicBuffer(maxCapacity*@sizeOf(Particle));
@@ -206,7 +200,7 @@ pub const ParticleSystem = struct {
 
 			// TODO: OPTIMIZE THE HELL OUT OF THIS
 			if (particle.collides) {
-				const hitBox: game.collision.Box = .{.min = @splat(-0.5), .max = @splat(0.5)};
+				const hitBox: game.collision.Box = .{.min = @splat(particle.size*-0.5), .max = @splat(particle.size*0.5)};
 				particle.pos[0] += vel[0];
 				if (game.collision.collides(.client, .x, -vel[0], particle.pos, hitBox)) |box| {
 					if (vel[0] < 0) {
@@ -231,41 +225,84 @@ pub const ParticleSystem = struct {
 						particle.pos[2] = @floatCast(box.min[2] - hitBox.max[2]);
 					}
 				}
+			} else {
+				particle.pos += vel;
 			}
 			
 			// TODO: optimize 
 			const intPos: Vec3i = @intFromFloat(@floor(particle.pos));
 			const light: [6]u8 = main.renderer.mesh_storage.getLight(intPos[0], intPos[1], intPos[2]) orelse @splat(0);
-			particle.light = (@as(u32, @intCast(light[0]>>3)) << 25 |
-				@as(u32, @intCast(light[1]>>3)) << 20 |
-				@as(u32, @intCast(light[2]>>3)) << 15 |
-				@as(u32, @intCast(light[3]>>3)) << 10 |
-				@as(u32, @intCast(light[4]>>3)) << 5 |
-				@as(u32, @intCast(light[5]>>3)));
+			particle.light = (@as(u32, light[0]>>3) << 25 |
+				@as(u32, light[1]>>3) << 20 |
+				@as(u32, light[2]>>3) << 15 |
+				@as(u32, light[3]>>3) << 10 |
+				@as(u32, light[4]>>3) << 5 |
+				@as(u32, light[5]>>3));
 
 			particles[i] = particle;
-			i += 1; // makes things simplier when put here
+			i += 1;
 		}
 	}
 
-	pub fn addParticle(id: []const u8, pos: Vec3f) void {
-		if (particles.len >= maxCapacity) {
-			return;
-		}
-
+	pub fn spawn(id: []const u8, count: u32, pos: Vec3f, size: f32, collides: bool, shape: EmmiterShape) void {
 		const typ = ParticleManager.particleTypeHashmap.get(id) orelse 0;
-		const lifeTime: f32 = properties.lifeTimeMin + random.nextFloat(&seed) * properties.lifeTimeMax;
-		const vel: Vec3f =  @splat(properties.velMin + random.nextFloat(&seed) * properties.velMax);
 
-		particles.len += 1;
-		particles[particles.len-1] = Particle{
-			.pos = pos,
-			.vel = random.nextFloatVectorSigned(3, &seed)*vel,
-			.lifeTime = lifeTime,
-			.lifeLeft = lifeTime,
-			.typ = typ,
-			.collides = true,
-		};
+		const to: u32 = @intCast(@min(particles.len + count, maxCapacity));
+		for (particles.len..to) |_| {
+			var vel: Vec3f = @splat(0);
+			var particlePos: Vec3f = @splat(0);
+
+			switch (shape.shapeType) {
+				.point => {
+					particlePos = pos;
+					const speed: Vec3f = @splat(properties.velMin + random.nextFloat(&seed) * properties.velMax);
+					const dir: Vec3f = switch (shape.directionMode) {
+						.direction => shape.dir,
+						.scatter => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
+						.spread => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
+					};
+					vel = dir*speed;
+				},
+				.sphere => {
+					// this has a non uniform way of distribution, not sure how to fix that
+					const spawnPos: Vec3f = @splat(random.nextFloat(&seed)*shape.size); 
+					const offsetPos: Vec3f = vec.normalize(random.nextFloatVectorSigned(3, &seed));
+					particlePos = pos + offsetPos*spawnPos;
+					const speed: Vec3f = @splat(properties.velMin + random.nextFloat(&seed) * properties.velMax);
+					const dir: Vec3f = switch (shape.directionMode) {
+						.direction => shape.dir,
+						.scatter => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
+						.spread => offsetPos,
+					};
+					vel = dir*speed;
+				},
+				.cube => {
+					const spawnPos: Vec3f = @splat(random.nextFloat(&seed)*shape.size); 
+					const offsetPos: Vec3f = random.nextFloatVectorSigned(3, &seed);
+					particlePos = pos + offsetPos*spawnPos;
+					const speed: Vec3f = @splat(properties.velMin + random.nextFloat(&seed)*properties.velMax);
+					const dir: Vec3f = switch (shape.directionMode) {
+						.direction => shape.dir,
+						.scatter => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
+						.spread => vec.normalize(offsetPos),
+					};
+					vel = dir*speed;
+				},
+			}
+		
+			const lifeTime = properties.lifeTimeMin + random.nextFloat(&seed)*properties.lifeTimeMax;
+
+			particles.len += 1;
+			particles[particles.len-1] = Particle{
+				.pos = particlePos,
+				.vel = vel,
+				.lifeTime = lifeTime,
+				.lifeLeft = lifeTime,
+				.typ = typ,
+				.size = size,
+				.collides = collides,
+			};
+		}
 	}
 
 	pub fn render(playerPosition: Vec3d, ambientLight: Vec3f) void {
@@ -273,10 +310,8 @@ pub const ParticleSystem = struct {
 
 		shader.bind();
 
-		c.glActiveTexture(c.GL_TEXTURE0);
-		ParticleManager.textureArray.bind();
-		c.glActiveTexture(c.GL_TEXTURE1);
-		ParticleManager.emissionTextureArray.bind();
+		c.glUniform1i(uniforms.textureSampler, 0);
+		c.glUniform1i(uniforms.emissionTextureSampler, 1);
 		
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
@@ -290,6 +325,11 @@ pub const ParticleSystem = struct {
 			.mul(Mat4f.rotationY(game.camera.rotation[0]-std.math.pi*0.5));
 		c.glUniformMatrix4fv(uniforms.billboardMatrix, 1, c.GL_TRUE, @ptrCast(&billboardMatrix));
 
+		c.glActiveTexture(c.GL_TEXTURE0);
+		ParticleManager.textureArray.bind();
+		c.glActiveTexture(c.GL_TEXTURE1);
+		ParticleManager.emissionTextureArray.bind();
+
 		c.glDrawArrays(c.GL_TRIANGLES, 0, @intCast(particles.len*6));
 	}
 
@@ -300,34 +340,32 @@ pub const ParticleSystem = struct {
 
 pub const EmmiterProperties = struct {
 	gravity: Vec3f = @splat(0),
-	// colorStart: Vec3f = @splat(0),
-	// colorEnd: Vec3f = @splat(0),
 	drag: f32 = 0,
-	rotVelMin: f32 = 0,
-	rotVelMax: f32 = 0,
 	velMin: f32 = 0,
 	velMax: f32 = 0,
-	
 	lifeTimeMin: f32 = 0,
 	lifeTimeMax: f32 = 0,
-	sizeStart: f32 = 0,
-	sizeEnd: f32 = 0,
 };
 
 pub const EmmiterShapeEnum = enum(u8) {
 	point,
 	sphere,
-	plane,
 	cube,
 };
-
-pub const EmmiterShape = union(EmmiterShapeEnum) {
-	point: struct {
-		
-	},
+pub const DirectionModeEnum = enum(u8) {
+	spread,
+	scatter,
+	direction,
 };
 
-// so ig we need to create a particle type for each block type
+pub const EmmiterShape = struct {
+	shapeType: EmmiterShapeEnum = .point,
+	directionMode: DirectionModeEnum = .spread,
+	size: f32 = 0,
+	dir: Vec3f = @splat(0),
+};
+
+
 pub const ParticleType = struct {
 	texture: u32,
 	animationFrames: u32,
@@ -341,11 +379,9 @@ pub const Particle = struct {
 	vel: Vec3f,
 	lifeTime: f32,
 	lifeLeft: f32,
-	// used for identifying the particle animation things
 	typ: u32, 
-	// anotherTyp: u16 = 0,
 	light: u32 = 0,
+	size: f32,
 	collides: bool,
-	// uv: u16 = 0,
 	// 15 bytes left for use due to alignment
 };
