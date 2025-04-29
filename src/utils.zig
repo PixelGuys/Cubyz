@@ -339,22 +339,22 @@ pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: 
 		}
 
 		pub fn peekFront(self: Self) ?T {
-			if(self.isEmpty()) return null;
+			if(self.len == 0) return null;
 			return self.mem[self.startIndex];
 		}
 
 		pub fn peekBack(self: Self) ?T {
-			if(self.isEmpty()) return null;
+			if(self.len == 0) return null;
 			return self.mem[self.startIndex + self.len - 1 & mask];
 		}
 
 		pub fn enqueueFront(self: *Self, elem: T) !void {
-			if(self.isFull()) return error.OutOfMemory;
+			if(self.len == capacity) return error.OutOfMemory;
 			self.enqueueFrontAssumeCapacity(elem);
 		}
 
 		pub fn forceEnqueueFront(self: *Self, elem: T) ?T {
-			const result = if(self.isFull()) self.dequeueBack() else null;
+			const result = if(self.len == capacity) self.dequeueBack() else null;
 			self.enqueueFrontAssumeCapacity(elem);
 			return result;
 		}
@@ -370,7 +370,7 @@ pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: 
 		}
 
 		pub fn enqueueBack(self: *Self, elem: T) !void {
-			if(self.isFull()) return error.OutOfMemory;
+			if(self.len == capacity) return error.OutOfMemory;
 			self.enqueueBackAssumeCapacity(elem);
 		}
 
@@ -380,7 +380,7 @@ pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: 
 		}
 
 		pub fn forceEnqueueBack(self: *Self, elem: T) ?T {
-			const result = if(self.isFull()) self.dequeueFront() else null;
+			const result = if(self.len == capacity) self.dequeueFront() else null;
 			self.enqueueBackAssumeCapacity(elem);
 			return result;
 		}
@@ -422,7 +422,7 @@ pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: 
 		}
 
 		pub fn dequeue(self: *Self) ?T {
-			if(self.isEmpty()) return null;
+			if(self.len == 0) return null;
 			const result = self.mem[self.startIndex];
 			self.startIndex = (self.startIndex + 1) & mask;
 			self.len -= 1;
@@ -430,7 +430,7 @@ pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: 
 		}
 
 		pub fn dequeueBack(self: *Self) ?T {
-			if(self.isEmpty()) return null;
+			if(self.len == 0) return null;
 			self.len -= 1;
 			return self.mem[self.startIndex + self.len & mask];
 		}
@@ -458,15 +458,6 @@ pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: 
 		pub fn getAtOffset(self: Self, i: usize) ?T {
 			if(i >= self.len) return null;
 			return self.mem[(self.startIndex + i) & mask];
-		}
-
-		pub fn isEmpty(self: Self) bool {
-			return self.len == 0;
-		}
-
-		pub fn isFull(self: Self) bool {
-			std.debug.assert(self.len <= capacity);
-			return self.len == capacity;
 		}
 	};
 }
