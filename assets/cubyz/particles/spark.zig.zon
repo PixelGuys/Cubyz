@@ -1,4 +1,4 @@
 .{
-    .texture = "cubyz:spark",
-    .animationFrames = 4,
+	.texture = "cubyz:spark",
+	.animationFrames = 4,
 }

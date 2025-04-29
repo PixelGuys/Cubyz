@@ -229,7 +229,7 @@ pub const ParticleSystem = struct {
 				particle.pos += vel;
 			}
 
-			// TODO: optimize test
+			// TODO: optimize
 			const intPos: Vec3i = @intFromFloat(@floor(particle.pos));
 			const light: [6]u8 = main.renderer.mesh_storage.getLight(intPos[0], intPos[1], intPos[2]) orelse @splat(0);
 			particle.light = (@as(u32, light[0] >> 3) << 25 |
