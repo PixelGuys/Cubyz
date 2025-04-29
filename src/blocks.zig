@@ -444,11 +444,8 @@ pub const TickEvent = struct {
 			break :blk null;
 		};
 
-		if (_function) |function| {
-			return TickEvent{
-				.function = function,
-				.chance = zon.get(f32, "chance", 1)
-			};
+		if(_function) |function| {
+			return TickEvent{.function = function, .chance = zon.get(f32, "chance", 1)};
 		}
 
 		return null;
