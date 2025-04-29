@@ -55,7 +55,7 @@ pub const ParticleManager = struct {
 		ParticleSystem.deinit();
 	}
 
-	pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
+	pub fn register(_: []const u8, id: []const u8, zon: ZonElement) void {
 		std.log.debug("Registered particle: {s}", .{id});
 		var particleType: ParticleType = undefined;
 
@@ -75,7 +75,6 @@ pub const ParticleManager = struct {
 
 		particleTypeHashmap.put(id, @intCast(types.items.len)) catch unreachable;
 		types.append(particleType);
-		return @intCast(types.items.len - 1);
 	}
 
 	fn readTextureData(_path: []const u8, typ: *ParticleType) void {

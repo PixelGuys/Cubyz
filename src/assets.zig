@@ -338,7 +338,7 @@ fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
 }
 
 fn registerParticle(assetFolder: []const u8, id: []const u8, zon: ZonElement) void {
-	_ = particles_zig.ParticleManager.register(assetFolder, id, zon);
+	particles_zig.ParticleManager.register(assetFolder, id, zon);
 }
 
 fn registerBlock(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void {
