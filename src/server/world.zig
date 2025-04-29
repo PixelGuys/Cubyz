@@ -937,11 +937,11 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	fn tickBlocksInChunk(self: *ServerWorld, _chunk: ?*chunk.ServerChunk) void {
 		if(_chunk) |ch| {
 			for(0..self.tickSpeed) |_| {
-				const blockIndex: u32 = main.random.nextInt(u32, &main.seed);
+				const blockIndex: i32 = main.random.nextInt(i32, &main.seed);
 
-				const x: i32 = @intCast(blockIndex >> chunk.chunkShift2 & chunk.chunkMask);
-				const y: i32 = @intCast(blockIndex >> chunk.chunkShift & chunk.chunkMask);
-				const z: i32 = @intCast(blockIndex & chunk.chunkMask);
+				const x: i32 = blockIndex >> chunk.chunkShift2 & chunk.chunkMask;
+				const y: i32 = blockIndex >> chunk.chunkShift & chunk.chunkMask;
+				const z: i32 = blockIndex & chunk.chunkMask;
 
 				var block = ch.super.getBlock(x, y, z);
 				for(block.tickEvents()) |event| {
