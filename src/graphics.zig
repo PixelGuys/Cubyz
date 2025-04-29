@@ -1924,12 +1924,6 @@ pub const Color = extern struct { // MARK: Color
 	}
 };
 
-pub const ColorRGB = extern struct { // MARK: Color
-	r: u8,
-	g: u8,
-	b: u8,
-};
-
 pub const Image = struct { // MARK: Image
 	var defaultImageData = [4]Color{
 		Color{.r = 0, .g = 0, .b = 0, .a = 255},
