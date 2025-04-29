@@ -1186,6 +1186,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 		self.mutex.unlock();
 
+		if(oldBlock.entityDataClass()) |class| {
+			class.onBreakClient(.{_x, _y, _z}, self.chunk);
+		}
+
 		var neighborBlocks: [6]Block = undefined;
 		@memset(&neighborBlocks, .{.typ = 0, .data = 0});
 
@@ -1211,7 +1215,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 					neighborChunkMesh.chunk.data.setValue(index, neighborBlock);
 					neighborChunkMesh.mutex.unlock();
 					neighborChunkMesh.updateBlockLight(nnx, nny, nnz, neighborBlock, lightRefreshList);
-					appendIfNotContainedAndIncreaseRefCount(regenerateMeshList, neighborChunkMesh);
+					appendIfNotContained(regenerateMeshList, neighborChunkMesh);
 					neighborChunkMesh.mutex.lock();
 				}
 				neighborChunkMesh.mutex.unlock();
@@ -1232,10 +1236,6 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			for(chunk.Neighbor.iterable) |neighbor| {
 				_ = newBlock.mode().updateData(&newBlock, neighbor, neighborBlocks[neighbor.toInt()]);
 			}
-		}
-
-		if(oldBlock.entityDataClass()) |class| {
-			class.onBreakClient(.{_x, _y, _z}, self.chunk);
 		}
 
 		self.mutex.lock();
@@ -1273,10 +1273,10 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 		self.mutex.unlock();
 
-		appendIfNotContainedAndIncreaseRefCount(regenerateMeshList, self);
+		appendIfNotContained(regenerateMeshList, self);
 	}
 
-	fn appendIfNotContainedAndIncreaseRefCount(list: *main.List(*ChunkMesh), mesh: *ChunkMesh) void {
+	fn appendIfNotContained(list: *main.List(*ChunkMesh), mesh: *ChunkMesh) void {
 		for(list.items) |other| {
 			if(other == mesh) {
 				return;
