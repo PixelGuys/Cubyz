@@ -228,7 +228,7 @@ pub const ParticleSystem = struct {
 			} else {
 				particle.pos += vel;
 			}
-			
+
 			// TODO: optimize
 			const intPos: Vec3i = @intFromFloat(@floor(particle.pos));
 			const light: [6]u8 = main.renderer.mesh_storage.getLight(intPos[0], intPos[1], intPos[2]) orelse @splat(0);
@@ -268,7 +268,7 @@ pub const ParticleSystem = struct {
 					const spawnPos: Vec3f = @splat(random.nextFloat(&seed)*shape.size);
 					const offsetPos: Vec3f = vec.normalize(random.nextFloatVectorSigned(3, &seed));
 					particlePos = pos + offsetPos*spawnPos;
-					const speed: Vec3f = @splat(properties.velMin + random.nextFloat(&seed) * properties.velMax);
+					const speed: Vec3f = @splat(properties.velMin + random.nextFloat(&seed)*properties.velMax);
 					const dir: Vec3f = switch(shape.directionMode) {
 						.direction => shape.dir,
 						.scatter => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
@@ -289,7 +289,7 @@ pub const ParticleSystem = struct {
 					vel = dir*speed;
 				},
 			}
-		
+
 			const lifeTime = properties.lifeTimeMin + random.nextFloat(&seed)*properties.lifeTimeMax;
 
 			particles.len += 1;
@@ -312,7 +312,7 @@ pub const ParticleSystem = struct {
 
 		c.glUniform1i(uniforms.textureSampler, 0);
 		c.glUniform1i(uniforms.emissionTextureSampler, 1);
-		
+
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&game.camera.viewMatrix));

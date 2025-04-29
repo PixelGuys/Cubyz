@@ -1209,7 +1209,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	const biome = world.?.playerBiome.load(.monotonic);
 
 	const t = 1 - @as(f32, @floatCast(@exp(-2*deltaTime)));
-	
+
 	timer += deltaTime;
 	if(timer > 5) {
 		particles.ParticleSystem.spawn("cubyz:spark", 1000, .{0, 0, 0}, 0.4, true, .{
