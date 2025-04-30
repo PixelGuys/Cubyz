@@ -349,12 +349,12 @@ pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: 
 		}
 
 		pub fn enqueueFront(self: *Self, elem: T) !void {
-			if(self.len == capacity) return error.OutOfMemory;
+			if(self.len >= capacity) return error.OutOfMemory;
 			self.enqueueFrontAssumeCapacity(elem);
 		}
 
 		pub fn forceEnqueueFront(self: *Self, elem: T) ?T {
-			const result = if(self.len == capacity) self.dequeueBack() else null;
+			const result = if(self.len >= capacity) self.dequeueBack() else null;
 			self.enqueueFrontAssumeCapacity(elem);
 			return result;
 		}
@@ -370,7 +370,7 @@ pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: 
 		}
 
 		pub fn enqueueBack(self: *Self, elem: T) !void {
-			if(self.len == capacity) return error.OutOfMemory;
+			if(self.len >= capacity) return error.OutOfMemory;
 			self.enqueueBackAssumeCapacity(elem);
 		}
 
@@ -380,7 +380,7 @@ pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: 
 		}
 
 		pub fn forceEnqueueBack(self: *Self, elem: T) ?T {
-			const result = if(self.len == capacity) self.dequeueFront() else null;
+			const result = if(self.len >= capacity) self.dequeueFront() else null;
 			self.enqueueBackAssumeCapacity(elem);
 			return result;
 		}

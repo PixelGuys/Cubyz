@@ -66,6 +66,9 @@ pub const History = struct {
 	}
 	fn moveUp(self: *History) void {
 		if(self.up.dequeueFront()) |msg| {
+			if(msg.len == 0) {
+				return self.moveUp();
+			}
 			if(self.down.forceEnqueueFront(msg)) |old| {
 				main.globalAllocator.free(old);
 			}
@@ -73,12 +76,15 @@ pub const History = struct {
 	}
 	fn moveDown(self: *History) void {
 		if(self.down.dequeueFront()) |msg| {
+			if(msg.len == 0) {
+				return self.moveDown();
+			}
 			if(self.up.forceEnqueueFront(msg)) |old| {
 				main.globalAllocator.free(old);
 			}
 		}
 	}
-	fn flush(self: *History) void {
+	fn flushUp(self: *History) void {
 		while(self.down.dequeueFront()) |msg| {
 			if(msg.len == 0) {
 				continue;
@@ -90,7 +96,7 @@ pub const History = struct {
 		}
 	}
 	pub fn isDuplicate(self: *History, new: []const u8) bool {
-		if(new.len == 0) return true;
+		if(new.len == 0 and self.down.len != 0) return true;
 		if(self.down.peekFront()) |msg| {
 			if(std.mem.eql(u8, msg, new)) return true;
 		}
@@ -104,7 +110,7 @@ pub const History = struct {
 			main.globalAllocator.free(old);
 		}
 	}
-	fn pushUp(self: *History, new: []const u8) void {
+	pub fn pushUp(self: *History, new: []const u8) void {
 		if(self.up.forceEnqueueFront(new)) |old| {
 			main.globalAllocator.free(old);
 		}
@@ -268,7 +274,7 @@ pub fn sendMessage(_: usize) void {
 			std.log.err("Chat message is too long with {}/{} characters. Limits are 1000/10000", .{main.graphics.TextBuffer.Parser.countVisibleCharacters(data), data.len});
 		} else {
 			const isDuplicate = messageHistory.isDuplicate(data);
-			messageHistory.flush();
+			messageHistory.flushUp();
 			if(!isDuplicate and !messageHistory.isDuplicate(data)) {
 				messageHistory.pushUp(main.globalAllocator.dupe(u8, data));
 			}
