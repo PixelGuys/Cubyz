@@ -96,7 +96,7 @@ pub const History = struct {
 		}
 	}
 	pub fn isDuplicate(self: *History, new: []const u8) bool {
-		if(new.len == 0 and self.down.len != 0) return true;
+		if(new.len == 0) return true;
 		if(self.down.peekFront()) |msg| {
 			if(std.mem.eql(u8, msg, new)) return true;
 		}
@@ -186,9 +186,8 @@ pub fn loadNextHistoryEntry(_: usize) void {
 			messageHistory.pushDown(msg);
 		}
 	}
-	if(messageHistory.down.peekFront()) |msg| {
-		input.setString(msg);
-	}
+	const msg = messageHistory.down.peekFront() orelse "";
+	input.setString(msg);
 }
 
 pub fn loadPreviousHistoryEntry(_: usize) void {
@@ -202,9 +201,8 @@ pub fn loadPreviousHistoryEntry(_: usize) void {
 		}
 		messageHistory.pushUp(main.globalAllocator.dupe(u8, input.currentString.items));
 	}
-	if(messageHistory.down.peekFront()) |msg| {
-		input.setString(msg);
-	}
+	const msg = messageHistory.down.peekFront() orelse "";
+	input.setString(msg);
 }
 
 pub fn onClose() void {
@@ -273,9 +271,8 @@ pub fn sendMessage(_: usize) void {
 		if(data.len > 10000 or main.graphics.TextBuffer.Parser.countVisibleCharacters(data) > 1000) {
 			std.log.err("Chat message is too long with {}/{} characters. Limits are 1000/10000", .{main.graphics.TextBuffer.Parser.countVisibleCharacters(data), data.len});
 		} else {
-			const isDuplicate = messageHistory.isDuplicate(data);
 			messageHistory.flushUp();
-			if(!isDuplicate and !messageHistory.isDuplicate(data)) {
+			if(!messageHistory.isDuplicate(data)) {
 				messageHistory.pushUp(main.globalAllocator.dupe(u8, data));
 			}
 
