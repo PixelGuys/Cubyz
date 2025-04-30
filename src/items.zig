@@ -461,9 +461,10 @@ pub const Tool = struct { // MARK: Tool
 	}
 
 	pub fn deinit(self: *const Tool) void {
-		if(self.texture) |texture| {
-			texture.deinit();
-		}
+		// TODO: This is leaking textures!
+		//if(self.texture) |texture| {
+		//texture.deinit();
+		//}
 		self.image.deinit(main.globalAllocator);
 		self.tooltip.deinit();
 		main.globalAllocator.free(self.modifiers);
@@ -520,6 +521,7 @@ pub const Tool = struct { // MARK: Tool
 		var items: [25]?*const BaseItem = undefined;
 		for(&items, 0..) |*item, i| {
 			item.* = reverseIndices.get(zonArray.getAtIndex([]const u8, i, "null"));
+			if(item.* != null and item.*.?.material == null) item.* = null;
 		}
 		return items;
 	}

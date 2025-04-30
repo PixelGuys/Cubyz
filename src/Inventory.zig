@@ -13,6 +13,7 @@ const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
+const Neighbor = main.chunk.Neighbor;
 
 const Gamemode = main.game.Gamemode;
 
@@ -301,7 +302,7 @@ pub const Sync = struct { // MARK: Sync
 		fn createInventory(user: *main.server.User, clientId: u32, len: usize, typ: Inventory.Type, source: Source) void {
 			main.utils.assertLocked(&mutex);
 			switch(source) {
-				.sharedTestingInventory, .recipe => {
+				.sharedTestingInventory, .recipe, .blockInventory => {
 					for(inventories.items) |*inv| {
 						if(std.meta.eql(inv.source, source)) {
 							inv.addUser(user, clientId);
@@ -313,6 +314,9 @@ pub const Sync = struct { // MARK: Sync
 				.alreadyFreed => unreachable,
 			}
 			const inventory = ServerInventory.init(len, typ, source);
+
+			inventories.items[inventory.inv.id] = inventory;
+			inventories.items[inventory.inv.id].addUser(user, clientId);
 
 			switch(source) {
 				.sharedTestingInventory => {},
@@ -339,12 +343,11 @@ pub const Sync = struct { // MARK: Sync
 					inventory.inv._items[inventory.inv._items.len - 1].amount = recipe.resultAmount;
 					inventory.inv._items[inventory.inv._items.len - 1].item = .{.baseItem = recipe.resultItem};
 				},
+				// TODO: Load block inventory data from save
+				.blockInventory => {},
 				.other => {},
 				.alreadyFreed => unreachable,
 			}
-
-			inventories.items[inventory.inv.id] = inventory;
-			inventories.items[inventory.inv.id].addUser(user, clientId);
 		}
 
 		fn closeInventory(user: *main.server.User, clientId: u32) !void {
@@ -1095,6 +1098,9 @@ pub const Command = struct { // MARK: Command
 						writer.writeWithDelimiter(val.sourceItems[i].id, 0);
 					}
 				},
+				.blockInventory => |val| {
+					writer.writeVec(Vec3i, val);
+				},
 				.sharedTestingInventory, .other => {},
 				.alreadyFreed => unreachable,
 			}
@@ -1139,6 +1145,7 @@ pub const Command = struct { // MARK: Command
 						return error.Invalid;
 					},
 				},
+				.blockInventory => .{.blockInventory = try reader.readVec(Vec3i)},
 				.other => .{.other = {}},
 				.alreadyFreed => unreachable,
 			};
@@ -1555,8 +1562,79 @@ pub const Command = struct { // MARK: Command
 	const UpdateBlock = struct { // MARK: UpdateBlock
 		source: InventoryAndSlot,
 		pos: Vec3i,
+		dropLocation: BlockDropLocation,
 		oldBlock: Block,
 		newBlock: Block,
+
+		const half = @as(Vec3f, @splat(0.5));
+		const itemHitBoxMargin: f32 = @floatCast(main.itemdrop.ItemDropManager.radius);
+		const itemHitBoxMarginVec: Vec3f = @splat(itemHitBoxMargin);
+
+		const BlockDropLocation = struct {
+			dir: Neighbor,
+			min: Vec3f,
+			max: Vec3f,
+
+			pub fn drop(self: BlockDropLocation, pos: Vec3i, newBlock: Block, _drop: main.blocks.BlockDrop) void {
+				if(newBlock.collide()) {
+					self.dropOutside(pos, _drop);
+				} else {
+					self.dropInside(pos, _drop);
+				}
+			}
+			fn dropInside(self: BlockDropLocation, pos: Vec3i, _drop: main.blocks.BlockDrop) void {
+				for(_drop.items) |itemStack| {
+					main.server.world.?.drop(itemStack.clone(), self.insidePos(pos), self.dropDir(), self.dropVelocity());
+				}
+			}
+			fn insidePos(self: BlockDropLocation, _pos: Vec3i) Vec3d {
+				const pos: Vec3d = @floatFromInt(_pos);
+				return pos + self.randomOffset();
+			}
+			fn randomOffset(self: BlockDropLocation) Vec3f {
+				const max = @min(@as(Vec3f, @splat(1.0)) - itemHitBoxMarginVec, @max(itemHitBoxMarginVec, self.max - itemHitBoxMarginVec));
+				const min = @min(max, @max(itemHitBoxMarginVec, self.min + itemHitBoxMarginVec));
+				const center = (max + min)*half;
+				const width = (max - min)*half;
+				return center + width*main.random.nextFloatVectorSigned(3, &main.seed)*half;
+			}
+			fn dropOutside(self: BlockDropLocation, pos: Vec3i, _drop: main.blocks.BlockDrop) void {
+				for(_drop.items) |itemStack| {
+					main.server.world.?.drop(itemStack.clone(), self.outsidePos(pos), self.dropDir(), self.dropVelocity());
+				}
+			}
+			fn outsidePos(self: BlockDropLocation, _pos: Vec3i) Vec3d {
+				const pos: Vec3d = @floatFromInt(_pos);
+				return pos + self.randomOffset()*self.minor() + self.directionOffset()*self.major() + self.direction()*itemHitBoxMarginVec;
+			}
+			fn directionOffset(self: BlockDropLocation) Vec3d {
+				return half + self.direction()*half;
+			}
+			inline fn direction(self: BlockDropLocation) Vec3d {
+				return @floatFromInt(self.dir.relPos());
+			}
+			inline fn major(self: BlockDropLocation) Vec3d {
+				return @floatFromInt(@abs(self.dir.relPos()));
+			}
+			inline fn minor(self: BlockDropLocation) Vec3d {
+				return @floatFromInt(self.dir.orthogonalComponents());
+			}
+			fn dropDir(self: BlockDropLocation) Vec3f {
+				const randomnessVec: Vec3f = main.random.nextFloatVectorSigned(3, &main.seed)*@as(Vec3f, @splat(0.25));
+				const directionVec: Vec3f = @as(Vec3f, @floatCast(self.direction())) + randomnessVec;
+				const z: f32 = directionVec[2];
+				return vec.normalize(Vec3f{
+					directionVec[0],
+					directionVec[1],
+					if(z < -0.5) 0 else if(z < 0.0) (z + 0.5)*4.0 else z + 2.0,
+				});
+			}
+			fn dropVelocity(self: BlockDropLocation) f32 {
+				const velocity = 3.5 + main.random.nextFloatSigned(&main.seed)*0.5;
+				if(self.direction()[2] < -0.5) return velocity*0.333;
+				return velocity;
+			}
+		};
 
 		fn run(self: UpdateBlock, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, gamemode: Gamemode) error{serverFailure}!void {
 			if(self.source.inv.type != .normal) return;
@@ -1610,7 +1688,7 @@ pub const Command = struct { // MARK: Command
 						for(0..amount) |_| {
 							for(self.newBlock.blockDrops()) |drop| {
 								if(drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
-									blockDrop(self.pos, drop);
+									self.dropLocation.drop(self.pos, self.newBlock, drop);
 								}
 							}
 						}
@@ -1621,25 +1699,18 @@ pub const Command = struct { // MARK: Command
 			if(side == .server and gamemode != .creative and self.oldBlock.typ != self.newBlock.typ and shouldDropSourceBlockOnSuccess) {
 				for(self.oldBlock.blockDrops()) |drop| {
 					if(drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
-						blockDrop(self.pos, drop);
+						self.dropLocation.drop(self.pos, self.newBlock, drop);
 					}
 				}
 			}
 		}
 
-		fn blockDrop(pos: Vec3i, drop: main.blocks.BlockDrop) void {
-			for(drop.items) |itemStack| {
-				const dropPos = @as(Vec3d, @floatFromInt(pos)) + @as(Vec3d, @splat(0.5)) + main.random.nextDoubleVectorSigned(3, &main.seed)*@as(Vec3d, @splat(0.5 - main.itemdrop.ItemDropManager.radius));
-				const dir = vec.normalize(main.random.nextFloatVectorSigned(3, &main.seed));
-				main.server.world.?.drop(itemStack.clone(), dropPos, dir, main.random.nextFloat(&main.seed)*1.5);
-			}
-		}
-
 		fn serialize(self: UpdateBlock, writer: *utils.BinaryWriter) void {
 			self.source.write(writer);
-			writer.writeInt(i32, self.pos[0]);
-			writer.writeInt(i32, self.pos[1]);
-			writer.writeInt(i32, self.pos[2]);
+			writer.writeVec(Vec3i, self.pos);
+			writer.writeEnum(Neighbor, self.dropLocation.dir);
+			writer.writeVec(Vec3f, self.dropLocation.min);
+			writer.writeVec(Vec3f, self.dropLocation.max);
 			writer.writeInt(u32, @as(u32, @bitCast(self.oldBlock)));
 			writer.writeInt(u32, @as(u32, @bitCast(self.newBlock)));
 		}
@@ -1647,10 +1718,11 @@ pub const Command = struct { // MARK: Command
 		fn deserialize(reader: *utils.BinaryReader, side: Side, user: ?*main.server.User) !UpdateBlock {
 			return .{
 				.source = try InventoryAndSlot.read(reader, side, user),
-				.pos = .{
-					try reader.readInt(i32),
-					try reader.readInt(i32),
-					try reader.readInt(i32),
+				.pos = try reader.readVec(Vec3i),
+				.dropLocation = .{
+					.dir = try reader.readEnum(Neighbor),
+					.min = try reader.readVec(Vec3f),
+					.max = try reader.readVec(Vec3f),
 				},
 				.oldBlock = @bitCast(try reader.readInt(u32)),
 				.newBlock = @bitCast(try reader.readInt(u32)),
@@ -1713,6 +1785,7 @@ const SourceType = enum(u8) {
 	sharedTestingInventory = 2,
 	hand = 3,
 	recipe = 4,
+	blockInventory = 5,
 	other = 0xff, // TODO: List every type separately here.
 };
 const Source = union(SourceType) {
@@ -1721,6 +1794,7 @@ const Source = union(SourceType) {
 	sharedTestingInventory: void,
 	hand: u32,
 	recipe: *const main.items.Recipe,
+	blockInventory: Vec3i,
 	other: void,
 };
 
