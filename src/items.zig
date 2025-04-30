@@ -463,7 +463,7 @@ pub const Tool = struct { // MARK: Tool
 	pub fn deinit(self: *const Tool) void {
 		// TODO: This is leaking textures!
 		//if(self.texture) |texture| {
-		//texture.deinit();
+			//texture.deinit();
 		//}
 		self.image.deinit(main.globalAllocator);
 		self.tooltip.deinit();
