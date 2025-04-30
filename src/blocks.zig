@@ -256,6 +256,10 @@ pub fn hasRegistered(id: []const u8) bool {
 pub const Block = packed struct { // MARK: Block
 	typ: u16,
 	data: u16,
+
+	pub const healingRatio: f32 = 0.01;
+	pub const Air = Block{.typ = 0, .data = 0};
+
 	pub fn toInt(self: Block) u32 {
 		return @as(u32, self.typ) | @as(u32, self.data) << 16;
 	}
