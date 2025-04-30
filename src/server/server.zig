@@ -512,7 +512,7 @@ pub fn connectInternal(user: *User) void {
 	userMutex.unlock();
 	user.conn.handShakeState.store(main.network.Protocols.handShake.stepComplete, .monotonic);
 
-	// main.network.Protocols.genericUpdate.sendDamageBlock(user.conn, .sync, null, null);
+	main.network.Protocols.genericUpdate.sendDamageBlock(user.conn, .sync, null, null);
 }
 
 pub fn messageFrom(msg: []const u8, source: *User) void { // MARK: message

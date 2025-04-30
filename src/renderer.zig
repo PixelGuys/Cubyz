@@ -1081,7 +1081,17 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 					currentSwingProgress -= currentSwingTime;
 					main.items.Inventory.Sync.ClientSide.mutex.unlock();
 					main.items.Inventory.Sync.ClientSide.executeCommand(.{
-						.damageBlock = .{.source = .{.inv = inventory, .slot = slot}, .pos = selectedPos, .oldBlock = oldBlock, .newBlock = newBlock},
+						.damageBlock = .{
+							.source = .{.inv = inventory, .slot = slot},
+							.pos = selectedPos,
+							.dropLocation = .{
+								.dir = selectionFace,
+								.min = selectionMin,
+								.max = selectionMax,
+							},
+							.oldBlock = oldBlock,
+							.newBlock = newBlock,
+						},
 					});
 					main.items.Inventory.Sync.ClientSide.mutex.lock();
 				}

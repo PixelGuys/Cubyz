@@ -1783,6 +1783,7 @@ pub const Command = struct { // MARK: Command
 	const DamageBlock = struct {
 		source: InventoryAndSlot,
 		pos: Vec3i,
+		dropLocation: UpdateBlock.BlockDropLocation,
 		oldBlock: Block,
 		newBlock: Block,
 
@@ -1857,7 +1858,7 @@ pub const Command = struct { // MARK: Command
 					if(self.oldBlock.typ != self.newBlock.typ and shouldDropSourceBlockOnSuccess) {
 						for(self.oldBlock.blockDrops()) |drop| {
 							if(drop.chance == 1 or main.random.nextFloat(&main.seed) < drop.chance) {
-								blockDrop(self.pos, drop);
+								self.dropLocation.drop(self.pos, self.newBlock, drop);
 							}
 						}
 					}
@@ -1868,19 +1869,12 @@ pub const Command = struct { // MARK: Command
 			}
 		}
 
-		fn blockDrop(pos: Vec3i, drop: main.blocks.BlockDrop) void {
-			for(drop.items) |itemStack| {
-				const dropPos = @as(Vec3d, @floatFromInt(pos)) + @as(Vec3d, @splat(0.5)) + main.random.nextDoubleVectorSigned(3, &main.seed)*@as(Vec3d, @splat(0.5 - main.itemdrop.ItemDropManager.radius));
-				const dir = vec.normalize(main.random.nextFloatVectorSigned(3, &main.seed));
-				main.server.world.?.drop(itemStack.clone(), dropPos, dir, main.random.nextFloat(&main.seed)*1.5);
-			}
-		}
-
 		fn serialize(self: DamageBlock, writer: *utils.BinaryWriter) void {
 			self.source.write(writer);
-			writer.writeInt(i32, self.pos[0]);
-			writer.writeInt(i32, self.pos[1]);
-			writer.writeInt(i32, self.pos[2]);
+			writer.writeVec(Vec3i, self.pos);
+			writer.writeEnum(Neighbor, self.dropLocation.dir);
+			writer.writeVec(Vec3f, self.dropLocation.min);
+			writer.writeVec(Vec3f, self.dropLocation.max);
 			writer.writeInt(u32, @as(u32, @bitCast(self.oldBlock)));
 			writer.writeInt(u32, @as(u32, @bitCast(self.newBlock)));
 		}
@@ -1888,10 +1882,11 @@ pub const Command = struct { // MARK: Command
 		fn deserialize(reader: *utils.BinaryReader, side: Side, user: ?*main.server.User) !DamageBlock {
 			return .{
 				.source = try InventoryAndSlot.read(reader, side, user),
-				.pos = .{
-					try reader.readInt(i32),
-					try reader.readInt(i32),
-					try reader.readInt(i32),
+				.pos = try reader.readVec(Vec3i),
+				.dropLocation = .{
+					.dir = try reader.readEnum(Neighbor),
+					.min = try reader.readVec(Vec3f),
+					.max = try reader.readVec(Vec3f),
 				},
 				.oldBlock = @bitCast(try reader.readInt(u32)),
 				.newBlock = @bitCast(try reader.readInt(u32)),
