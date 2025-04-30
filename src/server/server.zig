@@ -265,6 +265,17 @@ pub const User = struct { // MARK: User
 		defer main.stackAllocator.free(msg);
 		self.sendRawMessage(msg);
 	}
+
+	pub fn sendWarningAndLog(user: *User, comptime fmt: []const u8, args: anytype) void {
+		std.log.warn(fmt, args);
+		user.sendMessage("#ff0000" ++ fmt, args);
+	}
+
+	pub fn sendInfoAndLog(user: *User, comptime fmt: []const u8, args: anytype) void {
+		std.log.info(fmt, args);
+		user.sendMessage("#00ff00" ++ fmt, args);
+	}
+
 	fn sendRawMessage(self: *User, msg: []const u8) void {
 		main.network.Protocols.chat.send(self.conn, msg);
 	}
