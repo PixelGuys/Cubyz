@@ -1198,7 +1198,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			const ny = y + neighbor.relY();
 			const nz = z + neighbor.relZ();
 
-			if(!self.chunk.liesInChunk(nx, ny, nz)) {
+			if(nx & chunk.chunkMask != nx or ny & chunk.chunkMask != ny or nz & chunk.chunkMask != nz) {
 				const nnx: u5 = @intCast(nx & chunk.chunkMask);
 				const nny: u5 = @intCast(ny & chunk.chunkMask);
 				const nnz: u5 = @intCast(nz & chunk.chunkMask);
