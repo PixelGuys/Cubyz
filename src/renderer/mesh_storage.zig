@@ -1076,7 +1076,7 @@ const BlockDamage = struct {
 				continue;
 			}
 
-			const newRemainingHealth: f32 = @floatCast(remainingHealth + deltaTime*maxBlockHealth*block.healingRatio());
+			const newRemainingHealth: f32 = @floatCast(remainingHealth + deltaTime*maxBlockHealth*blocks.Block.healingRatio);
 			// TODO: If we allow some blocks to not heal we need to avoid re-adding the animation.
 			std.debug.assert(newRemainingHealth != remainingHealth);
 

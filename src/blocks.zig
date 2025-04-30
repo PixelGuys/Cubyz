@@ -257,6 +257,7 @@ pub const Block = packed struct { // MARK: Block
 	typ: u16,
 	data: u16,
 
+	pub const healingRatio: f32 = 0.01;
 	pub const Air = Block{.typ = 0, .data = 0};
 
 	pub fn toInt(self: Block) u32 {
@@ -364,10 +365,6 @@ pub const Block = packed struct { // MARK: Block
 
 	pub inline fn touchFunction(self: Block) ?*const TouchFunction {
 		return _touchFunction[self.typ];
-	}
-
-	pub inline fn healingRatio(_: Block) f32 {
-		return 0.05;
 	}
 
 	pub fn entityDataClass(self: Block) ?*EntityDataClass {

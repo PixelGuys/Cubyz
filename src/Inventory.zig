@@ -1792,9 +1792,7 @@ pub const Command = struct { // MARK: Command
 			if(gamemode == .creative) return;
 
 			const stack = self.source.ref();
-			if(stack.item == null or stack.item.? != .tool) return;
-
-			const tool = stack.item.?.tool;
+			const isTool = stack.item != null and stack.item.? == .tool;
 
 			var shouldDropSourceBlockOnSuccess: bool = true;
 			const costOfChange = self.oldBlock.canBeChangedInto(self.newBlock, stack.*, &shouldDropSourceBlockOnSuccess);
@@ -1802,8 +1800,8 @@ pub const Command = struct { // MARK: Command
 			// Check if we can change it:
 			if(!switch(costOfChange) {
 				.no => false,
-				.yes => false,
-				.yes_costsDurability => true,
+				.yes => true,
+				.yes_costsDurability => isTool,
 				.yes_costsItems => false,
 				.yes_dropsItems => false,
 			}) {
@@ -1814,12 +1812,21 @@ pub const Command = struct { // MARK: Command
 				return;
 			}
 
-			const damageDelta: f32 = tool.getBlockDamage(self.oldBlock) - self.oldBlock.blockResistance();
+			const damageDelta: f32 = if(isTool) stack.item.?.tool.getBlockDamage(self.oldBlock) - self.oldBlock.blockResistance() else 1;
 			if(damageDelta <= 0) return;
 
-			const maxBlockHealth: f32 = self.oldBlock.blockHealth();
-			std.debug.assert(tool.durability > 0);
+			switch(costOfChange) {
+				.yes => {},
+				.yes_costsDurability => {
+					cmd.executeBaseOperation(allocator, .{.useDurability = .{
+						.source = self.source,
+						.durability = 1,
+					}}, side);
+				},
+				else => unreachable,
+			}
 
+			const maxBlockHealth: f32 = self.oldBlock.blockHealth();
 			var remainingHealth: f32 = 0.0;
 
 			if(side == .server) {
@@ -1841,11 +1848,6 @@ pub const Command = struct { // MARK: Command
 
 				main.renderer.mesh_storage.blockDamage.set(self.pos, remainingHealth);
 			}
-
-			cmd.executeBaseOperation(allocator, .{.useDurability = .{
-				.source = self.source,
-				.durability = 1,
-			}}, side);
 
 			if(side == .server) {
 				if(remainingHealth <= 0) {

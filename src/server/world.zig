@@ -499,7 +499,7 @@ pub const BlockDamage = struct { // MARK: BlockDamage
 				continue;
 			}
 
-			const newRemainingHealth: f32 = @floatCast(remainingHealth + deltaTime*maxBlockHealth*block.healingRatio());
+			const newRemainingHealth: f32 = @floatCast(remainingHealth + deltaTime*maxBlockHealth*Block.healingRatio);
 			// TODO: If we allow some blocks to not heal we need to avoid re-sending the value.
 			std.debug.assert(newRemainingHealth != remainingHealth);
 

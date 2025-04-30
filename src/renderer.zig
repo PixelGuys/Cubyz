@@ -1025,88 +1025,78 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		}
 	}
 
-	pub fn resetBlockBreaking() void {
-		const selectedPos = selectedBlockPos orelse return;
-		lastSelectedBlockPos = selectedPos;
-		currentSwingProgress = 0;
-		currentSwingTime = 0;
-	}
-
 	pub fn breakBlock(inventory: main.items.Inventory, slot: u32, deltaTime: f64) void {
-		const selectedPos = selectedBlockPos orelse return;
-
-		const stack = inventory.getStack(slot);
-		const isSelectionWand = stack.item != null and stack.item.? == .baseItem and std.mem.eql(u8, stack.item.?.baseItem.id, "cubyz:selection_wand");
-		if(isSelectionWand) {
-			game.Player.selectionPosition1 = selectedPos;
-			main.network.Protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos1, selectedPos);
-			return;
-		}
-
-		if(@reduce(.Or, lastSelectedBlockPos != selectedPos)) {
-			resetBlockBreaking();
-		}
-
-		const oldBlock = mesh_storage.getBlock(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
-		const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
-
-		main.items.Inventory.Sync.ClientSide.mutex.lock();
-
-		if(!game.Player.isCreative()) {
-			var damage: f32 = 1;
-
-			const isTool = stack.item != null and stack.item.? == .tool;
-			if(isTool) {
-				damage = stack.item.?.tool.getBlockDamage(oldBlock);
-			}
-
-			const isChisel = stack.item != null and stack.item.? == .baseItem and std.mem.eql(u8, stack.item.?.baseItem.id, "cubyz:chisel");
-			if(isChisel and oldBlock.mode() == main.rotation.getByID("stairs")) { // TODO: Remove once the chisel is a tool.
-				damage = oldBlock.blockHealth();
-			}
-
-			damage -= oldBlock.blockResistance();
-
-			if(damage > 0) {
-				const swingTime = if(isTool) stack.item.?.tool.swingTime else 0.5;
-				if(currentSwingTime != swingTime) {
-					currentSwingProgress = 0;
-					currentSwingTime = swingTime;
-				}
-				var newBlock = oldBlock;
-				oldBlock.mode().onBlockBreaking(inventory.getStack(slot).item, relPos, lastDir, &newBlock);
-
-				currentSwingProgress += @floatCast(deltaTime);
-				while(currentSwingProgress > currentSwingTime) {
-					currentSwingProgress -= currentSwingTime;
-					main.items.Inventory.Sync.ClientSide.mutex.unlock();
-					main.items.Inventory.Sync.ClientSide.executeCommand(.{
-						.damageBlock = .{
-							.source = .{.inv = inventory, .slot = slot},
-							.pos = selectedPos,
-							.dropLocation = .{
-								.dir = selectionFace,
-								.min = selectionMin,
-								.max = selectionMax,
-							},
-							.oldBlock = oldBlock,
-							.newBlock = newBlock,
-						},
-					});
-					main.items.Inventory.Sync.ClientSide.mutex.lock();
-				}
-				main.items.Inventory.Sync.ClientSide.mutex.unlock();
-			} else {
-				main.items.Inventory.Sync.ClientSide.mutex.unlock();
+		if(selectedBlockPos) |selectedPos| {
+			const stack = inventory.getStack(slot);
+			const isSelectionWand = stack.item != null and stack.item.? == .baseItem and std.mem.eql(u8, stack.item.?.baseItem.id, "cubyz:selection_wand");
+			if(isSelectionWand) {
+				game.Player.selectionPosition1 = selectedPos;
+				main.network.Protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos1, selectedPos);
 				return;
 			}
-		} else {
-			var newBlock = oldBlock;
-			oldBlock.mode().onBlockBreaking(inventory.getStack(slot).item, relPos, lastDir, &newBlock);
+
+			if(@reduce(.Or, lastSelectedBlockPos != selectedPos)) {
+				lastSelectedBlockPos = selectedPos;
+				currentBlockProgress = 0;
+				currentSwingProgress = 0;
+				currentSwingTime = 0;
+			}
+			const block = mesh_storage.getBlock(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
+			const relPos: Vec3f = @floatCast(lastPos - @as(Vec3d, @floatFromInt(selectedPos)));
+
+			main.items.Inventory.Sync.ClientSide.mutex.lock();
+			if(!game.Player.isCreative()) {
+				var damage: f32 = 1;
+				const isTool = stack.item != null and stack.item.? == .tool;
+				if(isTool) {
+					damage = stack.item.?.tool.getBlockDamage(block);
+				}
+				const isChisel = stack.item != null and stack.item.? == .baseItem and std.mem.eql(u8, stack.item.?.baseItem.id, "cubyz:chisel");
+				if(isChisel and block.mode() == main.rotation.getByID("stairs")) { // TODO: Remove once the chisel is a tool.
+					damage = block.blockHealth();
+				}
+				damage -= block.blockResistance();
+				if(damage > 0) {
+					const swingTime = if(isTool) stack.item.?.tool.swingTime else 0.5;
+					if(currentSwingTime != swingTime) {
+						currentSwingProgress = 0;
+						currentSwingTime = swingTime;
+					}
+					var newBlock = block;
+					block.mode().onBlockBreaking(inventory.getStack(slot).item, relPos, lastDir, &newBlock);
+					currentSwingProgress += @floatCast(deltaTime);
+					while(currentSwingProgress > currentSwingTime) {
+						currentSwingProgress -= currentSwingTime;
+						main.items.Inventory.Sync.ClientSide.mutex.unlock();
+						main.items.Inventory.Sync.ClientSide.executeCommand(.{
+							.damageBlock = .{
+								.source = .{.inv = inventory, .slot = slot},
+								.pos = selectedPos,
+								.dropLocation = .{
+									.dir = selectionFace,
+									.min = selectionMin,
+									.max = selectionMax,
+								},
+								.oldBlock = block,
+								.newBlock = newBlock,
+							},
+						});
+						main.items.Inventory.Sync.ClientSide.mutex.lock();
+					}
+					main.items.Inventory.Sync.ClientSide.mutex.unlock();
+					return;
+				} else {
+					main.items.Inventory.Sync.ClientSide.mutex.unlock();
+					return;
+				}
+			}
+
+			var newBlock = block;
+			block.mode().onBlockBreaking(inventory.getStack(slot).item, relPos, lastDir, &newBlock);
 			main.items.Inventory.Sync.ClientSide.mutex.unlock();
 
-			if(newBlock != oldBlock) {
-				updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], oldBlock, newBlock);
+			if(newBlock != block) {
+				updateBlockAndSendUpdate(inventory, slot, selectedPos[0], selectedPos[1], selectedPos[2], block, newBlock);
 			}
 		}
 	}
