@@ -605,7 +605,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	// models:
 	modelIterator = entityModels.iterator();
 	while(modelIterator.next()) |entry| {
-		_ = main.models.registerEntityModel(entry.key_ptr.*, entry.value_ptr.*);
+		entity_zig.registerModel(entry.key_ptr.*, entry.value_ptr.*);
 	}
 
 	iterator = entities.iterator();

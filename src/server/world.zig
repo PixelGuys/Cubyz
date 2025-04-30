@@ -834,8 +834,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.itemDropManager.loadFrom(zon);
 	}
 
-	pub fn addEntity(self: *ServerWorld, entity: Entity) void {
+	pub fn addEntity(self: *ServerWorld, entity: Entity) *Entity {
 		self.entities.append(entity);
+		return &self.entities.mem[self.entities.len - 1];
 	}
 
 	pub fn findPlayer(self: *ServerWorld, user: *User) void {
@@ -848,7 +849,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		const playerData = files.readToZon(main.stackAllocator, path) catch .null;
 		defer playerData.deinit(main.stackAllocator);
-		const player = &user.player;
+		const player = user.player;
 		if(playerData == .null) {
 			player.pos = @floatFromInt(self.spawn);
 

@@ -87,7 +87,7 @@ pub const User = struct { // MARK: User
 	const simulationSize = 2*maxSimulationDistance;
 	const simulationMask = simulationSize - 1;
 	conn: *Connection = undefined,
-	player: Entity = .{},
+	player: *Entity = undefined,
 	timeDifference: utils.TimeDifference = .{},
 	interpolation: utils.GenericInterpolation(3) = undefined,
 	lastTime: i16 = undefined,
@@ -117,6 +117,7 @@ pub const User = struct { // MARK: User
 		const self = main.globalAllocator.create(User);
 		errdefer main.globalAllocator.destroy(self);
 		self.* = .{};
+		self.player = world.?.addEntity(.{});
 		self.player.entityType = main.entity.getTypeById("cubyz:player");
 		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
 		self.interpolation.init(@ptrCast(&self.player.pos), @ptrCast(&self.player.vel));
@@ -162,6 +163,7 @@ pub const User = struct { // MARK: User
 	var freeId: u32 = 0;
 	pub fn initPlayer(self: *User, name: []const u8) void {
 		self.id = freeId;
+		self.player.id = freeId;
 		freeId += 1;
 
 		self.name = main.globalAllocator.dupe(u8, name);
@@ -400,26 +402,13 @@ fn update() void { // MARK: update()
 	var entityData: main.List(main.entity.EntityNetworkData) = .init(main.stackAllocator);
 	defer entityData.deinit();
 
-	for(userList) |user| {
-		const id = user.id; // TODO
-		entityData.append(.{
-			.id = id,
-			.pos = user.player.pos,
-			.vel = user.player.vel,
-			.rot = user.player.rot,
-		});
-	}
 	for(world.?.entities.items()) |entity| {
-		if (entity.entityType == main.entity.getTypeById("cubyz:player")) {
-			continue;
-		}
 		entityData.append(.{
 			.id = entity.id,
 			.pos = entity.pos,
 			.vel = entity.vel,
 			.rot = entity.rot,
 		});
-		std.debug.print("Test\n", .{});
 	}
 	for(userList) |user| {
 		main.network.Protocols.entityPosition.send(user.conn, user.player.pos, entityData.items, itemData);
@@ -493,7 +482,6 @@ pub fn connect(user: *User) void {
 
 pub fn connectInternal(user: *User) void {
 	// TODO: addEntity(player);
-	world.?.addEntity(user.player);
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
 	defer freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 	// Let the other clients know about this new one.

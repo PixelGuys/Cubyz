@@ -12,6 +12,8 @@ pub fn execute(args: []const u8, source: *User) void {
 		return;
 	}
 
+    const id = main.server.User.increaseId();
+
     var entity: main.server.Entity = .{
         .pos = source.player.pos,
         .vel = @splat(0),
@@ -21,16 +23,15 @@ pub fn execute(args: []const u8, source: *User) void {
         .energy = 8,
         .maxEnergy = 8,
         .entityType = main.entity.getTypeById("cubyz:snail"),
+        .id = id,
     };
 
     const list = main.ZonElement.initArray(main.stackAllocator);
     defer list.deinit(main.stackAllocator);
 
-    const id = main.server.User.increaseId();
-
     const data = entity.save(main.stackAllocator);
     data.put("id", id);
-    data.put("name", "entity");
+    data.put("name", "Silly Guy");
 
     list.append(data);
 
@@ -43,5 +44,5 @@ pub fn execute(args: []const u8, source: *User) void {
         main.network.Protocols.entity.send(user.conn, updateData);
     }
 
-    main.server.world.?.addEntity(entity);
+    _ = main.server.world.?.addEntity(entity);
 }

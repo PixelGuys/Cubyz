@@ -442,13 +442,6 @@ pub fn getModelIndex(string: []const u8) ModelIndex {
 	};
 }
 
-pub fn getEntityModelIndex(string: []const u8) ModelIndex {
-	return nameToIndexEntities.get(string) orelse {
-		std.log.err("Couldn't find entity model with name: {s}.", .{string});
-		return .{.index = 0};
-	};
-}
-
 var quads: main.List(QuadInfo) = undefined;
 var extraQuadInfos: main.List(ExtraQuadInfo) = undefined;
 var models: main.utils.VirtualList(Model, 1 << 20) = undefined;
@@ -568,13 +561,6 @@ pub fn registerModel(id: []const u8, data: []const u8) ModelIndex {
 	return model;
 }
 
-pub fn registerEntityModel(id: []const u8, data: []const u8) ModelIndex {
-	const model = Model.loadModel(data);
-	nameToIndexEntities.put(id, model) catch unreachable;
-	return model;
-}
-
-// TODO: Entity models.
 pub fn init() void {
 	models = .init();
 	quads = .init(main.globalAllocator);
