@@ -12,7 +12,7 @@
 	.validPlayerSpawn = true,
 	.ground_structure = .{
 		"1 cubyz:cold_grass",
-		"1 to 3 cubyz:permafrost"
+		"1 to 3 cubyz:permafrost",
 	},
 	.stoneBlock = "cubyz:glacite",
 	.structures = .{
