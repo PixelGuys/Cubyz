@@ -115,45 +115,33 @@ pub const Blueprint = struct {
 	}
 
 	fn _pasteInGeneration(self: Blueprint, pos: Vec3i, chunk: *ServerChunk, comptime mode: PasteMode) void {
-		const chunkWidth: i32 = @intCast(chunk.super.width);
+		const blueprintOffset = @max(@as(Vec3i, @splat(0)), -pos);
+		const chunkOffset = @max(@as(Vec3i, @splat(0)), pos);
 
-		const blueprintWidth: i32 = @intCast(self.blocks.width);
-		const blueprintDepth: i32 = @intCast(self.blocks.depth);
-		const blueprintHeight: i32 = @intCast(self.blocks.height);
+		const indexEndX: i32 = @min(@as(i32, @intCast(chunk.super.width)) - chunkOffset[0], @as(i32, @intCast(self.blocks.width)) - blueprintOffset[0]);
+		const indexEndY: i32 = @min(@as(i32, @intCast(chunk.super.width)) - chunkOffset[1], @as(i32, @intCast(self.blocks.depth)) - blueprintOffset[1]);
+		const indexEndZ: i32 = @min(@as(i32, @intCast(chunk.super.width)) - chunkOffset[2], @as(i32, @intCast(self.blocks.height)) - blueprintOffset[2]);
 
-		var blueprintX: u32 = @max(0, -pos[0]);
-		const blueprintEndX = @min(blueprintWidth, chunkWidth - pos[0]);
+		var indexX: i32 = 0;
+		while(indexX < indexEndX) : (indexX += chunk.super.pos.voxelSize) {
 
-		var chunkX = @max(0, pos[0]);
-		const chunkEndX = @min(chunkWidth, blueprintWidth + pos[0]);
+			var indexY: i32 = 0;
+			while(indexY < indexEndY) : (indexY += chunk.super.pos.voxelSize) {
 
-		while(chunkX < chunkEndX and blueprintX < blueprintEndX) : ({
-			chunkX += chunk.super.pos.voxelSize;
-			blueprintX += chunk.super.pos.voxelSize;
-		}) {
-			var blueprintY: u32 = @max(0, -pos[1]);
-			const blueprintEndY = @min(blueprintDepth, chunkWidth - pos[1]);
+				var indexZ: i32 = 0;
+				while(indexZ < indexEndZ) : (indexZ += chunk.super.pos.voxelSize) {
 
-			var chunkY = @max(0, pos[1]);
-			const chunkEndY = @min(chunkWidth, blueprintDepth + pos[1]);
+					const blueprintX: usize = @intCast(indexX + blueprintOffset[0]);
+					const blueprintY: usize = @intCast(indexY + blueprintOffset[1]);
+					const blueprintZ: usize = @intCast(indexZ + blueprintOffset[2]);
 
-			while(chunkY < chunkEndY and blueprintY < blueprintEndY) : ({
-				chunkY += chunk.super.pos.voxelSize;
-				blueprintY += chunk.super.pos.voxelSize;
-			}) {
-				var blueprintZ: u32 = @max(0, -pos[2]);
-				const blueprintEndZ = @min(blueprintHeight, chunkWidth - pos[2]);
-
-				var chunkZ = @max(0, pos[2]);
-				const chunkEndZ = @min(chunkWidth, blueprintHeight + pos[2]);
-
-				while(chunkZ < chunkEndZ and blueprintZ < blueprintEndZ) : ({
-					chunkZ += chunk.super.pos.voxelSize;
-					blueprintZ += chunk.super.pos.voxelSize;
-				}) {
 					const block = self.blocks.get(blueprintX, blueprintY, blueprintZ);
+
 					if(block.typ == voidType) continue;
 
+					const chunkX = indexX + chunkOffset[0];
+					const chunkY = indexY + chunkOffset[1];
+					const chunkZ = indexZ + chunkOffset[2];
 					switch(mode) {
 						.all => chunk.updateBlockInGeneration(chunkX, chunkY, chunkZ, block),
 						.degradable => chunk.updateBlockIfDegradable(chunkX, chunkY, chunkZ, block),
