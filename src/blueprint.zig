@@ -12,6 +12,7 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const User = main.server.User;
 const ServerChunk = main.chunk.ServerChunk;
 const Degrees = main.rotation.Degrees;
+const Tag = main.Tag;
 
 const GameIdToBlueprintIdMapType = std.AutoHashMap(u16, u16);
 const BlockIdSizeType = u32;
@@ -277,10 +278,11 @@ pub const Blueprint = struct {
 			},
 		}
 	}
-	pub fn set(self: *Blueprint, pattern: Pattern) void {
+	pub fn set(self: *Blueprint, pattern: Pattern, mask: ?Mask) void {
 		for(0..self.blocks.width) |x| {
 			for(0..self.blocks.depth) |y| {
 				for(0..self.blocks.height) |z| {
+					if(mask) |_mask| if(!_mask.match(self.blocks.get(x, y, z))) continue;
 					self.blocks.set(x, y, z, pattern.blocks.sample(&main.seed).block);
 				}
 			}
@@ -332,6 +334,116 @@ pub const Pattern = struct {
 	pub fn deinit(self: @This(), allocator: NeverFailingAllocator) void {
 		self.blocks.deinit(allocator);
 		allocator.free(self.blocks.items);
+	}
+};
+
+pub const Mask = struct {
+	entries: ListUnmanaged(Entry),
+
+	pub const separator = ',';
+	pub const inverse = '!';
+	pub const tag = '$';
+	pub const property = '@';
+
+	const Entry = struct {
+		inner: Inner,
+		isInverse: bool,
+
+		const Inner = union(enum) {
+			block: struct {typ: u16, data: ?u16},
+			blockTag: Tag,
+			property: Property,
+
+			const Property = enum {transparent, collide, solid, selectable, degradable, viewThrough, allowOres, isEntity};
+
+			fn initFromString(specifier: []const u8) !Inner {
+				switch(specifier[0]) {
+					tag => {
+						const blockTag = specifier[1..];
+						if(blockTag.len == 0) return error.MaskSyntaxError;
+						return .{.blockTag = Tag.find(blockTag)};
+					},
+					property => {
+						const propertyName = specifier[1..];
+						const propertyValue = std.meta.stringToEnum(Property, propertyName) orelse return error.MaskSyntaxError;
+						return .{.property = propertyValue};
+					},
+					else => {
+						const block = main.blocks.parseBlock2(specifier) orelse return error.MaskSyntaxError;
+						return .{.block = .{.typ = block.typ, .data = block.data}};
+					},
+				}
+			}
+
+			fn match(self: Inner, block: Block) bool {
+				return switch(self) {
+					.block => block.typ == self.block.typ and (self.block.data == null or block.data == self.block.data),
+					.blockTag => |desired| {
+						for(block.blockTags()) |current| {
+							if(desired == current) return true;
+						}
+						return false;
+					},
+					.property => |prop| return switch(prop) {
+						.transparent => block.transparent(),
+						.collide => block.collide(),
+						.solid => block.solid(),
+						.selectable => block.selectable(),
+						.degradable => block.degradable(),
+						.viewThrough => block.viewThrough(),
+						.allowOres => block.allowOres(),
+						.isEntity => block.entityDataClass() != null,
+					},
+				};
+			}
+		};
+
+		fn initFromString(specifier: []const u8) !Entry {
+			switch(specifier[0]) {
+				inverse => {
+					const entry = try Inner.initFromString(specifier[1..]);
+					return .{.inner = entry, .isInverse = true};
+				},
+				else => {
+					const entry = try Inner.initFromString(specifier);
+					return .{.inner = entry, .isInverse = false};
+				},
+			}
+		}
+
+		pub fn match(self: Entry, block: Block) bool {
+			const isMatch = self.inner.match(block);
+			if(self.isInverse) {
+				return !isMatch;
+			}
+			return isMatch;
+		}
+	};
+
+	pub fn initFromString(allocator: NeverFailingAllocator, source: []const u8) !@This() {
+		var specifiers = std.mem.splitScalar(u8, source, separator);
+
+		var entries: ListUnmanaged(Entry) = .{};
+		errdefer entries.deinit(allocator);
+
+		while(specifiers.next()) |specifier| {
+			if(specifier.len == 0) continue;
+			const entry = try Entry.initFromString(specifier);
+			entries.append(allocator, entry);
+		}
+
+		return .{.entries = entries};
+	}
+
+	pub fn deinit(self: @This(), allocator: NeverFailingAllocator) void {
+		self.entries.deinit(allocator);
+	}
+
+	pub fn match(self: @This(), block: Block) bool {
+		for(self.entries.items) |e| {
+			if(e.match(block)) return true;
+		}
+		return false;
 	}
 };
 
