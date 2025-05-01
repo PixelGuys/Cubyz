@@ -303,12 +303,14 @@ fn addWindow(window: *GuiWindow) void {
 
 pub fn openWindow(id: []const u8) void {
 	defer updateWindowPositions();
+
 	for(windowList.items) |window| {
 		if(std.mem.eql(u8, window.id, id)) {
 			openWindowFromRef(window);
 			return;
 		}
 	}
+
 	std.log.err("Could not find window with id {s}.", .{id});
 }
 

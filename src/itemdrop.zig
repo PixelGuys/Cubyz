@@ -35,6 +35,12 @@ const ItemDrop = struct { // MARK: ItemDrop
 	reverseIndex: u16,
 };
 
+pub const ItemDropNetworkData = struct {
+	index: u16,
+	pos: Vec3d,
+	vel: Vec3d,
+};
+
 pub const ItemDropManager = struct { // MARK: ItemDropManager
 	/// Half the side length of all item entities hitboxes as a cube.
 	pub const radius: f64 = 0.1;
@@ -116,18 +122,16 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		}
 	}
 
-	pub fn getPositionAndVelocityData(self: *ItemDropManager, allocator: NeverFailingAllocator) []u8 {
-		var writer = utils.BinaryWriter.initCapacity(allocator, self.size*50);
-		for(self.indices[0..self.size]) |i| {
-			writer.writeInt(u16, i);
-			writer.writeFloat(f64, self.list.items(.pos)[i][0]);
-			writer.writeFloat(f64, self.list.items(.pos)[i][1]);
-			writer.writeFloat(f64, self.list.items(.pos)[i][2]);
-			writer.writeFloat(f64, self.list.items(.vel)[i][0]);
-			writer.writeFloat(f64, self.list.items(.vel)[i][1]);
-			writer.writeFloat(f64, self.list.items(.vel)[i][2]);
+	pub fn getPositionAndVelocityData(self: *ItemDropManager, allocator: NeverFailingAllocator) []ItemDropNetworkData {
+		const result = allocator.alloc(ItemDropNetworkData, self.size);
+		for(self.indices[0..self.size], result) |i, *res| {
+			res.* = .{
+				.index = i,
+				.pos = self.list.items(.pos)[i],
+				.vel = self.list.items(.vel)[i],
+			};
 		}
-		return writer.data.toOwnedSlice();
+		return result;
 	}
 
 	pub fn getInitialList(self: *ItemDropManager, allocator: NeverFailingAllocator) ZonElement {
@@ -462,18 +466,13 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 		self.super.deinit();
 	}
 
-	pub fn readPosition(self: *ClientItemDropManager, reader: *BinaryReader, time: i16) !void {
+	pub fn readPosition(self: *ClientItemDropManager, time: i16, itemData: []ItemDropNetworkData) void {
 		self.timeDifference.addDataPoint(time);
 		var pos: [ItemDropManager.maxCapacity]Vec3d = undefined;
 		var vel: [ItemDropManager.maxCapacity]Vec3d = undefined;
-		while(reader.remaining.len != 0) {
-			const i = try reader.readInt(u16);
-			pos[i][0] = try reader.readFloat(f64);
-			pos[i][1] = try reader.readFloat(f64);
-			pos[i][2] = try reader.readFloat(f64);
-			vel[i][0] = try reader.readFloat(f64);
-			vel[i][1] = try reader.readFloat(f64);
-			vel[i][2] = try reader.readFloat(f64);
+		for(itemData) |data| {
+			pos[data.index] = data.pos;
+			vel[data.index] = data.vel;
 		}
 		mutex.lock();
 		defer mutex.unlock();

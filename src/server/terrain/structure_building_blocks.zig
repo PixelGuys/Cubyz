@@ -200,20 +200,21 @@ pub fn registerSBB(structures: *std.StringHashMap(ZonElement)) !void {
 }
 
 pub fn registerChildBlock(numericId: u16, stringId: []const u8) void {
+	std.debug.assert(numericId != 0);
+
 	const index: u16 = @intCast(childBlockNumericIdMap.count());
 	childBlockNumericIdMap.put(arenaAllocator.allocator, numericId, index) catch unreachable;
 	// Take only color name from the ID.
 	var iterator = std.mem.splitBackwardsScalar(u8, stringId, '/');
 	const colorName = iterator.first();
 	childBlockStringId.append(arenaAllocator, arenaAllocator.dupe(u8, colorName));
-	std.log.debug("Structure child block '{s}' {} ('{s}' {}) ", .{colorName, index, stringId, numericId});
 }
 
 pub fn registerBlueprints(blueprints: *std.StringHashMap([]u8)) !void {
 	std.debug.assert(blueprintCache.capacity() == 0);
 
 	originBlockNumericId = main.blocks.parseBlock(originBlockStringId).typ;
-	std.log.debug("Origin block numeric id: {}", .{originBlockNumericId});
+	std.debug.assert(originBlockNumericId != 0);
 
 	blueprintCache.ensureTotalCapacity(arenaAllocator.allocator, blueprints.count()) catch unreachable;
 
@@ -234,7 +235,7 @@ pub fn registerBlueprints(blueprints: *std.StringHashMap([]u8)) !void {
 		};
 
 		blueprintCache.put(arenaAllocator.allocator, arenaAllocator.dupe(u8, stringId), rotatedBlueprints) catch unreachable;
-		std.log.debug("Registered blueprint: {s}", .{stringId});
+		std.log.debug("Registered blueprint: '{s}'", .{stringId});
 	}
 }
 
