@@ -118,27 +118,25 @@ pub const Blueprint = struct {
 		const blueprintOffset = @max(@as(Vec3i, @splat(0)), -pos);
 		const chunkOffset = @max(@as(Vec3i, @splat(0)), pos);
 
-		const indexEndX: i32 = @min(@as(i32, @intCast(chunk.super.width)) - chunkOffset[0], @as(i32, @intCast(self.blocks.width)) - blueprintOffset[0]);
-		const indexEndY: i32 = @min(@as(i32, @intCast(chunk.super.width)) - chunkOffset[1], @as(i32, @intCast(self.blocks.depth)) - blueprintOffset[1]);
-		const indexEndZ: i32 = @min(@as(i32, @intCast(chunk.super.width)) - chunkOffset[2], @as(i32, @intCast(self.blocks.height)) - blueprintOffset[2]);
+		const indexEndX: i32 = @min(@as(i32, @intCast(chunk.super.width)) - chunkOffset[0], @as(i32, @intCast(self.blocks.width)));
+		const indexEndY: i32 = @min(@as(i32, @intCast(chunk.super.width)) - chunkOffset[1], @as(i32, @intCast(self.blocks.depth)));
+		const indexEndZ: i32 = @min(@as(i32, @intCast(chunk.super.width)) - chunkOffset[2], @as(i32, @intCast(self.blocks.height)));
 
-		var indexX: i32 = 0;
+		var indexX: i32 = blueprintOffset[0];
 		while(indexX < indexEndX) : (indexX += chunk.super.pos.voxelSize) {
-			var indexY: i32 = 0;
-			while(indexY < indexEndY) : (indexY += chunk.super.pos.voxelSize) {
-				var indexZ: i32 = 0;
-				while(indexZ < indexEndZ) : (indexZ += chunk.super.pos.voxelSize) {
-					const blueprintX: usize = @intCast(indexX + blueprintOffset[0]);
-					const blueprintY: usize = @intCast(indexY + blueprintOffset[1]);
-					const blueprintZ: usize = @intCast(indexZ + blueprintOffset[2]);
 
-					const block = self.blocks.get(blueprintX, blueprintY, blueprintZ);
+			var indexY: i32 = blueprintOffset[1];
+			while(indexY < indexEndY) : (indexY += chunk.super.pos.voxelSize) {
+
+				var indexZ: i32 = blueprintOffset[2];
+				while(indexZ < indexEndZ) : (indexZ += chunk.super.pos.voxelSize) {
+					const block = self.blocks.get(@intCast(indexX), @intCast(indexY), @intCast(indexZ));
 
 					if(block.typ == voidType) continue;
 
-					const chunkX = indexX + chunkOffset[0];
-					const chunkY = indexY + chunkOffset[1];
-					const chunkZ = indexZ + chunkOffset[2];
+					const chunkX = indexX + chunkOffset[0] - blueprintOffset[0];
+					const chunkY = indexY + chunkOffset[1] - blueprintOffset[1];
+					const chunkZ = indexZ + chunkOffset[2] - blueprintOffset[2];
 					switch(mode) {
 						.all => chunk.updateBlockInGeneration(chunkX, chunkY, chunkZ, block),
 						.degradable => chunk.updateBlockIfDegradable(chunkX, chunkY, chunkZ, block),
