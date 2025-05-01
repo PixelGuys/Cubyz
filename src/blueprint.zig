@@ -277,16 +277,14 @@ pub const Blueprint = struct {
 			},
 		}
 	}
-	pub fn set(self: Blueprint, allocator: NeverFailingAllocator, pattern: Pattern) Blueprint {
-		var copy = self.clone(allocator);
+	pub fn set(self: *Blueprint, pattern: Pattern) void {
 		for(0..self.blocks.width) |x| {
 			for(0..self.blocks.depth) |y| {
 				for(0..self.blocks.height) |z| {
-					copy.blocks.set(x, y, z, pattern.blocks.sample(&main.seed).block);
+					self.blocks.set(x, y, z, pattern.blocks.sample(&main.seed).block);
 				}
 			}
 		}
-		return copy;
 	}
 };
 

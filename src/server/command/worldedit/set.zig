@@ -38,9 +38,10 @@ pub fn execute(args: []const u8, source: *User) void {
 			source.worldEditData.undoHistory.push(.init(blueprint, posStart, "set"));
 			source.worldEditData.redoHistory.clear();
 
-			const modifiedBlueprint = blueprint.set(main.stackAllocator, pattern);
+			var modifiedBlueprint = blueprint.clone(main.stackAllocator);
 			defer modifiedBlueprint.deinit(main.stackAllocator);
 
+			modifiedBlueprint.set(pattern);
 			modifiedBlueprint.paste(posStart, .{.preserveVoid = true});
 		},
 		.failure => |err| {
