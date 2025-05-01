@@ -64,26 +64,6 @@ pub const History = struct {
 			main.globalAllocator.free(msg);
 		}
 	}
-	fn moveUp(self: *History) void {
-		if(self.up.dequeueFront()) |msg| {
-			if(msg.len == 0) {
-				return self.moveUp();
-			}
-			if(self.down.forceEnqueueFront(msg)) |old| {
-				main.globalAllocator.free(old);
-			}
-		}
-	}
-	fn moveDown(self: *History) void {
-		if(self.down.dequeueFront()) |msg| {
-			if(msg.len == 0) {
-				return self.moveDown();
-			}
-			if(self.up.forceEnqueueFront(msg)) |old| {
-				main.globalAllocator.free(old);
-			}
-		}
-	}
 	fn flushUp(self: *History) void {
 		while(self.down.dequeueFront()) |msg| {
 			if(msg.len == 0) {
