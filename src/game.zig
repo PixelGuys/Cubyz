@@ -458,7 +458,7 @@ pub const collision = struct {
 		return false;
 	}
 
-	pub fn touchBlocks(entity: *main.server.Entity, hitBox: Box, side: main.utils.Side, amount: f32) void {
+	pub fn touchBlocks(entity: *main.server.Entity, hitBox: Box, side: main.utils.Side, amount: f32, slipVel: comptime_float) void {
 		const boundingBox: Box = .{.min = entity.pos + hitBox.min, .max = entity.pos + hitBox.max};
 
 		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0] - amount));
@@ -491,7 +491,7 @@ pub const collision = struct {
 						continue;
 
 					// climbing
-					if(block.?.climbable() and !entity.climbing) {
+					if(block.?.climbable() and !entity.climbing and entity.vel[2] > slipVel) {
 						const touchX: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extendClimableX);
 						const touchY: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extendClimableY);
 						entity.climbing = touchX or touchY;
@@ -1111,6 +1111,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			move[i] = a/frictionCoefficient*deltaTime - c_1/frictionCoefficient*@exp(-frictionCoefficient*deltaTime) + c_1/frictionCoefficient;
 		}
 
+		// hold onto climbable block
 		if(Player.super.climbing and Player.crouching and move[2] < 0) {
 			move[2] = 0;
 		}
@@ -1304,7 +1305,8 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			climbAmount = 0.4;
 		}
 		Player.currentClimbSpeed = collision.calculateClimbSpeed(.client, Player.super.pos, Player.outerBoundingBox, -camera.rotation[2], climbAmount, 3);
-		collision.touchBlocks(&Player.super, hitBox, .client, climbAmount);
+		const climbSlipVel: comptime_float = -@as(f64, @floatCast(gravity*0.45));
+		collision.touchBlocks(&Player.super, hitBox, .client, climbAmount, climbSlipVel);
 	} else {
 		Player.super.pos += move;
 	}
