@@ -20,6 +20,7 @@ const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const BlockUpdate = renderer.mesh_storage.BlockUpdate;
 
 //TODO: Might want to use SSL or something similar to encode the message
 
@@ -850,58 +851,121 @@ pub const Protocols = struct {
 		pub const asynchronous = false;
 		const type_entity: u8 = 0;
 		const type_item: u8 = 1;
+		const Type = enum(u8) {
+			noVelocityEntity = 0,
+			f16VelocityEntity = 1,
+			f32VelocityEntity = 2,
+			noVelocityItem = 3,
+			f16VelocityItem = 4,
+			f32VelocityItem = 5,
+		};
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
+			if(conn.isServerSide()) return error.InvalidSide;
 			if(conn.manager.world) |world| {
-				const typ = try reader.readInt(u8);
 				const time = try reader.readInt(i16);
-				if(typ == type_entity) {
-					try main.entity.ClientEntityManager.serverUpdate(time, reader);
-				} else if(typ == type_item) {
-					try world.itemDrops.readPosition(reader, time);
+				const playerPos = try reader.readVec(Vec3d);
+				var entityData: main.List(main.entity.EntityNetworkData) = .init(main.stackAllocator);
+				defer entityData.deinit();
+				var itemData: main.List(main.itemdrop.ItemDropNetworkData) = .init(main.stackAllocator);
+				defer itemData.deinit();
+				while(reader.remaining.len != 0) {
+					const typ = try reader.readEnum(Type);
+					switch(typ) {
+						.noVelocityEntity, .f16VelocityEntity, .f32VelocityEntity => {
+							entityData.append(.{
+								.vel = switch(typ) {
+									.noVelocityEntity => @splat(0),
+									.f16VelocityEntity => @floatCast(try reader.readVec(@Vector(3, f16))),
+									.f32VelocityEntity => @floatCast(try reader.readVec(@Vector(3, f32))),
+									else => unreachable,
+								},
+								.id = try reader.readInt(u32),
+								.pos = playerPos + try reader.readVec(Vec3f),
+								.rot = try reader.readVec(Vec3f),
+							});
+						},
+						.noVelocityItem, .f16VelocityItem, .f32VelocityItem => {
+							itemData.append(.{
+								.vel = switch(typ) {
+									.noVelocityItem => @splat(0),
+									.f16VelocityItem => @floatCast(try reader.readVec(@Vector(3, f16))),
+									.f32VelocityItem => @floatCast(try reader.readVec(Vec3f)),
+									else => unreachable,
+								},
+								.index = try reader.readInt(u16),
+								.pos = playerPos + try reader.readVec(Vec3f),
+							});
+						},
+					}
 				}
+				main.entity.ClientEntityManager.serverUpdate(time, entityData.items);
+				world.itemDrops.readPosition(time, itemData.items);
 			}
 		}
-		pub fn send(conn: *Connection, entityData: []const u8, itemData: []const u8) void {
-			if(entityData.len != 0) {
-				var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, entityData.len + 3);
-				defer writer.deinit();
-				writer.writeInt(u8, type_entity);
-				writer.writeInt(i16, @truncate(std.time.milliTimestamp()));
-				writer.writeSlice(entityData);
-				conn.send(.lossy, id, writer.data.items);
-			}
+		pub fn send(conn: *Connection, playerPos: Vec3d, entityData: []main.entity.EntityNetworkData, itemData: []main.itemdrop.ItemDropNetworkData) void {
+			var writer = utils.BinaryWriter.init(main.stackAllocator);
+			defer writer.deinit();
 
-			if(itemData.len != 0) {
-				var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, itemData.len + 3);
-				defer writer.deinit();
-				writer.writeInt(u8, type_item);
-				writer.writeInt(i16, @truncate(std.time.milliTimestamp()));
-				writer.writeSlice(itemData);
-				conn.send(.lossy, id, writer.data.items);
+			writer.writeInt(i16, @truncate(std.time.milliTimestamp()));
+			writer.writeVec(Vec3d, playerPos);
+			for(entityData) |data| {
+				const velocityMagnitudeSqr = vec.lengthSquare(data.vel);
+				if(velocityMagnitudeSqr < 1e-6*1e-6) {
+					writer.writeEnum(Type, .noVelocityEntity);
+				} else if(velocityMagnitudeSqr > 1000*1000) {
+					writer.writeEnum(Type, .f32VelocityEntity);
+					writer.writeVec(Vec3f, @floatCast(data.vel));
+				} else {
+					writer.writeEnum(Type, .f16VelocityEntity);
+					writer.writeVec(@Vector(3, f16), @floatCast(data.vel));
+				}
+				writer.writeInt(u32, data.id);
+				writer.writeVec(Vec3f, @floatCast(data.pos - playerPos));
+				writer.writeVec(Vec3f, data.rot);
 			}
+			for(itemData) |data| {
+				const velocityMagnitudeSqr = vec.lengthSquare(data.vel);
+				if(velocityMagnitudeSqr < 1e-6*1e-6) {
+					writer.writeEnum(Type, .noVelocityItem);
+				} else if(velocityMagnitudeSqr > 1000*1000) {
+					writer.writeEnum(Type, .f32VelocityItem);
+					writer.writeVec(Vec3f, @floatCast(data.vel));
+				} else {
+					writer.writeEnum(Type, .f16VelocityItem);
+					writer.writeVec(@Vector(3, f16), @floatCast(data.vel));
+				}
+				writer.writeInt(u16, data.index);
+				writer.writeVec(Vec3f, @floatCast(data.pos - playerPos));
+			}
+			conn.send(.lossy, id, writer.data.items);
 		}
 	};
 	pub const blockUpdate = struct {
 		pub const id: u8 = 7;
 		pub const asynchronous = false;
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			const x = try reader.readInt(i32);
-			const y = try reader.readInt(i32);
-			const z = try reader.readInt(i32);
-			const newBlock = Block.fromInt(try reader.readInt(u32));
 			if(conn.isServerSide()) {
 				return error.InvalidPacket;
-			} else {
-				renderer.mesh_storage.updateBlock(x, y, z, newBlock);
+			}
+			while(reader.remaining.len != 0) {
+				renderer.mesh_storage.updateBlock(.{
+					.x = try reader.readInt(i32),
+					.y = try reader.readInt(i32),
+					.z = try reader.readInt(i32),
+					.newBlock = Block.fromInt(try reader.readInt(u32)),
+				});
 			}
 		}
-		pub fn send(conn: *Connection, x: i32, y: i32, z: i32, newBlock: Block) void {
+		pub fn send(conn: *Connection, updates: []const BlockUpdate) void {
 			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 16);
 			defer writer.deinit();
-			writer.writeInt(i32, x);
-			writer.writeInt(i32, y);
-			writer.writeInt(i32, z);
-			writer.writeInt(u32, newBlock.toInt());
+
+			for(updates) |update| {
+				writer.writeInt(i32, update.x);
+				writer.writeInt(i32, update.y);
+				writer.writeInt(i32, update.z);
+				writer.writeInt(u32, update.newBlock.toInt());
+			}
 			conn.send(.fast, id, writer.data.items);
 		}
 	};
@@ -2079,6 +2143,9 @@ pub const Connection = struct { // MARK: Connection
 	pub fn disconnect(self: *Connection) void {
 		self.manager.send(&.{@intFromEnum(ChannelId.disconnect)}, self.remoteAddress, null);
 		self.connectionState.store(.disconnectDesired, .unordered);
+		if(builtin.os.tag == .windows and !self.isServerSide() and main.server.world != null) {
+			std.time.sleep(10000000); // Windows is too eager to close the socket, without waiting here we get a ConnectionResetByPeer on the other side.
+		}
 		self.manager.removeConnection(self);
 		if(self.user) |user| {
 			main.server.disconnect(user);
