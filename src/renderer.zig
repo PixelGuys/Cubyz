@@ -1119,7 +1119,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				.newBlock = newBlock,
 			},
 		});
-		mesh_storage.updateBlock(x, y, z, newBlock);
+		mesh_storage.updateBlock(.{.x = x, .y = y, .z = z, .newBlock = newBlock});
 	}
 
 	pub fn drawCube(projectionMatrix: Mat4f, viewMatrix: Mat4f, relativePositionToPlayer: Vec3d, min: Vec3f, max: Vec3f) void {
