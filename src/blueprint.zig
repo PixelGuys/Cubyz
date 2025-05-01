@@ -124,10 +124,8 @@ pub const Blueprint = struct {
 
 		var indexX: i32 = blueprintOffset[0];
 		while(indexX < indexEndX) : (indexX += chunk.super.pos.voxelSize) {
-
 			var indexY: i32 = blueprintOffset[1];
 			while(indexY < indexEndY) : (indexY += chunk.super.pos.voxelSize) {
-
 				var indexZ: i32 = blueprintOffset[2];
 				while(indexZ < indexEndZ) : (indexZ += chunk.super.pos.voxelSize) {
 					const block = self.blocks.get(@intCast(indexX), @intCast(indexY), @intCast(indexZ));
