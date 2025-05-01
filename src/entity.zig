@@ -340,7 +340,6 @@ pub fn register(_: []const u8, id: []const u8, _: ZonElement) u16 {
 	}
 
 	_id[num] = arenaAllocator.dupe(u8, id);
-	std.debug.print("{s}\n", .{_id[num]});
 	reverseIndices.put(_id[num], @intCast(num)) catch unreachable;
 
 	defer num += 1;
