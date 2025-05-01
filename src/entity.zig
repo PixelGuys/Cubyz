@@ -114,6 +114,8 @@ pub const ClientEntityManager = struct {
 	var shader: graphics.Shader = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
 	pub var entities: main.utils.VirtualList(ClientEntity, 1 << 20) = undefined;
 	pub var mutex: std.Thread.Mutex = .{};
+	
+	var entityModel: graphics.SSBO = undefined;
 
 	pub fn init() void {
 		entities = .init();
@@ -133,6 +135,11 @@ pub const ClientEntityManager = struct {
 		timeDifference = utils.TimeDifference{};
 	}
 
+	pub fn generateModel() void {
+		entityModel = .initStatic(models.QuadInfo, entityModelQuads.items);
+		entityModel.bind(11);
+	}
+
 	fn update() void {
 		main.utils.assertLocked(&mutex);
 		var time: i16 = @truncate(std.time.milliTimestamp() -% settings.entityLookback);
@@ -146,9 +153,13 @@ pub const ClientEntityManager = struct {
 	pub fn renderNames(projMatrix: Mat4f, playerPos: Vec3d) void {
 		mutex.lock();
 		defer mutex.unlock();
-
+		
 		for(entities.items()) |ent| {
 			if(ent.id == game.Player.id or ent.name.len == 0) continue; // don't render local player
+
+			const texture = meshes.entityTextureArray.items[meshes.textureIndex(ent)];
+			texture.bindTo(0);
+			
 			const pos3d = ent.getRenderPosition() - playerPos;
 			const pos4f = Vec4f{
 				@floatCast(pos3d[0]),
@@ -188,10 +199,9 @@ pub const ClientEntityManager = struct {
 			if(ent.id == game.Player.id) continue; // don't render local player
 			
 			meshes.entityTextureArray.items[meshes.textureIndex(ent)].bindTo(0);
-			entityModels.items()[ent.entityType].buffer.bind(11);
 			
-			std.debug.print("{any}\n", .{entityModels.items()[ent.entityType].buffer.bufferID});
-
+			const model = entityModels.items()[ent.entityType];
+			
 			const blockPos: vec.Vec3i = @intFromFloat(@floor(ent.pos));
 			const lightVals: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse @splat(0);
 			const light = (@as(u32, lightVals[0] >> 3) << 25 |
@@ -216,7 +226,7 @@ pub const ClientEntityManager = struct {
 			);
 			const modelViewMatrix = game.camera.viewMatrix.mul(modelMatrix);
 			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));
-			c.glDrawElements(c.GL_TRIANGLES, 6*entityModels.items()[ent.entityType].size, c.GL_UNSIGNED_INT, null);
+			c.glDrawElements(c.GL_TRIANGLES, 6*model.size, c.GL_UNSIGNED_INT, @ptrFromInt(@sizeOf(c_uint) * model.start * 6));
 		}
 	}
 
@@ -276,28 +286,27 @@ pub const ClientEntityManager = struct {
 };
 
 const EntityModel = struct {
-	buffer: graphics.SSBO,
+	start: usize,
 	size: c_int,
 };
 
 var entityModels: utils.VirtualList(EntityModel, 1 << 20) = undefined;
 var entityModelNameToIndex: std.StringHashMap(u16) = .init(arenaAllocator.allocator);
+var entityModelQuads: main.List(models.QuadInfo) = .init(arenaAllocator);
 
 pub fn registerModel(id: []const u8, data: []const u8) void {
 	const quadInfos = main.models.Model.loadRawModelDataFromObj(main.stackAllocator, data);
 	defer main.stackAllocator.free(quadInfos);
 
-	std.debug.print("{s}\n", .{data});
-	
-	const buffer: graphics.SSBO = .initStatic(main.models.QuadInfo, quadInfos);
-	buffer.bind(11);
-	
-	const next = entityModels.addOne();
-	next.buffer = buffer;
+	const start: usize = entityModels.len;
+	const size: c_int = @intCast(quadInfos.len);
 
-	next.size = @intCast(quadInfos.len);
+	entityModelQuads.appendSlice(quadInfos);
 
-	std.debug.print("{d} {d}\n", .{quadInfos.len, buffer.bufferID});
+	entityModels.append(.{
+		.start = start,
+		.size = size,
+	});
 
 	entityModelNameToIndex.put(id, @intCast(entityModels.len - 1)) catch unreachable;
 }
@@ -331,6 +340,7 @@ pub fn register(_: []const u8, id: []const u8, _: ZonElement) u16 {
 	}
 
 	_id[num] = arenaAllocator.dupe(u8, id);
+	std.debug.print("{s}\n", .{_id[num]});
 	reverseIndices.put(_id[num], @intCast(num)) catch unreachable;
 
 	defer num += 1;
@@ -369,6 +379,9 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	pub fn deinit() void {
+		for (entityTextureArray.items) |tex| {
+			tex.deinit();
+		}
 		entityTextureArray.deinit();
 		textureIDs.deinit();
 		entityTextures.deinit();
@@ -474,6 +487,8 @@ pub const meshes = struct { // MARK: meshes
 
 	pub fn generateTextureArray() void {
 		for (entityTextures.items, 0..) |image, i| {
+			entityTextureArray.items[i].deinit();
+			entityTextureArray.items[i] = .init();
 			entityTextureArray.items[i].generate(image);
 		}
 	}

@@ -98,6 +98,7 @@ fn anisotropicFilteringCallback(newValue: u16) void {
 	settings.anisotropicFiltering = anisotropy[newValue];
 	settings.save();
 	if(main.game.world != null) {
+		main.entity.meshes.reloadTextures(undefined);
 		main.blocks.meshes.reloadTextures(undefined);
 	}
 }
