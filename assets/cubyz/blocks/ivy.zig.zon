@@ -15,4 +15,7 @@
 		.texture = "ivy.png",
 	},
 	.lodReplacement = "cubyz:air",
+
+	.climbable = true,
+	.climbSpeed = 6,
 }
