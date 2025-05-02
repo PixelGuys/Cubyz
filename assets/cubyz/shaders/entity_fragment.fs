@@ -5,9 +5,10 @@ layout(location = 1) in vec3 mvVertexPos;
 layout(location = 2) in vec3 outLight;
 layout(location = 3) flat in vec3 normal;
 
-out vec4 fragColor;
+layout(location = 0) out vec4 fragColor;
 
-uniform sampler2D texture_sampler;
+layout(binding = 0) uniform sampler2D textureSampler;
+
 uniform float contrast;
 
 float lightVariation(vec3 normal) {
@@ -37,7 +38,7 @@ bool passDitherTest(float alpha) {
 }
 
 void main() {
-	fragColor = texture(texture_sampler, outTexCoord)*vec4(outLight*lightVariation(normal), 1);
+	fragColor = texture(textureSampler, outTexCoord)*vec4(outLight*lightVariation(normal), 1);
 	if(!passDitherTest(fragColor.a)) discard;
 	fragColor.a = 1;
 }

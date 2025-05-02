@@ -13,14 +13,15 @@ layout(location = 9) flat in uvec3 upper;
 
 layout(location = 0) out vec4 fragColor;
 
+layout(binding = 0) uniform sampler2DArray textureSampler;
+layout(binding = 1) uniform sampler2DArray emissionSampler;
+layout(binding = 2) uniform sampler2DArray reflectivityAndAbsorptionSampler;
+layout(binding = 4) uniform samplerCube reflectionMap;
+
 uniform vec3 ambientLight;
 uniform mat4 projectionMatrix;
 uniform float sizeScale;
 
-uniform sampler2DArray texture_sampler;
-uniform sampler2DArray emissionSampler;
-uniform sampler2DArray reflectivityAndAbsorptionSampler;
-uniform samplerCube reflectionMap;
 uniform float reflectionMapSize;
 uniform float contrast;
 
@@ -81,7 +82,7 @@ void mainBlockDrop() {
 	reflectivity = reflectivity*(1 - fresnelReflection) + fresnelReflection;
 
 	vec3 pixelLight = ambientLight*max(vec3(normalVariation), texture(emissionSampler, textureCoords).r*4);
-	fragColor = texture(texture_sampler, textureCoords)*vec4(pixelLight, 1);
+	fragColor = texture(textureSampler, textureCoords)*vec4(pixelLight, 1);
 	fragColor.rgb += reflectivity*pixelLight;
 
 	if(!passDitherTest(fragColor.a)) discard;

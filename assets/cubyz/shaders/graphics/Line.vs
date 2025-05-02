@@ -4,14 +4,12 @@ layout(location = 0) in vec2 vertex_pos;
 
 layout(location = 0) flat out vec4 color;
 
-
 //in pixel
 uniform vec2 start;
 uniform vec2 direction;
 uniform vec2 screen;
 
 uniform int lineColor;
-
 
 void main() {
 	// Convert to opengl coordinates:

@@ -551,10 +551,6 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		ambientLight: c_int,
 		modelIndex: c_int,
 		block: c_int,
-		texture_sampler: c_int,
-		emissionSampler: c_int,
-		reflectivityAndAbsorptionSampler: c_int,
-		reflectionMap: c_int,
 		reflectionMapSize: c_int,
 		contrast: c_int,
 	} = undefined;
@@ -681,10 +677,6 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 
 	fn bindCommonUniforms(projMatrix: Mat4f, viewMatrix: Mat4f, ambientLight: Vec3f) void {
 		itemShader.bind();
-		c.glUniform1i(itemUniforms.texture_sampler, 0);
-		c.glUniform1i(itemUniforms.emissionSampler, 1);
-		c.glUniform1i(itemUniforms.reflectivityAndAbsorptionSampler, 2);
-		c.glUniform1i(itemUniforms.reflectionMap, 4);
 		c.glUniform1f(itemUniforms.reflectionMapSize, main.renderer.reflectionCubeMapSize);
 		c.glUniformMatrix4fv(itemUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 		c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&ambientLight));

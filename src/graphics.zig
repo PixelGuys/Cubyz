@@ -393,7 +393,6 @@ pub const draw = struct { // MARK: draw
 		screen: c_int,
 		start: c_int,
 		size: c_int,
-		image: c_int,
 		color: c_int,
 		uvOffset: c_int,
 		uvDim: c_int,
@@ -1055,7 +1054,6 @@ const TextRendering = struct { // MARK: TextRendering
 		ratio: c_int,
 		fontEffects: c_int,
 		fontSize: c_int,
-		texture_sampler: c_int,
 		alpha: c_int,
 	} = undefined;
 
@@ -1081,7 +1079,6 @@ const TextRendering = struct { // MARK: TextRendering
 		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Text.vs", "assets/cubyz/shaders/graphics/Text.fs", "", &uniforms);
 		shader.bind();
 		errdefer shader.deinit();
-		c.glUniform1i(uniforms.texture_sampler, 0);
 		c.glUniform1f(uniforms.alpha, 1.0);
 		c.glUniform2f(uniforms.fontSize, @floatFromInt(textureWidth), @floatFromInt(textureHeight));
 		try ftError(hbft.FT_Init_FreeType(&freetypeLib));
@@ -2016,7 +2013,6 @@ pub const Fog = struct { // MARK: Fog
 
 const block_texture = struct { // MARK: block_texture
 	var uniforms: struct {
-		color: c_int,
 		transparent: c_int,
 	} = undefined;
 	var shader: Shader = undefined;
@@ -2151,7 +2147,6 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	defer c.glDeleteFramebuffers(1, &finalFrameBuffer.frameBuffer);
 	block_texture.shader.bind();
 	c.glUniform1i(block_texture.uniforms.transparent, if(block.transparent()) c.GL_TRUE else c.GL_FALSE);
-	c.glUniform1i(block_texture.uniforms.color, 3);
 	frameBuffer.bindTexture(c.GL_TEXTURE3);
 
 	c.glBindVertexArray(draw.rectVAO);

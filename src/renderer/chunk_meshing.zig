@@ -39,10 +39,6 @@ const UniformStruct = struct {
 	@"fog.density": c_int,
 	@"fog.fogLower": c_int,
 	@"fog.fogHigher": c_int,
-	texture_sampler: c_int,
-	emissionSampler: c_int,
-	reflectivityAndAbsorptionSampler: c_int,
-	reflectionMap: c_int,
 	reflectionMapSize: c_int,
 	lodDistance: c_int,
 	zNear: c_int,
@@ -137,10 +133,6 @@ pub fn endRender() void {
 fn bindCommonUniforms(locations: *UniformStruct, projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d) void {
 	c.glUniformMatrix4fv(locations.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 
-	c.glUniform1i(locations.texture_sampler, 0);
-	c.glUniform1i(locations.emissionSampler, 1);
-	c.glUniform1i(locations.reflectivityAndAbsorptionSampler, 2);
-	c.glUniform1i(locations.reflectionMap, 4);
 	c.glUniform1f(locations.reflectionMapSize, renderer.reflectionCubeMapSize);
 
 	c.glUniform1f(locations.contrast, 0);

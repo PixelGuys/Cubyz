@@ -11,17 +11,18 @@ layout(location = 7) flat in int ditherSeed;
 layout(location = 8) flat in float distanceForLodCheck;
 layout(location = 9) flat in int opaqueInLod;
 
-uniform sampler2DArray texture_sampler;
-uniform sampler2DArray emissionSampler;
-uniform sampler2DArray reflectivityAndAbsorptionSampler;
-uniform samplerCube reflectionMap;
+layout(binding = 0) uniform sampler2DArray textureSampler;
+layout(binding = 1) uniform sampler2DArray emissionSampler;
+layout(binding = 2) uniform sampler2DArray reflectivityAndAbsorptionSampler;
+layout(binding = 4) uniform samplerCube reflectionMap;
+layout(binding = 5) uniform sampler2D depthTexture;
+
 uniform float reflectionMapSize;
 uniform float contrast;
 
 uniform ivec3 playerPositionInteger;
 uniform vec3 playerPositionFraction;
 
-layout(binding = 5) uniform sampler2D depthTexture;
 
 layout(location = 0, index = 0) out vec4 fragColor;
 layout(location = 0, index = 1) out vec4 blendColor;
@@ -141,7 +142,7 @@ void main() {
 	float airFogDistance = calculateFogDistance(dist, densityAdjustment, playerPositionFraction.z, normalize(direction).z, fog.density, fog.fogLower - playerPositionInteger.z, fog.fogHigher - playerPositionInteger.z);
 	vec3 fogColor = unpackColor(fogData[int(animatedTextureIndex)].fogColor);
 	vec3 pixelLight = max(light*normalVariation, texture(emissionSampler, textureCoords).r*4);
-	vec4 textureColor = texture(texture_sampler, textureCoords)*vec4(pixelLight, 1);
+	vec4 textureColor = texture(textureSampler, textureCoords)*vec4(pixelLight, 1);
 
 	float reflectivity = texture(reflectivityAndAbsorptionSampler, textureCoords).a;
 	float fresnelReflection = (1 + dot(normalize(direction), normal));

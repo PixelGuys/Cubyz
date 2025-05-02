@@ -4,7 +4,8 @@ layout(location = 0) out vec4 fragColor;
 
 layout(location = 0) in vec2 texCoords;
 
-uniform sampler2D color;
+layout(binding = 3) uniform sampler2D color;
+
 uniform bool transparent;
 
 void main() {

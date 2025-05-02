@@ -5,7 +5,7 @@ layout(location = 0) out vec4 frag_color;
 layout(location = 0) in vec2 frag_face_pos;
 layout(location = 1) flat in vec4 color;
 
-uniform sampler2D texture_sampler;
+layout(binding = 0) uniform sampler2D textureSampler;
 
 // in pixels
 uniform vec4 texture_rect;
@@ -30,10 +30,10 @@ void main() {
 			);
 	if ((fontEffects & 0x01000000) != 0) { // make it bold in y by sampling more pixels.
 		vec2 pixel_offset = 1/fontSize;
-		frag_color = color*max(texture(texture_sampler, texture_position).r,
-					texture(texture_sampler, texture_position + vec2(0, 0.5f/fontSize.y)).r);
+		frag_color = color*max(texture(textureSampler, texture_position).r,
+					texture(textureSampler, texture_position + vec2(0, 0.5f/fontSize.y)).r);
 	} else {
-		frag_color = color*texture(texture_sampler,
+		frag_color = color*texture(textureSampler,
 			texture_position).r;
 	}
 }

@@ -5,9 +5,9 @@ layout(location = 0) out vec4 fragColor;
 layout(location = 0) in vec2 texCoords;
 layout(location = 1) flat in vec3[4] directions;
 
-uniform sampler2D color;
+layout(binding = 3) uniform sampler2D color;
 
-uniform sampler2D depthTexture;
+layout(binding = 4) uniform sampler2D depthTexture;
 uniform float zNear;
 uniform float zFar;
 uniform vec2 tanXY;

@@ -7,8 +7,8 @@ layout(location = 1) in vec2 normalizedTexCoords;
 layout(location = 2) in vec3 direction;
 
 layout(binding = 3) uniform sampler2D color;
+layout(binding = 4) uniform sampler2D depthTexture;
 
-uniform sampler2D depthTexture;
 uniform float zNear;
 uniform float zFar;
 uniform vec2 tanXY;
