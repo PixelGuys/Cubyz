@@ -20,6 +20,9 @@ const BlockStorageType = u32;
 const BinaryWriter = main.utils.BinaryWriter;
 const BinaryReader = main.utils.BinaryReader;
 
+const AliasTable = main.utils.AliasTable;
+const ListUnmanaged = main.ListUnmanaged;
+
 pub const blueprintVersion = 0;
 var voidType: ?u16 = null;
 
@@ -36,7 +39,7 @@ pub const Blueprint = struct {
 	pub fn deinit(self: Blueprint, allocator: NeverFailingAllocator) void {
 		self.blocks.deinit(allocator);
 	}
-	pub fn clone(self: *Blueprint, allocator: NeverFailingAllocator) Blueprint {
+	pub fn clone(self: Blueprint, allocator: NeverFailingAllocator) Blueprint {
 		return .{.blocks = self.blocks.clone(allocator)};
 	}
 	pub fn rotateZ(self: Blueprint, allocator: NeverFailingAllocator, angle: Degrees) Blueprint {
@@ -273,6 +276,62 @@ pub const Blueprint = struct {
 				return .{.mode = .deflate, .data = Compression.deflate(allocator, decompressedData, .default)};
 			},
 		}
+	}
+	pub fn set(self: *Blueprint, pattern: Pattern) void {
+		for(0..self.blocks.width) |x| {
+			for(0..self.blocks.depth) |y| {
+				for(0..self.blocks.height) |z| {
+					self.blocks.set(x, y, z, pattern.blocks.sample(&main.seed).block);
+				}
+			}
+		}
+	}
+};
+
+pub const Pattern = struct {
+	blocks: AliasTable(Entry),
+
+	const Entry = struct {
+		block: Block,
+		chance: f32,
+	};
+
+	pub fn initFromString(allocator: NeverFailingAllocator, source: []const u8) !@This() {
+		var specifiers = std.mem.splitScalar(u8, source, ',');
+		var totalWeight: f32 = 0;
+
+		var weightedEntries: ListUnmanaged(struct {block: Block, weight: f32}) = .{};
+		defer weightedEntries.deinit(main.stackAllocator);
+
+		while(specifiers.next()) |specifier| {
+			var iterator = std.mem.splitScalar(u8, specifier, '%');
+
+			var weight: f32 = undefined;
+			var block = main.blocks.parseBlock(iterator.rest());
+
+			const first = iterator.first();
+
+			weight = std.fmt.parseFloat(f32, first) catch blk: {
+				// To distinguish somehow between mistyped numeric values and actual block IDs we check for addon name separator.
+				if(!std.mem.containsAtLeastScalar(u8, first, 1, ':')) return error.PatternSyntaxError;
+				block = main.blocks.parseBlock(first);
+				break :blk 1.0;
+			};
+			totalWeight += weight;
+			weightedEntries.append(main.stackAllocator, .{.block = block, .weight = weight});
+		}
+
+		const entries = allocator.alloc(Entry, weightedEntries.items.len);
+		for(weightedEntries.items, 0..) |entry, i| {
+			entries[i] = .{.block = entry.block, .chance = entry.weight/totalWeight};
+		}
+
+		return .{.blocks = .init(allocator, entries)};
+	}
+
+	pub fn deinit(self: @This(), allocator: NeverFailingAllocator) void {
+		self.blocks.deinit(allocator);
+		allocator.free(self.blocks.items);
 	}
 };
 
