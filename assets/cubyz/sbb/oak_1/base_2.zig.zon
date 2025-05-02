@@ -1,0 +1,22 @@
+.{
+	.blueprint = "cubyz:oak_1/base_2",
+	.children = .{
+		.crimson = .{
+			.{.structure = "cubyz:oak_1/root_1", .chance = 0.125},
+			.{.structure = "cubyz:oak_1/root_2", .chance = 0.125},
+			.{.structure = "cubyz:oak_1/root_3", .chance = 0.125},
+			.{.structure = "cubyz:oak_1/root_4", .chance = 0.125},
+			.{.structure = "cubyz:oak_1/root_5", .chance = 0.125},
+			.{.structure = "cubyz:oak_1/root_6", .chance = 0.125},
+			.{.structure = "cubyz:null/null_side", .chance = 0.25},
+		},
+		.brown = .{
+			.{.structure = "cubyz:oak_1/trunk_1", .chance = 0.17},
+			.{.structure = "cubyz:oak_1/trunk_2", .chance = 0.16},
+			.{.structure = "cubyz:oak_1/trunk_3", .chance = 0.16},
+			.{.structure = "cubyz:oak_1/trunk_4", .chance = 0.16},
+			.{.structure = "cubyz:oak_1/trunk_5", .chance = 0.16},
+			.{.structure = "cubyz:oak_1/trunk_6", .chance = 0.16},
+		},
+	},
+}

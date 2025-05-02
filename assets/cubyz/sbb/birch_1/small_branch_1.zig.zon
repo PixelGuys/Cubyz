@@ -1,0 +1,4 @@
+.{
+	.blueprint = "cubyz:birch_1/small_branch_1",
+	.children = .{},
+}
