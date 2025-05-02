@@ -1316,11 +1316,10 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 		var climbAmount: f32 = 0.01;
 		if(!Player.onGround or KeyBoard.key("jump").pressed) {
-			climbAmount = 0.4;
+			climbAmount = 0.25;
 		}
 		Player.currentClimbSpeed = collision.calculateClimbSpeed(.client, Player.super.pos, Player.outerBoundingBox, -camera.rotation[2], climbAmount, 3);
-		const climbSlipVel: comptime_float = -@as(f64, @floatCast(gravity*0.45));
-		collision.touchBlocks(&Player.super, hitBox, .client, climbAmount, climbSlipVel);
+		collision.touchBlocks(&Player.super, hitBox, .client, climbAmount, -13);
 	} else {
 		Player.super.pos += move;
 	}
