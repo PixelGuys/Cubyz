@@ -503,7 +503,7 @@ pub const collision = struct {
 						const model = block.?.mode().model(block.?).model();
 						const modelBoundingBoxMax: Vec3d = model.max + blockPos;
 						const hasFullBlockHeight = model.max[2] > 0.9;
-						if (modelBoundingBoxMax[2] - boundingBox.min[2] < 0.15 and !hasFullBlockHeight) break :notClimbable;
+						if(modelBoundingBoxMax[2] - boundingBox.min[2] < 0.15 and !hasFullBlockHeight) break :notClimbable;
 
 						const touchX: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extendClimableX);
 						const touchY: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extendClimableY);
