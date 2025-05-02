@@ -115,11 +115,9 @@ pub const Blueprint = struct {
 	}
 
 	fn _pasteInGeneration(self: Blueprint, pos: Vec3i, chunk: *ServerChunk, comptime mode: PasteMode) void {
-		const chunkOffset = @max(@as(Vec3i, @splat(0)), pos);
-
-		const indexEndX: i32 = @min(@as(i32, chunk.super.width) - chunkOffset[0], @as(i32, @intCast(self.blocks.width)));
-		const indexEndY: i32 = @min(@as(i32, chunk.super.width) - chunkOffset[1], @as(i32, @intCast(self.blocks.depth)));
-		const indexEndZ: i32 = @min(@as(i32, chunk.super.width) - chunkOffset[2], @as(i32, @intCast(self.blocks.height)));
+		const indexEndX: i32 = @min(@as(i32, chunk.super.width) - pos[0], @as(i32, @intCast(self.blocks.width)));
+		const indexEndY: i32 = @min(@as(i32, chunk.super.width) - pos[1], @as(i32, @intCast(self.blocks.depth)));
+		const indexEndZ: i32 = @min(@as(i32, chunk.super.width) - pos[2], @as(i32, @intCast(self.blocks.height)));
 
 		var indexX: u31 = @max(0, -pos[0]);
 		while(indexX < indexEndX) : (indexX += chunk.super.pos.voxelSize) {
