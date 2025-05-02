@@ -1,5 +1,12 @@
 const std = @import("std");
 
+fn libName(b: *std.Build, name: []const u8, target: std.Target) []const u8 {
+	return switch(target.os.tag) {
+		.windows => b.fmt("{s}.lib", .{name}),
+		else => b.fmt("lib{s}.a", .{name}),
+	};
+}
+
 fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool) void {
 	const target = exe.root_module.resolved_target.?;
 	const t = target.result;
@@ -14,10 +21,7 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 		.windows => "gnu",
 		else => "none",
 	}});
-	const artifactName = switch(t.os.tag) {
-		.windows => b.fmt("{s}.lib", .{depsLib}),
-		else => b.fmt("lib{s}.a", .{depsLib}),
-	};
+	const artifactName = libName(b, depsLib, t);
 
 	var depsName: []const u8 = b.fmt("cubyz_deps_{s}_{s}", .{@tagName(t.cpu.arch), @tagName(t.os.tag)});
 	if(useLocalDeps) depsName = "local";
@@ -39,13 +43,13 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 	exe.addIncludePath(headersDeps.path("include"));
 	exe.addObjectFile(libsDeps.path("lib").path(b, artifactName));
 	const subPath = libsDeps.path("lib").path(b, depsLib);
-	exe.addObjectFile(subPath.path(b, "libglslang.a"));
-	exe.addObjectFile(subPath.path(b, "libMachineIndependent.a"));
-	exe.addObjectFile(subPath.path(b, "libGenericCodeGen.a"));
-	exe.addObjectFile(subPath.path(b, "libglslang-default-resource-limits.a"));
-	exe.addObjectFile(subPath.path(b, "libSPIRV.a"));
-	exe.addObjectFile(subPath.path(b, "libSPIRV-Tools.a"));
-	exe.addObjectFile(subPath.path(b, "libSPIRV-Tools-opt.a"));
+	exe.addObjectFile(subPath.path(b, libName(b, "glslang", t)));
+	exe.addObjectFile(subPath.path(b, libName(b, "MachineIndependent", t)));
+	exe.addObjectFile(subPath.path(b, libName(b, "GenericCodeGen", t)));
+	exe.addObjectFile(subPath.path(b, libName(b, "glslang-default-resource-limits", t)));
+	exe.addObjectFile(subPath.path(b, libName(b, "SPIRV", t)));
+	exe.addObjectFile(subPath.path(b, libName(b, "SPIRV-Tools", t)));
+	exe.addObjectFile(subPath.path(b, libName(b, "SPIRV-Tools-opt", t)));
 
 	if(t.os.tag == .windows) {
 		exe.linkSystemLibrary("ole32");
