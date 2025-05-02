@@ -403,6 +403,7 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "textPaste", .key = c.GLFW_KEY_V, .repeatAction = &gui.textCallbacks.paste},
 		.{.name = "textCut", .key = c.GLFW_KEY_X, .repeatAction = &gui.textCallbacks.cut},
 		.{.name = "textNewline", .key = c.GLFW_KEY_ENTER, .repeatAction = &gui.textCallbacks.newline},
+		.{.name = "textTab", .key = c.GLFW_KEY_TAB, .repeatAction = &gui.textCallbacks.tab},
 
 		// Hotbar shortcuts:
 		.{.name = "Hotbar 1", .key = c.GLFW_KEY_1, .pressAction = setHotbarSlot(1)},

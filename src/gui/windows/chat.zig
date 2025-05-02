@@ -262,3 +262,8 @@ pub fn sendMessage(_: usize) void {
 		}
 	}
 }
+
+pub fn autocomplete(_: usize) void {
+	if(input.currentString.items.len == 0) return;
+	if(input.currentString.items[0] != '/') return;
+}

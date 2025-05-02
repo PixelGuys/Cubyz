@@ -46,6 +46,7 @@ pub fn __deinit() void {
 const OptionalCallbacks = struct {
 	onUp: ?gui.Callback = null,
 	onDown: ?gui.Callback = null,
+	onTab: ?gui.Callback = null,
 };
 
 pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, onNewline: gui.Callback, optional: OptionalCallbacks) *TextInput {
@@ -464,6 +465,14 @@ pub fn newline(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 		return;
 	}
 	self.inputCharacter('\n');
+	self.ensureCursorVisibility();
+}
+
+pub fn tab(self: *TextInput, mods: main.Window.Key.Modifiers) void {
+	if(!mods.shift and self.optional.onTab != null) {
+		self.optional.onTab.?.run();
+		return;
+	}
 	self.ensureCursorVisibility();
 }
 
