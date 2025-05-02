@@ -27,7 +27,6 @@ struct ParticleTypeData {
 	uint animationFrames;
 	uint startFrame;
 	float size;
-	bool isBlockTexture;
 };
 layout(std430, binding = 14) restrict readonly buffer _particleTypeData
 {

@@ -60,7 +60,6 @@ pub const ParticleManager = struct {
 		std.log.debug("Registered particle: {s}", .{id});
 		var particleType: ParticleType = undefined;
 
-		particleType.isBlockTexture = zon.get(bool, "isBlockTexture", false);
 		particleType.animationFrames = zon.get(u32, "animationFrames", 1);
 
 		const textureId = zon.get([]const u8, "texture", "cubyz:spark");
@@ -390,7 +389,6 @@ pub const ParticleType = struct {
 	animationFrames: u32,
 	startFrame: u32,
 	size: f32,
-	isBlockTexture: bool,
 };
 
 pub const Particle = struct {
