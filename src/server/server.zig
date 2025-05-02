@@ -268,6 +268,9 @@ pub const User = struct { // MARK: User
 	fn sendRawMessage(self: *User, msg: []const u8) void {
 		main.network.Protocols.chat.send(self.conn, msg);
 	}
+	pub fn getEntity(self: *User) *Entity {
+		return &self.player;
+	}
 };
 
 pub const updatesPerSec: u32 = 20;
