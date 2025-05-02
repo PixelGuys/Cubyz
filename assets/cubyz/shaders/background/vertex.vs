@@ -5,8 +5,8 @@ layout(location = 1) in vec2 texCoords;
 
 layout(location = 0) out vec2 outTexCoords;
 
-uniform mat4 viewMatrix;
-uniform mat4 projectionMatrix;
+layout(location = 0) uniform mat4 viewMatrix;
+layout(location = 1) uniform mat4 projectionMatrix;
 
 void main() {
 	gl_Position = projectionMatrix*viewMatrix*vec4(vertexPos, 1);

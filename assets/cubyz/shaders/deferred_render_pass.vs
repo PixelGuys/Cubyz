@@ -5,8 +5,8 @@ layout(location = 0) in vec2 inTexCoords;
 layout(location = 0) out vec2 texCoords;
 layout(location = 1) flat out vec3[4] directions;
 
-uniform mat4 invViewMatrix;
-uniform vec2 tanXY;
+layout(location = 0) uniform mat4 invViewMatrix;
+layout(location = 1) uniform vec2 tanXY;
 
 void main() {
 	directions[0] = (invViewMatrix * vec4(1*tanXY.x, 1, 1*tanXY.y, 0)).xyz;

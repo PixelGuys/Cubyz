@@ -6,10 +6,11 @@ layout(location = 0) flat in vec2 startCoord;
 layout(location = 1) flat in vec2 endCoord;
 layout(location = 2) flat in vec4 fColor;
 
-uniform vec2 start;
-uniform vec2 size;
-uniform float scale;
-uniform vec2 effectLength;
+layout(location = 0) uniform vec2 start;
+layout(location = 1) uniform vec2 size;
+
+layout(location = 4) uniform float scale;
+layout(location = 5) uniform vec2 effectLength;
 
 void main() {
 	vec2 distanceToBorder = min(gl_FragCoord.xy - startCoord, endCoord - gl_FragCoord.xy)/effectLength/scale;

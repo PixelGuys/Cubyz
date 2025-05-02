@@ -8,8 +8,8 @@ layout(location = 2) out vec3 direction;
 
 layout(binding = 3) uniform sampler2D color;
 
-uniform mat4 invViewMatrix;
-uniform vec2 tanXY;
+layout(location = 0) uniform mat4 invViewMatrix;
+layout(location = 1) uniform vec2 tanXY;
 
 void main() {
 	vec2 position = inTexCoords*2 - vec2(1, 1);

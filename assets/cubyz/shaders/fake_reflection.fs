@@ -4,10 +4,10 @@ layout(location = 0) in vec3 coords;
 
 layout(location = 0) out vec4 fragColor;
 
-uniform vec3 normalVector;
-uniform vec3 upVector;
-uniform vec3 rightVector;
-uniform float frequency;
+layout(location = 1) uniform vec3 normalVector;
+layout(location = 2) uniform vec3 upVector;
+layout(location = 3) uniform vec3 rightVector;
+layout(location = 4) uniform float frequency;
 
 ivec3 random3to3(ivec3 v) {
 	v &= 15;

@@ -6,13 +6,13 @@ layout(location = 0) out vec2 frag_face_pos;
 layout(location = 1) flat out vec4 color;
 
 // in pixels
-uniform vec4 texture_rect;
-uniform vec2 scene;
-uniform vec2 offset;
-uniform float ratio;
-uniform int fontEffects;
+layout(location = 0) uniform vec4 texture_rect;
+layout(location = 1) uniform vec2 scene;
+layout(location = 2) uniform vec2 offset;
+layout(location = 3) uniform float ratio;
+layout(location = 4) uniform int fontEffects;
 
-uniform float alpha;
+layout(location = 5) uniform float alpha;
 
 vec2 convert2Proportional(vec2 original, vec2 full) {
 	return vec2(original.x/full.x, original.y/full.y);

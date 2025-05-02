@@ -17,8 +17,8 @@ layout(std430, binding = 1) buffer _animatedTexture
 	float animatedTexture[];
 };
 
-uniform uint time;
-uniform uint size;
+layout(location = 0) uniform uint time;
+layout(location = 1) uniform uint size;
 
 void main() {
 	uint textureIndex = gl_GlobalInvocationID.x;

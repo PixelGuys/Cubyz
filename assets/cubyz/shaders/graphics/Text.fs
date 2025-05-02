@@ -8,12 +8,12 @@ layout(location = 1) flat in vec4 color;
 layout(binding = 0) uniform sampler2D textureSampler;
 
 // in pixels
-uniform vec4 texture_rect;
-uniform vec2 scene;
-uniform vec2 fontSize;
-uniform vec2 offset;
-uniform float ratio;
-uniform int fontEffects;
+layout(location = 0) uniform vec4 texture_rect;
+layout(location = 1) uniform vec2 scene;
+layout(location = 2) uniform vec2 offset;
+layout(location = 3) uniform float ratio;
+layout(location = 4) uniform int fontEffects;
+layout(location = 6) uniform vec2 fontSize;
 
 vec2 convert2Proportional(vec2 original, vec2 full){
 	return vec2(original.x/full.x, original.y/full.y);

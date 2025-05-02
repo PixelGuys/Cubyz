@@ -8,11 +8,15 @@ layout(location = 1) flat in vec3[4] directions;
 layout(binding = 3) uniform sampler2D color;
 
 layout(binding = 4) uniform sampler2D depthTexture;
-uniform float zNear;
-uniform float zFar;
-uniform vec2 tanXY;
 
 layout(binding = 5) uniform sampler2D bloomColor;
+
+layout(location = 1) uniform vec2 tanXY;
+layout(location = 2) uniform float zNear;
+layout(location = 3) uniform float zFar;
+
+layout(location = 4) uniform ivec3 playerPositionInteger;
+layout(location = 5) uniform vec3 playerPositionFraction;
 
 struct Fog {
 	vec3 color;
@@ -21,10 +25,7 @@ struct Fog {
 	float fogHigher;
 };
 
-uniform Fog fog;
-
-uniform ivec3 playerPositionInteger;
-uniform vec3 playerPositionFraction;
+layout(location = 6) uniform Fog fog;
 
 float zFromDepth(float depthBufferValue) {
 	return zNear*zFar/(depthBufferValue*(zNear - zFar) + zFar);

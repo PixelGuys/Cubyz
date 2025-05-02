@@ -4,7 +4,7 @@ layout(location = 0) in vec2 inTexCoords;
 
 layout(location = 0) out vec3 coords;
 
-uniform float reflectionMapSize;
+layout(location = 0) uniform float reflectionMapSize;
 
 void main() {
 	coords = vec3((inTexCoords*2 - vec2(1, 1))*(reflectionMapSize + 1)/reflectionMapSize, 1);

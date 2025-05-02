@@ -11,16 +11,16 @@ layout(location = 7) flat in int ditherSeed;
 layout(location = 8) flat in float distanceForLodCheck;
 layout(location = 9) flat in int opaqueInLod;
 
+layout(location = 0) out vec4 fragColor;
+
 layout(binding = 0) uniform sampler2DArray textureSampler;
 layout(binding = 1) uniform sampler2DArray emissionSampler;
 layout(binding = 2) uniform sampler2DArray reflectivityAndAbsorptionSampler;
 layout(binding = 4) uniform samplerCube reflectionMap;
 
-uniform float reflectionMapSize;
-uniform float contrast;
-uniform float lodDistance;
-
-layout(location = 0) out vec4 fragColor;
+layout(location = 5) uniform float reflectionMapSize;
+layout(location = 6) uniform float contrast;
+layout(location = 7) uniform float lodDistance;
 
 layout(std430, binding = 1) buffer _animatedTexture
 {

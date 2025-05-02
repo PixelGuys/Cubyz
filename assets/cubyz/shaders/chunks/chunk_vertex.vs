@@ -11,11 +11,11 @@ layout(location = 7) flat out int ditherSeed;
 layout(location = 8) flat out float distanceForLodCheck;
 layout(location = 9) flat out int opaqueInLod;
 
-uniform vec3 ambientLight;
-uniform mat4 projectionMatrix;
-uniform mat4 viewMatrix;
-uniform ivec3 playerPositionInteger;
-uniform vec3 playerPositionFraction;
+layout(location = 0) uniform vec3 ambientLight;
+layout(location = 1) uniform mat4 projectionMatrix;
+layout(location = 2) uniform mat4 viewMatrix;
+layout(location = 3) uniform ivec3 playerPositionInteger;
+layout(location = 4) uniform vec3 playerPositionFraction;
 
 struct FaceData {
 	int encodedPositionAndLightIndex;

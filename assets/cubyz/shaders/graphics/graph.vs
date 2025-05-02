@@ -1,11 +1,11 @@
 #version 460
 
 //in pixel
-uniform vec2 start;
-uniform vec2 dimension;
-uniform vec2 screen;
-uniform int points;
-uniform int offset;
+layout(location = 0) uniform vec2 start;
+layout(location = 1) uniform vec2 dimension;
+layout(location = 2) uniform vec2 screen;
+layout(location = 3) uniform int points;
+layout(location = 4) uniform int offset;
 
 layout(std430, binding = 5) buffer _data
 {

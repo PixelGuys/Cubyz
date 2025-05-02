@@ -11,21 +11,23 @@ layout(location = 7) flat in int ditherSeed;
 layout(location = 8) flat in float distanceForLodCheck;
 layout(location = 9) flat in int opaqueInLod;
 
+layout(location = 0, index = 0) out vec4 fragColor;
+layout(location = 0, index = 1) out vec4 blendColor;
+
 layout(binding = 0) uniform sampler2DArray textureSampler;
 layout(binding = 1) uniform sampler2DArray emissionSampler;
 layout(binding = 2) uniform sampler2DArray reflectivityAndAbsorptionSampler;
 layout(binding = 4) uniform samplerCube reflectionMap;
 layout(binding = 5) uniform sampler2D depthTexture;
 
-uniform float reflectionMapSize;
-uniform float contrast;
+layout(location = 3) uniform ivec3 playerPositionInteger;
+layout(location = 4) uniform vec3 playerPositionFraction;
 
-uniform ivec3 playerPositionInteger;
-uniform vec3 playerPositionFraction;
+layout(location = 5) uniform float reflectionMapSize;
+layout(location = 6) uniform float contrast;
 
-
-layout(location = 0, index = 0) out vec4 fragColor;
-layout(location = 0, index = 1) out vec4 blendColor;
+layout(location = 8) uniform float zNear;
+layout(location = 9) uniform float zFar;
 
 struct Fog {
 	vec3 color;
@@ -33,6 +35,8 @@ struct Fog {
 	float fogLower;
 	float fogHigher;
 };
+
+layout(location = 10) uniform Fog fog;
 
 layout(std430, binding = 1) buffer _animatedTexture
 {
@@ -54,11 +58,6 @@ float lightVariation(vec3 normal) {
 	const float baseLighting = 1 - contrast;
 	return baseLighting + dot(normal, directionalPart);
 }
-
-uniform float zNear;
-uniform float zFar;
-
-uniform Fog fog;
 
 vec3 unpackColor(uint color) {
 	return vec3(

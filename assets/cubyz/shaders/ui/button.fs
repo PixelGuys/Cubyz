@@ -7,7 +7,7 @@ layout(location = 1) flat in vec4 fColor;
 
 layout(binding = 0) uniform sampler2D image;
 
-uniform float scale;
+layout(location = 4) uniform float scale;
 
 void main() {
 	frag_color = texture(image, (gl_FragCoord.xy - startCoord)/(2*scale)/textureSize(image, 0));

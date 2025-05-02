@@ -9,7 +9,7 @@ layout(location = 0) out vec4 fragColor;
 
 layout(binding = 0) uniform sampler2D textureSampler;
 
-uniform float contrast;
+layout(location = 5) uniform float contrast;
 
 float lightVariation(vec3 normal) {
 	const vec3 directionalPart = vec3(0, contrast/2, contrast);

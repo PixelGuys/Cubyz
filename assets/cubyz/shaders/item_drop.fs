@@ -18,12 +18,13 @@ layout(binding = 1) uniform sampler2DArray emissionSampler;
 layout(binding = 2) uniform sampler2DArray reflectivityAndAbsorptionSampler;
 layout(binding = 4) uniform samplerCube reflectionMap;
 
-uniform vec3 ambientLight;
-uniform mat4 projectionMatrix;
-uniform float sizeScale;
+layout(location = 0) uniform mat4 projectionMatrix;
 
-uniform float reflectionMapSize;
-uniform float contrast;
+layout(location = 5) uniform vec3 ambientLight;
+layout(location = 7) uniform float sizeScale;
+
+layout(location = 8) uniform float reflectionMapSize;
+layout(location = 9) uniform float contrast;
 
 const float[6] normalVariations = float[6](
 	1.0,
