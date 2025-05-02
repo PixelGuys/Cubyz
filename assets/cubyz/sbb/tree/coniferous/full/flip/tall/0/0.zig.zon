@@ -1,0 +1,28 @@
+.{
+	.blueprint = "cubyz:tree/coniferous/stem/short/flip",
+	.children = .{
+		.blue = .{
+			.{.structure = "cubyz:tree/coniferous/branch/none", .chance = 1.0},
+			.{.structure = "cubyz:mushroom/side/bolete", .chance = 0.25},
+			.{.structure = "cubyz:mushroom/side/toadstool", .chance = 0.25},
+		},
+		.indigo = .{
+			.{.structure = "cubyz:tree/coniferous/branch/none", .chance = 1.0},
+			.{.structure = "cubyz:mushroom/side/bolete", .chance = 0.25},
+			.{.structure = "cubyz:mushroom/side/toadstool", .chance = 0.25},
+		},
+		.red = .{
+			.{.structure = "cubyz:tree/coniferous/branch/none", .chance = 1.0},
+			.{.structure = "cubyz:mushroom/side/bolete", .chance = 0.25},
+			.{.structure = "cubyz:mushroom/side/toadstool", .chance = 0.25},
+		},
+		.crimson = .{
+			.{.structure = "cubyz:tree/coniferous/branch/none", .chance = 1.0},
+			.{.structure = "cubyz:mushroom/side/bolete", .chance = 0.25},
+			.{.structure = "cubyz:mushroom/side/toadstool", .chance = 0.25},
+		},
+		.white = .{
+			.{.structure = "cubyz:tree/coniferous/full/flip/tall/0/1", .chance = 1.0},
+		},
+	},
+}

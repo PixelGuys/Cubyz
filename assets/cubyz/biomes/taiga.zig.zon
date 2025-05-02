@@ -15,15 +15,28 @@
 	},
 	.structures = .{
 		.{
-			.id = "cubyz:simple_tree",
-			.leaves = "cubyz:pine_needles",
-			.log = "cubyz:pine_log",
-			.top = "cubyz:pine_top",
-			.chance = 0.4,
-			.type = .pyramid,
-			.height = 8,
-			.height_variation = 5,
-			.branched = false,
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/full/flip/tall/0/0",
+			.placeMode = .degradable,
+			.chance = 0.05,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/full/flip_spaced/tall/0/0",
+			.placeMode = .degradable,
+			.chance = 0.05,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/full/screw/tall/0/0",
+			.placeMode = .degradable,
+			.chance = 0.05,
+		},
+		.{
+			.id = "cubyz:sbb",
+			.structure = "cubyz:tree/coniferous/full/screw/tall/1/0",
+			.placeMode = .degradable,
+			.chance = 0.05,
 		},
 		.{
 			.id = "cubyz:flower_patch",

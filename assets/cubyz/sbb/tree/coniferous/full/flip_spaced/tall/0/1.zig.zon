@@ -1,0 +1,22 @@
+.{
+	.blueprint = "cubyz:tree/coniferous/stem/long/flip_spaced",
+	.children = .{
+		.blue = .{
+			.{.structure = "cubyz:tree/coniferous/branch/large/0", .chance = 1.0},
+			.{.structure = "cubyz:tree/coniferous/branch/large/1", .chance = 1.0},
+			.{.structure = "cubyz:tree/coniferous/branch/large/2", .chance = 1.0},
+			.{.structure = "cubyz:tree/coniferous/branch/large/3", .chance = 1.0},
+			.{.structure = "cubyz:tree/coniferous/branch/large/4", .chance = 1.0},
+			.{.structure = "cubyz:tree/coniferous/branch/large/5", .chance = 1.0},
+		},
+		.red = .{
+			.{.structure = "cubyz:tree/coniferous/branch/big/0", .chance = 1.0},
+			.{.structure = "cubyz:tree/coniferous/branch/big/1", .chance = 1.0},
+			.{.structure = "cubyz:tree/coniferous/branch/big/2", .chance = 1.0},
+			.{.structure = "cubyz:tree/coniferous/branch/big/3", .chance = 1.0},
+		},
+		.white = .{
+			.{.structure = "cubyz:tree/coniferous/full/flip_spaced/tall/0/2", .chance = 1.0},
+		},
+	},
+}
