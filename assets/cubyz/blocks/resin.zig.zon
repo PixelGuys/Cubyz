@@ -1,0 +1,22 @@
+.{
+	.tags = .{.wood},
+	.blockHealth = 1,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.rotation = .ore,
+	.model = "cubyz:cube",
+	.texture = "cubyz:resin",
+	.item = .{
+		.texture = "resin.png",
+		.material = .{
+			.density = 1.5,
+			.elasticity = 1,
+			.hardness = 1.5,
+			.textureRoughness = 0.1,
+			.colors = .{
+				0xff7e331f, 0xffa03d25, 0xffc34b27, 0xffdf682d, 0xfffc813a,
+			},
+		},
+	},
+}
