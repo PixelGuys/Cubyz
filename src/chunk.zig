@@ -141,6 +141,7 @@ pub fn getIndex(x: i32, y: i32, z: i32) u32 {
 	std.debug.assert((x & chunkMask) == x and (y & chunkMask) == y and (z & chunkMask) == z);
 	return (@as(u32, @intCast(x)) << chunkShift2) | (@as(u32, @intCast(y)) << chunkShift) | @as(u32, @intCast(z));
 }
+
 /// Gets the x coordinate from a given index inside this chunk.
 fn extractXFromIndex(index: usize) i32 {
 	return @intCast(index >> chunkShift2 & chunkMask);
@@ -303,6 +304,11 @@ pub const Chunk = struct { // MARK: Chunk
 		return self.data.getValue(index);
 	}
 
+	/// Checks if the given relative coordinates lie within the bounds of this chunk.
+	pub fn liesInChunk(self: *const Chunk, x: i32, y: i32, z: i32) bool {
+		return x >= 0 and x < self.width and y >= 0 and y < self.width and z >= 0 and z < self.width;
+	}
+
 	pub fn getLocalBlockIndex(self: *const Chunk, worldPos: Vec3i) u32 {
 		return getIndex(
 			(worldPos[0] - self.pos.wx) >> self.voxelSizeShift,
@@ -376,7 +382,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 
 	/// Checks if the given relative coordinates lie within the bounds of this chunk.
 	pub fn liesInChunk(self: *const ServerChunk, x: i32, y: i32, z: i32) bool {
-		return x >= 0 and x < self.super.width and y >= 0 and y < self.super.width and z >= 0 and z < self.super.width;
+		return self.super.liesInChunk(x, y, z);
 	}
 
 	/// This is useful to convert for loops to work for reduced resolution:

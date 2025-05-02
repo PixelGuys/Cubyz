@@ -18,6 +18,13 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const BinaryReader = main.utils.BinaryReader;
 
+pub const EntityNetworkData = struct {
+	id: u32,
+	pos: Vec3d,
+	vel: Vec3d,
+	rot: Vec3f,
+};
+
 pub const ClientEntity = struct {
 	interpolatedValues: utils.GenericInterpolation(6) = undefined,
 	_interpolationPos: [6]f64 = undefined,
@@ -80,7 +87,6 @@ pub const ClientEntityManager = struct {
 	var uniforms: struct {
 		projectionMatrix: c_int,
 		viewMatrix: c_int,
-		texture_sampler: c_int,
 		light: c_int,
 		contrast: c_int,
 		ambientLight: c_int,
@@ -169,7 +175,6 @@ pub const ClientEntityManager = struct {
 		c.glBindVertexArray(main.renderer.chunk_meshing.vao);
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 		modelTexture.bindTo(0);
-		c.glUniform1i(uniforms.texture_sampler, 0);
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniform3fv(uniforms.directionalLight, 1, @ptrCast(&directionalLight));
 		c.glUniform1f(uniforms.contrast, 0.12);
@@ -228,31 +233,30 @@ pub const ClientEntityManager = struct {
 		}
 	}
 
-	pub fn serverUpdate(time: i16, reader: *BinaryReader) !void {
+	pub fn serverUpdate(time: i16, entityData: []EntityNetworkData) void {
 		mutex.lock();
 		defer mutex.unlock();
 		timeDifference.addDataPoint(time);
 
-		while(reader.remaining.len != 0) {
-			const id = try reader.readInt(u32);
+		for(entityData) |data| {
 			const pos = [_]f64{
-				try reader.readFloat(f64),
-				try reader.readFloat(f64),
-				try reader.readFloat(f64),
-				@floatCast(try reader.readFloat(f32)),
-				@floatCast(try reader.readFloat(f32)),
-				@floatCast(try reader.readFloat(f32)),
+				data.pos[0],
+				data.pos[1],
+				data.pos[2],
+				@floatCast(data.rot[0]),
+				@floatCast(data.rot[1]),
+				@floatCast(data.rot[2]),
 			};
 			const vel = [_]f64{
-				try reader.readFloat(f64),
-				try reader.readFloat(f64),
-				try reader.readFloat(f64),
+				data.vel[0],
+				data.vel[1],
+				data.vel[2],
 				0,
 				0,
 				0,
 			};
 			for(entities.items()) |*ent| {
-				if(ent.id == id) {
+				if(ent.id == data.id) {
 					ent.updatePosition(&pos, &vel, time);
 					break;
 				}

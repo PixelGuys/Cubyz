@@ -1,17 +1,15 @@
-#version 330 core
+#version 460
 
-layout (location=0) in vec2 vertex_pos;
+layout(location = 0) in vec2 vertex_pos;
 
-flat out vec4 color;
-
+layout(location = 0) flat out vec4 color;
 
 //in pixel
-uniform vec2 start;
-uniform vec2 size;
-uniform vec2 screen;
+layout(location = 0) uniform vec2 start;
+layout(location = 1) uniform vec2 size;
+layout(location = 2) uniform vec2 screen;
 
-uniform int rectColor;
-
+layout(location = 3) uniform int rectColor;
 
 void main() {
 	// Convert to opengl coordinates:

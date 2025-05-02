@@ -1,11 +1,11 @@
 .{
 	.tags = .{.stone},
-	.blockHealth = 120,
+	.blockHealth = 80,
 	.blockResistance = 10,
 	.ore = .{
 		.veins = 3,
 		.size = 6,
-		.height = -100,
+		.height = -1000,
 		.density = 0.1,
 	},
 	.drops = .{

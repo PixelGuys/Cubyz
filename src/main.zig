@@ -23,6 +23,8 @@ pub const random = @import("random.zig");
 pub const renderer = @import("renderer.zig");
 pub const rotation = @import("rotation.zig");
 pub const settings = @import("settings.zig");
+const tag = @import("tag.zig");
+pub const Tag = tag.Tag;
 pub const utils = @import("utils.zig");
 pub const vec = @import("vec.zig");
 pub const ZonElement = @import("zon.zig").ZonElement;
@@ -301,6 +303,7 @@ fn openChat() void {
 	gui.windowlist.chat.input.select();
 }
 fn openCommand() void {
+	if(game.world == null) return;
 	openChat();
 	gui.windowlist.chat.input.clear();
 	gui.windowlist.chat.input.inputCharacter('/');
@@ -617,6 +620,9 @@ pub fn main() void { // MARK: main()
 
 	itemdrop.ItemDropRenderer.init();
 	defer itemdrop.ItemDropRenderer.deinit();
+
+	tag.init();
+	defer tag.deinit();
 
 	assets.init();
 	defer assets.deinit();

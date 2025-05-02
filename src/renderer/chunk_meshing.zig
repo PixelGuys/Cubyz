@@ -39,10 +39,6 @@ const UniformStruct = struct {
 	@"fog.density": c_int,
 	@"fog.fogLower": c_int,
 	@"fog.fogHigher": c_int,
-	texture_sampler: c_int,
-	emissionSampler: c_int,
-	reflectivityAndAbsorptionSampler: c_int,
-	reflectionMap: c_int,
 	reflectionMapSize: c_int,
 	lodDistance: c_int,
 	zNear: c_int,
@@ -137,10 +133,6 @@ pub fn endRender() void {
 fn bindCommonUniforms(locations: *UniformStruct, projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d) void {
 	c.glUniformMatrix4fv(locations.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 
-	c.glUniform1i(locations.texture_sampler, 0);
-	c.glUniform1i(locations.emissionSampler, 1);
-	c.glUniform1i(locations.reflectivityAndAbsorptionSampler, 2);
-	c.glUniform1i(locations.reflectionMap, 4);
 	c.glUniform1f(locations.reflectionMapSize, renderer.reflectionCubeMapSize);
 
 	c.glUniform1f(locations.contrast, 0);
@@ -1172,9 +1164,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 	}
 
-	pub fn updateBlock(self: *ChunkMesh, _x: i32, _y: i32, _z: i32, _newBlock: Block) void {
-		var lightRefreshList = main.List(*ChunkMesh).init(main.stackAllocator);
-		defer lightRefreshList.deinit();
+	pub fn updateBlock(self: *ChunkMesh, _x: i32, _y: i32, _z: i32, _newBlock: Block, lightRefreshList: *main.List(*ChunkMesh), regenerateMeshList: *main.List(*ChunkMesh)) void {
 		const x: u5 = @intCast(_x & chunk.chunkMask);
 		const y: u5 = @intCast(_y & chunk.chunkMask);
 		const z: u5 = @intCast(_z & chunk.chunkMask);
@@ -1194,24 +1184,31 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 
 		var neighborBlocks: [6]Block = undefined;
 		@memset(&neighborBlocks, .{.typ = 0, .data = 0});
+
 		for(chunk.Neighbor.iterable) |neighbor| {
 			const nx = x + neighbor.relX();
 			const ny = y + neighbor.relY();
 			const nz = z + neighbor.relZ();
+
 			if(nx & chunk.chunkMask != nx or ny & chunk.chunkMask != ny or nz & chunk.chunkMask != nz) {
+				const nnx: u5 = @intCast(nx & chunk.chunkMask);
+				const nny: u5 = @intCast(ny & chunk.chunkMask);
+				const nnz: u5 = @intCast(nz & chunk.chunkMask);
+
 				const neighborChunkMesh = mesh_storage.getNeighborAndIncreaseRefCount(self.pos, self.pos.voxelSize, neighbor) orelse continue;
 				defer neighborChunkMesh.decreaseRefCount();
-				const index = chunk.getIndex(nx & chunk.chunkMask, ny & chunk.chunkMask, nz & chunk.chunkMask);
+
+				const index = chunk.getIndex(nnx, nny, nnz);
+
 				neighborChunkMesh.mutex.lock();
 				var neighborBlock = neighborChunkMesh.chunk.data.getValue(index);
-				if(neighborBlock.mode().dependsOnNeighbors) {
-					if(neighborBlock.mode().updateData(&neighborBlock, neighbor.reverse(), newBlock)) {
-						neighborChunkMesh.chunk.data.setValue(index, neighborBlock);
-						neighborChunkMesh.mutex.unlock();
-						neighborChunkMesh.updateBlockLight(@intCast(nx & chunk.chunkMask), @intCast(ny & chunk.chunkMask), @intCast(nz & chunk.chunkMask), neighborBlock, &lightRefreshList);
-						neighborChunkMesh.generateMesh(&lightRefreshList);
-						neighborChunkMesh.mutex.lock();
-					}
+
+				if(neighborBlock.mode().dependsOnNeighbors and neighborBlock.mode().updateData(&neighborBlock, neighbor.reverse(), newBlock)) {
+					neighborChunkMesh.chunk.data.setValue(index, neighborBlock);
+					neighborChunkMesh.mutex.unlock();
+					neighborChunkMesh.updateBlockLight(nnx, nny, nnz, neighborBlock, lightRefreshList);
+					appendIfNotContained(regenerateMeshList, neighborChunkMesh);
+					neighborChunkMesh.mutex.lock();
 				}
 				neighborChunkMesh.mutex.unlock();
 				neighborBlocks[neighbor.toInt()] = neighborBlock;
@@ -1219,11 +1216,9 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				const index = chunk.getIndex(nx, ny, nz);
 				self.mutex.lock();
 				var neighborBlock = self.chunk.data.getValue(index);
-				if(neighborBlock.mode().dependsOnNeighbors) {
-					if(neighborBlock.mode().updateData(&neighborBlock, neighbor.reverse(), newBlock)) {
-						self.chunk.data.setValue(index, neighborBlock);
-						self.updateBlockLight(@intCast(nx & chunk.chunkMask), @intCast(ny & chunk.chunkMask), @intCast(nz & chunk.chunkMask), neighborBlock, &lightRefreshList);
-					}
+				if(neighborBlock.mode().dependsOnNeighbors and neighborBlock.mode().updateData(&neighborBlock, neighbor.reverse(), newBlock)) {
+					self.chunk.data.setValue(index, neighborBlock);
+					self.updateBlockLight(@intCast(nx), @intCast(ny), @intCast(nz), neighborBlock, lightRefreshList);
 				}
 				self.mutex.unlock();
 				neighborBlocks[neighbor.toInt()] = neighborBlock;
@@ -1242,9 +1237,9 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			class.onPlaceClient(.{_x, _y, _z}, self.chunk);
 		}
 
-		self.updateBlockLight(x, y, z, newBlock, &lightRefreshList);
+		self.updateBlockLight(x, y, z, newBlock, lightRefreshList);
+
 		self.mutex.lock();
-		defer self.mutex.unlock();
 		// Update neighbor chunks:
 		if(x == 0) {
 			self.lastNeighborsHigherLod[chunk.Neighbor.dirNegX.toInt()] = null;
@@ -1268,16 +1263,18 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			self.lastNeighborsSameLod[chunk.Neighbor.dirUp.toInt()] = null;
 		}
 		self.mutex.unlock();
-		self.generateMesh(&lightRefreshList); // TODO: Batch mesh updates instead of applying them for each block changes.
-		self.mutex.lock();
-		for(lightRefreshList.items) |other| {
-			if(other.needsLightRefresh.load(.unordered)) {
-				other.scheduleLightRefreshAndDecreaseRefCount1();
-			} else {
-				other.decreaseRefCount();
+
+		appendIfNotContained(regenerateMeshList, self);
+	}
+
+	fn appendIfNotContained(list: *main.List(*ChunkMesh), mesh: *ChunkMesh) void {
+		for(list.items) |other| {
+			if(other == mesh) {
+				return;
 			}
 		}
-		self.uploadData();
+		mesh.increaseRefCount();
+		list.append(mesh);
 	}
 
 	fn clearNeighborA(self: *ChunkMesh, neighbor: chunk.Neighbor, comptime isLod: bool) void {

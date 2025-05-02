@@ -1,30 +1,33 @@
-#version 430
+#version 460
 
-in vec3 mvVertexPos;
-in vec3 direction;
-in vec3 light;
-in vec2 uv;
-flat in vec3 normal;
-flat in int textureIndex;
-flat in int isBackFace;
-flat in int ditherSeed;
-flat in float distanceForLodCheck;
-flat in int opaqueInLod;
+layout(location = 0) in vec3 mvVertexPos;
+layout(location = 1) in vec3 direction;
+layout(location = 2) in vec3 light;
+layout(location = 3) in vec2 uv;
+layout(location = 4) flat in vec3 normal;
+layout(location = 5) flat in int textureIndex;
+layout(location = 6) flat in int isBackFace;
+layout(location = 7) flat in int ditherSeed;
+layout(location = 8) flat in float distanceForLodCheck;
+layout(location = 9) flat in int opaqueInLod;
 
-uniform sampler2DArray texture_sampler;
-uniform sampler2DArray emissionSampler;
-uniform sampler2DArray reflectivityAndAbsorptionSampler;
-uniform samplerCube reflectionMap;
-uniform float reflectionMapSize;
-uniform float contrast;
+layout(location = 0, index = 0) out vec4 fragColor;
+layout(location = 0, index = 1) out vec4 blendColor;
 
-uniform ivec3 playerPositionInteger;
-uniform vec3 playerPositionFraction;
-
+layout(binding = 0) uniform sampler2DArray textureSampler;
+layout(binding = 1) uniform sampler2DArray emissionSampler;
+layout(binding = 2) uniform sampler2DArray reflectivityAndAbsorptionSampler;
+layout(binding = 4) uniform samplerCube reflectionMap;
 layout(binding = 5) uniform sampler2D depthTexture;
 
-layout (location = 0, index = 0) out vec4 fragColor;
-layout (location = 0, index = 1) out vec4 blendColor;
+layout(location = 3) uniform ivec3 playerPositionInteger;
+layout(location = 4) uniform vec3 playerPositionFraction;
+
+layout(location = 5) uniform float reflectionMapSize;
+layout(location = 6) uniform float contrast;
+
+layout(location = 8) uniform float zNear;
+layout(location = 9) uniform float zFar;
 
 struct Fog {
 	vec3 color;
@@ -32,6 +35,8 @@ struct Fog {
 	float fogLower;
 	float fogHigher;
 };
+
+layout(location = 10) uniform Fog fog;
 
 layout(std430, binding = 1) buffer _animatedTexture
 {
@@ -53,11 +58,6 @@ float lightVariation(vec3 normal) {
 	const float baseLighting = 1 - contrast;
 	return baseLighting + dot(normal, directionalPart);
 }
-
-uniform float zNear;
-uniform float zFar;
-
-uniform Fog fog;
 
 vec3 unpackColor(uint color) {
 	return vec3(
@@ -141,7 +141,7 @@ void main() {
 	float airFogDistance = calculateFogDistance(dist, densityAdjustment, playerPositionFraction.z, normalize(direction).z, fog.density, fog.fogLower - playerPositionInteger.z, fog.fogHigher - playerPositionInteger.z);
 	vec3 fogColor = unpackColor(fogData[int(animatedTextureIndex)].fogColor);
 	vec3 pixelLight = max(light*normalVariation, texture(emissionSampler, textureCoords).r*4);
-	vec4 textureColor = texture(texture_sampler, textureCoords)*vec4(pixelLight, 1);
+	vec4 textureColor = texture(textureSampler, textureCoords)*vec4(pixelLight, 1);
 
 	float reflectivity = texture(reflectivityAndAbsorptionSampler, textureCoords).a;
 	float fresnelReflection = (1 + dot(normalize(direction), normal));

@@ -18,9 +18,7 @@
 	.item = .{
 		.material = .{
 			.density = 0.25,
-			.strength = 1.0,
 			.elasticity = 4,
-			.grip = 10,
 			.hardness = 1.5,
 			.textureRoughness = 0.7,
 			.colors = .{
