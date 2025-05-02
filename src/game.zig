@@ -959,6 +959,8 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		const right = Vec3d{-forward[1], forward[0], 0};
 		var movementDir: Vec3d = .{0, 0, 0};
 		var movementSpeed: f64 = 0;
+		var climbDir: Vec3d = .{0, 0, 0};
+		var climbSpeed: f64 = 0;
 
 		if(main.Window.grabbed) {
 			const walkingSpeed: f64 = if(Player.crouching or Player.super.climbing) 2 else 4;
@@ -974,13 +976,13 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 						movementSpeed = @max(movementSpeed, 8)*KeyBoard.key("forward").value;
 						movementDir += forward*@as(Vec3d, @splat(8*KeyBoard.key("forward").value));
 					}
-				} else if(Player.super.climbing) {
-					movementSpeed = @max(movementSpeed, Player.currentClimbSpeed)*KeyBoard.key("forward").value;
-					movementDir += forward*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("forward").value));
-					movementDir += up*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("forward").value));
 				} else {
 					movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("forward").value;
 					movementDir += forward*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("forward").value));
+				}
+				if(Player.super.climbing) {
+					climbSpeed = Player.currentClimbSpeed*KeyBoard.key("forward").value;
+					climbDir += up;
 				}
 			}
 			if(KeyBoard.key("backward").value > 0.0) {
@@ -1009,9 +1011,6 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 						movementSpeed = @max(movementSpeed, 5.5);
 						movementDir[2] += 5.5;
 					}
-				} else if(Player.super.climbing) {
-					movementSpeed = @max(movementSpeed, Player.currentClimbSpeed*0.7);
-					movementDir += up*@as(Vec3d, @splat(walkingSpeed));
 				} else if((Player.onGround or Player.jumpCoyote > 0.0) and Player.jumpCooldown <= 0) {
 					jumping = true;
 					Player.jumpCooldown = Player.jumpCooldownConstant;
@@ -1019,6 +1018,10 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 						Player.eyeCoyote = 0;
 					}
 					Player.jumpCoyote = 0;
+				}
+				if(Player.super.climbing) {
+					climbSpeed = Player.currentClimbSpeed;
+					climbDir += up;
 				}
 			} else {
 				Player.jumpCooldown = 0;
@@ -1042,6 +1045,10 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			if(movementSpeed != 0 and vec.lengthSquare(movementDir) != 0) {
 				movementDir = vec.normalize(movementDir);
 				acc += movementDir*@as(Vec3d, @splat(movementSpeed*fricMul));
+			}
+			if(climbSpeed != 0 and vec.lengthSquare(climbDir) != 0) {
+				climbDir = vec.normalize(climbDir);
+				acc += climbDir*@as(Vec3d, @splat(climbSpeed*fricMul));
 			}
 
 			const newSlot: i32 = @as(i32, @intCast(Player.selectedSlot)) -% @as(i32, @intFromFloat(main.Window.scrollOffset));
