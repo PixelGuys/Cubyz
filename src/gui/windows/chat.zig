@@ -12,6 +12,7 @@ const MutexComponent = GuiComponent.MutexComponent;
 const TextInput = GuiComponent.TextInput;
 const VerticalList = @import("../components/VerticalList.zig");
 const FixedSizeCircularBuffer = main.utils.FixedSizeCircularBuffer;
+const server_commands = main.server_commands;
 
 pub var window: GuiWindow = GuiWindow{
 	.relativePosition = .{
@@ -40,6 +41,8 @@ var fadeOutEnd: u32 = 0;
 pub var input: *TextInput = undefined;
 var hideInput: bool = true;
 var messageHistory: History = undefined;
+var autocompleteList: main.ListUnmanaged([]const u8) = .{};
+var autocompleteListPointer: usize = 0;
 
 pub const History = struct {
 	up: FixedSizeCircularBuffer([]const u8, reusableHistoryMaxSize),
@@ -127,6 +130,16 @@ pub fn deinit() void {
 	messageHistory.deinit();
 	messageQueue.deinit();
 	expirationTime.deinit();
+
+	discardAutocompleteList();
+}
+
+fn discardAutocompleteList() void {
+	for(autocompleteList.items) |match| {
+		main.globalAllocator.free(match);
+	}
+	autocompleteList.clearAndFree(main.globalAllocator);
+	autocompleteListPointer = 0;
 }
 
 fn refresh() void {
@@ -160,7 +173,12 @@ fn refresh() void {
 }
 
 pub fn onOpen() void {
-	input = TextInput.init(.{0, 0}, 256, 32, "", .{.callback = &sendMessage}, .{.onUp = .{.callback = loadNextHistoryEntry}, .onDown = .{.callback = loadPreviousHistoryEntry}});
+	input = TextInput.init(.{0, 0}, 256, 32, "", .{.callback = &sendMessage}, .{
+		.onUp = .{.callback = loadNextHistoryEntry},
+		.onDown = .{.callback = loadPreviousHistoryEntry},
+		.onTab = .{.callback = autocomplete},
+		.onCharacter = .{.callback = onCharacter},
+	});
 	refresh();
 }
 
@@ -264,6 +282,19 @@ pub fn sendMessage(_: usize) void {
 }
 
 pub fn autocomplete(_: usize) void {
-	if(input.currentString.items.len == 0) return;
-	if(input.currentString.items[0] != '/') return;
+	const msg = input.currentString.items;
+	if(msg.len <= 1) return;
+	if(msg[0] != '/') return;
+
+	if(autocompleteList.items.len == 0) {
+		autocompleteList = server_commands.autocomplete(msg[1..msg.len], main.globalAllocator);
+		autocompleteListPointer = 0;
+	}
+	if(autocompleteList.items.len == 0) return;
+	input.setString(autocompleteList.items[autocompleteListPointer%autocompleteList.items.len]);
+	autocompleteListPointer += 1;
+}
+
+pub fn onCharacter(_: usize) void {
+	discardAutocompleteList();
 }

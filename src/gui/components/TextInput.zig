@@ -47,6 +47,7 @@ const OptionalCallbacks = struct {
 	onUp: ?gui.Callback = null,
 	onDown: ?gui.Callback = null,
 	onTab: ?gui.Callback = null,
+	onCharacter: ?gui.Callback = null,
 };
 
 pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, onNewline: gui.Callback, optional: OptionalCallbacks) *TextInput {
@@ -407,6 +408,7 @@ pub fn inputCharacter(self: *TextInput, character: u21) void {
 		self.reloadText();
 		cursor.* += @intCast(utf8.len);
 		self.ensureCursorVisibility();
+		if(self.optional.onCharacter) |cb| cb.run();
 	}
 }
 

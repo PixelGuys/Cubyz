@@ -28,6 +28,7 @@ pub const Tag = tag.Tag;
 pub const utils = @import("utils.zig");
 pub const vec = @import("vec.zig");
 pub const ZonElement = @import("zon.zig").ZonElement;
+pub const server_commands = @import("server/command/_command.zig");
 
 pub const Window = @import("graphics/Window.zig");
 
@@ -573,6 +574,9 @@ pub fn main() void { // MARK: main()
 			}
 		}
 	} else |_| {}
+
+	server_commands.init();
+	defer server_commands.deinit();
 
 	gui.initWindowList();
 	defer gui.deinitWindowList();
