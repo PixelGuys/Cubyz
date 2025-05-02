@@ -1212,9 +1212,9 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 	timer += deltaTime;
 	if(timer > 5) {
-		particles.ParticleSystem.spawn("cubyz:spark", 1000, .{0, 0, 0}, 0.4, true, .{
+		particles.ParticleSystem.spawn("cubyz:spark", 60000, .{0, 0, 0}, false, .{
 			.shapeType = .sphere,
-			.size = 3,
+			.size = 10,
 			.directionMode = .spread,
 			.dir = .{1, 0, 0},
 		});
@@ -1227,4 +1227,5 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	fog.fogHigher = (biome.fogHigher - fog.fogHigher)*t + fog.fogHigher;
 
 	world.?.update();
+	particles.ParticleManager.update(deltaTime);
 }

@@ -14,6 +14,7 @@ const vec = @import("vec.zig");
 const Mat4f = vec.Mat4f;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
+const Vec4f = vec.Vec4f;
 const Vec3i = vec.Vec3i;
 
 var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
@@ -80,9 +81,11 @@ pub const ParticleManager = struct {
 	fn readTextureData(_path: []const u8, typ: *ParticleType) void {
 		const animationFrames = typ.animationFrames;
 		const path = _path[0 .. _path.len - ".png".len];
-		typ.startFrame = @intCast(textures.items.len);
+
 		const base = readTextureFile(path, ".png", Image.defaultImage);
 		const emission = readTextureFile(path, "_emission.png", Image.emptyImage);
+		typ.startFrame = @intCast(textures.items.len);
+		typ.size = @as(f32, @floatFromInt(base.width))/16;
 		for(0..animationFrames) |i| {
 			textures.append(extractAnimationSlice(base, i, animationFrames));
 			emissionTextures.append(extractAnimationSlice(emission, i, animationFrames));
@@ -127,23 +130,26 @@ pub const ParticleManager = struct {
 		ParticleSystem.update(dt);
 	}
 
-	pub fn render(playerPosition: Vec3d, ambientLight: Vec3f) void {
-		ParticleSystem.render(playerPosition, ambientLight);
+	pub fn render(projectionMatrix: Mat4f, viewMatrix: Mat4f, playerPosition: Vec3d, ambientLight: Vec3f) void {
+		ParticleSystem.render(projectionMatrix, viewMatrix, playerPosition, ambientLight);
 	}
 };
 
 pub const ParticleSystem = struct {
 	pub const maxCapacity: u32 = 65536;
-	var particles: []Particle = undefined;
+	var particleCount: u32 = 0;
+	var particles: [maxCapacity]Particle = undefined;
+	var particlesLocal: [maxCapacity]ParticleLocal = undefined;
 	var properties: EmmiterProperties = undefined;
 	var seed: u64 = undefined;
+	var cleanupTimer = 0;
+	var cleanupTime = 10;
 
 	var particlesSSBO: SSBO = undefined;
 
 	var shader: Shader = undefined;
 	const UniformStruct = struct {
-		projectionMatrix: c_int,
-		viewMatrix: c_int,
+		projectionAndViewMatrix: c_int,
 		billboardMatrix: c_int,
 		playerPositionInteger: c_int,
 		playerPositionFraction: c_int,
@@ -162,12 +168,13 @@ pub const ParticleSystem = struct {
 			.drag = 2,
 			.lifeTimeMin = 5,
 			.lifeTimeMax = 5,
-			.velMin = 5,
+			.velMin = 1,
 			.velMax = 10,
+			.rotVelMin = std.math.pi*0.2,
+			.rotVelMax = std.math.pi*0.6,
 		};
-		particles = main.globalAllocator.alloc(Particle, maxCapacity);
 		particlesSSBO = SSBO.init();
-		particlesSSBO.createDynamicBuffer(maxCapacity*@sizeOf(Particle));
+		particlesSSBO.createDynamicBuffer(Particle, maxCapacity);
 		particlesSSBO.bind(13);
 
 		seed = @bitCast(@as(i64, @truncate(std.time.nanoTimestamp())));
@@ -176,78 +183,90 @@ pub const ParticleSystem = struct {
 	pub fn deinit() void {
 		shader.deinit();
 		particlesSSBO.deinit();
-		particles.len = maxCapacity;
-		main.globalAllocator.free(particles);
 	}
 
 	pub fn update(deltaTime: f32) void {
-		const vdt: Vec3f = @as(Vec3f, @splat(deltaTime));
+		const vecDeltaTime: Vec4f = @as(Vec4f, @splat(deltaTime));
 
 		var i: u32 = 0;
-		while(i < particles.len) {
+		while(i < particleCount) {
 			var particle = particles[i];
+			var particleLocal = particlesLocal[i];
 			particle.lifeLeft -= deltaTime;
 			if(particle.lifeLeft < 0) {
-				particles[i] = particles[particles.len - 1];
-				particles.len -= 1;
+				particleCount -= 1;
+				particles[i] = particles[particleCount];
+				particlesLocal[i] = particlesLocal[particleCount];
 				continue;
 			}
 
-			particle.vel += properties.gravity*vdt;
-			particle.vel *= @splat(@max(0, 1 - properties.drag*deltaTime));
-			const vel = particle.vel*vdt;
+			var rot = particle.pos[3];
+			const rotVel = particleLocal.vel[3];
+			rot += rotVel*deltaTime;
+
+			particleLocal.vel += vec.combine(properties.gravity, 0)*vecDeltaTime;
+			particleLocal.vel *= @splat(@max(0, 1 - properties.drag*deltaTime));
+			const vel = particleLocal.vel*vecDeltaTime;
 
 			// TODO: OPTIMIZE THE HELL OUT OF THIS
-			if(particle.collides) {
-				const hitBox: game.collision.Box = .{.min = @splat(particle.size*-0.5), .max = @splat(particle.size*0.5)};
-				particle.pos[0] += vel[0];
-				if(game.collision.collides(.client, .x, -vel[0], particle.pos, hitBox)) |box| {
+			if(particleLocal.collides) {
+				const size = ParticleManager.types.items[particle.typ].size;
+				const hitBox: game.collision.Box = .{.min = @splat(size*-0.5), .max = @splat(size*0.5)};
+				var v3Pos = Vec3f{particle.pos[0], particle.pos[1], particle.pos[2]};
+				v3Pos[0] += vel[0];
+				if(game.collision.collides(.client, .x, -vel[0], v3Pos, hitBox)) |box| {
 					if(vel[0] < 0) {
-						particle.pos[0] = @floatCast(box.max[0] - hitBox.min[0]);
+						v3Pos[0] = @floatCast(box.max[0] - hitBox.min[0]);
 					} else {
-						particle.pos[0] = @floatCast(box.min[0] - hitBox.max[0]);
+						v3Pos[0] = @floatCast(box.min[0] - hitBox.max[0]);
 					}
 				}
-				particle.pos[1] += vel[1];
-				if(game.collision.collides(.client, .y, -vel[1], particle.pos, hitBox)) |box| {
+				v3Pos[1] += vel[1];
+				if(game.collision.collides(.client, .y, -vel[1], v3Pos, hitBox)) |box| {
 					if(vel[1] < 0) {
-						particle.pos[1] = @floatCast(box.max[1] - hitBox.min[1]);
+						v3Pos[1] = @floatCast(box.max[1] - hitBox.min[1]);
 					} else {
-						particle.pos[1] = @floatCast(box.min[1] - hitBox.max[1]);
+						v3Pos[1] = @floatCast(box.min[1] - hitBox.max[1]);
 					}
 				}
-				particle.pos[2] += vel[2];
-				if(game.collision.collides(.client, .z, -vel[2], particle.pos, hitBox)) |box| {
+				v3Pos[2] += vel[2];
+				if(game.collision.collides(.client, .z, -vel[2], v3Pos, hitBox)) |box| {
 					if(vel[2] < 0) {
-						particle.pos[2] = @floatCast(box.max[2] - hitBox.min[2]);
+						v3Pos[2] = @floatCast(box.max[2] - hitBox.min[2]);
 					} else {
-						particle.pos[2] = @floatCast(box.min[2] - hitBox.max[2]);
+						v3Pos[2] = @floatCast(box.min[2] - hitBox.max[2]);
 					}
 				}
+				particle.pos = vec.combine(v3Pos, 0);
 			} else {
 				particle.pos += vel;
 			}
 
+			particle.pos[3] = rot;
+			particleLocal.vel[3] = rotVel;
+
 			// TODO: optimize
-			const intPos: Vec3i = @intFromFloat(@floor(particle.pos));
+			const intPos: vec.Vec4i = @intFromFloat(@floor(particle.pos));
 			const light: [6]u8 = main.renderer.mesh_storage.getLight(intPos[0], intPos[1], intPos[2]) orelse @splat(0);
-			particle.light = (@as(u32, light[0] >> 3) << 25 |
+			const compressedLight = (@as(u32, light[0] >> 3) << 25 |
 				@as(u32, light[1] >> 3) << 20 |
 				@as(u32, light[2] >> 3) << 15 |
 				@as(u32, light[3] >> 3) << 10 |
 				@as(u32, light[4] >> 3) << 5 |
 				@as(u32, light[5] >> 3));
+			particle.light = compressedLight;
 
 			particles[i] = particle;
+			particlesLocal[i] = particleLocal;
 			i += 1;
 		}
 	}
 
-	pub fn spawn(id: []const u8, count: u32, pos: Vec3f, size: f32, collides: bool, shape: EmmiterShape) void {
+	pub fn spawn(id: []const u8, count: u32, pos: Vec3f, collides: bool, shape: EmmiterShape) void {
 		const typ = ParticleManager.particleTypeHashmap.get(id) orelse 0;
 
-		const to: u32 = @intCast(@min(particles.len + count, maxCapacity));
-		for(particles.len..to) |_| {
+		const to: u32 = @intCast(@min(particleCount + count, maxCapacity));
+		for(particleCount..to) |_| {
 			var vel: Vec3f = @splat(0);
 			var particlePos: Vec3f = @splat(0);
 
@@ -291,30 +310,31 @@ pub const ParticleSystem = struct {
 
 			const lifeTime = properties.lifeTimeMin + random.nextFloat(&seed)*properties.lifeTimeMax;
 
-			particles.len += 1;
-			particles[particles.len - 1] = Particle{
-				.pos = particlePos,
-				.vel = vel,
+			particles[particleCount] = Particle{
+				.pos = vec.combine(particlePos, 0),
 				.lifeTime = lifeTime,
 				.lifeLeft = lifeTime,
 				.typ = typ,
-				.size = size,
+			};
+			particlesLocal[particleCount] = ParticleLocal{
+				.vel = vec.combine(vel, properties.rotVelMin + random.nextFloatSigned(&seed)*properties.rotVelMax),
 				.collides = collides,
 			};
+			particleCount += 1;
 		}
 	}
 
-	pub fn render(playerPosition: Vec3d, ambientLight: Vec3f) void {
-		particlesSSBO.bufferDataDynamic(Particle, particles);
+	pub fn render(projectionMatrix: Mat4f, viewMatrix: Mat4f, playerPosition: Vec3d, ambientLight: Vec3f) void {
+		particlesSSBO.bufferSubData(Particle, &particles, particleCount);
 
 		shader.bind();
 
 		c.glUniform1i(uniforms.textureSampler, 0);
 		c.glUniform1i(uniforms.emissionTextureSampler, 1);
 
-		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&game.projectionMatrix));
+		const projectionAndViewMatrix = Mat4f.mul(projectionMatrix, viewMatrix);
+		c.glUniformMatrix4fv(uniforms.projectionAndViewMatrix, 1, c.GL_TRUE, @ptrCast(&projectionAndViewMatrix));
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
-		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&game.camera.viewMatrix));
 
 		const playerPos = playerPosition;
 		c.glUniform3i(uniforms.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
@@ -329,11 +349,11 @@ pub const ParticleSystem = struct {
 		c.glActiveTexture(c.GL_TEXTURE1);
 		ParticleManager.emissionTextureArray.bind();
 
-		c.glDrawArrays(c.GL_TRIANGLES, 0, @intCast(particles.len*6));
+		c.glDrawArrays(c.GL_TRIANGLES, 0, @intCast(particleCount*6));
 	}
 
 	pub fn getParticleCount() u32 {
-		return @intCast(particles.len);
+		return particleCount;
 	}
 };
 
@@ -342,6 +362,8 @@ pub const EmmiterProperties = struct {
 	drag: f32 = 0,
 	velMin: f32 = 0,
 	velMax: f32 = 0,
+	rotVelMin: f32 = 0,
+	rotVelMax: f32 = 0,
 	lifeTimeMin: f32 = 0,
 	lifeTimeMax: f32 = 0,
 };
@@ -368,18 +390,19 @@ pub const ParticleType = struct {
 	texture: u32,
 	animationFrames: u32,
 	startFrame: u32,
+	size: f32,
 	isBlockTexture: bool,
 };
 
-// TODO?: separate the data which is sent to the gpu into another struct
 pub const Particle = struct {
-	pos: Vec3f,
-	vel: Vec3f,
+	pos: Vec4f, // 4th element is rotation
 	lifeTime: f32,
 	lifeLeft: f32,
-	typ: u32,
 	light: u32 = 0,
-	size: f32,
+	typ: u32,
+};
+
+pub const ParticleLocal = struct {
+	vel: Vec4f, // 4th element is rotation velocity
 	collides: bool,
-	// 15 bytes left for use due to alignment
 };

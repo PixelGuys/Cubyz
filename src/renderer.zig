@@ -189,10 +189,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	Skybox.render();
 	gpu_performance_measuring.stopQuery();
 
-	gpu_performance_measuring.startQuery(.particle_rendering);
-	particles.ParticleManager.render(playerPos, ambientLight);
-	gpu_performance_measuring.stopQuery();
-
 	gpu_performance_measuring.startQuery(.animation);
 	blocks.meshes.preProcessAnimationData(time);
 	gpu_performance_measuring.stopQuery();
@@ -234,6 +230,16 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	itemdrop.ItemDropRenderer.renderItemDrops(game.projectionMatrix, ambientLight, playerPos);
 	gpu_performance_measuring.stopQuery();
+	
+	gpu_performance_measuring.startQuery(.particle_rendering);
+	particles.ParticleManager.render(game.projectionMatrix, game.camera.viewMatrix, playerPos, ambientLight);
+	gpu_performance_measuring.stopQuery();
+
+	// Rebind block textures back to their original slots
+	c.glActiveTexture(c.GL_TEXTURE0);
+	blocks.meshes.blockTextureArray.bind();
+	c.glActiveTexture(c.GL_TEXTURE1);
+	blocks.meshes.emissionTextureArray.bind();
 
 	// Render transparent chunk meshes:
 	worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE5);

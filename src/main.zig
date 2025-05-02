@@ -707,7 +707,6 @@ pub fn main() void { // MARK: main()
 
 		if(game.world != null) { // Update the game
 			game.update(deltaTime);
-			particles.ParticleManager.update(deltaTime);
 		}
 
 		if(!isHidden) {

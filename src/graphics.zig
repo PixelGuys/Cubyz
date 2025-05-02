@@ -1351,15 +1351,15 @@ pub const SSBO = struct { // MARK: SSBO
 		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
 	}
 
-	pub fn bufferDataDynamic(self: SSBO, comptime T: type, data: []const T) void {
+	pub fn bufferSubData(self: SSBO, comptime T: type, data: []const T, length: usize) void {
 		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
-		c.glBufferSubData(c.GL_SHADER_STORAGE_BUFFER, 0, @intCast(data.len*@sizeOf(T)), data.ptr);
+		c.glBufferSubData(c.GL_SHADER_STORAGE_BUFFER, 0, @intCast(length*@sizeOf(T)), data.ptr);
 		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
 	}
 
-	pub fn createDynamicBuffer(self: SSBO, size: usize) void {
+	pub fn createDynamicBuffer(self: SSBO, comptime T: type, size: usize) void {
 		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
-		c.glBufferData(c.GL_SHADER_STORAGE_BUFFER, @intCast(size), null, c.GL_DYNAMIC_DRAW);
+		c.glBufferData(c.GL_SHADER_STORAGE_BUFFER, @intCast(size*@sizeOf(T)), null, c.GL_DYNAMIC_DRAW);
 		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
 	}
 };
