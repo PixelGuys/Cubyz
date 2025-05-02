@@ -230,7 +230,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	itemdrop.ItemDropRenderer.renderItemDrops(game.projectionMatrix, ambientLight, playerPos);
 	gpu_performance_measuring.stopQuery();
-	
+
 	gpu_performance_measuring.startQuery(.particle_rendering);
 	particles.ParticleManager.render(game.projectionMatrix, game.camera.viewMatrix, playerPos, ambientLight);
 	gpu_performance_measuring.stopQuery();
