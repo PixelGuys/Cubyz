@@ -358,7 +358,8 @@ pub const collision = struct {
 	}
 
 	pub fn calculateClimbSpeed(comptime side: main.utils.Side, pos: Vec3d, hitBox: Box, cameraRotation: f32, amount: f32, defaultSpeed: f32) f32 {
-		const forwardOffset = vec.rotateZ(Vec3d{0, 1, 0}, cameraRotation)*Vec3d{amount, amount, 0};
+		const forward: Vec3d = vec.rotateZ(Vec3d{0, 1, 0}, cameraRotation);
+		const forwardOffset = forward*Vec3d{amount, amount, 0};
 
 		const boundingBox: Box = .{
 			.min = pos + hitBox.min + forwardOffset,
@@ -372,8 +373,8 @@ pub const collision = struct {
 		const minZ: i32 = @intFromFloat(@floor(boundingBox.min[2]));
 		const maxZ: i32 = @intFromFloat(@floor(boundingBox.max[2]));
 
-		var climbSpeed: f64 = 0;
-		var totalArea: f64 = 0;
+		var climbSpeed: f32 = 0;
+		var totalArea: f32 = 0;
 
 		var x = minX;
 		while(x <= maxX) : (x += 1) {
@@ -383,19 +384,16 @@ pub const collision = struct {
 				while(z <= maxZ) : (z += 1) {
 					const _block = if(side == .client) main.renderer.mesh_storage.getBlock(x, y, z) else main.server.world.?.getBlock(x, y, z);
 
-					if(_block) |block| {
-						const blockPos: Vec3d = .{@floatFromInt(x), @floatFromInt(y), @floatFromInt(z)};
+					if(_block == null or !_block.?.climbable()) continue;
 
-						const areaXZ = calculateIntersectingArea(block, blockPos, boundingBox, .xz);
-						const areaYZ = calculateIntersectingArea(block, blockPos, boundingBox, .yz);
+					const blockPos: Vec3d = .{@floatFromInt(x), @floatFromInt(y), @floatFromInt(z)};
 
-						const area = areaXZ + areaYZ;
+					const areaXZ = calculateIntersectingArea(_block.?, blockPos, boundingBox, .xz);
+					const areaYZ = calculateIntersectingArea(_block.?, blockPos, boundingBox, .yz);
+					const area: f32 = @floatCast(areaXZ + areaYZ);
 
-						if(block.collide()) {
-							totalArea += area;
-							climbSpeed += area*@as(f64, @floatCast(block.climbSpeed()));
-						}
-					}
+					totalArea += area;
+					climbSpeed += area*_block.?.climbSpeed();
 				}
 			}
 		}
@@ -404,7 +402,16 @@ pub const collision = struct {
 			return defaultSpeed;
 		}
 
-		return @floatCast(climbSpeed/totalArea);
+		// calculate the hitbox area of the x or y direction, depending on the camera rotation
+		const maxAngle: comptime_float = @sin(45.0);
+		const zLength: f64 = hitBox.max[2] - hitBox.min[2];
+		const directionLength: f64 = if(forward[0] >= -maxAngle and forward[0] >= maxAngle) hitBox.max[0] - hitBox.min[0] else hitBox.max[1] - hitBox.min[1];
+		const hitboxArea: f32 = @floatCast(directionLength*zLength);
+		if(totalArea > hitboxArea) {
+			return climbSpeed/totalArea;
+		}
+
+		return @max(climbSpeed, defaultSpeed);
 	}
 
 	pub fn collideOrStep(comptime side: main.utils.Side, comptime dir: Direction, amount: f64, pos: Vec3d, hitBox: Box, steppingHeight: f64) Vec3d {
