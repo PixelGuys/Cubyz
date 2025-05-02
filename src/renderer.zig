@@ -35,10 +35,10 @@ pub const zFar = 65536.0; // TODO: Fix z-fighting problems.
 
 var deferredRenderPassShader: graphics.Shader = undefined;
 var deferredUniforms: struct {
-	@"fog.color": c_int,
-	@"fog.density": c_int,
-	@"fog.fogLower": c_int,
-	@"fog.fogHigher": c_int,
+	fog_color: c_int,
+	fog_density: c_int,
+	fogLower: c_int,
+	fogHigher: c_int,
 	tanXY: c_int,
 	zNear: c_int,
 	zFar: c_int,
@@ -277,16 +277,16 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	worldFrameBuffer.unbind();
 	deferredRenderPassShader.bind();
 	if(!blocks.meshes.hasFog(playerBlock)) {
-		c.glUniform3fv(deferredUniforms.@"fog.color", 1, @ptrCast(&game.fog.skyColor));
-		c.glUniform1f(deferredUniforms.@"fog.density", game.fog.density);
-		c.glUniform1f(deferredUniforms.@"fog.fogLower", game.fog.fogLower);
-		c.glUniform1f(deferredUniforms.@"fog.fogHigher", game.fog.fogHigher);
+		c.glUniform3fv(deferredUniforms.fog_color, 1, @ptrCast(&game.fog.skyColor));
+		c.glUniform1f(deferredUniforms.fog_density, game.fog.density);
+		c.glUniform1f(deferredUniforms.fogLower, game.fog.fogLower);
+		c.glUniform1f(deferredUniforms.fogHigher, game.fog.fogHigher);
 	} else {
 		const fogColor = blocks.meshes.fogColor(playerBlock);
-		c.glUniform3f(deferredUniforms.@"fog.color", @as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0);
-		c.glUniform1f(deferredUniforms.@"fog.density", blocks.meshes.fogDensity(playerBlock));
-		c.glUniform1f(deferredUniforms.@"fog.fogLower", 1e10);
-		c.glUniform1f(deferredUniforms.@"fog.fogHigher", 1e10);
+		c.glUniform3f(deferredUniforms.fog_color, @as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0);
+		c.glUniform1f(deferredUniforms.fog_density, blocks.meshes.fogDensity(playerBlock));
+		c.glUniform1f(deferredUniforms.fogLower, 1e10);
+		c.glUniform1f(deferredUniforms.fogHigher, 1e10);
 	}
 	c.glUniformMatrix4fv(deferredUniforms.invViewMatrix, 1, c.GL_TRUE, @ptrCast(&game.camera.viewMatrix.transpose()));
 	c.glUniform3i(deferredUniforms.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
@@ -321,10 +321,10 @@ const Bloom = struct { // MARK: Bloom
 		zNear: c_int,
 		zFar: c_int,
 		tanXY: c_int,
-		@"fog.color": c_int,
-		@"fog.density": c_int,
-		@"fog.fogLower": c_int,
-		@"fog.fogHigher": c_int,
+		fog_color: c_int,
+		fog_density: c_int,
+		fogLower: c_int,
+		fogHigher: c_int,
 		invViewMatrix: c_int,
 		playerPositionInteger: c_int,
 		playerPositionFraction: c_int,
@@ -353,16 +353,16 @@ const Bloom = struct { // MARK: Bloom
 		worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
 		buffer1.bind();
 		if(!blocks.meshes.hasFog(playerBlock)) {
-			c.glUniform3fv(colorExtractUniforms.@"fog.color", 1, @ptrCast(&game.fog.skyColor));
-			c.glUniform1f(colorExtractUniforms.@"fog.density", game.fog.density);
-			c.glUniform1f(colorExtractUniforms.@"fog.fogLower", game.fog.fogLower);
-			c.glUniform1f(colorExtractUniforms.@"fog.fogHigher", game.fog.fogHigher);
+			c.glUniform3fv(colorExtractUniforms.fog_color, 1, @ptrCast(&game.fog.skyColor));
+			c.glUniform1f(colorExtractUniforms.fog_density, game.fog.density);
+			c.glUniform1f(colorExtractUniforms.fogLower, game.fog.fogLower);
+			c.glUniform1f(colorExtractUniforms.fogHigher, game.fog.fogHigher);
 		} else {
 			const fogColor = blocks.meshes.fogColor(playerBlock);
-			c.glUniform3f(colorExtractUniforms.@"fog.color", @as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0);
-			c.glUniform1f(colorExtractUniforms.@"fog.density", blocks.meshes.fogDensity(playerBlock));
-			c.glUniform1f(colorExtractUniforms.@"fog.fogLower", 1e10);
-			c.glUniform1f(colorExtractUniforms.@"fog.fogHigher", 1e10);
+			c.glUniform3f(colorExtractUniforms.fog_color, @as(f32, @floatFromInt(fogColor >> 16 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 8 & 255))/255.0, @as(f32, @floatFromInt(fogColor >> 0 & 255))/255.0);
+			c.glUniform1f(colorExtractUniforms.fog_density, blocks.meshes.fogDensity(playerBlock));
+			c.glUniform1f(colorExtractUniforms.fogLower, 1e10);
+			c.glUniform1f(colorExtractUniforms.fogHigher, 1e10);
 		}
 
 		c.glUniformMatrix4fv(colorExtractUniforms.invViewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix.transpose()));

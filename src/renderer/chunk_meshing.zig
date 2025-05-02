@@ -35,10 +35,10 @@ const UniformStruct = struct {
 	screenSize: c_int,
 	ambientLight: c_int,
 	contrast: c_int,
-	@"fog.color": c_int,
-	@"fog.density": c_int,
-	@"fog.fogLower": c_int,
-	@"fog.fogHigher": c_int,
+	fog_color: c_int,
+	fog_density: c_int,
+	fogLower: c_int,
+	fogHigher: c_int,
 	reflectionMapSize: c_int,
 	lodDistance: c_int,
 	zNear: c_int,
@@ -161,10 +161,10 @@ pub fn bindShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d
 pub fn bindTransparentShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d) void {
 	transparentShader.bind();
 
-	c.glUniform3fv(transparentUniforms.@"fog.color", 1, @ptrCast(&game.fog.skyColor));
-	c.glUniform1f(transparentUniforms.@"fog.density", game.fog.density);
-	c.glUniform1f(transparentUniforms.@"fog.fogLower", game.fog.fogLower);
-	c.glUniform1f(transparentUniforms.@"fog.fogHigher", game.fog.fogHigher);
+	c.glUniform3fv(transparentUniforms.fog_color, 1, @ptrCast(&game.fog.skyColor));
+	c.glUniform1f(transparentUniforms.fog_density, game.fog.density);
+	c.glUniform1f(transparentUniforms.fogLower, game.fog.fogLower);
+	c.glUniform1f(transparentUniforms.fogHigher, game.fog.fogHigher);
 
 	bindCommonUniforms(&transparentUniforms, projMatrix, ambient, playerPos);
 

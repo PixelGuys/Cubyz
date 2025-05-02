@@ -16,14 +16,10 @@ layout(location = 3) uniform float zFar;
 layout(location = 4) uniform ivec3 playerPositionInteger;
 layout(location = 5) uniform vec3 playerPositionFraction;
 
-struct Fog {
-	vec3 color;
-	float density;
-	float fogLower;
-	float fogHigher;
-};
-
-layout(location = 6) uniform Fog fog;
+layout(location = 6) uniform vec3 fog_color;
+layout(location = 7) uniform float fog_density;
+layout(location = 8) uniform float fogLower;
+layout(location = 9) uniform float fogHigher;
 
 float zFromDepth(float depthBufferValue) {
 	return zNear*zFar/(depthBufferValue*(zNear - zFar) + zFar);
@@ -80,9 +76,9 @@ vec3 fetch(ivec2 pos) {
 	vec4 rgba = texelFetch(color, pos, 0);
 	float densityAdjustment = sqrt(dot(tanXY*(normalizedTexCoords*2 - 1), tanXY*(normalizedTexCoords*2 - 1)) + 1);
 	float dist = zFromDepth(texelFetch(depthTexture, pos, 0).r);
-	float fogDistance = calculateFogDistance(dist, densityAdjustment, playerPositionFraction.z, normalize(direction).z, fog.density, fog.fogLower - playerPositionInteger.z, fog.fogHigher - playerPositionInteger.z);
-	vec3 fogColor = fog.color;
-	rgba.rgb = applyFrontfaceFog(fogDistance, fog.color, rgba.rgb);
+	float fogDistance = calculateFogDistance(dist, densityAdjustment, playerPositionFraction.z, normalize(direction).z, fog_density, fogLower - playerPositionInteger.z, fogHigher - playerPositionInteger.z);
+	vec3 fogColor = fog_color;
+	rgba.rgb = applyFrontfaceFog(fogDistance, fog_color, rgba.rgb);
 	return rgba.rgb/rgba.a;
 }
 

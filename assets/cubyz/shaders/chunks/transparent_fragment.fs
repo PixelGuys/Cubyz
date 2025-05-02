@@ -29,14 +29,10 @@ layout(location = 6) uniform float contrast;
 layout(location = 8) uniform float zNear;
 layout(location = 9) uniform float zFar;
 
-struct Fog {
-	vec3 color;
-	float density;
-	float fogLower;
-	float fogHigher;
-};
-
-layout(location = 10) uniform Fog fog;
+layout(location = 10) uniform vec3 fog_color;
+layout(location = 11) uniform float fog_density;
+layout(location = 12) uniform float fogLower;
+layout(location = 13) uniform float fogHigher;
 
 layout(std430, binding = 1) buffer _animatedTexture
 {
@@ -138,7 +134,7 @@ void main() {
 	float densityAdjustment = sqrt(dot(mvVertexPos, mvVertexPos))/abs(mvVertexPos.y);
 	float dist = zFromDepth(texelFetch(depthTexture, ivec2(gl_FragCoord.xy), 0).r);
 	float fogDistance = calculateFogDistance(dist, densityAdjustment, playerPositionFraction.z, normalize(direction).z, fogData[int(animatedTextureIndex)].fogDensity, 1e10, 1e10);
-	float airFogDistance = calculateFogDistance(dist, densityAdjustment, playerPositionFraction.z, normalize(direction).z, fog.density, fog.fogLower - playerPositionInteger.z, fog.fogHigher - playerPositionInteger.z);
+	float airFogDistance = calculateFogDistance(dist, densityAdjustment, playerPositionFraction.z, normalize(direction).z, fog_density, fogLower - playerPositionInteger.z, fogHigher - playerPositionInteger.z);
 	vec3 fogColor = unpackColor(fogData[int(animatedTextureIndex)].fogColor);
 	vec3 pixelLight = max(light*normalVariation, texture(emissionSampler, textureCoords).r*4);
 	vec4 textureColor = texture(textureSampler, textureCoords)*vec4(pixelLight, 1);
@@ -164,7 +160,7 @@ void main() {
 
 		if(fogData[int(animatedTextureIndex)].fogDensity == 0.0) {
 			// Apply the air fog, compensating for the potentially missing back-face:
-			applyFrontfaceFog(airFogDistance, fog.color);
+			applyFrontfaceFog(airFogDistance, fog_color);
 		} else {
 			// Apply the block fog:
 			applyFrontfaceFog(fogDistance, fogColor);
@@ -175,10 +171,10 @@ void main() {
 		fragColor.rgb += textureColor.rgb;
 
 		// Apply the air fog:
-		applyBackfaceFog(airFogDistance, fog.color);
+		applyBackfaceFog(airFogDistance, fog_color);
 	} else {
 		// Apply the air fog:
-		applyFrontfaceFog(airFogDistance, fog.color);
+		applyFrontfaceFog(airFogDistance, fog_color);
 
 		// Apply the texture:
 		fragColor.rgb *= blendColor.rgb;
@@ -187,7 +183,7 @@ void main() {
 		// Apply the block fog:
 		if(fogData[int(animatedTextureIndex)].fogDensity == 0.0) {
 			// Apply the air fog, compensating for the above line where I compensated for the potentially missing back-face.
-			applyBackfaceFog(airFogDistance, fog.color);
+			applyBackfaceFog(airFogDistance, fog_color);
 		} else {
 			applyBackfaceFog(fogDistance, fogColor);
 		}
