@@ -1,10 +1,10 @@
-#version 330
+#version 460
 
-layout (location=0) out vec4 frag_color;
+layout(location = 0) out vec4 frag_color;
 uniform sampler2D image;
 
-flat in vec4 fColor;
-in vec2 startCoord;
+layout(location = 0) in vec2 startCoord;
+layout(location = 1) flat in vec4 fColor;
 
 uniform float scale;
 

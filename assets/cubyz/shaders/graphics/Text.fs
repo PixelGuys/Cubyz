@@ -1,9 +1,9 @@
-#version 330
+#version 460
 
-layout (location=0) out vec4 frag_color;
+layout(location = 0) out vec4 frag_color;
 
-in vec2 frag_face_pos;
-flat in vec4 color;
+layout(location = 0) in vec2 frag_face_pos;
+layout(location = 1) flat in vec4 color;
 
 uniform sampler2D texture_sampler;
 

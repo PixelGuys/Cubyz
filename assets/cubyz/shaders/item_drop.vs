@@ -1,15 +1,15 @@
-#version 430
+#version 460
 
-out vec3 startPosition;
-out vec3 direction;
-out vec3 cameraSpacePos;
-out vec2 uv;
-flat out int faceNormalIndex;
-flat out vec3 faceNormal;
-flat out int voxelModel;
-flat out int textureIndex;
-flat out uvec3 lower;
-flat out uvec3 upper;
+layout(location = 0) out vec3 startPosition;
+layout(location = 1) out vec3 direction;
+layout(location = 2) out vec3 cameraSpacePos;
+layout(location = 3) out vec2 uv;
+layout(location = 4) flat out int faceNormalIndex;
+layout(location = 5) flat out vec3 faceNormal;
+layout(location = 6) flat out int voxelModel;
+layout(location = 7) flat out int textureIndex;
+layout(location = 8) flat out uvec3 lower;
+layout(location = 9) flat out uvec3 upper;
 
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;

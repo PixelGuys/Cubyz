@@ -1,10 +1,10 @@
-#version 430
+#version 460
 
-layout (location=0)  in vec2 inTexCoords;
+layout(location = 0) in vec2 inTexCoords;
 
-out vec2 texCoords;
-out vec2 normalizedTexCoords;
-out vec3 direction;
+layout(location = 0) out vec2 texCoords;
+layout(location = 1) out vec2 normalizedTexCoords;
+layout(location = 2) out vec3 direction;
 
 layout(binding = 3) uniform sampler2D color;
 

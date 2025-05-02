@@ -1,10 +1,10 @@
-#version 330
+#version 460
 
-layout (location=0) out vec4 frag_color;
+layout(location = 0) out vec4 frag_color;
 
-flat in vec4 fColor;
-flat in vec2 startCoord;
-flat in vec2 endCoord;
+layout(location = 0) flat in vec2 startCoord;
+layout(location = 1) flat in vec2 endCoord;
+layout(location = 2) flat in vec4 fColor;
 
 uniform vec2 start;
 uniform vec2 size;

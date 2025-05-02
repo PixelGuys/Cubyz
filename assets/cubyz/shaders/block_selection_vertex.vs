@@ -1,8 +1,8 @@
-#version 430
+#version 460
 
-layout (location=0)  in vec3 position;
+layout(location = 0) in vec3 position;
 
-out vec3 mvVertexPos;
+layout(location = 0) out vec3 mvVertexPos;
 
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;

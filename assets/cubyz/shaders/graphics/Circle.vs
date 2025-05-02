@@ -1,9 +1,9 @@
-#version 330 core
+#version 460
 
-layout (location=0) in vec2 vertex_pos;
+layout(location = 0) in vec2 vertex_pos;
 
-flat out vec4 color;
-out vec2 unitPosition;
+layout(location = 0) out vec2 unitPosition;
+layout(location = 1) flat out vec4 color;
 
 
 //in pixel

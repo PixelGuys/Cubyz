@@ -1,4 +1,4 @@
-#version 430
+#version 460
 
 struct star {
 	vec4 vertexPositions[3];
@@ -16,9 +16,9 @@ layout (std430, binding = 12) buffer _starBuffer {
 uniform mat4 mvp;
 uniform float starOpacity;
 
-out vec3 pos;
-out flat vec3 centerPos;
-out flat vec3 color;
+layout(location = 0) out vec3 pos;
+layout(location = 1) out flat vec3 centerPos;
+layout(location = 2) out flat vec3 color;
 
 void main() {
 	gl_Position = mvp*vec4(starData[gl_VertexID/3].vertexPositions[gl_VertexID%3].xyz, 1);

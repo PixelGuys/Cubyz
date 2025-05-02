@@ -1,15 +1,15 @@
-#version 430
+#version 460
 
-in vec3 startPosition;
-in vec3 direction;
-in vec3 cameraSpacePos;
-in vec2 uv;
-flat in int faceNormalIndex;
-flat in vec3 faceNormal;
-flat in int voxelModel;
-flat in int textureIndex;
-flat in uvec3 lower;
-flat in uvec3 upper;
+layout(location = 0) in vec3 startPosition;
+layout(location = 1) in vec3 direction;
+layout(location = 2) in vec3 cameraSpacePos;
+layout(location = 3) in vec2 uv;
+layout(location = 4) flat in int faceNormalIndex;
+layout(location = 5) flat in vec3 faceNormal;
+layout(location = 6) flat in int voxelModel;
+layout(location = 7) flat in int textureIndex;
+layout(location = 8) flat in uvec3 lower;
+layout(location = 9) flat in uvec3 upper;
 
 layout(location = 0) out vec4 fragColor;
 

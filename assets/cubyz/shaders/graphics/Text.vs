@@ -1,10 +1,9 @@
-#version 330
+#version 460
 
-layout (location=0) in vec2 face_pos;
+layout(location = 0) in vec2 face_pos;
 
-out vec2 frag_face_pos;
-flat out vec4 color;
-
+layout(location = 0) out vec2 frag_face_pos;
+layout(location = 1) flat out vec4 color;
 
 // in pixels
 uniform vec4 texture_rect;
@@ -14,7 +13,6 @@ uniform float ratio;
 uniform int fontEffects;
 
 uniform float alpha;
-
 
 vec2 convert2Proportional(vec2 original, vec2 full) {
 	return vec2(original.x/full.x, original.y/full.y);

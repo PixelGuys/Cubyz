@@ -1,9 +1,9 @@
-#version 330
+#version 460
 
-layout (location=0) in vec3 vertexPos;
-layout (location=1) in vec2 texCoords;
+layout(location = 0) in vec3 vertexPos;
+layout(location = 1) in vec2 texCoords;
 
-out vec2 outTexCoords;
+layout(location = 0) out vec2 outTexCoords;
 
 uniform mat4 viewMatrix;
 uniform mat4 projectionMatrix;

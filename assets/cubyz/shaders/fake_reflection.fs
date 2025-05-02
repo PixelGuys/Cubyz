@@ -1,8 +1,8 @@
-#version 430
+#version 460
 
-in vec3 coords;
+layout(location = 0) in vec3 coords;
 
-out vec4 fragColor;
+layout(location = 0) out vec4 fragColor;
 
 uniform vec3 normalVector;
 uniform vec3 upVector;

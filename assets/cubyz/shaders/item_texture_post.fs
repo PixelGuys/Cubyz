@@ -1,7 +1,8 @@
-#version 430
-out vec4 fragColor;
+#version 460
 
-in vec2 texCoords;
+layout(location = 0) out vec4 fragColor;
+
+layout(location = 0) in vec2 texCoords;
 
 uniform sampler2D color;
 uniform bool transparent;

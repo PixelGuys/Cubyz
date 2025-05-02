@@ -1,4 +1,4 @@
-#version 430 core
+#version 460
 
 //in pixel
 uniform vec2 start;

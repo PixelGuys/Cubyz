@@ -1,9 +1,9 @@
-#version 430
+#version 460
 
-out vec2 outTexCoord;
-out vec3 mvVertexPos;
-out vec3 outLight;
-flat out vec3 normal;
+layout(location = 0) out vec2 outTexCoord;
+layout(location = 1) out vec3 mvVertexPos;
+layout(location = 2) out vec3 outLight;
+layout(location = 3) flat out vec3 normal;
 
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;

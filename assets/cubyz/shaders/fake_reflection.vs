@@ -1,8 +1,8 @@
-#version 430
+#version 460
 
-layout (location=0)  in vec2 inTexCoords;
+layout(location = 0) in vec2 inTexCoords;
 
-out vec3 coords;
+layout(location = 0) out vec3 coords;
 
 uniform float reflectionMapSize;
 

@@ -1,10 +1,10 @@
-#version 430
+#version 460
 
-layout(location=0) out vec4 fragColor;
+layout(location = 0) out vec4 fragColor;
 
-in vec2 texCoords;
-in vec2 normalizedTexCoords;
-in vec3 direction;
+layout(location = 0) in vec2 texCoords;
+layout(location = 1) in vec2 normalizedTexCoords;
+layout(location = 2) in vec3 direction;
 
 layout(binding = 3) uniform sampler2D color;
 

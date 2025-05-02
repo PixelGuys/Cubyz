@@ -1,7 +1,9 @@
-#version 430
-out vec4 fragColor;
-in vec2 texCoords;
-flat in vec3[4] directions;
+#version 460
+
+layout(location = 0) out vec4 fragColor;
+
+layout(location = 0) in vec2 texCoords;
+layout(location = 1) flat in vec3[4] directions;
 
 uniform sampler2D color;
 

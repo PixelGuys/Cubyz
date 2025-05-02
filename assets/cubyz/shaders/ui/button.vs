@@ -1,9 +1,9 @@
-#version 330 core
+#version 460
 
-layout (location=0) in vec2 vertex_pos;
+layout(location = 0) in vec2 vertex_pos;
 
-out vec2 startCoord;
-flat out vec4 fColor;
+layout(location = 0) out vec2 startCoord;
+layout(location = 1) flat out vec4 fColor;
 
 //in pixel
 uniform vec2 start;

@@ -1,6 +1,6 @@
 #version 460
 
-flat out uint chunkID;
+layout(location = 0) flat out uint chunkID;
 
 struct ChunkData {
 	ivec4 position;

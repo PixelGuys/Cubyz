@@ -1,9 +1,9 @@
-#version 430
+#version 460
 
-layout (location=0)  in vec2 inTexCoords;
+layout(location = 0) in vec2 inTexCoords;
 
-out vec2 texCoords;
-flat out vec3[4] directions;
+layout(location = 0) out vec2 texCoords;
+layout(location = 1) flat out vec3[4] directions;
 
 uniform mat4 invViewMatrix;
 uniform vec2 tanXY;
