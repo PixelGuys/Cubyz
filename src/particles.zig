@@ -387,7 +387,6 @@ pub const EmmiterShape = struct {
 };
 
 pub const ParticleType = struct {
-	texture: u32,
 	animationFrames: u32,
 	startFrame: u32,
 	size: f32,
