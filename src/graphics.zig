@@ -1208,7 +1208,7 @@ pub fn init() void { // MARK: init()
 		std.log.err("Error while initializing TextRendering: {s}", .{@errorName(err)});
 	};
 	block_texture.init();
-	if (glslang.glslang_initialize_process() == glslang.false) std.log.err("glslang_initialize_process failed", .{});
+	if(glslang.glslang_initialize_process() == glslang.false) std.log.err("glslang_initialize_process failed", .{});
 }
 
 pub fn deinit() void {
@@ -1238,7 +1238,7 @@ pub const Shader = struct { // MARK: Shader
 		sourceWithDefines.appendSlice(sourceLines);
 		sourceWithDefines.append(0);
 
-		const input = glslang.glslang_input_t {
+		const input = glslang.glslang_input_t{
 			.language = glslang.GLSLANG_SOURCE_GLSL,
 			.stage = shaderStage,
 			.client = glslang.GLSLANG_CLIENT_OPENGL,
@@ -1257,7 +1257,7 @@ pub const Shader = struct { // MARK: Shader
 		};
 		const shader = glslang.glslang_shader_create(&input);
 		defer glslang.glslang_shader_delete(shader);
-		if(glslang.glslang_shader_preprocess(shader, &input) == 0)	{
+		if(glslang.glslang_shader_preprocess(shader, &input) == 0) {
 			std.log.err("Error preprocessing shader {s}:\n{s}\n{s}\n", .{filename, glslang.glslang_shader_get_info_log(shader), glslang.glslang_shader_get_info_debug_log(shader)});
 			return error.FailedCompiling;
 		}
@@ -1270,7 +1270,6 @@ pub const Shader = struct { // MARK: Shader
 		const program = glslang.glslang_program_create();
 		defer glslang.glslang_program_delete(program);
 		glslang.glslang_program_add_shader(program, shader);
-
 
 		if(glslang.glslang_program_link(program, glslang.GLSLANG_MSG_SPV_RULES_BIT | glslang.GLSLANG_MSG_VULKAN_RULES_BIT) == 0) {
 			std.log.err("Error linking shader {s}:\n{s}\n{s}\n", .{filename, glslang.glslang_shader_get_info_log(shader), glslang.glslang_shader_get_info_debug_log(shader)});
@@ -1341,7 +1340,9 @@ pub const Shader = struct { // MARK: Shader
 				if(!std.mem.startsWith(u8, line, layoutLocation)) continue;
 				const buf = line[layoutLocation.len..];
 				var end: usize = 0;
-				while(std.ascii.isDigit(buf[end])) {end += 1;}
+				while(std.ascii.isDigit(buf[end])) {
+					end += 1;
+				}
 				return std.fmt.parseInt(c_int, buf[0..end], 0) catch continue;
 			}
 		}
