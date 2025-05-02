@@ -38,6 +38,13 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 
 	exe.addIncludePath(headersDeps.path("include"));
 	exe.addObjectFile(libsDeps.path("lib").path(b, artifactName));
+	exe.addObjectFile(libsDeps.path("lib").path(b, "libglslang.a"));
+	exe.addObjectFile(libsDeps.path("lib").path(b, "libMachineIndependent.a"));
+	exe.addObjectFile(libsDeps.path("lib").path(b, "libGenericCodeGen.a"));
+	exe.addObjectFile(libsDeps.path("lib").path(b, "libglslang-default-resource-limits.a"));
+	exe.addObjectFile(libsDeps.path("lib").path(b, "libSPIRV.a"));
+	exe.addObjectFile(libsDeps.path("lib").path(b, "libSPIRV-Tools.a"));
+	exe.addObjectFile(libsDeps.path("lib").path(b, "libSPIRV-Tools-opt.a"));
 
 	if(t.os.tag == .windows) {
 		exe.linkSystemLibrary("ole32");
