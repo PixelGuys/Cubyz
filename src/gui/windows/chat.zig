@@ -102,12 +102,10 @@ pub const History = struct {
 		}
 		return false;
 	}
-	pub fn cycleDown(self: *History) bool {
+	pub fn cycleDown(self: *History) void {
 		if(self.up.dequeueFront()) |msg| {
 			self.pushDown(msg);
-			return true;
 		}
-		return false;
 	}
 };
 
@@ -169,21 +167,19 @@ pub fn onOpen() void {
 pub fn loadNextHistoryEntry(_: usize) void {
 	const isSuccess = messageHistory.cycleUp();
 	if(messageHistory.isDuplicate(input.currentString.items)) {
-		if(isSuccess) _ = messageHistory.cycleDown();
-		_ = messageHistory.cycleDown();
+		if(isSuccess) messageHistory.cycleDown();
+		messageHistory.cycleDown();
 	} else {
 		messageHistory.pushDown(main.globalAllocator.dupe(u8, input.currentString.items));
-		_ = messageHistory.cycleDown();
+		messageHistory.cycleDown();
 	}
 	const msg = messageHistory.down.peekFront() orelse "";
 	input.setString(msg);
 }
 
 pub fn loadPreviousHistoryEntry(_: usize) void {
-	if(messageHistory.isDuplicate(input.currentString.items)) {
-		_ = messageHistory.cycleUp();
-	} else {
-		_ = messageHistory.cycleUp();
+	_ = messageHistory.cycleUp();
+	if(messageHistory.isDuplicate(input.currentString.items)) {} else {
 		messageHistory.pushUp(main.globalAllocator.dupe(u8, input.currentString.items));
 	}
 	const msg = messageHistory.down.peekFront() orelse "";
