@@ -1226,23 +1226,79 @@ pub fn deinit() void {
 pub const Shader = struct { // MARK: Shader
 	id: c_uint,
 
-	fn addShader(self: *const Shader, filename: []const u8, defines: []const u8, shader_stage: c_uint) !void {
+	fn compileToSpirV(allocator: NeverFailingAllocator, source: []const u8, filename: []const u8, defines: []const u8, shaderStage: glslang.glslang_stage_t) ![]c_uint {
+		const versionLineEnd = if(std.mem.indexOfScalar(u8, source, '\n')) |len| len + 1 else 0;
+		const versionLine = source[0..versionLineEnd];
+		const sourceLines = source[versionLineEnd..];
+
+		var sourceWithDefines = main.List(u8).init(main.stackAllocator);
+		defer sourceWithDefines.deinit();
+		sourceWithDefines.appendSlice(versionLine);
+		sourceWithDefines.appendSlice(defines);
+		sourceWithDefines.appendSlice(sourceLines);
+		sourceWithDefines.append(0);
+
+		const input = glslang.glslang_input_t {
+			.language = glslang.GLSLANG_SOURCE_GLSL,
+			.stage = shaderStage,
+			.client = glslang.GLSLANG_CLIENT_OPENGL,
+			.client_version = glslang.GLSLANG_TARGET_OPENGL_450,
+			.target_language = glslang.GLSLANG_TARGET_SPV,
+			.target_language_version = glslang.GLSLANG_TARGET_SPV_1_0,
+			.code = sourceWithDefines.items.ptr,
+			.default_version = 100,
+			.default_profile = glslang.GLSLANG_NO_PROFILE,
+			.force_default_version_and_profile = glslang.false,
+			.forward_compatible = glslang.false,
+			.messages = glslang.GLSLANG_MSG_DEFAULT_BIT,
+			.resource = glslang.glslang_default_resource(),
+			.callbacks = .{}, // TODO: Add support for shader includes
+			.callbacks_ctx = null,
+		};
+		const shader = glslang.glslang_shader_create(&input);
+		defer glslang.glslang_shader_delete(shader);
+		if(glslang.glslang_shader_preprocess(shader, &input) == 0)	{
+			std.log.err("Error preprocessing shader {s}:\n{s}\n{s}\n", .{filename, glslang.glslang_shader_get_info_log(shader), glslang.glslang_shader_get_info_debug_log(shader)});
+			return error.FailedCompiling;
+		}
+
+		if(glslang.glslang_shader_parse(shader, &input) == 0) {
+			std.log.err("Error parsing shader {s}:\n{s}\n{s}\n", .{filename, glslang.glslang_shader_get_info_log(shader), glslang.glslang_shader_get_info_debug_log(shader)});
+			return error.FailedCompiling;
+		}
+
+		const program = glslang.glslang_program_create();
+		defer glslang.glslang_program_delete(program);
+		glslang.glslang_program_add_shader(program, shader);
+
+
+		if(glslang.glslang_program_link(program, glslang.GLSLANG_MSG_SPV_RULES_BIT | glslang.GLSLANG_MSG_VULKAN_RULES_BIT) == 0) {
+			std.log.err("Error linking shader {s}:\n{s}\n{s}\n", .{filename, glslang.glslang_shader_get_info_log(shader), glslang.glslang_shader_get_info_debug_log(shader)});
+			return error.FailedCompiling;
+		}
+
+		glslang.glslang_program_SPIRV_generate(program, shaderStage);
+		const result = allocator.alloc(c_uint, glslang.glslang_program_SPIRV_get_size(program));
+		glslang.glslang_program_SPIRV_get(program, result.ptr);
+		return result;
+	}
+
+	fn addShader(self: *const Shader, filename: []const u8, defines: []const u8, shaderStage: c_uint) !void {
 		const source = main.files.read(main.stackAllocator, filename) catch |err| {
 			std.log.err("Couldn't read shader file: {s}", .{filename});
 			return err;
 		};
 		defer main.stackAllocator.free(source);
-		const shader = c.glCreateShader(shader_stage);
+		const glslangStage: glslang.glslang_stage_t = if(shaderStage == c.GL_VERTEX_SHADER) glslang.GLSLANG_STAGE_VERTEX else if(shaderStage == c.GL_FRAGMENT_SHADER) glslang.GLSLANG_STAGE_FRAGMENT else glslang.GLSLANG_STAGE_COMPUTE;
+		const spirV = try compileToSpirV(main.stackAllocator, source, filename, defines, glslangStage);
+		defer main.stackAllocator.free(spirV);
+
+		const shader = c.glCreateShader(shaderStage);
 		defer c.glDeleteShader(shader);
 
-		const versionLineEnd = if(std.mem.indexOfScalar(u8, source, '\n')) |len| len + 1 else 0;
-		const versionLine = source[0..versionLineEnd];
-		const sourceLines = source[versionLineEnd..];
+		c.glShaderBinary(1, &shader, c.GL_SHADER_BINARY_FORMAT_SPIR_V, spirV.ptr, @intCast(spirV.len*@sizeOf(c_uint)));
 
-		const sourceLen: [3]c_int = .{@intCast(versionLine.len), @intCast(defines.len), @intCast(sourceLines.len)};
-		c.glShaderSource(shader, 3, &[3][*c]const u8{versionLine.ptr, defines.ptr, sourceLines.ptr}, &sourceLen);
-
-		c.glCompileShader(shader);
+		c.glSpecializeShader(shader, "main", 0, null, null);
 
 		var success: c_int = undefined;
 		c.glGetShaderiv(shader, c.GL_COMPILE_STATUS, &success);
@@ -1258,7 +1314,7 @@ pub const Shader = struct { // MARK: Shader
 		c.glAttachShader(self.id, shader);
 	}
 
-	fn link(self: *const Shader) !void {
+	fn link(self: *const Shader, file: []const u8) !void {
 		c.glLinkProgram(self.id);
 
 		var success: c_int = undefined;
@@ -1268,24 +1324,48 @@ pub const Shader = struct { // MARK: Shader
 			c.glGetProgramiv(self.id, c.GL_INFO_LOG_LENGTH, @ptrCast(&len));
 			var buf: [4096]u8 = undefined;
 			c.glGetProgramInfoLog(self.id, 4096, @ptrCast(&len), &buf);
-			std.log.err("Error Linking Shader program:\n{s}\n", .{buf[0..len]});
+			std.log.err("Error Linking Shader program {s}:\n{s}\n", .{file, buf[0..len]});
 			return error.FailedLinking;
 		}
+	}
+
+	fn getUniformLocation(codes: []const []const u8, path: []const u8, uniform: []const u8) c_int {
+		const uniformSearchString = std.fmt.allocPrint(main.stackAllocator.allocator, " {s};", .{uniform}) catch unreachable;
+		defer main.stackAllocator.free(uniformSearchString);
+		const layoutLocation = "layout(location = ";
+		for(codes) |code| {
+			var lines = std.mem.splitScalar(u8, code, '\n');
+			while(lines.next()) |line| {
+				if(line.len == 0) continue;
+				if(!std.mem.endsWith(u8, line, uniformSearchString)) continue;
+				if(!std.mem.startsWith(u8, line, layoutLocation)) continue;
+				const buf = line[layoutLocation.len..];
+				var end: usize = 0;
+				while(std.ascii.isDigit(buf[end])) {end += 1;}
+				return std.fmt.parseInt(c_int, buf[0..end], 0) catch continue;
+			}
+		}
+		std.log.err("Could not find uniform location for {s} in {s}", .{uniform, path});
+		return -1;
 	}
 
 	pub fn init(vertex: []const u8, fragment: []const u8, defines: []const u8) Shader {
 		const shader = Shader{.id = c.glCreateProgram()};
 		shader.addShader(vertex, defines, c.GL_VERTEX_SHADER) catch return shader;
 		shader.addShader(fragment, defines, c.GL_FRAGMENT_SHADER) catch return shader;
-		shader.link() catch return shader;
+		shader.link(fragment) catch return shader;
 		return shader;
 	}
 
 	pub fn initAndGetUniforms(vertex: []const u8, fragment: []const u8, defines: []const u8, ptrToUniformStruct: anytype) Shader {
 		const self = Shader.init(vertex, fragment, defines);
+		const vertexSource = main.files.read(main.stackAllocator, vertex) catch return self;
+		defer main.stackAllocator.free(vertexSource);
+		const fragmentSource = main.files.read(main.stackAllocator, fragment) catch return self;
+		defer main.stackAllocator.free(fragmentSource);
 		inline for(@typeInfo(@TypeOf(ptrToUniformStruct.*)).@"struct".fields) |field| {
 			if(field.type == c_int) {
-				@field(ptrToUniformStruct, field.name) = c.glGetUniformLocation(self.id, field.name[0..]);
+				@field(ptrToUniformStruct, field.name) = getUniformLocation(&.{vertexSource, fragmentSource}, fragment, field.name[0..]);
 			}
 		}
 		return self;
@@ -1294,15 +1374,17 @@ pub const Shader = struct { // MARK: Shader
 	pub fn initCompute(compute: []const u8, defines: []const u8) Shader {
 		const shader = Shader{.id = c.glCreateProgram()};
 		shader.addShader(compute, defines, c.GL_COMPUTE_SHADER) catch return shader;
-		shader.link() catch return shader;
+		shader.link(compute) catch return shader;
 		return shader;
 	}
 
 	pub fn initComputeAndGetUniforms(compute: []const u8, defines: []const u8, ptrToUniformStruct: anytype) Shader {
 		const self = Shader.initCompute(compute, defines);
+		const computeSource = main.files.read(main.stackAllocator, compute) catch return self;
+		defer main.stackAllocator.free(computeSource);
 		inline for(@typeInfo(@TypeOf(ptrToUniformStruct.*)).@"struct".fields) |field| {
 			if(field.type == c_int) {
-				@field(ptrToUniformStruct, field.name) = c.glGetUniformLocation(self.id, field.name[0..]);
+				@field(ptrToUniformStruct, field.name) = getUniformLocation(&.{computeSource}, compute, field.name[0..]);
 			}
 		}
 		return self;
