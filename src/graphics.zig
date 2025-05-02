@@ -38,6 +38,11 @@ pub const stb_image = @cImport({
 	@cInclude("stb/stb_image_write.h");
 });
 
+const glslang = @cImport({
+	@cInclude("glslang/Include/glslang_c_interface.h");
+	@cInclude("glslang/Public/resource_limits_c.h");
+});
+
 pub const draw = struct { // MARK: draw
 	var color: u32 = 0;
 	var clip: ?Vec4i = null;
@@ -1203,6 +1208,7 @@ pub fn init() void { // MARK: init()
 		std.log.err("Error while initializing TextRendering: {s}", .{@errorName(err)});
 	};
 	block_texture.init();
+	if (glslang.glslang_initialize_process() == glslang.false) std.log.err("glslang_initialize_process failed", .{});
 }
 
 pub fn deinit() void {
@@ -1214,6 +1220,7 @@ pub fn deinit() void {
 	draw.deinitRectBorder();
 	TextRendering.deinit();
 	block_texture.deinit();
+	glslang.glslang_finalize_process();
 }
 
 pub const Shader = struct { // MARK: Shader
