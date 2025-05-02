@@ -157,8 +157,8 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
 	_degradable[size] = zon.get(bool, "degradable", false);
 	_selectable[size] = zon.get(bool, "selectable", true);
-	_climbable[size] = zon.get(bool, "climbable", false);
-	_climbSpeed[size] = zon.get(f32, "climbSpeed", 4);
+	_climbSpeed[size] = zon.get(f32, "climbSpeed", 0);
+	_climbable[size] = _climbSpeed[size] != 0;
 	_solid[size] = zon.get(bool, "solid", true);
 	_gui[size] = allocator.dupe(u8, zon.get([]const u8, "gui", ""));
 	_transparent[size] = zon.get(bool, "transparent", false);
