@@ -497,8 +497,14 @@ pub const collision = struct {
 					if(block == null)
 						continue;
 
-					// climbing
-					if(block.?.climbable() and !entity.climbing and entity.vel[2] > slipVel) {
+					if(block.?.climbable() and !entity.climbing and entity.vel[2] > slipVel) notClimbable: {
+						// make plane rotation models not climbable on the ground
+						const blockPos: Vec3d = .{@floatFromInt(posX), @floatFromInt(posY), @floatFromInt(posZ)};
+						const model = block.?.mode().model(block.?).model();
+						const modelBoundingBoxMax: Vec3d = model.max + blockPos;
+						const hasFullBlockHeight = model.max[2] > 0.9;
+						if (modelBoundingBoxMax[2] - boundingBox.min[2] < 0.15 and !hasFullBlockHeight) break :notClimbable;
+
 						const touchX: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extendClimableX);
 						const touchY: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extendClimableY);
 						entity.climbing = touchX or touchY;
