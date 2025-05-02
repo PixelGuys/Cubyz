@@ -26,6 +26,8 @@ layout(location = 7) uniform float sizeScale;
 layout(location = 8) uniform float reflectionMapSize;
 layout(location = 9) uniform float contrast;
 
+layout(location = 10) uniform vec2 glDepthRange;
+
 const float[6] normalVariations = float[6](
 	1.0,
 	0.80,
@@ -175,9 +177,7 @@ void mainItemDrop() {
 	vec3 modifiedCameraSpacePos = cameraSpacePos*(1 + total_tMax*sizeScale*length(direction)/length(cameraSpacePos));
 	vec4 projection = projectionMatrix*vec4(modifiedCameraSpacePos, 1);
 	float depth = projection.z/projection.w;
-	gl_FragDepth = ((gl_DepthRange.diff * depth) + gl_DepthRange.near + gl_DepthRange.far)/2.0;
-
-
+	gl_FragDepth = (((glDepthRange.y - glDepthRange.x) * depth) + glDepthRange.x + glDepthRange.y)/2.0;
 
 	fragColor = decodeColor(block);
 	fragColor.a = 1; // No transparency supported!

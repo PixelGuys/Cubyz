@@ -553,6 +553,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		block: c_int,
 		reflectionMapSize: c_int,
 		contrast: c_int,
+		glDepthRange: c_int,
 	} = undefined;
 
 	var itemModelSSBO: graphics.SSBO = undefined;
@@ -682,6 +683,9 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniformMatrix4fv(itemUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
 		c.glUniform1f(itemUniforms.contrast, 0.12);
+		var depthRange: [2]f32 = undefined;
+		c.glGetFloatv(c.GL_DEPTH_RANGE, &depthRange);
+		c.glUniform2fv(itemUniforms.glDepthRange, 1, &depthRange);
 	}
 
 	fn bindLightUniform(light: [6]u8, ambientLight: Vec3f) void {
