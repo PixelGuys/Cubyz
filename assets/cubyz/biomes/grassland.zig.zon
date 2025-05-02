@@ -14,12 +14,6 @@
 	},
 	.structures = .{
 		.{
-			.id = "cubyz:sbb",
-			.structure = "cubyz:tree/oak/stem0",
-			.placeMode = .degradable,
-			.chance = 0.0128,
-		},
-		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:oak_leaves",
 			.log = "cubyz:oak_log",
