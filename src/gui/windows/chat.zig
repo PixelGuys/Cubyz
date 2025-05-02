@@ -95,6 +95,20 @@ pub const History = struct {
 			main.globalAllocator.free(old);
 		}
 	}
+	pub fn cycleUp(self: *History) bool {
+		if(self.down.dequeueFront()) |msg| {
+			self.pushUp(msg);
+			return true;
+		}
+		return false;
+	}
+	pub fn cycleDown(self: *History) bool {
+		if(self.up.dequeueFront()) |msg| {
+			self.pushDown(msg);
+			return true;
+		}
+		return false;
+	}
 };
 
 pub fn init() void {
@@ -153,18 +167,13 @@ pub fn onOpen() void {
 }
 
 pub fn loadNextHistoryEntry(_: usize) void {
+	const isSuccess = messageHistory.cycleUp();
 	if(messageHistory.isDuplicate(input.currentString.items)) {
-		if(messageHistory.up.dequeueFront()) |msg| {
-			messageHistory.pushDown(msg);
-		}
+		if(isSuccess) _ = messageHistory.cycleDown();
+		_ = messageHistory.cycleDown();
 	} else {
-		if(messageHistory.down.dequeueFront()) |msg| {
-			messageHistory.pushUp(msg);
-		}
 		messageHistory.pushDown(main.globalAllocator.dupe(u8, input.currentString.items));
-		if(messageHistory.up.dequeueFront()) |msg| {
-			messageHistory.pushDown(msg);
-		}
+		_ = messageHistory.cycleDown();
 	}
 	const msg = messageHistory.down.peekFront() orelse "";
 	input.setString(msg);
@@ -172,13 +181,9 @@ pub fn loadNextHistoryEntry(_: usize) void {
 
 pub fn loadPreviousHistoryEntry(_: usize) void {
 	if(messageHistory.isDuplicate(input.currentString.items)) {
-		if(messageHistory.down.dequeueFront()) |msg| {
-			messageHistory.pushUp(msg);
-		}
+		_ = messageHistory.cycleUp();
 	} else {
-		if(messageHistory.down.dequeueFront()) |msg| {
-			messageHistory.pushUp(msg);
-		}
+		_ = messageHistory.cycleUp();
 		messageHistory.pushUp(main.globalAllocator.dupe(u8, input.currentString.items));
 	}
 	const msg = messageHistory.down.peekFront() orelse "";
