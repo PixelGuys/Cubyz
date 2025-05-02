@@ -932,6 +932,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	const gravity = 30.0;
 	const terminalVelocity = 90.0;
 	const airFrictionCoefficient = gravity/terminalVelocity; // λ = a/v in equillibrium
+	const climbFrictionCoefficient = gravity/2.0;
 	var move: Vec3d = .{0, 0, 0};
 
 	if(main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(Player.super.pos[0])), @intFromFloat(@floor(Player.super.pos[1])), @intFromFloat(@floor(Player.super.pos[2]))) != null) {
@@ -947,6 +948,8 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 		if(!Player.onGround and !Player.super.climbing and !Player.isFlying.load(.monotonic)) {
 			baseFrictionCoefficient = airFrictionCoefficient;
+		} else if(Player.super.climbing) {
+			baseFrictionCoefficient = climbFrictionCoefficient;
 		}
 
 		var jumping: bool = false;
