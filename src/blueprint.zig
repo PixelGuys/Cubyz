@@ -118,11 +118,11 @@ pub const Blueprint = struct {
 		const blueprintOffset = @max(@as(Vec3i, @splat(0)), -pos);
 		const chunkOffset = @max(@as(Vec3i, @splat(0)), pos);
 
-		const indexEndX: i32 = @min(@as(i32, @intCast(chunk.super.width)) - chunkOffset[0], @as(i32, @intCast(self.blocks.width)));
+		const indexEndX: i32 = @min(chunk.super.width - chunkOffset[0], @as(i32, @intCast(self.blocks.width)));
 		const indexEndY: i32 = @min(@as(i32, @intCast(chunk.super.width)) - chunkOffset[1], @as(i32, @intCast(self.blocks.depth)));
 		const indexEndZ: i32 = @min(@as(i32, @intCast(chunk.super.width)) - chunkOffset[2], @as(i32, @intCast(self.blocks.height)));
 
-		var indexX: i32 = blueprintOffset[0];
+		var indexX: u31 = @max(0, -pos[0]);
 		while(indexX < indexEndX) : (indexX += chunk.super.pos.voxelSize) {
 			var indexY: i32 = blueprintOffset[1];
 			while(indexY < indexEndY) : (indexY += chunk.super.pos.voxelSize) {
@@ -132,7 +132,7 @@ pub const Blueprint = struct {
 
 					if(block.typ == voidType) continue;
 
-					const chunkX = indexX + chunkOffset[0] - blueprintOffset[0];
+					const chunkX = indexX + pos[0];
 					const chunkY = indexY + chunkOffset[1] - blueprintOffset[1];
 					const chunkZ = indexZ + chunkOffset[2] - blueprintOffset[2];
 					switch(mode) {
