@@ -29,7 +29,7 @@ pub fn execute(args: []const u8, source: *User) void {
 	}
 
 	if(source.worldEditData.clipboard) |clipboard| {
-		const pos: Vec3i = @intFromFloat(source.player.pos);
+		const pos: Vec3i = @intFromFloat(source.getEntity().pos);
 		source.sendMessage("Pasting: {}", .{pos});
 
 		const undo = Blueprint.capture(main.globalAllocator, pos, .{

@@ -152,7 +152,7 @@ const ChunkManager = struct { // MARK: ChunkManager
 
 		pub fn getPriority(self: *ChunkLoadTask) f32 {
 			switch(self.source) {
-				.user => |user| return self.pos.getPriority(user.player.pos),
+				.user => |user| return self.pos.getPriority(user.getEntity().pos),
 				else => return std.math.floatMax(f32),
 			}
 		}
@@ -212,7 +212,7 @@ const ChunkManager = struct { // MARK: ChunkManager
 
 		pub fn getPriority(self: *LightMapLoadTask) f32 {
 			if(self.source) |user| {
-				return self.pos.getPriority(user.player.pos, terrain.LightMap.LightMapFragment.mapSize) + 100;
+				return self.pos.getPriority(user.getEntity().pos, terrain.LightMap.LightMapFragment.mapSize) + 100;
 			} else {
 				return std.math.floatMax(f32);
 			}
@@ -837,7 +837,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		const playerData = files.readToZon(main.stackAllocator, path) catch .null;
 		defer playerData.deinit(main.stackAllocator);
-		const player = &user.player;
+		const player = user.getEntity();
 		if(playerData == .null) {
 			player.pos = @floatFromInt(self.spawn);
 
@@ -867,7 +867,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		playerZon.put("name", user.name);
 
-		playerZon.put("entity", user.player.save(main.stackAllocator));
+		playerZon.put("entity", user.getEntity().save(main.stackAllocator));
 		playerZon.put("gamemode", @tagName(user.gamemode.load(.monotonic)));
 
 		{
