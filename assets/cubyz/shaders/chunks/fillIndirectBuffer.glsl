@@ -1,6 +1,6 @@
-#version 430
+#version 460
 
-layout (local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
 struct AnimationData {
 	uint frames;
@@ -40,14 +40,14 @@ layout(std430, binding = 9) buffer _chunkIDs
 	uint chunkIDs[];
 };
 
-uniform uint chunkIDIndex;
-uniform uint commandIndexStart;
-uniform uint size;
-uniform bool isTransparent;
-uniform bool onlyDrawPreviouslyInvisible;
-uniform ivec3 playerPositionInteger;
+layout(location = 0) uniform uint chunkIDIndex;
+layout(location = 1) uniform uint commandIndexStart;
+layout(location = 2) uniform uint size;
+layout(location = 3) uniform bool isTransparent;
+layout(location = 4) uniform bool onlyDrawPreviouslyInvisible;
+layout(location = 5) uniform ivec3 playerPositionInteger;
 
-uniform float lodDistance;
+layout(location = 6) uniform float lodDistance;
 
 bool isVisible(int dir, ivec3 playerDist) {
 	switch(dir) {

@@ -551,12 +551,9 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		ambientLight: c_int,
 		modelIndex: c_int,
 		block: c_int,
-		texture_sampler: c_int,
-		emissionSampler: c_int,
-		reflectivityAndAbsorptionSampler: c_int,
-		reflectionMap: c_int,
 		reflectionMapSize: c_int,
 		contrast: c_int,
+		glDepthRange: c_int,
 	} = undefined;
 
 	var itemModelSSBO: graphics.SSBO = undefined;
@@ -681,15 +678,14 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 
 	fn bindCommonUniforms(projMatrix: Mat4f, viewMatrix: Mat4f, ambientLight: Vec3f) void {
 		itemShader.bind();
-		c.glUniform1i(itemUniforms.texture_sampler, 0);
-		c.glUniform1i(itemUniforms.emissionSampler, 1);
-		c.glUniform1i(itemUniforms.reflectivityAndAbsorptionSampler, 2);
-		c.glUniform1i(itemUniforms.reflectionMap, 4);
 		c.glUniform1f(itemUniforms.reflectionMapSize, main.renderer.reflectionCubeMapSize);
 		c.glUniformMatrix4fv(itemUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 		c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniformMatrix4fv(itemUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
 		c.glUniform1f(itemUniforms.contrast, 0.12);
+		var depthRange: [2]f32 = undefined;
+		c.glGetFloatv(c.GL_DEPTH_RANGE, &depthRange);
+		c.glUniform2fv(itemUniforms.glDepthRange, 1, &depthRange);
 	}
 
 	fn bindLightUniform(light: [6]u8, ambientLight: Vec3f) void {

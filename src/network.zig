@@ -20,6 +20,7 @@ const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const BlockUpdate = renderer.mesh_storage.BlockUpdate;
 
 //TODO: Might want to use SSL or something similar to encode the message
 
@@ -943,23 +944,28 @@ pub const Protocols = struct {
 		pub const id: u8 = 7;
 		pub const asynchronous = false;
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			const x = try reader.readInt(i32);
-			const y = try reader.readInt(i32);
-			const z = try reader.readInt(i32);
-			const newBlock = Block.fromInt(try reader.readInt(u32));
 			if(conn.isServerSide()) {
 				return error.InvalidPacket;
-			} else {
-				renderer.mesh_storage.updateBlock(x, y, z, newBlock);
+			}
+			while(reader.remaining.len != 0) {
+				renderer.mesh_storage.updateBlock(.{
+					.x = try reader.readInt(i32),
+					.y = try reader.readInt(i32),
+					.z = try reader.readInt(i32),
+					.newBlock = Block.fromInt(try reader.readInt(u32)),
+				});
 			}
 		}
-		pub fn send(conn: *Connection, x: i32, y: i32, z: i32, newBlock: Block) void {
+		pub fn send(conn: *Connection, updates: []const BlockUpdate) void {
 			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 16);
 			defer writer.deinit();
-			writer.writeInt(i32, x);
-			writer.writeInt(i32, y);
-			writer.writeInt(i32, z);
-			writer.writeInt(u32, newBlock.toInt());
+
+			for(updates) |update| {
+				writer.writeInt(i32, update.x);
+				writer.writeInt(i32, update.y);
+				writer.writeInt(i32, update.z);
+				writer.writeInt(u32, update.newBlock.toInt());
+			}
 			conn.send(.fast, id, writer.data.items);
 		}
 	};

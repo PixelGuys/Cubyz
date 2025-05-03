@@ -87,7 +87,6 @@ pub const ClientEntityManager = struct {
 	var uniforms: struct {
 		projectionMatrix: c_int,
 		viewMatrix: c_int,
-		texture_sampler: c_int,
 		light: c_int,
 		contrast: c_int,
 		ambientLight: c_int,
@@ -176,7 +175,6 @@ pub const ClientEntityManager = struct {
 		c.glBindVertexArray(main.renderer.chunk_meshing.vao);
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 		modelTexture.bindTo(0);
-		c.glUniform1i(uniforms.texture_sampler, 0);
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniform3fv(uniforms.directionalLight, 1, @ptrCast(&directionalLight));
 		c.glUniform1f(uniforms.contrast, 0.12);

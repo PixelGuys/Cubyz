@@ -1,15 +1,15 @@
-#version 430
+#version 460
 
-out vec2 outTexCoord;
-out vec3 mvVertexPos;
-out vec3 outLight;
-flat out vec3 normal;
+layout(location = 0) out vec2 outTexCoord;
+layout(location = 1) out vec3 mvVertexPos;
+layout(location = 2) out vec3 outLight;
+layout(location = 3) flat out vec3 normal;
 
-uniform mat4 projectionMatrix;
-uniform mat4 viewMatrix;
-uniform vec3 ambientLight;
-uniform vec3 directionalLight;
-uniform uint light;
+layout(location = 0) uniform mat4 projectionMatrix;
+layout(location = 1) uniform mat4 viewMatrix;
+layout(location = 2) uniform vec3 ambientLight;
+layout(location = 3) uniform vec3 directionalLight;
+layout(location = 4) uniform uint light;
 
 struct QuadInfo {
 	vec3 normal;

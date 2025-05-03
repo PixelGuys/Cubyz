@@ -1,10 +1,10 @@
-#version 430
+#version 460
 
-in vec3 pos;
-in flat vec3 centerPos;
-in flat vec3 color;
+layout(location = 0) in vec3 pos;
+layout(location = 1) in flat vec3 centerPos;
+layout(location = 2) in flat vec3 color;
 
-layout (location = 0, index = 0) out vec4 fragColor;
+layout(location = 0, index = 0) out vec4 fragColor;
 
 void main() {
 	if (dot(pos - centerPos, pos - centerPos) > 1.0/12.0)
