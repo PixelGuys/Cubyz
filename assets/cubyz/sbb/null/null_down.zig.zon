@@ -1,4 +1,0 @@
-.{
-	.blueprint = "cubyz:null/null_down",
-	.children = .{},
-}

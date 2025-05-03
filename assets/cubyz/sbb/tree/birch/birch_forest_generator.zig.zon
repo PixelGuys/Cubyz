@@ -1,0 +1,11 @@
+.{
+	.blueprint = "cubyz:generator",
+	.children = .{
+		.crimson = .{
+			.{.structure = "cubyz:tree/birch/1/tree_1", .chance = 0.2},
+			.{.structure = "cubyz:tree/birch/1/tree_2", .chance = 0.2},
+			.{.structure = "cubyz:tree/birch/1/tree_3", .chance = 0.2},
+			.{.structure = "cubyz:tree/birch/1/tree_4", .chance = 0.4},
+		},
+	},
+}

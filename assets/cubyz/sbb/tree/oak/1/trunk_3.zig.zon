@@ -1,0 +1,21 @@
+.{
+	.blueprint = "cubyz:tree/oak/1/trunk_3",
+	.children = .{
+		.blue = .{
+			.{.structure = "cubyz:tree/oak/1/branch_1", .chance = 0.333},
+			.{.structure = "cubyz:tree/oak/1/branch_2", .chance = 0.333},
+			.{.structure = "cubyz:tree/oak/1/branch_3", .chance = 0.334},
+		},
+		.crimson = .{
+			.{.structure = "cubyz:tree/oak/1/tree_blob_1", .chance = 0.5},
+			.{.structure = "cubyz:tree/oak/1/tree_blob_3", .chance = 0.5},
+		},
+		.yellow = .{
+			.{.structure = "cubyz:tree/oak/1/stub_1", .chance = 0.1},
+			.{.structure = "cubyz:tree/oak/1/stub_2", .chance = 0.1},
+			.{.structure = "cubyz:tree/oak/1/stub_3", .chance = 0.1},
+			.{.structure = "cubyz:tree/oak/1/stub_4", .chance = 0.1},
+			.{.structure = null, .chance = 0.6},
+		},
+	},
+}

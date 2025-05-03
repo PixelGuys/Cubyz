@@ -1,0 +1,10 @@
+.{
+	.blueprint = "cubyz:tree/oak/1/branch_3",
+	.children = .{
+		.crimson = .{
+			.{.structure = "cubyz:tree/oak/1/tree_blob_1", .chance = 0.34},
+			.{.structure = "cubyz:tree/oak/1/tree_blob_2", .chance = 0.33},
+			.{.structure = "cubyz:tree/oak/1/tree_blob_3", .chance = 0.33},
+		},
+	},
+}

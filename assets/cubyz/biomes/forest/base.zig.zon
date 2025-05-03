@@ -15,13 +15,13 @@
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:oak/forest_generator",
+			.structure = "cubyz:tree/oak/forest_generator",
 			.placeMode = .degradable,
 			.chance = 0.1,
 		},
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:birch/forest_generator",
+			.structure = "cubyz:tree/birch/forest_generator",
 			.placeMode = .degradable,
 			.chance = 0.1,
 		},

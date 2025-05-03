@@ -48,7 +48,7 @@
 		},
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:oak/grassland_generator",
+			.structure = "cubyz:tree/oak/grassland_generator",
 			.placeMode = .degradable,
 			.chance = 0.03,
 		},
