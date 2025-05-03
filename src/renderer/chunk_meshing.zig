@@ -27,12 +27,21 @@ const mesh_storage = @import("mesh_storage.zig");
 
 var shader: Shader = undefined;
 var transparentShader: Shader = undefined;
-const UniformStruct = struct {
+pub var uniforms: struct {
 	projectionMatrix: c_int,
 	viewMatrix: c_int,
 	playerPositionInteger: c_int,
 	playerPositionFraction: c_int,
-	screenSize: c_int,
+	ambientLight: c_int,
+	contrast: c_int,
+	reflectionMapSize: c_int,
+	lodDistance: c_int,
+} = undefined;
+pub var transparentUniforms: struct {
+	projectionMatrix: c_int,
+	viewMatrix: c_int,
+	playerPositionInteger: c_int,
+	playerPositionFraction: c_int,
 	ambientLight: c_int,
 	contrast: c_int,
 	fog_color: c_int,
@@ -40,12 +49,9 @@ const UniformStruct = struct {
 	fogLower: c_int,
 	fogHigher: c_int,
 	reflectionMapSize: c_int,
-	lodDistance: c_int,
 	zNear: c_int,
 	zFar: c_int,
-};
-pub var uniforms: UniformStruct = undefined;
-pub var transparentUniforms: UniformStruct = undefined;
+} = undefined;
 pub var commandShader: Shader = undefined;
 pub var commandUniforms: struct {
 	chunkIDIndex: c_int,
@@ -130,21 +136,21 @@ pub fn endRender() void {
 	chunkIDBuffer.endRender();
 }
 
-fn bindCommonUniforms(locations: *UniformStruct, projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d) void {
+fn bindCommonUniforms(locations: anytype, projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d) void {
 	c.glUniformMatrix4fv(locations.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 
 	c.glUniform1f(locations.reflectionMapSize, renderer.reflectionCubeMapSize);
 
 	c.glUniform1f(locations.contrast, 0);
 
-	c.glUniform1f(locations.lodDistance, main.settings.@"lod0.5Distance");
+	if(@hasField(@TypeOf(locations.*), "lodDistance")) c.glUniform1f(locations.lodDistance, main.settings.@"lod0.5Distance");
 
 	c.glUniformMatrix4fv(locations.viewMatrix, 1, c.GL_TRUE, @ptrCast(&game.camera.viewMatrix));
 
 	c.glUniform3f(locations.ambientLight, ambient[0], ambient[1], ambient[2]);
 
-	c.glUniform1f(locations.zNear, renderer.zNear);
-	c.glUniform1f(locations.zFar, renderer.zFar);
+	if(@hasField(@TypeOf(locations.*), "zNear")) c.glUniform1f(locations.zNear, renderer.zNear);
+	if(@hasField(@TypeOf(locations.*), "zFar")) c.glUniform1f(locations.zFar, renderer.zFar);
 
 	c.glUniform3i(locations.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
 	c.glUniform3f(locations.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));

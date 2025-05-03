@@ -547,7 +547,6 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 		projectionMatrix: c_int,
 		modelMatrix: c_int,
 		viewMatrix: c_int,
-		modelPosition: c_int,
 		ambientLight: c_int,
 		modelIndex: c_int,
 		block: c_int,

@@ -2135,6 +2135,14 @@ const block_texture = struct { // MARK: block_texture
 };
 
 pub fn generateBlockTexture(blockType: u16) Texture {
+	if(main.blocks.Block.transparent(.{.typ = blockType, .data = 0})) {
+		return generateBlockTextureGeneric(blockType, &main.renderer.chunk_meshing.transparentUniforms);
+	} else {
+		return generateBlockTextureGeneric(blockType, &main.renderer.chunk_meshing.uniforms);
+	}
+}
+
+pub fn generateBlockTextureGeneric(blockType: u16, uniforms: anytype) Texture {
 	const block = main.blocks.Block{.typ = blockType, .data = 0}; // TODO: Use natural standard data.
 	const textureSize = block_texture.textureSize;
 	c.glViewport(0, 0, textureSize, textureSize);
@@ -2164,7 +2172,6 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	const oldViewMatrix = main.game.camera.viewMatrix;
 	main.game.camera.viewMatrix = Mat4f.identity().mul(Mat4f.rotationX(std.math.pi/4.0)).mul(Mat4f.rotationZ(-5.0*std.math.pi/4.0));
 	defer main.game.camera.viewMatrix = oldViewMatrix;
-	const uniforms = if(block.transparent()) &main.renderer.chunk_meshing.transparentUniforms else &main.renderer.chunk_meshing.uniforms;
 
 	var faceData: main.ListUnmanaged(main.renderer.chunk_meshing.FaceData) = .{};
 	defer faceData.deinit(main.stackAllocator);
