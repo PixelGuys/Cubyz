@@ -1347,6 +1347,7 @@ pub const Shader = struct { // MARK: Shader
 			}
 		}
 		std.log.err("Could not find uniform location for {s} in {s}", .{uniform, path});
+		std.log.debug("File data {any} {s}", .{codes[0], codes[0]});
 		return -1;
 	}
 
