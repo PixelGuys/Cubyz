@@ -369,7 +369,7 @@ pub const Mask = struct {
 						return .{.property = propertyValue};
 					},
 					else => {
-						const block = main.blocks.parseBlock2(specifier) orelse return error.MaskSyntaxError;
+						const block = try main.blocks.tryParseBlock(specifier);
 						return .{.block = .{.typ = block.typ, .data = block.data}};
 					},
 				}
