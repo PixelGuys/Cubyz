@@ -165,8 +165,8 @@ const Child = struct {
 
 	fn initFromZon(parentId: []const u8, colorName: []const u8, colorIndex: usize, childIndex: usize, zon: ZonElement) !Child {
 		const structureId = zon.get(?[]const u8, "structure", null);
-		if(structureId != null and structureId.len != 0) {
-			childrenToResolve.append(.{.parentId = parentId, .colorName = colorName, .colorIndex = colorIndex, .childIndex = childIndex, .structureId = structureId});
+		if(structureId != null and structureId.?.len != 0) {
+			childrenToResolve.append(.{.parentId = parentId, .colorName = colorName, .colorIndex = colorIndex, .childIndex = childIndex, .structureId = structureId.?});
 		}
 		return .{
 			.structure = null,
