@@ -89,7 +89,7 @@ pub fn execute(args: []const u8, source: *User) void {
 		return;
 	}
 	if(z == null) {
-		z = source.player.pos[2];
+		z = source.getEntity().pos[2];
 	}
 	x = std.math.clamp(x.?, -1e9, 1e9); // TODO: Remove after #310 is implemented
 	y = std.math.clamp(y.?, -1e9, 1e9);

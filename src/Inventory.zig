@@ -321,9 +321,9 @@ pub const Sync = struct { // MARK: Sync
 			switch(source) {
 				.sharedTestingInventory => {},
 				.playerInventory, .hand => {
-					const dest: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Encoder.calcSize(user.name.len));
+					const dest: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Encoder.calcSize(user.getEntity().name.len));
 					defer main.stackAllocator.free(dest);
-					const hashedName = std.base64.url_safe.Encoder.encode(dest, user.name);
+					const hashedName = std.base64.url_safe.Encoder.encode(dest, user.getEntity().name);
 
 					const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players/{s}.zig.zon", .{main.server.world.?.name, hashedName}) catch unreachable;
 					defer main.stackAllocator.free(path);
@@ -938,13 +938,13 @@ pub const Command = struct { // MARK: Command
 			},
 			.addHealth => |*info| {
 				if(side == .server) {
-					info.previous = info.target.?.player.health;
+					info.previous = info.target.?.getEntity().health;
 
-					info.target.?.player.health = std.math.clamp(info.target.?.player.health + info.health, 0, info.target.?.player.maxHealth);
+					info.target.?.getEntity().health = std.math.clamp(info.target.?.getEntity().health + info.health, 0, info.target.?.getEntity().maxHealth);
 
-					if(info.target.?.player.health <= 0) {
-						info.target.?.player.health = info.target.?.player.maxHealth;
-						info.cause.sendMessage(info.target.?.name);
+					if(info.target.?.getEntity().health <= 0) {
+						info.target.?.getEntity().health = info.target.?.getEntity().maxHealth;
+						info.cause.sendMessage(info.target.?.getEntity().name);
 
 						self.syncOperations.append(allocator, .{.kill = .{
 							.target = info.target.?,
@@ -962,9 +962,9 @@ pub const Command = struct { // MARK: Command
 			},
 			.addEnergy => |*info| {
 				if(side == .server) {
-					info.previous = info.target.?.player.energy;
+					info.previous = info.target.?.getEntity().energy;
 
-					info.target.?.player.energy = std.math.clamp(info.target.?.player.energy + info.energy, 0, info.target.?.player.maxEnergy);
+					info.target.?.getEntity().energy = std.math.clamp(info.target.?.getEntity().energy + info.energy, 0, info.target.?.getEntity().maxEnergy);
 					self.syncOperations.append(allocator, .{.energy = .{
 						.target = info.target.?,
 						.energy = info.energy,
@@ -1378,8 +1378,8 @@ pub const Command = struct { // MARK: Command
 				std.debug.assert(cmd.baseOperations.pop().create.dest.inv._items.ptr == temp._items.ptr); // Remove the extra step from undo list (we cannot undo dropped items)
 				if(_items[0].item != null) {
 					if(side == .server) {
-						const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.player.rot[0]), -user.?.player.rot[2]);
-						main.server.world.?.dropWithCooldown(_items[0], user.?.player.pos, direction, 20, main.server.updatesPerSec*2);
+						const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.getEntity().rot[0]), -user.?.getEntity().rot[2]);
+						main.server.world.?.dropWithCooldown(_items[0], user.?.getEntity().pos, direction, 20, main.server.updatesPerSec*2);
 					}
 				}
 				return;
@@ -1390,8 +1390,8 @@ pub const Command = struct { // MARK: Command
 			}
 			const amount = @min(self.source.ref().amount, self.desiredAmount);
 			if(side == .server) {
-				const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.player.rot[0]), -user.?.player.rot[2]);
-				main.server.world.?.dropWithCooldown(.{.item = self.source.ref().item.?.clone(), .amount = amount}, user.?.player.pos, direction, 20, main.server.updatesPerSec*2);
+				const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.getEntity().rot[0]), -user.?.getEntity().rot[2]);
+				main.server.world.?.dropWithCooldown(.{.item = self.source.ref().item.?.clone(), .amount = amount}, user.?.getEntity().pos, direction, 20, main.server.updatesPerSec*2);
 			}
 			cmd.executeBaseOperation(allocator, .{.delete = .{
 				.source = self.source,
@@ -1504,8 +1504,8 @@ pub const Command = struct { // MARK: Command
 					}
 				}
 				if(side == .server) {
-					const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.player.rot[0]), -user.?.player.rot[2]);
-					main.server.world.?.drop(sourceStack.clone(), user.?.player.pos, direction, 20);
+					const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.getEntity().rot[0]), -user.?.getEntity().rot[2]);
+					main.server.world.?.drop(sourceStack.clone(), user.?.getEntity().pos, direction, 20);
 				}
 				cmd.executeBaseOperation(allocator, .{.delete = .{
 					.source = .{.inv = self.source, .slot = @intCast(sourceSlot)},
@@ -1759,7 +1759,7 @@ pub const Command = struct { // MARK: Command
 				.target = target,
 				.health = self.health,
 				.cause = self.cause,
-				.previous = if(side == .server) target.?.player.health else main.game.Player.super.health,
+				.previous = if(side == .server) target.?.getEntity().health else main.game.Player.super.health,
 			}}, side);
 		}
 

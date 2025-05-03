@@ -50,7 +50,7 @@ pub fn render() void {
 		const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
 		defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 		for(userList) |user| {
-			renderConnectionData(user.conn, user.name, &y);
+			renderConnectionData(user.conn, user.getEntity().name, &y);
 		}
 	}
 	if(window.contentSize[1] != y) {

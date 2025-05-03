@@ -152,7 +152,7 @@ const ChunkManager = struct { // MARK: ChunkManager
 
 		pub fn getPriority(self: *ChunkLoadTask) f32 {
 			switch(self.source) {
-				.user => |user| return self.pos.getPriority(user.player.pos),
+				.user => |user| return self.pos.getPriority(user.getEntity().pos),
 				else => return std.math.floatMax(f32),
 			}
 		}
@@ -212,7 +212,7 @@ const ChunkManager = struct { // MARK: ChunkManager
 
 		pub fn getPriority(self: *LightMapLoadTask) f32 {
 			if(self.source) |user| {
-				return self.pos.getPriority(user.player.pos, terrain.LightMap.LightMapFragment.mapSize) + 100;
+				return self.pos.getPriority(user.getEntity().pos, terrain.LightMap.LightMapFragment.mapSize) + 100;
 			} else {
 				return std.math.floatMax(f32);
 			}
@@ -422,7 +422,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	biomePalette: *main.assets.Palette = undefined,
 	chunkManager: ChunkManager = undefined,
 
-	entities: utils.VirtualList(Entity, entityCap) = undefined,
+	entities: main.entity.ServerEntityManager = undefined,
 
 	generated: bool = false,
 
@@ -533,7 +533,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		errdefer main.assets.unloadAssets();
 
-		self.entities = .init();
+		self.entities = .init(main.globalAllocator);
 
 		if(self.wio.hasWorldData()) {
 			self.seed = try self.wio.loadWorldSeed();
@@ -834,22 +834,29 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.itemDropManager.loadFrom(zon);
 	}
 
-	pub fn addEntity(self: *ServerWorld, entity: Entity) *Entity {
-		self.entities.append(entity);
-		return &self.entities.mem[self.entities.len - 1];
+	pub fn addEntity(self: *ServerWorld, entity: Entity) u32 {
+		return self.entities.add(entity);
+	}
+
+	pub fn removeEntity(self: *ServerWorld, id: u32) void {
+		self.entities.remove(id);
+	}
+
+	pub fn getEntity(self: *ServerWorld, id: u32) ?*Entity {
+		return self.entities.get(id);
 	}
 
 	pub fn findPlayer(self: *ServerWorld, user: *User) void {
-		const dest: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Encoder.calcSize(user.name.len));
+		const dest: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Encoder.calcSize(user.getEntity().name.len));
 		defer main.stackAllocator.free(dest);
-		const hashedName = std.base64.url_safe.Encoder.encode(dest, user.name);
+		const hashedName = std.base64.url_safe.Encoder.encode(dest, user.getEntity().name);
 
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players/{s}.zig.zon", .{self.name, hashedName}) catch unreachable;
 		defer main.stackAllocator.free(path);
 
 		const playerData = files.readToZon(main.stackAllocator, path) catch .null;
 		defer playerData.deinit(main.stackAllocator);
-		const player = user.player;
+		const player = user.getEntity();
 		if(playerData == .null) {
 			player.pos = @floatFromInt(self.spawn);
 
@@ -862,9 +869,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	pub fn savePlayer(self: *ServerWorld, user: *User) !void {
-		const dest: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Encoder.calcSize(user.name.len));
+		const dest: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Encoder.calcSize(user.getEntity().name.len));
 		defer main.stackAllocator.free(dest);
-		const hashedName = std.base64.url_safe.Encoder.encode(dest, user.name);
+		const hashedName = std.base64.url_safe.Encoder.encode(dest, user.getEntity().name);
 
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players/{s}.zig.zon", .{self.name, hashedName}) catch unreachable;
 		defer main.stackAllocator.free(path);
@@ -877,9 +884,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			playerZon = ZonElement.initObject(main.stackAllocator);
 		}
 
-		playerZon.put("name", user.name);
-
-		playerZon.put("entity", user.player.save(main.stackAllocator));
+		playerZon.put("entity", user.getEntity().save(main.stackAllocator));
 		playerZon.put("gamemode", @tagName(user.gamemode.load(.monotonic)));
 
 		{

@@ -15,13 +15,14 @@ pub fn execute(args: []const u8, source: *User) void {
     const id = main.server.User.increaseId();
 
     var entity: main.server.Entity = .{
-        .pos = source.player.pos,
+        .pos = source.getEntity().pos,
         .vel = @splat(0),
         .rot = @splat(0),
         .health = 8,
         .maxHealth = 8,
         .energy = 8,
         .maxEnergy = 8,
+		.name = "Silly Guy",
         .entityType = main.entity.getTypeById("cubyz:snail"),
         .id = id,
     };
@@ -31,7 +32,6 @@ pub fn execute(args: []const u8, source: *User) void {
 
     const data = entity.save(main.stackAllocator);
     data.put("id", id);
-    data.put("name", "Silly Guy");
 
     list.append(data);
 
