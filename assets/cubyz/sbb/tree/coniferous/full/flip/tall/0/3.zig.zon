@@ -1,0 +1,34 @@
+.{
+	.blueprint = "cubyz:tree/coniferous/stem/short/flip",
+	.children = .{
+		.blue = .{
+			.{.structure = "cubyz:tree/coniferous/branch/tiny/0", .chance = 1.0},
+			.{.structure = "cubyz:tree/coniferous/branch/tiny/1", .chance = 1.0},
+			.{.structure = "cubyz:tree/coniferous/branch/tiny/2", .chance = 1.0},
+			.{.structure = "cubyz:tree/coniferous/branch/tiny/3", .chance = 1.0},
+			.{.structure = "cubyz:tree/coniferous/branch/tiny/4", .chance = 1.0},
+		},
+		.indigo = .{
+			.{.structure = "cubyz:tree/coniferous/branch/big/0", .chance = 1.0},
+			.{.structure = "cubyz:tree/coniferous/branch/big/1", .chance = 1.0},
+			.{.structure = "cubyz:tree/coniferous/branch/big/2", .chance = 1.0},
+			.{.structure = "cubyz:tree/coniferous/branch/big/3", .chance = 1.0},
+		},
+		.red = .{
+			.{.structure = "cubyz:tree/coniferous/branch/tiny/0", .chance = 1.0},
+			.{.structure = "cubyz:tree/coniferous/branch/tiny/1", .chance = 1.0},
+			.{.structure = "cubyz:tree/coniferous/branch/tiny/2", .chance = 1.0},
+			.{.structure = "cubyz:tree/coniferous/branch/tiny/3", .chance = 1.0},
+			.{.structure = "cubyz:tree/coniferous/branch/tiny/4", .chance = 1.0},
+		},
+		.crimson = .{
+			.{.structure = "cubyz:tree/coniferous/branch/big/0", .chance = 1.0},
+			.{.structure = "cubyz:tree/coniferous/branch/big/1", .chance = 1.0},
+			.{.structure = "cubyz:tree/coniferous/branch/big/2", .chance = 1.0},
+			.{.structure = "cubyz:tree/coniferous/branch/big/3", .chance = 1.0},
+		},
+		.white = .{
+			.{.structure = "cubyz:tree/coniferous/full/flip/tall/0/4", .chance = 1.0},
+		},
+	},
+}
