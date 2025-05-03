@@ -136,13 +136,14 @@ pub const User = struct { // MARK: User
 		};
 
 		self.worldEditData.deinit();
+		
+		world.?.removeEntity(self.id);
 
 		main.items.Inventory.Sync.ServerSide.disconnectUser(self);
 		std.debug.assert(self.inventoryClientToServerIdMap.count() == 0); // leak
 		self.inventoryClientToServerIdMap.deinit();
 		self.unloadOldChunk(.{0, 0, 0}, 0);
 		self.conn.deinit();
-		main.globalAllocator.free(self.name);
 		main.globalAllocator.destroy(self);
 	}
 
@@ -159,20 +160,9 @@ pub const User = struct { // MARK: User
 		}
 	}
 
-	var freeId: u32 = 0;
 	pub fn initPlayer(self: *User, name: []const u8) void {
-		self.id = freeId;
-		self.getEntity().id = freeId;
-		freeId += 1;
-
 		self.getEntity().name = main.globalAllocator.dupe(u8, name);
 		world.?.findPlayer(self);
-	}
-
-	pub fn increaseId() u32 {
-		const id = freeId;
-		freeId += 1;
-		return id;
 	}
 
 	fn simArrIndex(x: i32) usize {
@@ -404,7 +394,7 @@ fn update() void { // MARK: update()
 	var entityData: main.List(main.entity.EntityNetworkData) = .init(main.stackAllocator);
 	defer entityData.deinit();
 
-	for(world.?.entities.values.items) |entity| {
+	for(world.?.entities.dense.items) |entity| {
 		entityData.append(.{
 			.id = entity.id,
 			.pos = entity.pos,
@@ -503,7 +493,7 @@ pub fn connectInternal(user: *User) void {
 	{ // Let this client know about the others:
 		const zonArray = main.ZonElement.initArray(main.stackAllocator);
 		defer zonArray.deinit(main.stackAllocator);
-		for(world.?.entities.values.items) |other| {
+		for(world.?.entities.dense.items) |other| {
 			const entityZon = main.ZonElement.initObject(main.stackAllocator);
 			entityZon.put("id", other.id);
 			entityZon.put("name", other.name);

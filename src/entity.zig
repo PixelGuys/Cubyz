@@ -99,22 +99,23 @@ pub const ClientEntity = struct {
 };
 
 pub const ServerEntityManager = struct {
-	dense: main.List(u32),
+	dense: main.List(main.server.Entity),
 	sparse: main.List(?u32),
-	values: main.List(main.server.Entity),
 
 	pub fn init(allocator: NeverFailingAllocator) ServerEntityManager {
 		return .{
 			.dense = .init(allocator),
 			.sparse = .init(allocator),
-			.values = .init(allocator),
 		};
 	}
 
 	pub fn deinit(self: *ServerEntityManager) void {
+		for (self.dense.items) |ent| {
+			ent.deinit();
+		}
+
 		self.dense.deinit();
 		self.sparse.deinit();
-		self.values.deinit();
 	}
 
 	pub fn contains(self: *ServerEntityManager, id: u32) bool {
@@ -123,41 +124,45 @@ pub const ServerEntityManager = struct {
 
 	pub fn add(self: *ServerEntityManager, entity: main.server.Entity) u32 {
 		const id: u32 = @intCast(self.dense.items.len);
-		
-		std.debug.print("Adding entity with id {d}", .{id});
 
-		if (id >= self.sparse.items.len) {
+		// The id can only be at most 1 greater then the length of the sparse list.
+		if (id == self.sparse.items.len) {
 			self.sparse.append(null);
 		}
 
-		self.dense.append(id);
-		self.values.append(entity);
-		self.values.items[id].id = id;
 		self.sparse.items[id] = id;
-
+		self.dense.append(entity);
+		self.dense.items[id].id = id;
+		
 		return id;
 	}
 
 	pub fn remove(self: *ServerEntityManager, id: u32) void {
 		if (!self.contains(id)) return;
 
-		const index = self.sparse.items[id].?;
-		const lastIndex = self.dense.items.len - 1;
-		const lastId = self.dense.items[lastIndex];
+		const index = self.sparse.items[id] orelse return;
 
-		self.dense.items[index] = lastId;
-		self.values.items[index] = self.values.items[lastIndex];
-		self.sparse.items[lastId] = index;
+		const back = self.dense.items.len - 1;
 
-		_ = self.dense.pop();
-		_ = self.values.pop();
+		if (id == back) {
+			_ = self.sparse.pop();
+			self.dense.pop().deinit();
+			return;
+		}
+
+		self.dense.items[index].deinit();
+		self.dense.items[index] = self.dense.items[back];
+
 		self.sparse.items[id] = null;
+		self.sparse.items[back] = index;
+		
+		_ = self.dense.pop();
 	}
 
 	pub fn get(self: *ServerEntityManager, id: u32) ?*main.server.Entity {
 		if (id >= self.sparse.items.len) return null;
 		const index = self.sparse.items[id] orelse return null;
-		return &self.values.items[index];
+		return &self.dense.items[index];
 	}
 };
 

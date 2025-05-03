@@ -32,8 +32,12 @@ pub fn loadFrom(self: *@This(), zon: ZonElement) void {
 	self.rot = zon.get(Vec3f, "rotation", .{0, 0, 0});
 	self.health = zon.get(f32, "health", self.maxHealth);
 	self.energy = zon.get(f32, "energy", self.maxEnergy);
-	self.name = zon.get([]const u8, "name", "");
+	self.name = main.globalAllocator.dupe(u8, zon.get([]const u8, "name", ""));
 	self.entityType = zon.get(u16, "entityType", 0);
+}
+
+pub fn deinit(self: @This()) void {
+	main.globalAllocator.free(self.name);
 }
 
 pub fn save(self: *@This(), allocator: NeverFailingAllocator) ZonElement {
@@ -43,7 +47,7 @@ pub fn save(self: *@This(), allocator: NeverFailingAllocator) ZonElement {
 	zon.put("rotation", self.rot);
 	zon.put("health", self.health);
 	zon.put("energy", self.energy);
-	zon.put("name", self.name);
+	zon.putOwnedString("name", self.name);
 	zon.put("entityType", self.entityType);
 	return zon;
 }
