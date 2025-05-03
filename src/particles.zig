@@ -136,7 +136,7 @@ pub const ParticleManager = struct {
 };
 
 pub const ParticleSystem = struct {
-	pub const maxCapacity: u32 = 65536;
+	pub const maxCapacity: u32 = 1165536;
 	var particleCount: u32 = 0;
 	var particles: [maxCapacity]Particle = undefined;
 	var particlesLocal: [maxCapacity]ParticleLocal = undefined;
@@ -162,12 +162,12 @@ pub const ParticleSystem = struct {
 		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/particles/particles.vs", "assets/cubyz/shaders/particles/particles.fs", "", &uniforms);
 
 		properties = EmmiterProperties{
-			.gravity = .{0, 0, 4},
-			.drag = 2,
-			.lifeTimeMin = 5,
-			.lifeTimeMax = 5,
-			.velMin = 1,
-			.velMax = 10,
+			.gravity = .{0, 0, -9.8},
+			.drag = 0.5,
+			.lifeTimeMin = 10,
+			.lifeTimeMax = 10,
+			.velMin = 3,
+			.velMax = 8,
 			.rotVelMin = std.math.pi*0.2,
 			.rotVelMax = std.math.pi*0.6,
 		};
@@ -349,7 +349,9 @@ pub const ParticleSystem = struct {
 
 		c.glBindVertexArray(chunk_meshing.vao);
 
-		c.glDrawElements(c.GL_TRIANGLES, @intCast(particleCount*4), c.GL_UNSIGNED_INT, null);
+		for (0..std.math.divCeil(u32, particleCount, chunk_meshing.maxQuadsInIndexBuffer) catch unreachable) |_| {
+			c.glDrawElements(c.GL_TRIANGLES, @intCast(particleCount*4), c.GL_UNSIGNED_INT, null);
+		}
 	}
 
 	pub fn getParticleCount() u32 {

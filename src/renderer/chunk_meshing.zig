@@ -76,6 +76,7 @@ pub var commandBuffer: graphics.LargeBuffer(IndirectData) = undefined;
 pub var chunkIDBuffer: graphics.LargeBuffer(u32) = undefined;
 pub var quadsDrawn: usize = 0;
 pub var transparentQuadsDrawn: usize = 0;
+pub const maxQuadsInIndexBuffer: u32 = 3 << (3*chunk.chunkShift); // maximum 3 faces/block
 
 pub fn init() void {
 	lighting.init();
@@ -84,7 +85,7 @@ pub fn init() void {
 	commandShader = Shader.initComputeAndGetUniforms("assets/cubyz/shaders/chunks/fillIndirectBuffer.glsl", "", &commandUniforms);
 	occlusionTestShader = Shader.initAndGetUniforms("assets/cubyz/shaders/chunks/occlusionTestVertex.vs", "assets/cubyz/shaders/chunks/occlusionTestFragment.fs", "", &occlusionTestUniforms);
 
-	var rawData: [6*3 << (3*chunk.chunkShift)]u32 = undefined; // 6 vertices per face, maximum 3 faces/block
+	var rawData: [6*maxQuadsInIndexBuffer]u32 = undefined;
 	const lut = [_]u32{0, 2, 1, 1, 2, 3};
 	for(0..rawData.len) |i| {
 		rawData[i] = @as(u32, @intCast(i))/6*4 + lut[i%6];
