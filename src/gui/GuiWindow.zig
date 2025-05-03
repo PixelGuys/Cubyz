@@ -93,9 +93,6 @@ var windowUniforms: struct {
 	size: c_int,
 	color: c_int,
 	scale: c_int,
-
-	image: c_int,
-	randomOffset: c_int,
 } = undefined;
 pub var borderShader: Shader = undefined;
 pub var borderUniforms: struct {
@@ -110,7 +107,6 @@ pub var borderUniforms: struct {
 pub fn __init() void {
 	shader = Shader.initAndGetUniforms("assets/cubyz/shaders/ui/button.vs", "assets/cubyz/shaders/ui/button.fs", "", &windowUniforms);
 	shader.bind();
-	graphics.c.glUniform1i(windowUniforms.image, 0);
 	borderShader = Shader.initAndGetUniforms("assets/cubyz/shaders/ui/window_border.vs", "assets/cubyz/shaders/ui/window_border.fs", "", &borderUniforms);
 	borderShader.bind();
 
