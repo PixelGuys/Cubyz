@@ -296,5 +296,8 @@ pub fn autocomplete(_: usize) void {
 }
 
 pub fn onCharacter(_: usize) void {
+	if(std.mem.eql(u8, input.currentString.items, "/")) {
+		messageHistory.flushUp();
+	}
 	discardAutocompleteList();
 }
