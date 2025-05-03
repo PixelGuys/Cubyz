@@ -28,6 +28,7 @@ pub const Tag = tag.Tag;
 pub const utils = @import("utils.zig");
 pub const vec = @import("vec.zig");
 pub const ZonElement = @import("zon.zig").ZonElement;
+pub const server_commands = @import("server/command/_command.zig");
 
 pub const Window = @import("graphics/Window.zig");
 
@@ -403,6 +404,7 @@ pub const KeyBoard = struct { // MARK: KeyBoard
 		.{.name = "textPaste", .key = c.GLFW_KEY_V, .repeatAction = &gui.textCallbacks.paste},
 		.{.name = "textCut", .key = c.GLFW_KEY_X, .repeatAction = &gui.textCallbacks.cut},
 		.{.name = "textNewline", .key = c.GLFW_KEY_ENTER, .repeatAction = &gui.textCallbacks.newline},
+		.{.name = "textTab", .key = c.GLFW_KEY_TAB, .repeatAction = &gui.textCallbacks.tab},
 
 		// Hotbar shortcuts:
 		.{.name = "Hotbar 1", .key = c.GLFW_KEY_1, .pressAction = setHotbarSlot(1)},
@@ -572,6 +574,9 @@ pub fn main() void { // MARK: main()
 			}
 		}
 	} else |_| {}
+
+	server_commands.init();
+	defer server_commands.deinit();
 
 	gui.initWindowList();
 	defer gui.deinitWindowList();
