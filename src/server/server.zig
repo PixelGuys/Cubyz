@@ -288,7 +288,6 @@ pub var thread: ?std.Thread = null;
 
 fn init(name: []const u8, singlePlayerPort: ?u16) void { // MARK: init()
 	std.debug.assert(world == null); // There can only be one world.
-	command.init();
 	users = .init(main.globalAllocator);
 	userDeinitList = .init(main.globalAllocator, 16);
 	userConnectList = .init(main.globalAllocator, 16);
@@ -339,7 +338,6 @@ fn deinit() void {
 		_world.deinit();
 	}
 	world = null;
-	command.deinit();
 }
 
 pub fn getUserListAndIncreaseRefCount(allocator: main.heap.NeverFailingAllocator) []*User {

@@ -40,3 +40,33 @@ pub fn execute(msg: []const u8, source: *User) void {
 		source.sendMessage("#ff0000Unrecognized Command \"{s}\"", .{command});
 	}
 }
+
+pub fn autocomplete(msg: []const u8, allocator: main.heap.NeverFailingAllocator) main.ListUnmanaged([]const u8) {
+	if(std.mem.indexOfScalar(u8, msg, ' ') != null) return .{};
+
+	var matches: main.ListUnmanaged([]const u8) = .{};
+
+	if(commands.contains(msg)) {
+		const newKey = std.fmt.allocPrint(allocator.allocator, "/{s}", .{msg}) catch unreachable;
+		matches.append(allocator, newKey);
+	} else {
+		var maxLen: usize = 0;
+
+		var iterator = commands.keyIterator();
+		while(iterator.next()) |key| {
+			if(std.mem.startsWith(u8, key.*, msg)) {
+				const newKey = std.fmt.allocPrint(allocator.allocator, "/{s}", .{key.*}) catch unreachable;
+				matches.append(allocator, newKey);
+
+				if(key.len > maxLen) {
+					const second = matches.items[0];
+					const first = matches.items[matches.items.len - 1];
+					matches.items[0] = first;
+					matches.items[matches.items.len - 1] = second;
+					maxLen = key.len;
+				}
+			}
+		}
+	}
+	return matches;
+}
