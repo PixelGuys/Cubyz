@@ -1729,6 +1729,80 @@ const ReadWriteTest = struct {
 	}
 };
 
+pub fn SparseSet(comptime T: type, comptime idType: type) type { // MARK: SparseSet
+	std.debug.assert(@typeInfo(idType).int.signedness == .unsigned);
+
+	return struct {
+		const SparseValue = enum(idType) {
+			noValue = std.math.maxInt(idType),
+			_,
+		};
+
+		dense: main.List(struct {
+			value: T,
+			id: idType,
+		}),
+		sparse: main.List(SparseValue),
+		freeList: main.List(idType),
+
+		pub fn init(allocator: NeverFailingAllocator) @This() {
+			return .{
+				.dense = .init(allocator),
+				.sparse = .init(allocator),
+				.freeList = .init(allocator),
+			};
+		}
+
+		pub fn deinit(self: *@This()) void {
+			self.dense.deinit();
+			self.sparse.deinit();
+			self.freeList.deinit();
+		}
+
+		pub fn contains(self: *@This(), id: idType) bool {
+			return id < self.sparse.items.len and self.sparse.items[id] != .noValue;
+		}
+
+		pub fn add(self: *@This(), entity: main.server.Entity) idType {
+			const sparseId: idType = self.freeList.popOrNull() orelse @intCast(self.sparse.items.len);
+
+			if (sparseId == self.sparse.items.len) {
+				self.sparse.append(null);
+			}
+
+			const denseId: idType = @intCast(self.dense.items.len);
+			self.sparse.items[sparseId] = denseId;
+			self.dense.append(.{.value = entity, .id = sparseId});
+			
+			return sparseId;
+		}
+
+		pub fn remove(self: *@This(), sparseId: idType) void {
+			if (!self.contains(sparseId)) return;
+
+			const denseId = self.sparse.items[sparseId];
+			if (denseId == .novalue) return;
+
+			self.dense.items[denseId] = self.dense.items[self.dense.items.len - 1];
+
+			self.sparse.items[sparseId] = .noValue;
+			self.sparse.items[self.dense.items[denseId].id] = denseId;
+			
+			_ = self.dense.pop();
+			if (sparseId == self.sparse.items.len) {
+				_ = self.sparse.pop();
+			}
+		}
+
+		pub fn get(self: *@This(), id: idType) !*T {
+			if (id >= self.sparse.items.len) return .idOutOfBounds;
+			const index = self.sparse.items[id];
+			if (index == .noValue) return .entityDoesntExist;
+			return &self.dense.items[index].value;
+		}
+	};
+}
+
 test "read/write unsigned int" {
 	inline for([_]type{u0, u1, u2, u4, u5, u8, u16, u31, u32, u64, u128}) |intT| {
 		const min = std.math.minInt(intT);

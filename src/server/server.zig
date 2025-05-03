@@ -394,12 +394,12 @@ fn update() void { // MARK: update()
 	var entityData: main.List(main.entity.EntityNetworkData) = .init(main.stackAllocator);
 	defer entityData.deinit();
 
-	for(world.?.entities.dense.items) |entity| {
+	for(world.?.entities.dense.items) |item| {
 		entityData.append(.{
-			.id = entity.id,
-			.pos = entity.pos,
-			.vel = entity.vel,
-			.rot = entity.rot,
+			.id = item.value.id,
+			.pos = item.value.pos,
+			.vel = item.value.vel,
+			.rot = item.value.rot,
 		});
 	}
 	for(userList) |user| {

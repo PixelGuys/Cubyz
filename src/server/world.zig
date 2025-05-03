@@ -422,7 +422,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	biomePalette: *main.assets.Palette = undefined,
 	chunkManager: ChunkManager = undefined,
 
-	entities: main.entity.ServerEntityManager = undefined,
+	entities: utils.SparseSet(Entity, u32) = undefined,
 
 	generated: bool = false,
 
@@ -579,6 +579,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.itemPalette.deinit();
 		self.biomePalette.deinit();
 		self.wio.deinit();
+		for (self.entities.dense.items) |item| {
+			item.value.deinit();
+		}
 		self.entities.deinit();
 		main.globalAllocator.free(self.name);
 		main.globalAllocator.destroy(self);
@@ -835,10 +838,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	pub fn addEntity(self: *ServerWorld, entity: Entity) u32 {
-		return self.entities.add(entity);
+		const id = self.entities.add(entity);
+		self.entities.get(id).?.id = id;
+		return id;
 	}
 
 	pub fn removeEntity(self: *ServerWorld, id: u32) void {
+		self.entities.get(id).?.deinit();
 		self.entities.remove(id);
 	}
 
