@@ -36,24 +36,22 @@ layout(std430, binding = 14) restrict readonly buffer _particleTypeData
 const vec2 uvPositions[4] = vec2[4]
 (
 	vec2(0.0f, 0.0f),
-	vec2(1.0f, 1.0f),
 	vec2(0.0f, 1.0f),
-	vec2(1.0f, 0.0f)
+	vec2(1.0f, 0.0f),
+	vec2(1.0f, 1.0f)
 );
 
 const vec3 facePositions[4] = vec3[4]
 (
+	vec3(-0.5f, -0.5f, 0.0f),
 	vec3(-0.5f, 0.5f, 0.0f),
 	vec3(0.5f, -0.5f, 0.0f),
-	vec3(0.5f, 0.5f, 0.0f),
-	vec3(-0.5f, -0.5f, 0.0f)
+	vec3(0.5f, 0.5f, 0.0f)
 );
 
-const int indices[6] = int[6](0, 1, 2, 1, 0, 3);
-
 void main() {
-	int particleID = gl_VertexID/6;
-	int vertexID = gl_VertexID%6;
+	int particleID = gl_VertexID >> 2;
+	int vertexID = gl_VertexID & 3;
 	ParticleData particle = particleData[particleID];
 	ParticleTypeData particleType = particleTypeData[particle.typ];
 
@@ -73,7 +71,7 @@ void main() {
 	textureIndex = floor(float(particleType.startFrame) + (particle.lifeLeft/particle.lifeTime)*float(particleType.animationFrames));
 
 	float rot = particle.rot;
-	vec3 pos = facePositions[indices[vertexID]];
+	vec3 pos = facePositions[vertexID];
 	float sn = sin(rot);
 	float cs = cos(rot);
 	vec3 position = vec3(0);
@@ -86,5 +84,5 @@ void main() {
 
 	gl_Position = projectionAndViewMatrix*vec4(position, 1);
 
-	uv = uvPositions[indices[vertexID]];
+	uv = uvPositions[vertexID];
 }

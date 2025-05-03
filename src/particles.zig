@@ -1,5 +1,6 @@
 const std = @import("std");
 const main = @import("main");
+const chunk_meshing = @import("renderer/chunk_meshing.zig");
 const graphics = @import("graphics.zig");
 const SSBO = graphics.SSBO;
 const TextureArray = graphics.TextureArray;
@@ -346,7 +347,9 @@ pub const ParticleSystem = struct {
 		c.glActiveTexture(c.GL_TEXTURE1);
 		ParticleManager.emissionTextureArray.bind();
 
-		c.glDrawArrays(c.GL_TRIANGLES, 0, @intCast(particleCount*6));
+		c.glBindVertexArray(chunk_meshing.vao);
+
+		c.glDrawElements(c.GL_TRIANGLES, @intCast(particleCount*4), c.GL_UNSIGNED_INT, null);
 	}
 
 	pub fn getParticleCount() u32 {
