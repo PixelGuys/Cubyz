@@ -525,10 +525,6 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 			self.len += elems.len;
 		}
 
-		pub inline fn enqueue_front(self: *Self, elem: T) void {
-			self.enqueue(elem);
-		}
-
 		pub fn enqueue_back(self: *Self, elem: T) void {
 			if(self.len == self.mem.len) {
 				self.increaseCapacity();
@@ -544,10 +540,6 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 			self.startIndex = (self.startIndex + 1) & self.mask;
 			self.len -= 1;
 			return result;
-		}
-
-		pub inline fn dequeue_back(self: *Self) ?T {
-			return self.dequeue();
 		}
 
 		pub fn dequeue_front(self: *Self) ?T {
