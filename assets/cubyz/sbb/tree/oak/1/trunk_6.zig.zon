@@ -2,13 +2,13 @@
 	.blueprint = "cubyz:tree/oak/1/trunk_6",
 	.children = .{
 		.blue = .{
-			.{.structure = "cubyz:tree/oak/1/branch_1", .chance = 0.333},
-			.{.structure = "cubyz:tree/oak/1/branch_2", .chance = 0.333},
-			.{.structure = "cubyz:tree/oak/1/branch_3", .chance = 0.334},
+			.{.structure = "cubyz:tree/oak/1/branch_1"},
+			.{.structure = "cubyz:tree/oak/1/branch_2"},
+			.{.structure = "cubyz:tree/oak/1/branch_3"},
 		},
 		.crimson = .{
-			.{.structure = "cubyz:tree/oak/1/leaf_1", .chance = 0.5},
-			.{.structure = "cubyz:tree/oak/1/leaf_3", .chance = 0.5},
+			.{.structure = "cubyz:tree/oak/1/leaf_1"},
+			.{.structure = "cubyz:tree/oak/1/leaf_3"},
 		},
 		.yellow = .{
 			.{.structure = "cubyz:tree/oak/1/stub_1", .chance = 0.1},

@@ -2,21 +2,21 @@
 	.blueprint = "cubyz:tree/birch/1/tree_4",
 	.children = .{
 		.crimson = .{
-			.{.structure = "cubyz:tree/birch/1/small_branch_1", .chance = 0.134},
-			.{.structure = "cubyz:tree/birch/1/small_branch_2", .chance = 0.133},
-			.{.structure = "cubyz:tree/birch/1/small_branch_3", .chance = 0.133},
-			.{.structure = "cubyz:tree/birch/1/branch_1", .chance = 0.133},
-			.{.structure = "cubyz:tree/birch/1/branch_2", .chance = 0.133},
-			.{.structure = "cubyz:tree/birch/1/branch_3", .chance = 0.133},
+			.{.structure = "cubyz:tree/birch/1/small_branch_1"},
+			.{.structure = "cubyz:tree/birch/1/small_branch_2"},
+			.{.structure = "cubyz:tree/birch/1/small_branch_3"},
+			.{.structure = "cubyz:tree/birch/1/branch_1"},
+			.{.structure = "cubyz:tree/birch/1/branch_2"},
+			.{.structure = "cubyz:tree/birch/1/branch_3"},
 		},
 		.blue = .{
-			.{.structure = "cubyz:tree/birch/1/top_1", .chance = 1.0},
+			.{.structure = "cubyz:tree/birch/1/top_1"},
 		},
 		.yellow = .{
-			.{.structure = null, .chance = 0.25},
-			.{.structure = "cubyz:tree/birch/1/root_1", .chance = 0.25},
-			.{.structure = "cubyz:tree/birch/1/root_2", .chance = 0.25},
-			.{.structure = "cubyz:tree/birch/1/root_3", .chance = 0.25},
+			.{.structure = null},
+			.{.structure = "cubyz:tree/birch/1/root_1"},
+			.{.structure = "cubyz:tree/birch/1/root_2"},
+			.{.structure = "cubyz:tree/birch/1/root_3"},
 		},
 		.magenta = .{
 			.{.structure = "cubyz:tree/birch/1/small_branch_1", .chance = 0.23},
@@ -24,7 +24,7 @@
 			.{.structure = "cubyz:tree/birch/1/small_branch_3", .chance = 0.44},
 		},
 		.lime = .{
-			.{.structure = "cubyz:tree/birch/1/top_2", .chance = 1.0},
+			.{.structure = "cubyz:tree/birch/1/top_2"},
 		},
 		.pink = .{
 			.{.structure = "cubyz:deco/ivy_side_2", .chance = 0.1},

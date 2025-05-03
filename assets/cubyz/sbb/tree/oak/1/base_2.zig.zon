@@ -11,12 +11,12 @@
 			.{.structure = null, .chance = 0.25},
 		},
 		.brown = .{
-			.{.structure = "cubyz:tree/oak/1/trunk_1", .chance = 0.17},
-			.{.structure = "cubyz:tree/oak/1/trunk_2", .chance = 0.16},
-			.{.structure = "cubyz:tree/oak/1/trunk_3", .chance = 0.16},
-			.{.structure = "cubyz:tree/oak/1/trunk_4", .chance = 0.16},
-			.{.structure = "cubyz:tree/oak/1/trunk_5", .chance = 0.16},
-			.{.structure = "cubyz:tree/oak/1/trunk_6", .chance = 0.16},
+			.{.structure = "cubyz:tree/oak/1/trunk_1"},
+			.{.structure = "cubyz:tree/oak/1/trunk_2"},
+			.{.structure = "cubyz:tree/oak/1/trunk_3"},
+			.{.structure = "cubyz:tree/oak/1/trunk_4"},
+			.{.structure = "cubyz:tree/oak/1/trunk_5"},
+			.{.structure = "cubyz:tree/oak/1/trunk_6"},
 		},
 	},
 }
