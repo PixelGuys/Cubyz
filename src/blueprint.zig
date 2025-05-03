@@ -20,6 +20,9 @@ const BlockStorageType = u32;
 const BinaryWriter = main.utils.BinaryWriter;
 const BinaryReader = main.utils.BinaryReader;
 
+const AliasTable = main.utils.AliasTable;
+const ListUnmanaged = main.ListUnmanaged;
+
 pub const blueprintVersion = 0;
 var voidType: ?u16 = null;
 
@@ -36,7 +39,7 @@ pub const Blueprint = struct {
 	pub fn deinit(self: Blueprint, allocator: NeverFailingAllocator) void {
 		self.blocks.deinit(allocator);
 	}
-	pub fn clone(self: *Blueprint, allocator: NeverFailingAllocator) Blueprint {
+	pub fn clone(self: Blueprint, allocator: NeverFailingAllocator) Blueprint {
 		return .{.blocks = self.blocks.clone(allocator)};
 	}
 	pub fn rotateZ(self: Blueprint, allocator: NeverFailingAllocator, angle: Degrees) Blueprint {
@@ -105,9 +108,46 @@ pub const Blueprint = struct {
 		}
 		return .{.success = self};
 	}
+
+	pub const PasteMode = enum {all, degradable};
+
+	pub fn pasteInGeneration(self: Blueprint, pos: Vec3i, chunk: *ServerChunk, mode: PasteMode) void {
+		switch(mode) {
+			inline else => |comptimeMode| _pasteInGeneration(self, pos, chunk, comptimeMode),
+		}
+	}
+
+	fn _pasteInGeneration(self: Blueprint, pos: Vec3i, chunk: *ServerChunk, comptime mode: PasteMode) void {
+		const indexEndX: i32 = @min(@as(i32, chunk.super.width) - pos[0], @as(i32, @intCast(self.blocks.width)));
+		const indexEndY: i32 = @min(@as(i32, chunk.super.width) - pos[1], @as(i32, @intCast(self.blocks.depth)));
+		const indexEndZ: i32 = @min(@as(i32, chunk.super.width) - pos[2], @as(i32, @intCast(self.blocks.height)));
+
+		var indexX: u31 = @max(0, -pos[0]);
+		while(indexX < indexEndX) : (indexX += chunk.super.pos.voxelSize) {
+			var indexY: u31 = @max(0, -pos[1]);
+			while(indexY < indexEndY) : (indexY += chunk.super.pos.voxelSize) {
+				var indexZ: u31 = @max(0, -pos[2]);
+				while(indexZ < indexEndZ) : (indexZ += chunk.super.pos.voxelSize) {
+					const block = self.blocks.get(indexX, indexY, indexZ);
+
+					if(block.typ == voidType) continue;
+
+					const chunkX = indexX + pos[0];
+					const chunkY = indexY + pos[1];
+					const chunkZ = indexZ + pos[2];
+					switch(mode) {
+						.all => chunk.updateBlockInGeneration(chunkX, chunkY, chunkZ, block),
+						.degradable => chunk.updateBlockIfDegradable(chunkX, chunkY, chunkZ, block),
+					}
+				}
+			}
+		}
+	}
+
 	pub const PasteFlags = struct {
 		preserveVoid: bool = false,
 	};
+
 	pub fn paste(self: Blueprint, pos: Vec3i, flags: PasteFlags) void {
 		const startX = pos[0];
 		const startY = pos[1];
@@ -274,9 +314,69 @@ pub const Blueprint = struct {
 			},
 		}
 	}
+	pub fn set(self: *Blueprint, pattern: Pattern) void {
+		for(0..self.blocks.width) |x| {
+			for(0..self.blocks.depth) |y| {
+				for(0..self.blocks.height) |z| {
+					self.blocks.set(x, y, z, pattern.blocks.sample(&main.seed).block);
+				}
+			}
+		}
+	}
+};
+
+pub const Pattern = struct {
+	blocks: AliasTable(Entry),
+
+	const Entry = struct {
+		block: Block,
+		chance: f32,
+	};
+
+	pub fn initFromString(allocator: NeverFailingAllocator, source: []const u8) !@This() {
+		var specifiers = std.mem.splitScalar(u8, source, ',');
+		var totalWeight: f32 = 0;
+
+		var weightedEntries: ListUnmanaged(struct {block: Block, weight: f32}) = .{};
+		defer weightedEntries.deinit(main.stackAllocator);
+
+		while(specifiers.next()) |specifier| {
+			var iterator = std.mem.splitScalar(u8, specifier, '%');
+
+			var weight: f32 = undefined;
+			var block = main.blocks.parseBlock(iterator.rest());
+
+			const first = iterator.first();
+
+			weight = std.fmt.parseFloat(f32, first) catch blk: {
+				// To distinguish somehow between mistyped numeric values and actual block IDs we check for addon name separator.
+				if(!std.mem.containsAtLeastScalar(u8, first, 1, ':')) return error.PatternSyntaxError;
+				block = main.blocks.parseBlock(first);
+				break :blk 1.0;
+			};
+			totalWeight += weight;
+			weightedEntries.append(main.stackAllocator, .{.block = block, .weight = weight});
+		}
+
+		const entries = allocator.alloc(Entry, weightedEntries.items.len);
+		for(weightedEntries.items, 0..) |entry, i| {
+			entries[i] = .{.block = entry.block, .chance = entry.weight/totalWeight};
+		}
+
+		return .{.blocks = .init(allocator, entries)};
+	}
+
+	pub fn deinit(self: @This(), allocator: NeverFailingAllocator) void {
+		self.blocks.deinit(allocator);
+		allocator.free(self.blocks.items);
+	}
 };
 
 pub fn registerVoidBlock(block: Block) void {
 	voidType = block.typ;
 	std.debug.assert(voidType != 0);
+}
+
+pub fn getVoidBlock() Block {
+	return Block{.typ = voidType.?, .data = 0};
 }

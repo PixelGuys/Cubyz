@@ -461,9 +461,10 @@ pub const Tool = struct { // MARK: Tool
 	}
 
 	pub fn deinit(self: *const Tool) void {
-		if(self.texture) |texture| {
-			texture.deinit();
-		}
+		// TODO: This is leaking textures!
+		//if(self.texture) |texture| {
+		//texture.deinit();
+		//}
 		self.image.deinit(main.globalAllocator);
 		self.tooltip.deinit();
 		main.globalAllocator.free(self.modifiers);

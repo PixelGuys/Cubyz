@@ -51,8 +51,6 @@ pub var buttonUniforms: struct {
 	size: c_int,
 	color: c_int,
 	scale: c_int,
-
-	image: c_int,
 } = undefined;
 
 pos: Vec2f,
@@ -65,7 +63,6 @@ child: GuiComponent,
 pub fn __init() void {
 	shader = Shader.initAndGetUniforms("assets/cubyz/shaders/ui/button.vs", "assets/cubyz/shaders/ui/button.fs", "", &buttonUniforms);
 	shader.bind();
-	graphics.c.glUniform1i(buttonUniforms.image, 0);
 	normalTextures = Textures.init("assets/cubyz/ui/button");
 	hoveredTextures = Textures.init("assets/cubyz/ui/button_hovered");
 	pressedTextures = Textures.init("assets/cubyz/ui/button_pressed");

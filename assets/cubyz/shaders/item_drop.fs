@@ -1,28 +1,32 @@
-#version 430
+#version 460
 
-in vec3 startPosition;
-in vec3 direction;
-in vec3 cameraSpacePos;
-in vec2 uv;
-flat in int faceNormalIndex;
-flat in vec3 faceNormal;
-flat in int voxelModel;
-flat in int textureIndex;
-flat in uvec3 lower;
-flat in uvec3 upper;
+layout(location = 0) in vec3 startPosition;
+layout(location = 1) in vec3 direction;
+layout(location = 2) in vec3 cameraSpacePos;
+layout(location = 3) in vec2 uv;
+layout(location = 4) flat in int faceNormalIndex;
+layout(location = 5) flat in vec3 faceNormal;
+layout(location = 6) flat in int voxelModel;
+layout(location = 7) flat in int textureIndex;
+layout(location = 8) flat in uvec3 lower;
+layout(location = 9) flat in uvec3 upper;
 
 layout(location = 0) out vec4 fragColor;
 
-uniform vec3 ambientLight;
-uniform mat4 projectionMatrix;
-uniform float sizeScale;
+layout(binding = 0) uniform sampler2DArray textureSampler;
+layout(binding = 1) uniform sampler2DArray emissionSampler;
+layout(binding = 2) uniform sampler2DArray reflectivityAndAbsorptionSampler;
+layout(binding = 4) uniform samplerCube reflectionMap;
 
-uniform sampler2DArray texture_sampler;
-uniform sampler2DArray emissionSampler;
-uniform sampler2DArray reflectivityAndAbsorptionSampler;
-uniform samplerCube reflectionMap;
-uniform float reflectionMapSize;
-uniform float contrast;
+layout(location = 0) uniform mat4 projectionMatrix;
+
+layout(location = 5) uniform vec3 ambientLight;
+layout(location = 7) uniform float sizeScale;
+
+layout(location = 8) uniform float reflectionMapSize;
+layout(location = 9) uniform float contrast;
+
+layout(location = 10) uniform vec2 glDepthRange;
 
 const float[6] normalVariations = float[6](
 	1.0,
@@ -81,7 +85,7 @@ void mainBlockDrop() {
 	reflectivity = reflectivity*(1 - fresnelReflection) + fresnelReflection;
 
 	vec3 pixelLight = ambientLight*max(vec3(normalVariation), texture(emissionSampler, textureCoords).r*4);
-	fragColor = texture(texture_sampler, textureCoords)*vec4(pixelLight, 1);
+	fragColor = texture(textureSampler, textureCoords)*vec4(pixelLight, 1);
 	fragColor.rgb += reflectivity*pixelLight;
 
 	if(!passDitherTest(fragColor.a)) discard;
@@ -173,9 +177,7 @@ void mainItemDrop() {
 	vec3 modifiedCameraSpacePos = cameraSpacePos*(1 + total_tMax*sizeScale*length(direction)/length(cameraSpacePos));
 	vec4 projection = projectionMatrix*vec4(modifiedCameraSpacePos, 1);
 	float depth = projection.z/projection.w;
-	gl_FragDepth = ((gl_DepthRange.diff * depth) + gl_DepthRange.near + gl_DepthRange.far)/2.0;
-
-
+	gl_FragDepth = (((glDepthRange.y - glDepthRange.x) * depth) + glDepthRange.x + glDepthRange.y)/2.0;
 
 	fragColor = decodeColor(block);
 	fragColor.a = 1; // No transparency supported!

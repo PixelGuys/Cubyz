@@ -35,8 +35,6 @@ pub const zFar = 65536.0; // TODO: Fix z-fighting problems.
 
 var deferredRenderPassShader: graphics.Shader = undefined;
 var deferredUniforms: struct {
-	color: c_int,
-	depthTexture: c_int,
 	@"fog.color": c_int,
 	@"fog.density": c_int,
 	@"fog.fogLower": c_int,
@@ -278,8 +276,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
 	worldFrameBuffer.unbind();
 	deferredRenderPassShader.bind();
-	c.glUniform1i(deferredUniforms.color, 3);
-	c.glUniform1i(deferredUniforms.depthTexture, 4);
 	if(!blocks.meshes.hasFog(playerBlock)) {
 		c.glUniform3fv(deferredUniforms.@"fog.color", 1, @ptrCast(&game.fog.skyColor));
 		c.glUniform1f(deferredUniforms.@"fog.density", game.fog.density);
@@ -322,7 +318,6 @@ const Bloom = struct { // MARK: Bloom
 	var secondPassShader: graphics.Shader = undefined;
 	var colorExtractAndDownsampleShader: graphics.Shader = undefined;
 	var colorExtractUniforms: struct {
-		depthTexture: c_int,
 		zNear: c_int,
 		zFar: c_int,
 		tanXY: c_int,
@@ -357,7 +352,6 @@ const Bloom = struct { // MARK: Bloom
 		worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
 		worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
 		buffer1.bind();
-		c.glUniform1i(colorExtractUniforms.depthTexture, 4);
 		if(!blocks.meshes.hasFog(playerBlock)) {
 			c.glUniform3fv(colorExtractUniforms.@"fog.color", 1, @ptrCast(&game.fog.skyColor));
 			c.glUniform1f(colorExtractUniforms.@"fog.density", game.fog.density);
@@ -438,7 +432,6 @@ const Bloom = struct { // MARK: Bloom
 pub const MenuBackGround = struct {
 	var shader: Shader = undefined;
 	var uniforms: struct {
-		image: c_int,
 		viewMatrix: c_int,
 		projectionMatrix: c_int,
 	} = undefined;
@@ -454,7 +447,6 @@ pub const MenuBackGround = struct {
 		lastTime = std.time.nanoTimestamp();
 		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/background/vertex.vs", "assets/cubyz/shaders/background/fragment.fs", "", &uniforms);
 		shader.bind();
-		c.glUniform1i(uniforms.image, 0);
 		// 4 sides of a simple cube with some panorama texture on it.
 		const rawData = [_]f32{
 			-1, 1,  -1, 1,    1,
@@ -1111,7 +1103,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				.newBlock = newBlock,
 			},
 		});
-		mesh_storage.updateBlock(x, y, z, newBlock);
+		mesh_storage.updateBlock(.{.x = x, .y = y, .z = z, .newBlock = newBlock});
 	}
 
 	pub fn drawCube(projectionMatrix: Mat4f, viewMatrix: Mat4f, relativePositionToPlayer: Vec3d, min: Vec3f, max: Vec3f) void {
