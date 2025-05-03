@@ -7,8 +7,8 @@
 			.{.structure = "cubyz:tree/oak/1/branch_3", .chance = 0.334},
 		},
 		.crimson = .{
-			.{.structure = "cubyz:tree/oak/1/tree_blob_1", .chance = 0.5},
-			.{.structure = "cubyz:tree/oak/1/tree_blob_3", .chance = 0.5},
+			.{.structure = "cubyz:tree/oak/1/leaf_1", .chance = 0.5},
+			.{.structure = "cubyz:tree/oak/1/leaf_3", .chance = 0.5},
 		},
 		.yellow = .{
 			.{.structure = "cubyz:tree/oak/1/stub_1", .chance = 0.1},

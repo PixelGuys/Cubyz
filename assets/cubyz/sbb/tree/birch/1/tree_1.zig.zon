@@ -2,9 +2,9 @@
 	.blueprint = "cubyz:tree/birch/1/tree_1",
 	.children = .{
 		.crimson = .{
-			.{.structure = "cubyz:tree/birch/1/tree_branch_1", .chance = 0.33},
-			.{.structure = "cubyz:tree/birch/1/tree_branch_2", .chance = 0.33},
-			.{.structure = "cubyz:tree/birch/1/tree_branch_3", .chance = 0.34},
+			.{.structure = "cubyz:tree/birch/1/branch_1", .chance = 0.33},
+			.{.structure = "cubyz:tree/birch/1/branch_2", .chance = 0.33},
+			.{.structure = "cubyz:tree/birch/1/branch_3", .chance = 0.34},
 		},
 		.lime = .{
 			.{.structure = "cubyz:tree/birch/1/stub_1", .chance = 0.2},
@@ -20,7 +20,7 @@
 			.{.structure = null, .chance = 0.25},
 		},
 		.blue = .{
-			.{.structure = "cubyz:tree/birch/1/blob_1", .chance = 1.0},
+			.{.structure = "cubyz:tree/birch/1/leaf_1", .chance = 1.0},
 		},
 		.pink = .{
 			.{.structure = "cubyz:deco/ivy_side_2", .chance = 0.1},

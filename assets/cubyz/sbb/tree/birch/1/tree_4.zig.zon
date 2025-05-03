@@ -5,9 +5,9 @@
 			.{.structure = "cubyz:tree/birch/1/small_branch_1", .chance = 0.134},
 			.{.structure = "cubyz:tree/birch/1/small_branch_2", .chance = 0.133},
 			.{.structure = "cubyz:tree/birch/1/small_branch_3", .chance = 0.133},
-			.{.structure = "cubyz:tree/birch/1/tree_branch_1", .chance = 0.133},
-			.{.structure = "cubyz:tree/birch/1/tree_branch_2", .chance = 0.133},
-			.{.structure = "cubyz:tree/birch/1/tree_branch_3", .chance = 0.133},
+			.{.structure = "cubyz:tree/birch/1/branch_1", .chance = 0.133},
+			.{.structure = "cubyz:tree/birch/1/branch_2", .chance = 0.133},
+			.{.structure = "cubyz:tree/birch/1/branch_3", .chance = 0.133},
 		},
 		.blue = .{
 			.{.structure = "cubyz:tree/birch/1/top_1", .chance = 1.0},
