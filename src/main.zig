@@ -623,6 +623,9 @@ pub fn main() void { // MARK: main()
 
 	tag.init();
 	defer tag.deinit();
+	
+	ecs.init();
+	defer ecs.deinit();
 
 	assets.init();
 	defer assets.deinit();
