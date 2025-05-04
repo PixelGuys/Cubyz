@@ -839,16 +839,22 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	pub fn addEntity(self: *ServerWorld, entity: Entity) u32 {
 		const id = self.entities.add(entity);
-		self.entities.get(id).?.id = id;
+		(self.entities.get(id) catch {
+			std.log.err("Could not get added entity from world: {d}", .{id});
+			return 0;
+		}).id = id;
 		return id;
 	}
 
 	pub fn removeEntity(self: *ServerWorld, id: u32) void {
-		self.entities.get(id).?.deinit();
+		(self.entities.get(id) catch {
+			std.log.err("Could not get entity from world: {d}", .{id});
+			return;
+		}).deinit();
 		self.entities.remove(id);
 	}
 
-	pub fn getEntity(self: *ServerWorld, id: u32) ?*Entity {
+	pub fn getEntity(self: *ServerWorld, id: u32) !*Entity {
 		return self.entities.get(id);
 	}
 

@@ -1733,16 +1733,17 @@ pub fn SparseSet(comptime T: type, comptime idType: type) type { // MARK: Sparse
 	std.debug.assert(@typeInfo(idType).int.signedness == .unsigned);
 
 	return struct {
-		const SparseValue = enum(idType) {
-			noValue = std.math.maxInt(idType),
-			_,
+		const GetError = error{
+			idOutOfBounds,
+			entityDoesntExist,
 		};
+		const noValue = std.math.maxInt(idType);
 
 		dense: main.List(struct {
 			value: T,
 			id: idType,
 		}),
-		sparse: main.List(SparseValue),
+		sparse: main.List(idType),
 		freeList: main.List(idType),
 
 		pub fn init(allocator: NeverFailingAllocator) @This() {
@@ -1760,14 +1761,14 @@ pub fn SparseSet(comptime T: type, comptime idType: type) type { // MARK: Sparse
 		}
 
 		pub fn contains(self: *@This(), id: idType) bool {
-			return id < self.sparse.items.len and self.sparse.items[id] != .noValue;
+			return id < self.sparse.items.len and self.sparse.items[id] != noValue;
 		}
 
 		pub fn add(self: *@This(), entity: main.server.Entity) idType {
 			const sparseId: idType = self.freeList.popOrNull() orelse @intCast(self.sparse.items.len);
 
 			if (sparseId == self.sparse.items.len) {
-				self.sparse.append(null);
+				self.sparse.append(noValue);
 			}
 
 			const denseId: idType = @intCast(self.dense.items.len);
@@ -1781,11 +1782,11 @@ pub fn SparseSet(comptime T: type, comptime idType: type) type { // MARK: Sparse
 			if (!self.contains(sparseId)) return;
 
 			const denseId = self.sparse.items[sparseId];
-			if (denseId == .novalue) return;
+			if (denseId == noValue) return;
 
 			self.dense.items[denseId] = self.dense.items[self.dense.items.len - 1];
 
-			self.sparse.items[sparseId] = .noValue;
+			self.sparse.items[sparseId] = noValue;
 			self.sparse.items[self.dense.items[denseId].id] = denseId;
 			
 			_ = self.dense.pop();
@@ -1794,10 +1795,10 @@ pub fn SparseSet(comptime T: type, comptime idType: type) type { // MARK: Sparse
 			}
 		}
 
-		pub fn get(self: *@This(), id: idType) !*T {
-			if (id >= self.sparse.items.len) return .idOutOfBounds;
+		pub fn get(self: *@This(), id: idType) GetError!*T {
+			if (id >= self.sparse.items.len) return GetError.idOutOfBounds;
 			const index = self.sparse.items[id];
-			if (index == .noValue) return .entityDoesntExist;
+			if (index == noValue) return GetError.entityDoesntExist;
 			return &self.dense.items[index].value;
 		}
 	};

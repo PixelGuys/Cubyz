@@ -334,13 +334,19 @@ pub fn getTypeById(id: []const u8) u16 {
 	}
 }
 
-pub fn register(_: []const u8, id: []const u8, _: ZonElement) u16 {
+pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	if(reverseIndices.contains(id)) {
 		std.log.err("Registered entity with id {s} twice!", .{id});
 	}
 
 	_id[num] = arenaAllocator.dupe(u8, id);
 	reverseIndices.put(_id[num], @intCast(num)) catch unreachable;
+
+	const components = zon.getChild("components");
+	const systems = zon.getChild("systems");
+
+	_ = components;
+	_ = systems;
 
 	defer num += 1;
 	std.log.debug("Registered entity: {d: >5} '{s}'", .{num, id});

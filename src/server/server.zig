@@ -267,7 +267,7 @@ pub const User = struct { // MARK: User
 		main.network.Protocols.chat.send(self.conn, msg);
 	}
 	pub inline fn getEntity(self: *User) *Entity {
-		return world.?.getEntity(self.id) orelse unreachable;
+		return world.?.getEntity(self.id) catch unreachable;
 	}
 };
 
@@ -496,7 +496,7 @@ pub fn connectInternal(user: *User) void {
 		for(world.?.entities.dense.items) |other| {
 			const entityZon = main.ZonElement.initObject(main.stackAllocator);
 			entityZon.put("id", other.id);
-			entityZon.put("name", other.name);
+			entityZon.put("name", other.value.name);
 			zonArray.array.append(entityZon);
 		}
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});

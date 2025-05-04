@@ -1,4 +1,15 @@
 .{
-    .model = "cubyz:snail_snail",
-    .texture = "cubyz:snail_snail"
+	.components = .{
+		.tranform = .{},
+		.model = .{
+			.model = "cubyz:snail_snail",
+			.texture = "cubyz:snail_snail",
+		},
+		.health = .{
+			.maxHealth = 8,
+		},
+	},
+	.systems = .{
+		.render = .{},
+	}
 }
