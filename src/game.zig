@@ -944,7 +944,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		if(!Player.isFlying.load(.monotonic)) {
 			acc[2] = -gravity;
 		}
-
+		Player.currentClimbSpeed = collision.calculateClimbSpeed(.client, Player.super.pos, Player.outerBoundingBox, -camera.rotation[2], 3);
 		Player.currentFriction = if(Player.isFlying.load(.monotonic)) 20 else collision.calculateFriction(.client, Player.super.pos, Player.outerBoundingBox, 20);
 		var baseFrictionCoefficient: f32 = Player.currentFriction;
 		var directionalFrictionCoefficients: Vec3f = @splat(0);
@@ -993,8 +993,10 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 				}
 			}
 			if(KeyBoard.key("backward").value > 0.0) {
-				movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("backward").value;
-				movementDir += forward*@as(Vec3d, @splat(-walkingSpeed*KeyBoard.key("backward").value));
+				if(!Player.super.climbing or Player.onGround) {
+					movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("backward").value;
+					movementDir += forward*@as(Vec3d, @splat(-walkingSpeed*KeyBoard.key("backward").value));
+				}
 			}
 			if(KeyBoard.key("left").value > 0.0) {
 				movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("left").value;
@@ -1244,18 +1246,40 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		const xMovement = collision.collideOrStep(.client, .x, move[0], Player.super.pos, hitBox, steppingHeight);
 		Player.super.pos += xMovement;
 		if(KeyBoard.key("crouch").pressed and Player.onGround and @abs(Player.super.vel[0]) < slipLimit) {
-			if(collision.collides(.client, .x, 0, Player.super.pos - Vec3d{0, 0, 1}, hitBox) == null) {
+			if(collision.collides(.client, .x, 0, Player.super.pos - Vec3d{0, 0, 1}, hitBox) == null) blk: {
 				Player.super.pos -= xMovement;
 				Player.super.vel[0] = 0;
+
+				// climbable full blocks
+				if(!Player.super.touchingClimbable) break :blk;
+				if(collision.collides(.client, .x, 0, Player.super.pos - Vec3d{0, 0, 1}, hitBox)) |box| {
+					const playerHitboxXExtend = (Player.outerBoundingBox.max[0] - Player.outerBoundingBox.min[0])*0.5;
+					const blockRelX = box.max[0] - box.min[0];
+					const xDir: f64 = if(std.math.approxEqAbs(f64, blockRelX, 0.0, 0.000001)) -1.0 else 1.0;
+					const xOffset = xDir*0.005;
+					const xBoundingExtend = xDir*playerHitboxXExtend;
+					Player.super.pos[0] = box.max[0] + xOffset + xBoundingExtend;
+				}
 			}
 		}
 
 		const yMovement = collision.collideOrStep(.client, .y, move[1], Player.super.pos, hitBox, steppingHeight);
 		Player.super.pos += yMovement;
 		if(KeyBoard.key("crouch").pressed and Player.onGround and @abs(Player.super.vel[1]) < slipLimit) {
-			if(collision.collides(.client, .y, 0, Player.super.pos - Vec3d{0, 0, 1}, hitBox) == null) {
+			if(collision.collides(.client, .y, 0, Player.super.pos - Vec3d{0, 0, 1}, hitBox) == null) blk: {
 				Player.super.pos -= yMovement;
 				Player.super.vel[1] = 0;
+
+				// climbable full blocks
+				if(!Player.super.touchingClimbable) break :blk;
+				if(collision.collides(.client, .y, 0, Player.super.pos - Vec3d{0, 0, 1}, hitBox)) |box| {
+					const playerHitboxXExtend = (Player.outerBoundingBox.max[1] - Player.outerBoundingBox.min[1])*0.5;
+					const blockRelX = box.max[1] - box.min[1];
+					const xDir: f64 = if(std.math.approxEqAbs(f64, blockRelX, 0.0, 0.000001)) -1.0 else 1.0;
+					const xOffset = xDir*0.005;
+					const xBoundingExtend = xDir*playerHitboxXExtend;
+					Player.super.pos[1] = box.max[1] + xOffset + xBoundingExtend;
+				}
 			}
 		}
 
