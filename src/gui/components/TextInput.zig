@@ -33,6 +33,7 @@ maxHeight: f32,
 textSize: Vec2f = undefined,
 scrollBar: *ScrollBar,
 onNewline: gui.Callback,
+optional: OptionalCallbacks,
 
 pub fn __init() void {
 	texture = Texture.initFromFile("assets/cubyz/ui/text_input.png");
@@ -42,7 +43,12 @@ pub fn __deinit() void {
 	texture.deinit();
 }
 
-pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, onNewline: gui.Callback) *TextInput {
+const OptionalCallbacks = struct {
+	onUp: ?gui.Callback = null,
+	onDown: ?gui.Callback = null,
+};
+
+pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, onNewline: gui.Callback, optional: OptionalCallbacks) *TextInput {
 	const scrollBar = ScrollBar.init(undefined, scrollBarWidth, maxHeight - 2*border, 0);
 	const self = main.globalAllocator.create(TextInput);
 	self.* = TextInput{
@@ -54,6 +60,7 @@ pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, onNewli
 		.maxHeight = maxHeight,
 		.scrollBar = scrollBar,
 		.onNewline = onNewline,
+		.optional = optional,
 	};
 	self.currentString.appendSlice(text);
 	self.textSize = self.textBuffer.calculateLineBreaks(fontSize, maxWidth - 2*border - scrollBarWidth);
@@ -239,8 +246,13 @@ pub fn right(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 	}
 }
 
-fn moveCursorVertically(self: *TextInput, relativeLines: f32) void {
-	self.cursor = self.textBuffer.mousePosToIndex(self.textBuffer.indexToCursorPos(self.cursor.?) + Vec2f{0, 16*relativeLines}, self.currentString.items.len);
+fn moveCursorVertically(self: *TextInput, relativeLines: f32) enum {changed, same} {
+	const newCursor = self.textBuffer.mousePosToIndex(self.textBuffer.indexToCursorPos(self.cursor.?) + Vec2f{0, 16*relativeLines}, self.currentString.items.len);
+	self.cursor = newCursor;
+	if(self.cursor != newCursor) {
+		return .changed;
+	}
+	return .same;
 }
 
 pub fn down(self: *TextInput, mods: main.Window.Key.Modifiers) void {
@@ -249,7 +261,7 @@ pub fn down(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 			if(self.selectionStart == null) {
 				self.selectionStart = cursor.*;
 			}
-			self.moveCursorVertically(1);
+			_ = self.moveCursorVertically(1);
 			if(self.selectionStart == self.cursor) {
 				self.selectionStart = null;
 			}
@@ -258,7 +270,9 @@ pub fn down(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 				cursor.* = @max(cursor.*, selectionStart);
 				self.selectionStart = null;
 			} else {
-				self.moveCursorVertically(1);
+				if(self.moveCursorVertically(1) == .same) {
+					if(self.optional.onDown) |cb| cb.run();
+				}
 			}
 		}
 		self.ensureCursorVisibility();
@@ -271,7 +285,7 @@ pub fn up(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 			if(self.selectionStart == null) {
 				self.selectionStart = cursor.*;
 			}
-			self.moveCursorVertically(-1);
+			_ = self.moveCursorVertically(-1);
 			if(self.selectionStart == self.cursor) {
 				self.selectionStart = null;
 			}
@@ -280,7 +294,9 @@ pub fn up(self: *TextInput, mods: main.Window.Key.Modifiers) void {
 				cursor.* = @min(cursor.*, selectionStart);
 				self.selectionStart = null;
 			} else {
-				self.moveCursorVertically(-1);
+				if(self.moveCursorVertically(-1) == .same) {
+					if(self.optional.onUp) |cb| cb.run();
+				}
 			}
 		}
 		self.ensureCursorVisibility();
@@ -391,6 +407,14 @@ pub fn inputCharacter(self: *TextInput, character: u21) void {
 		cursor.* += @intCast(utf8.len);
 		self.ensureCursorVisibility();
 	}
+}
+
+pub fn setString(self: *TextInput, utf8EncodedString: []const u8) void {
+	self.clear();
+	self.currentString.insertSlice(0, utf8EncodedString);
+	self.reloadText();
+	if(self.cursor != null) self.cursor = @intCast(utf8EncodedString.len);
+	self.ensureCursorVisibility();
 }
 
 pub fn selectAll(self: *TextInput, mods: main.Window.Key.Modifiers) void {

@@ -49,7 +49,7 @@ pub fn onOpen() void {
 	list.add(Label.init(.{0, 0}, width, "\\**italic*\\* \\*\\***bold**\\*\\* \\_\\___underlined__\\_\\_ \\~\\~~~strike-through~~\\~\\~", .center));
 	list.add(Label.init(.{0, 0}, width, "Even colors are possible, using the hexadecimal color code:", .center));
 	list.add(Label.init(.{0, 0}, width, "\\##ff0000ff#ffffff00#ffffff00#ff0000red#ffffff \\##ff0000ff#00770077#ffffff00#ff7700orange#ffffff \\##ffffff00#00ff00ff#ffffff00#00ff00green#ffffff \\##ffffff00#ffffff00#0000ffff#0000ffblue", .center));
-	textComponent = TextInput.init(.{0, 0}, width, 32, if(settings.playerName.len == 0) "quanturmdoelvloper" else settings.playerName, .{.callback = &apply});
+	textComponent = TextInput.init(.{0, 0}, width, 32, if(settings.playerName.len == 0) "quanturmdoelvloper" else settings.playerName, .{.callback = &apply}, .{});
 	list.add(textComponent);
 	list.add(Button.initText(.{0, 0}, 100, "Apply", .{.callback = &apply}));
 	list.finish(.center);
