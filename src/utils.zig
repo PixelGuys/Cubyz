@@ -1760,15 +1760,17 @@ pub fn SparseSet(comptime T: type, comptime idType: type) type { // MARK: Sparse
 			self.freeList.deinit();
 		}
 
+		pub fn nextFreeId(self: *@This()) idType {
+			return self.freeList.popOrNull() orelse @intCast(self.sparse.items.len);
+		}
+
 		pub fn contains(self: *@This(), id: idType) bool {
 			return id < self.sparse.items.len and self.sparse.items[id] != noValue;
 		}
 
-		pub fn add(self: *@This(), entity: main.server.Entity) idType {
-			const sparseId: idType = self.freeList.popOrNull() orelse @intCast(self.sparse.items.len);
-
-			if (sparseId == self.sparse.items.len) {
-				self.sparse.append(noValue);
+		pub fn add(self: *@This(), sparseId: idType, entity: main.server.Entity) idType {
+			if (sparseId >= self.sparse.items.len) {
+				self.sparse.appendNTimes(noValue, sparseId - self.sparse.items.len + 1);
 			}
 
 			const denseId: idType = @intCast(self.dense.items.len);

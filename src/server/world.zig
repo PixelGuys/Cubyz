@@ -838,7 +838,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	pub fn addEntity(self: *ServerWorld, entity: Entity) u32 {
-		const id = self.entities.add(entity);
+		const id = self.entities.add(self.entities.nextFreeId(), entity);
 		(self.entities.get(id) catch {
 			std.log.err("Could not get added entity from world: {d}", .{id});
 			return 0;

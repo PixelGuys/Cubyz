@@ -10,6 +10,6 @@
 		},
 	},
 	.systems = .{
-		.render = .{},
+		.render,
 	}
 }

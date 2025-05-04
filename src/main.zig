@@ -551,7 +551,7 @@ pub fn main() void { // MARK: main()
 
 	initLogging();
 	defer deinitLogging();
-
+	
 	if(std.fs.cwd().openFile("settings.json", .{})) |file| blk: { // TODO: Remove after #480
 		file.close();
 		std.log.warn("Detected old game client. Converting all .json files to .zig.zon", .{});
