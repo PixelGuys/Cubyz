@@ -7,7 +7,7 @@ layout(location = 3) flat in vec3 normal;
 
 layout(location = 0) out vec4 fragColor;
 
-layout(binding = 0) uniform sampler2D textureSampler;
+layout(binding = 0, location = 1000) uniform sampler2D textureSampler;
 
 layout(location = 5) uniform float contrast;
 

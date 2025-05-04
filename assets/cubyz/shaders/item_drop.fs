@@ -13,10 +13,10 @@ layout(location = 9) flat in uvec3 upper;
 
 layout(location = 0) out vec4 fragColor;
 
-layout(binding = 0) uniform sampler2DArray textureSampler;
-layout(binding = 1) uniform sampler2DArray emissionSampler;
-layout(binding = 2) uniform sampler2DArray reflectivityAndAbsorptionSampler;
-layout(binding = 4) uniform samplerCube reflectionMap;
+layout(binding = 0, location = 1000) uniform sampler2DArray textureSampler;
+layout(binding = 1, location = 1001) uniform sampler2DArray emissionSampler;
+layout(binding = 2, location = 1002) uniform sampler2DArray reflectivityAndAbsorptionSampler;
+layout(binding = 4, location = 1004) uniform samplerCube reflectionMap;
 
 layout(location = 0) uniform mat4 projectionMatrix;
 

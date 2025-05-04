@@ -6,7 +6,7 @@ layout(location = 0) out vec2 texCoords;
 layout(location = 1) out vec2 normalizedTexCoords;
 layout(location = 2) out vec3 direction;
 
-layout(binding = 3) uniform sampler2D color;
+layout(binding = 3, location = 1003) uniform sampler2D color;
 
 layout(location = 0) uniform mat4 invViewMatrix;
 layout(location = 1) uniform vec2 tanXY;

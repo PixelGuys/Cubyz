@@ -1,7 +1,7 @@
 #version 460
 
 layout(location = 0) out vec4 frag_color;
-layout(binding = 0) uniform sampler2D image;
+layout(binding = 0, location = 1000) uniform sampler2D image;
 
 layout(location = 0) in vec2 uv;
 layout(location = 1) flat in vec4 fColor;

@@ -5,7 +5,7 @@ layout(location = 0) out vec4 frag_color;
 layout(location = 0) in vec2 frag_face_pos;
 layout(location = 1) flat in vec4 color;
 
-layout(binding = 0) uniform sampler2D textureSampler;
+layout(binding = 0, location = 1000) uniform sampler2D textureSampler;
 
 // in pixels
 layout(location = 0) uniform vec4 texture_rect;

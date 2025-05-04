@@ -4,7 +4,7 @@ layout(location = 0) out vec4 fragColor;
 
 layout(location = 0) in vec2 texCoords;
 
-layout(binding = 3) uniform sampler2D color;
+layout(binding = 3, location = 1003) uniform sampler2D color;
 
 layout(location = 0) uniform bool transparent;
 

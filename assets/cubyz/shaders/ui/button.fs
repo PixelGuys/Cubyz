@@ -5,7 +5,7 @@ layout(location = 0) out vec4 frag_color;
 layout(location = 0) in vec2 startCoord;
 layout(location = 1) flat in vec4 fColor;
 
-layout(binding = 0) uniform sampler2D image;
+layout(binding = 0, location = 1000) uniform sampler2D image;
 
 layout(location = 4) uniform float scale;
 

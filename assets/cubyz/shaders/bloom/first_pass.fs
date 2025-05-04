@@ -4,7 +4,7 @@ layout(location = 0) out vec4 fragColor;
 
 layout(location = 0) in vec2 texCoords;
 
-layout(binding = 3) uniform sampler2D color;
+layout(binding = 3, location = 1003) uniform sampler2D color;
 
 float weights[8] = float[] (2.275305315223722e-01, 2.164337365563677e-01, 1.862862434215453e-01, 1.450798722521298e-01, 1.0223605803398833e-01, 6.518858871330833e-02, 3.7610543897114775e-02, 1.963442560317357e-02);
 /* Weight generator:
