@@ -357,9 +357,9 @@ pub const collision = struct {
 		return (max[0] - min[0])*(max[1] - min[1]);
 	}
 
-	pub fn calculateClimbSpeed(comptime side: main.utils.Side, pos: Vec3d, hitBox: Box, cameraRotation: f32, amount: f32, defaultSpeed: f32) f32 {
+	pub fn calculateClimbSpeed(comptime side: main.utils.Side, pos: Vec3d, hitBox: Box, cameraRotation: f32, defaultSpeed: f32) f32 {
 		const forward: Vec3d = vec.rotateZ(Vec3d{0, 1, 0}, cameraRotation);
-		const forwardOffset = forward*Vec3d{amount, amount, 0};
+		const forwardOffset = forward*Vec3d{0.01, 0.01, 0};
 
 		const boundingBox: Box = .{
 			.min = pos + hitBox.min + forwardOffset,
@@ -465,13 +465,13 @@ pub const collision = struct {
 		return false;
 	}
 
-	pub fn touchBlocks(entity: *main.server.Entity, hitBox: Box, side: main.utils.Side, amount: f32, slipVel: comptime_float) void {
+	pub fn touchBlocks(entity: *main.server.Entity, hitBox: Box, side: main.utils.Side, slipVel: comptime_float) void {
 		const boundingBox: Box = .{.min = entity.pos + hitBox.min, .max = entity.pos + hitBox.max};
 
-		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0] - amount));
-		const maxX: i32 = @intFromFloat(@floor(boundingBox.max[0] + amount));
-		const minY: i32 = @intFromFloat(@floor(boundingBox.min[1] - amount));
-		const maxY: i32 = @intFromFloat(@floor(boundingBox.max[1] + amount));
+		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0] - 0.01));
+		const maxX: i32 = @intFromFloat(@floor(boundingBox.max[0] + 0.01));
+		const minY: i32 = @intFromFloat(@floor(boundingBox.min[1] - 0.01));
+		const maxY: i32 = @intFromFloat(@floor(boundingBox.max[1] + 0.01));
 		const minZ: i32 = @intFromFloat(@floor(boundingBox.min[2] - 0.01));
 		const maxZ: i32 = @intFromFloat(@floor(boundingBox.max[2] + 0.01));
 
@@ -482,10 +482,6 @@ pub const collision = struct {
 		const extentY: Vec3d = extent + Vec3d{-0.01, 0.01, -0.01};
 		const extentZ: Vec3d = extent + Vec3d{-0.01, -0.01, 0.01};
 
-		const extendClimableX: Vec3d = extent + Vec3d{amount, -0.01, -0.01};
-		const extendClimableY: Vec3d = extent + Vec3d{-0.01, amount, -0.01};
-
-		entity.climbing = false;
 		var posX: i32 = minX;
 		while(posX <= maxX) : (posX += 1) {
 			var posY: i32 = minY;
@@ -494,28 +490,30 @@ pub const collision = struct {
 				while(posZ <= maxZ) : (posZ += 1) {
 					const block: ?Block =
 						if(side == .client) main.renderer.mesh_storage.getBlock(posX, posY, posZ) else main.server.world.?.getBlock(posX, posY, posZ);
-					if(block == null)
-						continue;
-
-					if(block.?.climbable() and !entity.climbing and entity.vel[2] > slipVel) notClimbable: {
-						// make plane rotation models not climbable on the ground
-						const blockPos: Vec3d = .{@floatFromInt(posX), @floatFromInt(posY), @floatFromInt(posZ)};
-						const model = block.?.mode().model(block.?).model();
-						const modelBoundingBoxMax: Vec3d = model.max + blockPos;
-						const hasFullBlockHeight = model.max[2] > 0.9;
-						if(modelBoundingBoxMax[2] - boundingBox.min[2] < 0.15 and !hasFullBlockHeight) break :notClimbable;
-
-						const touchX: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extendClimableX);
-						const touchY: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extendClimableY);
-						entity.climbing = touchX or touchY;
-					}
-
-					if(block.?.touchFunction() == null)
+					if(block == null or !block.?.climbable() and block.?.touchFunction() == null)
 						continue;
 
 					const touchX: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentX);
 					const touchY: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentY);
 					const touchZ: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentZ);
+
+					if(block.?.climbable()) {
+						if(!entity.climbing and entity.vel[2] > slipVel) {
+							// make plane rotation models not climbable on the ground
+							const blockPos: Vec3d = .{@floatFromInt(posX), @floatFromInt(posY), @floatFromInt(posZ)};
+							const model = block.?.mode().model(block.?).model();
+							const modelBoundingBoxMax: Vec3d = model.max + blockPos;
+							const hasFullBlockHeight = model.max[2] > 0.9;
+							if(hasFullBlockHeight or modelBoundingBoxMax[2] - boundingBox.min[2] > 0.15)
+								entity.climbing = touchX or touchY;
+						}
+
+						entity.touchingClimbable = entity.touchingClimbable or isBlockIntersecting(block.?, posX, posY, posZ, center, extent + Vec3d{0, 0, 0.01});
+					}
+
+					if(block.?.touchFunction() == null)
+						continue;
+
 					if(touchX or touchY or touchZ)
 						block.?.touchFunction().?(block.?, entity.*, posX, posY, posZ, touchX and touchY and touchZ);
 				}
@@ -1323,12 +1321,9 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			Player.eyePos[2] -= move[2];
 		}
 
-		var climbAmount: f32 = 0.01;
-		if(!Player.onGround or KeyBoard.key("jump").pressed) {
-			climbAmount = 0.25;
-		}
-		Player.currentClimbSpeed = collision.calculateClimbSpeed(.client, Player.super.pos, Player.outerBoundingBox, -camera.rotation[2], climbAmount, 3);
-		collision.touchBlocks(&Player.super, hitBox, .client, climbAmount, -13);
+		Player.super.climbing = false;
+		Player.super.touchingClimbable = false;
+		collision.touchBlocks(&Player.super, hitBox, .client, -13);
 	} else {
 		Player.super.pos += move;
 	}
