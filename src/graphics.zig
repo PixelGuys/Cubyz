@@ -1208,7 +1208,7 @@ pub fn init() void { // MARK: init()
 		std.log.err("Error while initializing TextRendering: {s}", .{@errorName(err)});
 	};
 	block_texture.init();
-	if (glslang.glslang_initialize_process() == glslang.false) std.log.err("glslang_initialize_process failed", .{});
+	if(glslang.glslang_initialize_process() == glslang.false) std.log.err("glslang_initialize_process failed", .{});
 }
 
 pub fn deinit() void {
