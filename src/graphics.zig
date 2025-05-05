@@ -1319,7 +1319,7 @@ pub const Shader = struct { // MARK: Shader
 		c.glAttachShader(self.id, shader);
 	}
 
-	fn link(self: *const Shader) !void {
+	fn link(self: *const Shader, file: []const u8) !void {
 		c.glLinkProgram(self.id);
 
 		var success: c_int = undefined;
@@ -1329,7 +1329,7 @@ pub const Shader = struct { // MARK: Shader
 			c.glGetProgramiv(self.id, c.GL_INFO_LOG_LENGTH, @ptrCast(&len));
 			var buf: [4096]u8 = undefined;
 			c.glGetProgramInfoLog(self.id, 4096, @ptrCast(&len), &buf);
-			std.log.err("Error Linking Shader program:\n{s}\n", .{buf[0..len]});
+			std.log.err("Error Linking Shader program {s}:\n{s}\n", .{file, buf[0..len]});
 			return error.FailedLinking;
 		}
 	}
@@ -1338,7 +1338,7 @@ pub const Shader = struct { // MARK: Shader
 		const shader = Shader{.id = c.glCreateProgram()};
 		shader.addShader(vertex, defines, c.GL_VERTEX_SHADER) catch return shader;
 		shader.addShader(fragment, defines, c.GL_FRAGMENT_SHADER) catch return shader;
-		shader.link() catch return shader;
+		shader.link(fragment) catch return shader;
 		return shader;
 	}
 
@@ -1355,7 +1355,7 @@ pub const Shader = struct { // MARK: Shader
 	pub fn initCompute(compute: []const u8, defines: []const u8) Shader {
 		const shader = Shader{.id = c.glCreateProgram()};
 		shader.addShader(compute, defines, c.GL_COMPUTE_SHADER) catch return shader;
-		shader.link() catch return shader;
+		shader.link(compute) catch return shader;
 		return shader;
 	}
 
