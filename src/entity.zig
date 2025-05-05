@@ -23,11 +23,12 @@ const Mat4f = vec.Mat4f;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
+const ecs = main.ecs;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const BinaryReader = main.utils.BinaryReader;
 
-pub const maxEntityCount: usize = 65536; // 16 bit limit
+pub const maxEntityTypeCount: usize = 65536; // 16 bit limit
 
 var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
 const arenaAllocator = arena.allocator();
@@ -311,7 +312,7 @@ pub fn registerModel(id: []const u8, data: []const u8) void {
 	entityModelNameToIndex.put(id, @intCast(entityModels.len - 1)) catch unreachable;
 }
 
-var _id: [maxEntityCount][]u8 = undefined;
+var _id: [maxEntityTypeCount][]u8 = undefined;
 
 var num: u16 = 0;
 var reverseIndices: std.StringHashMap(u16) = .init(arenaAllocator.allocator);
@@ -345,8 +346,45 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	const components = zon.getChild("components");
 	const systems = zon.getChild("systems");
 
-	_ = components;
-	_ = systems;
+	if (components == .object) {
+		var iterator = components.object.iterator();
+		while (iterator.next()) |entry| {
+			const tag = entry.key_ptr.*;
+			const child = entry.value_ptr.*;
+
+			const component = std.meta.stringToEnum(ecs.Components, tag) orelse {
+				std.log.err("Unknown component {s} for entity {s}.", .{tag, id});
+				return 0;
+			};
+
+			switch (component) {
+				inline else => |comp| {
+					ecs.addComponent(num, comp, child);
+				}
+			}
+		}
+	} else {
+		std.log.err(".components must be an object.", .{});
+		return 0;
+	}
+
+	if (systems == .array) {
+		for (systems.array.items) |item| {
+			const system = std.meta.stringToEnum(ecs.Systems, item.as([]const u8, "")) orelse {
+				std.log.err("Unknown system {s} for entity {s}.", .{item, id});
+				return 0;
+			};
+
+			switch (system) {
+				inline else => |sys| {
+					ecs.addSystem(num, sys);
+				}
+			}
+		}
+	} else {
+		std.log.err(".systems must be an array.", .{});
+		return 0;
+	}
 
 	defer num += 1;
 	std.log.debug("Registered entity: {d: >5} '{s}'", .{num, id});
@@ -355,10 +393,10 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 
 pub const meshes = struct { // MARK: meshes
 	var size: u32 = 0;
-	var _modelIndex: [maxEntityCount]u16 = undefined;
-	var textureIndices: [maxEntityCount]u16 = undefined;
+	var _modelIndex: [maxEntityTypeCount]u16 = undefined;
+	var textureIndices: [maxEntityTypeCount]u16 = undefined;
 	/// Stores the number of textures after each block was added. Used to clean additional textures when the world is switched.
-	var maxTextureCount: [maxEntityCount]u32 = undefined;
+	var maxTextureCount: [maxEntityTypeCount]u32 = undefined;
 	/// Number of loaded meshes. Used to determine if an update is needed.
 	var loadedMeshes: u32 = 0;
 

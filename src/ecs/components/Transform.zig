@@ -10,10 +10,9 @@ const ZonElement = main.ZonElement;
 
 const Transform = @This();
 
-const id = "transform";
-const bit = 2;
-
 pos: Vec3d = .{0, 0, 0},
 rot: Vec3f = .{0, 0, 0},
 
-pub fn loadFromZon(_: *Transform, _: ZonElement) void {}
+pub fn loadFromZon(_: ZonElement) Transform {
+	return .{};
+}

@@ -1735,7 +1735,7 @@ pub fn SparseSet(comptime T: type, comptime idType: type) type { // MARK: Sparse
 	return struct {
 		const GetError = error{
 			idOutOfBounds,
-			entityDoesntExist,
+			valueDoesntExist,
 		};
 		const noValue = std.math.maxInt(idType);
 
@@ -1768,14 +1768,14 @@ pub fn SparseSet(comptime T: type, comptime idType: type) type { // MARK: Sparse
 			return id < self.sparse.items.len and self.sparse.items[id] != noValue;
 		}
 
-		pub fn add(self: *@This(), sparseId: idType, entity: main.server.Entity) idType {
+		pub fn add(self: *@This(), sparseId: idType, value: T) idType {
 			if (sparseId >= self.sparse.items.len) {
 				self.sparse.appendNTimes(noValue, sparseId - self.sparse.items.len + 1);
 			}
 
 			const denseId: idType = @intCast(self.dense.items.len);
 			self.sparse.items[sparseId] = denseId;
-			self.dense.append(.{.value = entity, .id = sparseId});
+			self.dense.append(.{.value = value, .id = sparseId});
 			
 			return sparseId;
 		}
@@ -1800,7 +1800,7 @@ pub fn SparseSet(comptime T: type, comptime idType: type) type { // MARK: Sparse
 		pub fn get(self: *@This(), id: idType) GetError!*T {
 			if (id >= self.sparse.items.len) return GetError.idOutOfBounds;
 			const index = self.sparse.items[id];
-			if (index == noValue) return GetError.entityDoesntExist;
+			if (index == noValue) return GetError.valueDoesntExist;
 			return &self.dense.items[index].value;
 		}
 	};
