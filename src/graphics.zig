@@ -1379,6 +1379,333 @@ pub const Shader = struct { // MARK: Shader
 	}
 };
 
+pub const GraphicsPipeline = struct { // MARK: GraphicsPipeline
+	shader: Shader,
+	rasterState: RasterizationState,
+	multisampleState: MultisampleState = .{}, // TODO: Not implemented
+	depthStencilState: DepthStencilState,
+	blendState: ColorBlendState,
+
+
+	const RasterizationState = struct {
+		depthClamp: bool = true,
+		rasterizerDiscard: bool = false,
+		polygonMode: PolygonMode = .fill,
+		cullMode: CullModeFlags = .back,
+		frontFace: FrontFace = .counterClockwise,
+		depthBias: ?DepthBias = null,
+		lineWidth: f32 = 1,
+
+		const PolygonMode = enum(c.VkPolygonMode) {
+			fill = c.VK_POLYGON_MODE_FILL,
+			line = c.VK_POLYGON_MODE_LINE,
+			point = c.VK_POLYGON_MODE_POINT,
+			fillRectangleNV = c.VK_POLYGON_MODE_FILL_RECTANGLE_NV,
+		};
+
+		const CullModeFlags = enum(c.VkCullModeFlags) {
+			none = c.VK_CULL_MODE_NONE,
+			front = c.VK_CULL_MODE_FRONT_BIT,
+			back = c.VK_CULL_MODE_BACK_BIT,
+			frontAndBack = c.VK_CULL_MODE_FRONT_AND_BACK,
+		};
+
+		const FrontFace = enum(c.VkFrontFace) {
+			counterClockwise = c.VK_FRONT_FACE_COUNTER_CLOCKWISE,
+			clockwise = c.VK_FRONT_FACE_CLOCKWISE,
+		};
+
+		const DepthBias = struct {
+			constantFactor: f32,
+			clamp: f32,
+			slopeFactor: f32,
+		};
+	};
+
+	const MultisampleState = struct {
+		rasterizationSamples: Count = .@"1",
+		sampleShading: bool = false,
+		minSampleShading: f32 = undefined,
+		sampleMask: [*]const c.VkSampleMask = &.{0, 0},
+		alphaToCoverage: bool = false,
+		alphaToOne: bool = false,
+
+		const Count = enum(c.VkSampleCountFlags) {
+			@"1" = c.VK_SAMPLE_COUNT_1_BIT,
+			@"2" = c.VK_SAMPLE_COUNT_2_BIT,
+			@"4" = c.VK_SAMPLE_COUNT_4_BIT,
+			@"8" = c.VK_SAMPLE_COUNT_8_BIT,
+			@"16" = c.VK_SAMPLE_COUNT_16_BIT,
+			@"32" = c.VK_SAMPLE_COUNT_32_BIT,
+			@"64" = c.VK_SAMPLE_COUNT_64_BIT,
+		};
+	};
+
+	const DepthStencilState = struct {
+		depthTest: bool,
+		depthWrite: bool = true,
+		depthCompare: CompareOp,
+		depthBoundsTest: ?DepthBoundsTest = null,
+		stencilTest: ?StencilTest = null,
+
+		const CompareOp = enum(c.VkCompareOp) {
+			never = c.VK_COMPARE_OP_NEVER,
+			less = c.VK_COMPARE_OP_LESS,
+			equal = c.VK_COMPARE_OP_EQUAL,
+			lessOrEqual = c.VK_COMPARE_OP_LESS_OR_EQUAL,
+			greater = c.VK_COMPARE_OP_GREATER,
+			notEqual = c.VK_COMPARE_OP_NOT_EQUAL,
+			greateOrEqual = c.VK_COMPARE_OP_GREATER_OR_EQUAL,
+			always = c.VK_COMPARE_OP_ALWAYS,
+		};
+
+		const StencilTest = struct {
+			front: StencilOpState,
+			back: StencilOpState,
+
+			const StencilOpState = struct {
+				failOp: StencilOp,
+				passOp: StencilOp,
+				depthFailOp: StencilOp,
+				compareOp: CompareOp,
+				compareMask: u32,
+				writeMask: u32,
+				reference: u32,
+
+				const StencilOp = enum(c.VkStencilOp) {
+					keep = c.VK_STENCIL_OP_KEEP,
+					zero = c.VK_STENCIL_OP_ZERO,
+					replace = c.VK_STENCIL_OP_REPLACE,
+					incrementAndClamp = c.VK_STENCIL_OP_INCREMENT_AND_CLAMP,
+					decrementAndClamp = c.VK_STENCIL_OP_DECREMENT_AND_CLAMP,
+					invert = c.VK_STENCIL_OP_INVERT,
+					incrementAndWrap = c.VK_STENCIL_OP_INCREMENT_AND_WRAP,
+					decrementAndWrap = c.VK_STENCIL_OP_DECREMENT_AND_WRAP,
+				};
+			};
+		};
+
+		const DepthBoundsTest = struct {
+			min: f32,
+			max: f32,
+		};
+	};
+
+	const ColorBlendAttachmentState = struct {
+		enabled: bool = true,
+		srcColorBlendFactor: BlendFactor,
+		dstColorBlendFactor: BlendFactor,
+		colorBlendOp: BlendOp,
+		srcAlphaBlendFactor: BlendFactor,
+		dstAlphaBlendFactor: BlendFactor,
+		alphaBlendOp: BlendOp,
+		colorWriteMask: ColorComponentFlags = .all,
+
+		pub const alphaBlending: ColorBlendAttachmentState = .{
+			.srcColorBlendFactor = .srcAlpha,
+			.dstColorBlendFactor = .oneMinusSrcAlpha,
+			.colorBlendOp = .add,
+			.srcAlphaBlendFactor = .srcAlpha,
+			.dstAlphaBlendFactor = .oneMinusSrcAlpha,
+			.alphaBlendOp = .add,
+		};
+
+		const BlendFactor = enum(c.VkBlendFactor) {
+			zero = c.VK_BLEND_FACTOR_ZERO,
+			one = c.VK_BLEND_FACTOR_ONE,
+			srcColor = c.VK_BLEND_FACTOR_SRC_COLOR,
+			oneMinusSrcColor = c.VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR,
+			dstColor = c.VK_BLEND_FACTOR_DST_COLOR,
+			oneMinusDstColor = c.VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR,
+			srcAlpha = c.VK_BLEND_FACTOR_SRC_ALPHA,
+			oneMinusSrcAlpha = c.VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+			dstAlpha = c.VK_BLEND_FACTOR_DST_ALPHA,
+			oneMinusDstAlpha = c.VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA,
+			constantColor = c.VK_BLEND_FACTOR_CONSTANT_COLOR,
+			oneMinusConstantColor = c.VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR,
+			constantAlpha = c.VK_BLEND_FACTOR_CONSTANT_ALPHA,
+			oneMinusConstantAlpha = c.VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA,
+			srcAlphaSaturate = c.VK_BLEND_FACTOR_SRC_ALPHA_SATURATE,
+			src1Color = c.VK_BLEND_FACTOR_SRC1_COLOR,
+			oneMinusSrc1Color = c.VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR,
+			src1Alpha = c.VK_BLEND_FACTOR_SRC1_ALPHA,
+			oneMinusSrc1Alpha = c.VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA,
+
+			fn toGl(self: BlendFactor) c.GLenum {
+				return switch(self) {
+					.zero => c.GL_ZERO,
+					.one => c.GL_ONE,
+					.srcColor => c.GL_SRC_COLOR,
+					.oneMinusSrcColor => c.GL_ONE_MINUS_SRC_COLOR,
+					.dstColor => c.GL_DST_COLOR,
+					.oneMinusDstColor => c.GL_ONE_MINUS_DST_COLOR,
+					.srcAlpha => c.GL_SRC_ALPHA,
+					.oneMinusSrcAlpha => c.GL_ONE_MINUS_SRC_ALPHA,
+					.dstAlpha => c.GL_DST_ALPHA,
+					.oneMinusDstAlpha => c.GL_ONE_MINUS_DST_ALPHA,
+					.constantColor => c.GL_CONSTANT_COLOR,
+					.oneMinusConstantColor => c.GL_ONE_MINUS_CONSTANT_COLOR,
+					.constantAlpha => c.GL_CONSTANT_ALPHA,
+					.oneMinusConstantAlpha => c.GL_ONE_MINUS_CONSTANT_ALPHA,
+					.srcAlphaSaturate => c.GL_SRC_ALPHA_SATURATE,
+					.src1Color => c.GL_SRC1_COLOR,
+					.oneMinusSrc1Color => c.GL_ONE_MINUS_SRC1_COLOR,
+					.src1Alpha => c.GL_SRC1_ALPHA,
+					.oneMinusSrc1Alpha => c.GL_ONE_MINUS_SRC1_ALPHA,
+				};
+			}
+		};
+
+		const BlendOp = enum(c.VkBlendOp) {
+			add = c.VK_BLEND_OP_ADD,
+			subtract = c.VK_BLEND_OP_SUBTRACT,
+			reverseSubtract = c.VK_BLEND_OP_REVERSE_SUBTRACT,
+			min = c.VK_BLEND_OP_MIN,
+			max = c.VK_BLEND_OP_MAX,
+
+			fn toGl(self: BlendOp) c.GLenum {
+				return switch(self) {
+					.add => c.GL_FUNC_ADD,
+					.subtract => c.GL_FUNC_SUBTRACT,
+					.reverseSubtract => c.GL_FUNC_REVERSE_SUBTRACT,
+					.min => c.GL_MIN,
+					.max => c.GL_MAX,
+				};
+			}
+		};
+
+		const ColorComponentFlags = packed struct {
+			r: bool = false,
+			g: bool = false,
+			b: bool = false,
+			a: bool = false,
+			pub const all: ColorComponentFlags = .{.r = true, .g = true, .b = true, .a = true};
+		};
+	};
+
+	const ColorBlendState = struct {
+		logicOp: ?LogicOp = null,
+		attachments: []const ColorBlendAttachmentState,
+		blendConstants: [4]f32 = .{0, 0, 0, 0},
+
+		const LogicOp = enum(c.VkLogicOp) {
+			clear = c.VK_LOGIC_OP_CLEAR,
+			@"and" = c.VK_LOGIC_OP_AND,
+			andReverse = c.VK_LOGIC_OP_AND_REVERSE,
+			copy = c.VK_LOGIC_OP_COPY,
+			andInverted = c.VK_LOGIC_OP_AND_INVERTED,
+			noOp = c.VK_LOGIC_OP_NO_OP,
+			xor = c.VK_LOGIC_OP_XOR,
+			@"or" = c.VK_LOGIC_OP_OR,
+			nor = c.VK_LOGIC_OP_NOR,
+			equivalent = c.VK_LOGIC_OP_EQUIVALENT,
+			invert = c.VK_LOGIC_OP_INVERT,
+			orReverse = c.VK_LOGIC_OP_OR_REVERSE,
+			copyInverted = c.VK_LOGIC_OP_COPY_INVERTED,
+			orInverted = c.VK_LOGIC_OP_OR_INVERTED,
+			nand = c.VK_LOGIC_OP_NAND,
+			set = c.VK_LOGIC_OP_SET,
+		};
+	};
+
+	pub fn init(vertexPath: []const u8, fragmentPath: []const u8, defines: []const u8, rasterState: RasterizationState, depthStencilState: DepthStencilState, blendState: ColorBlendState) GraphicsPipeline {
+		std.debug.assert(depthStencilState.depthBoundsTest == null); // Only available in Vulkan 1.3
+		std.debug.assert(depthStencilState.stencilTest == null); // TODO: Not yet implemented
+		std.debug.assert(rasterState.lineWidth <= 1); // Larger values are poorly supported among drivers
+		std.debug.assert(blendState.logicOp == null); // TODO: Not yet implemented
+		return .{
+			.shader = .init(vertexPath, fragmentPath, defines),
+			.rasterState = rasterState,
+			.multisampleState = .{}, // TODO: Not implemented
+			.depthStencilState = depthStencilState,
+			.blendState = blendState,
+		};
+	}
+
+	fn conditionalEnable(typ: c.GLenum, val: bool) void {
+		if(val) {
+			c.glEnable(typ);
+		} else {
+			c.glDisable(typ);
+		}
+	}
+
+	pub fn bind(self: GraphicsPipeline, viewPort: *const c.VkViewport, scissor: ?*const c.VkRect2D) void {
+		self.shader.bind();
+		c.glViewport(@intFromFloat(viewPort.x), @intFromFloat(viewPort.y), @intFromFloat(viewPort.width), @intFromFloat(viewPort.height));
+		if(scissor) |s| {
+			c.glEnable(c.GL_SCISSOR_TEST);
+			c.glScissor(s.offset.x, s.offset.y, @intCast(s.extent.width), @intCast(s.extent.height));
+		} else {
+			c.glDisable(c.GL_SCISSOR_TEST);
+		}
+		c.glDepthRange(viewPort.minDepth, viewPort.maxDepth);
+
+		conditionalEnable(c.GL_DEPTH_CLAMP, self.rasterState.depthClamp);
+		conditionalEnable(c.GL_RASTERIZER_DISCARD, self.rasterState.rasterizerDiscard);
+		conditionalEnable(c.GL_RASTERIZER_DISCARD, self.rasterState.rasterizerDiscard);
+		c.glPolygonMode(c.GL_FRONT_AND_BACK, switch (self.rasterState.polygonMode) {
+			.fill => c.GL_FILL,
+			.line => c.GL_LINE,
+			.point => c.GL_POINT,
+			else => unreachable,
+		});
+		if(self.rasterState.cullMode != .frontAndBack) {
+			c.glEnable(c.GL_CULL_FACE);
+			c.glCullFace(switch (self.rasterState.cullMode) {
+				.none => c.GL_NONE,
+				.front => c.GL_FRONT,
+				.back => c.GL_BACK,
+				else => unreachable,
+			});
+		} else {
+			c.glDisable(c.GL_CULL_FACE);
+		}
+		c.glFrontFace(switch(self.rasterState.frontFace) {
+			.counterClockwise => c.GL_CCW,
+			.clockwise => c.GL_CW,
+		});
+		if(self.rasterState.depthBias) |depthBias| {
+			c.glEnable(c.GL_POLYGON_OFFSET_CLAMP);
+			c.glEnable(switch (self.rasterState.polygonMode) {
+				.fill => c.GL_POLYGON_OFFSET_FILL,
+				.line => c.GL_POLYGON_OFFSET_LINE,
+				.point => c.GL_POLYGON_OFFSET_POINT,
+				else => unreachable,
+			});
+			c.glPolygonOffsetClamp(depthBias.slopeFactor, depthBias.constantFactor, depthBias.clamp);
+		}
+		c.glLineWidth(self.rasterState.lineWidth);
+
+		// TODO: Multisampling
+
+		conditionalEnable(c.GL_DEPTH_TEST, self.depthStencilState.depthTest);
+		c.glDepthMask(@intFromBool(self.depthStencilState.depthWrite));
+		c.glDepthFunc(switch(self.depthStencilState.depthCompare) {
+			.never => c.GL_NEVER,
+			.less => c.GL_LESS,
+			.equal => c.GL_EQUAL,
+			.lessOrEqual => c.GL_LEQUAL,
+			.greater => c.GL_GREATER,
+			.notEqual => c.GL_NOTEQUAL,
+			.greateOrEqual => c.GL_GEQUAL,
+			.always => c.GL_ALWAYS,
+		});
+		// TODO: stencilTest
+
+		// TODO: logicOp
+		for(self.blendState.attachments, 0..) |attachment, i| {
+			if(!attachment.enabled) {
+				c.glDisable(c.GL_BLEND);
+				continue;
+			}
+			c.glBlendEquationSeparatei(@intCast(i), attachment.colorBlendOp.toGl(), attachment.alphaBlendOp.toGl());
+			c.glBlendFuncSeparatei(@intCast(i), attachment.srcColorBlendFactor.toGl(), attachment.dstColorBlendFactor.toGl(), attachment.srcAlphaBlendFactor.toGl(), attachment.dstAlphaBlendFactor.toGl());
+		}
+		c.glBlendColor(self.blendState.blendConstants[0], self.blendState.blendConstants[1], self.blendState.blendConstants[2], self.blendState.blendConstants[3]);
+	}
+};
+
 pub const SSBO = struct { // MARK: SSBO
 	bufferID: c_uint,
 	pub fn init() SSBO {
