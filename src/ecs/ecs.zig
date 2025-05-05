@@ -7,22 +7,21 @@ const ZonElement = main.ZonElement;
 const Entity = main.server.Entity;
 
 const componentlist = @import("components/_components.zig");
-const systemlist = @import("systems/_systems.zig");
+const systemList = @import("systems/_systems.zig");
 
 const SparseSet = main.utils.SparseSet;
 
 pub const Components = listToEnum(componentlist);
-pub const Systems = listToEnum(systemlist);
+pub const Systems = listToEnum(systemList);
 
-pub var components: listToSparseSets(componentlist, u32) = undefined;
-pub var systems: SparseSet(SystemBitset, u32) = undefined;
+pub var componentStorage: listToSparseSets(componentlist, u16) = undefined;
 
-pub var entityTypeComponents: listToSparseSets(componentlist, u16) = undefined;
-pub var entityTypeComponentBitset: [main.entity.maxEntityTypeCount]ComponentBitset = undefined;
-pub var entityTypeSystemBitset: [main.entity.maxEntityTypeCount]SystemBitset = undefined;
+pub var componentDefaultStorage: listToSparseSets(componentlist, u16) = undefined;
+pub var componentBitsetStorage: [main.entity.maxEntityTypeCount]ComponentBitset = undefined;
+pub var systemBitsetStorage: [main.entity.maxEntityTypeCount]SystemBitset = undefined;
 
 const ComponentBitset = listToBitset(componentlist);
-const SystemBitset = listToBitset(systemlist);
+const SystemBitset = listToBitset(systemList);
 
 fn listToSparseSets(comptime list: type, comptime idType: type) type {
 	var outFields: [@typeInfo(list).@"struct".decls.len]std.builtin.Type.StructField = undefined;
@@ -88,30 +87,34 @@ fn listToEnum(comptime list: type) type {
 	}});
 }
 
+pub const EntityTypeIndex = struct {
+	index: u16,
+};
+
+pub const EntityIndex = struct {
+	index: u16,
+};
+
 pub fn addComponent(entityType: u16, comptime component: Components, zon: ZonElement) void {
 	const componentType = @field(componentlist, @tagName(component));
 
-	_ = @field(entityTypeComponents, @tagName(component)).add(entityType, componentType.loadFromZon(zon));
-	@field(entityTypeComponentBitset[entityType], @tagName(component)) = true;
+	_ = @field(componentDefaultStorage, @tagName(component)).add(entityType, componentType.loadFromZon(zon));
+	@field(componentBitsetStorage[entityType], @tagName(component)) = true;
 }
 
 pub fn addSystem(entityType: u16, comptime system: Systems) void {
-	@field(entityTypeSystemBitset[entityType], @tagName(system)) = true;
+	@field(systemBitsetStorage[entityType], @tagName(system)) = true;
 }
 
 pub fn init() void {
-	inline for (@typeInfo(@TypeOf(components)).@"struct".fields) |field| {
+	inline for (@typeInfo(@TypeOf(componentStorage)).@"struct".fields) |field| {
 		std.debug.print("{s}\n", .{field.name});
-		@field(components, field.name) = .init(main.globalAllocator);
+		@field(componentStorage, field.name) = .init(main.globalAllocator);
 	}
-	
-	systems = .init(main.globalAllocator);
 }
 
 pub fn deinit() void {
-	inline for (@typeInfo(@TypeOf(components)).@"struct".decls) |field| {
-		@field(components, field.name).deinit();
+	inline for (@typeInfo(@TypeOf(componentStorage)).@"struct".decls) |field| {
+		@field(componentStorage, field.name).deinit();
 	}
-
-	systems.deinit();
 }
