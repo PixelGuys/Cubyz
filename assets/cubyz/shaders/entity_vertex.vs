@@ -8,8 +8,7 @@ layout(location = 3) flat out vec3 normal;
 layout(location = 0) uniform mat4 projectionMatrix;
 layout(location = 1) uniform mat4 viewMatrix;
 layout(location = 2) uniform vec3 ambientLight;
-layout(location = 3) uniform vec3 directionalLight;
-layout(location = 4) uniform uint light;
+layout(location = 3) uniform uint light;
 
 struct QuadInfo {
 	vec3 normal;

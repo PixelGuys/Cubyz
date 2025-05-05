@@ -38,6 +38,11 @@ pub const stb_image = @cImport({
 	@cInclude("stb/stb_image_write.h");
 });
 
+const glslang = @cImport({
+	@cInclude("glslang/Include/glslang_c_interface.h");
+	@cInclude("glslang/Public/resource_limits_c.h");
+});
+
 pub const draw = struct { // MARK: draw
 	var color: u32 = 0;
 	var clip: ?Vec4i = null;
@@ -1203,6 +1208,7 @@ pub fn init() void { // MARK: init()
 		std.log.err("Error while initializing TextRendering: {s}", .{@errorName(err)});
 	};
 	block_texture.init();
+	if(glslang.glslang_initialize_process() == glslang.false) std.log.err("glslang_initialize_process failed", .{});
 }
 
 pub fn deinit() void {
@@ -1214,18 +1220,80 @@ pub fn deinit() void {
 	draw.deinitRectBorder();
 	TextRendering.deinit();
 	block_texture.deinit();
+	glslang.glslang_finalize_process();
 }
 
 pub const Shader = struct { // MARK: Shader
 	id: c_uint,
 
-	fn addShader(self: *const Shader, filename: []const u8, defines: []const u8, shader_stage: c_uint) !void {
+	fn compileToSpirV(allocator: NeverFailingAllocator, source: []const u8, filename: []const u8, defines: []const u8, shaderStage: glslang.glslang_stage_t) ![]c_uint {
+		const versionLineEnd = if(std.mem.indexOfScalar(u8, source, '\n')) |len| len + 1 else 0;
+		const versionLine = source[0..versionLineEnd];
+		const sourceLines = source[versionLineEnd..];
+
+		var sourceWithDefines = main.List(u8).init(main.stackAllocator);
+		defer sourceWithDefines.deinit();
+		sourceWithDefines.appendSlice(versionLine);
+		sourceWithDefines.appendSlice(defines);
+		sourceWithDefines.appendSlice(sourceLines);
+		sourceWithDefines.append(0);
+
+		const input = glslang.glslang_input_t{
+			.language = glslang.GLSLANG_SOURCE_GLSL,
+			.stage = shaderStage,
+			.client = glslang.GLSLANG_CLIENT_OPENGL,
+			.client_version = glslang.GLSLANG_TARGET_OPENGL_450,
+			.target_language = glslang.GLSLANG_TARGET_SPV,
+			.target_language_version = glslang.GLSLANG_TARGET_SPV_1_0,
+			.code = sourceWithDefines.items.ptr,
+			.default_version = 100,
+			.default_profile = glslang.GLSLANG_NO_PROFILE,
+			.force_default_version_and_profile = glslang.false,
+			.forward_compatible = glslang.false,
+			.messages = glslang.GLSLANG_MSG_DEFAULT_BIT,
+			.resource = glslang.glslang_default_resource(),
+			.callbacks = .{}, // TODO: Add support for shader includes
+			.callbacks_ctx = null,
+		};
+		const shader = glslang.glslang_shader_create(&input);
+		defer glslang.glslang_shader_delete(shader);
+		if(glslang.glslang_shader_preprocess(shader, &input) == 0) {
+			std.log.err("Error preprocessing shader {s}:\n{s}\n{s}\n", .{filename, glslang.glslang_shader_get_info_log(shader), glslang.glslang_shader_get_info_debug_log(shader)});
+			return error.FailedCompiling;
+		}
+
+		if(glslang.glslang_shader_parse(shader, &input) == 0) {
+			std.log.err("Error parsing shader {s}:\n{s}\n{s}\n", .{filename, glslang.glslang_shader_get_info_log(shader), glslang.glslang_shader_get_info_debug_log(shader)});
+			return error.FailedCompiling;
+		}
+
+		const program = glslang.glslang_program_create();
+		defer glslang.glslang_program_delete(program);
+		glslang.glslang_program_add_shader(program, shader);
+
+		if(glslang.glslang_program_link(program, glslang.GLSLANG_MSG_SPV_RULES_BIT | glslang.GLSLANG_MSG_VULKAN_RULES_BIT) == 0) {
+			std.log.err("Error linking shader {s}:\n{s}\n{s}\n", .{filename, glslang.glslang_shader_get_info_log(shader), glslang.glslang_shader_get_info_debug_log(shader)});
+			return error.FailedCompiling;
+		}
+
+		glslang.glslang_program_SPIRV_generate(program, shaderStage);
+		const result = allocator.alloc(c_uint, glslang.glslang_program_SPIRV_get_size(program));
+		glslang.glslang_program_SPIRV_get(program, result.ptr);
+		return result;
+	}
+
+	fn addShader(self: *const Shader, filename: []const u8, defines: []const u8, shaderStage: c_uint) !void {
 		const source = main.files.read(main.stackAllocator, filename) catch |err| {
 			std.log.err("Couldn't read shader file: {s}", .{filename});
 			return err;
 		};
 		defer main.stackAllocator.free(source);
-		const shader = c.glCreateShader(shader_stage);
+
+		// SPIR-V will be used for the Vulkan, now it's completely useless due to lack of support in Vulkan drivers
+		const glslangStage: glslang.glslang_stage_t = if(shaderStage == c.GL_VERTEX_SHADER) glslang.GLSLANG_STAGE_VERTEX else if(shaderStage == c.GL_FRAGMENT_SHADER) glslang.GLSLANG_STAGE_FRAGMENT else glslang.GLSLANG_STAGE_COMPUTE;
+		main.stackAllocator.free(try compileToSpirV(main.stackAllocator, source, filename, defines, glslangStage));
+
+		const shader = c.glCreateShader(shaderStage);
 		defer c.glDeleteShader(shader);
 
 		const versionLineEnd = if(std.mem.indexOfScalar(u8, source, '\n')) |len| len + 1 else 0;
@@ -1251,7 +1319,7 @@ pub const Shader = struct { // MARK: Shader
 		c.glAttachShader(self.id, shader);
 	}
 
-	fn link(self: *const Shader) !void {
+	fn link(self: *const Shader, file: []const u8) !void {
 		c.glLinkProgram(self.id);
 
 		var success: c_int = undefined;
@@ -1261,7 +1329,7 @@ pub const Shader = struct { // MARK: Shader
 			c.glGetProgramiv(self.id, c.GL_INFO_LOG_LENGTH, @ptrCast(&len));
 			var buf: [4096]u8 = undefined;
 			c.glGetProgramInfoLog(self.id, 4096, @ptrCast(&len), &buf);
-			std.log.err("Error Linking Shader program:\n{s}\n", .{buf[0..len]});
+			std.log.err("Error Linking Shader program {s}:\n{s}\n", .{file, buf[0..len]});
 			return error.FailedLinking;
 		}
 	}
@@ -1270,7 +1338,7 @@ pub const Shader = struct { // MARK: Shader
 		const shader = Shader{.id = c.glCreateProgram()};
 		shader.addShader(vertex, defines, c.GL_VERTEX_SHADER) catch return shader;
 		shader.addShader(fragment, defines, c.GL_FRAGMENT_SHADER) catch return shader;
-		shader.link() catch return shader;
+		shader.link(fragment) catch return shader;
 		return shader;
 	}
 
@@ -1287,7 +1355,7 @@ pub const Shader = struct { // MARK: Shader
 	pub fn initCompute(compute: []const u8, defines: []const u8) Shader {
 		const shader = Shader{.id = c.glCreateProgram()};
 		shader.addShader(compute, defines, c.GL_COMPUTE_SHADER) catch return shader;
-		shader.link() catch return shader;
+		shader.link(compute) catch return shader;
 		return shader;
 	}
 

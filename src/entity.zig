@@ -90,7 +90,6 @@ pub const ClientEntityManager = struct {
 		light: c_int,
 		contrast: c_int,
 		ambientLight: c_int,
-		directionalLight: c_int,
 	} = undefined;
 	var modelBuffer: main.graphics.SSBO = undefined;
 	var modelSize: c_int = 0;
@@ -167,7 +166,7 @@ pub const ClientEntityManager = struct {
 		}
 	}
 
-	pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, directionalLight: Vec3f, playerPos: Vec3d) void {
+	pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
 		mutex.lock();
 		defer mutex.unlock();
 		update();
@@ -176,7 +175,6 @@ pub const ClientEntityManager = struct {
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 		modelTexture.bindTo(0);
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
-		c.glUniform3fv(uniforms.directionalLight, 1, @ptrCast(&directionalLight));
 		c.glUniform1f(uniforms.contrast, 0.12);
 
 		for(entities.items()) |ent| {
