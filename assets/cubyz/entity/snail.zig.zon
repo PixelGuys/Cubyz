@@ -1,6 +1,6 @@
 .{
 	.components = .{
-		.tranform = .{},
+		.transform = .{},
 		.model = .{
 			.model = "cubyz:snail_snail",
 			.texture = "cubyz:snail_snail",
