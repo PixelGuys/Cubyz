@@ -31,6 +31,7 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 pub const c = @cImport({
 	@cInclude("glad/glad.h");
+	@cInclude("vulkan/vulkan.h");
 });
 
 pub const stb_image = @cImport({
