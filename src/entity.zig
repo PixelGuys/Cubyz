@@ -153,7 +153,7 @@ pub const ClientEntityManager = struct {
 	pub fn renderNames(projMatrix: Mat4f, playerPos: Vec3d) void {
 		mutex.lock();
 		defer mutex.unlock();
-		
+
 		for(entities.items()) |ent| {
 			if(ent.id == game.Player.id or ent.name.len == 0) continue; // don't render local player
 
