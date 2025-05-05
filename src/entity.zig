@@ -105,7 +105,6 @@ pub const ClientEntityManager = struct {
 	var uniforms: struct {
 		projectionMatrix: c_int,
 		viewMatrix: c_int,
-		texture_sampler: c_int,
 		light: c_int,
 		contrast: c_int,
 		ambientLight: c_int,

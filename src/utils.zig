@@ -338,10 +338,51 @@ pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: 
 			allocator.destroy(self.mem);
 		}
 
-		pub fn enqueue(self: *Self, elem: T) !void {
+		pub fn peekFront(self: Self) ?T {
+			if(self.len == 0) return null;
+			return self.mem[self.startIndex + self.len - 1 & mask];
+		}
+
+		pub fn peekBack(self: Self) ?T {
+			if(self.len == 0) return null;
+			return self.mem[self.startIndex];
+		}
+
+		pub fn enqueueFront(self: *Self, elem: T) !void {
 			if(self.len >= capacity) return error.OutOfMemory;
+			self.enqueueFrontAssumeCapacity(elem);
+		}
+
+		pub fn forceEnqueueFront(self: *Self, elem: T) ?T {
+			const result = if(self.len >= capacity) self.dequeueBack() else null;
+			self.enqueueFrontAssumeCapacity(elem);
+			return result;
+		}
+
+		pub fn enqueueFrontAssumeCapacity(self: *Self, elem: T) void {
 			self.mem[self.startIndex + self.len & mask] = elem;
 			self.len += 1;
+		}
+
+		pub fn enqueue(self: *Self, elem: T) !void {
+			return self.enqueueFront(elem);
+		}
+
+		pub fn enqueueBack(self: *Self, elem: T) !void {
+			if(self.len >= capacity) return error.OutOfMemory;
+			self.enqueueBackAssumeCapacity(elem);
+		}
+
+		pub fn enqueueBackAssumeCapacity(self: *Self, elem: T) void {
+			self.startIndex = (self.startIndex -% 1) & mask;
+			self.mem[self.startIndex] = elem;
+			self.len += 1;
+		}
+
+		pub fn forceEnqueueBack(self: *Self, elem: T) ?T {
+			const result = if(self.len >= capacity) self.dequeueFront() else null;
+			self.enqueueBackAssumeCapacity(elem);
+			return result;
 		}
 
 		pub fn enqueueSlice(self: *Self, elems: []const T) !void {
@@ -377,6 +418,16 @@ pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: 
 		}
 
 		pub fn dequeue(self: *Self) ?T {
+			return self.dequeueBack();
+		}
+
+		pub fn dequeueFront(self: *Self) ?T {
+			if(self.len == 0) return null;
+			self.len -= 1;
+			return self.mem[self.startIndex + self.len & mask];
+		}
+
+		pub fn dequeueBack(self: *Self) ?T {
 			if(self.len == 0) return null;
 			const result = self.mem[self.startIndex];
 			self.startIndex = (self.startIndex + 1) & mask;

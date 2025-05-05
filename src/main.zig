@@ -304,6 +304,7 @@ fn openChat() void {
 	gui.windowlist.chat.input.select();
 }
 fn openCommand() void {
+	if(game.world == null) return;
 	openChat();
 	gui.windowlist.chat.input.clear();
 	gui.windowlist.chat.input.inputCharacter('/');
