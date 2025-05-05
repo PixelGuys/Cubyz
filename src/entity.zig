@@ -370,8 +370,9 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 
 	if (systems == .array) {
 		for (systems.array.items) |item| {
-			const system = std.meta.stringToEnum(ecs.Systems, item.as([]const u8, "")) orelse {
-				std.log.err("Unknown system {s} for entity {s}.", .{item, id});
+			const systemStr = item.as([]const u8, "");
+			const system = std.meta.stringToEnum(ecs.Systems, systemStr) orelse {
+				std.log.err("Unknown system {s} for entity {s}.", .{systemStr, id});
 				return 0;
 			};
 
