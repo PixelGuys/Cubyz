@@ -670,6 +670,8 @@ pub const World = struct { // MARK: World
 		network.Protocols.handShake.clientSide(self.conn, settings.playerName);
 
 		main.Window.setMouseGrabbed(true);
+
+		main.ecs.finalize();
 		
 		main.entity.ClientEntityManager.generateModel();
 		main.entity.meshes.generateTextureArray();

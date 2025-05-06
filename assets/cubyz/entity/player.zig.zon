@@ -8,6 +8,9 @@
 		.health = .{
 			.maxHealth = 8,
 		},
+		.energy = .{
+			.maxEnergy = 8,
+		},
 	},
 	.systems = .{
 		.render,

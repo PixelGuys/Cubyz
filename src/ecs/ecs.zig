@@ -124,10 +124,10 @@ pub const EntityIndex = struct {
 	index: u16,
 };
 
-pub fn addComponent(entityType: u16, comptime component: Components, zon: ZonElement) void {
+pub fn addComponent(entityType: u16, assetFolder: []const u8, id: []const u8, comptime component: Components, zon: ZonElement) void {
 	const componentType = @field(componentlist, @tagName(component));
 
-	_ = @field(componentDefaultStorage, @tagName(component)).add(entityType, componentType.loadFromZon(zon));
+	_ = @field(componentDefaultStorage, @tagName(component)).add(entityType, componentType.loadFromZon(assetFolder, id, zon));
 	@field(componentBitsetStorage[entityType], @tagName(component)) = true;
 }
 
@@ -161,4 +161,12 @@ pub fn init() void {
 
 pub fn deinit() void {
 	ecsArena.deinit();
+}
+
+pub fn finalize() void {
+	inline for (@typeInfo(@TypeOf(componentDefaultStorage)).@"struct".fields) |field| {
+		if (@hasField(@field(componentlist, field.name), "finalize")) {
+			@field(componentlist, field.name).finalize();
+		}
+	}
 }

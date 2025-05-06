@@ -13,7 +13,7 @@ const Transform = @This();
 pos: Vec3d = .{0, 0, 0},
 rot: Vec3f = .{0, 0, 0},
 
-pub fn loadFromZon(_: ZonElement) Transform {
+pub fn loadFromZon(_: []const u8, _: []const u8, _: ZonElement) Transform {
 	return .{};
 }
 
