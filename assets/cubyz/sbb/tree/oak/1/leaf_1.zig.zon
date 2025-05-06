@@ -1,4 +1,0 @@
-.{
-	.blueprint = "cubyz:tree/oak/1/leaf_1",
-	.children = .{},
-}
