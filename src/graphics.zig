@@ -1711,7 +1711,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 		conditionalEnable(c.GL_DEPTH_CLAMP, self.rasterState.depthClamp);
 		conditionalEnable(c.GL_RASTERIZER_DISCARD, self.rasterState.rasterizerDiscard);
 		conditionalEnable(c.GL_RASTERIZER_DISCARD, self.rasterState.rasterizerDiscard);
-		c.glPolygonMode(c.GL_FRONT_AND_BACK, switch (self.rasterState.polygonMode) {
+		c.glPolygonMode(c.GL_FRONT_AND_BACK, switch(self.rasterState.polygonMode) {
 			.fill => c.GL_FILL,
 			.line => c.GL_LINE,
 			.point => c.GL_POINT,
@@ -1719,7 +1719,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 		});
 		if(self.rasterState.cullMode != .none) {
 			c.glEnable(c.GL_CULL_FACE);
-			c.glCullFace(switch (self.rasterState.cullMode) {
+			c.glCullFace(switch(self.rasterState.cullMode) {
 				.front => c.GL_FRONT,
 				.back => c.GL_BACK,
 				.frontAndBack => c.GL_FRONT_AND_BACK,
@@ -1734,7 +1734,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 		});
 		if(self.rasterState.depthBias) |depthBias| {
 			c.glEnable(c.GL_POLYGON_OFFSET_CLAMP);
-			c.glEnable(switch (self.rasterState.polygonMode) {
+			c.glEnable(switch(self.rasterState.polygonMode) {
 				.fill => c.GL_POLYGON_OFFSET_FILL,
 				.line => c.GL_POLYGON_OFFSET_LINE,
 				.point => c.GL_POLYGON_OFFSET_POINT,
