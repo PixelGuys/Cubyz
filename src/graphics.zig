@@ -1343,11 +1343,13 @@ pub const Shader = struct { // MARK: Shader
 		return shader;
 	}
 
-	pub fn initAndGetUniforms(vertex: []const u8, fragment: []const u8, defines: []const u8, ptrToUniformStruct: anytype) Shader {
+	pub fn initAndGetUniforms(vertex: []const u8, fragment: []const u8, defines: []const u8, uniformStruct: anytype) Shader {
 		const self = Shader.init(vertex, fragment, defines);
-		inline for(@typeInfo(@TypeOf(ptrToUniformStruct.*)).@"struct".fields) |field| {
-			if(field.type == c_int) {
-				@field(ptrToUniformStruct, field.name) = c.glGetUniformLocation(self.id, field.name[0..]);
+		if(@TypeOf(uniformStruct) != @TypeOf(undefined)) {
+			inline for(@typeInfo(@TypeOf(uniformStruct.*)).@"struct".fields) |field| {
+				if(field.type == c_int) {
+					@field(uniformStruct, field.name) = c.glGetUniformLocation(self.id, field.name[0..]);
+				}
 			}
 		}
 		return self;
@@ -1379,7 +1381,7 @@ pub const Shader = struct { // MARK: Shader
 	}
 };
 
-pub const GraphicsPipeline = struct { // MARK: GraphicsPipeline
+pub const Pipeline = struct { // MARK: Pipeline
 	shader: Shader,
 	rasterState: RasterizationState,
 	multisampleState: MultisampleState = .{}, // TODO: Not implemented
@@ -1444,7 +1446,7 @@ pub const GraphicsPipeline = struct { // MARK: GraphicsPipeline
 	const DepthStencilState = struct {
 		depthTest: bool,
 		depthWrite: bool = true,
-		depthCompare: CompareOp,
+		depthCompare: CompareOp = .less,
 		depthBoundsTest: ?DepthBoundsTest = null,
 		stencilTest: ?StencilTest = null,
 
@@ -1508,6 +1510,15 @@ pub const GraphicsPipeline = struct { // MARK: GraphicsPipeline
 			.srcAlphaBlendFactor = .srcAlpha,
 			.dstAlphaBlendFactor = .oneMinusSrcAlpha,
 			.alphaBlendOp = .add,
+		};
+		pub const noBlending: ColorBlendAttachmentState = .{
+			.enabled = false,
+			.srcColorBlendFactor = undefined,
+			.dstColorBlendFactor = undefined,
+			.colorBlendOp = undefined,
+			.srcAlphaBlendFactor = undefined,
+			.dstAlphaBlendFactor = undefined,
+			.alphaBlendOp = undefined,
 		};
 
 		const BlendFactor = enum(c.VkBlendFactor) {
@@ -1608,13 +1619,13 @@ pub const GraphicsPipeline = struct { // MARK: GraphicsPipeline
 		};
 	};
 
-	pub fn init(vertexPath: []const u8, fragmentPath: []const u8, defines: []const u8, rasterState: RasterizationState, depthStencilState: DepthStencilState, blendState: ColorBlendState) GraphicsPipeline {
+	pub fn init(vertexPath: []const u8, fragmentPath: []const u8, defines: []const u8, uniformStruct: anytype, rasterState: RasterizationState, depthStencilState: DepthStencilState, blendState: ColorBlendState) Pipeline {
 		std.debug.assert(depthStencilState.depthBoundsTest == null); // Only available in Vulkan 1.3
 		std.debug.assert(depthStencilState.stencilTest == null); // TODO: Not yet implemented
 		std.debug.assert(rasterState.lineWidth <= 1); // Larger values are poorly supported among drivers
 		std.debug.assert(blendState.logicOp == null); // TODO: Not yet implemented
 		return .{
-			.shader = .init(vertexPath, fragmentPath, defines),
+			.shader = .initAndGetUniforms(vertexPath, fragmentPath, defines, uniformStruct),
 			.rasterState = rasterState,
 			.multisampleState = .{}, // TODO: Not implemented
 			.depthStencilState = depthStencilState,
@@ -1622,7 +1633,7 @@ pub const GraphicsPipeline = struct { // MARK: GraphicsPipeline
 		};
 	}
 
-	pub fn deinit(self: GraphicsPipeline) void {
+	pub fn deinit(self: Pipeline) void {
 		self.shader.deinit();
 	}
 
@@ -1634,7 +1645,7 @@ pub const GraphicsPipeline = struct { // MARK: GraphicsPipeline
 		}
 	}
 
-	pub fn bind(self: GraphicsPipeline, scissor: ?*const c.VkRect2D) void {
+	pub fn bind(self: Pipeline, scissor: ?c.VkRect2D) void {
 		self.shader.bind();
 		if(scissor) |s| {
 			c.glEnable(c.GL_SCISSOR_TEST);
@@ -1652,12 +1663,12 @@ pub const GraphicsPipeline = struct { // MARK: GraphicsPipeline
 			.point => c.GL_POINT,
 			else => unreachable,
 		});
-		if(self.rasterState.cullMode != .frontAndBack) {
+		if(self.rasterState.cullMode != .none) {
 			c.glEnable(c.GL_CULL_FACE);
 			c.glCullFace(switch (self.rasterState.cullMode) {
-				.none => c.GL_NONE,
 				.front => c.GL_FRONT,
 				.back => c.GL_BACK,
+				.frontAndBack => c.GL_FRONT_AND_BACK,
 				else => unreachable,
 			});
 		} else {
@@ -1701,6 +1712,7 @@ pub const GraphicsPipeline = struct { // MARK: GraphicsPipeline
 				c.glDisable(c.GL_BLEND);
 				continue;
 			}
+			c.glEnable(c.GL_BLEND);
 			c.glBlendEquationSeparatei(@intCast(i), attachment.colorBlendOp.toGl(), attachment.alphaBlendOp.toGl());
 			c.glBlendFuncSeparatei(@intCast(i), attachment.srcColorBlendFactor.toGl(), attachment.dstColorBlendFactor.toGl(), attachment.srcAlphaBlendFactor.toGl(), attachment.dstAlphaBlendFactor.toGl());
 		}
