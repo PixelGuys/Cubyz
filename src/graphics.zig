@@ -1622,6 +1622,10 @@ pub const GraphicsPipeline = struct { // MARK: GraphicsPipeline
 		};
 	}
 
+	pub fn deinit(self: GraphicsPipeline) void {
+		self.shader.deinit();
+	}
+
 	fn conditionalEnable(typ: c.GLenum, val: bool) void {
 		if(val) {
 			c.glEnable(typ);
@@ -1630,16 +1634,14 @@ pub const GraphicsPipeline = struct { // MARK: GraphicsPipeline
 		}
 	}
 
-	pub fn bind(self: GraphicsPipeline, viewPort: *const c.VkViewport, scissor: ?*const c.VkRect2D) void {
+	pub fn bind(self: GraphicsPipeline, scissor: ?*const c.VkRect2D) void {
 		self.shader.bind();
-		c.glViewport(@intFromFloat(viewPort.x), @intFromFloat(viewPort.y), @intFromFloat(viewPort.width), @intFromFloat(viewPort.height));
 		if(scissor) |s| {
 			c.glEnable(c.GL_SCISSOR_TEST);
 			c.glScissor(s.offset.x, s.offset.y, @intCast(s.extent.width), @intCast(s.extent.height));
 		} else {
 			c.glDisable(c.GL_SCISSOR_TEST);
 		}
-		c.glDepthRange(viewPort.minDepth, viewPort.maxDepth);
 
 		conditionalEnable(c.GL_DEPTH_CLAMP, self.rasterState.depthClamp);
 		conditionalEnable(c.GL_RASTERIZER_DISCARD, self.rasterState.rasterizerDiscard);
