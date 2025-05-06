@@ -16,3 +16,23 @@ pub fn loadFromZon(zon: ZonElement) Health {
 		.health = maxHealth,
 	};
 }
+
+pub fn copy(self: *Health) Health {
+	return .{
+		.maxHealth = self.maxHealth,
+		.health = self.health,
+	};
+}
+
+pub fn serialize(self: *Health, writer: *main.utils.BinaryWriter) !void {
+	try writer.writeEnum(main.ecs.Components, .health);
+	try writer.writeFloat(f32, self.maxHealth);
+	try writer.writeFloat(f32, self.health);
+}
+
+pub fn deserialize(reader: *main.utils.BinaryReader) !Health {
+	return .{
+		.maxHealth = try reader.readFloat(f32),
+		.health = try reader.readFloat(f32),
+	};
+}

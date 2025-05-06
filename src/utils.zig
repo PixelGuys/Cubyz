@@ -1781,6 +1781,7 @@ const ReadWriteTest = struct {
 };
 
 pub fn SparseSet(comptime T: type, comptime idType: type) type { // MARK: SparseSet
+	std.debug.assert(@typeInfo(idType) == .int);
 	std.debug.assert(@typeInfo(idType).int.signedness == .unsigned);
 
 	return struct {
@@ -1811,15 +1812,13 @@ pub fn SparseSet(comptime T: type, comptime idType: type) type { // MARK: Sparse
 			self.freeList.deinit();
 		}
 
-		pub fn nextFreeId(self: *@This()) idType {
-			return self.freeList.popOrNull() orelse @intCast(self.sparse.items.len);
-		}
-
 		pub fn contains(self: *@This(), id: idType) bool {
 			return id < self.sparse.items.len and self.sparse.items[id] != noValue;
 		}
 
-		pub fn add(self: *@This(), sparseId: idType, value: T) idType {
+		pub fn add(self: *@This(), value: T) idType {
+			const sparseId: idType = self.freeList.popOrNull() orelse @intCast(self.sparse.items.len);
+
 			if (sparseId >= self.sparse.items.len) {
 				self.sparse.appendNTimes(noValue, sparseId - self.sparse.items.len + 1);
 			}

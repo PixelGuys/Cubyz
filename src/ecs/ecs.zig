@@ -14,14 +14,19 @@ const SparseSet = main.utils.SparseSet;
 pub const Components = listToEnum(componentlist);
 pub const Systems = listToEnum(systemList);
 
-pub var componentStorage: listToSparseSets(componentlist, u16) = undefined;
-
-pub var componentDefaultStorage: listToSparseSets(componentlist, u16) = undefined;
-pub var componentBitsetStorage: [main.entity.maxEntityTypeCount]ComponentBitset = undefined;
-pub var systemBitsetStorage: [main.entity.maxEntityTypeCount]SystemBitset = undefined;
-
 const ComponentBitset = listToBitset(componentlist);
 const SystemBitset = listToBitset(systemList);
+const ComponentIds = listToIds(componentlist);
+
+var ecsArena: main.heap.NeverFailingArenaAllocator = .init(main.globalAllocator);
+var ecsAllocator: main.heap.NeverFailingAllocator = ecsArena.allocator();
+
+var componentStorage: listToSparseSets(componentlist, u16) = undefined;
+var componentIdStorage: SparseSet(ComponentIds, u16) = undefined;
+
+var componentDefaultStorage: listToSparseSets(componentlist, u16) = undefined;
+var componentBitsetStorage: [main.entity.maxEntityTypeCount]ComponentBitset = undefined;
+var systemBitsetStorage: [main.entity.maxEntityTypeCount]SystemBitset = undefined;
 
 fn listToSparseSets(comptime list: type, comptime idType: type) type {
 	var outFields: [@typeInfo(list).@"struct".decls.len]std.builtin.Type.StructField = undefined;
@@ -35,6 +40,28 @@ fn listToSparseSets(comptime list: type, comptime idType: type) type {
 			.default_value_ptr = null,
 			.is_comptime = false,
 			.alignment = @alignOf(SparseSet(typ, idType)),
+		};
+	}
+
+	return @Type(.{.@"struct" = .{
+		.layout = .auto,
+        .fields = &outFields,
+        .decls = &.{},
+        .is_tuple = false,
+	}});
+}
+
+fn listToIds(comptime list: type) type {
+	var outFields: [@typeInfo(list).@"struct".decls.len]std.builtin.Type.StructField = undefined;
+
+	for (@typeInfo(list).@"struct".decls, 0..) |decl, i| {
+		const name = decl.name;
+		outFields[i] = .{
+			.name = name,
+			.type = u16,
+			.default_value_ptr = null,
+			.is_comptime = false,
+			.alignment = @alignOf(u16),
 		};
 	}
 
@@ -106,15 +133,28 @@ pub fn addSystem(entityType: u16, comptime system: Systems) void {
 	@field(systemBitsetStorage[entityType], @tagName(system)) = true;
 }
 
+pub fn addEntity(entityType: u16) u32 {
+	var ids: ComponentIds = undefined;
+	inline for (@typeInfo(@TypeOf(componentStorage)).@"struct".fields) |field| {
+		var default = @field(componentDefaultStorage, field.name);
+		const id = @field(componentStorage, field.name).add(default.copy());
+		@field(ids, field.name) = id;
+	}
+
+}
+
 pub fn init() void {
 	inline for (@typeInfo(@TypeOf(componentStorage)).@"struct".fields) |field| {
-		std.debug.print("{s}\n", .{field.name});
-		@field(componentStorage, field.name) = .init(main.globalAllocator);
+		@field(componentStorage, field.name) = .init(ecsAllocator);
 	}
+
+	inline for (@typeInfo(@TypeOf(componentDefaultStorage)).@"struct".fields) |field| {
+		@field(componentDefaultStorage, field.name) = .init(ecsAllocator);
+	}
+
+	componentIdStorage = .init(ecsAllocator);
 }
 
 pub fn deinit() void {
-	inline for (@typeInfo(@TypeOf(componentStorage)).@"struct".decls) |field| {
-		@field(componentStorage, field.name).deinit();
-	}
+	ecsArena.deinit();
 }
