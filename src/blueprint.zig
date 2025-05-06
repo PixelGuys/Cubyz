@@ -373,24 +373,24 @@ pub fn GenericMask(comptime Context: type) type {
 						property => {
 							const propertyName = specifier[1..];
 							const propertyValue = std.meta.stringToEnum(Property, propertyName) orelse return error.MaskSyntaxError;
-							return .{.property = propertyValue};
+							return .{.blockProperty = propertyValue};
 						},
 						else => {
-							return .{.block = try Context.parseBlockLike(specifier)};
+							return .{.blockLike = try Context.parseBlockLike(specifier)};
 						},
 					}
 				}
 
 				fn match(self: Inner, block: Block) bool {
 					return switch(self) {
-						.block => block.typ == self.blockLike.typ and (self.blockLike.data == null or block.data == self.blockLike.data),
+						.blockLike => block.typ == self.blockLike.typ and (self.blockLike.data == null or block.data == self.blockLike.data),
 						.blockTag => |desired| {
 							for(block.blockTags()) |current| {
 								if(desired == current) return true;
 							}
 							return false;
 						},
-						.property => |prop| return switch(prop) {
+						.blockProperty => |prop| return switch(prop) {
 							.transparent => block.transparent(),
 							.collide => block.collide(),
 							.solid => block.solid(),
