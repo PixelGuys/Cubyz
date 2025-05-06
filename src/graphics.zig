@@ -103,23 +103,29 @@ pub const draw = struct { // MARK: draw
 			}
 			newClip[2] = @max(newClip[2], 0);
 			newClip[3] = @max(newClip[3], 0);
-		} else {
-			c.glEnable(c.GL_SCISSOR_TEST);
 		}
-		c.glScissor(newClip[0], newClip[1], newClip[2], newClip[3]);
 		const oldClip = clip;
 		clip = newClip;
 		return oldClip;
 	}
 
+	pub fn getScissor() ?c.VkRect2D {
+		const clipRect = clip orelse return null;
+		return .{
+			.offset = .{
+				.x = clipRect[0],
+				.y = clipRect[1],
+			},
+			.extent = .{
+				.width = @intCast(clipRect[2]),
+				.height = @intCast(clipRect[3]),
+			},
+		};
+	}
+
 	/// Should be used to restore the old clip when leaving the render function.
 	pub fn restoreClip(previousClip: ?Vec4i) void {
 		clip = previousClip;
-		if(clip) |clipRef| {
-			c.glScissor(clipRef[0], clipRef[1], clipRef[2], clipRef[3]);
-		} else {
-			c.glDisable(c.GL_SCISSOR_TEST);
-		}
 	}
 
 	// ----------------------------------------------------------------------------
@@ -130,12 +136,20 @@ pub const draw = struct { // MARK: draw
 		size: c_int,
 		rectColor: c_int,
 	} = undefined;
-	var rectShader: Shader = undefined;
+	var rectPipeline: Pipeline = undefined;
 	pub var rectVAO: c_uint = undefined;
 	var rectVBO: c_uint = undefined;
 
 	fn initRect() void {
-		rectShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Rect.vs", "assets/cubyz/shaders/graphics/Rect.fs", "", &rectUniforms);
+		rectPipeline = Pipeline.init(
+			"assets/cubyz/shaders/graphics/Rect.vs",
+			"assets/cubyz/shaders/graphics/Rect.fs",
+			"",
+			&rectUniforms,
+			.{.cullMode = .none},
+			.{.depthTest = false, .depthWrite = false},
+			.{.attachments = &.{.alphaBlending}},
+		);
 		const rawData = [_]f32{
 			0, 0,
 			0, 1,
@@ -153,7 +167,7 @@ pub const draw = struct { // MARK: draw
 	}
 
 	fn deinitRect() void {
-		rectShader.deinit();
+		rectPipeline.deinit();
 		c.glDeleteVertexArrays(1, &rectVAO);
 		c.glDeleteBuffers(1, &rectVBO);
 	}
@@ -165,7 +179,7 @@ pub const draw = struct { // MARK: draw
 		pos += translation;
 		dim *= @splat(scale);
 
-		rectShader.bind();
+		rectPipeline.bind(getScissor());
 
 		c.glUniform2f(rectUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
 		c.glUniform2f(rectUniforms.start, pos[0], pos[1]);
@@ -185,12 +199,20 @@ pub const draw = struct { // MARK: draw
 		rectColor: c_int,
 		lineWidth: c_int,
 	} = undefined;
-	var rectBorderShader: Shader = undefined;
+	var rectBorderPipeline: Pipeline = undefined;
 	var rectBorderVAO: c_uint = undefined;
 	var rectBorderVBO: c_uint = undefined;
 
 	fn initRectBorder() void {
-		rectBorderShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/RectBorder.vs", "assets/cubyz/shaders/graphics/RectBorder.fs", "", &rectBorderUniforms);
+		rectBorderPipeline = Pipeline.init(
+			"assets/cubyz/shaders/graphics/RectBorder.vs",
+			"assets/cubyz/shaders/graphics/RectBorder.fs",
+			"",
+			&rectBorderUniforms,
+			.{.cullMode = .none},
+			.{.depthTest = false, .depthWrite = false},
+			.{.attachments = &.{.alphaBlending}},
+		);
 		const rawData = [_]f32{
 			0, 0, 0,  0,
 			0, 0, 1,  1,
@@ -214,7 +236,7 @@ pub const draw = struct { // MARK: draw
 	}
 
 	fn deinitRectBorder() void {
-		rectBorderShader.deinit();
+		rectBorderPipeline.deinit();
 		c.glDeleteVertexArrays(1, &rectBorderVAO);
 		c.glDeleteBuffers(1, &rectBorderVBO);
 	}
@@ -228,7 +250,7 @@ pub const draw = struct { // MARK: draw
 		dim *= @splat(scale);
 		width *= scale;
 
-		rectBorderShader.bind();
+		rectBorderPipeline.bind(getScissor());
 
 		c.glUniform2f(rectBorderUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
 		c.glUniform2f(rectBorderUniforms.start, pos[0], pos[1]);
@@ -248,12 +270,20 @@ pub const draw = struct { // MARK: draw
 		direction: c_int,
 		lineColor: c_int,
 	} = undefined;
-	var lineShader: Shader = undefined;
+	var linePipeline: Pipeline = undefined;
 	var lineVAO: c_uint = undefined;
 	var lineVBO: c_uint = undefined;
 
 	fn initLine() void {
-		lineShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Line.vs", "assets/cubyz/shaders/graphics/Line.fs", "", &lineUniforms);
+		linePipeline = Pipeline.init(
+			"assets/cubyz/shaders/graphics/Line.vs",
+			"assets/cubyz/shaders/graphics/Line.fs",
+			"",
+			&lineUniforms,
+			.{.cullMode = .none},
+			.{.depthTest = false, .depthWrite = false},
+			.{.attachments = &.{.alphaBlending}},
+		);
 		const rawData = [_]f32{
 			0, 0,
 			1, 1,
@@ -269,7 +299,7 @@ pub const draw = struct { // MARK: draw
 	}
 
 	fn deinitLine() void {
-		lineShader.deinit();
+		linePipeline.deinit();
 		c.glDeleteVertexArrays(1, &lineVAO);
 		c.glDeleteBuffers(1, &lineVBO);
 	}
@@ -282,7 +312,7 @@ pub const draw = struct { // MARK: draw
 		pos2 *= @splat(scale);
 		pos2 += translation;
 
-		lineShader.bind();
+		linePipeline.bind(getScissor());
 
 		c.glUniform2f(lineUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
 		c.glUniform2f(lineUniforms.start, pos1[0], pos1[1]);
@@ -328,7 +358,7 @@ pub const draw = struct { // MARK: draw
 		pos += translation;
 		dim *= @splat(scale);
 
-		lineShader.bind();
+		linePipeline.bind(getScissor());
 
 		c.glUniform2f(lineUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
 		c.glUniform2f(lineUniforms.start, pos[0], pos[1]); // Move the coordinates, so they are in the center of a pixel.
@@ -347,12 +377,20 @@ pub const draw = struct { // MARK: draw
 		radius: c_int,
 		circleColor: c_int,
 	} = undefined;
-	var circleShader: Shader = undefined;
+	var circlePipeline: Pipeline = undefined;
 	var circleVAO: c_uint = undefined;
 	var circleVBO: c_uint = undefined;
 
 	fn initCircle() void {
-		circleShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Circle.vs", "assets/cubyz/shaders/graphics/Circle.fs", "", &circleUniforms);
+		circlePipeline = Pipeline.init(
+			"assets/cubyz/shaders/graphics/Circle.vs",
+			"assets/cubyz/shaders/graphics/Circle.fs",
+			"",
+			&circleUniforms,
+			.{.cullMode = .none},
+			.{.depthTest = false, .depthWrite = false},
+			.{.attachments = &.{.alphaBlending}},
+		);
 		const rawData = [_]f32{
 			-1, -1,
 			-1, 1,
@@ -370,7 +408,7 @@ pub const draw = struct { // MARK: draw
 	}
 
 	fn deinitCircle() void {
-		circleShader.deinit();
+		circlePipeline.deinit();
 		c.glDeleteVertexArrays(1, &circleVAO);
 		c.glDeleteBuffers(1, &circleVBO);
 	}
@@ -381,7 +419,7 @@ pub const draw = struct { // MARK: draw
 		center *= @splat(scale);
 		center += translation;
 		radius *= scale;
-		circleShader.bind();
+		circlePipeline.bind(getScissor());
 
 		c.glUniform2f(circleUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
 		c.glUniform2f(circleUniforms.center, center[0], center[1]); // Move the coordinates, so they are in the center of a pixel.
@@ -403,14 +441,22 @@ pub const draw = struct { // MARK: draw
 		uvOffset: c_int,
 		uvDim: c_int,
 	} = undefined;
-	var imageShader: Shader = undefined;
+	var imagePipeline: Pipeline = undefined;
 
 	fn initImage() void {
-		imageShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Image.vs", "assets/cubyz/shaders/graphics/Image.fs", "", &imageUniforms);
+		imagePipeline = Pipeline.init(
+			"assets/cubyz/shaders/graphics/Image.vs",
+			"assets/cubyz/shaders/graphics/Image.fs",
+			"",
+			&imageUniforms,
+			.{.cullMode = .none},
+			.{.depthTest = false, .depthWrite = false},
+			.{.attachments = &.{.alphaBlending}},
+		);
 	}
 
 	fn deinitImage() void {
-		imageShader.deinit();
+		imagePipeline.deinit();
 	}
 
 	pub fn boundImage(_pos: Vec2f, _dim: Vec2f) void {
@@ -422,7 +468,7 @@ pub const draw = struct { // MARK: draw
 		pos = @floor(pos);
 		dim = @ceil(dim);
 
-		imageShader.bind();
+		imagePipeline.bind(getScissor());
 
 		c.glUniform2f(imageUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
 		c.glUniform2f(imageUniforms.start, pos[0], pos[1]);
@@ -444,7 +490,7 @@ pub const draw = struct { // MARK: draw
 		pos = @floor(pos);
 		dim = @ceil(dim);
 
-		imageShader.bind();
+		imagePipeline.bind(getScissor());
 
 		c.glUniform2f(imageUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
 		c.glUniform2f(imageUniforms.start, pos[0], pos[1]);
@@ -929,7 +975,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		defer draw.restoreScale(oldScale);
 		var x: f32 = 0;
 		var y: f32 = 0;
-		TextRendering.shader.bind();
+		TextRendering.pipeline.bind(draw.getScissor());
 		c.glUniform2f(TextRendering.uniforms.scene, @floatFromInt(main.Window.width), @floatFromInt(main.Window.height));
 		c.glUniform1f(TextRendering.uniforms.ratio, draw.scale);
 		c.glUniform1f(TextRendering.uniforms.alpha, @as(f32, @floatFromInt(draw.color >> 24))/255.0);
@@ -995,7 +1041,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		defer draw.restoreScale(oldScale);
 		var x: f32 = 0;
 		var y: f32 = 0;
-		TextRendering.shader.bind();
+		TextRendering.pipeline.bind(draw.getScissor());
 		c.glUniform2f(TextRendering.uniforms.scene, @floatFromInt(main.Window.width), @floatFromInt(main.Window.height));
 		c.glUniform1f(TextRendering.uniforms.ratio, draw.scale);
 		c.glUniform1f(TextRendering.uniforms.alpha, @as(f32, @floatFromInt(draw.color >> 24))/255.0);
@@ -1052,7 +1098,7 @@ const TextRendering = struct { // MARK: TextRendering
 		bearing: Vec2i,
 		advance: f32,
 	};
-	var shader: Shader = undefined;
+	var pipeline: Pipeline = undefined;
 	var uniforms: struct {
 		texture_rect: c_int,
 		scene: c_int,
@@ -1082,9 +1128,17 @@ const TextRendering = struct { // MARK: TextRendering
 	}
 
 	fn init() !void {
-		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Text.vs", "assets/cubyz/shaders/graphics/Text.fs", "", &uniforms);
-		shader.bind();
-		errdefer shader.deinit();
+		pipeline = Pipeline.init(
+			"assets/cubyz/shaders/graphics/Text.vs",
+			"assets/cubyz/shaders/graphics/Text.fs",
+			"",
+			&uniforms,
+			.{.cullMode = .none},
+			.{.depthTest = false, .depthWrite = false},
+			.{.attachments = &.{.alphaBlending}},
+		);
+		pipeline.bind(null);
+		errdefer pipeline.deinit();
 		c.glUniform1f(uniforms.alpha, 1.0);
 		c.glUniform2f(uniforms.fontSize, @floatFromInt(textureWidth), @floatFromInt(textureHeight));
 		try ftError(hbft.FT_Init_FreeType(&freetypeLib));
@@ -1111,7 +1165,7 @@ const TextRendering = struct { // MARK: TextRendering
 	}
 
 	fn deinit() void {
-		shader.deinit();
+		pipeline.deinit();
 		ftError(hbft.FT_Done_FreeType(freetypeLib)) catch {};
 		glyphMapping.deinit();
 		glyphData.deinit();
@@ -1128,7 +1182,7 @@ const TextRendering = struct { // MARK: TextRendering
 		c.glBindTexture(c.GL_TEXTURE_2D, glyphTexture[0]);
 		c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_R8, newWidth, textureHeight, 0, c.GL_RED, c.GL_UNSIGNED_BYTE, null);
 		c.glCopyImageSubData(glyphTexture[1], c.GL_TEXTURE_2D, 0, 0, 0, 0, glyphTexture[0], c.GL_TEXTURE_2D, 0, 0, 0, 0, textureOffset, textureHeight, 1);
-		shader.bind();
+		pipeline.bind(draw.getScissor());
 		c.glUniform2f(uniforms.fontSize, @floatFromInt(textureWidth), @floatFromInt(textureHeight));
 	}
 
@@ -2425,12 +2479,20 @@ const block_texture = struct { // MARK: block_texture
 	var uniforms: struct {
 		transparent: c_int,
 	} = undefined;
-	var shader: Shader = undefined;
+	var pipeline: Pipeline = undefined;
 	var depthTexture: Texture = undefined;
 	const textureSize = 128;
 
 	fn init() void {
-		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/item_texture_post.vs", "assets/cubyz/shaders/item_texture_post.fs", "", &uniforms);
+		pipeline = Pipeline.init(
+			"assets/cubyz/shaders/item_texture_post.vs",
+			"assets/cubyz/shaders/item_texture_post.fs",
+			"",
+			&uniforms,
+			.{.cullMode = .none},
+			.{.depthTest = false, .depthWrite = false},
+			.{.attachments = &.{.noBlending}},
+		);
 		depthTexture = .init();
 		depthTexture.bind();
 		var data: [128*128]f32 = undefined;
@@ -2448,7 +2510,7 @@ const block_texture = struct { // MARK: block_texture
 		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
 	}
 	fn deinit() void {
-		shader.deinit();
+		pipeline.deinit();
 		depthTexture.deinit();
 	}
 };
@@ -2459,9 +2521,6 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	c.glViewport(0, 0, textureSize, textureSize);
 
 	var frameBuffer: FrameBuffer = undefined;
-	const scissor = c.glIsEnabled(c.GL_SCISSOR_TEST);
-	c.glDisable(c.GL_SCISSOR_TEST);
-	defer if(scissor != 0) c.glEnable(c.GL_SCISSOR_TEST);
 	const depthTest = c.glIsEnabled(c.GL_DEPTH_TEST);
 	c.glDisable(c.GL_DEPTH_TEST);
 	defer if(depthTest != 0) c.glEnable(c.GL_DEPTH_TEST);
@@ -2555,14 +2614,12 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	finalFrameBuffer.bind();
 	const texture = Texture{.textureID = finalFrameBuffer.texture};
 	defer c.glDeleteFramebuffers(1, &finalFrameBuffer.frameBuffer);
-	block_texture.shader.bind();
+	block_texture.pipeline.bind(null);
 	c.glUniform1i(block_texture.uniforms.transparent, if(block.transparent()) c.GL_TRUE else c.GL_FALSE);
 	frameBuffer.bindTexture(c.GL_TEXTURE3);
 
 	c.glBindVertexArray(draw.rectVAO);
-	c.glDisable(c.GL_BLEND);
 	c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
-	c.glEnable(c.GL_BLEND);
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 
