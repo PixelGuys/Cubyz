@@ -21,6 +21,8 @@ const ComponentIds = listToIds(componentlist);
 var ecsArena: main.heap.NeverFailingArenaAllocator = .init(main.globalAllocator);
 var ecsAllocator: main.heap.NeverFailingAllocator = ecsArena.allocator();
 
+var entityTypes: SparseSet(u16, u16) = undefined;
+
 var componentStorage: listToSparseSets(componentlist, u16) = undefined;
 var componentIdStorage: SparseSet(ComponentIds, u16) = undefined;
 
@@ -141,6 +143,7 @@ pub fn addEntity(entityType: u16) u32 {
 		@field(ids, field.name) = id;
 	}
 
+	entityTypes.add(entityType);
 }
 
 pub fn init() void {
@@ -153,6 +156,7 @@ pub fn init() void {
 	}
 
 	componentIdStorage = .init(ecsAllocator);
+	entityTypes = .init(ecsAllocator);
 }
 
 pub fn deinit() void {
