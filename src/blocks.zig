@@ -229,39 +229,39 @@ pub fn getTypeById(id: []const u8) u16 {
 	}
 }
 
-pub fn parseBlock(id: []const u8) Block {
-	const parsedBlock = tryParseBlock(id) catch |err| switch(err) {
-		error.DataError => {
-			std.log.err("Error while parsing block data of '{s}': {s}", .{id, @errorName(err)});
-			return Block.Air;
-		},
-		error.NotFound => {
-			std.log.err("Couldn't find block {s}. Replacing it with air...", .{id});
-			return Block.Air;
-		},
-		else => unreachable,
-	};
-	var block: Block = .{.typ = parsedBlock.typ, .data = 0};
-	if(parsedBlock.data) |blockData| {
-		block.data = blockData;
-	} else {
-		block.data = block.mode().naturalStandard;
-	}
-	return block;
-}
-
-pub fn tryParseBlock(data: []const u8) !struct {typ: u16, data: ?u16} {
+pub fn parseBlock(data: []const u8) Block {
 	var id: []const u8 = data;
 	var blockData: ?u16 = null;
-
 	if(std.mem.indexOfScalarPos(u8, data, 1 + (std.mem.indexOfScalar(u8, data, ':') orelse 0), ':')) |pos| {
 		id = data[0..pos];
-		blockData = std.fmt.parseInt(u16, data[pos + 1 ..], 0) catch return error.DataError;
+		blockData = std.fmt.parseInt(u16, data[pos + 1 ..], 0) catch |err| blk: {
+			std.log.err("Error while parsing block data of '{s}': {s}", .{data, @errorName(err)});
+			break :blk null;
+		};
 	}
 	if(reverseIndices.get(id)) |resultType| {
-		return .{.typ = resultType, .data = blockData};
+		var result: Block = .{.typ = resultType, .data = 0};
+		result.data = blockData orelse result.mode().naturalStandard;
+		return result;
+	} else {
+		std.log.err("Couldn't find block {s}. Replacing it with air...", .{id});
+		return .{.typ = 0, .data = 0};
 	}
-	return error.NotFound;
+}
+
+pub fn getBlockById(idLikeString: []const u8) !u16 {
+	const addonNameSeparatorIndex = std.mem.indexOfScalar(u8, idLikeString, ':') orelse return error.MissingAddonNameSeparator;
+	const blockIdEndIndex = std.mem.indexOfScalarPos(u8, idLikeString, 1 + addonNameSeparatorIndex, ':') orelse idLikeString.len;
+	const id = idLikeString[0..blockIdEndIndex];
+	return reverseIndices.get(id) orelse return error.NotFound;
+}
+
+pub fn getBlockData(idLikeString: []const u8) !?u16 {
+	const addonNameSeparatorIndex = std.mem.indexOfScalar(u8, idLikeString, ':') orelse return error.MissingAddonNameSeparator;
+	const blockIdEndIndex = std.mem.indexOfScalarPos(u8, idLikeString, 1 + addonNameSeparatorIndex, ':') orelse return null;
+	const dataString = idLikeString[blockIdEndIndex + 1 ..];
+	if(dataString.len == 0) return null;
+	return std.fmt.parseInt(u16, dataString, 0) catch return error.InvalidData;
 }
 
 pub fn hasRegistered(id: []const u8) bool {
@@ -272,7 +272,7 @@ pub const Block = packed struct { // MARK: Block
 	typ: u16,
 	data: u16,
 
-	pub const Air = Block{.typ = 0, .data = 0};
+	pub const air = Block{.typ = 0, .data = 0};
 
 	pub fn toInt(self: Block) u32 {
 		return @as(u32, self.typ) | @as(u32, self.data) << 16;
