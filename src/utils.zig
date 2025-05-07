@@ -1907,6 +1907,77 @@ test "read/write mixed" {
 	try std.testing.expect(reader.remaining.len == 0);
 }
 
+pub fn SparseSet(comptime T: type, comptime idType: type) type { // MARK: SparseSet
+	std.debug.assert(@typeInfo(idType) == .int);
+	std.debug.assert(@typeInfo(idType).int.signedness == .unsigned);
+
+	return struct {
+		const GetError = error{
+			idOutOfBounds,
+			valueDoesntExist,
+		};
+		pub const noValue = std.math.maxInt(idType);
+
+		const Self = @This();
+
+		dense: main.ListUnmanaged(struct {
+			value: T,
+			id: idType,
+		}),
+		sparse: main.ListUnmanaged(idType),
+		freeList: main.ListUnmanaged(idType),
+
+		pub fn deinit(self: *Self, allocator: NeverFailingAllocator) void {
+			self.dense.deinit(allocator);
+			self.sparse.deinit(allocator);
+			self.freeList.deinit(allocator);
+		}
+
+		pub fn contains(self: *Self, id: idType) bool {
+			return id < self.sparse.items.len and self.sparse.items[id] != noValue;
+		}
+
+		pub fn add(self: *Self, allocator: NeverFailingAllocator, value: T) idType {
+			const sparseId: idType = self.freeList.popOrNull() orelse @intCast(self.sparse.items.len);
+
+			if (sparseId == self.sparse.items.len) {
+				self.sparse.append(allocator, null);
+			}
+
+			const denseId: idType = @intCast(self.dense.items.len);
+			self.sparse.items[sparseId] = denseId;
+			self.dense.append(allocator, .{.value = value, .id = sparseId});
+			
+			return sparseId;
+		}
+
+		pub fn remove(self: *Self, allocator: NeverFailingAllocator, sparseId: idType) void {
+			if (!self.contains(sparseId)) return;
+
+			const denseId = self.sparse.items[sparseId];
+			if (denseId == noValue) return;
+
+			self.freeList.append(allocator, sparseId);
+			
+			if (self.dense.items.len == 1) {
+				_ = self.dense.pop();
+			} else {
+				self.dense.items[denseId] = self.dense.pop();
+			}
+
+			self.sparse.items[sparseId] = noValue;
+			self.sparse.items[self.dense.items[denseId].id] = denseId;
+		}
+
+		pub fn get(self: *Self, id: idType) GetError!*T {
+			if (id >= self.sparse.items.len) return GetError.idOutOfBounds;
+			const index = self.sparse.items[id];
+			if (index == noValue) return GetError.valueDoesntExist;
+			return &self.dense.items[index].value;
+		}
+	};
+}
+
 // MARK: functionPtrCast()
 fn CastFunctionSelfToAnyopaqueType(Fn: type) type {
 	var typeInfo = @typeInfo(Fn);
