@@ -1940,26 +1940,26 @@ pub fn SparseSet(comptime T: type, comptime idType: type) type { // MARK: Sparse
 		pub fn add(self: *Self, allocator: NeverFailingAllocator, value: T) idType {
 			const sparseId: idType = self.freeList.popOrNull() orelse @intCast(self.sparse.items.len);
 
-			if (sparseId == self.sparse.items.len) {
+			if(sparseId == self.sparse.items.len) {
 				self.sparse.append(allocator, null);
 			}
 
 			const denseId: idType = @intCast(self.dense.items.len);
 			self.sparse.items[sparseId] = denseId;
 			self.dense.append(allocator, .{.value = value, .id = sparseId});
-			
+
 			return sparseId;
 		}
 
 		pub fn remove(self: *Self, allocator: NeverFailingAllocator, sparseId: idType) void {
-			if (!self.contains(sparseId)) return;
+			if(!self.contains(sparseId)) return;
 
 			const denseId = self.sparse.items[sparseId];
-			if (denseId == noValue) return;
+			if(denseId == noValue) return;
 
 			self.freeList.append(allocator, sparseId);
-			
-			if (self.dense.items.len == 1) {
+
+			if(self.dense.items.len == 1) {
 				_ = self.dense.pop();
 			} else {
 				self.dense.items[denseId] = self.dense.pop();
@@ -1970,9 +1970,9 @@ pub fn SparseSet(comptime T: type, comptime idType: type) type { // MARK: Sparse
 		}
 
 		pub fn get(self: *Self, id: idType) GetError!*T {
-			if (id >= self.sparse.items.len) return GetError.idOutOfBounds;
+			if(id >= self.sparse.items.len) return GetError.idOutOfBounds;
 			const index = self.sparse.items[id];
-			if (index == noValue) return GetError.valueDoesntExist;
+			if(index == noValue) return GetError.valueDoesntExist;
 			return &self.dense.items[index].value;
 		}
 	};
