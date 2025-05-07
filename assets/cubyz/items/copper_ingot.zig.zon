@@ -7,7 +7,7 @@
 		.hardness = 3.0,
 		.textureRoughness = 0.1,
 		.colors = .{
-			0xffa25138, 0xffb66440, 0xffd5834b, 0xffec9568, 0xfff5b47e,
+			0xffa24e37, 0xffb65f3f, 0xffd57e4b, 0xffee9168, 0xfff2b17e,
 		},
 	},
 }
