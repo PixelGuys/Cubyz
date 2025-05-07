@@ -433,6 +433,7 @@ pub const Model = struct {
 };
 
 var nameToIndex: std.StringHashMap(ModelIndex) = undefined;
+var nameToIndexEntities: std.StringHashMap(ModelIndex) = undefined;
 
 pub fn getModelIndex(string: []const u8) ModelIndex {
 	return nameToIndex.get(string) orelse {
@@ -560,7 +561,6 @@ pub fn registerModel(id: []const u8, data: []const u8) ModelIndex {
 	return model;
 }
 
-// TODO: Entity models.
 pub fn init() void {
 	models = .init();
 	quads = .init(main.globalAllocator);
@@ -570,6 +570,10 @@ pub fn init() void {
 	nameToIndex = .init(main.globalAllocator.allocator);
 
 	nameToIndex.put("none", Model.init(&.{})) catch unreachable;
+	
+	nameToIndexEntities = .init(main.globalAllocator.allocator);
+
+	nameToIndexEntities.put("none", Model.init(&.{})) catch unreachable;
 }
 
 pub fn reset() void {
@@ -582,11 +586,14 @@ pub fn reset() void {
 	quadDeduplication.clearRetainingCapacity();
 	nameToIndex.clearRetainingCapacity();
 	nameToIndex.put("none", Model.init(&.{})) catch unreachable;
+	nameToIndexEntities.clearRetainingCapacity();
+	nameToIndexEntities.put("none", Model.init(&.{})) catch unreachable;
 }
 
 pub fn deinit() void {
 	quadSSBO.deinit();
 	nameToIndex.deinit();
+	nameToIndexEntities.deinit();
 	for(models.items()) |model| {
 		model.deinit();
 	}

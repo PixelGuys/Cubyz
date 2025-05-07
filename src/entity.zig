@@ -3,20 +3,35 @@ const std = @import("std");
 const chunk = @import("chunk.zig");
 const game = @import("game.zig");
 const graphics = @import("graphics.zig");
+const Shader = graphics.Shader;
+const Image = graphics.Image;
+const Color = graphics.Color;
+const Texture = graphics.Texture;
+const TextureArray = graphics.TextureArray;
 const c = graphics.c;
 const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main");
 const renderer = @import("renderer.zig");
 const settings = @import("settings.zig");
 const utils = @import("utils.zig");
+const models = @import("models.zig");
+const ModelIndex = models.ModelIndex;
+const rotation = @import("rotation.zig");
+const RotationMode = rotation.RotationMode;
 const vec = @import("vec.zig");
 const Mat4f = vec.Mat4f;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
+const ecs = main.ecs;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const BinaryReader = main.utils.BinaryReader;
+
+pub const maxEntityTypeCount: usize = 65536; // 16 bit limit
+
+var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
+const arenaAllocator = arena.allocator();
 
 pub const EntityNetworkData = struct {
 	id: u32,
@@ -36,6 +51,8 @@ pub const ClientEntity = struct {
 	pos: Vec3d = undefined,
 	rot: Vec3f = undefined,
 
+	entityType: u16 = undefined,
+
 	id: u32,
 	name: []const u8,
 
@@ -45,6 +62,7 @@ pub const ClientEntity = struct {
 			.width = zon.get(f64, "width", 1),
 			.height = zon.get(f64, "height", 1),
 			.name = allocator.dupe(u8, zon.get([]const u8, "name", "")),
+			.entityType = zon.get(u16, "entityType", 0),
 		};
 		self._interpolationPos = [_]f64{
 			self.pos[0],
@@ -91,28 +109,16 @@ pub const ClientEntityManager = struct {
 		contrast: c_int,
 		ambientLight: c_int,
 	} = undefined;
-	var modelBuffer: main.graphics.SSBO = undefined;
-	var modelSize: c_int = 0;
-	var modelTexture: main.graphics.Texture = undefined;
+
 	var shader: graphics.Shader = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
 	pub var entities: main.utils.VirtualList(ClientEntity, 1 << 20) = undefined;
 	pub var mutex: std.Thread.Mutex = .{};
+	
+	var entityModel: graphics.SSBO = undefined;
 
 	pub fn init() void {
 		entities = .init();
 		shader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/entity_vertex.vs", "assets/cubyz/shaders/entity_fragment.fs", "", &uniforms);
-
-		modelTexture = main.graphics.Texture.initFromFile("assets/cubyz/entity/textures/snail_player.png");
-		const modelFile = main.files.read(main.stackAllocator, "assets/cubyz/entity/models/snail_player.obj") catch |err| blk: {
-			std.log.err("Error while reading player model: {s}", .{@errorName(err)});
-			break :blk &.{};
-		};
-		defer main.stackAllocator.free(modelFile);
-		const quadInfos = main.models.Model.loadRawModelDataFromObj(main.stackAllocator, modelFile);
-		defer main.stackAllocator.free(quadInfos);
-		modelBuffer = .initStatic(main.models.QuadInfo, quadInfos);
-		modelBuffer.bind(11);
-		modelSize = @intCast(quadInfos.len);
 	}
 
 	pub fn deinit() void {
@@ -126,6 +132,11 @@ pub const ClientEntityManager = struct {
 	pub fn clear() void {
 		entities.clearRetainingCapacity();
 		timeDifference = utils.TimeDifference{};
+	}
+
+	pub fn generateModel() void {
+		entityModel = .initStatic(models.QuadInfo, entityModelQuads.items);
+		entityModel.bind(11);
 	}
 
 	fn update() void {
@@ -144,6 +155,10 @@ pub const ClientEntityManager = struct {
 
 		for(entities.items()) |ent| {
 			if(ent.id == game.Player.id or ent.name.len == 0) continue; // don't render local player
+
+			const texture = meshes.entityTextureArray.items[meshes.textureIndex(ent)];
+			texture.bindTo(0);
+			
 			const pos3d = ent.getRenderPosition() - playerPos;
 			const pos4f = Vec4f{
 				@floatCast(pos3d[0]),
@@ -171,15 +186,19 @@ pub const ClientEntityManager = struct {
 		defer mutex.unlock();
 		update();
 		shader.bind();
+
 		c.glBindVertexArray(main.renderer.chunk_meshing.vao);
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
-		modelTexture.bindTo(0);
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniform1f(uniforms.contrast, 0.12);
 
 		for(entities.items()) |ent| {
 			if(ent.id == game.Player.id) continue; // don't render local player
-
+			
+			meshes.entityTextureArray.items[meshes.textureIndex(ent)].bindTo(0);
+			
+			const model = entityModels.items()[ent.entityType];
+			
 			const blockPos: vec.Vec3i = @intFromFloat(@floor(ent.pos));
 			const lightVals: [6]u8 = main.renderer.mesh_storage.getLight(blockPos[0], blockPos[1], blockPos[2]) orelse @splat(0);
 			const light = (@as(u32, lightVals[0] >> 3) << 25 |
@@ -204,7 +223,7 @@ pub const ClientEntityManager = struct {
 			);
 			const modelViewMatrix = game.camera.viewMatrix.mul(modelMatrix);
 			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&modelViewMatrix));
-			c.glDrawElements(c.GL_TRIANGLES, 6*modelSize, c.GL_UNSIGNED_INT, null);
+			c.glDrawElements(c.GL_TRIANGLES, 6*model.size, c.GL_UNSIGNED_INT, @ptrFromInt(@sizeOf(c_uint) * model.start * 6));
 		}
 	}
 
@@ -259,6 +278,262 @@ pub const ClientEntityManager = struct {
 					break;
 				}
 			}
+		}
+	}
+};
+
+const EntityModel = struct {
+	start: usize,
+	size: c_int,
+};
+
+var entityModels: utils.VirtualList(EntityModel, 1 << 20) = undefined;
+var entityModelNameToIndex: std.StringHashMap(u16) = .init(arenaAllocator.allocator);
+var entityModelQuads: main.List(models.QuadInfo) = .init(arenaAllocator);
+
+pub fn registerModel(id: []const u8, data: []const u8) void {
+	const quadInfos = main.models.Model.loadRawModelDataFromObj(main.stackAllocator, data);
+	defer main.stackAllocator.free(quadInfos);
+
+	const start: usize = entityModels.len;
+	const size: c_int = @intCast(quadInfos.len);
+
+	entityModelQuads.appendSlice(quadInfos);
+
+	entityModels.append(.{
+		.start = start,
+		.size = size,
+	});
+
+	entityModelNameToIndex.put(id, @intCast(entityModels.len - 1)) catch unreachable;
+}
+
+var _id: [maxEntityTypeCount][]u8 = undefined;
+
+var num: u16 = 0;
+var reverseIndices: std.StringHashMap(u16) = .init(arenaAllocator.allocator);
+
+pub fn init() void {
+	entityModels = .init();
+}
+
+pub fn deinit() void {
+	arena.deinit();
+	entityModels.deinit();
+}
+
+pub fn getTypeById(id: []const u8) u16 {
+	if(reverseIndices.get(id)) |result| {
+		return result;
+	} else {
+		std.log.err("Couldn't find entity {s}. Replacing it with default...", .{id});
+		return 0;
+	}
+}
+
+pub fn numRegisteredEntites() u16 {
+	return num;
+}
+
+pub fn register(assetFolder: []const u8, id: []const u8, zon: ZonElement) u16 {
+	if(reverseIndices.contains(id)) {
+		std.log.err("Registered entity with id {s} twice!", .{id});
+	}
+
+	_id[num] = arenaAllocator.dupe(u8, id);
+	reverseIndices.put(_id[num], @intCast(num)) catch unreachable;
+
+	const components = zon.getChild("components");
+	const systems = zon.getChild("systems");
+
+	if (components == .object) {
+		var iterator = components.object.iterator();
+		while (iterator.next()) |entry| {
+			const tag = entry.key_ptr.*;
+			const child = entry.value_ptr.*;
+
+			const component = std.meta.stringToEnum(ecs.Components, tag) orelse {
+				std.log.err("Unknown component {s} for entity {s}.", .{tag, id});
+				return 0;
+			};
+
+			switch (component) {
+				inline else => |comp| {
+					ecs.addComponent(num, assetFolder, id, comp, child);
+				}
+			}
+		}
+	} else {
+		std.log.err(".components must be an object.", .{});
+		return 0;
+	}
+
+	if (systems == .array) {
+		for (systems.array.items) |item| {
+			const systemStr = item.as([]const u8, "");
+			const system = std.meta.stringToEnum(ecs.Systems, systemStr) orelse {
+				std.log.err("Unknown system {s} for entity {s}.", .{systemStr, id});
+				return 0;
+			};
+
+			switch (system) {
+				inline else => |sys| {
+					ecs.addSystem(num, sys);
+				}
+			}
+		}
+	} else {
+		std.log.err(".systems must be an array.", .{});
+		return 0;
+	}
+
+	defer num += 1;
+	std.log.debug("Registered entity: {d: >5} '{s}'", .{num, id});
+	return @intCast(num);
+}
+
+pub const meshes = struct { // MARK: meshes
+	var size: u32 = 0;
+	var _modelIndex: [maxEntityTypeCount]u16 = undefined;
+	var textureIndices: [maxEntityTypeCount]u16 = undefined;
+	/// Stores the number of textures after each block was added. Used to clean additional textures when the world is switched.
+	var maxTextureCount: [maxEntityTypeCount]u32 = undefined;
+	/// Number of loaded meshes. Used to determine if an update is needed.
+	var loadedMeshes: u32 = 0;
+
+	var textureIDs: main.List([]const u8) = undefined;
+	var entityTextures: main.List(Image) = undefined;
+
+	var arenaForWorld: main.heap.NeverFailingArenaAllocator = undefined;
+
+	pub var entityTextureArray: main.List(Texture) = undefined;
+
+	const black: Color = Color{.r = 0, .g = 0, .b = 0, .a = 255};
+	const magenta: Color = Color{.r = 255, .g = 0, .b = 255, .a = 255};
+	var undefinedTexture = [_]Color{magenta, black, black, magenta};
+	const undefinedImage = Image{.width = 2, .height = 2, .imageData = undefinedTexture[0..]};
+	var emptyTexture = [_]Color{black};
+	const emptyImage = Image{.width = 1, .height = 1, .imageData = emptyTexture[0..]};
+
+	pub fn init() void {
+		entityTextureArray = .init(main.globalAllocator);
+		textureIDs = .init(main.globalAllocator);
+		entityTextures = .init(main.globalAllocator);
+		arenaForWorld = .init(main.globalAllocator);
+	}
+
+	pub fn deinit() void {
+		for (entityTextureArray.items) |tex| {
+			tex.deinit();
+		}
+		entityTextureArray.deinit();
+		textureIDs.deinit();
+		entityTextures.deinit();
+		arenaForWorld.deinit();
+	}
+
+	pub fn reset() void {
+		meshes.size = 0;
+		loadedMeshes = 0;
+		textureIDs.clearRetainingCapacity();
+		entityTextures.clearRetainingCapacity();
+		_ = arenaForWorld.reset(.free_all);
+	}
+
+	pub inline fn model(entity: ClientEntity) ModelIndex {
+		return _modelIndex[entity.entityType];
+	}
+
+	pub inline fn textureIndex(entity: ClientEntity) u16 {
+		return textureIndices[entity.entityType];
+	}
+
+	fn extendedPath(_allocator: main.heap.NeverFailingAllocator, path: []const u8, ending: []const u8) []const u8 {
+		return std.fmt.allocPrint(_allocator.allocator, "{s}{s}", .{path, ending}) catch unreachable;
+	}
+
+	fn readTextureFile(_path: []const u8, ending: []const u8, default: Image) Image {
+		const path = extendedPath(main.stackAllocator, _path, ending);
+		defer main.stackAllocator.free(path);
+		return Image.readFromFile(arenaForWorld.allocator(), path) catch default;
+	}
+
+	fn readTextureData(_path: []const u8) void {
+		const path = _path[0 .. _path.len - ".png".len];
+		const textureInfoPath = extendedPath(main.stackAllocator, path, ".zig.zon");
+		defer main.stackAllocator.free(textureInfoPath);
+		const textureInfoZon = main.files.readToZon(main.stackAllocator, textureInfoPath) catch .null;
+		defer textureInfoZon.deinit(main.stackAllocator);
+		const base = readTextureFile(path, ".png", Image.defaultImage);
+		entityTextures.append(base);
+		entityTextureArray.append(.init());
+	}
+
+	pub fn readTexture(_textureId: ?[]const u8, assetFolder: []const u8) !u16 {
+		const textureId = _textureId orelse return error.NotFound;
+		var result: u16 = undefined;
+		var splitter = std.mem.splitScalar(u8, textureId, ':');
+		const mod = splitter.first();
+		const id = splitter.rest();
+		var path = try std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/entity/textures/{s}.png", .{assetFolder, mod, id});
+		defer main.stackAllocator.free(path);
+		// Test if it's already in the list:
+		for(textureIDs.items, 0..) |other, j| {
+			if(std.mem.eql(u8, other, path)) {
+				result = @intCast(j);
+				return result;
+			}
+		}
+		const file = std.fs.cwd().openFile(path, .{}) catch |err| blk: {
+			if(err != error.FileNotFound) {
+				std.log.err("Could not open file {s}: {s}", .{path, @errorName(err)});
+			}
+			main.stackAllocator.free(path);
+			path = try std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/entity/textures/{s}.png", .{mod, id}); // Default to global assets.
+			break :blk std.fs.cwd().openFile(path, .{}) catch |err2| {
+				std.log.err("File not found. Searched in \"{s}\" and also in the assetFolder \"{s}\"", .{path, assetFolder});
+				return err2;
+			};
+		};
+		file.close(); // It was only openend to check if it exists.
+		// Otherwise read it into the list:
+		result = @intCast(textureIDs.items.len);
+
+		textureIDs.append(arenaForWorld.allocator().dupe(u8, path));
+		readTextureData(path);
+		return result;
+	}
+
+	pub fn register(assetFolder: []const u8, _: []const u8, zon: ZonElement) void {
+		const modelName = zon.get([]const u8, "model", "none");
+		_modelIndex[meshes.size] = entityModelNameToIndex.get(modelName) orelse blk: {
+			std.log.err("Couldn't find voxelModel with name: {s}.", .{modelName});
+			break :blk 0;
+		};
+
+		// The actual model is loaded later, in the rendering thread.
+		// But textures can be loaded here:
+
+		textureIndices[meshes.size] = readTexture(zon.get(?[]const u8, "texture", null), assetFolder) catch 0;
+
+		maxTextureCount[meshes.size] = @intCast(textureIDs.items.len);
+
+		meshes.size += 1;
+	}
+
+	pub fn reloadTextures(_: usize) void {
+		entityTextures.clearRetainingCapacity();
+		for(textureIDs.items) |path| {
+			readTextureData(path);
+		}
+		generateTextureArray();
+	}
+
+	pub fn generateTextureArray() void {
+		for (entityTextures.items, 0..) |image, i| {
+			entityTextureArray.items[i].deinit();
+			entityTextureArray.items[i] = .init();
+			entityTextureArray.items[i].generate(image);
 		}
 	}
 };

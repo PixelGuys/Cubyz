@@ -152,7 +152,7 @@ const ChunkManager = struct { // MARK: ChunkManager
 
 		pub fn getPriority(self: *ChunkLoadTask) f32 {
 			switch(self.source) {
-				.user => |user| return self.pos.getPriority(user.player.pos),
+				.user => |user| return self.pos.getPriority(user.getTransform().pos),
 				else => return std.math.floatMax(f32),
 			}
 		}
@@ -212,7 +212,7 @@ const ChunkManager = struct { // MARK: ChunkManager
 
 		pub fn getPriority(self: *LightMapLoadTask) f32 {
 			if(self.source) |user| {
-				return self.pos.getPriority(user.player.pos, terrain.LightMap.LightMapFragment.mapSize) + 100;
+				return self.pos.getPriority(user.getTransform().pos, terrain.LightMap.LightMapFragment.mapSize) + 100;
 			} else {
 				return std.math.floatMax(f32);
 			}
@@ -410,6 +410,8 @@ const WorldIO = struct { // MARK: WorldIO
 		try self.dir.writeZon("world.zig.zon", worldData);
 	}
 };
+
+pub const entityCap = 1024;
 
 pub const ServerWorld = struct { // MARK: ServerWorld
 	pub const dayCycle: u31 = 12000; // Length of one in-game day in units of 100ms. Midnight is at DAY_CYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
@@ -828,31 +830,31 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	pub fn findPlayer(self: *ServerWorld, user: *User) void {
-		const dest: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Encoder.calcSize(user.name.len));
+		const dest: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Encoder.calcSize(user.getName().name.len));
 		defer main.stackAllocator.free(dest);
-		const hashedName = std.base64.url_safe.Encoder.encode(dest, user.name);
+		const hashedName = std.base64.url_safe.Encoder.encode(dest, user.getName().name);
 
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players/{s}.zig.zon", .{self.name, hashedName}) catch unreachable;
 		defer main.stackAllocator.free(path);
 
 		const playerData = files.readToZon(main.stackAllocator, path) catch .null;
 		defer playerData.deinit(main.stackAllocator);
-		const player = &user.player;
+		const player = user.getTransform();
 		if(playerData == .null) {
 			player.pos = @floatFromInt(self.spawn);
 
 			main.items.Inventory.Sync.setGamemode(user, self.defaultGamemode);
 		} else {
-			player.loadFrom(playerData.getChild("entity"));
+			// player.loadFrom(playerData.getChild("entity"));
 
 			main.items.Inventory.Sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", @tagName(self.defaultGamemode))) orelse self.defaultGamemode);
 		}
 	}
 
 	pub fn savePlayer(self: *ServerWorld, user: *User) !void {
-		const dest: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Encoder.calcSize(user.name.len));
+		const dest: []u8 = main.stackAllocator.alloc(u8, std.base64.url_safe.Encoder.calcSize(user.getName().name.len));
 		defer main.stackAllocator.free(dest);
-		const hashedName = std.base64.url_safe.Encoder.encode(dest, user.name);
+		const hashedName = std.base64.url_safe.Encoder.encode(dest, user.getName().name);
 
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players/{s}.zig.zon", .{self.name, hashedName}) catch unreachable;
 		defer main.stackAllocator.free(path);
@@ -865,9 +867,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			playerZon = ZonElement.initObject(main.stackAllocator);
 		}
 
-		playerZon.put("name", user.name);
-
-		playerZon.put("entity", user.player.save(main.stackAllocator));
+		// playerZon.put("entity", user.player.save(main.stackAllocator));
 		playerZon.put("gamemode", @tagName(user.gamemode.load(.monotonic)));
 
 		{
@@ -949,7 +949,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				main.network.Protocols.genericUpdate.sendTimeAndBiome(user.conn, self);
 			}
 		}
-		// TODO: Entities
 
 		// Item Entities
 		self.itemDropManager.update(deltaTime);

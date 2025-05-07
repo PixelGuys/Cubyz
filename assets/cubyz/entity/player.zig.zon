@@ -1,0 +1,19 @@
+.{
+	.components = .{
+		.transform = .{},
+		.model = .{
+			.model = "cubyz:snail_player",
+			.texture = "cubyz:snail_player",
+		},
+		.health = .{
+			.maxHealth = 8,
+		},
+		.energy = .{
+			.maxEnergy = 8,
+		},
+		.name = .{}
+	},
+	.systems = .{
+		.render,
+	}
+}

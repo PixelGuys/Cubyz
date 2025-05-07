@@ -671,6 +671,10 @@ pub const World = struct { // MARK: World
 
 		main.Window.setMouseGrabbed(true);
 
+		main.ecs.finalize();
+		
+		main.entity.ClientEntityManager.generateModel();
+		main.entity.meshes.generateTextureArray();
 		main.blocks.meshes.generateTextureArray();
 		main.models.uploadModels();
 		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());
@@ -718,7 +722,6 @@ pub const World = struct { // MARK: World
 		try assets.loadWorldAssets("serverAssets", self.blockPalette, self.itemPalette, self.biomePalette);
 		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
 		Player.inventory = Inventory.init(main.globalAllocator, 32, .normal, .{.playerInventory = Player.id});
-		Player.loadFrom(zon.getChild("player"));
 	}
 
 	pub fn update(self: *World) void {

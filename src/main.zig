@@ -2,6 +2,7 @@ const std = @import("std");
 
 pub const gui = @import("gui/gui.zig");
 pub const server = @import("server/server.zig");
+pub const ecs = @import("ecs/ecs.zig");
 
 pub const audio = @import("audio.zig");
 pub const assets = @import("assets.zig");
@@ -551,7 +552,7 @@ pub fn main() void { // MARK: main()
 
 	initLogging();
 	defer deinitLogging();
-
+	
 	if(std.fs.cwd().openFile("settings.json", .{})) |file| blk: { // TODO: Remove after #480
 		file.close();
 		std.log.warn("Detected old game client. Converting all .json files to .zig.zon", .{});
@@ -623,12 +624,18 @@ pub fn main() void { // MARK: main()
 
 	tag.init();
 	defer tag.deinit();
+	
+	ecs.init();
+	defer ecs.deinit();
 
 	assets.init();
 	defer assets.deinit();
 
 	blocks.meshes.init();
 	defer blocks.meshes.deinit();
+
+	entity.meshes.init();
+	defer entity.meshes.deinit();
 
 	renderer.init();
 	defer renderer.deinit();
