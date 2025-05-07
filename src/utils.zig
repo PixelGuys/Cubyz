@@ -1923,9 +1923,9 @@ pub fn SparseSet(comptime T: type, comptime idType: type) type { // MARK: Sparse
 		dense: main.ListUnmanaged(struct {
 			value: T,
 			id: idType,
-		}),
-		sparse: main.ListUnmanaged(idType),
-		freeList: main.ListUnmanaged(idType),
+		}) = .{},
+		sparse: main.ListUnmanaged(idType) = .{},
+		freeList: main.ListUnmanaged(idType) = .{},
 
 		pub fn deinit(self: *Self, allocator: NeverFailingAllocator) void {
 			self.dense.deinit(allocator);
@@ -1941,7 +1941,7 @@ pub fn SparseSet(comptime T: type, comptime idType: type) type { // MARK: Sparse
 			const sparseId: idType = self.freeList.popOrNull() orelse @intCast(self.sparse.items.len);
 
 			if(sparseId == self.sparse.items.len) {
-				self.sparse.append(allocator, null);
+				self.sparse.append(allocator, noValue);
 			}
 
 			const denseId: idType = @intCast(self.dense.items.len);
@@ -1976,6 +1976,55 @@ pub fn SparseSet(comptime T: type, comptime idType: type) type { // MARK: Sparse
 			return &self.dense.items[index].value;
 		}
 	};
+}
+
+
+const SparseSetTest = struct {
+	var testingAllocator = main.heap.ErrorHandlingAllocator.init(std.testing.allocator);
+	var allocator = testingAllocator.allocator();
+};
+
+test "SparseSet/adding" {
+	var set: SparseSet(u32, u32) = .{};
+	defer set.deinit(SparseSetTest.allocator);
+
+	const id = set.add(SparseSetTest.allocator, 5);
+	try std.testing.expectEqual(id, 0);
+	try std.testing.expectEqual((try set.get(id)).*, 5);
+}
+
+test "SparseSet/removing" {
+	var set: SparseSet(u32, u32) = .{};
+	defer set.deinit(SparseSetTest.allocator);
+
+	const expectSecond: u32 = 100;
+
+	const firstId = set.add(SparseSetTest.allocator, 5);
+	const secondId = set.add(SparseSetTest.allocator, expectSecond);
+
+	set.remove(SparseSetTest.allocator, firstId);
+
+	try std.testing.expectEqual((try set.get(secondId)).*, expectSecond);
+}
+
+test "SparseSet/reusing" {
+	var set: SparseSet(u32, u32) = .{};
+	defer set.deinit(SparseSetTest.allocator);
+
+	const expectSecond = 100;
+	const expectNew = 10;
+
+	const firstId = set.add(SparseSetTest.allocator, 5);
+	const secondId = set.add(SparseSetTest.allocator, expectSecond);
+
+	set.remove(SparseSetTest.allocator, firstId);
+
+	const newId = set.add(SparseSetTest.allocator, expectNew);
+	
+	try std.testing.expectEqual(firstId, newId);
+
+	try std.testing.expectEqual((try set.get(secondId)).*, expectSecond);
+	try std.testing.expectEqual((try set.get(newId)).*, expectNew);
 }
 
 // MARK: functionPtrCast()
