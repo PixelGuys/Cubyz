@@ -248,10 +248,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.startQuery(.transparent_rendering_preparation);
 	c.glTextureBarrier();
 
-	c.glBlendEquation(c.GL_FUNC_ADD);
-	c.glBlendFunc(c.GL_ONE, c.GL_SRC1_COLOR);
-	c.glDepthFunc(c.GL_LEQUAL);
-	c.glDepthMask(c.GL_FALSE);
 	{
 		chunkList.clearRetainingCapacity();
 		var i: usize = meshes.len;
@@ -265,9 +261,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 			chunk_meshing.drawChunksIndirect(chunkList.items, game.projectionMatrix, ambientLight, playerPos, true);
 		}
 	}
-	c.glDepthMask(c.GL_TRUE);
-	c.glDepthFunc(c.GL_LESS);
-	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 
 	c.glDepthRange(0, 0.001);
 	itemdrop.ItemDropRenderer.renderDisplayItems(ambientLight, playerPos);
