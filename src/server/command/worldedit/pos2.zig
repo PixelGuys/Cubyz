@@ -13,7 +13,7 @@ pub fn execute(args: []const u8, source: *User) void {
 		return;
 	}
 
-	const pos: Vec3i = @intFromFloat(source.getEntity().pos);
+	const pos: Vec3i = @intFromFloat(source.getTransform().pos);
 
 	source.worldEditData.selectionPosition2 = pos;
 	main.network.Protocols.genericUpdate.sendWorldEditPos(source.conn, .selectedPos2, pos);

@@ -115,11 +115,8 @@ pub const User = struct { // MARK: User
 		const self = main.globalAllocator.create(User);
 		errdefer main.globalAllocator.destroy(self);
 		self.* = .{};
-		self.id = world.?.addEntity(.{
-			.entityType = main.entity.getTypeById("cubyz:player"),
-		});
+		self.id = main.ecs.addEntity(main.entity.getTypeById("cubyz:player"));
 		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
-		self.interpolation.init(@ptrCast(&self.getEntity().pos), @ptrCast(&self.getEntity().vel));
 		self.conn = try Connection.init(manager, ipPort, self);
 		self.increaseRefCount();
 		self.worldEditData = .init();
@@ -136,8 +133,6 @@ pub const User = struct { // MARK: User
 		};
 
 		self.worldEditData.deinit();
-		
-		world.?.removeEntity(self.id);
 
 		main.items.Inventory.Sync.ServerSide.disconnectUser(self);
 		std.debug.assert(self.inventoryClientToServerIdMap.count() == 0); // leak
@@ -161,7 +156,7 @@ pub const User = struct { // MARK: User
 	}
 
 	pub fn initPlayer(self: *User, name: []const u8) void {
-		self.getEntity().name = main.globalAllocator.dupe(u8, name);
+		self.getName().setName(main.globalAllocator.dupe(u8, name));
 		world.?.findPlayer(self);
 	}
 
@@ -217,7 +212,7 @@ pub const User = struct { // MARK: User
 	}
 
 	fn loadUnloadChunks(self: *User) void {
-		const newPos: Vec3i = @as(Vec3i, @intFromFloat(self.getEntity().pos)) +% @as(Vec3i, @splat(chunk.chunkSize/2)) & ~@as(Vec3i, @splat(chunk.chunkMask));
+		const newPos: Vec3i = @as(Vec3i, @intFromFloat(self.getTransform().pos)) +% @as(Vec3i, @splat(chunk.chunkSize/2)) & ~@as(Vec3i, @splat(chunk.chunkMask));
 		const newRenderDistance = main.settings.simulationDistance;
 		if(@reduce(.Or, newPos != self.lastPos) or newRenderDistance != self.lastRenderDistance) {
 			self.unloadOldChunk(newPos, newRenderDistance);
@@ -232,13 +227,13 @@ pub const User = struct { // MARK: User
 		defer self.mutex.unlock();
 		var time = @as(i16, @truncate(std.time.milliTimestamp())) -% main.settings.entityLookback;
 		time -%= self.timeDifference.difference.load(.monotonic);
-		self.interpolation.update(time, self.lastTime);
+		self.getTransform().interpolation.update(time, self.lastTime);
 		self.lastTime = time;
 
 		const saveTime = std.time.milliTimestamp();
 		if(saveTime -% self.lastSaveTime > 5000) {
 			world.?.savePlayer(self) catch |err| {
-				std.log.err("Failed to save player {s}: {s}", .{self.getEntity().name, @errorName(err)});
+				std.log.err("Failed to save player {s}: {s}", .{self.getName().name, @errorName(err)});
 			};
 			self.lastSaveTime = saveTime;
 		}
@@ -252,7 +247,7 @@ pub const User = struct { // MARK: User
 		const position: [3]f64 = try reader.readVec(Vec3d);
 		const velocity: [3]f64 = try reader.readVec(Vec3d);
 		const rotation: [3]f32 = try reader.readVec(Vec3f);
-		self.getEntity().rot = rotation;
+		self.getTransform().rot = rotation;
 		const time = try reader.readInt(i16);
 		self.timeDifference.addDataPoint(time);
 		self.interpolation.updatePosition(&position, &velocity, time);
@@ -265,6 +260,21 @@ pub const User = struct { // MARK: User
 	}
 	fn sendRawMessage(self: *User, msg: []const u8) void {
 		main.network.Protocols.chat.send(self.conn, msg);
+	}
+	pub inline fn getComponent(self: *User, comptime component: main.ecs.Components) *align(32) anyopaque {
+		return main.ecs.getComponent(self.id, component);
+	}
+	pub inline fn getTransform(self: *User) *main.ecs.componentlist.transform {
+		return @ptrCast(self.getComponent(.transform));
+	}
+	pub inline fn getHealth(self: *User) *main.ecs.componentlist.health {
+		return @ptrCast(self.getComponent(.transform));
+	}
+	pub inline fn getEnergy(self: *User) *main.ecs.componentlist.energy {
+		return @ptrCast(self.getComponent(.transform));
+	}
+	pub inline fn getName(self: *User) *main.ecs.componentlist.name {
+		return @ptrCast(self.getComponent(.transform));
 	}
 	pub inline fn getEntity(self: *User) *Entity {
 		return world.?.getEntity(self.id) catch unreachable;
@@ -391,19 +401,8 @@ fn update() void { // MARK: update()
 	const itemData = world.?.itemDropManager.getPositionAndVelocityData(main.stackAllocator);
 	defer main.stackAllocator.free(itemData);
 
-	var entityData: main.List(main.entity.EntityNetworkData) = .init(main.stackAllocator);
-	defer entityData.deinit();
-
-	for(world.?.entities.dense.items) |item| {
-		entityData.append(.{
-			.id = item.value.id,
-			.pos = item.value.pos,
-			.vel = item.value.vel,
-			.rot = item.value.rot,
-		});
-	}
 	for(userList) |user| {
-		main.network.Protocols.entityPosition.send(user.conn, user.getEntity().pos, entityData.items, itemData);
+		main.network.Protocols.entityPosition.send(user.conn, user.getTransform().pos, &.{}, itemData);
 	}
 
 	while(userDeinitList.dequeue()) |user| {
@@ -454,7 +453,7 @@ pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 	}
 	userMutex.unlock();
 
-	sendMessage("{s}§#ffff00 left", .{user.getEntity().name});
+	sendMessage("{s}§#ffff00 left", .{user.getName().name});
 	// Let the other clients know about that this new one left.
 	const zonArray = main.ZonElement.initArray(main.stackAllocator);
 	defer zonArray.deinit(main.stackAllocator);
@@ -482,7 +481,7 @@ pub fn connectInternal(user: *User) void {
 		defer zonArray.deinit(main.stackAllocator);
 		const entityZon = main.ZonElement.initObject(main.stackAllocator);
 		entityZon.put("id", user.id);
-		entityZon.put("name", user.getEntity().name);
+		entityZon.put("name", user.getName().name);
 		zonArray.array.append(entityZon);
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(data);
@@ -493,12 +492,12 @@ pub fn connectInternal(user: *User) void {
 	{ // Let this client know about the others:
 		const zonArray = main.ZonElement.initArray(main.stackAllocator);
 		defer zonArray.deinit(main.stackAllocator);
-		for(world.?.entities.dense.items) |other| {
-			const entityZon = main.ZonElement.initObject(main.stackAllocator);
-			entityZon.put("id", other.id);
-			entityZon.put("name", other.value.name);
-			zonArray.array.append(entityZon);
-		}
+		// for(world.?.entities.dense.items) |other| {
+		// const entityZon = main.ZonElement.initObject(main.stackAllocator);
+		// entityZon.put("id", other.id);
+		// entityZon.put("name", other.value.name);
+		// zonArray.array.append(entityZon);
+		// }
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 		defer main.stackAllocator.free(data);
 		if(user.connected.load(.unordered)) main.network.Protocols.entity.send(user.conn, data);
@@ -506,7 +505,7 @@ pub fn connectInternal(user: *User) void {
 	const initialList = getInitialEntityList(main.stackAllocator);
 	main.network.Protocols.entity.send(user.conn, initialList);
 	main.stackAllocator.free(initialList);
-	sendMessage("{s}§#ffff00 joined", .{user.getEntity().name});
+	sendMessage("{s}§#ffff00 joined", .{user.getName().name});
 
 	userMutex.lock();
 	users.append(user);
@@ -517,13 +516,13 @@ pub fn connectInternal(user: *User) void {
 pub fn messageFrom(msg: []const u8, source: *User) void { // MARK: message
 	if(msg[0] == '/') { // Command.
 		if(world.?.allowCheats) {
-			std.log.info("User \"{s}\" executed command \"{s}\"", .{source.getEntity().name, msg}); // TODO use color \033[0;32m
+			std.log.info("User \"{s}\" executed command \"{s}\"", .{source.getName().name, msg}); // TODO use color \033[0;32m
 			command.execute(msg[1..], source);
 		} else {
 			source.sendRawMessage("Commands are not allowed because cheats are disabled");
 		}
 	} else {
-		main.server.sendMessage("[{s}§#ffffff] {s}", .{source.getEntity().name, msg});
+		main.server.sendMessage("[{s}§#ffffff] {s}", .{source.getName().name, msg});
 	}
 }
 

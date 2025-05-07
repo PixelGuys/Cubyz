@@ -1789,7 +1789,7 @@ pub fn SparseSet(comptime T: type, comptime idType: type) type { // MARK: Sparse
 			idOutOfBounds,
 			valueDoesntExist,
 		};
-		const noValue = std.math.maxInt(idType);
+		pub const noValue = std.math.maxInt(idType);
 
 		dense: main.List(struct {
 			value: T,

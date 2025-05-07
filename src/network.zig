@@ -679,7 +679,6 @@ pub const Protocols = struct {
 						conn.user.?.initPlayer(name);
 						const zonObject = ZonElement.initObject(main.stackAllocator);
 						defer zonObject.deinit(main.stackAllocator);
-						zonObject.put("player", conn.user.?.getEntity().save(main.stackAllocator));
 						zonObject.put("player_id", conn.user.?.id);
 						zonObject.put("spawn", main.server.world.?.spawn);
 						zonObject.put("blockPalette", main.server.world.?.blockPalette.storeToZon(main.stackAllocator));
@@ -1123,7 +1122,7 @@ pub const Protocols = struct {
 			writer.writeEnum(UpdateType, .timeAndBiome);
 			writer.writeInt(i64, world.gameTime);
 
-			const pos = @as(Vec3i, @intFromFloat(conn.user.?.getEntity().pos));
+			const pos = @as(Vec3i, @intFromFloat(conn.user.?.getTransform().pos));
 			writer.writeInt(u32, world.getBiome(pos[0], pos[1], pos[2]).paletteId);
 
 			conn.send(.fast, id, writer.data.items);

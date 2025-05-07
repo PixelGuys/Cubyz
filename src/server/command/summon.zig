@@ -12,34 +12,7 @@ pub fn execute(args: []const u8, source: *User) void {
 		return;
 	}
 
-    var entity: main.server.Entity = .{
-        .pos = source.getEntity().pos,
-        .vel = @splat(0),
-        .rot = @splat(0),
-        .health = 8,
-        .maxHealth = 8,
-        .energy = 8,
-        .maxEnergy = 8,
-		.name = main.globalAllocator.dupe(u8, "Silly Guy"),
-        .entityType = main.entity.getTypeById("cubyz:snail"),
-    };
-
-    const id = main.server.world.?.addEntity(entity);
-
-    const list = main.ZonElement.initArray(main.stackAllocator);
-    defer list.deinit(main.stackAllocator);
-
-    const data = entity.save(main.stackAllocator);
-    data.put("id", id);
-
-    list.append(data);
-
-    const updateData = list.toStringEfficient(main.stackAllocator, &.{});
-    defer main.stackAllocator.free(updateData);
-
-    const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
-    defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
-    for(userList) |user| {
-        main.network.Protocols.entity.send(user.conn, updateData);
-    }
+    source.sendMessage("#ff0000/summon is not implemented yet.", .{});
+	
+	_ = main.ecs.addEntity(main.entity.getTypeById("cubyz:snail"));
 }

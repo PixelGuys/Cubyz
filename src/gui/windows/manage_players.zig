@@ -36,8 +36,8 @@ pub fn onOpen() void {
 			userList[i] = connection.user.?;
 			userList[i].increaseRefCount();
 			const row = HorizontalList.init();
-			if(connection.user.?.getEntity().name.len != 0) {
-				row.add(Label.init(.{0, 0}, 200, connection.user.?.getEntity().name, .left));
+			if(connection.user.?.getName().name.len != 0) {
+				row.add(Label.init(.{0, 0}, 200, connection.user.?.getName().name, .left));
 				row.add(Button.initText(.{0, 0}, 100, "Kick", .{.callback = @ptrCast(&kick), .arg = @intFromPtr(connection)}));
 			} else {
 				const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{}", .{connection.remoteAddress}) catch unreachable;

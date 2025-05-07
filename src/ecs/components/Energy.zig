@@ -6,6 +6,8 @@ const ZonElement = main.ZonElement;
 
 const Energy = @This();
 
+entityId: u32 = undefined,
+
 maxEnergy: f32,
 energy: f32,
 
@@ -24,15 +26,8 @@ pub fn copy(self: *Energy) Energy {
 	};
 }
 
-pub fn serialize(self: *Energy, writer: *main.utils.BinaryWriter) !void {
-	try writer.writeEnum(main.ecs.Components, .energy);
-	try writer.writeFloat(f32, self.maxEnergy);
-	try writer.writeFloat(f32, self.energy);
-}
-
-pub fn deserialize(reader: *main.utils.BinaryReader) !Energy {
-	return .{
-		.maxEnergy = try reader.readFloat(f32),
-		.energy = try reader.readFloat(f32),
-	};
+pub fn addEnergy(self: *Energy, energy: f32) void {
+	_ = self;
+	_ = energy;
+	// Some networking stuff
 }

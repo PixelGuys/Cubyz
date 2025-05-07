@@ -190,7 +190,6 @@ pub const ClientEntityManager = struct {
 
 		c.glBindVertexArray(main.renderer.chunk_meshing.vao);
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
-		c.glUniform1i(uniforms.texture_sampler, 0);
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniform3fv(uniforms.directionalLight, 1, @ptrCast(&directionalLight));
 		c.glUniform1f(uniforms.contrast, 0.12);
@@ -334,7 +333,11 @@ pub fn getTypeById(id: []const u8) u16 {
 	}
 }
 
-pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
+pub fn numRegisteredEntites() u16 {
+	return num;
+}
+
+pub fn register(assetFolder: []const u8, id: []const u8, zon: ZonElement) u16 {
 	if(reverseIndices.contains(id)) {
 		std.log.err("Registered entity with id {s} twice!", .{id});
 	}
@@ -358,7 +361,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 
 			switch (component) {
 				inline else => |comp| {
-					ecs.addComponent(num, comp, child);
+					ecs.addComponent(num, assetFolder, id, comp, child);
 				}
 			}
 		}

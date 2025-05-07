@@ -10,14 +10,8 @@ const Vec3d = vec.Vec3d;
 
 const ZonElement = main.ZonElement;
 
-const Render = @This();
-
 pub const id = "render";
 
-pub fn isValid(components: ecs.ComponentBitset) bool {
-	return components.model and components.transform;
-}
+pub fn onClientUpdate() void {
 
-pub fn run(target: u32) void {
-	_ = target;
 }
