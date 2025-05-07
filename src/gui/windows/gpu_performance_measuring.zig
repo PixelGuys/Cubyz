@@ -21,6 +21,7 @@ pub const Samples = enum(u8) {
 	chunk_rendering_occlusion_test,
 	chunk_rendering_new_visible,
 	entity_rendering,
+	particle_rendering,
 	transparent_rendering_preparation,
 	transparent_rendering_occlusion_test,
 	transparent_rendering,
@@ -29,7 +30,6 @@ pub const Samples = enum(u8) {
 	bloom_second_pass,
 	final_copy,
 	gui,
-	particle_rendering,
 };
 
 const names = [_][]const u8{
@@ -42,6 +42,7 @@ const names = [_][]const u8{
 	"Chunk Rendering Occlusion Test",
 	"Chunk Rendering New Visible",
 	"Entity Rendering",
+	"Particle Rendering",
 	"Transparent Rendering Preparation",
 	"Transparent Rendering Occlusion Test",
 	"Transparent Rendering",
@@ -50,7 +51,6 @@ const names = [_][]const u8{
 	"Bloom - Second Pass",
 	"Copy to screen",
 	"GUI Rendering",
-	"Particle Rendering",
 };
 
 const buffers = 4;
