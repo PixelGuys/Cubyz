@@ -2049,7 +2049,8 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 
 	pub fn clear(_: FrameBuffer, clearColor: Vec4f) void {
 		c.glDepthFunc(c.GL_LESS);
-		c.glDepthMask(1);
+		c.glDepthMask(c.GL_TRUE);
+		c.glDisable(c.GL_SCISSOR_TEST);
 		c.glClearColor(clearColor[0], clearColor[1], clearColor[2], clearColor[3]);
 		c.glClear(c.GL_COLOR_BUFFER_BIT | c.GL_DEPTH_BUFFER_BIT);
 	}

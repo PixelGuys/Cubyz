@@ -668,6 +668,9 @@ pub fn main() void { // MARK: main()
 			c.glfwSwapBuffers(Window.window);
 			// Clear may also wait on vsync, so it's done before handling events:
 			gui.windowlist.gpu_performance_measuring.startQuery(.screenbuffer_clear);
+			c.glDepthFunc(c.GL_LESS);
+			c.glDepthMask(c.GL_TRUE);
+			c.glDisable(c.GL_SCISSOR_TEST);
 			c.glClearColor(0.5, 1, 1, 1);
 			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
 			gui.windowlist.gpu_performance_measuring.stopQuery();

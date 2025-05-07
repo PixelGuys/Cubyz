@@ -431,9 +431,6 @@ const Bloom = struct { // MARK: Bloom
 			std.debug.assert(buffer2.validate());
 		}
 		gpu_performance_measuring.startQuery(.bloom_extract_downsample);
-		c.glDisable(c.GL_DEPTH_TEST);
-		c.glDisable(c.GL_CULL_FACE);
-		c.glDepthMask(c.GL_FALSE);
 
 		c.glViewport(0, 0, width/4, height/4);
 		extractImageDataAndDownsample(playerBlock, playerPos, viewMatrix);
@@ -447,10 +444,6 @@ const Bloom = struct { // MARK: Bloom
 		c.glViewport(0, 0, width, height);
 		buffer1.bindTexture(c.GL_TEXTURE5);
 
-		c.glDepthMask(c.GL_TRUE);
-		c.glEnable(c.GL_DEPTH_TEST);
-		c.glEnable(c.GL_CULL_FACE);
-		c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 		gpu_performance_measuring.stopQuery();
 	}
 
@@ -612,8 +605,9 @@ pub const MenuBackGround = struct {
 		defer image.deinit(main.stackAllocator);
 
 		for(0..4) |i| {
-			c.glEnable(c.GL_CULL_FACE);
-			c.glEnable(c.GL_DEPTH_TEST);
+			c.glDepthFunc(c.GL_LESS);
+			c.glDepthMask(c.GL_TRUE);
+			c.glDisable(c.GL_SCISSOR_TEST);
 			game.camera.rotation = .{0, 0, angles[i]};
 			// Draw to frame buffer.
 			buffer.bind();
@@ -631,8 +625,6 @@ pub const MenuBackGround = struct {
 				}
 			}
 		}
-		c.glDisable(c.GL_CULL_FACE);
-		c.glDisable(c.GL_DEPTH_TEST);
 		c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 
 		const fileName = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/backgrounds/{s}_{}.png", .{game.world.?.name, game.world.?.gameTime.load(.monotonic)}) catch unreachable;
