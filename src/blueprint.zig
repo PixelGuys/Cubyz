@@ -365,174 +365,171 @@ fn generatePropertyEnum() type {
 	}});
 }
 
-pub fn GenericMask(comptime Context: type) type {
-	return struct {
-		const AndList = ListUnmanaged(Entry);
-		const OrList = ListUnmanaged(AndList);
+pub const Mask = struct {
+	const AndList = ListUnmanaged(Entry);
+	const OrList = ListUnmanaged(AndList);
 
-		entries: OrList,
+	entries: OrList,
 
-		const or_ = '|';
-		const and_ = '&';
-		const inverse = '!';
-		const tag = '$';
-		const property = '@';
+	const or_ = '|';
+	const and_ = '&';
+	const inverse = '!';
+	const tag = '$';
+	const property = '@';
 
-		const Entry = struct {
-			inner: Inner,
-			isInverse: bool,
+	const Entry = struct {
+		inner: Inner,
+		isInverse: bool,
 
-			const Inner = union(enum) {
-				blockLike: BlockLike,
-				blockTag: Tag,
-				blockProperty: Property,
+		const Inner = union(enum) {
+			blockLike: BlockLike,
+			blockTag: Tag,
+			blockProperty: Property,
 
-				const Property = generatePropertyEnum();
+			const Property = generatePropertyEnum();
 
-				fn initFromString(specifier: []const u8) !Inner {
-					switch(specifier[0]) {
-						tag => {
-							const blockTag = specifier[1..];
-							if(blockTag.len == 0) return error.MaskSyntaxError;
-							return .{.blockTag = Tag.find(blockTag)};
-						},
-						property => {
-							const propertyName = specifier[1..];
-							const propertyValue = std.meta.stringToEnum(Property, propertyName) orelse return error.MaskSyntaxError;
-							return .{.blockProperty = propertyValue};
-						},
-						else => {
-							return .{.blockLike = try Context.parseBlockLike(specifier)};
-						},
-					}
+			fn initFromString(specifier: []const u8) !Inner {
+				switch(specifier[0]) {
+					tag => {
+						const blockTag = specifier[1..];
+						if(blockTag.len == 0) return error.MaskSyntaxError;
+						return .{.blockTag = Tag.find(blockTag)};
+					},
+					property => {
+						const propertyName = specifier[1..];
+						const propertyValue = std.meta.stringToEnum(Property, propertyName) orelse return error.MaskSyntaxError;
+						return .{.blockProperty = propertyValue};
+					},
+					else => {
+						return .{.blockLike = try parseBlockLike(specifier)};
+					},
 				}
-
-				fn match(self: Inner, block: Block) bool {
-					return switch(self) {
-						.blockLike => block.typ == self.blockLike.typ and (self.blockLike.data == null or block.data == self.blockLike.data),
-						.blockTag => |desired| {
-							for(block.blockTags()) |current| {
-								if(desired == current) return true;
-							}
-							return false;
-						},
-						.blockProperty => |blockProperty| switch(blockProperty) {
-							inline else => |prop| @field(Block, @tagName(prop))(block),
-						},
-					};
-				}
-			};
-
-			fn initFromString(specifier: []const u8) !Entry {
-				const isInverse = specifier[0] == '!';
-				const entry = try Inner.initFromString(specifier[if(isInverse) 1 else 0..]);
-				return .{.inner = entry, .isInverse = isInverse};
 			}
 
-			pub fn match(self: Entry, block: Block) bool {
-				const isMatch = self.inner.match(block);
-				if(self.isInverse) {
-					return !isMatch;
-				}
-				return isMatch;
+			fn match(self: Inner, block: Block) bool {
+				return switch(self) {
+					.blockLike => block.typ == self.blockLike.typ and (self.blockLike.data == null or block.data == self.blockLike.data),
+					.blockTag => |desired| {
+						for(block.blockTags()) |current| {
+							if(desired == current) return true;
+						}
+						return false;
+					},
+					.blockProperty => |blockProperty| switch(blockProperty) {
+						inline else => |prop| @field(Block, @tagName(prop))(block),
+					},
+				};
 			}
 		};
 
-		pub fn initFromString(allocator: NeverFailingAllocator, source: []const u8) !@This() {
-			var orStorage: OrList = .{};
-			errdefer orStorage.deinit(allocator);
-
-			var orEdExpressions = std.mem.splitScalar(u8, source, or_);
-			while(orEdExpressions.next()) |subExpression| {
-				if(subExpression.len == 0) continue;
-
-				var andStorage: AndList = .{};
-				errdefer andStorage.deinit(allocator);
-
-				var andEdExpressions = std.mem.splitScalar(u8, subExpression, and_);
-				while(andEdExpressions.next()) |specifier| {
-					if(specifier.len == 0) continue;
-
-					const entry = try Entry.initFromString(specifier);
-					andStorage.append(allocator, entry);
-				}
-
-				if(andStorage.items.len == 0) {
-					return error.MaskSyntaxError;
-				}
-				orStorage.append(allocator, andStorage);
-			}
-
-			if(orStorage.items.len == 0) {
-				return error.MaskSyntaxError;
-			}
-
-			return .{.entries = orStorage};
+		fn initFromString(specifier: []const u8) !Entry {
+			const isInverse = specifier[0] == '!';
+			const entry = try Inner.initFromString(specifier[if(isInverse) 1 else 0..]);
+			return .{.inner = entry, .isInverse = isInverse};
 		}
 
-		pub fn deinit(self: @This(), allocator: NeverFailingAllocator) void {
-			for(self.entries.items) |andStorage| {
-				andStorage.deinit(allocator);
+		pub fn match(self: Entry, block: Block) bool {
+			const isMatch = self.inner.match(block);
+			if(self.isInverse) {
+				return !isMatch;
 			}
-			self.entries.deinit(allocator);
-		}
-
-		pub fn match(self: @This(), block: Block) bool {
-			for(self.entries.items) |andEdExpressions| {
-				var status = true;
-
-				for(andEdExpressions.items) |expression| {
-					status = status and expression.match(block);
-				}
-
-				if(status) return true;
-			}
-			return false;
+			return isMatch;
 		}
 	};
-}
 
-const RuntimeContext = struct {
-	fn parseBlockLike(block: []const u8) !BlockLike {
-		const typ = try main.blocks.getBlockById(block);
-		const data = try main.blocks.getBlockData(block);
-		return .{.typ = typ, .data = data};
+	pub fn initFromString(allocator: NeverFailingAllocator, source: []const u8) !@This() {
+		var orStorage: OrList = .{};
+		errdefer orStorage.deinit(allocator);
+
+		var orEdExpressions = std.mem.splitScalar(u8, source, or_);
+		while(orEdExpressions.next()) |subExpression| {
+			if(subExpression.len == 0) continue;
+
+			var andStorage: AndList = .{};
+			errdefer andStorage.deinit(allocator);
+
+			var andEdExpressions = std.mem.splitScalar(u8, subExpression, and_);
+			while(andEdExpressions.next()) |specifier| {
+				if(specifier.len == 0) continue;
+
+				const entry = try Entry.initFromString(specifier);
+				andStorage.append(allocator, entry);
+			}
+
+			if(andStorage.items.len == 0) {
+				return error.MaskSyntaxError;
+			}
+			orStorage.append(allocator, andStorage);
+		}
+
+		if(orStorage.items.len == 0) {
+			return error.MaskSyntaxError;
+		}
+
+		return .{.entries = orStorage};
+	}
+
+	pub fn deinit(self: @This(), allocator: NeverFailingAllocator) void {
+		for(self.entries.items) |andStorage| {
+			andStorage.deinit(allocator);
+		}
+		self.entries.deinit(allocator);
+	}
+
+	pub fn match(self: @This(), block: Block) bool {
+		for(self.entries.items) |andEdExpressions| {
+			var status = true;
+
+			for(andEdExpressions.items) |expression| {
+				status = status and expression.match(block);
+			}
+
+			if(status) return true;
+		}
+		return false;
 	}
 };
 
-pub const Mask = GenericMask(RuntimeContext);
+fn parseBlockLike(block: []const u8) error{DataParsingFailed, IdParsingFailed}!BlockLike {
+	if(@import("builtin").is_test) return try Test.parseBlockLikeTest(block);
+	const typ = main.blocks.getBlockById(block) catch return error.IdParsingFailed;
+	const data = try main.blocks.getBlockData(block) catch return error.DataParsingFailed;
+	return .{.typ = typ, .data = data};
+}
 
 const Test = struct {
 	var testingAllocator = main.heap.ErrorHandlingAllocator.init(std.testing.allocator);
 	var allocator = testingAllocator.allocator();
 
-	const @"TestContext 1 null" = struct {
-		fn parseBlockLike(_: []const u8) !BlockLike {
-			return .{.typ = 1, .data = null};
-		}
-	};
+	var parseBlockLikeTest: *const @TypeOf(parseBlockLike) = &defaultParseBlockLike;
 
-	const @"TestContext 1 1" = struct {
-		fn parseBlockLike(_: []const u8) !BlockLike {
-			return .{.typ = 1, .data = 1};
-		}
-	};
+	fn defaultParseBlockLike(_: []const u8) !BlockLike {
+		unreachable;
+	}
 
-	const @"TestContext foo or bar" = struct {
-		fn parseBlockLike(data: []const u8) !BlockLike {
-			if(std.mem.eql(u8, data, "addon:foo")) {
-				return .{.typ = 1, .data = 0};
-			}
-			if(std.mem.eql(u8, data, "addon:bar")) {
-				return .{.typ = 2, .data = 0};
-			}
-			unreachable;
+	fn @"parseBlockLike 1 null"(_: []const u8) !BlockLike {
+		return .{.typ = 1, .data = null};
+	}
+	fn @"parseBlockLike 1 1"(_: []const u8) !BlockLike {
+		return .{.typ = 1, .data = 1};
+	}
+
+	fn @"parseBlockLike foo or bar"(data: []const u8) !BlockLike {
+		if(std.mem.eql(u8, data, "addon:foo")) {
+			return .{.typ = 1, .data = 0};
 		}
-	};
+		if(std.mem.eql(u8, data, "addon:bar")) {
+			return .{.typ = 2, .data = 0};
+		}
+		unreachable;
+	}
 };
 
 test "Mask match block type with any data" {
-	const mask = try GenericMask(Test.@"TestContext 1 null").initFromString(Test.allocator, "addon:dummy");
+	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
+	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
+
+	const mask = try Mask.initFromString(Test.allocator, "addon:dummy");
 	defer mask.deinit(Test.allocator);
 
 	try std.testing.expect(mask.match(.{.typ = 1, .data = 0}));
@@ -541,7 +538,10 @@ test "Mask match block type with any data" {
 }
 
 test "Mask match block type with exact data" {
-	const mask = try GenericMask(Test.@"TestContext 1 1").initFromString(Test.allocator, "addon:dummy");
+	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 1";
+	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
+
+	const mask = try Mask.initFromString(Test.allocator, "addon:dummy");
 	defer mask.deinit(Test.allocator);
 
 	try std.testing.expect(!mask.match(.{.typ = 1, .data = 0}));
@@ -550,7 +550,10 @@ test "Mask match block type with exact data" {
 }
 
 test "Mask match type 0 or type 1 with exact data" {
-	const mask = try GenericMask(Test.@"TestContext foo or bar").initFromString(Test.allocator, "addon:foo|addon:bar");
+	Test.parseBlockLikeTest = &Test.@"parseBlockLike foo or bar";
+	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
+
+	const mask = try Mask.initFromString(Test.allocator, "addon:foo|addon:bar");
 	defer mask.deinit(Test.allocator);
 
 	try std.testing.expect(mask.match(.{.typ = 1, .data = 0}));
