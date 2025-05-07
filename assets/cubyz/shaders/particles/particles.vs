@@ -1,8 +1,7 @@
 #version 460
 
-out vec3 light;
-out vec2 uv;
-out float textureIndex;
+out vec3 textureCoords;
+flat out vec3 light;
 
 uniform vec3 ambientLight;
 uniform mat4 projectionAndViewMatrix;
@@ -13,8 +12,7 @@ uniform vec3 playerPositionFraction;
 struct ParticleData {
 	vec3 pos;
 	float rot;
-	float lifeTime;
-	float lifeLeft;
+	float lifeRatio;
 	uint light;
 	uint typ;
 };
@@ -66,9 +64,7 @@ void main() {
 		fullLight >> 5 & 31u,
 		fullLight >> 0 & 31u
 	);
-	light = max(sunLight*ambientLight, blockLight)*0.032258064516129; // 1/31 im not sure if we keep this
-
-	textureIndex = floor(float(particleType.startFrame) + (particle.lifeLeft/particle.lifeTime)*float(particleType.animationFrames));
+	light = max(sunLight*ambientLight, blockLight)/31;
 
 	float rot = particle.rot;
 	vec3 pos = facePositions[vertexID];
@@ -84,5 +80,6 @@ void main() {
 
 	gl_Position = projectionAndViewMatrix*vec4(position, 1);
 
-	uv = uvPositions[vertexID];
+	float textureIndex = floor(float(particleType.startFrame) + particle.lifeRatio*float(particleType.animationFrames));
+	textureCoords = vec3(uvPositions[vertexID], textureIndex);
 }

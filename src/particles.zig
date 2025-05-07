@@ -115,7 +115,6 @@ pub const ParticleManager = struct {
 	}
 
 	pub fn generateTextureArray() void {
-		std.log.debug("Particle texture sizes: {d} {d}", .{textures.items.len, emissionTextures.items.len});
 		textureArray.generate(textures.items, true, true);
 		c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
 		emissionTextureArray.generate(emissionTextures.items, true, false);
@@ -162,12 +161,12 @@ pub const ParticleSystem = struct {
 		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/particles/particles.vs", "assets/cubyz/shaders/particles/particles.fs", "", &uniforms);
 
 		properties = EmmiterProperties{
-			.gravity = .{0, 0, -9.8},
+			.gravity = .{0, 0, 2},
 			.drag = 0.5,
-			.lifeTimeMin = 10,
-			.lifeTimeMax = 10,
-			.velMin = 3,
-			.velMax = 8,
+			.lifeTimeMin = 1,
+			.lifeTimeMax = 1,
+			.velMin = 2,
+			.velMax = 2,
 			.rotVelMin = std.math.pi*0.2,
 			.rotVelMax = std.math.pi*0.6,
 		};
@@ -190,8 +189,8 @@ pub const ParticleSystem = struct {
 		while(i < particleCount) {
 			var particle = particles[i];
 			var particleLocal = particlesLocal[i];
-			particle.lifeLeft -= deltaTime;
-			if(particle.lifeLeft < 0) {
+			particle.lifeRatio -= particleLocal.lifeVelocity*deltaTime;
+			if(particle.lifeRatio < 0) {
 				particleCount -= 1;
 				particles[i] = particles[particleCount];
 				particlesLocal[i] = particlesLocal[particleCount];
@@ -310,12 +309,11 @@ pub const ParticleSystem = struct {
 
 			particles[particleCount] = Particle{
 				.posAndRotation = vec.combine(particlePos, 0),
-				.lifeTime = lifeTime,
-				.lifeLeft = lifeTime,
 				.typ = typ,
 			};
 			particlesLocal[particleCount] = ParticleLocal{
 				.velAndRotationVel = vec.combine(vel, properties.rotVelMin + random.nextFloatSigned(&seed)*properties.rotVelMax),
+				.lifeVelocity = 1/lifeTime,
 				.collides = collides,
 			};
 			particleCount += 1;
@@ -396,13 +394,13 @@ pub const ParticleType = struct {
 
 pub const Particle = struct {
 	posAndRotation: Vec4f,
-	lifeTime: f32,
-	lifeLeft: f32,
+	lifeRatio: f32 = 1,
 	light: u32 = 0,
 	typ: u32,
 };
 
 pub const ParticleLocal = struct {
 	velAndRotationVel: Vec4f,
+	lifeVelocity: f32,
 	collides: bool,
 };
