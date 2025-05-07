@@ -1733,13 +1733,14 @@ pub const Pipeline = struct { // MARK: Pipeline
 			.clockwise => c.GL_CW,
 		});
 		if(self.rasterState.depthBias) |depthBias| {
-			c.glEnable(switch(self.rasterState.polygonMode) {
-				.fill => c.GL_POLYGON_OFFSET_FILL,
-				.line => c.GL_POLYGON_OFFSET_LINE,
-				.point => c.GL_POLYGON_OFFSET_POINT,
-				else => unreachable,
-			});
-			c.glPolygonOffsetClamp(depthBias.slopeFactor, depthBias.constantFactor, depthBias.clamp);
+			c.glEnable(c.GL_POLYGON_OFFSET_FILL);
+			c.glEnable(c.GL_POLYGON_OFFSET_LINE);
+			c.glEnable(c.GL_POLYGON_OFFSET_POINT);
+			c.glPolygonOffset(depthBias.slopeFactor, depthBias.constantFactor);
+		} else {
+			c.glDisable(c.GL_POLYGON_OFFSET_FILL);
+			c.glDisable(c.GL_POLYGON_OFFSET_LINE);
+			c.glDisable(c.GL_POLYGON_OFFSET_POINT);
 		}
 		c.glLineWidth(self.rasterState.lineWidth);
 

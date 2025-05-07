@@ -863,7 +863,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				.clamp = 0,
 				.constantFactor = 0,
 			}},
-			.{.depthTest = true, .depthWrite = false},
+			.{.depthTest = true, .depthWrite = true},
 			.{.attachments = &.{.noBlending}},
 		);
 
@@ -1165,7 +1165,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		c.glUniform3f(uniforms.upperBounds, max[0], max[1], max[2]);
 
 		c.glBindVertexArray(cubeVAO);
-		// c.glLineWidth(2); // TODO: Draw thicker lines so they are more visible. Maybe a simple shader + cube mesh is enough.
+		// TODO: Draw thicker lines so they are more visible. Maybe a simple shader + cube mesh is enough.
 		c.glDrawElements(c.GL_LINES, 12*2, c.GL_UNSIGNED_BYTE, null);
 	}
 
