@@ -372,11 +372,11 @@ pub fn GenericMask(comptime Context: type) type {
 
 		entries: OrList,
 
-		pub const or_ = '|';
-		pub const and_ = '&';
-		pub const inverse = '!';
-		pub const tag = '$';
-		pub const property = '@';
+		const or_ = '|';
+		const and_ = '&';
+		const inverse = '!';
+		const tag = '$';
+		const property = '@';
 
 		const Entry = struct {
 			inner: Inner,
