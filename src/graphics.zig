@@ -1442,7 +1442,6 @@ pub const Pipeline = struct { // MARK: Pipeline
 	depthStencilState: DepthStencilState,
 	blendState: ColorBlendState,
 
-
 	const RasterizationState = struct {
 		depthClamp: bool = true,
 		rasterizerDiscard: bool = false,
