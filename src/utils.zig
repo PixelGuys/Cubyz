@@ -1978,7 +1978,6 @@ pub fn SparseSet(comptime T: type, comptime idType: type) type { // MARK: Sparse
 	};
 }
 
-
 const SparseSetTest = struct {
 	var testingAllocator = main.heap.ErrorHandlingAllocator.init(std.testing.allocator);
 	var allocator = testingAllocator.allocator();
@@ -2020,7 +2019,7 @@ test "SparseSet/reusing" {
 	set.remove(SparseSetTest.allocator, firstId);
 
 	const newId = set.add(SparseSetTest.allocator, expectNew);
-	
+
 	try std.testing.expectEqual(firstId, newId);
 
 	try std.testing.expectEqual((try set.get(secondId)).*, expectSecond);
