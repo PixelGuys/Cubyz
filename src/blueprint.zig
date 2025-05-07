@@ -339,6 +339,32 @@ pub const Pattern = struct {
 
 const BlockLike = struct {typ: u16, data: ?u16};
 
+fn generatePropertyEnum() type {
+	var tempFields: [@typeInfo(Block).@"struct".decls.len]std.builtin.Type.EnumField = undefined;
+	var count = 0;
+
+	for(std.meta.declarations(Block)) |decl| {
+		const declInfo = @typeInfo(@TypeOf(@field(Block, decl.name)));
+		if(declInfo != .@"fn") continue;
+		if(declInfo.@"fn".return_type != bool) continue;
+
+		tempFields[count] = .{.name = decl.name, .value = count};
+		count += 1;
+	}
+
+	var outFields: [count]std.builtin.Type.EnumField = undefined;
+	for(0..count) |i| {
+		outFields[i] = tempFields[i];
+	}
+
+	return @Type(.{.@"enum" = .{
+		.tag_type = u8,
+		.fields = &outFields,
+		.decls = &.{},
+		.is_exhaustive = true,
+	}});
+}
+
 pub fn GenericMask(comptime Context: type) type {
 	return struct {
 		const AndList = ListUnmanaged(Entry);
@@ -361,7 +387,7 @@ pub fn GenericMask(comptime Context: type) type {
 				blockTag: Tag,
 				blockProperty: Property,
 
-				const Property = enum {transparent, collide, solid, selectable, degradable, viewThrough, allowOres, isEntity};
+				const Property = generatePropertyEnum();
 
 				fn initFromString(specifier: []const u8) !Inner {
 					switch(specifier[0]) {
@@ -390,15 +416,8 @@ pub fn GenericMask(comptime Context: type) type {
 							}
 							return false;
 						},
-						.blockProperty => |prop| return switch(prop) {
-							.transparent => block.transparent(),
-							.collide => block.collide(),
-							.solid => block.solid(),
-							.selectable => block.selectable(),
-							.degradable => block.degradable(),
-							.viewThrough => block.viewThrough(),
-							.allowOres => block.allowOres(),
-							.isEntity => block.entityDataClass() != null,
+						.blockProperty => |blockProperty| switch(blockProperty) {
+							inline else => |prop| @field(Block, @tagName(prop))(block),
 						},
 					};
 				}
