@@ -1389,24 +1389,20 @@ pub const Shader = struct { // MARK: Shader
 		}
 	}
 
-	pub fn init(vertex: []const u8, fragment: []const u8, defines: []const u8) Shader {
+	fn init(vertex: []const u8, fragment: []const u8, defines: []const u8, uniformStruct: anytype) Shader {
 		const shader = Shader{.id = c.glCreateProgram()};
 		shader.addShader(vertex, defines, c.GL_VERTEX_SHADER) catch return shader;
 		shader.addShader(fragment, defines, c.GL_FRAGMENT_SHADER) catch return shader;
 		shader.link(fragment) catch return shader;
-		return shader;
-	}
 
-	pub fn initAndGetUniforms(vertex: []const u8, fragment: []const u8, defines: []const u8, uniformStruct: anytype) Shader {
-		const self = Shader.init(vertex, fragment, defines);
-		if(@TypeOf(uniformStruct) != @TypeOf(undefined)) {
+		if(@TypeOf(uniformStruct) != @TypeOf(null)) {
 			inline for(@typeInfo(@TypeOf(uniformStruct.*)).@"struct".fields) |field| {
 				if(field.type == c_int) {
-					@field(uniformStruct, field.name) = c.glGetUniformLocation(self.id, field.name[0..]);
+					@field(uniformStruct, field.name) = c.glGetUniformLocation(shader.id, field.name[0..]);
 				}
 			}
 		}
-		return self;
+		return shader;
 	}
 
 	pub fn initCompute(compute: []const u8, defines: []const u8) Shader {
@@ -1640,11 +1636,12 @@ pub const Pipeline = struct { // MARK: Pipeline
 		};
 
 		const ColorComponentFlags = packed struct {
-			r: bool = false,
-			g: bool = false,
-			b: bool = false,
-			a: bool = false,
+			r: bool,
+			g: bool,
+			b: bool,
+			a: bool,
 			pub const all: ColorComponentFlags = .{.r = true, .g = true, .b = true, .a = true};
+			pub const none: ColorComponentFlags = .{.r = false, .g = false, .b = false, .a = false};
 		};
 	};
 
@@ -1679,7 +1676,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 		std.debug.assert(rasterState.lineWidth <= 1); // Larger values are poorly supported among drivers
 		std.debug.assert(blendState.logicOp == null); // TODO: Not yet implemented
 		return .{
-			.shader = .initAndGetUniforms(vertexPath, fragmentPath, defines, uniformStruct),
+			.shader = .init(vertexPath, fragmentPath, defines, uniformStruct),
 			.rasterState = rasterState,
 			.multisampleState = .{}, // TODO: Not implemented
 			.depthStencilState = depthStencilState,
@@ -1733,7 +1730,6 @@ pub const Pipeline = struct { // MARK: Pipeline
 			.clockwise => c.GL_CW,
 		});
 		if(self.rasterState.depthBias) |depthBias| {
-			c.glEnable(c.GL_POLYGON_OFFSET_CLAMP);
 			c.glEnable(switch(self.rasterState.polygonMode) {
 				.fill => c.GL_POLYGON_OFFSET_FILL,
 				.line => c.GL_POLYGON_OFFSET_LINE,
@@ -2049,6 +2045,8 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 	}
 
 	pub fn clear(_: FrameBuffer, clearColor: Vec4f) void {
+		c.glDepthFunc(c.GL_LESS);
+		c.glDepthMask(1);
 		c.glClearColor(clearColor[0], clearColor[1], clearColor[2], clearColor[3]);
 		c.glClear(c.GL_COLOR_BUFFER_BIT | c.GL_DEPTH_BUFFER_BIT);
 	}

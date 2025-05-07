@@ -542,7 +542,7 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 };
 
 pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
-	var itemShader: graphics.Shader = undefined;
+	var itemPipeline: graphics.Pipeline = undefined;
 	var itemUniforms: struct {
 		projectionMatrix: c_int,
 		modelMatrix: c_int,
@@ -648,7 +648,15 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	};
 
 	pub fn init() void {
-		itemShader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/item_drop.vs", "assets/cubyz/shaders/item_drop.fs", "", &itemUniforms);
+		itemPipeline = graphics.Pipeline.init(
+			"assets/cubyz/shaders/item_drop.vs",
+			"assets/cubyz/shaders/item_drop.fs",
+			"",
+			&itemUniforms,
+			.{},
+			.{.depthTest = true},
+			.{.attachments = &.{.alphaBlending}},
+		);
 		itemModelSSBO = .init();
 		itemModelSSBO.bufferData(i32, &[3]i32{1, 1, 1});
 		itemModelSSBO.bind(2);
@@ -658,7 +666,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	}
 
 	pub fn deinit() void {
-		itemShader.deinit();
+		itemPipeline.deinit();
 		itemModelSSBO.deinit();
 		modelData.deinit();
 		voxelModels.clear();
@@ -676,7 +684,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	}
 
 	fn bindCommonUniforms(projMatrix: Mat4f, viewMatrix: Mat4f, ambientLight: Vec3f) void {
-		itemShader.bind();
+		itemPipeline.bind(null);
 		c.glUniform1f(itemUniforms.reflectionMapSize, main.renderer.reflectionCubeMapSize);
 		c.glUniformMatrix4fv(itemUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 		c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&ambientLight));
