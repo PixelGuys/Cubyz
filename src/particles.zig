@@ -10,7 +10,6 @@ const game = @import("game.zig");
 const ZonElement = @import("zon.zig").ZonElement;
 const c = graphics.c;
 const random = @import("random.zig");
-const ColorRGB = graphics.ColorRGB;
 const vec = @import("vec.zig");
 const Mat4f = vec.Mat4f;
 const Vec3d = vec.Vec3d;
@@ -19,27 +18,26 @@ const Vec4f = vec.Vec4f;
 const Vec3i = vec.Vec3i;
 
 var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
-const allocator = arena.allocator();
+const arenaAllocator = arena.allocator();
 
 pub const ParticleManager = struct {
-	pub var particleTypesSSBO: ?SSBO = null;
-	pub var types: main.List(ParticleType) = undefined;
+	var particleTypesSSBO: SSBO = undefined;
+	var types: main.List(ParticleType) = undefined;
 	var textureIDs: main.List([]const u8) = undefined;
 	var textures: main.List(Image) = undefined;
 	var emissionTextures: main.List(Image) = undefined;
-	var arenaForWorld: main.heap.NeverFailingArenaAllocator = undefined;
 
-	pub var textureArray: TextureArray = undefined;
-	pub var emissionTextureArray: TextureArray = undefined;
+	var textureArray: TextureArray = undefined;
+	var emissionTextureArray: TextureArray = undefined;
 
-	pub var particleTypeHashmap = std.StringHashMap(u16).init(allocator.allocator);
+	const ParticleIndex = u16;
+	var particleTypeHashmap: std.StringHashMapUnmanaged(ParticleIndex) = undefined;
 
 	pub fn init() void {
 		types = .init(main.globalAllocator);
 		textureIDs = .init(main.globalAllocator);
 		textures = .init(main.globalAllocator);
 		emissionTextures = .init(main.globalAllocator);
-		arenaForWorld = .init(main.globalAllocator);
 		textureArray = .init();
 		emissionTextureArray = .init();
 		ParticleSystem.init();
@@ -50,18 +48,15 @@ pub const ParticleManager = struct {
 		textureIDs.deinit();
 		textures.deinit();
 		emissionTextures.deinit();
-		arenaForWorld.deinit();
 		textureArray.deinit();
 		emissionTextureArray.deinit();
-		particleTypeHashmap.deinit();
+		particleTypeHashmap.deinit(arenaAllocator.allocator);
 		ParticleSystem.deinit();
+		arena.deinit();
 	}
 
 	pub fn register(_: []const u8, id: []const u8, zon: ZonElement) void {
-		std.log.debug("Registered particle: {s}", .{id});
-		var particleType: ParticleType = undefined;
-
-		particleType.animationFrames = zon.get(u32, "animationFrames", 1);
+		const animationFrames = zon.get(u32, "animationFrames", 1);
 
 		const textureId = zon.get([]const u8, "texture", "cubyz:spark");
 		var splitter = std.mem.splitScalar(u8, textureId, ':');
@@ -69,18 +64,20 @@ pub const ParticleManager = struct {
 		const _id = splitter.rest();
 
 		// this is so confusing i just hardcoded that thing
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/particles/textures/{s}.png", .{mod, _id}) catch unreachable;
+		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/particles/textures/{s}.png", .{ mod, _id }) catch unreachable;
 		defer main.stackAllocator.free(path);
-		textureIDs.append(arenaForWorld.allocator().dupe(u8, path));
-		readTextureData(path, &particleType);
+		textureIDs.append(arenaAllocator.dupe(u8, path));
+		const particleType = readTextureDataAndParticleType(path, animationFrames);
 
-		particleTypeHashmap.put(id, @intCast(types.items.len)) catch unreachable;
+		particleTypeHashmap.put(arenaAllocator.allocator, id, @intCast(types.items.len)) catch unreachable;
 		types.append(particleType);
+
+		std.log.debug("Registered particle type: {s}", .{id});
 	}
 
-	fn readTextureData(_path: []const u8, typ: *ParticleType) void {
-		const animationFrames = typ.animationFrames;
+	fn readTextureDataAndParticleType(_path: []const u8, animationFrames: u32) ParticleType {
 		const path = _path[0 .. _path.len - ".png".len];
+		var typ: ParticleType = undefined;
 
 		const base = readTextureFile(path, ".png", Image.defaultImage);
 		const emission = readTextureFile(path, "_emission.png", Image.emptyImage);
@@ -90,16 +87,19 @@ pub const ParticleManager = struct {
 			textures.append(extractAnimationSlice(base, i, animationFrames));
 			emissionTextures.append(extractAnimationSlice(emission, i, animationFrames));
 		}
+		
+		typ.animationFrames = animationFrames;
+		return typ;
 	}
 
 	fn extendedPath(_allocator: main.heap.NeverFailingAllocator, path: []const u8, ending: []const u8) []const u8 {
-		return std.fmt.allocPrint(_allocator.allocator, "{s}{s}", .{path, ending}) catch unreachable;
+		return std.mem.concat(_allocator.allocator, u8, &.{ path, ending }) catch unreachable;
 	}
 
 	fn readTextureFile(_path: []const u8, ending: []const u8, default: Image) Image {
 		const path = extendedPath(main.stackAllocator, _path, ending);
 		defer main.stackAllocator.free(path);
-		return Image.readFromFile(arenaForWorld.allocator(), path) catch default;
+		return Image.readFromFile(arenaAllocator, path) catch default;
 	}
 
 	fn extractAnimationSlice(image: Image, frame: usize, frames: usize) Image {
@@ -122,7 +122,7 @@ pub const ParticleManager = struct {
 		c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
 
 		particleTypesSSBO = SSBO.initStatic(ParticleType, ParticleManager.types.items);
-		particleTypesSSBO.?.bind(14);
+		particleTypesSSBO.bind(14);
 	}
 
 	pub fn update(deltaTime: f64) void {
@@ -136,7 +136,7 @@ pub const ParticleManager = struct {
 };
 
 pub const ParticleSystem = struct {
-	pub const maxCapacity: u32 = 1165536;
+	pub const maxCapacity: u32 = 4194304;
 	var particleCount: u32 = 0;
 	var particles: [maxCapacity]Particle = undefined;
 	var particlesLocal: [maxCapacity]ParticleLocal = undefined;
