@@ -405,16 +405,9 @@ pub fn GenericMask(comptime Context: type) type {
 			};
 
 			fn initFromString(specifier: []const u8) !Entry {
-				switch(specifier[0]) {
-					inverse => {
-						const entry = try Inner.initFromString(specifier[1..]);
-						return .{.inner = entry, .isInverse = true};
-					},
-					else => {
-						const entry = try Inner.initFromString(specifier);
-						return .{.inner = entry, .isInverse = false};
-					},
-				}
+				const isInverse = specifier[0] == '!';
+				const entry = try Inner.initFromString(specifier[if(isInverse) 1 else 0..]);
+				return .{.inner = entry, .isInverse = isInverse};
 			}
 
 			pub fn match(self: Entry, block: Block) bool {
