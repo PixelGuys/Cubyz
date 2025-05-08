@@ -345,7 +345,7 @@ const Bloom = struct { // MARK: Bloom
 			"assets/cubyz/shaders/bloom/first_pass.fs",
 			"",
 			null,
-			.{},
+			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.noBlending}},
 		);
@@ -354,7 +354,7 @@ const Bloom = struct { // MARK: Bloom
 			"assets/cubyz/shaders/bloom/second_pass.fs",
 			"",
 			null,
-			.{},
+			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.noBlending}},
 		);
@@ -363,7 +363,7 @@ const Bloom = struct { // MARK: Bloom
 			"assets/cubyz/shaders/bloom/color_extractor_downsample.fs",
 			"",
 			&colorExtractUniforms,
-			.{},
+			.{.cullMode = .none},
 			.{.depthTest = false, .depthWrite = false},
 			.{.attachments = &.{.noBlending}},
 		);
