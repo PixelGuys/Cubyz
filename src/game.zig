@@ -971,6 +971,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 		if(main.Window.grabbed) {
 			const walkingSpeed: f64 = if(Player.crouching or Player.super.climbing) 2 else 4;
+			const onGroundOrFlying = Player.onGround or Player.isFlying.load(.monotonic);
 			if(KeyBoard.key("forward").value > 0.0) {
 				if(KeyBoard.key("sprint").pressed and !Player.crouching) {
 					if(Player.isGhost.load(.monotonic)) {
@@ -983,28 +984,33 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 						movementSpeed = @max(movementSpeed, 8)*KeyBoard.key("forward").value;
 						movementDir += forward*@as(Vec3d, @splat(8*KeyBoard.key("forward").value));
 					}
-				} else {
+				} else if(Player.super.climbing and !Player.crouching) {
+					climbSpeed = Player.currentClimbSpeed*KeyBoard.key("forward").value;
+					climbDir += up;
+					movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("forward").value;
+					movementDir += forward*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("forward").value));
+				} else if((Player.super.climbing and !Player.crouching) or onGroundOrFlying) {
 					movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("forward").value;
 					movementDir += forward*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("forward").value));
 				}
-				if(Player.super.climbing) {
-					climbSpeed = Player.currentClimbSpeed*KeyBoard.key("forward").value;
-					climbDir += up;
-				}
 			}
 			if(KeyBoard.key("backward").value > 0.0) {
-				if(!Player.super.climbing or Player.onGround) {
+				if((Player.super.climbing and !Player.crouching) or onGroundOrFlying) {
 					movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("backward").value;
 					movementDir += forward*@as(Vec3d, @splat(-walkingSpeed*KeyBoard.key("backward").value));
 				}
 			}
 			if(KeyBoard.key("left").value > 0.0) {
-				movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("left").value;
-				movementDir += right*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("left").value));
+				if((Player.super.climbing and !Player.crouching) or onGroundOrFlying) {
+					movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("left").value;
+					movementDir += right*@as(Vec3d, @splat(walkingSpeed*KeyBoard.key("left").value));
+				}
 			}
 			if(KeyBoard.key("right").value > 0.0) {
-				movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("right").value;
-				movementDir += right*@as(Vec3d, @splat(-walkingSpeed*KeyBoard.key("right").value));
+				if((Player.super.climbing and !Player.crouching) or onGroundOrFlying) {
+					movementSpeed = @max(movementSpeed, walkingSpeed)*KeyBoard.key("right").value;
+					movementDir += right*@as(Vec3d, @splat(-walkingSpeed*KeyBoard.key("right").value));
+				}
 			}
 			if(KeyBoard.key("jump").pressed) {
 				if(Player.isFlying.load(.monotonic)) {
@@ -1036,6 +1042,10 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 				Player.jumpCooldown = 0;
 			}
 			if(KeyBoard.key("fall").pressed) {
+				if(Player.super.climbing) {
+					climbSpeed = -Player.currentClimbSpeed;
+					climbDir += up;
+				}
 				if(Player.isFlying.load(.monotonic)) {
 					if(KeyBoard.key("sprint").pressed) {
 						if(Player.isGhost.load(.monotonic)) {
