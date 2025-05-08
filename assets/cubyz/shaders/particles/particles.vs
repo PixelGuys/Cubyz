@@ -67,18 +67,18 @@ void main() {
 	light = max(sunLight*ambientLight, blockLight)/31;
 
 	float rot = particle.rot;
-	vec3 pos = facePositions[vertexID];
+	vec3 facePos = facePositions[vertexID];
 	float sn = sin(rot);
 	float cs = cos(rot);
-	vec3 position = vec3(0);
-	position.x = pos.x*cs - pos.y*sn;
-	position.y = pos.x*sn + pos.y*cs;
+	vec3 vertPos = vec3(0);
+	vertPos.x = facePos.x*cs - facePos.y*sn;
+	vertPos.y = facePos.x*sn + facePos.y*cs;
 
-	position = (billboardMatrix*vec4(particleType.size*position, 1)).xyz;
-	position += vec3(particle.pos - playerPositionInteger);
-	position -= playerPositionFraction;
+	vertPos = (billboardMatrix*vec4(particleType.size*vertPos, 1)).xyz;
+	vertPos += vec3(particle.pos - playerPositionInteger);
+	vertPos -= playerPositionFraction;
 
-	gl_Position = projectionAndViewMatrix*vec4(position, 1);
+	gl_Position = projectionAndViewMatrix*vec4(vertPos, 1);
 
 	float textureIndex = floor(float(particleType.startFrame) + particle.lifeRatio*float(particleType.animationFrames));
 	textureCoords = vec3(uvPositions[vertexID], textureIndex);
