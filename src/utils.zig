@@ -1912,7 +1912,7 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 	std.debug.assert(@typeInfo(IdType).int.signedness == .unsigned);
 
 	return struct {
-		const Index = enum (IdType) {
+		const Index = enum(IdType) {
 			noValue = std.math.maxInt(IdType),
 			_,
 		};
@@ -1922,7 +1922,7 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 		dense: main.ListUnmanaged(T) = .{},
 		reverseIds: main.ListUnmanaged(IdType) = .{},
 		sparse: main.ListUnmanaged(Index) = .{},
-		
+
 		pub fn deinit(self: *Self, allocator: NeverFailingAllocator) void {
 			self.dense.deinit(allocator);
 			self.reverseIds.deinit(allocator);
@@ -1951,8 +1951,8 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 
 			const denseId: IdType = @intFromEnum(self.sparse.items[id]);
 			self.sparse.items[id] = .noValue;
-			
-			if (denseId == self.dense.items.len - 1) {
+
+			if(denseId == self.dense.items.len - 1) {
 				_ = self.dense.pop();
 				_ = self.reverseIds.pop();
 			} else {
