@@ -137,6 +137,8 @@ pub const Address = struct {
 	port: u16,
 	isSymmetricNAT: bool = false,
 
+	pub const localHost = 0x0100007f;
+
 	pub fn format(self: Address, _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
 		if(self.isSymmetricNAT) {
 			try writer.print("{}.{}.{}.{}:?{}", .{self.ip & 255, self.ip >> 8 & 255, self.ip >> 16 & 255, self.ip >> 24, self.port});
@@ -552,7 +554,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 			}
 			if(self.online.load(.acquire) and source.ip == self.externalAddress.ip and source.port == self.externalAddress.port) return;
 		}
-		if(self.allowNewConnections.load(.monotonic)) {
+		if(self.allowNewConnections.load(.monotonic) or source.ip == Address.localHost) {
 			if(data.len != 0 and data[0] == @intFromEnum(Connection.ChannelId.init)) {
 				const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{}", .{source}) catch unreachable;
 				defer main.stackAllocator.free(ip);
