@@ -481,6 +481,7 @@ pub const collision = struct {
 		const extentX: Vec3d = extent + Vec3d{0.01, -0.01, -0.01};
 		const extentY: Vec3d = extent + Vec3d{-0.01, 0.01, -0.01};
 		const extentZ: Vec3d = extent + Vec3d{-0.01, -0.01, 0.01};
+		const extendSurrounding: Vec3d = extent + Vec3d{0.01, 0.01, 0.01};
 
 		var posX: i32 = minX;
 		while(posX <= maxX) : (posX += 1) {
@@ -495,25 +496,25 @@ pub const collision = struct {
 
 					const touchX: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentX);
 					const touchY: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentY);
-					const touchZ: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentZ);
 
-					if(block.?.climbable()) {
-						if(!entity.climbing and entity.vel[2] > slipVel) {
-							// make plane rotation models not climbable on the ground
-							const blockPos: Vec3d = .{@floatFromInt(posX), @floatFromInt(posY), @floatFromInt(posZ)};
-							const model = block.?.mode().model(block.?).model();
-							const modelBoundingBoxMax: Vec3d = model.max + blockPos;
-							const hasFullBlockHeight = model.max[2] > 0.9;
-							if(hasFullBlockHeight or modelBoundingBoxMax[2] - boundingBox.min[2] > 0.15)
-								entity.climbing = touchX or touchY;
-						}
+					if(block.?.climbable() and !entity.climbing and entity.vel[2] > slipVel) {
+						const blockPos: Vec3d = .{@floatFromInt(posX), @floatFromInt(posY), @floatFromInt(posZ)};
+						const model = block.?.mode().model(block.?).model();
+						const modelBoundingBoxMax: Vec3d = model.max + blockPos;
+						const blockCollisionLine = modelBoundingBoxMax[2] - boundingBox.min[2];
 
-						entity.touchingClimbable = entity.touchingClimbable or isBlockIntersecting(block.?, posX, posY, posZ, center, extent + Vec3d{0, 0, 0.01});
+						const isFullBlock = model.max[2] > 0.9;
+						const isSideBlock = touchX or touchY;
+						const isBottomBlock = blockCollisionLine < 0.15 and isBlockIntersecting(block.?, posX, posY, posZ, center, extendSurrounding);
+
+						entity.touchingClimbable = entity.touchingClimbable or isSideBlock or isBottomBlock;
+						entity.climbing = isSideBlock and (!isBottomBlock or isFullBlock);
 					}
 
 					if(block.?.touchFunction() == null)
 						continue;
 
+					const touchZ: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentZ);
 					if(touchX or touchY or touchZ)
 						block.?.touchFunction().?(block.?, entity.*, posX, posY, posZ, touchX and touchY and touchZ);
 				}
