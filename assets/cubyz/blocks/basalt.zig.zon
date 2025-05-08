@@ -14,12 +14,6 @@
 			.colors = .{
 				0xff282328, 0xff353135, 0xff434041, 0xff4A4849, 0xff605E5F,
 			},
-			.modifiers = .{
-				.{
-					.id = "fragile",
-					.strength = 0.20,
-				},
-			},
 		},
 	},
 	.allowOres = true,
