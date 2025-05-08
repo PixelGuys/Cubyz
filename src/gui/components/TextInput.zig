@@ -485,7 +485,7 @@ fn ensureCursorVisibility(self: *TextInput) void {
 
 pub fn render(self: *TextInput, mousePosition: Vec2f) void {
 	texture.bindTo(0);
-	Button.shader.bind();
+	Button.pipeline.bind(draw.getScissor());
 	draw.setColor(0xff000000);
 	draw.customShadedRect(Button.buttonUniforms, self.pos, self.size);
 	const oldTranslation = draw.setTranslation(self.pos);

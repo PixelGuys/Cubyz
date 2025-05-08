@@ -25,8 +25,8 @@ const gpu_performance_measuring = main.gui.windowlist.gpu_performance_measuring;
 
 const mesh_storage = @import("mesh_storage.zig");
 
-var shader: Shader = undefined;
-var transparentShader: Shader = undefined;
+var pipeline: graphics.Pipeline = undefined;
+var transparentPipeline: graphics.Pipeline = undefined;
 const UniformStruct = struct {
 	projectionMatrix: c_int,
 	viewMatrix: c_int,
@@ -56,7 +56,7 @@ pub var commandUniforms: struct {
 	onlyDrawPreviouslyInvisible: c_int,
 	lodDistance: c_int,
 } = undefined;
-pub var occlusionTestShader: Shader = undefined;
+pub var occlusionTestPipeline: graphics.Pipeline = undefined;
 pub var occlusionTestUniforms: struct {
 	projectionMatrix: c_int,
 	viewMatrix: c_int,
@@ -75,10 +75,50 @@ pub var transparentQuadsDrawn: usize = 0;
 
 pub fn init() void {
 	lighting.init();
-	shader = Shader.initAndGetUniforms("assets/cubyz/shaders/chunks/chunk_vertex.vs", "assets/cubyz/shaders/chunks/chunk_fragment.fs", "", &uniforms);
-	transparentShader = Shader.initAndGetUniforms("assets/cubyz/shaders/chunks/chunk_vertex.vs", "assets/cubyz/shaders/chunks/transparent_fragment.fs", "#define transparent\n", &transparentUniforms);
+	pipeline = graphics.Pipeline.init(
+		"assets/cubyz/shaders/chunks/chunk_vertex.vs",
+		"assets/cubyz/shaders/chunks/chunk_fragment.fs",
+		"",
+		&uniforms,
+		.{},
+		.{.depthTest = true, .depthWrite = true},
+		.{.attachments = &.{.noBlending}},
+	);
+	transparentPipeline = graphics.Pipeline.init(
+		"assets/cubyz/shaders/chunks/chunk_vertex.vs",
+		"assets/cubyz/shaders/chunks/transparent_fragment.fs",
+		"#define transparent\n",
+		&transparentUniforms,
+		.{},
+		.{.depthTest = true, .depthWrite = false, .depthCompare = .lessOrEqual},
+		.{.attachments = &.{.{
+			.srcColorBlendFactor = .one,
+			.dstColorBlendFactor = .src1Color,
+			.colorBlendOp = .add,
+			.srcAlphaBlendFactor = .one,
+			.dstAlphaBlendFactor = .src1Alpha,
+			.alphaBlendOp = .add,
+		}}},
+	);
 	commandShader = Shader.initComputeAndGetUniforms("assets/cubyz/shaders/chunks/fillIndirectBuffer.glsl", "", &commandUniforms);
-	occlusionTestShader = Shader.initAndGetUniforms("assets/cubyz/shaders/chunks/occlusionTestVertex.vs", "assets/cubyz/shaders/chunks/occlusionTestFragment.fs", "", &occlusionTestUniforms);
+	occlusionTestPipeline = graphics.Pipeline.init(
+		"assets/cubyz/shaders/chunks/occlusionTestVertex.vs",
+		"assets/cubyz/shaders/chunks/occlusionTestFragment.fs",
+		"",
+		&occlusionTestUniforms,
+		.{},
+		.{.depthTest = true, .depthWrite = false},
+		.{.attachments = &.{.{
+			.enabled = false,
+			.srcColorBlendFactor = undefined,
+			.dstColorBlendFactor = undefined,
+			.colorBlendOp = undefined,
+			.srcAlphaBlendFactor = undefined,
+			.dstAlphaBlendFactor = undefined,
+			.alphaBlendOp = undefined,
+			.colorWriteMask = .none,
+		}}},
+	);
 
 	var rawData: [6*3 << (3*chunk.chunkShift)]u32 = undefined; // 6 vertices per face, maximum 3 faces/block
 	const lut = [_]u32{0, 2, 1, 1, 2, 3};
@@ -102,8 +142,9 @@ pub fn init() void {
 
 pub fn deinit() void {
 	lighting.deinit();
-	shader.deinit();
-	transparentShader.deinit();
+	pipeline.deinit();
+	transparentPipeline.deinit();
+	occlusionTestPipeline.deinit();
 	commandShader.deinit();
 	c.glDeleteVertexArrays(1, &vao);
 	c.glDeleteBuffers(1, &vbo);
@@ -151,7 +192,7 @@ fn bindCommonUniforms(locations: *UniformStruct, projMatrix: Mat4f, ambient: Vec
 }
 
 pub fn bindShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d) void {
-	shader.bind();
+	pipeline.bind(null);
 
 	bindCommonUniforms(&uniforms, projMatrix, ambient, playerPos);
 
@@ -159,7 +200,7 @@ pub fn bindShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d
 }
 
 pub fn bindTransparentShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d) void {
-	transparentShader.bind();
+	transparentPipeline.bind(null);
 
 	c.glUniform3fv(transparentUniforms.@"fog.color", 1, @ptrCast(&game.fog.skyColor));
 	c.glUniform1f(transparentUniforms.@"fog.density", game.fog.density);
@@ -203,17 +244,13 @@ pub fn drawChunksIndirect(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec
 
 	// Occlusion tests:
 	gpu_performance_measuring.startQuery(if(transparent) .transparent_rendering_occlusion_test else .chunk_rendering_occlusion_test);
-	occlusionTestShader.bind();
+	occlusionTestPipeline.bind(null);
 	c.glUniform3i(occlusionTestUniforms.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
 	c.glUniform3f(occlusionTestUniforms.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
 	c.glUniformMatrix4fv(occlusionTestUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 	c.glUniformMatrix4fv(occlusionTestUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&game.camera.viewMatrix));
-	c.glDepthMask(c.GL_FALSE);
-	c.glColorMask(c.GL_FALSE, c.GL_FALSE, c.GL_FALSE, c.GL_FALSE);
 	c.glBindVertexArray(vao);
 	c.glDrawElementsBaseVertex(c.GL_TRIANGLES, @intCast(6*6*chunkIDs.len), c.GL_UNSIGNED_INT, null, chunkIDAllocation.start*24);
-	c.glDepthMask(c.GL_TRUE);
-	c.glColorMask(c.GL_TRUE, c.GL_TRUE, c.GL_TRUE, c.GL_TRUE);
 	c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT);
 	gpu_performance_measuring.stopQuery();
 
@@ -226,7 +263,6 @@ pub fn drawChunksIndirect(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec
 
 	if(transparent) {
 		bindTransparentShaderAndUniforms(projMatrix, ambient, playerPos);
-		c.glDepthMask(c.GL_FALSE);
 	} else {
 		bindShaderAndUniforms(projMatrix, ambient, playerPos);
 	}
