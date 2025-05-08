@@ -87,7 +87,7 @@ pub const ParticleManager = struct {
 			textures.append(extractAnimationSlice(base, i, animationFrames));
 			emissionTextures.append(extractAnimationSlice(emission, i, animationFrames));
 		}
-		
+
 		typ.animationFrames = animationFrames;
 		return typ;
 	}
@@ -129,8 +129,8 @@ pub const ParticleManager = struct {
 		ParticleSystem.update(dt);
 	}
 
-	pub fn render(projectionMatrix: Mat4f, viewMatrix: Mat4f, playerPosition: Vec3d, ambientLight: Vec3f) void {
-		ParticleSystem.render(projectionMatrix, viewMatrix, playerPosition, ambientLight);
+	pub fn render(projectionMatrix: Mat4f, viewMatrix: Mat4f, ambientLight: Vec3f) void {
+		ParticleSystem.render(projectionMatrix, viewMatrix, ambientLight);
 	}
 };
 
@@ -141,6 +141,7 @@ pub const ParticleSystem = struct {
 	var particlesLocal: [maxCapacity]ParticleLocal = undefined;
 	var properties: EmmiterProperties = undefined;
 	var seed: u64 = undefined;
+	var previousPlayerPos: Vec3f = undefined;
 
 	var particlesSSBO: SSBO = undefined;
 
@@ -148,8 +149,6 @@ pub const ParticleSystem = struct {
 	const UniformStruct = struct {
 		projectionAndViewMatrix: c_int,
 		billboardMatrix: c_int,
-		playerPositionInteger: c_int,
-		playerPositionFraction: c_int,
 		ambientLight: c_int,
 		textureSampler: c_int,
 		emissionTextureSampler: c_int,
@@ -161,12 +160,12 @@ pub const ParticleSystem = struct {
 		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/particles/particles.vs", "assets/cubyz/shaders/particles/particles.fs", "", &uniforms);
 
 		properties = EmmiterProperties{
-			.gravity = .{0, 0, 2},
+			.gravity = .{0, 0, -2},
 			.drag = 0.5,
 			.lifeTimeMin = 1,
 			.lifeTimeMax = 1,
-			.velMin = 2,
-			.velMax = 2,
+			.velMin = 0,
+			.velMax = 0,
 			.rotVelMin = std.math.pi*0.2,
 			.rotVelMax = std.math.pi*0.6,
 		};
@@ -184,6 +183,8 @@ pub const ParticleSystem = struct {
 
 	pub fn update(deltaTime: f32) void {
 		const vecDeltaTime: Vec4f = @as(Vec4f, @splat(deltaTime));
+		const playerPos: Vec3f = @floatCast(game.Player.getEyePosBlocking());
+		const prevPlayerPosDifference = previousPlayerPos - playerPos;
 
 		var i: u32 = 0;
 		while(i < particleCount) {
@@ -211,7 +212,7 @@ pub const ParticleSystem = struct {
 				const hitBox: game.collision.Box = .{.min = @splat(size*-0.5), .max = @splat(size*0.5)};
 				var v3Pos = Vec3f{particle.posAndRotation[0], particle.posAndRotation[1], particle.posAndRotation[2]};
 				v3Pos[0] += vel[0];
-				if(game.collision.collides(.client, .x, -vel[0], v3Pos, hitBox)) |box| {
+				if(game.collision.collides(.client, .x, -vel[0], v3Pos - playerPos, hitBox)) |box| {
 					if(vel[0] < 0) {
 						v3Pos[0] = @floatCast(box.max[0] - hitBox.min[0]);
 					} else {
@@ -219,7 +220,7 @@ pub const ParticleSystem = struct {
 					}
 				}
 				v3Pos[1] += vel[1];
-				if(game.collision.collides(.client, .y, -vel[1], v3Pos, hitBox)) |box| {
+				if(game.collision.collides(.client, .y, -vel[1], v3Pos - playerPos, hitBox)) |box| {
 					if(vel[1] < 0) {
 						v3Pos[1] = @floatCast(box.max[1] - hitBox.min[1]);
 					} else {
@@ -227,7 +228,7 @@ pub const ParticleSystem = struct {
 					}
 				}
 				v3Pos[2] += vel[2];
-				if(game.collision.collides(.client, .z, -vel[2], v3Pos, hitBox)) |box| {
+				if(game.collision.collides(.client, .z, -vel[2], v3Pos - playerPos, hitBox)) |box| {
 					if(vel[2] < 0) {
 						v3Pos[2] = @floatCast(box.max[2] - hitBox.min[2]);
 					} else {
@@ -236,14 +237,14 @@ pub const ParticleSystem = struct {
 				}
 				particle.posAndRotation = vec.combine(v3Pos, 0);
 			} else {
-				particle.posAndRotation += vel;
+				particle.posAndRotation += vel + vec.combine(prevPlayerPosDifference, 0);
 			}
 
 			particle.posAndRotation[3] = rot;
 			particleLocal.velAndRotationVel[3] = rotVel;
 
 			// TODO: optimize
-			const intPos: vec.Vec4i = @intFromFloat(@floor(particle.posAndRotation));
+			const intPos: vec.Vec4i = @intFromFloat(@floor(particle.posAndRotation + vec.combine(playerPos, 0)));
 			const light: [6]u8 = main.renderer.mesh_storage.getLight(intPos[0], intPos[1], intPos[2]) orelse @splat(0);
 			const compressedLight = (@as(u32, light[0] >> 3) << 25 |
 				@as(u32, light[1] >> 3) << 20 |
@@ -257,11 +258,13 @@ pub const ParticleSystem = struct {
 			particlesLocal[i] = particleLocal;
 			i += 1;
 		}
+		previousPlayerPos = playerPos;
 	}
 
 	pub fn spawn(id: []const u8, count: u32, pos: Vec3f, collides: bool, shape: EmmiterShape) void {
 		const typ = ParticleManager.particleTypeHashmap.get(id) orelse 0;
-
+		const playerPos: Vec3f = @floatCast(previousPlayerPos);
+		
 		const to: u32 = @intCast(@min(particleCount + count, maxCapacity));
 		for(particleCount..to) |_| {
 			var vel: Vec3f = @splat(0);
@@ -308,7 +311,7 @@ pub const ParticleSystem = struct {
 			const lifeTime = properties.lifeTimeMin + random.nextFloat(&seed)*properties.lifeTimeMax;
 
 			particles[particleCount] = Particle{
-				.posAndRotation = vec.combine(particlePos, 0),
+				.posAndRotation = vec.combine(particlePos - playerPos, 0),
 				.typ = typ,
 			};
 			particlesLocal[particleCount] = ParticleLocal{
@@ -320,7 +323,7 @@ pub const ParticleSystem = struct {
 		}
 	}
 
-	pub fn render(projectionMatrix: Mat4f, viewMatrix: Mat4f, playerPosition: Vec3d, ambientLight: Vec3f) void {
+	pub fn render(projectionMatrix: Mat4f, viewMatrix: Mat4f, ambientLight: Vec3f) void {
 		particlesSSBO.bufferSubData(Particle, &particles, particleCount);
 
 		shader.bind();
@@ -331,10 +334,6 @@ pub const ParticleSystem = struct {
 		const projectionAndViewMatrix = Mat4f.mul(projectionMatrix, viewMatrix);
 		c.glUniformMatrix4fv(uniforms.projectionAndViewMatrix, 1, c.GL_TRUE, @ptrCast(&projectionAndViewMatrix));
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
-
-		const playerPos = playerPosition;
-		c.glUniform3i(uniforms.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
-		c.glUniform3f(uniforms.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
 
 		const billboardMatrix = Mat4f.rotationZ(-game.camera.rotation[2] + std.math.pi*0.5)
 			.mul(Mat4f.rotationY(game.camera.rotation[0] - std.math.pi*0.5));

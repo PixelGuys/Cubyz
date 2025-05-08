@@ -1212,10 +1212,10 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 	timer += deltaTime;
 	// if(timer > 5) {
-		particles.ParticleSystem.spawn("cubyz:spark", 20, Vec3f{0, 0, 0}, false, .{
+		particles.ParticleSystem.spawn("cubyz:spark", 20, @as(Vec3f, @floatCast(Player.getEyePosBlocking()))+Vec3f{0, 0, -0.5}, false, .{
 			.shapeType = .point,
 			.size = 0,
-			.directionMode = .direction,
+			.directionMode = .scatter,
 			.dir = .{0, 0, 1},
 		});
 		timer = 0;

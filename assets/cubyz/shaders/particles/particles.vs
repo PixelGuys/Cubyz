@@ -6,8 +6,6 @@ flat out vec3 light;
 uniform vec3 ambientLight;
 uniform mat4 projectionAndViewMatrix;
 uniform mat4 billboardMatrix;
-uniform ivec3 playerPositionInteger;
-uniform vec3 playerPositionFraction;
 
 struct ParticleData {
 	vec3 pos;
@@ -70,15 +68,14 @@ void main() {
 	vec3 facePos = facePositions[vertexID];
 	float sn = sin(rot);
 	float cs = cos(rot);
-	vec3 vertPos = vec3(0);
-	vertPos.x = facePos.x*cs - facePos.y*sn;
-	vertPos.y = facePos.x*sn + facePos.y*cs;
+	const vec3 vertexRotationPos = vec3(
+		facePos.x*cs - facePos.y*sn,
+		facePos.x*sn + facePos.y*cs,
+		0
+	);
 
-	vertPos = (billboardMatrix*vec4(particleType.size*vertPos, 1)).xyz;
-	vertPos += vec3(particle.pos - playerPositionInteger);
-	vertPos -= playerPositionFraction;
-
-	gl_Position = projectionAndViewMatrix*vec4(vertPos, 1);
+	const vec3 vertexPos = (billboardMatrix*vec4(particleType.size*vertexRotationPos, 1)).xyz + particle.pos;
+	gl_Position = projectionAndViewMatrix*vec4(vertexPos, 1);
 
 	float textureIndex = floor(float(particleType.startFrame) + particle.lifeRatio*float(particleType.animationFrames));
 	textureCoords = vec3(uvPositions[vertexID], textureIndex);
