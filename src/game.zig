@@ -937,13 +937,13 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	const gravity = 30.0;
 	const terminalVelocity = 90.0;
 	const airFrictionCoefficient = gravity/terminalVelocity; // λ = a/v in equillibrium
-	const climbFrictionCoefficient = gravity/2.0;
+	const climbFrictionCoefficient = gravity/3.0;
 	var move: Vec3d = .{0, 0, 0};
 
 	if(main.renderer.mesh_storage.getBlock(@intFromFloat(@floor(Player.super.pos[0])), @intFromFloat(@floor(Player.super.pos[1])), @intFromFloat(@floor(Player.super.pos[2]))) != null) {
 		var acc = Vec3d{0, 0, 0};
 		if(!Player.isFlying.load(.monotonic)) {
-			acc[2] = -gravity;
+			acc[2] = if(Player.super.climbing) 0 else -gravity;
 		}
 		Player.currentClimbSpeed = collision.calculateClimbSpeed(.client, Player.super.pos, Player.outerBoundingBox, -camera.rotation[2], 3);
 		Player.currentFriction = if(Player.isFlying.load(.monotonic)) 20 else collision.calculateFriction(.client, Player.super.pos, Player.outerBoundingBox, 20);
@@ -1087,7 +1087,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 		}) == null) {
 			Player.crouching = KeyBoard.key("crouch").pressed and !Player.isFlying.load(.monotonic);
 
-			if(Player.onGround or Player.super.climbing) {
+			if(Player.onGround) {
 				if(Player.crouching) {
 					Player.crouchPerc += @floatCast(deltaTime*10);
 				} else {
@@ -1143,11 +1143,6 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 			const c_1 = v_0 - a/frictionCoefficient;
 			Player.super.vel[i] = a/frictionCoefficient + c_1*@exp(-frictionCoefficient*deltaTime);
 			move[i] = a/frictionCoefficient*deltaTime - c_1/frictionCoefficient*@exp(-frictionCoefficient*deltaTime) + c_1/frictionCoefficient;
-		}
-
-		// hold onto climbable block
-		if(Player.super.climbing and Player.crouching and move[2] < 0) {
-			move[2] = 0;
 		}
 
 		acc = @splat(0);
