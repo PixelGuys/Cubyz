@@ -9,7 +9,4 @@
 			.maxHealth = 8,
 		},
 	},
-	.systems = .{
-		.render,
-	}
 }

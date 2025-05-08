@@ -534,10 +534,10 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		if(self.wio.hasWorldData()) {
 			self.seed = try self.wio.loadWorldSeed();
 			self.generated = true;
-			try main.assets.loadWorldAssets(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/assets/", .{name}), self.blockPalette, self.itemPalette, self.biomePalette);
+			try main.assets.loadWorldAssets(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/assets/", .{name}), self.blockPalette, self.itemPalette, self.biomePalette, .server);
 		} else {
 			self.seed = main.random.nextInt(u48, &main.seed);
-			try main.assets.loadWorldAssets(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/assets/", .{name}), self.blockPalette, self.itemPalette, self.biomePalette);
+			try main.assets.loadWorldAssets(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/assets/", .{name}), self.blockPalette, self.itemPalette, self.biomePalette, .server);
 			try self.wio.saveWorldData();
 		}
 		// Store the block palette now that everything is loaded.

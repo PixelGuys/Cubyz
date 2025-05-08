@@ -719,7 +719,7 @@ pub const World = struct { // MARK: World
 		errdefer self.itemPalette.deinit();
 		self.spawn = zon.get(Vec3f, "spawn", .{0, 0, 0});
 
-		try assets.loadWorldAssets("serverAssets", self.blockPalette, self.itemPalette, self.biomePalette);
+		try assets.loadWorldAssets("serverAssets", self.blockPalette, self.itemPalette, self.biomePalette, .client);
 		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
 		Player.inventory = Inventory.init(main.globalAllocator, 32, .normal, .{.playerInventory = Player.id});
 	}

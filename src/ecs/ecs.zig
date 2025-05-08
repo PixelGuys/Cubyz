@@ -7,29 +7,27 @@ const ZonElement = main.ZonElement;
 const Entity = main.server.Entity;
 
 pub const componentlist = @import("components/_components.zig");
-pub const systemList = @import("systems/_systems.zig");
+pub const systemlist = @import("systems/_systems.zig");
 
 const SparseSet = main.utils.SparseSet;
 
-pub const Components = listToEnum(componentlist);
-pub const Systems = listToEnum(systemList);
+pub const Components = std.meta.DeclEnum(componentlist);
+pub const Systems = std.meta.DeclEnum(systemlist);
 
 const ComponentBitset = listToBitset(componentlist);
-const SystemBitset = listToBitset(systemList);
 const ComponentIds = listToIds(componentlist);
 const ComponentSelection = listToSelection(componentlist);
 
 var ecsArena: main.heap.NeverFailingArenaAllocator = .init(main.globalAllocator);
 pub var ecsAllocator: main.heap.NeverFailingAllocator = ecsArena.allocator();
 
-var entityTypes: SparseSet(u16, u16) = undefined;
+var entityTypes: SparseSet(u16, u16) = .{};
 
 pub var componentStorage: listToSparseSets(componentlist, u16) = undefined;
-var componentIdStorage: SparseSet(ComponentIds, u32) = undefined;
+var componentIdStorage: SparseSet(ComponentIds, u32) = .{};
 
-var componentDefaultStorage: listToSparseSets(componentlist, u16) = undefined;
+var componentDefaultStorage: listToSparseSets(componentlist, u16) = .{};
 var componentBitsetStorage: [main.entity.maxEntityTypeCount]ComponentBitset = undefined;
-var systemBitsetStorage: [main.entity.maxEntityTypeCount]SystemBitset = undefined;
 
 fn listToSparseSets(comptime list: type, comptime idType: type) type {
 	var outFields: [@typeInfo(list).@"struct".decls.len]std.builtin.Type.StructField = undefined;
@@ -122,25 +120,6 @@ fn listToSelection(comptime list: type) type {
 	}});
 }
 
-fn listToEnum(comptime list: type) type {
-	var outFields: [@typeInfo(list).@"struct".decls.len]std.builtin.Type.EnumField = undefined;
-
-	for (@typeInfo(list).@"struct".decls, 0..) |decl, i| {
-		const name = decl.name;
-		outFields[i] = .{
-			.name = name,
-			.value = i,
-		};
-	}
-
-	return @Type(.{.@"enum" = .{
-		.tag_type = u8,
-        .fields = &outFields,
-        .decls = &.{},
-        .is_exhaustive = true,
-	}});
-}
-
 pub const EntityTypeIndex = struct {
 	index: u16,
 };
@@ -154,15 +133,11 @@ pub fn addComponent(entityType: u16, assetFolder: []const u8, id: []const u8, co
 
 	var sparseSet = @field(componentDefaultStorage, @tagName(component));
 	if (sparseSet.sparse.items.len < entityType) {
-		sparseSet.sparse.appendNTimes(@TypeOf(sparseSet).noValue, entityType - sparseSet.sparse.items.len);
+		sparseSet.sparse.appendNTimes(ecsAllocator, @TypeOf(sparseSet).noValue, entityType - sparseSet.sparse.items.len);
 	}
 
-	_ = sparseSet.add(componentType.loadFromZon(assetFolder, id, zon));
+	_ = sparseSet.add(ecsAllocator, componentType.loadFromZon(assetFolder, id, zon));
 	@field(componentBitsetStorage[entityType], @tagName(component)) = true;
-}
-
-pub fn addSystem(entityType: u16, comptime system: Systems) void {
-	@field(systemBitsetStorage[entityType], @tagName(system)) = true;
 }
 
 pub fn addEntity(entityType: u16) u32 {
@@ -181,6 +156,23 @@ pub fn addEntity(entityType: u16) u32 {
 	}
 
 	_ = entityTypes.add(entityType);
+
+	const list = main.ZonElement.initArray(main.stackAllocator);
+	defer list.deinit(main.stackAllocator);
+
+	const data = main.ZonElement.initObject(main.stackAllocator);
+	defer data.deinit(main.stackAllocator);
+
+	list.append(data);
+
+	const updateData = list.toStringEfficient(main.stackAllocator, &.{});
+	defer main.stackAllocator.free(updateData);
+
+	const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
+	defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+	for(userList) |user| {
+		main.network.Protocols.entity.send(user.conn, updateData);
+	}
 
 	return entityId;
 }
@@ -216,7 +208,7 @@ fn bitsetMatchesSelection(bitset: ComponentBitset, selection: ComponentSelection
 			continue;
 		}
 
-		if (selected != selected) {
+		if (selected != expected) {
 			return false;
 		}
 	}
@@ -237,7 +229,7 @@ const ViewIterator = struct {
 					.valueDoesntExist => continue,
 				}
 			}) {
-				if (self.validTypes[self.current]) {
+				if (self.validTypes[try entityTypes.get(self.current)]) {
 					return self.current;
 				}
 			}

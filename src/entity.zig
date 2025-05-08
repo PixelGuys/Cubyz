@@ -337,7 +337,7 @@ pub fn numRegisteredEntites() u16 {
 	return num;
 }
 
-pub fn register(assetFolder: []const u8, id: []const u8, zon: ZonElement) u16 {
+pub fn registerEcs(assetFolder: []const u8, id: []const u8, zon: ZonElement) u16 {
 	if(reverseIndices.contains(id)) {
 		std.log.err("Registered entity with id {s} twice!", .{id});
 	}
@@ -346,7 +346,6 @@ pub fn register(assetFolder: []const u8, id: []const u8, zon: ZonElement) u16 {
 	reverseIndices.put(_id[num], @intCast(num)) catch unreachable;
 
 	const components = zon.getChild("components");
-	const systems = zon.getChild("systems");
 
 	if (components == .object) {
 		var iterator = components.object.iterator();
@@ -367,25 +366,6 @@ pub fn register(assetFolder: []const u8, id: []const u8, zon: ZonElement) u16 {
 		}
 	} else {
 		std.log.err(".components must be an object.", .{});
-		return 0;
-	}
-
-	if (systems == .array) {
-		for (systems.array.items) |item| {
-			const systemStr = item.as([]const u8, "");
-			const system = std.meta.stringToEnum(ecs.Systems, systemStr) orelse {
-				std.log.err("Unknown system {s} for entity {s}.", .{systemStr, id});
-				return 0;
-			};
-
-			switch (system) {
-				inline else => |sys| {
-					ecs.addSystem(num, sys);
-				}
-			}
-		}
-	} else {
-		std.log.err(".systems must be an array.", .{});
 		return 0;
 	}
 
@@ -507,7 +487,14 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	pub fn register(assetFolder: []const u8, _: []const u8, zon: ZonElement) void {
-		const modelName = zon.get([]const u8, "model", "none");
+		const components = zon.getChild("components");
+		if (components != .object) {
+			return;
+		}
+
+		const modelComponent = zon.getChild("model");
+
+		const modelName = modelComponent.get([]const u8, "model", "none");
 		_modelIndex[meshes.size] = entityModelNameToIndex.get(modelName) orelse blk: {
 			std.log.err("Couldn't find voxelModel with name: {s}.", .{modelName});
 			break :blk 0;
@@ -516,7 +503,7 @@ pub const meshes = struct { // MARK: meshes
 		// The actual model is loaded later, in the rendering thread.
 		// But textures can be loaded here:
 
-		textureIndices[meshes.size] = readTexture(zon.get(?[]const u8, "texture", null), assetFolder) catch 0;
+		textureIndices[meshes.size] = readTexture(modelComponent.get(?[]const u8, "texture", null), assetFolder) catch 0;
 
 		maxTextureCount[meshes.size] = @intCast(textureIDs.items.len);
 

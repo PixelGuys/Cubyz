@@ -36,21 +36,3 @@ pub fn createFromDefaults(self: *Transform, entityId: u32) void {
 	self.interpolation.init(@ptrCast(&self.pos), @ptrCast(&self.vel));
 	self.entityId = entityId;
 }
-
-pub fn setPosition(self: *Transform, pos: Vec3d) void {
-	_ = self;
-	_ = pos;
-	// Some networking stuff
-}
-
-pub fn setVelocity(self: *Transform, vel: Vec3d) void {
-	_ = self;
-	_ = vel;
-	// Some networking stuff
-}
-
-pub fn setRotation(self: *Transform, rot: Vec3f) void {
-	_ = self;
-	_ = rot;
-	// Some networking stuff
-}

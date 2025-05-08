@@ -365,11 +365,14 @@ fn registerRecipesFromZon(zon: ZonElement) void {
 	items_zig.registerRecipes(zon);
 }
 
-fn registerEntity(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void {
+fn registerEntity(assetFolder: []const u8, id: []const u8, zon: ZonElement, side: main.utils.Side) !void {
 	if(zon == .null) std.log.err("Missing entity: {s}. Replacing it with default entity.", .{id});
 
-	_ = entity_zig.register(assetFolder, id, zon);
-	entity_zig.meshes.register(assetFolder, id, zon);
+	if (side == .server) {
+		_ = entity_zig.registerEcs(assetFolder, id, zon);
+	} else {
+		entity_zig.meshes.register(assetFolder, id, zon);
+	}
 }
 
 pub const Palette = struct { // MARK: Palette
@@ -476,7 +479,7 @@ pub const Palette = struct { // MARK: Palette
 
 var loadedAssets: bool = false;
 
-pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, biomePalette: *Palette) !void { // MARK: loadWorldAssets()
+pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, biomePalette: *Palette, side: main.utils.Side) !void { // MARK: loadWorldAssets()
 	if(loadedAssets) return; // The assets already got loaded by the server.
 	loadedAssets = true;
 
@@ -613,8 +616,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		const stringId = entry.key_ptr.*;
 		const zon = entry.value_ptr.*;
 		
-		try registerEntity(assetFolder, stringId, zon);
-		itemPalette.add(stringId);
+		try registerEntity(assetFolder, stringId, zon, side);
 	}
 
 	// After we have registered all items and all blocks, we can assign block references to those that come from blocks.

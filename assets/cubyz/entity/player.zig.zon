@@ -13,7 +13,4 @@
 		},
 		.name = .{}
 	},
-	.systems = .{
-		.render,
-	}
 }

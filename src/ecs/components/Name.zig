@@ -20,5 +20,4 @@ pub fn copy(_: *Name) Name {
 
 pub fn setName(self: *Name, name: []const u8) void {
 	self.name = main.ecs.ecsAllocator.dupe(u8, name);
-	// Some networking stuff
 }

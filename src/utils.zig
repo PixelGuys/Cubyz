@@ -1780,82 +1780,6 @@ const ReadWriteTest = struct {
 	}
 };
 
-pub fn SparseSet(comptime T: type, comptime idType: type) type { // MARK: SparseSet
-	std.debug.assert(@typeInfo(idType) == .int);
-	std.debug.assert(@typeInfo(idType).int.signedness == .unsigned);
-
-	return struct {
-		const GetError = error{
-			idOutOfBounds,
-			valueDoesntExist,
-		};
-		pub const noValue = std.math.maxInt(idType);
-
-		dense: main.List(struct {
-			value: T,
-			id: idType,
-		}),
-		sparse: main.List(idType),
-		freeList: main.List(idType),
-
-		pub fn init(allocator: NeverFailingAllocator) @This() {
-			return .{
-				.dense = .init(allocator),
-				.sparse = .init(allocator),
-				.freeList = .init(allocator),
-			};
-		}
-
-		pub fn deinit(self: *@This()) void {
-			self.dense.deinit();
-			self.sparse.deinit();
-			self.freeList.deinit();
-		}
-
-		pub fn contains(self: *@This(), id: idType) bool {
-			return id < self.sparse.items.len and self.sparse.items[id] != noValue;
-		}
-
-		pub fn add(self: *@This(), value: T) idType {
-			const sparseId: idType = self.freeList.popOrNull() orelse @intCast(self.sparse.items.len);
-
-			if (sparseId >= self.sparse.items.len) {
-				self.sparse.appendNTimes(noValue, sparseId - self.sparse.items.len + 1);
-			}
-
-			const denseId: idType = @intCast(self.dense.items.len);
-			self.sparse.items[sparseId] = denseId;
-			self.dense.append(.{.value = value, .id = sparseId});
-			
-			return sparseId;
-		}
-
-		pub fn remove(self: *@This(), sparseId: idType) void {
-			if (!self.contains(sparseId)) return;
-
-			const denseId = self.sparse.items[sparseId];
-			if (denseId == noValue) return;
-
-			self.dense.items[denseId] = self.dense.items[self.dense.items.len - 1];
-
-			self.sparse.items[sparseId] = noValue;
-			self.sparse.items[self.dense.items[denseId].id] = denseId;
-			
-			_ = self.dense.pop();
-			if (sparseId == self.sparse.items.len) {
-				_ = self.sparse.pop();
-			}
-		}
-
-		pub fn get(self: *@This(), id: idType) GetError!*T {
-			if (id >= self.sparse.items.len) return GetError.idOutOfBounds;
-			const index = self.sparse.items[id];
-			if (index == noValue) return GetError.valueDoesntExist;
-			return &self.dense.items[index].value;
-		}
-	};
-}
-
 test "read/write unsigned int" {
 	inline for([_]type{u0, u1, u2, u4, u5, u8, u16, u31, u32, u64, u128}) |intT| {
 		const min = std.math.minInt(intT);
@@ -1981,6 +1905,125 @@ test "read/write mixed" {
 	try std.testing.expectEqualStrings(expected4, try reader.readSlice(expected4.len));
 
 	try std.testing.expect(reader.remaining.len == 0);
+}
+
+pub fn SparseSet(comptime T: type, comptime idType: type) type { // MARK: SparseSet
+	std.debug.assert(@typeInfo(idType) == .int);
+	std.debug.assert(@typeInfo(idType).int.signedness == .unsigned);
+
+	return struct {
+		const GetError = error{
+			idOutOfBounds,
+			valueDoesntExist,
+		};
+		pub const noValue = std.math.maxInt(idType);
+
+		const Self = @This();
+
+		dense: main.ListUnmanaged(struct {
+			value: T,
+			id: idType,
+		}) = .{},
+		sparse: main.ListUnmanaged(idType) = .{},
+		freeList: main.ListUnmanaged(idType) = .{},
+
+		pub fn deinit(self: *Self, allocator: NeverFailingAllocator) void {
+			self.dense.deinit(allocator);
+			self.sparse.deinit(allocator);
+			self.freeList.deinit(allocator);
+		}
+
+		pub fn contains(self: *Self, id: idType) bool {
+			return id < self.sparse.items.len and self.sparse.items[id] != noValue;
+		}
+
+		pub fn add(self: *Self, allocator: NeverFailingAllocator, value: T) idType {
+			const sparseId: idType = self.freeList.popOrNull() orelse @intCast(self.sparse.items.len);
+
+			if(sparseId == self.sparse.items.len) {
+				self.sparse.append(allocator, noValue);
+			}
+
+			const denseId: idType = @intCast(self.dense.items.len);
+			self.sparse.items[sparseId] = denseId;
+			self.dense.append(allocator, .{.value = value, .id = sparseId});
+
+			return sparseId;
+		}
+
+		pub fn remove(self: *Self, allocator: NeverFailingAllocator, sparseId: idType) void {
+			if(!self.contains(sparseId)) return;
+
+			const denseId = self.sparse.items[sparseId];
+			if(denseId == noValue) return;
+
+			self.freeList.append(allocator, sparseId);
+
+			if(self.dense.items.len == 1) {
+				_ = self.dense.pop();
+			} else {
+				self.dense.items[denseId] = self.dense.pop();
+			}
+
+			self.sparse.items[sparseId] = noValue;
+			self.sparse.items[self.dense.items[denseId].id] = denseId;
+		}
+
+		pub fn get(self: *Self, id: idType) GetError!*T {
+			if(id >= self.sparse.items.len) return GetError.idOutOfBounds;
+			const index = self.sparse.items[id];
+			if(index == noValue) return GetError.valueDoesntExist;
+			return &self.dense.items[index].value;
+		}
+	};
+}
+
+const SparseSetTest = struct {
+	var testingAllocator = main.heap.ErrorHandlingAllocator.init(std.testing.allocator);
+	var allocator = testingAllocator.allocator();
+};
+
+test "SparseSet/adding" {
+	var set: SparseSet(u32, u32) = .{};
+	defer set.deinit(SparseSetTest.allocator);
+
+	const id = set.add(SparseSetTest.allocator, 5);
+	try std.testing.expectEqual(id, 0);
+	try std.testing.expectEqual((try set.get(id)).*, 5);
+}
+
+test "SparseSet/removing" {
+	var set: SparseSet(u32, u32) = .{};
+	defer set.deinit(SparseSetTest.allocator);
+
+	const expectSecond: u32 = 100;
+
+	const firstId = set.add(SparseSetTest.allocator, 5);
+	const secondId = set.add(SparseSetTest.allocator, expectSecond);
+
+	set.remove(SparseSetTest.allocator, firstId);
+
+	try std.testing.expectEqual((try set.get(secondId)).*, expectSecond);
+}
+
+test "SparseSet/reusing" {
+	var set: SparseSet(u32, u32) = .{};
+	defer set.deinit(SparseSetTest.allocator);
+
+	const expectSecond = 100;
+	const expectNew = 10;
+
+	const firstId = set.add(SparseSetTest.allocator, 5);
+	const secondId = set.add(SparseSetTest.allocator, expectSecond);
+
+	set.remove(SparseSetTest.allocator, firstId);
+
+	const newId = set.add(SparseSetTest.allocator, expectNew);
+
+	try std.testing.expectEqual(firstId, newId);
+
+	try std.testing.expectEqual((try set.get(secondId)).*, expectSecond);
+	try std.testing.expectEqual((try set.get(newId)).*, expectNew);
 }
 
 // MARK: functionPtrCast()
