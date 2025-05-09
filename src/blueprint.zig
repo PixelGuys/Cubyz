@@ -577,6 +577,18 @@ test "Mask match block type with any data" {
 	try std.testing.expect(!mask.match(.{.typ = 2, .data = 0}));
 }
 
+test "Mask inverse match block type with any data" {
+	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
+	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
+
+	const mask = try Mask.initFromString(Test.allocator, "!addon:dummy");
+	defer mask.deinit(Test.allocator);
+
+	try std.testing.expect(!mask.match(.{.typ = 1, .data = 0}));
+	try std.testing.expect(!mask.match(.{.typ = 1, .data = 1}));
+	try std.testing.expect(mask.match(.{.typ = 2, .data = 0}));
+}
+
 test "Mask match block type with exact data" {
 	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 1";
 	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
