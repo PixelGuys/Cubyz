@@ -335,10 +335,7 @@ pub const Block = packed struct { // MARK: Block
 	}
 
 	pub inline fn hasTag(self: Block, tag: Tag) bool {
-		for(self.blockTags()) |current| {
-			if(tag == current) return true;
-		}
-		return false;
+		return std.mem.containsAtLeastScalar(Tag, self.blockTags(), 1, tag);
 	}
 
 	pub inline fn light(self: Block) u32 {
