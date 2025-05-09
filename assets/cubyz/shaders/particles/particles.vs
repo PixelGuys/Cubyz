@@ -77,6 +77,6 @@ void main() {
 	const vec3 vertexPos = (billboardMatrix*vec4(particleType.size*vertexRotationPos, 1)).xyz + particle.pos;
 	gl_Position = projectionAndViewMatrix*vec4(vertexPos, 1);
 
-	float textureIndex = floor(float(particleType.startFrame) + particle.lifeRatio*float(particleType.animationFrames));
+	float textureIndex = floor(particle.lifeRatio*particleType.animationFrames + particleType.startFrame);
 	textureCoords = vec3(uvPositions[vertexID], textureIndex);
 }

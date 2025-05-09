@@ -9,10 +9,10 @@ uniform sampler2DArray emissionTextureSampler;
 layout(location = 0) out vec4 fragColor;
 
 void main() {
-	vec4 texColor = texture(textureSampler, textureCoords);
+	const vec4 texColor = texture(textureSampler, textureCoords);
 	if(texColor.a != 1) {
 		discard;
 	}
-	vec3 pixelLight = max(light, texture(emissionTextureSampler, textureCoords).r*4);
+	const vec3 pixelLight = max(light, texture(emissionTextureSampler, textureCoords).r*4);
 	fragColor = texColor*vec4(pixelLight, 1);
 }
