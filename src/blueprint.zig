@@ -475,11 +475,12 @@ pub const Mask = struct {
 
 	pub fn match(self: @This(), block: Block) bool {
 		for(self.entries.items) |andEdExpressions| {
-			var status = true;
-
-			for(andEdExpressions.items) |expression| {
-				status = status and expression.match(block);
-			}
+			const status = blk: {
+				for(andEdExpressions.items) |expression| {
+					if(!expression.match(block)) break :blk false;
+				}
+				break :blk true;
+			};
 
 			if(status) return true;
 		}
