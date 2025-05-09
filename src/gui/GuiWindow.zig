@@ -3,7 +3,6 @@ const std = @import("std");
 const main = @import("main");
 const graphics = main.graphics;
 const draw = graphics.draw;
-const Shader = graphics.Shader;
 const Texture = graphics.Texture;
 const settings = main.settings;
 const vec = main.vec;
@@ -86,18 +85,15 @@ var titleTexture: Texture = undefined;
 var closeTexture: Texture = undefined;
 var zoomInTexture: Texture = undefined;
 var zoomOutTexture: Texture = undefined;
-var shader: Shader = undefined;
+var pipeline: graphics.Pipeline = undefined;
 var windowUniforms: struct {
 	screen: c_int,
 	start: c_int,
 	size: c_int,
 	color: c_int,
 	scale: c_int,
-
-	image: c_int,
-	randomOffset: c_int,
 } = undefined;
-pub var borderShader: Shader = undefined;
+pub var borderPipeline: graphics.Pipeline = undefined;
 pub var borderUniforms: struct {
 	screen: c_int,
 	start: c_int,
@@ -108,11 +104,24 @@ pub var borderUniforms: struct {
 } = undefined;
 
 pub fn __init() void {
-	shader = Shader.initAndGetUniforms("assets/cubyz/shaders/ui/button.vs", "assets/cubyz/shaders/ui/button.fs", "", &windowUniforms);
-	shader.bind();
-	graphics.c.glUniform1i(windowUniforms.image, 0);
-	borderShader = Shader.initAndGetUniforms("assets/cubyz/shaders/ui/window_border.vs", "assets/cubyz/shaders/ui/window_border.fs", "", &borderUniforms);
-	borderShader.bind();
+	pipeline = graphics.Pipeline.init(
+		"assets/cubyz/shaders/ui/button.vs",
+		"assets/cubyz/shaders/ui/button.fs",
+		"",
+		&windowUniforms,
+		.{.cullMode = .none},
+		.{.depthTest = false, .depthWrite = false},
+		.{.attachments = &.{.alphaBlending}},
+	);
+	borderPipeline = graphics.Pipeline.init(
+		"assets/cubyz/shaders/ui/window_border.vs",
+		"assets/cubyz/shaders/ui/window_border.fs",
+		"",
+		&borderUniforms,
+		.{.cullMode = .none},
+		.{.depthTest = false, .depthWrite = false},
+		.{.attachments = &.{.alphaBlending}},
+	);
 
 	backgroundTexture = Texture.initFromFile("assets/cubyz/ui/window_background.png");
 	titleTexture = Texture.initFromFile("assets/cubyz/ui/window_title.png");
@@ -122,7 +131,7 @@ pub fn __init() void {
 }
 
 pub fn __deinit() void {
-	shader.deinit();
+	pipeline.deinit();
 	backgroundTexture.deinit();
 	titleTexture.deinit();
 }
@@ -481,7 +490,7 @@ pub fn render(self: *const GuiWindow, mousePosition: Vec2f) void {
 	const oldScale = draw.setScale(self.scale);
 	if(self.hasBackground) {
 		draw.setColor(0xff000000);
-		shader.bind();
+		pipeline.bind(draw.getScissor());
 		backgroundTexture.bindTo(0);
 		draw.customShadedRect(windowUniforms, .{0, 0}, self.size/@as(Vec2f, @splat(self.scale)));
 	}
@@ -490,7 +499,7 @@ pub fn render(self: *const GuiWindow, mousePosition: Vec2f) void {
 		component.render((mousePosition - self.pos)/@as(Vec2f, @splat(self.scale)));
 	}
 	if(self.showTitleBar or gui.reorderWindows) {
-		shader.bind();
+		pipeline.bind(draw.getScissor());
 		titleTexture.bindTo(0);
 		draw.setColor(0xff000000);
 		draw.customShadedRect(windowUniforms, .{0, 0}, .{self.size[0]/self.scale, titleBarHeight});

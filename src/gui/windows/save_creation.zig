@@ -109,7 +109,7 @@ pub fn onOpen() void {
 	}
 	const name = std.fmt.allocPrint(main.stackAllocator.allocator, "Save{}", .{num}) catch unreachable;
 	defer main.stackAllocator.free(name);
-	textInput = TextInput.init(.{0, 0}, 128, 22, name, .{.callback = &createWorld});
+	textInput = TextInput.init(.{0, 0}, 128, 22, name, .{.callback = &createWorld}, .{});
 	list.add(textInput);
 
 	gamemodeInput = Button.initText(.{0, 0}, 128, @tagName(gamemode), .{.callback = &gamemodeCallback});

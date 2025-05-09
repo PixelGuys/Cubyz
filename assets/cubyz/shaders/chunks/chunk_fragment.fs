@@ -1,25 +1,26 @@
-#version 430
+#version 460
 
-in vec3 mvVertexPos;
-in vec3 direction;
-in vec3 light;
-in vec2 uv;
-flat in vec3 normal;
-flat in int textureIndex;
-flat in int isBackFace;
-flat in int ditherSeed;
-flat in float distanceForLodCheck;
-flat in int opaqueInLod;
-
-uniform sampler2DArray texture_sampler;
-uniform sampler2DArray emissionSampler;
-uniform sampler2DArray reflectivityAndAbsorptionSampler;
-uniform samplerCube reflectionMap;
-uniform float reflectionMapSize;
-uniform float contrast;
-uniform float lodDistance;
+layout(location = 0) in vec3 mvVertexPos;
+layout(location = 1) in vec3 direction;
+layout(location = 2) in vec3 light;
+layout(location = 3) in vec2 uv;
+layout(location = 4) flat in vec3 normal;
+layout(location = 5) flat in int textureIndex;
+layout(location = 6) flat in int isBackFace;
+layout(location = 7) flat in int ditherSeed;
+layout(location = 8) flat in float distanceForLodCheck;
+layout(location = 9) flat in int opaqueInLod;
 
 layout(location = 0) out vec4 fragColor;
+
+layout(binding = 0) uniform sampler2DArray textureSampler;
+layout(binding = 1) uniform sampler2DArray emissionSampler;
+layout(binding = 2) uniform sampler2DArray reflectivityAndAbsorptionSampler;
+layout(binding = 4) uniform samplerCube reflectionMap;
+
+layout(location = 5) uniform float reflectionMapSize;
+layout(location = 6) uniform float contrast;
+layout(location = 7) uniform float lodDistance;
 
 layout(std430, binding = 1) buffer _animatedTexture
 {
@@ -79,7 +80,7 @@ void main() {
 	reflectivity = reflectivity*(1 - fresnelReflection) + fresnelReflection;
 
 	vec3 pixelLight = max(light*normalVariation, texture(emissionSampler, textureCoords).r*4);
-	fragColor = texture(texture_sampler, textureCoords)*vec4(pixelLight, 1);
+	fragColor = texture(textureSampler, textureCoords)*vec4(pixelLight, 1);
 	fragColor.rgb += reflectivity*pixelLight;
 
 	if(!passDitherTest(fragColor.a)) discard;

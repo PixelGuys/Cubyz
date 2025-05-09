@@ -3,7 +3,6 @@ const std = @import("std");
 const main = @import("main");
 const graphics = main.graphics;
 const draw = graphics.draw;
-const Shader = graphics.Shader;
 const TextBuffer = graphics.TextBuffer;
 const Texture = graphics.Texture;
 const random = main.random;
@@ -95,7 +94,7 @@ pub fn mainButtonReleased(self: *ScrollBar, mousePosition: Vec2f) void {
 
 pub fn render(self: *ScrollBar, mousePosition: Vec2f) void {
 	texture.bindTo(0);
-	Button.shader.bind();
+	Button.pipeline.bind(draw.getScissor());
 	draw.setColor(0xff000000);
 	draw.customShadedRect(Button.buttonUniforms, self.pos, self.size);
 
