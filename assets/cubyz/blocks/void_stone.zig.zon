@@ -1,5 +1,5 @@
 .{
-	.tags = .{.stone},
+	.tags = .{.stone, .voidStone},
 	.blockHealth = 60,
 	.blockResistance = 5,
 	.drops = .{
@@ -18,6 +18,16 @@
 				.{
 					.id = "durable",
 					.strength = 0.1,
+				},
+				.{
+					.id = "good_at",
+					.strength = 0.5,
+					.tag = .voidStone,
+					.restriction = .{
+						.id = .encased,
+						.tag = .precious,
+						.amount = 2,
+					},
 				},
 			},
 		},

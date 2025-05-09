@@ -1,5 +1,5 @@
 .{
-	.tags = .{.stone},
+	.tags = .{.stone, .basalt},
 	.blockHealth = 30,
 	.blockResistance = 1,
 	.drops = .{
@@ -13,6 +13,18 @@
 			.textureRoughness = 5.0,
 			.colors = .{
 				0xff282328, 0xff353135, 0xff434041, 0xff4A4849, 0xff605E5F,
+			},
+			.modifiers = .{
+				.{
+					.id = "good_at",
+					.strength = 0.5,
+					.tag = .basalt,
+					.restriction = .{
+						.id = .encased,
+						.tag = .precious,
+						.amount = 2,
+					},
+				},
 			},
 		},
 	},
