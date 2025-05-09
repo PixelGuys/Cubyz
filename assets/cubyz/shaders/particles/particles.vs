@@ -65,12 +65,12 @@ void main() {
 	light = max(sunLight*ambientLight, blockLight)/31;
 
 	float rot = particle.rot;
-	vec3 facePos = facePositions[vertexID];
+	vec3 faceVertPos = facePositions[vertexID];
 	float sn = sin(rot);
 	float cs = cos(rot);
 	const vec3 vertexRotationPos = vec3(
-		facePos.x*cs - facePos.y*sn,
-		facePos.x*sn + facePos.y*cs,
+		faceVertPos.x*cs - faceVertPos.y*sn,
+		faceVertPos.x*sn + faceVertPos.y*cs,
 		0
 	);
 
