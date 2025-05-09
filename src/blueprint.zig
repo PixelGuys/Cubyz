@@ -389,12 +389,12 @@ pub const Mask = struct {
 				switch(specifier[0]) {
 					tag => {
 						const blockTag = specifier[1..];
-						if(blockTag.len == 0) return error.MaskSyntaxError;
-						return .{.blockTag = Tag.find(blockTag)};
+						if(blockTag.len == 0) return error.TagNotFound;
+						return .{.blockTag = Tag.findNoClobber(blockTag) orelse return error.TagNotFound};
 					},
 					property => {
 						const propertyName = specifier[1..];
-						const propertyValue = std.meta.stringToEnum(Property, propertyName) orelse return error.MaskSyntaxError;
+						const propertyValue = std.meta.stringToEnum(Property, propertyName) orelse return error.PropertyNotFound;
 						return .{.blockProperty = propertyValue};
 					},
 					else => {
