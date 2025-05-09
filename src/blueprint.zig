@@ -387,6 +387,7 @@ fn generatePropertyEnum() type {
 		const declInfo = @typeInfo(@TypeOf(@field(Block, decl.name)));
 		if(declInfo != .@"fn") continue;
 		if(declInfo.@"fn".return_type != bool) continue;
+		if(declInfo.@"fn".params.len > 1) continue;
 
 		tempFields[count] = .{.name = decl.name, .value = count};
 		count += 1;

@@ -334,7 +334,7 @@ pub const Block = packed struct { // MARK: Block
 		return _blockTags[self.typ];
 	}
 
-	pub inline fn hasTag(self: Block, tag: Tag) []const Tag {
+	pub inline fn hasTag(self: Block, tag: Tag) bool {
 		for(self.blockTags()) |current| {
 			if(tag == current) return true;
 		}
