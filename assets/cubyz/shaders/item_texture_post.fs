@@ -1,10 +1,12 @@
-#version 430
-out vec4 fragColor;
+#version 460
 
-in vec2 texCoords;
+layout(location = 0) out vec4 fragColor;
 
-uniform sampler2D color;
-uniform bool transparent;
+layout(location = 0) in vec2 texCoords;
+
+layout(binding = 3) uniform sampler2D color;
+
+layout(location = 0) uniform bool transparent;
 
 void main() {
 	fragColor = texture(color, texCoords);

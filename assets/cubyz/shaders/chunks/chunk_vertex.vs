@@ -1,21 +1,21 @@
 #version 460
 
-out vec3 mvVertexPos;
-out vec3 direction;
-out vec3 light;
-out vec2 uv;
-flat out vec3 normal;
-flat out int textureIndex;
-flat out int isBackFace;
-flat out int ditherSeed;
-flat out float distanceForLodCheck;
-flat out int opaqueInLod;
+layout(location = 0) out vec3 mvVertexPos;
+layout(location = 1) out vec3 direction;
+layout(location = 2) out vec3 light;
+layout(location = 3) out vec2 uv;
+layout(location = 4) flat out vec3 normal;
+layout(location = 5) flat out int textureIndex;
+layout(location = 6) flat out int isBackFace;
+layout(location = 7) flat out int ditherSeed;
+layout(location = 8) flat out float distanceForLodCheck;
+layout(location = 9) flat out int opaqueInLod;
 
-uniform vec3 ambientLight;
-uniform mat4 projectionMatrix;
-uniform mat4 viewMatrix;
-uniform ivec3 playerPositionInteger;
-uniform vec3 playerPositionFraction;
+layout(location = 0) uniform vec3 ambientLight;
+layout(location = 1) uniform mat4 projectionMatrix;
+layout(location = 2) uniform mat4 viewMatrix;
+layout(location = 3) uniform ivec3 playerPositionInteger;
+layout(location = 4) uniform vec3 playerPositionFraction;
 
 struct FaceData {
 	int encodedPositionAndLightIndex;

@@ -127,7 +127,7 @@
 	.parentBiomes = .{
 		.{
 			.id = "cubyz:forest/base",
-			.chance = 0.5,
+			.chance = 0.01,
 		},
 	},
 }
