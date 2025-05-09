@@ -14,6 +14,7 @@ const Vec3i = vec.Vec3i;
 const BinaryReader = main.utils.BinaryReader;
 const BinaryWriter = main.utils.BinaryWriter;
 const Blueprint = main.blueprint.Blueprint;
+const Mask = main.blueprint.Mask;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const CircularBufferQueue = main.utils.CircularBufferQueue;
 
@@ -32,6 +33,7 @@ pub const WorldEditData = struct {
 	clipboard: ?Blueprint = null,
 	undoHistory: History,
 	redoHistory: History,
+	mask: ?Mask = null,
 
 	const History = struct {
 		changes: CircularBufferQueue(Value),
@@ -79,6 +81,9 @@ pub const WorldEditData = struct {
 		}
 		self.undoHistory.deinit();
 		self.redoHistory.deinit();
+		if(self.mask) |mask| {
+			mask.deinit(main.globalAllocator);
+		}
 	}
 };
 
