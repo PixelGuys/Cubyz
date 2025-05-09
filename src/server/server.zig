@@ -445,14 +445,18 @@ pub fn disconnect(user: *User) void { // MARK: disconnect()
 pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 	if(!user.connected.load(.unordered)) return;
 
-	userMutex.lock();
-	for(users.items, 0..) |other, i| {
-		if(other == user) {
-			_ = users.swapRemove(i);
-			break;
+	const foundUser = blk: {
+		userMutex.lock();
+		defer userMutex.unlock();
+		for(users.items, 0..) |other, i| {
+			if(other == user) {
+				_ = users.swapRemove(i);
+				break :blk true;
+			}
 		}
-	}
-	userMutex.unlock();
+		break :blk false;
+	};
+	if(!foundUser) return;
 
 	sendMessage("{s}§#ffff00 left", .{user.name});
 	// Let the other clients know about that this new one left.
