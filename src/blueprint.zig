@@ -451,12 +451,7 @@ pub const Mask = struct {
 				return switch(self) {
 					.block => |desired| block.typ == desired.typ and block.data == desired.data,
 					.blockType => |desired| block.typ == desired,
-					.blockTag => |desired| {
-						for(block.blockTags()) |current| {
-							if(desired == current) return true;
-						}
-						return false;
-					},
+					.blockTag => |desired| block.hasTag(desired),
 					.blockProperty => |blockProperty| switch(blockProperty) {
 						inline else => |prop| @field(Block, @tagName(prop))(block),
 					},
