@@ -1890,12 +1890,12 @@ pub const CallbackError = error{NotFound, EmptyName};
 
 pub fn NamedCallbacks(comptime Child: type, comptime Function: type) type {
 	return struct {
-		const Super = @This();
+		const Self = @This();
 
 		hashMap: std.StringHashMap(*const Function) = undefined,
 
-		pub fn init(_allocator: std.mem.Allocator) Super {
-			var self = Super{.hashMap = .init(_allocator)};
+		pub fn init(_allocator: std.mem.Allocator) Self {
+			var self = Self{.hashMap = .init(_allocator)};
 			inline for(@typeInfo(Child).@"struct".decls) |declaration| {
 				if(@TypeOf(@field(Child, declaration.name)) == Function) {
 					std.log.debug("Registered Callback '{s}'", .{declaration.name});
@@ -1905,11 +1905,11 @@ pub fn NamedCallbacks(comptime Child: type, comptime Function: type) type {
 			return self;
 		}
 
-		pub fn deinit(self: *Super) void {
+		pub fn deinit(self: *Self) void {
 			self.hashMap.deinit();
 		}
 
-		pub fn getFunctionPointer(self: *Super, id: []const u8) CallbackError!*const Function {
+		pub fn getFunctionPointer(self: *Self, id: []const u8) CallbackError!*const Function {
 			const pointer = self.hashMap.getPtr(id);
 			if(pointer == null) {
 				if(id.len != 0)
