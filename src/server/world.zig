@@ -935,19 +935,19 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.dropWithCooldown(stack, pos, dir, velocity, 0);
 	}
 
-	fn tickBlocksInChunk(self: *ServerWorld, _chunk: ?*chunk.ServerChunk) void {
-		if(_chunk) |ch| {
-			for(0..self.tickSpeed) |_| {
-				const blockIndex: i32 = main.random.nextInt(i32, &main.seed);
+	fn tickBlocksInChunk(self: *ServerWorld, _chunk: *chunk.ServerChunk) void {
+		for(0..self.tickSpeed) |_| {
+			const blockIndex: i32 = main.random.nextInt(i32, &main.seed);
 
-				const x: i32 = blockIndex >> chunk.chunkShift2 & chunk.chunkMask;
-				const y: i32 = blockIndex >> chunk.chunkShift & chunk.chunkMask;
-				const z: i32 = blockIndex & chunk.chunkMask;
+			const x: i32 = blockIndex >> chunk.chunkShift2 & chunk.chunkMask;
+			const y: i32 = blockIndex >> chunk.chunkShift & chunk.chunkMask;
+			const z: i32 = blockIndex & chunk.chunkMask;
 
-				const block = ch.super.getBlock(x, y, z);
-				if(block.tickEvent()) |event| {
-					event.tryRandomTick(block, ch, x, y, z);
-				}
+			_chunk.mutex.lock();
+			const block = _chunk.getBlock(x, y, z);
+			_chunk.mutex.unlock();
+			if(block.tickEvent()) |event| {
+				event.tryRandomTick(block, _chunk, x, y, z);
 			}
 		}
 	}
@@ -958,8 +958,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		var iter = ChunkManager.entityChunkHashMap.keyIterator();
 		while(iter.next()) |pos| {
 			if(ChunkManager.entityChunkHashMap.get(pos.*)) |entityChunk| {
+				const ch = entityChunk.getChunk() orelse continue;
 				entityChunk.increaseRefCount();
-				self.tickBlocksInChunk(entityChunk.getChunk());
+				self.tickBlocksInChunk(ch);
 				entityChunk.decreaseRefCount();
 			}
 		}
