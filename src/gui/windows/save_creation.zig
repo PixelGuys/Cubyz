@@ -28,6 +28,7 @@ var gamemode: main.game.Gamemode = .creative;
 var gamemodeInput: *Button = undefined;
 
 var allowCheats: bool = true;
+var allowExplosives: bool = true;
 
 fn gamemodeCallback(_: usize) void {
 	gamemode = std.meta.intToEnum(main.game.Gamemode, @intFromEnum(gamemode) + 1) catch @enumFromInt(0);
@@ -36,6 +37,10 @@ fn gamemodeCallback(_: usize) void {
 
 fn allowCheatsCallback(allow: bool) void {
 	allowCheats = allow;
+}
+
+fn allowExplosivesCallback(allow: bool) void {
+	allowExplosives = allow;
 }
 
 fn createWorld(_: usize) void {
@@ -82,7 +87,7 @@ fn flawedCreateWorld() !void {
 
 		gamerules.put("default_gamemode", @tagName(gamemode));
 		gamerules.put("cheats", allowCheats);
-		gamerules.put("allow_explosives", true);
+		gamerules.put("allow_explosives", allowExplosives);
 
 		try main.files.writeZon(gamerulePath, gamerules);
 	}
@@ -110,15 +115,18 @@ pub fn onOpen() void {
 	}
 	const name = std.fmt.allocPrint(main.stackAllocator.allocator, "Save{}", .{num}) catch unreachable;
 	defer main.stackAllocator.free(name);
-	textInput = TextInput.init(.{0, 0}, 128, 22, name, .{.callback = &createWorld});
+
+	const widgetWidth = 160;
+	textInput = TextInput.init(.{0, 0}, widgetWidth, 22, name, .{.callback = &createWorld});
 	list.add(textInput);
 
-	gamemodeInput = Button.initText(.{0, 0}, 128, @tagName(gamemode), .{.callback = &gamemodeCallback});
+	gamemodeInput = Button.initText(.{0, 0}, widgetWidth, @tagName(gamemode), .{.callback = &gamemodeCallback});
 	list.add(gamemodeInput);
 
-	list.add(CheckBox.init(.{0, 0}, 128, "Allow Cheats", true, &allowCheatsCallback));
+	list.add(CheckBox.init(.{0, 0}, widgetWidth, "Allow Cheats", true, &allowCheatsCallback));
+	list.add(CheckBox.init(.{0, 0}, widgetWidth, "Allow Explosives", true, &allowExplosivesCallback));
 
-	list.add(Button.initText(.{0, 0}, 128, "Create World", .{.callback = &createWorld}));
+	list.add(Button.initText(.{0, 0}, widgetWidth, "Create World", .{.callback = &createWorld}));
 
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
