@@ -249,10 +249,10 @@ pub fn parseBlock(data: []const u8) Block {
 	}
 }
 
-pub fn getBlockById(idLikeString: []const u8) !u16 {
-	const addonNameSeparatorIndex = std.mem.indexOfScalar(u8, idLikeString, ':') orelse return error.MissingAddonNameSeparator;
-	const blockIdEndIndex = std.mem.indexOfScalarPos(u8, idLikeString, 1 + addonNameSeparatorIndex, ':') orelse idLikeString.len;
-	const id = idLikeString[0..blockIdEndIndex];
+pub fn getBlockById(idAndData: []const u8) !u16 {
+	const addonNameSeparatorIndex = std.mem.indexOfScalar(u8, idAndData, ':') orelse return error.MissingAddonNameSeparator;
+	const blockIdEndIndex = std.mem.indexOfScalarPos(u8, idAndData, 1 + addonNameSeparatorIndex, ':') orelse idAndData.len;
+	const id = idAndData[0..blockIdEndIndex];
 	return reverseIndices.get(id) orelse return error.NotFound;
 }
 
