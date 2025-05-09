@@ -438,15 +438,15 @@ pub const Mask = struct {
 		var orStorage: OrList = .{};
 		errdefer orStorage.deinit(allocator);
 
-		var orEdExpressions = std.mem.splitScalar(u8, source, or_);
-		while(orEdExpressions.next()) |subExpression| {
+		var oredExpressions = std.mem.splitScalar(u8, source, or_);
+		while(oredExpressions.next()) |subExpression| {
 			if(subExpression.len == 0) continue;
 
 			var andStorage: AndList = .{};
 			errdefer andStorage.deinit(allocator);
 
-			var andEdExpressions = std.mem.splitScalar(u8, subExpression, and_);
-			while(andEdExpressions.next()) |specifier| {
+			var andedExpressions = std.mem.splitScalar(u8, subExpression, and_);
+			while(andedExpressions.next()) |specifier| {
 				if(specifier.len == 0) continue;
 
 				const entry = try Entry.initFromString(specifier);
@@ -454,13 +454,13 @@ pub const Mask = struct {
 			}
 
 			if(andStorage.items.len == 0) {
-				return error.MaskSyntaxError;
+				return error.MaskEmptyAndExpression;
 			}
 			orStorage.append(allocator, andStorage);
 		}
 
 		if(orStorage.items.len == 0) {
-			return error.MaskSyntaxError;
+			return error.MaskEmptyOrExpression;
 		}
 
 		return .{.entries = orStorage};
