@@ -352,10 +352,7 @@ fn generatePropertyEnum() type {
 		count += 1;
 	}
 
-	var outFields: [count]std.builtin.Type.EnumField = undefined;
-	for(0..count) |i| {
-		outFields[i] = tempFields[i];
-	}
+	const outFields: [count]std.builtin.Type.EnumField = tempFields[0..count].*;
 
 	return @Type(.{.@"enum" = .{
 		.tag_type = u8,
