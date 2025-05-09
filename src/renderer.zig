@@ -969,15 +969,14 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			if(inventory.getItem(slot)) |item| {
 				switch(item) {
 					.baseItem => |baseItem| {
+						if(baseItem.hasTag(main.Tag.find("canIgnite")) and oldBlock.hasTag(main.Tag.find("canBeIgnited"))) {
+							if(oldBlock.hasTag(main.Tag.find("explosionSmall"))) main.network.Protocols.explode.send(main.game.world.?.conn, selectedPos, 40, 3.7);
+							if(oldBlock.hasTag(main.Tag.find("explosionMedium"))) main.network.Protocols.explode.send(main.game.world.?.conn, selectedPos, 240, 11.5);
+							if(oldBlock.hasTag(main.Tag.find("explosionLarge"))) main.network.Protocols.explode.send(main.game.world.?.conn, selectedPos, 480, 18.5);
+							return;
+						}
 						if(baseItem.block) |itemBlock| {
 							const heldBlock = blocks.Block{.typ = itemBlock, .data = 0};
-							if(heldBlock.hasTag("canIgnite") and oldBlock.hasTag("canBeIgnited")) {
-								if(oldBlock.hasTag("explosionSmall")) main.network.Protocols.explode.send(main.game.world.?.conn, selectedPos, 40, 3.7);
-								if(oldBlock.hasTag("explosionMedium")) main.network.Protocols.explode.send(main.game.world.?.conn, selectedPos, 240, 11.5);
-								if(oldBlock.hasTag("explosionLarge")) main.network.Protocols.explode.send(main.game.world.?.conn, selectedPos, 480, 18.5);
-								return;
-							}
-
 							const rotationMode = heldBlock.mode();
 							var neighborDir = Vec3i{0, 0, 0};
 							// Check if stuff can be added to the block itself:

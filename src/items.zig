@@ -236,10 +236,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 	}
 
 	pub fn hasTag(self: *const BaseItem, tag: Tag) bool {
-		for(self.tags) |other| {
-			if(other == tag) return true;
-		}
-		return false;
+		return std.mem.containsAtLeastScalar(Tag, self.tags, 1, tag);
 	}
 };
 

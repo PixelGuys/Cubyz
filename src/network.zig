@@ -1326,7 +1326,6 @@ pub const Protocols = struct {
 
 					var oldBlock = main.server.world.?.getBlock(p[0], p[1], p[2]) orelse continue;
 					if(oldBlock.typ == 0) continue;
-					if(oldBlock.hasTag("fluid")) continue;
 
 					if(damage < oldBlock.blockResistance()) break;
 					damage -= oldBlock.blockHealth();

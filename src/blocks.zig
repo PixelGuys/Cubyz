@@ -317,8 +317,8 @@ pub const Block = packed struct { // MARK: Block
 		return _blockTags[self.typ];
 	}
 
-	pub inline fn hasTag(self: Block, tag: []const u8) bool {
-		return std.mem.indexOfScalar(Tag, _blockTags[self.typ], Tag.find(tag)) != null;
+	pub inline fn hasTag(self: Block, tag: Tag) bool {
+		return std.mem.containsAtLeastScalar(Tag, self.blockTags(), 1, tag);
 	}
 
 	pub inline fn light(self: Block) u32 {
