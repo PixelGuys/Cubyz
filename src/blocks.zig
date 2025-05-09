@@ -407,8 +407,10 @@ pub const TickFunctions = struct {
 
 		const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
 		defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+		const newBlock: main.renderer.mesh_storage.BlockUpdate = .init(.{wx, wy, wz}, cobblestone);
+		const blockUpdates: [1]main.renderer.mesh_storage.BlockUpdate = .{newBlock};
 		for(userList) |user| {
-			main.network.Protocols.blockUpdate.send(user.conn, wx, wy, wz, cobblestone);
+			main.network.Protocols.blockUpdate.send(user.conn, blockUpdates[0..]);
 		}
 	}
 };
