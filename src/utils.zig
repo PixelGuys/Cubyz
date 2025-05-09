@@ -1922,31 +1922,20 @@ pub fn NamedCallbacks(comptime Child: type, comptime Function: type) type {
 
 test "Callback registers testFunction and expects errors" {
 	const TestFunction = fn(_: i32) void;
-
 	const TestFunctions = struct {
-		const Self = @This();
-		var super: NamedCallbacks(Self, TestFunction) = undefined;
-
-		pub fn init() void {
-			super = .init(std.testing.allocator);
-		}
-
-		pub fn deinit() void {
-			super.deinit();
-		}
-
 		// Callback should register this
 		pub fn testFunction(_: i32) void {}
 	};
+	var testFunctions: NamedCallbacks(TestFunctions, TestFunction) = undefined;
 
-	TestFunctions.init();
-	defer TestFunctions.deinit();
+	testFunctions = .init(std.testing.allocator);
+	defer testFunctions.deinit();
 
-	try std.testing.expect(TestFunctions.super.hashMap.count() == 1);
+	try std.testing.expect(testFunctions.hashMap.count() == 1);
 
-	const fnPtr = TestFunctions.super.getFunctionPointer("testFunction") catch unreachable;
+	const fnPtr = testFunctions.getFunctionPointer("testFunction") catch unreachable;
 	try std.testing.expect(@TypeOf(fnPtr) == *const TestFunction);
 
-	try std.testing.expectError(CallbackError.EmptyName, TestFunctions.super.getFunctionPointer(""));
-	try std.testing.expectError(CallbackError.NotFound, TestFunctions.super.getFunctionPointer("functionTest"));
+	try std.testing.expectError(CallbackError.EmptyName, testFunctions.getFunctionPointer(""));
+	try std.testing.expectError(CallbackError.NotFound, testFunctions.getFunctionPointer("functionTest"));
 }

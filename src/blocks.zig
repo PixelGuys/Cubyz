@@ -131,7 +131,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_tickEvent[size] = TickEvent.loadFromZon(zon.getChild("tickEvent"));
 
 	const touchFunctionName = zon.get([]const u8, "touchFunction", "");
-	_touchFunction[size] = TouchFunctions.getFunctionPointer(touchFunctionName) catch |err| blk: {
+	_touchFunction[size] = touchFunctions.getFunctionPointer(touchFunctionName) catch |err| blk: {
 		switch(err) {
 			utils.CallbackError.NotFound => std.log.err("Could not find TouchFunction {s}.", .{touchFunctionName}),
 			else => {},
@@ -391,25 +391,9 @@ pub const Block = packed struct { // MARK: Block
 };
 
 // MARK: Tick
+pub var tickFunctions: utils.NamedCallbacks(TickFunctions, TickFunction) = undefined;
 pub const TickFunction = fn(block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void;
-
 pub const TickFunctions = struct {
-	const Self = @This();
-
-	var super: utils.NamedCallbacks(Self, TickFunction) = undefined;
-
-	pub fn init() void {
-		super = .init(main.globalAllocator.allocator);
-	}
-
-	pub fn deinit() void {
-		super.deinit();
-	}
-
-	pub fn getFunctionPointer(id: []const u8) utils.CallbackError!*const TickFunction {
-		return super.getFunctionPointer(id);
-	}
-
 	pub fn replaceWithCobble(_: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void {
 		std.log.debug("Replace with cobblestone at ({d},{d},{d})", .{x, y, z});
 		const cobblestone = parseBlock("cubyz:cobblestone");
@@ -436,7 +420,7 @@ pub const TickEvent = struct {
 
 	pub fn loadFromZon(zon: ZonElement) ?TickEvent {
 		const name = zon.get([]const u8, "name", "");
-		const _function = TickFunctions.getFunctionPointer(name) catch |err| blk: {
+		const _function = tickFunctions.getFunctionPointer(name) catch |err| blk: {
 			switch(err) {
 				utils.CallbackError.NotFound => std.log.err("Could not find TickFunction {s}.", .{name}),
 				else => {},
@@ -459,25 +443,9 @@ pub const TickEvent = struct {
 };
 
 // MARK: Touch
+pub var touchFunctions: utils.NamedCallbacks(TouchFunctions, TouchFunction) = undefined;
 pub const TouchFunction = fn(block: Block, entity: Entity, posX: i32, posY: i32, posZ: i32, isEntityInside: bool) void;
-
-pub const TouchFunctions = struct {
-	const Self = @This();
-
-	var super: utils.NamedCallbacks(Self, TouchFunction) = undefined;
-
-	pub fn init() void {
-		super = .init(main.globalAllocator.allocator);
-	}
-
-	pub fn deinit() void {
-		super.deinit();
-	}
-
-	pub fn getFunctionPointer(id: []const u8) utils.CallbackError!*const TouchFunction {
-		return super.getFunctionPointer(id);
-	}
-};
+pub const TouchFunctions = struct {};
 
 pub const meshes = struct { // MARK: meshes
 	const AnimationData = extern struct {
