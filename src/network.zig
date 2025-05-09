@@ -1019,7 +1019,8 @@ pub const Protocols = struct {
 			gamemode = 0,
 			teleport = 1,
 			worldEditPos = 2,
-			timeAndBiome = 3,
+			time = 3,
+			biome = 4,
 		};
 
 		const WorldEditPosition = enum(u2) {
@@ -1063,10 +1064,9 @@ pub const Protocols = struct {
 						}
 					}
 				},
-				.timeAndBiome => {
+				.time => {
 					if(conn.manager.world) |world| {
 						const expectedTime = try reader.readInt(i64);
-						const biomeId = try reader.readInt(u32);
 
 						var curTime = world.gameTime.load(.monotonic);
 						if(@abs(curTime -% expectedTime) >= 10) {
@@ -1080,6 +1080,11 @@ pub const Protocols = struct {
 								curTime = actualTime;
 							}
 						}
+					}
+				},
+				.biome => {
+					if(conn.manager.world) |world| {
+						const biomeId = try reader.readInt(u32);
 
 						const newBiome = main.server.terrain.biomes.getByIndex(biomeId) orelse return error.MissingBiome;
 						const oldBiome = world.playerBiome.swap(newBiome, .monotonic);
@@ -1118,15 +1123,22 @@ pub const Protocols = struct {
 			conn.send(.fast, id, writer.data.items);
 		}
 
-		pub fn sendTimeAndBiome(conn: *Connection, world: *const main.server.ServerWorld) void {
+		pub fn sendBiome(conn: *Connection, biomeIndex: u32) void {
 			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 13);
 			defer writer.deinit();
 
-			writer.writeEnum(UpdateType, .timeAndBiome);
-			writer.writeInt(i64, world.gameTime);
+			writer.writeEnum(UpdateType, .biome);
+			writer.writeInt(u32, biomeIndex);
 
-			const pos = @as(Vec3i, @intFromFloat(conn.user.?.player.pos));
-			writer.writeInt(u32, world.getBiome(pos[0], pos[1], pos[2]).paletteId);
+			conn.send(.fast, id, writer.data.items);
+		}
+
+		pub fn sendTime(conn: *Connection, world: *const main.server.ServerWorld) void {
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 13);
+			defer writer.deinit();
+
+			writer.writeEnum(UpdateType, .time);
+			writer.writeInt(i64, world.gameTime);
 
 			conn.send(.fast, id, writer.data.items);
 		}

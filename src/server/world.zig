@@ -946,7 +946,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
 			defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 			for(userList) |user| {
-				main.network.Protocols.genericUpdate.sendTimeAndBiome(user.conn, self);
+				main.network.Protocols.genericUpdate.sendTime(user.conn, self);
 			}
 		}
 		// TODO: Entities

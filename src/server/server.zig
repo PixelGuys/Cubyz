@@ -105,6 +105,8 @@ pub const User = struct { // MARK: User
 	gamemode: std.atomic.Value(main.game.Gamemode) = .init(.creative),
 	worldEditData: WorldEditData = undefined,
 
+	lastSentBiomeId: u32 = 0xffffffff,
+
 	inventoryClientToServerIdMap: std.AutoHashMap(u32, u32) = undefined,
 
 	connected: Atomic(bool) = .init(true),
@@ -404,6 +406,15 @@ fn update() void { // MARK: update()
 	}
 	for(userList) |user| {
 		main.network.Protocols.entityPosition.send(user.conn, user.player.pos, entityData.items, itemData);
+	}
+
+	for(userList) |user| {
+		const pos = @as(Vec3i, @intFromFloat(user.player.pos));
+		const biomeId = world.?.getBiome(user.lastPos[0], pos[1], pos[2]).paletteId;
+		if(biomeId != user.lastSentBiomeId) {
+			user.lastSentBiomeId = biomeId;
+			main.network.Protocols.genericUpdate.sendBiome(user.conn, biomeId);
+		}
 	}
 
 	while(userDeinitList.dequeue()) |user| {
