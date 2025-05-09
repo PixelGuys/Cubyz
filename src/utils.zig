@@ -1910,8 +1910,7 @@ pub fn NamedCallbacks(comptime Child: type, comptime Function: type) type {
 		}
 
 		pub fn getFunctionPointer(self: *Super, id: []const u8) CallbackError!*const Function {
-			const pointer = self.hashMap.getPtr(id);
-			if(pointer == null) {
+			const pointer = self.hashMap.getPtr(id) orelse {
 				if(id.len != 0)
 					return CallbackError.NotFound;
 				return CallbackError.EmptyName;
