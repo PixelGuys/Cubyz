@@ -34,7 +34,7 @@ pub const Tag = enum(u32) {
 		loadDefaults();
 	}
 
-	pub fn findNoClobber(tag: []const u8) ?Tag {
+	pub fn get(tag: []const u8) ?Tag {
 		return tagIds.get(tag);
 	}
 

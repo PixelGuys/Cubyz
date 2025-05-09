@@ -390,7 +390,7 @@ pub const Mask = struct {
 					tag => {
 						const blockTag = specifier[1..];
 						if(blockTag.len == 0) return error.TagNotFound;
-						return .{.blockTag = Tag.findNoClobber(blockTag) orelse return error.TagNotFound};
+						return .{.blockTag = Tag.get(blockTag) orelse return error.TagNotFound};
 					},
 					property => {
 						const propertyName = specifier[1..];
