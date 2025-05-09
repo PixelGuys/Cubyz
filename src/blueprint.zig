@@ -337,7 +337,10 @@ pub const Pattern = struct {
 	}
 };
 
-const BlockLike = struct {typ: u16, data: ?u16};
+const BlockLike = union(enum) {
+	block: Block,
+	blockType: u16,
+};
 
 fn generatePropertyEnum() type {
 	var tempFields: [@typeInfo(Block).@"struct".decls.len]std.builtin.Type.EnumField = undefined;
@@ -379,7 +382,8 @@ pub const Mask = struct {
 		isInverse: bool,
 
 		const Inner = union(enum) {
-			blockLike: BlockLike,
+			block: Block,
+			blockType: u16,
 			blockTag: Tag,
 			blockProperty: Property,
 
@@ -398,14 +402,18 @@ pub const Mask = struct {
 						return .{.blockProperty = propertyValue};
 					},
 					else => {
-						return .{.blockLike = try parseBlockLike(specifier)};
+						switch(try parseBlockLike(specifier)) {
+							.block => |block| return .{.block = block},
+							.blockType => |blockType| return .{.blockType = blockType},
+						}
 					},
 				}
 			}
 
 			fn match(self: Inner, block: Block) bool {
 				return switch(self) {
-					.blockLike => block.typ == self.blockLike.typ and (self.blockLike.data == null or block.data == self.blockLike.data),
+					.block => |desired| block.typ == desired.typ and block.data == desired.data,
+					.blockType => |desired| block.typ == desired,
 					.blockTag => |desired| {
 						for(block.blockTags()) |current| {
 							if(desired == current) return true;
@@ -491,8 +499,9 @@ pub const Mask = struct {
 fn parseBlockLike(block: []const u8) error{DataParsingFailed, IdParsingFailed}!BlockLike {
 	if(@import("builtin").is_test) return try Test.parseBlockLikeTest(block);
 	const typ = main.blocks.getBlockById(block) catch return error.IdParsingFailed;
-	const data = try main.blocks.getBlockData(block) catch return error.DataParsingFailed;
-	return .{.typ = typ, .data = data};
+	const dataNullable = try main.blocks.getBlockData(block) catch return error.DataParsingFailed;
+	if(dataNullable) |data| return .{.block = .{.typ = typ, .data = data}};
+	return .{.blockType = typ};
 }
 
 const Test = struct {
@@ -506,18 +515,18 @@ const Test = struct {
 	}
 
 	fn @"parseBlockLike 1 null"(_: []const u8) !BlockLike {
-		return .{.typ = 1, .data = null};
+		return .{.blockType = 1};
 	}
 	fn @"parseBlockLike 1 1"(_: []const u8) !BlockLike {
-		return .{.typ = 1, .data = 1};
+		return .{.block = .{.typ = 1, .data = 1}};
 	}
 
 	fn @"parseBlockLike foo or bar"(data: []const u8) !BlockLike {
 		if(std.mem.eql(u8, data, "addon:foo")) {
-			return .{.typ = 1, .data = 0};
+			return .{.block = .{.typ = 1, .data = 0}};
 		}
 		if(std.mem.eql(u8, data, "addon:bar")) {
-			return .{.typ = 2, .data = 0};
+			return .{.block = .{.typ = 2, .data = 0}};
 		}
 		unreachable;
 	}
