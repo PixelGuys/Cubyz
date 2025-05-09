@@ -1,12 +1,13 @@
-#version 330
+#version 460
 
-layout (location=0) out vec4 frag_color;
-uniform sampler2D image;
+layout(location = 0) out vec4 frag_color;
 
-flat in vec4 fColor;
-in vec2 startCoord;
+layout(location = 0) in vec2 startCoord;
+layout(location = 1) flat in vec4 fColor;
 
-uniform float scale;
+layout(binding = 0) uniform sampler2D image;
+
+layout(location = 4) uniform float scale;
 
 void main() {
 	frag_color = texture(image, (gl_FragCoord.xy - startCoord)/(2*scale)/textureSize(image, 0));

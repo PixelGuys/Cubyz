@@ -31,11 +31,17 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 pub const c = @cImport({
 	@cInclude("glad/glad.h");
+	@cInclude("vulkan/vulkan.h");
 });
 
 pub const stb_image = @cImport({
 	@cInclude("stb/stb_image.h");
 	@cInclude("stb/stb_image_write.h");
+});
+
+const glslang = @cImport({
+	@cInclude("glslang/Include/glslang_c_interface.h");
+	@cInclude("glslang/Public/resource_limits_c.h");
 });
 
 pub const draw = struct { // MARK: draw
@@ -97,23 +103,29 @@ pub const draw = struct { // MARK: draw
 			}
 			newClip[2] = @max(newClip[2], 0);
 			newClip[3] = @max(newClip[3], 0);
-		} else {
-			c.glEnable(c.GL_SCISSOR_TEST);
 		}
-		c.glScissor(newClip[0], newClip[1], newClip[2], newClip[3]);
 		const oldClip = clip;
 		clip = newClip;
 		return oldClip;
 	}
 
+	pub fn getScissor() ?c.VkRect2D {
+		const clipRect = clip orelse return null;
+		return .{
+			.offset = .{
+				.x = clipRect[0],
+				.y = clipRect[1],
+			},
+			.extent = .{
+				.width = @intCast(clipRect[2]),
+				.height = @intCast(clipRect[3]),
+			},
+		};
+	}
+
 	/// Should be used to restore the old clip when leaving the render function.
 	pub fn restoreClip(previousClip: ?Vec4i) void {
 		clip = previousClip;
-		if(clip) |clipRef| {
-			c.glScissor(clipRef[0], clipRef[1], clipRef[2], clipRef[3]);
-		} else {
-			c.glDisable(c.GL_SCISSOR_TEST);
-		}
 	}
 
 	// ----------------------------------------------------------------------------
@@ -124,12 +136,20 @@ pub const draw = struct { // MARK: draw
 		size: c_int,
 		rectColor: c_int,
 	} = undefined;
-	var rectShader: Shader = undefined;
+	var rectPipeline: Pipeline = undefined;
 	pub var rectVAO: c_uint = undefined;
 	var rectVBO: c_uint = undefined;
 
 	fn initRect() void {
-		rectShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Rect.vs", "assets/cubyz/shaders/graphics/Rect.fs", "", &rectUniforms);
+		rectPipeline = Pipeline.init(
+			"assets/cubyz/shaders/graphics/Rect.vs",
+			"assets/cubyz/shaders/graphics/Rect.fs",
+			"",
+			&rectUniforms,
+			.{.cullMode = .none},
+			.{.depthTest = false, .depthWrite = false},
+			.{.attachments = &.{.alphaBlending}},
+		);
 		const rawData = [_]f32{
 			0, 0,
 			0, 1,
@@ -147,7 +167,7 @@ pub const draw = struct { // MARK: draw
 	}
 
 	fn deinitRect() void {
-		rectShader.deinit();
+		rectPipeline.deinit();
 		c.glDeleteVertexArrays(1, &rectVAO);
 		c.glDeleteBuffers(1, &rectVBO);
 	}
@@ -159,7 +179,7 @@ pub const draw = struct { // MARK: draw
 		pos += translation;
 		dim *= @splat(scale);
 
-		rectShader.bind();
+		rectPipeline.bind(getScissor());
 
 		c.glUniform2f(rectUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
 		c.glUniform2f(rectUniforms.start, pos[0], pos[1]);
@@ -179,12 +199,20 @@ pub const draw = struct { // MARK: draw
 		rectColor: c_int,
 		lineWidth: c_int,
 	} = undefined;
-	var rectBorderShader: Shader = undefined;
+	var rectBorderPipeline: Pipeline = undefined;
 	var rectBorderVAO: c_uint = undefined;
 	var rectBorderVBO: c_uint = undefined;
 
 	fn initRectBorder() void {
-		rectBorderShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/RectBorder.vs", "assets/cubyz/shaders/graphics/RectBorder.fs", "", &rectBorderUniforms);
+		rectBorderPipeline = Pipeline.init(
+			"assets/cubyz/shaders/graphics/RectBorder.vs",
+			"assets/cubyz/shaders/graphics/RectBorder.fs",
+			"",
+			&rectBorderUniforms,
+			.{.cullMode = .none},
+			.{.depthTest = false, .depthWrite = false},
+			.{.attachments = &.{.alphaBlending}},
+		);
 		const rawData = [_]f32{
 			0, 0, 0,  0,
 			0, 0, 1,  1,
@@ -208,7 +236,7 @@ pub const draw = struct { // MARK: draw
 	}
 
 	fn deinitRectBorder() void {
-		rectBorderShader.deinit();
+		rectBorderPipeline.deinit();
 		c.glDeleteVertexArrays(1, &rectBorderVAO);
 		c.glDeleteBuffers(1, &rectBorderVBO);
 	}
@@ -222,7 +250,7 @@ pub const draw = struct { // MARK: draw
 		dim *= @splat(scale);
 		width *= scale;
 
-		rectBorderShader.bind();
+		rectBorderPipeline.bind(getScissor());
 
 		c.glUniform2f(rectBorderUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
 		c.glUniform2f(rectBorderUniforms.start, pos[0], pos[1]);
@@ -242,12 +270,20 @@ pub const draw = struct { // MARK: draw
 		direction: c_int,
 		lineColor: c_int,
 	} = undefined;
-	var lineShader: Shader = undefined;
+	var linePipeline: Pipeline = undefined;
 	var lineVAO: c_uint = undefined;
 	var lineVBO: c_uint = undefined;
 
 	fn initLine() void {
-		lineShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Line.vs", "assets/cubyz/shaders/graphics/Line.fs", "", &lineUniforms);
+		linePipeline = Pipeline.init(
+			"assets/cubyz/shaders/graphics/Line.vs",
+			"assets/cubyz/shaders/graphics/Line.fs",
+			"",
+			&lineUniforms,
+			.{.cullMode = .none},
+			.{.depthTest = false, .depthWrite = false},
+			.{.attachments = &.{.alphaBlending}},
+		);
 		const rawData = [_]f32{
 			0, 0,
 			1, 1,
@@ -263,7 +299,7 @@ pub const draw = struct { // MARK: draw
 	}
 
 	fn deinitLine() void {
-		lineShader.deinit();
+		linePipeline.deinit();
 		c.glDeleteVertexArrays(1, &lineVAO);
 		c.glDeleteBuffers(1, &lineVBO);
 	}
@@ -276,7 +312,7 @@ pub const draw = struct { // MARK: draw
 		pos2 *= @splat(scale);
 		pos2 += translation;
 
-		lineShader.bind();
+		linePipeline.bind(getScissor());
 
 		c.glUniform2f(lineUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
 		c.glUniform2f(lineUniforms.start, pos1[0], pos1[1]);
@@ -322,7 +358,7 @@ pub const draw = struct { // MARK: draw
 		pos += translation;
 		dim *= @splat(scale);
 
-		lineShader.bind();
+		linePipeline.bind(getScissor());
 
 		c.glUniform2f(lineUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
 		c.glUniform2f(lineUniforms.start, pos[0], pos[1]); // Move the coordinates, so they are in the center of a pixel.
@@ -341,12 +377,20 @@ pub const draw = struct { // MARK: draw
 		radius: c_int,
 		circleColor: c_int,
 	} = undefined;
-	var circleShader: Shader = undefined;
+	var circlePipeline: Pipeline = undefined;
 	var circleVAO: c_uint = undefined;
 	var circleVBO: c_uint = undefined;
 
 	fn initCircle() void {
-		circleShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Circle.vs", "assets/cubyz/shaders/graphics/Circle.fs", "", &circleUniforms);
+		circlePipeline = Pipeline.init(
+			"assets/cubyz/shaders/graphics/Circle.vs",
+			"assets/cubyz/shaders/graphics/Circle.fs",
+			"",
+			&circleUniforms,
+			.{.cullMode = .none},
+			.{.depthTest = false, .depthWrite = false},
+			.{.attachments = &.{.alphaBlending}},
+		);
 		const rawData = [_]f32{
 			-1, -1,
 			-1, 1,
@@ -364,7 +408,7 @@ pub const draw = struct { // MARK: draw
 	}
 
 	fn deinitCircle() void {
-		circleShader.deinit();
+		circlePipeline.deinit();
 		c.glDeleteVertexArrays(1, &circleVAO);
 		c.glDeleteBuffers(1, &circleVBO);
 	}
@@ -375,7 +419,7 @@ pub const draw = struct { // MARK: draw
 		center *= @splat(scale);
 		center += translation;
 		radius *= scale;
-		circleShader.bind();
+		circlePipeline.bind(getScissor());
 
 		c.glUniform2f(circleUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
 		c.glUniform2f(circleUniforms.center, center[0], center[1]); // Move the coordinates, so they are in the center of a pixel.
@@ -393,41 +437,32 @@ pub const draw = struct { // MARK: draw
 		screen: c_int,
 		start: c_int,
 		size: c_int,
-		image: c_int,
 		color: c_int,
 		uvOffset: c_int,
 		uvDim: c_int,
 	} = undefined;
-	var imageShader: Shader = undefined;
+	var imagePipeline: Pipeline = undefined;
 
 	fn initImage() void {
-		imageShader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Image.vs", "assets/cubyz/shaders/graphics/Image.fs", "", &imageUniforms);
+		imagePipeline = Pipeline.init(
+			"assets/cubyz/shaders/graphics/Image.vs",
+			"assets/cubyz/shaders/graphics/Image.fs",
+			"",
+			&imageUniforms,
+			.{.cullMode = .none},
+			.{.depthTest = false, .depthWrite = false},
+			.{.attachments = &.{.alphaBlending}},
+		);
 	}
 
 	fn deinitImage() void {
-		imageShader.deinit();
+		imagePipeline.deinit();
 	}
 
 	pub fn boundImage(_pos: Vec2f, _dim: Vec2f) void {
-		var pos = _pos;
-		var dim = _dim;
-		pos *= @splat(scale);
-		pos += translation;
-		dim *= @splat(scale);
-		pos = @floor(pos);
-		dim = @ceil(dim);
+		imagePipeline.bind(getScissor());
 
-		imageShader.bind();
-
-		c.glUniform2f(imageUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
-		c.glUniform2f(imageUniforms.start, pos[0], pos[1]);
-		c.glUniform2f(imageUniforms.size, dim[0], dim[1]);
-		c.glUniform1i(imageUniforms.color, @bitCast(color));
-		c.glUniform2f(imageUniforms.uvOffset, 0, 0);
-		c.glUniform2f(imageUniforms.uvDim, 1, 1);
-
-		c.glBindVertexArray(rectVAO);
-		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+		customShadedImage(&imageUniforms, _pos, _dim);
 	}
 
 	pub fn boundSubImage(_pos: Vec2f, _dim: Vec2f, uvOffset: Vec2f, uvDim: Vec2f) void {
@@ -439,7 +474,7 @@ pub const draw = struct { // MARK: draw
 		pos = @floor(pos);
 		dim = @ceil(dim);
 
-		imageShader.bind();
+		imagePipeline.bind(getScissor());
 
 		c.glUniform2f(imageUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
 		c.glUniform2f(imageUniforms.start, pos[0], pos[1]);
@@ -447,6 +482,26 @@ pub const draw = struct { // MARK: draw
 		c.glUniform1i(imageUniforms.color, @bitCast(color));
 		c.glUniform2f(imageUniforms.uvOffset, uvOffset[0], 1 - uvOffset[1] - uvDim[1]);
 		c.glUniform2f(imageUniforms.uvDim, uvDim[0], uvDim[1]);
+
+		c.glBindVertexArray(rectVAO);
+		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
+	}
+
+	pub fn customShadedImage(uniforms: anytype, _pos: Vec2f, _dim: Vec2f) void {
+		var pos = _pos;
+		var dim = _dim;
+		pos *= @splat(scale);
+		pos += translation;
+		dim *= @splat(scale);
+		pos = @floor(pos);
+		dim = @ceil(dim);
+
+		c.glUniform2f(uniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
+		c.glUniform2f(uniforms.start, pos[0], pos[1]);
+		c.glUniform2f(uniforms.size, dim[0], dim[1]);
+		c.glUniform1i(uniforms.color, @bitCast(color));
+		c.glUniform2f(uniforms.uvOffset, 0, 0);
+		c.glUniform2f(uniforms.uvDim, 1, 1);
 
 		c.glBindVertexArray(rectVAO);
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
@@ -924,7 +979,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		defer draw.restoreScale(oldScale);
 		var x: f32 = 0;
 		var y: f32 = 0;
-		TextRendering.shader.bind();
+		TextRendering.pipeline.bind(draw.getScissor());
 		c.glUniform2f(TextRendering.uniforms.scene, @floatFromInt(main.Window.width), @floatFromInt(main.Window.height));
 		c.glUniform1f(TextRendering.uniforms.ratio, draw.scale);
 		c.glUniform1f(TextRendering.uniforms.alpha, @as(f32, @floatFromInt(draw.color >> 24))/255.0);
@@ -990,7 +1045,7 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		defer draw.restoreScale(oldScale);
 		var x: f32 = 0;
 		var y: f32 = 0;
-		TextRendering.shader.bind();
+		TextRendering.pipeline.bind(draw.getScissor());
 		c.glUniform2f(TextRendering.uniforms.scene, @floatFromInt(main.Window.width), @floatFromInt(main.Window.height));
 		c.glUniform1f(TextRendering.uniforms.ratio, draw.scale);
 		c.glUniform1f(TextRendering.uniforms.alpha, @as(f32, @floatFromInt(draw.color >> 24))/255.0);
@@ -1047,7 +1102,7 @@ const TextRendering = struct { // MARK: TextRendering
 		bearing: Vec2i,
 		advance: f32,
 	};
-	var shader: Shader = undefined;
+	var pipeline: Pipeline = undefined;
 	var uniforms: struct {
 		texture_rect: c_int,
 		scene: c_int,
@@ -1055,7 +1110,6 @@ const TextRendering = struct { // MARK: TextRendering
 		ratio: c_int,
 		fontEffects: c_int,
 		fontSize: c_int,
-		texture_sampler: c_int,
 		alpha: c_int,
 	} = undefined;
 
@@ -1078,10 +1132,17 @@ const TextRendering = struct { // MARK: TextRendering
 	}
 
 	fn init() !void {
-		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/Text.vs", "assets/cubyz/shaders/graphics/Text.fs", "", &uniforms);
-		shader.bind();
-		errdefer shader.deinit();
-		c.glUniform1i(uniforms.texture_sampler, 0);
+		pipeline = Pipeline.init(
+			"assets/cubyz/shaders/graphics/Text.vs",
+			"assets/cubyz/shaders/graphics/Text.fs",
+			"",
+			&uniforms,
+			.{.cullMode = .none},
+			.{.depthTest = false, .depthWrite = false},
+			.{.attachments = &.{.alphaBlending}},
+		);
+		pipeline.bind(null);
+		errdefer pipeline.deinit();
 		c.glUniform1f(uniforms.alpha, 1.0);
 		c.glUniform2f(uniforms.fontSize, @floatFromInt(textureWidth), @floatFromInt(textureHeight));
 		try ftError(hbft.FT_Init_FreeType(&freetypeLib));
@@ -1108,7 +1169,7 @@ const TextRendering = struct { // MARK: TextRendering
 	}
 
 	fn deinit() void {
-		shader.deinit();
+		pipeline.deinit();
 		ftError(hbft.FT_Done_FreeType(freetypeLib)) catch {};
 		glyphMapping.deinit();
 		glyphData.deinit();
@@ -1125,7 +1186,7 @@ const TextRendering = struct { // MARK: TextRendering
 		c.glBindTexture(c.GL_TEXTURE_2D, glyphTexture[0]);
 		c.glTexImage2D(c.GL_TEXTURE_2D, 0, c.GL_R8, newWidth, textureHeight, 0, c.GL_RED, c.GL_UNSIGNED_BYTE, null);
 		c.glCopyImageSubData(glyphTexture[1], c.GL_TEXTURE_2D, 0, 0, 0, 0, glyphTexture[0], c.GL_TEXTURE_2D, 0, 0, 0, 0, textureOffset, textureHeight, 1);
-		shader.bind();
+		pipeline.bind(draw.getScissor());
 		c.glUniform2f(uniforms.fontSize, @floatFromInt(textureWidth), @floatFromInt(textureHeight));
 	}
 
@@ -1206,6 +1267,7 @@ pub fn init() void { // MARK: init()
 		std.log.err("Error while initializing TextRendering: {s}", .{@errorName(err)});
 	};
 	block_texture.init();
+	if(glslang.glslang_initialize_process() == glslang.false) std.log.err("glslang_initialize_process failed", .{});
 }
 
 pub fn deinit() void {
@@ -1217,18 +1279,80 @@ pub fn deinit() void {
 	draw.deinitRectBorder();
 	TextRendering.deinit();
 	block_texture.deinit();
+	glslang.glslang_finalize_process();
 }
 
-pub const Shader = struct { // MARK: Shader
+const Shader = struct { // MARK: Shader
 	id: c_uint,
 
-	fn addShader(self: *const Shader, filename: []const u8, defines: []const u8, shader_stage: c_uint) !void {
+	fn compileToSpirV(allocator: NeverFailingAllocator, source: []const u8, filename: []const u8, defines: []const u8, shaderStage: glslang.glslang_stage_t) ![]c_uint {
+		const versionLineEnd = if(std.mem.indexOfScalar(u8, source, '\n')) |len| len + 1 else 0;
+		const versionLine = source[0..versionLineEnd];
+		const sourceLines = source[versionLineEnd..];
+
+		var sourceWithDefines = main.List(u8).init(main.stackAllocator);
+		defer sourceWithDefines.deinit();
+		sourceWithDefines.appendSlice(versionLine);
+		sourceWithDefines.appendSlice(defines);
+		sourceWithDefines.appendSlice(sourceLines);
+		sourceWithDefines.append(0);
+
+		const input = glslang.glslang_input_t{
+			.language = glslang.GLSLANG_SOURCE_GLSL,
+			.stage = shaderStage,
+			.client = glslang.GLSLANG_CLIENT_OPENGL,
+			.client_version = glslang.GLSLANG_TARGET_OPENGL_450,
+			.target_language = glslang.GLSLANG_TARGET_SPV,
+			.target_language_version = glslang.GLSLANG_TARGET_SPV_1_0,
+			.code = sourceWithDefines.items.ptr,
+			.default_version = 100,
+			.default_profile = glslang.GLSLANG_NO_PROFILE,
+			.force_default_version_and_profile = glslang.false,
+			.forward_compatible = glslang.false,
+			.messages = glslang.GLSLANG_MSG_DEFAULT_BIT,
+			.resource = glslang.glslang_default_resource(),
+			.callbacks = .{}, // TODO: Add support for shader includes
+			.callbacks_ctx = null,
+		};
+		const shader = glslang.glslang_shader_create(&input);
+		defer glslang.glslang_shader_delete(shader);
+		if(glslang.glslang_shader_preprocess(shader, &input) == 0) {
+			std.log.err("Error preprocessing shader {s}:\n{s}\n{s}\n", .{filename, glslang.glslang_shader_get_info_log(shader), glslang.glslang_shader_get_info_debug_log(shader)});
+			return error.FailedCompiling;
+		}
+
+		if(glslang.glslang_shader_parse(shader, &input) == 0) {
+			std.log.err("Error parsing shader {s}:\n{s}\n{s}\n", .{filename, glslang.glslang_shader_get_info_log(shader), glslang.glslang_shader_get_info_debug_log(shader)});
+			return error.FailedCompiling;
+		}
+
+		const program = glslang.glslang_program_create();
+		defer glslang.glslang_program_delete(program);
+		glslang.glslang_program_add_shader(program, shader);
+
+		if(glslang.glslang_program_link(program, glslang.GLSLANG_MSG_SPV_RULES_BIT | glslang.GLSLANG_MSG_VULKAN_RULES_BIT) == 0) {
+			std.log.err("Error linking shader {s}:\n{s}\n{s}\n", .{filename, glslang.glslang_shader_get_info_log(shader), glslang.glslang_shader_get_info_debug_log(shader)});
+			return error.FailedCompiling;
+		}
+
+		glslang.glslang_program_SPIRV_generate(program, shaderStage);
+		const result = allocator.alloc(c_uint, glslang.glslang_program_SPIRV_get_size(program));
+		glslang.glslang_program_SPIRV_get(program, result.ptr);
+		return result;
+	}
+
+	fn addShader(self: *const Shader, filename: []const u8, defines: []const u8, shaderStage: c_uint) !void {
 		const source = main.files.read(main.stackAllocator, filename) catch |err| {
 			std.log.err("Couldn't read shader file: {s}", .{filename});
 			return err;
 		};
 		defer main.stackAllocator.free(source);
-		const shader = c.glCreateShader(shader_stage);
+
+		// SPIR-V will be used for the Vulkan, now it's completely useless due to lack of support in Vulkan drivers
+		const glslangStage: glslang.glslang_stage_t = if(shaderStage == c.GL_VERTEX_SHADER) glslang.GLSLANG_STAGE_VERTEX else if(shaderStage == c.GL_FRAGMENT_SHADER) glslang.GLSLANG_STAGE_FRAGMENT else glslang.GLSLANG_STAGE_COMPUTE;
+		main.stackAllocator.free(try compileToSpirV(main.stackAllocator, source, filename, defines, glslangStage));
+
+		const shader = c.glCreateShader(shaderStage);
 		defer c.glDeleteShader(shader);
 
 		const versionLineEnd = if(std.mem.indexOfScalar(u8, source, '\n')) |len| len + 1 else 0;
@@ -1254,7 +1378,7 @@ pub const Shader = struct { // MARK: Shader
 		c.glAttachShader(self.id, shader);
 	}
 
-	fn link(self: *const Shader) !void {
+	fn link(self: *const Shader, file: []const u8) !void {
 		c.glLinkProgram(self.id);
 
 		var success: c_int = undefined;
@@ -1264,52 +1388,405 @@ pub const Shader = struct { // MARK: Shader
 			c.glGetProgramiv(self.id, c.GL_INFO_LOG_LENGTH, @ptrCast(&len));
 			var buf: [4096]u8 = undefined;
 			c.glGetProgramInfoLog(self.id, 4096, @ptrCast(&len), &buf);
-			std.log.err("Error Linking Shader program:\n{s}\n", .{buf[0..len]});
+			std.log.err("Error Linking Shader program {s}:\n{s}\n", .{file, buf[0..len]});
 			return error.FailedLinking;
 		}
 	}
 
-	pub fn init(vertex: []const u8, fragment: []const u8, defines: []const u8) Shader {
+	fn init(vertex: []const u8, fragment: []const u8, defines: []const u8, uniformStruct: anytype) Shader {
 		const shader = Shader{.id = c.glCreateProgram()};
 		shader.addShader(vertex, defines, c.GL_VERTEX_SHADER) catch return shader;
 		shader.addShader(fragment, defines, c.GL_FRAGMENT_SHADER) catch return shader;
-		shader.link() catch return shader;
+		shader.link(fragment) catch return shader;
+
+		if(@TypeOf(uniformStruct) != @TypeOf(null)) {
+			inline for(@typeInfo(@TypeOf(uniformStruct.*)).@"struct".fields) |field| {
+				if(field.type == c_int) {
+					@field(uniformStruct, field.name) = c.glGetUniformLocation(shader.id, field.name[0..]);
+				}
+			}
+		}
 		return shader;
 	}
 
-	pub fn initAndGetUniforms(vertex: []const u8, fragment: []const u8, defines: []const u8, ptrToUniformStruct: anytype) Shader {
-		const self = Shader.init(vertex, fragment, defines);
-		inline for(@typeInfo(@TypeOf(ptrToUniformStruct.*)).@"struct".fields) |field| {
-			if(field.type == c_int) {
-				@field(ptrToUniformStruct, field.name) = c.glGetUniformLocation(self.id, field.name[0..]);
-			}
-		}
-		return self;
-	}
-
-	pub fn initCompute(compute: []const u8, defines: []const u8) Shader {
+	fn initCompute(compute: []const u8, defines: []const u8, uniformStruct: anytype) Shader {
 		const shader = Shader{.id = c.glCreateProgram()};
 		shader.addShader(compute, defines, c.GL_COMPUTE_SHADER) catch return shader;
-		shader.link() catch return shader;
+		shader.link(compute) catch return shader;
+
+		if(@TypeOf(uniformStruct) != @TypeOf(null)) {
+			inline for(@typeInfo(@TypeOf(uniformStruct.*)).@"struct".fields) |field| {
+				if(field.type == c_int) {
+					@field(uniformStruct, field.name) = c.glGetUniformLocation(shader.id, field.name[0..]);
+				}
+			}
+		}
 		return shader;
 	}
 
-	pub fn initComputeAndGetUniforms(compute: []const u8, defines: []const u8, ptrToUniformStruct: anytype) Shader {
-		const self = Shader.initCompute(compute, defines);
-		inline for(@typeInfo(@TypeOf(ptrToUniformStruct.*)).@"struct".fields) |field| {
-			if(field.type == c_int) {
-				@field(ptrToUniformStruct, field.name) = c.glGetUniformLocation(self.id, field.name[0..]);
-			}
-		}
-		return self;
-	}
-
-	pub fn bind(self: *const Shader) void {
+	fn bind(self: *const Shader) void {
 		c.glUseProgram(self.id);
 	}
 
-	pub fn deinit(self: *const Shader) void {
+	fn deinit(self: *const Shader) void {
 		c.glDeleteProgram(self.id);
+	}
+};
+
+pub const Pipeline = struct { // MARK: Pipeline
+	shader: Shader,
+	rasterState: RasterizationState,
+	multisampleState: MultisampleState = .{}, // TODO: Not implemented
+	depthStencilState: DepthStencilState,
+	blendState: ColorBlendState,
+
+	const RasterizationState = struct {
+		depthClamp: bool = true,
+		rasterizerDiscard: bool = false,
+		polygonMode: PolygonMode = .fill,
+		cullMode: CullModeFlags = .back,
+		frontFace: FrontFace = .counterClockwise,
+		depthBias: ?DepthBias = null,
+		lineWidth: f32 = 1,
+
+		const PolygonMode = enum(c.VkPolygonMode) {
+			fill = c.VK_POLYGON_MODE_FILL,
+			line = c.VK_POLYGON_MODE_LINE,
+			point = c.VK_POLYGON_MODE_POINT,
+			fillRectangleNV = c.VK_POLYGON_MODE_FILL_RECTANGLE_NV,
+		};
+
+		const CullModeFlags = enum(c.VkCullModeFlags) {
+			none = c.VK_CULL_MODE_NONE,
+			front = c.VK_CULL_MODE_FRONT_BIT,
+			back = c.VK_CULL_MODE_BACK_BIT,
+			frontAndBack = c.VK_CULL_MODE_FRONT_AND_BACK,
+		};
+
+		const FrontFace = enum(c.VkFrontFace) {
+			counterClockwise = c.VK_FRONT_FACE_COUNTER_CLOCKWISE,
+			clockwise = c.VK_FRONT_FACE_CLOCKWISE,
+		};
+
+		const DepthBias = struct {
+			constantFactor: f32,
+			clamp: f32,
+			slopeFactor: f32,
+		};
+	};
+
+	const MultisampleState = struct {
+		rasterizationSamples: Count = .@"1",
+		sampleShading: bool = false,
+		minSampleShading: f32 = undefined,
+		sampleMask: [*]const c.VkSampleMask = &.{0, 0},
+		alphaToCoverage: bool = false,
+		alphaToOne: bool = false,
+
+		const Count = enum(c.VkSampleCountFlags) {
+			@"1" = c.VK_SAMPLE_COUNT_1_BIT,
+			@"2" = c.VK_SAMPLE_COUNT_2_BIT,
+			@"4" = c.VK_SAMPLE_COUNT_4_BIT,
+			@"8" = c.VK_SAMPLE_COUNT_8_BIT,
+			@"16" = c.VK_SAMPLE_COUNT_16_BIT,
+			@"32" = c.VK_SAMPLE_COUNT_32_BIT,
+			@"64" = c.VK_SAMPLE_COUNT_64_BIT,
+		};
+	};
+
+	const DepthStencilState = struct {
+		depthTest: bool,
+		depthWrite: bool = true,
+		depthCompare: CompareOp = .less,
+		depthBoundsTest: ?DepthBoundsTest = null,
+		stencilTest: ?StencilTest = null,
+
+		const CompareOp = enum(c.VkCompareOp) {
+			never = c.VK_COMPARE_OP_NEVER,
+			less = c.VK_COMPARE_OP_LESS,
+			equal = c.VK_COMPARE_OP_EQUAL,
+			lessOrEqual = c.VK_COMPARE_OP_LESS_OR_EQUAL,
+			greater = c.VK_COMPARE_OP_GREATER,
+			notEqual = c.VK_COMPARE_OP_NOT_EQUAL,
+			greateOrEqual = c.VK_COMPARE_OP_GREATER_OR_EQUAL,
+			always = c.VK_COMPARE_OP_ALWAYS,
+		};
+
+		const StencilTest = struct {
+			front: StencilOpState,
+			back: StencilOpState,
+
+			const StencilOpState = struct {
+				failOp: StencilOp,
+				passOp: StencilOp,
+				depthFailOp: StencilOp,
+				compareOp: CompareOp,
+				compareMask: u32,
+				writeMask: u32,
+				reference: u32,
+
+				const StencilOp = enum(c.VkStencilOp) {
+					keep = c.VK_STENCIL_OP_KEEP,
+					zero = c.VK_STENCIL_OP_ZERO,
+					replace = c.VK_STENCIL_OP_REPLACE,
+					incrementAndClamp = c.VK_STENCIL_OP_INCREMENT_AND_CLAMP,
+					decrementAndClamp = c.VK_STENCIL_OP_DECREMENT_AND_CLAMP,
+					invert = c.VK_STENCIL_OP_INVERT,
+					incrementAndWrap = c.VK_STENCIL_OP_INCREMENT_AND_WRAP,
+					decrementAndWrap = c.VK_STENCIL_OP_DECREMENT_AND_WRAP,
+				};
+			};
+		};
+
+		const DepthBoundsTest = struct {
+			min: f32,
+			max: f32,
+		};
+	};
+
+	const ColorBlendAttachmentState = struct {
+		enabled: bool = true,
+		srcColorBlendFactor: BlendFactor,
+		dstColorBlendFactor: BlendFactor,
+		colorBlendOp: BlendOp,
+		srcAlphaBlendFactor: BlendFactor,
+		dstAlphaBlendFactor: BlendFactor,
+		alphaBlendOp: BlendOp,
+		colorWriteMask: ColorComponentFlags = .all,
+
+		pub const alphaBlending: ColorBlendAttachmentState = .{
+			.srcColorBlendFactor = .srcAlpha,
+			.dstColorBlendFactor = .oneMinusSrcAlpha,
+			.colorBlendOp = .add,
+			.srcAlphaBlendFactor = .srcAlpha,
+			.dstAlphaBlendFactor = .oneMinusSrcAlpha,
+			.alphaBlendOp = .add,
+		};
+		pub const noBlending: ColorBlendAttachmentState = .{
+			.enabled = false,
+			.srcColorBlendFactor = undefined,
+			.dstColorBlendFactor = undefined,
+			.colorBlendOp = undefined,
+			.srcAlphaBlendFactor = undefined,
+			.dstAlphaBlendFactor = undefined,
+			.alphaBlendOp = undefined,
+		};
+
+		const BlendFactor = enum(c.VkBlendFactor) {
+			zero = c.VK_BLEND_FACTOR_ZERO,
+			one = c.VK_BLEND_FACTOR_ONE,
+			srcColor = c.VK_BLEND_FACTOR_SRC_COLOR,
+			oneMinusSrcColor = c.VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR,
+			dstColor = c.VK_BLEND_FACTOR_DST_COLOR,
+			oneMinusDstColor = c.VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR,
+			srcAlpha = c.VK_BLEND_FACTOR_SRC_ALPHA,
+			oneMinusSrcAlpha = c.VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+			dstAlpha = c.VK_BLEND_FACTOR_DST_ALPHA,
+			oneMinusDstAlpha = c.VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA,
+			constantColor = c.VK_BLEND_FACTOR_CONSTANT_COLOR,
+			oneMinusConstantColor = c.VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR,
+			constantAlpha = c.VK_BLEND_FACTOR_CONSTANT_ALPHA,
+			oneMinusConstantAlpha = c.VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA,
+			srcAlphaSaturate = c.VK_BLEND_FACTOR_SRC_ALPHA_SATURATE,
+			src1Color = c.VK_BLEND_FACTOR_SRC1_COLOR,
+			oneMinusSrc1Color = c.VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR,
+			src1Alpha = c.VK_BLEND_FACTOR_SRC1_ALPHA,
+			oneMinusSrc1Alpha = c.VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA,
+
+			fn toGl(self: BlendFactor) c.GLenum {
+				return switch(self) {
+					.zero => c.GL_ZERO,
+					.one => c.GL_ONE,
+					.srcColor => c.GL_SRC_COLOR,
+					.oneMinusSrcColor => c.GL_ONE_MINUS_SRC_COLOR,
+					.dstColor => c.GL_DST_COLOR,
+					.oneMinusDstColor => c.GL_ONE_MINUS_DST_COLOR,
+					.srcAlpha => c.GL_SRC_ALPHA,
+					.oneMinusSrcAlpha => c.GL_ONE_MINUS_SRC_ALPHA,
+					.dstAlpha => c.GL_DST_ALPHA,
+					.oneMinusDstAlpha => c.GL_ONE_MINUS_DST_ALPHA,
+					.constantColor => c.GL_CONSTANT_COLOR,
+					.oneMinusConstantColor => c.GL_ONE_MINUS_CONSTANT_COLOR,
+					.constantAlpha => c.GL_CONSTANT_ALPHA,
+					.oneMinusConstantAlpha => c.GL_ONE_MINUS_CONSTANT_ALPHA,
+					.srcAlphaSaturate => c.GL_SRC_ALPHA_SATURATE,
+					.src1Color => c.GL_SRC1_COLOR,
+					.oneMinusSrc1Color => c.GL_ONE_MINUS_SRC1_COLOR,
+					.src1Alpha => c.GL_SRC1_ALPHA,
+					.oneMinusSrc1Alpha => c.GL_ONE_MINUS_SRC1_ALPHA,
+				};
+			}
+		};
+
+		const BlendOp = enum(c.VkBlendOp) {
+			add = c.VK_BLEND_OP_ADD,
+			subtract = c.VK_BLEND_OP_SUBTRACT,
+			reverseSubtract = c.VK_BLEND_OP_REVERSE_SUBTRACT,
+			min = c.VK_BLEND_OP_MIN,
+			max = c.VK_BLEND_OP_MAX,
+
+			fn toGl(self: BlendOp) c.GLenum {
+				return switch(self) {
+					.add => c.GL_FUNC_ADD,
+					.subtract => c.GL_FUNC_SUBTRACT,
+					.reverseSubtract => c.GL_FUNC_REVERSE_SUBTRACT,
+					.min => c.GL_MIN,
+					.max => c.GL_MAX,
+				};
+			}
+		};
+
+		const ColorComponentFlags = packed struct {
+			r: bool,
+			g: bool,
+			b: bool,
+			a: bool,
+			pub const all: ColorComponentFlags = .{.r = true, .g = true, .b = true, .a = true};
+			pub const none: ColorComponentFlags = .{.r = false, .g = false, .b = false, .a = false};
+		};
+	};
+
+	const ColorBlendState = struct {
+		logicOp: ?LogicOp = null,
+		attachments: []const ColorBlendAttachmentState,
+		blendConstants: [4]f32 = .{0, 0, 0, 0},
+
+		const LogicOp = enum(c.VkLogicOp) {
+			clear = c.VK_LOGIC_OP_CLEAR,
+			@"and" = c.VK_LOGIC_OP_AND,
+			andReverse = c.VK_LOGIC_OP_AND_REVERSE,
+			copy = c.VK_LOGIC_OP_COPY,
+			andInverted = c.VK_LOGIC_OP_AND_INVERTED,
+			noOp = c.VK_LOGIC_OP_NO_OP,
+			xor = c.VK_LOGIC_OP_XOR,
+			@"or" = c.VK_LOGIC_OP_OR,
+			nor = c.VK_LOGIC_OP_NOR,
+			equivalent = c.VK_LOGIC_OP_EQUIVALENT,
+			invert = c.VK_LOGIC_OP_INVERT,
+			orReverse = c.VK_LOGIC_OP_OR_REVERSE,
+			copyInverted = c.VK_LOGIC_OP_COPY_INVERTED,
+			orInverted = c.VK_LOGIC_OP_OR_INVERTED,
+			nand = c.VK_LOGIC_OP_NAND,
+			set = c.VK_LOGIC_OP_SET,
+		};
+	};
+
+	pub fn init(vertexPath: []const u8, fragmentPath: []const u8, defines: []const u8, uniformStruct: anytype, rasterState: RasterizationState, depthStencilState: DepthStencilState, blendState: ColorBlendState) Pipeline {
+		std.debug.assert(depthStencilState.depthBoundsTest == null); // Only available in Vulkan 1.3
+		std.debug.assert(depthStencilState.stencilTest == null); // TODO: Not yet implemented
+		std.debug.assert(rasterState.lineWidth <= 1); // Larger values are poorly supported among drivers
+		std.debug.assert(blendState.logicOp == null); // TODO: Not yet implemented
+		return .{
+			.shader = .init(vertexPath, fragmentPath, defines, uniformStruct),
+			.rasterState = rasterState,
+			.multisampleState = .{}, // TODO: Not implemented
+			.depthStencilState = depthStencilState,
+			.blendState = blendState,
+		};
+	}
+
+	pub fn deinit(self: Pipeline) void {
+		self.shader.deinit();
+	}
+
+	fn conditionalEnable(typ: c.GLenum, val: bool) void {
+		if(val) {
+			c.glEnable(typ);
+		} else {
+			c.glDisable(typ);
+		}
+	}
+
+	pub fn bind(self: Pipeline, scissor: ?c.VkRect2D) void {
+		self.shader.bind();
+		if(scissor) |s| {
+			c.glEnable(c.GL_SCISSOR_TEST);
+			c.glScissor(s.offset.x, s.offset.y, @intCast(s.extent.width), @intCast(s.extent.height));
+		} else {
+			c.glDisable(c.GL_SCISSOR_TEST);
+		}
+
+		conditionalEnable(c.GL_DEPTH_CLAMP, self.rasterState.depthClamp);
+		conditionalEnable(c.GL_RASTERIZER_DISCARD, self.rasterState.rasterizerDiscard);
+		conditionalEnable(c.GL_RASTERIZER_DISCARD, self.rasterState.rasterizerDiscard);
+		c.glPolygonMode(c.GL_FRONT_AND_BACK, switch(self.rasterState.polygonMode) {
+			.fill => c.GL_FILL,
+			.line => c.GL_LINE,
+			.point => c.GL_POINT,
+			else => unreachable,
+		});
+		if(self.rasterState.cullMode != .none) {
+			c.glEnable(c.GL_CULL_FACE);
+			c.glCullFace(switch(self.rasterState.cullMode) {
+				.front => c.GL_FRONT,
+				.back => c.GL_BACK,
+				.frontAndBack => c.GL_FRONT_AND_BACK,
+				else => unreachable,
+			});
+		} else {
+			c.glDisable(c.GL_CULL_FACE);
+		}
+		c.glFrontFace(switch(self.rasterState.frontFace) {
+			.counterClockwise => c.GL_CCW,
+			.clockwise => c.GL_CW,
+		});
+		if(self.rasterState.depthBias) |depthBias| {
+			c.glEnable(c.GL_POLYGON_OFFSET_FILL);
+			c.glEnable(c.GL_POLYGON_OFFSET_LINE);
+			c.glEnable(c.GL_POLYGON_OFFSET_POINT);
+			c.glPolygonOffset(depthBias.slopeFactor, depthBias.constantFactor);
+		} else {
+			c.glDisable(c.GL_POLYGON_OFFSET_FILL);
+			c.glDisable(c.GL_POLYGON_OFFSET_LINE);
+			c.glDisable(c.GL_POLYGON_OFFSET_POINT);
+		}
+		c.glLineWidth(self.rasterState.lineWidth);
+
+		// TODO: Multisampling
+
+		conditionalEnable(c.GL_DEPTH_TEST, self.depthStencilState.depthTest);
+		c.glDepthMask(@intFromBool(self.depthStencilState.depthWrite));
+		c.glDepthFunc(switch(self.depthStencilState.depthCompare) {
+			.never => c.GL_NEVER,
+			.less => c.GL_LESS,
+			.equal => c.GL_EQUAL,
+			.lessOrEqual => c.GL_LEQUAL,
+			.greater => c.GL_GREATER,
+			.notEqual => c.GL_NOTEQUAL,
+			.greateOrEqual => c.GL_GEQUAL,
+			.always => c.GL_ALWAYS,
+		});
+		// TODO: stencilTest
+
+		// TODO: logicOp
+		for(self.blendState.attachments, 0..) |attachment, i| {
+			if(!attachment.enabled) {
+				c.glDisable(c.GL_BLEND);
+				continue;
+			}
+			c.glEnable(c.GL_BLEND);
+			c.glBlendEquationSeparatei(@intCast(i), attachment.colorBlendOp.toGl(), attachment.alphaBlendOp.toGl());
+			c.glBlendFuncSeparatei(@intCast(i), attachment.srcColorBlendFactor.toGl(), attachment.dstColorBlendFactor.toGl(), attachment.srcAlphaBlendFactor.toGl(), attachment.dstAlphaBlendFactor.toGl());
+		}
+		c.glBlendColor(self.blendState.blendConstants[0], self.blendState.blendConstants[1], self.blendState.blendConstants[2], self.blendState.blendConstants[3]);
+	}
+};
+
+pub const ComputePipeline = struct { // MARK: ComputePipeline
+	shader: Shader,
+
+	pub fn init(computePath: []const u8, defines: []const u8, uniformStruct: anytype) ComputePipeline {
+		return .{
+			.shader = .initCompute(computePath, defines, uniformStruct),
+		};
+	}
+
+	pub fn deinit(self: ComputePipeline) void {
+		self.shader.deinit();
+	}
+
+	pub fn bind(self: ComputePipeline) void {
+		self.shader.bind();
 	}
 };
 
@@ -1588,6 +2065,9 @@ pub const FrameBuffer = struct { // MARK: FrameBuffer
 	}
 
 	pub fn clear(_: FrameBuffer, clearColor: Vec4f) void {
+		c.glDepthFunc(c.GL_LESS);
+		c.glDepthMask(c.GL_TRUE);
+		c.glDisable(c.GL_SCISSOR_TEST);
 		c.glClearColor(clearColor[0], clearColor[1], clearColor[2], clearColor[3]);
 		c.glClear(c.GL_COLOR_BUFFER_BIT | c.GL_DEPTH_BUFFER_BIT);
 	}
@@ -2016,15 +2496,22 @@ pub const Fog = struct { // MARK: Fog
 
 const block_texture = struct { // MARK: block_texture
 	var uniforms: struct {
-		color: c_int,
 		transparent: c_int,
 	} = undefined;
-	var shader: Shader = undefined;
+	var pipeline: Pipeline = undefined;
 	var depthTexture: Texture = undefined;
 	const textureSize = 128;
 
 	fn init() void {
-		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/item_texture_post.vs", "assets/cubyz/shaders/item_texture_post.fs", "", &uniforms);
+		pipeline = Pipeline.init(
+			"assets/cubyz/shaders/item_texture_post.vs",
+			"assets/cubyz/shaders/item_texture_post.fs",
+			"",
+			&uniforms,
+			.{.cullMode = .none},
+			.{.depthTest = false, .depthWrite = false},
+			.{.attachments = &.{.noBlending}},
+		);
 		depthTexture = .init();
 		depthTexture.bind();
 		var data: [128*128]f32 = undefined;
@@ -2042,7 +2529,7 @@ const block_texture = struct { // MARK: block_texture
 		c.glTexParameteri(c.GL_TEXTURE_2D, c.GL_TEXTURE_WRAP_T, c.GL_REPEAT);
 	}
 	fn deinit() void {
-		shader.deinit();
+		pipeline.deinit();
 		depthTexture.deinit();
 	}
 };
@@ -2053,15 +2540,6 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	c.glViewport(0, 0, textureSize, textureSize);
 
 	var frameBuffer: FrameBuffer = undefined;
-	const scissor = c.glIsEnabled(c.GL_SCISSOR_TEST);
-	c.glDisable(c.GL_SCISSOR_TEST);
-	defer if(scissor != 0) c.glEnable(c.GL_SCISSOR_TEST);
-	const depthTest = c.glIsEnabled(c.GL_DEPTH_TEST);
-	c.glDisable(c.GL_DEPTH_TEST);
-	defer if(depthTest != 0) c.glEnable(c.GL_DEPTH_TEST);
-	const cullFace = c.glIsEnabled(c.GL_CULL_FACE);
-	c.glEnable(c.GL_CULL_FACE);
-	defer if(cullFace != 0) c.glEnable(c.GL_CULL_FACE);
 
 	frameBuffer.init(false, c.GL_NEAREST, c.GL_REPEAT);
 	defer frameBuffer.deinit();
@@ -2149,15 +2627,12 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	finalFrameBuffer.bind();
 	const texture = Texture{.textureID = finalFrameBuffer.texture};
 	defer c.glDeleteFramebuffers(1, &finalFrameBuffer.frameBuffer);
-	block_texture.shader.bind();
+	block_texture.pipeline.bind(null);
 	c.glUniform1i(block_texture.uniforms.transparent, if(block.transparent()) c.GL_TRUE else c.GL_FALSE);
-	c.glUniform1i(block_texture.uniforms.color, 3);
 	frameBuffer.bindTexture(c.GL_TEXTURE3);
 
 	c.glBindVertexArray(draw.rectVAO);
-	c.glDisable(c.GL_BLEND);
 	c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
-	c.glEnable(c.GL_BLEND);
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 

@@ -1,14 +1,15 @@
-#version 430
+#version 460
 
-in vec2 outTexCoord;
-in vec3 mvVertexPos;
-in vec3 outLight;
-flat in vec3 normal;
+layout(location = 0) in vec2 outTexCoord;
+layout(location = 1) in vec3 mvVertexPos;
+layout(location = 2) in vec3 outLight;
+layout(location = 3) flat in vec3 normal;
 
-out vec4 fragColor;
+layout(location = 0) out vec4 fragColor;
 
-uniform sampler2D texture_sampler;
-uniform float contrast;
+layout(binding = 0) uniform sampler2D textureSampler;
+
+layout(location = 5) uniform float contrast;
 
 float lightVariation(vec3 normal) {
 	const vec3 directionalPart = vec3(0, contrast/2, contrast);
@@ -37,7 +38,7 @@ bool passDitherTest(float alpha) {
 }
 
 void main() {
-	fragColor = texture(texture_sampler, outTexCoord)*vec4(outLight*lightVariation(normal), 1);
+	fragColor = texture(textureSampler, outTexCoord)*vec4(outLight*lightVariation(normal), 1);
 	if(!passDitherTest(fragColor.a)) discard;
 	fragColor.a = 1;
 }

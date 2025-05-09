@@ -1085,13 +1085,14 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			}
 		}
 		baseChunk.mutex.unlock();
+
 		var newBlock = _newBlock;
 		for(chunk.Neighbor.iterable) |neighbor| {
 			const nx = x + neighbor.relX();
 			const ny = y + neighbor.relY();
 			const nz = z + neighbor.relZ();
 			var ch = baseChunk;
-			if(nx & chunk.chunkMask != nx or ny & chunk.chunkMask != ny or nz & chunk.chunkMask != nz) {
+			if(!ch.liesInChunk(nx, ny, nz)) {
 				ch = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(.{
 					.wx = baseChunk.super.pos.wx + nx & ~@as(i32, chunk.chunkMask),
 					.wy = baseChunk.super.pos.wy + ny & ~@as(i32, chunk.chunkMask),
@@ -1102,13 +1103,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			defer if(ch != baseChunk) {
 				ch.decreaseRefCount();
 			};
+
 			ch.mutex.lock();
 			defer ch.mutex.unlock();
+
 			var neighborBlock = ch.getBlock(nx & chunk.chunkMask, ny & chunk.chunkMask, nz & chunk.chunkMask);
-			if(neighborBlock.mode().dependsOnNeighbors) {
-				if(neighborBlock.mode().updateData(&neighborBlock, neighbor.reverse(), newBlock)) {
-					ch.updateBlockAndSetChanged(nx & chunk.chunkMask, ny & chunk.chunkMask, nz & chunk.chunkMask, neighborBlock);
-				}
+			if(neighborBlock.mode().dependsOnNeighbors and neighborBlock.mode().updateData(&neighborBlock, neighbor.reverse(), newBlock)) {
+				ch.updateBlockAndSetChanged(nx & chunk.chunkMask, ny & chunk.chunkMask, nz & chunk.chunkMask, neighborBlock);
 			}
 			if(newBlock.mode().dependsOnNeighbors) {
 				_ = newBlock.mode().updateData(&newBlock, neighbor, neighborBlock);
@@ -1116,11 +1117,14 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 		baseChunk.mutex.lock();
 		defer baseChunk.mutex.unlock();
+
 		baseChunk.updateBlockAndSetChanged(x, y, z, newBlock);
+
 		const userList = server.getUserListAndIncreaseRefCount(main.stackAllocator);
 		defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
+
 		for(userList) |user| {
-			main.network.Protocols.blockUpdate.send(user.conn, wx, wy, wz, _newBlock);
+			main.network.Protocols.blockUpdate.send(user.conn, &.{.{.x = wx, .y = wy, .z = wz, .newBlock = newBlock}});
 		}
 		return null;
 	}

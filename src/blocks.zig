@@ -8,7 +8,6 @@ const chunk = @import("chunk.zig");
 const Neighbor = chunk.Neighbor;
 const Chunk = chunk.Chunk;
 const graphics = @import("graphics.zig");
-const Shader = graphics.Shader;
 const SSBO = graphics.SSBO;
 const Image = graphics.Image;
 const Color = graphics.Color;
@@ -494,7 +493,7 @@ pub const meshes = struct { // MARK: meshes
 	var animatedTextureSSBO: ?SSBO = null;
 	var fogSSBO: ?SSBO = null;
 
-	var animationShader: Shader = undefined;
+	var animationComputePipeline: graphics.ComputePipeline = undefined;
 	var animationUniforms: struct {
 		time: c_int,
 		size: c_int,
@@ -512,7 +511,7 @@ pub const meshes = struct { // MARK: meshes
 	const emptyImage = Image{.width = 1, .height = 1, .imageData = emptyTexture[0..]};
 
 	pub fn init() void {
-		animationShader = Shader.initComputeAndGetUniforms("assets/cubyz/shaders/animation_pre_processing.glsl", "", &animationUniforms);
+		animationComputePipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/animation_pre_processing.glsl", "", &animationUniforms);
 		blockTextureArray = .init();
 		emissionTextureArray = .init();
 		reflectivityAndAbsorptionTextureArray = .init();
@@ -538,7 +537,7 @@ pub const meshes = struct { // MARK: meshes
 		if(fogSSBO) |ssbo| {
 			ssbo.deinit();
 		}
-		animationShader.deinit();
+		animationComputePipeline.deinit();
 		blockTextureArray.deinit();
 		emissionTextureArray.deinit();
 		reflectivityAndAbsorptionTextureArray.deinit();
@@ -720,7 +719,7 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	pub fn preProcessAnimationData(time: u32) void {
-		animationShader.bind();
+		animationComputePipeline.bind();
 		graphics.c.glUniform1ui(animationUniforms.time, time);
 		graphics.c.glUniform1ui(animationUniforms.size, @intCast(animation.items.len));
 		graphics.c.glDispatchCompute(@intCast(@divFloor(animation.items.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
