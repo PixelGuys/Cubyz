@@ -13,6 +13,7 @@ const random = @import("random.zig");
 const vec = @import("vec.zig");
 const Mat4f = vec.Mat4f;
 const Vec3d = vec.Vec3d;
+const Vec4d = vec.Vec4d;
 const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
 const Vec3i = vec.Vec3i;
@@ -141,7 +142,7 @@ pub const ParticleSystem = struct {
 	var particlesLocal: [maxCapacity]ParticleLocal = undefined;
 	var properties: EmmiterProperties = undefined;
 	var seed: u64 = undefined;
-	var previousPlayerPos: Vec3f = undefined;
+	var previousPlayerPos: Vec3d = undefined;
 
 	var particlesSSBO: SSBO = undefined;
 
@@ -162,10 +163,10 @@ pub const ParticleSystem = struct {
 		properties = EmmiterProperties{
 			.gravity = .{0, 0, -2},
 			.drag = 0.5,
-			.lifeTimeMin = 1,
-			.lifeTimeMax = 1,
-			.velMin = 0,
-			.velMax = 0,
+			.lifeTimeMin = 5,
+			.lifeTimeMax = 5,
+			.velMin = 0.1,
+			.velMax = 0.3,
 			.rotVelMin = std.math.pi*0.2,
 			.rotVelMax = std.math.pi*0.6,
 		};
@@ -183,8 +184,8 @@ pub const ParticleSystem = struct {
 
 	pub fn update(deltaTime: f32) void {
 		const vecDeltaTime: Vec4f = @as(Vec4f, @splat(deltaTime));
-		const playerPos: Vec3f = @floatCast(game.Player.getEyePosBlocking());
-		const prevPlayerPosDifference = previousPlayerPos - playerPos;
+		const playerPos = game.Player.getEyePosBlocking();
+		const prevPlayerPosDifference: Vec3f = @floatCast(previousPlayerPos - playerPos);
 
 		var i: u32 = 0;
 		while(i < particleCount) {
@@ -204,47 +205,48 @@ pub const ParticleSystem = struct {
 
 			particleLocal.velAndRotationVel += vec.combine(properties.gravity, 0)*vecDeltaTime;
 			particleLocal.velAndRotationVel *= @splat(@max(0, 1 - properties.drag*deltaTime));
-			const vel = particleLocal.velAndRotationVel*vecDeltaTime;
+			const vel: Vec4d = @floatCast(particleLocal.velAndRotationVel*vecDeltaTime);
 
 			// TODO: OPTIMIZE THE HELL OUT OF THIS
 			if(particleLocal.collides) {
 				const size = ParticleManager.types.items[particle.typ].size;
 				const hitBox: game.collision.Box = .{.min = @splat(size*-0.5), .max = @splat(size*0.5)};
-				var v3Pos = Vec3f{particle.posAndRotation[0], particle.posAndRotation[1], particle.posAndRotation[2]};
+				var v3Pos: Vec3d = @floatCast(Vec3f{particle.posAndRotation[0], particle.posAndRotation[1], particle.posAndRotation[2]});
 				v3Pos[0] += vel[0];
-				if(game.collision.collides(.client, .x, -vel[0], v3Pos - playerPos, hitBox)) |box| {
+				if(game.collision.collides(.client, .x, -vel[0], v3Pos + playerPos, hitBox)) |box| {
 					if(vel[0] < 0) {
-						v3Pos[0] = @floatCast(box.max[0] - hitBox.min[0]);
+						v3Pos[0] = box.max[0] - hitBox.min[0];
 					} else {
-						v3Pos[0] = @floatCast(box.min[0] - hitBox.max[0]);
+						v3Pos[0] = box.min[0] - hitBox.max[0];
 					}
 				}
 				v3Pos[1] += vel[1];
-				if(game.collision.collides(.client, .y, -vel[1], v3Pos - playerPos, hitBox)) |box| {
+				if(game.collision.collides(.client, .y, -vel[1], v3Pos + playerPos, hitBox)) |box| {
 					if(vel[1] < 0) {
-						v3Pos[1] = @floatCast(box.max[1] - hitBox.min[1]);
+						v3Pos[1] = box.max[1] - hitBox.min[1];
 					} else {
-						v3Pos[1] = @floatCast(box.min[1] - hitBox.max[1]);
+						v3Pos[1] = box.min[1] - hitBox.max[1];
 					}
 				}
 				v3Pos[2] += vel[2];
-				if(game.collision.collides(.client, .z, -vel[2], v3Pos - playerPos, hitBox)) |box| {
+				if(game.collision.collides(.client, .z, -vel[2], v3Pos + playerPos, hitBox)) |box| {
 					if(vel[2] < 0) {
-						v3Pos[2] = @floatCast(box.max[2] - hitBox.min[2]);
+						v3Pos[2] = box.max[2] - hitBox.min[2];
 					} else {
-						v3Pos[2] = @floatCast(box.min[2] - hitBox.max[2]);
+						v3Pos[2] = box.min[2] - hitBox.max[2];
 					}
 				}
-				particle.posAndRotation = vec.combine(v3Pos, 0);
+				particle.posAndRotation = vec.combine(@as(Vec3f, @floatCast(v3Pos)), 0) + vec.combine(prevPlayerPosDifference, 0);
 			} else {
-				particle.posAndRotation += vel + vec.combine(prevPlayerPosDifference, 0);
+				particle.posAndRotation += @as(Vec4f, @floatCast(vel)) + vec.combine(prevPlayerPosDifference, 0);
 			}
 
 			particle.posAndRotation[3] = rot;
 			particleLocal.velAndRotationVel[3] = rotVel;
 
 			// TODO: optimize
-			const intPos: vec.Vec4i = @intFromFloat(@floor(particle.posAndRotation + vec.combine(playerPos, 0)));
+			const positionf64 = @as(Vec4d, @floatCast(particle.posAndRotation)) + Vec4d{playerPos[0], playerPos[1], playerPos[2], 0};
+			const intPos: vec.Vec4i = @intFromFloat(@floor(positionf64));
 			const light: [6]u8 = main.renderer.mesh_storage.getLight(intPos[0], intPos[1], intPos[2]) orelse @splat(0);
 			const compressedLight = (@as(u32, light[0] >> 3) << 25 |
 				@as(u32, light[1] >> 3) << 20 |
@@ -261,14 +263,14 @@ pub const ParticleSystem = struct {
 		previousPlayerPos = playerPos;
 	}
 
-	pub fn spawn(id: []const u8, count: u32, pos: Vec3f, collides: bool, shape: EmmiterShape) void {
+	pub fn spawn(id: []const u8, count: u32, pos: Vec3d, collides: bool, shape: EmmiterShape) void {
 		const typ = ParticleManager.particleTypeHashmap.get(id) orelse 0;
-		const playerPos: Vec3f = @floatCast(previousPlayerPos);
+		const playerPos: Vec3d = previousPlayerPos;
 		
 		const to: u32 = @intCast(@min(particleCount + count, maxCapacity));
 		for(particleCount..to) |_| {
 			var vel: Vec3f = @splat(0);
-			var particlePos: Vec3f = @splat(0);
+			var particlePos: Vec3d = @splat(0);
 
 			switch(shape.shapeType) {
 				.point => {
@@ -283,26 +285,26 @@ pub const ParticleSystem = struct {
 				},
 				.sphere => {
 					// this has a non uniform way of distribution, not sure how to fix that
-					const spawnPos: Vec3f = @splat(random.nextFloat(&seed)*shape.size);
-					const offsetPos: Vec3f = vec.normalize(random.nextFloatVectorSigned(3, &seed));
+					const spawnPos: Vec3d = @splat(random.nextDouble(&seed)*shape.size);
+					const offsetPos: Vec3d = vec.normalize(random.nextDoubleVectorSigned(3, &seed));
 					particlePos = pos + offsetPos*spawnPos;
 					const speed: Vec3f = @splat(properties.velMin + random.nextFloat(&seed)*properties.velMax);
 					const dir: Vec3f = switch(shape.directionMode) {
 						.direction => shape.dir,
 						.scatter => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
-						.spread => offsetPos,
+						.spread => @floatCast(offsetPos),
 					};
 					vel = dir*speed;
 				},
 				.cube => {
-					const spawnPos: Vec3f = @splat(random.nextFloat(&seed)*shape.size);
-					const offsetPos: Vec3f = random.nextFloatVectorSigned(3, &seed);
+					const spawnPos: Vec3d = @splat(random.nextDouble(&seed)*shape.size);
+					const offsetPos: Vec3d = random.nextDoubleVectorSigned(3, &seed);
 					particlePos = pos + offsetPos*spawnPos;
 					const speed: Vec3f = @splat(properties.velMin + random.nextFloat(&seed)*properties.velMax);
 					const dir: Vec3f = switch(shape.directionMode) {
 						.direction => shape.dir,
 						.scatter => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
-						.spread => vec.normalize(offsetPos),
+						.spread => vec.normalize(@as(Vec3f, @floatCast(offsetPos))),
 					};
 					vel = dir*speed;
 				},
@@ -311,7 +313,7 @@ pub const ParticleSystem = struct {
 			const lifeTime = properties.lifeTimeMin + random.nextFloat(&seed)*properties.lifeTimeMax;
 
 			particles[particleCount] = Particle{
-				.posAndRotation = vec.combine(particlePos - playerPos, 0),
+				.posAndRotation = vec.combine(@as(Vec3f, @floatCast(particlePos - playerPos)), 0),
 				.typ = typ,
 			};
 			particlesLocal[particleCount] = ParticleLocal{
