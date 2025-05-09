@@ -11,7 +11,6 @@ const QuadIndex = models.QuadIndex;
 const renderer = main.renderer;
 const graphics = main.graphics;
 const c = graphics.c;
-const Shader = graphics.Shader;
 const SSBO = graphics.SSBO;
 const lighting = @import("lighting.zig");
 const settings = main.settings;
@@ -46,7 +45,7 @@ const UniformStruct = struct {
 };
 pub var uniforms: UniformStruct = undefined;
 pub var transparentUniforms: UniformStruct = undefined;
-pub var commandShader: Shader = undefined;
+pub var commandPipeline: graphics.ComputePipeline = undefined;
 pub var commandUniforms: struct {
 	chunkIDIndex: c_int,
 	commandIndexStart: c_int,
@@ -100,7 +99,7 @@ pub fn init() void {
 			.alphaBlendOp = .add,
 		}}},
 	);
-	commandShader = Shader.initComputeAndGetUniforms("assets/cubyz/shaders/chunks/fillIndirectBuffer.glsl", "", &commandUniforms);
+	commandPipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/chunks/fillIndirectBuffer.glsl", "", &commandUniforms);
 	occlusionTestPipeline = graphics.Pipeline.init(
 		"assets/cubyz/shaders/chunks/occlusionTestVertex.vs",
 		"assets/cubyz/shaders/chunks/occlusionTestFragment.fs",
@@ -145,7 +144,7 @@ pub fn deinit() void {
 	pipeline.deinit();
 	transparentPipeline.deinit();
 	occlusionTestPipeline.deinit();
-	commandShader.deinit();
+	commandPipeline.deinit();
 	c.glDeleteVertexArrays(1, &vao);
 	c.glDeleteBuffers(1, &vbo);
 	faceBuffer.deinit();
@@ -219,7 +218,7 @@ pub fn drawChunksIndirect(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec
 	defer chunkIDBuffer.free(chunkIDAllocation);
 	const allocation = commandBuffer.rawAlloc(drawCallsEstimate);
 	defer commandBuffer.free(allocation);
-	commandShader.bind();
+	commandPipeline.bind();
 	c.glUniform1f(commandUniforms.lodDistance, main.settings.@"lod0.5Distance");
 	c.glUniform1ui(commandUniforms.chunkIDIndex, chunkIDAllocation.start);
 	c.glUniform1ui(commandUniforms.commandIndexStart, allocation.start);
@@ -256,7 +255,7 @@ pub fn drawChunksIndirect(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec
 
 	// Draw again:
 	gpu_performance_measuring.startQuery(if(transparent) .transparent_rendering else .chunk_rendering_new_visible);
-	commandShader.bind();
+	commandPipeline.bind();
 	c.glUniform1i(commandUniforms.onlyDrawPreviouslyInvisible, 1);
 	c.glDispatchCompute(@intCast(@divFloor(chunkIDs.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
 	c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);

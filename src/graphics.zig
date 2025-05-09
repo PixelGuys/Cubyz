@@ -1282,7 +1282,7 @@ pub fn deinit() void {
 	glslang.glslang_finalize_process();
 }
 
-pub const Shader = struct { // MARK: Shader
+const Shader = struct { // MARK: Shader
 	id: c_uint,
 
 	fn compileToSpirV(allocator: NeverFailingAllocator, source: []const u8, filename: []const u8, defines: []const u8, shaderStage: glslang.glslang_stage_t) ![]c_uint {
@@ -1409,28 +1409,26 @@ pub const Shader = struct { // MARK: Shader
 		return shader;
 	}
 
-	pub fn initCompute(compute: []const u8, defines: []const u8) Shader {
+	fn initCompute(compute: []const u8, defines: []const u8, uniformStruct: anytype) Shader {
 		const shader = Shader{.id = c.glCreateProgram()};
 		shader.addShader(compute, defines, c.GL_COMPUTE_SHADER) catch return shader;
 		shader.link(compute) catch return shader;
+
+		if(@TypeOf(uniformStruct) != @TypeOf(null)) {
+			inline for(@typeInfo(@TypeOf(uniformStruct.*)).@"struct".fields) |field| {
+				if(field.type == c_int) {
+					@field(uniformStruct, field.name) = c.glGetUniformLocation(shader.id, field.name[0..]);
+				}
+			}
+		}
 		return shader;
 	}
 
-	pub fn initComputeAndGetUniforms(compute: []const u8, defines: []const u8, ptrToUniformStruct: anytype) Shader {
-		const self = Shader.initCompute(compute, defines);
-		inline for(@typeInfo(@TypeOf(ptrToUniformStruct.*)).@"struct".fields) |field| {
-			if(field.type == c_int) {
-				@field(ptrToUniformStruct, field.name) = c.glGetUniformLocation(self.id, field.name[0..]);
-			}
-		}
-		return self;
-	}
-
-	pub fn bind(self: *const Shader) void {
+	fn bind(self: *const Shader) void {
 		c.glUseProgram(self.id);
 	}
 
-	pub fn deinit(self: *const Shader) void {
+	fn deinit(self: *const Shader) void {
 		c.glDeleteProgram(self.id);
 	}
 };
@@ -1771,6 +1769,24 @@ pub const Pipeline = struct { // MARK: Pipeline
 			c.glBlendFuncSeparatei(@intCast(i), attachment.srcColorBlendFactor.toGl(), attachment.dstColorBlendFactor.toGl(), attachment.srcAlphaBlendFactor.toGl(), attachment.dstAlphaBlendFactor.toGl());
 		}
 		c.glBlendColor(self.blendState.blendConstants[0], self.blendState.blendConstants[1], self.blendState.blendConstants[2], self.blendState.blendConstants[3]);
+	}
+};
+
+pub const ComputePipeline = struct { // MARK: ComputePipeline
+	shader: Shader,
+
+	pub fn init(computePath: []const u8, defines: []const u8, uniformStruct: anytype) ComputePipeline {
+		return .{
+			.shader = .initCompute(computePath, defines, uniformStruct),
+		};
+	}
+
+	pub fn deinit(self: ComputePipeline) void {
+		self.shader.deinit();
+	}
+
+	pub fn bind(self: ComputePipeline) void {
+		self.shader.bind();
 	}
 };
 

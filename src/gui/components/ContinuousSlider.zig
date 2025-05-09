@@ -3,7 +3,6 @@ const std = @import("std");
 const main = @import("main");
 const graphics = main.graphics;
 const draw = graphics.draw;
-const Shader = graphics.Shader;
 const TextBuffer = graphics.TextBuffer;
 const Texture = graphics.Texture;
 const random = main.random;

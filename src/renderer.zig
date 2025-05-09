@@ -6,7 +6,6 @@ const chunk = @import("chunk.zig");
 const entity = @import("entity.zig");
 const graphics = @import("graphics.zig");
 const c = graphics.c;
-const Shader = graphics.Shader;
 const game = @import("game.zig");
 const World = game.World;
 const itemdrop = @import("itemdrop.zig");
