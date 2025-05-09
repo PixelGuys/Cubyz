@@ -1915,7 +1915,7 @@ pub fn NamedCallbacks(comptime Child: type, comptime Function: type) type {
 					return CallbackError.NotFound;
 				return CallbackError.EmptyName;
 			};
-			return pointer.?.*;
+			return pointer.*;
 		}
 	};
 }
