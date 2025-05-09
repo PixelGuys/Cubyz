@@ -532,7 +532,7 @@ pub const Mask = struct {
 fn parseBlockLike(block: []const u8) error{DataParsingFailed, IdParsingFailed}!BlockLike {
 	if(@import("builtin").is_test) return try Test.parseBlockLikeTest(block);
 	const typ = main.blocks.getBlockById(block) catch return error.IdParsingFailed;
-	const dataNullable = try main.blocks.getBlockData(block) catch return error.DataParsingFailed;
+	const dataNullable = main.blocks.getBlockData(block) catch return error.DataParsingFailed;
 	if(dataNullable) |data| return .{.block = .{.typ = typ, .data = data}};
 	return .{.blockType = typ};
 }
