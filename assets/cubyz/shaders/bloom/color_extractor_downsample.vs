@@ -1,15 +1,15 @@
-#version 430
+#version 460
 
-layout (location=0)  in vec2 inTexCoords;
+layout(location = 0) in vec2 inTexCoords;
 
-out vec2 texCoords;
-out vec2 normalizedTexCoords;
-out vec3 direction;
+layout(location = 0) out vec2 texCoords;
+layout(location = 1) out vec2 normalizedTexCoords;
+layout(location = 2) out vec3 direction;
 
 layout(binding = 3) uniform sampler2D color;
 
-uniform mat4 invViewMatrix;
-uniform vec2 tanXY;
+layout(location = 0) uniform mat4 invViewMatrix;
+layout(location = 1) uniform vec2 tanXY;
 
 void main() {
 	vec2 position = inTexCoords*2 - vec2(1, 1);

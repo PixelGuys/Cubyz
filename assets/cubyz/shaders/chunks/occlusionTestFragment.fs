@@ -2,7 +2,7 @@
 
 layout(early_fragment_tests) in;
 
-flat in uint chunkID;
+layout(location = 0) flat in uint chunkID;
 
 struct ChunkData {
 	ivec4 position;

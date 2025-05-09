@@ -1,8 +1,8 @@
-#version 430
+#version 460
 
-layout (location=0)  in vec2 inTexCoords;
+layout(location = 0) in vec2 inTexCoords;
 
-out vec2 texCoords;
+layout(location = 0) out vec2 texCoords;
 
 void main() {
 	texCoords = inTexCoords;

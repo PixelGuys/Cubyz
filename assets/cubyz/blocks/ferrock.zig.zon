@@ -1,5 +1,5 @@
 .{
-	.tags = .{.stone},
+	.tags = .{.stone, .ferrock},
 	.blockHealth = 32.5,
 	.blockResistance = 1,
 	.drops = .{
@@ -16,8 +16,14 @@
 			},
 			.modifiers = .{
 				.{
-					.id = "fragile",
-					.strength = 0.20,
+					.id = "good_at",
+					.strength = 0.5,
+					.tag = .ferrock,
+					.restriction = .{
+						.id = .encased,
+						.tag = .precious,
+						.amount = 2,
+					},
 				},
 			},
 		},

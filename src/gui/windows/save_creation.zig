@@ -117,7 +117,7 @@ pub fn onOpen() void {
 	defer main.stackAllocator.free(name);
 
 	const widgetWidth = 160;
-	textInput = TextInput.init(.{0, 0}, widgetWidth, 22, name, .{.callback = &createWorld});
+	textInput = TextInput.init(.{0, 0}, widgetWidth, 22, name, .{.callback = &createWorld}, .{});
 	list.add(textInput);
 
 	gamemodeInput = Button.initText(.{0, 0}, widgetWidth, @tagName(gamemode), .{.callback = &gamemodeCallback});
