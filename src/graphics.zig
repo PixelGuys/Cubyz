@@ -142,8 +142,8 @@ pub const draw = struct { // MARK: draw
 
 	fn initRect() void {
 		rectPipeline = Pipeline.init(
-			"assets/cubyz/shaders/graphics/Rect.vs",
-			"assets/cubyz/shaders/graphics/Rect.fs",
+			"assets/cubyz/shaders/graphics/Rect.vert",
+			"assets/cubyz/shaders/graphics/Rect.frag",
 			"",
 			&rectUniforms,
 			.{.cullMode = .none},
@@ -205,8 +205,8 @@ pub const draw = struct { // MARK: draw
 
 	fn initRectBorder() void {
 		rectBorderPipeline = Pipeline.init(
-			"assets/cubyz/shaders/graphics/RectBorder.vs",
-			"assets/cubyz/shaders/graphics/RectBorder.fs",
+			"assets/cubyz/shaders/graphics/RectBorder.vert",
+			"assets/cubyz/shaders/graphics/RectBorder.frag",
 			"",
 			&rectBorderUniforms,
 			.{.cullMode = .none},
@@ -276,8 +276,8 @@ pub const draw = struct { // MARK: draw
 
 	fn initLine() void {
 		linePipeline = Pipeline.init(
-			"assets/cubyz/shaders/graphics/Line.vs",
-			"assets/cubyz/shaders/graphics/Line.fs",
+			"assets/cubyz/shaders/graphics/Line.vert",
+			"assets/cubyz/shaders/graphics/Line.frag",
 			"",
 			&lineUniforms,
 			.{.cullMode = .none},
@@ -383,8 +383,8 @@ pub const draw = struct { // MARK: draw
 
 	fn initCircle() void {
 		circlePipeline = Pipeline.init(
-			"assets/cubyz/shaders/graphics/Circle.vs",
-			"assets/cubyz/shaders/graphics/Circle.fs",
+			"assets/cubyz/shaders/graphics/Circle.vert",
+			"assets/cubyz/shaders/graphics/Circle.frag",
 			"",
 			&circleUniforms,
 			.{.cullMode = .none},
@@ -445,8 +445,8 @@ pub const draw = struct { // MARK: draw
 
 	fn initImage() void {
 		imagePipeline = Pipeline.init(
-			"assets/cubyz/shaders/graphics/Image.vs",
-			"assets/cubyz/shaders/graphics/Image.fs",
+			"assets/cubyz/shaders/graphics/Image.vert",
+			"assets/cubyz/shaders/graphics/Image.frag",
 			"",
 			&imageUniforms,
 			.{.cullMode = .none},
@@ -1133,8 +1133,8 @@ const TextRendering = struct { // MARK: TextRendering
 
 	fn init() !void {
 		pipeline = Pipeline.init(
-			"assets/cubyz/shaders/graphics/Text.vs",
-			"assets/cubyz/shaders/graphics/Text.fs",
+			"assets/cubyz/shaders/graphics/Text.vert",
+			"assets/cubyz/shaders/graphics/Text.frag",
 			"",
 			&uniforms,
 			.{.cullMode = .none},
@@ -2504,8 +2504,8 @@ const block_texture = struct { // MARK: block_texture
 
 	fn init() void {
 		pipeline = Pipeline.init(
-			"assets/cubyz/shaders/item_texture_post.vs",
-			"assets/cubyz/shaders/item_texture_post.fs",
+			"assets/cubyz/shaders/item_texture_post.vert",
+			"assets/cubyz/shaders/item_texture_post.frag",
 			"",
 			&uniforms,
 			.{.cullMode = .none},

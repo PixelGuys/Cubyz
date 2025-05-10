@@ -61,8 +61,8 @@ child: GuiComponent,
 
 pub fn __init() void {
 	pipeline = graphics.Pipeline.init(
-		"assets/cubyz/shaders/ui/button.vs",
-		"assets/cubyz/shaders/ui/button.fs",
+		"assets/cubyz/shaders/ui/button.vert",
+		"assets/cubyz/shaders/ui/button.frag",
 		"",
 		&buttonUniforms,
 		.{.cullMode = .none},

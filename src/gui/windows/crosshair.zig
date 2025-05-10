@@ -34,8 +34,8 @@ var uniforms: struct {
 
 pub fn init() void {
 	pipeline = graphics.Pipeline.init(
-		"assets/cubyz/shaders/graphics/Image.vs",
-		"assets/cubyz/shaders/graphics/Image.fs",
+		"assets/cubyz/shaders/graphics/Image.vert",
+		"assets/cubyz/shaders/graphics/Image.frag",
 		"",
 		&uniforms,
 		.{.cullMode = .none},
