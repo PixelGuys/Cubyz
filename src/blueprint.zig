@@ -374,30 +374,6 @@ pub const Pattern = struct {
 	}
 };
 
-fn generatePropertyEnum() type {
-	var tempFields: [@typeInfo(Block).@"struct".decls.len]std.builtin.Type.EnumField = undefined;
-	var count = 0;
-
-	for(std.meta.declarations(Block)) |decl| {
-		const declInfo = @typeInfo(@TypeOf(@field(Block, decl.name)));
-		if(declInfo != .@"fn") continue;
-		if(declInfo.@"fn".return_type != bool) continue;
-		if(declInfo.@"fn".params.len != 1) continue;
-
-		tempFields[count] = .{.name = decl.name, .value = count};
-		count += 1;
-	}
-
-	const outFields: [count]std.builtin.Type.EnumField = tempFields[0..count].*;
-
-	return @Type(.{.@"enum" = .{
-		.tag_type = u8,
-		.fields = &outFields,
-		.decls = &.{},
-		.is_exhaustive = true,
-	}});
-}
-
 pub const Mask = struct {
 	const AndList = ListUnmanaged(Entry);
 	const OrList = ListUnmanaged(AndList);
@@ -420,7 +396,29 @@ pub const Mask = struct {
 			blockTag: Tag,
 			blockProperty: Property,
 
-			const Property = generatePropertyEnum();
+			const Property = blk: {
+				var tempFields: [@typeInfo(Block).@"struct".decls.len]std.builtin.Type.EnumField = undefined;
+				var count = 0;
+
+				for(std.meta.declarations(Block)) |decl| {
+					const declInfo = @typeInfo(@TypeOf(@field(Block, decl.name)));
+					if(declInfo != .@"fn") continue;
+					if(declInfo.@"fn".return_type != bool) continue;
+					if(declInfo.@"fn".params.len != 1) continue;
+
+					tempFields[count] = .{.name = decl.name, .value = count};
+					count += 1;
+				}
+
+				const outFields: [count]std.builtin.Type.EnumField = tempFields[0..count].*;
+
+				break :blk @Type(.{.@"enum" = .{
+					.tag_type = u8,
+					.fields = &outFields,
+					.decls = &.{},
+					.is_exhaustive = true,
+				}});
+			};
 
 			fn initFromString(specifier: []const u8) !Inner {
 				return switch(specifier[0]) {
@@ -458,8 +456,8 @@ pub const Mask = struct {
 	};
 
 	pub fn initFromString(allocator: NeverFailingAllocator, source: []const u8) !@This() {
-		var orStorage: OrList = .{};
-		errdefer orStorage.deinit(allocator);
+		var result: @This() = .{.entries = .{}};
+		errdefer result.deinit(allocator);
 
 		var oredExpressions = std.mem.splitScalar(u8, source, or_);
 		while(oredExpressions.next()) |subExpression| {
@@ -475,18 +473,13 @@ pub const Mask = struct {
 				const entry = try Entry.initFromString(specifier);
 				andStorage.append(allocator, entry);
 			}
+			std.debug.assert(andStorage.items.len != 0);
 
-			if(andStorage.items.len == 0) {
-				return error.MaskEmptyAndExpression;
-			}
-			orStorage.append(allocator, andStorage);
+			result.entries.append(allocator, andStorage);
 		}
+		std.debug.assert(result.entries.items.len != 0);
 
-		if(orStorage.items.len == 0) {
-			return error.MaskEmptyOrExpression;
-		}
-
-		return .{.entries = orStorage};
+		return result;
 	}
 
 	pub fn deinit(self: @This(), allocator: NeverFailingAllocator) void {
@@ -557,6 +550,41 @@ test "Mask match block type with any data" {
 	try std.testing.expect(mask.match(.{.typ = 1, .data = 0}));
 	try std.testing.expect(mask.match(.{.typ = 1, .data = 1}));
 	try std.testing.expect(!mask.match(.{.typ = 2, .data = 0}));
+}
+
+test "Mask empty negative case" {
+	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
+	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
+
+	try std.testing.expectError(error.MissingExpression, Mask.initFromString(Test.allocator, ""));
+}
+
+test "Mask half-or negative case" {
+	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
+	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
+
+	try std.testing.expectError(error.MissingExpression, Mask.initFromString(Test.allocator, "addon:dummy|"));
+}
+
+test "Mask half-or negative case 2" {
+	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
+	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
+
+	try std.testing.expectError(error.MissingExpression, Mask.initFromString(Test.allocator, "|addon:dummy"));
+}
+
+test "Mask half-and negative case" {
+	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
+	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
+
+	try std.testing.expectError(error.MissingExpression, Mask.initFromString(Test.allocator, "addon:dummy&"));
+}
+
+test "Mask half-and negative case 2" {
+	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
+	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
+
+	try std.testing.expectError(error.MissingExpression, Mask.initFromString(Test.allocator, "&addon:dummy"));
 }
 
 test "Mask inverse match block type with any data" {
