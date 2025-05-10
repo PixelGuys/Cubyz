@@ -105,6 +105,8 @@ pub const User = struct { // MARK: User
 	gamemode: std.atomic.Value(main.game.Gamemode) = .init(.creative),
 	worldEditData: WorldEditData = undefined,
 
+	lastSentBiomeId: u32 = 0xffffffff,
+
 	inventoryClientToServerIdMap: std.AutoHashMap(u32, u32) = undefined,
 
 	connected: Atomic(bool) = .init(true),
@@ -406,6 +408,15 @@ fn update() void { // MARK: update()
 		main.network.Protocols.entityPosition.send(user.conn, user.player.pos, entityData.items, itemData);
 	}
 
+	for(userList) |user| {
+		const pos = @as(Vec3i, @intFromFloat(user.player.pos));
+		const biomeId = world.?.getBiome(user.lastPos[0], pos[1], pos[2]).paletteId;
+		if(biomeId != user.lastSentBiomeId) {
+			user.lastSentBiomeId = biomeId;
+			main.network.Protocols.genericUpdate.sendBiome(user.conn, biomeId);
+		}
+	}
+
 	while(userDeinitList.dequeue()) |user| {
 		user.decreaseRefCount();
 	}
@@ -445,14 +456,18 @@ pub fn disconnect(user: *User) void { // MARK: disconnect()
 pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 	if(!user.connected.load(.unordered)) return;
 
-	userMutex.lock();
-	for(users.items, 0..) |other, i| {
-		if(other == user) {
-			_ = users.swapRemove(i);
-			break;
+	const foundUser = blk: {
+		userMutex.lock();
+		defer userMutex.unlock();
+		for(users.items, 0..) |other, i| {
+			if(other == user) {
+				_ = users.swapRemove(i);
+				break :blk true;
+			}
 		}
-	}
-	userMutex.unlock();
+		break :blk false;
+	};
+	if(!foundUser) return;
 
 	sendMessage("{s}§#ffff00 left", .{user.name});
 	// Let the other clients know about that this new one left.
