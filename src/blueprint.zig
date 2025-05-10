@@ -374,11 +374,6 @@ pub const Pattern = struct {
 	}
 };
 
-const BlockLike = union(enum) {
-	block: Block,
-	blockType: u16,
-};
-
 fn generatePropertyEnum() type {
 	var tempFields: [@typeInfo(Block).@"struct".decls.len]std.builtin.Type.EnumField = undefined;
 	var count = 0;
@@ -440,10 +435,7 @@ pub const Mask = struct {
 						return .{.blockProperty = propertyValue};
 					},
 					else => {
-						switch(try parseBlockLike(specifier)) {
-							.block => |block| return .{.block = block},
-							.blockType => |blockType| return .{.blockType = blockType},
-						}
+						return try parseBlockLike(specifier);
 					},
 				}
 			}
@@ -529,7 +521,7 @@ pub const Mask = struct {
 	}
 };
 
-fn parseBlockLike(block: []const u8) error{DataParsingFailed, IdParsingFailed}!BlockLike {
+fn parseBlockLike(block: []const u8) error{DataParsingFailed, IdParsingFailed}!Mask.Entry.Inner {
 	if(@import("builtin").is_test) return try Test.parseBlockLikeTest(block);
 	const typ = main.blocks.getBlockById(block) catch return error.IdParsingFailed;
 	const dataNullable = main.blocks.getBlockData(block) catch return error.DataParsingFailed;
@@ -543,18 +535,18 @@ const Test = struct {
 
 	var parseBlockLikeTest: *const @TypeOf(parseBlockLike) = &defaultParseBlockLike;
 
-	fn defaultParseBlockLike(_: []const u8) !BlockLike {
+	fn defaultParseBlockLike(_: []const u8) !Mask.Entry.Inner {
 		unreachable;
 	}
 
-	fn @"parseBlockLike 1 null"(_: []const u8) !BlockLike {
+	fn @"parseBlockLike 1 null"(_: []const u8) !Mask.Entry.Inner {
 		return .{.blockType = 1};
 	}
-	fn @"parseBlockLike 1 1"(_: []const u8) !BlockLike {
+	fn @"parseBlockLike 1 1"(_: []const u8) !Mask.Entry.Inner {
 		return .{.block = .{.typ = 1, .data = 1}};
 	}
 
-	fn @"parseBlockLike foo or bar"(data: []const u8) !BlockLike {
+	fn @"parseBlockLike foo or bar"(data: []const u8) !Mask.Entry.Inner {
 		if(std.mem.eql(u8, data, "addon:foo")) {
 			return .{.block = .{.typ = 1, .data = 0}};
 		}
