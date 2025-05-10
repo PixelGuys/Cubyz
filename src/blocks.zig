@@ -248,6 +248,21 @@ pub fn parseBlock(data: []const u8) Block {
 	}
 }
 
+pub fn getBlockById(idAndData: []const u8) !u16 {
+	const addonNameSeparatorIndex = std.mem.indexOfScalar(u8, idAndData, ':') orelse return error.MissingAddonNameSeparator;
+	const blockIdEndIndex = std.mem.indexOfScalarPos(u8, idAndData, 1 + addonNameSeparatorIndex, ':') orelse idAndData.len;
+	const id = idAndData[0..blockIdEndIndex];
+	return reverseIndices.get(id) orelse return error.NotFound;
+}
+
+pub fn getBlockData(idLikeString: []const u8) !?u16 {
+	const addonNameSeparatorIndex = std.mem.indexOfScalar(u8, idLikeString, ':') orelse return error.MissingAddonNameSeparator;
+	const blockIdEndIndex = std.mem.indexOfScalarPos(u8, idLikeString, 1 + addonNameSeparatorIndex, ':') orelse return null;
+	const dataString = idLikeString[blockIdEndIndex + 1 ..];
+	if(dataString.len == 0) return error.EmptyDataString;
+	return std.fmt.parseInt(u16, dataString, 0) catch return error.InvalidData;
+}
+
 pub fn hasRegistered(id: []const u8) bool {
 	return reverseIndices.contains(id);
 }
@@ -255,6 +270,9 @@ pub fn hasRegistered(id: []const u8) bool {
 pub const Block = packed struct { // MARK: Block
 	typ: u16,
 	data: u16,
+
+	pub const air = Block{.typ = 0, .data = 0};
+
 	pub fn toInt(self: Block) u32 {
 		return @as(u32, self.typ) | @as(u32, self.data) << 16;
 	}
@@ -314,6 +332,10 @@ pub const Block = packed struct { // MARK: Block
 
 	pub inline fn blockTags(self: Block) []const Tag {
 		return _blockTags[self.typ];
+	}
+
+	pub inline fn hasTag(self: Block, tag: Tag) bool {
+		return std.mem.containsAtLeastScalar(Tag, self.blockTags(), 1, tag);
 	}
 
 	pub inline fn light(self: Block) u32 {
