@@ -1935,3 +1935,58 @@ fn CastFunctionReturnToAnyopaqueType(Fn: type) type {
 pub fn castFunctionReturnToAnyopaque(function: anytype) *const CastFunctionReturnToAnyopaqueType(@TypeOf(function)) {
 	return @ptrCast(&function);
 }
+
+// MARK: Callback
+pub const CallbackError = error{NotFound, EmptyName};
+
+pub fn NamedCallbacks(comptime Child: type, comptime Function: type) type {
+	return struct {
+		const Self = @This();
+
+		hashMap: std.StringHashMap(*const Function) = undefined,
+
+		pub fn init(_allocator: std.mem.Allocator) Self {
+			var self = Self{.hashMap = .init(_allocator)};
+			inline for(@typeInfo(Child).@"struct".decls) |declaration| {
+				if(@TypeOf(@field(Child, declaration.name)) == Function) {
+					std.log.debug("Registered Callback '{s}'", .{declaration.name});
+					self.hashMap.putNoClobber(declaration.name, &@field(Child, declaration.name)) catch unreachable;
+				}
+			}
+			return self;
+		}
+
+		pub fn deinit(self: *Self) void {
+			self.hashMap.deinit();
+		}
+
+		pub fn getFunctionPointer(self: *Self, id: []const u8) CallbackError!*const Function {
+			const pointer = self.hashMap.getPtr(id) orelse {
+				if(id.len != 0)
+					return CallbackError.NotFound;
+				return CallbackError.EmptyName;
+			};
+			return pointer.*;
+		}
+	};
+}
+
+test "Callback registers testFunction and expects errors" {
+	const TestFunction = fn(_: i32) void;
+	const TestFunctions = struct {
+		// Callback should register this
+		pub fn testFunction(_: i32) void {}
+	};
+	var testFunctions: NamedCallbacks(TestFunctions, TestFunction) = undefined;
+
+	testFunctions = .init(std.testing.allocator);
+	defer testFunctions.deinit();
+
+	try std.testing.expect(testFunctions.hashMap.count() == 1);
+
+	const fnPtr = testFunctions.getFunctionPointer("testFunction") catch unreachable;
+	try std.testing.expect(@TypeOf(fnPtr) == *const TestFunction);
+
+	try std.testing.expectError(CallbackError.EmptyName, testFunctions.getFunctionPointer(""));
+	try std.testing.expectError(CallbackError.NotFound, testFunctions.getFunctionPointer("functionTest"));
+}

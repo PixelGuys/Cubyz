@@ -395,6 +395,8 @@ const WorldIO = struct { // MARK: WorldIO
 		self.world.gameTime = worldData.get(i64, "gameTime", 0);
 		self.world.spawn = worldData.get(Vec3i, "spawn", .{0, 0, 0});
 		self.world.biomeChecksum = worldData.get(i64, "biomeChecksum", 0);
+		self.world.doTick = worldData.get(bool, "doTick", true);
+		self.world.tickSpeed = worldData.get(u32, "tickSpeed", 12);
 	}
 
 	pub fn saveWorldData(self: WorldIO) !void {
@@ -406,6 +408,8 @@ const WorldIO = struct { // MARK: WorldIO
 		worldData.put("gameTime", self.world.gameTime);
 		worldData.put("spawn", self.world.spawn);
 		worldData.put("biomeChecksum", self.world.biomeChecksum);
+		worldData.put("doTick", self.world.doTick);
+		worldData.put("tickSpeed", self.world.tickSpeed);
 		// TODO: Save entities
 		try self.dir.writeZon("world.zig.zon", worldData);
 	}
@@ -427,6 +431,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	lastUpdateTime: i64,
 	lastUnimportantDataSent: i64,
 	doGameTimeCycle: bool = true,
+
+	tickSpeed: u32 = 12,
+	doTick: bool = true,
 
 	defaultGamemode: main.game.Gamemode = undefined,
 	allowCheats: bool = undefined,
@@ -928,6 +935,38 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.dropWithCooldown(stack, pos, dir, velocity, 0);
 	}
 
+	fn tickBlocksInChunk(self: *ServerWorld, _chunk: *chunk.ServerChunk) void {
+		for(0..self.tickSpeed) |_| {
+			const blockIndex: i32 = main.random.nextInt(i32, &main.seed);
+
+			const x: i32 = blockIndex >> chunk.chunkShift2 & chunk.chunkMask;
+			const y: i32 = blockIndex >> chunk.chunkShift & chunk.chunkMask;
+			const z: i32 = blockIndex & chunk.chunkMask;
+
+			_chunk.mutex.lock();
+			const block = _chunk.getBlock(x, y, z);
+			_chunk.mutex.unlock();
+			if(block.tickEvent()) |event| {
+				event.tryRandomTick(block, _chunk, x, y, z);
+			}
+		}
+	}
+
+	fn tick(self: *ServerWorld) void {
+		// tick blocks
+		ChunkManager.mutex.lock();
+		var iter = ChunkManager.entityChunkHashMap.keyIterator();
+		while(iter.next()) |pos| {
+			if(ChunkManager.entityChunkHashMap.get(pos.*)) |entityChunk| {
+				const ch = entityChunk.getChunk() orelse continue;
+				entityChunk.increaseRefCount();
+				self.tickBlocksInChunk(ch);
+				entityChunk.decreaseRefCount();
+			}
+		}
+		ChunkManager.mutex.unlock();
+	}
+
 	pub fn update(self: *ServerWorld) void { // MARK: update()
 		const newTime = std.time.milliTimestamp();
 		var deltaTime = @as(f32, @floatFromInt(newTime - self.lastUpdateTime))/1000.0;
@@ -949,6 +988,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				main.network.Protocols.genericUpdate.sendTime(user.conn, self);
 			}
 		}
+		if(self.doTick) self.tick();
 		// TODO: Entities
 
 		// Item Entities
