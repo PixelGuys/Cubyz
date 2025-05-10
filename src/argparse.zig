@@ -4,11 +4,19 @@ const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const ListUnmanaged = main.ListUnmanaged;
 
-pub fn Parser(comptime T: type) type {
+pub fn Parser(comptime T: type, comptime callback: ?fn(self: T) anyerror!void) type {
 	return struct {
 		const Self = @This();
+		pub const Args = T;
 
 		pub fn parse(allocator: NeverFailingAllocator, args: []const u8) !ParseResult(T) {
+			const result = _parse(allocator, args);
+			if(callback != null and result == .success) {
+				try callback.?(result.success);
+			}
+			return result;
+		}
+		pub fn _parse(allocator: NeverFailingAllocator, args: []const u8) ParseResult(T) {
 			switch(@typeInfo(T)) {
 				inline .@"struct" => |s| {
 					if(s.layout != .@"packed") @compileError("Struct must be packed");
@@ -18,10 +26,10 @@ pub fn Parser(comptime T: type) type {
 					if(u.tag_type == null) @compileError("Union must have a tag type");
 					return parseUnion(u, allocator, args);
 				},
-				else => unreachable,
+				else => @compileError("Only structs and unions are supported"),
 			}
 		}
-		fn parseStruct(comptime s: std.builtin.Type.Struct, allocator: NeverFailingAllocator, args: []const u8) !ParseResult(T) {
+		fn parseStruct(comptime s: std.builtin.Type.Struct, allocator: NeverFailingAllocator, args: []const u8) ParseResult(T) {
 			var result: T = undefined;
 
 			var split = std.mem.splitScalar(u8, args, ' ');
@@ -48,9 +56,6 @@ pub fn Parser(comptime T: type) type {
 				return .{.failure = .{.message = message}};
 			}
 
-			if(@hasDecl(T, "callback")) {
-				try @field(T, "callback")(&result);
-			}
 			return .{.success = result};
 		}
 		fn parseArgument(comptime Field: type, _arg: ?[]const u8) !Field {
@@ -74,7 +79,7 @@ pub fn Parser(comptime T: type) type {
 				},
 			}
 		}
-		fn parseUnion(comptime u: std.builtin.Type.Union, allocator: NeverFailingAllocator, args: []const u8) !ParseResult(T) {
+		fn parseUnion(comptime u: std.builtin.Type.Union, allocator: NeverFailingAllocator, args: []const u8) ParseResult(T) {
 			var failureMessages: ListUnmanaged([]const u8) = .{};
 			defer {
 				for(failureMessages.items[1..]) |item| {
@@ -87,7 +92,7 @@ pub fn Parser(comptime T: type) type {
 			failureMessages.appendAssumeCapacity("Provided argument list didn't match any of the valid alternative interpretations of command argument list.");
 
 			inline for(u.fields) |field| {
-				const fieldResult = try Parser(field.type).parse(allocator, args);
+				const fieldResult = Parser(field.type, null)._parse(allocator, args);
 				if(fieldResult == .success) {
 					return .{.success = @unionInit(T, field.name, fieldResult.success)};
 				}
@@ -155,20 +160,34 @@ const Test = struct {
 
 	const OnlyX = Parser(packed struct {
 		x: f64,
-	});
+	}, null);
+
 	const @"float int BiomeId" = Parser(packed struct {
 		x: f32,
 		y: u64,
 		biome: BiomeId,
-	});
+	}, null);
+
 	const @"Union X or XY" = Parser(union(enum) {
 		x: packed struct {x: f64},
 		xy: packed struct {x: f64, y: f64},
-	});
+	}, null);
+
 	const @"subCommands foo or bar" = Parser(union(enum) {
 		foo: packed struct {cmd: enum(u1) {foo}, x: f64},
 		bar: packed struct {cmd: enum(u1) {bar}, x: f64, y: f64},
-	});
+	}, null);
+
+	const CallbackParserArgs = packed struct {
+		x: f64,
+	};
+
+	const CallbackParser = Parser(CallbackParserArgs, testCallback);
+
+	pub fn testCallback(self: CallbackParserArgs) !void {
+		try std.testing.expect(self.x == 1.0);
+		return error.CallbackTestExecutionSignal;
+	}
 };
 
 test "float" {
@@ -189,7 +208,7 @@ test "float negative" {
 test "enum" {
 	const ArgParser = Parser(packed struct {
 		cmd: enum(u1) {foo},
-	});
+	}, null);
 
 	const result = try ArgParser.parse(Test.allocator, "foo");
 	defer result.deinit(Test.allocator);
@@ -203,7 +222,7 @@ test "float int float" {
 		x: f64,
 		y: i32,
 		z: f32,
-	});
+	}, null);
 
 	const result = try ArgParser.parse(Test.allocator, "33.0 154 -5654.0");
 	defer result.deinit(Test.allocator);
@@ -279,4 +298,8 @@ test "subCommands bar" {
 	try std.testing.expect(result.success.bar.cmd == .bar);
 	try std.testing.expect(result.success.bar.x == 2.0);
 	try std.testing.expect(result.success.bar.y == 3.0);
+}
+
+test "callback" {
+	try std.testing.expectError(error.CallbackTestExecutionSignal, Test.CallbackParser.parse(Test.allocator, "1.0"));
 }
