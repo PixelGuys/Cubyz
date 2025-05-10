@@ -728,7 +728,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 	}
 
-	pub fn scheduleLightRefreshAndDecreaseRefCount1(self: *ChunkMesh) void {
+	pub fn scheduleLightRefreshAndDecreaseRefCount(self: *ChunkMesh) void {
 		LightRefreshTask.scheduleAndDecreaseRefCount(self);
 	}
 	const LightRefreshTask = struct {
@@ -873,7 +873,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 
 		for(lightRefreshList.items) |other| {
 			if(other.needsLightRefresh.load(.unordered)) {
-				other.scheduleLightRefreshAndDecreaseRefCount1();
+				other.scheduleLightRefreshAndDecreaseRefCount();
 			} else {
 				other.decreaseRefCount();
 			}
