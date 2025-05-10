@@ -7,5 +7,5 @@ layout(location = 0) in vec2 outTexCoords;
 layout(binding = 0) uniform sampler2D image;
 
 void main() {
-	fragColor = texture(image, outTexCoords);a
+	fragColor = texture(image, outTexCoords);
 }
