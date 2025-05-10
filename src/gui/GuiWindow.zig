@@ -105,8 +105,8 @@ pub var borderUniforms: struct {
 
 pub fn __init() void {
 	pipeline = graphics.Pipeline.init(
-		"assets/cubyz/shaders/ui/button.vs",
-		"assets/cubyz/shaders/ui/button.fs",
+		"assets/cubyz/shaders/ui/button.vert",
+		"assets/cubyz/shaders/ui/button.frag",
 		"",
 		&windowUniforms,
 		.{.cullMode = .none},
@@ -114,8 +114,8 @@ pub fn __init() void {
 		.{.attachments = &.{.alphaBlending}},
 	);
 	borderPipeline = graphics.Pipeline.init(
-		"assets/cubyz/shaders/ui/window_border.vs",
-		"assets/cubyz/shaders/ui/window_border.fs",
+		"assets/cubyz/shaders/ui/window_border.vert",
+		"assets/cubyz/shaders/ui/window_border.frag",
 		"",
 		&borderUniforms,
 		.{.cullMode = .none},

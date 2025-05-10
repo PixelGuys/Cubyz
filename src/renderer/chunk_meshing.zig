@@ -75,8 +75,8 @@ pub var transparentQuadsDrawn: usize = 0;
 pub fn init() void {
 	lighting.init();
 	pipeline = graphics.Pipeline.init(
-		"assets/cubyz/shaders/chunks/chunk_vertex.vs",
-		"assets/cubyz/shaders/chunks/chunk_fragment.fs",
+		"assets/cubyz/shaders/chunks/chunk_vertex.vert",
+		"assets/cubyz/shaders/chunks/chunk_fragment.frag",
 		"",
 		&uniforms,
 		.{},
@@ -84,8 +84,8 @@ pub fn init() void {
 		.{.attachments = &.{.noBlending}},
 	);
 	transparentPipeline = graphics.Pipeline.init(
-		"assets/cubyz/shaders/chunks/chunk_vertex.vs",
-		"assets/cubyz/shaders/chunks/transparent_fragment.fs",
+		"assets/cubyz/shaders/chunks/chunk_vertex.vert",
+		"assets/cubyz/shaders/chunks/transparent_fragment.frag",
 		"#define transparent\n",
 		&transparentUniforms,
 		.{},
@@ -99,10 +99,10 @@ pub fn init() void {
 			.alphaBlendOp = .add,
 		}}},
 	);
-	commandPipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/chunks/fillIndirectBuffer.glsl", "", &commandUniforms);
+	commandPipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/chunks/fillIndirectBuffer.comp", "", &commandUniforms);
 	occlusionTestPipeline = graphics.Pipeline.init(
-		"assets/cubyz/shaders/chunks/occlusionTestVertex.vs",
-		"assets/cubyz/shaders/chunks/occlusionTestFragment.fs",
+		"assets/cubyz/shaders/chunks/occlusionTestVertex.vert",
+		"assets/cubyz/shaders/chunks/occlusionTestFragment.frag",
 		"",
 		&occlusionTestUniforms,
 		.{},

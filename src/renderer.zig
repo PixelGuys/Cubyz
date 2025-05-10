@@ -61,8 +61,8 @@ var reflectionCubeMap: graphics.CubeMapTexture = undefined;
 
 pub fn init() void {
 	deferredRenderPassPipeline = graphics.Pipeline.init(
-		"assets/cubyz/shaders/deferred_render_pass.vs",
-		"assets/cubyz/shaders/deferred_render_pass.fs",
+		"assets/cubyz/shaders/deferred_render_pass.vert",
+		"assets/cubyz/shaders/deferred_render_pass.frag",
 		"",
 		&deferredUniforms,
 		.{.cullMode = .none},
@@ -70,8 +70,8 @@ pub fn init() void {
 		.{.attachments = &.{.noBlending}},
 	);
 	fakeReflectionPipeline = graphics.Pipeline.init(
-		"assets/cubyz/shaders/fake_reflection.vs",
-		"assets/cubyz/shaders/fake_reflection.fs",
+		"assets/cubyz/shaders/fake_reflection.vert",
+		"assets/cubyz/shaders/fake_reflection.frag",
 		"",
 		&fakeReflectionUniforms,
 		.{.cullMode = .none},
@@ -340,8 +340,8 @@ const Bloom = struct { // MARK: Bloom
 		emptyBuffer = .init();
 		emptyBuffer.generate(graphics.Image.emptyImage);
 		firstPassPipeline = graphics.Pipeline.init(
-			"assets/cubyz/shaders/bloom/first_pass.vs",
-			"assets/cubyz/shaders/bloom/first_pass.fs",
+			"assets/cubyz/shaders/bloom/first_pass.vert",
+			"assets/cubyz/shaders/bloom/first_pass.frag",
 			"",
 			null,
 			.{.cullMode = .none},
@@ -349,8 +349,8 @@ const Bloom = struct { // MARK: Bloom
 			.{.attachments = &.{.noBlending}},
 		);
 		secondPassPipeline = graphics.Pipeline.init(
-			"assets/cubyz/shaders/bloom/second_pass.vs",
-			"assets/cubyz/shaders/bloom/second_pass.fs",
+			"assets/cubyz/shaders/bloom/second_pass.vert",
+			"assets/cubyz/shaders/bloom/second_pass.frag",
 			"",
 			null,
 			.{.cullMode = .none},
@@ -358,8 +358,8 @@ const Bloom = struct { // MARK: Bloom
 			.{.attachments = &.{.noBlending}},
 		);
 		colorExtractAndDownsamplePipeline = graphics.Pipeline.init(
-			"assets/cubyz/shaders/bloom/color_extractor_downsample.vs",
-			"assets/cubyz/shaders/bloom/color_extractor_downsample.fs",
+			"assets/cubyz/shaders/bloom/color_extractor_downsample.vert",
+			"assets/cubyz/shaders/bloom/color_extractor_downsample.frag",
 			"",
 			&colorExtractUniforms,
 			.{.cullMode = .none},
@@ -468,8 +468,8 @@ pub const MenuBackGround = struct {
 	fn init() !void {
 		lastTime = std.time.nanoTimestamp();
 		pipeline = graphics.Pipeline.init(
-			"assets/cubyz/shaders/background/vertex.vs",
-			"assets/cubyz/shaders/background/fragment.fs",
+			"assets/cubyz/shaders/background/vertex.vert",
+			"assets/cubyz/shaders/background/fragment.frag",
 			"",
 			&uniforms,
 			.{.cullMode = .none},
@@ -681,8 +681,8 @@ pub const Skybox = struct {
 		defer starColorImage.deinit(main.stackAllocator);
 
 		starPipeline = graphics.Pipeline.init(
-			"assets/cubyz/shaders/skybox/star.vs",
-			"assets/cubyz/shaders/skybox/star.fs",
+			"assets/cubyz/shaders/skybox/star.vert",
+			"assets/cubyz/shaders/skybox/star.frag",
 			"",
 			&starUniforms,
 			.{.cullMode = .none},
@@ -853,8 +853,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 
 	pub fn init() void {
 		pipeline = graphics.Pipeline.init(
-			"assets/cubyz/shaders/block_selection_vertex.vs",
-			"assets/cubyz/shaders/block_selection_fragment.fs",
+			"assets/cubyz/shaders/block_selection_vertex.vert",
+			"assets/cubyz/shaders/block_selection_fragment.frag",
 			"",
 			&uniforms,
 			.{.depthBias = .{
