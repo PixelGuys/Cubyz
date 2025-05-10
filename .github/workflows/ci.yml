@@ -23,7 +23,7 @@ jobs:
       - run: zig build -Dtarget=x86_64-windows-gnu
       - run: zig build test
       - run: zig build format --summary none
-      - run: find assets/cubyz/shaders -type f -exec glslangValidator -G100 {} \;
+      - run: find assets/cubyz/shaders -type f | xargs -L1 glslangValidator -G100
       - run: glslangValidator -G100 assets/cubyz/shaders/background/fragment.frag
       - run: |
           if zig build fmt -- *.zig src/*.zig src/*/*.zig src/*/*/*.zig src/*/*/*/*.zig src/*/*/*/*/*.zig src/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*/*/*.zig | grep -q . ; then
