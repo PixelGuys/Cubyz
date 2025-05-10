@@ -6,47 +6,7 @@ const User = main.server.User;
 pub const description = "Teleport to location.";
 pub const usage = "/tp <x> <y>\n/tp <x> <y> <z>\n/tp <biome>";
 
-pub const declargs = @import("declargs.zig");
-pub const Args = declargs.Args;
-pub const End = declargs.End;
-pub const Flag = declargs.Flag;
-pub const Float = declargs.Float;
-pub const BiomeId = declargs.BiomeId;
-pub const Alternative = declargs.Alternative;
-
-pub const Tp = Alternative(
-	Float(Float(Alternative(
-		Float(End),
-		End,
-	))),
-	BiomeId(End),
-);
-
 pub fn execute(args: []const u8, source: *User) void {
-	const params = Tp.parse(args) catch |err| {
-		std.log.err("Error parsing arguments: {}", .{err});
-		return;
-	};
-
-	switch(params) {
-		.first => |first| {
-			const x = first.value;
-			const y = first.next.value;
-			switch(first.next.next) {
-				.first => |zFloat| {
-					const z = zFloat.value;
-					std.log.info("{} {} {}", .{x, y, z});
-				},
-				.second => {
-					std.log.info("{} {}", .{x, y});
-				},
-			}
-		},
-		.second => |biomeId| {
-			std.log.info("{s}", .{biomeId.value});
-		},
-	}
-
 	if(std.mem.containsAtLeast(u8, args, 1, ":")) {
 		const biome = main.server.terrain.biomes.getById(args);
 		if(!std.mem.eql(u8, biome.id, args)) {
