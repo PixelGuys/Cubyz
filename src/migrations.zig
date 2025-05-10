@@ -3,6 +3,7 @@ const std = @import("std");
 const main = @import("main");
 const ZonElement = @import("zon.zig").ZonElement;
 const Palette = @import("assets.zig").Palette;
+const Assets = main.assets.Assets;
 
 var arenaAllocator = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
 const migrationAllocator = arenaAllocator.allocator();
@@ -15,7 +16,7 @@ const MigrationType = enum {
 	biome,
 };
 
-pub fn registerAll(comptime typ: MigrationType, migrations: *std.StringHashMap(ZonElement)) void {
+pub fn registerAll(comptime typ: MigrationType, migrations: *Assets.AddonNameToZonMap) void {
 	std.log.info("Registering {} {s} migrations", .{migrations.count(), @tagName(typ)});
 	const collection = switch(typ) {
 		.block => &blockMigrations,

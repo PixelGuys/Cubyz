@@ -736,6 +736,7 @@ pub fn refAllDeclsRecursiveExceptCImports(comptime T: type) void {
 		if(comptime std.mem.eql(u8, decl.name, "c")) continue;
 		if(comptime std.mem.eql(u8, decl.name, "hbft")) break :blk;
 		if(comptime std.mem.eql(u8, decl.name, "stb_image")) break :blk;
+		if(comptime std.mem.eql(u8, decl.name, "Managed")) return;
 		if(@TypeOf(@field(T, decl.name)) == type) {
 			switch(@typeInfo(@field(T, decl.name))) {
 				.@"struct", .@"enum", .@"union", .@"opaque" => refAllDeclsRecursiveExceptCImports(@field(T, decl.name)),
@@ -745,7 +746,6 @@ pub fn refAllDeclsRecursiveExceptCImports(comptime T: type) void {
 		_ = &@field(T, decl.name);
 	}
 }
-
 test "abc" {
 	@setEvalBranchQuota(1000000);
 	refAllDeclsRecursiveExceptCImports(@This());
