@@ -382,7 +382,7 @@ fn generatePropertyEnum() type {
 		const declInfo = @typeInfo(@TypeOf(@field(Block, decl.name)));
 		if(declInfo != .@"fn") continue;
 		if(declInfo.@"fn".return_type != bool) continue;
-		if(declInfo.@"fn".params.len > 1) continue;
+		if(declInfo.@"fn".params.len != 1) continue;
 
 		tempFields[count] = .{.name = decl.name, .value = count};
 		count += 1;
@@ -423,21 +423,11 @@ pub const Mask = struct {
 			const Property = generatePropertyEnum();
 
 			fn initFromString(specifier: []const u8) !Inner {
-				switch(specifier[0]) {
-					tag => {
-						const blockTag = specifier[1..];
-						if(blockTag.len == 0) return error.TagNotFound;
-						return .{.blockTag = Tag.get(blockTag) orelse return error.TagNotFound};
-					},
-					property => {
-						const propertyName = specifier[1..];
-						const propertyValue = std.meta.stringToEnum(Property, propertyName) orelse return error.PropertyNotFound;
-						return .{.blockProperty = propertyValue};
-					},
-					else => {
-						return try parseBlockLike(specifier);
-					},
-				}
+				return switch(specifier[0]) {
+					tag => .{.blockTag = Tag.get(specifier[1..]) orelse return error.TagNotFound},
+					property => .{.blockProperty = std.meta.stringToEnum(Property, specifier[1..]) orelse return error.PropertyNotFound},
+					else => return try parseBlockLike(specifier),
+				};
 			}
 
 			fn match(self: Inner, block: Block) bool {
@@ -473,14 +463,14 @@ pub const Mask = struct {
 
 		var oredExpressions = std.mem.splitScalar(u8, source, or_);
 		while(oredExpressions.next()) |subExpression| {
-			if(subExpression.len == 0) continue;
+			if(subExpression.len == 0) return error.MissingExpression;
 
 			var andStorage: AndList = .{};
 			errdefer andStorage.deinit(allocator);
 
 			var andedExpressions = std.mem.splitScalar(u8, subExpression, and_);
 			while(andedExpressions.next()) |specifier| {
-				if(specifier.len == 0) continue;
+				if(specifier.len == 0) return error.MissingExpression;
 
 				const entry = try Entry.initFromString(specifier);
 				andStorage.append(allocator, entry);
@@ -507,9 +497,9 @@ pub const Mask = struct {
 	}
 
 	pub fn match(self: @This(), block: Block) bool {
-		for(self.entries.items) |andEdExpressions| {
+		for(self.entries.items) |andedExpressions| {
 			const status = blk: {
-				for(andEdExpressions.items) |expression| {
+				for(andedExpressions.items) |expression| {
 					if(!expression.match(block)) break :blk false;
 				}
 				break :blk true;
