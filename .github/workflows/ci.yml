@@ -24,7 +24,6 @@ jobs:
       - run: zig build test
       - run: zig build format --summary none
       - run: find assets/cubyz/shaders -type f | xargs -L1 glslangValidator -G100
-      - run: glslangValidator -G100 assets/cubyz/shaders/background/fragment.frag
       - run: |
           if zig build fmt -- *.zig src/*.zig src/*/*.zig src/*/*/*.zig src/*/*/*/*.zig src/*/*/*/*/*.zig src/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*/*.zig src/*/*/*/*/*/*/*/*/*/*.zig | grep -q . ; then
             git diff --color=always;
