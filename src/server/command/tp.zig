@@ -6,6 +6,43 @@ const User = main.server.User;
 pub const description = "Teleport to location.";
 pub const usage = "/tp <x> <y>\n/tp <x> <y> <z>\n/tp <biome>";
 
+const Parser = main.argparse.Parser;
+const Behavior = main.argparse.Behavior;
+const BiomeId = main.argparse.BiomeId;
+
+pub const ArgParser = Parser(union(enum) {
+	@"tp to xyz": packed struct {
+		x: f64,
+		y: f64,
+		z: f64,
+
+		pub fn callback(self: *@This()) !void {
+			const x = self.x;
+			const y = self.y;
+			const z = self.z;
+			std.log.info("{} {} {}", .{x, y, z});
+		}
+	},
+	@"tp to xy": packed struct {
+		x: f64,
+		y: f64,
+
+		pub fn callback(self: *@This()) !void {
+			const x = self.x;
+			const y = self.y;
+			std.log.info("{} {}", .{x, y});
+		}
+	},
+	@"tp to biome": packed struct {
+		biomeId: BiomeId,
+
+		pub fn callback(self: *@This()) !void {
+			const biomeId = self.biomeId;
+			std.log.info("{s}", .{biomeId});
+		}
+	},
+});
+
 pub fn execute(args: []const u8, source: *User) void {
 	if(std.mem.containsAtLeast(u8, args, 1, ":")) {
 		const biome = main.server.terrain.biomes.getById(args);

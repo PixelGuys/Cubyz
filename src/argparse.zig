@@ -4,11 +4,6 @@ const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const ListUnmanaged = main.ListUnmanaged;
 
-const Behavior = enum {
-	alternative,
-	subCommand,
-};
-
 pub fn Parser(comptime T: type) type {
 	return struct {
 		const Self = @This();
@@ -17,12 +12,10 @@ pub fn Parser(comptime T: type) type {
 			switch(@typeInfo(T)) {
 				inline .@"struct" => |s| {
 					if(s.layout != .@"packed") @compileError("Struct must be packed");
-					if(@hasDecl(T, "behavior")) @compileError("Struct can't have a behavior flag");
 					return parseStruct(s, allocator, args);
 				},
 				inline .@"union" => |u| {
 					if(u.tag_type == null) @compileError("Union must have a tag type");
-					if(!@hasDecl(T, "behavior")) @compileError("Union must have a behavior flag");
 					return parseUnion(u, allocator, args);
 				},
 				else => unreachable,
@@ -56,7 +49,7 @@ pub fn Parser(comptime T: type) type {
 			}
 
 			if(@hasDecl(T, "callback")) {
-				return try @field(result, "callback")(result);
+				try @field(T, "callback")(&result);
 			}
 			return .{.success = result};
 		}
@@ -69,10 +62,11 @@ pub fn Parser(comptime T: type) type {
 				else => |fieldInfo| {
 					const arg = _arg orelse return error.MissingArgument;
 					switch(fieldInfo) {
-						inline .@"struct" => |structInfo| {
-							if(!@hasDecl(structInfo, "parse")) @compileError("Struct must have a parse function");
+						inline .@"struct" => {
+							if(!@hasDecl(Field, "parse")) @compileError("Struct must have a parse function");
 							return try @field(Field, "parse")(arg);
 						},
+						inline .@"enum" => return std.meta.stringToEnum(Field, arg) orelse return error.InvalidEnum,
 						inline .float => |floatInfo| return try std.fmt.parseFloat(std.meta.Float(floatInfo.bits), arg),
 						inline .int => |intInfo| return try std.fmt.parseInt(std.meta.Int(intInfo.signedness, intInfo.bits), arg, 0),
 						inline else => |other| @compileError("Unsupported type " ++ @tagName(other)),
@@ -81,47 +75,27 @@ pub fn Parser(comptime T: type) type {
 			}
 		}
 		fn parseUnion(comptime u: std.builtin.Type.Union, allocator: NeverFailingAllocator, args: []const u8) !ParseResult(T) {
-			const behavior = @field(u, "behavior");
-			var result: ParseResult(T) = undefined;
-
-			const failureMessages: ListUnmanaged([]const u8) = .{};
+			var failureMessages: ListUnmanaged([]const u8) = .{};
 			defer {
 				for(failureMessages.items[1..]) |item| {
 					allocator.free(item);
 				}
-				failureMessages.deinit();
+				failureMessages.deinit(allocator);
 			}
 
 			failureMessages.ensureCapacity(allocator, u.fields.len + 1);
 			failureMessages.appendAssumeCapacity("Provided argument list didn't match any of the valid alternative interpretations of command argument list.");
 
 			inline for(u.fields) |field| {
-				result = switch(behavior) {
-					.alternative => try parseAlternative(field, allocator, args),
-					.subCommand => try parseSubCommand(field, allocator, args),
-				};
-				if(result == .success) return result;
-				failureMessages.appendAssumeCapacity(result.failure.message);
+				const fieldResult = try Parser(field.type).parse(allocator, args);
+				if(fieldResult == .success) {
+					return .{.success = @unionInit(T, field.name, fieldResult.success)};
+				}
+				failureMessages.appendAssumeCapacity(fieldResult.failure.message);
 			}
 
 			const message = join(allocator, '\n', failureMessages.items);
 			return .{.failure = .{.message = message}};
-		}
-		fn parseAlternative(comptime s: std.builtin.Type.UnionField, allocator: NeverFailingAllocator, args: []const u8) !ParseResult(T) {
-			return Parser(s.type).parse(allocator, args);
-		}
-		fn parseSubCommand(comptime s: std.builtin.Type.UnionField, allocator: NeverFailingAllocator, args: []const u8) !ParseResult(T) {
-			var split = std.mem.splitScalar(u8, args, ' ');
-			const arg = split.next();
-			if(arg == null) {
-				const message = std.fmt.allocPrint(allocator.allocator, "Expected subcommand name {s}, nothing found", .{s.name}) catch unreachable;
-				return .{.failure = .{.message = message}};
-			}
-			if(!std.mem.eql(u8, arg, s.name)) {
-				const message = std.fmt.allocPrint(allocator.allocator, "Expected subcommand name {s}, found {s}", .{s.name, arg}) catch unreachable;
-				return .{.failure = .{.message = message}};
-			}
-			return Parser(s.type).parse(allocator, split.rest());
 		}
 	};
 }
@@ -154,14 +128,24 @@ pub fn ParseResult(comptime SuccessT: type) type {
 			message: []const u8,
 		},
 		success: SuccessT,
+
+		pub fn deinit(self: @This(), allocator: NeverFailingAllocator) void {
+			if(self == .failure) {
+				allocator.free(self.failure.message);
+			}
+		}
 	};
 }
 
-pub const BiomeId = struct {
-	id: []const u8,
+pub const BiomeId = packed struct {
+	len: usize,
+	id: [*]const u8,
 
 	pub fn parse(arg: []const u8) !BiomeId {
-		return .{.id = arg};
+		return .{.len = arg.len, .id = arg.ptr};
+	}
+	pub fn toString(self: BiomeId) []const u8 {
+		return self.id[0..self.len];
 	}
 };
 
@@ -172,23 +156,49 @@ const Test = struct {
 	const OnlyX = Parser(packed struct {
 		x: f64,
 	});
+	const @"float int BiomeId" = Parser(packed struct {
+		x: f32,
+		y: u64,
+		biome: BiomeId,
+	});
+	const @"Union X or XY" = Parser(union(enum) {
+		x: packed struct {x: f64},
+		xy: packed struct {x: f64, y: f64},
+	});
+	const @"subCommands foo or bar" = Parser(union(enum) {
+		foo: packed struct {cmd: enum(u1) {foo}, x: f64},
+		bar: packed struct {cmd: enum(u1) {bar}, x: f64, y: f64},
+	});
 };
 
-test "parse float" {
+test "float" {
 	const result = try Test.OnlyX.parse(Test.allocator, "33.0");
+	defer result.deinit(Test.allocator);
 
 	try std.testing.expect(result == .success);
 	try std.testing.expect(result.success.x == 33.0);
 }
 
-test "parse float negative" {
-	const result = try Test.OnlyX.parse(Test.allocator, "33.0");
+test "float negative" {
+	const result = try Test.OnlyX.parse(Test.allocator, "foo");
+	defer result.deinit(Test.allocator);
 
-	try std.testing.expect(result == .success);
-	try std.testing.expect(result.success.x == 33.0);
+	try std.testing.expect(result == .failure);
 }
 
-test "parse float int float" {
+test "enum" {
+	const ArgParser = Parser(packed struct {
+		cmd: enum(u1) {foo},
+	});
+
+	const result = try ArgParser.parse(Test.allocator, "foo");
+	defer result.deinit(Test.allocator);
+
+	try std.testing.expect(result == .success);
+	try std.testing.expect(result.success.cmd == .foo);
+}
+
+test "float int float" {
 	const ArgParser = Parser(packed struct {
 		x: f64,
 		y: i32,
@@ -196,9 +206,77 @@ test "parse float int float" {
 	});
 
 	const result = try ArgParser.parse(Test.allocator, "33.0 154 -5654.0");
+	defer result.deinit(Test.allocator);
 
 	try std.testing.expect(result == .success);
 	try std.testing.expect(result.success.x == 33.0);
 	try std.testing.expect(result.success.y == 154);
 	try std.testing.expect(result.success.z == -5654.0);
+}
+
+test "float int BiomeId" {
+	const result = try Test.@"float int BiomeId".parse(Test.allocator, "33.0 154 cubyz:foo");
+	defer result.deinit(Test.allocator);
+
+	try std.testing.expect(result == .success);
+	try std.testing.expect(result.success.x == 33.0);
+	try std.testing.expect(result.success.y == 154);
+	try std.testing.expectEqualStrings("cubyz:foo", result.success.biome.toString());
+}
+
+test "float int BiomeId negative shuffled" {
+	const result = try Test.@"float int BiomeId".parse(Test.allocator, "33.0 cubyz:foo 154");
+	defer result.deinit(Test.allocator);
+
+	try std.testing.expect(result == .failure);
+}
+
+test "x or xy case x" {
+	const result = try Test.@"Union X or XY".parse(Test.allocator, "0.9");
+	defer result.deinit(Test.allocator);
+
+	try std.testing.expect(result == .success);
+	try std.testing.expect(result.success.x.x == 0.9);
+}
+
+test "x or xy case xy" {
+	const result = try Test.@"Union X or XY".parse(Test.allocator, "0.9 1.0");
+	defer result.deinit(Test.allocator);
+
+	try std.testing.expect(result == .success);
+	try std.testing.expect(result.success.xy.x == 0.9);
+	try std.testing.expect(result.success.xy.y == 1.0);
+}
+
+test "x or xy negative empty" {
+	const result = try Test.@"Union X or XY".parse(Test.allocator, "");
+	defer result.deinit(Test.allocator);
+
+	try std.testing.expect(result == .failure);
+}
+
+test "x or xy negative too much" {
+	const result = try Test.@"Union X or XY".parse(Test.allocator, "1.0 3.0 5.0");
+	defer result.deinit(Test.allocator);
+
+	try std.testing.expect(result == .failure);
+}
+
+test "subCommands foo" {
+	const result = try Test.@"subCommands foo or bar".parse(Test.allocator, "foo 1.0");
+	defer result.deinit(Test.allocator);
+
+	try std.testing.expect(result == .success);
+	try std.testing.expect(result.success.foo.cmd == .foo);
+	try std.testing.expect(result.success.foo.x == 1.0);
+}
+
+test "subCommands bar" {
+	const result = try Test.@"subCommands foo or bar".parse(Test.allocator, "bar 2.0 3.0");
+	defer result.deinit(Test.allocator);
+
+	try std.testing.expect(result == .success);
+	try std.testing.expect(result.success.bar.cmd == .bar);
+	try std.testing.expect(result.success.bar.x == 2.0);
+	try std.testing.expect(result.success.bar.y == 3.0);
 }
