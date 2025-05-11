@@ -1893,8 +1893,10 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 		pub fn beginRender(self: *Self) void {
 			self.activeFence += 1;
 			if(self.activeFence == self.fences.len) self.activeFence = 0;
-			for(self.fencedFreeLists[self.activeFence].items) |allocation| {
+			const startTime = std.time.milliTimestamp();
+			while(self.fencedFreeLists[self.activeFence].popOrNull()) |allocation| {
 				self.finalFree(allocation);
+				if(std.time.milliTimestamp() -% startTime > 5) break; // TODO: Remove after #1434
 			}
 			self.fencedFreeLists[self.activeFence].clearRetainingCapacity();
 			_ = c.glClientWaitSync(self.fences[self.activeFence], 0, c.GL_TIMEOUT_IGNORED); // Make sure the render calls that accessed these parts of the buffer have finished.
