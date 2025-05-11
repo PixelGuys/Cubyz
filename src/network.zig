@@ -1304,7 +1304,7 @@ pub const Protocols = struct {
 			const exploded = main.utils.Array3D(bool).init(main.stackAllocator, diameter, diameter, diameter);
 			defer exploded.deinit(main.stackAllocator);
 			@memset(exploded.mem, false);
-			
+
 			var explosionSeed: u64 = @bitCast(std.time.milliTimestamp());
 
 			for(0..numSamples) |i| {
