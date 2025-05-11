@@ -410,7 +410,7 @@ fn update() void { // MARK: update()
 
 	for(userList) |user| {
 		const pos = @as(Vec3i, @intFromFloat(user.player.pos));
-		const biomeId = world.?.getBiome(user.lastPos[0], pos[1], pos[2]).paletteId;
+		const biomeId = world.?.getBiome(pos[0], pos[1], pos[2]).paletteId;
 		if(biomeId != user.lastSentBiomeId) {
 			user.lastSentBiomeId = biomeId;
 			main.network.Protocols.genericUpdate.sendBiome(user.conn, biomeId);
