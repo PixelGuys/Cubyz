@@ -19,7 +19,6 @@ pub fn Parser(comptime T: type, comptime callback: ?fn(self: T) anyerror!void) t
 		pub fn _parse(allocator: NeverFailingAllocator, args: []const u8) ParseResult(T) {
 			switch(@typeInfo(T)) {
 				inline .@"struct" => |s| {
-					if(s.layout != .@"packed") @compileError("Struct must be packed");
 					return parseStruct(s, allocator, args);
 				},
 				inline .@"union" => |u| {
@@ -142,15 +141,12 @@ pub fn ParseResult(comptime SuccessT: type) type {
 	};
 }
 
-pub const BiomeId = packed struct {
-	len: usize,
-	id: [*]const u8,
+// TODO: This could check if biome ID is valid, either always or with generic flag.
+pub const BiomeId = struct {
+	id: []const u8,
 
 	pub fn parse(arg: []const u8) !BiomeId {
-		return .{.len = arg.len, .id = arg.ptr};
-	}
-	pub fn toString(self: BiomeId) []const u8 {
-		return self.id[0..self.len];
+		return .{.id = arg};
 	}
 };
 
@@ -158,29 +154,25 @@ const Test = struct {
 	var testingAllocator = main.heap.ErrorHandlingAllocator.init(std.testing.allocator);
 	var allocator = testingAllocator.allocator();
 
-	const OnlyX = Parser(packed struct {
-		x: f64,
-	}, null);
+	const OnlyX = Parser(struct {x: f64}, null);
 
-	const @"float int BiomeId" = Parser(packed struct {
+	const @"float int BiomeId" = Parser(struct {
 		x: f32,
 		y: u64,
 		biome: BiomeId,
 	}, null);
 
 	const @"Union X or XY" = Parser(union(enum) {
-		x: packed struct {x: f64},
-		xy: packed struct {x: f64, y: f64},
+		x: struct {x: f64},
+		xy: struct {x: f64, y: f64},
 	}, null);
 
 	const @"subCommands foo or bar" = Parser(union(enum) {
-		foo: packed struct {cmd: enum(u1) {foo}, x: f64},
-		bar: packed struct {cmd: enum(u1) {bar}, x: f64, y: f64},
+		foo: struct {cmd: enum(u1) {foo}, x: f64},
+		bar: struct {cmd: enum(u1) {bar}, x: f64, y: f64},
 	}, null);
 
-	const CallbackParserArgs = packed struct {
-		x: f64,
-	};
+	const CallbackParserArgs = struct {x: f64};
 
 	const CallbackParser = Parser(CallbackParserArgs, testCallback);
 
@@ -206,7 +198,7 @@ test "float negative" {
 }
 
 test "enum" {
-	const ArgParser = Parser(packed struct {
+	const ArgParser = Parser(struct {
 		cmd: enum(u1) {foo},
 	}, null);
 
@@ -218,7 +210,7 @@ test "enum" {
 }
 
 test "float int float" {
-	const ArgParser = Parser(packed struct {
+	const ArgParser = Parser(struct {
 		x: f64,
 		y: i32,
 		z: f32,
@@ -240,7 +232,7 @@ test "float int BiomeId" {
 	try std.testing.expect(result == .success);
 	try std.testing.expect(result.success.x == 33.0);
 	try std.testing.expect(result.success.y == 154);
-	try std.testing.expectEqualStrings("cubyz:foo", result.success.biome.toString());
+	try std.testing.expectEqualStrings("cubyz:foo", result.success.biome.id);
 }
 
 test "float int BiomeId negative shuffled" {

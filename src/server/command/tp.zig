@@ -6,130 +6,94 @@ const User = main.server.User;
 pub const description = "Teleport to location.";
 pub const usage = "/tp <x> <y>\n/tp <x> <y> <z>\n/tp <biome>";
 
-// const Parser = main.argparse.Parser;
-// const Behavior = main.argparse.Behavior;
-// const BiomeId = main.argparse.BiomeId;
+const Parser = main.argparse.Parser;
+const BiomeId = main.argparse.BiomeId;
 
-// pub const ArgParser = Parser(union(enum) {
-// @"tp to xyz": packed struct {
-// x: f64,
-// y: f64,
-// z: f64,
-
-// pub fn callback(self: *@This()) !void {
-// const x = self.x;
-// const y = self.y;
-// const z = self.z;
-// std.log.info("{} {} {}", .{x, y, z});
-// }
-// },
-// @"tp to xy": packed struct {
-// x: f64,
-// y: f64,
-
-// pub fn callback(self: *@This()) !void {
-// const x = self.x;
-// const y = self.y;
-// std.log.info("{} {}", .{x, y});
-// }
-// },
-// @"tp to biome": packed struct {
-// biomeId: BiomeId,
-
-// pub fn callback(self: *@This()) !void {
-// const biomeId = self.biomeId;
-// std.log.info("{s}", .{biomeId});
-// }
-// },
-// });
+const Args = union(enum) {
+	@"tp to xyz": struct {x: f64, y: f64, z: ?f64},
+	@"tp to biome": struct {biomeId: BiomeId},
+};
+const ArgParser = Parser(Args, null);
 
 pub fn execute(args: []const u8, source: *User) void {
-	if(std.mem.containsAtLeast(u8, args, 1, ":")) {
-		const biome = main.server.terrain.biomes.getById(args);
-		if(!std.mem.eql(u8, biome.id, args)) {
-			source.sendMessage("#ff0000Couldn't find biome with id \"{s}\"", .{args});
-			return;
-		}
-		if(biome.isCave) {
-			source.sendMessage("#ff0000Teleport to biome is only available for surface biomes.", .{});
-			return;
-		}
-		const radius = 16384;
-		const mapSize: i32 = main.server.terrain.ClimateMap.ClimateMapFragment.mapSize;
-		// Explore chunks in a spiral from the center:
-		const spiralLen = 2*radius/mapSize*2*radius/mapSize;
-		var wx = source.lastPos[0] & ~(mapSize - 1);
-		var wy = source.lastPos[1] & ~(mapSize - 1);
-		var dirChanges: usize = 1;
-		var dir: main.chunk.Neighbor = .dirNegX;
-		var stepsRemaining: usize = 1;
-		for(0..spiralLen) |_| {
-			const map = main.server.terrain.ClimateMap.getOrGenerateFragmentAndIncreaseRefCount(wx, wy);
-			defer map.decreaseRefCount();
-			for(0..map.map.len) |_| {
-				const x = main.random.nextIntBounded(u31, &main.seed, map.map.len);
-				const y = main.random.nextIntBounded(u31, &main.seed, map.map.len);
-				const sample = map.map[x][y];
-				if(sample.biome == biome) {
-					const z = sample.height + sample.hills + sample.mountains + sample.roughness;
-					const biomeSize = main.server.terrain.SurfaceMap.MapFragment.biomeSize;
-					main.network.Protocols.genericUpdate.sendTPCoordinates(source.conn, .{@floatFromInt(wx + x*biomeSize + biomeSize/2), @floatFromInt(wy + y*biomeSize + biomeSize/2), @floatCast(z + biomeSize/2)});
-					return;
+	const result = ArgParser.parse(main.stackAllocator, args) catch |err| {
+		source.sendMessage("#ff0000Error executing command: {s}", .{@errorName(err)});
+		return;
+	};
+	if(result == .failure) {
+		source.sendMessage("#ff0000{s}", .{result.failure.message});
+		return;
+	}
+	switch(result.success) {
+		.@"tp to biome" => |params| {
+			const biome = main.server.terrain.biomes.getById(params.biomeId.id);
+			if(!std.mem.eql(u8, biome.id, params.biomeId.id)) {
+				source.sendMessage("#ff0000Couldn't find biome with id \"{s}\"", .{params.biomeId.id});
+				return;
+			}
+			if(biome.isCave) {
+				source.sendMessage("#ff0000Teleport to biome is only available for surface biomes.", .{});
+				return;
+			}
+			const radius = 16384;
+			const mapSize: i32 = main.server.terrain.ClimateMap.ClimateMapFragment.mapSize;
+			// Explore chunks in a spiral from the center:
+			const spiralLen = 2*radius/mapSize*2*radius/mapSize;
+			var wx = source.lastPos[0] & ~(mapSize - 1);
+			var wy = source.lastPos[1] & ~(mapSize - 1);
+			var dirChanges: usize = 1;
+			var dir: main.chunk.Neighbor = .dirNegX;
+			var stepsRemaining: usize = 1;
+			for(0..spiralLen) |_| {
+				const map = main.server.terrain.ClimateMap.getOrGenerateFragmentAndIncreaseRefCount(wx, wy);
+				defer map.decreaseRefCount();
+				for(0..map.map.len) |_| {
+					const x = main.random.nextIntBounded(u31, &main.seed, map.map.len);
+					const y = main.random.nextIntBounded(u31, &main.seed, map.map.len);
+					const sample = map.map[x][y];
+					if(sample.biome == biome) {
+						const z = sample.height + sample.hills + sample.mountains + sample.roughness;
+						const biomeSize = main.server.terrain.SurfaceMap.MapFragment.biomeSize;
+						main.network.Protocols.genericUpdate.sendTPCoordinates(source.conn, .{@floatFromInt(wx + x*biomeSize + biomeSize/2), @floatFromInt(wy + y*biomeSize + biomeSize/2), @floatCast(z + biomeSize/2)});
+						return;
+					}
 				}
-			}
-			switch(dir) {
-				.dirNegX => wx -%= mapSize,
-				.dirPosX => wx +%= mapSize,
-				.dirNegY => wy -%= mapSize,
-				.dirPosY => wy +%= mapSize,
-				else => unreachable,
-			}
-			stepsRemaining -= 1;
-			if(stepsRemaining == 0) {
 				switch(dir) {
-					.dirNegX => dir = .dirNegY,
-					.dirPosX => dir = .dirPosY,
-					.dirNegY => dir = .dirPosX,
-					.dirPosY => dir = .dirNegX,
+					.dirNegX => wx -%= mapSize,
+					.dirPosX => wx +%= mapSize,
+					.dirNegY => wy -%= mapSize,
+					.dirPosY => wy +%= mapSize,
 					else => unreachable,
 				}
-				dirChanges += 1;
-				// Every second turn the number of steps needed doubles.
-				stepsRemaining = dirChanges/2;
+				stepsRemaining -= 1;
+				if(stepsRemaining == 0) {
+					switch(dir) {
+						.dirNegX => dir = .dirNegY,
+						.dirPosX => dir = .dirPosY,
+						.dirNegY => dir = .dirPosX,
+						.dirPosY => dir = .dirNegX,
+						else => unreachable,
+					}
+					dirChanges += 1;
+					// Every second turn the number of steps needed doubles.
+					stepsRemaining = dirChanges/2;
+				}
 			}
-		}
-		source.sendMessage("#ff0000Couldn't find biome. Searched in a radius of 16384 blocks.", .{});
-		return;
-	}
-	var x: ?f64 = null;
-	var y: ?f64 = null;
-	var z: ?f64 = null;
-	var split = std.mem.splitScalar(u8, args, ' ');
-	while(split.next()) |arg| {
-		const num: f64 = std.fmt.parseFloat(f64, arg) catch {
-			source.sendMessage("#ff0000Expected number, found \"{s}\"", .{arg});
+			source.sendMessage("#ff0000Couldn't find biome. Searched in a radius of 16384 blocks.", .{});
 			return;
-		};
-		if(x == null) {
-			x = num;
-		} else if(y == null) {
-			y = num;
-		} else if(z == null) {
-			z = num;
-		} else {
-			source.sendMessage("#ff0000Too many arguments for command /tp", .{});
-			return;
-		}
+		},
+		.@"tp to xyz" => |params| {
+			var x = params.x;
+			var y = params.y;
+			var z = params.z;
+
+			if(z == null) {
+				z = source.player.pos[2];
+			}
+			x = std.math.clamp(x, -1e9, 1e9); // TODO: Remove after #310 is implemented
+			y = std.math.clamp(y, -1e9, 1e9);
+			z = std.math.clamp(z.?, -1e9, 1e9);
+			main.network.Protocols.genericUpdate.sendTPCoordinates(source.conn, .{x, y, z.?});
+		},
 	}
-	if(x == null or y == null) {
-		source.sendMessage("#ff0000Too few arguments for command /tp", .{});
-		return;
-	}
-	if(z == null) {
-		z = source.player.pos[2];
-	}
-	x = std.math.clamp(x.?, -1e9, 1e9); // TODO: Remove after #310 is implemented
-	y = std.math.clamp(y.?, -1e9, 1e9);
-	z = std.math.clamp(z.?, -1e9, 1e9);
-	main.network.Protocols.genericUpdate.sendTPCoordinates(source.conn, .{x.?, y.?, z.?});
 }
