@@ -1,15 +1,10 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-const builtin = @import("builtin");
 
 const main = @import("main");
 
 var testingErrorHandlingAllocator = ErrorHandlingAllocator.init(std.testing.allocator);
-pub var testingAllocator = blk: {
-	if(!builtin.is_test) @compileError("testing allocator used when not testing");
-
-	break :blk testingErrorHandlingAllocator.allocator();
-};
+pub var testingAllocator = testingErrorHandlingAllocator.allocator();
 
 /// Allows for stack-like allocations in a fast and safe way.
 /// It is safe in the sense that a regular allocator will be used when the buffer is full.
