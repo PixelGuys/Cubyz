@@ -2068,7 +2068,7 @@ test "SparseSet/too many" {
 	try set.set(main.heap.testingAllocator, 0, 0);
 	try set.set(main.heap.testingAllocator, 1, 1);
 	try set.set(main.heap.testingAllocator, 2, 2);
-	
+
 	try std.testing.expectError(error.TooMany, set.set(main.heap.testingAllocator, 3, 3));
 
 	try std.testing.expectEqual(set.sparseToDenseIndex.items.len, 3);
