@@ -1920,52 +1920,57 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 		const Self = @This();
 
 		dense: main.ListUnmanaged(T) = .{},
-		reverseIds: main.ListUnmanaged(IdType) = .{},
-		sparse: main.ListUnmanaged(Index) = .{},
+		denseToSparseIndex: main.ListUnmanaged(IdType) = .{},
+		sparseToDenseIndex: main.ListUnmanaged(Index) = .{},
 
 		pub fn deinit(self: *Self, allocator: NeverFailingAllocator) void {
 			self.dense.deinit(allocator);
-			self.reverseIds.deinit(allocator);
-			self.sparse.deinit(allocator);
+			self.denseToSparseIndex.deinit(allocator);
+			self.sparseToDenseIndex.deinit(allocator);
 		}
 
 		pub fn contains(self: *Self, id: IdType) bool {
-			return id < self.sparse.items.len and self.sparse.items[id] != .noValue;
+			return id < self.sparseToDenseIndex.items.len and self.sparseToDenseIndex.items[id] != .noValue;
 		}
 
 		pub fn set(self: *Self, allocator: NeverFailingAllocator, id: IdType, value: T) void {
-			if(id >= self.sparse.items.len) {
-				self.sparse.appendNTimes(allocator, .noValue, id - self.sparse.items.len + 1);
+			const denseId: Index = @enumFromInt(self.dense.items.len);
+
+			if (denseId == .noValue) {
+				return;
 			}
 
-			std.debug.assert(self.sparse.items[id] == .noValue);
+			if(id >= self.sparseToDenseIndex.items.len) {
+				self.sparseToDenseIndex.appendNTimes(allocator, .noValue, id - self.sparseToDenseIndex.items.len + 1);
+			}
 
-			const denseId: Index = @enumFromInt(self.dense.items.len);
-			self.sparse.items[id] = denseId;
+			std.debug.assert(self.sparseToDenseIndex.items[id] == .noValue);
+
+			self.sparseToDenseIndex.items[id] = denseId;
 			self.dense.append(allocator, value);
-			self.reverseIds.append(allocator, id);
+			self.denseToSparseIndex.append(allocator, id);
 		}
 
 		pub fn remove(self: *Self, id: IdType) !void {
 			if(!self.contains(id)) return error.ElementNotFound;
 
-			const denseId: IdType = @intFromEnum(self.sparse.items[id]);
-			self.sparse.items[id] = .noValue;
+			const denseId: IdType = @intFromEnum(self.sparseToDenseIndex.items[id]);
+			self.sparseToDenseIndex.items[id] = .noValue;
 
 			if(denseId == self.dense.items.len - 1) {
 				_ = self.dense.pop();
-				_ = self.reverseIds.pop();
+				_ = self.denseToSparseIndex.pop();
 			} else {
 				self.dense.items[denseId] = self.dense.pop();
-				self.reverseIds.items[denseId] = self.reverseIds.pop();
+				self.denseToSparseIndex.items[denseId] = self.denseToSparseIndex.pop();
 
-				self.sparse.items[self.reverseIds.items[denseId]] = @enumFromInt(denseId);
+				self.sparseToDenseIndex.items[self.denseToSparseIndex.items[denseId]] = @enumFromInt(denseId);
 			}
 		}
 
 		pub fn get(self: *Self, id: IdType) ?*T {
-			if(id >= self.sparse.items.len) return null;
-			const index = self.sparse.items[id];
+			if(id >= self.sparseToDenseIndex.items.len) return null;
+			const index = self.sparseToDenseIndex.items[id];
 			if(index == .noValue) return null;
 			return &self.dense.items[@intFromEnum(index)];
 		}
@@ -2054,6 +2059,19 @@ test "SparseSet/reusing" {
 
 	try std.testing.expectEqual(set.get(secondId).?.*, expectSecond);
 	try std.testing.expectEqual(set.get(firstId).?.*, expectNew);
+}
+
+test "SparseSet/too many" {
+	var set: SparseSet(u32, u2) = .{};
+	defer set.deinit(main.heap.testingAllocator);
+
+	set.set(main.heap.testingAllocator, 0, 0);
+	set.set(main.heap.testingAllocator, 1, 1);
+	set.set(main.heap.testingAllocator, 2, 2);
+	set.set(main.heap.testingAllocator, 3, 3);
+
+	try std.testing.expectEqual(set.sparseToDenseIndex.items.len, 3);
+	try std.testing.expectEqual(set.dense.items.len, 3);
 }
 
 // MARK: functionPtrCast()
