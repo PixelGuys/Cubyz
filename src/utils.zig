@@ -1933,11 +1933,11 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 			return id < self.sparseToDenseIndex.items.len and self.sparseToDenseIndex.items[id] != .noValue;
 		}
 
-		pub fn set(self: *Self, allocator: NeverFailingAllocator, id: IdType, value: T) void {
+		pub fn set(self: *Self, allocator: NeverFailingAllocator, id: IdType, value: T) !void {
 			const denseId: Index = @enumFromInt(self.dense.items.len);
 
 			if(denseId == .noValue) {
-				return;
+				return error.TooMany;
 			}
 
 			if(id >= self.sparseToDenseIndex.items.len) {
@@ -1983,7 +1983,7 @@ test "SparseSet/set at zero" {
 
 	const index = 0;
 
-	set.set(main.heap.testingAllocator, index, 5);
+	try set.set(main.heap.testingAllocator, index, 5);
 	try std.testing.expectEqual(set.get(index).?.*, 5);
 }
 
@@ -1993,7 +1993,7 @@ test "SparseSet/set at 100" {
 
 	const index = 100;
 
-	set.set(main.heap.testingAllocator, index, 5);
+	try set.set(main.heap.testingAllocator, index, 5);
 	try std.testing.expectEqual(set.get(index).?.*, 5);
 }
 
@@ -2006,8 +2006,8 @@ test "SparseSet/remove first" {
 	const firstId = 0;
 	const secondId = 1;
 
-	set.set(main.heap.testingAllocator, firstId, 5);
-	set.set(main.heap.testingAllocator, secondId, expectSecond);
+	try set.set(main.heap.testingAllocator, firstId, 5);
+	try set.set(main.heap.testingAllocator, secondId, expectSecond);
 
 	try set.remove(firstId);
 
@@ -2018,7 +2018,7 @@ test "SparseSet/remove last" {
 	var set: SparseSet(u32, u32) = .{};
 	defer set.deinit(main.heap.testingAllocator);
 
-	set.set(main.heap.testingAllocator, 0, 5);
+	try set.set(main.heap.testingAllocator, 0, 5);
 
 	try set.remove(0);
 }
@@ -2034,7 +2034,7 @@ test "SparseSet/remove entry twice" {
 	var set: SparseSet(u32, u32) = .{};
 	defer set.deinit(main.heap.testingAllocator);
 
-	set.set(main.heap.testingAllocator, 0, 5);
+	try set.set(main.heap.testingAllocator, 0, 5);
 
 	try set.remove(0);
 	try std.testing.expectError(error.ElementNotFound, set.remove(0));
@@ -2050,12 +2050,12 @@ test "SparseSet/reusing" {
 	const firstId = 0;
 	const secondId = 1;
 
-	set.set(main.heap.testingAllocator, firstId, 5);
-	set.set(main.heap.testingAllocator, secondId, expectSecond);
+	try set.set(main.heap.testingAllocator, firstId, 5);
+	try set.set(main.heap.testingAllocator, secondId, expectSecond);
 
 	try set.remove(firstId);
 
-	set.set(main.heap.testingAllocator, firstId, expectNew);
+	try set.set(main.heap.testingAllocator, firstId, expectNew);
 
 	try std.testing.expectEqual(set.get(secondId).?.*, expectSecond);
 	try std.testing.expectEqual(set.get(firstId).?.*, expectNew);
@@ -2065,10 +2065,11 @@ test "SparseSet/too many" {
 	var set: SparseSet(u32, u2) = .{};
 	defer set.deinit(main.heap.testingAllocator);
 
-	set.set(main.heap.testingAllocator, 0, 0);
-	set.set(main.heap.testingAllocator, 1, 1);
-	set.set(main.heap.testingAllocator, 2, 2);
-	set.set(main.heap.testingAllocator, 3, 3);
+	try set.set(main.heap.testingAllocator, 0, 0);
+	try set.set(main.heap.testingAllocator, 1, 1);
+	try set.set(main.heap.testingAllocator, 2, 2);
+	
+	try std.testing.expectError(error.TooMany, set.set(main.heap.testingAllocator, 3, 3));
 
 	try std.testing.expectEqual(set.sparseToDenseIndex.items.len, 3);
 	try std.testing.expectEqual(set.dense.items.len, 3);
