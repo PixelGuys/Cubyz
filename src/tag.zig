@@ -34,6 +34,10 @@ pub const Tag = enum(u32) {
 		loadDefaults();
 	}
 
+	pub fn get(tag: []const u8) ?Tag {
+		return tagIds.get(tag);
+	}
+
 	pub fn find(tag: []const u8) Tag {
 		if(tagIds.get(tag)) |res| return res;
 		const result: Tag = @enumFromInt(tagList.items.len);
