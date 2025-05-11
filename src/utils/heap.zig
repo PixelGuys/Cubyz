@@ -4,7 +4,7 @@ const Allocator = std.mem.Allocator;
 const main = @import("main");
 
 var testingErrorHandlingAllocator = ErrorHandlingAllocator.init(std.testing.allocator);
-pub var testingAllocator = testingErrorHandlingAllocator.allocator();
+pub const testingAllocator = testingErrorHandlingAllocator.allocator();
 
 /// Allows for stack-like allocations in a fast and safe way.
 /// It is safe in the sense that a regular allocator will be used when the buffer is full.
