@@ -1303,9 +1303,9 @@ pub const Protocols = struct {
 
 			const exploded = main.utils.Array3D(bool).init(main.stackAllocator, diameter, diameter, diameter);
 			defer exploded.deinit(main.stackAllocator);
-			for(exploded.mem) |*e| {
-				e.* = false;
-			}
+			@memset(exploded.mem, false);
+			
+			var explosionSeed: u64 = @bitCast(std.time.milliTimestamp());
 
 			for(0..numSamples) |i| {
 				const z = 1 - 2*@as(f32, @floatFromInt(i))/@as(f32, @floatFromInt(numSamples));
@@ -1324,13 +1324,13 @@ pub const Protocols = struct {
 					const yOffset: i32 = @intFromFloat(y*distance);
 					const zOffset: i32 = @intFromFloat(z*distance);
 
-					const p = pos + Vec3i{xOffset, yOffset, zOffset};
+					const p = pos +| Vec3i{xOffset, yOffset, zOffset};
 
 					var oldBlock = main.server.world.?.getBlock(p[0], p[1], p[2]) orelse continue;
 					if(oldBlock.typ == 0) continue;
 
-					if(damage < oldBlock.blockResistance()) break;
-					damage -= oldBlock.blockHealth();
+					if(damage < oldBlock.blockHealth() + oldBlock.blockResistance()) break;
+					damage -= oldBlock.blockHealth() + oldBlock.blockResistance();
 
 					const xCentered: usize = @intCast(xOffset + @as(i32, @intCast(diameter/2)));
 					const yCentered: usize = @intCast(yOffset + @as(i32, @intCast(diameter/2)));
@@ -1338,18 +1338,18 @@ pub const Protocols = struct {
 
 					exploded.set(xCentered, yCentered, zCentered, true);
 
-					damage -= strength/@as(f32, @floatFromInt(radiusInt));
+					damage -= strength/@as(f32, @floatFromInt(radiusInt)) + main.random.nextFloat(&explosionSeed)*0.5;
 				}
 			}
 
 			for(0..diameter) |_x| {
-				const x = @as(i32, @intCast(_x)) + pos[0] - @as(i32, @intCast(diameter/2));
+				const x = @as(i32, @intCast(_x)) +| pos[0] -| @as(i32, @intCast(diameter/2));
 
 				for(0..diameter) |_y| {
-					const y = @as(i32, @intCast(_y)) + pos[1] - @as(i32, @intCast(diameter/2));
+					const y = @as(i32, @intCast(_y)) +| pos[1] -| @as(i32, @intCast(diameter/2));
 
 					for(0..diameter) |_z| {
-						const z = @as(i32, @intCast(_z)) + pos[2] - @as(i32, @intCast(diameter/2));
+						const z = @as(i32, @intCast(_z)) +| pos[2] -| @as(i32, @intCast(diameter/2));
 						if(exploded.get(_x, _y, _z)) {
 							_ = main.server.world.?.cmpxchgBlock(x, y, z, null, .{.typ = 0, .data = 0});
 						}
