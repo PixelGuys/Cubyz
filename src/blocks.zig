@@ -259,7 +259,7 @@ pub fn getBlockData(idLikeString: []const u8) !?u16 {
 	const addonNameSeparatorIndex = std.mem.indexOfScalar(u8, idLikeString, ':') orelse return error.MissingAddonNameSeparator;
 	const blockIdEndIndex = std.mem.indexOfScalarPos(u8, idLikeString, 1 + addonNameSeparatorIndex, ':') orelse return null;
 	const dataString = idLikeString[blockIdEndIndex + 1 ..];
-	if(dataString.len == 0) return null;
+	if(dataString.len == 0) return error.EmptyDataString;
 	return std.fmt.parseInt(u16, dataString, 0) catch return error.InvalidData;
 }
 
@@ -487,7 +487,7 @@ pub const meshes = struct { // MARK: meshes
 	const emptyImage = Image{.width = 1, .height = 1, .imageData = emptyTexture[0..]};
 
 	pub fn init() void {
-		animationComputePipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/animation_pre_processing.glsl", "", &animationUniforms);
+		animationComputePipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/animation_pre_processing.comp", "", &animationUniforms);
 		blockTextureArray = .init();
 		emissionTextureArray = .init();
 		reflectivityAndAbsorptionTextureArray = .init();
