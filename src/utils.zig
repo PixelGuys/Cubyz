@@ -1936,7 +1936,7 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 		pub fn set(self: *Self, allocator: NeverFailingAllocator, id: IdType, value: T) void {
 			const denseId: Index = @enumFromInt(self.dense.items.len);
 
-			if (denseId == .noValue) {
+			if(denseId == .noValue) {
 				return;
 			}
 
