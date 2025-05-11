@@ -32,7 +32,6 @@ pub fn copy(self: *Transform) Transform {
 	};
 }
 
-pub fn createFromDefaults(self: *Transform, entityId: u32) void {
+pub fn createFromDefaults(self: *Transform) void {
 	self.interpolation.init(@ptrCast(&self.pos), @ptrCast(&self.vel));
-	self.entityId = entityId;
 }

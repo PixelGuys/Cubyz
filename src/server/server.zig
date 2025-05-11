@@ -261,23 +261,17 @@ pub const User = struct { // MARK: User
 	fn sendRawMessage(self: *User, msg: []const u8) void {
 		main.network.Protocols.chat.send(self.conn, msg);
 	}
-	pub inline fn getComponent(self: *User, comptime component: main.ecs.Components) *align(32) anyopaque {
-		return main.ecs.getComponent(self.id, component);
-	}
 	pub inline fn getTransform(self: *User) *main.ecs.componentlist.transform {
-		return @ptrCast(self.getComponent(.transform));
+		return @ptrCast(@alignCast(main.ecs.getComponent(self.id, .transform)));
 	}
 	pub inline fn getHealth(self: *User) *main.ecs.componentlist.health {
-		return @ptrCast(self.getComponent(.transform));
+		return @ptrCast(@alignCast(main.ecs.getComponent(self.id, .health)));
 	}
 	pub inline fn getEnergy(self: *User) *main.ecs.componentlist.energy {
-		return @ptrCast(self.getComponent(.transform));
+		return @ptrCast(@alignCast(main.ecs.getComponent(self.id, .energy)));
 	}
 	pub inline fn getName(self: *User) *main.ecs.componentlist.name {
-		return @ptrCast(self.getComponent(.transform));
-	}
-	pub inline fn getEntity(self: *User) *Entity {
-		return world.?.getEntity(self.id) catch unreachable;
+		return @ptrCast(@alignCast(main.ecs.getComponent(self.id, .name)));
 	}
 };
 
