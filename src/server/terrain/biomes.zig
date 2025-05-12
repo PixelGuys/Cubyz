@@ -600,7 +600,7 @@ pub const TreeNode = union(enum) { // MARK: TreeNode
 var finishedLoading: bool = false;
 var biomes: main.List(Biome) = undefined;
 var caveBiomes: main.List(Biome) = undefined;
-var biomesById: std.StringHashMap(*Biome) = undefined;
+pub var biomesById: std.StringHashMap(*Biome) = undefined;
 var biomesByIndex: main.ListUnmanaged(*Biome) = .{};
 pub var byTypeBiomes: *TreeNode = undefined;
 

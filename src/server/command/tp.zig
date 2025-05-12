@@ -9,19 +9,19 @@ pub const usage = "/tp <x> <y>\n/tp <x> <y> <z>\n/tp <biome>";
 const Parser = main.argparse.Parser;
 const BiomeId = main.argparse.BiomeId;
 
-const Args = union(enum) {
+const ArgParser = Parser(union(enum) {
 	@"tp to xyz": struct {x: f64, y: f64, z: ?f64},
 	@"tp to biome": struct {biomeId: BiomeId},
-};
-const ArgParser = Parser(Args, null);
+});
 
 pub fn execute(args: []const u8, source: *User) void {
-	const result = ArgParser.parse(main.stackAllocator, args) catch |err| {
-		source.sendMessage("#ff0000Error executing command: {s}", .{@errorName(err)});
-		return;
-	};
+	const result = ArgParser.parse(main.stackAllocator, args);
+	defer result.deinit(main.stackAllocator);
+
 	if(result == .failure) {
-		source.sendMessage("#ff0000{s}", .{result.failure.message});
+		for(result.failure.messages.items) |message| {
+			source.sendMessage("#ff0000{s}", .{message});
+		}
 		return;
 	}
 	switch(result.success) {
