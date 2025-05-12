@@ -1945,8 +1945,8 @@ pub fn NamedCallbacks(comptime Child: type, comptime Function: type) type {
 
 		hashMap: std.StringHashMap(*const Function) = undefined,
 
-		pub fn init(_allocator: std.mem.Allocator) Self {
-			var self = Self{.hashMap = .init(_allocator)};
+		pub fn init() Self {
+			var self = Self{.hashMap = .init(main.globalAllocator.allocator)};
 			inline for(@typeInfo(Child).@"struct".decls) |declaration| {
 				if(@TypeOf(@field(Child, declaration.name)) == Function) {
 					std.log.debug("Registered Callback '{s}'", .{declaration.name});
@@ -1979,7 +1979,9 @@ test "Callback registers testFunction and expects errors" {
 	};
 	var testFunctions: NamedCallbacks(TestFunctions, TestFunction) = undefined;
 
-	testFunctions = .init(std.testing.allocator);
+	var testingEHA = main.heap.ErrorHandlingAllocator.init(std.testing.allocator);
+	const testingAllocator = testingEHA.allocator();
+	testFunctions = .init(testingAllocator);
 	defer testFunctions.deinit();
 
 	try std.testing.expect(testFunctions.hashMap.count() == 1);

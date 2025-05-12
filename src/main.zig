@@ -609,10 +609,10 @@ pub fn main() void { // MARK: main()
 	entity_data.init();
 	defer entity_data.deinit();
 
-	blocks.tickFunctions = .init(globalAllocator.allocator);
+	blocks.tickFunctions = .init();
 	defer blocks.tickFunctions.deinit();
 
-	blocks.touchFunctions = .init(globalAllocator.allocator);
+	blocks.touchFunctions = .init();
 	defer blocks.touchFunctions.deinit();
 
 	models.init();
