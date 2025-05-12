@@ -221,7 +221,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.startQuery(.chunk_rendering_preparation);
 	const direction = crosshairDirection(game.camera.viewMatrix, lastFov, lastWidth, lastHeight);
 	MeshSelection.select(playerPos, direction, game.Player.inventory.getItem(game.Player.selectedSlot));
-	MeshSelection.render(game.projectionMatrix, game.camera.viewMatrix, playerPos);
 
 	chunk_meshing.beginRender();
 
@@ -240,6 +239,8 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	itemdrop.ItemDropRenderer.renderItemDrops(game.projectionMatrix, ambientLight, playerPos);
 	gpu_performance_measuring.stopQuery();
+
+	MeshSelection.render(game.projectionMatrix, game.camera.viewMatrix, playerPos);
 
 	// Render transparent chunk meshes:
 	worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE5);
@@ -854,13 +855,9 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			"assets/cubyz/shaders/block_selection_fragment.frag",
 			"",
 			&uniforms,
-			.{.depthBias = .{
-				.slopeFactor = -2,
-				.clamp = 0,
-				.constantFactor = 0,
-			}},
+			.{.cullMode = .none},
 			.{.depthTest = true, .depthWrite = true},
-			.{.attachments = &.{.noBlending}},
+			.{.attachments = &.{.alphaBlending}},
 		);
 	}
 
@@ -1120,14 +1117,10 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		);
 		c.glUniform3f(uniforms.lowerBounds, min[0], min[1], min[2]);
 		c.glUniform3f(uniforms.upperBounds, max[0], max[1], max[2]);
-		c.glUniform1f(uniforms.lineSize, 1.0/64.0);
+		c.glUniform1f(uniforms.lineSize, 1.0/128.0);
 
 		c.glBindVertexArray(main.renderer.chunk_meshing.vao);
-		const model = models.getModelIndex("cubyz:cube").model();
-		for(model.neighborFacingQuads) |quadIndices| {
-			std.debug.assert(quadIndices.len == 1);
-			c.glDrawElementsBaseVertex(c.GL_TRIANGLES, 6, c.GL_UNSIGNED_INT, null, quadIndices[0].index*4);
-		}
+		c.glDrawElements(c.GL_TRIANGLES, 24*24, c.GL_UNSIGNED_INT, null);
 	}
 
 	pub fn render(projectionMatrix: Mat4f, viewMatrix: Mat4f, playerPos: Vec3d) void {
