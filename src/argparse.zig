@@ -45,13 +45,13 @@ pub fn Parser(comptime T: type) type {
 				}
 
 				@field(result, field.name) = resolveArgument(field.type, _arg) catch |err| {
-					const message = std.fmt.allocPrint(allocator.allocator, "Failed to parse argument {} due to error {s} (offset {})\n", .{count, @errorName(err), offset}) catch unreachable;
+					const message = std.fmt.allocPrint(allocator.allocator, "Failed to parse argument {} due to error {s} (offset {})", .{count, @errorName(err), offset}) catch unreachable;
 					return .initWithFailure(allocator, message);
 				};
 			}
 
 			if(split.next() != null) {
-				return .initWithFailure(allocator, std.fmt.allocPrint(allocator.allocator, "Too many arguments for command, expected {}\n", .{count}) catch unreachable);
+				return .initWithFailure(allocator, std.fmt.allocPrint(allocator.allocator, "Too many arguments for command, expected {}", .{count}) catch unreachable);
 			}
 
 			return .{.success = result};
@@ -99,7 +99,7 @@ pub fn Parser(comptime T: type) type {
 		}
 
 		fn parseUnion(comptime u: std.builtin.Type.Union, allocator: NeverFailingAllocator, args: []const u8) ParseResult(T) {
-			var result: ParseResult(T) = .initWithFailure(allocator, allocator.dupe(u8, "Provided argument list didn't match any of the valid alternative interpretations of command argument list.\n"));
+			var result: ParseResult(T) = .initWithFailure(allocator, allocator.dupe(u8, "Provided argument list didn't match any of the valid alternative interpretations of command argument list."));
 
 			inline for(u.fields) |field| {
 				var fieldResult = Parser(field.type).resolve(false, allocator, args);
@@ -109,6 +109,7 @@ pub fn Parser(comptime T: type) type {
 					result.deinit(allocator);
 					return .{.success = @unionInit(T, field.name, fieldResult.success)};
 				}
+				result.failure.messages.append(allocator, std.fmt.allocPrint(allocator.allocator, "\n{s}", .{field.name}) catch unreachable);
 				result.failure.takeMessages(allocator, &fieldResult.failure);
 			}
 
@@ -156,8 +157,7 @@ pub fn ParseResult(comptime SuccessT: type) type {
 		success: SuccessT,
 
 		pub fn initWithFailure(allocator: NeverFailingAllocator, message: []const u8) Self {
-			var self: Self = .{.failure = .{.messages = .{}}};
-			self.failure.messages.initCapacity(allocator, 1);
+			var self: Self = .{.failure = .{.messages = .initCapacity(allocator, 1)}};
 			self.failure.messages.append(allocator, message);
 			return self;
 		}
@@ -193,6 +193,7 @@ pub const BiomeId = struct {
 	id: []const u8,
 
 	pub fn parse(arg: []const u8) !BiomeId {
+		if(!main.server.terrain.biomes.biomesById.contains(arg)) return error.InvalidBiomeId;
 		return .{.id = arg};
 	}
 
