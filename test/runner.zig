@@ -381,7 +381,7 @@ pub fn fuzz(
 	const global = struct {
 		var ctx: @TypeOf(context) = undefined;
 
-		fn fuzzer_one(input_ptr: [*]const u8, input_len: usize) callconv(.c) void {
+		fn fuzzer_one(input_ptr: [*]const u8, input_len: usize) callconv(.C) void {
 			@disableInstrumentation();
 			testing.allocator_instance = .{};
 			defer if(testing.allocator_instance.deinit() == .leak) std.process.exit(1);
