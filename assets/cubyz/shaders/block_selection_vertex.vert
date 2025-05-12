@@ -75,7 +75,7 @@ void main() {
 	vec3 lineCenter = (lineStart + lineEnd)/2*(upperBounds - lowerBounds);
 
 	vec3 offsetVector = vec3(lineSize);
-	offsetVector += vec3(notEqual(lineStart, lineEnd))*(upperBounds.x - lowerBounds.x)/2;
+	offsetVector += vec3(notEqual(lineStart, lineEnd))*(upperBounds - lowerBounds)/2;
 
 	vec3 vertexPos = lineCenter + offsetVertices[vertexIndex]*offsetVector;
 	vec4 mvPos = viewMatrix*vec4(lowerBounds + vertexPos + modelPosition, 1);
