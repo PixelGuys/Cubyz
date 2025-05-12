@@ -85,11 +85,7 @@ pub fn execute(args: []const u8, source: *User) void {
 		.@"tp to xyz" => |params| {
 			var x = params.x;
 			var y = params.y;
-			var z = params.z;
-
-			if(z == null) {
-				z = source.player.pos[2];
-			}
+			var z = params.z orelse source.player.pos[2];
 			x = std.math.clamp(x, -1e9, 1e9); // TODO: Remove after #310 is implemented
 			y = std.math.clamp(y, -1e9, 1e9);
 			z = std.math.clamp(z.?, -1e9, 1e9);
