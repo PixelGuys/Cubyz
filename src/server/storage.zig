@@ -274,7 +274,8 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 			for(0..chunk.chunkVolume) |i| {
 				uncompressedData[i] = @intCast(ch.data.data.getValue(i));
 				if(allowLossy) {
-					if(ch.data.palette[uncompressedData[i]].solid()) {
+					const model = main.blocks.meshes.model(ch.data.palette[uncompressedData[i]]).model();
+					if(model.allNeighborsOccluded) {
 						solidMask[i >> 5] |= @as(u32, 1) << @intCast(i & 31);
 					} else {
 						solidMask[i >> 5] &= ~(@as(u32, 1) << @intCast(i & 31));

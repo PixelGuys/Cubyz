@@ -5,7 +5,6 @@
 	.absorbedLight = 0x000000,
 	.viewThrough = true,
 	.hasBackFace = true,
-	.solid = true,
 	.rotation = .no_rotation,
 	.degradable = false,
 	.collide = false,
