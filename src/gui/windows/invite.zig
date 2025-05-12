@@ -59,18 +59,8 @@ fn copyIp(_: usize) void {
 	main.Window.setClipboardString(ipAddress);
 }
 
-fn inviteFromExternal(address: main.network.Address) void {
-	const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{}", .{address}) catch unreachable;
-	defer main.stackAllocator.free(ip);
-	const user = main.server.User.initAndIncreaseRefCount(main.server.connectionManager, ip) catch |err| {
-		std.log.err("Cannot connect user from external IP {}: {s}", .{address, @errorName(err)});
-		return;
-	};
-	user.decreaseRefCount();
-}
-
 fn makePublic(public: bool) void {
-	main.server.connectionManager.newConnectionCallback.store(if(public) &inviteFromExternal else null, .monotonic);
+	main.server.connectionManager.allowNewConnections.store(public, .monotonic);
 }
 
 pub fn onOpen() void {
@@ -80,11 +70,11 @@ pub fn onOpen() void {
 	ipAddressLabel = Label.init(.{0, 0}, width, "                      ", .center);
 	list.add(ipAddressLabel);
 	list.add(Button.initText(.{0, 0}, 100, "Copy IP", .{.callback = &copyIp}));
-	ipAddressEntry = TextInput.init(.{0, 0}, width, 32, settings.lastUsedIPAddress, .{.callback = &invite});
+	ipAddressEntry = TextInput.init(.{0, 0}, width, 32, settings.lastUsedIPAddress, .{.callback = &invite}, .{});
 	list.add(ipAddressEntry);
 	list.add(Button.initText(.{0, 0}, 100, "Invite", .{.callback = &invite}));
 	list.add(Button.initText(.{0, 0}, 100, "Manage Players", gui.openWindowCallback("manage_players")));
-	list.add(CheckBox.init(.{0, 0}, width, "Allow anyone to join (requires a publicly visible IP address+port which may need some configuration in your router)", main.server.connectionManager.newConnectionCallback.load(.monotonic) != null, &makePublic));
+	list.add(CheckBox.init(.{0, 0}, width, "Allow anyone to join (requires a publicly visible IP address+port which may need some configuration in your router)", main.server.connectionManager.allowNewConnections.load(.monotonic), &makePublic));
 	list.finish(.center);
 	window.rootComponent = list.toComponent();
 	window.contentSize = window.rootComponent.?.pos() + window.rootComponent.?.size() + @as(Vec2f, @splat(padding));

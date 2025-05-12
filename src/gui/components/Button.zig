@@ -3,7 +3,6 @@ const std = @import("std");
 const main = @import("main");
 const graphics = main.graphics;
 const draw = graphics.draw;
-const Shader = graphics.Shader;
 const TextBuffer = graphics.TextBuffer;
 const Texture = graphics.Texture;
 const vec = main.vec;
@@ -44,15 +43,13 @@ const Textures = struct {
 var normalTextures: Textures = undefined;
 var hoveredTextures: Textures = undefined;
 var pressedTextures: Textures = undefined;
-pub var shader: Shader = undefined;
+pub var pipeline: graphics.Pipeline = undefined;
 pub var buttonUniforms: struct {
 	screen: c_int,
 	start: c_int,
 	size: c_int,
 	color: c_int,
 	scale: c_int,
-
-	image: c_int,
 } = undefined;
 
 pos: Vec2f,
@@ -63,16 +60,22 @@ onAction: gui.Callback,
 child: GuiComponent,
 
 pub fn __init() void {
-	shader = Shader.initAndGetUniforms("assets/cubyz/shaders/ui/button.vs", "assets/cubyz/shaders/ui/button.fs", "", &buttonUniforms);
-	shader.bind();
-	graphics.c.glUniform1i(buttonUniforms.image, 0);
+	pipeline = graphics.Pipeline.init(
+		"assets/cubyz/shaders/ui/button.vert",
+		"assets/cubyz/shaders/ui/button.frag",
+		"",
+		&buttonUniforms,
+		.{.cullMode = .none},
+		.{.depthTest = false, .depthWrite = false},
+		.{.attachments = &.{.alphaBlending}},
+	);
 	normalTextures = Textures.init("assets/cubyz/ui/button");
 	hoveredTextures = Textures.init("assets/cubyz/ui/button_hovered");
 	pressedTextures = Textures.init("assets/cubyz/ui/button_pressed");
 }
 
 pub fn __deinit() void {
-	shader.deinit();
+	pipeline.deinit();
 	normalTextures.deinit();
 	hoveredTextures.deinit();
 	pressedTextures.deinit();
@@ -139,7 +142,7 @@ pub fn render(self: *Button, mousePosition: Vec2f) void {
 		normalTextures;
 	draw.setColor(0xff000000);
 	textures.texture.bindTo(0);
-	shader.bind();
+	pipeline.bind(draw.getScissor());
 	self.hovered = false;
 	draw.customShadedRect(buttonUniforms, self.pos + Vec2f{2, 2}, self.size - Vec2f{4, 4});
 	{ // Draw the outline using the 9-slice texture.

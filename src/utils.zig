@@ -319,13 +319,156 @@ pub fn Array3D(comptime T: type) type { // MARK: Array3D
 	};
 }
 
+pub fn FixedSizeCircularBuffer(T: type, capacity: comptime_int) type { // MARK: FixedSizeCircularBuffer
+	std.debug.assert(capacity - 1 & capacity == 0 and capacity > 0);
+	const mask = capacity - 1;
+	return struct {
+		const Self = @This();
+		mem: *[capacity]T = undefined,
+		startIndex: usize = 0,
+		len: usize = 0,
+
+		pub fn init(allocator: NeverFailingAllocator) Self {
+			return .{
+				.mem = allocator.create([capacity]T),
+			};
+		}
+
+		pub fn deinit(self: Self, allocator: NeverFailingAllocator) void {
+			allocator.destroy(self.mem);
+		}
+
+		pub fn peekFront(self: Self) ?T {
+			if(self.len == 0) return null;
+			return self.mem[self.startIndex + self.len - 1 & mask];
+		}
+
+		pub fn peekBack(self: Self) ?T {
+			if(self.len == 0) return null;
+			return self.mem[self.startIndex];
+		}
+
+		pub fn enqueueFront(self: *Self, elem: T) !void {
+			if(self.len >= capacity) return error.OutOfMemory;
+			self.enqueueFrontAssumeCapacity(elem);
+		}
+
+		pub fn forceEnqueueFront(self: *Self, elem: T) ?T {
+			const result = if(self.len >= capacity) self.dequeueBack() else null;
+			self.enqueueFrontAssumeCapacity(elem);
+			return result;
+		}
+
+		pub fn enqueueFrontAssumeCapacity(self: *Self, elem: T) void {
+			self.mem[self.startIndex + self.len & mask] = elem;
+			self.len += 1;
+		}
+
+		pub fn enqueue(self: *Self, elem: T) !void {
+			return self.enqueueFront(elem);
+		}
+
+		pub fn enqueueBack(self: *Self, elem: T) !void {
+			if(self.len >= capacity) return error.OutOfMemory;
+			self.enqueueBackAssumeCapacity(elem);
+		}
+
+		pub fn enqueueBackAssumeCapacity(self: *Self, elem: T) void {
+			self.startIndex = (self.startIndex -% 1) & mask;
+			self.mem[self.startIndex] = elem;
+			self.len += 1;
+		}
+
+		pub fn forceEnqueueBack(self: *Self, elem: T) ?T {
+			const result = if(self.len >= capacity) self.dequeueFront() else null;
+			self.enqueueBackAssumeCapacity(elem);
+			return result;
+		}
+
+		pub fn enqueueSlice(self: *Self, elems: []const T) !void {
+			if(elems.len + self.len > capacity) {
+				return error.OutOfMemory;
+			}
+			const start = self.startIndex + self.len & mask;
+			const end = start + elems.len;
+			if(end < self.mem.len) {
+				@memcpy(self.mem[start..end], elems);
+			} else {
+				const mid = self.mem.len - start;
+				@memcpy(self.mem[start..], elems[0..mid]);
+				@memcpy(self.mem[0 .. end & mask], elems[mid..]);
+			}
+			self.len += elems.len;
+		}
+
+		pub fn insertSliceAtOffset(self: *Self, elems: []const T, offset: usize) !void {
+			if(offset + elems.len > capacity) {
+				return error.OutOfMemory;
+			}
+			self.len = @max(self.len, offset + elems.len);
+			const start = self.startIndex + offset & mask;
+			const end = start + elems.len;
+			if(end < self.mem.len) {
+				@memcpy(self.mem[start..end], elems);
+			} else {
+				const mid = self.mem.len - start;
+				@memcpy(self.mem[start..], elems[0..mid]);
+				@memcpy(self.mem[0 .. end & mask], elems[mid..]);
+			}
+		}
+
+		pub fn dequeue(self: *Self) ?T {
+			return self.dequeueBack();
+		}
+
+		pub fn dequeueFront(self: *Self) ?T {
+			if(self.len == 0) return null;
+			self.len -= 1;
+			return self.mem[self.startIndex + self.len & mask];
+		}
+
+		pub fn dequeueBack(self: *Self) ?T {
+			if(self.len == 0) return null;
+			const result = self.mem[self.startIndex];
+			self.startIndex = (self.startIndex + 1) & mask;
+			self.len -= 1;
+			return result;
+		}
+
+		pub fn dequeueSlice(self: *Self, out: []T) !void {
+			if(out.len > self.len) return error.OutOfBounds;
+			const start = self.startIndex;
+			const end = start + out.len;
+			if(end < self.mem.len) {
+				@memcpy(out, self.mem[start..end]);
+			} else {
+				const mid = self.mem.len - start;
+				@memcpy(out[0..mid], self.mem[start..]);
+				@memcpy(out[mid..], self.mem[0 .. end & mask]);
+			}
+			self.startIndex = self.startIndex + out.len & mask;
+			self.len -= out.len;
+		}
+
+		pub fn discardElements(self: *Self, n: usize) void {
+			self.len -= n;
+			self.startIndex = (self.startIndex + n) & mask;
+		}
+
+		pub fn getAtOffset(self: Self, i: usize) ?T {
+			if(i >= self.len) return null;
+			return self.mem[(self.startIndex + i) & mask];
+		}
+	};
+}
+
 pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 	return struct {
 		const Self = @This();
 		mem: []T,
 		mask: usize,
 		startIndex: usize,
-		endIndex: usize,
+		len: usize,
 		allocator: NeverFailingAllocator,
 
 		pub fn init(allocator: NeverFailingAllocator, initialCapacity: usize) Self {
@@ -335,7 +478,7 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 				.mem = allocator.alloc(T, initialCapacity),
 				.mask = initialCapacity - 1,
 				.startIndex = 0,
-				.endIndex = 0,
+				.len = 0,
 				.allocator = allocator,
 			};
 		}
@@ -344,44 +487,71 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 			self.allocator.free(self.mem);
 		}
 
+		pub fn reset(self: *Self) void {
+			self.len = 0;
+		}
+
 		fn increaseCapacity(self: *Self) void {
 			const newMem = self.allocator.alloc(T, self.mem.len*2);
 			@memcpy(newMem[0..(self.mem.len - self.startIndex)], self.mem[self.startIndex..]);
-			@memcpy(newMem[(self.mem.len - self.startIndex)..][0..self.endIndex], self.mem[0..self.endIndex]);
+			@memcpy(newMem[(self.mem.len - self.startIndex)..][0..self.startIndex], self.mem[0..self.startIndex]);
 			self.startIndex = 0;
-			self.endIndex = self.mem.len;
 			self.allocator.free(self.mem);
 			self.mem = newMem;
 			self.mask = self.mem.len - 1;
 		}
 
 		pub fn enqueue(self: *Self, elem: T) void {
-			self.mem[self.endIndex] = elem;
-			self.endIndex = (self.endIndex + 1) & self.mask;
-			if(self.endIndex == self.startIndex) {
+			if(self.len == self.mem.len) {
 				self.increaseCapacity();
 			}
+			self.mem[self.startIndex + self.len & self.mask] = elem;
+			self.len += 1;
+		}
+
+		pub fn enqueueSlice(self: *Self, elems: []const T) void {
+			while(elems.len + self.len > self.mem.len) {
+				self.increaseCapacity();
+			}
+			const start = self.startIndex + self.len & self.mask;
+			const end = start + elems.len;
+			if(end < self.mem.len) {
+				@memcpy(self.mem[start..end], elems);
+			} else {
+				const mid = self.mem.len - start;
+				@memcpy(self.mem[start..], elems[0..mid]);
+				@memcpy(self.mem[0 .. end & self.mask], elems[mid..]);
+			}
+			self.len += elems.len;
 		}
 
 		pub fn enqueue_back(self: *Self, elem: T) void {
-			self.startIndex = (self.startIndex -% 1) & self.mask;
-			self.mem[self.startIndex] = elem;
-			if(self.endIndex == self.startIndex) {
+			if(self.len == self.mem.len) {
 				self.increaseCapacity();
 			}
+			self.startIndex = (self.startIndex -% 1) & self.mask;
+			self.mem[self.startIndex] = elem;
+			self.len += 1;
 		}
 
 		pub fn dequeue(self: *Self) ?T {
 			if(self.empty()) return null;
 			const result = self.mem[self.startIndex];
 			self.startIndex = (self.startIndex + 1) & self.mask;
+			self.len -= 1;
 			return result;
 		}
 
 		pub fn dequeue_front(self: *Self) ?T {
 			if(self.empty()) return null;
-			self.endIndex = (self.endIndex -% 1) & self.mask;
-			return self.mem[self.endIndex];
+			self.len -= 1;
+			return self.mem[self.startIndex + self.len & self.mask];
+		}
+
+		pub fn discard(self: *Self, amount: usize) !void {
+			if(amount > self.len) return error.OutOfBounds;
+			self.startIndex = (self.startIndex + amount) & self.mask;
+			self.len -= amount;
 		}
 
 		pub fn peek(self: *Self) ?T {
@@ -389,12 +559,30 @@ pub fn CircularBufferQueue(comptime T: type) type { // MARK: CircularBufferQueue
 			return self.mem[self.startIndex];
 		}
 
+		pub fn getSliceAtOffset(self: Self, offset: usize, result: []T) !void {
+			if(offset + result.len > self.len) return error.OutOfBounds;
+			const start = self.startIndex + offset & self.mask;
+			const end = start + result.len;
+			if(end < self.mem.len) {
+				@memcpy(result, self.mem[start..end]);
+			} else {
+				const mid = self.mem.len - start;
+				@memcpy(result[0..mid], self.mem[start..]);
+				@memcpy(result[mid..], self.mem[0 .. end & self.mask]);
+			}
+		}
+
+		pub fn getAtOffset(self: Self, offset: usize) !T {
+			if(offset >= self.len) return error.OutOfBounds;
+			return self.mem[(self.startIndex + offset) & self.mask];
+		}
+
 		pub fn empty(self: *Self) bool {
-			return self.startIndex == self.endIndex;
+			return self.len == 0;
 		}
 
 		pub fn reachedCapacity(self: *Self) bool {
-			return self.startIndex == (self.endIndex + 1) & self.mask;
+			return self.len == self.mem.len;
 		}
 	};
 }

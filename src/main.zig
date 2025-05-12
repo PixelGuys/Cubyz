@@ -23,6 +23,8 @@ pub const random = @import("random.zig");
 pub const renderer = @import("renderer.zig");
 pub const rotation = @import("rotation.zig");
 pub const settings = @import("settings.zig");
+const tag = @import("tag.zig");
+pub const Tag = tag.Tag;
 pub const utils = @import("utils.zig");
 pub const vec = @import("vec.zig");
 pub const ZonElement = @import("zon.zig").ZonElement;
@@ -301,6 +303,7 @@ fn openChat() void {
 	gui.windowlist.chat.input.select();
 }
 fn openCommand() void {
+	if(game.world == null) return;
 	openChat();
 	gui.windowlist.chat.input.clear();
 	gui.windowlist.chat.input.inputCharacter('/');
@@ -618,6 +621,9 @@ pub fn main() void { // MARK: main()
 	itemdrop.ItemDropRenderer.init();
 	defer itemdrop.ItemDropRenderer.deinit();
 
+	tag.init();
+	defer tag.deinit();
+
 	assets.init();
 	defer assets.deinit();
 
@@ -646,11 +652,6 @@ pub fn main() void { // MARK: main()
 
 	const c = Window.c;
 
-	c.glCullFace(c.GL_BACK);
-	c.glEnable(c.GL_BLEND);
-	c.glEnable(c.GL_DEPTH_CLAMP);
-	c.glDepthFunc(c.GL_LESS);
-	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
 	var lastBeginRendering = std.time.nanoTimestamp();
 
@@ -667,6 +668,9 @@ pub fn main() void { // MARK: main()
 			c.glfwSwapBuffers(Window.window);
 			// Clear may also wait on vsync, so it's done before handling events:
 			gui.windowlist.gpu_performance_measuring.startQuery(.screenbuffer_clear);
+			c.glDepthFunc(c.GL_LESS);
+			c.glDepthMask(c.GL_TRUE);
+			c.glDisable(c.GL_SCISSOR_TEST);
 			c.glClearColor(0.5, 1, 1, 1);
 			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
 			gui.windowlist.gpu_performance_measuring.stopQuery();
@@ -701,13 +705,9 @@ pub fn main() void { // MARK: main()
 		}
 
 		if(!isHidden) {
-			c.glEnable(c.GL_CULL_FACE);
-			c.glEnable(c.GL_DEPTH_TEST);
 			renderer.render(game.Player.getEyePosBlocking(), deltaTime);
 			// Render the GUI
 			gui.windowlist.gpu_performance_measuring.startQuery(.gui);
-			c.glDisable(c.GL_CULL_FACE);
-			c.glDisable(c.GL_DEPTH_TEST);
 			gui.updateAndRenderGui();
 			gui.windowlist.gpu_performance_measuring.stopQuery();
 		}

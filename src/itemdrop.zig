@@ -35,6 +35,12 @@ const ItemDrop = struct { // MARK: ItemDrop
 	reverseIndex: u16,
 };
 
+pub const ItemDropNetworkData = struct {
+	index: u16,
+	pos: Vec3d,
+	vel: Vec3d,
+};
+
 pub const ItemDropManager = struct { // MARK: ItemDropManager
 	/// Half the side length of all item entities hitboxes as a cube.
 	pub const radius: f64 = 0.1;
@@ -116,18 +122,16 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 		}
 	}
 
-	pub fn getPositionAndVelocityData(self: *ItemDropManager, allocator: NeverFailingAllocator) []u8 {
-		var writer = utils.BinaryWriter.initCapacity(allocator, self.size*50);
-		for(self.indices[0..self.size]) |i| {
-			writer.writeInt(u16, i);
-			writer.writeFloat(f64, self.list.items(.pos)[i][0]);
-			writer.writeFloat(f64, self.list.items(.pos)[i][1]);
-			writer.writeFloat(f64, self.list.items(.pos)[i][2]);
-			writer.writeFloat(f64, self.list.items(.vel)[i][0]);
-			writer.writeFloat(f64, self.list.items(.vel)[i][1]);
-			writer.writeFloat(f64, self.list.items(.vel)[i][2]);
+	pub fn getPositionAndVelocityData(self: *ItemDropManager, allocator: NeverFailingAllocator) []ItemDropNetworkData {
+		const result = allocator.alloc(ItemDropNetworkData, self.size);
+		for(self.indices[0..self.size], result) |i, *res| {
+			res.* = .{
+				.index = i,
+				.pos = self.list.items(.pos)[i],
+				.vel = self.list.items(.vel)[i],
+			};
 		}
-		return writer.data.toOwnedSlice();
+		return result;
 	}
 
 	pub fn getInitialList(self: *ItemDropManager, allocator: NeverFailingAllocator) ZonElement {
@@ -462,18 +466,13 @@ pub const ClientItemDropManager = struct { // MARK: ClientItemDropManager
 		self.super.deinit();
 	}
 
-	pub fn readPosition(self: *ClientItemDropManager, reader: *BinaryReader, time: i16) !void {
+	pub fn readPosition(self: *ClientItemDropManager, time: i16, itemData: []ItemDropNetworkData) void {
 		self.timeDifference.addDataPoint(time);
 		var pos: [ItemDropManager.maxCapacity]Vec3d = undefined;
 		var vel: [ItemDropManager.maxCapacity]Vec3d = undefined;
-		while(reader.remaining.len != 0) {
-			const i = try reader.readInt(u16);
-			pos[i][0] = try reader.readFloat(f64);
-			pos[i][1] = try reader.readFloat(f64);
-			pos[i][2] = try reader.readFloat(f64);
-			vel[i][0] = try reader.readFloat(f64);
-			vel[i][1] = try reader.readFloat(f64);
-			vel[i][2] = try reader.readFloat(f64);
+		for(itemData) |data| {
+			pos[data.index] = data.pos;
+			vel[data.index] = data.vel;
 		}
 		mutex.lock();
 		defer mutex.unlock();
@@ -543,21 +542,17 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 };
 
 pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
-	var itemShader: graphics.Shader = undefined;
+	var itemPipeline: graphics.Pipeline = undefined;
 	var itemUniforms: struct {
 		projectionMatrix: c_int,
 		modelMatrix: c_int,
 		viewMatrix: c_int,
-		modelPosition: c_int,
 		ambientLight: c_int,
 		modelIndex: c_int,
 		block: c_int,
-		texture_sampler: c_int,
-		emissionSampler: c_int,
-		reflectivityAndAbsorptionSampler: c_int,
-		reflectionMap: c_int,
 		reflectionMapSize: c_int,
 		contrast: c_int,
+		glDepthRange: c_int,
 	} = undefined;
 
 	var itemModelSSBO: graphics.SSBO = undefined;
@@ -653,7 +648,15 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	};
 
 	pub fn init() void {
-		itemShader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/item_drop.vs", "assets/cubyz/shaders/item_drop.fs", "", &itemUniforms);
+		itemPipeline = graphics.Pipeline.init(
+			"assets/cubyz/shaders/item_drop.vert",
+			"assets/cubyz/shaders/item_drop.frag",
+			"",
+			&itemUniforms,
+			.{},
+			.{.depthTest = true},
+			.{.attachments = &.{.alphaBlending}},
+		);
 		itemModelSSBO = .init();
 		itemModelSSBO.bufferData(i32, &[3]i32{1, 1, 1});
 		itemModelSSBO.bind(2);
@@ -663,7 +666,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	}
 
 	pub fn deinit() void {
-		itemShader.deinit();
+		itemPipeline.deinit();
 		itemModelSSBO.deinit();
 		modelData.deinit();
 		voxelModels.clear();
@@ -681,16 +684,15 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	}
 
 	fn bindCommonUniforms(projMatrix: Mat4f, viewMatrix: Mat4f, ambientLight: Vec3f) void {
-		itemShader.bind();
-		c.glUniform1i(itemUniforms.texture_sampler, 0);
-		c.glUniform1i(itemUniforms.emissionSampler, 1);
-		c.glUniform1i(itemUniforms.reflectivityAndAbsorptionSampler, 2);
-		c.glUniform1i(itemUniforms.reflectionMap, 4);
+		itemPipeline.bind(null);
 		c.glUniform1f(itemUniforms.reflectionMapSize, main.renderer.reflectionCubeMapSize);
 		c.glUniformMatrix4fv(itemUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 		c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&ambientLight));
 		c.glUniformMatrix4fv(itemUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
 		c.glUniform1f(itemUniforms.contrast, 0.12);
+		var depthRange: [2]f32 = undefined;
+		c.glGetFloatv(c.GL_DEPTH_RANGE, &depthRange);
+		c.glUniform2fv(itemUniforms.glDepthRange, 1, &depthRange);
 	}
 
 	fn bindLightUniform(light: [6]u8, ambientLight: Vec3f) void {

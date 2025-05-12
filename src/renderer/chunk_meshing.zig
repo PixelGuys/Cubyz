@@ -11,7 +11,6 @@ const QuadIndex = models.QuadIndex;
 const renderer = main.renderer;
 const graphics = main.graphics;
 const c = graphics.c;
-const Shader = graphics.Shader;
 const SSBO = graphics.SSBO;
 const lighting = @import("lighting.zig");
 const settings = main.settings;
@@ -25,8 +24,8 @@ const gpu_performance_measuring = main.gui.windowlist.gpu_performance_measuring;
 
 const mesh_storage = @import("mesh_storage.zig");
 
-var shader: Shader = undefined;
-var transparentShader: Shader = undefined;
+var pipeline: graphics.Pipeline = undefined;
+var transparentPipeline: graphics.Pipeline = undefined;
 const UniformStruct = struct {
 	projectionMatrix: c_int,
 	viewMatrix: c_int,
@@ -39,10 +38,6 @@ const UniformStruct = struct {
 	@"fog.density": c_int,
 	@"fog.fogLower": c_int,
 	@"fog.fogHigher": c_int,
-	texture_sampler: c_int,
-	emissionSampler: c_int,
-	reflectivityAndAbsorptionSampler: c_int,
-	reflectionMap: c_int,
 	reflectionMapSize: c_int,
 	lodDistance: c_int,
 	zNear: c_int,
@@ -50,7 +45,7 @@ const UniformStruct = struct {
 };
 pub var uniforms: UniformStruct = undefined;
 pub var transparentUniforms: UniformStruct = undefined;
-pub var commandShader: Shader = undefined;
+pub var commandPipeline: graphics.ComputePipeline = undefined;
 pub var commandUniforms: struct {
 	chunkIDIndex: c_int,
 	commandIndexStart: c_int,
@@ -60,7 +55,7 @@ pub var commandUniforms: struct {
 	onlyDrawPreviouslyInvisible: c_int,
 	lodDistance: c_int,
 } = undefined;
-pub var occlusionTestShader: Shader = undefined;
+pub var occlusionTestPipeline: graphics.Pipeline = undefined;
 pub var occlusionTestUniforms: struct {
 	projectionMatrix: c_int,
 	viewMatrix: c_int,
@@ -79,10 +74,50 @@ pub var transparentQuadsDrawn: usize = 0;
 
 pub fn init() void {
 	lighting.init();
-	shader = Shader.initAndGetUniforms("assets/cubyz/shaders/chunks/chunk_vertex.vs", "assets/cubyz/shaders/chunks/chunk_fragment.fs", "", &uniforms);
-	transparentShader = Shader.initAndGetUniforms("assets/cubyz/shaders/chunks/chunk_vertex.vs", "assets/cubyz/shaders/chunks/transparent_fragment.fs", "#define transparent\n", &transparentUniforms);
-	commandShader = Shader.initComputeAndGetUniforms("assets/cubyz/shaders/chunks/fillIndirectBuffer.glsl", "", &commandUniforms);
-	occlusionTestShader = Shader.initAndGetUniforms("assets/cubyz/shaders/chunks/occlusionTestVertex.vs", "assets/cubyz/shaders/chunks/occlusionTestFragment.fs", "", &occlusionTestUniforms);
+	pipeline = graphics.Pipeline.init(
+		"assets/cubyz/shaders/chunks/chunk_vertex.vert",
+		"assets/cubyz/shaders/chunks/chunk_fragment.frag",
+		"",
+		&uniforms,
+		.{},
+		.{.depthTest = true, .depthWrite = true},
+		.{.attachments = &.{.noBlending}},
+	);
+	transparentPipeline = graphics.Pipeline.init(
+		"assets/cubyz/shaders/chunks/chunk_vertex.vert",
+		"assets/cubyz/shaders/chunks/transparent_fragment.frag",
+		"#define transparent\n",
+		&transparentUniforms,
+		.{},
+		.{.depthTest = true, .depthWrite = false, .depthCompare = .lessOrEqual},
+		.{.attachments = &.{.{
+			.srcColorBlendFactor = .one,
+			.dstColorBlendFactor = .src1Color,
+			.colorBlendOp = .add,
+			.srcAlphaBlendFactor = .one,
+			.dstAlphaBlendFactor = .src1Alpha,
+			.alphaBlendOp = .add,
+		}}},
+	);
+	commandPipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/chunks/fillIndirectBuffer.comp", "", &commandUniforms);
+	occlusionTestPipeline = graphics.Pipeline.init(
+		"assets/cubyz/shaders/chunks/occlusionTestVertex.vert",
+		"assets/cubyz/shaders/chunks/occlusionTestFragment.frag",
+		"",
+		&occlusionTestUniforms,
+		.{},
+		.{.depthTest = true, .depthWrite = false},
+		.{.attachments = &.{.{
+			.enabled = false,
+			.srcColorBlendFactor = undefined,
+			.dstColorBlendFactor = undefined,
+			.colorBlendOp = undefined,
+			.srcAlphaBlendFactor = undefined,
+			.dstAlphaBlendFactor = undefined,
+			.alphaBlendOp = undefined,
+			.colorWriteMask = .none,
+		}}},
+	);
 
 	var rawData: [6*3 << (3*chunk.chunkShift)]u32 = undefined; // 6 vertices per face, maximum 3 faces/block
 	const lut = [_]u32{0, 2, 1, 1, 2, 3};
@@ -106,9 +141,10 @@ pub fn init() void {
 
 pub fn deinit() void {
 	lighting.deinit();
-	shader.deinit();
-	transparentShader.deinit();
-	commandShader.deinit();
+	pipeline.deinit();
+	transparentPipeline.deinit();
+	occlusionTestPipeline.deinit();
+	commandPipeline.deinit();
 	c.glDeleteVertexArrays(1, &vao);
 	c.glDeleteBuffers(1, &vbo);
 	faceBuffer.deinit();
@@ -137,10 +173,6 @@ pub fn endRender() void {
 fn bindCommonUniforms(locations: *UniformStruct, projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d) void {
 	c.glUniformMatrix4fv(locations.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 
-	c.glUniform1i(locations.texture_sampler, 0);
-	c.glUniform1i(locations.emissionSampler, 1);
-	c.glUniform1i(locations.reflectivityAndAbsorptionSampler, 2);
-	c.glUniform1i(locations.reflectionMap, 4);
 	c.glUniform1f(locations.reflectionMapSize, renderer.reflectionCubeMapSize);
 
 	c.glUniform1f(locations.contrast, 0);
@@ -159,7 +191,7 @@ fn bindCommonUniforms(locations: *UniformStruct, projMatrix: Mat4f, ambient: Vec
 }
 
 pub fn bindShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d) void {
-	shader.bind();
+	pipeline.bind(null);
 
 	bindCommonUniforms(&uniforms, projMatrix, ambient, playerPos);
 
@@ -167,7 +199,7 @@ pub fn bindShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d
 }
 
 pub fn bindTransparentShaderAndUniforms(projMatrix: Mat4f, ambient: Vec3f, playerPos: Vec3d) void {
-	transparentShader.bind();
+	transparentPipeline.bind(null);
 
 	c.glUniform3fv(transparentUniforms.@"fog.color", 1, @ptrCast(&game.fog.skyColor));
 	c.glUniform1f(transparentUniforms.@"fog.density", game.fog.density);
@@ -186,7 +218,7 @@ pub fn drawChunksIndirect(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec
 	defer chunkIDBuffer.free(chunkIDAllocation);
 	const allocation = commandBuffer.rawAlloc(drawCallsEstimate);
 	defer commandBuffer.free(allocation);
-	commandShader.bind();
+	commandPipeline.bind();
 	c.glUniform1f(commandUniforms.lodDistance, main.settings.@"lod0.5Distance");
 	c.glUniform1ui(commandUniforms.chunkIDIndex, chunkIDAllocation.start);
 	c.glUniform1ui(commandUniforms.commandIndexStart, allocation.start);
@@ -211,30 +243,25 @@ pub fn drawChunksIndirect(chunkIDs: []const u32, projMatrix: Mat4f, ambient: Vec
 
 	// Occlusion tests:
 	gpu_performance_measuring.startQuery(if(transparent) .transparent_rendering_occlusion_test else .chunk_rendering_occlusion_test);
-	occlusionTestShader.bind();
+	occlusionTestPipeline.bind(null);
 	c.glUniform3i(occlusionTestUniforms.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
 	c.glUniform3f(occlusionTestUniforms.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
 	c.glUniformMatrix4fv(occlusionTestUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 	c.glUniformMatrix4fv(occlusionTestUniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&game.camera.viewMatrix));
-	c.glDepthMask(c.GL_FALSE);
-	c.glColorMask(c.GL_FALSE, c.GL_FALSE, c.GL_FALSE, c.GL_FALSE);
 	c.glBindVertexArray(vao);
 	c.glDrawElementsBaseVertex(c.GL_TRIANGLES, @intCast(6*6*chunkIDs.len), c.GL_UNSIGNED_INT, null, chunkIDAllocation.start*24);
-	c.glDepthMask(c.GL_TRUE);
-	c.glColorMask(c.GL_TRUE, c.GL_TRUE, c.GL_TRUE, c.GL_TRUE);
 	c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT);
 	gpu_performance_measuring.stopQuery();
 
 	// Draw again:
 	gpu_performance_measuring.startQuery(if(transparent) .transparent_rendering else .chunk_rendering_new_visible);
-	commandShader.bind();
+	commandPipeline.bind();
 	c.glUniform1i(commandUniforms.onlyDrawPreviouslyInvisible, 1);
 	c.glDispatchCompute(@intCast(@divFloor(chunkIDs.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available
 	c.glMemoryBarrier(c.GL_SHADER_STORAGE_BARRIER_BIT | c.GL_COMMAND_BARRIER_BIT);
 
 	if(transparent) {
 		bindTransparentShaderAndUniforms(projMatrix, ambient, playerPos);
-		c.glDepthMask(c.GL_FALSE);
 	} else {
 		bindShaderAndUniforms(projMatrix, ambient, playerPos);
 	}
@@ -701,7 +728,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 	}
 
-	pub fn scheduleLightRefreshAndDecreaseRefCount1(self: *ChunkMesh) void {
+	pub fn scheduleLightRefreshAndDecreaseRefCount(self: *ChunkMesh) void {
 		LightRefreshTask.scheduleAndDecreaseRefCount(self);
 	}
 	const LightRefreshTask = struct {
@@ -846,7 +873,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 
 		for(lightRefreshList.items) |other| {
 			if(other.needsLightRefresh.load(.unordered)) {
-				other.scheduleLightRefreshAndDecreaseRefCount1();
+				other.scheduleLightRefreshAndDecreaseRefCount();
 			} else {
 				other.decreaseRefCount();
 			}
@@ -1172,9 +1199,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 	}
 
-	pub fn updateBlock(self: *ChunkMesh, _x: i32, _y: i32, _z: i32, _newBlock: Block) void {
-		var lightRefreshList = main.List(*ChunkMesh).init(main.stackAllocator);
-		defer lightRefreshList.deinit();
+	pub fn updateBlock(self: *ChunkMesh, _x: i32, _y: i32, _z: i32, _newBlock: Block, lightRefreshList: *main.List(*ChunkMesh), regenerateMeshList: *main.List(*ChunkMesh)) void {
 		const x: u5 = @intCast(_x & chunk.chunkMask);
 		const y: u5 = @intCast(_y & chunk.chunkMask);
 		const z: u5 = @intCast(_z & chunk.chunkMask);
@@ -1194,24 +1219,31 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 
 		var neighborBlocks: [6]Block = undefined;
 		@memset(&neighborBlocks, .{.typ = 0, .data = 0});
+
 		for(chunk.Neighbor.iterable) |neighbor| {
 			const nx = x + neighbor.relX();
 			const ny = y + neighbor.relY();
 			const nz = z + neighbor.relZ();
+
 			if(nx & chunk.chunkMask != nx or ny & chunk.chunkMask != ny or nz & chunk.chunkMask != nz) {
+				const nnx: u5 = @intCast(nx & chunk.chunkMask);
+				const nny: u5 = @intCast(ny & chunk.chunkMask);
+				const nnz: u5 = @intCast(nz & chunk.chunkMask);
+
 				const neighborChunkMesh = mesh_storage.getNeighborAndIncreaseRefCount(self.pos, self.pos.voxelSize, neighbor) orelse continue;
 				defer neighborChunkMesh.decreaseRefCount();
-				const index = chunk.getIndex(nx & chunk.chunkMask, ny & chunk.chunkMask, nz & chunk.chunkMask);
+
+				const index = chunk.getIndex(nnx, nny, nnz);
+
 				neighborChunkMesh.mutex.lock();
 				var neighborBlock = neighborChunkMesh.chunk.data.getValue(index);
-				if(neighborBlock.mode().dependsOnNeighbors) {
-					if(neighborBlock.mode().updateData(&neighborBlock, neighbor.reverse(), newBlock)) {
-						neighborChunkMesh.chunk.data.setValue(index, neighborBlock);
-						neighborChunkMesh.mutex.unlock();
-						neighborChunkMesh.updateBlockLight(@intCast(nx & chunk.chunkMask), @intCast(ny & chunk.chunkMask), @intCast(nz & chunk.chunkMask), neighborBlock, &lightRefreshList);
-						neighborChunkMesh.generateMesh(&lightRefreshList);
-						neighborChunkMesh.mutex.lock();
-					}
+
+				if(neighborBlock.mode().dependsOnNeighbors and neighborBlock.mode().updateData(&neighborBlock, neighbor.reverse(), newBlock)) {
+					neighborChunkMesh.chunk.data.setValue(index, neighborBlock);
+					neighborChunkMesh.mutex.unlock();
+					neighborChunkMesh.updateBlockLight(nnx, nny, nnz, neighborBlock, lightRefreshList);
+					appendIfNotContained(regenerateMeshList, neighborChunkMesh);
+					neighborChunkMesh.mutex.lock();
 				}
 				neighborChunkMesh.mutex.unlock();
 				neighborBlocks[neighbor.toInt()] = neighborBlock;
@@ -1219,11 +1251,9 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 				const index = chunk.getIndex(nx, ny, nz);
 				self.mutex.lock();
 				var neighborBlock = self.chunk.data.getValue(index);
-				if(neighborBlock.mode().dependsOnNeighbors) {
-					if(neighborBlock.mode().updateData(&neighborBlock, neighbor.reverse(), newBlock)) {
-						self.chunk.data.setValue(index, neighborBlock);
-						self.updateBlockLight(@intCast(nx & chunk.chunkMask), @intCast(ny & chunk.chunkMask), @intCast(nz & chunk.chunkMask), neighborBlock, &lightRefreshList);
-					}
+				if(neighborBlock.mode().dependsOnNeighbors and neighborBlock.mode().updateData(&neighborBlock, neighbor.reverse(), newBlock)) {
+					self.chunk.data.setValue(index, neighborBlock);
+					self.updateBlockLight(@intCast(nx), @intCast(ny), @intCast(nz), neighborBlock, lightRefreshList);
 				}
 				self.mutex.unlock();
 				neighborBlocks[neighbor.toInt()] = neighborBlock;
@@ -1242,9 +1272,9 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			class.onPlaceClient(.{_x, _y, _z}, self.chunk);
 		}
 
-		self.updateBlockLight(x, y, z, newBlock, &lightRefreshList);
+		self.updateBlockLight(x, y, z, newBlock, lightRefreshList);
+
 		self.mutex.lock();
-		defer self.mutex.unlock();
 		// Update neighbor chunks:
 		if(x == 0) {
 			self.lastNeighborsHigherLod[chunk.Neighbor.dirNegX.toInt()] = null;
@@ -1268,16 +1298,18 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 			self.lastNeighborsSameLod[chunk.Neighbor.dirUp.toInt()] = null;
 		}
 		self.mutex.unlock();
-		self.generateMesh(&lightRefreshList); // TODO: Batch mesh updates instead of applying them for each block changes.
-		self.mutex.lock();
-		for(lightRefreshList.items) |other| {
-			if(other.needsLightRefresh.load(.unordered)) {
-				other.scheduleLightRefreshAndDecreaseRefCount1();
-			} else {
-				other.decreaseRefCount();
+
+		appendIfNotContained(regenerateMeshList, self);
+	}
+
+	fn appendIfNotContained(list: *main.List(*ChunkMesh), mesh: *ChunkMesh) void {
+		for(list.items) |other| {
+			if(other == mesh) {
+				return;
 			}
 		}
-		self.uploadData();
+		mesh.increaseRefCount();
+		list.append(mesh);
 	}
 
 	fn clearNeighborA(self: *ChunkMesh, neighbor: chunk.Neighbor, comptime isLod: bool) void {

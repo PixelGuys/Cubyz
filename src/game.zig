@@ -641,7 +641,7 @@ pub const Player = struct { // MARK: Player
 };
 
 pub const World = struct { // MARK: World
-	const dayCycle: u63 = 12000; // Length of one in-game day in 100ms. Midnight is at DAY_CYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
+	pub const dayCycle: u63 = 12000; // Length of one in-game day in 100ms. Midnight is at DAY_CYCLE/2. Sunrise and sunset each take about 1/16 of the day. Currently set to 20 minutes
 
 	conn: *Connection,
 	manager: *ConnectionManager,
@@ -673,8 +673,6 @@ pub const World = struct { // MARK: World
 
 		main.blocks.meshes.generateTextureArray();
 		main.models.uploadModels();
-		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());
-		main.audio.setMusic(self.playerBiome.raw.preferredMusic);
 	}
 
 	pub fn deinit(self: *World) void {
@@ -719,6 +717,8 @@ pub const World = struct { // MARK: World
 		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
 		Player.inventory = Inventory.init(main.globalAllocator, 32, .normal, .{.playerInventory = Player.id});
 		Player.loadFrom(zon.getChild("player"));
+		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());
+		main.audio.setMusic(self.playerBiome.raw.preferredMusic);
 	}
 
 	pub fn update(self: *World) void {

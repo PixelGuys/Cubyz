@@ -1,0 +1,10 @@
+.{
+	.tags = .{.wood},
+	.blockHealth = 3,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.model = "cubyz:cube",
+	.emittedLight = 0x594587,
+	.texture = "cubyz:glimmergill_cap",
+}

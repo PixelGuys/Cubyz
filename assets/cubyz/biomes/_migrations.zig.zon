@@ -1,0 +1,4 @@
+.{
+	.{.old = "jungle(TODO)", .new = "jungle"},
+	.{.old = "taiga", .new = "taiga/base"},
+}

@@ -4,7 +4,7 @@
 	.transparent = true,
 	.absorbedLight = 0x000000,
 	.viewThrough = true,
-	.solid = false,
+	.replacable = true,
 	.rotation = .no_rotation,
 	.degradable = true,
 	.hasItem = false,

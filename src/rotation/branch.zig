@@ -351,13 +351,13 @@ pub fn generateData(
 ) bool {
 	const canConnectToNeighbor = currentBlock.mode() == neighborBlock.mode() and currentBlock.modeData() == neighborBlock.modeData();
 
-	if(blockPlacing or canConnectToNeighbor or neighborBlock.solid()) {
+	if(blockPlacing or canConnectToNeighbor or !neighborBlock.replacable()) {
 		const neighborModel = blocks.meshes.model(neighborBlock).model();
 
 		var currentData = BranchData.init(currentBlock.data);
 		// Branch block upon placement should extend towards a block it was placed
 		// on if the block is solid or also uses branch model.
-		const targetVal = ((neighborBlock.solid() and (!neighborBlock.viewThrough() or canConnectToNeighbor)) and (canConnectToNeighbor or neighborModel.isNeighborOccluded[neighbor.?.reverse().toInt()]));
+		const targetVal = ((!neighborBlock.replacable() and (!neighborBlock.viewThrough() or canConnectToNeighbor)) and (canConnectToNeighbor or neighborModel.isNeighborOccluded[neighbor.?.reverse().toInt()]));
 		currentData.setConnection(neighbor.?, targetVal);
 
 		const result: u16 = currentData.enabledConnections;
@@ -379,7 +379,7 @@ pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool 
 	if(canConnectToNeighbor) {
 		const neighborData = BranchData.init(neighborBlock.data);
 		currentData.setConnection(neighbor, neighborData.isConnected(neighbor.reverse()));
-	} else if(!neighborBlock.solid()) {
+	} else if(neighborBlock.replacable()) {
 		currentData.setConnection(neighbor, false);
 	}
 

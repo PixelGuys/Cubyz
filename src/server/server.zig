@@ -9,6 +9,7 @@ const ConnectionManager = network.ConnectionManager;
 const utils = main.utils;
 const vec = main.vec;
 const Vec3d = vec.Vec3d;
+const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const BinaryReader = main.utils.BinaryReader;
 const BinaryWriter = main.utils.BinaryWriter;
@@ -104,6 +105,8 @@ pub const User = struct { // MARK: User
 	gamemode: std.atomic.Value(main.game.Gamemode) = .init(.creative),
 	worldEditData: WorldEditData = undefined,
 
+	lastSentBiomeId: u32 = 0xffffffff,
+
 	inventoryClientToServerIdMap: std.AutoHashMap(u32, u32) = undefined,
 
 	connected: Atomic(bool) = .init(true),
@@ -123,13 +126,6 @@ pub const User = struct { // MARK: User
 		self.worldEditData = .init();
 		network.Protocols.handShake.serverSide(self.conn);
 		return self;
-	}
-
-	pub fn reinitialize(self: *User) void {
-		removePlayer(self);
-		self.timeDifference = .{};
-		main.globalAllocator.free(self.name);
-		self.name = "";
 	}
 
 	pub fn deinit(self: *User) void {
@@ -257,21 +253,9 @@ pub const User = struct { // MARK: User
 	pub fn receiveData(self: *User, reader: *BinaryReader) !void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
-		const position: [3]f64 = .{
-			try reader.readFloat(f64),
-			try reader.readFloat(f64),
-			try reader.readFloat(f64),
-		};
-		const velocity: [3]f64 = .{
-			try reader.readFloat(f64),
-			try reader.readFloat(f64),
-			try reader.readFloat(f64),
-		};
-		const rotation: [3]f32 = .{
-			try reader.readFloat(f32),
-			try reader.readFloat(f32),
-			try reader.readFloat(f32),
-		};
+		const position: [3]f64 = try reader.readVec(Vec3d);
+		const velocity: [3]f64 = try reader.readVec(Vec3d);
+		const rotation: [3]f32 = try reader.readVec(Vec3f);
 		self.player.rot = rotation;
 		const time = try reader.readInt(i16);
 		self.timeDifference.addDataPoint(time);
@@ -405,27 +389,32 @@ fn update() void { // MARK: update()
 	}
 
 	// Send the entity data:
-	var writer = BinaryWriter.initCapacity(main.stackAllocator, (4 + 24 + 12 + 24)*userList.len);
-	defer writer.deinit();
-
 	const itemData = world.?.itemDropManager.getPositionAndVelocityData(main.stackAllocator);
 	defer main.stackAllocator.free(itemData);
 
+	var entityData: main.List(main.entity.EntityNetworkData) = .init(main.stackAllocator);
+	defer entityData.deinit();
+
 	for(userList) |user| {
 		const id = user.id; // TODO
-		writer.writeInt(u32, id);
-		writer.writeFloat(f64, user.player.pos[0]);
-		writer.writeFloat(f64, user.player.pos[1]);
-		writer.writeFloat(f64, user.player.pos[2]);
-		writer.writeFloat(f32, user.player.rot[0]);
-		writer.writeFloat(f32, user.player.rot[1]);
-		writer.writeFloat(f32, user.player.rot[2]);
-		writer.writeFloat(f64, user.player.vel[0]);
-		writer.writeFloat(f64, user.player.vel[1]);
-		writer.writeFloat(f64, user.player.vel[2]);
+		entityData.append(.{
+			.id = id,
+			.pos = user.player.pos,
+			.vel = user.player.vel,
+			.rot = user.player.rot,
+		});
 	}
 	for(userList) |user| {
-		main.network.Protocols.entityPosition.send(user.conn, writer.data.items, itemData);
+		main.network.Protocols.entityPosition.send(user.conn, user.player.pos, entityData.items, itemData);
+	}
+
+	for(userList) |user| {
+		const pos = @as(Vec3i, @intFromFloat(user.player.pos));
+		const biomeId = world.?.getBiome(pos[0], pos[1], pos[2]).paletteId;
+		if(biomeId != user.lastSentBiomeId) {
+			user.lastSentBiomeId = biomeId;
+			main.network.Protocols.genericUpdate.sendBiome(user.conn, biomeId);
+		}
 	}
 
 	while(userDeinitList.dequeue()) |user| {
@@ -467,14 +456,18 @@ pub fn disconnect(user: *User) void { // MARK: disconnect()
 pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 	if(!user.connected.load(.unordered)) return;
 
-	userMutex.lock();
-	for(users.items, 0..) |other, i| {
-		if(other == user) {
-			_ = users.swapRemove(i);
-			break;
+	const foundUser = blk: {
+		userMutex.lock();
+		defer userMutex.unlock();
+		for(users.items, 0..) |other, i| {
+			if(other == user) {
+				_ = users.swapRemove(i);
+				break :blk true;
+			}
 		}
-	}
-	userMutex.unlock();
+		break :blk false;
+	};
+	if(!foundUser) return;
 
 	sendMessage("{s}§#ffff00 left", .{user.name});
 	// Let the other clients know about that this new one left.

@@ -1,5 +1,5 @@
 .{
-	.tags = .{.stone},
+	.tags = .{.stone, .marble},
 	.blockHealth = 28,
 	.drops = .{
 		.{.items = .{.auto}},
@@ -7,9 +7,7 @@
 	.item = .{
 		.material = .{
 			.density = 2.6,
-			.strength = 2.6,
 			.elasticity = 0.0,
-			.grip = 1.0,
 			.hardness = 4.0,
 			.textureRoughness = 1.0,
 			.colors = .{
@@ -17,8 +15,14 @@
 			},
 			.modifiers = .{
 				.{
-					.id = "fragile",
-					.strength = 0.20,
+					.id = "good_at",
+					.strength = 0.5,
+					.tag = .marble,
+					.restriction = .{
+						.id = .encased,
+						.tag = .precious,
+						.amount = 2,
+					},
 				},
 			},
 		},

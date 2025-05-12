@@ -1,14 +1,13 @@
 .{
+	.tags = .{.metal},
 	.texture = "iron_ingot.png",
 	.material = .{
 		.density = 7.5,
-		.strength = 6.0,
 		.elasticity = 5.0,
-		.grip = 2.0,
 		.hardness = 5.0,
 		.textureRoughness = 0.1,
 		.colors = .{
-			0xff69696b, 0xff878484, 0xffa3a3a3, 0xffc2c2c2, 0xffe9e9e9,
+			0xff616163, 0xff797777, 0xff9c9c9c, 0xffb4b4b4, 0xffd9d9d9,
 		},
 	},
 }

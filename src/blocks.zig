@@ -1,10 +1,10 @@
 const std = @import("std");
 
 const main = @import("main");
+const Tag = main.Tag;
 const ZonElement = @import("zon.zig").ZonElement;
 const Neighbor = @import("chunk.zig").Neighbor;
 const graphics = @import("graphics.zig");
-const Shader = graphics.Shader;
 const SSBO = graphics.SSBO;
 const Image = graphics.Image;
 const Color = graphics.Color;
@@ -19,48 +19,7 @@ const Entity = main.server.Entity;
 const entity_data = @import("entity_data.zig");
 const EntityDataClass = entity_data.EntityDataClass;
 const sbb = main.server.terrain.structure_building_blocks;
-
-pub const BlockTag = enum(u32) {
-	air = 0,
-	fluid = 1,
-	sbbChild = 2,
-	_,
-
-	var tagList: main.List([]const u8) = .init(allocator);
-	var tagIds: std.StringHashMap(BlockTag) = .init(allocator.allocator);
-
-	fn loadDefaults() void {
-		inline for(comptime std.meta.fieldNames(BlockTag)) |tag| {
-			std.debug.assert(find(tag) == @field(BlockTag, tag));
-		}
-	}
-
-	fn reset() void {
-		tagList.clearAndFree();
-		tagIds.clearAndFree();
-	}
-
-	pub fn find(tag: []const u8) BlockTag {
-		if(tagIds.get(tag)) |res| return res;
-		const result: BlockTag = @enumFromInt(tagList.items.len);
-		const dupedTag = allocator.dupe(u8, tag);
-		tagList.append(dupedTag);
-		tagIds.put(dupedTag, result) catch unreachable;
-		return result;
-	}
-
-	pub fn loadFromZon(_allocator: main.heap.NeverFailingAllocator, zon: ZonElement) []BlockTag {
-		const result = _allocator.alloc(BlockTag, zon.toSlice().len);
-		for(zon.toSlice(), 0..) |tagZon, i| {
-			result[i] = BlockTag.find(tagZon.as([]const u8, "incorrect"));
-		}
-		return result;
-	}
-
-	pub fn getName(tag: BlockTag) []const u8 {
-		return tagList.items[@intFromEnum(tag)];
-	}
-};
+const blueprint = main.blueprint;
 
 var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
 const allocator = arena.allocator();
@@ -95,7 +54,8 @@ var _id: [maxBlockCount][]u8 = undefined;
 var _blockHealth: [maxBlockCount]f32 = undefined;
 var _blockResistance: [maxBlockCount]f32 = undefined;
 
-var _solid: [maxBlockCount]bool = undefined;
+/// Whether you can replace it with another block, mainly used for fluids/gases
+var _replacable: [maxBlockCount]bool = undefined;
 var _selectable: [maxBlockCount]bool = undefined;
 var _blockDrops: [maxBlockCount][]BlockDrop = undefined;
 /// Meaning undegradable parts of trees or other structures can grow through this block.
@@ -103,7 +63,7 @@ var _degradable: [maxBlockCount]bool = undefined;
 var _viewThrough: [maxBlockCount]bool = undefined;
 var _alwaysViewThrough: [maxBlockCount]bool = undefined;
 var _hasBackFace: [maxBlockCount]bool = undefined;
-var _blockTags: [maxBlockCount][]BlockTag = undefined;
+var _blockTags: [maxBlockCount][]Tag = undefined;
 var _light: [maxBlockCount]u32 = undefined;
 /// How much light this block absorbs if it is transparent
 var _absorption: [maxBlockCount]u32 = undefined;
@@ -114,6 +74,7 @@ var _modeData: [maxBlockCount]u16 = undefined;
 var _lodReplacement: [maxBlockCount]u16 = undefined;
 var _opaqueVariant: [maxBlockCount]u16 = undefined;
 var _friction: [maxBlockCount]f32 = undefined;
+
 var _allowOres: [maxBlockCount]bool = undefined;
 var _touchFunction: [maxBlockCount]?*const TouchFunction = undefined;
 var _entityDataClass: [maxBlockCount]?*EntityDataClass = undefined;
@@ -124,9 +85,7 @@ var size: u32 = 0;
 
 pub var ores: main.List(Ore) = .init(allocator);
 
-pub fn init() void {
-	BlockTag.loadDefaults();
-}
+pub fn init() void {}
 
 pub fn deinit() void {
 	arena.deinit();
@@ -136,6 +95,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	if(reverseIndices.contains(id)) {
 		std.log.err("Registered block with id {s} twice!", .{id});
 	}
+
 	_id[size] = allocator.dupe(u8, id);
 	reverseIndices.put(_id[size], @intCast(size)) catch unreachable;
 
@@ -143,10 +103,10 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_blockHealth[size] = zon.get(f32, "blockHealth", 1);
 	_blockResistance[size] = zon.get(f32, "blockResistance", 0);
 
-	_blockTags[size] = BlockTag.loadFromZon(allocator, zon.getChild("tags"));
+	_blockTags[size] = Tag.loadTagsFromZon(allocator, zon.getChild("tags"));
 	if(_blockTags[size].len == 0) std.log.err("Block {s} is missing 'tags' field", .{id});
 	for(_blockTags[size]) |tag| {
-		if(tag == BlockTag.sbbChild) {
+		if(tag == Tag.sbbChild) {
 			sbb.registerChildBlock(@intCast(size), _id[size]);
 			break;
 		}
@@ -155,7 +115,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
 	_degradable[size] = zon.get(bool, "degradable", false);
 	_selectable[size] = zon.get(bool, "selectable", true);
-	_solid[size] = zon.get(bool, "solid", true);
+	_replacable[size] = zon.get(bool, "replacable", false);
 	_gui[size] = allocator.dupe(u8, zon.get([]const u8, "gui", ""));
 	_transparent[size] = zon.get(bool, "transparent", false);
 	_collide[size] = zon.get(bool, "collide", true);
@@ -183,8 +143,9 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 		});
 	}
 
-	size += 1;
-	return @intCast(size - 1);
+	defer size += 1;
+	std.log.debug("Registered block: {d: >5} '{s}'", .{size, id});
+	return @intCast(size);
 }
 
 fn registerBlockDrop(typ: u16, zon: ZonElement) void {
@@ -248,16 +209,15 @@ pub fn finishBlocks(zonElements: std.StringHashMap(ZonElement)) void {
 		registerLodReplacement(i, zonElements.get(_id[i]) orelse continue);
 		registerOpaqueVariant(i, zonElements.get(_id[i]) orelse continue);
 	}
+	blueprint.registerVoidBlock(parseBlock("cubyz:void"));
 }
 
 pub fn reset() void {
 	size = 0;
 	ores.clearAndFree();
 	meshes.reset();
-	BlockTag.reset();
 	_ = arena.reset(.free_all);
 	reverseIndices = .init(arena.allocator().allocator);
-	BlockTag.loadDefaults();
 }
 
 pub fn getTypeById(id: []const u8) u16 {
@@ -289,6 +249,21 @@ pub fn parseBlock(data: []const u8) Block {
 	}
 }
 
+pub fn getBlockById(idAndData: []const u8) !u16 {
+	const addonNameSeparatorIndex = std.mem.indexOfScalar(u8, idAndData, ':') orelse return error.MissingAddonNameSeparator;
+	const blockIdEndIndex = std.mem.indexOfScalarPos(u8, idAndData, 1 + addonNameSeparatorIndex, ':') orelse idAndData.len;
+	const id = idAndData[0..blockIdEndIndex];
+	return reverseIndices.get(id) orelse return error.NotFound;
+}
+
+pub fn getBlockData(idLikeString: []const u8) !?u16 {
+	const addonNameSeparatorIndex = std.mem.indexOfScalar(u8, idLikeString, ':') orelse return error.MissingAddonNameSeparator;
+	const blockIdEndIndex = std.mem.indexOfScalarPos(u8, idLikeString, 1 + addonNameSeparatorIndex, ':') orelse return null;
+	const dataString = idLikeString[blockIdEndIndex + 1 ..];
+	if(dataString.len == 0) return error.EmptyDataString;
+	return std.fmt.parseInt(u16, dataString, 0) catch return error.InvalidData;
+}
+
 pub fn hasRegistered(id: []const u8) bool {
 	return reverseIndices.contains(id);
 }
@@ -296,6 +271,9 @@ pub fn hasRegistered(id: []const u8) bool {
 pub const Block = packed struct { // MARK: Block
 	typ: u16,
 	data: u16,
+
+	pub const air = Block{.typ = 0, .data = 0};
+
 	pub fn toInt(self: Block) u32 {
 		return @as(u32, self.typ) | @as(u32, self.data) << 16;
 	}
@@ -323,8 +301,9 @@ pub const Block = packed struct { // MARK: Block
 		return _blockResistance[self.typ];
 	}
 
-	pub inline fn solid(self: Block) bool {
-		return _solid[self.typ];
+	/// Whether you can replace it with another block, mainly used for fluids/gases
+	pub inline fn replacable(self: Block) bool {
+		return _replacable[self.typ];
 	}
 
 	pub inline fn selectable(self: Block) bool {
@@ -353,8 +332,12 @@ pub const Block = packed struct { // MARK: Block
 		return _hasBackFace[self.typ];
 	}
 
-	pub inline fn blockTags(self: Block) []const BlockTag {
+	pub inline fn blockTags(self: Block) []const Tag {
 		return _blockTags[self.typ];
+	}
+
+	pub inline fn hasTag(self: Block, tag: Tag) bool {
+		return std.mem.containsAtLeastScalar(Tag, self.blockTags(), 1, tag);
 	}
 
 	pub inline fn light(self: Block) u32 {
@@ -488,7 +471,7 @@ pub const meshes = struct { // MARK: meshes
 	var animatedTextureSSBO: ?SSBO = null;
 	var fogSSBO: ?SSBO = null;
 
-	var animationShader: Shader = undefined;
+	var animationComputePipeline: graphics.ComputePipeline = undefined;
 	var animationUniforms: struct {
 		time: c_int,
 		size: c_int,
@@ -506,7 +489,7 @@ pub const meshes = struct { // MARK: meshes
 	const emptyImage = Image{.width = 1, .height = 1, .imageData = emptyTexture[0..]};
 
 	pub fn init() void {
-		animationShader = Shader.initComputeAndGetUniforms("assets/cubyz/shaders/animation_pre_processing.glsl", "", &animationUniforms);
+		animationComputePipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/animation_pre_processing.comp", "", &animationUniforms);
 		blockTextureArray = .init();
 		emissionTextureArray = .init();
 		reflectivityAndAbsorptionTextureArray = .init();
@@ -532,7 +515,7 @@ pub const meshes = struct { // MARK: meshes
 		if(fogSSBO) |ssbo| {
 			ssbo.deinit();
 		}
-		animationShader.deinit();
+		animationComputePipeline.deinit();
 		blockTextureArray.deinit();
 		emissionTextureArray.deinit();
 		reflectivityAndAbsorptionTextureArray.deinit();
@@ -645,8 +628,8 @@ pub const meshes = struct { // MARK: meshes
 		var splitter = std.mem.splitScalar(u8, textureId, ':');
 		const mod = splitter.first();
 		const id = splitter.rest();
-		var buffer: [1024]u8 = undefined;
-		var path = try std.fmt.bufPrint(&buffer, "{s}/{s}/blocks/textures/{s}.png", .{assetFolder, mod, id});
+		var path = try std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/blocks/textures/{s}.png", .{assetFolder, mod, id});
+		defer main.stackAllocator.free(path);
 		// Test if it's already in the list:
 		for(textureIDs.items, 0..) |other, j| {
 			if(std.mem.eql(u8, other, path)) {
@@ -658,7 +641,8 @@ pub const meshes = struct { // MARK: meshes
 			if(err != error.FileNotFound) {
 				std.log.err("Could not open file {s}: {s}", .{path, @errorName(err)});
 			}
-			path = try std.fmt.bufPrint(&buffer, "assets/{s}/blocks/textures/{s}.png", .{mod, id}); // Default to global assets.
+			main.stackAllocator.free(path);
+			path = try std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/blocks/textures/{s}.png", .{mod, id}); // Default to global assets.
 			break :blk std.fs.cwd().openFile(path, .{}) catch |err2| {
 				std.log.err("File not found. Searched in \"{s}\" and also in the assetFolder \"{s}\"", .{path, assetFolder});
 				return err2;
@@ -713,7 +697,7 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	pub fn preProcessAnimationData(time: u32) void {
-		animationShader.bind();
+		animationComputePipeline.bind();
 		graphics.c.glUniform1ui(animationUniforms.time, time);
 		graphics.c.glUniform1ui(animationUniforms.size, @intCast(animation.items.len));
 		graphics.c.glDispatchCompute(@intCast(@divFloor(animation.items.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available

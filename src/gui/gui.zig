@@ -303,12 +303,14 @@ fn addWindow(window: *GuiWindow) void {
 
 pub fn openWindow(id: []const u8) void {
 	defer updateWindowPositions();
+
 	for(windowList.items) |window| {
 		if(std.mem.eql(u8, window.id, id)) {
 			openWindowFromRef(window);
 			return;
 		}
 	}
+
 	std.log.err("Could not find window with id {s}.", .{id});
 }
 
@@ -546,7 +548,7 @@ pub fn updateAndRenderGui() void {
 	if(!hideGui) {
 		if(!main.Window.grabbed) {
 			draw.setColor(0x80000000);
-			GuiWindow.borderShader.bind();
+			GuiWindow.borderPipeline.bind(draw.getScissor());
 			graphics.c.glUniform2f(GuiWindow.borderUniforms.effectLength, main.Window.getWindowSize()[0]/6, main.Window.getWindowSize()[1]/6);
 			draw.customShadedRect(GuiWindow.borderUniforms, .{0, 0}, main.Window.getWindowSize());
 		}

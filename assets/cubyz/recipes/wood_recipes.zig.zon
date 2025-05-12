@@ -147,6 +147,18 @@
 		.inputs = .{"cubyz:cactus"},
 		.output = "2 cubyz:cactus_arm",
 	},
+	.{
+		.inputs = .{"cubyz:bolete_stem"},
+		.output = "2 cubyz:bolete_branch",
+	},
+	.{
+		.inputs = .{"cubyz:toadstool_stem"},
+		.output = "2 cubyz:toadstool_branch",
+	},
+	.{
+		.inputs = .{"cubyz:glimmergill_stem"},
+		.output = "2 cubyz:glimmergill_branch",
+	},
 
 	.{
 		.inputs = .{"cubyz:birch_planks", "cubyz:coal"},
@@ -171,5 +183,29 @@
 	.{
 		.inputs = .{"cubyz:willow_planks", "cubyz:coal"},
 		.output = "8 cubyz:torch",
+	},
+	.{
+		.inputs = .{"cubyz:birch_planks", "cubyz:sulfur_ore"},
+		.output = "8 cubyz:sulfur_torch",
+	},
+	.{
+		.inputs = .{"cubyz:baobab_planks", "cubyz:sulfur_ore"},
+		.output = "8 cubyz:sulfur_torch",
+	},
+	.{
+		.inputs = .{"cubyz:oak_planks", "cubyz:sulfur_ore"},
+		.output = "8 cubyz:sulfur_torch",
+	},
+	.{
+		.inputs = .{"cubyz:mahogany_planks", "cubyz:sulfur_ore"},
+		.output = "8 cubyz:sulfur_torch",
+	},
+	.{
+		.inputs = .{"cubyz:pine_planks", "cubyz:sulfur_ore"},
+		.output = "8 cubyz:sulfur_torch",
+	},
+	.{
+		.inputs = .{"cubyz:willow_planks", "cubyz:sulfur_ore"},
+		.output = "8 cubyz:sulfur_torch",
 	},
 }

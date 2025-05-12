@@ -18,6 +18,7 @@ pub const RayIntersectionResult = struct {
 	distance: f64,
 	min: Vec3f,
 	max: Vec3f,
+	face: Neighbor,
 };
 
 pub const Degrees = enum(u2) {
@@ -65,10 +66,27 @@ pub const RotationMode = struct { // MARK: RotationMode
 			const boxTMin = @reduce(.Max, @min(t1, t2));
 			const boxTMax = @reduce(.Min, @max(t1, t2));
 			if(boxTMin <= boxTMax and boxTMax > 0) {
+				var face: Neighbor = undefined;
+				if(boxTMin == t1[0]) {
+					face = Neighbor.dirNegX;
+				} else if(boxTMin == t1[1]) {
+					face = Neighbor.dirNegY;
+				} else if(boxTMin == t1[2]) {
+					face = Neighbor.dirDown;
+				} else if(boxTMin == t2[0]) {
+					face = Neighbor.dirPosX;
+				} else if(boxTMin == t2[1]) {
+					face = Neighbor.dirPosY;
+				} else if(boxTMin == t2[2]) {
+					face = Neighbor.dirUp;
+				} else {
+					unreachable;
+				}
 				return .{
 					.distance = boxTMin,
 					.min = min,
 					.max = max,
+					.face = face,
 				};
 			}
 			return null;
@@ -80,7 +98,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 			shouldDropSourceBlockOnSuccess.* = true;
 			if(oldBlock == newBlock) return .no;
 			if(oldBlock.typ == newBlock.typ) return .yes;
-			if(oldBlock.solid()) {
+			if(!oldBlock.replacable()) {
 				var damage: f32 = 1;
 				const isTool = item.item != null and item.item.? == .tool;
 				if(isTool) {

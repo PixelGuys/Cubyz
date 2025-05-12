@@ -27,7 +27,7 @@ pub var window = GuiWindow{
 var lastFrameTime: [2048]f32 = undefined;
 var index: u31 = 0;
 var ssbo: graphics.SSBO = undefined;
-var shader: graphics.Shader = undefined;
+var pipeline: graphics.Pipeline = undefined;
 const border: f32 = 8;
 
 var uniforms: struct {
@@ -41,7 +41,15 @@ var uniforms: struct {
 
 pub fn init() void {
 	ssbo = graphics.SSBO.init();
-	shader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/graphics/graph.vs", "assets/cubyz/shaders/graphics/graph.fs", "", &uniforms);
+	pipeline = graphics.Pipeline.init(
+		"assets/cubyz/shaders/graphics/graph.vert",
+		"assets/cubyz/shaders/graphics/graph.frag",
+		"",
+		&uniforms,
+		.{.cullMode = .none},
+		.{.depthTest = false, .depthWrite = false},
+		.{.attachments = &.{.alphaBlending}},
+	);
 }
 
 pub fn deinit() void {
@@ -60,7 +68,7 @@ pub fn render() void {
 	draw.line(.{border, 40}, .{window.contentSize[0] - border, 40});
 	draw.line(.{border, 56}, .{window.contentSize[0] - border, 56});
 	draw.setColor(0xffffffff);
-	shader.bind();
+	pipeline.bind(null);
 	graphics.c.glUniform1i(uniforms.points, lastFrameTime.len);
 	graphics.c.glUniform1i(uniforms.offset, index);
 	graphics.c.glUniform3f(uniforms.lineColor, 1, 1, 1);

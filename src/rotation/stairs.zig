@@ -254,59 +254,30 @@ pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i,
 	return false;
 }
 
-fn intersectHalfUnitBox(start: Vec3f, invDir: Vec3f) ?f32 {
-	const t0 = start*invDir;
-	const t1 = (start + Vec3f{0.5, 0.5, 0.5})*invDir;
-	const entry = @reduce(.Max, @min(t0, t1));
-	const exit = @reduce(.Min, @max(t0, t1));
-	if(entry > exit or exit < 0) {
-		return null;
-	} else return entry;
-}
-
-fn intersectionPos(block: Block, relativePlayerPos: Vec3f, playerDir: Vec3f) ?struct {minT: f32, minPos: @Vector(3, u1)} {
-	const invDir = @as(Vec3f, @splat(1))/playerDir;
-	const relPos: Vec3f = @floatCast(-relativePlayerPos);
-	const data: u8 = @truncate(block.data);
-	var minT: f32 = std.math.floatMax(f32);
-	var minPos: @Vector(3, u1) = undefined;
-	for(0..8) |i| {
-		const subPos: @Vector(3, u1) = .{
-			@truncate(i >> 2),
-			@truncate(i >> 1),
-			@truncate(i),
-		};
-		if(hasSubBlock(data, subPos[0], subPos[1], subPos[2])) {
-			const relSubPos = relPos + @as(Vec3f, @floatFromInt(subPos))*@as(Vec3f, @splat(0.5));
-			if(intersectHalfUnitBox(relSubPos, invDir)) |t| {
-				if(t < minT) {
-					minT = t;
-					minPos = subPos;
+fn closestRay(comptime typ: enum {bit, intersection}, block: Block, relativePlayerPos: Vec3f, playerDir: Vec3f) if(typ == .intersection) ?RayIntersectionResult else u16 {
+	var result: ?RayIntersectionResult = null;
+	var resultBit: u16 = 0;
+	for([_]u16{1, 2, 4, 8, 16, 32, 64, 128}) |bit| {
+		if(block.data & bit == 0) {
+			const cornerModelIndex = ModelIndex{.index = blocks.meshes.modelIndexStart(block).index + (255 ^ bit)};
+			if(RotationMode.DefaultFunctions.rayModelIntersection(cornerModelIndex, relativePlayerPos, playerDir)) |intersection| {
+				if(result == null or intersection.distance < result.?.distance) {
+					result = intersection;
+					resultBit = bit;
 				}
 			}
 		}
 	}
-	if(minT != std.math.floatMax(f32)) {
-		return .{.minT = minT, .minPos = minPos};
-	}
-	return null;
+	if(typ == .bit) return resultBit;
+	return result;
 }
 
 pub fn rayIntersection(block: Block, item: ?main.items.Item, relativePlayerPos: Vec3f, playerDir: Vec3f) ?RayIntersectionResult {
 	if(item) |_item| {
 		switch(_item) {
 			.baseItem => |baseItem| {
-				if(std.mem.eql(u8, baseItem.id, "cubyz:chisel")) { // Select only one eigth of a block
-					if(intersectionPos(block, relativePlayerPos, playerDir)) |intersection| {
-						const offset: Vec3f = @floatFromInt(intersection.minPos);
-						const half: Vec3f = @splat(0.5);
-						return .{
-							.distance = intersection.minT,
-							.min = half*offset,
-							.max = half + half*offset,
-						};
-					}
-					return null;
+				if(std.mem.eql(u8, baseItem.id, "cubyz:chisel")) { // Select only one eighth of a block
+					return closestRay(.intersection, block, relativePlayerPos, playerDir);
 				}
 			},
 			else => {},
@@ -320,11 +291,9 @@ pub fn onBlockBreaking(item: ?main.items.Item, relativePlayerPos: Vec3f, playerD
 		switch(_item) {
 			.baseItem => |baseItem| {
 				if(std.mem.eql(u8, baseItem.id, "cubyz:chisel")) { // Break only one eigth of a block
-					if(intersectionPos(currentData.*, relativePlayerPos, playerDir)) |intersection| {
-						currentData.data = currentData.data | subBlockMask(intersection.minPos[0], intersection.minPos[1], intersection.minPos[2]);
-						if(currentData.data == 255) currentData.* = .{.typ = 0, .data = 0};
-						return;
-					}
+					currentData.data |= closestRay(.bit, currentData.*, relativePlayerPos, playerDir);
+					if(currentData.data == 255) currentData.* = .{.typ = 0, .data = 0};
+					return;
 				}
 			},
 			else => {},

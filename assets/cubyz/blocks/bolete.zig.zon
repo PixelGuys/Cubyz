@@ -4,8 +4,9 @@
 	.drops = .{
 		.{.items = .{.auto}},
 	},
-	.solid = false,
+	.replacable = true,
 	.viewThrough = true,
+	.degradable = true,
 	.absorbedLight = 0x010101,
 	.collide = false,
 	.rotation = .torch,

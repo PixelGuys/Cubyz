@@ -1,5 +1,5 @@
 .{
-	.tags = .{.stone},
+	.tags = .{.stone, .limestone},
 	.blockHealth = 27.5,
 	.blockResistance = 1,
 	.drops = .{
@@ -8,9 +8,7 @@
 	.item = .{
 		.material = .{
 			.density = 2.75,
-			.strength = 2.33,
 			.elasticity = 0.9,
-			.grip = 5.5,
 			.hardness = 3.33,
 			.textureRoughness = 0.5,
 			.colors = .{
@@ -18,8 +16,14 @@
 			},
 			.modifiers = .{
 				.{
-					.id = "fragile",
-					.strength = 0.20,
+					.id = "good_at",
+					.strength = 0.5,
+					.tag = .limestone,
+					.restriction = .{
+						.id = .encased,
+						.tag = .precious,
+						.amount = 2,
+					},
 				},
 			},
 		},
