@@ -129,14 +129,13 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_allowOres[size] = zon.get(bool, "allowOres", false);
 	_tickEvent[size] = TickEvent.loadFromZon(zon.getChild("tickEvent"));
 
-	const touchFunctionName = zon.get([]const u8, "touchFunction", "");
-	_touchFunction[size] = touchFunctions.getFunctionPointer(touchFunctionName) catch |err| blk: {
-		switch(err) {
-			utils.CallbackError.NotFound => std.log.err("Could not find TouchFunction {s}.", .{touchFunctionName}),
-			else => {},
+	_touchFunction[size] = if(zon.get(?[]const u8, "touchFunction", null)) |touchFunctionName| blk: {
+		const _function = touchFunctions.getFunctionPointer(touchFunctionName);
+		if(_function == null) {
+			std.log.err("Could not find TouchFunction {s}!", .{touchFunctionName});
 		}
-		break :blk null;
-	};
+		break :blk _function;
+	} else null;
 
 	_entityDataClass[size] = entity_data.getByID(zon.get(?[]const u8, "entityDataClass", null));
 
@@ -420,19 +419,15 @@ pub const TickEvent = struct {
 	chance: f32,
 
 	pub fn loadFromZon(zon: ZonElement) ?TickEvent {
-		const name = zon.get([]const u8, "name", "");
-		const _function = tickFunctions.getFunctionPointer(name) catch |err| blk: {
-			switch(err) {
-				utils.CallbackError.NotFound => std.log.err("Could not find TickFunction {s}.", .{name}),
-				else => {},
-			}
-			break :blk null;
-		};
+		const _functionName = zon.get(?[]const u8, "name", null);
+		if(_functionName == null) return null;
 
+		const _function = tickFunctions.getFunctionPointer(_functionName.?);
 		if(_function) |function| {
 			return TickEvent{.function = function, .chance = zon.get(f32, "chance", 1)};
 		}
 
+		std.log.err("Could not find TickFunction {s}.", .{_functionName.?});
 		return null;
 	}
 

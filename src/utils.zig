@@ -1937,8 +1937,6 @@ pub fn castFunctionReturnToAnyopaque(function: anytype) *const CastFunctionRetur
 }
 
 // MARK: Callback
-pub const CallbackError = error{NotFound, EmptyName};
-
 pub fn NamedCallbacks(comptime Child: type, comptime Function: type) type {
 	return struct {
 		const Self = @This();
@@ -1960,11 +1958,10 @@ pub fn NamedCallbacks(comptime Child: type, comptime Function: type) type {
 			self.hashMap.deinit();
 		}
 
-		pub fn getFunctionPointer(self: *Self, id: []const u8) CallbackError!*const Function {
+		pub fn getFunctionPointer(self: *Self, id: []const u8) ?*const Function {
+			std.debug.assert(id.len > 0);
 			const pointer = self.hashMap.getPtr(id) orelse {
-				if(id.len != 0)
-					return CallbackError.NotFound;
-				return CallbackError.EmptyName;
+				return null;
 			};
 			return pointer.*;
 		}
@@ -1979,16 +1976,17 @@ test "Callback registers testFunction and expects errors" {
 	};
 	var testFunctions: NamedCallbacks(TestFunctions, TestFunction) = undefined;
 
-	var testingEHA = main.heap.ErrorHandlingAllocator.init(std.testing.allocator);
-	const testingAllocator = testingEHA.allocator();
-	testFunctions = .init(testingAllocator);
+	testFunctions = .init();
 	defer testFunctions.deinit();
 
 	try std.testing.expect(testFunctions.hashMap.count() == 1);
 
-	const fnPtr = testFunctions.getFunctionPointer("testFunction") catch unreachable;
-	try std.testing.expect(@TypeOf(fnPtr) == *const TestFunction);
+	const fnPtr = testFunctions.getFunctionPointer("testFunction");
+	try std.testing.expect(fnPtr != null);
+	if(fnPtr) |callback| {
+		try std.testing.expect(@TypeOf(callback) == *const TestFunction);
+	}
 
-	try std.testing.expectError(CallbackError.EmptyName, testFunctions.getFunctionPointer(""));
-	try std.testing.expectError(CallbackError.NotFound, testFunctions.getFunctionPointer("functionTest"));
+	const nullPtr = testFunctions.getFunctionPointer("functionTest");
+	try std.testing.expect(nullPtr == null);
 }
