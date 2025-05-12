@@ -1120,7 +1120,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		c.glUniform1f(uniforms.lineSize, 1.0/128.0);
 
 		c.glBindVertexArray(main.renderer.chunk_meshing.vao);
-		c.glDrawElements(c.GL_TRIANGLES, 24*24, c.GL_UNSIGNED_INT, null);
+		c.glDrawElements(c.GL_TRIANGLES, 12*6*6, c.GL_UNSIGNED_INT, null);
 	}
 
 	pub fn render(projectionMatrix: Mat4f, viewMatrix: Mat4f, playerPos: Vec3d) void {
