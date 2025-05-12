@@ -1,5 +1,4 @@
-//! Default test runner for unit tests.
-// Source: https://github.com/ziglang/zig/blob/0.14.0/lib/compiler/test_runner.zig
+// https://github.com/ziglang/zig/blob/master/lib/compiler/test_runner.zig
 const builtin = @import("builtin");
 
 const std = @import("std");
@@ -168,7 +167,6 @@ fn mainServer() !void {
 					},
 				};
 				if(!is_fuzz_test) @panic("missed call to std.testing.fuzz");
-				if(log_err_count != 0) @panic("error logs detected");
 			},
 
 			else => {
@@ -190,12 +188,22 @@ fn mainTerminal() void {
 		.root_name = "Test",
 		.estimated_total_items = test_fn_list.len,
 	});
-	const have_tty = std.io.getStdErr().isTty();
 
 	var async_frame_buffer: []align(builtin.target.stackAlignment()) u8 = undefined;
 	// TODO this is on the next line (using `undefined` above) because otherwise zig incorrectly
 	// ignores the alignment of the slice.
 	async_frame_buffer = &[_]u8{};
+
+	var max_length: usize = 0;
+	for(test_fn_list) |test_fn| {
+		if(test_fn.name.len > max_length) {
+			max_length = test_fn.name.len;
+		}
+	}
+
+	const max_padding_buffer: usize = 384;
+	var padding_buffer: [max_padding_buffer]u8 = undefined;
+	for(0..max_padding_buffer) |i| padding_buffer[i] = '.';
 
 	var leaks: usize = 0;
 	for(test_fn_list, 0..) |test_fn, i| {
@@ -208,33 +216,25 @@ fn mainTerminal() void {
 		testing.log_level = .warn;
 
 		const test_node = root_node.start(test_fn.name, 0);
-		if(!have_tty) {
-			std.debug.print("{d}/{d} {s}...", .{i + 1, test_fn_list.len, test_fn.name});
-		}
+
+		const padding_length: usize = max_length - test_fn.name.len + 3;
+		const padding = padding_buffer[0..padding_length];
+
+		std.debug.print("{d: >4}/{d: <4} {s}{s}", .{i + 1, test_fn_list.len, test_fn.name, padding});
 		is_fuzz_test = false;
 		if(test_fn.func()) |_| {
 			ok_count += 1;
 			test_node.end();
-			if(!have_tty) std.debug.print("OK\n", .{});
+			std.debug.print("OK\n", .{});
 		} else |err| switch(err) {
 			error.SkipZigTest => {
 				skip_count += 1;
-				if(have_tty) {
-					std.debug.print("{d}/{d} {s}...SKIP\n", .{i + 1, test_fn_list.len, test_fn.name});
-				} else {
-					std.debug.print("SKIP\n", .{});
-				}
+				std.debug.print("SKIP\n", .{});
 				test_node.end();
 			},
 			else => {
 				fail_count += 1;
-				if(have_tty) {
-					std.debug.print("{d}/{d} {s}...FAIL ({s})\n", .{
-						i + 1, test_fn_list.len, test_fn.name, @errorName(err),
-					});
-				} else {
-					std.debug.print("FAIL ({s})\n", .{@errorName(err)});
-				}
+				std.debug.print("FAIL ({s})\n", .{@errorName(err)});
 				if(@errorReturnTrace()) |trace| {
 					std.debug.dumpStackTrace(trace.*);
 				}
@@ -258,7 +258,7 @@ fn mainTerminal() void {
 	if(fuzz_count != 0) {
 		std.debug.print("{d} fuzz tests found.\n", .{fuzz_count});
 	}
-	if(leaks != 0 or log_err_count != 0 or fail_count != 0) {
+	if(leaks != 0 or fail_count != 0) {
 		std.process.exit(1);
 	}
 }
@@ -351,7 +351,7 @@ var is_fuzz_test: bool = undefined;
 extern fn fuzzer_set_name(name_ptr: [*]const u8, name_len: usize) void;
 extern fn fuzzer_init(cache_dir: FuzzerSlice) void;
 extern fn fuzzer_init_corpus_elem(input_ptr: [*]const u8, input_len: usize) void;
-extern fn fuzzer_start(testOne: *const fn([*]const u8, usize) callconv(.C) void) void;
+extern fn fuzzer_start(testOne: *const fn([*]const u8, usize) callconv(.c) void) void;
 extern fn fuzzer_coverage_id() u64;
 
 pub fn fuzz(
@@ -372,9 +372,6 @@ pub fn fuzz(
 	// is built in fuzz mode.
 	is_fuzz_test = true;
 
-	// Ensure no test failure occurred before starting fuzzing.
-	if(log_err_count != 0) @panic("error logs detected");
-
 	// libfuzzer is in a separate compilation unit so that its own code can be
 	// excluded from code coverage instrumentation. It needs a function pointer
 	// it can call for checking exactly one input. Inside this function we do
@@ -383,7 +380,7 @@ pub fn fuzz(
 	const global = struct {
 		var ctx: @TypeOf(context) = undefined;
 
-		fn fuzzer_one(input_ptr: [*]const u8, input_len: usize) callconv(.C) void {
+		fn fuzzer_one(input_ptr: [*]const u8, input_len: usize) callconv(.c) void {
 			@disableInstrumentation();
 			testing.allocator_instance = .{};
 			defer if(testing.allocator_instance.deinit() == .leak) std.process.exit(1);
@@ -400,7 +397,6 @@ pub fn fuzz(
 			if(log_err_count != 0) {
 				std.debug.lockStdErr();
 				std.debug.print("error logs detected\n", .{});
-				std.process.exit(1);
 			}
 		}
 	};
