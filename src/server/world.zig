@@ -957,7 +957,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		var iter = ChunkManager.entityChunkHashMap.valueIterator();
 		var currentChunks: main.ListUnmanaged(*EntityChunk) = .initCapacity(main.stackAllocator, iter.len);
 		defer currentChunks.deinit(main.stackAllocator);
-		while (iter.next()) |entityChunk| {
+		while(iter.next()) |entityChunk| {
 			entityChunk.*.increaseRefCount();
 			currentChunks.append(main.stackAllocator, entityChunk.*);
 		}
