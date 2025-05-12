@@ -1,4 +1,5 @@
-// https://github.com/ziglang/zig/blob/master/lib/compiler/test_runner.zig
+//! Default test runner for unit tests.
+// Source: https://github.com/ziglang/zig/blob/0.14.0/lib/compiler/test_runner.zig
 const builtin = @import("builtin");
 
 const std = @import("std");
