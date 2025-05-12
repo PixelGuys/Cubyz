@@ -221,7 +221,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.startQuery(.chunk_rendering_preparation);
 	const direction = crosshairDirection(game.camera.viewMatrix, lastFov, lastWidth, lastHeight);
 	MeshSelection.select(playerPos, direction, game.Player.inventory.getItem(game.Player.selectedSlot));
-	MeshSelection.render(game.projectionMatrix, game.camera.viewMatrix, playerPos);
 
 	chunk_meshing.beginRender();
 
@@ -240,6 +239,8 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	itemdrop.ItemDropRenderer.renderItemDrops(game.projectionMatrix, ambientLight, playerPos);
 	gpu_performance_measuring.stopQuery();
+
+	MeshSelection.render(game.projectionMatrix, game.camera.viewMatrix, playerPos);
 
 	// Render transparent chunk meshes:
 	worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE5);
@@ -845,11 +846,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		modelPosition: c_int,
 		lowerBounds: c_int,
 		upperBounds: c_int,
+		lineSize: c_int,
 	} = undefined;
-
-	var cubeVAO: c_uint = undefined;
-	var cubeVBO: c_uint = undefined;
-	var cubeIBO: c_uint = undefined;
 
 	pub fn init() void {
 		pipeline = graphics.Pipeline.init(
@@ -857,57 +855,14 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			"assets/cubyz/shaders/block_selection_fragment.frag",
 			"",
 			&uniforms,
-			.{.depthBias = .{
-				.slopeFactor = -2,
-				.clamp = 0,
-				.constantFactor = 0,
-			}},
+			.{.cullMode = .none},
 			.{.depthTest = true, .depthWrite = true},
-			.{.attachments = &.{.noBlending}},
+			.{.attachments = &.{.alphaBlending}},
 		);
-
-		const rawData = [_]f32{
-			0, 0, 0,
-			0, 0, 1,
-			0, 1, 0,
-			0, 1, 1,
-			1, 0, 0,
-			1, 0, 1,
-			1, 1, 0,
-			1, 1, 1,
-		};
-		const indices = [_]u8{
-			0, 1,
-			0, 2,
-			0, 4,
-			1, 3,
-			1, 5,
-			2, 3,
-			2, 6,
-			3, 7,
-			4, 5,
-			4, 6,
-			5, 7,
-			6, 7,
-		};
-
-		c.glGenVertexArrays(1, &cubeVAO);
-		c.glBindVertexArray(cubeVAO);
-		c.glGenBuffers(1, &cubeVBO);
-		c.glBindBuffer(c.GL_ARRAY_BUFFER, cubeVBO);
-		c.glBufferData(c.GL_ARRAY_BUFFER, rawData.len*@sizeOf(f32), &rawData, c.GL_STATIC_DRAW);
-		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, 3*@sizeOf(f32), null);
-		c.glEnableVertexAttribArray(0);
-		c.glGenBuffers(1, &cubeIBO);
-		c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, cubeIBO);
-		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, indices.len*@sizeOf(u8), &indices, c.GL_STATIC_DRAW);
 	}
 
 	pub fn deinit() void {
 		pipeline.deinit();
-		c.glDeleteBuffers(1, &cubeIBO);
-		c.glDeleteBuffers(1, &cubeVBO);
-		c.glDeleteVertexArrays(1, &cubeVAO);
 	}
 
 	var posBeforeBlock: Vec3i = undefined;
@@ -1162,10 +1117,10 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		);
 		c.glUniform3f(uniforms.lowerBounds, min[0], min[1], min[2]);
 		c.glUniform3f(uniforms.upperBounds, max[0], max[1], max[2]);
+		c.glUniform1f(uniforms.lineSize, 1.0/128.0);
 
-		c.glBindVertexArray(cubeVAO);
-		// TODO: Draw thicker lines so they are more visible. Maybe a simple shader + cube mesh is enough.
-		c.glDrawElements(c.GL_LINES, 12*2, c.GL_UNSIGNED_BYTE, null);
+		c.glBindVertexArray(main.renderer.chunk_meshing.vao);
+		c.glDrawElements(c.GL_TRIANGLES, 24*24, c.GL_UNSIGNED_INT, null);
 	}
 
 	pub fn render(projectionMatrix: Mat4f, viewMatrix: Mat4f, playerPos: Vec3d) void {
