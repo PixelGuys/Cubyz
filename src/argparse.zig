@@ -189,26 +189,30 @@ pub const AutocompleteResult = struct {
 };
 
 // TODO: This could check if biome ID is valid, either always or with generic flag.
-pub const BiomeId = struct {
-	id: []const u8,
+pub fn BiomeId(comptime checkExists: bool) type {
+	return struct {
+		const Self = @This();
 
-	pub fn parse(arg: []const u8) !BiomeId {
-		if(!main.server.terrain.biomes.biomesById.contains(arg)) return error.InvalidBiomeId;
-		return .{.id = arg};
-	}
+		id: []const u8,
 
-	pub fn autocomplete(allocator: NeverFailingAllocator, arg: []const u8) AutocompleteResult {
-		var result: AutocompleteResult = .{};
-		var iterator = main.server.terrain.biomes.biomesById.keyIterator();
-		while(iterator.next()) |biomeId| {
-			const id = biomeId.*;
-			if(!std.mem.startsWith(u8, id, arg)) continue;
-			if(id.len == arg.len) continue;
-			result.suggestions.append(allocator, allocator.dupe(u8, id[arg.len..]));
+		pub fn parse(arg: []const u8) !Self {
+			if(checkExists and !main.server.terrain.biomes.biomesById.contains(arg)) return error.InvalidBiomeId;
+			return .{.id = arg};
 		}
-		return result;
-	}
-};
+
+		pub fn autocomplete(allocator: NeverFailingAllocator, arg: []const u8) AutocompleteResult {
+			var result: AutocompleteResult = .{};
+			var iterator = main.server.terrain.biomes.biomesById.keyIterator();
+			while(iterator.next()) |biomeId| {
+				const id = biomeId.*;
+				if(!std.mem.startsWith(u8, id, arg)) continue;
+				if(id.len == arg.len) continue;
+				result.suggestions.append(allocator, allocator.dupe(u8, id[arg.len..]));
+			}
+			return result;
+		}
+	};
+}
 
 const Test = struct {
 	var testingAllocator = main.heap.ErrorHandlingAllocator.init(std.testing.allocator);
@@ -219,7 +223,7 @@ const Test = struct {
 	const @"float int BiomeId" = Parser(struct {
 		x: f32,
 		y: u64,
-		biome: BiomeId,
+		biome: BiomeId(false),
 	});
 
 	const @"Union X or XY" = Parser(union(enum) {

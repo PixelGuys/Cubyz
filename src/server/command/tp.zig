@@ -11,7 +11,7 @@ const BiomeId = main.argparse.BiomeId;
 
 const ArgParser = Parser(union(enum) {
 	@"tp to xyz": struct {x: f64, y: f64, z: ?f64},
-	@"tp to biome": struct {biomeId: BiomeId},
+	@"tp to biome": struct {biomeId: BiomeId(true)},
 });
 
 pub fn execute(args: []const u8, source: *User) void {
