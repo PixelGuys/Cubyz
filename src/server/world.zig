@@ -945,26 +945,30 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 			_chunk.mutex.lock();
 			const block = _chunk.getBlock(x, y, z);
-			_chunk.mutex.unlock();
 			if(block.tickEvent()) |event| {
 				event.tryRandomTick(block, _chunk, x, y, z);
 			}
+			_chunk.mutex.unlock();
 		}
 	}
 
 	fn tick(self: *ServerWorld) void {
-		// tick blocks
 		ChunkManager.mutex.lock();
-		var iter = ChunkManager.entityChunkHashMap.keyIterator();
-		while(iter.next()) |pos| {
-			if(ChunkManager.entityChunkHashMap.get(pos.*)) |entityChunk| {
-				const ch = entityChunk.getChunk() orelse continue;
-				entityChunk.increaseRefCount();
-				self.tickBlocksInChunk(ch);
-				entityChunk.decreaseRefCount();
-			}
+		var iter = ChunkManager.entityChunkHashMap.valueIterator();
+		var currentChunks: main.ListUnmanaged(*EntityChunk) = .initCapacity(main.stackAllocator, iter.len);
+		defer currentChunks.deinit(main.stackAllocator);
+		while (iter.next()) |entityChunk| {
+			entityChunk.*.increaseRefCount();
+			currentChunks.append(main.stackAllocator, entityChunk.*);
 		}
 		ChunkManager.mutex.unlock();
+
+		// tick blocks
+		for(currentChunks.items) |entityChunk| {
+			defer entityChunk.decreaseRefCount();
+			const ch = entityChunk.getChunk() orelse continue;
+			self.tickBlocksInChunk(ch);
+		}
 	}
 
 	pub fn update(self: *ServerWorld) void { // MARK: update()
