@@ -2,9 +2,9 @@ const std = @import("std");
 
 const main = @import("main");
 const items = main.items;
-const BaseItem = items.BaseItem;
 const Inventory = items.Inventory;
 const ItemStack = items.ItemStack;
+const BaseItemIndex = items.BaseItemIndex;
 const Player = main.game.Player;
 const Texture = main.graphics.Texture;
 const Vec2f = main.vec.Vec2f;
@@ -31,7 +31,7 @@ pub var window = GuiWindow{
 
 const padding: f32 = 8;
 
-var availableItems: main.List(*BaseItem) = undefined;
+var availableItems: main.List(BaseItemIndex) = undefined;
 var itemAmount: main.List(u32) = undefined;
 var inventories: main.List(Inventory) = undefined;
 
