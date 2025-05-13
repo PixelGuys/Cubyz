@@ -50,13 +50,7 @@ fn findValidFolderName(allocator: NeverFailingAllocator, name: []const u8) []con
 	defer main.stackAllocator.free(escapedName);
 	for(name, 0..) |char, i| {
 		escapedName[i] = switch(char) {
-			'a'...'z',
-			'A'...'Z',
-			'0'...'9',
-			'_',
-			'-',
-			'.',
-			' ' => char,
+			'a'...'z', 'A'...'Z', '0'...'9', '_', '-', '.', ' ' => char,
 			128...255 => char,
 			else => '-',
 		};
