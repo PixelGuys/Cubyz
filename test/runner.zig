@@ -397,6 +397,7 @@ pub fn fuzz(
 			if(log_err_count != 0) {
 				std.debug.lockStdErr();
 				std.debug.print("error logs detected\n", .{});
+				std.process.exit(1);
 			}
 		}
 	};
