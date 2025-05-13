@@ -140,7 +140,7 @@ pub fn onOpen() void {
 	}
 
 	std.sort.insertion(WorldInfo, worldList.items, {}, struct {
-		fn lessThan(_: void, lhs: WorldInfo, rhs: WorldInfo)bool {
+		fn lessThan(_: void, lhs: WorldInfo, rhs: WorldInfo) bool {
 			return rhs.lastUsedTime -% lhs.lastUsedTime < 0;
 		}
 	}.lessThan);
