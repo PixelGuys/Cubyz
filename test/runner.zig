@@ -372,6 +372,9 @@ pub fn fuzz(
 	// is built in fuzz mode.
 	is_fuzz_test = true;
 
+	// Ensure no test failure occurred before starting fuzzing.
+	if(log_err_count != 0) @panic("error logs detected");
+
 	// libfuzzer is in a separate compilation unit so that its own code can be
 	// excluded from code coverage instrumentation. It needs a function pointer
 	// it can call for checking exactly one input. Inside this function we do
