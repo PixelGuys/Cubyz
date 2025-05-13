@@ -1,0 +1,8 @@
+.{
+	.blueprint = "cubyz:tree/willow/branch/1",
+	.children = .{
+		.blue = .{
+			.{.structure = "cubyz:tree/willow/1/leaf/1", .chance = 1.0},
+		},
+	},
+}

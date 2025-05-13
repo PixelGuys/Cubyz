@@ -1,0 +1,9 @@
+.{
+	.blueprint = "cubyz:tree/willow/crown/1",
+	.children = .{
+		.crimson = .{
+			.{.structure = "cubyz:deco/willow_leaf", .chance = 0.33},
+			.{.structure = null, .chance = 0.67},
+		},
+	},
+}

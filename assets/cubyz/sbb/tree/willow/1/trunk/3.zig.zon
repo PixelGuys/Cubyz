@@ -1,0 +1,19 @@
+.{
+	.blueprint = "cubyz:tree/willow/trunk/3",
+	.children = .{
+		.crimson = .{
+			.{.structure = "cubyz:tree/willow/1/branch/1", .chance = 0.5},
+			.{.structure = "cubyz:tree/willow/1/branch/2", .chance = 0.5},
+		},
+		.blue = .{
+			.{.structure = "cubyz:tree/willow/1/crown/1", .chance = 1.0},
+		},
+		.lime = .{
+			.{.structure = "cubyz:deco/bolete_side", .chance = 0.025},
+			.{.structure = null, .chance = 0.975},
+		},
+		.yellow = .{
+			.{.structure = null, .chance = 1.0},
+		},
+	},
+}
