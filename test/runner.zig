@@ -234,7 +234,7 @@ fn mainTerminal() void {
 			},
 			else => {
 				fail_count += 1;
-				std.debug.print("FAIL ({s})\n", .{@errorName(err)});
+				std.debug.print("FAIL\n{s}:\n", .{@errorName(err)});
 				if(@errorReturnTrace()) |trace| {
 					std.debug.dumpStackTrace(trace.*);
 				}
