@@ -195,13 +195,6 @@ fn mainTerminal() void {
 	// ignores the alignment of the slice.
 	async_frame_buffer = &[_]u8{};
 
-	var max_length: usize = 0;
-	for(test_fn_list) |test_fn| {
-		if(test_fn.name.len > max_length) {
-			max_length = test_fn.name.len;
-		}
-	}
-
 	var leaks: usize = 0;
 	for(test_fn_list, 0..) |test_fn, i| {
 		testing.allocator_instance = .{};
