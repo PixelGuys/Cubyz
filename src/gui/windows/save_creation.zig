@@ -44,16 +44,48 @@ fn createWorld(_: usize) void {
 	};
 }
 
+fn findValidFolderName(allocator: NeverFailingAllocator, name: []const u8) []const u8 {
+	// Remove illegal ASCII characters:
+	const escapedName = main.stackAllocator.alloc(u8, name.len);
+	defer main.stackAllocator.free(escapedName);
+	for(name, 0..) |char, i| {
+		escapedName[i] = switch(char) {
+			'a'...'z',
+			'A'...'Z',
+			'0'...'9',
+			'_',
+			'-',
+			'.',
+			' ' => char,
+			128...255 => char,
+			else => '-',
+		};
+	}
+
+	// Avoid duplicates:
+	var resultName = main.stackAllocator.dupe(u8, escapedName);
+	defer main.stackAllocator.free(resultName);
+	var i: usize = 0;
+	while(true) {
+		const resultPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{resultName}) catch unreachable;
+		defer main.stackAllocator.free(resultPath);
+
+		var dir = std.fs.cwd().openDir(resultPath, .{}) catch break;
+		dir.close();
+
+		main.stackAllocator.free(resultName);
+		resultName = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}_{}", .{escapedName, i}) catch unreachable;
+		i += 1;
+	}
+	return allocator.dupe(u8, resultName);
+}
+
 fn flawedCreateWorld() !void {
 	const worldName = textInput.currentString.items;
-	const worldPath = worldName; // TODO: Make sure that only valid file name characters are used, and add a check to allow different worlds of the same name.
+	const worldPath = findValidFolderName(main.stackAllocator, worldName);
+	defer main.stackAllocator.free(worldPath);
 	const saveFolder = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{worldPath}) catch unreachable;
 	defer main.stackAllocator.free(saveFolder);
-	if(std.fs.cwd().openDir(saveFolder, .{})) |_dir| {
-		var dir = _dir;
-		dir.close();
-		return error.AlreadyExists;
-	} else |_| {}
 	try main.files.makeDir(saveFolder);
 	{
 		const generatorSettingsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/generatorSettings.zig.zon", .{worldPath}) catch unreachable;

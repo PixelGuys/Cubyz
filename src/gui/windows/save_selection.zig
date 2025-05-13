@@ -94,33 +94,6 @@ fn openFolder(index: usize) void {
 	main.files.openDirInWindow(path);
 }
 
-fn parseEscapedFolderName(allocator: NeverFailingAllocator, name: []const u8) []const u8 {
-	var result = main.List(u8).init(allocator);
-	defer result.deinit();
-	var i: u32 = 0;
-	while(i < name.len) : (i += 1) {
-		if(name[i] == '_') {
-			var val: u21 = 0;
-			for(0..4) |_| {
-				i += 1;
-				if(i < name.len) {
-					val = val*16 + switch(name[i]) {
-						'0'...'9' => name[i] - '0',
-						'a'...'f' => name[i] - 'a' + 10,
-						'A'...'F' => name[i] - 'A' + 10,
-						else => 0,
-					};
-				}
-			}
-			var buf: [4]u8 = undefined;
-			result.appendSlice(buf[0 .. std.unicode.utf8Encode(val, &buf) catch 0]); // TODO: Change this to full unicode rather than using this broken utf-16 converter.
-		} else {
-			result.append(name[i]);
-		}
-	}
-	return result.toOwnedSlice();
-}
-
 pub fn update() void {
 	if(needsUpdate) {
 		needsUpdate = false;
@@ -157,13 +130,10 @@ pub fn onOpen() void {
 				};
 				defer worldInfo.deinit(main.stackAllocator);
 
-				const decodedName = parseEscapedFolderName(main.stackAllocator, entry.name);
-				defer main.stackAllocator.free(decodedName);
-
 				worldList.append(main.globalAllocator, .{
 					.fileName = main.globalAllocator.dupe(u8, entry.name),
 					.lastUsedTime = worldInfo.get(i64, "lastUsedTime", 0),
-					.name = main.globalAllocator.dupe(u8, worldInfo.get([]const u8, "", decodedName)),
+					.name = main.globalAllocator.dupe(u8, worldInfo.get([]const u8, "name", entry.name)),
 				});
 			}
 		}
