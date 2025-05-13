@@ -203,8 +203,7 @@ fn mainTerminal() void {
 	}
 
 	const max_padding_buffer: usize = 384;
-	var padding_buffer: [max_padding_buffer]u8 = undefined;
-	for(0..max_padding_buffer) |i| padding_buffer[i] = '.';
+	var padding_buffer: [max_padding_buffer]u8 = @splat('.');
 
 	var leaks: usize = 0;
 	for(test_fn_list, 0..) |test_fn, i| {
