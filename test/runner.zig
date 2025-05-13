@@ -202,9 +202,6 @@ fn mainTerminal() void {
 		}
 	}
 
-	const max_padding_buffer: usize = 384;
-	var padding_buffer: [max_padding_buffer]u8 = @splat('.');
-
 	var leaks: usize = 0;
 	for(test_fn_list, 0..) |test_fn, i| {
 		testing.allocator_instance = .{};
@@ -216,9 +213,6 @@ fn mainTerminal() void {
 		testing.log_level = .warn;
 
 		const test_node = root_node.start(test_fn.name, 0);
-
-		const padding_length: usize = max_length - test_fn.name.len + 3;
-		const padding = padding_buffer[0..padding_length];
 
 		std.debug.print("{d: >4}/{d: <4} {s:.<65}", .{i + 1, test_fn_list.len, test_fn.name});
 		is_fuzz_test = false;
