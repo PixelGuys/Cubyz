@@ -220,7 +220,7 @@ fn mainTerminal() void {
 		const padding_length: usize = max_length - test_fn.name.len + 3;
 		const padding = padding_buffer[0..padding_length];
 
-		std.debug.print("{d: >4}/{d: <4} {s}{s}", .{i + 1, test_fn_list.len, test_fn.name, padding});
+		std.debug.print("{d: >4}/{d: <4} {s:.<65}", .{i + 1, test_fn_list.len, test_fn.name});
 		is_fuzz_test = false;
 		if(test_fn.func()) |_| {
 			ok_count += 1;
