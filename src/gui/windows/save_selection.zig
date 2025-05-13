@@ -50,6 +50,9 @@ pub fn openWorld(name: []const u8) void {
 		std.log.err("Encountered error while starting server thread: {s}", .{@errorName(err)});
 		return;
 	};
+	main.server.thread.?.setName("Server") catch |err| {
+		std.log.err("Failed to rename Server thread: {s}", .{@errorName(err)});
+	};
 
 	while(!main.server.running.load(.acquire)) {
 		std.time.sleep(1_000_000);
