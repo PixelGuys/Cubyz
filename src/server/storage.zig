@@ -215,7 +215,7 @@ fn cacheInit(pos: chunk.ChunkPosition) *RegionFile {
 		return region;
 	}
 	hashMapMutex.unlock();
-	const path: []const u8 = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/chunks", .{server.world.?.name}) catch unreachable;
+	const path: []const u8 = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/chunks", .{server.world.?.path}) catch unreachable;
 	defer main.stackAllocator.free(path);
 	return RegionFile.init(pos, path);
 }
