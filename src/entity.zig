@@ -101,8 +101,8 @@ pub const ClientEntityManager = struct {
 	pub fn init() void {
 		entities = .init();
 		pipeline = graphics.Pipeline.init(
-			"assets/cubyz/shaders/entity_vertex.vs",
-			"assets/cubyz/shaders/entity_fragment.fs",
+			"assets/cubyz/shaders/entity_vertex.vert",
+			"assets/cubyz/shaders/entity_fragment.frag",
 			"",
 			&uniforms,
 			.{},

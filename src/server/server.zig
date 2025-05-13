@@ -17,7 +17,8 @@ const Blueprint = main.blueprint.Blueprint;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const CircularBufferQueue = main.utils.CircularBufferQueue;
 
-pub const ServerWorld = @import("world.zig").ServerWorld;
+pub const world_zig = @import("world.zig");
+pub const ServerWorld = world_zig.ServerWorld;
 pub const terrain = @import("terrain/terrain.zig");
 pub const Entity = @import("Entity.zig");
 pub const storage = @import("storage.zig");
@@ -410,7 +411,7 @@ fn update() void { // MARK: update()
 
 	for(userList) |user| {
 		const pos = @as(Vec3i, @intFromFloat(user.player.pos));
-		const biomeId = world.?.getBiome(user.lastPos[0], pos[1], pos[2]).paletteId;
+		const biomeId = world.?.getBiome(pos[0], pos[1], pos[2]).paletteId;
 		if(biomeId != user.lastSentBiomeId) {
 			user.lastSentBiomeId = biomeId;
 			main.network.Protocols.genericUpdate.sendBiome(user.conn, biomeId);
