@@ -3,11 +3,11 @@ const std = @import("std");
 const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const ListUnmanaged = main.ListUnmanaged;
+const utils = main.utils;
 
 pub fn Parser(comptime T: type) type {
 	return struct {
 		const Self = @This();
-		pub const Args = T;
 
 		pub fn parse(allocator: NeverFailingAllocator, args: []const u8) ParseResult(T) {
 			return resolve(false, allocator, args);
@@ -32,51 +32,76 @@ pub fn Parser(comptime T: type) type {
 
 		fn resolveStruct(comptime doAutocomplete: bool, comptime s: std.builtin.Type.Struct, allocator: NeverFailingAllocator, args: []const u8) if(doAutocomplete) AutocompleteResult else ParseResult(T) {
 			var result: T = undefined;
-
 			var split = std.mem.splitScalar(u8, args, ' ');
-			var offset: usize = 0;
-			var count: usize = 0;
+			var nullableArg: ?[]const u8 = null;
 
-			inline for(s.fields) |field| {
-				const _arg = split.next();
-				defer {
-					if(_arg) |arg| offset += arg.len + 1;
-					count += 1;
+			inline for(s.fields, 1..) |field, count| {
+				if(nullableArg == null) {
+					nullableArg = split.next();
 				}
 
-				@field(result, field.name) = resolveArgument(field.type, _arg) catch |err| {
-					const message = std.fmt.allocPrint(allocator.allocator, "Failed to parse argument {} due to error {s} (offset {})", .{count, @errorName(err), offset}) catch unreachable;
-					return .initWithFailure(allocator, message);
-				};
+				const fieldResult = resolveArgument(field.type, allocator, count, nullableArg);
+				switch(fieldResult) {
+					.failure => {
+						if(@typeInfo(field.type) != .optional or count == s.fields.len) {
+							return .{.failure = .{.messages = fieldResult.failure.messages}};
+						} else {
+							@field(result, field.name) = null;
+							fieldResult.deinit(allocator);
+						}
+					},
+					.success => {
+						@field(result, field.name) = fieldResult.success;
+						nullableArg = null;
+					},
+				}
 			}
 
 			if(split.next() != null) {
-				return .initWithFailure(allocator, std.fmt.allocPrint(allocator.allocator, "Too many arguments for command, expected {}", .{count}) catch unreachable);
+				return .initWithFailure(allocator, utils.format(allocator, "Too many arguments for command, expected {}", .{s.fields.len}));
 			}
 
 			return .{.success = result};
 		}
 
-		fn resolveArgument(comptime Field: type, _arg: ?[]const u8) !Field {
+		fn resolveArgument(comptime Field: type, allocator: NeverFailingAllocator, count: usize, nullableArg: ?[]const u8) ParseResult(Field) {
 			switch(@typeInfo(Field)) {
 				inline .optional => |optionalInfo| {
-					if(_arg == null) return null;
-					return try resolveArgument(optionalInfo.child, _arg);
+					if(nullableArg == null) return .{.success = null};
+					return switch(resolveArgument(optionalInfo.child, allocator, count, nullableArg)) {
+						.success => |success| return .{.success = success},
+						.failure => |failure| return .{.failure = .{.messages = failure.messages}},
+					};
 				},
-				else => |fieldInfo| {
-					const arg = _arg orelse return error.MissingArgument;
-					switch(fieldInfo) {
-						inline .@"struct" => {
-							if(!@hasDecl(Field, "parse")) @compileError("Struct must have a parse function");
-							return try @field(Field, "parse")(arg);
-						},
-						inline .@"enum" => return std.meta.stringToEnum(Field, arg) orelse return error.InvalidEnum,
-						inline .float => |floatInfo| return try std.fmt.parseFloat(std.meta.Float(floatInfo.bits), arg),
-						inline .int => |intInfo| return try std.fmt.parseInt(std.meta.Int(intInfo.signedness, intInfo.bits), arg, 0),
-						inline else => |other| @compileError("Unsupported type " ++ @tagName(other)),
-					}
+				inline .@"struct" => {
+					const arg = nullableArg orelse return missingArgument(Field, allocator, count);
+					if(!@hasDecl(Field, "parse")) @compileError("Struct must have a parse function");
+					return @field(Field, "parse")(allocator, count, arg);
 				},
+				inline .@"enum" => {
+					const arg = nullableArg orelse return missingArgument(Field, allocator, count);
+					return .{.success = std.meta.stringToEnum(Field, arg) orelse {
+						return .initWithFailure(allocator, utils.format(allocator, "Expected one of {} as argument {} found \"{s}\"", .{.{std.meta.fieldNames(Field)}, count, arg}));
+					}};
+				},
+				inline .float => |floatInfo| return {
+					const arg = nullableArg orelse return missingArgument(Field, allocator, count);
+					return .{.success = std.fmt.parseFloat(std.meta.Float(floatInfo.bits), arg) catch {
+						return .initWithFailure(allocator, utils.format(allocator, "Expected a number as argument {} found \"{s}\"", .{count, arg}));
+					}};
+				},
+				inline .int => |intInfo| {
+					const arg = nullableArg orelse return missingArgument(Field, allocator, count);
+					return .{.success = std.fmt.parseInt(std.meta.Int(intInfo.signedness, intInfo.bits), arg, 0) catch {
+						return .initWithFailure(allocator, utils.format(allocator, "Expected a integer as argument {} found \"{s}\"", .{count, arg}));
+					}};
+				},
+				inline else => |other| @compileError("Unsupported type " ++ @tagName(other)),
 			}
+		}
+
+		fn missingArgument(comptime Field: type, allocator: NeverFailingAllocator, count: usize) ParseResult(Field) {
+			return .initWithFailure(allocator, utils.format(allocator, "Missing argument at position {}", .{count}));
 		}
 
 		fn autocompleteArgument(comptime Field: type, allocator: NeverFailingAllocator, _arg: ?[]const u8) AutocompleteResult {
@@ -99,7 +124,7 @@ pub fn Parser(comptime T: type) type {
 		}
 
 		fn parseUnion(comptime u: std.builtin.Type.Union, allocator: NeverFailingAllocator, args: []const u8) ParseResult(T) {
-			var result: ParseResult(T) = .initWithFailure(allocator, allocator.dupe(u8, "Provided argument list didn't match any of the valid alternative interpretations of command argument list."));
+			var result: ParseResult(T) = .initWithFailure(allocator, allocator.dupe(u8, "Couldn't match argument list."));
 
 			inline for(u.fields) |field| {
 				var fieldResult = Parser(field.type).resolve(false, allocator, args);
@@ -109,7 +134,7 @@ pub fn Parser(comptime T: type) type {
 					result.deinit(allocator);
 					return .{.success = @unionInit(T, field.name, fieldResult.success)};
 				}
-				result.failure.messages.append(allocator, std.fmt.allocPrint(allocator.allocator, "\n{s}", .{field.name}) catch unreachable);
+				result.failure.messages.append(allocator, utils.format(allocator, "\n{s}", .{field.name}));
 				result.failure.takeMessages(allocator, &fieldResult.failure);
 			}
 
@@ -195,9 +220,9 @@ pub fn BiomeId(comptime checkExists: bool) type {
 
 		id: []const u8,
 
-		pub fn parse(arg: []const u8) !Self {
-			if(checkExists and !main.server.terrain.biomes.biomesById.contains(arg)) return error.InvalidBiomeId;
-			return .{.id = arg};
+		pub fn parse(allocator: NeverFailingAllocator, count: usize, arg: []const u8) ParseResult(Self) {
+			if(checkExists and !main.server.terrain.biomes.biomesById.contains(arg)) return .initWithFailure(allocator, utils.format(allocator, "Biome '{s}' passed as argument {} does not exist", .{arg, count}));
+			return .{.success = .{.id = arg}};
 		}
 
 		pub fn autocomplete(allocator: NeverFailingAllocator, arg: []const u8) AutocompleteResult {
@@ -278,6 +303,39 @@ test "float int float" {
 	try std.testing.expect(result.success.x == 33.0);
 	try std.testing.expect(result.success.y == 154);
 	try std.testing.expect(result.success.z == -5654.0);
+}
+
+test "float int optional float missing" {
+	const ArgParser = Parser(struct {
+		x: f64,
+		y: i32,
+		z: ?f32,
+	});
+
+	const result = ArgParser.parse(Test.allocator, "33.0 154");
+	defer result.deinit(Test.allocator);
+
+	try std.testing.expect(result == .success);
+	try std.testing.expect(result.success.x == 33.0);
+	try std.testing.expect(result.success.y == 154);
+	try std.testing.expect(result.success.z == null);
+}
+
+test "float optional int biome id missing" {
+	const ArgParser = Parser(struct {
+		x: f64,
+		y: ?i32,
+		z: BiomeId(false),
+	});
+
+	const result = ArgParser.parse(Test.allocator, "33.0 cubyz:foo");
+	defer result.deinit(Test.allocator);
+
+	try std.testing.expect(result == .success);
+
+	try std.testing.expect(result.success.x == 33.0);
+	try std.testing.expect(result.success.y == null);
+	try std.testing.expectEqualStrings("cubyz:foo", result.success.z.id);
 }
 
 test "float int BiomeId" {

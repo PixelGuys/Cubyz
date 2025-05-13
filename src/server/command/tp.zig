@@ -9,10 +9,12 @@ pub const usage = "/tp <x> <y>\n/tp <x> <y> <z>\n/tp <biome>";
 const Parser = main.argparse.Parser;
 const BiomeId = main.argparse.BiomeId;
 
-const ArgParser = Parser(union(enum) {
-	@"tp to xyz": struct {x: f64, y: f64, z: ?f64},
-	@"tp to biome": struct {biomeId: BiomeId(true)},
-});
+const Args = union(enum) {
+	@"/tp <x> <y> <z>": struct {x: f64, y: f64, z: ?f64},
+	@"/tp <biome>": struct {biomeId: BiomeId(true)},
+};
+
+const ArgParser = Parser(Args);
 
 pub fn execute(args: []const u8, source: *User) void {
 	const result = ArgParser.parse(main.stackAllocator, args);
@@ -25,7 +27,7 @@ pub fn execute(args: []const u8, source: *User) void {
 		return;
 	}
 	switch(result.success) {
-		.@"tp to biome" => |params| {
+		.@"/tp <biome>" => |params| {
 			const biome = main.server.terrain.biomes.getById(params.biomeId.id);
 			if(!std.mem.eql(u8, biome.id, params.biomeId.id)) {
 				source.sendMessage("#ff0000Couldn't find biome with id \"{s}\"", .{params.biomeId.id});
@@ -82,7 +84,7 @@ pub fn execute(args: []const u8, source: *User) void {
 			source.sendMessage("#ff0000Couldn't find biome. Searched in a radius of 16384 blocks.", .{});
 			return;
 		},
-		.@"tp to xyz" => |params| {
+		.@"/tp <x> <y> <z>" => |params| {
 			var x = params.x;
 			var y = params.y;
 			var z = params.z orelse source.player.pos[2];
