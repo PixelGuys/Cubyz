@@ -325,7 +325,7 @@ pub const Sync = struct { // MARK: Sync
 					defer main.stackAllocator.free(dest);
 					const hashedName = std.base64.url_safe.Encoder.encode(dest, user.name);
 
-					const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players/{s}.zig.zon", .{main.server.world.?.name, hashedName}) catch unreachable;
+					const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players/{s}.zig.zon", .{main.server.world.?.path, hashedName}) catch unreachable;
 					defer main.stackAllocator.free(path);
 
 					const playerData = main.files.readToZon(main.stackAllocator, path) catch .null;

@@ -46,7 +46,8 @@ fn createWorld(_: usize) void {
 
 fn flawedCreateWorld() !void {
 	const worldName = textInput.currentString.items;
-	const saveFolder = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{worldName}) catch unreachable;
+	const worldPath = worldName; // TODO: Make sure that only valid file name characters are used, and add a check to allow different worlds of the same name.
+	const saveFolder = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{worldPath}) catch unreachable;
 	defer main.stackAllocator.free(saveFolder);
 	if(std.fs.cwd().openDir(saveFolder, .{})) |_dir| {
 		var dir = _dir;
@@ -55,7 +56,7 @@ fn flawedCreateWorld() !void {
 	} else |_| {}
 	try main.files.makeDir(saveFolder);
 	{
-		const generatorSettingsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/generatorSettings.zig.zon", .{worldName}) catch unreachable;
+		const generatorSettingsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/generatorSettings.zig.zon", .{worldPath}) catch unreachable;
 		defer main.stackAllocator.free(generatorSettingsPath);
 		const generatorSettings = main.ZonElement.initObject(main.stackAllocator);
 		defer generatorSettings.deinit(main.stackAllocator);
@@ -75,7 +76,19 @@ fn flawedCreateWorld() !void {
 		try main.files.writeZon(generatorSettingsPath, generatorSettings);
 	}
 	{
-		const gamerulePath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/gamerules.zig.zon", .{worldName}) catch unreachable;
+		const worldInfoPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/world.zig.zon", .{worldPath}) catch unreachable;
+		defer main.stackAllocator.free(worldInfoPath);
+		const worldInfo = main.ZonElement.initObject(main.stackAllocator);
+		defer worldInfo.deinit(main.stackAllocator);
+
+		worldInfo.put("name", worldName);
+		worldInfo.put("version", main.server.world_zig.worldDataVersion);
+		worldInfo.put("lastUsedTime", std.time.milliTimestamp());
+
+		try main.files.writeZon(worldInfoPath, worldInfo);
+	}
+	{
+		const gamerulePath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/gamerules.zig.zon", .{worldPath}) catch unreachable;
 		defer main.stackAllocator.free(gamerulePath);
 		const gamerules = main.ZonElement.initObject(main.stackAllocator);
 		defer gamerules.deinit(main.stackAllocator);
@@ -86,7 +99,7 @@ fn flawedCreateWorld() !void {
 		try main.files.writeZon(gamerulePath, gamerules);
 	}
 	{ // Make assets subfolder
-		const assetsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets", .{worldName}) catch unreachable;
+		const assetsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets", .{worldPath}) catch unreachable;
 		defer main.stackAllocator.free(assetsPath);
 		try main.files.makeDir(assetsPath);
 	}

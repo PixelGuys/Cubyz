@@ -125,7 +125,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 	};
 
 	pub fn load(self: *MapFragment, biomePalette: *main.assets.Palette, originalHeightMap: ?*[mapSize][mapSize]i32) !NeighborInfo {
-		const saveFolder: []const u8 = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{main.server.world.?.name}) catch unreachable;
+		const saveFolder: []const u8 = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{main.server.world.?.path}) catch unreachable;
 		defer main.stackAllocator.free(saveFolder);
 
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}/{}.surface", .{saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy}) catch unreachable;
@@ -208,7 +208,7 @@ pub const MapFragment = struct { // MARK: MapFragment
 		outputWriter.writeInt(u8, @bitCast(header.neighborInfo));
 		outputWriter.writeSlice(compressedData);
 
-		const saveFolder: []const u8 = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{main.server.world.?.name}) catch unreachable;
+		const saveFolder: []const u8 = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/maps", .{main.server.world.?.path}) catch unreachable;
 		defer main.stackAllocator.free(saveFolder);
 
 		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{}/{}/{}.surface", .{saveFolder, self.pos.voxelSize, self.pos.wx, self.pos.wy}) catch unreachable;
