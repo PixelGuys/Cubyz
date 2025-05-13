@@ -134,7 +134,7 @@ pub fn Parser(comptime T: type) type {
 					result.deinit(allocator);
 					return .{.success = @unionInit(T, field.name, fieldResult.success)};
 				}
-				result.failure.messages.append(allocator, utils.format(allocator, "\n{s}", .{field.name}));
+				result.failure.messages.append(allocator, allocator.dupe(u8, field.name));
 				result.failure.takeMessages(allocator, &fieldResult.failure);
 			}
 
