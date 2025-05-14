@@ -1103,11 +1103,7 @@ const BlockDamage = struct {
 			const block = getBlock(pos[0], pos[1], pos[2]) orelse blocks.Block.air;
 			const maxBlockHealth = block.blockHealth();
 
-			if(maxBlockHealth == 0) {
-				keysToRemove.append(main.stackAllocator, pos);
-				self.removeAnimation(pos);
-				continue;
-			}
+			std.debug.assert(maxBlockHealth > 0);
 
 			const newRemainingHealth: f32 = @floatCast(remainingHealth + deltaTime*maxBlockHealth*blocks.Block.healingRatio);
 			// TODO: If we allow some blocks to not heal we need to avoid re-adding the animation.
