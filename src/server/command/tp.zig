@@ -10,8 +10,8 @@ const Parser = main.argparse.Parser;
 const BiomeId = main.argparse.BiomeId;
 
 const Args = union(enum) {
-	@"/tp <x> <y> <z>": struct {x: f64, y: f64, z: ?f64},
-	@"/tp <biome>": struct {biomeId: BiomeId(true)},
+	@"/tp <x> <y> <z>": struct {@"<x>": f64, @"<y>": f64, @"<z>": ?f64},
+	@"/tp <biome>": struct {@"<biome>": BiomeId(true)},
 };
 
 const ArgParser = Parser(Args);
@@ -28,9 +28,9 @@ pub fn execute(args: []const u8, source: *User) void {
 	}
 	switch(result.success) {
 		.@"/tp <biome>" => |params| {
-			const biome = main.server.terrain.biomes.getById(params.biomeId.id);
-			if(!std.mem.eql(u8, biome.id, params.biomeId.id)) {
-				source.sendMessage("#ff0000Couldn't find biome with id \"{s}\"", .{params.biomeId.id});
+			const biome = main.server.terrain.biomes.getById(params.@"<biome>".id);
+			if(!std.mem.eql(u8, biome.id, params.@"<biome>".id)) {
+				source.sendMessage("#ff0000Couldn't find biome with id \"{s}\"", .{params.@"<biome>".id});
 				return;
 			}
 			if(biome.isCave) {
@@ -85,9 +85,9 @@ pub fn execute(args: []const u8, source: *User) void {
 			return;
 		},
 		.@"/tp <x> <y> <z>" => |params| {
-			var x = params.x;
-			var y = params.y;
-			var z = params.z orelse source.player.pos[2];
+			var x = params.@"<x>";
+			var y = params.@"<y>";
+			var z = params.@"<z>" orelse source.player.pos[2];
 			x = std.math.clamp(x, -1e9, 1e9); // TODO: Remove after #310 is implemented
 			y = std.math.clamp(y, -1e9, 1e9);
 			z = std.math.clamp(z, -1e9, 1e9);

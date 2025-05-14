@@ -40,7 +40,7 @@ pub fn Parser(comptime T: type) type {
 					nullableArg = split.next();
 				}
 
-				const fieldResult = resolveArgument(field.type, allocator, count, nullableArg);
+				const fieldResult = resolveArgument(field.type, allocator, field.name[0..], nullableArg);
 				switch(fieldResult) {
 					.failure => {
 						if(@typeInfo(field.type) != .optional or count == s.fields.len) {
@@ -64,44 +64,44 @@ pub fn Parser(comptime T: type) type {
 			return .{.success = result};
 		}
 
-		fn resolveArgument(comptime Field: type, allocator: NeverFailingAllocator, count: usize, nullableArg: ?[]const u8) ParseResult(Field) {
+		fn resolveArgument(comptime Field: type, allocator: NeverFailingAllocator, name: []const u8, nullableArg: ?[]const u8) ParseResult(Field) {
 			switch(@typeInfo(Field)) {
 				inline .optional => |optionalInfo| {
 					if(nullableArg == null) return .{.success = null};
-					return switch(resolveArgument(optionalInfo.child, allocator, count, nullableArg)) {
+					return switch(resolveArgument(optionalInfo.child, allocator, name, nullableArg)) {
 						.success => |success| return .{.success = success},
 						.failure => |failure| return .{.failure = .{.messages = failure.messages}},
 					};
 				},
 				inline .@"struct" => {
-					const arg = nullableArg orelse return missingArgument(Field, allocator, count);
+					const arg = nullableArg orelse return missingArgument(Field, allocator, name);
 					if(!@hasDecl(Field, "parse")) @compileError("Struct must have a parse function");
-					return @field(Field, "parse")(allocator, count, arg);
+					return @field(Field, "parse")(allocator, name, arg);
 				},
 				inline .@"enum" => {
-					const arg = nullableArg orelse return missingArgument(Field, allocator, count);
+					const arg = nullableArg orelse return missingArgument(Field, allocator, name);
 					return .{.success = std.meta.stringToEnum(Field, arg) orelse {
-						return .initWithFailure(allocator, utils.format(allocator, "Expected one of {} as argument {} found \"{s}\"", .{.{std.meta.fieldNames(Field)}, count, arg}));
+						return .initWithFailure(allocator, utils.format(allocator, "Expected one of {} for {s} found \"{s}\"", .{.{std.meta.fieldNames(Field)}, name, arg}));
 					}};
 				},
 				inline .float => |floatInfo| return {
-					const arg = nullableArg orelse return missingArgument(Field, allocator, count);
+					const arg = nullableArg orelse return missingArgument(Field, allocator, name);
 					return .{.success = std.fmt.parseFloat(std.meta.Float(floatInfo.bits), arg) catch {
-						return .initWithFailure(allocator, utils.format(allocator, "Expected a number as argument {} found \"{s}\"", .{count, arg}));
+						return .initWithFailure(allocator, utils.format(allocator, "Expected a number for {s} found \"{s}\"", .{name, arg}));
 					}};
 				},
 				inline .int => |intInfo| {
-					const arg = nullableArg orelse return missingArgument(Field, allocator, count);
+					const arg = nullableArg orelse return missingArgument(Field, allocator, name);
 					return .{.success = std.fmt.parseInt(std.meta.Int(intInfo.signedness, intInfo.bits), arg, 0) catch {
-						return .initWithFailure(allocator, utils.format(allocator, "Expected a integer as argument {} found \"{s}\"", .{count, arg}));
+						return .initWithFailure(allocator, utils.format(allocator, "Expected a integer for {s} found \"{s}\"", .{name, arg}));
 					}};
 				},
 				inline else => |other| @compileError("Unsupported type " ++ @tagName(other)),
 			}
 		}
 
-		fn missingArgument(comptime Field: type, allocator: NeverFailingAllocator, count: usize) ParseResult(Field) {
-			return .initWithFailure(allocator, utils.format(allocator, "Missing argument at position {}", .{count}));
+		fn missingArgument(comptime Field: type, allocator: NeverFailingAllocator, name: []const u8) ParseResult(Field) {
+			return .initWithFailure(allocator, utils.format(allocator, "Missing argument at position {s}", .{name}));
 		}
 
 		fn autocompleteArgument(comptime Field: type, allocator: NeverFailingAllocator, _arg: ?[]const u8) AutocompleteResult {
@@ -220,8 +220,8 @@ pub fn BiomeId(comptime checkExists: bool) type {
 
 		id: []const u8,
 
-		pub fn parse(allocator: NeverFailingAllocator, count: usize, arg: []const u8) ParseResult(Self) {
-			if(checkExists and !main.server.terrain.biomes.biomesById.contains(arg)) return .initWithFailure(allocator, utils.format(allocator, "Biome '{s}' passed as argument {} does not exist", .{arg, count}));
+		pub fn parse(allocator: NeverFailingAllocator, name: []const u8, arg: []const u8) ParseResult(Self) {
+			if(checkExists and !main.server.terrain.biomes.biomesById.contains(arg)) return .initWithFailure(allocator, utils.format(allocator, "Biome '{s}' passed for {s} does not exist", .{arg, name}));
 			return .{.success = .{.id = arg}};
 		}
 
