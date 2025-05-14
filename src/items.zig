@@ -169,7 +169,7 @@ pub const BaseItemIndex = packed struct {
 		return itemList[self.index].image;
 	}
 	pub fn texture(self: BaseItemIndex) ?graphics.Texture {
-		return itemList[self.index].getTexture();
+		return itemList[self.index].texture;
 	}
 	pub fn id(self: BaseItemIndex) []const u8 {
 		return itemList[self.index].id;
