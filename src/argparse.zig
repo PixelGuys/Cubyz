@@ -81,19 +81,19 @@ pub fn Parser(comptime T: type) type {
 				inline .@"enum" => {
 					const arg = nullableArg orelse return missingArgument(Field, allocator, name);
 					return .{.success = std.meta.stringToEnum(Field, arg) orelse {
-						return .initWithFailure(allocator, utils.format(allocator, "Expected one of {} for {s} found \"{s}\"", .{.{std.meta.fieldNames(Field)}, name, arg}));
+						return .initWithFailure(allocator, utils.format(allocator, "Expected one of {} for {s}, found \"{s}\"", .{.{std.meta.fieldNames(Field)}, name, arg}));
 					}};
 				},
 				inline .float => |floatInfo| return {
 					const arg = nullableArg orelse return missingArgument(Field, allocator, name);
 					return .{.success = std.fmt.parseFloat(std.meta.Float(floatInfo.bits), arg) catch {
-						return .initWithFailure(allocator, utils.format(allocator, "Expected a number for {s} found \"{s}\"", .{name, arg}));
+						return .initWithFailure(allocator, utils.format(allocator, "Expected a number for {s}, found \"{s}\"", .{name, arg}));
 					}};
 				},
 				inline .int => |intInfo| {
 					const arg = nullableArg orelse return missingArgument(Field, allocator, name);
 					return .{.success = std.fmt.parseInt(std.meta.Int(intInfo.signedness, intInfo.bits), arg, 0) catch {
-						return .initWithFailure(allocator, utils.format(allocator, "Expected a integer for {s} found \"{s}\"", .{name, arg}));
+						return .initWithFailure(allocator, utils.format(allocator, "Expected a integer for {s}, found \"{s}\"", .{name, arg}));
 					}};
 				},
 				inline else => |other| @compileError("Unsupported type " ++ @tagName(other)),
@@ -221,7 +221,7 @@ pub fn BiomeId(comptime checkExists: bool) type {
 		id: []const u8,
 
 		pub fn parse(allocator: NeverFailingAllocator, name: []const u8, arg: []const u8) ParseResult(Self) {
-			if(checkExists and !main.server.terrain.biomes.biomesById.contains(arg)) return .initWithFailure(allocator, utils.format(allocator, "Biome '{s}' passed for {s} does not exist", .{arg, name}));
+			if(checkExists and !main.server.terrain.biomes.biomesById.contains(arg)) return .initWithFailure(allocator, utils.format(allocator, "Biome \"{s}\" passed for {s} does not exist", .{arg, name}));
 			return .{.success = .{.id = arg}};
 		}
 
