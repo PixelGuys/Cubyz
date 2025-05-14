@@ -1224,9 +1224,6 @@ fn removeBreakingAnimationFace(pos: Vec3i, quadIndex: main.models.QuadIndex, nei
 	const mesh = getMeshAndIncreaseRefCount(.{.wx = worldPos[0], .wy = worldPos[1], .wz = worldPos[2], .voxelSize = 1}) orelse return;
 	defer mesh.decreaseRefCount();
 
-	mesh.mutex.lock();
-	defer mesh.mutex.unlock();
-
 	for(mesh.blockBreakingFaces.items, 0..) |face, i| {
 		if(face.position.x == relPos[0] and face.position.y == relPos[1] and face.position.z == relPos[2] and face.blockAndQuad.quadIndex == quadIndex) {
 			_ = mesh.blockBreakingFaces.swapRemove(i);
