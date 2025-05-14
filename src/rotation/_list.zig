@@ -5,6 +5,7 @@ pub const log = @import("log.zig");
 pub const no_rotation = @import("no_rotation.zig");
 pub const ore = @import("ore.zig");
 pub const planar = @import("planar.zig");
+pub const sign = @import("sign.zig");
 pub const stairs = @import("stairs.zig");
 pub const texture_pile = @import("texture_pile.zig");
 pub const torch = @import("torch.zig");
