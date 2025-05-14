@@ -204,6 +204,51 @@ pub const BlockEntityTypes = struct {
 			return .handled;
 		}
 	};
+
+	pub const Sign = struct {
+		const StorageServer = BlockEntityDataStorage(.server, struct {
+			text: []const u8
+		});
+		const StorageClient = BlockEntityDataStorage(.client, struct {
+			text: []const u8,
+			renderedTexture: ?main.graphics.Texture = null,
+		});
+
+		pub const id = "sign";
+		pub fn init() void {
+			StorageServer.init();
+			StorageClient.init();
+		}
+		pub fn deinit() void {
+			StorageServer.deinit();
+			StorageClient.deinit();
+		}
+		pub fn reset() void {
+			StorageServer.reset();
+			StorageClient.reset();
+		}
+
+		pub fn onLoadClient(_: Vec3i, _: *Chunk) void {}
+		pub fn onUnloadClient(_: Vec3i, _: *Chunk) void {}
+		pub fn onLoadServer(_: Vec3i, _: *Chunk) void {}
+		pub fn onUnloadServer(_: Vec3i, _: *Chunk) void {}
+		pub fn onPlaceClient(_: Vec3i, _: *Chunk) void {}
+		pub fn onBreakClient(_: Vec3i, _: *Chunk) void {}
+		pub fn onPlaceServer(_: Vec3i, _: *Chunk) void {}
+		pub fn onBreakServer(pos: Vec3i, chunk: *Chunk) void {
+			StorageServer.remove(pos, chunk);
+		}
+		pub fn onInteract(pos: Vec3i, chunk: *Chunk) EventStatus {
+			if(main.KeyBoard.key("shift").pressed) return .ignored;
+
+			StorageClient.mutex.lock();
+			defer StorageClient.mutex.unlock();
+			const data = StorageClient.get(pos, chunk); // TODO: orelse return .ignored;
+			main.gui.windowlist.sign_editor.openFromSignData(pos, if(data) |_data| _data.text else "TODO: Remove");
+
+			return .handled;
+		}
+	};
 };
 
 var blockyEntityTypes: std.StringHashMapUnmanaged(BlockEntityType) = .{};
