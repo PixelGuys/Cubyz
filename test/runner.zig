@@ -189,11 +189,11 @@ fn mainTerminal() void {
 		.root_name = "Test",
 		.estimated_total_items = test_fn_list.len,
 	});
-	const have_tty = std.io.getStdErr().isTty();
-	const reset = if(have_tty) "\x1b[0m" else "";
-	const red = if(have_tty) "\x1b[31m" else "";
-	const yellow = if(have_tty) "\x1b[33m" else "";
-	const green = if(have_tty) "\x1b[32m" else "";
+	const doColors = std.io.getStdErr().supportsAnsiEscapeCodes();
+	const reset = if(doColors) "\x1b[0m" else "";
+	const red = if(doColors) "\x1b[31m" else "";
+	const yellow = if(doColors) "\x1b[33m" else "";
+	const green = if(doColors) "\x1b[32m" else "";
 
 	var async_frame_buffer: []align(builtin.target.stackAlignment()) u8 = undefined;
 	// TODO this is on the next line (using `undefined` above) because otherwise zig incorrectly
