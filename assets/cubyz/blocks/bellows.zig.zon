@@ -12,4 +12,7 @@
 	.texture_right = "cubyz:bellows/side",
 	.texture_top = "cubyz:bellows/top",
 	.texture_bottom = "cubyz:bellows/bottom",
+	.item = .{
+		.texture = "bellows.png",
+	},
 }
