@@ -17,7 +17,8 @@ const Blueprint = main.blueprint.Blueprint;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const CircularBufferQueue = main.utils.CircularBufferQueue;
 
-pub const ServerWorld = @import("world.zig").ServerWorld;
+pub const world_zig = @import("world.zig");
+pub const ServerWorld = world_zig.ServerWorld;
 pub const terrain = @import("terrain/terrain.zig");
 pub const Entity = @import("Entity.zig");
 pub const storage = @import("storage.zig");
@@ -104,6 +105,8 @@ pub const User = struct { // MARK: User
 	lastPos: Vec3i = @splat(0),
 	gamemode: std.atomic.Value(main.game.Gamemode) = .init(.creative),
 	worldEditData: WorldEditData = undefined,
+
+	lastSentBiomeId: u32 = 0xffffffff,
 
 	inventoryClientToServerIdMap: std.AutoHashMap(u32, u32) = undefined,
 
@@ -405,6 +408,16 @@ fn update() void { // MARK: update()
 	for(userList) |user| {
 		main.network.Protocols.entityPosition.send(user.conn, user.player.pos, entityData.items, itemData);
 	}
+
+	for(userList) |user| {
+		const pos = @as(Vec3i, @intFromFloat(user.player.pos));
+		const biomeId = world.?.getBiome(pos[0], pos[1], pos[2]).paletteId;
+		if(biomeId != user.lastSentBiomeId) {
+			user.lastSentBiomeId = biomeId;
+			main.network.Protocols.genericUpdate.sendBiome(user.conn, biomeId);
+		}
+	}
+
 	while(userDeinitList.dequeue()) |user| {
 		user.decreaseRefCount();
 	}
@@ -444,14 +457,18 @@ pub fn disconnect(user: *User) void { // MARK: disconnect()
 pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 	if(!user.connected.load(.unordered)) return;
 
-	userMutex.lock();
-	for(users.items, 0..) |other, i| {
-		if(other == user) {
-			_ = users.swapRemove(i);
-			break;
+	const foundUser = blk: {
+		userMutex.lock();
+		defer userMutex.unlock();
+		for(users.items, 0..) |other, i| {
+			if(other == user) {
+				_ = users.swapRemove(i);
+				break :blk true;
+			}
 		}
-	}
-	userMutex.unlock();
+		break :blk false;
+	};
+	if(!foundUser) return;
 
 	sendMessage("{s}§#ffff00 left", .{user.name});
 	// Let the other clients know about that this new one left.

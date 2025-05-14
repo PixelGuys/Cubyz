@@ -20,6 +20,7 @@ const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const BlockUpdate = renderer.mesh_storage.BlockUpdate;
 
 //TODO: Might want to use SSL or something similar to encode the message
 
@@ -135,6 +136,8 @@ pub const Address = struct {
 	ip: u32,
 	port: u16,
 	isSymmetricNAT: bool = false,
+
+	pub const localHost = 0x0100007f;
 
 	pub fn format(self: Address, _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
 		if(self.isSymmetricNAT) {
@@ -551,7 +554,7 @@ pub const ConnectionManager = struct { // MARK: ConnectionManager
 			}
 			if(self.online.load(.acquire) and source.ip == self.externalAddress.ip and source.port == self.externalAddress.port) return;
 		}
-		if(self.allowNewConnections.load(.monotonic)) {
+		if(self.allowNewConnections.load(.monotonic) or source.ip == Address.localHost) {
 			if(data.len != 0 and data[0] == @intFromEnum(Connection.ChannelId.init)) {
 				const ip = std.fmt.allocPrint(main.stackAllocator.allocator, "{}", .{source}) catch unreachable;
 				defer main.stackAllocator.free(ip);
@@ -664,7 +667,7 @@ pub const Protocols = struct {
 						std.log.info("User {s} joined using version {s}.", .{name, version});
 
 						{
-							const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets/", .{main.server.world.?.name}) catch unreachable;
+							const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets/", .{main.server.world.?.path}) catch unreachable;
 							defer main.stackAllocator.free(path);
 							var dir = try std.fs.cwd().openDir(path, .{.iterate = true});
 							defer dir.close();
@@ -943,23 +946,28 @@ pub const Protocols = struct {
 		pub const id: u8 = 7;
 		pub const asynchronous = false;
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
-			const x = try reader.readInt(i32);
-			const y = try reader.readInt(i32);
-			const z = try reader.readInt(i32);
-			const newBlock = Block.fromInt(try reader.readInt(u32));
 			if(conn.isServerSide()) {
 				return error.InvalidPacket;
-			} else {
-				renderer.mesh_storage.updateBlock(x, y, z, newBlock);
+			}
+			while(reader.remaining.len != 0) {
+				renderer.mesh_storage.updateBlock(.{
+					.x = try reader.readInt(i32),
+					.y = try reader.readInt(i32),
+					.z = try reader.readInt(i32),
+					.newBlock = Block.fromInt(try reader.readInt(u32)),
+				});
 			}
 		}
-		pub fn send(conn: *Connection, x: i32, y: i32, z: i32, newBlock: Block) void {
+		pub fn send(conn: *Connection, updates: []const BlockUpdate) void {
 			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 16);
 			defer writer.deinit();
-			writer.writeInt(i32, x);
-			writer.writeInt(i32, y);
-			writer.writeInt(i32, z);
-			writer.writeInt(u32, newBlock.toInt());
+
+			for(updates) |update| {
+				writer.writeInt(i32, update.x);
+				writer.writeInt(i32, update.y);
+				writer.writeInt(i32, update.z);
+				writer.writeInt(u32, update.newBlock.toInt());
+			}
 			conn.send(.fast, id, writer.data.items);
 		}
 	};
@@ -1011,8 +1019,9 @@ pub const Protocols = struct {
 			gamemode = 0,
 			teleport = 1,
 			worldEditPos = 2,
-			timeAndBiome = 3,
-			damageBlock = 4,
+			time = 3,
+			biome = 4,
+			damageBlock = 5,
 		};
 
 		const WorldEditPosition = enum(u2) {
@@ -1076,10 +1085,9 @@ pub const Protocols = struct {
 						},
 					}
 				},
-				.timeAndBiome => {
+				.time => {
 					if(conn.manager.world) |world| {
 						const expectedTime = try reader.readInt(i64);
-						const biomeId = try reader.readInt(u32);
 
 						var curTime = world.gameTime.load(.monotonic);
 						if(@abs(curTime -% expectedTime) >= 10) {
@@ -1093,6 +1101,11 @@ pub const Protocols = struct {
 								curTime = actualTime;
 							}
 						}
+					}
+				},
+				.biome => {
+					if(conn.manager.world) |world| {
+						const biomeId = try reader.readInt(u32);
 
 						const newBiome = main.server.terrain.biomes.getByIndex(biomeId) orelse return error.MissingBiome;
 						const oldBiome = world.playerBiome.swap(newBiome, .monotonic);
@@ -1131,15 +1144,22 @@ pub const Protocols = struct {
 			conn.send(.fast, id, writer.data.items);
 		}
 
-		pub fn sendTimeAndBiome(conn: *Connection, world: *const main.server.ServerWorld) void {
+		pub fn sendBiome(conn: *Connection, biomeIndex: u32) void {
 			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 13);
 			defer writer.deinit();
 
-			writer.writeEnum(UpdateType, .timeAndBiome);
-			writer.writeInt(i64, world.gameTime);
+			writer.writeEnum(UpdateType, .biome);
+			writer.writeInt(u32, biomeIndex);
 
-			const pos = @as(Vec3i, @intFromFloat(conn.user.?.player.pos));
-			writer.writeInt(u32, world.getBiome(pos[0], pos[1], pos[2]).paletteId);
+			conn.send(.fast, id, writer.data.items);
+		}
+
+		pub fn sendTime(conn: *Connection, world: *const main.server.ServerWorld) void {
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 13);
+			defer writer.deinit();
+
+			writer.writeEnum(UpdateType, .time);
+			writer.writeInt(i64, world.gameTime);
 
 			conn.send(.fast, id, writer.data.items);
 		}

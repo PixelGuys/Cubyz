@@ -1,0 +1,10 @@
+.{
+	.tags = .{.sand},
+	.blockHealth = 7,
+	.drops = .{
+		.{.items = .{"cubyz:permafrost"}},
+	},
+	.model = "cubyz:cube",
+	.texture = "cubyz:cold_grass",
+	.texture_bottom = "cubyz:permafrost",
+}

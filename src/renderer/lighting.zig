@@ -141,22 +141,26 @@ pub const ChannelChunk = struct {
 		}
 		self.data.optimizeLayout();
 		self.lock.unlockWrite();
-		if(mesh_storage.getMeshAndIncreaseRefCount(self.ch.pos)) |mesh| outer: {
-			for(lightRefreshList.items) |other| {
-				if(mesh == other) {
-					mesh.decreaseRefCount();
-					break :outer;
-				}
-			}
-			mesh.needsLightRefresh.store(true, .release);
-			lightRefreshList.append(mesh);
-		}
+		self.addSelfToLightRefreshList(lightRefreshList);
 
 		for(chunk.Neighbor.iterable) |neighbor| {
 			if(neighborLists[neighbor.toInt()].items.len == 0) continue;
 			const neighborMesh = mesh_storage.getNeighborAndIncreaseRefCount(self.ch.pos, self.ch.pos.voxelSize, neighbor) orelse continue;
 			defer neighborMesh.decreaseRefCount();
 			neighborMesh.lightingData[@intFromBool(self.isSun)].propagateFromNeighbor(lightQueue, neighborLists[neighbor.toInt()].items, lightRefreshList);
+		}
+	}
+
+	fn addSelfToLightRefreshList(self: *ChannelChunk, lightRefreshList: *main.List(*chunk_meshing.ChunkMesh)) void {
+		if(mesh_storage.getMeshAndIncreaseRefCount(self.ch.pos)) |mesh| {
+			for(lightRefreshList.items) |other| {
+				if(mesh == other) {
+					mesh.decreaseRefCount();
+					return;
+				}
+			}
+			mesh.needsLightRefresh.store(true, .release);
+			lightRefreshList.append(mesh);
 		}
 	}
 
@@ -230,16 +234,7 @@ pub const ChannelChunk = struct {
 			}
 		}
 		self.lock.unlockWrite();
-		if(mesh_storage.getMeshAndIncreaseRefCount(self.ch.pos)) |mesh| outer: {
-			for(lightRefreshList.items) |other| {
-				if(mesh == other) {
-					mesh.decreaseRefCount();
-					break :outer;
-				}
-			}
-			mesh.needsLightRefresh.store(true, .release);
-			lightRefreshList.append(mesh);
-		}
+		self.addSelfToLightRefreshList(lightRefreshList);
 
 		for(chunk.Neighbor.iterable) |neighbor| {
 			if(neighborLists[neighbor.toInt()].items.len == 0) continue;

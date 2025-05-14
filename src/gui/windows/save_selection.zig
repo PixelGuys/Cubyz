@@ -29,6 +29,13 @@ pub var needsUpdate: bool = false;
 var deleteIcon: Texture = undefined;
 var fileExplorerIcon: Texture = undefined;
 
+const WorldInfo = struct {
+	lastUsedTime: i64,
+	name: []const u8,
+	fileName: []const u8,
+};
+var worldList: main.ListUnmanaged(WorldInfo) = .{};
+
 pub fn init() void {
 	deleteIcon = Texture.initFromFile("assets/cubyz/ui/delete_icon.png");
 	fileExplorerIcon = Texture.initFromFile("assets/cubyz/ui/file_explorer_icon.png");
@@ -50,6 +57,9 @@ pub fn openWorld(name: []const u8) void {
 		std.log.err("Encountered error while starting server thread: {s}", .{@errorName(err)});
 		return;
 	};
+	main.server.thread.?.setName("Server") catch |err| {
+		std.log.err("Failed to rename Server thread: {s}", .{@errorName(err)});
+	};
 
 	while(!main.server.running.load(.acquire)) {
 		std.time.sleep(1_000_000);
@@ -67,55 +77,21 @@ pub fn openWorld(name: []const u8) void {
 	gui.openHud();
 }
 
-fn openWorldWrap(namePtr: usize) void { // TODO: Improve this situation. Maybe it makes sense to always use 2 arguments in the Callback.
-	const nullTerminatedName: [*:0]const u8 = @ptrFromInt(namePtr);
-	const name = std.mem.span(nullTerminatedName);
-	openWorld(name);
+fn openWorldWrap(index: usize) void { // TODO: Improve this situation. Maybe it makes sense to always use 2 arguments in the Callback.
+	openWorld(worldList.items[index].fileName);
 }
 
-fn deleteWorld(namePtr: usize) void {
-	const nullTerminatedName: [*:0]const u8 = @ptrFromInt(namePtr);
-	const name = std.mem.span(nullTerminatedName);
+fn deleteWorld(index: usize) void {
 	main.gui.closeWindow("delete_world_confirmation");
-	main.gui.windowlist.delete_world_confirmation.setDeleteWorldName(name);
+	main.gui.windowlist.delete_world_confirmation.setDeleteWorldName(worldList.items[index].fileName);
 	main.gui.openWindow("delete_world_confirmation");
 }
 
-fn openFolder(namePtr: usize) void {
-	const nullTerminatedName: [*:0]const u8 = @ptrFromInt(namePtr);
-	const name = std.mem.span(nullTerminatedName);
-
-	const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{name}) catch unreachable;
+fn openFolder(index: usize) void {
+	const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{worldList.items[index].fileName}) catch unreachable;
 	defer main.stackAllocator.free(path);
 
 	main.files.openDirInWindow(path);
-}
-
-fn parseEscapedFolderName(allocator: NeverFailingAllocator, name: []const u8) []const u8 {
-	var result = main.List(u8).init(allocator);
-	defer result.deinit();
-	var i: u32 = 0;
-	while(i < name.len) : (i += 1) {
-		if(name[i] == '_') {
-			var val: u21 = 0;
-			for(0..4) |_| {
-				i += 1;
-				if(i < name.len) {
-					val = val*16 + switch(name[i]) {
-						'0'...'9' => name[i] - '0',
-						'a'...'f' => name[i] - 'a' + 10,
-						'A'...'F' => name[i] - 'A' + 10,
-						else => 0,
-					};
-				}
-			}
-			var buf: [4]u8 = undefined;
-			result.appendSlice(buf[0 .. std.unicode.utf8Encode(val, &buf) catch 0]); // TODO: Change this to full unicode rather than using this broken utf-16 converter.
-		} else {
-			result.append(name[i]);
-		}
-	}
-	return result.toOwnedSlice();
 }
 
 pub fn update() void {
@@ -146,20 +122,36 @@ pub fn onOpen() void {
 			break :readingSaves;
 		}) |entry| {
 			if(entry.kind == .directory) {
-				const row = HorizontalList.init();
+				const worldInfoPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/world.zig.zon", .{entry.name}) catch unreachable;
+				defer main.stackAllocator.free(worldInfoPath);
+				const worldInfo = main.files.readToZon(main.stackAllocator, worldInfoPath) catch |err| {
+					std.log.err("Couldn't open save {s}: {s}", .{worldInfoPath, @errorName(err)});
+					continue;
+				};
+				defer worldInfo.deinit(main.stackAllocator);
 
-				const decodedName = parseEscapedFolderName(main.stackAllocator, entry.name);
-				defer main.stackAllocator.free(decodedName);
-				const name = buttonNameArena.allocator().dupeZ(u8, entry.name); // Null terminate, so we can later recover the string from just the pointer.
-				const buttonName = std.fmt.allocPrint(buttonNameArena.allocator().allocator, "{s}", .{decodedName}) catch unreachable;
-
-				row.add(Button.initText(.{0, 0}, 128, buttonName, .{.callback = &openWorldWrap, .arg = @intFromPtr(name.ptr)}));
-				row.add(Button.initIcon(.{8, 0}, .{16, 16}, fileExplorerIcon, false, .{.callback = &openFolder, .arg = @intFromPtr(name.ptr)}));
-				row.add(Button.initIcon(.{8, 0}, .{16, 16}, deleteIcon, false, .{.callback = &deleteWorld, .arg = @intFromPtr(name.ptr)}));
-				row.finish(.{0, 0}, .center);
-				list.add(row);
+				worldList.append(main.globalAllocator, .{
+					.fileName = main.globalAllocator.dupe(u8, entry.name),
+					.lastUsedTime = worldInfo.get(i64, "lastUsedTime", 0),
+					.name = main.globalAllocator.dupe(u8, worldInfo.get([]const u8, "name", entry.name)),
+				});
 			}
 		}
+	}
+
+	std.sort.insertion(WorldInfo, worldList.items, {}, struct {
+		fn lessThan(_: void, lhs: WorldInfo, rhs: WorldInfo) bool {
+			return rhs.lastUsedTime -% lhs.lastUsedTime < 0;
+		}
+	}.lessThan);
+
+	for(worldList.items, 0..) |worldInfo, i| {
+		const row = HorizontalList.init();
+		row.add(Button.initText(.{0, 0}, 128, worldInfo.name, .{.callback = &openWorldWrap, .arg = i}));
+		row.add(Button.initIcon(.{8, 0}, .{16, 16}, fileExplorerIcon, false, .{.callback = &openFolder, .arg = i}));
+		row.add(Button.initIcon(.{8, 0}, .{16, 16}, deleteIcon, false, .{.callback = &deleteWorld, .arg = i}));
+		row.finish(.{0, 0}, .center);
+		list.add(row);
 	}
 
 	list.finish(.center);
@@ -169,6 +161,11 @@ pub fn onOpen() void {
 }
 
 pub fn onClose() void {
+	for(worldList.items) |worldInfo| {
+		main.globalAllocator.free(worldInfo.fileName);
+		main.globalAllocator.free(worldInfo.name);
+	}
+	worldList.clearAndFree(main.globalAllocator);
 	buttonNameArena.deinit();
 	if(window.rootComponent) |*comp| {
 		comp.deinit();
