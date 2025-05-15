@@ -207,7 +207,7 @@ pub const BlockEntityTypes = struct {
 
 	pub const Sign = struct {
 		const StorageServer = BlockEntityDataStorage(.server, struct {
-			text: []const u8
+			text: []const u8,
 		});
 		const StorageClient = BlockEntityDataStorage(.client, struct {
 			text: []const u8,
