@@ -5,7 +5,11 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const ListUnmanaged = main.ListUnmanaged;
 const utils = main.utils;
 
-pub fn Parser(comptime T: type) type {
+pub const Options = struct {
+	commandName: []const u8,
+};
+
+pub fn Parser(comptime T: type, comptime options: Options) type {
 	return struct {
 		const Self = @This();
 
@@ -127,14 +131,35 @@ pub fn Parser(comptime T: type) type {
 			var result: ParseResult(T) = .initWithFailure(allocator, allocator.dupe(u8, "Couldn't match argument list."));
 
 			inline for(u.fields) |field| {
-				var fieldResult = Parser(field.type).resolve(false, allocator, args);
+				var fieldResult = Parser(field.type, options).resolve(false, allocator, args);
 				defer fieldResult.deinit(allocator);
 
 				if(fieldResult == .success) {
 					result.deinit(allocator);
 					return .{.success = @unionInit(T, field.name, fieldResult.success)};
 				}
-				result.failure.messages.append(allocator, allocator.dupe(u8, field.name));
+
+				var messageSegments: ListUnmanaged([]const u8) = .{};
+				defer messageSegments.deinit(allocator);
+				var maxSize: usize = 0;
+
+				messageSegments.append(allocator, options.commandName);
+				maxSize += options.commandName.len;
+
+				for(std.meta.fieldNames(field.type)) |name| {
+					messageSegments.append(allocator, name);
+					maxSize += name.len;
+				}
+
+				const message = allocator.alloc(u8, maxSize);
+				var rest = message;
+				for(messageSegments.items) |segment| {
+					@memcpy(rest[0..segment.len], segment);
+					rest = rest[segment.len..];
+				}
+				std.debug.print("{s}", .{message});
+
+				result.failure.messages.append(allocator, message);
 				result.failure.takeMessages(allocator, &fieldResult.failure);
 			}
 

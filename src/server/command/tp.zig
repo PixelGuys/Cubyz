@@ -14,7 +14,7 @@ const Args = union(enum) {
 	@"/tp <biome>": struct {@"<biome>": BiomeId(true)},
 };
 
-const ArgParser = Parser(Args);
+const ArgParser = Parser(Args, .{.commandName = "/tp"});
 
 pub fn execute(args: []const u8, source: *User) void {
 	const result = ArgParser.parse(main.stackAllocator, args);
