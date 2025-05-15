@@ -1130,12 +1130,12 @@ pub const Command = struct { // MARK: Command
 						while(reader.remaining.len >= 2) {
 							const resultAmount = try reader.readInt(u16);
 							const itemId = try reader.readUntilDelimiter(0);
-							itemList.append(.{.amount = resultAmount, .item = .fromId(itemId) orelse return error.Invalid});
+							itemList.append(.{.amount = resultAmount, .item = BaseItemIndex.fromId(itemId) orelse return error.Invalid});
 						}
 						if(itemList.items.len != len) return error.Invalid;
 						// Find the recipe in our list:
 						outer: for(main.items.recipes()) |*recipe| {
-							if(recipe.resultAmount == itemList.items[0].amount and recipe.resultItem.index == itemList.items[0].item.index and recipe.sourceItems.len == itemList.items.len - 1) {
+							if(recipe.resultAmount == itemList.items[0].amount and recipe.resultItem == itemList.items[0].item and recipe.sourceItems.len == itemList.items.len - 1) {
 								for(itemList.items[1..], 0..) |item, i| {
 									if(item.amount != recipe.sourceAmounts[i] or item.item != recipe.sourceItems[i]) continue :outer;
 								}

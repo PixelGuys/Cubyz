@@ -162,9 +162,6 @@ pub const BaseItemIndex = packed struct {
 	pub fn fromId(_id: []const u8) ?BaseItemIndex {
 		return reverseIndices.get(_id);
 	}
-	pub fn baseItem(self: BaseItemIndex) *BaseItem {
-		return &itemList[self.index];
-	}
 	pub fn image(self: BaseItemIndex) graphics.Image {
 		return itemList[self.index].image;
 	}
@@ -568,7 +565,7 @@ pub const Tool = struct { // MARK: Tool
 	fn extractItemsFromZon(zonArray: ZonElement) [25]?BaseItemIndex {
 		var items: [25]?BaseItemIndex = undefined;
 		for(&items, 0..) |*item, i| {
-			item.* = BaseItemIndex.fromId(zonArray.getAtIndex([]const u8, i, "null"));
+			item.* = .fromId(zonArray.getAtIndex([]const u8, i, "null"));
 			if(item.* != null and item.*.?.material() == null) item.* = null;
 		}
 		return items;
@@ -577,9 +574,9 @@ pub const Tool = struct { // MARK: Tool
 	pub fn save(self: *const Tool, allocator: NeverFailingAllocator) ZonElement {
 		const zonObject = ZonElement.initObject(allocator);
 		const zonArray = ZonElement.initArray(allocator);
-		for(self.craftingGrid) |_index| {
-			if(_index) |index| {
-				zonArray.array.append(.{.string = index.id()});
+		for(self.craftingGrid) |nullableItem| {
+			if(nullableItem) |item| {
+				zonArray.array.append(.{.string = item.id()});
 			} else {
 				zonArray.array.append(.null);
 			}
@@ -1035,15 +1032,6 @@ pub fn deinit() void {
 	modifierRestrictions.deinit();
 	arena.deinit();
 	Inventory.Sync.ClientSide.deinit();
-}
-
-pub fn getByID(id: []const u8) ?*BaseItem {
-	if(reverseIndices.get(id)) |result| {
-		return result.baseItem();
-	} else {
-		std.log.err("Couldn't find item {s}.", .{id});
-		return null;
-	}
 }
 
 pub fn getToolTypeByID(id: []const u8) ?*const ToolType {

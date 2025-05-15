@@ -2,9 +2,9 @@ const std = @import("std");
 
 const main = @import("main");
 const items = main.items;
+const BaseItemIndex = items.BaseItemIndex;
 const Inventory = items.Inventory;
 const ItemStack = items.ItemStack;
-const BaseItemIndex = items.BaseItemIndex;
 const Player = main.game.Player;
 const Texture = main.graphics.Texture;
 const Vec2f = main.vec.Vec2f;
