@@ -1980,7 +1980,9 @@ test "NamedCallbacks registers functions" {
 
 	try std.testing.expectEqual(2, testFunctions.hashMap.count());
 
-	try std.testing.expectEqual(&TestFunctions.testFunction, testFunctions.getFunctionPointer("testFunction").?);
+	const fnPtr = testFunctions.getFunctionPointer("testFunction");
+	try std.testing.expectEqual(&TestFunctions.testFunction, fnPtr.?);
+	try std.testing.expect(fnPtr.? != &TestFunctions.otherTestFunction);
 	try std.testing.expectEqual(&TestFunctions.otherTestFunction, testFunctions.getFunctionPointer("otherTestFunction").?);
 
 	try std.testing.expectEqual(null, testFunctions.getFunctionPointer("functionTest"));
