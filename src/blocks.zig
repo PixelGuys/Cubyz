@@ -392,23 +392,15 @@ pub const Block = packed struct { // MARK: Block
 pub var tickFunctions: utils.NamedCallbacks(TickFunctions, TickFunction) = undefined;
 pub const TickFunction = fn(block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void;
 pub const TickFunctions = struct {
-	pub fn replaceWithCobble(_: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void {
+	pub fn replaceWithCobble(block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void {
 		std.log.debug("Replace with cobblestone at ({d},{d},{d})", .{x, y, z});
 		const cobblestone = parseBlock("cubyz:cobblestone");
-
-		_chunk.updateBlockAndSetChanged(x, y, z, cobblestone);
 
 		const wx = _chunk.super.pos.wx + x;
 		const wy = _chunk.super.pos.wy + y;
 		const wz = _chunk.super.pos.wz + z;
 
-		const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
-		defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
-		const newBlock: main.renderer.mesh_storage.BlockUpdate = .init(.{wx, wy, wz}, cobblestone);
-		const blockUpdates: [1]main.renderer.mesh_storage.BlockUpdate = .{newBlock};
-		for(userList) |user| {
-			main.network.Protocols.blockUpdate.send(user.conn, blockUpdates[0..]);
-		}
+		_ = main.server.world.?.cmpxchgBlock(wx, wy, wz, block, cobblestone);
 	}
 };
 
