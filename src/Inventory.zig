@@ -1130,7 +1130,7 @@ pub const Command = struct { // MARK: Command
 						while(reader.remaining.len >= 2) {
 							const resultAmount = try reader.readInt(u16);
 							const itemId = try reader.readUntilDelimiter(0);
-							itemList.append(.{.amount = resultAmount, .item = BaseItemIndex.fromId(itemId) orelse return error.Invalid});
+							itemList.append(.{.amount = resultAmount, .item = .fromId(itemId) orelse return error.Invalid});
 						}
 						if(itemList.items.len != len) return error.Invalid;
 						// Find the recipe in our list:
