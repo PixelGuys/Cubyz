@@ -1959,34 +1959,30 @@ pub fn NamedCallbacks(comptime Child: type, comptime Function: type) type {
 		}
 
 		pub fn getFunctionPointer(self: *Self, id: []const u8) ?*const Function {
-			std.debug.assert(id.len > 0);
-			const pointer = self.hashMap.getPtr(id) orelse {
-				return null;
-			};
-			return pointer.*;
+			return self.hashMap.get(id);
 		}
 	};
 }
 
-test "Callback registers testFunction and expects errors" {
+test "NamedCallbacks registers functions" {
 	const TestFunction = fn(_: i32) void;
 	const TestFunctions = struct {
 		// Callback should register this
 		pub fn testFunction(_: i32) void {}
+		pub fn otherTestFunction(_: i32) void {}
+		// Callback should ignore this
+		pub fn wrongSignatureFunction(_: i32, _: bool) void {}
 	};
 	var testFunctions: NamedCallbacks(TestFunctions, TestFunction) = undefined;
 
 	testFunctions = .init();
 	defer testFunctions.deinit();
 
-	try std.testing.expect(testFunctions.hashMap.count() == 1);
+	try std.testing.expectEqual(2, testFunctions.hashMap.count());
 
-	const fnPtr = testFunctions.getFunctionPointer("testFunction");
-	try std.testing.expect(fnPtr != null);
-	if(fnPtr) |callback| {
-		try std.testing.expect(@TypeOf(callback) == *const TestFunction);
-	}
+	try std.testing.expectEqual(&TestFunctions.testFunction, testFunctions.getFunctionPointer("testFunction").?);
+	try std.testing.expectEqual(&TestFunctions.otherTestFunction, testFunctions.getFunctionPointer("otherTestFunction").?);
 
-	const nullPtr = testFunctions.getFunctionPointer("functionTest");
-	try std.testing.expect(nullPtr == null);
+	try std.testing.expectEqual(null, testFunctions.getFunctionPointer("functionTest"));
+	try std.testing.expectEqual(null, testFunctions.getFunctionPointer("wrongSignatureFunction"));
 }
