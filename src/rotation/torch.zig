@@ -122,7 +122,7 @@ pub fn rotateZ(data: u16, angle: Degrees) u16 {
 pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, relativeDir: Vec3i, neighbor: ?Neighbor, currentData: *Block, neighborBlock: Block, _: bool) bool {
 	if(neighbor == null) return false;
 	const neighborModel = blocks.meshes.model(neighborBlock).model();
-	const neighborSupport = neighborBlock.solid() and neighborModel.neighborFacingQuads[neighbor.?.reverse().toInt()].len != 0;
+	const neighborSupport = !neighborBlock.replacable() and neighborModel.neighborFacingQuads[neighbor.?.reverse().toInt()].len != 0;
 	if(!neighborSupport) return false;
 	var data: TorchData = @bitCast(@as(u5, @truncate(currentData.data)));
 	if(relativeDir[0] == 1) data.posX = true;
@@ -140,7 +140,7 @@ pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, relativeD
 
 pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool {
 	const neighborModel = blocks.meshes.model(neighborBlock).model();
-	const neighborSupport = neighborBlock.solid() and neighborModel.neighborFacingQuads[neighbor.reverse().toInt()].len != 0;
+	const neighborSupport = !neighborBlock.replacable() and neighborModel.neighborFacingQuads[neighbor.reverse().toInt()].len != 0;
 	var currentData: TorchData = @bitCast(@as(u5, @truncate(block.data)));
 	switch(neighbor) {
 		.dirNegX => {
@@ -174,7 +174,7 @@ fn closestRay(comptime typ: enum {bit, intersection}, block: Block, _: ?main.ite
 		if(block.data & bit != 0) {
 			const modelIndex = ModelIndex{.index = blocks.meshes.modelIndexStart(block).index + bit - 1};
 			if(RotationMode.DefaultFunctions.rayModelIntersection(modelIndex, relativePlayerPos, playerDir)) |intersection| {
-				if(result == null or result.?.distance > intersection.distance) {
+				if(result == null or intersection.distance < result.?.distance) {
 					result = intersection;
 					resultBit = bit;
 				}
