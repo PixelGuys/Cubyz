@@ -417,16 +417,14 @@ pub const TickEvent = struct {
 	chance: f32,
 
 	pub fn loadFromZon(zon: ZonElement) ?TickEvent {
-		const _functionName = zon.get(?[]const u8, "name", null);
-		if(_functionName == null) return null;
+		const functionName = zon.get(?[]const u8, "name", null) orelse return null;
 
-		const _function = tickFunctions.getFunctionPointer(_functionName.?);
-		if(_function) |function| {
-			return TickEvent{.function = function, .chance = zon.get(f32, "chance", 1)};
-		}
+		const function = tickFunctions.getFunctionPointer(functionName) orelse {
+			std.log.err("Could not find TickFunction {s}.", .{functionName});
+			return null;
+		};
 
-		std.log.err("Could not find TickFunction {s}.", .{_functionName.?});
-		return null;
+		return TickEvent{.function = function, .chance = zon.get(f32, "chance", 1)};
 	}
 
 	pub fn tryRandomTick(self: *const TickEvent, block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void {
