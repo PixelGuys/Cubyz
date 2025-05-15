@@ -33,6 +33,14 @@
 	},
 	.{
 		.inputs = .{"cubyz:birch_log"},
+		.output = "cubyz:bark/birch",
+	},
+	.{
+		.inputs = .{"cubyz:bark/birch"},
+		.output = "cubyz:birch_planks",
+	},
+	.{
+		.inputs = .{"cubyz:birch_log"},
 		.output = "2 cubyz:birch_branch",
 	},
 	.{
@@ -46,6 +54,14 @@
 	.{
 		.inputs = .{"cubyz:baobab_top"},
 		.output = "3 cubyz:baobab_planks",
+	},
+	.{
+		.inputs = .{"cubyz:baobab_log"},
+		.output = "cubyz:bark/baobab",
+	},
+	.{
+		.inputs = .{"cubyz:bark/baobab"},
+		.output = "cubyz:baobab_planks",
 	},
 	.{
 		.inputs = .{"cubyz:baobab_log"},
@@ -65,6 +81,14 @@
 	},
 	.{
 		.inputs = .{"cubyz:oak_log"},
+		.output = "cubyz:bark/oak",
+	},
+	.{
+		.inputs = .{"cubyz:bark/oak"},
+		.output = "cubyz:oak_planks",
+	},
+	.{
+		.inputs = .{"cubyz:oak_log"},
 		.output = "2 cubyz:oak_branch",
 	},
 	.{
@@ -78,6 +102,14 @@
 	.{
 		.inputs = .{"cubyz:mahogany_top"},
 		.output = "3 cubyz:mahogany_planks",
+	},
+	.{
+		.inputs = .{"cubyz:mahogany_log"},
+		.output = "cubyz:bark/mahogany",
+	},
+	.{
+		.inputs = .{"cubyz:bark/mahogany"},
+		.output = "cubyz:mahogany_planks",
 	},
 	.{
 		.inputs = .{"cubyz:mahogany_log"},
@@ -97,6 +129,14 @@
 	},
 	.{
 		.inputs = .{"cubyz:pine_log"},
+		.output = "cubyz:bark/pine",
+	},
+	.{
+		.inputs = .{"cubyz:bark/pine"},
+		.output = "cubyz:pine_planks",
+	},
+	.{
+		.inputs = .{"cubyz:pine_log"},
 		.output = "2 cubyz:pine_branch",
 	},
 	.{
@@ -110,6 +150,14 @@
 	.{
 		.inputs = .{"cubyz:willow_top"},
 		.output = "3 cubyz:willow_planks",
+	},
+	.{
+		.inputs = .{"cubyz:willow_log"},
+		.output = "cubyz:bark/willow",
+	},
+	.{
+		.inputs = .{"cubyz:bark/willow"},
+		.output = "cubyz:willow_planks",
 	},
 	.{
 		.inputs = .{"cubyz:willow_log"},
