@@ -395,7 +395,6 @@ const WorldIO = struct { // MARK: WorldIO
 		self.world.gameTime = worldData.get(i64, "gameTime", 0);
 		self.world.spawn = worldData.get(Vec3i, "spawn", .{0, 0, 0});
 		self.world.biomeChecksum = worldData.get(i64, "biomeChecksum", 0);
-		self.world.doTick = worldData.get(bool, "doTick", true);
 		self.world.tickSpeed = worldData.get(u32, "tickSpeed", 12);
 	}
 
@@ -408,7 +407,6 @@ const WorldIO = struct { // MARK: WorldIO
 		worldData.put("gameTime", self.world.gameTime);
 		worldData.put("spawn", self.world.spawn);
 		worldData.put("biomeChecksum", self.world.biomeChecksum);
-		worldData.put("doTick", self.world.doTick);
 		worldData.put("tickSpeed", self.world.tickSpeed);
 		// TODO: Save entities
 		try self.dir.writeZon("world.zig.zon", worldData);
@@ -433,7 +431,6 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	doGameTimeCycle: bool = true,
 
 	tickSpeed: u32 = 12,
-	doTick: bool = true,
 
 	defaultGamemode: main.game.Gamemode = undefined,
 	allowCheats: bool = undefined,
@@ -992,7 +989,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				main.network.Protocols.genericUpdate.sendTimeAndBiome(user.conn, self);
 			}
 		}
-		if(self.doTick) self.tick();
+		self.tick();
 		// TODO: Entities
 
 		// Item Entities
