@@ -157,7 +157,6 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 					@memcpy(rest[0..segment.len], segment);
 					rest = rest[segment.len..];
 				}
-				std.debug.print("{s}", .{message});
 
 				result.failure.messages.append(allocator, message);
 				result.failure.takeMessages(allocator, &fieldResult.failure);
@@ -268,23 +267,23 @@ const Test = struct {
 	var testingAllocator = main.heap.ErrorHandlingAllocator.init(std.testing.allocator);
 	var allocator = testingAllocator.allocator();
 
-	const OnlyX = Parser(struct {x: f64});
+	const OnlyX = Parser(struct {x: f64}, .{.commandName = ""});
 
 	const @"float int BiomeId" = Parser(struct {
 		x: f32,
 		y: u64,
 		biome: BiomeId(false),
-	});
+	}, .{.commandName = ""});
 
 	const @"Union X or XY" = Parser(union(enum) {
 		x: struct {x: f64},
 		xy: struct {x: f64, y: f64},
-	});
+	}, .{.commandName = ""});
 
 	const @"subCommands foo or bar" = Parser(union(enum) {
 		foo: struct {cmd: enum(u1) {foo}, x: f64},
 		bar: struct {cmd: enum(u1) {bar}, x: f64, y: f64},
-	});
+	}, .{.commandName = ""});
 };
 
 test "float" {
@@ -305,7 +304,7 @@ test "float negative" {
 test "enum" {
 	const ArgParser = Parser(struct {
 		cmd: enum(u1) {foo},
-	});
+	}, .{.commandName = ""});
 
 	const result = ArgParser.parse(Test.allocator, "foo");
 	defer result.deinit(Test.allocator);
@@ -319,7 +318,7 @@ test "float int float" {
 		x: f64,
 		y: i32,
 		z: f32,
-	});
+	}, .{.commandName = ""});
 
 	const result = ArgParser.parse(Test.allocator, "33.0 154 -5654.0");
 	defer result.deinit(Test.allocator);
@@ -335,7 +334,7 @@ test "float int optional float missing" {
 		x: f64,
 		y: i32,
 		z: ?f32,
-	});
+	}, .{.commandName = ""});
 
 	const result = ArgParser.parse(Test.allocator, "33.0 154");
 	defer result.deinit(Test.allocator);
@@ -351,7 +350,7 @@ test "float optional int biome id missing" {
 		x: f64,
 		y: ?i32,
 		z: BiomeId(false),
-	});
+	}, .{.commandName = ""});
 
 	const result = ArgParser.parse(Test.allocator, "33.0 cubyz:foo");
 	defer result.deinit(Test.allocator);
