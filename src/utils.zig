@@ -1989,7 +1989,7 @@ test "SparseSet/set at 100" {
 		noValue = std.math.maxInt(u32),
 		_,
 	};
-	
+
 	var set: SparseSet(u32, IdType) = .{};
 	defer set.deinit(main.heap.testingAllocator);
 
@@ -2004,7 +2004,7 @@ test "SparseSet/remove first" {
 		noValue = std.math.maxInt(u32),
 		_,
 	};
-	
+
 	var set: SparseSet(u32, IdType) = .{};
 	defer set.deinit(main.heap.testingAllocator);
 
@@ -2026,7 +2026,7 @@ test "SparseSet/remove last" {
 		noValue = std.math.maxInt(u32),
 		_,
 	};
-	
+
 	var set: SparseSet(u32, IdType) = .{};
 	defer set.deinit(main.heap.testingAllocator);
 
@@ -2040,7 +2040,7 @@ test "SparseSet/remove entry that doesn't exist" {
 		noValue = std.math.maxInt(u32),
 		_,
 	};
-	
+
 	var set: SparseSet(u32, IdType) = .{};
 	defer set.deinit(main.heap.testingAllocator);
 
@@ -2052,7 +2052,7 @@ test "SparseSet/remove entry twice" {
 		noValue = std.math.maxInt(u32),
 		_,
 	};
-	
+
 	var set: SparseSet(u32, IdType) = .{};
 	defer set.deinit(main.heap.testingAllocator);
 
@@ -2067,7 +2067,7 @@ test "SparseSet/reusing" {
 		noValue = std.math.maxInt(u32),
 		_,
 	};
-	
+
 	var set: SparseSet(u32, IdType) = .{};
 	defer set.deinit(main.heap.testingAllocator);
 
@@ -2093,7 +2093,7 @@ test "SparseSet/too many" {
 		noValue = std.math.maxInt(u2),
 		_,
 	};
-	
+
 	var set: SparseSet(u32, IdType) = .{};
 	defer set.deinit(main.heap.testingAllocator);
 
