@@ -443,27 +443,10 @@ pub const RuntimeList = struct {
 		return .{.elementSize = elementSize};
 	}
 
-	pub fn initLength(allocator: NeverFailingAllocator, length: usize, elementSize: usize) @This() {
-		return .{
-			.items = allocator.alignedAlloc(u8, alignment, length*elementSize)[0..0],
-			.capacity = length*elementSize,
-			.elementSize = elementSize,
-		};
-	}
-
 	pub fn deinit(self: @This(), allocator: NeverFailingAllocator) void {
 		if(self.capacity != 0) {
 			allocator.free(self.items.ptr[0..self.capacity]);
 		}
-	}
-
-	pub fn clearAndFree(self: *@This(), allocator: NeverFailingAllocator) void {
-		self.deinit(allocator);
-		self.* = .{};
-	}
-
-	pub fn clearRetainingCapacity(self: *@This()) void {
-		self.items.len = 0;
 	}
 
 	pub fn ensureCapacity(self: *@This(), allocator: NeverFailingAllocator, newCapacity: usize) void {
