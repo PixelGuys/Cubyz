@@ -434,15 +434,13 @@ pub fn ListUnmanaged(comptime T: type) type {
 
 pub const RuntimeList = struct {
 	const alignment = 64;
-	
-	items: [] align(alignment) u8 = &.{},
+
+	items: []align(alignment) u8 = &.{},
 	capacity: usize = 0,
 	elementSize: usize,
 
 	pub fn init(elementSize: usize) @This() {
-		return .{
-			.elementSize = elementSize
-		};
+		return .{.elementSize = elementSize};
 	}
 
 	pub fn initLength(allocator: NeverFailingAllocator, length: usize, elementSize: usize) @This() {
@@ -491,7 +489,7 @@ pub const RuntimeList = struct {
 		std.debug.assert(self.items.len <= self.capacity);
 		return self.items[self.items.len - self.elementSize ..];
 	}
-	
+
 	pub fn append(self: *@This(), allocator: NeverFailingAllocator, elems: anytype) void {
 		std.debug.assert(@sizeOf(@TypeOf(elems)) == self.elementSize);
 		const arr = std.mem.toBytes(elems);
@@ -505,7 +503,9 @@ pub const RuntimeList = struct {
 
 	pub fn swapRemove(self: *@This(), _i: usize) void {
 		const i = _i*self.elementSize;
-		@memcpy(self.items[i..i+self.elementSize], self.items[self.items.len - self.elementSize..]);
+		if(i != self.items.len - self.elementSize) {
+			@memcpy(self.items[i .. i + self.elementSize], self.items[self.items.len - self.elementSize ..]);
+		}
 		self.items.len -= self.elementSize;
 	}
 };
@@ -522,6 +522,40 @@ test "RuntimeList get correct value" {
 	defer list.deinit(main.heap.testingAllocator);
 	list.append(main.heap.testingAllocator, @as(i32, 300));
 	try std.testing.expectEqual(list.get(i32, 0), 300);
+}
+
+test "RuntimeList swap remove in the middle" {
+	var list = RuntimeList.init(@sizeOf(i32));
+	defer list.deinit(main.heap.testingAllocator);
+	list.append(main.heap.testingAllocator, @as(i32, 1));
+	list.append(main.heap.testingAllocator, @as(i32, 2));
+	list.append(main.heap.testingAllocator, @as(i32, 3));
+	list.append(main.heap.testingAllocator, @as(i32, 4));
+
+	list.swapRemove(1);
+
+	try std.testing.expectEqual(list.get(i32, 0), 1);
+	try std.testing.expectEqual(list.get(i32, 1), 4);
+	try std.testing.expectEqual(list.get(i32, 2), 3);
+
+	try std.testing.expectEqual(3*@sizeOf(i32), list.items.len);
+}
+
+test "RuntimeList swap remove at the end" {
+	var list = RuntimeList.init(@sizeOf(i32));
+	defer list.deinit(main.heap.testingAllocator);
+	list.append(main.heap.testingAllocator, @as(i32, 1));
+	list.append(main.heap.testingAllocator, @as(i32, 2));
+	list.append(main.heap.testingAllocator, @as(i32, 3));
+	list.append(main.heap.testingAllocator, @as(i32, 4));
+
+	list.swapRemove(3);
+
+	try std.testing.expectEqual(list.get(i32, 0), 1);
+	try std.testing.expectEqual(list.get(i32, 1), 2);
+	try std.testing.expectEqual(list.get(i32, 2), 3);
+
+	try std.testing.expectEqual(3*@sizeOf(i32), list.items.len);
 }
 
 /// Holds multiple arrays sequentially in memory.
