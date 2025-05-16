@@ -494,7 +494,8 @@ pub const RuntimeList = struct {
 	
 	pub fn append(self: *@This(), allocator: NeverFailingAllocator, elems: anytype) void {
 		std.debug.assert(@sizeOf(@TypeOf(elems)) == self.elementSize);
-		@memcpy(self.addOne(allocator), std.mem.toBytes(elems));
+		const arr = std.mem.toBytes(elems);
+		@memcpy(self.addOne(allocator), &arr);
 	}
 
 	pub fn get(self: *@This(), comptime T: type, i: usize) T {
@@ -509,10 +510,18 @@ pub const RuntimeList = struct {
 	}
 };
 
-test "RuntimeList/size" {
+test "RuntimeList append correct size" {
 	var list = RuntimeList.init(@sizeOf(i32));
+	defer list.deinit(main.heap.testingAllocator);
 	list.append(main.heap.testingAllocator, @as(i32, 300));
 	try std.testing.expectEqual(@sizeOf(i32), list.items.len);
+}
+
+test "RuntimeList get correct value" {
+	var list = RuntimeList.init(@sizeOf(i32));
+	defer list.deinit(main.heap.testingAllocator);
+	list.append(main.heap.testingAllocator, @as(i32, 300));
+	try std.testing.expectEqual(list.get(i32, 0), 300);
 }
 
 /// Holds multiple arrays sequentially in memory.
