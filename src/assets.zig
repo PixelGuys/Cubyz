@@ -342,7 +342,7 @@ fn assignBlockItem(stringId: []const u8) !void {
 	const block = blocks_zig.getTypeById(stringId);
 	// TODO: This must be gone in PixelGuys/Cubyz#1205
 	const index = (items_zig.BaseItemIndex.fromId(stringId) orelse unreachable).index;
-	var item = &items_zig.itemList[index];
+	const item = &items_zig.itemList[index];
 	item.block = block;
 }
 
