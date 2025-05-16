@@ -478,11 +478,6 @@ pub const RuntimeList = struct {
 		self.ensureCapacity(allocator, growCapacity(self.capacity, freeCapacity + self.items.len));
 	}
 
-	pub fn resize(self: *@This(), allocator: NeverFailingAllocator, newLength: usize) void {
-		self.ensureCapacity(allocator, newLength*self.elementSize);
-		self.items.len = newLength*self.elementSize;
-	}
-
 	pub fn addOne(self: *@This(), allocator: NeverFailingAllocator) []u8 {
 		self.ensureFreeCapacity(allocator, self.elementSize);
 		self.items.len += self.elementSize;
