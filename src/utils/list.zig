@@ -432,6 +432,89 @@ pub fn ListUnmanaged(comptime T: type) type {
 	};
 }
 
+pub const RuntimeList = struct {
+	const alignment = 64;
+	
+	items: [] align(alignment) u8 = &.{},
+	capacity: usize = 0,
+	elementSize: usize,
+
+	pub fn init(elementSize: usize) @This() {
+		return .{
+			.elementSize = elementSize
+		};
+	}
+
+	pub fn initLength(allocator: NeverFailingAllocator, length: usize, elementSize: usize) @This() {
+		return .{
+			.items = allocator.alignedAlloc(u8, alignment, length*elementSize)[0..0],
+			.capacity = length*elementSize,
+			.elementSize = elementSize,
+		};
+	}
+
+	pub fn deinit(self: @This(), allocator: NeverFailingAllocator) void {
+		if(self.capacity != 0) {
+			allocator.free(self.items.ptr[0..self.capacity]);
+		}
+	}
+
+	pub fn clearAndFree(self: *@This(), allocator: NeverFailingAllocator) void {
+		self.deinit(allocator);
+		self.* = .{};
+	}
+
+	pub fn clearRetainingCapacity(self: *@This()) void {
+		self.items.len = 0;
+	}
+
+	pub fn ensureCapacity(self: *@This(), allocator: NeverFailingAllocator, newCapacity: usize) void {
+		std.debug.assert(newCapacity >= self.items.len);
+		const newAllocation = allocator.realloc(self.items.ptr[0..self.capacity], newCapacity);
+		self.items.ptr = newAllocation.ptr;
+		self.capacity = newAllocation.len;
+	}
+
+	pub fn ensureFreeCapacity(self: *@This(), allocator: NeverFailingAllocator, freeCapacity: usize) void {
+		if(freeCapacity + self.items.len <= self.capacity) return;
+		self.ensureCapacity(allocator, growCapacity(self.capacity, freeCapacity + self.items.len));
+	}
+
+	pub fn resize(self: *@This(), allocator: NeverFailingAllocator, newLength: usize) void {
+		self.ensureCapacity(allocator, newLength*self.elementSize);
+		self.items.len = newLength*self.elementSize;
+	}
+
+	pub fn addOne(self: *@This(), allocator: NeverFailingAllocator) []u8 {
+		self.ensureFreeCapacity(allocator, self.elementSize);
+		self.items.len += self.elementSize;
+		std.debug.assert(self.items.len <= self.capacity);
+		return self.items[self.items.len - self.elementSize ..];
+	}
+	
+	pub fn append(self: *@This(), allocator: NeverFailingAllocator, elems: anytype) void {
+		std.debug.assert(@sizeOf(@TypeOf(elems)) == self.elementSize);
+		@memcpy(self.addOne(allocator), std.mem.toBytes(elems));
+	}
+
+	pub fn get(self: *@This(), comptime T: type, i: usize) T {
+		std.debug.assert(@sizeOf(T) == self.elementSize);
+		return std.mem.bytesAsSlice(T, self.items)[i];
+	}
+
+	pub fn swapRemove(self: *@This(), _i: usize) void {
+		const i = _i*self.elementSize;
+		@memcpy(self.items[i..i+self.elementSize], self.items[self.items.len - self.elementSize..]);
+		self.items.len -= self.elementSize;
+	}
+};
+
+test "RuntimeList/size" {
+	var list = RuntimeList.init(@sizeOf(i32));
+	list.append(main.heap.testingAllocator, @as(i32, 300));
+	try std.testing.expectEqual(@sizeOf(i32), list.items.len);
+}
+
 /// Holds multiple arrays sequentially in memory.
 /// Allows addressing and remove each subarray individually, as well as iterating through all of them at once.
 pub fn MultiArray(T: type, Range: type) type {
