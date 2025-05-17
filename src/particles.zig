@@ -35,10 +35,10 @@ pub const ParticleManager = struct {
 	var particleTypeHashmap: std.StringHashMapUnmanaged(ParticleIndex) = undefined;
 
 	pub fn init() void {
-		types = .init(main.globalAllocator);
-		textureIDs = .init(main.globalAllocator);
-		textures = .init(main.globalAllocator);
-		emissionTextures = .init(main.globalAllocator);
+		types = .init(arenaAllocator);
+		textureIDs = .init(arenaAllocator);
+		textures = .init(arenaAllocator);
+		emissionTextures = .init(arenaAllocator);
 		textureArray = .init();
 		emissionTextureArray = .init();
 		ParticleSystem.init();
