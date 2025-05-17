@@ -24,7 +24,6 @@ const arenaAllocator = arena.allocator();
 pub const ParticleManager = struct {
 	var particleTypesSSBO: SSBO = undefined;
 	var types: main.List(ParticleType) = undefined;
-	var textureIDs: main.List([]const u8) = undefined;
 	var textures: main.List(Image) = undefined;
 	var emissionTextures: main.List(Image) = undefined;
 
@@ -36,7 +35,6 @@ pub const ParticleManager = struct {
 
 	pub fn init() void {
 		types = .init(main.globalAllocator);
-		textureIDs = .init(main.globalAllocator);
 		textures = .init(main.globalAllocator);
 		emissionTextures = .init(main.globalAllocator);
 		textureArray = .init();
@@ -46,7 +44,6 @@ pub const ParticleManager = struct {
 
 	pub fn deinit() void {
 		types.deinit();
-		textureIDs.deinit();
 		textures.deinit();
 		emissionTextures.deinit();
 		textureArray.deinit();
@@ -56,32 +53,23 @@ pub const ParticleManager = struct {
 		arena.deinit();
 	}
 
-	pub fn register(_: []const u8, id: []const u8, zon: ZonElement) void {
+	pub fn register(assetsFolder: []const u8, id: []const u8, zon: ZonElement) void {
 		const animationFrames = zon.get(u32, "animationFrames", 1);
-
 		const textureId = zon.get([]const u8, "texture", "cubyz:spark");
-		var splitter = std.mem.splitScalar(u8, textureId, ':');
-		const mod = splitter.first();
-		const _id = splitter.rest();
 
-		// this is so confusing i just hardcoded that thing
-		const path = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/particles/textures/{s}.png", .{ mod, _id }) catch unreachable;
-		defer main.stackAllocator.free(path);
-		textureIDs.append(arenaAllocator.dupe(u8, path));
-		const particleType = readTextureDataAndParticleType(path, animationFrames);
+		const particleType = readTextureDataAndParticleType(assetsFolder, textureId, animationFrames);
 
 		particleTypeHashmap.put(arenaAllocator.allocator, id, @intCast(types.items.len)) catch unreachable;
 		types.append(particleType);
 
 		std.log.debug("Registered particle type: {s}", .{id});
 	}
-
-	fn readTextureDataAndParticleType(_path: []const u8, animationFrames: u32) ParticleType {
-		const path = _path[0 .. _path.len - ".png".len];
+	fn readTextureDataAndParticleType(assetsFolder: []const u8, textureId: []const u8, animationFrames: u32) ParticleType {
 		var typ: ParticleType = undefined;
 
-		const base = readTextureFile(path, ".png", Image.defaultImage);
-		const emission = readTextureFile(path, "_emission.png", Image.emptyImage);
+		const base = readTexture(assetsFolder, textureId, ".png", Image.defaultImage, .isMandatory);
+		const emission = readTexture(assetsFolder, textureId, "_emission.png", Image.emptyImage, .isOptional);
+
 		typ.startFrame = @intCast(textures.items.len);
 		typ.size = @as(f32, @floatFromInt(base.width))/16;
 		for(0..animationFrames) |i| {
@@ -93,14 +81,21 @@ pub const ParticleManager = struct {
 		return typ;
 	}
 
-	fn extendedPath(_allocator: main.heap.NeverFailingAllocator, path: []const u8, ending: []const u8) []const u8 {
-		return std.mem.concat(_allocator.allocator, u8, &.{ path, ending }) catch unreachable;
-	}
+	fn readTexture(assetsFolder: []const u8, textureId: []const u8, suffix: []const u8, default: graphics.Image, status: enum {isOptional, isMandatory}) graphics.Image {
+		var splitter = std.mem.splitScalar(u8, textureId, ':');
+		const mod = splitter.first();
+		const id = splitter.rest();
 
-	fn readTextureFile(_path: []const u8, ending: []const u8, default: Image) Image {
-		const path = extendedPath(main.stackAllocator, _path, ending);
-		defer main.stackAllocator.free(path);
-		return Image.readFromFile(arenaAllocator, path) catch default;
+		const gameAssetsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/particles/textures/{s}{s}", .{mod, id, suffix}) catch unreachable;
+		defer main.stackAllocator.free(gameAssetsPath);
+
+		const worldAssetsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/particles/textures/{s}{s}", .{assetsFolder, mod, id, suffix}) catch unreachable;
+		defer main.stackAllocator.free(worldAssetsPath);
+
+		return graphics.Image.readFromFile(arenaAllocator, worldAssetsPath) catch graphics.Image.readFromFile(arenaAllocator, gameAssetsPath) catch {
+			if(status == .isMandatory) std.log.err("Particle texture not found in {s} and {s}.", .{worldAssetsPath, gameAssetsPath});
+			return default;
+		};
 	}
 
 	fn extractAnimationSlice(image: Image, frame: usize, frames: usize) Image {
@@ -273,7 +268,7 @@ pub const ParticleSystem = struct {
 	pub fn spawn(id: []const u8, count: u32, pos: Vec3d, collides: bool, shape: EmmiterShape) void {
 		const typ = ParticleManager.particleTypeHashmap.get(id) orelse 0;
 		const playerPos: Vec3d = previousPlayerPos;
-		
+
 		const to: u32 = @intCast(@min(particleCount + count, maxCapacity));
 		for(particleCount..to) |_| {
 			var vel: Vec3f = @splat(0);
@@ -355,7 +350,7 @@ pub const ParticleSystem = struct {
 
 		c.glBindVertexArray(chunk_meshing.vao);
 
-		for (0..std.math.divCeil(u32, particleCount, chunk_meshing.maxQuadsInIndexBuffer) catch unreachable) |_| {
+		for(0..std.math.divCeil(u32, particleCount, chunk_meshing.maxQuadsInIndexBuffer) catch unreachable) |_| {
 			c.glDrawElements(c.GL_TRIANGLES, @intCast(particleCount*4), c.GL_UNSIGNED_INT, null);
 		}
 	}
