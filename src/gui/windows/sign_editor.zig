@@ -22,10 +22,15 @@ const padding: f32 = 8;
 var pos: main.vec.Vec3i = undefined;
 var oldText: []const u8 = &.{};
 
+pub fn deinit() void {
+	main.globalAllocator.free(oldText);
+}
+
 pub fn openFromSignData(_pos: main.vec.Vec3i, _oldText: []const u8) void {
 	pos = _pos;
-	std.debug.assert(oldText.len == 0);
+	main.globalAllocator.free(oldText);
 	oldText = main.globalAllocator.dupe(u8, _oldText);
+	gui.closeWindowFromRef(&window);
 	gui.openWindowFromRef(&window);
 	main.Window.setMouseGrabbed(false);
 }
@@ -54,7 +59,6 @@ pub fn onOpen() void {
 }
 
 pub fn onClose() void {
-	main.globalAllocator.free(oldText);
 	if(window.rootComponent) |*comp| {
 		comp.deinit();
 	}
