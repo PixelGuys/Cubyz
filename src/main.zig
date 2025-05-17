@@ -4,6 +4,7 @@ pub const gui = @import("gui/gui.zig");
 pub const server = @import("server/server.zig");
 
 pub const audio = @import("audio.zig");
+pub const argparse = @import("argparse.zig");
 pub const assets = @import("assets.zig");
 pub const blocks = @import("blocks.zig");
 pub const blueprint = @import("blueprint.zig");
