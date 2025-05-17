@@ -139,7 +139,8 @@ pub const ParticleSystem = struct {
 	var particleCount: u32 = 0;
 	var particles: [maxCapacity]Particle = undefined;
 	var particlesLocal: [maxCapacity]ParticleLocal = undefined;
-	var properties: EmmiterProperties = undefined;
+	// TODO: add different emitters for different types of movements like windy, normal, no collisions and etc.
+	var properties: EmitterProperties = undefined;
 	var seed: u64 = undefined;
 	var previousPlayerPos: Vec3d = undefined;
 
@@ -167,7 +168,7 @@ pub const ParticleSystem = struct {
 			.{.attachments = &.{.noBlending}},
 		);
 
-		properties = EmmiterProperties{
+		properties = EmitterProperties{
 			.gravity = .{0, 0, -2},
 			.drag = 0.5,
 			.lifeTimeMin = 5,
@@ -270,7 +271,7 @@ pub const ParticleSystem = struct {
 		previousPlayerPos = playerPos;
 	}
 
-	pub fn spawn(id: []const u8, count: u32, pos: Vec3d, collides: bool, shape: EmmiterShape) void {
+	pub fn spawn(id: []const u8, count: u32, pos: Vec3d, collides: bool, shape: EmitterShape) void {
 		const typ = ParticleManager.particleTypeHashmap.get(id) orelse 0;
 		const playerPos: Vec3d = previousPlayerPos;
 		
@@ -365,7 +366,7 @@ pub const ParticleSystem = struct {
 	}
 };
 
-pub const EmmiterProperties = struct {
+pub const EmitterProperties = struct {
 	gravity: Vec3f = @splat(0),
 	drag: f32 = 0,
 	velMin: f32 = 0,
@@ -376,7 +377,7 @@ pub const EmmiterProperties = struct {
 	lifeTimeMax: f32 = 0,
 };
 
-pub const EmmiterShapeEnum = enum(u8) {
+pub const EmitterShapeEnum = enum(u8) {
 	point,
 	sphere,
 	cube,
@@ -387,8 +388,8 @@ pub const DirectionModeEnum = enum(u8) {
 	direction,
 };
 
-pub const EmmiterShape = struct {
-	shapeType: EmmiterShapeEnum = .point,
+pub const EmitterShape = struct {
+	shapeType: EmitterShapeEnum = .point,
 	directionMode: DirectionModeEnum = .spread,
 	size: f32 = 0,
 	dir: Vec3f = @splat(0),
