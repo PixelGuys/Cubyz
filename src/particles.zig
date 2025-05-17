@@ -126,8 +126,7 @@ pub const ParticleManager = struct {
 	}
 
 	pub fn update(deltaTime: f64) void {
-		const dt: f32 = @floatCast(deltaTime);
-		ParticleSystem.update(dt);
+		ParticleSystem.update(@floatCast(deltaTime));
 	}
 
 	pub fn render(projectionMatrix: Mat4f, viewMatrix: Mat4f, ambientLight: Vec3f) void {
@@ -213,13 +212,13 @@ pub const ParticleSystem = struct {
 
 			particleLocal.velAndRotationVel += vec.combine(properties.gravity, 0)*vecDeltaTime;
 			particleLocal.velAndRotationVel *= @splat(@max(0, 1 - properties.drag*deltaTime));
-			const vel: Vec4d = @floatCast(particleLocal.velAndRotationVel*vecDeltaTime);
+			const vel = particleLocal.velAndRotationVel*vecDeltaTime;
 
 			// TODO: OPTIMIZE THE HELL OUT OF THIS
 			if(particleLocal.collides) {
 				const size = ParticleManager.types.items[particle.typ].size;
 				const hitBox: game.collision.Box = .{.min = @splat(size*-0.5), .max = @splat(size*0.5)};
-				var v3Pos = @as(Vec3d, @floatCast(Vec3f{particle.posAndRotation[0], particle.posAndRotation[1], particle.posAndRotation[2]} + prevPlayerPosDifference)) + playerPos;
+				var v3Pos = playerPos + @as(Vec3d, @floatCast(Vec3f{particle.posAndRotation[0], particle.posAndRotation[1], particle.posAndRotation[2]} + prevPlayerPosDifference));
 				v3Pos[0] += vel[0];
 				if(game.collision.collides(.client, .x, -vel[0], v3Pos, hitBox)) |box| {
 					if(vel[0] < 0) {
@@ -246,7 +245,7 @@ pub const ParticleSystem = struct {
 				}
 				particle.posAndRotation = vec.combine(@as(Vec3f, @floatCast(v3Pos - playerPos)), 0);
 			} else {
-				particle.posAndRotation += @as(Vec4f, @floatCast(vel)) + vec.combine(prevPlayerPosDifference, 0);
+				particle.posAndRotation += vel + vec.combine(prevPlayerPosDifference, 0);
 			}
 
 			particle.posAndRotation[3] = rot;
@@ -406,6 +405,7 @@ pub const Particle = struct {
 	lifeRatio: f32 = 1,
 	light: u32 = 0,
 	typ: u32,
+	// 4 bytes left for use
 };
 
 pub const ParticleLocal = struct {
