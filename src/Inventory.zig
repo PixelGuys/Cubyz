@@ -1865,7 +1865,6 @@ fn update(self: Inventory) void {
 		self._items[self._items.len - 1].deinit();
 		self._items[self._items.len - 1].clear();
 		var availableItems: [25]?BaseItemIndex = undefined;
-		var hasAllMandatory: bool = true;
 		const slotInfos = self.type.workbench.slotInfos;
 
 		for(0..25) |i| {
@@ -1873,24 +1872,21 @@ fn update(self: Inventory) void {
 				availableItems[i] = self._items[i].item.?.baseItem;
 			} else {
 				if(!slotInfos[i].optional and !slotInfos[i].disabled) {
-					hasAllMandatory = false;
-					break;
+					return;
 				}
 				availableItems[i] = null;
 			}
 		}
-		if(hasAllMandatory) {
-			var hash = std.hash.Crc32.init();
-			for(availableItems) |item| {
-				if(item != null) {
-					hash.update(item.?.id());
-				} else {
-					hash.update("none");
-				}
+		var hash = std.hash.Crc32.init();
+		for(availableItems) |item| {
+			if(item != null) {
+				hash.update(item.?.id());
+			} else {
+				hash.update("none");
 			}
-			self._items[self._items.len - 1].item = Item{.tool = Tool.initFromCraftingGrid(availableItems, hash.final(), self.type.workbench)};
-			self._items[self._items.len - 1].amount = 1;
 		}
+		self._items[self._items.len - 1].item = Item{.tool = Tool.initFromCraftingGrid(availableItems, hash.final(), self.type.workbench)};
+		self._items[self._items.len - 1].amount = 1;
 	}
 }
 
