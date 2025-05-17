@@ -1213,7 +1213,7 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 	timer += deltaTime;
 	// if(timer > 5) {
-		particles.ParticleSystem.spawn("cubyz:spark", 20, Player.getEyePosBlocking()+Vec3d{0, 0, -0.5}, false, .{
+		particles.ParticleSystem.spawn("cubyz:spark", 20, Player.getEyePosBlocking()+Vec3d{0, 0, -0.5}, true, .{
 			.shapeType = .point,
 			.size = 0,
 			.directionMode = .scatter,
