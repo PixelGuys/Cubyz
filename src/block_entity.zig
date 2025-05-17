@@ -206,10 +206,10 @@ pub const BlockEntityTypes = struct {
 	};
 
 	pub const Sign = struct {
-		const StorageServer = BlockEntityDataStorage(.server, struct {
+		const StorageServer = BlockEntityDataStorage(struct {
 			text: []const u8,
 		});
-		const StorageClient = BlockEntityDataStorage(.client, struct {
+		const StorageClient = BlockEntityDataStorage(struct {
 			text: []const u8,
 			renderedTexture: ?main.graphics.Texture = null,
 		});
@@ -229,12 +229,22 @@ pub const BlockEntityTypes = struct {
 		}
 
 		pub fn onLoadClient(_: Vec3i, _: *Chunk) void {}
-		pub fn onUnloadClient(_: Vec3i, _: *Chunk) void {}
+		pub fn onUnloadClient(dataIndex: BlockEntityIndex) void {
+			StorageClient.mutex.lock();
+			defer StorageClient.mutex.unlock();
+			StorageClient.removeAtIndex(dataIndex);
+		}
 		pub fn onLoadServer(_: Vec3i, _: *Chunk) void {}
-		pub fn onUnloadServer(_: Vec3i, _: *Chunk) void {}
-		pub fn onPlaceClient(_: Vec3i, _: *Chunk) void {}
-		pub fn onBreakClient(_: Vec3i, _: *Chunk) void {}
-		pub fn onPlaceServer(_: Vec3i, _: *Chunk) void {}
+		pub fn onUnloadServer(_: BlockEntityIndex) void {}
+		pub fn onPlaceClient(pos: Vec3i, chunk: *Chunk) void {
+			StorageClient.add(pos, .{.text = "test"}, chunk);
+		}
+		pub fn onBreakClient(pos: Vec3i, chunk: *Chunk) void {
+			StorageClient.remove(pos, chunk);
+		}
+		pub fn onPlaceServer(pos: Vec3i, chunk: *Chunk) void {
+			StorageServer.add(pos, .{.text = "test"}, chunk);
+		}
 		pub fn onBreakServer(pos: Vec3i, chunk: *Chunk) void {
 			StorageServer.remove(pos, chunk);
 		}
