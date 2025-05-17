@@ -328,6 +328,9 @@ pub const Blueprint = struct {
 };
 
 pub const Pattern = struct {
+	const weightSeparator = '%';
+	const expressionSeparator = ',';
+
 	blocks: AliasTable(Entry),
 
 	const Entry = struct {
@@ -336,26 +339,30 @@ pub const Pattern = struct {
 	};
 
 	pub fn initFromString(allocator: NeverFailingAllocator, source: []const u8) !@This() {
-		var specifiers = std.mem.splitScalar(u8, source, ',');
+		var specifiers = std.mem.splitScalar(u8, source, expressionSeparator);
 		var totalWeight: f32 = 0;
 
 		var weightedEntries: ListUnmanaged(struct {block: Block, weight: f32}) = .{};
 		defer weightedEntries.deinit(main.stackAllocator);
 
 		while(specifiers.next()) |specifier| {
-			var iterator = std.mem.splitScalar(u8, specifier, '%');
+			var blockId = specifier;
+			var weight: f32 = 1.0;
 
-			var weight: f32 = undefined;
-			var block = main.blocks.parseBlock(iterator.rest());
+			if(std.mem.containsAtLeastScalar(u8, specifier, 1, weightSeparator)) {
+				var iterator = std.mem.splitScalar(u8, specifier, '%');
+				const weightString = iterator.next() orelse return error.MissingWeight;
+				blockId = iterator.next() orelse return error.MissingBlockId;
 
-			const first = iterator.first();
+				if(iterator.next() != null) return error.TooManyElements;
 
-			weight = std.fmt.parseFloat(f32, first) catch blk: {
-				// To distinguish somehow between mistyped numeric values and actual block IDs we check for addon name separator.
-				if(!std.mem.containsAtLeastScalar(u8, first, 1, ':')) return error.PatternSyntaxError;
-				block = main.blocks.parseBlock(first);
-				break :blk 1.0;
-			};
+				weight = std.fmt.parseFloat(f32, weightString) catch return error.InvalidWeight;
+				if(weight <= 0) continue;
+			}
+
+			_ = main.blocks.getBlockById(blockId) catch return error.InvalidBlockId;
+			const block = main.blocks.parseBlock(blockId);
+
 			totalWeight += weight;
 			weightedEntries.append(main.stackAllocator, .{.block = block, .weight = weight});
 		}
