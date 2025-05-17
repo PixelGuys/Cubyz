@@ -694,6 +694,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		chunkBuffer.free(self.chunkAllocation);
 		self.opaqueMesh.deinit();
 		self.transparentMesh.deinit();
+		self.chunk.unloadBlockEntities(.client);
 		self.chunk.deinit();
 		main.globalAllocator.free(self.currentSorting);
 		main.globalAllocator.free(self.sortingOutputBuffer);

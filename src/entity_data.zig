@@ -17,9 +17,9 @@ pub const EntityDataClass = struct {
 
 	const VTable = struct {
 		onLoadClient: *const fn(pos: Vec3i, chunk: *Chunk) void,
-		onUnloadClient: *const fn(pos: Vec3i, chunk: *Chunk) void,
+		onUnloadClient: *const fn(dataIndex: u32) void,
 		onLoadServer: *const fn(pos: Vec3i, chunk: *Chunk) void,
-		onUnloadServer: *const fn(pos: Vec3i, chunk: *Chunk) void,
+		onUnloadServer: *const fn(dataIndex: u32) void,
 		onPlaceClient: *const fn(pos: Vec3i, chunk: *Chunk) void,
 		onBreakClient: *const fn(pos: Vec3i, chunk: *Chunk) void,
 		onPlaceServer: *const fn(pos: Vec3i, chunk: *Chunk) void,
@@ -44,14 +44,14 @@ pub const EntityDataClass = struct {
 	pub inline fn onLoadClient(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) void {
 		return self.vtable.onLoadClient(pos, chunk);
 	}
-	pub inline fn onUnloadClient(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) void {
-		return self.vtable.onUnloadClient(pos, chunk);
+	pub inline fn onUnloadClient(self: *EntityDataClass, dataIndex: u32) void {
+		return self.vtable.onUnloadClient(dataIndex);
 	}
 	pub inline fn onLoadServer(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) void {
 		return self.vtable.onLoadServer(pos, chunk);
 	}
-	pub inline fn onUnloadServer(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) void {
-		return self.vtable.onUnloadServer(pos, chunk);
+	pub inline fn onUnloadServer(self: *EntityDataClass, dataIndex: u32) void {
+		return self.vtable.onUnloadServer(dataIndex);
 	}
 	pub inline fn onPlaceClient(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) void {
 		return self.vtable.onPlaceClient(pos, chunk);
@@ -107,6 +107,20 @@ fn BlockEntityDataStorage(comptime side: enum {client, server}, T: type) type {
 			chunk.blockPosToEntityDataMap.put(main.globalAllocator.allocator, blockIndex, @intCast(dataIndex)) catch unreachable;
 			chunk.blockPosToEntityDataMapMutex.unlock();
 		}
+		pub fn removeByIndex(dataIndex: u32) void {
+			main.utils.assertLocked(&mutex);
+
+			_ = storage.swapRemove(dataIndex);
+			if(dataIndex == storage.items.len) {
+				return;
+			}
+
+			const movedEntry = storage.items[dataIndex];
+			switch(side) {
+				.server => propagateRemoveServer(movedEntry.absoluteBlockPosition, dataIndex),
+				.client => propagateRemoveClient(movedEntry.absoluteBlockPosition, dataIndex),
+			}
+		}
 		pub fn remove(pos: Vec3i, chunk: *Chunk) void {
 			mutex.lock();
 			defer mutex.unlock();
@@ -122,17 +136,7 @@ fn BlockEntityDataStorage(comptime side: enum {client, server}, T: type) type {
 				return;
 			};
 
-			const dataIndex = entry.value;
-			_ = storage.swapRemove(dataIndex);
-			if(dataIndex == storage.items.len) {
-				return;
-			}
-
-			const movedEntry = storage.items[dataIndex];
-			switch(side) {
-				.server => propagateRemoveServer(movedEntry.absoluteBlockPosition, dataIndex),
-				.client => propagateRemoveClient(movedEntry.absoluteBlockPosition, dataIndex),
-			}
+			removeByIndex(entry.value);
 		}
 		fn propagateRemoveServer(pos: Vec3i, index: u32) void {
 			const severChunk = server.world.?.getChunkFromCacheAndIncreaseRefCount(ChunkPosition.initFromWorldPos(pos, 1)).?;
@@ -192,9 +196,9 @@ pub const EntityDataClasses = struct {
 		}
 
 		pub fn onLoadClient(_: Vec3i, _: *Chunk) void {}
-		pub fn onUnloadClient(_: Vec3i, _: *Chunk) void {}
+		pub fn onUnloadClient(_: u32) void {}
 		pub fn onLoadServer(_: Vec3i, _: *Chunk) void {}
-		pub fn onUnloadServer(_: Vec3i, _: *Chunk) void {}
+		pub fn onUnloadServer(_: u32) void {}
 		pub fn onPlaceClient(_: Vec3i, _: *Chunk) void {}
 		pub fn onBreakClient(_: Vec3i, _: *Chunk) void {}
 		pub fn onPlaceServer(_: Vec3i, _: *Chunk) void {}
@@ -238,12 +242,22 @@ pub const EntityDataClasses = struct {
 		}
 
 		pub fn onLoadClient(_: Vec3i, _: *Chunk) void {}
-		pub fn onUnloadClient(_: Vec3i, _: *Chunk) void {}
+		pub fn onUnloadClient(dataIndex: u32) void {
+			StorageClient.mutex.lock();
+			defer StorageClient.mutex.unlock();
+			StorageClient.removeByIndex(dataIndex);
+		}
 		pub fn onLoadServer(_: Vec3i, _: *Chunk) void {}
-		pub fn onUnloadServer(_: Vec3i, _: *Chunk) void {}
-		pub fn onPlaceClient(_: Vec3i, _: *Chunk) void {}
-		pub fn onBreakClient(_: Vec3i, _: *Chunk) void {}
-		pub fn onPlaceServer(_: Vec3i, _: *Chunk) void {}
+		pub fn onUnloadServer(_: u32) void {}
+		pub fn onPlaceClient(pos: Vec3i, chunk: *Chunk) void {
+			StorageClient.add(pos, .{.text = "test"}, chunk);
+		}
+		pub fn onBreakClient(pos: Vec3i, chunk: *Chunk) void {
+			StorageClient.remove(pos, chunk);
+		}
+		pub fn onPlaceServer(pos: Vec3i, chunk: *Chunk) void {
+			StorageServer.add(pos, .{.text = "test"}, chunk);
+		}
 		pub fn onBreakServer(pos: Vec3i, chunk: *Chunk) void {
 			StorageServer.remove(pos, chunk);
 		}
