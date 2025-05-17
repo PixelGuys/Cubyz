@@ -1,10 +1,10 @@
 #version 430
 
-in vec3 textureCoords;
-flat in vec3 light;
+layout(location = 0) in vec3 textureCoords;
+layout(location = 1) flat in vec3 light;
 
-uniform sampler2DArray textureSampler;
-uniform sampler2DArray emissionTextureSampler;
+layout(location = 3) uniform sampler2DArray textureSampler;
+layout(location = 4) uniform sampler2DArray emissionTextureSampler;
 
 layout(location = 0) out vec4 fragColor;
 

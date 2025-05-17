@@ -146,7 +146,7 @@ pub const ParticleSystem = struct {
 
 	var particlesSSBO: SSBO = undefined;
 
-	var shader: Shader = undefined;
+	var pipeline: graphics.Pipeline = undefined;
 	const UniformStruct = struct {
 		projectionAndViewMatrix: c_int,
 		billboardMatrix: c_int,
@@ -158,7 +158,15 @@ pub const ParticleSystem = struct {
 
 	pub fn init() void {
 		std.log.debug("Particle alignment: {d} size: {d}\n", .{@alignOf(Particle), @sizeOf(Particle)});
-		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/particles/particles.vs", "assets/cubyz/shaders/particles/particles.fs", "", &uniforms);
+		pipeline = graphics.Pipeline.init(
+			"assets/cubyz/shaders/particles/particles.vert",
+			"assets/cubyz/shaders/particles/particles.frag",
+			"",
+			&uniforms,
+			.{},
+			.{.depthTest = true, .depthWrite = true},
+			.{.attachments = &.{.noBlending}},
+		);
 
 		properties = EmmiterProperties{
 			.gravity = .{0, 0, -2},
@@ -178,7 +186,7 @@ pub const ParticleSystem = struct {
 	}
 
 	pub fn deinit() void {
-		shader.deinit();
+		pipeline.deinit();
 		particlesSSBO.deinit();
 	}
 
@@ -328,7 +336,7 @@ pub const ParticleSystem = struct {
 	pub fn render(projectionMatrix: Mat4f, viewMatrix: Mat4f, ambientLight: Vec3f) void {
 		particlesSSBO.bufferSubData(Particle, &particles, particleCount);
 
-		shader.bind();
+		pipeline.bind(null);
 
 		c.glUniform1i(uniforms.textureSampler, 0);
 		c.glUniform1i(uniforms.emissionTextureSampler, 1);
