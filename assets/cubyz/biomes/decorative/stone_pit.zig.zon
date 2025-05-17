@@ -29,7 +29,7 @@
 			.chance = 16,
 		},
 		.{
-			.id = "cubyz:taiga",
+			.id = "cubyz:taiga/base",
 			.chance = 6,
 		},
 		.{

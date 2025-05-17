@@ -203,9 +203,12 @@ pub fn init() error{paError}!void {
 }
 
 pub fn deinit() void {
-	handleError(c.Pa_StopStream(stream)) catch {};
-	handleError(c.Pa_CloseStream(stream)) catch {};
-	handleError(c.Pa_Terminate()) catch {};
+	// Something about this causes a crash later in __GI___pthread_exit, this started happening after adding glslang, which may or may not be related
+	//handleError(c.Pa_StopStream(stream)) catch {};
+	//handleError(c.Pa_CloseStream(stream)) catch {};
+	//handleError(c.Pa_Terminate()) catch {};
+	mutex.lock();
+	defer mutex.unlock();
 	main.threadPool.closeAllTasksOfType(&MusicLoadTask.vtable);
 	musicCache.clear();
 	activeTasks.deinit(main.globalAllocator);

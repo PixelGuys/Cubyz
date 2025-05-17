@@ -358,7 +358,6 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 			sum *= property.resultScale;
 			tool.getProperty(property.destination orelse continue).* += sum;
 		}
-		if(tool.maxDurability < 1) tool.maxDurability = 1;
 		if(tool.damage < 1) tool.damage = 1/(2 - tool.damage);
 		if(tool.swingTime < 1) tool.swingTime = 1/(2 - tool.swingTime);
 		for(0..25) |i| {
@@ -384,7 +383,9 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 			mod.changeToolParameters(tool);
 		}
 
-		tool.durability = @max(1, std.math.lossyCast(u32, tool.maxDurability));
+		tool.maxDurability = @round(tool.maxDurability);
+		if(tool.maxDurability < 1) tool.maxDurability = 1;
+		tool.durability = std.math.lossyCast(u32, tool.maxDurability);
 	}
 };
 
@@ -461,9 +462,10 @@ pub const Tool = struct { // MARK: Tool
 	}
 
 	pub fn deinit(self: *const Tool) void {
-		if(self.texture) |texture| {
-			texture.deinit();
-		}
+		// TODO: This is leaking textures!
+		//if(self.texture) |texture| {
+		//texture.deinit();
+		//}
 		self.image.deinit(main.globalAllocator);
 		self.tooltip.deinit();
 		main.globalAllocator.free(self.modifiers);

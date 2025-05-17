@@ -19,6 +19,7 @@ const Mat4f = vec.Mat4f;
 const EventStatus = main.entity_data.EventStatus;
 
 const chunk_meshing = @import("chunk_meshing.zig");
+const ChunkMesh = chunk_meshing.ChunkMesh;
 
 const ChunkMeshNode = struct {
 	mesh: ?*chunk_meshing.ChunkMesh = null,
@@ -44,12 +45,18 @@ var lastPy: i32 = 0;
 var lastPz: i32 = 0;
 var lastRD: u16 = 0;
 var mutex: std.Thread.Mutex = .{};
-const BlockUpdate = struct {
+
+pub const BlockUpdate = struct {
 	x: i32,
 	y: i32,
 	z: i32,
 	newBlock: blocks.Block,
+
+	pub fn init(pos: Vec3i, block: blocks.Block) BlockUpdate {
+		return .{.x = pos[0], .y = pos[1], .z = pos[2], .newBlock = block};
+	}
 };
+
 var blockUpdateList: main.utils.ConcurrentQueue(BlockUpdate) = undefined;
 
 var meshMemoryPool: main.heap.MemoryPool(chunk_meshing.ChunkMesh) = undefined;
@@ -758,15 +765,8 @@ pub noinline fn updateAndGetRenderChunks(conn: *network.Connection, frustum: *co
 	return meshList.items;
 }
 
-pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()
-	// First of all process all the block updates:
-	while(blockUpdateList.dequeue()) |blockUpdate| {
-		const pos = chunk.ChunkPosition{.wx = blockUpdate.x, .wy = blockUpdate.y, .wz = blockUpdate.z, .voxelSize = 1};
-		if(getMeshAndIncreaseRefCount(pos)) |mesh| {
-			defer mesh.decreaseRefCount();
-			mesh.updateBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock);
-		} // TODO: It seems like we simply ignore the block update if we don't have the mesh yet.
-	}
+pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()=
+	if(!blockUpdateList.empty()) batchUpdateBlocks();
 
 	mutex.lock();
 	defer mutex.unlock();
@@ -856,6 +856,39 @@ pub fn updateMeshes(targetTime: i64) void { // MARK: updateMeshes()
 			mesh.decreaseRefCount();
 		}
 		if(std.time.milliTimestamp() >= targetTime) break; // Update at least one mesh.
+	}
+}
+
+fn batchUpdateBlocks() void {
+	var lightRefreshList = main.List(*ChunkMesh).init(main.stackAllocator);
+	defer lightRefreshList.deinit();
+
+	var regenerateMeshList = main.List(*ChunkMesh).init(main.stackAllocator);
+	defer regenerateMeshList.deinit();
+
+	// First of all process all the block updates:
+	while(blockUpdateList.dequeue()) |blockUpdate| {
+		const pos = chunk.ChunkPosition{.wx = blockUpdate.x, .wy = blockUpdate.y, .wz = blockUpdate.z, .voxelSize = 1};
+		if(getMeshAndIncreaseRefCount(pos)) |mesh| {
+			mesh.updateBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock, &lightRefreshList, &regenerateMeshList);
+			mesh.decreaseRefCount();
+		} // TODO: It seems like we simply ignore the block update if we don't have the mesh yet.
+	}
+	for(regenerateMeshList.items) |mesh| {
+		mesh.generateMesh(&lightRefreshList);
+	}
+	{
+		for(lightRefreshList.items) |mesh| {
+			if(mesh.needsLightRefresh.load(.unordered)) {
+				mesh.scheduleLightRefreshAndDecreaseRefCount();
+			} else {
+				mesh.decreaseRefCount();
+			}
+		}
+	}
+	for(regenerateMeshList.items) |mesh| {
+		mesh.uploadData();
+		mesh.decreaseRefCount();
 	}
 }
 
@@ -953,8 +986,8 @@ pub const MeshGenerationTask = struct { // MARK: MeshGenerationTask
 
 // MARK: updaters
 
-pub fn updateBlock(x: i32, y: i32, z: i32, newBlock: blocks.Block) void {
-	blockUpdateList.enqueue(.{.x = x, .y = y, .z = z, .newBlock = newBlock});
+pub fn updateBlock(update: BlockUpdate) void {
+	blockUpdateList.enqueue(update);
 }
 
 pub fn updateChunkMesh(mesh: *chunk.Chunk) void {

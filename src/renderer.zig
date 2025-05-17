@@ -7,7 +7,6 @@ const entity = @import("entity.zig");
 const graphics = @import("graphics.zig");
 const particles = @import("particles.zig");
 const c = graphics.c;
-const Shader = graphics.Shader;
 const game = @import("game.zig");
 const World = game.World;
 const itemdrop = @import("itemdrop.zig");
@@ -34,10 +33,8 @@ const maximumMeshTime = 12;
 pub const zNear = 0.1;
 pub const zFar = 65536.0; // TODO: Fix z-fighting problems.
 
-var deferredRenderPassShader: graphics.Shader = undefined;
+var deferredRenderPassPipeline: graphics.Pipeline = undefined;
 var deferredUniforms: struct {
-	color: c_int,
-	depthTexture: c_int,
 	@"fog.color": c_int,
 	@"fog.density": c_int,
 	@"fog.fogLower": c_int,
@@ -49,7 +46,7 @@ var deferredUniforms: struct {
 	playerPositionInteger: c_int,
 	playerPositionFraction: c_int,
 } = undefined;
-var fakeReflectionShader: graphics.Shader = undefined;
+var fakeReflectionPipeline: graphics.Pipeline = undefined;
 var fakeReflectionUniforms: struct {
 	normalVector: c_int,
 	upVector: c_int,
@@ -64,8 +61,24 @@ pub const reflectionCubeMapSize = 64;
 var reflectionCubeMap: graphics.CubeMapTexture = undefined;
 
 pub fn init() void {
-	deferredRenderPassShader = Shader.initAndGetUniforms("assets/cubyz/shaders/deferred_render_pass.vs", "assets/cubyz/shaders/deferred_render_pass.fs", "", &deferredUniforms);
-	fakeReflectionShader = Shader.initAndGetUniforms("assets/cubyz/shaders/fake_reflection.vs", "assets/cubyz/shaders/fake_reflection.fs", "", &fakeReflectionUniforms);
+	deferredRenderPassPipeline = graphics.Pipeline.init(
+		"assets/cubyz/shaders/deferred_render_pass.vert",
+		"assets/cubyz/shaders/deferred_render_pass.frag",
+		"",
+		&deferredUniforms,
+		.{.cullMode = .none},
+		.{.depthTest = false, .depthWrite = false},
+		.{.attachments = &.{.noBlending}},
+	);
+	fakeReflectionPipeline = graphics.Pipeline.init(
+		"assets/cubyz/shaders/fake_reflection.vert",
+		"assets/cubyz/shaders/fake_reflection.frag",
+		"",
+		&fakeReflectionUniforms,
+		.{.cullMode = .none},
+		.{.depthTest = false, .depthWrite = false},
+		.{.attachments = &.{.noBlending}},
+	);
 	worldFrameBuffer.init(true, c.GL_NEAREST, c.GL_CLAMP_TO_EDGE);
 	worldFrameBuffer.updateSize(Window.width, Window.height, c.GL_RGB16F);
 	Bloom.init();
@@ -82,8 +95,8 @@ pub fn init() void {
 }
 
 pub fn deinit() void {
-	deferredRenderPassShader.deinit();
-	fakeReflectionShader.deinit();
+	deferredRenderPassPipeline.deinit();
+	fakeReflectionPipeline.deinit();
 	worldFrameBuffer.deinit();
 	Bloom.deinit();
 	MeshSelection.deinit();
@@ -100,7 +113,7 @@ fn initReflectionCubeMap() void {
 	framebuffer.init(false, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
 	defer framebuffer.deinit();
 	framebuffer.bind();
-	fakeReflectionShader.bind();
+	fakeReflectionPipeline.bind(null);
 	c.glUniform1f(fakeReflectionUniforms.frequency, 1);
 	c.glUniform1f(fakeReflectionUniforms.reflectionMapSize, reflectionCubeMapSize);
 	for(0..6) |face| {
@@ -109,8 +122,6 @@ fn initReflectionCubeMap() void {
 		c.glUniform3fv(fakeReflectionUniforms.rightVector, 1, @ptrCast(&graphics.CubeMapTexture.faceRight(face)));
 		reflectionCubeMap.bindToFramebuffer(framebuffer, @intCast(face));
 		c.glBindVertexArray(graphics.draw.rectVAO);
-		c.glDisable(c.GL_DEPTH_TEST);
-		c.glDisable(c.GL_CULL_FACE);
 		c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 	}
 }
@@ -211,7 +222,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.startQuery(.chunk_rendering_preparation);
 	const direction = crosshairDirection(game.camera.viewMatrix, lastFov, lastWidth, lastHeight);
 	MeshSelection.select(playerPos, direction, game.Player.inventory.getItem(game.Player.selectedSlot));
-	MeshSelection.render(game.projectionMatrix, game.camera.viewMatrix, playerPos);
 
 	chunk_meshing.beginRender();
 
@@ -226,7 +236,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	}
 
 	gpu_performance_measuring.startQuery(.entity_rendering);
-	entity.ClientEntityManager.render(game.projectionMatrix, ambientLight, .{1, 0.5, 0.25}, playerPos);
+	entity.ClientEntityManager.render(game.projectionMatrix, ambientLight, playerPos);
 
 	itemdrop.ItemDropRenderer.renderItemDrops(game.projectionMatrix, ambientLight, playerPos);
 	gpu_performance_measuring.stopQuery();
@@ -240,6 +250,8 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	blocks.meshes.blockTextureArray.bind();
 	c.glActiveTexture(c.GL_TEXTURE1);
 	blocks.meshes.emissionTextureArray.bind();
+	
+	MeshSelection.render(game.projectionMatrix, game.camera.viewMatrix, playerPos);
 
 	// Render transparent chunk meshes:
 	worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE5);
@@ -247,10 +259,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	gpu_performance_measuring.startQuery(.transparent_rendering_preparation);
 	c.glTextureBarrier();
 
-	c.glBlendEquation(c.GL_FUNC_ADD);
-	c.glBlendFunc(c.GL_ONE, c.GL_SRC1_COLOR);
-	c.glDepthFunc(c.GL_LEQUAL);
-	c.glDepthMask(c.GL_FALSE);
 	{
 		chunkList.clearRetainingCapacity();
 		var i: usize = meshes.len;
@@ -264,9 +272,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 			chunk_meshing.drawChunksIndirect(chunkList.items, game.projectionMatrix, ambientLight, playerPos, true);
 		}
 	}
-	c.glDepthMask(c.GL_TRUE);
-	c.glDepthFunc(c.GL_LESS);
-	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 
 	c.glDepthRange(0, 0.001);
 	itemdrop.ItemDropRenderer.renderDisplayItems(ambientLight, playerPos);
@@ -288,9 +293,7 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
 	worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
 	worldFrameBuffer.unbind();
-	deferredRenderPassShader.bind();
-	c.glUniform1i(deferredUniforms.color, 3);
-	c.glUniform1i(deferredUniforms.depthTexture, 4);
+	deferredRenderPassPipeline.bind(null);
 	if(!blocks.meshes.hasFog(playerBlock)) {
 		c.glUniform3fv(deferredUniforms.@"fog.color", 1, @ptrCast(&game.fog.skyColor));
 		c.glUniform1f(deferredUniforms.@"fog.density", game.fog.density);
@@ -313,8 +316,6 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, activeFrameBuffer);
 
 	c.glBindVertexArray(graphics.draw.rectVAO);
-	c.glDisable(c.GL_DEPTH_TEST);
-	c.glDisable(c.GL_CULL_FACE);
 	c.glDrawArrays(c.GL_TRIANGLE_STRIP, 0, 4);
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
@@ -329,11 +330,10 @@ const Bloom = struct { // MARK: Bloom
 	var emptyBuffer: graphics.Texture = undefined;
 	var width: u31 = std.math.maxInt(u31);
 	var height: u31 = std.math.maxInt(u31);
-	var firstPassShader: graphics.Shader = undefined;
-	var secondPassShader: graphics.Shader = undefined;
-	var colorExtractAndDownsampleShader: graphics.Shader = undefined;
+	var firstPassPipeline: graphics.Pipeline = undefined;
+	var secondPassPipeline: graphics.Pipeline = undefined;
+	var colorExtractAndDownsamplePipeline: graphics.Pipeline = undefined;
 	var colorExtractUniforms: struct {
-		depthTexture: c_int,
 		zNear: c_int,
 		zFar: c_int,
 		tanXY: c_int,
@@ -351,24 +351,48 @@ const Bloom = struct { // MARK: Bloom
 		buffer2.init(false, c.GL_LINEAR, c.GL_CLAMP_TO_EDGE);
 		emptyBuffer = .init();
 		emptyBuffer.generate(graphics.Image.emptyImage);
-		firstPassShader = graphics.Shader.init("assets/cubyz/shaders/bloom/first_pass.vs", "assets/cubyz/shaders/bloom/first_pass.fs", "");
-		secondPassShader = graphics.Shader.init("assets/cubyz/shaders/bloom/second_pass.vs", "assets/cubyz/shaders/bloom/second_pass.fs", "");
-		colorExtractAndDownsampleShader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/bloom/color_extractor_downsample.vs", "assets/cubyz/shaders/bloom/color_extractor_downsample.fs", "", &colorExtractUniforms);
+		firstPassPipeline = graphics.Pipeline.init(
+			"assets/cubyz/shaders/bloom/first_pass.vert",
+			"assets/cubyz/shaders/bloom/first_pass.frag",
+			"",
+			null,
+			.{.cullMode = .none},
+			.{.depthTest = false, .depthWrite = false},
+			.{.attachments = &.{.noBlending}},
+		);
+		secondPassPipeline = graphics.Pipeline.init(
+			"assets/cubyz/shaders/bloom/second_pass.vert",
+			"assets/cubyz/shaders/bloom/second_pass.frag",
+			"",
+			null,
+			.{.cullMode = .none},
+			.{.depthTest = false, .depthWrite = false},
+			.{.attachments = &.{.noBlending}},
+		);
+		colorExtractAndDownsamplePipeline = graphics.Pipeline.init(
+			"assets/cubyz/shaders/bloom/color_extractor_downsample.vert",
+			"assets/cubyz/shaders/bloom/color_extractor_downsample.frag",
+			"",
+			&colorExtractUniforms,
+			.{.cullMode = .none},
+			.{.depthTest = false, .depthWrite = false},
+			.{.attachments = &.{.noBlending}},
+		);
 	}
 
 	pub fn deinit() void {
 		buffer1.deinit();
 		buffer2.deinit();
-		firstPassShader.deinit();
-		secondPassShader.deinit();
+		firstPassPipeline.deinit();
+		secondPassPipeline.deinit();
+		colorExtractAndDownsamplePipeline.deinit();
 	}
 
 	fn extractImageDataAndDownsample(playerBlock: blocks.Block, playerPos: Vec3d, viewMatrix: Mat4f) void {
-		colorExtractAndDownsampleShader.bind();
+		colorExtractAndDownsamplePipeline.bind(null);
 		worldFrameBuffer.bindTexture(c.GL_TEXTURE3);
 		worldFrameBuffer.bindDepthTexture(c.GL_TEXTURE4);
 		buffer1.bind();
-		c.glUniform1i(colorExtractUniforms.depthTexture, 4);
 		if(!blocks.meshes.hasFog(playerBlock)) {
 			c.glUniform3fv(colorExtractUniforms.@"fog.color", 1, @ptrCast(&game.fog.skyColor));
 			c.glUniform1f(colorExtractUniforms.@"fog.density", game.fog.density);
@@ -393,7 +417,7 @@ const Bloom = struct { // MARK: Bloom
 	}
 
 	fn firstPass() void {
-		firstPassShader.bind();
+		firstPassPipeline.bind(null);
 		buffer1.bindTexture(c.GL_TEXTURE3);
 		buffer2.bind();
 		c.glBindVertexArray(graphics.draw.rectVAO);
@@ -401,7 +425,7 @@ const Bloom = struct { // MARK: Bloom
 	}
 
 	fn secondPass() void {
-		secondPassShader.bind();
+		secondPassPipeline.bind(null);
 		buffer2.bindTexture(c.GL_TEXTURE3);
 		buffer1.bind();
 		c.glBindVertexArray(graphics.draw.rectVAO);
@@ -418,9 +442,6 @@ const Bloom = struct { // MARK: Bloom
 			std.debug.assert(buffer2.validate());
 		}
 		gpu_performance_measuring.startQuery(.bloom_extract_downsample);
-		c.glDisable(c.GL_DEPTH_TEST);
-		c.glDisable(c.GL_CULL_FACE);
-		c.glDepthMask(c.GL_FALSE);
 
 		c.glViewport(0, 0, width/4, height/4);
 		extractImageDataAndDownsample(playerBlock, playerPos, viewMatrix);
@@ -434,10 +455,6 @@ const Bloom = struct { // MARK: Bloom
 		c.glViewport(0, 0, width, height);
 		buffer1.bindTexture(c.GL_TEXTURE5);
 
-		c.glDepthMask(c.GL_TRUE);
-		c.glEnable(c.GL_DEPTH_TEST);
-		c.glEnable(c.GL_CULL_FACE);
-		c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 		gpu_performance_measuring.stopQuery();
 	}
 
@@ -447,9 +464,8 @@ const Bloom = struct { // MARK: Bloom
 };
 
 pub const MenuBackGround = struct {
-	var shader: Shader = undefined;
+	var pipeline: graphics.Pipeline = undefined;
 	var uniforms: struct {
-		image: c_int,
 		viewMatrix: c_int,
 		projectionMatrix: c_int,
 	} = undefined;
@@ -463,9 +479,15 @@ pub const MenuBackGround = struct {
 
 	fn init() !void {
 		lastTime = std.time.nanoTimestamp();
-		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/background/vertex.vs", "assets/cubyz/shaders/background/fragment.fs", "", &uniforms);
-		shader.bind();
-		c.glUniform1i(uniforms.image, 0);
+		pipeline = graphics.Pipeline.init(
+			"assets/cubyz/shaders/background/vertex.vert",
+			"assets/cubyz/shaders/background/fragment.frag",
+			"",
+			&uniforms,
+			.{.cullMode = .none},
+			.{.depthTest = false, .depthWrite = false},
+			.{.attachments = &.{.noBlending}},
+		);
 		// 4 sides of a simple cube with some panorama texture on it.
 		const rawData = [_]f32{
 			-1, 1,  -1, 1,    1,
@@ -534,7 +556,7 @@ pub const MenuBackGround = struct {
 	}
 
 	pub fn deinit() void {
-		shader.deinit();
+		pipeline.deinit();
 		c.glDeleteVertexArrays(1, &vao);
 		c.glDeleteBuffers(2, &vbos);
 	}
@@ -545,14 +567,13 @@ pub const MenuBackGround = struct {
 
 	pub fn render() void {
 		if(texture.textureID == 0) return;
-		c.glDisable(c.GL_CULL_FACE); // I'm not sure if my triangles are rotated correctly, and there are no triangles facing away from the player anyways.
 
 		// Use a simple rotation around the z axis, with a steadily increasing angle.
 		const newTime = std.time.nanoTimestamp();
 		angle += @as(f32, @floatFromInt(newTime - lastTime))/2e10;
 		lastTime = newTime;
 		const viewMatrix = Mat4f.rotationZ(angle);
-		shader.bind();
+		pipeline.bind(null);
 		updateViewport(main.Window.width, main.Window.height, 70.0);
 
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
@@ -595,8 +616,9 @@ pub const MenuBackGround = struct {
 		defer image.deinit(main.stackAllocator);
 
 		for(0..4) |i| {
-			c.glEnable(c.GL_CULL_FACE);
-			c.glEnable(c.GL_DEPTH_TEST);
+			c.glDepthFunc(c.GL_LESS);
+			c.glDepthMask(c.GL_TRUE);
+			c.glDisable(c.GL_SCISSOR_TEST);
 			game.camera.rotation = .{0, 0, angles[i]};
 			// Draw to frame buffer.
 			buffer.bind();
@@ -614,8 +636,6 @@ pub const MenuBackGround = struct {
 				}
 			}
 		}
-		c.glDisable(c.GL_CULL_FACE);
-		c.glDisable(c.GL_DEPTH_TEST);
 		c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 
 		const fileName = std.fmt.allocPrint(main.stackAllocator.allocator, "assets/backgrounds/{s}_{}.png", .{game.world.?.name, game.world.?.gameTime.load(.monotonic)}) catch unreachable;
@@ -628,7 +648,7 @@ pub const MenuBackGround = struct {
 };
 
 pub const Skybox = struct {
-	var starShader: Shader = undefined;
+	var starPipeline: graphics.Pipeline = undefined;
 	var starUniforms: struct {
 		mvp: c_int,
 		starOpacity: c_int,
@@ -672,8 +692,22 @@ pub const Skybox = struct {
 		};
 		defer starColorImage.deinit(main.stackAllocator);
 
-		starShader = Shader.initAndGetUniforms("assets/cubyz/shaders/skybox/star.vs", "assets/cubyz/shaders/skybox/star.fs", "", &starUniforms);
-		starShader.bind();
+		starPipeline = graphics.Pipeline.init(
+			"assets/cubyz/shaders/skybox/star.vert",
+			"assets/cubyz/shaders/skybox/star.frag",
+			"",
+			&starUniforms,
+			.{.cullMode = .none},
+			.{.depthTest = false, .depthWrite = false},
+			.{.attachments = &.{.{
+				.srcColorBlendFactor = .one,
+				.dstColorBlendFactor = .one,
+				.colorBlendOp = .add,
+				.srcAlphaBlendFactor = .one,
+				.dstAlphaBlendFactor = .one,
+				.alphaBlendOp = .add,
+			}}},
+		);
 
 		var starData: [numStars*20]f32 = undefined;
 
@@ -738,7 +772,7 @@ pub const Skybox = struct {
 	}
 
 	pub fn deinit() void {
-		starShader.deinit();
+		starPipeline.deinit();
 		starSsbo.deinit();
 		c.glDeleteVertexArrays(1, &starVao);
 	}
@@ -763,13 +797,7 @@ pub const Skybox = struct {
 		}
 
 		if(starOpacity != 0) {
-			c.glDisable(c.GL_CULL_FACE);
-			c.glDisable(c.GL_DEPTH_TEST);
-
-			c.glBlendFunc(c.GL_ONE, c.GL_ONE);
-			c.glEnable(c.GL_BLEND);
-
-			starShader.bind();
+			starPipeline.bind(null);
 
 			const starMatrix = game.projectionMatrix.mul(viewMatrix.mul(Mat4f.rotationX(@as(f32, @floatFromInt(time))/@as(f32, @floatFromInt(main.game.World.dayCycle)))));
 
@@ -782,11 +810,6 @@ pub const Skybox = struct {
 			c.glDrawArrays(c.GL_TRIANGLES, 0, numStars*3);
 
 			c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
-
-			c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
-
-			c.glEnable(c.GL_CULL_FACE);
-			c.glEnable(c.GL_DEPTH_TEST);
 		}
 	}
 };
@@ -827,64 +850,30 @@ pub const Frustum = struct { // MARK: Frustum
 };
 
 pub const MeshSelection = struct { // MARK: MeshSelection
-	var shader: Shader = undefined;
+	var pipeline: graphics.Pipeline = undefined;
 	var uniforms: struct {
 		projectionMatrix: c_int,
 		viewMatrix: c_int,
 		modelPosition: c_int,
 		lowerBounds: c_int,
 		upperBounds: c_int,
+		lineSize: c_int,
 	} = undefined;
 
-	var cubeVAO: c_uint = undefined;
-	var cubeVBO: c_uint = undefined;
-	var cubeIBO: c_uint = undefined;
-
 	pub fn init() void {
-		shader = Shader.initAndGetUniforms("assets/cubyz/shaders/block_selection_vertex.vs", "assets/cubyz/shaders/block_selection_fragment.fs", "", &uniforms);
-
-		const rawData = [_]f32{
-			0, 0, 0,
-			0, 0, 1,
-			0, 1, 0,
-			0, 1, 1,
-			1, 0, 0,
-			1, 0, 1,
-			1, 1, 0,
-			1, 1, 1,
-		};
-		const indices = [_]u8{
-			0, 1,
-			0, 2,
-			0, 4,
-			1, 3,
-			1, 5,
-			2, 3,
-			2, 6,
-			3, 7,
-			4, 5,
-			4, 6,
-			5, 7,
-			6, 7,
-		};
-
-		c.glGenVertexArrays(1, &cubeVAO);
-		c.glBindVertexArray(cubeVAO);
-		c.glGenBuffers(1, &cubeVBO);
-		c.glBindBuffer(c.GL_ARRAY_BUFFER, cubeVBO);
-		c.glBufferData(c.GL_ARRAY_BUFFER, rawData.len*@sizeOf(f32), &rawData, c.GL_STATIC_DRAW);
-		c.glVertexAttribPointer(0, 3, c.GL_FLOAT, c.GL_FALSE, 3*@sizeOf(f32), null);
-		c.glEnableVertexAttribArray(0);
-		c.glGenBuffers(1, &cubeIBO);
-		c.glBindBuffer(c.GL_ELEMENT_ARRAY_BUFFER, cubeIBO);
-		c.glBufferData(c.GL_ELEMENT_ARRAY_BUFFER, indices.len*@sizeOf(u8), &indices, c.GL_STATIC_DRAW);
+		pipeline = graphics.Pipeline.init(
+			"assets/cubyz/shaders/block_selection_vertex.vert",
+			"assets/cubyz/shaders/block_selection_fragment.frag",
+			"",
+			&uniforms,
+			.{.cullMode = .none},
+			.{.depthTest = true, .depthWrite = true},
+			.{.attachments = &.{.alphaBlending}},
+		);
 	}
 
 	pub fn deinit() void {
-		shader.deinit();
-		c.glDeleteBuffers(1, &cubeIBO);
-		c.glDeleteBuffers(1, &cubeVBO);
-		c.glDeleteVertexArrays(1, &cubeVAO);
+		pipeline.deinit();
 	}
 
 	var posBeforeBlock: Vec3i = undefined;
@@ -1012,7 +1001,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 									return;
 								}
 							} else {
-								if(block.solid()) return;
+								if(!block.replacable()) return;
 								block.typ = itemBlock;
 								block.data = 0;
 								if(rotationMode.generateData(main.game.world.?, neighborPos, relPos, lastDir, neighborDir, neighborOfSelection, &block, neighborBlock, true)) {
@@ -1122,11 +1111,11 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				.newBlock = newBlock,
 			},
 		});
-		mesh_storage.updateBlock(x, y, z, newBlock);
+		mesh_storage.updateBlock(.{.x = x, .y = y, .z = z, .newBlock = newBlock});
 	}
 
 	pub fn drawCube(projectionMatrix: Mat4f, viewMatrix: Mat4f, relativePositionToPlayer: Vec3d, min: Vec3f, max: Vec3f) void {
-		shader.bind();
+		pipeline.bind(null);
 
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projectionMatrix));
 		c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&viewMatrix));
@@ -1139,28 +1128,21 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 		);
 		c.glUniform3f(uniforms.lowerBounds, min[0], min[1], min[2]);
 		c.glUniform3f(uniforms.upperBounds, max[0], max[1], max[2]);
+		c.glUniform1f(uniforms.lineSize, 1.0/128.0);
 
-		c.glBindVertexArray(cubeVAO);
-		// c.glLineWidth(2); // TODO: Draw thicker lines so they are more visible. Maybe a simple shader + cube mesh is enough.
-		c.glDrawElements(c.GL_LINES, 12*2, c.GL_UNSIGNED_BYTE, null);
+		c.glBindVertexArray(main.renderer.chunk_meshing.vao);
+		c.glDrawElements(c.GL_TRIANGLES, 12*6*6, c.GL_UNSIGNED_INT, null);
 	}
 
 	pub fn render(projectionMatrix: Mat4f, viewMatrix: Mat4f, playerPos: Vec3d) void {
 		if(main.gui.hideGui) return;
 		if(selectedBlockPos) |_selectedBlockPos| {
-			c.glEnable(c.GL_POLYGON_OFFSET_LINE);
-			defer c.glDisable(c.GL_POLYGON_OFFSET_LINE);
-			c.glPolygonOffset(-2, 0);
 			drawCube(projectionMatrix, viewMatrix, @as(Vec3d, @floatFromInt(_selectedBlockPos)) - playerPos, selectionMin, selectionMax);
 		}
 		if(game.Player.selectionPosition1) |pos1| {
 			if(game.Player.selectionPosition2) |pos2| {
 				const bottomLeft: Vec3i = @min(pos1, pos2);
 				const topRight: Vec3i = @max(pos1, pos2);
-
-				c.glEnable(c.GL_POLYGON_OFFSET_LINE);
-				defer c.glDisable(c.GL_POLYGON_OFFSET_LINE);
-				c.glPolygonOffset(-2, 0);
 				drawCube(projectionMatrix, viewMatrix, @as(Vec3d, @floatFromInt(bottomLeft)) - playerPos, .{0, 0, 0}, @floatFromInt(topRight - bottomLeft + Vec3i{1, 1, 1}));
 			}
 		}

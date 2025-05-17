@@ -1,11 +1,12 @@
 const std = @import("std");
 
 const main = @import("main");
+const Vec3i = main.vec.Vec3i;
 const User = main.server.User;
-const Pattern = @import("Pattern.zig");
 
 const Block = main.blocks.Block;
 const Blueprint = main.blueprint.Blueprint;
+const Pattern = main.blueprint.Pattern;
 
 pub const description = "Set all blocks within selection to a block.";
 pub const usage = "/set <pattern>";
@@ -27,25 +28,24 @@ pub fn execute(args: []const u8, source: *User) void {
 	};
 	defer pattern.deinit(main.stackAllocator);
 
-	const startX = @min(pos1[0], pos2[0]);
-	const startY = @min(pos1[1], pos2[1]);
-	const startZ = @min(pos1[2], pos2[2]);
+	const posStart: Vec3i = @min(pos1, pos2);
+	const posEnd: Vec3i = @max(pos1, pos2);
 
-	const width = @abs(pos2[0] - pos1[0]) + 1;
-	const depth = @abs(pos2[1] - pos1[1]) + 1;
-	const height = @abs(pos2[2] - pos1[2]) + 1;
+	const selection = Blueprint.capture(main.globalAllocator, posStart, posEnd);
 
-	for(0..width) |x| {
-		const worldX = startX +% @as(i32, @intCast(x));
+	switch(selection) {
+		.success => |blueprint| {
+			source.worldEditData.undoHistory.push(.init(blueprint, posStart, "set"));
+			source.worldEditData.redoHistory.clear();
 
-		for(0..depth) |y| {
-			const worldY = startY +% @as(i32, @intCast(y));
+			var modifiedBlueprint = blueprint.clone(main.stackAllocator);
+			defer modifiedBlueprint.deinit(main.stackAllocator);
 
-			for(0..height) |z| {
-				const worldZ = startZ +% @as(i32, @intCast(z));
-
-				_ = main.server.world.?.updateBlock(worldX, worldY, worldZ, pattern.blocks.sample(&main.seed).block);
-			}
-		}
+			modifiedBlueprint.set(pattern, null);
+			modifiedBlueprint.paste(posStart, .{.preserveVoid = true});
+		},
+		.failure => |err| {
+			source.sendMessage("#ff0000Error: Could not capture selection. (at {}, {s})", .{err.pos, err.message});
+		},
 	}
 }

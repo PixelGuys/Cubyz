@@ -44,18 +44,45 @@ fn createWorld(_: usize) void {
 	};
 }
 
+fn findValidFolderName(allocator: NeverFailingAllocator, name: []const u8) []const u8 {
+	// Remove illegal ASCII characters:
+	const escapedName = main.stackAllocator.alloc(u8, name.len);
+	defer main.stackAllocator.free(escapedName);
+	for(name, 0..) |char, i| {
+		escapedName[i] = switch(char) {
+			'a'...'z', 'A'...'Z', '0'...'9', '_', '-', '.', ' ' => char,
+			128...255 => char,
+			else => '-',
+		};
+	}
+
+	// Avoid duplicates:
+	var resultName = main.stackAllocator.dupe(u8, escapedName);
+	defer main.stackAllocator.free(resultName);
+	var i: usize = 0;
+	while(true) {
+		const resultPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{resultName}) catch unreachable;
+		defer main.stackAllocator.free(resultPath);
+
+		var dir = std.fs.cwd().openDir(resultPath, .{}) catch break;
+		dir.close();
+
+		main.stackAllocator.free(resultName);
+		resultName = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}_{}", .{escapedName, i}) catch unreachable;
+		i += 1;
+	}
+	return allocator.dupe(u8, resultName);
+}
+
 fn flawedCreateWorld() !void {
 	const worldName = textInput.currentString.items;
-	const saveFolder = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{worldName}) catch unreachable;
+	const worldPath = findValidFolderName(main.stackAllocator, worldName);
+	defer main.stackAllocator.free(worldPath);
+	const saveFolder = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{worldPath}) catch unreachable;
 	defer main.stackAllocator.free(saveFolder);
-	if(std.fs.cwd().openDir(saveFolder, .{})) |_dir| {
-		var dir = _dir;
-		dir.close();
-		return error.AlreadyExists;
-	} else |_| {}
 	try main.files.makeDir(saveFolder);
 	{
-		const generatorSettingsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/generatorSettings.zig.zon", .{worldName}) catch unreachable;
+		const generatorSettingsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/generatorSettings.zig.zon", .{worldPath}) catch unreachable;
 		defer main.stackAllocator.free(generatorSettingsPath);
 		const generatorSettings = main.ZonElement.initObject(main.stackAllocator);
 		defer generatorSettings.deinit(main.stackAllocator);
@@ -75,7 +102,19 @@ fn flawedCreateWorld() !void {
 		try main.files.writeZon(generatorSettingsPath, generatorSettings);
 	}
 	{
-		const gamerulePath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/gamerules.zig.zon", .{worldName}) catch unreachable;
+		const worldInfoPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/world.zig.zon", .{worldPath}) catch unreachable;
+		defer main.stackAllocator.free(worldInfoPath);
+		const worldInfo = main.ZonElement.initObject(main.stackAllocator);
+		defer worldInfo.deinit(main.stackAllocator);
+
+		worldInfo.put("name", worldName);
+		worldInfo.put("version", main.server.world_zig.worldDataVersion);
+		worldInfo.put("lastUsedTime", std.time.milliTimestamp());
+
+		try main.files.writeZon(worldInfoPath, worldInfo);
+	}
+	{
+		const gamerulePath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/gamerules.zig.zon", .{worldPath}) catch unreachable;
 		defer main.stackAllocator.free(gamerulePath);
 		const gamerules = main.ZonElement.initObject(main.stackAllocator);
 		defer gamerules.deinit(main.stackAllocator);
@@ -86,7 +125,7 @@ fn flawedCreateWorld() !void {
 		try main.files.writeZon(gamerulePath, gamerules);
 	}
 	{ // Make assets subfolder
-		const assetsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets", .{worldName}) catch unreachable;
+		const assetsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets", .{worldPath}) catch unreachable;
 		defer main.stackAllocator.free(assetsPath);
 		try main.files.makeDir(assetsPath);
 	}
@@ -109,7 +148,7 @@ pub fn onOpen() void {
 	}
 	const name = std.fmt.allocPrint(main.stackAllocator.allocator, "Save{}", .{num}) catch unreachable;
 	defer main.stackAllocator.free(name);
-	textInput = TextInput.init(.{0, 0}, 128, 22, name, .{.callback = &createWorld});
+	textInput = TextInput.init(.{0, 0}, 128, 22, name, .{.callback = &createWorld}, .{});
 	list.add(textInput);
 
 	gamemodeInput = Button.initText(.{0, 0}, 128, @tagName(gamemode), .{.callback = &gamemodeCallback});

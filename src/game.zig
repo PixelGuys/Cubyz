@@ -675,8 +675,6 @@ pub const World = struct { // MARK: World
 		main.blocks.meshes.generateTextureArray();
 		main.particles.ParticleManager.generateTextureArray();
 		main.models.uploadModels();
-		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());
-		main.audio.setMusic(self.playerBiome.raw.preferredMusic);
 	}
 
 	pub fn deinit(self: *World) void {
@@ -721,6 +719,8 @@ pub const World = struct { // MARK: World
 		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
 		Player.inventory = Inventory.init(main.globalAllocator, 32, .normal, .{.playerInventory = Player.id});
 		Player.loadFrom(zon.getChild("player"));
+		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());
+		main.audio.setMusic(self.playerBiome.raw.preferredMusic);
 	}
 
 	pub fn update(self: *World) void {
