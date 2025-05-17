@@ -24,6 +24,7 @@ var oldText: []const u8 = &.{};
 
 pub fn deinit() void {
 	main.globalAllocator.free(oldText);
+	oldText = &.{};
 }
 
 pub fn openFromSignData(_pos: main.vec.Vec3i, _oldText: []const u8) void {
