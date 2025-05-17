@@ -1025,7 +1025,6 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			}
 
 			if(@reduce(.Or, lastSelectedBlockPos != selectedPos)) {
-				mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
 				lastSelectedBlockPos = selectedPos;
 				currentBlockProgress = 0;
 				currentSwingProgress = 0;
@@ -1052,24 +1051,29 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 						currentSwingProgress = 0;
 						currentSwingTime = swingTime;
 					}
+					var newBlock = block;
+					block.mode().onBlockBreaking(inventory.getStack(slot).item, relPos, lastDir, &newBlock);
 					currentSwingProgress += @floatCast(deltaTime);
 					while(currentSwingProgress > currentSwingTime) {
 						currentSwingProgress -= currentSwingTime;
-						currentBlockProgress += damage/block.blockHealth();
-						if(currentBlockProgress > 1) break;
-					}
-					if(currentBlockProgress < 1) {
-						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
-						if(currentBlockProgress != 0) {
-							mesh_storage.addBreakingAnimation(lastSelectedBlockPos, currentBlockProgress);
-						}
 						main.items.Inventory.Sync.ClientSide.mutex.unlock();
-
-						return;
-					} else {
-						mesh_storage.removeBreakingAnimation(lastSelectedBlockPos);
-						currentBlockProgress = 0;
+						main.items.Inventory.Sync.ClientSide.executeCommand(.{
+							.damageBlock = .{
+								.source = .{.inv = inventory, .slot = slot},
+								.pos = selectedPos,
+								.dropLocation = .{
+									.dir = selectionFace,
+									.min = selectionMin,
+									.max = selectionMax,
+								},
+								.oldBlock = block,
+								.newBlock = newBlock,
+							},
+						});
+						main.items.Inventory.Sync.ClientSide.mutex.lock();
 					}
+					main.items.Inventory.Sync.ClientSide.mutex.unlock();
+					return;
 				} else {
 					main.items.Inventory.Sync.ClientSide.mutex.unlock();
 					return;
