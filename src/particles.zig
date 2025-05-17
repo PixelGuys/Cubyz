@@ -35,7 +35,6 @@ pub const ParticleManager = struct {
 
 	pub fn init() void {
 		types = .init(arenaAllocator);
-		textureIDs = .init(arenaAllocator);
 		textures = .init(arenaAllocator);
 		emissionTextures = .init(arenaAllocator);
 		textureArray = .init();
