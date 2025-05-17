@@ -606,8 +606,9 @@ pub const Player = struct { // MARK: Player
 			const block = main.renderer.mesh_storage.getBlock(selectedPos[0], selectedPos[1], selectedPos[2]) orelse return;
 
 			const item: items.Item = for(0..items.itemListSize) |idx| {
-				if(items.itemList[idx].block == block.typ) {
-					break .{.baseItem = &items.itemList[idx]};
+				const baseItem: main.items.BaseItemIndex = .{.index = @intCast(idx)};
+				if(baseItem.block() == block.typ) {
+					break .{.baseItem = baseItem};
 				}
 			} else return;
 

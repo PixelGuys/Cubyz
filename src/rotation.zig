@@ -113,7 +113,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 			} else {
 				if(item.item) |_item| {
 					if(_item == .baseItem) {
-						if(_item.baseItem.block != null and _item.baseItem.block.? == newBlock.typ) {
+						if(_item.baseItem.block() != null and _item.baseItem.block().? == newBlock.typ) {
 							return .{.yes_costsItems = 1};
 						}
 					}

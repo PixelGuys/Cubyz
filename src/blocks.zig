@@ -175,7 +175,7 @@ fn registerBlockDrop(typ: u16, zon: ZonElement) void {
 				name = _id[typ];
 			}
 
-			const item = items.getByID(name) orelse continue;
+			const item = items.BaseItemIndex.fromId(name) orelse continue;
 			resultItems.append(.{.item = .{.baseItem = item}, .amount = amount});
 		}
 

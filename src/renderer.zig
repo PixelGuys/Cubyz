@@ -969,7 +969,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			if(inventory.getItem(slot)) |item| {
 				switch(item) {
 					.baseItem => |baseItem| {
-						if(baseItem.block) |itemBlock| {
+						if(baseItem.block()) |itemBlock| {
 							const rotationMode = blocks.Block.mode(.{.typ = itemBlock, .data = 0});
 							var neighborDir = Vec3i{0, 0, 0};
 							// Check if stuff can be added to the block itself:
@@ -1011,7 +1011,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 								}
 							}
 						}
-						if(std.mem.eql(u8, baseItem.id, "cubyz:selection_wand")) {
+						if(std.mem.eql(u8, baseItem.id(), "cubyz:selection_wand")) {
 							game.Player.selectionPosition2 = selectedPos;
 							main.network.Protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos2, selectedPos);
 							return;
@@ -1028,7 +1028,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 	pub fn breakBlock(inventory: main.items.Inventory, slot: u32, deltaTime: f64) void {
 		if(selectedBlockPos) |selectedPos| {
 			const stack = inventory.getStack(slot);
-			const isSelectionWand = stack.item != null and stack.item.? == .baseItem and std.mem.eql(u8, stack.item.?.baseItem.id, "cubyz:selection_wand");
+			const isSelectionWand = stack.item != null and stack.item.? == .baseItem and std.mem.eql(u8, stack.item.?.baseItem.id(), "cubyz:selection_wand");
 			if(isSelectionWand) {
 				game.Player.selectionPosition1 = selectedPos;
 				main.network.Protocols.genericUpdate.sendWorldEditPos(main.game.world.?.conn, .selectedPos1, selectedPos);
@@ -1052,7 +1052,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				if(isTool) {
 					damage = stack.item.?.tool.getBlockDamage(block);
 				}
-				const isChisel = stack.item != null and stack.item.? == .baseItem and std.mem.eql(u8, stack.item.?.baseItem.id, "cubyz:chisel");
+				const isChisel = stack.item != null and stack.item.? == .baseItem and std.mem.eql(u8, stack.item.?.baseItem.id(), "cubyz:chisel");
 				if(isChisel and block.mode() == main.rotation.getByID("stairs")) { // TODO: Remove once the chisel is a tool.
 					damage = block.blockHealth();
 				}
