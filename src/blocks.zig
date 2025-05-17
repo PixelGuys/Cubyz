@@ -20,6 +20,7 @@ const entity_data = @import("entity_data.zig");
 const EntityDataClass = entity_data.EntityDataClass;
 const sbb = main.server.terrain.structure_building_blocks;
 const blueprint = main.blueprint;
+const Assets = main.assets.Assets;
 
 var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
 const allocator = arena.allocator();
@@ -199,7 +200,7 @@ fn registerOpaqueVariant(typ: u16, zon: ZonElement) void {
 	}
 }
 
-pub fn finishBlocks(zonElements: std.StringHashMap(ZonElement)) void {
+pub fn finishBlocks(zonElements: Assets.ZonHashMap) void {
 	var i: u16 = 0;
 	while(i < size) : (i += 1) {
 		registerBlockDrop(i, zonElements.get(_id[i]) orelse continue);

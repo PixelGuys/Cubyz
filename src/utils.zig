@@ -1935,3 +1935,7 @@ fn CastFunctionReturnToAnyopaqueType(Fn: type) type {
 pub fn castFunctionReturnToAnyopaque(function: anytype) *const CastFunctionReturnToAnyopaqueType(@TypeOf(function)) {
 	return @ptrCast(&function);
 }
+
+pub fn typeId(comptime T: type) usize {
+	return @intFromPtr(&@typeName(T));
+}
