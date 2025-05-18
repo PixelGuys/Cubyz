@@ -11,6 +11,8 @@ const server = main.server;
 const User = server.User;
 const mesh_storage = main.renderer.mesh_storage;
 
+pub const BlockEntityIndex = u32;
+
 pub const BlockEntityType = struct {
 	id: []const u8,
 	vtable: VTable,
@@ -134,7 +136,7 @@ fn BlockEntityDataStorage(comptime side: enum {client, server}, T: type) type {
 				.client => propagateRemoveClient(movedEntry.absoluteBlockPosition, dataIndex),
 			}
 		}
-		fn propagateRemoveServer(pos: Vec3i, index: u32) void {
+		fn propagateRemoveServer(pos: Vec3i, index: BlockEntityIndex) void {
 			const severChunk = server.world.?.getChunkFromCacheAndIncreaseRefCount(ChunkPosition.initFromWorldPos(pos, 1)).?;
 			defer severChunk.decreaseRefCount();
 
@@ -144,7 +146,7 @@ fn BlockEntityDataStorage(comptime side: enum {client, server}, T: type) type {
 			const otherDataIndex = severChunk.super.getLocalBlockIndex(pos);
 			severChunk.super.blockPosToEntityDataMap.put(main.globalAllocator.allocator, otherDataIndex, index) catch unreachable;
 		}
-		fn propagateRemoveClient(pos: Vec3i, index: u32) void {
+		fn propagateRemoveClient(pos: Vec3i, index: BlockEntityIndex) void {
 			const mesh = mesh_storage.getMeshAndIncreaseRefCount(ChunkPosition.initFromWorldPos(pos, 1)).?;
 			defer mesh.decreaseRefCount();
 
