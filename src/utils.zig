@@ -1938,7 +1938,7 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 		}
 
 		pub fn set(self: *Self, allocator: NeverFailingAllocator, id: IdType, value: T) void {
-			std.debug.assert(id == .noValue);
+			std.debug.assert(id != .noValue);
 
 			const denseId: IdType = @enumFromInt(self.dense.items.len);
 
@@ -1983,7 +1983,7 @@ test "SparseSet/set at zero" {
 
 	const index: IdType = @enumFromInt(0);
 
-	try set.set(main.heap.testingAllocator, index, 5);
+	set.set(main.heap.testingAllocator, index, 5);
 	try std.testing.expectEqual(set.get(index).?.*, 5);
 }
 
@@ -1994,7 +1994,7 @@ test "SparseSet/set at 100" {
 
 	const index: IdType = @enumFromInt(100);
 
-	try set.set(main.heap.testingAllocator, index, 5);
+	set.set(main.heap.testingAllocator, index, 5);
 	try std.testing.expectEqual(set.get(index).?.*, 5);
 }
 
@@ -2008,8 +2008,8 @@ test "SparseSet/remove first" {
 	const firstId: IdType = @enumFromInt(0);
 	const secondId: IdType = @enumFromInt(1);
 
-	try set.set(main.heap.testingAllocator, firstId, 5);
-	try set.set(main.heap.testingAllocator, secondId, expectSecond);
+	set.set(main.heap.testingAllocator, firstId, 5);
+	set.set(main.heap.testingAllocator, secondId, expectSecond);
 
 	try set.remove(firstId);
 
@@ -2021,7 +2021,7 @@ test "SparseSet/remove last" {
 	var set: SparseSet(u32, IdType) = .{};
 	defer set.deinit(main.heap.testingAllocator);
 
-	try set.set(main.heap.testingAllocator, @enumFromInt(0), 5);
+	set.set(main.heap.testingAllocator, @enumFromInt(0), 5);
 
 	try set.remove(@enumFromInt(0));
 }
@@ -2039,7 +2039,7 @@ test "SparseSet/remove entry twice" {
 	var set: SparseSet(u32, IdType) = .{};
 	defer set.deinit(main.heap.testingAllocator);
 
-	try set.set(main.heap.testingAllocator, @enumFromInt(0), 5);
+	set.set(main.heap.testingAllocator, @enumFromInt(0), 5);
 
 	try set.remove(@enumFromInt(0));
 	try std.testing.expectError(error.ElementNotFound, set.remove(@enumFromInt(0)));
@@ -2056,12 +2056,12 @@ test "SparseSet/reusing" {
 	const firstId: IdType = @enumFromInt(0);
 	const secondId: IdType = @enumFromInt(1);
 
-	try set.set(main.heap.testingAllocator, firstId, 5);
-	try set.set(main.heap.testingAllocator, secondId, expectSecond);
+	set.set(main.heap.testingAllocator, firstId, 5);
+	set.set(main.heap.testingAllocator, secondId, expectSecond);
 
 	try set.remove(firstId);
 
-	try set.set(main.heap.testingAllocator, firstId, expectNew);
+	set.set(main.heap.testingAllocator, firstId, expectNew);
 
 	try std.testing.expectEqual(set.get(secondId).?.*, expectSecond);
 	try std.testing.expectEqual(set.get(firstId).?.*, expectNew);
