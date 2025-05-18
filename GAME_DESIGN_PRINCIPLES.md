@@ -1,13 +1,12 @@
-# Cubyz is NOT a Survival Game!
-The goal of this project is to create a game about exploration and adventure, not survival. Our additions are inspired by reality, not copied from it.
+# Cubyz is an Adventure Game, not a Survival Game
+The goal of this project is to create a game about exploration and adventure, not survival.
 
 ### Avoid Unavoidable Threats
-A player should have to create or approach a threat on their own terms, rather than the threat approach them.
-**This is a key part of Cubyz game design, as it is what keeps it from being a survival game.**
+A player should have to create or approach a threat on their own terms, rather than the threat approach them. This should allow the player to interact with whatever they want without feeling forced to.
 
 **Examples:**
+- A player will not be attacked by monsters at night. They have to actively approach a monster-infested place such as a structure or cave. This is so they have free reign to do activites during the night without being interrupted or frustrated.
 - A player has lost much health, and must risk what little life they have left to gather food. Note that the player cannot heal unless they have an accessory that consumes their energy. This is a situation the player has to face because of their own skill level.
-- A player will not be attacked by monsters at night. They have to actively approach a monster-infested place such as a structure or cave. This is so they have free reign to do tasks during the night.
 - A player summons an event that spawns waves of enemies to their base.
 
 ### Progression = Risk
@@ -20,23 +19,23 @@ In order to progress in the game, the player must take risks. The player is othe
 
 # Break the Cycle
 ### No Dimensions
-Large dimension-like areas can be placed within the world itself, as it's immensely big already.
+Instead of creating seperate dimensions, we can fit these places physically into Cubyz' massive world to allow the player to come across them on their own.
 "Dimensions" such as an underworld and an overworld are already planned for the game.
 
 ### No Teleportation
-We want the player to create infrastructure for travelling. Long-range teleportation would make this useless.
+To immerse the player and let them feel the sense of scale the world of Cubyz has, teleportation is not allowed, as the player will see less of the world that way.
 
 ### No Automation
-The player should have to explore the world to find resources, not just stay in one place and farm everything.
+Instead of staying in one place and farming everything, the player should have to take advantage of the infinite nature of the world to gain resources.
 
 ### No Generic Creatures
-Cubyz' creatures should not copy from real life or Minecraft.
+(WIP)
 
 ### No Passive Animals
-To make hunting more engaging, animals will run from the player, attack back, and use defense mechanisms.
+Instead of animals standing by to let you kill them, they will run from the player, attack back, and use defense mechanisms. This should make hunting and taming much more engaging.
 
 ### Spawn Points --> Check Points
-Being able to set your spawn anywhere is very powerful, so whatever sets your spawn in this game should be immovable or consumable.
+Being able to set your spawn anywhere is very powerful, so whatever sets your spawn in this game should be a pre-existing immovable structure, or a one-time-use consumable.
 
 # Player Engagement
 ### "How would the player feel?"
@@ -83,16 +82,15 @@ When balancing the game, keep in mind how players might interact with the world,
 At no point should the player be extremely hard to kill. Armor, tools, accessories, and buffs should be designed around aiding the player in skill-based encounters, not making them win regardless of skill.
 
 ### Trade-offs
-If the player is given a powerful ability, then it should have an appropriate downside that forces them to use said ability or interact with other mechanics.
+If the player is given something to aid them, then it should have an appropriate take-away to balance it.
 
 **Examples:**
-- An accessory that gives the player a double-jump, but increases their fall damage.
+- Using rare resources to create a strong tool.
 - An accessory that heals the player, but takes away energy or some other resource.
-- Armor that grants a lot of defense, but makes the player slow.
-- A golden pickaxe is strong, but uses rare resources and is slow to swing.
+- Armor that grants a ton of defense, but makes the player slow.
 
 ### No Unbreakable Tools
-There should be no way to make tool last indefinitely.
+There should be no way to make tool last indefinitely. (WIP)
 
 # Little Details
 
