@@ -8,7 +8,6 @@ layout(location = 1) flat in vec3 light;
 layout(binding = 0) uniform sampler2DArray textureSampler;
 layout(binding = 1) uniform sampler2DArray emissionTextureSampler;
 
-
 void main() {
 	const vec4 texColor = texture(textureSampler, textureCoords);
 	if(texColor.a != 1) discard;

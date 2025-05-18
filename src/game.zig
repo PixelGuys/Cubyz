@@ -1212,15 +1212,13 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	const t = 1 - @as(f32, @floatCast(@exp(-2*deltaTime)));
 
 	timer += deltaTime;
-	// if(timer > 5) {
-		particles.ParticleSystem.spawn("cubyz:spark", 20, Player.getEyePosBlocking()+Vec3d{0, 0, -0.5}, true, .{
-			.shapeType = .point,
-			.size = 0,
-			.directionMode = .scatter,
-			.dir = .{0, 0, 1},
-		});
-		timer = 0;
-	// }
+	particles.ParticleSystem.spawn("cubyz:spark", 20, Player.getEyePosBlocking() + Vec3d{0, 0, -0.5}, true, .{
+		.shapeType = .point,
+		.size = 0,
+		.directionMode = .scatter,
+		.dir = .{0, 0, 1},
+	});
+	timer = 0;
 
 	fog.fogColor = (biome.fogColor - fog.fogColor)*@as(Vec3f, @splat(t)) + fog.fogColor;
 	fog.density = (biome.fogDensity - fog.density)*t + fog.density;

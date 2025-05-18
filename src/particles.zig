@@ -74,9 +74,10 @@ pub const ParticleManager = struct {
 		typ.size = @as(f32, @floatFromInt(base.width))/16;
 		for(0..animationFrames) |i| {
 			textures.append(extractAnimationSlice(base, i, animationFrames, textureId, .base));
-			const emmisionResult = if (emission.imageData.ptr != Image.emptyImage.imageData.ptr)
-			 extractAnimationSlice(emission, i, animationFrames, textureId, .emmision) else
-			 Image.emptyImage;
+			const emmisionResult = if(emission.imageData.ptr != Image.emptyImage.imageData.ptr)
+				extractAnimationSlice(emission, i, animationFrames, textureId, .emmision)
+			else
+				Image.emptyImage;
 			emissionTextures.append(emmisionResult);
 		}
 
@@ -101,9 +102,9 @@ pub const ParticleManager = struct {
 		};
 	}
 
-	fn extractAnimationSlice(image: Image, frame: usize, frames: usize, imageName: []const u8, textureType: enum { base, emmision }) Image {
-		if (image.height%frames != 0) {
-			std.log.err("Particle texture size is not divisible by its frame count for {s} in {s} texture", .{imageName, @tagName(textureType)});	
+	fn extractAnimationSlice(image: Image, frame: usize, frames: usize, imageName: []const u8, textureType: enum {base, emmision}) Image {
+		if(image.height%frames != 0) {
+			std.log.err("Particle texture size is not divisible by its frame count for {s} in {s} texture", .{imageName, @tagName(textureType)});
 			return Image.defaultImage;
 		}
 		const frameHeight = image.height/frames;
@@ -254,7 +255,7 @@ pub const ParticleSystem = struct {
 			const positionf64 = @as(Vec4d, @floatCast(particle.posAndRotation)) + Vec4d{playerPos[0], playerPos[1], playerPos[2], 0};
 			const intPos: vec.Vec4i = @intFromFloat(@floor(positionf64));
 			const light: [6]u8 = main.renderer.mesh_storage.getLight(intPos[0], intPos[1], intPos[2]) orelse @splat(0);
-			const compressedLight = 
+			const compressedLight =
 				@as(u32, light[0] >> 3) << 25 |
 				@as(u32, light[1] >> 3) << 20 |
 				@as(u32, light[2] >> 3) << 15 |
