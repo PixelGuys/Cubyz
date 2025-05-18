@@ -97,7 +97,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 				inline .int => |intInfo| {
 					const arg = nullableArg orelse return missingArgument(Field, allocator, name);
 					return .{.success = std.fmt.parseInt(std.meta.Int(intInfo.signedness, intInfo.bits), arg, 0) catch {
-						return .initWithFailure(allocator, utils.format(allocator, "Expected a integer for {s}, found \"{s}\"", .{name, arg}));
+						return .initWithFailure(allocator, utils.format(allocator, "Expected an integer for {s}, found \"{s}\"", .{name, arg}));
 					}};
 				},
 				inline else => |other| @compileError("Unsupported type " ++ @tagName(other)),
@@ -112,7 +112,7 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 			const arg = _arg orelse return .{};
 			switch(@typeInfo(Field)) {
 				inline .@"struct" => {
-					if(!@hasDecl(Field, "autocomplete")) @compileError("Struct must have a parse function");
+					if(!@hasDecl(Field, "autocomplete")) @compileError("Struct must have an autocomplete function");
 					return try @field(Field, "autocomplete")(allocator, arg);
 				},
 				inline .@"enum" => {
@@ -232,7 +232,6 @@ pub const AutocompleteResult = struct {
 	}
 };
 
-// TODO: This could check if biome ID is valid, either always or with generic flag.
 pub fn BiomeId(comptime checkExists: bool) type {
 	return struct {
 		const Self = @This();

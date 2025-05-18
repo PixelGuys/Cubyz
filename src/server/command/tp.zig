@@ -6,15 +6,12 @@ const User = main.server.User;
 pub const description = "Teleport to location.";
 pub const usage = "/tp <x> <y>\n/tp <x> <y> <z>\n/tp <biome>";
 
-const Parser = main.argparse.Parser;
-const BiomeId = main.argparse.BiomeId;
-
 const Args = union(enum) {
 	@"/tp <x> <y> <z>": struct {@"<x>": f64, @"<y>": f64, @"<z>": ?f64},
-	@"/tp <biome>": struct {@"<biome>": BiomeId(true)},
+	@"/tp <biome>": struct {@"<biome>": main.argparse.BiomeId(true)},
 };
 
-const ArgParser = Parser(Args, .{.commandName = "/tp"});
+const ArgParser = main.argparse.Parser(Args, .{.commandName = "/tp"});
 
 pub fn execute(args: []const u8, source: *User) void {
 	const result = ArgParser.parse(main.stackAllocator, args);
