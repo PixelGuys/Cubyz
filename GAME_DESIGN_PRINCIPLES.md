@@ -35,7 +35,7 @@ Cubyz' creatures should not copy from real life or Minecraft.
 ### No Passive Animals
 To make hunting more engaging, animals will run from the player, attack back, and use defense mechanisms.
 
-### Beds shouldn't set spawn
+### Spawn Points --> Check Points
 Being able to set your spawn anywhere is very powerful, so whatever sets your spawn in this game should be immovable or consumable.
 
 # Player Engagement
