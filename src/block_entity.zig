@@ -37,7 +37,7 @@ pub const BlockEntityType = struct {
 
 		inline for(@typeInfo(BlockEntityType.VTable).@"struct".fields) |field| {
 			if(!@hasDecl(BlockEntityTypeT, field.name)) {
-				@compileError("EntityDataClass missing field");
+				@compileError("BlockEntityType missing field '" ++ field.name ++ "'");
 			}
 			@field(class.vtable, field.name) = &@field(BlockEntityTypeT, field.name);
 		}
@@ -217,12 +217,12 @@ pub const BlockEntityTypes = struct {
 	};
 };
 
-var entityDataClasses: std.StringHashMapUnmanaged(BlockEntityType) = .{};
+var blockyEntityTypes: std.StringHashMapUnmanaged(BlockEntityType) = .{};
 
 pub fn init() void {
 	inline for(@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
 		const class = BlockEntityType.init(@field(BlockEntityTypes, declaration.name));
-		entityDataClasses.putNoClobber(main.globalAllocator.allocator, class.id, class) catch unreachable;
+		blockyEntityTypes.putNoClobber(main.globalAllocator.allocator, class.id, class) catch unreachable;
 		std.log.debug("Registered BlockEntityType '{s}'", .{class.id});
 	}
 }
@@ -237,12 +237,12 @@ pub fn deinit() void {
 	inline for(@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
 		@field(BlockEntityTypes, declaration.name).deinit();
 	}
-	entityDataClasses.deinit(main.globalAllocator.allocator);
+	blockyEntityTypes.deinit(main.globalAllocator.allocator);
 }
 
 pub fn getByID(_id: ?[]const u8) ?*BlockEntityType {
 	const id = _id orelse return null;
-	if(entityDataClasses.getPtr(id)) |cls| return cls;
+	if(blockyEntityTypes.getPtr(id)) |cls| return cls;
 	std.log.err("BlockEntityType with id '{s}' not found", .{id});
 	return null;
 }
