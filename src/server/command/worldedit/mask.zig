@@ -3,8 +3,6 @@ const std = @import("std");
 const main = @import("main");
 const User = main.server.User;
 
-const Block = main.blocks.Block;
-const Blueprint = main.blueprint.Blueprint;
 const Mask = main.blueprint.Mask;
 
 pub const description = "Set edit mask. When used with no mask expression it will clear current mask.";
