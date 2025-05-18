@@ -213,32 +213,32 @@ pub const ParticleSystem = struct {
 
 			particleLocal.velAndRotationVel += vec.combine(properties.gravity, 0)*vecDeltaTime;
 			particleLocal.velAndRotationVel *= @splat(@max(0, 1 - properties.drag*deltaTime));
-			const vel = particleLocal.velAndRotationVel*vecDeltaTime;
+			const posDelta = particleLocal.velAndRotationVel*vecDeltaTime;
 
 			// TODO: OPTIMIZE THE HELL OUT OF THIS
 			if(particleLocal.collides) {
 				const size = ParticleManager.types.items[particle.typ].size;
 				const hitBox: game.collision.Box = .{.min = @splat(size*-0.5), .max = @splat(size*0.5)};
 				var v3Pos = playerPos + @as(Vec3d, @floatCast(Vec3f{particle.posAndRotation[0], particle.posAndRotation[1], particle.posAndRotation[2]} + prevPlayerPosDifference));
-				v3Pos[0] += vel[0];
-				if(game.collision.collides(.client, .x, -vel[0], v3Pos, hitBox)) |box| {
-					if(vel[0] < 0) {
+				v3Pos[0] += posDelta[0];
+				if(game.collision.collides(.client, .x, -posDelta[0], v3Pos, hitBox)) |box| {
+					if(posDelta[0] < 0) {
 						v3Pos[0] = box.max[0] - hitBox.min[0];
 					} else {
 						v3Pos[0] = box.min[0] - hitBox.max[0];
 					}
 				}
-				v3Pos[1] += vel[1];
-				if(game.collision.collides(.client, .y, -vel[1], v3Pos, hitBox)) |box| {
-					if(vel[1] < 0) {
+				v3Pos[1] += posDelta[1];
+				if(game.collision.collides(.client, .y, -posDelta[1], v3Pos, hitBox)) |box| {
+					if(posDelta[1] < 0) {
 						v3Pos[1] = box.max[1] - hitBox.min[1];
 					} else {
 						v3Pos[1] = box.min[1] - hitBox.max[1];
 					}
 				}
-				v3Pos[2] += vel[2];
-				if(game.collision.collides(.client, .z, -vel[2], v3Pos, hitBox)) |box| {
-					if(vel[2] < 0) {
+				v3Pos[2] += posDelta[2];
+				if(game.collision.collides(.client, .z, -posDelta[2], v3Pos, hitBox)) |box| {
+					if(posDelta[2] < 0) {
 						v3Pos[2] = box.max[2] - hitBox.min[2];
 					} else {
 						v3Pos[2] = box.min[2] - hitBox.max[2];
@@ -246,7 +246,7 @@ pub const ParticleSystem = struct {
 				}
 				particle.posAndRotation = vec.combine(@as(Vec3f, @floatCast(v3Pos - playerPos)), 0);
 			} else {
-				particle.posAndRotation += vel + vec.combine(prevPlayerPosDifference, 0);
+				particle.posAndRotation += posDelta + vec.combine(prevPlayerPosDifference, 0);
 			}
 
 			particle.posAndRotation[3] = rot;
@@ -256,12 +256,13 @@ pub const ParticleSystem = struct {
 			const positionf64 = @as(Vec4d, @floatCast(particle.posAndRotation)) + Vec4d{playerPos[0], playerPos[1], playerPos[2], 0};
 			const intPos: vec.Vec4i = @intFromFloat(@floor(positionf64));
 			const light: [6]u8 = main.renderer.mesh_storage.getLight(intPos[0], intPos[1], intPos[2]) orelse @splat(0);
-			const compressedLight = (@as(u32, light[0] >> 3) << 25 |
+			const compressedLight = 
+				@as(u32, light[0] >> 3) << 25 |
 				@as(u32, light[1] >> 3) << 20 |
 				@as(u32, light[2] >> 3) << 15 |
 				@as(u32, light[3] >> 3) << 10 |
 				@as(u32, light[4] >> 3) << 5 |
-				@as(u32, light[5] >> 3));
+				@as(u32, light[5] >> 3);
 			particle.light = compressedLight;
 
 			particles[i] = particle;
