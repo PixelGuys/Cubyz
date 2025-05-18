@@ -9,6 +9,5 @@
 	.absorbedLight = 0xe95825,
 	.model = "cubyz:cube",
 	.texture = "cubyz:ice",
-	.blockEntity = "cubyz.modding.base.MeltableBlockEntity",
 	.friction = 1,
 }
