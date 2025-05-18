@@ -1324,7 +1324,7 @@ pub const Protocols = struct {
 					const yOffset: i32 = @intFromFloat(y*distance);
 					const zOffset: i32 = @intFromFloat(z*distance);
 
-					const p = pos +| Vec3i{xOffset, yOffset, zOffset};
+					const p = pos +% Vec3i{xOffset, yOffset, zOffset};
 
 					var oldBlock = main.server.world.?.getBlock(p[0], p[1], p[2]) orelse continue;
 					if(oldBlock.typ == 0) continue;
@@ -1343,13 +1343,13 @@ pub const Protocols = struct {
 			}
 
 			for(0..diameter) |_x| {
-				const x = @as(i32, @intCast(_x)) +| pos[0] -| @as(i32, @intCast(diameter/2));
+				const x = @as(i32, @intCast(_x)) +% pos[0] -% @as(i32, @intCast(diameter/2));
 
 				for(0..diameter) |_y| {
-					const y = @as(i32, @intCast(_y)) +| pos[1] -| @as(i32, @intCast(diameter/2));
+					const y = @as(i32, @intCast(_y)) +% pos[1] -% @as(i32, @intCast(diameter/2));
 
 					for(0..diameter) |_z| {
-						const z = @as(i32, @intCast(_z)) +| pos[2] -| @as(i32, @intCast(diameter/2));
+						const z = @as(i32, @intCast(_z)) +% pos[2] -% @as(i32, @intCast(diameter/2));
 						if(exploded.get(_x, _y, _z)) {
 							_ = main.server.world.?.cmpxchgBlock(x, y, z, null, .{.typ = 0, .data = 0});
 						}
