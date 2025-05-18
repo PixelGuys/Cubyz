@@ -1210,12 +1210,15 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 	const t = 1 - @as(f32, @floatCast(@exp(-2*deltaTime)));
 
-	particles.ParticleSystem.spawn("cubyz:spark", 5, Player.getEyePosBlocking() + Vec3d{0, 0, -0.5}, true, .{
+	const emitter = particles.Emitter{
 		.shapeType = .point,
-		.size = 0,
 		.directionMode = .scatter,
-		.dir = .{0, 0, 1},
-	});
+		.count = 5,
+		.size = 0,
+		.id = "cubyz:spark",
+		.collides = true,
+	};
+	emitter.spawn(Player.getEyePosBlocking() + Vec3d{0, 0, -0.5});
 
 	fog.fogColor = (biome.fogColor - fog.fogColor)*@as(Vec3f, @splat(t)) + fog.fogColor;
 	fog.density = (biome.fogDensity - fog.density)*t + fog.density;
