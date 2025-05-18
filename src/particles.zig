@@ -386,7 +386,7 @@ pub const Emitter = struct {
 					particleVel = dir*speed;
 				},
 			}
-			
+
 			ParticleSystem.addParticle(typ, particlePos, particleVel, self.collides);
 		}
 	}
