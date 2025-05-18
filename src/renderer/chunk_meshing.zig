@@ -71,7 +71,7 @@ pub var commandBuffer: graphics.LargeBuffer(IndirectData) = undefined;
 pub var chunkIDBuffer: graphics.LargeBuffer(u32) = undefined;
 pub var quadsDrawn: usize = 0;
 pub var transparentQuadsDrawn: usize = 0;
-pub const maxQuadsInIndexBuffer: u32 = 3 << (3*chunk.chunkShift); // maximum 3 faces/block
+pub const maxQuadsInIndexBuffer = 3 << (3*chunk.chunkShift); // maximum 3 faces/block
 
 pub fn init() void {
 	lighting.init();
