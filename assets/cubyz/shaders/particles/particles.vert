@@ -9,7 +9,7 @@ layout(location = 2) uniform mat4 billboardMatrix;
 
 struct ParticleData {
 	vec3 pos;
-	float rot;
+	float rotation;
 	float lifeRatio;
 	uint light;
 	uint typ;
