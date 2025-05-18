@@ -1,6 +1,6 @@
 .{
-	.tags = .{.canBeIgnited, .explosionMedium},
-	.blockHealth = 4,
+	.tags = .{.canBeIgnited, .explosive},
+	.blockHealth = 3,
 	.drops = .{
 		.{.items = .{.auto}},
 	},

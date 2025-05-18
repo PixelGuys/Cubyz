@@ -1003,10 +1003,8 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			if(inventory.getItem(slot)) |item| {
 				switch(item) {
 					.baseItem => |baseItem| {
-						if(baseItem.hasTag(main.Tag.find("canIgnite")) and oldBlock.hasTag(main.Tag.find("canBeIgnited"))) {
-							if(oldBlock.hasTag(main.Tag.find("explosionSmall"))) main.network.Protocols.explode.send(main.game.world.?.conn, selectedPos, 40, 3.7);
-							if(oldBlock.hasTag(main.Tag.find("explosionMedium"))) main.network.Protocols.explode.send(main.game.world.?.conn, selectedPos, 240, 11.5);
-							if(oldBlock.hasTag(main.Tag.find("explosionLarge"))) main.network.Protocols.explode.send(main.game.world.?.conn, selectedPos, 480, 18.5);
+						if(baseItem.hasTag(.canIgnite) and oldBlock.hasTag(.canBeIgnited)) {
+							if(oldBlock.hasTag(.explosive)) main.network.Protocols.explode.send(main.game.world.?.conn, selectedPos);
 							return;
 						}
 						if(baseItem.block) |itemBlock| {

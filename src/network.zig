@@ -1282,19 +1282,20 @@ pub const Protocols = struct {
 		pub const asynchronous = false;
 		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
 			const pos = try reader.readVec(Vec3i);
-			const strength = try reader.readFloat(f32);
-			const radius = try reader.readFloat(f32);
 
-			if(conn.user != null) {
-				if(!main.server.world.?.allowExplosives) return;
-				doExplode(pos, strength, radius);
-			} else {
-				return error.InvalidPacket;
-			}
+			if(conn.user == null) return error.InvalidPacket;
+			if(!main.server.world.?.allowExplosives) return;
+			doExplode(pos);
 		}
-		fn doExplode(pos: Vec3i, _strength: f32, _radius: f32) void {
-			const radius = @min(@max(_radius, 0), 256);
-			const strength = @min(@max(_strength, 0), 1024);
+		fn doExplode(pos: Vec3i) void {
+			const explosiveBlock = main.server.world.?.getBlock(pos[0], pos[1], pos[2]) orelse return;
+			if(!explosiveBlock.hasTag(.explosive)) return;
+
+			const strength = explosiveBlock.blockHealth()*32.0;
+			const radius = explosiveBlock.blockHealth()*4.0;
+
+			const airDamageDecrease = 8.0;
+			const fluidDamageDecrease = 64.0;
 
 			const diameter: u32 = @intFromFloat(std.math.ceil(radius)*2);
 			const goldenAngle = std.math.pi*(3.0 - @sqrt(5.0));
@@ -1327,10 +1328,22 @@ pub const Protocols = struct {
 					const p = pos +% Vec3i{xOffset, yOffset, zOffset};
 
 					var oldBlock = main.server.world.?.getBlock(p[0], p[1], p[2]) orelse continue;
-					if(oldBlock.typ == 0) continue;
 
-					if(damage < oldBlock.blockHealth() + oldBlock.blockResistance()) break;
-					damage -= oldBlock.blockHealth() + oldBlock.blockResistance();
+					const blockDamageDelta = (oldBlock.blockHealth() + oldBlock.blockResistance());
+					if(damage < blockDamageDelta) {
+						defer damage = 0;
+						if(damage < 0 or damage/blockDamageDelta > main.random.nextFloat(&main.seed)) break;
+					}
+
+					if(oldBlock.hasTag(.air)) {
+						damage -= airDamageDecrease;
+						continue;
+					} else if(oldBlock.hasTag(.fluid)) {
+						damage -= fluidDamageDecrease;
+						continue;
+					} else {
+						damage -= blockDamageDelta*main.random.nextFloat(&main.seed) + airDamageDecrease*main.random.nextFloat(&main.seed);
+					}
 
 					const xCentered: usize = @intCast(xOffset + @as(i32, @intCast(diameter/2)));
 					const yCentered: usize = @intCast(yOffset + @as(i32, @intCast(diameter/2)));
@@ -1357,12 +1370,10 @@ pub const Protocols = struct {
 				}
 			}
 		}
-		pub fn send(conn: *Connection, pos: Vec3i, strength: f32, radius: f32) void {
-			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 20);
+		pub fn send(conn: *Connection, pos: Vec3i) void {
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 12);
 			defer writer.deinit();
 			writer.writeVec(Vec3i, pos);
-			writer.writeFloat(f32, strength);
-			writer.writeFloat(f32, radius);
 			conn.send(.fast, id, writer.data.items);
 		}
 	};
