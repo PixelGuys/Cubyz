@@ -583,9 +583,9 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			self.* = ItemVoxelModel{
 				.item = template.item,
 			};
-			if(self.item == .baseItem and self.item.baseItem.block != null and self.item.baseItem.image.imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
+			if(self.item == .baseItem and self.item.baseItem.block() != null and self.item.baseItem.image().imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
 				// Find sizes and free index:
-				var block = blocks.Block{.typ = self.item.baseItem.block.?, .data = 0};
+				var block = blocks.Block{.typ = self.item.baseItem.block().?, .data = 0};
 				block.data = block.mode().naturalStandard;
 				const model = blocks.meshes.model(block).model();
 				var data = main.List(u32).init(main.stackAllocator);
@@ -649,8 +649,8 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 
 	pub fn init() void {
 		itemPipeline = graphics.Pipeline.init(
-			"assets/cubyz/shaders/item_drop.vs",
-			"assets/cubyz/shaders/item_drop.fs",
+			"assets/cubyz/shaders/item_drop.vert",
+			"assets/cubyz/shaders/item_drop.frag",
 			"",
 			&itemUniforms,
 			.{},
@@ -732,8 +732,8 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 
 				var scale: f32 = 0.3;
 				var blockType: u16 = 0;
-				if(item == .baseItem and item.baseItem.block != null and item.baseItem.image.imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
-					blockType = item.baseItem.block.?;
+				if(item == .baseItem and item.baseItem.block() != null and item.baseItem.image().imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
+					blockType = item.baseItem.block().?;
 					vertices = model.len/2*6;
 				} else {
 					scale = 0.5;
@@ -817,11 +817,11 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			const model = getModel(item);
 			var vertices: u31 = 36;
 
-			const isBlock: bool = item == .baseItem and item.baseItem.block != null and item.baseItem.image.imageData.ptr == graphics.Image.defaultImage.imageData.ptr;
+			const isBlock: bool = item == .baseItem and item.baseItem.block() != null and item.baseItem.image().imageData.ptr == graphics.Image.defaultImage.imageData.ptr;
 			var scale: f32 = 0;
 			var blockType: u16 = 0;
 			if(isBlock) {
-				blockType = item.baseItem.block.?;
+				blockType = item.baseItem.block().?;
 				vertices = model.len/2*6;
 				scale = 0.3;
 				pos = Vec3d{0.4, 0.55, -0.32};

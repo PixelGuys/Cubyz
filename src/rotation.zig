@@ -98,7 +98,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 			shouldDropSourceBlockOnSuccess.* = true;
 			if(oldBlock == newBlock) return .no;
 			if(oldBlock.typ == newBlock.typ) return .yes;
-			if(oldBlock.solid()) {
+			if(!oldBlock.replacable()) {
 				var damage: f32 = 1;
 				const isTool = item.item != null and item.item.? == .tool;
 				if(isTool) {
@@ -113,7 +113,7 @@ pub const RotationMode = struct { // MARK: RotationMode
 			} else {
 				if(item.item) |_item| {
 					if(_item == .baseItem) {
-						if(_item.baseItem.block != null and _item.baseItem.block.? == newBlock.typ) {
+						if(_item.baseItem.block() != null and _item.baseItem.block().? == newBlock.typ) {
 							return .{.yes_costsItems = 1};
 						}
 					}

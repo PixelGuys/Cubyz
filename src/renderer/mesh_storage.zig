@@ -880,7 +880,7 @@ fn batchUpdateBlocks() void {
 	{
 		for(lightRefreshList.items) |mesh| {
 			if(mesh.needsLightRefresh.load(.unordered)) {
-				mesh.scheduleLightRefreshAndDecreaseRefCount1();
+				mesh.scheduleLightRefreshAndDecreaseRefCount();
 			} else {
 				mesh.decreaseRefCount();
 			}

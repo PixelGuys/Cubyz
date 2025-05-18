@@ -28,11 +28,11 @@ var inventory: Inventory = undefined;
 
 fn lessThan(_: void, lhs: Item, rhs: Item) bool {
 	if(lhs == .baseItem and rhs == .baseItem) {
-		const lhsFolders = std.mem.count(u8, lhs.baseItem.id, "/");
-		const rhsFolders = std.mem.count(u8, rhs.baseItem.id, "/");
+		const lhsFolders = std.mem.count(u8, lhs.baseItem.id(), "/");
+		const rhsFolders = std.mem.count(u8, rhs.baseItem.id(), "/");
 		if(lhsFolders < rhsFolders) return true;
 		if(lhsFolders > rhsFolders) return false;
-		return std.ascii.lessThanIgnoreCase(lhs.baseItem.id, rhs.baseItem.id);
+		return std.ascii.lessThanIgnoreCase(lhs.baseItem.id(), rhs.baseItem.id());
 	} else {
 		if(lhs == .baseItem) return true;
 		return false;
