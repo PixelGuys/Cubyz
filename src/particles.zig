@@ -73,8 +73,11 @@ pub const ParticleManager = struct {
 		typ.startFrame = @floatFromInt(textures.items.len);
 		typ.size = @as(f32, @floatFromInt(base.width))/16;
 		for(0..animationFrames) |i| {
-			textures.append(extractAnimationSlice(base, i, animationFrames));
-			emissionTextures.append(extractAnimationSlice(emission, i, animationFrames));
+			textures.append(extractAnimationSlice(base, i, animationFrames, textureId, .base));
+			const emmisionResult = if (emission.imageData.ptr != Image.emptyImage.imageData.ptr)
+			 extractAnimationSlice(emission, i, animationFrames, textureId, .emmision) else
+			 Image.emptyImage;
+			emissionTextures.append(emmisionResult);
 		}
 
 		typ.animationFrames = @floatFromInt(animationFrames);
@@ -98,14 +101,16 @@ pub const ParticleManager = struct {
 		};
 	}
 
-	fn extractAnimationSlice(image: Image, frame: usize, frames: usize) Image {
-		if(image.height < frames) return image;
-		var startHeight = image.height/frames*frame;
-		if(image.height%frames > frame) startHeight += frame else startHeight += image.height%frames;
-		var endHeight = image.height/frames*(frame + 1);
-		if(image.height%frames > frame + 1) endHeight += frame + 1 else endHeight += image.height%frames;
+	fn extractAnimationSlice(image: Image, frame: usize, frames: usize, imageName: []const u8, textureType: enum { base, emmision }) Image {
+		if (image.height%frames != 0) {
+			std.log.err("Particle texture size is not divisible by its frame count for {s} in {s} texture", .{imageName, @tagName(textureType)});	
+			return Image.defaultImage;
+		}
+		const frameHeight = image.height/frames;
+		const startHeight = frameHeight*frame;
+		const endHeight = frameHeight*(frame + 1);
 		var result = image;
-		result.height = @intCast(endHeight - startHeight);
+		result.height = @intCast(frameHeight);
 		result.imageData = result.imageData[startHeight*image.width .. endHeight*image.width];
 		return result;
 	}
