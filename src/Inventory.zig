@@ -36,6 +36,13 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		pub fn deinit() void {
+			reset();
+			commands.deinit();
+			freeIdList.deinit();
+			serverToClientMap.deinit();
+		}
+
+		pub fn reset() void {
 			mutex.lock();
 			while(commands.dequeue()) |cmd| {
 				var reader = utils.BinaryReader.init(&.{});
@@ -44,10 +51,7 @@ pub const Sync = struct { // MARK: Sync
 				};
 			}
 			mutex.unlock();
-			commands.deinit();
 			std.debug.assert(freeIdList.items.len == maxId); // leak
-			freeIdList.deinit();
-			serverToClientMap.deinit();
 		}
 
 		pub fn executeCommand(payload: Command.Payload) void {
