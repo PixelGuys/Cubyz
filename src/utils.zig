@@ -1919,7 +1919,7 @@ pub fn DenseId(comptime IdType: type) type {
 
 pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: SparseSet
 	std.debug.assert(@intFromEnum(IdType.noValue) == std.math.maxInt(@typeInfo(IdType).@"enum".tag_type));
-	
+
 	return struct {
 		const Self = @This();
 
