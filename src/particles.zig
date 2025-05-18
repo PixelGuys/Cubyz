@@ -263,8 +263,6 @@ pub const ParticleSystem = struct {
 				@as(u32, light[5] >> 3);
 			particle.light = compressedLight;
 
-			// particles[i] = particle;
-			// particlesLocal[i] = particleLocal;
 			i += 1;
 		}
 		previousPlayerPos = playerPos;
