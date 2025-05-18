@@ -12,7 +12,7 @@ struct ParticleData {
 	float rotation;
 	float lifeRatio;
 	uint light;
-	uint typ;
+	uint type;
 };
 layout(std430, binding = 13) restrict readonly buffer _particleData
 {
