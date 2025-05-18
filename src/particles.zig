@@ -195,8 +195,8 @@ pub const ParticleSystem = struct {
 
 		var i: u32 = 0;
 		while(i < particleCount) {
-			var particle = particles[i];
-			var particleLocal = particlesLocal[i];
+			const particle = &particles[i];
+			const particleLocal = &particlesLocal[i];
 			particle.lifeRatio -= particleLocal.lifeVelocity*deltaTime;
 			if(particle.lifeRatio < 0) {
 				particleCount -= 1;
@@ -263,8 +263,8 @@ pub const ParticleSystem = struct {
 				@as(u32, light[5] >> 3);
 			particle.light = compressedLight;
 
-			particles[i] = particle;
-			particlesLocal[i] = particleLocal;
+			// particles[i] = particle;
+			// particlesLocal[i] = particleLocal;
 			i += 1;
 		}
 		previousPlayerPos = playerPos;
