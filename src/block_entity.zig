@@ -11,7 +11,7 @@ const server = main.server;
 const User = server.User;
 const mesh_storage = main.renderer.mesh_storage;
 
-pub const EntityDataClass = struct {
+pub const BlockEntityType = struct {
 	id: []const u8,
 	vtable: VTable,
 
@@ -26,46 +26,46 @@ pub const EntityDataClass = struct {
 		onBreakServer: *const fn(pos: Vec3i, chunk: *Chunk) void,
 		onInteract: *const fn(pos: Vec3i, chunk: *Chunk) EventStatus,
 	};
-	pub fn init(comptime EntityDataClassT: type) EntityDataClass {
-		EntityDataClassT.init();
-		var class = EntityDataClass{
-			.id = EntityDataClassT.id,
+	pub fn init(comptime BlockEntityTypeT: type) BlockEntityType {
+		BlockEntityTypeT.init();
+		var class = BlockEntityType{
+			.id = BlockEntityTypeT.id,
 			.vtable = undefined,
 		};
 
-		inline for(@typeInfo(EntityDataClass.VTable).@"struct".fields) |field| {
-			if(!@hasDecl(EntityDataClassT, field.name)) {
+		inline for(@typeInfo(BlockEntityType.VTable).@"struct".fields) |field| {
+			if(!@hasDecl(BlockEntityTypeT, field.name)) {
 				@compileError("EntityDataClass missing field");
 			}
-			@field(class.vtable, field.name) = &@field(EntityDataClassT, field.name);
+			@field(class.vtable, field.name) = &@field(BlockEntityTypeT, field.name);
 		}
 		return class;
 	}
-	pub inline fn onLoadClient(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) void {
+	pub inline fn onLoadClient(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk) void {
 		return self.vtable.onLoadClient(pos, chunk);
 	}
-	pub inline fn onUnloadClient(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) void {
+	pub inline fn onUnloadClient(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk) void {
 		return self.vtable.onUnloadClient(pos, chunk);
 	}
-	pub inline fn onLoadServer(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) void {
+	pub inline fn onLoadServer(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk) void {
 		return self.vtable.onLoadServer(pos, chunk);
 	}
-	pub inline fn onUnloadServer(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) void {
+	pub inline fn onUnloadServer(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk) void {
 		return self.vtable.onUnloadServer(pos, chunk);
 	}
-	pub inline fn onPlaceClient(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) void {
+	pub inline fn onPlaceClient(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk) void {
 		return self.vtable.onPlaceClient(pos, chunk);
 	}
-	pub inline fn onBreakClient(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) void {
+	pub inline fn onBreakClient(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk) void {
 		return self.vtable.onBreakClient(pos, chunk);
 	}
-	pub inline fn onPlaceServer(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) void {
+	pub inline fn onPlaceServer(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk) void {
 		return self.vtable.onPlaceServer(pos, chunk);
 	}
-	pub inline fn onBreakServer(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) void {
+	pub inline fn onBreakServer(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk) void {
 		return self.vtable.onBreakServer(pos, chunk);
 	}
-	pub inline fn onInteract(self: *EntityDataClass, pos: Vec3i, chunk: *Chunk) EventStatus {
+	pub inline fn onInteract(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk) EventStatus {
 		return self.vtable.onInteract(pos, chunk);
 	}
 };
@@ -171,7 +171,7 @@ fn BlockEntityDataStorage(comptime side: enum {client, server}, T: type) type {
 	};
 }
 
-pub const EntityDataClasses = struct {
+pub const BlockEntityTypes = struct {
 	pub const Chest = struct {
 		const StorageServer = BlockEntityDataStorage(
 			.server,
@@ -215,32 +215,32 @@ pub const EntityDataClasses = struct {
 	};
 };
 
-var entityDataClasses: std.StringHashMapUnmanaged(EntityDataClass) = .{};
+var entityDataClasses: std.StringHashMapUnmanaged(BlockEntityType) = .{};
 
 pub fn init() void {
-	inline for(@typeInfo(EntityDataClasses).@"struct".decls) |declaration| {
-		const class = EntityDataClass.init(@field(EntityDataClasses, declaration.name));
+	inline for(@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
+		const class = BlockEntityType.init(@field(BlockEntityTypes, declaration.name));
 		entityDataClasses.putNoClobber(main.globalAllocator.allocator, class.id, class) catch unreachable;
-		std.log.debug("Registered EntityDataClass '{s}'", .{class.id});
+		std.log.debug("Registered BlockEntityType '{s}'", .{class.id});
 	}
 }
 
 pub fn reset() void {
-	inline for(@typeInfo(EntityDataClasses).@"struct".decls) |declaration| {
-		@field(EntityDataClasses, declaration.name).reset();
+	inline for(@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
+		@field(BlockEntityTypes, declaration.name).reset();
 	}
 }
 
 pub fn deinit() void {
-	inline for(@typeInfo(EntityDataClasses).@"struct".decls) |declaration| {
-		@field(EntityDataClasses, declaration.name).deinit();
+	inline for(@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
+		@field(BlockEntityTypes, declaration.name).deinit();
 	}
 	entityDataClasses.deinit(main.globalAllocator.allocator);
 }
 
-pub fn getByID(_id: ?[]const u8) ?*EntityDataClass {
+pub fn getByID(_id: ?[]const u8) ?*BlockEntityType {
 	const id = _id orelse return null;
 	if(entityDataClasses.getPtr(id)) |cls| return cls;
-	std.log.err("EntityDataClass with id '{s}' not found", .{id});
+	std.log.err("BlockEntityType with id '{s}' not found", .{id});
 	return null;
 }
