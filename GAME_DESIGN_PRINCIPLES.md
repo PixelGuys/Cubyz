@@ -23,7 +23,7 @@ In order to progress in the game, the player must take risks. The player is othe
 Large dimension-like areas can be placed within the world itself, as it's immensely big already.
 "Dimensions" such as an underworld and an overworld are already planned for the game.
 
-### No Fast Travel
+### No Teleportation
 We want the player to create infrastructure for travelling. Long-range teleportation would make this useless.
 
 ### No Automation
