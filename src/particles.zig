@@ -263,7 +263,7 @@ pub const ParticleSystem = struct {
 		previousPlayerPos = playerPos;
 	}
 
-	pub fn addParticle(typ: u32, pos: Vec3d, vel: Vec3f, collides: bool) void {
+	fn addParticle(typ: u32, pos: Vec3d, vel: Vec3f, collides: bool) void {
 		const lifeTime = properties.lifeTimeMin + random.nextFloat(&seed)*properties.lifeTimeMax;
 
 		particles[particleCount] = Particle{
