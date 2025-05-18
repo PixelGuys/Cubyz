@@ -49,7 +49,7 @@ void main() {
 	int particleID = gl_VertexID >> 2;
 	int vertexID = gl_VertexID & 3;
 	ParticleData particle = particleData[particleID];
-	ParticleTypeData particleType = particleTypeData[particle.typ];
+	ParticleTypeData particleType = particleTypeData[particle.type];
 
 	uint fullLight = particle.light;
 	vec3 sunLight = vec3(
@@ -64,10 +64,10 @@ void main() {
 	);
 	light = max(sunLight*ambientLight, blockLight)/31;
 
-	float rot = particle.rot;
+	float rotation = particle.rotation;
 	vec3 faceVertPos = facePositions[vertexID];
-	float sn = sin(rot);
-	float cs = cos(rot);
+	float sn = sin(rotation);
+	float cs = cos(rotation);
 	const vec3 vertexRotationPos = vec3(
 		faceVertPos.x*cs - faceVertPos.y*sn,
 		faceVertPos.x*sn + faceVertPos.y*cs,

@@ -151,8 +151,6 @@ pub const ParticleSystem = struct {
 		projectionAndViewMatrix: c_int,
 		billboardMatrix: c_int,
 		ambientLight: c_int,
-		textureSampler: c_int,
-		emissionTextureSampler: c_int,
 	};
 	var uniforms: UniformStruct = undefined;
 
@@ -338,9 +336,6 @@ pub const ParticleSystem = struct {
 		particlesSSBO.bufferSubData(Particle, &particles, particleCount);
 
 		pipeline.bind(null);
-
-		c.glUniform1i(uniforms.textureSampler, 0);
-		c.glUniform1i(uniforms.emissionTextureSampler, 1);
 
 		const projectionAndViewMatrix = Mat4f.mul(projectionMatrix, viewMatrix);
 		c.glUniformMatrix4fv(uniforms.projectionAndViewMatrix, 1, c.GL_TRUE, @ptrCast(&projectionAndViewMatrix));

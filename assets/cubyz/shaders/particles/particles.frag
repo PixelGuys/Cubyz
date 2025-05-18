@@ -1,12 +1,13 @@
 #version 430
 
+layout(location = 0) out vec4 fragColor;
+
 layout(location = 0) in vec3 textureCoords;
 layout(location = 1) flat in vec3 light;
 
-layout(location = 3) uniform sampler2DArray textureSampler;
-layout(location = 4) uniform sampler2DArray emissionTextureSampler;
+layout(binding = 0) uniform sampler2DArray textureSampler;
+layout(binding = 1) uniform sampler2DArray emissionTextureSampler;
 
-layout(location = 0) out vec4 fragColor;
 
 void main() {
 	const vec4 texColor = texture(textureSampler, textureCoords);
