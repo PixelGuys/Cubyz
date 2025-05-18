@@ -203,7 +203,7 @@ pub fn canBeChangedInto(oldBlock: Block, newBlock: Block, item: main.items.ItemS
 			if(torchAmountChange <= 0) {
 				return .{.yes_dropsItems = @intCast(-torchAmountChange)};
 			} else {
-				if(item.item == null or item.item.? != .baseItem or !std.meta.eql(item.item.?.baseItem.block, newBlock.typ)) return .no;
+				if(item.item == null or item.item.? != .baseItem or !std.meta.eql(item.item.?.baseItem.block(), newBlock.typ)) return .no;
 				return .{.yes_costsItems = @intCast(torchAmountChange)};
 			}
 		},
