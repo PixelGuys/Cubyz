@@ -70,14 +70,14 @@ pub const ParticleManager = struct {
 		const base = readTexture(assetsFolder, textureId, ".png", Image.defaultImage, .isMandatory);
 		const emission = readTexture(assetsFolder, textureId, "_emission.png", Image.emptyImage, .isOptional);
 
-		typ.startFrame = @intCast(textures.items.len);
+		typ.startFrame = @floatFromInt(textures.items.len);
 		typ.size = @as(f32, @floatFromInt(base.width))/16;
 		for(0..animationFrames) |i| {
 			textures.append(extractAnimationSlice(base, i, animationFrames));
 			emissionTextures.append(extractAnimationSlice(emission, i, animationFrames));
 		}
 
-		typ.animationFrames = animationFrames;
+		typ.animationFrames = @floatFromInt(animationFrames);
 		return typ;
 	}
 
@@ -391,8 +391,8 @@ pub const EmitterShape = struct {
 };
 
 pub const ParticleType = struct {
-	animationFrames: u32,
-	startFrame: u32,
+	animationFrames: f32,
+	startFrame: f32,
 	size: f32,
 };
 

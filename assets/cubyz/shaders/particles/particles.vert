@@ -20,8 +20,8 @@ layout(std430, binding = 13) restrict readonly buffer _particleData
 };
 
 struct ParticleTypeData {
-	uint animationFrames;
-	uint startFrame;
+	float animationFrames;
+	float startFrame;
 	float size;
 };
 layout(std430, binding = 14) restrict readonly buffer _particleTypeData
