@@ -147,17 +147,12 @@ pub fn Parser(comptime T: type, comptime options: Options) type {
 				maxSize += options.commandName.len;
 
 				for(std.meta.fieldNames(field.type)) |name| {
+					messageSegments.append(allocator, " ");
 					messageSegments.append(allocator, name);
 					maxSize += name.len;
 				}
 
-				const message = allocator.alloc(u8, maxSize);
-				var rest = message;
-				for(messageSegments.items) |segment| {
-					@memcpy(rest[0..segment.len], segment);
-					rest = rest[segment.len..];
-				}
-
+				const message = std.mem.concat(allocator.allocator, u8, messageSegments.items) catch unreachable;
 				result.failure.messages.append(allocator, message);
 				result.failure.takeMessages(allocator, &fieldResult.failure);
 			}
