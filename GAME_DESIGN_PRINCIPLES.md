@@ -26,7 +26,7 @@ Instead of creating seperate dimensions, we can fit these places physically into
 To immerse the player and let them feel the sense of scale the world of Cubyz has, teleportation is not allowed, as the player will see less of the world that way.
 
 ### No Automation
-Instead of staying in one place and farming everything, the player should have to take advantage of the infinite nature of the world to gain resources.
+Instead of staying in one place and farming everything, the player should have to take advantage of the infinite nature of the world to gain resources, meaning that a majority of resources are non-renewable.
 
 ### No Generic Creatures
 (WIP)
@@ -36,6 +36,9 @@ Instead of animals standing by to let you kill them, they will run from the play
 
 ### Spawn Points --> Check Points
 Being able to set your spawn anywhere is very powerful, so whatever sets your spawn in this game should be a pre-existing immovable structure, or a one-time-use consumable.
+
+### No Unbreakable Tools
+In Minecraft, a tool is an investment you can make. You can enchant the tool, rename it, make it your own; there's an incentive to make it last forever with the use of mending. In Cubyz though, you are not creating an investment, but rather a tool to use until it breaks. If a player gets too attached to their tool, then they won't want to make other types of tools, and lower-tier materials will see less use as they will never be used in tool-making.
 
 # Player Engagement
 ### "How would the player feel?"
@@ -89,8 +92,7 @@ If the player is given something to aid them, then it should have an appropriate
 - An accessory that heals the player, but takes away energy or some other resource.
 - Armor that grants a ton of defense, but makes the player slow.
 
-### No Unbreakable Tools
-In Minecraft, a tool is an investment you can make. You can enchant the tool, rename it, make it your own; there's an incentive to make it last forever with the use of mending. In Cubyz though, you are not creating an investment, but rather a tool to use until it breaks. If a player gets too attached to their tool, then they won't want to make other types of tools, and lower-tier materials will see less use as they will never be used in tool-making.
+
 
 # Little Details
 
