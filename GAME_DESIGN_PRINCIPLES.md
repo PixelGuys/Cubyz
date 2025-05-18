@@ -35,7 +35,7 @@ Instead of staying in one place and farming everything, the player should have t
 Instead of animals standing by to let you kill them, they will run from the player, attack back, and use defense mechanisms. This should make hunting and taming much more engaging.
 
 ### Spawn Points --> Check Points
-Being able to set your spawn anywhere is very powerful, so whatever sets your spawn in this game should be a pre-existing immovable structure, or a one-time-use consumable.
+Being able to set your spawn whenever and whereever you want is too powerful, so changing it to not being "whenever" would help prevent meta-game shenanigans that Minecraft beds allow. This can be achieved by making the spawn-point block be some sort of multi-block structure that's hard to move around practically, or something you have to charge before using.
 
 ### No Unbreakable Tools
 In Minecraft, a tool is an investment you can make. You can enchant the tool, rename it, make it your own; there's an incentive to make it last forever with the use of mending. In Cubyz though, you are not creating an investment, but rather a tool to use until it breaks. If a player gets too attached to their tool, then they won't want to make other types of tools, and lower-tier materials will see less use as they will never be used in tool-making.
