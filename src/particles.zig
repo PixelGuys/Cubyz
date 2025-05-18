@@ -125,14 +125,6 @@ pub const ParticleManager = struct {
 		particleTypesSSBO = SSBO.initStatic(ParticleType, ParticleManager.types.items);
 		particleTypesSSBO.bind(14);
 	}
-
-	pub fn update(deltaTime: f64) void {
-		ParticleSystem.update(@floatCast(deltaTime));
-	}
-
-	pub fn render(projectionMatrix: Mat4f, viewMatrix: Mat4f, ambientLight: Vec3f) void {
-		ParticleSystem.render(projectionMatrix, viewMatrix, ambientLight);
-	}
 };
 
 pub const ParticleSystem = struct {

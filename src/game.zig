@@ -1223,5 +1223,5 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	fog.fogHigher = (biome.fogHigher - fog.fogHigher)*t + fog.fogHigher;
 
 	world.?.update();
-	particles.ParticleManager.update(deltaTime);
+	particles.ParticleSystem.update(@floatCast(deltaTime));
 }
