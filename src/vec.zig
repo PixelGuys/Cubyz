@@ -6,17 +6,11 @@ pub const Vec2d = @Vector(2, f64);
 pub const Vec3i = @Vector(3, i32);
 pub const Vec3f = @Vector(3, f32);
 pub const Vec3d = @Vector(3, f64);
-pub const Vec3h = @Vector(3, f16);
 pub const Vec4i = @Vector(4, i32);
 pub const Vec4f = @Vector(4, f32);
 pub const Vec4d = @Vector(4, f64);
-pub const Vec4h = @Vector(4, f16);
 
 pub inline fn combine(pos: Vec3f, w: f32) Vec4f {
-	return .{pos[0], pos[1], pos[2], w};
-}
-
-pub inline fn combineH(pos: Vec3h, w: f16) Vec4h {
 	return .{pos[0], pos[1], pos[2], w};
 }
 
