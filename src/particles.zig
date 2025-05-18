@@ -18,6 +18,8 @@ const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
 const Vec3i = vec.Vec3i;
 
+var seed: u64 = undefined;
+
 var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
 const arenaAllocator = arena.allocator();
 
@@ -135,7 +137,6 @@ pub const ParticleSystem = struct {
 	var particlesLocal: [maxCapacity]ParticleLocal = undefined;
 	// TODO: add different emitters for different types of movements like windy, normal, no collisions and etc.
 	var properties: EmitterProperties = undefined;
-	var seed: u64 = undefined;
 	var previousPlayerPos: Vec3d = undefined;
 
 	var particlesSSBO: SSBO = undefined;
@@ -339,7 +340,7 @@ pub const Emitter = struct {
 	id: []const u8,
 	collides: bool,
 
-	pub fn spawn(self: Emitter, pos: Vec3d,) void {
+	pub fn spawn(self: Emitter, pos: Vec3d) void {
 		const typ = ParticleManager.particleTypeHashmap.get(self.id) orelse 0;
 		const properties = ParticleSystem.properties;
 
@@ -351,35 +352,35 @@ pub const Emitter = struct {
 			switch(self.shapeType) {
 				.point => {
 					particlePos = pos;
-					const speed: Vec3f = @splat(properties.velMin + random.nextFloat(&ParticleSystem.seed)*properties.velMax);
+					const speed: Vec3f = @splat(properties.velMin + random.nextFloat(&seed)*properties.velMax);
 					const dir: Vec3f = switch(self.directionMode) {
 						.direction => self.dir,
-						.scatter => vec.normalize(random.nextFloatVectorSigned(3, &ParticleSystem.seed)),
-						.spread => vec.normalize(random.nextFloatVectorSigned(3, &ParticleSystem.seed)),
+						.scatter => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
+						.spread => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
 					};
 					particleVel = dir*speed;
 				},
 				.sphere => {
-					// this has a non uniform way of distribution, not sure how to fix that
-					const spawnPos: Vec3d = @splat(random.nextDouble(&ParticleSystem.seed)*self.size);
-					const offsetPos: Vec3d = vec.normalize(random.nextDoubleVectorSigned(3, &ParticleSystem.seed));
+					// this has a non uniform way of distribution
+					const spawnPos: Vec3d = @splat(random.nextDouble(&seed)*self.size);
+					const offsetPos: Vec3d = vec.normalize(random.nextDoubleVectorSigned(3, &seed));
 					particlePos = pos + offsetPos*spawnPos;
-					const speed: Vec3f = @splat(properties.velMin + random.nextFloat(&ParticleSystem.seed)*properties.velMax);
+					const speed: Vec3f = @splat(properties.velMin + random.nextFloat(&seed)*properties.velMax);
 					const dir: Vec3f = switch(self.directionMode) {
 						.direction => self.dir,
-						.scatter => vec.normalize(random.nextFloatVectorSigned(3, &ParticleSystem.seed)),
+						.scatter => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
 						.spread => @floatCast(offsetPos),
 					};
 					particleVel = dir*speed;
 				},
 				.cube => {
-					const spawnPos: Vec3d = @splat(random.nextDouble(&ParticleSystem.seed)*self.size);
-					const offsetPos: Vec3d = random.nextDoubleVectorSigned(3, &ParticleSystem.seed);
+					const spawnPos: Vec3d = @splat(random.nextDouble(&seed)*self.size);
+					const offsetPos: Vec3d = random.nextDoubleVectorSigned(3, &seed);
 					particlePos = pos + offsetPos*spawnPos;
-					const speed: Vec3f = @splat(properties.velMin + random.nextFloat(&ParticleSystem.seed)*properties.velMax);
+					const speed: Vec3f = @splat(properties.velMin + random.nextFloat(&seed)*properties.velMax);
 					const dir: Vec3f = switch(self.directionMode) {
 						.direction => self.dir,
-						.scatter => vec.normalize(random.nextFloatVectorSigned(3, &ParticleSystem.seed)),
+						.scatter => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
 						.spread => vec.normalize(@as(Vec3f, @floatCast(offsetPos))),
 					};
 					particleVel = dir*speed;
