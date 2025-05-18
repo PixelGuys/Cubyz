@@ -75,8 +75,8 @@ pub var transparentQuadsDrawn: usize = 0;
 pub fn init() void {
 	lighting.init();
 	pipeline = graphics.Pipeline.init(
-		"assets/cubyz/shaders/chunks/chunk_vertex.vs",
-		"assets/cubyz/shaders/chunks/chunk_fragment.fs",
+		"assets/cubyz/shaders/chunks/chunk_vertex.vert",
+		"assets/cubyz/shaders/chunks/chunk_fragment.frag",
 		"",
 		&uniforms,
 		.{},
@@ -84,8 +84,8 @@ pub fn init() void {
 		.{.attachments = &.{.noBlending}},
 	);
 	transparentPipeline = graphics.Pipeline.init(
-		"assets/cubyz/shaders/chunks/chunk_vertex.vs",
-		"assets/cubyz/shaders/chunks/transparent_fragment.fs",
+		"assets/cubyz/shaders/chunks/chunk_vertex.vert",
+		"assets/cubyz/shaders/chunks/transparent_fragment.frag",
 		"#define transparent\n",
 		&transparentUniforms,
 		.{},
@@ -99,10 +99,10 @@ pub fn init() void {
 			.alphaBlendOp = .add,
 		}}},
 	);
-	commandPipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/chunks/fillIndirectBuffer.glsl", "", &commandUniforms);
+	commandPipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/chunks/fillIndirectBuffer.comp", "", &commandUniforms);
 	occlusionTestPipeline = graphics.Pipeline.init(
-		"assets/cubyz/shaders/chunks/occlusionTestVertex.vs",
-		"assets/cubyz/shaders/chunks/occlusionTestFragment.fs",
+		"assets/cubyz/shaders/chunks/occlusionTestVertex.vert",
+		"assets/cubyz/shaders/chunks/occlusionTestFragment.frag",
 		"",
 		&occlusionTestUniforms,
 		.{},
@@ -728,7 +728,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 	}
 
-	pub fn scheduleLightRefreshAndDecreaseRefCount1(self: *ChunkMesh) void {
+	pub fn scheduleLightRefreshAndDecreaseRefCount(self: *ChunkMesh) void {
 		LightRefreshTask.scheduleAndDecreaseRefCount(self);
 	}
 	const LightRefreshTask = struct {
@@ -873,7 +873,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 
 		for(lightRefreshList.items) |other| {
 			if(other.needsLightRefresh.load(.unordered)) {
-				other.scheduleLightRefreshAndDecreaseRefCount1();
+				other.scheduleLightRefreshAndDecreaseRefCount();
 			} else {
 				other.decreaseRefCount();
 			}
@@ -1213,8 +1213,8 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 		self.mutex.unlock();
 
-		if(oldBlock.entityDataClass()) |class| {
-			class.onBreakClient(.{_x, _y, _z}, self.chunk);
+		if(oldBlock.blockEntity()) |blockEntity| {
+			blockEntity.onBreakClient(.{_x, _y, _z}, self.chunk);
 		}
 
 		var neighborBlocks: [6]Block = undefined;
@@ -1268,8 +1268,8 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		self.chunk.data.setValue(chunk.getIndex(x, y, z), newBlock);
 		self.mutex.unlock();
 
-		if(newBlock.entityDataClass()) |class| {
-			class.onPlaceClient(.{_x, _y, _z}, self.chunk);
+		if(newBlock.blockEntity()) |blockEntity| {
+			blockEntity.onPlaceClient(.{_x, _y, _z}, self.chunk);
 		}
 
 		self.updateBlockLight(x, y, z, newBlock, lightRefreshList);

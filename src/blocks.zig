@@ -16,8 +16,8 @@ const rotation = @import("rotation.zig");
 const RotationMode = rotation.RotationMode;
 const Degrees = rotation.Degrees;
 const Entity = main.server.Entity;
-const entity_data = @import("entity_data.zig");
-const EntityDataClass = entity_data.EntityDataClass;
+const block_entity = @import("block_entity.zig");
+const BlockEntityType = block_entity.BlockEntityType;
 const sbb = main.server.terrain.structure_building_blocks;
 const blueprint = main.blueprint;
 
@@ -54,7 +54,8 @@ var _id: [maxBlockCount][]u8 = undefined;
 var _blockHealth: [maxBlockCount]f32 = undefined;
 var _blockResistance: [maxBlockCount]f32 = undefined;
 
-var _solid: [maxBlockCount]bool = undefined;
+/// Whether you can replace it with another block, mainly used for fluids/gases
+var _replacable: [maxBlockCount]bool = undefined;
 var _selectable: [maxBlockCount]bool = undefined;
 var _blockDrops: [maxBlockCount][]BlockDrop = undefined;
 /// Meaning undegradable parts of trees or other structures can grow through this block.
@@ -76,7 +77,7 @@ var _friction: [maxBlockCount]f32 = undefined;
 
 var _allowOres: [maxBlockCount]bool = undefined;
 var _touchFunction: [maxBlockCount]?*const TouchFunction = undefined;
-var _entityDataClass: [maxBlockCount]?*EntityDataClass = undefined;
+var _blockEntity: [maxBlockCount]?*BlockEntityType = undefined;
 
 var reverseIndices = std.StringHashMap(u16).init(allocator.allocator);
 
@@ -114,7 +115,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
 	_degradable[size] = zon.get(bool, "degradable", false);
 	_selectable[size] = zon.get(bool, "selectable", true);
-	_solid[size] = zon.get(bool, "solid", true);
+	_replacable[size] = zon.get(bool, "replacable", false);
 	_gui[size] = allocator.dupe(u8, zon.get([]const u8, "gui", ""));
 	_transparent[size] = zon.get(bool, "transparent", false);
 	_collide[size] = zon.get(bool, "collide", true);
@@ -124,7 +125,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_friction[size] = zon.get(f32, "friction", 20);
 	_allowOres[size] = zon.get(bool, "allowOres", false);
 	_touchFunction[size] = TouchFunctions.getFunctionPointer(zon.get([]const u8, "touchFunction", ""));
-	_entityDataClass[size] = entity_data.getByID(zon.get(?[]const u8, "entityDataClass", null));
+	_blockEntity[size] = block_entity.getByID(zon.get(?[]const u8, "blockEntity", null));
 
 	const oreProperties = zon.getChild("ore");
 	if(oreProperties != .null) blk: {
@@ -174,7 +175,7 @@ fn registerBlockDrop(typ: u16, zon: ZonElement) void {
 				name = _id[typ];
 			}
 
-			const item = items.getByID(name) orelse continue;
+			const item = items.BaseItemIndex.fromId(name) orelse continue;
 			resultItems.append(.{.item = .{.baseItem = item}, .amount = amount});
 		}
 
@@ -248,6 +249,21 @@ pub fn parseBlock(data: []const u8) Block {
 	}
 }
 
+pub fn getBlockById(idAndData: []const u8) !u16 {
+	const addonNameSeparatorIndex = std.mem.indexOfScalar(u8, idAndData, ':') orelse return error.MissingAddonNameSeparator;
+	const blockIdEndIndex = std.mem.indexOfScalarPos(u8, idAndData, 1 + addonNameSeparatorIndex, ':') orelse idAndData.len;
+	const id = idAndData[0..blockIdEndIndex];
+	return reverseIndices.get(id) orelse return error.NotFound;
+}
+
+pub fn getBlockData(idLikeString: []const u8) !?u16 {
+	const addonNameSeparatorIndex = std.mem.indexOfScalar(u8, idLikeString, ':') orelse return error.MissingAddonNameSeparator;
+	const blockIdEndIndex = std.mem.indexOfScalarPos(u8, idLikeString, 1 + addonNameSeparatorIndex, ':') orelse return null;
+	const dataString = idLikeString[blockIdEndIndex + 1 ..];
+	if(dataString.len == 0) return error.EmptyDataString;
+	return std.fmt.parseInt(u16, dataString, 0) catch return error.InvalidData;
+}
+
 pub fn hasRegistered(id: []const u8) bool {
 	return reverseIndices.contains(id);
 }
@@ -255,6 +271,9 @@ pub fn hasRegistered(id: []const u8) bool {
 pub const Block = packed struct { // MARK: Block
 	typ: u16,
 	data: u16,
+
+	pub const air = Block{.typ = 0, .data = 0};
+
 	pub fn toInt(self: Block) u32 {
 		return @as(u32, self.typ) | @as(u32, self.data) << 16;
 	}
@@ -282,8 +301,9 @@ pub const Block = packed struct { // MARK: Block
 		return _blockResistance[self.typ];
 	}
 
-	pub inline fn solid(self: Block) bool {
-		return _solid[self.typ];
+	/// Whether you can replace it with another block, mainly used for fluids/gases
+	pub inline fn replacable(self: Block) bool {
+		return _replacable[self.typ];
 	}
 
 	pub inline fn selectable(self: Block) bool {
@@ -366,8 +386,8 @@ pub const Block = packed struct { // MARK: Block
 		return _touchFunction[self.typ];
 	}
 
-	pub fn entityDataClass(self: Block) ?*EntityDataClass {
-		return _entityDataClass[self.typ];
+	pub fn blockEntity(self: Block) ?*BlockEntityType {
+		return _blockEntity[self.typ];
 	}
 
 	pub fn canBeChangedInto(self: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) main.rotation.RotationMode.CanBeChangedInto {
@@ -469,7 +489,7 @@ pub const meshes = struct { // MARK: meshes
 	const emptyImage = Image{.width = 1, .height = 1, .imageData = emptyTexture[0..]};
 
 	pub fn init() void {
-		animationComputePipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/animation_pre_processing.glsl", "", &animationUniforms);
+		animationComputePipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/animation_pre_processing.comp", "", &animationUniforms);
 		blockTextureArray = .init();
 		emissionTextureArray = .init();
 		reflectivityAndAbsorptionTextureArray = .init();

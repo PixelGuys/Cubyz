@@ -42,8 +42,8 @@ var uniforms: struct {
 pub fn init() void {
 	ssbo = graphics.SSBO.init();
 	pipeline = graphics.Pipeline.init(
-		"assets/cubyz/shaders/graphics/graph.vs",
-		"assets/cubyz/shaders/graphics/graph.fs",
+		"assets/cubyz/shaders/graphics/graph.vert",
+		"assets/cubyz/shaders/graphics/graph.frag",
 		"",
 		&uniforms,
 		.{.cullMode = .none},
