@@ -1,4 +1,4 @@
-# Cubyz is an Adventure Sandbox Game, not Survival
+# Cubyz is a Sandbox Game, not a Survival Game
 The goal of this project is to create a game about exploration, adventure, and building. There is no looming threat of hunger or monsters; the player should be able to build in peace and choose how they would like to play. 
 
 ### Avoid Unavoidable Threats
