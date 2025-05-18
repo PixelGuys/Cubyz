@@ -136,7 +136,7 @@ pub const ParticleManager = struct {
 };
 
 pub const ParticleSystem = struct {
-	pub const maxCapacity: u32 = 4194304;
+	pub const maxCapacity: u32 = 524288;
 	var particleCount: u32 = 0;
 	var particles: [maxCapacity]Particle = undefined;
 	var particlesLocal: [maxCapacity]ParticleLocal = undefined;
@@ -362,6 +362,7 @@ pub const ParticleSystem = struct {
 };
 
 pub const EmitterProperties = struct {
+	// TODO: move gravity and drag into particle type, and other things into spawn logic which would allow for more flexibility
 	gravity: Vec3f = @splat(0),
 	drag: f32 = 0,
 	velMin: f32 = 0,
