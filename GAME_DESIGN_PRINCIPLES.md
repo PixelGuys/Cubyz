@@ -90,7 +90,7 @@ If the player is given something to aid them, then it should have an appropriate
 - Armor that grants a ton of defense, but makes the player slow.
 
 ### No Unbreakable Tools
-There should be no way to make tool last indefinitely. (WIP)
+In Minecraft, a tool is an investment you can make. You can enchant the tool, rename it, make it your own; there's an incentive to make it last forever with the use of mending. In Cubyz though, you are not creating an investment, but rather a tool to use until it breaks. If a player gets too attached to their tool, then they won't want to make other types of tools, and lower-tier materials will see less use as they will never be used in tool-making.
 
 # Little Details
 
