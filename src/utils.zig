@@ -1911,7 +1911,7 @@ pub fn DenseId(comptime IdType: type) type {
 	std.debug.assert(@typeInfo(IdType) == .int);
 	std.debug.assert(@typeInfo(IdType).int.signedness == .unsigned);
 
-	return enum (IdType) {
+	return enum(IdType) {
 		noValue = std.math.maxInt(IdType),
 		_,
 	};
@@ -1961,7 +1961,7 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 
 			_ = self.dense.swapRemove(denseId);
 			_ = self.denseToSparseIndex.swapRemove(denseId);
-			
+
 			if(denseId != self.dense.items.len) {
 				self.sparseToDenseIndex.items[@intFromEnum(self.denseToSparseIndex.items[denseId])] = @enumFromInt(denseId);
 			}
