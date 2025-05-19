@@ -1,5 +1,5 @@
 .{
-	.tags = .{.stone},
+	.tags = .{.stone, .glacite},
 	.blockHealth = 25,
 	.blockResistance = 1,
 	.drops = .{
@@ -16,8 +16,14 @@
 			},
 			.modifiers = .{
 				.{
-					.id = "fragile",
-					.strength = 0.35,
+					.id = "good_at",
+					.strength = 0.5,
+					.tag = .glacite,
+					.restriction = .{
+						.id = .encased,
+						.tag = .precious,
+						.amount = 2,
+					},
 				},
 			},
 		},

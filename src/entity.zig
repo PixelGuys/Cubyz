@@ -108,10 +108,9 @@ pub const ClientEntityManager = struct {
 		light: c_int,
 		contrast: c_int,
 		ambientLight: c_int,
-		directionalLight: c_int,
 	} = undefined;
 
-	var shader: graphics.Shader = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
+	var pipeline: graphics.Pipeline = undefined; // Entities are sometimes small and sometimes big. Therefor it would mean a lot of work to still use smooth lighting. Therefor the non-smooth shader is used for those.
 	pub var entities: main.utils.VirtualList(ClientEntity, 1 << 20) = undefined;
 	pub var mutex: std.Thread.Mutex = .{};
 	
@@ -119,7 +118,15 @@ pub const ClientEntityManager = struct {
 
 	pub fn init() void {
 		entities = .init();
-		shader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/entity_vertex.vs", "assets/cubyz/shaders/entity_fragment.fs", "", &uniforms);
+		pipeline = graphics.Pipeline.init(
+			"assets/cubyz/shaders/entity_vertex.vs",
+			"assets/cubyz/shaders/entity_fragment.fs",
+			"",
+			&uniforms,
+			.{},
+			.{.depthTest = true},
+			.{.attachments = &.{.alphaBlending}},
+		);
 	}
 
 	pub fn deinit() void {
@@ -127,7 +134,7 @@ pub const ClientEntityManager = struct {
 			ent.deinit(main.globalAllocator);
 		}
 		entities.deinit();
-		shader.deinit();
+		pipeline.deinit();
 	}
 
 	pub fn clear() void {
@@ -182,16 +189,14 @@ pub const ClientEntityManager = struct {
 		}
 	}
 
-	pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, directionalLight: Vec3f, playerPos: Vec3d) void {
+	pub fn render(projMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
 		mutex.lock();
 		defer mutex.unlock();
 		update();
-		shader.bind();
-
+		pipeline.bind(null);
 		c.glBindVertexArray(main.renderer.chunk_meshing.vao);
 		c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 		c.glUniform3fv(uniforms.ambientLight, 1, @ptrCast(&ambientLight));
-		c.glUniform3fv(uniforms.directionalLight, 1, @ptrCast(&directionalLight));
 		c.glUniform1f(uniforms.contrast, 0.12);
 
 		for(entities.items()) |ent| {

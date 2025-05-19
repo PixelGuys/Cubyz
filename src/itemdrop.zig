@@ -542,12 +542,11 @@ pub const ItemDisplayManager = struct { // MARK: ItemDisplayManager
 };
 
 pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
-	var itemShader: graphics.Shader = undefined;
+	var itemPipeline: graphics.Pipeline = undefined;
 	var itemUniforms: struct {
 		projectionMatrix: c_int,
 		modelMatrix: c_int,
 		viewMatrix: c_int,
-		modelPosition: c_int,
 		ambientLight: c_int,
 		modelIndex: c_int,
 		block: c_int,
@@ -584,9 +583,9 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			self.* = ItemVoxelModel{
 				.item = template.item,
 			};
-			if(self.item == .baseItem and self.item.baseItem.block != null and self.item.baseItem.image.imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
+			if(self.item == .baseItem and self.item.baseItem.block() != null and self.item.baseItem.image().imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
 				// Find sizes and free index:
-				var block = blocks.Block{.typ = self.item.baseItem.block.?, .data = 0};
+				var block = blocks.Block{.typ = self.item.baseItem.block().?, .data = 0};
 				block.data = block.mode().naturalStandard;
 				const model = blocks.meshes.model(block).model();
 				var data = main.List(u32).init(main.stackAllocator);
@@ -649,7 +648,15 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	};
 
 	pub fn init() void {
-		itemShader = graphics.Shader.initAndGetUniforms("assets/cubyz/shaders/item_drop.vs", "assets/cubyz/shaders/item_drop.fs", "", &itemUniforms);
+		itemPipeline = graphics.Pipeline.init(
+			"assets/cubyz/shaders/item_drop.vert",
+			"assets/cubyz/shaders/item_drop.frag",
+			"",
+			&itemUniforms,
+			.{},
+			.{.depthTest = true},
+			.{.attachments = &.{.alphaBlending}},
+		);
 		itemModelSSBO = .init();
 		itemModelSSBO.bufferData(i32, &[3]i32{1, 1, 1});
 		itemModelSSBO.bind(2);
@@ -659,7 +666,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	}
 
 	pub fn deinit() void {
-		itemShader.deinit();
+		itemPipeline.deinit();
 		itemModelSSBO.deinit();
 		modelData.deinit();
 		voxelModels.clear();
@@ -677,7 +684,7 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 	}
 
 	fn bindCommonUniforms(projMatrix: Mat4f, viewMatrix: Mat4f, ambientLight: Vec3f) void {
-		itemShader.bind();
+		itemPipeline.bind(null);
 		c.glUniform1f(itemUniforms.reflectionMapSize, main.renderer.reflectionCubeMapSize);
 		c.glUniformMatrix4fv(itemUniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projMatrix));
 		c.glUniform3fv(itemUniforms.ambientLight, 1, @ptrCast(&ambientLight));
@@ -725,8 +732,8 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 
 				var scale: f32 = 0.3;
 				var blockType: u16 = 0;
-				if(item == .baseItem and item.baseItem.block != null and item.baseItem.image.imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
-					blockType = item.baseItem.block.?;
+				if(item == .baseItem and item.baseItem.block() != null and item.baseItem.image().imageData.ptr == graphics.Image.defaultImage.imageData.ptr) {
+					blockType = item.baseItem.block().?;
 					vertices = model.len/2*6;
 				} else {
 					scale = 0.5;
@@ -810,11 +817,11 @@ pub const ItemDropRenderer = struct { // MARK: ItemDropRenderer
 			const model = getModel(item);
 			var vertices: u31 = 36;
 
-			const isBlock: bool = item == .baseItem and item.baseItem.block != null and item.baseItem.image.imageData.ptr == graphics.Image.defaultImage.imageData.ptr;
+			const isBlock: bool = item == .baseItem and item.baseItem.block() != null and item.baseItem.image().imageData.ptr == graphics.Image.defaultImage.imageData.ptr;
 			var scale: f32 = 0;
 			var blockType: u16 = 0;
 			if(isBlock) {
-				blockType = item.baseItem.block.?;
+				blockType = item.baseItem.block().?;
 				vertices = model.len/2*6;
 				scale = 0.3;
 				pos = Vec3d{0.4, 0.55, -0.32};

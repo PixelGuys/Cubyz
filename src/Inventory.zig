@@ -14,6 +14,7 @@ const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
 const Neighbor = main.chunk.Neighbor;
+const BaseItemIndex = main.items.BaseItemIndex;
 
 const Gamemode = main.game.Gamemode;
 
@@ -35,6 +36,13 @@ pub const Sync = struct { // MARK: Sync
 		}
 
 		pub fn deinit() void {
+			reset();
+			commands.deinit();
+			freeIdList.deinit();
+			serverToClientMap.deinit();
+		}
+
+		pub fn reset() void {
 			mutex.lock();
 			while(commands.dequeue()) |cmd| {
 				var reader = utils.BinaryReader.init(&.{});
@@ -43,10 +51,7 @@ pub const Sync = struct { // MARK: Sync
 				};
 			}
 			mutex.unlock();
-			commands.deinit();
 			std.debug.assert(freeIdList.items.len == maxId); // leak
-			freeIdList.deinit();
-			serverToClientMap.deinit();
 		}
 
 		pub fn executeCommand(payload: Command.Payload) void {
@@ -325,7 +330,7 @@ pub const Sync = struct { // MARK: Sync
 					defer main.stackAllocator.free(dest);
 					const hashedName = std.base64.url_safe.Encoder.encode(dest, user.getName().name);
 
-					const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players/{s}.zig.zon", .{main.server.world.?.name, hashedName}) catch unreachable;
+					const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players/{s}.zig.zon", .{main.server.world.?.path, hashedName}) catch unreachable;
 					defer main.stackAllocator.free(path);
 
 					const playerData = main.files.readToZon(main.stackAllocator, path) catch .null;
@@ -993,7 +998,7 @@ pub const Command = struct { // MARK: Command
 	fn canPutIntoWorkbench(source: InventoryAndSlot) bool {
 		if(source.ref().item) |item| {
 			if(item != .baseItem) return false;
-			return item.baseItem.material != null;
+			return item.baseItem.material() != null;
 		}
 		return true;
 	}
@@ -1092,10 +1097,10 @@ pub const Command = struct { // MARK: Command
 				},
 				.recipe => |val| {
 					writer.writeInt(u16, val.resultAmount);
-					writer.writeWithDelimiter(val.resultItem.id, 0);
+					writer.writeWithDelimiter(val.resultItem.id(), 0);
 					for(0..val.sourceItems.len) |i| {
 						writer.writeInt(u16, val.sourceAmounts[i]);
-						writer.writeWithDelimiter(val.sourceItems[i].id, 0);
+						writer.writeWithDelimiter(val.sourceItems[i].id(), 0);
 					}
 				},
 				.blockInventory => |val| {
@@ -1124,13 +1129,12 @@ pub const Command = struct { // MARK: Command
 				.hand => .{.hand = try reader.readInt(u32)},
 				.recipe => .{
 					.recipe = blk: {
-						var itemList = main.List(struct {amount: u16, item: *const main.items.BaseItem}).initCapacity(main.stackAllocator, len);
+						var itemList = main.List(struct {amount: u16, item: BaseItemIndex}).initCapacity(main.stackAllocator, len);
 						defer itemList.deinit();
 						while(reader.remaining.len >= 2) {
 							const resultAmount = try reader.readInt(u16);
 							const itemId = try reader.readUntilDelimiter(0);
-							const resultItem = main.items.getByID(itemId) orelse return error.Invalid;
-							itemList.append(.{.amount = resultAmount, .item = resultItem});
+							itemList.append(.{.amount = resultAmount, .item = BaseItemIndex.fromId(itemId) orelse return error.Invalid});
 						}
 						if(itemList.items.len != len) return error.Invalid;
 						// Find the recipe in our list:
@@ -1864,30 +1868,29 @@ fn update(self: Inventory) void {
 	if(self.type == .workbench) {
 		self._items[self._items.len - 1].deinit();
 		self._items[self._items.len - 1].clear();
-		var availableItems: [25]?*const BaseItem = undefined;
-		var hasAllMandatory: bool = true;
+		var availableItems: [25]?BaseItemIndex = undefined;
+		const slotInfos = self.type.workbench.slotInfos;
 
 		for(0..25) |i| {
 			if(self._items[i].item != null and self._items[i].item.? == .baseItem) {
 				availableItems[i] = self._items[i].item.?.baseItem;
 			} else {
-				if(!self.type.workbench.slotInfos[i].optional and !self.type.workbench.slotInfos[i].disabled)
-					hasAllMandatory = false;
+				if(!slotInfos[i].optional and !slotInfos[i].disabled) {
+					return;
+				}
 				availableItems[i] = null;
 			}
 		}
-		if(hasAllMandatory) {
-			var hash = std.hash.Crc32.init();
-			for(availableItems) |item| {
-				if(item != null) {
-					hash.update(item.?.id);
-				} else {
-					hash.update("none");
-				}
+		var hash = std.hash.Crc32.init();
+		for(availableItems) |item| {
+			if(item != null) {
+				hash.update(item.?.id());
+			} else {
+				hash.update("none");
 			}
-			self._items[self._items.len - 1].item = Item{.tool = Tool.initFromCraftingGrid(availableItems, hash.final(), self.type.workbench)};
-			self._items[self._items.len - 1].amount = 1;
 		}
+		self._items[self._items.len - 1].item = Item{.tool = Tool.initFromCraftingGrid(availableItems, hash.final(), self.type.workbench)};
+		self._items[self._items.len - 1].amount = 1;
 	}
 }
 

@@ -6,11 +6,11 @@ pub const ecs = @import("ecs/ecs.zig");
 
 pub const audio = @import("audio.zig");
 pub const assets = @import("assets.zig");
+pub const block_entity = @import("block_entity.zig");
 pub const blocks = @import("blocks.zig");
 pub const blueprint = @import("blueprint.zig");
 pub const chunk = @import("chunk.zig");
 pub const entity = @import("entity.zig");
-pub const entity_data = @import("entity_data.zig");
 pub const files = @import("files.zig");
 pub const game = @import("game.zig");
 pub const graphics = @import("graphics.zig");
@@ -607,11 +607,14 @@ pub fn main() void { // MARK: main()
 	rotation.init();
 	defer rotation.deinit();
 
-	entity_data.init();
-	defer entity_data.deinit();
+	block_entity.init();
+	defer block_entity.deinit();
 
-	blocks.TouchFunctions.init();
-	defer blocks.TouchFunctions.deinit();
+	blocks.tickFunctions = .init();
+	defer blocks.tickFunctions.deinit();
+
+	blocks.touchFunctions = .init();
+	defer blocks.touchFunctions.deinit();
 
 	models.init();
 	defer models.deinit();
@@ -659,11 +662,6 @@ pub fn main() void { // MARK: main()
 
 	const c = Window.c;
 
-	c.glCullFace(c.GL_BACK);
-	c.glEnable(c.GL_BLEND);
-	c.glEnable(c.GL_DEPTH_CLAMP);
-	c.glDepthFunc(c.GL_LESS);
-	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 	Window.GLFWCallbacks.framebufferSize(undefined, Window.width, Window.height);
 	var lastBeginRendering = std.time.nanoTimestamp();
 
@@ -680,6 +678,9 @@ pub fn main() void { // MARK: main()
 			c.glfwSwapBuffers(Window.window);
 			// Clear may also wait on vsync, so it's done before handling events:
 			gui.windowlist.gpu_performance_measuring.startQuery(.screenbuffer_clear);
+			c.glDepthFunc(c.GL_LESS);
+			c.glDepthMask(c.GL_TRUE);
+			c.glDisable(c.GL_SCISSOR_TEST);
 			c.glClearColor(0.5, 1, 1, 1);
 			c.glClear(c.GL_DEPTH_BUFFER_BIT | c.GL_STENCIL_BUFFER_BIT | c.GL_COLOR_BUFFER_BIT);
 			gui.windowlist.gpu_performance_measuring.stopQuery();
@@ -714,13 +715,9 @@ pub fn main() void { // MARK: main()
 		}
 
 		if(!isHidden) {
-			c.glEnable(c.GL_CULL_FACE);
-			c.glEnable(c.GL_DEPTH_TEST);
 			renderer.render(game.Player.getEyePosBlocking(), deltaTime);
 			// Render the GUI
 			gui.windowlist.gpu_performance_measuring.startQuery(.gui);
-			c.glDisable(c.GL_CULL_FACE);
-			c.glDisable(c.GL_DEPTH_TEST);
 			gui.updateAndRenderGui();
 			gui.windowlist.gpu_performance_measuring.stopQuery();
 		}

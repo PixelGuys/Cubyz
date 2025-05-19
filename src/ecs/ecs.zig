@@ -20,12 +20,15 @@ const ComponentSelection = listToSelection(componentlist);
 var ecsArena: main.heap.NeverFailingArenaAllocator = .init(main.globalAllocator);
 pub var ecsAllocator: main.heap.NeverFailingAllocator = ecsArena.allocator();
 
-var entityTypes: SparseSet(u16, u32) = .{};
+const EntityIndex = main.utils.DenseId(u32);
+const EntityTypeIndex = main.utils.DenseId(u16);
 
-var freeEntityIds: main.ListUnmanaged(u32) = .{};
-pub var componentStorage: listToSparseSets(componentlist, u32) = undefined;
+var entityTypes: SparseSet(EntityTypeIndex, EntityIndex) = .{};
 
-var componentDefaultStorage: listToSparseSets(componentlist, u16) = undefined;
+var freeEntityIds: main.ListUnmanaged(EntityIndex) = .{};
+pub var componentStorage: listToSparseSets(componentlist, EntityIndex) = undefined;
+
+var componentDefaultStorage: listToSparseSets(componentlist, EntityTypeIndex) = undefined;
 var componentBitsetStorage: [main.entity.maxEntityTypeCount]ComponentBitset = undefined;
 
 fn listToSparseSets(comptime list: type, comptime idType: type) type {
@@ -95,14 +98,6 @@ fn listToSelection(comptime list: type) type {
         .is_tuple = false,
 	}});
 }
-
-pub const EntityTypeIndex = struct {
-	index: u16,
-};
-
-pub const EntityIndex = struct {
-	index: u16,
-};
 
 pub fn addComponent(entityType: u16, assetFolder: []const u8, id: []const u8, comptime component: Components, zon: ZonElement) void {
 	const componentType = @field(componentlist, @tagName(component));
