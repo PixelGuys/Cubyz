@@ -1927,6 +1927,12 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 		denseToSparseIndex: main.ListUnmanaged(IdType) = .{},
 		sparseToDenseIndex: main.ListUnmanaged(IdType) = .{},
 
+		pub fn clear(self: *Self) void {
+			self.dense.clearRetainingCapacity();
+			self.denseToSparseIndex.clearRetainingCapacity();
+			self.sparseToDenseIndex.clearRetainingCapacity();
+		}
+
 		pub fn deinit(self: *Self, allocator: NeverFailingAllocator) void {
 			self.dense.deinit(allocator);
 			self.denseToSparseIndex.deinit(allocator);

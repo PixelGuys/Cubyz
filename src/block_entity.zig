@@ -1,7 +1,6 @@
 const std = @import("std");
 
 const main = @import("main.zig");
-const List = main.List;
 const Vec3i = main.vec.Vec3i;
 const Block = main.blocks.Block;
 const Chunk = main.chunk.Chunk;
@@ -11,7 +10,10 @@ const server = main.server;
 const User = server.User;
 const mesh_storage = main.renderer.mesh_storage;
 
-pub const BlockEntityIndex = u32;
+pub const BlockEntityIndex = enum(u32) {
+	noValue = std.math.maxInt(u32),
+	_,
+};
 
 pub const BlockEntityType = struct {
 	id: []const u8,
@@ -77,31 +79,40 @@ pub const EventStatus = enum {
 	ignored,
 };
 
-fn BlockEntityDataStorage(comptime side: enum {client, server}, T: type) type {
+fn BlockEntityDataStorage(T: type) type {
 	return struct {
 		pub const DataT = T;
 		pub const EntryT = struct {
 			absoluteBlockPosition: Vec3i,
 			data: DataT,
 		};
-		var storage: List(EntryT) = undefined;
+		var freeIndexList: main.ListUnmanaged(BlockEntityIndex) = .{};
+		var nextIndex: BlockEntityIndex = @enumFromInt(0);
+		var storage: main.utils.SparseSet(EntryT, BlockEntityIndex) = .{};
 		pub var mutex: std.Thread.Mutex = .{};
 
 		pub fn init() void {
-			storage = .init(main.globalAllocator);
+			storage = .{};
+			freeIndexList = .{};
 		}
 		pub fn deinit() void {
-			storage.deinit();
+			storage.deinit(main.globalAllocator);
+			freeIndexList.deinit(main.globalAllocator);
+			nextIndex = @enumFromInt(0);
 		}
 		pub fn reset() void {
-			storage.clearRetainingCapacity();
+			storage.clear();
+			freeIndexList.clearRetainingCapacity();
 		}
 		pub fn add(pos: Vec3i, value: DataT, chunk: *Chunk) void {
 			mutex.lock();
 			defer mutex.unlock();
 
-			const dataIndex = storage.items.len;
-			storage.append(.{.absoluteBlockPosition = pos, .data = value});
+			const dataIndex: BlockEntityIndex = freeIndexList.popOrNull() orelse blk: {
+				defer nextIndex = @enumFromInt(@intFromEnum(nextIndex) + 1);
+				break :blk nextIndex;
+			};
+			storage.set(main.globalAllocator, dataIndex, value);
 
 			const blockIndex = chunk.getLocalBlockIndex(pos);
 
@@ -120,41 +131,15 @@ fn BlockEntityDataStorage(comptime side: enum {client, server}, T: type) type {
 			chunk.blockPosToEntityDataMapMutex.unlock();
 
 			const entry = entityNullable orelse {
-				std.log.warn("Couldn't remove entity data of block at position {}", .{pos});
+				std.log.err("Couldn't remove entity data of block at position {}", .{pos});
 				return;
 			};
 
 			const dataIndex = entry.value;
-			_ = storage.swapRemove(dataIndex);
-			if(dataIndex == storage.items.len) {
-				return;
-			}
-
-			const movedEntry = storage.items[dataIndex];
-			switch(side) {
-				.server => propagateRemoveServer(movedEntry.absoluteBlockPosition, dataIndex),
-				.client => propagateRemoveClient(movedEntry.absoluteBlockPosition, dataIndex),
-			}
-		}
-		fn propagateRemoveServer(pos: Vec3i, index: BlockEntityIndex) void {
-			const severChunk = server.world.?.getChunkFromCacheAndIncreaseRefCount(ChunkPosition.initFromWorldPos(pos, 1)).?;
-			defer severChunk.decreaseRefCount();
-
-			severChunk.super.blockPosToEntityDataMapMutex.lock();
-			defer severChunk.super.blockPosToEntityDataMapMutex.unlock();
-
-			const otherDataIndex = severChunk.super.getLocalBlockIndex(pos);
-			severChunk.super.blockPosToEntityDataMap.put(main.globalAllocator.allocator, otherDataIndex, index) catch unreachable;
-		}
-		fn propagateRemoveClient(pos: Vec3i, index: BlockEntityIndex) void {
-			const mesh = mesh_storage.getMeshAndIncreaseRefCount(ChunkPosition.initFromWorldPos(pos, 1)).?;
-			defer mesh.decreaseRefCount();
-
-			mesh.chunk.blockPosToEntityDataMapMutex.lock();
-			defer mesh.chunk.blockPosToEntityDataMapMutex.unlock();
-
-			const otherDataIndex = mesh.chunk.getLocalBlockIndex(pos);
-			mesh.chunk.blockPosToEntityDataMap.put(main.globalAllocator.allocator, otherDataIndex, index) catch unreachable;
+			freeIndexList.append(main.globalAllocator, dataIndex);
+			storage.remove(dataIndex) catch |err| {
+				std.log.err("Error while remvoing block entity at position {}: {s}", .{pos, @errorName(err)});
+			};
 		}
 		pub fn get(pos: Vec3i, chunk: *Chunk) ?*DataT {
 			main.utils.assertLocked(&mutex);
@@ -176,7 +161,6 @@ fn BlockEntityDataStorage(comptime side: enum {client, server}, T: type) type {
 pub const BlockEntityTypes = struct {
 	pub const Chest = struct {
 		const StorageServer = BlockEntityDataStorage(
-			.server,
 			struct {
 				id: ?u32,
 			},
