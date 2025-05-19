@@ -15,7 +15,7 @@ In order to progress in the game, the player must take risks. The player is othe
 **Examples:**
 - The deeper the player goes into the world's caves, the more valuables they can find, but consequentially, the more monsters they'll come across.
 - The player must defeat an enemy, boss, or event to obtain an item that helps them progress.
-- In a multiplayer world, a player might have to attack an enemy player to rise up in power.
+- In a multiplayer world, a player could attack an enemy player to rise up in power.
 
 # Break the Cycle
 ### No Dimensions
