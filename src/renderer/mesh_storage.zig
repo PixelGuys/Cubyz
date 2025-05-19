@@ -16,7 +16,7 @@ const Vec3f = vec.Vec3f;
 const Vec3d = vec.Vec3d;
 const Vec4f = vec.Vec4f;
 const Mat4f = vec.Mat4f;
-const EventStatus = main.entity_data.EventStatus;
+const EventStatus = main.block_entity.EventStatus;
 
 const chunk_meshing = @import("chunk_meshing.zig");
 const ChunkMesh = chunk_meshing.ChunkMesh;
@@ -188,8 +188,8 @@ pub fn triggerOnInteractBlock(x: i32, y: i32, z: i32) EventStatus {
 	defer node.mutex.unlock();
 	const mesh = node.mesh orelse return .ignored;
 	const block = mesh.chunk.getBlock(x & chunk.chunkMask, y & chunk.chunkMask, z & chunk.chunkMask);
-	if(block.entityDataClass()) |class| {
-		return class.onInteract(.{x, y, z}, mesh.chunk);
+	if(block.blockEntity()) |blockEntity| {
+		return blockEntity.onInteract(.{x, y, z}, mesh.chunk);
 	}
 	// Event was not handled.
 	return .ignored;
