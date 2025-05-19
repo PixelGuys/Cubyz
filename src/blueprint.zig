@@ -351,16 +351,14 @@ pub const Pattern = struct {
 
 			if(std.mem.containsAtLeastScalar(u8, specifier, 1, weightSeparator)) {
 				var iterator = std.mem.splitScalar(u8, specifier, weightSeparator);
-				const weightString = iterator.next() orelse return error.MissingWeight;
-				blockId = iterator.next() orelse return error.MissingBlockId;
+				const weightString = iterator.first();
+				blockId = iterator.rest();
 
-				if(iterator.next() != null) return error.TooManyElements;
-
-				weight = std.fmt.parseFloat(f32, weightString) catch return error.InvalidWeight;
-				if(weight <= 0) continue;
+				weight = std.fmt.parseFloat(f32, weightString) catch return error.@"Weight not a valid number";
+				if(weight <= 0) return error.@"Weight must be >= 0";
 			}
 
-			_ = main.blocks.getBlockById(blockId) catch return error.InvalidBlockId;
+			_ = main.blocks.getBlockById(blockId) catch return error.@"Block not found";
 			const block = main.blocks.parseBlock(blockId);
 
 			totalWeight += weight;
