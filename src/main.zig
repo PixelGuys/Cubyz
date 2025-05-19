@@ -5,11 +5,11 @@ pub const server = @import("server/server.zig");
 
 pub const audio = @import("audio.zig");
 pub const assets = @import("assets.zig");
+pub const block_entity = @import("block_entity.zig");
 pub const blocks = @import("blocks.zig");
 pub const blueprint = @import("blueprint.zig");
 pub const chunk = @import("chunk.zig");
 pub const entity = @import("entity.zig");
-pub const entity_data = @import("entity_data.zig");
 pub const files = @import("files.zig");
 pub const game = @import("game.zig");
 pub const graphics = @import("graphics.zig");
@@ -606,8 +606,8 @@ pub fn main() void { // MARK: main()
 	rotation.init();
 	defer rotation.deinit();
 
-	entity_data.init();
-	defer entity_data.deinit();
+	block_entity.init();
+	defer block_entity.deinit();
 
 	blocks.tickFunctions = .init();
 	defer blocks.tickFunctions.deinit();

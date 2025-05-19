@@ -570,7 +570,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.biomePalette.deinit();
 		self.wio.deinit();
 		main.globalAllocator.free(self.path);
-		//main.globalAllocator.free(self.name);
+		main.globalAllocator.free(self.name);
 		main.globalAllocator.destroy(self);
 	}
 
@@ -1070,11 +1070,11 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				return currentBlock;
 			}
 			if(currentBlock != _newBlock) {
-				if(currentBlock.entityDataClass()) |class| class.onBreakServer(.{wx, wy, wz}, &baseChunk.super);
+				if(currentBlock.blockEntity()) |blockEntity| blockEntity.onBreakServer(.{wx, wy, wz}, &baseChunk.super);
 			}
 			baseChunk.updateBlockAndSetChanged(x, y, z, _newBlock);
 			if(currentBlock != _newBlock) {
-				if(_newBlock.entityDataClass()) |class| class.onPlaceServer(.{wx, wy, wz}, &baseChunk.super);
+				if(_newBlock.blockEntity()) |blockEntity| blockEntity.onPlaceServer(.{wx, wy, wz}, &baseChunk.super);
 			}
 		}
 		baseChunk.mutex.unlock();

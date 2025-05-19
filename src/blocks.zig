@@ -19,8 +19,8 @@ const rotation = @import("rotation.zig");
 const RotationMode = rotation.RotationMode;
 const Degrees = rotation.Degrees;
 const Entity = main.server.Entity;
-const entity_data = @import("entity_data.zig");
-const EntityDataClass = entity_data.EntityDataClass;
+const block_entity = @import("block_entity.zig");
+const BlockEntityType = block_entity.BlockEntityType;
 const sbb = main.server.terrain.structure_building_blocks;
 const blueprint = main.blueprint;
 
@@ -81,7 +81,7 @@ var _friction: [maxBlockCount]f32 = undefined;
 var _allowOres: [maxBlockCount]bool = undefined;
 var _tickEvent: [maxBlockCount]?TickEvent = undefined;
 var _touchFunction: [maxBlockCount]?*const TouchFunction = undefined;
-var _entityDataClass: [maxBlockCount]?*EntityDataClass = undefined;
+var _blockEntity: [maxBlockCount]?*BlockEntityType = undefined;
 
 var reverseIndices = std.StringHashMap(u16).init(allocator.allocator);
 
@@ -138,7 +138,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 		break :blk _function;
 	} else null;
 
-	_entityDataClass[size] = entity_data.getByID(zon.get(?[]const u8, "entityDataClass", null));
+	_blockEntity[size] = block_entity.getByID(zon.get(?[]const u8, "blockEntity", null));
 
 	const oreProperties = zon.getChild("ore");
 	if(oreProperties != .null) blk: {
@@ -188,7 +188,7 @@ fn registerBlockDrop(typ: u16, zon: ZonElement) void {
 				name = _id[typ];
 			}
 
-			const item = items.getByID(name) orelse continue;
+			const item = items.BaseItemIndex.fromId(name) orelse continue;
 			resultItems.append(.{.item = .{.baseItem = item}, .amount = amount});
 		}
 
@@ -403,8 +403,8 @@ pub const Block = packed struct { // MARK: Block
 		return _touchFunction[self.typ];
 	}
 
-	pub fn entityDataClass(self: Block) ?*EntityDataClass {
-		return _entityDataClass[self.typ];
+	pub fn blockEntity(self: Block) ?*BlockEntityType {
+		return _blockEntity[self.typ];
 	}
 
 	pub fn canBeChangedInto(self: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) main.rotation.RotationMode.CanBeChangedInto {
