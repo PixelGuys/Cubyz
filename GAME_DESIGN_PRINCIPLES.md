@@ -8,6 +8,7 @@ A player should have to create or approach a threat on their own terms, rather t
 - A player will not be attacked by monsters at night. They have to actively approach a monster-infested place such as a structure or cave. This is so they have free reign to do activites during the night without being interrupted or frustrated.
 - A player has lost much health, and must risk what little life they have left to gather food. Note that the player cannot heal unless they have an accessory that consumes their energy. This is a situation the player has to face because of their own skill level.
 - A player summons an event that spawns waves of enemies to their base.
+- A player might want to claim a naturally generated structure, but will have to cull the area of monsters to claim it. Make note that monsters do not respawn.
 
 ### Progression = Risk
 In order to progress in the game, the player must take risks. The player is otherwise free to stay where they are in terms of progression.
@@ -20,7 +21,7 @@ In order to progress in the game, the player must take risks. The player is othe
 # Break the Cycle
 ### No Dimensions
 Instead of creating seperate dimensions, we can fit these places physically into Cubyz' massive world to allow the player to come across them on their own.
-"Dimensions" such as an underworld and an overworld are already planned for the game.
+"Dimensions" such as The Root and Sky Islands are already planned for the game.
 
 ### No Teleportation
 To immerse the player and let them feel the sense of scale the world of Cubyz has, teleportation is not allowed, as the player will see less of the world that way.
@@ -28,8 +29,8 @@ To immerse the player and let them feel the sense of scale the world of Cubyz ha
 ### No Automation
 Instead of staying in one place and farming everything, the player should have to take advantage of the infinite nature of the world to gain resources, meaning that a majority of resources are non-renewable.
 
-### No Generic Creatures
-(WIP)
+### Mobs Don't Respawn
+To prevent farming, mobs will not respawn once killed. 
 
 ### No Passive Animals
 Instead of animals standing by to let you kill them, they will run from the player, attack back, and use defense mechanisms. This should make hunting and taming much more engaging.
@@ -87,9 +88,7 @@ If the player is given something to aid them, then it should have an appropriate
 **Examples:**
 - Using rare resources to create a strong tool.
 - An accessory that heals the player, but takes away energy or some other resource.
-- Armor that grants a ton of defense, but makes the player slow.
-
-
+- Creating a weapon that has a damage type that is strong against some enemies, and weak against others.
 
 # Little Details
 
