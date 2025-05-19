@@ -1,0 +1,8 @@
+.{
+	.components = .{
+		.@"cubyz:server_entity" = .{
+			.maxHealth = 8,
+			.maxEnergy = 8,
+		},
+	},
+}
