@@ -34,9 +34,6 @@ Instead of staying in one place and farming everything, the player should have t
 ### No Passive Animals
 Instead of animals standing by to let you kill them, they will run from the player, attack back, and use defense mechanisms. This should make hunting and taming much more engaging.
 
-### Spawn Points
-Being able to set your spawn whenever and whereever you want is too powerful, so changing it to not being "whenever" would help prevent meta-game shenanigans that Minecraft beds allow, such as greifers hiding their spawn near your base, or them deleting your bed, sending you right back to world spawn.
-
 ### No Unbreakable Tools
 In Minecraft, a tool is an investment you can make. You can enchant the tool, rename it, make it your own; there's an incentive to make it last forever with the use of mending. In Cubyz though, you are not creating an investment, but rather a tool to use until it breaks. If a player gets too attached to their tool, then they won't want to make other types of tools, and lower-tier materials will see less use as they will never be used in tool-making.
 
