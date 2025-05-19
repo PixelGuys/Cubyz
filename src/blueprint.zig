@@ -350,7 +350,7 @@ pub const Pattern = struct {
 			var weight: f32 = 1.0;
 
 			if(std.mem.containsAtLeastScalar(u8, specifier, 1, weightSeparator)) {
-				var iterator = std.mem.splitScalar(u8, specifier, '%');
+				var iterator = std.mem.splitScalar(u8, specifier, weightSeparator);
 				const weightString = iterator.next() orelse return error.MissingWeight;
 				blockId = iterator.next() orelse return error.MissingBlockId;
 
