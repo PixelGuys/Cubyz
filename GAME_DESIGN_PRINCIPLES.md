@@ -30,7 +30,7 @@ To immerse the player and let them feel the sense of scale the world of Cubyz ha
 Instead of staying in one place and farming everything, the player should have to take advantage of the infinite nature of the world to gain resources, meaning that a majority of resources are non-renewable.
 
 ### Mobs Don't Respawn
-To prevent farming, mobs will not respawn once killed. 
+To prevent farming, mobs will not respawn once killed. This will also make the player more aware that killing has long-term consequences in the area it occurs in.
 
 ### No Passive Animals
 Instead of animals standing by to let you kill them, they will run from the player, attack back, and use defense mechanisms. This should make hunting and taming much more engaging.
