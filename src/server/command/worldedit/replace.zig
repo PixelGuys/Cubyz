@@ -9,8 +9,8 @@ const Blueprint = main.blueprint.Blueprint;
 const Pattern = main.blueprint.Pattern;
 const Mask = main.blueprint.Mask;
 
-pub const description = "Replace all blocks matching <old> mask expression with blocks from <new> block pattern.";
-pub const usage = "/replace <old> <new>";
+pub const description = "Replace blocks in the worldedit selection box.";
+pub const usage = "/replace <old mask> <new pattern>";
 
 pub fn execute(args: []const u8, source: *User) void {
 	var argsSplit = std.mem.splitScalar(u8, args, ' ');
