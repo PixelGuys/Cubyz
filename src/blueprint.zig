@@ -315,13 +315,13 @@ pub const Blueprint = struct {
 			},
 		}
 	}
-	pub fn replace(self: *Blueprint, oldBlocks: ?Mask, newBlocks: Pattern, mask: ?Mask) void {
+	pub fn replace(self: *Blueprint, whitelist: ?Mask, blacklist: ?Mask, newBlocks: Pattern) void {
 		for(0..self.blocks.width) |x| {
 			for(0..self.blocks.depth) |y| {
 				for(0..self.blocks.height) |z| {
 					const current = self.blocks.get(x, y, z);
-					if(oldBlocks) |m| if(!m.match(current)) continue;
-					if(mask) |m| if(m.match(current)) continue;
+					if(whitelist) |m| if(!m.match(current)) continue;
+					if(blacklist) |m| if(m.match(current)) continue;
 					self.blocks.set(x, y, z, newBlocks.blocks.sample(&main.seed).block);
 				}
 			}

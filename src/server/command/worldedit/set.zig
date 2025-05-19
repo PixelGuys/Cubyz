@@ -41,7 +41,7 @@ pub fn execute(args: []const u8, source: *User) void {
 			var modifiedBlueprint = blueprint.clone(main.stackAllocator);
 			defer modifiedBlueprint.deinit(main.stackAllocator);
 
-			modifiedBlueprint.replace(null, pattern, source.worldEditData.mask);
+			modifiedBlueprint.replace(null, source.worldEditData.mask, pattern);
 			modifiedBlueprint.paste(posStart, .{.preserveVoid = true});
 		},
 		.failure => |err| {
