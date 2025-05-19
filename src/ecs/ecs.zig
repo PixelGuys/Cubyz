@@ -29,9 +29,9 @@ var componentDefaultStorage: listToSparseSets(componentlist, u16) = undefined;
 var componentBitsetStorage: [main.entity.maxEntityTypeCount]ComponentBitset = undefined;
 
 fn listToSparseSets(comptime list: type, comptime idType: type) type {
-	var outFields: [@typeInfo(list).@"struct".decls.len]std.builtin.Type.StructField = undefined;
+	var outFields: [std.meta.declarations(list).len]std.builtin.Type.StructField = undefined;
 
-	for (@typeInfo(list).@"struct".decls, 0..) |decl, i| {
+	for (std.meta.declarations(list), 0..) |decl, i| {
 		const name = decl.name;
 		const typ = @field(list, name);
 		outFields[i] = .{
@@ -52,9 +52,9 @@ fn listToSparseSets(comptime list: type, comptime idType: type) type {
 }
 
 fn listToBitset(comptime list: type) type {
-	var outFields: [@typeInfo(list).@"struct".decls.len]std.builtin.Type.StructField = undefined;
+	var outFields: [std.meta.declarations(list).len]std.builtin.Type.StructField = undefined;
 
-	for (@typeInfo(list).@"struct".decls, 0..) |decl, i| {
+	for (std.meta.declarations(list), 0..) |decl, i| {
 		const name = decl.name;
 		outFields[i] = .{
 			.name = name,
@@ -74,10 +74,10 @@ fn listToBitset(comptime list: type) type {
 }
 
 fn listToSelection(comptime list: type) type {
-	var outFields: [@typeInfo(list).@"struct".decls.len]std.builtin.Type.StructField = undefined;
+	var outFields: [std.meta.declarations(list).len]std.builtin.Type.StructField = undefined;
 	const defaultSelection: ?bool = null;
 
-	for (@typeInfo(list).@"struct".decls, 0..) |decl, i| {
+	for (std.meta.declarations(list), 0..) |decl, i| {
 		const name = decl.name;
 		outFields[i] = .{
 			.name = name,
