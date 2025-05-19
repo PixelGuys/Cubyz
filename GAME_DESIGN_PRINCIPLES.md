@@ -58,7 +58,7 @@ For example, in the "Pre-Caves Age," the player will not have access to coal, as
 - Find an above-ground structure that can grant the player coal.
 - Dig straight down until you find coal.
 
-Of course, this problem is completely solved as soon as the player gets coal, as they can now explore caves to find more coal with their newfound torches, but it's important that the player has these options in the first place so they can have more freedom. Not one option is better or easier than the other, and if one turns out to be, then it should be allowed to be adjusted to encourage other methods.
+Of course, this problem is completely solved as soon as the player gets coal, as they can now explore caves to find more coal with their newfound torches, but it's important that the player has these options in the first place to prevent them from getting stuck on a seemingly insurmountable barrier. This also gives them more freedom in how they can approach the game. Not one option is better or easier than the other, and if one turns out to be, then it should be allowed to be adjusted to encourage other methods.
 
 ### Explain when Needed
 If something progress-related has no obvious explanation, the player will have to rely on a wiki to find out how to progress. One example is the bellows; players won't know to place it next to a furnace and jump on it repeatedly. The issue can be fixed by adding a tooltip that tells them how it works, while leaving out details they can intuitively find out themselves.
