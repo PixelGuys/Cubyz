@@ -355,7 +355,7 @@ pub const Pattern = struct {
 				blockId = iterator.rest();
 
 				weight = std.fmt.parseFloat(f32, weightString) catch return error.@"Weight not a valid number";
-				if(weight <= 0) return error.@"Weight must be >= 0";
+				if(weight <= 0) return error.@"Weight must be greater than 0";
 			}
 
 			_ = main.blocks.getBlockById(blockId) catch return error.@"Block not found";
