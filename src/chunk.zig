@@ -293,13 +293,13 @@ pub const Chunk = struct { // MARK: Chunk
 			const entityDataIndex = elem.value_ptr.*;
 			const block = self.data.getValue(index);
 			const blockEntity = block.blockEntity() orelse unreachable;
-			switch (side) {
+			switch(side) {
 				.client => {
 					blockEntity.onUnloadClient(entityDataIndex);
 				},
 				.server => {
 					blockEntity.onUnloadServer(entityDataIndex);
-				}
+				},
 			}
 		}
 		self.blockPosToEntityDataMap.clearRetainingCapacity();
