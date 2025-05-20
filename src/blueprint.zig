@@ -315,12 +315,14 @@ pub const Blueprint = struct {
 			},
 		}
 	}
-	pub fn set(self: *Blueprint, pattern: Pattern, mask: ?Mask) void {
+	pub fn replace(self: *Blueprint, whitelist: ?Mask, blacklist: ?Mask, newBlocks: Pattern) void {
 		for(0..self.blocks.width) |x| {
 			for(0..self.blocks.depth) |y| {
 				for(0..self.blocks.height) |z| {
-					if(mask) |_mask| if(_mask.match(self.blocks.get(x, y, z))) continue;
-					self.blocks.set(x, y, z, pattern.blocks.sample(&main.seed).block);
+					const current = self.blocks.get(x, y, z);
+					if(whitelist) |m| if(!m.match(current)) continue;
+					if(blacklist) |m| if(m.match(current)) continue;
+					self.blocks.set(x, y, z, newBlocks.blocks.sample(&main.seed).block);
 				}
 			}
 		}
@@ -328,6 +330,9 @@ pub const Blueprint = struct {
 };
 
 pub const Pattern = struct {
+	const weightSeparator = '%';
+	const expressionSeparator = ',';
+
 	blocks: AliasTable(Entry),
 
 	const Entry = struct {
@@ -336,26 +341,28 @@ pub const Pattern = struct {
 	};
 
 	pub fn initFromString(allocator: NeverFailingAllocator, source: []const u8) !@This() {
-		var specifiers = std.mem.splitScalar(u8, source, ',');
+		var specifiers = std.mem.splitScalar(u8, source, expressionSeparator);
 		var totalWeight: f32 = 0;
 
 		var weightedEntries: ListUnmanaged(struct {block: Block, weight: f32}) = .{};
 		defer weightedEntries.deinit(main.stackAllocator);
 
 		while(specifiers.next()) |specifier| {
-			var iterator = std.mem.splitScalar(u8, specifier, '%');
+			var blockId = specifier;
+			var weight: f32 = 1.0;
 
-			var weight: f32 = undefined;
-			var block = main.blocks.parseBlock(iterator.rest());
+			if(std.mem.containsAtLeastScalar(u8, specifier, 1, weightSeparator)) {
+				var iterator = std.mem.splitScalar(u8, specifier, weightSeparator);
+				const weightString = iterator.first();
+				blockId = iterator.rest();
 
-			const first = iterator.first();
+				weight = std.fmt.parseFloat(f32, weightString) catch return error.@"Weight not a valid number";
+				if(weight <= 0) return error.@"Weight must be greater than 0";
+			}
 
-			weight = std.fmt.parseFloat(f32, first) catch blk: {
-				// To distinguish somehow between mistyped numeric values and actual block IDs we check for addon name separator.
-				if(!std.mem.containsAtLeastScalar(u8, first, 1, ':')) return error.PatternSyntaxError;
-				block = main.blocks.parseBlock(first);
-				break :blk 1.0;
-			};
+			_ = main.blocks.getBlockById(blockId) catch return error.@"Block not found";
+			const block = main.blocks.parseBlock(blockId);
+
 			totalWeight += weight;
 			weightedEntries.append(main.stackAllocator, .{.block = block, .weight = weight});
 		}
