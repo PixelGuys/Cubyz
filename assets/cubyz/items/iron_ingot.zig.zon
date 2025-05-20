@@ -3,7 +3,7 @@
 	.texture = "iron_ingot.png",
 	.material = .{
 		.density = 7.5,
-		.elasticity = 5.0,
+		.elasticity = 8.0,
 		.hardness = 5.0,
 		.textureRoughness = 0.1,
 		.colors = .{
