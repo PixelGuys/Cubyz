@@ -23,7 +23,7 @@ pub fn execute(args: []const u8, source: *User) void {
 		return source.sendMessage("#ff0000Position 2 isn't set", .{});
 	};
 	const pattern = Pattern.initFromString(main.stackAllocator, args) catch |err| {
-		source.sendMessage("#ff0000Error parsing pattern: {}", .{err});
+		source.sendMessage("#ff0000Error parsing pattern: {s}", .{@errorName(err)});
 		return;
 	};
 	defer pattern.deinit(main.stackAllocator);
