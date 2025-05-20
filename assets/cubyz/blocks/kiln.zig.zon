@@ -11,5 +11,5 @@
 	.texture_left = "cubyz:kiln/side",
 	.texture_right = "cubyz:kiln/side",
 	.texture_top = "cubyz:kiln/top",
-	.texture_bottom = "cubyz:kiln/back",
+	.texture_bottom = "cubyz:kiln/bottom",
 }
