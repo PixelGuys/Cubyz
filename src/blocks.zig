@@ -414,23 +414,45 @@ pub const Block = packed struct { // MARK: Block
 
 // MARK: Tick
 pub var tickFunctions: utils.NamedCallbacks(TickFunctions, TickFunction) = undefined;
-pub const TickFunction = fn(block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void;
+pub const TickFunction = fn(block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32, _param: ?*anyopaque) void;
 pub const TickFunctions = struct {
-	pub fn replaceWithCobble(block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void {
-		std.log.debug("Replace with cobblestone at ({d},{d},{d})", .{x, y, z});
-		const cobblestone = parseBlock("cubyz:cobblestone");
+	pub const FunctionName = enum {
+		null,
+		replaceWith,
+	};
+
+	inline fn castToArgs(comptime Args: type, param: *anyopaque) *Args {
+		return @ptrCast(@alignCast(param));
+	}
+
+	const ReplaceWithArgs = struct {
+		block: []const u8,
+
+		pub fn init(blockName: []const u8) *ReplaceWithArgs {
+			const self = allocator.create(ReplaceWithArgs);
+			self.* = .{.block = allocator.dupe(u8, blockName)};
+			return self;
+		}
+	};
+
+	pub fn replaceWith(block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32, _param: ?*anyopaque) void {
+		const replacementBlock = if(_param) |param| blk: {
+			const replaceArgs = castToArgs(ReplaceWithArgs, param);
+			break :blk parseBlock(replaceArgs.block);
+		} else Block.air;
 
 		const wx = _chunk.super.pos.wx + x;
 		const wy = _chunk.super.pos.wy + y;
 		const wz = _chunk.super.pos.wz + z;
 
-		_ = main.server.world.?.cmpxchgBlock(wx, wy, wz, block, cobblestone);
+		_ = main.server.world.?.cmpxchgBlock(wx, wy, wz, block, replacementBlock);
 	}
 };
 
 pub const TickEvent = struct {
 	function: *const TickFunction,
 	chance: f32,
+	param: ?*anyopaque,
 
 	pub fn loadFromZon(zon: ZonElement) ?TickEvent {
 		const functionName = zon.get(?[]const u8, "name", null) orelse return null;
@@ -440,12 +462,24 @@ pub const TickEvent = struct {
 			return null;
 		};
 
-		return TickEvent{.function = function, .chance = zon.get(f32, "chance", 1)};
+		const functionEnum = std.meta.stringToEnum(TickFunctions.FunctionName, functionName) orelse TickFunctions.FunctionName.null;
+		var param: ?*anyopaque = null;
+		switch(functionEnum) {
+			.replaceWith => {
+				if(zon.get(?[]const u8, "block", null)) |newBlockName| {
+					const args: *TickFunctions.ReplaceWithArgs = .init(newBlockName);
+					param = @ptrCast(args);
+				}
+			},
+			else => {},
+		}
+
+		return TickEvent{.function = function, .chance = zon.get(f32, "chance", 1), .param = param};
 	}
 
 	pub fn tryRandomTick(self: *const TickEvent, block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void {
 		if(self.chance >= 1.0 or main.random.nextFloat(&main.seed) < self.chance) {
-			self.function(block, _chunk, x, y, z);
+			self.function(block, _chunk, x, y, z, self.param);
 		}
 	}
 };
