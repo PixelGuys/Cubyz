@@ -6,6 +6,8 @@ const BaseItem = items.BaseItem;
 const Inventory = items.Inventory;
 const Item = items.Item;
 const Tool = items.Tool;
+const ToolType = items.ToolType;
+const ToolTypeIndex = items.ToolTypeIndex;
 const Player = main.game.Player;
 const Texture = main.graphics.Texture;
 const Vec2f = main.vec.Vec2f;
@@ -39,7 +41,7 @@ var craftingResult: *ItemSlot = undefined;
 
 var itemSlots: [25]*ItemSlot = undefined;
 
-var toolTypes: main.ListUnmanaged(*const main.items.ToolType) = .{};
+var toolTypes: []ToolType = undefined;
 var currentToolType: usize = 0;
 
 var toolButton: *Button = undefined;
@@ -48,13 +50,13 @@ var needsUpdate: bool = false;
 
 fn toggleTool(_: usize) void {
 	currentToolType += 1;
-	currentToolType %= toolTypes.items.len;
-	toolButton.child.label.updateText(toolTypes.items[currentToolType].id);
+	currentToolType %= toolTypes.len;
+	toolButton.child.label.updateText(toolTypes[currentToolType].id);
 	needsUpdate = true;
 }
 
 fn openInventory() void {
-	inv = Inventory.init(main.globalAllocator, 26, .{.workbench = toolTypes.items[currentToolType]}, .other);
+	inv = Inventory.init(main.globalAllocator, 26, .{.workbench = .{.index = @intCast(currentToolType)}}, .other);
 	const list = HorizontalList.init();
 	{ // crafting grid
 		const grid = VerticalList.init(.{0, 0}, 300, 0);
@@ -63,7 +65,7 @@ fn openInventory() void {
 			const row = HorizontalList.init();
 			for(0..5) |x| {
 				const index = x + y*5;
-				const slotInfo = toolTypes.items[currentToolType].slotInfos[index];
+				const slotInfo = toolTypes[currentToolType].slotInfos[index];
 				const slot = ItemSlot.init(.{0, 0}, inv, @intCast(index), if(slotInfo.disabled) .invisible else if(slotInfo.optional) .immutable else .default, if(slotInfo.disabled) .immutable else .normal);
 				itemSlots[index] = slot;
 				row.add(slot);
@@ -74,7 +76,7 @@ fn openInventory() void {
 		list.add(grid);
 	}
 	const verticalThing = VerticalList.init(.{0, 0}, 300, padding);
-	toolButton = Button.initText(.{8, 0}, 116, toolTypes.items[currentToolType].id, .{.callback = &toggleTool});
+	toolButton = Button.initText(.{8, 0}, 116, toolTypes[currentToolType].id, .{.callback = &toggleTool});
 	verticalThing.add(toolButton);
 	const buttonHeight = verticalThing.size[1];
 	const craftingResultList = HorizontalList.init();
@@ -110,15 +112,10 @@ pub fn update() void {
 
 pub fn onOpen() void {
 	currentToolType = 0;
-	var iterator = main.items.toolTypeIterator();
-
-	while(iterator.next()) |toolType| {
-		toolTypes.append(main.globalAllocator, toolType);
-	}
+	toolTypes = ToolTypeIndex.all();
 	openInventory();
 }
 
 pub fn onClose() void {
 	closeInventory();
-	toolTypes.clearAndFree(main.globalAllocator);
 }
