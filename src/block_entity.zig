@@ -10,10 +10,7 @@ const server = main.server;
 const User = server.User;
 const mesh_storage = main.renderer.mesh_storage;
 
-pub const BlockEntityIndex = enum(u32) {
-	noValue = std.math.maxInt(u32),
-	_,
-};
+pub const BlockEntityIndex = main.utils.DenseId(u32);
 
 pub const BlockEntityType = struct {
 	id: []const u8,
