@@ -751,6 +751,7 @@ pub fn refAllDeclsRecursiveExceptCImports(comptime T: type) void {
 		_ = &@field(T, decl.name);
 	}
 }
+
 test "abc" {
 	@setEvalBranchQuota(1000000);
 	refAllDeclsRecursiveExceptCImports(@This());
