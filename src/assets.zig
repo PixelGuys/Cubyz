@@ -80,12 +80,12 @@ pub const Assets = struct {
 		defer for(addons.items) |*addon| addon.deinit(main.stackAllocator);
 
 		for(addons.items) |addon| {
-			addon.readAllZon(allocator, .blocks, true, &self.blocks, &self.blockMigrations);
-			addon.readAllZon(allocator, .items, true, &self.items, null);
-			addon.readAllZon(allocator, .tools, true, &self.tools, null);
-			addon.readAllZon(allocator, .biomes, true, &self.biomes, &self.biomeMigrations);
-			addon.readAllZon(allocator, .recipes, false, &self.recipes, null);
-			addon.readAllZon(allocator, .sbb, true, &self.structureBuildingBlocks, null);
+			addon.readAllZon(allocator, "blocks", true, &self.blocks, &self.blockMigrations);
+			addon.readAllZon(allocator, "items", true, &self.items, null);
+			addon.readAllZon(allocator, "tools", true, &self.tools, null);
+			addon.readAllZon(allocator, "biomes", true, &self.biomes, &self.biomeMigrations);
+			addon.readAllZon(allocator, "recipes", false, &self.recipes, null);
+			addon.readAllZon(allocator, "sbb", true, &self.structureBuildingBlocks, null);
 			addon.readAllBlueprints(allocator, &self.blueprints);
 			addon.readAllModels(allocator, &self.models);
 		}
@@ -181,20 +181,10 @@ pub const Assets = struct {
 			}
 		};
 
-		const ZonAssets = enum {
-			blocks,
-			items,
-			tools,
-			biomes,
-			recipes,
-			sbb,
-		};
-
-		pub fn readAllZon(addon: Addon, allocator: NeverFailingAllocator, assetType: ZonAssets, hasDefaults: bool, output: *ZonHashMap, migrations: ?*AddonNameToZonMap) void {
-			const subPath = @tagName(assetType);
-			var assetsDirectory = addon.dir.openDir(subPath, .{.iterate = true}) catch |err| {
+		pub fn readAllZon(addon: Addon, allocator: NeverFailingAllocator, assetType: []const u8, hasDefaults: bool, output: *ZonHashMap, migrations: ?*AddonNameToZonMap) void {
+			var assetsDirectory = addon.dir.openDir(assetType, .{.iterate = true}) catch |err| {
 				if(err != error.FileNotFound) {
-					std.log.err("Could not open addon directory {s}: {s}", .{subPath, @errorName(err)});
+					std.log.err("Could not open addon directory {s}: {s}", .{assetType, @errorName(err)});
 				}
 				return;
 			};
@@ -208,7 +198,7 @@ pub const Assets = struct {
 			defer walker.deinit();
 
 			while(walker.next() catch |err| blk: {
-				std.log.err("Got error while iterating addon directory {s}: {s}", .{subPath, @errorName(err)});
+				std.log.err("Got error while iterating addon directory {s}: {s}", .{assetType, @errorName(err)});
 				break :blk null;
 			}) |entry| {
 				if(entry.kind != .file) continue;
@@ -220,7 +210,7 @@ pub const Assets = struct {
 				const id = createAssetStringID(allocator, addon.name, entry.path);
 
 				const zon = files.Dir.init(assetsDirectory).readToZon(allocator, entry.path) catch |err| {
-					std.log.err("Could not open {s}/{s}: {s}", .{subPath, entry.path, @errorName(err)});
+					std.log.err("Could not open {s}/{s}: {s}", .{assetType, entry.path, @errorName(err)});
 					continue;
 				};
 				if(hasDefaults) {
@@ -230,7 +220,7 @@ pub const Assets = struct {
 			}
 			if(migrations != null) blk: {
 				const zon = files.Dir.init(assetsDirectory).readToZon(allocator, "_migrations.zig.zon") catch |err| {
-					if(err != error.FileNotFound) std.log.err("Cannot read {s} migration file for addon {s}", .{subPath, addon.name});
+					if(err != error.FileNotFound) std.log.err("Cannot read {s} migration file for addon {s}", .{assetType, addon.name});
 					break :blk;
 				};
 				migrations.?.put(allocator.allocator, allocator.dupe(u8, addon.name), zon) catch unreachable;
