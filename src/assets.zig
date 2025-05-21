@@ -492,7 +492,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	const worldAllocator = worldArena.allocator();
 
 	var worldAssets = common.clone(worldAllocator);
-	worldAssets.read(worldAllocator, "assets/");
+	worldAssets.read(worldAllocator, assetFolder);
 
 	errdefer unloadAssets();
 
