@@ -218,7 +218,7 @@ pub fn registerChildBlock(numericId: u16, stringId: []const u8) void {
 	childBlockStringId.append(arenaAllocator, arenaAllocator.dupe(u8, colorName));
 }
 
-pub fn registerBlueprints(blueprints: *Assets.RawHashMap) !void {
+pub fn registerBlueprints(blueprints: *Assets.BytesHashMap) !void {
 	std.debug.assert(blueprintCache.capacity() == 0);
 
 	originBlockNumericId = main.blocks.parseBlock(originBlockStringId).typ;

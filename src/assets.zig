@@ -20,7 +20,7 @@ var common: Assets = undefined;
 
 pub const Assets = struct {
 	pub const ZonHashMap = std.StringHashMapUnmanaged(ZonElement);
-	pub const RawHashMap = std.StringHashMapUnmanaged([]const u8);
+	pub const BytesHashMap = std.StringHashMapUnmanaged([]const u8);
 	pub const AddonNameToZonMap = std.StringHashMapUnmanaged(ZonElement);
 
 	blocks: ZonHashMap,
@@ -30,9 +30,9 @@ pub const Assets = struct {
 	biomes: ZonHashMap,
 	biomeMigrations: AddonNameToZonMap,
 	recipes: ZonHashMap,
-	models: RawHashMap,
+	models: BytesHashMap,
 	structureBuildingBlocks: ZonHashMap,
-	blueprints: RawHashMap,
+	blueprints: BytesHashMap,
 
 	fn init() Assets {
 		return .{
@@ -237,7 +237,7 @@ pub const Assets = struct {
 			}
 		}
 
-		pub fn readAllBlueprints(addon: Addon, allocator: NeverFailingAllocator, output: *RawHashMap) void {
+		pub fn readAllBlueprints(addon: Addon, allocator: NeverFailingAllocator, output: *BytesHashMap) void {
 			const subPath = "blueprints";
 			var assetsDirectory = addon.dir.openDir(subPath, .{.iterate = true}) catch |err| {
 				if(err != error.FileNotFound) {
@@ -269,7 +269,7 @@ pub const Assets = struct {
 			}
 		}
 
-		pub fn readAllModels(addon: Addon, allocator: NeverFailingAllocator, output: *RawHashMap) void {
+		pub fn readAllModels(addon: Addon, allocator: NeverFailingAllocator, output: *BytesHashMap) void {
 			const subPath = "models";
 			var assetsDirectory = addon.dir.openDir(subPath, .{.iterate = true}) catch |err| {
 				if(err != error.FileNotFound) {
