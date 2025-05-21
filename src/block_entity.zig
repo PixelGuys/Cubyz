@@ -113,14 +113,12 @@ fn BlockEntityDataStorage(T: type) type {
 			chunk.blockPosToEntityDataMap.put(main.globalAllocator.allocator, blockIndex, dataIndex) catch unreachable;
 			chunk.blockPosToEntityDataMapMutex.unlock();
 		}
-		pub fn removeAtIndex(dataIndex: BlockEntityIndex) void {
+		pub fn removeAtIndex(dataIndex: BlockEntityIndex) ?DataT {
 			main.utils.assertLocked(&mutex);
 			freeIndexList.append(main.globalAllocator, dataIndex);
-			storage.remove(dataIndex) catch |err| {
-				std.log.err("Error while removing block entity: {s}", .{@errorName(err)});
-			};
+			return storage.fetchRemove(dataIndex) catch null;
 		}
-		pub fn remove(pos: Vec3i, chunk: *Chunk) void {
+		pub fn remove(pos: Vec3i, chunk: *Chunk) ?DataT {
 			mutex.lock();
 			defer mutex.unlock();
 
@@ -130,13 +128,10 @@ fn BlockEntityDataStorage(T: type) type {
 			const entityNullable = chunk.blockPosToEntityDataMap.fetchRemove(blockIndex);
 			chunk.blockPosToEntityDataMapMutex.unlock();
 
-			const entry = entityNullable orelse {
-				std.log.err("Couldn't remove entity data of block at position {}", .{pos});
-				return;
-			};
+			const entry = entityNullable orelse return null;
 
 			const dataIndex = entry.value;
-			removeAtIndex(dataIndex);
+			return removeAtIndex(dataIndex);
 		}
 		pub fn get(pos: Vec3i, chunk: *Chunk) ?*DataT {
 			main.utils.assertLocked(&mutex);
@@ -180,13 +175,13 @@ pub const BlockEntityTypes = struct {
 		pub fn onUnloadServer(dataIndex: BlockEntityIndex) void {
 			StorageServer.mutex.lock();
 			defer StorageServer.mutex.unlock();
-			StorageServer.removeAtIndex(dataIndex);
+			_ = StorageServer.removeAtIndex(dataIndex) orelse unreachable;
 		}
 		pub fn onPlaceClient(_: Vec3i, _: *Chunk) void {}
 		pub fn onBreakClient(_: Vec3i, _: *Chunk) void {}
 		pub fn onPlaceServer(_: Vec3i, _: *Chunk) void {}
 		pub fn onBreakServer(pos: Vec3i, chunk: *Chunk) void {
-			StorageServer.remove(pos, chunk);
+			_ = StorageServer.remove(pos, chunk) orelse return;
 		}
 		pub fn onInteract(pos: Vec3i, _: *Chunk) EventStatus {
 			if(main.KeyBoard.key("shift").pressed) return .ignored;
@@ -228,21 +223,30 @@ pub const BlockEntityTypes = struct {
 		pub fn onUnloadClient(dataIndex: BlockEntityIndex) void {
 			StorageClient.mutex.lock();
 			defer StorageClient.mutex.unlock();
-			StorageClient.removeAtIndex(dataIndex);
+			const entry = StorageClient.removeAtIndex(dataIndex) orelse unreachable;
+			main.globalAllocator.free(entry.text);
 		}
 		pub fn onLoadServer(_: Vec3i, _: *Chunk) void {}
-		pub fn onUnloadServer(_: BlockEntityIndex) void {}
+		pub fn onUnloadServer(dataIndex: BlockEntityIndex) void {
+			StorageServer.mutex.lock();
+			defer StorageServer.mutex.unlock();
+			const entry = StorageServer.removeAtIndex(dataIndex) orelse unreachable;
+			main.globalAllocator.free(entry.text);
+
+		}
 		pub fn onPlaceClient(pos: Vec3i, chunk: *Chunk) void {
-			StorageClient.add(pos, .{.text = "test"}, chunk);
+			StorageClient.add(pos, .{.text = main.globalAllocator.dupe(u8, "test")}, chunk);
 		}
 		pub fn onBreakClient(pos: Vec3i, chunk: *Chunk) void {
-			StorageClient.remove(pos, chunk);
+			const entry = StorageClient.remove(pos, chunk) orelse return;
+			main.globalAllocator.free(entry.text);
 		}
 		pub fn onPlaceServer(pos: Vec3i, chunk: *Chunk) void {
-			StorageServer.add(pos, .{.text = "test"}, chunk);
+			StorageServer.add(pos, .{.text = main.globalAllocator.dupe(u8, "test")}, chunk);
 		}
 		pub fn onBreakServer(pos: Vec3i, chunk: *Chunk) void {
-			StorageServer.remove(pos, chunk);
+			const entry = StorageServer.remove(pos, chunk) orelse return;
+			main.globalAllocator.free(entry.text);
 		}
 		pub fn onInteract(pos: Vec3i, chunk: *Chunk) EventStatus {
 			if(main.KeyBoard.key("shift").pressed) return .ignored;
