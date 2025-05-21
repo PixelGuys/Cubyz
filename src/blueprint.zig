@@ -520,9 +520,6 @@ fn parseBlockLike(block: []const u8) error{DataParsingFailed, IdParsingFailed}!M
 }
 
 const Test = struct {
-	var testingAllocator = main.heap.ErrorHandlingAllocator.init(std.testing.allocator);
-	var allocator = testingAllocator.allocator();
-
 	var parseBlockLikeTest: *const @TypeOf(parseBlockLike) = &defaultParseBlockLike;
 
 	fn defaultParseBlockLike(_: []const u8) !Mask.Entry.Inner {
@@ -551,8 +548,8 @@ test "Mask match block type with any data" {
 	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
 	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
 
-	const mask = try Mask.initFromString(Test.allocator, "addon:dummy");
-	defer mask.deinit(Test.allocator);
+	const mask = try Mask.initFromString(main.heap.testingAllocator, "addon:dummy");
+	defer mask.deinit(main.heap.testingAllocator);
 
 	try std.testing.expect(mask.match(.{.typ = 1, .data = 0}));
 	try std.testing.expect(mask.match(.{.typ = 1, .data = 1}));
@@ -563,43 +560,43 @@ test "Mask empty negative case" {
 	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
 	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
 
-	try std.testing.expectError(error.MissingExpression, Mask.initFromString(Test.allocator, ""));
+	try std.testing.expectError(error.MissingExpression, Mask.initFromString(main.heap.testingAllocator, ""));
 }
 
 test "Mask half-or negative case" {
 	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
 	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
 
-	try std.testing.expectError(error.MissingExpression, Mask.initFromString(Test.allocator, "addon:dummy|"));
+	try std.testing.expectError(error.MissingExpression, Mask.initFromString(main.heap.testingAllocator, "addon:dummy|"));
 }
 
 test "Mask half-or negative case 2" {
 	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
 	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
 
-	try std.testing.expectError(error.MissingExpression, Mask.initFromString(Test.allocator, "|addon:dummy"));
+	try std.testing.expectError(error.MissingExpression, Mask.initFromString(main.heap.testingAllocator, "|addon:dummy"));
 }
 
 test "Mask half-and negative case" {
 	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
 	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
 
-	try std.testing.expectError(error.MissingExpression, Mask.initFromString(Test.allocator, "addon:dummy&"));
+	try std.testing.expectError(error.MissingExpression, Mask.initFromString(main.heap.testingAllocator, "addon:dummy&"));
 }
 
 test "Mask half-and negative case 2" {
 	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
 	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
 
-	try std.testing.expectError(error.MissingExpression, Mask.initFromString(Test.allocator, "&addon:dummy"));
+	try std.testing.expectError(error.MissingExpression, Mask.initFromString(main.heap.testingAllocator, "&addon:dummy"));
 }
 
 test "Mask inverse match block type with any data" {
 	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
 	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
 
-	const mask = try Mask.initFromString(Test.allocator, "!addon:dummy");
-	defer mask.deinit(Test.allocator);
+	const mask = try Mask.initFromString(main.heap.testingAllocator, "!addon:dummy");
+	defer mask.deinit(main.heap.testingAllocator);
 
 	try std.testing.expect(!mask.match(.{.typ = 1, .data = 0}));
 	try std.testing.expect(!mask.match(.{.typ = 1, .data = 1}));
@@ -610,8 +607,8 @@ test "Mask match block type with exact data" {
 	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 1";
 	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
 
-	const mask = try Mask.initFromString(Test.allocator, "addon:dummy");
-	defer mask.deinit(Test.allocator);
+	const mask = try Mask.initFromString(main.heap.testingAllocator, "addon:dummy");
+	defer mask.deinit(main.heap.testingAllocator);
 
 	try std.testing.expect(!mask.match(.{.typ = 1, .data = 0}));
 	try std.testing.expect(mask.match(.{.typ = 1, .data = 1}));
@@ -622,8 +619,8 @@ test "Mask match type 0 or type 1 with exact data" {
 	Test.parseBlockLikeTest = &Test.@"parseBlockLike foo or bar";
 	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
 
-	const mask = try Mask.initFromString(Test.allocator, "addon:foo|addon:bar");
-	defer mask.deinit(Test.allocator);
+	const mask = try Mask.initFromString(main.heap.testingAllocator, "addon:foo|addon:bar");
+	defer mask.deinit(main.heap.testingAllocator);
 
 	try std.testing.expect(mask.match(.{.typ = 1, .data = 0}));
 	try std.testing.expect(mask.match(.{.typ = 2, .data = 0}));

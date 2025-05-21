@@ -1719,11 +1719,8 @@ pub const BinaryWriter = struct {
 };
 
 const ReadWriteTest = struct {
-	var testingAllocator = main.heap.ErrorHandlingAllocator.init(std.testing.allocator);
-	var allocator = testingAllocator.allocator();
-
 	fn getWriter() BinaryWriter {
-		return .init(ReadWriteTest.allocator);
+		return .init(main.heap.testingAllocator);
 	}
 	fn getReader(data: []const u8) BinaryReader {
 		return .init(data);
