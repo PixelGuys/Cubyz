@@ -215,7 +215,7 @@ fn cacheInit(pos: chunk.ChunkPosition) *RegionFile {
 		return region;
 	}
 	hashMapMutex.unlock();
-	const path: []const u8 = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/chunks", .{server.world.?.name}) catch unreachable;
+	const path: []const u8 = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/chunks", .{server.world.?.path}) catch unreachable;
 	defer main.stackAllocator.free(path);
 	return RegionFile.init(pos, path);
 }
@@ -274,7 +274,8 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 			for(0..chunk.chunkVolume) |i| {
 				uncompressedData[i] = @intCast(ch.data.data.getValue(i));
 				if(allowLossy) {
-					if(ch.data.palette[uncompressedData[i]].solid()) {
+					const model = main.blocks.meshes.model(ch.data.palette[uncompressedData[i]]).model();
+					if(model.allNeighborsOccluded) {
 						solidMask[i >> 5] |= @as(u32, 1) << @intCast(i & 31);
 					} else {
 						solidMask[i >> 5] &= ~(@as(u32, 1) << @intCast(i & 31));

@@ -52,6 +52,10 @@
 		.output = "cubyz:lamp",
 	},
 	.{
+		.inputs = .{"4 cubyz:resin"},
+		.output = "cubyz:resin_block",
+	},
+	.{
 		.inputs = .{"4 cubyz:coal"},
 		.output = "cubyz:coal_block",
 	},
@@ -98,6 +102,10 @@
 	.{
 		.inputs = .{"cubyz:ruby_block"},
 		.output = "cubyz:cut_ruby_block",
+	},
+	.{
+		.inputs = .{"cubyz:resin_block"},
+		.output = "4 cubyz:resin",
 	},
 	.{
 		.inputs = .{"cubyz:coal_block"},

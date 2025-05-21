@@ -2,10 +2,12 @@ const std = @import("std");
 
 const main = @import("main");
 const Tag = main.Tag;
+const utils = main.utils;
 const ZonElement = @import("zon.zig").ZonElement;
-const Neighbor = @import("chunk.zig").Neighbor;
+const chunk = @import("chunk.zig");
+const Neighbor = chunk.Neighbor;
+const Chunk = chunk.Chunk;
 const graphics = @import("graphics.zig");
-const Shader = graphics.Shader;
 const SSBO = graphics.SSBO;
 const Image = graphics.Image;
 const Color = graphics.Color;
@@ -17,8 +19,8 @@ const rotation = @import("rotation.zig");
 const RotationMode = rotation.RotationMode;
 const Degrees = rotation.Degrees;
 const Entity = main.server.Entity;
-const entity_data = @import("entity_data.zig");
-const EntityDataClass = entity_data.EntityDataClass;
+const block_entity = @import("block_entity.zig");
+const BlockEntityType = block_entity.BlockEntityType;
 const sbb = main.server.terrain.structure_building_blocks;
 const blueprint = main.blueprint;
 const Assets = main.assets.Assets;
@@ -56,7 +58,8 @@ var _id: [maxBlockCount][]u8 = undefined;
 var _blockHealth: [maxBlockCount]f32 = undefined;
 var _blockResistance: [maxBlockCount]f32 = undefined;
 
-var _solid: [maxBlockCount]bool = undefined;
+/// Whether you can replace it with another block, mainly used for fluids/gases
+var _replacable: [maxBlockCount]bool = undefined;
 var _selectable: [maxBlockCount]bool = undefined;
 var _blockDrops: [maxBlockCount][]BlockDrop = undefined;
 /// Meaning undegradable parts of trees or other structures can grow through this block.
@@ -75,9 +78,11 @@ var _modeData: [maxBlockCount]u16 = undefined;
 var _lodReplacement: [maxBlockCount]u16 = undefined;
 var _opaqueVariant: [maxBlockCount]u16 = undefined;
 var _friction: [maxBlockCount]f32 = undefined;
+
 var _allowOres: [maxBlockCount]bool = undefined;
+var _tickEvent: [maxBlockCount]?TickEvent = undefined;
 var _touchFunction: [maxBlockCount]?*const TouchFunction = undefined;
-var _entityDataClass: [maxBlockCount]?*EntityDataClass = undefined;
+var _blockEntity: [maxBlockCount]?*BlockEntityType = undefined;
 
 var reverseIndices = std.StringHashMap(u16).init(allocator.allocator);
 
@@ -115,7 +120,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_absorption[size] = zon.get(u32, "absorbedLight", 0xffffff);
 	_degradable[size] = zon.get(bool, "degradable", false);
 	_selectable[size] = zon.get(bool, "selectable", true);
-	_solid[size] = zon.get(bool, "solid", true);
+	_replacable[size] = zon.get(bool, "replacable", false);
 	_gui[size] = allocator.dupe(u8, zon.get([]const u8, "gui", ""));
 	_transparent[size] = zon.get(bool, "transparent", false);
 	_collide[size] = zon.get(bool, "collide", true);
@@ -124,8 +129,17 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_hasBackFace[size] = zon.get(bool, "hasBackFace", false);
 	_friction[size] = zon.get(f32, "friction", 20);
 	_allowOres[size] = zon.get(bool, "allowOres", false);
-	_touchFunction[size] = TouchFunctions.getFunctionPointer(zon.get([]const u8, "touchFunction", ""));
-	_entityDataClass[size] = entity_data.getByID(zon.get(?[]const u8, "entityDataClass", null));
+	_tickEvent[size] = TickEvent.loadFromZon(zon.getChild("tickEvent"));
+
+	_touchFunction[size] = if(zon.get(?[]const u8, "touchFunction", null)) |touchFunctionName| blk: {
+		const _function = touchFunctions.getFunctionPointer(touchFunctionName);
+		if(_function == null) {
+			std.log.err("Could not find TouchFunction {s}!", .{touchFunctionName});
+		}
+		break :blk _function;
+	} else null;
+
+	_blockEntity[size] = block_entity.getByID(zon.get(?[]const u8, "blockEntity", null));
 
 	const oreProperties = zon.getChild("ore");
 	if(oreProperties != .null) blk: {
@@ -175,7 +189,7 @@ fn registerBlockDrop(typ: u16, zon: ZonElement) void {
 				name = _id[typ];
 			}
 
-			const item = items.getByID(name) orelse continue;
+			const item = items.BaseItemIndex.fromId(name) orelse continue;
 			resultItems.append(.{.item = .{.baseItem = item}, .amount = amount});
 		}
 
@@ -249,6 +263,21 @@ pub fn parseBlock(data: []const u8) Block {
 	}
 }
 
+pub fn getBlockById(idAndData: []const u8) !u16 {
+	const addonNameSeparatorIndex = std.mem.indexOfScalar(u8, idAndData, ':') orelse return error.MissingAddonNameSeparator;
+	const blockIdEndIndex = std.mem.indexOfScalarPos(u8, idAndData, 1 + addonNameSeparatorIndex, ':') orelse idAndData.len;
+	const id = idAndData[0..blockIdEndIndex];
+	return reverseIndices.get(id) orelse return error.NotFound;
+}
+
+pub fn getBlockData(idLikeString: []const u8) !?u16 {
+	const addonNameSeparatorIndex = std.mem.indexOfScalar(u8, idLikeString, ':') orelse return error.MissingAddonNameSeparator;
+	const blockIdEndIndex = std.mem.indexOfScalarPos(u8, idLikeString, 1 + addonNameSeparatorIndex, ':') orelse return null;
+	const dataString = idLikeString[blockIdEndIndex + 1 ..];
+	if(dataString.len == 0) return error.EmptyDataString;
+	return std.fmt.parseInt(u16, dataString, 0) catch return error.InvalidData;
+}
+
 pub fn hasRegistered(id: []const u8) bool {
 	return reverseIndices.contains(id);
 }
@@ -256,6 +285,9 @@ pub fn hasRegistered(id: []const u8) bool {
 pub const Block = packed struct { // MARK: Block
 	typ: u16,
 	data: u16,
+
+	pub const air = Block{.typ = 0, .data = 0};
+
 	pub fn toInt(self: Block) u32 {
 		return @as(u32, self.typ) | @as(u32, self.data) << 16;
 	}
@@ -283,8 +315,9 @@ pub const Block = packed struct { // MARK: Block
 		return _blockResistance[self.typ];
 	}
 
-	pub inline fn solid(self: Block) bool {
-		return _solid[self.typ];
+	/// Whether you can replace it with another block, mainly used for fluids/gases
+	pub inline fn replacable(self: Block) bool {
+		return _replacable[self.typ];
 	}
 
 	pub inline fn selectable(self: Block) bool {
@@ -315,6 +348,10 @@ pub const Block = packed struct { // MARK: Block
 
 	pub inline fn blockTags(self: Block) []const Tag {
 		return _blockTags[self.typ];
+	}
+
+	pub inline fn hasTag(self: Block, tag: Tag) bool {
+		return std.mem.containsAtLeastScalar(Tag, self.blockTags(), 1, tag);
 	}
 
 	pub inline fn light(self: Block) u32 {
@@ -359,12 +396,16 @@ pub const Block = packed struct { // MARK: Block
 		return _allowOres[self.typ];
 	}
 
+	pub inline fn tickEvent(self: Block) ?TickEvent {
+		return _tickEvent[self.typ];
+	}
+
 	pub inline fn touchFunction(self: Block) ?*const TouchFunction {
 		return _touchFunction[self.typ];
 	}
 
-	pub fn entityDataClass(self: Block) ?*EntityDataClass {
-		return _entityDataClass[self.typ];
+	pub fn blockEntity(self: Block) ?*BlockEntityType {
+		return _blockEntity[self.typ];
 	}
 
 	pub fn canBeChangedInto(self: Block, newBlock: Block, item: main.items.ItemStack, shouldDropSourceBlockOnSuccess: *bool) main.rotation.RotationMode.CanBeChangedInto {
@@ -372,34 +413,48 @@ pub const Block = packed struct { // MARK: Block
 	}
 };
 
-pub const TouchFunction = fn(block: Block, entity: Entity, posX: i32, posY: i32, posZ: i32, isEntityInside: bool) void;
+// MARK: Tick
+pub var tickFunctions: utils.NamedCallbacks(TickFunctions, TickFunction) = undefined;
+pub const TickFunction = fn(block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void;
+pub const TickFunctions = struct {
+	pub fn replaceWithCobble(block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void {
+		std.log.debug("Replace with cobblestone at ({d},{d},{d})", .{x, y, z});
+		const cobblestone = parseBlock("cubyz:cobblestone");
 
-pub const TouchFunctions = struct {
-	var hashMap: std.StringHashMap(*const TouchFunction) = undefined;
+		const wx = _chunk.super.pos.wx + x;
+		const wy = _chunk.super.pos.wy + y;
+		const wz = _chunk.super.pos.wz + z;
 
-	pub fn init() void {
-		hashMap = .init(main.globalAllocator.allocator);
-		inline for(@typeInfo(TouchFunctions).@"struct".decls) |declaration| {
-			if(@TypeOf(@field(TouchFunctions, declaration.name)) == TouchFunction) {
-				hashMap.putNoClobber(declaration.name, &@field(TouchFunctions, declaration.name)) catch unreachable;
-			}
-		}
-	}
-
-	pub fn deinit() void {
-		hashMap.deinit();
-	}
-
-	pub fn getFunctionPointer(id: []const u8) ?*const TouchFunction {
-		const pointer = hashMap.getPtr(id);
-		if(pointer == null) {
-			if(id.len != 0)
-				std.log.err("Could not find touch function {s}.", .{id});
-			return null;
-		}
-		return pointer.?.*;
+		_ = main.server.world.?.cmpxchgBlock(wx, wy, wz, block, cobblestone);
 	}
 };
+
+pub const TickEvent = struct {
+	function: *const TickFunction,
+	chance: f32,
+
+	pub fn loadFromZon(zon: ZonElement) ?TickEvent {
+		const functionName = zon.get(?[]const u8, "name", null) orelse return null;
+
+		const function = tickFunctions.getFunctionPointer(functionName) orelse {
+			std.log.err("Could not find TickFunction {s}.", .{functionName});
+			return null;
+		};
+
+		return TickEvent{.function = function, .chance = zon.get(f32, "chance", 1)};
+	}
+
+	pub fn tryRandomTick(self: *const TickEvent, block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void {
+		if(self.chance >= 1.0 or main.random.nextFloat(&main.seed) < self.chance) {
+			self.function(block, _chunk, x, y, z);
+		}
+	}
+};
+
+// MARK: Touch
+pub var touchFunctions: utils.NamedCallbacks(TouchFunctions, TouchFunction) = undefined;
+pub const TouchFunction = fn(block: Block, entity: Entity, posX: i32, posY: i32, posZ: i32, isEntityInside: bool) void;
+pub const TouchFunctions = struct {};
 
 pub const meshes = struct { // MARK: meshes
 	const AnimationData = extern struct {
@@ -448,7 +503,7 @@ pub const meshes = struct { // MARK: meshes
 	var animatedTextureSSBO: ?SSBO = null;
 	var fogSSBO: ?SSBO = null;
 
-	var animationShader: Shader = undefined;
+	var animationComputePipeline: graphics.ComputePipeline = undefined;
 	var animationUniforms: struct {
 		time: c_int,
 		size: c_int,
@@ -466,7 +521,7 @@ pub const meshes = struct { // MARK: meshes
 	const emptyImage = Image{.width = 1, .height = 1, .imageData = emptyTexture[0..]};
 
 	pub fn init() void {
-		animationShader = Shader.initComputeAndGetUniforms("assets/cubyz/shaders/animation_pre_processing.glsl", "", &animationUniforms);
+		animationComputePipeline = graphics.ComputePipeline.init("assets/cubyz/shaders/animation_pre_processing.comp", "", &animationUniforms);
 		blockTextureArray = .init();
 		emissionTextureArray = .init();
 		reflectivityAndAbsorptionTextureArray = .init();
@@ -492,7 +547,7 @@ pub const meshes = struct { // MARK: meshes
 		if(fogSSBO) |ssbo| {
 			ssbo.deinit();
 		}
-		animationShader.deinit();
+		animationComputePipeline.deinit();
 		blockTextureArray.deinit();
 		emissionTextureArray.deinit();
 		reflectivityAndAbsorptionTextureArray.deinit();
@@ -605,8 +660,8 @@ pub const meshes = struct { // MARK: meshes
 		var splitter = std.mem.splitScalar(u8, textureId, ':');
 		const mod = splitter.first();
 		const id = splitter.rest();
-		var buffer: [1024]u8 = undefined;
-		var path = try std.fmt.bufPrint(&buffer, "{s}/{s}/blocks/textures/{s}.png", .{assetFolder, mod, id});
+		var path = try std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/blocks/textures/{s}.png", .{assetFolder, mod, id});
+		defer main.stackAllocator.free(path);
 		// Test if it's already in the list:
 		for(textureIDs.items, 0..) |other, j| {
 			if(std.mem.eql(u8, other, path)) {
@@ -618,7 +673,8 @@ pub const meshes = struct { // MARK: meshes
 			if(err != error.FileNotFound) {
 				std.log.err("Could not open file {s}: {s}", .{path, @errorName(err)});
 			}
-			path = try std.fmt.bufPrint(&buffer, "assets/{s}/blocks/textures/{s}.png", .{mod, id}); // Default to global assets.
+			main.stackAllocator.free(path);
+			path = try std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/blocks/textures/{s}.png", .{mod, id}); // Default to global assets.
 			break :blk std.fs.cwd().openFile(path, .{}) catch |err2| {
 				std.log.err("File not found. Searched in \"{s}\" and also in the assetFolder \"{s}\"", .{path, assetFolder});
 				return err2;
@@ -673,7 +729,7 @@ pub const meshes = struct { // MARK: meshes
 	}
 
 	pub fn preProcessAnimationData(time: u32) void {
-		animationShader.bind();
+		animationComputePipeline.bind();
 		graphics.c.glUniform1ui(animationUniforms.time, time);
 		graphics.c.glUniform1ui(animationUniforms.size, @intCast(animation.items.len));
 		graphics.c.glDispatchCompute(@intCast(@divFloor(animation.items.len + 63, 64)), 1, 1); // TODO: Replace with @divCeil once available

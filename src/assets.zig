@@ -340,13 +340,13 @@ pub fn init() void {
 fn registerItem(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void {
 	var split = std.mem.splitScalar(u8, id, ':');
 	const mod = split.first();
-	var texturePath: []const u8 = &[0]u8{};
-	var replacementTexturePath: []const u8 = &[0]u8{};
-	var buf1: [4096]u8 = undefined;
-	var buf2: [4096]u8 = undefined;
+	var texturePath: []const u8 = &.{};
+	defer main.stackAllocator.free(texturePath);
+	var replacementTexturePath: []const u8 = &.{};
+	defer main.stackAllocator.free(replacementTexturePath);
 	if(zon.get(?[]const u8, "texture", null)) |texture| {
-		texturePath = try std.fmt.bufPrint(&buf1, "{s}/{s}/items/textures/{s}", .{assetFolder, mod, texture});
-		replacementTexturePath = try std.fmt.bufPrint(&buf2, "assets/{s}/items/textures/{s}", .{mod, texture});
+		texturePath = try std.fmt.allocPrint(main.stackAllocator.allocator, "{s}/{s}/items/textures/{s}", .{assetFolder, mod, texture});
+		replacementTexturePath = try std.fmt.allocPrint(main.stackAllocator.allocator, "assets/{s}/items/textures/{s}", .{mod, texture});
 	}
 	_ = items_zig.register(assetFolder, texturePath, replacementTexturePath, id, zon);
 }
@@ -364,7 +364,9 @@ fn registerBlock(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void
 
 fn assignBlockItem(stringId: []const u8) !void {
 	const block = blocks_zig.getTypeById(stringId);
-	const item = items_zig.getByID(stringId) orelse unreachable;
+	// TODO: This must be gone in PixelGuys/Cubyz#1205
+	const index = (items_zig.BaseItemIndex.fromId(stringId) orelse unreachable).index;
+	const item = &items_zig.itemList[index];
 	item.block = block;
 }
 
