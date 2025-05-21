@@ -1221,7 +1221,6 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	};
 	emitter2.spawn(Vec3d{0, 0, 15});
 
-
 	fog.fogColor = (biome.fogColor - fog.fogColor)*@as(Vec3f, @splat(t)) + fog.fogColor;
 	fog.density = (biome.fogDensity - fog.density)*t + fog.density;
 	fog.fogLower = (biome.fogLower - fog.fogLower)*t + fog.fogLower;
