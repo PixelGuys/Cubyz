@@ -1,4 +1,5 @@
 const std = @import("std");
+
 const main = @import("main");
 const chunk_meshing = @import("renderer/chunk_meshing.zig");
 const graphics = @import("graphics.zig");
@@ -6,9 +7,9 @@ const SSBO = graphics.SSBO;
 const TextureArray = graphics.TextureArray;
 const Shader = graphics.Shader;
 const Image = graphics.Image;
+const c = graphics.c;
 const game = @import("game.zig");
 const ZonElement = @import("zon.zig").ZonElement;
-const c = graphics.c;
 const random = @import("random.zig");
 const vec = @import("vec.zig");
 const Mat4f = vec.Mat4f;
@@ -56,35 +57,58 @@ pub const ParticleManager = struct {
 	}
 
 	pub fn register(assetsFolder: []const u8, id: []const u8, zon: ZonElement) void {
-		const animationFrames = zon.get(u32, "animationFrames", 1);
-		const textureId = zon.get([]const u8, "texture", "cubyz:spark");
+		const textureId = zon.get(?[]const u8, "texture", null) orelse {
+			std.log.err("Particle texture id was not specified for {s} ({s})", .{id, assetsFolder});
+			return;
+		};
 
-		const particleType = readTextureDataAndParticleType(assetsFolder, textureId, animationFrames);
+		const particleType = readTextureDataAndParticleType(assetsFolder, textureId);
 
 		particleTypeHashmap.put(arenaAllocator.allocator, id, @intCast(types.items.len)) catch unreachable;
 		types.append(particleType);
 
 		std.log.debug("Registered particle type: {s}", .{id});
 	}
-	fn readTextureDataAndParticleType(assetsFolder: []const u8, textureId: []const u8, animationFrames: u32) ParticleType {
+	fn readTextureDataAndParticleType(assetsFolder: []const u8, textureId: []const u8) ParticleType {
 		var typ: ParticleType = undefined;
 
 		const base = readTexture(assetsFolder, textureId, ".png", Image.defaultImage, .isMandatory);
 		const emission = readTexture(assetsFolder, textureId, "_emission.png", Image.emptyImage, .isOptional);
+		const hasEmission = (emission.imageData.ptr != Image.emptyImage.imageData.ptr);
+		const baseAnimationFrameCount = base.height/base.width;
+		const emissionAnimationFrameCount = emission.height/emission.width;
 
+		typ.frameCount = @floatFromInt(baseAnimationFrameCount);
 		typ.startFrame = @floatFromInt(textures.items.len);
 		typ.size = @as(f32, @floatFromInt(base.width))/16;
-		for(0..animationFrames) |i| {
-			textures.append(extractAnimationSlice(base, i, animationFrames, textureId, .base));
 
-			const emmisionSlice = if(emission.imageData.ptr != Image.emptyImage.imageData.ptr)
-				extractAnimationSlice(emission, i, animationFrames, textureId, .emmision)
-			else
-				Image.emptyImage;
-			emissionTextures.append(emmisionSlice);
+		var isBaseBroken = false;
+		var isEmissionBroken = false;
+
+		if(base.height%base.width != 0) {
+			std.log.err("Particle base texture has incorrect dimensions ({}x{}) expected height to be multiple of width for {s} ({s})", .{base.width, base.height, textureId, assetsFolder});
+			isBaseBroken = true;
+		}
+		if(hasEmission and emission.height%emission.width != 0) {
+			std.log.err("Particle emission texture has incorrect dimensions ({}x{}) expected height to be multiple of width for {s} ({s})", .{base.width, base.height, textureId, assetsFolder});
+			isEmissionBroken = true;
+		}
+		if(hasEmission and baseAnimationFrameCount != emissionAnimationFrameCount) {
+			std.log.err("Particle base texture and emission texture frame count mismatch ({} vs {}) for {s} ({s})", .{baseAnimationFrameCount, emissionAnimationFrameCount, textureId, assetsFolder});
+			isEmissionBroken = true;
 		}
 
-		typ.animationFrames = @floatFromInt(animationFrames);
+		if(isBaseBroken) {
+			createDummyAnimationFrames(&textures, baseAnimationFrameCount, Image.defaultImage);
+			createDummyAnimationFrames(&emissionTextures, baseAnimationFrameCount, Image.emptyImage);
+		} else if(isEmissionBroken or !hasEmission) {
+			createAnimationFrames(&textures, baseAnimationFrameCount, base);
+			createDummyAnimationFrames(&emissionTextures, baseAnimationFrameCount, Image.emptyImage);
+		} else {
+			createAnimationFrames(&textures, baseAnimationFrameCount, base);
+			createAnimationFrames(&emissionTextures, baseAnimationFrameCount, emission);
+		}
+
 		return typ;
 	}
 
@@ -105,14 +129,23 @@ pub const ParticleManager = struct {
 		};
 	}
 
-	fn extractAnimationSlice(image: Image, frame: usize, frames: usize, imageName: []const u8, textureType: enum {base, emmision}) Image {
-		if(image.height%frames != 0) {
-			std.log.err("Particle texture size is not divisible by its frame count for {s} in {s} texture", .{imageName, @tagName(textureType)});
-			return Image.defaultImage;
+	fn createDummyAnimationFrames(container: *main.List(Image), frameCount: usize, image: Image) void {
+		for(0..frameCount) |_| {
+			container.append(image);
 		}
-		const frameHeight = image.height/frames;
-		const startHeight = frameHeight*frame;
-		const endHeight = frameHeight*(frame + 1);
+	}
+
+	fn createAnimationFrames(container: *main.List(Image), frameCount: usize, image: Image) void {
+		for(0..frameCount) |i| {
+			container.append(extractAnimationSlice(image, i));
+		}
+	}
+
+	fn extractAnimationSlice(image: Image, fameIndex: usize) Image {
+		const frameCount = image.height/image.width;
+		const frameHeight = image.height/frameCount;
+		const startHeight = frameHeight*fameIndex;
+		const endHeight = frameHeight*(fameIndex + 1);
 		var result = image;
 		result.height = @intCast(frameHeight);
 		result.imageData = result.imageData[startHeight*image.width .. endHeight*image.width];
@@ -135,7 +168,6 @@ pub const ParticleSystem = struct {
 	var particleCount: u32 = 0;
 	var particles: [maxCapacity]Particle = undefined;
 	var particlesLocal: [maxCapacity]ParticleLocal = undefined;
-	// TODO: add different emitters for different types of movements like windy, normal, no collisions and etc.
 	var properties: EmitterProperties = undefined;
 	var previousPlayerPos: Vec3d = undefined;
 
@@ -150,7 +182,6 @@ pub const ParticleSystem = struct {
 	var uniforms: UniformStruct = undefined;
 
 	pub fn init() void {
-		std.log.debug("Particle alignment: {d} size: {d}\n", .{@alignOf(Particle), @sizeOf(Particle)});
 		pipeline = graphics.Pipeline.init(
 			"assets/cubyz/shaders/particles/particles.vert",
 			"assets/cubyz/shaders/particles/particles.frag",
@@ -164,8 +195,8 @@ pub const ParticleSystem = struct {
 		properties = EmitterProperties{
 			.gravity = .{0, 0, -2},
 			.drag = 0.5,
-			.lifeTimeMin = 5,
-			.lifeTimeMax = 5,
+			.lifeTimeMin = 10,
+			.lifeTimeMax = 10,
 			.velMin = 0.1,
 			.velMax = 0.3,
 			.rotVelMin = std.math.pi*0.2,
@@ -208,7 +239,6 @@ pub const ParticleSystem = struct {
 			particleLocal.velAndRotationVel *= @splat(@max(0, 1 - properties.drag*deltaTime));
 			const posDelta = particleLocal.velAndRotationVel*vecDeltaTime;
 
-			// TODO: OPTIMIZE THE HELL OUT OF THIS
 			if(particleLocal.collides) {
 				const size = ParticleManager.types.items[particle.typ].size;
 				const hitBox: game.collision.Box = .{.min = @splat(size*-0.5), .max = @splat(size*0.5)};
@@ -245,7 +275,6 @@ pub const ParticleSystem = struct {
 			particle.posAndRotation[3] = rot;
 			particleLocal.velAndRotationVel[3] = rotVel;
 
-			// TODO: optimize
 			const positionf64 = @as(Vec4d, @floatCast(particle.posAndRotation)) + Vec4d{playerPos[0], playerPos[1], playerPos[2], 0};
 			const intPos: vec.Vec4i = @intFromFloat(@floor(positionf64));
 			const light: [6]u8 = main.renderer.mesh_storage.getLight(intPos[0], intPos[1], intPos[2]) orelse @splat(0);
@@ -309,7 +338,6 @@ pub const ParticleSystem = struct {
 };
 
 pub const EmitterProperties = struct {
-	// TODO: move gravity and drag into particle type, and other things into spawn logic which would allow for more flexibility
 	gravity: Vec3f = @splat(0),
 	drag: f32 = 0,
 	velMin: f32 = 0,
@@ -393,7 +421,7 @@ pub const Emitter = struct {
 };
 
 pub const ParticleType = struct {
-	animationFrames: f32,
+	frameCount: f32,
 	startFrame: f32,
 	size: f32,
 };

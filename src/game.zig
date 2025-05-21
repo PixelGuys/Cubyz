@@ -1211,6 +1211,17 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 	const t = 1 - @as(f32, @floatCast(@exp(-2*deltaTime)));
 
+	const emitter2 = particles.Emitter{
+		.shapeType = .sphere,
+		.directionMode = .scatter,
+		.count = 10,
+		.size = 2,
+		.id = "cubyz:poof",
+		.collides = false,
+	};
+	emitter2.spawn(Vec3d{0, 0, 15});
+
+
 	fog.fogColor = (biome.fogColor - fog.fogColor)*@as(Vec3f, @splat(t)) + fog.fogColor;
 	fog.density = (biome.fogDensity - fog.density)*t + fog.density;
 	fog.fogLower = (biome.fogLower - fog.fogLower)*t + fog.fogLower;
