@@ -6,6 +6,9 @@ const builtin = @import("builtin");
 const main = @import("main");
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
+const ecs = main.ecs;
+const EntityIndex = ecs.EntityIndex;
+
 pub const file_monitor = @import("utils/file_monitor.zig");
 pub const VirtualList = @import("utils/virtual_mem.zig").VirtualList;
 
@@ -1383,6 +1386,14 @@ pub fn GenericInterpolation(comptime elements: comptime_int) type { // MARK: Gen
 		currentPoint: ?u31,
 		outPos: *[elements]f64,
 		outVel: *[elements]f64,
+
+		entityId: EntityIndex = .noValue,
+
+		pub fn initEnityIndex(self: *@This(), entityId: EntityIndex) void {
+			self.entityId = entityId;
+			self.frontIndex = 0;
+			self.currentPoint = null;
+		}
 
 		pub fn init(self: *@This(), initialPosition: *[elements]f64, initialVelocity: *[elements]f64) void {
 			self.outPos = initialPosition;

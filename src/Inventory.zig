@@ -15,6 +15,8 @@ const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
 const Neighbor = main.chunk.Neighbor;
 const BaseItemIndex = main.items.BaseItemIndex;
+const ecs = main.ecs;
+const EntityIndex = ecs.EntityIndex;
 
 const Gamemode = main.game.Gamemode;
 
@@ -425,7 +427,7 @@ pub const Sync = struct { // MARK: Sync
 		}
 	};
 
-	pub fn addHealth(health: f32, cause: main.game.DamageType, side: Side, id: u32) void {
+	pub fn addHealth(health: f32, cause: main.game.DamageType, side: Side, id: EntityIndex) void {
 		if(side == .client) {
 			Sync.ClientSide.executeCommand(.{.addHealth = .{.target = id, .health = health, .cause = cause}});
 		} else {
@@ -943,12 +945,12 @@ pub const Command = struct { // MARK: Command
 			},
 			.addHealth => |*info| {
 				if(side == .server) {
-					info.previous = info.target.?.player.health;
+					info.previous = info.target.?.player().health;
 
-					info.target.?.player.health = std.math.clamp(info.target.?.player.health + info.health, 0, info.target.?.player.maxHealth);
+					info.target.?.player().health = std.math.clamp(info.target.?.player().health + info.health, 0, info.target.?.player().maxHealth);
 
-					if(info.target.?.player.health <= 0) {
-						info.target.?.player.health = info.target.?.player.maxHealth;
+					if(info.target.?.player().health <= 0) {
+						info.target.?.player().health = info.target.?.player().maxHealth;
 						info.cause.sendMessage(info.target.?.name);
 
 						self.syncOperations.append(allocator, .{.kill = .{
@@ -967,9 +969,9 @@ pub const Command = struct { // MARK: Command
 			},
 			.addEnergy => |*info| {
 				if(side == .server) {
-					info.previous = info.target.?.player.energy;
+					info.previous = info.target.?.player().energy;
 
-					info.target.?.player.energy = std.math.clamp(info.target.?.player.energy + info.energy, 0, info.target.?.player.maxEnergy);
+					info.target.?.player().energy = std.math.clamp(info.target.?.player().energy + info.energy, 0, info.target.?.player().maxEnergy);
 					self.syncOperations.append(allocator, .{.energy = .{
 						.target = info.target.?,
 						.energy = info.energy,
@@ -1093,7 +1095,7 @@ pub const Command = struct { // MARK: Command
 			writer.writeEnum(SourceType, self.source);
 			switch(self.source) {
 				.playerInventory, .hand => |val| {
-					writer.writeInt(u32, val);
+					writer.writeEnum(EntityIndex, val);
 				},
 				.recipe => |val| {
 					writer.writeInt(u16, val.resultAmount);
@@ -1124,9 +1126,9 @@ pub const Command = struct { // MARK: Command
 			const typeEnum = try reader.readEnum(TypeEnum);
 			const sourceType = try reader.readEnum(SourceType);
 			const source: Source = switch(sourceType) {
-				.playerInventory => .{.playerInventory = try reader.readInt(u32)},
+				.playerInventory => .{.playerInventory = try reader.readEnum(EntityIndex)},
 				.sharedTestingInventory => .{.sharedTestingInventory = {}},
-				.hand => .{.hand = try reader.readInt(u32)},
+				.hand => .{.hand = try reader.readEnum(EntityIndex)},
 				.recipe => .{
 					.recipe = blk: {
 						var itemList = main.List(struct {amount: u16, item: BaseItemIndex}).initCapacity(main.stackAllocator, len);
@@ -1382,8 +1384,8 @@ pub const Command = struct { // MARK: Command
 				std.debug.assert(cmd.baseOperations.pop().create.dest.inv._items.ptr == temp._items.ptr); // Remove the extra step from undo list (we cannot undo dropped items)
 				if(_items[0].item != null) {
 					if(side == .server) {
-						const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.player.rot[0]), -user.?.player.rot[2]);
-						main.server.world.?.dropWithCooldown(_items[0], user.?.player.pos, direction, 20, main.server.updatesPerSec*2);
+						const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.player().rot[0]), -user.?.player().rot[2]);
+						main.server.world.?.dropWithCooldown(_items[0], user.?.player().pos, direction, 20, main.server.updatesPerSec*2);
 					}
 				}
 				return;
@@ -1394,8 +1396,8 @@ pub const Command = struct { // MARK: Command
 			}
 			const amount = @min(self.source.ref().amount, self.desiredAmount);
 			if(side == .server) {
-				const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.player.rot[0]), -user.?.player.rot[2]);
-				main.server.world.?.dropWithCooldown(.{.item = self.source.ref().item.?.clone(), .amount = amount}, user.?.player.pos, direction, 20, main.server.updatesPerSec*2);
+				const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.player().rot[0]), -user.?.player().rot[2]);
+				main.server.world.?.dropWithCooldown(.{.item = self.source.ref().item.?.clone(), .amount = amount}, user.?.player().pos, direction, 20, main.server.updatesPerSec*2);
 			}
 			cmd.executeBaseOperation(allocator, .{.delete = .{
 				.source = self.source,
@@ -1508,8 +1510,8 @@ pub const Command = struct { // MARK: Command
 					}
 				}
 				if(side == .server) {
-					const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.player.rot[0]), -user.?.player.rot[2]);
-					main.server.world.?.drop(sourceStack.clone(), user.?.player.pos, direction, 20);
+					const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.player().rot[0]), -user.?.player().rot[2]);
+					main.server.world.?.drop(sourceStack.clone(), user.?.player().pos, direction, 20);
 				}
 				cmd.executeBaseOperation(allocator, .{.delete = .{
 					.source = .{.inv = self.source, .slot = @intCast(sourceSlot)},
@@ -1736,7 +1738,7 @@ pub const Command = struct { // MARK: Command
 	};
 
 	const AddHealth = struct { // MARK: AddHealth
-		target: u32,
+		target: EntityIndex,
 		health: f32,
 		cause: main.game.DamageType,
 
@@ -1764,19 +1766,19 @@ pub const Command = struct { // MARK: Command
 				.target = target,
 				.health = self.health,
 				.cause = self.cause,
-				.previous = if(side == .server) target.?.player.health else main.game.Player.super.health,
+				.previous = if(side == .server) target.?.player().health else main.game.Player.super.health,
 			}}, side);
 		}
 
 		fn serialize(self: AddHealth, writer: *utils.BinaryWriter) void {
-			writer.writeInt(u32, self.target);
+			writer.writeEnum(EntityIndex, self.target);
 			writer.writeInt(u32, @bitCast(self.health));
 			writer.writeEnum(main.game.DamageType, self.cause);
 		}
 
 		fn deserialize(reader: *utils.BinaryReader, _: Side, _: ?*main.server.User) !AddHealth {
 			return .{
-				.target = try reader.readInt(u32),
+				.target = try reader.readEnum(EntityIndex),
 				.health = @bitCast(try reader.readInt(u32)),
 				.cause = try reader.readEnum(main.game.DamageType),
 			};
@@ -1795,9 +1797,9 @@ const SourceType = enum(u8) {
 };
 const Source = union(SourceType) {
 	alreadyFreed: void,
-	playerInventory: u32,
+	playerInventory: EntityIndex,
 	sharedTestingInventory: void,
-	hand: u32,
+	hand: EntityIndex,
 	recipe: *const main.items.Recipe,
 	blockInventory: Vec3i,
 	other: void,

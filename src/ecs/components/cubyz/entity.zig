@@ -14,8 +14,8 @@ const EntityIndex = ecs.EntityIndex;
 
 const Self = @This();
 
-const typeStorage: SparseSet(TypeData, EntityTypeIndex) = undefined;
-const storage: SparseSet(Data, EntityIndex) = undefined;
+var typeStorage: SparseSet(TypeData, EntityTypeIndex) = undefined;
+var storage: SparseSet(Data, EntityIndex) = undefined;
 
 pub const TypeData = struct {
 	maxHealth: f32 = 8,
@@ -39,7 +39,7 @@ pub fn init() void {
 	storage = .{};
 }
 
-pub fn fromZon(self: *Self, zon: ZonElement) void {
+pub fn fromZon(self: *Data, zon: ZonElement) void {
 	self.pos = zon.get(Vec3d, "position", .{0, 0, 0});
 	self.vel = zon.get(Vec3d, "velocity", .{0, 0, 0});
 	self.rot = zon.get(Vec3f, "rotation", .{0, 0, 0});
@@ -47,20 +47,14 @@ pub fn fromZon(self: *Self, zon: ZonElement) void {
 	self.energy = zon.get(f32, "energy", self.maxEnergy);
 }
 
-pub fn toZon(allocator: NeverFailingAllocator) ZonElement {
-	const list = ZonElement.initArray(allocator);
-
-	for(storage.dense.items) |item| {
-		const zon = ZonElement.initObject(allocator);
-		zon.put("position", item.pos);
-		zon.put("velocity", item.vel);
-		zon.put("rotation", item.rot);
-		zon.put("health", item.health);
-		zon.put("energy", item.energy);
-		list.append(zon);
-	}
-
-	return list;
+pub fn toZon(allocator: NeverFailingAllocator, data: Data) ZonElement {
+	const zon = ZonElement.initObject(allocator);
+	zon.put("position", data.pos);
+	zon.put("velocity", data.vel);
+	zon.put("rotation", data.rot);
+	zon.put("health", data.health);
+	zon.put("energy", data.energy);
+	return zon;
 }
 
 pub fn initData(allocator: NeverFailingAllocator, entityId: EntityIndex, entityTypeId: EntityTypeIndex) void {

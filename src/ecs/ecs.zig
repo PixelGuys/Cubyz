@@ -15,18 +15,18 @@ const ComponentEnum = std.meta.DeclEnum(components);
 pub const EntityTypeIndex = DenseId(u16);
 pub const EntityIndex = DenseId(u16);
 
-const FeatureMask = @Type(.{.int = .{.bits = std.meta.declarations(components).len, .signedness = .unsigned}});
+const FeatureMask = @Type(.{.int = .{.bits = @typeInfo(components).@"struct".decls.len, .signedness = .unsigned}});
 
 var arenaAllocator: NeverFailingArenaAllocator = undefined;
 var allocator: NeverFailingAllocator = undefined;
 
-const freeList: main.ListUnmanaged(EntityIndex) = undefined;
+var freeList: main.ListUnmanaged(EntityIndex) = undefined;
 
 var entityTypeList: main.ListUnmanaged(EntityType) = undefined;
-var entityIdToEntityType: std.StringArrayHashMapUnmanaged(*const EntityType) = undefined;
+var entityIdToEntityType: std.StringArrayHashMapUnmanaged(EntityTypeIndex) = undefined;
 var nextEntityType: u16 = undefined;
 
-var entityIndexToEntityTypeIndex: SparseSet(EntityTypeIndex, EntityType) = undefined;
+var entityIndexToEntityTypeIndex: SparseSet(EntityTypeIndex, EntityIndex) = undefined;
 
 const EntityType = struct {
 	index: EntityTypeIndex,
@@ -49,7 +49,7 @@ pub fn init() void {
 	entityIdToEntityType = .{};
 	entityIndexToEntityTypeIndex = .{};
 
-	inline for(std.meta.declarations(components)) |decl| {
+	inline for(@typeInfo(components).@"struct".decls) |decl| {
 		@field(components, decl.name).init();
 	}
 }
@@ -89,7 +89,19 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) void {
 		.index = nextEntityType,
 		.features = featureMask,
 	});
-	entityIdToEntityType.put(allocator, id, &entityTypeList.items[nextEntityType]);
+	entityIdToEntityType.put(allocator, id, @enumFromInt(nextEntityType));
+}
+
+pub fn getComponent(comptime component: []const u8, entity: EntityIndex) ?*@field(components, component).Data {
+	return @field(components, component).get(entity);
+}
+
+pub fn getTypeById(id: []const u8) !EntityType {
+	const typeIndex = entityIdToEntityType.get(id) orelse {
+		std.log.err("Couldn't find entity with id {s}, replacing with noValue", .{id});
+		return error.InvalidEntity;
+	};
+	return entityTypeList.items[@intFromEnum(typeIndex)];
 }
 
 pub fn createEntity(id: []const u8) !EntityIndex {
@@ -97,16 +109,16 @@ pub fn createEntity(id: []const u8) !EntityIndex {
 		return error.EntityPoolExhausted;
 	};
 
-	const entityType = entityIdToEntityType.get(id) orelse {
+	const entityTypeIndex = entityIdToEntityType.get(id) orelse {
 		return error.InvalidEntityType;
 	};
 
-	for(std.meta.declarations(components), 0..) |decl, i| {
-		if((entityType.features >> i) & 1 == 0) {
-			continue;
-		}
+	const entityType = entityTypeList.items[@intFromEnum(entityTypeIndex)];
 
-		@field(components, decl.name).initData(main.globalAllocator, entityIndex, entityType.index);
+	inline for(@typeInfo(components).@"struct".decls, 0..) |decl, i| {
+		if((entityType.features >> i) & 1 == 1) {
+			@field(components, decl.name).initData(main.globalAllocator, entityIndex, entityType.index);
+		}
 	}
 
 	entityIndexToEntityTypeIndex.set(allocator, entityIndex, entityType.index);
@@ -114,22 +126,20 @@ pub fn createEntity(id: []const u8) !EntityIndex {
 	return entityIndex;
 }
 
-pub fn removeEntity(entityIndex: EntityIndex) void {
+pub fn removeEntity(entityIndex: EntityIndex) !void {
 	const entityTypeIndex = entityIndexToEntityTypeIndex.get(entityIndex) orelse {
 		return error.InvalidEntityType;
 	};
 
-	const entityType = entityTypeList.items[@intFromEnum(entityTypeIndex)];
+	const entityType = entityTypeList.items[@intFromEnum(entityTypeIndex.*)];
 
-	for(std.meta.declarations(components), 0..) |decl, i| {
-		if((entityType.features >> i) & 1 == 0) {
-			continue;
+	inline for(@typeInfo(components).@"struct".decls, 0..) |decl, i| {
+		if((entityType.features >> i) & 1 == 1) {
+			try @field(components, decl.name).deinitData(main.globalAllocator, entityIndex, entityType.index);
 		}
-
-		@field(components, decl.name).deinitData(main.globalAllocator, entityIndex, entityType.index);
 	}
 
-	entityIndexToEntityTypeIndex.remove(entityIndex);
+	try entityIndexToEntityTypeIndex.remove(entityIndex);
 
 	freeList.append(allocator, entityIndex);
 }
@@ -137,7 +147,7 @@ pub fn removeEntity(entityIndex: EntityIndex) void {
 pub fn deinit() void {
 	arenaAllocator.deinit();
 
-	inline for(std.meta.declarations(components)) |decl| {
+	inline for(@typeInfo(components).@"struct".decls) |decl| {
 		@field(components, decl.name).deinit(main.globalAllocator);
 	}
 }

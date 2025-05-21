@@ -152,7 +152,7 @@ const ChunkManager = struct { // MARK: ChunkManager
 
 		pub fn getPriority(self: *ChunkLoadTask) f32 {
 			switch(self.source) {
-				.user => |user| return self.pos.getPriority(user.player.pos),
+				.user => |user| return self.pos.getPriority(user.player().pos),
 				else => return std.math.floatMax(f32),
 			}
 		}
@@ -212,7 +212,7 @@ const ChunkManager = struct { // MARK: ChunkManager
 
 		pub fn getPriority(self: *LightMapLoadTask) f32 {
 			if(self.source) |user| {
-				return self.pos.getPriority(user.player.pos, terrain.LightMap.LightMapFragment.mapSize) + 100;
+				return self.pos.getPriority(user.player().pos, terrain.LightMap.LightMapFragment.mapSize) + 100;
 			} else {
 				return std.math.floatMax(f32);
 			}
@@ -833,13 +833,13 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		const playerData = files.readToZon(main.stackAllocator, path) catch .null;
 		defer playerData.deinit(main.stackAllocator);
-		const player = &user.player;
+		const player = user.player();
 		if(playerData == .null) {
 			player.pos = @floatFromInt(self.spawn);
 
 			main.items.Inventory.Sync.setGamemode(user, self.defaultGamemode);
 		} else {
-			player.loadFrom(playerData.getChild("entity"));
+			@import("../ecs/components/cubyz/entity.zig").fromZon(player, playerData.getChild("entity"));
 
 			main.items.Inventory.Sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", @tagName(self.defaultGamemode))) orelse self.defaultGamemode);
 		}
@@ -863,7 +863,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		playerZon.put("name", user.name);
 
-		playerZon.put("entity", user.player.save(main.stackAllocator));
+		playerZon.put("entity", @import("../ecs/components/cubyz/entity.zig").toZon(main.stackAllocator, user.player().*));
 		playerZon.put("gamemode", @tagName(user.gamemode.load(.monotonic)));
 
 		{

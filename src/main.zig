@@ -637,6 +637,9 @@ pub fn main() void { // MARK: main()
 	renderer.init();
 	defer renderer.deinit();
 
+	ecs.init();
+	defer ecs.deinit();
+
 	network.init();
 
 	entity.ClientEntityManager.init();
