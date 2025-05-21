@@ -54,6 +54,10 @@ pub fn init() void {
 	}
 }
 
+pub fn hasRegistered(id: []const u8) bool {
+	return entityIdToEntityType.contains(id);
+}
+
 pub fn register(_: []const u8, id: []const u8, zon: ZonElement) void {
 	const componentMap = zon.getChild("components");
 
@@ -66,7 +70,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) void {
 
 	var featureMask: FeatureMask = 0;
 
-	const iterator = componentMap.object.iterator();
+	var iterator = componentMap.object.iterator();
 	while(iterator.next()) |entry| {
 		const component = entry.key_ptr.*;
 		const value = entry.value_ptr.*;
@@ -86,10 +90,10 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) void {
 	}
 
 	entityTypeList.append(allocator, .{
-		.index = nextEntityType,
+		.index = @enumFromInt(nextEntityType),
 		.features = featureMask,
 	});
-	entityIdToEntityType.put(allocator, id, @enumFromInt(nextEntityType));
+	entityIdToEntityType.put(allocator.allocator, id, @enumFromInt(nextEntityType)) catch unreachable;
 }
 
 pub fn getComponent(comptime component: []const u8, entity: EntityIndex) ?*@field(components, component).Data {

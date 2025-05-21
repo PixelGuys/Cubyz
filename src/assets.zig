@@ -2,6 +2,8 @@ const std = @import("std");
 
 const blocks_zig = @import("blocks.zig");
 const items_zig = @import("items.zig");
+const ecs_zig = @import("ecs/ecs.zig");
+const entity_zig = @import("entity.zig");
 const migrations_zig = @import("migrations.zig");
 const blueprints_zig = @import("blueprint.zig");
 const Blueprint = blueprints_zig.Blueprint;
@@ -19,6 +21,7 @@ var commonItems: std.StringHashMap(ZonElement) = undefined;
 var commonTools: std.StringHashMap(ZonElement) = undefined;
 var commonBiomes: std.StringHashMap(ZonElement) = undefined;
 var commonBiomeMigrations: std.StringHashMap(ZonElement) = undefined;
+var commonEntities: std.StringHashMap(ZonElement) = undefined;
 var commonRecipes: std.StringHashMap(ZonElement) = undefined;
 var commonModels: std.StringHashMap([]const u8) = undefined;
 var commonStructureBuildingBlocks: std.StringHashMap(ZonElement) = undefined;
@@ -36,6 +39,7 @@ pub fn init() void {
 	commonTools = .init(arenaAllocator.allocator);
 	commonBiomes = .init(arenaAllocator.allocator);
 	commonBiomeMigrations = .init(arenaAllocator.allocator);
+	commonEntities = .init(arenaAllocator.allocator);
 	commonRecipes = .init(arenaAllocator.allocator);
 	commonModels = .init(arenaAllocator.allocator);
 	commonStructureBuildingBlocks = .init(arenaAllocator.allocator);
@@ -50,6 +54,7 @@ pub fn init() void {
 		&commonTools,
 		&commonBiomes,
 		&commonBiomeMigrations,
+		&commonEntities,
 		&commonRecipes,
 		&commonModels,
 		&commonStructureBuildingBlocks,
@@ -57,8 +62,8 @@ pub fn init() void {
 	);
 
 	std.log.info(
-		"Finished assets init with {} blocks ({} migrations), {} items, {} tools, {} biomes ({} migrations), {} recipes, {} structure building blocks and {} blueprints",
-		.{commonBlocks.count(), commonBlockMigrations.count(), commonItems.count(), commonTools.count(), commonBiomes.count(), commonBiomeMigrations.count(), commonRecipes.count(), commonStructureBuildingBlocks.count(), commonBlueprints.count()},
+		"Finished assets init with {} blocks ({} migrations), {} items, {} tools, {} biomes ({} migrations), {} entities, {} recipes, {} structure building blocks and {} blueprints",
+		.{commonBlocks.count(), commonBlockMigrations.count(), commonItems.count(), commonTools.count(), commonBiomes.count(), commonBiomeMigrations.count(), commonEntities.count(), commonRecipes.count(), commonStructureBuildingBlocks.count(), commonBlueprints.count()},
 	);
 }
 
@@ -268,6 +273,7 @@ pub fn readAssets(
 	tools: *std.StringHashMap(ZonElement),
 	biomes: *std.StringHashMap(ZonElement),
 	biomeMigrations: *std.StringHashMap(ZonElement),
+	entities: *std.StringHashMap(ZonElement),
 	recipes: *std.StringHashMap(ZonElement),
 	models: *std.StringHashMap([]const u8),
 	structureBuildingBlocks: *std.StringHashMap(ZonElement),
@@ -307,6 +313,7 @@ pub fn readAssets(
 	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "items", true, items, null);
 	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "tools", true, tools, null);
 	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "biomes", true, biomes, biomeMigrations);
+	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "entities", true, entities, null);
 	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "recipes", false, recipes, null);
 	readAllObjFilesInAddonsHashmap(externalAllocator, addons, addonNames, "models", models);
 	readAllZonFilesInAddons(externalAllocator, addons, addonNames, "sbb", true, structureBuildingBlocks, null);
@@ -336,6 +343,15 @@ fn registerBlock(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void
 
 	_ = blocks_zig.register(assetFolder, id, zon);
 	blocks_zig.meshes.register(assetFolder, id, zon);
+}
+
+fn registerEntity(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void {
+	if(zon == .null) std.log.err("Missing block: {s}. Replacing it with default block.", .{id});
+
+	_ = ecs_zig.register(assetFolder, id, zon);
+
+	// TODO: Add this
+	// entity_zig.meshes.register(assetFolder, id, zon);
 }
 
 fn assignBlockItem(stringId: []const u8) !void {
@@ -475,6 +491,8 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	defer biomes.clearAndFree();
 	var biomeMigrations = commonBiomeMigrations.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer biomeMigrations.clearAndFree();
+	var entities = commonEntities.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
+	defer entities.clearAndFree();
 	var recipes = commonRecipes.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
 	defer recipes.clearAndFree();
 	var models = commonModels.cloneWithAllocator(main.stackAllocator.allocator) catch unreachable;
@@ -493,6 +511,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		&tools,
 		&biomes,
 		&biomeMigrations,
+		&entities,
 		&recipes,
 		&models,
 		&structureBuildingBlocks,
@@ -587,6 +606,17 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		std.debug.assert(items_zig.hasRegistered(stringId));
 
 		try assignBlockItem(stringId);
+	}
+	
+	iterator = entities.iterator();
+	while(iterator.next()) |entry| {
+		const stringId = entry.key_ptr.*;
+		const zon = entry.value_ptr.*;
+
+		if(ecs_zig.hasRegistered(stringId)) continue;
+		std.debug.assert(zon != .null);
+
+		try registerEntity(assetFolder, stringId, zon);
 	}
 
 	// tools:

@@ -79,11 +79,11 @@ pub fn get(entityId: EntityIndex) ?*Data {
 pub fn initType(allocator: NeverFailingAllocator, entityTypeId: EntityTypeIndex, zon: ZonElement) void {
 	const value: TypeData = .{
 		.maxHealth = zon.get(?f32, "maxHealth", null) orelse blk: {
-			std.log.err("Missing required parameter: maxHealth");
+			std.log.err("Missing required parameter: maxHealth", .{});
 			break :blk 8;
 		},
 		.maxEnergy = zon.get(?f32, "maxEnergy", null) orelse blk: {
-			std.log.err("Missing required parameter: maxEnergy");
+			std.log.err("Missing required parameter: maxEnergy", .{});
 			break :blk 8;
 		},
 	};
