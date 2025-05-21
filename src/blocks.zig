@@ -23,6 +23,9 @@ const block_entity = @import("block_entity.zig");
 const BlockEntityType = block_entity.BlockEntityType;
 const sbb = main.server.terrain.structure_building_blocks;
 const blueprint = main.blueprint;
+const vec = main.vec;
+
+const Vec3i = vec.Vec3i;
 
 var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
 const allocator = arena.allocator();
@@ -425,6 +428,91 @@ pub const TickFunctions = struct {
 		const wz = _chunk.super.pos.wz + z;
 
 		_ = main.server.world.?.cmpxchgBlock(wx, wy, wz, block, cobblestone);
+	}
+
+	// MARK: decay
+	fn calculateBFSMaxBranches(branchingFactor: usize, depth: usize) usize {
+		if(branchingFactor == 1) return depth;
+		return @divFloor((std.math.pow(usize, branchingFactor, depth + 1) - 1), (branchingFactor - 1));
+	}
+
+	fn shouldDecay(depth: comptime_int, block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) bool {
+		// TODO get neighboring chunks if the depth overflows the current chunk
+		const visitedOffset: Vec3i = @splat(depth);
+		const visitSize: usize = 2*depth + 1;
+		var visited = std.mem.zeroes([visitSize][visitSize][visitSize]bool);
+		visited[depth][depth][depth] = true;
+		const neighbors = comptime blk: {
+			var pos: [6]Vec3i = std.mem.zeroes([6]Vec3i);
+			for(Neighbor.iterable, 0..) |dir, i| {
+				pos[i] = dir.relPos();
+			}
+			break :blk pos;
+		};
+
+		const maxNodes: usize = calculateBFSMaxBranches(neighbors.len - 1, depth);
+		const nextPow = std.math.ceilPowerOfTwo(usize, maxNodes) catch unreachable;
+
+		var queue: utils.CircularBufferQueue(main.vec.Vec3i) = .init(main.stackAllocator, nextPow);
+		defer queue.deinit();
+		queue.enqueueSlice(neighbors[0..]);
+
+		while(queue.dequeue()) |relPos| {
+			var visitPos: @Vector(3, usize) = @intCast(relPos + visitedOffset);
+			if(visited[visitPos[0]][visitPos[1]][visitPos[2]]) continue;
+			visited[visitPos[0]][visitPos[1]][visitPos[2]] = true;
+
+			const blockX = relPos[0] + x;
+			const blockY = relPos[1] + y;
+			const blockZ = relPos[2] + z;
+
+			// TODO: check across chunks
+			if(!_chunk.liesInChunk(blockX, blockY, blockZ)) continue;
+
+			_chunk.mutex.lock();
+			const currentNeighbor = _chunk.getBlock(blockX, blockY, blockZ);
+			_chunk.mutex.unlock();
+
+			if(currentNeighbor.hasTag(.cambium)) return false;
+			if(currentNeighbor.typ != block.typ) continue;
+
+			for(neighbors) |neighborDir| {
+				const neighborPos = relPos + neighborDir;
+				if(@reduce(.Add, @abs(neighborPos)) > depth) continue;
+				visitPos = @intCast(neighborPos + visitedOffset);
+				if(visited[visitPos[0]][visitPos[1]][visitPos[2]]) continue;
+				queue.enqueue(neighborPos);
+			}
+		}
+		return true;
+	}
+
+	pub fn decay(block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void {
+		const startDecay = std.time.microTimestamp();
+		if(block.mode() == rotation.getByID("persistent")) {
+			if(rotation.PersistentData.castData(block.data).playerPlaced) return;
+		}
+
+		const depth = 4;
+		if(!shouldDecay(depth, block, _chunk, x, y, z)) {
+			const depthTime = std.time.microTimestamp() - startDecay;
+			std.log.debug("depth calculation {d:.4}µs", .{depthTime});
+			return;
+		}
+		const depthTime = std.time.microTimestamp() - startDecay;
+		const startReplace = std.time.microTimestamp();
+
+		const wx = _chunk.super.pos.wx + x;
+		const wy = _chunk.super.pos.wy + y;
+		const wz = _chunk.super.pos.wz + z;
+
+		_ = main.server.world.?.cmpxchgBlock(wx, wy, wz, block, Block.air) orelse {
+			// TODO: Drop items
+		};
+		const replaceTime = std.time.microTimestamp() - startReplace;
+
+		const totalTime = std.time.microTimestamp() - startDecay;
+		std.log.debug("total {d:.4}µs, depth calculation {d:.4}µs, replace {d:.4}µs", .{totalTime, depthTime, replaceTime});
 	}
 };
 

@@ -14,6 +14,8 @@ const ZonElement = main.ZonElement;
 
 const list = @import("rotation/_list.zig");
 
+pub const PersistentData = list.persistent.PersistentData;
+
 pub const RayIntersectionResult = struct {
 	distance: f64,
 	min: Vec3f,
