@@ -37,8 +37,9 @@ pub fn openFromSignData(_pos: main.vec.Vec3i, _oldText: []const u8) void {
 }
 
 fn apply(_: usize) void {
-	if(textComponent.currentString.items.len > 500 or main.graphics.TextBuffer.Parser.countVisibleCharacters(textComponent.currentString.items) > 100) {
-		std.log.err("Text is too long with {}/{} characters. Limits are 100/500", .{main.graphics.TextBuffer.Parser.countVisibleCharacters(textComponent.currentString.items), textComponent.currentString.items.len});
+	const visibleCharacterCount = main.graphics.TextBuffer.Parser.countVisibleCharacters(textComponent.currentString.items);
+	if(textComponent.currentString.items.len > 500 or visibleCharacterCount > 100) {
+		std.log.err("Text is too long with {}/{} characters. Limits are 100/500", .{visibleCharacterCount, textComponent.currentString.items.len});
 		return;
 	}
 
