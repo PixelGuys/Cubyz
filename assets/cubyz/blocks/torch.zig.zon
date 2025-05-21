@@ -15,7 +15,7 @@
 		.ceiling = "cubyz:torch_side",
 		.floor = "cubyz:torch_side",
 	},
-	.entityDataClass = .sign,
+	.blockEntity = .sign,
 	.texture = "cubyz:torch",
 	.item = .{
 		.texture = "torch.png",
