@@ -79,13 +79,9 @@ pub const EventStatus = enum {
 fn BlockEntityDataStorage(T: type) type {
 	return struct {
 		pub const DataT = T;
-		pub const EntryT = struct {
-			absoluteBlockPosition: Vec3i,
-			data: DataT,
-		};
 		var freeIndexList: main.ListUnmanaged(BlockEntityIndex) = .{};
 		var nextIndex: BlockEntityIndex = @enumFromInt(0);
-		var storage: main.utils.SparseSet(EntryT, BlockEntityIndex) = .{};
+		var storage: main.utils.SparseSet(DataT, BlockEntityIndex) = .{};
 		pub var mutex: std.Thread.Mutex = .{};
 
 		pub fn init() void {
@@ -114,7 +110,7 @@ fn BlockEntityDataStorage(T: type) type {
 			const blockIndex = chunk.getLocalBlockIndex(pos);
 
 			chunk.blockPosToEntityDataMapMutex.lock();
-			chunk.blockPosToEntityDataMap.put(main.globalAllocator.allocator, blockIndex, @intCast(dataIndex)) catch unreachable;
+			chunk.blockPosToEntityDataMap.put(main.globalAllocator.allocator, blockIndex, dataIndex) catch unreachable;
 			chunk.blockPosToEntityDataMapMutex.unlock();
 		}
 		pub fn removeAtIndex(dataIndex: BlockEntityIndex) void {
@@ -154,7 +150,7 @@ fn BlockEntityDataStorage(T: type) type {
 				std.log.warn("Couldn't get entity data of block at position {}", .{pos});
 				return null;
 			};
-			return &storage.items[dataIndex].data;
+			return storage.get(dataIndex);
 		}
 	};
 }
