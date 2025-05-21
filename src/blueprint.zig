@@ -315,12 +315,14 @@ pub const Blueprint = struct {
 			},
 		}
 	}
-	pub fn set(self: *Blueprint, pattern: Pattern, mask: ?Mask) void {
+	pub fn replace(self: *Blueprint, whitelist: ?Mask, blacklist: ?Mask, newBlocks: Pattern) void {
 		for(0..self.blocks.width) |x| {
 			for(0..self.blocks.depth) |y| {
 				for(0..self.blocks.height) |z| {
-					if(mask) |_mask| if(_mask.match(self.blocks.get(x, y, z))) continue;
-					self.blocks.set(x, y, z, pattern.blocks.sample(&main.seed).block);
+					const current = self.blocks.get(x, y, z);
+					if(whitelist) |m| if(!m.match(current)) continue;
+					if(blacklist) |m| if(m.match(current)) continue;
+					self.blocks.set(x, y, z, newBlocks.blocks.sample(&main.seed).block);
 				}
 			}
 		}
@@ -328,6 +330,9 @@ pub const Blueprint = struct {
 };
 
 pub const Pattern = struct {
+	const weightSeparator = '%';
+	const expressionSeparator = ',';
+
 	blocks: AliasTable(Entry),
 
 	const Entry = struct {
@@ -336,26 +341,28 @@ pub const Pattern = struct {
 	};
 
 	pub fn initFromString(allocator: NeverFailingAllocator, source: []const u8) !@This() {
-		var specifiers = std.mem.splitScalar(u8, source, ',');
+		var specifiers = std.mem.splitScalar(u8, source, expressionSeparator);
 		var totalWeight: f32 = 0;
 
 		var weightedEntries: ListUnmanaged(struct {block: Block, weight: f32}) = .{};
 		defer weightedEntries.deinit(main.stackAllocator);
 
 		while(specifiers.next()) |specifier| {
-			var iterator = std.mem.splitScalar(u8, specifier, '%');
+			var blockId = specifier;
+			var weight: f32 = 1.0;
 
-			var weight: f32 = undefined;
-			var block = main.blocks.parseBlock(iterator.rest());
+			if(std.mem.containsAtLeastScalar(u8, specifier, 1, weightSeparator)) {
+				var iterator = std.mem.splitScalar(u8, specifier, weightSeparator);
+				const weightString = iterator.first();
+				blockId = iterator.rest();
 
-			const first = iterator.first();
+				weight = std.fmt.parseFloat(f32, weightString) catch return error.@"Weight not a valid number";
+				if(weight <= 0) return error.@"Weight must be greater than 0";
+			}
 
-			weight = std.fmt.parseFloat(f32, first) catch blk: {
-				// To distinguish somehow between mistyped numeric values and actual block IDs we check for addon name separator.
-				if(!std.mem.containsAtLeastScalar(u8, first, 1, ':')) return error.PatternSyntaxError;
-				block = main.blocks.parseBlock(first);
-				break :blk 1.0;
-			};
+			_ = main.blocks.getBlockById(blockId) catch return error.@"Block not found";
+			const block = main.blocks.parseBlock(blockId);
+
 			totalWeight += weight;
 			weightedEntries.append(main.stackAllocator, .{.block = block, .weight = weight});
 		}
@@ -513,9 +520,6 @@ fn parseBlockLike(block: []const u8) error{DataParsingFailed, IdParsingFailed}!M
 }
 
 const Test = struct {
-	var testingAllocator = main.heap.ErrorHandlingAllocator.init(std.testing.allocator);
-	var allocator = testingAllocator.allocator();
-
 	var parseBlockLikeTest: *const @TypeOf(parseBlockLike) = &defaultParseBlockLike;
 
 	fn defaultParseBlockLike(_: []const u8) !Mask.Entry.Inner {
@@ -544,8 +548,8 @@ test "Mask match block type with any data" {
 	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
 	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
 
-	const mask = try Mask.initFromString(Test.allocator, "addon:dummy");
-	defer mask.deinit(Test.allocator);
+	const mask = try Mask.initFromString(main.heap.testingAllocator, "addon:dummy");
+	defer mask.deinit(main.heap.testingAllocator);
 
 	try std.testing.expect(mask.match(.{.typ = 1, .data = 0}));
 	try std.testing.expect(mask.match(.{.typ = 1, .data = 1}));
@@ -556,43 +560,43 @@ test "Mask empty negative case" {
 	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
 	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
 
-	try std.testing.expectError(error.MissingExpression, Mask.initFromString(Test.allocator, ""));
+	try std.testing.expectError(error.MissingExpression, Mask.initFromString(main.heap.testingAllocator, ""));
 }
 
 test "Mask half-or negative case" {
 	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
 	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
 
-	try std.testing.expectError(error.MissingExpression, Mask.initFromString(Test.allocator, "addon:dummy|"));
+	try std.testing.expectError(error.MissingExpression, Mask.initFromString(main.heap.testingAllocator, "addon:dummy|"));
 }
 
 test "Mask half-or negative case 2" {
 	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
 	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
 
-	try std.testing.expectError(error.MissingExpression, Mask.initFromString(Test.allocator, "|addon:dummy"));
+	try std.testing.expectError(error.MissingExpression, Mask.initFromString(main.heap.testingAllocator, "|addon:dummy"));
 }
 
 test "Mask half-and negative case" {
 	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
 	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
 
-	try std.testing.expectError(error.MissingExpression, Mask.initFromString(Test.allocator, "addon:dummy&"));
+	try std.testing.expectError(error.MissingExpression, Mask.initFromString(main.heap.testingAllocator, "addon:dummy&"));
 }
 
 test "Mask half-and negative case 2" {
 	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
 	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
 
-	try std.testing.expectError(error.MissingExpression, Mask.initFromString(Test.allocator, "&addon:dummy"));
+	try std.testing.expectError(error.MissingExpression, Mask.initFromString(main.heap.testingAllocator, "&addon:dummy"));
 }
 
 test "Mask inverse match block type with any data" {
 	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 null";
 	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
 
-	const mask = try Mask.initFromString(Test.allocator, "!addon:dummy");
-	defer mask.deinit(Test.allocator);
+	const mask = try Mask.initFromString(main.heap.testingAllocator, "!addon:dummy");
+	defer mask.deinit(main.heap.testingAllocator);
 
 	try std.testing.expect(!mask.match(.{.typ = 1, .data = 0}));
 	try std.testing.expect(!mask.match(.{.typ = 1, .data = 1}));
@@ -603,8 +607,8 @@ test "Mask match block type with exact data" {
 	Test.parseBlockLikeTest = &Test.@"parseBlockLike 1 1";
 	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
 
-	const mask = try Mask.initFromString(Test.allocator, "addon:dummy");
-	defer mask.deinit(Test.allocator);
+	const mask = try Mask.initFromString(main.heap.testingAllocator, "addon:dummy");
+	defer mask.deinit(main.heap.testingAllocator);
 
 	try std.testing.expect(!mask.match(.{.typ = 1, .data = 0}));
 	try std.testing.expect(mask.match(.{.typ = 1, .data = 1}));
@@ -615,8 +619,8 @@ test "Mask match type 0 or type 1 with exact data" {
 	Test.parseBlockLikeTest = &Test.@"parseBlockLike foo or bar";
 	defer Test.parseBlockLikeTest = &Test.defaultParseBlockLike;
 
-	const mask = try Mask.initFromString(Test.allocator, "addon:foo|addon:bar");
-	defer mask.deinit(Test.allocator);
+	const mask = try Mask.initFromString(main.heap.testingAllocator, "addon:foo|addon:bar");
+	defer mask.deinit(main.heap.testingAllocator);
 
 	try std.testing.expect(mask.match(.{.typ = 1, .data = 0}));
 	try std.testing.expect(mask.match(.{.typ = 2, .data = 0}));
