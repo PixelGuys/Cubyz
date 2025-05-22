@@ -196,7 +196,7 @@ pub const ParticleSystem = struct {
 
 		properties = EmitterProperties{
 			.gravity = .{0, 0, -2},
-			.drag = 0.5,
+			.drag = 0.2,
 			.lifeTimeMin = 10,
 			.lifeTimeMax = 10,
 			.velMin = 0.1,
@@ -238,7 +238,7 @@ pub const ParticleSystem = struct {
 			rot += rotVel*deltaTime;
 
 			particleLocal.velAndRotationVel += vec.combine(properties.gravity, 0)*vecDeltaTime;
-			particleLocal.velAndRotationVel *= @splat(@max(0, 1 - properties.drag*deltaTime));
+			particleLocal.velAndRotationVel *= @splat(@exp(-properties.drag*deltaTime));
 			const posDelta = particleLocal.velAndRotationVel*vecDeltaTime;
 
 			if(particleLocal.collides) {
