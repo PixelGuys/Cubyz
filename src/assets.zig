@@ -522,14 +522,15 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	}
 
 	// Then all the blocks that were missing in palette but are present in the game.
-	var iterator = worldAssets.entities.iterator();
+	var iterator = worldAssets.blocks.iterator();
 	while(iterator.next()) |entry| {
 		const stringId = entry.key_ptr.*;
 		const zon = entry.value_ptr.*;
 
-		if(ecs_zig.hasRegistered(stringId)) continue;
+		if(blocks_zig.hasRegistered(stringId)) continue;
 
-		try registerEntity(assetFolder, stringId, zon);
+		try registerBlock(assetFolder, stringId, zon);
+		blockPalette.add(stringId);
 	}
 
 	// Items:
@@ -565,18 +566,29 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		try registerItem(assetFolder, stringId, zon.getChild("item"));
 		itemPalette.add(stringId);
 	}
+	
+
+	// Then missing block-items to keep backwards compatibility of ID order.
+	for(blockPalette.palette.items) |stringId| {
+		const zon = worldAssets.blocks.get(stringId) orelse .null;
+
+		if(!zon.get(bool, "hasItem", true)) continue;
+		if(items_zig.hasRegistered(stringId)) continue;
+
+		try registerItem(assetFolder, stringId, zon.getChild("item"));
+		itemPalette.add(stringId);
+	}
 
 	// And finally normal items.
-	iterator = worldAssets.items.iterator();
+	iterator = worldAssets.entities.iterator();
 	while(iterator.next()) |entry| {
-		const stringId = entry.key_ptr.*;
+		const id = entry.key_ptr.*;
 		const zon = entry.value_ptr.*;
 
-		if(items_zig.hasRegistered(stringId)) continue;
+		if(items_zig.hasRegistered(id)) continue;
 		std.debug.assert(zon != .null);
 
-		try registerItem(assetFolder, stringId, zon);
-		itemPalette.add(stringId);
+		try registerEntity(assetFolder, id, zon);
 	}
 
 	// After we have registered all items and all blocks, we can assign block references to those that come from blocks.
