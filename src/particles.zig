@@ -372,8 +372,8 @@ pub const Emitter = struct {
 		const typ = ParticleManager.particleTypeHashmap.get(self.id) orelse 0;
 		const properties = ParticleSystem.properties;
 
-		const to: u32 = @intCast(@min(ParticleSystem.particleCount + self.count, ParticleSystem.maxCapacity));
-		for(ParticleSystem.particleCount..to) |_| {
+		const count = @min(self.count, ParticleSystem.maxCapacity - ParticleSystem.particleCount);
+		for(0..count) |_| {
 			var particleVel: Vec3f = @splat(0);
 			var particlePos: Vec3d = @splat(0);
 
