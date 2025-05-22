@@ -1211,12 +1211,6 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 
 	const t = 1 - @as(f32, @floatCast(@exp(-2*deltaTime)));
 
-	const emitter2: particles.Emitter = .init("cubyz:poof", true);
-	emitter2.spawnParticles(5, particles.Emitter.SpawnPoint, .{
-		.mode = .spread,
-		.position = Player.getEyePosBlocking() + Vec3d{0, 0, -0.5},
-	});
-
 	fog.fogColor = (biome.fogColor - fog.fogColor)*@as(Vec3f, @splat(t)) + fog.fogColor;
 	fog.density = (biome.fogDensity - fog.density)*t + fog.density;
 	fog.fogLower = (biome.fogLower - fog.fogLower)*t + fog.fogLower;
