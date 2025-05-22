@@ -1,0 +1,18 @@
+.{
+	.tags = .{.wood},
+	.blockHealth = 8,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.rotation = .log_new,
+	.model = "cubyz:cube",
+	.texture0 = "cubyz:branch/birch/dot",
+	.texture1 = "cubyz:branch/birch/half_line",
+	.texture2 = "cubyz:branch/birch/line",
+	.texture3 = "cubyz:branch/birch/bend",
+	.texture4 = "cubyz:branch/birch/intersection",
+	.texture5 = "cubyz:branch/birch/cross",
+	.texture6 = "cubyz:birch_log_top",
+	.lodReplacement = "cubyz:birch_leaves_opaque",
+	.opaqueVariant = "cubyz:birch_leaves_opaque",
+}
