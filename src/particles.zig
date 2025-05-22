@@ -42,6 +42,7 @@ pub const ParticleManager = struct {
 		emissionTextures = .init(arenaAllocator);
 		textureArray = .init();
 		emissionTextureArray = .init();
+		particleTypesSSBO = SSBO.init();
 		ParticleSystem.init();
 	}
 
@@ -53,6 +54,7 @@ pub const ParticleManager = struct {
 		emissionTextureArray.deinit();
 		particleTypeHashmap.deinit(arenaAllocator.allocator);
 		ParticleSystem.deinit();
+		particleTypesSSBO.deinit();
 		arena.deinit();
 	}
 
@@ -158,7 +160,7 @@ pub const ParticleManager = struct {
 		emissionTextureArray.generate(emissionTextures.items, true, false);
 		c.glTexParameterf(c.GL_TEXTURE_2D_ARRAY, c.GL_TEXTURE_MAX_ANISOTROPY, @floatFromInt(main.settings.anisotropicFiltering));
 
-		particleTypesSSBO = SSBO.initStatic(ParticleType, ParticleManager.types.items);
+		particleTypesSSBO.bufferData(ParticleType, ParticleManager.types.items);
 		particleTypesSSBO.bind(14);
 	}
 };
@@ -348,74 +350,94 @@ pub const EmitterProperties = struct {
 	lifeTimeMax: f32 = 0,
 };
 
-pub const EmitterShapeEnum = enum(u8) {
-	point,
-	sphere,
-	cube,
-};
-pub const DirectionModeEnum = enum(u8) {
-	spread,
-	scatter,
-	direction,
+pub const DirectionMode = union(enum(u8)) {
+	// The particle goes in direction away from the center 
+	spread: void,
+	// The particle goes in random directions
+	scatter: void,
+	// The particle goes in the specified direction
+	direction: Vec3f,
 };
 
 pub const Emitter = struct {
-	shapeType: EmitterShapeEnum,
-	directionMode: DirectionModeEnum = .spread,
-	count: u32,
-	size: f32 = 0,
-	dir: Vec3f = @splat(0),
-	id: []const u8,
+	typ: u16 = 0,
 	collides: bool,
 
-	pub fn spawn(self: Emitter, pos: Vec3d) void {
-		const typ = ParticleManager.particleTypeHashmap.get(self.id) orelse 0;
-		const properties = ParticleSystem.properties;
+	pub const SpawnPoint = struct {
+		mode: DirectionMode,
+		position: Vec3d,
 
-		const to: u32 = @intCast(@min(ParticleSystem.particleCount + self.count, ParticleSystem.maxCapacity));
-		for(ParticleSystem.particleCount..to) |_| {
-			var particleVel: Vec3f = @splat(0);
-			var particlePos: Vec3d = @splat(0);
+		pub fn spawn(self: SpawnPoint) struct{ Vec3d, Vec3f } {
+			const particlePos = self.position;
+			const speed: Vec3f = @splat(ParticleSystem.properties.velMin + random.nextFloat(&seed)*ParticleSystem.properties.velMax);
+			const dir: Vec3f = switch(self.mode) {
+				.direction => |dir| dir,
+				.scatter, .spread => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
+			};
+			const particleVel = dir*speed;
 
-			switch(self.shapeType) {
-				.point => {
-					particlePos = pos;
-					const speed: Vec3f = @splat(properties.velMin + random.nextFloat(&seed)*properties.velMax);
-					const dir: Vec3f = switch(self.directionMode) {
-						.direction => self.dir,
-						.scatter => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
-						.spread => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
-					};
-					particleVel = dir*speed;
-				},
-				.sphere => {
-					// this has a non uniform way of distribution
-					const spawnPos: Vec3d = @splat(random.nextDouble(&seed)*self.size);
-					const offsetPos: Vec3d = vec.normalize(random.nextDoubleVectorSigned(3, &seed));
-					particlePos = pos + offsetPos*spawnPos;
-					const speed: Vec3f = @splat(properties.velMin + random.nextFloat(&seed)*properties.velMax);
-					const dir: Vec3f = switch(self.directionMode) {
-						.direction => self.dir,
-						.scatter => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
-						.spread => @floatCast(offsetPos),
-					};
-					particleVel = dir*speed;
-				},
-				.cube => {
-					const spawnPos: Vec3d = @splat(random.nextDouble(&seed)*self.size);
-					const offsetPos: Vec3d = random.nextDoubleVectorSigned(3, &seed);
-					particlePos = pos + offsetPos*spawnPos;
-					const speed: Vec3f = @splat(properties.velMin + random.nextFloat(&seed)*properties.velMax);
-					const dir: Vec3f = switch(self.directionMode) {
-						.direction => self.dir,
-						.scatter => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
-						.spread => vec.normalize(@as(Vec3f, @floatCast(offsetPos))),
-					};
-					particleVel = dir*speed;
-				},
-			}
+			return .{particlePos, particleVel};
+		}
+	};
 
-			ParticleSystem.addParticle(typ, particlePos, particleVel, self.collides);
+	pub const SpawnSphere = struct {
+		size: f64,
+		mode: DirectionMode,
+		position: Vec3d,
+
+		pub fn spawn(self: SpawnSphere) struct{ Vec3d, Vec3f } {
+			// this has a non uniform way of distribution
+			const spawnPos: Vec3d = @splat(random.nextDouble(&seed)*self.size);
+			const offsetPos: Vec3d = vec.normalize(random.nextDoubleVectorSigned(3, &seed));
+			const particlePos = self.position + offsetPos*spawnPos;
+			const speed: Vec3f = @splat(ParticleSystem.properties.velMin + random.nextFloat(&seed)*ParticleSystem.properties.velMax);
+			const dir: Vec3f = switch(self.mode) {
+				.direction => |dir| dir,
+				.scatter => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
+				.spread => @floatCast(offsetPos),
+			};
+			const particleVel = dir*speed;
+
+			return .{particlePos, particleVel};
+		}
+	};
+
+	pub const SpawnCube = struct {
+		size: f64,
+		mode: DirectionMode,
+		position: Vec3d,
+
+		pub fn spawn(self: SpawnCube) struct{ Vec3d, Vec3f } {
+			const spawnPos: Vec3d = @splat(random.nextDouble(&seed)*self.size);
+			const offsetPos: Vec3d = random.nextDoubleVectorSigned(3, &seed);
+			const particlePos = self.position + offsetPos*spawnPos;
+			const speed: Vec3f = @splat(ParticleSystem.properties.velMin + random.nextFloat(&seed)*ParticleSystem.properties.velMax);
+			const dir: Vec3f = switch(self.mode) {
+				.direction => |dir| dir,
+				.scatter => vec.normalize(random.nextFloatVectorSigned(3, &seed)),
+				.spread => vec.normalize(@as(Vec3f, @floatCast(offsetPos))),
+			};
+			const particleVel = dir*speed;
+
+			return .{particlePos, particleVel};
+		}
+	};
+
+	pub fn init(id: []const u8, collides: bool) Emitter {
+		const emitter = Emitter{
+			.typ = ParticleManager.particleTypeHashmap.get(id) orelse 0,
+			.collides = collides,
+		};
+
+		return emitter;
+	}
+
+	pub fn spawnParticles(self: Emitter, spawnCount: u32, comptime T: type, spawnRules: T) void {
+		const count = @min(spawnCount, ParticleSystem.maxCapacity - ParticleSystem.particleCount);
+		for(0..count) |_| {
+			const particlePos, const particleVel = spawnRules.spawn();
+
+			ParticleSystem.addParticle(self.typ, particlePos, particleVel, self.collides);
 		}
 	}
 };
