@@ -336,7 +336,8 @@ pub const ParticleSystem = struct {
 
 	pub fn getParticleCount() u32 {
 		return particleCount;
-	}
+	} // sdfjasidjgfasdpij
+
 };
 
 pub const EmitterProperties = struct {
@@ -351,9 +352,9 @@ pub const EmitterProperties = struct {
 };
 
 pub const DirectionMode = union(enum(u8)) {
-	// The particle goes in direction away from the center 
+	// The particle goes in direction away from the center
 	spread: void,
-	// The particle goes in random directions
+	// The particle goes in a random direction
 	scatter: void,
 	// The particle goes in the specified direction
 	direction: Vec3f,
@@ -367,7 +368,7 @@ pub const Emitter = struct {
 		mode: DirectionMode,
 		position: Vec3d,
 
-		pub fn spawn(self: SpawnPoint) struct{ Vec3d, Vec3f } {
+		pub fn spawn(self: SpawnPoint) struct {Vec3d, Vec3f} {
 			const particlePos = self.position;
 			const speed: Vec3f = @splat(ParticleSystem.properties.velMin + random.nextFloat(&seed)*ParticleSystem.properties.velMax);
 			const dir: Vec3f = switch(self.mode) {
@@ -385,7 +386,7 @@ pub const Emitter = struct {
 		mode: DirectionMode,
 		position: Vec3d,
 
-		pub fn spawn(self: SpawnSphere) struct{ Vec3d, Vec3f } {
+		pub fn spawn(self: SpawnSphere) struct {Vec3d, Vec3f} {
 			// this has a non uniform way of distribution
 			const spawnPos: Vec3d = @splat(random.nextDouble(&seed)*self.size);
 			const offsetPos: Vec3d = vec.normalize(random.nextDoubleVectorSigned(3, &seed));
@@ -407,7 +408,7 @@ pub const Emitter = struct {
 		mode: DirectionMode,
 		position: Vec3d,
 
-		pub fn spawn(self: SpawnCube) struct{ Vec3d, Vec3f } {
+		pub fn spawn(self: SpawnCube) struct {Vec3d, Vec3f} {
 			const spawnPos: Vec3d = @splat(random.nextDouble(&seed)*self.size);
 			const offsetPos: Vec3d = random.nextDoubleVectorSigned(3, &seed);
 			const particlePos = self.position + offsetPos*spawnPos;
