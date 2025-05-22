@@ -11,6 +11,7 @@ const Neighbor = main.chunk.Neighbor;
 const Block = main.blocks.Block;
 const Degrees = main.rotation.Degrees;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const Assets = main.assets.Assets;
 
 var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
 const arenaAllocator = arena.allocator();
@@ -175,7 +176,7 @@ const Child = struct {
 	}
 };
 
-pub fn registerSBB(structures: *std.StringHashMap(ZonElement)) !void {
+pub fn registerSBB(structures: *Assets.ZonHashMap) !void {
 	std.debug.assert(structureCache.capacity() == 0);
 	structureCache.ensureTotalCapacity(arenaAllocator.allocator, structures.count()) catch unreachable;
 	childrenToResolve = .init(main.stackAllocator);
@@ -217,7 +218,7 @@ pub fn registerChildBlock(numericId: u16, stringId: []const u8) void {
 	childBlockStringId.append(arenaAllocator, arenaAllocator.dupe(u8, colorName));
 }
 
-pub fn registerBlueprints(blueprints: *std.StringHashMap([]u8)) !void {
+pub fn registerBlueprints(blueprints: *Assets.BytesHashMap) !void {
 	std.debug.assert(blueprintCache.capacity() == 0);
 
 	originBlockNumericId = main.blocks.parseBlock(originBlockStringId).typ;

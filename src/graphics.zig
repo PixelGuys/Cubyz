@@ -1760,6 +1760,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 
 		// TODO: logicOp
 		for(self.blendState.attachments, 0..) |attachment, i| {
+			c.glColorMask(@intFromBool(attachment.colorWriteMask.r), @intFromBool(attachment.colorWriteMask.g), @intFromBool(attachment.colorWriteMask.b), @intFromBool(attachment.colorWriteMask.a));
 			if(!attachment.enabled) {
 				c.glDisable(c.GL_BLEND);
 				continue;
