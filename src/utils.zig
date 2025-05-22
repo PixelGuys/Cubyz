@@ -1730,11 +1730,8 @@ pub const BinaryWriter = struct {
 };
 
 const ReadWriteTest = struct {
-	var testingAllocator = main.heap.ErrorHandlingAllocator.init(std.testing.allocator);
-	var allocator = testingAllocator.allocator();
-
 	fn getWriter() BinaryWriter {
-		return .init(ReadWriteTest.allocator);
+		return .init(main.heap.testingAllocator);
 	}
 	fn getReader(data: []const u8) BinaryReader {
 		return .init(data);
@@ -1937,6 +1934,12 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 		dense: main.ListUnmanaged(T) = .{},
 		denseToSparseIndex: main.ListUnmanaged(IdType) = .{},
 		sparseToDenseIndex: main.ListUnmanaged(IdType) = .{},
+
+		pub fn clear(self: *Self) void {
+			self.dense.clearRetainingCapacity();
+			self.denseToSparseIndex.clearRetainingCapacity();
+			self.sparseToDenseIndex.clearRetainingCapacity();
+		}
 
 		pub fn deinit(self: *Self, allocator: NeverFailingAllocator) void {
 			self.dense.deinit(allocator);
