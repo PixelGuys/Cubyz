@@ -2,6 +2,7 @@ const std = @import("std");
 
 const blocks_zig = @import("blocks.zig");
 const items_zig = @import("items.zig");
+const ecs_zig = @import("ecs/ecs.zig");
 const migrations_zig = @import("migrations.zig");
 const blueprints_zig = @import("blueprint.zig");
 const Blueprint = blueprints_zig.Blueprint;
@@ -29,6 +30,7 @@ pub const Assets = struct {
 	tools: ZonHashMap,
 	biomes: ZonHashMap,
 	biomeMigrations: AddonNameToZonMap,
+	entities: ZonHashMap,
 	recipes: ZonHashMap,
 	models: BytesHashMap,
 	structureBuildingBlocks: ZonHashMap,
@@ -42,6 +44,7 @@ pub const Assets = struct {
 			.tools = .{},
 			.biomes = .{},
 			.biomeMigrations = .{},
+			.entities = .{},
 			.recipes = .{},
 			.models = .{},
 			.structureBuildingBlocks = .{},
@@ -55,6 +58,7 @@ pub const Assets = struct {
 		self.tools.deinit(allocator.allocator);
 		self.biomes.deinit(allocator.allocator);
 		self.biomeMigrations.deinit(allocator.allocator);
+		self.entities.deinit(allocator.allocator);
 		self.recipes.deinit(allocator.allocator);
 		self.models.deinit(allocator.allocator);
 		self.structureBuildingBlocks.deinit(allocator.allocator);
@@ -68,6 +72,7 @@ pub const Assets = struct {
 			.tools = self.tools.clone(allocator.allocator) catch unreachable,
 			.biomes = self.biomes.clone(allocator.allocator) catch unreachable,
 			.biomeMigrations = self.biomeMigrations.clone(allocator.allocator) catch unreachable,
+			.entities = self.entities.clone(allocator.allocator) catch unreachable,
 			.recipes = self.recipes.clone(allocator.allocator) catch unreachable,
 			.models = self.models.clone(allocator.allocator) catch unreachable,
 			.structureBuildingBlocks = self.structureBuildingBlocks.clone(allocator.allocator) catch unreachable,
@@ -84,6 +89,7 @@ pub const Assets = struct {
 			addon.readAllZon(allocator, "items", true, &self.items, null);
 			addon.readAllZon(allocator, "tools", true, &self.tools, null);
 			addon.readAllZon(allocator, "biomes", true, &self.biomes, &self.biomeMigrations);
+			addon.readAllZon(allocator, "entities", true, &self.entities, null);
 			addon.readAllZon(allocator, "recipes", false, &self.recipes, null);
 			addon.readAllZon(allocator, "sbb", true, &self.structureBuildingBlocks, null);
 			addon.readAllBlueprints(allocator, &self.blueprints);
@@ -92,8 +98,8 @@ pub const Assets = struct {
 	}
 	fn log(self: *Assets, typ: enum {common, world}) void {
 		std.log.info(
-			"Finished {s} assets reading with {} blocks ({} migrations), {} items, {} tools, {} biomes ({} migrations), {} recipes, {} structure building blocks and {} blueprints",
-			.{@tagName(typ), self.blocks.count(), self.blockMigrations.count(), self.items.count(), self.tools.count(), self.biomes.count(), self.biomeMigrations.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count()},
+			"Finished {s} assets reading with {} blocks ({} migrations), {} items, {} tools, {} biomes ({} migrations), {} entities, {} recipes, {} structure building blocks and {} blueprints",
+			.{@tagName(typ), self.blocks.count(), self.blockMigrations.count(), self.items.count(), self.tools.count(), self.biomes.count(), self.biomeMigrations.count(), self.entities.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count()},
 		);
 	}
 
@@ -352,6 +358,15 @@ fn registerBlock(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void
 	blocks_zig.meshes.register(assetFolder, id, zon);
 }
 
+fn registerEntity(assetFolder: []const u8, id: []const u8, zon: ZonElement) !void {
+	if(zon == .null) std.log.err("Missing entity: {s}. Replacing it with default entity.", .{id});
+
+	_ = ecs_zig.register(assetFolder, id, zon);
+
+	// TODO: Do this
+	// blocks_zig.meshes.register(assetFolder, id, zon);
+}
+
 fn assignBlockItem(stringId: []const u8) !void {
 	const block = blocks_zig.getTypeById(stringId);
 	// TODO: This must be gone in PixelGuys/Cubyz#1205
@@ -507,15 +522,14 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	}
 
 	// Then all the blocks that were missing in palette but are present in the game.
-	var iterator = worldAssets.blocks.iterator();
+	var iterator = worldAssets.entities.iterator();
 	while(iterator.next()) |entry| {
 		const stringId = entry.key_ptr.*;
 		const zon = entry.value_ptr.*;
 
-		if(blocks_zig.hasRegistered(stringId)) continue;
+		if(ecs_zig.hasRegistered(stringId)) continue;
 
-		try registerBlock(assetFolder, stringId, zon);
-		blockPalette.add(stringId);
+		try registerEntity(assetFolder, stringId, zon);
 	}
 
 	// Items:
