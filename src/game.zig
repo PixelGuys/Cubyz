@@ -510,10 +510,10 @@ pub const collision = struct {
 						entity.touchingClimbable = entity.touchingClimbable or isSideBlock or isBottomBlock;
 						entity.climbing = isSideBlock and (!isBottomBlock or isFullBlock);
 
-						const normal = if (model.internalQuads.len > 0) model.internalQuads[0].quadInfo().normal else break :missingNormal;
-						const area: vec.Area = if (normal[0] != 0) .yz else if (normal[1] != 0) .xz else .xy;
+						const normal = if(model.internalQuads.len > 0) model.internalQuads[0].quadInfo().normal else break :missingNormal;
+						const area: vec.Area = if(normal[0] != 0) .yz else if(normal[1] != 0) .xz else .xy;
 
-						if (calculateIntersectingArea(block.?, blockPos, boundingBox, area) <= 0) 
+						if(calculateIntersectingArea(block.?, blockPos, boundingBox, area) <= 0)
 							entity.climbing = false;
 					}
 
