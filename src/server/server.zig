@@ -95,7 +95,6 @@ pub const User = struct { // MARK: User
 	conn: *Connection = undefined,
 	player: Entity = .{},
 	timeDifference: utils.TimeDifference = .{},
-	interpolation: utils.GenericInterpolation(3) = undefined,
 	lastTime: i16 = undefined,
 	lastSaveTime: i64 = 0,
 	name: []const u8 = "",
@@ -126,7 +125,6 @@ pub const User = struct { // MARK: User
 		errdefer main.globalAllocator.destroy(self);
 		self.* = .{};
 		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
-		self.interpolation.init(@ptrCast(&self.player.pos), @ptrCast(&self.player.vel));
 		self.conn = try Connection.init(manager, ipPort, self);
 		self.increaseRefCount();
 		self.worldEditData = .init();
@@ -242,7 +240,6 @@ pub const User = struct { // MARK: User
 		defer self.mutex.unlock();
 		var time = @as(i16, @truncate(std.time.milliTimestamp())) -% main.settings.entityLookback;
 		time -%= self.timeDifference.difference.load(.monotonic);
-		self.interpolation.update(time, self.lastTime);
 		self.lastTime = time;
 
 		const saveTime = std.time.milliTimestamp();
@@ -259,13 +256,11 @@ pub const User = struct { // MARK: User
 	pub fn receiveData(self: *User, reader: *BinaryReader) !void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
-		const position: [3]f64 = try reader.readVec(Vec3d);
-		const velocity: [3]f64 = try reader.readVec(Vec3d);
-		const rotation: [3]f32 = try reader.readVec(Vec3f);
-		self.player.rot = rotation;
+		self.player.pos = try reader.readVec(Vec3d);
+		self.player.vel = try reader.readVec(Vec3d);
+		self.player.rot = try reader.readVec(Vec3f);
 		const time = try reader.readInt(i16);
 		self.timeDifference.addDataPoint(time);
-		self.interpolation.updatePosition(&position, &velocity, time);
 	}
 
 	pub fn sendMessage(self: *User, comptime fmt: []const u8, args: anytype) void {
