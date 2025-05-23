@@ -100,16 +100,8 @@ pub const ParticleManager = struct {
 			isEmissionBroken = true;
 		}
 
-		if(isBaseBroken) {
-			createDummyAnimationFrames(&textures, baseAnimationFrameCount, Image.defaultImage);
-			createDummyAnimationFrames(&emissionTextures, baseAnimationFrameCount, Image.emptyImage);
-		} else if(isEmissionBroken or !hasEmission) {
-			createAnimationFrames(&textures, baseAnimationFrameCount, base);
-			createDummyAnimationFrames(&emissionTextures, baseAnimationFrameCount, Image.emptyImage);
-		} else {
-			createAnimationFrames(&textures, baseAnimationFrameCount, base);
-			createAnimationFrames(&emissionTextures, baseAnimationFrameCount, emission);
-		}
+		createAnimationFrames(&textures, baseAnimationFrameCount, base, isBaseBroken);
+		createAnimationFrames(&emissionTextures, baseAnimationFrameCount, emission, isBaseBroken or isEmissionBroken or !hasEmission);
 
 		return typ;
 	}
@@ -131,15 +123,9 @@ pub const ParticleManager = struct {
 		};
 	}
 
-	fn createDummyAnimationFrames(container: *main.List(Image), frameCount: usize, image: Image) void {
-		for(0..frameCount) |_| {
-			container.append(image);
-		}
-	}
-
-	fn createAnimationFrames(container: *main.List(Image), frameCount: usize, image: Image) void {
+	fn createAnimationFrames(container: *main.List(Image), frameCount: usize, image: Image, isBroken: bool) void {
 		for(0..frameCount) |i| {
-			container.append(extractAnimationSlice(image, i));
+			container.append(if(isBroken) image else extractAnimationSlice(image, i));
 		}
 	}
 
@@ -348,7 +334,7 @@ pub const EmitterProperties = struct {
 };
 
 pub const DirectionMode = union(enum(u8)) {
-	// The particle goes in direction away from the center
+	// The particle goes in the direction away from the center
 	spread: void,
 	// The particle goes in a random direction
 	scatter: void,
