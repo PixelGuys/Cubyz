@@ -1,6 +1,6 @@
 .{
 	.components = .{
-		.@"cubyz:entity" = .{
+		.entity = .{
 			.maxHealth = 8,
 			.maxEnergy = 8,
 		},

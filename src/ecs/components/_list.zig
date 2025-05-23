@@ -1,1 +1,1 @@
-pub const @"cubyz:entity" = @import("cubyz/entity.zig");
+pub const entity = @import("cubyz/entity.zig");

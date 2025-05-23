@@ -8,14 +8,10 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const SparseSet = main.utils.SparseSet;
 const DenseId = main.utils.DenseId;
 
-const components = @import("components/_list.zig");
-
-const ComponentEnum = std.meta.DeclEnum(components);
+const component_list = @import("components/_list.zig");
 
 pub const EntityTypeIndex = DenseId(u16);
 pub const EntityIndex = DenseId(u16);
-
-const FeatureMask = @Type(.{.int = .{.bits = @typeInfo(components).@"struct".decls.len, .signedness = .unsigned}});
 
 var arenaAllocator: NeverFailingArenaAllocator = undefined;
 var allocator: NeverFailingAllocator = undefined;
@@ -28,14 +24,32 @@ var nextEntityType: u16 = undefined;
 
 var entityIndexToEntityTypeIndex: SparseSet(EntityTypeIndex, EntityIndex) = undefined;
 
+const Component = struct {
+	init: *const fn () void,
+	deinit: *const fn (allocator: NeverFailingAllocator) void,
+	reset: *const fn () void,
+	fromZon: *const fn (allocator: NeverFailingAllocator, entityIndex: EntityIndex, entityTypeIndex: EntityTypeIndex, zon: ZonElement) void,
+	toZon: *const fn (allocator: NeverFailingAllocator, entityIndex: EntityIndex) ZonElement,
+	initData: *const fn (allocator: NeverFailingAllocator, entityId: EntityIndex, entityTypeId: EntityTypeIndex) void,
+	deinitData: *const fn (allocator: NeverFailingAllocator, entityIndex: EntityIndex, entityTypeIndex: EntityTypeIndex) error{ElementNotFound}!void,
+	get: *const fn (entityId: EntityIndex) ?*anyopaque,
+	initType: *const fn (allocator: NeverFailingAllocator, entityTypeId: EntityTypeIndex, zon: ZonElement) void,
+};
+
+const componentList: main.ListUnmanaged(Component) = undefined;
+const componentHashMap: std.StringArrayHashMapUnmanaged(u16) = undefined;
+
 const EntityType = struct {
 	index: EntityTypeIndex,
-	features: FeatureMask,
+	features: main.ListUnmanaged(u16),
 };
 
 pub fn init() void {
 	arenaAllocator = .init(main.globalAllocator);
 	allocator = arenaAllocator.allocator();
+
+	componentList = .{};
+	componentHashMap = .{};
 
 	nextEntityType = 0;
 
@@ -49,9 +63,44 @@ pub fn init() void {
 	entityIdToEntityType = .{};
 	entityIndexToEntityTypeIndex = .{};
 
-	inline for(@typeInfo(components).@"struct".decls) |decl| {
-		@field(components, decl.name).init();
+	inline for(@typeInfo(component_list).@"struct".decls) |decl| {
+		registerComponent(decl.name, @field(component_list, decl.name));
 	}
+
+	for (componentList.items) |comp| {
+		comp.init();
+	}
+}
+
+pub fn deinit() void {
+	arenaAllocator.deinit();
+
+	for (componentList.items) |comp| {
+		comp.deinit(main.globalAllocator);
+	}
+}
+
+pub fn reset() void {
+	_ = arenaAllocator.reset(.free_all);
+	
+	for (componentList.items) |comp| {
+		comp.reset();
+	}
+}
+
+pub fn registerComponent(id: []const u8, comptime Comp: type) void {
+	var result: Component = .{};
+	inline for(@typeInfo(result).@"struct".fields) |field| {
+		if(@hasDecl(Comp, field.name)) {
+			if(field.type == @TypeOf(@field(Comp, field.name))) {
+				@field(result, field.name) = @field(Comp, field.name);
+			} else {
+				@field(result, field.name) = &@field(Comp, field.name);
+			}
+		}
+	}
+	componentHashMap.putNoClobber(allocator, id, componentList.items.len);
+	componentList.append(allocator, result);
 }
 
 pub fn hasRegistered(id: []const u8) bool {
@@ -68,36 +117,32 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) void {
 
 	defer nextEntityType += 1;
 
-	var featureMask: FeatureMask = 0;
+	var features: main.ListUnmanaged(u16) = .{};
 
 	var iterator = componentMap.object.iterator();
 	while(iterator.next()) |entry| {
 		const component = entry.key_ptr.*;
 		const value = entry.value_ptr.*;
 
-		const componentType = std.meta.stringToEnum(ComponentEnum, component) orelse {
+		const componentIndex = componentHashMap.get(component) orelse {
 			std.log.err("{s} is not a valid component", .{component});
 			continue;
 		};
 
-		featureMask |= 1 << @intFromEnum(componentType);
+		features.append(main.globalAllocator, componentIndex);
 
-		switch(componentType) {
-			inline else => |typ| {
-				@field(components, @tagName(typ)).initType(main.globalAllocator, @enumFromInt(nextEntityType), value);
-			},
-		}
+		componentList.items[componentIndex].initType(main.globalAllocator, @enumFromInt(nextEntityType), value);
 	}
 
 	entityTypeList.append(allocator, .{
 		.index = @enumFromInt(nextEntityType),
-		.features = featureMask,
+		.features = features,
 	});
 	entityIdToEntityType.put(allocator.allocator, id, @enumFromInt(nextEntityType)) catch unreachable;
 }
 
-pub fn getComponent(comptime component: []const u8, entity: EntityIndex) ?*@field(components, component).Data {
-	return @field(components, component).get(entity);
+pub fn getComponent(comptime component: []const u8, entity: EntityIndex) ?*@field(component_list, component).Data {
+	return @field(component_list, component).get(entity);
 }
 
 pub fn getTypeById(id: []const u8) !EntityType {
@@ -119,9 +164,9 @@ pub fn createEntity(id: []const u8) !EntityIndex {
 
 	const entityType = entityTypeList.items[@intFromEnum(entityTypeIndex)];
 
-	inline for(@typeInfo(components).@"struct".decls, 0..) |decl, i| {
+	inline for(@typeInfo(component_list).@"struct".decls, 0..) |decl, i| {
 		if((entityType.features >> i) & 1 == 1) {
-			@field(components, decl.name).initData(main.globalAllocator, entityIndex, entityType.index);
+			@field(component_list, decl.name).initData(main.globalAllocator, entityIndex, entityType.index);
 		}
 	}
 
@@ -137,25 +182,13 @@ pub fn removeEntity(entityIndex: EntityIndex) !void {
 
 	const entityType = entityTypeList.items[@intFromEnum(entityTypeIndex.*)];
 
-	inline for(@typeInfo(components).@"struct".decls, 0..) |decl, i| {
+	inline for(@typeInfo(component_list).@"struct".decls, 0..) |decl, i| {
 		if((entityType.features >> i) & 1 == 1) {
-			try @field(components, decl.name).deinitData(main.globalAllocator, entityIndex, entityType.index);
+			try @field(component_list, decl.name).deinitData(main.globalAllocator, entityIndex, entityType.index);
 		}
 	}
 
 	try entityIndexToEntityTypeIndex.remove(entityIndex);
 
 	freeList.append(allocator, entityIndex);
-}
-
-pub fn deinit() void {
-	arenaAllocator.deinit();
-
-	inline for(@typeInfo(components).@"struct".decls) |decl| {
-		@field(components, decl.name).deinit(main.globalAllocator);
-	}
-}
-
-pub fn reset() void {
-	_ = arenaAllocator.reset(.free_all);
 }

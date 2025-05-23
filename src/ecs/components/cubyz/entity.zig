@@ -39,21 +39,37 @@ pub fn init() void {
 	storage = .{};
 }
 
-pub fn fromZon(self: *Data, zon: ZonElement) void {
-	self.pos = zon.get(Vec3d, "position", .{0, 0, 0});
-	self.vel = zon.get(Vec3d, "velocity", .{0, 0, 0});
-	self.rot = zon.get(Vec3f, "rotation", .{0, 0, 0});
-	self.health = zon.get(f32, "health", self.maxHealth);
-	self.energy = zon.get(f32, "energy", self.maxEnergy);
+pub fn deinit(allocator: NeverFailingAllocator) void {
+	typeStorage.deinit(allocator);
+	storage.deinit(allocator);
 }
 
-pub fn toZon(allocator: NeverFailingAllocator, data: Data) ZonElement {
+pub fn reset() void {
+	typeStorage.clear();
+	storage.clear();
+}
+
+pub fn fromZon(allocator: NeverFailingAllocator, entityIndex: EntityIndex, entityTypeIndex: EntityTypeIndex, zon: ZonElement) void {
+	const entityType = typeStorage.get(entityTypeIndex).?;
+	storage.set(allocator, entityIndex, .{
+		.pos = zon.get(Vec3d, "position", .{0, 0, 0}),
+		.vel = zon.get(Vec3d, "velocity", .{0, 0, 0}),
+		.rot = zon.get(Vec3f, "rotation", .{0, 0, 0}),
+		.health = zon.get(f32, "health", entityType.maxHealth),
+		.energy = zon.get(f32, "energy", entityType.maxEnergy),
+	});
+}
+
+pub fn toZon(allocator: NeverFailingAllocator, entityIndex: EntityIndex) ZonElement {
+	const data = get(entityIndex).?;
+
 	const zon = ZonElement.initObject(allocator);
 	zon.put("position", data.pos);
 	zon.put("velocity", data.vel);
 	zon.put("rotation", data.rot);
 	zon.put("health", data.health);
 	zon.put("energy", data.energy);
+
 	return zon;
 }
 
@@ -72,8 +88,8 @@ pub fn deinitData(_: NeverFailingAllocator, entityIndex: EntityIndex, _: EntityT
 	try storage.remove(entityIndex);
 }
 
-pub fn get(entityId: EntityIndex) ?*Data {
-	return storage.get(entityId);
+pub fn get(entityId: EntityIndex) ?*anyopaque {
+	return @ptrCast(storage.get(entityId) orelse return null);
 }
 
 pub fn initType(allocator: NeverFailingAllocator, entityTypeId: EntityTypeIndex, zon: ZonElement) void {
@@ -88,9 +104,4 @@ pub fn initType(allocator: NeverFailingAllocator, entityTypeId: EntityTypeIndex,
 		},
 	};
 	typeStorage.set(allocator, entityTypeId, value);
-}
-
-pub fn deinit(allocator: NeverFailingAllocator) void {
-	typeStorage.deinit(allocator);
-	storage.deinit(allocator);
 }
