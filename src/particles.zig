@@ -143,11 +143,11 @@ pub const ParticleManager = struct {
 		}
 	}
 
-	fn extractAnimationSlice(image: Image, fameIndex: usize) Image {
+	fn extractAnimationSlice(image: Image, frameIndex: usize) Image {
 		const frameCount = image.height/image.width;
 		const frameHeight = image.height/frameCount;
-		const startHeight = frameHeight*fameIndex;
-		const endHeight = frameHeight*(fameIndex + 1);
+		const startHeight = frameHeight*frameIndex;
+		const endHeight = frameHeight*(frameIndex + 1);
 		var result = image;
 		result.height = @intCast(frameHeight);
 		result.imageData = result.imageData[startHeight*image.width .. endHeight*image.width];
@@ -333,8 +333,7 @@ pub const ParticleSystem = struct {
 
 	pub fn getParticleCount() u32 {
 		return particleCount;
-	} // sdfjasidjgfasdpij
-
+	}
 };
 
 pub const EmitterProperties = struct {
