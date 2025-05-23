@@ -56,7 +56,7 @@ fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placeme
 	rotated.blueprint.pasteInGeneration(pastePosition, chunk, self.placeMode);
 
 	for(rotated.childBlocks) |childBlock| {
-		const child = structure.pickChild(childBlock, seed);
+		const child = structure.pickChild(childBlock, seed) orelse continue;
 		placeSbb(self, child, pastePosition + childBlock.pos(), childBlock.direction(), chunk, seed);
 	}
 }

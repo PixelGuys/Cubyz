@@ -11,6 +11,7 @@ const Neighbor = main.chunk.Neighbor;
 const Block = main.blocks.Block;
 const Degrees = main.rotation.Degrees;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const Assets = main.assets.Assets;
 
 var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
 const arenaAllocator = arena.allocator();
@@ -137,7 +138,7 @@ pub const StructureBuildingBlock = struct {
 	pub fn getBlueprint(self: StructureBuildingBlock, rotation: Degrees) *BlueprintEntry {
 		return &self.blueprints[@intFromEnum(rotation)];
 	}
-	pub fn pickChild(self: StructureBuildingBlock, block: BlueprintEntry.StructureBlock, seed: *u64) *const StructureBuildingBlock {
+	pub fn pickChild(self: StructureBuildingBlock, block: BlueprintEntry.StructureBlock, seed: *u64) ?*const StructureBuildingBlock {
 		return self.children[block.index].sample(seed).structure;
 	}
 };
@@ -160,24 +161,22 @@ fn initChildTableFromZon(parentId: []const u8, colorName: []const u8, colorIndex
 }
 
 const Child = struct {
-	structure: *StructureBuildingBlock,
+	structure: ?*StructureBuildingBlock,
 	chance: f32,
 
 	fn initFromZon(parentId: []const u8, colorName: []const u8, colorIndex: usize, childIndex: usize, zon: ZonElement) !Child {
-		const structureId = zon.get([]const u8, "structure", "");
-		if(structureId.len == 0) {
-			std.log.err("['{s}'->'{s}'->'{d}'] Child node has empty structure field, parent structure will be discarded.", .{parentId, colorName, childIndex});
-			return error.EmptyStructureId;
+		const structureId = zon.get(?[]const u8, "structure", null);
+		if(structureId != null and structureId.?.len != 0) {
+			childrenToResolve.append(.{.parentId = parentId, .colorName = colorName, .colorIndex = colorIndex, .childIndex = childIndex, .structureId = structureId.?});
 		}
-		childrenToResolve.append(.{.parentId = parentId, .colorName = colorName, .colorIndex = colorIndex, .childIndex = childIndex, .structureId = structureId});
 		return .{
-			.structure = undefined,
+			.structure = null,
 			.chance = zon.get(f32, "chance", 1.0),
 		};
 	}
 };
 
-pub fn registerSBB(structures: *std.StringHashMap(ZonElement)) !void {
+pub fn registerSBB(structures: *Assets.ZonHashMap) !void {
 	std.debug.assert(structureCache.capacity() == 0);
 	structureCache.ensureTotalCapacity(arenaAllocator.allocator, structures.count()) catch unreachable;
 	childrenToResolve = .init(main.stackAllocator);
@@ -219,7 +218,7 @@ pub fn registerChildBlock(numericId: u16, stringId: []const u8) void {
 	childBlockStringId.append(arenaAllocator, arenaAllocator.dupe(u8, colorName));
 }
 
-pub fn registerBlueprints(blueprints: *std.StringHashMap([]u8)) !void {
+pub fn registerBlueprints(blueprints: *Assets.BytesHashMap) !void {
 	std.debug.assert(blueprintCache.capacity() == 0);
 
 	originBlockNumericId = main.blocks.parseBlock(originBlockStringId).typ;
