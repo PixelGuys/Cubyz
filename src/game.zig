@@ -497,7 +497,7 @@ pub const collision = struct {
 					const touchX: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentX);
 					const touchY: bool = isBlockIntersecting(block.?, posX, posY, posZ, center, extentY);
 
-					if(block.?.climbable() and !entity.climbing and entity.vel[2] > slipVel) {
+					if(block.?.climbable() and !entity.climbing and entity.vel[2] > slipVel) missingNormal: {
 						const blockPos: Vec3d = .{@floatFromInt(posX), @floatFromInt(posY), @floatFromInt(posZ)};
 						const model = block.?.mode().model(block.?).model();
 						const modelBoundingBoxMax: Vec3d = model.max + blockPos;
@@ -509,6 +509,12 @@ pub const collision = struct {
 
 						entity.touchingClimbable = entity.touchingClimbable or isSideBlock or isBottomBlock;
 						entity.climbing = isSideBlock and (!isBottomBlock or isFullBlock);
+
+						const normal = if (model.internalQuads.len > 0) model.internalQuads[0].quadInfo().normal else break :missingNormal;
+						const area: vec.Area = if (normal[0] != 0) .yz else if (normal[1] != 0) .xz else .xy;
+
+						if (calculateIntersectingArea(block.?, blockPos, boundingBox, area) <= 0) 
+							entity.climbing = false;
 					}
 
 					if(block.?.touchFunction() == null)
