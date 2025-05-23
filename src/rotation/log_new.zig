@@ -47,27 +47,31 @@ pub fn reset() void {
 	modelIndex = null;
 }
 
-
-const Direction = enum(u2) {
+const DirectionWithSign = enum(u2) {
 	negYDir = 0,
 	posXDir = 1,
 	posYDir = 2,
 	negXDir = 3,
 };
 
+const DirectionWithoutSign = enum(u1) {
+	y = 0,
+	x = 1,
+};
+
 const Pattern = union(enum) {
 	dot: void,
 	halfLine: struct {
-		dir: Direction,
+		dir: DirectionWithoutSign,
 	},
 	line: struct {
-		dir: Direction,
+		dir: DirectionWithoutSign,
 	},
 	bend: struct {
-		dir: Direction,
+		dir: DirectionWithSign,
 	},
 	intersection: struct {
-		dir: Direction,
+		dir: DirectionWithSign,
 	},
 	cross: void,
 	cut: void,
@@ -148,27 +152,27 @@ fn getPattern(data: LogData, side: Neighbor) Pattern {
 			return .dot;
 		},
 		1 => {
-			var dir: Direction = .negXDir;
+			var dir: DirectionWithoutSign = .x;
 			if(connectedNegY) {
-				dir = .negYDir;
+				dir = .y;
 			} else if(connectedPosX) {
-				dir = .posXDir;
+				dir = .x;
 			} else if(connectedPosY) {
-				dir = .posYDir;
+				dir = .y;
 			}
 			return .{.halfLine = .{.dir = dir}};
 		},
 		2 => {
 			if((connectedPosX and connectedNegX) or (connectedPosY and connectedNegY)) {
-				var dir: Direction = .negYDir;
+				var dir: DirectionWithoutSign = .y;
 				if(connectedPosX and connectedNegX) {
-					dir = .posXDir;
+					dir = .x;
 				}
 
 				return .{.line = .{.dir = dir}};
 			}
 
-			var dir: Direction = .negXDir;
+			var dir: DirectionWithSign = .negXDir;
 
 			if(connectedNegY) {
 				dir = .negYDir;
@@ -190,7 +194,7 @@ fn getPattern(data: LogData, side: Neighbor) Pattern {
 			return .{.bend = .{.dir = dir}};
 		},
 		3 => {
-			var dir: Direction = undefined;
+			var dir: DirectionWithSign = undefined;
 			if(!connectedPosY) dir = .negYDir;
 			if(!connectedNegX) dir = .posXDir;
 			if(!connectedNegY) dir = .posYDir;
@@ -272,31 +276,49 @@ pub fn generateData(
 ) bool {
 	const canConnectToNeighbor = currentBlock.mode() == neighborBlock.mode() and currentBlock.modeData() == neighborBlock.modeData();
 
-	if(!canConnectToNeighbor) {
-		return blockPlacing;
+	if(blockPlacing or canConnectToNeighbor or !neighborBlock.replacable()) {
+		const neighborModel = blocks.meshes.model(neighborBlock).model();
+
+		var currentData = LogData.init(currentBlock.data);
+		// Log block upon placement should extend towards a block it was placed
+		// on if the block is solid or also uses log model.
+		const targetVal = ((!neighborBlock.replacable() and (!neighborBlock.viewThrough() or canConnectToNeighbor)) and (canConnectToNeighbor or neighborModel.isNeighborOccluded[neighbor.?.reverse().toInt()]));
+		currentData.setConnection(neighbor.?, targetVal);
+
+		const result: u16 = currentData.enabledConnections;
+		if(result == currentBlock.data) return false;
+
+		currentBlock.data = result;
+		return true;
 	}
-	
-	const neighborModel = blocks.meshes.model(neighborBlock).model();
-
-	var currentData = LogData.init(currentBlock.data);
-	
-	const targetVal = ((!neighborBlock.replacable() and (!neighborBlock.viewThrough() or canConnectToNeighbor)) and (canConnectToNeighbor or neighborModel.isNeighborOccluded[neighbor.?.reverse().toInt()]));
-	currentData.setConnection(neighbor.?, targetVal);
-
-	const result: u16 = currentData.enabledConnections;
-	if(result == currentBlock.data) return false;
-
-	currentBlock.data = result;
-	return true;
+	return false;
 }
 
 pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool {
+	// const canConnectToNeighbor = block.mode() == neighborBlock.mode() and block.modeData() == neighborBlock.modeData();
+	// var currentData = LogData.init(block.data);
+
+	// if (canConnectToNeighbor) {
+	// const oldData = currentData.isConnected(neighbor);
+	// const neighborData = LogData.init(neighborBlock.data);
+	// currentData.setConnection(neighbor, oldData or neighborData.isConnected(neighbor.reverse()));
+	// }
+
+	// const result: u16 = currentData.enabledConnections;
+	// if(result == block.data) return false;
+
+	// block.data = result;
+	// return true;
 	const canConnectToNeighbor = block.mode() == neighborBlock.mode() and block.modeData() == neighborBlock.modeData();
 	var currentData = LogData.init(block.data);
 
-	const oldData = currentData.isConnected(neighbor);
-
-	currentData.setConnection(neighbor, oldData or canConnectToNeighbor);
+	// Handle joining with other branches. While placed, branches extend in a
+	// opposite direction than they were placed from, effectively connecting
+	// to the block they were placed at.
+	if(canConnectToNeighbor) {
+		const neighborData = LogData.init(neighborBlock.data);
+		currentData.setConnection(neighbor, neighborData.isConnected(neighbor.reverse()));
+	}
 
 	const result: u16 = currentData.enabledConnections;
 	if(result == block.data) return false;
