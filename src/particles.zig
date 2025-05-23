@@ -335,7 +335,7 @@ pub const EmitterProperties = struct {
 };
 
 pub const DirectionMode = union(enum(u8)) {
-	// The particle goes in direction away from the center
+	// The particle goes in the direction away from the center
 	spread: void,
 	// The particle goes in a random direction
 	scatter: void,
