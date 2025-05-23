@@ -100,16 +100,8 @@ pub const ParticleManager = struct {
 			isEmissionBroken = true;
 		}
 
-		if(isBaseBroken) {
-			createDummyAnimationFrames(&textures, baseAnimationFrameCount, Image.defaultImage);
-			createDummyAnimationFrames(&emissionTextures, baseAnimationFrameCount, Image.emptyImage);
-		} else if(isEmissionBroken or !hasEmission) {
-			createAnimationFrames(&textures, baseAnimationFrameCount, base);
-			createDummyAnimationFrames(&emissionTextures, baseAnimationFrameCount, Image.emptyImage);
-		} else {
-			createAnimationFrames(&textures, baseAnimationFrameCount, base);
-			createAnimationFrames(&emissionTextures, baseAnimationFrameCount, emission);
-		}
+		createAnimationFrames(&textures, baseAnimationFrameCount, base, isBaseBroken);
+		createAnimationFrames(&emissionTextures, baseAnimationFrameCount, emission, isBaseBroken or isEmissionBroken or !hasEmission);
 
 		return typ;
 	}
