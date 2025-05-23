@@ -56,9 +56,7 @@ const Direction = enum(u2) {
 };
 
 const Pattern = union(enum) {
-	dot: struct {
-		isCut: bool,
-	},
+	dot: void,
 	halfLine: struct {
 		dir: Direction,
 	},
@@ -72,13 +70,14 @@ const Pattern = union(enum) {
 		dir: Direction,
 	},
 	cross: void,
+	cut: void,
 };
 
 fn rotateQuad(originalCorners: [4]Vec2f, pattern: Pattern, side: Neighbor) main.models.QuadInfo {
 	var corners: [4]Vec2f = originalCorners;
 
 	switch(pattern) {
-		.dot, .cross => {},
+		.dot, .cross, .cut => {},
 		inline else => |typ| {
 			const angle: f32 = @as(f32, @floatFromInt(@intFromEnum(typ.dir)))*std.math.pi/2.0;
 			corners = .{
@@ -112,69 +111,26 @@ fn rotateQuad(originalCorners: [4]Vec2f, pattern: Pattern, side: Neighbor) main.
 		},
 		.cornerUV = originalCorners,
 		.normal = @floatFromInt(side.relPos()),
-		.textureSlot = switch (pattern) {
-			.dot => |d| if (d.isCut) 6 else 0,
-			else => @intFromEnum(pattern),
-		},
+		.textureSlot = @intFromEnum(pattern),
 	};
 
 	return res;
 }
 
 fn addQuads(pattern: Pattern, side: Neighbor, out: *main.List(main.models.QuadInfo)) void {
-	switch(pattern) {
-		.dot => {
-			out.append(rotateQuad(.{
-				.{0, 0},
-				.{0, 1},
-				.{1, 0},
-				.{1, 1},
-			}, pattern, side));
-		},
-		.halfLine => {
-			out.append(rotateQuad(.{
-				.{0, 0.0},
-				.{0, 1},
-				.{1, 0.0},
-				.{1, 1},
-			}, pattern, side));
-		},
-		.line => {
-			out.append(rotateQuad(.{
-				.{0, 0.0},
-				.{0, 1.0},
-				.{1, 0.0},
-				.{1, 1.0},
-			}, pattern, side));
-		},
-		.bend => {
-			out.append(rotateQuad(.{
-				.{0.0, 0.0},
-				.{0.0, 1},
-				.{1, 0.0},
-				.{1, 1},
-			}, pattern, side));
-		},
-		.intersection => {
-			out.append(rotateQuad(.{
-				.{0.0, 0.0},
-				.{0.0, 1},
-				.{1.0, 0.0},
-				.{1.0, 1},
-			}, pattern, side));
-		},
-		.cross => {
-			out.append(rotateQuad(.{
-				.{0.0, 0.0},
-				.{0.0, 1.0},
-				.{1.0, 0.0},
-				.{1.0, 1.0},
-			}, pattern, side));
-		},
-	}
+	out.append(rotateQuad(.{
+		.{0, 0},
+		.{0, 1},
+		.{1, 0},
+		.{1, 1},
+	}, pattern, side));
 }
 
 fn getPattern(data: LogData, side: Neighbor) Pattern {
+	if (data.isConnected(side)) {
+		return .cut;
+	}
+
 	const posX = Neighbor.fromRelPos(side.textureX()).?;
 	const negX = Neighbor.fromRelPos(side.textureX()).?.reverse();
 	const posY = Neighbor.fromRelPos(side.textureY()).?;
@@ -189,7 +145,7 @@ fn getPattern(data: LogData, side: Neighbor) Pattern {
 
 	return switch(count) {
 		0 => {
-			return .{.dot = .{.isCut = data.isConnected(side)}};
+			return .dot;
 		},
 		1 => {
 			var dir: Direction = .negXDir;
