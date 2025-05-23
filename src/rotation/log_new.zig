@@ -265,7 +265,7 @@ pub fn rotateZ(data: u16, angle: Degrees) u16 {
 
 pub fn generateData(
 	_: *main.game.World,
-	_: Vec3i,
+	pos: Vec3i,
 	_: Vec3f,
 	_: Vec3f,
 	_: Vec3i,
@@ -285,6 +285,21 @@ pub fn generateData(
 		const targetVal = ((!neighborBlock.replacable() and (!neighborBlock.viewThrough() or canConnectToNeighbor)) and (canConnectToNeighbor or neighborModel.isNeighborOccluded[neighbor.?.reverse().toInt()]));
 		currentData.setConnection(neighbor.?, targetVal);
 
+		for (Neighbor.iterable) |side| {
+			if (side == neighbor.?) {
+				continue;
+			}
+
+			const sidePos = pos + side.relPos();
+			const sideBlock = main.renderer.mesh_storage.getBlock(sidePos[0], sidePos[1], sidePos[2]) orelse continue;
+			const canConnectToSide = currentBlock.mode() == sideBlock.mode() and currentBlock.modeData() == sideBlock.modeData();
+
+			if (canConnectToSide) {
+				const sideData = LogData.init(sideBlock.data);
+				currentData.setConnection(side, sideData.isConnected(side.reverse()));
+			}
+		}
+
 		const result: u16 = currentData.enabledConnections;
 		if(result == currentBlock.data) return false;
 
@@ -295,20 +310,6 @@ pub fn generateData(
 }
 
 pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool {
-	// const canConnectToNeighbor = block.mode() == neighborBlock.mode() and block.modeData() == neighborBlock.modeData();
-	// var currentData = LogData.init(block.data);
-
-	// if (canConnectToNeighbor) {
-	// const oldData = currentData.isConnected(neighbor);
-	// const neighborData = LogData.init(neighborBlock.data);
-	// currentData.setConnection(neighbor, oldData or neighborData.isConnected(neighbor.reverse()));
-	// }
-
-	// const result: u16 = currentData.enabledConnections;
-	// if(result == block.data) return false;
-
-	// block.data = result;
-	// return true;
 	const canConnectToNeighbor = block.mode() == neighborBlock.mode() and block.modeData() == neighborBlock.modeData();
 	var currentData = LogData.init(block.data);
 
