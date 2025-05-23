@@ -131,15 +131,9 @@ pub const ParticleManager = struct {
 		};
 	}
 
-	fn createDummyAnimationFrames(container: *main.List(Image), frameCount: usize, image: Image) void {
-		for(0..frameCount) |_| {
-			container.append(image);
-		}
-	}
-
-	fn createAnimationFrames(container: *main.List(Image), frameCount: usize, image: Image) void {
+	fn createAnimationFrames(container: *main.List(Image), frameCount: usize, image: Image, isBroken: bool) void {
 		for(0..frameCount) |i| {
-			container.append(extractAnimationSlice(image, i));
+			container.append(if(isBroken) image else extractAnimationSlice(image, i));
 		}
 	}
 
