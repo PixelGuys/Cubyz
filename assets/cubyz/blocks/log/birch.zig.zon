@@ -7,7 +7,7 @@
 	.rotation = .log_new,
 	.model = "cubyz:cube",
 	.texture0 = "cubyz:log/birch/dot",
-	.texture1 = "cubyz:log/birch/half_line",
+	.texture1 = "cubyz:log/birch/line",
 	.texture2 = "cubyz:log/birch/line",
 	.texture3 = "cubyz:log/birch/bend",
 	.texture4 = "cubyz:log/birch/intersection",

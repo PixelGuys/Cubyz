@@ -272,22 +272,22 @@ pub fn generateData(
 ) bool {
 	const canConnectToNeighbor = currentBlock.mode() == neighborBlock.mode() and currentBlock.modeData() == neighborBlock.modeData();
 
-	if(blockPlacing or canConnectToNeighbor or !neighborBlock.replacable()) {
-		const neighborModel = blocks.meshes.model(neighborBlock).model();
-
-		var currentData = LogData.init(currentBlock.data);
-		// Branch block upon placement should extend towards a block it was placed
-		// on if the block is solid or also uses branch model.
-		const targetVal = ((!neighborBlock.replacable() and (!neighborBlock.viewThrough() or canConnectToNeighbor)) and (canConnectToNeighbor or neighborModel.isNeighborOccluded[neighbor.?.reverse().toInt()]));
-		currentData.setConnection(neighbor.?, targetVal);
-
-		const result: u16 = currentData.enabledConnections;
-		if(result == currentBlock.data) return false;
-
-		currentBlock.data = result;
-		return true;
+	if(!canConnectToNeighbor) {
+		return blockPlacing;
 	}
-	return false;
+	
+	const neighborModel = blocks.meshes.model(neighborBlock).model();
+
+	var currentData = LogData.init(currentBlock.data);
+	
+	const targetVal = ((!neighborBlock.replacable() and (!neighborBlock.viewThrough() or canConnectToNeighbor)) and (canConnectToNeighbor or neighborModel.isNeighborOccluded[neighbor.?.reverse().toInt()]));
+	currentData.setConnection(neighbor.?, targetVal);
+
+	const result: u16 = currentData.enabledConnections;
+	if(result == currentBlock.data) return false;
+
+	currentBlock.data = result;
+	return true;
 }
 
 pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool {
