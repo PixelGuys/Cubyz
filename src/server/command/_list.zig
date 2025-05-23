@@ -17,3 +17,4 @@ pub const blueprint = @import("worldedit/blueprint.zig");
 pub const rotate = @import("worldedit/rotate.zig");
 pub const set = @import("worldedit/set.zig");
 pub const mask = @import("worldedit/mask.zig");
+pub const replace = @import("worldedit/replace.zig");

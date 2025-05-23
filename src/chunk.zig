@@ -284,6 +284,27 @@ pub const Chunk = struct { // MARK: Chunk
 		memoryPool.destroy(@alignCast(self));
 	}
 
+	pub fn unloadBlockEntities(self: *Chunk, comptime side: main.utils.Side) void {
+		self.blockPosToEntityDataMapMutex.lock();
+		defer self.blockPosToEntityDataMapMutex.unlock();
+		var iterator = self.blockPosToEntityDataMap.iterator();
+		while(iterator.next()) |elem| {
+			const index = elem.key_ptr.*;
+			const entityDataIndex = elem.value_ptr.*;
+			const block = self.data.getValue(index);
+			const blockEntity = block.blockEntity() orelse unreachable;
+			switch(side) {
+				.client => {
+					blockEntity.onUnloadClient(entityDataIndex);
+				},
+				.server => {
+					blockEntity.onUnloadServer(entityDataIndex);
+				},
+			}
+		}
+		self.blockPosToEntityDataMap.clearRetainingCapacity();
+	}
+
 	/// Updates a block if it is inside this chunk.
 	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
 	pub fn updateBlock(self: *Chunk, _x: i32, _y: i32, _z: i32, newBlock: Block) void {
