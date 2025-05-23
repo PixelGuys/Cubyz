@@ -550,8 +550,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	}
 
 	pub fn loadPalette(allocator: NeverFailingAllocator, worldName: []const u8, paletteName: []const u8, firstEntry: ?[]const u8) !*Palette {
-		const path = try std.fmt.allocPrint(allocator.allocator, "saves/{s}/{s}.zig.zon", .{worldName, paletteName});
-		defer allocator.free(path);
+		const path = try std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/{s}.zig.zon", .{worldName, paletteName});
+		defer main.stackAllocator.allocator.free(path);
 		const paletteZon = files.readToZon(allocator, path) catch .null;
 		const palette = try main.assets.Palette.init(main.globalAllocator, paletteZon, firstEntry);
 		std.log.info("Loaded {s} with {} entries.", .{paletteName, palette.size()});
