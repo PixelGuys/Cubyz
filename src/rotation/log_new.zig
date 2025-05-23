@@ -285,8 +285,8 @@ pub fn generateData(
 		const targetVal = ((!neighborBlock.replacable() and (!neighborBlock.viewThrough() or canConnectToNeighbor)) and (canConnectToNeighbor or neighborModel.isNeighborOccluded[neighbor.?.reverse().toInt()]));
 		currentData.setConnection(neighbor.?, targetVal);
 
-		for (Neighbor.iterable) |side| {
-			if (side == neighbor.?) {
+		for(Neighbor.iterable) |side| {
+			if(side == neighbor.?) {
 				continue;
 			}
 
@@ -294,7 +294,7 @@ pub fn generateData(
 			const sideBlock = main.renderer.mesh_storage.getBlock(sidePos[0], sidePos[1], sidePos[2]) orelse continue;
 			const canConnectToSide = currentBlock.mode() == sideBlock.mode() and currentBlock.modeData() == sideBlock.modeData();
 
-			if (canConnectToSide) {
+			if(canConnectToSide) {
 				const sideData = LogData.init(sideBlock.data);
 				currentData.setConnection(side, sideData.isConnected(side.reverse()));
 			}
