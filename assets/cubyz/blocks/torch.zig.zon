@@ -16,6 +16,7 @@
 	},
 	.texture = "cubyz:torch",
 	.item = .{
+		.tags = .{.canIgnite},
 		.texture = "torch.png",
 	},
 	.lodReplacement = "cubyz:air",
