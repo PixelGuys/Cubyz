@@ -80,7 +80,10 @@ fn rotateQuad(originalCorners: [4]Vec2f, pattern: Pattern, side: Neighbor) main.
 	switch(pattern) {
 		.dot, .cross, .cut => {},
 		inline else => |typ| {
-			const angle: f32 = @as(f32, @floatFromInt(@intFromEnum(typ.dir)))*std.math.pi/2.0;
+			var angle: f32 = @as(f32, @floatFromInt(@intFromEnum(typ.dir)))*std.math.pi/2.0;
+			if(!side.isPositive()) {
+				angle *= -1;
+			}
 			corners = .{
 				vec.rotate2d(originalCorners[0], angle, @splat(0.5)),
 				vec.rotate2d(originalCorners[1], angle, @splat(0.5)),
