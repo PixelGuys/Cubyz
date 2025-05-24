@@ -129,7 +129,6 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_hasBackFace[size] = zon.get(bool, "hasBackFace", false);
 	_friction[size] = zon.get(f32, "friction", 20);
 	_allowOres[size] = zon.get(bool, "allowOres", false);
-	_tickEvent[size] = TickEvent.loadFromZon(zon.getChild("tickEvent"));
 
 	_touchFunction[size] = if(zon.get(?[]const u8, "touchFunction", null)) |touchFunctionName| blk: {
 		const _function = touchFunctions.getFunctionPointer(touchFunctionName);
@@ -213,6 +212,10 @@ fn registerOpaqueVariant(typ: u16, zon: ZonElement) void {
 	}
 }
 
+pub fn registerTickEvent(typ: u16, zon: ZonElement) void {
+	_tickEvent[typ] = TickEvent.loadFromZon(zon.getChild("tickEvent"));
+}
+
 pub fn finishBlocks(zonElements: Assets.ZonHashMap) void {
 	var i: u16 = 0;
 	while(i < size) : (i += 1) {
@@ -222,6 +225,7 @@ pub fn finishBlocks(zonElements: Assets.ZonHashMap) void {
 	while(i < size) : (i += 1) {
 		registerLodReplacement(i, zonElements.get(_id[i]) orelse continue);
 		registerOpaqueVariant(i, zonElements.get(_id[i]) orelse continue);
+		registerTickEvent(i, zonElements.get(_id[i]) orelse continue);
 	}
 	blueprint.registerVoidBlock(parseBlock("cubyz:void"));
 }
@@ -415,23 +419,83 @@ pub const Block = packed struct { // MARK: Block
 
 // MARK: Tick
 pub var tickFunctions: utils.NamedCallbacks(TickFunctions, TickFunction) = undefined;
-pub const TickFunction = fn(block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void;
+pub const TickFunction = fn(block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32, _args: ?*TickEvent.Arguments) void;
 pub const TickFunctions = struct {
-	pub fn replaceWithCobble(block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void {
-		std.log.debug("Replace with cobblestone at ({d},{d},{d})", .{x, y, z});
-		const cobblestone = parseBlock("cubyz:cobblestone");
+	pub fn replaceWith(block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32, _args: ?*TickEvent.Arguments) void {
+		const replacementBlock = if(_args) |args| blk: {
+			const data: *TickEvent.ArgumentTypes.ReplaceWithArguments = @ptrCast(@alignCast(args.loadData()));
+			break :blk data.block;
+		} else Block.air;
 
 		const wx = _chunk.super.pos.wx + x;
 		const wy = _chunk.super.pos.wy + y;
 		const wz = _chunk.super.pos.wz + z;
 
-		_ = main.server.world.?.cmpxchgBlock(wx, wy, wz, block, cobblestone);
+		_ = main.server.world.?.cmpxchgBlock(wx, wy, wz, block, replacementBlock);
 	}
 };
 
 pub const TickEvent = struct {
 	function: *const TickFunction,
 	chance: f32,
+	args: ?*Arguments,
+
+	pub var tableMap: std.StringHashMap(*const Arguments.VTable) = undefined;
+
+	pub fn init() void {
+		tableMap = .init(main.globalAllocator.allocator);
+
+		inline for(@typeInfo(ArgumentTypes).@"struct".decls) |decl| {
+			const ArgumentsStruct = @field(ArgumentTypes, decl.name);
+			tableMap.put(ArgumentsStruct.id, &.{.loadData = comptime utils.castFunctionReturnToAnyopaque(ArgumentsStruct.loadData)}) catch unreachable;
+		}
+	}
+
+	pub fn deinit() void {
+		tableMap.deinit();
+	}
+
+	pub const Arguments = struct {
+		data: *anyopaque,
+		vTable: *const VTable,
+
+		pub const VTable = struct {
+			loadData: *const fn(self: *anyopaque) *anyopaque,
+		};
+
+		pub fn init(data: anytype, table: *const VTable) *Arguments {
+			std.debug.assert(@typeInfo(@TypeOf(data)) == .pointer);
+
+			const self = allocator.create(Arguments);
+			self.* = Arguments{
+				.data = data,
+				.vTable = table,
+			};
+
+			return self;
+		}
+
+		pub fn loadData(self: *Arguments) *anyopaque {
+			return self.vTable.loadData(self.data);
+		}
+	};
+
+	pub const ArgumentTypes = struct {
+		pub const ReplaceWithArguments = struct {
+			pub const id: []const u8 = "replaceWith";
+			block: Block,
+
+			pub fn init(newBlock: []const u8) *ReplaceWithArguments {
+				const self = allocator.create(ReplaceWithArguments);
+				self.* = .{.block = parseBlock(newBlock)};
+				return self;
+			}
+
+			pub fn loadData(self: *anyopaque) *const ReplaceWithArguments {
+				return @ptrCast(@alignCast(self));
+			}
+		};
+	};
 
 	pub fn loadFromZon(zon: ZonElement) ?TickEvent {
 		const functionName = zon.get(?[]const u8, "name", null) orelse return null;
@@ -441,12 +505,20 @@ pub const TickEvent = struct {
 			return null;
 		};
 
-		return TickEvent{.function = function, .chance = zon.get(f32, "chance", 1)};
+		if(function == &TickFunctions.replaceWith) {
+			if(zon.get(?[]const u8, "block", null)) |newBlockName| {
+				const replaceArgs: *ArgumentTypes.ReplaceWithArguments = .init(newBlockName);
+				const table = tableMap.get(ArgumentTypes.ReplaceWithArguments.id) orelse unreachable;
+				return TickEvent{.function = function, .chance = zon.get(f32, "chance", 1), .args = .init(replaceArgs, table)};
+			}
+		}
+
+		return TickEvent{.function = function, .chance = zon.get(f32, "chance", 1), .args = null};
 	}
 
 	pub fn tryRandomTick(self: *const TickEvent, block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void {
 		if(self.chance >= 1.0 or main.random.nextFloat(&main.seed) < self.chance) {
-			self.function(block, _chunk, x, y, z);
+			self.function(block, _chunk, x, y, z, self.args);
 		}
 	}
 };

@@ -609,6 +609,9 @@ pub fn main() void { // MARK: main()
 	block_entity.init();
 	defer block_entity.deinit();
 
+	blocks.TickEvent.init();
+	defer blocks.TickEvent.deinit();
+
 	blocks.tickFunctions = .init();
 	defer blocks.tickFunctions.deinit();
 
