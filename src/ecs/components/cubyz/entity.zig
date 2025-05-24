@@ -51,17 +51,22 @@ pub fn reset() void {
 
 pub fn fromZon(allocator: NeverFailingAllocator, entityIndex: EntityIndex, entityTypeIndex: EntityTypeIndex, zon: ZonElement) void {
 	const entityType = typeStorage.get(entityTypeIndex).?;
+	if (storage.contains(entityIndex)) {
+		storage.remove(entityIndex) catch unreachable;
+	}
 	storage.set(allocator, entityIndex, .{
 		.pos = zon.get(Vec3d, "position", .{0, 0, 0}),
 		.vel = zon.get(Vec3d, "velocity", .{0, 0, 0}),
 		.rot = zon.get(Vec3f, "rotation", .{0, 0, 0}),
 		.health = zon.get(f32, "health", entityType.maxHealth),
+		.maxHealth = entityType.maxHealth,
 		.energy = zon.get(f32, "energy", entityType.maxEnergy),
+		.maxEnergy = entityType.maxEnergy,
 	});
 }
 
 pub fn toZon(allocator: NeverFailingAllocator, entityIndex: EntityIndex) ZonElement {
-	const data = get(entityIndex).?;
+	const data = storage.get(entityIndex).?;
 
 	const zon = ZonElement.initObject(allocator);
 	zon.put("position", data.pos);
@@ -73,26 +78,40 @@ pub fn toZon(allocator: NeverFailingAllocator, entityIndex: EntityIndex) ZonElem
 	return zon;
 }
 
-pub fn initData(allocator: NeverFailingAllocator, entityId: EntityIndex, entityTypeId: EntityTypeIndex) void {
-	const typeData = typeStorage.get(entityTypeId).?;
-	storage.set(allocator, entityId, .{
+pub fn initData(allocator: NeverFailingAllocator, entityIndex: EntityIndex, entityTypeIndex: EntityTypeIndex) void {
+	const typeData = typeStorage.get(entityTypeIndex).?;
+	const data: Data = .{
 		.maxHealth = typeData.maxHealth,
 		.health = typeData.maxHealth,
 
 		.maxEnergy = typeData.maxEnergy,
 		.energy = typeData.maxEnergy,
-	});
+	};
+	if (storage.get(entityIndex)) |ptr| {
+		ptr.* = data;
+		return;
+	}
+	storage.set(allocator, entityIndex, data);
 }
 
 pub fn deinitData(_: NeverFailingAllocator, entityIndex: EntityIndex, _: EntityTypeIndex) !void {
 	try storage.remove(entityIndex);
 }
 
-pub fn get(entityId: EntityIndex) ?*anyopaque {
-	return @ptrCast(storage.get(entityId) orelse return null);
+pub fn set(allocator: NeverFailingAllocator, entityIndex: EntityIndex, dataOpaque: *anyopaque) void {
+	const data: *Data = @ptrCast(@alignCast(dataOpaque));
+	if (storage.get(entityIndex)) |ptr| {
+		ptr.* = data.*;
+		return;
+	}
+	storage.set(allocator, entityIndex, data.*);
 }
 
-pub fn initType(allocator: NeverFailingAllocator, entityTypeId: EntityTypeIndex, zon: ZonElement) void {
+pub fn get(entityIndex: EntityIndex) ?*anyopaque {
+	return @ptrCast(@alignCast(storage.get(entityIndex) orelse return null));
+}
+
+pub fn initType(allocator: NeverFailingAllocator, entityTypeIndex: EntityTypeIndex, zon: ZonElement) void {
 	const value: TypeData = .{
 		.maxHealth = zon.get(?f32, "maxHealth", null) orelse blk: {
 			std.log.err("Missing required parameter: maxHealth", .{});
@@ -103,5 +122,9 @@ pub fn initType(allocator: NeverFailingAllocator, entityTypeId: EntityTypeIndex,
 			break :blk 8;
 		},
 	};
-	typeStorage.set(allocator, entityTypeId, value);
+	typeStorage.set(allocator, entityTypeIndex, value);
+}
+
+pub fn hasType(entityTypeIndex: EntityTypeIndex) bool {
+	return typeStorage.contains(entityTypeIndex);
 }

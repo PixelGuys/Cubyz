@@ -13,7 +13,8 @@ const KeyBoard = main.KeyBoard;
 const network = @import("network.zig");
 const Connection = network.Connection;
 const ConnectionManager = network.ConnectionManager;
-const Entity = @import("ecs/components/cubyz/entity.zig").Data;
+const ecs = main.ecs;
+const Entity = ecs.component_list.entity.Data;
 const vec = @import("vec.zig");
 const Vec2f = vec.Vec2f;
 const Vec2d = vec.Vec2d;
@@ -495,7 +496,15 @@ pub const Player = struct { // MARK: Player
 	const jumpHeight = 1.25;
 
 	fn loadFrom(zon: ZonElement) void {
-		@import("ecs/components/cubyz/entity.zig").fromZon(&super, zon);
+		super = .{
+			.pos = zon.get(Vec3d, "position", .{0, 0, 0}),
+			.vel = zon.get(Vec3d, "velocity", .{0, 0, 0}),
+			.rot = zon.get(Vec3f, "rotation", .{0, 0, 0}),
+			.health = zon.get(f32, "health", 8),
+			.maxHealth = 8,
+			.energy = zon.get(f32, "energy", 8),
+			.maxEnergy = 8,
+		};
 		inventory.loadFromZon(zon.getChild("inventory"));
 	}
 

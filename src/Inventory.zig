@@ -945,12 +945,14 @@ pub const Command = struct { // MARK: Command
 			},
 			.addHealth => |*info| {
 				if(side == .server) {
-					info.previous = info.target.?.player().health;
+					var health = info.target.?.getHealth();
+					info.previous = health;
 
-					info.target.?.player().health = std.math.clamp(info.target.?.player().health + info.health, 0, info.target.?.player().maxHealth);
+					health = std.math.clamp(health + info.health, 0, info.target.?.getMaxHealth());
+					info.target.?.setHealth(health);
 
-					if(info.target.?.player().health <= 0) {
-						info.target.?.player().health = info.target.?.player().maxHealth;
+					if(health <= 0) {
+						info.target.?.setHealth(info.target.?.getMaxHealth());
 						info.cause.sendMessage(info.target.?.name);
 
 						self.syncOperations.append(allocator, .{.kill = .{
@@ -969,9 +971,10 @@ pub const Command = struct { // MARK: Command
 			},
 			.addEnergy => |*info| {
 				if(side == .server) {
-					info.previous = info.target.?.player().energy;
+					const energy = info.target.?.getEnergy();
+					info.previous = energy;
 
-					info.target.?.player().energy = std.math.clamp(info.target.?.player().energy + info.energy, 0, info.target.?.player().maxEnergy);
+					info.target.?.setEnergy(std.math.clamp(energy + info.energy, 0, info.target.?.getMaxEnergy()));
 					self.syncOperations.append(allocator, .{.energy = .{
 						.target = info.target.?,
 						.energy = info.energy,
@@ -1384,8 +1387,9 @@ pub const Command = struct { // MARK: Command
 				std.debug.assert(cmd.baseOperations.pop().create.dest.inv._items.ptr == temp._items.ptr); // Remove the extra step from undo list (we cannot undo dropped items)
 				if(_items[0].item != null) {
 					if(side == .server) {
-						const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.player().rot[0]), -user.?.player().rot[2]);
-						main.server.world.?.dropWithCooldown(_items[0], user.?.player().pos, direction, 20, main.server.updatesPerSec*2);
+						const rotation = user.?.getRotation();
+						const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -rotation[0]), -rotation[2]);
+						main.server.world.?.dropWithCooldown(_items[0], user.?.getPosition(), direction, 20, main.server.updatesPerSec*2);
 					}
 				}
 				return;
@@ -1396,8 +1400,9 @@ pub const Command = struct { // MARK: Command
 			}
 			const amount = @min(self.source.ref().amount, self.desiredAmount);
 			if(side == .server) {
-				const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.player().rot[0]), -user.?.player().rot[2]);
-				main.server.world.?.dropWithCooldown(.{.item = self.source.ref().item.?.clone(), .amount = amount}, user.?.player().pos, direction, 20, main.server.updatesPerSec*2);
+				const rotation = user.?.getRotation();
+				const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -rotation[0]), -rotation[2]);
+				main.server.world.?.dropWithCooldown(.{.item = self.source.ref().item.?.clone(), .amount = amount}, user.?.getPosition(), direction, 20, main.server.updatesPerSec*2);
 			}
 			cmd.executeBaseOperation(allocator, .{.delete = .{
 				.source = self.source,
@@ -1510,8 +1515,9 @@ pub const Command = struct { // MARK: Command
 					}
 				}
 				if(side == .server) {
-					const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -user.?.player().rot[0]), -user.?.player().rot[2]);
-					main.server.world.?.drop(sourceStack.clone(), user.?.player().pos, direction, 20);
+					const rotation = user.?.getRotation();
+					const direction = vec.rotateZ(vec.rotateX(Vec3f{0, 1, 0}, -rotation[0]), -rotation[2]);
+					main.server.world.?.drop(sourceStack.clone(), user.?.getPosition(), direction, 20);
 				}
 				cmd.executeBaseOperation(allocator, .{.delete = .{
 					.source = .{.inv = self.source, .slot = @intCast(sourceSlot)},
@@ -1766,7 +1772,7 @@ pub const Command = struct { // MARK: Command
 				.target = target,
 				.health = self.health,
 				.cause = self.cause,
-				.previous = if(side == .server) target.?.player().health else main.game.Player.super.health,
+				.previous = if(side == .server) target.?.getHealth() else main.game.Player.super.health,
 			}}, side);
 		}
 

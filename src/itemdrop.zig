@@ -414,8 +414,9 @@ pub const ItemDropManager = struct { // MARK: ItemDropManager
 				continue;
 			}
 			const hitbox = main.game.Player.outerBoundingBox;
-			const min = user.player().pos + hitbox.min;
-			const max = user.player().pos + hitbox.max;
+			const pos = user.getPosition();
+			const min = pos + hitbox.min;
+			const max = pos + hitbox.max;
 			const itemPos = self.list.items(.pos)[i];
 			const dist = @max(min - itemPos, itemPos - max);
 			if(@reduce(.Max, dist) < radius + pickupRange) {

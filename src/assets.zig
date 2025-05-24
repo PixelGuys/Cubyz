@@ -566,16 +566,17 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		try registerItem(assetFolder, stringId, zon.getChild("item"));
 		itemPalette.add(stringId);
 	}
-	
 
-	// Then missing block-items to keep backwards compatibility of ID order.
-	for(blockPalette.palette.items) |stringId| {
-		const zon = worldAssets.blocks.get(stringId) orelse .null;
+	// And finally normal items.
+	iterator = worldAssets.items.iterator();
+	while(iterator.next()) |entry| {
+		const stringId = entry.key_ptr.*;
+		const zon = entry.value_ptr.*;
 
-		if(!zon.get(bool, "hasItem", true)) continue;
 		if(items_zig.hasRegistered(stringId)) continue;
+		std.debug.assert(zon != .null);
 
-		try registerItem(assetFolder, stringId, zon.getChild("item"));
+		try registerItem(assetFolder, stringId, zon);
 		itemPalette.add(stringId);
 	}
 

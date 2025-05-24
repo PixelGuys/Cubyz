@@ -22,6 +22,7 @@ const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const BlockUpdate = renderer.mesh_storage.BlockUpdate;
 const EntityIndex = main.ecs.EntityIndex;
+const ecs = main.ecs;
 
 //TODO: Might want to use SSL or something similar to encode the message
 
@@ -682,7 +683,7 @@ pub const Protocols = struct {
 						conn.user.?.initPlayer(name);
 						const zonObject = ZonElement.initObject(main.stackAllocator);
 						defer zonObject.deinit(main.stackAllocator);
-						zonObject.put("player", @import("ecs/components/cubyz/entity.zig").toZon(main.stackAllocator, conn.user.?.player().*));
+						zonObject.put("player", ecs.component_list.entity.toZon(main.stackAllocator, conn.user.?.id));
 						zonObject.put("player_id", @intFromEnum(conn.user.?.id));
 						zonObject.put("spawn", main.server.world.?.spawn);
 						zonObject.put("blockPalette", main.server.world.?.blockPalette.storeToZon(main.stackAllocator));

@@ -224,7 +224,7 @@ pub const User = struct { // MARK: User
 	}
 
 	fn loadUnloadChunks(self: *User) void {
-		const newPos: Vec3i = @as(Vec3i, @intFromFloat(self.player().pos)) +% @as(Vec3i, @splat(chunk.chunkSize/2)) & ~@as(Vec3i, @splat(chunk.chunkMask));
+		const newPos: Vec3i = @as(Vec3i, @intFromFloat(self.getPosition())) +% @as(Vec3i, @splat(chunk.chunkSize/2)) & ~@as(Vec3i, @splat(chunk.chunkMask));
 		const newRenderDistance = main.settings.simulationDistance;
 		if(@reduce(.Or, newPos != self.lastPos) or newRenderDistance != self.lastRenderDistance) {
 			self.unloadOldChunk(newPos, newRenderDistance);
@@ -256,10 +256,9 @@ pub const User = struct { // MARK: User
 		self.mutex.lock();
 		defer self.mutex.unlock();
 
-		const entityData = self.player();
-		entityData.pos = try reader.readVec(Vec3d);
-		entityData.vel = try reader.readVec(Vec3d);
-		entityData.rot = try reader.readVec(Vec3f);
+		self.setPosition(try reader.readVec(Vec3d));
+		self.setVelocity(try reader.readVec(Vec3d));
+		self.setRotation(try reader.readVec(Vec3f));
 
 		const time = try reader.readInt(i16);
 		self.timeDifference.addDataPoint(time);
@@ -274,8 +273,69 @@ pub const User = struct { // MARK: User
 		main.network.Protocols.chat.send(self.conn, msg);
 	}
 
-	pub fn player(self: *User) *@import("../ecs/components/cubyz/entity.zig").Data {
-		return ecs.getComponent("cubyz:entity", self.id).?;
+	pub fn setPosition(self: *User, pos: Vec3d) void {
+		var component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		component.pos = pos;
+		ecs.setComponent(ecs.component_list.entity, "entity", self.id, component);
+	}
+
+	pub fn getPosition(self: *User) Vec3d {
+		const component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		return component.pos;
+	}
+
+	pub fn setVelocity(self: *User, vel: Vec3d) void {
+		var component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		component.vel = vel;
+		ecs.setComponent(ecs.component_list.entity, "entity", self.id, component);
+	}
+
+	pub fn getVelocity(self: *User) Vec3d {
+		const component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		return component.vel;
+	}
+
+	pub fn setRotation(self: *User, rot: Vec3f) void {
+		var component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		component.rot = rot;
+		ecs.setComponent(ecs.component_list.entity, "entity", self.id, component);
+	}
+
+	pub fn getRotation(self: *User) Vec3f {
+		const component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		return component.rot;
+	}
+
+	pub fn setHealth(self: *User, health: f32) void {
+		var component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		component.health = health;
+		ecs.setComponent(ecs.component_list.entity, "entity", self.id, component);
+	}
+
+	pub fn getHealth(self: *User) f32 {
+		const component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		return component.health;
+	}
+
+	pub fn getMaxHealth(self: *User) f32 {
+		const component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		return component.maxHealth;
+	}
+
+	pub fn setEnergy(self: *User, energy: f32) void {
+		var component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		component.energy = energy;
+		ecs.setComponent(ecs.component_list.entity, "entity", self.id, component);
+	}
+
+	pub fn getEnergy(self: *User) f32 {
+		const component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		return component.energy;
+	}
+
+	pub fn getMaxEnergy(self: *User) f32 {
+		const component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		return component.maxEnergy;
 	}
 };
 
@@ -406,17 +466,17 @@ fn update() void { // MARK: update()
 		const id = user.id; // TODO
 		entityData.append(.{
 			.id = id,
-			.pos = user.player().pos,
-			.vel = user.player().vel,
-			.rot = user.player().rot,
+			.pos = user.getPosition(),
+			.vel = user.getVelocity(),
+			.rot = user.getRotation(),
 		});
 	}
 	for(userList) |user| {
-		main.network.Protocols.entityPosition.send(user.conn, user.player().pos, entityData.items, itemData);
+		main.network.Protocols.entityPosition.send(user.conn, user.getPosition(), entityData.items, itemData);
 	}
 
 	for(userList) |user| {
-		const pos = @as(Vec3i, @intFromFloat(user.player().pos));
+		const pos = @as(Vec3i, @intFromFloat(user.getPosition()));
 		const biomeId = world.?.getBiome(pos[0], pos[1], pos[2]).paletteId;
 		if(biomeId != user.lastSentBiomeId) {
 			user.lastSentBiomeId = biomeId;
