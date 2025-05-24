@@ -828,6 +828,10 @@ pub fn hasRegistered(id: []const u8) bool {
 	return reverseIndices.contains(id);
 }
 
+pub fn hasRegisteredTool(id: []const u8) bool {
+	return toolTypes.contains(id);
+}
+
 pub fn toolTypeIterator() std.StringHashMap(ToolType).ValueIterator {
 	return toolTypes.valueIterator();
 }
