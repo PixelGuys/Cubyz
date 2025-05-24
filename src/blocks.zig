@@ -507,7 +507,7 @@ pub const TickEvent = struct {
 
 		if(function == &TickFunctions.replaceWith) {
 			if(zon.get(?[]const u8, "block", null)) |newBlockName| {
-				const replaceArgs = .init(newBlockName);
+				const replaceArgs: *ArgumentTypes.ReplaceWithArguments = .init(newBlockName);
 				const table = tableMap.get(ArgumentTypes.ReplaceWithArguments.id) orelse unreachable;
 				return TickEvent{.function = function, .chance = zon.get(f32, "chance", 1), .args = .init(replaceArgs, table)};
 			}
