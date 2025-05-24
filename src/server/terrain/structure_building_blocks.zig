@@ -135,6 +135,24 @@ pub const StructureBuildingBlock = struct {
 		}
 		return self;
 	}
+	pub fn initInline(sbbId: []const u8) !StructureBuildingBlock {
+		const blueprints = blueprintCache.get(sbbId) orelse {
+			std.log.err("['{s}'] Could not find blueprint '{s}'.", .{sbbId, sbbId});
+			return error.MissingBlueprint;
+		};
+		if(blueprints[0].childBlocks.len != 0) {
+			std.debug.assert(blueprints[1].childBlocks.len == 0);
+			std.debug.assert(blueprints[2].childBlocks.len == 0);
+			std.debug.assert(blueprints[3].childBlocks.len == 0);
+			std.log.err("['{s}'] Inline structures cannot contain child blocks.", .{sbbId});
+			return error.InlineStructureCannotContainChildBlocks;
+		}
+		return .{
+			.id = sbbId,
+			.children = &.{},
+			.blueprints = blueprints,
+		};
+	}
 	pub fn getBlueprint(self: StructureBuildingBlock, rotation: Degrees) *BlueprintEntry {
 		return &self.blueprints[@intFromEnum(rotation)];
 	}
@@ -194,10 +212,28 @@ pub fn registerSBB(structures: *Assets.ZonHashMap) !void {
 		}
 	}
 	{
+		var iterator = blueprintCache.iterator();
+		while(iterator.next()) |entry| {
+			const blueprintId = entry.key_ptr.*;
+			const blueprints = entry.value_ptr.*;
+
+			if(structureCache.contains(blueprintId)) continue;
+			if(blueprints[0].childBlocks.len != 0) continue;
+
+			const value = StructureBuildingBlock.initInline(blueprintId) catch |err| {
+				std.log.err("Could not register inline structure building block '{s}' ({s})", .{blueprintId, @errorName(err)});
+				continue;
+			};
+			const key = arenaAllocator.dupe(u8, blueprintId);
+			structureCache.put(arenaAllocator.allocator, key, value) catch unreachable;
+			std.log.debug("Registered inline structure building block: '{s}'", .{blueprintId});
+		}
+	}
+	{
 		for(childrenToResolve.items) |entry| {
 			const parent = structureCache.getPtr(entry.parentId).?;
 			const child = structureCache.getPtr(entry.structureId) orelse {
-				std.log.err("Could not find child structure '{s}' for child resolution.", .{entry.structureId});
+				std.log.err("Could not find child structure nor blueprint '{s}' for child resolution.", .{entry.structureId});
 				continue;
 			};
 
