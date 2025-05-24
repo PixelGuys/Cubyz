@@ -61,9 +61,6 @@ const DirectionWithoutSign = enum(u1) {
 
 const Pattern = union(enum) {
 	dot: void,
-	halfLine: struct {
-		dir: DirectionWithoutSign,
-	},
 	line: struct {
 		dir: DirectionWithoutSign,
 	},
@@ -160,7 +157,7 @@ fn getPattern(data: LogData, side: Neighbor) Pattern {
 			} else if(connectedPosY) {
 				dir = .y;
 			}
-			return .{.halfLine = .{.dir = dir}};
+			return .{.line = .{.dir = dir}};
 		},
 		2 => {
 			if((connectedPosX and connectedNegX) or (connectedPosY and connectedNegY)) {
