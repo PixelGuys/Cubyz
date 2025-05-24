@@ -128,7 +128,6 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) u16 {
 	_hasBackFace[size] = zon.get(bool, "hasBackFace", false);
 	_friction[size] = zon.get(f32, "friction", 20);
 	_allowOres[size] = zon.get(bool, "allowOres", false);
-	_tickEvent[size] = TickEvent.loadFromZon(zon.getChild("tickEvent"));
 
 	_touchFunction[size] = if(zon.get(?[]const u8, "touchFunction", null)) |touchFunctionName| blk: {
 		const _function = touchFunctions.getFunctionPointer(touchFunctionName);
@@ -212,6 +211,10 @@ fn registerOpaqueVariant(typ: u16, zon: ZonElement) void {
 	}
 }
 
+pub fn registerTickEvent(typ: u16, zon: ZonElement) void {
+	_tickEvent[typ] = TickEvent.loadFromZon(zon.getChild("tickEvent"));
+}
+
 pub fn finishBlocks(zonElements: std.StringHashMap(ZonElement)) void {
 	var i: u16 = 0;
 	while(i < size) : (i += 1) {
@@ -221,6 +224,7 @@ pub fn finishBlocks(zonElements: std.StringHashMap(ZonElement)) void {
 	while(i < size) : (i += 1) {
 		registerLodReplacement(i, zonElements.get(_id[i]) orelse continue);
 		registerOpaqueVariant(i, zonElements.get(_id[i]) orelse continue);
+		registerTickEvent(i, zonElements.get(_id[i]) orelse continue);
 	}
 	blueprint.registerVoidBlock(parseBlock("cubyz:void"));
 }
