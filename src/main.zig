@@ -2,6 +2,7 @@ const std = @import("std");
 
 pub const gui = @import("gui/gui.zig");
 pub const server = @import("server/server.zig");
+pub const ecs = @import("ecs/ecs.zig");
 
 pub const audio = @import("audio.zig");
 pub const assets = @import("assets.zig");
@@ -635,6 +636,9 @@ pub fn main() void { // MARK: main()
 
 	renderer.init();
 	defer renderer.deinit();
+
+	ecs.init();
+	defer ecs.deinit();
 
 	network.init();
 

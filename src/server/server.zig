@@ -17,11 +17,12 @@ const Blueprint = main.blueprint.Blueprint;
 const Mask = main.blueprint.Mask;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const CircularBufferQueue = main.utils.CircularBufferQueue;
+const ecs = main.ecs;
+const EntityIndex = ecs.EntityIndex;
 
 pub const world_zig = @import("world.zig");
 pub const ServerWorld = world_zig.ServerWorld;
 pub const terrain = @import("terrain/terrain.zig");
-pub const Entity = @import("Entity.zig");
 pub const storage = @import("storage.zig");
 
 const command = @import("command/_command.zig");
@@ -93,9 +94,7 @@ pub const User = struct { // MARK: User
 	const simulationSize = 2*maxSimulationDistance;
 	const simulationMask = simulationSize - 1;
 	conn: *Connection = undefined,
-	player: Entity = .{},
 	timeDifference: utils.TimeDifference = .{},
-	interpolation: utils.GenericInterpolation(3) = undefined,
 	lastTime: i16 = undefined,
 	lastSaveTime: i64 = 0,
 	name: []const u8 = "",
@@ -103,7 +102,7 @@ pub const User = struct { // MARK: User
 	clientUpdatePos: Vec3i = .{0, 0, 0},
 	receivedFirstEntityData: bool = false,
 	isLocal: bool = false,
-	id: u32 = 0, // TODO: Use entity id.
+	id: EntityIndex = .noValue, // TODO: Use entity id.
 	// TODO: ipPort: []const u8,
 	loadedChunks: [simulationSize][simulationSize][simulationSize]*@import("world.zig").EntityChunk = undefined,
 	lastRenderDistance: u16 = 0,
@@ -126,7 +125,7 @@ pub const User = struct { // MARK: User
 		errdefer main.globalAllocator.destroy(self);
 		self.* = .{};
 		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
-		self.interpolation.init(@ptrCast(&self.player.pos), @ptrCast(&self.player.vel));
+		self.id = try ecs.createEntity("cubyz:player");
 		self.conn = try Connection.init(manager, ipPort, self);
 		self.increaseRefCount();
 		self.worldEditData = .init();
@@ -141,6 +140,8 @@ pub const User = struct { // MARK: User
 			std.log.err("Failed to save player: {s}", .{@errorName(err)});
 			return;
 		};
+
+		ecs.removeEntity(self.id) catch unreachable;
 
 		self.worldEditData.deinit();
 
@@ -166,11 +167,7 @@ pub const User = struct { // MARK: User
 		}
 	}
 
-	var freeId: u32 = 0;
 	pub fn initPlayer(self: *User, name: []const u8) void {
-		self.id = freeId;
-		freeId += 1;
-
 		self.name = main.globalAllocator.dupe(u8, name);
 		world.?.findPlayer(self);
 	}
@@ -227,7 +224,7 @@ pub const User = struct { // MARK: User
 	}
 
 	fn loadUnloadChunks(self: *User) void {
-		const newPos: Vec3i = @as(Vec3i, @intFromFloat(self.player.pos)) +% @as(Vec3i, @splat(chunk.chunkSize/2)) & ~@as(Vec3i, @splat(chunk.chunkMask));
+		const newPos: Vec3i = @as(Vec3i, @intFromFloat(self.getPosition())) +% @as(Vec3i, @splat(chunk.chunkSize/2)) & ~@as(Vec3i, @splat(chunk.chunkMask));
 		const newRenderDistance = main.settings.simulationDistance;
 		if(@reduce(.Or, newPos != self.lastPos) or newRenderDistance != self.lastRenderDistance) {
 			self.unloadOldChunk(newPos, newRenderDistance);
@@ -242,7 +239,6 @@ pub const User = struct { // MARK: User
 		defer self.mutex.unlock();
 		var time = @as(i16, @truncate(std.time.milliTimestamp())) -% main.settings.entityLookback;
 		time -%= self.timeDifference.difference.load(.monotonic);
-		self.interpolation.update(time, self.lastTime);
 		self.lastTime = time;
 
 		const saveTime = std.time.milliTimestamp();
@@ -259,13 +255,13 @@ pub const User = struct { // MARK: User
 	pub fn receiveData(self: *User, reader: *BinaryReader) !void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
-		const position: [3]f64 = try reader.readVec(Vec3d);
-		const velocity: [3]f64 = try reader.readVec(Vec3d);
-		const rotation: [3]f32 = try reader.readVec(Vec3f);
-		self.player.rot = rotation;
+
+		self.setPosition(try reader.readVec(Vec3d));
+		self.setVelocity(try reader.readVec(Vec3d));
+		self.setRotation(try reader.readVec(Vec3f));
+
 		const time = try reader.readInt(i16);
 		self.timeDifference.addDataPoint(time);
-		self.interpolation.updatePosition(&position, &velocity, time);
 	}
 
 	pub fn sendMessage(self: *User, comptime fmt: []const u8, args: anytype) void {
@@ -275,6 +271,71 @@ pub const User = struct { // MARK: User
 	}
 	fn sendRawMessage(self: *User, msg: []const u8) void {
 		main.network.Protocols.chat.send(self.conn, msg);
+	}
+
+	pub fn setPosition(self: *User, pos: Vec3d) void {
+		var component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		component.pos = pos;
+		ecs.setComponent(ecs.component_list.entity, "entity", self.id, component);
+	}
+
+	pub fn getPosition(self: *User) Vec3d {
+		const component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		return component.pos;
+	}
+
+	pub fn setVelocity(self: *User, vel: Vec3d) void {
+		var component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		component.vel = vel;
+		ecs.setComponent(ecs.component_list.entity, "entity", self.id, component);
+	}
+
+	pub fn getVelocity(self: *User) Vec3d {
+		const component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		return component.vel;
+	}
+
+	pub fn setRotation(self: *User, rot: Vec3f) void {
+		var component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		component.rot = rot;
+		ecs.setComponent(ecs.component_list.entity, "entity", self.id, component);
+	}
+
+	pub fn getRotation(self: *User) Vec3f {
+		const component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		return component.rot;
+	}
+
+	pub fn setHealth(self: *User, health: f32) void {
+		var component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		component.health = health;
+		ecs.setComponent(ecs.component_list.entity, "entity", self.id, component);
+	}
+
+	pub fn getHealth(self: *User) f32 {
+		const component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		return component.health;
+	}
+
+	pub fn getMaxHealth(self: *User) f32 {
+		const component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		return component.maxHealth;
+	}
+
+	pub fn setEnergy(self: *User, energy: f32) void {
+		var component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		component.energy = energy;
+		ecs.setComponent(ecs.component_list.entity, "entity", self.id, component);
+	}
+
+	pub fn getEnergy(self: *User) f32 {
+		const component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		return component.energy;
+	}
+
+	pub fn getMaxEnergy(self: *User) f32 {
+		const component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		return component.maxEnergy;
 	}
 };
 
@@ -405,17 +466,17 @@ fn update() void { // MARK: update()
 		const id = user.id; // TODO
 		entityData.append(.{
 			.id = id,
-			.pos = user.player.pos,
-			.vel = user.player.vel,
-			.rot = user.player.rot,
+			.pos = user.getPosition(),
+			.vel = user.getVelocity(),
+			.rot = user.getRotation(),
 		});
 	}
 	for(userList) |user| {
-		main.network.Protocols.entityPosition.send(user.conn, user.player.pos, entityData.items, itemData);
+		main.network.Protocols.entityPosition.send(user.conn, user.getPosition(), entityData.items, itemData);
 	}
 
 	for(userList) |user| {
-		const pos = @as(Vec3i, @intFromFloat(user.player.pos));
+		const pos = @as(Vec3i, @intFromFloat(user.getPosition()));
 		const biomeId = world.?.getBiome(pos[0], pos[1], pos[2]).paletteId;
 		if(biomeId != user.lastSentBiomeId) {
 			user.lastSentBiomeId = biomeId;
@@ -479,7 +540,7 @@ pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 	// Let the other clients know about that this new one left.
 	const zonArray = main.ZonElement.initArray(main.stackAllocator);
 	defer zonArray.deinit(main.stackAllocator);
-	zonArray.array.append(.{.int = user.id});
+	zonArray.append(@intFromEnum(user.id));
 	const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
 	defer main.stackAllocator.free(data);
 	const userList = getUserListAndIncreaseRefCount(main.stackAllocator);
@@ -502,7 +563,7 @@ pub fn connectInternal(user: *User) void {
 		const zonArray = main.ZonElement.initArray(main.stackAllocator);
 		defer zonArray.deinit(main.stackAllocator);
 		const entityZon = main.ZonElement.initObject(main.stackAllocator);
-		entityZon.put("id", user.id);
+		entityZon.put("id", @intFromEnum(user.id));
 		entityZon.put("name", user.name);
 		zonArray.array.append(entityZon);
 		const data = zonArray.toStringEfficient(main.stackAllocator, &.{});
@@ -516,7 +577,7 @@ pub fn connectInternal(user: *User) void {
 		defer zonArray.deinit(main.stackAllocator);
 		for(userList) |other| {
 			const entityZon = main.ZonElement.initObject(main.stackAllocator);
-			entityZon.put("id", other.id);
+			entityZon.put("id", @intFromEnum(other.id));
 			entityZon.put("name", other.name);
 			zonArray.array.append(entityZon);
 		}
