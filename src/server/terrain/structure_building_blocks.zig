@@ -141,12 +141,12 @@ pub const StructureBuildingBlock = struct {
 			return error.MissingBlueprint;
 		};
 		if(blueprints[0].childBlocks.len != 0) {
-			std.debug.assert(blueprints[1].childBlocks.len == 0);
-			std.debug.assert(blueprints[2].childBlocks.len == 0);
-			std.debug.assert(blueprints[3].childBlocks.len == 0);
 			std.log.err("['{s}'] Inline structures cannot contain child blocks.", .{sbbId});
 			return error.InlineStructureCannotContainChildBlocks;
 		}
+		std.debug.assert(blueprints[1].childBlocks.len == 0);
+		std.debug.assert(blueprints[2].childBlocks.len == 0);
+		std.debug.assert(blueprints[3].childBlocks.len == 0);
 		return .{
 			.id = sbbId,
 			.children = &.{},
