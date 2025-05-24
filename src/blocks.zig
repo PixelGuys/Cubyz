@@ -216,10 +216,6 @@ pub fn registerTickEvent(typ: u16, zon: ZonElement) void {
 	_tickEvent[typ] = TickEvent.loadFromZon(zon.getChild("tickEvent"));
 }
 
-pub fn registerTickEvent(typ: u16, zon: ZonElement) void {
-	_tickEvent[typ] = TickEvent.loadFromZon(zon.getChild("tickEvent"));
-}
-
 pub fn finishBlocks(zonElements: Assets.ZonHashMap) void {
 	var i: u16 = 0;
 	while(i < size) : (i += 1) {
