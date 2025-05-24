@@ -91,7 +91,7 @@ pub const Assets = struct {
 			addon.readAllZon(allocator, "biomes", true, &self.biomes, &self.biomeMigrations);
 			addon.readAllZon(allocator, "recipes", false, &self.recipes, null);
 			addon.readAllZon(allocator, "sbb", true, &self.structureBuildingBlocks, null);
-			addon.readAllBlueprints(allocator, &self.blueprints);
+			addon.readAllBlueprints(allocator, "sbb", &self.blueprints);
 			addon.readAllModels(allocator, &self.models);
 			addon.readAllZon(allocator, "particles", true, &self.particles, null);
 		}
@@ -233,8 +233,7 @@ pub const Assets = struct {
 			}
 		}
 
-		pub fn readAllBlueprints(addon: Addon, allocator: NeverFailingAllocator, output: *BytesHashMap) void {
-			const subPath = "blueprints";
+		pub fn readAllBlueprints(addon: Addon, allocator: NeverFailingAllocator, subPath: []const u8, output: *BytesHashMap) void {
 			var assetsDirectory = addon.dir.openDir(subPath, .{.iterate = true}) catch |err| {
 				if(err != error.FileNotFound) {
 					std.log.err("Could not open addon directory {s}: {s}", .{subPath, @errorName(err)});
@@ -479,7 +478,7 @@ pub const Palette = struct { // MARK: Palette
 
 var loadedAssets: bool = false;
 
-pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, biomePalette: *Palette) !void { // MARK: loadWorldAssets()
+pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPalette: *Palette, toolPalette: *Palette, biomePalette: *Palette) !void { // MARK: loadWorldAssets()
 	if(loadedAssets) return; // The assets already got loaded by the server.
 	loadedAssets = true;
 
@@ -581,10 +580,17 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		try assignBlockItem(stringId);
 	}
 
+	for(toolPalette.palette.items) |id| {
+		registerTool(assetFolder, id, worldAssets.tools.get(id) orelse .null);
+	}
+
 	// tools:
 	iterator = worldAssets.tools.iterator();
 	while(iterator.next()) |entry| {
-		registerTool(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
+		const id = entry.key_ptr.*;
+		if(items_zig.hasRegisteredTool(id)) continue;
+		registerTool(assetFolder, id, entry.value_ptr.*);
+		toolPalette.add(id);
 	}
 
 	// block drops:
