@@ -86,7 +86,7 @@ pub const Assets = struct {
 			addon.readAllZon(allocator, "biomes", true, &self.biomes, &self.biomeMigrations);
 			addon.readAllZon(allocator, "recipes", false, &self.recipes, null);
 			addon.readAllZon(allocator, "sbb", true, &self.structureBuildingBlocks, null);
-			addon.readAllBlueprints(allocator, &self.blueprints);
+			addon.readAllBlueprints(allocator, "sbb", &self.blueprints);
 			addon.readAllModels(allocator, &self.models);
 		}
 	}
@@ -227,8 +227,7 @@ pub const Assets = struct {
 			}
 		}
 
-		pub fn readAllBlueprints(addon: Addon, allocator: NeverFailingAllocator, output: *BytesHashMap) void {
-			const subPath = "blueprints";
+		pub fn readAllBlueprints(addon: Addon, allocator: NeverFailingAllocator, subPath: []const u8, output: *BytesHashMap) void {
 			var assetsDirectory = addon.dir.openDir(subPath, .{.iterate = true}) catch |err| {
 				if(err != error.FileNotFound) {
 					std.log.err("Could not open addon directory {s}: {s}", .{subPath, @errorName(err)});
