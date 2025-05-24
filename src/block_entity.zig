@@ -79,13 +79,9 @@ pub const EventStatus = enum {
 fn BlockEntityDataStorage(T: type) type {
 	return struct {
 		pub const DataT = T;
-		pub const EntryT = struct {
-			absoluteBlockPosition: Vec3i,
-			data: DataT,
-		};
 		var freeIndexList: main.ListUnmanaged(BlockEntityIndex) = .{};
 		var nextIndex: BlockEntityIndex = @enumFromInt(0);
-		var storage: main.utils.SparseSet(EntryT, BlockEntityIndex) = .{};
+		var storage: main.utils.SparseSet(DataT, BlockEntityIndex) = .{};
 		pub var mutex: std.Thread.Mutex = .{};
 
 		pub fn init() void {
@@ -114,17 +110,15 @@ fn BlockEntityDataStorage(T: type) type {
 			const blockIndex = chunk.getLocalBlockIndex(pos);
 
 			chunk.blockPosToEntityDataMapMutex.lock();
-			chunk.blockPosToEntityDataMap.put(main.globalAllocator.allocator, blockIndex, @intCast(dataIndex)) catch unreachable;
+			chunk.blockPosToEntityDataMap.put(main.globalAllocator.allocator, blockIndex, dataIndex) catch unreachable;
 			chunk.blockPosToEntityDataMapMutex.unlock();
 		}
-		pub fn removeAtIndex(dataIndex: BlockEntityIndex) void {
+		pub fn removeAtIndex(dataIndex: BlockEntityIndex) ?DataT {
 			main.utils.assertLocked(&mutex);
 			freeIndexList.append(main.globalAllocator, dataIndex);
-			storage.remove(dataIndex) catch |err| {
-				std.log.err("Error while removing block entity: {s}", .{@errorName(err)});
-			};
+			return storage.fetchRemove(dataIndex) catch null;
 		}
-		pub fn remove(pos: Vec3i, chunk: *Chunk) void {
+		pub fn remove(pos: Vec3i, chunk: *Chunk) ?DataT {
 			mutex.lock();
 			defer mutex.unlock();
 
@@ -134,13 +128,10 @@ fn BlockEntityDataStorage(T: type) type {
 			const entityNullable = chunk.blockPosToEntityDataMap.fetchRemove(blockIndex);
 			chunk.blockPosToEntityDataMapMutex.unlock();
 
-			const entry = entityNullable orelse {
-				std.log.err("Couldn't remove entity data of block at position {}", .{pos});
-				return;
-			};
+			const entry = entityNullable orelse return null;
 
 			const dataIndex = entry.value;
-			removeAtIndex(dataIndex);
+			return removeAtIndex(dataIndex);
 		}
 		pub fn get(pos: Vec3i, chunk: *Chunk) ?*DataT {
 			main.utils.assertLocked(&mutex);
@@ -154,7 +145,7 @@ fn BlockEntityDataStorage(T: type) type {
 				std.log.warn("Couldn't get entity data of block at position {}", .{pos});
 				return null;
 			};
-			return &storage.items[dataIndex].data;
+			return storage.get(dataIndex);
 		}
 	};
 }
@@ -184,13 +175,13 @@ pub const BlockEntityTypes = struct {
 		pub fn onUnloadServer(dataIndex: BlockEntityIndex) void {
 			StorageServer.mutex.lock();
 			defer StorageServer.mutex.unlock();
-			StorageServer.removeAtIndex(dataIndex);
+			_ = StorageServer.removeAtIndex(dataIndex) orelse unreachable;
 		}
 		pub fn onPlaceClient(_: Vec3i, _: *Chunk) void {}
 		pub fn onBreakClient(_: Vec3i, _: *Chunk) void {}
 		pub fn onPlaceServer(_: Vec3i, _: *Chunk) void {}
 		pub fn onBreakServer(pos: Vec3i, chunk: *Chunk) void {
-			StorageServer.remove(pos, chunk);
+			_ = StorageServer.remove(pos, chunk) orelse return;
 		}
 		pub fn onInteract(pos: Vec3i, _: *Chunk) EventStatus {
 			if(main.KeyBoard.key("shift").pressed) return .ignored;
@@ -200,6 +191,70 @@ pub const BlockEntityTypes = struct {
 			main.gui.windowlist.chest.setInventory(inventory);
 			main.gui.openWindow("chest");
 			main.Window.setMouseGrabbed(false);
+
+			return .handled;
+		}
+	};
+
+	pub const Sign = struct {
+		const StorageServer = BlockEntityDataStorage(struct {
+			text: []const u8,
+		});
+		const StorageClient = BlockEntityDataStorage(struct {
+			text: []const u8,
+			renderedTexture: ?main.graphics.Texture = null,
+		});
+
+		pub const id = "sign";
+		pub fn init() void {
+			StorageServer.init();
+			StorageClient.init();
+		}
+		pub fn deinit() void {
+			StorageServer.deinit();
+			StorageClient.deinit();
+		}
+		pub fn reset() void {
+			StorageServer.reset();
+			StorageClient.reset();
+		}
+
+		pub fn onLoadClient(_: Vec3i, _: *Chunk) void {}
+		pub fn onUnloadClient(dataIndex: BlockEntityIndex) void {
+			StorageClient.mutex.lock();
+			defer StorageClient.mutex.unlock();
+			const entry = StorageClient.removeAtIndex(dataIndex) orelse unreachable;
+			main.globalAllocator.free(entry.text);
+		}
+		pub fn onLoadServer(_: Vec3i, _: *Chunk) void {}
+		pub fn onUnloadServer(dataIndex: BlockEntityIndex) void {
+			StorageServer.mutex.lock();
+			defer StorageServer.mutex.unlock();
+			const entry = StorageServer.removeAtIndex(dataIndex) orelse unreachable;
+			main.globalAllocator.free(entry.text);
+
+		}
+		pub fn onPlaceClient(pos: Vec3i, chunk: *Chunk) void {
+			StorageClient.add(pos, .{.text = main.globalAllocator.dupe(u8, "test")}, chunk);
+		}
+		pub fn onBreakClient(pos: Vec3i, chunk: *Chunk) void {
+			const entry = StorageClient.remove(pos, chunk) orelse return;
+			main.globalAllocator.free(entry.text);
+		}
+		pub fn onPlaceServer(pos: Vec3i, chunk: *Chunk) void {
+			StorageServer.add(pos, .{.text = main.globalAllocator.dupe(u8, "test")}, chunk);
+		}
+		pub fn onBreakServer(pos: Vec3i, chunk: *Chunk) void {
+			const entry = StorageServer.remove(pos, chunk) orelse return;
+			main.globalAllocator.free(entry.text);
+		}
+		pub fn onInteract(pos: Vec3i, chunk: *Chunk) EventStatus {
+			if(main.KeyBoard.key("shift").pressed) return .ignored;
+
+			StorageClient.mutex.lock();
+			defer StorageClient.mutex.unlock();
+			const data = StorageClient.get(pos, chunk); // TODO: orelse return .ignored;
+			main.gui.windowlist.sign_editor.openFromSignData(pos, if(data) |_data| _data.text else "TODO: Remove");
 
 			return .handled;
 		}

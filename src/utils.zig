@@ -1956,18 +1956,23 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 			self.denseToSparseIndex.append(allocator, id);
 		}
 
-		pub fn remove(self: *Self, id: IdType) !void {
+		pub fn fetchRemove(self: *Self, id: IdType) !T {
 			if(!self.contains(id)) return error.ElementNotFound;
 
 			const denseId = @intFromEnum(self.sparseToDenseIndex.items[@intFromEnum(id)]);
 			self.sparseToDenseIndex.items[@intFromEnum(id)] = .noValue;
 
-			_ = self.dense.swapRemove(denseId);
+			const result = self.dense.swapRemove(denseId);
 			_ = self.denseToSparseIndex.swapRemove(denseId);
 
 			if(denseId != self.dense.items.len) {
 				self.sparseToDenseIndex.items[@intFromEnum(self.denseToSparseIndex.items[denseId])] = @enumFromInt(denseId);
 			}
+			return result;
+		}
+
+		pub fn remove(self: *Self, id: IdType) !void {
+			_ = try self.fetchRemove(id);
 		}
 
 		pub fn get(self: *Self, id: IdType) ?*T {

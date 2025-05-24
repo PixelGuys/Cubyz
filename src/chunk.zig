@@ -375,6 +375,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 		if(self.wasChanged) {
 			self.save(main.server.world.?);
 		}
+		self.super.unloadBlockEntities(.server);
 		self.super.data.deinit();
 		serverPool.destroy(@alignCast(self));
 	}
