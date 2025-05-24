@@ -124,5 +124,7 @@ pub fn render() void {
 		}
 		draw.print("Opaque faces: {}, Transparent faces: {}", .{main.renderer.chunk_meshing.quadsDrawn, main.renderer.chunk_meshing.transparentQuadsDrawn}, 0, y, 8, .left);
 		y += 8;
+		draw.print("Particle count: {}/{}", .{main.particles.ParticleSystem.getParticleCount(), main.particles.ParticleSystem.maxCapacity}, 0, y, 8, .left);
+		y += 8;
 	}
 }

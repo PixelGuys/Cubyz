@@ -99,6 +99,7 @@ fn anisotropicFilteringCallback(newValue: u16) void {
 	settings.save();
 	if(main.game.world != null) {
 		main.blocks.meshes.reloadTextures(undefined);
+		main.particles.ParticleManager.generateTextureArray();
 	}
 }
 
