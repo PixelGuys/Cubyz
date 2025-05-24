@@ -23,6 +23,7 @@ const block_entity = @import("block_entity.zig");
 const BlockEntityType = block_entity.BlockEntityType;
 const sbb = main.server.terrain.structure_building_blocks;
 const blueprint = main.blueprint;
+const Assets = main.assets.Assets;
 
 var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
 const allocator = arena.allocator();
@@ -215,7 +216,11 @@ pub fn registerTickEvent(typ: u16, zon: ZonElement) void {
 	_tickEvent[typ] = TickEvent.loadFromZon(zon.getChild("tickEvent"));
 }
 
-pub fn finishBlocks(zonElements: std.StringHashMap(ZonElement)) void {
+pub fn registerTickEvent(typ: u16, zon: ZonElement) void {
+	_tickEvent[typ] = TickEvent.loadFromZon(zon.getChild("tickEvent"));
+}
+
+pub fn finishBlocks(zonElements: Assets.ZonHashMap) void {
 	var i: u16 = 0;
 	while(i < size) : (i += 1) {
 		registerBlockDrop(i, zonElements.get(_id[i]) orelse continue);
