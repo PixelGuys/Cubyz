@@ -26,6 +26,7 @@ const blueprint = main.blueprint;
 const vec = main.vec;
 
 const Vec3i = vec.Vec3i;
+const Vec3d = vec.Vec3d;
 
 var arena = main.heap.NeverFailingArenaAllocator.init(main.globalAllocator);
 const allocator = arena.allocator();
@@ -487,6 +488,24 @@ pub const TickFunctions = struct {
 		return true;
 	}
 
+	fn dropItems(block: Block, pos: Vec3d) void {
+		const outMin = 0.1;
+		const outMax = 0.3;
+		const slope = outMax - outMin;
+
+		for (block.blockDrops()) |blockDrop| {
+			if (blockDrop.chance >= 1.0 or main.random.nextFloat(&main.seed) < blockDrop.chance) {
+				const rng = main.random.nextFloat(&main.seed);
+				const vel = slope * rng + outMin;
+				const rngPos: Vec3d = pos + @as(Vec3d, @splat(rng - 0.5));
+					
+				for(blockDrop.items) |item| {
+					main.server.world.?.drop(item, rngPos, .{0,0,1}, vel);
+				}
+			}
+		}
+	}
+
 	pub fn decay(block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void {
 		if(block.mode() == rotation.getByID("persistent")) {
 			if(rotation.PersistentData.castData(block.data).playerPlaced) return;
@@ -500,7 +519,8 @@ pub const TickFunctions = struct {
 		const wz = _chunk.super.pos.wz + z;
 
 		_ = main.server.world.?.cmpxchgBlock(wx, wy, wz, block, Block.air) orelse {
-			// TODO: Drop items
+			const dropPos: Vec3d  = Vec3d{@floatFromInt(wx), @floatFromInt(wy), @floatFromInt(wz)} + @as(Vec3d, @splat(0.5));
+			dropItems(block, dropPos);
 		};
 	}
 };
