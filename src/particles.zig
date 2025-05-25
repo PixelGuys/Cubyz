@@ -39,7 +39,9 @@ pub const ParticleManager = struct {
 	pub fn init() void {
 		types = .init(arenaAllocator);
 		textures = .init(arenaAllocator);
+		textures.append(Image.defaultImage);
 		emissionTextures = .init(arenaAllocator);
+		emissionTextures.append(Image.emptyImage);
 		textureArray = .init();
 		emissionTextureArray = .init();
 		particleTypesSSBO = SSBO.init();
