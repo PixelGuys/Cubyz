@@ -23,7 +23,7 @@ pub const PersistentData = packed struct(PackedType) {
 
 pub fn generateData(_: *main.game.World, _: Vec3i, _: Vec3f, _: Vec3f, _: Vec3i, _: ?Neighbor, currentData: *Block, _: Block, blockPlacing: bool) bool {
 	if(blockPlacing) {
-		var data: PersistentData = PersistentData.castData(currentData.data);
+		var data = PersistentData.castData(currentData.data);
 		data.playerPlaced = true;
 		currentData.data = @as(PackedType, @bitCast(data));
 	}

@@ -488,19 +488,12 @@ pub const TickFunctions = struct {
 	}
 
 	pub fn decay(block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void {
-		const startDecay = std.time.microTimestamp();
 		if(block.mode() == rotation.getByID("persistent")) {
 			if(rotation.PersistentData.castData(block.data).playerPlaced) return;
 		}
 
 		const depth = 4;
-		if(!shouldDecay(depth, block, _chunk, x, y, z)) {
-			const depthTime = std.time.microTimestamp() - startDecay;
-			std.log.debug("depth calculation {d:.4}µs", .{depthTime});
-			return;
-		}
-		const depthTime = std.time.microTimestamp() - startDecay;
-		const startReplace = std.time.microTimestamp();
+		if(!shouldDecay(depth, block, _chunk, x, y, z)) return;
 
 		const wx = _chunk.super.pos.wx + x;
 		const wy = _chunk.super.pos.wy + y;
@@ -509,10 +502,6 @@ pub const TickFunctions = struct {
 		_ = main.server.world.?.cmpxchgBlock(wx, wy, wz, block, Block.air) orelse {
 			// TODO: Drop items
 		};
-		const replaceTime = std.time.microTimestamp() - startReplace;
-
-		const totalTime = std.time.microTimestamp() - startDecay;
-		std.log.debug("total {d:.4}µs, depth calculation {d:.4}µs, replace {d:.4}µs", .{totalTime, depthTime, replaceTime});
 	}
 };
 
