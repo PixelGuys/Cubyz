@@ -61,15 +61,9 @@ const DirectionWithoutSign = enum(u1) {
 
 const Pattern = union(enum) {
 	dot: void,
-	line: struct {
-		dir: DirectionWithoutSign,
-	},
-	bend: struct {
-		dir: DirectionWithSign,
-	},
-	intersection: struct {
-		dir: DirectionWithSign,
-	},
+	line: DirectionWithoutSign,
+	bend: DirectionWithSign,
+	intersection: DirectionWithSign,
 	cross: void,
 	cut: void,
 };
@@ -79,9 +73,15 @@ fn rotateQuad(originalCorners: [4]Vec2f, pattern: Pattern, side: Neighbor) main.
 
 	switch(pattern) {
 		.dot, .cross, .cut => {},
-		inline else => |typ| {
-			var angle: f32 = @as(f32, @floatFromInt(@intFromEnum(typ.dir)))*std.math.pi/2.0;
-			if(!side.isPositive()) {
+		.line => |dir| {
+			var angle: f32 = @as(f32, @floatFromInt(@intFromEnum(dir)))*std.math.pi/2.0;
+			if(side.relZ() != 0) {
+				angle *= -1;
+			}
+			if(side.isPositive()) {
+				angle *= -1;
+			}
+			if(side.relY() != 0) {
 				angle *= -1;
 			}
 			corners = .{
@@ -91,16 +91,27 @@ fn rotateQuad(originalCorners: [4]Vec2f, pattern: Pattern, side: Neighbor) main.
 				vec.rotate2d(originalCorners[3], angle, @splat(0.5)),
 			};
 		},
+		.bend, .intersection => |dir| {
+			corners = originalCorners;
+
+			const angle: f32 = -@as(f32, @floatFromInt(@intFromEnum(dir)))*std.math.pi/2.0;
+			corners = .{
+				vec.rotate2d(originalCorners[0], angle, @splat(0.5)),
+				vec.rotate2d(originalCorners[1], angle, @splat(0.5)),
+				vec.rotate2d(originalCorners[2], angle, @splat(0.5)),
+				vec.rotate2d(originalCorners[3], angle, @splat(0.5)),
+			};
+		}
 	}
 
 	const offX: f32 = @floatFromInt(@intFromBool(@reduce(.Add, side.textureX()) < 0));
 	const offY: f32 = @floatFromInt(@intFromBool(@reduce(.Add, side.textureY()) < 0));
 
 	const corners3d = .{
-		@as(Vec3f, @floatFromInt(side.textureX()))*@as(Vec3f, @splat(corners[0][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY()))*@as(Vec3f, @splat(corners[0][1] - offY)),
-		@as(Vec3f, @floatFromInt(side.textureX()))*@as(Vec3f, @splat(corners[1][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY()))*@as(Vec3f, @splat(corners[1][1] - offY)),
-		@as(Vec3f, @floatFromInt(side.textureX()))*@as(Vec3f, @splat(corners[2][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY()))*@as(Vec3f, @splat(corners[2][1] - offY)),
-		@as(Vec3f, @floatFromInt(side.textureX()))*@as(Vec3f, @splat(corners[3][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY()))*@as(Vec3f, @splat(corners[3][1] - offY)),
+		@as(Vec3f, @floatFromInt(side.textureX()))*@as(Vec3f, @splat(originalCorners[0][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY()))*@as(Vec3f, @splat(originalCorners[0][1] - offY)),
+		@as(Vec3f, @floatFromInt(side.textureX()))*@as(Vec3f, @splat(originalCorners[1][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY()))*@as(Vec3f, @splat(originalCorners[1][1] - offY)),
+		@as(Vec3f, @floatFromInt(side.textureX()))*@as(Vec3f, @splat(originalCorners[2][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY()))*@as(Vec3f, @splat(originalCorners[2][1] - offY)),
+		@as(Vec3f, @floatFromInt(side.textureX()))*@as(Vec3f, @splat(originalCorners[3][0] - offX)) + @as(Vec3f, @floatFromInt(side.textureY()))*@as(Vec3f, @splat(originalCorners[3][1] - offY)),
 	};
 
 	var offset: Vec3f = .{0.0, 0.0, 0.0};
@@ -113,7 +124,7 @@ fn rotateQuad(originalCorners: [4]Vec2f, pattern: Pattern, side: Neighbor) main.
 			corners3d[2] + offset,
 			corners3d[3] + offset,
 		},
-		.cornerUV = originalCorners,
+		.cornerUV = corners,
 		.normal = @floatFromInt(side.relPos()),
 		.textureSlot = @intFromEnum(pattern),
 	};
@@ -160,7 +171,7 @@ fn getPattern(data: LogData, side: Neighbor) Pattern {
 			} else if(connectedPosY) {
 				dir = .y;
 			}
-			return .{.line = .{.dir = dir}};
+			return .{.line = dir};
 		},
 		2 => {
 			if((connectedPosX and connectedNegX) or (connectedPosY and connectedNegY)) {
@@ -169,7 +180,7 @@ fn getPattern(data: LogData, side: Neighbor) Pattern {
 					dir = .x;
 				}
 
-				return .{.line = .{.dir = dir}};
+				return .{.line = dir};
 			}
 
 			var dir: DirectionWithSign = .negXDir;
@@ -191,7 +202,7 @@ fn getPattern(data: LogData, side: Neighbor) Pattern {
 				}
 			}
 
-			return .{.bend = .{.dir = dir}};
+			return .{.bend = dir};
 		},
 		3 => {
 			var dir: DirectionWithSign = undefined;
@@ -200,7 +211,7 @@ fn getPattern(data: LogData, side: Neighbor) Pattern {
 			if(!connectedNegY) dir = .posYDir;
 			if(!connectedPosX) dir = .negXDir;
 
-			return .{.intersection = .{.dir = dir}};
+			return .{.intersection = dir};
 		},
 		4 => {
 			return .cross;
