@@ -102,10 +102,10 @@ pub fn build(b: *std.Build) !void {
 	});
 	exe.root_module.addImport("main", exe.root_module);
 
-	const rotationIndexFile = try std.fs.cwd().createFile("assets/rotation.zig", .{});
+	const rotationIndexFile = try std.fs.cwd().createFile("mods/rotation.zig", .{});
 	defer rotationIndexFile.close();
 
-	var assetsDir = try std.fs.cwd().openDir("assets/", .{.iterate = true});
+	var assetsDir = try std.fs.cwd().openDir("mods/", .{.iterate = true});
 	defer assetsDir.close();
 	{
 		var iterator = assetsDir.iterate();
@@ -131,7 +131,7 @@ pub fn build(b: *std.Build) !void {
 	}
 
 	const rotation = b.createModule(.{
-		.root_source_file = b.path("assets/rotation.zig"),
+		.root_source_file = b.path("mods/rotation.zig"),
 		.target = target,
 		.optimize = optimize,
 	});

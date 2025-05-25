@@ -12,3 +12,4 @@ test.png
 
 # Ignore user generated backgrounds
 /assets/backgrounds/client_*.png
+mods/rotation.zig
