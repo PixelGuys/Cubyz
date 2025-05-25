@@ -169,7 +169,7 @@ pub const StructureBuildingBlock = struct {
 fn initChildTableFromZon(parentId: []const u8, colorName: []const u8, colorIndex: usize, zon: ZonElement) !?AliasTable(Child) {
 	if(zon == .null) return null;
 	if(zon != .array) {
-		std.log.warn("['{s}'->'{s}'] Incorrect child data structure, array expected.", .{parentId, colorName});
+		std.log.err("['{s}'->'{s}'] Incorrect child data structure, array or null expected.", .{parentId, colorName});
 		return null;
 	}
 	if(zon.array.items.len == 0) {
