@@ -46,6 +46,10 @@ const BlueprintEntry = struct {
 		pub inline fn pos(self: StructureBlock) Vec3i {
 			return Vec3i{self.x, self.y, self.z};
 		}
+
+		pub fn id(self: StructureBlock) []const u8 {
+			return childBlockStringId.items[self.index];
+		}
 	};
 
 	fn init(blueprint: Blueprint, stringId: []const u8) !BlueprintEntry {
@@ -112,7 +116,7 @@ pub fn isOriginBlock(block: Block) bool {
 
 pub const StructureBuildingBlock = struct {
 	id: []const u8,
-	children: []AliasTable(Child),
+	children: []?AliasTable(Child),
 	blueprints: *[4]BlueprintEntry,
 
 	fn initFromZon(stringId: []const u8, zon: ZonElement) !StructureBuildingBlock {
@@ -126,7 +130,7 @@ pub const StructureBuildingBlock = struct {
 		};
 		const self = StructureBuildingBlock{
 			.id = stringId,
-			.children = arenaAllocator.alloc(AliasTable(Child), childBlockStringId.items.len),
+			.children = arenaAllocator.alloc(?AliasTable(Child), childBlockStringId.items.len),
 			.blueprints = blueprints,
 		};
 		const childrenZon = zon.getChild("children");
@@ -140,13 +144,6 @@ pub const StructureBuildingBlock = struct {
 			std.log.err("['{s}'] Could not find blueprint '{s}'.", .{sbbId, sbbId});
 			return error.MissingBlueprint;
 		};
-		if(blueprints[0].childBlocks.len != 0) {
-			std.log.err("['{s}'] Inline structures cannot contain child blocks.", .{sbbId});
-			return error.InlineStructureCannotContainChildBlocks;
-		}
-		std.debug.assert(blueprints[1].childBlocks.len == 0);
-		std.debug.assert(blueprints[2].childBlocks.len == 0);
-		std.debug.assert(blueprints[3].childBlocks.len == 0);
 		return .{
 			.id = sbbId,
 			.children = &.{},
@@ -157,19 +154,27 @@ pub const StructureBuildingBlock = struct {
 		return &self.blueprints[@intFromEnum(rotation)];
 	}
 	pub fn pickChild(self: StructureBuildingBlock, block: BlueprintEntry.StructureBlock, seed: *u64) ?*const StructureBuildingBlock {
-		return self.children[block.index].sample(seed).structure;
+		if(self.children.len == 0) {
+			std.log.warn("[{s}] Attempting to sample child structure from SBB with no children defined.", .{self.id});
+			return null;
+		}
+		if(self.children[block.index]) |child| {
+			return child.sample(seed).structure;
+		}
+		std.log.warn("[{s}] Attempting to sample child structure from SBB with empty list of possible structures for that child color ({s}).", .{self.id, (block.id())});
+		return null;
 	}
 };
 
-fn initChildTableFromZon(parentId: []const u8, colorName: []const u8, colorIndex: usize, zon: ZonElement) !AliasTable(Child) {
-	if(zon == .null) return .init(arenaAllocator, &.{});
+fn initChildTableFromZon(parentId: []const u8, colorName: []const u8, colorIndex: usize, zon: ZonElement) !?AliasTable(Child) {
+	if(zon == .null) return null;
 	if(zon != .array) {
-		std.log.err("['{s}'->'{s}'] Incorrect child data structure, array expected.", .{parentId, colorName});
-		return .init(arenaAllocator, &.{});
+		std.log.warn("['{s}'->'{s}'] Incorrect child data structure, array expected.", .{parentId, colorName});
+		return null;
 	}
 	if(zon.array.items.len == 0) {
-		std.log.err("['{s}'->'{s}'] Empty children list.", .{parentId, colorName});
-		return error.EmptyChildrenList;
+		std.log.warn("['{s}'->'{s}'] Empty children list.", .{parentId, colorName});
+		return null;
 	}
 	const list = arenaAllocator.alloc(Child, zon.array.items.len);
 	for(zon.array.items, 0..) |entry, childIndex| {
@@ -215,10 +220,8 @@ pub fn registerSBB(structures: *Assets.ZonHashMap) !void {
 		var iterator = blueprintCache.iterator();
 		while(iterator.next()) |entry| {
 			const blueprintId = entry.key_ptr.*;
-			const blueprints = entry.value_ptr.*;
 
 			if(structureCache.contains(blueprintId)) continue;
-			if(blueprints[0].childBlocks.len != 0) continue;
 
 			const value = StructureBuildingBlock.initInline(blueprintId) catch |err| {
 				std.log.err("Could not register inline structure building block '{s}' ({s})", .{blueprintId, @errorName(err)});
@@ -237,8 +240,16 @@ pub fn registerSBB(structures: *Assets.ZonHashMap) !void {
 				continue;
 			};
 
+			if(parent.children.len <= entry.colorIndex or parent.children[entry.colorIndex] == null) {
+				// This should never happen, structure should either have fields for all child colors or none, if it is inline sbb, then it should not request resolution.
+				std.log.err("Error resolved child structure '{s}'->'{s}'->'{d}' to '{s}'", .{entry.parentId, entry.colorName, entry.childIndex, entry.structureId});
+				unreachable;
+			}
+
+			const childColor = parent.children[entry.colorIndex] orelse unreachable;
+
 			std.log.debug("Resolved child structure '{s}'->'{s}'->'{d}' to '{s}'", .{entry.parentId, entry.colorName, entry.childIndex, entry.structureId});
-			parent.children[entry.colorIndex].items[entry.childIndex].structure = child;
+			childColor.items[entry.childIndex].structure = child;
 		}
 	}
 }
