@@ -1,5 +1,5 @@
 .{
-	.tags = .{.leaf},
+	.tags = .{.leaf, .cambium},
 	.blockHealth = 0.5,
 	.absorbedLight = 0x202830,
 	.alwaysViewThrough = true,

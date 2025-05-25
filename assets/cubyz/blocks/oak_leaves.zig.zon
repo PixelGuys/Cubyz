@@ -12,4 +12,8 @@
 	.texture = "cubyz:oak_leaves",
 	.lodReplacement = "cubyz:oak_leaves_opaque",
 	.opaqueVariant = "cubyz:oak_leaves_opaque",
+	.rotation = "persistent",
+	.tickEvent = .{
+		.name = .decay,
+	},
 }
