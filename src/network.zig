@@ -686,6 +686,7 @@ pub const Protocols = struct {
 						zonObject.put("spawn", main.server.world.?.spawn);
 						zonObject.put("blockPalette", main.server.world.?.blockPalette.storeToZon(main.stackAllocator));
 						zonObject.put("itemPalette", main.server.world.?.itemPalette.storeToZon(main.stackAllocator));
+						zonObject.put("toolPalette", main.server.world.?.toolPalette.storeToZon(main.stackAllocator));
 						zonObject.put("biomePalette", main.server.world.?.biomePalette.storeToZon(main.stackAllocator));
 
 						const outData = zonObject.toStringEfficient(main.stackAllocator, &[1]u8{stepServerData});
