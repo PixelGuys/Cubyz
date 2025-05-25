@@ -24,15 +24,11 @@
 		.output = "cubyz:workbench",
 	},
 	.{
-		.inputs = .{"cubyz:birch_log"},
+		.inputs = .{"cubyz:log/birch"},
 		.output = "4 cubyz:birch_planks",
 	},
 	.{
-		.inputs = .{"cubyz:birch_top"},
-		.output = "3 cubyz:birch_planks",
-	},
-	.{
-		.inputs = .{"cubyz:birch_log"},
+		.inputs = .{"cubyz:log/birch"},
 		.output = "2 cubyz:birch_branch",
 	},
 	.{

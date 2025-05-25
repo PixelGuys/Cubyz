@@ -1,0 +1,10 @@
+.{
+	.{
+		.inputs = .{"cubyz:birch_log"},
+		.output = "cubyz:log/birch",
+	},
+	.{
+		.inputs = .{"cubyz:birch_top"},
+		.output = "cubyz:log/birch",
+	},
+}
