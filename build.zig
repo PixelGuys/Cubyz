@@ -102,6 +102,42 @@ pub fn build(b: *std.Build) !void {
 	});
 	exe.root_module.addImport("main", exe.root_module);
 
+	const rotationIndexFile = try std.fs.cwd().createFile("assets/rotation.zig", .{});
+	defer rotationIndexFile.close();
+
+	var assetsDir = try std.fs.cwd().openDir("assets/", .{.iterate = true});
+	defer assetsDir.close();
+	{
+		var iterator = assetsDir.iterate();
+		while(try iterator.next()) |addonEntry| {
+			if(addonEntry.kind != .directory) continue;
+			var addon = try assetsDir.openDir(addonEntry.name, .{});
+			defer addon.close();
+
+			var rotationDir = addon.openDir("rotation", .{.iterate = true}) catch continue;
+			defer rotationDir.close();
+
+			var rotationIterator = rotationDir.iterate();
+			while(try rotationIterator.next()) |rotationEntry| {
+				if(rotationEntry.kind != .file) continue;
+				if(!std.mem.endsWith(u8, rotationEntry.name, ".zig")) continue;
+
+				const sourceLine = try std.fmt.allocPrint(b.allocator, "pub const @\"{s}:{s}\" = @import(\"{s}/rotation/{s}\");\n", .{addonEntry.name, rotationEntry.name[0..rotationEntry.name.len - 4], addonEntry.name, rotationEntry.name});
+				defer b.allocator.free(sourceLine);
+
+				try rotationIndexFile.writeAll(sourceLine);
+			}
+		}
+	}
+
+	const rotation = b.createModule(.{
+		.root_source_file = b.path("assets/rotation.zig"),
+		.target = target,
+		.optimize = optimize,
+	});
+	rotation.addImport("main", exe.root_module);
+	exe.root_module.addImport("rotation", rotation);
+
 	linkLibraries(b, exe, useLocalDeps);
 
 	b.installArtifact(exe);
