@@ -25,6 +25,9 @@ pub const Tag = enum(u32) {
 	air = 0,
 	fluid = 1,
 	sbbChild = 2,
+	explosive = 3,
+	canIgnite = 4,
+	canBeIgnited = 5,
 	_,
 
 	pub fn resetTags() void {

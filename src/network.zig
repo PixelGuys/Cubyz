@@ -1290,6 +1290,106 @@ pub const Protocols = struct {
 			conn.send(.fast, id, writer.data.items);
 		}
 	};
+	pub const explode = struct {
+		pub const id: u8 = 14;
+		pub const asynchronous = false;
+		fn receive(conn: *Connection, reader: *utils.BinaryReader) !void {
+			const pos = try reader.readVec(Vec3i);
+
+			if(conn.user == null) return error.InvalidPacket;
+			if(!main.server.world.?.allowExplosives) return;
+			doExplode(pos);
+		}
+		fn doExplode(pos: Vec3i) void {
+			const explosiveBlock = main.server.world.?.getBlock(pos[0], pos[1], pos[2]) orelse return;
+			if(!explosiveBlock.hasTag(.explosive)) return;
+
+			const strength = explosiveBlock.blockHealth()*32.0;
+			const radius = explosiveBlock.blockHealth()*4.0;
+
+			const airDamageDecrease = 8.0;
+			const fluidDamageDecrease = 64.0;
+
+			const diameter: u32 = @intFromFloat(std.math.ceil(radius)*2);
+			const goldenAngle = std.math.pi*(3.0 - @sqrt(5.0));
+			const radiusInt: usize = @intFromFloat(std.math.ceil(radius));
+			const numSamples: usize = @intFromFloat(std.math.ceil(4*std.math.pi*radius*radius)*2);
+
+			const exploded = main.utils.Array3D(bool).init(main.stackAllocator, diameter, diameter, diameter);
+			defer exploded.deinit(main.stackAllocator);
+			@memset(exploded.mem, false);
+
+			var explosionSeed: u64 = @bitCast(std.time.milliTimestamp());
+
+			for(0..numSamples) |i| {
+				const z = 1 - 2*@as(f32, @floatFromInt(i))/@as(f32, @floatFromInt(numSamples));
+				const radiusAtZ = @sqrt(1 - z*z);
+				const theta = goldenAngle*@as(f32, @floatFromInt(i));
+				const x = radiusAtZ*@cos(theta);
+				const y = radiusAtZ*@sin(theta);
+
+				var damage = strength;
+
+				for(0..radiusInt) |j| {
+					const distanceFactor = @as(f32, @floatFromInt(j))/@as(f32, @floatFromInt(radiusInt));
+					const distance = radius*distanceFactor;
+
+					const xOffset: i32 = @intFromFloat(x*distance);
+					const yOffset: i32 = @intFromFloat(y*distance);
+					const zOffset: i32 = @intFromFloat(z*distance);
+
+					const p = pos +% Vec3i{xOffset, yOffset, zOffset};
+
+					var oldBlock = main.server.world.?.getBlock(p[0], p[1], p[2]) orelse continue;
+
+					const blockDamageDelta = (oldBlock.blockHealth() + oldBlock.blockResistance());
+					if(damage < blockDamageDelta) {
+						defer damage = 0;
+						if(damage < 0 or damage/blockDamageDelta > main.random.nextFloat(&main.seed)) break;
+					}
+
+					if(oldBlock.hasTag(.air)) {
+						damage -= airDamageDecrease;
+						continue;
+					} else if(oldBlock.hasTag(.fluid)) {
+						damage -= fluidDamageDecrease;
+						continue;
+					} else {
+						damage -= blockDamageDelta*main.random.nextFloat(&main.seed) + airDamageDecrease*main.random.nextFloat(&main.seed);
+					}
+
+					const xCentered: usize = @intCast(xOffset + @as(i32, @intCast(diameter/2)));
+					const yCentered: usize = @intCast(yOffset + @as(i32, @intCast(diameter/2)));
+					const zCentered: usize = @intCast(zOffset + @as(i32, @intCast(diameter/2)));
+
+					exploded.set(xCentered, yCentered, zCentered, true);
+
+					damage -= strength/@as(f32, @floatFromInt(radiusInt)) + main.random.nextFloat(&explosionSeed)*0.5;
+				}
+			}
+
+			for(0..diameter) |_x| {
+				const x = @as(i32, @intCast(_x)) +% pos[0] -% @as(i32, @intCast(diameter/2));
+
+				for(0..diameter) |_y| {
+					const y = @as(i32, @intCast(_y)) +% pos[1] -% @as(i32, @intCast(diameter/2));
+
+					for(0..diameter) |_z| {
+						const z = @as(i32, @intCast(_z)) +% pos[2] -% @as(i32, @intCast(diameter/2));
+						if(exploded.get(_x, _y, _z)) {
+							_ = main.server.world.?.cmpxchgBlock(x, y, z, null, .{.typ = 0, .data = 0});
+						}
+					}
+				}
+			}
+		}
+		pub fn send(conn: *Connection, pos: Vec3i) void {
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 12);
+			defer writer.deinit();
+			writer.writeVec(Vec3i, pos);
+			conn.send(.fast, id, writer.data.items);
+		}
+	};
 };
 
 pub const Connection = struct { // MARK: Connection

@@ -969,6 +969,10 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 			if(inventory.getItem(slot)) |item| {
 				switch(item) {
 					.baseItem => |baseItem| {
+						if(baseItem.hasTag(.canIgnite) and oldBlock.hasTag(.canBeIgnited)) {
+							if(oldBlock.hasTag(.explosive)) main.network.Protocols.explode.send(main.game.world.?.conn, selectedPos);
+							return;
+						}
 						if(baseItem.block()) |itemBlock| {
 							const rotationMode = blocks.Block.mode(.{.typ = itemBlock, .data = 0});
 							var neighborDir = Vec3i{0, 0, 0};
