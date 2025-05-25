@@ -156,6 +156,50 @@ const MaterialProperty = enum {
 	}
 };
 
+pub const BaseItemIndex = packed struct {
+	index: u16,
+
+	pub fn fromId(_id: []const u8) ?BaseItemIndex {
+		return reverseIndices.get(_id);
+	}
+	pub fn image(self: BaseItemIndex) graphics.Image {
+		return itemList[self.index].image;
+	}
+	pub fn texture(self: BaseItemIndex) ?graphics.Texture {
+		return itemList[self.index].texture;
+	}
+	pub fn id(self: BaseItemIndex) []const u8 {
+		return itemList[self.index].id;
+	}
+	pub fn name(self: BaseItemIndex) []const u8 {
+		return itemList[self.index].name;
+	}
+	pub fn tags(self: BaseItemIndex) []const Tag {
+		return itemList[self.index].tags;
+	}
+	pub fn stackSize(self: BaseItemIndex) u16 {
+		return itemList[self.index].stackSize;
+	}
+	pub fn material(self: BaseItemIndex) ?Material {
+		return itemList[self.index].material;
+	}
+	pub fn block(self: BaseItemIndex) ?u16 {
+		return itemList[self.index].block;
+	}
+	pub fn hasTag(self: BaseItemIndex, tag: Tag) bool {
+		return itemList[self.index].hasTag(tag);
+	}
+	pub fn hashCode(self: BaseItemIndex) u32 {
+		return itemList[self.index].hashCode();
+	}
+	pub fn getTexture(self: BaseItemIndex) graphics.Texture {
+		return itemList[self.index].getTexture();
+	}
+	pub fn getTooltip(self: BaseItemIndex) []const u8 {
+		return itemList[self.index].getTooltip();
+	}
+};
+
 pub const BaseItem = struct { // MARK: BaseItem
 	image: graphics.Image,
 	texture: ?graphics.Texture, // TODO: Properly deinit
@@ -245,7 +289,7 @@ pub const BaseItem = struct { // MARK: BaseItem
 
 ///Generates the texture of a Tool using the material information.
 const TextureGenerator = struct { // MARK: TextureGenerator
-	fn generateHeightMap(itemGrid: *[16][16]?*const BaseItem, seed: *u64) [17][17]f32 {
+	fn generateHeightMap(itemGrid: *[16][16]?BaseItemIndex, seed: *u64) [17][17]f32 {
 		var heightMap: [17][17]f32 = undefined;
 		var x: u8 = 0;
 		while(x < 17) : (x += 1) {
@@ -263,7 +307,7 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 					while(dy <= 0) : (dy += 1) {
 						if(y + dy < 0 or y + dy >= 16) continue;
 						const otherItem = itemGrid[@intCast(x + dx)][@intCast(y + dy)];
-						heightMap[x][y] = if(otherItem) |item| (if(item.material) |material| 1 + (4*random.nextFloat(seed) - 2)*material.textureRoughness else 0) else 0;
+						heightMap[x][y] = if(otherItem) |item| (if(item.material()) |material| 1 + (4*random.nextFloat(seed) - 2)*material.textureRoughness else 0) else 0;
 						if(otherItem != oneItem) {
 							hasDifferentItems = true;
 						}
@@ -318,7 +362,7 @@ const TextureGenerator = struct { // MARK: TextureGenerator
 			var y: u8 = 0;
 			while(y < 16) : (y += 1) {
 				if(tool.materialGrid[x][y]) |item| {
-					if(item.material) |material| {
+					if(item.material()) |material| {
 						// Calculate the lighting based on the nearest free space:
 						const lightTL = heightMap[x][y] - heightMap[x + 1][y + 1];
 						const lightTR = heightMap[x + 1][y] - heightMap[x][y + 1];
@@ -349,7 +393,7 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 			var sum: f32 = 0;
 			var weight: f32 = 0;
 			for(0..25) |i| {
-				const material = (tool.craftingGrid[i] orelse continue).material orelse continue;
+				const material = (tool.craftingGrid[i] orelse continue).material() orelse continue;
 				sum += property.weigths[i]*material.getProperty(property.source orelse break);
 				weight += property.weigths[i];
 			}
@@ -358,11 +402,10 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 			sum *= property.resultScale;
 			tool.getProperty(property.destination orelse continue).* += sum;
 		}
-		if(tool.maxDurability < 1) tool.maxDurability = 1;
 		if(tool.damage < 1) tool.damage = 1/(2 - tool.damage);
 		if(tool.swingTime < 1) tool.swingTime = 1/(2 - tool.swingTime);
 		for(0..25) |i| {
-			const material = (tool.craftingGrid[i] orelse continue).material orelse continue;
+			const material = (tool.craftingGrid[i] orelse continue).material() orelse continue;
 			outer: for(material.modifiers) |newMod| {
 				if(!newMod.restriction.satisfied(tool, @intCast(i%5), @intCast(i/5))) continue;
 				for(tempModifiers.items) |*oldMod| {
@@ -384,7 +427,9 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 			mod.changeToolParameters(tool);
 		}
 
-		tool.durability = @max(1, std.math.lossyCast(u32, tool.maxDurability));
+		tool.maxDurability = @round(tool.maxDurability);
+		if(tool.maxDurability < 1) tool.maxDurability = 1;
+		tool.durability = std.math.lossyCast(u32, tool.maxDurability);
 	}
 };
 
@@ -423,8 +468,8 @@ const ToolProperty = enum {
 };
 
 pub const Tool = struct { // MARK: Tool
-	craftingGrid: [25]?*const BaseItem,
-	materialGrid: [16][16]?*const BaseItem,
+	craftingGrid: [25]?BaseItemIndex,
+	materialGrid: [16][16]?BaseItemIndex,
 	modifiers: []Modifier,
 	tooltip: main.List(u8),
 	image: graphics.Image,
@@ -461,9 +506,10 @@ pub const Tool = struct { // MARK: Tool
 	}
 
 	pub fn deinit(self: *const Tool) void {
-		if(self.texture) |texture| {
-			texture.deinit();
-		}
+		// TODO: This is leaking textures!
+		//if(self.texture) |texture| {
+		//texture.deinit();
+		//}
 		self.image.deinit(main.globalAllocator);
 		self.tooltip.deinit();
 		main.globalAllocator.free(self.modifiers);
@@ -495,7 +541,7 @@ pub const Tool = struct { // MARK: Tool
 		return result;
 	}
 
-	pub fn initFromCraftingGrid(craftingGrid: [25]?*const BaseItem, seed: u32, typ: *const ToolType) *Tool {
+	pub fn initFromCraftingGrid(craftingGrid: [25]?BaseItemIndex, seed: u32, typ: *const ToolType) *Tool {
 		const self = init();
 		self.seed = seed;
 		self.craftingGrid = craftingGrid;
@@ -516,10 +562,11 @@ pub const Tool = struct { // MARK: Tool
 		return self;
 	}
 
-	fn extractItemsFromZon(zonArray: ZonElement) [25]?*const BaseItem {
-		var items: [25]?*const BaseItem = undefined;
+	fn extractItemsFromZon(zonArray: ZonElement) [25]?BaseItemIndex {
+		var items: [25]?BaseItemIndex = undefined;
 		for(&items, 0..) |*item, i| {
-			item.* = reverseIndices.get(zonArray.getAtIndex([]const u8, i, "null"));
+			item.* = .fromId(zonArray.getAtIndex([]const u8, i, "null"));
+			if(item.* != null and item.*.?.material() == null) item.* = null;
 		}
 		return items;
 	}
@@ -527,9 +574,9 @@ pub const Tool = struct { // MARK: Tool
 	pub fn save(self: *const Tool, allocator: NeverFailingAllocator) ZonElement {
 		const zonObject = ZonElement.initObject(allocator);
 		const zonArray = ZonElement.initArray(allocator);
-		for(self.craftingGrid) |nullItem| {
-			if(nullItem) |item| {
-				zonArray.array.append(.{.string = item.id});
+		for(self.craftingGrid) |nullableItem| {
+			if(nullableItem) |item| {
+				zonArray.array.append(.{.string = item.id()});
 			} else {
 				zonArray.array.append(.null);
 			}
@@ -545,13 +592,13 @@ pub const Tool = struct { // MARK: Tool
 		var hash: u32 = 0;
 		for(self.craftingGrid) |nullItem| {
 			if(nullItem) |item| {
-				hash = 33*%hash +% item.material.?.hashCode();
+				hash = 33*%hash +% item.material().?.hashCode();
 			}
 		}
 		return hash;
 	}
 
-	pub fn getItemAt(self: *const Tool, x: i32, y: i32) ?*const BaseItem {
+	pub fn getItemAt(self: *const Tool, x: i32, y: i32) ?BaseItemIndex {
 		if(x < 0 or x >= 5) return null;
 		if(y < 0 or y >= 5) return null;
 		return self.craftingGrid[@intCast(x + y*5)];
@@ -616,11 +663,11 @@ pub const Tool = struct { // MARK: Tool
 };
 
 pub const Item = union(enum) { // MARK: Item
-	baseItem: *BaseItem,
+	baseItem: BaseItemIndex,
 	tool: *Tool,
 
 	pub fn init(zon: ZonElement) !Item {
-		if(reverseIndices.get(zon.get([]const u8, "item", "null"))) |baseItem| {
+		if(BaseItemIndex.fromId(zon.get([]const u8, "item", "null"))) |baseItem| {
 			return Item{.baseItem = baseItem};
 		} else {
 			const toolZon = zon.getChild("tool");
@@ -650,7 +697,7 @@ pub const Item = union(enum) { // MARK: Item
 	pub fn stackSize(self: Item) u16 {
 		switch(self) {
 			.baseItem => |_baseItem| {
-				return _baseItem.stackSize;
+				return _baseItem.stackSize();
 			},
 			.tool => {
 				return 1;
@@ -661,7 +708,7 @@ pub const Item = union(enum) { // MARK: Item
 	pub fn insertIntoZon(self: Item, allocator: NeverFailingAllocator, zonObject: ZonElement) void {
 		switch(self) {
 			.baseItem => |_baseItem| {
-				zonObject.put("item", _baseItem.id);
+				zonObject.put("item", _baseItem.id());
 			},
 			.tool => |_tool| {
 				zonObject.put("tool", _tool.save(allocator));
@@ -694,7 +741,7 @@ pub const Item = union(enum) { // MARK: Item
 	pub fn getImage(self: Item) graphics.Image {
 		switch(self) {
 			.baseItem => |_baseItem| {
-				return _baseItem.image;
+				return _baseItem.image();
 			},
 			.tool => |_tool| {
 				return _tool.image;
@@ -760,16 +807,16 @@ pub const ItemStack = struct { // MARK: ItemStack
 };
 
 pub const Recipe = struct { // MARK: Recipe
-	sourceItems: []*BaseItem,
+	sourceItems: []BaseItemIndex,
 	sourceAmounts: []u16,
-	resultItem: *BaseItem,
+	resultItem: BaseItemIndex,
 	resultAmount: u16,
 	cachedInventory: ?Inventory = null,
 };
 
 var arena: main.heap.NeverFailingArenaAllocator = undefined;
 var toolTypes: std.StringHashMap(ToolType) = undefined;
-var reverseIndices: std.StringHashMap(*BaseItem) = undefined;
+var reverseIndices: std.StringHashMap(BaseItemIndex) = undefined;
 var modifiers: std.StringHashMap(*const Modifier.VTable) = undefined;
 var modifierRestrictions: std.StringHashMap(*const ModifierRestriction.VTable) = undefined;
 pub var itemList: [65536]BaseItem = undefined;
@@ -781,11 +828,15 @@ pub fn hasRegistered(id: []const u8) bool {
 	return reverseIndices.contains(id);
 }
 
+pub fn hasRegisteredTool(id: []const u8) bool {
+	return toolTypes.contains(id);
+}
+
 pub fn toolTypeIterator() std.StringHashMap(ToolType).ValueIterator {
 	return toolTypes.valueIterator();
 }
 
-pub fn iterator() std.StringHashMap(*BaseItem).ValueIterator {
+pub fn iterator() std.StringHashMap(BaseItemIndex).ValueIterator {
 	return reverseIndices.valueIterator();
 }
 
@@ -830,7 +881,7 @@ pub fn register(_: []const u8, texturePath: []const u8, replacementTexturePath: 
 	defer itemListSize += 1;
 
 	newItem.init(arena.allocator(), texturePath, replacementTexturePath, id, zon);
-	reverseIndices.put(newItem.id, newItem) catch unreachable;
+	reverseIndices.put(newItem.id, .{.index = itemListSize}) catch unreachable;
 
 	std.log.debug("Registered item: {d: >5} '{s}'", .{itemListSize, id});
 	return newItem;
@@ -927,7 +978,7 @@ fn parseRecipeItem(zon: ZonElement) !ItemStack {
 		id = id[index + 1 ..];
 		id = std.mem.trim(u8, id, &std.ascii.whitespace);
 	}
-	result.item = .{.baseItem = getByID(id) orelse return error.ItemNotFound};
+	result.item = .{.baseItem = BaseItemIndex.fromId(id) orelse return error.ItemNotFound};
 	return result;
 }
 
@@ -935,7 +986,7 @@ fn parseRecipe(zon: ZonElement) !Recipe {
 	const inputs = zon.getChild("inputs").toSlice();
 	const output = try parseRecipeItem(zon.getChild("output"));
 	const recipe = Recipe{
-		.sourceItems = arena.allocator().alloc(*BaseItem, inputs.len),
+		.sourceItems = arena.allocator().alloc(BaseItemIndex, inputs.len),
 		.sourceAmounts = arena.allocator().alloc(u16, inputs.len),
 		.resultItem = output.item.?.baseItem,
 		.resultAmount = output.amount,
@@ -985,15 +1036,6 @@ pub fn deinit() void {
 	modifierRestrictions.deinit();
 	arena.deinit();
 	Inventory.Sync.ClientSide.deinit();
-}
-
-pub fn getByID(id: []const u8) ?*BaseItem {
-	if(reverseIndices.get(id)) |result| {
-		return result;
-	} else {
-		std.log.err("Couldn't find item {s}.", .{id});
-		return null;
-	}
 }
 
 pub fn getToolTypeByID(id: []const u8) ?*const ToolType {

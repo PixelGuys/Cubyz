@@ -141,6 +141,7 @@ pub fn getIndex(x: i32, y: i32, z: i32) u32 {
 	std.debug.assert((x & chunkMask) == x and (y & chunkMask) == y and (z & chunkMask) == z);
 	return (@as(u32, @intCast(x)) << chunkShift2) | (@as(u32, @intCast(y)) << chunkShift) | @as(u32, @intCast(z));
 }
+
 /// Gets the x coordinate from a given index inside this chunk.
 fn extractXFromIndex(index: usize) i32 {
 	return @intCast(index >> chunkShift2 & chunkMask);
@@ -254,7 +255,7 @@ pub const Chunk = struct { // MARK: Chunk
 	voxelSizeMask: i32,
 	widthShift: u5,
 
-	blockPosToEntityDataMap: std.AutoHashMapUnmanaged(u32, u32),
+	blockPosToEntityDataMap: std.AutoHashMapUnmanaged(u32, main.block_entity.BlockEntityIndex),
 	blockPosToEntityDataMapMutex: std.Thread.Mutex,
 
 	pub fn init(pos: ChunkPosition) *Chunk {
@@ -283,6 +284,27 @@ pub const Chunk = struct { // MARK: Chunk
 		memoryPool.destroy(@alignCast(self));
 	}
 
+	pub fn unloadBlockEntities(self: *Chunk, comptime side: main.utils.Side) void {
+		self.blockPosToEntityDataMapMutex.lock();
+		defer self.blockPosToEntityDataMapMutex.unlock();
+		var iterator = self.blockPosToEntityDataMap.iterator();
+		while(iterator.next()) |elem| {
+			const index = elem.key_ptr.*;
+			const entityDataIndex = elem.value_ptr.*;
+			const block = self.data.getValue(index);
+			const blockEntity = block.blockEntity() orelse unreachable;
+			switch(side) {
+				.client => {
+					blockEntity.onUnloadClient(entityDataIndex);
+				},
+				.server => {
+					blockEntity.onUnloadServer(entityDataIndex);
+				},
+			}
+		}
+		self.blockPosToEntityDataMap.clearRetainingCapacity();
+	}
+
 	/// Updates a block if it is inside this chunk.
 	/// Does not do any bound checks. They are expected to be done with the `liesInChunk` function.
 	pub fn updateBlock(self: *Chunk, _x: i32, _y: i32, _z: i32, newBlock: Block) void {
@@ -301,6 +323,11 @@ pub const Chunk = struct { // MARK: Chunk
 		const z = _z >> self.voxelSizeShift;
 		const index = getIndex(x, y, z);
 		return self.data.getValue(index);
+	}
+
+	/// Checks if the given relative coordinates lie within the bounds of this chunk.
+	pub fn liesInChunk(self: *const Chunk, x: i32, y: i32, z: i32) bool {
+		return x >= 0 and x < self.width and y >= 0 and y < self.width and z >= 0 and z < self.width;
 	}
 
 	pub fn getLocalBlockIndex(self: *const Chunk, worldPos: Vec3i) u32 {
@@ -376,7 +403,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 
 	/// Checks if the given relative coordinates lie within the bounds of this chunk.
 	pub fn liesInChunk(self: *const ServerChunk, x: i32, y: i32, z: i32) bool {
-		return x >= 0 and x < self.super.width and y >= 0 and y < self.super.width and z >= 0 and z < self.super.width;
+		return self.super.liesInChunk(x, y, z);
 	}
 
 	/// This is useful to convert for loops to work for reduced resolution:

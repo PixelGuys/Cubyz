@@ -6,7 +6,7 @@
 		.hardness = 10.0,
 		.textureRoughness = 0.1,
 		.colors = .{
-			0xff847bce, 0xff8b9fe0, 0xff94c6ea, 0xffb0eaf6, 0xffffffff,
+			0xff5d7ae4, 0xff8d85ff, 0xff78c1f9, 0xffa8f0ff, 0xffffffff,
 		},
 		.modifiers = .{
 			.{

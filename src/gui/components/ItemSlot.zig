@@ -142,6 +142,22 @@ pub fn render(self: *ItemSlot, _: Vec2f) void {
 		if(self.inventory.getAmount(self.itemSlot) != 1) {
 			self.text.render(self.pos[0] + self.size[0] - self.textSize[0] - border, self.pos[1] + self.size[1] - self.textSize[1] - border, 8);
 		}
+		if(item == .tool) {
+			const tool = item.tool;
+			const durabilityPercentage = @as(f32, @floatFromInt(tool.durability))/tool.maxDurability;
+
+			if(durabilityPercentage < 1) {
+				const width = durabilityPercentage*(self.size[0] - 2*border);
+				draw.setColor(0xff000000);
+				draw.rect(self.pos + Vec2f{border, 15*(self.size[1] - border)/16.0}, .{self.size[0] - 2*border, (self.size[1] - 2*border)/16.0});
+
+				const red = std.math.lossyCast(u8, (2 - durabilityPercentage*2)*255);
+				const green = std.math.lossyCast(u8, durabilityPercentage*2*255);
+
+				draw.setColor(0xff000000 | (@as(u32, @intCast(red)) << 16) | (@as(u32, @intCast(green)) << 8));
+				draw.rect(self.pos + Vec2f{border, 15*(self.size[1] - border)/16.0}, .{width, (self.size[1] - 2*border)/16.0});
+			}
+		}
 	}
 	if(self.mode != .immutable) {
 		if(self.pressed) {

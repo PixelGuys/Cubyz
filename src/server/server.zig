@@ -14,10 +14,12 @@ const Vec3i = vec.Vec3i;
 const BinaryReader = main.utils.BinaryReader;
 const BinaryWriter = main.utils.BinaryWriter;
 const Blueprint = main.blueprint.Blueprint;
+const Mask = main.blueprint.Mask;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const CircularBufferQueue = main.utils.CircularBufferQueue;
 
-pub const ServerWorld = @import("world.zig").ServerWorld;
+pub const world_zig = @import("world.zig");
+pub const ServerWorld = world_zig.ServerWorld;
 pub const terrain = @import("terrain/terrain.zig");
 pub const Entity = @import("Entity.zig");
 pub const storage = @import("storage.zig");
@@ -32,6 +34,7 @@ pub const WorldEditData = struct {
 	clipboard: ?Blueprint = null,
 	undoHistory: History,
 	redoHistory: History,
+	mask: ?Mask = null,
 
 	const History = struct {
 		changes: CircularBufferQueue(Value),
@@ -79,6 +82,9 @@ pub const WorldEditData = struct {
 		}
 		self.undoHistory.deinit();
 		self.redoHistory.deinit();
+		if(self.mask) |mask| {
+			mask.deinit(main.globalAllocator);
+		}
 	}
 };
 
@@ -104,6 +110,8 @@ pub const User = struct { // MARK: User
 	lastPos: Vec3i = @splat(0),
 	gamemode: std.atomic.Value(main.game.Gamemode) = .init(.creative),
 	worldEditData: WorldEditData = undefined,
+
+	lastSentBiomeId: u32 = 0xffffffff,
 
 	inventoryClientToServerIdMap: std.AutoHashMap(u32, u32) = undefined,
 
@@ -398,21 +406,32 @@ fn update() void { // MARK: update()
 	}
 
 	// Send the entity data:
-	var writer = BinaryWriter.initCapacity(main.stackAllocator, (4 + 24 + 12 + 24)*userList.len);
-	defer writer.deinit();
-
 	const itemData = world.?.itemDropManager.getPositionAndVelocityData(main.stackAllocator);
 	defer main.stackAllocator.free(itemData);
 
+	var entityData: main.List(main.entity.EntityNetworkData) = .init(main.stackAllocator);
+	defer entityData.deinit();
+
 	for(userList) |user| {
 		const id = user.id; // TODO
-		writer.writeInt(u32, id);
-		writer.writeVec(Vec3d, user.player.pos);
-		writer.writeVec(Vec3f, user.player.rot);
-		writer.writeVec(Vec3d, user.player.vel);
+		entityData.append(.{
+			.id = id,
+			.pos = user.player.pos,
+			.vel = user.player.vel,
+			.rot = user.player.rot,
+		});
 	}
 	for(userList) |user| {
-		main.network.Protocols.entityPosition.send(user.conn, writer.data.items, itemData);
+		main.network.Protocols.entityPosition.send(user.conn, user.player.pos, entityData.items, itemData);
+	}
+
+	for(userList) |user| {
+		const pos = @as(Vec3i, @intFromFloat(user.player.pos));
+		const biomeId = world.?.getBiome(pos[0], pos[1], pos[2]).paletteId;
+		if(biomeId != user.lastSentBiomeId) {
+			user.lastSentBiomeId = biomeId;
+			main.network.Protocols.genericUpdate.sendBiome(user.conn, biomeId);
+		}
 	}
 
 	while(userDeinitList.dequeue()) |user| {
@@ -454,14 +473,18 @@ pub fn disconnect(user: *User) void { // MARK: disconnect()
 pub fn removePlayer(user: *User) void { // MARK: removePlayer()
 	if(!user.connected.load(.unordered)) return;
 
-	userMutex.lock();
-	for(users.items, 0..) |other, i| {
-		if(other == user) {
-			_ = users.swapRemove(i);
-			break;
+	const foundUser = blk: {
+		userMutex.lock();
+		defer userMutex.unlock();
+		for(users.items, 0..) |other, i| {
+			if(other == user) {
+				_ = users.swapRemove(i);
+				break :blk true;
+			}
 		}
-	}
-	userMutex.unlock();
+		break :blk false;
+	};
+	if(!foundUser) return;
 
 	sendMessage("{s}§#ffff00 left", .{user.name});
 	// Let the other clients know about that this new one left.
