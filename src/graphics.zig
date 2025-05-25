@@ -2165,8 +2165,8 @@ pub const TextureArray = struct { // MARK: TextureArray
 
 	/// (Re-)Generates the GPU buffer.
 	pub fn generate(self: TextureArray, images: []Image, mipmapping: bool, alphaCorrectMipmapping: bool) void {
-		var maxWidth: u31 = 0;
-		var maxHeight: u31 = 0;
+		var maxWidth: u31 = 1;
+		var maxHeight: u31 = 1;
 		for(images) |image| {
 			maxWidth = @max(maxWidth, image.width);
 			maxHeight = @max(maxHeight, image.height);
