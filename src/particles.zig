@@ -278,7 +278,7 @@ pub const ParticleSystem = struct {
 
 	fn addParticle(typ: u32, pos: Vec3d, vel: Vec3f, collides: bool) void {
 		const lifeTime = properties.lifeTimeMin + random.nextFloat(&seed)*properties.lifeTimeMax;
-		const rot = if(properties.randomizeRotationOnSpawn) random.nextFloat(&seed)*std.math.tau else 0;
+		const rot = if(properties.randomizeRotationOnSpawn) random.nextFloat(&seed)*std.math.pi*2 else 0;
 
 		particles[particleCount] = Particle{
 			.posAndRotation = vec.combine(@as(Vec3f, @floatCast(pos - previousPlayerPos)), rot),
@@ -374,7 +374,7 @@ pub const Emitter = struct {
 			var offsetPos: Vec3f = undefined;
 			while(true) {
 				offsetPos = random.nextFloatVectorSigned(3, &seed);
-				if(vec.length(offsetPos) <= 1) break;
+				if(vec.lengthSquare(offsetPos) <= 1) break;
 			}
 			const particlePos = self.position + @as(Vec3d, @floatCast(offsetPos*spawnPos));
 			const speed: Vec3f = @splat(ParticleSystem.properties.velMin + random.nextFloat(&seed)*ParticleSystem.properties.velMax);
