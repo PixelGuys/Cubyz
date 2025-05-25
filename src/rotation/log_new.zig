@@ -101,7 +101,7 @@ fn rotateQuad(originalCorners: [4]Vec2f, pattern: Pattern, side: Neighbor) main.
 				vec.rotate2d(originalCorners[2], angle, @splat(0.5)),
 				vec.rotate2d(originalCorners[3], angle, @splat(0.5)),
 			};
-		}
+		},
 	}
 
 	const offX: f32 = @floatFromInt(@intFromBool(@reduce(.Add, side.textureX()) < 0));
