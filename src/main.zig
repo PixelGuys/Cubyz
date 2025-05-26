@@ -5,11 +5,11 @@ pub const server = @import("server/server.zig");
 
 pub const audio = @import("audio.zig");
 pub const assets = @import("assets.zig");
+pub const block_entity = @import("block_entity.zig");
 pub const blocks = @import("blocks.zig");
 pub const blueprint = @import("blueprint.zig");
 pub const chunk = @import("chunk.zig");
 pub const entity = @import("entity.zig");
-pub const entity_data = @import("entity_data.zig");
 pub const files = @import("files.zig");
 pub const game = @import("game.zig");
 pub const graphics = @import("graphics.zig");
@@ -23,6 +23,7 @@ pub const random = @import("random.zig");
 pub const renderer = @import("renderer.zig");
 pub const rotation = @import("rotation.zig");
 pub const settings = @import("settings.zig");
+pub const particles = @import("particles.zig");
 const tag = @import("tag.zig");
 pub const Tag = tag.Tag;
 pub const utils = @import("utils.zig");
@@ -606,11 +607,14 @@ pub fn main() void { // MARK: main()
 	rotation.init();
 	defer rotation.deinit();
 
-	entity_data.init();
-	defer entity_data.deinit();
+	block_entity.init();
+	defer block_entity.deinit();
 
-	blocks.TouchFunctions.init();
-	defer blocks.TouchFunctions.deinit();
+	blocks.tickFunctions = .init();
+	defer blocks.tickFunctions.deinit();
+
+	blocks.touchFunctions = .init();
+	defer blocks.touchFunctions.deinit();
 
 	models.init();
 	defer models.deinit();
@@ -640,6 +644,9 @@ pub fn main() void { // MARK: main()
 
 	gui.init();
 	defer gui.deinit();
+
+	particles.ParticleManager.init();
+	defer particles.ParticleManager.deinit();
 
 	if(settings.playerName.len == 0) {
 		gui.openWindow("change_name");
@@ -736,6 +743,8 @@ pub fn refAllDeclsRecursiveExceptCImports(comptime T: type) void {
 		if(comptime std.mem.eql(u8, decl.name, "c")) continue;
 		if(comptime std.mem.eql(u8, decl.name, "hbft")) break :blk;
 		if(comptime std.mem.eql(u8, decl.name, "stb_image")) break :blk;
+		// TODO: Remove this after Zig removes Managed hashmap PixelGuys/Cubyz#308
+		if(comptime std.mem.eql(u8, decl.name, "Managed")) continue;
 		if(@TypeOf(@field(T, decl.name)) == type) {
 			switch(@typeInfo(@field(T, decl.name))) {
 				.@"struct", .@"enum", .@"union", .@"opaque" => refAllDeclsRecursiveExceptCImports(@field(T, decl.name)),

@@ -1719,11 +1719,8 @@ pub const BinaryWriter = struct {
 };
 
 const ReadWriteTest = struct {
-	var testingAllocator = main.heap.ErrorHandlingAllocator.init(std.testing.allocator);
-	var allocator = testingAllocator.allocator();
-
 	fn getWriter() BinaryWriter {
-		return .init(ReadWriteTest.allocator);
+		return .init(main.heap.testingAllocator);
 	}
 	fn getReader(data: []const u8) BinaryReader {
 		return .init(data);
@@ -1907,6 +1904,172 @@ test "read/write mixed" {
 	try std.testing.expect(reader.remaining.len == 0);
 }
 
+pub fn DenseId(comptime IdType: type) type {
+	std.debug.assert(@typeInfo(IdType) == .int);
+	std.debug.assert(@typeInfo(IdType).int.signedness == .unsigned);
+
+	return enum(IdType) {
+		noValue = std.math.maxInt(IdType),
+		_,
+	};
+}
+
+pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: SparseSet
+	std.debug.assert(@intFromEnum(IdType.noValue) == std.math.maxInt(@typeInfo(IdType).@"enum".tag_type));
+
+	return struct {
+		const Self = @This();
+
+		dense: main.ListUnmanaged(T) = .{},
+		denseToSparseIndex: main.ListUnmanaged(IdType) = .{},
+		sparseToDenseIndex: main.ListUnmanaged(IdType) = .{},
+
+		pub fn clear(self: *Self) void {
+			self.dense.clearRetainingCapacity();
+			self.denseToSparseIndex.clearRetainingCapacity();
+			self.sparseToDenseIndex.clearRetainingCapacity();
+		}
+
+		pub fn deinit(self: *Self, allocator: NeverFailingAllocator) void {
+			self.dense.deinit(allocator);
+			self.denseToSparseIndex.deinit(allocator);
+			self.sparseToDenseIndex.deinit(allocator);
+		}
+
+		pub fn contains(self: *Self, id: IdType) bool {
+			return @intFromEnum(id) < self.sparseToDenseIndex.items.len and self.sparseToDenseIndex.items[@intFromEnum(id)] != .noValue;
+		}
+
+		pub fn set(self: *Self, allocator: NeverFailingAllocator, id: IdType, value: T) void {
+			std.debug.assert(id != .noValue);
+
+			const denseId: IdType = @enumFromInt(self.dense.items.len);
+
+			if(@intFromEnum(id) >= self.sparseToDenseIndex.items.len) {
+				self.sparseToDenseIndex.appendNTimes(allocator, .noValue, @intFromEnum(id) - self.sparseToDenseIndex.items.len + 1);
+			}
+
+			std.debug.assert(self.sparseToDenseIndex.items[@intFromEnum(id)] == .noValue);
+
+			self.sparseToDenseIndex.items[@intFromEnum(id)] = denseId;
+			self.dense.append(allocator, value);
+			self.denseToSparseIndex.append(allocator, id);
+		}
+
+		pub fn remove(self: *Self, id: IdType) !void {
+			if(!self.contains(id)) return error.ElementNotFound;
+
+			const denseId = @intFromEnum(self.sparseToDenseIndex.items[@intFromEnum(id)]);
+			self.sparseToDenseIndex.items[@intFromEnum(id)] = .noValue;
+
+			_ = self.dense.swapRemove(denseId);
+			_ = self.denseToSparseIndex.swapRemove(denseId);
+
+			if(denseId != self.dense.items.len) {
+				self.sparseToDenseIndex.items[@intFromEnum(self.denseToSparseIndex.items[denseId])] = @enumFromInt(denseId);
+			}
+		}
+
+		pub fn get(self: *Self, id: IdType) ?*T {
+			if(@intFromEnum(id) >= self.sparseToDenseIndex.items.len) return null;
+			const index = self.sparseToDenseIndex.items[@intFromEnum(id)];
+			if(index == .noValue) return null;
+			return &self.dense.items[@intFromEnum(index)];
+		}
+	};
+}
+
+test "SparseSet/set at zero" {
+	const IdType = DenseId(u32);
+	var set: SparseSet(u32, IdType) = .{};
+	defer set.deinit(main.heap.testingAllocator);
+
+	const index: IdType = @enumFromInt(0);
+
+	set.set(main.heap.testingAllocator, index, 5);
+	try std.testing.expectEqual(set.get(index).?.*, 5);
+}
+
+test "SparseSet/set at 100" {
+	const IdType = DenseId(u32);
+	var set: SparseSet(u32, IdType) = .{};
+	defer set.deinit(main.heap.testingAllocator);
+
+	const index: IdType = @enumFromInt(100);
+
+	set.set(main.heap.testingAllocator, index, 5);
+	try std.testing.expectEqual(set.get(index).?.*, 5);
+}
+
+test "SparseSet/remove first" {
+	const IdType = DenseId(u32);
+	var set: SparseSet(u32, IdType) = .{};
+	defer set.deinit(main.heap.testingAllocator);
+
+	const expectSecond: u32 = 100;
+
+	const firstId: IdType = @enumFromInt(0);
+	const secondId: IdType = @enumFromInt(1);
+
+	set.set(main.heap.testingAllocator, firstId, 5);
+	set.set(main.heap.testingAllocator, secondId, expectSecond);
+
+	try set.remove(firstId);
+
+	try std.testing.expectEqual(set.get(secondId).?.*, expectSecond);
+}
+
+test "SparseSet/remove last" {
+	const IdType = DenseId(u32);
+	var set: SparseSet(u32, IdType) = .{};
+	defer set.deinit(main.heap.testingAllocator);
+
+	set.set(main.heap.testingAllocator, @enumFromInt(0), 5);
+
+	try set.remove(@enumFromInt(0));
+}
+
+test "SparseSet/remove entry that doesn't exist" {
+	const IdType = DenseId(u32);
+	var set: SparseSet(u32, IdType) = .{};
+	defer set.deinit(main.heap.testingAllocator);
+
+	try std.testing.expectError(error.ElementNotFound, set.remove(@enumFromInt(0)));
+}
+
+test "SparseSet/remove entry twice" {
+	const IdType = DenseId(u32);
+	var set: SparseSet(u32, IdType) = .{};
+	defer set.deinit(main.heap.testingAllocator);
+
+	set.set(main.heap.testingAllocator, @enumFromInt(0), 5);
+
+	try set.remove(@enumFromInt(0));
+	try std.testing.expectError(error.ElementNotFound, set.remove(@enumFromInt(0)));
+}
+
+test "SparseSet/reusing" {
+	const IdType = DenseId(u32);
+	var set: SparseSet(u32, IdType) = .{};
+	defer set.deinit(main.heap.testingAllocator);
+
+	const expectSecond = 100;
+	const expectNew = 10;
+
+	const firstId: IdType = @enumFromInt(0);
+	const secondId: IdType = @enumFromInt(1);
+
+	set.set(main.heap.testingAllocator, firstId, 5);
+	set.set(main.heap.testingAllocator, secondId, expectSecond);
+
+	try set.remove(firstId);
+
+	set.set(main.heap.testingAllocator, firstId, expectNew);
+
+	try std.testing.expectEqual(set.get(secondId).?.*, expectSecond);
+	try std.testing.expectEqual(set.get(firstId).?.*, expectNew);
+}
+
 // MARK: functionPtrCast()
 fn CastFunctionSelfToAnyopaqueType(Fn: type) type {
 	var typeInfo = @typeInfo(Fn);
@@ -1934,4 +2097,55 @@ fn CastFunctionReturnToAnyopaqueType(Fn: type) type {
 /// Turns the return parameter into a anyopaque*
 pub fn castFunctionReturnToAnyopaque(function: anytype) *const CastFunctionReturnToAnyopaqueType(@TypeOf(function)) {
 	return @ptrCast(&function);
+}
+
+// MARK: Callback
+pub fn NamedCallbacks(comptime Child: type, comptime Function: type) type {
+	return struct {
+		const Self = @This();
+
+		hashMap: std.StringHashMap(*const Function) = undefined,
+
+		pub fn init() Self {
+			var self = Self{.hashMap = .init(main.globalAllocator.allocator)};
+			inline for(@typeInfo(Child).@"struct".decls) |declaration| {
+				if(@TypeOf(@field(Child, declaration.name)) == Function) {
+					std.log.debug("Registered Callback '{s}'", .{declaration.name});
+					self.hashMap.putNoClobber(declaration.name, &@field(Child, declaration.name)) catch unreachable;
+				}
+			}
+			return self;
+		}
+
+		pub fn deinit(self: *Self) void {
+			self.hashMap.deinit();
+		}
+
+		pub fn getFunctionPointer(self: *Self, id: []const u8) ?*const Function {
+			return self.hashMap.get(id);
+		}
+	};
+}
+
+test "NamedCallbacks registers functions" {
+	const TestFunction = fn(_: i32) void;
+	const TestFunctions = struct {
+		// Callback should register this
+		pub fn testFunction(_: i32) void {}
+		pub fn otherTestFunction(_: i32) void {}
+		// Callback should ignore this
+		pub fn wrongSignatureFunction(_: i32, _: bool) void {}
+	};
+	var testFunctions: NamedCallbacks(TestFunctions, TestFunction) = undefined;
+
+	testFunctions = .init();
+	defer testFunctions.deinit();
+
+	try std.testing.expectEqual(2, testFunctions.hashMap.count());
+
+	try std.testing.expectEqual(&TestFunctions.testFunction, testFunctions.getFunctionPointer("testFunction").?);
+	try std.testing.expectEqual(&TestFunctions.otherTestFunction, testFunctions.getFunctionPointer("otherTestFunction").?);
+
+	try std.testing.expectEqual(null, testFunctions.getFunctionPointer("functionTest"));
+	try std.testing.expectEqual(null, testFunctions.getFunctionPointer("wrongSignatureFunction"));
 }

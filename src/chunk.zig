@@ -255,7 +255,7 @@ pub const Chunk = struct { // MARK: Chunk
 	voxelSizeMask: i32,
 	widthShift: u5,
 
-	blockPosToEntityDataMap: std.AutoHashMapUnmanaged(u32, u32),
+	blockPosToEntityDataMap: std.AutoHashMapUnmanaged(u32, main.block_entity.BlockEntityIndex),
 	blockPosToEntityDataMapMutex: std.Thread.Mutex,
 
 	pub fn init(pos: ChunkPosition) *Chunk {
@@ -282,6 +282,27 @@ pub const Chunk = struct { // MARK: Chunk
 		self.blockPosToEntityDataMap.deinit(main.globalAllocator.allocator);
 		self.data.deinit();
 		memoryPool.destroy(@alignCast(self));
+	}
+
+	pub fn unloadBlockEntities(self: *Chunk, comptime side: main.utils.Side) void {
+		self.blockPosToEntityDataMapMutex.lock();
+		defer self.blockPosToEntityDataMapMutex.unlock();
+		var iterator = self.blockPosToEntityDataMap.iterator();
+		while(iterator.next()) |elem| {
+			const index = elem.key_ptr.*;
+			const entityDataIndex = elem.value_ptr.*;
+			const block = self.data.getValue(index);
+			const blockEntity = block.blockEntity() orelse unreachable;
+			switch(side) {
+				.client => {
+					blockEntity.onUnloadClient(entityDataIndex);
+				},
+				.server => {
+					blockEntity.onUnloadServer(entityDataIndex);
+				},
+			}
+		}
+		self.blockPosToEntityDataMap.clearRetainingCapacity();
 	}
 
 	/// Updates a block if it is inside this chunk.

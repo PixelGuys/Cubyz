@@ -1760,6 +1760,7 @@ pub const Pipeline = struct { // MARK: Pipeline
 
 		// TODO: logicOp
 		for(self.blendState.attachments, 0..) |attachment, i| {
+			c.glColorMask(@intFromBool(attachment.colorWriteMask.r), @intFromBool(attachment.colorWriteMask.g), @intFromBool(attachment.colorWriteMask.b), @intFromBool(attachment.colorWriteMask.a));
 			if(!attachment.enabled) {
 				c.glDisable(c.GL_BLEND);
 				continue;
@@ -1828,9 +1829,15 @@ pub const SSBO = struct { // MARK: SSBO
 		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
 	}
 
-	pub fn createDynamicBuffer(self: SSBO, size: usize) void {
+	pub fn bufferSubData(self: SSBO, comptime T: type, data: []const T, length: usize) void {
 		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
-		c.glBufferData(c.GL_SHADER_STORAGE_BUFFER, @intCast(size), null, c.GL_DYNAMIC_DRAW);
+		c.glBufferSubData(c.GL_SHADER_STORAGE_BUFFER, 0, @intCast(length*@sizeOf(T)), data.ptr);
+		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
+	}
+
+	pub fn createDynamicBuffer(self: SSBO, comptime T: type, size: usize) void {
+		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, self.bufferID);
+		c.glBufferData(c.GL_SHADER_STORAGE_BUFFER, @intCast(size*@sizeOf(T)), null, c.GL_DYNAMIC_DRAW);
 		c.glBindBuffer(c.GL_SHADER_STORAGE_BUFFER, 0);
 	}
 };
@@ -1893,8 +1900,10 @@ pub fn LargeBuffer(comptime Entry: type) type { // MARK: LargerBuffer
 		pub fn beginRender(self: *Self) void {
 			self.activeFence += 1;
 			if(self.activeFence == self.fences.len) self.activeFence = 0;
-			for(self.fencedFreeLists[self.activeFence].items) |allocation| {
+			const startTime = std.time.milliTimestamp();
+			while(self.fencedFreeLists[self.activeFence].popOrNull()) |allocation| {
 				self.finalFree(allocation);
+				if(std.time.milliTimestamp() -% startTime > 5) break; // TODO: Remove after #1434
 			}
 			self.fencedFreeLists[self.activeFence].clearRetainingCapacity();
 			_ = c.glClientWaitSync(self.fences[self.activeFence], 0, c.GL_TIMEOUT_IGNORED); // Make sure the render calls that accessed these parts of the buffer have finished.
@@ -2156,8 +2165,8 @@ pub const TextureArray = struct { // MARK: TextureArray
 
 	/// (Re-)Generates the GPU buffer.
 	pub fn generate(self: TextureArray, images: []Image, mipmapping: bool, alphaCorrectMipmapping: bool) void {
-		var maxWidth: u31 = 0;
-		var maxHeight: u31 = 0;
+		var maxWidth: u31 = 1;
+		var maxHeight: u31 = 1;
 		for(images) |image| {
 			maxWidth = @max(maxWidth, image.width);
 			maxHeight = @max(maxHeight, image.height);

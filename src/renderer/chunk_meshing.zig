@@ -71,6 +71,7 @@ pub var commandBuffer: graphics.LargeBuffer(IndirectData) = undefined;
 pub var chunkIDBuffer: graphics.LargeBuffer(u32) = undefined;
 pub var quadsDrawn: usize = 0;
 pub var transparentQuadsDrawn: usize = 0;
+pub const maxQuadsInIndexBuffer = 3 << (3*chunk.chunkShift); // maximum 3 faces/block
 
 pub fn init() void {
 	lighting.init();
@@ -119,7 +120,7 @@ pub fn init() void {
 		}}},
 	);
 
-	var rawData: [6*3 << (3*chunk.chunkShift)]u32 = undefined; // 6 vertices per face, maximum 3 faces/block
+	var rawData: [6*maxQuadsInIndexBuffer]u32 = undefined;
 	const lut = [_]u32{0, 2, 1, 1, 2, 3};
 	for(0..rawData.len) |i| {
 		rawData[i] = @as(u32, @intCast(i))/6*4 + lut[i%6];
@@ -694,6 +695,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		chunkBuffer.free(self.chunkAllocation);
 		self.opaqueMesh.deinit();
 		self.transparentMesh.deinit();
+		self.chunk.unloadBlockEntities(.client);
 		self.chunk.deinit();
 		main.globalAllocator.free(self.currentSorting);
 		main.globalAllocator.free(self.sortingOutputBuffer);
@@ -1213,8 +1215,8 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 		self.mutex.unlock();
 
-		if(oldBlock.entityDataClass()) |class| {
-			class.onBreakClient(.{_x, _y, _z}, self.chunk);
+		if(oldBlock.blockEntity()) |blockEntity| {
+			blockEntity.onBreakClient(.{_x, _y, _z}, self.chunk);
 		}
 
 		var neighborBlocks: [6]Block = undefined;
@@ -1268,8 +1270,8 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		self.chunk.data.setValue(chunk.getIndex(x, y, z), newBlock);
 		self.mutex.unlock();
 
-		if(newBlock.entityDataClass()) |class| {
-			class.onPlaceClient(.{_x, _y, _z}, self.chunk);
+		if(newBlock.blockEntity()) |blockEntity| {
+			blockEntity.onPlaceClient(.{_x, _y, _z}, self.chunk);
 		}
 
 		self.updateBlockLight(x, y, z, newBlock, lightRefreshList);

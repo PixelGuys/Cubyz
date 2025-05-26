@@ -667,7 +667,7 @@ pub const Protocols = struct {
 						std.log.info("User {s} joined using version {s}.", .{name, version});
 
 						{
-							const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets/", .{main.server.world.?.name}) catch unreachable;
+							const path = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/assets/", .{main.server.world.?.path}) catch unreachable;
 							defer main.stackAllocator.free(path);
 							var dir = try std.fs.cwd().openDir(path, .{.iterate = true});
 							defer dir.close();
@@ -686,6 +686,7 @@ pub const Protocols = struct {
 						zonObject.put("spawn", main.server.world.?.spawn);
 						zonObject.put("blockPalette", main.server.world.?.blockPalette.storeToZon(main.stackAllocator));
 						zonObject.put("itemPalette", main.server.world.?.itemPalette.storeToZon(main.stackAllocator));
+						zonObject.put("toolPalette", main.server.world.?.toolPalette.storeToZon(main.stackAllocator));
 						zonObject.put("biomePalette", main.server.world.?.biomePalette.storeToZon(main.stackAllocator));
 
 						const outData = zonObject.toStringEfficient(main.stackAllocator, &[1]u8{stepServerData});
