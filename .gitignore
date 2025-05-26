@@ -10,8 +10,6 @@ gamecontrollerdb.stamp
 
 test.png
 
-# Ignore user generated backgrounds
-
 /assets/*
 
 !/assets/cubyz
