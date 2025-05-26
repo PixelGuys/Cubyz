@@ -1940,7 +1940,7 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 			return @intFromEnum(id) < self.sparseToDenseIndex.items.len and self.sparseToDenseIndex.items[@intFromEnum(id)] != .noValue;
 		}
 
-		pub fn set(self: *Self, allocator: NeverFailingAllocator, id: IdType, value: T) void {
+		pub fn add(self: *Self, allocator: NeverFailingAllocator, id: IdType) *T {
 			std.debug.assert(id != .noValue);
 
 			const denseId: IdType = @enumFromInt(self.dense.items.len);
@@ -1952,8 +1952,12 @@ pub fn SparseSet(comptime T: type, comptime IdType: type) type { // MARK: Sparse
 			std.debug.assert(self.sparseToDenseIndex.items[@intFromEnum(id)] == .noValue);
 
 			self.sparseToDenseIndex.items[@intFromEnum(id)] = denseId;
-			self.dense.append(allocator, value);
 			self.denseToSparseIndex.append(allocator, id);
+			return self.dense.addOne(allocator);
+		}
+
+		pub fn set(self: *Self, allocator: NeverFailingAllocator, id: IdType, value: T) void {
+			self.add(allocator, id).* = value;
 		}
 
 		pub fn fetchRemove(self: *Self, id: IdType) !T {

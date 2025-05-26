@@ -97,21 +97,25 @@ fn BlockEntityDataStorage(T: type) type {
 			storage.clear();
 			freeIndexList.clearRetainingCapacity();
 		}
-		pub fn add(pos: Vec3i, value: DataT, chunk: *Chunk) void {
-			mutex.lock();
-			defer mutex.unlock();
-
+		fn createEntry(pos: Vec3i, chunk: *Chunk) BlockEntityIndex {
+			main.utils.assertLocked(&mutex);
 			const dataIndex: BlockEntityIndex = freeIndexList.popOrNull() orelse blk: {
 				defer nextIndex = @enumFromInt(@intFromEnum(nextIndex) + 1);
 				break :blk nextIndex;
 			};
-			storage.set(main.globalAllocator, dataIndex, value);
-
 			const blockIndex = chunk.getLocalBlockIndex(pos);
 
 			chunk.blockPosToEntityDataMapMutex.lock();
 			chunk.blockPosToEntityDataMap.put(main.globalAllocator.allocator, blockIndex, dataIndex) catch unreachable;
 			chunk.blockPosToEntityDataMapMutex.unlock();
+			return dataIndex;
+		}
+		pub fn add(pos: Vec3i, value: DataT, chunk: *Chunk) void {
+			mutex.lock();
+			defer mutex.unlock();
+
+			const dataIndex = createEntry(pos, chunk);
+			storage.set(main.globalAllocator, dataIndex, value);
 		}
 		pub fn removeAtIndex(dataIndex: BlockEntityIndex) ?DataT {
 			main.utils.assertLocked(&mutex);
@@ -146,6 +150,17 @@ fn BlockEntityDataStorage(T: type) type {
 				return null;
 			};
 			return storage.get(dataIndex);
+		}
+		pub const GetOrPutResult = struct {
+			valuePtr: *DataT,
+			foundExisting: bool,
+		};
+		pub fn getOrPut(pos: Vec3i, chunk: *Chunk) GetOrPutResult {
+			main.utils.assertLocked(&mutex);
+			if(get(pos, chunk)) |result| return .{.valuePtr = result, .foundExisting = true};
+
+			const dataIndex = createEntry(pos, chunk);
+			return .{.valuePtr = storage.add(main.globalAllocator, dataIndex), .foundExisting = false};
 		}
 	};
 }
@@ -232,7 +247,6 @@ pub const BlockEntityTypes = struct {
 			defer StorageServer.mutex.unlock();
 			const entry = StorageServer.removeAtIndex(dataIndex) orelse unreachable;
 			main.globalAllocator.free(entry.text);
-
 		}
 		pub fn onPlaceClient(pos: Vec3i, chunk: *Chunk) void {
 			StorageClient.add(pos, .{.text = main.globalAllocator.dupe(u8, "test")}, chunk);
