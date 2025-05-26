@@ -1,0 +1,15 @@
+.{
+	.tags = .{.wood},
+	.blockHealth = 8,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.rotation = .log_new,
+	.model = "cubyz:cube",
+	.texture0 = "cubyz:log/pine/dot",
+	.texture1 = "cubyz:log/pine/line",
+	.texture2 = "cubyz:log/pine/bend",
+	.texture3 = "cubyz:log/pine/intersection",
+	.texture4 = "cubyz:log/pine/cross",
+	.texture5 = "cubyz:log/pine/top",
+}
