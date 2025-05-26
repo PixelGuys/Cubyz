@@ -51,9 +51,10 @@ pub const BlockUpdate = struct {
 	y: i32,
 	z: i32,
 	newBlock: blocks.Block,
+	blockEntityData: []const u8,
 
-	pub fn init(pos: Vec3i, block: blocks.Block) BlockUpdate {
-		return .{.x = pos[0], .y = pos[1], .z = pos[2], .newBlock = block};
+	pub fn init(pos: Vec3i, block: blocks.Block, blockEntityData: []const u8) BlockUpdate {
+		return .{.x = pos[0], .y = pos[1], .z = pos[2], .newBlock = block, .blockEntityData = blockEntityData};
 	}
 };
 
@@ -108,6 +109,9 @@ pub fn deinit() void {
 		mesh.decreaseRefCount();
 	}
 	priorityMeshUpdateList.deinit();
+	while(blockUpdateList.dequeue()) |blockUpdate| {
+		main.globalAllocator.free(blockUpdate.blockEntityData);
+	}
 	blockUpdateList.deinit();
 	meshList.clearAndFree();
 	for(clearList.items) |mesh| {
@@ -868,9 +872,10 @@ fn batchUpdateBlocks() void {
 
 	// First of all process all the block updates:
 	while(blockUpdateList.dequeue()) |blockUpdate| {
+		defer main.globalAllocator.free(blockUpdate.blockEntityData);
 		const pos = chunk.ChunkPosition{.wx = blockUpdate.x, .wy = blockUpdate.y, .wz = blockUpdate.z, .voxelSize = 1};
 		if(getMeshAndIncreaseRefCount(pos)) |mesh| {
-			mesh.updateBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock, &lightRefreshList, &regenerateMeshList);
+			mesh.updateBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock, blockUpdate.blockEntityData, &lightRefreshList, &regenerateMeshList);
 			mesh.decreaseRefCount();
 		} // TODO: It seems like we simply ignore the block update if we don't have the mesh yet.
 	}
@@ -986,7 +991,9 @@ pub const MeshGenerationTask = struct { // MARK: MeshGenerationTask
 
 // MARK: updaters
 
-pub fn updateBlock(update: BlockUpdate) void {
+pub fn updateBlock(_update: BlockUpdate) void {
+	var update = _update;
+	update.blockEntityData = main.globalAllocator.dupe(u8, update.blockEntityData);
 	blockUpdateList.enqueue(update);
 }
 

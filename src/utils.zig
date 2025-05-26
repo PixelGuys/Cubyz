@@ -1601,6 +1601,8 @@ const endian: std.builtin.Endian = .big;
 pub const BinaryReader = struct {
 	remaining: []const u8,
 
+	pub const AllErrors = error{OutOfBounds, IntOutOfBounds, InvalidEnumTag};
+
 	pub fn init(data: []const u8) BinaryReader {
 		return .{.remaining = data};
 	}

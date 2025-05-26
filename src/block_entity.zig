@@ -9,6 +9,8 @@ const getIndex = main.chunk.getIndex;
 const server = main.server;
 const User = server.User;
 const mesh_storage = main.renderer.mesh_storage;
+const BinaryReader = main.utils.BinaryReader;
+const BinaryWriter = main.utils.BinaryWriter;
 
 pub const BlockEntityIndex = main.utils.DenseId(u32);
 
@@ -26,6 +28,10 @@ pub const BlockEntityType = struct {
 		onPlaceServer: *const fn(pos: Vec3i, chunk: *Chunk) void,
 		onBreakServer: *const fn(pos: Vec3i, chunk: *Chunk) void,
 		onInteract: *const fn(pos: Vec3i, chunk: *Chunk) EventStatus,
+		updateClientData: *const fn(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void,
+		updateServerData: *const fn(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void,
+		getServerToClientData: *const fn(pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void,
+		getClientToServerData: *const fn(pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void,
 	};
 	pub fn init(comptime BlockEntityTypeT: type) BlockEntityType {
 		BlockEntityTypeT.init();
@@ -68,6 +74,18 @@ pub const BlockEntityType = struct {
 	}
 	pub inline fn onInteract(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk) EventStatus {
 		return self.vtable.onInteract(pos, chunk);
+	}
+	pub inline fn updateClientData(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void {
+		return try self.vtable.updateClientData(pos, chunk, reader);
+	}
+	pub inline fn updateServerData(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void {
+		return try self.vtable.updateServerData(pos, chunk, reader);
+	}
+	pub inline fn getServerToClientData(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void {
+		return self.vtable.getServerToClientData(pos, chunk, writer);
+	}
+	pub inline fn getClientToServerData(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void {
+		return self.vtable.getClientToServerData(pos, chunk, writer);
 	}
 };
 
@@ -209,6 +227,11 @@ pub const BlockEntityTypes = struct {
 
 			return .handled;
 		}
+
+		pub fn updateClientData(_: Vec3i, _: *Chunk, _: *BinaryReader) BinaryReader.AllErrors!void {}
+		pub fn updateServerData(_: Vec3i, _: *Chunk, _: *BinaryReader) BinaryReader.AllErrors!void {}
+		pub fn getServerToClientData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
+		pub fn getClientToServerData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
 	};
 
 	pub const Sign = struct {
@@ -249,14 +272,16 @@ pub const BlockEntityTypes = struct {
 			main.globalAllocator.free(entry.text);
 		}
 		pub fn onPlaceClient(pos: Vec3i, chunk: *Chunk) void {
-			StorageClient.add(pos, .{.text = main.globalAllocator.dupe(u8, "test")}, chunk);
+			const entry = StorageClient.remove(pos, chunk) orelse return;
+			main.globalAllocator.free(entry.text);
 		}
 		pub fn onBreakClient(pos: Vec3i, chunk: *Chunk) void {
 			const entry = StorageClient.remove(pos, chunk) orelse return;
 			main.globalAllocator.free(entry.text);
 		}
 		pub fn onPlaceServer(pos: Vec3i, chunk: *Chunk) void {
-			StorageServer.add(pos, .{.text = main.globalAllocator.dupe(u8, "test")}, chunk);
+			const entry = StorageServer.remove(pos, chunk) orelse return;
+			main.globalAllocator.free(entry.text);
 		}
 		pub fn onBreakServer(pos: Vec3i, chunk: *Chunk) void {
 			const entry = StorageServer.remove(pos, chunk) orelse return;
@@ -271,6 +296,62 @@ pub const BlockEntityTypes = struct {
 			main.gui.windowlist.sign_editor.openFromSignData(pos, if(data) |_data| _data.text else "TODO: Remove");
 
 			return .handled;
+		}
+
+		pub fn updateClientData(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void {
+			StorageClient.mutex.lock();
+			defer StorageClient.mutex.unlock();
+
+			const data = StorageClient.getOrPut(pos, chunk);
+			if(data.foundExisting) main.globalAllocator.free(data.valuePtr.text);
+			data.valuePtr.text = main.globalAllocator.dupe(u8, reader.remaining);
+		}
+
+		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void {
+			StorageServer.mutex.lock();
+			defer StorageServer.mutex.unlock();
+
+			const data = StorageServer.getOrPut(pos, chunk);
+			if(data.foundExisting) main.globalAllocator.free(data.valuePtr.text);
+			data.valuePtr.text = main.globalAllocator.dupe(u8, reader.remaining);
+		}
+
+		pub fn getServerToClientData(pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void {
+			StorageServer.mutex.lock();
+			defer StorageServer.mutex.unlock();
+
+			const data = StorageServer.get(pos, chunk) orelse return;
+			writer.writeSlice(data.text);
+		}
+
+		pub fn getClientToServerData(pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void {
+			StorageClient.mutex.lock();
+			defer StorageClient.mutex.unlock();
+
+			const data = StorageClient.get(pos, chunk) orelse return;
+			writer.writeSlice(data.text);
+		}
+
+		pub fn updateTextFromClient(pos: Vec3i, newText: []const u8) void {
+			{
+				const mesh = main.renderer.mesh_storage.getMeshAndIncreaseRefCount(.initFromWorldPos(pos, 1)) orelse return;
+				defer mesh.decreaseRefCount();
+				mesh.mutex.lock();
+				defer mesh.mutex.unlock();
+				const index = mesh.chunk.getLocalBlockIndex(pos);
+				const block = mesh.chunk.data.getValue(index);
+				const blockEntity = block.blockEntity() orelse return;
+				if(!std.mem.eql(u8, blockEntity.id, id)) return;
+
+				StorageClient.mutex.lock();
+				defer StorageClient.mutex.unlock();
+
+				const data = StorageClient.getOrPut(pos, mesh.chunk);
+				if(data.foundExisting) main.globalAllocator.free(data.valuePtr.text);
+				data.valuePtr.text = main.globalAllocator.dupe(u8, newText);
+			}
+
+			main.network.Protocols.blockEntityUpdate.sendClientDataUpdateToServer(main.game.world.?.conn, pos);
 		}
 	};
 };

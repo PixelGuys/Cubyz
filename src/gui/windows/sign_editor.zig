@@ -43,7 +43,7 @@ fn apply(_: usize) void {
 		return;
 	}
 
-	std.log.err("TODO: Update block entity data for block at {} to {s}", .{pos, textComponent.currentString.items});
+	main.block_entity.BlockEntityTypes.Sign.updateTextFromClient(pos, textComponent.currentString.items);
 
 	gui.closeWindowFromRef(&window);
 }
