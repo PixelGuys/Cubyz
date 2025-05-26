@@ -5,4 +5,7 @@
 			.maxEnergy = 8,
 		},
 	},
+	.spawnComponents = .{
+		.entity,
+	},
 }

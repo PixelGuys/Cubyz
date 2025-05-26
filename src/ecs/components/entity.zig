@@ -51,7 +51,7 @@ pub fn reset() void {
 
 pub fn fromZon(allocator: NeverFailingAllocator, entityIndex: EntityIndex, entityTypeIndex: EntityTypeIndex, zon: ZonElement) void {
 	const entityType = typeStorage.get(entityTypeIndex).?;
-	if (storage.contains(entityIndex)) {
+	if(storage.contains(entityIndex)) {
 		storage.remove(entityIndex) catch unreachable;
 	}
 	storage.set(allocator, entityIndex, .{
@@ -87,7 +87,7 @@ pub fn initData(allocator: NeverFailingAllocator, entityIndex: EntityIndex, enti
 		.maxEnergy = typeData.maxEnergy,
 		.energy = typeData.maxEnergy,
 	};
-	if (storage.get(entityIndex)) |ptr| {
+	if(storage.get(entityIndex)) |ptr| {
 		ptr.* = data;
 		return;
 	}
@@ -98,17 +98,25 @@ pub fn deinitData(_: NeverFailingAllocator, entityIndex: EntityIndex, _: EntityT
 	try storage.remove(entityIndex);
 }
 
-pub fn set(allocator: NeverFailingAllocator, entityIndex: EntityIndex, dataOpaque: *anyopaque) void {
-	const data: *Data = @ptrCast(@alignCast(dataOpaque));
-	if (storage.get(entityIndex)) |ptr| {
-		ptr.* = data.*;
+pub fn set(allocator: NeverFailingAllocator, entityIndex: EntityIndex, data: Data) void {
+	if(storage.get(entityIndex)) |ptr| {
+		ptr.* = data;
 		return;
 	}
-	storage.set(allocator, entityIndex, data.*);
+	storage.set(allocator, entityIndex, data);
 }
 
-pub fn get(entityIndex: EntityIndex) ?*anyopaque {
-	return @ptrCast(@alignCast(storage.get(entityIndex) orelse return null));
+pub fn get(entityIndex: EntityIndex) ?Data {
+	const data = storage.get(entityIndex) orelse return null;
+	return data.*;
+}
+
+pub fn has(entityIndex: EntityIndex) bool {
+	return storage.contains(entityIndex);
+}
+
+pub fn remove(entityIndex: EntityIndex) void {
+	storage.remove(entityIndex);
 }
 
 pub fn initType(allocator: NeverFailingAllocator, entityTypeIndex: EntityTypeIndex, zon: ZonElement) void {

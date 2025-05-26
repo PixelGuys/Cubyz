@@ -8,10 +8,14 @@ const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const SparseSet = main.utils.SparseSet;
 const DenseId = main.utils.DenseId;
 
+const ComponentMask = std.StaticBitSet(@typeInfo(component_list).@"struct".decls.len);
+
 pub const component_list = @import("components/_list.zig");
 
 pub const EntityTypeIndex = DenseId(u16);
 pub const EntityIndex = DenseId(u16);
+
+const ComponentEnum = std.meta.DeclEnum(component_list);
 
 var arenaAllocator: NeverFailingArenaAllocator = undefined;
 var allocator: NeverFailingAllocator = undefined;
@@ -23,29 +27,11 @@ var nextEntityType: u16 = undefined;
 
 var entityIndexToEntityTypeIndex: SparseSet(EntityTypeIndex, EntityIndex) = undefined;
 
-const Component = struct {
-	init: *const fn () void,
-	deinit: *const fn (allocator: NeverFailingAllocator) void,
-	reset: *const fn () void,
-	fromZon: *const fn (allocator: NeverFailingAllocator, entityIndex: EntityIndex, entityTypeIndex: EntityTypeIndex, zon: ZonElement) void,
-	toZon: *const fn (allocator: NeverFailingAllocator, entityIndex: EntityIndex) ZonElement,
-	initData: *const fn (allocator: NeverFailingAllocator, entityIndex: EntityIndex, entityTypeIndex: EntityTypeIndex) void,
-	deinitData: *const fn (allocator: NeverFailingAllocator, entityIndex: EntityIndex, entityTypeIndex: EntityTypeIndex) error{ElementNotFound}!void,
-	set: *const fn (allocator: NeverFailingAllocator, entityIndex: EntityIndex, dataOpaque: *anyopaque) void,
-	get: *const fn (entityIndex: EntityIndex) ?*anyopaque,
-	initType: *const fn (allocator: NeverFailingAllocator, entityTypeIndex: EntityTypeIndex, zon: ZonElement) void,
-	hasType: *const fn (entityTypeIndex: EntityTypeIndex) bool,
-};
-
-var componentList: main.ListUnmanaged(Component) = undefined;
-var componentHashMap: std.StringArrayHashMapUnmanaged(u16) = undefined;
+var entitySpawnComponents: SparseSet(ComponentMask, EntityTypeIndex) = undefined;
 
 pub fn init() void {
 	arenaAllocator = .init(main.globalAllocator);
 	allocator = arenaAllocator.allocator();
-
-	componentList = .{};
-	componentHashMap = .{};
 
 	nextEntityType = 0;
 
@@ -57,45 +43,27 @@ pub fn init() void {
 
 	entityIdToEntityType = .{};
 	entityIndexToEntityTypeIndex = .{};
+	entitySpawnComponents = .{};
 
 	inline for(@typeInfo(component_list).@"struct".decls) |decl| {
-		registerComponent(decl.name, @field(component_list, decl.name));
-	}
-
-	for (componentList.items) |comp| {
-		comp.init();
+		@field(component_list, decl.name).init();
 	}
 }
 
 pub fn deinit() void {
-	for (componentList.items) |comp| {
-		comp.deinit(main.globalAllocator);
+	inline for(@typeInfo(component_list).@"struct".decls) |decl| {
+		@field(component_list, decl.name).deinit(main.globalAllocator);
 	}
 
 	arenaAllocator.deinit();
 }
 
 pub fn reset() void {
-	for (componentList.items) |comp| {
-		comp.reset();
+	inline for(@typeInfo(component_list).@"struct".decls) |decl| {
+		@field(component_list, decl.name).reset();
 	}
-	
-	_ = arenaAllocator.reset(.free_all);
-}
 
-pub fn registerComponent(id: []const u8, comptime Comp: type) void {
-	var result: Component = undefined;
-	inline for(@typeInfo(Component).@"struct".fields) |field| {
-		if(@hasDecl(Comp, field.name)) {
-			if(field.type == @TypeOf(@field(Comp, field.name))) {
-				@field(result, field.name) = @field(Comp, field.name);
-			} else {
-				@field(result, field.name) = &@field(Comp, field.name);
-			}
-		} else unreachable;
-	}
-	componentHashMap.putNoClobber(allocator.allocator, id, @intCast(componentList.items.len)) catch unreachable;
-	componentList.append(allocator, result);
+	_ = arenaAllocator.reset(.free_all);
 }
 
 pub fn hasRegistered(id: []const u8) bool {
@@ -119,47 +87,69 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) void {
 
 	defer nextEntityType += 1;
 
-	var features: main.ListUnmanaged(u16) = .{};
-
 	var iterator = componentMap.object.iterator();
 	while(iterator.next()) |entry| {
-		const component = entry.key_ptr.*;
+		const componentId = entry.key_ptr.*;
 		const value = entry.value_ptr.*;
 
-		const componentIndex = componentHashMap.get(component) orelse {
-			std.log.err("{s} is not a valid component", .{component});
+		const component = std.meta.stringToEnum(ComponentEnum, componentId) orelse {
+			std.log.err("{s} is not a valid component", .{componentId});
 			continue;
 		};
 
-		features.append(main.globalAllocator, componentIndex);
-
-		componentList.items[componentIndex].initType(main.globalAllocator, @enumFromInt(nextEntityType), value);
+		switch(component) {
+			inline else => |comp| {
+				@field(component_list, @tagName(comp)).initType(main.globalAllocator, @enumFromInt(nextEntityType), value);
+			},
+		}
 	}
 
 	entityIdToEntityType.put(allocator.allocator, id, @enumFromInt(nextEntityType)) catch unreachable;
-}
 
-pub fn getComponent(comptime ComponentType: type, component: []const u8, entity: EntityIndex) ?ComponentType.Data {
-	const componentIndex = componentHashMap.get(component) orelse {
-		std.log.err("Component {s} does not exist", .{component});
-		return null;
-	};
+	var spawnComponents: ComponentMask = .initEmpty();
 
-	const comp = componentList.items[componentIndex];
-	const compPtr: *ComponentType.Data = @ptrCast(@alignCast(comp.get(entity) orelse return null));
-	return compPtr.*;
-}
-
-pub fn setComponent(comptime ComponentType: type, component: []const u8, entity: EntityIndex, data: ComponentType.Data) void {
-	const componentIndex = componentHashMap.get(component) orelse {
-		std.log.err("Component {s} does not exist", .{component});
+	const spawnComponentsList = zon.getChild("spawnComponents");
+	if(spawnComponentsList != .array) {
+		std.log.err("spawnComponents must be an array, not a {s}", .{@tagName(spawnComponentsList)});
 		return;
-	};
+	}
 
-	const comp = componentList.items[componentIndex];
+	for(spawnComponentsList.array.items) |item| {
+		const componentId = item.as(?[]const u8, null) orelse {
+			std.log.err("spawnComponents must only contain strings", .{});
+			continue;
+		};
 
-	var dataVar = data;
-	comp.set(main.globalAllocator, entity, @ptrCast(&dataVar));
+		const component = std.meta.stringToEnum(ComponentEnum, componentId) orelse {
+			std.log.err("{s} is not a valid component", .{componentId});
+			continue;
+		};
+
+		switch(component) {
+			inline else => |comp| {
+				if(!@field(component_list, @tagName(comp)).hasType(@enumFromInt(nextEntityType))) {
+					std.log.err("Component type {s} is not initialized for entity type {s}", .{componentId, id});
+					continue;
+				}
+			},
+		}
+
+		spawnComponents.set(@intFromEnum(component));
+	}
+
+	entitySpawnComponents.set(allocator, @enumFromInt(nextEntityType), spawnComponents);
+}
+
+pub fn getComponent(comptime component: []const u8, entity: EntityIndex) ?@field(component_list, component).Data {
+	return @field(component_list, component).get(entity);
+}
+
+pub fn setComponent(comptime component: []const u8, entity: EntityIndex, data: @field(component_list, component).Data) void {
+	@field(component_list, component).set(main.globalAllocator, entity, data);
+}
+
+pub fn removeComponent(comptime component: []const u8, entity: EntityIndex) void {
+	@field(component_list, component).remove(entity);
 }
 
 pub fn createEntity(id: []const u8) !EntityIndex {
@@ -171,9 +161,16 @@ pub fn createEntity(id: []const u8) !EntityIndex {
 		return error.InvalidEntityType;
 	};
 
-	for(componentList.items) |comp| {
-		if(comp.hasType(entityTypeIndex)) {
-			comp.initData(main.globalAllocator, entityIndex, entityTypeIndex);
+	const spawnComponents = entitySpawnComponents.get(entityTypeIndex) orelse unreachable;
+
+	var iterator = spawnComponents.iterator(.{});
+	while(iterator.next()) |component| {
+		const componentFlag: ComponentEnum = @enumFromInt(component);
+
+		switch(componentFlag) {
+			inline else => |comp| {
+				@field(component_list, @tagName(comp)).initData(main.globalAllocator, entityIndex, entityTypeIndex);
+			},
 		}
 	}
 
@@ -189,8 +186,9 @@ pub fn removeEntity(entityIndex: EntityIndex) !void {
 
 	const entityTypeIndex = entityTypeIndexPtr.*;
 
-	for(componentList.items) |comp| {
-		if(comp.hasType(entityTypeIndex)) {
+	inline for(@typeInfo(component_list).@"struct".decls) |decl| {
+		const comp = @field(component_list, decl.name);
+		if(comp.has(entityIndex)) {
 			try comp.deinitData(main.globalAllocator, entityIndex, entityTypeIndex);
 		}
 	}

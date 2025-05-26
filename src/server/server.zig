@@ -273,68 +273,69 @@ pub const User = struct { // MARK: User
 		main.network.Protocols.chat.send(self.conn, msg);
 	}
 
+	// TODO: Remove these functions and use the ecs directly instead.
 	pub fn setPosition(self: *User, pos: Vec3d) void {
-		var component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		var component = ecs.getComponent("entity", self.id).?;
 		component.pos = pos;
-		ecs.setComponent(ecs.component_list.entity, "entity", self.id, component);
+		ecs.setComponent("entity", self.id, component);
 	}
 
 	pub fn getPosition(self: *User) Vec3d {
-		const component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		const component = ecs.getComponent("entity", self.id).?;
 		return component.pos;
 	}
 
 	pub fn setVelocity(self: *User, vel: Vec3d) void {
-		var component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		var component = ecs.getComponent("entity", self.id).?;
 		component.vel = vel;
-		ecs.setComponent(ecs.component_list.entity, "entity", self.id, component);
+		ecs.setComponent("entity", self.id, component);
 	}
 
 	pub fn getVelocity(self: *User) Vec3d {
-		const component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		const component = ecs.getComponent("entity", self.id).?;
 		return component.vel;
 	}
 
 	pub fn setRotation(self: *User, rot: Vec3f) void {
-		var component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		var component = ecs.getComponent("entity", self.id).?;
 		component.rot = rot;
-		ecs.setComponent(ecs.component_list.entity, "entity", self.id, component);
+		ecs.setComponent("entity", self.id, component);
 	}
 
 	pub fn getRotation(self: *User) Vec3f {
-		const component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		const component = ecs.getComponent("entity", self.id).?;
 		return component.rot;
 	}
 
 	pub fn setHealth(self: *User, health: f32) void {
-		var component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		var component = ecs.getComponent("entity", self.id).?;
 		component.health = health;
-		ecs.setComponent(ecs.component_list.entity, "entity", self.id, component);
+		ecs.setComponent("entity", self.id, component);
 	}
 
 	pub fn getHealth(self: *User) f32 {
-		const component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		const component = ecs.getComponent("entity", self.id).?;
 		return component.health;
 	}
 
 	pub fn getMaxHealth(self: *User) f32 {
-		const component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		const component = ecs.getComponent("entity", self.id).?;
 		return component.maxHealth;
 	}
 
 	pub fn setEnergy(self: *User, energy: f32) void {
-		var component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		var component = ecs.getComponent("entity", self.id).?;
 		component.energy = energy;
-		ecs.setComponent(ecs.component_list.entity, "entity", self.id, component);
+		ecs.setComponent("entity", self.id, component);
 	}
 
 	pub fn getEnergy(self: *User) f32 {
-		const component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		const component = ecs.getComponent("entity", self.id).?;
 		return component.energy;
 	}
 
 	pub fn getMaxEnergy(self: *User) f32 {
-		const component = ecs.getComponent(ecs.component_list.entity, "entity", self.id).?;
+		const component = ecs.getComponent("entity", self.id).?;
 		return component.maxEnergy;
 	}
 };
