@@ -20,6 +20,7 @@ const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
+const Blueprint = main.blueprint.Blueprint;
 const BlockUpdate = renderer.mesh_storage.BlockUpdate;
 
 //TODO: Might want to use SSL or something similar to encode the message
@@ -1022,6 +1023,10 @@ pub const Protocols = struct {
 			worldEditPos = 2,
 			time = 3,
 			biome = 4,
+			blueprintSave = 5,
+			blueprintDelete = 6,
+			blueprintLoad = 7,
+			blueprintList = 8,
 		};
 
 		const WorldEditPosition = enum(u2) {
@@ -1094,6 +1099,70 @@ pub const Protocols = struct {
 						}
 					}
 				},
+				.blueprintSave => {
+					if(conn.isServerSide()) return error.InvalidPacket;
+					const filePath = try reader.readUntilDelimiter(0);
+					const blueprintData = reader.remaining;
+
+					var split = std.mem.splitBackwardsScalar(u8, filePath, '/');
+					const fileName = split.first();
+					const fileDir = split.rest();
+
+					var dir = main.files.openDir(fileDir) catch |err| {
+						return conn.user.?.sendWarningAndLog("Failed to open directory '{s}' ({s})", .{fileDir, @errorName(err)});
+					};
+					defer dir.close();
+
+					dir.write(fileName, blueprintData) catch |err| {
+						return conn.user.?.sendWarningAndLog("Failed to write blueprint file '{s}' ({s})", .{filePath, @errorName(err)});
+					};
+				},
+				.blueprintDelete => {
+					if(conn.isServerSide()) return error.InvalidPacket;
+					const path = try reader.readUntilDelimiter(0);
+
+					std.fs.cwd().deleteFile(path) catch |err| {
+						std.log.err("Failed to delete file '{s}': {s}", .{path, @errorName(err)});
+						return err;
+					};
+				},
+				.blueprintLoad => {
+					if(conn.isServerSide()) {
+						const blueprint = Blueprint.load(main.globalAllocator, reader.remaining) catch |err| {
+							return conn.user.?.sendWarningAndLog("Failed to load blueprint ({s})", .{@errorName(err)});
+						};
+
+						const oldClipboard = conn.user.?.worldEditData.clipboard;
+						conn.user.?.worldEditData.clipboard = blueprint;
+
+						if(oldClipboard) |_oldClipboard| {
+							_oldClipboard.deinit(main.globalAllocator);
+						}
+					} else {
+						const path = try reader.readUntilDelimiter(0);
+
+						var blueprintFile = std.fs.cwd().openFile(path, .{.mode = .read_only}) catch |err| {
+							return conn.user.?.sendWarningAndLog("Failed to open blueprint file '{s}' ({s})", .{path, @errorName(err)});
+						};
+						defer blueprintFile.close();
+
+						const raw = blueprintFile.readToEndAlloc(main.stackAllocator.allocator, std.math.maxInt(usize)) catch |err| {
+							return conn.user.?.sendWarningAndLog("Failed to write blueprint to file '{s}' ({s})", .{path, @errorName(err)});
+						};
+						defer main.stackAllocator.free(raw);
+						sendBlueprintUpload(conn, raw);
+					}
+				},
+				.blueprintList => {
+					if(conn.isServerSide()) {
+						while(reader.remaining.len != 0) {
+							const path = try reader.readUntilDelimiter(0);
+							conn.user.?.sendMessage("#ffffff{s}", .{path});
+						}
+					} else {
+						sendBlueprintListResponse(conn);
+					}
+				},
 			}
 		}
 
@@ -1140,6 +1209,100 @@ pub const Protocols = struct {
 
 			writer.writeEnum(UpdateType, .time);
 			writer.writeInt(i64, world.gameTime);
+
+			conn.send(.fast, id, writer.data.items);
+		}
+
+		pub fn sendBlueprintSave(conn: *Connection, path: []const u8, blueprint: Blueprint) void {
+			var writer = utils.BinaryWriter.init(main.stackAllocator);
+			defer writer.deinit();
+
+			writer.writeEnum(UpdateType, .blueprintSave);
+			writer.writeWithDelimiter(path, 0);
+
+			const data = blueprint.store(main.stackAllocator);
+			defer main.stackAllocator.free(data);
+
+			writer.writeSlice(data);
+
+			conn.send(.fast, id, writer.data.items);
+		}
+
+		pub fn sendBlueprintDelete(conn: *Connection, path: []const u8) void {
+			var writer = utils.BinaryWriter.init(main.stackAllocator);
+			defer writer.deinit();
+
+			writer.writeEnum(UpdateType, .blueprintSave);
+			writer.writeWithDelimiter(path, 0);
+
+			conn.send(.fast, id, writer.data.items);
+		}
+
+		pub fn sendBlueprintLoadRequest(conn: *Connection, path: []const u8) void {
+			var writer = utils.BinaryWriter.init(main.stackAllocator);
+			defer writer.deinit();
+
+			writer.writeEnum(UpdateType, .blueprintLoad);
+			writer.writeWithDelimiter(path, 0);
+
+			conn.send(.fast, id, writer.data.items);
+		}
+
+		pub fn sendBlueprintUpload(conn: *Connection, blueprintRawData: []const u8) void {
+			var writer = utils.BinaryWriter.init(main.stackAllocator);
+			defer writer.deinit();
+
+			writer.writeEnum(UpdateType, .blueprintLoad);
+			writer.writeSlice(blueprintRawData);
+
+			conn.send(.fast, id, writer.data.items);
+		}
+
+		pub fn sendBlueprintListRequest(conn: *Connection) void {
+			var writer = utils.BinaryWriter.init(main.stackAllocator);
+			defer writer.deinit();
+
+			writer.writeEnum(UpdateType, .blueprintList);
+			conn.send(.fast, id, writer.data.items);
+		}
+
+		pub fn sendBlueprintListResponse(conn: *Connection) void {
+			var writer = utils.BinaryWriter.init(main.stackAllocator);
+			defer writer.deinit();
+
+			writer.writeEnum(UpdateType, .blueprintList);
+			var isEmpty = true;
+
+			outer: {
+				var blueprintsDir = std.fs.cwd().openDir("blueprints", .{.iterate = true}) catch break :outer;
+				defer blueprintsDir.close();
+
+				var iterator = blueprintsDir.iterate();
+				while(iterator.next() catch break :outer) |entry| {
+					if(entry.kind != .directory) continue;
+
+					var addonDir = blueprintsDir.openDir(entry.name, .{.iterate = true}) catch continue;
+					defer addonDir.close();
+
+					var walker = addonDir.walk(main.stackAllocator.allocator) catch continue;
+					defer walker.deinit();
+
+					while(walker.next() catch continue) |addonEntry| {
+						if(addonEntry.kind != .file) continue;
+
+						var split = std.mem.splitBackwardsScalar(u8, addonEntry.path, '.');
+						_ = split.first();
+						const formatted = std.fmt.allocPrint(main.stackAllocator.allocator, "{s}:{s}", .{entry.name, split.rest()}) catch unreachable;
+						defer main.stackAllocator.free(formatted);
+
+						writer.writeWithDelimiter(formatted, 0);
+						isEmpty = false;
+					}
+				}
+			}
+			if(isEmpty) {
+				writer.writeWithDelimiter("No blueprints found.", 0);
+			}
 
 			conn.send(.fast, id, writer.data.items);
 		}
