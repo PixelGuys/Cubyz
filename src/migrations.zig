@@ -14,8 +14,8 @@ var biomeMigrations: std.StringHashMapUnmanaged([]const u8) = undefined;
 
 const MigrationType = enum {
 	block,
-	biome,
 	item,
+	biome,
 };
 
 pub fn registerAll(comptime typ: MigrationType, migrations: *Assets.AddonNameToZonMap) void {
