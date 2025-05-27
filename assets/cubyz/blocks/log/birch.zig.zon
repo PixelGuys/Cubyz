@@ -12,6 +12,4 @@
 	.texture3 = "cubyz:log/birch/intersection",
 	.texture4 = "cubyz:log/birch/cross",
 	.texture5 = "cubyz:log/birch/top",
-	.lodReplacement = "cubyz:birch_leaves_opaque",
-	.opaqueVariant = "cubyz:birch_leaves_opaque",
 }
