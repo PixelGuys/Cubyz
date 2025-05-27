@@ -182,6 +182,11 @@ pub fn AliasTable(comptime T: type) type { // MARK: AliasTable
 			}
 			return &self.items[initialIndex];
 		}
+
+		pub fn sampleSafe(self: *const @This(), seed: *u64) ?*T {
+			if(self.items.len == 0) return null;
+			return self.sample(seed);
+		}
 	};
 }
 

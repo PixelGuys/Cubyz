@@ -110,10 +110,34 @@ pub fn isOriginBlock(block: Block) bool {
 	return block.typ == originBlockNumericId;
 }
 
+pub const Rotation = enum(u8) {
+	@"0" = 0,
+	@"90" = 1,
+	@"180" = 2,
+	@"270" = 3,
+	random = 4,
+	inherit = 5,
+
+	pub fn sampleRandom(seed: *u64) Rotation {
+		return @enumFromInt(main.random.nextInt(u8, seed)%4);
+	}
+
+	pub fn fromZon(zon: ZonElement) error{UnknownString, UnknownType}!Rotation {
+		return switch(zon) {
+			.string, .stringOwned => |str| std.meta.stringToEnum(Rotation, str) orelse return error.UnknownString,
+			.int => |value| @enumFromInt(@abs(@divTrunc(value, 90))%4),
+			.float => |value| @enumFromInt(@abs(@as(u64, @intFromFloat(value/90.0)))%4),
+			.null => Rotation.random,
+			else => return error.UnknownType,
+		};
+	}
+};
+
 pub const StructureBuildingBlock = struct {
 	id: []const u8,
 	children: []AliasTable(Child),
 	blueprints: *[4]BlueprintEntry,
+	rotation: Rotation,
 
 	fn initFromZon(stringId: []const u8, zon: ZonElement) !StructureBuildingBlock {
 		const blueprintId = zon.get(?[]const u8, "blueprint", null) orelse {
@@ -124,10 +148,19 @@ pub const StructureBuildingBlock = struct {
 			std.log.err("['{s}'] Could not find blueprint '{s}'.", .{stringId, blueprintId});
 			return error.MissingBlueprint;
 		};
+		const rotationParam = zon.getChild("rotation");
+		const rotation = Rotation.fromZon(rotationParam) catch |err| blk: {
+			switch(err) {
+				error.UnknownString => std.log.err("['{s}'] specified unknown rotation '{s}'", .{stringId, rotationParam.as([]const u8, "")}),
+				error.UnknownType => std.log.err("['{s}'] unsupported type of rotation field '{s}'", .{stringId, @tagName(rotationParam)}),
+			}
+			break :blk .inherit;
+		};
 		const self = StructureBuildingBlock{
 			.id = stringId,
 			.children = arenaAllocator.alloc(AliasTable(Child), childBlockStringId.items.len),
 			.blueprints = blueprints,
+			.rotation = rotation,
 		};
 		const childrenZon = zon.getChild("children");
 		for(childBlockStringId.items, 0..) |colorName, colorIndex| {
@@ -139,7 +172,8 @@ pub const StructureBuildingBlock = struct {
 		return &self.blueprints[@intFromEnum(rotation)];
 	}
 	pub fn pickChild(self: StructureBuildingBlock, block: BlueprintEntry.StructureBlock, seed: *u64) ?*const StructureBuildingBlock {
-		return self.children[block.index].sample(seed).structure;
+		const child = self.children[block.index].sampleSafe(seed) orelse return null;
+		return child.structure;
 	}
 };
 
@@ -150,8 +184,8 @@ fn initChildTableFromZon(parentId: []const u8, colorName: []const u8, colorIndex
 		return .init(arenaAllocator, &.{});
 	}
 	if(zon.array.items.len == 0) {
-		std.log.err("['{s}'->'{s}'] Empty children list.", .{parentId, colorName});
-		return error.EmptyChildrenList;
+		std.log.warn("['{s}'->'{s}'] Empty children list.", .{parentId, colorName});
+		return .init(arenaAllocator, &.{});
 	}
 	const list = arenaAllocator.alloc(Child, zon.array.items.len);
 	for(zon.array.items, 0..) |entry, childIndex| {
