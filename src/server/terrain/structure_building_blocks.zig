@@ -296,7 +296,7 @@ pub fn getByStringId(stringId: []const u8) ?*StructureBuildingBlock {
 	const blueprint = structure.blueprints[0];
 	for(blueprint.childBlocks) |child| {
 		if(structure.children.len == 0) {
-			std.log.err("[{s}] Blueprint contains child blocks but there are no child structures defined for it.", .{structure.id, child.id()});
+			std.log.err("[{s}] Blueprint contains child blocks but there are no child structures defined for it.", .{structure.id});
 			break;
 		}
 		if(structure.children[child.index].items.len == 0) {
