@@ -23,7 +23,7 @@ placeMode: Blueprint.PasteMode,
 rotation: Rotation,
 
 pub fn getHash(self: SbbGen) u64 {
-	return std.hash.Wyhash.hash(@intFromEnum(self.placeMode), if(self.structureRef) |ref | ref.id else "");
+	return std.hash.Wyhash.hash(@intFromEnum(self.placeMode), if(self.structureRef) |ref| ref.id else "");
 }
 
 const Rotation = enum(u8) {
@@ -46,16 +46,16 @@ pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) 
 	const rotationParam = parameters.getChild("rotation");
 	const rotation: Rotation = switch(rotationParam) {
 		.string, .stringOwned => |str| std.meta.stringToEnum(Rotation, str) orelse blk: {
-				std.log.err("Error loading generator 'cubyz:sbb' structure '{s}' specified unknown rotation '{s}'", .{structureId, str});
-				break :blk Rotation.random;
-			},
-		.int => |value| @enumFromInt(@abs(@divTrunc(value, 90)) % 4),
-		.float => |value| @enumFromInt(@abs(@as(u64, @intFromFloat(value / 90.0))) % 4),
-		.@"null" => Rotation.random,
+			std.log.err("Error loading generator 'cubyz:sbb' structure '{s}' specified unknown rotation '{s}'", .{structureId, str});
+			break :blk Rotation.random;
+		},
+		.int => |value| @enumFromInt(@abs(@divTrunc(value, 90))%4),
+		.float => |value| @enumFromInt(@abs(@as(u64, @intFromFloat(value/90.0)))%4),
+		.null => Rotation.random,
 		else => blk: {
 			std.log.err("Error loading generator 'cubyz:sbb' structure '{s}' unsupported value in rotation field '{s}'", .{structureId, @tagName(rotationParam)});
 			break :blk Rotation.random;
-		}
+		},
 	};
 	const self = arenaAllocator.create(SbbGen);
 	self.* = .{
@@ -67,14 +67,14 @@ pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) 
 }
 
 pub fn generate(self: *SbbGen, _: GenerationMode, x: i32, y: i32, z: i32, chunk: *ServerChunk, _: CaveMapView, _: CaveBiomeMapView, seed: *u64, _: bool) void {
-	if(self.structureRef == null) return;
+	const structure = self.structureRef orelse return;
 
 	var rotation = self.rotation;
 	if(self.rotation == Rotation.random) {
 		rotation = @enumFromInt(main.random.nextInt(u8, seed)%4);
 	}
 
-	placeSbb(self, self.structureRef.?, Vec3i{x, y, z}, Neighbor.dirUp, rotation, chunk, seed);
+	placeSbb(self, structure, Vec3i{x, y, z}, Neighbor.dirUp, rotation, chunk, seed);
 }
 
 fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placementPosition: Vec3i, placementDirection: Neighbor, rotationNullable: ?Rotation, chunk: *ServerChunk, seed: *u64) void {

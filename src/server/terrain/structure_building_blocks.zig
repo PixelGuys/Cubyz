@@ -139,7 +139,8 @@ pub const StructureBuildingBlock = struct {
 		return &self.blueprints[@intFromEnum(rotation)];
 	}
 	pub fn pickChild(self: StructureBuildingBlock, block: BlueprintEntry.StructureBlock, seed: *u64) ?*const StructureBuildingBlock {
-		return self.children[block.index].sample(seed).structure;
+		const child = self.children[block.index].sampleSafe(seed) orelse return null;
+		return child.structure;
 	}
 };
 
@@ -150,8 +151,8 @@ fn initChildTableFromZon(parentId: []const u8, colorName: []const u8, colorIndex
 		return .init(arenaAllocator, &.{});
 	}
 	if(zon.array.items.len == 0) {
-		std.log.err("['{s}'->'{s}'] Empty children list.", .{parentId, colorName});
-		return error.EmptyChildrenList;
+		std.log.warn("['{s}'->'{s}'] Empty children list.", .{parentId, colorName});
+		return .init(arenaAllocator, &.{});
 	}
 	const list = arenaAllocator.alloc(Child, zon.array.items.len);
 	for(zon.array.items, 0..) |entry, childIndex| {
