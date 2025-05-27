@@ -102,8 +102,8 @@ pub const Assets = struct {
 	}
 	fn log(self: *Assets, typ: enum {common, world}) void {
 		std.log.info(
-			"Finished {s} assets reading with {} blocks ({} migrations), {} items, {} tools, {} biomes ({} migrations), {} recipes, {} structure building blocks, {} blueprints and {} particles",
-			.{@tagName(typ), self.blocks.count(), self.blockMigrations.count(), self.items.count(), self.tools.count(), self.biomes.count(), self.biomeMigrations.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count()},
+			"Finished {s} assets reading with {} blocks ({} migrations), {} items ({} migrations), {} tools, {} biomes ({} migrations), {} recipes, {} structure building blocks, {} blueprints and {} particles",
+			.{@tagName(typ), self.blocks.count(), self.blockMigrations.count(), self.items.count(), self.itemMigrations.count(), self.tools.count(), self.biomes.count(), self.biomeMigrations.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count()},
 		);
 	}
 
