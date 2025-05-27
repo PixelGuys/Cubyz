@@ -116,7 +116,7 @@ pub fn isOriginBlock(block: Block) bool {
 
 pub const StructureBuildingBlock = struct {
 	id: []const u8,
-	children: []?AliasTable(Child),
+	children: []AliasTable(Child),
 	blueprints: *[4]BlueprintEntry,
 
 	fn initFromZon(stringId: []const u8, zon: ZonElement) !StructureBuildingBlock {
@@ -130,7 +130,7 @@ pub const StructureBuildingBlock = struct {
 		};
 		const self = StructureBuildingBlock{
 			.id = stringId,
-			.children = arenaAllocator.alloc(?AliasTable(Child), childBlockStringId.items.len),
+			.children = arenaAllocator.alloc(AliasTable(Child), childBlockStringId.items.len),
 			.blueprints = blueprints,
 		};
 		const childrenZon = zon.getChild("children");
@@ -158,23 +158,20 @@ pub const StructureBuildingBlock = struct {
 			std.log.warn("[{s}] Attempting to sample child structure from SBB with no children defined.", .{self.id});
 			return null;
 		}
-		if(self.children[block.index]) |child| {
-			return child.sample(seed).structure;
-		}
-		std.log.warn("[{s}] Attempting to sample child structure from SBB with empty list of possible structures for that child color ({s}).", .{self.id, (block.id())});
-		return null;
+		const child = self.children[block.index].sampleSafe(seed) orelse return null;
+		return child.structure;
 	}
 };
 
-fn initChildTableFromZon(parentId: []const u8, colorName: []const u8, colorIndex: usize, zon: ZonElement) !?AliasTable(Child) {
-	if(zon == .null) return null;
+fn initChildTableFromZon(parentId: []const u8, colorName: []const u8, colorIndex: usize, zon: ZonElement) !AliasTable(Child) {
+	if(zon == .null) return .init(arenaAllocator, &.{});
 	if(zon != .array) {
-		std.log.err("['{s}'->'{s}'] Incorrect child data structure, array or null expected.", .{parentId, colorName});
-		return null;
+		std.log.err("['{s}'->'{s}'] Incorrect child data structure, array expected.", .{parentId, colorName});
+		return .init(arenaAllocator, &.{});
 	}
 	if(zon.array.items.len == 0) {
 		std.log.warn("['{s}'->'{s}'] Empty children list.", .{parentId, colorName});
-		return null;
+		return .init(arenaAllocator, &.{});
 	}
 	const list = arenaAllocator.alloc(Child, zon.array.items.len);
 	for(zon.array.items, 0..) |entry, childIndex| {
@@ -240,13 +237,12 @@ pub fn registerSBB(structures: *Assets.ZonHashMap) !void {
 				continue;
 			};
 
-			if(parent.children.len <= entry.colorIndex or parent.children[entry.colorIndex] == null) {
-				// This should never happen, structure should either have fields for all child colors or none, if it is inline sbb, then it should not request resolution.
-				std.log.err("Error resolved child structure '{s}'->'{s}'->'{d}' to '{s}'", .{entry.parentId, entry.colorName, entry.childIndex, entry.structureId});
-				unreachable;
+			if(parent.children.len <= entry.colorIndex) {
+				std.log.err("Error resolving child structure '{s}'->'{s}'->'{d}' to '{s}'", .{entry.parentId, entry.colorName, entry.childIndex, entry.structureId});
+				unreachable; // This is a programming error.
 			}
 
-			const childColor = parent.children[entry.colorIndex] orelse unreachable;
+			const childColor = parent.children[entry.colorIndex];
 
 			std.log.debug("Resolved child structure '{s}'->'{s}'->'{d}' to '{s}'", .{entry.parentId, entry.colorName, entry.childIndex, entry.structureId});
 			childColor.items[entry.childIndex].structure = child;
