@@ -113,6 +113,15 @@ fn addModFeature(b: *std.Build, exe: *std.Build.Step.Compile, writeFiles: *std.B
 	exe.root_module.addImport(name, rotation);
 }
 
+fn addModFeatures(b: *std.Build, exe: *std.Build.Step.Compile) !void {
+	const writeFiles = b.addWriteFiles();
+
+	_ = writeFiles.addCopyDirectory(b.path("mods"), "mods", .{});
+
+	try addModFeature(b, exe, writeFiles, "rotation");
+	exe.step.dependOn(&writeFiles.step);
+}
+
 pub fn build(b: *std.Build) !void {
 	// Standard target options allows the person running `zig build` to choose
 	// what target to build for. Here we do not override the defaults, which
@@ -135,13 +144,7 @@ pub fn build(b: *std.Build) !void {
 		//.use_llvm = false,
 	});
 	exe.root_module.addImport("main", exe.root_module);
-
-	const writeFiles = b.addWriteFiles();
-
-	_ = writeFiles.addCopyDirectory(b.path("mods"), "mods", .{});
-
-	try addModFeature(b, exe, writeFiles, "rotation");
-	exe.step.dependOn(&writeFiles.step);
+	try addModFeatures(b, exe);
 
 	linkLibraries(b, exe, useLocalDeps);
 
@@ -164,6 +167,7 @@ pub fn build(b: *std.Build) !void {
 	});
 	linkLibraries(b, exe_tests, useLocalDeps);
 	exe_tests.root_module.addImport("main", exe_tests.root_module);
+	try addModFeatures(b, exe_tests);
 	const run_exe_tests = b.addRunArtifact(exe_tests);
 
 	const test_step = b.step("test", "Run unit tests");
