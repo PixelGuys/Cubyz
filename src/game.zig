@@ -11,6 +11,7 @@ const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main");
 const KeyBoard = main.KeyBoard;
 const network = @import("network.zig");
+const particles = @import("particles.zig");
 const Connection = network.Connection;
 const ConnectionManager = network.ConnectionManager;
 const ecs = main.ecs;
@@ -685,6 +686,7 @@ pub const World = struct { // MARK: World
 		main.Window.setMouseGrabbed(true);
 
 		main.blocks.meshes.generateTextureArray();
+		main.particles.ParticleManager.generateTextureArray();
 		main.models.uploadModels();
 	}
 
@@ -1230,4 +1232,5 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	fog.fogHigher = (biome.fogHigher - fog.fogHigher)*t + fog.fogHigher;
 
 	world.?.update();
+	particles.ParticleSystem.update(@floatCast(deltaTime));
 }
