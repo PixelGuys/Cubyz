@@ -238,8 +238,7 @@ pub fn registerSBB(structures: *Assets.ZonHashMap) !void {
 			};
 
 			if(parent.children.len <= entry.colorIndex) {
-				std.log.err("Error resolving child structure '{s}'->'{s}'->'{d}' to '{s}'", .{entry.parentId, entry.colorName, entry.childIndex, entry.structureId});
-				unreachable; // This is a programming error.
+				main.utils.panicWithMessage("Error resolving child structure '{s}'->'{s}'->'{d}' to '{s}'", .{entry.parentId, entry.colorName, entry.childIndex, entry.structureId});
 			}
 
 			const childColor = parent.children[entry.colorIndex];
