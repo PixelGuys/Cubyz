@@ -99,7 +99,7 @@ fn addModFeature(b: *std.Build, exe: *std.Build.Step.Compile, writeFiles: *std.B
 				if(rotationEntry.kind != .file) continue;
 				if(!std.mem.endsWith(u8, rotationEntry.name, ".zig")) continue;
 
-				try out.appendSlice(b.allocator, b.fmt("pub const @\"{s}:{s}\" = @import(\"{s}/{s}/{s}\");\n", .{addonEntry.name, rotationEntry.name[0..rotationEntry.name.len - 4], addonEntry.name, name, rotationEntry.name}));
+				try out.appendSlice(b.allocator, b.fmt("pub const @\"{s}:{s}\" = @import(\"{s}/{s}/{s}\");\n", .{addonEntry.name, rotationEntry.name[0 .. rotationEntry.name.len - 4], addonEntry.name, name, rotationEntry.name}));
 			}
 		}
 	}
