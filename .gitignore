@@ -11,7 +11,5 @@ gamecontrollerdb.stamp
 test.png
 
 /assets/*
-
 !/assets/cubyz
-
 !/assets/backgrounds/default_background.png
