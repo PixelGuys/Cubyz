@@ -154,10 +154,7 @@ pub const StructureBuildingBlock = struct {
 		return &self.blueprints[@intFromEnum(rotation)];
 	}
 	pub fn pickChild(self: StructureBuildingBlock, block: BlueprintEntry.StructureBlock, seed: *u64) ?*const StructureBuildingBlock {
-		if(self.children.len == 0) {
-			std.log.warn("[{s}] Attempting to sample child structure from SBB with no children defined.", .{self.id});
-			return null;
-		}
+		if(self.children.len == 0) return null;
 		const child = self.children[block.index].sampleSafe(seed) orelse return null;
 		return child.structure;
 	}
@@ -232,7 +229,7 @@ pub fn registerSBB(structures: *Assets.ZonHashMap) !void {
 	{
 		for(childrenToResolve.items) |entry| {
 			const parent = structureCache.getPtr(entry.parentId).?;
-			const child = structureCache.getPtr(entry.structureId) orelse {
+			const child = getByStringId(entry.structureId) orelse {
 				std.log.err("Could not find child structure nor blueprint '{s}' for child resolution.", .{entry.structureId});
 				continue;
 			};
@@ -295,7 +292,18 @@ pub fn registerBlueprints(blueprints: *Assets.BytesHashMap) !void {
 }
 
 pub fn getByStringId(stringId: []const u8) ?*StructureBuildingBlock {
-	return structureCache.getPtr(stringId);
+	const structure = structureCache.getPtr(stringId) orelse return null;
+	const blueprint = structure.blueprints[0];
+	for(blueprint.childBlocks) |child| {
+		if(structure.children.len == 0) {
+			std.log.err("[{s}] Blueprint contains child blocks but there are no child structures defined for it.", .{structure.id, child.id()});
+			break;
+		}
+		if(structure.children[child.index].items.len == 0) {
+			std.log.err("[{s}] Blueprint contains child block '{s}' but there are no child structures to fill it.", .{structure.id, child.id()});
+		}
+	}
+	return structure;
 }
 
 pub fn reset() void {
