@@ -1637,16 +1637,17 @@ pub const BinaryReader = struct {
 		return std.mem.readInt(T, self.remaining[0..bufSize], endian);
 	}
 
-	pub fn readVarInt(self: *BinaryWriter, T: type) T {
+	pub fn readVarInt(self: *BinaryReader, T: type) !T {
 		comptime std.debug.assert(@typeInfo(T).int.signedness == .unsigned);
+		comptime std.debug.assert(@bitSizeOf(T) > 8); // Why would you use a VarInt for this?
 		var result: T = 0;
-		var shift: std.meta.Int(.unsigned, std.math.log2_int_ceil(comptime_int, @bitSizeOf(T))) = 0;
+		var shift: std.meta.Int(.unsigned, std.math.log2_int_ceil(usize, @bitSizeOf(T))) = 0;
 		while(true) {
 			const nextByte = try self.readInt(u8);
 			const value: T = nextByte & 0x7f;
 			result |= try std.math.shlExact(T, value, shift);
-			shift = try std.math.add(@TypeOf(shift), shift, 7);
 			if(nextByte & 0x80 == 0) break;
+			shift = try std.math.add(@TypeOf(shift), shift, 7);
 		}
 		return result;
 	}
@@ -1716,6 +1717,7 @@ pub const BinaryWriter = struct {
 
 	pub fn writeVarInt(self: *BinaryWriter, T: type, value: T) void {
 		comptime std.debug.assert(@typeInfo(T).int.signedness == .unsigned);
+		comptime std.debug.assert(@bitSizeOf(T) > 8); // Why would you use a VarInt for this?
 		var remaining: T = value;
 		while(true) {
 			var writeByte: u8 = @intCast(remaining & 0x7f);
@@ -1771,7 +1773,7 @@ const ReadWriteTest = struct {
 		defer writer.deinit();
 		writer.writeVarInt(IntT, expected);
 
-		const expectedWidth = std.math.divCeil(comptime_int, std.math.log2_int_ceil(IntT, @max(1, expected), 7));
+		const expectedWidth = 1 + std.math.log2_int(IntT, @max(1, expected))/7;
 		try std.testing.expectEqual(expectedWidth, writer.data.items.len);
 
 		var reader = getReader(writer.data.items);
@@ -1846,13 +1848,13 @@ test "read/write signed int" {
 }
 
 test "read/write unsigned varint" {
-	inline for([_]type{u0, u1, u2, u4, u5, u8, u16, u31, u32, u64, u128}) |IntT| {
+	inline for([_]type{u9, u16, u31, u32, u64, u128}) |IntT| {
 		for(0..@bitSizeOf(IntT)) |i| {
-			try ReadWriteTest.testInt(IntT, @as(IntT, 1) << @intCast(i));
-			try ReadWriteTest.testInt(IntT, (@as(IntT, 1) << @intCast(i)) - 1);
+			try ReadWriteTest.testVarInt(IntT, @as(IntT, 1) << @intCast(i));
+			try ReadWriteTest.testVarInt(IntT, (@as(IntT, 1) << @intCast(i)) - 1);
 		}
 		const max = std.math.maxInt(IntT);
-		try ReadWriteTest.testInt(IntT, max);
+		try ReadWriteTest.testVarInt(IntT, max);
 	}
 }
 
