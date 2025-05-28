@@ -318,7 +318,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 			for(0..ch.data.paletteLength) |i| {
 				writer.writeInt(u32, ch.data.palette[i].toInt());
 			}
-			writer.writeInt(u32, @intCast(compressedData.len));
+			writer.writeVarInt(usize, compressedData.len);
 			writer.writeSlice(compressedData);
 			return;
 		}
@@ -332,7 +332,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 		defer main.stackAllocator.free(compressedData);
 
 		writer.writeEnum(ChunkCompressionAlgo, .deflate);
-		writer.writeInt(u32, @intCast(compressedData.len));
+		writer.writeVarInt(usize, compressedData.len);
 		writer.writeSlice(compressedData);
 	}
 
@@ -347,7 +347,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 				const decompressedData = main.stackAllocator.alloc(u8, chunk.chunkVolume*@sizeOf(u32));
 				defer main.stackAllocator.free(decompressedData);
 
-				const compressedDataLen = if(compressionAlgorithm == .deflate) try reader.readInt(u32) else reader.remaining.len;
+				const compressedDataLen = if(compressionAlgorithm == .deflate) try reader.readVarInt(usize) else reader.remaining.len;
 				const compressedData = try reader.readSlice(compressedDataLen);
 				const decompressedLength = try main.utils.Compression.inflateTo(decompressedData, compressedData);
 				if(decompressedLength != chunk.chunkVolume*@sizeOf(u32)) return error.corrupted;
@@ -371,7 +371,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 				const decompressedData = main.stackAllocator.alloc(u8, chunk.chunkVolume);
 				defer main.stackAllocator.free(decompressedData);
 
-				const compressedDataLen = if(compressionAlgorithm == .deflate_with_8bit_palette) try reader.readInt(u32) else reader.remaining.len;
+				const compressedDataLen = if(compressionAlgorithm == .deflate_with_8bit_palette) try reader.readVarInt(usize) else reader.remaining.len;
 				const compressedData = try reader.readSlice(compressedDataLen);
 
 				const decompressedLength = try main.utils.Compression.inflateTo(decompressedData, compressedData);
