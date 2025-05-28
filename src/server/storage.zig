@@ -264,7 +264,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 		raw = 0, // TODO: Maybe we need some basic compression at some point. For now this is good enough though.
 	};
 
-	const Target = enum{toClient, toDisk};
+	const Target = enum {toClient, toDisk};
 
 	pub fn storeChunk(allocator: main.heap.NeverFailingAllocator, ch: *chunk.Chunk, comptime target: Target, allowLossy: bool) []const u8 {
 		var writer = BinaryWriter.init(allocator);
@@ -436,7 +436,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 		const compressionAlgo = try reader.readEnum(BlockEntityCompressionAlgo);
 		std.debug.assert(compressionAlgo == .raw);
 
-		while (reader.remaining.len != 0) {
+		while(reader.remaining.len != 0) {
 			const index = try reader.readInt(u16);
 			const pos = ch.getGlobalBlockPosFromIndex(index);
 			const dataLength = try reader.readVarInt(usize);
