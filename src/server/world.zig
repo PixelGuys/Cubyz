@@ -314,7 +314,7 @@ const ChunkManager = struct { // MARK: ChunkManager
 			@as(usize, @intCast(pos.wz -% region.pos.wz))/pos.voxelSize/chunk.chunkSize,
 		)) |data| blk: { // Load chunk from file:
 			defer main.stackAllocator.free(data);
-			storage.ChunkCompression.loadChunk(&ch.super, data) catch {
+			storage.ChunkCompression.loadChunk(&ch.super, .server, data) catch {
 				std.log.err("Storage for chunk {} in region file at {} is corrupted", .{pos, region.pos});
 				break :blk;
 			};

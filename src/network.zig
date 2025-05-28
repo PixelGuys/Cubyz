@@ -791,12 +791,12 @@ pub const Protocols = struct {
 				.voxelSize = try reader.readInt(u31),
 			};
 			const ch = chunk.Chunk.init(pos);
-			try main.server.storage.ChunkCompression.loadChunk(ch, reader.remaining);
+			try main.server.storage.ChunkCompression.loadChunk(ch, .client, reader.remaining);
 			renderer.mesh_storage.updateChunkMesh(ch);
 		}
 		fn sendChunkOverTheNetwork(conn: *Connection, ch: *chunk.ServerChunk) void {
 			ch.mutex.lock();
-			const chunkData = main.server.storage.ChunkCompression.storeChunk(main.stackAllocator, &ch.super, ch.super.pos.voxelSize != 1);
+			const chunkData = main.server.storage.ChunkCompression.storeChunk(main.stackAllocator, &ch.super, .toClient, ch.super.pos.voxelSize != 1);
 			ch.mutex.unlock();
 			defer main.stackAllocator.free(chunkData);
 			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, chunkData.len + 16);
@@ -815,7 +815,7 @@ pub const Protocols = struct {
 			renderer.mesh_storage.updateChunkMesh(chunkCopy);
 		}
 		pub fn sendChunk(conn: *Connection, ch: *chunk.ServerChunk) void {
-			if(conn.user.?.isLocal) {
+			if(conn.user.?.isLocal and false) { // TODO: block entities with local transmission
 				sendChunkLocally(ch);
 			} else {
 				sendChunkOverTheNetwork(conn, ch);

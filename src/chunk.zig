@@ -337,6 +337,14 @@ pub const Chunk = struct { // MARK: Chunk
 			(worldPos[2] - self.pos.wz) >> self.voxelSizeShift,
 		);
 	}
+
+	pub fn getGlobalBlockPosFromIndex(self: *const Chunk, index: u16) Vec3i {
+		return .{
+			(extractXFromIndex(index) << self.voxelSizeShift) + self.pos.wx,
+			(extractYFromIndex(index) << self.voxelSizeShift) + self.pos.wy,
+			(extractZFromIndex(index) << self.voxelSizeShift) + self.pos.wz,
+		};
+	}
 };
 
 pub const ServerChunk = struct { // MARK: ServerChunk
@@ -604,7 +612,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 			const regionMask: i32 = regionSize - 1;
 			const region = main.server.storage.loadRegionFileAndIncreaseRefCount(pos.wx & ~regionMask, pos.wy & ~regionMask, pos.wz & ~regionMask, pos.voxelSize);
 			defer region.decreaseRefCount();
-			const data = main.server.storage.ChunkCompression.storeChunk(main.stackAllocator, &self.super, false);
+			const data = main.server.storage.ChunkCompression.storeChunk(main.stackAllocator, &self.super, .toDisk, false);
 			defer main.stackAllocator.free(data);
 			region.storeChunk(
 				data,

@@ -19,9 +19,11 @@ pub const BlockEntityType = struct {
 	vtable: VTable,
 
 	const VTable = struct {
-		onLoadClient: *const fn(pos: Vec3i, chunk: *Chunk) void,
+		onLoadClient: *const fn(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void,
 		onUnloadClient: *const fn(dataIndex: BlockEntityIndex) void,
-		onLoadServer: *const fn(pos: Vec3i, chunk: *Chunk) void,
+		onLoadServer: *const fn(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void,
+		onStoreServerToDisk: *const fn(dataIndex: BlockEntityIndex, writer: *BinaryWriter) void,
+		onStoreServerToClient: *const fn(dataIndex: BlockEntityIndex, writer: *BinaryWriter) void,
 		onUnloadServer: *const fn(dataIndex: BlockEntityIndex) void,
 		onPlaceClient: *const fn(pos: Vec3i, chunk: *Chunk) void,
 		onBreakClient: *const fn(pos: Vec3i, chunk: *Chunk) void,
@@ -48,14 +50,20 @@ pub const BlockEntityType = struct {
 		}
 		return class;
 	}
-	pub inline fn onLoadClient(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk) void {
-		return self.vtable.onLoadClient(pos, chunk);
+	pub inline fn onLoadClient(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void {
+		return self.vtable.onLoadClient(pos, chunk, reader);
 	}
 	pub inline fn onUnloadClient(self: *BlockEntityType, dataIndex: BlockEntityIndex) void {
 		return self.vtable.onUnloadClient(dataIndex);
 	}
-	pub inline fn onLoadServer(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk) void {
-		return self.vtable.onLoadServer(pos, chunk);
+	pub inline fn onLoadServer(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void {
+		return self.vtable.onLoadServer(pos, chunk, reader);
+	}
+	pub inline fn onStoreServerToDisk(self: *BlockEntityType, dataIndex: BlockEntityIndex, writer: *BinaryWriter) void {
+		return self.vtable.onStoreServerToDisk(dataIndex, writer);
+	}
+	pub inline fn onStoreServerToClient(self: *BlockEntityType, dataIndex: BlockEntityIndex, writer: *BinaryWriter) void {
+		return self.vtable.onStoreServerToClient(dataIndex, writer);
 	}
 	pub inline fn onUnloadServer(self: *BlockEntityType, dataIndex: BlockEntityIndex) void {
 		return self.vtable.onUnloadServer(dataIndex);
@@ -155,6 +163,11 @@ fn BlockEntityDataStorage(T: type) type {
 			const dataIndex = entry.value;
 			return removeAtIndex(dataIndex);
 		}
+		pub fn getByIndex(dataIndex: BlockEntityIndex) ?*DataT {
+			main.utils.assertLocked(&mutex);
+
+			return storage.get(dataIndex);
+		}
 		pub fn get(pos: Vec3i, chunk: *Chunk) ?*DataT {
 			main.utils.assertLocked(&mutex);
 
@@ -202,9 +215,11 @@ pub const BlockEntityTypes = struct {
 			StorageServer.reset();
 		}
 
-		pub fn onLoadClient(_: Vec3i, _: *Chunk) void {}
+		pub fn onLoadClient(_: Vec3i, _: *Chunk, _: *BinaryReader) BinaryReader.AllErrors!void {}
 		pub fn onUnloadClient(_: BlockEntityIndex) void {}
-		pub fn onLoadServer(_: Vec3i, _: *Chunk) void {}
+		pub fn onLoadServer(_: Vec3i, _: *Chunk, _: *BinaryReader) BinaryReader.AllErrors!void {}
+		pub fn onStoreServerToDisk(_: BlockEntityIndex, _: *BinaryWriter) void {}
+		pub fn onStoreServerToClient(_: BlockEntityIndex, _: *BinaryWriter) void {}
 		pub fn onUnloadServer(dataIndex: BlockEntityIndex) void {
 			StorageServer.mutex.lock();
 			defer StorageServer.mutex.unlock();
@@ -257,14 +272,12 @@ pub const BlockEntityTypes = struct {
 			StorageClient.reset();
 		}
 
-		pub fn onLoadClient(_: Vec3i, _: *Chunk) void {}
 		pub fn onUnloadClient(dataIndex: BlockEntityIndex) void {
 			StorageClient.mutex.lock();
 			defer StorageClient.mutex.unlock();
 			const entry = StorageClient.removeAtIndex(dataIndex) orelse unreachable;
 			main.globalAllocator.free(entry.text);
 		}
-		pub fn onLoadServer(_: Vec3i, _: *Chunk) void {}
 		pub fn onUnloadServer(dataIndex: BlockEntityIndex) void {
 			StorageServer.mutex.lock();
 			defer StorageServer.mutex.unlock();
@@ -298,6 +311,7 @@ pub const BlockEntityTypes = struct {
 			return .handled;
 		}
 
+		pub const onLoadClient = updateClientData;
 		pub fn updateClientData(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void {
 			StorageClient.mutex.lock();
 			defer StorageClient.mutex.unlock();
@@ -307,6 +321,7 @@ pub const BlockEntityTypes = struct {
 			data.valuePtr.text = main.globalAllocator.dupe(u8, reader.remaining);
 		}
 
+		pub const onLoadServer = updateServerData;
 		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void {
 			StorageServer.mutex.lock();
 			defer StorageServer.mutex.unlock();
@@ -316,6 +331,14 @@ pub const BlockEntityTypes = struct {
 			data.valuePtr.text = main.globalAllocator.dupe(u8, reader.remaining);
 		}
 
+		pub const onStoreServerToClient = onStoreServerToDisk;
+		pub fn onStoreServerToDisk(dataIndex: BlockEntityIndex, writer: *BinaryWriter) void {
+			StorageServer.mutex.lock();
+			defer StorageServer.mutex.unlock();
+
+			const data = StorageServer.getByIndex(dataIndex) orelse return;
+			writer.writeSlice(data.text);
+		}
 		pub fn getServerToClientData(pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void {
 			StorageServer.mutex.lock();
 			defer StorageServer.mutex.unlock();

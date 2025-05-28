@@ -259,21 +259,31 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 		deflate_with_8bit_palette_no_block_entities = 3,
 		deflate = 4,
 		deflate_with_8bit_palette = 5,
-		_,
+	};
+	const BlockEntityCompressionAlgo = enum(u8) {
+		raw = 0, // TODO: Maybe we need some basic compression at some point. For now this is good enough though.
 	};
 
-	pub fn storeChunk(allocator: main.heap.NeverFailingAllocator, ch: *chunk.Chunk, allowLossy: bool) []const u8 {
+	const Target = enum{toClient, toDisk};
+
+	pub fn storeChunk(allocator: main.heap.NeverFailingAllocator, ch: *chunk.Chunk, comptime target: Target, allowLossy: bool) []const u8 {
 		var writer = BinaryWriter.init(allocator);
 
 		compressBlockData(ch, allowLossy, &writer);
+		compressBlockEntityData(ch, target, &writer);
 
 		return writer.data.toOwnedSlice();
 	}
 
-	pub fn loadChunk(ch: *chunk.Chunk, data: []const u8) !void {
+	pub fn loadChunk(ch: *chunk.Chunk, comptime side: main.utils.Side, data: []const u8) !void {
 		var reader = BinaryReader.init(data);
 		try decompressBlockData(ch, &reader);
+		decompressBlockEntityData(ch, side, &reader) catch |err| {
+			std.log.err("{}", .{@as(ChunkCompressionAlgo, @enumFromInt(data[3]))});
+			return err;
+		};
 	}
+
 	fn compressBlockData(ch: *chunk.Chunk, allowLossy: bool, writer: *BinaryWriter) void {
 		if(ch.data.paletteLength == 1) {
 			writer.writeEnum(ChunkCompressionAlgo, .uniform);
@@ -385,9 +395,68 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 			.uniform => {
 				ch.data.palette[0] = main.blocks.Block.fromInt(try reader.readInt(u32));
 			},
-			_ => {
-				return error.corrupted;
-			},
+		}
+	}
+
+	pub fn compressBlockEntityData(ch: *chunk.Chunk, comptime target: Target, writer: *BinaryWriter) void {
+		ch.blockPosToEntityDataMapMutex.lock();
+		defer ch.blockPosToEntityDataMapMutex.unlock();
+
+		if(ch.blockPosToEntityDataMap.count() == 0) return;
+
+		writer.writeEnum(BlockEntityCompressionAlgo, .raw);
+
+		var iterator = ch.blockPosToEntityDataMap.iterator();
+		while(iterator.next()) |entry| {
+			const index = entry.key_ptr.*;
+			const blockEntityIndex = entry.value_ptr.*;
+			const block = ch.data.getValue(index);
+			const blockEntity = block.blockEntity() orelse continue;
+
+			var tempWriter = BinaryWriter.init(main.stackAllocator);
+			defer tempWriter.deinit();
+
+			if(target == .toDisk) {
+				blockEntity.onStoreServerToDisk(blockEntityIndex, &tempWriter);
+			} else {
+				blockEntity.onStoreServerToClient(blockEntityIndex, &tempWriter);
+			}
+
+			if(tempWriter.data.items.len == 0) continue;
+
+			writer.writeInt(u16, @intCast(index));
+			writer.writeVarInt(usize, tempWriter.data.items.len);
+			writer.writeSlice(tempWriter.data.items);
+		}
+	}
+
+	pub fn decompressBlockEntityData(ch: *chunk.Chunk, comptime side: main.utils.Side, reader: *BinaryReader) !void {
+		if(reader.remaining.len == 0) return;
+
+		const compressionAlgo = try reader.readEnum(BlockEntityCompressionAlgo);
+		std.debug.assert(compressionAlgo == .raw);
+
+		while (reader.remaining.len != 0) {
+			const index = try reader.readInt(u16);
+			const pos = ch.getGlobalBlockPosFromIndex(index);
+			const dataLength = try reader.readVarInt(usize);
+
+			const blockEntityData = try reader.readSlice(dataLength);
+			const block = ch.data.getValue(index);
+			const blockEntity = block.blockEntity() orelse {
+				std.log.err("Could not load BlockEntity at position {} for block {s}: Block has no block entity", .{pos, block.id()});
+				continue;
+			};
+
+			var tempReader = BinaryReader.init(blockEntityData);
+			if(side == .server) {
+				blockEntity.onLoadServer(pos, ch, &tempReader) catch |err| {
+					std.log.err("Could not load BlockEntity at position {} for block {s}: {s}", .{pos, block.id(), @errorName(err)});
+					continue;
+				};
+			} else {
+				try blockEntity.onLoadClient(pos, ch, &tempReader);
+			}
 		}
 	}
 };
