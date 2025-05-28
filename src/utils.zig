@@ -1637,6 +1637,20 @@ pub const BinaryReader = struct {
 		return std.mem.readInt(T, self.remaining[0..bufSize], endian);
 	}
 
+	pub fn readVarInt(self: *BinaryWriter, T: type) T {
+		comptime std.debug.assert(@typeInfo(T).int.signedness == .unsigned);
+		var result: T = 0;
+		var shift: std.meta.Int(.unsigned, std.math.log2_int_ceil(comptime_int, @bitSizeOf(T))) = 0;
+		while(true) {
+			const nextByte = try self.readInt(u8);
+			const value: T = nextByte & 0x7f;
+			result |= try std.math.shlExact(T, value, shift);
+			shift = try std.math.add(@TypeOf(shift), shift, 7);
+			if(nextByte & 0x80 == 0) break;
+		}
+		return result;
+	}
+
 	pub fn readFloat(self: *BinaryReader, T: type) error{OutOfBounds, IntOutOfBounds}!T {
 		const IntT = std.meta.Int(.unsigned, @typeInfo(T).float.bits);
 		return @as(T, @bitCast(try self.readInt(IntT)));
@@ -1700,6 +1714,18 @@ pub const BinaryWriter = struct {
 		std.mem.writeInt(T, self.data.addMany(bufSize)[0..bufSize], value, endian);
 	}
 
+	pub fn writeVarInt(self: *BinaryWriter, T: type, value: T) void {
+		comptime std.debug.assert(@typeInfo(T).int.signedness == .unsigned);
+		var remaining: T = value;
+		while(true) {
+			var writeByte: u8 = @intCast(remaining & 0x7f);
+			remaining >>= 7;
+			if(remaining != 0) writeByte |= 0x80;
+			self.writeInt(u8, writeByte);
+			if(remaining == 0) break;
+		}
+	}
+
 	pub fn writeFloat(self: *BinaryWriter, T: type, value: T) void {
 		const IntT = std.meta.Int(.unsigned, @typeInfo(T).float.bits);
 		self.writeInt(IntT, @bitCast(value));
@@ -1737,6 +1763,19 @@ const ReadWriteTest = struct {
 
 		var reader = getReader(writer.data.items);
 		const actual = try reader.readInt(IntT);
+
+		try std.testing.expectEqual(expected, actual);
+	}
+	fn testVarInt(comptime IntT: type, expected: IntT) !void {
+		var writer = getWriter();
+		defer writer.deinit();
+		writer.writeVarInt(IntT, expected);
+
+		const expectedWidth = std.math.divCeil(comptime_int, std.math.log2_int_ceil(IntT, @max(1, expected), 7));
+		try std.testing.expectEqual(expectedWidth, writer.data.items.len);
+
+		var reader = getReader(writer.data.items);
+		const actual = try reader.readVarInt(IntT);
 
 		try std.testing.expectEqual(expected, actual);
 	}
@@ -1803,6 +1842,17 @@ test "read/write signed int" {
 		try ReadWriteTest.testInt(intT, 0);
 		try ReadWriteTest.testInt(intT, upperMid);
 		try ReadWriteTest.testInt(intT, max);
+	}
+}
+
+test "read/write unsigned varint" {
+	inline for([_]type{u0, u1, u2, u4, u5, u8, u16, u31, u32, u64, u128}) |IntT| {
+		for(0..@bitSizeOf(IntT)) |i| {
+			try ReadWriteTest.testInt(IntT, @as(IntT, 1) << @intCast(i));
+			try ReadWriteTest.testInt(IntT, (@as(IntT, 1) << @intCast(i)) - 1);
+		}
+		const max = std.math.maxInt(IntT);
+		try ReadWriteTest.testInt(IntT, max);
 	}
 }
 
