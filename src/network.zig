@@ -1310,6 +1310,7 @@ pub const Protocols = struct {
 			if(block.typ != blockType) return;
 			const blockEntity = block.blockEntity() orelse return;
 			try blockEntity.updateServerData(pos, &ch.super, reader);
+			ch.setChanged();
 
 			sendServerDataUpdateToClientsInternal(pos, &ch.super, block, blockEntity);
 		}
