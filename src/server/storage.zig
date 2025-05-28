@@ -278,6 +278,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 		if(ch.data.paletteLength == 1) {
 			writer.writeEnum(ChunkCompressionAlgo, .uniform);
 			writer.writeInt(u32, ch.data.palette[0].toInt());
+			return;
 		}
 		if(ch.data.paletteLength < 256) {
 			var uncompressedData: [chunk.chunkVolume]u8 = undefined;
