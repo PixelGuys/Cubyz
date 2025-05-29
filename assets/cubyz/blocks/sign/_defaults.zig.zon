@@ -1,0 +1,16 @@
+.{
+	.tags = .{.wood},
+	.blockHealth = 2,
+	.drops = .{
+		.{.items = .{.auto}},
+	},
+	.viewThrough = true,
+	.rotation = .sign,
+	.model = .{
+		.side = "cubyz:sign/side",
+		.ceiling = "cubyz:sign/ceiling",
+		.floor = "cubyz:sign/floor",
+	},
+	.blockEntity = .sign,
+	.lodReplacement = "cubyz:air",
+}
