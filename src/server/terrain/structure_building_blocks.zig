@@ -124,10 +124,14 @@ pub const StructureBuildingBlock = struct {
 			std.log.err("['{s}'] Missing blueprint field.", .{stringId});
 			return error.MissingBlueprintIdField;
 		};
-		const blueprints = blueprintCache.get(blueprintId) orelse {
+		const blueprintsPtr = blueprintCache.get(blueprintId) orelse {
 			std.log.err("['{s}'] Could not find blueprint '{s}'.", .{stringId, blueprintId});
 			return error.MissingBlueprint;
 		};
+
+		const blueprints = arenaAllocator.create([4]BlueprintEntry);
+		blueprints.* = blueprintsPtr.*;
+
 		const self = StructureBuildingBlock{
 			.id = stringId,
 			.children = arenaAllocator.alloc(AliasTable(Child), childBlockStringId.items.len),
@@ -137,13 +141,46 @@ pub const StructureBuildingBlock = struct {
 		for(childBlockStringId.items, 0..) |colorName, colorIndex| {
 			self.children[colorIndex] = try initChildTableFromZon(stringId, colorName, colorIndex, childrenZon.getChild(colorName));
 		}
+		self.updateBlueprintChildLists();
 		return self;
 	}
+	pub fn updateBlueprintChildLists(self: StructureBuildingBlock) void {
+		for(self.children, 0..) |child, index| {
+			if(child.items.len == 0) continue;
+
+			var found = false;
+			for(self.blueprints[0].childBlocks) |blueprintChild| {
+				if(blueprintChild.index != index) continue;
+				found = true;
+				break;
+			}
+			if(found) break;
+			std.log.err("['{s}'] Blueprint doesn't contain child '{s}' but configuration for it was specified.", .{self.id, childBlockStringId.items[index]});
+		}
+		for(self.blueprints, 0..) |*b, i| {
+			var childBlocks: ListUnmanaged(BlueprintEntry.StructureBlock) = .{};
+			defer childBlocks.deinit(main.stackAllocator);
+
+			for(b.childBlocks) |c| {
+				if(self.children[c.index].items.len == 0) {
+					if(i == 0) std.log.err("['{s}'] Missing child structure configuration for child '{s}'", .{self.id, c.id()});
+					continue;
+				}
+				childBlocks.append(main.stackAllocator, c);
+			}
+			b.childBlocks = arenaAllocator.dupe(BlueprintEntry.StructureBlock, childBlocks.items);
+		}
+	}
 	pub fn initInline(sbbId: []const u8) !StructureBuildingBlock {
-		const blueprints = blueprintCache.get(sbbId) orelse {
+		const blueprintsPtr = blueprintCache.get(sbbId) orelse {
 			std.log.err("['{s}'] Could not find blueprint '{s}'.", .{sbbId, sbbId});
 			return error.MissingBlueprint;
 		};
+
+		const blueprints = arenaAllocator.create([4]BlueprintEntry);
+		blueprints.* = blueprintsPtr.*;
+		for(blueprints) |*b| b.childBlocks = &.{};
+
 		return .{
 			.id = sbbId,
 			.children = &.{},
@@ -154,9 +191,7 @@ pub const StructureBuildingBlock = struct {
 		return &self.blueprints[@intFromEnum(rotation)];
 	}
 	pub fn pickChild(self: StructureBuildingBlock, block: BlueprintEntry.StructureBlock, seed: *u64) ?*const StructureBuildingBlock {
-		if(self.children.len == 0) return null;
-		const child = self.children[block.index].sampleSafe(seed) orelse return null;
-		return child.structure;
+		return self.children[block.index].sample(seed).structure;
 	}
 };
 
@@ -167,7 +202,7 @@ fn initChildTableFromZon(parentId: []const u8, colorName: []const u8, colorIndex
 		return .init(arenaAllocator, &.{});
 	}
 	if(zon.array.items.len == 0) {
-		std.log.warn("['{s}'->'{s}'] Empty children list.", .{parentId, colorName});
+		std.log.err("['{s}'->'{s}'] Empty children list not allowed. Remove 'children' field or add child structure configurations.", .{parentId, colorName});
 		return .init(arenaAllocator, &.{});
 	}
 	const list = arenaAllocator.alloc(Child, zon.array.items.len);
