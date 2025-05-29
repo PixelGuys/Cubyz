@@ -991,6 +991,10 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 
 	pub fn render(self: TextBuffer, _x: f32, _y: f32, _fontSize: f32) void {
 		self.renderShadow(_x, _y, _fontSize);
+		self.renderTextWithoutShadow(_x, _y, _fontSize);
+	}
+
+	pub fn renderTextWithoutShadow(self: TextBuffer, _x: f32, _y: f32, _fontSize: f32) void {
 		const oldTranslation = draw.setTranslation(.{_x, _y});
 		defer draw.restoreTranslation(oldTranslation);
 		const oldScale = draw.setScale(_fontSize/16.0);

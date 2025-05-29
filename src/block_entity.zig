@@ -270,7 +270,7 @@ pub const BlockEntityTypes = struct {
 		var textureDeinitList: main.List(graphics.Texture) = undefined;
 		var textureDeinitLock: std.Thread.Mutex = .{};
 		var pipeline: graphics.Pipeline = undefined;
-		var uniforms: struct{
+		var uniforms: struct {
 			ambientLight: c_int,
 			projectionMatrix: c_int,
 			viewMatrix: c_int,
@@ -284,7 +284,7 @@ pub const BlockEntityTypes = struct {
 
 		// TODO: Load these from some per-block settings
 		const textureWidth = 128;
-		const textureHeight = 64;
+		const textureHeight = 72;
 		const textureMargin = 4;
 
 		pub const id = "sign";
@@ -478,12 +478,15 @@ pub const BlockEntityTypes = struct {
 				signData.renderedTexture = .{.textureID = finalFrameBuffer.texture};
 				defer c.glDeleteFramebuffers(1, &finalFrameBuffer.frameBuffer);
 
-
 				const oldTranslation = graphics.draw.setTranslation(.{textureMargin, textureMargin});
 				defer graphics.draw.restoreTranslation(oldTranslation);
 				const oldClip = graphics.draw.setClip(.{textureWidth - 2*textureMargin, textureHeight - 2*textureMargin});
 				defer graphics.draw.restoreClip(oldClip);
-				graphics.draw.text(signData.text, textureMargin, textureMargin, 16, .center);
+
+				var textBuffer = graphics.TextBuffer.init(main.stackAllocator, signData.text, .{.color = 0x000000}, false, .center); // TODO: Make the color configurable in the zon
+				defer textBuffer.deinit();
+				_ = textBuffer.calculateLineBreaks(16, textureWidth - 2*textureMargin);
+				textBuffer.renderTextWithoutShadow(0, 0, 16);
 			}
 
 			c.glBindFramebuffer(c.GL_FRAMEBUFFER, @bitCast(oldFramebufferBinding));

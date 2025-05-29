@@ -50,8 +50,8 @@ fn apply(_: usize) void {
 
 pub fn onOpen() void {
 	const list = VerticalList.init(.{padding, 16 + padding}, 300, 16);
-	const width = 120;
-	textComponent = TextInput.init(.{0, 0}, width, 32*4, oldText, .{.callback = &apply}, .{});
+	const width = 128 + padding;
+	textComponent = TextInput.init(.{0, 0}, width, 16*4 + 8, oldText, .{.callback = &apply}, .{});
 	list.add(textComponent);
 	list.add(Button.initText(.{0, 0}, 100, "Apply", .{.callback = &apply}));
 	list.finish(.center);
