@@ -1,16 +1,22 @@
 const std = @import("std");
 
 const main = @import("main.zig");
-const Vec3i = main.vec.Vec3i;
 const Block = main.blocks.Block;
 const Chunk = main.chunk.Chunk;
 const ChunkPosition = main.chunk.ChunkPosition;
 const getIndex = main.chunk.getIndex;
+const graphics = main.graphics;
+const c = graphics.c;
 const server = main.server;
 const User = server.User;
 const mesh_storage = main.renderer.mesh_storage;
 const BinaryReader = main.utils.BinaryReader;
 const BinaryWriter = main.utils.BinaryWriter;
+const vec = main.vec;
+const Mat4f = vec.Mat4f;
+const Vec3d = vec.Vec3d;
+const Vec3f = vec.Vec3f;
+const Vec3i = vec.Vec3i;
 
 pub const BlockEntityIndex = main.utils.DenseId(u32);
 
@@ -247,6 +253,8 @@ pub const BlockEntityTypes = struct {
 		pub fn updateServerData(_: Vec3i, _: *Chunk, _: *BinaryReader) BinaryReader.AllErrors!void {}
 		pub fn getServerToClientData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
 		pub fn getClientToServerData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
+
+		pub fn renderAll(_: Mat4f, _: Vec3f, _: Vec3d) void {}
 	};
 
 	pub const Sign = struct {
@@ -256,14 +264,51 @@ pub const BlockEntityTypes = struct {
 		const StorageClient = BlockEntityDataStorage(struct {
 			text: []const u8,
 			renderedTexture: ?main.graphics.Texture = null,
+			blockPos: Vec3i,
+			block: main.blocks.Block,
 		});
+		var textureDeinitList: main.List(graphics.Texture) = undefined;
+		var textureDeinitLock: std.Thread.Mutex = .{};
+		var pipeline: graphics.Pipeline = undefined;
+		var uniforms: struct{
+			ambientLight: c_int,
+			projectionMatrix: c_int,
+			viewMatrix: c_int,
+			playerPositionInteger: c_int,
+			playerPositionFraction: c_int,
+			quadIndex: c_int,
+			lightData: c_int,
+			chunkPos: c_int,
+			blockPos: c_int,
+		} = undefined;
+
+		// TODO: Load these from some per-block settings
+		const textureWidth = 128;
+		const textureHeight = 64;
+		const textureMargin = 4;
 
 		pub const id = "sign";
 		pub fn init() void {
 			StorageServer.init();
 			StorageClient.init();
+			textureDeinitList = .init(main.globalAllocator);
+
+			pipeline = graphics.Pipeline.init(
+				"assets/cubyz/shaders/block_entity/sign.vert",
+				"assets/cubyz/shaders/block_entity/sign.frag",
+				"",
+				&uniforms,
+				.{},
+				.{.depthTest = true, .depthCompare = .equal, .depthWrite = false},
+				.{.attachments = &.{.alphaBlending}},
+			);
 		}
 		pub fn deinit() void {
+			while(textureDeinitList.popOrNull()) |texture| {
+				texture.deinit();
+			}
+			textureDeinitList.deinit();
+			pipeline.deinit();
 			StorageServer.deinit();
 			StorageClient.deinit();
 		}
@@ -287,10 +332,20 @@ pub const BlockEntityTypes = struct {
 		pub fn onPlaceClient(pos: Vec3i, chunk: *Chunk) void {
 			const entry = StorageClient.remove(pos, chunk) orelse return;
 			main.globalAllocator.free(entry.text);
+			if(entry.renderedTexture) |texture| {
+				textureDeinitLock.lock();
+				defer textureDeinitLock.unlock();
+				textureDeinitList.append(texture);
+			}
 		}
 		pub fn onBreakClient(pos: Vec3i, chunk: *Chunk) void {
 			const entry = StorageClient.remove(pos, chunk) orelse return;
 			main.globalAllocator.free(entry.text);
+			if(entry.renderedTexture) |texture| {
+				textureDeinitLock.lock();
+				defer textureDeinitLock.unlock();
+				textureDeinitList.append(texture);
+			}
 		}
 		pub fn onPlaceServer(pos: Vec3i, chunk: *Chunk) void {
 			const entry = StorageServer.remove(pos, chunk) orelse return;
@@ -305,8 +360,8 @@ pub const BlockEntityTypes = struct {
 
 			StorageClient.mutex.lock();
 			defer StorageClient.mutex.unlock();
-			const data = StorageClient.get(pos, chunk); // TODO: orelse return .ignored;
-			main.gui.windowlist.sign_editor.openFromSignData(pos, if(data) |_data| _data.text else "TODO: Remove");
+			const data = StorageClient.get(pos, chunk);
+			main.gui.windowlist.sign_editor.openFromSignData(pos, if(data) |_data| _data.text else "");
 
 			return .handled;
 		}
@@ -317,8 +372,20 @@ pub const BlockEntityTypes = struct {
 			defer StorageClient.mutex.unlock();
 
 			const data = StorageClient.getOrPut(pos, chunk);
-			if(data.foundExisting) main.globalAllocator.free(data.valuePtr.text);
-			data.valuePtr.text = main.globalAllocator.dupe(u8, reader.remaining);
+			if(data.foundExisting) {
+				main.globalAllocator.free(data.valuePtr.text);
+				if(data.valuePtr.renderedTexture) |texture| {
+					textureDeinitLock.lock();
+					defer textureDeinitLock.unlock();
+					textureDeinitList.append(texture);
+				}
+			}
+			data.valuePtr.* = .{
+				.blockPos = pos,
+				.block = chunk.data.getValue(chunk.getLocalBlockIndex(pos)),
+				.renderedTexture = null,
+				.text = main.globalAllocator.dupe(u8, reader.remaining),
+			};
 		}
 
 		pub const onLoadServer = updateServerData;
@@ -370,11 +437,86 @@ pub const BlockEntityTypes = struct {
 				defer StorageClient.mutex.unlock();
 
 				const data = StorageClient.getOrPut(pos, mesh.chunk);
-				if(data.foundExisting) main.globalAllocator.free(data.valuePtr.text);
-				data.valuePtr.text = main.globalAllocator.dupe(u8, newText);
+				if(data.foundExisting) {
+					main.globalAllocator.free(data.valuePtr.text);
+					if(data.valuePtr.renderedTexture) |texture| {
+						textureDeinitLock.lock();
+						defer textureDeinitLock.unlock();
+						textureDeinitList.append(texture);
+					}
+				}
+				data.valuePtr.* = .{
+					.blockPos = pos,
+					.block = mesh.chunk.data.getValue(mesh.chunk.getLocalBlockIndex(pos)),
+					.renderedTexture = null,
+					.text = main.globalAllocator.dupe(u8, newText),
+				};
 			}
 
 			main.network.Protocols.blockEntityUpdate.sendClientDataUpdateToServer(main.game.world.?.conn, pos);
+		}
+
+		pub fn renderAll(projectionMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
+
+			var oldFramebufferBinding: c_int = undefined;
+			c.glGetIntegerv(c.GL_DRAW_FRAMEBUFFER_BINDING, &oldFramebufferBinding);
+
+			StorageClient.mutex.lock();
+			defer StorageClient.mutex.unlock();
+
+			for(StorageClient.storage.dense.items) |*signData| {
+				if(signData.renderedTexture != null) continue;
+
+				c.glViewport(0, 0, textureWidth, textureHeight);
+				defer c.glViewport(0, 0, main.Window.width, main.Window.height);
+
+				var finalFrameBuffer: graphics.FrameBuffer = undefined;
+				finalFrameBuffer.init(false, c.GL_NEAREST, c.GL_REPEAT);
+				finalFrameBuffer.updateSize(textureWidth, textureHeight, c.GL_RGBA8);
+				finalFrameBuffer.bind();
+				finalFrameBuffer.clear(.{0, 0, 0, 0});
+				signData.renderedTexture = .{.textureID = finalFrameBuffer.texture};
+				defer c.glDeleteFramebuffers(1, &finalFrameBuffer.frameBuffer);
+
+
+				const oldTranslation = graphics.draw.setTranslation(.{textureMargin, textureMargin});
+				defer graphics.draw.restoreTranslation(oldTranslation);
+				const oldClip = graphics.draw.setClip(.{textureWidth - 2*textureMargin, textureHeight - 2*textureMargin});
+				defer graphics.draw.restoreClip(oldClip);
+				graphics.draw.text(signData.text, textureMargin, textureMargin, 16, .center);
+			}
+
+			c.glBindFramebuffer(c.GL_FRAMEBUFFER, @bitCast(oldFramebufferBinding));
+
+			pipeline.bind(null);
+			c.glBindVertexArray(main.renderer.chunk_meshing.vao);
+
+			c.glUniform3f(uniforms.ambientLight, ambientLight[0], ambientLight[1], ambientLight[2]);
+			c.glUniformMatrix4fv(uniforms.projectionMatrix, 1, c.GL_TRUE, @ptrCast(&projectionMatrix));
+			c.glUniformMatrix4fv(uniforms.viewMatrix, 1, c.GL_TRUE, @ptrCast(&main.game.camera.viewMatrix));
+			c.glUniform3i(uniforms.playerPositionInteger, @intFromFloat(@floor(playerPos[0])), @intFromFloat(@floor(playerPos[1])), @intFromFloat(@floor(playerPos[2])));
+			c.glUniform3f(uniforms.playerPositionFraction, @floatCast(@mod(playerPos[0], 1)), @floatCast(@mod(playerPos[1], 1)), @floatCast(@mod(playerPos[2], 1)));
+
+			outer: for(StorageClient.storage.dense.items) |signData| {
+				if(main.blocks.meshes.model(signData.block).model().internalQuads.len == 0) continue;
+				const quad = main.blocks.meshes.model(signData.block).model().internalQuads[0];
+
+				signData.renderedTexture.?.bindTo(0);
+
+				c.glUniform1i(uniforms.quadIndex, quad.index);
+				const mesh = main.renderer.mesh_storage.getMeshAndIncreaseRefCount(main.chunk.ChunkPosition.initFromWorldPos(signData.blockPos, 1)) orelse continue :outer;
+				defer mesh.decreaseRefCount();
+				mesh.lightingData[0].lock.lockRead();
+				defer mesh.lightingData[0].lock.unlockRead();
+				mesh.lightingData[1].lock.lockRead();
+				defer mesh.lightingData[1].lock.unlockRead();
+				const light: [4]u32 = main.renderer.chunk_meshing.PrimitiveMesh.getLight(mesh, signData.blockPos -% Vec3i{mesh.pos.wx, mesh.pos.wy, mesh.pos.wz}, 0, quad);
+				c.glUniform4ui(uniforms.lightData, light[0], light[1], light[2], light[3]);
+				c.glUniform3i(uniforms.chunkPos, signData.blockPos[0] & ~main.chunk.chunkMask, signData.blockPos[1] & ~main.chunk.chunkMask, signData.blockPos[2] & ~main.chunk.chunkMask);
+				c.glUniform3i(uniforms.blockPos, signData.blockPos[0] & main.chunk.chunkMask, signData.blockPos[1] & main.chunk.chunkMask, signData.blockPos[2] & main.chunk.chunkMask);
+
+				c.glDrawElements(c.GL_TRIANGLES, 6, c.GL_UNSIGNED_INT, null);
+			}
 		}
 	};
 };
@@ -407,4 +549,10 @@ pub fn getByID(_id: ?[]const u8) ?*BlockEntityType {
 	if(blockyEntityTypes.getPtr(id)) |cls| return cls;
 	std.log.err("BlockEntityType with id '{s}' not found", .{id});
 	return null;
+}
+
+pub fn renderAll(projectionMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
+	inline for(@typeInfo(BlockEntityTypes).@"struct".decls) |declaration| {
+		@field(BlockEntityTypes, declaration.name).renderAll(projectionMatrix, ambientLight, playerPos);
+	}
 }
