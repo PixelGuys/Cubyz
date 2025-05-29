@@ -6,7 +6,7 @@ const Palette = @import("assets.zig").Palette;
 const Assets = main.assets.Assets;
 
 var arenaAllocator: main.heap.NeverFailingArenaAllocator = undefined;
-var migrationAllocator: main.heap.NeverFailingAllocator = undefined;
+const migrationAllocator: main.heap.NeverFailingAllocator = arenaAllocator.allocator();
 
 var blockMigrations: std.StringHashMapUnmanaged([]const u8) = undefined;
 var itemMigrations: std.StringHashMapUnmanaged([]const u8) = undefined;
@@ -102,11 +102,10 @@ pub fn apply(comptime typ: MigrationType, palette: *Palette) void {
 }
 
 pub fn init() void {
-	arenaAllocator = .init(main.globalAllocator);
-	migrationAllocator = arenaAllocator.allocator();
 	biomeMigrations = .{};
 	blockMigrations = .{};
 	itemMigrations = .{};
+	arenaAllocator = .init(main.globalAllocator);
 }
 
 pub fn reset() void {
