@@ -80,9 +80,11 @@ pub const draw = struct { // MARK: draw
 	/// Returns the previous clip.
 	pub fn setClip(clipRect: Vec2f) ?Vec4i {
 		std.debug.assert(@reduce(.And, clipRect >= Vec2f{0, 0}));
+		var viewport: [4]c_int = undefined;
+		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
 		var newClip = Vec4i{
 			std.math.lossyCast(i32, translation[0]),
-			main.Window.height - std.math.lossyCast(i32, translation[1] + clipRect[1]*scale),
+			viewport[3] - std.math.lossyCast(i32, translation[1] + clipRect[1]*scale),
 			std.math.lossyCast(i32, clipRect[0]*scale),
 			std.math.lossyCast(i32, clipRect[1]*scale),
 		};
@@ -181,7 +183,9 @@ pub const draw = struct { // MARK: draw
 
 		rectPipeline.bind(getScissor());
 
-		c.glUniform2f(rectUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
+		var viewport: [4]c_int = undefined;
+		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
+		c.glUniform2f(rectUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
 		c.glUniform2f(rectUniforms.start, pos[0], pos[1]);
 		c.glUniform2f(rectUniforms.size, dim[0], dim[1]);
 		c.glUniform1i(rectUniforms.rectColor, @bitCast(color));
@@ -252,7 +256,9 @@ pub const draw = struct { // MARK: draw
 
 		rectBorderPipeline.bind(getScissor());
 
-		c.glUniform2f(rectBorderUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
+		var viewport: [4]c_int = undefined;
+		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
+		c.glUniform2f(rectBorderUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
 		c.glUniform2f(rectBorderUniforms.start, pos[0], pos[1]);
 		c.glUniform2f(rectBorderUniforms.size, dim[0], dim[1]);
 		c.glUniform1i(rectBorderUniforms.rectColor, @bitCast(color));
@@ -314,7 +320,9 @@ pub const draw = struct { // MARK: draw
 
 		linePipeline.bind(getScissor());
 
-		c.glUniform2f(lineUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
+		var viewport: [4]c_int = undefined;
+		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
+		c.glUniform2f(lineUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
 		c.glUniform2f(lineUniforms.start, pos1[0], pos1[1]);
 		c.glUniform2f(lineUniforms.direction, pos2[0] - pos1[0], pos2[1] - pos1[1]);
 		c.glUniform1i(lineUniforms.lineColor, @bitCast(color));
@@ -360,7 +368,9 @@ pub const draw = struct { // MARK: draw
 
 		linePipeline.bind(getScissor());
 
-		c.glUniform2f(lineUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
+		var viewport: [4]c_int = undefined;
+		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
+		c.glUniform2f(lineUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
 		c.glUniform2f(lineUniforms.start, pos[0], pos[1]); // Move the coordinates, so they are in the center of a pixel.
 		c.glUniform2f(lineUniforms.direction, dim[0] - 1, dim[1] - 1); // The height is a lot smaller because the inner edge of the rect is drawn.
 		c.glUniform1i(lineUniforms.lineColor, @bitCast(color));
@@ -421,7 +431,9 @@ pub const draw = struct { // MARK: draw
 		radius *= scale;
 		circlePipeline.bind(getScissor());
 
-		c.glUniform2f(circleUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
+		var viewport: [4]c_int = undefined;
+		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
+		c.glUniform2f(circleUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
 		c.glUniform2f(circleUniforms.center, center[0], center[1]); // Move the coordinates, so they are in the center of a pixel.
 		c.glUniform1f(circleUniforms.radius, radius); // The height is a lot smaller because the inner edge of the rect is drawn.
 		c.glUniform1i(circleUniforms.circleColor, @bitCast(color));
@@ -476,7 +488,9 @@ pub const draw = struct { // MARK: draw
 
 		imagePipeline.bind(getScissor());
 
-		c.glUniform2f(imageUniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
+		var viewport: [4]c_int = undefined;
+		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
+		c.glUniform2f(imageUniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
 		c.glUniform2f(imageUniforms.start, pos[0], pos[1]);
 		c.glUniform2f(imageUniforms.size, dim[0], dim[1]);
 		c.glUniform1i(imageUniforms.color, @bitCast(color));
@@ -496,7 +510,9 @@ pub const draw = struct { // MARK: draw
 		pos = @floor(pos);
 		dim = @ceil(dim);
 
-		c.glUniform2f(uniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
+		var viewport: [4]c_int = undefined;
+		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
+		c.glUniform2f(uniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
 		c.glUniform2f(uniforms.start, pos[0], pos[1]);
 		c.glUniform2f(uniforms.size, dim[0], dim[1]);
 		c.glUniform1i(uniforms.color, @bitCast(color));
@@ -519,7 +535,9 @@ pub const draw = struct { // MARK: draw
 		pos = @floor(pos);
 		dim = @ceil(dim);
 
-		c.glUniform2f(uniforms.screen, @floatFromInt(Window.width), @floatFromInt(Window.height));
+		var viewport: [4]c_int = undefined;
+		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
+		c.glUniform2f(uniforms.screen, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
 		c.glUniform2f(uniforms.start, pos[0], pos[1]);
 		c.glUniform2f(uniforms.size, dim[0], dim[1]);
 		c.glUniform1i(uniforms.color, @bitCast(color));
@@ -980,7 +998,9 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		var x: f32 = 0;
 		var y: f32 = 0;
 		TextRendering.pipeline.bind(draw.getScissor());
-		c.glUniform2f(TextRendering.uniforms.scene, @floatFromInt(main.Window.width), @floatFromInt(main.Window.height));
+		var viewport: [4]c_int = undefined;
+		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
+		c.glUniform2f(TextRendering.uniforms.scene, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
 		c.glUniform1f(TextRendering.uniforms.ratio, draw.scale);
 		c.glUniform1f(TextRendering.uniforms.alpha, @as(f32, @floatFromInt(draw.color >> 24))/255.0);
 		c.glActiveTexture(c.GL_TEXTURE0);
@@ -1046,7 +1066,9 @@ pub const TextBuffer = struct { // MARK: TextBuffer
 		var x: f32 = 0;
 		var y: f32 = 0;
 		TextRendering.pipeline.bind(draw.getScissor());
-		c.glUniform2f(TextRendering.uniforms.scene, @floatFromInt(main.Window.width), @floatFromInt(main.Window.height));
+		var viewport: [4]c_int = undefined;
+		c.glGetIntegerv(c.GL_VIEWPORT, &viewport);
+		c.glUniform2f(TextRendering.uniforms.scene, @floatFromInt(viewport[2]), @floatFromInt(viewport[3]));
 		c.glUniform1f(TextRendering.uniforms.ratio, draw.scale);
 		c.glUniform1f(TextRendering.uniforms.alpha, @as(f32, @floatFromInt(draw.color >> 24))/255.0);
 		c.glActiveTexture(c.GL_TEXTURE0);
