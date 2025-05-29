@@ -157,18 +157,18 @@ pub const StructureBuildingBlock = struct {
 			if(found) break;
 			std.log.err("['{s}'] Blueprint doesn't contain child '{s}' but configuration for it was specified.", .{self.id, childBlockStringId.items[index]});
 		}
-		for(self.blueprints, 0..) |*b, i| {
+		for(self.blueprints, 0..) |*blueprint, index| {
 			var childBlocks: ListUnmanaged(BlueprintEntry.StructureBlock) = .{};
 			defer childBlocks.deinit(main.stackAllocator);
 
-			for(b.childBlocks) |c| {
-				if(self.children[c.index].items.len == 0) {
-					if(i == 0) std.log.err("['{s}'] Missing child structure configuration for child '{s}'", .{self.id, c.id()});
+			for(blueprint.childBlocks) |child| {
+				if(self.children[child.index].items.len == 0) {
+					if(index == 0) std.log.err("['{s}'] Missing child structure configuration for child '{s}'", .{self.id, child.id()});
 					continue;
 				}
-				childBlocks.append(main.stackAllocator, c);
+				childBlocks.append(main.stackAllocator, child);
 			}
-			b.childBlocks = arenaAllocator.dupe(BlueprintEntry.StructureBlock, childBlocks.items);
+			blueprint.childBlocks = arenaAllocator.dupe(BlueprintEntry.StructureBlock, childBlocks.items);
 		}
 	}
 	pub fn initInline(sbbId: []const u8) !StructureBuildingBlock {
@@ -179,7 +179,12 @@ pub const StructureBuildingBlock = struct {
 
 		const blueprints = arenaAllocator.create([4]BlueprintEntry);
 		blueprints.* = blueprintsPtr.*;
-		for(blueprints) |*b| b.childBlocks = &.{};
+		for(blueprints, 0..) |*blueprint, index| {
+			if(index == 0) {
+				for(blueprint.childBlocks) |child| std.log.err("['{s}'] Missing child structure configuration for child '{s}'", .{sbbId, child.id()});
+			}
+			blueprint.childBlocks = &.{};
+		}
 
 		return .{
 			.id = sbbId,
