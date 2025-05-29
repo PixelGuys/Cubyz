@@ -1094,11 +1094,16 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				return currentBlock;
 			}
 			if(currentBlock != _newBlock) {
-				if(currentBlock.blockEntity()) |blockEntity| blockEntity.onBreakServer(.{wx, wy, wz}, &baseChunk.super);
+				if(currentBlock.blockEntity()) |blockEntity| blockEntity.updateServerData(.{wx, wy, wz}, &baseChunk.super, null) catch |err| {
+					std.log.err("Got error {s} while trying to remove entity data in position {} for block {s}", .{@errorName(err), Vec3i{wx, wy, wz}, currentBlock.id()});
+				};
 			}
 			baseChunk.updateBlockAndSetChanged(x, y, z, _newBlock);
 			if(currentBlock != _newBlock) {
-				if(_newBlock.blockEntity()) |blockEntity| blockEntity.onPlaceServer(.{wx, wy, wz}, &baseChunk.super);
+				var reader = utils.BinaryReader.init(&.{});
+				if(_newBlock.blockEntity()) |blockEntity| blockEntity.updateServerData(.{wx, wy, wz}, &baseChunk.super, &reader) catch |err| {
+					std.log.err("Got error {s} while trying to create empty entity data in position {} for block {s}", .{@errorName(err), Vec3i{wx, wy, wz}, _newBlock.id()});
+				};
 			}
 		}
 		baseChunk.mutex.unlock();
