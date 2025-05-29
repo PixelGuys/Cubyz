@@ -5,6 +5,7 @@
 		.{.items = .{.auto}},
 	},
 	.viewThrough = true,
+	.collide = false,
 	.rotation = .sign,
 	.model = .{
 		.side = "cubyz:sign/side",
