@@ -457,7 +457,6 @@ pub const BlockEntityTypes = struct {
 		}
 
 		pub fn renderAll(projectionMatrix: Mat4f, ambientLight: Vec3f, playerPos: Vec3d) void {
-
 			var oldFramebufferBinding: c_int = undefined;
 			c.glGetIntegerv(c.GL_DRAW_FRAMEBUFFER_BINDING, &oldFramebufferBinding);
 
