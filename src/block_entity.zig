@@ -28,9 +28,9 @@ pub const BlockEntityType = struct {
 		onLoadClient: *const fn(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void,
 		onUnloadClient: *const fn(dataIndex: BlockEntityIndex) void,
 		onLoadServer: *const fn(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void,
+		onUnloadServer: *const fn(dataIndex: BlockEntityIndex) void,
 		onStoreServerToDisk: *const fn(dataIndex: BlockEntityIndex, writer: *BinaryWriter) void,
 		onStoreServerToClient: *const fn(dataIndex: BlockEntityIndex, writer: *BinaryWriter) void,
-		onUnloadServer: *const fn(dataIndex: BlockEntityIndex) void,
 		onInteract: *const fn(pos: Vec3i, chunk: *Chunk) EventStatus,
 		updateClientData: *const fn(pos: Vec3i, chunk: *Chunk, reader: ?*BinaryReader) BinaryReader.AllErrors!void,
 		updateServerData: *const fn(pos: Vec3i, chunk: *Chunk, reader: ?*BinaryReader) BinaryReader.AllErrors!void,
@@ -61,14 +61,14 @@ pub const BlockEntityType = struct {
 	pub inline fn onLoadServer(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void {
 		return self.vtable.onLoadServer(pos, chunk, reader);
 	}
+	pub inline fn onUnloadServer(self: *BlockEntityType, dataIndex: BlockEntityIndex) void {
+		return self.vtable.onUnloadServer(dataIndex);
+	}
 	pub inline fn onStoreServerToDisk(self: *BlockEntityType, dataIndex: BlockEntityIndex, writer: *BinaryWriter) void {
 		return self.vtable.onStoreServerToDisk(dataIndex, writer);
 	}
 	pub inline fn onStoreServerToClient(self: *BlockEntityType, dataIndex: BlockEntityIndex, writer: *BinaryWriter) void {
 		return self.vtable.onStoreServerToClient(dataIndex, writer);
-	}
-	pub inline fn onUnloadServer(self: *BlockEntityType, dataIndex: BlockEntityIndex) void {
-		return self.vtable.onUnloadServer(dataIndex);
 	}
 	pub inline fn onInteract(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk) EventStatus {
 		return self.vtable.onInteract(pos, chunk);
@@ -208,13 +208,13 @@ pub const BlockEntityTypes = struct {
 		pub fn onLoadClient(_: Vec3i, _: *Chunk, _: *BinaryReader) BinaryReader.AllErrors!void {}
 		pub fn onUnloadClient(_: BlockEntityIndex) void {}
 		pub fn onLoadServer(_: Vec3i, _: *Chunk, _: *BinaryReader) BinaryReader.AllErrors!void {}
-		pub fn onStoreServerToDisk(_: BlockEntityIndex, _: *BinaryWriter) void {}
-		pub fn onStoreServerToClient(_: BlockEntityIndex, _: *BinaryWriter) void {}
 		pub fn onUnloadServer(dataIndex: BlockEntityIndex) void {
 			StorageServer.mutex.lock();
 			defer StorageServer.mutex.unlock();
 			_ = StorageServer.removeAtIndex(dataIndex) orelse unreachable;
 		}
+		pub fn onStoreServerToDisk(_: BlockEntityIndex, _: *BinaryWriter) void {}
+		pub fn onStoreServerToClient(_: BlockEntityIndex, _: *BinaryWriter) void {}
 		pub fn onInteract(pos: Vec3i, _: *Chunk) EventStatus {
 			if(main.KeyBoard.key("shift").pressed) return .ignored;
 
