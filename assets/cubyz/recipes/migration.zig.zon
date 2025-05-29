@@ -1,10 +1,66 @@
 .{
 	.{
+		.inputs = .{"cubyz:baobab_log"},
+		.output = "cubyz:log/baobab",
+	},
+	.{
+		.inputs = .{"cubyz:baobab_top"},
+		.output = "cubyz:log/baobab",
+	},
+	.{
 		.inputs = .{"cubyz:birch_log"},
 		.output = "cubyz:log/birch",
 	},
 	.{
 		.inputs = .{"cubyz:birch_top"},
 		.output = "cubyz:log/birch",
+	},
+	.{
+		.inputs = .{"cubyz:bolete_stem"},
+		.output = "cubyz:log/bolete",
+	},
+	.{
+		.inputs = .{"cubyz:cactus"},
+		.output = "cubyz:log/cactus",
+	},
+	.{
+		.inputs = .{"cubyz:glimmergill"},
+		.output = "cubyz:log/glimmergill",
+	},
+	.{
+		.inputs = .{"cubyz:mahogany_log"},
+		.output = "cubyz:log/mahogany",
+	},
+	.{
+		.inputs = .{"cubyz:mahogany_top"},
+		.output = "cubyz:log/mahogany",
+	},
+	.{
+		.inputs = .{"cubyz:oak_log"},
+		.output = "cubyz:log/oak",
+	},
+	.{
+		.inputs = .{"cubyz:oak_top"},
+		.output = "cubyz:log/oak",
+	},
+	.{
+		.inputs = .{"cubyz:pine_log"},
+		.output = "cubyz:log/pine",
+	},
+	.{
+		.inputs = .{"cubyz:pine_top"},
+		.output = "cubyz:log/pine",
+	},
+	.{
+		.inputs = .{"cubyz:toadstool_stem"},
+		.output = "cubyz:log/toadstool",
+	},
+	.{
+		.inputs = .{"cubyz:willow_log"},
+		.output = "cubyz:log/willow",
+	},
+	.{
+		.inputs = .{"cubyz:willow_top"},
+		.output = "cubyz:log/willow",
 	},
 }

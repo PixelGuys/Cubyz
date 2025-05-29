@@ -1,8 +1,9 @@
 .{
 	.tags = .{.wood},
 	.blockHealth = 4,
+	.hasItem = false,
 	.drops = .{
-		.{.items = .{.auto}},
+		.{.items = .{"cubyz:log/glimmergill"}},
 	},
 	.rotation = .log,
 	.model = "cubyz:cube",
