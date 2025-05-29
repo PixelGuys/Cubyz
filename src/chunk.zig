@@ -277,11 +277,14 @@ pub const Chunk = struct { // MARK: Chunk
 	}
 
 	pub fn deinit(self: *Chunk) void {
-		// TODO: We should either unload this data here or make sure it was unloaded before.
+		self.deinitContent();
+		memoryPool.destroy(@alignCast(self));
+	}
+
+	fn deinitContent(self: *Chunk) void {
 		std.debug.assert(self.blockPosToEntityDataMap.count() == 0);
 		self.blockPosToEntityDataMap.deinit(main.globalAllocator.allocator);
 		self.data.deinit();
-		memoryPool.destroy(@alignCast(self));
 	}
 
 	pub fn unloadBlockEntities(self: *Chunk, comptime side: main.utils.Side) void {
@@ -384,7 +387,7 @@ pub const ServerChunk = struct { // MARK: ServerChunk
 			self.save(main.server.world.?);
 		}
 		self.super.unloadBlockEntities(.server);
-		self.super.data.deinit();
+		self.super.deinitContent();
 		serverPool.destroy(@alignCast(self));
 	}
 
