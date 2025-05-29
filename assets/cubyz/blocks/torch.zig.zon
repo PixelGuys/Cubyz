@@ -9,13 +9,11 @@
 	.viewThrough = true,
 	.absorbedLight = 0x010101,
 	.collide = false,
-	.rotation = .sign,
+	.rotation = .torch,
 	.model = .{
+		.base = "cubyz:torch",
 		.side = "cubyz:torch_side",
-		.ceiling = "cubyz:torch_side",
-		.floor = "cubyz:torch_side",
 	},
-	.blockEntity = .sign,
 	.texture = "cubyz:torch",
 	.item = .{
 		.texture = "torch.png",
