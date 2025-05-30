@@ -1,5 +1,5 @@
 .{
-	.blueprint = "cubyz:tree/birch/generator",
+	.blueprint = "cubyz:tree/birch/forest_generator",
 	.children = .{
 		.crimson = .{
 			.{.structure = "cubyz:tree/birch/1/tree/1"},
