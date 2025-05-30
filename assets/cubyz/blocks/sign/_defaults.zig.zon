@@ -5,6 +5,7 @@
 		.{.items = .{.auto}},
 	},
 	.viewThrough = true,
+	.alwaysViewThrough = true,
 	.collide = false,
 	.rotation = .sign,
 	.model = .{
