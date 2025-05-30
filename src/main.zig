@@ -23,6 +23,7 @@ pub const random = @import("random.zig");
 pub const renderer = @import("renderer.zig");
 pub const rotation = @import("rotation.zig");
 pub const settings = @import("settings.zig");
+pub const particles = @import("particles.zig");
 const tag = @import("tag.zig");
 pub const Tag = tag.Tag;
 pub const utils = @import("utils.zig");
@@ -643,6 +644,9 @@ pub fn main() void { // MARK: main()
 
 	gui.init();
 	defer gui.deinit();
+
+	particles.ParticleManager.init();
+	defer particles.ParticleManager.deinit();
 
 	if(settings.playerName.len == 0) {
 		gui.openWindow("change_name");
