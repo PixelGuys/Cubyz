@@ -172,7 +172,7 @@ pub const StructureBuildingBlock = struct {
 		}
 	}
 	pub fn initInline(sbbId: []const u8) !StructureBuildingBlock {
-		const blueprintsPtr = blueprintCache.get(sbbId) orelse {
+		const blueprintsTemplate = blueprintCache.get(sbbId) orelse {
 			std.log.err("['{s}'] Could not find blueprint '{s}'.", .{sbbId, sbbId});
 			return error.MissingBlueprint;
 		};
