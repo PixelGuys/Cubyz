@@ -808,18 +808,8 @@ pub const Protocols = struct {
 			writer.writeSlice(chunkData);
 			conn.send(.fast, id, writer.data.items); // TODO: Can this use the slow channel?
 		}
-		fn sendChunkLocally(ch: *chunk.ServerChunk) void {
-			const chunkCopy = chunk.Chunk.init(ch.super.pos);
-			chunkCopy.data.deinit();
-			chunkCopy.data.initCopy(&ch.super.data);
-			renderer.mesh_storage.updateChunkMesh(chunkCopy);
-		}
 		pub fn sendChunk(conn: *Connection, ch: *chunk.ServerChunk) void {
-			if(conn.user.?.isLocal and false) { // TODO: block entities with local transmission
-				sendChunkLocally(ch);
-			} else {
-				sendChunkOverTheNetwork(conn, ch);
-			}
+			sendChunkOverTheNetwork(conn, ch);
 		}
 	};
 	pub const playerPosition = struct {
