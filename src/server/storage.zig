@@ -278,10 +278,7 @@ pub const ChunkCompression = struct { // MARK: ChunkCompression
 	pub fn loadChunk(ch: *chunk.Chunk, comptime side: main.utils.Side, data: []const u8) !void {
 		var reader = BinaryReader.init(data);
 		try decompressBlockData(ch, &reader);
-		decompressBlockEntityData(ch, side, &reader) catch |err| {
-			std.log.err("{}", .{@as(ChunkCompressionAlgo, @enumFromInt(data[3]))});
-			return err;
-		};
+		try decompressBlockEntityData(ch, side, &reader);
 	}
 
 	fn compressBlockData(ch: *chunk.Chunk, allowLossy: bool, writer: *BinaryWriter) void {
