@@ -5,7 +5,7 @@
 	.absorbedLight = 0x000000,
 	.viewThrough = true,
 	.hasBackFace = true,
-	.rotation = .no_rotation,
+	.rotation = "cubyz:no_rotation",
 	.degradable = false,
 	.collide = false,
 	.texture = "cubyz:void",

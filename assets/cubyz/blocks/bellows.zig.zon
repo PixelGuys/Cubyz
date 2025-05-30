@@ -4,7 +4,7 @@
 	.drops = .{
 		.{.items = .{.auto}},
 	},
-	.rotation = .planar,
+	.rotation = "cubyz:planar",
 	.model = "cubyz:bellows",
 	.texture = "cubyz:bellows/side",
 	.texture_front = "cubyz:bellows/nozzle",

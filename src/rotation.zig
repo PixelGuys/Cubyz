@@ -12,7 +12,7 @@ const Vec3f = vec.Vec3f;
 const Mat4f = vec.Mat4f;
 const ZonElement = main.ZonElement;
 
-const list = @import("rotation/_list.zig");
+const list = @import("rotation");
 
 pub const RayIntersectionResult = struct {
 	distance: f64,
@@ -196,8 +196,8 @@ pub fn deinit() void {
 
 pub fn getByID(id: []const u8) *RotationMode {
 	if(rotationModes.getPtr(id)) |mode| return mode;
-	std.log.err("Could not find rotation mode {s}. Using no_rotation instead.", .{id});
-	return rotationModes.getPtr("no_rotation").?;
+	std.log.err("Could not find rotation mode {s}. Using cubyz:no_rotation instead.", .{id});
+	return rotationModes.getPtr("cubyz:no_rotation").?;
 }
 
 pub fn register(comptime id: []const u8, comptime Mode: type) void {

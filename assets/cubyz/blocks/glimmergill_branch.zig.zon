@@ -5,7 +5,7 @@
 		.{.items = .{.auto}},
 	},
 	.absorbedLight = 0x202830,
-	.rotation = .branch,
+	.rotation = "cubyz:branch",
 	.model = .{
 		.radius = 4,
 	},

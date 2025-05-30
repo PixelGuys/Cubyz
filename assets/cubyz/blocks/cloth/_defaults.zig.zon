@@ -6,5 +6,5 @@
 	},
 	.collide = false,
 	.model = "cubyz:carpet",
-	.rotation = .carpet,
+	.rotation = "cubyz:carpet",
 }

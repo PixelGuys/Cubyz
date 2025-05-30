@@ -5,7 +5,7 @@
 		.{.items = .{.auto}},
 	},
 	.allowOres = true,
-	.rotation = .stairs,
+	.rotation = "cubyz:stairs",
 	.model = "cubyz:cube",
 	.texture = "cubyz:terracotta",
 }
