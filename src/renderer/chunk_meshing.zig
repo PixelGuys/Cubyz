@@ -1212,7 +1212,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		if(oldBlock == newBlock) {
 			if(newBlock.blockEntity()) |blockEntity| {
 				var reader = main.utils.BinaryReader.init(blockEntityData);
-				blockEntity.updateClientData(.{_x, _y, _z}, self.chunk, &reader) catch |err| {
+				blockEntity.updateClientData(.{_x, _y, _z}, self.chunk, .{.createOrUpdate = &reader}) catch |err| {
 					std.log.err("Got error {s} while trying to apply block entity data {any} in position {} for block {s}", .{@errorName(err), blockEntityData, Vec3i{_x, _y, _z}, newBlock.id()});
 				};
 			}
@@ -1222,7 +1222,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		self.mutex.unlock();
 
 		if(oldBlock.blockEntity()) |blockEntity| {
-			blockEntity.updateClientData(.{_x, _y, _z}, self.chunk, null) catch |err| {
+			blockEntity.updateClientData(.{_x, _y, _z}, self.chunk, .remove) catch |err| {
 				std.log.err("Got error {s} while trying to remove entity data in position {} for block {s}", .{@errorName(err), Vec3i{_x, _y, _z}, oldBlock.id()});
 			};
 		}
@@ -1279,7 +1279,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 
 		if(newBlock.blockEntity()) |blockEntity| {
 			var reader = main.utils.BinaryReader.init(blockEntityData);
-			blockEntity.updateClientData(.{_x, _y, _z}, self.chunk, &reader) catch |err| {
+			blockEntity.updateClientData(.{_x, _y, _z}, self.chunk, .{.createOrUpdate = &reader}) catch |err| {
 				std.log.err("Got error {s} while trying to apply block entity data {any} in position {} for block {s}", .{@errorName(err), blockEntityData, Vec3i{_x, _y, _z}, newBlock.id()});
 			};
 		}

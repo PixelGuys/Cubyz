@@ -20,6 +20,11 @@ const Vec3i = vec.Vec3i;
 
 pub const BlockEntityIndex = main.utils.DenseId(u32);
 
+const UpdateEvent = union(enum) {
+	remove: void,
+	createOrUpdate: *BinaryReader,
+};
+
 pub const BlockEntityType = struct {
 	id: []const u8,
 	vtable: VTable,
@@ -32,8 +37,8 @@ pub const BlockEntityType = struct {
 		onStoreServerToDisk: *const fn(dataIndex: BlockEntityIndex, writer: *BinaryWriter) void,
 		onStoreServerToClient: *const fn(dataIndex: BlockEntityIndex, writer: *BinaryWriter) void,
 		onInteract: *const fn(pos: Vec3i, chunk: *Chunk) EventStatus,
-		updateClientData: *const fn(pos: Vec3i, chunk: *Chunk, reader: ?*BinaryReader) BinaryReader.AllErrors!void,
-		updateServerData: *const fn(pos: Vec3i, chunk: *Chunk, reader: ?*BinaryReader) BinaryReader.AllErrors!void,
+		updateClientData: *const fn(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void,
+		updateServerData: *const fn(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void,
 		getServerToClientData: *const fn(pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void,
 		getClientToServerData: *const fn(pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void,
 	};
@@ -73,11 +78,11 @@ pub const BlockEntityType = struct {
 	pub inline fn onInteract(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk) EventStatus {
 		return self.vtable.onInteract(pos, chunk);
 	}
-	pub inline fn updateClientData(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, reader: ?*BinaryReader) BinaryReader.AllErrors!void {
-		return try self.vtable.updateClientData(pos, chunk, reader);
+	pub inline fn updateClientData(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void {
+		return try self.vtable.updateClientData(pos, chunk, event);
 	}
-	pub inline fn updateServerData(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, reader: ?*BinaryReader) BinaryReader.AllErrors!void {
-		return try self.vtable.updateServerData(pos, chunk, reader);
+	pub inline fn updateServerData(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void {
+		return try self.vtable.updateServerData(pos, chunk, event);
 	}
 	pub inline fn getServerToClientData(self: *BlockEntityType, pos: Vec3i, chunk: *Chunk, writer: *BinaryWriter) void {
 		return self.vtable.getServerToClientData(pos, chunk, writer);
@@ -227,8 +232,8 @@ pub const BlockEntityTypes = struct {
 			return .handled;
 		}
 
-		pub fn updateClientData(_: Vec3i, _: *Chunk, _: ?*BinaryReader) BinaryReader.AllErrors!void {}
-		pub fn updateServerData(_: Vec3i, _: *Chunk, _: ?*BinaryReader) BinaryReader.AllErrors!void {}
+		pub fn updateClientData(_: Vec3i, _: *Chunk, _: UpdateEvent) BinaryReader.AllErrors!void {}
+		pub fn updateServerData(_: Vec3i, _: *Chunk, _: UpdateEvent) BinaryReader.AllErrors!void {}
 		pub fn getServerToClientData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
 		pub fn getClientToServerData(_: Vec3i, _: *Chunk, _: *BinaryWriter) void {}
 
@@ -327,9 +332,11 @@ pub const BlockEntityTypes = struct {
 			return .handled;
 		}
 
-		pub const onLoadClient = updateClientData;
-		pub fn updateClientData(pos: Vec3i, chunk: *Chunk, reader: ?*BinaryReader) BinaryReader.AllErrors!void {
-			if(reader == null or reader.?.remaining.len == 0) {
+		pub fn onLoadClient(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void {
+			return updateClientData(pos, chunk, .{.createOrUpdate = reader});
+		}
+		pub fn updateClientData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void {
+			if(event == .remove or event.createOrUpdate.remaining.len == 0) {
 				const entry = StorageClient.remove(pos, chunk) orelse return;
 				entry.deinit();
 				return;
@@ -346,13 +353,15 @@ pub const BlockEntityTypes = struct {
 				.blockPos = pos,
 				.block = chunk.data.getValue(chunk.getLocalBlockIndex(pos)),
 				.renderedTexture = null,
-				.text = main.globalAllocator.dupe(u8, reader.?.remaining),
+				.text = main.globalAllocator.dupe(u8, event.createOrUpdate.remaining),
 			};
 		}
 
-		pub const onLoadServer = updateServerData;
-		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, reader: ?*BinaryReader) BinaryReader.AllErrors!void {
-			if(reader == null or reader.?.remaining.len == 0) {
+		pub fn onLoadServer(pos: Vec3i, chunk: *Chunk, reader: *BinaryReader) BinaryReader.AllErrors!void {
+			return updateServerData(pos, chunk, .{.createOrUpdate = reader});
+		}
+		pub fn updateServerData(pos: Vec3i, chunk: *Chunk, event: UpdateEvent) BinaryReader.AllErrors!void {
+			if(event == .remove or event.createOrUpdate.remaining.len == 0) {
 				const entry = StorageServer.remove(pos, chunk) orelse return;
 				main.globalAllocator.free(entry.text);
 				return;
@@ -363,7 +372,7 @@ pub const BlockEntityTypes = struct {
 
 			const data = StorageServer.getOrPut(pos, chunk);
 			if(data.foundExisting) main.globalAllocator.free(data.valuePtr.text);
-			data.valuePtr.text = main.globalAllocator.dupe(u8, reader.?.remaining);
+			data.valuePtr.text = main.globalAllocator.dupe(u8, event.createOrUpdate.remaining);
 		}
 
 		pub const onStoreServerToClient = onStoreServerToDisk;
