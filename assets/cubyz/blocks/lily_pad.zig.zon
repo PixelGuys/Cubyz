@@ -8,7 +8,7 @@
 	.alwaysViewThrough = true,
 	.absorbedLight = 0x121012,
 	.model = "cubyz:plane",
-	.rotation = .planar,
+	.rotation = "cubyz:planar",
 	.texture = "cubyz:lily_pad",
 	.item = .{
 		.texture = "lily_pad.png",

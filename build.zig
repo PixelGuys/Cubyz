@@ -79,47 +79,63 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 	}
 }
 
-fn addModFeature(b: *std.Build, exe: *std.Build.Step.Compile, writeFiles: *std.Build.Step.WriteFile, name: []const u8) !void {
-	var out: std.ArrayListUnmanaged(u8) = .{};
+pub fn addModFeatureStep(builder: *std.Build, name: []const u8) !std.Build.Step {
+    return std.Build.Step.init(.{
+        .id = .custom,
+        .name = name,
+        .owner = builder,
+        .makeFn = struct {
+            pub fn makeFn(step: *std.Build.Step, _: std.Build.Step.MakeOptions) anyerror!void {
+                const b = step.owner;
+				const allocator = b.allocator;
 
-	var assetsDir = try std.fs.cwd().openDir("mods/", .{.iterate = true});
-	defer assetsDir.close();
-	{
-		var iterator = assetsDir.iterate();
-		while(try iterator.next()) |addonEntry| {
-			if(addonEntry.kind != .directory) continue;
-			var addon = try assetsDir.openDir(addonEntry.name, .{});
-			defer addon.close();
+                var out: std.ArrayListUnmanaged(u8) = .{};
 
-			var rotationDir = addon.openDir(name, .{.iterate = true}) catch continue;
-			defer rotationDir.close();
+                var assetsDir = try std.fs.cwd().openDir("mods", .{ .iterate = true });
+                defer assetsDir.close();
 
-			var rotationIterator = rotationDir.iterate();
-			while(try rotationIterator.next()) |rotationEntry| {
-				if(rotationEntry.kind != .file) continue;
-				if(!std.mem.endsWith(u8, rotationEntry.name, ".zig")) continue;
+                var iterator = assetsDir.iterate();
+                while (try iterator.next()) |addonEntry| {
+                    if (addonEntry.kind != .directory) continue;
 
-				try out.appendSlice(b.allocator, b.fmt("pub const @\"{s}:{s}\" = @import(\"{s}/{s}/{s}\");\n", .{addonEntry.name, rotationEntry.name[0 .. rotationEntry.name.len - 4], addonEntry.name, name, rotationEntry.name}));
-			}
-		}
-	}
+                    var addon = try assetsDir.openDir(addonEntry.name, .{});
+                    defer addon.close();
 
-	const file = writeFiles.add(b.fmt("mods/{s}.zig", .{name}), out.items);
+                    var rotationDir = addon.openDir(step.name, .{ .iterate = true }) catch continue;
+                    defer rotationDir.close();
 
-	const rotation = b.createModule(.{
-		.root_source_file = file,
-	});
-	rotation.addImport("main", exe.root_module);
-	exe.root_module.addImport(name, rotation);
+                    var rotationIterator = rotationDir.iterate();
+                    while (try rotationIterator.next()) |rotationEntry| {
+                        if (rotationEntry.kind != .file) continue;
+                        if (!std.mem.endsWith(u8, rotationEntry.name, ".zig")) continue;
+
+                        try out.appendSlice(allocator, b.fmt(
+                            "pub const @\"{s}:{s}\" = @import(\"{s}/{s}/{s}\");\n",
+                            .{
+                                addonEntry.name,
+                                rotationEntry.name[0..rotationEntry.name.len - 4],
+                                addonEntry.name,
+                                step.name,
+                                rotationEntry.name,
+                            },
+                        ));
+                    }
+                }
+
+                const file_path = try std.fs.path.join(allocator, &.{ "mods", b.fmt("{s}.zig", .{step.name}) });
+                var file = try std.fs.cwd().createFile(file_path, .{ .truncate = true });
+                defer file.close();
+
+                try file.writeAll(out.items);
+                out.deinit(allocator);
+            }
+        }.makeFn,
+    });
 }
 
 fn addModFeatures(b: *std.Build, exe: *std.Build.Step.Compile) !void {
-	const writeFiles = b.addWriteFiles();
-
-	_ = writeFiles.addCopyDirectory(b.path("mods"), "mods", .{});
-
-	try addModFeature(b, exe, writeFiles, "rotation");
-	exe.step.dependOn(&writeFiles.step);
+	var rotationStep = try addModFeatureStep(b, "rotation");
+	exe.step.dependOn(&rotationStep);
 }
 
 pub fn build(b: *std.Build) !void {

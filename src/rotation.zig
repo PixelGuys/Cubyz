@@ -196,13 +196,6 @@ pub fn deinit() void {
 
 pub fn getByID(id: []const u8) *RotationMode {
 	if(rotationModes.getPtr(id)) |mode| return mode;
-
-	if(!std.mem.containsAtLeastScalar(u8, id, 1, ':')) blk: {
-		const namespacedId = std.fmt.allocPrint(main.stackAllocator.allocator, "cubyz:{s}", .{id}) catch unreachable;
-		defer main.stackAllocator.free(namespacedId);
-		return rotationModes.getPtr(namespacedId) orelse break :blk;
-	}
-
 	std.log.err("Could not find rotation mode {s}. Using cubyz:no_rotation instead.", .{id});
 	return rotationModes.getPtr("cubyz:no_rotation").?;
 }
