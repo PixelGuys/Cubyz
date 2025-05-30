@@ -56,6 +56,20 @@ pub const BlockUpdate = struct {
 	pub fn init(pos: Vec3i, block: blocks.Block, blockEntityData: []const u8) BlockUpdate {
 		return .{.x = pos[0], .y = pos[1], .z = pos[2], .newBlock = block, .blockEntityData = blockEntityData};
 	}
+
+	pub fn initManaged(allocator: main.heap.NeverFailingAllocator, template: BlockUpdate) BlockUpdate {
+		return .{
+			.x = template.x,
+			.y = template.y,
+			.z = template.z,
+			.newBlock = template.newBlock,
+			.blockEntityData = allocator.dupe(u8, template.blockEntityData),
+		};
+	}
+
+	pub fn deinitManaged(self: BlockUpdate, allocator: main.heap.NeverFailingAllocator) void {
+		allocator.free(self.blockEntityData);
+	}
 };
 
 var blockUpdateList: main.utils.ConcurrentQueue(BlockUpdate) = undefined;
@@ -110,7 +124,7 @@ pub fn deinit() void {
 	}
 	priorityMeshUpdateList.deinit();
 	while(blockUpdateList.dequeue()) |blockUpdate| {
-		main.globalAllocator.free(blockUpdate.blockEntityData);
+		blockUpdate.deinitManaged(main.globalAllocator);
 	}
 	blockUpdateList.deinit();
 	meshList.clearAndFree();
@@ -872,7 +886,7 @@ fn batchUpdateBlocks() void {
 
 	// First of all process all the block updates:
 	while(blockUpdateList.dequeue()) |blockUpdate| {
-		defer main.globalAllocator.free(blockUpdate.blockEntityData);
+		defer blockUpdate.deinitManaged(main.globalAllocator);
 		const pos = chunk.ChunkPosition{.wx = blockUpdate.x, .wy = blockUpdate.y, .wz = blockUpdate.z, .voxelSize = 1};
 		if(getMeshAndIncreaseRefCount(pos)) |mesh| {
 			mesh.updateBlock(blockUpdate.x, blockUpdate.y, blockUpdate.z, blockUpdate.newBlock, blockUpdate.blockEntityData, &lightRefreshList, &regenerateMeshList);
@@ -991,10 +1005,8 @@ pub const MeshGenerationTask = struct { // MARK: MeshGenerationTask
 
 // MARK: updaters
 
-pub fn updateBlock(_update: BlockUpdate) void {
-	var update = _update;
-	update.blockEntityData = main.globalAllocator.dupe(u8, update.blockEntityData);
-	blockUpdateList.enqueue(update);
+pub fn updateBlock(update: BlockUpdate) void {
+	blockUpdateList.enqueue(BlockUpdate.initManaged(main.globalAllocator, update));
 }
 
 pub fn updateChunkMesh(mesh: *chunk.Chunk) void {
