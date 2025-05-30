@@ -418,107 +418,111 @@ pub const Block = packed struct { // MARK: Block
 };
 
 // MARK: Tick
-pub var tickFunctions: utils.NamedCallbacks(TickFunctions, TickFunction) = undefined;
-pub const TickFunction = fn(block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32, _args: ?*TickEvent.Arguments) void;
-pub const TickFunctions = struct {
-	pub fn replaceWith(block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32, _args: ?*TickEvent.Arguments) void {
-		const replacementBlock = if(_args) |args| blk: {
-			const data: *TickEvent.ArgumentTypes.ReplaceWithArguments = @ptrCast(@alignCast(args.loadData()));
-			break :blk data.block;
-		} else Block.air;
+pub fn TickEventTableMap(comptime Child: type) type {
+	return struct {
+		const Self = @This();
 
-		const wx = _chunk.super.pos.wx + x;
-		const wy = _chunk.super.pos.wy + y;
-		const wz = _chunk.super.pos.wz + z;
+		tableMap: std.StringHashMap(*const TickEvent.VTable) = undefined,
 
-		_ = main.server.world.?.cmpxchgBlock(wx, wy, wz, block, replacementBlock);
-	}
-};
-
-pub const TickEvent = struct {
-	function: *const TickFunction,
-	chance: f32,
-	args: ?*Arguments,
-
-	pub var tableMap: std.StringHashMap(*const Arguments.VTable) = undefined;
-
-	pub fn init() void {
-		tableMap = .init(main.globalAllocator.allocator);
-
-		inline for(@typeInfo(ArgumentTypes).@"struct".decls) |decl| {
-			const ArgumentsStruct = @field(ArgumentTypes, decl.name);
-			tableMap.put(ArgumentsStruct.id, &.{.loadData = comptime utils.castFunctionReturnToAnyopaque(ArgumentsStruct.loadData)}) catch unreachable;
-		}
-	}
-
-	pub fn deinit() void {
-		tableMap.deinit();
-	}
-
-	pub const Arguments = struct {
-		data: *anyopaque,
-		vTable: *const VTable,
-
-		pub const VTable = struct {
-			loadData: *const fn(self: *anyopaque) *anyopaque,
-		};
-
-		pub fn init(data: anytype, table: *const VTable) *Arguments {
-			std.debug.assert(@typeInfo(@TypeOf(data)) == .pointer);
-
-			const self = allocator.create(Arguments);
-			self.* = Arguments{
-				.data = data,
-				.vTable = table,
+		pub fn init() Self {
+			var self = Self{
+				.tableMap = .init(main.globalAllocator.allocator),
 			};
+
+			switch(@typeInfo(Child)) {
+				.@"struct" => |childStruct| {
+					inline for(childStruct.decls) |childDecl| {
+						const childField = @field(Child, childDecl.name);
+						if(@typeInfo(@TypeOf(childField)) == .type) {
+							registerEventStruct(childField, &self);
+						}
+					}
+				},
+				else => {
+					std.log.err("Type {s} is not a struct", .{@typeName(Child)});
+				},
+			}
 
 			return self;
 		}
 
-		pub fn loadData(self: *Arguments) *anyopaque {
-			return self.vTable.loadData(self.data);
+		fn registerEventStruct(comptime EventType: type, self: *Self) void {
+			inline for(@typeInfo(EventType).@"struct".decls) |eventDecl| {
+				const field = @field(EventType, eventDecl.name);
+				if(@TypeOf(field) == *const TickEvent.VTable) {
+					const id = @field(EventType, "id");
+					self.tableMap.putNoClobber(id, field) catch unreachable;
+					std.log.debug("Registered Callback '{s}'", .{eventDecl.name});
+				}
+			}
+		}
+
+		pub fn deinit(self: *Self) void {
+			self.tableMap.deinit();
+		}
+
+		pub fn getTablePointer(self: *Self, id: []const u8) ?*const TickEvent.VTable {
+			return self.tableMap.get(id);
 		}
 	};
+}
 
-	pub const ArgumentTypes = struct {
-		pub const ReplaceWithArguments = struct {
-			pub const id: []const u8 = "replaceWith";
-			block: Block,
+pub var tickEvents: TickEventTableMap(TickEvents) = undefined;
+pub const TickFunction = fn(self: *anyopaque, block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void;
+pub const TickEvents = struct {
+	pub const ReplaceWithEvent = struct {
+		pub const id = "replaceWith";
+		replacementBlock: Block,
 
-			pub fn init(newBlock: []const u8) *ReplaceWithArguments {
-				const self = allocator.create(ReplaceWithArguments);
-				self.* = .{.block = parseBlock(newBlock)};
-				return self;
-			}
-
-			pub fn loadData(self: *anyopaque) *const ReplaceWithArguments {
-				return @ptrCast(@alignCast(self));
-			}
+		pub const VTable: *const TickEvent.VTable = &.{
+			.id = id,
+			.tickFunction = utils.castFunctionSelfToAnyopaque(replaceWith),
+			.loadFromZon = utils.castFunctionReturnToAnyopaque(loadFromZon),
 		};
+
+		pub fn replaceWith(self: *ReplaceWithEvent, block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void {
+			const wx = _chunk.super.pos.wx + x;
+			const wy = _chunk.super.pos.wy + y;
+			const wz = _chunk.super.pos.wz + z;
+
+			_ = main.server.world.?.cmpxchgBlock(wx, wy, wz, block, self.replacementBlock);
+		}
+
+		pub fn loadFromZon(zon: ZonElement) *const ReplaceWithEvent {
+			const self = allocator.create(ReplaceWithEvent);
+			const newBlock = if(zon.get(?[]const u8, "block", null)) |blockName| parseBlock(blockName) else Block.air;
+			self.* = .{.replacementBlock = newBlock};
+			return self;
+		}
+	};
+};
+
+pub const TickEvent = struct {
+	args: *anyopaque,
+	vTable: *const VTable,
+	chance: f32,
+
+	pub const VTable = struct {
+		id: []const u8,
+		tickFunction: *const TickFunction,
+		loadFromZon: *const fn(zon: ZonElement) *anyopaque,
 	};
 
 	pub fn loadFromZon(zon: ZonElement) ?TickEvent {
 		const functionName = zon.get(?[]const u8, "name", null) orelse return null;
 
-		const function = tickFunctions.getFunctionPointer(functionName) orelse {
+		const eventVTable = tickEvents.getTablePointer(functionName) orelse {
 			std.log.err("Could not find TickFunction {s}.", .{functionName});
 			return null;
 		};
 
-		if(function == &TickFunctions.replaceWith) {
-			if(zon.get(?[]const u8, "block", null)) |newBlockName| {
-				const replaceArgs: *ArgumentTypes.ReplaceWithArguments = .init(newBlockName);
-				const table = tableMap.get(ArgumentTypes.ReplaceWithArguments.id) orelse unreachable;
-				return TickEvent{.function = function, .chance = zon.get(f32, "chance", 1), .args = .init(replaceArgs, table)};
-			}
-		}
-
-		return TickEvent{.function = function, .chance = zon.get(f32, "chance", 1), .args = null};
+		const args = eventVTable.loadFromZon(zon);
+		return TickEvent{.args = args, .vTable = eventVTable, .chance = zon.get(f32, "chance", 1)};
 	}
 
 	pub fn tryRandomTick(self: *const TickEvent, block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void {
 		if(self.chance >= 1.0 or main.random.nextFloat(&main.seed) < self.chance) {
-			self.function(block, _chunk, x, y, z, self.args);
+			self.vTable.tickFunction(self.args, block, _chunk, x, y, z);
 		}
 	}
 };
