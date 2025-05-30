@@ -67,7 +67,7 @@ fn register(
 			continue;
 		}
 
-		const oldAssetId = main.utils.format(migrationAllocator, "{s}:{s}", .{addonName, oldZon});
+		const oldAssetId = std.fmt.allocPrint(migrationAllocator.allocator, "{s}:{s}", .{addonName, oldZon}) catch unreachable;
 		const result = collection.getOrPut(migrationAllocator.allocator, oldAssetId) catch unreachable;
 
 		if(result.found_existing) {
@@ -77,7 +77,7 @@ fn register(
 
 			migrationAllocator.free(oldAssetId);
 		} else {
-			const newAssetId = main.utils.format(migrationAllocator, "{s}:{s}", .{addonName, newZon});
+			const newAssetId = std.fmt.allocPrint(migrationAllocator.allocator, "{s}:{s}", .{addonName, newZon}) catch unreachable;
 
 			result.key_ptr.* = oldAssetId;
 			result.value_ptr.* = newAssetId;
