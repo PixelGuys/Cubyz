@@ -2150,9 +2150,7 @@ test "NamedCallbacks registers functions" {
 	try std.testing.expectEqual(null, testFunctions.getFunctionPointer("wrongSignatureFunction"));
 }
 
-var panicMessageBuffer: [1 << 17]u8 = undefined;
-
 pub fn panicWithMessage(comptime fmt: []const u8, args: anytype) void {
-	const message = std.fmt.bufPrint(&panicMessageBuffer, fmt, args) catch unreachable; // Please don't overflow the buffer :3
+	const message = std.fmt.allocPrint(main.stackAllocator.allocator, fmt, args) catch unreachable;
 	@panic(message);
 }

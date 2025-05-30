@@ -332,18 +332,7 @@ pub fn registerBlueprints(blueprints: *Assets.BytesHashMap) !void {
 }
 
 pub fn getByStringId(stringId: []const u8) ?*StructureBuildingBlock {
-	const structure = structureCache.getPtr(stringId) orelse return null;
-	const blueprint = structure.blueprints[0];
-	for(blueprint.childBlocks) |child| {
-		if(structure.children.len == 0) {
-			std.log.err("[{s}] Blueprint contains child blocks but there are no child structures defined for it.", .{structure.id});
-			break;
-		}
-		if(structure.children[child.index].items.len == 0) {
-			std.log.err("[{s}] Blueprint contains child block '{s}' but there are no child structures to fill it.", .{structure.id, child.id()});
-		}
-	}
-	return structure;
+	return structureCache.getPtr(stringId);
 }
 
 pub fn reset() void {
