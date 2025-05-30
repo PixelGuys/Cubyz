@@ -130,7 +130,7 @@ pub const StructureBuildingBlock = struct {
 		};
 
 		const blueprints = arenaAllocator.create([4]BlueprintEntry);
-		blueprints.* = blueprintsPtr.*;
+		blueprints.* = blueprintsTemplate.*;
 
 		const self = StructureBuildingBlock{
 			.id = stringId,
@@ -178,7 +178,7 @@ pub const StructureBuildingBlock = struct {
 		};
 
 		const blueprints = arenaAllocator.create([4]BlueprintEntry);
-		blueprints.* = blueprintsPtr.*;
+		blueprints.* = blueprintsTemplate.*;
 		for(blueprints, 0..) |*blueprint, index| {
 			if(index == 0) {
 				for(blueprint.childBlocks) |child| std.log.err("['{s}'] Missing child structure configuration for child '{s}'", .{sbbId, child.id()});
