@@ -138,11 +138,11 @@ pub fn addModFeatureStep(b: *std.Build, name: []const u8) !*std.Build.Step {
 pub fn addModFeature(b: *std.Build, exe: *std.Build.Step.Compile, name: []const u8) !void {
 	exe.step.dependOn(try addModFeatureStep(b, name));
 
-	const module = b.createModule(.{ // zig fmt: off
+	const module = b.createModule(.{
 		.root_source_file = b.path(try std.fs.path.join(b.allocator, &.{"mods", b.fmt("{s}.zig", .{name})})),
 		.target = exe.root_module.resolved_target,
-		.optimize = exe.root_module.optimize
-	}); // zig fmt: on
+		.optimize = exe.root_module.optimize,
+	});
 	module.addImport("main", exe.root_module);
 	exe.root_module.addImport(name, module);
 }
