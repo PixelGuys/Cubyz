@@ -145,16 +145,13 @@ pub const StructureBuildingBlock = struct {
 		return self;
 	}
 	pub fn updateBlueprintChildLists(self: StructureBuildingBlock) void {
-		for(self.children, 0..) |child, index| {
+		for(self.children, 0..) |child, index| found: {
 			if(child.items.len == 0) continue;
 
-			var found = false;
 			for(self.blueprints[0].childBlocks) |blueprintChild| {
 				if(blueprintChild.index != index) continue;
-				found = true;
-				break;
+				break :found;
 			}
-			if(found) break;
 			std.log.err("['{s}'] Blueprint doesn't contain child '{s}' but configuration for it was specified.", .{self.id, childBlockStringId.items[index]});
 		}
 		for(self.blueprints, 0..) |*blueprint, index| {
