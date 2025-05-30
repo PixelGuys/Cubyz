@@ -33,7 +33,7 @@ const HashMapKey = struct {
 		return std.mem.eql(u8, val1.shellModelId, val2.shellModelId);
 	}
 };
-const BranchData = packed struct(u6) {
+pub const BranchData = packed struct(u6) {
 	enabledConnections: u6,
 
 	pub inline fn init(blockData: u16) BranchData {

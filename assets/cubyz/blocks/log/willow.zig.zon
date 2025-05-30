@@ -1,11 +1,4 @@
 .{
-	.tags = .{.wood},
-	.blockHealth = 8,
-	.drops = .{
-		.{.items = .{.auto}},
-	},
-	.rotation = .log_new,
-	.model = "cubyz:cube",
 	.texture0 = "cubyz:log/willow/dot",
 	.texture1 = "cubyz:log/willow/line",
 	.texture2 = "cubyz:log/willow/bend",
