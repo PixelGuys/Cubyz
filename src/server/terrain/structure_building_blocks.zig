@@ -124,7 +124,7 @@ pub const StructureBuildingBlock = struct {
 			std.log.err("['{s}'] Missing blueprint field.", .{stringId});
 			return error.MissingBlueprintIdField;
 		};
-		const blueprintsPtr = blueprintCache.get(blueprintId) orelse {
+		const blueprintsTemplate = blueprintCache.get(blueprintId) orelse {
 			std.log.err("['{s}'] Could not find blueprint '{s}'.", .{stringId, blueprintId});
 			return error.MissingBlueprint;
 		};
