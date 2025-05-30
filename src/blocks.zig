@@ -286,6 +286,7 @@ pub const Block = packed struct { // MARK: Block
 	typ: u16,
 	data: u16,
 
+	pub const healingRatio: f32 = 0.01;
 	pub const air = Block{.typ = 0, .data = 0};
 
 	pub fn toInt(self: Block) u32 {

@@ -1220,6 +1220,8 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	fog.fogLower = (biome.fogLower - fog.fogLower)*t + fog.fogLower;
 	fog.fogHigher = (biome.fogHigher - fog.fogHigher)*t + fog.fogHigher;
 
+	main.renderer.mesh_storage.blockDamage.update(deltaTime);
+
 	world.?.update();
 	particles.ParticleSystem.update(@floatCast(deltaTime));
 }
