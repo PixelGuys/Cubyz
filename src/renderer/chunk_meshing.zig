@@ -314,7 +314,7 @@ pub const IndirectData = extern struct {
 	baseInstance: u32,
 };
 
-const PrimitiveMesh = struct { // MARK: PrimitiveMesh
+pub const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 	const FaceGroups = enum(u32) {
 		core,
 		neighbor0,
@@ -485,7 +485,7 @@ const PrimitiveMesh = struct { // MARK: PrimitiveMesh
 		return result;
 	}
 
-	fn getLight(parent: *ChunkMesh, blockPos: Vec3i, textureIndex: u16, quadIndex: QuadIndex) [4]u32 {
+	pub fn getLight(parent: *ChunkMesh, blockPos: Vec3i, textureIndex: u16, quadIndex: QuadIndex) [4]u32 {
 		const quadInfo = quadIndex.quadInfo();
 		const extraQuadInfo = quadIndex.extraQuadInfo();
 		const normal = quadInfo.normal;
@@ -1201,7 +1201,7 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 	}
 
-	pub fn updateBlock(self: *ChunkMesh, _x: i32, _y: i32, _z: i32, _newBlock: Block, lightRefreshList: *main.List(*ChunkMesh), regenerateMeshList: *main.List(*ChunkMesh)) void {
+	pub fn updateBlock(self: *ChunkMesh, _x: i32, _y: i32, _z: i32, _newBlock: Block, blockEntityData: []const u8, lightRefreshList: *main.List(*ChunkMesh), regenerateMeshList: *main.List(*ChunkMesh)) void {
 		const x: u5 = @intCast(_x & chunk.chunkMask);
 		const y: u5 = @intCast(_y & chunk.chunkMask);
 		const z: u5 = @intCast(_z & chunk.chunkMask);
@@ -1210,13 +1210,21 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		const oldBlock = self.chunk.data.getValue(chunk.getIndex(x, y, z));
 
 		if(oldBlock == newBlock) {
+			if(newBlock.blockEntity()) |blockEntity| {
+				var reader = main.utils.BinaryReader.init(blockEntityData);
+				blockEntity.updateClientData(.{_x, _y, _z}, self.chunk, .{.createOrUpdate = &reader}) catch |err| {
+					std.log.err("Got error {s} while trying to apply block entity data {any} in position {} for block {s}", .{@errorName(err), blockEntityData, Vec3i{_x, _y, _z}, newBlock.id()});
+				};
+			}
 			self.mutex.unlock();
 			return;
 		}
 		self.mutex.unlock();
 
 		if(oldBlock.blockEntity()) |blockEntity| {
-			blockEntity.onBreakClient(.{_x, _y, _z}, self.chunk);
+			blockEntity.updateClientData(.{_x, _y, _z}, self.chunk, .remove) catch |err| {
+				std.log.err("Got error {s} while trying to remove entity data in position {} for block {s}", .{@errorName(err), Vec3i{_x, _y, _z}, oldBlock.id()});
+			};
 		}
 
 		var neighborBlocks: [6]Block = undefined;
@@ -1268,11 +1276,14 @@ pub const ChunkMesh = struct { // MARK: ChunkMesh
 		}
 		self.mutex.lock();
 		self.chunk.data.setValue(chunk.getIndex(x, y, z), newBlock);
-		self.mutex.unlock();
 
 		if(newBlock.blockEntity()) |blockEntity| {
-			blockEntity.onPlaceClient(.{_x, _y, _z}, self.chunk);
+			var reader = main.utils.BinaryReader.init(blockEntityData);
+			blockEntity.updateClientData(.{_x, _y, _z}, self.chunk, .{.createOrUpdate = &reader}) catch |err| {
+				std.log.err("Got error {s} while trying to create block entity data {any} in position {} for block {s}", .{@errorName(err), blockEntityData, Vec3i{_x, _y, _z}, newBlock.id()});
+			};
 		}
+		self.mutex.unlock();
 
 		self.updateBlockLight(x, y, z, newBlock, lightRefreshList);
 

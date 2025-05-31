@@ -29,6 +29,8 @@ var gamemodeInput: *Button = undefined;
 
 var allowCheats: bool = true;
 
+var testingMode: bool = false;
+
 fn gamemodeCallback(_: usize) void {
 	gamemode = std.meta.intToEnum(main.game.Gamemode, @intFromEnum(gamemode) + 1) catch @enumFromInt(0);
 	gamemodeInput.child.label.updateText(@tagName(gamemode));
@@ -36,6 +38,10 @@ fn gamemodeCallback(_: usize) void {
 
 fn allowCheatsCallback(allow: bool) void {
 	allowCheats = allow;
+}
+
+fn testingModeCallback(enabled: bool) void {
+	testingMode = enabled;
 }
 
 fn createWorld(_: usize) void {
@@ -121,6 +127,7 @@ fn flawedCreateWorld() !void {
 
 		gamerules.put("default_gamemode", @tagName(gamemode));
 		gamerules.put("cheats", allowCheats);
+		gamerules.put("testingMode", testingMode);
 
 		try main.files.writeZon(gamerulePath, gamerules);
 	}
@@ -155,6 +162,8 @@ pub fn onOpen() void {
 	list.add(gamemodeInput);
 
 	list.add(CheckBox.init(.{0, 0}, 128, "Allow Cheats", true, &allowCheatsCallback));
+
+	list.add(CheckBox.init(.{0, 0}, 128, "Testing mode (for developers)", false, &testingModeCallback));
 
 	list.add(Button.initText(.{0, 0}, 128, "Create World", .{.callback = &createWorld}));
 

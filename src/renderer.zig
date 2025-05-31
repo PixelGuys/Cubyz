@@ -241,6 +241,10 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	itemdrop.ItemDropRenderer.renderItemDrops(game.projectionMatrix, ambientLight, playerPos);
 	gpu_performance_measuring.stopQuery();
 
+	gpu_performance_measuring.startQuery(.block_entity_rendering);
+	main.block_entity.renderAll(game.projectionMatrix, ambientLight, playerPos);
+	gpu_performance_measuring.stopQuery();
+
 	gpu_performance_measuring.startQuery(.particle_rendering);
 	particles.ParticleSystem.render(game.projectionMatrix, game.camera.viewMatrix, ambientLight);
 	gpu_performance_measuring.stopQuery();
@@ -1111,7 +1115,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				.newBlock = newBlock,
 			},
 		});
-		mesh_storage.updateBlock(.{.x = x, .y = y, .z = z, .newBlock = newBlock});
+		mesh_storage.updateBlock(.{.x = x, .y = y, .z = z, .newBlock = newBlock, .blockEntityData = &.{}});
 	}
 
 	pub fn drawCube(projectionMatrix: Mat4f, viewMatrix: Mat4f, relativePositionToPlayer: Vec3d, min: Vec3f, max: Vec3f) void {
