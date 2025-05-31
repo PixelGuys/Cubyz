@@ -15,7 +15,40 @@ pub const component_list = @import("components/_list.zig");
 pub const EntityTypeIndex = DenseId(u16);
 pub const EntityIndex = DenseId(u16);
 
-const ComponentEnum = std.meta.DeclEnum(component_list);
+const ComponentEnum = struct {
+	const ComponentDeclEnum = std.meta.DeclEnum(component_list);
+	componentType: ComponentDeclEnum,
+
+	pub fn stringToComponent(string: []const u8) ?ComponentEnum {
+		return .{
+			.componentType = std.meta.stringToEnum(ComponentDeclEnum, string),
+		};
+	}
+
+	pub fn add(self: ComponentEnum, allocator: NeverFailingAllocator, entityIndex: EntityIndex, entityTypeIndex: EntityTypeIndex) void {
+		switch(self.componentType) {
+			inline else => |typ| {
+				@field(component_list, @tagName(typ)).add(allocator, entityIndex, entityTypeIndex);
+			}
+		}
+	}
+	
+	pub fn initType(self: ComponentEnum, allocator: NeverFailingAllocator, entityTypeIndex: EntityTypeIndex, zon: ZonElement) void {
+		switch(self.componentType) {
+			inline else => |typ| {
+				@field(component_list, @tagName(typ)).add(allocator, entityTypeIndex, zon);
+			}
+		}
+	}
+	
+	pub fn hasType(self: ComponentEnum, entityTypeIndex: EntityTypeIndex) bool {
+		switch(self.componentType) {
+			inline else => |typ| {
+				return @field(component_list, @tagName(typ)).hasType(entityTypeIndex);
+			}
+		}
+	}
+};
 
 var arenaAllocator: NeverFailingArenaAllocator = undefined;
 var arena: NeverFailingAllocator = undefined;
@@ -96,26 +129,22 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) void {
 		return;
 	}
 
-	defer nextEntityType += 1;
-
 	var iterator = componentMap.object.iterator();
 	while(iterator.next()) |entry| {
 		const componentId = entry.key_ptr.*;
 		const value = entry.value_ptr.*;
 
-		const component = std.meta.stringToEnum(ComponentEnum, componentId) orelse {
+		const component: ComponentEnum = .stringToComponent(componentId) orelse {
 			std.log.err("{s} is not a valid component", .{componentId});
 			continue;
 		};
 
-		switch(component) {
-			inline else => |comp| {
-				@field(component_list, @tagName(comp)).initType(main.globalAllocator, @enumFromInt(nextEntityType), value);
-			},
-		}
+		component.initType(main.globalAllocator, @enumFromInt(nextEntityType), value);
 	}
 
 	entityIdToEntityType.put(arena.allocator, id, @enumFromInt(nextEntityType)) catch unreachable;
+
+	defer nextEntityType += 1;
 
 	var spawnComponents: ComponentMask = .initEmpty();
 
@@ -131,18 +160,14 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) void {
 			continue;
 		};
 
-		const component = std.meta.stringToEnum(ComponentEnum, componentId) orelse {
+		const component: ComponentEnum = .stringToComponent(componentId) orelse {
 			std.log.err("{s} is not a valid component", .{componentId});
 			continue;
 		};
 
-		switch(component) {
-			inline else => |comp| {
-				if(!@field(component_list, @tagName(comp)).hasType(@enumFromInt(nextEntityType))) {
-					std.log.err("Component type {s} is not initialized for entity type {s}", .{componentId, id});
-					continue;
-				}
-			},
+		if(!component.hasType(@enumFromInt(nextEntityType))) {
+			std.log.err("Component type {s} is not initialized for entity type {s}", .{componentId, id});
+			continue;
 		}
 
 		spawnComponents.set(@intFromEnum(component));
@@ -164,13 +189,11 @@ pub fn createEntity(id: []const u8) !EntityIndex {
 
 	var iterator = spawnComponents.iterator(.{});
 	while(iterator.next()) |component| {
-		const componentFlag: ComponentEnum = @enumFromInt(component);
+		const componentFlag: ComponentEnum = .{
+			.componentType = @enumFromInt(component)
+		};
 
-		switch(componentFlag) {
-			inline else => |comp| {
-				@field(component_list, @tagName(comp)).add(main.globalAllocator, entityIndex, entityTypeIndex);
-			},
-		}
+		componentFlag.add(main.globalAllocator, entityIndex, entityTypeIndex);
 	}
 
 	entityIndexToEntityTypeIndex.set(arena, entityIndex, entityTypeIndex);
