@@ -948,8 +948,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			if(block.tickEvent()) |event| {
 				const wx = _chunk.super.pos.wx + x;
 				const wy = _chunk.super.pos.wy + y;
-				const wz = _chunk.super.pos.wz + z;	
-				event.tryRandomTick(block, self, wx,wy, wz);
+				const wz = _chunk.super.pos.wz + z;
+				event.tryRandomTick(block, self, wx, wy, wz);
 			}
 		}
 	}
