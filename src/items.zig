@@ -7,6 +7,9 @@ const Color = graphics.Color;
 const Tag = main.Tag;
 const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main");
+const ReaderWriter = main.utils.BinaryWriter;
+const BinaryWriter = main.utils.BinaryWriter;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const chunk = main.chunk;
 const random = @import("random.zig");
 const vec = @import("vec.zig");
@@ -15,7 +18,6 @@ const Vec2f = vec.Vec2f;
 const Vec2i = vec.Vec2i;
 const Vec3i = vec.Vec3i;
 const Vec3f = vec.Vec3f;
-const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const modifierList = @import("tool/modifiers/_list.zig");
 const modifierRestrictionList = @import("tool/modifiers/restrictions/_list.zig");
@@ -197,6 +199,9 @@ pub const BaseItemIndex = packed struct {
 	}
 	pub fn getTooltip(self: BaseItemIndex) []const u8 {
 		return itemList[self.index].getTooltip();
+	}
+	pub fn writeBytes(self: BaseItemIndex, writer: *BinaryWriter) void {
+		writer.writeInt(u16, self.index);
 	}
 };
 
@@ -468,7 +473,9 @@ const ToolProperty = enum {
 };
 
 pub const Tool = struct { // MARK: Tool
-	craftingGrid: [25]?BaseItemIndex,
+	const craftingGridSize = 25;
+
+	craftingGrid: [craftingGridSize]?BaseItemIndex,
 	materialGrid: [16][16]?BaseItemIndex,
 	modifiers: []Modifier,
 	tooltip: main.List(u8),
@@ -562,8 +569,8 @@ pub const Tool = struct { // MARK: Tool
 		return self;
 	}
 
-	fn extractItemsFromZon(zonArray: ZonElement) [25]?BaseItemIndex {
-		var items: [25]?BaseItemIndex = undefined;
+	fn extractItemsFromZon(zonArray: ZonElement) [craftingGridSize]?BaseItemIndex {
+		var items: [craftingGridSize]?BaseItemIndex = undefined;
 		for(&items, 0..) |*item, i| {
 			item.* = .fromId(zonArray.getAtIndex([]const u8, i, "null"));
 			if(item.* != null and item.*.?.material() == null) item.* = null;
@@ -660,9 +667,36 @@ pub const Tool = struct { // MARK: Tool
 		self.durability -|= 1;
 		return self.durability == 0;
 	}
+	pub fn writeBytes(self: Tool, writer: *BinaryWriter) void {
+		var craftingGridMask: u32 = 0;
+		for(0..craftingGridSize) |i| {
+			if(self.craftingGrid[i] != null) {
+				craftingGridMask |= 1 << i;
+			}
+		}
+		writer.writeInt(u32, craftingGridMask);
+
+		for(0..craftingGridSize) |i| {
+			if(self.craftingGrid[i]) |baseItem| {
+				baseItem.writeBytes(writer);
+			} else {
+				writer.writeInt(u16, 0);
+			}
+		}
+
+		writer.writeInt(u32, self.durability);
+		writer.writeInt(u32, self.seed);
+		writer.writeInt(u32, self.seed);
+	}
 };
 
-pub const Item = union(enum) { // MARK: Item
+pub const ItemEnum = enum {
+	baseItem,
+	tool,
+};
+
+
+pub const Item = union(ItemEnum) { // MARK: Item
 	baseItem: BaseItemIndex,
 	tool: *Tool,
 
@@ -754,6 +788,13 @@ pub const Item = union(enum) { // MARK: Item
 			inline else => |item| {
 				return item.hashCode();
 			},
+		}
+	}
+
+	pub fn writeBytes(self: Item, writer: *BinaryWriter) void {
+		writer.writeEnum(ItemEnum, self);
+		switch(self) {
+			inline else => |item| item.writeBytes(writer),
 		}
 	}
 };
