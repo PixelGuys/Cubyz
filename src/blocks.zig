@@ -478,7 +478,7 @@ pub const TickEvents = struct {
 			.loadFromZon = utils.castFunctionReturnToAnyopaque(loadFromZon),
 		};
 
-		pub fn replaceWith(self: *ReplaceWithEvent, block: Block, world: *main.server.ServerWorld, wx: i32, wy: i32, wz: i32) void {
+		pub fn replaceWith(self: *const ReplaceWithEvent, block: Block, world: *main.server.ServerWorld, wx: i32, wy: i32, wz: i32) void {
 			_ = world.cmpxchgBlock(wx, wy, wz, block, self.replacementBlock);
 		}
 
