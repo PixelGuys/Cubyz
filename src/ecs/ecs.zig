@@ -21,7 +21,7 @@ const ComponentEnum = struct {
 
 	pub fn stringToComponent(string: []const u8) ?ComponentEnum {
 		return .{
-			.componentType = std.meta.stringToEnum(ComponentDeclEnum, string),
+			.componentType = std.meta.stringToEnum(ComponentDeclEnum, string) orelse return null,
 		};
 	}
 
@@ -36,7 +36,7 @@ const ComponentEnum = struct {
 	pub fn initType(self: ComponentEnum, allocator: NeverFailingAllocator, entityTypeIndex: EntityTypeIndex, zon: ZonElement) void {
 		switch(self.componentType) {
 			inline else => |typ| {
-				@field(component_list, @tagName(typ)).add(allocator, entityTypeIndex, zon);
+				@field(component_list, @tagName(typ)).initType(allocator, entityTypeIndex, zon);
 			},
 		}
 	}
@@ -134,7 +134,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) void {
 		const componentId = entry.key_ptr.*;
 		const value = entry.value_ptr.*;
 
-		const component: ComponentEnum = .stringToComponent(componentId) orelse {
+		const component = ComponentEnum.stringToComponent(componentId) orelse {
 			std.log.err("{s} is not a valid component", .{componentId});
 			continue;
 		};
@@ -160,7 +160,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) void {
 			continue;
 		};
 
-		const component: ComponentEnum = .stringToComponent(componentId) orelse {
+		const component = ComponentEnum.stringToComponent(componentId) orelse {
 			std.log.err("{s} is not a valid component", .{componentId});
 			continue;
 		};
@@ -170,7 +170,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) void {
 			continue;
 		}
 
-		spawnComponents.set(@intFromEnum(component));
+		spawnComponents.set(@intFromEnum(component.componentType));
 	}
 
 	entitySpawnComponents.set(arena, @enumFromInt(nextEntityType), spawnComponents);
