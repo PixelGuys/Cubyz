@@ -465,7 +465,7 @@ pub const TickEventVTableMap = struct {
 	}
 };
 
-pub const TickFunction = fn(self: *anyopaque, block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void;
+pub const TickFunction = fn(self: *anyopaque, block: Block, world: *main.server.ServerWorld, wx: i32, wy: i32, wz: i32) void;
 pub var tickEvents: TickEventVTableMap = undefined;
 pub const TickEvents = struct {
 	pub const ReplaceWithEvent = struct {
@@ -478,12 +478,8 @@ pub const TickEvents = struct {
 			.loadFromZon = utils.castFunctionReturnToAnyopaque(loadFromZon),
 		};
 
-		pub fn replaceWith(self: *ReplaceWithEvent, block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void {
-			const wx = _chunk.super.pos.wx + x;
-			const wy = _chunk.super.pos.wy + y;
-			const wz = _chunk.super.pos.wz + z;
-
-			_ = main.server.world.?.cmpxchgBlock(wx, wy, wz, block, self.replacementBlock);
+		pub fn replaceWith(self: *ReplaceWithEvent, block: Block, world: *main.server.ServerWorld, wx: i32, wy: i32, wz: i32) void {
+			_ = world.cmpxchgBlock(wx, wy, wz, block, self.replacementBlock);
 		}
 
 		pub fn loadFromZon(zon: ZonElement) *ReplaceWithEvent {
@@ -513,7 +509,7 @@ pub const TickEvent = struct {
 		const functionName = zon.get(?[]const u8, "name", null) orelse return null;
 
 		const eventVTable = tickEvents.getVTable(functionName) orelse {
-			std.log.err("Could not find TickFunction {s}.", .{functionName});
+			std.log.err("Could not find TickEvent {s}.", .{functionName});
 			return null;
 		};
 
@@ -521,9 +517,9 @@ pub const TickEvent = struct {
 		return TickEvent{.args = args, .vTable = eventVTable, .chance = zon.get(f32, "chance", 1)};
 	}
 
-	pub fn tryRandomTick(self: *const TickEvent, block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void {
+	pub fn tryRandomTick(self: *const TickEvent, block: Block, world: *main.server.ServerWorld, wx: i32, wy: i32, wz: i32) void {
 		if(self.chance >= 1.0 or main.random.nextFloat(&main.seed) < self.chance) {
-			self.vTable.tickFunction(self.args, block, _chunk, x, y, z);
+			self.vTable.tickFunction(self.args, block, world, wx, wy, wz);
 		}
 	}
 };
