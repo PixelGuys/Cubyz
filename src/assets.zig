@@ -6,6 +6,7 @@ const ecs_zig = @import("ecs/ecs.zig");
 const migrations_zig = @import("migrations.zig");
 const blueprints_zig = @import("blueprint.zig");
 const Blueprint = blueprints_zig.Blueprint;
+const particles_zig = @import("particles.zig");
 const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main");
 const biomes_zig = main.server.terrain.biomes;
@@ -35,6 +36,7 @@ pub const Assets = struct {
 	models: BytesHashMap,
 	structureBuildingBlocks: ZonHashMap,
 	blueprints: BytesHashMap,
+	particles: ZonHashMap,
 
 	fn init() Assets {
 		return .{
@@ -49,6 +51,7 @@ pub const Assets = struct {
 			.models = .{},
 			.structureBuildingBlocks = .{},
 			.blueprints = .{},
+			.particles = .{},
 		};
 	}
 	fn deinit(self: *Assets, allocator: NeverFailingAllocator) void {
@@ -63,6 +66,7 @@ pub const Assets = struct {
 		self.models.deinit(allocator.allocator);
 		self.structureBuildingBlocks.deinit(allocator.allocator);
 		self.blueprints.deinit(allocator.allocator);
+		self.particles.deinit(allocator.allocator);
 	}
 	fn clone(self: Assets, allocator: NeverFailingAllocator) Assets {
 		return .{
@@ -77,6 +81,7 @@ pub const Assets = struct {
 			.models = self.models.clone(allocator.allocator) catch unreachable,
 			.structureBuildingBlocks = self.structureBuildingBlocks.clone(allocator.allocator) catch unreachable,
 			.blueprints = self.blueprints.clone(allocator.allocator) catch unreachable,
+			.particles = self.particles.clone(allocator.allocator) catch unreachable,
 		};
 	}
 	fn read(self: *Assets, allocator: NeverFailingAllocator, assetPath: []const u8) void {
@@ -94,12 +99,13 @@ pub const Assets = struct {
 			addon.readAllZon(allocator, "sbb", true, &self.structureBuildingBlocks, null);
 			addon.readAllBlueprints(allocator, "sbb", &self.blueprints);
 			addon.readAllModels(allocator, &self.models);
+			addon.readAllZon(allocator, "particles", true, &self.particles, null);
 		}
 	}
 	fn log(self: *Assets, typ: enum {common, world}) void {
 		std.log.info(
-			"Finished {s} assets reading with {} blocks ({} migrations), {} items, {} tools, {} biomes ({} migrations), {} entities, {} recipes, {} structure building blocks and {} blueprints",
-			.{@tagName(typ), self.blocks.count(), self.blockMigrations.count(), self.items.count(), self.tools.count(), self.biomes.count(), self.biomeMigrations.count(), self.entities.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count()},
+			"Finished {s} assets reading with {} blocks ({} migrations), {} items, {} tools, {} biomes ({} migrations), {} entities, {} recipes, {} structure building blocks, {} blueprints and {} particles",
+			.{@tagName(typ), self.blocks.count(), self.blockMigrations.count(), self.items.count(), self.tools.count(), self.biomes.count(), self.biomeMigrations.count(), self.entities.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count()},
 		);
 	}
 
@@ -621,6 +627,11 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 
 	try sbb.registerBlueprints(&worldAssets.blueprints);
 	try sbb.registerSBB(&worldAssets.structureBuildingBlocks);
+
+	iterator = worldAssets.particles.iterator();
+	while(iterator.next()) |entry| {
+		particles_zig.ParticleManager.register(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
+	}
 
 	// Biomes:
 	var nextBiomeNumericId: u32 = 0;
