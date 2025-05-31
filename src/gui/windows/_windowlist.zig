@@ -30,5 +30,6 @@ pub const save_creation = @import("save_creation.zig");
 pub const save_selection = @import("save_selection.zig");
 pub const settings = @import("settings.zig");
 pub const shared_inventory_testing = @import("shared_inventory_testing.zig");
+pub const sign_editor = @import("sign_editor.zig");
 pub const sound = @import("sound.zig");
 pub const workbench = @import("workbench.zig");

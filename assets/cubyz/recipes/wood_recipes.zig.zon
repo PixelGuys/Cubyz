@@ -144,6 +144,30 @@
 		.output = "2 cubyz:willow_fence",
 	},
 	.{
+		.inputs = .{"cubyz:birch_planks"},
+		.output = "cubyz:sign/birch",
+	},
+	.{
+		.inputs = .{"cubyz:baobab_planks"},
+		.output = "cubyz:sign/baobab",
+	},
+	.{
+		.inputs = .{"cubyz:oak_planks"},
+		.output = "cubyz:sign/oak",
+	},
+	.{
+		.inputs = .{"cubyz:mahogany_planks"},
+		.output = "cubyz:sign/mahogany",
+	},
+	.{
+		.inputs = .{"cubyz:pine_planks"},
+		.output = "cubyz:sign/pine",
+	},
+	.{
+		.inputs = .{"cubyz:willow_planks"},
+		.output = "cubyz:sign/willow",
+	},
+	.{
 		.inputs = .{"cubyz:cactus"},
 		.output = "2 cubyz:cactus_arm",
 	},
