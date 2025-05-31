@@ -29,7 +29,6 @@ const Fog = graphics.Fog;
 const renderer = @import("renderer.zig");
 const settings = @import("settings.zig");
 const Block = main.blocks.Block;
-const EntityIndex = main.ecs.EntityIndex;
 
 pub const camera = struct { // MARK: camera
 	pub var rotation: Vec3f = Vec3f{0, 0, 0};
@@ -459,7 +458,7 @@ pub const Player = struct { // MARK: Player
 	pub var eyeCoyote: f64 = 0;
 	pub var eyeStep: @Vector(3, bool) = .{false, false, false};
 	pub var crouching: bool = false;
-	pub var id: EntityIndex = .noValue;
+	pub var id: u32 = std.math.maxInt(u32);
 	pub var gamemode: Atomic(Gamemode) = .init(.creative);
 	pub var isFlying: Atomic(bool) = .init(false);
 	pub var isGhost: Atomic(bool) = .init(false);
@@ -731,7 +730,7 @@ pub const World = struct { // MARK: World
 		self.spawn = zon.get(Vec3f, "spawn", .{0, 0, 0});
 
 		try assets.loadWorldAssets("serverAssets", self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette);
-		Player.id = @enumFromInt(zon.get(u16, "player_id", @intFromEnum(EntityIndex.noValue)));
+		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
 		Player.inventory = Inventory.init(main.globalAllocator, 32, .normal, .{.playerInventory = Player.id});
 		Player.loadFrom(zon.getChild("player"));
 		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());

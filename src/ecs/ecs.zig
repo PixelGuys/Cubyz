@@ -18,7 +18,7 @@ pub const EntityIndex = DenseId(u16);
 const ComponentEnum = std.meta.DeclEnum(component_list);
 
 var arenaAllocator: NeverFailingArenaAllocator = undefined;
-var allocator: NeverFailingAllocator = undefined;
+var arena: NeverFailingAllocator = undefined;
 
 var freeList: main.ListUnmanaged(EntityIndex) = undefined;
 
@@ -31,14 +31,14 @@ var entitySpawnComponents: SparseSet(ComponentMask, EntityTypeIndex) = undefined
 
 pub fn init() void {
 	arenaAllocator = .init(main.globalAllocator);
-	allocator = arenaAllocator.allocator();
+	arena = arenaAllocator.allocator();
 
 	nextEntityType = 0;
 
-	freeList = .initCapacity(allocator, @intFromEnum(EntityIndex.noValue));
+	freeList = .initCapacity(arena, @intFromEnum(EntityIndex.noValue));
 
 	for(0..@intFromEnum(EntityIndex.noValue)) |i| {
-		freeList.append(allocator, @enumFromInt(@intFromEnum(EntityIndex.noValue) - i - 1));
+		freeList.append(arena, @enumFromInt(@intFromEnum(EntityIndex.noValue) - i - 1));
 	}
 
 	entityIdToEntityType = .{};
@@ -63,7 +63,18 @@ pub fn reset() void {
 		@field(component_list, decl.name).reset();
 	}
 
+	freeList = .initCapacity(arena, @intFromEnum(EntityIndex.noValue));
+
+	for(0..@intFromEnum(EntityIndex.noValue)) |i| {
+		freeList.append(arena, @enumFromInt(@intFromEnum(EntityIndex.noValue) - i - 1));
+	}
+
 	_ = arenaAllocator.reset(.free_all);
+	
+	entityIdToEntityType = .{};
+	entityIndexToEntityTypeIndex = .{};
+	entitySpawnComponents = .{};
+	freeList = .{};
 }
 
 pub fn hasRegistered(id: []const u8) bool {
@@ -104,7 +115,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) void {
 		}
 	}
 
-	entityIdToEntityType.put(allocator.allocator, id, @enumFromInt(nextEntityType)) catch unreachable;
+	entityIdToEntityType.put(arena.allocator, id, @enumFromInt(nextEntityType)) catch unreachable;
 
 	var spawnComponents: ComponentMask = .initEmpty();
 
@@ -137,19 +148,7 @@ pub fn register(_: []const u8, id: []const u8, zon: ZonElement) void {
 		spawnComponents.set(@intFromEnum(component));
 	}
 
-	entitySpawnComponents.set(allocator, @enumFromInt(nextEntityType), spawnComponents);
-}
-
-pub fn getComponent(comptime component: []const u8, entity: EntityIndex) ?@field(component_list, component).Data {
-	return @field(component_list, component).get(entity);
-}
-
-pub fn setComponent(comptime component: []const u8, entity: EntityIndex, data: @field(component_list, component).Data) void {
-	@field(component_list, component).set(main.globalAllocator, entity, data);
-}
-
-pub fn removeComponent(comptime component: []const u8, entity: EntityIndex) void {
-	@field(component_list, component).remove(entity);
+	entitySpawnComponents.set(arena, @enumFromInt(nextEntityType), spawnComponents);
 }
 
 pub fn createEntity(id: []const u8) !EntityIndex {
@@ -169,12 +168,12 @@ pub fn createEntity(id: []const u8) !EntityIndex {
 
 		switch(componentFlag) {
 			inline else => |comp| {
-				@field(component_list, @tagName(comp)).initData(main.globalAllocator, entityIndex, entityTypeIndex);
+				@field(component_list, @tagName(comp)).add(main.globalAllocator, entityIndex, entityTypeIndex);
 			},
 		}
 	}
 
-	entityIndexToEntityTypeIndex.set(allocator, entityIndex, entityTypeIndex);
+	entityIndexToEntityTypeIndex.set(arena, entityIndex, entityTypeIndex);
 
 	return entityIndex;
 }
@@ -189,11 +188,11 @@ pub fn removeEntity(entityIndex: EntityIndex) !void {
 	inline for(@typeInfo(component_list).@"struct".decls) |decl| {
 		const comp = @field(component_list, decl.name);
 		if(comp.has(entityIndex)) {
-			try comp.deinitData(main.globalAllocator, entityIndex, entityTypeIndex);
+			try comp.remove(main.globalAllocator, entityIndex, entityTypeIndex);
 		}
 	}
 
 	try entityIndexToEntityTypeIndex.remove(entityIndex);
 
-	freeList.append(allocator, entityIndex);
+	freeList.append(arena, entityIndex);
 }

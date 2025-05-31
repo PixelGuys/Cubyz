@@ -15,12 +15,11 @@ const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const Vec4f = vec.Vec4f;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
-const EntityIndex = main.ecs.EntityIndex;
 
 const BinaryReader = main.utils.BinaryReader;
 
 pub const EntityNetworkData = struct {
-	id: EntityIndex,
+	id: u32,
 	pos: Vec3d,
 	vel: Vec3d,
 	rot: Vec3f,
@@ -37,12 +36,12 @@ pub const ClientEntity = struct {
 	pos: Vec3d = undefined,
 	rot: Vec3f = undefined,
 
-	id: EntityIndex,
+	id: u32,
 	name: []const u8,
 
 	pub fn init(self: *ClientEntity, zon: ZonElement, allocator: NeverFailingAllocator) void {
 		self.* = ClientEntity{
-			.id = @enumFromInt(zon.get(u16, "id", @intFromEnum(EntityIndex.noValue))),
+			.id = zon.get(u32, "id", std.math.maxInt(u32)),
 			.width = zon.get(f64, "width", 1),
 			.height = zon.get(f64, "height", 1),
 			.name = allocator.dupe(u8, zon.get([]const u8, "name", "")),
@@ -224,7 +223,7 @@ pub const ClientEntityManager = struct {
 		ent.init(zon, main.globalAllocator);
 	}
 
-	pub fn removeEntity(id: EntityIndex) void {
+	pub fn removeEntity(id: u32) void {
 		mutex.lock();
 		defer mutex.unlock();
 		for(entities.items(), 0..) |*ent, i| {

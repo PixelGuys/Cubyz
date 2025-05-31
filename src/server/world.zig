@@ -878,11 +878,11 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		{
 			main.items.Inventory.Sync.ServerSide.mutex.lock();
 			defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
-			if(main.items.Inventory.Sync.ServerSide.getInventoryFromSource(.{.playerInventory = user.id})) |inv| {
+			if(main.items.Inventory.Sync.ServerSide.getInventoryFromSource(.{.playerInventory = @intFromEnum(user.id)})) |inv| {
 				playerZon.put("playerInventory", inv.save(main.stackAllocator));
 			}
 
-			if(main.items.Inventory.Sync.ServerSide.getInventoryFromSource(.{.hand = user.id})) |inv| {
+			if(main.items.Inventory.Sync.ServerSide.getInventoryFromSource(.{.hand = @intFromEnum(user.id)})) |inv| {
 				playerZon.put("hand", inv.save(main.stackAllocator));
 			}
 		}

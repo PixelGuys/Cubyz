@@ -94,6 +94,9 @@ pub const User = struct { // MARK: User
 	const simulationSize = 2*maxSimulationDistance;
 	const simulationMask = simulationSize - 1;
 	conn: *Connection = undefined,
+	interpolation: utils.GenericInterpolation(3) = undefined,
+	interpolatedPos: Vec3d = undefined,
+	interpolatedVel: Vec3d = undefined,
 	timeDifference: utils.TimeDifference = .{},
 	lastTime: i16 = undefined,
 	lastSaveTime: i64 = 0,
@@ -102,7 +105,7 @@ pub const User = struct { // MARK: User
 	clientUpdatePos: Vec3i = .{0, 0, 0},
 	receivedFirstEntityData: bool = false,
 	isLocal: bool = false,
-	id: EntityIndex = .noValue, // TODO: Use entity id.
+	id: EntityIndex = .noValue,
 	// TODO: ipPort: []const u8,
 	loadedChunks: [simulationSize][simulationSize][simulationSize]*@import("world.zig").EntityChunk = undefined,
 	lastRenderDistance: u16 = 0,
@@ -125,6 +128,7 @@ pub const User = struct { // MARK: User
 		errdefer main.globalAllocator.destroy(self);
 		self.* = .{};
 		self.inventoryClientToServerIdMap = .init(main.globalAllocator.allocator);
+		self.interpolation.init(@ptrCast(&self.interpolatedPos), @ptrCast(&self.interpolatedVel));
 		self.id = try ecs.createEntity("cubyz:player");
 		self.conn = try Connection.init(manager, ipPort, self);
 		self.increaseRefCount();
@@ -239,7 +243,13 @@ pub const User = struct { // MARK: User
 		defer self.mutex.unlock();
 		var time = @as(i16, @truncate(std.time.milliTimestamp())) -% main.settings.entityLookback;
 		time -%= self.timeDifference.difference.load(.monotonic);
+		self.interpolation.update(time, self.lastTime);
 		self.lastTime = time;
+
+		var component = ecs.component_list.entity.get(self.id).?;
+		component.pos = self.interpolatedPos;
+		component.vel = self.interpolatedVel;
+		ecs.component_list.entity.set(main.globalAllocator, self.id, component);
 
 		const saveTime = std.time.milliTimestamp();
 		if(saveTime -% self.lastSaveTime > 5000) {
@@ -255,13 +265,15 @@ pub const User = struct { // MARK: User
 	pub fn receiveData(self: *User, reader: *BinaryReader) !void {
 		self.mutex.lock();
 		defer self.mutex.unlock();
-
-		self.setPosition(try reader.readVec(Vec3d));
-		self.setVelocity(try reader.readVec(Vec3d));
+		
+		const position: [3]f64 = try reader.readVec(Vec3d);
+		const velocity: [3]f64 = try reader.readVec(Vec3d);
 		self.setRotation(try reader.readVec(Vec3f));
 
 		const time = try reader.readInt(i16);
 		self.timeDifference.addDataPoint(time);
+
+		self.interpolation.updatePosition(&position, &velocity, time);
 	}
 
 	pub fn sendMessage(self: *User, comptime fmt: []const u8, args: anytype) void {
@@ -275,68 +287,61 @@ pub const User = struct { // MARK: User
 
 	// TODO: Remove these functions and use the ecs directly instead.
 	pub fn setPosition(self: *User, pos: Vec3d) void {
-		var component = ecs.getComponent("entity", self.id).?;
+		var component = ecs.component_list.entity.get(self.id).?;
 		component.pos = pos;
-		ecs.setComponent("entity", self.id, component);
+		ecs.component_list.entity.set(main.globalAllocator, self.id, component);
 	}
 
 	pub fn getPosition(self: *User) Vec3d {
-		const component = ecs.getComponent("entity", self.id).?;
-		return component.pos;
+		return ecs.component_list.entity.get(self.id).?.pos;
 	}
 
 	pub fn setVelocity(self: *User, vel: Vec3d) void {
-		var component = ecs.getComponent("entity", self.id).?;
+		var component = ecs.component_list.entity.get(self.id).?;
 		component.vel = vel;
-		ecs.setComponent("entity", self.id, component);
+		ecs.component_list.entity.set(main.globalAllocator, self.id, component);
 	}
 
 	pub fn getVelocity(self: *User) Vec3d {
-		const component = ecs.getComponent("entity", self.id).?;
-		return component.vel;
+		return ecs.component_list.entity.get(self.id).?.vel;
 	}
 
 	pub fn setRotation(self: *User, rot: Vec3f) void {
-		var component = ecs.getComponent("entity", self.id).?;
+		var component = ecs.component_list.entity.get(self.id).?;
 		component.rot = rot;
-		ecs.setComponent("entity", self.id, component);
+		ecs.component_list.entity.set(main.globalAllocator, self.id, component);
 	}
 
 	pub fn getRotation(self: *User) Vec3f {
-		const component = ecs.getComponent("entity", self.id).?;
-		return component.rot;
+		return ecs.component_list.entity.get(self.id).?.rot;
 	}
 
 	pub fn setHealth(self: *User, health: f32) void {
-		var component = ecs.getComponent("entity", self.id).?;
+		var component = ecs.component_list.entity.get(self.id).?;
 		component.health = health;
-		ecs.setComponent("entity", self.id, component);
+		ecs.component_list.entity.set(main.globalAllocator, self.id, component);
 	}
 
 	pub fn getHealth(self: *User) f32 {
-		const component = ecs.getComponent("entity", self.id).?;
-		return component.health;
+		return ecs.component_list.entity.get(self.id).?.health;
 	}
 
 	pub fn getMaxHealth(self: *User) f32 {
-		const component = ecs.getComponent("entity", self.id).?;
-		return component.maxHealth;
+		return ecs.component_list.entity.get(self.id).?.maxHealth;
 	}
 
 	pub fn setEnergy(self: *User, energy: f32) void {
-		var component = ecs.getComponent("entity", self.id).?;
+		var component = ecs.component_list.entity.get(self.id).?;
 		component.energy = energy;
-		ecs.setComponent("entity", self.id, component);
+		ecs.component_list.entity.set(main.globalAllocator, self.id, component);
 	}
 
 	pub fn getEnergy(self: *User) f32 {
-		const component = ecs.getComponent("entity", self.id).?;
-		return component.energy;
+		return ecs.component_list.entity.get(self.id).?.energy;
 	}
 
 	pub fn getMaxEnergy(self: *User) f32 {
-		const component = ecs.getComponent("entity", self.id).?;
-		return component.maxEnergy;
+		return ecs.component_list.entity.get(self.id).?.maxEnergy;
 	}
 };
 
@@ -466,7 +471,7 @@ fn update() void { // MARK: update()
 	for(userList) |user| {
 		const id = user.id; // TODO
 		entityData.append(.{
-			.id = id,
+			.id = @intFromEnum(id),
 			.pos = user.getPosition(),
 			.vel = user.getVelocity(),
 			.rot = user.getRotation(),

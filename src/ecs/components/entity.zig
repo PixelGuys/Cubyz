@@ -78,7 +78,7 @@ pub fn toZon(allocator: NeverFailingAllocator, entityIndex: EntityIndex) ZonElem
 	return zon;
 }
 
-pub fn initData(allocator: NeverFailingAllocator, entityIndex: EntityIndex, entityTypeIndex: EntityTypeIndex) void {
+pub fn add(allocator: NeverFailingAllocator, entityIndex: EntityIndex, entityTypeIndex: EntityTypeIndex) void {
 	const typeData = typeStorage.get(entityTypeIndex).?;
 	const data: Data = .{
 		.maxHealth = typeData.maxHealth,
@@ -92,10 +92,6 @@ pub fn initData(allocator: NeverFailingAllocator, entityIndex: EntityIndex, enti
 		return;
 	}
 	storage.set(allocator, entityIndex, data);
-}
-
-pub fn deinitData(_: NeverFailingAllocator, entityIndex: EntityIndex, _: EntityTypeIndex) !void {
-	try storage.remove(entityIndex);
 }
 
 pub fn set(allocator: NeverFailingAllocator, entityIndex: EntityIndex, data: Data) void {
@@ -115,8 +111,8 @@ pub fn has(entityIndex: EntityIndex) bool {
 	return storage.contains(entityIndex);
 }
 
-pub fn remove(entityIndex: EntityIndex) void {
-	storage.remove(entityIndex);
+pub fn remove(_: NeverFailingAllocator, entityIndex: EntityIndex, _: EntityTypeIndex) !void {
+	try storage.remove(entityIndex);
 }
 
 pub fn initType(allocator: NeverFailingAllocator, entityTypeIndex: EntityTypeIndex, zon: ZonElement) void {

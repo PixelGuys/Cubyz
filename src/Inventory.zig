@@ -16,7 +16,6 @@ const ZonElement = main.ZonElement;
 const Neighbor = main.chunk.Neighbor;
 const BaseItemIndex = main.items.BaseItemIndex;
 const ecs = main.ecs;
-const EntityIndex = ecs.EntityIndex;
 
 const Gamemode = main.game.Gamemode;
 
@@ -427,7 +426,7 @@ pub const Sync = struct { // MARK: Sync
 		}
 	};
 
-	pub fn addHealth(health: f32, cause: main.game.DamageType, side: Side, id: EntityIndex) void {
+	pub fn addHealth(health: f32, cause: main.game.DamageType, side: Side, id: u32) void {
 		if(side == .client) {
 			Sync.ClientSide.executeCommand(.{.addHealth = .{.target = id, .health = health, .cause = cause}});
 		} else {
@@ -1098,7 +1097,7 @@ pub const Command = struct { // MARK: Command
 			writer.writeEnum(SourceType, self.source);
 			switch(self.source) {
 				.playerInventory, .hand => |val| {
-					writer.writeEnum(EntityIndex, val);
+					writer.writeInt(u32, val);
 				},
 				.recipe => |val| {
 					writer.writeInt(u16, val.resultAmount);
@@ -1129,9 +1128,9 @@ pub const Command = struct { // MARK: Command
 			const typeEnum = try reader.readEnum(TypeEnum);
 			const sourceType = try reader.readEnum(SourceType);
 			const source: Source = switch(sourceType) {
-				.playerInventory => .{.playerInventory = try reader.readEnum(EntityIndex)},
+				.playerInventory => .{.playerInventory = try reader.readInt(u32)},
 				.sharedTestingInventory => .{.sharedTestingInventory = {}},
-				.hand => .{.hand = try reader.readEnum(EntityIndex)},
+				.hand => .{.hand = try reader.readInt(u32)},
 				.recipe => .{
 					.recipe = blk: {
 						var itemList = main.List(struct {amount: u16, item: BaseItemIndex}).initCapacity(main.stackAllocator, len);
@@ -1744,7 +1743,7 @@ pub const Command = struct { // MARK: Command
 	};
 
 	const AddHealth = struct { // MARK: AddHealth
-		target: EntityIndex,
+		target: u32,
 		health: f32,
 		cause: main.game.DamageType,
 
@@ -1755,7 +1754,7 @@ pub const Command = struct { // MARK: Command
 				const userList = main.server.getUserListAndIncreaseRefCount(main.stackAllocator);
 				defer main.server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 				for(userList) |user| {
-					if(user.id == self.target) {
+					if(@intFromEnum(user.id) == self.target) {
 						target = user;
 						break;
 					}
@@ -1777,14 +1776,14 @@ pub const Command = struct { // MARK: Command
 		}
 
 		fn serialize(self: AddHealth, writer: *utils.BinaryWriter) void {
-			writer.writeEnum(EntityIndex, self.target);
+			writer.writeInt(u32, self.target);
 			writer.writeInt(u32, @bitCast(self.health));
 			writer.writeEnum(main.game.DamageType, self.cause);
 		}
 
 		fn deserialize(reader: *utils.BinaryReader, _: Side, _: ?*main.server.User) !AddHealth {
 			return .{
-				.target = try reader.readEnum(EntityIndex),
+				.target = try reader.readInt(u32),
 				.health = @bitCast(try reader.readInt(u32)),
 				.cause = try reader.readEnum(main.game.DamageType),
 			};
@@ -1803,9 +1802,9 @@ const SourceType = enum(u8) {
 };
 const Source = union(SourceType) {
 	alreadyFreed: void,
-	playerInventory: EntityIndex,
+	playerInventory: u32,
 	sharedTestingInventory: void,
-	hand: EntityIndex,
+	hand: u32,
 	recipe: *const main.items.Recipe,
 	blockInventory: Vec3i,
 	other: void,

@@ -361,9 +361,6 @@ fn registerEntity(assetFolder: []const u8, id: []const u8, zon: ZonElement) !voi
 	if(zon == .null) std.log.err("Missing entity: {s}. Replacing it with default entity.", .{id});
 
 	_ = ecs_zig.register(assetFolder, id, zon);
-
-	// TODO: Do this
-	// blocks_zig.meshes.register(assetFolder, id, zon);
 }
 
 fn assignBlockItem(stringId: []const u8) !void {
@@ -579,7 +576,7 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 		itemPalette.add(stringId);
 	}
 
-	// And finally normal items.
+	// Loading the entities
 	iterator = worldAssets.entities.iterator();
 	while(iterator.next()) |entry| {
 		const id = entry.key_ptr.*;
