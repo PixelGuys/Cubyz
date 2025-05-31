@@ -1,7 +1,7 @@
 pub const branch = @import("branch.zig");
 pub const carpet = @import("carpet.zig");
+pub const direction = @import("direction.zig");
 pub const fence = @import("fence.zig");
-pub const log_old = @import("log_old.zig");
 pub const log = @import("log.zig");
 pub const no_rotation = @import("no_rotation.zig");
 pub const ore = @import("ore.zig");

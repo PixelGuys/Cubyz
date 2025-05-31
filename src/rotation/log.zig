@@ -30,12 +30,7 @@ pub fn reset() void {
 	modelIndex = null;
 }
 
-const DirectionWithSign = enum(u2) {
-	negYDir = 0,
-	posXDir = 1,
-	posYDir = 2,
-	negXDir = 3,
-};
+const DirectionWithSign = branch.Direction;
 
 const DirectionWithoutSign = enum(u1) {
 	y = 0,
@@ -126,78 +121,28 @@ fn getPattern(data: LogData, side: Neighbor) Pattern {
 		return .cut;
 	}
 
-	const posX = Neighbor.fromRelPos(side.textureX()).?;
-	const negX = Neighbor.fromRelPos(side.textureX()).?.reverse();
-	const posY = Neighbor.fromRelPos(side.textureY()).?;
-	const negY = Neighbor.fromRelPos(side.textureY()).?.reverse();
+	const pattern = branch.getPattern(data, side).?;
 
-	const connectedPosX = data.isConnected(posX);
-	const connectedNegX = data.isConnected(negX);
-	const connectedPosY = data.isConnected(posY);
-	const connectedNegY = data.isConnected(negY);
-
-	const count: u6 = @as(u6, @intFromBool(connectedPosX)) + @as(u6, @intFromBool(connectedNegX)) + @as(u6, @intFromBool(connectedPosY)) + @as(u6, @intFromBool(connectedNegY));
-
-	return switch(count) {
-		0 => {
+	switch(pattern) {
+		.dot => |_| {
 			return .dot;
 		},
-		1 => {
-			var dir: DirectionWithoutSign = .x;
-			if(connectedNegY) {
-				dir = .y;
-			} else if(connectedPosX) {
-				dir = .x;
-			} else if(connectedPosY) {
-				dir = .y;
-			}
-			return .{.line = dir};
+		.halfLine => |dir| {
+			return .{.line = @enumFromInt(@intFromEnum(dir) & 1)};
 		},
-		2 => {
-			if((connectedPosX and connectedNegX) or (connectedPosY and connectedNegY)) {
-				var dir: DirectionWithoutSign = .y;
-				if(connectedPosX and connectedNegX) {
-					dir = .x;
-				}
-
-				return .{.line = dir};
-			}
-
-			var dir: DirectionWithSign = .negXDir;
-
-			if(connectedNegY) {
-				dir = .negYDir;
-				if(connectedPosX) {
-					dir = .posXDir;
-				}
-			} else if(connectedPosX) {
-				dir = .posXDir;
-				if(connectedPosY) {
-					dir = .posYDir;
-				}
-			} else if(connectedPosY) {
-				dir = .posYDir;
-				if(connectedNegX) {
-					dir = .negXDir;
-				}
-			}
-
+		.line => |dir| {
+			return .{.line = @enumFromInt(@intFromEnum(dir) & 1)};
+		},
+		.bend => |dir| {
 			return .{.bend = dir};
 		},
-		3 => {
-			var dir: DirectionWithSign = undefined;
-			if(!connectedPosY) dir = .negYDir;
-			if(!connectedNegX) dir = .posXDir;
-			if(!connectedNegY) dir = .posYDir;
-			if(!connectedPosX) dir = .negXDir;
-
+		.intersection => |dir| {
 			return .{.intersection = dir};
 		},
-		4 => {
+		.cross => |_| {
 			return .cross;
 		},
-		else => undefined,
-	};
+	}
 }
 
 pub fn createBlockModel(_: Block, _: *u16, _: ZonElement) ModelIndex {
@@ -280,7 +225,7 @@ pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool 
 	const canConnectToNeighbor = block.mode() == neighborBlock.mode() and block.modeData() == neighborBlock.modeData();
 	var currentData = LogData.init(block.data);
 
-	// Handle joining with other branches. While placed, branches extend in a
+	// Handle joining with other logs. While placed, logs extend in a
 	// opposite direction than they were placed from, effectively connecting
 	// to the block they were placed at.
 	if(canConnectToNeighbor) {

@@ -5,7 +5,7 @@
 	.drops = .{
 		.{.items = .{"cubyz:log/baobab"}},
 	},
-	.rotation = .log_old,
+	.rotation = .direction,
 	.model = "cubyz:cube",
 	.texture = "cubyz:baobab_log",
 	.texture_top = "cubyz:baobab_log_top",
