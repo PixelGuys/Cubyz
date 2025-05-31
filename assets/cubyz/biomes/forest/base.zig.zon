@@ -21,7 +21,7 @@
 		},
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:tree/birch/forest_generator",
+			.structure = "cubyz:tree/birch/mixed_forest_generator",
 			.placeMode = .degradable,
 			.chance = 0.1,
 		},
