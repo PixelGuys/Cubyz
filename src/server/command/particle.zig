@@ -4,7 +4,7 @@ const main = @import("main");
 const particles = main.particles;
 const User = main.server.User;
 
-pub const description = "Spawns particles";
+pub const description = "Spawns particles.";
 pub const usage =
 	\\/particle <id> <x> <y> <z>
 	\\/particle <id> <x> <y> <z> <collides>
