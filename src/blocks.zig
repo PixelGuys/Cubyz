@@ -418,57 +418,55 @@ pub const Block = packed struct { // MARK: Block
 };
 
 // MARK: Tick
-pub fn TickEventTableMap(comptime Child: type) type {
-	return struct {
-		const Self = @This();
+pub const TickEventVTableMap = struct {
+	const Self = @This();
 
-		tableMap: std.StringHashMap(*const TickEvent.VTable) = undefined,
+	vTableMap: std.StringHashMap(*const TickEvent.VTable) = undefined,
 
-		pub fn init() Self {
-			var self = Self{
-				.tableMap = .init(main.globalAllocator.allocator),
-			};
+	pub fn init() Self {
+		var self = Self{
+			.vTableMap = .init(main.globalAllocator.allocator),
+		};
 
-			switch(@typeInfo(Child)) {
-				.@"struct" => |childStruct| {
-					inline for(childStruct.decls) |childDecl| {
-						const childField = @field(Child, childDecl.name);
-						if(@typeInfo(@TypeOf(childField)) == .type) {
-							registerEventStruct(childField, &self);
-						}
+		switch(@typeInfo(TickEvents)) {
+			.@"struct" => |eventStruct| {
+				inline for(eventStruct.decls) |decl| {
+					const field = @field(TickEvents, decl.name);
+					if(@typeInfo(@TypeOf(field)) == .type) {
+						registerEventStruct(field, &self);
 					}
-				},
-				else => {
-					std.log.err("Type {s} is not a struct", .{@typeName(Child)});
-				},
-			}
-
-			return self;
-		}
-
-		fn registerEventStruct(comptime EventType: type, self: *Self) void {
-			inline for(@typeInfo(EventType).@"struct".decls) |eventDecl| {
-				const field = @field(EventType, eventDecl.name);
-				if(@TypeOf(field) == *const TickEvent.VTable) {
-					const id = @field(EventType, "id");
-					self.tableMap.putNoClobber(id, field) catch unreachable;
-					std.log.debug("Registered Callback '{s}'", .{eventDecl.name});
 				}
+			},
+			else => {
+				std.log.err("Type {s} is not a struct", .{@typeName(TickEvents)});
+			},
+		}
+
+		return self;
+	}
+
+	pub fn deinit(self: *Self) void {
+		self.vTableMap.deinit();
+	}
+
+	fn registerEventStruct(comptime EventType: type, self: *Self) void {
+		inline for(@typeInfo(EventType).@"struct".decls) |eventDecl| {
+			const field = @field(EventType, eventDecl.name);
+			if(@TypeOf(field) == *const TickEvent.VTable) {
+				const id = @field(EventType, "id");
+				self.vTableMap.putNoClobber(id, field) catch unreachable;
+				std.log.debug("Registered TickEvent '{s}'", .{id});
 			}
 		}
+	}
 
-		pub fn deinit(self: *Self) void {
-			self.tableMap.deinit();
-		}
+	pub fn getVTable(self: *Self, id: []const u8) ?*const TickEvent.VTable {
+		return self.vTableMap.get(id);
+	}
+};
 
-		pub fn getTablePointer(self: *Self, id: []const u8) ?*const TickEvent.VTable {
-			return self.tableMap.get(id);
-		}
-	};
-}
-
-pub var tickEvents: TickEventTableMap(TickEvents) = undefined;
 pub const TickFunction = fn(self: *anyopaque, block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void;
+pub var tickEvents: TickEventVTableMap = undefined;
 pub const TickEvents = struct {
 	pub const ReplaceWithEvent = struct {
 		pub const id = "replaceWith";
@@ -511,7 +509,7 @@ pub const TickEvent = struct {
 	pub fn loadFromZon(zon: ZonElement) ?TickEvent {
 		const functionName = zon.get(?[]const u8, "name", null) orelse return null;
 
-		const eventVTable = tickEvents.getTablePointer(functionName) orelse {
+		const eventVTable = tickEvents.getVTable(functionName) orelse {
 			std.log.err("Could not find TickFunction {s}.", .{functionName});
 			return null;
 		};
