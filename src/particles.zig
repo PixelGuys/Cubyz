@@ -147,6 +147,10 @@ pub const ParticleManager = struct {
 		particleTypesSSBO.bufferData(ParticleType, ParticleManager.types.items);
 		particleTypesSSBO.bind(14);
 	}
+
+	pub fn getTypeById(id: []const u8) ?ParticleType {
+		return particleTypeHashmap.get(id);
+	}
 };
 
 pub const ParticleSystem = struct {
