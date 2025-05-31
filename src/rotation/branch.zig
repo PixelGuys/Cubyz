@@ -33,7 +33,7 @@ const HashMapKey = struct {
 		return std.mem.eql(u8, val1.shellModelId, val2.shellModelId);
 	}
 };
-const BranchData = packed struct(u6) {
+pub const BranchData = packed struct(u6) {
 	enabledConnections: u6,
 
 	pub inline fn init(blockData: u16) BranchData {
@@ -65,7 +65,7 @@ pub fn reset() void {
 	branchModels.clearRetainingCapacity();
 }
 
-const Direction = enum(u2) {
+pub const Direction = enum(u2) {
 	negYDir = 0,
 	posXDir = 1,
 	posYDir = 2,
@@ -74,18 +74,10 @@ const Direction = enum(u2) {
 
 const Pattern = union(enum) {
 	dot: void,
-	halfLine: struct {
-		dir: Direction,
-	},
-	line: struct {
-		dir: Direction,
-	},
-	bend: struct {
-		dir: Direction,
-	},
-	intersection: struct {
-		dir: Direction,
-	},
+	halfLine: Direction,
+	line: Direction,
+	bend: Direction,
+	intersection: Direction,
 	cross: void,
 };
 
@@ -95,7 +87,7 @@ fn rotateQuad(originalCorners: [4]Vec2f, pattern: Pattern, min: f32, max: f32, s
 	switch(pattern) {
 		.dot, .cross => {},
 		inline else => |typ| {
-			const angle: f32 = @as(f32, @floatFromInt(@intFromEnum(typ.dir)))*std.math.pi/2.0;
+			const angle: f32 = @as(f32, @floatFromInt(@intFromEnum(typ)))*std.math.pi/2.0;
 			corners = .{
 				vec.rotate2d(originalCorners[0], angle, @splat(0.5)),
 				vec.rotate2d(originalCorners[1], angle, @splat(0.5)),
@@ -188,7 +180,7 @@ fn addQuads(pattern: Pattern, side: Neighbor, radius: f32, out: *main.List(main.
 	}
 }
 
-fn getPattern(data: BranchData, side: Neighbor) ?Pattern {
+pub fn getPattern(data: BranchData, side: Neighbor) ?Pattern {
 	const posX = Neighbor.fromRelPos(side.textureX()).?;
 	const negX = Neighbor.fromRelPos(side.textureX()).?.reverse();
 	const posY = Neighbor.fromRelPos(side.textureY()).?;
@@ -218,7 +210,7 @@ fn getPattern(data: BranchData, side: Neighbor) ?Pattern {
 			} else if(connectedPosY) {
 				dir = .posYDir;
 			}
-			return .{.halfLine = .{.dir = dir}};
+			return .{.halfLine = dir};
 		},
 		2 => {
 			if((connectedPosX and connectedNegX) or (connectedPosY and connectedNegY)) {
@@ -227,7 +219,7 @@ fn getPattern(data: BranchData, side: Neighbor) ?Pattern {
 					dir = .posXDir;
 				}
 
-				return .{.line = .{.dir = dir}};
+				return .{.line = dir};
 			}
 
 			var dir: Direction = .negXDir;
@@ -249,7 +241,7 @@ fn getPattern(data: BranchData, side: Neighbor) ?Pattern {
 				}
 			}
 
-			return .{.bend = .{.dir = dir}};
+			return .{.bend = dir};
 		},
 		3 => {
 			var dir: Direction = undefined;
@@ -258,7 +250,7 @@ fn getPattern(data: BranchData, side: Neighbor) ?Pattern {
 			if(!connectedNegY) dir = .posYDir;
 			if(!connectedPosX) dir = .negXDir;
 
-			return .{.intersection = .{.dir = dir}};
+			return .{.intersection = dir};
 		},
 		4 => {
 			return .cross;

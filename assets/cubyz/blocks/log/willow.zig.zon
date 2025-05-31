@@ -1,0 +1,8 @@
+.{
+	.texture0 = "cubyz:log/willow/dot",
+	.texture1 = "cubyz:log/willow/line",
+	.texture2 = "cubyz:log/willow/bend",
+	.texture3 = "cubyz:log/willow/intersection",
+	.texture4 = "cubyz:log/willow/cross",
+	.texture5 = "cubyz:log/willow/top",
+}
