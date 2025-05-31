@@ -480,7 +480,7 @@ pub const TickEvents = struct {
 			.loadFromZon = utils.castFunctionReturnToAnyopaque(loadFromZon),
 		};
 
-		pub fn replaceWith(self: *ReplaceWithEvent, block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void {
+		pub fn replaceWith(self: *const ReplaceWithEvent, block: Block, _chunk: *chunk.ServerChunk, x: i32, y: i32, z: i32) void {
 			const wx = _chunk.super.pos.wx + x;
 			const wy = _chunk.super.pos.wy + y;
 			const wz = _chunk.super.pos.wz + z;
