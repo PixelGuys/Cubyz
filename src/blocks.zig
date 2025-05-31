@@ -486,9 +486,12 @@ pub const TickEvents = struct {
 			_ = main.server.world.?.cmpxchgBlock(wx, wy, wz, block, self.replacementBlock);
 		}
 
-		pub fn loadFromZon(zon: ZonElement) *const ReplaceWithEvent {
+		pub fn loadFromZon(zon: ZonElement) *ReplaceWithEvent {
 			const self = allocator.create(ReplaceWithEvent);
-			const newBlock = if(zon.get(?[]const u8, "block", null)) |blockName| parseBlock(blockName) else Block.air;
+			const newBlock = if(zon.get(?[]const u8, "block", null)) |blockName| parseBlock(blockName) else blk: {
+				std.log.err("No 'block' parameter was provided for '{s}'. Using fallback block: {s}", .{id, Block.air.id()});
+				break :blk Block.air;
+			};
 			self.* = .{.replacementBlock = newBlock};
 			return self;
 		}
