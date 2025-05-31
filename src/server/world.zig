@@ -434,6 +434,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	defaultGamemode: main.game.Gamemode = undefined,
 	allowCheats: bool = undefined,
+	testingMode: bool = undefined,
 
 	seed: u64,
 	path: []const u8,
@@ -543,6 +544,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 		self.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, gamerules.get([]const u8, "default_gamemode", "creative")) orelse .creative;
 		self.allowCheats = gamerules.get(bool, "cheats", true);
+		self.testingMode = gamerules.get(bool, "testingMode", false);
 
 		self.chunkManager = try ChunkManager.init(self, generatorSettings);
 		errdefer self.chunkManager.deinit();
@@ -821,9 +823,17 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 		const newBiomeCheckSum: i64 = @bitCast(terrain.biomes.getBiomeCheckSum(self.seed));
 		if(newBiomeCheckSum != self.biomeChecksum) {
-			self.regenerateLOD(newBiomeCheckSum) catch |err| {
-				std.log.err("Error while trying to regenerate LODs: {s}", .{@errorName(err)});
-			};
+			if(self.testingMode) {
+				const dir = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{self.path}) catch unreachable;
+				defer main.stackAllocator.free(dir);
+				main.files.deleteDir(dir, "maps") catch |err| {
+					std.log.err("Error while trying to remove maps folder of testingMode world: {s}", .{@errorName(err)});
+				};
+			} else {
+				self.regenerateLOD(newBiomeCheckSum) catch |err| {
+					std.log.err("Error while trying to regenerate LODs: {s}", .{@errorName(err)});
+				};
+			}
 		}
 		try self.wio.saveWorldData();
 		const itemsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/items.zig.zon", .{self.path}) catch unreachable;
