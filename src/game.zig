@@ -14,6 +14,8 @@ const network = @import("network.zig");
 const particles = @import("particles.zig");
 const Connection = network.Connection;
 const ConnectionManager = network.ConnectionManager;
+const ecs = main.ecs;
+const Entity = ecs.component_list.entity.Data;
 const vec = @import("vec.zig");
 const Vec2f = vec.Vec2f;
 const Vec2d = vec.Vec2d;
@@ -383,7 +385,7 @@ pub const collision = struct {
 		return false;
 	}
 
-	pub fn touchBlocks(entity: main.server.Entity, hitBox: Box, side: main.utils.Side) void {
+	pub fn touchBlocks(entity: Entity, hitBox: Box, side: main.utils.Side) void {
 		const boundingBox: Box = .{.min = entity.pos + hitBox.min, .max = entity.pos + hitBox.max};
 
 		const minX: i32 = @intFromFloat(@floor(boundingBox.min[0] - 0.01));
@@ -451,13 +453,13 @@ pub const DamageType = enum(u8) {
 };
 
 pub const Player = struct { // MARK: Player
-	pub var super: main.server.Entity = .{};
+	pub var super: Entity = .{};
 	pub var eyePos: Vec3d = .{0, 0, 0};
 	pub var eyeVel: Vec3d = .{0, 0, 0};
 	pub var eyeCoyote: f64 = 0;
 	pub var eyeStep: @Vector(3, bool) = .{false, false, false};
 	pub var crouching: bool = false;
-	pub var id: u32 = 0;
+	pub var id: u32 = std.math.maxInt(u32);
 	pub var gamemode: Atomic(Gamemode) = .init(.creative);
 	pub var isFlying: Atomic(bool) = .init(false);
 	pub var isGhost: Atomic(bool) = .init(false);
@@ -494,7 +496,15 @@ pub const Player = struct { // MARK: Player
 	const jumpHeight = 1.25;
 
 	fn loadFrom(zon: ZonElement) void {
-		super.loadFrom(zon);
+		super = .{
+			.pos = zon.get(Vec3d, "position", .{0, 0, 0}),
+			.vel = zon.get(Vec3d, "velocity", .{0, 0, 0}),
+			.rot = zon.get(Vec3f, "rotation", .{0, 0, 0}),
+			.health = zon.get(f32, "health", 8),
+			.maxHealth = 8,
+			.energy = zon.get(f32, "energy", 8),
+			.maxEnergy = 8,
+		};
 		inventory.loadFromZon(zon.getChild("inventory"));
 	}
 
