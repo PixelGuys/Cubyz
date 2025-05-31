@@ -29,23 +29,23 @@ const ComponentEnum = struct {
 		switch(self.componentType) {
 			inline else => |typ| {
 				@field(component_list, @tagName(typ)).add(allocator, entityIndex, entityTypeIndex);
-			}
+			},
 		}
 	}
-	
+
 	pub fn initType(self: ComponentEnum, allocator: NeverFailingAllocator, entityTypeIndex: EntityTypeIndex, zon: ZonElement) void {
 		switch(self.componentType) {
 			inline else => |typ| {
 				@field(component_list, @tagName(typ)).add(allocator, entityTypeIndex, zon);
-			}
+			},
 		}
 	}
-	
+
 	pub fn hasType(self: ComponentEnum, entityTypeIndex: EntityTypeIndex) bool {
 		switch(self.componentType) {
 			inline else => |typ| {
 				return @field(component_list, @tagName(typ)).hasType(entityTypeIndex);
-			}
+			},
 		}
 	}
 };
@@ -103,7 +103,7 @@ pub fn reset() void {
 	}
 
 	_ = arenaAllocator.reset(.free_all);
-	
+
 	entityIdToEntityType = .{};
 	entityIndexToEntityTypeIndex = .{};
 	entitySpawnComponents = .{};
@@ -189,9 +189,7 @@ pub fn createEntity(id: []const u8) !EntityIndex {
 
 	var iterator = spawnComponents.iterator(.{});
 	while(iterator.next()) |component| {
-		const componentFlag: ComponentEnum = .{
-			.componentType = @enumFromInt(component)
-		};
+		const componentFlag: ComponentEnum = .{.componentType = @enumFromInt(component)};
 
 		componentFlag.add(main.globalAllocator, entityIndex, entityTypeIndex);
 	}
