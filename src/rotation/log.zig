@@ -35,6 +35,15 @@ const DirectionWithSign = branch.Direction;
 const DirectionWithoutSign = enum(u1) {
 	y = 0,
 	x = 1,
+
+	fn fromBranchDirection(dir: DirectionWithSign) DirectionWithoutSign {
+		return switch(dir) {
+			.negYDir => .y,
+			.posXDir => .x,
+			.posYDir => .y,
+			.negXDir => .x,
+		};
+	}
 };
 
 const Pattern = union(enum) {
@@ -124,14 +133,14 @@ fn getPattern(data: LogData, side: Neighbor) Pattern {
 	const pattern = branch.getPattern(data, side).?;
 
 	switch(pattern) {
-		.dot => |_| {
+		.dot => {
 			return .dot;
 		},
 		.halfLine => |dir| {
-			return .{.line = @enumFromInt(@intFromEnum(dir) & 1)};
+			return .{.line = .fromBranchDirection(dir)};
 		},
 		.line => |dir| {
-			return .{.line = @enumFromInt(@intFromEnum(dir) & 1)};
+			return .{.line = .fromBranchDirection(dir)};
 		},
 		.bend => |dir| {
 			return .{.bend = dir};
@@ -139,7 +148,7 @@ fn getPattern(data: LogData, side: Neighbor) Pattern {
 		.intersection => |dir| {
 			return .{.intersection = dir};
 		},
-		.cross => |_| {
+		.cross => {
 			return .cross;
 		},
 	}
@@ -186,7 +195,7 @@ pub fn generateData(
 	neighborBlock: Block,
 	blockPlacing: bool,
 ) bool {
-	const canConnectToNeighbor = currentBlock.mode() == neighborBlock.mode() and currentBlock.modeData() == neighborBlock.modeData();
+	const canConnectToNeighbor = currentBlock.mode() == neighborBlock.mode();
 
 	if(blockPlacing or canConnectToNeighbor or !neighborBlock.replacable()) {
 		const neighborModel = blocks.meshes.model(neighborBlock).model();
@@ -222,7 +231,7 @@ pub fn generateData(
 }
 
 pub fn updateData(block: *Block, neighbor: Neighbor, neighborBlock: Block) bool {
-	const canConnectToNeighbor = block.mode() == neighborBlock.mode() and block.modeData() == neighborBlock.modeData();
+	const canConnectToNeighbor = block.mode() == neighborBlock.mode();
 	var currentData = LogData.init(block.data);
 
 	// Handle joining with other logs. While placed, logs extend in a
