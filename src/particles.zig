@@ -155,7 +155,7 @@ pub const ParticleManager = struct {
 	pub fn getTypeIndexById(id: []const u8) ?ParticleIndex {
 		return particleTypeHashmap.get(id);
 	}
-	
+
 	pub fn getIdByTypeIndex(index: ParticleIndex) []const u8 {
 		std.debug.assert(index < typeIds.items.len);
 
