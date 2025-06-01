@@ -78,7 +78,7 @@ fn parseBool(arg: []const u8) CommandError!bool {
 }
 
 fn parseNumber(arg: []const u8, source: *User) CommandError!u32 {
-	return std.fmt.parseUnsigned(u32, arg, 0) catch |err| {
+	const num = std.fmt.parseUnsigned(u32, arg, 0) catch |err| {
 		switch(err) {
 			error.Overflow => return std.math.maxInt(u32),
 			error.InvalidCharacter => {
@@ -87,4 +87,6 @@ fn parseNumber(arg: []const u8, source: *User) CommandError!u32 {
 			},
 		}
 	};
+
+	return std.math.clamp(num, 0, 500);
 }
