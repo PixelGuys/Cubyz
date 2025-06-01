@@ -227,8 +227,7 @@ pub const StructureBuildingBlock = struct {
 		return &self.blueprints[@intFromEnum(rotation)];
 	}
 	pub fn pickChild(self: StructureBuildingBlock, block: BlueprintEntry.StructureBlock, seed: *u64) ?*const StructureBuildingBlock {
-		const child = self.children[block.index].sampleSafe(seed) orelse return null;
-		return child.structure;
+		return self.children[block.index].sample(seed).structure;
 	}
 };
 
