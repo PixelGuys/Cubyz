@@ -32,8 +32,8 @@ layout(std430, binding = 14) restrict readonly buffer _particleTypeData
 const vec2 uvPositions[4] = vec2[4]
 (
 	vec2(0.0f, 0.0f),
-	vec2(0.0f, 1.0f),
 	vec2(1.0f, 0.0f),
+	vec2(0.0f, 1.0f),
 	vec2(1.0f, 1.0f)
 );
 
