@@ -2,10 +2,10 @@
 	.blueprint = "cubyz:tree/coniferous/stem/extender/2",
 	.children = .{
 		.white = .{
-			.{.structure = "cubyz:tree/coniferous/stem/3/0"},
-			.{.structure = "cubyz:tree/coniferous/stem/5/0"},
-			.{.structure = "cubyz:tree/coniferous/stem/5/1"},
-			.{.structure = "cubyz:tree/coniferous/stem/5/2"},
+			.{.structure = "cubyz:tree/coniferous/stem/3/0", .chance = 0.50},
+			.{.structure = "cubyz:tree/coniferous/stem/5/0", .chance = 0.50},
+			.{.structure = "cubyz:tree/coniferous/stem/5/1", .chance = 0.25},
+			.{.structure = "cubyz:tree/coniferous/stem/5/2", .chance = 0.25},
 		},
 	},
 }
