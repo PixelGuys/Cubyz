@@ -2212,3 +2212,8 @@ test "NamedCallbacks registers functions" {
 	try std.testing.expectEqual(null, testFunctions.getFunctionPointer("functionTest"));
 	try std.testing.expectEqual(null, testFunctions.getFunctionPointer("wrongSignatureFunction"));
 }
+
+pub fn panicWithMessage(comptime fmt: []const u8, args: anytype) void {
+	const message = std.fmt.allocPrint(main.stackAllocator.allocator, fmt, args) catch unreachable;
+	@panic(message);
+}
