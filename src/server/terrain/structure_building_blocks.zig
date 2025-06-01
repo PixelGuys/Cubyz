@@ -219,6 +219,7 @@ pub const StructureBuildingBlock = struct {
 		return .{
 			.id = sbbId,
 			.children = &.{},
+			.rotation = .inherit,
 			.blueprints = blueprints,
 		};
 	}
