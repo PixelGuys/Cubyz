@@ -248,9 +248,9 @@ pub fn registerSBB(structures: *Assets.ZonHashMap) !void {
 		}
 	}
 	{
-		var iterator = blueprintCache.iterator();
-		while(iterator.next()) |entry| {
-			const blueprintId = entry.key_ptr.*;
+		var keyIterator = blueprintCache.keyIterator();
+		while(keyIterator.next()) |key_ptr| {
+			const blueprintId = key_ptr.*;
 
 			if(structureCache.contains(blueprintId)) continue;
 
