@@ -18,7 +18,6 @@
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:oak_leaves",
 			.log = "cubyz:air",
-			.top = "cubyz:oak_top",
 			.chance = 0.3,
 			.type = .round,
 			.height = 6,
@@ -32,8 +31,7 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:oak_leaves",
-			.log = "cubyz:oak_log",
-			.top = "cubyz:oak_top",
+			.log = "cubyz:log/oak",
 			.chance = 0.004,
 			.type = .round,
 			.height = 6,
@@ -45,7 +43,7 @@
 		},
 		.{
 			.id = "cubyz:simple_vegetation",
-			.block = "cubyz:oak_log",
+			.block = "cubyz:log/oak",
 			.chance = 0.01,
 			.height = 1,
 			.height_variation = 2,

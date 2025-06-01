@@ -19,8 +19,7 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:pine_needles",
-			.log = "cubyz:pine_log",
-			.top = "cubyz:pine_top",
+			.log = "cubyz:log/pine",
 			.chance = 0.25,
 			.type = .pyramid,
 			.height = 6,

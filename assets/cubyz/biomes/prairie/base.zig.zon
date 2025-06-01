@@ -34,8 +34,7 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:oak_leaves",
-			.log = "cubyz:oak_log",
-			.top = "cubyz:oak_top",
+			.log = "cubyz:log/oak",
 			.chance = 0.025,
 			.type = .round,
 			.height = 2,

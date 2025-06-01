@@ -26,8 +26,7 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:baobab_leaves",
-			.log = "cubyz:baobab_log",
-			.top = "cubyz:baobab_top",
+			.log = "cubyz:log/baobab",
 			.chance = 0.075,
 			.type = .round,
 			.height = 2,
@@ -40,8 +39,7 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:oak_leaves",
-			.log = "cubyz:oak_log",
-			.top = "cubyz:oak_top",
+			.log = "cubyz:log/oak",
 			.chance = 0.075,
 			.type = .round,
 			.height = 3,
