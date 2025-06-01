@@ -26,6 +26,7 @@
 				0x0, 0x0, 0x0, 0x0, 1.0,
 			},
 			.factor = 0.25,
+			.method = .average,
 		},
 		.{
 			.source = .density,
@@ -38,6 +39,7 @@
 				0x0, 0x0, 0x0, 0x0, 0.0,
 			},
 			.factor = 0.4,
+			.method = .average,
 		},
 		.{
 			.source = .hardness,
@@ -50,6 +52,7 @@
 				0x0, 0x0, 0x0, 0x0, 1.0,
 			},
 			.factor = 120,
+			.method = .average,
 		},
 		.{
 			.source = .hardness,
@@ -62,6 +65,7 @@
 				0x0, 0x0, 0x0, 0x0, 0.0,
 			},
 			.factor = 0.2,
+			.method = .average,
 		},
 		.{
 			.source = .elasticity,
@@ -74,6 +78,7 @@
 				0x0, 0x0, 0x0, 0x0, 1.0,
 			},
 			.factor = 120,
+			.method = .average,
 		},
 		.{
 			.source = .elasticity,
@@ -86,6 +91,7 @@
 				0x0, 0x0, 0x0, 0x0, 0.0,
 			},
 			.factor = -1.0,
+			.method = .average,
 		},
 	},
 }

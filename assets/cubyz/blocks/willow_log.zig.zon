@@ -1,10 +1,11 @@
 .{
 	.tags = .{.wood},
 	.blockHealth = 8,
+	.hasItem = false,
 	.drops = .{
-		.{.items = .{.auto}},
+		.{.items = .{"cubyz:log/willow"}},
 	},
-	.rotation = "cubyz:log",
+	.rotation = "cubyz:direction",
 	.model = "cubyz:cube",
 	.texture = "cubyz:willow_log",
 	.texture_top = "cubyz:willow_log_top",

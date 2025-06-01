@@ -1,0 +1,8 @@
+.{
+	.texture0 = "cubyz:log/mahogany/dot",
+	.texture1 = "cubyz:log/mahogany/line",
+	.texture2 = "cubyz:log/mahogany/bend",
+	.texture3 = "cubyz:log/mahogany/intersection",
+	.texture4 = "cubyz:log/mahogany/cross",
+	.texture5 = "cubyz:log/mahogany/top",
+}

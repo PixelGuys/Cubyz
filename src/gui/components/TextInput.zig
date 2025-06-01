@@ -68,6 +68,10 @@ pub fn init(pos: Vec2f, maxWidth: f32, maxHeight: f32, text: []const u8, onNewli
 }
 
 pub fn deinit(self: *const TextInput) void {
+	if(gui.selectedTextInput == self) {
+		gui.setSelectedTextInput(null);
+	}
+
 	self.textBuffer.deinit();
 	self.currentString.deinit();
 	self.scrollBar.deinit();
