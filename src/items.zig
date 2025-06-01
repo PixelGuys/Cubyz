@@ -398,7 +398,12 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 				weight += property.weigths[i];
 			}
 			if(weight == 0) continue;
-			sum /= weight;
+			switch(property.method) {
+				.sum => {},
+				.average => {
+					sum /= weight;
+				},
+			}
 			sum *= property.resultScale;
 			tool.getProperty(property.destination orelse continue).* += sum;
 		}
@@ -443,6 +448,19 @@ const PropertyMatrix = struct { // MARK: PropertyMatrix
 	destination: ?ToolProperty,
 	weigths: [25]f32,
 	resultScale: f32,
+	method: Method,
+
+	const Method = enum {
+		average,
+		sum,
+
+		fn fromString(string: []const u8) ?Method {
+			return std.meta.stringToEnum(Method, string) orelse {
+				std.log.err("Couldn't find property matrix method {s}.", .{string});
+				return null;
+			};
+		}
+	};
 };
 
 pub const ToolType = struct { // MARK: ToolType
@@ -828,6 +846,10 @@ pub fn hasRegistered(id: []const u8) bool {
 	return reverseIndices.contains(id);
 }
 
+pub fn hasRegisteredTool(id: []const u8) bool {
+	return toolTypes.contains(id);
+}
+
 pub fn toolTypeIterator() std.StringHashMap(ToolType).ValueIterator {
 	return toolTypes.valueIterator();
 }
@@ -943,6 +965,7 @@ pub fn registerTool(assetFolder: []const u8, id: []const u8, zon: ZonElement) vo
 		val.source = MaterialProperty.fromString(paramZon.get([]const u8, "source", "not specified"));
 		val.destination = ToolProperty.fromString(paramZon.get([]const u8, "destination", "not specified"));
 		val.resultScale = paramZon.get(f32, "factor", 1.0);
+		val.method = PropertyMatrix.Method.fromString(paramZon.get([]const u8, "method", "not specified")) orelse .sum;
 		const matrixZon = paramZon.getChild("matrix");
 		for(0..25) |i| {
 			val.weigths[i] = matrixZon.getAtIndex(f32, i, 0.0);

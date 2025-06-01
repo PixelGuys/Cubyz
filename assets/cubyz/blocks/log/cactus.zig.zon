@@ -1,0 +1,9 @@
+.{
+	.tags = .{.leaf},
+	.texture0 = "cubyz:log/cactus/dot",
+	.texture1 = "cubyz:log/cactus/line",
+	.texture2 = "cubyz:log/cactus/bend",
+	.texture3 = "cubyz:log/cactus/intersection",
+	.texture4 = "cubyz:log/cactus/cross",
+	.texture5 = "cubyz:log/cactus/top",
+}

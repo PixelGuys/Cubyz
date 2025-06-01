@@ -11,6 +11,7 @@ const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main");
 const KeyBoard = main.KeyBoard;
 const network = @import("network.zig");
+const particles = @import("particles.zig");
 const Connection = network.Connection;
 const ConnectionManager = network.ConnectionManager;
 const vec = @import("vec.zig");
@@ -655,6 +656,7 @@ pub const World = struct { // MARK: World
 	connected: bool = true,
 	blockPalette: *assets.Palette = undefined,
 	itemPalette: *assets.Palette = undefined,
+	toolPalette: *assets.Palette = undefined,
 	biomePalette: *assets.Palette = undefined,
 	itemDrops: ClientItemDropManager = undefined,
 	playerBiome: Atomic(*const main.server.terrain.biomes.Biome) = undefined,
@@ -673,6 +675,7 @@ pub const World = struct { // MARK: World
 		main.Window.setMouseGrabbed(true);
 
 		main.blocks.meshes.generateTextureArray();
+		main.particles.ParticleManager.generateTextureArray();
 		main.models.uploadModels();
 	}
 
@@ -692,6 +695,7 @@ pub const World = struct { // MARK: World
 		self.itemDrops.deinit();
 		self.blockPalette.deinit();
 		self.itemPalette.deinit();
+		self.toolPalette.deinit();
 		self.biomePalette.deinit();
 		self.manager.deinit();
 		main.server.stop();
@@ -713,9 +717,11 @@ pub const World = struct { // MARK: World
 		errdefer self.biomePalette.deinit();
 		self.itemPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("itemPalette"), null);
 		errdefer self.itemPalette.deinit();
+		self.toolPalette = try assets.Palette.init(main.globalAllocator, zon.getChild("toolPalette"), null);
+		errdefer self.toolPalette.deinit();
 		self.spawn = zon.get(Vec3f, "spawn", .{0, 0, 0});
 
-		try assets.loadWorldAssets("serverAssets", self.blockPalette, self.itemPalette, self.biomePalette);
+		try assets.loadWorldAssets("serverAssets", self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette);
 		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
 		Player.inventory = Inventory.init(main.globalAllocator, 32, .normal, .{.playerInventory = Player.id});
 		Player.loadFrom(zon.getChild("player"));
@@ -1215,4 +1221,5 @@ pub fn update(deltaTime: f64) void { // MARK: update()
 	fog.fogHigher = (biome.fogHigher - fog.fogHigher)*t + fog.fogHigher;
 
 	world.?.update();
+	particles.ParticleSystem.update(@floatCast(deltaTime));
 }

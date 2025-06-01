@@ -537,12 +537,12 @@ pub const GLFWCallbacks = struct { // MARK: GLFWCallbacks
 		const typeString: []const u8 = switch(typ) {
 			c.GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR => "deprecated behavior",
 			c.GL_DEBUG_TYPE_ERROR => "error",
-			c.GL_DEBUG_TYPE_MARKER => "marker",
-			c.GL_DEBUG_TYPE_OTHER => "other",
+			c.GL_DEBUG_TYPE_MARKER => return,
+			c.GL_DEBUG_TYPE_OTHER => return,
 			c.GL_DEBUG_TYPE_PERFORMANCE => "performance",
-			c.GL_DEBUG_TYPE_POP_GROUP => "pop group",
+			c.GL_DEBUG_TYPE_POP_GROUP => return,
 			c.GL_DEBUG_TYPE_PORTABILITY => "portability",
-			c.GL_DEBUG_TYPE_PUSH_GROUP => "push group",
+			c.GL_DEBUG_TYPE_PUSH_GROUP => return,
 			c.GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR => "undefined behavior",
 			else => "unknown",
 		};

@@ -16,6 +16,7 @@ const Vec3i = vec.Vec3i;
 const Vec3d = vec.Vec3d;
 const Vec3f = vec.Vec3f;
 const terrain = server.terrain;
+const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 
 const server = @import("server.zig");
 const User = server.User;
@@ -313,7 +314,7 @@ const ChunkManager = struct { // MARK: ChunkManager
 			@as(usize, @intCast(pos.wz -% region.pos.wz))/pos.voxelSize/chunk.chunkSize,
 		)) |data| blk: { // Load chunk from file:
 			defer main.stackAllocator.free(data);
-			storage.ChunkCompression.decompressChunk(&ch.super, data) catch {
+			storage.ChunkCompression.loadChunk(&ch.super, .server, data) catch {
 				std.log.err("Storage for chunk {} in region file at {} is corrupted", .{pos, region.pos});
 				break :blk;
 			};
@@ -419,6 +420,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 	itemDropManager: ItemDropManager = undefined,
 	blockPalette: *main.assets.Palette = undefined,
 	itemPalette: *main.assets.Palette = undefined,
+	toolPalette: *main.assets.Palette = undefined,
 	biomePalette: *main.assets.Palette = undefined,
 	chunkManager: ChunkManager = undefined,
 
@@ -432,6 +434,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 	defaultGamemode: main.game.Gamemode = undefined,
 	allowCheats: bool = undefined,
+	testingMode: bool = undefined,
 
 	seed: u64,
 	path: []const u8,
@@ -515,38 +518,46 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.wio = WorldIO.init(try files.openDir(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}", .{path})), self);
 		errdefer self.wio.deinit();
 
-		const blockPaletteZon = files.readToZon(arenaAllocator, try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/palette.zig.zon", .{path})) catch .null;
-		self.blockPalette = try main.assets.Palette.init(main.globalAllocator, blockPaletteZon, "cubyz:air");
+		self.blockPalette = try loadPalette(arenaAllocator, path, "palette", "cubyz:air");
 		errdefer self.blockPalette.deinit();
-		std.log.info("Loaded save block palette with {} blocks.", .{self.blockPalette.size()});
 
-		const itemPaletteZon = files.readToZon(arenaAllocator, try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/item_palette.zig.zon", .{path})) catch .null;
-		self.itemPalette = try main.assets.Palette.init(main.globalAllocator, itemPaletteZon, null);
+		self.itemPalette = try loadPalette(arenaAllocator, path, "item_palette", null);
 		errdefer self.itemPalette.deinit();
-		std.log.info("Loaded save item palette with {} items.", .{self.itemPalette.size()});
 
-		const biomePaletteZon = files.readToZon(arenaAllocator, try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/biome_palette.zig.zon", .{path})) catch .null;
-		self.biomePalette = try main.assets.Palette.init(main.globalAllocator, biomePaletteZon, null);
+		self.toolPalette = try loadPalette(arenaAllocator, path, "tool_palette", null);
+		errdefer self.toolPalette.deinit();
+
+		self.biomePalette = try loadPalette(arenaAllocator, path, "biome_palette", null);
 		errdefer self.biomePalette.deinit();
-		std.log.info("Loaded save biome palette with {} biomes.", .{self.biomePalette.size()});
 
 		errdefer main.assets.unloadAssets();
 
 		self.seed = try self.wio.loadWorldSeed();
-		try main.assets.loadWorldAssets(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/assets/", .{path}), self.blockPalette, self.itemPalette, self.biomePalette);
+		try main.assets.loadWorldAssets(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/assets/", .{path}), self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette);
 		// Store the block palette now that everything is loaded.
 		try files.writeZon(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/palette.zig.zon", .{path}), self.blockPalette.storeToZon(arenaAllocator));
-		try files.writeZon(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/biome_palette.zig.zon", .{path}), self.biomePalette.storeToZon(arenaAllocator));
 		try files.writeZon(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/item_palette.zig.zon", .{path}), self.itemPalette.storeToZon(arenaAllocator));
+		try files.writeZon(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/tool_palette.zig.zon", .{path}), self.toolPalette.storeToZon(arenaAllocator));
+		try files.writeZon(try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/biome_palette.zig.zon", .{path}), self.biomePalette.storeToZon(arenaAllocator));
 
 		var gamerules = files.readToZon(arenaAllocator, try std.fmt.allocPrint(arenaAllocator.allocator, "saves/{s}/gamerules.zig.zon", .{path})) catch ZonElement.initObject(arenaAllocator);
 
 		self.defaultGamemode = std.meta.stringToEnum(main.game.Gamemode, gamerules.get([]const u8, "default_gamemode", "creative")) orelse .creative;
 		self.allowCheats = gamerules.get(bool, "cheats", true);
+		self.testingMode = gamerules.get(bool, "testingMode", false);
 
 		self.chunkManager = try ChunkManager.init(self, generatorSettings);
 		errdefer self.chunkManager.deinit();
 		return self;
+	}
+
+	pub fn loadPalette(allocator: NeverFailingAllocator, worldName: []const u8, paletteName: []const u8, firstEntry: ?[]const u8) !*Palette {
+		const path = try std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/{s}.zig.zon", .{worldName, paletteName});
+		defer main.stackAllocator.allocator.free(path);
+		const paletteZon = files.readToZon(allocator, path) catch .null;
+		const palette = try main.assets.Palette.init(main.globalAllocator, paletteZon, firstEntry);
+		std.log.info("Loaded {s} with {} entries.", .{paletteName, palette.size()});
+		return palette;
 	}
 
 	pub fn deinit(self: *ServerWorld) void {
@@ -567,6 +578,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		self.itemDropManager.deinit();
 		self.blockPalette.deinit();
 		self.itemPalette.deinit();
+		self.toolPalette.deinit();
 		self.biomePalette.deinit();
 		self.wio.deinit();
 		main.globalAllocator.free(self.path);
@@ -811,9 +823,17 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		}
 		const newBiomeCheckSum: i64 = @bitCast(terrain.biomes.getBiomeCheckSum(self.seed));
 		if(newBiomeCheckSum != self.biomeChecksum) {
-			self.regenerateLOD(newBiomeCheckSum) catch |err| {
-				std.log.err("Error while trying to regenerate LODs: {s}", .{@errorName(err)});
-			};
+			if(self.testingMode) {
+				const dir = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}", .{self.path}) catch unreachable;
+				defer main.stackAllocator.free(dir);
+				main.files.deleteDir(dir, "maps") catch |err| {
+					std.log.err("Error while trying to remove maps folder of testingMode world: {s}", .{@errorName(err)});
+				};
+			} else {
+				self.regenerateLOD(newBiomeCheckSum) catch |err| {
+					std.log.err("Error while trying to regenerate LODs: {s}", .{@errorName(err)});
+				};
+			}
 		}
 		try self.wio.saveWorldData();
 		const itemsPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/items.zig.zon", .{self.path}) catch unreachable;
@@ -1055,6 +1075,20 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		return ch.getBlock(x - ch.super.pos.wx, y - ch.super.pos.wy, z - ch.super.pos.wz);
 	}
 
+	pub fn getBlockAndBlockEntityData(self: *ServerWorld, x: i32, y: i32, z: i32, blockEntityDataWriter: *utils.BinaryWriter) ?Block {
+		const chunkPos = Vec3i{x, y, z} & ~@as(Vec3i, @splat(main.chunk.chunkMask));
+		const otherChunk = self.getSimulationChunkAndIncreaseRefCount(chunkPos[0], chunkPos[1], chunkPos[2]) orelse return null;
+		defer otherChunk.decreaseRefCount();
+		const ch = otherChunk.getChunk() orelse return null;
+		ch.mutex.lock();
+		defer ch.mutex.unlock();
+		const block = ch.getBlock(x - ch.super.pos.wx, y - ch.super.pos.wy, z - ch.super.pos.wz);
+		if(block.blockEntity()) |blockEntity| {
+			blockEntity.getServerToClientData(.{x, y, z}, &ch.super, blockEntityDataWriter);
+		}
+		return block;
+	}
+
 	/// Returns the actual block on failure
 	pub fn cmpxchgBlock(_: *ServerWorld, wx: i32, wy: i32, wz: i32, oldBlock: ?Block, _newBlock: Block) ?Block {
 		const baseChunk = ChunkManager.getOrGenerateChunkAndIncreaseRefCount(.{.wx = wx & ~@as(i32, chunk.chunkMask), .wy = wy & ~@as(i32, chunk.chunkMask), .wz = wz & ~@as(i32, chunk.chunkMask), .voxelSize = 1});
@@ -1070,11 +1104,16 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 				return currentBlock;
 			}
 			if(currentBlock != _newBlock) {
-				if(currentBlock.blockEntity()) |blockEntity| blockEntity.onBreakServer(.{wx, wy, wz}, &baseChunk.super);
+				if(currentBlock.blockEntity()) |blockEntity| blockEntity.updateServerData(.{wx, wy, wz}, &baseChunk.super, .remove) catch |err| {
+					std.log.err("Got error {s} while trying to remove entity data in position {} for block {s}", .{@errorName(err), Vec3i{wx, wy, wz}, currentBlock.id()});
+				};
 			}
 			baseChunk.updateBlockAndSetChanged(x, y, z, _newBlock);
 			if(currentBlock != _newBlock) {
-				if(_newBlock.blockEntity()) |blockEntity| blockEntity.onPlaceServer(.{wx, wy, wz}, &baseChunk.super);
+				var reader = utils.BinaryReader.init(&.{});
+				if(_newBlock.blockEntity()) |blockEntity| blockEntity.updateServerData(.{wx, wy, wz}, &baseChunk.super, .{.createOrUpdate = &reader}) catch |err| {
+					std.log.err("Got error {s} while trying to create empty entity data in position {} for block {s}", .{@errorName(err), Vec3i{wx, wy, wz}, _newBlock.id()});
+				};
 			}
 		}
 		baseChunk.mutex.unlock();
@@ -1117,7 +1156,7 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 		defer server.freeUserListAndDecreaseRefCount(main.stackAllocator, userList);
 
 		for(userList) |user| {
-			main.network.Protocols.blockUpdate.send(user.conn, &.{.{.x = wx, .y = wy, .z = wz, .newBlock = newBlock}});
+			main.network.Protocols.blockUpdate.send(user.conn, &.{.{.x = wx, .y = wy, .z = wz, .newBlock = newBlock, .blockEntityData = &.{}}});
 		}
 		return null;
 	}
