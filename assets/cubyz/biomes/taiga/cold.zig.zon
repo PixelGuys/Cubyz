@@ -18,13 +18,13 @@
 	.structures = .{
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:tree/coniferous/1",
+			.structure = "cubyz:tree/coniferous/short",
 			.placeMode = .degradable,
-			.chance = 0.10,
+			.chance = 0.15,
 		},
 		.{
 			.id = "cubyz:sbb",
-			.structure = "cubyz:tree/coniferous/0",
+			.structure = "cubyz:tree/coniferous/sapling",
 			.placeMode = .degradable,
 			.chance = 0.05,
 		},
