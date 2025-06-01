@@ -10,3 +10,4 @@ pub const sign = @import("sign.zig");
 pub const stairs = @import("stairs.zig");
 pub const texture_pile = @import("texture_pile.zig");
 pub const torch = @import("torch.zig");
+pub const ladder = @import("ladder.zig");
