@@ -35,6 +35,7 @@ pub const ParticleManager = struct {
 
 	const ParticleIndex = u16;
 	var particleTypeHashmap: std.StringHashMapUnmanaged(ParticleIndex) = undefined;
+	var typeIds: main.List([]const u8) = undefined;
 
 	pub fn init() void {
 		types = .init(arenaAllocator);
@@ -42,6 +43,7 @@ pub const ParticleManager = struct {
 		emissionTextures = .init(arenaAllocator);
 		textureArray = .init();
 		emissionTextureArray = .init();
+		typeIds = .init(arenaAllocator);
 		particleTypesSSBO = SSBO.init();
 		ParticleSystem.init();
 	}
@@ -52,6 +54,7 @@ pub const ParticleManager = struct {
 		emissionTextures.deinit();
 		textureArray.deinit();
 		emissionTextureArray.deinit();
+		typeIds.deinit();
 		particleTypeHashmap.deinit(arenaAllocator.allocator);
 		ParticleSystem.deinit();
 		particleTypesSSBO.deinit();
@@ -67,6 +70,7 @@ pub const ParticleManager = struct {
 		const particleType = readTextureDataAndParticleType(assetsFolder, textureId);
 
 		particleTypeHashmap.put(arenaAllocator.allocator, id, @intCast(types.items.len)) catch unreachable;
+		typeIds.append(id);
 		types.append(particleType);
 
 		std.log.debug("Registered particle type: {s}", .{id});
@@ -148,11 +152,14 @@ pub const ParticleManager = struct {
 		particleTypesSSBO.bind(14);
 	}
 
-	pub fn getTypeById(id: []const u8) ?ParticleType {
-		if(particleTypeHashmap.get(id)) |typ| {
-			return types.items[typ];
-		}
-		return null;
+	pub fn getTypeIndexById(id: []const u8) ?ParticleIndex {
+		return particleTypeHashmap.get(id);
+	}
+	
+	pub fn getIdByTypeIndex(index: ParticleIndex) []const u8 {
+		std.debug.assert(index < typeIds.items.len);
+
+		return typeIds.items[index];
 	}
 };
 
