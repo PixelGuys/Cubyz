@@ -1,0 +1,10 @@
+.{
+	.blueprint = "cubyz:tree/coniferous/stem/extender/5",
+	.children = .{
+		.white = .{
+			.{.structure = "cubyz:tree/coniferous/stem/5/0b"},
+			.{.structure = "cubyz:tree/coniferous/stem/5/1b"},
+			.{.structure = "cubyz:tree/coniferous/stem/5/2b"},
+		},
+	},
+}
