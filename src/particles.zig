@@ -149,7 +149,10 @@ pub const ParticleManager = struct {
 	}
 
 	pub fn getTypeById(id: []const u8) ?ParticleType {
-		return particleTypeHashmap.get(id);
+		if(particleTypeHashmap.get(id)) |typ| {
+			return types.items[typ];
+		}
+		return null;
 	}
 };
 
