@@ -408,7 +408,7 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 			tool.getProperty(property.destination orelse continue).* += sum;
 		}
 		if(tool.damage < 1) tool.damage = 1/(2 - tool.damage);
-		if(tool.swingTime < 1) tool.swingTime = 1/(2 - tool.swingTime);
+		if(tool.swingTime < 1) tool.swingTime = 1/(3 - tool.swingTime);
 		for(0..25) |i| {
 			const material = (tool.craftingGrid[i] orelse continue).material() orelse continue;
 			outer: for(material.modifiers) |newMod| {
