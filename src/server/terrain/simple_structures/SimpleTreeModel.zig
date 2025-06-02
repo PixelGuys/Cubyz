@@ -57,7 +57,7 @@ pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) 
 }
 
 fn getWoodBlock(self: *SimpleTreeModel, data: u16) main.blocks.Block {
-	if(self.woodBlock.mode() == main.rotation.getByID("log")) {
+	if(self.woodBlock.mode() == main.rotation.getByID("log") or self.woodBlock.mode() == main.rotation.getByID("branch")) {
 		return .{.typ = self.woodBlock.typ, .data = data};
 	}
 	return self.woodBlock;
@@ -70,16 +70,16 @@ pub fn generateStem(self: *SimpleTreeModel, x: i32, y: i32, z: i32, height: i32,
 			if(chunk.liesInChunk(x, y, pz)) {
 				var data: u16 = 0;
 				if(pz != z + height - 1) {
-					data |= @as(u16, 1) << @intFromEnum(Neighbor.dirUp);
+					data |= Neighbor.dirUp.bitMask();
 				}
-				data |= @as(u16, 1) << @intFromEnum(Neighbor.dirDown);
+				data |= Neighbor.dirDown.bitMask();
 
 				if(self.branched) {
 					const chance = @sqrt(@as(f32, @floatFromInt(pz - z))/@as(f32, @floatFromInt(height*2)));
 					if(main.random.nextFloat(seed) < chance) {
 						const d = main.random.nextIntBounded(u32, seed, 4);
 						if(generateBranch(self, x, y, pz, d, chunk, seed)) |side| {
-							data |= @as(u16, 1) << @intFromEnum(side);
+							data |= side.bitMask();
 						}
 					}
 				}
@@ -94,16 +94,16 @@ pub fn generateBranch(self: *SimpleTreeModel, x: i32, y: i32, z: i32, d: u32, ch
 	_ = seed;
 
 	if(d == 0 and chunk.liesInChunk(x + 1, y, z)) {
-		chunk.updateBlockIfDegradable(x + 1, y, z, self.getWoodBlock(@as(u16, 1) << @intFromEnum(Neighbor.dirNegX)));
+		chunk.updateBlockIfDegradable(x + 1, y, z, self.getWoodBlock(Neighbor.dirNegX.bitMask()));
 		return .dirPosX;
 	} else if(d == 1 and chunk.liesInChunk(x - 1, y, z)) {
-		chunk.updateBlockIfDegradable(x - 1, y, z, self.getWoodBlock(@as(u16, 1) << @intFromEnum(Neighbor.dirPosX)));
+		chunk.updateBlockIfDegradable(x - 1, y, z, self.getWoodBlock(Neighbor.dirPosX.bitMask()));
 		return .dirNegX;
 	} else if(d == 2 and chunk.liesInChunk(x, y + 1, z)) {
-		chunk.updateBlockIfDegradable(x, y + 1, z, self.getWoodBlock(@as(u16, 1) << @intFromEnum(Neighbor.dirNegY)));
+		chunk.updateBlockIfDegradable(x, y + 1, z, self.getWoodBlock(Neighbor.dirNegY.bitMask()));
 		return .dirPosY;
 	} else if(d == 3 and chunk.liesInChunk(x, y - 1, z)) {
-		chunk.updateBlockIfDegradable(x, y - 1, z, self.getWoodBlock(@as(u16, 1) << @intFromEnum(Neighbor.dirPosY)));
+		chunk.updateBlockIfDegradable(x, y - 1, z, self.getWoodBlock(Neighbor.dirPosY.bitMask()));
 		return .dirNegY;
 	}
 
