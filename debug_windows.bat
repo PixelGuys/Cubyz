@@ -2,7 +2,7 @@
 
 cd /D "%~dp0"
 
-call scripts\detect_compiler_windows.bat
+call scripts\install_compiler_windows.bat
 if errorlevel 1 (
 	echo Failed to install Zig compiler.
 	exit /b 1

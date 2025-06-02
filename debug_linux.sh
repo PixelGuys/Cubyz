@@ -6,8 +6,9 @@ fail () {
 	exit 1
 }
 
-if ! ./scripts/detect_compiler_linux.sh
+if ! ./scripts/install_compiler_linux.sh
 then
+	echo Failed to install Zig compiler.
 	fail
 fi
 
