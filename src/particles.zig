@@ -35,7 +35,7 @@ pub const ParticleManager = struct {
 
 	const ParticleIndex = u16;
 	var particleTypeHashmap: std.StringHashMapUnmanaged(ParticleIndex) = .{};
-  var typeIds: main.List([]const u8) = undefined;
+	var typeIds: main.List([]const u8) = undefined;
 
 	pub fn init() void {
 		types = .init(arenaAllocator);
