@@ -21,6 +21,7 @@ const Vec3f = vec.Vec3f;
 const Vec3i = vec.Vec3i;
 const NeverFailingAllocator = main.heap.NeverFailingAllocator;
 const BlockUpdate = renderer.mesh_storage.BlockUpdate;
+const ecs = main.ecs;
 
 //TODO: Might want to use SSL or something similar to encode the message
 
@@ -681,8 +682,8 @@ pub const Protocols = struct {
 						conn.user.?.initPlayer(name);
 						const zonObject = ZonElement.initObject(main.stackAllocator);
 						defer zonObject.deinit(main.stackAllocator);
-						zonObject.put("player", conn.user.?.player.save(main.stackAllocator));
-						zonObject.put("player_id", conn.user.?.id);
+						zonObject.put("player", ecs.component_list.entity.toZon(main.stackAllocator, conn.user.?.id));
+						zonObject.put("player_id", @as(u32, @intFromEnum(conn.user.?.id)));
 						zonObject.put("spawn", main.server.world.?.spawn);
 						zonObject.put("blockPalette", main.server.world.?.blockPalette.storeToZon(main.stackAllocator));
 						zonObject.put("itemPalette", main.server.world.?.itemPalette.storeToZon(main.stackAllocator));
@@ -976,7 +977,7 @@ pub const Protocols = struct {
 				const elem = zonArray.array.items[i];
 				switch(elem) {
 					.int => {
-						main.entity.ClientEntityManager.removeEntity(elem.as(u32, 0));
+						main.entity.ClientEntityManager.removeEntity(@intCast(elem.as(u16, 0)));
 					},
 					.object => {
 						main.entity.ClientEntityManager.addEntity(elem);
