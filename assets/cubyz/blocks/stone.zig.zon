@@ -25,6 +25,18 @@
 						.amount = 2,
 					},
 				},
+				.{
+					.id = "brittle",
+					.strength = 0.33,
+					.restriction = .{
+						.id = .not,
+						.child = .{
+							.id = .encased,
+							.tag = .precious,
+							.amount = 4,
+						},
+					},
+				},
 			},
 		},
 	},
