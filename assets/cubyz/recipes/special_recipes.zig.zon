@@ -96,6 +96,14 @@
 		.output = "cubyz:cut_diamond_block",
 	},
 	.{
+		.inputs = .{"4 cubyz:amber_ore"},
+		.output = "cubyz:amber_block",
+	},
+	.{
+		.inputs = .{"cubyz:amber_block"},
+		.output = "cubyz:cut_amber_block",
+	},
+	.{
 		.inputs = .{"4 cubyz:ruby_ore"},
 		.output = "cubyz:ruby_block",
 	},
@@ -142,6 +150,14 @@
 	.{
 		.inputs = .{"cubyz:cut_diamond_block"},
 		.output = "4 cubyz:diamond",
+	},
+	.{
+		.inputs = .{"cubyz:amber_block"},
+		.output = "4 cubyz:amber_ore",
+	},
+	.{
+		.inputs = .{"cubyz:cut_amber_block"},
+		.output = "4 cubyz:amber_ore",
 	},
 	.{
 		.inputs = .{"cubyz:ruby_block"},
