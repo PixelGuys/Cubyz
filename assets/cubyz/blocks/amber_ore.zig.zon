@@ -1,7 +1,7 @@
 .{
 	.tags = .{.stone},
-	.blockHealth = 100,
-	.blockResistance = 9,
+	.blockHealth = 15,
+	.blockResistance = 3,
 	.item = .{
 		.texture = "amber.png",
 		.material = .{
