@@ -1062,7 +1062,7 @@ pub const MeshSelection = struct { // MARK: MeshSelection
 				}
 				damage -= block.blockResistance();
 				if(damage > 0) {
-					const swingTime = if(isTool) stack.item.?.tool.swingTime else 0.33;
+					const swingTime = if(isTool) stack.item.?.tool.swingTime else 0.20;
 					if(currentSwingTime != swingTime) {
 						currentSwingProgress = 0;
 						currentSwingTime = swingTime;
