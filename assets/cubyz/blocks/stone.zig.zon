@@ -32,7 +32,7 @@
 						.id = .not,
 						.child = .{
 							.id = .encased,
-							.tag = .precious,
+							.tag = .metal,
 							.amount = 4,
 						},
 					},

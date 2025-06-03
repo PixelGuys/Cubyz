@@ -17,7 +17,7 @@
 					.child = .{
 						.id = .encased,
 						.tag = .precious,
-						.amount = 4,
+						.amount = 5,
 					},
 				},
 			},
