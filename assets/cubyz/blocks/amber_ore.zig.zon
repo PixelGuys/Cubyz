@@ -16,6 +16,11 @@
 				.{
 					.id = "light",
 					.strength = 0.5,
+					.restriction = .{
+						.id = .encased,
+						.tag = .precious,
+						.amount = 4,
+					},
 				},
 			},
 		},
