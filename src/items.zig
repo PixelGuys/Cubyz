@@ -22,7 +22,7 @@ const modifierRestrictionList = @import("tool/modifiers/restrictions/_list.zig")
 
 pub const Inventory = @import("Inventory.zig");
 
-const Material = struct { // MARK: Material
+pub const Material = struct { // MARK: Material
 	density: f32 = undefined,
 	elasticity: f32 = undefined,
 	hardness: f32 = undefined,

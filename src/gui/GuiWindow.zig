@@ -494,10 +494,10 @@ pub fn render(self: *const GuiWindow, mousePosition: Vec2f) void {
 		backgroundTexture.bindTo(0);
 		draw.customShadedRect(windowUniforms, .{0, 0}, self.size/@as(Vec2f, @splat(self.scale)));
 	}
-	self.renderFn();
 	if(self.rootComponent) |*component| {
 		component.render((mousePosition - self.pos)/@as(Vec2f, @splat(self.scale)));
 	}
+	self.renderFn();
 	if(self.showTitleBar or gui.reorderWindows) {
 		pipeline.bind(draw.getScissor());
 		titleTexture.bindTo(0);

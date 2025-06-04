@@ -100,6 +100,85 @@ fn closeInventory() void {
 	}
 }
 
+fn getStats(material: main.items.Material, index: usize, activeSlots: f32) struct {f32, f32, f32} {
+	const toolType = toolTypes.items[currentToolType];
+	var durability: f32 = 0;
+	var swingTime: f32 = 0;
+	var damage: f32 = 0;
+	for(toolType.properties) |property| {
+		const destinationPointer = switch(property.destination orelse continue) {
+			.maxDurability => &durability,
+			.swingTime => &swingTime,
+			.damage => &damage,
+		};
+		const sourceValue = switch(property.source orelse continue) {
+			.density => material.density,
+			.elasticity => material.elasticity,
+			.hardness => material.hardness,
+		};
+		destinationPointer.* += sourceValue*property.weigths[index]*property.resultScale;
+		switch(property.method) {
+			.average => {
+				destinationPointer.* /= activeSlots;
+			},
+			.sum => {},
+		}
+	}
+	return .{durability, swingTime, damage};
+}
+
+fn renderChanges() void {
+	const selectedItem = main.gui.inventory.carried._items[0].item orelse return;
+	if(selectedItem != .baseItem) return;
+	const selectedMaterial = selectedItem.baseItem.material() orelse return;
+	var count: f32 = 0;
+	for(0..5) |y| {
+		for(0..5) |x| {
+			const index = x + y*5;
+			const slot = itemSlots[index];
+			if(slot.inventory._items[slot.itemSlot].item != null) count += 1;
+		}
+	}
+
+	for(0..5) |y| {
+		for(0..5) |x| {
+			const index = x + y*5;
+			const slot = itemSlots[index];
+			if(slot.mode != .immutable) {
+				const current = blk: {
+					const slotItem = slot.inventory._items[slot.itemSlot].item orelse continue;
+					const slotMaterial = slotItem.baseItem.material() orelse unreachable;
+					break :blk getStats(slotMaterial, index, count);
+				};
+				const new = getStats(selectedMaterial, index, count + if(slot.inventory._items[slot.itemSlot].item == null) @as(f32, 1) else 0);
+				var string = main.List(u8).init(main.stackAllocator);
+				defer string.deinit();
+				string.appendSlice("#000000🪨 ");
+				string.appendSlice(if(new[0] < current[0]) "#ff0000↓" else if(new[0] > current[0]) "#00ff00↑" else "#ffff00=");
+				string.appendSlice("#000000\n🚄 ");
+				string.appendSlice(if(new[1] > current[1]) "#ff0000↓" else if(new[1] < current[1]) "#00ff00↑" else "#ffff00=");
+				string.appendSlice("#000000\n💥 ");
+				string.appendSlice(if(new[2] < current[2]) "#ff0000↓" else if(new[2] > current[2]) "#00ff00↑" else "#ffff00=");
+				std.log.debug("{} {}", .{new, current});
+				var text = main.graphics.TextBuffer.init(main.globalAllocator, string.items, .{}, false, .left);
+				defer text.deinit();
+				_ = text.calculateLineBreaks(8, 32);
+				text.render(@as(f32, @floatFromInt(x))*36 + 8, @as(f32, @floatFromInt(y))*36 + 24, 8);
+			}
+		}
+	}
+}
+
+pub fn render() void {
+	renderChanges();
+
+	const currentResult = inv._items[25].item orelse return;
+
+	main.graphics.draw.print("#000000🪨  {}", .{@as(usize, @intFromFloat(currentResult.tool.maxDurability))}, 36*5 + 20, 36*4, 16, .left);
+	main.graphics.draw.print("#000000🚄  {d:.1} swings/s", .{1.0/currentResult.tool.swingTime}, 36*5 + 20, 36*4 + 16, 16, .left);
+	main.graphics.draw.print("#000000💥  {d:.1}", .{currentResult.tool.damage}, 36*5 + 20, 36*4 + 32, 16, .left);
+}
+
 pub fn update() void {
 	if(needsUpdate) {
 		needsUpdate = false;
