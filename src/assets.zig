@@ -5,6 +5,7 @@ const items_zig = @import("items.zig");
 const migrations_zig = @import("migrations.zig");
 const blueprints_zig = @import("blueprint.zig");
 const Blueprint = blueprints_zig.Blueprint;
+const particles_zig = @import("particles.zig");
 const ZonElement = @import("zon.zig").ZonElement;
 const main = @import("main");
 const biomes_zig = main.server.terrain.biomes;
@@ -26,6 +27,7 @@ pub const Assets = struct {
 	blocks: ZonHashMap,
 	blockMigrations: AddonNameToZonMap,
 	items: ZonHashMap,
+	itemMigrations: ZonHashMap,
 	tools: ZonHashMap,
 	biomes: ZonHashMap,
 	biomeMigrations: AddonNameToZonMap,
@@ -33,12 +35,14 @@ pub const Assets = struct {
 	models: BytesHashMap,
 	structureBuildingBlocks: ZonHashMap,
 	blueprints: BytesHashMap,
+	particles: ZonHashMap,
 
 	fn init() Assets {
 		return .{
 			.blocks = .{},
 			.blockMigrations = .{},
 			.items = .{},
+			.itemMigrations = .{},
 			.tools = .{},
 			.biomes = .{},
 			.biomeMigrations = .{},
@@ -46,12 +50,14 @@ pub const Assets = struct {
 			.models = .{},
 			.structureBuildingBlocks = .{},
 			.blueprints = .{},
+			.particles = .{},
 		};
 	}
 	fn deinit(self: *Assets, allocator: NeverFailingAllocator) void {
 		self.blocks.deinit(allocator.allocator);
 		self.blockMigrations.deinit(allocator.allocator);
 		self.items.deinit(allocator.allocator);
+		self.itemMigrations.deinit(allocator.allocator);
 		self.tools.deinit(allocator.allocator);
 		self.biomes.deinit(allocator.allocator);
 		self.biomeMigrations.deinit(allocator.allocator);
@@ -59,12 +65,14 @@ pub const Assets = struct {
 		self.models.deinit(allocator.allocator);
 		self.structureBuildingBlocks.deinit(allocator.allocator);
 		self.blueprints.deinit(allocator.allocator);
+		self.particles.deinit(allocator.allocator);
 	}
 	fn clone(self: Assets, allocator: NeverFailingAllocator) Assets {
 		return .{
 			.blocks = self.blocks.clone(allocator.allocator) catch unreachable,
 			.blockMigrations = self.blockMigrations.clone(allocator.allocator) catch unreachable,
 			.items = self.items.clone(allocator.allocator) catch unreachable,
+			.itemMigrations = self.itemMigrations.clone(allocator.allocator) catch unreachable,
 			.tools = self.tools.clone(allocator.allocator) catch unreachable,
 			.biomes = self.biomes.clone(allocator.allocator) catch unreachable,
 			.biomeMigrations = self.biomeMigrations.clone(allocator.allocator) catch unreachable,
@@ -72,6 +80,7 @@ pub const Assets = struct {
 			.models = self.models.clone(allocator.allocator) catch unreachable,
 			.structureBuildingBlocks = self.structureBuildingBlocks.clone(allocator.allocator) catch unreachable,
 			.blueprints = self.blueprints.clone(allocator.allocator) catch unreachable,
+			.particles = self.particles.clone(allocator.allocator) catch unreachable,
 		};
 	}
 	fn read(self: *Assets, allocator: NeverFailingAllocator, assetPath: []const u8) void {
@@ -81,19 +90,20 @@ pub const Assets = struct {
 
 		for(addons.items) |addon| {
 			addon.readAllZon(allocator, "blocks", true, &self.blocks, &self.blockMigrations);
-			addon.readAllZon(allocator, "items", true, &self.items, null);
+			addon.readAllZon(allocator, "items", true, &self.items, &self.itemMigrations);
 			addon.readAllZon(allocator, "tools", true, &self.tools, null);
 			addon.readAllZon(allocator, "biomes", true, &self.biomes, &self.biomeMigrations);
 			addon.readAllZon(allocator, "recipes", false, &self.recipes, null);
 			addon.readAllZon(allocator, "sbb", true, &self.structureBuildingBlocks, null);
-			addon.readAllBlueprints(allocator, &self.blueprints);
+			addon.readAllBlueprints(allocator, "sbb", &self.blueprints);
 			addon.readAllModels(allocator, &self.models);
+			addon.readAllZon(allocator, "particles", true, &self.particles, null);
 		}
 	}
 	fn log(self: *Assets, typ: enum {common, world}) void {
 		std.log.info(
-			"Finished {s} assets reading with {} blocks ({} migrations), {} items, {} tools, {} biomes ({} migrations), {} recipes, {} structure building blocks and {} blueprints",
-			.{@tagName(typ), self.blocks.count(), self.blockMigrations.count(), self.items.count(), self.tools.count(), self.biomes.count(), self.biomeMigrations.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count()},
+			"Finished {s} assets reading with {} blocks ({} migrations), {} items ({} migrations), {} tools, {} biomes ({} migrations), {} recipes, {} structure building blocks, {} blueprints and {} particles",
+			.{@tagName(typ), self.blocks.count(), self.blockMigrations.count(), self.items.count(), self.itemMigrations.count(), self.tools.count(), self.biomes.count(), self.biomeMigrations.count(), self.recipes.count(), self.structureBuildingBlocks.count(), self.blueprints.count(), self.particles.count()},
 		);
 	}
 
@@ -227,8 +237,7 @@ pub const Assets = struct {
 			}
 		}
 
-		pub fn readAllBlueprints(addon: Addon, allocator: NeverFailingAllocator, output: *BytesHashMap) void {
-			const subPath = "blueprints";
+		pub fn readAllBlueprints(addon: Addon, allocator: NeverFailingAllocator, subPath: []const u8, output: *BytesHashMap) void {
 			var assetsDirectory = addon.dir.openDir(subPath, .{.iterate = true}) catch |err| {
 				if(err != error.FileNotFound) {
 					std.log.err("Could not open addon directory {s}: {s}", .{subPath, @errorName(err)});
@@ -318,6 +327,7 @@ fn createAssetStringID(
 pub fn init() void {
 	biomes_zig.init();
 	blocks_zig.init();
+	migrations_zig.init();
 
 	commonAssetArena = .init(main.globalAllocator);
 	commonAssetAllocator = commonAssetArena.allocator();
@@ -489,6 +499,9 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	migrations_zig.registerAll(.block, &worldAssets.blockMigrations);
 	migrations_zig.apply(.block, blockPalette);
 
+	migrations_zig.registerAll(.item, &worldAssets.itemMigrations);
+	migrations_zig.apply(.item, itemPalette);
+
 	migrations_zig.registerAll(.biome, &worldAssets.biomeMigrations);
 	migrations_zig.apply(.biome, biomePalette);
 
@@ -599,6 +612,11 @@ pub fn loadWorldAssets(assetFolder: []const u8, blockPalette: *Palette, itemPale
 	try sbb.registerBlueprints(&worldAssets.blueprints);
 	try sbb.registerSBB(&worldAssets.structureBuildingBlocks);
 
+	iterator = worldAssets.particles.iterator();
+	while(iterator.next()) |entry| {
+		particles_zig.ParticleManager.register(assetFolder, entry.key_ptr.*, entry.value_ptr.*);
+	}
+
 	// Biomes:
 	var nextBiomeNumericId: u32 = 0;
 	for(biomePalette.palette.items) |id| {
@@ -643,6 +661,7 @@ pub fn unloadAssets() void { // MARK: unloadAssets()
 	sbb.reset();
 	blocks_zig.reset();
 	items_zig.reset();
+	migrations_zig.reset();
 	biomes_zig.reset();
 	migrations_zig.reset();
 	main.models.reset();
