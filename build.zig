@@ -80,7 +80,6 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 }
 
 pub fn makeModFeature(step: *std.Build.Step, _: std.Build.Step.MakeOptions) anyerror!void {
-	const b = step.owner;
 	var out: std.ArrayListUnmanaged(u8) = .{};
 
 	var assetsDir = try std.fs.cwd().openDir("mods", .{.iterate = true});
@@ -101,7 +100,7 @@ pub fn makeModFeature(step: *std.Build.Step, _: std.Build.Step.MakeOptions) anye
 			if(rotationEntry.kind != .file) continue;
 			if(!std.mem.endsWith(u8, rotationEntry.name, ".zig")) continue;
 
-			try out.appendSlice(b.allocator, b.fmt(
+			try out.appendSlice(step.owner.allocator, step.owner.fmt(
 				"pub const @\"{s}:{s}\" = @import(\"{s}/{s}/{s}\");\n",
 				.{
 					addonEntry.name,
@@ -114,12 +113,12 @@ pub fn makeModFeature(step: *std.Build.Step, _: std.Build.Step.MakeOptions) anye
 		}
 	}
 
-	const file_path = try std.fs.path.join(b.allocator, &.{"mods", b.fmt("{s}.zig", .{step.name})});
+	const file_path = try std.fs.path.join(step.owner.allocator, &.{"mods", step.owner.fmt("{s}.zig", .{step.name})});
 	var file = try std.fs.cwd().createFile(file_path, .{.truncate = true});
 	defer file.close();
 
 	try file.writeAll(out.items);
-	out.deinit(b.allocator);
+	out.deinit(step.owner.allocator);
 }
 
 pub fn addModFeatureStep(b: *std.Build, name: []const u8) !*std.Build.Step {
