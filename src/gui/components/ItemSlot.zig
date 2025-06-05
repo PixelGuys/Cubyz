@@ -16,6 +16,8 @@ const ItemSlot = @This();
 
 const border: f32 = 2;
 
+pub const sizeWithBorder = 32 + 2*border;
+
 const Mode = enum {
 	normal,
 	takeOnly,
@@ -23,7 +25,7 @@ const Mode = enum {
 };
 
 pos: Vec2f,
-size: Vec2f = .{32 + 2*border, 32 + 2*border},
+size: Vec2f = @splat(sizeWithBorder),
 inventory: Inventory,
 itemSlot: u32,
 lastItemAmount: u16 = 0,
