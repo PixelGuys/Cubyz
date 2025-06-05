@@ -18,22 +18,20 @@ pub const generationMode = .floor;
 
 const SbbGen = @This();
 
-structureRef: ?*const sbb.StructureBuildingBlock,
+structureRef: *const sbb.StructureBuildingBlock,
 placeMode: Blueprint.PasteMode,
 rotation: sbb.Rotation,
 
 pub fn getHash(self: SbbGen) u64 {
-	return std.hash.Wyhash.hash(@intFromEnum(self.placeMode), if(self.structureRef) |ref| ref.id else "");
+	return std.hash.Wyhash.hash(@intFromEnum(self.placeMode), self.structureRef.id);
 }
 
 pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) *SbbGen {
-	const structureId = parameters.get(?[]const u8, "structure", null) orelse blk: {
-		std.log.err("Error loading generator 'cubyz:sbb' structure field is mandatory.", .{});
-		break :blk "";
+	const structureId = parameters.get(?[]const u8, "structure", null) orelse {
+		main.utils.panicWithMessage("Error loading generator 'cubyz:sbb' structure field is mandatory.", .{});
 	};
-	const structureRef = sbb.getByStringId(structureId) orelse blk: {
-		std.log.err("Could not find structure building block with id '{s}'", .{structureId});
-		break :blk null;
+	const structureRef = sbb.getByStringId(structureId) orelse {
+		main.utils.panicWithMessage("Could not find structure building block with id '{s}'", .{structureId});
 	};
 	const rotationParam = parameters.getChild("rotation");
 	const rotation = sbb.Rotation.fromZon(rotationParam) catch |err| blk: {
@@ -53,13 +51,12 @@ pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) 
 }
 
 pub fn generate(self: *SbbGen, _: GenerationMode, x: i32, y: i32, z: i32, chunk: *ServerChunk, _: CaveMapView, _: CaveBiomeMapView, seed: *u64, _: bool) void {
-	const structure = self.structureRef orelse return;
 	const rotation: sbb.Rotation = switch(self.rotation) {
 		.random => sbb.Rotation.sampleRandom(seed),
 		.inherit => .@"0",
 		else => |r| r,
 	};
-	placeSbb(self, structure, Vec3i{x, y, z}, Neighbor.dirUp, rotation, chunk, seed);
+	placeSbb(self, self.structureRef, Vec3i{x, y, z}, Neighbor.dirUp, rotation, chunk, seed);
 }
 
 fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placementPosition: Vec3i, placementDirection: Neighbor, rotationNullable: ?sbb.Rotation, chunk: *ServerChunk, seed: *u64) void {
