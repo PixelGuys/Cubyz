@@ -90,7 +90,6 @@ fn openInventory() void {
 }
 
 fn closeInventory() void {
-	main.game.Player.inventory.depositOrDrop(inv);
 	inv.deinit(main.globalAllocator);
 	if(window.rootComponent) |*comp| {
 		comp.deinit();

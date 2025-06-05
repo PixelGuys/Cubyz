@@ -463,6 +463,7 @@ pub const Player = struct { // MARK: Player
 	pub var isGhost: Atomic(bool) = .init(false);
 	pub var hyperSpeed: Atomic(bool) = .init(false);
 	pub var mutex: std.Thread.Mutex = .{};
+	pub const inventorySize = 32;
 	pub var inventory: Inventory = undefined;
 	pub var selectedSlot: u32 = 0;
 
@@ -723,7 +724,7 @@ pub const World = struct { // MARK: World
 
 		try assets.loadWorldAssets("serverAssets", self.blockPalette, self.itemPalette, self.toolPalette, self.biomePalette);
 		Player.id = zon.get(u32, "player_id", std.math.maxInt(u32));
-		Player.inventory = Inventory.init(main.globalAllocator, 32, .normal, .{.playerInventory = Player.id});
+		Player.inventory = Inventory.init(main.globalAllocator, Player.inventorySize, .normal, .{.playerInventory = Player.id});
 		Player.loadFrom(zon.getChild("player"));
 		self.playerBiome = .init(main.server.terrain.biomes.getPlaceholderBiome());
 		main.audio.setMusic(self.playerBiome.raw.preferredMusic);

@@ -863,6 +863,9 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 
 			main.items.Inventory.Sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", @tagName(self.defaultGamemode))) orelse self.defaultGamemode);
 		}
+
+		user.inventory = main.items.Inventory.Sync.ServerSide.createManagedInventory(main.game.Player.inventorySize, .normal, .{.playerInventory = user.id}, playerData.getChild("playerInventory"));
+		user.handInventory = main.items.Inventory.Sync.ServerSide.createManagedInventory(1, .normal, .{.hand = user.id}, playerData.getChild("hand"));
 	}
 
 	pub fn savePlayer(self: *ServerWorld, user: *User) !void {
@@ -891,11 +894,11 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			defer main.items.Inventory.Sync.ServerSide.mutex.unlock();
 			if(main.items.Inventory.Sync.ServerSide.getInventoryFromSource(.{.playerInventory = user.id})) |inv| {
 				playerZon.put("playerInventory", inv.save(main.stackAllocator));
-			}
+			} else @panic("The player inventory wasn't found. Cannot save player data.");
 
 			if(main.items.Inventory.Sync.ServerSide.getInventoryFromSource(.{.hand = user.id})) |inv| {
 				playerZon.put("hand", inv.save(main.stackAllocator));
-			}
+			} else @panic("The player hand inventory wasn't found. Cannot save player data.");
 		}
 
 		const playerPath = std.fmt.allocPrint(main.stackAllocator.allocator, "saves/{s}/players", .{self.path}) catch unreachable;
