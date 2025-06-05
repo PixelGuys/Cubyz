@@ -419,37 +419,31 @@ pub const Block = packed struct { // MARK: Block
 
 // MARK: Tick
 pub const TickEventVTableMap = struct {
-	const Self = @This();
-
 	vTableMap: std.StringHashMap(*const TickEvent.VTable) = undefined,
 
-	pub fn init() Self {
-		var self = Self{
+	pub fn init() TickEventVTableMap {
+		var self = TickEventVTableMap{
 			.vTableMap = .init(main.globalAllocator.allocator),
 		};
 
-		switch(@typeInfo(TickEvents)) {
-			.@"struct" => |eventStruct| {
-				inline for(eventStruct.decls) |decl| {
-					const field = @field(TickEvents, decl.name);
-					if(@typeInfo(@TypeOf(field)) == .type) {
-						registerEventStruct(field, &self);
-					}
-				}
-			},
-			else => {
-				std.log.err("Type {s} is not a struct", .{@typeName(TickEvents)});
-			},
+		const typeInfo = @typeInfo(TickEvents);
+		if(typeInfo != .@"struct") @compileError("Type " ++ @typeName(TickEvents) ++ " is not a struct");
+
+		inline for(typeInfo.@"struct".decls) |decl| {
+			const field = @field(TickEvents, decl.name);
+			if(@typeInfo(@TypeOf(field)) == .type) {
+				self.registerEventStruct(field);
+			}
 		}
 
 		return self;
 	}
 
-	pub fn deinit(self: *Self) void {
+	pub fn deinit(self: *TickEventVTableMap) void {
 		self.vTableMap.deinit();
 	}
 
-	fn registerEventStruct(comptime EventType: type, self: *Self) void {
+	fn registerEventStruct(self: *TickEventVTableMap, comptime EventType: type) void {
 		inline for(@typeInfo(EventType).@"struct".decls) |eventDecl| {
 			const field = @field(EventType, eventDecl.name);
 			if(@TypeOf(field) == *const TickEvent.VTable) {
@@ -460,7 +454,7 @@ pub const TickEventVTableMap = struct {
 		}
 	}
 
-	pub fn getVTable(self: *Self, id: []const u8) ?*const TickEvent.VTable {
+	pub fn getVTable(self: *TickEventVTableMap, id: []const u8) ?*const TickEvent.VTable {
 		return self.vTableMap.get(id);
 	}
 };
