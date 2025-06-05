@@ -390,7 +390,7 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 		}
 		var tempModifiers: main.List(Modifier) = .init(main.stackAllocator);
 		defer tempModifiers.deinit();
-		for(tool.type.properties()) |property| {
+		for(tool.type.properties().*) |property| {
 			var sum: f32 = 0;
 			var weight: f32 = 0;
 			for(0..25) |i| {
@@ -467,8 +467,18 @@ const PropertyMatrix = struct { // MARK: PropertyMatrix
 pub const ToolTypeIndex = packed struct {
 	index: u16,
 
-	pub fn all() []ToolType {
-		return toolTypeList.items;
+	const ToolTypeIterator = struct {
+		i: u16 = 0,
+
+		pub fn next(self: *ToolTypeIterator) ?ToolTypeIndex {
+			if(self.i >= toolTypeList.items.len) return null;
+			defer self.i += 1;
+			return ToolTypeIndex{.index = self.i};
+		}
+	};
+
+	pub fn iterator() ToolTypeIterator {
+		return .{};
 	}
 	pub fn fromId(_id: []const u8) ?ToolTypeIndex {
 		return toolTypeIdToIndex.get(_id);
@@ -479,14 +489,14 @@ pub const ToolTypeIndex = packed struct {
 	pub fn blockTags(self: ToolTypeIndex) []const Tag {
 		return toolTypeList.items[self.index].blockTags;
 	}
-	pub fn properties(self: ToolTypeIndex) []PropertyMatrix {
-		return toolTypeList.items[self.index].properties;
+	pub fn properties(self: ToolTypeIndex) *const []PropertyMatrix {
+		return &toolTypeList.items[self.index].properties;
 	}
-	pub fn slotInfos(self: ToolTypeIndex) [25]SlotInfo {
-		return toolTypeList.items[self.index].slotInfos;
+	pub fn slotInfos(self: ToolTypeIndex) *const [25]SlotInfo {
+		return &toolTypeList.items[self.index].slotInfos;
 	}
-	pub fn pixelSources(self: ToolTypeIndex) [16][16]u8 {
-		return toolTypeList.items[self.index].pixelSources;
+	pub fn pixelSources(self: ToolTypeIndex) *const [16][16]u8 {
+		return &toolTypeList.items[self.index].pixelSources;
 	}
 	pub fn pixelSourcesOverlay(self: ToolTypeIndex) [16][16]u8 {
 		return toolTypeList.items[self.index].pixelSourcesOverlay;
