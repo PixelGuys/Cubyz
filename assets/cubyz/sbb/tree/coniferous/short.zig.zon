@@ -9,6 +9,7 @@
 		.black = .{
 			.{.structure = "cubyz:tree/coniferous/roots/0"},
 			.{.structure = "cubyz:tree/coniferous/roots/1"},
+			.{.structure = "cubyz:tree/coniferous/roots/2"},
 		},
 	},
 }
