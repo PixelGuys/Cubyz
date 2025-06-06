@@ -9,5 +9,11 @@
 		.colors = .{
 			0xffa24e37, 0xffb65f3f, 0xffd57e4b, 0xffee9168, 0xfff2b17e,
 		},
+		.modifiers = .{
+			.{
+				.id = "heavy",
+				.strength = 0.075,
+			},
+		},
 	},
 }
