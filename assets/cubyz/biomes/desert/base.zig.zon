@@ -27,7 +27,6 @@
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:air",
 			.log = "cubyz:cactus",
-			.top = "cubyz:cactus_flower",
 			.chance = 0.005,
 			.type = .round,
 			.height = 2,

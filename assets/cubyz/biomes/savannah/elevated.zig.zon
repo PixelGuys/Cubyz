@@ -53,8 +53,7 @@
 		.{
 			.id = "cubyz:simple_tree",
 			.leaves = "cubyz:baobab_leaves",
-			.log = "cubyz:baobab_log",
-			.top = "cubyz:baobab_leaves",
+			.log = "cubyz:log/baobab",
 			.chance = 0.05,
 			.type = .round,
 			.height = 3,
