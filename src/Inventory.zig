@@ -313,7 +313,7 @@ pub const Sync = struct { // MARK: Sync
 			executeCommand(payload, source);
 		}
 
-		pub fn createManagedInventory(len: usize, typ: Inventory.Type, source: Source, zon: ZonElement) u32 {
+		pub fn createExternallyManagedInventory(len: usize, typ: Inventory.Type, source: Source, zon: ZonElement) u32 {
 			mutex.lock();
 			defer mutex.unlock();
 			const inventory = ServerInventory.init(len, typ, source, .externallyManaged);
@@ -322,7 +322,7 @@ pub const Sync = struct { // MARK: Sync
 			return inventory.inv.id;
 		}
 
-		pub fn destroyManagedInventory(invId: u32) void {
+		pub fn destroyExternallyManagedInventory(invId: u32) void {
 			mutex.lock();
 			defer mutex.unlock();
 			std.debug.assert(inventories.items[invId].managed == .externallyManaged);

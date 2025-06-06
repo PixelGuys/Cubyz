@@ -864,8 +864,8 @@ pub const ServerWorld = struct { // MARK: ServerWorld
 			main.items.Inventory.Sync.setGamemode(user, std.meta.stringToEnum(main.game.Gamemode, playerData.get([]const u8, "gamemode", @tagName(self.defaultGamemode))) orelse self.defaultGamemode);
 		}
 
-		user.inventory = main.items.Inventory.Sync.ServerSide.createManagedInventory(main.game.Player.inventorySize, .normal, .{.playerInventory = user.id}, playerData.getChild("playerInventory"));
-		user.handInventory = main.items.Inventory.Sync.ServerSide.createManagedInventory(1, .normal, .{.hand = user.id}, playerData.getChild("hand"));
+		user.inventory = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(main.game.Player.inventorySize, .normal, .{.playerInventory = user.id}, playerData.getChild("playerInventory"));
+		user.handInventory = main.items.Inventory.Sync.ServerSide.createExternallyManagedInventory(1, .normal, .{.hand = user.id}, playerData.getChild("hand"));
 	}
 
 	pub fn savePlayer(self: *ServerWorld, user: *User) !void {

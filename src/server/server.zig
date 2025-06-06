@@ -148,8 +148,8 @@ pub const User = struct { // MARK: User
 			return;
 		};
 
-		if(self.inventory) |inv| main.items.Inventory.Sync.ServerSide.destroyManagedInventory(inv);
-		if(self.handInventory) |inv| main.items.Inventory.Sync.ServerSide.destroyManagedInventory(inv);
+		if(self.inventory) |inv| main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(inv);
+		if(self.handInventory) |inv| main.items.Inventory.Sync.ServerSide.destroyExternallyManagedInventory(inv);
 
 		self.worldEditData.deinit();
 
