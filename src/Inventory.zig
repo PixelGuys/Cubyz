@@ -171,13 +171,17 @@ pub const Sync = struct { // MARK: Sync
 			inv: Inventory,
 			users: main.ListUnmanaged(*main.server.User),
 			source: Source,
+			managed: Managed,
 
-			fn init(len: usize, typ: Inventory.Type, source: Source) ServerInventory {
+			const Managed = enum {internallyManaged, externallyManaged};
+
+			fn init(len: usize, typ: Inventory.Type, source: Source, managed: Managed) ServerInventory {
 				main.utils.assertLocked(&mutex);
 				return .{
 					.inv = Inventory._init(main.globalAllocator, len, typ, .server),
 					.users = .{},
 					.source = source,
+					.managed = managed,
 				};
 			}
 
@@ -188,6 +192,7 @@ pub const Sync = struct { // MARK: Sync
 				self.inv._deinit(main.globalAllocator, .server);
 				self.inv._items.len = 0;
 				self.source = .alreadyFreed;
+				self.managed = .internallyManaged;
 			}
 
 			fn addUser(self: *ServerInventory, user: *main.server.User, clientId: u32) void {
@@ -200,7 +205,11 @@ pub const Sync = struct { // MARK: Sync
 				main.utils.assertLocked(&mutex);
 				_ = self.users.swapRemove(std.mem.indexOfScalar(*main.server.User, self.users.items, user).?);
 				std.debug.assert(user.inventoryClientToServerIdMap.fetchRemove(clientId).?.value == self.inv.id);
-				if(self.users.items.len == 0) {
+				if(self.users.items.len == 0 and self.managed == .internallyManaged) {
+					if(self.inv.type.shouldDepositToUserOnClose()) {
+						const playerInventory = getInventoryFromSource(.{.playerInventory = user.id}) orelse @panic("Could not find player inventory");
+						Sync.ServerSide.executeCommand(.{.depositOrDrop = .{.dest = playerInventory, .source = self.inv}}, null);
+					}
 					self.deinit();
 				}
 			}
@@ -305,10 +314,26 @@ pub const Sync = struct { // MARK: Sync
 			executeCommand(payload, source);
 		}
 
+		pub fn createExternallyManagedInventory(len: usize, typ: Inventory.Type, source: Source, zon: ZonElement) u32 {
+			mutex.lock();
+			defer mutex.unlock();
+			const inventory = ServerInventory.init(len, typ, source, .externallyManaged);
+			inventories.items[inventory.inv.id] = inventory;
+			inventory.inv.loadFromZon(zon);
+			return inventory.inv.id;
+		}
+
+		pub fn destroyExternallyManagedInventory(invId: u32) void {
+			mutex.lock();
+			defer mutex.unlock();
+			std.debug.assert(inventories.items[invId].managed == .externallyManaged);
+			inventories.items[invId].deinit();
+		}
+
 		fn createInventory(user: *main.server.User, clientId: u32, len: usize, typ: Inventory.Type, source: Source) void {
 			main.utils.assertLocked(&mutex);
 			switch(source) {
-				.sharedTestingInventory, .recipe, .blockInventory => {
+				.sharedTestingInventory, .recipe, .blockInventory, .playerInventory, .hand => {
 					for(inventories.items) |*inv| {
 						if(std.meta.eql(inv.source, source)) {
 							inv.addUser(user, clientId);
@@ -316,10 +341,10 @@ pub const Sync = struct { // MARK: Sync
 						}
 					}
 				},
-				.playerInventory, .hand, .other => {},
+				.other => {},
 				.alreadyFreed => unreachable,
 			}
-			const inventory = ServerInventory.init(len, typ, source);
+			const inventory = ServerInventory.init(len, typ, source, .internallyManaged);
 
 			inventories.items[inventory.inv.id] = inventory;
 			inventories.items[inventory.inv.id].addUser(user, clientId);
@@ -1824,6 +1849,10 @@ const Type = union(TypeEnum) {
 	creative: void,
 	crafting: void,
 	workbench: ToolTypeIndex,
+
+	pub fn shouldDepositToUserOnClose(self: Type) bool {
+		return self == .workbench;
+	}
 };
 type: Type,
 id: u32,

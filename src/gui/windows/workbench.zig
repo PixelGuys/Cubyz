@@ -37,8 +37,6 @@ const padding: f32 = 8;
 
 var inv: Inventory = undefined;
 
-var craftingResult: *ItemSlot = undefined;
-
 var itemSlots: [25]*ItemSlot = undefined;
 
 var toolTypes: main.ListUnmanaged(ToolTypeIndex) = undefined;
@@ -94,7 +92,6 @@ fn openInventory() void {
 }
 
 fn closeInventory() void {
-	main.game.Player.inventory.depositOrDrop(inv);
 	inv.deinit(main.globalAllocator);
 	if(window.rootComponent) |*comp| {
 		comp.deinit();
@@ -108,6 +105,18 @@ pub fn update() void {
 		closeInventory();
 		openInventory();
 	}
+}
+
+pub fn render() void {
+	const currentResult = inv._items[25].item orelse return;
+
+	const offsetX = 5*ItemSlot.sizeWithBorder + 20;
+	const offsetY = 4*ItemSlot.sizeWithBorder;
+	const fontSize = 16;
+
+	main.graphics.draw.print("#ffffff{} durability", .{@as(usize, @intFromFloat(currentResult.tool.maxDurability))}, offsetX, offsetY, fontSize, .left);
+	main.graphics.draw.print("#ffffff{d:.1} swings/s", .{1.0/currentResult.tool.swingTime}, offsetX, offsetY + fontSize, fontSize, .left);
+	main.graphics.draw.print("#ffffff{d:.1} damage", .{currentResult.tool.damage}, offsetX, offsetY + 2*fontSize, fontSize, .left);
 }
 
 pub fn onOpen() void {
