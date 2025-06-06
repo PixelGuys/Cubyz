@@ -225,15 +225,22 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 
 	chunk_meshing.beginRender();
 
-	var chunkList = main.List(u32).init(main.stackAllocator);
-	defer chunkList.deinit();
+	var chunkLists: [main.settings.highestSupportedLod + 1]main.List(u32) = @splat(main.List(u32).init(main.stackAllocator));
+	defer for(chunkLists) |list| list.deinit();
 	for(meshes) |mesh| {
-		mesh.prepareRendering(&chunkList);
+		mesh.prepareRendering(&chunkLists);
 	}
 	gpu_performance_measuring.stopQuery();
-	if(chunkList.items.len != 0) {
-		chunk_meshing.drawChunksIndirect(chunkList.items, game.projectionMatrix, ambientLight, playerPos, false);
-	}
+	gpu_performance_measuring.startQuery(.chunk_rendering_previous_visible);
+	chunk_meshing.drawChunksIndirect(&.{
+		chunkLists[0].items,
+		chunkLists[1].items,
+		chunkLists[2].items,
+		chunkLists[3].items,
+		chunkLists[4].items,
+		chunkLists[5].items,
+	}, game.projectionMatrix, ambientLight, playerPos, false);
+	gpu_performance_measuring.stopQuery();
 
 	gpu_performance_measuring.startQuery(.entity_rendering);
 	entity.ClientEntityManager.render(game.projectionMatrix, ambientLight, playerPos);
@@ -264,17 +271,24 @@ pub fn renderWorld(world: *World, ambientLight: Vec3f, skyColor: Vec3f, playerPo
 	c.glTextureBarrier();
 
 	{
-		chunkList.clearRetainingCapacity();
+		for(&chunkLists) |*list| list.clearRetainingCapacity();
 		var i: usize = meshes.len;
 		while(true) {
 			if(i == 0) break;
 			i -= 1;
-			meshes[i].prepareTransparentRendering(playerPos, &chunkList);
+			meshes[i].prepareTransparentRendering(playerPos, &chunkLists);
 		}
 		gpu_performance_measuring.stopQuery();
-		if(chunkList.items.len != 0) {
-			chunk_meshing.drawChunksIndirect(chunkList.items, game.projectionMatrix, ambientLight, playerPos, true);
-		}
+		gpu_performance_measuring.startQuery(.transparent_rendering);
+		chunk_meshing.drawChunksIndirect(&.{
+			chunkLists[0].items,
+			chunkLists[1].items,
+			chunkLists[2].items,
+			chunkLists[3].items,
+			chunkLists[4].items,
+			chunkLists[5].items,
+		}, game.projectionMatrix, ambientLight, playerPos, true);
+		gpu_performance_measuring.stopQuery();
 	}
 
 	c.glDepthRange(0, 0.001);
