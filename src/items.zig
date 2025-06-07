@@ -489,7 +489,7 @@ pub const ToolTypeIndex = packed struct {
 	pub fn blockTags(self: ToolTypeIndex) []const Tag {
 		return toolTypeList.items[self.index].blockTags;
 	}
-	pub fn properties(self: ToolTypeIndex) *const []PropertyMatrix {
+	pub fn properties(self: ToolTypeIndex) []const PropertyMatrix {
 		return &toolTypeList.items[self.index].properties;
 	}
 	pub fn slotInfos(self: ToolTypeIndex) *const [25]SlotInfo {
@@ -1074,6 +1074,7 @@ pub fn registerRecipes(zon: ZonElement) void {
 }
 
 pub fn reset() void {
+	toolTypeList.clearAndFree(arena.allocator().allocator);
 	toolTypeIdToIndex.clearAndFree(arena.allocator().allocator);
 	reverseIndices.clearAndFree();
 	for(recipeList.items) |recipe| {
@@ -1087,6 +1088,7 @@ pub fn reset() void {
 }
 
 pub fn deinit() void {
+	toolTypeList.clearAndFree(arena.allocator().allocator);
 	toolTypeIdToIndex.clearAndFree(arena.allocator().allocator);
 	reverseIndices.clearAndFree();
 	for(recipeList.items) |recipe| {
