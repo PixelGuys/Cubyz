@@ -30,6 +30,6 @@
 	},
 	.allowOres = true,
 	.model = "cubyz:cube",
-	.rotation = .stairs,
+	.rotation = "cubyz:stairs",
 	.texture = "cubyz:ferrock",
 }
