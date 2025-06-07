@@ -390,7 +390,7 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 		}
 		var tempModifiers: main.List(Modifier) = .init(main.stackAllocator);
 		defer tempModifiers.deinit();
-		for(tool.type.properties().*) |property| {
+		for(tool.type.properties()) |property| {
 			var sum: f32 = 0;
 			var weight: f32 = 0;
 			for(0..25) |i| {
@@ -490,7 +490,7 @@ pub const ToolTypeIndex = packed struct {
 		return toolTypeList.items[self.index].blockTags;
 	}
 	pub fn properties(self: ToolTypeIndex) []const PropertyMatrix {
-		return &toolTypeList.items[self.index].properties;
+		return toolTypeList.items[self.index].properties;
 	}
 	pub fn slotInfos(self: ToolTypeIndex) *const [25]SlotInfo {
 		return &toolTypeList.items[self.index].slotInfos;
@@ -499,7 +499,7 @@ pub const ToolTypeIndex = packed struct {
 		return &toolTypeList.items[self.index].pixelSources;
 	}
 	pub fn pixelSourcesOverlay(self: ToolTypeIndex) *const [16][16]u8 {
-		return toolTypeList.items[self.index].pixelSourcesOverlay;
+		return &toolTypeList.items[self.index].pixelSourcesOverlay;
 	}
 };
 
@@ -1074,7 +1074,7 @@ pub fn registerRecipes(zon: ZonElement) void {
 }
 
 pub fn reset() void {
-	toolTypeList.clearAndFree(arena.allocator().allocator);
+	toolTypeList.clearAndFree(arena.allocator());
 	toolTypeIdToIndex.clearAndFree(arena.allocator().allocator);
 	reverseIndices.clearAndFree();
 	for(recipeList.items) |recipe| {
@@ -1088,8 +1088,8 @@ pub fn reset() void {
 }
 
 pub fn deinit() void {
-	toolTypeList.clearAndFree(arena.allocator().allocator);
-	toolTypeIdToIndex.clearAndFree(arena.allocator().allocator);
+	toolTypeList.deinit(arena.allocator());
+	toolTypeIdToIndex.deinit(arena.allocator().allocator);
 	reverseIndices.clearAndFree();
 	for(recipeList.items) |recipe| {
 		if(recipe.cachedInventory) |inv| {
