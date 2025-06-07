@@ -8,9 +8,11 @@
 	.collide = false,
 	.alwaysViewThrough = true,
 	.absorbedLight = 0x121012,
-	.model = "cubyz:plane",
+	.model = "cubyz:flower/small",
 	.rotation = .carpet,
-	.texture = "cubyz:daisies",
+	.texture_top = "cubyz:daisies/higher",
+	.texture_bottom = "cubyz:daisies/lower",
+	.texture = "cubyz:daisies/stem",
 	.item = .{
 		.texture = "daisies.png",
 	},
