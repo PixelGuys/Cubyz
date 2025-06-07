@@ -89,14 +89,14 @@ fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placeme
 }
 
 fn alignDirections(input: Neighbor, desired: Neighbor) !usize {
-	const _Rotation = enum(u3) {
+	const Rotation = enum(u3) {
 		@"0" = 0,
 		@"90" = 1,
 		@"180" = 2,
 		@"270" = 3,
 		NotPossibleToAlign = 4,
 	};
-	comptime var alignTable: [6][6]_Rotation = undefined;
+	comptime var alignTable: [6][6]Rotation = undefined;
 	comptime for(Neighbor.iterable) |in| {
 		for(Neighbor.iterable) |out| blk: {
 			var current = in;
@@ -107,7 +107,7 @@ fn alignDirections(input: Neighbor, desired: Neighbor) !usize {
 				}
 				current = current.rotateZ();
 			}
-			alignTable[in.toInt()][out.toInt()] = _Rotation.NotPossibleToAlign;
+			alignTable[in.toInt()][out.toInt()] = Rotation.NotPossibleToAlign;
 		}
 	};
 	switch(alignTable[input.toInt()][desired.toInt()]) {
