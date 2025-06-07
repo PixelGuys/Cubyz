@@ -498,7 +498,7 @@ pub const ToolTypeIndex = packed struct {
 	pub fn pixelSources(self: ToolTypeIndex) *const [16][16]u8 {
 		return &toolTypeList.items[self.index].pixelSources;
 	}
-	pub fn pixelSourcesOverlay(self: ToolTypeIndex) [16][16]u8 {
+	pub fn pixelSourcesOverlay(self: ToolTypeIndex) *const [16][16]u8 {
 		return toolTypeList.items[self.index].pixelSourcesOverlay;
 	}
 };
