@@ -79,7 +79,7 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 	}
 }
 
-pub fn makeModFeature(step: *std.Build.Step, _: std.Build.Step.MakeOptions) anyerror!void {
+pub fn makeModFeature(step: *std.Build.Step, name: []const u8) !void {
 	var featureList: std.ArrayListUnmanaged(u8) = .{};
 	defer featureList.deinit(step.owner.allocator);
 
@@ -93,7 +93,7 @@ pub fn makeModFeature(step: *std.Build.Step, _: std.Build.Step.MakeOptions) anye
 		var mod = try modDir.openDir(modEntry.name, .{});
 		defer mod.close();
 
-		var featureDir = mod.openDir(step.name, .{.iterate = true}) catch continue;
+		var featureDir = mod.openDir(name, .{.iterate = true}) catch continue;
 		defer featureDir.close();
 
 		var featureIterator = featureDir.iterate();
@@ -104,38 +104,29 @@ pub fn makeModFeature(step: *std.Build.Step, _: std.Build.Step.MakeOptions) anye
 			try featureList.appendSlice(step.owner.allocator, step.owner.fmt(
 				\\pub const @"{s}:{s}" = @import("{s}/{s}/{s}");
 				\\
-				,
+			,
 				.{
 					modEntry.name,
 					featureEntry.name[0 .. featureEntry.name.len - 4],
 					modEntry.name,
-					step.name,
+					name,
 					featureEntry.name,
 				},
 			));
 		}
 	}
 
-	const file_path = try std.fs.path.join(step.owner.allocator, &.{"mods", step.owner.fmt("{s}.zig", .{step.name})});
+	const file_path = try std.fs.path.join(step.owner.allocator, &.{"mods", step.owner.fmt("{s}.zig", .{name})});
 	defer step.owner.allocator.free(file_path);
 
 	try std.fs.cwd().writeFile(.{.data = featureList.items, .sub_path = file_path});
 }
 
-pub fn addModFeatureStep(b: *std.Build, name: []const u8) !*std.Build.Step {
-	const step = try b.allocator.create(std.Build.Step);
-	step.* = std.Build.Step.init(.{
-		.id = .custom,
-		.name = name,
-		.owner = b,
-		.makeFn = makeModFeature,
-	});
-	return step;
+pub fn makeModFeaturesStep(step: *std.Build.Step, _: std.Build.Step.MakeOptions) anyerror!void {
+	try makeModFeature(step, "rotation");
 }
 
-pub fn addModFeature(b: *std.Build, exe: *std.Build.Step.Compile, name: []const u8) !void {
-	exe.step.dependOn(try addModFeatureStep(b, name));
-
+pub fn addModFeatureModule(b: *std.Build, exe: *std.Build.Step.Compile, name: []const u8) !void {
 	const module = b.createModule(.{
 		.root_source_file = b.path(try std.fs.path.join(b.allocator, &.{"mods", b.fmt("{s}.zig", .{name})})),
 		.target = exe.root_module.resolved_target,
@@ -146,7 +137,15 @@ pub fn addModFeature(b: *std.Build, exe: *std.Build.Step.Compile, name: []const 
 }
 
 fn addModFeatures(b: *std.Build, exe: *std.Build.Step.Compile) !void {
-	try addModFeature(b, exe, "rotation");
+	const step = try b.allocator.create(std.Build.Step);
+	step.* = std.Build.Step.init(.{
+		.id = .custom,
+		.name = "Create Mods",
+		.owner = b,
+		.makeFn = makeModFeaturesStep,
+	});
+	
+	try addModFeatureModule(b, exe, "rotation");
 }
 
 pub fn build(b: *std.Build) !void {
