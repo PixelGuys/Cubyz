@@ -80,45 +80,46 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 }
 
 pub fn makeModFeature(step: *std.Build.Step, _: std.Build.Step.MakeOptions) anyerror!void {
-	var out: std.ArrayListUnmanaged(u8) = .{};
+	var featureList: std.ArrayListUnmanaged(u8) = .{};
+	defer featureList.deinit(step.owner.allocator);
 
-	var assetsDir = try std.fs.cwd().openDir("mods", .{.iterate = true});
-	defer assetsDir.close();
+	var modDir = try std.fs.cwd().openDir("mods", .{.iterate = true});
+	defer modDir.close();
 
-	var iterator = assetsDir.iterate();
-	while(try iterator.next()) |addonEntry| {
-		if(addonEntry.kind != .directory) continue;
+	var iterator = modDir.iterate();
+	while(try iterator.next()) |modEntry| {
+		if(modEntry.kind != .directory) continue;
 
-		var addon = try assetsDir.openDir(addonEntry.name, .{});
-		defer addon.close();
+		var mod = try modDir.openDir(modEntry.name, .{});
+		defer mod.close();
 
-		var rotationDir = addon.openDir(step.name, .{.iterate = true}) catch continue;
-		defer rotationDir.close();
+		var featureDir = mod.openDir(step.name, .{.iterate = true}) catch continue;
+		defer featureDir.close();
 
-		var rotationIterator = rotationDir.iterate();
-		while(try rotationIterator.next()) |rotationEntry| {
-			if(rotationEntry.kind != .file) continue;
-			if(!std.mem.endsWith(u8, rotationEntry.name, ".zig")) continue;
+		var featureIterator = featureDir.iterate();
+		while(try featureIterator.next()) |featureEntry| {
+			if(featureEntry.kind != .file) continue;
+			if(!std.mem.endsWith(u8, featureEntry.name, ".zig")) continue;
 
-			try out.appendSlice(step.owner.allocator, step.owner.fmt(
-				"pub const @\"{s}:{s}\" = @import(\"{s}/{s}/{s}\");\n",
+			try featureList.appendSlice(step.owner.allocator, step.owner.fmt(
+				\\pub const @"{s}:{s}" = @import("{s}/{s}/{s}");
+				\\
+				,
 				.{
-					addonEntry.name,
-					rotationEntry.name[0 .. rotationEntry.name.len - 4],
-					addonEntry.name,
+					modEntry.name,
+					featureEntry.name[0 .. featureEntry.name.len - 4],
+					modEntry.name,
 					step.name,
-					rotationEntry.name,
+					featureEntry.name,
 				},
 			));
 		}
 	}
 
 	const file_path = try std.fs.path.join(step.owner.allocator, &.{"mods", step.owner.fmt("{s}.zig", .{step.name})});
-	var file = try std.fs.cwd().createFile(file_path, .{.truncate = true});
-	defer file.close();
+	defer step.owner.allocator.free(file_path);
 
-	try file.writeAll(out.items);
-	out.deinit(step.owner.allocator);
+	try std.fs.cwd().writeFile(.{.data = featureList.items, .sub_path = file_path});
 }
 
 pub fn addModFeatureStep(b: *std.Build, name: []const u8) !*std.Build.Step {
