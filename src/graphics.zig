@@ -2610,9 +2610,11 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 		face.position.lightIndex = 0;
 	}
 	var allocation: SubAllocation = .{.start = 0, .len = 0};
-	main.renderer.chunk_meshing.faceBuffer.uploadData(faceData.items, &allocation);
+	main.renderer.chunk_meshing.faceBuffers[0].uploadData(faceData.items, &allocation);
+	defer main.renderer.chunk_meshing.faceBuffers[0].free(allocation);
 	var lightAllocation: SubAllocation = .{.start = 0, .len = 0};
-	main.renderer.chunk_meshing.lightBuffer.uploadData(&.{0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff}, &lightAllocation);
+	main.renderer.chunk_meshing.lightBuffers[0].uploadData(&.{0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff}, &lightAllocation);
+	defer main.renderer.chunk_meshing.lightBuffers[0].free(lightAllocation);
 
 	{
 		const i = 6; // Easily switch between the 8 rotations.
@@ -2671,7 +2673,6 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 
 	c.glBindFramebuffer(c.GL_FRAMEBUFFER, 0);
 
-	main.renderer.chunk_meshing.faceBuffer.free(allocation);
 	c.glViewport(0, 0, main.Window.width, main.Window.height);
 	c.glBlendFunc(c.GL_SRC_ALPHA, c.GL_ONE_MINUS_SRC_ALPHA);
 	return texture;
