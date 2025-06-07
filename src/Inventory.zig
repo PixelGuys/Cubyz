@@ -15,6 +15,7 @@ const Vec3i = vec.Vec3i;
 const ZonElement = main.ZonElement;
 const Neighbor = main.chunk.Neighbor;
 const BaseItemIndex = main.items.BaseItemIndex;
+const ToolTypeIndex = main.items.ToolTypeIndex;
 
 const Gamemode = main.game.Gamemode;
 
@@ -1137,7 +1138,7 @@ pub const Command = struct { // MARK: Command
 			switch(self.inv.type) {
 				.normal, .creative, .crafting => {},
 				.workbench => {
-					writer.writeSlice(self.inv.type.workbench.id);
+					writer.writeSlice(self.inv.type.workbench.id());
 				},
 			}
 		}
@@ -1180,7 +1181,7 @@ pub const Command = struct { // MARK: Command
 			};
 			const typ: Type = switch(typeEnum) {
 				inline .normal, .creative, .crafting => |tag| tag,
-				.workbench => .{.workbench = main.items.getToolTypeByID(reader.remaining) orelse return error.Invalid},
+				.workbench => .{.workbench = ToolTypeIndex.fromId(reader.remaining) orelse return error.Invalid},
 			};
 			Sync.ServerSide.createInventory(user.?, id, len, typ, source);
 			return .{
@@ -1231,7 +1232,7 @@ pub const Command = struct { // MARK: Command
 				cmd.tryCraftingTo(allocator, self.source, self.dest, side, user);
 				return;
 			}
-			if(self.dest.inv.type == .workbench and self.dest.slot != 25 and self.dest.inv.type.workbench.slotInfos[self.dest.slot].disabled) return;
+			if(self.dest.inv.type == .workbench and self.dest.slot != 25 and self.dest.inv.type.workbench.slotInfos()[self.dest.slot].disabled) return;
 			if(self.dest.inv.type == .workbench and self.dest.slot == 25) {
 				if(self.source.ref().item == null and self.dest.ref().item != null) {
 					cmd.executeBaseOperation(allocator, .{.move = .{
@@ -1288,7 +1289,7 @@ pub const Command = struct { // MARK: Command
 			std.debug.assert(self.source.inv.type == .normal);
 			if(self.dest.inv.type == .creative) return;
 			if(self.dest.inv.type == .crafting) return;
-			if(self.dest.inv.type == .workbench and (self.dest.slot == 25 or self.dest.inv.type.workbench.slotInfos[self.dest.slot].disabled)) return;
+			if(self.dest.inv.type == .workbench and (self.dest.slot == 25 or self.dest.inv.type.workbench.slotInfos()[self.dest.slot].disabled)) return;
 			if(self.dest.inv.type == .workbench and !canPutIntoWorkbench(self.source)) return;
 			const itemSource = self.source.ref().item orelse return;
 			if(self.dest.ref().item) |itemDest| {
@@ -1342,7 +1343,7 @@ pub const Command = struct { // MARK: Command
 				cmd.tryCraftingTo(allocator, self.dest, self.source, side, user);
 				return;
 			}
-			if(self.source.inv.type == .workbench and self.source.slot != 25 and self.source.inv.type.workbench.slotInfos[self.source.slot].disabled) return;
+			if(self.source.inv.type == .workbench and self.source.slot != 25 and self.source.inv.type.workbench.slotInfos()[self.source.slot].disabled) return;
 			if(self.source.inv.type == .workbench and self.source.slot == 25) {
 				if(self.dest.ref().item == null and self.source.ref().item != null) {
 					cmd.executeBaseOperation(allocator, .{.move = .{
@@ -1413,7 +1414,7 @@ pub const Command = struct { // MARK: Command
 				}
 				return;
 			}
-			if(self.source.inv.type == .workbench and self.source.slot != 25 and self.source.inv.type.workbench.slotInfos[self.source.slot].disabled) return;
+			if(self.source.inv.type == .workbench and self.source.slot != 25 and self.source.inv.type.workbench.slotInfos()[self.source.slot].disabled) return;
 			if(self.source.inv.type == .workbench and self.source.slot == 25) {
 				cmd.removeToolCraftingIngredients(allocator, self.source.inv, side);
 			}
@@ -1449,7 +1450,7 @@ pub const Command = struct { // MARK: Command
 		amount: u16 = 0,
 
 		fn run(self: FillFromCreative, allocator: NeverFailingAllocator, cmd: *Command, side: Side, user: ?*main.server.User, mode: Gamemode) error{serverFailure}!void {
-			if(self.dest.inv.type == .workbench and (self.dest.slot == 25 or self.dest.inv.type.workbench.slotInfos[self.dest.slot].disabled)) return;
+			if(self.dest.inv.type == .workbench and (self.dest.slot == 25 or self.dest.inv.type.workbench.slotInfos()[self.dest.slot].disabled)) return;
 			if(side == .server and user != null and mode != .creative) return;
 			if(side == .client and mode != .creative) return;
 
@@ -1847,7 +1848,7 @@ const Type = union(TypeEnum) {
 	normal: void,
 	creative: void,
 	crafting: void,
-	workbench: *const main.items.ToolType,
+	workbench: ToolTypeIndex,
 
 	pub fn shouldDepositToUserOnClose(self: Type) bool {
 		return self == .workbench;
@@ -1905,7 +1906,7 @@ fn update(self: Inventory) void {
 		self._items[self._items.len - 1].deinit();
 		self._items[self._items.len - 1].clear();
 		var availableItems: [25]?BaseItemIndex = undefined;
-		const slotInfos = self.type.workbench.slotInfos;
+		const slotInfos = self.type.workbench.slotInfos();
 
 		for(0..25) |i| {
 			if(self._items[i].item != null and self._items[i].item.? == .baseItem) {
