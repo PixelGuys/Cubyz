@@ -1,7 +1,6 @@
 .{
 	.tags = .{.wood},
 	.blockHealth = 8,
-	.hasItem = false,
 	.drops = .{
 		.{.items = .{"cubyz:log/mahogany"}},
 	},

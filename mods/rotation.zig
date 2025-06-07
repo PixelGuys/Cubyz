@@ -1,0 +1,12 @@
+pub const @"cubyz:branch" = @import("cubyz/rotation/branch.zig");
+pub const @"cubyz:carpet" = @import("cubyz/rotation/carpet.zig");
+pub const @"cubyz:direction" = @import("cubyz/rotation/direction.zig");
+pub const @"cubyz:fence" = @import("cubyz/rotation/fence.zig");
+pub const @"cubyz:log" = @import("cubyz/rotation/log.zig");
+pub const @"cubyz:no_rotation" = @import("cubyz/rotation/no_rotation.zig");
+pub const @"cubyz:ore" = @import("cubyz/rotation/ore.zig");
+pub const @"cubyz:planar" = @import("cubyz/rotation/planar.zig");
+pub const @"cubyz:sign" = @import("cubyz/rotation/sign.zig");
+pub const @"cubyz:stairs" = @import("cubyz/rotation/stairs.zig");
+pub const @"cubyz:texture_pile" = @import("cubyz/rotation/texture_pile.zig");
+pub const @"cubyz:torch" = @import("cubyz/rotation/torch.zig");

@@ -1,7 +1,6 @@
 .{
 	.tags = .{.leaf},
 	.blockHealth = 5,
-	.hasItem = false,
 	.drops = .{
 		.{.items = .{"cubyz:log/cactus"}},
 	},
