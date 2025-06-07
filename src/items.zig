@@ -435,6 +435,47 @@ const ToolPhysics = struct { // MARK: ToolPhysics
 		tool.maxDurability = @round(tool.maxDurability);
 		if(tool.maxDurability < 1) tool.maxDurability = 1;
 		tool.durability = std.math.lossyCast(u32, tool.maxDurability);
+
+		if(!checkConnectivity(tool)) {
+			tool.maxDurability = 0;
+			tool.durability = 1;
+		}
+	}
+
+	fn checkConnectivity(tool: *Tool) bool {
+		var gridCellsReached: [16][16]bool = @splat(@splat(false));
+		var floodfillQueue = main.utils.CircularBufferQueue(Vec2i).init(main.stackAllocator, 16);
+		defer floodfillQueue.deinit();
+		outer: for(tool.materialGrid, 0..) |row, x| {
+			for(row, 0..) |entry, y| {
+				if(entry != null) {
+					floodfillQueue.enqueue(.{@intCast(x), @intCast(y)});
+					gridCellsReached[x][y] = true;
+					break :outer;
+				}
+			}
+		}
+		while(floodfillQueue.dequeue()) |pos| {
+			for([4]Vec2i{.{-1, 0}, .{1, 0}, .{0, -1}, .{0, 1}}) |delta| {
+				const newPos = pos + delta;
+				if(newPos[0] < 0 or newPos[0] >= gridCellsReached.len) continue;
+				if(newPos[1] < 0 or newPos[1] >= gridCellsReached.len) continue;
+				const x: usize = @intCast(newPos[0]);
+				const y: usize = @intCast(newPos[1]);
+				if(gridCellsReached[x][y]) continue;
+				if(tool.materialGrid[x][y] == null) continue;
+				gridCellsReached[x][y] = true;
+				floodfillQueue.enqueue(newPos);
+			}
+		}
+		for(tool.materialGrid, 0..) |row, x| {
+			for(row, 0..) |entry, y| {
+				if(entry != null and !gridCellsReached[x][y]) {
+					return false;
+				}
+			}
+		}
+		return true;
 	}
 };
 
