@@ -114,23 +114,64 @@ pub fn isOriginBlock(block: Block) bool {
 	return block.typ == originBlockNumericId;
 }
 
-pub const Rotation = enum(u8) {
-	@"0" = 0,
-	@"90" = 1,
-	@"180" = 2,
-	@"270" = 3,
-	random = 4,
-	inherit = 5,
+pub const RotationMode = enum {
+	fixed,
+	random,
+	inherit,
+};
 
-	pub fn sampleRandom(seed: *u64) Rotation {
-		return @enumFromInt(main.random.nextInt(u8, seed)%4);
+pub const Rotation = union(RotationMode) {
+	fixed: FixedRotation,
+	random: void,
+	inherit: void,
+
+	pub const FixedRotation = enum(u3) {
+		@"0" = 0,
+		@"90" = 1,
+		@"180" = 2,
+		@"270" = 3,
+	};
+
+	pub fn apply(self: Rotation, rotationCount: usize) usize {
+		return switch(self) {
+			.fixed => |fixed| rotationCount + @intFromEnum(fixed)%4,
+			.random, .inherit => rotationCount,
+		};
 	}
-
+	pub fn ensureFixed(self: Rotation, seed: *u64) Rotation {
+		return switch(self) {
+			.fixed => self,
+			.random => sampleRandom(seed),
+			.inherit => .{.fixed = .@"0"},
+		};
+	}
+	fn sampleRandom(seed: *u64) Rotation {
+		return .{.fixed = @enumFromInt(main.random.nextInt(u8, seed)%4)};
+	}
+	pub fn getChildRotation(self: Rotation, seed: *u64, child: Rotation) Rotation {
+		return switch(child) {
+			.random => sampleRandom(seed),
+			.inherit => self,
+			else => |r| r,
+		};
+	}
 	pub fn fromZon(zon: ZonElement) error{UnknownString, UnknownType}!Rotation {
 		return switch(zon) {
-			.string, .stringOwned => |str| std.meta.stringToEnum(Rotation, str) orelse return error.UnknownString,
-			.int => |value| @enumFromInt(@abs(@divTrunc(value, 90))%4),
-			.float => |value| @enumFromInt(@abs(@as(u64, @intFromFloat(value/90.0)))%4),
+			.string, .stringOwned => |str| {
+				if(std.meta.stringToEnum(FixedRotation, str)) |r| {
+					return .{.fixed = r};
+				}
+				if(std.meta.stringToEnum(RotationMode, str)) |mode| {
+					return switch(mode) {
+						.fixed => .{.fixed = .@"0"},
+						.random => .{.random = {}},
+						.inherit => .{.inherit = {}},
+					};
+				}
+				return error.UnknownString;
+			},
+			.int => |value| .{.fixed = @enumFromInt(@abs(@divTrunc(value, 90))%4)},
+			.float => |value| .{.fixed = @enumFromInt(@abs(@as(u64, @intFromFloat(value/90.0)))%4)},
 			.null => Rotation.random,
 			else => return error.UnknownType,
 		};

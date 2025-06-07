@@ -51,23 +51,15 @@ pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) 
 }
 
 pub fn generate(self: *SbbGen, _: GenerationMode, x: i32, y: i32, z: i32, chunk: *ServerChunk, _: CaveMapView, _: CaveBiomeMapView, seed: *u64, _: bool) void {
-	const rotation: sbb.Rotation = switch(self.rotation) {
-		.random => sbb.Rotation.sampleRandom(seed),
-		.inherit => .@"0",
-		else => |r| r,
-	};
-	placeSbb(self, self.structureRef, Vec3i{x, y, z}, Neighbor.dirUp, rotation, chunk, seed);
+	placeSbb(self, self.structureRef, Vec3i{x, y, z}, Neighbor.dirUp, self.rotation.ensureFixed(seed), chunk, seed);
 }
 
-fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placementPosition: Vec3i, placementDirection: Neighbor, rotationNullable: ?sbb.Rotation, chunk: *ServerChunk, seed: *u64) void {
+fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placementPosition: Vec3i, placementDirection: Neighbor, rotation: sbb.Rotation, chunk: *ServerChunk, seed: *u64) void {
 	const origin = structure.blueprints[0].originBlock;
-	var rotationCount = alignDirections(origin.direction(), placementDirection) catch |err| {
+	const rotationCount = rotation.apply(alignDirections(origin.direction(), placementDirection) catch |err| {
 		std.log.err("Could not align directions for structure '{s}' for directions '{s}'' and '{s}', error: {s}", .{structure.id, @tagName(origin.direction()), @tagName(placementDirection), @errorName(err)});
 		return;
-	};
-	if(rotationNullable) |rotation| {
-		rotationCount = (rotationCount + @intFromEnum(rotation))%4;
-	}
+	});
 	const rotated = &structure.blueprints[rotationCount];
 	const rotatedOrigin = rotated.originBlock.pos();
 	const pastePosition = placementPosition - rotatedOrigin - placementDirection.relPos();
@@ -76,13 +68,9 @@ fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placeme
 
 	for(rotated.childBlocks) |childBlock| {
 		const child = structure.pickChild(childBlock, seed) orelse continue;
-		const childRotation = switch(childBlock.direction()) {
-			.dirDown, .dirUp => switch(child.rotation) {
-				.random => sbb.Rotation.sampleRandom(seed),
-				.inherit => rotationNullable,
-				else => |r| r,
-			},
-			else => null,
+		const childRotation: sbb.Rotation = switch(childBlock.direction()) {
+			.dirDown, .dirUp => rotation.getChildRotation(seed, child.rotation),
+			else => .{.fixed = .@"0"},
 		};
 		placeSbb(self, child, pastePosition + childBlock.pos(), childBlock.direction(), childRotation, chunk, seed);
 	}
