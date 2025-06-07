@@ -145,7 +145,7 @@ fn addModFeatures(b: *std.Build, exe: *std.Build.Step.Compile) !void {
 		.makeFn = makeModFeaturesStep,
 	});
 	exe.step.dependOn(step);
-	
+
 	try addModFeatureModule(b, exe, "rotation");
 }
 
