@@ -20,35 +20,46 @@ const SbbGen = @This();
 
 structureRef: *const sbb.StructureBuildingBlock,
 placeMode: Blueprint.PasteMode,
+rotation: sbb.Rotation,
 
 pub fn getHash(self: SbbGen) u64 {
 	return std.hash.Wyhash.hash(@intFromEnum(self.placeMode), self.structureRef.id);
 }
 
 pub fn loadModel(arenaAllocator: NeverFailingAllocator, parameters: ZonElement) *SbbGen {
-	const structureId = parameters.get(?[]const u8, "structure", null) orelse unreachable;
+	const structureId = parameters.get(?[]const u8, "structure", null) orelse {
+		main.utils.panicWithMessage("Error loading generator 'cubyz:sbb' structure field is mandatory.", .{});
+	};
 	const structureRef = sbb.getByStringId(structureId) orelse {
-		std.log.err("Could not find structure building block with id '{s}'", .{structureId});
-		unreachable;
+		main.utils.panicWithMessage("Could not find structure building block with id '{s}'", .{structureId});
+	};
+	const rotationParam = parameters.getChild("rotation");
+	const rotation = sbb.Rotation.fromZon(rotationParam) catch |err| blk: {
+		switch(err) {
+			error.UnknownString => std.log.err("Error loading generator 'cubyz:sbb' structure '{s}' specified unknown rotation '{s}'", .{structureId, rotationParam.as([]const u8, "")}),
+			error.UnknownType => std.log.err("Error loading generator 'cubyz:sbb' structure '{s}' unsupported type of rotation field '{s}'", .{structureId, @tagName(rotationParam)}),
+		}
+		break :blk .random;
 	};
 	const self = arenaAllocator.create(SbbGen);
 	self.* = .{
 		.structureRef = structureRef,
 		.placeMode = std.meta.stringToEnum(Blueprint.PasteMode, parameters.get([]const u8, "placeMode", "degradable")) orelse Blueprint.PasteMode.degradable,
+		.rotation = rotation,
 	};
 	return self;
 }
 
 pub fn generate(self: *SbbGen, _: GenerationMode, x: i32, y: i32, z: i32, chunk: *ServerChunk, _: CaveMapView, _: CaveBiomeMapView, seed: *u64, _: bool) void {
-	placeSbb(self, self.structureRef, Vec3i{x, y, z}, Neighbor.dirUp, chunk, seed);
+	placeSbb(self, self.structureRef, Vec3i{x, y, z}, Neighbor.dirUp, self.rotation.ensureFixed(seed), chunk, seed);
 }
 
-fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placementPosition: Vec3i, placementDirection: Neighbor, chunk: *ServerChunk, seed: *u64) void {
+fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placementPosition: Vec3i, placementDirection: Neighbor, rotation: sbb.Rotation, chunk: *ServerChunk, seed: *u64) void {
 	const origin = structure.blueprints[0].originBlock;
-	const rotationCount = alignDirections(origin.direction(), placementDirection) catch |err| {
+	const rotationCount = rotation.apply(alignDirections(origin.direction(), placementDirection) catch |err| {
 		std.log.err("Could not align directions for structure '{s}' for directions '{s}'' and '{s}', error: {s}", .{structure.id, @tagName(origin.direction()), @tagName(placementDirection), @errorName(err)});
 		return;
-	};
+	});
 	const rotated = &structure.blueprints[rotationCount];
 	const rotatedOrigin = rotated.originBlock.pos();
 	const pastePosition = placementPosition - rotatedOrigin - placementDirection.relPos();
@@ -57,7 +68,11 @@ fn placeSbb(self: *SbbGen, structure: *const sbb.StructureBuildingBlock, placeme
 
 	for(rotated.childBlocks) |childBlock| {
 		const child = structure.pickChild(childBlock, seed) orelse continue;
-		placeSbb(self, child, pastePosition + childBlock.pos(), childBlock.direction(), chunk, seed);
+		const childRotation: sbb.Rotation = switch(childBlock.direction()) {
+			.dirDown, .dirUp => rotation.getChildRotation(seed, child.rotation),
+			else => .{.fixed = .@"0"},
+		};
+		placeSbb(self, child, pastePosition + childBlock.pos(), childBlock.direction(), childRotation, chunk, seed);
 	}
 }
 
