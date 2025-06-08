@@ -56,9 +56,11 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 		exe.linkSystemLibrary("gdi32");
 		exe.linkSystemLibrary("opengl32");
 		exe.linkSystemLibrary("ws2_32");
+		exe.linkSystemLibrary("vulkan-1");
 	} else if(t.os.tag == .linux) {
 		exe.linkSystemLibrary("X11");
 		exe.linkSystemLibrary("GL");
+		exe.linkSystemLibrary("vulkan");
 	} else if(t.os.tag == .macos) {
 		exe.linkFramework("AudioUnit");
 		exe.linkFramework("AudioToolbox");
@@ -71,6 +73,7 @@ fn linkLibraries(b: *std.Build, exe: *std.Build.Step.Compile, useLocalDeps: bool
 		exe.addRPath(.{.cwd_relative = "/usr/local/GL/lib"});
 		exe.root_module.addRPathSpecial("@executable_path/../Library");
 		exe.addRPath(.{.cwd_relative = "/opt/X11/lib"});
+		exe.linkSystemLibrary("vulkan.1");
 	} else {
 		std.log.err("Unsupported target: {}\n", .{t.os.tag});
 	}

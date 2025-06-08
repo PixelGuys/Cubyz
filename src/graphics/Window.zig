@@ -7,8 +7,11 @@ const files = main.files;
 const vec = main.vec;
 const Vec2f = vec.Vec2f;
 
+const vulkan = @import("vulkan.zig");
+
 pub const c = @cImport({
 	@cInclude("glad/glad.h");
+	@cDefine("GLFW_INCLUDE_VULKAN", "");
 	@cInclude("GLFW/glfw3.h");
 });
 
@@ -640,6 +643,12 @@ pub fn init() void { // MARK: init()
 		@panic("Failed to initialize GLFW");
 	}
 
+	if(c.glfwVulkanSupported() == c.GLFW_FALSE) {
+		std.log.err("Vulkan is not supported. Please update your drivers if you want to keep playing Cubyz in the future.", .{});
+	}
+
+	vulkan.Instance.init();
+
 	c.glfwWindowHint(c.GLFW_OPENGL_DEBUG_CONTEXT, 1);
 	c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MAJOR, 4);
 	c.glfwWindowHint(c.GLFW_CONTEXT_VERSION_MINOR, 6);
@@ -683,6 +692,7 @@ pub fn init() void { // MARK: init()
 pub fn deinit() void {
 	Gamepad.deinit();
 	c.glfwDestroyWindow(window);
+	vulkan.Instance.deinit();
 	c.glfwTerminate();
 }
 var cursorVisible: bool = true;
