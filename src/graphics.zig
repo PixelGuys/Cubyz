@@ -2588,7 +2588,7 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 
 	const projMatrix = Mat4f.perspective(0.013, 1, 64, 256);
 	const oldViewMatrix = main.game.camera.viewMatrix;
-	main.game.camera.viewMatrix = Mat4f.identity().mul(Mat4f.rotationX(std.math.pi/4.0)).mul(Mat4f.rotationZ(-5.0*std.math.pi/4.0));
+	main.game.camera.viewMatrix = Mat4f.identity().mul(Mat4f.rotationX(std.math.pi/4.0)).mul(Mat4f.rotationZ(1.0*std.math.pi/4.0));
 	defer main.game.camera.viewMatrix = oldViewMatrix;
 	const uniforms = if(block.transparent()) &main.renderer.chunk_meshing.transparentUniforms else &main.renderer.chunk_meshing.uniforms;
 
@@ -2617,7 +2617,7 @@ pub fn generateBlockTexture(blockType: u16) Texture {
 	defer main.renderer.chunk_meshing.lightBuffers[0].free(lightAllocation);
 
 	{
-		const i = 6; // Easily switch between the 8 rotations.
+		const i = 4; // Easily switch between the 8 diagonal coordinates.
 		var x: f64 = -65.5 + 1.5;
 		var y: f64 = -65.5 + 1.5;
 		var z: f64 = -92.631 + 1.5;
