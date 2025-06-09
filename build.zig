@@ -116,19 +116,13 @@ pub fn makeModFeature(step: *std.Build.Step, name: []const u8) !void {
 		}
 	}
 
-	const file_path = try std.fs.path.join(step.owner.allocator, &.{"mods", step.owner.fmt("{s}.zig", .{name})});
-	defer step.owner.allocator.free(file_path);
-
+	const file_path = step.owner.fmt("mods/{s}.zig", .{name});
 	try std.fs.cwd().writeFile(.{.data = featureList.items, .sub_path = file_path});
-}
-
-pub fn makeModFeaturesStep(step: *std.Build.Step, _: std.Build.Step.MakeOptions) anyerror!void {
-	try makeModFeature(step, "rotation");
 }
 
 pub fn addModFeatureModule(b: *std.Build, exe: *std.Build.Step.Compile, name: []const u8) !void {
 	const module = b.createModule(.{
-		.root_source_file = b.path(try std.fs.path.join(b.allocator, &.{"mods", b.fmt("{s}.zig", .{name})})),
+		.root_source_file = b.path(b.fmt("mods/{s}.zig", .{name})),
 		.target = exe.root_module.resolved_target,
 		.optimize = exe.root_module.optimize,
 	});
@@ -147,6 +141,10 @@ fn addModFeatures(b: *std.Build, exe: *std.Build.Step.Compile) !void {
 	exe.step.dependOn(step);
 
 	try addModFeatureModule(b, exe, "rotation");
+}
+
+pub fn makeModFeaturesStep(step: *std.Build.Step, _: std.Build.Step.MakeOptions) anyerror!void {
+	try makeModFeature(step, "rotation");
 }
 
 pub fn build(b: *std.Build) !void {
