@@ -6,6 +6,7 @@ const assets = @import("assets.zig");
 const Block = @import("blocks.zig").Block;
 const chunk = @import("chunk.zig");
 const entity = @import("entity.zig");
+const particles = @import("particles.zig");
 const items = @import("items.zig");
 const Inventory = items.Inventory;
 const ItemStack = items.ItemStack;
@@ -1015,6 +1016,7 @@ pub const Protocols = struct {
 			worldEditPos = 2,
 			time = 3,
 			biome = 4,
+			particle = 5,
 		};
 
 		const WorldEditPosition = enum(u2) {
@@ -1087,6 +1089,20 @@ pub const Protocols = struct {
 						}
 					}
 				},
+				.particle => {
+					if(conn.manager.world) |_| {
+						const particleId = particles.ParticleManager.getIdByTypeIndex(try reader.readInt(u16));
+						const pos = try reader.readVec(Vec3d);
+						const collides = try reader.readInt(u8) == 1;
+						const count = try reader.readInt(u32);
+
+						const emitter: particles.Emitter = .init(particleId, collides);
+						emitter.spawnParticles(count, particles.Emitter.SpawnPoint, .{
+							.mode = .spread,
+							.position = pos,
+						});
+					}
+				},
 			}
 		}
 
@@ -1123,6 +1139,19 @@ pub const Protocols = struct {
 
 			writer.writeEnum(UpdateType, .biome);
 			writer.writeInt(u32, biomeIndex);
+
+			conn.send(.fast, id, writer.data.items);
+		}
+
+		pub fn sendParticle(conn: *Connection, particleId: u16, pos: Vec3d, collides: bool, count: u32) void {
+			var writer = utils.BinaryWriter.initCapacity(main.stackAllocator, 32);
+			defer writer.deinit();
+
+			writer.writeEnum(UpdateType, .particle);
+			writer.writeInt(u16, particleId);
+			writer.writeVec(Vec3d, pos);
+			writer.writeInt(u8, if(collides) 1 else 0);
+			writer.writeInt(u32, count);
 
 			conn.send(.fast, id, writer.data.items);
 		}
