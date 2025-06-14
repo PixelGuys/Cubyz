@@ -7,7 +7,6 @@
 		.{.structure = "cubyz:tree/coniferous/stem/5/2", .chance = 0.25},
 	}, .red = .{
 		.{.structure = "cubyz:mushroom/side/bolete", .chance = 0.05},
-		.{.structure = "cubyz:mushroom/side/toadstool", .chance = 0.01},
 		.{.structure = null, .chance = 1.0},
 	}},
 }
