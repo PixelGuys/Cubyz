@@ -6,5 +6,5 @@
 	},
 	.model = "cubyz:cube",
 	.texture = "cubyz:cobblestone",
-	.rotation = .stairs,
+	.rotation = "cubyz:stairs",
 }

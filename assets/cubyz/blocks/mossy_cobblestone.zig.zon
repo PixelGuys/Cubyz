@@ -7,5 +7,5 @@
 	.model = "cubyz:cube",
 	.texture = "cubyz:mossy_cobblestone",
 
-	.rotation = .stairs,
+	.rotation = "cubyz:stairs",
 }

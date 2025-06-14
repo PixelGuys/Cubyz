@@ -5,7 +5,7 @@
 		.{.items = .{.auto}},
 	},
 	.absorbedLight = 0x202830,
-	.rotation = .fence,
+	.rotation = "cubyz:fence",
 	.model = "cubyz:fence",
 	.texture = "cubyz:oak_fence",
 	.texture_top = "cubyz:oak_fence_top",

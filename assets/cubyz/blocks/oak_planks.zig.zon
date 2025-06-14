@@ -17,6 +17,6 @@
 		.{.items = .{.auto}},
 	},
 	.model = "cubyz:cube",
-	.rotation = .stairs,
+	.rotation = "cubyz:stairs",
 	.texture = "cubyz:oak_planks",
 }
