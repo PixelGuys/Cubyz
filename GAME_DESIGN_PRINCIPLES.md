@@ -8,7 +8,7 @@ A player should have to create or approach a threat on their own terms, rather t
 - A player will not be attacked by monsters at night. They have to actively approach a monster-infested place such as a structure or cave. This is so they have free reign to do activites during the night without being interrupted or frustrated.
 - A player has lost much health, and must risk what little life they have left to gather food. Note that the player cannot heal unless they have an accessory that consumes their energy. This is a situation the player has to face because of their own skill level.
 - A player summons an event that spawns waves of enemies to their base.
-- A player might want to claim a naturally generated structure, but will have to cull the area of monsters to claim it. Make note that monsters do not respawn.
+- A player can claim a naturally generated structure by killing all monsters monsters in the area. Note that monsters do not respawn naturally.
 
 ### Progression = Risk
 In order to progress in the game, the player must take risks. The player is otherwise free to stay where they are in terms of progression.
