@@ -21,7 +21,6 @@ In order to progress in the game, the player must take risks. The player is othe
 # Break the Cycle
 ### No Dimensions
 Instead of creating seperate dimensions, we can fit these places physically into Cubyz' massive world to allow the player to come across them on their own.
-"Dimensions" such as The Root and Sky Islands are already planned for the game.
 
 ### No Teleportation
 To immerse the player and let them feel the sense of scale the world of Cubyz has, teleportation is not allowed, as the player will see less of the world that way.
@@ -42,10 +41,8 @@ In Minecraft, a tool is an investment you can make. You can enchant the tool, re
 ### "How would the player feel?"
 This is a very important part of game design in general. When a player encounters and re-encounters a mechanic or feature, put yourself in the player's shoes and ask "how would the player feel?" The goal is to make the player feel what you want them to feel, whether that be satisfaction, frustration, excitement, fear, or all of the above! It also helps to ask for feedback from players and asking how they feel about your addition.
 
-### Make the World Feel Alive
-
 ### Depth in Simplicity
-Cubyz' special sauce is its simplicity. Keeping everything simple on the surface makes the game approachable for beginners, while the hidden depth keeps it interesting for skilled players. Avoid features that would add unnecessary tedium to the player's experience. Always think about how it would effect the player's first impressions of the game.
+Cubyz' special sauce is its simplicity, keeping everything simple on the surface makes the game approachable for beginners, while the hidden depth keeps it interesting for skilled players. Avoid features that would add unnecessary tedium to the player's experience. Always think about how it would effect the player's first impressions of the game.
 
 ### Fuel the Player's Curiosity
 The world is filled with secrets, and we want the player to find these secrets on their own without any outside help or guide.
@@ -64,6 +61,8 @@ Of course, this problem is completely solved as soon as the player gets coal, as
 ### Explain when Needed
 If something progress-related has no obvious explanation, the player will have to rely on a wiki to find out how to progress. One example is the bellows; players won't know to place it next to a furnace and jump on it repeatedly. The issue can be fixed by adding a tooltip that tells them how it works, while leaving out details they can intuitively find out themselves.
 
+Having a mechanic that isn't explained or illuded to makes it an "Invisible Mechanic." These can only be found out through looking at the game's code, wiki reading, or asking a developer, thus giving a disadvantage to casual players. It's best to avoid these at all costs.
+
 ### Micro Moments
 These are tiny things the player does in between larger events; examples include:
 - Travelling
@@ -75,6 +74,9 @@ These are tiny things the player does in between larger events; examples include
 - Fighting
 
 These moments are extremely important as they let the player mentally rest, so making sure they're as satisfying and consistent as possible is a must.
+
+### Make the World Feel Alive
+To add immersion to the game, creatures should perform behaviors outside of player input, such as hunting, migrating, eating, or sleeping.
 
 # Balancing
 When balancing the game, keep in mind how players might interact with the world, the wildlife, and each other.
@@ -90,7 +92,31 @@ If the player is given something to aid them, then it should have an appropriate
 - An accessory that heals the player, but takes away energy or some other resource.
 - Enemies have strengths and weaknesses towards particular damage types
 
+### Mob Greifing
+Creatures should not be able to grief players without their input. Destructive creatures are reserved for caves.
+
 # Little Details
+The following contains spoilers for future content. If you are not looking into contributing, you should not read this section.
+<details>
+  <summary>Open Spoilers</summary>
 
 ### Big Trees vs Small Trees
 There are two categories of trees, big and small. Big trees are designed to be built upon or left as decoration, whereas small trees are designed to be chopped down.
+
+### World Building with Gameplay
+Gameplay elements have implications on the world's lore, and the same goes other way around. It's best to design the gameplay element first, and then apply the world's style to the element during implementation.
+
+### Vegetation
+Vegetation should always fit the biome's climate. For example, Toadstools prefer humid areas, while Boletes prefer nutritious areas. Think about how a plant would fit into a biome or structure.
+
+### Caves are Creepy and Mysterious
+As the player goes deeper into Cubyz, they'll find that the music gets scarier, the monsters get harder and more disturbing, and the cave generation becomes an utter spectacle. We want the player to feel uneasy and stressed as they go down because it makes finding underground resources feel more rewarding.
+
+### The Root
+The Root is a cave located at a depth of -50000, sprawling with stone roots.
+
+This area is not required for progression, instead acting as a bonus challenge area that grants the player appropriate rewards for their current place in progression. It is the only area in the game (as of now) that will require a progression step to access, being an accessory that completely nullifies fall damage. As the player goes deeper, they'll find more curious areas that will put various skills to the test.
+
+### Sky Islands
+
+</details>
